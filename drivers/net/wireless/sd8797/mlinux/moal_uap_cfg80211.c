@@ -404,7 +404,7 @@ woal_get_second_channel_offset(int chan)
 	return chan2Offset;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 /**
  * @brief initialize AP or GO bss config
  *
@@ -430,7 +430,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 {
 	int ret = 0;
 	mlan_uap_bss_param sys_config;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 	int i = 0;
 #else
 	const t_u8 *ssid_ie = NULL;
@@ -481,7 +481,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 	memcpy(sys_config.mac_addr, priv->current_addr, ETH_ALEN);
 
 	if (priv->bss_type == MLAN_BSS_TYPE_UAP) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 		if (params->beacon_interval)
 			sys_config.beacon_period = params->beacon_interval;
 #else
@@ -523,7 +523,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 				       sizeof(Rates_A));
 		}
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 	if (!params->ssid || !params->ssid_len) {
 		ret = -EINVAL;
 		goto done;
@@ -540,7 +540,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 	else
 		sys_config.auth_mode = MLAN_AUTH_MODE_OPEN;
 	if (params->crypto.n_akm_suites) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 		woal_find_wpa_ies(params->beacon.tail,
 				  (int)params->beacon.tail_len, &sys_config);
 #else
@@ -635,7 +635,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 	   fixed element length for beacon */
 #define BEACON_IE_OFFSET	36
 	/* Find SSID in head SSID IE id: 0, right now use hard code */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	ssid_ie = woal_parse_ie_tlv(params->beacon.head + BEACON_IE_OFFSET,
 				    params->beacon.head_len - BEACON_IE_OFFSET,
 				    0);
@@ -655,7 +655,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 	}
 	memcpy(sys_config.ssid.ssid, ssid_ie + 2, *(ssid_ie + 1));
 	sys_config.ssid.ssid_len = *(ssid_ie + 1);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	head = (struct ieee80211_mgmt *)params->beacon.head;
 #else
 	head = (struct ieee80211_mgmt *)params->head;
@@ -677,7 +677,7 @@ woal_cfg80211_beacon_config(moal_private * priv,
 	} else {
 		/** Get cipher and key_mgmt from RSN/WPA IE */
 		if (capab_info & WLAN_CAPABILITY_PRIVACY) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 			if (MFALSE ==
 			    woal_find_wpa_ies(params->beacon.tail,
 					      (int)params->beacon.tail_len,
@@ -750,7 +750,7 @@ woal_virt_if_setup(struct net_device *dev)
  */
 moal_private *
 woal_alloc_virt_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 			  const
 #endif
 			  char *name)
@@ -759,20 +759,17 @@ woal_alloc_virt_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type,
 	moal_private *priv = NULL;
 	ENTER();
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 #ifndef MAX_WMM_QUEUE
 #define MAX_WMM_QUEUE   4
 #endif
 	/* Allocate an Ethernet device */
-	if (!
-	    (dev =
-	     alloc_netdev_mq(sizeof(moal_private), name, woal_virt_if_setup,
-			     MAX_WMM_QUEUE))) {
+	dev = alloc_netdev_mq(sizeof(moal_private), name, woal_virt_if_setup,
+			      MAX_WMM_QUEUE);
 #else
-	if (!
-	    (dev =
-	     alloc_netdev(sizeof(moal_private), name, woal_virt_if_setup))) {
+	dev = alloc_netdev(sizeof(moal_private), name, woal_virt_if_setup);
 #endif
+	if (!dev) {
 		PRINTM(MFATAL, "Init virtual ethernet device failed\n");
 		goto error;
 	}
@@ -796,7 +793,7 @@ woal_alloc_virt_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type,
 	INIT_LIST_HEAD(&priv->tcp_sess_queue);
 	spin_lock_init(&priv->tcp_sess_lock);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 	SET_MODULE_OWNER(dev);
 #endif
 
@@ -825,7 +822,7 @@ error:
  */
 int
 woal_cfg80211_add_virt_if(struct wiphy *wiphy,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 			  const
 #endif
 			  char *name, enum nl80211_iftype type, u32 * flags,
@@ -974,7 +971,8 @@ woal_cfg80211_del_virt_if(struct wiphy *wiphy, struct net_device *dev)
 	priv = (moal_private *) woal_get_priv_bss_type(handle,
 						       MLAN_BSS_TYPE_WIFIDIRECT);
 	for (i = 0; i < priv->phandle->priv_num; i++) {
-		if ((vir_priv = priv->phandle->priv[i])) {
+		vir_priv = priv->phandle->priv[i];
+		if (vir_priv) {
 			if (vir_priv->netdev == dev) {
 				PRINTM(MIOCTL,
 				       "Find virtual interface, index=%d\n", i);
@@ -1002,7 +1000,7 @@ woal_cfg80211_del_virt_if(struct wiphy *wiphy, struct net_device *dev)
 
 				if (priv->phandle->cookie) {
 					cfg80211_remain_on_channel_expired(
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
 										  remain_priv->
 										  netdev,
 #else
@@ -1015,7 +1013,7 @@ woal_cfg80211_del_virt_if(struct wiphy *wiphy, struct net_device *dev)
 										  &priv->
 										  phandle->
 										  chan,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 										  priv->
 										  phandle->
 										  channel_type,
@@ -1038,7 +1036,7 @@ woal_cfg80211_del_virt_if(struct wiphy *wiphy, struct net_device *dev)
 		woal_proc_remove(vir_priv);
 #endif /* CONFIG_PROC_FS */
 		/* Last reference is our one */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
 		PRINTM(MINFO, "refcnt = %d\n", atomic_read(&dev->refcnt));
 #else
 		PRINTM(MINFO, "refcnt = %d\n", netdev_refcnt_read(dev));
@@ -1069,7 +1067,8 @@ woal_remove_virtual_interface(moal_handle * handle)
 	ENTER();
 	rtnl_lock();
 	for (i = 0; i < handle->priv_num; i++) {
-		if ((priv = handle->priv[i])) {
+		priv = handle->priv[i];
+		if (priv) {
 			if (priv->bss_virtual) {
 				PRINTM(MCMND, "Remove virtual interface %s\n",
 				       priv->netdev->name);
@@ -1089,8 +1088,8 @@ woal_remove_virtual_interface(moal_handle * handle)
 #endif
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,37) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 37) || defined(COMPAT_WIRELESS)
 /**
  * @brief Request the driver to add a virtual interface
  *
@@ -1137,14 +1136,14 @@ woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
  */
 struct wireless_dev *
 woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 			       const
 #endif
 			       char *name, enum nl80211_iftype type,
 			       u32 * flags, struct vif_params *params)
 #endif
 {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,37) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 37) || defined(COMPAT_WIRELESS)
 	struct net_device *ndev = NULL;
 #endif
 	int ret = 0;
@@ -1167,8 +1166,8 @@ woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
 		break;
 	}
 	LEAVE();
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,37) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 37) || defined(COMPAT_WIRELESS)
 	if (ret)
 		return NULL;
 	else
@@ -1180,11 +1179,11 @@ woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
 	if (ret)
 		return NULL;
 	else
-		return (ndev->ieee80211_ptr);
+		return ndev->ieee80211_ptr;
 #endif
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
 /**
  * @brief Request the driver to del a virtual interface
  *
@@ -1209,7 +1208,7 @@ woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct wireless_dev *wdev)
 #endif
 {
 	int ret = 0;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 	struct net_device *dev = wdev->netdev;
 #endif
 	ENTER();
@@ -1225,7 +1224,7 @@ woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct wireless_dev *wdev)
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 /**
  * @brief initialize AP or GO parameters
 
@@ -1266,8 +1265,8 @@ woal_cfg80211_add_beacon(struct wiphy *wiphy,
 	woal_cancel_scan(priv, MOAL_IOCTL_WAIT);
 #endif
 	if (params != NULL) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
 		priv->channel =
 			ieee80211_frequency_to_channel(params->chandef.chan->
 						       center_freq);
@@ -1286,7 +1285,7 @@ woal_cfg80211_add_beacon(struct wiphy *wiphy,
 
 		/* set mgmt frame ies */
 		if (MLAN_STATUS_SUCCESS != woal_cfg80211_mgmt_frame_ie(priv,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0) && !defined(COMPAT_WIRELESS)
 								       params->
 								       tail,
 								       params->
@@ -1296,7 +1295,7 @@ woal_cfg80211_add_beacon(struct wiphy *wiphy,
 								       NULL, 0,
 								       MGMT_MASK_BEACON
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 								       params->
 								       beacon.
 								       tail,
@@ -1341,8 +1340,8 @@ woal_cfg80211_add_beacon(struct wiphy *wiphy,
 			goto done;
 		}
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	if (params->beacon.beacon_ies && params->beacon.beacon_ies_len) {
 		if (MLAN_STATUS_SUCCESS != woal_cfg80211_mgmt_frame_ie(priv,
 								       params->
@@ -1396,7 +1395,7 @@ done:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 /**
  * @brief set AP or GO parameter
  *
@@ -1431,7 +1430,7 @@ woal_cfg80211_set_beacon(struct wiphy *wiphy,
 
 	PRINTM(MIOCTL, "set beacon\n");
 	if (params != NULL) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0) && !defined(COMPAT_WIRELESS)
 		if (params->tail && params->tail_len) {
 			if (MLAN_STATUS_SUCCESS !=
 			    woal_cfg80211_mgmt_frame_ie(priv,
@@ -1545,13 +1544,12 @@ woal_cfg80211_del_beacon(struct wiphy *wiphy, struct net_device *dev)
 
 #ifdef STA_SUPPORT
 	if (!woal_is_any_interface_active(priv->phandle)) {
-		if ((pmpriv =
-		     woal_get_priv((moal_handle *) priv->phandle,
-				   MLAN_BSS_ROLE_STA))) {
+		pmpriv = woal_get_priv((moal_handle *) priv->phandle,
+				       MLAN_BSS_ROLE_STA);
+		if (pmpriv)
 			woal_set_scan_time(pmpriv, ACTIVE_SCAN_CHAN_TIME,
 					   PASSIVE_SCAN_CHAN_TIME,
 					   SPECIFIC_SCAN_CHAN_TIME);
-		}
 	}
 #endif
 
@@ -1577,12 +1575,25 @@ int
 woal_cfg80211_del_station(struct wiphy *wiphy, struct net_device *dev,
 			  u8 * mac_addr)
 {
+	moal_private *priv = (moal_private *) woal_get_netdev_priv(dev);
 	ENTER();
-    /** we can not send deauth here, it will cause WPS failure */
-	if (mac_addr)
-		PRINTM(MIOCTL, "del station: " MACSTR "\n", MAC2STR(mac_addr));
-	else
+	if (priv->media_connected == MFALSE) {
+		PRINTM(MINFO, "cfg80211: Media not connected!\n");
+		LEAVE();
+		return 0;
+	}
+    /** we will not send deauth to p2p interface, it might cause WPS failure */
+	if (mac_addr) {
+		PRINTM(MMSG, "wlan: deauth station " MACSTR "\n",
+		       MAC2STR(mac_addr));
+#ifdef WIFI_DIRECT_SUPPORT
+		if (!priv->phandle->is_go_timer_set &&
+		    priv->bss_type != MLAN_BSS_TYPE_WIFIDIRECT)
+#endif
+			woal_deauth_station(priv, mac_addr);
+	} else {
 		PRINTM(MIOCTL, "del all station\n");
+	}
 	LEAVE();
 	return 0;
 

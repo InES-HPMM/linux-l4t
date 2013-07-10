@@ -38,15 +38,15 @@ Change log:
 #include "mlan_meas.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -357,7 +357,8 @@ wlan_is_p2p_connected(IN pmlan_adapter pmadapter)
 	pmlan_private priv;
 	ENTER();
 	for (j = 0; j < pmadapter->priv_num; ++j) {
-		if ((priv = pmadapter->priv[j])) {
+		priv = pmadapter->priv[j];
+		if (priv) {
 			if (priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT) {
 				if ((priv->bss_role == MLAN_BSS_ROLE_STA) &&
 				    (priv->media_connected == MTRUE)) {
@@ -493,7 +494,7 @@ wlan_cmd_802_11_mac_address(IN pmlan_private pmpriv,
 	if (cmd_action == HostCmd_ACT_GEN_SET) {
 		memcpy(pmpriv->adapter, cmd->params.mac_addr.mac_addr,
 		       pmpriv->curr_addr, MLAN_MAC_ADDR_LENGTH);
-		// HEXDUMP("SET_CMD: MAC ADDRESS-", priv->CurrentAddr, 6);
+		/* HEXDUMP("SET_CMD: MAC ADDRESS-", priv->CurrentAddr, 6); */
 	}
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
@@ -1611,7 +1612,7 @@ wlan_cmd_inactivity_timeout(IN HostCmd_DS_COMMAND * cmd,
 }
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 /**

@@ -30,7 +30,7 @@ Change log:
 /** NF value for default scan */
 #define MRVDRV_NF_DEFAULT_SCAN_VALUE		(-96)
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
 /** Add event */
 #define IWE_STREAM_ADD_EVENT(i, c, e, w, l) iwe_stream_add_event((i), (c), (e), (w), (l))
 /** Add point */

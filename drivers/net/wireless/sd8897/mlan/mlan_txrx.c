@@ -35,19 +35,19 @@ Change Log:
 #include "mlan_sdio.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 /**
  *   @brief This function processes the received buffer
@@ -293,7 +293,7 @@ wlan_add_buf_bypass_txqueue(mlan_adapter * pmadapter, pmlan_buffer pmbuf)
 INLINE t_u8
 wlan_bypass_tx_list_empty(mlan_adapter * pmadapter)
 {
-	return ((pmadapter->bypass_pkt_count) ? MFALSE : MTRUE);
+	return (pmadapter->bypass_pkt_count) ? MFALSE : MTRUE;
 }
 
 /**
@@ -342,18 +342,19 @@ wlan_process_bypass_tx(pmlan_adapter pmadapter)
 	int j = 0;
 	ENTER();
 	for (j = 0; j < pmadapter->priv_num; ++j) {
-		if ((priv = pmadapter->priv[j])) {
-			if ((pmbuf =
-			     (pmlan_buffer) util_dequeue_list(pmadapter->
-							      pmoal_handle,
-							      &priv->bypass_txq,
-							      pmadapter->
-							      callbacks.
-							      moal_spin_lock,
-							      pmadapter->
-							      callbacks.
-							      moal_spin_unlock)))
-			{
+		priv = pmadapter->priv[j];
+		if (priv) {
+			pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->
+								 pmoal_handle,
+								 &priv->
+								 bypass_txq,
+								 pmadapter->
+								 callbacks.
+								 moal_spin_lock,
+								 pmadapter->
+								 callbacks.
+								 moal_spin_unlock);
+			if (pmbuf) {
 				PRINTM(MINFO, "Dequeuing bypassed packet %p\n",
 				       pmbuf);
 				/* XXX: nex_pkt_len ??? */

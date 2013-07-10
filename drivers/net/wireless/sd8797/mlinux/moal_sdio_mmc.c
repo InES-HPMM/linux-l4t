@@ -449,10 +449,14 @@ mlan_status
 woal_write_reg(moal_handle * handle, t_u32 reg, t_u32 data)
 {
 	mlan_status ret = MLAN_STATUS_FAILURE;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	sdio_writeb(((struct sdio_mmc_card *)handle->card)->func, (t_u8) data,
 		    reg, (int *)&ret);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	return ret;
 }
 
@@ -470,11 +474,14 @@ woal_read_reg(moal_handle * handle, t_u32 reg, t_u32 * data)
 {
 	mlan_status ret = MLAN_STATUS_FAILURE;
 	t_u8 val;
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	val = sdio_readb(((struct sdio_mmc_card *)handle->card)->func, reg,
 			 (int *)&ret);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	*data = val;
 
 	return ret;
@@ -507,12 +514,16 @@ woal_write_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53w = 1;
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	if (!sdio_writesb
 	    (((struct sdio_mmc_card *)handle->card)->func, ioport, buffer,
 	     blkcnt * blksz))
 		ret = MLAN_STATUS_SUCCESS;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53w = 2;
 #endif
@@ -547,14 +558,18 @@ woal_read_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53r = 1;
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	if (!sdio_readsb
 	    (((struct sdio_mmc_card *)handle->card)->func, buffer, ioport,
 	     blkcnt * blksz))
 		ret = MLAN_STATUS_SUCCESS;
 	else
 		woal_dump_sdio_reg(handle);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53r = 2;
 #endif

@@ -39,11 +39,11 @@ Change Log:
 #endif
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
 extern mlan_operations *mlan_ops[];
@@ -51,7 +51,7 @@ extern mlan_operations *mlan_ops[];
 extern t_u8 ac_to_tid[4][2];
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /** Custom IE auto index and mask */
@@ -276,7 +276,7 @@ wlan_custom_ioctl_auto_delete(IN pmlan_private pmpriv,
 }
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -395,6 +395,8 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 			info->param.debug_info.pm_wakeup_card_req;
 		pmadapter->pm_wakeup_fw_try =
 			info->param.debug_info.pm_wakeup_fw_try;
+		pmadapter->pm_wakeup_in_secs =
+			info->param.debug_info.pm_wakeup_in_secs;
 		pmadapter->is_hs_configured =
 			info->param.debug_info.is_hs_configured;
 		pmadapter->hs_activated = info->param.debug_info.hs_activated;
@@ -478,6 +480,10 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 			info->param.debug_info.num_bridge_pkts;
 		pmpriv->num_drop_pkts = info->param.debug_info.num_drop_pkts;
 #endif
+		pmadapter->mlan_processing =
+			info->param.debug_info.mlan_processing;
+		pmadapter->mlan_rx_processing =
+			info->param.debug_info.mlan_rx_processing;
 	} else {		/* MLAN_ACT_GET */
 		ptid = ac_to_tid[WMM_AC_BK];
 		info->param.debug_info.wmm_ac_bk =
@@ -516,6 +522,8 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 			pmadapter->pm_wakeup_card_req;
 		info->param.debug_info.pm_wakeup_fw_try =
 			pmadapter->pm_wakeup_fw_try;
+		info->param.debug_info.pm_wakeup_in_secs =
+			pmadapter->pm_wakeup_in_secs;
 		info->param.debug_info.is_hs_configured =
 			pmadapter->is_hs_configured;
 		info->param.debug_info.hs_activated = pmadapter->hs_activated;
@@ -601,6 +609,10 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 			pmadapter->pending_bridge_pkts;
 		info->param.debug_info.num_drop_pkts = pmpriv->num_drop_pkts;
 #endif
+		info->param.debug_info.mlan_processing =
+			pmadapter->mlan_processing;
+		info->param.debug_info.mlan_rx_processing =
+			pmadapter->mlan_rx_processing;
 	}
 
 	pioctl_req->data_read_written =
@@ -663,10 +675,15 @@ mlan_status
 wlan_pm_wakeup_card(IN pmlan_adapter pmadapter)
 {
 	mlan_status ret = MLAN_STATUS_SUCCESS;
+	t_u32 age_ts_usec;
 	pmlan_callbacks pcb = &pmadapter->callbacks;
 
 	ENTER();
 	PRINTM(MEVENT, "Wakeup device...\n");
+	pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
+						  &pmadapter->pm_wakeup_in_secs,
+						  &age_ts_usec);
+
 	ret = pcb->moal_write_reg(pmadapter->pmoal_handle,
 				  HOST_TO_CARD_EVENT_REG, HOST_POWER_UP);
 	LEAVE();
@@ -1541,12 +1558,13 @@ wlan_get_station_entry(mlan_private * priv, t_u8 * mac)
 		LEAVE();
 		return MNULL;
 	}
-	if (!(sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
-						    &priv->sta_list,
-						    priv->adapter->callbacks.
-						    moal_spin_lock,
-						    priv->adapter->callbacks.
-						    moal_spin_unlock))) {
+	sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
+					      &priv->sta_list,
+					      priv->adapter->callbacks.
+					      moal_spin_lock,
+					      priv->adapter->callbacks.
+					      moal_spin_unlock);
+	if (!sta_ptr) {
 		LEAVE();
 		return MNULL;
 	}
@@ -1622,7 +1640,8 @@ wlan_delete_station_entry(mlan_private * priv, t_u8 * mac)
 	ENTER();
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
 					    priv->wmm.ra_list_spinlock);
-	if ((sta_ptr = wlan_get_station_entry(priv, mac))) {
+	sta_ptr = wlan_get_station_entry(priv, mac);
+	if (sta_ptr) {
 		util_unlink_list(priv->adapter->pmoal_handle, &priv->sta_list,
 				 (pmlan_linked_list) sta_ptr,
 				 priv->adapter->callbacks.moal_spin_lock,
@@ -2843,6 +2862,88 @@ wlan_misc_ioctl_txcontrol(IN pmlan_adapter pmadapter,
 		pmpriv->pkt_tx_ctrl = misc->param.tx_control;
 	else
 		misc->param.tx_control = pmpriv->pkt_tx_ctrl;
+
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief Get/Set channel time and buffer weight configuration
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_misc_ioctl_multi_chan_config(IN pmlan_adapter pmadapter,
+				  IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_ds_misc_cfg *misc = MNULL;
+	t_u16 cmd_action = 0;
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+
+	ENTER();
+
+	misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+
+	if (pioctl_req->action == MLAN_ACT_SET)
+		cmd_action = HostCmd_ACT_GEN_SET;
+	else
+		cmd_action = HostCmd_ACT_GEN_GET;
+
+	/* Send request to firmware */
+	ret = wlan_prepare_cmd(pmpriv,
+			       HostCmd_CMD_MULTI_CHAN_CONFIG,
+			       cmd_action,
+			       0,
+			       (t_void *) pioctl_req,
+			       &misc->param.multi_chan_cfg);
+
+	if (ret == MLAN_STATUS_SUCCESS)
+		ret = MLAN_STATUS_PENDING;
+
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief Get/Set multi-channel policy setting
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_misc_ioctl_multi_chan_policy(IN pmlan_adapter pmadapter,
+				  IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_ds_misc_cfg *misc = MNULL;
+	t_u16 cmd_action = 0;
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+
+	ENTER();
+
+	misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+
+	if (pioctl_req->action == MLAN_ACT_SET)
+		cmd_action = HostCmd_ACT_GEN_SET;
+	else
+		cmd_action = HostCmd_ACT_GEN_GET;
+
+	/* Send request to firmware */
+	ret = wlan_prepare_cmd(pmpriv,
+			       HostCmd_CMD_MULTI_CHAN_POLICY,
+			       cmd_action,
+			       0,
+			       (t_void *) pioctl_req,
+			       &misc->param.multi_chan_policy);
+
+	if (ret == MLAN_STATUS_SUCCESS)
+		ret = MLAN_STATUS_PENDING;
 
 	LEAVE();
 	return ret;

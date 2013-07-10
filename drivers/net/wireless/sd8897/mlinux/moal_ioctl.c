@@ -44,8 +44,7 @@ Change log:
 /* Marvell Channel config TLV ID */
 #define MRVL_CHANNELCONFIG_TLV_ID       (0x0100 + 0x2a)	/* 0x012a */
 
-typedef struct _hostcmd_header
-{
+typedef struct _hostcmd_header {
     /** Command Header : Command */
 	t_u16 command;
     /** Command Header : Size */
@@ -60,8 +59,7 @@ typedef struct _hostcmd_header
 
 #ifdef STA_SUPPORT
 /** Region code mapping */
-typedef struct _region_code_mapping_t
-{
+typedef struct _region_code_mapping_t {
     /** Region */
 	t_u8 region[COUNTRY_CODE_LEN];
     /** Code */
@@ -133,7 +131,7 @@ region_string_2_region_code(char *region_string)
 			    region_code_mapping[i].region,
 			    strlen(region_string))) {
 			LEAVE();
-			return (region_code_mapping[i].code);
+			return region_code_mapping[i].code;
 		}
 	}
 	/* Default is US */
@@ -286,11 +284,16 @@ woal_fill_wait_queue(moal_private * priv, wait_queue * wait, t_u8 wait_option)
 	ENTER();
 	wait->start_time = jiffies;
 	wait->condition = MFALSE;
+	wait->wait_timeout = MFALSE;
 	switch (wait_option) {
 	case MOAL_NO_WAIT:
 		break;
 	case MOAL_IOCTL_WAIT:
 		wait->wait = &priv->ioctl_wait_q;
+		break;
+	case MOAL_IOCTL_WAIT_TIMEOUT:
+		wait->wait = &priv->ioctl_wait_q;
+		wait->wait_timeout = MTRUE;
 		break;
 	case MOAL_CMD_WAIT:
 		wait->wait = &priv->cmd_wait_q;
@@ -336,6 +339,10 @@ woal_wait_ioctl_complete(moal_private * priv, mlan_ioctl_req * req,
 		wait_event_interruptible_exclusive(priv->ioctl_wait_q,
 						   wait->condition);
 		break;
+	case MOAL_IOCTL_WAIT_TIMEOUT:
+		wait_event_timeout(priv->ioctl_wait_q, wait->condition,
+				   MOAL_IOCTL_TIMEOUT);
+		break;
 	case MOAL_CMD_WAIT:
 		wait_event_interruptible_exclusive(priv->cmd_wait_q,
 						   wait->condition);
@@ -356,11 +363,11 @@ woal_wait_ioctl_complete(moal_private * priv, mlan_ioctl_req * req,
 	}
 	if (wait->condition == MFALSE) {
 		req->action = MLAN_ACT_CANCEL;
-		status = mlan_ioctl(priv->phandle->pmlan_adapter, req);
 		PRINTM(MMSG,
-		       "wlan: IOCTL cancel %p id=0x%x, sub_id=0x%x, wait_option=%d, action=%d, status=%d\n",
+		       "wlan: IOCTL cancel %p id=0x%x, sub_id=0x%x, wait_option=%d, action=%d\n",
 		       req, req->req_id, (*(t_u32 *) req->pbuf), wait_option,
-		       (int)req->action, status);
+		       (int)req->action);
+		status = mlan_ioctl(priv->phandle->pmlan_adapter, req);
 	}
 	LEAVE();
 	return;
@@ -2527,8 +2534,7 @@ done:
 void
 woal_get_version(moal_handle * handle, char *version, int max_len)
 {
-	union
-	{
+	union {
 		t_u32 l;
 		t_u8 c[4];
 	} ver;
@@ -4029,8 +4035,9 @@ woal_cancel_scan(moal_private * priv, t_u8 wait_option)
 	for (i = 0; i < handle->priv_num; i++) {
 		if (IS_STA_CFG80211(cfg80211_wext) &&
 		    handle->priv[i]->scan_request) {
+	    /** some supplicant can not handle SCAN abort event */
 			cfg80211_scan_done(handle->priv[i]->scan_request,
-					   MTRUE);
+					   MFALSE);
 			handle->priv[i]->scan_request = NULL;
 		}
 	}
@@ -4525,52 +4532,6 @@ woal_set_scan_type(moal_private * priv, t_u32 scan_type)
 	memset(&scan->param.scan_cfg, 0, sizeof(mlan_scan_cfg));
 	scan_cfg.scan_type = scan_type;
 	PRINTM(MIOCTL, "Set scan_type=%d\n", (int)scan_type);
-	memcpy(&scan->param.scan_cfg, &scan_cfg, sizeof(mlan_scan_cfg));
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT))
-		ret = MLAN_STATUS_FAILURE;
-done:
-	if (req)
-		kfree(req);
-	LEAVE();
-	return ret;
-}
-
-/**
- *  @brief enable/disable ext_scan
- *
- *  @param priv                 A pointer to moal_private structure
- *  @param enable               MTRUE -- enable, MFALSE --disable
- *
- *  @return                     MLAN_STATUS_SUCCESS -- success, otherwise fail
- */
-mlan_status
-woal_enable_ext_scan(moal_private * priv, t_u8 enable)
-{
-	mlan_status ret = MLAN_STATUS_SUCCESS;
-	mlan_ds_scan *scan = NULL;
-	mlan_ioctl_req *req = NULL;
-	mlan_scan_cfg scan_cfg;
-
-	ENTER();
-	memset(&scan_cfg, 0, sizeof(scan_cfg));
-	if (MLAN_STATUS_SUCCESS != woal_get_scan_config(priv, &scan_cfg)) {
-		ret = MLAN_STATUS_FAILURE;
-		goto done;
-	}
-
-	req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_scan));
-	if (req == NULL) {
-		ret = MLAN_STATUS_FAILURE;
-		goto done;
-	}
-	scan = (mlan_ds_scan *) req->pbuf;
-	scan->sub_command = MLAN_OID_SCAN_CONFIG;
-	req->req_id = MLAN_IOCTL_SCAN;
-	req->action = MLAN_ACT_SET;
-	memset(&scan->param.scan_cfg, 0, sizeof(mlan_scan_cfg));
-	scan_cfg.ext_scan = enable;
-	PRINTM(MIOCTL, "Set ext_scan=%d\n", (int)enable);
 	memcpy(&scan->param.scan_cfg, &scan_cfg, sizeof(mlan_scan_cfg));
 	if (MLAN_STATUS_SUCCESS !=
 	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT))

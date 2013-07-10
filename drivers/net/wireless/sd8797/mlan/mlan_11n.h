@@ -174,8 +174,8 @@ is_station_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 			    !sta_ptr->wapi_key_on)
 				return MFALSE;
 		}
-		return ((sta_ptr->ampdu_sta[tid] != BA_STREAM_NOT_ALLOWED)
-			? MTRUE : MFALSE);
+		return (sta_ptr->ampdu_sta[tid] != BA_STREAM_NOT_ALLOWED)
+			? MTRUE : MFALSE;
 	}
 	return MFALSE;
 }
@@ -256,8 +256,8 @@ wlan_is_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 	if (priv->sec_info.wapi_enabled && !priv->sec_info.wapi_key_on)
 		return MFALSE;
 
-	return ((priv->aggr_prio_tbl[tid].ampdu_ap != BA_STREAM_NOT_ALLOWED)
-		? MTRUE : MFALSE);
+	return (priv->aggr_prio_tbl[tid].ampdu_ap != BA_STREAM_NOT_ALLOWED)
+		? MTRUE : MFALSE;
 }
 
 /**
@@ -307,10 +307,10 @@ wlan_is_amsdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 	}
 #endif /* UAP_SUPPORT */
 #define TXRATE_BITMAP_INDEX_MCS0_7 2
-	return (((priv->aggr_prio_tbl[tid].amsdu != BA_STREAM_NOT_ALLOWED)
-		 && ((priv->is_data_rate_auto)
-		     || !((priv->bitmap_rates[TXRATE_BITMAP_INDEX_MCS0_7]) &
-			  0x03))) ? MTRUE : MFALSE);
+	return ((priv->aggr_prio_tbl[tid].amsdu != BA_STREAM_NOT_ALLOWED)
+		&& ((priv->is_data_rate_auto)
+		    || !((priv->bitmap_rates[TXRATE_BITMAP_INDEX_MCS0_7]) &
+			 0x03))) ? MTRUE : MFALSE;
 }
 
 /**
@@ -334,8 +334,7 @@ wlan_is_bastream_avail(mlan_private * priv)
 						  (pmlan_list_head) & pmpriv->
 						  tx_ba_stream_tbl_ptr);
 	}
-	return ((bastream_num <
-		 MLAN_MAX_TX_BASTREAM_SUPPORTED) ? MTRUE : MFALSE);
+	return (bastream_num < MLAN_MAX_TX_BASTREAM_SUPPORTED) ? MTRUE : MFALSE;
 }
 
 /**

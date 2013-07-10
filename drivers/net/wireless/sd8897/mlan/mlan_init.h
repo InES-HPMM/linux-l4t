@@ -38,12 +38,10 @@ Change log:
 #define FW_HAS_LAST_BLOCK		0x00000004
 
 /** Firmware data transmit size */
-#define FW_DATA_XMIT_SIZE \
-	sizeof(FWHeader) + DataLength + sizeof(t_u32)
+#define FW_DATA_XMIT_SIZE       (sizeof(FWHeader) + DataLength + sizeof(t_u32))
 
 /** FWHeader */
-typedef struct _FWHeader
-{
+typedef struct _FWHeader {
     /** FW download command */
 	t_u32 dnld_cmd;
     /** FW base address */
@@ -55,8 +53,7 @@ typedef struct _FWHeader
 } FWHeader;
 
 /** FWData */
-typedef struct _FWData
-{
+typedef struct _FWData {
     /** FW data header */
 	FWHeader fw_header;
     /** FW data sequence number */
@@ -66,8 +63,7 @@ typedef struct _FWData
 } FWData;
 
 /** FWSyncHeader */
-typedef struct _FWSyncHeader
-{
+typedef struct _FWSyncHeader {
     /** FW sync header command */
 	t_u32 cmd;
     /** FW sync header sequence number */

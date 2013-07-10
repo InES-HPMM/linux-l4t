@@ -40,11 +40,11 @@ Change log:
 #define MIN_ACCEPTED_GET_SCAN_BUF 8000
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 extern int hw_test;
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -1628,7 +1628,7 @@ woal_set_auth(struct net_device *dev, struct iw_request_info *info,
 	case IW_AUTH_RX_UNENCRYPTED_EAPOL:
 	case IW_AUTH_ROAMING_CONTROL:
 	case IW_AUTH_PRIVACY_INVOKED:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 	case IW_AUTH_MFP:
 #endif
 		break;
@@ -1774,7 +1774,8 @@ woal_get_range(struct net_device *dev, struct iw_request_info *info,
 
 	ENTER();
 
-	if (!(pchan_list = kmalloc(sizeof(mlan_chan_list), GFP_KERNEL))) {
+	pchan_list = kmalloc(sizeof(mlan_chan_list), GFP_KERNEL);
+	if (!pchan_list) {
 		LEAVE();
 		return -ENOMEM;
 	}
@@ -1989,7 +1990,8 @@ woal_set_priv(struct net_device *dev, struct iw_request_info *info,
 	t_u8 country_code[COUNTRY_CODE_LEN];
 	int len = 0;
 	ENTER();
-	if (!(buf = kmalloc(dwrq->length + 1, GFP_KERNEL))) {
+	buf = kmalloc(dwrq->length + 1, GFP_KERNEL);
+	if (!buf) {
 		ret = -ENOMEM;
 		goto done;
 	}
@@ -2147,16 +2149,16 @@ woal_set_priv(struct net_device *dev, struct iw_request_info *info,
 	} else if (strncmp(buf, "RXFILTER-START", strlen("RXFILTER-START")) ==
 		   0) {
 #ifdef MEF_CFG_RX_FILTER
-		if ((ret = woal_set_rxfilter(priv, MTRUE))) {
+		ret = woal_set_rxfilter(priv, MTRUE);
+		if (ret)
 			goto done;
-		}
 #endif
 		len = sprintf(buf, "OK\n") + 1;
 	} else if (strncmp(buf, "RXFILTER-STOP", strlen("RXFILTER-STOP")) == 0) {
 #ifdef MEF_CFG_RX_FILTER
-		if ((ret = woal_set_rxfilter(priv, MFALSE))) {
+		ret = woal_set_rxfilter(priv, MFALSE);
+		if (ret)
 			goto done;
-		}
 #endif
 		len = sprintf(buf, "OK\n") + 1;
 	} else if (strncmp(buf, "RXFILTER-ADD", strlen("RXFILTER-ADD")) == 0) {
@@ -2532,7 +2534,8 @@ woal_get_scan(struct net_device *dev, struct iw_request_info *info,
 		return -EAGAIN;
 	}
 
-	if (!(buf = kmalloc((buf_size), GFP_KERNEL))) {
+	buf = kmalloc((buf_size), GFP_KERNEL);
+	if (!buf) {
 		PRINTM(MERROR, "Cannot allocate buffer!\n");
 		ret = -EFAULT;
 		goto done;
@@ -2936,7 +2939,7 @@ static const iw_handler woal_private_handler[] = {
 #endif /* STA_SUPPORT */
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 #if WIRELESS_EXT > 14

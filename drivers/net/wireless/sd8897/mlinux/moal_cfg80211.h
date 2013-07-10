@@ -198,6 +198,34 @@ int woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev);
 #endif
 
 #if defined(WIFI_DIRECT_SUPPORT)
+/* Group Owner Negotiation Req */
+#define P2P_GO_NEG_REQ         0
+/* Group Owner Negotiation Rsp */
+#define P2P_GO_NEG_RSP         1
+/* Group Owner Negotiation Confirm */
+#define P2P_GO_NEG_CONF        2
+/* P2P Invitation Request */
+#define P2P_INVITE_REQ         3
+/* P2P Invitation Response */
+#define P2P_INVITE_RSP         4
+/* Device Discoverability Request */
+#define P2P_DEVDIS_REQ         5
+/* Device Discoverability Response */
+#define P2P_DEVDIS_RSP         6
+/* Provision Discovery Request */
+#define P2P_PROVDIS_REQ        7
+/* Provision Discovery Response */
+#define P2P_PROVDIS_RSP        8
+/** P2P category */
+#define P2P_ACT_FRAME_CATEGORY            0x04
+/** P2P oui offset */
+#define P2P_ACT_FRAME_OUI_OFFSET          26
+/** P2P subtype offset */
+#define P2P_ACT_FRAME_OUI_SUBTYPE_OFFSET  30
+void woal_cfg80211_display_p2p_actframe(const t_u8 * buf, int len,
+					struct ieee80211_channel *chan,
+					const t_u8 flag);
+
 /** Define kernel version for wifi direct */
 #if !defined(COMPAT_WIRELESS)
 #define WIFI_DIRECT_KERNEL_VERSION          KERNEL_VERSION(2, 6, 39)
@@ -266,7 +294,7 @@ int woal_cfg80211_mgmt_frame_ie(moal_private * priv,
 
 t_u8 woal_is_any_interface_active(moal_handle * handle);
 
-int woal_get_active_intf_freq(moal_handle * handle);
+int woal_get_active_intf_freq(moal_private * priv);
 
 void woal_cfg80211_setup_ht_cap(struct ieee80211_sta_ht_cap *ht_info,
 				t_u32 dev_cap, t_u8 * mcs_set);

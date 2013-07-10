@@ -223,8 +223,7 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Chip Id Register 1 */
 #define CARD_CHIP_ID_1_REG		0x801d
 
-struct sdio_mmc_card
-{
+struct sdio_mmc_card {
 	/** sdio_func structure pointer */
 	struct sdio_func *func;
 	/** bt_private structure pointer */

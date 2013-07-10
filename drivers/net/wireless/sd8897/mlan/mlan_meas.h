@@ -37,6 +37,7 @@ Change Log:
 
 /* Send a given measurement request to the firmware, report back the result */
 extern int
+
 wlan_meas_util_send_req(mlan_private * pmpriv,
 			HostCmd_DS_MEASUREMENT_REQUEST * pmeas_req,
 			t_u32 wait_for_resp_timeout, pmlan_ioctl_req pioctl_req,

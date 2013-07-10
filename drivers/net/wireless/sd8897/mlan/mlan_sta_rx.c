@@ -37,8 +37,7 @@ Change log:
 ********************************************************/
 
 /** Ethernet II header */
-typedef struct
-{
+typedef struct {
     /** Ethernet II header destination address */
 	t_u8 dest_addr[MLAN_MAC_ADDR_LENGTH];
     /** Ethernet II header source address */
@@ -292,11 +291,10 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 	}
 
 	/* Reorder and send to OS */
-	if ((ret = mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num,
-					  prx_pd->priority, ta,
-					  (t_u8) prx_pd->rx_pkt_type,
-					  (void *)pmbuf)) ||
-	    (rx_pkt_type == PKT_TYPE_BAR)
+	ret = mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num,
+				     prx_pd->priority, ta,
+				     (t_u8) prx_pd->rx_pkt_type, (void *)pmbuf);
+	if (ret || (rx_pkt_type == PKT_TYPE_BAR)
 		) {
 		wlan_free_mlan_buffer(pmadapter, pmbuf);
 	}
@@ -304,5 +302,5 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 done:
 
 	LEAVE();
-	return (ret);
+	return ret;
 }

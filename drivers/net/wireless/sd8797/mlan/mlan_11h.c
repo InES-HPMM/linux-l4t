@@ -36,7 +36,7 @@ Change Log:
 #endif
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /** Default IBSS DFS recovery interval (in TBTTs); used for adhoc start */
@@ -83,50 +83,48 @@ Change Log:
 
 /** Region codes 0x10, 0x20:  channels 1 thru 11 supported */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_FCC = { 1, 11 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_FCC = { 1, 11 };
 
 /** Region codes 0x30, 0x32, 0x41, 0x50:  channels 1 thru 13 supported */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_EU = { 1, 13 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_EU = { 1, 13 };
 
 /** Region code 0x40:  only channel 14 supported */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_JPN40 = { 14, 1 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_2_4G_region_JPN40 = { 14, 1 };
 
 /** JPN sub-band config : Start Channel = 8, NumChans = 3 */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_JPN_bottom_band = { 8, 3 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_JPN_bottom_band = { 8, 3 };
 
 /** U-NII sub-band config : Start Channel = 36, NumChans = 4 */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_unii_lower_band = { 36, 4 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_unii_lower_band = { 36, 4 };
 
 /** U-NII sub-band config : Start Channel = 52, NumChans = 4 */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_unii_middle_band = { 52, 4 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_unii_middle_band = { 52, 4 };
 
 /** U-NII sub-band config : Start Channel = 100, NumChans = 11 */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_unii_mid_upper_band =
-	{ 100, 11 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_unii_mid_upper_band = { 100, 11 };
 
 /** U-NII sub-band config : Start Channel = 149, NumChans = 5 */
 static const
-	IEEEtypes_SupportChan_Subband_t wlan_11h_unii_upper_band = { 149, 5 };
+IEEEtypes_SupportChan_Subband_t wlan_11h_unii_upper_band = { 149, 5 };
 
 /** Internally passed structure used to send a CMD_802_11_TPC_INFO command */
-typedef struct
-{
+typedef struct {
 	t_u8 chan;		/**< Channel to which the power constraint applies */
 	t_u8 power_constraint;	/**< Local power constraint to send to firmware */
 } wlan_11h_tpc_info_param_t;
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -147,7 +145,7 @@ wlan_11h_get_random_num(pmlan_adapter pmadapter)
 	usec = (usec & 0xFFFF) + (usec >> 16);
 
 	LEAVE();
-	return ((usec << 16) | sec);
+	return (usec << 16) | sec;
 }
 
 /**
@@ -190,7 +188,7 @@ wlan_11h_convert_ieee_to_mrvl_ie(mlan_adapter * pmadapter,
 
 	LEAVE();
 	/* Return the number of bytes appended to pout_buf */
-	return (sizeof(mrvl_ie_hdr) + pin_ie[1]);
+	return sizeof(mrvl_ie_hdr) + pin_ie[1];
 }
 
 #ifdef STA_SUPPORT
@@ -264,8 +262,7 @@ wlan_11h_set_ibss_dfs_ie(mlan_private * priv, IEEEtypes_IBSS_DFS_t * pdfs)
 			 + num_chans * sizeof(IEEEtypes_ChannelMap_t));
 
 		LEAVE();
-		return (pdfs->len + sizeof(pdfs->len) +
-			sizeof(pdfs->element_id));
+		return pdfs->len + sizeof(pdfs->len) + sizeof(pdfs->element_id);
 	}
 
 	/* Ensure the element is zeroed out for an invalid return */
@@ -293,7 +290,8 @@ wlan_11h_set_ibss_dfs_ie(mlan_private * priv, IEEEtypes_IBSS_DFS_t * pdfs)
  *    - Length of the returned element in psup_chan output parameter
  *    - 0 if returned element is not setup
  */
-static t_u16
+static
+	t_u16
 wlan_11h_set_supp_channels_ie(mlan_private * priv,
 			      t_u8 band,
 			      IEEEtypes_SupportedChannels_t * psup_chan)
@@ -879,7 +877,7 @@ wlan_11h_is_enabled(mlan_private * priv)
 {
 	ENTER();
 	LEAVE();
-	return (priv->intf_state_11h.is_11h_enabled);
+	return priv->intf_state_11h.is_11h_enabled;
 }
 
 /**
@@ -896,7 +894,7 @@ wlan_11h_is_slave_radar_det_active(mlan_private * priv)
 {
 	ENTER();
 	LEAVE();
-	return (priv->adapter->state_11h.is_slave_radar_det_active);
+	return priv->adapter->state_11h.is_slave_radar_det_active;
 }
 
 /**
@@ -1444,7 +1442,7 @@ wlan_11h_add_dfs_timestamp(mlan_adapter * pmadapter, t_u8 repr, t_u8 channel)
 }
 
 /********************************************************
-                Global functions
+			Global functions
 ********************************************************/
 
 /**
@@ -1461,7 +1459,7 @@ wlan_11h_is_master_radar_det_active(mlan_private * priv)
 {
 	ENTER();
 	LEAVE();
-	return (priv->adapter->state_11h.is_master_radar_det_active);
+	return priv->adapter->state_11h.is_master_radar_det_active;
 }
 
 /**
@@ -1587,7 +1585,7 @@ wlan_11h_is_active(mlan_private * priv)
 {
 	ENTER();
 	LEAVE();
-	return (priv->intf_state_11h.is_11h_active);
+	return priv->intf_state_11h.is_11h_active;
 }
 
 /**

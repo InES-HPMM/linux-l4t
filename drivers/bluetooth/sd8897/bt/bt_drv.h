@@ -210,8 +210,7 @@ hexdump(char *prompt, u8 * buf, int len)
 	wait_event_interruptible_timeout(waitq, cond, ((timeout) * HZ / 1000))
 #endif
 
-typedef struct
-{
+typedef struct {
 	/** Task */
 	struct task_struct *task;
 	/** Queue */
@@ -273,8 +272,7 @@ os_sched_timeout(u32 millisec)
 #endif
 
 /** Data structure for the Marvell Bluetooth device */
-typedef struct _bt_dev
-{
+typedef struct _bt_dev {
 	/** device name */
 	char name[DEV_NAME_LEN];
 	/** card pointer */
@@ -324,8 +322,7 @@ typedef struct _bt_dev
 	u32 sdio_pull_cfg;
 } bt_dev_t, *pbt_dev_t;
 
-typedef struct _bt_adapter
-{
+typedef struct _bt_adapter {
 	/** Chip revision ID */
 	u8 chip_rev;
 	/** Surprise removed flag */
@@ -377,8 +374,7 @@ typedef struct _bt_adapter
 /** Length of prov name */
 #define PROC_NAME_LEN				32
 
-struct item_data
-{
+struct item_data {
 	/** Name */
 	char name[PROC_NAME_LEN];
 	/** Size */
@@ -391,8 +387,7 @@ struct item_data
 	u32 flag;
 };
 
-struct proc_private_data
-{
+struct proc_private_data {
 	/** Name */
 	char name[PROC_NAME_LEN];
 	/** File flag */
@@ -409,8 +404,7 @@ struct proc_private_data
 	const struct file_operations *fops;
 };
 
-struct device_proc
-{
+struct device_proc {
 	/** Proc directory entry */
 	struct proc_dir_entry *proc_entry;
 	/** num of proc files */
@@ -420,8 +414,7 @@ struct device_proc
 };
 
 /** Private structure for the MV device */
-typedef struct _bt_private
-{
+typedef struct _bt_private {
 	/** Bluetooth device */
 	bt_dev_t bt_dev;
 	/** Adapter */
@@ -573,8 +566,7 @@ int fm_set_intr_mask(bt_private * priv, u32 mask);
 /** default idle time */
 #define DEFAULT_IDLE_TIME           1000
 
-typedef struct _BT_CMD
-{
+typedef struct _BT_CMD {
 	/** OCF OGF */
 	u16 ocf_ogf;
 	/** Length */
@@ -583,8 +575,7 @@ typedef struct _BT_CMD
 	u8 data[32];
 } __ATTRIB_PACK__ BT_CMD;
 
-typedef struct _BT_EVENT
-{
+typedef struct _BT_EVENT {
 	/** Event Counter */
 	u8 EC;
 	/** Length */
@@ -667,8 +658,7 @@ int sd_download_firmware_w_helper(bt_private * priv);
 /** Bluetooth command : BLE deepsleep */
 #define BT_CMD_BLE_DEEP_SLEEP       0x8b
 
-typedef struct _BT_BLE_CMD
-{
+typedef struct _BT_BLE_CMD {
 	/** OCF OGF */
 	u16 ocf_ogf;
 	/** Length */
@@ -677,8 +667,7 @@ typedef struct _BT_BLE_CMD
 	u8 deepsleep;
 } __ATTRIB_PACK__ BT_BLE_CMD;
 
-typedef struct _BT_CSU_CMD
-{
+typedef struct _BT_CSU_CMD {
 	/** OCF OGF */
 	u16 ocf_ogf;
 	/** Length */
@@ -702,8 +691,7 @@ int bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac);
 /** BT set user defined calibration data */
 int bt_cal_config(bt_private * priv, char *cfg_file, char *mac);
 
-typedef struct _BT_HCI_CMD
-{
+typedef struct _BT_HCI_CMD {
 	/** OCF OGF */
 	u16 ocf_ogf;
 	/** Length */

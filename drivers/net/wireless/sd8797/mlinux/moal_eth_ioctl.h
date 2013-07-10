@@ -27,6 +27,16 @@ Change log:
 #ifndef _WOAL_ETH_PRIV_H_
 #define _WOAL_ETH_PRIV_H_
 
+/** Command disabled */
+#define	CMD_DISABLED                    0
+/** Command enabled */
+#define	CMD_ENABLED                     1
+/** Command get */
+#define	CMD_GET                         2
+
+/** 2K bytes */
+#define WOAL_2K_BYTES       2000
+
 /** Marvell private command identifier string */
 #define CMD_MARVELL     "MRVL_CMD"
 
@@ -128,11 +138,50 @@ Change log:
 #endif
 /** Private command: Verext */
 #define PRIV_CMD_VEREXT    	    "verext"
+#define PRIV_CMD_WMM_CFG        "wmmcfg"
+#if defined(STA_SUPPORT)
+#define PRIV_CMD_11D_CFG        "11dcfg"
+#define PRIV_CMD_11D_CLR_TBL    "11dclrtbl"
+#endif
+#define PRIV_CMD_WWS_CFG        "wwscfg"
+#if defined(REASSOCIATION)
+#define PRIV_CMD_REASSOCTRL     "reassoctrl"
+#endif
+#define PRIV_CMD_TXBUF_CFG          "txbufcfg"
+#ifdef STA_SUPPORT
+#define PRIV_CMD_AUTH_TYPE          "authtype"
+#endif
+#define PRIV_CMD_POWER_CONS         "powercons"
+#define PRIV_CMD_HT_STREAM_CFG      "htstreamcfg"
+#define PRIV_CMD_THERMAL            "thermal"
+#define PRIV_CMD_BCN_INTERVAL       "bcninterval"
+#ifdef STA_SUPPORT
+#define PRIV_CMD_GET_SIGNAL         "getsignal"
+#endif
 #if defined(STA_SUPPORT)
 #define PRIV_CMD_PMFCFG         "pmfcfg"
 #endif
 #define PRIV_CMD_INACTIVITYTO   "inactivityto"
+#define PRIV_CMD_ATIM_WINDOW    "atimwindow"
+#define PRIV_CMD_AMSDU_AGGR_CTRL    "amsduaggrctrl"
+#define PRIV_CMD_TX_BF_CAP          "httxbfcap"
+#define PRIV_CMD_SDIO_CLOCK         "sdioclock"
+#if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
+#define PRIV_CMD_MPA_CTRL           "mpactrl"
+#endif
+#define PRIV_CMD_SLEEP_PARAMS       "sleepparams"
+#if defined(DFS_TESTING_SUPPORT)
+#define PRIV_CMD_DFS_TESTING        "dfstesting"
+#endif
+#define PRIV_CMD_CFP_CODE           "cfpcode"
+#define PRIV_CMD_ANT_CFG            "antcfg"
 #define PRIV_CMD_SYSCLOCK       "sysclock"
+#define PRIV_CMD_ADHOC_AES      "adhocaes"
+#define PRIV_CMD_ASSOCIATE      "associate"
+#define PRIV_CMD_TX_BF_CFG      "httxbfcfg"
+#define PRIV_CMD_PORT_CTRL      "port_ctrl"
+#define PRIV_CMD_PB_BYPASS      "pb_bypass"
+#define PRIV_CMD_SD_CMD53_RW        "sdcmd53rw"
 
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)
@@ -159,8 +208,7 @@ int woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);
  * kernel updates "used_len" during copy_to_user
  */
 /** Private command structure from app */
-typedef struct _android_wifi_priv_cmd
-{
+typedef struct _android_wifi_priv_cmd {
     /** Buffer pointer */
 	char *buf;
     /** buffer updated by driver */
@@ -218,8 +266,7 @@ typedef struct _android_wifi_priv_cmd
 #define MW_AUTH_ALG_LEAP    0x00000004
 
 /* Generic format for most parameters that fit in an int */
-struct mw_param
-{
+struct mw_param {
 	t_s32 value;		/* The value of the parameter itself */
 	t_u8 fixed;		/* Hardware should not use auto select */
 	t_u8 disabled;		/* Disable the feature */
@@ -230,8 +277,7 @@ struct mw_param
  *  For all data larger than 16 octets, we need to use a
  *  pointer to memory allocated in user space.
  */
-struct mw_point
-{
+struct mw_point {
 	t_u8 *pointer;		/* Pointer to the data (in user space) */
 	t_u16 length;		/* number of fields or size in bytes */
 	t_u16 flags;		/* Optional params */
@@ -241,8 +287,7 @@ struct mw_point
  * This structure defines the payload of an ioctl, and is used
  * below.
  */
-union mwreq_data
-{
+union mwreq_data {
 	/* Config - generic */
 	char name[IFNAMSIZ];
 
@@ -255,10 +300,8 @@ union mwreq_data
 };
 
  /* The structure to exchange data for ioctl */
-struct mwreq
-{
-	union
-	{
+struct mwreq {
+	union {
 		char ifrn_name[IFNAMSIZ];	/* if name, e.g. "eth0" */
 	} ifr_ifrn;
 
@@ -266,14 +309,12 @@ struct mwreq
 	union mwreq_data u;
 };
 
-typedef struct woal_priv_ht_cap_info
-{
+typedef struct woal_priv_ht_cap_info {
 	t_u32 ht_cap_info_bg;
 	t_u32 ht_cap_info_a;
 } woal_ht_cap_info;
 
-typedef struct woal_priv_addba
-{
+typedef struct woal_priv_addba {
 	t_u32 time_out;
 	t_u32 tx_win_size;
 	t_u32 rx_win_size;
@@ -282,16 +323,14 @@ typedef struct woal_priv_addba
 } woal_addba;
 
 /** data structure for cmd txratecfg */
-typedef struct woal_priv_tx_rate_cfg
-{
+typedef struct woal_priv_tx_rate_cfg {
 	/* LG rate: 0, HT rate: 1, VHT rate: 2 */
 	t_u32 rate_format;
     /** Rate/MCS index (0xFF: auto) */
 	t_u32 rate_index;
 } woal_tx_rate_cfg;
 
-typedef struct woal_priv_esuppmode_cfg
-{
+typedef struct woal_priv_esuppmode_cfg {
 	/* RSN mode */
 	t_u16 rsn_mode;
 	/* Pairwise cipher */

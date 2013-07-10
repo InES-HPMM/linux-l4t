@@ -32,7 +32,7 @@ Change Log:
 #include "mlan_main.h"
 
 /********************************************************
-    Local Variables
+			Local Variables
 ********************************************************/
 
 /** 100mW */
@@ -65,8 +65,7 @@ Change Log:
 #define WLAN_TX_PWR_250MW   24
 
 /** Region code mapping */
-typedef struct _country_code_mapping
-{
+typedef struct _country_code_mapping {
     /** Region */
 	t_u8 country_code[COUNTRY_CODE_LEN];
     /** Code for B/G CFP table */
@@ -96,8 +95,7 @@ static country_code_mapping_t country_code_mapping[] = {
 /**
  * The structure for Channel-Frequency-Power table
  */
-typedef struct _cfp_table
-{
+typedef struct _cfp_table {
     /** Region or Code */
 	t_u8 code;
     /** Frequency/Power */
@@ -695,7 +693,7 @@ static cfp_table_t cfp_table_A[] = {
 #define MLAN_CFP_TABLE_SIZE_A   (sizeof(cfp_table_A)/sizeof(cfp_table_t))
 
 /********************************************************
-    Global Variables
+			Global Variables
 ********************************************************/
 /**
  * The table to keep region code
@@ -776,7 +774,7 @@ t_u8 SupportedRates_BG[BG_SUPPORTED_RATES] =
 t_u8 SupportedRates_N[N_SUPPORTED_RATES] = { 0x02, 0x04, 0 };
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 /**
  *  @brief Find a character in a string.
@@ -907,7 +905,7 @@ wlan_cfp_copy_dynamic(pmlan_adapter pmadapter,
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 /**
  *  @brief This function converts region string to integer code
@@ -1026,12 +1024,14 @@ wlan_data_rate_to_index(pmlan_adapter pmadapter, t_u32 rate)
 	t_u16 *ptr;
 
 	ENTER();
-	if (rate)
-		if ((ptr = wlan_memchr(pmadapter, WlanDataRates, (t_u8) rate,
-				       sizeof(WlanDataRates)))) {
+	if (rate) {
+		ptr = wlan_memchr(pmadapter, WlanDataRates, (t_u8) rate,
+				  sizeof(WlanDataRates));
+		if (ptr) {
 			LEAVE();
 			return (t_u8) (ptr - WlanDataRates);
 		}
+	}
 	LEAVE();
 	return 0;
 }

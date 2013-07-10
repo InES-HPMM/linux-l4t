@@ -29,22 +29,22 @@ Change log:
 
 #ifdef BIG_ENDIAN_SUPPORT
 /** Convert TxPD to little endian format from CPU format */
-#define uap_endian_convert_TxPD(x)                                          \
-    {                                                                   \
-        (x)->tx_pkt_length = wlan_cpu_to_le16((x)->tx_pkt_length);      \
-        (x)->tx_pkt_offset = wlan_cpu_to_le16((x)->tx_pkt_offset);      \
-        (x)->tx_pkt_type = wlan_cpu_to_le16((x)->tx_pkt_type);      \
-        (x)->tx_control = wlan_cpu_to_le32((x)->tx_control);      \
-    }
+#define uap_endian_convert_TxPD(x)                                  \
+	{                                                               \
+		(x)->tx_pkt_length = wlan_cpu_to_le16((x)->tx_pkt_length);  \
+		(x)->tx_pkt_offset = wlan_cpu_to_le16((x)->tx_pkt_offset);  \
+		(x)->tx_pkt_type = wlan_cpu_to_le16((x)->tx_pkt_type);      \
+		(x)->tx_control = wlan_cpu_to_le32((x)->tx_control);        \
+	}
 
 /** Convert RxPD from little endian format to CPU format */
-#define uap_endian_convert_RxPD(x)                                          \
-    {                                                                   \
-        (x)->rx_pkt_length = wlan_le16_to_cpu((x)->rx_pkt_length);      \
-        (x)->rx_pkt_offset = wlan_le16_to_cpu((x)->rx_pkt_offset);      \
-        (x)->rx_pkt_type = wlan_le16_to_cpu((x)->rx_pkt_type);      \
-        (x)->seq_num = wlan_le16_to_cpu((x)->seq_num);              \
-    }
+#define uap_endian_convert_RxPD(x)                                  \
+	{                                                               \
+		(x)->rx_pkt_length = wlan_le16_to_cpu((x)->rx_pkt_length);  \
+		(x)->rx_pkt_offset = wlan_le16_to_cpu((x)->rx_pkt_offset);  \
+		(x)->rx_pkt_type = wlan_le16_to_cpu((x)->rx_pkt_type);      \
+		(x)->seq_num = wlan_le16_to_cpu((x)->seq_num);              \
+	}
 #else
 /** Convert TxPD to little endian format from CPU format */
 #define uap_endian_convert_TxPD(x)  do {} while (0)

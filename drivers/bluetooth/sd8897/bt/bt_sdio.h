@@ -203,8 +203,7 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Host Control Registers : I/O port 2 */
 #define IO_PORT_2_REG			0xDA
 
-struct sdio_mmc_card
-{
+struct sdio_mmc_card {
 	/** sdio_func structure pointer */
 	struct sdio_func *func;
 	/** bt_private structure pointer */

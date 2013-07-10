@@ -28,8 +28,7 @@ Change log:
 #define _MLAN_UTIL_H_
 
 /** Circular doubly linked list */
-typedef struct _mlan_linked_list
-{
+typedef struct _mlan_linked_list {
     /** Pointer to previous node */
 	struct _mlan_linked_list *pprev;
     /** Pointer to next node */
@@ -37,8 +36,7 @@ typedef struct _mlan_linked_list
 } mlan_linked_list, *pmlan_linked_list;
 
 /** List head */
-typedef struct _mlan_list_head
-{
+typedef struct _mlan_list_head {
     /** Pointer to previous node */
 	struct _mlan_linked_list *pprev;
     /** Pointer to next node */
@@ -261,8 +259,7 @@ util_dequeue_list(t_void * pmoal_handle,
 }
 
 /** Access controlled scalar variable */
-typedef struct _mlan_scalar
-{
+typedef struct _mlan_scalar {
     /** Value */
 	t_s32 value;
     /** Pointer to lock */
@@ -275,8 +272,7 @@ typedef struct _mlan_scalar
 #define MLAN_SCALAR_FLAG_UNIQUE_LOCK	MBIT(16)
 
 /** scalar conditional value list */
-typedef enum _MLAN_SCALAR_CONDITIONAL
-{
+typedef enum _MLAN_SCALAR_CONDITIONAL {
 	MLAN_SCALAR_COND_EQUAL,
 	MLAN_SCALAR_COND_NOT_EQUAL,
 	MLAN_SCALAR_COND_GREATER_THAN,
@@ -328,7 +324,7 @@ util_scalar_free(t_void * pmoal_handle,
 		 mlan_status(*moal_free_lock) (t_void * handle, t_void * plock))
 {
 	if (pscalar->flags & MLAN_SCALAR_FLAG_UNIQUE_LOCK)
-		moal_free_lock(pmoal_handle, &pscalar->plock);
+		moal_free_lock(pmoal_handle, pscalar->plock);
 }
 
 /**

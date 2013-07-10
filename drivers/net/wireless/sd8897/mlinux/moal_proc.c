@@ -66,26 +66,20 @@ extern int drv_mode;
 /**
  *  @brief Proc read function for info
  *
- *  @param page	   Pointer to buffer
- *  @param start   Read data starting position
- *  @param offset  Offset
- *  @param count   Counter
- *  @param eof     End of file flag
- *  @param data    Data to output
+ *  @param sfp 	   pointer to seq_file structure
+ *  @param data
  *
  *  @return 	   Number of output data
  */
 static int
-woal_info_proc_read(char *page, char **start, off_t offset,
-		    int count, int *eof, void *data)
+woal_info_proc_read(struct seq_file *sfp, void *data)
 {
-	char *p = page;
-	struct net_device *netdev = data;
+	struct net_device *netdev = (struct net_device *)sfp->private;
 	char fmt[MLAN_MAX_VER_STR_LEN];
 	moal_private *priv = (moal_private *) netdev_priv(netdev);
 #ifdef STA_SUPPORT
 	int i = 0;
-	moal_handle *handle = priv->phandle;
+	moal_handle *handle = NULL;
 	mlan_bss_info info;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 	struct dev_mc_list *mcptr = netdev->mc_list;
@@ -105,19 +99,29 @@ woal_info_proc_read(char *page, char **start, off_t offset,
 
 	ENTER();
 
-	if (offset) {
-		*eof = 1;
+	if (priv == NULL)
 		goto exit;
+#ifdef STA_SUPPORT
+	handle = priv->phandle;
+	if (handle == NULL)
+		goto exit;
+#endif
+
+	if (!MODULE_GET) {
+		LEAVE();
+		return 0;
 	}
+
 	memset(fmt, 0, sizeof(fmt));
 #ifdef UAP_SUPPORT
 	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP) {
-		p += sprintf(p, "driver_name = " "\"uap\"\n");
+		seq_printf(sfp, "driver_name = " "\"uap\"\n");
 		woal_uap_get_version(priv, fmt, sizeof(fmt) - 1);
 		if (MLAN_STATUS_SUCCESS !=
 		    woal_uap_get_stats(priv, MOAL_PROC_WAIT, &ustats)) {
-			*eof = 1;
-			goto exit;
+			MODULE_PUT;
+			LEAVE();
+			return -EFAULT;
 		}
 	}
 #endif /* UAP_SUPPORT */
@@ -127,134 +131,154 @@ woal_info_proc_read(char *page, char **start, off_t offset,
 		memset(&info, 0, sizeof(info));
 		if (MLAN_STATUS_SUCCESS !=
 		    woal_get_bss_info(priv, MOAL_PROC_WAIT, &info)) {
-			*eof = 1;
-			goto exit;
+			MODULE_PUT;
+			LEAVE();
+			return -EFAULT;
 		}
-		p += sprintf(p, "driver_name = " "\"wlan\"\n");
+		seq_printf(sfp, "driver_name = " "\"wlan\"\n");
 	}
 #endif
-	p += sprintf(p, "driver_version = %s", fmt);
-	p += sprintf(p, "\ninterface_name=\"%s\"\n", netdev->name);
+	seq_printf(sfp, "driver_version = %s", fmt);
+	seq_printf(sfp, "\ninterface_name=\"%s\"\n", netdev->name);
 #if defined(WIFI_DIRECT_SUPPORT)
 	if (priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT) {
 		if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA)
-			p += sprintf(p, "bss_mode = \"WIFIDIRECT-Client\"\n");
+			seq_printf(sfp, "bss_mode = \"WIFIDIRECT-Client\"\n");
 		else
-			p += sprintf(p, "bss_mode = \"WIFIDIRECT-GO\"\n");
+			seq_printf(sfp, "bss_mode = \"WIFIDIRECT-GO\"\n");
 	}
 #endif
 #ifdef STA_SUPPORT
 	if (priv->bss_type == MLAN_BSS_TYPE_STA)
-		p += sprintf(p, "bss_mode =\"%s\"\n", szModes[info.bss_mode]);
+		seq_printf(sfp, "bss_mode =\"%s\"\n", szModes[info.bss_mode]);
 #endif
-	p += sprintf(p, "media_state=\"%s\"\n",
-		     ((priv->media_connected ==
-		       MFALSE) ? "Disconnected" : "Connected"));
-	p += sprintf(p, "mac_address=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
-		     netdev->dev_addr[0], netdev->dev_addr[1],
-		     netdev->dev_addr[2], netdev->dev_addr[3],
-		     netdev->dev_addr[4], netdev->dev_addr[5]);
+	seq_printf(sfp, "media_state=\"%s\"\n",
+		   ((priv->media_connected ==
+		     MFALSE) ? "Disconnected" : "Connected"));
+	seq_printf(sfp, "mac_address=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
+		   netdev->dev_addr[0], netdev->dev_addr[1],
+		   netdev->dev_addr[2], netdev->dev_addr[3],
+		   netdev->dev_addr[4], netdev->dev_addr[5]);
 #ifdef STA_SUPPORT
 	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
-		p += sprintf(p, "multicast_count=\"%d\"\n", mc_count);
-		p += sprintf(p, "essid=\"%s\"\n", info.ssid.ssid);
-		p += sprintf(p, "bssid=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
-			     info.bssid[0], info.bssid[1],
-			     info.bssid[2], info.bssid[3],
-			     info.bssid[4], info.bssid[5]);
-		p += sprintf(p, "channel=\"%d\"\n", (int)info.bss_chan);
-		p += sprintf(p, "region_code = \"%02x\"\n",
-			     (t_u8) info.region_code);
+		seq_printf(sfp, "multicast_count=\"%d\"\n", mc_count);
+		seq_printf(sfp, "essid=\"%s\"\n", info.ssid.ssid);
+		seq_printf(sfp, "bssid=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
+			   info.bssid[0], info.bssid[1],
+			   info.bssid[2], info.bssid[3],
+			   info.bssid[4], info.bssid[5]);
+		seq_printf(sfp, "channel=\"%d\"\n", (int)info.bss_chan);
+		seq_printf(sfp, "region_code = \"%02x\"\n",
+			   (t_u8) info.region_code);
 
 		/*
 		 * Put out the multicast list
 		 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 		for (i = 0; i < netdev->mc_count; i++) {
-			p += sprintf(p,
-				     "multicast_address[%d]=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
-				     i,
-				     mcptr->dmi_addr[0], mcptr->dmi_addr[1],
-				     mcptr->dmi_addr[2], mcptr->dmi_addr[3],
-				     mcptr->dmi_addr[4], mcptr->dmi_addr[5]);
+			seq_printf(sfp,
+				   "multicast_address[%d]=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
+				   i,
+				   mcptr->dmi_addr[0], mcptr->dmi_addr[1],
+				   mcptr->dmi_addr[2], mcptr->dmi_addr[3],
+				   mcptr->dmi_addr[4], mcptr->dmi_addr[5]);
 
 			mcptr = mcptr->next;
 		}
 #else
 		netdev_for_each_mc_addr(mcptr, netdev)
-			p += sprintf(p,
-				     "multicast_address[%d]=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
-				     i++,
-				     mcptr->addr[0], mcptr->addr[1],
-				     mcptr->addr[2], mcptr->addr[3],
-				     mcptr->addr[4], mcptr->addr[5]);
+			seq_printf(sfp,
+				   "multicast_address[%d]=\"%02x:%02x:%02x:%02x:%02x:%02x\"\n",
+				   i++,
+				   mcptr->addr[0], mcptr->addr[1],
+				   mcptr->addr[2], mcptr->addr[3],
+				   mcptr->addr[4], mcptr->addr[5]);
 #endif /* < 2.6.35 */
 	}
 #endif
-	p += sprintf(p, "num_tx_bytes = %lu\n", priv->stats.tx_bytes);
-	p += sprintf(p, "num_rx_bytes = %lu\n", priv->stats.rx_bytes);
-	p += sprintf(p, "num_tx_pkts = %lu\n", priv->stats.tx_packets);
-	p += sprintf(p, "num_rx_pkts = %lu\n", priv->stats.rx_packets);
-	p += sprintf(p, "num_tx_pkts_dropped = %lu\n", priv->stats.tx_dropped);
-	p += sprintf(p, "num_rx_pkts_dropped = %lu\n", priv->stats.rx_dropped);
-	p += sprintf(p, "num_tx_pkts_err = %lu\n", priv->stats.tx_errors);
-	p += sprintf(p, "num_rx_pkts_err = %lu\n", priv->stats.rx_errors);
-	p += sprintf(p, "carrier %s\n",
-		     ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
+	seq_printf(sfp, "num_tx_bytes = %lu\n", priv->stats.tx_bytes);
+	seq_printf(sfp, "num_rx_bytes = %lu\n", priv->stats.rx_bytes);
+	seq_printf(sfp, "num_tx_pkts = %lu\n", priv->stats.tx_packets);
+	seq_printf(sfp, "num_rx_pkts = %lu\n", priv->stats.rx_packets);
+	seq_printf(sfp, "num_tx_pkts_dropped = %lu\n", priv->stats.tx_dropped);
+	seq_printf(sfp, "num_rx_pkts_dropped = %lu\n", priv->stats.rx_dropped);
+	seq_printf(sfp, "num_tx_pkts_err = %lu\n", priv->stats.tx_errors);
+	seq_printf(sfp, "num_rx_pkts_err = %lu\n", priv->stats.rx_errors);
+	seq_printf(sfp, "carrier %s\n",
+		   ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 	for (i = 0; i < netdev->num_tx_queues; i++) {
-		p += sprintf(p, "tx queue %d:  %s\n", i,
-			     ((netif_tx_queue_stopped
-			       (netdev_get_tx_queue(netdev, 0))) ? "stopped" :
-			      "started"));
+		seq_printf(sfp, "tx queue %d:  %s\n", i,
+			   ((netif_tx_queue_stopped
+			     (netdev_get_tx_queue(netdev, 0))) ? "stopped" :
+			    "started"));
 	}
 #else
-	p += sprintf(p, "tx queue %s\n",
-		     ((netif_queue_stopped(priv->netdev)) ? "stopped" :
-		      "started"));
+	seq_printf(sfp, "tx queue %s\n",
+		   ((netif_queue_stopped(priv->netdev)) ? "stopped" :
+		    "started"));
 #endif
 #ifdef UAP_SUPPORT
 	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP) {
-		p += sprintf(p, "tkip_mic_failures = %u\n",
-			     ustats.tkip_mic_failures);
-		p += sprintf(p, "ccmp_decrypt_errors = %u\n",
-			     ustats.ccmp_decrypt_errors);
-		p += sprintf(p, "wep_undecryptable_count = %u\n",
-			     ustats.wep_undecryptable_count);
-		p += sprintf(p, "wep_icv_error_count = %u\n",
-			     ustats.wep_icv_error_count);
-		p += sprintf(p, "decrypt_failure_count = %u\n",
-			     ustats.decrypt_failure_count);
-		p += sprintf(p, "mcast_tx_count = %u\n", ustats.mcast_tx_count);
-		p += sprintf(p, "failed_count = %u\n", ustats.failed_count);
-		p += sprintf(p, "retry_count = %u\n", ustats.retry_count);
-		p += sprintf(p, "multiple_retry_count = %u\n",
-			     ustats.multi_retry_count);
-		p += sprintf(p, "frame_duplicate_count = %u\n",
-			     ustats.frame_dup_count);
-		p += sprintf(p, "rts_success_count = %u\n",
-			     ustats.rts_success_count);
-		p += sprintf(p, "rts_failure_count = %u\n",
-			     ustats.rts_failure_count);
-		p += sprintf(p, "ack_failure_count = %u\n",
-			     ustats.ack_failure_count);
-		p += sprintf(p, "rx_fragment_count = %u\n",
-			     ustats.rx_fragment_count);
-		p += sprintf(p, "mcast_rx_frame_count = %u\n",
-			     ustats.mcast_rx_frame_count);
-		p += sprintf(p, "fcs_error_count = %u\n",
-			     ustats.fcs_error_count);
-		p += sprintf(p, "tx_frame_count = %u\n", ustats.tx_frame_count);
-		p += sprintf(p, "rsna_tkip_cm_invoked = %u\n",
-			     ustats.rsna_tkip_cm_invoked);
-		p += sprintf(p, "rsna_4way_hshk_failures = %u\n",
-			     ustats.rsna_4way_hshk_failures);
+		seq_printf(sfp, "tkip_mic_failures = %u\n",
+			   ustats.tkip_mic_failures);
+		seq_printf(sfp, "ccmp_decrypt_errors = %u\n",
+			   ustats.ccmp_decrypt_errors);
+		seq_printf(sfp, "wep_undecryptable_count = %u\n",
+			   ustats.wep_undecryptable_count);
+		seq_printf(sfp, "wep_icv_error_count = %u\n",
+			   ustats.wep_icv_error_count);
+		seq_printf(sfp, "decrypt_failure_count = %u\n",
+			   ustats.decrypt_failure_count);
+		seq_printf(sfp, "mcast_tx_count = %u\n", ustats.mcast_tx_count);
+		seq_printf(sfp, "failed_count = %u\n", ustats.failed_count);
+		seq_printf(sfp, "retry_count = %u\n", ustats.retry_count);
+		seq_printf(sfp, "multiple_retry_count = %u\n",
+			   ustats.multi_retry_count);
+		seq_printf(sfp, "frame_duplicate_count = %u\n",
+			   ustats.frame_dup_count);
+		seq_printf(sfp, "rts_success_count = %u\n",
+			   ustats.rts_success_count);
+		seq_printf(sfp, "rts_failure_count = %u\n",
+			   ustats.rts_failure_count);
+		seq_printf(sfp, "ack_failure_count = %u\n",
+			   ustats.ack_failure_count);
+		seq_printf(sfp, "rx_fragment_count = %u\n",
+			   ustats.rx_fragment_count);
+		seq_printf(sfp, "mcast_rx_frame_count = %u\n",
+			   ustats.mcast_rx_frame_count);
+		seq_printf(sfp, "fcs_error_count = %u\n",
+			   ustats.fcs_error_count);
+		seq_printf(sfp, "tx_frame_count = %u\n", ustats.tx_frame_count);
+		seq_printf(sfp, "rsna_tkip_cm_invoked = %u\n",
+			   ustats.rsna_tkip_cm_invoked);
+		seq_printf(sfp, "rsna_4way_hshk_failures = %u\n",
+			   ustats.rsna_4way_hshk_failures);
 	}
 #endif /* UAP_SUPPORT */
 exit:
 	LEAVE();
-	return (p - page);
+	MODULE_PUT;
+	return 0;
 }
+
+static int
+woal_info_proc_open(struct inode *inode, struct file *file)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+	return single_open(file, woal_info_proc_read, PDE_DATA(inode));
+#else
+	return single_open(file, woal_info_proc_read, PDE(inode)->data);
+#endif
+}
+
+static const struct file_operations info_proc_fops = {
+	.owner = THIS_MODULE,
+	.open = woal_info_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 #define     CMD52_STR_LEN   50
 /*
@@ -315,18 +339,20 @@ parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
  *
  *  @param f	   file pointer
  *  @param buf     pointer to data buffer
- *  @param cnt     data number to write
- *  @param data    data to write
+ *  @param count   data number to write
+ *  @param off     Offset
+ *
  *  @return 	   number of data
  */
-static int
-woal_config_write(struct file *f, const char *buf, unsigned long cnt,
-		  void *data)
+static ssize_t
+woal_config_write(struct file *f, const char __user * buf, size_t count,
+		  loff_t * off)
 {
 	char databuf[101];
 	char *line;
 	t_u32 config_data = 0;
-	moal_handle *handle = (moal_handle *) data;
+	struct seq_file *sfp = f->private_data;
+	moal_handle *handle = (moal_handle *) sfp->private;
 	int func, reg, val;
 	int copy_len;
 	moal_private *priv = NULL;
@@ -337,13 +363,13 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
 		return 0;
 	}
 
-	if (cnt >= sizeof(databuf)) {
+	if (count >= sizeof(databuf)) {
 		MODULE_PUT;
 		LEAVE();
-		return (int)cnt;
+		return (int)count;
 	}
 	memset(databuf, 0, sizeof(databuf));
-	copy_len = MIN((sizeof(databuf) - 1), cnt);
+	copy_len = MIN((sizeof(databuf) - 1), count);
 	if (copy_from_user(databuf, buf, copy_len)) {
 		MODULE_PUT;
 		LEAVE();
@@ -371,12 +397,13 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
 			}
 	}
 	if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw="))) {
-		parse_cmd52_string(databuf, (size_t) cnt, &func, &reg, &val);
+		parse_cmd52_string(databuf, (size_t) count, &func, &reg, &val);
 		woal_sdio_read_write_cmd52(handle, func, reg, val);
 	}
 	if (!strncmp(databuf, "debug_dump", strlen("debug_dump"))) {
 		priv = woal_get_priv(handle, MLAN_BSS_ROLE_ANY);
 		if (priv) {
+			PRINTM(MERROR, "Recevie debug_dump command\n");
 			woal_mlan_debug_info(priv);
 			woal_moal_debug_info(priv, NULL, MFALSE);
 		}
@@ -384,40 +411,58 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
 
 	MODULE_PUT;
 	LEAVE();
-	return (int)cnt;
+	return (int)count;
 }
 
 /**
  *  @brief config proc read function
  *
- *  @param page	   pointer to buffer
- *  @param s       read data starting position
- *  @param off     offset
- *  @param cnt     counter
- *  @param eof     end of file flag
- *  @param data    data to output
+ *  @param sfp 	   pointer to seq_file structure
+ *  @param data
+ *
  *  @return 	   number of output data
  */
 static int
-woal_config_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
+woal_config_read(struct seq_file *sfp, void *data)
 {
-	char *p = page;
-	moal_handle *handle = (moal_handle *) data;
+	moal_handle *handle = (moal_handle *) sfp->private;
 
 	ENTER();
+
 	if (!MODULE_GET) {
 		LEAVE();
 		return 0;
 	}
-	p += sprintf(p, "hardware_status=%d\n", (int)handle->hardware_status);
-	p += sprintf(p, "netlink_num=%d\n", (int)handle->netlink_num);
-	p += sprintf(p, "drv_mode=%d\n", (int)drv_mode);
-	p += sprintf(p, "sdcmd52rw=%d 0x%0x 0x%02X\n", handle->cmd52_func,
-		     handle->cmd52_reg, handle->cmd52_val);
+
+	seq_printf(sfp, "hardware_status=%d\n", (int)handle->hardware_status);
+	seq_printf(sfp, "netlink_num=%d\n", (int)handle->netlink_num);
+	seq_printf(sfp, "drv_mode=%d\n", (int)drv_mode);
+	seq_printf(sfp, "sdcmd52rw=%d 0x%0x 0x%02X\n", handle->cmd52_func,
+		   handle->cmd52_reg, handle->cmd52_val);
+
 	MODULE_PUT;
 	LEAVE();
-	return p - page;
+	return 0;
 }
+
+static int
+woal_config_proc_open(struct inode *inode, struct file *file)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+	return single_open(file, woal_config_read, PDE_DATA(inode));
+#else
+	return single_open(file, woal_config_read, PDE(inode)->data);
+#endif
+}
+
+static const struct file_operations config_proc_fops = {
+	.owner = THIS_MODULE,
+	.open = woal_config_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.write = woal_config_write,
+};
 
 /********************************************************
 		Global Functions
@@ -457,7 +502,7 @@ woal_string_to_number(char *s)
 			break;
 	}
 
-	return (r * pn);
+	return r * pn;
 }
 
 /**
@@ -519,17 +564,19 @@ woal_proc_init(moal_handle * handle)
 			else
 				strcpy(config_proc_dir, "config");
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+			r = proc_create_data(config_proc_dir, 0644,
+					     handle->proc_mwlan,
+					     &config_proc_fops, handle);
+			if (r == NULL)
+#else
 			r = create_proc_entry(config_proc_dir, 0644,
 					      handle->proc_mwlan);
-
 			if (r) {
 				r->data = handle;
-				r->read_proc = woal_config_read;
-				r->write_proc = woal_config_write;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 30)
-				r->owner = THIS_MODULE;
-#endif
+				r->proc_fops = &config_proc_fops;
 			} else
+#endif
 				PRINTM(MMSG, "Fail to create proc config\n");
 		}
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 26)
@@ -562,10 +609,12 @@ woal_proc_exit(moal_handle * handle)
 			strcpy(config_proc_dir, "config");
 		remove_proc_entry(config_proc_dir, handle->proc_mwlan);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 		/* Remove only if we are the only instance using this */
 		if (atomic_read(&(handle->proc_mwlan->count)) > 1) {
 			PRINTM(MWARN, "More than one interface using proc!\n");
 		} else {
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 			atomic_dec(&(handle->proc_mwlan->count));
 #endif
@@ -574,7 +623,9 @@ woal_proc_exit(moal_handle * handle)
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 26)
 			proc_mwlan = NULL;
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 		}
+#endif
 	}
 
 	LEAVE();
@@ -590,6 +641,7 @@ woal_proc_exit(moal_handle * handle)
 void
 woal_create_proc_entry(moal_private * priv)
 {
+	struct proc_dir_entry *r;
 	struct net_device *dev = priv->netdev;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
 	char proc_dir_name[20];
@@ -606,11 +658,13 @@ woal_create_proc_entry(moal_private * priv)
 		priv->proc_entry = proc_mkdir(proc_dir_name, PROC_DIR);
 		if (priv->proc_entry) {
 			/* Success. Continue normally */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 			if (!priv->phandle->proc_mwlan) {
 				priv->phandle->proc_mwlan =
 					priv->proc_entry->parent;
 			}
 			atomic_inc(&(priv->phandle->proc_mwlan->count));
+#endif
 		} else {
 			/* Failure. mwlan may not exist. Try to create that
 			   first */
@@ -624,19 +678,33 @@ woal_create_proc_entry(moal_private * priv)
 				/* Success. Now retry creating mlanX */
 				priv->proc_entry =
 					proc_mkdir(proc_dir_name, PROC_DIR);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 				atomic_inc(&(priv->phandle->proc_mwlan->count));
+#endif
 			}
 		}
 #else
 	if (priv->phandle->proc_mwlan && !priv->proc_entry) {
 		priv->proc_entry =
 			proc_mkdir(dev->name, priv->phandle->proc_mwlan);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 		atomic_inc(&(priv->phandle->proc_mwlan->count));
-#endif
+#endif /* < 3.10.0 */
+#endif /* < 2.6.26 */
 		strcpy(priv->proc_entry_name, dev->name);
 		if (priv->proc_entry) {
-			create_proc_read_entry("info", 0, priv->proc_entry,
-					       woal_info_proc_read, dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+			r = proc_create_data("info", 0, priv->proc_entry,
+					     &info_proc_fops, dev);
+			if (r == NULL)
+#else
+			r = create_proc_entry("info", 0, priv->proc_entry);
+			if (r) {
+				r->data = dev;
+				r->proc_fops = &info_proc_fops;
+			} else
+#endif
+				PRINTM(MMSG, "Fail to create proc info\n");
 		}
 	}
 
@@ -658,7 +726,9 @@ woal_proc_remove(moal_private * priv)
 		remove_proc_entry("info", priv->proc_entry);
 		remove_proc_entry(priv->proc_entry_name,
 				  priv->phandle->proc_mwlan);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 		atomic_dec(&(priv->phandle->proc_mwlan->count));
+#endif
 		priv->proc_entry = NULL;
 	}
 	LEAVE();

@@ -38,12 +38,12 @@ Change log:
 #include "mlan_11ac.h"
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 extern t_u8 tos_to_tid_inv[];
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 /**
  *  @brief Stop BSS
@@ -179,7 +179,7 @@ wlan_uap_callback_bss_ioctl_start(IN t_void * priv)
 		ret = MLAN_STATUS_PENDING;
 
 done:
-	puap_state_chan_cb->pioctl_req_curr = MNULL;	// prevent re-use
+	puap_state_chan_cb->pioctl_req_curr = MNULL;	/* prevent re-use */
 	LEAVE();
 	return ret;
 }
@@ -917,7 +917,7 @@ wlan_uap_callback_domain_info(IN t_void * priv)
 					 MLAN_STATUS_FAILURE);
 	}
 
-	puap_state_chan_cb->pioctl_req_curr = MNULL;	// prevent re-use
+	puap_state_chan_cb->pioctl_req_curr = MNULL;	/* prevent re-use */
 	LEAVE();
 	return ret;
 }
@@ -1110,7 +1110,7 @@ wlan_uap_callback_snmp_mib_11h(IN t_void * priv)
 	if (ret == MLAN_STATUS_SUCCESS)
 		ret = MLAN_STATUS_PENDING;
 
-	puap_state_chan_cb->pioctl_req_curr = MNULL;	// prevent re-use
+	puap_state_chan_cb->pioctl_req_curr = MNULL;	/* prevent re-use */
 	LEAVE();
 	return ret;
 }
@@ -1172,7 +1172,7 @@ wlan_uap_snmp_mib_11h(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -1389,6 +1389,12 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 		if (misc->sub_command == MLAN_OID_MISC_MAC_CONTROL)
 			status = wlan_misc_ioctl_mac_control(pmadapter,
 							     pioctl_req);
+		if (misc->sub_command == MLAN_OID_MISC_MULTI_CHAN_CFG)
+			status = wlan_misc_ioctl_multi_chan_config(pmadapter,
+								   pioctl_req);
+		if (misc->sub_command == MLAN_OID_MISC_MULTI_CHAN_POLICY)
+			status = wlan_misc_ioctl_multi_chan_policy(pmadapter,
+								   pioctl_req);
 		break;
 	case MLAN_IOCTL_PM_CFG:
 		pm = (mlan_ds_pm_cfg *) pioctl_req->pbuf;

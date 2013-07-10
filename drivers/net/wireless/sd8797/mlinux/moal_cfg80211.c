@@ -213,18 +213,20 @@ woal_is_any_interface_active(moal_handle * handle)
 /**
  *  @brief Get current frequency of active interface
  *
- *  @param handle        A pointer to moal_handle
+ *  @param priv        A pointer to moal_private
  *
  *  @return              channel frequency
  */
 int
-woal_get_active_intf_freq(moal_handle * handle)
+woal_get_active_intf_freq(moal_private * priv)
 {
+	moal_handle *handle = priv->phandle;
 	int i;
 	for (i = 0; i < handle->priv_num; i++) {
 #ifdef STA_SUPPORT
 		if (GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_STA) {
-			if (handle->priv[i]->media_connected == MTRUE)
+			if ((handle->priv[i]->media_connected == MTRUE) &&
+			    (handle->priv[i]->bss_type == priv->bss_type))
 				return ieee80211_channel_to_frequency(handle->
 								      priv[i]->
 								      channel,
@@ -240,7 +242,8 @@ woal_get_active_intf_freq(moal_handle * handle)
 #endif
 #ifdef UAP_SUPPORT
 		if (GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_UAP) {
-			if (handle->priv[i]->bss_started == MTRUE)
+			if ((handle->priv[i]->bss_started == MTRUE) &&
+			    (handle->priv[i]->bss_type == priv->bss_type))
 				return ieee80211_channel_to_frequency(handle->
 								      priv[i]->
 								      channel,
@@ -552,6 +555,102 @@ done:
 
 #if defined(WIFI_DIRECT_SUPPORT)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
+/**
+ *  @brief This function display P2P public action frame type
+ *
+ *  @param  buf      A buffer to a management frame
+ *  @param  len      buffer len
+ *  @param chan      the channel
+ *  @param flag      Tx/Rx flag. Tx:flag = 1;Rx:flag = 0;
+ *
+ *  @return          N/A
+ */
+void
+woal_cfg80211_display_p2p_actframe(const t_u8 * buf, int len,
+				   struct ieee80211_channel *chan,
+				   const t_u8 flag)
+{
+	const t_u8 p2p_oui[] = { 0x50, 0x6f, 0x9a, 0x09 };
+	t_u8 subtype;
+
+	ENTER();
+
+	if (!buf || len < (P2P_ACT_FRAME_OUI_SUBTYPE_OFFSET + 1)) {
+		LEAVE();
+		return;
+	}
+
+	if (((struct ieee80211_mgmt *)buf)->u.action.category ==
+	    P2P_ACT_FRAME_CATEGORY &&
+	    !memcmp(buf + P2P_ACT_FRAME_OUI_OFFSET, p2p_oui, sizeof(p2p_oui))) {
+		subtype = *(buf + P2P_ACT_FRAME_OUI_SUBTYPE_OFFSET);
+		switch (subtype) {
+		case P2P_GO_NEG_REQ:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Group Owner Negotiation Req Frame, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_GO_NEG_RSP:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Group Owner Negotiation Rsp Frame, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_GO_NEG_CONF:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Group Owner Negotiation Confirm Frame, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_INVITE_REQ:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Invitation Request, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_INVITE_RSP:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Invitation Response, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_DEVDIS_REQ:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Device Discoverability Request, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_DEVDIS_RSP:
+			PRINTM(MIOCTL,
+			       "wlan: %s P2P Device Discoverability Response, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_PROVDIS_REQ:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Provision Discovery Request, channel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		case P2P_PROVDIS_RSP:
+			PRINTM(MMSG,
+			       "wlan: %s P2P Provision Discovery Response, channnel=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0);
+			break;
+		default:
+			PRINTM(MMSG,
+			       "wlan: %s Unknow P2P Action Frame, channel=%d, subtype=%d\n",
+			       (flag) ? "TX" : "RX",
+			       (chan) ? chan->hw_value : 0, subtype);
+			break;
+		}
+	}
+
+	LEAVE();
+	return;
+}
 
 /**
  * @brief initialize p2p client for wpa_supplicant
@@ -1180,6 +1279,12 @@ woal_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
 	moal_private *priv = (moal_private *) woal_get_netdev_priv(netdev);
 
 	ENTER();
+	if (priv->phandle->driver_state) {
+		PRINTM(MERROR,
+		       "Block woal_cfg80211_del_key in abnormal driver state\n");
+		LEAVE();
+		return 0;
+	}
 
 	if (woal_cfg80211_set_key(priv, 0, 0, NULL, 0, NULL, 0, key_index,
 				  mac_addr, 1)) {
@@ -1697,11 +1802,14 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
 	if ((priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT) &&
 	    (framectrl == IEEE80211_STYPE_ACTION)) {
+		woal_cfg80211_display_p2p_actframe(buf, len, chan, MTRUE);
 		if (priv->phandle->is_go_timer_set) {
 			woal_cancel_timer(&priv->phandle->go_timer);
 			priv->phandle->is_go_timer_set = MFALSE;
 		}
-#define MGMT_TX_DEFAULT_WAIT_TIME	   1000
+		/* With sd8777 We have difficulty to receive response packet in
+		   500ms */
+#define MGMT_TX_DEFAULT_WAIT_TIME	   1500
 		/** cancel previous remain on channel */
 		if (priv->phandle->remain_on_channel) {
 			remain_priv =
@@ -1722,6 +1830,7 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 				ret = -EFAULT;
 				goto done;
 			}
+
 			if (priv->phandle->cookie) {
 				cfg80211_remain_on_channel_expired(
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
@@ -1751,9 +1860,11 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 		/** cancel pending scan */
 		woal_cancel_scan(priv, MOAL_IOCTL_WAIT);
 #endif
-		duration = wait;
-		if (!wait)
-			duration = MGMT_TX_DEFAULT_WAIT_TIME;
+
+		duration =
+			(wait >
+			 MGMT_TX_DEFAULT_WAIT_TIME) ? wait :
+			MGMT_TX_DEFAULT_WAIT_TIME;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 		if (channel_type_valid)
 			ret = woal_cfg80211_remain_on_channel_cfg(priv,
@@ -1772,20 +1883,45 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 								  chan, 0,
 								  duration);
 		if (ret) {
-			PRINTM(MERROR, "Fail to configure remain on channel\n");
-			ret = -EFAULT;
-			goto done;
-		}
-		priv->phandle->remain_on_channel = MTRUE;
-		priv->phandle->remain_bss_index = priv->bss_index;
+			/* Return fail will cause p2p connnection fail */
+			woal_sched_timeout(2);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
-		priv->phandle->channel_type = channel_type;
+			if (channel_type_valid)
+				ret = woal_cfg80211_remain_on_channel_cfg(priv,
+									  MOAL_IOCTL_WAIT,
+									  MFALSE,
+									  &channel_status,
+									  chan,
+									  channel_type,
+									  duration);
+			else
 #endif
-		memcpy(&priv->phandle->chan, chan,
-		       sizeof(struct ieee80211_channel));
-		PRINTM(MIOCTL, "%s: Mgmt Tx: Set remain channel=%d\n",
-		       dev->name,
-		       ieee80211_frequency_to_channel(chan->center_freq));
+				ret = woal_cfg80211_remain_on_channel_cfg(priv,
+									  MOAL_IOCTL_WAIT,
+									  MFALSE,
+									  &channel_status,
+									  chan,
+									  0,
+									  duration);
+			PRINTM(MERROR,
+			       "Try configure remain on channel again, ret=%d\n",
+			       ret);
+			ret = 0;
+		} else {
+			priv->phandle->remain_on_channel = MTRUE;
+			priv->phandle->remain_bss_index = priv->bss_index;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
+			priv->phandle->channel_type = channel_type;
+#endif
+			memcpy(&priv->phandle->chan, chan,
+			       sizeof(struct ieee80211_channel));
+			PRINTM(MIOCTL,
+			       "%s: Mgmt Tx: Set remain channel=%d duration=%d\n",
+			       dev->name,
+			       ieee80211_frequency_to_channel(chan->
+							      center_freq),
+			       duration);
+		}
 	}
 #endif
 #endif
@@ -1801,7 +1937,11 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 		ret = -ENOMEM;
 		goto done;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 	*cookie = random32() | 1;
+#else
+	*cookie = prandom_u32() | 1;
+#endif
 	pmbuf->data_offset = MLAN_MIN_DATA_HEADER_LEN;
 	pkt_type = MRVL_PKT_TYPE_MGMT_FRAME;
 	tx_control = 0;

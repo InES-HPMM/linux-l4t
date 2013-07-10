@@ -37,15 +37,15 @@ Change log:
 #include "mlan_meas.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 /**
  *  @brief This function handles the command response error
@@ -87,7 +87,6 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
 				pmadapter->ps_mode = Wlan802_11PowerModeCAM;
 		}
 		break;
-	case HostCmd_CMD_802_11_SCAN_EXT:
 	case HostCmd_CMD_802_11_SCAN:
 		/* Cancel all pending scan command */
 		wlan_flush_scan_queue(pmadapter);
@@ -1475,7 +1474,7 @@ wlan_ret_otp_user_data(IN pmlan_private pmpriv,
 }
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -1531,11 +1530,6 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
 		break;
 	case HostCmd_CMD_802_11_SCAN:
 		ret = wlan_ret_802_11_scan(pmpriv, resp, pioctl_buf);
-		pioctl_buf = MNULL;
-		pmadapter->curr_cmd->pioctl_buf = MNULL;
-		break;
-	case HostCmd_CMD_802_11_SCAN_EXT:
-		ret = wlan_ret_802_11_scan_ext(pmpriv, resp, pioctl_buf);
 		pioctl_buf = MNULL;
 		pmadapter->curr_cmd->pioctl_buf = MNULL;
 		break;
@@ -1747,7 +1741,12 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
 	case HostCmd_CMD_REJECT_ADDBA_REQ:
 		ret = wlan_ret_reject_addba_req(pmpriv, resp, pioctl_buf);
 		break;
-
+	case HostCmd_CMD_MULTI_CHAN_CONFIG:
+		ret = wlan_ret_multi_chan_cfg(pmpriv, resp, pioctl_buf);
+		break;
+	case HostCmd_CMD_MULTI_CHAN_POLICY:
+		ret = wlan_ret_multi_chan_policy(pmpriv, resp, pioctl_buf);
+		break;
 	default:
 		PRINTM(MERROR, "CMD_RESP: Unknown command response %#x\n",
 		       resp->command);

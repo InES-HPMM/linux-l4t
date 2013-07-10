@@ -383,7 +383,7 @@ done:
 int
 sd_verify_fw_download(bt_private * priv, int pollnum)
 {
-	int ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_FAILURE;
 	u16 firmwarestat;
 	int tries;
 
@@ -397,16 +397,10 @@ sd_verify_fw_download(bt_private * priv, int pollnum)
 			PRINTM(MSG, "BT FW is active(%d)\n", tries);
 			ret = BT_STATUS_SUCCESS;
 			break;
-		} else {
-			mdelay(100);
-			ret = BT_STATUS_FAILURE;
 		}
+		mdelay(100);
 	}
-	if (ret < 0)
-		goto done;
 
-	ret = BT_STATUS_SUCCESS;
-done:
 	LEAVE();
 	return ret;
 }
@@ -640,6 +634,7 @@ sd_request_fw_dpc(const struct firmware *fw_firmware, void *context)
 		PRINTM(ERROR,
 		       "BT: sd_init_fw_dpc failed (download fw with nowait: %d). Terminating download\n",
 		       req_fw_nowait);
+		sdio_release_host(card->func);
 		ret = BT_STATUS_FAILURE;
 		goto done;
 	}
@@ -648,6 +643,7 @@ sd_request_fw_dpc(const struct firmware *fw_firmware, void *context)
 	if (sd_verify_fw_download(priv, MAX_FIRMWARE_POLL_TRIES)) {
 		PRINTM(ERROR, "BT: FW failed to be active in time!\n");
 		ret = BT_STATUS_FAILURE;
+		sdio_release_host(card->func);
 		goto done;
 	}
 	sdio_release_host(card->func);
@@ -677,7 +673,6 @@ done:
 	/* For synchronous download cleanup will be done in add_card */
 	if (!req_fw_nowait)
 		return ret;
-	sdio_release_host(card->func);
 	PRINTM(INFO, "unregister device\n");
 	sbi_unregister_dev(priv);
 	((struct sdio_mmc_card *)card)->priv = NULL;
@@ -1678,7 +1673,6 @@ sbi_download_fw(bt_private * priv)
 	if (sd_download_firmware_w_helper(priv)) {
 		PRINTM(INFO, "BT: FW download failed!\n");
 		ret = BT_STATUS_FAILURE;
-		goto done;
 	}
 	goto exit;
 done:
@@ -1695,8 +1689,6 @@ err_register:
 		free_m_dev(m_dev_fm);
 	if (m_dev_nfc->dev_pointer)
 		free_m_dev(m_dev_nfc);
-	if (priv->adapter)
-		bt_free_adapter(priv);
 	LEAVE();
 	return ret;
 }

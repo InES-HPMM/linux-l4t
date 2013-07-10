@@ -84,8 +84,7 @@ Change log:
 #define BAND_CONFIG_5GHZ            0x01
 
 /** wapi_msg */
-typedef struct _wapi_msg
-{
+typedef struct _wapi_msg {
     /** message type */
 	t_u16 msg_type;
     /** message len */
@@ -95,8 +94,7 @@ typedef struct _wapi_msg
 } wapi_msg;
 
 /* wapi key msg */
-typedef struct _wapi_key_msg
-{
+typedef struct _wapi_key_msg {
     /** mac address */
 	t_u8 mac_addr[MLAN_MAC_ADDR_LENGTH];
     /** pad */
@@ -107,8 +105,7 @@ typedef struct _wapi_key_msg
 	t_u8 key[32];
 } wapi_key_msg;
 
-typedef struct _tx_rate_cfg_t
-{
+typedef struct _tx_rate_cfg_t {
     /** sub command */
 	int subcmd;
     /** Action */
@@ -120,8 +117,7 @@ typedef struct _tx_rate_cfg_t
 } tx_rate_cfg_t;
 
 /** ant_cfg structure */
-typedef struct _ant_cfg_t
-{
+typedef struct _ant_cfg_t {
    /** Subcommand */
 	int subcmd;
    /** Action */
@@ -181,8 +177,7 @@ typedef struct _ant_cfg_t
 #define HS_CFG_CONDITION_MASK   0x0f
 
 /** ds_hs_cfg */
-typedef struct _ds_hs_cfg
-{
+typedef struct _ds_hs_cfg {
     /** subcmd */
 	t_u32 subcmd;
     /** Bit0: 0 - Get, 1 Set
@@ -208,8 +203,7 @@ typedef struct _ds_hs_cfg
 #define	UAP_GET_BSS_TYPE            (SIOCDEVPRIVATE + 15)
 
 /** addba_param */
-typedef struct _addba_param
-{
+typedef struct _addba_param {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -227,8 +221,7 @@ typedef struct _addba_param
 } addba_param;
 
 /** aggr_prio_tbl */
-typedef struct _aggr_prio_tbl
-{
+typedef struct _aggr_prio_tbl {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -240,8 +233,7 @@ typedef struct _aggr_prio_tbl
 } aggr_prio_tbl;
 
 /** addba_reject parameters */
-typedef struct _addba_reject_para
-{
+typedef struct _addba_reject_para {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -251,8 +243,7 @@ typedef struct _addba_reject_para
 } addba_reject_para;
 
 /** fw_info */
-typedef struct _fw_info
-{
+typedef struct _fw_info {
     /** subcmd */
 	t_u32 subcmd;
     /** Get */
@@ -265,8 +256,7 @@ typedef struct _fw_info
 	t_u16 region_code;
 } fw_info;
 
-typedef struct _tx_bf_cfg_para_hdr
-{
+typedef struct _tx_bf_cfg_para_hdr {
     /** Sub command */
 	t_u32 subcmd;
     /** Action: Set/Get */
@@ -274,8 +264,7 @@ typedef struct _tx_bf_cfg_para_hdr
 } tx_bf_cfg_para_hdr;
 
 /** sdcmd52rw parameters */
-typedef struct _sdcmd52_para
-{
+typedef struct _sdcmd52_para {
     /** subcmd */
 	t_u32 subcmd;
     /** Write /Read */
@@ -285,8 +274,7 @@ typedef struct _sdcmd52_para
 } sdcmd52_para;
 
 /** deep_sleep parameters */
-typedef struct _deep_sleep_para
-{
+typedef struct _deep_sleep_para {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -298,8 +286,7 @@ typedef struct _deep_sleep_para
 } deep_sleep_para;
 
 /** tx_data_pause parameters */
-typedef struct _tx_data_pause_para
-{
+typedef struct _tx_data_pause_para {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -311,8 +298,7 @@ typedef struct _tx_data_pause_para
 } tx_data_pause_para;
 
 /** mgmt_frame_ctrl */
-typedef struct _mgmt_frame_ctrl
-{
+typedef struct _mgmt_frame_ctrl {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -321,8 +307,7 @@ typedef struct _mgmt_frame_ctrl
 	t_u32 mask;
 } mgmt_frame_ctrl;
 
-typedef struct _snmp_mib_para
-{
+typedef struct _snmp_mib_para {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -345,8 +330,7 @@ typedef struct _snmp_mib_para
 
 #ifdef DFS_TESTING_SUPPORT
 /** dfs_testing parameters */
-typedef struct _dfs_testing_param
-{
+typedef struct _dfs_testing_param {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */
@@ -363,8 +347,7 @@ typedef struct _dfs_testing_param
 #endif
 
 /** domain_info parameters */
-typedef struct _domain_info_param
-{
+typedef struct _domain_info_param {
     /** subcmd */
 	t_u32 subcmd;
     /** Set/Get */

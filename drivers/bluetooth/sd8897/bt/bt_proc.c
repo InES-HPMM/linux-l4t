@@ -40,8 +40,7 @@ static struct proc_dir_entry *proc_mbt = NULL;
 static bt_private *bpriv = NULL;
 static char cmd52_string[CMD52_STR_LEN];
 
-struct proc_data
-{
+struct proc_data {
 	/** Read length */
 	int rdlen;
 	/** Read buffer */
@@ -618,14 +617,13 @@ bt_proc_remove(bt_private * priv)
 	PRINTM(INFO, "BT: Remove Proc Interface\n");
 	if (proc_mbt) {
 		for (i = 0; i < MAX_RADIO_FUNC; i++) {
-			if (priv->dev_proc[i].proc_entry) {
-				for (j = 0;
-				     j <
-				     sizeof(proc_files) / sizeof(proc_files[0]);
-				     j++)
-					remove_proc_entry(proc_files[j].name,
-							  priv->dev_proc[i].
-							  proc_entry);
+			if (!priv->dev_proc[i].proc_entry)
+				continue;
+			for (j = 0;
+			     j < sizeof(proc_files) / sizeof(proc_files[0]);
+			     j++) {
+				remove_proc_entry(proc_files[j].name,
+						  priv->dev_proc[i].proc_entry);
 			}
 			if (priv->dev_proc[i].proc_entry) {
 				remove_proc_entry(priv->bt_dev.m_dev[i].name,

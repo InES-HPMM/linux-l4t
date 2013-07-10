@@ -39,15 +39,15 @@ Change log:
 #include "mlan_meas.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -358,7 +358,8 @@ wlan_is_p2p_connected(IN pmlan_adapter pmadapter)
 	pmlan_private priv;
 	ENTER();
 	for (j = 0; j < pmadapter->priv_num; ++j) {
-		if ((priv = pmadapter->priv[j])) {
+		priv = pmadapter->priv[j];
+		if (priv) {
 			if (priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT) {
 				if ((priv->bss_role == MLAN_BSS_ROLE_STA) &&
 				    (priv->media_connected == MTRUE)) {
@@ -494,7 +495,7 @@ wlan_cmd_802_11_mac_address(IN pmlan_private pmpriv,
 	if (cmd_action == HostCmd_ACT_GEN_SET) {
 		memcpy(pmpriv->adapter, cmd->params.mac_addr.mac_addr,
 		       pmpriv->curr_addr, MLAN_MAC_ADDR_LENGTH);
-		// HEXDUMP("SET_CMD: MAC ADDRESS-", priv->CurrentAddr, 6);
+		/* HEXDUMP("SET_CMD: MAC ADDRESS-", priv->CurrentAddr, 6); */
 	}
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
@@ -1659,7 +1660,7 @@ wlan_cmd_inactivity_timeout(IN HostCmd_DS_COMMAND * cmd,
 }
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -1916,9 +1917,6 @@ wlan_ops_sta_prepare_cmd(IN t_void * priv,
 		ret = wlan_cmd_mgmt_ie_list(pmpriv, cmd_ptr, cmd_action,
 					    pdata_buf);
 		break;
-	case HostCmd_CMD_802_11_SCAN_EXT:
-		ret = wlan_cmd_802_11_scan_ext(pmpriv, cmd_ptr, pdata_buf);
-		break;
 	case HostCmd_CMD_ECL_SYSTEM_CLOCK_CONFIG:
 		ret = wlan_cmd_sysclock_cfg(pmpriv, cmd_ptr, cmd_action,
 					    pdata_buf);
@@ -1987,6 +1985,14 @@ wlan_ops_sta_prepare_cmd(IN t_void * priv,
 	case HostCmd_CMD_REJECT_ADDBA_REQ:
 		ret = wlan_cmd_reject_addba_req(pmpriv, cmd_ptr, cmd_action,
 						pdata_buf);
+		break;
+	case HostCmd_CMD_MULTI_CHAN_CONFIG:
+		ret = wlan_cmd_multi_chan_cfg(pmpriv, cmd_ptr, cmd_action,
+					      pdata_buf);
+		break;
+	case HostCmd_CMD_MULTI_CHAN_POLICY:
+		ret = wlan_cmd_multi_chan_policy(pmpriv, cmd_ptr, cmd_action,
+						 pdata_buf);
 		break;
 	default:
 		PRINTM(MERROR, "PREP_CMD: unknown command- %#x\n", cmd_no);

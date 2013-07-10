@@ -35,15 +35,15 @@ Change log:
 #include "mlan_sdio.h"
 
 /********************************************************
-    Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-    Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -98,7 +98,7 @@ wlan_11n_form_amsdu_pkt(pmlan_adapter pmadapter, t_u8 * amsdu_buf, t_u8 * data,
 						      LLC_SNAP_LEN)) & 3)) : 0;
 
 	LEAVE();
-	return (pkt_len + LLC_SNAP_LEN + *pad);
+	return pkt_len + LLC_SNAP_LEN + *pad;
 }
 
 /**
@@ -206,7 +206,7 @@ wlan_11n_get_num_aggrpkts(t_u8 * data, int total_pkt_len)
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -540,5 +540,5 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
 
 exit:
 	LEAVE();
-	return (pkt_size + headroom);
+	return pkt_size + headroom;
 }

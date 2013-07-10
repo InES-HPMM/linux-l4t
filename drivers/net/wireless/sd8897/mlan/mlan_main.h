@@ -30,7 +30,8 @@ Change log:
 
 #ifdef DEBUG_LEVEL1
 extern t_void(*print_callback) (IN t_void * pmoal_handle,
-				IN t_u32 level, IN char *pformat, IN ...);
+				IN t_u32 level, IN char *pformat, IN ...
+	);
 
 extern mlan_status(*get_sys_time_callback) (IN t_void * pmoal_handle,
 					    OUT t_u32 * psec,
@@ -40,22 +41,22 @@ extern t_u32 mlan_drvdbg;
 
 #ifdef	DEBUG_LEVEL2
 #define	PRINTM_MINFO(msg...)  do {if ((mlan_drvdbg & MINFO) && (print_callback)) \
-                                    print_callback(MNULL, MINFO, msg);} while(0)
+				  print_callback(MNULL, MINFO, msg); } while(0)
 #define	PRINTM_MWARN(msg...)  do {if ((mlan_drvdbg & MWARN) && (print_callback)) \
-                                    print_callback(MNULL, MWARN, msg);} while(0)
+				  print_callback(MNULL, MWARN, msg); } while(0)
 #define	PRINTM_MENTRY(msg...) do {if ((mlan_drvdbg & MENTRY) && (print_callback)) \
-                                    print_callback(MNULL, MENTRY, msg);} while(0)
-#define PRINTM_GET_SYS_TIME(level, psec, pusec)             \
-do {                                                        \
-    if ((level & mlan_drvdbg) && (get_sys_time_callback))        \
-        get_sys_time_callback(MNULL, psec, pusec);          \
+				  print_callback(MNULL, MENTRY, msg); } while(0)
+#define PRINTM_GET_SYS_TIME(level, psec, pusec)              \
+do {                                                         \
+	if ((level & mlan_drvdbg) && (get_sys_time_callback))\
+	    get_sys_time_callback(MNULL, psec, pusec);       \
 } while (0)
 
 /** Hexdump for level-2 debugging */
-#define HEXDUMP(x,y,z)   \
+#define HEXDUMP(x, y, z)   \
 do {                \
-    if ((mlan_drvdbg & (MHEX_DUMP | MINFO)) && (print_callback))  \
-        print_callback(MNULL, MHEX_DUMP | MINFO, x, y, z); \
+	if ((mlan_drvdbg & (MHEX_DUMP | MINFO)) && (print_callback))  \
+	    print_callback(MNULL, MHEX_DUMP | MINFO, x, y, z); \
 } while (0)
 
 #else
@@ -66,53 +67,53 @@ do {                \
 
 #define PRINTM_GET_SYS_TIME(level, psec, pusec)         \
 do {                                                    \
-    if ((level & mlan_drvdbg) && (get_sys_time_callback)     \
-            && (level != MINFO) && (level != MWARN))    \
-        get_sys_time_callback(MNULL, psec, pusec);      \
+	if ((level & mlan_drvdbg) && (get_sys_time_callback)     \
+	        && (level != MINFO) && (level != MWARN))    \
+	    get_sys_time_callback(MNULL, psec, pusec);      \
 } while (0)
 
 /** Hexdump for debugging */
-#define HEXDUMP(x,y,z) do {} while (0)
+#define HEXDUMP(x, y, z) do {} while (0)
 
 #endif /* DEBUG_LEVEL2 */
 
 #define	PRINTM_MFW_D(msg...)  do {if ((mlan_drvdbg & MFW_D) && (print_callback)) \
-                                    print_callback(MNULL, MFW_D, msg);} while(0)
+				  print_callback(MNULL, MFW_D, msg); } while(0)
 #define	PRINTM_MCMD_D(msg...) do {if ((mlan_drvdbg & MCMD_D) && (print_callback)) \
-                                    print_callback(MNULL, MCMD_D, msg);} while(0)
+				  print_callback(MNULL, MCMD_D, msg); } while(0)
 #define	PRINTM_MDAT_D(msg...) do {if ((mlan_drvdbg & MDAT_D) && (print_callback)) \
-                                    print_callback(MNULL, MDAT_D, msg);} while(0)
+				  print_callback(MNULL, MDAT_D, msg); } while(0)
 #define	PRINTM_MIF_D(msg...) do {if ((mlan_drvdbg & MIF_D) && (print_callback)) \
-                                    print_callback(MNULL, MIF_D, msg);} while(0)
+				  print_callback(MNULL, MIF_D, msg); } while(0)
 
 #define	PRINTM_MIOCTL(msg...) do {if ((mlan_drvdbg & MIOCTL) && (print_callback)) \
-                                    print_callback(MNULL, MIOCTL, msg);} while(0)
+				  print_callback(MNULL, MIOCTL, msg); } while(0)
 #define	PRINTM_MINTR(msg...)  do {if ((mlan_drvdbg & MINTR) && (print_callback)) \
-                                    print_callback(MNULL, MINTR, msg);} while(0)
+				  print_callback(MNULL, MINTR, msg); } while(0)
 #define	PRINTM_MEVENT(msg...) do {if ((mlan_drvdbg & MEVENT) && (print_callback)) \
-                                    print_callback(MNULL, MEVENT, msg);} while(0)
+				  print_callback(MNULL, MEVENT, msg); } while(0)
 #define	PRINTM_MCMND(msg...)  do {if ((mlan_drvdbg & MCMND) && (print_callback)) \
-                                    print_callback(MNULL, MCMND, msg);} while(0)
+				  print_callback(MNULL, MCMND, msg); } while(0)
 #define	PRINTM_MDATA(msg...)  do {if ((mlan_drvdbg & MDATA) && (print_callback)) \
-                                    print_callback(MNULL, MDATA, msg);} while(0)
+				  print_callback(MNULL, MDATA, msg); } while(0)
 #define	PRINTM_MERROR(msg...) do {if ((mlan_drvdbg & MERROR) && (print_callback)) \
-                                    print_callback(MNULL, MERROR, msg);} while(0)
+				  print_callback(MNULL, MERROR, msg); } while(0)
 #define	PRINTM_MFATAL(msg...) do {if ((mlan_drvdbg & MFATAL) && (print_callback)) \
-                                    print_callback(MNULL, MFATAL, msg);} while(0)
+				  print_callback(MNULL, MFATAL, msg); } while(0)
 #define	PRINTM_MMSG(msg...)   do {if ((mlan_drvdbg & MMSG) && (print_callback)) \
-                                    print_callback(MNULL, MMSG, msg);} while(0)
+				  print_callback(MNULL, MMSG, msg); } while(0)
 
-#define	PRINTM(level,msg...) PRINTM_##level((char*)msg)
+#define	PRINTM(level, msg...) PRINTM_##level((char *)msg)
 
 /** Log debug message */
 #ifdef __GNUC__
 #define PRINTM_NETINTF(level, pmpriv)   \
 do {                                    \
-    if ((mlan_drvdbg & level) && pmpriv      \
-            && pmpriv->adapter->callbacks.moal_print_netintf) \
-        pmpriv->adapter->callbacks.moal_print_netintf( \
-            pmpriv->adapter->pmoal_handle, \
-            pmpriv->bss_index, level); \
+	if ((mlan_drvdbg & level) && pmpriv      \
+	        && pmpriv->adapter->callbacks.moal_print_netintf) \
+	    pmpriv->adapter->callbacks.moal_print_netintf( \
+		    pmpriv->adapter->pmoal_handle, \
+		    pmpriv->bss_index, level); \
 } while (0)
 #endif /* __GNUC__ */
 
@@ -120,23 +121,23 @@ do {                                    \
 #define MAX_DATA_DUMP_LEN	64
 
 /** Debug hexdump for level-1 debugging */
-#define DBG_HEXDUMP(level,x,y,z)   \
+#define DBG_HEXDUMP(level, x, y, z)   \
 do {                \
-    if ((mlan_drvdbg & level) && print_callback)  \
-        print_callback(MNULL, MHEX_DUMP | level, x, y, z); \
+	if ((mlan_drvdbg & level) && print_callback)  \
+		print_callback(MNULL, MHEX_DUMP | level, x, y, z); \
 } while (0)
 
 #else /* DEBUG_LEVEL1 */
 
-#define	PRINTM(level,msg...) do {} while (0)
+#define	PRINTM(level, msg...) do {} while (0)
 
 #define PRINTM_NETINTF(level, pmpriv) do {} while (0)
 
 /** Debug hexdump for level-1 debugging */
-#define DBG_HEXDUMP(level,x,y,z) do {} while (0)
+#define DBG_HEXDUMP(level, x, y, z) do {} while (0)
 
 /** Hexdump for debugging */
-#define HEXDUMP(x,y,z) do {} while (0)
+#define HEXDUMP(x, y, z) do {} while (0)
 
 #define PRINTM_GET_SYS_TIME(level, psec, pusec) do { } while(0)
 
@@ -145,23 +146,23 @@ do {                \
 /** Log entry point for debugging */
 #define ENTER()     \
 do {                \
-        PRINTM(MENTRY, "Enter: %s\n", __FUNCTION__);   \
+	PRINTM(MENTRY, "Enter: %s\n", __FUNCTION__);   \
 } while (0)
 
 /** Log exit point for debugging */
 #define LEAVE()     \
 do {                \
-        PRINTM(MENTRY, "Leave: %s\n", __FUNCTION__);   \
+	PRINTM(MENTRY, "Leave: %s\n", __FUNCTION__);   \
 } while (0)
 
 /** Find minimum */
 #ifndef MIN
-#define MIN(a,b)		((a) < (b) ? (a) : (b))
+#define MIN(a, b)		((a) < (b) ? (a) : (b))
 #endif
 
 /** Find maximum */
 #ifndef MAX
-#define MAX(a,b)		((a) > (b) ? (a) : (b))
+#define MAX(a, b)		((a) > (b) ? (a) : (b))
 #endif
 
 #ifdef memset
@@ -169,28 +170,28 @@ do {                \
 #endif
 /** Memset routine */
 #define memset(adapter, s, c, len) \
-  adapter->callbacks.moal_memset(adapter->pmoal_handle, s, c, len)
+	(adapter->callbacks.moal_memset(adapter->pmoal_handle, s, c, len))
 
 #ifdef memmove
 #undef memmove
 #endif
 /** Memmove routine */
 #define memmove(adapter, dest, src, len) \
-  adapter->callbacks.moal_memmove(adapter->pmoal_handle, dest, src, len)
+	(adapter->callbacks.moal_memmove(adapter->pmoal_handle, dest, src, len))
 
 #ifdef memcpy
 #undef memcpy
 #endif
 /** Memcpy routine */
 #define memcpy(adapter, to, from, len) \
-  adapter->callbacks.moal_memcpy(adapter->pmoal_handle, to, from, len)
+	(adapter->callbacks.moal_memcpy(adapter->pmoal_handle, to, from, len))
 
 #ifdef memcmp
 #undef memcmp
 #endif
 /** Memcmp routine */
 #define memcmp(adapter, s1, s2, len) \
-  adapter->callbacks.moal_memcmp(adapter->pmoal_handle, s1, s2, len)
+	(adapter->callbacks.moal_memcmp(adapter->pmoal_handle, s1, s2, len))
 
 /** Find number of elements */
 #ifndef NELEMENTS
@@ -198,10 +199,10 @@ do {                \
 #endif
 
 /** SWAP: swap t_u8 */
-#define SWAP_U8(a,b)	{t_u8 t; t=a; a=b; b=t;}
+#define SWAP_U8(a, b)	{t_u8 t; t = a; a = b; b = t; }
 
 /** SWAP: swap t_u8 */
-#define SWAP_U16(a,b)	{t_u16 t; t=a; a=b; b=t;}
+#define SWAP_U16(a, b)	{t_u16 t; t = a; a = b; b = t; }
 
 /** MLAN MNULL pointer */
 #define MNULL                           (0)
@@ -209,25 +210,25 @@ do {                \
 /** 16 bits byte swap */
 #define swap_byte_16(x) \
 ((t_u16)((((t_u16)(x) & 0x00ffU) << 8) | \
-         (((t_u16)(x) & 0xff00U) >> 8)))
+		 (((t_u16)(x) & 0xff00U) >> 8)))
 
 /** 32 bits byte swap */
 #define swap_byte_32(x) \
 ((t_u32)((((t_u32)(x) & 0x000000ffUL) << 24) | \
-         (((t_u32)(x) & 0x0000ff00UL) <<  8) | \
-         (((t_u32)(x) & 0x00ff0000UL) >>  8) | \
-         (((t_u32)(x) & 0xff000000UL) >> 24)))
+	 (((t_u32)(x) & 0x0000ff00UL) <<  8) | \
+	 (((t_u32)(x) & 0x00ff0000UL) >>  8) | \
+	 (((t_u32)(x) & 0xff000000UL) >> 24)))
 
 /** 64 bits byte swap */
 #define swap_byte_64(x) \
 ((t_u64)((t_u64)(((t_u64)(x) & 0x00000000000000ffULL) << 56) | \
-         (t_u64)(((t_u64)(x) & 0x000000000000ff00ULL) << 40) | \
-         (t_u64)(((t_u64)(x) & 0x0000000000ff0000ULL) << 24) | \
-         (t_u64)(((t_u64)(x) & 0x00000000ff000000ULL) <<  8) | \
-         (t_u64)(((t_u64)(x) & 0x000000ff00000000ULL) >>  8) | \
-         (t_u64)(((t_u64)(x) & 0x0000ff0000000000ULL) >> 24) | \
-         (t_u64)(((t_u64)(x) & 0x00ff000000000000ULL) >> 40) | \
-         (t_u64)(((t_u64)(x) & 0xff00000000000000ULL) >> 56) ))
+	     (t_u64)(((t_u64)(x) & 0x000000000000ff00ULL) << 40) | \
+	     (t_u64)(((t_u64)(x) & 0x0000000000ff0000ULL) << 24) | \
+	     (t_u64)(((t_u64)(x) & 0x00000000ff000000ULL) <<  8) | \
+	     (t_u64)(((t_u64)(x) & 0x000000ff00000000ULL) >>  8) | \
+	     (t_u64)(((t_u64)(x) & 0x0000ff0000000000ULL) >> 24) | \
+	     (t_u64)(((t_u64)(x) & 0x00ff000000000000ULL) >> 40) | \
+	     (t_u64)(((t_u64)(x) & 0xff00000000000000ULL) >> 56) ))
 
 #ifdef BIG_ENDIAN_SUPPORT
 /** Convert ulong n/w to host */
@@ -253,21 +254,21 @@ do {                \
 
 /** Convert TxPD to little endian format from CPU format */
 #define endian_convert_TxPD(x)                                          \
-    {                                                                   \
-        (x)->tx_pkt_length = wlan_cpu_to_le16((x)->tx_pkt_length);      \
-        (x)->tx_pkt_offset = wlan_cpu_to_le16((x)->tx_pkt_offset);      \
-        (x)->tx_pkt_type   = wlan_cpu_to_le16((x)->tx_pkt_type);        \
-        (x)->tx_control    = wlan_cpu_to_le32((x)->tx_control);         \
-    }
+	{                                                                   \
+	    (x)->tx_pkt_length = wlan_cpu_to_le16((x)->tx_pkt_length);      \
+	    (x)->tx_pkt_offset = wlan_cpu_to_le16((x)->tx_pkt_offset);      \
+	    (x)->tx_pkt_type   = wlan_cpu_to_le16((x)->tx_pkt_type);        \
+	    (x)->tx_control    = wlan_cpu_to_le32((x)->tx_control);         \
+	}
 
 /** Convert RxPD from little endian format to CPU format */
 #define endian_convert_RxPD(x)                                          \
-    {                                                                   \
-        (x)->rx_pkt_length = wlan_le16_to_cpu((x)->rx_pkt_length);      \
-        (x)->rx_pkt_offset = wlan_le16_to_cpu((x)->rx_pkt_offset);      \
-        (x)->rx_pkt_type   = wlan_le16_to_cpu((x)->rx_pkt_type);        \
-        (x)->seq_num       = wlan_le16_to_cpu((x)->seq_num);            \
-    }
+	{                                                                   \
+	    (x)->rx_pkt_length = wlan_le16_to_cpu((x)->rx_pkt_length);      \
+	    (x)->rx_pkt_offset = wlan_le16_to_cpu((x)->rx_pkt_offset);      \
+	    (x)->rx_pkt_type   = wlan_le16_to_cpu((x)->rx_pkt_type);        \
+	    (x)->seq_num       = wlan_le16_to_cpu((x)->seq_num);            \
+	}
 #else
 /** Convert ulong n/w to host */
 #define mlan_ntohl(x) swap_byte_32(x)
@@ -302,14 +303,14 @@ extern t_void(*assert_callback) (IN t_void * pmoal_handle, IN t_u32 cond);
 /** Assertion */
 #define MASSERT(cond)                   \
 do {                                    \
-    if (!(cond)) {                      \
-        PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
-        if (assert_callback) {          \
-            assert_callback(MNULL, (t_ptr)(cond)); \
-        } else {                        \
-            do {} while(1);             \
-        }                               \
-    }                                   \
+	if (!(cond)) {                      \
+	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
+	    if (assert_callback) {          \
+	        assert_callback(MNULL, (t_ptr)(cond)); \
+	    } else {                        \
+	        do {} while(1);             \
+	    }                               \
+	}                                   \
 } while(0)
 
 /** Upload size */
@@ -355,6 +356,11 @@ do {                                    \
 /** Maximum number of CFP codes for A */
 #define MRVDRV_MAX_CFP_CODE_A           5
 
+/** high rx pending packets */
+#define HIGH_RX_PENDING         50
+/** low rx pending packets */
+#define LOW_RX_PENDING          20
+
 /** Default region code */
 #define MRVDRV_DEFAULT_REGION_CODE      0x10
 
@@ -387,8 +393,7 @@ do {                                    \
 /** Default beacon missing timeout */
 #define DEFAULT_BCN_MISS_TIMEOUT            10
 
-/** Maximum buffer space for beacons retrieved from scan responses */
-#define MAX_SCAN_BEACON_BUFFER          49152
+#define MAX_SCAN_BEACON_BUFFER          16384
 /** Default buffer space for beacons retrieved from scan responses */
 #define DEFAULT_SCAN_BEACON_BUFFER      4096
 
@@ -427,9 +432,8 @@ do {                                    \
 
 /** Is cmd_resp, event or data packet received? */
 #define IS_CARD_RX_RCVD(adapter) (adapter->cmd_resp_received || \
-                                  adapter->event_received || \
-                                  adapter->data_received)
-
+	                          adapter->event_received || \
+	                          adapter->data_received)
 /** Type command */
 #define MLAN_TYPE_CMD			1
 /** Type data */
@@ -465,8 +469,7 @@ do {                                    \
 #define DBG_CMD_NUM	10
 
 /** Info for debug purpose */
-typedef struct _wlan_dbg
-{
+typedef struct _wlan_dbg {
     /** Number of host to card command failures */
 	t_u32 num_cmd_host_to_card_failure;
     /** Number of host to card sleep confirm failures */
@@ -520,8 +523,7 @@ typedef struct _wlan_dbg
 } wlan_dbg;
 
 /** Hardware status codes */
-typedef enum _WLAN_HARDWARE_STATUS
-{
+typedef enum _WLAN_HARDWARE_STATUS {
 	WlanHardwareStatusReady,
 	WlanHardwareStatusInitializing,
 	WlanHardwareStatusInitdone,
@@ -531,22 +533,19 @@ typedef enum _WLAN_HARDWARE_STATUS
 } WLAN_HARDWARE_STATUS;
 
 /** WLAN_802_11_POWER_MODE */
-typedef enum _WLAN_802_11_POWER_MODE
-{
+typedef enum _WLAN_802_11_POWER_MODE {
 	Wlan802_11PowerModeCAM,
 	Wlan802_11PowerModePSP
 } WLAN_802_11_POWER_MODE;
 
 /** tx param */
-typedef struct _mlan_tx_param
-{
+typedef struct _mlan_tx_param {
     /** next packet length */
 	t_u32 next_pkt_len;
 } mlan_tx_param;
 
 /** PS_STATE */
-typedef enum _PS_STATE
-{
+typedef enum _PS_STATE {
 	PS_STATE_AWAKE,
 	PS_STATE_PRE_SLEEP,
 	PS_STATE_SLEEP_CFM,
@@ -559,8 +558,7 @@ typedef enum _PS_STATE
 typedef struct _TxBAStreamTbl TxBAStreamTbl;
 
 /** Add BA parameter data structure */
-typedef struct
-{
+typedef struct {
     /** Window size for initiator */
 	t_u32 tx_win_size;
     /** Window size for receiver */
@@ -574,8 +572,7 @@ typedef struct
 } add_ba_param_t;
 
 /** Tx aggregation data structure */
-typedef struct _txAggr_t
-{
+typedef struct _txAggr_t {
     /** AMPDU user */
 	t_u8 ampdu_user;
     /** AMPDU AP */
@@ -588,8 +585,7 @@ typedef struct _txAggr_t
 typedef struct _raListTbl raListTbl;
 
 /** RA list table */
-struct _raListTbl
-{
+struct _raListTbl {
     /** Pointer to previous node */
 	raListTbl *pprev;
     /** Pointer to next node */
@@ -613,8 +609,7 @@ struct _raListTbl
 };
 
 /** TID table */
-typedef struct _tidTbl
-{
+typedef struct _tidTbl {
     /** RA list head */
 	mlan_list_head ra_list;
     /** Current RA list */
@@ -634,8 +629,7 @@ typedef struct _tidTbl
 #define WMM_DRV_DELAY_MAX	510
 
 /** Struct of WMM DESC */
-typedef struct _wmm_desc
-{
+typedef struct _wmm_desc {
     /** TID table */
 	tid_tbl_t tid_tbl_ptr[MAX_NUM_TID];
     /** Packets out */
@@ -665,8 +659,7 @@ typedef struct _wmm_desc
 } wmm_desc_t;
 
 /** Security structure */
-typedef struct _wlan_802_11_security_t
-{
+typedef struct _wlan_802_11_security_t {
     /** WPA enabled flag */
 	t_u8 wpa_enabled;
     /** E-Supplicant enabled flag */
@@ -686,8 +679,7 @@ typedef struct _wlan_802_11_security_t
 } wlan_802_11_security_t;
 
 /** Current Basic Service Set State Structure */
-typedef struct
-{
+typedef struct {
     /** BSS descriptor */
 	BSSDescriptor_t bss_descriptor;
     /** WMM enable? */
@@ -703,8 +695,7 @@ typedef struct
 } current_bss_params_t;
 
 /** Sleep_params */
-typedef struct _sleep_params_t
-{
+typedef struct _sleep_params_t {
     /** Sleep parameter error */
 	t_u16 sp_error;
     /** Sleep parameter offset */
@@ -720,8 +711,7 @@ typedef struct _sleep_params_t
 } sleep_params_t;
 
 /** Sleep_period */
-typedef struct sleep_period_t
-{
+typedef struct sleep_period_t {
     /** Sleep period */
 	t_u16 period;
     /** Reserved */
@@ -729,8 +719,7 @@ typedef struct sleep_period_t
 } sleep_period_t;
 
 /** mrvl_wep_key_t */
-typedef struct _mrvl_wep_key_t
-{
+typedef struct _mrvl_wep_key_t {
     /** Length */
 	t_u32 length;
     /** WEP key index */
@@ -745,15 +734,13 @@ typedef struct _mrvl_wep_key_t
 #define MAX_REGION_CHANNEL_NUM  2
 
 /** CFP dynamic (non-const) elements */
-typedef struct _cfp_dyn_t
-{
+typedef struct _cfp_dyn_t {
     /** TRUE: Channel is blacklisted (do not use) */
 	t_bool blacklist;
 } cfp_dyn_t;
 
 /** Chan-Freq-TxPower mapping table*/
-typedef struct _chan_freq_power_t
-{
+typedef struct _chan_freq_power_t {
     /** Channel Number */
 	t_u16 channel;
     /** Frequency of this Channel */
@@ -768,8 +755,7 @@ typedef struct _chan_freq_power_t
 } chan_freq_power_t;
 
 /** Region-band mapping table */
-typedef struct _region_chan_t
-{
+typedef struct _region_chan_t {
     /** TRUE if this entry is valid */
 	t_u8 valid;
     /** Region code for US, Japan ... */
@@ -783,8 +769,7 @@ typedef struct _region_chan_t
 } region_chan_t;
 
 /** State of 11d */
-typedef enum _state_11d_t
-{
+typedef enum _state_11d_t {
 	DISABLE_11D = 0,
 	ENABLE_11D = 1,
 } state_11d_t;
@@ -792,8 +777,7 @@ typedef enum _state_11d_t
 #define DEFAULT_11D_STATE   DISABLE_11D
 
 /** Domain regulatory information */
-typedef struct _wlan_802_11d_domain_reg
-{
+typedef struct _wlan_802_11d_domain_reg {
     /** Country Code */
 	t_u8 country_code[COUNTRY_CODE_LEN];
     /** band that channels in sub_band belong to */
@@ -805,8 +789,7 @@ typedef struct _wlan_802_11d_domain_reg
 } wlan_802_11d_domain_reg_t;
 
 /** Data for state machine */
-typedef struct _wlan_802_11d_state
-{
+typedef struct _wlan_802_11d_state {
     /** True for enabling 11D */
 	state_11d_t enable_11d;
     /** True for user enabling 11D */
@@ -814,8 +797,7 @@ typedef struct _wlan_802_11d_state
 } wlan_802_11d_state_t;
 
 /** 802.11h State information kept in the 'mlan_private' driver structure */
-typedef struct
-{
+typedef struct {
     /** Indicates whether 11h is enabled in the driver */
 	t_bool is_11h_enabled;
     /** Indicates whether 11h is active in the firmware */
@@ -832,8 +814,7 @@ typedef struct
 
 #if defined(UAP_SUPPORT)
 /** UAP get info callback state kept in the 'mlan_private' driver structure */
-typedef struct
-{
+typedef struct {
     /** UAP internal callback after wlan_uap_get_channel */
     /**  (parameter is really pointer to mlan_private)   */
 	mlan_status(*get_chan_callback) (t_void *);
@@ -851,8 +832,7 @@ typedef struct
 #endif
 
 /** Data structure for WPS information */
-typedef struct
-{
+typedef struct {
     /** WPS IE */
 	IEEEtypes_VendorSpecific_t wps_ie;
     /** Session enable flag */
@@ -860,8 +840,7 @@ typedef struct
 } wps_t;
 
 /** mlan_operations data structure */
-typedef struct _mlan_operations
-{
+typedef struct _mlan_operations {
     /** cmd init handler */
 	mlan_status(*init_cmd) (IN t_void * priv, IN t_u8 first_bss);
     /** ioctl handler */
@@ -890,8 +869,7 @@ typedef struct _mlan_operations
 } mlan_operations;
 
 /** Private structure for MLAN */
-typedef struct _mlan_private
-{
+typedef struct _mlan_private {
     /** Pointer to mlan_adapter */
 	struct _mlan_adapter *adapter;
     /** BSS index */
@@ -1128,16 +1106,14 @@ typedef struct _mlan_private
 } mlan_private, *pmlan_private;
 
 /** BA stream status */
-typedef enum _baStatus_e
-{
+typedef enum _baStatus_e {
 	BA_STREAM_NOT_SETUP = 0,
 	BA_STREAM_SETUP_INPROGRESS,
 	BA_STREAM_SETUP_COMPLETE
 } baStatus_e;
 
 /** Tx BA stream table */
-struct _TxBAStreamTbl
-{
+struct _TxBAStreamTbl {
     /** TxBAStreamTbl previous node */
 	TxBAStreamTbl *pprev;
     /** TxBAStreamTbl next node */
@@ -1154,8 +1130,7 @@ struct _TxBAStreamTbl
 /** RX reorder table */
 typedef struct _RxReorderTbl RxReorderTbl;
 
-typedef struct
-{
+typedef struct {
     /** Timer for flushing */
 	t_void *timer;
     /** Timer set flag */
@@ -1167,8 +1142,7 @@ typedef struct
 } reorder_tmr_cnxt_t;
 
 /** RX reorder table */
-struct _RxReorderTbl
-{
+struct _RxReorderTbl {
     /** RxReorderTbl previous node */
 	RxReorderTbl *pprev;
     /** RxReorderTbl next node */
@@ -1200,8 +1174,7 @@ struct _RxReorderTbl
 typedef struct _mlan_bssprio_node mlan_bssprio_node;
 
 /** BSS priority node */
-struct _mlan_bssprio_node
-{
+struct _mlan_bssprio_node {
     /** Pointer to previous node */
 	mlan_bssprio_node *pprev;
     /** Pointer to next node */
@@ -1214,8 +1187,7 @@ struct _mlan_bssprio_node
 typedef struct _mlan_bssprio_tbl mlan_bssprio_tbl;
 
 /** BSS priority table */
-struct _mlan_bssprio_tbl
-{
+struct _mlan_bssprio_tbl {
     /** BSS priority list head */
 	mlan_list_head bssprio_head;
     /** Current priority node */
@@ -1226,8 +1198,7 @@ struct _mlan_bssprio_tbl
 typedef struct _cmd_ctrl_node cmd_ctrl_node;
 
 /** _cmd_ctrl_node */
-struct _cmd_ctrl_node
-{
+struct _cmd_ctrl_node {
     /** Pointer to previous node */
 	cmd_ctrl_node *pprev;
     /** Pointer to next node */
@@ -1254,8 +1225,7 @@ struct _cmd_ctrl_node
 typedef struct _sta_node sta_node;
 
 /** station node*/
-struct _sta_node
-{
+struct _sta_node {
     /** previous node */
 	sta_node *pprev;
     /** next node */
@@ -1281,8 +1251,7 @@ struct _sta_node
 };
 
 /** 802.11h State information kept in the 'mlan_adapter' driver structure */
-typedef struct
-{
+typedef struct {
     /** Min TX Power capability sent to FW for 11h use and fw power control */
 	t_s8 min_tx_power_capability;
     /** Max TX Power capability sent to FW for 11h use and fw power control */
@@ -1304,8 +1273,7 @@ typedef struct
 } wlan_11h_device_state_t;
 
 /** Enumeration for DFS Timestamp represents field */
-enum _dfs_timestamp_repr_e
-{
+enum _dfs_timestamp_repr_e {
     /** Ignore entry */
 	DFS_TS_REPR_NOT_IN_USE = 0,
     /** NOP (Non-Occupancy Period) start time */
@@ -1318,8 +1286,7 @@ enum _dfs_timestamp_repr_e
 typedef struct _wlan_dfs_timestamp_t wlan_dfs_timestamp_t;
 
 /** DFS Timestamp type used for marking NOP/CAC events */
-struct _wlan_dfs_timestamp_t
-{
+struct _wlan_dfs_timestamp_t {
     /** Pointer to previous node */
 	wlan_dfs_timestamp_t *pprev;
     /** Pointer to next node */
@@ -1337,8 +1304,7 @@ struct _wlan_dfs_timestamp_t
 };
 
 /** DFS State information kept in the 'mlan_adapter' driver structure */
-typedef struct
-{
+typedef struct {
     /** Indicates whether DFS channel check is occurring in firmware */
 	t_bool dfs_check_pending;
     /** Indicates whether DFS channel check found radar */
@@ -1352,8 +1318,7 @@ typedef struct
 } wlan_dfs_device_state_t;
 
 /** Enumeration for mlan_ds_11h_radar_det_hndlg stages */
-enum _mlan_ds_11h_rdh_stages
-{
+enum _mlan_ds_11h_rdh_stages {
 	RDH_OFF = 0,
 	RDH_CHK_INTFS = 1,
 	RDH_STOP_TRAFFIC,
@@ -1368,8 +1333,7 @@ enum _mlan_ds_11h_rdh_stages
 };
 
 /** State info for Radar Detected Handling kept in 'mlan_adapter' */
-typedef struct
-{
+typedef struct {
     /** Stage (of Operation) */
 	t_u8 stage;
     /** Number of interfaces to handle */
@@ -1390,8 +1354,7 @@ typedef struct
 
 #ifdef DFS_TESTING_SUPPORT
 /** DFS/RDH testing exception settings kept in 'mlan_adapter' */
-typedef struct
-{
+typedef struct {
     /** user-configured CAC period (in msec) */
 	t_u16 user_cac_period_msec;
     /** user-configured NOP period (in sec) */
@@ -1409,8 +1372,7 @@ typedef struct
  *  Used to record a measurement request that the driver is pending on
  *    the result (received measurement report).
  */
-typedef struct
-{
+typedef struct {
     /**
      * Dialog token of a pending measurement request/report.  Used to
      *   block execution while waiting for the specific dialog token
@@ -1426,8 +1388,7 @@ typedef struct
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 /** data structure for SDIO MPA TX */
-typedef struct _sdio_mpa_tx
-{
+typedef struct _sdio_mpa_tx {
 	/** allocated buf for tx aggreation */
 	t_u8 *head_ptr;
 	/** multiport tx aggregation buffer pointer */
@@ -1451,8 +1412,7 @@ typedef struct _sdio_mpa_tx
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
 /** data structure for SDIO MPA RX */
-typedef struct _sdio_mpa_rx
-{
+typedef struct _sdio_mpa_rx {
 	/** allocated buf for rx aggreation */
 	t_u8 *head_ptr;
 	/** multiport rx aggregation buffer pointer */
@@ -1481,8 +1441,7 @@ typedef struct _sdio_mpa_rx
 #endif /* SDIO_MULTI_PORT_RX_AGGR */
 
 /** mlan_init_para structure */
-typedef struct _mlan_init_para
-{
+typedef struct _mlan_init_para {
 #ifdef MFG_CMD_SUPPORT
     /** MFG mode */
 	t_u32 mfg_mode;
@@ -1514,8 +1473,7 @@ typedef struct _mlan_init_para
 } mlan_init_para, *pmlan_init_para;
 
 /** Adapter data structure for MLAN */
-typedef struct _mlan_adapter
-{
+typedef struct _mlan_adapter {
     /** MOAL handle structure */
 	t_void *pmoal_handle;
     /** Private pointer */
@@ -1535,8 +1493,16 @@ typedef struct _mlan_adapter
 	t_void *pmain_proc_lock;
     /** mlan_processing */
 	t_u32 mlan_processing;
+    /** mlan_rx_processing */
+	t_u32 mlan_rx_processing;
+    /** rx_proc_lock for main_rx_process */
+	t_void *prx_proc_lock;
+	/* number of rx pkts queued */
+	mlan_scalar rx_pkts_queued;
     /** more task flag */
 	t_u32 more_task_flag;
+    /** delay task flag */
+	t_u32 delay_task_flag;
     /** Max tx buf size */
 	t_u16 max_tx_buf_size;
     /** Tx buf size */
@@ -1714,8 +1680,6 @@ typedef struct _mlan_adapter
 	t_u16 passive_scan_time;
     /** Scan block flag */
 	t_u8 scan_block;
-    /** Extended scan or legacy scan */
-	t_u8 ext_scan;
 	t_u16 bcn_buf_size;
     /** Beacon buffer */
 	t_u8 *bcn_buf;
@@ -1733,6 +1697,10 @@ typedef struct _mlan_adapter
 
     /** Tx lock flag */
 	t_u8 tx_lock_flag;
+    /** Rx lock flag */
+	t_u8 rx_lock_flag;
+	/** Multi channel status */
+	t_u8 mc_status;
 
     /** sleep_params_t */
 	sleep_params_t sleep_params;
@@ -1788,6 +1756,8 @@ typedef struct _mlan_adapter
 	t_u16 pps_uapsd_mode;
     /** Number of wakeup tries */
 	t_u32 pm_wakeup_fw_try;
+    /** time stamp when host try to wake up firmware */
+	t_u32 pm_wakeup_in_secs;
 
     /** Host Sleep configured flag */
 	t_u8 is_hs_configured;
@@ -1827,7 +1797,8 @@ typedef struct _mlan_adapter
 
     /** max mgmt IE index in device */
 	t_u16 max_mgmt_ie_index;
-
+    /** Head of Rx data queue */
+	mlan_list_head rx_data_queue;
 #ifdef MFG_CMD_SUPPORT
 	t_u32 mfg_mode;
 #endif
@@ -1852,8 +1823,8 @@ typedef struct _mlan_adapter
     /** warm-reset IOCTL request buffer pointer */
 	pmlan_ioctl_req pwarm_reset_ioctl_req;
 #endif
-    /** Extended SCAN IOCTL request buffer pointer */
-	pmlan_ioctl_req pext_scan_ioctl_req;
+    /** SCAN IOCTL request buffer pointer */
+	pmlan_ioctl_req pscan_ioctl_req;
     /** Cal data pointer */
 	t_u8 *pcal_data;
     /** Cal data length  */
@@ -2132,6 +2103,9 @@ t_void wlan_host_sleep_wakeup_event(pmlan_private priv);
 /** send adapter specific init cmd to firmware */
 mlan_status wlan_adapter_init_cmd(IN pmlan_adapter pmadapter);
 
+mlan_status wlan_handle_event_multi_chan_info(IN pmlan_private pmpriv,
+					      pmlan_buffer pevent);
+
 #ifdef STA_SUPPORT
 /** Process received packet */
 mlan_status wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf);
@@ -2192,18 +2166,6 @@ t_void wlan_queue_scan_cmd(IN mlan_private * pmpriv,
 mlan_status wlan_ret_802_11_scan(IN pmlan_private pmpriv,
 				 IN HostCmd_DS_COMMAND * resp,
 				 IN t_void * pioctl_buf);
-
-/** Extended scan command handler */
-mlan_status wlan_cmd_802_11_scan_ext(IN pmlan_private pmpriv,
-				     IN HostCmd_DS_COMMAND * pcmd,
-				     IN t_void * pdata_buf);
-/** Handler for extended scan command response */
-mlan_status wlan_ret_802_11_scan_ext(IN pmlan_private pmpriv,
-				     IN HostCmd_DS_COMMAND * resp,
-				     IN t_void * pioctl_buf);
-/** Handler event for extended scan report */
-mlan_status wlan_handle_event_ext_scan_report(IN mlan_private * pmpriv,
-					      IN mlan_buffer * pmbuf);
 
 /** check network compatibility */
 t_s32 wlan_is_network_compatible(IN mlan_private * pmpriv,
@@ -2445,9 +2407,9 @@ static int INLINE
 wlan_is_tx_pause(mlan_private * priv, t_u8 * ra)
 {
 	sta_node *sta_ptr = MNULL;
-	if ((sta_ptr = wlan_get_station_entry(priv, ra))) {
+	sta_ptr = wlan_get_station_entry(priv, ra);
+	if (sta_ptr)
 		return sta_ptr->tx_pause;
-	}
 	return MFALSE;
 }
 
@@ -2547,6 +2509,29 @@ mlan_status wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
 mlan_status wlan_misc_ioctl_txcontrol(IN pmlan_adapter pmadapter,
 				      IN pmlan_ioctl_req pioctl_req);
 
+mlan_status wlan_misc_ioctl_multi_chan_config(IN pmlan_adapter pmadapter,
+					      IN pmlan_ioctl_req pioctl_req);
+
+mlan_status wlan_cmd_multi_chan_cfg(IN pmlan_private pmpriv,
+				    IN HostCmd_DS_COMMAND * cmd,
+				    IN t_u16 cmd_action, IN t_void * pdata_buf);
+
+mlan_status wlan_ret_multi_chan_cfg(IN pmlan_private pmpriv,
+				    const IN HostCmd_DS_COMMAND * resp,
+				    OUT mlan_ioctl_req * pioctl_buf);
+
+mlan_status wlan_misc_ioctl_multi_chan_policy(IN pmlan_adapter pmadapter,
+					      IN pmlan_ioctl_req pioctl_req);
+
+mlan_status wlan_cmd_multi_chan_policy(IN pmlan_private pmpriv,
+				       IN HostCmd_DS_COMMAND * cmd,
+				       IN t_u16 cmd_action,
+				       IN t_void * pdata_buf);
+
+mlan_status wlan_ret_multi_chan_policy(IN pmlan_private pmpriv,
+				       const IN HostCmd_DS_COMMAND * resp,
+				       OUT mlan_ioctl_req * pioctl_buf);
+
 /**
  *  @brief RA based queueing
  *
@@ -2619,8 +2604,8 @@ wlan_strlen(const char *str)
 static INLINE t_u32
 wlan_isxdigit(t_u8 chr)
 {
-	return ((chr <= 'f' && chr >= 'a') || (chr <= 'F' && chr >= 'A') ||
-		(chr <= '9' && chr >= '0'));
+	return (chr <= 'f' && chr >= 'a') || (chr <= 'F' && chr >= 'A') ||
+		(chr <= '9' && chr >= '0');
 }
 
 /**
@@ -2633,12 +2618,11 @@ wlan_isxdigit(t_u8 chr)
 static INLINE t_u32
 wlan_isspace(t_u8 chr)
 {
-	return (chr <= ' ' && (chr == ' ' || (chr <= 13 && chr >= 9)));
+	return chr <= ' ' && (chr == ' ' || (chr <= 13 && chr >= 9));
 }
 
 /** delay unit */
-typedef enum _delay_unit
-{
+typedef enum _delay_unit {
 	USEC,
 	MSEC,
 	SEC,
@@ -2656,12 +2640,13 @@ t_void wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u);
 
 /** Function to check if any command is pending in the queue */
 #define IS_COMMAND_PENDING(pmadapter) ((cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle, \
-                                       &pmadapter->cmd_pending_q,\
-                                       pmadapter->callbacks.moal_spin_lock,\
-                                       pmadapter->callbacks.moal_spin_unlock))
+	                                   &pmadapter->cmd_pending_q,\
+	                                   pmadapter->callbacks.moal_spin_lock,\
+	                                   pmadapter->callbacks.moal_spin_unlock))
 
 /** Get BSS number from priv */
-#define GET_BSS_NUM(priv)   (priv)->bss_num
+#define GET_BSS_NUM(priv)   ((priv)->bss_num)
+
 /**
  *  @brief This function returns priv based on the BSS num and BSS type
  *
@@ -2680,7 +2665,7 @@ wlan_get_priv_by_id(mlan_adapter * pmadapter, t_u32 bss_num, t_u32 bss_type)
 		if (pmadapter->priv[i]) {
 			if ((pmadapter->priv[i]->bss_num == bss_num) &&
 			    (pmadapter->priv[i]->bss_type == bss_type))
-				return (pmadapter->priv[i]);
+				return pmadapter->priv[i];
 		}
 	}
 	return MNULL;
@@ -2704,7 +2689,7 @@ wlan_get_priv(mlan_adapter * pmadapter, mlan_bss_role bss_role)
 		if (pmadapter->priv[i]) {
 			if (bss_role == MLAN_BSS_ROLE_ANY ||
 			    GET_BSS_ROLE(pmadapter->priv[i]) == bss_role)
-				return (pmadapter->priv[i]);
+				return pmadapter->priv[i];
 		}
 	}
 	return MNULL;
@@ -2735,7 +2720,8 @@ wlan_count_priv_cond(mlan_adapter * pmadapter,
 		return 0;
 
 	for (i = 0; i < pmadapter->priv_num; i++) {
-		if ((pmpriv = pmadapter->priv[i])) {
+		pmpriv = pmadapter->priv[i];
+		if (pmpriv) {
 			if ((check_cond == MNULL) ||
 			    (check_cond && check_cond(pmpriv))) {
 				if (count_cond(pmpriv))
@@ -2771,7 +2757,8 @@ wlan_do_task_on_privs(mlan_adapter * pmadapter,
 		return 0;
 
 	for (i = 0; i < pmadapter->priv_num; i++) {
-		if ((pmpriv = pmadapter->priv[i])) {
+		pmpriv = pmadapter->priv[i];
+		if (pmpriv) {
 			if ((check_cond == MNULL) ||
 			    (check_cond && check_cond(pmpriv))) {
 				operation(pmpriv);
@@ -2812,7 +2799,8 @@ wlan_get_privs_by_cond(mlan_adapter * pmadapter,
 		return 0;
 
 	for (i = 0; i < pmadapter->priv_num; i++) {
-		if ((pmpriv = pmadapter->priv[i])) {
+		pmpriv = pmadapter->priv[i];
+		if (pmpriv) {
 			if (check_cond(pmpriv)) {
 				ppriv_list[count++] = pmpriv;
 			}
@@ -2857,7 +2845,8 @@ wlan_get_privs_by_two_cond(mlan_adapter * pmadapter,
 		return 0;
 
 	for (i = 0; i < pmadapter->priv_num; i++) {
-		if ((pmpriv = pmadapter->priv[i])) {
+		pmpriv = pmadapter->priv[i];
+		if (pmpriv) {
 			if (and_conditions) {
 				if (check_cond(pmpriv) && check_cond_2(pmpriv)) {
 					ppriv_list[count++] = pmpriv;

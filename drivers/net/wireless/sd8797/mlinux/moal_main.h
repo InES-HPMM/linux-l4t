@@ -125,8 +125,7 @@ typedef struct _moal_private moal_private;
 typedef struct _moal_handle moal_handle;
 
 /** Hardware status codes */
-typedef enum _MOAL_HARDWARE_STATUS
-{
+typedef enum _MOAL_HARDWARE_STATUS {
 	HardwareStatusReady,
 	HardwareStatusInitializing,
 	HardwareStatusFwReady,
@@ -136,20 +135,19 @@ typedef enum _MOAL_HARDWARE_STATUS
 } MOAL_HARDWARE_STATUS;
 
 /** moal_wait_option */
-enum
-{
+enum {
 	MOAL_NO_WAIT,
 	MOAL_IOCTL_WAIT,
 	MOAL_CMD_WAIT,
 #ifdef CONFIG_PROC_FS
 	MOAL_PROC_WAIT,
 #endif
-	MOAL_WSTATS_WAIT
+	MOAL_WSTATS_WAIT,
+	MOAL_IOCTL_WAIT_TIMEOUT
 };
 
 /** moal_main_state */
-enum
-{
+enum {
 	MOAL_STATE_IDLE,
 	MOAL_RECV_INT,
 	MOAL_ENTER_WORK_QUEUE,
@@ -158,8 +156,7 @@ enum
 };
 
 /** HostCmd_Header */
-typedef struct _HostCmd_Header
-{
+typedef struct _HostCmd_Header {
     /** Command */
 	t_u16 command;
     /** Size */
@@ -181,8 +178,7 @@ typedef struct _HostCmd_Header
  */
 
 /** Timer structure */
-typedef struct _moal_drv_timer
-{
+typedef struct _moal_drv_timer {
 	/** Timer list */
 	struct timer_list tl;
 	/** Timer function */
@@ -273,7 +269,10 @@ woal_mod_timer(pmoal_drv_timer timer, t_u32 MillisecondPeriod)
 static inline void
 woal_cancel_timer(moal_drv_timer * timer)
 {
-	del_timer(&timer->tl);
+	if (timer->timer_is_periodic)
+		del_timer(&timer->tl);
+	else
+		del_timer_sync(&timer->tl);
 	timer->timer_is_canceled = MTRUE;
 	timer->time_period = 0;
 }
@@ -286,8 +285,7 @@ woal_cancel_timer(moal_drv_timer * timer)
 #include	<linux/kthread.h>
 
 /** Kernel thread structure */
-typedef struct _moal_thread
-{
+typedef struct _moal_thread {
     /** Task control structrue */
 	struct task_struct *task;
     /** Pointer to wait_queue_head */
@@ -517,6 +515,9 @@ out:
 #define MRVDRV_DEFAULT_UAP_WATCHDOG_TIMEOUT (41 * HZ)
 #endif
 
+/* IOCTL Timeout */
+#define MOAL_IOCTL_TIMEOUT                    (20 * HZ)
+
 /** Threshold value of number of times the Tx timeout happened */
 #define NUM_TX_TIMEOUT_THRESHOLD      5
 
@@ -643,8 +644,7 @@ out:
 #define DSCP_OFFSET 2
 
 /** wait_queue structure */
-typedef struct _wait_queue
-{
+typedef struct _wait_queue {
 	/** Pointer to wait_queue_head */
 	wait_queue_head_t *wait;
 	/** Wait condition */
@@ -653,6 +653,8 @@ typedef struct _wait_queue
 	t_u32 start_time;
 	/** Status from MLAN */
 	mlan_status status;
+    /** flag for wait_timeout */
+	t_u8 wait_timeout;
 } wait_queue, *pwait_queue;
 
 /** Auto Rate */
@@ -720,16 +722,12 @@ typedef struct _wait_queue
 #endif
 #endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
 
-/** max interrupt idle time 3 sceond */
-#define MAX_INT_IDLE_TIME         (3 * HZ)
-
 /**
  * the maximum number of adapter supported
  **/
 #define MAX_MLAN_ADAPTER    2
 
-typedef struct _moal_drv_mode
-{
+typedef struct _moal_drv_mode {
     /** driver mode */
 	t_u16 drv_mode;
     /** total number of interfaces */
@@ -742,8 +740,7 @@ typedef struct _moal_drv_mode
 
 #ifdef PROC_DEBUG
 /** Debug data */
-struct debug_data
-{
+struct debug_data {
     /** Name */
 	char name[32];
     /** Size */
@@ -753,8 +750,7 @@ struct debug_data
 };
 
 /** Private debug data */
-struct debug_data_priv
-{
+struct debug_data_priv {
     /** moal_private handle */
 	moal_private *priv;
     /** Debug items */
@@ -769,8 +765,7 @@ struct debug_data_priv
 /** IP address operation: Remove */
 #define IPADDR_OP_REMOVE        0
 
-struct tcp_sess
-{
+struct tcp_sess {
 	struct list_head link;
     /** tcp session info */
 	t_u32 src_ip_addr;
@@ -788,8 +783,7 @@ struct tcp_sess
 };
 
 /** Private structure for MOAL */
-struct _moal_private
-{
+struct _moal_private {
 	/** Handle structure */
 	moal_handle *phandle;
 	/** Tx timeout count */
@@ -985,8 +979,7 @@ struct _moal_private
 };
 
 /** Handle data structure for MOAL */
-struct _moal_handle
-{
+struct _moal_handle {
 	/** MLAN adapter structure */
 	t_void *pmlan_adapter;
 	/** Private pointer */
@@ -1071,11 +1064,14 @@ struct _moal_handle
 	/** Bitmap for re-association on/off */
 	t_u8 reassoc_on;
 #endif				/* REASSOCIATION */
-	t_u32 last_int_jiffies;
 	/** Driver workqueue */
 	struct workqueue_struct *workqueue;
 	/** main work */
 	struct work_struct main_work;
+    /** Driver workqueue */
+	struct workqueue_struct *rx_workqueue;
+	/** main work */
+	struct work_struct rx_work;
 #if defined(STA_CFG80211) || defined(UAP_CFG80211)
 	struct wiphy *wiphy;
 	/** Country code for regulatory domain */
@@ -1426,7 +1422,7 @@ woal_get_priv(moal_handle * handle, mlan_bss_role bss_role)
 		if (handle->priv[i]) {
 			if (bss_role == MLAN_BSS_ROLE_ANY ||
 			    GET_BSS_ROLE(handle->priv[i]) == bss_role)
-				return (handle->priv[i]);
+				return handle->priv[i];
 		}
 	}
 	return NULL;
@@ -1450,7 +1446,7 @@ woal_get_priv_bss_type(moal_handle * handle, mlan_bss_type bss_type)
 		if (handle->priv[i]) {
 			if (bss_type == MLAN_BSS_TYPE_ANY ||
 			    handle->priv[i]->bss_type == bss_type)
-				return (handle->priv[i]);
+				return handle->priv[i];
 		}
 	}
 	return NULL;
@@ -1470,16 +1466,14 @@ woal_get_priv_bss_type(moal_handle * handle, mlan_bss_type bss_type)
 /** HostCmd CAL data header length */
 #define CFG_DATA_HEADER_LEN	6
 
-typedef struct _HostCmd_DS_GEN
-{
+typedef struct _HostCmd_DS_GEN {
 	t_u16 command;
 	t_u16 size;
 	t_u16 seq_num;
 	t_u16 result;
 } HostCmd_DS_GEN;
 
-typedef struct _HostCmd_DS_802_11_CFG_DATA
-{
+typedef struct _HostCmd_DS_802_11_CFG_DATA {
     /** Action */
 	t_u16 action;
     /** Type */
@@ -1815,6 +1809,7 @@ void woal_reassoc_timer_func(void *context);
 #endif /* REASSOCIATION */
 
 t_void woal_main_work_queue(struct work_struct *work);
+t_void woal_rx_work_queue(struct work_struct *work);
 
 int woal_hard_start_xmit(struct sk_buff *skb, struct net_device *dev);
 #ifdef STA_SUPPORT

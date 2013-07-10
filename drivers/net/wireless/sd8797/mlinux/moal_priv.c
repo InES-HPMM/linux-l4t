@@ -30,7 +30,7 @@ Change log:
 #include    "moal_eth_ioctl.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 /** Bands supported in Infra mode */
 static t_u8 SupportedInfraBand[] = {
@@ -51,13 +51,13 @@ static t_u8 SupportedAdhocBand[] = {
 };
 
 /********************************************************
-		Global Variables
+			Global Variables
 ********************************************************/
 
 extern int cfg80211_wext;
 
 /********************************************************
-		Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -4471,7 +4471,7 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
 	/* Return ret_code (EFAULT or E2BIG) in the case where no scan results
 	   were successfully encoded. */
 	LEAVE();
-	return (num_scans_done ? MLAN_STATUS_SUCCESS : ret_code);
+	return num_scans_done ? MLAN_STATUS_SUCCESS : ret_code;
 }
 
 /**
@@ -6160,7 +6160,7 @@ done:
 }
 
 /********************************************************
-		Global Functions
+			Global Functions
 ********************************************************/
 /**
  *  @brief ioctl function - entry point

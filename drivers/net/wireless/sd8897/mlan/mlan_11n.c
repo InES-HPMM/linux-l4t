@@ -33,15 +33,15 @@ Change log:
 #include "mlan_11n.h"
 
 /********************************************************
-    Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-    Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -59,9 +59,24 @@ wlan_11n_ioctl_max_tx_buf_size(IN pmlan_adapter pmadapter,
 {
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	mlan_ds_11n_cfg *cfg = MNULL;
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
 
 	ENTER();
 	cfg = (mlan_ds_11n_cfg *) pioctl_req->pbuf;
+	if (pioctl_req->action == MLAN_ACT_SET) {
+		if (cfg->param.tx_buf_size == 0xffff) {
+			PRINTM(MIOCTL, "Send reconfigure tx buf to FW\n");
+			ret = wlan_prepare_cmd(pmpriv,
+					       HostCmd_CMD_RECONFIGURE_TX_BUFF,
+					       HostCmd_ACT_GEN_SET, 0,
+					       (t_void *) pioctl_req,
+					       &cfg->param.tx_buf_size);
+			if (ret == MLAN_STATUS_SUCCESS)
+				ret = MLAN_STATUS_PENDING;
+			LEAVE();
+			return ret;
+		}
+	}
 	cfg->param.tx_buf_size = (t_u32) pmadapter->max_tx_buf_size;
 	pioctl_req->data_read_written = sizeof(t_u32) + MLAN_SUB_COMMAND_SIZE;
 
@@ -453,6 +468,8 @@ wlan_11n_delba(mlan_private * priv, int tid)
 			       tid, MAC2STR(rx_reor_tbl_ptr->ta));
 			wlan_send_delba(priv, MNULL, tid, rx_reor_tbl_ptr->ta,
 					0);
+			LEAVE();
+			return;
 		}
 		rx_reor_tbl_ptr = rx_reor_tbl_ptr->pnext;
 	}
@@ -487,6 +504,18 @@ wlan_11n_ioctl_addba_reject(IN pmlan_adapter pmadapter,
 		memcpy(pmadapter, cfg->param.addba_reject, pmpriv->addba_reject,
 		       MAX_NUM_TID);
 	} else {
+		for (i = 0; i < MAX_NUM_TID; i++) {
+			/* For AMPDU */
+			if (cfg->param.addba_reject[i] >
+			    ADDBA_RSP_STATUS_REJECT) {
+				pioctl_req->status_code =
+					MLAN_ERROR_INVALID_PARAMETER;
+				ret = MLAN_STATUS_FAILURE;
+				break;
+			}
+
+			pmpriv->addba_reject[i] = cfg->param.addba_reject[i];
+		}
 		if (pmpriv->media_connected == MTRUE) {
 			for (i = 0; i < MAX_NUM_TID; i++) {
 				if (cfg->param.addba_reject[i] ==
@@ -500,18 +529,6 @@ wlan_11n_ioctl_addba_reject(IN pmlan_adapter pmadapter,
 			wlan_recv_event(pmpriv,
 					MLAN_EVENT_ID_DRV_DEFER_HANDLING,
 					MNULL);
-		}
-		for (i = 0; i < MAX_NUM_TID; i++) {
-			/* For AMPDU */
-			if (cfg->param.addba_reject[i] >
-			    ADDBA_RSP_STATUS_REJECT) {
-				pioctl_req->status_code =
-					MLAN_ERROR_INVALID_PARAMETER;
-				ret = MLAN_STATUS_FAILURE;
-				break;
-			}
-
-			pmpriv->addba_reject[i] = cfg->param.addba_reject[i];
 		}
 	}
 
@@ -862,6 +879,8 @@ wlan_send_delba_txbastream_tbl(pmlan_private priv, t_u8 tid)
 				wlan_send_delba(priv, MNULL,
 						tx_ba_stream_tbl_ptr->tid,
 						tx_ba_stream_tbl_ptr->ra, 1);
+				LEAVE();
+				return;
 			}
 		}
 		tx_ba_stream_tbl_ptr = tx_ba_stream_tbl_ptr->pnext;
@@ -900,22 +919,6 @@ wlan_11n_ioctl_aggr_prio_tbl(IN pmlan_adapter pmadapter,
 				pmpriv->aggr_prio_tbl[i].amsdu;
 		}
 	} else {
-		if (pmpriv->media_connected == MTRUE) {
-			for (i = 0; i < MAX_NUM_TID; i++) {
-				if (cfg->param.aggr_prio_tbl.ampdu[i] ==
-				    BA_STREAM_NOT_ALLOWED) {
-					PRINTM(MIOCTL,
-					       "Receive aggrpriotbl: BA not allowed tid=%d\n",
-					       i);
-					wlan_send_delba_txbastream_tbl(pmpriv,
-								       i);
-				}
-			}
-			wlan_recv_event(pmpriv,
-					MLAN_EVENT_ID_DRV_DEFER_HANDLING,
-					MNULL);
-		}
-
 		for (i = 0; i < MAX_NUM_TID; i++) {
 			/* For AMPDU */
 			if ((cfg->param.aggr_prio_tbl.ampdu[i] > HIGH_PRIO_TID)
@@ -943,6 +946,21 @@ wlan_11n_ioctl_aggr_prio_tbl(IN pmlan_adapter pmadapter,
 				pmpriv->aggr_prio_tbl[i].amsdu =
 					cfg->param.aggr_prio_tbl.amsdu[i];
 			}
+		}
+		if (pmpriv->media_connected == MTRUE) {
+			for (i = 0; i < MAX_NUM_TID; i++) {
+				if (cfg->param.aggr_prio_tbl.ampdu[i] ==
+				    BA_STREAM_NOT_ALLOWED) {
+					PRINTM(MIOCTL,
+					       "Receive aggrpriotbl: BA not allowed tid=%d\n",
+					       i);
+					wlan_send_delba_txbastream_tbl(pmpriv,
+								       i);
+				}
+			}
+			wlan_recv_event(pmpriv,
+					MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+					MNULL);
 		}
 	}
 
@@ -1072,7 +1090,7 @@ wlan_11n_get_txbastream_status(mlan_private * priv, baStatus_e ba_status)
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 
 #ifdef STA_SUPPORT

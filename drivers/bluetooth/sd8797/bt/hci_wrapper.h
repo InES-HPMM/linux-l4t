@@ -51,8 +51,7 @@
 #define DEV_NAME_LEN				32
 
 /** Define struct m_dev */
-struct m_dev
-{
+struct m_dev {
 	char name[DEV_NAME_LEN];
 	int index;
 	unsigned long flags;
@@ -81,8 +80,7 @@ struct m_dev
 };
 
 /** Define struct mbt_dev */
-struct mbt_dev
-{
+struct mbt_dev {
 	/** maybe could add some private member later */
 	char name[DEV_NAME_LEN];
 	unsigned long flags;
@@ -103,23 +101,20 @@ struct mbt_dev
 };
 
 /** Define 'fm' interface specific struct fm_dev */
-struct fm_dev
-{
+struct fm_dev {
 	/** maybe could add some private member later */
 	char name[DEV_NAME_LEN];
 	unsigned long flags;
 };
 
 /** Define 'nfc' interface specific struct fm_dev */
-struct nfc_dev
-{
+struct nfc_dev {
 	/** maybe could add some private member later */
 	char name[DEV_NAME_LEN];
 	unsigned long flags;
 };
 
-struct debug_dev
-{
+struct debug_dev {
 	/** maybe could add some private member later */
 	char name[DEV_NAME_LEN];
 	unsigned long flags;

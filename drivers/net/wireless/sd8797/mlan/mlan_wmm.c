@@ -35,7 +35,7 @@ Change log:
 #include "mlan_sdio.h"
 
 /********************************************************
-    Local Variables
+			Local Variables
 ********************************************************/
 
 /** Maximum value FW can accept for driver delay in packet transmission */
@@ -137,7 +137,7 @@ raListTbl *wlan_wmm_get_ralist_node(pmlan_private priv, t_u8 tid,
 				    t_u8 * ra_addr);
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 #ifdef DEBUG_LEVEL2
 /**
@@ -180,7 +180,8 @@ wlan_wmm_ac_debug_print(const IEEEtypes_WmmAcParameters_t * pac_param)
  *
  *  @return         ra_list
  */
-static raListTbl *
+static
+raListTbl *
 wlan_wmm_allocate_ralist_node(pmlan_adapter pmadapter, t_u8 * ra)
 {
 	raListTbl *ra_list = MNULL;
@@ -715,8 +716,8 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 						return ptr;
 					}
 
-					if ((ptr =
-					     ptr->pnext) ==
+					ptr = ptr->pnext;
+					if (ptr ==
 					    (raListTbl *) & tid_ptr->ra_list)
 						ptr = ptr->pnext;
 				} while (ptr != head);
@@ -735,8 +736,8 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 							      ra_list_spinlock);
 
 next_intf:
-			if ((bssprio_node = bssprio_node->pnext) ==
-			    (mlan_bssprio_node *)
+			bssprio_node = bssprio_node->pnext;
+			if (bssprio_node == (mlan_bssprio_node *)
 			    & pmadapter->bssprio_tbl[j].bssprio_head)
 				bssprio_node = bssprio_node->pnext;
 			pmadapter->bssprio_tbl[j].bssprio_cur = bssprio_node;
@@ -798,9 +799,9 @@ wlan_send_single_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
 
 	ENTER();
 
-	if ((pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
-						      &ptr->buf_head,
-						      MNULL, MNULL))) {
+	pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
+						 &ptr->buf_head, MNULL, MNULL);
+	if (pmbuf) {
 		PRINTM(MINFO, "Dequeuing the packet %p %p\n", ptr, pmbuf);
 		priv->wmm.pkts_queued[ptrindex]--;
 		util_scalar_decrement(pmadapter->pmoal_handle,
@@ -895,10 +896,9 @@ wlan_is_ptr_processed(mlan_private * priv, raListTbl * ptr)
 {
 	pmlan_buffer pmbuf;
 
-	if ((pmbuf = (pmlan_buffer) util_peek_list(priv->adapter->pmoal_handle,
-						   &ptr->buf_head,
-						   MNULL, MNULL))
-	    && (pmbuf->flags & MLAN_BUF_FLAG_REQUEUED_PKT))
+	pmbuf = (pmlan_buffer) util_peek_list(priv->adapter->pmoal_handle,
+					      &ptr->buf_head, MNULL, MNULL);
+	if (pmbuf && (pmbuf->flags & MLAN_BUF_FLAG_REQUEUED_PKT))
 		return MTRUE;
 
 	return MFALSE;
@@ -922,9 +922,9 @@ wlan_send_processed_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
 	pmlan_adapter pmadapter = priv->adapter;
 	mlan_status ret = MLAN_STATUS_FAILURE;
 
-	if ((pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
-						      &ptr->buf_head,
-						      MNULL, MNULL))) {
+	pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
+						 &ptr->buf_head, MNULL, MNULL);
+	if (pmbuf) {
 		pmbuf_next =
 			(pmlan_buffer) util_peek_list(pmadapter->pmoal_handle,
 						      &ptr->buf_head, MNULL,
@@ -1036,8 +1036,8 @@ wlan_dequeue_tx_packet(pmlan_adapter pmadapter)
 
 	ENTER();
 
-	if (!(ptr = wlan_wmm_get_highest_priolist_ptr(pmadapter, &priv,
-						      &ptrindex))) {
+	ptr = wlan_wmm_get_highest_priolist_ptr(pmadapter, &priv, &ptrindex);
+	if (!ptr) {
 		LEAVE();
 		return MLAN_STATUS_FAILURE;
 	}
@@ -1170,7 +1170,7 @@ wlan_update_ralist_tx_pause(pmlan_private priv, t_u8 * mac, t_u8 tx_pause)
 #ifdef STA_SUPPORT
 #endif /* STA_SUPPORT */
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -1481,7 +1481,8 @@ wlan_wmm_init(pmlan_adapter pmadapter)
 	ENTER();
 
 	for (j = 0; j < pmadapter->priv_num; ++j) {
-		if ((priv = pmadapter->priv[j])) {
+		priv = pmadapter->priv[j];
+		if (priv) {
 			for (i = 0; i < MAX_NUM_TID; ++i) {
 				priv->aggr_prio_tbl[i].amsdu =
 					BA_STREAM_NOT_ALLOWED;
@@ -1590,7 +1591,8 @@ wlan_wmm_lists_empty(pmlan_adapter pmadapter)
 	ENTER();
 
 	for (j = 0; j < pmadapter->priv_num; ++j) {
-		if ((priv = pmadapter->priv[j])) {
+		priv = pmadapter->priv[j];
+		if (priv) {
 			if ((priv->port_ctrl_mode == MTRUE) &&
 			    (priv->port_open == MFALSE)) {
 				PRINTM(MINFO,
@@ -1779,7 +1781,8 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 			memset(pmadapter, ra, 0xff, sizeof(ra));
 #if defined(UAP_SUPPORT)
 		else if (priv->bss_type == MLAN_BSS_TYPE_UAP) {
-			if ((sta_ptr = wlan_get_station_entry(priv, ra))) {
+			sta_ptr = wlan_get_station_entry(priv, ra);
+			if (sta_ptr) {
 				if (!sta_ptr->is_wmm_enabled) {
 					tid_down =
 						wlan_wmm_downgrade_tid(priv,
@@ -2209,12 +2212,12 @@ wlan_del_tx_pkts_in_ralist(pmlan_private priv,
 		if (ra_list->total_pkts && (ra_list->tx_pause ||
 					    (ra_list->total_pkts >
 					     RX_LOW_THRESHOLD))) {
-			if ((pmbuf =
-			     (pmlan_buffer) util_dequeue_list(pmadapter->
-							      pmoal_handle,
-							      &ra_list->
-							      buf_head, MNULL,
-							      MNULL))) {
+			pmbuf = (pmlan_buffer) util_dequeue_list(pmadapter->
+								 pmoal_handle,
+								 &ra_list->
+								 buf_head,
+								 MNULL, MNULL);
+			if (pmbuf) {
 				PRINTM(MDATA,
 				       "Drop pkts: tid=%d tx_pause=%d pkts=%d brd_pkts=%d "
 				       MACSTR "\n", tid, ra_list->tx_pause,

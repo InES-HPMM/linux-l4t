@@ -30,7 +30,7 @@ Change log:
 #include    "moal_eth_ioctl.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 /** Bands supported in Infra mode */
 static t_u8 SupportedInfraBand[] = {
@@ -59,13 +59,13 @@ static t_u8 SupportedAdhocBand[] = {
 };
 
 /********************************************************
-		Global Variables
+			Global Variables
 ********************************************************/
 
 extern int cfg80211_wext;
 
 /********************************************************
-		Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -4561,7 +4561,7 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
 	/* Return ret_code (EFAULT or E2BIG) in the case where no scan results
 	   were successfully encoded. */
 	LEAVE();
-	return (num_scans_done ? MLAN_STATUS_SUCCESS : ret_code);
+	return num_scans_done ? MLAN_STATUS_SUCCESS : ret_code;
 }
 
 /**
@@ -5054,7 +5054,7 @@ static int
 woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 {
 	int ret = 0;
-	int arg_len = 7;
+	int arg_len = 6;
 	int data[arg_len], copy_len;
 	mlan_ds_scan *scan = NULL;
 	mlan_ioctl_req *req = NULL;
@@ -5104,11 +5104,6 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 		    ((data[5] < 0) ||
 		     (data[5] > MRVDRV_MAX_PASSIVE_SCAN_CHAN_TIME))) {
 			PRINTM(MERROR, "Invalid argument for scan time\n");
-			ret = -EINVAL;
-			goto done;
-		}
-		if ((data[6] < 0) || (data[6] > 1)) {
-			PRINTM(MERROR, "Invalid argument for extended scan\n");
 			ret = -EINVAL;
 			goto done;
 		}
@@ -6250,7 +6245,7 @@ done:
 }
 
 /********************************************************
-		Global Functions
+			Global Functions
 ********************************************************/
 /**
  *  @brief ioctl function - entry point

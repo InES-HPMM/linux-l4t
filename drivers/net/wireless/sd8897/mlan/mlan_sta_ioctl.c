@@ -35,15 +35,15 @@ Change log:
 #include "mlan_11h.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-                Global Variables
+			Global Variables
 ********************************************************/
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 /**
  *  @brief enable adhoc aes key
@@ -3972,6 +3972,8 @@ wlan_misc_ioctl_warm_reset(IN pmlan_adapter pmadapter,
 {
 	pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
 	mlan_status ret = MLAN_STATUS_SUCCESS;
+	pmlan_callbacks pcb = &pmadapter->callbacks;
+	pmlan_buffer pmbuf;
 	t_s32 i = 0;
 
 	ENTER();
@@ -3980,6 +3982,17 @@ wlan_misc_ioctl_warm_reset(IN pmlan_adapter pmadapter,
 	for (i = 0; i < pmadapter->priv_num; i++) {
 		wlan_free_priv(pmadapter->priv[i]);
 	}
+
+	while ((pmbuf =
+		(pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
+						 &pmadapter->rx_data_queue,
+						 pcb->moal_spin_lock,
+						 pcb->moal_spin_unlock))) {
+		wlan_free_mlan_buffer(pmadapter, pmbuf);
+	}
+	util_scalar_write(pmadapter->pmoal_handle, &pmadapter->rx_pkts_queued,
+			  0, pmadapter->callbacks.moal_spin_lock,
+			  pmadapter->callbacks.moal_spin_unlock);
 
 	/* Initialize adapter structure */
 	wlan_init_adapter(pmadapter);
@@ -4390,7 +4403,7 @@ done:
 	return ret;
 }
 
-#define FLTR_BUF_IP_OFFSET      24
+#define FLTR_BUF_IP_OFFSET              24
 #define FLTR_BUF_IP_OFFSET_2_IP_1       9
 #define FLTR_BUF_IP_OFFSET_2_IP_2       26
 
@@ -4579,7 +4592,7 @@ wlan_misc_ioctl_mef_cfg(IN pmlan_adapter pmadapter,
 		break;
 	case MEF_CFG_AUTO_ARP_RESP:
 		PRINTM(MINFO, "Enable auto ARP response\n");
-		// TODO
+		/* TODO */
 		break;
 	case MEF_CFG_HOSTCMD:
 		PRINTM(MINFO, "MEF hostcmd from MOAL\n");
@@ -4967,6 +4980,14 @@ wlan_misc_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 	case MLAN_OID_MISC_PMFCFG:
 		status = wlan_misc_pmfcfg(pmadapter, pioctl_req);
 		break;
+	case MLAN_OID_MISC_MULTI_CHAN_CFG:
+		status = wlan_misc_ioctl_multi_chan_config(pmadapter,
+							   pioctl_req);
+		break;
+	case MLAN_OID_MISC_MULTI_CHAN_POLICY:
+		status = wlan_misc_ioctl_multi_chan_policy(pmadapter,
+							   pioctl_req);
+		break;
 	default:
 		if (pioctl_req)
 			pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
@@ -5006,7 +5027,6 @@ wlan_set_get_scan_cfg(IN pmlan_adapter pmadapter,
 			(t_u32) pmadapter->active_scan_time;
 		scan->param.scan_cfg.scan_time.passive_scan_time =
 			(t_u32) pmadapter->passive_scan_time;
-		scan->param.scan_cfg.ext_scan = pmadapter->ext_scan;
 	} else {
 		if (scan->param.scan_cfg.scan_type)
 			pmadapter->scan_type =
@@ -5028,7 +5048,6 @@ wlan_set_get_scan_cfg(IN pmlan_adapter pmadapter,
 			pmadapter->passive_scan_time =
 				(t_u16) scan->param.scan_cfg.scan_time.
 				passive_scan_time;
-		pmadapter->ext_scan = scan->param.scan_cfg.ext_scan;
 	}
 	pioctl_req->data_read_written = sizeof(t_u32) + MLAN_SUB_COMMAND_SIZE;
 
@@ -5065,7 +5084,11 @@ wlan_scan_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 
 	if (pmadapter->scan_block && pioctl_req->action == MLAN_ACT_SET) {
 		PRINTM(MINFO, "Scan is blocked during association...\n");
-		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_SCAN_REPORT, MNULL);
+		if ((pscan->sub_command == MLAN_OID_SCAN_NORMAL) ||
+		    (pscan->sub_command == MLAN_OID_SCAN_SPECIFIC_SSID) ||
+		    (pscan->sub_command == MLAN_OID_SCAN_USER_CONFIG))
+			wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_SCAN_REPORT,
+					MNULL);
 		LEAVE();
 		return status;
 	}
@@ -5176,7 +5199,7 @@ start_config:
 }
 
 /********************************************************
-                Global Functions
+			Global Functions
 ********************************************************/
 
 /**

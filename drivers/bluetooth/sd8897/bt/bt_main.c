@@ -209,6 +209,7 @@ free_m_dev(struct m_dev *m_dev)
 {
 	ENTER();
 	kfree(m_dev->dev_pointer);
+	m_dev->dev_pointer = NULL;
 	LEAVE();
 }
 
@@ -1745,6 +1746,7 @@ sbi_register_conf_dpc(bt_private * priv)
 				 "mbtchar%d", mbtchar_minor);
 		snprintf(dev_file, sizeof(dev_file), "/dev/%s", mbt_dev->name);
 		mbtchar_minor++;
+		PRINTM(MSG, "BT: Create %s\n", dev_file);
 
 		/** create BT char device node */
 		register_char_dev(char_dev, chardev_class, MODULE_NAME,
@@ -1802,6 +1804,7 @@ sbi_register_conf_dpc(bt_private * priv)
 			snprintf(fm_dev->name, sizeof(fm_dev->name),
 				 "mfmchar%d", fmchar_minor);
 		snprintf(dev_file, sizeof(dev_file), "/dev/%s", fm_dev->name);
+		PRINTM(MSG, "BT: Create %s\n", dev_file);
 		fmchar_minor++;
 
 		/** register char dev */
@@ -1857,6 +1860,7 @@ sbi_register_conf_dpc(bt_private * priv)
 			snprintf(nfc_dev->name, sizeof(nfc_dev->name),
 				 "mnfcchar%d", nfcchar_minor);
 		snprintf(dev_file, sizeof(dev_file), "/dev/%s", nfc_dev->name);
+		PRINTM(MSG, "BT: Create %s\n", dev_file);
 		nfcchar_minor++;
 
 		/** register char dev */
@@ -2050,6 +2054,7 @@ bt_add_card(void *card)
 	return priv;
 
 err_init_fw:
+	bt_proc_remove(priv);
 	PRINTM(INFO, "Unregister device\n");
 	sbi_unregister_dev(priv);
 err_registerdev:
@@ -2110,6 +2115,7 @@ bt_remove_card(void *card)
 		if (m_dev->spec_type == IANYWHERE_SPEC) {
 			if ((drv_mode & DRV_MODE_BT) && (mbtchar_minor > 0))
 				mbtchar_minor--;
+			m_dev->close(m_dev);
 			for (i = 0; i < 3; i++)
 				kfree_skb(((struct mbt_dev *)
 					   (m_dev->dev_pointer))->
@@ -2124,7 +2130,8 @@ bt_remove_card(void *card)
 		m_dev = &(priv->bt_dev.m_dev[FM_SEQ]);
 		if ((drv_mode & DRV_MODE_FM) && (fmchar_minor > 0))
 			fmchar_minor--;
-			/** unregister m_dev to char_dev */
+		m_dev->close(m_dev);
+		/** unregister m_dev to char_dev */
 		if (chardev_class)
 			chardev_cleanup_one(m_dev, chardev_class);
 		free_m_dev(m_dev);
@@ -2133,6 +2140,7 @@ bt_remove_card(void *card)
 		m_dev = &(priv->bt_dev.m_dev[NFC_SEQ]);
 		if ((drv_mode & DRV_MODE_NFC) && (nfcchar_minor > 0))
 			nfcchar_minor--;
+		m_dev->close(m_dev);
 		/** unregister m_dev to char_dev */
 		if (chardev_class)
 			chardev_cleanup_one(m_dev, chardev_class);
@@ -2286,11 +2294,11 @@ bt_init_module(void)
 {
 	int ret = BT_STATUS_SUCCESS;
 	ENTER();
-	bt_root_proc_init();
-	if (ret)
-		goto done;
+	PRINTM(MSG, "BT: Loading driver\n");
 
-		/** create char device class */
+	bt_root_proc_init();
+
+	/** create char device class */
 	chardev_class = class_create(THIS_MODULE, MODULE_NAME);
 	if (IS_ERR(chardev_class)) {
 		PRINTM(ERROR, "Unable to allocate class\n");
@@ -2301,10 +2309,16 @@ bt_init_module(void)
 
 	bt_add_dev();
 	if (sbi_register() == NULL) {
+		bt_root_proc_remove();
 		ret = BT_STATUS_FAILURE;
 		goto done;
 	}
 done:
+	if (ret)
+		PRINTM(MSG, "BT: Driver loading failed\n");
+	else
+		PRINTM(MSG, "BT: Driver loaded successfully\n");
+
 	LEAVE();
 	return ret;
 }
@@ -2318,13 +2332,13 @@ static void
 bt_exit_module(void)
 {
 	ENTER();
-	printk(KERN_ERR "+++++ enter func bt_exit_module() +++++\n");
-
+	PRINTM(MSG, "BT: Unloading driver\n");
 	sbi_unregister();
 
 	bt_root_proc_remove();
 	bt_del_dev();
 	class_destroy(chardev_class);
+	PRINTM(MSG, "BT: Driver unloaded\n");
 	LEAVE();
 }
 

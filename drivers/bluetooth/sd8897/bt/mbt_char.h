@@ -37,8 +37,7 @@
 #define DEBUGCHAR_MINOR_BASE         (30)
 
 /** Declaration of char_dev struct */
-struct char_dev
-{
+struct char_dev {
 	struct list_head list;
 	int minor;
 	int dev_type;

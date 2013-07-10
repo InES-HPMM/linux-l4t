@@ -38,11 +38,11 @@ Change log:
 #include "mlan_11h.h"
 
 /********************************************************
-                Local Variables
+			Local Variables
 ********************************************************/
 
 /********************************************************
-        Global Variables
+			Global Variables
 ********************************************************/
 #ifdef STA_SUPPORT
 mlan_operations mlan_sta_ops = {
@@ -119,11 +119,11 @@ t_u32 mlan_drvdbg = DEFAULT_DEBUG_MASK;
 #endif
 
 /********************************************************
-        Local Functions
+			Local Functions
 *******************************************************/
 
 /********************************************************
-        Global Functions
+			Global Functions
 ********************************************************/
 
 /**
@@ -242,7 +242,8 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 	pmadapter->init_para.int_mode = pmdevice->int_mode;
 	pmadapter->init_para.gpio_pin = pmdevice->gpio_pin;
 	/* card specific probing has been deferred until now .. */
-	if (MLAN_STATUS_SUCCESS != (ret = wlan_sdio_probe(pmadapter))) {
+	ret = wlan_sdio_probe(pmadapter);
+	if (MLAN_STATUS_SUCCESS != ret) {
 		ret = MLAN_STATUS_FAILURE;
 		goto error;
 	}
@@ -607,6 +608,7 @@ mlan_shutdown_fw(IN t_void * pmlan_adapter)
 {
 	mlan_status ret = MLAN_STATUS_PENDING;
 	mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
+	pmlan_buffer pmbuf;
 	pmlan_callbacks pcb;
 	t_s32 i = 0;
 
@@ -642,9 +644,85 @@ mlan_shutdown_fw(IN t_void * pmlan_adapter)
 
 	pcb = &pmadapter->callbacks;
 
+	while ((pmbuf =
+		(pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
+						 &pmadapter->rx_data_queue,
+						 pcb->moal_spin_lock,
+						 pcb->moal_spin_unlock))) {
+		wlan_free_mlan_buffer(pmadapter, pmbuf);
+	}
+	util_scalar_write(pmadapter->pmoal_handle, &pmadapter->rx_pkts_queued,
+			  0, pmadapter->callbacks.moal_spin_lock,
+			  pmadapter->callbacks.moal_spin_unlock);
+
 	/* Notify completion */
 	ret = wlan_shutdown_fw_complete(pmadapter);
 
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief The main process
+ *
+ *  @param pmlan_adapter	A pointer to mlan_adapter structure
+ *
+ *  @return			MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+mlan_rx_process(IN t_void * pmlan_adapter)
+{
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
+	pmlan_callbacks pcb;
+	pmlan_buffer pmbuf;
+
+	ENTER();
+
+	MASSERT(pmlan_adapter);
+	pcb = &pmadapter->callbacks;
+	pcb->moal_spin_lock(pmadapter->pmoal_handle, pmadapter->prx_proc_lock);
+	if (pmadapter->mlan_rx_processing || pmadapter->rx_lock_flag) {
+		pcb->moal_spin_unlock(pmadapter->pmoal_handle,
+				      pmadapter->prx_proc_lock);
+		goto exit_rx_proc;
+	} else {
+		pmadapter->mlan_rx_processing = MTRUE;
+		pcb->moal_spin_unlock(pmadapter->pmoal_handle,
+				      pmadapter->prx_proc_lock);
+	}
+	/* Check for Rx data */
+	while ((pmbuf =
+		(pmlan_buffer) util_dequeue_list(pmadapter->pmoal_handle,
+						 &pmadapter->rx_data_queue,
+						 pmadapter->callbacks.
+						 moal_spin_lock,
+						 pmadapter->callbacks.
+						 moal_spin_unlock))) {
+		util_scalar_decrement(pmadapter->pmoal_handle,
+				      &pmadapter->rx_pkts_queued,
+				      pmadapter->callbacks.moal_spin_lock,
+				      pmadapter->callbacks.moal_spin_unlock);
+		if (pmadapter->delay_task_flag &&
+		    (util_scalar_read
+		     (pmadapter->pmoal_handle, &pmadapter->rx_pkts_queued,
+		      pmadapter->callbacks.moal_spin_lock,
+		      pmadapter->callbacks.moal_spin_unlock) <
+		     LOW_RX_PENDING)) {
+			PRINTM(MEVENT, "Run\n");
+			pmadapter->delay_task_flag = MFALSE;
+			wlan_recv_event(wlan_get_priv
+					(pmadapter, MLAN_BSS_ROLE_ANY),
+					MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+					MNULL);
+		}
+		wlan_handle_rx_packet(pmadapter, pmbuf);
+	}
+	pcb->moal_spin_lock(pmadapter->pmoal_handle, pmadapter->prx_proc_lock);
+	pmadapter->mlan_rx_processing = MFALSE;
+	pcb->moal_spin_unlock(pmadapter->pmoal_handle,
+			      pmadapter->prx_proc_lock);
+exit_rx_proc:
 	LEAVE();
 	return ret;
 }
@@ -694,7 +772,14 @@ process_start:
 		if ((pmadapter->hw_status == WlanHardwareStatusClosing) ||
 		    (pmadapter->hw_status == WlanHardwareStatusNotReady))
 			break;
-
+		if (util_scalar_read
+		    (pmadapter->pmoal_handle, &pmadapter->rx_pkts_queued,
+		     pmadapter->callbacks.moal_spin_lock,
+		     pmadapter->callbacks.moal_spin_unlock) > HIGH_RX_PENDING) {
+			PRINTM(MEVENT, "Pause\n");
+			pmadapter->delay_task_flag = MTRUE;
+			break;
+		}
 		/* Handle pending SDIO interrupts if any */
 		if (pmadapter->sdio_ireg) {
 			if (pmadapter->hs_activated == MTRUE)

@@ -523,22 +523,18 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
 			break;
 
 		for (tries = 0; tries < MAX_POLL_TRIES; tries++) {
-			if ((ret = pcb->moal_read_reg(pmadapter->pmoal_handle,
-						      READ_BASE_0_REG,
-						      &base0)) !=
-			    MLAN_STATUS_SUCCESS) {
-				PRINTM(MERROR,
-				       "Dev BASE0 register read failed:"
+			ret = pcb->moal_read_reg(pmadapter->pmoal_handle,
+						 READ_BASE_0_REG, &base0);
+			if (ret != MLAN_STATUS_SUCCESS) {
+				PRINTM(MERROR, "Dev BASE0 register read failed:"
 				       " base0=0x%04X(%d). Terminating download\n",
 				       base0, base0);
 				goto done;
 			}
-			if ((ret = pcb->moal_read_reg(pmadapter->pmoal_handle,
-						      READ_BASE_1_REG,
-						      &base1)) !=
-			    MLAN_STATUS_SUCCESS) {
-				PRINTM(MERROR,
-				       "Dev BASE1 register read failed:"
+			ret = pcb->moal_read_reg(pmadapter->pmoal_handle,
+						 READ_BASE_1_REG, &base1);
+			if (ret != MLAN_STATUS_SUCCESS) {
+				PRINTM(MERROR, "Dev BASE1 register read failed:"
 				       " base1=0x%04X(%d). Terminating download\n",
 				       base1, base1);
 				goto done;
@@ -681,7 +677,15 @@ wlan_decode_rx_packet(mlan_adapter * pmadapter, mlan_buffer * pmbuf,
 		PRINTM(MINFO, "--- Rx: Data packet ---\n");
 		pmbuf->data_len = (pmadapter->upld_len - INTF_HEADER_LEN);
 		pmbuf->data_offset += INTF_HEADER_LEN;
-		wlan_handle_rx_packet(pmadapter, pmbuf);
+		util_enqueue_list_tail(pmadapter->pmoal_handle,
+				       &pmadapter->rx_data_queue,
+				       (pmlan_linked_list) pmbuf,
+				       pmadapter->callbacks.moal_spin_lock,
+				       pmadapter->callbacks.moal_spin_unlock);
+		util_scalar_increment(pmadapter->pmoal_handle,
+				      &pmadapter->rx_pkts_queued,
+				      pmadapter->callbacks.moal_spin_lock,
+				      pmadapter->callbacks.moal_spin_unlock);
 		pmadapter->data_received = MTRUE;
 		break;
 
@@ -846,7 +850,7 @@ wlan_sdio_card_to_host_mp_aggr(mlan_adapter * pmadapter, mlan_buffer
 		mbuf_aggr.pbuf = (t_u8 *) pmadapter->mpa_rx.buf;
 		mbuf_aggr.data_len = pmadapter->mpa_rx.buf_len;
 		port_count = bitcount(pmadapter->mpa_rx.ports) - 1;
-//        port_count = pmadapter->mpa_rx.pkt_cnt - 1;
+/*        port_count = pmadapter->mpa_rx.pkt_cnt - 1; */
 		cmd53_port =
 			(pmadapter->
 			 ioport | SDIO_MPA_ADDR_BASE | (port_count << 8))
@@ -1146,8 +1150,8 @@ wlan_check_fw_status(mlan_adapter * pmadapter, t_u32 pollnum)
 
 	/* Wait for firmware initialization event */
 	for (tries = 0; tries < pollnum; tries++) {
-		if (MLAN_STATUS_SUCCESS !=
-		    (ret = wlan_sdio_read_fw_status(pmadapter, &firmwarestat)))
+		ret = wlan_sdio_read_fw_status(pmadapter, &firmwarestat);
+		if (MLAN_STATUS_SUCCESS != ret)
 			continue;
 		if (firmwarestat == FIRMWARE_READY) {
 			ret = MLAN_STATUS_SUCCESS;

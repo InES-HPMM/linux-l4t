@@ -408,40 +408,39 @@ static struct debug_data uap_items[] = {
 /**
  *  @brief Proc read function
  *
- *  @param page	   Pointer to buffer
- *  @param s       Read data starting position
- *  @param off     Offset
- *  @param cnt     Counter
- *  @param eof     End of file flag
- *  @param data    Output data
+ *  @param sfp 	   pointer to seq_file structure
+ *  @param data
  *
  *  @return 	   Number of output data or MLAN_STATUS_FAILURE
  */
 static int
-woal_debug_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
+woal_debug_read(struct seq_file *sfp, void *data)
 {
 	int val = 0;
 	unsigned int i;
-	char *p = page;
-	struct debug_data *d = ((struct debug_data_priv *)data)->items;
-	moal_private *priv = ((struct debug_data_priv *)data)->priv;
+	struct debug_data_priv *items_priv =
+		(struct debug_data_priv *)sfp->private;
+	struct debug_data *d = items_priv->items;
+	moal_private *priv = items_priv->priv;
 
 	ENTER();
 
-	if (MODULE_GET == 0) {
+	if (priv == NULL) {
 		LEAVE();
-		return MLAN_STATUS_FAILURE;
+		return -EFAULT;
 	}
 
-	/* Get debug information */
-	if (woal_get_debug_info(priv, MOAL_PROC_WAIT, &info)) {
-		*eof = 1;
-		goto exit;
+	if (MODULE_GET == 0) {
+		LEAVE();
+		return -EFAULT;
 	}
+
 	priv->phandle->driver_state = woal_check_driver_status(priv->phandle);
-	for (i = 0;
-	     i < (unsigned int)((struct debug_data_priv *)data)->num_of_items;
-	     i++) {
+	/* Get debug information */
+	if (woal_get_debug_info(priv, MOAL_PROC_WAIT, &info))
+		goto exit;
+
+	for (i = 0; i < (unsigned int)items_priv->num_of_items; i++) {
 		if (d[i].size == 1)
 			val = *((t_u8 *) d[i].addr);
 		else if (d[i].size == 2)
@@ -450,81 +449,82 @@ woal_debug_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
 			val = *((t_ptr *) d[i].addr);
 		else {
 			unsigned int j;
-			p += sprintf(p, "%s=", d[i].name);
+			seq_printf(sfp, "%s=", d[i].name);
 			for (j = 0; j < d[i].size; j += 2) {
 				val = *(t_u16 *) (d[i].addr + j);
-				p += sprintf(p, "0x%x ", val);
+				seq_printf(sfp, "0x%x ", val);
 			}
-			p += sprintf(p, "\n");
+			seq_printf(sfp, "\n");
 			continue;
 		}
 		if (strstr(d[i].name, "id")
 		    || strstr(d[i].name, "bitmap")
 			)
-			p += sprintf(p, "%s=0x%x\n", d[i].name, val);
+			seq_printf(sfp, "%s=0x%x\n", d[i].name, val);
 		else
-			p += sprintf(p, "%s=%d\n", d[i].name, val);
+			seq_printf(sfp, "%s=%d\n", d[i].name, val);
 	}
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 	for (i = 0; i < 4; i++)
-		p += sprintf(p, "wmm_tx_pending[%d]:%d\n", i,
-			     atomic_read(&priv->wmm_tx_pending[i]));
+		seq_printf(sfp, "wmm_tx_pending[%d]:%d\n", i,
+			   atomic_read(&priv->wmm_tx_pending[i]));
 #endif
 	if (info.tx_tbl_num) {
-		p += sprintf(p, "Tx BA stream table:\n");
+		seq_printf(sfp, "Tx BA stream table:\n");
 		for (i = 0; i < info.tx_tbl_num; i++) {
-			p += sprintf(p,
-				     "tid = %d, ra = %02x:%02x:%02x:%02x:%02x:%02x amsdu=%d\n",
-				     (int)info.tx_tbl[i].tid,
-				     info.tx_tbl[i].ra[0], info.tx_tbl[i].ra[1],
-				     info.tx_tbl[i].ra[2], info.tx_tbl[i].ra[3],
-				     info.tx_tbl[i].ra[4], info.tx_tbl[i].ra[5],
-				     (int)info.tx_tbl[i].amsdu);
+			seq_printf(sfp,
+				   "tid = %d, ra = %02x:%02x:%02x:%02x:%02x:%02x amsdu=%d\n",
+				   (int)info.tx_tbl[i].tid,
+				   info.tx_tbl[i].ra[0], info.tx_tbl[i].ra[1],
+				   info.tx_tbl[i].ra[2], info.tx_tbl[i].ra[3],
+				   info.tx_tbl[i].ra[4], info.tx_tbl[i].ra[5],
+				   (int)info.tx_tbl[i].amsdu);
 		}
 	}
 	if (info.rx_tbl_num) {
-		p += sprintf(p, "Rx reorder table:\n");
+		seq_printf(sfp, "Rx reorder table:\n");
 		for (i = 0; i < info.rx_tbl_num; i++) {
 			unsigned int j;
 
-			p += sprintf(p,
-				     "tid = %d, ta =  %02x:%02x:%02x:%02x:%02x:%02x, start_win = %d, "
-				     "win_size = %d, amsdu=%d\n",
-				     (int)info.rx_tbl[i].tid,
-				     info.rx_tbl[i].ta[0], info.rx_tbl[i].ta[1],
-				     info.rx_tbl[i].ta[2], info.rx_tbl[i].ta[3],
-				     info.rx_tbl[i].ta[4], info.rx_tbl[i].ta[5],
-				     (int)info.rx_tbl[i].start_win,
-				     (int)info.rx_tbl[i].win_size,
-				     (int)info.rx_tbl[i].amsdu);
-			p += sprintf(p, "buffer: ");
+			seq_printf(sfp,
+				   "tid = %d, ta =  %02x:%02x:%02x:%02x:%02x:%02x, start_win = %d, "
+				   "win_size = %d, amsdu=%d\n",
+				   (int)info.rx_tbl[i].tid,
+				   info.rx_tbl[i].ta[0], info.rx_tbl[i].ta[1],
+				   info.rx_tbl[i].ta[2], info.rx_tbl[i].ta[3],
+				   info.rx_tbl[i].ta[4], info.rx_tbl[i].ta[5],
+				   (int)info.rx_tbl[i].start_win,
+				   (int)info.rx_tbl[i].win_size,
+				   (int)info.rx_tbl[i].amsdu);
+			seq_printf(sfp, "buffer: ");
 			for (j = 0; j < info.rx_tbl[i].win_size; j++) {
 				if (info.rx_tbl[i].buffer[j] == MTRUE)
-					p += sprintf(p, "1 ");
+					seq_printf(sfp, "1 ");
 				else
-					p += sprintf(p, "0 ");
+					seq_printf(sfp, "0 ");
 			}
-			p += sprintf(p, "\n");
+			seq_printf(sfp, "\n");
 		}
 	}
 exit:
 	MODULE_PUT;
 	LEAVE();
-	return p - page;
+	return 0;
 }
 
 /**
  *  @brief Proc write function
  *
- *  @param f	   File pointer
- *  @param buf     Pointer to data buffer
- *  @param cnt     Data number to write
- *  @param data    Data to write
+ *  @param f	   file pointer
+ *  @param buf     pointer to data buffer
+ *  @param count   data number to write
+ *  @param off     Offset
  *
- *  @return 	   Number of data or MLAN_STATUS_FAILURE
+ *  @return 	   number of data
  */
-static int
-woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
+static ssize_t
+woal_debug_write(struct file *f, const char __user * buf, size_t count,
+		 loff_t * off)
 {
 	int r, i;
 	char *pdata;
@@ -532,8 +532,11 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
 	char *p0;
 	char *p1;
 	char *p2;
-	struct debug_data *d = ((struct debug_data_priv *)data)->items;
-	moal_private *priv = ((struct debug_data_priv *)data)->priv;
+	struct seq_file *sfp = f->private_data;
+	struct debug_data_priv *items_priv =
+		(struct debug_data_priv *)sfp->private;
+	struct debug_data *d = items_priv->items;
+	moal_private *priv = items_priv->priv;
 #ifdef DEBUG_LEVEL1
 	t_u32 last_drvdbg = drvdbg;
 #endif
@@ -545,15 +548,15 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
 		return MLAN_STATUS_FAILURE;
 	}
 
-	pdata = (char *)kmalloc(cnt + 1, GFP_KERNEL);
+	pdata = (char *)kmalloc(count + 1, GFP_KERNEL);
 	if (pdata == NULL) {
 		MODULE_PUT;
 		LEAVE();
 		return 0;
 	}
-	memset(pdata, 0, cnt + 1);
+	memset(pdata, 0, count + 1);
 
-	if (copy_from_user(pdata, buf, cnt)) {
+	if (copy_from_user(pdata, buf, count)) {
 		PRINTM(MERROR, "Copy from user failed\n");
 		kfree(pdata);
 		MODULE_PUT;
@@ -569,7 +572,7 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
 	}
 
 	p0 = pdata;
-	for (i = 0; i < ((struct debug_data_priv *)data)->num_of_items; i++) {
+	for (i = 0; i < items_priv->num_of_items; i++) {
 		do {
 			p = strstr(p0, d[i].name);
 			if (p == NULL)
@@ -609,8 +612,27 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
 
 	MODULE_PUT;
 	LEAVE();
-	return cnt;
+	return count;
 }
+
+static int
+woal_debug_proc_open(struct inode *inode, struct file *file)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+	return single_open(file, woal_debug_read, PDE_DATA(inode));
+#else
+	return single_open(file, woal_debug_read, PDE(inode)->data);
+#endif
+}
+
+static const struct file_operations debug_proc_fops = {
+	.owner = THIS_MODULE,
+	.open = woal_debug_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.write = woal_debug_write,
+};
 
 /********************************************************
 		Global Functions
@@ -680,17 +702,22 @@ woal_debug_entry(moal_private * priv)
 				       i].addr += (t_ptr) (priv->phandle);
 
 	/* Create proc entry */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+	r = proc_create_data("debug", 0644, priv->proc_entry, &debug_proc_fops,
+			     &priv->items_priv);
+	if (r == NULL)
+#else
 	r = create_proc_entry("debug", 0644, priv->proc_entry);
-	if (r == NULL) {
+	if (r) {
+		r->data = &priv->items_priv;
+		r->proc_fops = &debug_proc_fops;
+	} else
+#endif
+	{
+		PRINTM(MMSG, "Fail to create proc debug entry\n");
 		LEAVE();
 		return;
 	}
-	r->data = &priv->items_priv;
-	r->read_proc = woal_debug_read;
-	r->write_proc = woal_debug_write;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 30)
-	r->owner = THIS_MODULE;
-#endif
 
 	LEAVE();
 }

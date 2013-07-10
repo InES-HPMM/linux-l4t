@@ -37,7 +37,7 @@ Change log:
 #include "mlan_11ac.h"
 
 /********************************************************
-    Local Functions
+			Local Functions
 ********************************************************/
 /**
  *  @brief This function handles the command response error
@@ -90,12 +90,13 @@ wlan_notify_station_deauth(mlan_private * priv)
 	t_u8 *pbuf;
 
 	ENTER();
-	if (!(sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
-						    &priv->sta_list,
-						    priv->adapter->callbacks.
-						    moal_spin_lock,
-						    priv->adapter->callbacks.
-						    moal_spin_unlock))) {
+	sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
+					      &priv->sta_list,
+					      priv->adapter->callbacks.
+					      moal_spin_lock,
+					      priv->adapter->callbacks.
+					      moal_spin_unlock);
+	if (!sta_ptr) {
 		LEAVE();
 		return;
 	}
@@ -284,9 +285,10 @@ wlan_process_tx_pause_event(pmlan_private priv, pmlan_buffer pevent)
 			PRINTM(MCMND, "TxPause: " MACSTR " pause=%d, pkts=%d\n",
 			       MAC2STR(tx_pause_tlv->peermac),
 			       tx_pause_tlv->tx_pause, tx_pause_tlv->pkt_cnt);
-			if ((sta_ptr =
-			     wlan_get_station_entry(priv,
-						    tx_pause_tlv->peermac))) {
+			sta_ptr =
+				wlan_get_station_entry(priv,
+						       tx_pause_tlv->peermac);
+			if (sta_ptr) {
 				if (sta_ptr->tx_pause != tx_pause_tlv->tx_pause) {
 					sta_ptr->tx_pause =
 						tx_pause_tlv->tx_pause;
@@ -2332,8 +2334,9 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
 												 */
 			pkey_material->key_param_set.key_info |=
 				wlan_cpu_to_le16(KEY_INFO_WAPI_UNICAST);
-			if ((sta_ptr =
-			     wlan_add_station_entry(pmpriv, pkey->mac_addr))) {
+			sta_ptr =
+				wlan_add_station_entry(pmpriv, pkey->mac_addr);
+			if (sta_ptr) {
 				PRINTM(MCMND, "station: wapi_key_on\n");
 				sta_ptr->wapi_key_on = MTRUE;
 			}
@@ -2886,7 +2889,7 @@ wlan_process_sta_assoc_event(pmlan_private priv, mlan_event * pevent,
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 /**
  *  @brief This function prepare the command before sending to firmware.
@@ -3100,12 +3103,14 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
 	case HostCmd_CMD_WMM_QUEUE_CONFIG:
 		ret = wlan_cmd_wmm_queue_config(pmpriv, cmd_ptr, pdata_buf);
 		break;
-#if defined(MUTLI_CHAN_SUPPORT)
 	case HostCmd_CMD_MULTI_CHAN_CONFIG:
 		ret = wlan_cmd_multi_chan_cfg(pmpriv, cmd_ptr, cmd_action,
 					      pdata_buf);
 		break;
-#endif
+	case HostCmd_CMD_MULTI_CHAN_POLICY:
+		ret = wlan_cmd_multi_chan_policy(pmpriv, cmd_ptr, cmd_action,
+						 pdata_buf);
+		break;
 	default:
 		PRINTM(MERROR, "PREP_CMD: unknown command- %#x\n", cmd_no);
 		if (pioctl_req)
@@ -3295,6 +3300,12 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
 		break;
 	case HostCmd_CMD_WMM_QUEUE_CONFIG:
 		ret = wlan_ret_wmm_queue_config(pmpriv, resp, pioctl_buf);
+		break;
+	case HostCmd_CMD_MULTI_CHAN_CONFIG:
+		ret = wlan_ret_multi_chan_cfg(pmpriv, resp, pioctl_buf);
+		break;
+	case HostCmd_CMD_MULTI_CHAN_POLICY:
+		ret = wlan_ret_multi_chan_policy(pmpriv, resp, pioctl_buf);
 		break;
 	default:
 		PRINTM(MERROR, "CMD_RESP: Unknown command response %#x\n",
@@ -3511,8 +3522,8 @@ wlan_ops_uap_process_event(IN t_void * priv)
 		memcpy(pmadapter, (t_u8 *) pevent->event_buf,
 		       pmbuf->pbuf + pmbuf->data_offset, pevent->event_len);
 		wlan_recv_event(pmpriv, pevent->event_id, pevent);
-		pevent->event_id = 0;	// clear to avoid resending at end of
-					// fcn
+		pevent->event_id = 0;	/* clear to avoid resending at end of
+					   fcn */
 
 		if (pmadapter->state_rdh.stage == RDH_OFF) {
 			pmadapter->state_rdh.stage = RDH_CHK_INTFS;
@@ -3544,9 +3555,14 @@ wlan_ops_uap_process_event(IN t_void * priv)
 	case EVENT_REMAIN_ON_CHANNEL_EXPIRED:
 		PRINTM(MEVENT, "EVENT: REMAIN_ON_CHANNEL_EXPIRED reason=%d\n",
 		       *(t_u16 *) pmadapter->event_body);
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
 		pevent->event_id = MLAN_EVENT_ID_FW_REMAIN_ON_CHAN_EXPIRED;
 		break;
 #endif
+	case EVENT_MULTI_CHAN_INFO:
+		PRINTM(MEVENT, "EVENT: MULTI_CHAN_INFO\n");
+		wlan_handle_event_multi_chan_info(pmpriv, pmbuf);
+		break;
 
 	case EVENT_FW_DEBUG_INFO:
 		PRINTM(MERROR, "EVENT: FW Debug Info\n");
@@ -3559,8 +3575,8 @@ wlan_ops_uap_process_event(IN t_void * priv)
 		       pmbuf->pbuf + pmbuf->data_offset + sizeof(eventcause),
 		       pevent->event_len);
 		wlan_recv_event(pmpriv, pevent->event_id, pevent);
-		pevent->event_id = 0;	// clear to avoid resending at end of
-					// fcn
+		pevent->event_id = 0;	/* clear to avoid resending at end of
+					   fcn */
 		break;
 	default:
 		pevent->event_id = MLAN_EVENT_ID_DRV_PASSTHRU;

@@ -27,13 +27,6 @@ Change log:
 #ifndef _WOAL_PRIV_H_
 #define _WOAL_PRIV_H_
 
-/** Command disabled */
-#define	CMD_DISABLED				0
-/** Command enabled */
-#define	CMD_ENABLED				1
-/** Command get */
-#define	CMD_GET					2
-
 /** 2K bytes */
 #define WOAL_2K_BYTES       2000
 
@@ -720,8 +713,7 @@ static const struct iw_priv_args woal_private_args[] = {
 };
 
 /** moal_802_11_rates  */
-typedef struct _moal_802_11_rates
-{
+typedef struct _moal_802_11_rates {
 	/** Num of rates */
 	t_u8 num_of_rates;
 	/** Rates */

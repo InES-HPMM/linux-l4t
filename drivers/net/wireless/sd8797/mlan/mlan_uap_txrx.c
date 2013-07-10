@@ -37,7 +37,7 @@ Change log:
 #include "mlan_11n_rxreorder.h"
 
 /********************************************************
-                Local Functions
+			Local Functions
 ********************************************************/
 
 /**
@@ -112,7 +112,8 @@ wlan_check_unicast_packet(mlan_private * priv, t_u8 * mac)
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	ENTER();
 	for (j = 0; j < MLAN_MAX_BSS_NUM; ++j) {
-		if ((pmpriv = pmadapter->priv[j])) {
+		pmpriv = pmadapter->priv[j];
+		if (pmpriv) {
 			if (GET_BSS_ROLE(pmpriv) == MLAN_BSS_ROLE_STA)
 				continue;
 			sta_ptr = wlan_get_station_entry(pmpriv, mac);
@@ -139,7 +140,7 @@ wlan_check_unicast_packet(mlan_private * priv, t_u8 * mac)
 }
 
 /********************************************************
-    Global Functions
+			Global Functions
 ********************************************************/
 /**
  *  @brief This function fill the txpd for tx packet
@@ -316,7 +317,8 @@ wlan_ops_uap_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 	memcpy(pmadapter, ta, prx_pkt->eth803_hdr.src_addr,
 	       MLAN_MAC_ADDR_LENGTH);
 	if ((rx_pkt_type != PKT_TYPE_BAR) && (prx_pd->priority < MAX_NUM_TID)) {
-		if ((sta_ptr = wlan_get_station_entry(priv, ta)))
+		sta_ptr = wlan_get_station_entry(priv, ta);
+		if (sta_ptr)
 			sta_ptr->rx_seq[prx_pd->priority] = prx_pd->seq_num;
 	}
 	/* check if UAP enable 11n */
@@ -332,11 +334,10 @@ wlan_ops_uap_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 		goto done;
 	}
 	/* Reorder and send to OS */
-	if ((ret = mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num,
-					  prx_pd->priority, ta,
-					  (t_u8) prx_pd->rx_pkt_type,
-					  (void *)pmbuf))
-	    || (rx_pkt_type == PKT_TYPE_BAR)) {
+	ret = mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num,
+				     prx_pd->priority, ta,
+				     (t_u8) prx_pd->rx_pkt_type, (void *)pmbuf);
+	if (ret || (rx_pkt_type == PKT_TYPE_BAR)) {
 		wlan_free_mlan_buffer(pmadapter, pmbuf);
 	}
 done:
@@ -379,10 +380,10 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 	if (prx_pkt->eth803_hdr.dest_addr[0] & 0x01) {
 		if (!(priv->pkt_fwd & PKT_FWD_INTRA_BCAST)) {
 			/* Multicast pkt */
-			if ((newbuf =
-			     wlan_alloc_mlan_buffer(pmadapter,
-						    MLAN_TX_DATA_BUF_SIZE_2K, 0,
-						    MOAL_MALLOC_BUFFER))) {
+			newbuf = wlan_alloc_mlan_buffer(pmadapter,
+							MLAN_TX_DATA_BUF_SIZE_2K,
+							0, MOAL_MALLOC_BUFFER);
+			if (newbuf) {
 				newbuf->bss_index = pmbuf->bss_index;
 				newbuf->buf_type = pmbuf->buf_type;
 				newbuf->priority = pmbuf->priority;
@@ -412,10 +413,10 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 		    (wlan_get_station_entry
 		     (priv, prx_pkt->eth803_hdr.dest_addr))) {
 			/* Intra BSS packet */
-			if ((newbuf =
-			     wlan_alloc_mlan_buffer(pmadapter,
-						    MLAN_TX_DATA_BUF_SIZE_2K, 0,
-						    MOAL_MALLOC_BUFFER))) {
+			newbuf = wlan_alloc_mlan_buffer(pmadapter,
+							MLAN_TX_DATA_BUF_SIZE_2K,
+							0, MOAL_MALLOC_BUFFER);
+			if (newbuf) {
 				newbuf->bss_index = pmbuf->bss_index;
 				newbuf->buf_type = pmbuf->buf_type;
 				newbuf->priority = pmbuf->priority;
@@ -504,10 +505,10 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 	if (prx_pkt->eth803_hdr.dest_addr[0] & 0x01) {
 		if (!(priv->pkt_fwd & PKT_FWD_INTRA_BCAST)) {
 			/* Multicast pkt */
-			if ((newbuf =
-			     wlan_alloc_mlan_buffer(pmadapter,
-						    MLAN_TX_DATA_BUF_SIZE_2K, 0,
-						    MOAL_MALLOC_BUFFER))) {
+			newbuf = wlan_alloc_mlan_buffer(pmadapter,
+							MLAN_TX_DATA_BUF_SIZE_2K,
+							0, MOAL_MALLOC_BUFFER);
+			if (newbuf) {
 				newbuf->bss_index = pmbuf->bss_index;
 				newbuf->buf_type = pmbuf->buf_type;
 				newbuf->priority = pmbuf->priority;

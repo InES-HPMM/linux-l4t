@@ -63,9 +63,9 @@ Change log:
 /** Host Control Registers : Download host interrupt mask */
 #define DN_LD_HOST_INT_MASK		(0x2U)
 /** Host Control Registers : Cmd port upload interrupt mask */
-#define CMD_PORT_UPLD_INT_MASK		(0x1U<<6)
+#define CMD_PORT_UPLD_INT_MASK		(0x1U << 6)
 /** Host Control Registers : Cmd port download interrupt mask */
-#define CMD_PORT_DNLD_INT_MASK		(0x1U<<7)
+#define CMD_PORT_DNLD_INT_MASK		(0x1U << 7)
 /** Enable Host interrupt mask */
 #define HIM_ENABLE			(UP_LD_HOST_INT_MASK   | \
 					DN_LD_HOST_INT_MASK    | \
@@ -138,65 +138,65 @@ Change log:
 #define DATA_PORT_MASK			0xffffffff
 
 /** Misc. Config Register : Auto Re-enable interrupts */
-#define AUTO_RE_ENABLE_INT             	MBIT(4)
+#define AUTO_RE_ENABLE_INT		MBIT(4)
 
 /** Host Control Registers : Host transfer status */
 #define HOST_RESTART_REG		0x4C
 /** Host Control Registers : Download CRC error */
-#define DN_LD_CRC_ERR              	(0x1U << 2)
+#define DN_LD_CRC_ERR			(0x1U << 2)
 /** Host Control Registers : Upload restart */
-#define UP_LD_RESTART              	(0x1U << 1)
+#define UP_LD_RESTART			(0x1U << 1)
 /** Host Control Registers : Download restart */
-#define DN_LD_RESTART              	(0x1U << 0)
+#define DN_LD_RESTART			(0x1U << 0)
 
 /* Card Control Registers */
 /** Card Control Registers : Card to host event */
-#define CARD_TO_HOST_EVENT_REG         	0x50
+#define CARD_TO_HOST_EVENT_REG		0x50
 /** Card Control Registers : Command port upload ready */
-#define UP_LD_CP_RDY                   	(0x1U << 6)
+#define UP_LD_CP_RDY			(0x1U << 6)
 /** Card Control Registers : Command port download ready */
-#define DN_LD_CP_RDY                   	(0x1U << 7)
+#define DN_LD_CP_RDY			(0x1U << 7)
 /** Card Control Registers : Card I/O ready */
-#define CARD_IO_READY                 	(0x1U << 3)
+#define CARD_IO_READY			(0x1U << 3)
 /** Card Control Registers : CIS card ready */
-#define CIS_CARD_RDY                 	(0x1U << 2)
+#define CIS_CARD_RDY			(0x1U << 2)
 /** Card Control Registers : Upload card ready */
-#define UP_LD_CARD_RDY               	(0x1U << 1)
+#define UP_LD_CARD_RDY			(0x1U << 1)
 /** Card Control Registers : Download card ready */
-#define DN_LD_CARD_RDY               	(0x1U << 0)
+#define DN_LD_CARD_RDY			(0x1U << 0)
 
 /** Card Control Registers : Host interrupt mask register */
-#define HOST_INTERRUPT_MASK_REG      	0x54
+#define HOST_INTERRUPT_MASK_REG		0x54
 /** Card Control Registers : Host power interrupt mask */
-#define HOST_POWER_INT_MASK          	(0x1U << 3)
+#define HOST_POWER_INT_MASK		(0x1U << 3)
 /** Card Control Registers : Abort card interrupt mask */
-#define ABORT_CARD_INT_MASK          	(0x1U << 2)
+#define ABORT_CARD_INT_MASK		(0x1U << 2)
 /** Card Control Registers : Upload card interrupt mask */
-#define UP_LD_CARD_INT_MASK          	(0x1U << 1)
+#define UP_LD_CARD_INT_MASK		(0x1U << 1)
 /** Card Control Registers : Download card interrupt mask */
-#define DN_LD_CARD_INT_MASK          	(0x1U << 0)
+#define DN_LD_CARD_INT_MASK		(0x1U << 0)
 
 /** Card Control Registers : Card interrupt status register */
-#define CARD_INTERRUPT_STATUS_REG    	0x58
+#define CARD_INTERRUPT_STATUS_REG	0x58
 /** Card Control Registers : Power up interrupt */
-#define POWER_UP_INT                 	(0x1U << 4)
+#define POWER_UP_INT			(0x1U << 4)
 /** Card Control Registers : Power down interrupt */
-#define POWER_DOWN_INT               	(0x1U << 3)
+#define POWER_DOWN_INT			(0x1U << 3)
 
 /** Card Control Registers : Card interrupt RSR register */
-#define CARD_INTERRUPT_RSR_REG       	0x5C
+#define CARD_INTERRUPT_RSR_REG		0x5C
 /** Card Control Registers : Power up RSR */
-#define POWER_UP_RSR                 	(0x1U << 4)
+#define POWER_UP_RSR			(0x1U << 4)
 /** Card Control Registers : Power down RSR */
-#define POWER_DOWN_RSR               	(0x1U << 3)
+#define POWER_DOWN_RSR			(0x1U << 3)
 
 /** Card Control Registers : SQ Read base address 0 register */
-#define READ_BASE_0_REG  		0x60
+#define READ_BASE_0_REG			0x60
 /** Card Control Registers : SQ Read base address 1 register */
-#define READ_BASE_1_REG  		0x61
+#define READ_BASE_1_REG			0x61
 
 /** Card Control Registers : Card revision register */
-#define CARD_REVISION_REG            	0xBC
+#define CARD_REVISION_REG		0xBC
 
 /** Firmware status 0 register (SCRATCH0_0) */
 #define CARD_FW_STATUS0_REG		0xC0
@@ -208,20 +208,20 @@ Change log:
 #define CARD_RX_UNIT_REG		0xC3
 
 /** Card Control Registers : Card OCR 0 register */
-#define CARD_OCR_0_REG               	0xC8
+#define CARD_OCR_0_REG			0xC8
 /** Card Control Registers : Card OCR 1 register */
-#define CARD_OCR_1_REG               	0xC9
+#define CARD_OCR_1_REG			0xC9
 /** Card Control Registers : Card OCR 3 register */
-#define CARD_OCR_3_REG               	0xCA
+#define CARD_OCR_3_REG			0xCA
 /** Card Control Registers : Card config register */
-#define CARD_CONFIG_REG              	0xCB
+#define CARD_CONFIG_REG			0xCB
 /** Card Control Registers : Miscellaneous Configuration Register */
-#define CARD_MISC_CFG_REG              	0xCC
+#define CARD_MISC_CFG_REG		0xCC
 
 /** Card Control Registers : sdio new mode register */
 #define CARD_CONFIG_2_1_REG             0xCD
 /** Card Control Registers : cmd53 new mode */
-#define CMD53_NEW_MODE                 	(0x1U << 0)
+#define CMD53_NEW_MODE			(0x1U << 0)
 /** Card Control Registers : cmd53 tx len format 1 (0x10) */
 #define CMD53_TX_LEN_FORMAT_1           (0x1U << 4)
 /** Card Control Registers : cmd53 tx len format 2 (0x20)*/
@@ -232,21 +232,21 @@ Change log:
 #define CMD53_RX_LEN_FORMAT_2           (0x1U << 7)
 
 /** Card Control Registers : Debug 0 register */
-#define DEBUG_0_REG                  	0xD0
+#define DEBUG_0_REG			0xD0
 /** Card Control Registers : SD test BUS 0 */
-#define SD_TESTBUS0                  	(0x1U)
+#define SD_TESTBUS0			(0x1U)
 /** Card Control Registers : Debug 1 register */
-#define DEBUG_1_REG                  	0xD1
+#define DEBUG_1_REG			0xD1
 /** Card Control Registers : SD test BUS 1 */
-#define SD_TESTBUS1                  	(0x1U)
+#define SD_TESTBUS1			(0x1U)
 /** Card Control Registers : Debug 2 register */
-#define DEBUG_2_REG                  	0xD2
+#define DEBUG_2_REG			0xD2
 /** Card Control Registers : SD test BUS 2 */
-#define SD_TESTBUS2                  	(0x1U)
+#define SD_TESTBUS2			(0x1U)
 /** Card Control Registers : Debug 3 register */
-#define DEBUG_3_REG                  	0xD3
+#define DEBUG_3_REG			0xD3
 /** Card Control Registers : SD test BUS 3 */
-#define SD_TESTBUS3                  	(0x1U)
+#define SD_TESTBUS3			(0x1U)
 
 /** Host Control Registers : I/O port 0 */
 #define IO_PORT_0_REG			0xD8
@@ -269,92 +269,92 @@ Change log:
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 
 /** SDIO Tx aggregation in progress ? */
-#define MP_TX_AGGR_IN_PROGRESS(a) (a->mpa_tx.pkt_cnt>0)
+#define MP_TX_AGGR_IN_PROGRESS(a) (a->mpa_tx.pkt_cnt > 0)
 
 /** SDIO Tx aggregation buffer room for next packet ? */
-#define MP_TX_AGGR_BUF_HAS_ROOM(a,mbuf, len) ((a->mpa_tx.buf_len+len)<= a->mpa_tx.buf_size)
+#define MP_TX_AGGR_BUF_HAS_ROOM(a, mbuf, len) (((a->mpa_tx.buf_len) + len) <= (a->mpa_tx.buf_size))
 
 /** Copy current packet (SDIO Tx aggregation buffer) to SDIO buffer */
-#define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do{                   \
-    pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len],mbuf->pbuf+mbuf->data_offset,mbuf->data_len);\
-    a->mpa_tx.buf_len += mbuf->data_len;                        \
-    if(!a->mpa_tx.pkt_cnt){                                     \
-        a->mpa_tx.start_port = port;                            \
-    }                                                           \
-    a->mpa_tx.ports |= (1<<port);                               \
-    a->mpa_tx.pkt_cnt++;                                        \
-}while(0);
+#define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do {                  \
+	pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len], mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
+	a->mpa_tx.buf_len += mbuf->data_len;                        \
+	if (!a->mpa_tx.pkt_cnt) {                                   \
+	    a->mpa_tx.start_port = port;                            \
+	}                                                           \
+	a->mpa_tx.ports |= (1 << port);                             \
+	a->mpa_tx.pkt_cnt++;                                        \
+} while (0);
 
 /** SDIO Tx aggregation limit ? */
-#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_tx.pkt_cnt==a->mpa_tx.pkt_aggr_limit)
+#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) ((a->mpa_tx.pkt_cnt) == (a->mpa_tx.pkt_aggr_limit))
 
 /** SDIO Tx aggregation port limit ? */
 /** this is for test only, because port 0 is reserved for control port */
-//#define MP_TX_AGGR_PORT_LIMIT_REACHED(a) (a->curr_wr_port == 1)
+/* #define MP_TX_AGGR_PORT_LIMIT_REACHED(a) (a->curr_wr_port == 1) */
 /* tx packets aggregated until a half of mp_end_port is reached
  * This port limination may be relaxed */
 /* hw tx wraps round only after port 31 */
 #define MP_TX_AGGR_PORT_LIMIT_REACHED(a) \
 			(((a->curr_wr_port < a->mpa_tx.start_port) && \
 			(((MAX_PORT - a->mpa_tx.start_port) + a->curr_wr_port) \
-			>= (a->mp_end_port>>1))) || \
+			>= (a->mp_end_port >> 1))) || \
 			((a->curr_wr_port - a->mpa_tx.start_port) >= \
-			(a->mp_end_port>>1)))
+			(a->mp_end_port >> 1)))
 
 /** Reset SDIO Tx aggregation buffer parameters */
-#define MP_TX_AGGR_BUF_RESET(a) do{         \
-   a->mpa_tx.pkt_cnt = 0;                   \
-   a->mpa_tx.buf_len = 0;                   \
-   a->mpa_tx.ports = 0;                     \
-   a->mpa_tx.start_port = 0;                \
-} while(0);
+#define MP_TX_AGGR_BUF_RESET(a) do {         \
+	a->mpa_tx.pkt_cnt = 0;                   \
+	a->mpa_tx.buf_len = 0;                   \
+	a->mpa_tx.ports = 0;                     \
+	a->mpa_tx.start_port = 0;                \
+} while (0);
 
 #endif /* SDIO_MULTI_PORT_TX_AGGR */
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
 
 /** SDIO Rx aggregation limit ? */
-#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt== a->mpa_rx.pkt_aggr_limit)
+#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt == a->mpa_rx.pkt_aggr_limit)
 
 /** SDIO Rx aggregation port limit ? */
 /** this is for test only, because port 0 is reserved for control port */
-//#define MP_RX_AGGR_PORT_LIMIT_REACHED(a) (a->curr_rd_port == 1)
+/* #define MP_RX_AGGR_PORT_LIMIT_REACHED(a) (a->curr_rd_port == 1) */
 
 /* receive packets aggregated up to a half of mp_end_port */
 /* note: hw rx wraps round only after port (MAX_PORT-1) */
 #define MP_RX_AGGR_PORT_LIMIT_REACHED(a) \
 			(((a->curr_rd_port < a->mpa_rx.start_port) && \
 			(((MAX_PORT - a->mpa_rx.start_port) + a->curr_rd_port) \
-			>= (a->mp_end_port>>1))) || \
+			>= (a->mp_end_port >> 1))) || \
 			((a->curr_rd_port - a->mpa_rx.start_port) >= \
-			(a->mp_end_port>>1)))
+			(a->mp_end_port >> 1)))
 
 /** SDIO Rx aggregation in progress ? */
-#define MP_RX_AGGR_IN_PROGRESS(a) (a->mpa_rx.pkt_cnt>0)
+#define MP_RX_AGGR_IN_PROGRESS(a) (a->mpa_rx.pkt_cnt > 0)
 
 /** SDIO Rx aggregation buffer room for next packet ? */
-#define MP_RX_AGGR_BUF_HAS_ROOM(a,rx_len)   \
-    ((a->mpa_rx.buf_len+rx_len)<=a->mpa_rx.buf_size)
+#define MP_RX_AGGR_BUF_HAS_ROOM(a, rx_len)   \
+	((a->mpa_rx.buf_len + rx_len) <= a->mpa_rx.buf_size)
 
 /** Prepare to copy current packet from card to SDIO Rx aggregation buffer */
-#define MP_RX_AGGR_SETUP(a, mbuf, port, rx_len) do{    \
-    a->mpa_rx.buf_len += rx_len;                       \
-    if(!a->mpa_rx.pkt_cnt){                            \
-        a->mpa_rx.start_port = port;                   \
-    }                                                  \
-    a->mpa_rx.ports |= (1<<port);                      \
-    a->mpa_rx.mbuf_arr[a->mpa_rx.pkt_cnt] = mbuf;      \
-    a->mpa_rx.len_arr[a->mpa_rx.pkt_cnt] = rx_len;     \
-    a->mpa_rx.pkt_cnt++;                               \
-}while(0);
+#define MP_RX_AGGR_SETUP(a, mbuf, port, rx_len) do {   \
+	a->mpa_rx.buf_len += rx_len;                       \
+	if (!a->mpa_rx.pkt_cnt) {                          \
+	    a->mpa_rx.start_port = port;                   \
+	}                                                  \
+	a->mpa_rx.ports |= (1 << port);                    \
+	a->mpa_rx.mbuf_arr[a->mpa_rx.pkt_cnt] = mbuf;      \
+	a->mpa_rx.len_arr[a->mpa_rx.pkt_cnt] = rx_len;     \
+	a->mpa_rx.pkt_cnt++;                              \
+} while (0);
 
 /** Reset SDIO Rx aggregation buffer parameters */
-#define MP_RX_AGGR_BUF_RESET(a) do{         \
-   a->mpa_rx.pkt_cnt = 0;                   \
-   a->mpa_rx.buf_len = 0;                   \
-   a->mpa_rx.ports = 0;                     \
-   a->mpa_rx.start_port = 0;                \
-} while(0);
+#define MP_RX_AGGR_BUF_RESET(a) do {         \
+	a->mpa_rx.pkt_cnt = 0;                   \
+	a->mpa_rx.buf_len = 0;                   \
+	a->mpa_rx.ports = 0;                     \
+	a->mpa_rx.start_port = 0;                \
+} while (0);
 
 #endif /* SDIO_MULTI_PORT_RX_AGGR */
 

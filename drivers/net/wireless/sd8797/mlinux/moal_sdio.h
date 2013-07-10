@@ -121,8 +121,7 @@ int woal_sdio_resume(struct device *dev);
 #endif /* SDIO_SUSPEND_RESUME */
 
 /** Structure: SDIO MMC card */
-struct sdio_mmc_card
-{
+struct sdio_mmc_card {
 	/** sdio_func structure pointer */
 	struct sdio_func *func;
 	/** moal_handle structure pointer */

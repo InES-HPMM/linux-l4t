@@ -37,6 +37,7 @@ EXPORT_SYMBOL(mlan_shutdown_fw);
 EXPORT_SYMBOL(mlan_send_packet);
 EXPORT_SYMBOL(mlan_ioctl);
 EXPORT_SYMBOL(mlan_main_process);
+EXPORT_SYMBOL(mlan_rx_process);
 EXPORT_SYMBOL(mlan_select_wmm_queue);
 EXPORT_SYMBOL(mlan_interrupt);
 

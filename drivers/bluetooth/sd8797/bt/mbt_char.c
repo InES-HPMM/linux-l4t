@@ -178,6 +178,10 @@ chardev_write(struct file * filp, const char *buf, size_t count, loff_t * f_pos)
 		LEAVE();
 		return -ENXIO;
 	}
+	if (!test_bit(HCI_UP, &m_dev->flags)) {
+		LEAVE();
+		return -EBUSY;
+	}
 	nwrite = count;
 	skb = bt_skb_alloc(count, GFP_ATOMIC);
 	if (!skb) {

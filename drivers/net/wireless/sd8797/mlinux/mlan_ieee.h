@@ -37,8 +37,7 @@ Change log:
 
 /** Enumeration definition*/
 /** WLAN_802_11_NETWORK_TYPE */
-typedef enum _WLAN_802_11_NETWORK_TYPE
-{
+typedef enum _WLAN_802_11_NETWORK_TYPE {
 	Wlan802_11FH,
 	Wlan802_11DS,
 	/* Defined as upper bound */
@@ -65,8 +64,7 @@ typedef enum _WLAN_802_11_NETWORK_TYPE
 #endif
 
 /** IEEE Type definitions  */
-typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e {
 	SSID = 0,
 	SUPPORTED_RATES = 1,
 
@@ -110,8 +108,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e
 } MLAN_PACK_END IEEEtypes_ElementId_e;
 
 /** IEEE IE header */
-typedef MLAN_PACK_START struct _IEEEtypes_Header_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_Header_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -119,8 +116,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_Header_t
 } MLAN_PACK_END IEEEtypes_Header_t, *pIEEEtypes_Header_t;
 
 /** Vendor specific IE header */
-typedef MLAN_PACK_START struct _IEEEtypes_VendorHeader_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_VendorHeader_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -136,8 +132,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_VendorHeader_t
 } MLAN_PACK_END IEEEtypes_VendorHeader_t, *pIEEEtypes_VendorHeader_t;
 
 /** Vendor specific IE */
-typedef MLAN_PACK_START struct _IEEEtypes_VendorSpecific_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_VendorSpecific_t {
     /** Vendor specific IE header */
 	IEEEtypes_VendorHeader_t vend_hdr;
     /** IE Max - size of previous fields */
@@ -146,8 +141,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_VendorSpecific_t
 MLAN_PACK_END IEEEtypes_VendorSpecific_t, *pIEEEtypes_VendorSpecific_t;
 
 /** IEEE IE */
-typedef MLAN_PACK_START struct _IEEEtypes_Generic_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_Generic_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** IE Max - size of previous fields */
@@ -156,8 +150,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_Generic_t
 MLAN_PACK_END IEEEtypes_Generic_t, *pIEEEtypes_Generic_t;
 
 /** TLV header */
-typedef MLAN_PACK_START struct _TLV_Generic_t
-{
+typedef MLAN_PACK_START struct _TLV_Generic_t {
     /** Type */
 	t_u16 type;
     /** Length */
@@ -170,8 +163,7 @@ typedef MLAN_PACK_START struct _TLV_Generic_t
 
 /** Capability Bit Map*/
 #ifdef BIG_ENDIAN_SUPPORT
-typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t {
 	t_u8 rsrvd1:2;
 	t_u8 dsss_ofdm:1;
 	t_u8 rsvrd2:2;
@@ -188,8 +180,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t
 	t_u8 ess:1;
 } MLAN_PACK_END IEEEtypes_CapInfo_t, *pIEEEtypes_CapInfo_t;
 #else
-typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t {
     /** Capability Bit Map : ESS */
 	t_u8 ess:1;
     /** Capability Bit Map : IBSS */
@@ -224,8 +215,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_CapInfo_t
 #endif /* BIG_ENDIAN_SUPPORT */
 
 /** IEEEtypes_CfParamSet_t */
-typedef MLAN_PACK_START struct _IEEEtypes_CfParamSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_CfParamSet_t {
     /** CF peremeter : Element ID */
 	t_u8 element_id;
     /** CF peremeter : Length */
@@ -241,8 +231,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_CfParamSet_t
 } MLAN_PACK_END IEEEtypes_CfParamSet_t, *pIEEEtypes_CfParamSet_t;
 
 /** IEEEtypes_IbssParamSet_t */
-typedef MLAN_PACK_START struct _IEEEtypes_IbssParamSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_IbssParamSet_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -252,8 +241,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_IbssParamSet_t
 } MLAN_PACK_END IEEEtypes_IbssParamSet_t, *pIEEEtypes_IbssParamSet_t;
 
 /** IEEEtypes_SsParamSet_t */
-typedef MLAN_PACK_START union _IEEEtypes_SsParamSet_t
-{
+typedef MLAN_PACK_START union _IEEEtypes_SsParamSet_t {
     /** SS parameter : CF parameter set */
 	IEEEtypes_CfParamSet_t cf_param_set;
     /** SS parameter : IBSS parameter set */
@@ -261,8 +249,7 @@ typedef MLAN_PACK_START union _IEEEtypes_SsParamSet_t
 } MLAN_PACK_END IEEEtypes_SsParamSet_t, *pIEEEtypes_SsParamSet_t;
 
 /** IEEEtypes_FhParamSet_t */
-typedef MLAN_PACK_START struct _IEEEtypes_FhParamSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_FhParamSet_t {
     /** FH parameter : Element ID */
 	t_u8 element_id;
     /** FH parameter : Length */
@@ -278,8 +265,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_FhParamSet_t
 } MLAN_PACK_END IEEEtypes_FhParamSet_t, *pIEEEtypes_FhParamSet_t;
 
 /** IEEEtypes_DsParamSet_t */
-typedef MLAN_PACK_START struct _IEEEtypes_DsParamSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_DsParamSet_t {
     /** DS parameter : Element ID */
 	t_u8 element_id;
     /** DS parameter : Length */
@@ -289,8 +275,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_DsParamSet_t
 } MLAN_PACK_END IEEEtypes_DsParamSet_t, *pIEEEtypes_DsParamSet_t;
 
 /** IEEEtypes_PhyParamSet_t */
-typedef MLAN_PACK_START union _IEEEtypes_PhyParamSet_t
-{
+typedef MLAN_PACK_START union _IEEEtypes_PhyParamSet_t {
     /** FH parameter set */
 	IEEEtypes_FhParamSet_t fh_param_set;
     /** DS parameter set */
@@ -298,8 +283,7 @@ typedef MLAN_PACK_START union _IEEEtypes_PhyParamSet_t
 } MLAN_PACK_END IEEEtypes_PhyParamSet_t, *pIEEEtypes_PhyParamSet_t;
 
 /** IEEEtypes_ERPInfo_t */
-typedef MLAN_PACK_START struct _IEEEtypes_ERPInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_ERPInfo_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -317,8 +301,7 @@ typedef t_u16 IEEEtypes_StatusCode_t;
 /** Fixed size in assoc_resp */
 #define ASSOC_RESP_FIXED_SIZE      6
 /** IEEEtypes_AssocRsp_t */
-typedef MLAN_PACK_START struct _IEEEtypes_AssocRsp_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_AssocRsp_t {
     /** Capability information */
 	IEEEtypes_CapInfo_t capability;
     /** Association response status code */
@@ -356,8 +339,7 @@ typedef t_u8 WLAN_802_11_RATES[WLAN_SUPPORTED_RATES];
 #endif
 
 /** wpa_suite_t */
-typedef MLAN_PACK_START struct _wpa_suite_t
-{
+typedef MLAN_PACK_START struct _wpa_suite_t {
     /** OUI */
 	t_u8 oui[3];
     /** tyep */
@@ -365,8 +347,7 @@ typedef MLAN_PACK_START struct _wpa_suite_t
 } MLAN_PACK_END wpa_suite, wpa_suite_mcast_t;
 
 /** wpa_suite_ucast_t */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	/* count */
 	t_u16 count;
     /** wpa_suite list */
@@ -374,8 +355,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END wpa_suite_ucast_t, wpa_suite_auth_key_mgmt_t;
 
 /** IEEEtypes_Rsn_t */
-typedef MLAN_PACK_START struct _IEEEtypes_Rsn_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_Rsn_t {
     /** Rsn : Element ID */
 	t_u8 element_id;
     /** Rsn : Length */
@@ -389,8 +369,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_Rsn_t
 } MLAN_PACK_END IEEEtypes_Rsn_t, *pIEEEtypes_Rsn_t;
 
 /** IEEEtypes_Wpa_t */
-typedef MLAN_PACK_START struct _IEEEtypes_Wpa_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_Wpa_t {
     /** Wpa : Element ID */
 	t_u8 element_id;
     /** Wpa : Length */
@@ -409,8 +388,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_Wpa_t
 #define MAX_AC_QUEUES 4
 
 /** Data structure of WMM QoS information */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmQosInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmQosInfo_t {
 #ifdef BIG_ENDIAN_SUPPORT
     /** QoS UAPSD */
 	t_u8 qos_uapsd:1;
@@ -429,8 +407,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmQosInfo_t
 } MLAN_PACK_END IEEEtypes_WmmQosInfo_t, *pIEEEtypes_WmmQosInfo_t;
 
 /** Data structure of WMM Aci/Aifsn */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmAciAifsn_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmAciAifsn_t {
 #ifdef BIG_ENDIAN_SUPPORT
     /** Reserved */
 	t_u8 reserved:1;
@@ -453,8 +430,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmAciAifsn_t
 } MLAN_PACK_END IEEEtypes_WmmAciAifsn_t, *pIEEEtypes_WmmAciAifsn_t;
 
 /** Data structure of WMM ECW */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmEcw_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmEcw_t {
 #ifdef BIG_ENDIAN_SUPPORT
     /** Maximum Ecw */
 	t_u8 ecw_max:4;
@@ -469,16 +445,14 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmEcw_t
 } MLAN_PACK_END IEEEtypes_WmmEcw_t, *pIEEEtypes_WmmEcw_t;
 
 /** Data structure of WMM AC parameters  */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmAcParameters_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmAcParameters_t {
 	IEEEtypes_WmmAciAifsn_t aci_aifsn;   /**< AciAifSn */
 	IEEEtypes_WmmEcw_t ecw;		    /**< Ecw */
 	t_u16 tx_op_limit;		      /**< Tx op limit */
 } MLAN_PACK_END IEEEtypes_WmmAcParameters_t, *pIEEEtypes_WmmAcParameters_t;
 
 /** Data structure of WMM Info IE  */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmInfo_t {
 
     /**
      * WMM Info IE - Vendor Specific Header:
@@ -497,8 +471,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmInfo_t
 } MLAN_PACK_END IEEEtypes_WmmInfo_t, *pIEEEtypes_WmmInfo_t;
 
 /** Data structure of WMM parameter IE  */
-typedef MLAN_PACK_START struct _IEEEtypes_WmmParameter_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_WmmParameter_t {
     /**
      * WMM Parameter IE - Vendor Specific Header:
      *   element_id  [221/0xdd]
@@ -520,8 +493,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmParameter_t
 } MLAN_PACK_END IEEEtypes_WmmParameter_t, *pIEEEtypes_WmmParameter_t;
 
 /** Enumerator for TSPEC direction */
-typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_Direction_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_Direction_e {
 
 	TSPEC_DIR_UPLINK = 0,
 	TSPEC_DIR_DOWNLINK = 1,
@@ -531,8 +503,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_Direction_e
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_TS_Info_Direction_e;
 
 /** Enumerator for TSPEC PSB */
-typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_PSB_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_PSB_e {
 
 	TSPEC_PSB_LEGACY = 0,
 	TSPEC_PSB_TRIG = 1,
@@ -540,8 +511,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_PSB_e
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_TS_Info_PSB_e;
 
 /** Enumerator for TSPEC Ack Policy */
-typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e {
 
 	TSPEC_ACKPOLICY_NORMAL = 0,
 	TSPEC_ACKPOLICY_NOACK = 1,
@@ -551,8 +521,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e;
 
 /** Enumerator for TSPEC Trafffice type */
-typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e {
 
 	TSPEC_TRAFFIC_APERIODIC = 0,
 	TSPEC_TRAFFIC_PERIODIC = 1,
@@ -560,66 +529,64 @@ typedef MLAN_PACK_START enum _IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e;
 
 /** Data structure of WMM TSPEC information */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 #ifdef BIG_ENDIAN_SUPPORT
-	t_u8 Reserved17_23:7;	// ! Reserved
+	t_u8 Reserved17_23:7;	/* ! Reserved */
 	t_u8 Schedule:1;
 	IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e AckPolicy:2;
-	t_u8 UserPri:3;		// ! 802.1d User Priority
-	IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;	// !
-								// Legacy/Trigg
-	t_u8 Aggregation:1;	// ! Reserved
-	t_u8 AccessPolicy2:1;	// !
-	t_u8 AccessPolicy1:1;	// !
+	t_u8 UserPri:3;		/* ! 802.1d User Priority */
+	IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;	/* !
+								   Legacy/Trigg
+								 */
+	t_u8 Aggregation:1;	/* ! Reserved */
+	t_u8 AccessPolicy2:1;	/* ! */
+	t_u8 AccessPolicy1:1;	/* ! */
 	IEEEtypes_WMM_TSPEC_TS_Info_Direction_e Direction:2;
-	t_u8 TID:4;		// ! Unique identifier
+	t_u8 TID:4;		/* ! Unique identifier */
 	IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e TrafficType:1;
 #else
 	IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e TrafficType:1;
-	t_u8 TID:4;		// ! Unique identifier
+	t_u8 TID:4;		/* ! Unique identifier */
 	IEEEtypes_WMM_TSPEC_TS_Info_Direction_e Direction:2;
-	t_u8 AccessPolicy1:1;	// !
-	t_u8 AccessPolicy2:1;	// !
-	t_u8 Aggregation:1;	// ! Reserved
-	IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;	// !
-								// Legacy/Trigg
-	t_u8 UserPri:3;		// ! 802.1d User Priority
+	t_u8 AccessPolicy1:1;	/* ! */
+	t_u8 AccessPolicy2:1;	/* ! */
+	t_u8 Aggregation:1;	/* ! Reserved */
+	IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;	/* !
+								   Legacy/Trigg
+								 */
+	t_u8 UserPri:3;		/* ! 802.1d User Priority */
 	IEEEtypes_WMM_TSPEC_TS_Info_AckPolicy_e AckPolicy:2;
 	t_u8 Schedule:1;
-	t_u8 Reserved17_23:7;	// ! Reserved
+	t_u8 Reserved17_23:7;	/* ! Reserved */
 #endif
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_TS_Info_t;
 
 /** Data structure of WMM TSPEC Nominal Size */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 #ifdef BIG_ENDIAN_SUPPORT
-	t_u16 Fixed:1;		// ! 1: Fixed size given in Size, 0: Var, size
-				// is nominal
-	t_u16 Size:15;		// ! Nominal size in octets
+	t_u16 Fixed:1;		/* ! 1: Fixed size given in Size, 0: Var, size
+				   is nominal */
+	t_u16 Size:15;		/* ! Nominal size in octets */
 #else
-	t_u16 Size:15;		// ! Nominal size in octets
-	t_u16 Fixed:1;		// ! 1: Fixed size given in Size, 0: Var, size
-				// is nominal
+	t_u16 Size:15;		/* ! Nominal size in octets */
+	t_u16 Fixed:1;		/* ! 1: Fixed size given in Size, 0: Var, size
+				   is nominal */
 #endif
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_NomMSDUSize_t;
 
 /** Data structure of WMM TSPEC SBWA */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 #ifdef BIG_ENDIAN_SUPPORT
-	t_u16 Whole:3;		// ! Whole portion
-	t_u16 Fractional:13;	// ! Fractional portion
+	t_u16 Whole:3;		/* ! Whole portion */
+	t_u16 Fractional:13;	/* ! Fractional portion */
 #else
-	t_u16 Fractional:13;	// ! Fractional portion
-	t_u16 Whole:3;		// ! Whole portion
+	t_u16 Fractional:13;	/* ! Fractional portion */
+	t_u16 Whole:3;		/* ! Whole portion */
 #endif
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_SBWA;
 
 /** Data structure of WMM TSPEC Body */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 
 	IEEEtypes_WMM_TSPEC_TS_Info_t TSInfo;
 	IEEEtypes_WMM_TSPEC_NomMSDUSize_t NomMSDUSize;
@@ -640,8 +607,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_Body_t;
 
 /** Data structure of WMM TSPEC all elements */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 ElementId;
 	t_u8 Len;
 	t_u8 OuiType[4];	/* 00:50:f2:02 */
@@ -653,8 +619,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_WMM_TSPEC_t;
 
 /** WMM Action Category values */
-typedef MLAN_PACK_START enum _IEEEtypes_ActionCategory_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_ActionCategory_e {
 
 	IEEE_MGMT_ACTION_CATEGORY_SPECTRUM_MGMT = 0,
 	IEEE_MGMT_ACTION_CATEGORY_QOS = 1,
@@ -672,8 +637,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_ActionCategory_e
 } MLAN_PACK_END IEEEtypes_ActionCategory_e;
 
 /** WMM TSPEC operations */
-typedef MLAN_PACK_START enum _IEEEtypes_WMM_Tspec_Action_e
-{
+typedef MLAN_PACK_START enum _IEEEtypes_WMM_Tspec_Action_e {
 
 	TSPEC_ACTION_CODE_ADDTS_REQ = 0,
 	TSPEC_ACTION_CODE_ADDTS_RSP = 1,
@@ -682,8 +646,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_WMM_Tspec_Action_e
 } MLAN_PACK_END IEEEtypes_WMM_Tspec_Action_e;
 
 /** WMM TSPEC Category Action Base */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 
 	IEEEtypes_ActionCategory_e category;
 	IEEEtypes_WMM_Tspec_Action_e action;
@@ -692,8 +655,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_WMM_Tspec_Action_Base_Tspec_t;
 
 /** WMM TSPEC AddTS request structure */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 
 	IEEEtypes_WMM_Tspec_Action_Base_Tspec_t tspecAct;
 	t_u8 statusCode;
@@ -705,8 +667,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_Action_WMM_AddTsReq_t;
 
 /** WMM TSPEC AddTS response structure */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	IEEEtypes_WMM_Tspec_Action_Base_Tspec_t tspecAct;
 	t_u8 statusCode;
 	IEEEtypes_WMM_TSPEC_t tspecIE;
@@ -717,8 +678,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_Action_WMM_AddTsRsp_t;
 
 /** WMM TSPEC DelTS structure */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	IEEEtypes_WMM_Tspec_Action_Base_Tspec_t tspecAct;
 	t_u8 reasonCode;
 	IEEEtypes_WMM_TSPEC_t tspecIE;
@@ -726,8 +686,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_Action_WMM_DelTs_t;
 
 /** union of WMM TSPEC structures */
-typedef MLAN_PACK_START union
-{
+typedef MLAN_PACK_START union {
 	IEEEtypes_WMM_Tspec_Action_Base_Tspec_t tspecAct;
 
 	IEEEtypes_Action_WMM_AddTsReq_t addTsReq;
@@ -737,8 +696,7 @@ typedef MLAN_PACK_START union
 } MLAN_PACK_END IEEEtypes_Action_WMMAC_t;
 
 /** union of WMM TSPEC & Action category */
-typedef MLAN_PACK_START union
-{
+typedef MLAN_PACK_START union {
 	IEEEtypes_ActionCategory_e category;
 
 	IEEEtypes_Action_WMMAC_t wmmAc;
@@ -746,8 +704,7 @@ typedef MLAN_PACK_START union
 } MLAN_PACK_END IEEEtypes_ActionFrame_t;
 
 /** Data structure for subband set */
-typedef MLAN_PACK_START struct _IEEEtypes_SubbandSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_SubbandSet_t {
     /** First channel */
 	t_u8 first_chan;
     /** Number of channels */
@@ -758,8 +715,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_SubbandSet_t
 
 #ifdef STA_SUPPORT
 /** Data structure for Country IE */
-typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoSet_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -771,8 +727,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoSet_t
 } MLAN_PACK_END IEEEtypes_CountryInfoSet_t, *pIEEEtypes_CountryInfoSet_t;
 
 /** Data structure for Country IE full set */
-typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoFullSet_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoFullSet_t {
     /** Element ID */
 	t_u8 element_id;
     /** Length */
@@ -787,8 +742,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_CountryInfoFullSet_t
 #endif /* STA_SUPPORT */
 
 /** HT Capabilities Data */
-typedef struct MLAN_PACK_START _HTCap_t
-{
+typedef struct MLAN_PACK_START _HTCap_t {
     /** HT Capabilities Info field */
 	t_u16 ht_cap_info;
     /** A-MPDU Parameters field */
@@ -804,8 +758,7 @@ typedef struct MLAN_PACK_START _HTCap_t
 } MLAN_PACK_END HTCap_t, *pHTCap_t;
 
 /** HT Information Data */
-typedef struct MLAN_PACK_START _HTInfo_t
-{
+typedef struct MLAN_PACK_START _HTInfo_t {
     /** Primary channel */
 	t_u8 pri_chan;
     /** Field 2 */
@@ -819,16 +772,14 @@ typedef struct MLAN_PACK_START _HTInfo_t
 } MLAN_PACK_END HTInfo_t, *pHTInfo_t;
 
 /** 20/40 BSS Coexistence Data */
-typedef struct MLAN_PACK_START _BSSCo2040_t
-{
+typedef struct MLAN_PACK_START _BSSCo2040_t {
     /** 20/40 BSS Coexistence value */
 	t_u8 bss_co_2040_value;
 } MLAN_PACK_END BSSCo2040_t, *pBSSCo2040_t;
 
 #ifdef BIG_ENDIAN_SUPPORT
 /** Extended Capabilities Data */
-typedef struct MLAN_PACK_START _ExtCap_t
-{
+typedef struct MLAN_PACK_START _ExtCap_t {
     /** Extended Capabilities value */
 	t_u8 rsvdBit63:1;	/* bit 63 */
 	t_u8 OperModeNtf:1;	/* bit 62 */
@@ -897,8 +848,7 @@ typedef struct MLAN_PACK_START _ExtCap_t
 } MLAN_PACK_END ExtCap_t, *pExtCap_t;
 #else
 /** Extended Capabilities Data */
-typedef struct MLAN_PACK_START _ExtCap_t
-{
+typedef struct MLAN_PACK_START _ExtCap_t {
     /** Extended Capabilities value */
 	t_u8 BSS_CoexistSupport:1;	/* bit 0 */
 	t_u8 Reserved1:1;	/* bit 1 */
@@ -968,8 +918,7 @@ typedef struct MLAN_PACK_START _ExtCap_t
 #endif
 
 /** Overlapping BSS Scan Parameters Data */
-typedef struct MLAN_PACK_START _OverlapBSSScanParam_t
-{
+typedef struct MLAN_PACK_START _OverlapBSSScanParam_t {
     /** OBSS Scan Passive Dwell in milliseconds */
 	t_u16 obss_scan_passive_dwell;
     /** OBSS Scan Active Dwell in milliseconds */
@@ -987,8 +936,7 @@ typedef struct MLAN_PACK_START _OverlapBSSScanParam_t
 } MLAN_PACK_END OBSSScanParam_t, *pOBSSScanParam_t;
 
 /** HT Capabilities IE */
-typedef MLAN_PACK_START struct _IEEEtypes_HTCap_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_HTCap_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** HTCap struct */
@@ -996,8 +944,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_HTCap_t
 } MLAN_PACK_END IEEEtypes_HTCap_t, *pIEEEtypes_HTCap_t;
 
 /** HT Information IE */
-typedef MLAN_PACK_START struct _IEEEtypes_HTInfo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_HTInfo_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** HTInfo struct */
@@ -1005,8 +952,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_HTInfo_t
 } MLAN_PACK_END IEEEtypes_HTInfo_t, *pIEEEtypes_HTInfo_t;
 
 /** 20/40 BSS Coexistence IE */
-typedef MLAN_PACK_START struct _IEEEtypes_2040BSSCo_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_2040BSSCo_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** BSSCo2040_t struct */
@@ -1014,8 +960,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_2040BSSCo_t
 } MLAN_PACK_END IEEEtypes_2040BSSCo_t, *pIEEEtypes_2040BSSCo_t;
 
 /** Extended Capabilities IE */
-typedef MLAN_PACK_START struct _IEEEtypes_ExtCap_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_ExtCap_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** ExtCap_t struct */
@@ -1023,8 +968,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_ExtCap_t
 } MLAN_PACK_END IEEEtypes_ExtCap_t, *pIEEEtypes_ExtCap_t;
 
 /** Overlapping BSS Scan Parameters IE */
-typedef MLAN_PACK_START struct _IEEEtypes_OverlapBSSScanParam_t
-{
+typedef MLAN_PACK_START struct _IEEEtypes_OverlapBSSScanParam_t {
     /** Generic IE header */
 	IEEEtypes_Header_t ieee_hdr;
     /** OBSSScanParam_t struct */
@@ -1039,8 +983,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_OverlapBSSScanParam_t
 #define WLAN_11H_MAX_IBSS_DFS_CHANNELS 25
 
 /**  IEEE Power Constraint element (7.3.2.15) */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;    /**< IEEE Element ID = 32 */
 	t_u8 len;	    /**< Element length after id and len */
 	t_u8 local_constraint;
@@ -1048,8 +991,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_PowerConstraint_t;
 
 /**  IEEE Power Capability element (7.3.2.16) */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;	    /**< IEEE Element ID = 33 */
 	t_u8 len;		    /**< Element length after id and len */
 	t_s8 min_tx_power_capability;
@@ -1059,8 +1001,7 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_PowerCapability_t;
 
 /**  IEEE TPC Report element (7.3.2.18) */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;/**< IEEE Element ID = 35 */
 	t_u8 len;	/**< Element length after id and len */
 	t_s8 tx_power;	/**< Max power used to transmit the TPC Report frame (dBm) */
@@ -1072,8 +1013,7 @@ typedef MLAN_PACK_START struct
 /**
  *  Sub-band description used in the supported channels element.
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 start_chan;/**< Starting channel in the subband */
 	t_u8 num_chans;	/**< Number of channels in the subband */
 
@@ -1084,8 +1024,7 @@ typedef MLAN_PACK_START struct
  *  Sent in association requests. Details the sub-bands and number
  *    of channels supported in each subband
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;/**< IEEE Element ID = 36 */
 	t_u8 len;	/**< Element length after id and len */
 
@@ -1100,8 +1039,7 @@ typedef MLAN_PACK_START struct
  *    and to which channel it is changing to.  Only starting STAs in
  *    an IBSS and APs are allowed to originate a chan switch element.
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;	/**< IEEE Element ID = 37 */
 	t_u8 len;		/**< Element length after id and len */
 	t_u8 chan_switch_mode;	/**< STA should not transmit any frames if 1 */
@@ -1116,8 +1054,7 @@ typedef MLAN_PACK_START struct
  *    which the STA should not be transmitting data.  Only starting STAs in
  *    an IBSS and APs are allowed to originate a quiet element.
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;    /**< IEEE Element ID = 40 */
 	t_u8 len;	    /**< Element length after id and len */
 	t_u8 quiet_count;   /**< Number of TBTTs until beacon with the quiet period */
@@ -1131,8 +1068,7 @@ typedef MLAN_PACK_START struct
 /**
 ***  @brief Map octet of the basic measurement report (7.3.2.22.1)
 **/
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 #ifdef BIG_ENDIAN_SUPPORT
 	t_u8 rsvd5_7:3;		   /**< Reserved */
 	t_u8 unmeasured:1;	   /**< Channel is unmeasured */
@@ -1157,8 +1093,7 @@ typedef MLAN_PACK_START struct
  *    contains a basic measurement report for that channel in the
  *    IEEEtypes_IBSS_DFS_t element
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 channel_number;	/**< Channel number */
 	MeasRptBasicMap_t rpt_map;
 				/**< Basic measurement report for the channel */
@@ -1171,8 +1106,7 @@ typedef MLAN_PACK_START struct
  *    Provides information regarding the IBSS DFS Owner as well as the
  *    originating STAs supported channels and basic measurement results.
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
 	t_u8 element_id;		    /**< IEEE Element ID = 41 */
 	t_u8 len;			    /**< Element length after id and len */
 	t_u8 dfs_owner[MLAN_MAC_ADDR_LENGTH];
@@ -1189,8 +1123,7 @@ typedef MLAN_PACK_START struct
  * IEEE BSS information needed from scan results for later processing in
  *    join commands
  */
-typedef struct
-{
+typedef struct {
 	t_u8 sensed_11h;
 		      /**< Capability bit set or 11h IE found in this BSS */
 
@@ -1224,8 +1157,7 @@ typedef struct
  *  Used to specify SSID specific filters as well as SSID pattern matching
  *    filters for scan result processing in firmware.
  */
-typedef MLAN_PACK_START struct _wlan_user_scan_ssid
-{
+typedef MLAN_PACK_START struct _wlan_user_scan_ssid {
     /** SSID */
 	t_u8 ssid[MLAN_MAX_SSID_LENGTH + 1];
     /** Maximum length of SSID */
@@ -1238,8 +1170,7 @@ typedef MLAN_PACK_START struct _wlan_user_scan_ssid
  *  Multiple instances of this structure are included in the IOCTL command
  *   to configure a instance of a scan on the specific channel.
  */
-typedef MLAN_PACK_START struct _wlan_user_scan_chan
-{
+typedef MLAN_PACK_START struct _wlan_user_scan_chan {
     /** Channel Number to scan */
 	t_u8 chan_number;
     /** Radio type: 'B/G' Band = 0, 'A' Band = 1 */
@@ -1259,8 +1190,7 @@ typedef MLAN_PACK_START struct _wlan_user_scan_chan
  *    as well as a channel list (wlan_user_scan_chan) for each scan period
  *    desired.
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
     /**
      *  Flag set to keep the previous scan table intact
      *
@@ -1324,8 +1254,7 @@ typedef MLAN_PACK_START struct
 /**
  *  Input structure to configure bs scan cmd to firmware
  */
-typedef MLAN_PACK_START struct
-{
+typedef MLAN_PACK_START struct {
     /** action */
 	t_u16 action;
     /** enable/disable */
@@ -1367,8 +1296,7 @@ typedef MLAN_PACK_START struct
 /** BSSDescriptor_t
  *    Structure used to store information for beacon/probe response
  */
-typedef struct _BSSDescriptor_t
-{
+typedef struct _BSSDescriptor_t {
     /** MAC address */
 	mlan_802_11_mac_addr mac_address;
 

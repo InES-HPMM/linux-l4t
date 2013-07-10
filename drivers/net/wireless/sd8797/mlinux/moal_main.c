@@ -848,11 +848,16 @@ woal_init_sw(moal_handle * handle)
 			handle->drv_mode.bss_attr[i].bss_virtual;
 	}
 	memcpy(&device.callbacks, &woal_callbacks, sizeof(mlan_callbacks));
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	if (MLAN_STATUS_SUCCESS == mlan_register(&device, &pmlan))
 		handle->pmlan_adapter = pmlan;
 	else
 		ret = MLAN_STATUS_FAILURE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 
 	LEAVE();
 	return ret;
@@ -1314,7 +1319,13 @@ woal_init_fw_dpc(moal_handle * handle)
 		memset(&fw, 0, sizeof(mlan_fw_image));
 		fw.pfw_buf = (t_u8 *) handle->firmware->data;
 		fw.fw_len = handle->firmware->size;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+		sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 		ret = mlan_dnld_fw(handle->pmlan_adapter, &fw);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+		sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 		if (ret == MLAN_STATUS_FAILURE) {
 			PRINTM(MERROR, "WLAN: Download FW with nowwait: %d\n",
 			       req_fw_nowait);
@@ -1347,9 +1358,13 @@ woal_init_fw_dpc(moal_handle * handle)
 	handle->init_wait_q_woken = MFALSE;
 
 	ret = mlan_set_init_param(handle->pmlan_adapter, &param);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	ret = mlan_init_fw(handle->pmlan_adapter);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	if (ret == MLAN_STATUS_FAILURE) {
 		goto done;
 	} else if (ret == MLAN_STATUS_SUCCESS) {
@@ -1362,6 +1377,8 @@ woal_init_fw_dpc(moal_handle * handle)
 	if (handle->hardware_status != HardwareStatusReady) {
 		woal_moal_debug_info(woal_get_priv(handle, MLAN_BSS_ROLE_ANY),
 				     handle, MTRUE);
+#if defined(DEBUG_LEVEL1)
+#endif
 		ret = MLAN_STATUS_FAILURE;
 		goto done;
 	}
@@ -2138,7 +2155,11 @@ woal_terminate_workqueue(moal_handle * handle)
 		destroy_workqueue(handle->workqueue);
 		handle->workqueue = NULL;
 	}
-
+	if (handle->rx_workqueue) {
+		flush_workqueue(handle->rx_workqueue);
+		destroy_workqueue(handle->rx_workqueue);
+		handle->rx_workqueue = NULL;
+	}
 	LEAVE();
 }
 
@@ -2501,6 +2522,7 @@ t_u8
 woal_check_driver_status(moal_handle * handle)
 {
 	moal_private *priv = NULL;
+	struct timeval t;
 	int i = 0;
 	ENTER();
 	priv = woal_get_priv(handle, MLAN_BSS_ROLE_ANY);
@@ -2533,18 +2555,14 @@ woal_check_driver_status(moal_handle * handle)
 			}
 		}
 	}
-	if (info.data_sent || info.cmd_sent) {
-		if ((jiffies - handle->last_int_jiffies) > MAX_INT_IDLE_TIME) {
-			PRINTM(MERROR, "data_sent=%d cmd_sent=%d\n",
-			       info.data_sent, info.cmd_sent);
-			LEAVE();
-			return MTRUE;
-		}
-	}
 	if (info.pm_wakeup_card_req && info.pm_wakeup_fw_try) {
-		if ((jiffies - handle->last_int_jiffies) > MAX_INT_IDLE_TIME) {
-			PRINTM(MERROR, "wakeup_dev_req=%d wakeup_tries=%d\n",
-			       info.pm_wakeup_card_req, info.pm_wakeup_fw_try);
+		do_gettimeofday(&t);
+#define MAX_WAIT_TIME     3
+		if (t.tv_sec > (info.pm_wakeup_in_secs + MAX_WAIT_TIME)) {
+			PRINTM(MERROR,
+			       "wakeup_dev_req=%d wakeup_tries=%d wait=%d\n",
+			       info.pm_wakeup_card_req, info.pm_wakeup_fw_try,
+			       (int)(t.tv_sec - info.pm_wakeup_in_secs));
 			LEAVE();
 			return MTRUE;
 		}
@@ -2575,6 +2593,9 @@ woal_mlan_debug_info(moal_private * priv)
 		LEAVE();
 		return;
 	}
+	PRINTM(MERROR, "------------mlan_debug_info-------------\n");
+	PRINTM(MERROR, "mlan_processing =%d\n", info.mlan_processing);
+	PRINTM(MERROR, "mlan_rx_processing =%d\n", info.mlan_rx_processing);
 
 	PRINTM(MERROR, "num_cmd_timeout = %d\n", info.num_cmd_timeout);
 	PRINTM(MERROR, "Timeout cmd id = 0x%x, act = 0x%x \n",
@@ -2645,7 +2666,7 @@ woal_mlan_debug_info(moal_private * priv)
 	       (unsigned int)info.mp_rd_bitmap, info.curr_rd_port);
 	PRINTM(MERROR, "mp_wr_bitmap=0x%x curr_wr_port=0x%x\n",
 	       (unsigned int)info.mp_wr_bitmap, info.curr_wr_port);
-
+	PRINTM(MERROR, "------------mlan_debug_info End-------------\n");
 	LEAVE();
 }
 
@@ -3305,7 +3326,7 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
 #ifdef STA_SUPPORT
 #endif
 
-	priv->enable_tcp_ack_enh = MTRUE;
+	priv->enable_tcp_ack_enh = MFALSE;
 
 	woal_request_get_fw_info(priv, wait_option, NULL);
 
@@ -4218,7 +4239,9 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
 	}
 
 	/* Display SDIO registers */
-	if (flag && phandle->main_state == MOAL_END_MAIN_PROCESS) {
+	if (flag &&
+	    ((phandle->main_state == MOAL_END_MAIN_PROCESS) ||
+	     (phandle->main_state == MOAL_STATE_IDLE))) {
 		woal_sdio_reg_dbg(phandle);
 	} else {
 		phandle->sdio_reg_dbg = MTRUE;
@@ -4227,6 +4250,26 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
 
 	LEAVE();
 	return;
+}
+
+/**
+ *  @brief This workqueue function handles rx_process
+ *
+ *  @param work    A pointer to work_struct
+ *
+ *  @return        N/A
+ */
+t_void
+woal_rx_work_queue(struct work_struct * work)
+{
+	moal_handle *handle = container_of(work, moal_handle, rx_work);
+	ENTER();
+	if (handle->surprise_removed == MTRUE) {
+		LEAVE();
+		return;
+	}
+	mlan_rx_process(handle->pmlan_adapter);
+	LEAVE();
 }
 
 /**
@@ -4271,10 +4314,16 @@ woal_main_work_queue(struct work_struct * work)
 #endif
 
 	handle->main_state = MOAL_ENTER_WORK_QUEUE;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 	handle->main_state = MOAL_START_MAIN_PROCESS;
 	/* Call MLAN main process */
 	mlan_main_process(handle->pmlan_adapter);
 	handle->main_state = MOAL_END_MAIN_PROCESS;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
+	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
 
 	LEAVE();
 }
@@ -4296,7 +4345,6 @@ woal_interrupt(moal_handle * handle)
 		LEAVE();
 		return;
 	}
-	handle->last_int_jiffies = jiffies;
 	/* call mlan_interrupt to read int status */
 	mlan_interrupt(handle->pmlan_adapter);
 #ifdef SDIO_SUSPEND_RESUME
@@ -4310,6 +4358,7 @@ woal_interrupt(moal_handle * handle)
 	/* Call MLAN main process */
 	mlan_main_process(handle->pmlan_adapter);
 	handle->main_state = MOAL_END_MAIN_PROCESS;
+	queue_work(handle->rx_workqueue, &handle->rx_work);
 	LEAVE();
 }
 
@@ -4443,8 +4492,8 @@ woal_add_card(void *card)
 #else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
 	handle->workqueue =
-		alloc_workqueue("MOAL_WORK_QUEUE", WQ_HIGHPRI | WQ_MEM_RECLAIM,
-				1);
+		alloc_workqueue("MOAL_WORK_QUEUE",
+				WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
 #else
 	handle->workqueue = create_workqueue("MOAL_WORK_QUEUE");
 #endif
@@ -4453,6 +4502,25 @@ woal_add_card(void *card)
 		goto err_kmalloc;
 
 	MLAN_INIT_WORK(&handle->main_work, woal_main_work_queue);
+	/* Create workqueue for rx process */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
+	/* For kernel less than 2.6.14 name can not be * greater than 10
+	   characters */
+	handle->rx_workqueue = create_workqueue("MOAL_RX_WORKQ");
+#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
+	handle->rx_workqueue =
+		alloc_workqueue("MOAL_RX_WORK_QUEUE",
+				WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
+#else
+	handle->rx_workqueue = create_workqueue("MOAL_RX_WORK_QUEUE");
+#endif
+#endif
+	if (!handle->rx_workqueue) {
+		woal_terminate_workqueue(handle);
+		goto err_kmalloc;
+	}
+	MLAN_INIT_WORK(&handle->rx_work, woal_rx_work_queue);
 
 #ifdef REASSOCIATION
 	PRINTM(MINFO, "Starting re-association thread...\n");
