@@ -31,14 +31,12 @@
 #define NVSHM_CHAN_NAME_SIZE (27)         /* max channel name size in chars */
 
 /* Versions: */
-/* Original version */
-#define NVSHM_CONFIG_ORIGINAL_VERSION (0x00010001)
-/** Serial version: support for SHM serial version in SHM
- *  config: SHM serial version is PCID */
-#define NVSHM_CONFIG_SERIAL_VERSION (0x00010002)
-#define NVSHM_CONFIG_V3_VERSION (0x00010003)
-/** Version with statistics export support, otherwise compatible with V3 */
-#define NVSHM_CONFIG_STATS_VERSION (0x00020001)
+#define NVSHM_MAJOR(v) (v >> 16)
+#define NVSHM_MINOR(v) (v & 0xFFFF)
+/** Version 1.3 is supported. Keep until modem image has reached v2.x in main */
+#define NVSHM_CONFIG_VERSION_1_3 (0x00010003)
+/** Version with statistics export support, otherwise compatible with v1.3 */
+#define NVSHM_CONFIG_VERSION (0x00020001)
 
 
 #define NVSHM_AP_POOL_ID (128) /* IOPOOL ID - use 128-255 for AP */

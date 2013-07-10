@@ -37,15 +37,32 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 
 	conf = (struct nvshm_config *)(handle->mb_base_virt
 				       + NVSHM_CONFIG_OFFSET);
-	if ((conf->version != NVSHM_CONFIG_STATS_VERSION) &&
-	    (conf->version != NVSHM_CONFIG_V3_VERSION)) {
-		pr_err("%s:No SHM: protocol mismatch: BBC=%x AP=%x/%x\n",
+	/* No change in v2.x kernel prevents from running v1.3 modems, so let's
+	 * ensure some continuity of service.
+	 */
+	if ((conf->version == NVSHM_CONFIG_VERSION_1_3) &&
+	    (NVSHM_MAJOR(NVSHM_CONFIG_VERSION) == 2)) {
+		pr_warn("%s BBC version 1.3, statistics not available\n",
+			__func__);
+	} else if (NVSHM_MAJOR(conf->version) !=
+					NVSHM_MAJOR(NVSHM_CONFIG_VERSION)) {
+		pr_err("%s SHM version mismatch: BBC: %d.%d / AP: %d.%d\n",
 		       __func__,
-		       (unsigned int)conf->version,
-		       NVSHM_CONFIG_V3_VERSION,
-		       NVSHM_CONFIG_STATS_VERSION);
+		       NVSHM_MAJOR(conf->version),
+		       NVSHM_MINOR(conf->version),
+		       NVSHM_MAJOR(NVSHM_CONFIG_VERSION),
+		       NVSHM_MINOR(NVSHM_CONFIG_VERSION));
 		return -1;
+	} else if (NVSHM_MINOR(conf->version) !=
+					NVSHM_MINOR(NVSHM_CONFIG_VERSION)) {
+		pr_warn("%s SHM versions differ: BBC: %d.%d / AP: %d.%d\n",
+			__func__,
+			NVSHM_MAJOR(conf->version),
+			NVSHM_MINOR(conf->version),
+			NVSHM_MAJOR(NVSHM_CONFIG_VERSION),
+			NVSHM_MINOR(NVSHM_CONFIG_VERSION));
 	}
+
 	if (handle->ipc_size != conf->shmem_size) {
 		pr_warn("%s shmem mapped/reported not matching: 0x%x/0x%x\n",
 			__func__, (unsigned int)handle->ipc_size,
@@ -58,13 +75,13 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 
 	handle->desc_size = conf->region_ap_desc_size;
 	pr_debug("%s desc_size=%d\n",
-		__func__, (int)handle->desc_size);
+		 __func__, (int)handle->desc_size);
 
 	/* Data is cached */
 	handle->data_base_virt = handle->ipc_base_virt
 		+ conf->region_ap_data_offset;
 	pr_debug("%s data_base_virt=0x%p\n",
-		__func__, handle->data_base_virt);
+		 __func__, handle->data_base_virt);
 
 	handle->data_size = conf->region_ap_data_size;
 	pr_debug("%s data_size=%d\n", __func__, (int)handle->data_size);
@@ -74,36 +91,34 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				     + conf->queue_bb_offset);
 	pr_debug("%s shared_queue_head offset=0x%lx\n",
-		__func__,
+		 __func__,
 		 (long)handle->shared_queue_head - (long)handle->ipc_base_virt);
 #else
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				      + conf->queue_ap_offset);
 	pr_debug("%s shared_queue_head offset=0x%lx\n",
-		__func__,
+		 __func__,
 		 (long)handle->shared_queue_head - (long)handle->ipc_base_virt);
 #endif
 	handle->shared_queue_tail =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				     + conf->queue_ap_offset);
 	pr_debug("%s shared_queue_tail offset=0x%lx\n",
-		__func__, (long)handle->shared_queue_tail -
-		(long)handle->ipc_base_virt);
+		 __func__, (long)handle->shared_queue_tail -
+		 (long)handle->ipc_base_virt);
 
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		handle->chan[chan].index = chan;
 		handle->chan[chan].map = conf->chan_map[chan];
 		if (handle->chan[chan].map.type != NVSHM_CHAN_UNMAP) {
 			pr_debug("%s chan[%d]=%s\n",
-				__func__, chan, handle->chan[chan].map.name);
+				 __func__, chan, handle->chan[chan].map.name);
 		}
 	}
 
-	if (conf->version >= NVSHM_CONFIG_SERIAL_VERSION) {
-		/* Serial number (e.g BBC PCID) */
-		tegra_bb_set_ipc_serial(handle->tegra_bb, conf->serial);
-	}
+	/* Serial number (e.g BBC PCID) */
+	tegra_bb_set_ipc_serial(handle->tegra_bb, conf->serial);
 
 	handle->conf = conf;
 	handle->configured = 1;
