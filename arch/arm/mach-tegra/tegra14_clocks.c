@@ -6235,6 +6235,52 @@ static struct clk tegra_clk_cbus = {
 };
 #endif
 
+static void tegra14_camera_mclk_init(struct clk *c)
+{
+	c->state = OFF;
+	c->set = true;
+
+	if (!strcmp(c->name, "mclk")) {
+		c->parent = tegra_get_clock_by_name("vi_sensor");
+		c->max_rate = c->parent->max_rate;
+	}
+
+	if (!strcmp(c->name, "mclk2")) {
+		c->parent = tegra_get_clock_by_name("vi_sensor2");
+		c->max_rate = c->parent->max_rate;
+	}
+}
+
+static int tegra14_camera_mclk_set_rate(struct clk *c, unsigned long rate)
+{
+	return clk_set_rate(c->parent, rate);
+}
+
+static struct clk_ops tegra_camera_mclk_ops = {
+	.init     = tegra14_camera_mclk_init,
+	.enable   = tegra14_periph_clk_enable,
+	.disable  = tegra14_periph_clk_disable,
+	.set_rate = tegra14_camera_mclk_set_rate,
+};
+
+static struct clk tegra_camera_mclk = {
+	.name = "mclk",
+	.ops = &tegra_camera_mclk_ops,
+	.u.periph = {
+		.clk_num = 92,
+	},
+	.flags = PERIPH_NO_RESET,
+};
+
+static struct clk tegra_camera_mclk2 = {
+	.name = "mclk2",
+	.ops = &tegra_camera_mclk_ops,
+	.u.periph = {
+		.clk_num = 171,
+	},
+	.flags = PERIPH_NO_RESET,
+};
+
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
 		.name      = _name,			\
@@ -6594,7 +6640,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("csus", "touch_clk", "e1680_ts_clk_con"),
 	CLK_DUPLICATE("dmic0", "tegra-dmic.0", NULL),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.1", NULL),
-	CLK_DUPLICATE("vi_sensor2", NULL, "default_mclk"),
+	CLK_DUPLICATE("mclk2", NULL, "default_mclk"),
 };
 
 struct clk *tegra_ptr_clks[] = {
@@ -6651,6 +6697,11 @@ struct clk *tegra_ptr_clks[] = {
 #else
 	&tegra_clk_cbus,
 #endif
+};
+
+struct clk *tegra_ptr_camera_mclks[] = {
+	&tegra_camera_mclk,
+	&tegra_camera_mclk2,
 };
 
 /* Return true from this function if the target rate can be locked without
@@ -7316,6 +7367,9 @@ void __init tegra14x_init_clocks(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
 		tegra14_init_one_clock(&tegra_list_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_ptr_camera_mclks); i++)
+		tegra14_init_one_clock(tegra_ptr_camera_mclks[i]);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
 		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
