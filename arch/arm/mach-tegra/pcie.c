@@ -1672,6 +1672,23 @@ skip:
 	return 0;
 }
 
+static void tegra_pcie_enable_aspm_support(void)
+{
+	struct pci_dev *pdev = NULL;
+	u16 val = 0, aspm = 0;
+
+	for_each_pci_dev(pdev) {
+		/* Find ASPM capability */
+		pcie_capability_read_word(pdev, PCI_EXP_LNKCAP, &aspm);
+		aspm &= PCI_EXP_LNKCAP_ASPMS;
+
+		/* Enable ASPM support as per capability */
+		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
+		val |= aspm >> 10;
+		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
+	}
+}
+
 static int __init tegra_pcie_init(void)
 {
 	int err = 0;
@@ -1756,6 +1773,9 @@ static int __init tegra_pcie_init(void)
 	/* configure all links to gen2 speed by default */
 	for_each_pci_dev(pdev)
 		tegra_pcie_change_link_speed(pdev, true);
+
+	/* Enable ASPM support of all devices based on it's capability */
+	tegra_pcie_enable_aspm_support();
 
 	return 0;
 err_irq:
