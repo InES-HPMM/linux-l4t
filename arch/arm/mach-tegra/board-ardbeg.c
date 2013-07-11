@@ -326,7 +326,7 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	.gpio_codec3 = -1,
 	.i2s_param[HIFI_CODEC]       = {
 		.audio_port_id = 1,
-		.is_i2s_master = 1,
+		.is_i2s_master = 0,
 		.i2s_mode = TEGRA_DAIFMT_I2S,
 	},
 	.i2s_param[BT_SCO] = {
@@ -348,7 +348,7 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5645 = {
 	.gpio_codec3 = -1,
 	.i2s_param[HIFI_CODEC]       = {
 		.audio_port_id = 1,
-		.is_i2s_master = 1,
+		.is_i2s_master = 0,
 		.i2s_mode = TEGRA_DAIFMT_I2S,
 	},
 	.i2s_param[BT_SCO] = {
