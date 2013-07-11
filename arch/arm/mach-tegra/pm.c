@@ -1136,7 +1136,7 @@ static void tegra_suspend_check_pwr_stats(void)
 	for (partid = 0; partid < TEGRA_NUM_POWERGATE; partid++)
 		if ((1 << partid) & pwrgate_partid_mask)
 			if (tegra_powergate_is_powered(partid))
-				pr_info("partition %s is left on before suspend\n",
+				pr_debug("partition %s is left on before suspend\n",
 					tegra_powergate_get_name(partid));
 
 	return;
