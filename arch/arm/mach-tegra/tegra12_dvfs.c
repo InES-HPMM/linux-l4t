@@ -221,10 +221,10 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("disp2",  -1, -1, 0, KHZ,   108000, 120000, 144000, 192000,  240000),
 
 	/* xusb clocks */
-	CORE_DVFS("xusb_falcon_src", -1, -1, 1, KHZ,  204000, 204000, 204000, 204000, 204000),
-	CORE_DVFS("xusb_host_src",   -1, -1, 1, KHZ,   58300,  58300,  58300,  58300,  58300),
-	CORE_DVFS("xusb_dev_src",    -1, -1, 1, KHZ,   58300,  58300,  58300,  58300,  58300),
-	CORE_DVFS("xusb_ss_src",     -1, -1, 1, KHZ,   12000,  12000,  12000,  12000,  12000),
+	CORE_DVFS("xusb_falcon_src", -1, -1, 1, KHZ,  204000, 204000, 204000, 336000, 336000),
+	CORE_DVFS("xusb_host_src",   -1, -1, 1, KHZ,   58300,  58300,  58300, 112000, 112000),
+	CORE_DVFS("xusb_dev_src",    -1, -1, 1, KHZ,   58300,  58300,  58300, 112000, 112000),
+	CORE_DVFS("xusb_ss_src",     -1, -1, 1, KHZ,   60000,  60000,  60000, 120000, 120000),
 	CORE_DVFS("xusb_fs_src",     -1, -1, 1, KHZ,       0,  48000,  48000,  48000,  48000),
 	CORE_DVFS("xusb_hs_src",     -1, -1, 1, KHZ,       0,  60000,  60000,  60000,  60000),
 #endif
