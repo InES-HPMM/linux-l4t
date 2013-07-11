@@ -442,7 +442,7 @@ static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 		}
 		if (rail->therm_mv_caps) {
 			pr_err("tegra_dvfs: cannot fix %s with thermal caps\n",
-			       rail->reg_id, v);
+			       rail->reg_id);
 			return ERR_PTR(-ENOSYS);
 		}
 		return reg;
