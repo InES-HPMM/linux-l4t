@@ -934,8 +934,8 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 	/* Find nvmem carveout */
 	if (!pfn_valid(__phys_to_pfn(0x8e000000))) {
 		nvavp->os_info.phys = 0x8e000000;
-	} else if (!pfn_valid(__phys_to_pfn(0xfde00000))) {
-		nvavp->os_info.phys = 0xfde00000;
+	} else if (!pfn_valid(__phys_to_pfn(0xf7e00000))) {
+		nvavp->os_info.phys = 0xf7e00000;
 	} else if (!pfn_valid(__phys_to_pfn(0x9e000000))) {
 		nvavp->os_info.phys = 0x9e000000;
 	} else if (!pfn_valid(__phys_to_pfn(0xbe000000))) {
