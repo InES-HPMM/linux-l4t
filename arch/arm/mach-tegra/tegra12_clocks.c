@@ -3185,6 +3185,24 @@ static void tegra12_pllss_clk_init(struct clk *c)
 	c->min_rate =
 		DIV_ROUND_UP(c->u.pll.vco_min, pllss_p[PLLSS_SW_PDIV_MAX]);
 
+	/* Assuming bootloader does not initialize these PLLs */
+	n = (val & PLLSS_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
+	BUG_ON(n > 1);
+
+	/* Reset default value of those PLLs are not safe.
+	   For example, they cause problem in LP0 resume.
+	   Replace them here with the safe value. */
+	m = PLL_FIXED_MDIV(c, input_rate);
+	n = c->u.pll.vco_min / input_rate * m;
+	p_div = PLLSS_SW_PDIV_MAX;
+	val &= ~PLLSS_BASE_DIVM_MASK;
+	val &= ~PLLSS_BASE_DIVN_MASK;
+	val &= ~PLLSS_BASE_DIVP_MASK;
+	val |= m << PLL_BASE_DIVM_SHIFT;
+	val |= n << PLL_BASE_DIVN_SHIFT;
+	val |= p_div << PLL_BASE_DIVP_SHIFT;
+	clk_writel(val, c->reg + PLL_BASE);
+
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
 	m = (val & PLLSS_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
@@ -3261,10 +3279,6 @@ static int tegra12_pllss_clk_set_rate(struct clk *c, unsigned long rate)
 	val |= (sel->m << PLL_BASE_DIVM_SHIFT)
 		| (sel->n << PLL_BASE_DIVN_SHIFT)
 		| (pdiv << PLL_BASE_DIVP_SHIFT);
-
-	/* FIXME: hack for bringup */
-	pr_info("%s: val=%08x m=%d n=%d pdiv=%d input_rate=%lu\n",
-		c->name, val, sel->m, sel->n, pdiv, input_rate);
 
 	if (val == old_base)
 		return 0;
