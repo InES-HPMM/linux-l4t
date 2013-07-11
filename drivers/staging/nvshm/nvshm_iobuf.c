@@ -91,6 +91,7 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 		int check = nvshm_iobuf_check(alloc.free_pool_head);
 
 		if (check) {
+			spin_unlock_irqrestore(&alloc.lock, f);
 			pr_err("%s: iobuf check ret %d\n", __func__, check);
 			return NULL;
 		}
