@@ -369,7 +369,7 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "pclk",	"hclk",		51000000,	true },
 	{ "wake.sclk",	NULL,		40000000,	true },
 	{ "mselect",	"pll_p",	102000000,	true },
-	{ "pll_p_out5", "pll_p",	204000000,	true },
+	{ "pll_p_out5", NULL,		102000000,	true },
 #else
 	{ "pll_m_out1",	"pll_m",	275000000,	true },
 	{ "pll_p_out2",	"pll_p",	108000000,	false },
