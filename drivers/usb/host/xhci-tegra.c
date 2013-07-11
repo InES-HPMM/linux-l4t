@@ -192,10 +192,10 @@ struct xusb_save_regs {
 	u32 cfg_fladj;
 	u32 cfg_sid;
 	/* DFE and CTLE */
-	u32 tap1_val[2];
-	u32 amp_val[2];
-	u32 ctle_z_val[2];
-	u32 ctle_g_val[2];
+	u32 tap1_val[3];
+	u32 amp_val[3];
+	u32 ctle_z_val[3];
+	u32 ctle_g_val[3];
 };
 
 struct tegra_xhci_firmware {
@@ -2713,7 +2713,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 			tegra_xhci_restore_dfe_ctle_context(tegra, 3);
 		}
 
-		sw_resp |= (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
+		sw_resp |= tegra->cmd_data | (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
 		goto send_sw_response;
 	case MBOX_CMD_ACK:
 		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
