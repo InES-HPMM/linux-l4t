@@ -2252,7 +2252,8 @@ struct tegra_iommu_mapping {
 static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SYSTEM_GK20A] = {0, (u32)~0},
+	/* Non-zero base to account for gk20a driver's assumptions */
+	[SYSTEM_GK20A] = {0x100000, (u32)~0},
 };
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
