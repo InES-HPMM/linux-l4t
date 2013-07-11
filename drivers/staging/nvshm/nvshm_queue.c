@@ -27,12 +27,14 @@
 static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
 	struct nvshm_iobuf *phy_list, *leaf, *next, *sg_next;
+
 	phy_list = iob;
 	while (phy_list) {
 		leaf = phy_list;
 		next = phy_list->next;
 		while (leaf) {
 			sg_next = leaf->sg_next;
+			BUG_ON(nvshm_iobuf_check(leaf) < 0);
 			/* Flush associated data */
 			if (leaf->length) {
 				FLUSH_CPU_DCACHE(NVSHM_B2A(handle,
@@ -251,5 +253,7 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 void nvshm_abort_queue(struct nvshm_handle *handle)
 {
 	pr_debug("%s:abort queue\n", __func__);
+	/* Clear IPC to avoid warning in kernel log */
+	tegra_bb_abort_ipc(handle->tegra_bb);
 }
 

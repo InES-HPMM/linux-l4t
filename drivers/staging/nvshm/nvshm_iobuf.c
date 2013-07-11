@@ -365,6 +365,7 @@ int nvshm_iobuf_flags(struct nvshm_iobuf *iob,
 int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
+	struct nvshm_iobuf *bbiob;
 
 	/* Check iobuf is in IPC space */
 	if (ADDR_OUTSIDE(iob, priv->ipc_base_virt, priv->ipc_size)) {
@@ -374,23 +375,28 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 		return -1;
 	}
 
+	bbiob = NVSHM_A2B(priv, iob);
+
 	if (ADDR_OUTSIDE(iob->npdu_data, NVSHM_IPC_BB_BASE, priv->ipc_size)) {
-		pr_err("%s: npdu_data @ check failed 0x%lx\n",
+		pr_err("%s 0x%lx: npduData @ check failed 0x%lx\n",
 		       __func__,
+		       (long)bbiob,
 		       (long)iob->npdu_data);
 		return -2;
 	}
 	if (ADDR_OUTSIDE(iob->npdu_data + iob->data_offset,
 			NVSHM_IPC_BB_BASE, priv->ipc_size)) {
-		pr_err("%s: npdu_data + offset @ check failed 0x%lx/0x%lx\n",
-		       __func__, (long)iob->npdu_data, (long)iob->data_offset);
+		pr_err("%s 0x%lx: npduData + offset @ check failed 0x%lx/0x%lx\n",
+		       __func__, (long)bbiob,
+		       (long)iob->npdu_data, (long)iob->data_offset);
 		return -3;
 	}
 	if (iob->next) {
 		if (ADDR_OUTSIDE(iob->next,
 				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
-			pr_err("%s: next @ check failed 0x%lx\n",
+			pr_err("%s 0x%lx: next @ check failed 0x%lx\n",
 			       __func__,
+			       (long)bbiob,
 			       (long)iob->next);
 			return -4;
 		}
@@ -398,16 +404,16 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 	if (iob->sg_next) {
 		if (ADDR_OUTSIDE(iob->sg_next,
 				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
-			pr_err("%s:sg_next @ check failed 0x%lx\n",
-			       __func__, (long)iob->sg_next);
+			pr_err("%s 0x%lx:sg_next @ check failed 0x%lx\n",
+			       __func__, (long)bbiob, (long)iob->sg_next);
 			return -5;
 		}
 	}
 	if (iob->qnext) {
 		if (ADDR_OUTSIDE(iob->qnext,
 				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
-			pr_err("%s:qnext @ check failed 0x%lx\n",
-			       __func__, (long)iob->qnext);
+			pr_err("%s 0x%lx:qnext @ check failed 0x%lx\n",
+			       __func__, (long)bbiob, (long)iob->qnext);
 			return -6;
 		}
 	}
@@ -423,6 +429,9 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	pr_debug("%s instance %d\n", __func__, handle->instance);
 
 	spin_lock_init(&alloc.lock);
+	/* Clear BBC free list */
+	alloc.bbc_pool_head = alloc.bbc_pool_tail = NULL;
+	alloc.free_count = 0;
 	ndesc = handle->desc_size / sizeof(struct nvshm_iobuf) ;
 	alloc.nbuf = ndesc;
 	alloc.free_count = 0;
@@ -435,8 +444,11 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	iob = (struct nvshm_iobuf *)handle->desc_base_virt;
 
 	dataptr = handle->data_base_virt;
-	/* Dummy queue element */
+	/* Invalidate all data region */
+	INV_CPU_DCACHE(dataptr, handle->data_size);
+	/* Clear all desc region */
 	memset(handle->desc_base_virt, 0, handle->desc_size);
+	/* Dummy queue element */
 	iob->npdu_data = NVSHM_A2B(handle, dataptr);
 	dataptr += datasize;
 	iob->data_offset = NVSHM_DEFAULT_OFFSET;
@@ -464,9 +476,9 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	iob->next = NULL;
 
 	alloc.free_pool_tail = iob;
-	FLUSH_CPU_DCACHE(alloc.free_pool_head,
-			 (long)alloc.free_pool_tail
-			 - (long)alloc.free_pool_head);
+	/* Flush all descriptor region */
+	FLUSH_CPU_DCACHE(handle->desc_base_virt,
+			 (long)handle->desc_size);
 	spin_unlock(&alloc.lock);
 	return 0;
 }

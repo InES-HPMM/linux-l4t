@@ -121,6 +121,8 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	/* Serial number (e.g BBC PCID) */
 	tegra_bb_set_ipc_serial(handle->tegra_bb, conf->serial);
 
+	/* Invalidate cache for IPC region before use */
+	INV_CPU_DCACHE(handle->ipc_base_virt, handle->ipc_size);
 	handle->conf = conf;
 	handle->configured = 1;
 	return 0;
