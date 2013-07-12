@@ -570,6 +570,7 @@ int palmas_init_charger_regulator(struct palmas_charger_chip *palmas_chip,
 		struct palmas_charger_platform_data *pdata)
 {
 	int ret = 0;
+	struct regulator_config rconfig = { };
 
 	if (!pdata->bcharger_pdata) {
 		dev_err(palmas_chip->dev, "No charger platform data\n");
@@ -602,10 +603,12 @@ int palmas_init_charger_regulator(struct palmas_charger_chip *palmas_chip,
 						REGULATOR_CHANGE_STATUS |
 						REGULATOR_CHANGE_CURRENT;
 
+	rconfig.dev = palmas_chip->dev;
+	rconfig.of_node = NULL;
+	rconfig.init_data = &palmas_chip->chg_reg_init_data;
+	rconfig.driver_data = palmas_chip;
 	palmas_chip->chg_rdev = regulator_register(&palmas_chip->chg_reg_desc,
-				palmas_chip->dev,
-				&palmas_chip->chg_reg_init_data,
-				palmas_chip, NULL);
+					&rconfig);
 	if (IS_ERR(palmas_chip->chg_rdev)) {
 		ret = PTR_ERR(palmas_chip->chg_rdev);
 		dev_err(palmas_chip->dev,
@@ -618,6 +621,7 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 		struct palmas_charger_platform_data *pdata)
 {
 	int ret = 0;
+	struct regulator_config rconfig = { };
 
 	if (!pdata->vbus_pdata) {
 		dev_err(palmas_chip->dev, "No vbus platform data\n");
@@ -661,9 +665,12 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 	}
 
 	/* Register the regulators */
+	rconfig.dev = palmas_chip->dev;
+	rconfig.of_node = NULL;
+	rconfig.init_data = &palmas_chip->vbus_reg_init_data;
+	rconfig.driver_data = palmas_chip;
 	palmas_chip->vbus_rdev = regulator_register(&palmas_chip->vbus_reg_desc,
-			palmas_chip->dev, &palmas_chip->vbus_reg_init_data,
-			palmas_chip, NULL);
+					&rconfig);
 	if (IS_ERR(palmas_chip->vbus_rdev)) {
 		ret = PTR_ERR(palmas_chip->vbus_rdev);
 		dev_err(palmas_chip->dev,
@@ -857,7 +864,7 @@ int palmas_resource_cleanup(struct palmas_charger_chip *palmas_chip)
 }
 
 
-static int __devinit palmas_probe(struct platform_device *pdev)
+static int palmas_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct palmas_charger_chip *palmas_chip;
@@ -903,7 +910,7 @@ static int __devinit palmas_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int __devexit palmas_remove(struct platform_device *pdev)
+static int palmas_remove(struct platform_device *pdev)
 {
 	struct palmas_charger_chip *palmas_chip = dev_get_drvdata(&pdev->dev);
 	palmas_resource_cleanup(palmas_chip);
@@ -912,7 +919,7 @@ static int __devexit palmas_remove(struct platform_device *pdev)
 
 static struct platform_driver palmas_platform_driver = {
 	.probe  = palmas_probe,
-	.remove = __devexit_p(palmas_remove),
+	.remove = palmas_remove,
 	.driver = {
 		.name = "palmas-charger",
 		.owner = THIS_MODULE,
