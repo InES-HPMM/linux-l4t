@@ -261,6 +261,7 @@ config BATTERY_GAUGE_TPS8003X
 config CHARGER_TPS65090
 	tristate "TPS65090 battery charger driver"
 	depends on MFD_TPS65090
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	 Say Y here to enable support for battery charging with TPS65090 chips.
 

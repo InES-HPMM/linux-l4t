@@ -30,6 +30,7 @@
 #include <linux/power_supply.h>
 #include <linux/power/sbs-battery.h>
 #include <linux/mfd/tps65090.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 #define TPS65090_INTR_STS	0x00
 #define TPS65090_CG_CTRL0	0x04
@@ -52,6 +53,8 @@ struct tps65090_charger {
 	int	prev_ac_online;
 	struct power_supply	ac;
 	struct tps65090_charger_data *chg_pdata;
+	struct battery_charger_dev *bc_dev;
+	int status;
 };
 
 static enum power_supply_property tps65090_ac_props[] = {
@@ -151,18 +154,36 @@ static irqreturn_t tps65090_charger_isr(int irq, void *dev_id)
 		if (ret < 0)
 			goto error;
 		charger->ac_online = 1;
+		charger->status = BATTERY_CHARGING;
 	} else {
 		charger->ac_online = 0;
+		charger->status = BATTERY_DISCHARGING;
 	}
 
 	if (charger->prev_ac_online != charger->ac_online) {
-		if (charger->chg_pdata->update_status)
-			charger->chg_pdata->update_status();
+		battery_charging_status_update(charger->bc_dev,
+				charger->status);
 		power_supply_changed(&charger->ac);
 	}
 error:
 	return IRQ_HANDLED;
 }
+
+static int tps65090_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct tps65090_charger *chip = battery_charger_get_drvdata(bc_dev);
+
+	return chip->status;
+}
+
+static struct battery_charging_ops tps65090_charger_bci_ops = {
+	.get_charging_status = tps65090_charger_get_status,
+};
+
+static struct battery_charger_info tps65090_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &tps65090_charger_bci_ops,
+};
 
 static int tps65090_charger_probe(struct platform_device *pdev)
 {
@@ -226,6 +247,16 @@ static int tps65090_charger_probe(struct platform_device *pdev)
 		goto fail_suppy_reg;
 	}
 
+	charger_data->bc_dev = battery_charger_register(&pdev->dev,
+				&tps65090_charger_bci);
+	if (IS_ERR(charger_data->bc_dev)) {
+		ret = PTR_ERR(charger_data->bc_dev);
+		dev_err(&pdev->dev, "battery charger register failed: %d\n",
+			ret);
+		goto chg_reg_err;
+	}
+	battery_charger_set_drvdata(charger_data->bc_dev, charger_data);
+
 	ret = tps65090_config_charger(charger_data);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "charger config failed, err %d\n", ret);
@@ -253,6 +284,8 @@ static int tps65090_charger_probe(struct platform_device *pdev)
 
 	return 0;
 fail_config:
+	battery_charger_unregister(charger_data->bc_dev);
+chg_reg_err:
 	power_supply_unregister(&charger_data->ac);
 
 fail_suppy_reg:
@@ -264,6 +297,7 @@ static int tps65090_charger_remove(struct platform_device *pdev)
 {
 	struct tps65090_charger *charger = dev_get_drvdata(&pdev->dev);
 
+	battery_charger_unregister(charger->bc_dev);
 	power_supply_unregister(&charger->ac);
 	free_irq(charger->irq_base, charger);
 	return 0;
