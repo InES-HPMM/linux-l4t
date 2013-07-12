@@ -41,6 +41,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -68,9 +69,7 @@ struct bq2419x_chip {
 
 	struct mutex			mutex;
 	int				in_current_limit;
-	int				status;
 	int				rtc_alarm_time;
-	void				(*update_status)(int, int);
 
 	struct regulator_dev		*chg_rdev;
 	struct regulator_desc		chg_reg_desc;
@@ -79,6 +78,9 @@ struct bq2419x_chip {
 	struct regulator_dev		*vbus_rdev;
 	struct regulator_desc		vbus_reg_desc;
 	struct regulator_init_data	vbus_reg_init_data;
+
+	struct battery_charger_dev	*bc_dev;
+	int				chg_status;
 
 	struct kthread_worker		bq_kworker;
 	struct task_struct		*bq_kworker_task;
@@ -256,7 +258,7 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 
 	dev_info(bq_charger->dev, "Setting charging current %d\n", max_uA/1000);
 	msleep(200);
-	bq_charger->status = 0;
+	bq_charger->chg_status = BATTERY_DISCHARGING;
 
 	ret = bq2419x_charger_enable(bq_charger);
 	if (ret < 0) {
@@ -275,15 +277,15 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	bq_charger->in_current_limit = max_uA/1000;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		bq_charger->in_current_limit = 500;
-		bq_charger->status = 0;
+		bq_charger->chg_status = BATTERY_DISCHARGING;
 	} else {
-		bq_charger->status = 1;
+		bq_charger->chg_status = BATTERY_CHARGING;
 	}
 	ret = bq2419x_init(bq_charger);
 	if (ret < 0)
 		goto error;
-	if (bq_charger->update_status)
-		bq_charger->update_status(bq_charger->status, 0);
+	battery_charging_status_update(bq_charger->bc_dev,
+					bq_charger->chg_status);
 	return 0;
 error:
 	dev_err(bq_charger->dev, "Charger enable failed, err = %d\n", ret);
@@ -435,18 +437,17 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				*/
 				if ((val & BQ2419x_CHRG_STATE_MASK) ==
 					BQ2419x_CHRG_STATE_NOTCHARGING) {
-					bq2419x->status = 0;
-					if (bq2419x->update_status)
-						bq2419x->update_status
-							(bq2419x->status, 0);
+					bq2419x->chg_status = BATTERY_DISCHARGING;
+					battery_charging_status_update(bq2419x->bc_dev,
+						bq2419x->chg_status);
+
 					bq2419x->chg_restart_timeout =
 						bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
 				} else {
-					bq2419x->status = 1;
-					if (bq2419x->update_status)
-						bq2419x->update_status
-							(bq2419x->status, 0);
+					bq2419x->chg_status = BATTERY_CHARGING;
+					battery_charging_status_update(bq2419x->bc_dev,
+						bq2419x->chg_status);
 				}
 
 			}
@@ -578,9 +579,9 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
 		dev_info(bq2419x->dev, "Charging completed\n");
-		bq2419x->status = 4;
-		if (bq2419x->update_status)
-			bq2419x->update_status(bq2419x->status, 0);
+		bq2419x->chg_status = BATTERY_CHARGING_DONE;
+		battery_charging_status_update(bq2419x->bc_dev,
+					bq2419x->chg_status);
 	}
 
 	/*
@@ -589,9 +590,9 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	if (check_chg_state) {
 		if ((val & BQ2419x_CHRG_STATE_MASK) ==
 				BQ2419x_CHRG_STATE_NOTCHARGING) {
-			bq2419x->status = 0;
-			if (bq2419x->update_status)
-				bq2419x->update_status(bq2419x->status, 0);
+			bq2419x->chg_status = BATTERY_DISCHARGING;
+			battery_charging_status_update(bq2419x->bc_dev,
+					bq2419x->chg_status);
 		}
 	}
 
@@ -774,6 +775,22 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
+static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+
+	return bq2419x->chg_status;
+}
+
+static struct battery_charging_ops bq2419x_charger_bci_ops = {
+	.get_charging_status = bq2419x_charger_get_status,
+};
+
+static struct battery_charger_info bq2419x_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &bq2419x_charger_bci_ops,
+};
+
 static int bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -803,7 +820,6 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->dev = &client->dev;
 
 	if (pdata->bcharger_pdata) {
-		bq2419x->update_status	= pdata->bcharger_pdata->update_status;
 		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
 		bq2419x->chg_restart_time =
@@ -841,11 +857,21 @@ static int bq2419x_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	bq2419x->bc_dev = battery_charger_register(bq2419x->dev,
+			&bq2419x_charger_bci);
+	if (IS_ERR(bq2419x->bc_dev)) {
+		ret = PTR_ERR(bq2419x->bc_dev);
+		dev_err(bq2419x->dev, "battery charger register failed: %d\n",
+			ret);
+		goto scrub_chg_reg;
+	}
+	battery_charger_set_drvdata(bq2419x->bc_dev, bq2419x);
+
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(&client->dev,
 			"VBUS regualtor init failed %d\n", ret);
-		goto scrub_chg_reg;
+		goto scrub_bchg_reg;
 	}
 
 	init_kthread_worker(&bq2419x->bq_kworker);
@@ -898,6 +924,8 @@ scrub_kthread:
 	kthread_stop(bq2419x->bq_kworker_task);
 scrub_vbus_reg:
 	regulator_unregister(bq2419x->vbus_rdev);
+scrub_bchg_reg:
+	battery_charger_unregister(bq2419x->bc_dev);
 scrub_chg_reg:
 	regulator_unregister(bq2419x->chg_rdev);
 	mutex_destroy(&bq2419x->mutex);
@@ -908,6 +936,7 @@ static int bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 
+	battery_charger_unregister(bq2419x->bc_dev);
 	free_irq(bq2419x->irq, bq2419x);
 	bq2419x->stop_thread = true;
 	flush_kthread_worker(&bq2419x->bq_kworker);
