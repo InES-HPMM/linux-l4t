@@ -356,6 +356,11 @@ bool tegra_powergate_is_powered(int id)
 	if (id < 0 || id >= pg_ops->num_powerdomains)
 		return -EINVAL;
 
+	if (pg_ops->powergate_is_powered)
+		return pg_ops->powergate_is_powered(id);
+	else
+		status = pmc_read(PWRGATE_STATUS) & (1 << id);
+
 	status = pmc_read(PWRGATE_STATUS) & (1 << id);
 
 	return !!status;

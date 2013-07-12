@@ -240,6 +240,8 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 
 static DEFINE_SPINLOCK(tegra12x_powergate_lock);
 
+static struct regulator *gpu_reg;
+
 #define HOTRESET_READ_COUNT	5
 static bool tegra12x_stable_hotreset_check(u32 stat_reg, u32 *stat)
 {
@@ -380,9 +382,12 @@ static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_in
 
 	udelay(10);
 
-	/* TBD: call regulator api to turn off VDD_GPU */
-	if (0)
-		goto err_power_off;
+	if (gpu_reg && tegra_powergate_is_powered(id)) {
+		ret = regulator_disable(gpu_reg);
+		if (ret)
+			goto err_power_off;
+	} else
+		pr_info("No GPU regulator?\n");
 
 	return 0;
 
@@ -391,30 +396,22 @@ err_power_off:
 	return ret;
 }
 
-int hack_tegra12x_gpu_unpowergate(void)
+static int tegra12x_gpu_unpowergate(int id,
+	struct powergate_partition_info *pg_info)
 {
-	int ret;
-	int id = TEGRA_POWERGATE_GPU;
-	struct powergate_partition_info *pg_info =
-					&tegra12x_powergate_partition_info[id];
-	struct regulator * gpu_reg;
+	int ret = 0;
 
-	if (!tegra_platform_is_silicon())
-		return 0;
+	if (!gpu_reg) {
+		gpu_reg = regulator_get(NULL, "vdd_gpu");
+		if (IS_ERR_OR_NULL(gpu_reg)) {
+			WARN(1, "No GPU regulator?\n");
+			goto err_power;
+		}
+	}
 
-	printk("%s(): start\n", __func__);
-	gpu_reg = regulator_get(NULL, "vdd_gpu");
-	if (IS_ERR_OR_NULL(gpu_reg))
-		BUG_ON(1);
-
-	regulator_set_voltage(gpu_reg, 900000, 900000);
 	ret = regulator_enable(gpu_reg);
 	if (ret)
-		BUG_ON(1);
-
-	/* TBD: call regulator api to turn on VDD_GPU */
-	if (0)
-               goto err_power;
+		goto err_power;
 
 	/* If first clk_ptr is null, fill clk info for the partition */
 	if (!pg_info->clk_info[0].clk_ptr)
@@ -434,52 +431,6 @@ int hack_tegra12x_gpu_unpowergate(void)
 
 	powergate_partition_assert_reset(pg_info);
 	udelay(10);
-	powergate_partition_deassert_reset(pg_info);
-
-	udelay(10);
-
-	tegra_powergate_mc_flush_done(id);
-
-	udelay(10);
-
-	/* Disable all clks enabled earlier. Drivers should enable clks */
-	// partition_clk_disable(pg_info);
-
-	printk("%s(): end\n", __func__);
-	return 0;
-
-err_clk_on:
-	powergate_module(id);
-err_power:
-	WARN(1, "Could not Un-Railgate %d", id);
-	return ret;
-}
-EXPORT_SYMBOL(hack_tegra12x_gpu_unpowergate);
-
-static int tegra12x_gpu_unpowergate(int id, struct powergate_partition_info *pg_info)
-{
-	int ret;
-
-	/* TBD: call regulator api to turn on VDD_GPU */
-	if (0)
-		goto err_power;
-
-	/* If first clk_ptr is null, fill clk info for the partition */
-	if (!pg_info->clk_info[0].clk_ptr)
-		get_clk_info(pg_info);
-
-	/* Un-Powergating fails if all clks are not enabled */
-	ret = partition_clk_enable(pg_info);
-	if (ret)
-		goto err_clk_on;
-
-	udelay(10);
-
-	/* disable clamp */
-	pmc_write(0, PMC_GPU_RG_CNTRL_0);
-
-	udelay(10);
-
 	powergate_partition_deassert_reset(pg_info);
 
 	udelay(10);
@@ -646,6 +597,20 @@ bool tegra12x_powergate_skip(int id)
 	}
 }
 
+bool tegra12x_powergate_is_powered(int id)
+{
+	u32 status = 0;
+
+	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
+		if (gpu_reg)
+			return regulator_is_enabled(gpu_reg);
+	} else {
+		status = pmc_read(PWRGATE_STATUS) & (1 << id);
+		return !!status;
+	}
+	return status;
+}
+
 static struct powergate_ops tegra12x_powergate_ops = {
 	.soc_name = "tegra12x",
 
@@ -667,6 +632,8 @@ static struct powergate_ops tegra12x_powergate_ops = {
 	.powergate_mc_flush_done = tegra12x_powergate_mc_flush_done,
 
 	.powergate_skip = tegra12x_powergate_skip,
+
+	.powergate_is_powered = tegra12x_powergate_is_powered,
 };
 
 struct powergate_ops *tegra12x_powergate_init_chip_support(void)

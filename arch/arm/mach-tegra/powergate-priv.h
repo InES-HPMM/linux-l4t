@@ -107,6 +107,8 @@ struct powergate_ops {
 	bool (*powergate_check_clamping)(int id);
 
 	bool (*powergate_skip)(int id);
+
+	bool (*powergate_is_powered)(int id);
 };
 
 void get_clk_info(struct powergate_partition_info *pg_info);
