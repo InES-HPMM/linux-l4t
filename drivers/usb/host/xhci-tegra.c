@@ -398,6 +398,7 @@ struct tegra_xhci_hcd {
 	bool usb3_rh_suspend;
 	bool hc_in_elpg;
 
+	unsigned long usb2_rh_remote_wakeup_ports; /* one bit per port */
 	unsigned long usb3_rh_remote_wakeup_ports; /* one bit per port */
 	/* firmware loading related */
 	struct tegra_xhci_firmware firmware;
@@ -2547,10 +2548,11 @@ static void ss_partition_elpg_exit_work(struct work_struct *work)
 }
 
 /* read pmc WAKE2_STATUS register to know if SS port caused remote wake */
-static void update_remote_wakeup_ports_pmc(struct tegra_xhci_hcd *tegra)
+static void update_remote_wakeup_ports(struct tegra_xhci_hcd *tegra)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
 	u32 wake2_status;
+	int port;
 
 #define PMC_WAKE2_STATUS	0x168
 #define PADCTL_WAKE		(1 << (58 - 32)) /* PADCTL is WAKE#58 */
@@ -2564,6 +2566,15 @@ static void update_remote_wakeup_ports_pmc(struct tegra_xhci_hcd *tegra)
 		tegra_usb_pmc_reg_write(PMC_WAKE2_STATUS, PADCTL_WAKE);
 	}
 
+	/* set all usb2 ports with RESUME link state as wakup ports  */
+	for (port = 0; port < xhci->num_usb2_ports; port++) {
+		u32 portsc = xhci_readl(xhci, xhci->usb2_ports[port]);
+		if ((portsc & PORT_PLS_MASK) == XDEV_RESUME)
+			set_bit(port, &tegra->usb2_rh_remote_wakeup_ports);
+	}
+
+	xhci_dbg(xhci, "%s: usb2 roothub remote_wakeup_ports 0x%lx\n",
+			__func__, tegra->usb2_rh_remote_wakeup_ports);
 	xhci_dbg(xhci, "%s: usb3 roothub remote_wakeup_ports 0x%lx\n",
 			__func__, tegra->usb3_rh_remote_wakeup_ports);
 }
@@ -2578,18 +2589,26 @@ static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
 	__le32 __iomem	**port_array;
 	unsigned char *rh;
 	unsigned int retry = 64;
+	struct xhci_bus_state *bus_state;
 
+	bus_state = &xhci->bus_state[hcd_index(hcd)];
 
 	if (hcd == xhci->shared_hcd) {
 		port_array = xhci->usb3_ports;
 		num_ports = xhci->num_usb3_ports;
 		remote_wakeup_ports = &tegra->usb3_rh_remote_wakeup_ports;
 		rh = "usb3 roothub";
-	} else
-		return;
+	} else {
+		port_array = xhci->usb2_ports;
+		num_ports = xhci->num_usb2_ports;
+		remote_wakeup_ports = &tegra->usb2_rh_remote_wakeup_ports;
+		rh = "usb2 roothub";
+	}
 
 	while (*remote_wakeup_ports && retry--) {
 		for_each_set_bit(port, remote_wakeup_ports, num_ports) {
+			bool can_continue;
+
 			portsc = xhci_readl(xhci, port_array[port]);
 
 			if (!(portsc & PORT_CONNECT)) {
@@ -2598,11 +2617,23 @@ static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
 				continue;
 			}
 
-			if ((portsc & PORT_PLS_MASK) == XDEV_U0)
+			if (hcd == xhci->shared_hcd) {
+				can_continue =
+					(portsc & PORT_PLS_MASK) == XDEV_U0;
+			} else {
+				unsigned long flags;
+
+				spin_lock_irqsave(&xhci->lock, flags);
+				can_continue =
+				test_bit(port, &bus_state->resuming_ports);
+				spin_unlock_irqrestore(&xhci->lock, flags);
+			}
+
+			if (can_continue)
 				clear_bit(port, remote_wakeup_ports);
 			else
 				xhci_dbg(xhci, "%s: %s port %d status 0x%x\n",
-						__func__, rh, port, portsc);
+					__func__, rh, port, portsc);
 		}
 
 		if (*remote_wakeup_ports)
@@ -2812,7 +2843,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 
-	update_remote_wakeup_ports_pmc(tegra);
+	update_remote_wakeup_ports(tegra);
 
 	if (tegra->hs_wake_event)
 		tegra->hs_wake_event = false;
