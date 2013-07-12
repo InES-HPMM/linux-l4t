@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
+#include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/pm.h>
 #include <linux/jiffies.h>
@@ -37,6 +38,7 @@
 #include <linux/power_supply.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/of.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 /* Status register bits */
 #define STATUS_POR_BIT         (1 << 1)
@@ -75,6 +77,7 @@ struct max17042_chip {
 	struct power_supply battery;
 	enum max170xx_chip_type chip_type;
 	struct max17042_platform_data *pdata;
+	struct battery_gauge_dev	*bg_dev;
 	struct delayed_work work;
 	int    init_complete;
 	int shutdown_complete;
@@ -745,6 +748,29 @@ max17042_get_pdata(struct device *dev)
 }
 #endif
 
+static int max17042_update_battery_status(struct battery_gauge_dev *bg_dev,
+		enum battery_charger_status status)
+{
+	struct max17042_chip *chip = battery_gauge_get_drvdata(bg_dev);
+
+	if (status == BATTERY_CHARGING)
+		chip->status = POWER_SUPPLY_STATUS_CHARGING;
+	else
+		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
+
+	power_supply_changed(&chip->battery);
+	return 0;
+}
+
+static struct battery_gauge_ops max17042_bg_ops = {
+	.update_battery_status = max17042_update_battery_status,
+};
+
+static struct battery_gauge_info max17042_bgi = {
+	.cell_id = 0,
+	.bg_ops = &max17042_bg_ops,
+};
+
 static int max17042_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -845,10 +871,23 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	chip->bg_dev = battery_gauge_register(&client->dev, &max17042_bgi);
+	if (IS_ERR(chip->bg_dev)) {
+		ret = PTR_ERR(chip->bg_dev);
+		dev_err(&client->dev, "battery gauge register failed: %d\n",
+			ret);
+		goto bg_err;
+	}
+	battery_gauge_set_drvdata(chip->bg_dev, chip);
+
 	INIT_DEFERRABLE_WORK(&chip->work, max17042_init_worker);
 	schedule_delayed_work(&chip->work, 0);
 
 	return 0;
+
+bg_err:
+	power_supply_unregister(&chip->battery);
+	return ret;
 }
 
 static int max17042_remove(struct i2c_client *client)
@@ -857,6 +896,7 @@ static int max17042_remove(struct i2c_client *client)
 
 	if (client->irq)
 		free_irq(client->irq, chip);
+	battery_gauge_unregister(chip->bg_dev);
 	power_supply_unregister(&chip->battery);
 	return 0;
 }
