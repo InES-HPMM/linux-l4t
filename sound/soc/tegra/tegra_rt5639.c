@@ -878,11 +878,11 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 		ret = gpio_request(pdata->gpio_ldo1_en, "rt5639");
 		if (ret)
 			dev_err(&pdev->dev, "Fail gpio_request AUDIO_LDO1\n");
-
-		ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_direction AUDIO_LDO1\n");
-
+		else {
+			ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
+			if (ret)
+				dev_err(&pdev->dev, "Fail gpio_direction AUDIO_LDO1\n");
+		}
 		msleep(200);
 	}
 
