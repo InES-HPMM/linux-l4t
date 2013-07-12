@@ -208,6 +208,8 @@ int tegra_core_speedo_mv(void)
 			return 1170;
 	/* fall thru if core_process_id = 0 */
 	case 1:
+		if (tegra_sku_id == 0x4)
+			return 1390;
 		return 1250;
 	default:
 		BUG();
