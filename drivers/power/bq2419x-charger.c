@@ -602,6 +602,7 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 		struct bq2419x_platform_data *pdata)
 {
 	int ret = 0;
+	struct regulator_config rconfig = { };
 
 	if (!pdata->bcharger_pdata) {
 		dev_err(bq2419x->dev, "No charger platform data\n");
@@ -634,9 +635,12 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 						REGULATOR_CHANGE_STATUS |
 						REGULATOR_CHANGE_CURRENT;
 
+	rconfig.dev = bq2419x->dev;
+	rconfig.of_node = NULL;
+	rconfig.init_data = &bq2419x->chg_reg_init_data;
+	rconfig.driver_data = bq2419x;
 	bq2419x->chg_rdev = regulator_register(&bq2419x->chg_reg_desc,
-				bq2419x->dev, &bq2419x->chg_reg_init_data,
-				bq2419x, NULL);
+					&rconfig);
 	if (IS_ERR(bq2419x->chg_rdev)) {
 		ret = PTR_ERR(bq2419x->chg_rdev);
 		dev_err(bq2419x->dev,
@@ -649,6 +653,7 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 		struct bq2419x_platform_data *pdata)
 {
 	int ret = 0;
+	struct regulator_config rconfig = { };
 
 	if (!pdata->vbus_pdata) {
 		dev_err(bq2419x->dev, "No vbus platform data\n");
@@ -690,9 +695,12 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	}
 
 	/* Register the regulators */
+	rconfig.dev = bq2419x->dev;
+	rconfig.of_node = NULL;
+	rconfig.init_data = &bq2419x->vbus_reg_init_data;
+	rconfig.driver_data = bq2419x;
 	bq2419x->vbus_rdev = regulator_register(&bq2419x->vbus_reg_desc,
-			bq2419x->dev, &bq2419x->vbus_reg_init_data,
-			bq2419x, NULL);
+					&rconfig);
 	if (IS_ERR(bq2419x->vbus_rdev)) {
 		ret = PTR_ERR(bq2419x->vbus_rdev);
 		dev_err(bq2419x->dev,
@@ -766,7 +774,7 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
-static int __devinit bq2419x_probe(struct i2c_client *client,
+static int bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct bq2419x_chip *bq2419x;
@@ -896,7 +904,7 @@ scrub_chg_reg:
 	return ret;
 }
 
-static int __devexit bq2419x_remove(struct i2c_client *client)
+static int bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 
@@ -1051,7 +1059,7 @@ static struct i2c_driver bq2419x_i2c_driver = {
 		.pm = &bq2419x_pm_ops,
 	},
 	.probe		= bq2419x_probe,
-	.remove		= __devexit_p(bq2419x_remove),
+	.remove		= bq2419x_remove,
 	.shutdown	= bq2419x_shutdown,
 	.id_table	= bq2419x_id,
 };
