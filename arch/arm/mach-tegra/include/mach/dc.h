@@ -816,7 +816,7 @@ struct sync_fence *tegra_dc_create_fence(struct tegra_dc *dc, int i, u32 val);
  * dirty_rect is u16[4]: xoff, yoff, width, height
  */
 int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n,
-	u16 *dirty_rect);
+	u16 *dirty_rect, bool wait_for_vblank);
 int tegra_dc_sync_windows(struct tegra_dc_win *windows[], int n);
 int tegra_dc_config_frame_end_intr(struct tegra_dc *dc, bool enable);
 bool tegra_dc_is_within_n_vsync(struct tegra_dc *dc, s64 ts);
