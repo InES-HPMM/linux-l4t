@@ -140,6 +140,7 @@ config BATTERY_PALMAS
 	tristate "Palmas Embedded Fuel Gauge"
 	depends on MFD_PALMAS
 	select MFD_PALMAS_GPADC
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  Say Y to include support for the TPS80036 fuel gauge IP block
 	  within the palmas-charger PMIC IC.

@@ -36,6 +36,7 @@
 #include <linux/mfd/palmas.h>
 #include <linux/byteorder/generic.h>
 #include <linux/iio/consumer.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 #define MODULE_NAME			"palmas-battery"
 #define FG_SLAVE			1
@@ -89,6 +90,7 @@ struct palmas_battery_info {
 	struct device *dev;
 	struct palmas *palmas;
 	struct power_supply battery;
+	struct battery_gauge_dev *bg_dev;
 
 	/* Battery Power Supply */
 	int battery_voltage_uV;
@@ -120,6 +122,7 @@ struct palmas_battery_info {
 	int current_max_scale;
 	int accumulated_charge;
 	struct cell_state cell;
+	int status;
 };
 
 int fuelgauge_mode;
@@ -1488,6 +1491,29 @@ static int palmas_current_setup(struct palmas_battery_info *di,
 	return ret;
 }
 
+static int palmas_update_battery_status(struct battery_gauge_dev *bg_dev,
+	enum battery_charger_status status)
+{
+	struct palmas_battery_info *binfo = battery_gauge_get_drvdata(bg_dev);
+
+	if (status == BATTERY_CHARGING)
+		binfo->status = POWER_SUPPLY_STATUS_CHARGING;
+	else
+		binfo->status = POWER_SUPPLY_STATUS_DISCHARGING;
+
+	power_supply_changed(&binfo->battery);
+	return 0;
+}
+
+static struct battery_gauge_ops plamas_battery_gauge_ops = {
+	.update_battery_status = palmas_update_battery_status,
+};
+
+static struct battery_gauge_info palmas_battery_gauge_info = {
+	.cell_id = 0,
+	.bg_ops = &plamas_battery_gauge_ops,
+};
+
 static int palmas_battery_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
@@ -1605,13 +1631,25 @@ static int palmas_battery_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	di->bg_dev = battery_gauge_register(di->dev, &palmas_battery_gauge_info);
+	if (IS_ERR(di->bg_dev)) {
+		ret = PTR_ERR(di->bg_dev);
+		dev_err(di->dev, "battery gauge register failed: %d\n", ret);
+		goto bg_err;
+	}
+	battery_gauge_set_drvdata(di->bg_dev, di);
 	return 0;
+
+bg_err:
+	power_supply_unregister(&di->battery);
+	return ret;
 }
 
 static int palmas_battery_remove(struct platform_device *pdev)
 {
 	struct palmas_battery_info *di = platform_get_drvdata(pdev);
 
+	battery_gauge_unregister(di->bg_dev);
 	cancel_delayed_work(&di->battery_current_avg_work);
 	flush_scheduled_work();
 	power_supply_unregister(&di->battery);
