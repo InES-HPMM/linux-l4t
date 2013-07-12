@@ -437,7 +437,7 @@ static struct tegra_dc_out ardbeg_disp2_out = {
 	.parent_clk	= "pll_d",
 #endif /* CONFIG_TEGRA_HDMI_PRIMARY */
 
-	.dcc_bus	= 3,
+	.ddc_bus	= 3,
 	.hotplug_gpio	= ardbeg_hdmi_hpd,
 	.hdmi_out	= &ardbeg_hdmi_out,
 

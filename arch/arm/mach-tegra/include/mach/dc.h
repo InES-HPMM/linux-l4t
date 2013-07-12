@@ -526,6 +526,9 @@ enum {
 	TEGRA_PIN_OUT_CONFIG_SEL_LSPI_DE,
 };
 
+/* this is the old name. provided for compatibility with old board files. */
+#define dcc_bus ddc_bus
+
 struct tegra_dc_out {
 	int				type;
 	unsigned			flags;
@@ -534,7 +537,7 @@ struct tegra_dc_out {
 	unsigned			h_size;
 	unsigned			v_size;
 
-	int				dcc_bus;
+	int				ddc_bus;
 	int				hotplug_gpio;
 	int				hotplug_state; /* 0 normal 1 force on */
 	const char			*parent_clk;

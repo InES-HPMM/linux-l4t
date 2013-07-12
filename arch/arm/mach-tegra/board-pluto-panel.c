@@ -223,7 +223,7 @@ static struct tegra_dc_out pluto_disp2_out = {
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
 	.parent_clk	= "pll_d2_out0",
 
-	.dcc_bus	= 3,
+	.ddc_bus	= 3,
 	.hotplug_gpio	= pluto_hdmi_hpd,
 
 	.max_pixclock	= KHZ2PICOS(297000),

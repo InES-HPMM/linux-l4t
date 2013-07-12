@@ -259,7 +259,7 @@ static struct tegra_dc_out vcm30_t124_disp2_out = {
 			  TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
 	.parent_clk	= "pll_d2",
 
-	.dcc_bus	= 3,
+	.ddc_bus	= 3,
 	.hotplug_gpio	= VCM30_T124_HDMI_HPD,
 	.hdmi_out	= &vcm30_t124_hdmi_out,
 

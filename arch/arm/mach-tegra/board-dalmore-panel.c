@@ -285,7 +285,7 @@ static struct tegra_dc_out dalmore_disp2_out = {
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
 	.parent_clk	= "pll_d2_out0",
 
-	.dcc_bus	= 3,
+	.ddc_bus	= 3,
 	.hotplug_gpio	= dalmore_hdmi_hpd,
 	.hdmi_out	= &dalmore_hdmi_out,
 
