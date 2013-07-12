@@ -36,6 +36,7 @@
 #include <linux/sysfs.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
@@ -82,6 +83,8 @@ struct max77665_charger {
 	struct wake_lock wdt_wake_lock;
 	unsigned int oc_count;
 	struct max77665_regulator_info reg_info;
+	struct battery_charger_dev *bc_dev;
+	int chg_status;
 };
 
 static int max77665_write_reg(struct max77665_charger *charger,
@@ -453,14 +456,15 @@ static int max77665_charging_disable(struct max77665_charger *charger)
 
 	max77665_charger_disable_wdt(charger);
 
-	if (charger->plat_data->update_status)
-		charger->plat_data->update_status(0);
+	charger->chg_status = BATTERY_DISCHARGING;
+	battery_charging_status_update(charger->bc_dev, charger->chg_status);
 	return ret;
 }
 
 static int max77665_charging_enable(struct max77665_charger *charger)
 {
 	int ret;
+	int ilim;
 
 	dev_info(charger->dev, "Enabling charging\n");
 
@@ -474,16 +478,16 @@ static int max77665_charging_enable(struct max77665_charger *charger)
 	alarm_start(&charger->wdt_alarm, ktime_add(ktime_get_boottime(),
 			ktime_set(MAX77665_WATCHDOG_TIMER_PERIOD_S / 2, 0)));
 
-	if (charger->plat_data->update_status) {
-		int ilim;
-
-		ret = max77665_get_max_input_current(charger, &ilim);
-		if (ret < 0) {
-			dev_info(charger->dev, "Not able to get max current\n");
-			return ret;
-		}
-		charger->plat_data->update_status(ilim);
+	ret = max77665_get_max_input_current(charger, &ilim);
+	if (ret < 0) {
+		dev_info(charger->dev, "Not able to get max current\n");
+		return ret;
 	}
+	if (ilim)
+		charger->chg_status = BATTERY_CHARGING;
+	else
+		charger->chg_status = BATTERY_DISCHARGING;
+	battery_charging_status_update(charger->bc_dev, charger->chg_status);
 	return ret;
 }
 
@@ -525,8 +529,8 @@ static int max77665_set_charging_current(struct regulator_dev *rdev,
 		goto scrub;
 	}
 
-	if (charger->plat_data->update_status)
-		charger->plat_data->update_status(0);
+	charger->chg_status = BATTERY_DISCHARGING;
+	battery_charging_status_update(charger->bc_dev, charger->chg_status);
 
 	if (charger->max_current_mA)
 		ret = max77665_charging_enable(charger);
@@ -771,6 +775,22 @@ static void max77665_remove_sysfs_entry(struct device *dev)
 	sysfs_remove_group(&dev->kobj, &max77665_chg_attr_group);
 }
 
+static int max77665_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct max77665_charger *charger = battery_charger_get_drvdata(bc_dev);
+
+	return charger->chg_status;
+}
+
+static struct battery_charging_ops max77665_charger_bci_ops = {
+	.get_charging_status = max77665_charger_get_status,
+};
+
+static struct battery_charger_info max77665_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &max77665_charger_bci_ops,
+};
+
 static int max77665_battery_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -828,15 +848,25 @@ static int max77665_battery_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&charger->set_max_current_work,
 				max77665_set_ideal_input_current_work);
 
+	charger->bc_dev = battery_charger_register(&pdev->dev,
+					&max77665_charger_bci);
+	if (IS_ERR(charger->bc_dev)) {
+		ret = PTR_ERR(charger->bc_dev);
+		dev_err(&pdev->dev, "battery charger register failed: %d\n",
+			ret);
+		goto free_lock;
+	}
+	battery_charger_set_drvdata(charger->bc_dev, charger);
+
 	/* modify OTP setting of input current limit to 100ma */
 	ret = max77665_set_max_input_current(charger, 100);
 	if (ret < 0)
-		goto free_lock;
+		goto free_bc;
 
 	ret = max77665_charger_regulator_init(charger, charger->plat_data);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Charger regulator init failed\n");
-		goto free_lock;
+		goto free_bc;
 	}
 
 	ret = max77665_charger_init(charger);
@@ -857,6 +887,8 @@ skip_charger_init:
 
 free_reg:
 	regulator_unregister(charger->reg_info.rdev);
+free_bc:
+	battery_charger_unregister(charger->bc_dev);
 free_lock:
 	wake_lock_destroy(&charger->wdt_wake_lock);
 remove_sysfs:
@@ -872,6 +904,7 @@ static int max77665_battery_remove(struct platform_device *pdev)
 {
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
+	battery_charger_unregister(charger->bc_dev);
 	max77665_charger_disable_wdt(charger);
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
