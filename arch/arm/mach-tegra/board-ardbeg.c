@@ -506,7 +506,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
 	&ardbeg_audio_device_rt5639,
-	&ardbeg_audio_device_rt5645,
 	&tegra_spdif_device,
 #endif
 	&spdif_dit_device,
