@@ -62,8 +62,8 @@
 		.debounce_interval = _deb,	\
 	}
 
-#define PMC_WAKE_STATUS         0x14
-#define TEGRA_WAKE_PWR_INT      (1UL << 18)
+#define PMC_WAKE2_STATUS         0x160
+#define TEGRA_WAKE_PWR_INT      (1UL << 19)
 
 static int ardbeg_wakeup_key(void);
 
@@ -95,7 +95,7 @@ static struct platform_device ardbeg_int_keys_device = {
 static int ardbeg_wakeup_key(void)
 {
 	u32 status;
-	status = __raw_readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
+	status = __raw_readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE2_STATUS);
 
 	pr_info("%s: Power key pressed\n", __func__);
 
