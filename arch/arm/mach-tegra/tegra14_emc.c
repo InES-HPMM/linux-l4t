@@ -499,8 +499,6 @@ static inline void do_clock_change(u32 clk_setting)
 	}
 }
 
-#ifndef EMULATE_CLOCK_SWITCH
-
 static u32 emc_prelock_dll(const struct tegra14_emc_table *last_timing,
 			   const struct tegra14_emc_table *next_timing)
 {
@@ -641,13 +639,11 @@ skip_dll_disable:
 
 	return dll_out;
 }
-#endif
 
 static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 				   const struct tegra14_emc_table *last_timing,
 				   u32 clk_setting)
 {
-#ifndef EMULATE_CLOCK_SWITCH
 	int i, dll_change, pre_wait;
 	bool dyn_sref_enabled, zcal_long;
 
@@ -827,12 +823,6 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 
 	/* 18. update restored timing */
 	emc_timing_update();
-
-#else
-	/* FIXME: implement */
-	pr_info("tegra14_emc: Configuring EMC rate %lu (setting: 0x%x)\n",
-		next_timing->rate, clk_setting);
-#endif
 }
 
 static inline void emc_get_timing(struct tegra14_emc_table *timing)
