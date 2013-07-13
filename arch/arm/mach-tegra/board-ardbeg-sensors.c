@@ -512,6 +512,8 @@ static int __init ardbeg_tj_throttle_init(void)
 module_init(ardbeg_tj_throttle_init);
 
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
+	.loc_name = "tegra",
+
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
@@ -542,10 +544,39 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	},
 };
 
+static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
+	.loc_name = "skin",
+
+	.supported_hwrev = true,
+	.ext_range = true,
+	.conv_rate = 0x06, /* 4Hz conversion rate */
+	.offset = 0,
+	.shutdown_ext_limit = 85, /* C */
+	.shutdown_local_limit = 120, /* C */
+
+	.passive_delay = 5000,
+	.polling_delay = 1000,
+	.num_trips = 1,
+	.trips = {
+		{
+			.cdev_type = "skin-balanced",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+		},
+	},
+};
+
 static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct72", 0x4c),
 		.platform_data = &ardbeg_nct72_pdata,
+		.irq = -1,
+	},
+	{
+		I2C_BOARD_INFO("nct72", 0x4d),
+		.platform_data = &ardbeg_nct72_tskin_pdata,
 		.irq = -1,
 	}
 };
