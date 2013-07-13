@@ -52,6 +52,16 @@ static DEFINE_MUTEX(rail_disable_lock);
 
 static int dvfs_rail_update(struct dvfs_rail *rail);
 
+static inline int tegra_dvfs_rail_get_disable_level(struct dvfs_rail *rail)
+{
+	return rail->disable_millivolts ? : rail->nominal_millivolts;
+}
+
+static inline int tegra_dvfs_rail_get_suspend_level(struct dvfs_rail *rail)
+{
+	return rail->suspend_millivolts ? : rail->nominal_millivolts;
+}
+
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 {
 	int i;
@@ -96,7 +106,7 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 {
-	int i;
+	int i, mv;
 
 	mutex_lock(&dvfs_lock);
 
@@ -104,8 +114,19 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 		INIT_LIST_HEAD(&rails[i]->dvfs);
 		INIT_LIST_HEAD(&rails[i]->relationships_from);
 		INIT_LIST_HEAD(&rails[i]->relationships_to);
-		rails[i]->millivolts = rails[i]->nominal_millivolts;
-		rails[i]->new_millivolts = rails[i]->nominal_millivolts;
+
+		mv = rails[i]->nominal_millivolts;
+		if (rails[i]->boot_millivolts > mv)
+			WARN(1, "%s: boot voltage %d above nominal %d\n",
+			     rails[i]->reg_id, rails[i]->boot_millivolts, mv);
+		if (rails[i]->disable_millivolts > mv)
+			rails[i]->disable_millivolts = mv;
+		if (rails[i]->suspend_millivolts > mv)
+			rails[i]->suspend_millivolts = mv;
+
+		mv = tegra_dvfs_rail_get_boot_level(rails[i]);
+		rails[i]->millivolts = mv;
+		rails[i]->new_millivolts = mv;
 		if (!rails[i]->step)
 			rails[i]->step = rails[i]->max_millivolts;
 		if (!rails[i]->step_up)
@@ -405,22 +426,6 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	return ret;
 }
 
-/*
- * This function is called on entry to suspend, or when rail scaling is disabled
- * - can't do anything in either case if regulsator is fixed in pll mode. Since
- * the pll mode frequency is already capped according to fixed voltage level, it
- * is safe to substitute fixed level for nominal, just for stats update.
- */
-static int dvfs_rail_set_nominal(struct dvfs_rail *rail)
-{
-	int mv;
-	if (!rail->dfll_mode && rail->fixed_millivolts)
-		mv = rail->fixed_millivolts;
-	else
-		mv = dvfs_rail_apply_limits(rail, rail->nominal_millivolts);
-	return dvfs_rail_set_voltage(rail, mv);
-}
-
 static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 {
 	struct regulator *reg;
@@ -525,6 +530,13 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 	rail->millivolts = v / 1000;
 	rail->new_millivolts = rail->millivolts;
 	dvfs_rail_stats_init(rail, rail->millivolts);
+
+	if (rail->boot_millivolts &&
+	    (rail->boot_millivolts != rail->millivolts)) {
+		WARN(1, "%s boot voltage %d does not match expected %d\n",
+		     rail->reg_id, rail->millivolts, rail->boot_millivolts);
+		rail->boot_millivolts = rail->millivolts;
+	}
 	return 0;
 }
 
@@ -545,7 +557,7 @@ static int
 __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 {
 	int i = 0;
-	int ret;
+	int ret, mv, detach_mv;
 	unsigned long *freqs = dvfs_get_freqs(d);
 	const int *millivolts = dvfs_get_millivolts(d, rate);
 
@@ -573,6 +585,28 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 		    (millivolts[i] > d->max_millivolts)) {
 			pr_warn("tegra_dvfs: voltage %d too high for dvfs on"
 				" %s\n", millivolts[i], d->clk_name);
+			return -EINVAL;
+		}
+
+		mv = millivolts[i];
+		detach_mv = tegra_dvfs_rail_get_boot_level(d->dvfs_rail);
+		if (!d->dvfs_rail->reg && (mv > detach_mv)) {
+			pr_warn("%s: %s: voltage %d above boot limit %d\n",
+				__func__, d->clk_name, mv, detach_mv);
+			return -EINVAL;
+		}
+
+		detach_mv = tegra_dvfs_rail_get_disable_level(d->dvfs_rail);
+		if (d->dvfs_rail->disabled && (mv > detach_mv)) {
+			pr_warn("%s: %s: voltage %d above disable limit %d\n",
+				__func__, d->clk_name, mv, detach_mv);
+			return -EINVAL;
+		}
+
+		detach_mv = tegra_dvfs_rail_get_suspend_level(d->dvfs_rail);
+		if (d->dvfs_rail->suspended && (mv > detach_mv)) {
+			pr_warn("%s: %s: voltage %d above disable limit %d\n",
+				__func__, d->clk_name, mv, detach_mv);
 			return -EINVAL;
 		}
 		d->cur_millivolts = millivolts[i];
@@ -845,14 +879,29 @@ static bool tegra_dvfs_from_rails_suspended_or_solved(struct dvfs_rail *to)
 static int tegra_dvfs_suspend_one(void)
 {
 	struct dvfs_rail *rail;
-	int ret;
+	int ret, mv;
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		if (!rail->suspended && !rail->disabled &&
 		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
-			ret = dvfs_rail_set_nominal(rail);
-			if (ret)
+			/* Safe, as pll mode rate is capped to fixed level */
+			if (!rail->dfll_mode && rail->fixed_millivolts) {
+				mv = rail->fixed_millivolts;
+			} else {
+				mv = tegra_dvfs_rail_get_suspend_level(rail);
+				mv = dvfs_rail_apply_limits(rail, mv);
+			}
+
+			/* apply suspend limit only if it is above current mv */
+			ret = -EPERM;
+			if (mv >= rail->millivolts)
+				ret = dvfs_rail_set_voltage(rail, mv);
+			if (ret) {
+				pr_err("tegra_dvfs: failed %s suspend at %d\n",
+				       rail->reg_id, rail->millivolts);
 				return ret;
+			}
+
 			rail->suspended = true;
 			return 0;
 		}
@@ -896,24 +945,35 @@ static int tegra_dvfs_suspend(void)
 	return ret;
 }
 
-static int tegra_dvfs_pm_notify(struct notifier_block *nb,
-				unsigned long event, void *data)
+static int tegra_dvfs_pm_suspend(struct notifier_block *nb,
+				 unsigned long event, void *data)
 {
-	switch (event) {
-	case PM_SUSPEND_PREPARE:
+	if (event == PM_SUSPEND_PREPARE) {
 		if (tegra_dvfs_suspend())
 			return NOTIFY_STOP;
-		break;
-	case PM_POST_SUSPEND:
-		tegra_dvfs_resume();
-		break;
+		pr_info("tegra_dvfs: suspended\n");
 	}
-
 	return NOTIFY_OK;
 };
 
-static struct notifier_block tegra_dvfs_nb = {
-	.notifier_call = tegra_dvfs_pm_notify,
+static int tegra_dvfs_pm_resume(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	if (event == PM_POST_SUSPEND) {
+		tegra_dvfs_resume();
+		pr_info("tegra_dvfs: resumed\n");
+	}
+	return NOTIFY_OK;
+};
+
+static struct notifier_block tegra_dvfs_suspend_nb = {
+	.notifier_call = tegra_dvfs_pm_suspend,
+	.priority = -1,
+};
+
+static struct notifier_block tegra_dvfs_resume_nb = {
+	.notifier_call = tegra_dvfs_pm_resume,
+	.priority = 1,
 };
 
 static int tegra_dvfs_reboot_notify(struct notifier_block *nb,
@@ -936,7 +996,8 @@ static struct notifier_block tegra_dvfs_reboot_nb = {
 /* must be called with dvfs lock held */
 static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 {
-	int ret;
+	int ret = -EPERM;
+	int mv;
 
 	/* don't set voltage in DFLL mode - won't work, but break stats */
 	if (rail->dfll_mode) {
@@ -944,11 +1005,20 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 		return;
 	}
 
-	ret = dvfs_rail_set_nominal(rail);
+	/* Safe, as pll mode rate is capped to fixed level */
+	if (!rail->dfll_mode && rail->fixed_millivolts) {
+		mv = rail->fixed_millivolts;
+	} else {
+		mv = tegra_dvfs_rail_get_disable_level(rail);
+		mv = dvfs_rail_apply_limits(rail, mv);
+	}
+
+	/* apply detach mode limit provided it is above current volatge */
+	if (mv >= rail->millivolts)
+		ret = dvfs_rail_set_voltage(rail, mv);
 	if (ret) {
-		pr_info("dvfs: failed to set regulator %s to disable "
-			"voltage %d\n", rail->reg_id,
-			rail->nominal_millivolts);
+		pr_err("tegra_dvfs: failed to disable %s at %d\n",
+		       rail->reg_id, rail->millivolts);
 		return;
 	}
 	rail->disabled = true;
@@ -1212,10 +1282,14 @@ int __init tegra_dvfs_late_init(void)
 
 	mutex_unlock(&dvfs_lock);
 
-	if (!connected && tegra_platform_is_silicon())
+	if (!connected && tegra_platform_is_silicon()) {
+		pr_warn("tegra_dvfs: DVFS regulators connection failed\n"
+			"            !!!! voltage scaling is disabled !!!!\n");
 		return -ENODEV;
+	}
 
-	register_pm_notifier(&tegra_dvfs_nb);
+	register_pm_notifier(&tegra_dvfs_suspend_nb);
+	register_pm_notifier(&tegra_dvfs_resume_nb);
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)

@@ -92,6 +92,10 @@ struct dvfs_rail {
 	int millivolts;
 	int new_millivolts;
 	int offs_millivolts;
+	int boot_millivolts;
+	int disable_millivolts;
+	int suspend_millivolts;
+
 	bool suspended;
 	bool dfll_mode;
 	bool dfll_mode_updating;
@@ -327,6 +331,13 @@ static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
 {
 	if (rail)
 		return rail->nominal_millivolts;
+	return -ENOENT;
+}
+
+static inline int tegra_dvfs_rail_get_boot_level(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->boot_millivolts ? : rail->nominal_millivolts;
 	return -ENOENT;
 }
 

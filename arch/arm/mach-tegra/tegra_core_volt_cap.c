@@ -57,7 +57,8 @@ static int core_cap_level_set(int level, int core_nominal_mv)
 	int ret = 0;
 
 	if (!core_cap_table) {
-		if (level == core_nominal_mv) {
+		int mv = tegra_dvfs_rail_get_boot_level(tegra_core_rail);
+		if (level == mv) {
 			core_buses_cap.level = level;
 			return 0;
 		}
