@@ -510,14 +510,14 @@ static int __init set_cpu_dvfs_data(
 
 		dfll_mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_dfll_param);
-		/* FIXME: Remove guardband of 20% once its included in coefficients */
+		/* FIXME: Remove guardband later */
 		dfll_mv = DIV_ROUND_CLOSEST(dfll_mv * 120, 100);
 		dfll_mv = round_cvb_voltage(dfll_mv, d->voltage_scale);
 
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
-		/* FIXME: Remove guardband of 30% once its included in coefficients */
-		mv = DIV_ROUND_CLOSEST(mv * 130, 100);
+		/* FIXME: Remove guardband later */
+		mv = DIV_ROUND_CLOSEST(dfll_mv * 130, 100);
 		mv = round_cvb_voltage(mv, d->voltage_scale);
 
 		/*
@@ -736,11 +736,12 @@ void __init tegra12x_init_dvfs(void)
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
 
 	/* Init thermal floors */
-	init_rail_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
+	/* FIXME: Uncomment when proper values are available later */
+	/* init_rail_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	init_rail_thermal_profile(vdd_core_therm_trips_table,
-		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);
+		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);*/
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra12_dvfs_rails,
