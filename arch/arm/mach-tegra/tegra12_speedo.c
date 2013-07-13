@@ -31,7 +31,7 @@
 #include "fuse.h"
 #include "iomap.h"
 
-#define TEGRA124_CPU_SPEEDO 17777 /* FIXME: Get Correct Value */
+#define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 
 #define FUSE_CPU_SPEEDO_0	0x114
 #define FUSE_CPU_SPEEDO_1	0x12c
