@@ -743,6 +743,12 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	 * If core regulator current limit is below minimum required to reach
 	 * nominal frequencies, cap core voltage, and through dvfs table all
 	 * core domain frequencies at the respective limits.
+	 *
+	 * If core boot edp limit is not set, cap core voltage as well.
+	 *
+	 * Otherwise, leave nominal core voltage at chip bin level, and set
+	 * all detach mode (boot, suspend, disable) limits same as boot edp
+	 * (for now, still throttle nominal for other than T40T skus).
 	 */
 	if (core_edp_current < TEGRA11_MIN_CORE_CURRENT) {
 		core_edp_voltage = min(core_edp_voltage,
@@ -754,15 +760,17 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 			TEGRA11_CORE_VOLTAGE_CAP);
 	}
 
-	/*
-	 * Start with nominal level for the chips with this speedo_id. Then,
-	 * make sure core nominal voltage is below edp limit for the board
-	 * (if edp limit is set).
-	 */
 	if (!core_edp_voltage)
 		core_edp_voltage = TEGRA11_CORE_VOLTAGE_CAP;
 
-	mv = min(mv, core_edp_voltage);
+	if ((core_edp_voltage <= TEGRA11_CORE_VOLTAGE_CAP) ||
+	    (tegra_sku_id != 0x4))
+		mv = min(mv, core_edp_voltage);
+
+	/* use boot edp limit as disable and suspend levels as well */
+	tegra11_dvfs_rail_vdd_core.boot_millivolts = core_edp_voltage;
+	tegra11_dvfs_rail_vdd_core.suspend_millivolts = core_edp_voltage;
+	tegra11_dvfs_rail_vdd_core.disable_millivolts = core_edp_voltage;
 
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
