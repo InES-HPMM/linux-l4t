@@ -1584,7 +1584,7 @@ static void calculate_high_freq_tap_value(struct sdhci_host *sdhci)
 	partial_win_quality = (vmid_tap_data->partial_win -
 		vmid_tap_data->sampling_point) - partial_win_tap;
 
-	if ((full_win_quality <= 0) && (partial_win_quality)) {
+	if ((full_win_quality <= 0) && (partial_win_quality <= 0)) {
 		dev_warn(mmc_dev(sdhci->mmc),
 			"No margin window for both windows\n");
 		tuning_data->best_tap_value = vmax_tap_data->full_win_begin +
