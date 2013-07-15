@@ -516,6 +516,45 @@ static s32 show_power(struct device *dev,
 	return sprintf(buf, "%d mW\n", power_mW);
 }
 
+static s32 show_power2(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina230_data *data = i2c_get_clientdata(client);
+	s32 power_mW, voltage_uV, voltage_mV;
+	s32 inverse_shunt_resistor, current_mA;
+	int retval;
+
+	mutex_lock(&data->mutex);
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	voltage_mV =
+		(s16)be16_to_cpu(i2c_smbus_read_word_data(client,
+							  INA230_VOLTAGE));
+
+	voltage_uV =
+		(s16)be16_to_cpu(i2c_smbus_read_word_data(client,
+							  INA230_SHUNT));
+
+	ensure_enabled_end(client);
+	mutex_unlock(&data->mutex);
+
+	voltage_mV = busv_register_to_mv(voltage_mV);
+
+	voltage_uV = shuntv_register_to_uv(voltage_uV);
+
+	inverse_shunt_resistor = 1000 / data->pdata->resistor;
+	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
+	power_mW = voltage_mV * current_mA / 1000;
+
+	return sprintf(buf, "%d mW\n", power_mW);
+}
+
 static s32 show_alert_flag(struct device *dev,
 			   struct device_attribute *attr,
 			   char *buf)
@@ -568,6 +607,7 @@ static struct sensor_device_attribute ina230[] = {
 	SENSOR_ATTR(in1_input, S_IRUGO, show_bus_voltage, NULL, 0),
 #endif
 	SENSOR_ATTR(power1_input, S_IRUGO, show_power, NULL, 0),
+	SENSOR_ATTR(power2_input, S_IRUGO, show_power2, NULL, 0),
 	SENSOR_ATTR(alert_flag, S_IRUGO, show_alert_flag, NULL, 0),
 };
 
