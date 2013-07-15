@@ -496,8 +496,8 @@ static void as364x_config_init(struct as364x_info *info)
 			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
 				sizeof(pcfg_cust->led_config[0]));
 		else
-			dev_notice(info->dev,
-				"%s: invalid led config[%d].\n", __func__, i);
+			dev_notice(info->dev, "%s:  led config[%d]."
+				"Using default values\n", __func__, i);
 	}
 
 config_init_done:
@@ -609,7 +609,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	if (pcfg->max_sustained_current_mA > pcap->max_assist_curr_mA ||
 		!pcfg->max_sustained_current_mA) {
 		dev_notice(info->dev,
-			"max_sustained_current_mA of %d invalid"
+			"max_sustained_current_mA is %d "
 			"changing to %d\n",
 			pcfg->max_sustained_current_mA,
 			pcap->max_assist_curr_mA);
