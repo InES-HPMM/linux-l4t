@@ -741,8 +741,7 @@ static void __init tegra_init_power(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
 #endif
-#if defined(CONFIG_ARCH_TEGRA_HAS_PCIE) && \
-			!defined(CONFIG_TEGRA_PCIE_SKIP_POWERGATING)
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 #endif
 

@@ -269,12 +269,6 @@ config ARCH_TEGRA_HAS_SATA
 config ARCH_TEGRA_HAS_CL_DVFS
 	bool
 
-config TEGRA_PCIE_SKIP_POWERGATING
-	bool "Skip PCIE powergating"
-	depends on PCI_TEGRA
-	help
-	 Do not powergate PCIE partition on boot up.
-
 config TEGRA_AHB
 	bool "Enable AHB driver for NVIDIA Tegra SoCs"
 	default y
