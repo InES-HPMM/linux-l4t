@@ -224,6 +224,10 @@ config ARCH_TEGRA_14x_SOC
 	  Support for NVIDIA Tegra 14x family of SoCs, based upon the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
 
+config TEGRA_NO_CARVEOUT
+	bool "Disable Tegra carveout"
+	default n
+
 config ARCH_TEGRA_HAS_ARM_SCU
 	bool
 
