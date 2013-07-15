@@ -465,6 +465,38 @@ static s32 show_current(struct device *dev,
 	return sprintf(buf, "%d mA\n", current_mA);
 }
 
+static s32 show_current2(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina230_data *data = i2c_get_clientdata(client);
+	s32 voltage_uV;
+	s32 inverse_shunt_resistor, current_mA;
+	int retval;
+
+	mutex_lock(&data->mutex);
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	voltage_uV =
+		(s16)be16_to_cpu(i2c_smbus_read_word_data(client,
+							  INA230_SHUNT));
+
+	ensure_enabled_end(client);
+	mutex_unlock(&data->mutex);
+
+	voltage_uV = shuntv_register_to_uv(voltage_uV);
+
+	inverse_shunt_resistor = 1000 / data->pdata->resistor;
+	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
+
+	return sprintf(buf, "%d mA\n", current_mA);
+}
+
 static s32 show_power(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
@@ -603,6 +635,7 @@ static struct sensor_device_attribute ina230[] = {
 		    show_current_threshold, set_current_threshold, 0),
 	SENSOR_ATTR(shuntvolt1_input, S_IRUGO, show_shunt_voltage, NULL, 0),
 	SENSOR_ATTR(curr1_input, S_IRUGO, show_current, NULL, 0),
+	SENSOR_ATTR(curr2_input, S_IRUGO, show_current2, NULL, 0),
 #if MEASURE_BUS_VOLT
 	SENSOR_ATTR(in1_input, S_IRUGO, show_bus_voltage, NULL, 0),
 #endif
