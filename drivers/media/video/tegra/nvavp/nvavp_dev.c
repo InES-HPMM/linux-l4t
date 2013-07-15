@@ -1588,30 +1588,26 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
 
-		iovmm_addr = 0x8ff00000;
+		nvavp->os_info.phys = 0x8ff00000;
+		nvavp->os_info.data = dma_alloc_at_coherent(
+							&ndev->dev,
+							SZ_1M,
+							&nvavp->os_info.phys,
+							GFP_KERNEL);
 
-		nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
-						L1_CACHE_BYTES,
-						NVMAP_HANDLE_UNCACHEABLE,
-						iovmm_addr);
-		if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
-			iovmm_addr = 0x0ff00000;
+		if (!nvavp->os_info.data || nvavp->os_info.phys != 0x8ff00000) {
+			nvavp->os_info.phys = 0x0ff00000;
+			nvavp->os_info.data = dma_alloc_at_coherent(
+							&ndev->dev,
+							SZ_1M,
+							&nvavp->os_info.phys,
+							GFP_KERNEL);
 
-			nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
-							L1_CACHE_BYTES,
-							NVMAP_HANDLE_UNCACHEABLE,
-							iovmm_addr);
-			if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
-				dev_err(&ndev->dev,
-					"cannot map os handle\n");
-				ret = PTR_ERR(nvavp->os_info.handle);
-				goto err_nvmap_alloc;
+			if (!nvavp->os_info.data ||
+			    nvavp->os_info.phys != 0x0ff00000) {
+				dev_err(&ndev->dev, "cannot allocate IOVA memory\n");
+				ret = -ENOMEM;
 			}
-		}
-
-		if (!nvavp->os_info.data || nvavp->os_info.phys != 0x0ff00000) {
-			dev_err(&ndev->dev, "cannot allocate IOVA memory\n");
-			ret = -ENOMEM;
 		}
 
 		dev_info(&ndev->dev,
