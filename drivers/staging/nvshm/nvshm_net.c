@@ -90,19 +90,19 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			datagram_len += ap_iob->length;
 			bb_iob = ap_iob->sg_next;
 			ap_iob = NVSHM_B2A(netdev.handle, bb_iob);
-			if (datagram_len > dev->mtu) {
-				pr_err("%s: MTU %d>%d\n", __func__,
-				       dev->mtu, datagram_len);
-				priv->stats.rx_errors++;
-				/* move to next datagram - drop current one */
-				ap_iob = ap_next;
-				bb_next = ap_next->next;
-				ap_next = NVSHM_B2A(netdev.handle, bb_next);
-				/* Break ->next chain before free */
-				ap_iob->next = NULL;
-				nvshm_iobuf_free_cluster(ap_iob);
-				continue;
-			}
+		}
+		if (datagram_len > dev->mtu) {
+			pr_err("%s: MTU %d>%d\n", __func__,
+			       dev->mtu, datagram_len);
+			priv->stats.rx_errors++;
+			/* move to next datagram - drop current one */
+			ap_iob = ap_next;
+			bb_next = ap_next->next;
+			ap_next = NVSHM_B2A(netdev.handle, bb_next);
+			/* Break ->next chain before free */
+			ap_iob->next = NULL;
+			nvshm_iobuf_free_cluster(ap_iob);
+			continue;
 		}
 		/* construct the skb */
 		skb = (struct sk_buff *) __netdev_alloc_skb(dev,
