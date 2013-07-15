@@ -520,6 +520,11 @@ static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
 	REGULATOR_SUPPLY("vdd_dtv_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_modem_3v3", NULL),
 	REGULATOR_SUPPLY("vdd", "1-004c"),
+	REGULATOR_SUPPLY("vdd", "0-0048"),
+	REGULATOR_SUPPLY("vdd", "0-0069"),
+	REGULATOR_SUPPLY("vdd", "0-000c"),
+	REGULATOR_SUPPLY("vdd", "0-0077"),
+	REGULATOR_SUPPLY("vin", "2-0030"),
 };
 
 /* AS3722 GPIO1*/
@@ -545,6 +550,11 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_kp_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_tp_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_modem_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_1v8b", "0-0048"),
+	REGULATOR_SUPPLY("vlogic", "0-0069"),
+	REGULATOR_SUPPLY("vid", "0-000c"),
+	REGULATOR_SUPPLY("vddio", "0-0077"),
+	REGULATOR_SUPPLY("vi2c", "2-0030"),
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
