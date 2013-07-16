@@ -30,10 +30,12 @@
 #include <asm/io.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/clk.h>
 #include <mach/tegra_bb.h>
 #include <mach/tegra_bbc_proxy.h>
+#include <mach/pm_domains.h>
 #include <linux/platform_data/nvshm.h>
 
 #include "clock.h"
@@ -907,6 +909,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		bb->prev_state = bb->state;
 		spin_unlock_irqrestore(&bb->lock, flags);
 
+		pm_runtime_get_sync(bb->dev);
 		/* going from 0 to high */
 		clk_prepare_enable(bb->emc_clk);
 		if (bb->emc_flags & EMC_DSR)
@@ -944,6 +947,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		/* reenable mem_req_soon irq */
 		tegra_bb_enable_mem_req_soon();
 		irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_HIGH);
+		pm_runtime_put(bb->dev);
 		return;
 
 	case BBC_CRASHDUMP_FLOOR:
@@ -951,6 +955,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		 * do not store prev_state */
 		spin_unlock_irqrestore(&bb->lock, flags);
 
+		pm_runtime_get_sync(bb->dev);
 		pr_info("%s: bbc crash detected, set EMC to max\n", __func__);
 		if (bb->prev_state != BBC_SET_FLOOR)
 			clk_prepare_enable(bb->emc_clk);
@@ -1212,6 +1217,9 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->nvshm_device.dev.platform_data = &bb->nvshm_pdata;
 	platform_device_register(&bb->nvshm_device);
 	platform_set_drvdata(pdev, bb);
+
+	tegra_pd_add_device(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	snprintf(bb->name, sizeof(bb->name), "tegra_bb%d", pdev->id);
