@@ -216,8 +216,7 @@ static struct domain_client client_list[] = {
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_chain_b.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_chain_b.gpd },
 	{ .name = "tegra_bb", .domain = &tegra_mc_clk.gpd },
-#endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#else
 	{ .name = "gr2d", .domain = &tegra_mc_clk.gpd },
 	{ .name = "gr3d", .domain = &tegra_mc_clk.gpd },
 	{ .name = "msenc", .domain = &tegra_mc_clk.gpd },
@@ -234,6 +233,10 @@ static struct domain_client client_list[] = {
 	{ .name = "nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_clk.gpd },
+	{ .name = "vic03", .domain = &tegra_mc_clk.gpd },
+	{ .name = "ve", .domain = &tegra_mc_clk.gpd },
+	{ .name = "gk20a", .domain = &tegra_mc_clk.gpd },
+	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
 #endif
 	{},
 };
