@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_emc.h
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -316,7 +316,7 @@ enum {
 #define EMC_STALL_THEN_EXE_AFTER_CLKCHANGE	0x3cc
 #define EMC_AUTO_CAL_CLK_STATUS			0x3d4
 #define EMC_SEL_DPD_CTRL			0x3d8
-#define EMC_SEL_DPD_CTRL_QUSE_DPD_ENABLE	(0x1 << 9)
+#define EMC_SEL_DPD_CTRL_DATA_DPD_ENABLE	(0x1 << 8)
 #define EMC_PRE_REFRESH_REQ_CNT			0x3dc
 #define EMC_DYN_SELF_REF_CONTROL		0x3e0
 #define EMC_TXSRDLL				0x3e4

@@ -723,6 +723,17 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 6.1 Disable auto-refresh right before clock change. */
 	ccfifo_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
+	/* 6.2 Set EMC_SEL_DPD_CTRL based on next freq: disable DATA_DPD for
+	   frequencies above 408 MHz. */
+	if (next_timing->rate > 408000)
+		ccfifo_writel(emc_readl(EMC_SEL_DPD_CTRL) &
+			      ~EMC_SEL_DPD_CTRL_DATA_DPD_ENABLE,
+			      EMC_SEL_DPD_CTRL);
+	else
+		ccfifo_writel(emc_readl(EMC_SEL_DPD_CTRL) |
+			      EMC_SEL_DPD_CTRL_DATA_DPD_ENABLE,
+			      EMC_SEL_DPD_CTRL);
+
 	/* 7. flow control marker 2 */
 	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
 
