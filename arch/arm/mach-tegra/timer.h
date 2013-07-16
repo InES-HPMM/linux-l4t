@@ -45,7 +45,19 @@ struct tegra_twd_context {
 	u32 twd_cnt;
 };
 
+#define timer_writel(value, reg) \
+	__raw_writel(value, IO_ADDRESS(TEGRA_TMR1_BASE) + (reg))
+#define timer_readl(reg) \
+	__raw_readl(IO_ADDRESS(TEGRA_TMR1_BASE) + (reg))
+
+#ifdef CONFIG_ARM_ARCH_TIMER
+int __init tegra_init_arch_timer(void);
+extern bool arch_timer_initialized;
+#endif
+
 void __init tegra_cpu_timer_init(void);
+void __init tegra_init_late_timer(void);
+
 int tegra_get_linear_age(void);
 
 #ifdef CONFIG_HAVE_ARM_TWD

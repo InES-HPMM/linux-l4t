@@ -1843,3 +1843,68 @@ static void update_pmc_registers(int instance)
 	iounmap(base);
 }
 #endif
+
+#ifdef CONFIG_ARM_ARCH_TIMER
+
+static u32 tsc_suspend_start;
+static u32 tsc_resume_start;
+
+#define pmc_writel(value, reg) \
+		writel(value, (uintptr_t)pmc + (reg))
+#define pmc_readl(reg) \
+		readl((uintptr_t)pmc + (reg))
+
+#define PMC_DPD_ENABLE			0x24
+#define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
+
+#define PMC_TSC_MULT			0x2b4
+#define PMC_TSC_MULT_FREQ_STS		(1 << 16)
+
+#define TSC_TIMEOUT_US			32
+
+void tegra_tsc_suspend(void)
+{
+	if (arch_timer_initialized) {
+		u32 reg = pmc_readl(PMC_DPD_ENABLE);
+		BUG_ON(reg & PMC_DPD_ENABLE_TSC_MULT_ENABLE);
+		reg |= PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+		pmc_writel(reg, PMC_DPD_ENABLE);
+		tsc_suspend_start = timer_readl(TIMERUS_CNTR_1US);
+	}
+}
+
+void tegra_tsc_resume(void)
+{
+	if (arch_timer_initialized) {
+		u32 reg = pmc_readl(PMC_DPD_ENABLE);
+		BUG_ON(!(reg & PMC_DPD_ENABLE_TSC_MULT_ENABLE));
+		reg &= ~PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+		pmc_writel(reg, PMC_DPD_ENABLE);
+		tsc_resume_start = timer_readl(TIMERUS_CNTR_1US);
+	}
+}
+
+void tegra_tsc_wait_for_suspend(void)
+{
+	if (arch_timer_initialized) {
+		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_suspend_start) <
+			TSC_TIMEOUT_US) {
+			if (pmc_readl(PMC_TSC_MULT) & PMC_TSC_MULT_FREQ_STS)
+				break;
+			cpu_relax();
+		}
+	}
+}
+
+void tegra_tsc_wait_for_resume(void)
+{
+	if (arch_timer_initialized) {
+		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_resume_start) <
+			TSC_TIMEOUT_US) {
+			if (!(pmc_readl(PMC_TSC_MULT) & PMC_TSC_MULT_FREQ_STS))
+				break;
+			cpu_relax();
+		}
+	}
+}
+#endif

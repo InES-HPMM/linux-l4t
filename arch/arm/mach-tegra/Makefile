@@ -12,6 +12,8 @@ obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
+obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
+obj-$(CONFIG_ARM_ARCH_TIMER)            += cpu_timer_arch.o
 obj-y                                   += timerinfo.o
 ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
