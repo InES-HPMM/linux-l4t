@@ -887,22 +887,22 @@ static irqreturn_t tegra_pmc_wake_intr(int irq, void *data)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	static void __iomem *tert_ictlr = IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE);
 	u32 lic, sts;
-	int mem_req;
+	int mem_req_soon;
 
 	spin_lock(&bb->lock);
 	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	mem_req = (sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT) & 1;
+	mem_req_soon =
+		(sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT)
+		& 1;
 
 	/* clear interrupt */
 	lic = readl(tert_ictlr + TRI_ICTLR_VIRQ_CPU);
-	if (lic & TRI_ICTLR_PMC_WAKE_INT) {
-		pr_debug("clear pmc_wake sts %x mem_req %d\n", sts, mem_req);
+	if (lic & TRI_ICTLR_PMC_WAKE_INT)
 		writel(TRI_ICTLR_PMC_WAKE_INT,
 				tert_ictlr + TRI_ICTLR_CPU_IER_CLR);
-	}
 
 	irq_set_irq_type(INT_PMC_WAKE_INT, IRQF_TRIGGER_RISING);
-	if (!mem_req) {
+	if (!mem_req_soon) {
 
 		bb->state = BBC_REMOVE_FLOOR;
 		queue_work(bb->workqueue, &bb->work);
