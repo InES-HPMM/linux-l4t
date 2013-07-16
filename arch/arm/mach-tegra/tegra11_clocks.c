@@ -4849,10 +4849,14 @@ static int tegra11_clk_cbus_enable(struct clk *c)
 	return 0;
 }
 
+/* select 5 steps below top rate as fine granularity region */
+#define CBUS_FINE_GRANULARITY		12000000	/* 12 MHz */
+#define CBUS_FINE_GRANULARITY_RANGE	(5 * CBUS_FINE_GRANULARITY)
+
 static long tegra11_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 					  bool up)
 {
-	int i;
+	int i, n;
 
 	if (!c->dvfs) {
 		if (!c->min_rate)
@@ -4874,6 +4878,24 @@ static long tegra11_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 	}
 	rate = max(rate, c->min_rate);
 
+	/* for top rates in fine granularity region don't clip to dvfs table */
+	n = c->dvfs->num_freqs;
+	if ((n >= 2) && (c->dvfs->millivolts[n-1] <= c->dvfs->max_millivolts) &&
+	    (rate > c->dvfs->freqs[n-2])) {
+		unsigned long threshold = max(c->dvfs->freqs[n-1],
+			c->dvfs->freqs[n-2] + CBUS_FINE_GRANULARITY_RANGE);
+		threshold -= CBUS_FINE_GRANULARITY_RANGE;
+
+		if (rate <= threshold)
+			return up ? threshold : c->dvfs->freqs[n-2];
+
+		rate = (up ? DIV_ROUND_UP(rate, CBUS_FINE_GRANULARITY) :
+			rate / CBUS_FINE_GRANULARITY) * CBUS_FINE_GRANULARITY;
+		rate = clamp(rate, threshold, c->dvfs->freqs[n-1]);
+		return rate;
+	}
+
+	/* clip rate to dvfs table steps */
 	for (i = 0; ; i++) {
 		unsigned long f = c->dvfs->freqs[i];
 		int mv = c->dvfs->millivolts[i];
