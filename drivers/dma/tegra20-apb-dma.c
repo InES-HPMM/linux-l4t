@@ -1494,6 +1494,7 @@ err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_dma_runtime_suspend(&pdev->dev);
+	tegra_pd_remove_device(&pdev->dev);
 	return ret;
 }
 
@@ -1514,6 +1515,7 @@ static int tegra_dma_remove(struct platform_device *pdev)
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_dma_runtime_suspend(&pdev->dev);
 
+	tegra_pd_remove_device(&pdev->dev);
 	return 0;
 }
 
