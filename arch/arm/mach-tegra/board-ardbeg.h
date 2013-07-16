@@ -86,8 +86,7 @@ enum tegra_bb_type {
 
 #define UTMI1_PORT_OWNER_XUSB   0x1
 #define UTMI2_PORT_OWNER_XUSB   0x2
-#define UTMI3_PORT_OWNER_XUSB   0x4
-#define HSIC1_PORT_OWNER_XUSB   0x8
+#define HSIC1_PORT_OWNER_XUSB   0x4
 
 /* Touchscreen definitions */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC

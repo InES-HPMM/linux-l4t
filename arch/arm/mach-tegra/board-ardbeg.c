@@ -697,7 +697,7 @@ static void ardbeg_usb_init(void)
 		}
 	}
 #endif
-	if (!(usb_port_owner_info & UTMI3_PORT_OWNER_XUSB)) {
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
