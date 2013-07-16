@@ -83,12 +83,13 @@ static void __init setup_core_count(void)
 
 	unsigned int cpuid;
 
-	/* T40DC is a special case */
-	if (tegra_sku_id == 0x20) {
-		number_of_cores = 2;
-		return;
+	/* Dual core SKU */
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) {
+		if (tegra_sku_id == 0x20) {
+			number_of_cores = 2;
+			return;
+		}
 	}
-
 	cpuid = (read_cpuid_id() >> 4) & 0xFFF;
 
 	/* Cortex-A15? */
