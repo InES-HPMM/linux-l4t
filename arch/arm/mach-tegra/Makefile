@@ -286,6 +286,7 @@ obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sensors.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-pinmux.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
+obj-${CONFIG_MACH_LAGUNA}               += board-laguna-powermon.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o

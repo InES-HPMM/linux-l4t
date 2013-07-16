@@ -1078,7 +1078,10 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_touch_init();
 	ardbeg_panel_init();
 	ardbeg_kbc_init();
-	ardbeg_pmon_init();
+	if (board_info.board_id == BOARD_PM358)
+		laguna_pm358_pmon_init();
+	else
+		ardbeg_pmon_init();
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	if (board_info.board_id == BOARD_PM359 ||

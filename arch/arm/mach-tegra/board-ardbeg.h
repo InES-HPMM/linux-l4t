@@ -147,7 +147,7 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 
 int laguna_pinmux_init(void);
 int laguna_regulator_init(void);
-
+int laguna_pm358_pmon_init(void);
 
 /* AUO Display related GPIO */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
