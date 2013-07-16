@@ -24,6 +24,7 @@
 
 #include "board.h"
 #include "board-ardbeg.h"
+#include "tegra-board-id.h"
 
 #define PRECISION_MULTIPLIER_ARDBEG	1000
 
@@ -55,6 +56,31 @@ enum {
 enum {
 	VDD_SYS_BL,
 	AVDD_1V05_LDO2,
+};
+
+/* following rails are present on Ardbeg A01 and onward boards */
+/* rails on i2c2_1 */
+enum {
+	ARDBEG_A01_VDD_SYS_BAT,
+	ARDBEG_A01_VDD_RTC_LDO3,
+	ARDBEG_A01_VDD_SYS_BUCKSOC,
+	ARDBEG_A01_VDD_SOC_SD1,
+	ARDBEG_A01_VDD_SYS_BUCKCPU,
+	ARDBEG_A01_VDD_CPU_BUCKCPU,
+	ARDBEG_A01_VDD_1V8_SD5,
+	ARDBEG_A01_VDD_3V3A_LDO1_6,
+	ARDBEG_A01_VDD_DIS_3V3_LCD,
+	ARDBEG_A01_VDD_1V35_SD2,
+	ARDBEG_A01_VDD_SYS_BUCKGPU,
+	ARDBEG_A01_VDD_LCD_1V8B_DIS,
+	ARDBEG_A01_VDD_1V05_LDO0,
+};
+
+/* rails on i2c2_2 */
+enum {
+	ARDBEG_A01_VDD_1V05_SD4,
+	ARDBEG_A01_VDD_1V8A_LDO2_5_7,
+	ARDBEG_A01_VDD_SYS_BL,
 };
 
 static struct ina219_platform_data power_mon_info_0[] = {
@@ -202,6 +228,155 @@ static struct ina230_platform_data power_mon_info_2[] = {
 	},
 };
 
+/* following are power monitor parameters for Ardbeg A01*/
+static struct ina230_platform_data ardbeg_A01_power_mon_info_1[] = {
+	[ARDBEG_A01_VDD_SYS_BAT] = {
+		.calibration_data  = 0x1366,
+		.power_lsb = 2.577527185 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SYS_BAT",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_RTC_LDO3] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 0.078127384 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_RTC_LDO3",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 50,
+	},
+
+	[ARDBEG_A01_VDD_SYS_BUCKSOC] = {
+		.calibration_data  = 0x1AAC,
+		.power_lsb = 0.624877954 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SYS_BUCKSOC",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 30,
+	},
+
+	[ARDBEG_A01_VDD_SOC_SD1] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 3.906369213 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SOC_SD1",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 1,
+	},
+
+	[ARDBEG_A01_VDD_SYS_BUCKCPU] = {
+		.calibration_data  = 0x1AC5,
+		.power_lsb = 1.867795126 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SYS_BUCKCPU",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_CPU_BUCKCPU] = {
+		.calibration_data  = 0x2ECF,
+		.power_lsb = 10.68179922 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_CPU_BUCKCPU",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 1,
+	},
+
+	[ARDBEG_A01_VDD_1V8_SD5] = {
+		.calibration_data  = 0x45F0,
+		.power_lsb = 0.714924039 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_1V8_SD5",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_3V3A_LDO1_6] = {
+		.calibration_data  = 0x3A83,
+		.power_lsb = 0.042726484 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_3V3A_LDO1_6",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 200,
+	},
+
+	[ARDBEG_A01_VDD_DIS_3V3_LCD] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 0.390636921 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_DIS_3V3_LCD",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_1V35_SD2] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 3.906369213 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_1V35_SD2",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 1,
+	},
+
+	[ARDBEG_A01_VDD_SYS_BUCKGPU] = {
+		.calibration_data  = 0x1F38,
+		.power_lsb = 1.601601602 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SYS_BUCKGPU",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_LCD_1V8B_DIS] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 0.039063692 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_LCD_1V8B_DIS",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 100,
+	},
+
+	[ARDBEG_A01_VDD_1V05_LDO0] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 0.130212307 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_1V05_LDO0",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 30,
+	},
+};
+
+static struct ina230_platform_data ardbeg_A01_power_mon_info_2[] = {
+	[ARDBEG_A01_VDD_1V05_SD4] = {
+		.calibration_data  = 0x7FFF,
+		.power_lsb = 0.390636921 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_1V05_SD4",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 10,
+	},
+
+	[ARDBEG_A01_VDD_1V8A_LDO2_5_7] = {
+		.calibration_data  = 0x5A04,
+		.power_lsb = 0.277729561 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_1V8A_LDO2_5_7",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 20,
+	},
+
+	[ARDBEG_A01_VDD_SYS_BL] = {
+		.calibration_data  = 0x2468,
+		.power_lsb = 0.274678112 * PRECISION_MULTIPLIER_ARDBEG,
+		.rail_name = "VDD_SYS_BL",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_ARDBEG,
+		.resistor = 50,
+	},
+};
+
 /* i2c addresses of rails present on Ardbeg */
 /* addresses on i2c2_0 */
 enum {
@@ -235,6 +410,32 @@ enum {
 	INA_I2C_2_2_ADDR_4C,
 };
 
+/* i2c addresses of rails present on Ardbeg A01*/
+/* addresses on i2c2_1 */
+enum {
+	ARDBEG_A01_INA_I2C_2_1_ADDR_40,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_41,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_42,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_43,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_44,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_45,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_46,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_47,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_48,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_49,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_4B,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_4E,
+	ARDBEG_A01_INA_I2C_2_1_ADDR_4F,
+};
+
+/* addresses on i2c2_2 */
+enum {
+	ARDBEG_A01_INA_I2C_2_2_ADDR_40,
+	ARDBEG_A01_INA_I2C_2_2_ADDR_41,
+	ARDBEG_A01_INA_I2C_2_2_ADDR_49,
+};
+
+/* following is the i2c board info for Ardbeg */
 static struct i2c_board_info ardbeg_i2c2_0_ina219_board_info[] = {
 	[INA_I2C_2_0_ADDR_40] = {
 		I2C_BOARD_INFO("ina219", 0x40),
@@ -362,6 +563,123 @@ static struct i2c_board_info ardbeg_i2c2_2_ina230_board_info[] = {
 
 };
 
+/* following is the i2c board info for Ardbeg A01 */
+static struct i2c_board_info ardbeg_A01_i2c2_1_ina230_board_info[] = {
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_40] = {
+		I2C_BOARD_INFO("ina230", 0x40),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BAT],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_41] = {
+		I2C_BOARD_INFO("ina230", 0x41),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_RTC_LDO3],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_42] = {
+		I2C_BOARD_INFO("ina230", 0x42),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKSOC],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_43] = {
+		I2C_BOARD_INFO("ina230", 0x43),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SOC_SD1],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_44] = {
+		I2C_BOARD_INFO("ina230", 0x44),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKCPU],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_45] = {
+		I2C_BOARD_INFO("ina230", 0x45),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_CPU_BUCKCPU],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_46] = {
+		I2C_BOARD_INFO("ina230", 0x46),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_1V8_SD5],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_47] = {
+		I2C_BOARD_INFO("ina230", 0x47),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_3V3A_LDO1_6],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_48] = {
+		I2C_BOARD_INFO("ina230", 0x48),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_DIS_3V3_LCD],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_49] = {
+		I2C_BOARD_INFO("ina230", 0x49),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_1V35_SD2],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_4B] = {
+		I2C_BOARD_INFO("ina230", 0x4B),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKGPU],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_4E] = {
+		I2C_BOARD_INFO("ina230", 0x4E),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_LCD_1V8B_DIS],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_1_ADDR_4F] = {
+		I2C_BOARD_INFO("ina230", 0x4F),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_1V05_LDO0],
+		.irq = -1,
+	},
+};
+
+static struct i2c_board_info ardbeg_A01_i2c2_2_ina230_board_info[] = {
+	[ARDBEG_A01_INA_I2C_2_2_ADDR_40] = {
+		I2C_BOARD_INFO("ina230", 0x40),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_1V05_SD4],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_2_ADDR_41] = {
+		I2C_BOARD_INFO("ina230", 0x41),
+		.platform_data =
+		&ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_1V8A_LDO2_5_7],
+		.irq = -1,
+	},
+
+	[ARDBEG_A01_INA_I2C_2_2_ADDR_49] = {
+		I2C_BOARD_INFO("ina230", 0x49),
+		.platform_data =
+			&ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_SYS_BL],
+		.irq = -1,
+	},
+};
+
 static struct pca954x_platform_mode ardbeg_pca954x_modes[] = {
 	{ .adap_id = PCA954x_I2C_BUS0, .deselect_on_exit = true, },
 	{ .adap_id = PCA954x_I2C_BUS1, .deselect_on_exit = true, },
@@ -381,15 +699,19 @@ static const struct i2c_board_info ardbeg_i2c2_board_info[] = {
 	},
 };
 
-int __init ardbeg_pmon_init(void)
+static void __init register_devices_ardbeg_A01(void)
 {
-	i2c_register_board_info(1, ardbeg_i2c2_board_info,
-		ARRAY_SIZE(ardbeg_i2c2_board_info));
+	i2c_register_board_info(PCA954x_I2C_BUS1,
+			ardbeg_A01_i2c2_1_ina230_board_info,
+			ARRAY_SIZE(ardbeg_A01_i2c2_1_ina230_board_info));
 
-	i2c_register_board_info(PCA954x_I2C_BUS0,
-			ardbeg_i2c2_0_ina219_board_info,
-			ARRAY_SIZE(ardbeg_i2c2_0_ina219_board_info));
+	i2c_register_board_info(PCA954x_I2C_BUS2,
+			ardbeg_A01_i2c2_2_ina230_board_info,
+			ARRAY_SIZE(ardbeg_A01_i2c2_2_ina230_board_info));
+}
 
+static void __init register_devices_ardbeg(void)
+{
 	i2c_register_board_info(PCA954x_I2C_BUS1,
 			ardbeg_i2c2_1_ina230_board_info,
 			ARRAY_SIZE(ardbeg_i2c2_1_ina230_board_info));
@@ -397,6 +719,25 @@ int __init ardbeg_pmon_init(void)
 	i2c_register_board_info(PCA954x_I2C_BUS2,
 			ardbeg_i2c2_2_ina230_board_info,
 			ARRAY_SIZE(ardbeg_i2c2_2_ina230_board_info));
+}
+
+int __init ardbeg_pmon_init(void)
+{
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	i2c_register_board_info(1, ardbeg_i2c2_board_info,
+		ARRAY_SIZE(ardbeg_i2c2_board_info));
+
+	i2c_register_board_info(PCA954x_I2C_BUS0,
+			ardbeg_i2c2_0_ina219_board_info,
+			ARRAY_SIZE(ardbeg_i2c2_0_ina219_board_info));
+
+	if (bi.fab >= BOARD_FAB_A01)
+		register_devices_ardbeg_A01();
+	else
+		register_devices_ardbeg();
 
 	return 0;
 }
