@@ -43,6 +43,27 @@
  */
 #define SUN_RPC_ACC_REPLY_HDR_SIZE 4
 
+/*
+ * Check that there are enough bytes left in message payload, given length
+ * needed, and current read pointer
+ */
+static inline bool is_too_short(const struct nvshm_rpc_message *message,
+				const void *reader,
+				u32 data_needed)
+{
+	u32 data_left = message->length - (reader - message->payload);
+	if (data_left < data_needed) {
+		/* We use 1 to check for emptiness */
+		if (data_needed != 1)
+			pr_err("Not enough data left in buffer: %d < %d\n",
+			       data_left, data_needed);
+
+		return true;
+	}
+
+	return false;
+}
+
 static int nvshm_rpc_utils_encode_args(const struct nvshm_rpc_datum_in *data,
 				       u32 number,
 				       u32 *writer)
@@ -304,20 +325,38 @@ int nvshm_rpc_utils_decode_args(const struct nvshm_rpc_message *message,
 				u32 number)
 {
 	const __be32 *reader = message->payload;
-	u32 n;
+	void *arrays[number];
+	u32 n, arrays_index = 0;
+	int rc = -EPROTO;
 
-	if (is_response)
+	if (is_response) {
+		if (is_too_short(message, reader, SUN_RPC_ACC_REPLY_HDR_SIZE))
+			return rc;
+
 		reader += SUN_RPC_ACC_REPLY_HDR_SIZE;
-	else
+	} else {
+		if (is_too_short(message, reader, SUN_RPC_CALL_HDR_SIZE))
+			return rc;
+
 		reader += SUN_RPC_CALL_HDR_SIZE;
+	}
+
 	for (n = 0; n < number; ++n) {
 		struct nvshm_rpc_datum_out *datum = &data[n];
+		enum nvshm_rpc_datumtype type = datum->type & ~TYPE_ARRAY_FLAG;
 		u32 uint;
 
-		/* There is always a number, either the data ot its length */
+		/* There is always a number, either the data or its length */
+		if (is_too_short(message, reader, sizeof(uint)))
+			goto err_mem_free;
+
 		uint = be32_to_cpup((__be32 *) reader);
-		++reader;
+		reader++;
 		if ((datum->type & TYPE_ARRAY_FLAG) == 0) {
+			if (((type == TYPE_STRING) || (type == TYPE_BLOB)) &&
+			    is_too_short(message, reader, sizeof(uint)))
+				goto err_mem_free;
+
 			switch (datum->type) {
 			case TYPE_SINT:
 				*datum->d.sint_data = (s32) uint;
@@ -336,27 +375,30 @@ int nvshm_rpc_utils_decode_args(const struct nvshm_rpc_message *message,
 				break;
 			default:
 				pr_err("unknown RPC type %d\n", datum->type);
-				return -EINVAL;
+				rc = -EINVAL;
+				goto err_mem_free;
 			}
 		} else {
-			enum nvshm_rpc_datumtype type;
-
-			type = datum->type & ~TYPE_ARRAY_FLAG;
 			*datum->length = uint;
 			if ((type == TYPE_SINT) || (type == TYPE_UINT)) {
 				u32 *a;
 				u32 d;
 
+				if (is_too_short(message, reader, uint * 4))
+					break;
+
 				a = kmalloc(uint * sizeof(u32), GFP_KERNEL);
 				if (!a) {
 					pr_err("kmalloc failed\n");
-					return -ENOMEM;
+					rc = -ENOMEM;
+					goto err_mem_free;
 				}
 
+				arrays[arrays_index++] = a;
 				*datum->d.blob_data = a;
 				for (d = 0; d < uint; ++d, ++a) {
 					*a = be32_to_cpup((__be32 *) reader);
-					++reader;
+					reader++;
 				}
 			} else if (type == TYPE_STRING) {
 				const char **a;
@@ -366,24 +408,46 @@ int nvshm_rpc_utils_decode_args(const struct nvshm_rpc_message *message,
 					    GFP_KERNEL);
 				if (!a) {
 					pr_err("kmalloc failed\n");
-					return -ENOMEM;
+					rc = -ENOMEM;
+					goto err_mem_free;
 				}
 
+				arrays[arrays_index++] = a;
 				*datum->d.blob_data = a;
 				for (d = 0; d < uint; ++d, ++a) {
 					u32 len;
+
+					if (is_too_short(message, reader,
+							 sizeof(len)))
+						goto err_mem_free;
+
 					len = be32_to_cpup((__be32 *) reader);
-					++reader;
+					reader++;
+					if (is_too_short(message, reader,
+							 XDR_QUADLEN(len)))
+						goto err_mem_free;
+
 					*a = (const char *) reader;
 					reader += XDR_QUADLEN(len);
 				}
 			} else {
 				pr_err("invalid RPC type for array %d\n", type);
-				return -EINVAL;
+				rc = -EINVAL;
+				goto err_mem_free;
 			}
 		}
 	}
-	return 0;
+
+	/* Check that things went well and there is no more data in buffer */
+	if ((n == number) && is_too_short(message, reader, 1))
+		return 0;
+
+err_mem_free:
+	/* Failure: need to free what's been allocated */
+	for (n = 0; n < arrays_index; n++)
+		kfree(arrays[n]);
+
+	return rc;
 }
 EXPORT_SYMBOL_GPL(nvshm_rpc_utils_decode_args);
 
