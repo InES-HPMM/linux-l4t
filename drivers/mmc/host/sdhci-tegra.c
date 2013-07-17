@@ -1578,7 +1578,9 @@ static void calculate_high_freq_tap_value(struct sdhci_host *sdhci)
 		vmax_tap_data->full_win_begin));
 	partial_win_tap = ((vmid_tap_data->partial_win -
 		vmid_tap_data->sampling_point) +
-		(partial_win_start + vmax_tap_data->sampling_point)) / 2;
+		(partial_win_start + vmax_tap_data->sampling_point));
+	partial_win_tap >>= 1;
+
 	if (partial_win_tap < 0)
 		partial_win_tap = 0;
 	partial_win_quality = (vmid_tap_data->partial_win -
@@ -1593,6 +1595,7 @@ static void calculate_high_freq_tap_value(struct sdhci_host *sdhci)
 	} else {
 		if (full_win_quality > partial_win_quality) {
 			tuning_data->best_tap_value = full_win_tap;
+			tuning_data->select_partial_win = false;
 		} else {
 			tuning_data->best_tap_value = partial_win_tap;
 			tuning_data->select_partial_win = true;
@@ -1727,6 +1730,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	struct tap_window_data *tap_data)
 {
 	unsigned int tap_value;
+	unsigned int full_win_percentage = 0;
 	int err = 0;
 
 	if (!tap_data) {
@@ -1758,31 +1762,40 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		}
 	}
 
-	/* Get the full window start */
-	tap_value++;
-	tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true);
-	if (tap_value > MAX_TAP_VALUES) {
-		/* All tap values exhausted. No full window */
-		tap_data->abandon_full_win = true;
-		goto out;
-	} else {
-		tap_data->full_win_begin = tap_value;
-		/*
-		 * If full win start is 0xFF, then set that as full win end
-		 * and exit.
-		 */
-		if (tap_value == MAX_TAP_VALUES) {
-			tap_data->full_win_end = tap_value;
+	do {
+		/* Get the full window start */
+		tap_value++;
+		tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true);
+		if (tap_value > MAX_TAP_VALUES) {
+			/* All tap values exhausted. No full window */
+			tap_data->abandon_full_win = true;
 			goto out;
+		} else {
+			tap_data->full_win_begin = tap_value;
+			/*
+			 * If full win start is 0xFF, then set that as
+			 * full win end and exit.
+			 */
+			if (tap_value == MAX_TAP_VALUES) {
+				tap_data->full_win_end = tap_value;
+				goto out;
+			}
 		}
-	}
 
-	/* Get the full window end */
-	tap_value++;
-	tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, false);
-	tap_data->full_win_end = tap_value - 1;
-	if (tap_value > MAX_TAP_VALUES)
-		tap_data->full_win_end = MAX_TAP_VALUES;
+		/* Get the full window end */
+		tap_value++;
+		tap_value = sdhci_tegra_scan_tap_values(sdhci,
+				tap_value, false);
+		tap_data->full_win_end = tap_value - 1;
+		if (tap_value > MAX_TAP_VALUES)
+			tap_data->full_win_end = MAX_TAP_VALUES;
+		full_win_percentage = ((tap_data->full_win_end -
+				tap_data->full_win_begin) * 100) /
+				(tap_data->partial_win + 1);
+	} while (full_win_percentage < 50 && tap_value < MAX_TAP_VALUES);
+
+	if (full_win_percentage < 50)
+		tap_data->abandon_full_win = true;
 out:
 	/*
 	 * Mark tuning as failed if both partial and full windows are
