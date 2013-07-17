@@ -522,8 +522,15 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.passive_delay = 1000,
 	.tzp = &tj_tzp,
 
-	.num_trips = 1,
+	.num_trips = 2,
 	.trips = {
+		{
+			.cdev_type = "shutdown_warning",
+			.trip_temp = 93000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+		},
 		{
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 83000,
