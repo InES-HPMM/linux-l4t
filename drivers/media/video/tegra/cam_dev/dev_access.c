@@ -27,6 +27,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/gpio.h>
+#include <linux/clk.h>
 
 #include <media/nvc.h>
 #include <media/camera.h>
@@ -114,11 +115,51 @@ static int camera_dev_wr_blk(
 }
 
 int camera_dev_parser(
-	struct camera_device *cdev, u32 addr, u32 val)
+	struct camera_device *cdev,
+	u32 command, u32 val,
+	struct camera_seq_status *pst)
 {
+	int err = 0;
 	u8 flag = 0;
 
-	switch (addr) {
+	switch (command) {
+	case CAMERA_TABLE_EDP_STATE:
+		err = camera_edp_req(cdev, val);
+		if (pst)
+			pst->status = cdev->edpc.edp_state;
+		if (err < 0)
+			return err;
+		break;
+	case CAMERA_TABLE_INX_CGATE:
+	case CAMERA_TABLE_INX_CLOCK:
+	{
+		struct clk *ck;
+		int idx = val & CAMERA_TABLE_CLOCK_INDEX_MASK;
+
+		idx >>= CAMERA_TABLE_CLOCK_VALUE_BITS;
+		val &= CAMERA_TABLE_CLOCK_VALUE_MASK;
+		if (idx >= cdev->num_clk) {
+			dev_err(cdev->dev,
+				"clock index %d out of range.\n", idx);
+			return -ENODEV;
+		}
+
+		ck = cdev->clks[idx];
+		dev_dbg(cdev->dev, "%s CAMERA_TABLE_INX_CLOCK %d %d, %d %p\n",
+			__func__, idx, val, cdev->num_clk, ck);
+		if (ck) {
+			if (val) {
+				if (command == CAMERA_TABLE_INX_CLOCK)
+					err = clk_set_rate(ck, val * 1000);
+				if (!err)
+					err = clk_prepare_enable(ck);
+			} else
+				clk_disable_unprepare(ck);
+		}
+		if (err)
+			return err;
+		break;
+	}
 	case CAMERA_TABLE_PWR:
 	{
 		struct nvc_regulator *preg;
@@ -145,7 +186,7 @@ int camera_dev_parser(
 			if (err) {
 				dev_err(cdev->dev, "%s %s err\n",
 					__func__, preg->vreg_name);
-				return -EFAULT;
+				return -EIO;
 			}
 		} else
 			dev_dbg(cdev->dev, "%s not available\n",
@@ -165,7 +206,7 @@ int camera_dev_parser(
 		gpio = &cdev->gpios[val];
 		if (gpio->valid) {
 			flag = gpio->active_high ? 0xff : 0;
-			if (addr != CAMERA_TABLE_GPIO_INX_ACT)
+			if (command != CAMERA_TABLE_GPIO_INX_ACT)
 				flag = !flag;
 			gpio_set_value(gpio->gpio, flag & 0x01);
 			dev_dbg(cdev->dev, "IDX %d(%d) %d\n", val,
@@ -182,7 +223,7 @@ int camera_dev_parser(
 		}
 
 		flag = 0xff;
-		if (addr != CAMERA_TABLE_GPIO_ACT)
+		if (command != CAMERA_TABLE_GPIO_ACT)
 			flag = !flag;
 		gpio_set_value(val, flag & 0x01);
 		dev_dbg(cdev->dev,
@@ -234,15 +275,17 @@ int camera_dev_parser(
 		usleep_range(val, val + 20);
 		break;
 	default:
-		dev_err(cdev->dev, "unrecognized cmd %x.\n", addr);
+		dev_err(cdev->dev, "unrecognized cmd %x.\n", command);
 		return -ENODEV;
-		break;
 	}
 
 	return 1;
 }
 
-int camera_dev_wr_table(struct camera_device *cdev, struct camera_reg *table)
+int camera_dev_wr_table(
+	struct camera_device *cdev,
+	struct camera_reg *table,
+	struct camera_seq_status *pst)
 {
 	const struct camera_reg *next;
 	u8 *b_ptr = cdev->i2c_buf;
@@ -253,27 +296,32 @@ int camera_dev_wr_table(struct camera_device *cdev, struct camera_reg *table)
 
 	dev_dbg(cdev->dev, "%s\n", __func__);
 	if (!cdev->chip) {
-		dev_err(cdev->dev, "%s chip?\n", "EMPTY");
-		return -EFAULT;
+		dev_err(cdev->dev, "EMPTY chip!\n");
+		return -EEXIST;
 	}
 
 	byte_num = cdev->chip->regmap_cfg.val_bits / 8;
 	if (byte_num != 1 && byte_num != 2) {
 		dev_err(cdev->dev,
 			"unsupported byte length %d.\n", byte_num);
-		return -EFAULT;
+		return -ENODEV;
 	}
 
 	for (next = table; next->addr != CAMERA_TABLE_END; next++) {
 		dev_dbg(cdev->dev, "%x - %x\n", next->addr, next->val);
 		if (next->addr & CAMERA_INT_MASK) {
-			err = camera_dev_parser(cdev, next->addr, next->val);
+			err = camera_dev_parser(
+				cdev, next->addr, next->val, pst);
 			if (err > 0) { /* special cmd executed */
 				err = 0;
 				continue;
 			}
-			if (err < 0) /* this is a real error */
+			if (err < 0) { /* this is a real error */
+				if (pst)
+					pst->idx = (next - table) /
+						sizeof(*table) + 1;
 				break;
+			}
 		}
 
 		if (!buf_count) {
@@ -316,7 +364,7 @@ int camera_regulator_get(struct device *dev,
 	dev_dbg(dev, "%s %s", __func__, vreg_name);
 	if (vreg_name == NULL) {
 		dev_err(dev, "%s NULL regulator name.\n", __func__);
-		return -EFAULT;
+		return -ENODEV;
 	}
 	reg = regulator_get(dev, vreg_name);
 	if (unlikely(IS_ERR_OR_NULL(reg))) {

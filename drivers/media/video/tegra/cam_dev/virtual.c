@@ -26,11 +26,13 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/clk.h>
 
 #include <media/nvc.h>
 #include <media/camera.h>
 
 struct chip_config {
+	int clk_num;
 	int gpio_num;
 	int reg_num;
 	struct camera_reg *seq_power_on;
@@ -41,8 +43,6 @@ struct chip_config {
 static int virtual_update(
 	struct camera_device *cdev, struct cam_update *upd, int num)
 {
-	struct nvc_gpio *gpio;
-	u32 *pinmux;
 	int err = 0;
 	int idx;
 
@@ -50,7 +50,110 @@ static int virtual_update(
 	mutex_lock(&cdev->mutex);
 	for (idx = 0; idx < num; idx++) {
 		switch (upd[idx].type) {
+		case UPDATE_EDP:
+		{
+			struct edp_cfg ec;
+			struct edp_client *pec = &cdev->edpc.edp_client;
+
+			/* update edp throttle seq */
+			if (upd[idx].index == CAMERA_SEQ_FLAG_EDP) {
+				u32 sidx = upd[idx].arg;
+				dev_dbg(cdev->dev, "%s UPDATE_EDP throttle %d\n",
+					__func__, sidx);
+				if (sidx >= NUM_OF_SEQSTACK ||
+					!cdev->seq_stack[sidx]) {
+					dev_err(cdev->dev, "edp index err!\n");
+					err = -ENOENT;
+					break;
+				}
+
+				cdev->edpc.s_throttle = cdev->seq_stack[sidx];
+				break;
+			}
+
+			dev_dbg(cdev->dev, "%s UPDATE_EDP config\n", __func__);
+			if (cdev->edpc.edpc_en) {
+				dev_err(cdev->dev, "edp client already set!\n");
+				err = -EEXIST;
+				break;
+			}
+			if (upd[idx].size != sizeof(ec)) {
+				dev_err(cdev->dev, "Invalid edp cfg size!\n");
+				err = -EINVAL;
+				break;
+			}
+			memset(&ec, 0, sizeof(ec));
+			if (copy_from_user(&ec,
+				(const void __user *)upd[idx].arg,
+				sizeof(ec))) {
+				dev_err(cdev->dev,
+					"%s copy_from_user err line %d\n",
+					__func__, __LINE__);
+				err = -EFAULT;
+				break;
+			}
+			if (ec.num > CAMERA_MAX_EDP_ENTRIES) {
+				dev_err(cdev->dev, "too many estate entries!\n");
+				err = -E2BIG;
+				break;
+			}
+
+			memcpy(cdev->estates, ec.estates,
+				ec.num * sizeof(cdev->estates[0]));
+			pec->states = cdev->estates;
+			pec->num_states = ec.num;
+			pec->e0_index = ec.e0_index;
+			pec->priority = ec.priority;
+			camera_edp_register(cdev);
+			break;
+		}
+		case UPDATE_CLOCK:
+		{
+			struct clk *ck;
+			u8 buf[CAMERA_MAX_NAME_LENGTH];
+
+			if (!cdev->num_clk) {
+				dev_err(cdev->dev, "NO clock needed.\n");
+				err = -ENODEV;
+				break;
+			}
+			if (upd[idx].index >= cdev->num_clk) {
+				dev_err(cdev->dev,
+					"clock index %d out of range.\n",
+					upd[idx].index);
+				err = -ENODEV;
+				break;
+			}
+
+			memset(buf, 0, sizeof(buf));
+			if (copy_from_user(buf,
+				(const void __user *)upd[idx].arg,
+				sizeof(buf) - 1 < upd[idx].size ?
+				sizeof(buf) - 1 : upd[idx].size)) {
+				dev_err(cdev->dev,
+					"%s copy_from_user err line %d\n",
+					__func__, __LINE__);
+				err = -EFAULT;
+				break;
+			}
+
+			dev_dbg(cdev->dev, "%s UPDATE_CLOCK %d of %d, %s\n",
+				__func__, upd[idx].index, cdev->num_clk, buf);
+			ck = devm_clk_get(cdev->dev, buf);
+			if (IS_ERR(ck)) {
+				dev_err(cdev->dev, "%s: get clock %s FAILED.\n",
+					__func__, buf);
+				return PTR_ERR(ck);
+			}
+			cdev->clks[upd[idx].index] = ck;
+			dev_dbg(cdev->dev, "UPDATE_CLOCK: %d %s\n",
+				upd[idx].index, buf);
+			break;
+		}
 		case UPDATE_PINMUX:
+		{
+			u32 *pinmux;
+
 			if (!cdev->pinmux_num) {
 				dev_err(cdev->dev, "NO pinmux available.\n");
 				err = -ENODEV;
@@ -72,7 +175,11 @@ static int virtual_update(
 				pinmux = &cdev->mclk_disable_idx;
 			*pinmux = upd[idx].arg;
 			break;
+		}
 		case UPDATE_GPIO:
+		{
+			struct nvc_gpio *gpio;
+
 			if (upd[idx].index >= cdev->num_gpio) {
 				dev_err(cdev->dev,
 					"gpio index %d out of range.\n",
@@ -94,6 +201,7 @@ static int virtual_update(
 			gpio->valid = true;
 			cdev->gpios[upd[idx].index] = *gpio;
 			break;
+		}
 		default:
 			dev_err(cdev->dev,
 				"unsupported upd type %d\n", upd[idx].type);
@@ -119,7 +227,7 @@ static int virtual_power_on(struct camera_device *cdev)
 		return 0;
 
 	mutex_lock(&cdev->mutex);
-	err = camera_dev_wr_table(cdev, pwr_seq);
+	err = camera_dev_wr_table(cdev, pwr_seq, NULL);
 	if (!err)
 		cdev->is_power_on = 1;
 	mutex_unlock(&cdev->mutex);
@@ -138,10 +246,32 @@ static int virtual_power_off(struct camera_device *cdev)
 		return 0;
 
 	mutex_lock(&cdev->mutex);
-	err = camera_dev_wr_table(cdev, pwr_seq);
+	err = camera_dev_wr_table(cdev, pwr_seq, NULL);
 	if (!err)
 		cdev->is_power_on = 0;
 	mutex_unlock(&cdev->mutex);
+
+	return err;
+}
+
+static int virtual_shutdown(struct camera_device *cdev)
+{
+	struct camera_reg *t_seq = cdev->edpc.s_throttle;
+	int err = 0;
+
+	dev_dbg(cdev->dev, "%s %x %p\n",
+		__func__, cdev->is_power_on, t_seq);
+	if (!cdev->is_power_on)
+		return 0;
+
+	if (t_seq) {
+		mutex_lock(&cdev->mutex);
+		err = camera_dev_wr_table(cdev, t_seq, NULL);
+		mutex_unlock(&cdev->mutex);
+	}
+
+	if (!err)
+		err = virtual_power_off(cdev);
 
 	return err;
 }
@@ -175,8 +305,9 @@ static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 	u32 idx;
 
 	dev_dbg(cdev->dev, "%s\n", __func__);
-	cdev->gpios = kzalloc(c_info->gpio_num * sizeof(struct nvc_gpio) +
-		c_info->reg_num * sizeof(struct nvc_regulator),
+	cdev->gpios = kzalloc(c_info->gpio_num * sizeof(*cdev->gpios) +
+		c_info->reg_num * sizeof(*cdev->regs) +
+		c_info->clk_num * sizeof(*cdev->clks),
 		GFP_KERNEL);
 	if (cdev->gpios == NULL) {
 		dev_err(cdev->dev, "%s memory low!\n", __func__);
@@ -187,8 +318,10 @@ static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 	cdev->pinmux_tbl = ((struct camera_platform_data *)pdata)->pinmux;
 	cdev->num_gpio = c_info->gpio_num;
 	cdev->regs = (void *)cdev->gpios +
-		c_info->gpio_num * sizeof(struct nvc_gpio);
+		c_info->gpio_num * sizeof(*cdev->gpios);
 	cdev->num_reg = c_info->reg_num;
+	cdev->clks = (void *)cdev->regs + c_info->reg_num * sizeof(*cdev->regs);
+	cdev->num_clk = c_info->clk_num;
 	cdev->mclk_enable_idx = CAMDEV_INVALID;
 	cdev->mclk_disable_idx = CAMDEV_INVALID;
 
@@ -222,8 +355,8 @@ static int virtual_device_sanity_check(
 	dev_dbg(dev, "%s: %s, bus type %d, addr bits %d, val bits %d\n",
 		__func__, dev_info->name, dev_info->bus_type,
 		dev_info->regmap_cfg.addr_bits, dev_info->regmap_cfg.val_bits);
-	dev_dbg(dev, "gpios %d, regs %d\n",
-		dev_info->gpio_num, dev_info->reg_num);
+	dev_dbg(dev, "gpios %d, regs %d, clks %d\n",
+		dev_info->gpio_num, dev_info->reg_num, dev_info->clk_num);
 	if (dev_info->name[0] == '\0') {
 		dev_err(dev, "%s need a device name!\n", __func__);
 		return -ENODEV;
@@ -269,6 +402,11 @@ static int virtual_device_sanity_check(
 			__func__, dev_info->gpio_num);
 	}
 
+	if (dev_info->clk_num >= 5) {
+		dev_notice(dev, "%s WHAT?! Are you sure you need %d clocks?\n",
+			__func__, dev_info->clk_num);
+	}
+
 	*len = 0;
 	num = dev_info->reg_num;
 	nptr = &dev_info->reg_names[0];
@@ -299,6 +437,7 @@ static int virtual_chip_config(
 	u32 idx;
 
 	dev_dbg(dev, "%s regulators:\n", __func__);
+	c_info->clk_num = dev_info->clk_num;
 	c_info->gpio_num = dev_info->gpio_num;
 	c_info->reg_num = dev_info->reg_num;
 	rptr += sizeof(*c_info) + sizeof(char *) * c_info->reg_num;
@@ -392,6 +531,7 @@ int virtual_device_add(struct device *dev, unsigned long arg)
 	v_chip->release = virtual_instance_destroy,
 	v_chip->power_on = virtual_power_on,
 	v_chip->power_off = virtual_power_off,
+	v_chip->shutdown = virtual_shutdown,
 	v_chip->update = virtual_update,
 
 	camera_chip_add(v_chip);

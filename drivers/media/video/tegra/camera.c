@@ -41,6 +41,7 @@
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/clk.h>
 
 #include <media/camera.h>
 
@@ -109,7 +110,9 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 {
 	struct nvc_param params;
 	struct camera_device *cdev = cam->cdev;
-	struct camera_reg *p_i2c_table;
+	struct camera_reg *p_i2c_table = NULL;
+	struct camera_seq_status seqs;
+	u8 pfree = 0;
 	int err = 0;
 	int idx;
 
@@ -125,19 +128,19 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 	dev_dbg(cam->dev, "param: %x, size %d\n", params.param,
 		params.sizeofvalue);
 	if (params.param == CAMERA_SEQ_EXIST) {
-		if (params.variant >= NUM_OF_SEQSTACK) {
+		idx = params.variant & CAMERA_SEQ_INDEX_MASK;
+		if (idx >= NUM_OF_SEQSTACK) {
 			dev_err(cam->dev, "%s seq index out of range %d\n",
-				__func__, params.variant);
+				__func__, idx);
 			return -EFAULT;
 		}
-		p_i2c_table = cdev->seq_stack[params.variant];
+		p_i2c_table = cdev->seq_stack[idx];
 		if (p_i2c_table == NULL) {
 			dev_err(cam->dev, "%s seq index empty! %d\n",
-				__func__, params.variant);
+				__func__, idx);
 			return -EEXIST;
 		}
-		err = camera_dev_wr_table(cdev, p_i2c_table);
-		return err;
+		goto seq_wr_table;
 	}
 
 	p_i2c_table = devm_kzalloc(cdev->dev, params.sizeofvalue, GFP_KERNEL);
@@ -146,13 +149,14 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 			__func__, __LINE__);
 		return -ENOMEM;
 	}
+	pfree = 1;
 
 	if (copy_from_user(p_i2c_table,
 		(const void __user *)params.p_value, params.sizeofvalue)) {
 		dev_err(cam->dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
-		devm_kfree(cdev->dev, p_i2c_table);
-		return -EFAULT;
+		err = -EFAULT;
+		goto seq_wr_end;
 	}
 
 	switch (params.param) {
@@ -161,36 +165,54 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 		for (idx = 0; idx < NUM_OF_SEQSTACK; idx++) {
 			if (!cdev->seq_stack[idx]) {
 				cdev->seq_stack[idx] = p_i2c_table;
+				pfree = 0;
 				break;
 			}
 		}
 		if (idx >= NUM_OF_SEQSTACK) {
 			dev_err(cam->dev, "%s seq index full!\n", __func__);
-			return -EINVAL;
+			err = -EINVAL;
+			goto seq_wr_end;
 		} else {
+			if (params.variant & CAMERA_SEQ_FLAG_EDP)
+				cdev->edpc.s_throttle = p_i2c_table;
 			params.variant = idx;
-			if (copy_to_user((void __user *)arg,
-				(const void *)&params, sizeof(params))) {
-				dev_err(cam->dev,
-					"%s copy_to_user err line %d\n",
-					__func__, __LINE__);
-				devm_kfree(cdev->dev, p_i2c_table);
-				return -EFAULT;
-			}
+			goto seq_wr_upd;
 		}
 		if (params.param == CAMERA_SEQ_REGISTER_EXEC)
-			err |= camera_dev_wr_table(cdev, p_i2c_table);
+			goto seq_wr_table;
 		break;
 	case CAMERA_SEQ_EXEC:
-		err |= camera_dev_wr_table(cdev, p_i2c_table);
-		devm_kfree(cdev->dev, p_i2c_table);
 		break;
 	}
 
+seq_wr_table:
+	if (err < 0)
+		goto seq_wr_end;
+
+	mutex_lock(&cdev->mutex);
+	err = camera_dev_wr_table(cdev, p_i2c_table, &seqs);
+	mutex_unlock(&cdev->mutex);
+	if (err < 0) {
+		params.param = CAMERA_SEQ_STATUS_MASK | seqs.idx;
+		params.variant = seqs.status;
+	}
+
+seq_wr_upd:
+	if (copy_to_user((void __user *)arg,
+		(const void *)&params, sizeof(params))) {
+		dev_err(cam->dev, "%s copy_to_user err line %d\n",
+			__func__, __LINE__);
+		err = -EFAULT;
+	}
+
+seq_wr_end:
+	if (pfree)
+		devm_kfree(cdev->dev, p_i2c_table);
 	return err;
 }
 
-static int camera_dev_power(struct camera_info *cam, unsigned long pwr)
+static int camera_dev_pwr_set(struct camera_info *cam, unsigned long pwr)
 {
 	struct camera_device *cdev = cam->cdev;
 	struct camera_chip *chip = cdev->chip;
@@ -205,6 +227,7 @@ static int camera_dev_power(struct camera_info *cam, unsigned long pwr)
 	case NVC_PWR_STDBY_OFF:
 		if (chip->power_off)
 			err |= chip->power_off(cdev);
+		camera_edp_lowest(cdev);
 		break;
 	case NVC_PWR_STDBY:
 	case NVC_PWR_COMM:
@@ -230,7 +253,7 @@ dev_power_end:
 	return err;
 }
 
-static int camera_dev_pwrd(struct camera_info *cam, unsigned long arg)
+static int camera_dev_pwr_get(struct camera_info *cam, unsigned long arg)
 {
 	int pwr;
 	int err = 0;
@@ -302,12 +325,8 @@ static int camera_remove_device(struct camera_device *cdev, bool ref_dec)
 	}
 	if (cdev->chip)
 		(cdev->chip->release)(cdev);
-	/*if (cdev->regmap)
-		regmap_exit(cdev->regmap);*/
 	if (cdev->dev)
 		i2c_unregister_device(to_i2c_client(cdev->dev));
-	/*for (idx = 0; idx < NUM_OF_SEQSTACK; idx++)
-		kfree(cdev->seq_stack[idx]);*/
 	if (ref_dec)
 		atomic_dec(&cdev->chip->ref_cnt);
 	kfree(cdev);
@@ -601,7 +620,7 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 		goto add_driver_end;
 	}
 
-	if (param.sizeofvalue > sizeof(ref_name)) {
+	if (param.sizeofvalue > sizeof(ref_name) - 1) {
 		dev_err(cam->dev, "%s driver name too long %d\n",
 			__func__, param.sizeofvalue);
 		err = -EFAULT;
@@ -623,6 +642,7 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 	while (cm && cm->sensor && strlen(cm->sensor->type)) {
 		dev_dbg(cam->dev, "%s\n", cm->sensor->type);
 		if (!strcmp(cm->sensor->type, ref_name)) {
+			dev_dbg(cam->dev, "installing %s\n", cm->sensor->type);
 			client = i2c_new_device(adap, cm->sensor);
 			if (!client) {
 				dev_err(cam->dev, "%s add driver %s fail\n",
@@ -630,19 +650,10 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 				err = -EFAULT;
 				break;
 			}
-			if (cm->sensor &&
-				strlen(cm->sensor->type)) {
-				i2c_new_device(adap, cm->sensor);
-				if (!client) {
-					dev_err(cam->dev,
-						"%s add driver %s fail\n",
-						__func__, cm->sensor->type);
-					err = -EFAULT;
-					break;
-				}
-			}
 			if (cm->focuser && strlen(cm->focuser->type)) {
-				i2c_new_device(adap, cm->focuser);
+				dev_dbg(cam->dev, "installing %s\n",
+					cm->focuser->type);
+				client = i2c_new_device(adap, cm->focuser);
 				if (!client) {
 					dev_err(cam->dev,
 						"%s add driver %s fail\n",
@@ -652,7 +663,9 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 				}
 			}
 			if (cm->flash && strlen(cm->flash->type)) {
-				i2c_new_device(adap, cm->flash);
+				dev_dbg(cam->dev, "installing %s\n",
+					cm->flash->type);
+				client = i2c_new_device(adap, cm->flash);
 				if (!client) {
 					dev_err(cam->dev,
 						"%s add driver %s fail\n",
@@ -714,10 +727,10 @@ static long camera_ioctl(struct file *file,
 		break;
 	case PCLLK_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
-		err = camera_dev_power(cam, arg);
+		err = camera_dev_pwr_set(cam, arg);
 		break;
 	case PCLLK_IOCTL_PWR_RD:
-		err = camera_dev_pwrd(cam, arg);
+		err = camera_dev_pwr_get(cam, arg);
 		break;
 	case PCLLK_IOCTL_UPDATE:
 		err = camera_update(cam, arg);

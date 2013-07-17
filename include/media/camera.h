@@ -20,7 +20,9 @@
 #ifdef __KERNEL__
 #include <linux/list.h>
 #include <linux/miscdevice.h>
+#include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <linux/edp.h>
 #include <media/nvc.h>
 #endif
 
@@ -37,11 +39,20 @@
 #define CAMERA_TABLE_GPIO_INX_DEACT	(CAMERA_INT_MASK | 33)
 #define CAMERA_TABLE_REG_NEW_POWER	(CAMERA_INT_MASK | 40)
 #define CAMERA_TABLE_INX_POWER		(CAMERA_INT_MASK | 41)
+#define CAMERA_TABLE_INX_CLOCK		(CAMERA_INT_MASK | 50)
+#define CAMERA_TABLE_INX_CGATE		(CAMERA_INT_MASK | 51)
+#define CAMERA_TABLE_EDP_STATE		(CAMERA_INT_MASK | 60)
 
 #define CAMERA_TABLE_PWR_FLAG_MASK	0xf0000000
 #define CAMERA_TABLE_PWR_FLAG_ON	0x80000000
 #define CAMERA_TABLE_PINMUX_FLAG_MASK	0xf0000000
 #define CAMERA_TABLE_PINMUX_FLAG_ON	0x80000000
+#define CAMERA_TABLE_CLOCK_VALUE_BITS	24
+#define CAMERA_TABLE_CLOCK_VALUE_MASK	\
+			((u32)(-1) >> (32 - CAMERA_TABLE_CLOCK_VALUE_BITS))
+#define CAMERA_TABLE_CLOCK_INDEX_BITS	(32 - CAMERA_TABLE_CLOCK_VALUE_BITS)
+#define CAMERA_TABLE_CLOCK_INDEX_MASK	\
+			((u32)(-1) << (32 - CAMERA_TABLE_CLOCK_INDEX_BITS))
 
 #define PCLLK_IOCTL_CHIP_REG	_IOW('o', 100, struct virtual_device)
 #define PCLLK_IOCTL_DEV_REG	_IOW('o', 104, struct camera_device_info)
@@ -58,18 +69,25 @@
 #define PCLLK_IOCTL_PARAM_RD	_IOWR('o', 141, struct nvc_param)
 #define PCLLK_IOCTL_DRV_ADD	_IOW('o', 150, struct nvc_param)
 
+#define CAMERA_MAX_EDP_ENTRIES  16
 #define CAMERA_MAX_NAME_LENGTH	32
 #define CAMDEV_INVALID		0xffffffff
 
+#define	CAMERA_SEQ_STATUS_MASK	0xf0000000
+#define	CAMERA_SEQ_INDEX_MASK	0x0000ffff
+#define	CAMERA_SEQ_FLAG_MASK	(~CAMERA_SEQ_INDEX_MASK)
+#define	CAMERA_SEQ_FLAG_EDP	0x80000000
 enum {
 	CAMERA_SEQ_EXEC,
 	CAMERA_SEQ_REGISTER_EXEC,
 	CAMERA_SEQ_REGISTER_ONLY,
 	CAMERA_SEQ_EXIST,
+	CAMERA_SEQ_MAX_NUM,
 };
 
 enum {
 	CAMERA_DEVICE_TYPE_I2C,
+	CAMERA_DEVICE_TYPE_MAX_NUM,
 };
 
 struct camera_device_info {
@@ -98,6 +116,13 @@ struct gpio_cfg {
 	u8 reserved;
 };
 
+struct edp_cfg {
+	uint estates[CAMERA_MAX_EDP_ENTRIES];
+	uint num;
+	uint e0_index;
+	int priority;
+};
+
 #define VIRTUAL_DEV_MAX_REGULATORS	8
 #define VIRTUAL_DEV_MAX_GPIOS		8
 #define VIRTUAL_REGNAME_SIZE		(VIRTUAL_DEV_MAX_REGULATORS * \
@@ -114,12 +139,15 @@ struct virtual_device {
 	struct camera_reg *power_on;
 	u32 pwr_off_size;
 	struct camera_reg *power_off;
+	u32 clk_num;
 };
 
 enum {
 	UPDATE_PINMUX,
 	UPDATE_GPIO,
 	UPDATE_POWER,
+	UPDATE_CLOCK,
+	UPDATE_EDP,
 	UPDATE_MAX_NUM,
 };
 
@@ -127,6 +155,7 @@ struct cam_update {
 	u32 type;
 	u32 index;
 	u32 arg;
+	u32 size;
 };
 
 struct cam_device_layout {
@@ -146,6 +175,8 @@ struct cam_device_layout {
 #define NUM_OF_SEQSTACK		16
 #define SIZEOF_I2C_BUF		32
 
+struct camera_device;
+
 struct camera_module {
 	struct i2c_board_info *sensor;
 	struct i2c_board_info *focuser;
@@ -159,6 +190,19 @@ struct camera_platform_data {
 	struct camera_module *modules;
 };
 
+struct camera_edp_cfg {
+	struct edp_client edp_client;
+	unsigned edp_state;
+	u8 edpc_en;
+	struct camera_reg *s_throttle;
+	int (*shutdown)(struct camera_device *cdev);
+};
+
+struct camera_seq_status {
+	u32 idx;
+	u32 status;
+};
+
 struct camera_device {
 	struct list_head list;
 	u8 name[CAMERA_MAX_NAME_LENGTH];
@@ -169,6 +213,10 @@ struct camera_device {
 	struct camera_info *cam;
 	atomic_t in_use;
 	struct mutex mutex;
+	uint estates[CAMERA_MAX_EDP_ENTRIES];
+	struct camera_edp_cfg edpc;
+	struct clk **clks;
+	u32 num_clk;
 	struct nvc_regulator *regs;
 	u32 num_reg;
 	struct nvc_gpio *gpios;
@@ -196,6 +244,7 @@ struct camera_chip {
 	int	(*release)(struct camera_device *cdev);
 	int	(*power_on)(struct camera_device *cdev);
 	int	(*power_off)(struct camera_device *cdev);
+	int	(*shutdown)(struct camera_device *cdev);
 	int	(*update)(struct camera_device *cdev,
 			struct cam_update *upd, int num);
 };
@@ -229,19 +278,40 @@ struct camera_platform_info {
 	size_t size_layout;
 };
 
+/* common functions */
 extern int virtual_device_add(
-	struct device *dev, unsigned long arg);
-extern int camera_regulator_get(struct device *dev,
-	struct nvc_regulator *nvc_reg, char *vreg_name);
+	struct device *, unsigned long
+);
+extern int camera_regulator_get(
+	struct device *, struct nvc_regulator *, char *
+);
 
+/* device access functions */
 extern int camera_dev_parser(
-	struct camera_device *cdev, u32 addr, u32 val);
+	struct camera_device *, u32, u32, struct camera_seq_status *
+);
 extern int camera_dev_wr_table(
-	struct camera_device *cdev, struct camera_reg *table);
+	struct camera_device *, struct camera_reg *, struct camera_seq_status *
+);
 extern int camera_dev_rd_table(
-	struct camera_device *cdev, struct camera_reg *table);
+	struct camera_device *, struct camera_reg *
+);
 
-extern int camera_debugfs_init(struct camera_platform_info *info);
+/* edp functions */
+void camera_edp_register(
+	struct camera_device *
+);
+int camera_edp_req(
+	struct camera_device *, unsigned
+);
+void camera_edp_lowest(
+	struct camera_device *
+);
+
+/* debugfs functions */
+extern int camera_debugfs_init(
+	struct camera_platform_info *
+);
 extern int camera_debugfs_remove(void);
 
 #endif
