@@ -564,6 +564,13 @@
 
 #define MAX77660_CHARGER_DETAILS3		0x62
 #define MAX77660_CHARGER_BAT2SYS		0x63
+#define MAX77660_CHARGER_BAT2SYS_OC_MASK	(0x3 << 3)
+#define MAX77660_CHARGER_BAT2SYS_OC_3A0		(0x0 << 3)
+#define MAX77660_CHARGER_BAT2SYS_OC_3A5		(0x1 << 3)
+#define MAX77660_CHARGER_BAT2SYS_OC_4A0		(0x2 << 3)
+#define MAX77660_CHARGER_BAT2SYS_OC_5A0		(0x3 << 3)
+#define MAX77660_CHARGER_BAT2SYS_OCEN		BIT(2)
+
 #define MAX77660_CHARGER_CHGCTRL1		0x64
 
 #define MAX77660_CHARGER_CHGPROT_MASK		0x03
@@ -694,6 +701,14 @@ enum {
 	MAX77660_FCHGTIME_8HRS,
 	MAX77660_FCHGTIME_9HRS,
 	MAX77660_FCHGTIME_10HRS,
+};
+
+enum {
+	OC_THRESH_3A0 = MAX77660_CHARGER_BAT2SYS_OC_3A0,
+	OC_THRESH_3A5 = MAX77660_CHARGER_BAT2SYS_OC_3A5,
+	OC_THRESH_4A0 = MAX77660_CHARGER_BAT2SYS_OC_4A0,
+	OC_THRESH_5A0 = MAX77660_CHARGER_BAT2SYS_OC_5A0,
+	OC_THRESH_DIS = MAX77660_CHARGER_BAT2SYS_OC_MASK + 1
 };
 
 enum {
@@ -1019,6 +1034,7 @@ struct max77660_bcharger_platform_data {
 	u8	regtemp;	/* Die temperature thermal regulation */
 	u8	int_mask;	/* CHGINT_MASK */
 	u8	wdt_timeout;	/* WDT timeout */
+	u8	oc_thresh;	/* Overcurrent threshold */
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int max_charge_current_mA;

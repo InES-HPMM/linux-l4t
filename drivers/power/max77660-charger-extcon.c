@@ -1,7 +1,7 @@
 /*
  * max77660-charger-extcon.c -- MAXIM MAX77660 VBUS detection.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Darbha Sriharsha <dsriharsha@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -891,6 +891,40 @@ static int max77660_charging_restart(struct battery_charger_dev *bc_dev)
 	return ret;
 }
 
+static int max77660_init_oc_alert(struct max77660_chg_extcon *chip)
+{
+	int ret;
+	u8 octh;
+
+	octh = chip->charger->bcharger_pdata->oc_thresh;
+
+	if (octh >= OC_THRESH_DIS) {
+		ret = max77660_reg_clr_bits(chip->parent, MAX77660_CHG_SLAVE,
+				MAX77660_CHARGER_BAT2SYS,
+				MAX77660_CHARGER_BAT2SYS_OCEN);
+		if (ret < 0)
+			dev_err(chip->dev, "BAT2SYS update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_set_bits(chip->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG1,
+			MAX77660_GLBLCNFG1_ENPGOC);
+	if (ret < 0) {
+		dev_err(chip->dev, "GLBLCNFG1 update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_update(chip->parent,
+			MAX77660_CHG_SLAVE, MAX77660_CHARGER_BAT2SYS,
+			MAX77660_CHARGER_BAT2SYS_OCEN |
+			MAX77660_CHARGER_BAT2SYS_OC_MASK,
+			MAX77660_CHARGER_BAT2SYS_OCEN | octh);
+	if (ret < 0)
+		dev_err(chip->dev, "BAT2SYS update failed: %d\n", ret);
+	return ret;
+}
+
 static struct battery_charging_ops max77660_charger_bci_ops = {
 	.get_charging_status = max77660_charger_get_status,
 	.thermal_configure = max77660_charger_thermal_configure,
@@ -1027,6 +1061,12 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"Charger watchdog timer init failed %d\n", ret);
+		goto chg_reg_err;
+	}
+
+	ret = max77660_init_oc_alert(chg_extcon);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "OC init failed: %d\n", ret);
 		goto chg_reg_err;
 	}
 
