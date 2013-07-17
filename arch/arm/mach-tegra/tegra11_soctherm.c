@@ -1623,6 +1623,7 @@ static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 
 	r = soctherm_readl(ALARM_CFG(throt));
 	r = REG_SET(r, OC1_CFG_HW_RESTORE, 1);
+	r = REG_SET(r, OC1_CFG_PWR_GOOD_MASK, data->pgmask);
 	r = REG_SET(r, OC1_CFG_THROTTLE_MODE, data->throt_mode);
 	r = REG_SET(r, OC1_CFG_ALARM_POLARITY, data->polarity);
 	r = REG_SET(r, OC1_CFG_EN_THROTTLE, 1);

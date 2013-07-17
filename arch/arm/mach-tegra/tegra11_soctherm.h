@@ -106,6 +106,7 @@ enum throt_mode {
 };
 
 struct soctherm_throttle {
+	u8 pgmask;
 	u8 throt_mode;
 	u8 polarity;
 	u8 priority;
