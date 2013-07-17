@@ -507,6 +507,7 @@ static int max77387_edp_req(struct max77387_info *info,
 	return 0;
 }
 
+
 static int max77387_set_leds(struct max77387_info *info,
 		u8 mask, u8 curr1, u8 curr2)
 {
@@ -527,14 +528,9 @@ static int max77387_set_leds(struct max77387_info *info,
 			info->regs.led2_tcurr = 0;
 			info->regs.leds_en = 0;
 			info->regs.regs_stale = false;
-			max77387_edp_lowest(info);
 		}
 		goto set_leds_end;
 	}
-
-	err = max77387_edp_req(info, mask, &curr1, &curr2);
-	if (err)
-		goto set_leds_end;
 
 	if (mask & 1) {
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
@@ -611,6 +607,25 @@ set_leds_end:
 			__func__, mask, curr1, curr2, info->regs.f_timer,
 			info->regs.led1_tcurr, info->regs.led2_tcurr,
 			info->regs.t_timer, fled_en);
+	return err;
+}
+
+static int max77387_edp_set_leds(struct max77387_info *info,
+		u8 mask, u8 curr1, u8 curr2)
+{
+	int err;
+
+	err = max77387_edp_req(info, mask, &curr1, &curr2);
+	if (err)
+		goto edp_set_leds_end;
+
+	err = max77387_set_leds(info, mask, curr1, curr2);
+	if (!err && info->op_mode == MAXFLASH_MODE_NONE)
+		max77387_edp_lowest(info);
+
+edp_set_leds_end:
+	if (err)
+		dev_err(info->dev, "%s ERROR: %d\n", __func__, err);
 	return err;
 }
 
@@ -882,10 +897,10 @@ static int max77387_update_settings(struct max77387_info *info)
 	err = max77387_reg_raw_wr(info, MAX77387_RW_NTC, regs, 5);
 
 	if (info->op_mode == MAXFLASH_MODE_FLASH)
-		err |= max77387_set_leds(info, info->config.led_mask,
+		err |= max77387_edp_set_leds(info, info->config.led_mask,
 				info->regs.led1_fcurr, info->regs.led2_fcurr);
 	else
-		err |= max77387_set_leds(info, info->config.led_mask,
+		err |= max77387_edp_set_leds(info, info->config.led_mask,
 				info->regs.led1_tcurr, info->regs.led2_tcurr);
 
 	info->regs.regs_stale = false;
@@ -1137,6 +1152,7 @@ static void max77387_shutdown(struct i2c_client *client)
 	dev_info(info->dev, "Shutting down\n");
 
 	max77387_enter_offmode(info, true);
+	max77387_edp_lowest(info);
 	info->regs.regs_stale = true;
 }
 #endif
@@ -1246,6 +1262,7 @@ static int max77387_power_set(struct max77387_info *info, int pwr)
 	switch (pwr) {
 	case NVC_PWR_OFF:
 		max77387_enter_offmode(info, true);
+		max77387_edp_lowest(info);
 		if ((info->pdata->cfg & NVC_CFG_OFF2STDBY) ||
 			(info->pdata->cfg & NVC_CFG_BOOT_INIT))
 			pwr = NVC_PWR_STDBY;
@@ -1518,7 +1535,7 @@ static int max77387_set_param(struct max77387_info *info, long arg)
 			info->new_timer = led_levels.timeout;
 		curr1 = led_levels.levels[0];
 		curr2 = led_levels.levels[1];
-		err = max77387_set_leds(info,
+		err = max77387_edp_set_leds(info,
 			led_levels.ledmask, curr1, curr2);
 		break;
 	case NVC_PARAM_TORCH_LEVEL:
@@ -1526,7 +1543,7 @@ static int max77387_set_param(struct max77387_info *info, long arg)
 		info->new_timer = led_levels.timeout;
 		curr1 = led_levels.levels[0];
 		curr2 = led_levels.levels[1];
-		err = max77387_set_leds(info,
+		err = max77387_edp_set_leds(info,
 			led_levels.ledmask, curr1, curr2);
 		break;
 	case NVC_PARAM_FLASH_PIN_STATE:
@@ -1883,7 +1900,7 @@ set_attr:
 		break;
 	/* change led 1/2 current settings */
 	case 'c':
-		max77387_set_leds(info, info->config.led_mask,
+		max77387_edp_set_leds(info, info->config.led_mask,
 			val & 0xff, (val >> 8) & 0xff);
 		break;
 	/* modify flash timeout reg */
