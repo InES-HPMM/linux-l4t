@@ -877,6 +877,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
+static struct kobject *floor_kobj;
 
 static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -908,7 +909,18 @@ static struct core_bus_cap_table tegra11_bus_cap_table[] = {
 #endif
 };
 
-static int __init tegra11_dvfs_init_core_cap(void)
+static struct core_bus_floor_table tegra11_bus_floor_table[] = {
+	{ .floor_name = "floor.profile.host1x",
+	  .refcnt_attr = {.attr = {.name = "h1x_floor_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "h1x_floor_level", .mode = 0644} },
+	},
+	{ .floor_name = "floor.profile.emc",
+	  .refcnt_attr = {.attr = {.name = "emc_floor_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "emc_floor_level", .mode = 0644} },
+	},
+};
+
+static int __init tegra11_dvfs_init_core_limits(void)
 {
 	int ret;
 
@@ -940,6 +952,23 @@ static int __init tegra11_dvfs_init_core_cap(void)
 	}
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
+	floor_kobj = kobject_create_and_add("tegra_floor", kernel_kobj);
+	if (!floor_kobj) {
+		pr_err("tegra11_dvfs: failed to create sysfs floor object\n");
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_floor(
+		tegra11_bus_floor_table, ARRAY_SIZE(tegra11_bus_floor_table),
+		floor_kobj);
+	if (ret) {
+		pr_err("tegra11_dvfs: failed to init bus floor interface (%d)\n",
+		       ret);
+		kobject_del(floor_kobj);
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs floor interface is initialized\n");
+
 	return 0;
 }
-late_initcall(tegra11_dvfs_init_core_cap);
+late_initcall(tegra11_dvfs_init_core_limits);

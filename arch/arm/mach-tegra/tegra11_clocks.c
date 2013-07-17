@@ -6978,6 +6978,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
 	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("battery.emc", "battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("floor.profile.emc", "profile.emc", NULL, &tegra_clk_emc, NULL,  0, 0, 0),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_c2bus, "3d",  0, 0),
@@ -7020,6 +7021,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("cap.host1x", "cap.host1x",		NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("override.host1x", "override.host1x", NULL,    &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
+	SHARED_CLK("floor.profile.host1x", "profile.host1x", NULL, &tegra_clk_host1x, NULL,  0, 0),
 };
 
 
