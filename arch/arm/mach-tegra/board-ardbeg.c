@@ -464,7 +464,7 @@ static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[1]	= 1,
 	.use_dock_detect	= 1,
 	.gpio	= TEGRA_GPIO_PO1,
-	.gpio_x1_slot	= PMU_TCA6416_GPIO(12),
+	.gpio_x1_slot	= PMU_TCA6416_GPIO(8),
 };
 
 static void laguna_pcie_init(void)

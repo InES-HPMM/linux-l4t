@@ -1013,7 +1013,6 @@ static int tegra_pcie_enable_controller(void)
 	/* system management configuration of PCIE crossbar */
 	val = afi_readl(AFI_PCIE_CONFIG);
 	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
-		 AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
@@ -1034,6 +1033,8 @@ static int tegra_pcie_enable_controller(void)
 		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
 		if ((board_info.board_id == BOARD_PM359) &&
 			(lane_owner == PCIE_LANES_X4_X1)) {
+			/* X1 works only on ERS-S board with X4_X1 config */
+			val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
 			/* enable x1 slot for ERS-S if all lanes are config'd for PCIe */
 			err = gpio_request(tegra_pcie.plat_data->gpio_x1_slot,
 					"pcie_x1_slot");
@@ -1045,7 +1046,7 @@ static int tegra_pcie_enable_controller(void)
 			if (err < 0)
 				pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
 					__func__, err);
-			__gpio_set_value(tegra_pcie.plat_data->gpio_x1_slot, 0);
+			gpio_set_value_cansleep(tegra_pcie.plat_data->gpio_x1_slot, 1);
 		}
 	}
 #endif
