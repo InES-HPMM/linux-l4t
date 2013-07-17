@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -515,6 +515,8 @@ static struct actmon_dev actmon_dev_emc = {
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.count_weight		= 0x200,
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	.count_weight		= 0x400,
 #else
 	.count_weight		= 0x100,
 #endif
