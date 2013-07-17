@@ -27,6 +27,7 @@
 #include "fuse.h"
 #include "board.h"
 #include "tegra_cl_dvfs.h"
+#include "tegra_core_sysfs_limits.h"
 
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;

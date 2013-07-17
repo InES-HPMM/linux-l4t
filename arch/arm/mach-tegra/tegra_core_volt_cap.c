@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_core_volt_cap.c
  *
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c), NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -23,6 +23,7 @@
 
 #include "clock.h"
 #include "dvfs.h"
+#include "tegra_core_sysfs_limits.h"
 
 /*
  * sysfs and kernel interfaces to limit tegra core shared bus frequencies based
@@ -411,6 +412,102 @@ int __init tegra_init_shared_bus_cap(
 	bus_cap_attributes[j] = NULL;
 
 	if (!cap_kobj || sysfs_create_files(cap_kobj, bus_cap_attributes))
+		return -ENOMEM;
+	return 0;
+}
+
+static DEFINE_MUTEX(bus_floor_lock);
+const struct attribute *bus_floor_attributes[2 * MAX_BUS_NUM + 1];
+
+#define refcnt_to_bus_floor(attr) \
+	container_of(attr, struct core_bus_floor_table, refcnt_attr)
+#define level_to_bus_floor(attr) \
+	container_of(attr, struct core_bus_floor_table, level_attr)
+
+static ssize_t
+bus_floor_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	struct core_bus_floor_table *bus_floor = refcnt_to_bus_floor(attr);
+	struct clk *c = bus_floor->floor_clk;
+	return sprintf(buf, "%d\n", tegra_is_clk_enabled(c) ? 1 : 0);
+}
+static ssize_t
+bus_floor_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int state;
+	struct core_bus_floor_table *bus_floor = refcnt_to_bus_floor(attr);
+	struct clk *c = bus_floor->floor_clk;
+
+	if (sscanf(buf, "%d", &state) != 1)
+		return -EINVAL;
+
+	if (state) {
+		int ret = tegra_clk_prepare_enable(c);
+		if (ret)
+			return ret;
+	} else {
+		tegra_clk_disable_unprepare(c);
+	}
+	return count;
+}
+
+static ssize_t
+bus_floor_level_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	struct core_bus_floor_table *bus_floor = level_to_bus_floor(attr);
+	return sprintf(buf, "%d\n", bus_floor->level);
+}
+static ssize_t
+bus_floor_level_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int level, ret;
+	struct core_bus_floor_table *bus_floor = level_to_bus_floor(attr);
+	struct clk *c = bus_floor->floor_clk;
+
+	if (sscanf(buf, "%d", &level) != 1)
+		return -EINVAL;
+
+	mutex_lock(&bus_floor_lock);
+	ret = clk_set_rate(c, level);
+	if (!ret)
+		bus_floor->level = level;
+	mutex_unlock(&bus_floor_lock);
+	return ret ? : count;
+}
+
+int __init tegra_init_shared_bus_floor(
+	struct core_bus_floor_table *table, int table_size,
+	struct kobject *floor_kobj)
+{
+	int i, j;
+	struct clk *c = NULL;
+
+	if (!table || !table_size || (table_size > MAX_BUS_NUM))
+		return -EINVAL;
+
+	for (i = 0, j = 0; i < table_size; i++) {
+		c = tegra_get_clock_by_name(table[i].floor_name);
+		if (!c) {
+			pr_err("%s: failed to initialize %s table\n",
+			       __func__, table[i].floor_name);
+			continue;
+		}
+		table[i].floor_clk = c;
+		table[i].level = clk_get_max_rate(c);
+		table[i].refcnt_attr.show = bus_floor_state_show;
+		table[i].refcnt_attr.store = bus_floor_state_store;
+		table[i].level_attr.show = bus_floor_level_show;
+		table[i].level_attr.store = bus_floor_level_store;
+		bus_floor_attributes[j++] = &table[i].refcnt_attr.attr;
+		bus_floor_attributes[j++] = &table[i].level_attr.attr;
+	}
+	bus_floor_attributes[j] = NULL;
+
+	if (!floor_kobj || sysfs_create_files(floor_kobj, bus_floor_attributes))
 		return -ENOMEM;
 	return 0;
 }
