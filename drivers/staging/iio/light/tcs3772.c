@@ -377,10 +377,12 @@ success:
 static const struct iio_chan_spec_ext_info tcs3772_ext_info[] = {
 	{
 		.name = "regulator_enable",
+		.shared = true,
 		.write = tcs3772_chan_regulator_enable,
 	},
 	{
 		.name = "enable",
+		.shared = true,
 		.write = tcs3772_chan_enable,
 	},
 	{
@@ -390,10 +392,12 @@ static const struct iio_chan_spec_ext_info tcs3772_ext_info[] = {
 static const struct iio_chan_spec tcs3772_channels[] = {
 	{
 		.type = IIO_LIGHT,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
 		.ext_info = tcs3772_ext_info,
 	},
 	{
 		.type = IIO_PROXIMITY,
+		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
 		.ext_info = tcs3772_ext_info,
 	},
 };
