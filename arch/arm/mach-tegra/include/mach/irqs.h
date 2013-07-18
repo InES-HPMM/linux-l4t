@@ -425,9 +425,6 @@
 #define INT_UARTC			(INT_SEC_BASE + 14)
 #define INT_MIPI			(INT_SEC_BASE + 15)
 #define INT_THERMAL			(INT_SEC_BASE + 16)
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#define IRQ_ETH                         (INT_SEC_BASE + 16)
-#endif
 #define INT_XUSB_PADCTL			(INT_SEC_BASE + 17)
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)
@@ -463,7 +460,7 @@
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define INT_PMC_WAKE_INT		(INT_TRI_BASE + 12)
 #else
-/* unused				(INT_TRI_BASE + 12) */
+#define IRQ_ETH				(INT_TRI_BASE + 12)
 #endif
 #define INT_MC_GENERAL			(INT_TRI_BASE + 13)
 #define INT_EMC_GENERAL			(INT_TRI_BASE + 14)
@@ -629,9 +626,7 @@
 #define INT_UARTC			(INT_SEC_BASE + 14)
 #define INT_MIPI			(INT_SEC_BASE + 15)
 #define INT_THERMAL			(INT_SEC_BASE + 16)
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #define IRQ_ETH				(INT_SEC_BASE + 16)
-#endif
 #define INT_XUSB_PADCTL			(INT_SEC_BASE + 17)
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)

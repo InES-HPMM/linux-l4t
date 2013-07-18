@@ -2288,6 +2288,7 @@ static int __init asim_enet_smc91x_init(void)
 
 rootfs_initcall(asim_enet_smc91x_init);
 #endif
+#endif
 
 #if defined(CONFIG_SMSC911X)
 static struct resource tegra_smsc911x_resources[] = {
@@ -2328,6 +2329,7 @@ static int __init enet_smsc911x_init(void)
 rootfs_initcall(enet_smsc911x_init);
 #endif
 
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 int tegra_split_mem_active(void)
 {
