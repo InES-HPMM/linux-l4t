@@ -162,17 +162,12 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 		.name = "disa",
 		.clk_info = {
 			[0] = { .clk_name = "disp1", .clk_type = CLK_AND_RST },
-			[1] = { .clk_name = "dsia", .clk_type = CLK_AND_RST },
-			[2] = { .clk_name = "dsib", .clk_type = CLK_AND_RST },
-			[3] = { .clk_name = "csi", .clk_type = CLK_AND_RST },
-			[4] = { .clk_name = "mipi-cal", .clk_type = CLK_AND_RST },
 		},
 	},
 	[TEGRA_POWERGATE_DISB] = {
 		.name = "disb",
 		.clk_info = {
 			[0] = { .clk_name = "disp2", .clk_type = CLK_AND_RST },
-			[1] = { .clk_name = "hdmi", .clk_type = CLK_AND_RST },
 		},
 	},
 	[TEGRA_POWERGATE_XUSBA] = {
@@ -219,6 +214,11 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 		.name = "sor",
 		.clk_info = {
 			[0] = { .clk_name = "sor0", .clk_type = CLK_AND_RST },
+			[1] = { .clk_name = "dsia", .clk_type = CLK_AND_RST },
+			[2] = { .clk_name = "dsib", .clk_type = CLK_AND_RST },
+			[3] = { .clk_name = "hdmi", .clk_type = CLK_AND_RST },
+			[4] = { .clk_name = "mipi-cal", .clk_type = CLK_AND_RST },
+			[5] = { .clk_name = "dpaux", .clk_type = CLK_ONLY },
 		},
 	},
 #ifdef CONFIG_ARCH_TEGRA_VIC
@@ -230,9 +230,6 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 	},
 #endif
 };
-
-static atomic_t ref_count_a = ATOMIC_INIT(1); /* for TEGRA_POWERGATE_DISA */
-static atomic_t ref_count_b = ATOMIC_INIT(1); /* for TEGRA_POWERGATE_DISB */
 
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204
@@ -500,23 +497,86 @@ err_power:
 	return ret;
 }
 
+static atomic_t ref_count_disp = ATOMIC_INIT(0);
+
+#define CHECK_RET(x)			\
+	do {				\
+		ret = (x);		\
+		if (ret != 0)		\
+			return ret;	\
+	} while (0)
+
+
+static inline int tegra12x_powergate(int id)
+{
+	if (tegra_powergate_is_powered(id))
+		return tegra1xx_powergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	return 0;
+}
+
+static inline int tegra12x_unpowergate(int id)
+{
+	if (!tegra_powergate_is_powered(id))
+		return tegra1xx_unpowergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	return 0;
+}
+
+
+static int tegra12x_disp_powergate(int id)
+{
+	int ret = 0;
+	int ref_count = atomic_read(&ref_count_disp);
+
+	if (!TEGRA_IS_DISP_POWERGATE_ID(id))
+		return -EINVAL;
+
+	if (id == TEGRA_POWERGATE_DISA) {
+		ref_count = atomic_dec_return(&ref_count_disp);
+		WARN(ref_count < 0, "DISP ref count underflow");
+	} else
+		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
+
+	if (ref_count <= 0 &&
+		!tegra_powergate_is_powered(TEGRA_POWERGATE_DISB)) {
+		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_SOR));
+		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISA));
+	}
+	return ret;
+}
+
+static int tegra12x_disp_unpowergate(int id)
+{
+	int ret;
+
+	if (!TEGRA_IS_DISP_POWERGATE_ID(id))
+		return -EINVAL;
+
+	/* always unpowergate dispA and SOR partition */
+	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_DISA));
+	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_SOR));
+
+	if (id == TEGRA_POWERGATE_DISA)
+		WARN_ONCE(atomic_inc_return(&ref_count_disp) > 1,
+			"disp ref count overflow");
+	else
+		ret = tegra12x_unpowergate(TEGRA_POWERGATE_DISB);
+
+	return ret;
+}
+
+
 int tegra12x_powergate_partition(int id)
 {
 	int ret;
 
-	WARN_ONCE(atomic_read(&ref_count_a) < 0, "ref count A underflow");
-	WARN_ONCE(atomic_read(&ref_count_b) < 0, "ref count B underflow");
-
-	if (id == TEGRA_POWERGATE_DISA && atomic_dec_return(&ref_count_a) != 0)
-		return 0;
-	else if (id == TEGRA_POWERGATE_DISB &&
-		atomic_dec_return(&ref_count_b) != 0)
-		return 0;
-
 	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
 		ret = tegra12x_gpu_powergate(id,
 			&tegra12x_powergate_partition_info[id]);
-	} else {
+	} else if (TEGRA_IS_DISP_POWERGATE_ID(id))
+		ret = tegra12x_disp_powergate(id);
+	else {
 		/* call common power-gate API for t1xx */
 		ret = tegra1xx_powergate(id,
 			&tegra12x_powergate_partition_info[id]);
@@ -529,19 +589,12 @@ int tegra12x_unpowergate_partition(int id)
 {
 	int ret;
 
-	WARN_ONCE(atomic_read(&ref_count_a) < 0, "ref count A underflow");
-	WARN_ONCE(atomic_read(&ref_count_b) < 0, "ref count B underflow");
-
-	if (id == TEGRA_POWERGATE_DISA && atomic_inc_return(&ref_count_a) != 1)
-		return 0;
-	else if (id == TEGRA_POWERGATE_DISB &&
-		atomic_inc_return(&ref_count_b) != 1)
-		return 0;
-
 	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
 		ret = tegra12x_gpu_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);
-	} else {
+	} else if (TEGRA_IS_DISP_POWERGATE_ID(id))
+		ret = tegra12x_disp_unpowergate(id);
+	else {
 		ret = tegra1xx_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);
 	}
@@ -580,15 +633,12 @@ bool tegra12x_powergate_skip(int id)
 	switch (id) {
 	case TEGRA_POWERGATE_VDEC:
 	case TEGRA_POWERGATE_VENC:
-	case TEGRA_POWERGATE_DISA:
-	case TEGRA_POWERGATE_DISB:
 	case TEGRA_POWERGATE_XUSBA:
 	case TEGRA_POWERGATE_XUSBB:
 	case TEGRA_POWERGATE_XUSBC:
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	case TEGRA_POWERGATE_SATA:
 #endif
-	case TEGRA_POWERGATE_SOR:
 		return true;
 
 	default:
