@@ -989,7 +989,9 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 	 * module needs to increase the ref-count of disa to
 	 * avoid itself powergated by DIS inadvertently.
 	 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
+#endif
 	/* Unpowergate VE */
 	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
 
@@ -1023,7 +1025,9 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 
 	/* Powergate VE */
 	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_powergate_partition(TEGRA_POWERGATE_DISA);
+#endif
 
 	/* Disable external power */
 	regulator_disable(pcdev->reg);
