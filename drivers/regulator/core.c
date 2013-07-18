@@ -2595,6 +2595,8 @@ int regulator_map_voltage_linear_range(struct regulator_dev *rdev,
 		if (ret < 0)
 			return ret;
 
+		ret += range->min_sel;
+
 		break;
 	}
 
