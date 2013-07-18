@@ -162,7 +162,7 @@ extern int tegra_smmu_suspend(struct device *dev);
 #define PMC_DPAD_ORIDE		0x1C
 #define PMC_WAKE_DELAY		0xe0
 #define PMC_DPD_SAMPLE		0x20
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define PMC_DPD_ENABLE		0x24
 #endif
 #define PMC_IO_DPD_REQ          0x1B8
@@ -912,7 +912,7 @@ static void tegra_common_resume(void)
 	void __iomem *emc = IO_ADDRESS(TEGRA_EMC_BASE);
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	/* Clear DPD Enable */
 	writel(0x0, pmc + PMC_DPD_ENABLE);
 #endif
