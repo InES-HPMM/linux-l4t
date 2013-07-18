@@ -35,7 +35,7 @@ int tegra_camera_power_on(struct tegra_camera *camera)
 	/* Powergating DIS must powergate VE partition. Camera
 	 * module needs to increase the ref-count of disa to
 	 * avoid itself powergated by DIS inadvertently. */
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
 	if (ret)
 		dev_err(camera->dev,
@@ -67,7 +67,7 @@ int tegra_camera_power_off(struct tegra_camera *camera)
 			"%s: VENC powergate failed.\n",
 			__func__);
 
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_DISA);
 	if (ret)
 		dev_err(camera->dev,
