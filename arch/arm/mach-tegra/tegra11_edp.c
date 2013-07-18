@@ -282,9 +282,9 @@ static struct core_edp_entry core_edp_table[] = {
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 840 },
-				 { 924, 828 },
+				{{ 924, 828 },
 				 { 924, 816 },
+				 { 924, 804 },
 				 { 924, 648 },
 				}
 			},
