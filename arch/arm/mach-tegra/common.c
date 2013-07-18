@@ -920,6 +920,7 @@ void __init tegra12x_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_apb_io_init();
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra_ramrepair_init();
 	tegra12x_init_clocks();
