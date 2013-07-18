@@ -24,6 +24,7 @@
 
 #include <net/ip.h>
 #include <linux/netfilter_ipv4.h>
+#include <net/ipv6.h>
 #include <linux/proc_fs.h>
 
 #include <mach/tegra_wakeup_monitor.h>
@@ -32,8 +33,11 @@
 
 #define MAX_PACKET_NUM 6
 #define MONITOR_HTABLE_SIZE 256
-#define TWM_TCP 1
-#define TWM_UDP 2
+#define TWM_TCP_IPV4 1
+#define TWM_UDP_IPV4 2
+#define TWM_TCP_IPV6 3
+#define TWM_UDP_IPV6 4
+#define CMDLINE_LENGTH 80
 
 struct packet_info {
 	struct hlist_nulls_node node;
@@ -43,9 +47,10 @@ struct packet_info {
 	unsigned int		valid_counter;
 };
 
-struct uid_info {
+struct program_info {
 	struct hlist_nulls_node	node;
-	unsigned int		uid;
+	unsigned int		hash;
+	char program[CMDLINE_LENGTH];
 	atomic_t		wakeup;
 	unsigned int		valid_counter;
 };
@@ -68,7 +73,7 @@ struct tegra_wakeup_monitor {
 };
 
 struct _monitor_table {
-	struct twm_hslot		*uid_hash;
+	struct twm_hslot		*program_hash;
 	struct twm_hslot		*tcp_hash;
 	struct twm_hslot		*udp_hash;
 	unsigned short			mask;
@@ -81,6 +86,15 @@ static struct _monitor_table monitor_table;
 static bool nf_monitor;
 static bool nf_valid_flag;
 static int nf_counter;
+
+static unsigned int string_hash(const char *str)
+{
+	unsigned int i, hash = 0;
+	for (i = 0; str[i] && i < CMDLINE_LENGTH; i++)
+		hash = 31*hash + str[i];
+
+	return hash;
+}
 
 static ssize_t show_monitor_enable(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -106,34 +120,34 @@ static ssize_t store_monitor_enable(struct device *dev,
 }
 
 /* MUST hold hslot->lock when call this func */
-static struct uid_info *get_uid_info(struct device *dev,
-			unsigned int uid,
+static struct program_info *get_program_info(struct device *dev,
+			char *program,
 			struct twm_hslot *hslot,
 			bool auto_alloc)
 {
-	struct uid_info *uid_info;
+	struct program_info *cmd_info;
 	struct hlist_nulls_node *node;
 	if (hslot->count == 0)
 		goto alloc;
 
-	hlist_nulls_for_each_entry(uid_info, node, &hslot->head, node)
-		if (uid_info->uid == uid)
-			return uid_info;
+	hlist_nulls_for_each_entry(cmd_info, node, &hslot->head, node)
+		if (!strncmp(cmd_info->program, program, CMDLINE_LENGTH))
+			return cmd_info;
 alloc:
 	if (!auto_alloc)
 		return NULL;
 
-	uid_info = devm_kzalloc(dev, sizeof(*uid_info), GFP_ATOMIC);
-	if (!uid_info) {
-		dev_err(dev, "could not allocate a uid_info");
+	cmd_info = devm_kzalloc(dev, sizeof(*cmd_info), GFP_ATOMIC);
+	if (!cmd_info) {
+		dev_err(dev, "could not allocate a program_info");
 		return NULL;
 	}
 
-	uid_info->uid = uid;
+	strncpy(cmd_info->program, program, CMDLINE_LENGTH);
 
-	hlist_nulls_add_head_rcu(&uid_info->node, &hslot->head);
+	hlist_nulls_add_head_rcu(&cmd_info->node, &hslot->head);
 	hslot->count++;
-	return uid_info;
+	return cmd_info;
 }
 
 /* if the wakeup monitor is enabled, it will receive a command before suspend */
@@ -242,12 +256,15 @@ static unsigned int twm_nf_hook(unsigned int hook,
 			const struct net_device *outdev,
 			int (*okfn) (struct sk_buff *))
 {
-	struct tcphdr *ptcphdr;
-	struct udphdr *pudphdr;
+	struct tcphdr *ptcphdr, _tcph;
+	struct udphdr *pudphdr, _udph;
 	struct timeval tv;
 	unsigned short sport;
 	unsigned short dport;
 	unsigned char protocol;
+	__le16 fragoff;
+	int offset;
+	struct ipv6hdr _ipv6h, *ip6;
 	struct packet_info *packet_info;
 	struct twm_hslot *hslot_table, *hslot;
 	struct tegra_wakeup_monitor *twm = monitor_table.twm;
@@ -263,25 +280,70 @@ static unsigned int twm_nf_hook(unsigned int hook,
 	if (nf_counter == 0)
 		dev_dbg(&twm->pdev->dev, "a new begin of monitoring");
 
-	nf_counter++;
-	if (nf_counter >= MAX_PACKET_NUM)
+	if (nf_counter++ >= MAX_PACKET_NUM)
 		nf_monitor = false;
 
-	protocol = ip_hdr(skb)->protocol;
-	if (protocol == IPPROTO_TCP) {
-		ptcphdr = (struct tcphdr *)
-			((char *)ip_hdr(skb) + (ip_hdr(skb)->ihl << 2));
-		sport = ntohs(ptcphdr->source);
-		dport = ntohs(ptcphdr->dest);
-		hslot_table = monitor_table.tcp_hash;
-	} else if (protocol == IPPROTO_UDP) {
-		pudphdr = (struct udphdr *)
-			((char *)ip_hdr(skb) + (ip_hdr(skb)->ihl << 2));
-		sport = ntohs(pudphdr->source);
-		dport = ntohs(pudphdr->dest);
-		hslot_table = monitor_table.udp_hash;
+	if (ip_hdr(skb)->version == 4) {
+		protocol = ip_hdr(skb)->protocol;
+		if (protocol == IPPROTO_TCP) {
+			ptcphdr = (struct tcphdr *)
+				((char *)ip_hdr(skb) + (ip_hdr(skb)->ihl << 2));
+			sport = ntohs(ptcphdr->source);
+			dport = ntohs(ptcphdr->dest);
+			hslot_table = monitor_table.tcp_hash;
+		} else if (protocol == IPPROTO_UDP) {
+			pudphdr = (struct udphdr *)
+				((char *)ip_hdr(skb) + (ip_hdr(skb)->ihl << 2));
+			sport = ntohs(pudphdr->source);
+			dport = ntohs(pudphdr->dest);
+			hslot_table = monitor_table.udp_hash;
+		} else {
+			dev_dbg(&twm->pdev->dev, "unexpected transport layer trpacket");
+			return NF_ACCEPT;
+		}
+	} else if (ip_hdr(skb)->version == 6) {
+		offset = skb_network_offset(skb);
+		ip6 = skb_header_pointer(skb, offset,
+			sizeof(struct ipv6hdr), &_ipv6h);
+		if (ip6 == NULL)
+			return NF_ACCEPT;
+
+		protocol = ip6->nexthdr;
+		offset += sizeof(struct ipv6hdr);
+		offset = ipv6_skip_exthdr(skb, offset, &protocol, &fragoff);
+		if (offset < 0)
+			return NF_ACCEPT;
+
+		switch (protocol) {
+		case IPPROTO_TCP: {
+			ptcphdr = skb_header_pointer(skb, offset,
+				sizeof(struct tcphdr), &_tcph);
+			if (ptcphdr == NULL)
+				return NF_ACCEPT;
+
+			sport = ntohs(ptcphdr->source);
+			dport = ntohs(ptcphdr->dest);
+			hslot_table = monitor_table.tcp_hash;
+			break;
+		}
+		case IPPROTO_UDP: {
+			pudphdr = skb_header_pointer(skb, offset,
+				sizeof(struct udphdr), &_udph);
+			if (pudphdr == NULL)
+				return NF_ACCEPT;
+
+			sport = ntohs(pudphdr->source);
+			dport = ntohs(pudphdr->dest);
+			hslot_table = monitor_table.udp_hash;
+			break;
+		}
+		default:
+			dev_dbg(&twm->pdev->dev, "unexpected transport layer packet");
+			return NF_ACCEPT;
+		}
+
 	} else {
-		dev_dbg(&twm->pdev->dev, "unexpected packet");
+		dev_dbg(&twm->pdev->dev, "unexpected not-IPV4/IPV6 packet");
 		return NF_ACCEPT;
 	}
 
@@ -387,31 +449,48 @@ static ssize_t store_init_ports(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
-	unsigned int uid, proto, port, off;
-	struct uid_info *uid_info;
+	char *program = NULL;
+	unsigned int proto, port, off, hash;
+	struct program_info *cmd_info;
 	struct packet_info *packet_info;
-	struct twm_hslot *uid_hslot_table, *pkt_hslot_table;
-	struct twm_hslot *uid_hslot, *pkt_hslot;
+	struct twm_hslot *program_hslot_table, *pkt_hslot_table;
+	struct twm_hslot *program_hslot, *pkt_hslot;
 	struct tegra_wakeup_monitor *twm = dev_get_drvdata(dev);
 
-	if (!twm || !monitor_table.uid_hash) {
+	if (!twm || !monitor_table.program_hash) {
 		dev_err(dev, "monitor_table is not initialized!");
 		return 0;
 	}
 
-	monitor_table.valid_counter++;
+	off = strlen(buf);
+	if (off >= PAGE_SIZE) {
+		dev_err(dev, "buffer size is over %lu!", PAGE_SIZE);
+		return 0;
+	}
 
-	uid_hslot_table = monitor_table.uid_hash;
-	while (3 == sscanf(buf, "%u,%u,%u;%n", &uid, &proto, &port, &off)) {
+	program = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (program == NULL) {
+		dev_err(dev, "can't not alloate buffer!");
+		return 0;
+	}
+
+	monitor_table.valid_counter++;
+	program_hslot_table = monitor_table.program_hash;
+	while (3 == sscanf(buf, "%s %u %u;%n", program, &proto, &port, &off)) {
 		if (off == 0)
 			break;
 		buf += off;
 
-		if (proto == TWM_TCP)
+		switch (proto) {
+		case TWM_TCP_IPV4:
+		case TWM_TCP_IPV6:
 			pkt_hslot_table = monitor_table.tcp_hash;
-		else if (proto == TWM_UDP)
+			break;
+		case TWM_UDP_IPV4:
+		case TWM_UDP_IPV6:
 			pkt_hslot_table = monitor_table.udp_hash;
-		else {
+			break;
+		default:
 			dev_err(dev, "%s: invalid proto type", __func__);
 			continue;
 		}
@@ -421,17 +500,18 @@ static ssize_t store_init_ports(struct device *dev,
 			continue;
 		}
 
-		uid_hslot = &uid_hslot_table[uid & monitor_table.mask];
-		spin_lock_bh(&uid_hslot->lock);
-		uid_info = get_uid_info(dev, uid, uid_hslot, true);
-		if (uid_info == NULL) {
-			dev_err(dev, "%s: cannot get a uid_info", __func__);
-			spin_unlock_bh(&uid_hslot->lock);
+		hash = string_hash(program);
+		program_hslot = &program_hslot_table[hash & monitor_table.mask];
+		spin_lock_bh(&program_hslot->lock);
+		cmd_info = get_program_info(dev, program, program_hslot, true);
+		if (cmd_info == NULL) {
+			dev_err(dev, "%s: cannot get a program_info", __func__);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
-		uid_info->uid = uid;
-		atomic_set(&uid_info->wakeup, 0);
-		uid_info->valid_counter = monitor_table.valid_counter;
+		cmd_info->hash = hash;
+		atomic_set(&cmd_info->wakeup, 0);
+		cmd_info->valid_counter = monitor_table.valid_counter;
 
 		pkt_hslot = &pkt_hslot_table[port & monitor_table.mask];
 		spin_lock_bh(&pkt_hslot->lock);
@@ -439,18 +519,19 @@ static ssize_t store_init_ports(struct device *dev,
 		if (packet_info == NULL) {
 			dev_err(dev, "%s: cannot get a packet_info", __func__);
 			spin_unlock_bh(&pkt_hslot->lock);
-			spin_unlock_bh(&uid_hslot->lock);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
 		packet_info->dport = port;
-		packet_info->wakeup = &uid_info->wakeup;
+		packet_info->wakeup = &cmd_info->wakeup;
 		atomic_set(&packet_info->unmonitored, 0);
 		packet_info->valid_counter = monitor_table.valid_counter;
 
 		spin_unlock_bh(&pkt_hslot->lock);
-		spin_unlock_bh(&uid_hslot->lock);
+		spin_unlock_bh(&program_hslot->lock);
 	}
 
+	kfree(program);
 	return count;
 }
 
@@ -458,29 +539,47 @@ static ssize_t store_add_ports(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
-	unsigned int uid, proto, port, off;
-	struct uid_info *uid_info;
+	char *program = NULL;
+	unsigned int proto, port, off, hash;
+	struct program_info *cmd_info;
 	struct packet_info *packet_info;
-	struct twm_hslot *uid_hslot_table, *pkt_hslot_table;
-	struct twm_hslot *uid_hslot, *pkt_hslot;
+	struct twm_hslot *program_hslot_table, *pkt_hslot_table;
+	struct twm_hslot *program_hslot, *pkt_hslot;
 	struct tegra_wakeup_monitor *twm = dev_get_drvdata(dev);
 
-	if (!twm || !monitor_table.uid_hash) {
+	if (!twm || !monitor_table.program_hash) {
 		dev_err(dev, "monitor_table is not initialized!");
 		return 0;
 	}
 
-	uid_hslot_table = monitor_table.uid_hash;
-	while (3 == sscanf(buf, "%u,%u,%u;%n", &uid, &proto, &port, &off)) {
+	off = strlen(buf);
+	if (off >= PAGE_SIZE) {
+		dev_err(dev, "buffer size is over %lu!", PAGE_SIZE);
+		return 0;
+	}
+
+	program = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (program == NULL) {
+		dev_err(dev, "can't not alloate buffer!");
+		return 0;
+	}
+
+	program_hslot_table = monitor_table.program_hash;
+	while (3 == sscanf(buf, "%s %u %u;%n", program, &proto, &port, &off)) {
 		if (off == 0)
 			break;
 		buf += off;
 
-		if (proto == TWM_TCP)
+		switch (proto) {
+		case TWM_TCP_IPV4:
+		case TWM_TCP_IPV6:
 			pkt_hslot_table = monitor_table.tcp_hash;
-		else if (proto == TWM_UDP)
+			break;
+		case TWM_UDP_IPV4:
+		case TWM_UDP_IPV6:
 			pkt_hslot_table = monitor_table.udp_hash;
-		else {
+			break;
+		default:
 			dev_err(dev, "%s: invalid proto type", __func__);
 			continue;
 		}
@@ -490,12 +589,13 @@ static ssize_t store_add_ports(struct device *dev,
 			continue;
 		}
 
-		uid_hslot = &uid_hslot_table[uid & monitor_table.mask];
-		spin_lock_bh(&uid_hslot->lock);
-		uid_info = get_uid_info(dev, uid, uid_hslot, false);
-		if (uid_info == NULL) {
-			dev_err(dev, "%s: cannot get a uid_info", __func__);
-			spin_unlock_bh(&uid_hslot->lock);
+		hash = string_hash(program);
+		program_hslot = &program_hslot_table[hash & monitor_table.mask];
+		spin_lock_bh(&program_hslot->lock);
+		cmd_info = get_program_info(dev, program, program_hslot, false);
+		if (cmd_info == NULL) {
+			dev_err(dev, "%s: cannot get a program_info", __func__);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
 
@@ -505,18 +605,19 @@ static ssize_t store_add_ports(struct device *dev,
 		if (packet_info == NULL) {
 			dev_err(dev, "%s: cannot get a packet_info", __func__);
 			spin_unlock_bh(&pkt_hslot->lock);
-			spin_unlock_bh(&uid_hslot->lock);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
 		packet_info->dport = port;
-		packet_info->wakeup = &uid_info->wakeup;
+		packet_info->wakeup = &cmd_info->wakeup;
 		atomic_set(&packet_info->unmonitored, 0);
-		packet_info->valid_counter = uid_info->valid_counter;
+		packet_info->valid_counter = cmd_info->valid_counter;
 
 		spin_unlock_bh(&pkt_hslot->lock);
-		spin_unlock_bh(&uid_hslot->lock);
+		spin_unlock_bh(&program_hslot->lock);
 	}
 
+	kfree(program);
 	return count;
 }
 
@@ -524,29 +625,48 @@ static ssize_t store_del_ports(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
-	unsigned int uid, proto, port, off;
-	struct uid_info *uid_info, *target_uid_info;
+	char *program;
+	unsigned int proto, port, off, hash;
+	struct program_info *cmd_info, *target_program_info;
 	struct packet_info *packet_info;
-	struct twm_hslot *uid_hslot_table, *pkt_hslot_table;
-	struct twm_hslot *uid_hslot, *pkt_hslot;
+	struct twm_hslot *program_hslot_table, *pkt_hslot_table;
+	struct twm_hslot *program_hslot, *pkt_hslot;
 	struct tegra_wakeup_monitor *twm = dev_get_drvdata(dev);
 
-	if (!twm || !monitor_table.uid_hash) {
+	if (!twm || !monitor_table.program_hash) {
 		dev_err(dev, "monitor_table is not initialized!");
 		return 0;
 	}
 
-	uid_hslot_table = monitor_table.uid_hash;
-	while (3 == sscanf(buf, "%u,%u,%u;%n", &uid, &proto, &port, &off)) {
+	off = strlen(buf);
+	if (off >= PAGE_SIZE) {
+		dev_err(dev, "buffer size is over %lu!", PAGE_SIZE);
+		return 0;
+	}
+
+	program = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (program == NULL) {
+		dev_err(dev, "can't not alloate buffer!");
+		return 0;
+	}
+
+	program_hslot_table = monitor_table.program_hash;
+	while (3 == sscanf(buf, "%s %u %u;%n",
+		program, &proto, &port, &off)) {
 		if (off == 0)
 			break;
 		buf += off;
 
-		if (proto == TWM_TCP)
+		switch (proto) {
+		case TWM_TCP_IPV4:
+		case TWM_TCP_IPV6:
 			pkt_hslot_table = monitor_table.tcp_hash;
-		else if (proto == TWM_UDP)
+			break;
+		case TWM_UDP_IPV4:
+		case TWM_UDP_IPV6:
 			pkt_hslot_table = monitor_table.udp_hash;
-		else {
+			break;
+		default:
 			dev_err(dev, "%s: invalid proto type", __func__);
 			continue;
 		}
@@ -556,12 +676,13 @@ static ssize_t store_del_ports(struct device *dev,
 			continue;
 		}
 
-		uid_hslot = &uid_hslot_table[uid & monitor_table.mask];
-		spin_lock_bh(&uid_hslot->lock);
-		uid_info = get_uid_info(dev, uid, uid_hslot, false);
-		if (uid_info == NULL) {
-			dev_err(dev, "%s: cannot get a uid_info", __func__);
-			spin_unlock_bh(&uid_hslot->lock);
+		hash = string_hash(program);
+		program_hslot = &program_hslot_table[hash & monitor_table.mask];
+		spin_lock_bh(&program_hslot->lock);
+		cmd_info = get_program_info(dev, program, program_hslot, false);
+		if (cmd_info == NULL) {
+			dev_err(dev, "%s: cannot get a program_info", __func__);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
 
@@ -571,21 +692,24 @@ static ssize_t store_del_ports(struct device *dev,
 		if (packet_info == NULL) {
 			dev_err(dev, "%s: cannot get a packet_info", __func__);
 			spin_unlock_bh(&pkt_hslot->lock);
-			spin_unlock_bh(&uid_hslot->lock);
+			spin_unlock_bh(&program_hslot->lock);
 			continue;
 		}
-		target_uid_info = container_of(packet_info->wakeup,
-					struct uid_info, wakeup);
-		if (uid == target_uid_info->uid) {
+		target_program_info = container_of(packet_info->wakeup,
+					struct program_info, wakeup);
+		if (!strncmp(target_program_info->program,
+			program, CMDLINE_LENGTH)) {
+
 			hlist_nulls_del(&packet_info->node);
 			devm_kfree(dev, packet_info);
 			pkt_hslot->count--;
 		}
 
 		spin_unlock_bh(&pkt_hslot->lock);
-		spin_unlock_bh(&uid_hslot->lock);
+		spin_unlock_bh(&program_hslot->lock);
 	}
 
+	kfree(program);
 	return count;
 }
 
@@ -605,20 +729,22 @@ static inline int monitor_table_init(struct _monitor_table *table,
 {
 	unsigned int i;
 
-	table->uid_hash = devm_kzalloc(&twm->pdev->dev, MONITOR_HTABLE_SIZE *
-				3 * sizeof(struct twm_hslot), GFP_KERNEL);
-	if (!table->uid_hash)
+	table->program_hash = devm_kzalloc(&twm->pdev->dev,
+		MONITOR_HTABLE_SIZE *
+		3 * sizeof(struct twm_hslot), GFP_KERNEL);
+
+	if (!table->program_hash)
 		return -ENOMEM;
 
 	table->twm = twm;
 
 	table->mask = MONITOR_HTABLE_SIZE - 1;
-	table->tcp_hash = table->uid_hash + (table->mask + 1);
+	table->tcp_hash = table->program_hash + (table->mask + 1);
 	table->udp_hash = table->tcp_hash + (table->mask + 1);
 	for (i = 0; i <= table->mask; i++) {
-		INIT_HLIST_NULLS_HEAD(&table->uid_hash[i].head, i);
-		table->uid_hash[i].count = 0;
-		spin_lock_init(&table->uid_hash[i].lock);
+		INIT_HLIST_NULLS_HEAD(&table->program_hash[i].head, i);
+		table->program_hash[i].count = 0;
+		spin_lock_init(&table->program_hash[i].lock);
 	}
 	for (i = 0; i <= table->mask; i++) {
 		INIT_HLIST_NULLS_HEAD(&table->tcp_hash[i].head, i);
@@ -638,12 +764,12 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 {
 	int i = 0;
 	struct twm_hslot *hslot;
-	struct uid_info *uid_info;
+	struct program_info *cmd_info;
 	struct packet_info *packet_info;
 	struct hlist_nulls_node *node;
 	struct device *dev;
 
-	if (!monitor_table.twm || !monitor_table.uid_hash) {
+	if (!monitor_table.twm || !monitor_table.program_hash) {
 		seq_printf(m, "monitor table not initialized\n");
 		return 0;
 	}
@@ -652,23 +778,23 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 
 	/* make sure the len does not exceed PAGE_SIZE */
 	for (i = 0; i <= monitor_table.mask; i++) {
-		hslot = &monitor_table.uid_hash[i];
+		hslot = &monitor_table.program_hash[i];
 		if (hslot->count == 0)
 			continue;
 
 		spin_lock_bh(&hslot->lock);
-		hlist_nulls_for_each_entry(uid_info, node,
+		hlist_nulls_for_each_entry(cmd_info, node,
 					&hslot->head, node) {
-			if (uid_info->valid_counter !=
+			if (cmd_info->valid_counter !=
 					monitor_table.valid_counter) {
-				hlist_nulls_del(&uid_info->node);
-				devm_kfree(dev, uid_info);
+				hlist_nulls_del(&cmd_info->node);
+				devm_kfree(dev, cmd_info);
 				hslot->count--;
 				continue;
 			}
-			seq_printf(m, "uid %u, wakeup times %u\n",
-				uid_info->uid,
-				atomic_read(&uid_info->wakeup));
+			seq_printf(m, "program %s, wakeup times %u\n",
+				cmd_info->program,
+				atomic_read(&cmd_info->wakeup));
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
