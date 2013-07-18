@@ -902,7 +902,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	}
 
 	ret = request_threaded_irq(bq2419x->irq, NULL,
-		bq2419x_irq, IRQF_TRIGGER_FALLING,
+		bq2419x_irq, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 			dev_name(bq2419x->dev), bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "request IRQ %d fail, err = %d\n",
