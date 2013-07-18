@@ -24,6 +24,7 @@
 #include <linux/max17048_battery.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/pm.h>
+#include <linux/jiffies.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -41,7 +42,7 @@
 #define MAX17048_CMD		0xFF
 #define MAX17048_UNLOCK_VALUE	0x4a57
 #define MAX17048_RESET_VALUE	0x5400
-#define MAX17048_DELAY		1000
+#define MAX17048_DELAY		(30*HZ)
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
 #define MAX17048_VERSION_NO	0x11
@@ -64,10 +65,10 @@ struct max17048_chip {
 	/* battery capacity */
 	int capacity_level;
 
-	int lasttime_vcell;
 	int lasttime_soc;
 	int lasttime_status;
 	int shutdown_complete;
+	int charge_complete;
 	struct mutex mutex;
 };
 struct max17048_chip *max17048_data;
@@ -222,9 +223,11 @@ static void max17048_get_soc(struct i2c_client *client)
 	else
 		chip->soc = (uint16_t)soc >> 9;
 
-	if (chip->soc >= MAX17048_BATTERY_FULL) {
+	if (chip->soc >= MAX17048_BATTERY_FULL && chip->charge_complete != 1)
+		chip->soc = MAX17048_BATTERY_FULL-1;
+
+	if (chip->status == POWER_SUPPLY_STATUS_FULL && chip->charge_complete) {
 		chip->soc = MAX17048_BATTERY_FULL;
-		chip->status = POWER_SUPPLY_STATUS_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 	} else if (chip->soc < MAX17048_BATTERY_LOW) {
@@ -252,13 +255,9 @@ static void max17048_work(struct work_struct *work)
 	max17048_get_vcell(chip->client);
 	max17048_get_soc(chip->client);
 
-	if (chip->vcell != chip->lasttime_vcell ||
-		chip->soc != chip->lasttime_soc ||
+	if (chip->soc != chip->lasttime_soc ||
 		chip->status != chip->lasttime_status) {
-
-		chip->lasttime_vcell = chip->vcell;
 		chip->lasttime_soc = chip->soc;
-
 		power_supply_changed(&chip->battery);
 	}
 
@@ -596,9 +595,16 @@ static int max17048_update_battery_status(struct battery_gauge_dev *bg_dev,
 
 	if (status == BATTERY_CHARGING)
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
-	else
+	else if (status == BATTERY_CHARGING_DONE) {
+		chip->charge_complete = 1;
+		chip->soc = MAX17048_BATTERY_FULL;
+		chip->status = POWER_SUPPLY_STATUS_FULL;
+		power_supply_changed(&chip->battery);
+		return 0;
+	} else {
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
-
+		chip->charge_complete = 0;
+	}
 	chip->lasttime_status = chip->status;
 	power_supply_changed(&chip->battery);
 	return 0;
@@ -660,6 +666,8 @@ static int max17048_probe(struct i2c_client *client,
 	chip->battery.properties	= max17048_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17048_battery_props);
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
+	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
+	chip->charge_complete		= 0;
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
@@ -677,7 +685,7 @@ static int max17048_probe(struct i2c_client *client,
 	battery_gauge_set_drvdata(chip->bg_dev, chip);
 
 	INIT_DEFERRABLE_WORK(&chip->work, max17048_work);
-	schedule_delayed_work(&chip->work, MAX17048_DELAY);
+	schedule_delayed_work(&chip->work, 0);
 
 	return 0;
 bg_err:
