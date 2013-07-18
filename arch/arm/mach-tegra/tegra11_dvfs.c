@@ -918,6 +918,17 @@ static struct core_bus_floor_table tegra11_bus_floor_table[] = {
 	  .refcnt_attr = {.attr = {.name = "emc_floor_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "emc_floor_level", .mode = 0644} },
 	},
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ .floor_name = "floor.profile.c2bus",
+	  .refcnt_attr = {.attr = {.name = "cbus_floor_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "cbus_floor_level", .mode = 0644} },
+	},
+#else
+	{ .floor_name = "floor.profile.cbus",
+	  .refcnt_attr = {.attr = {.name = "cbus_floor_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "cbus_floor_level", .mode = 0644} },
+	},
+#endif
 };
 
 static int __init tegra11_dvfs_init_core_limits(void)
