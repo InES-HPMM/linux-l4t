@@ -199,6 +199,7 @@ struct clk {
 			u32				src_shift;
 			struct clk			*pll_low;
 			struct clk			*pll_high;
+			struct clk			*pll_selected;
 			unsigned long			threshold;
 			int				min_div_low;
 			int				min_div_high;

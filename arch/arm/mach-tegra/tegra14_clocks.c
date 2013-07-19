@@ -3791,21 +3791,16 @@ static struct clk_ops tegra_periph_clk_ops = {
 };
 
 /* 1x shared bus ops */
-static long tegra14_1xbus_round_updown(struct clk *c, unsigned long rate,
-					    bool up)
+static long _1x_round_updown(struct clk *c, struct clk *src,
+			     unsigned long rate, bool up)
 {
 	int divider;
 	unsigned long source_rate, round_rate;
-	struct clk *new_parent;
 
-	rate = max(rate, c->min_rate);
+	source_rate = clk_get_rate(src);
 
-	new_parent = (rate <= c->u.periph.threshold) ?
-		c->u.periph.pll_low : c->u.periph.pll_high;
-	source_rate = clk_get_rate(new_parent);
-
-	divider = clk_div71_get_divider(source_rate, rate, c->flags,
-		up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
+	divider = clk_div71_get_divider(source_rate, rate + (up ? -1 : 1),
+		c->flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
 
 	if (divider < 0)
 		return c->min_rate;
@@ -3819,13 +3814,49 @@ static long tegra14_1xbus_round_updown(struct clk *c, unsigned long rate,
 #endif
 		round_rate = source_rate * 2 / (divider + 2);
 	}
-
-	if (new_parent == c->u.periph.pll_high) {
-		/* Prevent oscillation across threshold */
-		if (round_rate <= c->u.periph.threshold)
-			round_rate = c->u.periph.threshold;
-	}
 	return round_rate;
+}
+
+static long tegra14_1xbus_round_updown(struct clk *c, unsigned long rate,
+					    bool up)
+{
+	unsigned long pll_low_rate, pll_high_rate;
+
+	rate = max(rate, c->min_rate);
+
+	pll_low_rate = _1x_round_updown(c, c->u.periph.pll_low, rate, up);
+	if (rate <= c->u.periph.threshold) {
+		c->u.periph.pll_selected = c->u.periph.pll_low;
+		return pll_low_rate;
+	}
+
+	pll_high_rate = _1x_round_updown(c, c->u.periph.pll_high, rate, up);
+	if (pll_high_rate <= c->u.periph.threshold) {
+		c->u.periph.pll_selected = c->u.periph.pll_low;
+		return pll_low_rate;  /* prevent oscillation across threshold */
+	}
+
+	if (up) {
+		/* rounding up: both plls may hit max, and round down */
+		if (pll_high_rate < rate) {
+			if (pll_low_rate < pll_high_rate) {
+				c->u.periph.pll_selected = c->u.periph.pll_high;
+				return pll_high_rate;
+			}
+		} else {
+			if ((pll_low_rate < rate) ||
+			    (pll_low_rate > pll_high_rate)) {
+				c->u.periph.pll_selected = c->u.periph.pll_high;
+				return pll_high_rate;
+			}
+		}
+	} else if (pll_low_rate < pll_high_rate) {
+		/* rounding down: to get here both plls able to round down */
+		c->u.periph.pll_selected = c->u.periph.pll_high;
+		return pll_high_rate;
+	}
+	c->u.periph.pll_selected = c->u.periph.pll_low;
+	return pll_low_rate;
 }
 
 static long tegra14_1xbus_round_rate(struct clk *c, unsigned long rate)
@@ -3864,8 +3895,7 @@ static int tegra14_clk_1xbus_update(struct clk *c)
 		c->u.periph.min_div_high = DIV_ROUND_UP(r, m) * c->mul;
 	}
 
-	new_parent = (rate <= c->u.periph.threshold) ?
-		c->u.periph.pll_low : c->u.periph.pll_high;
+	new_parent = c->u.periph.pll_selected;
 
 	/*
 	 * The transition procedure below is guaranteed to switch to the target
@@ -3886,7 +3916,8 @@ static int tegra14_clk_1xbus_update(struct clk *c)
 		/* Switching to pll_low may dip down rate if current divider
 		   is too big - decrease divider as much as we can */
 		if ((new_parent == c->u.periph.pll_low) &&
-		    (c->div > c->u.periph.min_div_low))
+		    (c->div > c->u.periph.min_div_low) &&
+		    (c->div > c->u.periph.min_div_high))
 			interim_div = c->u.periph.min_div_low;
 
 		if (interim_div) {
@@ -3934,6 +3965,7 @@ static struct clk_ops tegra_1xbus_clk_ops = {
 	.set_parent		= &tegra14_periph_clk_set_parent,
 	.set_rate		= &tegra14_1xbus_set_rate,
 	.round_rate		= &tegra14_1xbus_round_rate,
+	.round_rate_updown	= &tegra14_1xbus_round_updown,
 	.reset			= &tegra14_periph_clk_reset,
 	.shared_bus_update	= &tegra14_clk_1xbus_update,
 };
