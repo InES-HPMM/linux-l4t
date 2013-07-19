@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_bb.h
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -24,7 +24,6 @@ struct tegra_bb_platform_data {
 	/* Baseband->AP IRQ */
 	unsigned int bb_irq;
 	unsigned int mem_req_soon;
-	void *bb_handle;
 };
 
 /*

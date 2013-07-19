@@ -58,37 +58,30 @@
 #define BBC_MC_MIN_FREQ		600000000
 #define BBC_MC_MAX_FREQ		700000000
 
-#define APBDEV_PMC_EVENT_COUNTER_0	(0x44c)
-#define APBDEV_PMC_EVENT_COUNTER_0_EN_MASK	(1<<20)
-#define APBDEV_PMC_EVENT_COUNTER_0_LP0BB	(0<<16)
-#define APBDEV_PMC_EVENT_COUNTER_0_LP0ACTIVE	(1<<16)
+#define PMC_EVENT_COUNTER_0		(0x44c)
+#define PMC_EVENT_COUNTER_0_EN_MASK	(1<<20)
+#define PMC_EVENT_COUNTER_0_LP0BB	(0<<16)
+#define PMC_EVENT_COUNTER_0_LP0ACTIVE	(1<<16)
 
-#define APBDEV_PMC_IPC_PMC_IPC_STS_0 (0x500)
-#define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT (1)
-#define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK (1)
-#define APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT (3)
-#define APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT (4)
+#define PMC_IPC_STS_0			(0x500)
+#define AP2BB_RESET_SHIFT		(1)
+#define AP2BB_RESET_DEFAULT_MASK	(1)
+#define BB2AP_MEM_REQ_SHIFT		(3)
+#define BB2AP_MEM_REQ_SOON_SHIFT	(4)
 
-#define APBDEV_PMC_IPC_PMC_IPC_SET_0 (0x504)
-#define APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_RESET_SHIFT (1)
-#define APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT (5)
+#define PMC_IPC_SET_0			(0x504)
+#define AP2BB_MEM_STS_SHIFT		(5)
 
-#define APBDEV_PMC_IPC_PMC_IPC_CLEAR_0 (0x508)
-#define APBDEV_PMC_IPC_PMC_IPC_CLEAR_0_AP2BB_RESET_SHIFT (1)
+#define PMC_IPC_CLEAR_0			(0x508)
 
-#define FLOW_CTLR_IPC_FLOW_IPC_STS_0 (0x500)
-#define FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT  (4)
-#define FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT1_STS_SHIFT (3)
-#define FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT (2)
-#define FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_INT0_STS_SHIFT (0)
+#define FLOW_IPC_STS_0			(0x500)
+#define AP2BB_MSC_STS_SHIFT		(4)
+#define BB2AP_INT1_STS_SHIFT		(3)
+#define BB2AP_INT0_STS_SHIFT		(2)
+#define AP2BB_INT0_STS_SHIFT		(0)
 
-#define FLOW_CTLR_IPC_FLOW_IPC_SET_0 (0x504)
-#define FLOW_CTLR_IPC_FLOW_IPC_SET_0_AP2BB_INT0_STS_SHIFT (0)
-
-#define FLOW_CTLR_IPC_FLOW_IPC_CLR_0 (0x508)
-#define FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT1_STS_SHIFT (3)
-#define FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT (2)
-#define FLOW_CTLR_IPC_FLOW_IPC_CLR_0_AP2BB_INT0_STS_SHIFT (0)
+#define FLOW_IPC_SET_0			(0x504)
+#define FLOW_IPC_CLR_0			(0x508)
 
 #define MC_BBC_MEM_REGIONS_0_OFFSET (0xF0)
 
@@ -172,22 +165,7 @@ static const struct vm_operations_struct tegra_bb_vm_ops = {
 void tegra_bb_register_ipc(struct platform_device *pdev,
 			   void (*cb)(void *data), void *cb_data)
 {
-	struct tegra_bb *bb;
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		pr_err("%s platform device is NULL!\n", __func__);
-		return;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
-		return;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
+	struct tegra_bb *bb = platform_get_drvdata(pdev);
 
 	if (!bb) {
 		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
@@ -200,25 +178,10 @@ EXPORT_SYMBOL_GPL(tegra_bb_register_ipc);
 
 void tegra_bb_generate_ipc(struct platform_device *pdev)
 {
-	struct tegra_bb *bb;
+	struct tegra_bb *bb = platform_get_drvdata(pdev);
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	void __iomem *flow = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
 #endif
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		pr_err("%s platform device is NULL!\n", __func__);
-		return;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
-		return;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
 
 	if (!bb) {
 		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
@@ -241,9 +204,9 @@ void tegra_bb_generate_ipc(struct platform_device *pdev)
 	}
 #else
 	{
-		u32 sts = readl(flow + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-		sts |= 1 << FLOW_CTLR_IPC_FLOW_IPC_SET_0_AP2BB_INT0_STS_SHIFT;
-		writel(sts, flow + FLOW_CTLR_IPC_FLOW_IPC_SET_0);
+		u32 sts = readl(flow + FLOW_IPC_STS_0);
+		sts |= 1 << AP2BB_INT0_STS_SHIFT;
+		writel(sts, flow + FLOW_IPC_SET_0);
 	}
 #endif
 }
@@ -254,8 +217,7 @@ void tegra_bb_clear_ipc(struct platform_device *dev)
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
 
 	/* clear BB2AP INT status */
-	writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
-	       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+	writel(1 << BB2AP_INT0_STS_SHIFT, fctrl + FLOW_IPC_CLR_0);
 }
 EXPORT_SYMBOL_GPL(tegra_bb_clear_ipc);
 
@@ -264,8 +226,7 @@ void tegra_bb_abort_ipc(struct platform_device *dev)
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
 
 	/* clear AP2BB INT status */
-	writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_AP2BB_INT0_STS_SHIFT,
-	       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+	writel(1 << AP2BB_INT0_STS_SHIFT, fctrl + FLOW_IPC_CLR_0);
 }
 EXPORT_SYMBOL_GPL(tegra_bb_abort_ipc);
 
@@ -274,8 +235,8 @@ int tegra_bb_check_ipc(struct platform_device *dev)
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
 	int sts;
 
-	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_INT0_STS_SHIFT))
+	sts = readl(fctrl + FLOW_IPC_STS_0);
+	if (sts & (1 << AP2BB_INT0_STS_SHIFT))
 		return 0;
 	return 1;
 }
@@ -287,14 +248,14 @@ int tegra_bb_check_bb2ap_ipc(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	int sts;
 
-	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	sts = sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT;
-	sts &= APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK;
+	sts = readl(pmc + PMC_IPC_STS_0);
+	sts = sts >> AP2BB_RESET_SHIFT;
+	sts &= AP2BB_RESET_DEFAULT_MASK;
 	if (!sts)
 		return 0;
 
-	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT))
+	sts = readl(fctrl + FLOW_IPC_STS_0);
+	if (sts & (1 << BB2AP_INT0_STS_SHIFT))
 		return 1;
 	return 0;
 }
@@ -322,12 +283,12 @@ static int tegra_bb_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 static inline void tegra_bb_enable_mem_req_soon(void)
 {
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
-	int val = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+	int val = readl(fctrl + FLOW_IPC_STS_0);
 
 	/* AP2BB_MSC_STS[3] is to mask or unmask
 	 * mem_req_soon interrupt to interrupt controller */
-	val = val | (0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT);
-	writel(val, fctrl + FLOW_CTLR_IPC_FLOW_IPC_SET_0);
+	val = val | (0x8 << AP2BB_MSC_STS_SHIFT);
+	writel(val, fctrl + FLOW_IPC_SET_0);
 
 	pr_debug("%s: fctrl ipc_sts = %x\n", __func__, val);
 }
@@ -377,34 +338,16 @@ static int tegra_bb_map(struct file *filp, struct vm_area_struct *vma)
 static ssize_t show_tegra_bb_retcode(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
-	struct tegra_bb *bb;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 	int retcode;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
 
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
 	retcode = *(int *)((unsigned long)bb->mb_virt + TEGRA_BB_REG_RETCODE);
-	dev_dbg(&pdev->dev, "%s retcode=%d\n", __func__, (int)retcode);
+	dev_dbg(dev, "%s retcode=%d\n", __func__, (int)retcode);
 	return sprintf(buf, "%d\n", retcode);
 }
 static DEVICE_ATTR(retcode, S_IRUSR | S_IRGRP, show_tegra_bb_retcode, NULL);
@@ -412,37 +355,19 @@ static DEVICE_ATTR(retcode, S_IRUSR | S_IRGRP, show_tegra_bb_retcode, NULL);
 static ssize_t show_tegra_bb_status(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
-	struct tegra_bb *bb;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 	unsigned int *ptr;
 	int status;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
 
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
 	ptr = bb->mb_virt + TEGRA_BB_REG_MAILBOX;
 	status = *ptr & 0xFFFF;
-	dev_dbg(&pdev->dev, "%s status=%x\n", __func__,
-		 status);
+
+	dev_dbg(dev, "%s status=%x\n", __func__, status);
 	return sprintf(buf, "%d\n", status);
 }
 
@@ -450,30 +375,13 @@ static ssize_t store_tegra_bb_status(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
 {
-	struct tegra_bb *bb;
 	int ret, value;
 	unsigned int *ptr;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
+	struct tegra_bb *bb = dev_get_drvdata(dev);
+	struct platform_device *pdev = container_of(dev, struct platform_device,
 						    dev);
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
-
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
@@ -484,9 +392,7 @@ static ssize_t store_tegra_bb_status(struct device *dev,
 	ptr = bb->mb_virt + TEGRA_BB_REG_MAILBOX;
 	*ptr = (value & 0xFFFF) | ((~value << 16) & 0xFFFF0000);
 	tegra_bb_generate_ipc(pdev);
-	dev_dbg(&pdev->dev, "%s status=0x%x\n",
-		 __func__,
-		 (unsigned int)value);
+	dev_dbg(dev, "%s status=0x%x\n",  __func__, (unsigned int)value);
 	return count;
 }
 
@@ -497,32 +403,14 @@ static ssize_t show_tegra_bb_priv_size(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
-	struct tegra_bb *bb;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
-	dev_dbg(&pdev->dev, "%s priv_size=%d\n", __func__,
+	dev_dbg(dev, "%s priv_size=%d\n", __func__,
 		 (unsigned int)bb->priv_size);
 	return sprintf(buf, "%d\n", (int)bb->priv_size);
 }
@@ -532,34 +420,14 @@ static ssize_t show_tegra_bb_ipc_size(struct device *dev,
 				      struct device_attribute *attr,
 				      char *buf)
 {
-	struct tegra_bb *bb;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
-	dev_dbg(&pdev->dev, "%s ipc_size=%d\n",
-		 __func__,
-		 (unsigned int)bb->ipc_size);
+	dev_dbg(dev, "%s ipc_size=%d\n", __func__, (unsigned int)bb->ipc_size);
 	return sprintf(buf, "%d\n", (int)bb->ipc_size);
 }
 static DEVICE_ATTR(ipc_size, S_IRUSR | S_IRGRP, show_tegra_bb_ipc_size, NULL);
@@ -571,25 +439,10 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 	int ret, value;
 	static bool regulator_status;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	struct platform_device *pdev = container_of(dev, struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-	struct tegra_bb *bb;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
@@ -601,15 +454,12 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 	if ((value < 0) || (value > 1))
 		return -EINVAL;
 
-	dev_dbg(&pdev->dev, "%s reset=%d\n",
-		 __func__,
-		 (unsigned int)value);
+	dev_dbg(dev, "%s reset=%d\n",  __func__, (unsigned int)value);
 
 	/* reset is active low - sysfs interface assume reset is active high */
 	if (value) {
-		writel(1 << APBDEV_PMC_IPC_PMC_IPC_CLEAR_0_AP2BB_RESET_SHIFT |
-		       1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT,
-			pmc + APBDEV_PMC_IPC_PMC_IPC_CLEAR_0);
+		writel(1 << AP2BB_RESET_SHIFT | 1 << AP2BB_MEM_STS_SHIFT,
+			pmc + PMC_IPC_CLEAR_0);
 
 		if (regulator_status == true) {
 			pr_debug("%s: disabling bbc regulators\n", __func__);
@@ -638,9 +488,8 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 			tegra_bb_enable_mem_req_soon();
 		}
 
-		writel(1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_RESET_SHIFT |
-		       1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT,
-			pmc + APBDEV_PMC_IPC_PMC_IPC_SET_0);
+		writel(1 << AP2BB_RESET_SHIFT | 1 << AP2BB_MEM_STS_SHIFT,
+			pmc + PMC_IPC_SET_0);
 	}
 
 	return ret;
@@ -652,21 +501,14 @@ static ssize_t show_tegra_bb_reset(struct device *dev,
 {
 	int sts;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
 	/* reset is active low - sysfs interface assume reset is active high */
 
-	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	dev_dbg(&pdev->dev, "%s IPC_STS=0x%x\n",
-		 __func__,
-		 (unsigned int)sts);
-	sts = ~sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT;
-	sts &= APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK;
+	sts = readl(pmc + PMC_IPC_STS_0);
+	dev_dbg(dev, "%s IPC_STS=0x%x\n", __func__, (unsigned int)sts);
+	sts = ~sts >> AP2BB_RESET_SHIFT;
+	sts &= AP2BB_RESET_DEFAULT_MASK;
 
-	dev_dbg(&pdev->dev, "%s reset=%d\n",
-		 __func__,
-		 (unsigned int)sts);
+	dev_dbg(dev, "%s reset=%d\n", __func__, (unsigned int)sts);
 	return sprintf(buf, "%d\n", (int)sts);
 }
 
@@ -679,19 +521,14 @@ static ssize_t show_tegra_bb_state(struct device *dev,
 {
 	unsigned int sts, mem_req, mem_req_soon;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	dev_dbg(&pdev->dev, "%s IPC_STS=0x%x\n", __func__,
-			 (unsigned int)sts);
 
-	mem_req = (sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT) & 1;
-	mem_req_soon =
-		(sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT)
-		& 1;
+	sts = readl(pmc + PMC_IPC_STS_0);
+	dev_dbg(dev, "%s IPC_STS=0x%x\n", __func__, (unsigned int)sts);
 
-	dev_dbg(&pdev->dev, "%s mem_req=%d mem_req_soon=%d\n", __func__,
+	mem_req = (sts >> BB2AP_MEM_REQ_SHIFT) & 1;
+	mem_req_soon = (sts >> BB2AP_MEM_REQ_SOON_SHIFT) & 1;
+
+	dev_dbg(dev, "%s mem_req=%d mem_req_soon=%d\n", __func__,
 					mem_req, mem_req_soon);
 	return sprintf(buf, "%d\n", (unsigned int)mem_req);
 }
@@ -701,36 +538,18 @@ static DEVICE_ATTR(state, S_IRUSR | S_IRGRP, show_tegra_bb_state, NULL);
 static ssize_t show_tegra_bb_serial(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
-	struct tegra_bb *bb;
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 	int idx, ret;
 
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL!\n", __func__);
-		return 0;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
-		return 0;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
-
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return 0;
 	}
 
 	for (idx = 0; NVSHM_SERIAL_BYTE_SIZE > idx; ++idx) {
 		ret = sprintf(buf+2*idx, "%02X", bb->ipc_serial[idx]);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "%s sprintf shm serial failure!\n",
+			dev_err(dev, "%s sprintf shm serial failure!\n",
 					__func__);
 			return 0;
 		}
@@ -745,22 +564,7 @@ static DEVICE_ATTR(serial, S_IRUSR | S_IRGRP, show_tegra_bb_serial, NULL);
 
 void tegra_bb_set_ipc_serial(struct platform_device *pdev, char *serial)
 {
-	struct tegra_bb *bb;
-	struct tegra_bb_platform_data *pdata;
-
-	if (!pdev) {
-		pr_err("%s platform device is NULL!\n", __func__);
-		return;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
-		return;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
+	struct tegra_bb *bb = platform_get_drvdata(pdev);
 
 	if (!bb) {
 		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
@@ -797,11 +601,10 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 
 	spin_lock_irqsave(&bb->lock, irq_flags);
 	/* read/clear INT status */
-	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT)) {
-		writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
-		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
-	}
+	sts = readl(fctrl + FLOW_IPC_STS_0);
+	if (sts & (1 << BB2AP_INT0_STS_SHIFT))
+		writel(1 << BB2AP_INT0_STS_SHIFT, fctrl + FLOW_IPC_CLR_0);
+
 	spin_unlock_irqrestore(&bb->lock, irq_flags);
 	/* wake IPC mechanism */
 	if (bb->ipc_cb)
@@ -834,12 +637,10 @@ static irqreturn_t tegra_bb_mem_req_soon(int irq, void *data)
 
 	spin_lock(&bb->lock);
 	/* clear the interrupt */
-	fc_sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (fc_sts &
-		(0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT)) {
+	fc_sts = readl(fctrl + FLOW_IPC_STS_0);
+	if (fc_sts & (0x8 << AP2BB_MSC_STS_SHIFT)) {
 
-		writel((0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT)
-				, fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+		writel((0x8 << AP2BB_MSC_STS_SHIFT), fctrl + FLOW_IPC_CLR_0);
 
 		irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_RISING);
 		bb->state = BBC_SET_FLOOR;
@@ -895,10 +696,8 @@ static irqreturn_t tegra_pmc_wake_intr(int irq, void *data)
 	int mem_req_soon;
 
 	spin_lock(&bb->lock);
-	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	mem_req_soon =
-		(sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT)
-		& 1;
+	sts = readl(pmc + PMC_IPC_STS_0);
+	mem_req_soon = (sts >> BB2AP_MEM_REQ_SOON_SHIFT) & 1;
 
 	/* clear interrupt */
 	lic = readl(tert_ictlr + TRI_ICTLR_VIRQ_CPU);
@@ -1001,25 +800,10 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 void tegra_bb_set_emc_floor(struct device *dev, unsigned long freq, u32 flags)
 {
-	struct platform_device *pdev = container_of(dev, struct platform_device,
-						    dev);
-	struct tegra_bb_platform_data *pdata;
-	struct tegra_bb *bb;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 
-	if (!pdev) {
-		dev_err(dev, "%s platform device is NULL\n", __func__);
-		return;
-	}
-
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform data not found\n", __func__);
-		return;
-	}
-
-	bb = (struct tegra_bb *)pdata->bb_handle;
 	if (!bb) {
-		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		dev_err(dev, "%s tegra_bb not found!\n", __func__);
 		return;
 	}
 
@@ -1047,12 +831,10 @@ static int tegra_bb_pm_notifier_event(struct notifier_block *this,
 		return NOTIFY_OK;
 	}
 
-	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	mem_req_soon = (sts >>
-			APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT)
-		& 1;
-	sts = sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT;
-	sts &= APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK;
+	sts = readl(pmc + PMC_IPC_STS_0);
+	mem_req_soon = (sts >> BB2AP_MEM_REQ_SOON_SHIFT) & 1;
+	sts = sts >> AP2BB_RESET_SHIFT;
+	sts &= AP2BB_RESET_DEFAULT_MASK;
 
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
@@ -1193,8 +975,6 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->irq = pdata->bb_irq;
 	bb->mem_req_soon = pdata->mem_req_soon;
 
-	pdata->bb_handle = bb;
-
 	/* Map mb_virt uncached (first 132K of IPC for config + statistics) */
 	bb->mb_virt = ioremap_nocache(bb->ipc_phy, mb_size);
 	pr_debug("%s: uncached IPC Virtual=0x%p\n", __func__, bb->mb_virt);
@@ -1291,7 +1071,6 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->nvshm_device.id = bb->instance;
 	bb->nvshm_device.dev.platform_data = &bb->nvshm_pdata;
 	platform_device_register(&bb->nvshm_device);
-	platform_set_drvdata(pdev, bb);
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -1364,6 +1143,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	register_pm_notifier(&bb->pm_notifier);
 #endif
 	bb->is_suspending = false;
+
+	dev_set_drvdata(&pdev->dev, bb);
 	return 0;
 }
 
@@ -1378,18 +1159,11 @@ static int tegra_bb_suspend(struct device *dev)
 static int tegra_bb_resume(struct device *dev)
 {
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
-	struct tegra_bb *bb;
-	struct tegra_bb_platform_data *pdata;
+	struct tegra_bb *bb = dev_get_drvdata(dev);
 #endif
 	dev_dbg(dev, "%s\n", __func__);
 
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
-	pdata = dev->platform_data;
-	if (!pdata) {
-		dev_err(dev, "%s platform dev not found!\n", __func__);
-		return -EINVAL;
-	}
-	bb = (struct tegra_bb *)pdata->bb_handle;
 
 	tegra_bb_enable_mem_req_soon();
 	irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_HIGH);
@@ -1467,13 +1241,12 @@ static int lp0bb_transitions_set(void *data, u64 val)
 	if (!val) {
 		/* disable event counting and clear counter */
 		reg = 0;
-		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		writel(reg, pmc + PMC_EVENT_COUNTER_0);
 		pmc_event_sel = PMC_EVENT_NONE;
 	} else if (val == 1) {
-		reg = APBDEV_PMC_EVENT_COUNTER_0_EN_MASK |
-				APBDEV_PMC_EVENT_COUNTER_0_LP0BB;
+		reg = PMC_EVENT_COUNTER_0_EN_MASK | PMC_EVENT_COUNTER_0_LP0BB;
 		 /* lp0->lp0bb transitions */
-		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		writel(reg, pmc + PMC_EVENT_COUNTER_0);
 		pmc_event_sel = PMC_EVENT_LP0BB;
 	}
 	return 0;
@@ -1482,7 +1255,7 @@ static int lp0bb_transitions_set(void *data, u64 val)
 static inline unsigned long read_pmc_event_counter(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 reg = readl(pmc + APBDEV_PMC_EVENT_COUNTER_0);
+	u32 reg = readl(pmc + PMC_EVENT_COUNTER_0);
 	/* hw event counter is 16 bit */
 	reg = reg & 0xffff;
 	return reg;
@@ -1507,13 +1280,13 @@ static int lp0active_transitions_set(void *data, u64 val)
 	if (!val) {
 		/* disable event counting and clear counter */
 		reg = 0;
-		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		writel(reg, pmc + PMC_EVENT_COUNTER_0);
 		pmc_event_sel = PMC_EVENT_NONE;
 	} else if (val == 1) {
-		reg = APBDEV_PMC_EVENT_COUNTER_0_EN_MASK |
-				APBDEV_PMC_EVENT_COUNTER_0_LP0ACTIVE;
+		reg = PMC_EVENT_COUNTER_0_EN_MASK |
+				PMC_EVENT_COUNTER_0_LP0ACTIVE;
 		 /* lp0->active transitions */
-		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		writel(reg, pmc + PMC_EVENT_COUNTER_0);
 		pmc_event_sel = PMC_EVENT_LP0ACTIVE;
 	}
 	return 0;
