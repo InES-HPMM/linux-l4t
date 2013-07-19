@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_smmu.h
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,11 +19,15 @@ extern int tegra_smmu_window_count(void);
 #endif
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+/* Maximum number of iommu address spaces in the system */
+#define TEGRA_IOMMU_NUM_ASIDS 4
 extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 						    u64 swgids);
 void tegra_smmu_unmap_misc_device(struct device *dev);
 void tegra_smmu_map_misc_device(struct device *dev);
+int tegra_smmu_get_asid(struct device *dev);
 #else
+#define TEGRA_IOMMU_NUM_ASIDS 1
 static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 							   u64 swgids)
 {
@@ -36,6 +40,11 @@ static inline void tegra_smmu_unmap_misc_device(struct device *dev)
 
 static inline void tegra_smmu_map_misc_device(struct device *dev)
 {
+}
+
+static inline int tegra_smmu_get_asid(struct device *dev)
+{
+	return 0;
 }
 #endif
 

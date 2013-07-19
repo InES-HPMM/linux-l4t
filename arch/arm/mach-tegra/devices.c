@@ -2306,6 +2306,23 @@ void tegra_smmu_unmap_misc_device(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
 
+static int _tegra_smmu_get_asid(u64 swgids)
+{
+	if (swgids & SWGID(PPCS))
+		return SYSTEM_PROTECTED;
+
+	if (swgids & SWGID(GPUB))
+		return SYSTEM_GK20A;
+
+	return SYSTEM_DEFAULT;
+}
+
+int tegra_smmu_get_asid(struct device *dev)
+{
+	u64 swgids = tegra_smmu_fixup_swgids(dev);
+	return _tegra_smmu_get_asid(swgids);
+}
+
 struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
 	if (!swgids)
@@ -2314,13 +2331,7 @@ struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 	if (!swgids)
 		return NULL;
 
-	if (swgids & SWGID(PPCS))
-		return smmu_default_map[SYSTEM_PROTECTED].map;
-
-	if (swgids & SWGID(GPUB))
-		return smmu_default_map[SYSTEM_GK20A].map;
-
-	return smmu_default_map[SYSTEM_DEFAULT].map;
+	return smmu_default_map[_tegra_smmu_get_asid(swgids)].map;
 }
 #else
 static inline void tegra_smmu_map_init(struct platform_device *pdev)
