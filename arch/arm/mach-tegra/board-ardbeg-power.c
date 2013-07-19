@@ -93,6 +93,7 @@ static struct regulator_consumer_supply as3722_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_hsic_com", NULL),
 	REGULATOR_SUPPLY("avdd_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
+	REGULATOR_SUPPLY("vdd", "1-004c"),
 };
 
 static struct regulator_consumer_supply as3722_ldo3_supply[] = {

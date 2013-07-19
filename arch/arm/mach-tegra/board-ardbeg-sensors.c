@@ -26,7 +26,10 @@
 #include <media/imx135.h>
 #include <media/dw9718.h>
 #include <media/as364x.h>
+#include <linux/pid_thermal_gov.h>
 
+#include "cpu-tegra.h"
+#include "devices.h"
 #include "board.h"
 #include "board-common.h"
 #include "board-ardbeg.h"
@@ -431,23 +434,103 @@ static int ardbeg_camera_init(void)
 	return 0;
 }
 
+static struct pid_thermal_gov_params tj_pid_params = {
+	.max_err_temp = 4000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 15,
+	.down_compensation = 15,
+};
+
+static struct thermal_zone_params tj_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &tj_pid_params,
+};
+
+static struct throttle_table tj_throttle_table[] = {
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  790500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  765000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  739500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  714000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  688500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  663000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  637500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  612000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  586500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  561000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  535500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  510000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  484500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  459000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  433500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  408000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  382500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  357000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  331500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  306000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+};
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
+};
+
+static int __init ardbeg_tj_throttle_init(void)
+{
+	balanced_throttle_register(&tj_throttle, "tegra-balanced");
+	return 0;
+}
+module_init(ardbeg_tj_throttle_init);
+
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.shutdown_ext_limit = 95, /* C */
 	.shutdown_local_limit = 120, /* C */
 
-	.num_trips = 0,
+	.passive_delay = 1000,
+	.tzp = &tj_tzp,
+
+	.num_trips = 1,
 	.trips = {
 		{
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
+			.cdev_type = "tegra-balanced",
+			.trip_temp = 83000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+			.hysteresis = 1000,
 		},
 	},
 };
