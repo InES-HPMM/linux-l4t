@@ -136,7 +136,7 @@ static noinline void __init dalmore_setup_bluesleep(void)
 	platform_device_register(&dalmore_bluesleep_device);
 	return;
 }
-#elif defined CONFIG_BLUEDROID_PM
+#elif defined(CONFIG_BLUEDROID_PM) || defined(CONFIG_BLUEDROID_PM_MODULE)
 static struct resource dalmore_bluedroid_pm_resources[] = {
 	[0] = {
 		.name   = "shutdown_gpio",
@@ -777,7 +777,7 @@ static void __init tegra_dalmore_late_init(void)
 #if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	dalmore_setup_bluesleep();
 	dalmore_setup_bt_rfkill();
-#elif defined CONFIG_BLUEDROID_PM
+#elif defined(CONFIG_BLUEDROID_PM) || defined(CONFIG_BLUEDROID_PM_MODULE)
 	dalmore_setup_bluedroid_pm();
 #endif
 	tegra_release_bootloader_fb();
