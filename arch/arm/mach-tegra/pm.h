@@ -32,17 +32,11 @@
 
 #include "iomap.h"
 
+#include "pmc.h"
+
 #define PMC_SCRATCH0		0x50
 #define PMC_SCRATCH1		0x54
 #define PMC_SCRATCH4		0x60
-
-enum tegra_suspend_mode {
-	TEGRA_SUSPEND_NONE = 0,
-	TEGRA_SUSPEND_LP2,	/* CPU voltage off */
-	TEGRA_SUSPEND_LP1,	/* CPU voltage off, DRAM self-refresh */
-	TEGRA_SUSPEND_LP0,	/* CPU + core voltage off, DRAM self-refresh */
-	TEGRA_MAX_SUSPEND_MODE,
-};
 
 enum suspend_stage {
 	TEGRA_SUSPEND_BEFORE_PERIPHERAL,

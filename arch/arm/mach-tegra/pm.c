@@ -445,6 +445,7 @@ static void pmc_32kwritel(u32 val, unsigned long offs)
 	udelay(130);
 }
 
+#if !defined(CONFIG_OF) || !defined(CONFIG_COMMON_CLK)
 static void set_power_timers(unsigned long us_on, unsigned long us_off,
 			     long rate)
 {
@@ -470,6 +471,7 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 	tegra_last_pclk = pclk;
 	last_us_off = us_off;
 }
+#endif
 
 void tegra_limit_cpu_power_timers(unsigned long us_on, unsigned long us_off)
 {
@@ -747,8 +749,12 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 			trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_START);
 		else
 			trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_START);
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
+		set_power_timers(pdata->cpu_timer, 2);
+#else
 		set_power_timers(pdata->cpu_timer, 2,
 			clk_get_rate_all_locked(tegra_pclk));
+#endif
 		if (flags & TEGRA_POWER_CLUSTER_G) {
 			/*
 			 * To reduce the vdd_cpu up latency when LP->G
@@ -768,8 +774,12 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 		}
 		tegra_cluster_switch_prolog(flags);
 	} else {
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
+		set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer);
+#else
 		set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer,
 			clk_get_rate_all_locked(tegra_pclk));
+#endif
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 		reg = readl(FLOW_CTRL_CPU_CSR(0));
 		reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
@@ -1068,7 +1078,11 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		BUG();
 	}
 
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
+	set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer);
+#else
 	set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer, rate);
+#endif
 
 	pmc_32kwritel(reg, PMC_CTRL);
 }
@@ -1572,6 +1586,8 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 {
 	u32 reg;
 	u32 mode;
+	struct pmc_pm_data *pm_dat;
+	bool is_board_pdata = true;
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	tegra_dfll = clk_get_sys(NULL, "dfll_cpu");
@@ -1579,7 +1595,94 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 #endif
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
-	pdata = plat;
+
+	/* create the pdata from DT information */
+	pm_dat = tegra_get_pm_data();
+	if (pm_dat) {
+		pr_err("PMC dt information non-NULL %s\n", __func__);
+		is_board_pdata = false;
+		pdata = kzalloc(sizeof(struct tegra_suspend_platform_data),
+			GFP_KERNEL);
+		if (pm_dat->combined_req != plat->combined_req) {
+			pr_err("PMC DT attribute combined_req=%d, board value=%d\n",
+				pm_dat->combined_req, plat->combined_req);
+			pdata->combined_req = plat->combined_req;
+		} else {
+			pdata->combined_req = pm_dat->combined_req;
+		}
+		if (pm_dat->sysclkreq_high != plat->sysclkreq_high) {
+			pr_err("PMC DT attribute sysclkreq_high=%d, board value=%d\n",
+				pm_dat->sysclkreq_high, plat->sysclkreq_high);
+			pdata->sysclkreq_high = plat->sysclkreq_high;
+		} else {
+			pdata->sysclkreq_high = pm_dat->sysclkreq_high;
+		}
+		if (pm_dat->corereq_high != plat->corereq_high) {
+			pr_err("PMC DT attribute corereq_high=%d, board value=%d\n",
+				pm_dat->corereq_high, plat->corereq_high);
+			pdata->corereq_high = plat->corereq_high;
+		} else {
+			pdata->corereq_high = pm_dat->corereq_high;
+		}
+		if (pm_dat->cpu_off_time != plat->cpu_off_timer) {
+			pr_err("PMC DT attribute cpu_off_timer=%d, board value=%ld\n",
+				pm_dat->cpu_off_time, plat->cpu_off_timer);
+			pdata->cpu_off_timer = plat->cpu_off_timer;
+		} else {
+			pdata->cpu_off_timer = pm_dat->cpu_off_time;
+		}
+		if (pm_dat->cpu_good_time != plat->cpu_timer) {
+			pr_err("PMC DT attribute cpu_timer=%d, board value=%ld\n",
+				pm_dat->cpu_good_time, plat->cpu_timer);
+			pdata->cpu_timer = plat->cpu_timer;
+		} else {
+			pdata->cpu_timer = pm_dat->cpu_good_time;
+		}
+		if (pm_dat->suspend_mode != plat->suspend_mode) {
+			pr_err("PMC DT attribute suspend_mode=%d, board value=%d\n",
+				pm_dat->suspend_mode, plat->suspend_mode);
+			pdata->suspend_mode = plat->suspend_mode;
+		} else {
+			pdata->suspend_mode = pm_dat->suspend_mode;
+		}
+		/* FIXME: pmc_pm_data fields to be reused
+		 *	core_osc_time, core_pmu_time, core_off_time
+		 *	units of above fields is uSec while
+		 *	platform data values are in ticks
+		 */
+		/* FIXME: pmc_pm_data unused by downstream code
+		 *	cpu_pwr_good_en, lp0_vec_size, lp0_vec_phy_addr
+		 */
+		/* FIXME: add missing DT bindings taken from platform data */
+		pdata->core_timer = plat->core_timer;
+		pdata->core_off_timer = plat->core_off_timer;
+		pdata->board_suspend = plat->board_suspend;
+		pdata->board_resume = plat->board_resume;
+		pdata->sysclkreq_gpio = plat->sysclkreq_gpio;
+		pdata->cpu_lp2_min_residency = plat->cpu_lp2_min_residency;
+		pdata->cpu_resume_boost = plat->cpu_resume_boost;
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+		pdata->lp1_lowvolt_support = plat->lp1_lowvolt_support;
+		pdata->i2c_base_addr = plat->i2c_base_addr;
+		pdata->pmuslave_addr = plat->pmuslave_addr;
+		pdata->core_reg_addr = plat->core_reg_addr;
+		pdata->lp1_core_volt_low_cold = plat->lp1_core_volt_low_cold;
+		pdata->lp1_core_volt_low = plat->lp1_core_volt_low;
+		pdata->lp1_core_volt_high = plat->lp1_core_volt_high;
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+		pdata->min_residency_vmin_fmin = plat->min_residency_vmin_fmin;
+		pdata->min_residency_ncpu_slow = plat->min_residency_ncpu_slow;
+		pdata->min_residency_ncpu_fast = plat->min_residency_ncpu_fast;
+		pdata->min_residency_crail = plat->min_residency_crail;
+#endif
+		pdata->min_residency_mc_clk = plat->min_residency_mc_clk;
+		pdata->usb_vbus_internal_wake = plat->usb_vbus_internal_wake;
+		pdata->usb_id_internal_wake = plat->usb_id_internal_wake;
+	} else {
+		pr_err("PMC board data used in %s\n", __func__);
+		pdata = plat;
+	}
 	(void)reg;
 	(void)mode;
 
