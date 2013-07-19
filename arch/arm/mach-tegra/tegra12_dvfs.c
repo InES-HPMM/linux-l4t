@@ -250,7 +250,7 @@ static const int gpu_millivolts[MAX_DVFS_FREQS] = {
 static struct dvfs gpu_dvfs_table[] = {
 	/* Gpu voltages (mV):		    810,    860,    900,    990,    1080*/
 	/* Clock limits for internal blocks, PLLs */
-	GPU_DVFS("gpu",     -1, 1, KHZ,    204000, 264000,  312000, 492000, 624000),
+	GPU_DVFS("gpu",     -1, 1, KHZ,    408000, 528000,  700000, 984000, 1248000),
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)

@@ -361,7 +361,7 @@ int __init ardbeg_as3722_regulator_init(void)
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	/* Set vdd_gpu init uV to 1V */
-	as3722_sd6_reg_idata.constraints.init_uV = 1000000;
+	as3722_sd6_reg_idata.constraints.init_uV = 900000;
 	pr_info("%s: i2c_register_board_info\n", __func__);
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
@@ -611,7 +611,7 @@ int __init ardbeg_tps65913_regulator_init(void)
 	}
 
 	/* Set vdd_gpu init uV to 1V */
-	reg_idata_ti913_smps123.constraints.init_uV = 1000000;
+	reg_idata_ti913_smps123.constraints.init_uV = 900000;
 	i2c_register_board_info(4, palma_ti913_device,
 			ARRAY_SIZE(palma_ti913_device));
 	return 0;

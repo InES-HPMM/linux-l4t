@@ -407,7 +407,7 @@ int hack_tegra12x_gpu_unpowergate(void)
 	if (IS_ERR_OR_NULL(gpu_reg))
 		BUG_ON(1);
 
-	regulator_set_voltage(gpu_reg, 1000000, 1000000);
+	regulator_set_voltage(gpu_reg, 900000, 900000);
 	ret = regulator_enable(gpu_reg);
 	if (ret)
 		BUG_ON(1);
