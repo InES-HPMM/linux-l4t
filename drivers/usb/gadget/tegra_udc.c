@@ -401,8 +401,12 @@ static void dr_controller_run(struct tegra_udc *udc)
 	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
 	temp &= ~USB_CMD_ITC;
 	temp |= USB_CMD_ITC_1_MICRO_FRM;
-	if (can_pullup(udc))
+	if (can_pullup(udc)) {
 		temp |= USB_CMD_RUN_STOP;
+		if (udc->connect_type == CONNECT_TYPE_SDP)
+			schedule_delayed_work(&udc->non_std_charger_work,
+				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
+	}
 	else
 		temp &= ~USB_CMD_RUN_STOP;
 	udc_writel(udc, temp, USB_CMD_REG_OFFSET);
@@ -1508,16 +1512,6 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		if ((udc->connect_type == CONNECT_TYPE_SDP) ||
 		    (udc->connect_type == CONNECT_TYPE_CDP))
 			dr_controller_run(udc);
-
-		/*
-		 * We cannot tell difference between a SDP and non-standard
-		 * charger (which has D+/D- line floating) based on line status.
-		 * Schedule a 7sec delayed work and verify it is an
-		 * non-standard charger if no setup packet is received.
-		 */
-		if (udc->connect_type == CONNECT_TYPE_SDP)
-			schedule_delayed_work(&udc->non_std_charger_work,
-				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
 	}
 	mutex_unlock(&udc->sync_lock);
 
@@ -1566,9 +1560,21 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 	tmp = udc_readl(udc, USB_CMD_REG_OFFSET);
 	tmp &= ~USB_CMD_ITC;
 	tmp |= USB_CMD_ITC_1_MICRO_FRM;
-	if (can_pullup(udc))
+	if (can_pullup(udc)) {
 		udc_writel(udc, tmp | USB_CMD_RUN_STOP, USB_CMD_REG_OFFSET);
-	else
+		/*
+		 * We cannot tell difference between a SDP and non-standard
+		 * charger (which has D+/D- line floating) based on line status
+		 * at the time VBUS is detected.
+		 *
+		 * We can schedule a 4s delayed work and verify it is an
+		 * non-standard charger if no setup packet is received after
+		 * enumeration started.
+		 */
+		if (udc->connect_type == CONNECT_TYPE_SDP)
+			schedule_delayed_work(&udc->non_std_charger_work,
+				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
+	} else
 		udc_writel(udc, (tmp & ~USB_CMD_RUN_STOP), USB_CMD_REG_OFFSET);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
