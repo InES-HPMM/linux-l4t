@@ -754,7 +754,7 @@ static void ardbeg_xusb_init(void)
 
 		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
 			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
-				TEGRA_XUSB_SS_P1);
+				TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P2);
 
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	} else {
