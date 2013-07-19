@@ -399,6 +399,9 @@ int hack_tegra12x_gpu_unpowergate(void)
 					&tegra12x_powergate_partition_info[id];
 	struct regulator * gpu_reg;
 
+	if (!tegra_platform_is_silicon())
+		return 0;
+
 	printk("%s(): start\n", __func__);
 	gpu_reg = regulator_get(NULL, "vdd_gpu");
 	if (IS_ERR_OR_NULL(gpu_reg))
