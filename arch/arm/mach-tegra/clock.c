@@ -1447,6 +1447,13 @@ static int state_get(void *data, u64 *val)
 	return 0;
 }
 
+static int max_get(void *data, u64 *val)
+{
+	struct clk *c = (struct clk *)data;
+	*val = (u64)clk_get_max_rate(c);
+	return 0;
+}
+
 #ifdef CONFIG_TEGRA_CLOCK_DEBUG_WRITE
 
 static const mode_t parent_rate_mode =  S_IRUGO | S_IWUSR;
@@ -1508,6 +1515,23 @@ static int state_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, state_set, "%llu\n");
 
+static int max_set(void *data, u64 val)
+{
+	int i;
+	struct clk *c = (struct clk *)data;
+
+	c->max_rate = (unsigned long)val;
+
+	if (c->dvfs && c->dvfs->max_millivolts) {
+		for (i = 0; i < c->dvfs->num_freqs; i++) {
+			if (c->dvfs->millivolts[i] == c->dvfs->max_millivolts)
+				c->dvfs->freqs[i] = c->max_rate;
+		}
+	}
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(max_fops, max_get, max_set, "%llu\n");
+
 #else
 
 static const mode_t parent_rate_mode =  S_IRUGO;
@@ -1521,6 +1545,7 @@ static const struct file_operations parent_fops = {
 
 DEFINE_SIMPLE_ATTRIBUTE(rate_fops, rate_get, NULL, "%llu\n");
 DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, NULL, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(max_fops, max_get, NULL, "%llu\n");
 #endif
 
 static int time_on_get(void *data, u64 *val)
@@ -1584,8 +1609,8 @@ static int clk_debugfs_register_one(struct clk *c)
 	if (!d)
 		goto err_out;
 
-	d = debugfs_create_u32(
-		"max", parent_rate_mode, c->dent, (u32 *)&c->max_rate);
+	d = debugfs_create_file(
+		"max", parent_rate_mode, c->dent, c, &max_fops);
 	if (!d)
 		goto err_out;
 
