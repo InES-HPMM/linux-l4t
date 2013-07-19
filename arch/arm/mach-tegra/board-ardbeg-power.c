@@ -884,7 +884,7 @@ PALMAS_PDATA_INIT(ldo6, 2700, 2700, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo7, 2800, 2800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo8, 2800, 3000, NULL, 0, 0, 0);
 //PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 1, 1, 0);
-PALMAS_PDATA_INIT(ldo9, 1500, 2100, palmas_rails(smps3), 1, 1, 0);
+PALMAS_PDATA_INIT(ldo9, 1500, 2100, palmas_rails(smps3), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo10, 1800, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo11, 3300, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo12, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
