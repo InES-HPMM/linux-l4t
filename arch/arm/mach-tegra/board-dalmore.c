@@ -829,4 +829,5 @@ MACHINE_START(DALMORE, "dalmore")
 	.init_machine	= tegra_dalmore_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= dalmore_dt_board_compat,
+	.init_late	= tegra_init_late,
 MACHINE_END
