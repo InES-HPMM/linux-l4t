@@ -77,6 +77,7 @@ struct tegra_cl_dvfs_platform_data {
 			unsigned long		pwm_rate;
 			bool			delta_mode;
 
+			int			pwm_pingroup;
 			int			out_gpio;
 			bool			out_enable_high;
 		} pmu_pwm;

@@ -33,6 +33,7 @@
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
+#include <mach/pinmux.h>
 
 #include "tegra_cl_dvfs.h"
 #include "clock.h"
@@ -295,12 +296,19 @@ static int output_enable(struct tegra_cl_dvfs *cld)
 	if (is_i2c(cld)) {
 		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
 	} else {
-		int gpio = cld->p_data->u.pmu_pwm.out_gpio;
+		int pg, gpio = cld->p_data->u.pmu_pwm.out_gpio;
 		if (gpio) {
 			int v = cld->p_data->u.pmu_pwm.out_enable_high ? 1 : 0;
 			__gpio_set_value(gpio, v);
 			return 0;
 		}
+
+		pg = cld->p_data->u.pmu_pwm.pwm_pingroup;
+		if (pg) {
+			tegra_pinmux_set_tristate(pg, TEGRA_TRI_NORMAL);
+			return 0;
+		}
+
 		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
 	}
 
@@ -313,10 +321,16 @@ static int output_disable_pwm(struct tegra_cl_dvfs *cld)
 {
 	u32 val;
 
-	int gpio = cld->p_data->u.pmu_pwm.out_gpio;
+	int pg, gpio = cld->p_data->u.pmu_pwm.out_gpio;
 	if (gpio) {
 		int v = cld->p_data->u.pmu_pwm.out_enable_high ? 0 : 1;
 		__gpio_set_value(gpio, v);
+		return 0;
+	}
+
+	pg = cld->p_data->u.pmu_pwm.pwm_pingroup;
+	if (pg) {
+		tegra_pinmux_set_tristate(pg, TEGRA_TRI_TRISTATE);
 		return 0;
 	}
 
@@ -1026,10 +1040,13 @@ static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
 		CL_DVFS_OUTPUT_CFG_PWM_DIV_MASK;
 
 	/*
-	 * Keep PWM output always enabled if there is an external output buffer
-	 * controlled by dedicated GPIO.
+	 * Different ways to enable/disable PWM depending on board design:
+	 * a) Use native CL-DVFS output configuration PWM_ENABLE control
+	 * b) Use gpio control of external buffer (out_gpio is populated)
+	 * c) Use tristate PWM pingroup control (pwm_pingroup is populated)
+	 * in cases (b) and (c) keep CL-DVFS native control always enabled
 	 */
-	if (p_data->u.pmu_pwm.out_gpio)
+	if (p_data->u.pmu_pwm.out_gpio || p_data->u.pmu_pwm.pwm_pingroup)
 		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
 
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
