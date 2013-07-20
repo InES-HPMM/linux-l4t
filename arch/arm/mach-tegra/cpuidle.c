@@ -184,10 +184,6 @@ static int tegra_cpuidle_register_device(struct cpuidle_driver *drv,
 	dev->cpu = cpu;
 	dev->state_count = drv->state_count;
 
-	/* MC clock stop is only for CPU 0 */
-	if (cpu != 0)
-		dev->state_count -= 1;
-
 	if (cpuidle_register_device(dev)) {
 		pr_err("CPU%u: failed to register idle device\n", cpu);
 		kfree(dev);
