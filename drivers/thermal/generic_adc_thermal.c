@@ -95,7 +95,7 @@ static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 	int val;
 	int ret;
 
-	ret = iio_st_read_channel_raw(drvdata->channel, &val);
+	ret = iio_read_channel_raw(drvdata->channel, &val);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
@@ -124,7 +124,7 @@ static int adc_temp_show(struct seq_file *s, void *p)
 	int adc, temp;
 	int ret;
 
-	ret = iio_st_read_channel_raw(drvdata->channel, &adc);
+	ret = iio_read_channel_raw(drvdata->channel, &adc);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
@@ -266,7 +266,7 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 		memcpy(drvdata->adc_temp_lookup, pdata->adc_temp_lookup,
 			pdata->lookup_table_size * sizeof(unsigned int));
 
-	drvdata->channel = iio_st_channel_get(dev_name(&pdev->dev),
+	drvdata->channel = iio_channel_get(dev_name(&pdev->dev),
 					pdata->iio_channel_name);
 	if (IS_ERR(drvdata->channel)) {
 		dev_err(&pdev->dev, "%s: Failed to get channel %s, %ld\n",
@@ -290,7 +290,7 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 	return 0;
 
 error_release_channel:
-	iio_st_channel_release(drvdata->channel);
+	iio_channel_release(drvdata->channel);
 	return ret;
 }
 
@@ -301,7 +301,7 @@ static int gadc_thermal_remove(struct platform_device *pdev)
 	if (drvdata->dentry)
 		debugfs_remove_recursive(drvdata->dentry);
 	thermal_zone_device_unregister(drvdata->tz);
-	iio_st_channel_release(drvdata->channel);
+	iio_channel_release(drvdata->channel);
 	return 0;
 }
 
