@@ -229,7 +229,7 @@ error:
 }
 #endif /*  CONFIG_DEBUG_FS */
 
-static int __devinit gadc_thermal_probe(struct platform_device *pdev)
+static int gadc_thermal_probe(struct platform_device *pdev)
 {
 	struct gadc_thermal_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	struct gadc_thermal_driver_data *drvdata;
@@ -294,7 +294,7 @@ error_release_channel:
 	return ret;
 }
 
-static int __devexit gadc_thermal_remove(struct platform_device *pdev)
+static int gadc_thermal_remove(struct platform_device *pdev)
 {
 	struct gadc_thermal_driver_data *drvdata = platform_get_drvdata(pdev);
 
@@ -311,7 +311,7 @@ static struct platform_driver gadc_thermal_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = gadc_thermal_probe,
-	.remove = __devexit_p(gadc_thermal_remove),
+	.remove = gadc_thermal_remove,
 };
 
 module_platform_driver(gadc_thermal_driver);
