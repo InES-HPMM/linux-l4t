@@ -105,6 +105,15 @@ config THERMAL_EMULATION
 	  because userland can easily disable the thermal policy by simply
 	  flooding this sysfs node with low temperature values.
 
+config GENERIC_ADC_THERMAL
+	tristate
+	prompt "Generic ADC thermal sensor support using IIO framework"
+	depends on THERMAL
+	depends on IIO
+	help
+	  Enable support for the generic ADC thermal sensor driver
+	  using IIO framework.
+
 config SPEAR_THERMAL
 	bool "SPEAr thermal sensor driver"
 	depends on PLAT_SPEAR
