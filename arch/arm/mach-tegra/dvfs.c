@@ -732,7 +732,7 @@ EXPORT_SYMBOL(tegra_dvfs_get_freqs);
 #ifdef CONFIG_TEGRA_VDD_CORE_OVERRIDE
 static DEFINE_MUTEX(rail_override_lock);
 
-int tegra_dvfs_override_core_voltage(int override_mv)
+static int dvfs_override_core_voltage(int override_mv)
 {
 	int ret, floor, ceiling;
 	struct dvfs_rail *rail = tegra_core_rail;
@@ -795,12 +795,21 @@ out:
 	return ret;
 }
 #else
-int tegra_dvfs_override_core_voltage(int override_mv)
+static int dvfs_override_core_voltage(int override_mv)
 {
 	pr_err("%s: vdd core override is not supported\n", __func__);
 	return -ENOSYS;
 }
 #endif
+
+int tegra_dvfs_override_core_voltage(struct clk *c, int override_mv)
+{
+	if (!c->dvfs || !c->dvfs->can_override) {
+		pr_err("%s: %s cannot override vdd core\n", __func__, c->name);
+		return -EPERM;
+	}
+	return dvfs_override_core_voltage(override_mv);
+}
 EXPORT_SYMBOL(tegra_dvfs_override_core_voltage);
 
 /* May only be called during clock init, does not take any locks on clock c. */
@@ -1691,7 +1700,7 @@ static int core_override_get(void *data, u64 *val)
 }
 static int core_override_set(void *data, u64 val)
 {
-	return tegra_dvfs_override_core_voltage((int)val);
+	return dvfs_override_core_voltage((int)val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");

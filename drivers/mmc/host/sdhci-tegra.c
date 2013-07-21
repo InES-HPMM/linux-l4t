@@ -2127,7 +2127,7 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 	SDHCI_TEGRA_DBG("%s: Setting vcore override %d\n",
 		mmc_hostname(sdhci->mmc), voltage);
 	/* First clear any previous dvfs override settings */
-	err = tegra_dvfs_override_core_voltage(0);
+	err = tegra_dvfs_override_core_voltage(pltfm_host->clk, 0);
 	if (!voltage)
 		return err;
 
@@ -2144,7 +2144,7 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 			nom_emc_freq_set = true;
 	}
 
-	err = tegra_dvfs_override_core_voltage(voltage);
+	err = tegra_dvfs_override_core_voltage(pltfm_host->clk, voltage);
 	if (err)
 		dev_err(mmc_dev(sdhci->mmc),
 			"failed to set vcore override %dmv\n", voltage);
