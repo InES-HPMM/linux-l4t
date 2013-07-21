@@ -199,6 +199,20 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 		.dvfs_rail	= &tegra14_dvfs_rail_vdd_core,	\
 	}
 
+#define OVRRD_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...)	\
+	{							\
+		.clk_name	= _clk_name,			\
+		.speedo_id	= _speedo_id,			\
+		.process_id	= _process_id,			\
+		.freqs		= {_freqs},			\
+		.freqs_mult	= _mult,			\
+		.millivolts	= core_millivolts,		\
+		.auto_dvfs	= _auto,			\
+		.can_override	= true,				\
+		.dvfs_rail	= &tegra14_dvfs_rail_vdd_core,	\
+	}
+
+
 static struct dvfs core_dvfs_table[] = {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	/* Core voltages (mV):		             800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1230 */
@@ -282,9 +296,9 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sbc2",   -1, -1, 1, KHZ,        33000,  33000,  33000,  30000,  30000,  50000,  50000,  50000,  50000,  50000),
 	CORE_DVFS("sbc3",   -1, -1, 1, KHZ,        33000,  33000,  33000,  30000,  30000,  50000,  50000,  50000,  50000,  50000),
 
-	CORE_DVFS("sdmmc1", -1, -1, 1, KHZ,        51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 204000),
-	CORE_DVFS("sdmmc3", -1, -1, 1, KHZ,        51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 204000),
-	CORE_DVFS("sdmmc4", -1, -1, 1, KHZ,        51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 192000),
+	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       51000,  51000,  51000,  51000,  51000,  51000, 136000, 136000, 136000, 192000),
 
 	/*
 	 * The clock rate for the display controllers that determines the
