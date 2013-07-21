@@ -23,6 +23,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/kthread.h>
+#include <linux/iio/machine.h>
 
 #define PALMAS_NUM_CLIENTS	4
 
@@ -272,6 +273,8 @@ struct palmas_gpadc_platform_data {
 
 	/* Sets the START_POLARITY bit in the RT_CTRL register */
 	int start_polarity;
+
+	struct iio_map *iio_maps;
 };
 
 struct palmas_reg_init {
