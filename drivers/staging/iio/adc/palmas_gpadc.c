@@ -52,10 +52,6 @@ struct palmas_gpadc_info {
 	bool is_correct_code;
 };
 
-
-#define PALMAS_DATASHEET_NAME(_name)	"PALMAS_GPADC_"#_name
-
-
 #define PALMAS_ADC_INFO(_chan, _x1, _x2, _v1, _v2, _t1, _t2, _is_correct_code)\
 [PALMAS_ADC_CH_##_chan] = {						\
 		.x1 = _x1,						\
@@ -339,19 +335,6 @@ static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
 	PALMAS_ADC_CHAN_IIO(IN15),
 };
 
-#define PALMAS_GPADC_IIO_MAP(chan, _consumer, _comsumer_channel_name)	\
-{									\
-	.adc_channel_label = PALMAS_DATASHEET_NAME(chan),		\
-	.consumer_dev_name = _consumer,					\
-	.consumer_channel = _comsumer_channel_name,			\
-}									\
-
-
-static struct iio_map palmas_iio_map[] = {
-	PALMAS_GPADC_IIO_MAP(IN1, "palmas-battery", "temp_channel"),
-	PALMAS_GPADC_IIO_MAP(IN6, "palmas-battery", "vbat_channel"),
-};
-
 static int palmas_gpadc_probe(struct platform_device *pdev)
 {
 	struct palmas_gpadc *adc;
@@ -378,13 +361,6 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		ret = iio_map_array_register(iodev, adc_pdata->iio_maps);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "iio_map_array_register failed\n");
-			goto out;
-		}
-	} else {
-		dev_info(&pdev->dev, "Using default IIO mapping\n");
-		ret = iio_map_array_register(iodev, palmas_iio_map);
-		if (ret < 0) {
-			dev_err(adc->dev, "iio_map_array_register() failed: %d\n", ret);
 			goto out;
 		}
 	}

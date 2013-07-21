@@ -4228,4 +4228,13 @@ static inline int palmas_is_es_version_or_less(struct palmas *palmas,
 	return false;
 }
 
+#define PALMAS_DATASHEET_NAME(_name)	"palmas-gpadc-chan-"#_name
+
+#define PALMAS_GPADC_IIO_MAP(chan, _consumer, _comsumer_channel_name)	\
+{									\
+	.adc_channel_label = PALMAS_DATASHEET_NAME(chan),		\
+	.consumer_dev_name = _consumer,					\
+	.consumer_channel = _comsumer_channel_name,			\
+}
+
 #endif /*  __LINUX_MFD_PALMAS_H */
