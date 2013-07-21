@@ -31,6 +31,8 @@
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/completion.h>
 #include <linux/iio/iio.h>
+#include <linux/iio/machine.h>
+#include <linux/iio/driver.h>
 
 #define MOD_NAME "max77660-adc"
 #define ADC_CONVERTION_TIMEOUT	(msecs_to_jiffies(1000))
@@ -296,12 +298,13 @@ static int max77660_adc_read_raw(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info max77660_adc_iio_info = {
-	.read_raw = &max77660_adc_read_raw,
+	.read_raw = max77660_adc_read_raw,
 	.driver_module = THIS_MODULE,
 };
 
 #define MAX77660_ADC_CHAN_IIO(chan)				\
 {								\
+	.datasheet_name = MAX77660_DATASHEET_NAME(chan),	\
 	.type = IIO_VOLTAGE,					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),		\
 	.indexed = 1,						\
@@ -394,6 +397,15 @@ static int max77660_adc_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(adc->dev, "iio_device_register() failed: %d\n", ret);
 		goto out_irq_free;
+	}
+
+	if (adc_pdata->channel_mapping) {
+		ret = iio_map_array_register(iodev, adc_pdata->channel_mapping);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"iio_map_array_register() failed: %d\n", ret);
+			goto out_irq_free;
+			}
 	}
 
 	device_set_wakeup_capable(&pdev->dev, 1);

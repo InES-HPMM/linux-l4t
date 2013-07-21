@@ -1037,6 +1037,7 @@ struct max77660_adc_platform_data {
 	int adc_current_uA;
 	int adc_avg_sample;
 	unsigned adc_ref_enabled:1;
+	struct iio_map *channel_mapping;
 };
 
 /*
@@ -1345,5 +1346,15 @@ static inline int max77660_is_es_1_1(struct device *dev)
 		return true;
 	return false;
 }
+
+#define MAX77660_GPADC_IIO_MAP(chan, _consumer, _comsumer_channel_name) \
+{									\
+	.adc_channel_label = MAX77660_DATASHEET_NAME(chan),		\
+	.consumer_dev_name = _consumer,					\
+	.consumer_channel = _comsumer_channel_name,			\
+}
+
+#define MAX77660_DATASHEET_NAME(_name)	"MAX77660_GPADC_"#_name
+
 
 #endif /* __LINUX_MFD_MAX77660_CORE_H__ */
