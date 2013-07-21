@@ -829,6 +829,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	 */
 	if (core_edp_limit)
 		mv = min(mv, core_edp_limit);
+	mv = round_core_cvb_voltage(mv * 1000, 1000);
 
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
@@ -873,6 +874,12 @@ void __init tegra14x_init_dvfs(void)
 	tegra14_dvfs_rail_vdd_core.stats.bin_uV =
 		tegra_get_core_cvb_alignment_uV();
 
+	/* Align dvfs voltages */
+	for (i = 0; (i < MAX_DVFS_FREQS) && (core_millivolts[i] != 0); i++) {
+		((int *)core_millivolts)[i] =
+			round_core_cvb_voltage(core_millivolts[i] * 1000, 1000);
+	}
+
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
 	 * init. Nominal voltage index in core scaling ladder can also be
@@ -886,8 +893,8 @@ void __init tegra14x_init_dvfs(void)
 		tegra_dvfs_core_disabled = true;
 		core_nominal_mv_index = 0;
 	}
-	tegra14_dvfs_rail_vdd_core.nominal_millivolts = round_core_cvb_voltage(
-		core_millivolts[core_nominal_mv_index] * 1000, 1000);
+	tegra14_dvfs_rail_vdd_core.nominal_millivolts =
+			core_millivolts[core_nominal_mv_index];
 
 	/*
 	 * Setup cpu dvfs and dfll tables from cvb data, determine nominal
