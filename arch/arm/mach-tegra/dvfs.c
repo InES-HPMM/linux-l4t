@@ -841,7 +841,7 @@ int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	 * safe levels when override limit is set)
 	 */
 	if (i && c->ops && !c->ops->shared_bus_update &&
-	    !(c->flags & PERIPH_ON_CBUS)) {
+	    !(c->flags & PERIPH_ON_CBUS) && !d->can_override) {
 		int mv = tegra_dvfs_predict_millivolts(c, d->freqs[i-1]);
 		if (d->dvfs_rail->min_override_millivolts < mv)
 			d->dvfs_rail->min_override_millivolts = mv;

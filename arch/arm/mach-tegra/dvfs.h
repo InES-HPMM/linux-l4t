@@ -143,6 +143,7 @@ struct dvfs {
 	const int *dfll_millivolts;
 	struct dvfs_rail *dvfs_rail;
 	bool auto_dvfs;
+	bool can_override;
 
 	/* Filled in by tegra_dvfs_init */
 	int max_millivolts;
