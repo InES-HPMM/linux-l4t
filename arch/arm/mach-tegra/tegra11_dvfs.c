@@ -895,36 +895,36 @@ static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
  * Keep sys file names the same for dual and single cbus configurations to
  * avoid changes in user space GPU capping interface.
  */
-static struct core_bus_cap_table tegra11_bus_cap_table[] = {
+static struct core_bus_limit_table tegra11_bus_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .cap_name = "cap.profile.c2bus",
+	{ .limit_clk_name = "cap.profile.c2bus",
 	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
 	},
 #else
-	{ .cap_name = "cap.profile.cbus",
+	{ .limit_clk_name = "cap.profile.cbus",
 	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
 	},
 #endif
 };
 
-static struct core_bus_floor_table tegra11_bus_floor_table[] = {
-	{ .floor_name = "floor.profile.host1x",
+static struct core_bus_limit_table tegra11_bus_floor_table[] = {
+	{ .limit_clk_name = "floor.profile.host1x",
 	  .refcnt_attr = {.attr = {.name = "h1x_floor_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "h1x_floor_level", .mode = 0644} },
 	},
-	{ .floor_name = "floor.profile.emc",
+	{ .limit_clk_name = "floor.profile.emc",
 	  .refcnt_attr = {.attr = {.name = "emc_floor_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "emc_floor_level", .mode = 0644} },
 	},
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .floor_name = "floor.profile.c2bus",
+	{ .limit_clk_name = "floor.profile.c2bus",
 	  .refcnt_attr = {.attr = {.name = "cbus_floor_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_floor_level", .mode = 0644} },
 	},
 #else
-	{ .floor_name = "floor.profile.cbus",
+	{ .limit_clk_name = "floor.profile.cbus",
 	  .refcnt_attr = {.attr = {.name = "cbus_floor_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_floor_level", .mode = 0644} },
 	},

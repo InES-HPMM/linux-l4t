@@ -23,18 +23,9 @@ struct core_dvfs_cap_table {
 	unsigned long freqs[MAX_DVFS_FREQS];
 };
 
-struct core_bus_cap_table {
-	const char *cap_name;
-	struct clk *cap_clk;
-	struct kobj_attribute refcnt_attr;
-	struct kobj_attribute level_attr;
-	int refcnt;
-	int level;
-};
-
-struct core_bus_floor_table {
-	const char *floor_name;
-	struct clk *floor_clk;
+struct core_bus_limit_table {
+	const char *limit_clk_name;
+	struct clk *limit_clk;
 	struct kobj_attribute refcnt_attr;
 	struct kobj_attribute level_attr;
 	int refcnt;
@@ -43,9 +34,9 @@ struct core_bus_floor_table {
 
 int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
 	const int *millivolts, int millivolts_num, struct kobject *cap_kobj);
-int tegra_init_shared_bus_cap(struct core_bus_cap_table *table, int table_size,
-	struct kobject *cap_kobj);
-int tegra_init_shared_bus_floor(struct core_bus_floor_table *table,
+int tegra_init_shared_bus_cap(struct core_bus_limit_table *table,
+	int table_size, struct kobject *cap_kobj);
+int tegra_init_shared_bus_floor(struct core_bus_limit_table *table,
 	int table_size, struct kobject *floor_kobj);
 
 #endif /* _MACH_TEGRA_CORE_SYSFS_LIMITS_H_ */

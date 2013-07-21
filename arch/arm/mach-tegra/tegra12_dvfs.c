@@ -897,14 +897,14 @@ static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
  * Keep sys file names the same for dual and single cbus configurations to
  * avoid changes in user space GPU capping interface.
  */
-static struct core_bus_cap_table tegra12_bus_cap_table[] = {
+static struct core_bus_limit_table tegra12_bus_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .cap_name = "cap.profile.c2bus",
+	{ .limit_clk_name = "cap.profile.c2bus",
 	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
 	},
 #else
-	{ .cap_name = "cap.profile.cbus",
+	{ .limit_clk_name = "cap.profile.cbus",
 	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
 	},

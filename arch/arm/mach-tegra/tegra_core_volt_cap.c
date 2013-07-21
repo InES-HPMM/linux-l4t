@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_core_volt_cap.c
  *
- * Copyright (c), NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c), 2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -300,19 +300,20 @@ int __init tegra_init_core_cap(
  * sysfs interfaces to profile tegra core shared bus frequencies by directly
  * specifying limit level in Hz for each bus independently
  */
-static DEFINE_MUTEX(bus_cap_lock);
+
+#define refcnt_to_bus(attr) \
+	container_of(attr, struct core_bus_limit_table, refcnt_attr)
+#define level_to_bus(attr) \
+	container_of(attr, struct core_bus_limit_table, level_attr)
 
 #define MAX_BUS_NUM	8
-const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
 
-#define refcnt_to_bus_cap(attr) \
-	container_of(attr, struct core_bus_cap_table, refcnt_attr)
-#define level_to_bus_cap(attr) \
-	container_of(attr, struct core_bus_cap_table, level_attr)
+static DEFINE_MUTEX(bus_cap_lock);
+static const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
 
-static void bus_cap_update(struct core_bus_cap_table *bus_cap)
+static void bus_cap_update(struct core_bus_limit_table *bus_cap)
 {
-	struct clk *c = bus_cap->cap_clk;
+	struct clk *c = bus_cap->limit_clk;
 
 	if (!c)
 		return;
@@ -327,7 +328,7 @@ static ssize_t
 bus_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_cap_table *bus_cap = refcnt_to_bus_cap(attr);
+	struct core_bus_limit_table *bus_cap = refcnt_to_bus(attr);
 	return sprintf(buf, "%d\n", bus_cap->refcnt ? 1 : 0);
 }
 static ssize_t
@@ -335,7 +336,7 @@ bus_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int state;
-	struct core_bus_cap_table *bus_cap = refcnt_to_bus_cap(attr);
+	struct core_bus_limit_table *bus_cap = refcnt_to_bus(attr);
 
 	if (sscanf(buf, "%d", &state) != 1)
 		return -1;
@@ -360,7 +361,7 @@ static ssize_t
 bus_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_cap_table *bus_cap = level_to_bus_cap(attr);
+	struct core_bus_limit_table *bus_cap = level_to_bus(attr);
 	return sprintf(buf, "%d\n", bus_cap->level);
 }
 static ssize_t
@@ -368,7 +369,7 @@ bus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int level;
-	struct core_bus_cap_table *bus_cap = level_to_bus_cap(attr);
+	struct core_bus_limit_table *bus_cap = level_to_bus(attr);
 
 	if (sscanf(buf, "%d", &level) != 1)
 		return -1;
@@ -383,7 +384,7 @@ bus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 }
 
 int __init tegra_init_shared_bus_cap(
-	struct core_bus_cap_table *table, int table_size,
+	struct core_bus_limit_table *table, int table_size,
 	struct kobject *cap_kobj)
 {
 	int i, j;
@@ -393,13 +394,13 @@ int __init tegra_init_shared_bus_cap(
 		return -EINVAL;
 
 	for (i = 0, j = 0; i < table_size; i++) {
-		c = tegra_get_clock_by_name(table[i].cap_name);
+		c = tegra_get_clock_by_name(table[i].limit_clk_name);
 		if (!c) {
 			pr_err("%s: failed to initialize %s table\n",
-			       __func__, table[i].cap_name);
+			       __func__, table[i].limit_clk_name);
 			continue;
 		}
-		table[i].cap_clk = c;
+		table[i].limit_clk = c;
 		table[i].level = clk_get_max_rate(c);
 		table[i].refcnt = 0;
 		table[i].refcnt_attr.show = bus_cap_state_show;
@@ -419,17 +420,12 @@ int __init tegra_init_shared_bus_cap(
 static DEFINE_MUTEX(bus_floor_lock);
 const struct attribute *bus_floor_attributes[2 * MAX_BUS_NUM + 1];
 
-#define refcnt_to_bus_floor(attr) \
-	container_of(attr, struct core_bus_floor_table, refcnt_attr)
-#define level_to_bus_floor(attr) \
-	container_of(attr, struct core_bus_floor_table, level_attr)
-
 static ssize_t
 bus_floor_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_floor_table *bus_floor = refcnt_to_bus_floor(attr);
-	struct clk *c = bus_floor->floor_clk;
+	struct core_bus_limit_table *bus_floor = refcnt_to_bus(attr);
+	struct clk *c = bus_floor->limit_clk;
 	return sprintf(buf, "%d\n", tegra_is_clk_enabled(c) ? 1 : 0);
 }
 static ssize_t
@@ -437,8 +433,8 @@ bus_floor_state_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int state;
-	struct core_bus_floor_table *bus_floor = refcnt_to_bus_floor(attr);
-	struct clk *c = bus_floor->floor_clk;
+	struct core_bus_limit_table *bus_floor = refcnt_to_bus(attr);
+	struct clk *c = bus_floor->limit_clk;
 
 	if (sscanf(buf, "%d", &state) != 1)
 		return -EINVAL;
@@ -457,7 +453,7 @@ static ssize_t
 bus_floor_level_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_floor_table *bus_floor = level_to_bus_floor(attr);
+	struct core_bus_limit_table *bus_floor = level_to_bus(attr);
 	return sprintf(buf, "%d\n", bus_floor->level);
 }
 static ssize_t
@@ -465,8 +461,8 @@ bus_floor_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int level, ret;
-	struct core_bus_floor_table *bus_floor = level_to_bus_floor(attr);
-	struct clk *c = bus_floor->floor_clk;
+	struct core_bus_limit_table *bus_floor = level_to_bus(attr);
+	struct clk *c = bus_floor->limit_clk;
 
 	if (sscanf(buf, "%d", &level) != 1)
 		return -EINVAL;
@@ -480,7 +476,7 @@ bus_floor_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 }
 
 int __init tegra_init_shared_bus_floor(
-	struct core_bus_floor_table *table, int table_size,
+	struct core_bus_limit_table *table, int table_size,
 	struct kobject *floor_kobj)
 {
 	int i, j;
@@ -490,13 +486,13 @@ int __init tegra_init_shared_bus_floor(
 		return -EINVAL;
 
 	for (i = 0, j = 0; i < table_size; i++) {
-		c = tegra_get_clock_by_name(table[i].floor_name);
+		c = tegra_get_clock_by_name(table[i].limit_clk_name);
 		if (!c) {
 			pr_err("%s: failed to initialize %s table\n",
-			       __func__, table[i].floor_name);
+			       __func__, table[i].limit_clk_name);
 			continue;
 		}
-		table[i].floor_clk = c;
+		table[i].limit_clk = c;
 		table[i].level = clk_get_max_rate(c);
 		table[i].refcnt_attr.show = bus_floor_state_show;
 		table[i].refcnt_attr.store = bus_floor_state_store;
