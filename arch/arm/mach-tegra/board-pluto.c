@@ -53,8 +53,6 @@
 #include <linux/mfd/tlv320aic3xxx-core.h>
 #include <linux/usb/tegra_usb_phy.h>
 
-#include <asm/hardware/gic.h>
-
 #include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -1416,7 +1414,6 @@ MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.reserve	= tegra_pluto_reserve,
 	.init_early     = tegra11x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.handle_irq	= gic_handle_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_pluto_dt_init,
 	.restart	= tegra_assert_system_reset,

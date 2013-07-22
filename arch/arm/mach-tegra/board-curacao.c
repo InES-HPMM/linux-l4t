@@ -50,7 +50,6 @@
 #include <mach/nand.h>
 #include <mach/hardware.h>
 
-#include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
@@ -609,7 +608,6 @@ MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.reserve        = tegra_curacao_reserve,
 	.init_early	= tegra11x_init_early,
 	.init_irq       = tegra_dt_init_irq,
-	.handle_irq	= gic_handle_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine   = tegra_curacao_dt_init,
 	.dt_compat	= curacao_dt_board_compat,

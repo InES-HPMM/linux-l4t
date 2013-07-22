@@ -20,7 +20,6 @@
 #include <linux/of.h>
 
 #include <asm/mach/arch.h>
-#include <asm/hardware/gic.h>
 
 #include "board.h"
 #include "clock.h"
@@ -40,7 +39,6 @@ DT_MACHINE_START(TEGRA148_DT, "NVIDIA Tegra148 (Flattened Device Tree)")
 	.map_io		= tegra_map_common_io,
 	.init_early	= tegra14x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.handle_irq	= gic_handle_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra148_dt_init,
 	.restart	= tegra_assert_system_reset,

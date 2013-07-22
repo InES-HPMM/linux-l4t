@@ -47,7 +47,6 @@
 #include <linux/of_platform.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <asm/system_info.h>
-#include <asm/hardware/gic.h>
 
 #include <mach/clk.h>
 #include <mach/irqs.h>
@@ -790,7 +789,6 @@ MACHINE_START(ROTH, "roth")
 	.reserve	= tegra_roth_reserve,
 	.init_early	= tegra11x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.handle_irq	= gic_handle_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_roth_dt_init,
 	.restart	= tegra_assert_system_reset,
