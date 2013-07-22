@@ -828,7 +828,7 @@ MACHINE_START(DALMORE, "dalmore")
 	.init_early	= tegra11x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.handle_irq	= gic_handle_irq,
-	.timer		= &tegra_sys_timer,
+	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_dalmore_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= dalmore_dt_board_compat,
