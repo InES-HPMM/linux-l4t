@@ -37,6 +37,7 @@
 #include <linux/slab.h>
 #include <linux/pm_qos.h>
 #include <linux/bluedroid_pm.h>
+#include <linux/delay.h>
 
 #define PROC_DIR	"bluetooth/sleep"
 struct bluedroid_pm_data {
@@ -76,6 +77,7 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 	if (gpio_get_value(bluedroid_pm->gpio_shutdown) == !blocked)
 		return 0;
 
+	mdelay(100);
 	if (blocked) {
 		if (bluedroid_pm->gpio_shutdown)
 			gpio_set_value(bluedroid_pm->gpio_shutdown, 0);
@@ -106,6 +108,8 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 						PM_QOS_DEFAULT_VALUE);
 	}
 	bluedroid_pm->is_blocked = blocked;
+	mdelay(100);
+
 	return 0;
 }
 
