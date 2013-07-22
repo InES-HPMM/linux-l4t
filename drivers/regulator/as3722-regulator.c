@@ -1049,8 +1049,6 @@ static struct regulator_desc regulators[] = {
 static int as3722_extreg_init(struct as3722 *as3722, int id, int ext_pwr_ctrl)
 {
 	int ret;
-	u32 reg = 0;
-	u32 mask_val = 0;
 	u32 sleep_ctrl_mask = 0;
 	u32 shift_count = 0;
 
@@ -1066,20 +1064,6 @@ static int as3722_extreg_init(struct as3722 *as3722, int id, int ext_pwr_ctrl)
 	ret = as3722_set_bits(as3722, as3722_reg_lookup[id].sleep_ctrl_reg,
 			as3722_reg_lookup[id].sleep_ctrl_bit_mask_mask,
 			ext_pwr_ctrl << shift_count);
-	if (ret < 0)
-		return ret;
-
-	if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE1) {
-		reg = AS3722_INTERRUPTMASK1_REG;
-		mask_val = 0x4;
-	} else if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE2) {
-		reg = AS3722_INTERRUPTMASK2_REG;
-		mask_val = 0x20;
-	} else if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE3) {
-		reg = AS3722_INTERRUPTMASK3_REG;
-		mask_val = 0x80;
-	}
-	ret = as3722_set_bits(as3722, reg, mask_val, 0);
 	if (ret < 0)
 		return ret;
 
