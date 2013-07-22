@@ -274,6 +274,7 @@
 #define SS_PORT_MAP_0				0x14
 #define PORT0_MAP(x)				(((x) & 0x7) << 0)
 #define PORT1_MAP(x)				(((x) & 0x7) << 4)
+#define XUSB_SS_PORT_SATA			2
 
 #define OC_DET_0							0x18
 #define SET_OC_DETECTED0					(1 << 0)

@@ -1456,7 +1456,7 @@ static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 
 	xhci_info(xhci, "saving dfe_cntl and ctle context for port %d\n", port);
 
-	if (port == 3 /* SATA pad */)
+	if (port == XUSB_SS_PORT_SATA /* SATA pad */)
 		offset = padregs->iophy_misc_pad_s0_ctl6_0;
 	else
 		offset = port ? padregs->iophy_misc_pad_p1_ctl6_0 :
@@ -1512,7 +1512,7 @@ static void tegra_xhci_restore_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 	if (tegra->dfe_ctle_ctx_saved == false)
 		return;
 
-	if (port == 3 /* SATA pad */) {
+	if (port == XUSB_SS_PORT_SATA /* SATA pad */) {
 		ctl4_offset = padregs->iophy_misc_pad_s0_ctl4_0;
 		ctl2_offset = padregs->iophy_misc_pad_s0_ctl2_0;
 	} else {
@@ -1702,7 +1702,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	/* SATA also if USB3_SS port1 mapped to it */
 	if ((port == 1) && (XUSB_DEVICE_ID_T114 != tegra->device_id) &&
 			(tegra->bdata->lane_owner & BIT(0)))
-		tegra_xhci_restore_dfe_ctle_context(tegra, 3);
+		tegra_xhci_restore_dfe_ctle_context(tegra, XUSB_SS_PORT_SATA);
 }
 
 /* This function assigns the USB ports to the controllers,
@@ -2709,8 +2709,10 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		if (tegra->cmd_data == 0x1 &&
 			XUSB_DEVICE_ID_T114 != tegra->device_id &&
 				tegra->bdata->lane_owner & BIT(0)) {
-			tegra_xhci_save_dfe_ctle_context(tegra, 3);
-			tegra_xhci_restore_dfe_ctle_context(tegra, 3);
+			tegra_xhci_save_dfe_ctle_context(tegra,
+					XUSB_SS_PORT_SATA);
+			tegra_xhci_restore_dfe_ctle_context(tegra,
+					XUSB_SS_PORT_SATA);
 		}
 
 		sw_resp |= tegra->cmd_data | (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
