@@ -171,7 +171,8 @@ static int max17048_get_property(struct power_supply *psy,
 {
 	struct max17048_chip *chip = container_of(psy,
 				struct max17048_chip, battery);
-
+	int temp;
+	int ret;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -193,6 +194,13 @@ static int max17048_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 		val->intval = max17048_get_ocv(chip);
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		ret = battery_gauge_get_battery_temperature(chip->bg_dev,
+								&temp);
+		if (ret < 0)
+			return -EINVAL;
+		val->intval = temp;
 		break;
 	default:
 	return -EINVAL;
@@ -287,7 +295,8 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
-	POWER_SUPPLY_PROP_VOLTAGE_OCV
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_TEMP,
 };
 
 static int max17048_write_rcomp_seg(struct i2c_client *client,
@@ -675,7 +684,7 @@ static int max17048_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed: power supply register\n");
 		goto error;
 	}
-
+	max17048_bgi.tz_name = chip->pdata->tz_name;
 	chip->bg_dev = battery_gauge_register(&client->dev, &max17048_bgi,
 				chip);
 	if (IS_ERR(chip->bg_dev)) {
