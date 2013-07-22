@@ -17,8 +17,7 @@
 #include <linux/io.h>
 #include <linux/irqnr.h>
 #include <linux/cpu_pm.h>
-
-#include <asm/hardware/gic.h>
+#include <linux/irqchip/arm-gic.h>
 
 #include <mach/irqs.h>
 

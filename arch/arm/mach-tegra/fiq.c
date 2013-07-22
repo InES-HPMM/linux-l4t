@@ -22,8 +22,7 @@
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-
-#include <asm/hardware/gic.h>
+#include <linux/irqchip/arm-gic.h>
 
 #include <mach/fiq.h>
 

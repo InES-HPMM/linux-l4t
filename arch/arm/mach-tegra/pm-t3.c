@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/clockchips.h>
 #include <linux/cpu_pm.h>
+#include <linux/irqchip/arm-gic.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -35,7 +36,6 @@
 
 #include <asm/smp_plat.h>
 #include <asm/cputype.h>
-#include <asm/hardware/gic.h>
 
 #include <trace/events/power.h>
 
