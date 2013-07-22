@@ -370,14 +370,15 @@ static int max77660_regulator_get_voltage(struct regulator_dev *rdev)
 	return volt;
 }
 
-static int max77660_regualtor_unmask_ext_control(struct device *dev)
+static int max77660_regulator_mask_ext_control(struct device *dev)
 {
 	u8 mask;
 	int ret;
 
-	mask = GLBLCNFG5_EN1_MASK_MASK | GLBLCNFG5_EN5_MASK_MASK;
+	mask = GLBLCNFG5_EN1_MASK_MASK | GLBLCNFG5_EN5_MASK_MASK |
+			GLBLCNFG5_EN1_FPS6_MASK_MASK;
 	ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG5, 0, mask);
+			MAX77660_REG_GLOBAL_CFG5, mask, mask);
 	if (ret < 0) {
 		dev_err(dev, "GLOBAL_CFG5 update failed: %d\n", ret);
 		return ret;
@@ -386,12 +387,56 @@ static int max77660_regualtor_unmask_ext_control(struct device *dev)
 	mask = GLBLCNFG7_EN4_MASK_MASK | GLBLCNFG7_EN3_MASK_MASK |
 			GLBLCNFG7_EN2_MASK_MASK;
 	ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG7, 0, mask);
+			MAX77660_REG_GLOBAL_CFG7, mask, mask);
 	if (ret < 0) {
 		dev_err(dev, "GLOBAL_CFG7 update failed: %d\n", ret);
 		return ret;
 	}
+	return 0;
+}
 
+static int max77660_regulator_unmask_ext_control(struct device *dev,
+	unsigned ext_control)
+{
+	u8 mask_cfg7 = 0;
+	u8 mask_cfg5 = 0;
+	int ret;
+
+	if ((ext_control & MAX77660_EXT_ENABLE_EN1) ||
+			(ext_control & MAX77660_EXT_ENABLE_EN2)) {
+		mask_cfg5 |= GLBLCNFG5_EN1_MASK_MASK;
+		mask_cfg7 |= GLBLCNFG7_EN2_MASK_MASK;
+	}
+
+	if (ext_control & MAX77660_EXT_ENABLE_EN3)
+		mask_cfg7 |= GLBLCNFG7_EN3_MASK_MASK;
+
+	if (ext_control & MAX77660_EXT_ENABLE_EN4)
+		mask_cfg7 |= GLBLCNFG7_EN4_MASK_MASK;
+
+	if (ext_control & MAX77660_EXT_ENABLE_EN5)
+		mask_cfg5 |= GLBLCNFG5_EN5_MASK_MASK;
+
+	if (ext_control & MAX77660_EXT_ENABLE_EN1FPS6)
+		mask_cfg5 |= GLBLCNFG5_EN1_FPS6_MASK_MASK;
+
+	if (mask_cfg5) {
+		ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG5, 0, mask_cfg5);
+		if (ret < 0) {
+			dev_err(dev, "GLOBAL_CFG5 update failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	if (mask_cfg7) {
+		ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG7, 0, mask_cfg7);
+		if (ret < 0) {
+			dev_err(dev, "GLOBAL_CFG7 update failed: %d\n", ret);
+			return ret;
+		}
+	}
 	return 0;
 }
 
@@ -599,6 +644,17 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 	u8 val, mask;
 	int ret;
 	int addr;
+
+	/* Unmask extern control */
+	if (pdata->flags & MAX77660_EXTERNAL_ENABLE) {
+		ret = max77660_regulator_unmask_ext_control(reg->dev,
+				pdata->flags);
+		if (ret < 0) {
+			dev_err(reg->dev, "Unmasking ext control failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
 
 	/* Update Power Mode register mask and offset */
 	if (rinfo->type == REGULATOR_TYPE_BUCK) {
@@ -995,9 +1051,9 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, max_regs);
 
-	ret = max77660_regualtor_unmask_ext_control(&pdev->dev);
+	ret = max77660_regulator_mask_ext_control(&pdev->dev);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "Unmasking ext control failed, %d\n", ret);
+		dev_err(&pdev->dev, "Masking ext control failed, %d\n", ret);
 		return ret;
 	}
 
@@ -1025,7 +1081,7 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 			ret = max77660_regulator_preinit(reg);
 			if (ret < 0) {
 				dev_err(&pdev->dev,
-					"Preinit regualtor %s failed: %d\n",
+					"Preinit regulator %s failed: %d\n",
 					rdesc->name, ret);
 				goto clean_exit;
 			}
