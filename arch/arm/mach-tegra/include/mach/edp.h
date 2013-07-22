@@ -189,4 +189,12 @@ static inline struct tegra_edp_cpu_leakage_params *tegra14x_get_leakage_params
 (int index, unsigned int *sz) { return NULL; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,
+							unsigned int *sz);
+#else
+static inline struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params
+(int index, unsigned int *sz) { return NULL; }
+#endif
+
 #endif	/* __MACH_EDP_H */
