@@ -105,6 +105,9 @@ struct as3722_platform_data {
 	struct as3722_rtc_platform_data *rtc_pdata;
 	struct as3722_pinctrl_init_data *pinctrl_pdata;
 	int pinctrl_init_data_size;
+
+	bool enable_ldo3_tracking;
+	bool disabe_ldo3_tracking_suspend;
 };
 
 static inline int as3722_reg_read(struct as3722 *as3722, u32 reg, u32 *dest)

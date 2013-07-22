@@ -399,6 +399,21 @@ static int as3722_ldo3_get_current_limit(struct regulator_dev *dev)
 	return 150000;
 }
 
+static int as3722_ldo3_set_mode(struct regulator_dev *dev, u8 mode)
+{
+	u32 val;
+	struct as3722 *as3722 = rdev_get_drvdata(dev);
+
+	if (mode != AS3722_LDO3_MODE_PMOS && mode
+		!= AS3722_LDO3_MODE_PMOS_TRACKING && mode
+		!= AS3722_LDO3_MODE_NMOS && mode != AS3722_LDO3_MODE_SWITCH)
+		return -EINVAL;
+
+	return as3722_set_bits(as3722,
+			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
+			AS3722_LDO3_MODE_MASK, mode);
+}
+
 static struct regulator_ops as3722_ldo3_ops = {
 	.is_enabled = as3722_ldo3_is_enabled,
 	.enable = as3722_ldo3_enable,
@@ -1110,6 +1125,18 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			}
 		}
 	}
+
+	/* Check if LDO3 need to work in tracking mode or not */
+	rdev = as3722->rdevs[AS3722_LDO3];
+	if (pdata->enable_ldo3_tracking) {
+		ret = as3722_ldo3_set_mode(rdev,
+		AS3722_LDO3_MODE_PMOS_TRACKING);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"as3722 track enable failed for LDO3 err\n");
+			return ret;
+		}
+	}
 	return 0;
 }
 
@@ -1130,10 +1157,61 @@ static int as3722_regulator_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int as3722_regulator_suspend(struct device *dev)
+{
+	struct as3722 *as3722 = dev_get_drvdata(dev->parent);
+	struct as3722_platform_data *pdata = as3722->dev->platform_data;
+	struct regulator_dev *rdev;
+	int ret;
+	/* Check and set LDO3 working mode in LP0 */
+	rdev = as3722->rdevs[AS3722_LDO3];
+	if (pdata->disabe_ldo3_tracking_suspend) {
+		ret = as3722_ldo3_set_mode(rdev,
+		AS3722_LDO3_MODE_NMOS);
+		if (ret < 0) {
+			dev_err(as3722->dev,
+			"as3722 ldo3 tracking disable failed err\n");
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int as3722_regulator_resume(struct device *dev)
+{
+	struct as3722 *as3722 = dev_get_drvdata(dev->parent);
+	struct as3722_platform_data *pdata = as3722->dev->platform_data;
+	struct regulator_dev *rdev;
+	int ret;
+
+	/* Check if LDO3 need to be set to tracking mode*/
+	rdev = as3722->rdevs[AS3722_LDO3];
+	if (pdata->enable_ldo3_tracking) {
+		ret = as3722_ldo3_set_mode(rdev,
+			AS3722_LDO3_MODE_PMOS_TRACKING);
+		if (ret < 0) {
+			dev_err(as3722->dev,
+				"as3722 ldo3 tracking disable failed err\n");
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops as3722_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(as3722_regulator_suspend,
+	as3722_regulator_resume)
+};
+#endif
+
 static struct platform_driver as3722_regulator_driver = {
 	.driver = {
 		.name = "as3722-regulator",
 		.owner = THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
+		.pm = &as3722_pm_ops,
+#endif
 	},
 	.probe = as3722_regulator_probe,
 	.remove = as3722_regulator_remove,
