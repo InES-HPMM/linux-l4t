@@ -42,7 +42,6 @@
 #include <linux/module.h>
 
 #include <asm/cacheflush.h>
-#include <asm/hardware/gic.h>
 #include <asm/localtimer.h>
 #include <asm/suspend.h>
 #include <asm/cputype.h>
