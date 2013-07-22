@@ -271,6 +271,31 @@ int usb3_phy_pad_enable(u8 lane_owner)
 
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
 
+	/* Program SATA pad phy */
+	if (lane_owner & BIT(0)) {
+		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		val &= ~XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0_PLL0_REFCLK_NDIV_MASK;
+		val |= XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0_PLL0_REFCLK_NDIV;
+		writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+
+		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0);
+		val &= ~(XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_XDIGCLK_SEL_MASK |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_TXCLKREF_SEL |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_TCLKOUT_EN |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_PLL0_CP_CNTL_MASK |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_PLL1_CP_CNTL_MASK);
+		val |= XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_XDIGCLK_SEL |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_TXCLKREF_SEL |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_PLL0_CP_CNTL |
+			XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0_PLL1_CP_CNTL;
+
+		writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL2_0);
+
+		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0);
+		val &= ~XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0_RCAL_BYPASS;
+		writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0);
+	}
+
 	/*
 	 * program ownership of lanes owned by USB3 based on odmdata[28:30]
 	 * odmdata[28] = 0 (SATA lane owner = SATA),
