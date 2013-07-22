@@ -1515,12 +1515,11 @@ static int state_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, state_set, "%llu\n");
 
-static int max_set(void *data, u64 val)
+static int _max_set(struct clk *c, unsigned long val)
 {
 	int i;
-	struct clk *c = (struct clk *)data;
 
-	c->max_rate = (unsigned long)val;
+	c->max_rate = val;
 
 	if (c->dvfs && c->dvfs->max_millivolts) {
 		for (i = 0; i < c->dvfs->num_freqs; i++) {
@@ -1529,6 +1528,20 @@ static int max_set(void *data, u64 val)
 		}
 	}
 	return 0;
+}
+
+#ifdef CONFIG_TEGRA_CLOCK_DEBUG_MODS
+int tegra_clk_set_max(struct clk *c, unsigned long rate)
+{
+	return _max_set(c, rate);
+}
+EXPORT_SYMBOL(tegra_clk_set_max);
+#endif
+
+static int max_set(void *data, u64 val)
+{
+	struct clk *c = (struct clk *)data;
+	return _max_set(c, (unsigned long)val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(max_fops, max_get, max_set, "%llu\n");
 
