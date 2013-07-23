@@ -44,6 +44,7 @@ enum emc_user_id {
 struct emc_iso_usage {
 	u32 emc_usage_flags;
 	u8 iso_usage_share;
+	u8 (*iso_share_calculator)(unsigned long iso_bw);
 };
 
 struct clk;
