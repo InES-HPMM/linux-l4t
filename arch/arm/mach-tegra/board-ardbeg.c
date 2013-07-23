@@ -1078,8 +1078,8 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_suspend_init();
 #if 0
 	ardbeg_emc_init();
-	ardbeg_edp_init();
 #endif
+	ardbeg_edp_init();
 	isomgr_init();
 	ardbeg_touch_init();
 	ardbeg_panel_init();

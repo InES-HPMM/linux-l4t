@@ -28,6 +28,7 @@
 #include <media/dw9718.h>
 #include <media/as364x.h>
 #include <linux/pid_thermal_gov.h>
+#include <mach/edp.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -672,6 +673,10 @@ static int ardbeg_nct72_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
+
+	tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
+				&ardbeg_nct72_pdata.num_trips,
+				12000);
 
 /*
 	tegra_add_cdev_trips(ardbeg_nct72_pdata.trips,

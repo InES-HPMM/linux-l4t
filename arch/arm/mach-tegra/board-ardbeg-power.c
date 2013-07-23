@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/resource.h>
 #include <linux/io.h>
+#include <mach/edp.h>
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 #include <linux/regulator/fixed.h>
@@ -1583,6 +1584,22 @@ static int __init ardbeg_fixed_regulator_init(void)
 }
 
 subsys_initcall_sync(ardbeg_fixed_regulator_init);
+
+int __init ardbeg_edp_init(void)
+{
+	unsigned int regulator_mA;
+
+	regulator_mA = get_maximum_cpu_current_supported();
+	if (!regulator_mA)
+		regulator_mA = 16000;
+
+	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
+	tegra_init_cpu_edp_limits(regulator_mA);
+
+	return 0;
+}
+
+
 
 /* TO DO: set default governor for gpu throttling */
 /*
