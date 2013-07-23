@@ -506,3 +506,17 @@ config PGTABLE_MAPPING
 
 config GENERIC_EARLY_IOREMAP
 	bool
+
+if STAGING
+config HMM
+	bool "Enable heterogeneous memory management (HMM)"
+	depends on MMU
+	select MMU_NOTIFIER
+	default n
+	help
+	  Heterogeneous memory management provide infrastructure for a device
+	  to mirror a process address space into an hardware mmu or into any
+	  things supporting pagefault like event.
+
+	  If unsure, say N to disable hmm.
+endif # STAGING
