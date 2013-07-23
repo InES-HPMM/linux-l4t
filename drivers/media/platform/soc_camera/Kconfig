@@ -95,6 +95,6 @@ config VIDEO_ATMEL_ISI
 config VIDEO_TEGRA
 	tristate "Tegra soc_camera host driver"
 	depends on VIDEO_DEV && ARCH_TEGRA && SOC_CAMERA && HAS_DMA && HAVE_CLK
-	select VIDEOBUF2_DMA_NVMAP
+	select VIDEOBUF2_DMA_CONTIG
 	---help---
 	  This is a v4l2 driver for the Tegra camera interface
