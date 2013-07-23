@@ -28,6 +28,7 @@
 #include <asm/cacheflush.h>
 #include <asm/outercache.h>
 #include <linux/list.h>
+#include <linux/dma-mapping.h>
 
 #include "ote_protocol.h"
 
@@ -55,21 +56,18 @@ u32 notrace tegra_read_cycle(void)
 
 static int te_create_free_cmd_list(struct tlk_device *dev)
 {
-	struct page *te_cmd_pages;
-	int cmd_desc_count = 0, ret = 0;
+	int cmd_desc_count, ret = 0;
 	struct te_cmd_req_desc *req_desc;
 	int bitmap_size;
 
-	te_cmd_pages = alloc_pages(GFP_KERNEL, get_count_order(2));
-	if (!te_cmd_pages) {
+	dev->req_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
+				&dev->req_addr_phys, GFP_KERNEL);
+	dev->param_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
+				&dev->param_addr_phys, GFP_KERNEL);
+	if ((dev->req_addr == NULL) || (dev->param_addr == NULL)) {
 		ret = -ENOMEM;
 		goto error;
 	}
-
-	/* first 4KB page is request freelist, second is param freelist */
-	dev->req_addr = (unsigned long) page_address(te_cmd_pages);
-	dev->param_addr = (struct te_oper_param *)(dev->req_addr + PAGE_SIZE);
-	set_memory_uc(dev->req_addr, 2);
 
 	/* alloc param bitmap allocator */
 	bitmap_size = BITS_TO_LONGS(TE_PARAM_MAX) * sizeof(long);
@@ -84,8 +82,7 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 			ret = -ENOMEM;
 			goto error;
 		}
-		req_desc->req_addr = dev->req_addr +
-			sizeof(struct te_request) * cmd_desc_count;
+		req_desc->req_addr = dev->req_addr + cmd_desc_count;
 		INIT_LIST_HEAD(&(req_desc->list));
 
 		/* Add the cmd param descriptor to free list */
@@ -162,7 +159,7 @@ static void __attribute__((unused)) te_print_cmd_list(
 		if (!(list_empty(&(dev->free_cmd_list)))) {
 			list_for_each_entry(param_desc, &(dev->free_cmd_list),
 					list)
-				pr_info("Phys addr for cmd req desc (%lx)\n",
+				pr_info("Phys addr for cmd req desc (%p)\n",
 					param_desc->req_addr);
 		}
 	} else {
@@ -170,7 +167,7 @@ static void __attribute__((unused)) te_print_cmd_list(
 		if (!(list_empty(&(dev->used_cmd_list)))) {
 			list_for_each_entry(param_desc, &(dev->used_cmd_list),
 					list)
-				pr_info("Phys addr for cmd req desc (%lx)\n",
+				pr_info("Phys addr for cmd req desc (%p)\n",
 					param_desc->req_addr);
 		}
 	}
@@ -301,7 +298,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 			goto error;
 		}
 
-		request = (struct te_request *)cmd_desc->req_addr;
+		request = cmd_desc->req_addr;
 		memset(request, 0, sizeof(struct te_request));
 
 		request->params = params;
@@ -330,7 +327,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 			goto error;
 		}
 
-		request = (struct te_request *)cmd_desc->req_addr;
+		request = cmd_desc->req_addr;
 		memset(request, 0, sizeof(struct te_request));
 
 		/* close session cannot fail */
@@ -352,7 +349,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 			goto error;
 		}
 
-		request = (struct te_request *)cmd_desc->req_addr;
+		request = cmd_desc->req_addr;
 		memset(request, 0, sizeof(struct te_request));
 
 		request->params = params;

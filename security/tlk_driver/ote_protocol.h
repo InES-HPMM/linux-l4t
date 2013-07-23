@@ -45,8 +45,11 @@ extern uint32_t tlk_extended_smc(uint32_t *args);
 extern void tlk_irq_handler(void);
 
 struct tlk_device {
-	unsigned long req_addr;
+	struct te_request *req_addr;
+	dma_addr_t req_addr_phys;
 	struct te_oper_param *param_addr;
+	dma_addr_t param_addr_phys;
+
 	unsigned long *param_bitmap;
 
 	struct list_head used_cmd_list;
@@ -54,7 +57,7 @@ struct tlk_device {
 };
 
 struct te_cmd_req_desc {
-	unsigned long req_addr;
+	struct te_request *req_addr;
 	struct list_head list;
 };
 
