@@ -67,3 +67,4 @@ obj-$(CONFIG_TEGRA_EFS)		+= tegra-efshlp.o
 obj-$(CONFIG_TEGRA_PFLASH)        += tegra_pflash.o
 obj-$(CONFIG_TEGRA_GMI_CHAR)	+= tegra_gmi_char.o
 obj-$(CONFIG_TEGRA_GMI_ACCESS_CONTROL)	+= tegra_gmi_access.o
+obj-$(CONFIG_HMM_DUMMY)		+= hmm_dummy.o

@@ -644,6 +644,15 @@ config TEGRA_GMI_CHAR
 	help
 	Enable tegra GMI char driver for Nvidia's board.
 
+config HMM_DUMMY
+	tristate "hmm dummy driver to test hmm."
+	depends on HMM
+	default n
+	help
+	  Say Y here if you want to build the hmm dummy driver that allow you
+	  to test the hmm infrastructure by mapping a process address space
+	  in hmm dummy driver device file. When in doubt, say "N".
+
 config TEGRA_PFLASH
 	bool "Character-device interface for pflash"
 	depends on  ARCH_TEGRA && MTD_NOR_TEGRA_GMI
