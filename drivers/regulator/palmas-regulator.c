@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/err.h>
+#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
@@ -1632,6 +1633,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
 		config.of_node = NULL;//palmas_matches[id].of_node;
+		if (reg_init && (reg_init->roof_floor & EXT_PWR_REQ)) {
+			config.ena_gpio = reg_init->enable_gpio;
+			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+		}
 
 		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
@@ -1713,6 +1718,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
 		config.of_node = NULL; //palmas_matches[id].of_node;
+		if (reg_init && (reg_init->roof_floor & EXT_PWR_REQ)) {
+			config.ena_gpio = reg_init->enable_gpio;
+			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+		}
 
 		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {

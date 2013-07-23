@@ -313,6 +313,13 @@ struct palmas_reg_init {
 	 */
 	int roof_floor;
 
+	/*
+	 * If the rail is externally controlled and the external signal is
+	 * connected to gpios of the SoCs then this can be provided by
+	 * enable_gpio;
+	 */
+	int enable_gpio;
+
 	/* sleep_mode is the mode loaded to MODE_SLEEP bits as defined in
 	 * the data sheet.
 	 *
