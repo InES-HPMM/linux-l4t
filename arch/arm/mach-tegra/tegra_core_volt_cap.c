@@ -20,6 +20,7 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/pm_qos.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -305,23 +306,46 @@ int __init tegra_init_core_cap(
 	container_of(attr, struct core_bus_limit_table, refcnt_attr)
 #define level_to_bus(attr) \
 	container_of(attr, struct core_bus_limit_table, level_attr)
+#define nb_to_bus(nb) \
+	container_of(nb, struct core_bus_limit_table, qos_nb)
 
 #define MAX_BUS_NUM	8
 
 static DEFINE_MUTEX(bus_cap_lock);
 static const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
 
-static void bus_cap_update(struct core_bus_limit_table *bus_cap)
+static int _cap_update(struct core_bus_limit_table *bus_cap,
+		       unsigned long qos_cap_level)
 {
+	int ret = 0;
+	unsigned long level, max_level;
 	struct clk *c = bus_cap->limit_clk;
 
-	if (!c)
-		return;
+	BUG_ON(!c);
+	max_level = clk_get_max_rate(c);
+	level = bus_cap->refcnt ? bus_cap->level : max_level;
 
-	if (bus_cap->refcnt)
-		clk_set_rate(c, bus_cap->level);
+	/* qos level is in kHz, bus cap level is in Hz */
+	if (qos_cap_level < max_level / 1000)
+		qos_cap_level *= 1000;
 	else
-		clk_set_rate(c, clk_get_max_rate(c));
+		qos_cap_level = max_level;
+
+	level = min(level, qos_cap_level);
+
+	ret = clk_set_rate(c, level);
+	if (ret)
+		pr_err("%s: Failed to cap %s at level %lu\n",
+		       __func__, bus_cap->limit_clk_name, level);
+	return ret;
+}
+
+static int bus_cap_update(struct core_bus_limit_table *bus_cap)
+{
+	unsigned long qos_cap_level = ULONG_MAX;
+	if (bus_cap->pm_qos_class)
+		qos_cap_level = pm_qos_request(bus_cap->pm_qos_class);
+	return _cap_update(bus_cap, qos_cap_level);
 }
 
 static ssize_t
@@ -383,6 +407,17 @@ bus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 	return count;
 }
 
+static int qos_cap_notify(struct notifier_block *nb,
+			  unsigned long qos_cap_level, void *p)
+{
+	struct core_bus_limit_table *bus_cap = nb_to_bus(nb);
+
+	mutex_lock(&bus_cap_lock);
+	_cap_update(bus_cap, qos_cap_level);
+	mutex_unlock(&bus_cap_lock);
+	return NOTIFY_OK;
+}
+
 int __init tegra_init_shared_bus_cap(
 	struct core_bus_limit_table *table, int table_size,
 	struct kobject *cap_kobj)
@@ -409,6 +444,15 @@ int __init tegra_init_shared_bus_cap(
 		table[i].level_attr.store = bus_cap_level_store;
 		bus_cap_attributes[j++] = &table[i].refcnt_attr.attr;
 		bus_cap_attributes[j++] = &table[i].level_attr.attr;
+		if (table[i].pm_qos_class) {
+			table[i].qos_nb.notifier_call = qos_cap_notify;
+			if (pm_qos_add_notifier(
+				table[i].pm_qos_class, &table[i].qos_nb)) {
+				pr_err("%s: Failed register %s with PM QoS\n",
+					__func__, table[i].limit_clk_name);
+				table[i].pm_qos_class = 0;
+			}
+		}
 	}
 	bus_cap_attributes[j] = NULL;
 
