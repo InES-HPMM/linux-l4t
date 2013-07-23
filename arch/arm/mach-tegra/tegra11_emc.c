@@ -50,12 +50,49 @@ module_param(emc_enable, bool, 0644);
 
 static int pasr_enable;
 
-u8 tegra_emc_bw_efficiency = 80;
-static struct emc_iso_usage tegra11_emc_iso_usage[] = {
-	{ BIT(EMC_USER_DC),			80 },
-	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
+static u32 bw_calc_freqs[] = {
+	40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300
 };
 
+static u32 tegra11_lpddr3_emc_usage_share_default[] = {
+	35, 38, 40,  41,  42,  43,  43,  45,  45,  45,  46,  47,  48,  48, 50
+};
+
+static u32 tegra11_lpddr3_emc_usage_share_dc[] = {
+	47, 52, 55,  57,  58,  59,  60,  62,  62,  63,  64,  66,  67,  68, 70
+};
+
+static u8 iso_share_calc_t114_lpddr3_default(unsigned long iso_bw);
+static u8 iso_share_calc_t114_lpddr3_dc(unsigned long iso_bw);
+
+u8 tegra_emc_bw_efficiency = 80;
+
+static struct emc_iso_usage tegra11_ddr3_emc_iso_usage[] = {
+	{ BIT(EMC_USER_DC),			80},
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45},
+};
+
+static struct emc_iso_usage tegra11_lpddr3_emc_iso_usage[] = {
+	{
+		BIT(EMC_USER_DC),
+		80, iso_share_calc_t114_lpddr3_dc
+	},
+	{
+		BIT(EMC_USER_DC) | BIT(EMC_USER_VI),
+		45, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC) | BIT(EMC_USER_MSENC),
+		50, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC) | BIT(EMC_USER_3D),
+		50, iso_share_calc_t114_lpddr3_default
+	},
+};
+
+#define MHZ 1000000
+#define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM 14
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
@@ -1571,8 +1608,14 @@ int __init tegra11_emc_init(void)
 {
 	int ret = platform_driver_register(&tegra11_emc_driver);
 	if (!ret) {
-		tegra_emc_iso_usage_table_init(tegra11_emc_iso_usage,
-			ARRAY_SIZE(tegra11_emc_iso_usage));
+		if (dram_type == DRAM_TYPE_LPDDR2)
+			tegra_emc_iso_usage_table_init(
+				tegra11_lpddr3_emc_iso_usage,
+				ARRAY_SIZE(tegra11_lpddr3_emc_iso_usage));
+		else if (dram_type == DRAM_TYPE_DDR3)
+			tegra_emc_iso_usage_table_init(
+				tegra11_ddr3_emc_iso_usage,
+				ARRAY_SIZE(tegra11_ddr3_emc_iso_usage));
 		if (emc_enable) {
 			unsigned long rate = tegra_emc_round_rate_updown(
 				emc->boot_rate, false);
@@ -1667,6 +1710,38 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 	}
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 	return 0;
+}
+
+static inline int bw_calc_get_freq_idx(unsigned long bw)
+{
+	int idx = 0;
+
+	if (bw > bw_calc_freqs[TEGRA_EMC_ISO_USE_FREQ_MAX_NUM-1] * MHZ)
+		idx = TEGRA_EMC_ISO_USE_FREQ_MAX_NUM;
+
+	for (; idx < TEGRA_EMC_ISO_USE_FREQ_MAX_NUM; idx++) {
+		u32 freq = bw_calc_freqs[idx] * MHZ;
+		if (bw < freq) {
+			if (idx)
+				idx--;
+			break;
+		} else if (bw == freq)
+			break;
+	}
+
+	return idx;
+}
+
+static u8 iso_share_calc_t114_lpddr3_default(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+	return tegra11_lpddr3_emc_usage_share_default[freq_idx];
+}
+
+static u8 iso_share_calc_t114_lpddr3_dc(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+	return tegra11_lpddr3_emc_usage_share_dc[freq_idx];
 }
 
 #ifdef CONFIG_DEBUG_FS
