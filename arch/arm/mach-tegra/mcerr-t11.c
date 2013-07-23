@@ -3,7 +3,7 @@
  *
  * Tegra 11x SoC-specific mcerr code.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #include "mcerr.h"
 
 #define dummy_client	client("dummy")
-
-static char unknown_buf[30];
 
 struct mc_client mc_clients[] = {
 	client("ptc"),
@@ -84,37 +82,20 @@ struct mc_client mc_clients[] = {
 
 int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 
-static const char *mcerr_t11x_info(u32 stat)
-{
-	if (stat & MC_INT_DECERR_EMEM)
-		return "MC_DECERR";
-	else if (stat & MC_INT_SECURITY_VIOLATION)
-		return "MC_SECURITY_ERR";
-	else if (stat & MC_INT_INVALID_SMMU_PAGE)
-		return "MC_SMMU_ERR";
-	else if (stat & MC_INT_DECERR_VPR)
-		return "MC_DECERR_VPR";
-	else if (stat & MC_INT_SECERR_SEC)
-		return "MC_DECERR_SEC";
-
-	/* Otherwise we have an unknown type... */
-	snprintf(unknown_buf, 30, "unknown - 0x%04x", stat);
-	return unknown_buf;
-}
-
 static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
 {
 	if (stat & MC_INT_DECERR_EMEM)
 		c->intr_counts[0]++;
-	else if (stat & MC_INT_SECURITY_VIOLATION)
+	if (stat & MC_INT_SECURITY_VIOLATION)
 		c->intr_counts[1]++;
-	else if (stat & MC_INT_INVALID_SMMU_PAGE)
+	if (stat & MC_INT_INVALID_SMMU_PAGE)
 		c->intr_counts[2]++;
-	else if (stat & MC_INT_DECERR_VPR)
+	if (stat & MC_INT_DECERR_VPR)
 		c->intr_counts[3]++;
-	else if (stat & MC_INT_SECERR_SEC)
+	if (stat & MC_INT_SECERR_SEC)
 		c->intr_counts[4]++;
-	else
+
+	if (stat & ~MC_INT_EN_MASK)
 		c->intr_counts[5]++;
 }
 
@@ -122,17 +103,17 @@ static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
  * T11x reports addresses in a 32 byte range thus we can only give an
  * approximate location for the invalid memory request, not the exact address.
  */
-static void mcerr_t11x_print(const char *mc_type, u32 err, u32 addr,
-			     const struct mc_client *client, int is_secure,
-			     int is_write, const char *mc_err_info)
+static void mcerr_t11x_print(const struct mc_error *err,
+			     const struct mc_client *client,
+			     u32 status, phys_addr_t addr,
+			     int secure, int rw, const char *smmu_info)
 {
-	pr_err("%s (0x%08lx) [0x%p -> 0x%p] %s (%s %s %s)\n", mc_type,
-	       (unsigned long) err,
-	       (void *)(addr & ~0x1f), (void *)(addr | 0x1f),
-	       (client) ? client->name : "unknown",
-	       (is_secure) ? "secure" : "non-secure",
-	       (is_write) ? "write" : "read",
-	       mc_err_info);
+	pr_err("[mcerr] %s: %s\n", client->name, err->msg);
+	pr_err("[mcerr]   status = 0x%08x; addr = [0x%08lx -> 0x%08lx]",
+	       status, (ulong)(addr & ~0x1f), (ulong)(addr | 0x1f));
+	pr_err("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
+	       secure ? "yes" : "no", rw ? "write" : "read",
+	       smmu_info ? smmu_info : "none");
 }
 
 static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
@@ -173,7 +154,6 @@ static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
  */
 void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec)
 {
-	spec->mcerr_info = mcerr_t11x_info;
 	spec->mcerr_print = mcerr_t11x_print;
 	spec->mcerr_info_update = mcerr_t11x_info_update;
 	spec->mcerr_debugfs_show = mcerr_t11x_debugfs_show;
