@@ -561,6 +561,9 @@ struct palmas_battery_platform_data {
 	int current_avg_interval;
 	struct cell_config *cell_cfg;
 	int is_battery_present;
+	bool enable_ovc_alarm;
+	int ovc_period;
+	int ovc_threshold;
 };
 
 struct palmas_sim_platform_data {
@@ -1333,6 +1336,7 @@ enum usb_irq_events {
 /* Bit definitions for SMPS_POWERGOOD_MASK2 */
 #define PALMAS_SMPS_POWERGOOD_MASK2_POWERGOOD_TYPE_SELECT	0x80
 #define PALMAS_SMPS_POWERGOOD_MASK2_POWERGOOD_TYPE_SELECT_SHIFT	7
+#define PALMAS_SMPS_POWERGOOD_MASK2_OVC_ALARM			0x10
 #define PALMAS_SMPS_POWERGOOD_MASK2_GPIO_7			0x04
 #define PALMAS_SMPS_POWERGOOD_MASK2_GPIO_7_SHIFT		2
 #define PALMAS_SMPS_POWERGOOD_MASK2_VBUS			0x02

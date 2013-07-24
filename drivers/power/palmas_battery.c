@@ -1394,6 +1394,83 @@ static void palmas_battery_current_avg(struct work_struct *work)
 	return;
 }
 
+static int palmas_ovc_period_config(struct palmas_battery_platform_data *pdata)
+{
+	if (pdata->ovc_period >= 3900)
+		return 0x3;
+	if (pdata->ovc_period >= 2000)
+		return 0x2;
+	if (pdata->ovc_period >= 1000)
+		return 0x1;
+	return 0x0;
+}
+
+static int palmas_ovc_thresh_config(struct palmas_battery_platform_data *pdata,
+		unsigned int period)
+{
+	unsigned int step;
+	unsigned int div;
+	unsigned int reg;
+	unsigned int mask;
+
+	div = pdata->cell_cfg->r_sense == 10 ? 1 : 2;
+	div *= 1 << period;
+	step = 750000 / div;
+
+	mask = PALMAS_FG_REG_21_CC_OVERCUR_THRES_MASK >>
+			PALMAS_FG_REG_21_CC_OVERCUR_THRES_SHIFT;
+	reg = pdata->ovc_threshold * 1000 / step - 1;
+	reg = min(reg, mask);
+
+	return reg;
+}
+
+static int palmas_init_oc_alert(struct palmas_battery_info *di,
+		struct palmas_battery_platform_data *pdata)
+{
+	struct palmas *palmas = di->palmas;
+	int ret;
+	unsigned int period;
+	unsigned int thresh;
+	unsigned int mask;
+	unsigned int val;
+
+	if (!pdata->enable_ovc_alarm)
+		return 0;
+
+	ret = palmas_update_bits(palmas, PALMAS_SMPS_BASE,
+			PALMAS_SMPS_POWERGOOD_MASK2,
+			PALMAS_SMPS_POWERGOOD_MASK2_OVC_ALARM,
+			0);
+	if (ret < 0) {
+		dev_err(di->dev, "failed to write POWERGOOD_MASK2: %d\n", ret);
+		return ret;
+	}
+
+	period = palmas_ovc_period_config(pdata);
+	thresh = palmas_ovc_thresh_config(pdata, period);
+
+	ret = palmas_update_bits(palmas, PALMAS_FUEL_GAUGE_BASE,
+			PALMAS_FG_REG_21,
+			PALMAS_FG_REG_21_CC_OVERCUR_THRES_MASK,
+			thresh);
+	if (ret < 0) {
+		dev_err(di->dev, "failed to write FG_REG_21: %d\n", ret);
+		return ret;
+	}
+
+	mask = PALMAS_FG_REG_22_CC_OVC_PER_MASK | PALMAS_FG_REG_22_CC_OVC_EN;
+	val = period << PALMAS_FG_REG_22_CC_OVC_PER_SHIFT |
+			PALMAS_FG_REG_22_CC_OVC_EN;
+	ret = palmas_update_bits(palmas, PALMAS_FUEL_GAUGE_BASE,
+			PALMAS_FG_REG_22, mask, val);
+	if (ret < 0) {
+		dev_err(di->dev, "failed to write FG_REG_22: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 static int palmas_current_setup(struct palmas_battery_info *di,
 		struct palmas_battery_platform_data *pdata)
@@ -1622,6 +1699,13 @@ static int palmas_battery_probe(struct platform_device *pdev)
 		dev_err(di->dev, "battery gauge register failed: %d\n", ret);
 		goto bg_err;
 	}
+
+	ret = palmas_init_oc_alert(di, pdata);
+	if (ret < 0) {
+		dev_err(di->dev, "OC alert init failed: %d\n", ret);
+		return ret;
+	}
+
 	return 0;
 
 bg_err:
