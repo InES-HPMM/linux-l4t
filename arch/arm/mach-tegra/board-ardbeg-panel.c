@@ -502,7 +502,13 @@ static void ardbeg_panel_select(void)
 		ardbeg_disp1_device.num_resources =
 			ARRAY_SIZE(ardbeg_disp1_edp_resources);
 		break;
-	/* fall through */
+	case BOARD_PM366:
+		panel = &lvds_c_1366_14;
+		ardbeg_disp1_out.type = TEGRA_DC_OUT_LVDS;
+		ardbeg_disp1_device.resource = ardbeg_disp1_edp_resources;
+		ardbeg_disp1_device.num_resources =
+			ARRAY_SIZE(ardbeg_disp1_edp_resources);
+		break;
 	default:
 		panel = &dsi_p_wuxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;

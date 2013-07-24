@@ -277,6 +277,7 @@ obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-edp-1080p-14-0.o
+obj-${CONFIG_MACH_ARDBEG}               += panel-c-lvds-1366-14.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-kbc.o
