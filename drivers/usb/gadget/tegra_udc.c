@@ -2574,6 +2574,7 @@ static int tegra_udc_setup_qh(struct tegra_udc *udc)
 {
 	u32 dccparams;
 	size_t size;
+	struct resource *res;
 
 	/* Read Device Controller Capability Parameters register */
 	dccparams = udc_readl(udc, DCCPARAMS_REG_OFFSET);
@@ -2595,8 +2596,13 @@ static int tegra_udc_setup_qh(struct tegra_udc *udc)
 	/* Setup hardware queue heads */
 	size = udc->max_ep * sizeof(struct ep_queue_head);
 	udc->ep_qh = (struct ep_queue_head *)((u8 *)(udc->regs) + QH_OFFSET);
-	udc->ep_qh_dma = platform_get_resource(udc->pdev, IORESOURCE_MEM
-				, 0)->start + QH_OFFSET;
+	res = platform_get_resource(udc->pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		ERR("resource request failed\n");
+		kfree(udc->eps);
+		return -ENODEV;
+	}
+	udc->ep_qh_dma = res->start + QH_OFFSET;
 	udc->ep_qh_size = size;
 
 	/* Initialize ep0 status request structure */
@@ -2931,6 +2937,10 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 
 	if (!udc)
 		return -ENODEV;
+	if (!res) {
+		ERR("resource request failed\n");
+		return -ENODEV;
+	}
 
 #ifdef CONFIG_EXTCON
 	if (udc->edev != NULL) {
