@@ -282,7 +282,8 @@ static int __init ardbeg_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init ardbeg_wifi_prepower(void)
 {
-	if (!of_machine_is_compatible("nvidia,ardbeg"))
+	if (!of_machine_is_compatible("nvidia,ardbeg") &&
+		!of_machine_is_compatible("nvidia,laguna"))
 		return 0;
 	ardbeg_wifi_power(1);
 

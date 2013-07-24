@@ -1031,7 +1031,10 @@ static void __init tegra_ardbeg_early_init(void)
 {
 	tegra_clk_init_from_table(ardbeg_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_soc_device_init("ardbeg");
+	if (of_machine_is_compatible("nvidia,laguna"))
+		tegra_soc_device_init("laguna");
+	else
+		tegra_soc_device_init("ardbeg");
 }
 
 static void __init tegra_ardbeg_late_init(void)
@@ -1140,6 +1143,24 @@ static const char * const ardbeg_dt_board_compat[] = {
 	"nvidia,ardbeg",
 	NULL
 };
+
+static const char * const laguna_dt_board_compat[] = {
+	"nvidia,laguna",
+	NULL
+};
+
+DT_MACHINE_START(LAGUNA, "laguna")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_ardbeg_reserve,
+	.init_early	= tegra12x_init_early,
+	.init_irq	= tegra_dt_init_irq,
+	.init_time	= tegra_init_timer,
+	.init_machine	= tegra_ardbeg_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= laguna_dt_board_compat,
+MACHINE_END
 
 DT_MACHINE_START(ARDBEG, "ardbeg")
 	.atag_offset	= 0x100,

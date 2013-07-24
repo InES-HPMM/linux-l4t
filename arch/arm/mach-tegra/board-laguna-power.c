@@ -774,7 +774,7 @@ static int __init laguna_fixed_regulator_init(void)
 {
 	struct board_info board_info;
 
-	if (!of_machine_is_compatible("nvidia,ardbeg"))
+	if (!of_machine_is_compatible("nvidia,laguna"))
 		return 0;
 
 	tegra_get_board_info(&board_info);

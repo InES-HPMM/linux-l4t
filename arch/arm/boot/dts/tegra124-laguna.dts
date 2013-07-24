@@ -4,7 +4,7 @@
 
 / {
 	model = "NVIDIA Tegra124 Laguna";
-	compatible = "nvidia,ardbeg", "nvidia,tegra124";
+	compatible = "nvidia,laguna", "nvidia,tegra124";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
