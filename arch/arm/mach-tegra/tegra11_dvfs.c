@@ -243,6 +243,44 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.therm_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
+	{
+		.speedo_id = 3,
+		.process_id = -1,
+		.dfll_tune_data  = {
+			.tune0		= 0x00b0039d,
+			.tune0_high_mv	= 0x00b0009d,
+			.tune1		= 0x0000001f,
+			.droop_rate_min = 1000000,
+			.tune_high_min_millivolts = 1050,
+			.min_millivolts = 1000,
+		},
+		.max_mv = 1320,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f       dfll:  c0,      c1,    c2  pll:   c0,   c1,    c2 */
+			{ 306000, { 2190643, -141851, 3576}, {  900000,    0,    0} },
+			{ 408000, { 2250968, -144331, 3576}, {  950000,    0,    0} },
+			{ 510000, { 2313333, -146811, 3576}, {  970000,    0,    0} },
+			{ 612000, { 2377738, -149291, 3576}, { 1000000,    0,    0} },
+			{ 714000, { 2444183, -151771, 3576}, { 1020000,    0,    0} },
+			{ 816000, { 2512669, -154251, 3576}, { 1020000,    0,    0} },
+			{ 918000, { 2583194, -156731, 3576}, { 1030000,    0,    0} },
+			{1020000, { 2655759, -159211, 3576}, { 1030000,    0,    0} },
+			{1122000, { 2730365, -161691, 3576}, { 1090000,    0,    0} },
+			{1224000, { 2807010, -164171, 3576}, { 1090000,    0,    0} },
+			{1326000, { 2885696, -166651, 3576}, { 1120000,    0,    0} },
+			{1428000, { 2966422, -169131, 3576}, { 1400000,    0,    0} },
+			{1530000, { 3049183, -171601, 3576}, { 1400000,    0,    0} },
+			{1606500, { 3112179, -173451, 3576}, { 1400000,    0,    0} },
+			{1708500, { 3198504, -175931, 3576}, { 1400000,    0,    0} },
+			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
+			{      0, {       0,       0,    0}, {       0,    0,    0} },
+		},
+		.therm_trips_table = { 20, },
+		.therm_floors_table = { 1000, },
+	},
 };
 
 static int cpu_millivolts[MAX_DVFS_FREQS];
@@ -533,7 +571,8 @@ static inline void override_min_millivolts(struct cpu_cvb_dvfs *d)
 	 * dfll min_millivolts for AP40 sku is different from all other skus
 	 * that have the same cvb tables
 	 */
-	if (tegra_sku_id == 0x06)
+	if ((tegra_sku_id == 0x6) || (tegra_sku_id == 0x8) ||
+	    tegra_spare_fuse(61))
 		d->dfll_tune_data.min_millivolts = 900;
 
 	/*
@@ -681,7 +720,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		core_edp_voltage = TEGRA11_CORE_VOLTAGE_CAP;
 
 	if ((core_edp_voltage <= TEGRA11_CORE_VOLTAGE_CAP) ||
-	    (tegra_sku_id != 0x4))
+	    ((tegra_sku_id != 0x4) && (tegra_sku_id != 0x8)))
 		mv = min(mv, core_edp_voltage);
 
 	/* use boot edp limit as disable and suspend levels as well */

@@ -101,6 +101,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		threshold_index = 1;
 		break;
 
+	case 0x08: /* AP40X */
+		if (!a01)
+			cpu_speedo_id = 3;
+		soc_speedo_id = 1;
+		threshold_index = 1;
+		break;
+
 	default:
 		/* FIXME: replace with BUG() when all SKU's valid */
 		pr_err("Tegra11 Unknown SKU %d\n", sku);
@@ -208,7 +215,7 @@ int tegra_core_speedo_mv(void)
 			return 1170;
 	/* fall thru if core_process_id = 0 */
 	case 1:
-		if (tegra_sku_id == 0x4)
+		if ((tegra_sku_id == 0x4) || (tegra_sku_id == 0x8))
 			return 1390;
 		return 1250;
 	default:
