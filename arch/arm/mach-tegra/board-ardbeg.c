@@ -742,9 +742,10 @@ static void ardbeg_xusb_init(void)
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
+		pr_info("Laguna ERS. 0x%x\n", board_info.board_id);
 		xusb_bdata.gpio_controls_muxed_ss_lanes = true;
-		/* D[0:15] = gpio number and D[16:31] = output value*/
-		xusb_bdata.gpio_ss1_sata = PMU_TCA6416_GPIO(11) | (0 << 16);
+		/* D[0:15] = gpio number and D[16:31] = output value */
+		xusb_bdata.gpio_ss1_sata = PMU_TCA6416_GPIO(9) | (0 << 16);
 		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
 			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4);
 
