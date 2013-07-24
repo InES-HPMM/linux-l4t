@@ -936,4 +936,11 @@ config TEGRA_VDD_CORE_OVERRIDE
 
 config TEGRA_GMI
 	bool
+
+config TEGRA_SOC_TIMERS
+	bool "Enable support for SOC timers"
+	default n
+	help
+	  When enabled, cpu clock events will be using SOC timers instead
+	  of arm private timers.
 endif
