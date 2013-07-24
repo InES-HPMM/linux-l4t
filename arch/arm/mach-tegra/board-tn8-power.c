@@ -281,12 +281,13 @@ static struct regulator_init_data *tn8_reg_data[PALMAS_NUM_REGS] = {
 	static struct palmas_reg_init reg_init_data_##_name = {		\
 		.warm_reset = _warm_reset,				\
 		.roof_floor =	_roof_floor,				\
+		.enable_gpio = -EINVAL,					\
 		.mode_sleep = _mode_sleep,		\
 		.vsel = _vsel,		\
 	}
 
 PALMAS_REG_INIT(smps123, 0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0);
-PALMAS_REG_INIT(smps45, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0);
 PALMAS_REG_INIT(smps6, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0);
@@ -414,6 +415,8 @@ int __init tn8_regulator_init(void)
 		PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 	*/
 	reg_idata_smps45.constraints.init_uV = 1000000;
+
+	reg_init_data_smps45.enable_gpio = TEGRA_GPIO_PR5;
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
