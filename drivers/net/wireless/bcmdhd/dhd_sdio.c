@@ -8265,6 +8265,12 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 					bcmerror = dhd_bus_init((dhd_pub_t *) bus->dhd, FALSE);
 					if (bcmerror == BCME_OK) {
 #if defined(OOB_INTR_ONLY)
+						if (!bcmsdh_is_oob_intr_registered()) {
+							sdioh_start(NULL, 1);
+							bcmsdh_register_oob_intr(dhdp);
+							dhdp->iswl = TRUE;
+						}
+
 						bcmsdh_set_irq(TRUE);
 						dhd_enable_oob_intr(bus, TRUE);
 #endif
