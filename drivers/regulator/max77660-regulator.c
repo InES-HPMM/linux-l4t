@@ -68,6 +68,7 @@ struct max77660_regulator {
 	enum max77660_regulator_fps_src fps_src;
 	u8 val[4]; /* volt, cfg, fps, power mode */
 	int safe_down_uV; /* for stable down scaling */
+	int external_flags;
 };
 
 #define fps_src_name(fps_src)	\
@@ -369,35 +370,25 @@ static int max77660_regulator_get_voltage(struct regulator_dev *rdev)
 	return volt;
 }
 
-static int
-max77660_regulator_ext_control(struct max77660_regulator *reg, bool enable)
+static int max77660_regualtor_unmask_ext_control(struct device *dev)
 {
-	struct max77660_regulator_platform_data *reg_pdata = reg->pdata;
-	u8 mask = 0;
+	u8 mask;
 	int ret;
 
-	if (reg_pdata->flags & ENABLE_EN1 || reg_pdata->flags & ENABLE_EN2) {
-		ret = max77660_reg_update(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG5,
-				enable ? 0 : GLBLCNFG5_EN1_MASK_MASK,
-				GLBLCNFG5_EN1_MASK_MASK);
-		if (ret < 0) {
-			dev_err(reg->dev, "Failed to update GLBLCNFG5 reg");
-			return ret;
-		}
+	mask = GLBLCNFG5_EN1_MASK_MASK | GLBLCNFG5_EN5_MASK_MASK;
+	ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG5, 0, mask);
+	if (ret < 0) {
+		dev_err(dev, "GLOBAL_CFG5 update failed: %d\n", ret);
+		return ret;
 	}
 
-	if (reg_pdata->flags & ENABLE_EN2)
-		mask |= GLBLCNFG7_EN2_MASK_MASK;
-	else if (reg_pdata->flags & ENABLE_EN3)
-		mask |= GLBLCNFG7_EN3_MASK_MASK;
-
-	ret = max77660_reg_update(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE, MAX77660_REG_GLOBAL_CFG7,
-				enable ? 0 : mask, mask);
+	mask = GLBLCNFG7_EN4_MASK_MASK | GLBLCNFG7_EN3_MASK_MASK |
+			GLBLCNFG7_EN2_MASK_MASK;
+	ret = max77660_reg_update(dev->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG7, 0, mask);
 	if (ret < 0) {
-		dev_err(reg->dev, "Failed to update GLBLCNFG7 register");
+		dev_err(dev, "GLOBAL_CFG7 update failed: %d\n", ret);
 		return ret;
 	}
 
@@ -413,15 +404,8 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 			 POWER_MODE_GLPM : POWER_MODE_NORMAL;
 	int ret;
 
-	if (pdata->flags & ENABLE_EN) {
-		ret = max77660_regulator_ext_control(reg, true);
-		if (ret < 0) {
-			dev_err(reg->dev, "Failed to set external control");
-			return ret;
-		}
-		power_mode = POWER_MODE_DISABLE;
-		goto power_mode_done;
-	}
+	if (reg->external_flags & MAX77660_EXTERNAL_ENABLE)
+		return 0;
 
 	/* ES 1.1 suggest to keep BUCK3 and BUCK5 in GLPM */
 	if (max77660_is_es_1_1(reg->dev))
@@ -441,7 +425,6 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 			(reg->regulator_mode == REGULATOR_MODE_STANDBY))
 		power_mode = POWER_MODE_LPM;
 
-power_mode_done:
 	return max77660_regulator_set_power_mode(reg, power_mode);
 }
 
@@ -449,17 +432,10 @@ static int max77660_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
-	int ret;
-
 	int power_mode = POWER_MODE_DISABLE;
 
-	if (pdata->flags & ENABLE_EN) {
-		ret = max77660_regulator_ext_control(reg, false);
-		if (ret < 0) {
-			dev_err(reg->dev, "Failed to set external control");
-			return ret;
-		}
-	}
+	if (reg->external_flags & MAX77660_EXTERNAL_ENABLE)
+		return 0;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "disable: Regulator %s using %s\n",
@@ -474,6 +450,9 @@ static int max77660_regulator_is_enabled(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
 	int ret = 1;
+
+	if (reg->external_flags & MAX77660_EXTERNAL_ENABLE)
+		return 1;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "is_enable: Regulator %s using %s\n",
@@ -1016,6 +995,12 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, max_regs);
 
+	ret = max77660_regualtor_unmask_ext_control(&pdev->dev);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Unmasking ext control failed, %d\n", ret);
+		return ret;
+	}
+
 	for (id = 0; id < MAX77660_REGULATOR_ID_NR; ++id) {
 		struct max77660_regulator_platform_data *reg_pdata;
 		struct regulator_init_data *reg_init_data = NULL;
@@ -1070,6 +1055,19 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 				"regulator %s register failed: %d\n",
 				rdesc->name, ret);
 			goto clean_exit;
+		}
+
+		if (reg_pdata &&
+			(reg_pdata->flags & MAX77660_EXTERNAL_ENABLE)) {
+			reg->external_flags = reg_pdata->flags;
+			ret = max77660_regulator_set_power_mode(reg,
+					POWER_MODE_DISABLE);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"power mode config for regulator %s failed, %d\n",
+					rdesc->name, ret);
+				goto clean_exit;
+			}
 		}
 	}
 
