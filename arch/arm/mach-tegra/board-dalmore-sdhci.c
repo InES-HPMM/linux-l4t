@@ -31,6 +31,7 @@
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
 
+#include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
@@ -108,11 +109,11 @@ struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0 = {
 	.tap_delay = 0x2,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.base_clk = 208000000,
 };
 
-#ifndef CONFIG_USE_OF
 static struct resource sdhci_resource0[] = {
 	[0] = {
 		.start  = INT_SDMMC1,
@@ -159,6 +160,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.power_off_rail = true,
 };
@@ -172,6 +174,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.trim_delay = 0xA,
 	.ddr_trim_delay = -1,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
@@ -207,7 +210,6 @@ static struct platform_device tegra_sdhci_device3 = {
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
-#endif
 
 static int dalmore_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
@@ -388,7 +390,6 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 
 int __init dalmore_sdhci_init(void)
 {
-#ifndef CONFIG_USE_OF
 	int nominal_core_mv;
 
 	nominal_core_mv =
@@ -403,10 +404,10 @@ int __init dalmore_sdhci_init(void)
 		&& (!(tegra_sdhci_platform_data3.uhs_mask &
 		MMC_UHS_MASK_DDR50)))
 		tegra_sdhci_platform_data3.trim_delay = 0;
+
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
-#endif
 	dalmore_wifi_init();
 	return 0;
 }
