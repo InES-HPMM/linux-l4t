@@ -2,7 +2,7 @@
  * include/linux/mfd/max77660-core.h
  *
  * Copyright 2011 Maxim Integrated Products, Inc.
- * Copyright (C) 2011-2013 NVIDIA CORPORATION
+ * Copyright (C) 2011-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -76,6 +76,9 @@
 #define MAX77660_REG_FPS_BUCK5			0x2A
 #define MAX77660_REG_FPS_BUCK6			0x2B
 #define MAX77660_REG_FPS_BUCK7			0x2C
+#define MAX77660_REG_FPS_SW1			MAX77660_REG_FPS_NONE
+#define MAX77660_REG_FPS_SW2			MAX77660_REG_FPS_NONE
+#define MAX77660_REG_FPS_SW3			MAX77660_REG_FPS_NONE
 #define MAX77660_REG_FPS_SW4			0x2E
 #define MAX77660_REG_FPS_SW5			0x2D
 #define MAX77660_REG_FPS_LDO1			0x2E
@@ -605,6 +608,7 @@
 
 #define MAX77660_CHARGER_BATREGCTRL		0x67
 #define MAX77660_MBATREG_4200MV			0x16
+#define MAX77660_MBATREG_4050MV			0x10
 
 #define MAX77660_CHARGER_DCCRNT			0x68
 #define MAX77660_DCLIMIT_1A			0x20
@@ -1018,7 +1022,8 @@ struct max77660_bcharger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int max_charge_current_mA;
-	void (*update_status)(int);
+	int temperature_poll_period_secs;
+	const char *tz_name; /* Thermal zone name */
 };
 
 struct max77660_vbus_platform_data {

@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2013, NVIDIA Corporation.
  *
+ * Author: Darbha Sriharsha <dsriharsha@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -29,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/iio/consumer.h>
 #include <linux/pm.h>
 #include <linux/extcon.h>
 #include <linux/regulator/driver.h>
@@ -42,6 +44,22 @@
 #include <linux/timer.h>
 #include <linux/power_supply.h>
 #include <linux/power/battery-charger-gauge-comm.h>
+
+#define CHARGER_USB_EXTCON_REGISTRATION_DELAY	5000
+#define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS	500
+
+#define BATT_TEMP_HOT				56
+#define BATT_TEMP_WARM				45
+#define BATT_TEMP_COOL				10
+#define BATT_TEMP_COLD				3
+
+#define NO_LIMIT				99999
+
+enum charging_states {
+	ENABLED_HALF_IBAT = 1,
+	ENABLED_FULL_IBAT,
+	DISABLED,
+};
 
 static int max77660_dccrnt_current_lookup[] = {
 	1000, 1000, 1000, 2750, 3000, 3250, 3500, 3750,
@@ -78,12 +96,15 @@ struct max77660_chg_extcon {
 	struct max77660_charger		*charger;
 	int				chg_irq;
 	int				chg_wdt_irq;
+	int				cable_connected;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
 	struct battery_charger_dev	*bc_dev;
 	int				charging_state;
 	int				cable_connected_state;
 	int				battery_present;
+
+	struct battery_charger_thermal_dev *bc_therm_dev;
 };
 
 struct max77660_chg_extcon *max77660_ext;
@@ -253,18 +274,25 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 			return ret;
 
 	} else {
-		/* disable charge */
-		/* Clear top level charge */
-		ret = max77660_reg_clr_bits(chip->parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
+		ret = max77660_reg_write(chip->parent,
+				MAX77660_CHG_SLAVE,
+				MAX77660_CHARGER_DCCRNT,
+				0);
 		if (ret < 0)
 			return ret;
+		/* disable charge */
 		/* Clear CEN */
 		ret = max77660_reg_clr_bits(chip->parent,
 			MAX77660_CHG_SLAVE, MAX77660_CHARGER_CHGCTRL2,
 			MAX77660_CEN_MASK);
 		if (ret < 0)
 			return ret;
+		/* Clear top level charge */
+		ret = max77660_reg_clr_bits(chip->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
+		if (ret < 0)
+			return ret;
+
 	}
 	dev_info(chip->dev, "%s\n", (enable) ? "Enable charger" :
 			"Disable charger");
@@ -356,13 +384,16 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 			goto error;
 		battery_charging_status_update(chip->bc_dev,
 					BATTERY_DISCHARGING);
+		battery_charger_thermal_stop_monitoring(chip->bc_therm_dev);
 	} else {
+		chip->cable_connected = 1;
 		charger->status = BATTERY_CHARGING;
 		ret = max77660_full_current_enable(chip);
 		if (ret < 0)
 			goto error;
 		battery_charging_status_update(chip->bc_dev,
 					BATTERY_CHARGING);
+		battery_charger_thermal_start_monitoring(chip->bc_therm_dev);
 	}
 
 	return 0;
@@ -423,6 +454,58 @@ static int max77660_init_charger_regulator(struct max77660_chg_extcon *chip,
 	}
 	return ret;
 }
+
+static int max77660_charger_thermal_configure(
+		struct battery_charger_thermal_dev *bct_dev,
+		int temp, bool enable_charger, bool enable_charg_half_current,
+		int battery_voltage)
+{
+	struct max77660_chg_extcon *chip;
+	int temperature;
+	int ret;
+
+	chip = battery_charger_thermal_get_drvdata(bct_dev);
+	if (!chip->cable_connected)
+		return 0;
+
+	temperature = temp;
+	dev_info(chip->dev, "Battery temp %d\n", temperature);
+	if (enable_charger) {
+		if (!enable_charg_half_current &&
+			chip->charging_state != ENABLED_FULL_IBAT) {
+			max77660_full_current_enable(chip);
+			battery_charging_status_update(chip->bc_dev,
+				BATTERY_CHARGING);
+		} else if (enable_charg_half_current &&
+			chip->charging_state != ENABLED_HALF_IBAT)
+			max77660_half_current_enable(chip);
+			/* MBATREGMAX to 4.05V */
+			ret = max77660_reg_write(chip->parent,
+					MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_MBATREGMAX,
+					MAX77660_MBATREG_4050MV);
+			if (ret < 0)
+				return ret;
+			battery_charging_status_update(chip->bc_dev,
+							BATTERY_CHARGING);
+	} else {
+		if (chip->charging_state != DISABLED) {
+			max77660_charging_disable(chip);
+			battery_charging_status_update(chip->bc_dev,
+						BATTERY_DISCHARGING);
+		}
+	}
+	return 0;
+}
+
+struct battery_charger_thermal_ops max77660_charger_thermal_ops = {
+	.thermal_configure = max77660_charger_thermal_configure,
+};
+
+struct battery_charger_thermal_info max77660_charger_thermal_info = {
+	.cell_id = 0,
+	.bct_ops = &max77660_charger_thermal_ops,
+};
 
 static int max77660_chg_extcon_cable_update(
 		struct max77660_chg_extcon *chg_extcon)
@@ -842,6 +925,7 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 
 	charger = chg_extcon->charger;
 	charger->status = BATTERY_DISCHARGING;
+	charger->bcharger_pdata = bcharger_pdata;
 
 	chg_extcon->edev = edev;
 	chg_extcon->edev->name = (chg_pdata->ext_conn_name) ?
@@ -937,10 +1021,26 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 	battery_charger_set_drvdata(chg_extcon->bc_dev, chg_extcon);
 
+	max77660_charger_thermal_info.polling_time_sec =
+			bcharger_pdata->temperature_poll_period_secs;
+	max77660_charger_thermal_info.tz_name = bcharger_pdata->tz_name;
+	if (!max77660_charger_thermal_info.polling_time_sec)
+		goto skip_bcharger_init;
+	chg_extcon->bc_therm_dev = battery_charger_thermal_register(&pdev->dev,
+				&max77660_charger_thermal_info, chg_extcon);
+	if (IS_ERR(chg_extcon->bc_therm_dev)) {
+		ret = PTR_ERR(chg_extcon->bc_therm_dev);
+		dev_err(&pdev->dev,
+			"battery charger thermal register failed: %d\n", ret);
+		goto thermal_chg_reg_err;
+	}
+
 skip_bcharger_init:
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
+thermal_chg_reg_err:
+	battery_charger_unregister(chg_extcon->bc_dev);
 chg_reg_err:
 	regulator_unregister(chg_extcon->chg_rdev);
 wdt_irq_free:
@@ -961,6 +1061,7 @@ static int max77660_chg_extcon_remove(struct platform_device *pdev)
 	free_irq(chg_extcon->chg_irq, chg_extcon);
 	regulator_unregister(chg_extcon->vbus_rdev);
 	if (chg_extcon->battery_present) {
+		battery_charger_thermal_unregister(chg_extcon->bc_therm_dev);
 		battery_charger_unregister(chg_extcon->bc_dev);
 		extcon_dev_unregister(chg_extcon->edev);
 		free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
@@ -1050,6 +1151,7 @@ static void __exit max77660_chg_extcon_driver_exit(void)
 module_exit(max77660_chg_extcon_driver_exit);
 
 MODULE_DESCRIPTION("max77660 charger-extcon driver");
+MODULE_AUTHOR("Darbha Sriharsha<dsriharsha@nvidia.com>");
 MODULE_AUTHOR("Syed Rafiuddin<srafiuddin@nvidia.com>");
 MODULE_AUTHOR("Laxman Dewangan<ldewangan@nvidia.com>");
 MODULE_ALIAS("platform:max77660-charger-extcon");
