@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
+#include <linux/pid_thermal_gov.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
 #include <media/dw9718.h>
@@ -511,6 +512,83 @@ static int __init ardbeg_tj_throttle_init(void)
 }
 module_init(ardbeg_tj_throttle_init);
 
+static struct pid_thermal_gov_params skin_pid_params = {
+	.max_err_temp = 4000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 15,
+	.down_compensation = 15,
+};
+
+static struct thermal_zone_params skin_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &skin_pid_params,
+};
+
+static struct throttle_table skin_throttle_table[] = {
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  790500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  765000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  739500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  714000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  688500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  663000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  637500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  612000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  586500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  561000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  535500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  510000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  484500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  459000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  433500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  408000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  382500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  357000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  331500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  306000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+};
+
+static struct balanced_throttle skin_throttle = {
+	.throt_tab_size = ARRAY_SIZE(skin_throttle_table),
+	.throt_tab = skin_throttle_table,
+};
+
+static int __init ardbeg_skin_init(void)
+{
+	balanced_throttle_register(&skin_throttle, "skin-balanced");
+	return 0;
+}
+late_initcall(ardbeg_skin_init);
+
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.loc_name = "tegra",
 
@@ -556,6 +634,8 @@ static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 
 	.passive_delay = 5000,
 	.polling_delay = 1000,
+	.tzp = &skin_tzp,
+
 	.num_trips = 1,
 	.trips = {
 		{
