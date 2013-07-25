@@ -248,6 +248,13 @@ __invalidate_cpu_state:
 	orreq	r0, r0, #0x1000			@ disable throttling
 	mcreq	p15, 0x1, r0, c15, c0, 3
 
+	mrc	p15, 0, r0, c0, c0, 0		@ main ID register
+	ubfx    r1, r0, #20, #4
+	cmp	r1, #0x3			@ Compare to rev 3
+	mrcge	p15, 0x1, r0, c15, c0, 4	@ ACTLR2
+	orrge	r0, #(1<<31)                    @ Enable regional clock gates
+	mcrge	p15, 0x1, r0, c15, c0, 4	@ Rev 3 or higher
+
 	/*	This is only needed for cluster 0 with integrated L2 cache */
 	mrc	p15, 0, r0, c0, c0, 5
 	ubfx	r0, r0, #8, #4

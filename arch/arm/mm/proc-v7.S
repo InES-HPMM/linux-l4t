@@ -458,6 +458,10 @@ __v7_ca9mp_setup:
 	mov	r10, #(1 << 0)			@ TLB ops broadcasting
 #endif
 	b	1f
+__v7_ca15mp_r3_setup:
+	mrc	p15, 1, r0, c15, c0, 4		@ ACTLR2
+	orr	r0, #(1<<31)			@ Enable regional clock gates
+	mcr	p15, 1, r0, c15, c0, 4
 __v7_ca15mp_setup:
 #ifdef CONFIG_ARCH_TEGRA
 	mrc	p15, 0, r0, c1, c0, 1
@@ -792,6 +796,16 @@ __v7_ca7mp_proc_info:
 	.long	0xff0ffff0
 	__v7_proc __v7_ca7mp_setup
 	.size	__v7_ca7mp_proc_info, . - __v7_ca7mp_proc_info
+
+	/*
+	 * ARM Ltd. Cortex A15 r3 processor.
+	 */
+	.type	__v7_ca15mp_proc_info, #object
+__v7_ca15mp_r3_proc_info:
+	.long	0x413fc0f0
+	.long	0xfffffff0
+	__v7_proc __v7_ca15mp_r3_setup, hwcaps = HWCAP_IDIV
+	.size	__v7_ca15mp_proc_info, . - __v7_ca15mp_proc_info
 
 	/*
 	 * ARM Ltd. Cortex A15 processor.
