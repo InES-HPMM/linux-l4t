@@ -112,7 +112,7 @@
 
 /* Registers values */
 #define SCL_LOW_REG_VAL			0xB6
-#define CONTROL_REG_VAL			0x02
+#define CONTROL_REG_VAL			0x0A
 #define MODE_REG_VAL			0x42
 #define VCM_FREQ_REG_VAL		0x54
 
