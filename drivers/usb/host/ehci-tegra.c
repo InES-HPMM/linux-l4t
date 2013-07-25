@@ -379,7 +379,8 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+	if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			PM_QOS_DEFAULT_VALUE);
 	tegra->cpu_boost_in_work = false;
 #endif
@@ -404,7 +405,8 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+	if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
 	tegra->cpu_boost_in_work = false;
 
@@ -662,16 +664,16 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 		tegra_usb_phy_power_on(tegra->phy);
 
 	if (pdata->port_otg) {
-
 		timeout = jiffies + 5 * HZ;
-
 		/* wait for devices connected to root hub to disconnect*/
-		while (time_before(jiffies, timeout) &&
-			rhdev && usb_hub_find_child(rhdev, 0))
-			;
-
-		/* wait for any control packets sent to root hub to complete */
-		msleep(1000);
+		while (rhdev && usb_hub_find_child(rhdev, 1)) {
+			/* wait for any control packets
+			sent to root hub to complete */
+			if (time_after(jiffies, timeout))
+				break;
+			msleep(20);
+			cpu_relax();
+		}
 	}
 
 	usb_remove_hcd(hcd);
