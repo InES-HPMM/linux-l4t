@@ -20,6 +20,7 @@
 
 struct tegra_ahci_platform_data {
 	s16 gen2_rx_eq;
+	int pexp_gpio;
 };
 
 #endif
