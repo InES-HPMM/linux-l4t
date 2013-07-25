@@ -6730,6 +6730,35 @@ static struct clk tegra_clk_cbus = {
 };
 #endif
 
+static void tegra11_camera_mclk_init(struct clk *c)
+{
+	c->state = OFF;
+	c->set = true;
+	c->parent = tegra_get_clock_by_name("vi_sensor");
+	c->max_rate = c->parent->max_rate;
+}
+
+static int tegra11_camera_mclk_set_rate(struct clk *c, unsigned long rate)
+{
+	return clk_set_rate(c->parent, rate);
+}
+
+static struct clk_ops tegra_camera_mclk_ops = {
+	.init     = tegra11_camera_mclk_init,
+	.enable   = tegra11_periph_clk_enable,
+	.disable  = tegra11_periph_clk_disable,
+	.set_rate = tegra11_camera_mclk_set_rate,
+};
+
+static struct clk tegra_camera_mclk = {
+	.name = "mclk",
+	.ops = &tegra_camera_mclk_ops,
+	.u.periph = {
+		.clk_num = 92, /* csus */
+	},
+	.flags = PERIPH_NO_RESET,
+};
+
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
 		.name      = _name,			\
@@ -7161,7 +7190,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
-	CLK_DUPLICATE("vi_sensor", NULL, "default_mclk"),
+	CLK_DUPLICATE("mclk", NULL, "default_mclk"),
 };
 
 struct clk *tegra_ptr_clks[] = {
@@ -7976,6 +8005,8 @@ void __init tegra11x_init_clocks(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
 		tegra11_init_one_clock(&tegra_list_clks[i]);
+
+	tegra11_init_one_clock(&tegra_camera_mclk);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_sync_source_list); i++)
 		tegra11_init_one_clock(&tegra_sync_source_list[i]);
