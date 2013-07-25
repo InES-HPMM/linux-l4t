@@ -189,12 +189,6 @@ static int tegra_cpuidle_register_device(struct cpuidle_driver *drv,
 		kfree(dev);
 		return -EIO;
 	}
-
-#ifdef CONFIG_TEGRA_MC_DOMAINS
-	if (cpu == 0)
-		pm_genpd_name_attach_cpuidle("tegra_mc_clk", 2);
-#endif
-
 	return 0;
 }
 
@@ -214,6 +208,14 @@ static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
 static struct notifier_block tegra_cpuidle_pm_notifier = {
 	.notifier_call = tegra_cpuidle_pm_notify,
 };
+
+#ifdef CONFIG_TEGRA_MC_DOMAINS
+static long __init pm_attach_cpuidle_work (void * arg)
+{
+	pm_genpd_name_attach_cpuidle("tegra_mc_clk", 2);
+	return 0;
+}
+#endif
 
 static int __init tegra_cpuidle_init(void)
 {
@@ -272,6 +274,9 @@ static int __init tegra_cpuidle_init(void)
 		}
 	}
 
+#ifdef CONFIG_TEGRA_MC_DOMAINS
+	work_on_cpu(0, pm_attach_cpuidle_work, NULL);
+#endif
 	register_pm_notifier(&tegra_cpuidle_pm_notifier);
 	return 0;
 }
