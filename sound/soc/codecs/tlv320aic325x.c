@@ -1143,6 +1143,10 @@ static int aic3256_ops_restore(struct snd_soc_codec *codec, int run_state)
 		aic3256_restart_dsps_sync(codec, run_state);
 	else
 		aic3256_dsp_pwrup(codec, run_state);
+	aic325x_set_bits(codec->control_data, AIC3256_DAC_DATAPATH_SETUP,
+				AIC3256_DAC_SOFT_STEPPING_MASK, 0x02);
+	aic325x_set_bits(codec->control_data, AIC3256_ADC_DATAPATH_SETUP,
+				AIC3256_ADC_SOFT_STEPPING_MASK, 0x02);
 
 	return 0;
 }
