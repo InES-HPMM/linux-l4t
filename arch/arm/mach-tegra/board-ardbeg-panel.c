@@ -494,6 +494,7 @@ static void ardbeg_panel_select(void)
 		panel = &dsi_p_wuxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
 		break;
+	case BOARD_PM363:
 	case BOARD_E1824:
 		panel = &edp_a_1080p_14_0;
 		ardbeg_disp1_out.type = TEGRA_DC_OUT_DP;
