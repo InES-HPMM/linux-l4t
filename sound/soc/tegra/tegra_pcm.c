@@ -80,6 +80,7 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 	ret = snd_dmaengine_pcm_open_request_chan(substream, NULL, NULL);
 	if (ret) {
 		dev_err(dev, "dmaengine pcm open failed with err %d\n", ret);
+		kfree(prtd);
 		return ret;
 	}
 

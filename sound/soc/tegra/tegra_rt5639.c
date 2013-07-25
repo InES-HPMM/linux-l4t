@@ -871,6 +871,8 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	machine = kzalloc(sizeof(struct tegra_rt5639), GFP_KERNEL);
 	if (!machine) {
 		dev_err(&pdev->dev, "Can't allocate tegra_rt5639 struct\n");
+		if (np)
+			kfree(pdata);
 		return -ENOMEM;
 	}
 
