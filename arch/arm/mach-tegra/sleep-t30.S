@@ -1073,13 +1073,19 @@ lp1_volt_skip:
 
 	ldr	r11, [r4, #PMC_SCRATCH37]	@ load the LP1 flags
 	tst	r11, #TEGRA_POWER_LP1_AUDIO	@ check if voice call is going on
+#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	bne	powerdown_pll_cx		@ if yes, do not turn off pll-p/pll-a
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	/* BB needs PLLP and EMC in LP1BB */
+#else
+	/*
+         * BB needs PLLP and EMC on voice call/LP1BB. EMC may be clocked by
+         * PLLC so we need to check the EMC source PLL to determine whether
+         * PLLC can be turned OFF
+         */
+	bne	lp1bb_emc_source_check
 	ldr	r0, lp_enter_state
 	cmp	r0, #PMC_LP_STATE_LP1BB         @ check if we're entering LP1BB
 	bne	powerdown_pll_pacx              @ if not, turn off plls p/a/c/x
+lp1bb_emc_source_check:
 	/* find source pll of EMC */
 	ldr	r0, [r5, #CLK_RESET_CLK_SOURCE_EMC]
 	mov	r0, r0, lsr #0x1d
