@@ -6305,6 +6305,35 @@ static struct clk tegra_clk_host1x = {
 	.rate_change_nh = &host1x_rate_change_nh,
 };
 
+static struct raw_notifier_head msenc_rate_change_nh;
+
+static struct clk tegra_clk_msenc = {
+	.name      = "msenc",
+	.lookup    = {
+		.dev_id = "msenc",
+	},
+	.ops       = &tegra_1xbus_clk_ops,
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	.reg       = 0x170,
+#else
+	.reg       = 0x1f0,
+#endif
+	.inputs    = mux_pllm_pllc_pllp_plla,
+	.flags     = MUX | DIV_U71 | DIV_U71_INT,
+	.max_rate  = 600000000,
+	.min_rate  = 34000000,
+	.u.periph = {
+		.clk_num   = 91,
+		.pll_low = &tegra_pll_p,
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		.pll_high = &tegra_pll_c,
+#else
+		.pll_high = &tegra_pll_m,
+#endif
+	},
+	.rate_change_nh = &msenc_rate_change_nh,
+};
+
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 
 static struct raw_notifier_head c2bus_rate_change_nh;
@@ -6603,11 +6632,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("vi_sensor",	NULL,			"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2",NULL,			"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	800000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
-#else
-	PERIPH_CLK("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
-#endif
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	297000000, mux_plld2,			MUX | MUX8 | DIV_U71),
@@ -6731,6 +6755,10 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("cap.host1x", "cap.host1x",		NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("override.host1x", "override.host1x", NULL,    &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
+
+	SHARED_CLK("nv.msenc",	"tegra_msenc",		"msenc",  &tegra_clk_msenc, NULL,  0, 0),
+	SHARED_CLK("cap.msenc", "cap.msenc",		NULL,	  &tegra_clk_msenc, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("override.msenc", "override.msenc",	NULL,     &tegra_clk_msenc, NULL,  0, SHARED_OVERRIDE),
 };
 
 #define CLK_DUPLICATE(_name, _dev, _con)		\
@@ -6791,7 +6819,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
 	CLK_DUPLICATE("twd", "smp_twd", NULL),
-	CLK_DUPLICATE("msenc", "tegra_msenc", "msenc"),
 	CLK_DUPLICATE("tsec", "tegra_tsec", "tsec"),
 	CLK_DUPLICATE("csus", "touch_clk", "e1680_ts_clk_con"),
 	CLK_DUPLICATE("dmic0", "tegra-dmic.0", NULL),
@@ -6846,6 +6873,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_apb,
 	&tegra_clk_emc,
 	&tegra_clk_host1x,
+	&tegra_clk_msenc,
 	&tegra14_clk_twd,
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	&tegra_clk_c2bus,
@@ -6933,18 +6961,21 @@ static void tegra14_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out3.u.pll_div.default_rate = 72000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 108000000;
 		tegra_clk_host1x.u.periph.threshold = 108000000;
+		tegra_clk_msenc.u.periph.threshold = 108000000;
 		break;
 	case 408000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 9600000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 68000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
+		tegra_clk_msenc.u.periph.threshold = 204000000;
 		break;
 	case 204000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 4800000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 68000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
+		tegra_clk_msenc.u.periph.threshold = 204000000;
 		break;
 	default:
 		pr_err("tegra: PLLP rate: %lu is not supported\n", pllp_rate);
