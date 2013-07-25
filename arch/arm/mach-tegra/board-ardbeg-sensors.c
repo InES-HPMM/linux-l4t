@@ -204,7 +204,7 @@ static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
 struct ar0261_platform_data ardbeg_ar0261_data = {
 	.power_on = ardbeg_ar0261_power_on,
 	.power_off = ardbeg_ar0261_power_off,
-	.mclk_name = "vi_sensor2",
+	.mclk_name = "mclk2",
 };
 
 static int ardbeg_imx135_get_extra_regulators(struct imx135_power_rail *pw)

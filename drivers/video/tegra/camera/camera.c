@@ -28,7 +28,6 @@
 static struct clock_data clock_init[] = {
 	{ CAMERA_ISP_CLK, "isp", true, 0},
 	{ CAMERA_VI_CLK, "vi", true, 0},
-	{ CAMERA_CSUS_CLK, "csus", true, 0},
 	{ CAMERA_CSI_CLK, "csi", true, 0},
 	{ CAMERA_EMC_CLK, "emc", true, 0},
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
