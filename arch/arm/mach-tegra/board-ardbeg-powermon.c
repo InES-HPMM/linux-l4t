@@ -27,6 +27,10 @@
 #include "tegra-board-id.h"
 
 #define PRECISION_MULTIPLIER_ARDBEG	1000
+#define ARDBEG_POWER_REWORKED_CONFIG	0x10
+#define VDD_SOC_SD1_REWORKED		10
+#define VDD_CPU_BUCKCPU_REWORKED	10
+#define VDD_1V35_SD2_REWORKED		10
 
 /* unused rail */
 enum {
@@ -721,9 +725,29 @@ static void __init register_devices_ardbeg(void)
 			ARRAY_SIZE(ardbeg_i2c2_2_ina230_board_info));
 }
 
+static void modify_reworked_rail_data(void)
+{
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_1V35_SD2].resistor
+					= VDD_1V35_SD2_REWORKED;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_CPU_BUCKCPU].resistor
+					= VDD_CPU_BUCKCPU_REWORKED;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SOC_SD1].resistor
+					= VDD_SOC_SD1_REWORKED;
+}
+
 int __init ardbeg_pmon_init(void)
 {
+	/*
+	* Get power_config of board and check whether
+	* board is power reworked or not.
+	* In case board is reworked, modify rail data
+	* for which rework was done.
+	*/
+	u8 power_config;
 	struct board_info bi;
+	power_config = get_power_config();
+	if (power_config & ARDBEG_POWER_REWORKED_CONFIG)
+		modify_reworked_rail_data();
 
 	tegra_get_board_info(&bi);
 
