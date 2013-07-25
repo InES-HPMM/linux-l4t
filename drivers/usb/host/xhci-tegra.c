@@ -819,7 +819,7 @@ static inline bool fw_log_available(struct tegra_xhci_hcd *tegra)
 static inline bool fw_log_wait_empty_timeout(struct tegra_xhci_hcd *tegra,
 		unsigned timeout)
 {
-	u32 target = jiffies + msecs_to_jiffies(timeout);
+	unsigned long target = jiffies + msecs_to_jiffies(timeout);
 	bool ret;
 
 	mutex_lock(&tegra->log.mutex);
