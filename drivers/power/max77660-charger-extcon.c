@@ -271,6 +271,56 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 	return 0;
 }
 
+int max77660_full_current_enable(struct max77660_chg_extcon *chip)
+{
+	int ret;
+
+	ret = max77660_charger_init(chip, true);
+	if (ret < 0) {
+		dev_err(chip->dev,
+			"Failed to initialise full current charging\n");
+		return ret;
+	}
+
+	chip->charging_state = ENABLED_FULL_IBAT;
+
+	return 0;
+}
+
+int max77660_half_current_enable(struct max77660_chg_extcon *chip)
+{
+	int ret;
+	int temp;
+
+	temp = chip->charger->in_current_lim;
+	chip->charger->in_current_lim = chip->charger->in_current_lim/2;
+	ret = max77660_charger_init(chip, true);
+	if (ret < 0) {
+		dev_err(chip->dev,
+			"Failed to initialise full current charging\n");
+		return ret;
+	}
+	chip->charger->in_current_lim = temp;
+	chip->charging_state = ENABLED_HALF_IBAT;
+
+	return 0;
+}
+
+int max77660_charging_disable(struct max77660_chg_extcon *chip)
+{
+	int ret;
+
+	ret = max77660_charger_init(chip, false);
+	if (ret < 0) {
+		dev_err(chip->dev,
+			"Failed to disable charging\n");
+		return ret;
+	}
+	chip->charging_state = DISABLED;
+
+	return 0;
+}
+
 static int max77660_set_charging_current(struct regulator_dev *rdev,
 		int min_uA, int max_uA)
 {
@@ -300,14 +350,15 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 		return 0;
 
 	if (charger->in_current_lim == 0) {
-		ret = max77660_charger_init(chip, false);
+		chip->cable_connected = 0;
+		ret = max77660_charging_disable(chip);
 		if (ret < 0)
 			goto error;
 		battery_charging_status_update(chip->bc_dev,
 					BATTERY_DISCHARGING);
 	} else {
 		charger->status = BATTERY_CHARGING;
-		ret = max77660_charger_init(chip, true);
+		ret = max77660_full_current_enable(chip);
 		if (ret < 0)
 			goto error;
 		battery_charging_status_update(chip->bc_dev,
