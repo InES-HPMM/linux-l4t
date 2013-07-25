@@ -43,6 +43,17 @@
 #include <linux/power_supply.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 
+static int max77660_dccrnt_current_lookup[] = {
+	1000, 1000, 1000, 2750, 3000, 3250, 3500, 3750,
+	4000, 4250, 4500, 4750, 5000, 5250, 5500, 5750,
+	6000, 6250, 6500, 6750, 7000, 7250, 7500, 7750,
+	8000, 8250, 8500, 8750, 9000, 9250, 9500, 9750,
+	10000, 10250, 10500, 10750, 11000, 11250, 11500, 11750,
+	12000, 12250, 12500, 12750, 13000, 13250, 13500, 13750,
+	14000, 14250, 14500, 14750, 15000, 15375, 15750, 16125,
+	16500, 16875, 17250, 17625, 18000, 18375, 18750, NO_LIMIT,
+};
+
 static int max77660_chrg_wdt[] = {16, 32, 64, 128};
 
 struct max77660_charger {
@@ -95,12 +106,18 @@ enum {
 
 static inline int fchg_current(int x)
 {
-	if (x >= 1620)
-		return (x+60)/60;
-	else if (x >= 250)
-		return (x-200)/50;
-	else
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(max77660_dccrnt_current_lookup); i++) {
+		if (10*x < max77660_dccrnt_current_lookup[i])
+			break;
+	}
+	ret = i-1;
+
+	if (ret < 3)
 		return 0;
+	else
+		return ret;
 }
 
 static int max77660_battery_detect(struct max77660_chg_extcon *chip)
