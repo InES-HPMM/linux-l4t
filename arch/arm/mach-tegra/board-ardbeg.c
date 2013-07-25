@@ -458,6 +458,15 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
+#ifdef CONFIG_SATA_AHCI_TEGRA
+static void bonaire_sata_init(void)
+{
+	platform_device_register(&tegra_sata_device);
+}
+#else
+static void bonaire_sata_init(void) { }
+#endif
+
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[0]	= 1,
@@ -1125,6 +1134,7 @@ static void __init tegra_ardbeg_late_init(void)
 #endif
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
+	bonaire_sata_init();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
