@@ -1882,15 +1882,34 @@ static int tegra12_pll_clk_wait_for_lock(
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 #if USE_PLL_LOCK_BITS
 	int i;
+	u32 val = 0;
+
 	for (i = 0; i < (c->u.pll.lock_delay / PLL_PRE_LOCK_DELAY + 1); i++) {
 		udelay(PLL_PRE_LOCK_DELAY);
-		if ((clk_readl(lock_reg) & lock_bits) == lock_bits) {
+		val = clk_readl(lock_reg);
+		if ((val & lock_bits) == lock_bits) {
 			udelay(PLL_POST_LOCK_DELAY);
 			return 0;
 		}
 	}
-	pr_err("Timed out waiting for lock bit on pll %s\n", c->name);
-	return -1;
+
+	/* PLLCX lock bits may fluctuate after the lock - do detailed reporting
+	   at debug level (phase lock bit happens to uniquely identify PLLCX) */
+	if (lock_bits & PLLCX_BASE_PHASE_LOCK) {
+		pr_debug("Timed out waiting %s locks: %s %s not set\n", c->name,
+		       val & PLL_BASE_LOCK ? "" : "frequency_lock",
+		       val & PLLCX_BASE_PHASE_LOCK ? "" : "phase_lock");
+		pr_debug("base =  0x%x\n", val);
+		pr_debug("misc =  0x%x\n", clk_readl(c->reg + PLL_MISC(c)));
+		pr_debug("misc1 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 1)));
+		pr_debug("misc2 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 2)));
+		pr_debug("misc3 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 3)));
+		return -ETIMEDOUT;
+	} else {
+		pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
+		       c->name, lock_reg, val);
+		return -ETIMEDOUT;
+	}
 #endif
 	udelay(c->u.pll.lock_delay);
 #endif
