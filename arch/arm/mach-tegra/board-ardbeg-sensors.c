@@ -314,6 +314,13 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 }
 
 struct imx135_platform_data ardbeg_imx135_data = {
+	.flash_cap = {
+		.enable = 1,
+		.edge_trig_en = 1,
+		.start_edge = 0,
+		.repeat = 1,
+		.delay_frm = 0,
+	},
 	.power_on = ardbeg_imx135_power_on,
 	.power_off = ardbeg_imx135_power_off,
 };
