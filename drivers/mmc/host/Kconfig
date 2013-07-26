@@ -178,6 +178,15 @@ config MMC_SDHCI_TEGRA
 
 	  If unsure, say N.
 
+config MMC_SDHCI_TEGRA_HS200_DISABLE
+	tristate "Mask HS200 mode support in Tegra SDHCI"
+	depends on MMC_SDHCI_TEGRA
+	help
+	  If you need to disable the default HS200 mode for EMMC and
+	  use DDR50 mode please select this mode.
+
+	  If unsure, say N.
+
 config MMC_SDHCI_S3C
 	tristate "SDHCI support on Samsung S3C SoC"
 	depends on MMC_SDHCI && PLAT_SAMSUNG
