@@ -104,6 +104,13 @@
 #define XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0_OWNER_USB3_SS	(0x1 << 16)
 #define XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1_OWNER_USB3_SS	(0x1 << 18)
 
+/* SATA PADPLL */
+#define CLK_RST_CONTROLLER_SATA_PLL_CFG0_0	0x490
+#define SATA_PADPLL_USE_LOCKDET			(1 << 2)
+#define SATA_PADPLL_RESET_SWCTL			(1 << 0)
+#define SATA_SEQ_ENABLE				(1 << 24)
+#define SATA_SEQ_START_STATE			(1 << 25)
+
 void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable);
 void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable);
 void tegra_xhci_ss_wake_signal(u32 portmap, bool enable);

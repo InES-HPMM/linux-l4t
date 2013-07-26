@@ -273,6 +273,8 @@ int usb3_phy_pad_enable(u8 lane_owner)
 
 	/* Program SATA pad phy */
 	if (lane_owner & BIT(0)) {
+		void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
 		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
 		val &= ~XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0_PLL0_REFCLK_NDIV_MASK;
 		val |= XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0_PLL0_REFCLK_NDIV;
@@ -294,6 +296,18 @@ int usb3_phy_pad_enable(u8 lane_owner)
 		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0);
 		val &= ~XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0_RCAL_BYPASS;
 		writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0);
+
+		/* Enable SATA PADPLL clocks */
+		val = readl(clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+		val &= ~SATA_PADPLL_RESET_SWCTL;
+		val |= SATA_PADPLL_USE_LOCKDET | SATA_SEQ_START_STATE;
+		writel(val, clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+
+		udelay(1);
+
+		val = readl(clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+		val |= SATA_SEQ_ENABLE;
+		writel(val, clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
 	}
 
 	/*
