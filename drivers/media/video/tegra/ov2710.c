@@ -849,8 +849,6 @@ static int ov2710_probe(struct i2c_client *client,
 
 static int ov2710_remove(struct i2c_client *client)
 {
-	struct ov2710_info *info;
-	info = i2c_get_clientdata(client);
 	misc_deregister(&ov2710_device);
 	return 0;
 }
