@@ -1910,22 +1910,27 @@ static void soctherm_adjust_cpu_zone(void)
 {
 	u32 r;
 	int cpu;
-	unsigned long cpu_temp, pll_temp;
+	unsigned long cpu_temp, pll_temp, diff;
 
 	if (soctherm_suspended)
 		return;
 
-	if (soctherm_high_voltage_range) {
+	if (!soctherm_high_voltage_range) {
 		r = soctherm_readl(TS_TEMP1);
 		cpu_temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
+
 
 		r = soctherm_readl(TS_TEMP2);
 		pll_temp = temp_translate(REG_GET(r, TS_TEMP2_PLLX_TEMP));
 
+		if (cpu_temp > pll_temp)
+			diff = cpu_temp - pll_temp;
+		else
+			diff = 0;
+
 		/* Program hotspot offsets per CPU ~ PLL diff */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
-		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
-					(cpu_temp - pll_temp) / 1000);
+		r = REG_SET(r, TS_HOTSPOT_OFF_CPU, diff / 1000);
 		soctherm_writel(r, TS_HOTSPOT_OFF);
 
 		/* Stop CPUn TSOSCs */
@@ -1937,13 +1942,6 @@ static void soctherm_adjust_cpu_zone(void)
 						(TS_CPU0_CONFIG0, cpu));
 		}
 	} else {
-		/* Program hotspot offsets per config */
-		r = soctherm_readl(TS_HOTSPOT_OFF);
-		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
-			plat_data.therm[THERM_CPU].hotspot_offset / 1000);
-
-		soctherm_writel(r, TS_HOTSPOT_OFF);
-
 		/* UN-Stop CPUn TSOSCs */
 		for (cpu = 0; cpu <= TSENSE_CPU3; cpu++) {
 			r = soctherm_readl(TS_TSENSE_REG_OFFSET
@@ -1952,6 +1950,13 @@ static void soctherm_adjust_cpu_zone(void)
 			soctherm_writel(r, TS_TSENSE_REG_OFFSET
 						(TS_CPU0_CONFIG0, cpu));
 		}
+
+		/* Program hotspot offsets per config */
+		r = soctherm_readl(TS_HOTSPOT_OFF);
+		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
+			plat_data.therm[THERM_CPU].hotspot_offset / 1000);
+
+		soctherm_writel(r, TS_HOTSPOT_OFF);
 	}
 }
 
