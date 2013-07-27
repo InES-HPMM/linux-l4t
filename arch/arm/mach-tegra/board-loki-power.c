@@ -191,13 +191,13 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	*/
 };
 
-PALMAS_REGS_PDATA(smps123, 900,  1300, NULL, 0, 0, 0, NORMAL,
+PALMAS_REGS_PDATA(smps123, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, NORMAL,
+PALMAS_REGS_PDATA(smps45, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
 PALMAS_REGS_PDATA(smps6, 3300,  3300, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(smps7, 1050,  1050, NULL, 1, 1, 1, NORMAL,
+PALMAS_REGS_PDATA(smps7, 1350,  1350, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps8, 1800,  1800, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
@@ -205,15 +205,15 @@ PALMAS_REGS_PDATA(smps9, 2800,  2800, NULL, 0, 0, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps10, 5000,  5000, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo1, 1050,  1050, palmas_rails(smps7), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo1, 1050,  1050, NULL, 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo2, 2800,  2800, NULL, 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo2, 2800,  2800, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo4, 1200,  1200, NULL, 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo4, 1800,  1800, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo5, 2800,  3000, NULL, 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo5, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo6, 2800,  3300, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
@@ -355,7 +355,7 @@ static struct i2c_board_info palma_device[] = {
 static struct tegra_suspend_platform_data loki_suspend_data = {
 	.cpu_timer      = 500,
 	.cpu_off_timer  = 300,
-	.suspend_mode   = TEGRA_SUSPEND_LP0,
+	.suspend_mode   = TEGRA_SUSPEND_NONE,
 	.core_timer     = 0x157e,
 	.core_off_timer = 2000,
 	.corereq_high   = true,
