@@ -34,7 +34,7 @@
 #include "flowctrl.h"
 #include "sleep.h"
 
-#if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
+#ifdef CONFIG_PM_SLEEP
 /*
  * tegra_disable_clean_inv_dcache
  *
@@ -60,9 +60,7 @@ ENTRY(tegra_disable_clean_inv_dcache)
 
 	ldmfd	sp!, {r0, r4-r5, r7, r9-r11, pc}
 ENDPROC(tegra_disable_clean_inv_dcache)
-#endif
 
-#ifdef CONFIG_PM_SLEEP
 /*
  * tegra_sleep_cpu_finish(unsigned long v2p)
  *

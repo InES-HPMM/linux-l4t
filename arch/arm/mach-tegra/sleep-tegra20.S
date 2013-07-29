@@ -33,6 +33,9 @@
  * should never return
  */
 ENTRY(tegra20_hotplug_shutdown)
+	/* Turn off SMP coherency */
+	exit_smp r4, r5
+
 	/* Put this CPU down */
 	cpu_id	r0
 	bl	tegra20_cpu_shutdown

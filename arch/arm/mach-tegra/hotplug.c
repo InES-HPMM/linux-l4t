@@ -28,8 +28,8 @@ void __ref tegra_cpu_die(unsigned int cpu)
 {
 	cpu = cpu_logical_map(cpu);
 
-	/* Clean L1 data cache */
-	tegra_disable_clean_inv_dcache();
+	/* Flush the L1 data cache. */
+	flush_cache_all();
 
 	/* Shut down the current CPU. */
 	tegra_hotplug_shutdown();
