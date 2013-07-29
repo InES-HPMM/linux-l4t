@@ -21,6 +21,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
@@ -343,22 +344,8 @@ static int __set_throttle(void *data, u64 val)
 	mcerr_throttle_enabled = (bool) val;
 	return 0;
 }
-
-static int mcerr_throttle_debugfs_fops_open(struct inode *inode,
-					    struct file *file)
-{
-	__simple_attr_check_format("%llu\n", 0ull);
-	return simple_attr_open(inode, file, __get_throttle,
-			      __set_throttle, "%llu\n");
-}
-
-static const struct file_operations mcerr_throttle_debugfs_fops = {
-	.open    = mcerr_throttle_debugfs_fops_open,
-	.release = simple_attr_release,
-	.read    = simple_attr_read,
-	.write   = simple_attr_write,
-	.llseek  = generic_file_llseek,
-};
+DEFINE_SIMPLE_ATTRIBUTE(mcerr_throttle_debugfs_fops, __get_throttle,
+			__set_throttle, "%llu\n");
 
 static int __init tegra_mcerr_init(void)
 {
