@@ -113,7 +113,7 @@ static void suspend_cpu_complex(void)
 	save_cpu_arch_register();
 }
 
-void tegra_clear_cpu_in_lp2(int phy_cpu_id)
+void __cpuinit tegra_clear_cpu_in_lp2(int phy_cpu_id)
 {
 	u32 *cpu_in_lp2 = tegra_cpu_lp2_mask;
 
@@ -125,7 +125,7 @@ void tegra_clear_cpu_in_lp2(int phy_cpu_id)
 	spin_unlock(&tegra_lp2_lock);
 }
 
-bool tegra_set_cpu_in_lp2(int phy_cpu_id)
+bool __cpuinit tegra_set_cpu_in_lp2(int phy_cpu_id)
 {
 	bool last_cpu = false;
 	cpumask_t *cpu_lp2_mask = tegra_cpu_lp2_mask;

@@ -16,6 +16,8 @@
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
         .section ".text.head", "ax"
+	__CPUINIT
+
 
 ENTRY(tegra_secondary_startup)
         bl      v7_invalidate_l1
