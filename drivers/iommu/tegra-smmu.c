@@ -830,6 +830,7 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	int total = bytes >> PAGE_SHIFT;
 	unsigned long *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
+	unsigned long iova_base = iova;
 	bool flush_all = (total > SZ_512) ? true : false;
 
 	while (total > 0) {
@@ -873,7 +874,8 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	}
 
 	if (flush_all)
-		flush_ptc_and_tlb_as(as, iova, iova + bytes);
+		flush_ptc_and_tlb_as(as, iova_base,
+				     iova_base + bytes);
 
 	return bytes;
 }
@@ -970,6 +972,7 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	unsigned long flags;
 	unsigned long *pdir = page_address(as->pdir_page);
 	int err = 0;
+	unsigned long iova_base = iova;
 	bool flush_all = (total > SZ_512) ? true : false;
 
 	spin_lock_irqsave(&as->lock, flags);
@@ -1023,7 +1026,8 @@ skip:
 
 out:
 	if (flush_all)
-		flush_ptc_and_tlb_as(as, iova, iova + total * PAGE_SIZE);
+		flush_ptc_and_tlb_as(as, iova_base,
+				     iova_base + total * PAGE_SIZE);
 
 	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
@@ -1035,6 +1039,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	unsigned int count;
 	struct scatterlist *s;
 	int err = 0;
+	unsigned long iova_base = iova;
 	bool flush_all = (nents * PAGE_SIZE > SZ_512) ? true : false;
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
@@ -1101,7 +1106,8 @@ skip:
 	}
 
 	if (flush_all)
-		flush_ptc_and_tlb_as(as, iova, iova + nents * PAGE_SIZE);
+		flush_ptc_and_tlb_as(as, iova_base,
+				     iova_base + nents * PAGE_SIZE);
 
 	return err;
 }
