@@ -282,13 +282,13 @@ obj-${CONFIG_MACH_ARDBEG}               += panel-c-lvds-1366-14.o
 
 obj-${CONFIG_MACH_LOKI}               	+= board-loki.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-kbc.o
-obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sensors.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-panel.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-pinmux.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-tn8-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-powermon.o
+obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o

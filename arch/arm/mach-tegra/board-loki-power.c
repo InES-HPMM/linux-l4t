@@ -517,6 +517,18 @@ static struct regulator_consumer_supply fixed_reg_en_lcd_bl_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
+/* VDD_3V3_COM controled by Wifi */
+static struct regulator_consumer_supply fixed_reg_en_com_3v3_supply[] = {
+	REGULATOR_SUPPLY("avdd", "bcm4329_wlan.1"),
+	REGULATOR_SUPPLY("avdd", "bluedroid_pm.0"),
+};
+
+/* VDD_1v8_COM controled by Wifi */
+static struct regulator_consumer_supply fixed_reg_en_com_1v8_supply[] = {
+	REGULATOR_SUPPLY("dvdd", "bcm4329_wlan.1"),
+	REGULATOR_SUPPLY("dvdd", "bluedroid_pm.0"),
+};
+
 FIXED_REG(0,	battery,	battery,	NULL,
 	0,	0,	-1,
 	false,	true,	0,	3300, 0);
@@ -553,6 +565,14 @@ FIXED_REG(8,	lcd_bl,	lcd_bl,
 	NULL,	0,	0,
 	TEGRA_GPIO_PH2,	false,	true,	1,	5000, 1000);
 
+FIXED_REG(9,	com_3v3,	com_3v3,
+	palmas_rails(smps6),	0,	0,
+	TEGRA_GPIO_PX1,	false,	true,	0,	3300, 1000);
+
+FIXED_REG(10,	com_1v8,	com_1v8,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PX7,	false,	true,	0,	1800, 1000);
+
 /*
  * Creating fixed regulator device tables
  */
@@ -566,7 +586,9 @@ FIXED_REG(8,	lcd_bl,	lcd_bl,
 	ADD_FIXED_REG(3v3_ts),		\
 	ADD_FIXED_REG(1v8_display),	\
 	ADD_FIXED_REG(vdd_cpu_fixed),	\
-	ADD_FIXED_REG(lcd_bl),
+	ADD_FIXED_REG(lcd_bl), \
+	ADD_FIXED_REG(com_3v3), \
+	ADD_FIXED_REG(com_1v8),
 
 
 static struct platform_device *fixed_reg_devs_e2545[] = {

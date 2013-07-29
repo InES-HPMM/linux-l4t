@@ -37,8 +37,8 @@
 #include "board-loki.h"
 #include "iomap.h"
 
-#define LOKI_WLAN_RST	TEGRA_GPIO_PCC5
-#define LOKI_WLAN_PWR	TEGRA_GPIO_PX7
+#define LOKI_WLAN_RST	TEGRA_GPIO_PR3
+#define LOKI_WLAN_PWR	TEGRA_GPIO_PCC5
 #define LOKI_WLAN_WOW	TEGRA_GPIO_PU5
 
 #define LOKI_SD_CD	TEGRA_GPIO_PV2
@@ -230,13 +230,108 @@ static int loki_wifi_set_carddetect(int val)
 	return 0;
 }
 
+static struct regulator *loki_vdd_com_3v3;
+static struct regulator *loki_vddio_com_1v8;
+
+#define LOKI_VDD_WIFI_3V3 "avdd"
+#define LOKI_VDD_WIFI_1V8 "dvdd"
+
+static int loki_wifi_regulator_enable(void)
+{
+	int ret = 0;
+
+	/* Enable COM's vdd_com_3v3 regulator*/
+	if (IS_ERR_OR_NULL(loki_vdd_com_3v3)) {
+		loki_vdd_com_3v3 = regulator_get(&loki_wifi_device.dev,
+					LOKI_VDD_WIFI_3V3);
+		if (IS_ERR_OR_NULL(loki_vdd_com_3v3)) {
+			pr_err("Couldn't get regulator "
+				LOKI_VDD_WIFI_3V3 "\n");
+			return PTR_ERR(loki_vdd_com_3v3);
+		}
+
+		ret = regulator_enable(loki_vdd_com_3v3);
+		if (ret < 0) {
+			pr_err("Couldn't enable regulator "
+				LOKI_VDD_WIFI_3V3 "\n");
+			regulator_put(loki_vdd_com_3v3);
+			loki_vdd_com_3v3 = NULL;
+			return ret;
+		}
+	}
+
+	/* Enable COM's vddio_com_1v8 regulator*/
+	if (IS_ERR_OR_NULL(loki_vddio_com_1v8)) {
+		loki_vddio_com_1v8 = regulator_get(&loki_wifi_device.dev,
+			LOKI_VDD_WIFI_1V8);
+		if (IS_ERR_OR_NULL(loki_vddio_com_1v8)) {
+			pr_err("Couldn't get regulator "
+				LOKI_VDD_WIFI_1V8 "\n");
+			regulator_disable(loki_vdd_com_3v3);
+
+			regulator_put(loki_vdd_com_3v3);
+			loki_vdd_com_3v3 = NULL;
+			return PTR_ERR(loki_vddio_com_1v8);
+		}
+
+		ret = regulator_enable(loki_vddio_com_1v8);
+		if (ret < 0) {
+			pr_err("Couldn't enable regulator "
+				LOKI_VDD_WIFI_1V8 "\n");
+			regulator_put(loki_vddio_com_1v8);
+			loki_vddio_com_1v8 = NULL;
+
+			regulator_disable(loki_vdd_com_3v3);
+			regulator_put(loki_vdd_com_3v3);
+			loki_vdd_com_3v3 = NULL;
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static void loki_wifi_regulator_disable(void)
+{
+	/* Disable COM's vdd_com_3v3 regulator*/
+	if (!IS_ERR_OR_NULL(loki_vdd_com_3v3)) {
+		regulator_disable(loki_vdd_com_3v3);
+		regulator_put(loki_vdd_com_3v3);
+		loki_vdd_com_3v3 = NULL;
+	}
+
+	/* Disable COM's vddio_com_1v8 regulator*/
+	if (!IS_ERR_OR_NULL(loki_vddio_com_1v8)) {
+		regulator_disable(loki_vddio_com_1v8);
+		regulator_put(loki_vddio_com_1v8);
+		loki_vddio_com_1v8 = NULL;
+	}
+}
+
 static int loki_wifi_power(int on)
 {
+	int ret = 0;
+
 	pr_err("%s: %d\n", __func__, on);
+
+	/* Enable COM's regulators on wi-fi poer on*/
+	if (on == 1) {
+		ret = loki_wifi_regulator_enable();
+		if (ret < 0) {
+			pr_err("Failed to enable COM regulators\n");
+			return ret;
+		}
+	}
 
 	gpio_set_value(LOKI_WLAN_PWR, on);
 	gpio_set_value(LOKI_WLAN_RST, on);
 	mdelay(100);
+
+	/* Disable COM's regulators on wi-fi poer off*/
+	if (on != 1) {
+		pr_debug("Disabling COM regulators\n");
+		loki_wifi_regulator_disable();
+	}
 
 	return 0;
 }

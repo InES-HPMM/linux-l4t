@@ -108,14 +108,14 @@ static struct resource loki_bluedroid_pm_resources[] = {
 	},
 	[3] = {
 		.name = "gpio_host_wake",
-		.start  = TEGRA_GPIO_PU6,
-		.end    = TEGRA_GPIO_PU6,
+		.start  = TEGRA_GPIO_PU0,
+		.end    = TEGRA_GPIO_PU0,
 		.flags  = IORESOURCE_IO,
 	},
 	[4] = {
 		.name = "reset_gpio",
-		.start  = TEGRA_GPIO_PX1,
-		.end    = TEGRA_GPIO_PX1,
+		.start  = TEGRA_GPIO_PQ6,
+		.end    = TEGRA_GPIO_PQ6,
 		.flags  = IORESOURCE_IO,
 	},
 };
@@ -131,7 +131,7 @@ static noinline void __init loki_setup_bluedroid_pm(void)
 {
 	loki_bluedroid_pm_resources[1].start =
 		loki_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PU6);
+				gpio_to_irq(TEGRA_GPIO_PU0);
 	platform_device_register(&loki_bluedroid_pm_device);
 }
 
