@@ -185,6 +185,8 @@ AS3722_LDO11,
 
 #define AS3722_CTRL1_REG                       0x58
 #define AS3722_CTRL2_REG                       0x59
+#define AS3722_OVCURRENT                       0x5A
+#define AS3722_OVCURRENT_DEB                   0x5B
 #define AS3722_RTC_CONTROL_REG                 0x60
 #define AS3722_RTC_SECOND_REG                  0x61
 #define AS3722_RTC_MINUTE_REG                  0x62
@@ -236,6 +238,18 @@ AS3722_LDO11,
 #define AS3722_SD4_EXTERNAL_ENABLE_MASK        0x3
 #define AS3722_SD5_EXTERNAL_ENABLE_MASK        0xC
 #define AS3722_SD6_EXTERNAL_ENABLE_MASK        0x30
+
+#define AS3722_OVCURRENT_SD0_ALARM_MASK        0x07
+#define AS3722_OVCURRENT_SD0_ALARM_SHIFT       0x01
+#define AS3722_OVCURRENT_SD0_TRIP_MASK         0x18
+#define AS3722_OVCURRENT_SD0_TRIP_SHIFT        0x03
+#define AS3722_OVCURRENT_SD1_TRIP_MASK         0x60
+#define AS3722_OVCURRENT_SD1_TRIP_SHIFT        0x05
+
+#define AS3722_OVCURRENT_SD6_ALARM_MASK        0x07
+#define AS3722_OVCURRENT_SD6_ALARM_SHIFT       0x01
+#define AS3722_OVCURRENT_SD6_TRIP_MASK         0x18
+#define AS3722_OVCURRENT_SD6_TRIP_SHIFT        0x03
 
 #define AS3722_ADC0_CONTROL_REG                0x80
 #define AS3722_ADC1_CONTROL_REG                0x81

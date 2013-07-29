@@ -1085,6 +1085,66 @@ static int as3722_extreg_init(struct as3722 *as3722, int id, int ext_pwr_ctrl)
 
 	return 0;
 }
+
+static int oc_alarm_table[] = {0, 1600, 1800, 2000, 2200, 2400, 2600, 2800};
+
+static int as3722_overcurrent_init(struct as3722 *as3722, int id,
+		struct as3722_regulator_platform_data *rpdata)
+{
+	int ret;
+	int oc_trip = rpdata->oc_trip_thres_perphase;
+	int oc_alarm = rpdata->oc_alarm_thres_perphase;
+	int mask;
+	int reg;
+	int trip_val;
+	int alarm_val;
+	int i;
+	int val;
+
+	if (oc_trip <= 2500)
+		trip_val = 0;
+	else if (oc_trip <= 3000)
+		trip_val = 1;
+	else
+		trip_val = 2;
+
+	for (i = 0; i < ARRAY_SIZE(oc_alarm_table); ++i) {
+		if (oc_alarm <=  oc_alarm_table[i])
+			break;
+	}
+	alarm_val = i;
+
+	switch (id) {
+	case AS3722_SD0:
+		mask = AS3722_OVCURRENT_SD0_ALARM_MASK |
+				AS3722_OVCURRENT_SD0_TRIP_MASK;
+		val = (trip_val << AS3722_OVCURRENT_SD0_TRIP_SHIFT) |
+				(alarm_val << AS3722_OVCURRENT_SD0_ALARM_SHIFT);
+		reg = AS3722_OVCURRENT;
+		break;
+
+	case AS3722_SD1:
+		mask = AS3722_OVCURRENT_SD1_TRIP_MASK;
+		val = (trip_val << AS3722_OVCURRENT_SD1_TRIP_SHIFT);
+		reg = AS3722_OVCURRENT;
+		break;
+
+	case AS3722_SD6:
+		mask = AS3722_OVCURRENT_SD6_ALARM_MASK |
+				AS3722_OVCURRENT_SD6_TRIP_MASK;
+		val = (trip_val << AS3722_OVCURRENT_SD6_TRIP_SHIFT) |
+				(alarm_val << AS3722_OVCURRENT_SD6_ALARM_SHIFT);
+		reg = AS3722_OVCURRENT_DEB;
+		break;
+	default:
+		return 0;
+	}
+	ret = as3722_set_bits(as3722, reg, mask, val);
+	if (ret < 0)
+		dev_err(as3722->dev, "Reg 0x%02x update failed %d\n", reg, ret);
+	return ret;
+}
+
 static int as3722_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
@@ -1106,6 +1166,17 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 		if (!(pdata->reg_pdata[regulator] &&
 			pdata->reg_pdata[regulator]->reg_init))
 			continue;
+
+		if (pdata->reg_pdata[regulator]->oc_configure_enable) {
+			ret = as3722_overcurrent_init(as3722, regulator,
+					pdata->reg_pdata[regulator]);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"OC init for regulator %d failed %d\n",
+					regulator, ret);
+				return ret;
+			}
+		}
 		config.init_data = pdata->reg_pdata[regulator]->reg_init;
 		rdev = regulator_register(&regulators[regulator],
 				&config);
