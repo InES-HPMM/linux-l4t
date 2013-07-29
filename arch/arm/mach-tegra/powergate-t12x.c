@@ -451,7 +451,8 @@ err_power:
 	return ret;
 }
 
-static atomic_t ref_count_disp = ATOMIC_INIT(0);
+static atomic_t ref_count_dispa = ATOMIC_INIT(0);
+static atomic_t ref_count_dispb = ATOMIC_INIT(0);
 
 #define CHECK_RET(x)			\
 	do {				\
@@ -481,19 +482,23 @@ static inline int tegra12x_unpowergate(int id)
 static int tegra12x_disp_powergate(int id)
 {
 	int ret = 0;
-	int ref_count = atomic_read(&ref_count_disp);
+	int ref_counta = atomic_read(&ref_count_dispa);
+	int ref_countb = atomic_read(&ref_count_dispb);
 
 	if (!TEGRA_IS_DISP_POWERGATE_ID(id))
 		return -EINVAL;
 
 	if (id == TEGRA_POWERGATE_DISA) {
-		ref_count = atomic_dec_return(&ref_count_disp);
-		WARN(ref_count < 0, "DISP ref count underflow");
-	} else
-		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
+		ref_counta = atomic_dec_return(&ref_count_dispa);
+		WARN_ONCE(ref_counta < 0, "DISPA ref count underflow");
+	} else {
+		ref_countb = atomic_dec_return(&ref_count_dispb);
+		WARN_ONCE(ref_countb < 0, "DISPB ref count underflow");
+		if (ref_countb <= 0)
+			CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
+	}
 
-	if (ref_count <= 0 &&
-		!tegra_powergate_is_powered(TEGRA_POWERGATE_DISB)) {
+	if ((ref_counta <= 0) && (ref_countb <= 0)) {
 		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_SOR));
 		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISA));
 	}
@@ -512,10 +517,11 @@ static int tegra12x_disp_unpowergate(int id)
 	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_SOR));
 
 	if (id == TEGRA_POWERGATE_DISA)
-		WARN_ONCE(atomic_inc_return(&ref_count_disp) > 1,
-			"disp ref count overflow");
-	else
+		atomic_inc(&ref_count_dispa);
+	else {
+		atomic_inc(&ref_count_dispb);
 		ret = tegra12x_unpowergate(TEGRA_POWERGATE_DISB);
+	}
 
 	return ret;
 }
