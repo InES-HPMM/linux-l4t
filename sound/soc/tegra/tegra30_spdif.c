@@ -488,7 +488,10 @@ static int tegra30_spdif_platform_remove(struct platform_device *pdev)
 	iounmap(spdif->regs);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	release_mem_region(res->start, resource_size(res));
+	if (res)
+		release_mem_region(res->start, resource_size(res));
+	else
+		dev_err(&pdev->dev, "error getting memory resource\n");
 
 	clk_put(spdif->clk_spdif_out);
 
