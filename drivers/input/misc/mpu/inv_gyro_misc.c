@@ -662,55 +662,47 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 	reg = st->reg;
 	has_accl = (st->chip_type != INV_ITG3500);
 	packet_size = 6 + 6 * has_accl;
-	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, INV_CLK_PLL);
+
+	result = nvi_pm_wr(st, INV_CLK_PLL, 0, 0);
 	if (result)
 		return result;
 
-	mdelay(POWER_UP_TIME);
-	result = inv_i2c_single_write(st, reg->pwr_mgmt_2, 0);
-	if (result)
-		return result;
-
-	mdelay(POWER_UP_TIME);
-	result = inv_i2c_single_write(st, reg->int_enable, 0);
+	mdelay(POWER_UP_TIME << 1);
+	result = nvi_int_enable_wr(st, false);
 	if (result)
 		return result;
 
 	/* disable the sensor output to FIFO */
-	result = inv_i2c_single_write(st, reg->fifo_en, 0);
-	if (result)
-		return result;
-
 	/* disable fifo reading */
-	result = inv_i2c_single_write(st, reg->user_ctrl, 0);
+	result = nvi_user_ctrl_en(st, false, false);
 	if (result)
 		return result;
 
 	/* clear FIFO */
-	result = inv_i2c_single_write(st, reg->user_ctrl, BIT_FIFO_RST);
+	result = nvi_user_ctrl_reset_wr(st, st->hw.user_ctrl |
+					st->reg->fifo_reset);
 	if (result)
 		return result;
 
 	mdelay(15);
 	/* setup parameters */
-	result = inv_i2c_single_write(st, reg->lpf, test_setup.lpf);
+	result = nvi_config_wr(st, test_setup.lpf);
+	if (result < 0)
+		return result;
+
+	result = nvi_smplrt_div_wr(st, test_setup.sample_rate);
 	if (result)
 		return result;
 
-	result = inv_i2c_single_write(st, reg->sample_rate_div,
-				      test_setup.sample_rate);
-	if (result)
-		return result;
-
-	result = inv_i2c_single_write(st, reg->gyro_config,
-				      self_test_flag | test_setup.gyro_fsr);
-	if (result)
+	result = nvi_gyro_config_wr(st, (self_test_flag >> 5),
+				    (test_setup.gyro_fsr >> 3));
+	if (result < 0)
 		return result;
 
 	if (has_accl) {
-		result = inv_i2c_single_write(st, reg->accl_config,
-					 self_test_flag | test_setup.accl_fsr);
-		if (result)
+		result = nvi_accel_config_wr(st, (self_test_flag >> 5),
+					     (test_setup.accl_fsr >> 3), 0);
+		if (result < 0)
 			return result;
 	}
 
@@ -718,19 +710,18 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 	if (self_test_flag)
 		mdelay(200);
 	/* enable FIFO reading */
-	result = inv_i2c_single_write(st, reg->user_ctrl, BIT_FIFO_EN);
+	result = nvi_user_ctrl_en_wr(st, st->hw.user_ctrl | BIT_FIFO_EN);
 	if (result)
 		return result;
 
 	/* enable sensor output to FIFO */
-	result = inv_i2c_single_write(st, reg->fifo_en, BITS_GYRO_OUT
-		| (has_accl << 3));
+	result = nvi_fifo_en_wr(st, BITS_GYRO_OUT | (has_accl << 3));
 	if (result)
 		return result;
 
 	mdelay(DEF_GYRO_WAIT_TIME);
 	/* stop sending data to FIFO */
-	result = inv_i2c_single_write(st, reg->fifo_en, 0);
+	result = nvi_fifo_en_wr(st, 0);
 	if (result)
 		return result;
 
@@ -783,7 +774,9 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 		accl_result[2] =
 			accl_result[2] * DEF_GYRO_PRECISION / packet_count;
 	}
-
+	result = inv_i2c_read(st, st->reg->temperature, 2, data);
+	if (!result)
+		nvi_report_temp(st, data, nvi_ts_ns());
 	return 0;
 }
 
@@ -792,10 +785,21 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
  */
 static void inv_recover_setting(struct inv_gyro_state_s *st)
 {
-	nvi_gyro_enable(st, st->chip_config.gyro_enable,
-			st->chip_config.gyro_fifo_enable);
-	nvi_accl_enable(st, st->chip_config.accl_enable,
-			st->chip_config.accl_fifo_enable);
+	unsigned char enable;
+	unsigned char fifo_enable;
+
+	nvi_accel_config_wr(st, 0, st->chip_config.accl_fsr, 0);
+	nvi_gyro_config_wr(st, 0, st->chip_config.gyro_fsr);
+	enable = st->chip_config.accl_enable;
+	fifo_enable = st->chip_config.accl_fifo_enable;
+	st->chip_config.accl_enable ^= 7;
+	st->chip_config.accl_fifo_enable ^= 7;
+	nvi_accl_enable(st, enable, fifo_enable);
+	enable = st->chip_config.gyro_enable;
+	fifo_enable = st->chip_config.gyro_fifo_enable;
+	st->chip_config.gyro_enable ^= 7;
+	st->chip_config.gyro_fifo_enable ^= 7;
+	nvi_gyro_enable(st, enable, fifo_enable);
 }
 
 /**

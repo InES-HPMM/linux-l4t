@@ -61,6 +61,7 @@ void inv_setup_reg_mpu3050(struct inv_reg_map_s *reg)
 	reg->fifo_reset		= BIT_3050_FIFO_RST;
 	reg->i2c_mst_reset	= BIT_3050_AUX_IF_RST;
 	reg->cycle		= 0;
+	reg->temp_dis		= 0;
 }
 
 /**

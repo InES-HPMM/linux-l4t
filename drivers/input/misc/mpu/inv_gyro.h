@@ -44,7 +44,7 @@
 #define NVI_FIFO_SAMPLE_SIZE_MAX	(38)
 #define NVI_DELAY_US_MAX		(256000)
 #define NVI_DELAY_US_MIN		(15000)
-#define NVI_DELAY_DEFAULT		(50000)
+#define NVI_DELAY_DEFAULT		(100000)
 #define NVI_INPUT_GYRO_DELAY_US_MIN	(5000)
 #define NVI_INPUT_ACCL_DELAY_US_MIN	(5000)
 #define NVI_TEMP_EN			(1 << 0)
@@ -141,6 +141,7 @@ struct inv_reg_map_s {
 	u8 fifo_reset;
 	u8 i2c_mst_reset;
 	u8 cycle;
+	u8 temp_dis;
 };
 
 enum inv_devices {
@@ -438,7 +439,7 @@ struct inv_gyro_state_s {
 	bool shutdown;
 	bool suspend;
 	bool fifo_reset_3050;
-	unsigned int mot_cnt;
+	bool mot_det_en;
 	s64 fifo_ts;
 	s64 gyro_start_ts;
 	unsigned int data_info;
@@ -573,6 +574,7 @@ struct inv_mpu_slave {
 #define BIT_RESET               (0x80)
 #define BIT_SLEEP		(0x40)
 #define BIT_CYCLE               (0x20)
+#define BIT_TEMP_DIS		(0x08)
 #define BIT_LPA_FREQ            (0xC0)
 #define BIT_STBY_XA		(0x20)
 #define BIT_STBY_YA		(0x10)
@@ -737,10 +739,24 @@ int inv_i2c_single_write_base(struct inv_gyro_state_s *st,
 #define inv_secondary_write(reg, data) \
 	inv_i2c_single_write_base(st, st->plat_data.secondary_i2c_addr, \
 		reg, data)
+s64 nvi_ts_ns(void);
+int nvi_smplrt_div_wr(struct inv_gyro_state_s *inf, u8 smplrt_div);
+int nvi_config_wr(struct inv_gyro_state_s *inf, u8 val);
+int nvi_gyro_config_wr(struct inv_gyro_state_s *inf, u8 test, u8 fsr);
+int nvi_accel_config_wr(struct inv_gyro_state_s *inf, u8 test, u8 fsr, u8 hpf);
+int nvi_fifo_en_wr(struct inv_gyro_state_s *inf, u8 fifo_en);
+int nvi_int_enable_wr(struct inv_gyro_state_s *inf, bool enable);
+int nvi_user_ctrl_reset_wr(struct inv_gyro_state_s *inf, u8 val);
+int nvi_user_ctrl_en_wr(struct inv_gyro_state_s *inf, u8 val);
+int nvi_user_ctrl_en(struct inv_gyro_state_s *inf,
+		     bool fifo_enable, bool i2c_enable);
+int nvi_pm_wr(struct inv_gyro_state_s *inf,
+	      u8 pwr_mgmt_1, u8 pwr_mgmt_2, u8 lpa);
 int nvi_gyro_enable(struct inv_gyro_state_s *inf,
 		    unsigned char enable, unsigned char fifo_enable);
 int nvi_accl_enable(struct inv_gyro_state_s *inf,
 		    unsigned char enable, unsigned char fifo_enable);
+void nvi_report_temp(struct inv_gyro_state_s *inf, u8 *data, s64 ts);
 
 int mpu_memory_write(struct i2c_adapter *i2c_adap,
 			    unsigned char mpu_addr,
