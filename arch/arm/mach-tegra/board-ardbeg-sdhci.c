@@ -283,7 +283,8 @@ static int __init ardbeg_wifi_init(void)
 static int __init ardbeg_wifi_prepower(void)
 {
 	if (!of_machine_is_compatible("nvidia,ardbeg") &&
-		!of_machine_is_compatible("nvidia,laguna"))
+		!of_machine_is_compatible("nvidia,laguna") &&
+		!of_machine_is_compatible("nvidia,tn8"))
 		return 0;
 	ardbeg_wifi_power(1);
 
