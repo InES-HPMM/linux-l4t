@@ -268,7 +268,13 @@ static bool as3722_writeable(struct device *dev, unsigned int reg)
 
 static bool as3722_volatile(struct device *dev, unsigned int reg)
 {
-	return false;
+	switch (reg) {
+	case AS3722_SD0_VOLTAGE_REG ... AS3722_LDO11_VOLTAGE_REG:
+	case AS3722_SD_CONTROL_REG ... AS3722_LDOCONTROL1_REG:
+		return false;
+	default:
+		return true;
+	}
 }
 
 const struct regmap_config as3722_regmap_config = {
