@@ -246,6 +246,7 @@ void machine_shutdown(void)
  */
 void machine_halt(void)
 {
+	preempt_disable();
 	smp_send_stop();
 
 	local_irq_disable();
@@ -289,6 +290,7 @@ void machine_restart(char *cmd)
 	local_irq_disable();
 	local_fiq_disable();
 
+	preempt_disable();
 	smp_send_stop();
 
 	if (arm_pm_restart)
