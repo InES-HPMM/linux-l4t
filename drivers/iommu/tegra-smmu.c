@@ -565,14 +565,14 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 }
 
 
-static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
-			   struct page *page)
+static void __smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
+			     struct page *page)
 {
 	u32 val;
 
 	if (!pte) {
 		smmu_write(smmu, SMMU_PTC_FLUSH_TYPE_ALL, SMMU_PTC_FLUSH);
-		goto out;
+		return;
 	}
 
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
@@ -583,16 +583,21 @@ static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
 
 	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
-out:
+}
+
+static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
+			   struct page *page)
+{
+	__smmu_flush_ptc(smmu, pte, page);
 	FLUSH_SMMU_REGS(smmu);
 }
 
-static inline void smmu_flush_ptc_all(struct smmu_device *smmu)
+static inline void __smmu_flush_ptc_all(struct smmu_device *smmu)
 {
-	smmu_flush_ptc(smmu, 0, NULL);
+	__smmu_flush_ptc(smmu, 0, NULL);
 }
 
-static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
+static void __smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
 			   dma_addr_t iova, int is_pde)
 {
 	u32 val;
@@ -603,24 +608,24 @@ static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
 		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
 
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
-	FLUSH_SMMU_REGS(smmu);
 }
 
-static inline void smmu_flush_tlb_section(struct smmu_as *as, dma_addr_t iova)
+static inline void __smmu_flush_tlb_section(struct smmu_as *as, dma_addr_t iova)
 {
-	smmu_flush_tlb(as->smmu, as, iova, 1);
+	__smmu_flush_tlb(as->smmu, as, iova, 1);
 }
 
 static void flush_ptc_and_tlb(struct smmu_device *smmu,
 			      struct smmu_as *as, dma_addr_t iova,
 			      unsigned long *pte, struct page *page, int is_pde)
 {
-	smmu_flush_ptc(smmu, pte, page);
-	smmu_flush_tlb(smmu, as, iova, is_pde);
+	__smmu_flush_ptc(smmu, pte, page);
+	__smmu_flush_tlb(smmu, as, iova, is_pde);
+	FLUSH_SMMU_REGS(smmu);
 }
 
 /* Flush PTEs within the same L2 pagetable */
-static void __smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
+static void ____smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 				   dma_addr_t end)
 {
 	size_t unit = SZ_16K;
@@ -631,8 +636,6 @@ static void __smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 
 		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
 		smmu_write(smmu, val, SMMU_TLB_FLUSH);
-		FLUSH_SMMU_REGS(smmu);
-
 		iova += unit;
 	}
 }
@@ -649,14 +652,15 @@ static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 	while (iova < end) {
 		u32 val;
 
-		smmu_flush_ptc(smmu, pte, page);
+		__smmu_flush_ptc(smmu, pte, page);
 		pte += unit / PAGE_SIZE;
 
 		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
 		smmu_write(smmu, val, SMMU_TLB_FLUSH);
-		FLUSH_SMMU_REGS(smmu);
 		iova += unit;
 	}
+
+	FLUSH_SMMU_REGS(smmu);
 }
 
 static inline void flush_ptc_and_tlb_all(struct smmu_device *smmu,
@@ -686,7 +690,7 @@ static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 }
 
 #ifdef CONFIG_TEGRA_ERRATA_1053704
-static void smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
+static void __smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
 				 dma_addr_t end)
 {
 	unsigned long *pdir;
@@ -705,12 +709,12 @@ static void smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
 						SMMU_PDN_TO_ADDR(pdn + 1));
 
 			if (pfn_valid(page_to_pfn(page)))
-				__smmu_flush_tlb_range(smmu, iova, _end);
+				____smmu_flush_tlb_range(smmu, iova, _end);
 
 			iova = _end;
 		} else {
 			if (pdir[pdn])
-				smmu_flush_tlb_section(as, iova);
+				__smmu_flush_tlb_section(as, iova);
 
 			iova = SMMU_PDN_TO_ADDR(pdn + 1);
 		}
@@ -720,13 +724,14 @@ static void smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
 	}
 }
 
-static void smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
+static void __smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
 			      dma_addr_t end)
 {
-	smmu_flush_tlb_range(as, iova, end);
+	__smmu_flush_tlb_range(as, iova, end);
 }
 #else
-static void __smmu_flush_tlb_as(struct smmu_as *as)
+static void __smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
+			      dma_addr_t end)
 {
 	u32 val;
 	struct smmu_device *smmu = as->smmu;
@@ -734,20 +739,17 @@ static void __smmu_flush_tlb_as(struct smmu_as *as)
 	val = SMMU_TLB_FLUSH_ASID_ENABLE |
 		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
-	FLUSH_SMMU_REGS(smmu);
-}
-static inline void smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
-				     dma_addr_t end)
-{
-	__smmu_flush_tlb_as(as);
 }
 #endif
 
 static void flush_ptc_and_tlb_as(struct smmu_as *as, dma_addr_t start,
 				 dma_addr_t end)
 {
-	smmu_flush_ptc_all(as->smmu);
-	smmu_flush_tlb_as(as, start, end);
+	struct smmu_device *smmu = as->smmu;
+
+	__smmu_flush_ptc_all(smmu);
+	__smmu_flush_tlb_as(as, start, end);
+	FLUSH_SMMU_REGS(smmu);
 }
 
 static void free_pdir(struct smmu_as *as)
