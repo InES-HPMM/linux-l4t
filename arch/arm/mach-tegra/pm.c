@@ -212,9 +212,10 @@ static int create_suspend_pgtable(void)
 	if (!tegra_pgd)
 		return -ENOMEM;
 
-	identity_mapping_add(tegra_pgd, PHYS_OFFSET, IO_IRAM_PHYS);
-	identity_mapping_add(tegra_pgd, IO_IRAM_PHYS,
-		IO_IRAM_PHYS + SECTION_SIZE);
+	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
+		IO_IRAM_VIRT, 0);
+	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
+		IO_IRAM_VIRT + SECTION_SIZE, 0);
 
 	tegra_pgd_phys = virt_to_phys(tegra_pgd);
 
