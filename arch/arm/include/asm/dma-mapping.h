@@ -228,6 +228,7 @@ static inline size_t dma_iova_get_free_max(struct device *dev)
 	return ops->iova_get_free_max(dev);
 }
 
+#ifdef CONFIG_ARM_DMA_USE_IOMMU
 static inline dma_addr_t
 dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 		     enum dma_data_direction dir, struct dma_attrs *attrs)
@@ -253,6 +254,14 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 	}
 	return dma_map_single_at_attrs(dev, va, da, size, dir, attrs);
 }
+#else
+static inline dma_addr_t
+dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
+		     enum dma_data_direction dir, struct dma_attrs *attrs)
+{
+	return DMA_ERROR_CODE;
+}
+#endif
 
 /**
  * arm_dma_mmap - map a coherent DMA allocation into user space
