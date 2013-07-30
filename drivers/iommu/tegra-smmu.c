@@ -166,7 +166,7 @@ enum {
 #define SMMU_PDIR_SHIFT	12
 #define SMMU_PDE_SHIFT	12
 #define SMMU_PTE_SHIFT	12
-#define SMMU_PFN_MASK	0x000fffff
+#define SMMU_PFN_MASK	0x0fffffff
 
 #define SMMU_ADDR_TO_PTN(addr)	(((addr) >> 12) & (BIT(10) - 1))
 #define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
