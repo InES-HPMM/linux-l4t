@@ -827,6 +827,14 @@ config TEGRA_USE_DFLL_RANGE
 	  "2" - DFLL is used only for high rates above crossover with
 		PLL dvfs curve
 
+config REGULATOR_TEGRA_DFLL_BYPASS
+	bool "Use dfll bypass regulator"
+	depends on ARCH_TEGRA_HAS_CL_DVFS
+	default n
+        help
+	  Enables use of dfll bypass interfaces for voltage control
+	  by s/w driver.
+
 config TEGRA_TIMER_HZ
 	int "Kernel HZ (jiffies per second)"
 	default "100" if TEGRA_FPGA_PLATFORM
