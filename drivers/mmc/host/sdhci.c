@@ -1470,12 +1470,13 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	u8 ctrl;
 
 	/*
-	 * Controller registers should not be updated without the
-	 * controller clock enabled. Set the minimum controller
-	 * clock if there is no clock.
+	 * Some controllers requires clock to be enabled for any register
+	 * access. If SDHCI_QUIRK2_REG_ACCESS_REQ_CLOCK is set, set the
+	 * minimum controller clock if there is no clock.
 	 */
 	if (host->ops->set_clock) {
-		if (!host->clock && !ios->clock) {
+		if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
+			(!host->clock && !ios->clock)) {
 			host->ops->set_clock(host, host->mmc->f_min);
 			host->clock = host->mmc->f_min;
 		} else if (ios->clock && (ios->clock != host->clock)) {
@@ -1659,11 +1660,13 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 
 	mmiowb();
 	spin_unlock_irqrestore(&host->lock, flags);
+
 	/*
-	 * Controller clock should only be disabled after all the register
-	 * writes are done.
+	 * If SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK is set, controller clock can
+	 * be shutdown after all the register accesses are done.
 	 */
-	if (!ios->clock && host->ops->set_clock)
+	if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
+		(!ios->clock && host->ops->set_clock))
 		host->ops->set_clock(host, ios->clock);
 }
 
@@ -2781,18 +2784,37 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		return ret;
 	}
 
+	/*
+	 * If host clock is disabled but the register access requires host
+	 * clock, then enable the clock, mask the interrupts and disable
+	 * the clock.
+	 */
+	if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
+		if (!host->clock && host->ops->set_clock)
+			host->ops->set_clock(host, max(mmc->ios.clock, mmc->f_min));
+
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
 		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
 			SDHCI_INT_CARD_INT;
 
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {
 		sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
+
+		if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
+			if (!host->clock && host->ops->set_clock)
+				host->ops->set_clock(host, 0);
+
 		if (host->irq)
 			disable_irq(host->irq);
 	} else {
 		sdhci_enable_irq_wakeups(host);
 		enable_irq_wake(host->irq);
+
+		if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
+			if (!host->clock && host->ops->set_clock)
+				host->ops->set_clock(host, 0);
 	}
+
 	return ret;
 }
 

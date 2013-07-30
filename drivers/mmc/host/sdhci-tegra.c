@@ -2144,6 +2144,9 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 			(gpio_get_value_cansleep(plat->cd_gpio) == 0);
 	}
 
+	/* Setting the min identification clock of freq 400KHz */
+	tegra_sdhci_set_clock(sdhci, 400000);
+
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
@@ -2162,9 +2165,6 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 			tegra_host->is_rail_enabled = 1;
 		}
 	}
-
-	/* Setting the min identification clock of freq 400KHz */
-	tegra_sdhci_set_clock(sdhci, 400000);
 
 	/* Reset the controller and power on if MMC_KEEP_POWER flag is set*/
 	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
@@ -2325,7 +2325,8 @@ static const struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
 		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO,
-	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
+		SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK,
 	.ops  = &tegra_sdhci_ops,
 };
 
