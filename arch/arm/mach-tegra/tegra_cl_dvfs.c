@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/regulator/tegra-dfll-bypass-regulator.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -209,6 +210,7 @@ struct tegra_cl_dvfs {
 	u8				lut_min;
 	u8				lut_max;
 	u8				force_out_min;
+	u32				suspended_force_out;
 	int				therm_cap_idx;
 	int				therm_floor_idx;
 	struct dfll_rate_req		last_req;
@@ -271,6 +273,30 @@ static inline void invalidate_request(struct tegra_cl_dvfs *cld)
 	val &= ~CL_DVFS_FREQ_REQ_FREQ_VALID;
 	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 	cl_dvfs_wmb(cld);
+}
+
+static inline void disable_forced_output(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	val &= ~CL_DVFS_OUTPUT_FORCE_ENABLE;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
+	cl_dvfs_wmb(cld);
+}
+
+static inline u32 get_last_output(struct tegra_cl_dvfs *cld)
+{
+	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
+	return cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+		CL_DVFS_MONITOR_DATA_MASK;
+}
+
+/* out minitored before forced value applied - return the latter if enabled */
+static inline u32 cl_dvfs_get_output(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	if (val & CL_DVFS_OUTPUT_FORCE_ENABLE)
+		return val & OUT_MASK;
+	return get_last_output(cld);
 }
 
 static inline bool is_i2c(struct tegra_cl_dvfs *cld)
@@ -702,10 +728,15 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 			return;
 		}
 	} else {
+		/* Forced output must be disabled in closed loop mode */
+		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+		if (val & CL_DVFS_OUTPUT_FORCE_ENABLE) {
+			disable_forced_output(cld);
+			calibration_timer_update(cld);
+			return;
+		}
 		/* Get last output (there is no such thing as pending PWM) */
-		switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
-		val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
-			CL_DVFS_MONITOR_DATA_MASK;
+		val = get_last_output(cld);
 	}
 
 	/* Adjust minimum rate */
@@ -1310,6 +1341,9 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_out_if(cld);
 	cl_dvfs_init_cntrl_logic(cld);
 
+	/* Restore force output */
+	cl_dvfs_writel(cld, cld->suspended_force_out, CL_DVFS_OUTPUT_FORCE);
+
 	cl_dvfs_disable_clocks(cld);
 
 	/* Restore last request and mode */
@@ -1469,6 +1503,7 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
 	}
+	cld->suspended_force_out = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	clk_unlock_restore(cld->dfll_clk, &flags);
 
 	return 0;
@@ -1478,6 +1513,65 @@ static const struct dev_pm_ops tegra_cl_dvfs_pm_ops = {
 	.suspend = tegra_cl_dvfs_suspend_cl,
 };
 #endif
+
+/*
+ * These dfll bypass APIs provide direct access to force output register.
+ * Set operation always updates force value, but applies it only in open loop,
+ * or disabled mode. Get operation returns force value back if it is applied,
+ * and return monitored output, otherwise. Hence, get value matches real output
+ * in any mode.
+ */
+static int tegra_cl_dvfs_force_output(void *data, unsigned int out_sel)
+{
+	u32 val;
+	unsigned long flags;
+	struct tegra_cl_dvfs *cld = data;
+
+	if (out_sel > OUT_MASK)
+		return -EINVAL;
+
+	clk_lock_save(cld->dfll_clk, &flags);
+
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	val = (val & CL_DVFS_OUTPUT_FORCE_ENABLE) | out_sel;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+
+	if ((cld->mode < TEGRA_CL_DVFS_CLOSED_LOOP) &&
+	    !(val & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
+		val |= CL_DVFS_OUTPUT_FORCE_ENABLE;
+		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
+		cl_dvfs_wmb(cld);
+		output_enable(cld);
+	}
+
+	clk_unlock_restore(cld->dfll_clk, &flags);
+	return 0;
+}
+
+static unsigned int tegra_cl_dvfs_get_output(void *data)
+{
+	u32 val;
+	unsigned long flags;
+	struct tegra_cl_dvfs *cld = data;
+
+	clk_lock_save(cld->dfll_clk, &flags);
+	val = cl_dvfs_get_output(cld);
+	clk_unlock_restore(cld->dfll_clk, &flags);
+	return val;
+}
+
+static void tegra_cl_dvfs_bypass_dev_register(struct tegra_cl_dvfs *cld,
+					      struct platform_device *byp_dev)
+{
+	struct tegra_dfll_bypass_platform_data *p_data =
+		byp_dev->dev.platform_data;
+	p_data->set_bypass_sel = tegra_cl_dvfs_force_output;
+	p_data->get_bypass_sel = tegra_cl_dvfs_get_output;
+	p_data->dfll_data = cld;
+
+	platform_device_register(byp_dev);
+}
 
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
@@ -1547,6 +1641,19 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, cld);
+
+	/*
+	 *  I2C interface mux is embedded into cl_dvfs h/w, so the attached
+	 *  regulator can be accessed by s/w independently. PWM interface,
+	 *  on the other hand, is accessible solely through cl_dvfs registers.
+	 *  Hence, bypass device is supported in PWM mode only.
+	 */
+	if ((p_data->pmu_if == TEGRA_CL_DVFS_PMU_PWM) &&
+	    p_data->u.pmu_pwm.dfll_bypass_dev) {
+		clk_enable(cld->soc_clk);
+		tegra_cl_dvfs_bypass_dev_register(
+			cld, p_data->u.pmu_pwm.dfll_bypass_dev);
+	}
 
 	/*
 	 * Schedule cooling device registration as a separate work to address
@@ -1649,12 +1756,14 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		/*
 		 * Update control logic setting with last rate request;
 		 * sync output limits with current tuning and thermal state,
-		 * enable output and switch to closed loop mode.
+		 * enable output and switch to closed loop mode. Make sure
+		 * forced output does not interfere with closed loop.
 		 */
 		set_cl_config(cld, req);
 		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		set_request(cld, req);
+		disable_forced_output(cld);
 		calibration_timer_update(cld);
 		return 0;
 
@@ -1822,10 +1931,7 @@ static int output_get(void *data, u64 *val)
 	clk_enable(cld->soc_clk);
 	clk_lock_save(c, &flags);
 
-	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
-
-	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
-		CL_DVFS_MONITOR_DATA_MASK;
+	v = cl_dvfs_get_output(cld);
 	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
 		cld->p_data->vdd_map[v].reg_uV / 1000;
 

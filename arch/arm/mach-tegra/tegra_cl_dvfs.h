@@ -80,6 +80,7 @@ struct tegra_cl_dvfs_platform_data {
 			int			pwm_pingroup;
 			int			out_gpio;
 			bool			out_enable_high;
+			struct platform_device	*dfll_bypass_dev;
 		} pmu_pwm;
 	} u;
 
