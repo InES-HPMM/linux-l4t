@@ -36,6 +36,16 @@ config SENSORS_ISL29028
 	 Proximity value via iio. The ISL29028 provides the concurrent sensing
 	 of ambient light and proximity.
 
+config SENSORS_JSA1127
+	tristate "JSA1127 Ambient light sensor"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable the JSA1127 Ambient Light Sensor.
+	  This driver provides measurements of ambient light intensity in
+	  its own units.
+	  Data from sensor is accessible via sysfs.
+
 config TSL2583
 	tristate "TAOS TSL2580, TSL2581 and TSL2583 light-to-digital converters"
 	depends on I2C
