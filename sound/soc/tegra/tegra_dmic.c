@@ -654,7 +654,10 @@ static int __devexit asoc_dmic_remove(struct platform_device *pdev)
 	snd_soc_unregister_dai(&pdev->dev);
 	iounmap(dmic->io_base);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	release_mem_region(res->start, resource_size(res));
+	if (res)
+		release_mem_region(res->start, resource_size(res));
+	else
+		dev_err(&pdev->dev, "failed to get memory resource\n");
 
 	if (dmic->parent)
 		clk_put(dmic->parent);

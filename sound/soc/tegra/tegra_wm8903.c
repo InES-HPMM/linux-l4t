@@ -821,6 +821,15 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 	if (pdev->dev.platform_data) {
 		memcpy(pdata, card->dev->platform_data, sizeof(*pdata));
 	} else if (np) {
+		pdata = devm_kzalloc(&pdev->dev,
+			sizeof(struct tegra_asoc_platform_data), GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&pdev->dev,
+				"no memory for tegra_asoc_platform_data\n");
+			ret = -ENOMEM;
+			goto err;
+		}
+
 		pdata->gpio_spkr_en = of_get_named_gpio(np,
 						"nvidia,spkr-en-gpios", 0);
 		if (pdata->gpio_spkr_en == -EPROBE_DEFER)
