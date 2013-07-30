@@ -110,6 +110,13 @@ enum {
 #define SMMU_PTC_FLUSH_1			0x9b8
 
 #define SMMU_ASID_SECURITY			0x38
+#define SMMU_ASID_SECURITY_1			0x3c
+#define SMMU_ASID_SECURITY_2			0x9e0
+#define SMMU_ASID_SECURITY_3			0x9e4
+#define SMMU_ASID_SECURITY_4			0x9e8
+#define SMMU_ASID_SECURITY_5			0x9ec
+#define SMMU_ASID_SECURITY_6			0x9f0
+#define SMMU_ASID_SECURITY_7			0x9f4
 
 #define SMMU_STATS_CACHE_COUNT_BASE		0x1f0
 
@@ -281,6 +288,17 @@ enum {
 
 static struct device *save_smmu_device;
 
+static const u32 smmu_asid_security_ofs[] = {
+	SMMU_ASID_SECURITY,
+	SMMU_ASID_SECURITY_1,
+	SMMU_ASID_SECURITY_2,
+	SMMU_ASID_SECURITY_3,
+	SMMU_ASID_SECURITY_4,
+	SMMU_ASID_SECURITY_5,
+	SMMU_ASID_SECURITY_6,
+	SMMU_ASID_SECURITY_7,
+};
+
 static size_t tegra_smmu_get_offset_base(int id)
 {
 	if (!(id & BIT(5)))
@@ -343,7 +361,8 @@ struct smmu_device {
 	 */
 	int num_translation_enable;
 	unsigned long translation_enable[4];
-	unsigned long asid_security;
+	int num_asid_security;
+	unsigned long asid_security[8];
 
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;
@@ -539,7 +558,10 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		smmu_write(smmu, smmu->translation_enable[i],
 			   SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
 
-	smmu_write(smmu, smmu->asid_security, SMMU_ASID_SECURITY);
+	for (i = 0; i < smmu->num_asid_security; i++)
+		smmu_write(smmu,
+			   smmu->asid_security[i], smmu_asid_security_ofs[i]);
+
 	smmu_write(smmu, SMMU_TLB_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_TLB));
 	smmu_write(smmu, SMMU_PTC_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_PTC));
 
@@ -1648,7 +1670,10 @@ int tegra_smmu_suspend(struct device *dev)
 		smmu->translation_enable[i] = smmu_read(smmu,
 				SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
 
-	smmu->asid_security = smmu_read(smmu, SMMU_ASID_SECURITY);
+	for (i = 0; i < smmu->num_asid_security; i++)
+		smmu->asid_security[i] =
+			smmu_read(smmu, smmu_asid_security_ofs[i]);
+
 	return 0;
 }
 EXPORT_SYMBOL(tegra_smmu_suspend);
@@ -1728,14 +1753,14 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
 		smmu->swgids = 0x06f9000001fec9cf;
 		smmu->num_translation_enable = 4;
+		smmu->num_asid_security = 8;
 	} else {
 		smmu->num_translation_enable = 3;
+		smmu->num_asid_security = 1;
 	}
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
 		smmu->translation_enable[i] = ~0;
-
-	smmu->asid_security = 0;
 
 	for (i = 0; i < smmu->num_as; i++) {
 		struct smmu_as *as = &smmu->as[i];
