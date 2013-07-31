@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -130,8 +130,8 @@ static int tegra_wake_event_irq[] = {
 	INT_USB, /* TEGRA_USB1_UTMIP, */	/* wake39 */
 	INT_USB2, /* TEGRA_USB2_UTMIP */	/* wake40 */
 	INT_USB3, /* TEGRA_USB3_UTMIP, */	/* wake41 */
-	-EINVAL, /* INT_USB2, USB2 UHSIC PHY */		/* wake42 */
-	-EINVAL, /* INT_USB3, USB3 UHSIC PHY */		/* wake43 */
+	INT_USB2, /* TEGRA_USB2_UHSIC */	/* wake42 */
+	INT_USB3, /* TEGRA_USB3_UHSIC */	/* wake43 */
 	-EAGAIN, /* I2C1 DAT */			/* wake44 */
 	-EAGAIN,				/* wake45 */
 	-EAGAIN, /* PWR I2C DAT */		/* wake46 */
