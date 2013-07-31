@@ -466,8 +466,8 @@ config TEGRA_CLOCK_DEBUG_WRITE
 	depends on DEBUG_FS
 	default n
 
-config TEGRA_CLOCK_DEBUG_MODS
-	bool "Enable functions for MODS to access to clock tree"
+config TEGRA_CLOCK_DEBUG_FUNC
+	bool "Enable extra debug functions to access to clock tree"
 	depends on TEGRA_CLOCK_DEBUG_WRITE
 	default n
 

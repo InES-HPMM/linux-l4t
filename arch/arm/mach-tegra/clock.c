@@ -1551,7 +1551,7 @@ static int _max_set(struct clk *c, unsigned long val)
 	return 0;
 }
 
-#ifdef CONFIG_TEGRA_CLOCK_DEBUG_MODS
+#ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
 int tegra_clk_set_max(struct clk *c, unsigned long rate)
 {
 	return _max_set(c, rate);
