@@ -1343,6 +1343,39 @@ static const struct file_operations rail_stats_fops = {
 	.release	= single_release,
 };
 
+static int gpu_dvfs_show(struct seq_file *s, void *data)
+{
+	int idx;
+	int *millivolts;
+	unsigned long *freqs;
+
+	if (read_gpu_dvfs_table(&millivolts, &freqs)) {
+		seq_printf(s, "Only supported for T124 or higher\n");
+		return 0;
+	}
+
+	seq_printf(s, "millivolts \t \t frequency\n");
+	seq_printf(s, "=====================================\n");
+
+	for (idx = 0; millivolts[idx]; idx++)
+		seq_printf(s, "%d mV \t \t %lu Hz\n", millivolts[idx],
+				freqs[idx]);
+
+	return 0;
+}
+
+static int gpu_dvfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpu_dvfs_show, NULL);
+}
+
+static const struct file_operations gpu_dvfs_fops = {
+	.open           = gpu_dvfs_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 static int cpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_cpu_rail) {
@@ -1429,6 +1462,10 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_core_override", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &core_override_fops);
+
+	d = debugfs_create_file("gpu_dvfs", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &gpu_dvfs_fops);
+
 	if (!d)
 		return -ENOMEM;
 

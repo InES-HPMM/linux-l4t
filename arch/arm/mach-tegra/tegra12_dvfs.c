@@ -253,6 +253,15 @@ static struct dvfs gpu_dvfs_table[] = {
 	GPU_DVFS("gpu",     -1, 1, KHZ,    408000, 528000,  700000, 984000, 1248000),
 };
 
+int read_gpu_dvfs_table(int **millivolts, unsigned long **freqs)
+{
+	*millivolts = gpu_dvfs_table[0].millivolts;
+	*freqs = gpu_dvfs_table[0].freqs;
+
+	return 0;
+}
+EXPORT_SYMBOL(read_gpu_dvfs_table);
+
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
