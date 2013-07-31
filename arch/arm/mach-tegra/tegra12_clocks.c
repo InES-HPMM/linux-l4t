@@ -6333,9 +6333,9 @@ static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c_out1,	.value = 1},
 	{ .input = &tegra_pll_p_out4,	.value = 2},
-	{ .input = &tegra_pll_p_out3,	.value = 3},
+	{ .input = &tegra_pll_p,	.value = 3},
 	{ .input = &tegra_pll_p_out2,	.value = 4},
-	/* { .input = &tegra_clk_d,	.value = 5}, - no use on tegra12x */
+	{ .input = &tegra_pll_c,	.value = 5},
 	{ .input = &tegra_clk_32k,	.value = 6},
 	{ .input = &tegra_pll_m_out1,	.value = 7},
 	{ 0, 0},
@@ -6539,7 +6539,10 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
-	{ .input = &tegra_pll_m, .value = 4}, /* low jitter PLLM input */
+	{ .input = &tegra_pll_m, .value = 4}, /* low jitter PLLM output */
+	/* { .input = &tegra_pll_c2, .value = 5}, - no use on tegra12x */
+	/* { .input = &tegra_pll_c3, .value = 6}, - no use on tegra12x */
+	{ .input = &tegra_pll_c, .value = 7}, /* low jitter PLLC output */
 	{ 0, 0},
 };
 
