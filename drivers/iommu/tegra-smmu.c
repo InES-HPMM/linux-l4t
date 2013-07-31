@@ -358,37 +358,36 @@ static struct smmu_device *smmu_handle; /* unique for a system */
 /*
  *	SMMU register accessors
  */
-static bool inline smmu_valid_reg(struct smmu_device *smmu,
-				  void __iomem *addr)
+static inline u32 smmu_read(struct smmu_device *smmu, size_t offs)
 {
 	int i;
 
 	for (i = 0; i < smmu->nregs; i++) {
-		if (addr < smmu->regs[i])
-			break;
+		void __iomem *addr = smmu->regbase + offs;
+
+		BUG_ON(addr < smmu->regs[i]);
 		if (addr <= smmu->rege[i])
-			return true;
+			return readl(addr);
 	}
 
-	return false;
-}
-
-static inline u32 smmu_read(struct smmu_device *smmu, size_t offs)
-{
-	void __iomem *addr = smmu->regbase + offs;
-
-	BUG_ON(!smmu_valid_reg(smmu, addr));
-
-	return readl(addr);
+	BUG();
 }
 
 static inline void smmu_write(struct smmu_device *smmu, u32 val, size_t offs)
 {
-	void __iomem *addr = smmu->regbase + offs;
+	int i;
 
-	BUG_ON(!smmu_valid_reg(smmu, addr));
+	for (i = 0; i < smmu->nregs; i++) {
+		void __iomem *addr = smmu->regbase + offs;
 
-	writel(val, addr);
+		BUG_ON(addr < smmu->regs[i]);
+		if (addr <= smmu->rege[i]) {
+			writel(val, addr);
+			return;
+		}
+	}
+
+	BUG();
 }
 
 #define VA_PAGE_TO_PA(va, page)	\
