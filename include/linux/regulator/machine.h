@@ -141,6 +141,7 @@ struct regulation_constraints {
 	unsigned always_on:1;	/* regulator never off when system is on */
 	unsigned boot_on:1;	/* bootloader/firmware enabled regulator */
 	unsigned apply_uV:1;	/* apply uV constraint if min == max */
+	unsigned boot_off:1;	/* bootloader/firmware disabled regulator */
 };
 
 /**
