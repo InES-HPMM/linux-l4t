@@ -209,6 +209,7 @@ static struct regulator_consumer_supply as3722_sd6_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
 };
 
+
 AMS_PDATA_INIT(sd0, NULL, 700000, 1400000, 1, 1, 1, 2);
 AMS_PDATA_INIT(sd1, NULL, 700000, 1400000, 1, 1, 1, 1);
 AMS_PDATA_INIT(sd2, NULL, 1350000, 1350000, 1, 1, 1, 0);
@@ -362,6 +363,19 @@ int __init ardbeg_as3722_regulator_init(void)
 
 	/* Set vdd_gpu init uV to 1V */
 	as3722_sd6_reg_idata.constraints.init_uV = 900000;
+
+	as3722_sd6_reg_pdata.oc_configure_enable = true;
+	as3722_sd6_reg_pdata.oc_trip_thres_perphase = 3500;
+	as3722_sd6_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	as3722_sd0_reg_pdata.oc_configure_enable = true;
+	as3722_sd0_reg_pdata.oc_trip_thres_perphase = 3500;
+	as3722_sd0_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	as3722_sd1_reg_pdata.oc_configure_enable = true;
+	as3722_sd1_reg_pdata.oc_trip_thres_perphase = 2500;
+	as3722_sd1_reg_pdata.oc_alarm_thres_perphase = 0;
+
 	pr_info("%s: i2c_register_board_info\n", __func__);
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
