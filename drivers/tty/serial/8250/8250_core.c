@@ -436,6 +436,7 @@ static void io_serial_out(struct uart_port *p, int offset, int value)
 }
 
 static int serial8250_default_handle_irq(struct uart_port *port);
+static int serial8250_tegra_handle_irq(struct uart_port *port);
 static int exar_handle_irq(struct uart_port *port);
 
 static void set_io_from_upio(struct uart_port *p)
@@ -1577,6 +1578,68 @@ static int serial8250_default_handle_irq(struct uart_port *port)
 }
 
 /*
+ * Tegra UART IIR sometimes not consistent with its IRQ signal
+ * which will generate continous spurious interrupts, inorder to
+ * recover from this, generate legal modem interrupt and
+ * handle it.
+ */
+#define NOINTR_COUNTER 1000
+static int serial8250_tegra_handle_irq(struct uart_port *port)
+{
+	struct uart_8250_port *up =
+		container_of(port, struct uart_8250_port, port);
+	static int tegra_nointr_count;
+	unsigned int iir = serial_port_in(port, UART_IIR);
+	unsigned char status;
+	unsigned long flags;
+
+	if ((iir & UART_IIR_NO_INT)) {
+		tegra_nointr_count++;
+		if (tegra_nointr_count > NOINTR_COUNTER) {
+			up->mcr = serial_port_in(port, UART_MCR)
+				| UART_MCR_LOOP;
+			serial_port_out(port, UART_MCR, up->mcr);
+			up->ier = serial_port_in(port, UART_IER)
+				| UART_IER_MSI;
+			serial_port_out(port, UART_IER, up->ier);
+			up->mcr |= UART_MCR_RTS;
+			serial_port_out(port, UART_MCR, up->mcr);
+		}
+		return 0;
+	} else {
+		tegra_nointr_count = 0;
+	}
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	status = serial_port_in(port, UART_LSR);
+
+	DEBUG_INTR("status = %x...", status);
+
+	if ((iir & 0xf) == UART_IIR_MSI) {
+		if (up->mcr & UART_MCR_LOOP) {
+			serial_port_out(port, UART_TX, 0xff);
+			up->mcr &= ~UART_MCR_LOOP;
+			serial_port_out(port, UART_MCR, up->mcr);
+			up->ier &= ~UART_IER_MSI;
+			serial_port_out(port, UART_IER, up->ier);
+			up->mcr &= ~UART_MCR_RTS;
+			serial_port_out(port, UART_MCR, up->mcr);
+		}
+		serial8250_modem_status(up);
+	}
+
+	if (status & (UART_LSR_DR | UART_LSR_BI))
+		status = serial8250_rx_chars(up, status);
+
+	if (status & UART_LSR_THRE)
+		serial8250_tx_chars(up);
+
+	spin_unlock_irqrestore(&port->lock, flags);
+	return 1;
+}
+
+/*
  * These Exar UARTs have an extra interrupt indicator that could
  * fire for a few unimplemented interrupts.  One of which is a
  * wakeup event when coming out of sleep.  Put this here just
@@ -1645,6 +1708,10 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 			end = NULL;
 		} else if (end == NULL)
 			end = l;
+
+		/* Tegra NO_INTR should be returned as handled */
+		if (port->type == PORT_TEGRA)
+			handled = 1;
 
 		l = l->next;
 
@@ -2738,8 +2805,10 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 	if (port->type == PORT_16550A && port->iotype == UPIO_AU)
 		up->bugs |= UART_BUG_NOMSR;
 
-	if (port->type == PORT_TEGRA)
+	if (port->type == PORT_TEGRA) {
 		up->bugs |= UART_BUG_NOMSR;
+		port->handle_irq = serial8250_tegra_handle_irq;
+	}
 
 	if (port->type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
 		autoconfig_irq(up);
