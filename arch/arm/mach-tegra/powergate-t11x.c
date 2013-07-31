@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -530,6 +530,10 @@ static int tegra11x_unpowergate(int id,
 	ret = tegra_powergate_set(id, true);
 	if (ret)
 		goto err_power;
+
+	udelay(10);
+
+	powergate_partition_assert_reset(pg_info);
 
 	udelay(10);
 
