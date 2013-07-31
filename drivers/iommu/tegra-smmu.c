@@ -354,6 +354,7 @@ struct smmu_device {
 	char		*name;
 	struct device	*dev;
 	u64		swgids;		/* memory client ID bitmap */
+	size_t		ptc_cache_size;
 	struct page *avp_vector_page;	/* dummy page shared by all AS's */
 
 	/*
@@ -667,14 +668,18 @@ static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 
 	iova = round_down(iova, unit);
 	while (iova < end) {
-		u32 val;
+		int i;
 
 		__smmu_flush_ptc(smmu, pte, page);
-		pte += unit / PAGE_SIZE;
+		pte += smmu->ptc_cache_size / PAGE_SIZE;
 
-		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
-		smmu_write(smmu, val, SMMU_TLB_FLUSH);
-		iova += unit;
+		for (i = 0; i < smmu->ptc_cache_size / unit; i++) {
+			u32 val;
+
+			val = SMMU_TLB_FLUSH_VA(iova, GROUP);
+			smmu_write(smmu, val, SMMU_TLB_FLUSH);
+			iova += unit;
+		}
 	}
 
 	FLUSH_SMMU_REGS(smmu);
@@ -1754,9 +1759,11 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu->swgids = 0x06f9000001fec9cf;
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
+		smmu->ptc_cache_size = SZ_32K;
 	} else {
 		smmu->num_translation_enable = 3;
 		smmu->num_asid_security = 1;
+		smmu->ptc_cache_size = SZ_16K;
 	}
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
