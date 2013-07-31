@@ -1199,7 +1199,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			ptbl = page_address(tbl_page);
 			for (i = 0; i < num; i++) {
 				pte = &ptbl[ptn + i];
-				if (*pte == _PTE_VACANT(iova)) {
+				if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE)) {
 					unsigned int *rest;
 
 					rest = &as->pte_count[pdn];
