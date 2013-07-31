@@ -1048,9 +1048,18 @@ core_initcall(prefetch_pages_init);
 static int pg_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			phys_addr_t phys, size_t len, int prot)
 {
-	WARN_ON(iommu_map(domain, iova + len, page_to_phys(prefetch_pages),
-			   PF_PAGES_SIZE, prot));
-	return iommu_map(domain, iova, phys, len, prot);
+	int err;
+
+	err = iommu_map(domain, iova + len, page_to_phys(prefetch_pages),
+			   PF_PAGES_SIZE, prot);
+	if (err)
+		return err;
+
+	err = iommu_map(domain, iova, phys, len, prot);
+	if (err)
+		iommu_unmap(domain, iova + len, PF_PAGES_SIZE);
+
+	return err;
 }
 
 static size_t pg_iommu_unmap(struct iommu_domain *domain,
@@ -1067,19 +1076,36 @@ static size_t pg_iommu_unmap(struct iommu_domain *domain,
 static int pg_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		    struct page **pages, size_t count, int prot)
 {
-	WARN_ON(iommu_map(domain, iova + (count << PAGE_SHIFT),
+	int err;
+
+	err = iommu_map(domain, iova + (count << PAGE_SHIFT),
 			   page_to_phys(prefetch_pages),
-			   PF_PAGES_SIZE, prot));
-	return iommu_map_pages(domain, iova, pages, count, prot);
+			   PF_PAGES_SIZE, prot);
+	if (err)
+		return err;
+
+	err = iommu_map_pages(domain, iova, pages, count, prot);
+	if (err)
+		iommu_unmap(domain, iova + (count << PAGE_SHIFT), PF_PAGES_SIZE);
+
+	return err;
 }
 
 static int pg_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		 struct scatterlist *sgl, int nents, int prot)
 {
-	WARN_ON(iommu_map(domain, iova + (nents << PAGE_SHIFT),
+	int err;
+
+	err = iommu_map(domain, iova + (nents << PAGE_SHIFT),
 			   page_to_phys(prefetch_pages),
-			   PF_PAGES_SIZE, prot));
-	return iommu_map_sg(domain, iova, sgl, nents, prot);
+			   PF_PAGES_SIZE, prot);
+	if (err)
+		return err;
+
+	err = iommu_map_sg(domain, iova, sgl, nents, prot);
+	if (err)
+		iommu_unmap(domain, iova + (nents << PAGE_SHIFT), PF_PAGES_SIZE);
+	return err;
 }
 
 static size_t arm_iommu_iova_get_free_total(struct device *dev)
