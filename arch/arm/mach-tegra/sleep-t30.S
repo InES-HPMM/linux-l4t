@@ -63,8 +63,11 @@
 
 #define PMC_IO_DPD_REQ			0x1b8
 #define PMC_IO_DPD_STATUS		0x1bc
-#define PMC_SCRATCH1_ECO       0x264
-#define PMC_POR_DPD_CTRL	       0x264
+#define PMC_IO_DPD2_REQ			0x1c0
+#define PMC_IO_DPD2_REQ_CODE_DPD_OFF	(1 << 30)
+#define PMC_IO_DPD2_REQ_DISC_BIAS	(1 << 27)
+#define PMC_SCRATCH1_ECO		0x264
+#define PMC_POR_DPD_CTRL		0x264
 
 #define FLOW_IPC_STS			0x500
 #define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
@@ -1285,10 +1288,20 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	bne	pmc_io_dpd_skip
 	mov32	r1, 0x8EC00000
 	str	r1, [r4, #PMC_IO_DPD_REQ]
-pmc_io_dpd_skip:
-
 	dsb
+	mov	pc, lr
 
+pmc_io_dpd_skip:
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	/*
+	 * Make sure the BGBIAS pads are not in DPD so that when the system
+	 * comes out of LP0 at max EMC frequency we can read memory.
+	 */
+	ldr	r1, =PMC_IO_DPD2_REQ_CODE_DPD_OFF
+	orr	r1, r1, #PMC_IO_DPD2_REQ_DISC_BIAS
+	str	r1, [r4, #PMC_IO_DPD2_REQ]
+#endif
+	dsb
 	mov	pc, lr
 
 	.ltorg
