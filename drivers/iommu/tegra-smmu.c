@@ -1311,11 +1311,13 @@ const struct dev_pm_ops tegra_smmu_pm_ops = {
 	.resume		= tegra_smmu_resume,
 };
 
+#ifdef CONFIG_OF
 static struct of_device_id tegra_smmu_of_match[] = {
 	{ .compatible = "nvidia,tegra30-smmu", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tegra_smmu_of_match);
+#endif
 
 static struct platform_driver tegra_smmu_driver = {
 	.probe		= tegra_smmu_probe,
@@ -1324,7 +1326,7 @@ static struct platform_driver tegra_smmu_driver = {
 		.owner	= THIS_MODULE,
 		.name	= "tegra_smmu",
 		.pm	= &tegra_smmu_pm_ops,
-		.of_match_table = tegra_smmu_of_match,
+		.of_match_table = of_match_ptr(tegra_smmu_of_match),
 	},
 };
 
