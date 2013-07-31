@@ -346,7 +346,8 @@ endchoice
 
 config TEGRA_GPU_CYCLE_STATS
 	bool "Support GK20A GPU CYCLE STATS"
-	default n
+	depends on TEGRA_GK20A
+	default y
 	help
 	  Say Y here to enable the cycle stats debugging features.
 
