@@ -1537,8 +1537,9 @@ wl_cfgp2p_listen_complete(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 			wl_clr_drv_status(wl, FAKE_REMAINING_ON_CHANNEL, ndev);
 #endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
 			if (ndev && (ndev->ieee80211_ptr != NULL)) {
-				cfg80211_remain_on_channel_expired(cfgdev, wl->last_roc_id,
-					&wl->remain_on_chan, wl->remain_on_chan_type, GFP_KERNEL);
+				cfg80211_remain_on_channel_expired
+				(ndev->ieee80211_ptr, wl->last_roc_id,
+				&wl->remain_on_chan, GFP_KERNEL);
 			}
 		}
 		if (wl_add_remove_eventmsg(wl_to_prmry_ndev(wl),
@@ -1588,8 +1589,9 @@ wl_cfgp2p_cancel_listen(struct wl_priv *wl, struct net_device *ndev,
 		del_timer_sync(&wl->p2p->listen_timer);
 		if (notify)
 			if (ndev && ndev->ieee80211_ptr) {
-				cfg80211_remain_on_channel_expired(ndev, wl->last_roc_id,
-					&wl->remain_on_chan, wl->remain_on_chan_type, GFP_KERNEL);
+				cfg80211_remain_on_channel_expired
+	(ndev->ieee80211_ptr, wl->last_roc_id,
+	&wl->remain_on_chan, GFP_KERNEL);
 			}
 	}
 	return 0;
