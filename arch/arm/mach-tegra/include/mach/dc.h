@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (C) 2010-2013 NVIDIA Corporation
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -302,6 +302,8 @@ struct tegra_dsi_out {
 	const u32		*pkt_seq;
 
 	struct dsi_phy_timing_ns phy_timing;
+
+	u8		*bl_name;
 };
 
 enum {
