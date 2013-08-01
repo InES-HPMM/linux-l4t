@@ -27,6 +27,7 @@
 #include <linux/leds.h>
 #include <linux/ioport.h>
 #include <linux/lm3528.h>
+#include <linux/export.h>
 
 #include "gpio-names.h"
 #include "board-panel.h"

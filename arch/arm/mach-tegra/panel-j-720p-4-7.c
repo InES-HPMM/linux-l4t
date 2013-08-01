@@ -25,6 +25,7 @@
 #include <linux/max8831_backlight.h>
 #include <linux/leds.h>
 #include <linux/ioport.h>
+#include <linux/export.h>
 
 #include "gpio-names.h"
 #include "board-panel.h"
