@@ -430,13 +430,15 @@ static int tegra12x_gpu_unpowergate(int id,
 
 	udelay(10);
 
+	powergate_partition_assert_reset(pg_info);
+
+	udelay(10);
+
 	/* disable clamp */
 	pmc_write(0, PMC_GPU_RG_CNTRL_0);
 
 	udelay(10);
 
-	powergate_partition_assert_reset(pg_info);
-	udelay(10);
 	powergate_partition_deassert_reset(pg_info);
 
 	udelay(10);
