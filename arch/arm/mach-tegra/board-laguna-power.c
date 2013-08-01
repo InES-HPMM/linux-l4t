@@ -349,6 +349,20 @@ int __init laguna_as3722_regulator_init(void)
 	regulator_has_full_constraints();
 	/* Set vdd_gpu init uV to 1V */
 	as3722_sd6_reg_idata.constraints.init_uV = 1000000;
+
+	/* Set overcurrent of rails. */
+	as3722_sd6_reg_pdata.oc_configure_enable = true;
+	as3722_sd6_reg_pdata.oc_trip_thres_perphase = 3500;
+	as3722_sd6_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	as3722_sd0_reg_pdata.oc_configure_enable = true;
+	as3722_sd0_reg_pdata.oc_trip_thres_perphase = 3500;
+	as3722_sd0_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	as3722_sd1_reg_pdata.oc_configure_enable = true;
+	as3722_sd1_reg_pdata.oc_trip_thres_perphase = 2500;
+	as3722_sd1_reg_pdata.oc_alarm_thres_perphase = 0;
+
 	printk(KERN_INFO "%s: i2c_register_board_info\n",
 			__func__);
 	if (board_info.board_id == BOARD_PM358) {
