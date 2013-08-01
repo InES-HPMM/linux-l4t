@@ -25,6 +25,9 @@
 #include <linux/io.h>
 #include <mach/edp.h>
 #include <mach/irqs.h>
+#include <linux/edp.h>
+#include <linux/platform_data/tegra_edp.h>
+#include <linux/pid_thermal_gov.h>
 #include <mach/hardware.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
@@ -49,6 +52,8 @@
 #include "iomap.h"
 #include "tegra-board-id.h"
 #include "tegra_cl_dvfs.h"
+#include "tegra11_soctherm.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -1732,25 +1737,29 @@ int __init ardbeg_edp_init(void)
 }
 
 
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
 
-/* TO DO: set default governor for gpu throttling */
-/*
-static struct thermal_zone_params bonaire_soctherm_therm_gpu_tzp = {
-	.governor_name = "pid_thermal_gov",
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 20,
+	.down_compensation = 20,
 };
-*/
 
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
+};
 
-/* TO DO: This number will be changed post-silicon */
-/* sample table */
-/*
-static struct soctherm_platform_data bonaire_soctherm_data = {
+static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 3,
+			.num_trips = 0,
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",
@@ -1778,7 +1787,7 @@ static struct soctherm_platform_data bonaire_soctherm_data = {
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
-			.num_trips = 3,
+			.num_trips = 0,
 			.trips = {
 				{
 					.cdev_type = "gk20a_cdev",
@@ -1824,22 +1833,19 @@ static struct soctherm_platform_data bonaire_soctherm_data = {
 			.priority = 0xf0,
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
-					.enable = true,
+					.enable = false,
 					.depth = 80,
 				},
 				[THROTTLE_DEV_GPU] = {
-					.enable = true,
+					.enable = false,
 					.throttling_depth = "heavy_throttling",
 				},
 			},
 		},
-		[THROTTLE_OC1] = {
-		},
 	},
 };
 
-int __init bonaire_soctherm_init(void)
+int __init ardbeg_soctherm_init(void)
 {
-	return tegra11_soctherm_init(&bonaire_soctherm_data);
+	return tegra11_soctherm_init(&ardbeg_soctherm_data);
 }
-*/

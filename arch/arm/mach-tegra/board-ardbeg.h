@@ -35,6 +35,7 @@ int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
 int ardbeg_pmon_init(void);
 int ardbeg_rail_alignment_init(void);
+int ardbeg_soctherm_init(void);
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME		"mpu9250"

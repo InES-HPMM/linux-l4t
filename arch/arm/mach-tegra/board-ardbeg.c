@@ -1152,9 +1152,9 @@ static void __init tegra_ardbeg_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 
 	ardbeg_sensors_init();
-#if 0
+
 	ardbeg_soctherm_init();
-#endif
+
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
 	bonaire_sata_init();
