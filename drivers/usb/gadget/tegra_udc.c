@@ -1583,9 +1583,10 @@ static void tegra_udc_release(struct device *dev)
 	kfree(udc);
 }
 
-static int tegra_udc_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *));
-static int tegra_udc_stop(struct usb_gadget_driver *driver);
+static int tegra_udc_start(struct usb_gadget *g,
+		struct usb_gadget_driver *driver);
+static int tegra_udc_stop(struct usb_gadget *g,
+		struct usb_gadget_driver *driver);
 /* defined in gadget.h */
 static const struct usb_gadget_ops tegra_gadget_ops = {
 	.get_frame = tegra_get_frame,
@@ -1596,8 +1597,8 @@ static const struct usb_gadget_ops tegra_gadget_ops = {
 	.vbus_session = tegra_vbus_session,
 	.vbus_draw = tegra_vbus_draw,
 	.pullup = tegra_pullup,
-	.start = tegra_udc_start,
-	.stop = tegra_udc_stop,
+	.udc_start = tegra_udc_start,
+	.udc_stop = tegra_udc_stop,
 };
 
 static int tegra_udc_setup_gadget_dev(struct tegra_udc *udc)
@@ -2515,23 +2516,12 @@ done:
  * Hook to gadget drivers
  * Called by initialization code of gadget drivers
  */
-static int tegra_udc_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *))
+static int tegra_udc_start(struct usb_gadget *g,
+		struct usb_gadget_driver *driver)
 {
 	struct tegra_udc *udc = the_udc;
-	int retval = -ENODEV;
 	unsigned long flags = 0;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
-
-	if (!udc)
-		return -ENODEV;
-
-	if (!driver || (driver->max_speed != USB_SPEED_FULL && driver->max_speed != USB_SPEED_HIGH)
-	    || !bind || !driver->disconnect || !driver->setup)
-		return -EINVAL;
-
-	if (udc->driver)
-		return -EBUSY;
 
 	/* lock is needed but whether should use this lock or another */
 	spin_lock_irqsave(&udc->lock, flags);
@@ -2542,15 +2532,6 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 	udc->gadget.dev.driver = &driver->driver;
 	spin_unlock_irqrestore(&udc->lock, flags);
 
-	/* bind udc driver to gadget driver */
-	retval = bind(&udc->gadget, driver);
-	if (retval) {
-		VDBG("bind to %s --> %d", driver->driver.name, retval);
-		udc->gadget.dev.driver = NULL;
-		udc->driver = NULL;
-		goto out;
-	}
-
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
 	if (vbus_enabled(udc))
 		tegra_vbus_session(&udc->gadget, 1);
@@ -2558,28 +2539,19 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 	printk(KERN_INFO "%s: bind to driver %s\n",
 			udc->gadget.name, driver->driver.name);
 
-out:
-	if (retval)
-		printk(KERN_WARNING "gadget driver register failed %d\n",
-								retval);
-
 	DBG("%s(%d) END\n", __func__, __LINE__);
-	return retval;
+	return 0;
 }
 
 /* Disconnect from gadget driver */
-static int tegra_udc_stop(struct usb_gadget_driver *driver)
+static int tegra_udc_stop(struct usb_gadget *g,
+		struct usb_gadget_driver *driver)
 {
 	struct tegra_udc *udc = the_udc;
 	struct tegra_ep *loop_ep;
 	unsigned long flags;
 
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
-	if (!udc)
-		return -ENODEV;
-
-	if (!driver || driver != udc->driver || !driver->unbind)
-		return -EINVAL;
 
 	tegra_vbus_session(&udc->gadget, 0);
 
@@ -2592,11 +2564,6 @@ static int tegra_udc_stop(struct usb_gadget_driver *driver)
 		nuke(loop_ep, -ESHUTDOWN);
 	spin_unlock_irqrestore(&udc->lock, flags);
 
-	/* report disconnect; the controller is already quiesced */
-	driver->disconnect(&udc->gadget);
-
-	/* unbind gadget and unhook driver. */
-	driver->unbind(&udc->gadget);
 	udc->gadget.dev.driver = NULL;
 	udc->driver = NULL;
 
