@@ -152,6 +152,7 @@ static inline void tegra_clocks_apply_init_table(void)
 struct dvfs;
 struct notifier_block;
 
+int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs);
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 int tegra_dvfs_override_core_voltage(int override_mv);
 unsigned long clk_get_rate_all_locked(struct clk *c);

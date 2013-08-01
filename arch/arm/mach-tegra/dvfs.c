@@ -677,6 +677,21 @@ int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 }
 EXPORT_SYMBOL(tegra_dvfs_set_rate);
 
+int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs)
+{
+	if (!c->dvfs)
+		return -ENOSYS;
+
+	if (c->dvfs->alt_freqs)
+		return -ENOSYS;
+
+	*num_freqs = c->dvfs->num_freqs;
+	*freqs = c->dvfs->freqs;
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_dvfs_get_freqs);
+
 #ifdef CONFIG_TEGRA_VDD_CORE_OVERRIDE
 static DEFINE_MUTEX(rail_override_lock);
 
