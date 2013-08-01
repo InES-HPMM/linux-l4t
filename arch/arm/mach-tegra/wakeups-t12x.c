@@ -224,11 +224,19 @@ int tegra_wake_to_irq(int wake)
 	return ret;
 }
 
-int tegra_disable_wake_source(int wake)
+int tegra_set_wake_source(int wake, int irq)
 {
+	if (wake < 0)
+		return -EINVAL;
+
 	if (wake >= ARRAY_SIZE(tegra_wake_event_irq))
 		return -EINVAL;
 
-	tegra_wake_event_irq[wake] = -EINVAL;
+	tegra_wake_event_irq[wake] = irq;
 	return 0;
+}
+
+int tegra_disable_wake_source(int wake)
+{
+	return tegra_set_wake_source(wake, -EINVAL);
 }

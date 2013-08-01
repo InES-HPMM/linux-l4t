@@ -882,13 +882,20 @@ static void ardbeg_modem_init(void)
 
 	switch (modem_id) {
 	case TEGRA_BB_BRUCE:
-		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
+			/* Set specific USB wake source for Ardbeg */
+			if (board_info.board_id == BOARD_E1780)
+				tegra_set_wake_source(42, INT_USB2);
 			platform_device_register(&icera_bruce_device);
+		}
 		break;
 	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
 		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
 			tegra_ehci2_device.dev.platform_data =
 				&tegra_ehci2_hsic_smsc_hub_pdata;
+			/* Set specific USB wake source for Ardbeg */
+			if (board_info.board_id == BOARD_E1780)
+				tegra_set_wake_source(42, INT_USB2);
 			platform_device_register(&tegra_ehci2_device);
 		}
 		break;
