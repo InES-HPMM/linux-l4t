@@ -725,8 +725,19 @@ static struct tegra_xusb_board_data xusb_bdata = {
 		.s5p0v2 = "usb_vbus2",
 		.s3p3v = "hvdd_usb",
 		.s1p8v = "avdd_pll_utmip",
-		.s1p2v = "vddio_hsic",
+		.vddio_hsic = "vddio_hsic",
 		.s1p05v = "avddio_usb",
+	},
+
+	.hsic = {
+		.rx_strobe_trim = 0x1,
+		.rx_data_trim = 0x1,
+		.tx_rtune_n = 0x8,
+		.tx_rtune_p = 0xc,
+		.tx_slew_n = 0,
+		.tx_slew_p = 0,
+		.auto_term_en = true,
+		.strb_trim_val = 0x22,
 	},
 #endif
 	.uses_external_pmic = false,
@@ -794,6 +805,13 @@ static void ardbeg_xusb_init(void)
 		}
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	}
+
+	if (usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)
+		xusb_bdata.portmap |= TEGRA_XUSB_HSIC_P0;
+
+	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
+		xusb_bdata.portmap |= TEGRA_XUSB_HSIC_P1;
+
 	if (xusb_bdata.portmap)
 		tegra_xusb_init(&xusb_bdata);
 }

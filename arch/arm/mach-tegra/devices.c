@@ -1237,6 +1237,7 @@ static struct resource tegra_xusb_resources[] = {
 	[5] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_SMI, "host-smi"),
 	[6] = DEFINE_RES_IRQ_NAMED(INT_XUSB_PADCTL, "padctl"),
 	[7] = DEFINE_RES_IRQ_NAMED(INT_USB3, "usb3"),
+	[8] = DEFINE_RES_IRQ_NAMED(INT_USB2, "usb2"),
 };
 
 static u64 tegra_xusb_dmamask = DMA_BIT_MASK(64);

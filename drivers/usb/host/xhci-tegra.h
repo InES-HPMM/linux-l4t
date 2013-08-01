@@ -97,6 +97,10 @@
 #define XUSB_CFG_ARU_CONTEXT_HSFS_SPEED			0x00000480
 #define XUSB_CFG_ARU_CONTEXT_HSFS_PP			0x00000484
 #define XUSB_CFG_CSB_BASE_ADDR				0x00000800
+#define XUSB_CFG_ARU_C11PAGESEL0			0x00000400
+#define XUSB_CFG_ARU_C11PAGESEL1			0x00000404
+#define XUSB_CFG_HSPX_CORE_HSICWRAP			0x00000658
+
 
 #define XUSB_DEVICE_ID_T114				0x0E16
 #define XUSB_DEVICE_ID_T124				0x0FA3
@@ -240,12 +244,6 @@
 #define BOOT_MEDIA_ENABLE		(1 << 0)
 #define BOOT_PORT(x)			(((x) & 0xf) << 1)
 
-#define USB2_PAD_MUX_0						0x4
-#define USB2_OTG_PAD_PORT0(x)		(((x) & 0x3) << 0)
-#define USB2_OTG_PAD_PORT1(x)		(((x) & 0x3) << 2)
-#define USB2_ULPI_PAD_PORT					(1 << 12)
-#define USB2_HSIC_PAD_PORT0					(1 << 14)
-#define USB2_HSIC_PAD_PORT1					(1 << 15)
 #define FORCE_PCIE_PAD_IDDQ_DISABLE			(1 << 16)
 #define FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 17)
 #define FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1	(1 << 18)
@@ -565,34 +563,6 @@
 #define RCTRL(x)			(((x) & 0xffff) << 0)
 #define TCTRL(x)			(((x) & 0xffff0000) >> 16)
 
-#define HSIC_PAD0_CTL_0_0	0xa8
-#define HSIC_PAD1_CTL_0_0	0xac
-#define TX_RTUNEP(x)		(((x) & 0xf) << 0)
-#define TX_RTUNEN(x)		(((x) & 0xf) << 4)
-#define TX_SLEWP(x)			(((x) & 0xf) << 8)
-#define TX_SLEWN(x)			(((x) & 0xf) << 12)
-#define HSIC_OPT(x)			(((x) & 0xf) << 16)
-
-#define HSIC_PAD0_CTL_1_0	0xb0
-#define HSIC_PAD1_CTL_1_0	0xb4
-#define AUTO_TERM_EN		(1 << 0)
-#define HSIC_IDDQ			(1 << 1)
-#define PD_TX				(1 << 2)
-#define PD_TRX				(1 << 3)
-#define PD_RX				(1 << 4)
-#define HSIC_PD_ZI			(1 << 5)
-#define LPBK				(1 << 6)
-#define RPD_DATA			(1 << 7)
-#define RPD_STROBE			(1 << 8)
-#define RPU_DATA			(1 << 9)
-#define RPU_STROBE			(1 << 10)
-
-#define HSIC_PAD0_CTL_2_0	0xb8
-#define HSIC_PAD1_CTL_2_0	0xbc
-#define RX_DATA_TRIM(x)		(((x) & 0xf) << 0)
-#define RX_STROBE_TRIM(x)	(((x) & 0xf) << 4)
-#define CALIOUT(x)			(((x) & 0xffff) << 16)
-
 #define ULPI_LINK_TRIM_CONTROL_0	0xc0
 #define DAT_TRIM_VAL(x)		(((x) & 0xff) << 0)
 #define DAT_SEL_DEL0		(1 << 9)
@@ -625,6 +595,59 @@
 #define HSIC_PM_SPARE_BIT1		(1 << 9)
 #define HSIC_PM_SPARE_BIT2		(1 << 10)
 #define HSIC_PM_SPARE_BIT3		(1 << 11)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define HSIC_PAD_CTL_0(_p)			(0xa8 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define HSIC_PAD_CTL_0(_p)			(0xc0 + _p * 4)
+#endif
+#define   TX_RTUNEP(x)				(((x) & 0xf) << 0)
+#define   TX_RTUNEN(x)				(((x) & 0xf) << 4)
+#define   TX_SLEWP(x)				(((x) & 0xf) << 8)
+#define   TX_SLEWN(x)				(((x) & 0xf) << 12)
+#define   HSIC_OPT(x)				(((x) & 0xf) << 16)
+
+#define USB2_PAD_MUX				0x4
+#define   USB2_OTG_PAD_PORT(_p, x)		(((x) & 0x3) << (0 + _p * 2))
+#define   USB_OTG_PAD_SNPS			(0)
+#define   USB_OTG_PAD_XUSB			(1)
+#define   USB_OTG_PAD_UART			(2)
+#define   USB2_ULPI_PAD_PORT			(1 << 12)
+#define   USB2_HSIC_PAD_PORT(_p)		(1 << (14 + _p * 1))
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define HSIC_PAD_CTL_1(_p)			(0xb0 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define HSIC_PAD_CTL_1(_p)			(0xc8 + _p * 4)
+#endif
+#define   AUTO_TERM_EN				(1 << 0)
+#define   HSIC_IDDQ				(1 << 1)
+#define   PD_TX				(1 << 2)
+#define   PD_TRX				(1 << 3)
+#define   PD_RX				(1 << 4)
+#define   HSIC_PD_ZI				(1 << 5)
+#define   LPBK					(1 << 6)
+#define   RPD_DATA				(1 << 7)
+#define   RPD_STROBE				(1 << 8)
+#define   RPU_DATA				(1 << 9)
+#define   RPU_STROBE				(1 << 10)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define HSIC_PAD_CTL_2(_p)			(0xb8 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define HSIC_PAD_CTL_2(_p)			(0xd0 + _p * 4)
+#endif
+#define   RX_DATA_TRIM(x)			(((x) & 0xf) << 0)
+#define   RX_STROBE_TRIM(x)			(((x) & 0xf) << 4)
+#define   CALIOUT(x)				(((x) & 0xffff) << 16)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define HSIC_STRB_TRIM_CONTROL			(0xc8)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define HSIC_STRB_TRIM_CONTROL			(0xe0)
+#endif
+#define STRB_TRIM_VAL(x)			(((x) & 0x3f) << 0)
+
 /* XUSB PAD Ctl Registers END */
 
 /*
@@ -692,4 +715,44 @@ struct vbus_enable_oc_map {
 	u32 vbus_en1;
 };
 
+/**
+ * port_to_hsic_pad - given "port number", return with hsic pad number
+ * @_port:	(zero-based) index to portsc registers array.
+ */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define port_to_hsic_pad(_port) ({			\
+	int _pad = -1;					\
+	int __p = _port;				\
+	if (__p == 5)					\
+		_pad = 0;				\
+	else if (__p == 6)				\
+		_pad = 1;				\
+	_pad; })
+#define hsic_pad_to_port(_pad) ({			\
+	int _port = -1;					\
+	int __p = _pad;					\
+	if (__p == 0)					\
+		_port = 5;				\
+	else if (__p == 1)				\
+		_port = 6;				\
+	_port; })
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define port_to_hsic_pad(_port) ({			\
+	int _pad = -1;					\
+	int __p = _port;				\
+	if (__p == 6)					\
+		_pad = 0;				\
+	else if (__p == 7)				\
+		_pad = 1;				\
+	_pad; })
+
+#define hsic_pad_to_port(_pad) ({			\
+	int _port = -1;					\
+	int __p = _pad;					\
+	if (__p == 0)					\
+		_port = 6;				\
+	else if (__p == 1)				\
+		_port = 7;				\
+	_port; })
+#endif
 #endif
