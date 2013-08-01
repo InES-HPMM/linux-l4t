@@ -270,8 +270,8 @@ int tegra_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 		>> FUSE_BASE_CP_SHIFT);
 
 	if (!(*base_cp)) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled.\n");
-		return -EINVAL;
+		pr_warning("soctherm: WARNING: Improper FUSE_BASE_CP. Using hard coded value (1400).\n");
+		*base_cp = 1400;
 	}
 
 	val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
@@ -292,10 +292,12 @@ int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 	*base_ft = (((val) &
 		(FUSE_BASE_FT_MASK << FUSE_BASE_FT_SHIFT))
 		>> FUSE_BASE_FT_SHIFT);
+
 	if (!(*base_ft)) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled.\n");
-		return -EINVAL;
+		pr_warning("soctherm: WARNING: Improper FUSE_BASE_FT. Using hard coded value (652).\n");
+		*base_ft = 652;
 	}
+
 	ft = (((val) &
 		(FUSE_SHIFT_FT_MASK << FUSE_SHIFT_FT_SHIFT))
 		>> FUSE_SHIFT_FT_SHIFT);
