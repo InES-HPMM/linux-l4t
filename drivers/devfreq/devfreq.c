@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2011 Samsung Electronics
  *	MyungJoo Ham <myungjoo.ham@samsung.com>
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -879,17 +880,29 @@ static ssize_t show_available_freqs(struct device *d,
 	ssize_t count = 0;
 	unsigned long freq = 0;
 
-	rcu_read_lock();
-	do {
-		opp = opp_find_freq_ceil(dev, &freq);
-		if (IS_ERR(opp))
-			break;
+	if (df->profile->max_state) {
+		int i;
 
-		count += scnprintf(&buf[count], (PAGE_SIZE - count - 2),
-				   "%lu ", freq);
-		freq++;
-	} while (1);
-	rcu_read_unlock();
+		for (i = 0; i < df->profile->max_state; i++) {
+			freq = df->profile->freq_table[i];
+			count += scnprintf(&buf[count],
+					   (PAGE_SIZE - count - 2), "%lu ",
+					   freq);
+		}
+	} else {
+		rcu_read_lock();
+		do {
+			opp = opp_find_freq_ceil(dev, &freq);
+			if (IS_ERR(opp))
+				break;
+
+			count += scnprintf(&buf[count],
+					   (PAGE_SIZE - count - 2), "%lu ",
+					   freq);
+			freq++;
+		} while (1);
+		rcu_read_unlock();
+	}
 
 	/* Truncate the trailing space */
 	if (count)
