@@ -353,17 +353,6 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_OFFSET				0x30
 #define ALARM_OFFSET				0x14
 
-#define FUSE_BASE_CP_SHIFT	0
-#define FUSE_BASE_CP_MASK	0x3ff
-#define FUSE_BASE_FT_SHIFT	16
-#define FUSE_BASE_FT_MASK	0x7ff
-#define FUSE_SHIFT_CP_SHIFT	10
-#define FUSE_SHIFT_CP_MASK	0x3f
-#define FUSE_SHIFT_CP_BITS	6
-#define FUSE_SHIFT_FT_SHIFT	27
-#define FUSE_SHIFT_FT_MASK	0x1f
-#define FUSE_SHIFT_FT_BITS	5
-
 #define FUSE_TSENSOR_CALIB_FT_SHIFT	13
 #define FUSE_TSENSOR_CALIB_FT_MASK	0x1fff
 #define FUSE_TSENSOR_CALIB_CP_SHIFT	0
@@ -1717,30 +1706,14 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
-static int soctherm_fuse_read_vsensor(void)
+static int soctherm_fuse_read_calib_base(void)
 {
 	u32 value;
 	s32 calib_cp, calib_ft;
 	s32 nominal_calib_cp, nominal_calib_ft;
 
-	tegra_fuse_get_vsensor_calib(&value);
-
-	/* Extract bits */
-	fuse_calib_base_cp = REG_GET(value, FUSE_BASE_CP);
-	fuse_calib_base_ft = REG_GET(value, FUSE_BASE_FT);
-
-	/* TSOSC base counts cannot be zero */
-	if (!fuse_calib_base_ft || !fuse_calib_base_cp) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
-		return -EINVAL;
-	}
-
-	/* Extract bits and convert to signed 2's complement */
-	calib_cp = REG_GET(value, FUSE_SHIFT_CP);
-	calib_cp = MAKE_SIGNED32(calib_cp, FUSE_SHIFT_CP_BITS);
-
-	calib_ft = REG_GET(value, FUSE_SHIFT_FT);
-	calib_ft = MAKE_SIGNED32(calib_ft, FUSE_SHIFT_FT_BITS);
+	tegra_fuse_calib_base_get_cp(&fuse_calib_base_cp, &calib_cp);
+	tegra_fuse_calib_base_get_ft(&fuse_calib_base_ft, &calib_ft);
 
 	nominal_calib_cp = 25;
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
@@ -2002,7 +1975,7 @@ static int soctherm_init_platform_data(void)
 	soctherm_writel(r, TS_PDIV);
 
 	/* Thermal Sensing programming */
-	if (soctherm_fuse_read_vsensor() < 0)
+	if (soctherm_fuse_read_calib_base() < 0)
 		return -EINVAL;
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].sensor_enable) {
