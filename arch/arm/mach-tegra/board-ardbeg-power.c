@@ -33,6 +33,7 @@
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
+#include <linux/regulator/tegra-dfll-bypass-regulator.h>
 
 #include <asm/mach-types.h>
 
@@ -1484,12 +1485,46 @@ static struct platform_device *pfixed_reg_devs[] = {
 	ARBDEG_1731_COMMON_FIXED_REG
 };
 
-#define ARDBEG_E1735_CVB_ALIGNMENT	18750
+/************************ ARDBEG CL-DVFS DATA *********************/
+#define E1735_CPU_VDD_MAP_SIZE		33
+#define E1735_CPU_VDD_MIN_UV		675000
+#define E1735_CPU_VDD_STEP_UV		18750
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-/* board parameters for cpu dfll */
-static struct tegra_cl_dvfs_cfg_param ardbeg_cl_dvfs_param = {
+/* Macro definition of dfll bypass device */
+#define DFLL_BYPASS(_board, _min, _step, _size)				       \
+static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
+	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
+	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
+	.constraints = {						       \
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		       \
+				REGULATOR_MODE_STANDBY),		       \
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		       \
+				REGULATOR_CHANGE_STATUS |		       \
+				REGULATOR_CHANGE_VOLTAGE),		       \
+		.min_uV = (_min),					       \
+		.max_uV = ((_size) - 1) * (_step) + (_min),		       \
+		.always_on = 1,						       \
+		.boot_on = 1,						       \
+	},								       \
+};									       \
+static struct tegra_dfll_bypass_platform_data _board##_dfll_bypass_pdata = {   \
+	.reg_init_data = &_board##_dfll_bypass_init_data,		       \
+	.uV_step = (_step),						       \
+	.linear_min_sel = 0,						       \
+	.n_voltages = (_size),						       \
+};									       \
+static struct platform_device e1735_dfll_bypass_dev = {			       \
+	.name = "tegra_dfll_bypass",					       \
+	.id = -1,							       \
+	.dev = {							       \
+		.platform_data = &_board##_dfll_bypass_pdata,		       \
+	},								       \
+}
+
+/* E1735 board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param e1735_cl_dvfs_param = {
 	.sample_rate = 50000,
 
 	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
@@ -1503,17 +1538,26 @@ static struct tegra_cl_dvfs_cfg_param ardbeg_cl_dvfs_param = {
 };
 
 /* E1735 RT8812C volatge map */
-#define E1735_CPU_VDD_MAP_SIZE 33
 static struct voltage_reg_map e1735_cpu_vdd_map[E1735_CPU_VDD_MAP_SIZE];
-static inline void e1735_fill_reg_map(void)
+static inline int e1735_fill_reg_map(int nominal_mv)
 {
-	int i;
+	int i, uv, nominal_uv = 0;
 	for (i = 0; i < E1735_CPU_VDD_MAP_SIZE; i++) {
 		e1735_cpu_vdd_map[i].reg_value = i;
-		e1735_cpu_vdd_map[i].reg_uV =
-			675000 + ARDBEG_E1735_CVB_ALIGNMENT * i;
+		e1735_cpu_vdd_map[i].reg_uV = uv =
+			E1735_CPU_VDD_MIN_UV + E1735_CPU_VDD_STEP_UV * i;
+		if (!nominal_uv && uv >= nominal_mv * 1000)
+			nominal_uv = uv;
 	}
+	return nominal_uv;
 }
+
+/* E1735 dfll bypass device for legacy dvfs control */
+static struct regulator_consumer_supply e1735_dfll_bypass_consumers[] = {
+	REGULATOR_SUPPLY("vdd_cpu", NULL),
+};
+DFLL_BYPASS(e1735, E1735_CPU_VDD_MIN_UV, E1735_CPU_VDD_STEP_UV,
+	    E1735_CPU_VDD_MAP_SIZE);
 
 static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
@@ -1522,20 +1566,30 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 		.pwm_rate = 12750000,
 		.out_gpio = TEGRA_GPIO_PS5,
 		.out_enable_high = false,
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+		.dfll_bypass_dev = &e1735_dfll_bypass_dev,
+#endif
 	},
 	.vdd_map = e1735_cpu_vdd_map,
 	.vdd_map_size = E1735_CPU_VDD_MAP_SIZE,
 
-	.cfg_param = &ardbeg_cl_dvfs_param,
+	.cfg_param = &e1735_cl_dvfs_param,
 };
 
 static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
+	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
 
 	if (pmu_board_id == BOARD_E1735) {
-		e1735_fill_reg_map();
+		v = e1735_fill_reg_map(v);
 		data = &e1735_cl_dvfs_data;
+		if (data->u.pmu_pwm.dfll_bypass_dev) {
+			/* this has to be exact to 1uV level from table */
+			e1735_dfll_bypass_init_data.constraints.init_uV = v;
+		} else {
+			(void)e1735_dfll_bypass_dev;
+		}
 	}
 
 	if (data) {
@@ -1557,8 +1611,8 @@ int __init ardbeg_rail_alignment_init(void)
 	tegra_get_pmu_board_info(&pmu_board_info);
 
 	if (pmu_board_info.board_id == BOARD_E1735)
-		tegra12x_vdd_cpu_align(ARDBEG_E1735_CVB_ALIGNMENT,
-				       675000);
+		tegra12x_vdd_cpu_align(E1735_CPU_VDD_STEP_UV,
+				       E1735_CPU_VDD_MIN_UV);
 	else
 		tegra12x_vdd_cpu_align(ARDBEG_DEFAULT_CVB_ALIGNMENT, 0);
 	return 0;
