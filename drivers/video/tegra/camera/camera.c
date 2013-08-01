@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <linux/export.h>
 
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -305,9 +306,12 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	/* Powergate VE when boot */
 	mutex_lock(&camera->tegra_camera_lock);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+
 	ret = tegra_camera_powergate_init(camera);
-	if (ret)
+	if (ret) {
+		mutex_unlock(&camera->tegra_camera_lock);
 		goto regulator_fail;
+	}
 #endif
 	mutex_unlock(&camera->tegra_camera_lock);
 
@@ -380,12 +384,16 @@ regulator_fail:
 	camera = NULL;
 	return camera;
 }
+EXPORT_SYMBOL(tegra_camera_register);
 
 int tegra_camera_unregister(struct tegra_camera *camera)
 {
 	int i;
+	int ret;
 
 	dev_info(camera->dev, "%s: ++\n", __func__);
+
+	tegra_camera_remove_debugfs(camera);
 
 	/* Free IRQ */
 	tegra_camera_intr_free(camera);
@@ -393,10 +401,19 @@ int tegra_camera_unregister(struct tegra_camera *camera)
 	for (i = 0; i < CAMERA_CLK_MAX; i++)
 		clk_put(camera->clock[i].clk);
 	tegra_camera_isomgr_unregister(camera);
+
+	ret = misc_deregister(&camera->misc_dev);
+	if (ret)
+		dev_err(camera->dev, "deregister misc dev fail, %d\n", ret);
+
+	if (camera->reg)
+		regulator_put(camera->reg);
+
 	kfree(camera);
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_camera_unregister);
 
 #ifdef CONFIG_PM
 int tegra_camera_suspend(struct tegra_camera *camera)
@@ -415,10 +432,12 @@ int tegra_camera_suspend(struct tegra_camera *camera)
 
 	return ret;
 }
+EXPORT_SYMBOL(tegra_camera_suspend);
 
 int tegra_camera_resume(struct tegra_camera *camera)
 {
 	dev_info(camera->dev, "%s: ++\n", __func__);
 	return 0;
 }
+EXPORT_SYMBOL(tegra_camera_resume);
 #endif
