@@ -2709,6 +2709,7 @@ EXPORT_SYMBOL_GPL(sdhci_disable_irq_wakeups);
 int sdhci_suspend_host(struct sdhci_host *host)
 {
 	int ret;
+	struct mmc_host *mmc = host->mmc;
 
 	if (host->ops->platform_suspend)
 		host->ops->platform_suspend(host);
