@@ -7,10 +7,6 @@
 	model = "NVIDIA Tegra114 pluto evaluation board";
 	compatible = "nvidia,pluto", "nvidia,tegra114";
 
-	gpio: gpio@6000d000 {
-		status = "okay";
-	};
-
 	host1x {
 		dsi {
 			nvidia,controller-vs = <1>;

@@ -6,10 +6,6 @@
 	model = "NVIDIA Tegra114 dalmore evaluation board";
 	compatible = "nvidia,dalmore", "nvidia,tegra114";
 
-	gpio: gpio@6000d000 {
-		status = "okay";
-	};
-
 	pinmux {
 		pinctrl-names = "default";
 		pinctrl-0 = <&state_default>;
