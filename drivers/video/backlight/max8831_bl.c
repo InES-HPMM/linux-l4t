@@ -30,6 +30,7 @@
 #include <linux/max8831_backlight.h>
 #include <linux/regulator/consumer.h>
 #include <linux/edp.h>
+#include <linux/platform_device.h>
 
 struct max8831_backlight_data {
 	struct device		*max8831_dev;
