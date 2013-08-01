@@ -2048,7 +2048,7 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
 		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO,
-	.quirks2 = SDHCI_QUIRK2_BROKEN_PRESET_VALUES,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
 	.ops  = &tegra_sdhci_ops,
 };
 
