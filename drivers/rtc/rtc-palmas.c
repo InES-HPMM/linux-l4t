@@ -387,7 +387,7 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	palmas_rtc->irq = platform_get_irq(pdev, 0);
+	palmas_rtc->irq = palmas_irq_get_virq(palmas, PALMAS_RTC_ALARM_IRQ);
 	dev_dbg(&pdev->dev, "RTC interrupt %d\n", palmas_rtc->irq);
 	ret = request_threaded_irq(palmas_rtc->irq, NULL,
 		palmas_rtc_interrupt, IRQF_TRIGGER_LOW | IRQF_ONESHOT |
