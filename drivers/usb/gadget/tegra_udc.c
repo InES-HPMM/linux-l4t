@@ -1587,7 +1587,7 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *));
 static int tegra_udc_stop(struct usb_gadget_driver *driver);
 /* defined in gadget.h */
-static struct usb_gadget_ops tegra_gadget_ops = {
+static const struct usb_gadget_ops tegra_gadget_ops = {
 	.get_frame = tegra_get_frame,
 #ifndef CONFIG_USB_ANDROID
 	.wakeup = tegra_wakeup,
