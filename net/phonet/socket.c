@@ -77,7 +77,6 @@ static struct hlist_head *pn_hash_list(u16 obj)
 struct sock *pn_find_sock_by_sa_and_skb(struct net *net,
 			const struct sockaddr_pn *spn, struct sk_buff *skb)
 {
-	struct hlist_node *node;
 	struct sock *sknode;
 	struct sock *rval = NULL;
 	u16 obj = pn_sockaddr_get_object(spn);
@@ -90,7 +89,7 @@ struct sock *pn_find_sock_by_sa_and_skb(struct net *net,
 	rcu_read_lock();
 
 	for (h = 0; h < PN_HASHSIZE; h++) {
-		sk_for_each_rcu(sknode, node, hlist) {
+		sk_for_each_rcu(sknode, hlist) {
 			struct pn_sock *pn = pn_sk(sknode);
 			BUG_ON(!pn->sobject); /* unbound socket */
 			if (!net_eq(sock_net(sknode), net))
