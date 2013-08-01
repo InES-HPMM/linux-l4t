@@ -147,10 +147,13 @@ static int tegra_vc_set_cur_state(
 
 	mutex_lock(&capping_lock);
 	if (vcd->thermal_idx != cur_state) {
+// Not sending netlink event to userspace volt_cap, this needs a thermal_zone_device
+#if 0
 		thermal_generate_netlink_event(
 			vcd->cd->trip_temperatures[cur_state],
 			cur_state > vcd->thermal_idx ?
 				THERMAL_AUX1 : THERMAL_AUX0);
+#endif
 		vcd->thermal_idx = cur_state;
 	}
 	mutex_unlock(&capping_lock);
