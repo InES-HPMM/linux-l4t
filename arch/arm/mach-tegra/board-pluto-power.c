@@ -659,7 +659,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pmic_pdata = &pmic_platform,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
-	.irq_type = IRQ_TYPE_LEVEL_HIGH,
+	.irq_flags = IRQ_TYPE_LEVEL_HIGH,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 };
