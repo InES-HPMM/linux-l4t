@@ -4,7 +4,7 @@
  * MC error interrupt handling header file. Various defines and declarations
  * across T20, T30, and T11x.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

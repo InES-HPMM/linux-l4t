@@ -3,7 +3,7 @@
  *
  * MC error code common to T3x and T11x. T20 has been left alone.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,9 +49,7 @@ static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp);
 static int arb_intr_mma_get(char *buff, const struct kernel_param *kp);
 static void unthrottle_prints(struct work_struct *work);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static int spurious_mc1_intr;
-#endif
+static int spurious_intrs;
 
 static struct arb_emem_intr_info arb_intr_info = {
 	.lock = __SPIN_LOCK_UNLOCKED(arb_intr_info.lock),
@@ -66,9 +64,7 @@ static struct kernel_param_ops arb_intr_mma_ops = {
 module_param_cb(arb_intr_mma_in_ms, &arb_intr_mma_ops,
 		&arb_intr_info.arb_intr_mma, S_IRUGO | S_IWUSR);
 module_param(arb_intr_count, int, S_IRUGO | S_IWUSR);
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-module_param(spurious_mc1_intr, int, S_IRUGO | S_IWUSR);
-#endif
+module_param(spurious_intrs, int, S_IRUGO | S_IWUSR);
 
 static const char *const smmu_page_attrib[] = {
 	"nr-nw-s",
@@ -197,7 +193,7 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	u32 write, secure;
 	u32 client_id;
 
-	intr = readl(mc + MC_INT_STATUS) & MC_INT_EN_MASK;
+	intr = readl(mc + MC_INT_STATUS);
 
 	cancel_delayed_work(&unthrottle_prints_work);
 
@@ -209,20 +205,20 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	if (intr & MC_INT_EXT_INTR_IN) {
 		err_mc = mc1;
 		intr = readl(err_mc + MC_INT_STATUS);
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-		/*
-		 * It appears like the secondary MC occasionally generates a
-		 * spurious interrupt. If so, just ignore this interrupt.
-		 */
-		if (!intr) {
-			spurious_mc1_intr++;
-			goto out;
-		}
 	}
-#endif /* CONFIG_ARCH_TEGRA_11x_SOC */
 #endif
 
+	/*
+	 * Sometimes the MC seems to generate spurious interrupts - that
+	 * is interrupts with an interrupt status register equal to 0.
+	 * Not much we can do other than keep a count of them.
+	 */
+	if (!intr) {
+		spurious_intrs++;
+		goto out;
+	}
+
+	intr &= MC_INT_EN_MASK;
 	if (intr & MC_INT_ARBITRATION_EMEM) {
 		arb_intr();
 		if (intr == MC_INT_ARBITRATION_EMEM)
