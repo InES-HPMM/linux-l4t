@@ -236,9 +236,11 @@ get_write_lock:
 		vma->vm_flags = vm_flags;
 	}
 
-	mmu_notifier_invalidate_range_start(mm, start, start + size);
+	/* XXX: using MMU_MIGRATE as it is OK. Need to optimize this */
+	mmu_notifier_invalidate_range_start(mm, start, start + size,
+					    MMU_MIGRATE);
 	err = vma->vm_ops->remap_pages(vma, start, size, pgoff);
-	mmu_notifier_invalidate_range_end(mm, start, start + size);
+	mmu_notifier_invalidate_range_end(mm, start, start + size, MMU_MIGRATE);
 
 	/*
 	 * We can't clear VM_NONLINEAR because we'd have to do

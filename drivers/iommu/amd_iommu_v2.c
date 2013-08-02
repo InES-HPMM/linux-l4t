@@ -421,21 +421,25 @@ static int mn_clear_flush_young(struct mmu_notifier *mn,
 static void mn_change_pte(struct mmu_notifier *mn,
 			  struct mm_struct *mm,
 			  unsigned long address,
-			  pte_t pte)
+			  pte_t pte,
+			  enum mmu_event event)
 {
 	__mn_flush_page(mn, address);
 }
 
 static void mn_invalidate_page(struct mmu_notifier *mn,
 			       struct mm_struct *mm,
-			       unsigned long address)
+			       unsigned long address,
+			       enum mmu_event event)
 {
 	__mn_flush_page(mn, address);
 }
 
 static void mn_invalidate_range_start(struct mmu_notifier *mn,
 				      struct mm_struct *mm,
-				      unsigned long start, unsigned long end)
+				      unsigned long start,
+				      unsigned long end,
+				      enum mmu_event event)
 {
 	struct pasid_state *pasid_state;
 	struct device_state *dev_state;
@@ -449,7 +453,9 @@ static void mn_invalidate_range_start(struct mmu_notifier *mn,
 
 static void mn_invalidate_range_end(struct mmu_notifier *mn,
 				    struct mm_struct *mm,
-				    unsigned long start, unsigned long end)
+				    unsigned long start,
+				    unsigned long end,
+				    enum mmu_event event)
 {
 	struct pasid_state *pasid_state;
 	struct device_state *dev_state;
