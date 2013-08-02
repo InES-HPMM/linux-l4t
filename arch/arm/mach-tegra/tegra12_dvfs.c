@@ -56,6 +56,12 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_cdev,
+	.alignment = {
+		.step_uv = 10000, /* 10mV */
+	},
+	.stats = {
+		.bin_uV = 10000, /* 10mV */
+	}
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
@@ -80,10 +86,10 @@ static struct dvfs_rail *tegra12_dvfs_rails[] = {
 	&tegra12_dvfs_rail_vdd_gpu,
 };
 
-/* default cvb alignment on Tegra11 - 10mV */
-int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
+void __init tegra12x_vdd_cpu_align(int step_uv, int offset_uv)
 {
-	return 10000;
+	tegra12_dvfs_rail_vdd_cpu.alignment.step_uv = step_uv;
+	tegra12_dvfs_rail_vdd_cpu.alignment.offset_uv = offset_uv;
 }
 
 /* CPU DVFS tables */
@@ -477,13 +483,16 @@ static inline int get_cvb_voltage(int speedo, int s_scale,
 	return mv;
 }
 
-static inline int round_cvb_voltage(int mv, int v_scale)
+static int round_cvb_voltage(int mv, int v_scale, struct rail_alignment *align)
 {
 	/* combined: apply voltage scale and round to cvb alignment step */
-	int cvb_align_step_uv = tegra_get_cvb_alignment_uV();
+	int uv;
+	int step = (align->step_uv ? : 1000) * v_scale;
+	int offset = align->offset_uv * v_scale;
 
-	return DIV_ROUND_UP(mv * 1000, v_scale * cvb_align_step_uv) *
-		cvb_align_step_uv / 1000;
+	uv = max(mv * 1000, offset) - offset;
+	uv = DIV_ROUND_UP(uv, step) * align->step_uv + align->offset_uv;
+	return uv / 1000;
 }
 
 static int __init set_cpu_dvfs_data(
@@ -495,10 +504,11 @@ static int __init set_cpu_dvfs_data(
 	unsigned long fmin_use_dfll = 0;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
+	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_cpu.alignment;
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
-	min_dfll_mv =  round_cvb_voltage(min_dfll_mv * 1000, 1000);
-	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000);
+	min_dfll_mv =  round_cvb_voltage(min_dfll_mv * 1000, 1000, align);
+	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000, align);
 	BUG_ON(min_dfll_mv < tegra12_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
@@ -519,13 +529,14 @@ static int __init set_cpu_dvfs_data(
 
 		dfll_mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_dfll_param);
+
 		/* FIXME: Remove guardband later */
 		dfll_mv = DIV_ROUND_CLOSEST(dfll_mv * 120, 100);
-		dfll_mv = round_cvb_voltage(dfll_mv, d->voltage_scale);
+		dfll_mv = round_cvb_voltage(dfll_mv, d->voltage_scale, align);
 
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
-		mv = round_cvb_voltage(mv, d->voltage_scale);
+		mv = round_cvb_voltage(mv, d->voltage_scale, align);
 
 		/*
 		 * Check maximum frequency at minimum voltage for dfll source;
@@ -691,9 +702,6 @@ void __init tegra12x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_GPU_DVFS
 	tegra_dvfs_gpu_disabled = true;
 #endif
-	/* Setup rail bins */
-	tegra12_dvfs_rail_vdd_cpu.stats.bin_uV = tegra_get_cvb_alignment_uV();
-	tegra12_dvfs_rail_vdd_core.stats.bin_uV = tegra_get_cvb_alignment_uV();
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail

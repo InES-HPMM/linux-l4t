@@ -37,6 +37,7 @@
 #include <asm/mach-types.h>
 
 #include "pm.h"
+#include "dvfs.h"
 #include "board.h"
 #include "tegra-board-id.h"
 #include "board-common.h"
@@ -1485,17 +1486,6 @@ static struct platform_device *pfixed_reg_devs[] = {
 
 #define ARDBEG_E1735_CVB_ALIGNMENT	18750
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
-int tegra_get_cvb_alignment_uV(void)
-{
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if (pmu_board_info.board_id == BOARD_E1735)
-		return ARDBEG_E1735_CVB_ALIGNMENT;
-	else
-		return ARDBEG_DEFAULT_CVB_ALIGNMENT;
-}
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
@@ -1559,6 +1549,20 @@ static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 static inline int ardbeg_cl_dvfs_init(u16 pmu_board_id)
 { return 0; }
 #endif
+
+int __init ardbeg_rail_alignment_init(void)
+{
+	struct board_info pmu_board_info;
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if (pmu_board_info.board_id == BOARD_E1735)
+		tegra12x_vdd_cpu_align(ARDBEG_E1735_CVB_ALIGNMENT,
+				       675000);
+	else
+		tegra12x_vdd_cpu_align(ARDBEG_DEFAULT_CVB_ALIGNMENT, 0);
+	return 0;
+}
 
 static int __init ardbeg_fixed_regulator_init(void)
 {

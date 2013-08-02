@@ -57,6 +57,11 @@ struct rail_stats {
 	int bin_uV;
 };
 
+struct rail_alignment {
+	int offset_uv;
+	int step_uv;
+};
+
 struct dvfs_rail {
 	const char *reg_id;
 	int min_millivolts;
@@ -92,6 +97,7 @@ struct dvfs_rail {
 	int therm_floor_idx;
 	struct tegra_cooling_device *vmin_cdev;
 	struct tegra_cooling_device *vmax_cdev;
+	struct rail_alignment alignment;
 	struct rail_stats stats;
 };
 
@@ -216,6 +222,7 @@ static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
 void tegra11x_init_dvfs(void);
 void tegra12x_init_dvfs(void);
 void tegra14x_init_dvfs(void);
+void tegra12x_vdd_cpu_align(int step_uv, int offset_uv);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
 int dvfs_debugfs_init(struct dentry *clk_debugfs_root);
 int tegra_dvfs_late_init(void);
