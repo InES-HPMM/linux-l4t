@@ -116,7 +116,7 @@ AS3722_LDO11,
 #define AS3722_GPIO_USAGE_OC_PG_SD6                     0xE
 
 /* Interrupt IDs */
-#define AS3722_IRQ_MAX_HANDLER                 16
+#define AS3722_IRQ_MAX_HANDLER                 18
 #define AS3722_IRQ_LID                         0
 #define AS3722_IRQ_ACOK                        1
 #define AS3722_IRQ_CORE_PWRREQ                 2
@@ -134,6 +134,7 @@ AS3722_LDO11,
 #define AS3722_IRQ_RTC_GPIO4                   14
 #define AS3722_IRQ_RTC_GPIO5                   15
 #define AS3722_IRQ_WATCHDOG                    16
+#define AS3722_IRQ_ADC                         17
 
 /* AS3722 registers */
 #define AS3722_SD0_VOLTAGE_REG                 0x00
@@ -387,6 +388,7 @@ AS3722_LDO11,
 #define AS3722_IRQ_MASK_GPIO_EDGE4             (1 << 4)
 #define AS3722_IRQ_MASK_GPIO_EDGE5             (1 << 5)
 #define AS3722_IRQ_MASK_WATCHDOG               (1 << 6)
+#define AS3722_IRQ_MASK_ADC                    (1 << 7)
 
 #define AS3722_IRQ_BIT_LID                     (1 << 0)
 #define AS3722_IRQ_BIT_ACOK                    (1 << 1)
@@ -409,7 +411,10 @@ AS3722_LDO11,
 #define AS3722_ADC1_MASK_INTERVAL_TIME         (1 << 0)
 #define AS3722_ADC1_BIT_INTERVAL_TIME          (1 << 0)
 
-#define AS3722_ADC_MASK_MSB_VAL                0x3F
+#define AS3722_ADC_MASK_MSB_VAL                0x7F
+#define AS3722_ADC1_INT_MASK                   (1 << 7)
+#define AS3722_ADC1_UNMASK_VALUE               (0 << 7)
+
 #define AS3722_ADC_MASK_LSB_VAL                0x07
 
 #define AS3722_ADC0_MASK_CONV_START            (1 << 7)
@@ -449,6 +454,10 @@ AS3722_LDO11,
 #define AS3722_GPIO5_SIGNAL_MASK               (1 << 5)
 #define AS3722_GPIO6_SIGNAL_MASK               (1 << 6)
 #define AS3722_GPIO7_SIGNAL_MASK               (1 << 7)
+
+#define AS3722_ADC1_LOW_VOLTAGE_RANGE_MASK     (1 << 5)
+#define AS3722_ADC1_INTEVAL_SCAN_MASK          (1 << 6)
+#define AS3722_ADC1_CONVERSION_START_MASK      (1 << 7)
 
 #define AS3722_INT_PULLUP_MASK                 (1<<5)
 #define AS3722_INT_PULLUP_ON                   (1<<5)

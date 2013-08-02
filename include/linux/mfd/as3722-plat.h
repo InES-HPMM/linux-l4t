@@ -101,6 +101,19 @@ struct as3722_regulator_platform_data {
 	int oc_alarm_thres_perphase;
 };
 
+/*
+ * as3722_adc_extcon_platform_data: ADC platform data.
+ * @connection_name: Extcon connection name.
+ */
+struct as3722_adc_extcon_platform_data {
+	const char *connection_name;
+	bool enable_adc1_continuous_mode;
+	bool enable_low_voltage_range;
+	int adc_channel;
+	int hi_threshold;
+	int low_threshold;
+};
+
 struct as3722_platform_data {
 	struct as3722_regulator_platform_data *reg_pdata[AS3722_NUM_REGULATORS];
 
@@ -116,6 +129,7 @@ struct as3722_platform_data {
 	struct as3722_gpio_config *gpio_cfgs;
 	struct as3722_rtc_platform_data *rtc_pdata;
 	struct as3722_pinctrl_init_data *pinctrl_pdata;
+	struct as3722_adc_extcon_platform_data *extcon_pdata;
 	int pinctrl_init_data_size;
 
 	bool enable_ldo3_tracking;
