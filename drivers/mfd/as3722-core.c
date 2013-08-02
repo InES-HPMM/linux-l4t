@@ -42,6 +42,7 @@ enum as3722_ids {
 	AS3722_GPIO_ID,
 	AS3722_REGULATOR_ID,
 	AS3722_RTC_ID,
+	AS3722_ADC,
 };
 
 static const struct resource as3722_rtc_resource[] = {
@@ -49,6 +50,15 @@ static const struct resource as3722_rtc_resource[] = {
 		.name = "as3722-rtc-alarm",
 		.start = AS3722_IRQ_RTC_ALARM,
 		.end = AS3722_IRQ_RTC_ALARM,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static const struct resource as3722_adc_resource[] = {
+	{
+		.name = "as3722-adc",
+		.start = AS3722_IRQ_ADC,
+		.end = AS3722_IRQ_ADC,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -67,6 +77,12 @@ static struct mfd_cell as3722_devs[] = {
 		.num_resources = ARRAY_SIZE(as3722_rtc_resource),
 		.resources = as3722_rtc_resource,
 		.id = AS3722_RTC_ID,
+	},
+	{
+		.name = "as3722-adc-extcon",
+		.num_resources = ARRAY_SIZE(as3722_adc_resource),
+		.resources = as3722_adc_resource,
+		.id = AS3722_ADC,
 	},
 };
 
@@ -139,6 +155,10 @@ static const struct regmap_irq as3722_irqs[] = {
 	[AS3722_IRQ_WATCHDOG] = {
 		.mask = AS3722_IRQ_MASK_WATCHDOG,
 		.reg_offset = 2,
+	},
+	[AS3722_IRQ_ADC] = {
+		.mask = AS3722_IRQ_MASK_ADC,
+		.reg_offset = 3,
 	},
 };
 
