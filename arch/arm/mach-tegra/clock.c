@@ -1033,9 +1033,23 @@ static int __init tegra_dfll_cpu_start(void)
 
 static int __init tegra_clk_late_init(void)
 {
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+	bool init_dfll_first = true;
+#else
+	bool init_dfll_first = false;
+#endif
 	tegra_init_disable_boot_clocks(); /* must before dvfs late init */
-	if (!tegra_dvfs_late_init())
-		tegra_dfll_cpu_start();	/* after successful dvfs init only */
+
+	/*
+	 * Initialize dfll first if it provides bypass to regulator for legacy
+	 * dvfs; otherwise legacy dvfs controls cpu voltage independently, and
+	 * initialized before dfll.
+	 */
+	if (init_dfll_first)
+		tegra_dfll_cpu_start();
+	if (!tegra_dvfs_late_init() && !init_dfll_first)
+		tegra_dfll_cpu_start();
+
 	tegra_sync_cpu_clock();		/* after attempt to get dfll ready */
 	tegra_recalculate_cpu_edp_limits();
 	return 0;

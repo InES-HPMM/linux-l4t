@@ -90,6 +90,9 @@ struct tegra_suspend_platform_data {
 	unsigned long min_residency_mc_clk;
 	bool usb_vbus_internal_wake; /* support for internal vbus wake */
 	bool usb_id_internal_wake; /* support for internal id wake */
+
+	void (*suspend_dfll_bypass)(void);
+	void (*resume_dfll_bypass)(void);
 };
 
 /* clears io dpd settings before kernel code */

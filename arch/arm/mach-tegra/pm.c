@@ -343,23 +343,37 @@ unsigned long tegra_min_residency_crail(void)
 }
 #endif
 
-static void suspend_cpu_dfll_mode(void)
+static void suspend_cpu_dfll_mode(unsigned int flags)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	/* If DFLL is used as CPU clock source go to open loop mode */
-	if (!is_lp_cluster() && tegra_dfll &&
-	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
-		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 0);
+	if (!(flags & TEGRA_POWER_CLUSTER_MASK)) {
+		if (!is_lp_cluster() && tegra_dfll &&
+		    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+			tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 0);
+	}
+
+	/* If defined always suspend dfll bypass (safe cpu rail down) */
+	if (pdata && pdata->suspend_dfll_bypass &&
+	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		pdata->suspend_dfll_bypass();
 #endif
 }
 
-static void resume_cpu_dfll_mode(void)
+static void resume_cpu_dfll_mode(unsigned int flags)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	/* If DFLL is Not used as CPU clock source restore bypass mode */
+	if (pdata && pdata->resume_dfll_bypass && !is_lp_cluster() &&
+	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		pdata->resume_dfll_bypass();
+
 	/* If DFLL is used as CPU clock source restore closed loop mode */
-	if (!is_lp_cluster() && tegra_dfll &&
-	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
-		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	if (!(flags & TEGRA_POWER_CLUSTER_MASK)) {
+		if (!is_lp_cluster() && tegra_dfll &&
+		    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+			tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	}
 #endif
 }
 
@@ -689,6 +703,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	 * We can use clk_get_rate_all_locked() here, because all other cpus
 	 * are in LP2 state and irqs are disabled
 	 */
+	suspend_cpu_dfll_mode(flags);
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
 		if (is_idle_task(current))
 			trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_START);
@@ -715,7 +730,6 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 		}
 		tegra_cluster_switch_prolog(flags);
 	} else {
-		suspend_cpu_dfll_mode();
 		set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer,
 			clk_get_rate_all_locked(tegra_pclk));
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
@@ -826,9 +840,8 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 			trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_DONE);
 		else
 			trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_DONE);
-	} else {
-		resume_cpu_dfll_mode();
 	}
+	resume_cpu_dfll_mode(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_epilog);
 
 #if INSTRUMENT_CLUSTER_SWITCH
@@ -1483,7 +1496,7 @@ static struct kobject *suspend_kobj;
 static int tegra_pm_enter_suspend(void)
 {
 	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
-	suspend_cpu_dfll_mode();
+	suspend_cpu_dfll_mode(0);
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(true);
 	return 0;
@@ -1493,13 +1506,13 @@ static void tegra_pm_enter_resume(void)
 {
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(false);
-	resume_cpu_dfll_mode();
+	resume_cpu_dfll_mode(0);
 	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
 }
 
 static void tegra_pm_enter_shutdown(void)
 {
-	suspend_cpu_dfll_mode();
+	suspend_cpu_dfll_mode(0);
 	pr_info("Shutting down tegra ...\n");
 }
 

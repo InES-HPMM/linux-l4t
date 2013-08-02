@@ -33,6 +33,7 @@
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 
 #include <asm/mach-types.h>
@@ -1576,6 +1577,16 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.cfg_param = &e1735_cl_dvfs_param,
 };
 
+static void e1735_suspend_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PS5, 1); /* tristate external PWM buffer */
+}
+
+static void e1735_resume_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PS5, 0); /* enable PWM buffer operations */
+}
+
 static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
@@ -1587,6 +1598,10 @@ static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
 			/* this has to be exact to 1uV level from table */
 			e1735_dfll_bypass_init_data.constraints.init_uV = v;
+			ardbeg_suspend_data.suspend_dfll_bypass =
+				e1735_suspend_dfll_bypass;
+			ardbeg_suspend_data.resume_dfll_bypass =
+				e1735_resume_dfll_bypass;
 		} else {
 			(void)e1735_dfll_bypass_dev;
 		}
