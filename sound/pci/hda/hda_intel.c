@@ -4455,5 +4455,36 @@ static struct platform_driver hda_platform_driver = {
 };
 #endif /* CONFIG_SND_HDA_PLATFORM_DRIVER */
 
-module_pci_driver(azx_driver);
-module_platform_driver(hda_platform_driver);
+static int __init alsa_card_azx_init(void)
+{
+	int err = 0;
+
+	err = pci_register_driver(&azx_driver);
+	if (err < 0) {
+		snd_printk(KERN_ERR SFX "Failed to register pci driver\n");
+		return err;
+	}
+
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	err = platform_driver_register(&hda_platform_driver);
+	if (err < 0) {
+		snd_printk(KERN_ERR SFX "Failed to register platform driver\n");
+		pci_unregister_driver(&azx_driver);
+		return err;
+	}
+#endif
+
+	return 0;
+}
+
+static void __exit alsa_card_azx_exit(void)
+{
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	platform_driver_unregister(&hda_platform_driver);
+#endif
+
+	pci_unregister_driver(&azx_driver);
+}
+
+module_init(alsa_card_azx_init)
+module_exit(alsa_card_azx_exit)
