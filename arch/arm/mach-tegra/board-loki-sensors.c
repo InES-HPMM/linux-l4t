@@ -26,11 +26,16 @@
 #include <media/imx135.h>
 #include <media/dw9718.h>
 #include <media/as364x.h>
+#include <mach/gpio-tegra.h>
+#include <linux/gpio.h>
+#include <linux/therm_est.h>
 
 #include "board.h"
 #include "board-common.h"
 #include "board-loki.h"
 #include "tegra-board-id.h"
+#include "dvfs.h"
+#include "cpu-tegra.h"
 
 static struct i2c_board_info loki_i2c_board_info_cm32181[] = {
 	{
@@ -426,17 +431,119 @@ static int loki_camera_init(void)
 	return 0;
 }
 
+static struct throttle_table tj_throttle_table[] = {
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
+};
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
+};
+
+static struct throttle_table tj_hard_throttle_table[] = {
+	{ {  204000,  420000,  360000,  208000,  204000 } },
+};
+
+static struct balanced_throttle tj_hard_throttle = {
+	.throt_tab_size = ARRAY_SIZE(tj_hard_throttle_table),
+	.throt_tab = tj_hard_throttle_table,
+};
+
+static int __init loki_throttle_init(void)
+{
+	balanced_throttle_register(&tj_throttle, "tegra-balanced");
+	balanced_throttle_register(&tj_hard_throttle, "tegra-hard");
+	return 0;
+}
+module_init(loki_throttle_init);
+
 static struct nct1008_platform_data loki_nct72_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.shutdown_ext_limit = 91, /* C */
 	.shutdown_local_limit = 120, /* C */
 
-	.num_trips = 0,
+	.passive_delay = 2000,
+
+	.num_trips = 2,
 	.trips = {
-		{
+		/* Thermal Throttling */
+		[0] = {
+			.cdev_type = "tegra-balanced",
+			.trip_temp = 80000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+			.hysteresis = 0,
+		},
+		[1] = {
+			.cdev_type = "tegra-hard",
+			.trip_temp = 86000, /* shutdown_ext_limit - 2C */
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 6000,
+		},
+		[2] = {
 			.cdev_type = "suspend_soctherm",
 			.trip_temp = 50000,
 			.trip_type = THERMAL_TRIP_ACTIVE,
@@ -464,6 +571,16 @@ static int loki_nct72_init(void)
 	tegra_add_cdev_trips(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips);
 */
+/*
+	tegra_platform_edp_init(loki_nct72_pdata.trips,
+				&loki_nct72_pdata.num_trips,
+				0);
+*/
+	 /* edp temperature margin */
+	tegra_add_cdev_trips(loki_nct72_pdata.trips,
+				&loki_nct72_pdata.num_trips);
+	tegra_add_tj_trips(loki_nct72_pdata.trips,
+				&loki_nct72_pdata.num_trips);
 	loki_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 
 	ret = gpio_request(nct72_port, "temp_alert");
@@ -477,7 +594,7 @@ static int loki_nct72_init(void)
 	}
 
 	/* loki has thermal sensor on GEN2-I2C i.e. instance 1 */
-	i2c_register_board_info(1, loki_i2c_nct72_board_info,
+	i2c_register_board_info(0, loki_i2c_nct72_board_info,
 		ARRAY_SIZE(loki_i2c_nct72_board_info));
 
 	return ret;
