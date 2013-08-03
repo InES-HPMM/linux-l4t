@@ -25,6 +25,8 @@
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
+#include <linux/power/bq2419x-charger.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -375,6 +377,43 @@ int __init loki_suspend_init(void)
 	return 0;
 }
 
+static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+};
+
+static struct regulator_consumer_supply bq2419x_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
+static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
+	.consumer_supplies = bq2419x_vbus_supply,
+};
+
+struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
+	.max_charge_current_mA = 3000,
+	.charging_term_current_mA = 100,
+	.consumer_supplies = bq2419x_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
+	.wdt_timeout    = 40,
+	.rtc_alarm_time = 3600,
+	.chg_restart_time = 1800,
+};
+
+struct bq2419x_platform_data bq2419x_pdata = {
+	.vbus_pdata = &bq2419x_vbus_pdata,
+	.bcharger_pdata = &bq2419x_charger_pdata,
+};
+
+static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("bq2419x", 0x6b),
+		.irq = TEGRA_GPIO_PJ0,
+		.platform_data	= &bq2419x_pdata,
+	},
+};
 
 int __init loki_regulator_init(void)
 {
@@ -395,8 +434,10 @@ int __init loki_regulator_init(void)
 	/* Set vdd_gpu init uV to 1V */
 	reg_idata_smps123.constraints.init_uV = 1000000;
 
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
+	i2c_register_board_info(0, bq2419x_boardinfo, 1);
 	return 0;
 }
 /* Macro for defining fixed regulator sub device data */
