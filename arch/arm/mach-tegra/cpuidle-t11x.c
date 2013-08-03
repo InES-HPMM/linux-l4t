@@ -648,12 +648,16 @@ int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 			idle_stats.cpu_wants_pd_time[4]) : 0));
 
 	seq_printf(s, "\n");
-	seq_printf(s, "rail gating time  c0nc gating time  c1nc gating time\n");
-	seq_printf(s, "%8llu ms          %8llu ms          %8llu ms\n",
+	seq_printf(s, "rail gating time  c0nc gating time  " \
+			"c1nc gating time  mc_clk gating time\n");
+	seq_printf(s, "%8llu ms          %8llu ms          " \
+			"%8llu ms          %8llu ms\n",
 		div64_u64(idle_stats.rail_pd_time, 1000),
 		div64_u64(idle_stats.c0nc_pg_time, 1000),
-		div64_u64(idle_stats.c1nc_pg_time, 1000));
-	seq_printf(s, "%8d%%             %8d%%             %8d%%\n",
+		div64_u64(idle_stats.c1nc_pg_time, 1000),
+		div64_u64(idle_stats.mc_clk_stop_time, 1000));
+	seq_printf(s, "%8d%%             %8d%%             " \
+			"%8d%%             %8d%%\n",
 		(int)(idle_stats.cpu_wants_pd_time[0] ?
 			div64_u64(idle_stats.rail_pd_time * 100,
 			idle_stats.cpu_wants_pd_time[0]) : 0),
@@ -662,6 +666,9 @@ int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 			idle_stats.cpu_wants_pd_time[0]) : 0),
 		(int)(idle_stats.cpu_wants_pd_time[4] ?
 			div64_u64(idle_stats.c1nc_pg_time * 100,
+			idle_stats.cpu_wants_pd_time[4]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[4] ?
+			div64_u64(idle_stats.mc_clk_stop_time * 100,
 			idle_stats.cpu_wants_pd_time[4]) : 0));
 
 	seq_printf(s, "\n");
