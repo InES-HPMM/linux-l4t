@@ -889,6 +889,9 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 	if (cld->calibration_range_min < cld->safe_dvfs->freqs[0])
 		cld->calibration_range_min = cld->safe_dvfs->freqs[0];
 	cld->calibration_range_max = cld->dvco_rate_min + 24 * RATE_STEP(cld);
+	rate = cld->safe_dvfs->freqs[cld->safe_dvfs->num_freqs - 1];
+	if (cld->calibration_range_max > rate)
+		cld->calibration_range_max = rate;
 }
 
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
