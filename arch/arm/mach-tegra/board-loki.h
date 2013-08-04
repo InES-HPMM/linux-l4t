@@ -35,16 +35,11 @@ int loki_suspend_init(void);
 int loki_pmon_init(void);
 
 /* Invensense MPU Definitions */
-#define MPU_GYRO_NAME		"mpu6050c"
-#define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PS0
+#define MPU_GYRO_NAME		"mpu6050"
+#define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PR2
 #define MPU_GYRO_ADDR		0x68
 #define MPU_GYRO_BUS_NUM	0
 #define MPU_GYRO_ORIENTATION	MTMAT_TOP_CCW_0
-#define MPU_COMPASS_NAME	"ak8975"
-#define MPU_COMPASS_ADDR	0x0C
-#define MPU_COMPASS_ORIENTATION	MTMAT_BOT_CCW_270
-#define MPU_BMP_NAME		"bmp280"
-#define MPU_BMP_ADDR		0x77
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6

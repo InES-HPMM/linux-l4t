@@ -39,7 +39,7 @@
 #include "cpu-tegra.h"
 
 /* MPU board file definition    */
-static struct mpu_platform_data mpu9250_gyro_data = {
+static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config     = 0x10,
 	.level_shifter  = 0,
 	/* Located in board_[platformname].h */
@@ -49,33 +49,11 @@ static struct mpu_platform_data mpu9250_gyro_data = {
 			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
-static struct mpu_platform_data mpu_compass_data = {
-	.orientation    = MPU_COMPASS_ORIENTATION,
-	.config         = NVI_CONFIG_BOOT_MPU,
-};
 
-static struct mpu_platform_data mpu_bmp_pdata = {
-	.config         = NVI_CONFIG_BOOT_MPU,
-};
-
-static struct i2c_board_info __initdata inv_mpu9250_i2c0_board_info[] = {
+static struct i2c_board_info __initdata inv_mpu6050_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-		.platform_data = &mpu9250_gyro_data,
-	},
-	{
-		/* The actual BMP180 address is 0x77 but because this conflicts
-		 * with another device, this address is hacked so Linux will
-		 * call the driver.  The conflict is technically okay since the
-		 * BMP180 is behind the MPU.  Also, the BMP180 driver uses a
-		 * hard-coded address of 0x77 since it can't be changed anyway.
-		 */
-		I2C_BOARD_INFO(MPU_BMP_NAME, MPU_BMP_ADDR),
-		.platform_data = &mpu_bmp_pdata,
-	},
-	{
-		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-		.platform_data = &mpu_compass_data,
+		.platform_data = &mpu6050_gyro_data,
 	},
 };
 
@@ -103,9 +81,9 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
-	inv_mpu9250_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
-		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));
+	inv_mpu6050_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c0_board_info,
+		ARRAY_SIZE(inv_mpu6050_i2c0_board_info));
 }
 
 struct jsa1127_platform_data jsa1127_platform_data = {
