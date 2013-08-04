@@ -105,7 +105,7 @@ on Laguna the LDO_EN signal comes from a GPIO expander and
 this is exposed as a fixed regulator directly handeled from
 machine driver of rt5639 and for ardebeg we use the below tegra
 GPIO, also the GPIO is same for T114 interposer and T124*/
-#define TEGRA_GPIO_LDO_EN	TEGRA_GPIO_PR2
+#define TEGRA_GPIO_LDO_EN	TEGRA_GPIO_PV3
 
 /*GPIOs used by board panel file */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
