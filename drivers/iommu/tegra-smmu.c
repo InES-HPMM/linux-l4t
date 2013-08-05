@@ -1165,7 +1165,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	struct scatterlist *s;
 	int err = 0;
 	unsigned long iova_base = iova;
-	bool flush_all = (nents * PAGE_SIZE > SZ_512) ? true : false;
+	bool flush_all = (nents > SZ_512) ? true : false;
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 
