@@ -591,7 +591,6 @@ spinlock_t *tegra12x_get_powergate_lock(void)
 bool tegra12x_powergate_skip(int id)
 {
 	switch (id) {
-	case TEGRA_POWERGATE_VDEC:
 	case TEGRA_POWERGATE_VENC:
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	case TEGRA_POWERGATE_SATA:
