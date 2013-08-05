@@ -137,7 +137,7 @@ static unsigned int edp_calculate_maxf(
 {
 	unsigned int voltage_mV, freq_KHz = 0;
 	unsigned int cur_effective = regulator_cur - edp_reg_override_mA;
-	int f, i, j, k, r = 0;
+	int f, i, j, k;
 	s64 leakage_mA, dyn_mA, leakage_calc_step;
 	s64 leakage_mW, dyn_mW;
 
@@ -215,9 +215,6 @@ static unsigned int edp_calculate_maxf(
 	}
 
  end:
-	if (r != 0)
-		return r;
-
 	return edp_apply_fixed_limits(freq_KHz, params,
 					cur_effective, temp_C, n_cores_idx);
 }
