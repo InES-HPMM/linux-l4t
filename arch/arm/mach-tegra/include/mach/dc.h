@@ -255,6 +255,8 @@ struct tegra_dsi_out {
 	u8		controller_vs;
 
 	bool		panel_has_frame_buffer;	/* required*/
+
+	/* Deprecated. Use DSI_SEND_FRAME panel command instead. */
 	bool		panel_send_dc_frames;
 
 	struct tegra_dsi_cmd	*dsi_init_cmd;		/* required */
@@ -304,6 +306,9 @@ struct tegra_dsi_out {
 	struct dsi_phy_timing_ns phy_timing;
 
 	u8		*bl_name;
+
+	bool		lp00_pre_panel_wakeup;
+	bool		ulpm_not_supported;
 };
 
 enum {
@@ -526,7 +531,7 @@ struct tegra_dc_out {
 	struct completion	user_vblank_comp;
 
 	int	(*enable)(struct device *);
-	int	(*postpoweron)(void);
+	int	(*postpoweron)(struct device *);
 	int	(*prepoweroff)(void);
 	int	(*disable)(void);
 
