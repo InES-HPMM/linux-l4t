@@ -333,6 +333,9 @@ static ssize_t amb_clear_enable(struct device *dev,
 		if (!max44005_power(chip, true))
 			goto fail;
 
+		if (max44005_write(chip, AMB_PGA_256x, AMB_CONF_REG_ADDR))
+			goto fail;
+
 		if (!PROXIMITY_ENABLED &&
 				set_main_conf(chip, MODE_CRGB))
 			goto success;
