@@ -16,6 +16,7 @@
 #include <linux/vmalloc.h>
 #include <linux/mutex.h>
 
+#include <asm/cputype.h>
 #include <asm/processor.h>
 #include <asm/tlbflush.h>
 #include <asm/sections.h>
@@ -31,15 +32,22 @@
 #define cpa_debug(x, ...)
 #endif
 
+static int inner_cache_maint_threshold = SZ_2M;
+extern void v7_flush_kern_cache_all(void);
 extern void __flush_dcache_page(struct address_space *, struct page *);
+
+static inline void v7_flush_kern_cache_all_arg(void *arg)
+{
+	v7_flush_kern_cache_all();
+}
 
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
 static void inner_flush_cache_all(void)
 {
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#ifdef CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU
 	v7_flush_kern_cache_all();
 #else
-	on_each_cpu(v7_flush_kern_cache_all, NULL, 1);
+	on_each_cpu(v7_flush_kern_cache_all_arg, NULL, 1);
 #endif
 }
 #endif
@@ -164,7 +172,7 @@ static void cpa_flush_array(unsigned long *start, int numpages, int cache,
 	BUG_ON(irqs_disabled());
 
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
-	if (numpages >= (cache_maint_inner_threshold >> PAGE_SHIFT) &&
+	if (numpages >= (inner_cache_maint_threshold >> PAGE_SHIFT) &&
 		cache && in_flags & CPA_PAGES_ARRAY) {
 		inner_flush_cache_all();
 		flush_inner = false;
@@ -1087,7 +1095,7 @@ static void flush_cache(struct page **pages, int numpages)
 	unsigned long base;
 
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
-	if (numpages >= (cache_maint_inner_threshold >> PAGE_SHIFT)) {
+	if (numpages >= (inner_cache_maint_threshold >> PAGE_SHIFT)) {
 		inner_flush_cache_all();
 		flush_inner = false;
 	}
@@ -1129,3 +1137,17 @@ int set_pages_array_iwb(struct page **pages, int addrinarray)
 EXPORT_SYMBOL(set_pages_array_iwb);
 
 #endif
+
+static __init int init_cache_size(void)
+{
+	unsigned int id;
+
+	id = read_cpuid_id();
+	/* cortex-a9 */
+	if ((id >> 4 & 0xfff) == 0xc09)
+		inner_cache_maint_threshold = SZ_32K;
+	pr_info("CPA: inner cache maint threshold=%d", SZ_32K);
+	return 0;
+}
+
+core_initcall(init_cache_size);
