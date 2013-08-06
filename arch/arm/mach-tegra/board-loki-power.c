@@ -27,6 +27,7 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/power/bq2419x-charger.h>
+#include <linux/power/bq27441_battery.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -414,6 +415,18 @@ static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
 	},
 };
 
+static struct bq27441_platform_data bq27441_pdata = {
+	.full_capacity_in_mAh = 7350,
+	.tz_name = "battery-temp",
+};
+
+static struct i2c_board_info loki_i2c_board_info_bq27441[] = {
+	{
+		I2C_BOARD_INFO("bq27441", 0x55),
+		.platform_data = &bq27441_pdata,
+	},
+};
+
 int __init loki_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -437,6 +450,8 @@ int __init loki_regulator_init(void)
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);
+	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
+			ARRAY_SIZE(loki_i2c_board_info_bq27441));
 	return 0;
 }
 /* Macro for defining fixed regulator sub device data */
