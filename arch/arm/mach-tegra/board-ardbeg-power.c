@@ -362,7 +362,7 @@ int __init ardbeg_as3722_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
-
+	struct board_info board_info;
 
 	/* AS3722: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -385,6 +385,13 @@ int __init ardbeg_as3722_regulator_init(void)
 	as3722_sd1_reg_pdata.oc_configure_enable = true;
 	as3722_sd1_reg_pdata.oc_trip_thres_perphase = 2500;
 	as3722_sd1_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1792) {
+		/*Default DDR voltage is 1.35V but lpddr3 supports 1.2V*/
+		as3722_sd2_reg_idata.constraints.min_uV = 1200000;
+		as3722_sd2_reg_idata.constraints.max_uV = 1200000;
+	}
 
 	pr_info("%s: i2c_register_board_info\n", __func__);
 	i2c_register_board_info(4, as3722_regulators,
@@ -600,6 +607,7 @@ int __init ardbeg_tps65913_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
+	struct board_info board_info;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -620,6 +628,12 @@ int __init ardbeg_tps65913_regulator_init(void)
 
 	/* Set vdd_gpu init uV to 1V */
 	reg_idata_ti913_smps123.constraints.init_uV = 900000;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1792) {
+		/*Default DDR voltage is 1.35V but lpddr3 supports 1.2V*/
+		reg_idata_ti913_smps7.constraints.max_uV = 1200000;
+	}
 
 	i2c_register_board_info(4, palma_ti913_device,
 			ARRAY_SIZE(palma_ti913_device));
