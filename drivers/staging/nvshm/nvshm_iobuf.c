@@ -42,6 +42,24 @@ struct nvshm_allocator {
 
 static struct nvshm_allocator alloc;
 
+static const char *give_pointer_location(struct nvshm_handle *handle, void *ptr)
+{
+	if (!ptr)
+		return "null";
+
+	ptr = NVSHM_B2A(handle, ptr);
+
+	if (ADDR_OUTSIDE(ptr, handle->desc_base_virt, handle->desc_size)
+	    && ADDR_OUTSIDE(ptr, handle->data_base_virt, handle->data_size)) {
+		if (ADDR_OUTSIDE(ptr, handle->ipc_base_virt, handle->ipc_size))
+			return "Err";
+		else
+			return "BBC";
+	}
+
+	return "AP";
+}
+
 /* Accumulate BBC freed iobuf to return them later at end of rx processing */
 /* This saves a lot of CPU/memory cycles on both sides */
 static void bbc_free(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
@@ -363,10 +381,38 @@ int nvshm_iobuf_flags(struct nvshm_iobuf *iob,
 	return 0;
 }
 
+void nvshm_iobuf_dump(struct nvshm_iobuf *iob)
+{
+	struct nvshm_handle *priv = nvshm_get_handle();
+
+	pr_err("iobuf (0x%p) dump:\n", NVSHM_A2B(priv, iob));
+	pr_err("\t data      = 0x%p (%s)\n", iob->npdu_data,
+	       give_pointer_location(priv, iob->npdu_data));
+	pr_err("\t length    = %d\n", iob->length);
+	pr_err("\t offset    = %d\n", iob->data_offset);
+	pr_err("\t total_len = %d\n", iob->total_length);
+	pr_err("\t ref       = %d\n", iob->ref);
+	pr_err("\t pool_id   = %d (%s)\n", iob->pool_id,
+	       (iob->pool_id < NVSHM_AP_POOL_ID) ? "BBC" : "AP");
+	pr_err("\t next      = 0x%p (%s)\n", iob->next,
+	       give_pointer_location(priv, iob->next));
+	pr_err("\t sg_next   = 0x%p (%s)\n", iob->sg_next,
+	       give_pointer_location(priv, iob->sg_next));
+	pr_err("\t flags     = 0x%x\n", iob->flags);
+	pr_err("\t _size     = %d\n", iob->_size);
+	pr_err("\t _handle   = 0x%p\n", iob->_handle);
+	pr_err("\t _reserved = 0x%x\n", iob->_reserved);
+	pr_err("\t qnext     = 0x%p (%s)\n", iob->qnext,
+	       give_pointer_location(priv, iob->qnext));
+	pr_err("\t chan      = 0x%x\n", iob->chan);
+	pr_err("\t qflags    = 0x%x\n", iob->qflags);
+}
+
 int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 	struct nvshm_iobuf *bbiob;
+	int ret = 0;
 
 	/* Check iobuf is in IPC space */
 	if (ADDR_OUTSIDE(iob, priv->ipc_base_virt, priv->ipc_size)) {
@@ -383,14 +429,16 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 		       __func__,
 		       (long)bbiob,
 		       (long)iob->npdu_data);
-		return -2;
+		ret = -2;
+		goto dump;
 	}
 	if (ADDR_OUTSIDE(iob->npdu_data + iob->data_offset,
 			NVSHM_IPC_BB_BASE, priv->ipc_size)) {
 		pr_err("%s 0x%lx: npduData + offset @ check failed 0x%lx/0x%lx\n",
 		       __func__, (long)bbiob,
 		       (long)iob->npdu_data, (long)iob->data_offset);
-		return -3;
+		ret = -3;
+		goto dump;
 	}
 	if (iob->next) {
 		if (ADDR_OUTSIDE(iob->next,
@@ -399,7 +447,8 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 			       __func__,
 			       (long)bbiob,
 			       (long)iob->next);
-			return -4;
+			ret = -4;
+			goto dump;
 		}
 	}
 	if (iob->sg_next) {
@@ -407,7 +456,8 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
 			pr_err("%s 0x%lx:sg_next @ check failed 0x%lx\n",
 			       __func__, (long)bbiob, (long)iob->sg_next);
-			return -5;
+			ret = -5;
+			goto dump;
 		}
 	}
 	if (iob->qnext) {
@@ -415,10 +465,15 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
 			pr_err("%s 0x%lx:qnext @ check failed 0x%lx\n",
 			       __func__, (long)bbiob, (long)iob->qnext);
-			return -6;
+			ret = -6;
+			goto dump;
 		}
 	}
-	return 0;
+
+	return ret;
+dump:
+	nvshm_iobuf_dump(iob);
+	return ret;
 }
 
 int nvshm_iobuf_init(struct nvshm_handle *handle)
