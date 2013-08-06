@@ -815,7 +815,7 @@ static void tegra_pcie_prsnt_map_override(bool prsnt)
 }
 #endif
 
-static void __init work_hotplug_handler(struct work_struct *work)
+static void work_hotplug_handler(struct work_struct *work)
 {
 	struct tegra_pcie_info *pcie_driver =
 		container_of(work, struct tegra_pcie_info, hotplug_detect);
@@ -1888,7 +1888,8 @@ static const struct dev_pm_ops tegra_pcie_pm_ops = {
 	};
 #endif
 
-static struct platform_driver __initdata tegra_pcie_driver = {
+/* driver data is accessed after init, so use __refdata instead of __initdata */
+static struct platform_driver __refdata tegra_pcie_driver = {
 	.probe   = tegra_pcie_probe,
 	.remove  = tegra_pcie_remove,
 	.driver  = {
