@@ -329,6 +329,19 @@ static void save_ptsa(void)
 	p->heg_extra_snap_level = readl(T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
 }
 
+static void program_ring1_ptsa(struct ptsa_info *p)
+{
+	p->ring1_ptsa_rate = p->dis_ptsa_rate +
+			     p->bbc_ptsa_rate;
+#if defined(CONFIG_TEGRA_ERRATA_977223)
+	p->ring1_ptsa_rate /= 2;
+#endif
+	p->ring1_ptsa_rate += p->disb_ptsa_rate +
+			      p->ve_ptsa_rate +
+			      p->ring2_ptsa_rate;
+	writel(p->ring1_ptsa_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
+}
+
 static void t14x_init_ptsa(void)
 {
 	struct ptsa_info *p = &cs->ptsa_info;
@@ -390,14 +403,7 @@ static void t14x_init_ptsa(void)
 	p->bbcll_earb_cfg = 0xd << 24 | 0x3f << 16 |
 		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0;
 
-	p->ring1_ptsa_rate = p->dis_ptsa_rate +
-			     p->bbc_ptsa_rate;
-#if defined(CONFIG_TEGRA_ERRATA_977223)
-	p->ring1_ptsa_rate /= 2;
-#endif
-	p->ring1_ptsa_rate += p->disb_ptsa_rate +
-			      p->ve_ptsa_rate +
-			      p->ring2_ptsa_rate;
+	program_ring1_ptsa(p);
 	program_ptsa();
 }
 
@@ -408,7 +414,7 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	unsigned int total_disb_bw;
 	struct ptsa_info *p = &cs->ptsa_info;
 
-	if (cs->disable_ptsa)
+	if (cs->disable_ptsa || cs->disable_disp_ptsa)
 		return;
 	total_dis_bw = disp_bw_array[ID_IDX(DISPLAY_0A)] +
 			disp_bw_array[ID_IDX(DISPLAY_0B)] +
@@ -425,14 +431,23 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	writel(p->dis_ptsa_rate, T14X_MC_RA(DIS_PTSA_RATE_0));
 	writel(p->disb_ptsa_rate, T14X_MC_RA(DISB_PTSA_RATE_0));
 
-	p->ring1_ptsa_rate = p->dis_ptsa_rate + p->bbc_ptsa_rate;
-#if defined(CONFIG_TEGRA_ERRATA_977223)
-	p->ring1_ptsa_rate /= 2;
-#endif
-	p->ring1_ptsa_rate += p->disb_ptsa_rate +
-			      p->ve_ptsa_rate +
-			      p->ring2_ptsa_rate;
-	writel(p->ring1_ptsa_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
+	program_ring1_ptsa(p);
+}
+
+#define BBC_ID_IDX(x) (ID(x) - ID(BBCR))
+static void t14x_update_bbc_ptsa_rate(uint *bbc_bw_array)
+{
+	uint total_bbc_bw;
+	struct ptsa_info *p = &cs->ptsa_info;
+
+	if (cs->disable_ptsa || cs->disable_bbc_ptsa)
+		return;
+
+	total_bbc_bw = bbc_bw_array[BBC_ID_IDX(BBCR)] +
+		       bbc_bw_array[BBC_ID_IDX(BBCW)];
+	p->bbc_ptsa_rate = t14x_get_ptsa_rate(total_bbc_bw);
+	writel(p->bbc_ptsa_rate, T14X_MC_RA(BBC_PTSA_RATE_0));
+	program_ring1_ptsa(p);
 }
 
 static void program_la(struct la_client_info *ci, int la)
@@ -488,14 +503,17 @@ static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 	ci = &cs->la_info_array[idx];
 	fifo_size_in_atoms = ci->fifo_size_in_atoms;
 
+	if (id == TEGRA_LA_BBCR || id == TEGRA_LA_BBCW) {
+		cs->bbc_bw_array[id - TEGRA_LA_BBCR] = bw_mbps;
+		t14x_update_bbc_ptsa_rate(cs->bbc_bw_array);
 #ifdef CONFIG_TEGRA_DISABLE_BBC_LATENCY_ALLOWANCE
-	if (id == TEGRA_LA_BBCR || id == TEGRA_LA_BBCW)
 		return 0;
 #endif
+	}
+
 	if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAYD) {
 		cs->disp_bw_array[id - TEGRA_LA_DISPLAY_0A] = bw_mbps;
-		if (cs->update_display_ptsa_rate)
-			cs->update_display_ptsa_rate(cs->disp_bw_array);
+		t14x_update_display_ptsa_rate(cs->disp_bw_array);
 	}
 
 	if (bw_mbps == 0) {

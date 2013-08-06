@@ -184,6 +184,7 @@ struct la_chip_specific {
 	unsigned int ispa_read_bw;
 	unsigned int ispa_write_bw;
 	unsigned int ispb_write_bw;
+	unsigned int bbc_bw_array[ID(BBCLLR) - ID(BBCR) + 1];
 	struct la_scaling_info scaling_info[ID(MAX_ID)];
 	int la_scaling_enable_count;
 	struct dentry *latency_debug_dir;
@@ -191,6 +192,8 @@ struct la_chip_specific {
 	bool disable_la;
 	bool disable_ptsa;
 	struct la_to_dc_params la_params;
+	bool disable_disp_ptsa;
+	bool disable_bbc_ptsa;
 
 	void (*init_ptsa)(void);
 	void (*update_display_ptsa_rate)(unsigned int *disp_bw_array);

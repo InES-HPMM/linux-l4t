@@ -41,8 +41,12 @@
 static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps);
 
 static struct la_chip_specific cs;
-module_param_named(disable_la, cs.disable_la, bool, 0644);
-module_param_named(disable_ptsa, cs.disable_ptsa, bool, 0644);
+module_param_named(disable_la, cs.disable_la, bool, S_IRUGO | S_IWUSR);
+module_param_named(disable_ptsa, cs.disable_ptsa, bool, S_IRUGO | S_IWUSR);
+module_param_named(disable_disp_ptsa,
+	cs.disable_disp_ptsa, bool, S_IRUGO | S_IWUSR);
+module_param_named(disable_bbc_ptsa,
+	cs.disable_bbc_ptsa, bool, S_IRUGO | S_IWUSR);
 
 /* FIXME!!:- This function needs to be implemented properly. */
 unsigned int tegra_get_dvfs_time_nsec(unsigned long emc_freq_mhz)
