@@ -13,10 +13,19 @@
  * GNU General Public License for more details.
  *
  */
+
+#ifndef __ARCH_ARM_MACH_TEGRA_SMMU_H
+#define __ARCH_ARM_MACH_TEGRA_SMMU_H
+
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 extern struct resource *tegra_smmu_window(int wnum);
 extern int tegra_smmu_window_count(void);
 #endif
+
+struct iommu_linear_map {
+	dma_addr_t start;
+	size_t size;
+};
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 /* Maximum number of iommu address spaces in the system */
@@ -28,6 +37,7 @@ void tegra_smmu_map_misc_device(struct device *dev);
 int tegra_smmu_get_asid(struct device *dev);
 #else
 #define TEGRA_IOMMU_NUM_ASIDS 1
+
 static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 							   u64 swgids)
 {
@@ -48,4 +58,8 @@ static inline int tegra_smmu_get_asid(struct device *dev)
 }
 #endif
 
-u64 tegra_smmu_fixup_swgids(struct device *dev);
+
+extern u64 tegra_smmu_fixup_swgids(struct device *dev,
+				   struct iommu_linear_map **map);
+
+#endif /* __ARCH_ARM_MACH_TEGRA_SMMU_H */

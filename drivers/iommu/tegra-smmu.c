@@ -1285,14 +1285,33 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	struct smmu_client *client, *c;
-	u64 map;
+	struct iommu_linear_map *area = NULL;
+	u64 map, temp;
 	int err;
 
 	map = tegra_smmu_of_get_swgids(dev);
-	if (!map) {
-		map = tegra_smmu_fixup_swgids(dev);
-		if (!map)
-			return -EINVAL;
+	temp = tegra_smmu_fixup_swgids(dev, &area);
+
+	if (!map && !temp)
+		return -ENODEV;
+
+	if (map && temp && map != temp)
+		dev_err(dev, "%llx %llx\n", map, temp);
+
+	if (!map)
+		map = temp;
+
+	while (area && area->size) {
+		size_t size = PAGE_ALIGN(area->size);
+
+		err = iommu_map(domain, area->start, area->start, size, 0);
+		if (err)
+			dev_err(dev, "Failed to map %08x(%x)\n", area->start,
+				size);
+		else
+			dev_info(dev, "map %08x(%x)\n", area->start, size);
+
+		area++;
 	}
 
 	map &= smmu->swgids;

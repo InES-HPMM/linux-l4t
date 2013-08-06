@@ -2060,6 +2060,7 @@ int tegra_smmu_window_count(void)
 struct swgid_fixup {
 	const char * const name;
 	u64 swgids;
+	struct iommu_linear_map *linear_map;
 };
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
@@ -2213,7 +2214,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{},
 };
 
-u64 tegra_smmu_fixup_swgids(struct device *dev)
+u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 {
 	const char *s;
 	struct swgid_fixup *table = tegra_swgid_fixup;
@@ -2222,8 +2223,12 @@ u64 tegra_smmu_fixup_swgids(struct device *dev)
 		table = tegra_swgid_fixup_t124;
 
 	while ((s = table->name) != NULL) {
-		if (!strncmp(s, dev_name(dev), strlen(s)))
+		if (!strncmp(s, dev_name(dev), strlen(s))) {
+			if (map)
+				*map = table->linear_map;
+
 			return table->swgids;
+		}
 		table++;
 	}
 
@@ -2320,14 +2325,14 @@ static int _tegra_smmu_get_asid(u64 swgids)
 
 int tegra_smmu_get_asid(struct device *dev)
 {
-	u64 swgids = tegra_smmu_fixup_swgids(dev);
+	u64 swgids = tegra_smmu_fixup_swgids(dev, NULL);
 	return _tegra_smmu_get_asid(swgids);
 }
 
 struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
 	if (!swgids)
-		swgids = tegra_smmu_fixup_swgids(dev);
+		swgids = tegra_smmu_fixup_swgids(dev, NULL);
 
 	if (!swgids)
 		return NULL;
