@@ -2035,6 +2035,23 @@ int tegra_smmu_window_count(void)
 	return ARRAY_SIZE(tegra_smmu);
 }
 
+static struct iommu_linear_map tegra_fb_linear_map[5]; /* Terminated with 0 */
+
+void tegra_fb_linear_set(struct iommu_linear_map *map)
+{
+	int i;
+	struct iommu_linear_map *p = &tegra_fb_linear_map[0];
+
+	for (i = 0; i < ARRAY_SIZE(tegra_fb_linear_map) - 1; i++) {
+		if (!map->size)
+			continue;
+
+		p->start = map[i].start;
+		p->size = map[i].size;
+		p++;
+	}
+}
+
 struct swgid_fixup {
 	const char * const name;
 	u64 swgids;
@@ -2053,7 +2070,8 @@ static char dummy_name[DUMMY_DEV_MAX_NAME_SIZE] = DUMMY_DEV_NAME;
 struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "540c0000.epp",	.swgids = SWGID(EPP), },
 	{ .name = "epp",	.swgids = SWGID(EPP), },
-	{ .name = "54200000.dc",	.swgids = SWGID(DC), },
+	{ .name = "54200000.dc",	.swgids = SWGID(DC),
+	  .linear_map = tegra_fb_linear_map, },
 	{ .name = "54240000.dc",	.swgids = SWGID(DCB), },
 	{ .name = "dc",	.swgids = SWGID(DC) | SWGID(DCB) },
 	{ .name = "gr2d",	.swgids = SWGID(G2), },
@@ -2145,6 +2163,8 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	  SWGID(PPCS2), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
+	{ .name = "tegradc.0", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12),
+	  .linear_map = tegra_fb_linear_map, },
 	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
 	{ .name = "tegra_bb",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },

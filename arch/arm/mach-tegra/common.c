@@ -1804,6 +1804,8 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 {
 	const size_t avp_kernel_reserve = SZ_32M;
 	int i = 0;
+	struct iommu_linear_map map[4];
+
 #if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
 	!defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 & up with SMMU */
 	/* Reserve hardcoded AVP kernel load area starting at 0xXe000000*/
@@ -2111,6 +2113,17 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 				tegra_nck_start + tegra_nck_size - 1 : 0);
 	}
 #endif
+
+	map[0].start = tegra_fb_start;
+	map[0].size = tegra_fb_size;
+	map[1].start = tegra_bootloader_fb_start;
+	map[1].size = tegra_bootloader_fb_size;
+	map[2].start = tegra_fb2_start;
+	map[2].size = tegra_fb2_size;
+	map[3].start = tegra_bootloader_fb2_start;
+	map[3].size = tegra_bootloader_fb2_size;
+
+	tegra_fb_linear_set(map);
 }
 
 #ifdef CONFIG_PSTORE_RAM

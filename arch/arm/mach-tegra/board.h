@@ -29,6 +29,8 @@
 #include <linux/power_supply.h>
 #include <linux/memory.h>
 
+#include <mach/tegra_smmu.h>
+
 #ifdef CONFIG_TEGRA_NVDUMPER
 #define NVDUMPER_RESERVED_SIZE 4096UL
 #endif
@@ -153,6 +155,12 @@ extern unsigned long tegra_grhost_aperture;
 /* info for NCK(NCT for Kernel) carveout area */
 extern unsigned long tegra_nck_start;
 extern unsigned long tegra_nck_size;
+#endif
+
+#ifdef CONFIG_TEGRA_IOMMU_SMMU
+void tegra_fb_linear_set(struct iommu_linear_map *map);
+#else
+static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}
 #endif
 
 void tegra_init_late(void);
