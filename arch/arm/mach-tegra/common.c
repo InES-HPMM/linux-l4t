@@ -1720,7 +1720,6 @@ void __tegra_move_framebuffer(struct platform_device *pdev,
 	void __iomem *to_io;
 	void *from_virt;
 	unsigned long i;
-	phys_addr_t addr[] = { to, from, };
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
@@ -1753,15 +1752,6 @@ void __tegra_move_framebuffer(struct platform_device *pdev,
 		iounmap(from_io);
 	}
 
-	if (!pdev)
-		goto out;
-
-#ifdef CONFIG_ARM64
-	BUG(); /* ARM64 doesn't support dma_map_linear yet!!! */
-#else
-	for (i = 0; i < ARRAY_SIZE(addr); i++)
-		dma_map_linear(&pdev->dev, addr[i], size, DMA_TO_DEVICE);
-#endif
 out:
 	iounmap(to_io);
 }
@@ -1789,13 +1779,6 @@ void __tegra_clear_framebuffer(struct platform_device *pdev,
 			writel(0, to_io + i);
 	}
 
-	if (!pdev)
-		goto out;
-
-#ifndef CONFIG_ARM64 /* FIXME */
-	dma_map_linear(&pdev->dev, to, size, DMA_TO_DEVICE);
-#endif
-out:
 	iounmap(to_io);
 }
 
