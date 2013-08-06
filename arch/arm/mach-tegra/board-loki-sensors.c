@@ -29,6 +29,7 @@
 #include <mach/gpio-tegra.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
+#include <linux/iio/light/jsa1127.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -36,12 +37,6 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 #include "cpu-tegra.h"
-
-static struct i2c_board_info loki_i2c_board_info_cm32181[] = {
-	{
-		I2C_BOARD_INFO("cm32181", 0x48),
-	},
-};
 
 /* MPU board file definition    */
 static struct mpu_platform_data mpu9250_gyro_data = {
@@ -112,6 +107,26 @@ static void mpuirq_init(void)
 	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));
 }
+
+struct jsa1127_platform_data jsa1127_platform_data = {
+	.rint = 100,
+	.integration_time = 200,
+	.use_internal_integration_timing = 1,
+};
+
+static struct i2c_board_info loki_i2c_jsa1127_board_info[] = {
+	{
+		I2C_BOARD_INFO(JSA1127_NAME, JSA1127_SLAVE_ADDRESS),
+		.platform_data = &jsa1127_platform_data,
+	}
+};
+
+static void loki_jsa1127_init(void)
+{
+	i2c_register_board_info(0, loki_i2c_jsa1127_board_info,
+		ARRAY_SIZE(loki_i2c_jsa1127_board_info));
+}
+
 
 static struct regulator *loki_vcmvdd;
 
@@ -605,9 +620,7 @@ int __init loki_sensors_init(void)
 	mpuirq_init();
 	loki_camera_init();
 	loki_nct72_init();
-
-	i2c_register_board_info(0, loki_i2c_board_info_cm32181,
-			ARRAY_SIZE(loki_i2c_board_info_cm32181));
+	loki_jsa1127_init();
 
 	return 0;
 }
