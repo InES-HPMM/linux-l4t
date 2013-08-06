@@ -703,7 +703,11 @@ static int ardbeg_nct72_init(void)
 
 int __init ardbeg_sensors_init(void)
 {
-	mpuirq_init();
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	/* PM363 don't have mpu 9250 mounted */
+	if (board_info.board_id != BOARD_PM363)
+		mpuirq_init();
 	ardbeg_camera_init();
 	ardbeg_nct72_init();
 
