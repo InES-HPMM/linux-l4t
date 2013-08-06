@@ -829,9 +829,6 @@ static void __init work_hotplug_handler(struct work_struct *work)
 		tegra_pcie_attach();
 	} else {
 		pr_info("Pcie Dock DisConnected\n");
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-		tegra_pcie_prsnt_map_override(false);
-#endif
 		tegra_pcie_detach();
 	}
 }
@@ -1385,6 +1382,9 @@ static int tegra_pcie_power_off(void)
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
 	}
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+		tegra_pcie_prsnt_map_override(false);
+#endif
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pll_e)
