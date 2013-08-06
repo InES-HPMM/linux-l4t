@@ -144,6 +144,9 @@ alloc:
 	}
 
 	strncpy(cmd_info->program, program, CMDLINE_LENGTH);
+	cmd_info->hash = string_hash(program);
+	atomic_set(&cmd_info->wakeup, 0);
+	cmd_info->valid_counter = monitor_table.valid_counter;
 
 	hlist_nulls_add_head_rcu(&cmd_info->node, &hslot->head);
 	hslot->count++;
@@ -592,7 +595,7 @@ static ssize_t store_add_ports(struct device *dev,
 		hash = string_hash(program);
 		program_hslot = &program_hslot_table[hash & monitor_table.mask];
 		spin_lock_bh(&program_hslot->lock);
-		cmd_info = get_program_info(dev, program, program_hslot, false);
+		cmd_info = get_program_info(dev, program, program_hslot, true);
 		if (cmd_info == NULL) {
 			dev_err(dev, "%s: cannot get a program_info", __func__);
 			spin_unlock_bh(&program_hslot->lock);
