@@ -286,7 +286,7 @@ static struct gpio_init_pin_info init_gpio_mode_loki_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH0, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK0, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK0, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ2, true, 0),
