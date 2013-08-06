@@ -69,7 +69,6 @@ int loki_pmon_init(void);
 #define CAM_AF_PWDN TEGRA_GPIO_PBB7
 
 /* Modem related GPIOs */
-#define MODEM_EN		TEGRA_GPIO_PS4
 #define MDM_RST			TEGRA_GPIO_PS3
 #define MDM_COLDBOOT		TEGRA_GPIO_PO5
 

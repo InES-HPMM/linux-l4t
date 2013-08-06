@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-pinmux-t12x.h
  *
- * Copyright (c) 2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -233,7 +233,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(ULPI_DATA1),
 	UNUSED_PINMUX(ULPI_DATA2),
 	UNUSED_PINMUX(ULPI_DATA3),
-	UNUSED_PINMUX(ULPI_DATA4),
 	UNUSED_PINMUX(ULPI_DATA5),
 	UNUSED_PINMUX(ULPI_DATA6),
 	UNUSED_PINMUX(ULPI_DATA7),
@@ -261,7 +260,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(KB_COL2),
 	UNUSED_PINMUX(KB_COL4),
 	UNUSED_PINMUX(KB_COL7),
-	UNUSED_PINMUX(KB_ROW10),
 	UNUSED_PINMUX(KB_ROW11),
 	UNUSED_PINMUX(KB_ROW14),
 	UNUSED_PINMUX(KB_ROW16),

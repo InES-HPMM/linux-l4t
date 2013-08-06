@@ -599,7 +599,6 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 };
 
 static struct gpio modem_gpios[] = { /* Bruce modem */
-	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
 	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
 };
 
