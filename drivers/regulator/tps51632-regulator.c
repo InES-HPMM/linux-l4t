@@ -26,6 +26,7 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -385,7 +386,13 @@ static int tps51632_probe(struct i2c_client *client,
 	config.driver_data = tps;
 	config.regmap = tps->regmap;
 	config.of_node = client->dev.of_node;
-
+	if (pdata->ena_gpio) {
+		config.ena_gpio = pdata->ena_gpio;
+		config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+	} else {
+		config.ena_gpio = -EINVAL;
+		config.ena_gpio_flags = 0;
+	}
 	rdev = regulator_register(&tps->desc, &config);
 	if (IS_ERR(rdev)) {
 		dev_err(tps->dev, "regulator register failed\n");
