@@ -1636,6 +1636,9 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		if (reg_init && (reg_init->roof_floor & EXT_PWR_REQ)) {
 			config.ena_gpio = reg_init->enable_gpio;
 			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+		} else {
+			config.ena_gpio = -EINVAL;
+			config.ena_gpio_flags = 0;
 		}
 
 		rdev = regulator_register(&pmic->desc[id], &config);
