@@ -33,6 +33,8 @@
 
 #define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 
+#define GPU_PROCESS_CORNERS_NUM		2
+
 #define FUSE_CPU_SPEEDO_0	0x114
 #define FUSE_CPU_SPEEDO_1	0x12c
 #define FUSE_CPU_SPEEDO_2	0x130
@@ -44,6 +46,7 @@
 #define FUSE_GPU_IDDQ		0x228
 #define FUSE_FT_REV		0x128
 
+static int threshold_index;
 static int cpu_process_id;
 static int core_process_id;
 static int gpu_process_id;
@@ -58,15 +61,23 @@ static int soc_iddq_value;
 
 static int cpu_speedo_0_value;
 static int cpu_speedo_1_value;
-static int cpu_speedo_2_value;
 static int soc_speedo_0_value;
 static int soc_speedo_1_value;
 static int soc_speedo_2_value;
 
+static int gpu_speedo_value;
+
 static int enable_app_profiles;
+
+static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
+/* proc_id  0,	1 */
+	{1950,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+};
 
 void tegra_init_speedo_data(void)
 {
+	int i;
 
 	if (!tegra_platform_is_silicon()) {
 		cpu_process_id  =  0;
@@ -79,7 +90,6 @@ void tegra_init_speedo_data(void)
 		cpu_speedo_value = 1777;
 		cpu_speedo_0_value = 0;
 		cpu_speedo_1_value = 0;
-		cpu_speedo_2_value = 0;
 		soc_speedo_0_value = 0;
 		soc_speedo_1_value = 0;
 		soc_speedo_2_value = 0;
@@ -91,7 +101,9 @@ void tegra_init_speedo_data(void)
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
-	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
+
+	/* GPU Speedo is stored in CPU_SPEEDO_2 */
+	gpu_speedo_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
 
 	soc_speedo_0_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	soc_speedo_1_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_1);
@@ -100,6 +112,17 @@ void tegra_init_speedo_data(void)
 	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
 	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
+
+
+	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {
+		if (gpu_speedo_value <
+			gpu_process_speedos[threshold_index][i]) {
+			break;
+		}
+	}
+
+	gpu_process_id = i;
+	pr_info("Tegra12: GPU Speedo %d", gpu_speedo_value);
 
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
@@ -155,9 +178,9 @@ int tegra_cpu_speedo_1_value(void)
 	return cpu_speedo_1_value;
 }
 
-int tegra_cpu_speedo_2_value(void)
+int tegra_gpu_speedo_value(void)
 {
-	return cpu_speedo_2_value;
+	return gpu_speedo_value;
 }
 
 int tegra_soc_speedo_0_value(void)

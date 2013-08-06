@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corp.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -310,12 +310,12 @@ static inline int tegra_get_cpu_iddq_value(void) { return 0; }
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 int tegra_cpu_speedo_0_value(void);
 int tegra_cpu_speedo_1_value(void);
-int tegra_cpu_speedo_2_value(void);
 int tegra_soc_speedo_0_value(void);
 int tegra_soc_speedo_1_value(void);
 int tegra_soc_speedo_2_value(void);
 int tegra_get_soc_iddq_value(void);
 int tegra_get_gpu_iddq_value(void);
+int tegra_gpu_speedo_value(void);
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC

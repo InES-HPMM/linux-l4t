@@ -240,11 +240,11 @@ static struct dvfs core_dvfs_table[] = {
 static const int gpu_millivolts[MAX_DVFS_FREQS] = {
 	810, 860, 900, 990, 1080};
 
-#define GPU_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
+#define GPU_DVFS(_clk_name, _process_id, _auto, _mult, _freqs...)	\
 	{							\
 		.clk_name	= _clk_name,			\
-		.speedo_id	= _speedo_id,			\
-		.process_id	= -1,				\
+		.speedo_id	= -1,			\
+		.process_id	= _process_id,			\
 		.freqs		= {_freqs},			\
 		.freqs_mult	= _mult,			\
 		.millivolts	= gpu_millivolts,		\
