@@ -294,6 +294,14 @@ config BATTERY_MAX17048
 	  to operate with a single lithium cell, and MAX17049 for two lithium
 	  cells.
 
+config BATTERY_BQ27441
+	tristate "TI's BQ27441 Fuel Gauge"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  BQ27441 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment.
+
 config BATTERY_ANDROID
 	tristate "Battery driver for Android"
 	help
