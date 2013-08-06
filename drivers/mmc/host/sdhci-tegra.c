@@ -203,6 +203,12 @@ struct sdhci_tegra_soc_data {
 	const char *parent_clk_list[2];
 };
 
+enum tegra_regulator_config_ops {
+	CONFIG_REG_EN,
+	CONFIG_REG_DIS,
+	CONFIG_REG_SET_VOLT,
+};
+
 static unsigned int uhs_max_freq_MHz[] = {
 	[MMC_TIMING_UHS_SDR50] = 100,
 	[MMC_TIMING_UHS_SDR104] = 208,
@@ -356,6 +362,8 @@ static unsigned long get_nearest_clock_freq(unsigned long pll_rate,
 		unsigned long desired_rate);
 static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	unsigned int tap_delay);
+static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
+	u8 option, int min_uV, int max_uV);
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
@@ -829,6 +837,7 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhost->mmc));
 	struct tegra_sdhci_platform_data *plat;
+	int err;
 
 	plat = pdev->dev.platform_data;
 
@@ -836,21 +845,17 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 			(gpio_get_value_cansleep(plat->cd_gpio) == 0);
 
 	if (tegra_host->card_present) {
-		if (!tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_slot_reg)
-				regulator_enable(tegra_host->vdd_slot_reg);
-			if (tegra_host->vdd_io_reg)
-				regulator_enable(tegra_host->vdd_io_reg);
-			tegra_host->is_rail_enabled = 1;
-		}
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_EN, 0, 0);
+		if (err)
+			dev_err(mmc_dev(sdhost->mmc),
+				"Failed to enable card regulators %d\n", err);
 	} else {
-		if (tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_io_reg)
-				regulator_disable(tegra_host->vdd_io_reg);
-			if (tegra_host->vdd_slot_reg)
-				regulator_disable(tegra_host->vdd_slot_reg);
-			tegra_host->is_rail_enabled = 0;
-		}
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_DIS, 0 , 0);
+		if (err)
+			dev_err(mmc_dev(sdhost->mmc),
+				"Failed to disable card regulators %d\n", err);
 		/*
 		 * Set retune request as tuning should be done next time
 		 * a card is inserted.
@@ -1311,19 +1316,14 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	sdhci_writew(sdhci, ctrl, SDHCI_HOST_CONTROL2);
 
 	/* Switch the I/O rail voltage */
-	if (tegra_host->vdd_io_reg) {
-		rc = regulator_set_voltage(tegra_host->vdd_io_reg,
-			min_uV, max_uV);
-		if (rc) {
-			dev_err(mmc_dev(sdhci->mmc), "switching to 1.8V"
-			"failed . Switching back to 3.3V\n");
-			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
-				SDHOST_HIGH_VOLT_MIN,
-				SDHOST_HIGH_VOLT_MAX);
-			if (rc)
-				dev_err(mmc_dev(sdhci->mmc),
-				"switching to 3.3V also failed\n");
-		}
+	rc = tegra_sdhci_configure_regulators(tegra_host, CONFIG_REG_SET_VOLT,
+		min_uV, max_uV);
+	if (rc && (signal_voltage == MMC_SIGNAL_VOLTAGE_180)) {
+		dev_err(mmc_dev(sdhci->mmc),
+			"setting 1.8V failed %d. Revert to 3.3V\n", rc);
+		rc = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_SET_VOLT, SDHOST_HIGH_VOLT_MIN,
+			SDHOST_HIGH_VOLT_MAX);
 	}
 
 	/* Wait for 10 msec for the voltage to be switched */
@@ -1335,6 +1335,43 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 
 	/* Wait for 1 msec after enabling clock */
 	mdelay(1);
+
+	return rc;
+}
+
+static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
+	u8 option, int min_uV, int max_uV)
+{
+	int rc = 0;
+
+	switch (option) {
+	case CONFIG_REG_EN:
+		if (!tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_slot_reg)
+				rc = regulator_enable(tegra_host->vdd_slot_reg);
+			if (tegra_host->vdd_io_reg)
+				rc = regulator_enable(tegra_host->vdd_io_reg);
+			tegra_host->is_rail_enabled = true;
+		}
+	break;
+	case CONFIG_REG_DIS:
+		if (tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_io_reg)
+				rc = regulator_disable(tegra_host->vdd_io_reg);
+			if (tegra_host->vdd_slot_reg)
+				rc = regulator_disable(
+					tegra_host->vdd_slot_reg);
+			tegra_host->is_rail_enabled = false;
+		}
+	break;
+	case CONFIG_REG_SET_VOLT:
+		if (tegra_host->vdd_io_reg)
+			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
+				min_uV, max_uV);
+	break;
+	default:
+		pr_err("Invalid argument passed to reg config %d\n", option);
+	}
 
 	return rc;
 }
@@ -2120,21 +2157,19 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	int err = 0;
 
 	tegra_sdhci_set_clock(sdhci, 0);
 
 	/* Disable the power rails if any */
 	if (tegra_host->card_present) {
-		if (tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_io_reg)
-				regulator_disable(tegra_host->vdd_io_reg);
-			if (tegra_host->vdd_slot_reg)
-				regulator_disable(tegra_host->vdd_slot_reg);
-			tegra_host->is_rail_enabled = 0;
-		}
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_DIS, 0, 0);
+		if (err)
+			dev_err(mmc_dev(sdhci->mmc),
+			"Regulators disable in suspend failed %d\n", err);
 	}
-
-	return 0;
+	return err;
 }
 
 static int tegra_sdhci_resume(struct sdhci_host *sdhci)
@@ -2143,6 +2178,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev;
 	struct tegra_sdhci_platform_data *plat;
+	int err;
 
 	pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	plat = pdev->dev.platform_data;
@@ -2157,20 +2193,21 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
-		if (!tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_slot_reg)
-				regulator_enable(tegra_host->vdd_slot_reg);
-			if (tegra_host->vdd_io_reg) {
-				regulator_enable(tegra_host->vdd_io_reg);
-				if (plat->mmc_data.ocr_mask &
-							SDHOST_1V8_OCR_MASK)
-					tegra_sdhci_signal_voltage_switch(sdhci,
-							MMC_SIGNAL_VOLTAGE_180);
-				else
-					tegra_sdhci_signal_voltage_switch(sdhci,
-							MMC_SIGNAL_VOLTAGE_330);
-			}
-			tegra_host->is_rail_enabled = 1;
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_EN, 0, 0);
+		if (err) {
+			dev_err(mmc_dev(sdhci->mmc),
+				"Regulators enable in resume failed %d\n", err);
+			return err;
+		}
+		if (tegra_host->vdd_io_reg) {
+			if (plat->mmc_data.ocr_mask &
+						SDHOST_1V8_OCR_MASK)
+				tegra_sdhci_signal_voltage_switch(sdhci,
+						MMC_SIGNAL_VOLTAGE_180);
+			else
+				tegra_sdhci_signal_voltage_switch(sdhci,
+						MMC_SIGNAL_VOLTAGE_330);
 		}
 	}
 
@@ -2290,27 +2327,21 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 		tegra_sdhci_set_clock(sdhci, 0);
 }
 
-static void tegra_sdhci_rail_off(struct sdhci_tegra *tegra_host)
-{
-	if (tegra_host->is_rail_enabled) {
-		if (tegra_host->vdd_slot_reg)
-			regulator_disable(tegra_host->vdd_slot_reg);
-		if (tegra_host->vdd_io_reg)
-			regulator_disable(tegra_host->vdd_io_reg);
-		tegra_host->is_rail_enabled = false;
-	}
-}
-
 static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
 	struct sdhci_tegra *tegra_host =
 		container_of(nb, struct sdhci_tegra, reboot_notify);
+	int err;
 
 	switch (event) {
 	case SYS_RESTART:
 	case SYS_POWER_OFF:
-		tegra_sdhci_rail_off(tegra_host);
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_DIS, 0, 0);
+		if (err)
+			pr_err("Disable regulator in reboot notify failed %d\n",
+				err);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -2613,12 +2644,15 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
 		tegra_host->vdd_io_reg = NULL;
 	} else {
-		rc = regulator_set_voltage(tegra_host->vdd_io_reg,
+		rc = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_SET_VOLT,
 			tegra_host->vddio_min_uv,
 			tegra_host->vddio_max_uv);
 		if (rc) {
-			dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
-				"vddio_sdmmc", rc);
+			dev_err(mmc_dev(host->mmc),
+				"Init volt(%duV-%duV) setting failed %d\n",
+				tegra_host->vddio_min_uv,
+				tegra_host->vddio_max_uv, rc);
 			regulator_put(tegra_host->vdd_io_reg);
 			tegra_host->vdd_io_reg = NULL;
 		}
@@ -2634,11 +2668,13 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	if (tegra_host->card_present) {
-		if (tegra_host->vdd_slot_reg)
-			regulator_enable(tegra_host->vdd_slot_reg);
-		if (tegra_host->vdd_io_reg)
-			regulator_enable(tegra_host->vdd_io_reg);
-		tegra_host->is_rail_enabled = 1;
+		rc = tegra_sdhci_configure_regulators(tegra_host, CONFIG_REG_EN,
+			0, 0);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc),
+				"Enable regulators failed in probe %d\n", rc);
+			goto err_clk_get;
+		}
 	}
 
 	tegra_pd_add_device(&pdev->dev);
@@ -2796,20 +2832,21 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 	int dead = (readl(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
+	int rc = 0;
 
 	sdhci_remove_host(host, dead);
 
 	disable_irq_wake(gpio_to_irq(plat->cd_gpio));
 
-	if (tegra_host->vdd_slot_reg) {
-		regulator_disable(tegra_host->vdd_slot_reg);
-		regulator_put(tegra_host->vdd_slot_reg);
-	}
+	rc = tegra_sdhci_configure_regulators(tegra_host, CONFIG_REG_DIS, 0, 0);
+	if (rc)
+		dev_err(mmc_dev(host->mmc),
+			"Regulator disable in remove failed %d\n", rc);
 
-	if (tegra_host->vdd_io_reg) {
-		regulator_disable(tegra_host->vdd_io_reg);
+	if (tegra_host->vdd_slot_reg)
+		regulator_put(tegra_host->vdd_slot_reg);
+	if (tegra_host->vdd_io_reg)
 		regulator_put(tegra_host->vdd_io_reg);
-	}
 
 	if (gpio_is_valid(plat->wp_gpio))
 		gpio_free(plat->wp_gpio);
@@ -2837,7 +2874,7 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 
 	sdhci_pltfm_free(pdev);
 
-	return 0;
+	return rc;
 }
 
 static struct platform_driver sdhci_tegra_driver = {
