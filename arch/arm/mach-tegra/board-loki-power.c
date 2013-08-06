@@ -507,6 +507,8 @@ static struct platform_device fixed_reg_en_##_var##_dev = {	\
 /* Always ON Battery regulator */
 static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
+		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
+		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_modem_3v3_supply[] = {
