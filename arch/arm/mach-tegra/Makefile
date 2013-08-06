@@ -309,6 +309,11 @@ obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-edp-1080p-14-0.o
 
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-pinmux.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
+
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
 
