@@ -188,7 +188,7 @@ static s32 power_down_ina230(struct i2c_client *client)
 static s32 __locked_start_current_mon(struct i2c_client *client)
 {
 	s32 retval;
-	s16 shunt_uV;
+	s32 shunt_uV;
 	s16 shunt_limit;
 	s16 alert_mask;
 	struct ina230_data *data = i2c_get_clientdata(client);
@@ -210,7 +210,7 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 	if (data->pdata->shunt_polarity_inverted)
 		shunt_uV *= -1;
 
-	shunt_limit = uv_to_alert_register(shunt_uV);
+	shunt_limit = (s16) uv_to_alert_register(shunt_uV);
 
 	retval = i2c_smbus_write_word_data(client, INA230_ALERT,
 					   cpu_to_be16(shunt_limit));
