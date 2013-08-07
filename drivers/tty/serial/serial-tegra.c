@@ -483,12 +483,15 @@ static void tegra_uart_stop_tx(struct uart_port *u)
 	struct dma_tx_state state;
 	int count;
 
-	dmaengine_terminate_all(tup->tx_dma_chan);
-	dmaengine_tx_status(tup->tx_dma_chan, tup->tx_cookie, &state);
-	count = tup->tx_bytes_requested - state.residue;
-	async_tx_ack(tup->tx_dma_desc);
-	xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
-	tup->tx_in_progress = 0;
+	if (tup->tx_in_progress == TEGRA_UART_TX_DMA) {
+		dmaengine_terminate_all(tup->tx_dma_chan);
+		dmaengine_tx_status(tup->tx_dma_chan, tup->tx_cookie, &state);
+		count = tup->tx_bytes_requested - state.residue;
+		async_tx_ack(tup->tx_dma_desc);
+		xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
+		tup->tx_in_progress = 0;
+	}
+
 	return;
 }
 
