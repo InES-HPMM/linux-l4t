@@ -1844,6 +1844,9 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		/* FALLTHROUGH */
 	case BUS_NOTIFY_ADD_DEVICE:
+		if (strncmp(dev_name(dev), "tegra_smmu", 10) == 0)
+			break;
+
 		if (!smmu_handle) {
 			dev_warn(dev, "No map yet available\n");
 			break;
