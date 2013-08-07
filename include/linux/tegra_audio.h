@@ -102,6 +102,7 @@ struct dmic_params_t {
 #define DAM_MIXING_START	_IOW(TEGRA_AUDIO_MAGIC, 15, struct dam_srate *)
 #define DAM_MIXING_STOP	_IO(TEGRA_AUDIO_MAGIC, 16)
 #define DAM_SET_MIXING_FLAG	_IO(TEGRA_AUDIO_MAGIC, 17)
+#define DAM_SET_MIXING_OUTPUT_I2S _IO(TEGRA_AUDIO_MAGIC, 18)
 
 #define I2S_START	_IOW(TEGRA_AUDIO_MAGIC, 21, struct i2s_pcm_format *)
 #define I2S_STOP	_IOW(TEGRA_AUDIO_MAGIC, 22, struct i2s_pcm_format *)
