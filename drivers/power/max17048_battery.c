@@ -692,8 +692,10 @@ static int max17048_update_battery_status(struct battery_gauge_dev *bg_dev,
 {
 	struct max17048_chip *chip = battery_gauge_get_drvdata(bg_dev);
 
-	if (status == BATTERY_CHARGING)
+	if (status == BATTERY_CHARGING) {
+		chip->charge_complete = 0;
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
+	}
 	else if (status == BATTERY_CHARGING_DONE) {
 		chip->charge_complete = 1;
 		chip->soc = MAX17048_BATTERY_FULL;
