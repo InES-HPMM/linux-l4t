@@ -487,6 +487,10 @@ static int tegra14x_unpowergate(int id,
 
 	udelay(10);
 
+	powergate_partition_assert_reset(pg_info);
+
+	udelay(10);
+
 	/* Un-Powergating fails if all clks are not enabled */
 	ret = partition_clk_enable(pg_info);
 	if (ret)
