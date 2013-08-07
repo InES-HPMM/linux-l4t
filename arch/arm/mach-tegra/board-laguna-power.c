@@ -175,7 +175,7 @@ static struct regulator_consumer_supply as3722_sd6_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
 };
 
-AMS_PDATA_INIT(sd0, NULL, 700000, 1350000, 1, 1, 1, AS3722_EXT_CONTROL_ENABLE2);
+AMS_PDATA_INIT(sd0, NULL, 700000, 1400000, 1, 1, 1, AS3722_EXT_CONTROL_ENABLE2);
 AMS_PDATA_INIT(sd1, NULL, 700000, 1350000, 1, 1, 1, AS3722_EXT_CONTROL_ENABLE1);
 AMS_PDATA_INIT(sd2, NULL, 1350000, 1350000, 1, 1, 1, 0);
 AMS_PDATA_INIT(sd4, NULL, 1050000, 1050000, 0, 1, 1, 0);
@@ -431,15 +431,15 @@ static struct tegra_cl_dvfs_cfg_param laguna_cl_dvfs_param = {
 };
 #endif
 
-/* TPS51632: fixed 10mV steps from 600mV to 1400mV, with offset 0x23 */
-#define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
+/* Laguna: fixed 10mV steps from 700mV to 1400mV */
+#define PMU_CPU_VDD_MAP_SIZE ((1400000 - 700000) / 10000 + 1)
 static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
 static inline void fill_reg_map(void)
 {
 	int i;
 	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
-		pmu_cpu_vdd_map[i].reg_value = i + 0x23;
-		pmu_cpu_vdd_map[i].reg_uV = 600000 + 10000 * i;
+		pmu_cpu_vdd_map[i].reg_value = i + 0xa;
+		pmu_cpu_vdd_map[i].reg_uV = 700000 + 10000 * i;
 	}
 }
 
@@ -449,7 +449,7 @@ static struct tegra_cl_dvfs_platform_data laguna_cl_dvfs_data = {
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
 	.u.pmu_i2c = {
 		.fs_rate = 400000,
-		.slave_addr = 0x86,
+		.slave_addr = 0x80,
 		.reg = 0x00,
 	},
 	.vdd_map = pmu_cpu_vdd_map,
@@ -461,10 +461,9 @@ static struct tegra_cl_dvfs_platform_data laguna_cl_dvfs_data = {
 static int __init laguna_cl_dvfs_init(void)
 {
 	fill_reg_map();
+	laguna_cl_dvfs_data.flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
 	tegra_cl_dvfs_device.dev.platform_data = &laguna_cl_dvfs_data;
-/* FIXME: Should only be enabled when proper settings are there for
-          Laguna regulators */
-	/* platform_device_register(&tegra_cl_dvfs_device); */
+	platform_device_register(&tegra_cl_dvfs_device);
 
 	return 0;
 }
