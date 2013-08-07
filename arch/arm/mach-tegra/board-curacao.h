@@ -45,10 +45,6 @@ int curacao_panel_init(void);
 int curacao_sensors_init(void);
 int curacao_emc_init(void);
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-#define CURACAO_BOARD_NAME "curacao_sim"
-#else
 #define CURACAO_BOARD_NAME "curacao"
-#endif
 
 #endif

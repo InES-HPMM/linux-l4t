@@ -273,7 +273,6 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         900,    950,   1000,   1050,    1100,    1120,    1170,    1200,    1250 */
 	/* Clock limits for internal blocks, PLLs */
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	CORE_DVFS("emc",    -1, -1, 1, KHZ,        1,      1,      1,      1,  800000,  800000,  933000,  933000, 1066000),
 
 	CORE_DVFS("cpu_lp",  0,  0, 1, KHZ,   228000, 306000, 396000, 510000,  648000,  696000,  696000,  696000,  696000),
@@ -362,7 +361,6 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("xusb_ss_src",     -1, -1, 1, KHZ,  1, 122400, 122400, 122400,  122400,  122400,  122400,  122400,  122400),
 	CORE_DVFS("xusb_fs_src",     -1, -1, 1, KHZ,  1,  48000,  48000,  48000,   48000,   48000,   48000,   48000,   48000),
 	CORE_DVFS("xusb_hs_src",     -1, -1, 1, KHZ,  1,  61200,  61200,  61200,   61200,   61200,   61200,   61200,   61200),
-#endif
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)

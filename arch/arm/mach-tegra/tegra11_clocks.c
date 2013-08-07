@@ -1255,7 +1255,7 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	bool is_dfll = c->parent->parent == c->u.cpu.dynamic;
 
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
-	   Ignore regulator connection on FPGA and SIMULATION platforms. */
+	   Ignore regulator connection on FPGA platforms. */
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
@@ -1848,7 +1848,6 @@ static struct clk_ops tegra_blink_clk_ops = {
 static int tegra11_pll_clk_wait_for_lock(
 	struct clk *c, u32 lock_reg, u32 lock_bits)
 {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 #if USE_PLL_LOCK_BITS
 	int i;
 	u32 val = 0;
@@ -1878,7 +1877,6 @@ static int tegra11_pll_clk_wait_for_lock(
 	}
 #endif
 	udelay(c->u.pll.lock_delay);
-#endif
 	return 0;
 }
 
@@ -2504,9 +2502,7 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	 * and no enabled module clocks should use it as a source during clock
 	 * init.
 	 */
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	BUG_ON(c->state == ON);
-#endif
 	/*
 	 * Most of PLLCX register fields are shadowed, and can not be read
 	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
@@ -2723,9 +2719,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 
 	/* Only s/w dyn ramp control is supported */
 	val = clk_readl(PLLX_HW_CTRL_CFG);
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	BUG_ON(!(val & PLLX_HW_CTRL_CFG_SWCTRL));
-#endif
 
 	pllxc_get_dyn_steps(c, input_rate, &step_a, &step_b);
 	val = step_a << PLLX_MISC2_DYNRAMP_STEPA_SHIFT;
@@ -2743,11 +2737,9 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 
 	/* Check/set IDDQ */
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
-	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	if (c->state == ON)
 		BUG_ON(val & PLLX_MISC3_IDDQ);
-#endif
-	} else {
+	else {
 		val |= PLLX_MISC3_IDDQ;
 		clk_writel(val, c->reg + PLL_MISCN(c, 3));
 	}
@@ -2778,9 +2770,7 @@ static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 	clk_writel(val, c->reg + PLL_MISC(c));
 
 	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 		BUG_ON(val & PLLC_MISC_IDDQ);
-#endif
 	} else {
 		val |= PLLC_MISC_IDDQ;
 		clk_writel(val, c->reg + PLL_MISC(c));
@@ -2994,10 +2984,8 @@ static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state != ON)
 		val |= PLLM_MISC_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
 		BUG_ON(val & PLLM_MISC_IDDQ);
-#endif
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
@@ -3161,10 +3149,8 @@ static void pllre_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state != ON)
 		val |= PLLRE_MISC_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
 		BUG_ON(val & PLLRE_MISC_IDDQ);
-#endif
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
@@ -4342,7 +4328,6 @@ static struct clk_ops tegra_1xbus_clk_ops = {
 	.shared_bus_update	= &tegra11_clk_1xbus_update,
 };
 
-#if !defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 /* msenc clock propagation WAR for bug 1005168 */
 static int tegra11_msenc_clk_enable(struct clk *c)
 {
@@ -4366,7 +4351,6 @@ static struct clk_ops tegra_msenc_clk_ops = {
 	.round_rate		= &tegra11_periph_clk_round_rate,
 	.reset			= &tegra11_periph_clk_reset,
 };
-#endif
 /* Periph extended clock configuration ops */
 static int
 tegra11_vi_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
@@ -6915,11 +6899,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	NULL,			"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	700000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
-#else
 	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
-#endif
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	297000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8 | DIV_U71),

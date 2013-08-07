@@ -205,21 +205,6 @@ static struct tegra_dc_sd_settings curacao_sd_settings = {
 };
 
 static struct tegra_dc_mode curacao_panel_modes[] = {
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	{
-		.pclk = 18000000,
-		.h_ref_to_sync = 11,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 16,
-		.v_sync_width = 4,
-		.h_back_porch = 16,
-		.v_back_porch = 4,
-		.h_active = 240,
-		.v_active = 320,
-		.h_front_porch = 16,
-		.v_front_porch = 4,
-	},
-#else
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
 			TEGRA_DSI_GANGED_MODE
 	{
@@ -250,17 +235,10 @@ static struct tegra_dc_mode curacao_panel_modes[] = {
 		.v_front_porch = 4,
 	},
 #endif
-#endif
 };
 
 static struct tegra_fb_data curacao_fb_data = {
 	.win		= 0,
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
-	.xres		= 240,
-	.yres		= 320,
-	.bits_per_pixel = 16,
-	.flags		= 0,
-#else
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
 		TEGRA_DSI_GANGED_MODE
 	.xres		= 640,
@@ -271,7 +249,6 @@ static struct tegra_fb_data curacao_fb_data = {
 	.bits_per_pixel = 32,
 #endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
-#endif
 };
 
 static struct tegra_dsi_cmd dsi_init_cmd[] = {
@@ -370,11 +347,7 @@ static struct tegra_dsi_out curacao_dsi = {
 static struct tegra_dc_out curacao_disp1_out = {
 	.sd_settings	= &curacao_sd_settings,
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.type		= TEGRA_DC_OUT_RGB,
-#else
 	.type		= TEGRA_DC_OUT_DSI,
-#endif
 	.dsi		= &curacao_dsi,
 
 	.align		= TEGRA_DC_ALIGN_MSB,
@@ -452,11 +425,7 @@ static struct resource curacao_disp2_resources[] = {
 static struct tegra_dc_out curacao_disp2_out = {
 	.sd_settings	= &curacao_sd_settings,
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.type		= TEGRA_DC_OUT_RGB,
-#else
 	.type		= TEGRA_DC_OUT_DSI,
-#endif
 	.dsi		= &curacao_dsi,
 
 	.align		= TEGRA_DC_ALIGN_MSB,
