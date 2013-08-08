@@ -17,6 +17,7 @@ config ARM64
 	select GENERIC_SMP_IDLE_THREAD
 	select GENERIC_TIME_VSYSCALL
 	select HARDIRQS_SW_RESEND
+	select GENERIC_PCI_IOMAP
 	select HAVE_ARCH_TRACEHOOK
 	select HAVE_DEBUG_BUGVERBOSE
 	select HAVE_DEBUG_KMEMLEAK
@@ -51,7 +52,7 @@ config MMU
 	def_bool y
 
 config NO_IOPORT
-	def_bool y
+	bool
 
 config STACKTRACE_SUPPORT
 	def_bool y
