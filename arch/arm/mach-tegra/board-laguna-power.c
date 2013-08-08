@@ -452,7 +452,9 @@ static int __init laguna_cl_dvfs_init(void)
 {
 	fill_reg_map();
 	tegra_cl_dvfs_device.dev.platform_data = &laguna_cl_dvfs_data;
-	platform_device_register(&tegra_cl_dvfs_device);
+/* FIXME: Should only be enabled when proper settings are there for
+          Laguna regulators */
+	/* platform_device_register(&tegra_cl_dvfs_device); */
 
 	return 0;
 }
