@@ -1472,10 +1472,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_core_override", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &core_override_fops);
+	if (!d)
+		return -ENOMEM;
 
 	d = debugfs_create_file("gpu_dvfs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &gpu_dvfs_fops);
-
 	if (!d)
 		return -ENOMEM;
 
