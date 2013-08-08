@@ -1678,7 +1678,7 @@ static void ov5693_pm_init(struct ov5693_info *info)
 
 	ov5693_regulator_get(info, &pw->dvdd, "dvdd");
 
-	ov5693_regulator_get(info, &pw->avdd, "avdd");
+	ov5693_regulator_get(info, &pw->avdd, "avdd_ov5693");
 
 	ov5693_regulator_get(info, &pw->dovdd, "dovdd");
 	info->power_on = false;
