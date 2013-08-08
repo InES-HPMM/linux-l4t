@@ -543,12 +543,6 @@
 			     <1 14 0xf08>,
 			     <1 11 0xf08>,
 			     <1 10 0xf08>;
-	};
-
-	timer {
-		compatible = "arm,armv7-timer";
-		interrupts = <1 13 0xf04
-			      1 14 0xf04>;
 		clock-frequency = <12000000>;
 	};
 
