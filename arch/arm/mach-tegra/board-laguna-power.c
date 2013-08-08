@@ -488,14 +488,10 @@ static struct regulator_consumer_supply fixed_reg_usb0_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 };
 
-/* EN_USB1_VBUS From TEGRA GPIO PN5 */
-static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
+/* EN_USB1_USB2_VBUS From TEGRA GPIO PN5 */
+static struct regulator_consumer_supply fixed_reg_usb1_usb2_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("usb_vbus1", "tegra-xhci"),
-};
-
-/* EN_USB2_VBUS From TEGRA GPIO PPF1 */
-static struct regulator_consumer_supply fixed_reg_usb2_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("usb_vbus2", "tegra-xhci"),
 };
@@ -690,46 +686,43 @@ FIXED_REG(5,	vdd_hdmi,	vdd_hdmi,	AS3722_SUPPLY(sd4),
 FIXED_REG(6,	usb0_vbus,	usb0_vbus,	NULL,	0,	0,
 		TEGRA_GPIO_PN4,	true,	true,	0,	5000);
 
-FIXED_REG(7,	usb1_vbus,	usb1_vbus,	NULL,	0,	0,
+FIXED_REG(7,	usb1_usb2_vbus,	usb1_usb2_vbus,	NULL,	0,	0,
 		TEGRA_GPIO_PN5,	true,	true,	0,	5000);
 
-FIXED_REG(8,	usb2_vbus,	usb2_vbus,	NULL,	0,	0,
-		TEGRA_GPIO_PFF1,	false,	true,	0,	5000);
-
-FIXED_REG(9,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
+FIXED_REG(8,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
 		TEGRA_GPIO_PP2,	false,	true,	0,	3300);
 
-FIXED_REG(10,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
+FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
 		TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
-FIXED_REG(11,	3v3,		3v3,		NULL,	0,	0,
+FIXED_REG(10,	3v3,		3v3,		NULL,	0,	0,
 		-1,	false,	true,	0,	3300);
 
-FIXED_REG(12,	5v0,		5v0,		NULL,	0,	0,
+FIXED_REG(11,	5v0,		5v0,		NULL,	0,	0,
 		-1,	false,	true,	0,	5000);
 
-FIXED_REG(13,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
+FIXED_REG(12,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
 		-1,	false,	true,	0,	1800);
 
-FIXED_REG(14,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
+FIXED_REG(13,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
 		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200);
 
-FIXED_REG(15,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
+FIXED_REG(14,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,	3300);
 
-FIXED_REG(16,	lcd,		lcd,		NULL,	0,	0,
+FIXED_REG(15,	lcd,		lcd,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,	3300);
 
-FIXED_REG(17,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
+FIXED_REG(16,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
 		TEGRA_GPIO_PR0,		false,	true,	0,	3300);
 
-FIXED_REG(18,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
+FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(2),	false,	true,	0,	1200);
 
-FIXED_REG(19,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
+FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(3),	false,	true,	0,	1200);
 
-FIXED_REG(20,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
+FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(13),	false,	true,	0,	3300);
 /*
  * Creating the fixed regulator device tables
@@ -745,8 +738,7 @@ FIXED_REG(20,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
 	ADD_FIXED_REG(vdd_hdmi_5v0),		\
 	ADD_FIXED_REG(vdd_hdmi),		\
 	ADD_FIXED_REG(usb0_vbus),		\
-	ADD_FIXED_REG(usb1_vbus),		\
-	ADD_FIXED_REG(usb2_vbus),		\
+	ADD_FIXED_REG(usb1_usb2_vbus),		\
 	ADD_FIXED_REG(vdd_lcd_bl),		\
 	ADD_FIXED_REG(lcd_bl_en),		\
 	ADD_FIXED_REG(3v3),			\
