@@ -483,6 +483,7 @@
 #define INT_UARTE			(INT_TRI_BASE + 27)
 #define INT_I2C3			(INT_TRI_BASE + 28)
 #define INT_SPI_4			(INT_TRI_BASE + 29)
+#define INT_DTV			INT_SPI_4
 #define INT_SPI_5			(INT_TRI_BASE + 30)
 #define INT_SW_RESERVED			(INT_TRI_BASE + 31)
 
@@ -675,6 +676,7 @@
 #define INT_UARTE			(INT_TRI_BASE + 27)
 #define INT_I2C3			(INT_TRI_BASE + 28)
 #define INT_SPI_4			(INT_TRI_BASE + 29)
+#define INT_DTV			INT_SPI_4
 #define INT_SPI_5			(INT_TRI_BASE + 30)
 #define INT_SW_RESERVED			(INT_TRI_BASE + 31)
 
