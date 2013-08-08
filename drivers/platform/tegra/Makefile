@@ -73,6 +73,8 @@ obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
 
+obj-$(CONFIG_TEGRA_PCI) += pcie.o
+
 obj-y += board-common.o
 
 obj-y += mcerr.o
