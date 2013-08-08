@@ -49,6 +49,7 @@
 #include <linux/kthread.h>
 #include <linux/netdevice.h>
 #include <linux/sched.h>
+#include <linux/sched/rt.h>
 #include <linux/etherdevice.h>
 #include <linux/wireless.h>
 #include <linux/ieee80211.h>
@@ -6338,7 +6339,7 @@ static s32 wl_inform_single_bss(struct wl_priv *wl, struct wl_bss_info *bi, u8 i
 		return -EINVAL;
 	}
 
-	cfg80211_put_bss(cbss);
+	cfg80211_put_bss(wiphy, cbss);
 	kfree(notif_bss_info);
 	return err;
 }
@@ -6925,7 +6926,7 @@ static s32 wl_update_bss_info(struct wl_priv *wl, struct net_device *ndev, u8 is
 		ie = bss->ies;
 		ie_len = bss->ies->len;
 		beacon_interval = bss->beacon_ies->len;
-		cfg80211_put_bss(bss);
+		cfg80211_put_bss(wiphy, bss);
 	}
 
 	tim = bcm_parse_tlvs(ie, ie_len, WLAN_EID_TIM);
