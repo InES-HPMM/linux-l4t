@@ -38,7 +38,7 @@ struct tps65090_regulator {
 
 static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
 {
-	return rdev_get_dev(rdev)->parent->parent;
+	return rdev_get_dev(rdev)->parent;
 }
 
 static int tps65090_reg_enable(struct regulator_dev *rdev)
