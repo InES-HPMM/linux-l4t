@@ -515,7 +515,7 @@ static void nct1008_update(struct nct1008_data *data)
 		}
 	}
 
-	thermal_generate_netlink_event(thz->id, type);
+	thermal_generate_netlink_event(thz, type);
 	nct1008_thermal_set_limits(data, low_temp, high_temp);
 }
 
