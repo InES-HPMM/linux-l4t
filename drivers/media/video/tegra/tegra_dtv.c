@@ -911,6 +911,18 @@ static int setup_dma(struct tegra_dtv_context *dtv_ctx)
 
 	pr_debug("%s called\n", __func__);
 
+	/* allocate dma channel */
+	dtv_ctx->stream.dma_chan = tegra_dma_allocate_channel(
+		TEGRA_DMA_MODE_CONTINUOUS_DOUBLE,
+		"tegra_dtv_rx", dtv_ctx->dma_req_sel);
+	if (!dtv_ctx->stream.dma_chan) {
+		pr_err("%s : cannot allocate input DMA channel: %ld\n",
+		       __func__, PTR_ERR(dtv_ctx->stream.dma_chan));
+		ret = -ENODEV;
+		return ret;
+	}
+
+	/* map buffers */
 	for (i = 0; i < stream->num_bufs; i++) {
 		buf = &stream->bufs[i];
 		buf->data_phy = dma_map_single(
@@ -919,18 +931,6 @@ static int setup_dma(struct tegra_dtv_context *dtv_ctx)
 		BUG_ON(!buf->data_phy);
 		setup_dma_rx_request(&buf->dma_req, stream);
 		buf->dma_req.dest_addr = buf->data_phy;
-	}
-	dtv_ctx->stream.dma_chan = tegra_dma_allocate_channel(
-		TEGRA_DMA_MODE_CONTINUOUS_DOUBLE,
-		"tegra_dtv_rx", dtv_ctx->dma_req_sel);
-	if (!dtv_ctx->stream.dma_chan) {
-		pr_err("%s : cannot allocate input DMA channel: %ld\n",
-		       __func__, PTR_ERR(dtv_ctx->stream.dma_chan));
-		ret = -ENODEV;
-		/* release */
-		tear_down_dma(dtv_ctx);
-
-		return ret;
 	}
 
 	return ret;
@@ -945,16 +945,18 @@ static void tear_down_dma(struct tegra_dtv_context *dtv_ctx)
 
 	pr_debug("%s called\n", __func__);
 
-	for (i = 0; i < dtv_ctx->stream.num_bufs; i++) {
-		buf = &stream->bufs[i];
-		dma_unmap_single(dev,
-				 buf->data_phy,
-				 stream->buf_size,
-				 DMA_FROM_DEVICE);
-		buf->data_phy = 0;
+	if (dtv_ctx->stream.dma_chan) {
+		for (i = 0; i < dtv_ctx->stream.num_bufs; i++) {
+			buf = &stream->bufs[i];
+			dma_unmap_single(dev,
+					 buf->data_phy,
+					 stream->buf_size,
+					 DMA_FROM_DEVICE);
+			buf->data_phy = 0;
+		}
+		tegra_dma_free_channel(stream->dma_chan);
+		dtv_ctx->stream.dma_chan = 0;
 	}
-	tegra_dma_free_channel(stream->dma_chan);
-	dtv_ctx->stream.dma_chan = 0;
 }
 
 static void free_dtv_buffer(struct dtv_buffer *buf)
@@ -1227,10 +1229,14 @@ fail_setup_stream:
 fail_setup_dma:
 	tear_down_dma(dtv_ctx);
 fail_no_res:
+	pm_qos_remove_request(&dtv_ctx->min_cpufreq);
+	pm_qos_remove_request(&dtv_ctx->cpudma_lat);
 fail_clk_enable:
 fail_no_clk:
 	if (clk)
 		clk_put(clk);
+
+	pr_warn("%s: DTV probing failed", __func__);
 
 	return ret;
 }
@@ -1246,6 +1252,9 @@ static int tegra_dtv_remove(struct platform_device *pdev)
 	dtv_debugfs_exit(dtv_ctx);
 	tear_down_dma(dtv_ctx);
 	destroy_stream(&dtv_ctx->stream);
+
+	pm_qos_remove_request(&dtv_ctx->min_cpufreq);
+	pm_qos_remove_request(&dtv_ctx->cpudma_lat);
 
 	clk_put(dtv_ctx->clk);
 
