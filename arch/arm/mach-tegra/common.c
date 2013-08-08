@@ -197,11 +197,12 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 {
 	unsigned long check;
 	int retry = 10;
+	unsigned long flags;
 
 	/* Read and check if write is successful,
 	 * if val doesn't match with read, retry write.
 	 */
-	spin_lock(&ahb_lock);
+	spin_lock_irqsave(&ahb_lock, flags);
 	do {
 		writel(val, reg);
 		check = readl(reg);
@@ -210,7 +211,7 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 		else
 			pr_err("AHB register access fail for reg\n");
 	} while (--retry);
-	spin_unlock(&ahb_lock);
+	spin_unlock_irqrestore(&ahb_lock, flags);
 }
 
 void tegra_assert_system_reset(char mode, const char *cmd)
