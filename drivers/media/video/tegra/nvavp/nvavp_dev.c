@@ -39,7 +39,6 @@
 
 #include <mach/clk.h>
 #include <mach/hardware.h>
-#include <mach/iomap.h>
 #include <mach/legacy_irq.h>
 #include <mach/pm_domains.h>
 
@@ -50,6 +49,9 @@
 #include "../avp/headavp.h"
 #endif
 #include "nvavp_os.h"
+
+/* HACK: this has to come from DT */
+#include "../../../../../arch/arm/mach-tegra/iomap.h"
 
 #define TEGRA_NVAVP_NAME			"nvavp"
 
@@ -1758,7 +1760,6 @@ err_get_bsev_clk:
 err_get_vde_clk:
 	clk_put(nvavp->cop_clk);
 err_get_cop_clk:
-err_dma_alloc:
 err_get_syncpt:
 	kfree(nvavp);
 	return ret;
