@@ -113,7 +113,6 @@ void tegra_init_speedo_data(void)
 	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
 	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
 
-
 	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {
 		if (gpu_speedo_value <
 			gpu_process_speedos[threshold_index][i]) {
@@ -123,6 +122,14 @@ void tegra_init_speedo_data(void)
 
 	gpu_process_id = i;
 	pr_info("Tegra12: GPU Speedo %d", gpu_speedo_value);
+
+	/* cpu_speedo_value = TEGRA124_CPU_SPEEDO; */
+	cpu_speedo_value = cpu_speedo_0_value;
+
+	if (cpu_speedo_value > 2200)
+		cpu_process_id = 1;
+	else
+		cpu_process_id = 0;
 
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
