@@ -412,13 +412,9 @@ EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static int tegera_xusb_padctl_phy_enable(void)
 {
-	unsigned long val, flags, timeout;
+	unsigned long val, timeout;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
-	static bool phy_enabled = false;
 
-	/* return if PHY is already enabled by any of clients */
-	if (phy_enabled)
-		return 0;
 	/* set up PLL inputs in PLL_CTL1 */
 	val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_REFCLK_SEL_MASK;
@@ -449,7 +445,6 @@ static int tegera_xusb_padctl_phy_enable(void)
 			return -EBUSY;
 		}
 	} while (!(val & XUSB_PADCTL_IOPHY_PLL_P0_CTL1_PLL0_LOCKDET));
-	phy_enabled = true;
 
 	return 0;
 }
