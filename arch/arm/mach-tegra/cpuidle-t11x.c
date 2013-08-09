@@ -501,7 +501,9 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	tegra_set_cpu_in_pd(dev->cpu);
 	cpu_gating_only = (((fast_cluster_power_down_mode
 			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
-			& TEGRA_POWER_CLUSTER_PART_MASK) == 0);
+			& TEGRA_POWER_CLUSTER_PART_MASK) == 0) ||
+			(tegra_dvfs_is_dfll_bypass() &&
+			 !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail));
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu &&

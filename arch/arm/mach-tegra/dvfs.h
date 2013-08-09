@@ -344,4 +344,13 @@ static inline int tegra_dvfs_rail_get_override_floor(struct dvfs_rail *rail)
 	return -ENOENT;
 }
 
+static inline bool tegra_dvfs_is_dfll_bypass(void)
+{
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+	return true;
+#else
+	return false;
+#endif
+}
+
 #endif

@@ -1034,11 +1034,8 @@ static int __init tegra_dfll_cpu_start(void)
 
 static int __init tegra_clk_late_init(void)
 {
-#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
-	bool init_dfll_first = true;
-#else
-	bool init_dfll_first = false;
-#endif
+	bool init_dfll_first = tegra_dvfs_is_dfll_bypass();
+
 	tegra_init_disable_boot_clocks(); /* must before dvfs late init */
 
 	/*
