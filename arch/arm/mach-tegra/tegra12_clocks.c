@@ -6963,6 +6963,20 @@ static struct clk tegra_camera_mclk2 = {
 	.flags = PERIPH_NO_RESET,
 };
 
+static struct clk tegra_clk_isp = {
+	.name = "isp",
+	.ops = &tegra_periph_clk_ops,
+	.reg = 0x144,
+	.max_rate = 600000000,
+	.inputs = mux_pllm_pllc_pllp_plla_clkm_pllc4,
+	.flags = MUX | MUX8 | DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
+};
+
+static struct clk_mux_sel mux_isp[] = {
+	{ .input = &tegra_clk_isp, .value = 0},
+	{ 0, 0},
+};
+
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
 		.name      = _name,			\
@@ -7145,9 +7159,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0x4b8,	500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
-	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	102000000, mux_plld,		PLLD),
-	PERIPH_CLK("isp",	"isp",			"isp",	23,	0x144,	600000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	150000000, mux_clk_m,			0),
+	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	102000000, mux_plld,			PLLD),
+	PERIPH_CLK("ispa",	"isp",			"ispa",	23,	0,	600000000, mux_isp,			PERIPH_ON_APB),
+	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	600000000, mux_isp,			PERIPH_ON_APB),
 	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vim2_clk",	"vi",			"vim2_clk",	171,	0,	150000000, mux_clk_m,		PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"vi",			"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
@@ -7473,6 +7487,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cbus,
 #endif
 	&tegra_clk_gpu,
+	&tegra_clk_isp,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
