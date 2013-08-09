@@ -3454,6 +3454,7 @@ static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
 	dma_addr_t fw_dma;
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	int ret;
+	DEFINE_DMA_ATTRS(attrs);
 #endif
 
 	/* bootloader saved firmware memory address in PMC SCRATCH34 register */
@@ -3483,8 +3484,10 @@ static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
 			fw_mem_phy_addr, fw_mmio_base, fw_size);
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-	fw_dma = dma_map_linear(&pdev->dev, fw_mem_phy_addr, fw_size,
-			DMA_TO_DEVICE);
+	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	fw_dma = dma_map_linear_attrs(&pdev->dev, fw_mem_phy_addr, fw_size,
+			DMA_TO_DEVICE, &attrs);
+
 	if (fw_dma == DMA_ERROR_CODE) {
 		dev_err(&pdev->dev, "%s: dma_map_linear failed\n",
 				__func__);
