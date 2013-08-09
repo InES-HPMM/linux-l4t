@@ -65,7 +65,6 @@ static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
-	.en_core_tk_irqen = 1,
 #ifdef CONFIG_PM_SLEEP
 	.state_count = 3,
 #else
