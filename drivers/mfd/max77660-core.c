@@ -262,6 +262,22 @@ static void max77660_power_off(void)
 			GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 }
 
+static void max77660_power_reset(void)
+{
+	struct max77660_chip *chip = max77660_chip;
+
+	if (!chip)
+		return;
+
+	dev_info(chip->dev, "%s: PMIC Reset\n", __func__);
+	/*
+	 * ES1.0 errata suggest that in place of doing read modify write,
+	 * write direct valid value.
+	 */
+	max77660_reg_write(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG0, 1);
+}
+
 static int max77660_32kclk_init(struct max77660_chip *chip,
 		struct max77660_platform_data *pdata)
 {
@@ -578,10 +594,12 @@ static int max77660_probe(struct i2c_client *client,
 		goto fail_client_reg;
 	}
 
-	if (pdata->use_power_off && !pm_power_off) {
-		max77660_chip = chip;
+	max77660_chip = chip;
+	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = max77660_power_off;
-	}
+
+	if (pdata->use_power_reset && !pm_power_reset)
+		pm_power_reset = max77660_power_reset;
 
 	ret = max77660_32kclk_init(chip, pdata);
 	if (ret < 0) {
