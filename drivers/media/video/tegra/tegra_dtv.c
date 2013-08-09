@@ -1,4 +1,3 @@
-
 /*
  * tegra_dtv.c - Tegra DTV interface driver
  *

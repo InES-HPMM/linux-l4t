@@ -12,7 +12,7 @@ source "drivers/media/video/tegra/nvavp/Kconfig"
 
 config TEGRA_DTV
         bool "Enable support for tegra dtv interface"
-        depends on ARCH_TEGRA
+        depends on ARCH_TEGRA && TEGRA_SYSTEM_DMA
         default y
         help
           Enables support for the Tegra dtv interface
