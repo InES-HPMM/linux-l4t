@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-curacao-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ static struct platform_pwm_backlight_data curacao_backlight_data = {
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 5000000,
+	.pwm_gpio	= TEGRA_GPIO_INVALID,
 	.init		= curacao_backlight_init,
 	.exit		= curacao_backlight_exit,
 	.notify		= curacao_backlight_notify,

@@ -117,6 +117,7 @@ static struct platform_pwm_backlight_data dsi_j_720p_4_7_bl_data = {
 	.max_brightness = 255,
 	.dft_brightness = 77,
 	.pwm_period_ns  = 40000,
+	.pwm_gpio	= TEGRA_GPIO_INVALID,
 	.notify         = dsi_j_720p_4_7_bl_notify,
 	.check_fb       = dsi_j_720p_4_7_check_fb,
 };

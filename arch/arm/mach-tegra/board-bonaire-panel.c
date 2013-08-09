@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-bonaire-panel.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -179,6 +179,7 @@ static struct platform_pwm_backlight_data bonaire_backlight_data = {
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 5000000,
+	.pwm_gpio	= TEGRA_GPIO_INVALID,
 	.init		= bonaire_backlight_init,
 	.exit		= bonaire_backlight_exit,
 	.notify		= bonaire_backlight_notify,
