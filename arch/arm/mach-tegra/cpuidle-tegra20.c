@@ -64,6 +64,7 @@ static struct cpuidle_state tegra_idle_states[] = {
 static struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
+	.en_core_tk_irqen = 1,
 };
 
 static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
