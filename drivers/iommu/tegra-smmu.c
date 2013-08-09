@@ -413,10 +413,7 @@ static void __smmu_client_ordered(struct smmu_device *smmu, int id)
 static void smmu_client_ordered(struct smmu_device *smmu)
 {
 	int i, id[] = {
-		CSW_SDMMCWA,
-		CSW_SDMMCWAA,
-		CSW_SDMMCW,
-		CSW_SDMMCWAB,
+		/* Add client ID here to be ordered */
 	};
 
 	for (i = 0; i < ARRAY_SIZE(id); i++)
