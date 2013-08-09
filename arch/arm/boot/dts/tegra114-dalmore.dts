@@ -709,10 +709,6 @@
 		};
 	};
 
-	apbdma: dma@6000a000 {
-		status = "okay";
-	};
-
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
