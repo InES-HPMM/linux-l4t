@@ -5524,6 +5524,34 @@ static struct clk_ops tegra_clk_shared_bus_user_ops = {
 	.reset = tegra_clk_shared_bus_user_reset,
 };
 
+/* shared bus connector ops (user/bus connector to cascade shared buses) */
+static int tegra12_clk_shared_connector_update(struct clk *bus)
+{
+	unsigned long rate, old_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra12_clk_shared_bus_update(bus, NULL, NULL, NULL);
+
+	old_rate = clk_get_rate_locked(bus);
+	if (rate == old_rate)
+		return 0;
+
+	return clk_set_rate_locked(bus, rate);
+}
+
+static struct clk_ops tegra_clk_shared_connector_ops = {
+	.init = tegra_clk_shared_bus_user_init,
+	.enable = tegra_clk_shared_bus_user_enable,
+	.disable = tegra_clk_shared_bus_user_disable,
+	.set_parent = tegra_clk_shared_bus_user_set_parent,
+	.set_rate = tegra_clk_shared_bus_user_set_rate,
+	.round_rate = tegra_clk_shared_bus_user_round_rate,
+	.reset = tegra_clk_shared_bus_user_reset,
+	.shared_bus_update = tegra12_clk_shared_connector_update,
+};
+
 /* coupled gate ops */
 /*
  * Some clocks may have common enable/disable control, but run at different
@@ -6977,6 +7005,21 @@ static struct clk_mux_sel mux_isp[] = {
 	{ 0, 0},
 };
 
+static struct raw_notifier_head c4bus_rate_change_nh;
+
+static struct clk tegra_clk_c4bus = {
+	.name	   = "c4bus",
+	.parent    = &tegra_pll_c4,
+	.ops       = &tegra_clk_cbus_ops,
+	.max_rate  = 600000000,
+	.mul	   = 1,
+	.div	   = 1,
+	.shared_bus_backup = {
+		.input = &tegra_pll_p,
+	},
+	.rate_change_nh = &c4bus_rate_change_nh,
+};
+
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
 		.name      = _name,			\
@@ -7039,6 +7082,21 @@ static struct clk_mux_sel mux_isp[] = {
 			.con_id    = _con,		\
 		},					\
 		.ops = &tegra_clk_shared_bus_user_ops,	\
+		.parent = _parent,			\
+		.u.shared_bus_user = {			\
+			.client_id = _id,		\
+			.client_div = _div,		\
+			.mode = _mode,			\
+		},					\
+	}
+#define SHARED_CONNECT(_name, _dev, _con, _parent, _id, _div, _mode)\
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id    = _con,		\
+		},					\
+		.ops = &tegra_clk_shared_connector_ops,	\
 		.parent = _parent,			\
 		.u.shared_bus_user = {			\
 			.client_id = _id,		\
@@ -7260,6 +7318,18 @@ struct clk tegra_list_clks[] = {
 #endif
 };
 
+/* VI, ISP buses */
+static struct clk tegra_visp_clks[] = {
+	SHARED_CONNECT("vi.c4bus",	"vi.c4bus",	NULL,	&tegra_clk_c4bus,   "vi",    0, 0),
+	SHARED_CONNECT("isp.c4bus",	"isp.c4bus",	NULL,	&tegra_clk_c4bus,   "isp",   0, 0),
+	SHARED_CLK("override.c4bus",	"override.c4bus", NULL,	&tegra_clk_c4bus,    NULL,   0, SHARED_OVERRIDE),
+
+	SHARED_CLK("via.vi.c4bus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+	SHARED_CLK("vib.vi.c4bus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+
+	SHARED_CLK("ispa.isp.c4bus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
+	SHARED_CLK("ispb.isp.c4bus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
+};
 
 /* XUSB clocks */
 #define XUSB_ID "tegra-xhci"
@@ -7405,11 +7475,10 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
 	CLK_DUPLICATE("gpu", "tegra_gk20a", "PLLG_ref"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a", "pwr"),
-	CLK_DUPLICATE("isp", "tegra_isp", "isp"),
-	CLK_DUPLICATE("isp", "tegra_isp.1", "isp"),
-	CLK_DUPLICATE("ispb", "tegra_isp.1", "ispb"),
-	CLK_DUPLICATE("vi", "tegra_vi", "vi"),
-	CLK_DUPLICATE("vi", "tegra_vi.1", "vi"),
+	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp", "isp"),
+	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
+	CLK_DUPLICATE("via.vi.c4bus", "tegra_vi", "vi"),
+	CLK_DUPLICATE("vib.vi.c4bus", "tegra_vi.1", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
 	CLK_DUPLICATE("csi", "tegra_vi.1", "csi"),
 	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
@@ -7488,6 +7557,7 @@ struct clk *tegra_ptr_clks[] = {
 #endif
 	&tegra_clk_gpu,
 	&tegra_clk_isp,
+	&tegra_clk_c4bus,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
@@ -8175,6 +8245,9 @@ void __init tegra12x_init_clocks(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
 		tegra12_init_one_clock(&tegra_list_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_visp_clks); i++)
+		tegra12_init_one_clock(&tegra_visp_clks[i]);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_camera_mclks); i++)
 		tegra12_init_one_clock(tegra_ptr_camera_mclks[i]);

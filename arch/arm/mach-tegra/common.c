@@ -456,6 +456,7 @@ static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
 	{ "cbus",	"pll_c",	200000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	100000000,	false },
+	{ "c4bus",	"pll_c4",	200000000,	false },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
