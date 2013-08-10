@@ -8179,18 +8179,6 @@ void __init tegra12x_init_clocks(void)
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_camera_mclks); i++)
 		tegra12_init_one_clock(tegra_ptr_camera_mclks[i]);
 
-	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
-		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
-		if (!c) {
-			pr_err("%s: Unknown duplicate clock %s\n", __func__,
-				tegra_clk_duplicates[i].name);
-			continue;
-		}
-
-		tegra_clk_duplicates[i].lookup.clk = c;
-		clkdev_add(&tegra_clk_duplicates[i].lookup);
-	}
-
 	for (i = 0; i < ARRAY_SIZE(tegra_sync_source_list); i++)
 		tegra12_init_one_clock(&tegra_sync_source_list[i]);
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_list); i++)
@@ -8203,6 +8191,18 @@ void __init tegra12x_init_clocks(void)
 		tegra12_init_one_clock(&tegra_clk_out_list[i]);
 
 	tegra12_init_xusb_clocks();
+
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
+		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
+		if (!c) {
+			pr_err("%s: Unknown duplicate clock %s\n", __func__,
+				tegra_clk_duplicates[i].name);
+			continue;
+		}
+
+		tegra_clk_duplicates[i].lookup.clk = c;
+		clkdev_add(&tegra_clk_duplicates[i].lookup);
+	}
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
