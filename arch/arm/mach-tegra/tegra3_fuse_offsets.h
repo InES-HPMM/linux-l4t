@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, nvidia corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * this program is free software; you can redistribute it and/or modify
  * it under the terms of the gnu general public license as published by
@@ -86,7 +86,7 @@
 
 #define TEGRA_FUSE_SUPPLY	"vpp_fuse"
 
-int fuse_pgm_cycles[] = {130, 168, 0, 0, 192, 384, 0, 0, 120, 480, 0, 0, 260};
+#define PGM_TIME_US 10
 
 int tegra_fuse_get_revision(u32 *rev)
 {

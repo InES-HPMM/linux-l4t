@@ -1,5 +1,5 @@
 /*
- * copyright (c) 2012, nvidia corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * this program is free software; you can redistribute it and/or modify
  * it under the terms of the gnu general public license as published by
@@ -68,7 +68,7 @@
 
 #define TEGRA_FUSE_SUPPLY	"vdd_fuse"
 
-int fuse_pgm_cycles[] = {130, 192, 120, 260};
+#define PGM_TIME_US 10
 
 unsigned long long tegra_chip_uid(void)
 {

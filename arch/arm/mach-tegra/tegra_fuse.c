@@ -941,6 +941,57 @@ static int fuse_set(enum fuse_io_param io_param, u32 *param, int size)
 int (*tegra_fuse_regulator_en)(int);
 EXPORT_SYMBOL(tegra_fuse_regulator_en);
 
+static int fuse_get_pgm_cycles(int index)
+{
+	int cycles;
+	int osc_khz;
+
+	switch (index) {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	case 0:
+		osc_khz = 13000;
+		break;
+	case 1:
+		osc_khz = 19200;
+		break;
+	case 2:
+		osc_khz = 12000;
+		break;
+	case 3:
+		osc_khz = 26000;
+		break;
+#else
+	case 0:
+		osc_khz = 13000;
+		break;
+	case 4:
+		osc_khz = 19200;
+		break;
+	case 8:
+		osc_khz = 12000;
+		break;
+	case 12:
+		osc_khz = 26000;
+		break;
+	case 1:
+		osc_khz = 16800;
+		break;
+	case 5:
+		osc_khz = 38400;
+		break;
+	case 9:
+		osc_khz = 48000;
+		break;
+#endif
+	default:
+		osc_khz = 0;
+		break;
+	}
+
+	cycles = DIV_ROUND_UP(osc_khz * PGM_TIME_US, 1000);
+
+	return cycles;
+}
 
 int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 {
@@ -949,6 +1000,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	int index;
 	int ret;
 	int delay = FUSE_PGM_TIMEOUT_MS;
+	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
 		pr_err("invalid parameter");
@@ -983,9 +1035,10 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		index = reg >> CAR_OSC_FREQ_SHIFT;
 	}
 
+	fuse_pgm_cycles = fuse_get_pgm_cycles(index);
 	pr_debug("%s: use %d programming cycles\n", __func__,
-						fuse_pgm_cycles[index]);
-	if (fuse_pgm_cycles[index] == 0)
+						fuse_pgm_cycles);
+	if (fuse_pgm_cycles)
 		return -EPERM;
 
 	clk_enable(clk_fuse);
@@ -1023,7 +1076,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	/* FIXME: Ideally, this delay should not be present */
 	mdelay(1);
 
-	fuse_program_array(fuse_pgm_cycles[index]);
+	fuse_program_array(fuse_pgm_cycles);
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
