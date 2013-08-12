@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-bonaire-panel.c
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -650,9 +650,6 @@ static struct tegra_dc_out bonaire_disp_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
 	.flags		= TEGRA_DC_OUT_CONTINUOUS_MODE,
-#if defined (CONFIG_TEGRA_DC_TEMPORAL_DITHER) /* mds hack */
-	.dither		= TEGRA_DC_TEMPORAL_DITHER,
-#endif
 
 #if defined(CONFIG_TEGRA_DP)
 	.type		= TEGRA_DC_OUT_DP,
