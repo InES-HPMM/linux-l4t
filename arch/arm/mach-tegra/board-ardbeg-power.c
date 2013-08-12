@@ -83,6 +83,7 @@ static struct regulator_consumer_supply as3722_ldo1_supply[] = {
 	REGULATOR_SUPPLY("vif", "2-0010"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000c"),
+	REGULATOR_SUPPLY("vi2c", "2-0030"),
 
 };
 
@@ -138,6 +139,7 @@ static struct regulator_consumer_supply as3722_ldo10_supply[] = {
 	REGULATOR_SUPPLY("avdd_af1_cam", NULL),
 	REGULATOR_SUPPLY("imx135_reg1", NULL),
 	REGULATOR_SUPPLY("vdd", "2-000c"),
+	REGULATOR_SUPPLY("vin", "2-0030"),
 };
 
 static struct regulator_consumer_supply as3722_ldo11_supply[] = {
