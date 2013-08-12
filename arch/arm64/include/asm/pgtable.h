@@ -31,6 +31,13 @@
 #define PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
 
 /*
+ * Some extra PTE bits definition.
+ */
+#define PTE_YOUNG		PTE_AF
+#define PTE_PRESENT		PTE_VALID | PTE_PROT_NONE
+#define PTE_XN			PTE_UXN
+
+/*
  * VMALLOC and SPARSEMEM_VMEMMAP ranges.
  */
 #define VMALLOC_START		UL(0xffffff8000000000)
