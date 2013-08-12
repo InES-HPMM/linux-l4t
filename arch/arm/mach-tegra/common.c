@@ -49,6 +49,7 @@
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/gic.h>
+#include <asm/system_info.h>
 #else
 #include <asm/system.h>
 #include <asm/hardware/cache-l2x0.h>
@@ -1479,24 +1480,11 @@ void tegra_get_board_info(struct board_info *bi)
 			pr_err("failed to read /chosen/board_info/minor_revision\n");
 		else
 			bi->minor_revision = prop_val;
-#ifndef CONFIG_ARM64
 		system_serial_high = (bi->board_id << 16) | bi->sku;
 		system_serial_low = (bi->fab << 24) |
 			(bi->major_revision << 16) | (bi->minor_revision << 8);
-#endif
 	} else {
 #endif
-#ifdef CONFIG_ARM64
-		/* FIXME:
-		 * use dummy values for now as system_serial_high/low
-		 * are gone in arm64.
-		 */
-		bi->board_id = 0xDEAD;
-		bi->sku = 0xDEAD;
-		bi->fab = 0xDD;
-		bi->major_revision = 0xDD;
-		bi->minor_revision = 0xDD;
-#else
 		if (system_serial_high || system_serial_low) {
 			bi->board_id = (system_serial_high >> 16) & 0xFFFF;
 			bi->sku = (system_serial_high) & 0xFFFF;
@@ -1506,7 +1494,6 @@ void tegra_get_board_info(struct board_info *bi)
 		} else {
 			memcpy(bi, &main_board_info, sizeof(struct board_info));
 		}
-#endif
 #ifdef CONFIG_OF
 	}
 #endif
