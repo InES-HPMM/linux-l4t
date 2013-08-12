@@ -140,9 +140,6 @@ static noinline void __init loki_setup_bluedroid_pm(void)
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
-static struct i2c_board_info __initdata rt5645_board_info = {
-	I2C_BOARD_INFO("rt5645", 0x1a),
-};
 #endif
 
 static __initdata struct tegra_clk_init_table loki_clk_init_table[] = {
@@ -271,7 +268,6 @@ static void loki_i2c_init(void)
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	i2c_register_board_info(0, &rt5639_board_info, 1);
-	i2c_register_board_info(0, &rt5645_board_info, 1);
 #endif
 
 	if (board_info.board_id == BOARD_PM359 ||
@@ -337,71 +333,19 @@ static struct tegra_asoc_platform_data loki_audio_pdata_rt5639 = {
 	},
 };
 
-static struct tegra_asoc_platform_data loki_audio_pdata_rt5645 = {
-	.gpio_hp_det = TEGRA_GPIO_HP_DET,
-	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
-	.gpio_spkr_en = -1,
-	.gpio_int_mic_en = -1,
-	.gpio_ext_mic_en = -1,
-	.gpio_hp_mute = -1,
-	.gpio_codec1 = -1,
-	.gpio_codec2 = -1,
-	.gpio_codec3 = -1,
-	.i2s_param[HIFI_CODEC]       = {
-		.audio_port_id = 1,
-		.is_i2s_master = 0,
-		.i2s_mode = TEGRA_DAIFMT_I2S,
-	},
-	.i2s_param[BT_SCO] = {
-		.audio_port_id = 3,
-		.is_i2s_master = 1,
-		.i2s_mode = TEGRA_DAIFMT_DSP_A,
-	},
-};
-
 static void loki_audio_init(void)
 {
-	struct board_info board_info;
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363) {
-		/*Laguna*/
-		loki_audio_pdata_rt5645.gpio_hp_det =
-			TEGRA_GPIO_HP_DET;
-		loki_audio_pdata_rt5645.gpio_hp_det_active_high = 1;
-		loki_audio_pdata_rt5645.gpio_ldo1_en = -1;
-	} else {
-		/*Loki*/
-		loki_audio_pdata_rt5645.gpio_hp_det =
-			TEGRA_GPIO_HP_DET;
-		loki_audio_pdata_rt5645.gpio_hp_det_active_high = 0;
-		loki_audio_pdata_rt5645.gpio_ldo1_en =
-			TEGRA_GPIO_LDO_EN;
-	}
-
 	loki_audio_pdata_rt5639.gpio_hp_det =
-		loki_audio_pdata_rt5645.gpio_hp_det;
+			TEGRA_GPIO_HP_DET;
 
-	loki_audio_pdata_rt5639.gpio_hp_det_active_high =
-		loki_audio_pdata_rt5645.gpio_hp_det_active_high;
+	loki_audio_pdata_rt5639.gpio_hp_det_active_high = 0;
 
 	loki_audio_pdata_rt5639.gpio_ldo1_en =
-		loki_audio_pdata_rt5645.gpio_ldo1_en;
+			TEGRA_GPIO_LDO_EN;
 
 	loki_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
 	loki_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
-	loki_audio_pdata_rt5645.codec_name = "rt5645.0-001a";
-	loki_audio_pdata_rt5645.codec_dai_name = "rt5645-aif1";
 }
-
-static struct platform_device loki_audio_device_rt5645 = {
-	.name = "tegra-snd-rt5645",
-	.id = 0,
-	.dev = {
-		.platform_data = &loki_audio_pdata_rt5645,
-	},
-};
 
 static struct platform_device loki_audio_device_rt5639 = {
 	.name = "tegra-snd-rt5639",
@@ -913,8 +857,6 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 				NULL),
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	OF_DEV_AUXDATA("nvidia,tegra30-ahub", 0x70080000, "tegra30-ahub",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
 				NULL),
