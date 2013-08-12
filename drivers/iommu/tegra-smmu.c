@@ -166,9 +166,9 @@ enum {
 #define SMMU_PAGE_SIZE	(1 << SMMU_PAGE_SHIFT)
 
 #define SMMU_PDIR_COUNT	1024
-#define SMMU_PDIR_SIZE	(sizeof(unsigned long) * SMMU_PDIR_COUNT)
+#define SMMU_PDIR_SIZE	(sizeof(u32) * SMMU_PDIR_COUNT)
 #define SMMU_PTBL_COUNT	1024
-#define SMMU_PTBL_SIZE	(sizeof(unsigned long) * SMMU_PTBL_COUNT)
+#define SMMU_PTBL_SIZE	(sizeof(u32) * SMMU_PTBL_COUNT)
 #define SMMU_PDIR_SHIFT	12
 #define SMMU_PDE_SHIFT	12
 #define SMMU_PTE_SHIFT	12
@@ -203,10 +203,10 @@ enum {
 #define SMMU_MK_PDIR(page, attr)	\
 		((page_to_phys(page) >> SMMU_PDIR_SHIFT) | (attr))
 #define SMMU_MK_PDE(page, attr)		\
-		(unsigned long)((page_to_phys(page) >> SMMU_PDE_SHIFT) | (attr))
+		(u32)((page_to_phys(page) >> SMMU_PDE_SHIFT) | (attr))
 #define SMMU_EX_PTBL_PAGE(pde)		\
-		pfn_to_page((unsigned long)(pde) & SMMU_PFN_MASK)
-#define SMMU_PFN_TO_PTE(pfn, attr)	(unsigned long)((pfn) | (attr))
+		pfn_to_page((u32)(pde) & SMMU_PFN_MASK)
+#define SMMU_PFN_TO_PTE(pfn, attr)	(u32)((pfn) | (attr))
 
 #define SMMU_ASID_ENABLE(asid)	((asid) | (1 << 31))
 #define SMMU_ASID_DISABLE	0
@@ -309,9 +309,9 @@ static size_t tegra_smmu_get_offset_base(int id)
 		return SMMU_SWGRP_ASID_BASE;
 
 	if (id & BIT(4))
-		return  0xa88 - SWGID_DC12 * sizeof(unsigned long);
+		return  0xa88 - SWGID_DC12 * sizeof(u32);
 
-	return 0x490 - SWGID_DC14 * sizeof(unsigned long);
+	return 0x490 - SWGID_DC14 * sizeof(u32);
 }
 
 /*
@@ -332,9 +332,9 @@ struct smmu_as {
 	unsigned int		asid;
 	spinlock_t		lock;	/* for pagetable */
 	struct page		*pdir_page;
-	unsigned long		pdir_attr;
-	unsigned long		pde_attr;
-	unsigned long		pte_attr;
+	u32			pdir_attr;
+	u32			pde_attr;
+	u32			pte_attr;
 	unsigned int		*pte_count;
 
 	struct list_head	client;
@@ -365,9 +365,9 @@ struct smmu_device {
 	 * Register image savers for suspend/resume
 	 */
 	int num_translation_enable;
-	unsigned long translation_enable[4];
+	u32 translation_enable[4];
 	int num_asid_security;
-	unsigned long asid_security[8];
+	u32 asid_security[8];
 
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;
@@ -480,9 +480,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		if (i == SWGID_AFI)
 			continue;
 
-		offs = i * sizeof(unsigned long) +
-			tegra_smmu_get_offset_base(i);
-
+		offs = i * sizeof(u32) + tegra_smmu_get_offset_base(i);
 		val = smmu_read(smmu, offs);
 		val &= ~3; /* always overwrite ASID */
 
@@ -599,7 +597,7 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 }
 
 
-static void __smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
+static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 			     struct page *page)
 {
 	u32 val;
@@ -619,7 +617,7 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
 }
 
-static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
+static void smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 			   struct page *page)
 {
 	__smmu_flush_ptc(smmu, pte, page);
@@ -651,7 +649,7 @@ static inline void __smmu_flush_tlb_section(struct smmu_as *as, dma_addr_t iova)
 
 static void flush_ptc_and_tlb(struct smmu_device *smmu,
 			      struct smmu_as *as, dma_addr_t iova,
-			      unsigned long *pte, struct page *page, int is_pde)
+			      u32 *pte, struct page *page, int is_pde)
 {
 	__smmu_flush_ptc(smmu, pte, page);
 	__smmu_flush_tlb(smmu, as, iova, is_pde);
@@ -676,7 +674,7 @@ static void ____smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 
 static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 				    struct smmu_as *as, dma_addr_t iova,
-				    unsigned long *pte, struct page *page,
+				    u32 *pte, struct page *page,
 				    size_t count)
 {
 	size_t unit = SZ_16K;
@@ -709,11 +707,11 @@ static inline void flush_ptc_and_tlb_all(struct smmu_device *smmu,
 
 static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 {
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = (u32 *)page_address(as->pdir_page);
 
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
-		dev_dbg(as->smmu->dev, "pdn: %lx\n", pdn);
+		dev_dbg(as->smmu->dev, "pdn: %x\n", pdn);
 
 		ClearPageReserved(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
@@ -731,7 +729,7 @@ static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 static void __smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
 				 dma_addr_t end)
 {
-	unsigned long *pdir;
+	u32 *pdir;
 	struct smmu_device *smmu = as->smmu;
 
 	if (!pfn_valid(page_to_pfn(as->pdir_page)))
@@ -739,7 +737,7 @@ static void __smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
 
 	pdir = page_address(as->pdir_page);
 	while (iova < end) {
-		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+		int pdn = SMMU_ADDR_TO_PDN(iova);
 
 		if (pdir[pdn] & _PDE_NEXT) {
 			struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
@@ -792,7 +790,7 @@ static void flush_ptc_and_tlb_as(struct smmu_as *as, dma_addr_t start,
 
 static void free_pdir(struct smmu_as *as)
 {
-	unsigned addr;
+	unsigned long addr;
 	int count;
 	struct device *dev = as->smmu->dev;
 
@@ -815,25 +813,25 @@ static void free_pdir(struct smmu_as *as)
 static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 {
 	int i;
-	unsigned long *pdir = page_address(as->pdir_page);
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
 	unsigned long addr = SMMU_PDN_TO_ADDR(pdn);
 	struct page *page;
-	unsigned long *ptbl;
+	u32 *ptbl;
 	gfp_t gfp = GFP_ATOMIC;
 
 	if (IS_ENABLED(CONFIG_PREEMPT) && !in_atomic())
 		gfp = GFP_KERNEL;
 
 	/* Vacant - allocate a new page table */
-	dev_dbg(as->smmu->dev, "New PTBL pdn: %lx\n", pdn);
+	dev_dbg(as->smmu->dev, "New PTBL pdn: %x\n", pdn);
 
 	page = alloc_page(gfp);
 	if (!page)
 		return NULL;
 
 	SetPageReserved(page);
-	ptbl = (unsigned long *)page_address(page);
+	ptbl = (u32 *)page_address(page);
 	for (i = 0; i < SMMU_PTBL_COUNT; i++) {
 		ptbl[i] = _PTE_VACANT(addr);
 		addr += SMMU_PAGE_SIZE;
@@ -852,15 +850,15 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
  * Maps PTBL for given iova and returns the PTE address
  * Caller must unmap the mapped PTBL returned in *ptbl_page_p
  */
-static unsigned long *locate_pte(struct smmu_as *as,
+static u32 *locate_pte(struct smmu_as *as,
 				 dma_addr_t iova, bool allocate,
 				 struct page **ptbl_page_p,
 				 unsigned int **count)
 {
-	unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = page_address(as->pdir_page);
-	unsigned long *ptbl;
+	int ptn = SMMU_ADDR_TO_PTN(iova);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = page_address(as->pdir_page);
+	u32 *ptbl;
 
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
 		/* Mapped entry table already exists */
@@ -883,7 +881,7 @@ static void put_signature(struct smmu_as *as,
 			  dma_addr_t iova, unsigned long pfn)
 {
 	struct page *page;
-	unsigned long *vaddr;
+	u32 *vaddr;
 
 	page = pfn_to_page(pfn);
 	vaddr = page_address(page);
@@ -906,7 +904,8 @@ static inline void put_signature(struct smmu_as *as,
  */
 static int alloc_pdir(struct smmu_as *as)
 {
-	unsigned long *pdir, flags;
+	u32 *pdir;
+	unsigned long flags;
 	int pdn, err = 0;
 	u32 val;
 	struct smmu_device *smmu = as->smmu;
@@ -969,17 +968,17 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 				       size_t bytes)
 {
 	int total = bytes >> PAGE_SHIFT;
-	unsigned long *pdir = page_address(as->pdir_page);
+	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
 	unsigned long iova_base = iova;
 	bool flush_all = (total > smmu_flush_all_th_pages) ? true : false;
 
 	while (total > 0) {
-		unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
-		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+		int ptn = SMMU_ADDR_TO_PTN(iova);
+		int pdn = SMMU_ADDR_TO_PDN(iova);
 		struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
-		unsigned long *ptbl;
-		unsigned long *pte;
+		u32 *ptbl;
+		u32 *pte;
 		int count;
 
 		if (!pfn_valid(page_to_pfn(page))) {
@@ -990,7 +989,7 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 
 		ptbl = page_address(page);
 		pte = &ptbl[ptn];
-		count = min_t(unsigned long, SMMU_PTBL_COUNT - ptn, total);
+		count = min_t(int, SMMU_PTBL_COUNT - ptn, total);
 
 		dev_dbg(as->smmu->dev, "unmapping %d pages at once\n", count);
 
@@ -1023,8 +1022,8 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 
 static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
 {
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = (u32 *)page_address(as->pdir_page);
 
 	pdir[pdn] = _PDE_VACANT(pdn);
 	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
@@ -1036,7 +1035,7 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 				unsigned long pfn, int prot)
 {
 	struct smmu_device *smmu = as->smmu;
-	unsigned long *pte;
+	u32 *pte;
 	unsigned int *count;
 	struct page *page;
 	int attrs = as->pte_attr;
@@ -1071,8 +1070,8 @@ static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
 static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 				 phys_addr_t pa, int prot)
 {
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = (u32 *)page_address(as->pdir_page);
 	int attrs = _PDE_ATTR;
 
 	if (pdir[pdn] != _PDE_VACANT(pdn))
@@ -1125,7 +1124,7 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	unsigned long flags;
-	unsigned long *pdir = page_address(as->pdir_page);
+	u32 *pdir = page_address(as->pdir_page);
 	int err = 0;
 	unsigned long iova_base = iova;
 	bool flush_all = (total > smmu_flush_all_th_pages) ? true : false;
@@ -1139,13 +1138,13 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	spin_lock_irqsave(&as->lock, flags);
 
 	while (total > 0) {
-		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-		unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
+		int pdn = SMMU_ADDR_TO_PDN(iova);
+		int ptn = SMMU_ADDR_TO_PTN(iova);
 		unsigned int *rest = &as->pte_count[pdn];
-		int count = min_t(unsigned long, SMMU_PTBL_COUNT - ptn, total);
+		int count = min_t(size_t, SMMU_PTBL_COUNT - ptn, total);
 		struct page *tbl_page;
-		unsigned long *ptbl;
-		unsigned long *pte;
+		u32 *ptbl;
+		u32 *pte;
 		int i;
 
 		if (pdir[pdn] == _PDE_VACANT(pdn)) {
@@ -1173,8 +1172,7 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		}
 
 		pte = &ptbl[ptn];
-		FLUSH_CPU_DCACHE(pte, tbl_page,
-				 count * sizeof(unsigned long *));
+		FLUSH_CPU_DCACHE(pte, tbl_page, count * sizeof(u32 *));
 		if (!flush_all)
 			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
 						count);
@@ -1218,14 +1216,14 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		spin_lock_irqsave(&as->lock, flags);
 
 		while (len) {
-			unsigned long pfn = __phys_to_pfn(phys);
-			unsigned long *pte;
-			unsigned long *pdir = page_address(as->pdir_page);
-			unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
-			unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-			unsigned long *ptbl;
+			int pfn = __phys_to_pfn(phys);
+			u32 *pte;
+			u32 *pdir = page_address(as->pdir_page);
+			int ptn = SMMU_ADDR_TO_PTN(iova);
+			int pdn = SMMU_ADDR_TO_PDN(iova);
+			u32 *ptbl;
 			struct page *tbl_page;
-			size_t num = min_t(unsigned long, SMMU_PTBL_COUNT - ptn,
+			size_t num = min_t(int, SMMU_PTBL_COUNT - ptn,
 					   len >> PAGE_SHIFT);
 			int i;
 
@@ -1281,8 +1279,8 @@ skip:
 static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	size_t bytes)
 {
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = page_address(as->pdir_page);
 
 	if (!(pdir[pdn] & _PDE_NEXT))
 		return __smmu_iommu_unmap_largepage(as, iova);
@@ -1310,14 +1308,14 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
-	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
-	unsigned long *pdir = page_address(as->pdir_page);
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = page_address(as->pdir_page);
 	phys_addr_t pa = 0;
 
 	spin_lock_irqsave(&as->lock, flags);
 
 	if (pdir[pdn] & _PDE_NEXT) {
-		unsigned long *pte;
+		u32 *pte;
 		unsigned int *count;
 		struct page *page;
 
