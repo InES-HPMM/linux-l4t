@@ -68,6 +68,7 @@ struct tegra_xusb_hsic_config {
 	u8 tx_slew_p;
 	bool auto_term_en;
 	u8 strb_trim_val;
+	bool pretend_connect;
 };
 
 struct tegra_xusb_board_data {
@@ -84,7 +85,7 @@ struct tegra_xusb_board_data {
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;
 	struct tegra_xusb_regulator_name supply;
-	struct tegra_xusb_hsic_config hsic;
+	struct tegra_xusb_hsic_config hsic[XUSB_HSIC_COUNT];
 };
 
 struct tegra_xusb_platform_data {

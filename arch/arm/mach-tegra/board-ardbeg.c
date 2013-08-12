@@ -663,7 +663,7 @@ static struct tegra_xusb_board_data xusb_bdata = {
 		.s1p05v = "avddio_usb",
 	},
 
-	.hsic = {
+	.hsic[0] = {
 		.rx_strobe_trim = 0x1,
 		.rx_data_trim = 0x1,
 		.tx_rtune_n = 0x8,
@@ -672,6 +672,7 @@ static struct tegra_xusb_board_data xusb_bdata = {
 		.tx_slew_p = 0,
 		.auto_term_en = true,
 		.strb_trim_val = 0x22,
+		.pretend_connect = false,
 	},
 	.uses_external_pmic = false,
 	.uses_different_vbus_per_port = true,
@@ -821,7 +822,8 @@ static void ardbeg_modem_init(void)
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
 			platform_device_register(&tegra_ehci2_device);
-		}
+		} else
+			xusb_bdata.hsic[0].pretend_connect = true;
 		break;
 	default:
 		return;

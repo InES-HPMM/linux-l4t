@@ -178,10 +178,16 @@
 
 /* Nvidia MailBox Registers */
 
-#define XUSB_CFG_ARU_MBOX_CMD				0xE4
-#define XUSB_CFG_ARU_MBOX_DATA_IN				0xE8
-#define XUSB_CFG_ARU_MBOX_DATA_OUT			0xEC
-#define XUSB_CFG_ARU_MBOX_OWNER				0xF0
+#define XUSB_CFG_ARU_MBOX_CMD		0xE4
+#define XUSB_CFG_ARU_MBOX_DATA_IN	0xE8
+#define  CMD_DATA_SHIFT		(0)
+#define  CMD_DATA_MASK			(0xFFFFFF)
+#define  CMD_DATA(_x)			((_x & CMD_DATA_MASK) << CMD_DATA_SHIFT)
+#define  CMD_TYPE_SHIFT		(24)
+#define  CMD_TYPE_MASK			(0xFF)
+#define  CMD_TYPE(_x)			((_x & CMD_TYPE_MASK) << CMD_TYPE_SHIFT)
+#define XUSB_CFG_ARU_MBOX_DATA_OUT	0xEC
+#define XUSB_CFG_ARU_MBOX_OWNER	0xF0
 
 /* Nvidia Falcon Registers */
 #define XUSB_FALC_CPUCTL					0x00000100
@@ -218,11 +224,6 @@
 #define MBOX_OWNER_SW						2
 #define MBOX_OWNER_ID_MASK					0xFF
 
-#define MBOX_CMD_TYPE_MASK					0xFF000000
-#define MBOX_CMD_DATA_MASK					0x00FFFFFF
-#define MBOX_CMD_STATUS_MASK				MBOX_CMD_TYPE_MASK
-#define MBOX_CMD_RESULT_MASK				MBOX_CMD_DATA_MASK
-#define MBOX_CMD_SHIFT						24
 #define MBOX_SMI_INTR_EN					(1 << 3)
 
 /* PMC Register */
