@@ -245,11 +245,13 @@ void mask_msi_irq(struct irq_data *data)
 {
 	msi_set_mask_bit(data, 1);
 }
+EXPORT_SYMBOL(mask_msi_irq);
 
 void unmask_msi_irq(struct irq_data *data)
 {
 	msi_set_mask_bit(data, 0);
 }
+EXPORT_SYMBOL(unmask_msi_irq);
 
 #endif /* CONFIG_GENERIC_HARDIRQS */
 
@@ -350,6 +352,7 @@ void write_msi_msg(unsigned int irq, struct msi_msg *msg)
 
 	__write_msi_msg(entry, msg);
 }
+EXPORT_SYMBOL(write_msi_msg);
 
 static void free_msi_irqs(struct pci_dev *dev)
 {
