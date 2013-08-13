@@ -353,9 +353,9 @@ static void suspend_cpu_dfll_mode(unsigned int flags)
 			tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	}
 
-	/* If defined always suspend dfll bypass (safe cpu rail down) */
+	/* Suspend dfll bypass (safe rail down) on LP or if DFLL is Not used */
 	if (pdata && pdata->suspend_dfll_bypass &&
-	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+	    (!tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail) || is_lp_cluster()))
 		pdata->suspend_dfll_bypass();
 #endif
 }
@@ -363,7 +363,7 @@ static void suspend_cpu_dfll_mode(unsigned int flags)
 static void resume_cpu_dfll_mode(unsigned int flags)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-	/* If DFLL is Not used as CPU clock source restore bypass mode */
+	/* If DFLL is Not used and resume on G restore bypass mode */
 	if (pdata && pdata->resume_dfll_bypass && !is_lp_cluster() &&
 	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		pdata->resume_dfll_bypass();
