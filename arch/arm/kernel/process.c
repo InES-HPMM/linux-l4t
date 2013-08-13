@@ -163,6 +163,9 @@ EXPORT_SYMBOL(pm_power_off);
 void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
+void (*pm_power_reset)(void);
+EXPORT_SYMBOL(pm_power_reset);
+
 /*
  * This is our default idle handler.
  */
