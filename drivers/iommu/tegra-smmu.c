@@ -1354,10 +1354,12 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 
 		err = iommu_map(domain, area->start, area->start, size, 0);
 		if (err)
-			dev_err(dev, "Failed to map %08x(%x)\n", area->start,
+			dev_err(dev, "Failed to map %016llx(%x)\n",
+				(u64)area->start,
 				size);
 		else
-			dev_info(dev, "map %08x(%x)\n", area->start, size);
+			dev_info(dev, "map %016llx(%x)\n", (u64)area->start,
+				size);
 
 		area++;
 	}
