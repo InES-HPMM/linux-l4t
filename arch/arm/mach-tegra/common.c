@@ -36,6 +36,7 @@
 #if defined(CONFIG_SMSC911X)
 #include <linux/smsc911x.h>
 #endif
+#include <linux/pm.h>
 
 #include <linux/export.h>
 #include <linux/bootmem.h>
@@ -241,9 +242,13 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 		reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
 	}
 	writel_relaxed(reg, reset + PMC_SCRATCH0);
-	reg = readl_relaxed(reset);
-	reg |= 0x10;
-	writel_relaxed(reg, reset);
+	if (!cmd && pm_power_reset) {
+		pm_power_reset();
+	} else {
+		reg = readl_relaxed(reset);
+		reg |= 0x10;
+		writel_relaxed(reg, reset);
+	}
 }
 static int modem_id;
 static int commchip_id;
