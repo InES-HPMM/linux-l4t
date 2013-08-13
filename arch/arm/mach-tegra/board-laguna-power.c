@@ -640,8 +640,9 @@ static struct regulator_consumer_supply fixed_reg_vdd_dsi_mux_supply[] = {
 
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
-#define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,		\
-		_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts)	\
+#define FIXED_REG(_id, _var, _name, _in_supply,			\
+	_always_on, _boot_on, _gpio_nr, _open_drain,		\
+	_active_high, _boot_state, _millivolts, _sdelay)	\
 static struct regulator_init_data ri_data_##_var =		\
 {								\
 	.supply_regulator = _in_supply,				\
@@ -667,6 +668,7 @@ static struct fixed_voltage_config fixed_reg_##_var##_pdata =	\
 	.enable_high = _active_high,				\
 	.enabled_at_boot = _boot_state,				\
 	.init_data = &ri_data_##_var,				\
+	.startup_delay = _sdelay,				\
 };								\
 static struct platform_device fixed_reg_##_var##_dev = {	\
 	.name = "reg-fixed-voltage",				\
@@ -677,65 +679,70 @@ static struct platform_device fixed_reg_##_var##_dev = {	\
 }
 
 FIXED_REG(0,	battery,	battery,	NULL,	0,	0,
-		-1,	false, true,	0,	8400);
+		-1,	false, true,	0,	8400,	0);
 
 FIXED_REG(1,	aon_1v8,	aon_1v8,	NULL,	0,	0,
-		-1,	false, true,	0,	1800);
+		-1,	false, true,	0,	1800,	0);
 
 FIXED_REG(2,	aon_3v3,	aon_3v3,	NULL,	0,	0,
-		-1,	false, true,	0,	3300);
+		-1,	false, true,	0,	3300,	0);
 
 FIXED_REG(3,	aon_1v2,	aon_1v2,	NULL,	0,	0,
-		-1,	false, true,	0,	1200);
+		-1,	false, true,	0,	1200,	0);
 
 FIXED_REG(4,	vdd_hdmi_5v0,	vdd_hdmi_5v0,	NULL,	0,	0,
-		TEGRA_GPIO_PK6,	false,	true,	0,	5000);
+		TEGRA_GPIO_PK6,	false,	true,	0,	5000,	5000);
 
 FIXED_REG(5,	vdd_hdmi,	vdd_hdmi,	AS3722_SUPPLY(sd4),
 		0,	0,
-		TEGRA_GPIO_PH7,	false,	false,	0,	3300);
+		TEGRA_GPIO_PH7,	false,	false,	0,	3300,	0);
 
 FIXED_REG(6,	usb0_vbus,	usb0_vbus,	NULL,	0,	0,
-		TEGRA_GPIO_PN4,	true,	true,	0,	5000);
+		TEGRA_GPIO_PN4,	true,	true,	0,	5000,	0);
 
 FIXED_REG(7,	usb1_usb2_vbus,	usb1_usb2_vbus,	NULL,	0,	0,
-		TEGRA_GPIO_PN5,	true,	true,	0,	5000);
+		TEGRA_GPIO_PN5,	true,	true,	0,	5000, 0);
 
 FIXED_REG(8,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
-		TEGRA_GPIO_PP2,	false,	true,	0,	3300);
+		TEGRA_GPIO_PP2,	false,	true,	0,	3300, 0);
 
 FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
-		TEGRA_GPIO_PH2,	false,	true,	0,	5000);
+		TEGRA_GPIO_PH2,	false,	true,	0,	5000,	0);
 
 FIXED_REG(10,	3v3,		3v3,		NULL,	0,	0,
-		-1,	false,	true,	0,	3300);
+		-1,	false,	true,	0,	3300,	0);
 
 FIXED_REG(11,	5v0,		5v0,		NULL,	0,	0,
-		-1,	false,	true,	0,	5000);
+		-1,	false,	true,	0,	5000,	0);
 
 FIXED_REG(12,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
-		-1,	false,	true,	0,	1800);
+		-1,	false,	true,	0,	1800,	0);
 
 FIXED_REG(13,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
-		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200);
+		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200,
+		0);
 
 FIXED_REG(14,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
-		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,	3300);
+		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,
+		3300,	0);
 
 FIXED_REG(15,	lcd,		lcd,		NULL,	0,	0,
-		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,	3300);
+		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,
+		3300,	0);
 
 FIXED_REG(16,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
-		TEGRA_GPIO_PR0,		false,	true,	0,	3300);
+		TEGRA_GPIO_PR0,		false,	true,	0,	3300,	0);
 
-FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
-		PMU_TCA6416_GPIO(2),	false,	true,	0,	1200);
+FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,
+		0,	PMU_TCA6416_GPIO(2),	false,	true,	0,
+		1200,	250000);
 
-FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
-		PMU_TCA6416_GPIO(3),	false,	true,	0,	1200);
+FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,
+		0,	PMU_TCA6416_GPIO(3),	false,	true,	0,
+		1200,	0);
 
 FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
-		PMU_TCA6416_GPIO(13),	false,	true,	0,	3300);
+		PMU_TCA6416_GPIO(13),	false,	true,	0,	3300,	0);
 /*
  * Creating the fixed regulator device tables
  */
