@@ -140,5 +140,6 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 /* TN8 specific */
 
 int tn8_regulator_init(void);
+int loki_fan_init(void);
 
 #endif
