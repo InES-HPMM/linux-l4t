@@ -92,7 +92,6 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vlogic", "0-0068"),
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),
-	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -554,6 +553,11 @@ static struct regulator_consumer_supply fixed_reg_en_com_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "bluedroid_pm.0"),
 };
 
+/* EN_1V8_DISPLAY From TEGRA_GPIO_PU4 */
+static struct regulator_consumer_supply fixed_reg_en_dvdd_lcd_supply[] = {
+	REGULATOR_SUPPLY("dvdd_lcd", NULL),
+};
+
 FIXED_REG(0,	battery,	battery,	NULL,
 	0,	0,	-1,
 	false,	true,	0,	3300, 0);
@@ -598,6 +602,10 @@ FIXED_REG(10,	com_1v8,	com_1v8,
 	palmas_rails(smps8),	0,	0,
 	TEGRA_GPIO_PX7,	false,	true,	0,	1800, 1000);
 
+FIXED_REG(11,	dvdd_lcd,	dvdd_lcd,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PU4,	false,	true,	1,	1800, 0);
+
 /*
  * Creating fixed regulator device tables
  */
@@ -613,7 +621,8 @@ FIXED_REG(10,	com_1v8,	com_1v8,
 	ADD_FIXED_REG(vdd_cpu_fixed),	\
 	ADD_FIXED_REG(lcd_bl), \
 	ADD_FIXED_REG(com_3v3), \
-	ADD_FIXED_REG(com_1v8),
+	ADD_FIXED_REG(com_1v8), \
+	ADD_FIXED_REG(dvdd_lcd),
 
 
 static struct platform_device *fixed_reg_devs_e2545[] = {
