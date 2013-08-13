@@ -23,6 +23,8 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
+#include <linux/i2c-algo-bit.h>
+#include <linux/i2c-gpio.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
@@ -219,6 +221,10 @@ struct tegra_i2c_dev {
 	const struct tegra_i2c_chipdata *chipdata;
 	int scl_gpio;
 	int sda_gpio;
+	struct i2c_algo_bit_data bit_data;
+	const struct i2c_algorithm *bit_algo;
+	bool bit_banging_xfer_after_shutdown;
+	bool is_shutdown;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -282,6 +288,99 @@ static void i2c_readsl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
 	readsl(i2c_dev->base + tegra_i2c_reg_addr(i2c_dev, reg), data, len);
+}
+
+static inline void tegra_i2c_gpio_setscl(void *data, int state)
+{
+	struct tegra_i2c_dev *i2c_dev = data;
+
+	gpio_set_value(i2c_dev->scl_gpio, state);
+}
+
+static inline int tegra_i2c_gpio_getscl(void *data)
+{
+	struct tegra_i2c_dev *i2c_dev = data;
+
+	return gpio_get_value(i2c_dev->scl_gpio);
+}
+
+static inline void tegra_i2c_gpio_setsda(void *data, int state)
+{
+	struct tegra_i2c_dev *i2c_dev = data;
+
+	gpio_set_value(i2c_dev->sda_gpio, state);
+}
+
+static inline int tegra_i2c_gpio_getsda(void *data)
+{
+	struct tegra_i2c_dev *i2c_dev = data;
+
+	return gpio_get_value(i2c_dev->sda_gpio);
+}
+
+static int tegra_i2c_gpio_request(struct tegra_i2c_dev *i2c_dev)
+{
+	int ret;
+
+	ret = gpio_request_one(i2c_dev->scl_gpio,
+				GPIOF_OUT_INIT_HIGH | GPIOF_OPEN_DRAIN,
+				"i2c-gpio-scl");
+	if (ret < 0) {
+		dev_err(i2c_dev->dev, "GPIO request for gpio %d failed %d\n",
+				i2c_dev->scl_gpio, ret);
+		return ret;
+	}
+
+	ret = gpio_request_one(i2c_dev->sda_gpio,
+				GPIOF_OUT_INIT_HIGH | GPIOF_OPEN_DRAIN,
+				"i2c-gpio-sda");
+	if (ret < 0) {
+		dev_err(i2c_dev->dev, "GPIO request for gpio %d failed %d\n",
+				i2c_dev->sda_gpio, ret);
+		gpio_free(i2c_dev->scl_gpio);
+		return ret;
+	}
+	return ret;
+}
+
+static void tegra_i2c_gpio_free(struct tegra_i2c_dev *i2c_dev)
+{
+	gpio_free(i2c_dev->scl_gpio);
+	gpio_free(i2c_dev->sda_gpio);
+}
+
+static int tegra_i2c_gpio_xfer(struct i2c_adapter *adap,
+	struct i2c_msg msgs[], int num)
+{
+	struct tegra_i2c_dev *i2c_dev = i2c_get_adapdata(adap);
+	int ret;
+
+	ret = tegra_i2c_gpio_request(i2c_dev);
+	if (ret < 0)
+		return ret;
+
+	ret = i2c_dev->bit_algo->master_xfer(adap, msgs, num);
+	if (ret < 0)
+		dev_err(i2c_dev->dev, "i2c-bit-algo xfer failed %d\n", ret);
+
+	tegra_i2c_gpio_free(i2c_dev);
+	return ret;
+}
+
+static int tegra_i2c_gpio_init(struct tegra_i2c_dev *i2c_dev)
+{
+	struct i2c_algo_bit_data *bit_data = &i2c_dev->bit_data;
+
+	bit_data->setsda = tegra_i2c_gpio_setsda;
+	bit_data->getsda = tegra_i2c_gpio_getsda;
+	bit_data->setscl = tegra_i2c_gpio_setscl;
+	bit_data->getscl = tegra_i2c_gpio_getscl;
+	bit_data->data = i2c_dev;
+	bit_data->udelay = 5; /* 100KHz */
+	bit_data->timeout = HZ; /* 10 ms*/
+	i2c_dev->bit_algo = &i2c_bit_algo;
+	i2c_dev->adapter.algo_data = bit_data;
+	return 0;
 }
 
 static void tegra_i2c_mask_irq(struct tegra_i2c_dev *i2c_dev, u32 mask)
@@ -1043,6 +1142,9 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (i2c_dev->is_suspended)
 		return -EBUSY;
 
+	if (i2c_dev->is_shutdown && i2c_dev->bit_banging_xfer_after_shutdown)
+		return tegra_i2c_gpio_xfer(adap, msgs, num);
+
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
@@ -1133,6 +1235,9 @@ static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 		pdata->hs_master_code = prop;
 		pdata->is_high_speed_enable = true;
 	}
+
+	if (of_find_property(np, "nvidia,bit-banging-xfer-after-shutdown", NULL))
+		pdata->bit_banging_xfer_after_shutdown = true;
 
 	pdata->scl_gpio = of_get_named_gpio(np, "scl-gpio", 0);
 	pdata->sda_gpio = of_get_named_gpio(np, "sda-gpio", 0);
@@ -1337,6 +1442,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->is_dvc = pdata->is_dvc;
 	i2c_dev->slave_addr = pdata->slave_addr;
 	i2c_dev->hs_master_code = pdata->hs_master_code;
+	i2c_dev->bit_banging_xfer_after_shutdown =
+			pdata->bit_banging_xfer_after_shutdown;
 	init_completion(&i2c_dev->msg_complete);
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
@@ -1391,6 +1498,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 
 	of_i2c_register_devices(&i2c_dev->adapter);
 	pm_runtime_enable(&i2c_dev->adapter.dev);
+	tegra_i2c_gpio_init(i2c_dev);
 
 	return 0;
 }
@@ -1406,6 +1514,13 @@ static int tegra_i2c_remove(struct platform_device *pdev)
 
 	pm_runtime_disable(&pdev->dev);
 	return 0;
+}
+
+static void tegra_i2c_shutdown(struct platform_device *pdev)
+{
+	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+
+	i2c_dev->is_shutdown = true;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -1462,6 +1577,7 @@ static const struct dev_pm_ops tegra_i2c_pm = {
 static struct platform_driver tegra_i2c_driver = {
 	.probe   = tegra_i2c_probe,
 	.remove  = tegra_i2c_remove,
+	.shutdown = tegra_i2c_shutdown,
 	.id_table = tegra_i2c_devtype,
 	.driver  = {
 		.name  = "tegra-i2c",
