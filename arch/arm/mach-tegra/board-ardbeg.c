@@ -690,9 +690,10 @@ static void ardbeg_usb_init(void)
 
 		switch (bi.board_id) {
 		case BOARD_E1733:
-			/* Host cable is detected through USB ID */
-			tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
-			tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
+			/* Host cable is detected through PMU Interrupt */
+			tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
+			tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+			tegra_otg_pdata.id_extcon_dev_name = "as3722-extcon";
 			break;
 		case BOARD_E1736:
 			tegra_udc_pdata.support_pmu_vbus = true;
