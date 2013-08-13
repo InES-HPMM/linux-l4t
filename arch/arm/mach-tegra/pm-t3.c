@@ -3,7 +3,7 @@
  *
  * Tegra3 SOC-specific power and cluster management
  *
- * Copyright (c) 2009-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -409,28 +409,28 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		(flags & TEGRA_POWER_CLUSTER_FORCE) ? "force" : "",
 		us));
 
-	local_irq_save(irq_flags);
-
 	if (current_cluster != target_cluster && !timekeeping_suspended) {
-		ktime_t now = ktime_get();
 		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
+			ktime_t now = ktime_get();
 			s64 t = ktime_to_us(ktime_sub(now, last_g2lp));
 			s64 t_off = tegra_cpu_power_off_time();
 			if (t_off > t)
 				udelay((unsigned int)(t_off - t));
+		}
+	}
 
-			tegra_dvfs_rail_on(tegra_cpu_rail, now);
-		} else {
+	local_irq_save(irq_flags);
+
 #ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+	if (current_cluster != target_cluster && !timekeeping_suspended) {
+		if (target_cluster == TEGRA_POWER_CLUSTER_LP) {
 			u32 cpu;
 
 			cpu = cpu_logical_map(smp_processor_id());
 			writel(cpu, FLOW_CTRL_MPID);
-#endif
-			last_g2lp = now;
-			tegra_dvfs_rail_off(tegra_cpu_rail, now);
 		}
 	}
+#endif
 
 	if (flags & TEGRA_POWER_SDRAM_SELFREFRESH) {
 		if (us)
@@ -458,6 +458,16 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 					   &cpu);
 		cpu_pm_exit();
 		tegra_clear_cpu_in_pd(cpu);
+	}
+
+	if (current_cluster != target_cluster && !timekeeping_suspended) {
+		ktime_t now = ktime_get();
+		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
+			tegra_dvfs_rail_on(tegra_cpu_rail, now);
+		} else {
+			last_g2lp = now;
+			tegra_dvfs_rail_off(tegra_cpu_rail, now);
+		}
 	}
 	local_irq_restore(irq_flags);
 
