@@ -858,6 +858,7 @@ int tf_get_current_process_hash(void *hash)
 	int result = 0;
 	void *buffer;
 	struct mm_struct *mm;
+	unsigned long populate;
 
 	buffer = internal_kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (buffer == NULL) {
@@ -890,7 +891,7 @@ int tf_get_current_process_hash(void *hash)
 		start = do_mmap_pgoff(mm->exe_file, 0,
 			dentry->d_inode->i_size,
 			PROT_READ | PROT_WRITE | PROT_EXEC,
-			MAP_PRIVATE, 0);
+			MAP_PRIVATE, 0, &populate);
 		if (start < 0) {
 			dprintk(
 				KERN_ERR "tf_get_current_process_hash"
