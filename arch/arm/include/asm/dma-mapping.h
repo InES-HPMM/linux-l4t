@@ -234,7 +234,9 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 	dma_addr_t da, req = pa;
-	void *va = phys_to_virt(pa);
+
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	dma_addr_t addr;
 
 	da = dma_iova_alloc_at(dev, &req, size);
 	if (da == DMA_ERROR_CODE) {
@@ -252,7 +254,16 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 			return DMA_ERROR_CODE;
 		}
 	}
-	return dma_map_single_at_attrs(dev, va, da, size, dir, attrs);
+
+	BUG_ON(!valid_dma_direction(dir));
+	addr = ops->map_page_at(dev, phys_to_page(pa), da,
+			     (unsigned long)pa & ~PAGE_MASK, size,
+			     dir, attrs);
+	debug_dma_map_page(dev, phys_to_page(pa),
+			   (unsigned long)pa & ~PAGE_MASK, size,
+			   dir, addr, true);
+	return addr;
+
 }
 #else
 static inline dma_addr_t
