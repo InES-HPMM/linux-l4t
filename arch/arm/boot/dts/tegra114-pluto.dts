@@ -839,6 +839,27 @@
 		};
 	};
 
+	keyboard: keyboard@7000e200 {
+		compatible = "nvidia,tegra114-kbc";
+		reg = <0x7000e200 0x100>;
+		interrupts = <0 85 0x04>;
+		nvidia,ghost-filter;
+		nvidia,wakeup-source;
+		nvidia,debounce-delay-ms = <640>;
+		nvidia,kbc-row-pins = <0 1 2>;    /* pin 0, 1, 2 as rows */
+		nvidia,kbc-col-pins = <11 12 13>; /* pin 11, 12, 13 as columns */
+		linux,keymap = <0x00000074
+				0x00010073
+				0x00020072
+				0x010000D9
+				0x010100D4
+				0x010200D2
+				0x02000066
+				0x0201009E
+				0x0202008B>;
+		status = "disable";
+	};
+
 	i2c@7000c500 {
 		status = "okay";
 		clock-frequency = <100000>;

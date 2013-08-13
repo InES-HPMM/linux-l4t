@@ -520,7 +520,7 @@ static struct tegra_kbc_platform_data *tegra_kbc_dt_parse_pdata(
 	if (!of_property_read_u32(np, "nvidia,repeat-delay-ms", &prop))
 		pdata->repeat_cnt = prop;
 
-	if (of_find_property(np, "nvidia,needs-ghost-filter", NULL))
+	if (of_find_property(np, "nvidia,ghost-filter", NULL))
 		pdata->use_ghost_filter = true;
 
 	if (of_find_property(np, "nvidia,wakeup-source", NULL))
@@ -830,7 +830,15 @@ static int tegra_kbc_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(tegra_kbc_pm_ops, tegra_kbc_suspend, tegra_kbc_resume);
 
 static const struct of_device_id tegra_kbc_of_match[] = {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ .compatible = "nvidia,tegra20-kbc", },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	{ .compatible = "nvidia,tegra30-kbc", },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	{ .compatible = "nvidia,tegra114-kbc", },
+#endif
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tegra_kbc_of_match);
