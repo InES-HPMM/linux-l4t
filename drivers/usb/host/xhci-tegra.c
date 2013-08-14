@@ -2538,18 +2538,6 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
 		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
-	/* STEP 4: Assert reset to host clk and disable host clk */
-	tegra_periph_reset_assert(tegra->host_clk);
-
-	clk_disable(tegra->host_clk);
-
-	/* wait 150us */
-	usleep_range(150, 200);
-
-	/* flush MC client of XUSB_HOST */
-	tegra_powergate_mc_flush(TEGRA_POWERGATE_XUSBC);
-
-	/* STEP 4: Powergate host partition */
 	/* tegra_powergate_partition also does partition reset assert */
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
 	if (ret) {
@@ -2559,6 +2547,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 		return ret;
 	}
 	tegra->host_pwr_gated = true;
+	clk_disable(tegra->host_clk);
 
 	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
 		clk_disable(tegra->pll_re_vco_clk);
