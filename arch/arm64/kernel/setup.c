@@ -291,6 +291,7 @@ void __init setup_arch(char **cmdline_p)
 
 	cpu_logical_map(0) = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
 #ifdef CONFIG_SMP
+	smp_set_ops(machine_desc->smp);
 	smp_init_cpus();
 #endif
 
