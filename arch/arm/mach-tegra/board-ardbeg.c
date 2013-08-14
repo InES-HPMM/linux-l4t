@@ -677,19 +677,30 @@ static void ardbeg_usb_init(void)
 	int modem_id = tegra_get_modem_id();
 	struct board_info bi;
 
-	tegra_get_pmu_board_info(&bi);
-
-	switch (bi.board_id) {
-	case BOARD_E1733:
-		/* Host cable is detected through USB ID */
-		tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
-		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
-		break;
-	case BOARD_E1735:
-		/* Host cable is detected through PMU Interrupt */
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363) {
+		/* Laguna */
+		/* Host cable is detected through AMS PMU Interrupt */
 		tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
 		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
-		tegra_otg_pdata.id_extcon_dev_name = "palmas-extcon";
+		tegra_otg_pdata.id_extcon_dev_name = "as3722-extcon";
+	} else {
+		/* Ardbeg */
+		tegra_get_pmu_board_info(&bi);
+
+		switch (bi.board_id) {
+		case BOARD_E1733:
+			/* Host cable is detected through USB ID */
+			tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
+			tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
+			break;
+		case BOARD_E1735:
+			/* Host cable is detected through PMU Interrupt */
+			tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
+			tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+			tegra_otg_pdata.id_extcon_dev_name = "palmas-extcon";
+		}
 	}
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {

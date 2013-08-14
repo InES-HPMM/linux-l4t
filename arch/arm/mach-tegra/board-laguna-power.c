@@ -272,6 +272,15 @@ static struct as3722_rtc_platform_data as3722_rtc_pdata = {
 	.enable_clk32k  = 1,
 };
 
+static struct as3722_adc_extcon_platform_data as3722_adc_extcon_pdata = {
+	.connection_name = "as3722-extcon",
+	.enable_adc1_continuous_mode = true,
+	.enable_low_voltage_range = true,
+	.adc_channel = 12,
+	.hi_threshold =  0x100,
+	.low_threshold = 0x80,
+};
+
 static struct as3722_platform_data as3722_pdata = {
 	.reg_pdata[AS3722_LDO0] = &as3722_ldo0_reg_pdata,
 	.reg_pdata[AS3722_LDO1] = &as3722_ldo1_reg_pdata,
@@ -303,6 +312,7 @@ static struct as3722_platform_data as3722_pdata = {
 	.use_power_off = true,
 	.enable_ldo3_tracking = true,
 	.disabe_ldo3_tracking_suspend = true,
+	.extcon_pdata = &as3722_adc_extcon_pdata,
 };
 
 static struct pca953x_platform_data tca6416_pdata = {
