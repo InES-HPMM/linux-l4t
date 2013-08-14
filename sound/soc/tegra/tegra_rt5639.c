@@ -936,8 +936,6 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	machine->spk_reg = regulator_get(&pdev->dev, "spkvdd");
 	if (IS_ERR(machine->spk_reg))
 		machine->spk_reg = 0;
-	else
-		regulator_disable(machine->spk_reg);
 
 	/*
 	*dmic_reg - provided the DMIC power and can be turned ON
@@ -946,8 +944,6 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	machine->dmic_reg = regulator_get(&pdev->dev, "dmicvdd");
 	if (IS_ERR(machine->dmic_reg))
 		machine->dmic_reg = 0;
-	else
-		regulator_disable(machine->dmic_reg);
 
 
 #ifdef CONFIG_SWITCH
