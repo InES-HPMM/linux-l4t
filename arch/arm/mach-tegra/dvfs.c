@@ -44,6 +44,7 @@
 
 struct dvfs_rail *tegra_cpu_rail;
 struct dvfs_rail *tegra_core_rail;
+static struct dvfs_rail *tegra_gpu_rail;
 
 static LIST_HEAD(dvfs_rail_list);
 static DEFINE_MUTEX(dvfs_lock);
@@ -116,6 +117,8 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 
 		if (!strcmp("vdd_cpu", rails[i]->reg_id))
 			tegra_cpu_rail = rails[i];
+		else if (!strcmp("vdd_gpu", rails[i]->reg_id))
+			tegra_gpu_rail = rails[i];
 		else if (!strcmp("vdd_core", rails[i]->reg_id))
 			tegra_core_rail = rails[i];
 	}
@@ -1386,6 +1389,18 @@ static const struct file_operations gpu_dvfs_fops = {
 	.release        = single_release,
 };
 
+static int rail_offs_set(struct dvfs_rail *rail, int offs)
+{
+	if (rail) {
+		mutex_lock(&dvfs_lock);
+		rail->offs_millivolts = offs;
+		dvfs_rail_update(rail);
+		mutex_unlock(&dvfs_lock);
+		return 0;
+	}
+	return -ENOENT;
+}
+
 static int cpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_cpu_rail) {
@@ -1397,16 +1412,24 @@ static int cpu_offs_get(void *data, u64 *val)
 }
 static int cpu_offs_set(void *data, u64 val)
 {
-	if (tegra_cpu_rail) {
-		mutex_lock(&dvfs_lock);
-		tegra_cpu_rail->offs_millivolts = (int)val;
-		dvfs_rail_update(tegra_cpu_rail);
-		mutex_unlock(&dvfs_lock);
-		return 0;
-	}
-	return -ENOENT;
+	return rail_offs_set(tegra_cpu_rail, (int)val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(cpu_offs_fops, cpu_offs_get, cpu_offs_set, "%lld\n");
+
+static int gpu_offs_get(void *data, u64 *val)
+{
+	if (tegra_gpu_rail) {
+		*val = (u64)tegra_gpu_rail->offs_millivolts;
+		return 0;
+	}
+	*val = 0;
+	return -ENOENT;
+}
+static int gpu_offs_set(void *data, u64 val)
+{
+	return rail_offs_set(tegra_gpu_rail, (int)val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(gpu_offs_fops, gpu_offs_get, gpu_offs_set, "%lld\n");
 
 static int core_offs_get(void *data, u64 *val)
 {
@@ -1419,14 +1442,7 @@ static int core_offs_get(void *data, u64 *val)
 }
 static int core_offs_set(void *data, u64 val)
 {
-	if (tegra_core_rail) {
-		mutex_lock(&dvfs_lock);
-		tegra_core_rail->offs_millivolts = (int)val;
-		dvfs_rail_update(tegra_core_rail);
-		mutex_unlock(&dvfs_lock);
-		return 0;
-	}
-	return -ENOENT;
+	return rail_offs_set(tegra_core_rail, (int)val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(core_offs_fops, core_offs_get, core_offs_set, "%lld\n");
 
@@ -1462,6 +1478,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_cpu_offs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &cpu_offs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_gpu_offs", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &gpu_offs_fops);
 	if (!d)
 		return -ENOMEM;
 
