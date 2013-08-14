@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra CPUs
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -134,8 +134,12 @@ static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 
 	if (!power_down_in_idle || pd_disabled_by_suspend ||
 	    !tegra_idle_ops.pd_is_allowed(dev, state)) {
+#ifdef CONFIG_ARCH_NEEDS_CPU_IDLE_COUPLED
 		return drv->states[dev->safe_state_index].enter(dev,
 					drv, dev->safe_state_index);
+#else
+		return drv->states[0].enter(dev, drv, 0);
+#endif
 	}
 
 	/* cpu_idle calls us with IRQs disabled */
@@ -195,7 +199,9 @@ static int tegra_cpuidle_register(unsigned int cpu)
 	state->power_usage = 600;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->enter = tegra_idle_enter_clock_gating;
+#ifdef CONFIG_ARCH_NEEDS_CPU_IDLE_COUPLED
 	drv->safe_state_index = 0;
+#endif
 	drv->state_count++;
 
 #ifdef CONFIG_PM_SLEEP
