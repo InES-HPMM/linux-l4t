@@ -1462,6 +1462,65 @@ static int core_override_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");
 
+static int dvfs_table_show(struct seq_file *s, void *data)
+{
+	int i;
+	struct dvfs *d;
+	struct dvfs_rail *rail;
+
+	seq_printf(s, "DVFS tables: units mV/MHz\n\n");
+
+	mutex_lock(&dvfs_lock);
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		bool mv_done = false;
+		list_for_each_entry(d, &rail->dvfs, reg_node) {
+			if (!mv_done) {
+				mv_done = true;
+				seq_printf(s, "%-16s", rail->reg_id);
+				for (i = 0; i < d->num_freqs; i++) {
+					int mv = d->millivolts[i];
+					seq_printf(s, "%7d", mv);
+				}
+				seq_printf(s, "\n");
+				if (d->dfll_millivolts) {
+					seq_printf(s, "%-8s (dfll) ",
+						   rail->reg_id);
+					for (i = 0; i < d->num_freqs; i++) {
+						int mv = d->dfll_millivolts[i];
+						seq_printf(s, "%7d", mv);
+					}
+					seq_printf(s, "\n");
+				}
+			}
+
+			seq_printf(s, "%-16s", d->clk_name);
+			for (i = 0; i < d->num_freqs; i++) {
+				unsigned int f = d->freqs[i]/100000;
+				seq_printf(s, " %4u.%u", f/10, f%10);
+			}
+			seq_printf(s, "\n");
+		}
+		seq_printf(s, "\n");
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
+
+static int dvfs_table_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dvfs_table_show, inode->i_private);
+}
+
+static const struct file_operations dvfs_table_fops = {
+	.open		= dvfs_table_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 {
 	struct dentry *d;
@@ -1498,6 +1557,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("gpu_dvfs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &gpu_dvfs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("dvfs_table", S_IRUGO, clk_debugfs_root, NULL,
+		&dvfs_table_fops);
 	if (!d)
 		return -ENOMEM;
 
