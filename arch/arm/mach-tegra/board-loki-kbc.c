@@ -69,13 +69,6 @@ static int loki_wakeup_key(void);
 
 static struct gpio_keys_button loki_int_keys[] = {
 	[0] = GPIO_IKEY(KEY_POWER, 0, 1, 10),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, PQ6, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ7, 0),
-	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
-	[4] = GPIO_KEY(KEY_CAMERA_FOCUS, PQ2, 0),
-#if 0
-	[5] = GPIO_KEY(KEY_CAMERA, PV3, 0),
-#endif
 };
 
 static struct gpio_keys_platform_data loki_int_keys_pdata = {

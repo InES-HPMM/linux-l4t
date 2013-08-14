@@ -423,11 +423,6 @@ static struct i2c_board_info loki_i2c_board_info_e1823[] = {
 
 static int loki_camera_init(void)
 {
-	pr_debug("%s: ++\n", __func__);
-
-
-	i2c_register_board_info(2, loki_i2c_board_info_e1823,
-			ARRAY_SIZE(loki_i2c_board_info_e1823));
 	return 0;
 }
 

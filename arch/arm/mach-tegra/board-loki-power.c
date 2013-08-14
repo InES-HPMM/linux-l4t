@@ -60,7 +60,6 @@ static struct regulator_consumer_supply palmas_smps6_supply[] = {
 static struct regulator_consumer_supply palmas_smps7_supply[] = {
 	REGULATOR_SUPPLY("vddio_ddr", NULL),
 	REGULATOR_SUPPLY("vddio_ddr_mclk", NULL),
-	REGULATOR_SUPPLY("vddio_ddr_hs", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps8_supply[] = {
@@ -93,7 +92,6 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
-	REGULATOR_SUPPLY("vdd_lcd_1v8_s", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -124,7 +122,7 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0069"),
-	REGULATOR_SUPPLY("avdd_lcd", "0-0069"),
+	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
@@ -191,7 +189,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	*/
 };
 
-PALMAS_REGS_PDATA(smps123, 700,  1250, NULL, 0, 0, 0, NORMAL,
+PALMAS_REGS_PDATA(smps123, 1000,  1000, NULL, 1, 1, 0, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
@@ -474,6 +472,10 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_cpu_fixed_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu_fixed", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_en_lcd_bl_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
+};
+
 FIXED_REG(0,	battery,	battery,	NULL,
 	0,	0,	-1,
 	false,	true,	0,	3300, 0);
@@ -498,13 +500,17 @@ FIXED_REG(5,	3v3_ts,	3v3_ts,	palmas_rails(smps6),
 	0,	0,	TEGRA_GPIO_PH0,
 	false,	true,	0,	3300,	0);
 
-FIXED_REG(6,	1v8_display,	1v8_display,	palmas_rails(smps8),
-	0,	0,	TEGRA_GPIO_PU4,
+FIXED_REG(6,	1v8_display,	1v8_display,	NULL,
+	0,	0,	-1,
 	false,	true,	0,	1800,	0);
 
 FIXED_REG(7,   vdd_cpu_fixed,  vdd_cpu_fixed,	NULL,
 	0,	1,	-1,
 	false,  true,   0,      1000,   0);
+
+FIXED_REG(8,	lcd_bl,	lcd_bl,
+	NULL,	0,	0,
+	TEGRA_GPIO_PH2,	false,	true,	1,	5000, 1000);
 
 /*
  * Creating fixed regulator device tables
@@ -518,7 +524,8 @@ FIXED_REG(7,   vdd_cpu_fixed,  vdd_cpu_fixed,	NULL,
 	ADD_FIXED_REG(1v8_ts),		\
 	ADD_FIXED_REG(3v3_ts),		\
 	ADD_FIXED_REG(1v8_display),	\
-	ADD_FIXED_REG(vdd_cpu_fixed),
+	ADD_FIXED_REG(vdd_cpu_fixed),	\
+	ADD_FIXED_REG(lcd_bl),
 
 
 static struct platform_device *fixed_reg_devs_e2545[] = {

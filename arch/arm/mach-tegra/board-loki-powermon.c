@@ -81,7 +81,7 @@ static struct i2c_board_info loki_i2c1_ina3221_board_info[] = {
 int __init loki_pmon_init(void)
 {
 	pr_info("INA3221: registering device\n");
-	i2c_register_board_info(2, loki_i2c1_ina3221_board_info,
+	i2c_register_board_info(1, loki_i2c1_ina3221_board_info,
 		ARRAY_SIZE(loki_i2c1_ina3221_board_info));
 
 	return 0;
