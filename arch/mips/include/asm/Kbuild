@@ -1,2 +1,8 @@
 # MIPS headers
 generic-y += trace_clock.h
+<<<<<<< HEAD
+=======
+generic-y += preempt.h
+generic-y += ucontext.h
+generic-y += xor.h
+>>>>>>> a787870... sched, arch: Create asm/preempt.h

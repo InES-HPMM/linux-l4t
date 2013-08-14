@@ -2,3 +2,8 @@
 generic-y += clkdev.h
 generic-y += rwsem.h
 generic-y += trace_clock.h
+<<<<<<< HEAD
+=======
+generic-y += preempt.h
+generic-y += vtime.h
+>>>>>>> a787870... sched, arch: Create asm/preempt.h

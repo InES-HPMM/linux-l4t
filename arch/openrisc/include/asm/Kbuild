@@ -66,3 +66,8 @@ generic-y += types.h
 generic-y += ucontext.h
 generic-y += user.h
 generic-y += word-at-a-time.h
+<<<<<<< HEAD
+=======
+generic-y += xor.h
+generic-y += preempt.h
+>>>>>>> a787870... sched, arch: Create asm/preempt.h
