@@ -1,34 +1,43 @@
-/* FIXME: temporary */
-#include <linux/compiler.h>
-#include "../../arm/mach-tegra/include/mach/io.h"
+/*
+ *  linux/arch/arm64/mach-tegra/platsmp.c
+ *
+ *  Copyright (C) 2002 ARM Ltd.
+ *  All Rights Reserved
+ *
+ *  Copyright (C) 2009 Palm
+ *  All Rights Reserved
+ *
+ *  Copyright (C) 2013, NVIDIA Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
-/* FIXME: smp_operations is n/a in arm64 */
-struct smp_operations {
-#ifdef CONFIG_SMP
-	/*
-	 * Setup the set of possible CPUs (via set_cpu_possible)
-	 */
-	void (*smp_init_cpus)(void);
-	/*
-	 * Initialize cpu_possible map, and enable coherency
-	 */
-	void (*smp_prepare_cpus)(unsigned int max_cpus);
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/io.h>
+#include <linux/smp.h>
+#include <linux/delay.h>
+#include <linux/clk.h>
+#include <linux/cpumask.h>
 
-	/*
-	 * Perform platform specific initialisation of the specified CPU.
-	 */
-	void (*smp_secondary_init)(unsigned int cpu);
-	/*
-	 * Boot a secondary CPU, and assign it the specified idle task.
-	 * This also gives us the initial stack to use for this CPU.
-	 */
-	int  (*smp_boot_secondary)(unsigned int cpu, struct task_struct *idle);
-#ifdef CONFIG_HOTPLUG_CPU
-	int  (*cpu_kill)(unsigned int cpu);
-	void (*cpu_die)(unsigned int cpu);
-	int  (*cpu_disable)(unsigned int cpu);
-#endif
-#endif
+#include <asm/cputype.h>
+#include <asm/smp_plat.h>
+#include <asm/soc.h>
+
+#include "common.h"
+#include "reset.h"
+
+void tegra_smp_clear_power_mask()
+{
+}
+
+static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
+{
+	tegra_cpu_reset_handler_init();
+}
+
+struct smp_operations tegra_smp_ops __initdata = {
+	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
 };
-
-#include "../../arm/mach-tegra/platsmp.c"
