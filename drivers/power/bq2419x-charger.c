@@ -138,7 +138,7 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 
 static int bq2419x_vbus_regulator_enable_time(struct regulator_dev *rdev)
 {
-	return 500000;
+	return 8000;
 }
 
 static int bq2419x_vbus_enable(struct regulator_dev *rdev)
