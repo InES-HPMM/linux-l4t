@@ -366,8 +366,8 @@ static void t14x_init_ptsa(void)
 	p->ring2_ptsa_min = 0x3f;
 	p->ring2_ptsa_max = 0x01;
 
-	p->bbc_ptsa_min = 0x3d;
-	p->bbc_ptsa_max = 0x14;
+	p->bbc_ptsa_min = 0x3e;
+	p->bbc_ptsa_max = 0x18;
 
 	p->mpcorer_ptsa_rate = 23 * emc_freq / T14X_BASE_EMC_FREQ_MHZ;
 	p->mpcorer_ptsa_min = 0x3f;
@@ -387,7 +387,7 @@ static void t14x_init_ptsa(void)
 	p->bbc_ptsa_rate = t14x_get_ptsa_rate(T14X_MAX_BBCDMA_BW_MHZ);
 
 	/* BBC ring0 ptsa max/min/rate/limit */
-	p->bbcll_earb_cfg = 0x14 << 20 | 0x3d << 16 |
+	p->bbcll_earb_cfg = 0xd << 24 | 0x3f << 16 |
 		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0;
 
 	p->ring1_ptsa_rate = p->dis_ptsa_rate +
