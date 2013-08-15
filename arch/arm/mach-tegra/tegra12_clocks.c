@@ -1,4 +1,4 @@
-/*
+	/*
  * arch/arm/mach-tegra/tegra12_clocks.c
  *
  * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
@@ -680,13 +680,13 @@ static DEFINE_SPINLOCK(periph_refcount_lock);
 static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #define clk_writel(value, reg) \
-	__raw_writel(value, (void *)((u32)reg_clk_base + (reg)))
+	__raw_writel(value, reg_clk_base + (reg))
 #define clk_readl(reg) \
-	__raw_readl((void *)((u32)reg_clk_base + (reg)))
+	__raw_readl(reg_clk_base + (reg))
 #define pmc_writel(value, reg) \
-	__raw_writel(value,(void *)((u32)reg_pmc_base + (reg)))
+	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
-	__raw_readl((void *)((u32)reg_pmc_base + (reg)))
+	__raw_readl(reg_pmc_base + (reg))
 #define xusb_padctl_writel(value, reg) \
 	 __raw_writel(value, reg_xusb_padctl_base + (reg))
 #define xusb_padctl_readl(reg) \
@@ -705,7 +705,6 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 		__raw_readl(reg_clk_base + (reg));			\
 		udelay(1);						\
 	} while (0)
-
 
 static inline int clk_set_div(struct clk *c, u32 n)
 {

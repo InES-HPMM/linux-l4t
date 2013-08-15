@@ -1399,7 +1399,9 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 #endif
 
 	flush_cache_all();
+#ifndef CONFIG_ARM64
 	outer_disable();
+#endif
 
 	if (mode == TEGRA_SUSPEND_LP2)
 		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
