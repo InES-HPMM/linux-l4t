@@ -167,6 +167,18 @@ static inline void tegra_lp0_cpu_mode(bool enter) {}
 #define DEBUG_CLUSTER_SWITCH 0		/* Should be zero for shipping code */
 #define PARAMETERIZE_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
 
+#define CLUSTER_SWITCH_TIME_AVG_SHIFT	4
+#define CLUSTER_SWITCH_AVG_SAMPLES	(0x1U << CLUSTER_SWITCH_TIME_AVG_SHIFT)
+
+enum tegra_cluster_switch_time_id {
+	tegra_cluster_switch_time_id_start = 0,
+	tegra_cluster_switch_time_id_prolog,
+	tegra_cluster_switch_time_id_switch,
+	tegra_cluster_switch_time_id_epilog,
+	tegra_cluster_switch_time_id_end,
+	tegra_cluster_switch_time_id_max
+};
+
 static inline bool is_g_cluster_present(void)
 {
 	u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
@@ -221,6 +233,12 @@ static inline int tegra_cluster_switch(struct clk *cpu_clk,
 {
 	return -EPERM;
 }
+#endif
+
+#if INSTRUMENT_CLUSTER_SWITCH
+void tegra_cluster_switch_time(unsigned int flags, int id);
+#else
+static inline void tegra_cluster_switch_time(unsigned int flags, int id) { }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

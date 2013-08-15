@@ -222,31 +222,54 @@ static struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
 
 #if defined(CONFIG_TEGRA_CLUSTER_CONTROL) && INSTRUMENT_CLUSTER_SWITCH
-enum tegra_cluster_switch_time_id {
-	tegra_cluster_switch_time_id_start = 0,
-	tegra_cluster_switch_time_id_prolog,
-	tegra_cluster_switch_time_id_switch,
-	tegra_cluster_switch_time_id_epilog,
-	tegra_cluster_switch_time_id_max
-};
-
 static unsigned long
 		tegra_cluster_switch_times[tegra_cluster_switch_time_id_max];
-#define tegra_cluster_switch_time(flags, id) \
-	do { \
-		barrier(); \
-		if (flags & TEGRA_POWER_CLUSTER_MASK) { \
-			void __iomem *timer_us = \
-						IO_ADDRESS(TEGRA_TMRUS_BASE); \
-			if (id < tegra_cluster_switch_time_id_max) \
-				tegra_cluster_switch_times[id] = \
-							readl(timer_us); \
-				wmb(); \
-		} \
-		barrier(); \
-	} while(0)
-#else
-#define tegra_cluster_switch_time(flags, id) do {} while(0)
+struct tegra_cluster_switch_time_stats {
+	unsigned long sum;
+	unsigned long avg;
+	unsigned long exp_avg;
+	unsigned long max;
+	int cnt;
+};
+
+static struct tegra_cluster_switch_time_stats lp2g_stats;
+static struct tegra_cluster_switch_time_stats g2lp_stats;
+
+void tegra_cluster_switch_time(unsigned int flags, int id)
+{
+	unsigned long t;
+	struct tegra_cluster_switch_time_stats *stats;
+
+	if (!(flags & TEGRA_POWER_CLUSTER_MASK) ||
+	    (id >= tegra_cluster_switch_time_id_max))
+		return;
+
+	tegra_cluster_switch_times[id] = tegra_read_usec_raw();
+	wmb();
+	if (id != tegra_cluster_switch_time_id_end)
+		return;
+
+	stats = flags & TEGRA_POWER_CLUSTER_G ? &lp2g_stats : &g2lp_stats;
+
+	t = tegra_cluster_switch_times[tegra_cluster_switch_time_id_end] -
+		tegra_cluster_switch_times[tegra_cluster_switch_time_id_start];
+	if (stats->max < t)
+		stats->max = t;
+
+	stats->sum += t;
+	stats->cnt++;
+	if (stats->cnt < CLUSTER_SWITCH_AVG_SAMPLES)
+		return;
+
+	stats->avg = stats->sum;
+	stats->cnt = stats->sum = 0;
+	if (!stats->exp_avg) {
+		stats->exp_avg = stats->avg;	/* 1st window sample */
+		return;
+	}
+	stats->exp_avg = (stats->exp_avg * (CLUSTER_SWITCH_AVG_SAMPLES - 1) +
+			  stats->avg) >> CLUSTER_SWITCH_TIME_AVG_SHIFT;
+}
 #endif
 
 #ifdef CONFIG_PM_SLEEP
@@ -697,8 +720,6 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
 	writel(reg, pmc + PMC_CTRL);
 
-	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
-
 	/*
 	 * We can use clk_get_rate_all_locked() here, because all other cpus
 	 * are in LP2 state and irqs are disabled
@@ -846,7 +867,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 
 #if INSTRUMENT_CLUSTER_SWITCH
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
-		pr_err("%s: prolog %lu us, switch %lu us, epilog %lu us, total %lu us\n",
+		pr_debug("%s: prolog %lu us, switch %lu us, epilog %lu us, total %lu us\n",
 			is_lp_cluster() ? "G=>LP" : "LP=>G",
 			tegra_cluster_switch_times[tegra_cluster_switch_time_id_prolog] -
 			tegra_cluster_switch_times[tegra_cluster_switch_time_id_start],
@@ -1944,4 +1965,60 @@ void tegra_tsc_wait_for_resume(void)
 		}
 	}
 }
+#endif
+
+#if defined(CONFIG_DEBUG_FS) && INSTRUMENT_CLUSTER_SWITCH
+
+static void cluster_switch_stats_show(
+	struct seq_file *s, struct tegra_cluster_switch_time_stats *stats)
+{
+	seq_printf(s, "%u-samples average:           %lu\n",
+		   CLUSTER_SWITCH_AVG_SAMPLES,
+		   stats->avg >> CLUSTER_SWITCH_TIME_AVG_SHIFT);
+	seq_printf(s, "exponential average:          %lu\n",
+		   stats->exp_avg >> CLUSTER_SWITCH_TIME_AVG_SHIFT);
+	seq_printf(s, "maximum since boot:           %lu\n\n", stats->max);
+}
+
+
+static int tegra_cluster_switch_stats_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "G=>LP cluster switch timing:  (us)\n");
+	cluster_switch_stats_show(s, &g2lp_stats);
+	seq_printf(s, "LP=>G cluster switch timing:  (us)\n");
+	cluster_switch_stats_show(s, &lp2g_stats);
+	return 0;
+}
+
+static int tegra_cluster_switch_stats_open(
+	struct inode *inode, struct file *file)
+{
+	return single_open(file, tegra_cluster_switch_stats_show,
+			   inode->i_private);
+}
+
+static const struct file_operations tegra_cluster_switch_stats_ops = {
+	.open		= tegra_cluster_switch_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int __init tegra_pm_core_debug_init(void)
+{
+	struct dentry *dir, *d;
+
+	dir = debugfs_create_dir("tegra_pm_core", NULL);
+	if (!dir)
+		return -ENOMEM;
+
+	d = debugfs_create_file("cluster_switch_stats", S_IRUGO, dir, NULL,
+		&tegra_cluster_switch_stats_ops);
+	if (!d)
+		return -ENOMEM;
+
+	return 0;
+}
+
+late_initcall(tegra_pm_core_debug_init);
 #endif

@@ -420,6 +420,7 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	}
 
 	local_irq_save(irq_flags);
+	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
 
 #ifdef CONFIG_TEGRA_VIRTUAL_CPUID
 	if (current_cluster != target_cluster && !timekeeping_suspended) {
@@ -469,6 +470,7 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 			tegra_dvfs_rail_off(tegra_cpu_rail, now);
 		}
 	}
+	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_end);
 	local_irq_restore(irq_flags);
 
 	DEBUG_CLUSTER(("%s: %s\r\n", __func__, is_lp_cluster() ? "LP" : "G"));
