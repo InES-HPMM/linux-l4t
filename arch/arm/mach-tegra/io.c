@@ -33,6 +33,10 @@
 #include "board.h"
 #include "iomap.h"
 
+#ifdef CONFIG_ARM64
+#define MT_DEVICE MT_DEVICE_nGnRE
+#endif
+
 static struct map_desc tegra_io_desc[] __initdata = {
 	{
 		.virtual = (unsigned long)IO_PPSB_VIRT,
