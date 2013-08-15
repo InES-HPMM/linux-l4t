@@ -1146,7 +1146,8 @@ static __init int init_cache_size(void)
 	/* cortex-a9 */
 	if ((id >> 4 & 0xfff) == 0xc09)
 		inner_cache_maint_threshold = SZ_32K;
-	pr_info("CPA: inner cache maint threshold=%d", SZ_32K);
+	pr_info("CPA: inner cache maint threshold=%d",
+		inner_cache_maint_threshold);
 	return 0;
 }
 
