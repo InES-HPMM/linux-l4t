@@ -2375,7 +2375,7 @@ static struct platform_device tegra_smsc911x_device = {
 
 static int __init enet_smsc911x_init(void)
 {
-	if (!tegra_cpu_is_dsim())
+	if (!tegra_cpu_is_dsim() && !tegra_platform_is_qt())
 		platform_device_register(&tegra_smsc911x_device);
 	return 0;
 }
