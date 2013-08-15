@@ -121,5 +121,22 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
 {
 }
 
+/* FIXME: copied from arch/arm
+ *
+ * This can be called during boot to increase the size of the consistent
+ * DMA region above it's default value of 2MB. It must be called before the
+ * memory allocator is initialised, i.e. before any core_initcall.
+ */
+static inline void init_consistent_dma_size(unsigned long size) { }
+
+/* FIXME: copied from arch/arm */
+static inline size_t dma_iova_get_free_max(struct device *dev)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	BUG_ON(!ops);
+	BUG_ON(!ops->iova_get_free_max);
+	return ops->iova_get_free_max(dev);
+}
+
 #endif	/* __KERNEL__ */
 #endif	/* __ASM_DMA_MAPPING_H */

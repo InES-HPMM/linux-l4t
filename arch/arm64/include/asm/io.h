@@ -117,7 +117,9 @@ static inline u64 __raw_readq(const volatile void __iomem *addr)
 /*
  *  I/O port access primitives.
  */
+#ifndef IO_SPACE_LIMIT
 #define IO_SPACE_LIMIT		0xffff
+#endif
 #define PCI_IOBASE		((void __iomem *)(MODULES_VADDR - SZ_2M))
 
 static inline u8 inb(unsigned long addr)
