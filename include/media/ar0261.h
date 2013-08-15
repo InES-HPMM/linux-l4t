@@ -20,6 +20,7 @@
 #define AR0261_IOCTL_SET_GAIN		_IOW('o', 5, __u16)
 #define AR0261_IOCTL_GET_SENSORDATA _IOR('o', 6, struct ar0261_sensordata)
 #define AR0261_IOCTL_SET_GROUP_HOLD	_IOW('o', 7, struct ar0261_ae)
+#define AR0261_IOCTL_SET_HDR_COARSE_TIME	_IOW('o', 8, struct ar0261_hdr)
 
 /* AR0261 registers */
 #define AR0261_GROUP_PARAM_HOLD			(0x0104)
@@ -28,22 +29,33 @@
 #define AR0261_ANA_GAIN_GLOBAL			(0x305F)
 #define AR0261_FRAME_LEN_LINES_15_8		(0x0340)
 #define AR0261_FRAME_LEN_LINES_7_0		(0x0341)
+#define AR0261_COARSE_INTEGRATION_SHORT_TIME_15_8	(0x3088)
+#define AR0261_COARSE_INTEGRATION_SHORT_TIME_7_0	(0x3089)
 
 #define NUM_OF_FRAME_LEN_REG		2
 #define NUM_OF_COARSE_TIME_REG		2
-#define NUM_OF_SENSOR_ID_SPECIFIC_REG	8
+#define HDR_MODE_OVERRIDE_REGS		7
+#define NORMAL_MODE_OVERRIDE_REGS	5
 struct ar0261_mode {
 	int xres;
 	int yres;
 	__u32 frame_length;
 	__u32 coarse_time;
+	__u32 coarse_time_short;
 	__u16 gain;
+	__u8 hdr_en;
+};
+
+struct ar0261_hdr {
+	__u32 coarse_time_long;
+	__u32 coarse_time_short;
 };
 
 struct ar0261_ae {
 	__u32 frame_length;
 	__u8  frame_length_enable;
 	__u32 coarse_time;
+	__u32 coarse_time_short;
 	__u8  coarse_time_enable;
 	__s32 gain;
 	__u8  gain_enable;
