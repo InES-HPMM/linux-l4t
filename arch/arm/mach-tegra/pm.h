@@ -86,6 +86,7 @@ struct tegra_suspend_platform_data {
 	unsigned long min_residency_ncpu_slow;
 	unsigned long min_residency_ncpu_fast;
 	unsigned long min_residency_crail;
+	bool crail_up_early;
 #endif
 	unsigned long min_residency_mc_clk;
 	bool usb_vbus_internal_wake; /* support for internal vbus wake */
@@ -106,7 +107,12 @@ unsigned long tegra_mc_clk_stop_min_residency(void);
 unsigned long tegra_min_residency_vmin_fmin(void);
 unsigned long tegra_min_residency_ncpu(void);
 unsigned long tegra_min_residency_crail(void);
+bool tegra_crail_can_start_early(void);
+#else
+static inline bool tegra_crail_can_start_early(void)
+{ return false; }
 #endif
+void tegra_limit_cpu_power_timers(unsigned long us_on, unsigned long us_off);
 void tegra_clear_cpu_in_pd(int cpu);
 bool tegra_set_cpu_in_pd(int cpu);
 
@@ -135,6 +141,8 @@ unsigned long tegra_lp1bb_emc_min_rate_get(void);
 #define FLOW_CTRL_RAM_REPAIR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x40)
 #define FLOW_CTRL_RAM_REPAIR_BYPASS_EN	(1<<2)
+#define FLOW_CTRL_RAM_REPAIR_STS	(1<<1)
+#define FLOW_CTRL_RAM_REPAIR_REQ	(1<<0)
 
 #define FUSE_SKU_DIRECT_CONFIG \
 	(IO_ADDRESS(TEGRA_FUSE_BASE) + 0x1F4)

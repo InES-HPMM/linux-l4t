@@ -364,6 +364,11 @@ unsigned long tegra_min_residency_crail(void)
 			? pdata->min_residency_crail
 			: TEGRA_MIN_RESIDENCY_CRAIL;
 }
+
+bool tegra_crail_can_start_early(void)
+{
+	return pdata && pdata->crail_up_early;
+}
 #endif
 
 static void suspend_cpu_dfll_mode(unsigned int flags)
@@ -460,6 +465,12 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 	}
 	tegra_last_pclk = pclk;
 	last_us_off = us_off;
+}
+
+void tegra_limit_cpu_power_timers(unsigned long us_on, unsigned long us_off)
+{
+	/* make sure power timers would not exceed specified limits */
+	set_power_timers(us_on, us_off, clk_get_min_rate(tegra_pclk));
 }
 
 /*
@@ -738,7 +749,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 			 * transition. Before the transition, enable
 			 * the vdd_cpu rail.
 			 */
-			if (is_lp_cluster()) {
+			if (!tegra_crail_can_start_early() && is_lp_cluster()) {
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 				reg = readl(FLOW_CTRL_CPU_PWR_CSR);
 				reg |= FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE;

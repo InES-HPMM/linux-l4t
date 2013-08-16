@@ -34,6 +34,7 @@
 #include <mach/io_dpd.h>
 #include <mach/edp.h>
 #include <mach/hardware.h>
+#include <mach/powergate.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cputype.h>
@@ -247,7 +248,8 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 	    (current_cluster == TEGRA_POWER_CLUSTER_LP))
 		reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
 	else if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
-		reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+		reg |= tegra_crail_can_start_early() ?
+		FLOW_CTRL_CSR_ENABLE_EXT_NCPU : FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
 
 	if (flags & TEGRA_POWER_CLUSTER_PART_NONCPU)
 		reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
@@ -358,6 +360,11 @@ void tegra_cluster_switch_epilog(unsigned int flags)
 	if (!is_lp_cluster()) {
 		cluster_switch_epilog_actlr();
 		cluster_switch_epilog_gic();
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	} else  if ((flags & TEGRA_POWER_CLUSTER_PART_CRAIL) &&
+		    tegra_crail_can_start_early()) {
+		tegra_powergate_partition(TEGRA_POWERGATE_CRAIL);
+#endif
 	}
 
 	/* Disable unused port of PLL_X */
@@ -372,6 +379,52 @@ void tegra_cluster_switch_epilog(unsigned int flags)
 			is_lp_cluster() ? "LP" : "G", clk_get_rate(c)));
 	}
 	#endif
+}
+
+static int tegra_crail_startup_early(void)
+{
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	u32 reg;
+	int us = tegra_cpu_power_good_time();
+
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_CRAIL))
+		return 0;
+
+	/*
+	 * Toggle CRAIL, insert s/w  power good delay (load h/w power good
+	 * timer with very small settings so it expires for sure within power
+	 * gate toggle timeout).
+	 */
+	tegra_limit_cpu_power_timers(1, 1);
+	tegra_unpowergate_partition(TEGRA_POWERGATE_CRAIL);
+	if (timekeeping_suspended)
+		udelay(us);			/* suspend exit */
+	else
+		usleep_range(us, us + 10);	/* regular scheduling */
+
+	if (!tegra_powergate_is_powered(TEGRA_POWERGATE_CRAIL)) {
+		WARN(1, "Failed to turn CRAIL ON in %d us\n", us);
+		return -ETIMEDOUT;
+	}
+
+	/* If needed trigger RAM rapair request in s/w (auto-clear in h/w) */
+	#define RAM_REPAIR_TIMEOUT 500
+
+	reg = readl(FLOW_CTRL_RAM_REPAIR) | FLOW_CTRL_RAM_REPAIR_REQ;
+	if (!(reg & FLOW_CTRL_RAM_REPAIR_BYPASS_EN)) {
+		int ram_repair_time = RAM_REPAIR_TIMEOUT;
+		flowctrl_writel(reg, FLOW_CTRL_RAM_REPAIR);
+		while (readl(FLOW_CTRL_RAM_REPAIR) & FLOW_CTRL_RAM_REPAIR_REQ) {
+			udelay(1);
+			if (!(ram_repair_time--)) {
+				WARN(1, "Failed to repair RAM in %d us\n",
+				     RAM_REPAIR_TIMEOUT);
+				return -ETIMEDOUT;
+			}
+		}
+	}
+#endif
+	return 0;
 }
 
 int tegra_cluster_control(unsigned int us, unsigned int flags)
@@ -409,13 +462,21 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		(flags & TEGRA_POWER_CLUSTER_FORCE) ? "force" : "",
 		us));
 
-	if (current_cluster != target_cluster && !timekeeping_suspended) {
-		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
+	if ((current_cluster == TEGRA_POWER_CLUSTER_LP) &&
+	    (target_cluster == TEGRA_POWER_CLUSTER_G)) {
+		if (!timekeeping_suspended) {
 			ktime_t now = ktime_get();
 			s64 t = ktime_to_us(ktime_sub(now, last_g2lp));
 			s64 t_off = tegra_cpu_power_off_time();
 			if (t_off > t)
 				udelay((unsigned int)(t_off - t));
+		}
+
+		/* Start CPU rail transition up early - before disabling irq */
+		if (tegra_crail_can_start_early()) {
+			int ret = tegra_crail_startup_early();
+			if (ret)
+				return ret;
 		}
 	}
 
