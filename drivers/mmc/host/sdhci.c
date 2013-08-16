@@ -1464,6 +1464,12 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			}
 		}
 
+		/* For a data cmd, check for plat specific preparation */
+		spin_unlock_irqrestore(&host->lock, flags);
+		if (mrq->data)
+			host->ops->platform_get_bus(host);
+		spin_lock_irqsave(&host->lock, flags);
+
 		if (mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23))
 			sdhci_send_command(host, mrq->sbc);
 		else
@@ -1679,6 +1685,8 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
 		(!ios->clock && host->ops->set_clock))
 		host->ops->set_clock(host, ios->clock);
+	if ((ios->power_mode == MMC_POWER_OFF) && host->ops->platform_power_off)
+		host->ops->platform_power_off(host, ios->power_mode);
 }
 
 static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
@@ -1951,17 +1959,16 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	sdhci_runtime_pm_get(host);
 	disable_irq(host->irq);
-	spin_lock(&host->lock);
 
 	if ((host->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING) &&
 		host->ops->execute_freq_tuning) {
 		err = host->ops->execute_freq_tuning(host, opcode);
-		spin_unlock(&host->lock);
 		enable_irq(host->irq);
 		sdhci_runtime_pm_put(host);
 		return err;
 	}
 
+	spin_lock(&host->lock);
 	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	/*

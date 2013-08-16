@@ -363,6 +363,8 @@ struct sdhci_ops {
 	void	(*platform_resume)(struct sdhci_host *host);
 	void    (*adma_workaround)(struct sdhci_host *host, u32 intmask);
 	void	(*platform_init)(struct sdhci_host *host);
+	void	(*platform_get_bus)(struct sdhci_host *host);
+	void	(*platform_power_off)(struct sdhci_host *host, u8 power_mode);
 
 	int	(*switch_signal_voltage)(struct sdhci_host *host,
 				unsigned int signal_voltage);

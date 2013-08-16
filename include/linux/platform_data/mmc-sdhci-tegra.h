@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Palm, Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Yvonne Yip <y@palm.com>
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
@@ -48,6 +49,7 @@ struct tegra_sdhci_platform_data {
 	int pm_caps;
 	int nominal_vcore_mv;
 	int min_vcore_override_mv;
+	int boot_vcore_mv;
 	unsigned int max_clk_limit;
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
@@ -60,6 +62,7 @@ struct tegra_sdhci_platform_data {
 	bool edp_support;
 	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool cd_wakeup_incapable;
+	bool en_nominal_vcore_tuning;
 };
 
 #endif
