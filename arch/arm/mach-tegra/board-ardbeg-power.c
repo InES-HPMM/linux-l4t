@@ -1120,8 +1120,10 @@ int __init ardbeg_suspend_init(void)
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
-	if (pmu_board_info.board_id == BOARD_E1735)
-		ardbeg_suspend_data.cpu_timer = 2500;
+	if (pmu_board_info.board_id == BOARD_E1735) {
+		ardbeg_suspend_data.cpu_timer = 2000;
+		ardbeg_suspend_data.crail_up_early = true;
+	}
 
 	tegra_init_suspend(&ardbeg_suspend_data);
 	return 0;
