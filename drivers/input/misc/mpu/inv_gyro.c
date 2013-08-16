@@ -1895,6 +1895,17 @@ int nvi_mpu_bypass_release(void)
 }
 EXPORT_SYMBOL(nvi_mpu_bypass_release);
 
+int nvi_mpu_sysfs_register(struct kobject *target, char *name)
+{
+	int err;
+	struct inv_gyro_state_s *inf = inf_local;
+	err = sysfs_create_link(&inf->inv_dev->kobj, target, name);
+	if (err)
+		dev_err(&inf->i2c->dev, "%s: ERR=%d\n",
+			__func__, err);
+	return err;
+}
+EXPORT_SYMBOL(nvi_mpu_sysfs_register);
 
 int nvi_gyro_enable(struct inv_gyro_state_s *inf,
 		    unsigned char enable, unsigned char fifo_enable)

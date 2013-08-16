@@ -1397,6 +1397,13 @@ static int bmp_sysfs_create(struct bmp_inf *inf)
 	int err;
 
 	err = sysfs_create_group(&inf->idev->dev.kobj, &bmp_attr_group);
+	if (err) {
+		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
+		return err;
+	}
+	err = nvi_mpu_sysfs_register(&inf->idev->dev.kobj, BMPX80_NAME);
+	if (err)
+		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
 	return err;
 }
 

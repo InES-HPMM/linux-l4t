@@ -1250,6 +1250,13 @@ static int akm_sysfs_create(struct akm_inf *inf)
 	int err;
 
 	err = sysfs_create_group(&inf->idev->dev.kobj, &akm_attr_group);
+	if (err) {
+		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
+		return err;
+	}
+	err = nvi_mpu_sysfs_register(&inf->idev->dev.kobj, AKM_NAME);
+	if (err)
+		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
 	return err;
 }
 
