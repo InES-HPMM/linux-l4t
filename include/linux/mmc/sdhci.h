@@ -106,8 +106,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NON_STANDARD_TUNING		(1<<6)
 /* Controller doesn't calculate max_discard_to */
 #define SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO		(1<<7)
-/* Do dummy write */
-#define SDHCI_QUIRK2_DO_DUMMY_WRITE			(1<<8)
+/* Controller needs a dummy write after INT_CLK_EN for clock to be stable */
+#define SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE	(1<<8)
 /* Controller supports 64 BIT DMA mode */
 #define SDHCI_QUIRK2_SUPPORT_64BIT_DMA			(1<<9)
 /* Use 64 BIT addressing */

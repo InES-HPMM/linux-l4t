@@ -1165,8 +1165,8 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	int div = 0; /* Initialized for compiler warning */
 	int real_div = div, clk_mul = 1;
 	u16 clk = 0;
-	u8 ctrl;
 	unsigned long timeout;
+	u32 caps;
 
 	if (clock && clock == host->clock)
 		return;
@@ -1176,12 +1176,16 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	if (host->quirks & SDHCI_QUIRK_NONSTANDARD_CLOCK)
 		return;
 
-	/* Disable card clock first to avoid any abnormal clock behavior */
+	/*
+	 * If the entire clock control register is updated with zero, some
+	 * controllers might first update clock divisor fields and then update
+	 * the INT_CLK_EN and CARD_CLK_EN fields. Disable card clock first
+	 * to ensure there is no abnormal clock behavior.
+	 */
 	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
 	clk &= ~SDHCI_CLOCK_CARD_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
 	clk = 0;
-
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
 	if (clock == 0)
@@ -1267,11 +1271,18 @@ clock_set:
 	clk |= SDHCI_CLOCK_INT_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
 
-	/* Do a dummy write */
-	if (host->quirks2 & SDHCI_QUIRK2_DO_DUMMY_WRITE) {
-		ctrl = sdhci_readb(host, SDHCI_CAPABILITIES);
-		ctrl |= 1;
-		sdhci_writeb(host, ctrl, SDHCI_CAPABILITIES);
+	/*
+	 * For Tegra3 sdmmc controller, internal clock will not be stable bit
+	 * will get set only after some other register write is done. To
+	 * handle, do a dummy reg write to the caps reg if
+	 * SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE is set.
+	 */
+	if (host->quirks2 & SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE) {
+		udelay(5);
+
+		caps = sdhci_readl(host, SDHCI_CAPABILITIES);
+		caps |= 1;
+		sdhci_writel(host, caps, SDHCI_CAPABILITIES);
 	}
 
 	/* Wait max 20 ms */
