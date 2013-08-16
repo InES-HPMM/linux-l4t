@@ -196,9 +196,14 @@ config NVMAP_PAGE_POOLS_INIT_FILLUP
 	  requests. Page pools fill up during init would increase the boot time.
 	  If increase in boot time is not acceptable, keep this option disabled.
 
+config NVMAP_PAGE_POOLS_INIT_FILLUP_SIZE
+	depends on NVMAP_PAGE_POOLS_INIT_FILLUP
+	hex "Amount of memory to fill up page pools with during bootup in MB"
+	default 0x64
+
 config NVMAP_PAGE_POOL_SIZE
 	depends on NVMAP_PAGE_POOLS
-	hex
+	hex "Page pool size in pages"
 	default 0x0
 
 config NVMAP_CACHE_MAINT_BY_SET_WAYS
