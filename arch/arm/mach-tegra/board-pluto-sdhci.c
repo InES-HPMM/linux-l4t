@@ -310,6 +310,7 @@ int __init pluto_sdhci_init(void)
 {
 	int nominal_core_mv;
 	int min_vcore_override_mv;
+	int boot_vcore_mv;
 
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
@@ -329,6 +330,13 @@ int __init pluto_sdhci_init(void)
 		tegra_sdhci_platform_data3.min_vcore_override_mv =
 			min_vcore_override_mv;
 	}
+	boot_vcore_mv = tegra_dvfs_rail_get_boot_level(tegra_core_rail);
+	if (boot_vcore_mv) {
+		pluto_tegra_sdhci_platform_data0.boot_vcore_mv = boot_vcore_mv;
+		tegra_sdhci_platform_data2.boot_vcore_mv = boot_vcore_mv;
+		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
+	}
+
 	if ((tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
 		&& (!(tegra_sdhci_platform_data3.uhs_mask &
 		MMC_UHS_MASK_DDR50)))
