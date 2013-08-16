@@ -406,6 +406,7 @@ static struct as364x_platform_data ardbeg_as3648_data = {
 		.led_mask	= 3,
 		.max_total_current_mA = 1000,
 		.max_peak_current_mA = 600,
+		.max_torch_current_mA = 600,
 		.vin_low_v_run_mV = 3070,
 		.strobe_type = 1,
 		},
