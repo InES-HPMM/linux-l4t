@@ -45,6 +45,11 @@ struct tegra12x_powergate_mc_client_info {
 };
 
 static struct tegra12x_powergate_mc_client_info tegra12x_pg_mc_info[] = {
+	[TEGRA_POWERGATE_CRAIL] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
 	[TEGRA_POWERGATE_GPU] = {
 		.hot_reset_clients = {
 			[0] = MC_CLIENT_GPU,
@@ -131,6 +136,7 @@ static struct tegra12x_powergate_mc_client_info tegra12x_pg_mc_info[] = {
 };
 
 static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
+	[TEGRA_POWERGATE_CRAIL] = { .name = "crail" },
 	[TEGRA_POWERGATE_GPU] = {
 		.name = "gpu",
 		.clk_info = {
@@ -536,6 +542,8 @@ int tegra12x_powergate_partition(int id)
 			&tegra12x_powergate_partition_info[id]);
 	} else if (TEGRA_IS_DISP_POWERGATE_ID(id))
 		ret = tegra12x_disp_powergate(id);
+	else if (id == TEGRA_POWERGATE_CRAIL)
+		ret = tegra_powergate_set(id, false);
 	else {
 		/* call common power-gate API for t1xx */
 		ret = tegra1xx_powergate(id,
@@ -554,6 +562,8 @@ int tegra12x_unpowergate_partition(int id)
 			&tegra12x_powergate_partition_info[id]);
 	} else if (TEGRA_IS_DISP_POWERGATE_ID(id))
 		ret = tegra12x_disp_unpowergate(id);
+	else if (id == TEGRA_POWERGATE_CRAIL)
+		ret = tegra_powergate_set(id, true);
 	else {
 		ret = tegra1xx_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);
