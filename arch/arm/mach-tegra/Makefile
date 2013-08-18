@@ -270,6 +270,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-kbc.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sensors.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-panel.o
+obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-memory.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-pinmux.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-tn8-power.o

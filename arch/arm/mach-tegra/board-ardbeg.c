@@ -1127,9 +1127,10 @@ static void __init tegra_ardbeg_late_init(void)
 	else
 		ardbeg_regulator_init();
 	ardbeg_suspend_init();
-#if 0
-	ardbeg_emc_init();
-#endif
+/* TODO: add support for laguna board when dvfs table is ready */
+	if (board_info.board_id == BOARD_E1780)
+		ardbeg_emc_init();
+
 	ardbeg_edp_init();
 	isomgr_init();
 	ardbeg_touch_init();
