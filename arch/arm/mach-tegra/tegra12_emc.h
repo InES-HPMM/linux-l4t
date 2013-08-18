@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_emc.h
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ enum {
 #define EMC_CFG_EN_DYNAMIC_PUTERM		(0x1 << 20)
 #define EMC_CFG_DLY_WR_DQ_HALF_CLOCK		(0x1 << 19)
 #define EMC_CFG_DSR_VTTGEN_DRV_EN		(0x1 << 18)
+#define EMC_CFG_EMC2MC_CLK_RATIO		(0x3 << 16)
 #define EMC_CFG_EMC2PMACRO_CFG_BYPASS_DATAPIPE2	(0x1 << 3)
 #define EMC_CFG_EMC2PMACRO_CFG_BYPASS_DATAPIPE1	(0x1 << 2)
 #define EMC_CFG_EMC2PMACRO_CFG_BYPASS_ADDRPIPE	(0x1 << 1)
@@ -55,6 +56,7 @@ enum {
 	(EMC_CFG_EMC2PMACRO_CFG_BYPASS_ADDRPIPE | \
 	 EMC_CFG_EMC2PMACRO_CFG_BYPASS_DATAPIPE1 | \
 	 EMC_CFG_EMC2PMACRO_CFG_BYPASS_DATAPIPE2 | \
+	 EMC_CFG_EMC2MC_CLK_RATIO | \
 	 EMC_CFG_DSR_VTTGEN_DRV_EN | \
 	 EMC_CFG_DLY_WR_DQ_HALF_CLOCK | \
 	 EMC_CFG_EN_DYNAMIC_PUTERM | \
@@ -205,6 +207,7 @@ enum {
 #define EMC_CFG_2_MODE_MASK			(0x3 << EMC_CFG_2_MODE_SHIFT)
 #define EMC_CFG_2_SREF_MODE			0x1
 #define EMC_CFG_2_PD_MODE			0x3
+#define EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR (0x1 << 6)
 
 #define EMC_CFG_DIG_DLL				0x2bc
 #define EMC_CFG_DIG_DLL_PERIOD			0x2c0
@@ -288,7 +291,6 @@ enum {
 #define EMC_STALL_THEN_EXE_AFTER_CLKCHANGE	0x3cc
 #define EMC_AUTO_CAL_CLK_STATUS			0x3d4
 #define EMC_SEL_DPD_CTRL			0x3d8
-#define EMC_SEL_DPD_CTRL_QUSE_DPD_ENABLE	(0x1 << 9)
 #define EMC_PRE_REFRESH_REQ_CNT			0x3dc
 #define EMC_DYN_SELF_REF_CONTROL		0x3e0
 #define EMC_TXSRDLL				0x3e4

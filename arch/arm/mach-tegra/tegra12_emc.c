@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_emc.c
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -64,7 +64,6 @@ enum {
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
 
-/* FIXME: actual Tegar12 list */
 #define BURST_REG_LIST \
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RC),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RFC),			\
@@ -82,14 +81,15 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_WEXT),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_WDV),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_WDV_MASK),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_QUSE),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_QUSE_WIDTH),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_IBDLY),			\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT), \
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT_DURATION), \
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_EXTRA) ,	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT_DURATION),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_EXTRA),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_WIDTH),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_ADJ),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_1), 	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_1),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_2),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_3),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_QRST),			\
@@ -131,12 +131,12 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS7),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS8),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS9),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS10),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS11),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS12),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS13),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS14),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS15),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS10),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS11),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS12),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS13),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS14),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS15),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE0),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE1),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE2),	\
@@ -202,7 +202,6 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DSR_VTTGEN_DRV),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_TXDSRVTTGEN),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_FBIO_SPARE),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CTT_TERM_CTRL),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_ZCAL_INTERVAL),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_ZCAL_WAIT_CNT),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_MRS_WAIT_CNT),		\
@@ -212,13 +211,9 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_AUTO_CAL_CONFIG),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CTT),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CTT_DURATION),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_2),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_PIPE),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DYN_SELF_REF_CONTROL),	\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CA_TRAINING_TIMING_CNTL1),	\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_QPOP),	\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CA_TRAINING_TIMING_CNTL2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_QPOP),			\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_CFG),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_OUTSTANDING_REQ),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_TIMING_RCD),	\
@@ -236,41 +231,40 @@ enum {
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_DA_TURNS),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_DA_COVERS),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_MISC0),		\
-	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_RING1_THROTTLE),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_MLL_MPCORER_PTSA_RATE),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_PTSA_GRANT_DECREMENT),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_XUSB_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_XUSB_1),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_TSEC_0),	\
+	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_RING1_THROTTLE),
+
+#define BURST_UP_DOWN_REG_LIST \
+	DEFINE_REG(TEGRA_MC_BASE, MC_MLL_MPCORER_PTSA_RATE),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_PTSA_GRANT_DECREMENT),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_XUSB_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_XUSB_1),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_TSEC_0),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SDMMCA_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SDMMCAA_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SDMMC_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SDMMCAB_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SATA_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_PPCS_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_PPCS_1), \
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_PPCS_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_PPCS_1),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_MPCORE_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_MPCORELP_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HC_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HC_1),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_AVPC_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_AFI_0), \
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_GPU_0),	\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HC_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HC_1),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_AVPC_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_GPU_0),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_MSENC_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HDA_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VIC_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VI2_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2_1), \
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_HDA_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VIC_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VI2_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2_1),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2B_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_ISP2B_1),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_0),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_1),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_2),	\
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_3),
-
-#define BURST_UP_DOWN_REG_LIST \
-	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_3),
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_1),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_2),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_VDE_3),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_SATA_0),		\
+	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_AFI_0),
 
 #define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
 static void __iomem *burst_reg_addr[TEGRA12_EMC_MAX_NUM_REGS] = {
@@ -418,20 +412,21 @@ static inline bool dqs_preset(const struct tegra12_emc_table *next_timing,
 			      const struct tegra12_emc_table *last_timing)
 {
 	bool ret = false;
-
+	int data;
 #define DQS_SET(reg, bit)						\
-	do {								\
+	do {						\
+		data = emc_readl(EMC_XM2DQSPADCTRL2); \
 		if ((next_timing->burst_regs[EMC_##reg##_INDEX] &	\
 		     EMC_##reg##_##bit##_ENABLE) &&			\
-		    (!(last_timing->burst_regs[EMC_##reg##_INDEX] &	\
+			(!(data &	\
 		       EMC_##reg##_##bit##_ENABLE)))   {		\
-			emc_writel(last_timing->burst_regs[EMC_##reg##_INDEX] \
+				emc_writel(data \
 				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg); \
 			pr_debug("dqs preset: presetting rx_ft_rec\n");	\
 			ret = true;					\
 		}							\
 	} while (0)
-
+	DQS_SET(XM2DQSPADCTRL2, VREF);
 	DQS_SET(XM2DQSPADCTRL2, RX_FT_REC);
 
 	return ret;
@@ -541,6 +536,7 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	bool dyn_sref_enabled, zcal_long;
 
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
+	u32 emc_cfg_2_reg = emc_readl(EMC_CFG_2);
 
 	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
 	dll_change = get_dll_change(next_timing, last_timing);
@@ -576,12 +572,13 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	/term-slope,offset values instantly*/
 	ctt_term_changed = (last_timing->emc_ctt_term_ctrl
 				!= next_timing->emc_ctt_term_ctrl);
-
-	if (last_timing->emc_ctt_term_ctrl != next_timing->emc_ctt_term_ctrl) {
-		/* 2.6.1 Disable autocal before programming CTT_TERM*/
-		auto_cal_disable();
-		emc_writel(next_timing->emc_ctt_term_ctrl, EMC_CTT_TERM_CTRL);
+	if (last_timing->emc_ctt_term_ctrl !=
+			next_timing->emc_ctt_term_ctrl) {
+			auto_cal_disable();
+			emc_writel(next_timing->emc_ctt_term_ctrl,
+				EMC_CTT_TERM_CTRL);
 	}
+
 	if (pre_wait || ctt_term_changed) {
 		emc_timing_update();
 		udelay(pre_wait);
@@ -609,6 +606,16 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 
 	/* 5.2 disable auto-refresh to save time after clock change */
 	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+
+	/* 5.3 post cfg_2 write and dis ob clock gate */
+	emc_cfg_2_reg = next_timing->emc_cfg_2;
+
+	if (emc_cfg_2_reg & EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR)
+		emc_cfg_2_reg &= ~EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR;
+	ccfifo_writel(emc_cfg_2_reg, EMC_CFG_2);
+
+	/* 5.4 program sel_dpd */
+	ccfifo_writel(next_timing->emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
 
 	/* 6. turn Off dll and enter self-refresh on DDR3  */
 	if (dram_type == DRAM_TYPE_DDR3) {
@@ -638,6 +645,13 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	/* 10.1 dummy write to RO register to remove stall after change */
 	ccfifo_writel(0, EMC_CCFIFO_STATUS);
 
+
+	/* 11.1 DIS_STP_OB_CLK_DURING_NON_WR ->0 */
+	if (next_timing->emc_cfg_2 & EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR) {
+		emc_cfg_2_reg = next_timing->emc_cfg_2;
+		ccfifo_writel(emc_cfg_2_reg, EMC_CFG_2);
+	}
+
 	/* 11.5 program burst_up_down registers if emc rate is going down */
 	if (next_timing->rate < last_timing->rate) {
 		for (i = 0; i < next_timing->burst_up_down_regs_num; i++)
@@ -661,8 +675,10 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 		wmb();
 	}
 
-	/* 15. restore auto-cal - removed */
-	emc_writel(next_timing->emc_acal_interval, EMC_AUTO_CAL_INTERVAL);
+	/* 15. restore auto-cal */
+	if (last_timing->emc_ctt_term_ctrl != next_timing->emc_ctt_term_ctrl)
+		emc_writel(next_timing->emc_acal_interval,
+			EMC_AUTO_CAL_INTERVAL);
 
 	/* 16. restore dynamic self-refresh */
 	if (next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
@@ -671,8 +687,7 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	}
 
 	/* 17. set zcal wait count */
-	if (zcal_long)
-		emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
+	emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
 	/* 18. update restored timing */
 	udelay(2);
@@ -1069,7 +1084,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	emc_stats.last_update = get_jiffies_64();
 	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
 
-	if (dram_type != DRAM_TYPE_LPDDR2) {
+	if (dram_type != DRAM_TYPE_DDR3) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
 		return -ENODATA;
 	}
@@ -1084,8 +1099,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
-	case 0x60:
-	case 0x61:
+	case 0x14:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:

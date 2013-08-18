@@ -145,8 +145,8 @@ struct tegra14_emc_pdata {
 	struct tegra14_emc_table *tables_derated;
 };
 
-#define TEGRA12_EMC_MAX_NUM_REGS	300
-#define TEGRA12_EMC_MAX_UP_DOWN_REGS	20
+#define TEGRA12_EMC_MAX_NUM_REGS	200
+#define TEGRA12_EMC_MAX_UP_DOWN_REGS	40
 
 struct tegra12_emc_table {
 	u8 rev;
@@ -170,12 +170,13 @@ struct tegra12_emc_table {
 	u32 emc_acal_interval;
 	u32 emc_ctt_term_ctrl;
 	u32 emc_cfg;
+	u32 emc_cfg_2;
+	u32 emc_sel_dpd_ctrl;
 	u32 emc_cfg_dig_dll;
 	u32 emc_mode_reset;
 	u32 emc_mode_1;
 	u32 emc_mode_2;
 	u32 emc_mode_4;
-	u32 clock_change_latency;
 };
 
 struct tegra12_emc_pdata {
