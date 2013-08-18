@@ -190,7 +190,7 @@ static struct dvfs cpu_dvfs = {
 /* Core DVFS tables */
 /* FIXME: real data */
 static const int core_millivolts[MAX_DVFS_FREQS] = {
-	810, 860, 900, 990, 1080};
+	810, 860, 900, 1000, 1100};
 
 #define CORE_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
 	{							\
@@ -205,7 +205,7 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 	}
 
 static struct dvfs core_dvfs_table[] = {
-	/* Core voltages (mV):		         810,    860,    900,    990,    1080*/
+	/* Core voltages (mV):		         810,    860,    900,    1000,    1100*/
 	/* Clock limits for internal blocks, PLLs */
 	CORE_DVFS("emc",    -1, -1, 1, KHZ,   264000, 348000, 384000, 528000,  924000),
 
