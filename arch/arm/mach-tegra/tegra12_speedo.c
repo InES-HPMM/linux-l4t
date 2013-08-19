@@ -133,6 +133,12 @@ void tegra_init_speedo_data(void)
 
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
+
+	if (cpu_speedo_value == 0) {
+		cpu_speedo_value = 1900;
+		pr_warn("Tegra12: Warning: Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
+		pr_warn("Tegra12: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
+	}
 }
 
 int tegra_cpu_process_id(void)
