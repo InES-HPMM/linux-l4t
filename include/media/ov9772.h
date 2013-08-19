@@ -1,7 +1,7 @@
 /*
  * nvc_ov9772.h - ov9772 sensor driver
  *
- *  * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
+ *  * Copyright (c) 2012-2013 NVIDIA Corporation.  All rights reserved.
  *
  * Contributors:
  *	Phil Breczinski <pbreczinski@nvidia.com>
@@ -31,6 +31,7 @@ struct ov9772_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
 	struct regulator *dovdd;
+	struct regulator *afvdd;
 };
 
 struct ov9772_platform_data {
@@ -48,6 +49,7 @@ struct ov9772_platform_data {
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
 	const char *mclk_name;
 	int (*probe_clock)(unsigned long);
+	bool vcm_vdd;
 	int (*power_on)(struct ov9772_power_rail *);
 	int (*power_off)(struct ov9772_power_rail *);
 };

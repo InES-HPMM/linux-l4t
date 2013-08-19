@@ -140,6 +140,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #include <media/ov9772.h>
 #include "nvc_utilities.h"
@@ -1216,6 +1219,9 @@ static int ov9772_power_off(struct ov9772_info *info)
 		if (pw->dovdd)
 			WARN_ON(IS_ERR_VALUE(
 				err |= regulator_disable(pw->dovdd)));
+		if (pw->afvdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_disable(pw->afvdd)));
 	}
 
 	if (!err)
@@ -1252,12 +1258,16 @@ static int ov9772_power_on(struct ov9772_info *info, bool standby)
 		if (pw->dvdd)
 			WARN_ON(IS_ERR_VALUE(
 				err = regulator_enable(pw->dvdd)));
-		if (pw->dovdd)
-			WARN_ON(IS_ERR_VALUE(
-				err |= regulator_enable(pw->dovdd)));
 		if (pw->avdd)
 			WARN_ON(IS_ERR_VALUE(
 				err |= regulator_enable(pw->avdd)));
+		if (pw->dovdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_enable(pw->dovdd)));
+		if (pw->afvdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_enable(pw->afvdd)));
+
 		ov9772_gpio_able(info, 1);
 		ov9772_gpio_shutdn(info, 0);
 		ov9772_gpio_pwrdn(info, 0); /* PWRDN off to access I2C */
@@ -1391,9 +1401,13 @@ static void ov9772_pm_exit(struct ov9772_info *info)
 		regulator_put(pw->dvdd);
 	if (pw->dovdd)
 		regulator_put(pw->dovdd);
+	if (pw->afvdd)
+		regulator_put(pw->afvdd);
+
 	pw->avdd = NULL;
 	pw->dvdd = NULL;
 	pw->dovdd = NULL;
+	pw->afvdd = NULL;
 
 	ov9772_gpio_exit(info);
 }
@@ -1427,6 +1441,8 @@ static void ov9772_pm_init(struct ov9772_info *info)
 	ov9772_regulator_get(info, &pw->avdd, "avdd");
 	ov9772_regulator_get(info, &pw->dvdd, "dvdd");
 	ov9772_regulator_get(info, &pw->dovdd, "dovdd");
+	ov9772_regulator_get(info, &pw->afvdd, "vdd_af_cam1");
+
 	info->power_on = false;
 }
 
@@ -2363,6 +2379,84 @@ static int ov9772_remove(struct i2c_client *client)
 	return 0;
 }
 
+static struct of_device_id ov9772_of_match[] = {
+	{ .compatible = "nvidia,ov9772", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, ov9772_of_match);
+
+static int ov9772_parse_dt_gpio(struct device_node *np, const char *name,
+			enum ov9772_gpio_type type,
+			struct nvc_gpio_pdata *pdata)
+{
+	enum of_gpio_flags gpio_flags;
+
+	if (of_find_property(np, name, NULL)) {
+		pdata->gpio = of_get_named_gpio_flags(np, name, 0, &gpio_flags);
+		pdata->gpio_type = type;
+		pdata->init_en = true;
+		pdata->active_high = !(gpio_flags & OF_GPIO_ACTIVE_LOW);
+		return 1;
+	}
+	return 0;
+}
+
+static struct ov9772_platform_data *ov9772_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct ov9772_platform_data *board_info_pdata;
+	struct nvc_gpio_pdata *gpio_pdata = NULL;
+	const struct of_device_id *match;
+
+	match = of_match_device(ov9772_of_match, &client->dev);
+	if (!match) {
+		dev_err(&client->dev, "Failed to find matching dt id\n");
+		return NULL;
+	}
+
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+			GFP_KERNEL);
+	if (!board_info_pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	gpio_pdata = devm_kzalloc(&client->dev,
+		sizeof(*gpio_pdata) * ARRAY_SIZE(ov9772_gpio),
+		GFP_KERNEL);
+	if (!gpio_pdata) {
+		dev_err(&client->dev, "cannot allocate gpio data memory\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	/* init with default platform data values */
+	memcpy(board_info_pdata, &ov9772_dflt_pdata, sizeof(*board_info_pdata));
+
+	/* generic info */
+	of_property_read_u32(np, "nvidia,num", &board_info_pdata->num);
+	of_property_read_string(np, "nvidia,dev_name",
+				&board_info_pdata->dev_name);
+	board_info_pdata->vcm_vdd = of_property_read_bool(np, "nvidia,vcm_vdd");
+
+	/* ov9772 gpios */
+	board_info_pdata->gpio_count = 0;
+	board_info_pdata->gpio_count += ov9772_parse_dt_gpio(np,
+				"power-gpios", OV9772_GPIO_TYPE_SHTDN,
+				&gpio_pdata[board_info_pdata->gpio_count]);
+	board_info_pdata->gpio_count += ov9772_parse_dt_gpio(np,
+				"reset-gpios", OV9772_GPIO_TYPE_PWRDN,
+				&gpio_pdata[board_info_pdata->gpio_count]);
+
+	board_info_pdata->gpio = gpio_pdata;
+
+	/* Use driver's default power functions */
+	board_info_pdata->power_on = NULL;
+	board_info_pdata->power_off = NULL;
+
+	return board_info_pdata;
+}
+
 static int ov9772_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -2381,20 +2475,24 @@ static int ov9772_probe(
 	}
 
 	info->i2c_client = client;
-	if (client->dev.platform_data) {
+
+	if (client->dev.of_node) {
+		info->pdata = ov9772_parse_dt(client);
+	} else if (client->dev.platform_data) {
 		info->pdata = client->dev.platform_data;
 	} else {
 		info->pdata = &ov9772_dflt_pdata;
 		dev_dbg(&client->dev,
 			"%s No platform data.  Using defaults.\n", __func__);
 	}
+
 	if (info->pdata->cap)
 		info->cap = info->pdata->cap;
 	else
 		info->cap = &ov9772_dflt_cap;
 
 	mclk_name = info->pdata->mclk_name ?
-		    info->pdata->mclk_name : "default_mclk";
+			info->pdata->mclk_name : "default_mclk";
 	info->mclk = devm_clk_get(&client->dev, mclk_name);
 	if (IS_ERR(info->mclk)) {
 		dev_err(&client->dev, "%s: unable to get clock %s\n",
