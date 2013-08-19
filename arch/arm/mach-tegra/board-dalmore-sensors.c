@@ -44,8 +44,8 @@
 #ifndef CONFIG_OF
 #include <media/imx091.h>
 #include <media/ad5816.h>
-#endif
 #include <media/ov9772.h>
+#endif
 #include <media/as364x.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -226,13 +226,13 @@ static struct tegra_pingroup_config mclk_disable =
 
 static struct tegra_pingroup_config mclk_enable =
 	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-#endif
 
 static struct tegra_pingroup_config pbb0_disable =
 	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
 static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+#endif
 
 /*
  * As a workaround, dalmore_vcmvdd need to be allocated to activate the
@@ -372,6 +372,7 @@ static struct sbs_platform_data sbs_pdata = {
 	.i2c_retry_count = 2,
 };
 
+#ifndef CONFIG_OF
 static int dalmore_ov9772_power_on(struct ov9772_power_rail *pw)
 {
 	int err;
@@ -453,6 +454,7 @@ static struct ov9772_platform_data dalmore_ov9772_pdata = {
 	.power_on	= dalmore_ov9772_power_on,
 	.power_off	= dalmore_ov9772_power_off,
 };
+#endif
 
 static int dalmore_as3648_power_on(struct as364x_power_rail *pw)
 {
@@ -509,11 +511,11 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 		I2C_BOARD_INFO("imx091", 0x36),
 		.platform_data = &imx091_pdata,
 	},
-#endif
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
 		.platform_data = &dalmore_ov9772_pdata,
 	},
+#endif
 	{
 		I2C_BOARD_INFO("as3648", 0x30),
 		.platform_data = &dalmore_as3648_pdata,
@@ -530,8 +532,8 @@ static int dalmore_camera_init(void)
 {
 #ifndef CONFIG_OF
 	tegra_pinmux_config_table(&mclk_disable, 1);
-#endif
 	tegra_pinmux_config_table(&pbb0_disable, 1);
+#endif
 
 	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
 		ARRAY_SIZE(dalmore_i2c_board_info_e1625));
