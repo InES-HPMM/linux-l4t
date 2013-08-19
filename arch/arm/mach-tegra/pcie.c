@@ -41,6 +41,7 @@
 #include <linux/clk.h>
 #include <linux/async.h>
 #include <linux/vmalloc.h>
+#include <linux/pm_runtime.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
@@ -49,6 +50,7 @@
 #include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/hardware.h>
+#include <mach/pm_domains.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -1345,6 +1347,8 @@ static int tegra_pcie_power_on(void)
 		goto err_exit;
 	}
 	tegra_pcie.pcie_power_enabled = 1;
+	pm_runtime_get_sync(tegra_pcie.dev);
+
 	if (!tegra_platform_is_fpga()) {
 		err = tegra_pcie_enable_regulators();
 		if (err) {
@@ -1371,6 +1375,8 @@ static int tegra_pcie_power_on(void)
 	}
 
 err_exit:
+	if (err)
+		pm_runtime_put(tegra_pcie.dev);
 	return err;
 }
 
@@ -1400,6 +1406,8 @@ static int tegra_pcie_power_off(void)
 		if (err)
 			goto err_exit;
 	}
+	pm_runtime_put(tegra_pcie.dev);
+
 	tegra_pcie.pcie_power_enabled = 0;
 err_exit:
 	return err;
@@ -1800,7 +1808,13 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[2] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[2]);
 #endif
+	/* Enable Runtime PM for PCIe */
+	tegra_pd_add_device(tegra_pcie.dev);
+	pm_runtime_enable(tegra_pcie.dev);
+
 	ret = tegra_pcie_init();
+	if (ret)
+		tegra_pd_remove_device(tegra_pcie.dev);
 
 	return ret;
 }
@@ -1878,6 +1892,8 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	}
 	kfree(bus);
 	tegra_pcie_detach();
+	tegra_pd_remove_device(tegra_pcie.dev);
+
 	return 0;
 }
 
