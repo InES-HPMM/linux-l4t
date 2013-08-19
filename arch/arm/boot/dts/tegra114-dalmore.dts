@@ -748,7 +748,7 @@
 
 			/* imx091 gpios */
 			reset-gpios = <&gpio 219 0>; /* gpio PBB3 */
-			power-gpios = <&gpio 221 0>; /* gpio PBB6 */
+			power-gpios = <&gpio 221 0>; /* gpio PBB5 */
 			gp1-gpios = <&gpio 225 0>; /* gpio PCC1 */
 
 			/* imx091 caps */
@@ -780,6 +780,21 @@
 
 			status = "okay";
 
+		};
+
+		ov9772@10 {
+			compatible = "nvidia,ov9772";
+			reg = <0x10>;
+			nvidia,num = <1>;
+
+			nvidia,vcm_vdd; /* extra regulator needed */
+
+			/* ov9772 gpios */
+			reset-gpios = <&gpio 219 0>; /* gpio PBB3 */
+			power-gpios = <&gpio 222 0>; /* gpio PBB6 */
+
+			nvidia,dev_name = "camera";
+			status = "okay";
 		};
 
 		ad5816@0E {
