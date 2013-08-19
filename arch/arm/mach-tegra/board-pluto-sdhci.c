@@ -25,6 +25,7 @@
 #include <linux/wl12xx.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 
+#include "tegra-board-id.h"
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
@@ -114,11 +115,11 @@ struct tegra_sdhci_platform_data pluto_tegra_sdhci_platform_data0 = {
 	.tap_delay = 0x2,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
 	.base_clk = 208000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 };
 
-#ifndef CONFIG_USE_OF
 static struct resource sdhci_resource0[] = {
 	[0] = {
 		.start  = INT_SDMMC1,
@@ -214,7 +215,6 @@ static struct platform_device tegra_sdhci_device3 = {
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
-#endif
 
 static int pluto_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
@@ -309,7 +309,6 @@ subsys_initcall_sync(pluto_wifi_prepower);
 
 int __init pluto_sdhci_init(void)
 {
-#ifndef CONFIG_USE_OF
 	int nominal_core_mv;
 
 	nominal_core_mv =
@@ -329,7 +328,6 @@ int __init pluto_sdhci_init(void)
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
-#endif
 	pluto_wifi_init();
 	return 0;
 }
