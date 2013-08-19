@@ -49,11 +49,19 @@ static int tegra_dfll_bypass_get_voltage_sel(struct regulator_dev *reg)
 	return tdb->pdata->get_bypass_sel(tdb->pdata->dfll_data);
 }
 
+static int tegra_dfll_bypass_set_voltage_time_sel(struct regulator_dev *reg,
+	unsigned int old_selector, unsigned int new_selector)
+{
+	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
+	return tdb->pdata->voltage_time_sel;
+}
+
 static struct regulator_ops tegra_dfll_bypass_rops = {
 	.set_voltage_sel = tegra_dfll_bypass_set_voltage_sel,
 	.get_voltage_sel = tegra_dfll_bypass_get_voltage_sel,
 	.list_voltage = regulator_list_voltage_linear,
 	.map_voltage = regulator_map_voltage_linear,
+	.set_voltage_time_sel = tegra_dfll_bypass_set_voltage_time_sel,
 };
 
 static int tegra_dfll_bypass_probe(struct platform_device *pdev)
