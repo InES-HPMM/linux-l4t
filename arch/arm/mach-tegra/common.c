@@ -409,6 +409,8 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 		TEGRA_CLK_INIT_PLATFORM_NON_SI },
 	{ "cl_dvfs_soc", "clk_m",	13000000,	false,
 		TEGRA_CLK_INIT_PLATFORM_NON_SI },
+	{ "vde",	"pll_c3",	48400000,	true,
+		TEGRA_CLK_INIT_CPU_ASIM},
 #endif
 #ifdef CONFIG_TEGRA_SLOW_CSITE
 	{ "csite",	"clk_m",	1000000,	true },
@@ -440,8 +442,6 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "soc_therm",	"pll_p",	51000000,	false },
 	{ "tsensor",	"clk_m",	500000,		false },
 #endif
-	{ "vde",	"pll_c3",	48400000,	true,
-		TEGRA_CLK_INIT_CPU_ASIM},
 	{ NULL,		NULL,		0,		0},
 };
 static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
