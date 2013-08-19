@@ -1847,14 +1847,14 @@ static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 {
 	u32 val, checksum;
 
+	if (!data)
+		return;
+
 	/* enable therm trip at PMC */
 	val = pmc_readl(PMC_SENSOR_CTRL);
 	val = REG_SET(val, PMC_SCRATCH_WRITE, 1);
 	val = REG_SET(val, PMC_ENABLE_RST, 1);
 	pmc_writel(val, PMC_SENSOR_CTRL);
-
-	if (!data)
-		return;
 
 	/* Fill scratch registers to shutdown device on therm TRIP */
 	val = REG_SET(0, PMU_OFF_DATA, data->poweroff_reg_data);
