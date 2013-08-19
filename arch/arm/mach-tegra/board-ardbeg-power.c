@@ -1502,11 +1502,12 @@ static struct platform_device *pfixed_reg_devs[] = {
 #define E1735_CPU_VDD_MAP_SIZE		33
 #define E1735_CPU_VDD_MIN_UV		675000
 #define E1735_CPU_VDD_STEP_UV		18750
+#define E1735_CPU_VDD_STEP_US		80
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* Macro definition of dfll bypass device */
-#define DFLL_BYPASS(_board, _min, _step, _size)				       \
+#define DFLL_BYPASS(_board, _min, _step, _size, _us_sel)		       \
 static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
 	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
 	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
@@ -1527,6 +1528,7 @@ static struct tegra_dfll_bypass_platform_data _board##_dfll_bypass_pdata = {   \
 	.uV_step = (_step),						       \
 	.linear_min_sel = 0,						       \
 	.n_voltages = (_size),						       \
+	.voltage_time_sel = _us_sel,					       \
 };									       \
 static struct platform_device e1735_dfll_bypass_dev = {			       \
 	.name = "tegra_dfll_bypass",					       \
@@ -1570,7 +1572,7 @@ static struct regulator_consumer_supply e1735_dfll_bypass_consumers[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
 DFLL_BYPASS(e1735, E1735_CPU_VDD_MIN_UV, E1735_CPU_VDD_STEP_UV,
-	    E1735_CPU_VDD_MAP_SIZE);
+	    E1735_CPU_VDD_MAP_SIZE, E1735_CPU_VDD_STEP_US);
 
 static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
