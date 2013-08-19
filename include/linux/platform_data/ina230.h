@@ -35,6 +35,7 @@ struct ina230_platform_data {
 	u32 shunt_resistor;
 	u32 precision_multiplier;
 	int shunt_polarity_inverted; /* 0: not invert, 1: inverted */
+	int alert_latch_enable;
 };
 
 #endif /* _INA230_H */

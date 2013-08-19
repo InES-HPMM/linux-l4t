@@ -192,6 +192,7 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 	s16 shunt_limit;
 	s16 alert_mask;
 	struct ina230_data *data = i2c_get_clientdata(client);
+	int mask_len;
 
 	if (!data->pdata->current_threshold) {
 		dev_err(&client->dev, "no current threshold specified\n");
@@ -231,7 +232,9 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 		return retval;
 	}
 
-	alert_mask = shunt_limit >= 0 ? INA230_MASK_SOL : INA230_MASK_SUL;
+	mask_len = data->pdata->alert_latch_enable ? 0x1 : 0x0;
+	alert_mask = shunt_limit >= 0 ? INA230_MASK_SOL + mask_len :
+		INA230_MASK_SUL + mask_len;
 	retval = i2c_smbus_write_word_data(client, INA230_MASK,
 					   cpu_to_be16(alert_mask));
 	if (retval < 0) {
