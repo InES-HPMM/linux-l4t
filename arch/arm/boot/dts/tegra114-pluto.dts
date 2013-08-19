@@ -931,7 +931,7 @@
 		built-in;
 		edp_support;
 		edp_states = <966 0>;
-		status = "okay";
+		status = "disabled";
 	};
 	sdhci@78000400 {
 		cd-gpios = <&gpio 170 0>; /* gpio PV2 */
@@ -942,10 +942,10 @@
 		edp_support;
 		edp_states = <966 0>;
 		bus-width = <4>;
-		status = "okay";
+		status = "disabled";
 	};
 	sdhci@78000000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	camera {

@@ -814,7 +814,7 @@
 	};
 
 	sdhci@78000000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	sdhci@78000400 {
@@ -824,7 +824,7 @@
 		ddr-clk-limit = <41000000>;
 		base-clk = <208000000>;
 		bus-width = <4>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	sdhci@78000600 {
@@ -835,7 +835,7 @@
 		mmc-ocr-mask = <0>;
 		bus-width = <8>;
 		built-in;
-		status = "okay";
+		status = "disabled";
 		non-removable;
 	};
 
