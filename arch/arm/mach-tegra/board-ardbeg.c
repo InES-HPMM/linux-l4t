@@ -370,7 +370,8 @@ static void ardbeg_audio_init(void)
 		ardbeg_audio_pdata_rt5645.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
 		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high = 1;
-		ardbeg_audio_pdata_rt5645.gpio_ldo1_en = -1;
+		if (board_info.board_id != BOARD_PM363)
+			ardbeg_audio_pdata_rt5645.gpio_ldo1_en = -1;
 	} else {
 		/*Ardbeg*/
 		ardbeg_audio_pdata_rt5645.gpio_hp_det =
