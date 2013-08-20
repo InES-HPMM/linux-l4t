@@ -31,6 +31,13 @@
 #ifndef __TEGRA_PCM_H__
 #define __TEGRA_PCM_H__
 
+struct tegra_pcm_dma_params {
+	unsigned long addr;
+	unsigned long wrap;
+	unsigned long width;
+	unsigned long req_sel;
+};
+
 int tegra_pcm_platform_register(struct device *dev);
 void tegra_pcm_platform_unregister(struct device *dev);
 

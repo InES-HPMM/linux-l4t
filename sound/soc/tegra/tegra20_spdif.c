@@ -32,7 +32,6 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
-#include <sound/dmaengine_pcm.h>
 
 #include "tegra20_spdif.h"
 
@@ -323,9 +322,9 @@ static int tegra20_spdif_platform_probe(struct platform_device *pdev)
 	}
 
 	spdif->playback_dma_data.addr = mem->start + TEGRA20_SPDIF_DATA_OUT;
-	spdif->capture_dma_data.addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-	spdif->capture_dma_data.maxburst = 4;
-	spdif->playback_dma_data.slave_id = dmareq->start;
+	spdif->playback_dma_data.wrap = 4;
+	spdif->playback_dma_data.width = 32;
+	spdif->playback_dma_data.req_sel = dmareq->start;
 
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev)) {
