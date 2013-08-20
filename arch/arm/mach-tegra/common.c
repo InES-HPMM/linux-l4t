@@ -27,6 +27,8 @@
 
 #include <asm/hardware/cache-l2x0.h>
 
+#include <mach/powergate.h>
+
 #include "board.h"
 #include "common.h"
 #include "fuse.h"

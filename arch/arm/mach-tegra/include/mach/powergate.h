@@ -1,4 +1,6 @@
 /*
+ * drivers/regulator/tegra-regulator.c
+ *
  * Copyright (c) 2010 Google, Inc
  *
  * Author:
@@ -38,6 +40,9 @@ struct clk;
 #define TEGRA_POWERGATE_CPU0	TEGRA_POWERGATE_CPU
 #define TEGRA_POWERGATE_3D0	TEGRA_POWERGATE_3D
 
+int  __init tegra_powergate_init(void);
+
+int tegra_cpu_powergate_id(int cpuid);
 int tegra_powergate_is_powered(int id);
 int tegra_powergate_power_on(int id);
 int tegra_powergate_power_off(int id);
