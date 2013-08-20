@@ -44,7 +44,6 @@ ENTRY(tegra_resume)
 
 	cpu_id	r0
 	cmp	r0, #0				@ CPU0?
- THUMB(	it	ne )
 	bne	cpu_resume			@ no
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
