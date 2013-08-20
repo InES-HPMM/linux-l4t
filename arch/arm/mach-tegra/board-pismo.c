@@ -34,7 +34,6 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
-#include <linux/tegra_uart.h>
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
@@ -309,16 +308,6 @@ static struct platform_device *pismo_uart_devices[] __initdata = {
 	&tegra_uartc_device,
 	&tegra_uartd_device,
 };
-static struct uart_clk_parent uart_parent_clk[] = {
-	[0] = {.name = "clk_m"},
-	[1] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
-	[2] = {.name = "pll_m"},
-#endif
-};
-
-static struct tegra_uart_platform_data pismo_uart_pdata;
-static struct tegra_uart_platform_data pismo_loopback_uart_pdata;
 
 static void __init uart_debug_init(void)
 {
@@ -333,30 +322,6 @@ static void __init uart_debug_init(void)
 
 static void __init pismo_uart_init(void)
 {
-	struct clk *c;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
-		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
-		if (IS_ERR_OR_NULL(c)) {
-			pr_err("Not able to get the clock for %s\n",
-						uart_parent_clk[i].name);
-			continue;
-		}
-		uart_parent_clk[i].parent_clk = c;
-		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
-	}
-	pismo_uart_pdata.parent_clk_list = uart_parent_clk;
-	pismo_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	pismo_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
-	pismo_loopback_uart_pdata.parent_clk_count =
-						ARRAY_SIZE(uart_parent_clk);
-	pismo_loopback_uart_pdata.is_loopback = true;
-	tegra_uarta_device.dev.platform_data = &pismo_uart_pdata;
-	tegra_uartb_device.dev.platform_data = &pismo_uart_pdata;
-	tegra_uartc_device.dev.platform_data = &pismo_uart_pdata;
-	tegra_uartd_device.dev.platform_data = &pismo_uart_pdata;
-
 	/* Register low speed only if it is selected */
 	if (!is_tegra_debug_uartport_hs())
 		uart_debug_init();

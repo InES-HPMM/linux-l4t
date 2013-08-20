@@ -36,7 +36,6 @@
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/tegra_uart.h>
 #include <linux/serial_tegra.h>
 #include <linux/of_platform.h>
 #include <mach/clk.h>
@@ -539,10 +538,6 @@ static struct platform_device *bonaire_hs_uart_devices[] __initdata = {
 	&tegra_uartd_device, &tegra_uartb_device, &tegra_uartc_device,
 };
 
-static struct uart_clk_parent uart_parent_clk[] = {
-	[0] = {.name = "clk_m"},
-};
-
 static struct tegra_serial_platform_data bonaire_uartb_pdata = {
 	.dma_req_selector = 9,
 	.modem_interrupt = false,
@@ -556,11 +551,8 @@ static struct tegra_serial_platform_data bonaire_uartd_pdata = {
 	.modem_interrupt = false,
 };
 
-static struct tegra_uart_platform_data bonaire_loopback_uart_pdata;
-
 static void __init bonaire_hs_uart_init(void)
 {
-	bonaire_loopback_uart_pdata.is_loopback = true;
 	tegra_uartb_device.dev.platform_data = &bonaire_uartb_pdata;
 	tegra_uartc_device.dev.platform_data = &bonaire_uartc_pdata;
 	tegra_uartd_device.dev.platform_data = &bonaire_uartd_pdata;
