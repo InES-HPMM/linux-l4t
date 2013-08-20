@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/smp.h>
+#include <asm/cacheflush.h>
 #include <asm/cp15.h>
 #include <asm/smp_plat.h>
 
@@ -20,6 +21,7 @@ static inline void cpu_enter_lowpower(void)
 {
 	unsigned int v;
 
+	flush_cache_all();
 	asm volatile(
 	"	mcr	p15, 0, %1, c7, c5, 0\n"
 	"	dsb\n"
