@@ -9,6 +9,7 @@ config TEGRA_GRHOST
 
 config TEGRA_GRHOST_VI
 	tristate "Tegra video input host1x client driver"
+	default y if TEGRA_GRHOST
 	help
 	  Driver for the Tegra video input hardware.
 	  To compile this driver as a module, choose M here:
