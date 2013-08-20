@@ -611,7 +611,7 @@ static const struct dev_pm_ops tegra_ehci_pm_ops = {
 /* Bits of PORTSC1, which will get cleared by writing 1 into them */
 #define TEGRA_PORTSC1_RWC_BITS (PORT_CSC | PORT_PEC | PORT_OCC)
 
-static void tegra_ehci_set_pts(struct usb_phy *x, u8 pts_val)
+void tegra_ehci_set_pts(struct usb_phy *x, u8 pts_val)
 {
 	unsigned long val;
 	struct usb_hcd *hcd = bus_to_hcd(x->otg->host);
@@ -622,8 +622,9 @@ static void tegra_ehci_set_pts(struct usb_phy *x, u8 pts_val)
 	val |= TEGRA_USB_PORTSC1_PTS(pts_val & 3);
 	writel(val, base + TEGRA_USB_PORTSC1);
 }
+EXPORT_SYMBOL_GPL(tegra_ehci_set_pts);
 
-static void tegra_ehci_set_phcd(struct usb_phy *x, bool enable)
+void tegra_ehci_set_phcd(struct usb_phy *x, bool enable)
 {
 	unsigned long val;
 	struct usb_hcd *hcd = bus_to_hcd(x->otg->host);
@@ -636,6 +637,7 @@ static void tegra_ehci_set_phcd(struct usb_phy *x, bool enable)
 		val &= ~TEGRA_USB_PORTSC1_PHCD;
 	writel(val, base + TEGRA_USB_PORTSC1);
 }
+EXPORT_SYMBOL_GPL(tegra_ehci_set_phcd);
 
 static u64 tegra_ehci_dma_mask = DMA_BIT_MASK(32);
 
@@ -736,9 +738,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	tegra->phy = tegra_usb_phy_open(&pdev->dev, instance, hcd->regs,
 					pdata->phy_config,
-					TEGRA_USB_PHY_MODE_HOST,
-					tegra_ehci_set_pts,
-					tegra_ehci_set_phcd);
+					TEGRA_USB_PHY_MODE_HOST);
 	if (IS_ERR(tegra->phy)) {
 		dev_err(&pdev->dev, "Failed to open USB phy\n");
 		err = -ENXIO;
