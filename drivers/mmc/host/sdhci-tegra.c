@@ -173,6 +173,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.platform_reset_exit = tegra_sdhci_reset_exit,
 };
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
@@ -186,7 +187,9 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
+#endif
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static struct sdhci_pltfm_data sdhci_tegra30_pdata = {
 	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
@@ -200,10 +203,15 @@ static struct sdhci_tegra_soc_data soc_data_tegra30 = {
 	.pdata = &sdhci_tegra30_pdata,
 	.nvquirks = NVQUIRK_ENABLE_SDHCI_SPEC_300,
 };
+#endif
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	{ .compatible = "nvidia,tegra30-sdhci", .data = &soc_data_tegra30 },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ .compatible = "nvidia,tegra20-sdhci", .data = &soc_data_tegra20 },
+#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdhci_dt_ids);
