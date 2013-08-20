@@ -33,8 +33,6 @@
 #include <linux/io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
-#include <linux/slab.h>
-#include <linux/sys_soc.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
 
@@ -45,7 +43,6 @@
 
 #include "board.h"
 #include "common.h"
-#include "fuse.h"
 #include "iomap.h"
 
 static struct tegra_ehci_platform_data tegra_ehci1_pdata = {
@@ -84,38 +81,14 @@ static struct of_dev_auxdata tegra20_auxdata_lookup[] __initdata = {
 
 static void __init tegra_dt_init(void)
 {
-	struct soc_device_attribute *soc_dev_attr;
-	struct soc_device *soc_dev;
-	struct device *parent = NULL;
-
 	tegra_clocks_apply_init_table();
-
-	soc_dev_attr = kzalloc(sizeof(*soc_dev_attr), GFP_KERNEL);
-	if (!soc_dev_attr)
-		goto out;
-
-	soc_dev_attr->family = kasprintf(GFP_KERNEL, "Tegra");
-	soc_dev_attr->revision = kasprintf(GFP_KERNEL, "%d", tegra_revision);
-	soc_dev_attr->soc_id = kasprintf(GFP_KERNEL, "%d", tegra_chip_id);
-
-	soc_dev = soc_device_register(soc_dev_attr);
-	if (IS_ERR(soc_dev)) {
-		kfree(soc_dev_attr->family);
-		kfree(soc_dev_attr->revision);
-		kfree(soc_dev_attr->soc_id);
-		kfree(soc_dev_attr);
-		goto out;
-	}
-
-	parent = soc_device_to_device(soc_dev);
 
 	/*
 	 * Finished with the static registrations now; fill in the missing
 	 * devices
 	 */
-out:
 	of_platform_populate(NULL, of_default_bus_match_table,
-				tegra20_auxdata_lookup, parent);
+				tegra20_auxdata_lookup, NULL);
 }
 
 static void __init trimslice_init(void)
