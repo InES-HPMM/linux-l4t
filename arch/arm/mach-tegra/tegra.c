@@ -1,7 +1,6 @@
 /*
- * NVIDIA Tegra SoC device tree board support
+ * nVidia Tegra device tree board support
  *
- * Copyright (C) 2011, 2013, NVIDIA Corporation
  * Copyright (C) 2010 Secret Lab Technologies, Ltd.
  * Copyright (C) 2010 Google, Inc.
  *
@@ -115,8 +114,7 @@ static void __init harmony_init(void)
 
 static void __init paz00_init(void)
 {
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_2x_SOC))
-		tegra_paz00_wifikill_init();
+	tegra_paz00_wifikill_init();
 }
 
 static struct {
@@ -142,14 +140,12 @@ static void __init tegra_dt_init_late(void)
 	}
 }
 
-static const char * const tegra_dt_board_compat[] = {
-	"nvidia,tegra114",
-	"nvidia,tegra30",
+static const char *tegra20_dt_board_compat[] = {
 	"nvidia,tegra20",
 	NULL
 };
 
-DT_MACHINE_START(TEGRA_DT, "NVIDIA Tegra SoC (Flattened Device Tree)")
+DT_MACHINE_START(TEGRA_DT, "nVidia Tegra20 (Flattened Device Tree)")
 	.map_io		= tegra_map_common_io,
 	.smp		= smp_ops(tegra_smp_ops),
 	.init_early	= tegra_init_early,
@@ -158,5 +154,5 @@ DT_MACHINE_START(TEGRA_DT, "NVIDIA Tegra SoC (Flattened Device Tree)")
 	.init_machine	= tegra_dt_init,
 	.init_late	= tegra_dt_init_late,
 	.restart	= tegra_assert_system_reset,
-	.dt_compat	= tegra_dt_board_compat,
+	.dt_compat	= tegra20_dt_board_compat,
 MACHINE_END
