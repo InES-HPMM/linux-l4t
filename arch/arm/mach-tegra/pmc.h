@@ -27,9 +27,7 @@ enum tegra_suspend_mode {
 };
 
 #ifdef CONFIG_PM_SLEEP
-enum tegra_suspend_mode tegra_pmc_get_suspend_mode(void);
-void tegra_pmc_pm_set(enum tegra_suspend_mode mode);
-void tegra_pmc_suspend_init(void);
+void set_power_timers(unsigned long us_on, unsigned long us_off);
 #endif
 
 bool tegra_pmc_cpu_is_powered(int cpuid);
