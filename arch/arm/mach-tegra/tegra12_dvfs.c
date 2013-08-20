@@ -76,7 +76,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
 	.max_millivolts = 1350,
-	.min_millivolts = 850,
+	.min_millivolts = 810,
 	.step = VDD_SAFE_STEP,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
@@ -289,7 +289,7 @@ static struct core_cvb_dvfs gpu_cvb_dvfs_table[] = {
 			/*f        dfll  pll:   c0,     c1,   c2 */
 			{  408000, {  }, {  810000,      0,   0}, },
 			{  528000, {  }, {  860000,      0,   0}, },
-			{  700000, {  }, {  900000,      0,   0}, },
+			{  702000, {  }, {  900000,      0,   0}, },
 			{  984000, {  }, {  990000,      0,   0}, },
 			{ 1248000, {  }, { 1080000,      0,   0}, },
 			{       0, {  }, {       0,      0,   0}, },
