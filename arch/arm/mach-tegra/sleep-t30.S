@@ -412,6 +412,75 @@ tegra3_iram_start:
 	str	\rd, [\car, #\iddq]
 .endm
 
+/* Prepare to set the Core to the lowest voltage if supported.
+ * Start by setting the I2C clocks to make the I2C transfer.
+ * rd, re and rf are temporary registers.
+ * car = TEGRA_CLK_RESET_BASE
+ * volt = core voltage + pmu register offset
+ */
+.macro set_voltage, rd, re, rf, car, volt
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+1:
+	/* Reset(Set/Clr) the DVC-I2C Controller*/
+	mov \rd, #(1 << 15)
+	str \rd, [\car, #CLK_RESET_CLK_RST_DEV_H_SET]
+
+	mov32	r7, TEGRA_TMRUS_BASE
+	/* Wait for 2us */
+	wait_for_us \re, r7, r9
+	add \re, \re, #2
+	wait_until \re, r7, r9
+
+	mov \rd, #(1 << 15)
+	str \rd, [\car, #CLK_RESET_CLK_RST_DEV_H_CLR]
+
+	/* Enable the DVC-I2C Controller */
+	mov \rd, #(1 << 15)
+	str \rd, [\car, #CLK_RESET_CLK_ENB_H_SET]
+	/* I2C transfer protocol:
+	 * 4 packets: Slaveaddr + WriteConfigure + Data1 + Data2 */
+
+	/* First, check if entries are valid, bail out otherwise */
+	ldr \rd, lp1_register_pmuslave_addr
+	cmp \rd, #0
+	beq 3f
+
+	ldr \re, lp1_register_i2c_base_addr
+	str \rd, [\re, #I2C_ADDR0]
+
+	mov32 \rd, 0x2
+	str \rd, [\re, #I2C_CNFG]
+
+	ldr \rd, \volt
+	str \rd, [\re, #I2C_DATA1]
+
+	mov32 \rd, 0
+	str \rd, [\re, #I2C_DATA2]
+
+	mov32 \rd, 0xA02
+	str \rd, [\re, #I2C_CNFG]
+
+	/* Check the transaction status before proceeding */
+	wait_for_us \rd, r7, r9
+	mov32 \rf, 0x7D0   /* Wait for 2ms and try transaction again */
+	add \rf, \rd, \rf
+2:
+	add \rd, \rd, #0xFA /* Check status every 250us */
+	wait_until \rd, r7, r9
+	cmp \rf, \rd /* Waited for 2ms, I2C transaction didn't happen. Exit */
+	beq 3f
+
+	ldr r9, [\re, #I2C_STATUS]
+	cmp r9, #0
+	bne 2b
+
+3:
+	/* Disable the DVC-I2C Controller */
+	mov \rd, #(1 << 15)
+	str \rd, [\car, #CLK_RESET_CLK_ENB_H_CLR]
+#endif
+.endm
+
 ENTRY(tegra3_lp1_reset)
 	/* the CPU and system bus are running from CLKM and executing from
 	 * IRAM when this code is executed
@@ -536,6 +605,9 @@ resume_lp1:
 	str	r4, [r0, #CLK_RESET_CLK_ENB_W_SET]
 #endif
 
+	/* Restore the Core voltage back to high */
+	set_voltage r1, r4, r3, r0, lp1_register_core_highvolt
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
 defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
@@ -564,66 +636,6 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	add	r1, r1, #2
 	wait_until r1, r7, r3
 	str	r4, [r0, #CLK_RESET_CCLK_BURST]
-#endif
-
-#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
-lp1_voltset:
-	/* Restore the Core voltage to high on LP1 resume */
-	/* Reset(Enable/Disable) the DVC-I2C Controller*/
-	mov r1, #(1 << 15)
-	str r1, [r0, #CLK_RESET_CLK_RST_DEV_H_SET]
-
-	/* Wait for 2us */
-	mov32	r7, TEGRA_TMRUS_BASE
-	wait_for_us r1, r7, r9
-	add r1, r1, #2
-	wait_until r1, r7, r9
-
-	mov r1, #(1 << 15)
-	str r1, [r0, #CLK_RESET_CLK_RST_DEV_H_CLR]
-
-	/* Enable the DVC-I2C Controller */
-	mov r1, #(1 << 15)
-	str r1, [r0, #CLK_RESET_CLK_ENB_H_SET]
-
-
-	/* Same I2C transaction protocol as suspend */
-	ldr r1, lp1_register_pmuslave_addr
-	cmp r1, #0
-	beq lp1_voltskip_resume
-
-	ldr r4, lp1_register_i2c_base_addr
-	str r1, [r4, #I2C_ADDR0]
-
-	mov32 r1, 0x2
-	str r1, [r4, #I2C_CNFG]
-
-	ldr r1, lp1_register_core_highvolt
-	str r1, [r4, #I2C_DATA1]
-
-	mov32 r1, 0
-	str r1, [r4, #I2C_DATA2]
-
-	mov32 r1, 0xA02
-	str r1, [r4, #I2C_CNFG]
-
-	wait_for_us r1, r7, r9
-	mov32 r3, 0x7D0   /* Wait for 2ms and try transaction again */
-	add r3, r1, r3
-loop_i2c_status_resume:
-	add r1, r1, #0xFA /* Check status every 250us */
-	wait_until r1, r7, r9
-	cmp r3, r1
-	beq lp1_voltset
-
-	ldr r3, [r4, #I2C_STATUS]
-	cmp r3, #0
-	bne loop_i2c_status_resume
-
-lp1_voltskip_resume:
-	/* Disable the DVC-I2C Controller */
-	mov r1, #(1 << 15)
-	str r1, [r0, #CLK_RESET_CLK_ENB_H_CLR]
 #endif
 
 #if defined (CONFIG_CACHE_L2X0)
@@ -1147,69 +1159,6 @@ tegra3_cpu_clk32k:
 	mov	pc, lr
 
 lp1_clocks_prepare:
-	/* Prepare to set the Core to the lowest voltage if supported.
-	 * Start by setting the I2C clocks to make the I2C transfer */
-#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
-	/* Set up the PWR I2C GPIOs with the right masks*/
-
-	/* Reset(Set/Clr) the DVC-I2C Controller*/
-	mov r0, #(1 << 15)
-	str r0, [r5, #CLK_RESET_CLK_RST_DEV_H_SET]
-
-	/* Wait for 2us */
-	wait_for_us r1, r7, r9
-	mov32 r0, 0x7D0
-	add r1, r1, r0
-	wait_until r1, r7, r9
-
-	mov r0, #(1 << 15)
-	str r0, [r5, #CLK_RESET_CLK_RST_DEV_H_CLR]
-
-	/* Enable the DVC-I2C Controller */
-	mov r0, #(1 << 15)
-	str r0, [r5, #CLK_RESET_CLK_ENB_H_SET]
-
-	/* I2C transfer protocol:
-	 * 4 packets: Slaveaddr + WriteConfigure + Data1 + Data2 */
-	ldr r0, lp1_register_pmuslave_addr
-	cmp r0, #0
-	beq lp1_volt_skip
-	ldr r1, lp1_register_i2c_base_addr
-	str r0, [r1, #I2C_ADDR0]
-
-	mov32 r0, 0x2
-	str r0, [r1, #I2C_CNFG]
-
-	ldr r0, lp1_register_core_lowvolt
-	str r0, [r1, #I2C_DATA1]
-
-	mov32 r0, 0
-	str r0, [r1, #I2C_DATA2]
-
-	/* Send I2C transaction */
-	mov32 r0, 0xA02
-	str r0, [r1, #I2C_CNFG]
-
-	/* Check the transaction status before proceeding */
-	wait_for_us r2, r7, r9
-	mov32 r3, 0x7D0 /* Wait for 2ms for I2C transaction */
-	add r3, r2, r3
-loop_i2c_status_suspend:
-	add r2, r2, #0xFA /* Check status every 250us */
-	cmp r3, r2
-	beq lp1_volt_skip  /* Waited for 2ms, I2C transaction didn't take place */
-	wait_until r2, r7, r9
-
-	ldr r0, [r1, #I2C_STATUS]
-	cmp r0, #0
-	bne loop_i2c_status_suspend
-lp1_volt_skip:
-
-	/* Disable the DVC-I2C Controller */
-	mov r0, #(1 << 15)
-	str r0, [r5, #CLK_RESET_CLK_ENB_H_CLR]
-
-#endif
 	/* start by jumping to clkm to safely disable PLLs, then jump
 	 * to clks */
 	mov	r0, #(1 << 28)
@@ -1228,6 +1177,9 @@ lp1_volt_skip:
 	ldr	r0, [r5, #CLK_RESET_CLK_SOURCE_MSELECT]
 	orr	r0, r0, #MSELECT_CLKM
 	str	r0, [r5, #CLK_RESET_CLK_SOURCE_MSELECT]
+
+	/* Lower the Core voltage through an i2c communication */
+	set_voltage r0, r1, r3, r5, lp1_register_core_lowvolt
 
 #if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* disable cl_dvfs logic clock (if dfll running, it's in open loop) */

@@ -608,7 +608,6 @@ config ARCH_TEGRA_4GB_MEMORY
 config TEGRA_LP1_LOW_COREVOLTAGE
 	bool "LP1 low core voltage"
 	default n
-	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
 	help
 		Enable support for LP1 Core voltage to set to lowest
 
