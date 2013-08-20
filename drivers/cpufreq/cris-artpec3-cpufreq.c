@@ -27,17 +27,23 @@ static unsigned int cris_freq_get_cpu_frequency(unsigned int cpu)
 	return clk_ctrl.pll ? 200000 : 6000;
 }
 
-static void cris_freq_set_cpu_state(struct cpufreq_policy *policy,
-		unsigned int state)
+static void cris_freq_set_cpu_state(unsigned int state)
 {
+	int i = 0;
 	struct cpufreq_freqs freqs;
 	reg_clkgen_rw_clk_ctrl clk_ctrl;
 	clk_ctrl = REG_RD(clkgen, regi_clkgen, rw_clk_ctrl);
 
-	freqs.old = cris_freq_get_cpu_frequency(policy->cpu);
-	freqs.new = cris_freq_table[state].frequency;
+#ifdef CONFIG_SMP
+	for_each_present_cpu(i)
+#endif
+	{
+		freqs.old = cris_freq_get_cpu_frequency(i);
+		freqs.new = cris_freq_table[state].frequency;
+		freqs.cpu = i;
+	}
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 	local_irq_disable();
 
@@ -51,7 +57,7 @@ static void cris_freq_set_cpu_state(struct cpufreq_policy *policy,
 
 	local_irq_enable();
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 };
 
 static int cris_freq_verify(struct cpufreq_policy *policy)
@@ -69,7 +75,7 @@ static int cris_freq_target(struct cpufreq_policy *policy,
 			target_freq, relation, &newstate))
 		return -EINVAL;
 
-	cris_freq_set_cpu_state(policy, newstate);
+	cris_freq_set_cpu_state(newstate);
 
 	return 0;
 }

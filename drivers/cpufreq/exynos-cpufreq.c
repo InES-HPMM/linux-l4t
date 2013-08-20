@@ -70,6 +70,7 @@ static int exynos_cpufreq_scale(unsigned int target_freq)
 
 	freqs.old = policy->cur;
 	freqs.new = target_freq;
+	freqs.cpu = policy->cpu;
 
 	if (freqs.new == freqs.old)
 		goto out;
@@ -104,7 +105,8 @@ static int exynos_cpufreq_scale(unsigned int target_freq)
 	}
 	arm_volt = volt_table[index];
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	for_each_cpu(freqs.cpu, policy->cpus)
+		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 	/* When the new frequency is higher than current frequency */
 	if ((freqs.new > freqs.old) && !safe_arm_volt) {
@@ -129,7 +131,8 @@ static int exynos_cpufreq_scale(unsigned int target_freq)
 
 	exynos_info->set_freq(old_index, index);
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	for_each_cpu(freqs.cpu, policy->cpus)
+		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
 	/* When the new frequency is lower than current frequency */
 	if ((freqs.new < freqs.old) ||

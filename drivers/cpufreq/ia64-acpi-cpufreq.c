@@ -136,7 +136,7 @@ migrate_end:
 static int
 processor_set_freq (
 	struct cpufreq_acpi_io	*data,
-	struct cpufreq_policy   *policy,
+	unsigned int		cpu,
 	int			state)
 {
 	int			ret = 0;
@@ -148,8 +148,8 @@ processor_set_freq (
 	pr_debug("processor_set_freq\n");
 
 	saved_mask = current->cpus_allowed;
-	set_cpus_allowed_ptr(current, cpumask_of(policy->cpu));
-	if (smp_processor_id() != policy->cpu) {
+	set_cpus_allowed_ptr(current, cpumask_of(cpu));
+	if (smp_processor_id() != cpu) {
 		retval = -EAGAIN;
 		goto migrate_end;
 	}
@@ -169,11 +169,12 @@ processor_set_freq (
 		data->acpi_data.state, state);
 
 	/* cpufreq frequency struct */
+	cpufreq_freqs.cpu = cpu;
 	cpufreq_freqs.old = data->freq_table[data->acpi_data.state].frequency;
 	cpufreq_freqs.new = data->freq_table[state].frequency;
 
 	/* notify cpufreq */
-	cpufreq_notify_transition(policy, &cpufreq_freqs, CPUFREQ_PRECHANGE);
+	cpufreq_notify_transition(&cpufreq_freqs, CPUFREQ_PRECHANGE);
 
 	/*
 	 * First we write the target state's 'control' value to the
@@ -187,20 +188,17 @@ processor_set_freq (
 	ret = processor_set_pstate(value);
 	if (ret) {
 		unsigned int tmp = cpufreq_freqs.new;
-		cpufreq_notify_transition(policy, &cpufreq_freqs,
-				CPUFREQ_POSTCHANGE);
+		cpufreq_notify_transition(&cpufreq_freqs, CPUFREQ_POSTCHANGE);
 		cpufreq_freqs.new = cpufreq_freqs.old;
 		cpufreq_freqs.old = tmp;
-		cpufreq_notify_transition(policy, &cpufreq_freqs,
-				CPUFREQ_PRECHANGE);
-		cpufreq_notify_transition(policy, &cpufreq_freqs,
-				CPUFREQ_POSTCHANGE);
+		cpufreq_notify_transition(&cpufreq_freqs, CPUFREQ_PRECHANGE);
+		cpufreq_notify_transition(&cpufreq_freqs, CPUFREQ_POSTCHANGE);
 		printk(KERN_WARNING "Transition failed with error %d\n", ret);
 		retval = -ENODEV;
 		goto migrate_end;
 	}
 
-	cpufreq_notify_transition(policy, &cpufreq_freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(&cpufreq_freqs, CPUFREQ_POSTCHANGE);
 
 	data->acpi_data.state = state;
 
@@ -241,7 +239,7 @@ acpi_cpufreq_target (
 	if (result)
 		return (result);
 
-	result = processor_set_freq(data, policy, next_state);
+	result = processor_set_freq(data, policy->cpu, next_state);
 
 	return (result);
 }

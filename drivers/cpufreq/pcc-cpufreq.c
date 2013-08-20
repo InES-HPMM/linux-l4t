@@ -215,7 +215,8 @@ static int pcc_cpufreq_target(struct cpufreq_policy *policy,
 		(pcch_virt_addr + pcc_cpu_data->input_offset));
 
 	freqs.new = target_freq;
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	freqs.cpu = cpu;
+	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 	input_buffer = 0x1 | (((target_freq * 100)
 			       / (ioread32(&pcch_hdr->nominal) * 1000)) << 8);
@@ -236,7 +237,7 @@ static int pcc_cpufreq_target(struct cpufreq_policy *policy,
 	}
 	iowrite16(0, &pcch_hdr->status);
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 	pr_debug("target: was SUCCESSFUL for cpu %d\n", cpu);
 	spin_unlock(&pcc_lock);
 

@@ -127,13 +127,13 @@ unsigned long cpu_set_cclk(int cpu, unsigned long new)
 }
 #endif
 
-static int bfin_target(struct cpufreq_policy *policy,
+static int bfin_target(struct cpufreq_policy *poli,
 			unsigned int target_freq, unsigned int relation)
 {
 #ifndef CONFIG_BF60x
 	unsigned int plldiv;
 #endif
-	unsigned int index;
+	unsigned int index, cpu;
 	unsigned long cclk_hz;
 	struct cpufreq_freqs freqs;
 	static unsigned long lpj_ref;
@@ -144,48 +144,59 @@ static int bfin_target(struct cpufreq_policy *policy,
 	cycles_t cycles;
 #endif
 
-	if (cpufreq_frequency_table_target(policy, bfin_freq_table, target_freq,
-				relation, &index))
-		return -EINVAL;
+	for_each_online_cpu(cpu) {
+		struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
 
-	cclk_hz = bfin_freq_table[index].frequency;
+		if (!policy)
+			continue;
 
-	freqs.old = bfin_getfreq_khz(0);
-	freqs.new = cclk_hz;
+		if (cpufreq_frequency_table_target(policy, bfin_freq_table,
+				 target_freq, relation, &index))
+			return -EINVAL;
 
-	pr_debug("cpufreq: changing cclk to %lu; target = %u, oldfreq = %u\n",
-			cclk_hz, target_freq, freqs.old);
+		cclk_hz = bfin_freq_table[index].frequency;
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+		freqs.old = bfin_getfreq_khz(0);
+		freqs.new = cclk_hz;
+		freqs.cpu = cpu;
+
+		pr_debug("cpufreq: changing cclk to %lu; target = %u, oldfreq = %u\n",
+			 cclk_hz, target_freq, freqs.old);
+
+		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+		if (cpu == CPUFREQ_CPU) {
 #ifndef CONFIG_BF60x
-	plldiv = (bfin_read_PLL_DIV() & SSEL) | dpm_state_table[index].csel;
-	bfin_write_PLL_DIV(plldiv);
+			plldiv = (bfin_read_PLL_DIV() & SSEL) |
+						dpm_state_table[index].csel;
+			bfin_write_PLL_DIV(plldiv);
 #else
-	ret = cpu_set_cclk(policy->cpu, freqs.new * 1000);
-	if (ret != 0) {
-		WARN_ONCE(ret, "cpufreq set freq failed %d\n", ret);
-		return ret;
-	}
+			ret = cpu_set_cclk(cpu, freqs.new * 1000);
+			if (ret != 0) {
+				WARN_ONCE(ret, "cpufreq set freq failed %d\n", ret);
+				break;
+			}
 #endif
-	on_each_cpu(bfin_adjust_core_timer, &index, 1);
+			on_each_cpu(bfin_adjust_core_timer, &index, 1);
 #if defined(CONFIG_CYCLES_CLOCKSOURCE)
-	cycles = get_cycles();
-	SSYNC();
-	cycles += 10; /* ~10 cycles we lose after get_cycles() */
-	__bfin_cycles_off += (cycles << __bfin_cycles_mod) - (cycles << index);
-	__bfin_cycles_mod = index;
+			cycles = get_cycles();
+			SSYNC();
+			cycles += 10; /* ~10 cycles we lose after get_cycles() */
+			__bfin_cycles_off +=
+			    (cycles << __bfin_cycles_mod) - (cycles << index);
+			__bfin_cycles_mod = index;
 #endif
-	if (!lpj_ref_freq) {
-		lpj_ref = loops_per_jiffy;
-		lpj_ref_freq = freqs.old;
+			if (!lpj_ref_freq) {
+				lpj_ref = loops_per_jiffy;
+				lpj_ref_freq = freqs.old;
+			}
+			if (freqs.new != freqs.old) {
+				loops_per_jiffy = cpufreq_scale(lpj_ref,
+						lpj_ref_freq, freqs.new);
+			}
+		}
+		/* TODO: just test case for cycles clock source, remove later */
+		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 	}
-	if (freqs.new != freqs.old) {
-		loops_per_jiffy = cpufreq_scale(lpj_ref,
-				lpj_ref_freq, freqs.new);
-	}
-
-	/* TODO: just test case for cycles clock source, remove later */
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 
 	pr_debug("cpufreq: done\n");
 	return ret;

@@ -204,6 +204,7 @@ static int s3c_cpufreq_settarget(struct cpufreq_policy *policy,
 	freqs.old = cpu_cur.freq;
 	freqs.new = cpu_new.freq;
 
+	freqs.freqs.cpu = 0;
 	freqs.freqs.old = cpu_cur.freq.armclk / 1000;
 	freqs.freqs.new = cpu_new.freq.armclk / 1000;
 
@@ -217,7 +218,9 @@ static int s3c_cpufreq_settarget(struct cpufreq_policy *policy,
 	s3c_cpufreq_updateclk(clk_pclk, cpu_new.freq.pclk);
 
 	/* start the frequency change */
-	cpufreq_notify_transition(policy, &freqs.freqs, CPUFREQ_PRECHANGE);
+
+	if (policy)
+		cpufreq_notify_transition(&freqs.freqs, CPUFREQ_PRECHANGE);
 
 	/* If hclk is staying the same, then we do not need to
 	 * re-write the IO or the refresh timings whilst we are changing
@@ -261,7 +264,8 @@ static int s3c_cpufreq_settarget(struct cpufreq_policy *policy,
 	local_irq_restore(flags);
 
 	/* notify everyone we've done this */
-	cpufreq_notify_transition(policy, &freqs.freqs, CPUFREQ_POSTCHANGE);
+	if (policy)
+		cpufreq_notify_transition(&freqs.freqs, CPUFREQ_POSTCHANGE);
 
 	s3c_freq_dbg("%s: finished\n", __func__);
 	return 0;

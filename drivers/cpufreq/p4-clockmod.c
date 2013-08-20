@@ -124,7 +124,10 @@ static int cpufreq_p4_target(struct cpufreq_policy *policy,
 		return 0;
 
 	/* notifiers */
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	for_each_cpu(i, policy->cpus) {
+		freqs.cpu = i;
+		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+	}
 
 	/* run on each logical CPU,
 	 * see section 13.15.3 of IA32 Intel Architecture Software
@@ -134,7 +137,10 @@ static int cpufreq_p4_target(struct cpufreq_policy *policy,
 		cpufreq_p4_setdc(i, p4clockmod_table[newstate].index);
 
 	/* notifiers */
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	for_each_cpu(i, policy->cpus) {
+		freqs.cpu = i;
+		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	}
 
 	return 0;
 }

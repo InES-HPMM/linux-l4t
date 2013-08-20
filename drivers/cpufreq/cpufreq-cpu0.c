@@ -46,7 +46,7 @@ static int cpu0_set_target(struct cpufreq_policy *policy,
 	struct opp *opp;
 	unsigned long volt = 0, volt_old = 0, tol = 0;
 	long freq_Hz, freq_exact;
-	unsigned int index;
+	unsigned int index, cpu;
 	int ret;
 
 	ret = cpufreq_frequency_table_target(policy, freq_table, target_freq,
@@ -67,7 +67,10 @@ static int cpu0_set_target(struct cpufreq_policy *policy,
 	if (freqs.old == freqs.new)
 		return 0;
 
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	for_each_online_cpu(cpu) {
+		freqs.cpu = cpu;
+		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+	}
 
 	if (cpu_reg) {
 		rcu_read_lock();
@@ -119,7 +122,10 @@ static int cpu0_set_target(struct cpufreq_policy *policy,
 	}
 
 post_notify:
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	for_each_online_cpu(cpu) {
+		freqs.cpu = cpu;
+		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	}
 
 	return ret;
 }
