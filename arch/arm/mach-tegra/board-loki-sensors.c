@@ -490,19 +490,10 @@ static struct balanced_throttle tj_throttle = {
 	.throt_tab = tj_throttle_table,
 };
 
-static struct throttle_table tj_hard_throttle_table[] = {
-	{ {  204000,  420000,  360000,  208000,  204000 } },
-};
-
-static struct balanced_throttle tj_hard_throttle = {
-	.throt_tab_size = ARRAY_SIZE(tj_hard_throttle_table),
-	.throt_tab = tj_hard_throttle_table,
-};
-
 static int __init loki_throttle_init(void)
 {
-	balanced_throttle_register(&tj_throttle, "tegra-balanced");
-	balanced_throttle_register(&tj_hard_throttle, "tegra-hard");
+	if (of_machine_is_compatible("nvidia,loki"))
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
 module_init(loki_throttle_init);

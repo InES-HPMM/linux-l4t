@@ -515,7 +515,8 @@ static struct balanced_throttle tj_throttle = {
 
 static int __init ardbeg_tj_throttle_init(void)
 {
-	balanced_throttle_register(&tj_throttle, "tegra-balanced");
+	if (of_machine_is_compatible("nvidia,ardbeg"))
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
 module_init(ardbeg_tj_throttle_init);
