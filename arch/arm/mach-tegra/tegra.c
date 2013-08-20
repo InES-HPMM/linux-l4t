@@ -31,6 +31,8 @@
 #include <linux/pda_power.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/io.h>
+#include <linux/i2c.h>
+#include <linux/i2c-tegra.h>
 #include <linux/slab.h>
 #include <linux/sys_soc.h>
 #include <linux/usb/tegra_usb_phy.h>
