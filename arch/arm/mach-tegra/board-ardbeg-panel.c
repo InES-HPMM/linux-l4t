@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-panel.c
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,9 +69,6 @@ struct platform_device * __init ardbeg_host1x_init(void)
 #endif
 	return pdev;
 }
-
-#ifdef CONFIG_TEGRA_DC
-
 
 /* hdmi related regulators */
 static struct regulator *ardbeg_hdmi_reg;
@@ -624,12 +621,3 @@ int __init ardbeg_panel_init(void)
 #endif
 	return err;
 }
-#else
-int __init ardbeg_panel_init(void)
-{
-	if (ardbeg_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif
