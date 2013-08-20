@@ -800,7 +800,6 @@
 
 				fet6 {
 					regulator-name = "vdd-sd-slot";
-					regulator-always-on;
 					regulator-boot-on;
 				};
 
