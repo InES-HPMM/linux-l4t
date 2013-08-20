@@ -39,6 +39,7 @@
 #include "fuse.h"
 #include "pmc.h"
 #include "sleep.h"
+#include "pmc.h"
 
 #ifdef CONFIG_PM_SLEEP
 static DEFINE_SPINLOCK(tegra_lp2_lock);
