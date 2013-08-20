@@ -31,7 +31,6 @@
 #include "common.h"
 #include "fuse.h"
 #include "iomap.h"
-#include "irq.h"
 #include "pmc.h"
 #include "apbio.h"
 #include "sleep.h"
@@ -63,7 +62,6 @@ void __init tegra_dt_init_irq(void)
 	tegra_pmc_init();
 	tegra_init_irq();
 	irqchip_init();
-	tegra_legacy_irq_syscore_init();
 }
 #endif
 
