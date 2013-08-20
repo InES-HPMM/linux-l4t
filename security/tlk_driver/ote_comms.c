@@ -193,11 +193,32 @@ static void te_unpin_temp_buffers(struct te_request *request,
 
 uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+#ifdef CONFIG_SMP
+	cpumask_t saved_cpu_mask;
+#endif
 	uint32_t saved_regs[9];
-	register uint32_t r0 asm("r0") = arg0;
-	register uint32_t r1 asm("r1") = arg1;
-	register uint32_t r2 asm("r2") = arg2;
-	register uint32_t r3 asm("r3") = (uint32_t)saved_regs;
+	register uint32_t r0 asm("r0");
+	register uint32_t r1 asm("r1");
+	register uint32_t r2 asm("r2");
+	register uint32_t r3 asm("r3");
+
+#ifdef CONFIG_SMP
+{
+	long ret;
+	cpumask_t local_cpu_mask = CPU_MASK_NONE;
+
+	cpu_set(0, local_cpu_mask);
+	cpumask_copy(&saved_cpu_mask, tsk_cpus_allowed(current));
+	ret = sched_setaffinity(0, &local_cpu_mask);
+	if (ret)
+		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
+}
+#endif
+
+	r0 = arg0;
+	r1 = arg1;
+	r2 = arg2;
+	r3 = (uint32_t)saved_regs;
 
 	asm volatile(
 		__asmeq("%0", "r0")
@@ -216,44 +237,24 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 		: "r" (r0), "r" (r1), "r" (r2), "r" (r3)
 	);
 
-	return r0;
-}
-
-uint32_t __naked tlk_extended_smc(uint32_t *regs)
+#ifdef CONFIG_SMP
 {
-	register uint32_t r0 asm("r0") = (uint32_t)regs;
-
-	/* allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers */
-	asm volatile(
-		__asmeq("%0", "r0")
-		"stmfd	sp!, {r4-r12}	@ save reg state\n"
-		"mov	r12, r0		@ reg ptr to r12\n"
-		"ldmia	r12, {r0-r11}	@ load arg regs\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec\n"
+	long ret = sched_setaffinity(0, &saved_cpu_mask);
+	if (ret)
+		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
+}
 #endif
-		"smc	#0		@ switch to secure world\n"
-		"ldmfd	sp!, {r4-r12}	@ restore saved regs\n"
-		"bx	lr"
-		: "=r" (r0)
-		: "r" (r0)
-	);
+
 	return r0;
 }
 
-/*
- * Do an SMC call
- */
-static void do_smc(struct te_request *request)
+uint32_t tlk_extended_smc(uint32_t *regs)
 {
 #ifdef CONFIG_SMP
 	cpumask_t saved_cpu_mask;
 #endif
-	phys_addr_t smc_args = virt_to_phys(request);
-	phys_addr_t smc_params = 0;
 
-	if (request->params)
-		smc_params = virt_to_phys(request->params);
+	register uint32_t r0 asm("r0");
 
 #ifdef CONFIG_SMP
 {
@@ -268,7 +269,22 @@ static void do_smc(struct te_request *request)
 }
 #endif
 
-	tlk_generic_smc(request->type, smc_args, smc_params);
+	r0 = (uint32_t)regs;
+
+	/* allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers */
+	asm volatile(
+		__asmeq("%0", "r0")
+		"stmfd	sp!, {r4-r12}	@ save reg state\n"
+		"mov	r12, r0		@ reg ptr to r12\n"
+		"ldmia	r12, {r0-r11}	@ load arg regs\n"
+#ifdef REQUIRES_SEC
+		".arch_extension sec\n"
+#endif
+		"smc	#0		@ switch to secure world\n"
+		"ldmfd	sp!, {r4-r12}	@ restore saved regs\n"
+		: "=r" (r0)
+		: "r" (r0)
+	);
 
 #ifdef CONFIG_SMP
 {
@@ -277,6 +293,22 @@ static void do_smc(struct te_request *request)
 		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
 }
 #endif
+
+	return r0;
+}
+
+/*
+ * Do an SMC call
+ */
+static void do_smc(struct te_request *request)
+{
+	phys_addr_t smc_args = virt_to_phys(request);
+	phys_addr_t smc_params = 0;
+
+	if (request->params)
+		smc_params = virt_to_phys(request->params);
+
+	tlk_generic_smc(request->type, smc_args, smc_params);
 }
 
 /*
