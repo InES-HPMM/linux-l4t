@@ -27,19 +27,18 @@
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/clk.h>
 #include <linux/slab.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/clk/tegra.h>
 #include <linux/err.h>
 
+#define KBC_MAX_GPIO	24
 #define KBC_MAX_KPENT	8
 
-/* Maximum row/column supported by Tegra KBC yet  is 16x8 */
-#define KBC_MAX_GPIO	24
-/* Maximum keys supported by Tegra KBC yet is 16 x 8*/
-#define KBC_MAX_KEY	(16 * 8)
+#define KBC_MAX_ROW	16
+#define KBC_MAX_COL	8
+#define KBC_MAX_KEY	(KBC_MAX_ROW * KBC_MAX_COL)
 
 #define KBC_MAX_DEBOUNCE_CNT	0x3ffu
 
@@ -82,12 +81,6 @@ enum tegra_pin_type {
 	PIN_CFG_ROW,
 };
 
-/* Tegra KBC hw support */
-struct tegra_kbc_hw_support {
-	int max_rows;
-	int max_columns;
-};
-
 struct tegra_kbc_pin_cfg {
 	enum tegra_pin_type type;
 	unsigned char num;
@@ -116,9 +109,6 @@ struct tegra_kbc {
 	u32 wakeup_key;
 	struct timer_list timer;
 	struct clk *clk;
-	const struct tegra_kbc_hw_support *hw_support;
-	int max_keys;
-	int num_rows_and_columns;
 };
 
 static void tegra_kbc_report_released_keys(struct input_dev *input,
@@ -215,11 +205,11 @@ static void tegra_kbc_report_keys(struct tegra_kbc *kbc)
 
 	/*
 	 * If the platform uses Fn keymaps, translate keys on a Fn keypress.
-	 * Function keycodes are max_keys apart from the plain keycodes.
+	 * Function keycodes are KBC_MAX_KEY apart from the plain keycodes.
 	 */
 	if (fn_keypress) {
 		for (i = 0; i < num_down; i++) {
-			scancodes[i] += kbc->max_keys;
+			scancodes[i] += KBC_MAX_KEY;
 			keycodes[i] = kbc->keycode[scancodes[i]];
 		}
 	}
@@ -326,7 +316,7 @@ static void tegra_kbc_setup_wakekeys(struct tegra_kbc *kbc, bool filter)
 	/* Either mask all keys or none. */
 	rst_val = (filter && !kbc->wakeup) ? ~0 : 0;
 
-	for (i = 0; i < kbc->hw_support->max_rows; i++)
+	for (i = 0; i < KBC_MAX_ROW; i++)
 		writel(rst_val, kbc->mmio + KBC_ROW0_MASK_0 + i * 4);
 }
 
@@ -463,7 +453,7 @@ static bool tegra_kbc_check_pin_cfg(const struct tegra_kbc *kbc,
 
 		switch (pin_cfg->type) {
 		case PIN_CFG_ROW:
-			if (pin_cfg->num >= kbc->hw_support->max_rows) {
+			if (pin_cfg->num >= KBC_MAX_ROW) {
 				dev_err(kbc->dev,
 					"pin_cfg[%d]: invalid row number %d\n",
 					i, pin_cfg->num);
@@ -473,7 +463,7 @@ static bool tegra_kbc_check_pin_cfg(const struct tegra_kbc *kbc,
 			break;
 
 		case PIN_CFG_COL:
-			if (pin_cfg->num >= kbc->hw_support->max_columns) {
+			if (pin_cfg->num >= KBC_MAX_COL) {
 				dev_err(kbc->dev,
 					"pin_cfg[%d]: invalid column number %d\n",
 					i, pin_cfg->num);
@@ -531,18 +521,6 @@ static int tegra_kbc_parse_dt(struct tegra_kbc *kbc)
 	}
 	num_cols = proplen / sizeof(u32);
 
-	if (num_rows > kbc->hw_support->max_rows) {
-		dev_err(kbc->dev,
-			"Number of rows is more than supported by hardware\n");
-		return -EINVAL;
-	}
-
-	if (num_cols > kbc->hw_support->max_columns) {
-		dev_err(kbc->dev,
-			"Number of cols is more than supported by hardware\n");
-		return -EINVAL;
-	}
-
 	if (!of_get_property(np, "linux,keymap", &proplen)) {
 		dev_err(kbc->dev, "property linux,keymap not found\n");
 		return -ENOENT;
@@ -555,7 +533,7 @@ static int tegra_kbc_parse_dt(struct tegra_kbc *kbc)
 	}
 
 	/* Set all pins as non-configured */
-	for (i = 0; i < kbc->num_rows_and_columns; i++)
+	for (i = 0; i < KBC_MAX_GPIO; i++)
 		kbc->pin_cfg[i].type = PIN_CFG_IGNORE;
 
 	ret = of_property_read_u32_array(np, "nvidia,kbc-row-pins",
@@ -585,24 +563,6 @@ static int tegra_kbc_parse_dt(struct tegra_kbc *kbc)
 	return 0;
 }
 
-static const struct tegra_kbc_hw_support tegra20_kbc_hw_support = {
-	.max_rows	= 16,
-	.max_columns	= 8,
-};
-
-static const struct tegra_kbc_hw_support tegra11_kbc_hw_support = {
-	.max_rows	= 11,
-	.max_columns	= 8,
-};
-
-static const struct of_device_id tegra_kbc_of_match[] = {
-	{ .compatible = "nvidia,tegra114-kbc", .data = &tegra11_kbc_hw_support},
-	{ .compatible = "nvidia,tegra30-kbc", .data = &tegra20_kbc_hw_support},
-	{ .compatible = "nvidia,tegra20-kbc", .data = &tegra20_kbc_hw_support},
-	{ },
-};
-MODULE_DEVICE_TABLE(of, tegra_kbc_of_match);
-
 static int tegra_kbc_probe(struct platform_device *pdev)
 {
 	struct tegra_kbc *kbc;
@@ -611,10 +571,7 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 	int num_rows = 0;
 	unsigned int debounce_cnt;
 	unsigned int scan_time_rows;
-	unsigned int keymap_rows;
-	const struct of_device_id *match;
-
-	match = of_match_device(of_match_ptr(tegra_kbc_of_match), &pdev->dev);
+	unsigned int keymap_rows = KBC_MAX_KEY;
 
 	kbc = devm_kzalloc(&pdev->dev, sizeof(*kbc), GFP_KERNEL);
 	if (!kbc) {
@@ -623,12 +580,6 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 	}
 
 	kbc->dev = &pdev->dev;
-	kbc->hw_support = match->data;
-	kbc->max_keys = kbc->hw_support->max_rows *
-				kbc->hw_support->max_columns;
-	kbc->num_rows_and_columns = kbc->hw_support->max_rows +
-					kbc->hw_support->max_columns;
-	keymap_rows = kbc->max_keys;
 	spin_lock_init(&kbc->lock);
 
 	err = tegra_kbc_parse_dt(kbc);
@@ -689,8 +640,7 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 		keymap_rows *= 2;
 
 	err = matrix_keypad_build_keymap(kbc->keymap_data, NULL,
-					 keymap_rows,
-					 kbc->hw_support->max_columns,
+					 keymap_rows, KBC_MAX_COL,
 					 kbc->keycode, kbc->idev);
 	if (err) {
 		dev_err(&pdev->dev, "failed to setup keymap\n");
@@ -815,6 +765,12 @@ static int tegra_kbc_resume(struct device *dev)
 #endif
 
 static SIMPLE_DEV_PM_OPS(tegra_kbc_pm_ops, tegra_kbc_suspend, tegra_kbc_resume);
+
+static const struct of_device_id tegra_kbc_of_match[] = {
+	{ .compatible = "nvidia,tegra20-kbc", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tegra_kbc_of_match);
 
 static struct platform_driver tegra_kbc_driver = {
 	.probe		= tegra_kbc_probe,
