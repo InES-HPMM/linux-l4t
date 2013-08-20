@@ -2217,6 +2217,9 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 	const char *s;
 	struct swgid_fixup *table = tegra_swgid_fixup;
 
+	if (!dev)
+		return 0;
+
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)
 		table = tegra_swgid_fixup_t124;
 
