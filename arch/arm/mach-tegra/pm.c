@@ -123,11 +123,6 @@ bool tegra_set_cpu_in_lp2(int phy_cpu_id)
 	return last_cpu;
 }
 
-int tegra_cpu_do_idle(void)
-{
-	return cpu_do_idle();
-}
-
 static int tegra_sleep_cpu(unsigned long v2p)
 {
 	setup_mm_for_reboot();
