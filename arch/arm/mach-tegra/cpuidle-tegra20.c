@@ -129,6 +129,10 @@ static bool tegra20_cpu_cluster_power_down(struct cpuidle_device *dev,
 					   struct cpuidle_driver *drv,
 					   int index)
 {
+	struct cpuidle_state *state = &drv->states[index];
+	u32 cpu_on_time = state->exit_latency;
+	u32 cpu_off_time = state->target_residency - state->exit_latency;
+
 	while (tegra20_cpu_is_resettable_soon())
 		cpu_relax();
 
@@ -137,7 +141,7 @@ static bool tegra20_cpu_cluster_power_down(struct cpuidle_device *dev,
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 
-	tegra_idle_lp2_last();
+	tegra_idle_lp2_last(cpu_on_time, cpu_off_time);
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 
