@@ -1,7 +1,8 @@
 /*
+ *
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
- *  Copyright (c) 2010, 2012-2013, NVIDIA Corporation. All rights reserved.
+ *  Copyright (c) 2010, 2012 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,7 +15,6 @@
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
 
-#include "fuse.h"
 #include "sleep.h"
 
 static void (*tegra_hotplug_shutdown)(void);
@@ -47,13 +47,18 @@ void __ref tegra_cpu_die(unsigned int cpu)
 	BUG();
 }
 
-void __init tegra_hotplug_init(void)
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+extern void tegra20_hotplug_shutdown(void);
+void __init tegra20_hotplug_init(void)
 {
-	if (!IS_ENABLED(CONFIG_HOTPLUG_CPU))
-		return;
-
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_2x_SOC) && tegra_chip_id == TEGRA20)
-		tegra_hotplug_shutdown = tegra20_hotplug_shutdown;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_3x_SOC) && tegra_chip_id == TEGRA30)
-		tegra_hotplug_shutdown = tegra30_hotplug_shutdown;
+	tegra_hotplug_shutdown = tegra20_hotplug_shutdown;
 }
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+extern void tegra30_hotplug_shutdown(void);
+void __init tegra30_hotplug_init(void)
+{
+	tegra_hotplug_shutdown = tegra30_hotplug_shutdown;
+}
+#endif
