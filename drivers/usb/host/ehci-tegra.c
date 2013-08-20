@@ -637,6 +637,8 @@ static void tegra_ehci_set_phcd(struct usb_phy *x, bool enable)
 	writel(val, base + TEGRA_USB_PORTSC1);
 }
 
+static u64 tegra_ehci_dma_mask = DMA_BIT_MASK(32);
+
 static int tegra_ehci_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -659,9 +661,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	 * Once we have dma capability bindings this can go away.
 	 */
 	if (!pdev->dev.dma_mask)
-		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
-	if (!pdev->dev.coherent_dma_mask)
-		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+		pdev->dev.dma_mask = &tegra_ehci_dma_mask;
 
 	setup_vbus_gpio(pdev, pdata);
 
