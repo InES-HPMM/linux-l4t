@@ -498,8 +498,9 @@ static int tegra12x_disp_powergate(int id)
 		ref_counta = atomic_dec_return(&ref_count_dispa);
 		WARN_ONCE(ref_counta < 0, "DISPA ref count underflow");
 	} else {
-		ref_countb = atomic_dec_return(&ref_count_dispb);
-		WARN_ONCE(ref_countb < 0, "DISPB ref count underflow");
+		WARN_ONCE(ref_countb == 0, "DISPB ref count underflow");
+		if (ref_countb > 0)
+			ref_countb = atomic_dec_return(&ref_count_dispb);
 		if (ref_countb <= 0)
 			CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
 	}
