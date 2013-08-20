@@ -307,9 +307,6 @@
 #define TEGRA_BSEA_BASE			0x60010000
 #define TEGRA_BSEA_SIZE			SZ_4K
 
-#define TEGRA_VDE_BASE			0x6001A000
-#define TEGRA_VDE_SIZE			0x3c00
-
 #define TEGRA_APB_MISC_BASE		0x70000000
 #define TEGRA_APB_MISC_SIZE		SZ_4K
 
@@ -835,6 +832,15 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 
 #define TEGRA_AFC5_BASE		0x70307500
 #define TEGRA_AFC5_SIZE		SZ_256
+
+#define TEGRA_VDE_BASE			0x60030000
+#define TEGRA_VDE_SIZE			SZ_16K
+
+#else
+
+#define TEGRA_VDE_BASE			0x6001A000
+#define TEGRA_VDE_SIZE			0x3c00
+
 #endif
 
 /* On TEGRA, many peripherals are very closely packed in
