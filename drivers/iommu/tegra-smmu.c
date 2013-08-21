@@ -1365,10 +1365,12 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		map = temp;
 
 	while (area && area->size) {
+		DEFINE_DMA_ATTRS(attrs);
 		size_t size = PAGE_ALIGN(area->size);
 
-		err = iommu_map(domain, area->start, area->start, size, 0);
-		if (err)
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
+		if (err == DMA_ERROR_CODE)
 			dev_err(dev, "Failed to map %016llx(%x)\n",
 				(u64)area->start,
 				size);
