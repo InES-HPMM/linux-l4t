@@ -43,7 +43,7 @@
 #include <linux/termios.h>
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
-#include <linux/serial_tegra.h>
+#include <linux/platform_data/serial-tegra.h>
 #include <mach/clk.h>
 
 #define TEGRA_UART_TYPE				"TEGRA_UART"

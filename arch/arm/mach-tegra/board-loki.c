@@ -48,7 +48,7 @@
 #include <linux/of_platform.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
-#include <linux/serial_tegra.h>
+#include <linux/platform_data/serial-tegra.h>
 #include <linux/edp.h>
 #include <linux/mfd/palmas.h>
 #include <linux/usb/tegra_usb_phy.h>

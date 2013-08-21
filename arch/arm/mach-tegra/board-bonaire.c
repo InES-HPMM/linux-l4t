@@ -36,7 +36,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/serial_tegra.h>
+#include <linux/platform_data/serial-tegra.h>
 #include <linux/of_platform.h>
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>

@@ -13,9 +13,14 @@
  *
  */
 
+#ifndef __LINUX_PLATFORM_DATA_SERIAL_TEGRA_H__
+#define __LINUX_PLATFORM_DATA_SERIAL_TEGRA_H__
+
 struct tegra_serial_platform_data {
 	int dma_req_selector;
 	bool modem_interrupt;
 	int dev_id;
 };
+
+#endif /* __LINUX_PLATFORM_DATA_SERIAL_TEGRA_H__ */
 
