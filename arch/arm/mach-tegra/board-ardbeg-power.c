@@ -641,6 +641,12 @@ int __init ardbeg_tps65913_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Tracking configuration */
+	reg_init_data_ti913_ldo8.config_flags =
+		PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
+		PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
+
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_ti913_platform.reg_data[i] = ardbeg_1735_reg_data[i];
 		pmic_ti913_platform.reg_init[i] = ardbeg_1735_reg_init[i];
@@ -648,6 +654,7 @@ int __init ardbeg_tps65913_regulator_init(void)
 
 	/* Set vdd_gpu init uV to 1V */
 	reg_idata_ti913_smps123.constraints.init_uV = 900000;
+
 	i2c_register_board_info(4, palma_ti913_device,
 			ARRAY_SIZE(palma_ti913_device));
 	return 0;
