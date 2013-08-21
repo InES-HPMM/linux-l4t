@@ -588,12 +588,8 @@ static inline int round_cvb_voltage(int mv, int v_scale)
 
 static inline void override_min_millivolts(struct cpu_cvb_dvfs *d)
 {
-	/*
-	 * dfll min_millivolts for AP40 sku is different from all other skus
-	 * that have the same cvb tables
-	 */
-	if ((tegra_sku_id == 0x6) || (tegra_sku_id == 0x8) ||
-	    tegra_spare_fuse(61))
+	/* override dfll min_millivolts if dfll Vmin designated fuse 61 set */
+	if (tegra_spare_fuse(61))
 		d->dfll_tune_data.min_millivolts = 900;
 
 	/*
