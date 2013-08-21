@@ -842,7 +842,7 @@ static int tegra_otg_suspend(struct device *dev)
 
 	mutex_lock(&tegra->irq_work_mutex);
 	DBG("%s(%d) BEGIN state : %s\n", __func__, __LINE__,
-				tegra_state_name(tegra->phy->state));
+				tegra_state_name(tegra->phy.state));
 
 	pm_runtime_get_sync(dev);
 	clk_prepare_enable(tegra->clk);
