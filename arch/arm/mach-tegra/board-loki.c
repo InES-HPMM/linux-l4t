@@ -936,7 +936,6 @@ static void __init tegra_loki_dt_init(void)
 	of_platform_populate(NULL,
 		of_default_bus_match_table, loki_auxdata_lookup,
 		&platform_bus);
-	platform_device_register(&tegra_gpio_device);
 #endif
 
 	tegra_loki_late_init();

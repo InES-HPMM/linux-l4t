@@ -1182,7 +1182,6 @@ static void __init tegra_ardbeg_dt_init(void)
 	of_platform_populate(NULL,
 		of_default_bus_match_table, ardbeg_auxdata_lookup,
 		&platform_bus);
-	platform_device_register(&tegra_gpio_device);
 #endif
 
 	tegra_ardbeg_late_init();
