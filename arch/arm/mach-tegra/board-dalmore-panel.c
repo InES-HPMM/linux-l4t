@@ -57,8 +57,6 @@ struct platform_device * __init dalmore_host1x_init(void)
 	return pdev;
 }
 
-#ifdef CONFIG_TEGRA_DC
-
 /* HDMI Hotplug detection pin */
 #define dalmore_hdmi_hpd	TEGRA_GPIO_PN7
 
@@ -575,12 +573,3 @@ int __init dalmore_panel_init(void)
 #endif
 	return err;
 }
-#else
-int __init dalmore_panel_init(void)
-{
-	if (dalmore_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif

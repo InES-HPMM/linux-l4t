@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,8 +54,6 @@ struct platform_device * __init roth_host1x_init(void)
 #endif
 	return pdev;
 }
-
-#ifdef CONFIG_TEGRA_DC
 
 #define IS_EXTERNAL_PWM		1
 
@@ -1033,12 +1031,3 @@ int __init roth_panel_init(int board_id)
 #endif
 	return err;
 }
-#else
-int __init roth_panel_init(void)
-{
-	if (roth_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif

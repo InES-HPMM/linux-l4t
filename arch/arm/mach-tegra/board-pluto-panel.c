@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-panel.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -59,8 +59,6 @@ struct platform_device * __init pluto_host1x_init(void)
 	return pdev;
 }
 
-
-#ifdef CONFIG_TEGRA_DC
 
 /* hdmi pins for hotplug */
 #define pluto_hdmi_hpd		TEGRA_GPIO_PN7
@@ -503,12 +501,3 @@ int __init pluto_panel_init(void)
 #endif
 	return err;
 }
-#else
-int __init pluto_panel_init(void)
-{
-	if (pluto_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif

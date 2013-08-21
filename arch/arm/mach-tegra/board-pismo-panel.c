@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pismo-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,8 +56,6 @@ struct platform_device * __init pismo_host1x_init(void)
 #endif
 	return pdev;
 }
-
-#ifdef CONFIG_TEGRA_DC
 
 /* HDMI Hotplug detection pin */
 #define pismo_hdmi_hpd	TEGRA_GPIO_PN7
@@ -489,12 +487,3 @@ int __init pismo_panel_init(void)
 #endif
 	return err;
 }
-#else
-int __init pismo_panel_init(void)
-{
-	if (pismo_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif
