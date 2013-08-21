@@ -142,7 +142,7 @@ static int max77665_enable_id_detect_interrupt(struct max77665_muic *muic)
 	return ret;
 }
 
-static int __devinit max77665_muic_probe(struct platform_device *pdev)
+static int max77665_muic_probe(struct platform_device *pdev)
 {
 	struct max77665_muic_platform_data *pdata;
 	struct max77665_muic *muic;
@@ -220,7 +220,7 @@ scrub:
 	return ret;
 }
 
-static int __devexit max77665_muic_remove(struct platform_device *pdev)
+static int max77665_muic_remove(struct platform_device *pdev)
 {
 	struct max77665_muic *muic = platform_get_drvdata(pdev);
 
@@ -264,7 +264,7 @@ static struct platform_driver max77665_muic_driver = {
 		.pm = &max77665_pm_ops,
 	},
 	.probe		= max77665_muic_probe,
-	.remove		= __devexit_p(max77665_muic_remove),
+	.remove		= max77665_muic_remove,
 };
 
 static int __init max77665_extcon_driver_init(void)
