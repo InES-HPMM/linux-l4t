@@ -14,10 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define pr_fmt(fmt) "%s: " fmt, __func__
 
-#include <linux/slab.h>
-#include <linux/printk.h>
 #include <linux/err.h>
 #include <linux/nvshm_stats.h>
 #include "nvshm_priv.h"
@@ -122,6 +119,7 @@ const u32 *nvshm_stats_top(const char *top_name,
 
 	return rc;
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_top);
 
 int nvshm_stats_sub(const struct nvshm_stats_iter *it,
 		    int index,
@@ -137,6 +135,7 @@ int nvshm_stats_sub(const struct nvshm_stats_iter *it,
 	sub_it->data = it->data + index * it->desc->elem_size;
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_sub);
 
 int nvshm_stats_next(struct nvshm_stats_iter *it)
 {
@@ -147,74 +146,92 @@ int nvshm_stats_next(struct nvshm_stats_iter *it)
 	it->desc++;
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_next);
 
 const char *nvshm_stats_name(const struct nvshm_stats_iter *it)
 {
 	return it->desc->name;
 }
-
+EXPORT_SYMBOL_GPL(nvshm_stats_name);
 
 enum nvshm_stats_type nvshm_stats_type(const struct nvshm_stats_iter *it)
 {
 	return it->desc->type;
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_type);
 
 int nvshm_stats_elems(const struct nvshm_stats_iter *it)
 {
 	return it->desc->size;
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_elems);
 
-const u32 *nvshm_stats_valueptr_uint32(const struct nvshm_stats_iter *it,
-				       int index)
+static inline int check_type_index(const struct nvshm_stats_iter *it,
+				   enum nvshm_stats_type type,
+				   int index)
 {
-	u32 *array;
-
-	if (it->desc->type != NVSHM_STATS_UINT32)
-		return ERR_PTR(-EINVAL);
+	if (it->desc->type != type)
+		return -EINVAL;
 
 	if (index >= it->desc->size)
-		return ERR_PTR(-ERANGE);
+		return -ERANGE;
+
+	return 0;
+}
+
+u32 *nvshm_stats_valueptr_uint32(const struct nvshm_stats_iter *it,
+				 int index)
+{
+	u32 *array;
+	int rc;
+
+	rc = check_type_index(it, NVSHM_STATS_UINT32, index);
+	if (rc)
+		return ERR_PTR(rc);
 
 	array = (u32 *) it->data;
 	return &array[index];
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_valueptr_uint32);
 
-const s32 *nvshm_stats_valueptr_sint32(const struct nvshm_stats_iter *it,
-				       int index)
+s32 *nvshm_stats_valueptr_sint32(const struct nvshm_stats_iter *it,
+				 int index)
 {
 	s32 *array;
+	int rc;
 
-	if (it->desc->type != NVSHM_STATS_SINT32)
-		return ERR_PTR(-EINVAL);
-
-	if (index >= it->desc->size)
-		return ERR_PTR(-ERANGE);
+	rc = check_type_index(it, NVSHM_STATS_SINT32, index);
+	if (rc)
+		return ERR_PTR(rc);
 
 	array = (s32 *) it->data;
 	return &array[index];
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_valueptr_sint32);
 
-const u64 *nvshm_stats_valueptr_uint64(const struct nvshm_stats_iter *it,
-				       int index)
+u64 *nvshm_stats_valueptr_uint64(const struct nvshm_stats_iter *it,
+				int index)
 {
 	u64 *array;
+	int rc;
 
-	if (it->desc->type != NVSHM_STATS_UINT64)
-		return ERR_PTR(-EINVAL);
-
-	if (index >= it->desc->size)
-		return ERR_PTR(-ERANGE);
+	rc = check_type_index(it, NVSHM_STATS_UINT64, index);
+	if (rc)
+		return ERR_PTR(rc);
 
 	array = (u64 *) it->data;
 	return &array[index];
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_valueptr_uint64);
 
 void nvshm_stats_register(struct notifier_block *nb)
 {
 	raw_notifier_chain_register(&notifier_list, nb);
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_register);
 
 void nvshm_stats_unregister(struct notifier_block *nb)
 {
 	raw_notifier_chain_unregister(&notifier_list, nb);
 }
+EXPORT_SYMBOL_GPL(nvshm_stats_unregister);
