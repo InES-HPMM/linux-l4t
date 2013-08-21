@@ -2162,14 +2162,23 @@ int arm_iommu_attach_device(struct device *dev,
 			    struct dma_iommu_mapping *mapping)
 {
 	int err;
+	const struct dma_map_ops *org_ops;
+	struct dma_iommu_mapping *org_map;
+
+	org_ops = get_dma_ops(dev);
+	set_dma_ops(dev, &iommu_ops);
+
+	org_map = dev->archdata.mapping;
+	dev->archdata.mapping = mapping;
 
 	err = iommu_attach_device(mapping->domain, dev);
-	if (err)
+	if (err) {
+		set_dma_ops(dev, org_ops);
+		dev->archdata.mapping = org_map;
 		return err;
+	}
 
 	kref_get(&mapping->kref);
-	dev->archdata.mapping = mapping;
-	set_dma_ops(dev, &iommu_ops);
 
 	pr_debug("Attached IOMMU controller to %s device.\n", dev_name(dev));
 	return 0;
