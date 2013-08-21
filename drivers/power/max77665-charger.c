@@ -771,7 +771,7 @@ static void max77665_remove_sysfs_entry(struct device *dev)
 	sysfs_remove_group(&dev->kobj, &max77665_chg_attr_group);
 }
 
-static __devinit int max77665_battery_probe(struct platform_device *pdev)
+static int max77665_battery_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct max77665_charger *charger;
@@ -868,7 +868,7 @@ free_mutex:
 	return ret;
 }
 
-static int __devexit max77665_battery_remove(struct platform_device *pdev)
+static int max77665_battery_remove(struct platform_device *pdev)
 {
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
@@ -914,7 +914,7 @@ static struct platform_driver max77665_battery_driver = {
 		.pm	= MAX77665_PM,
 	},
 	.probe = max77665_battery_probe,
-	.remove = __devexit_p(max77665_battery_remove),
+	.remove = max77665_battery_remove,
 
 };
 
