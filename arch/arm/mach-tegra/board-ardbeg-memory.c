@@ -5432,11 +5432,16 @@ static struct tegra12_emc_table ardbeg_lpddr3_emc_table[] = {
 	},
 };
 
+#ifdef CONFIG_TEGRA_USE_NCT
+static struct tegra12_emc_pdata board_emc_pdata;
+#endif
+
 static struct tegra12_emc_pdata ardbeg_emc_pdata = {
 	.description = "ardbeg_emc_tables",
 	.tables = ardbeg_emc_table,
 	.num_tables = ARRAY_SIZE(ardbeg_emc_table),
 };
+
 static struct tegra12_emc_pdata ardbeg_lpddr3_emc_pdata = {
 	.description = "ardbeg_emc_tables",
 	.tables = ardbeg_lpddr3_emc_table,
@@ -5450,22 +5455,36 @@ int __init ardbeg_emc_init(void)
 {
 	struct board_info bi;
 
-	tegra_get_board_info(&bi);
+	/*
+	 * If the EMC table is successfully read from the NCT partition,
+	 * we do not need to check for board ids and blindly load the one
+	 * flashed on the NCT partition.
+	 */
+	#ifdef CONFIG_TEGRA_USE_NCT
+	if (!tegra12_nct_emc_table_init(&board_emc_pdata)) {
+		tegra_emc_device.dev.platform_data = &board_emc_pdata;
+		pr_info("Loading EMC table read from NCT partition.\n");
+	} else {
+	#endif
+		tegra_get_board_info(&bi);
 
-
-	switch (bi.board_id) {
-	case BOARD_E1780:
-		pr_info("Loading Ardbeg EMC tables.\n");
-		tegra_emc_device.dev.platform_data = &ardbeg_emc_pdata;
-		break;
-	case BOARD_E1792:
-		pr_info("Loading Ardbeg EMC tables.\n");
-		tegra_emc_device.dev.platform_data = &ardbeg_lpddr3_emc_pdata;
-		break;
-	default:
-		WARN(1, "Invalid board ID: %u\n", bi.board_id);
-		return -EINVAL;
+		switch (bi.board_id) {
+		case BOARD_E1780:
+			pr_info("Loading Ardbeg EMC tables.\n");
+			tegra_emc_device.dev.platform_data = &ardbeg_emc_pdata;
+			break;
+		case BOARD_E1792:
+			pr_info("Loading Ardbeg EMC tables.\n");
+			tegra_emc_device.dev.platform_data = &ardbeg_lpddr3_emc_pdata;
+			break;
+		default:
+			WARN(1, "Invalid board ID: %u\n", bi.board_id);
+			return -EINVAL;
+		}
+	#ifdef CONFIG_TEGRA_USE_NCT
 	}
+	#endif
+
 	platform_device_register(&tegra_emc_device);
 	tegra12_emc_init();
 	return 0;

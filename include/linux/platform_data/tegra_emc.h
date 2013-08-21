@@ -23,6 +23,7 @@
 #define TEGRA14_MAX_TABLE_ID_LEN	16
 #define TEGRA12_MAX_TABLE_ID_LEN	60
 
+#define TEGRA_EMC_MAX_FREQS 20
 
 #define TEGRA_EMC_NUM_REGS 46
 #define TEGRA30_EMC_NUM_REGS 110
@@ -147,8 +148,9 @@ struct tegra14_emc_pdata {
 	struct tegra14_emc_table *tables_derated;
 };
 
-#define TEGRA12_EMC_MAX_NUM_REGS	200
-#define TEGRA12_EMC_MAX_UP_DOWN_REGS	40
+#define TEGRA12_EMC_MAX_NUM_REGS 200
+#define TEGRA12_EMC_MAX_NUM_BURST_REGS 175
+#define TEGRA12_EMC_MAX_UP_DOWN_REGS 40
 
 struct tegra12_emc_table {
 	u8 rev;
@@ -156,14 +158,14 @@ struct tegra12_emc_table {
 	unsigned long rate;
 	int emc_min_mv;
 	int gk20a_min_mv;
-	const char *src_name;
+	char src_name[16];
 	u32 src_sel_reg;
 
 	int burst_regs_num;
 	int burst_up_down_regs_num;
 
 	/* unconditionally updated in one burst shot */
-	u32 burst_regs[TEGRA12_EMC_MAX_NUM_REGS];
+	u32 burst_regs[TEGRA12_EMC_MAX_NUM_BURST_REGS];
 
 	/* one burst shot, but update time depends on rate change direction */
 	u32 burst_up_down_regs[TEGRA12_EMC_MAX_UP_DOWN_REGS];

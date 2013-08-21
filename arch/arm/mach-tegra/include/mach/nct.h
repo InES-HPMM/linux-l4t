@@ -21,6 +21,8 @@
 #ifndef __MACH_TEGRA_NCT_H
 #define __MACH_TEGRA_NCT_H
 
+#include <linux/platform_data/tegra_emc.h>
+
 #define NCT_MAGIC_ID		0x7443566E /* "nVCt" */
 
 #define NCT_FORMAT_VERSION	0x00010000 /* 0xMMMMNNNN (VMMMM.NNNN) */
@@ -51,7 +53,9 @@ enum nct_id_type {
 	NCT_ID_CHARGER_ID,
 	NCT_ID_TOUCH_ID,
 	NCT_ID_FUELGAUGE_ID,
-	NCT_ID_END = NCT_ID_FUELGAUGE_ID,
+	NCT_ID_MEMTABLE,
+	NCT_ID_MEMTABLE_END = NCT_ID_MEMTABLE + TEGRA_EMC_MAX_FREQS - 1,
+	NCT_ID_END = NCT_ID_MEMTABLE_END,
 	NCT_ID_DISABLED = 0xEEEE,
 	NCT_ID_MAX = 0xFFFF
 };
@@ -92,6 +96,11 @@ struct nct_board_info_type {
 	u16 minor_revision;
 };
 
+union nct_tegra_emc_table_type {
+	struct tegra12_emc_table	tegra12_emc_table;
+} __packed;
+
+
 union nct_item_type {
 	struct nct_serial_number_type	serial_number;
 	struct nct_wifi_mac_addr_type	wifi_mac_addr;
@@ -110,6 +119,7 @@ union nct_item_type {
 	struct nct_lbh_id_type          charger_id;
 	struct nct_lbh_id_type          touch_id;
 	u8      fuelgauge_id[MAX_NCT_DATA_SIZE];
+	union nct_tegra_emc_table_type	tegra_emc_table;
 	u8	u8[MAX_NCT_DATA_SIZE];
 	u16	u16[MAX_NCT_DATA_SIZE/2];
 	u32	u32[MAX_NCT_DATA_SIZE/4];

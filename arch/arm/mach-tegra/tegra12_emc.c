@@ -30,6 +30,8 @@
 #include <linux/seq_file.h>
 #include <linux/hrtimer.h>
 #include <linux/pasr.h>
+#include <linux/slab.h>
+#include <mach/nct.h>
 
 #include <asm/cputime.h>
 
@@ -1478,6 +1480,88 @@ int tegra_emc_get_dram_temperature(void)
 		mr4, LPDDR2_MR4_TEMP_MASK, LPDDR2_MR4_TEMP_SHIFT);
 	return mr4;
 }
+
+#ifdef CONFIG_TEGRA_USE_NCT
+int tegra12_nct_emc_table_init(struct tegra12_emc_pdata *nct_emc_pdata)
+{
+	union nct_item_type *entry = NULL;
+	struct tegra12_emc_table *mem_table_ptr;
+	u8 *src, *dest;
+	unsigned int i, non_zero_freqs;
+	int ret = 0;
+
+	/* Allocating memory for holding a single NCT entry */
+	entry = kmalloc(sizeof(union nct_item_type), GFP_KERNEL);
+	if (!entry) {
+		pr_err("%s: failed to allocate buffer for single entry. ",
+								__func__);
+		ret = -ENOMEM;
+		goto done;
+	}
+	src = (u8 *)entry;
+
+	/* Counting the actual number of frequencies present in the table */
+	non_zero_freqs = 0;
+	for (i = 0; i < TEGRA_EMC_MAX_FREQS; i++) {
+		if (!tegra_nct_read_item(NCT_ID_MEMTABLE + i, entry)) {
+			if (entry->tegra_emc_table.tegra12_emc_table.rate > 0) {
+				non_zero_freqs++;
+				pr_info("%s: Found NCT item for freq %lu.\n",
+				 __func__,
+				 entry->tegra_emc_table.tegra12_emc_table.rate);
+			} else
+				break;
+		} else {
+			pr_err("%s: NCT: Could not read item for %dth freq.\n",
+								__func__, i);
+			ret = -EIO;
+			goto free_entry;
+		}
+	}
+
+	/* Allocating memory for the DVFS table */
+	mem_table_ptr = kmalloc(sizeof(struct tegra12_emc_table) *
+				non_zero_freqs, GFP_KERNEL);
+	if (!mem_table_ptr) {
+		pr_err("%s: Memory allocation for emc table failed.",
+							    __func__);
+		ret = -ENOMEM;
+		goto free_entry;
+	}
+
+	/* Copy paste the emc table from NCT partition */
+	for (i = 0; i < non_zero_freqs; i++) {
+		/*
+		 * We reset the whole buffer, to emulate the property
+		 * of a static variable being initialized to zero
+		 */
+		memset(entry, 0, sizeof(*entry));
+		ret = tegra_nct_read_item(NCT_ID_MEMTABLE + i, entry);
+		if (!ret) {
+			dest = (u8 *)mem_table_ptr + (i * sizeof(struct
+							tegra12_emc_table));
+			memcpy(dest, src, sizeof(struct tegra12_emc_table));
+		} else {
+			pr_err("%s: Could not copy item for %dth freq.\n",
+								__func__, i);
+			goto free_mem_table_ptr;
+		}
+	}
+
+	/* Setting appropriate pointers */
+	nct_emc_pdata->tables = mem_table_ptr;
+	nct_emc_pdata->num_tables = non_zero_freqs;
+
+	goto free_entry;
+
+free_mem_table_ptr:
+	kfree(mem_table_ptr);
+free_entry:
+	kfree(entry);
+done:
+	return ret;
+}
+#endif
 
 #ifdef CONFIG_DEBUG_FS
 
