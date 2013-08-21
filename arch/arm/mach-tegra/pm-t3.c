@@ -29,6 +29,7 @@
 #include <linux/clockchips.h>
 #include <linux/cpu_pm.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/sched.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -46,6 +47,9 @@
 #include "sleep.h"
 #include "tegra3_emc.h"
 #include "dvfs.h"
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvpower.h>
 
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 #define CAR_CCLK_BURST_POLICY \
@@ -481,6 +485,10 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	}
 
 	local_irq_save(irq_flags);
+	if (is_idle_task(current))
+		trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_START);
+	else
+		trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_START);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
 
 #ifdef CONFIG_TEGRA_VIRTUAL_CPUID
@@ -532,6 +540,10 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		}
 	}
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_end);
+	if (is_idle_task(current))
+		trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_DONE);
+	else
+		trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_DONE);
 	local_irq_restore(irq_flags);
 
 	DEBUG_CLUSTER(("%s: %s\r\n", __func__, is_lp_cluster() ? "LP" : "G"));
