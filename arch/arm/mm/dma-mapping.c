@@ -1195,13 +1195,15 @@ static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
 {
 	unsigned int count, start, orig;
 	unsigned long flags;
+	size_t bytes;
 
 	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) + PG_PAGES +
 		 (1 << mapping->order) - 1) >> mapping->order;
+	bytes = count << (mapping->order + PAGE_SHIFT);
 
 	spin_lock_irqsave(&mapping->lock, flags);
 
-	if ((*iova < mapping->base) || (*iova >= mapping->end)) {
+	if ((*iova < mapping->base) || (bytes > mapping->end - *iova)) {
 		*iova = -ENXIO;
 		goto err_out;
 	}
