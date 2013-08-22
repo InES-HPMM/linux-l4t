@@ -179,13 +179,13 @@ extern struct platform_device tegra14_i2c_device6;
 extern struct platform_device tegra_mipi_bif_device;
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
-extern struct platform_device tegra14_i2c_device1;
-extern struct platform_device tegra14_i2c_device2;
-extern struct platform_device tegra14_i2c_device3;
-extern struct platform_device tegra14_i2c_device4;
-extern struct platform_device tegra14_i2c_device5;
-extern struct platform_device tegra14_i2c_device6;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+extern struct platform_device tegra12_i2c_device1;
+extern struct platform_device tegra12_i2c_device2;
+extern struct platform_device tegra12_i2c_device3;
+extern struct platform_device tegra12_i2c_device4;
+extern struct platform_device tegra12_i2c_device5;
+extern struct platform_device tegra12_i2c_device6;
 #endif
 
 void __init tegra_init_debug_uart_rate(void);

@@ -235,32 +235,20 @@ static void loki_i2c_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
-	/* T124 does not use device tree as of now */
-	tegra14_i2c_device1.dev.platform_data = &loki_i2c1_platform_data;
-	tegra14_i2c_device2.dev.platform_data = &loki_i2c2_platform_data;
-	tegra14_i2c_device3.dev.platform_data = &loki_i2c3_platform_data;
-	tegra14_i2c_device4.dev.platform_data = &loki_i2c4_platform_data;
-	tegra14_i2c_device5.dev.platform_data = &loki_i2c5_platform_data;
 
-	platform_device_register(&tegra14_i2c_device5);
-	platform_device_register(&tegra14_i2c_device4);
-	platform_device_register(&tegra14_i2c_device3);
-	platform_device_register(&tegra14_i2c_device2);
-	platform_device_register(&tegra14_i2c_device1);
+	tegra12_i2c_device1.dev.platform_data = &loki_i2c1_platform_data;
+	tegra12_i2c_device2.dev.platform_data = &loki_i2c2_platform_data;
+	tegra12_i2c_device3.dev.platform_data = &loki_i2c3_platform_data;
+	tegra12_i2c_device4.dev.platform_data = &loki_i2c4_platform_data;
+	tegra12_i2c_device5.dev.platform_data = &loki_i2c5_platform_data;
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
+	platform_device_register(&tegra12_i2c_device5);
+	platform_device_register(&tegra12_i2c_device4);
+	platform_device_register(&tegra12_i2c_device3);
+	platform_device_register(&tegra12_i2c_device2);
+	platform_device_register(&tegra12_i2c_device1);
+
 	i2c_register_board_info(0, &rt5639_board_info, 1);
-#endif
-
-	if (board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363) {
-		i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
-		i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
-
-		i2c_touchpad_board_info.irq = gpio_to_irq(I2C_TP_IRQ);
-		i2c_register_board_info(1, &i2c_touchpad_board_info , 1);
-	}
 }
 
 #ifndef CONFIG_USE_OF

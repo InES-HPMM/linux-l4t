@@ -579,7 +579,7 @@ struct platform_device tegra11_i2c_device5 = {
 };
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 
 struct platform_device tegra14_i2c_device1 = {
 	.name		= "tegra14-i2c",
@@ -641,6 +641,68 @@ struct platform_device tegra14_i2c_device6 = {
 	},
 };
 
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+struct platform_device tegra12_i2c_device1 = {
+	.name		= "tegra12-i2c",
+	.id		= 0,
+	.resource	= i2c_resource1,
+	.num_resources	= ARRAY_SIZE(i2c_resource1),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra12_i2c_device2 = {
+	.name		= "tegra12-i2c",
+	.id		= 1,
+	.resource	= i2c_resource2,
+	.num_resources	= ARRAY_SIZE(i2c_resource2),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra12_i2c_device3 = {
+	.name		= "tegra12-i2c",
+	.id		= 2,
+	.resource	= i2c_resource3,
+	.num_resources	= ARRAY_SIZE(i2c_resource3),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra12_i2c_device4 = {
+	.name		= "tegra12-i2c",
+	.id		= 3,
+	.resource	= i2c_resource4,
+	.num_resources	= ARRAY_SIZE(i2c_resource4),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra12_i2c_device5 = {
+	.name		= "tegra12-i2c",
+	.id		= 4,
+	.resource	= i2c_resource5,
+	.num_resources	= ARRAY_SIZE(i2c_resource5),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra12_i2c_device6 = {
+	.name		= "tegra12-i2c",
+	.id		= 5,
+	.resource	= i2c_resource6,
+	.num_resources	= ARRAY_SIZE(i2c_resource6),
+	.dev = {
+		.platform_data = 0,
+	},
+};
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
