@@ -649,7 +649,7 @@ static int __init set_gpu_dvfs_data(
 {
 	int i, j, mv, max_mv;
 	struct cvb_dvfs_table *table = NULL;
-	int speedo = 0; /* FIXME: tegra_core_speedo_value(); */
+	int speedo = tegra_gpu_speedo_value();
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_gpu.alignment;
 
 	max_mv = round_cvb_voltage(tegra_gpu_speedo_mv() * 1000, 1000, align);
