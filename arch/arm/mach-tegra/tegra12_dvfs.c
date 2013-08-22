@@ -279,7 +279,7 @@ static struct dvfs core_dvfs_table[] = {
 };
 
 /* TBD: fill in actual hw numbers */
-static struct core_cvb_dvfs gpu_cvb_dvfs_table[] = {
+static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id =  0,
 		.process_id = -1,
@@ -645,7 +645,7 @@ static int __init set_cpu_dvfs_data(
 }
 
 static int __init set_gpu_dvfs_data(
-	struct core_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
+	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
 	int i, j, mv, max_mv;
 	struct cvb_dvfs_table *table = NULL;
@@ -808,7 +808,7 @@ void __init tegra12x_init_dvfs(void)
 	 * not be constructed must never happen.
 	 */
 	for (ret = 0, i = 0; i < ARRAY_SIZE(gpu_cvb_dvfs_table); i++) {
-		struct core_cvb_dvfs *d = &gpu_cvb_dvfs_table[i];
+		struct gpu_cvb_dvfs *d = &gpu_cvb_dvfs_table[i];
 		if (match_dvfs_one("gpu cvb", d->speedo_id, d->process_id,
 				   gpu_speedo_id, gpu_process_id)) {
 			ret = set_gpu_dvfs_data(

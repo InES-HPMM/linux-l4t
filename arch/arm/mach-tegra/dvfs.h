@@ -166,13 +166,13 @@ struct cvb_dvfs_table {
 	struct cvb_dvfs_parameters cvb_pll_param;
 };
 
-struct cpu_cvb_dvfs {
+struct cvb_dvfs {
 	int speedo_id;
 	int process_id;
 
 	struct dvfs_dfll_data dfll_tune_data;
 	int max_mv;
-	int min_dfll_mv;
+	int min_mv;
 	int freqs_mult;
 	int speedo_scale;
 	int voltage_scale;
@@ -181,15 +181,9 @@ struct cpu_cvb_dvfs {
 	int therm_floors_table[MAX_THERMAL_LIMITS];
 };
 
-struct core_cvb_dvfs {
-	int speedo_id;
-	int process_id;
-
-	int freqs_mult;
-	int speedo_scale;
-	int voltage_scale;
-	struct cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
-};
+#define cpu_cvb_dvfs	cvb_dvfs
+#define gpu_cvb_dvfs	cvb_dvfs
+#define core_cvb_dvfs	cvb_dvfs
 
 extern struct dvfs_rail *tegra_cpu_rail;
 extern struct dvfs_rail *tegra_core_rail;
