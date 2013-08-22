@@ -1,5 +1,11 @@
 / {
 	aliases {
+		i2c0 = &i2c1;
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
+		i2c3 = &i2c4;
+		i2c4 = &i2c5;
+		i2c5 = &i2c6;
 		serial0 = &uarta;
 		serial1 = &uartb;
 		serial2 = &uartc;
@@ -118,6 +124,76 @@
 		nvidia,dma-request-selector = <&apbdma 19>;
 		nvidia,memory-clients = <14>;
 		status = "disabled";
+	};
+
+	i2c1: i2c@7000c000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000c000 0x100>;
+		interrupts = <0 38 0x04>;
+		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
+		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
+		nvidia,memory-clients = <14>;
+		status = "disable";
+	};
+
+	i2c2: i2c@7000c400 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000c400 0x100>;
+		interrupts = <0 84 0x04>;
+		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
+		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
+		nvidia,memory-clients = <14>;
+		status = "disable";
+	};
+
+	i2c3: i2c@7000c500 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000c500 0x100>;
+		interrupts = <0 92 0x04>;
+		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
+		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
+		nvidia,memory-clients = <14>;
+		status = "disable";
+	};
+
+	i2c4: i2c@7000c700 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000c700 0x100>;
+		interrupts = <0 120 0x04>;
+		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
+		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
+		nvidia,memory-clients = <14>;
+		status = "disable";
+	};
+
+	i2c5: i2c@7000d000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000d000 0x100>;
+		interrupts = <0 53 0x04>;
+		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
+		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
+		nvidia,memory-clients = <14>;
+		status = "disable";
+	};
+
+	i2c6: i2c@7000d100 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra124-i2c";
+		reg = <0x7000d100 0x100>;
+		interrupts = <0 63 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "disable";
 	};
 
 	spi0: spi@7000d400 {

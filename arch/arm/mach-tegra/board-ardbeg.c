@@ -182,40 +182,6 @@ static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
-static struct tegra_i2c_platform_data ardbeg_i2c1_platform_data = {
-	.bus_clk_rate	= 100000,
-	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C1_SDA,
-};
-
-static struct tegra_i2c_platform_data ardbeg_i2c2_platform_data = {
-	.bus_clk_rate	= 100000,
-	.is_clkon_always = true,
-	.scl_gpio	= TEGRA_GPIO_I2C2_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C2_SDA,
-};
-
-static struct tegra_i2c_platform_data ardbeg_i2c3_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
-};
-
-static struct tegra_i2c_platform_data ardbeg_i2c4_platform_data = {
-	.bus_clk_rate	= 10000,
-	.scl_gpio	= TEGRA_GPIO_I2C4_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C4_SDA,
-};
-
-static struct tegra_i2c_platform_data ardbeg_i2c5_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
-	.needs_cl_dvfs_clock = true,
-};
-#endif
-
 static struct i2c_hid_platform_data i2c_keyboard_pdata = {
 	.hid_descriptor_address = 0x0,
 };
@@ -238,18 +204,6 @@ static void ardbeg_i2c_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
-
-	tegra12_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
-	tegra12_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
-	tegra12_i2c_device3.dev.platform_data = &ardbeg_i2c3_platform_data;
-	tegra12_i2c_device4.dev.platform_data = &ardbeg_i2c4_platform_data;
-	tegra12_i2c_device5.dev.platform_data = &ardbeg_i2c5_platform_data;
-
-	platform_device_register(&tegra12_i2c_device5);
-	platform_device_register(&tegra12_i2c_device4);
-	platform_device_register(&tegra12_i2c_device3);
-	platform_device_register(&tegra12_i2c_device2);
-	platform_device_register(&tegra12_i2c_device1);
 
 	i2c_register_board_info(0, &rt5639_board_info, 1);
 	i2c_register_board_info(0, &rt5645_board_info, 1);
@@ -947,16 +901,6 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra114-camera", 0x0, "tegra_camera",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c700, "tegra11-i2c.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
-				NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
 				NULL),
@@ -1011,6 +955,18 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c000, "tegra12-i2c.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c400, "tegra12-i2c.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c500, "tegra12-i2c.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c700, "tegra12-i2c.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d000, "tegra12-i2c.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5",
 				NULL),
 	{}
 };
