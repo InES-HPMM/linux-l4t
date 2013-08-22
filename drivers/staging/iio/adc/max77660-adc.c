@@ -303,7 +303,7 @@ static const struct iio_info max77660_adc_iio_info = {
 #define MAX77660_ADC_CHAN_IIO(chan)				\
 {								\
 	.type = IIO_VOLTAGE,					\
-	.info_mask = IIO_CHAN_INFO_SCALE_SEPARATE_BIT,		\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),		\
 	.indexed = 1,						\
 	.channel = MAX77660_ADC_CH_##chan,			\
 }
