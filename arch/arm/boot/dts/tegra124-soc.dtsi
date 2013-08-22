@@ -27,7 +27,6 @@
 		gpio-controller;
 		#interrupt-cells = <2>;
 		interrupt-controller;
-		status = "disable";
 	};
 
 	tegra_car: clock {
