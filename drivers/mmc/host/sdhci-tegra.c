@@ -2128,6 +2128,8 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 		mmc_hostname(sdhci->mmc), voltage);
 	/* First clear any previous dvfs override settings */
 	err = tegra_dvfs_override_core_voltage(0);
+	if (!voltage)
+		return err;
 
 	/* EMC clock freq boost might be required for nominal core voltage */
 	if ((voltage == tegra_host->nominal_vcore_mv) &&
@@ -2342,6 +2344,8 @@ out:
 	if (boot_volt_req_refcount)
 		sdhci_tegra_set_tuning_voltage(sdhci,
 			tegra_host->boot_vcore_mv);
+	else
+		sdhci_tegra_set_tuning_voltage(sdhci, 0);
 
 
 	/* Enable interrupts. Enable full range for core voltage */
