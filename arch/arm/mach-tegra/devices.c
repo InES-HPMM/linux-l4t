@@ -26,7 +26,6 @@
 #include <linux/i2c-tegra.h>
 #include <linux/mipi-bif-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/platform_data/tegra_ahci.h>
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
@@ -1974,11 +1973,6 @@ struct platform_device tegra_otg_device = {
 #ifdef CONFIG_SATA_AHCI_TEGRA
 static u64 tegra_sata_dma_mask = DMA_BIT_MASK(64);
 
-static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
-	.gen2_rx_eq = -1,
-	.pexp_gpio = -1,
-};
-
 static struct resource tegra_sata_resources[] = {
 	[0] = {
 		.start = TEGRA_SATA_BAR5_BASE,
@@ -2001,7 +1995,6 @@ struct platform_device tegra_sata_device = {
 	.name 	= "tegra-sata",
 	.id 	= 0,
 	.dev 	= {
-		.platform_data = &tegra_ahci_platform_data0,
 		.coherent_dma_mask = DMA_BIT_MASK(64),
 		.dma_mask = &tegra_sata_dma_mask,
 	},

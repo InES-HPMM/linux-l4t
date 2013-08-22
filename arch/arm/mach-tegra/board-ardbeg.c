@@ -393,17 +393,24 @@ static struct platform_device tegra_rtc_device = {
 };
 
 #ifdef CONFIG_SATA_AHCI_TEGRA
-static void bonaire_sata_init(void)
+static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
+	.gen2_rx_eq = -1,
+	.pexp_gpio = PMU_TCA6416_GPIO(9),
+};
+
+static void ardbeg_sata_init(void)
 {
-	struct tegra_ahci_platform_data *pdata;
+	struct board_info board_info;
 
-	pdata = tegra_sata_device.dev.platform_data;
-	pdata->pexp_gpio = PMU_TCA6416_GPIO(9);
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_PM363)
+		tegra_ahci_platform_data0.pexp_gpio = -1;
 
+	tegra_sata_device.dev.platform_data = &tegra_ahci_platform_data0;
 	platform_device_register(&tegra_sata_device);
 }
 #else
-static void bonaire_sata_init(void) { }
+static void ardbeg_sata_init(void) { }
 #endif
 
 static struct tegra_pci_platform_data laguna_pcie_platform_data = {
@@ -1100,7 +1107,8 @@ static void __init tegra_ardbeg_late_init(void)
 
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
-	bonaire_sata_init();
+	ardbeg_sata_init();
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init ardbeg_ramconsole_reserve(unsigned long size)
