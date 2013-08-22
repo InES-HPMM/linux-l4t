@@ -305,4 +305,79 @@
 		interrupts = <0 2 0x04>;
 		clocks = <&tegra_car 4>;
 	};
+
+	tegra_ahub_apbif: ahub {
+		compatible = "nvidia,tegra124-ahub";
+		reg = <0x70300000 0x200>,
+			<0x70300800 0x800>,
+			<0x70300200 0x200>;
+		interrupts = <0 103 0x04>;
+		nvidia,dma-request-selector = <&apbdma 1>, <&apbdma 2>,
+			<&apbdma 3>, <&apbdma 4>, <&apbdma 6>, <&apbdma 7>,
+			<&apbdma 12>, <&apbdma 13>, <&apbdma 14>, <&apbdma 29>;
+		status = "disabled";
+
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		tegra_i2s0: i2s@70301000 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301000 0x100>;
+			nvidia,ahub-cif-ids = <4 4>;
+			status = "disabled";
+		};
+
+		tegra_i2s1: i2s@70301100 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301100 0x100>;
+			nvidia,ahub-cif-ids = <5 5>;
+			status = "disabled";
+		};
+
+		tegra_i2s2: i2s@70301200 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301200 0x100>;
+			nvidia,ahub-cif-ids = <6 6>;
+			status = "disabled";
+		};
+
+		tegra_i2s3: i2s@70301300 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301300 0x100>;
+			nvidia,ahub-cif-ids = <7 7>;
+			status = "disabled";
+		};
+
+		tegra_i2s4: i2s@70301400 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301400 0x100>;
+			nvidia,ahub-cif-ids = <8 8>;
+			status = "disabled";
+		};
+
+		tegra_amx0: amx@70303000 {
+			compatible = "nvidia,tegra124-amx";
+			reg = <0x70303000 0x100>;
+			status = "disabled";
+		};
+
+		tegra_amx1: amx@70303100 {
+			compatible = "nvidia,tegra124-amx";
+			reg = <0x70303100 0x100>;
+			status = "disabled";
+		};
+
+		tegra_adx0: adx@70303800 {
+			compatible = "nvidia,tegra124-adx";
+			reg = <0x70303800 0x100>;
+			status = "disabled";
+		};
+
+		tegra_adx1: adx@70303900 {
+			compatible = "nvidia,tegra124-adx";
+			reg = <0x70303900 0x100>;
+			status = "disabled";
+		};
+	};
 };
