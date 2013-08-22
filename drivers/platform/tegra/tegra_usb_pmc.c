@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -100,6 +100,13 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	if (val & UTMIP_MASTER_ENABLE(inst)) {
+		DBG("%s(%d) inst:[%d] pmc already enabled\n",
+				__func__, __LINE__, pmc_data->instance);
+		spin_unlock_irqrestore(&pmc_lock, flags);
+		return;
+	}
 
 	/*Set PMC MASTER bits to do the following
 	* a. Take over the UTMI drivers
@@ -261,6 +268,13 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	if (!(val & UTMIP_MASTER_ENABLE(inst))) {
+		DBG("%s(%d) inst:[%d] pmc already disabled\n",
+				__func__, __LINE__, pmc_data->instance);
+		spin_unlock_irqrestore(&pmc_lock, flags);
+		return;
+	}
 
 	if (pmc_data->controller_type == TEGRA_USB_2_0 && usb_base) {
 		/* disable PMC master control */
@@ -433,7 +447,13 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
-
+	val = readl(pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
+	if (val & UHSIC_MASTER_ENABLE(inst)) {
+		DBG("%s(%d) inst:[%d] pmc already enabled\n",
+				__func__, __LINE__, pmc_data->instance);
+		spin_unlock_irqrestore(&pmc_lock, flags);
+		return;
+	}
 	/*Set PMC MASTER bits to do the following
 	* a. Take over the hsic drivers
 	* b. set up such that it will take over resume
@@ -545,6 +565,14 @@ static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
+
+	val = readl(pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
+	if (!(val & UHSIC_MASTER_ENABLE(inst))) {
+		DBG("%s(%d) inst:[%d] pmc already disabled\n",
+				__func__, __LINE__, pmc_data->instance);
+		spin_unlock_irqrestore(&pmc_lock, flags);
+		return;
+	}
 
 	if (pmc_data->controller_type == TEGRA_USB_2_0 && usb_base) {
 		/* disable PMC master control */
