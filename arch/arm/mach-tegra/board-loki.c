@@ -179,24 +179,6 @@ static __initdata struct tegra_clk_init_table loki_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static struct i2c_hid_platform_data i2c_keyboard_pdata = {
-	.hid_descriptor_address = 0x0,
-};
-
-static struct i2c_board_info __initdata i2c_keyboard_board_info = {
-	I2C_BOARD_INFO("hid", 0x3B),
-	.platform_data  = &i2c_keyboard_pdata,
-};
-
-static struct i2c_hid_platform_data i2c_touchpad_pdata = {
-	.hid_descriptor_address = 0x20,
-};
-
-static struct i2c_board_info __initdata i2c_touchpad_board_info = {
-	I2C_BOARD_INFO("hid", 0x2C),
-	.platform_data  = &i2c_touchpad_pdata,
-};
-
 static void loki_i2c_init(void)
 {
 	i2c_register_board_info(0, &rt5639_board_info, 1);
