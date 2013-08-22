@@ -26,6 +26,10 @@
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
 
+#include <linux/gpio.h>
+#include <linux/power/bq2419x-charger.h>
+#include <linux/max17048_battery.h>
+
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 
@@ -44,6 +48,34 @@
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
+
+/* BQ2419X VBUS regulator */
+static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+};
+
+static struct regulator_consumer_supply bq2419x_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
+static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
+	.consumer_supplies = bq2419x_vbus_supply,
+};
+
+struct bq2419x_platform_data tn8_bq2419x_pdata = {
+	.vbus_pdata = &bq2419x_vbus_pdata,
+};
+
+static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("bq2419x", 0x6b),
+		.platform_data = &tn8_bq2419x_pdata,
+	},
+};
+
 
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
@@ -414,6 +446,10 @@ int __init tn8_regulator_init(void)
 		pmic_platform.reg_data[i] = tn8_reg_data[i];
 		pmic_platform.reg_init[i] = tn8_reg_init[i];
 	}
+
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	i2c_register_board_info(0, bq2419x_boardinfo,
+		ARRAY_SIZE(bq2419x_boardinfo));
 
 	/* Tracking configuration */
 	/* TODO
