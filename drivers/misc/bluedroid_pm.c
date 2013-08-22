@@ -337,18 +337,19 @@ static struct platform_driver bluedroid_pm_driver = {
 	},
 };
 
-static int lpm_read_proc(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
+static int lpm_read_proc(struct file *file, char __user *buf, size_t size,
+					loff_t *ppos)
 {
-	*eof = 1;
-	return sprintf(page, "lpm_read");
+	char *msg = "lpm_read";
+
+	return simple_read_from_buffer(buf, size, ppos, msg, strlen(msg));
 }
 
-static int lpm_write_proc(struct file *file, const char *buffer,
-					unsigned long count, void *data)
+static ssize_t lpm_write_proc(struct file *file, const char __user *buffer,
+					size_t count, loff_t *ppos)
 {
 	char *buf;
-	struct bluedroid_pm_data *bluedroid_pm = data;
+	struct bluedroid_pm_data *bluedroid_pm = PDE_DATA(file_inode(file));
 
 	if (count < 1)
 		return -EINVAL;
@@ -379,6 +380,12 @@ static int lpm_write_proc(struct file *file, const char *buffer,
 	return count;
 }
 
+static const struct file_operations lpm_fops = {
+	.read		= lpm_read_proc,
+	.write		= lpm_write_proc,
+	.llseek		= default_llseek,
+};
+
 static void remove_bt_proc_interface(void)
 {
 	remove_proc_entry("lpm", bluetooth_sleep_dir);
@@ -404,15 +411,12 @@ static int create_bt_proc_interface(void *drv_data)
 	}
 
 	/* Creating read/write "btwake" entry */
-	ent = create_proc_entry("lpm", 0622, bluetooth_sleep_dir);
+	ent = proc_create_data("lpm", 0622, bluetooth_sleep_dir, &lpm_fops, drv_data);
 	if (ent == NULL) {
 		pr_err("Unable to create /proc/%s/btwake entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
-	ent->read_proc	= lpm_read_proc;
-	ent->write_proc = lpm_write_proc;
-	ent->data	= drv_data;
 	return 0;
 fail:
 	remove_proc_entry("lpm", bluetooth_sleep_dir);
