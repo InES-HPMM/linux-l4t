@@ -604,19 +604,10 @@ static struct notifier_block arch_timer_cpu_pm_nb = {
 
 static int __init tegra_init_arch_timer(void)
 {
-	int err;
-
 	if (!local_timer_is_architected())
 		return -ENODEV;
 
-	arch_timer_of_register();
-
-	err = arch_timer_sched_clock_init();
-	if (err) {
-		pr_err("%s: Unable to initialize arch timer sched_clock: %d\n",
-		     __func__, err);
-		return err;
-	}
+	clocksource_of_init();
 
 	register_cpu_notifier(&arch_timer_cpu_nb);
 	cpu_pm_register_notifier(&arch_timer_cpu_pm_nb);
