@@ -1577,6 +1577,7 @@ err_out:
 static int acm_reset_resume(struct usb_interface *intf)
 {
 	struct acm *acm = usb_get_intfdata(intf);
+	struct tty_struct *tty;
 
 	if (!acm) {
 		pr_err("%s: !acm\n", __func__);
