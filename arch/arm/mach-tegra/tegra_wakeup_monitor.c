@@ -634,11 +634,9 @@ static inline int monitor_table_init(struct _monitor_table *table,
 	return 0;
 }
 
-static int twm_offender_stat(char *page, char **start, off_t off,
-				int count, int *eof, void *data)
+static int twm_offender_stat_show(struct seq_file *m, void *v)
 {
 	int i = 0;
-	int len = 0;
 	struct twm_hslot *hslot;
 	struct uid_info *uid_info;
 	struct packet_info *packet_info;
@@ -646,9 +644,8 @@ static int twm_offender_stat(char *page, char **start, off_t off,
 	struct device *dev;
 
 	if (!monitor_table.twm || !monitor_table.uid_hash) {
-		len += sprintf(page + len, "monitor table not initialized\n");
-		*eof = 1;
-		return len;
+		seq_printf(m, "monitor table not initialized\n");
+		return 0;
 	}
 
 	dev = &monitor_table.twm->pdev->dev;
@@ -669,14 +666,13 @@ static int twm_offender_stat(char *page, char **start, off_t off,
 				hslot->count--;
 				continue;
 			}
-			len += sprintf(page + len,
-				"uid %u, wakeup times %u\n",
+			seq_printf(m, "uid %u, wakeup times %u\n",
 				uid_info->uid,
 				atomic_read(&uid_info->wakeup));
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
-	len += sprintf(page + len, "Unmonitored wakeups\nTCP statistics:\n");
+	seq_printf(m, "Unmonitored wakeups\nTCP statistics:\n");
 	for (i = 0; i <= monitor_table.mask; i++) {
 		hslot = &monitor_table.tcp_hash[i];
 		if (hslot->count == 0)
@@ -694,14 +690,13 @@ static int twm_offender_stat(char *page, char **start, off_t off,
 			}
 			if (packet_info->wakeup)
 				continue;
-			len += sprintf(page + len,
-				"port %u, wakeup times %u\n",
+			seq_printf(m, "port %u, wakeup times %u\n",
 				packet_info->dport,
 				atomic_read(&packet_info->unmonitored));
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
-	len += sprintf(page + len, "UDP statistics:\n");
+	seq_printf(m, "UDP statistics:\n");
 	for (i = 0; i <= monitor_table.mask; i++) {
 		hslot = &monitor_table.udp_hash[i];
 		if (hslot->count == 0)
@@ -719,17 +714,26 @@ static int twm_offender_stat(char *page, char **start, off_t off,
 			}
 			if (packet_info->wakeup)
 				continue;
-			len += sprintf(page + len,
-				"port %u, wakeup times %u\n",
+			seq_printf(m, "port %u, wakeup times %u\n",
 				packet_info->dport,
 				atomic_read(&packet_info->unmonitored));
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
 
-	*eof = 1;
-	return len;
+	return 0;
 }
+
+static int twm_offender_stat_open(struct inode *inode, struct file *file) {
+	return single_open(file, twm_offender_stat_show, PDE_DATA(inode));
+}
+
+static const struct file_operations twm_offender_stat_fops = {
+	.open		= twm_offender_stat_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
 
 static inline int twm_init(struct tegra_wakeup_monitor *twm,
 					struct platform_device *pdev)
@@ -737,7 +741,6 @@ static inline int twm_init(struct tegra_wakeup_monitor *twm,
 	unsigned int i;
 	struct tegra_wakeup_monitor_platform_data *pdata =
 		pdev->dev.platform_data;
-	struct proc_dir_entry *e = NULL;
 	int ret = 0;
 
 	twm->pdata = pdata;
@@ -754,9 +757,8 @@ static inline int twm_init(struct tegra_wakeup_monitor *twm,
 		return ret;
 	}
 
-	e = create_proc_read_entry("twm_offender_stat", 0, init_net.proc_net,
-					twm_offender_stat, NULL);
-	if (!e) {
+	if (!proc_create("twm_offender_stat", 0, init_net.proc_net,
+			&twm_offender_stat_fops)) {
 		dev_err(&pdev->dev, "proc entry creation error\n");
 		return -ENOMEM;
 	}
