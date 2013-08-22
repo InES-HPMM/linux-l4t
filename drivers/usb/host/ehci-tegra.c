@@ -55,9 +55,7 @@ static const char driver_name[] = "tegra-ehci";
 struct tegra_ehci_hcd {
 	struct ehci_hcd *ehci;
 	struct tegra_usb_phy *phy;
-#ifdef CONFIG_USB_OTG_UTILS
 	struct usb_phy *transceiver;
-#endif
 	struct mutex sync_lock;
 	bool port_resuming;
 	unsigned int irq;
