@@ -34,6 +34,7 @@
 #include <linux/clk.h>
 #include <linux/interrupt.h>
 #include <linux/wakelock.h>
+#include <linux/slab.h>
 
 #define PROC_DIR	"bluetooth/sleep"
 struct bluedroid_pm_data {
