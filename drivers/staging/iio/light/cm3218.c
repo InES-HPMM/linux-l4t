@@ -382,10 +382,10 @@ static const struct iio_chan_spec_ext_info cm3218_ext_info[] = {
 static const struct iio_chan_spec cm3218_channels[] = {
 	{
 		.type = IIO_LIGHT,
-		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
-				IIO_CHAN_INFO_SCALE_SEPARATE_BIT |
-				IIO_CHAN_INFO_PEAK_SEPARATE_BIT |
-				IIO_CHAN_INFO_SAMP_FREQ_SEPARATE_BIT,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
+				BIT(IIO_CHAN_INFO_SCALE) |
+				BIT(IIO_CHAN_INFO_PEAK) |
+				BIT(IIO_CHAN_INFO_SAMP_FREQ),
 		.ext_info = cm3218_ext_info,
 	},
 };
