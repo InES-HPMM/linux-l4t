@@ -1437,10 +1437,13 @@ static void palmas_dt_to_pdata(struct device *dev,
 			pdata->reg_init[idx]->vsel =
 				PALMAS_SMPS12_VOLTAGE_RANGE;
 
-		if (idx == PALMAS_REG_LDO8)
-			pdata->enable_ldo8_tracking = of_property_read_bool(
-						palmas_matches[idx].of_node,
-						"ti,enable-ldo8-tracking");
+		if (idx == PALMAS_REG_LDO8) {
+			if (of_property_read_bool(palmas_matches[idx].of_node,
+						"ti,enable-ldo8-tracking")) {
+				pdata->reg_init[idx]->config_flags =
+					PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE;
+			}
+		}
 	}
 
 	pdata->ldo6_vibrator = of_property_read_bool(node, "ti,ldo6-vibrator");
@@ -1685,7 +1688,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 			/* Check if LDO8 is in tracking mode or not */
 			if (pdata && (id == PALMAS_REG_LDO8) &&
-					pdata->enable_ldo8_tracking) {
+					(pdata->reg_init[id]->config_flags &
+					PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE)) {
 				pmic->desc[id].min_uV = 450000;
 				pmic->desc[id].uV_step = 25000;
 			}
