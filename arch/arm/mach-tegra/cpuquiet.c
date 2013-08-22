@@ -775,7 +775,7 @@ int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 	 * task, single-threaded, freezable.
 	 */
 	cpuquiet_wq = alloc_workqueue(
-		"cpuquiet", WQ_NON_REENTRANT | WQ_RESCUER | WQ_FREEZABLE, 1);
+		"cpuquiet", WQ_NON_REENTRANT | WQ_FREEZABLE, 1);
 
 	if (!cpuquiet_wq)
 		return -ENOMEM;
