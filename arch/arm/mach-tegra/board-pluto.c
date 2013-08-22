@@ -876,10 +876,12 @@ static int baseband_init(void)
 	}
 
 	baseband_reg = regulator_get(NULL, "vdd_core_bb");
-	if (IS_ERR_OR_NULL(baseband_reg))
+	if (IS_ERR(baseband_reg))
 		pr_warn("%s: baseband regulator get failed\n", __func__);
-	else
-		regulator_enable(baseband_reg);
+	else {
+		if (regulator_enable(baseband_reg) != 0)
+			pr_warn("baseband regulator enable failed\n");
+	}
 
 	/* enable pull-up for MDM1 UART RX */
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GPIO_PU1,

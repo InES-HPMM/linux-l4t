@@ -714,16 +714,19 @@ static int roth_hdmi_postsuspend(void)
 
 static int roth_hdmi_hotplug_init(struct device *dev)
 {
+	int e = 0;
+
 	if (!roth_hdmi_vddio) {
 		roth_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(roth_hdmi_vddio))) {
-			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
-					__func__, PTR_ERR(roth_hdmi_vddio));
+			e = PTR_ERR(roth_hdmi_vddio);
+			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %d\n",
+					__func__, e);
 			roth_hdmi_vddio = NULL;
 		} else
-			regulator_enable(roth_hdmi_vddio);
+			e = regulator_enable(roth_hdmi_vddio);
 	}
-	return 0;
+	return e;
 }
 
 static void roth_hdmi_hotplug_report(bool state)

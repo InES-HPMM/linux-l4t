@@ -208,19 +208,22 @@ static int macallan_hdmi_postsuspend(void)
 
 static int macallan_hdmi_hotplug_init(struct device *dev)
 {
+	int e = 0;
+
 	if (!macallan_hdmi_vddio) {
 		macallan_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(macallan_hdmi_vddio))) {
-			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
-				__func__, PTR_ERR(macallan_hdmi_vddio));
-				macallan_hdmi_vddio = NULL;
+			e = PTR_ERR(macallan_hdmi_vddio);
+			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %d\n",
+				__func__, e);
+			macallan_hdmi_vddio = NULL;
 		} else {
-			regulator_enable(macallan_hdmi_vddio);
+			e = regulator_enable(macallan_hdmi_vddio);
 			mdelay(5);
 		}
 	}
 
-	return 0;
+	return e;
 }
 
 static struct tegra_dc_out macallan_disp2_out = {

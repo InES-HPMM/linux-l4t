@@ -209,18 +209,21 @@ static int dalmore_hdmi_postsuspend(void)
 
 static int dalmore_hdmi_hotplug_init(struct device *dev)
 {
+	int e = 0;
+
 	if (!dalmore_hdmi_vddio) {
 		dalmore_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(dalmore_hdmi_vddio))) {
-			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
-				__func__, PTR_ERR(dalmore_hdmi_vddio));
-				dalmore_hdmi_vddio = NULL;
+			e = PTR_ERR(dalmore_hdmi_vddio);
+			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %d\n",
+				__func__, e);
+			dalmore_hdmi_vddio = NULL;
 		} else {
-			regulator_enable(dalmore_hdmi_vddio);
+			e = regulator_enable(dalmore_hdmi_vddio);
 		}
 	}
 
-	return 0;
+	return e;
 }
 
 /* Electrical characteristics for HDMI, all modes must be declared here */
