@@ -161,7 +161,7 @@ static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
 			clk_rate = clk_get_max_rate(
 					CAP_TBL_CAP_CLK(cap_clk_index-1));
 		else if (gk20a_clk_cap != NULL)
-			clk_rate = gk20a_clk_cap->get_max() * 1000000UL / 2;
+			clk_rate = gk20a_clk_cap->get_max();
 
 		/* TODO : use when GPU clock is in Linux Clock Framework */
 		/* clk_rate = */
@@ -177,7 +177,7 @@ static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
 								clk_rate);
 		else if (gk20a_clk_cap != NULL)
 			gk20a_clk_cap->set_cap_thermal(gk20a_clk_cap->g,
-						clk_rate / 1000000UL * 2);
+								clk_rate);
 
 		/* TODO : use when GPU clock is in Linux Clock Framework */
 		/* clk_set_rate(CAP_TBL_CAP_CLK(cap_clk_index-1), clk_rate); */
@@ -413,8 +413,7 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 			CAP_TBL_CAP_CLK(i) = c;
 			CAP_TBL_CAP_FREQ(i) = clk_get_max_rate(c);
 		} else if (gk20a_clk_cap != NULL)
-			CAP_TBL_CAP_FREQ(i) = gk20a_clk_cap->get_max() *
-								1000000UL / 2;
+			CAP_TBL_CAP_FREQ(i) = gk20a_clk_cap->get_max();
 	}
 	pr_info("tegra_throttle : init %s\n",
 		tegra_throttle_init_failed ? "FAILED" : "passed");
