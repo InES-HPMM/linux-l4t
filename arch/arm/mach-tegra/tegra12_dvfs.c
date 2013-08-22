@@ -77,7 +77,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
 	.max_millivolts = 1350,
-	.min_millivolts = 810,
+	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
@@ -283,6 +283,8 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id =  0,
 		.process_id = -1,
+		.max_mv = 1100,
+		.min_mv = 800,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
@@ -647,12 +649,14 @@ static int __init set_cpu_dvfs_data(
 static int __init set_gpu_dvfs_data(
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
-	int i, j, mv, max_mv;
+	int i, j, mv;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_gpu_speedo_value();
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_gpu.alignment;
 
-	max_mv = round_cvb_voltage(tegra_gpu_speedo_mv() * 1000, 1000, align);
+	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000, align);
+	d->min_mv = round_cvb_voltage(d->min_mv * 1000, 1000, align);
+	BUG_ON(d->min_mv < tegra12_dvfs_rail_vdd_gpu.min_millivolts);
 
 	/*
 	 * Use CVB table to fill in gpu dvfs frequencies and voltages. Each
@@ -668,10 +672,11 @@ static int __init set_gpu_dvfs_data(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
 		mv = round_cvb_voltage(mv, d->voltage_scale, align);
 
-		if (mv > max_mv)
+		if (mv > d->max_mv)
 			break;
 
 		/* fill in gpu dvfs tables */
+		mv = max(mv, d->min_mv);
 		if (!j || (mv > gpu_millivolts[j - 1])) {
 			gpu_millivolts[j] = mv;
 			gpu_dvfs->freqs[j] = table->freq;
@@ -692,7 +697,7 @@ static int __init set_gpu_dvfs_data(
 	gpu_dvfs->process_id = d->process_id;
 	gpu_dvfs->freqs_mult = d->freqs_mult;
 	gpu_dvfs->dvfs_rail->nominal_millivolts =
-		min(max_mv, gpu_millivolts[j - 1]);
+		min(d->max_mv, gpu_millivolts[j - 1]);
 
 	*max_freq_index = j - 1;
 	return 0;

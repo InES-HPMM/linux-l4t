@@ -231,12 +231,6 @@ int tegra_core_speedo_mv(void)
 	}
 }
 
-int tegra_gpu_speedo_mv(void)
-{
-	/* TBD: fill in actual number */
-	return 1100;
-}
-
 int tegra_get_cpu_iddq_value(void)
 {
 	return cpu_iddq_value;
