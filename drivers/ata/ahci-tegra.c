@@ -754,14 +754,16 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	val |= SWR_SATACOLD_RST;
 	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
 
-	if (gpio_is_valid(ahci_pdata->pexp_gpio)) {
-		val = gpio_request(ahci_pdata->pexp_gpio, "ahci-tegra");
-		if (val) {
-			pr_err("failed to allocate Port expander gpio\n");
-			err = -ENODEV;
-			goto exit;
+	if (ahci_pdata->pexp_gpio) {
+		if (gpio_is_valid(ahci_pdata->pexp_gpio)) {
+			val = gpio_request(ahci_pdata->pexp_gpio, "ahci-tegra");
+			if (val) {
+				pr_err("failed to allocate Port expander gpio\n");
+				err = -ENODEV;
+				goto exit;
+			}
+			gpio_direction_output(ahci_pdata->pexp_gpio, 1);
 		}
-		gpio_direction_output(ahci_pdata->pexp_gpio, 1);
 	}
 
 #endif
