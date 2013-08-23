@@ -349,6 +349,19 @@ static void __init map_mem(void)
 {
 	struct memblock_region *reg;
 	struct map_desc md;
+	phys_addr_t limit;
+
+	/*
+	 * Temporarily limit the memblock range. We need to do this as
+	 * create_mapping requires puds, pmds and ptes to be allocated from
+	 * memory addressable from the initial direct kernel mapping.
+	 *
+	 * The initial direct kernel mapping, located at swapper_pg_dir,
+	 * gives us PGDIR_SIZE memory starting from PHYS_OFFSET (which must be
+	 * aligned to 2MB as per Documentation/arm64/booting.txt).
+	 */
+	limit = PHYS_OFFSET + PGDIR_SIZE;
+	memblock_set_current_limit(limit);
 
 	/* map all the memory banks */
 	for_each_memblock(memory, reg) {
@@ -362,6 +375,22 @@ static void __init map_mem(void)
 
 		if (start >= end)
 			break;
+
+#ifndef CONFIG_ARM64_64K_PAGES
+		/*
+		 * For the first memory bank align the start address and
+		 * current memblock limit to prevent create_mapping() from
+		 * allocating pte page tables from unmapped memory.
+		 * When 64K pages are enabled, the pte page table for the
+		 * first PGDIR_SIZE is already present in swapper_pg_dir.
+		 */
+		if (start < limit)
+			start = ALIGN(start, PMD_SIZE);
+		if (end < limit) {
+			limit = end & PMD_MASK;
+			memblock_set_current_limit(limit);
+		}
+#endif
 
 		create_mapping(&md);
 	}
