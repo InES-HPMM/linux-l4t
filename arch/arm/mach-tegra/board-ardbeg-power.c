@@ -191,13 +191,11 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
-#endif
 	REGULATOR_SUPPLY("vddio_audio", NULL),
 	REGULATOR_SUPPLY("pwrdet_audio", NULL),
 	REGULATOR_SUPPLY("vddio_uart", NULL),
@@ -838,7 +836,6 @@ FIXED_REG(1,	usb0_vbus,	usb0_vbus,
 	NULL,	0,	0,	TEGRA_GPIO_PN4,
 	false,	true,	0,	5000,	0);
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 FIXED_REG(2,	usb1_vbus,	usb1_vbus,
 	NULL,	0,	0,	TEGRA_GPIO_PN5,
 	true,	true,	0,	5000,	0);
@@ -846,15 +843,6 @@ FIXED_REG(2,	usb1_vbus,	usb1_vbus,
 FIXED_REG(3,	usb2_vbus,	usb2_vbus,
 	NULL,	0,	0,	TEGRA_GPIO_PFF1,
 	false,	true,	0,	5000,	0);
-#else
-FIXED_REG(2,	usb1_vbus,	usb1_vbus,
-	NULL,	0,	0,	TEGRA_GPIO_PK6,
-	true,	true,	0,	5000,	0);
-
-FIXED_REG(3,	usb2_vbus,	usb2_vbus,
-	NULL,	0,	0,	TEGRA_GPIO_PK5,
-	false,	true,	0,	5000,	0);
-#endif
 
 FIXED_REG(4,	vdd_sd,	vdd_sd,
 	NULL,	0,	0,	TEGRA_GPIO_PR0,

@@ -133,15 +133,12 @@ static noinline void __init ardbeg_setup_bluedroid_pm(void)
 	platform_device_register(&ardbeg_bluedroid_pm_device);
 }
 
-/*use board file for T12x*/
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
 static struct i2c_board_info __initdata rt5645_board_info = {
 	I2C_BOARD_INFO("rt5645", 0x1a),
 };
-#endif
 
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -247,8 +244,6 @@ static struct tegra_serial_platform_data ardbeg_uartd_pdata = {
 	.modem_interrupt = false,
 };
 
-/*use board file for T12x*/
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
 	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
@@ -346,8 +341,6 @@ static struct platform_device ardbeg_audio_device_rt5639 = {
 	},
 };
 
-#endif
-
 static void __init ardbeg_uart_init(void)
 {
 	int debug_port_id;
@@ -402,7 +395,6 @@ static void bonaire_sata_init(void)
 static void bonaire_sata_init(void) { }
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[0]	= 1,
 	.port_status[1]	= 1,
@@ -424,7 +416,6 @@ static void laguna_pcie_init(void)
 	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
-#endif
 
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -434,12 +425,8 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_avp_device,
 #endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	&tegra12_se_device,
 #endif
-#endif
-/*use board file for T12x*/
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
@@ -449,7 +436,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_i2s_device4,
 	&ardbeg_audio_device_rt5639,
 	&tegra_spdif_device,
-#endif
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_hda_device,
@@ -510,7 +496,6 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 };
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -536,7 +521,6 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 		.vbus_oc_map = 0x5,
 	},
 };
-#endif
 
 static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.port_otg = false,
@@ -647,7 +631,6 @@ static void ardbeg_usb_init(void)
 		/* Setup the udc platform data */
 		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	}
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		if (!modem_id) {
 			tegra_ehci2_device.dev.platform_data =
@@ -655,7 +638,6 @@ static void ardbeg_usb_init(void)
 			platform_device_register(&tegra_ehci2_device);
 		}
 	}
-#endif
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
@@ -996,10 +978,7 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_i2c_init();
 	ardbeg_spi_init();
 	ardbeg_uart_init();
-/*use board file for T12x*/
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	ardbeg_audio_init();
-#endif
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
@@ -1025,12 +1004,10 @@ static void __init tegra_ardbeg_late_init(void)
 	else
 		ardbeg_pmon_init();
 	tegra_release_bootloader_fb();
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_pcie_init();
-#endif
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
@@ -1130,11 +1107,7 @@ DT_MACHINE_START(ARDBEG, "ardbeg")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_ardbeg_reserve,
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	.init_early	= tegra_ardbeg_init_early,
-#else
-	.init_early	= tegra11x_init_early,
-#endif
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_ardbeg_dt_init,

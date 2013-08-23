@@ -579,13 +579,11 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
-#endif
 };
 
 /* gated by TCA6416 GPIO EXP GPIO0 */

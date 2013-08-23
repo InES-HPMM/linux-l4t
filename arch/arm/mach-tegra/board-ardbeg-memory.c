@@ -953,8 +953,6 @@ int __init ardbeg_emc_init(void)
 		return -EINVAL;
 	}
 	platform_device_register(&tegra_emc_device);
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	tegra12_emc_init();
-#endif
 	return 0;
 }
