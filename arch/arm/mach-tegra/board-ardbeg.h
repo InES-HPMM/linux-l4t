@@ -94,17 +94,10 @@ enum tegra_bb_type {
 #define HSIC2_PORT_OWNER_XUSB   0x8
 
 /* Touchscreen definitions */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
 #define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
 #define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
-#else
-#define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
-#define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
-#define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
-#define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
-#endif
 
 /* Audio-related GPIOs */
 /*Same GPIO's used for T114(Interposer) and T124*/
@@ -119,20 +112,11 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 #define TEGRA_GPIO_LDO_EN	TEGRA_GPIO_PR2
 
 /*GPIOs used by board panel file */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
 #define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
-#else
-#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
-#define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
-#endif
 
 /* HDMI Hotplug detection pin */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
-#else
-#define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
-#endif
 
 /* I2C related GPIOs */
 /* Same for interposer and t124 */
@@ -154,7 +138,6 @@ int laguna_regulator_init(void);
 int laguna_pm358_pmon_init(void);
 
 /* AUO Display related GPIO */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
 #define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
 #define LCD_LR                  TEGRA_GPIO_PH6 /* GMI_AD14 */
@@ -163,17 +146,6 @@ int laguna_pm358_pmon_init(void);
 #define en_vdd_bl       TEGRA_GPIO_PP2 /* DAP3_DOUT */
 #define lvds_en         TEGRA_GPIO_PI0 /* GMI_WR_N */
 #define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
-
-#else
-#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
-#define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
-#define LCD_LR                  TEGRA_GPIO_PH6 /* GMI_AD14 */
-#define LCD_TE                  TEGRA_GPIO_PI4 /* GMI_RST_N */
-#define DSI_PANEL_BL_PWM        TEGRA_GPIO_PH1 /*GMI_AD9 */
-#define en_vdd_bl       TEGRA_GPIO_PP2 /* DAP3_DOUT */
-#define lvds_en         TEGRA_GPIO_PI0 /* GMI_WR_N */
-#define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
-#endif
 
 /* HID keyboard and trackpad irq same for interposer and t124 */
 #define I2C_KB_IRQ	TEGRA_GPIO_PC7

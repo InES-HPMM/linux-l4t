@@ -33,11 +33,7 @@
 #include "board-loki.h"
 #include "devices.h"
 #include "iomap.h"
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#include "wakeups-t11x.h"
-#else
 #include "wakeups-t12x.h"
-#endif
 
 
 #define GPIO_KEY(_id, _gpio, _iswake)           \

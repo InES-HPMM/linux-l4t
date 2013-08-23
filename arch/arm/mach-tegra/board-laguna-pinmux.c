@@ -25,11 +25,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#include <mach/pinmux-t11.h>
-#else
 #include <mach/pinmux-t12.h>
-#endif
 
 #define DEFAULT_DRIVE(_name)					\
 	{							\
@@ -197,22 +193,6 @@
 	}
 
 static __initdata struct tegra_drive_pingroup_config laguna_drive_pinmux[] = {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/* DEFAULT_DRIVE(<pin_group>), */
-
-	/*Set DAP2 drive (required for Codec Master Mode)*/
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
-
-	/* SDMMC1 */
-	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
-
-	/* SDMMC3 */
-	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
-
-	/* SDMMC4 */
-	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
-								FASTEST, 1),
-#else
 	/*Set DAP2 drive (required for Codec Master Mode)*/
 	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
 
@@ -225,87 +205,9 @@ static __initdata struct tegra_drive_pingroup_config laguna_drive_pinmux[] = {
 	/* SDMMC4 */
 	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
 								FASTEST, 1),
-#endif
 };
-#if 0
-/* Initially setting all used GPIO's to non-TRISTATE */
-static __initdata struct tegra_pingroup_config laguna_pinmux_set_nontristate[] = {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_X5_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_X6_AUD,     RSVD3,  PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_X7_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_W2_AUD,     RSVD1,  PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_W3_AUD,     SPI6,   PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_X1_AUD,     RSVD3,  PULL_DOWN,    NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_X3_AUD,     RSVD3,  PULL_UP,      NORMAL,    INPUT),
 
-	DEFAULT_PINMUX(DAP3_FS,         I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(DAP3_DIN,        I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(DAP3_DOUT,       I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(DAP3_SCLK,       I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PV0,        RSVD3,  NORMAL,       NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PV1,        RSVD,   NORMAL,       NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(GPIO_PBB3,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PBB5,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PBB6,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PBB7,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PCC1,       RSVD3,  PULL_DOWN,    NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PCC2,       RSVD3,  PULL_DOWN,    NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(GMI_AD0,         GMI,    NORMAL,       NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD1,         GMI,    NORMAL,       NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD10,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD11,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD12,        GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD13,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD2,         GMI,    NORMAL,       NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD3,         GMI,    NORMAL,       NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD8,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_ADV_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CLK,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_CS0_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS2_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS3_N,       GMI,    PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_CS4_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS7_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_DQS_P,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_IORDY,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_WP_N,        GMI,    PULL_UP,      NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(SDMMC1_WP_N,     SPI4,   PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(CLK2_REQ,        RSVD3,  NORMAL,       NORMAL,    OUTPUT),
-
-	DEFAULT_PINMUX(KB_COL3,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(KB_COL5,         KBC,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(KB_COL6,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(KB_COL7,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(KB_ROW3,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
-	DEFAULT_PINMUX(KB_ROW4,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
-	DEFAULT_PINMUX(KB_ROW6,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
-	DEFAULT_PINMUX(KB_ROW7,         KBC,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(KB_ROW8,         KBC,    PULL_UP,      NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(CLK3_REQ,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU4,        PWM1,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU5,        PWM2,  NORMAL,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PU6,        PWM3,  NORMAL,      NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
-
-	DEFAULT_PINMUX(GMI_AD9,         PWM1,   NORMAL,    NORMAL,     OUTPUT),
-#else
-	/* TODO: update for t124 laguna */
-#endif
-};
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#include "board-laguna-pinmux-t11x.h"
-#else
 #include "board-laguna-pinmux-t12x.h"
-#endif
 
 static void __init laguna_gpio_init_configure(void)
 {
@@ -325,10 +227,6 @@ static void __init laguna_gpio_init_configure(void)
 
 int __init laguna_pinmux_init(void)
 {
-#if 0
-	tegra_pinmux_config_table(laguna_pinmux_set_nontristate,
-					ARRAY_SIZE(laguna_pinmux_set_nontristate));
-#endif
 	laguna_gpio_init_configure();
 
 	tegra_pinmux_config_table(laguna_pinmux_common, ARRAY_SIZE(laguna_pinmux_common));

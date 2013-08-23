@@ -39,12 +39,7 @@
 #include "board-panel.h"
 #include "common.h"
 #include "iomap.h"
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#include "tegra11_host1x_devices.h"
-#else
 #include "tegra12_host1x_devices.h"
-#endif
 
 
 struct platform_device * __init ardbeg_host1x_init(void)
@@ -52,15 +47,7 @@ struct platform_device * __init ardbeg_host1x_init(void)
 	struct platform_device *pdev = NULL;
 
 #ifdef CONFIG_TEGRA_GRHOST
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	if (!of_have_populated_dt())
-		pdev = tegra11_register_host1x_devices();
-	else
-		pdev = to_platform_device(bus_find_device_by_name(
-				&platform_bus_type, NULL, "host1x"));
-#else
 	pdev = tegra12_register_host1x_devices();
-#endif
 
 	if (!pdev) {
 		pr_err("host1x devices registration failed\n");

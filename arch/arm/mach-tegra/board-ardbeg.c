@@ -437,9 +437,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	&tegra12_se_device,
 #endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	&tegra11_se_device,
-#endif
 #endif
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
@@ -666,18 +663,6 @@ static void ardbeg_usb_init(void)
 }
 
 static struct tegra_xusb_board_data xusb_bdata = {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_USB2_P1,
-	.supply = {
-		.s5p0v = "usb_vbus0",
-		.s5p0v1 = "usb_vbus1",
-		.s5p0v2 = "usb_vbus2",
-		.s3p3v = "hvdd_usb",
-		.s1p8v = "avdd_usb_pll",
-		.s1p2v = "vddio_hsic",
-		.s1p05v = "avddio_usb",
-	},
-#else
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
 	.supply = {
@@ -700,7 +685,6 @@ static struct tegra_xusb_board_data xusb_bdata = {
 		.auto_term_en = true,
 		.strb_trim_val = 0x22,
 	},
-#endif
 	.uses_external_pmic = false,
 	.uses_different_vbus_per_port = true,
 };
@@ -889,19 +873,6 @@ static void __init ardbeg_spi_init(void)
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/* sdhci and i2c dt support not planned for bringup */
-	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000400, "sdhci-tegra.2",
-				NULL),
-#if 0
-	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000000, "sdhci-tegra.0",
-				&ardbeg_tegra_sdhci_platform_data0),
-#endif
-	OF_DEV_AUXDATA("nvidia,tegra114-camera", 0x0, "tegra_camera",
-				NULL),
-#endif
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
@@ -914,30 +885,6 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
 				NULL),
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	OF_DEV_AUXDATA("nvidia,tegra30-ahub", 0x70080000, "tegra30-ahub",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-gr3d", TEGRA_GR3D_BASE, "gr3d",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-gr2d", TEGRA_GR2D_BASE, "gr2d",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-msenc", TEGRA_MSENC_BASE, "msenc",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
-				NULL),
-#else
 	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
@@ -949,7 +896,6 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
-#endif
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",

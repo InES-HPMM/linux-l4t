@@ -600,13 +600,6 @@ static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
-#endif
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),

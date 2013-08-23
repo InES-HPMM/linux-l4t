@@ -444,13 +444,6 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd", "0-000c"),
 	REGULATOR_SUPPLY("vdd", "0-0077"),
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
-#endif
 };
 
 PALMAS_PDATA_INIT(ti913_smps123, 700, 1400, NULL, 1, 1, 1, NORMAL);
@@ -896,15 +889,9 @@ FIXED_REG(11,	tca6408_p2,	tca6408_p2,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(2),
 	false,	true,	0,	1200, 0);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
-	NULL,	0,	0,
-	TEGRA_GPIO_PH7,	false,	true,	0,	5000,	5000);
-#else
 FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
 	TEGRA_GPIO_PK6,	false,	true,	0,	5000,	5000);
-#endif
 
 FIXED_REG(13,	tca6408_p6,	tca6408_p6,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(6),
