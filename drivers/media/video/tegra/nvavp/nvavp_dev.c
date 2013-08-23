@@ -12,6 +12,7 @@
 #include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
+#include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/firmware.h>
@@ -1180,8 +1181,9 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	struct nvavp_pushbuffer_submit_hdr hdr;
 	u32 *cmdbuf_data;
-	ulong cmdbuf_handle_id;
-	struct nvmap_handle_ref *cmdbuf_dupe;
+	struct dma_buf *cmdbuf_dmabuf;
+	struct dma_buf_attachment *dmabuf_attach;
+	struct sg_table *sgt;
 	int ret = 0, i;
 	phys_addr_t phys_addr;
 	unsigned long virt_addr;
@@ -1206,36 +1208,33 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 	}
 
-	cmdbuf_handle_id = nvmap_get_handle_user_id(clientctx->nvmap,
-						hdr.cmdbuf.mem);
-	if (cmdbuf_handle_id == 0) {
+	cmdbuf_dmabuf = nvmap_dmabuf_export(clientctx->nvmap, hdr.cmdbuf.mem);
+	if (!cmdbuf_dmabuf) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
 		return -EPERM;
 	}
 
-	cmdbuf_dupe = nvmap_duplicate_handle_user_id(clientctx->nvmap,
-						hdr.cmdbuf.mem);
-	nvmap_put_handle_user_id(cmdbuf_handle_id);
-
-	if (IS_ERR(cmdbuf_dupe)) {
-		dev_err(&nvavp->nvhost_dev->dev,
-			"could not duplicate handle\n");
-		return PTR_ERR(cmdbuf_dupe);
-	}
-
-	ret = nvmap_pin(clientctx->nvmap, cmdbuf_dupe, &phys_addr);
-	if (ret) {
-		dev_err(&nvavp->nvhost_dev->dev, "could not pin handle\n");
-		nvmap_free(clientctx->nvmap, cmdbuf_dupe);
-		return ret;
-	}
-
-	virt_addr = (unsigned long)nvmap_mmap(cmdbuf_dupe);
-	if (!virt_addr) {
-		dev_err(&nvavp->nvhost_dev->dev, "cannot map cmdbuf handle\n");
+	dmabuf_attach = dma_buf_attach(cmdbuf_dmabuf, &nvavp->nvhost_dev->dev);
+	if (!dmabuf_attach) {
+		dev_err(&nvavp->nvhost_dev->dev, "cannot attach cmdbuf_dmabuf\n");
 		ret = -ENOMEM;
-		goto err_cmdbuf_mmap;
+		goto err_dmabuf_attach;
+	}
+
+	sgt = dma_buf_map_attachment(dmabuf_attach, DMA_BIDIRECTIONAL);
+	if (!sgt) {
+		dev_err(&nvavp->nvhost_dev->dev, "cannot map cmdbuf_dmabuf\n");
+		goto err_dmabuf_map;
+	}
+
+	phys_addr = sg_dma_address(sgt->sgl);
+
+	virt_addr = (unsigned long)dma_buf_vmap(cmdbuf_dmabuf);
+	if (!virt_addr) {
+		dev_err(&nvavp->nvhost_dev->dev, "cannot vmap cmdbuf_dmabuf\n");
+		ret = -ENOMEM;
+		goto err_dmabuf_vmap;
 	}
 
 	cmdbuf_data = (u32 *)(virt_addr + hdr.cmdbuf.offset);
@@ -1280,10 +1279,12 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	}
 
 err_reloc_info:
-	nvmap_munmap(cmdbuf_dupe, (void *)virt_addr);
-err_cmdbuf_mmap:
-	nvmap_unpin(clientctx->nvmap, cmdbuf_dupe);
-	nvmap_free(clientctx->nvmap, cmdbuf_dupe);
+err_dmabuf_vmap:
+	dma_buf_vunmap(cmdbuf_dmabuf, (void *)virt_addr);
+err_dmabuf_map:
+	dma_buf_unmap_attachment(dmabuf_attach, sgt, DMA_BIDIRECTIONAL);
+err_dmabuf_attach:
+	dma_buf_put(cmdbuf_dmabuf);
 	return ret;
 }
 
