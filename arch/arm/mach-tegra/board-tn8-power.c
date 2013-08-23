@@ -252,24 +252,42 @@ static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
 };
 
-PALMAS_PDATA_INIT(smps123, 900, 1400, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(smps45, 900, 1400, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(smps6, 1350, 1350, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(smps7, 900, 1400, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(smps8, 1800, 1800, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(smps9, 3300, 3300, NULL, 0, 0, 1, NORMAL);
-PALMAS_PDATA_INIT(smps10, 5000, 5000, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo1, 1050, 1050, palmas_rails(smps6), 1, 1, 1, 0);
-PALMAS_PDATA_INIT(ldo2, 1050, 1200, palmas_rails(smps6), 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo3, 3300, 3300, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo4, 2700, 2700, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo5, 1200, 1200, palmas_rails(smps8), 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo6, 1800, 1800, palmas_rails(smps9), 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo7, 2700, 2700, palmas_rails(smps9), 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldo8, 1000, 1000, NULL, 1, 1, 1, 0);
-PALMAS_PDATA_INIT(ldo9, 1800, 3300, palmas_rails(smps9), 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ldoln, 3300, 3300, palmas_rails(smps10), 1, 1, 1, 0);
-PALMAS_PDATA_INIT(ldousb, 3000, 3300, NULL, 1, 1, 1, 0);
+PALMAS_REGS_PDATA(smps123, 900, 1400, NULL, 1, 1, 1, NORMAL,
+	0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
+PALMAS_REGS_PDATA(smps45, 900, 1400, NULL, 1, 1, 1, NORMAL,
+	0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0, 0);
+PALMAS_REGS_PDATA(smps6, 1350, 1350, NULL, 1, 1, 1, NORMAL,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(smps7, 900, 1400, NULL, 1, 1, 1, NORMAL,
+	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REGS_PDATA(smps8, 1800, 1800, NULL, 1, 1, 1, NORMAL,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(smps9, 3300, 3300, NULL, 0, 0, 1, NORMAL,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(smps10, 5000, 5000, NULL, 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo1, 1050, 1050, palmas_rails(smps6), 1, 1, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo2, 1050, 1200, palmas_rails(smps6), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo3, 3300, 3300, NULL, 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo4, 2700, 2700, NULL, 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo5, 1200, 1200, palmas_rails(smps8), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo6, 1800, 1800, palmas_rails(smps9), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo7, 2700, 2700, palmas_rails(smps9), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo8, 1000, 1000, NULL, 1, 1, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo9, 1800, 3300, palmas_rails(smps9), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldoln, 3300, 3300, palmas_rails(smps10), 1, 1, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldousb, 3000, 3300, NULL, 1, 1, 1, 0,
+	0, 0, 0, 0, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 static struct regulator_init_data *tn8_reg_data[PALMAS_NUM_REGS] = {
@@ -305,35 +323,6 @@ static struct regulator_init_data *tn8_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	NULL,
 };
-
-#define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep,	\
-		_vsel)						\
-	static struct palmas_reg_init reg_init_data_##_name = {		\
-		.warm_reset = _warm_reset,				\
-		.roof_floor =	_roof_floor,				\
-		.enable_gpio = -EINVAL,					\
-		.mode_sleep = _mode_sleep,		\
-		.vsel = _vsel,		\
-	}
-
-PALMAS_REG_INIT(smps123, 0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0);
-PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0);
-PALMAS_REG_INIT(smps6, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps7, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
-PALMAS_REG_INIT(smps8, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps9, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps10, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo1, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo2, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo3, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo4, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo5, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo6, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo7, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo8, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldoln, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldousb, 0, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
 static struct palmas_reg_init *tn8_reg_init[PALMAS_NUM_REGS] = {

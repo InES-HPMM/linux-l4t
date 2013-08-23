@@ -81,6 +81,7 @@
 		.warm_reset = _warm_reset,				\
 		.roof_floor = _roof_floor,				\
 		.mode_sleep = _mode_sleep,				\
+		.enable_gpio = -EINVAL,					\
 		.vsel = _vsel,						\
 	}
 
