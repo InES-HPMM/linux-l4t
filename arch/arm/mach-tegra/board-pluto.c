@@ -1420,4 +1420,5 @@ MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.init_machine	= tegra_pluto_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= pluto_dt_board_compat,
+	.init_late	= tegra_init_late
 MACHINE_END
