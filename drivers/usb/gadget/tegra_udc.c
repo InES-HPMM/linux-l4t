@@ -2870,12 +2870,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		udc->vbus_reg = NULL;
 	}
 
-#ifdef CONFIG_USB_OTG_UTILS
 	if (pdata->port_otg)
 		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
-#else
-		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
-#endif
 
 	if (!IS_ERR_OR_NULL(udc->transceiver)) {
 		dr_controller_stop(udc);
@@ -2885,13 +2881,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		udc->usb_state = USB_STATE_DEFAULT;
 		otg_set_peripheral(udc->transceiver->otg, &udc->gadget);
 	}
-
-#ifndef CONFIG_USB_OTG_UTILS
-	/* Power down the phy if cable is not connected */
-	if (!vbus_enabled(udc))
-		tegra_usb_phy_power_off(udc->phy);
-#endif
-
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
