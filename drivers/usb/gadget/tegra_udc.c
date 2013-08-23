@@ -1601,25 +1601,6 @@ static const struct usb_gadget_ops tegra_gadget_ops = {
 	.udc_stop = tegra_udc_stop,
 };
 
-static int tegra_udc_setup_gadget_dev(struct tegra_udc *udc)
-{
-	/* Setup gadget structure */
-	udc->gadget.ops = &tegra_gadget_ops;
-	udc->gadget.max_speed = USB_SPEED_HIGH;
-	udc->gadget.ep0 = &udc->eps[0].ep;
-	INIT_LIST_HEAD(&udc->gadget.ep_list);
-	udc->gadget.speed = USB_SPEED_UNKNOWN;
-	udc->gadget.name = driver_name;
-
-	/* Setup gadget.dev and register with kernel */
-	dev_set_name(&udc->gadget.dev, "gadget");
-	udc->gadget.dev.release = tegra_udc_release;
-	udc->gadget.dev.parent = &udc->pdev->dev;
-
-	return device_register(&udc->gadget.dev);
-}
-
-
 /**
  * Set protocol stall on ep0, protocol stall will automatically be cleared
  * on new transaction.
@@ -2529,7 +2510,6 @@ static int tegra_udc_start(struct usb_gadget *g,
 	driver->driver.bus = NULL;
 	/* hook up the driver */
 	udc->driver = driver;
-	udc->gadget.dev.driver = &driver->driver;
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
@@ -2820,16 +2800,18 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_phy;
 	}
 
-	err = tegra_udc_setup_gadget_dev(udc);
-	if (err) {
-		dev_err(&pdev->dev, "failed to setup udc gadget device\n");
-		goto err_phy;
-	}
+	/* Setup gadget structure */
+	udc->gadget.ops = &tegra_gadget_ops;
+	udc->gadget.max_speed = USB_SPEED_HIGH;
+	udc->gadget.ep0 = &udc->eps[0].ep;
+	INIT_LIST_HEAD(&udc->gadget.ep_list);
+	udc->gadget.speed = USB_SPEED_UNKNOWN;
+	udc->gadget.name = driver_name;
 
 	err = tegra_udc_ep_setup(udc);
 	if (err) {
 		dev_err(&pdev->dev, "failed to setup end points\n");
-		goto err_unregister;
+		goto err_phy;
 	}
 
 	/* Use dma_pool for TD management */
@@ -2838,10 +2820,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			DTD_ALIGNMENT, UDC_DMA_BOUNDARY);
 	if (!udc->td_pool) {
 		err = -ENOMEM;
-		goto err_unregister;
+		goto err_phy;
 	}
 
-	err = usb_add_gadget_udc(&pdev->dev, &udc->gadget);
+	err = usb_add_gadget_udc_release(&pdev->dev, &udc->gadget,
+		tegra_udc_release);
 	if (err)
 		goto err_del_udc;
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
@@ -2916,9 +2899,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 err_del_udc:
 	dma_pool_destroy(udc->td_pool);
 
-err_unregister:
-	device_unregister(&udc->gadget.dev);
-
 err_phy:
 	usb_phy_shutdown(get_usb_phy(udc->phy));
 
@@ -2986,7 +2966,6 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	release_mem_region(res->start, res->end - res->start + 1);
 
 	mutex_destroy(&udc->sync_lock);
-	device_unregister(&udc->gadget.dev);
 	/* Free udc -- wait for the release() finished */
 	wait_for_completion(&done);
 
