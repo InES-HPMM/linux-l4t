@@ -260,6 +260,9 @@ struct clk {
 			enum shared_bus_users_mode	mode;
 			u32				usage_flag;
 		} shared_bus_user;
+		struct {
+			struct tegra_clk_export_ops	*ops;
+		} export_clk;
 	} u;
 
 	struct raw_notifier_head			*rate_change_nh;

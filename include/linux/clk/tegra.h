@@ -172,6 +172,18 @@ int tegra_is_clk_enabled(struct clk *clk);
 
 void tegra_cpu_user_cap_set(unsigned int speed_khz);
 
+struct tegra_clk_export_ops {
+	void		(*init)(void *data, unsigned long *rate, bool *state);
+	int		(*enable)(void *data);
+	void		(*disable)(void *data);
+	int		(*set_rate)(void *data, unsigned long *rate);
+	void		*data;
+};
+
+int tegra_clk_register_export_ops(struct clk *c,
+				  struct tegra_clk_export_ops *ops);
+
+
 #ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
 int tegra_clk_set_max(struct clk *c, unsigned long rate);
 #else

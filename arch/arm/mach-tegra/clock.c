@@ -1103,6 +1103,20 @@ void tegra_unregister_clk_rate_notifier(
 	clk_unlock_restore(c, &flags);
 }
 
+int tegra_clk_register_export_ops(struct clk *c,
+				  struct tegra_clk_export_ops *ops)
+{
+	unsigned long flags;
+
+	clk_lock_save(c, &flags);
+	c->u.export_clk.ops = ops;
+	if (c->ops && c->ops->init)
+		c->ops->init(c);
+	clk_unlock_restore(c, &flags);
+
+	return 0;
+}
+
 #define OSC_FREQ_DET			0x58
 #define OSC_FREQ_DET_TRIG		BIT(31)
 
