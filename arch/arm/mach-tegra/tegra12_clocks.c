@@ -6974,7 +6974,80 @@ static struct clk tegra_clk_gpu = {
 	.u.periph  = {
 		.clk_num = 184,
 	},
-	.max_rate  = 806000000,
+	.max_rate  = 48000000,
+	.min_rate  = 12000000,
+};
+
+static void tegra12_clk_gbus_init(struct clk *c)
+{
+	unsigned long rate;
+	bool enabled;
+
+	pr_debug("%s on clock %s (export ops %s)\n", __func__,
+		 c->name, c->u.export_clk.ops ? "ready" : "not ready");
+
+	if (!c->u.export_clk.ops || !c->u.export_clk.ops->init)
+		return;
+
+	c->u.export_clk.ops->init(c->u.export_clk.ops->data, &rate, &enabled);
+	c->div = clk_get_rate(c->parent) / 1000000;
+	c->mul = rate / 1000000;
+	c->state = enabled ? ON : OFF;
+}
+
+static int tegra12_clk_gbus_enable(struct clk *c)
+{
+	pr_debug("%s on clock %s (export ops %s)\n", __func__,
+		 c->name, c->u.export_clk.ops ? "ready" : "not ready");
+
+	if (!c->u.export_clk.ops || !c->u.export_clk.ops->enable)
+		return -ENOENT;
+
+	return c->u.export_clk.ops->enable(c->u.export_clk.ops->data);
+}
+
+static void tegra12_clk_gbus_disable(struct clk *c)
+{
+	pr_debug("%s on clock %s (export ops %s)\n", __func__,
+		 c->name, c->u.export_clk.ops ? "ready" : "not ready");
+
+	if (!c->u.export_clk.ops || !c->u.export_clk.ops->disable)
+		return;
+
+	c->u.export_clk.ops->disable(c->u.export_clk.ops->data);
+}
+
+static int tegra12_clk_gbus_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret;
+
+	pr_debug("%s %lu on clock %s (export ops %s)\n", __func__,
+		 rate, c->name, c->u.export_clk.ops ? "ready" : "not ready");
+
+	if (!c->u.export_clk.ops || !c->u.export_clk.ops->set_rate)
+		return -ENOENT;
+
+	ret = c->u.export_clk.ops->set_rate(c->u.export_clk.ops->data, &rate);
+	if (!ret)
+		c->mul = rate / 1000000;
+	return ret;
+}
+
+static struct clk_ops tegra_clk_gbus_ops = {
+	.init		= tegra12_clk_gbus_init,
+	.enable		= tegra12_clk_gbus_enable,
+	.disable	= tegra12_clk_gbus_disable,
+	.set_rate	= tegra12_clk_gbus_set_rate,
+	.round_rate	= tegra12_clk_cbus_round_rate,		  /* re-use */
+	.round_rate_updown = tegra12_clk_cbus_round_updown,	  /* re-use */
+	.shared_bus_update = tegra12_clk_shared_connector_update, /* re-use */
+};
+
+static struct clk tegra_clk_gbus = {
+	.name      = "gbus",
+	.ops       = &tegra_clk_gbus_ops,
+	.parent    = &tegra_clk_gpu,
+	.max_rate  = 1000000000,
 };
 
 static void tegra12_camera_mclk_init(struct clk *c)
@@ -7340,6 +7413,10 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("override.cbus", "override.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.cbus",	"edp.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
+	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
+	SHARED_CLK("cap.gbus",		"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("override.gbus",	"override.gbus", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE),
 };
 
 /* VI, ISP buses */
@@ -7494,6 +7571,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
 	CLK_DUPLICATE("gpu", "tegra_gk20a", "PLLG_ref"),
+	CLK_DUPLICATE("gbus", "tegra_gk20a", "PLLG_out"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a", "pwr"),
 	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp", "isp"),
 	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
@@ -7576,6 +7654,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cbus,
 #endif
 	&tegra_clk_gpu,
+	&tegra_clk_gbus,
 	&tegra_clk_isp,
 	&tegra_clk_c4bus,
 };

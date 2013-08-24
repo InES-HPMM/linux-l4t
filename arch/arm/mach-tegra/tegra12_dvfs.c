@@ -290,11 +290,11 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f        dfll  pll:   c0,     c1,   c2 */
-			{  408000, {  }, {  810000,      0,   0}, },
-			{  528000, {  }, {  860000,      0,   0}, },
-			{  702000, {  }, {  900000,      0,   0}, },
-			{  984000, {  }, {  990000,      0,   0}, },
-			{ 1248000, {  }, { 1080000,      0,   0}, },
+			{  204000, {  }, {  810000,      0,   0}, },
+			{  264000, {  }, {  860000,      0,   0}, },
+			{  351000, {  }, {  900000,      0,   0}, },
+			{  492000, {  }, {  990000,      0,   0}, },
+			{  624000, {  }, { 1080000,      0,   0}, },
 			{       0, {  }, {       0,      0,   0}, },
 		},
 	},
@@ -302,9 +302,9 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 
 static int gpu_millivolts[MAX_DVFS_FREQS];
 static struct dvfs gpu_dvfs = {
-	.clk_name	= "gpu",
+	.clk_name	= "gbus",
 	.millivolts	= gpu_millivolts,
-	.auto_dvfs	= false,
+	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra12_dvfs_rail_vdd_gpu,
 };
 
