@@ -230,9 +230,15 @@ static int ad193x_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct ad193x_priv *ad193x = snd_soc_codec_get_drvdata(codec);
 	switch (freq) {
+	case 8192000:
+	case 11289600:
 	case 12288000:
+	case 16934400:
+	case 16384000:
 	case 18432000:
+	case 22579200:
 	case 24576000:
+	case 33868800:
 	case 36864000:
 		ad193x->sysclk = freq;
 		return 0;
@@ -263,15 +269,21 @@ static int ad193x_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	switch (ad193x->sysclk) {
+	case 8192000:
+	case 11289600:
 	case 12288000:
 		master_rate = AD193X_PLL_INPUT_256;
 		break;
+	case 16934400:
 	case 18432000:
 		master_rate = AD193X_PLL_INPUT_384;
 		break;
+	case 16384000:
+	case 22579200:
 	case 24576000:
 		master_rate = AD193X_PLL_INPUT_512;
 		break;
+	case 33868800:
 	case 36864000:
 		master_rate = AD193X_PLL_INPUT_768;
 		break;
