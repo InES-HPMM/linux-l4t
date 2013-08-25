@@ -45,7 +45,8 @@ struct tegra_sdhci_platform_data {
 	int is_8bit;
 	int pm_flags;
 	int pm_caps;
-	int nominal_vcore_uV;
+	int nominal_vcore_mv;
+	int min_vcore_override_mv;
 	unsigned int max_clk_limit;
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
