@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2013 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1026,6 +1026,35 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 
 	ret = wait_for_completion_timeout(&i2c_dev->msg_complete,
 					TEGRA_I2C_TIMEOUT);
+	if (ret == 0) {
+		dev_err(i2c_dev->dev, "--- register dump for debugging ----\n");
+		dev_err(i2c_dev->dev, "I2C_CNFG - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_CNFG));
+		dev_err(i2c_dev->dev, "I2C_PACKET_TRANSFER_STATUS - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
+		dev_err(i2c_dev->dev, "I2C_FIFO_CONTROL - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_FIFO_CONTROL));
+		dev_err(i2c_dev->dev, "I2C_FIFO_STATUS - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_FIFO_STATUS));
+		dev_err(i2c_dev->dev, "I2C_INT_MASK - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_INT_MASK));
+		dev_err(i2c_dev->dev, "I2C_INT_STATUS - 0x%x\n",
+			i2c_readl(i2c_dev, I2C_INT_STATUS));
+
+		dev_err(i2c_dev->dev, "msg->len - %d\n", msg->len);
+		dev_err(i2c_dev->dev, "is_msg_write - %d\n",
+			!(msg->flags & I2C_M_RD));
+		if (next_msg != NULL) {
+			dev_err(i2c_dev->dev, "next_msg->len - %d\n",
+				next_msg->len);
+			dev_err(i2c_dev->dev, "is_next_msg_write - %d\n",
+				!(next_msg->flags & I2C_M_RD));
+		}
+
+		dev_err(i2c_dev->dev, "buf_remaining - %d\n",
+			i2c_dev->msg_buf_remaining);
+	}
+
 	tegra_i2c_mask_irq(i2c_dev, int_mask);
 
 	if (i2c_dev->is_dvc)
