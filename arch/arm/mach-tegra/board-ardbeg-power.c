@@ -837,10 +837,10 @@ static struct regulator_init_data tps51632_cpu_init_data = {
 
 static struct tps51632_regulator_platform_data tps51632_pdata_cpu = {
 	.reg_init_data = &tps51632_cpu_init_data,
-	.enable_pwm = false,
+	.enable_pwm_dvfs = false,
 	.max_voltage_uV = 1520000,
 	.base_voltage_uV = 500000,
-	.slew_rate_uv_per_us = 6000,
+/*	.slew_rate_uv_per_us = 6000,*/
 };
 
 static struct i2c_board_info tps51632_cpu_boardinfo[] = {
@@ -875,10 +875,10 @@ static struct regulator_init_data tps51632_init_gpu_data = {
 
 static struct tps51632_regulator_platform_data tps51632_pdata_gpu = {
 	.reg_init_data = &tps51632_init_gpu_data,
-	.enable_pwm = false,
+	.enable_pwm_dvfs = false,
 	.max_voltage_uV = 1520000,
 	.base_voltage_uV = 500000,
-	.slew_rate_uv_per_us = 6000,
+/*	.slew_rate_uv_per_us = 6000,*/
 };
 
 static struct i2c_board_info tps51632_gpu_boardinfo[] = {
