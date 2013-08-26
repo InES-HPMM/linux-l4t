@@ -574,7 +574,6 @@ static struct palmas_platform_data palmas_ti913_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_ti913_platform,
-	.use_power_off = true,
 	.pinctrl_pdata = &palmas_ti913_pinctrl_pdata,
 	.clk32k_init_data =  palmas_ti913_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_ti913_clk32k_idata),
