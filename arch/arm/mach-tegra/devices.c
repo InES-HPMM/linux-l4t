@@ -2243,7 +2243,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	  SWGID(PPCS2), },
 	{ .name = "tegra-rtc",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
-	{ .name = "tegra-sata",	.swgids = SWGID(SATA), },
+	{ .name = "tegra-sata",	.swgids = SWGID(SATA2), },
 	{ .name = "tegra-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "tegra-snd",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |

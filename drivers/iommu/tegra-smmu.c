@@ -1804,7 +1804,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu->swgids = 0x00000020018659fe;
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
-		smmu->swgids = 0x06f9000001fec9cf;
+		smmu->swgids = 0x06f9000001ffc9cf;
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
 		smmu->ptc_cache_size = SZ_32K;
