@@ -28,6 +28,7 @@
 #include <media/dw9718.h>
 #include <media/as364x.h>
 #include <linux/pid_thermal_gov.h>
+#include <linux/power/sbs-battery.h>
 #include <mach/edp.h>
 #include <mach/tegra_fuse.h>
 
@@ -720,6 +721,18 @@ static int ardbeg_nct72_init(void)
 	return ret;
 }
 
+static struct sbs_platform_data sbs_pdata = {
+	.poll_retry_count	= 100,
+	.i2c_retry_count	= 2,
+};
+
+static struct i2c_board_info __initdata bq20z45_pdata[] = {
+	{
+		I2C_BOARD_INFO("sbs-battery", 0x0B),
+		.platform_data = &sbs_pdata,
+	},
+};
+
 int __init ardbeg_sensors_init(void)
 {
 	struct board_info board_info;
@@ -732,6 +745,10 @@ int __init ardbeg_sensors_init(void)
 
 	i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
+
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		i2c_register_board_info(1, bq20z45_pdata,
+			ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }
