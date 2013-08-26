@@ -324,7 +324,7 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 		rtc_pdata = palmas_pdata->rtc_pdata;
 
 	palmas->rtc = palmas_rtc;
-	if (rtc_pdata && rtc_pdata->enable_charging) {
+	if (rtc_pdata && rtc_pdata->backup_battery_chargeable) {
 		int slave;
 		unsigned int addr;
 		int reg = 0;
@@ -333,7 +333,7 @@ static int palmas_rtc_probe(struct platform_device *pdev)
 				PALMAS_BACKUP_BATTERY_CTRL);
 		slave = PALMAS_BASE_TO_SLAVE(PALMAS_PMU_CONTROL_BASE);
 
-		if (rtc_pdata->charging_current_ua < 100)
+		if (!rtc_pdata->backup_battery_charge_high_current)
 			reg = PALMAS_BACKUP_BATTERY_CTRL_BBS_BBC_LOW_ICHRG;
 
 		ret = regmap_update_bits(palmas->regmap[slave], addr,

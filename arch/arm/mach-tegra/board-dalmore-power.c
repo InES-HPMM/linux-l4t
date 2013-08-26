@@ -758,8 +758,8 @@ static struct palmas_pmic_platform_data pmic_platform = {
 };
 
 static struct palmas_rtc_platform_data rtc_platform = {
-	.enable_charging = 1,
-	.charging_current_ua = 100,
+	.backup_battery_chargeable = true,
+	.backup_battery_charge_high_current = true,
 };
 
 static struct palmas_pinctrl_config palmas_pincfg[] = {

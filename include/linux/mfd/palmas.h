@@ -523,8 +523,8 @@ struct palmas_charger_platform_data {
 
 
 struct palmas_rtc_platform_data {
-	unsigned enable_charging:1;
-	unsigned charging_current_ua;
+	bool backup_battery_chargeable;
+	bool backup_battery_charge_high_current;
 };
 
 struct palmas_pm_platform_data {
