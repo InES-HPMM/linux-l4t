@@ -74,8 +74,39 @@ static void palmas_power_off(void *drv_data)
 				PALMAS_DEV_CTRL, 1, 0);
 }
 
+static void palmas_power_reset(void *drv_data)
+{
+	struct palmas_pm *palmas_pm = drv_data;
+	struct palmas *palmas = palmas_pm->palmas;
+	unsigned int val;
+	int i;
+	int ret;
+
+	for (i = 0; i < palmas_pm->num_int_mask_regs; ++i) {
+		ret = palmas_write(palmas, PALMAS_INTERRUPT_BASE,
+				palmas_pm->int_mask_reg_add[i],
+				palmas_pm->int_mask_val[i]);
+		if (ret < 0)
+			dev_err(palmas_pm->dev,
+				"register 0x%02x write failed: %d\n",
+				palmas_pm->int_mask_reg_add[i], ret);
+
+		ret = palmas_read(palmas, PALMAS_INTERRUPT_BASE,
+					palmas_pm->int_status_reg_add[i], &val);
+		if (ret < 0)
+			dev_err(palmas_pm->dev,
+				"register 0x%02x read failed: %d\n",
+				palmas_pm->int_status_reg_add[i], ret);
+	}
+
+	dev_info(palmas_pm->dev, "Power reset the device\n");
+	palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+				PALMAS_DEV_CTRL, 0x2, 0x2);
+}
+
 static struct system_pmic_ops palmas_pm_ops = {
 	.power_off = palmas_power_off,
+	.power_reset = palmas_power_reset,
 };
 
 static int palmas_pm_probe(struct platform_device *pdev)
