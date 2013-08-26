@@ -348,8 +348,7 @@ proc_write(struct file *file,
 static void
 proc_on_close(struct inode *inode, struct file *file)
 {
-	struct proc_dir_entry *entry = PDE(inode);
-	struct proc_private_data *priv = entry->data;
+	struct proc_private_data *priv = PDE_DATA(inode);
 	struct proc_data *pdata = file->private_data;
 	char *line;
 	int i;
@@ -398,8 +397,7 @@ proc_on_close(struct inode *inode, struct file *file)
 static int
 proc_open(struct inode *inode, struct file *file)
 {
-	struct proc_dir_entry *entry = PDE(inode);
-	struct proc_private_data *priv = entry->data;
+	struct proc_private_data *priv = PDE_DATA(inode);
 	struct proc_data *pdata;
 	int i;
 	char *p;
