@@ -40,3 +40,11 @@ config POWER_RESET_VEXPRESS
 	help
 	  Power off and reset support for the ARM Ltd. Versatile
 	  Express boards.
+
+config POWER_OFF_PALMAS
+	bool "Palmas power-off-reset driver"
+	depends on MFD_PALMAS
+	select SYSTEM_PMIC
+	help
+	  This driver supports turning off and resetting board through Palmas
+	  PMIC.

@@ -527,6 +527,11 @@ struct palmas_rtc_platform_data {
 	unsigned charging_current_ua;
 };
 
+struct palmas_pm_platform_data {
+	bool use_power_off;
+	bool use_power_reset;
+};
+
 struct palmas_pinctrl_config {
 	int pin_name;
 	int pin_mux_option;
@@ -592,6 +597,7 @@ struct palmas_platform_data {
 	struct palmas_resource_platform_data *resource_pdata;
 	struct palmas_clk_platform_data *clk_pdata;
 	struct palmas_rtc_platform_data *rtc_pdata;
+	struct palmas_pm_platform_data *pm_pdata;
 	struct palmas_battery_platform_data *battery_pdata;
 	struct palmas_sim_platform_data *sim_pdata;
 
