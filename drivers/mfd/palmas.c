@@ -57,6 +57,7 @@ enum palmas_ids {
 	PALMAS_BATTERY_GAUGE_ID,
 	PALMAS_CHARGER_ID,
 	PALMAS_SIM_ID,
+	PALMAS_PM_ID,
 };
 
 static struct resource palmas_rtc_resources[] = {
@@ -73,7 +74,8 @@ static struct resource palmas_rtc_resources[] = {
 		BIT(PALMAS_RTC_ID) | BIT(PALMAS_PWRBUTTON_ID) |		\
 		BIT(PALMAS_GPADC_ID) |	BIT(PALMAS_RESOURCE_ID) |	\
 		BIT(PALMAS_CLK_ID) | BIT(PALMAS_PWM_ID)		| 	\
-		BIT(PALMAS_USB_ID) | BIT(PALMAS_EXTCON_ID))
+		BIT(PALMAS_USB_ID) | BIT(PALMAS_EXTCON_ID))	|	\
+		BIT(PALMAS_PM_ID)
 
 #define TPS80036_SUB_MODULE	(TPS65913_SUB_MODULE |			\
 		BIT(PALMAS_BATTERY_GAUGE_ID) | BIT(PALMAS_CHARGER_ID) |	\
@@ -155,6 +157,10 @@ static const struct mfd_cell palmas_children[] = {
 	{
 		.name = "palmas-sim",
 		.id = PALMAS_SIM_ID,
+	},
+	{
+		.name = "palmas-pm",
+		.id = PALMAS_PM_ID,
 	},
 };
 
@@ -959,52 +965,6 @@ static void palmas_dt_to_pdata(struct i2c_client *i2c,
 		palmas_set_pdata_irq_flag(i2c, pdata);
 }
 
-static struct palmas *palmas_dev;
-static void palmas_power_off(void)
-{
-	unsigned int val;
-	struct palmas_irq_chip_data *d;
-	int i;
-	int ret;
-
-	if (!palmas_dev)
-		return;
-
-	/* Mask all interrupts and clear any pending interrupt */
-	d = palmas_dev->irq_chip_data;
-	for (i = 0; i < d->num_mask_regs; i++) {
-		ret = palmas_write(d->palmas,
-				d->irq_regs->mask_reg[i].reg_base,
-				d->irq_regs->mask_reg[i].reg_add,
-				0xFF);
-		if (ret < 0)
-			dev_err(palmas_dev->dev,
-				"register 0x%02x write failed: %d\n",
-				d->irq_regs->mask_reg[i].reg_add, ret);
-
-		ret = palmas_read(d->palmas,
-				d->irq_regs->status_reg[i].reg_base,
-				d->irq_regs->status_reg[i].reg_add,
-				&val);
-		if (ret < 0)
-			dev_err(palmas_dev->dev,
-				"register 0x%02x read failed: %d\n",
-				d->irq_regs->mask_reg[i].reg_add, ret);
-	}
-
-	/* Mask all COLD RST condition */
-	palmas_write(palmas_dev, PALMAS_PMU_CONTROL_BASE,
-			PALMAS_SWOFF_COLDRST, 0x0);
-
-	dev_info(palmas_dev->dev, "Powering off the device\n");
-
-	/* Switch off the device */
-	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
-
-	/* Do not expect control here */
-	dev_err(palmas_dev->dev, "Powering off of device failed\n");
-}
-
 static int palmas_read_version_information(struct palmas *palmas)
 {
 	unsigned int sw_rev, des_rev;
@@ -1241,15 +1201,11 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		goto err_devices;
 
-	if (pdata->use_power_off && !pm_power_off)
-		pm_power_off = palmas_power_off;
-
 	if (pdata->auto_ldousb_en)
 		/* VBUS detection enables the LDOUSB */
 		palmas_control_update(palmas, PALMAS_EXT_CHRG_CTRL, 1,
 					PALMAS_EXT_CHRG_CTRL_AUTO_LDOUSB_EN);
 
-	palmas_dev = palmas;
 	return ret;
 
 err_devices:
