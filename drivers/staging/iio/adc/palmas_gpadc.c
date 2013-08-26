@@ -385,7 +385,7 @@ static const struct iio_info palmas_gpadc_iio_info = {
 {									\
 	.datasheet_name = PALMAS_DATASHEET_NAME(chan),			\
 	.type = IIO_VOLTAGE, 						\
-	.info_mask = 0 | IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,		\
+	.info_mask_separate = 0 | BIT(IIO_CHAN_INFO_CALIBSCALE),	\
 	.indexed = 1,							\
 	.channel = PALMAS_ADC_CH_##chan,				\
 }
