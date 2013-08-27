@@ -1,7 +1,7 @@
 /*
  * DMA driver for Nvidia's Tegra20 APB DMA controller.
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-13, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -600,6 +600,11 @@ static void handle_once_dma_done(struct tegra_dma_channel *tdc,
 	list_add_tail(&sgreq->node, &tdc->free_sg_req);
 
 	/* Do not start DMA if it is going to be terminate */
+	if (list_empty(&tdc->pending_sg_req)) {
+		clk_disable_unprepare(tdc->tdma->dma_clk);
+		pm_runtime_put(tdc->tdma->dev);
+	}
+
 	if (to_terminate || list_empty(&tdc->pending_sg_req))
 		return;
 
@@ -703,12 +708,21 @@ static void tegra_dma_issue_pending(struct dma_chan *dc)
 {
 	struct tegra_dma_channel *tdc = to_tegra_dma_chan(dc);
 	unsigned long flags;
+	int ret;
 
 	spin_lock_irqsave(&tdc->lock, flags);
 	if (list_empty(&tdc->pending_sg_req)) {
 		dev_err(tdc2dev(tdc), "No DMA request\n");
 		goto end;
 	}
+
+	pm_runtime_get(tdc->tdma->dev);
+	ret = clk_prepare_enable(tdc->tdma->dma_clk);
+	if (ret < 0) {
+		dev_err(tdc2dev(tdc), "clk_enable failed: %d\n", ret);
+		return;
+	}
+
 	if (!tdc->busy) {
 		tdc_start_head_req(tdc);
 
@@ -772,6 +786,8 @@ static void tegra_dma_terminate_all(struct dma_chan *dc)
 				get_current_xferred_count(tdc, sgreq, wcount);
 	}
 	tegra_dma_resume(tdc);
+	clk_disable_unprepare(tdc->tdma->dma_clk);
+	pm_runtime_put(tdc->tdma->dev);
 
 skip_dma_stop:
 	tegra_dma_abort_all(tdc);
@@ -1193,22 +1209,15 @@ struct dma_async_tx_descriptor *tegra_dma_prep_dma_cyclic(
 static int tegra_dma_alloc_chan_resources(struct dma_chan *dc)
 {
 	struct tegra_dma_channel *tdc = to_tegra_dma_chan(dc);
-	struct tegra_dma *tdma = tdc->tdma;
-	int ret;
 
 	dma_cookie_init(&tdc->dma_chan);
 	tdc->config_init = false;
-	ret = clk_prepare_enable(tdma->dma_clk);
-	if (ret < 0)
-		dev_err(tdc2dev(tdc), "clk_prepare_enable failed: %d\n", ret);
-	return ret;
+	return 0;
 }
 
 static void tegra_dma_free_chan_resources(struct dma_chan *dc)
 {
 	struct tegra_dma_channel *tdc = to_tegra_dma_chan(dc);
-	struct tegra_dma *tdma = tdc->tdma;
-
 	struct tegra_dma_desc *dma_desc;
 	struct tegra_dma_sg_req *sg_req;
 	struct list_head dma_desc_list;
@@ -1243,7 +1252,6 @@ static void tegra_dma_free_chan_resources(struct dma_chan *dc)
 		list_del(&sg_req->node);
 		kfree(sg_req);
 	}
-	clk_disable_unprepare(tdma->dma_clk);
 }
 
 /* Tegra20 specific DMA controller information */
