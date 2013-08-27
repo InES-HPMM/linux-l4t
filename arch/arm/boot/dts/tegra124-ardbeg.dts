@@ -57,6 +57,7 @@
 	i2c@7000d000 {
 		status = "okay";
 		clock-frequency = <400000>;
+		nvidia,bit-banging-xfer-after-shutdown;
 	};
 
 	i2c@7000d100 {
