@@ -182,7 +182,6 @@ static int tegra_cpuidle_register(unsigned int cpu)
 {
 	struct cpuidle_driver *drv;
 	struct cpuidle_state *state;
-	int mc_state_index = -1;
 
 	drv = &per_cpu(cpuidle_drv, cpu);
 	drv->name = driver_name;
@@ -233,7 +232,6 @@ static int tegra_cpuidle_register(unsigned int cpu)
 		state->flags = CPUIDLE_FLAG_TIME_VALID;
 		state->enter = tegra_idle_enter_pd;
 		state->disabled = true;
-		mc_state_index = drv->state_count;
 		drv->state_count++;
 	}
 #endif
@@ -245,11 +243,6 @@ static int tegra_cpuidle_register(unsigned int cpu)
 
 	on_each_cpu_mask(drv->cpumask, tegra_cpuidle_setup_bctimer,
 				(void *)CLOCK_EVT_NOTIFY_BROADCAST_ON, 1);
-
-#ifdef CONFIG_TEGRA_MC_DOMAINS
-	if (cpu == 0 && mc_state_index != -1)
-		pm_genpd_name_attach_cpuidle("tegra_mc_clk", mc_state_index);
-#endif
 
 	return 0;
 }
