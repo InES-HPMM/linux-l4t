@@ -7434,6 +7434,26 @@ static struct clk tegra_visp_clks[] = {
 
 /* XUSB clocks */
 #define XUSB_ID "tegra-xhci"
+/* xusb common clock gate - enabled on init and never disabled */
+static void tegra12_xusb_gate_clk_init(struct clk *c)
+{
+	tegra12_periph_clk_enable(c);
+}
+
+static struct clk_ops tegra_xusb_gate_clk_ops = {
+	.init    = tegra12_xusb_gate_clk_init,
+};
+
+static struct clk tegra_clk_xusb_gate = {
+	.name      = "xusb_gate",
+	.flags     = ENABLE_ON_INIT | PERIPH_NO_RESET,
+	.ops       = &tegra_xusb_gate_clk_ops,
+	.rate      = 12000000,
+	.max_rate  = 48000000,
+	.u.periph = {
+		.clk_num   = 143,
+	},
+};
 
 static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
@@ -7618,6 +7638,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_a_out0,
 	&tegra_pll_d,
 	&tegra_pll_d_out0,
+	&tegra_clk_xusb_gate,
 	&tegra_pll_u,
 	&tegra_pll_u_480M,
 	&tegra_pll_u_60M,
