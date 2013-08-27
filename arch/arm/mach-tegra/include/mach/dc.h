@@ -552,6 +552,8 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
 #define TEGRA_DC_OUT_ONE_SHOT_LP_MODE		(1 << 5)
 #define TEGRA_DC_OUT_INITIALIZED_MODE		(1 << 6)
+/* Makes hotplug GPIO a LP0 wakeup source */
+#define TEGRA_DC_OUT_HOTPLUG_WAKE_LP0		(1 << 7)
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1
