@@ -7418,7 +7418,10 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
 	SHARED_CLK("cap.gbus",		"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.profile.gbus",	"profile.gbus", "cap",	&tegra_clk_gbus, NULL, 0, SHARED_CEILING),
 	SHARED_CLK("override.gbus",	"override.gbus", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE),
+	SHARED_CLK("floor.gbus",	"floor.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, 0),
+	SHARED_CLK("floor.profile.gbus", "profile.gbus", "floor", &tegra_clk_gbus, NULL,  0, 0),
 };
 
 /* VI, ISP buses */

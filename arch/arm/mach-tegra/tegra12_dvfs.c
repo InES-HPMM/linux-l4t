@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/pm_qos.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -888,6 +889,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
+static struct kobject *gpu_kobj;
 
 static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -900,22 +902,25 @@ static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 	{ .cap_name = "cap.emc" },
 };
 
-/*
- * Keep sys file names the same for dual and single cbus configurations to
- * avoid changes in user space GPU capping interface.
- */
-static struct core_bus_limit_table tegra12_bus_cap_table[] = {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .limit_clk_name = "cap.profile.c2bus",
-	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
-	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
-	},
-#else
-	{ .limit_clk_name = "cap.profile.cbus",
-	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
-	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
-	},
-#endif
+static struct core_bus_limit_table tegra12_gpu_cap_syfs = {
+	.limit_clk_name = "cap.profile.gbus",
+	.refcnt_attr = {.attr = {.name = "gpu_cap_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_cap_level", .mode = 0644} },
+	.pm_qos_class = PM_QOS_GPU_FREQ_MAX,
+};
+
+static struct core_bus_limit_table tegra12_gpu_floor_sysfs = {
+	.limit_clk_name = "floor.profile.gbus",
+	.refcnt_attr = {.attr = {.name = "gpu_floor_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_floor_level", .mode = 0644} },
+	.pm_qos_class = PM_QOS_GPU_FREQ_MIN,
+};
+
+static struct core_bus_rates_table tegra12_gpu_rates_sysfs = {
+	.bus_clk_name = "gbus",
+	.rate_attr = {.attr = {.name = "gpu_rate", .mode = 0444} },
+	.available_rates_attr = {
+		.attr = {.name = "gpu_available_rates", .mode = 0444} },
 };
 
 static int __init tegra12_dvfs_init_core_cap(void)
@@ -925,16 +930,6 @@ static int __init tegra12_dvfs_init_core_cap(void)
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
 		pr_err("tegra12_dvfs: failed to create sysfs cap object\n");
-		return 0;
-	}
-
-	ret = tegra_init_shared_bus_cap(
-		tegra12_bus_cap_table, ARRAY_SIZE(tegra12_bus_cap_table),
-		cap_kobj);
-	if (ret) {
-		pr_err("tegra12_dvfs: failed to init bus cap interface (%d)\n",
-		       ret);
-		kobject_del(cap_kobj);
 		return 0;
 	}
 
@@ -949,6 +944,40 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
+
+	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);
+	if (!gpu_kobj) {
+		pr_err("tegra12_dvfs: failed to create sysfs gpu object\n");
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_cap(&tegra12_gpu_cap_syfs,
+					1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu cap interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_floor(&tegra12_gpu_floor_sysfs,
+					  1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu floor interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+
+	ret = tegra_init_sysfs_shared_bus_rate(&tegra12_gpu_rates_sysfs,
+					       1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu rates interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
 
 	return 0;
 }
