@@ -570,6 +570,11 @@ static struct palmas_pinctrl_platform_data palmas_ti913_pinctrl_pdata = {
 static struct palmas_pmic_platform_data pmic_ti913_platform = {
 };
 
+static struct palmas_pm_platform_data palmas_pm_pdata = {
+	.use_power_off = true,
+	.use_power_reset = true,
+};
+
 static struct palmas_platform_data palmas_ti913_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
@@ -578,6 +583,7 @@ static struct palmas_platform_data palmas_ti913_pdata = {
 	.clk32k_init_data =  palmas_ti913_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_ti913_clk32k_idata),
 	.extcon_pdata = &palmas_extcon_pdata,
+	.pm_pdata = &palmas_pm_pdata,
 };
 
 static struct i2c_board_info palma_ti913_device[] = {
