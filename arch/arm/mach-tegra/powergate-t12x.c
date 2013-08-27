@@ -159,9 +159,9 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 		.name = "ve",
 		.clk_info = {
 			[0] = { .clk_name = "isp", .clk_type = CLK_AND_RST },
-			[0] = { .clk_name = "ispb", .clk_type = CLK_AND_RST },
-			[1] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
-			[2] = { .clk_name = "csi", .clk_type = CLK_AND_RST },
+			[1] = { .clk_name = "ispb", .clk_type = CLK_AND_RST },
+			[2] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
+			[3] = { .clk_name = "csi", .clk_type = CLK_AND_RST },
 		},
 	},
 	[TEGRA_POWERGATE_DISA] = {
@@ -602,7 +602,6 @@ spinlock_t *tegra12x_get_powergate_lock(void)
 bool tegra12x_powergate_skip(int id)
 {
 	switch (id) {
-	case TEGRA_POWERGATE_VENC:
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	case TEGRA_POWERGATE_SATA:
 #endif
