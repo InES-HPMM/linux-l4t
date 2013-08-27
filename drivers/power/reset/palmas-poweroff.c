@@ -99,6 +99,56 @@ static void palmas_power_reset(void *drv_data)
 				palmas_pm->int_status_reg_add[i], ret);
 	}
 
+	/* SW-WAR for ES Version 2.1, 2.0 and 1.0 */
+	if (palmas_is_es_version_or_less(palmas, 2, 1)) {
+		dev_info(palmas_pm->dev, "Resetting Palmas through RTC\n");
+		ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+				PALMAS_DEV_CTRL, PALMAS_DEV_CTRL_SW_RST, 0);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"DEV_CTRL update failed: %d\n", ret);
+			goto reset_direct;
+		}
+
+		ret = palmas_update_bits(palmas, PALMAS_RTC_BASE,
+				PALMAS_RTC_INTERRUPTS_REG,
+				PALMAS_RTC_INTERRUPTS_REG_IT_TIMER,
+				PALMAS_RTC_INTERRUPTS_REG_IT_TIMER);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"RTC_INTERRUPTS update failed: %d\n", ret);
+			goto reset_direct;
+		}
+
+		ret = palmas_update_bits(palmas, PALMAS_RTC_BASE,
+			PALMAS_RTC_CTRL_REG, PALMAS_RTC_CTRL_REG_STOP_RTC,
+			PALMAS_RTC_CTRL_REG_STOP_RTC);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"RTC_CTRL_REG update failed: %d\n", ret);
+			goto reset_direct;
+		}
+
+		ret = palmas_update_bits(palmas, PALMAS_INTERRUPT_BASE,
+				PALMAS_INT2_MASK, PALMAS_INT2_MASK_RTC_TIMER, 0);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"INT2_MASK update failed: %d\n", ret);
+			goto reset_direct;
+		}
+
+		ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+				PALMAS_DEV_CTRL, PALMAS_DEV_CTRL_SW_RST,
+				PALMAS_DEV_CTRL_SW_RST);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"DEV_CTRL update failed: %d\n", ret);
+			goto reset_direct;
+		}
+		return;
+	}
+
+reset_direct:
 	dev_info(palmas_pm->dev, "Power reset the device\n");
 	palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
 				PALMAS_DEV_CTRL, 0x2, 0x2);
