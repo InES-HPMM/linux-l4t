@@ -1,0 +1,14 @@
+/dts-v1/;
+
+/include/ "tegra210.dtsi"
+
+/ {
+	model = "grenada";
+	compatible = "nvidia,grenada", "nvidia,tegra210";
+
+	/* chosen */
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x40000000 >;
+	};
+};
