@@ -103,13 +103,13 @@ static int __init mipi_cal_dev_init(void)
 		pr_warn("%s: cannot get mipi-cal clk.\n", __func__);
 		pm.clk = NULL;
 	}
-
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	pm.clk72mhz = clk_get_sys("clk72mhz", NULL);
 	if (IS_ERR_OR_NULL(pm.clk72mhz)) {
 		pr_warn("%s: cannot get mipi-cal clk.\n", __func__);
 		pm.clk72mhz = NULL;
 	}
-
+#endif
 	return misc_register(&mipi_cal_dev);
 }
 
