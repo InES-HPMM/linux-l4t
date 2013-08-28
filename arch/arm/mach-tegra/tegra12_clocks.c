@@ -5460,7 +5460,7 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->refcnt && c->parent)
+	if (c->refcnt)
 		clk_disable(c->parent);
 
 	clk_reparent(c, p);
