@@ -6,6 +6,12 @@
 	model = "NVIDIA Tegra114 macallan evaluation board";
 	compatible = "nvidia,macallan", "nvidia,tegra114";
 
+	host1x {
+		hdmi {
+			status = "okay";
+		};
+	};
+
 	pinmux {
 		pinctrl-names = "default";
 		pinctrl-0 = <&state_default>;

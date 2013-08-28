@@ -19,6 +19,12 @@
 		};
 	};
 
+	host1x {
+		hdmi {
+			status = "okay";
+		};
+	};
+
 	pmc {
 		status = "okay";
 		nvidia,invert-interrupt;

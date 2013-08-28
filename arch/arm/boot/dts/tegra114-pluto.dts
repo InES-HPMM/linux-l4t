@@ -17,6 +17,10 @@
 				nvidia,dsi-panel-bl-pwm-gpio = <&gpio 57 0>; /* PH1 */
 			};
 		};
+
+		hdmi {
+			status = "okay";
+		};
 	};
 
 	pinmux {
