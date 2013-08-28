@@ -547,15 +547,15 @@ FIXED_REG(0,	battery,	battery,	NULL,
 
 FIXED_REG(1,	usb0_vbus,	usb0_vbus,	NULL,
 	0,	0,	TEGRA_GPIO_PN4,
-	false,	true,	0,	5000,	0);
+	true,	true,	0,	5000,	0);
 
 FIXED_REG(2,	usb1_vbus,	usb1_vbus,	palmas_rails(smps10),
 	0,	0,	TEGRA_GPIO_PN5,
-	false,	true,	0,	5000,	0);
+	true,	true,	0,	5000,	0);
 
 FIXED_REG(3,	usb2_vbus,	usb2_vbus,	palmas_rails(smps10),
 	0,	0,	TEGRA_GPIO_PFF1,
-	false,	true,	0,	5000,	0);
+	true,	true,	0,	5000,	0);
 
 FIXED_REG(4,	palmas_gpio3,	palmas_gpio3,	palmas_rails(smps9),
 	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,
