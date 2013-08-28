@@ -3972,8 +3972,11 @@ static int tegra12_pll_div_clk_set_rate(struct clk *c, unsigned long rate);
 static void tegra12_pll_div_clk_init(struct clk *c)
 {
 	if (c->flags & DIV_U71) {
-		u32 divu71;
-		u32 val = clk_readl(c->reg);
+		u32 val, divu71;
+		if (c->parent->state == OFF)
+			c->ops->disable(c);
+
+		val = clk_readl(c->reg);
 		val >>= c->reg_shift;
 		c->state = (val & PLL_OUT_CLKEN) ? ON : OFF;
 		if (!(val & PLL_OUT_RESET_DISABLE))
