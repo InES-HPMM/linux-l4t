@@ -1231,11 +1231,6 @@ skip_setting_calib_offsets:
 	if (!timeout)
 		dev_err(mmc_dev(sdhci->mmc), "Auto calibration failed\n");
 
-	/* Disable Auto calibration */
-	val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
-	val &= ~SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
-	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
-
 	if (soc_data->nvquirks & NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD) {
 		val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
 		val &= ~SDMMC_SDMEMCOMPPADCTRL_PAD_E_INPUT_OR_E_PWRD_MASK;
@@ -1247,6 +1242,11 @@ skip_setting_calib_offsets:
 		unsigned int pullup_code;
 		int pg;
 		int err;
+
+		/* Disable Auto calibration */
+		val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
+		val &= ~SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
+		sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
 
 		pg = tegra_drive_get_pingroup(mmc_dev(sdhci->mmc));
 		if (pg != -1) {
