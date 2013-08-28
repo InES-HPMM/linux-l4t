@@ -258,6 +258,7 @@ struct tegra_usb_pmc_data {
 	enum tegra_usb_phy_interface phy_type;
 	enum tegra_usb_port_speed port_speed;
 	struct tegra_usb_pmc_ops *pmc_ops;
+	bool is_xhci;
 	void __iomem *usb_base;
 	u32 utmip_rctrl_val;
 	u32 utmip_tctrl_val;

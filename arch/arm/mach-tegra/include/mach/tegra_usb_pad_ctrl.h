@@ -87,6 +87,11 @@
 #define SSP1_ELPG_CLAMP_EN_EARLY	(1 << 21)
 #define SSP1_ELPG_VCORE_DOWN		(1 << 22)
 
+#define XUSB_PADCTL_USB2_PAD_MUX_0		0x4
+#define USB2_OTG_PAD_PORT0_MASK			0x3
+#define USB2_OTG_PAD_PORT0_SNPS			0x0
+#define USB2_OTG_PAD_PORT0_XUSB			0x1
+
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
 #define XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
 #define XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1	(1 << 2)
@@ -111,6 +116,7 @@
 #define SATA_SEQ_ENABLE				(1 << 24)
 #define SATA_SEQ_START_STATE			(1 << 25)
 
+void tegra_xhci_release_otg_port(bool release);
 void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable);
 void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable);
 void tegra_xhci_ss_wake_signal(u32 portmap, bool enable);

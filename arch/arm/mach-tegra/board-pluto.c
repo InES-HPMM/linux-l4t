@@ -997,12 +997,17 @@ static void pluto_usb_init(void)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-		platform_device_register(&tegra_otg_device);
-
-		/* Setup the udc platform data */
-		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+		tegra_otg_pdata.is_xhci = false;
+		tegra_udc_pdata.u_data.dev.is_xhci = false;
+	} else {
+		tegra_otg_pdata.is_xhci = true;
+		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 }
 
 static void pluto_modem_init(void)

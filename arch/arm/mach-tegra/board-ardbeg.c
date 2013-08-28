@@ -626,11 +626,17 @@ static void ardbeg_usb_init(void)
 	}
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-		platform_device_register(&tegra_otg_device);
-		/* Setup the udc platform data */
-		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+		tegra_otg_pdata.is_xhci = false;
+		tegra_udc_pdata.u_data.dev.is_xhci = false;
+	} else {
+		tegra_otg_pdata.is_xhci = true;
+		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		if (!modem_id) {
 			tegra_ehci2_device.dev.platform_data =

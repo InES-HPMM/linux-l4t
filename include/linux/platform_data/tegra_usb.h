@@ -103,6 +103,7 @@ struct tegra_usb_dev_mode_data {
 	int vbus_gpio;
 	bool charging_supported;
 	bool remote_wakeup_supported;
+	bool is_xhci;
 };
 
 /**
@@ -150,6 +151,7 @@ struct tegra_usb_otg_data {
 	char *vbus_extcon_dev_name;
 	char *id_extcon_dev_name;
 	int id_det_gpio;
+	bool is_xhci;
 };
 
 #endif /* _TEGRA_USB_H_ */
