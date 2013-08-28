@@ -42,6 +42,7 @@
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
+#include <asm/outercache.h>
 #include <asm/dma-iommu.h>
 
 #include <mach/tegra_smmu.h>
@@ -438,7 +439,7 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 #define FLUSH_CPU_DCACHE(va, page, size)	\
 	do {	\
 		unsigned long _pa_ = VA_PAGE_TO_PA(va, page);		\
-		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
+		FLUSH_DCACHE_AREA((void *)(va), (size_t)(size));	\
 		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
 	} while (0)
 
@@ -458,7 +459,7 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 	int i;
 	u64 swgids = 0;
 
-	prop = of_get_property(dev->of_node, propname, &bytes);
+	prop = of_get_property(dev->of_node, propname, (int *)&bytes);
 	if (!prop || !bytes)
 		return 0;
 
@@ -587,8 +588,10 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
+		(IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)))
 		smmu_client_ordered(smmu);
 
 	smmu_flush_regs(smmu, 1);
@@ -614,8 +617,10 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 		return;
 	}
 
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
+	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
+		(IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA13))) {
 		val = VA_PAGE_TO_PA_HI(pte, page);
 		smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
 	}
@@ -1122,7 +1127,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 		fn = __smmu_iommu_map_largepage;
 		break;
 	default:
-		WARN(1,  "%d not supported\n", bytes);
+		WARN(1,  "%lld not supported\n", (u64)bytes);
 		return -EINVAL;
 	}
 
@@ -1636,8 +1641,8 @@ static ssize_t smmu_debugfs_stats_write(struct file *file,
 		break;
 	}
 
-	dev_dbg(smmu->dev, "%s() %08x, %08x @%08x\n", __func__,
-		val, smmu_read(smmu, offs), offs);
+	dev_dbg(smmu->dev, "%s() %08x, %08x @%08llx\n", __func__,
+		val, smmu_read(smmu, offs), (u64)offs);
 
 	return count;
 }
@@ -1658,8 +1663,8 @@ static int smmu_debugfs_stats_show(struct seq_file *s, void *v)
 		val = smmu_read(smmu, offs);
 		seq_printf(s, "%s:%08x ", stats[i], val);
 
-		dev_dbg(smmu->dev, "%s() %s %08x @%08x\n", __func__,
-			stats[i], val, offs);
+		dev_dbg(smmu->dev, "%s() %s %08x @%08llx\n", __func__,
+			stats[i], val, (u64)offs);
 	}
 	seq_printf(s, "\n");
 	return 0;
@@ -1805,7 +1810,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	}
 
 	num_as = SMMU_NUM_ASIDS;
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12 ||
+		tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)
 		num_as = SMMU_NUM_ASIDS_TEGRA12;
 
 	bytes = sizeof(*smmu) + num_as * sizeof(*smmu->as);
@@ -1837,8 +1843,10 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_14x_SOC) &&
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14))
 		smmu->swgids = 0x0000000001865bfe;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
+	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
+	    (IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13))) {
 		smmu->swgids = 0x00000001fffecdcf;
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
