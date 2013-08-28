@@ -287,13 +287,10 @@ menu "Power management options"
 source "kernel/power/Kconfig"
 
 config ARCH_SUSPEND_POSSIBLE
-        depends on ARM64
-        def_bool y
+	def_bool y
 
 config ARM_CPU_SUSPEND
-        def_bool PM_SLEEP
-
-source "drivers/cpuidle/Kconfig"
+	def_bool y
 
 endmenu
 
