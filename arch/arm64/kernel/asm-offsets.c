@@ -25,6 +25,7 @@
 #include <asm/memory.h>
 #include <asm/cputable.h>
 #include <asm/smp_plat.h>
+#include <asm/suspend.h>
 #include <asm/vdso_datapage.h>
 #include <linux/kbuild.h>
 
@@ -118,6 +119,9 @@ int main(void)
   DEFINE(CPU_CTX_VBAR_EL1,	offsetof(struct cpu_suspend_ctx, vbar_el1));
   DEFINE(CPU_CTX_SCTLR_EL1,	offsetof(struct cpu_suspend_ctx, sctlr_el1));
   DEFINE(CPU_CTX_SP,		offsetof(struct cpu_suspend_ctx, sp));
+  DEFINE(SLEEP_SAVE_SP_SZ,     sizeof(struct sleep_save_sp));
+  DEFINE(SLEEP_SAVE_SP_PHYS,   offsetof(struct sleep_save_sp, save_ptr_stash_phys));
+  DEFINE(SLEEP_SAVE_SP_VIRT,   offsetof(struct sleep_save_sp, save_ptr_stash));
   DEFINE(MPIDR_HASH_MASK,	offsetof(struct mpidr_hash, mask));
   DEFINE(MPIDR_HASH_SHIFTS,	offsetof(struct mpidr_hash, shift_aff));
 #endif
