@@ -3142,6 +3142,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat->en_freq_scaling && (plat->max_clk_limit > low_freq))
 		host->mmc->caps2 |= MMC_CAP2_FREQ_SCALING;
 
+	if (!plat->disable_clock_gate)
+		host->mmc->caps2 |= MMC_CAP2_CLOCK_GATING;
 
 	if (plat->nominal_vcore_mv)
 		tegra_host->nominal_vcore_mv = plat->nominal_vcore_mv;
