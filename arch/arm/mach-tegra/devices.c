@@ -2104,7 +2104,7 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 	dma_addr_t prev_end = 0;
 
 	for (i = 0; i < ARRAY_SIZE(tegra_fb_linear_map) - 1; i++) {
-		if (!map->size)
+		if (!map[i].size)
 			continue;
 
 		p->size += map[i].size;
