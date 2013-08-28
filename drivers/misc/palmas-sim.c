@@ -165,13 +165,13 @@ static int palmas_sim_probe(struct platform_device *pdev)
 	sim_pdata = pdata->sim_pdata;
 	palmas = dev_get_drvdata(pdev->dev.parent);
 
-	sim1_irq = platform_get_irq(pdev, 0);
+	sim1_irq = palmas_irq_get_virq(palmas, PALMAS_SIM1_IRQ);
 	if (sim1_irq <= 0) {
 		dev_err(&pdev->dev, "sim1 interrupt is not available\n");
 		return -ENODEV;
 	}
 
-	sim2_irq = platform_get_irq(pdev, 1);
+	sim2_irq = palmas_irq_get_virq(palmas, PALMAS_SIM2_IRQ);
 	if (sim2_irq <= 0) {
 		dev_err(&pdev->dev, "sim2 interrupt is not available\n");
 		return -ENODEV;

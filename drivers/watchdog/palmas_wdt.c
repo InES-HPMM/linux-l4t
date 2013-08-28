@@ -3,7 +3,7 @@
  *
  * Watchdog timer for Palmas PMIC.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -147,8 +147,8 @@ static int palmas_wdt_probe(struct platform_device *pdev)
 	pdata = dev_get_platdata(pdev->dev.parent);
 
 	wdt->dev = &pdev->dev;
-	wdt->irq = platform_get_irq(pdev, 0);
 	wdt->palmas = dev_get_drvdata(pdev->dev.parent);
+	wdt->irq = palmas_irq_get_virq(wdt->palmas, PALMAS_WDT_IRQ);
 	wdt_dev = &wdt->wdt_dev;
 
 	wdt_dev->info = &palmas_wdt_info;

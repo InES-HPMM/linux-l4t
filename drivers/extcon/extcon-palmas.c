@@ -157,8 +157,10 @@ static int palmas_extcon_probe(struct platform_device *pdev)
 
 	palma_econ->enable_vbus_detection = epdata->enable_vbus_detection;
 	palma_econ->enable_id_pin_detection = epdata->enable_id_pin_detection;
-	palma_econ->vbus_irq = platform_get_irq(pdev, 0);
-	palma_econ->id_irq = platform_get_irq(pdev, 1);
+	palma_econ->vbus_irq =
+		palmas_irq_get_virq(palma_econ->palmas, PALMAS_VBUS_IRQ);
+	palma_econ->id_irq =
+		palmas_irq_get_virq(palma_econ->palmas, PALMAS_ID_IRQ);
 
 	ret = extcon_dev_register(palma_econ->edev, NULL);
 	if (ret < 0) {

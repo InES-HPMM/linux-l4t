@@ -447,7 +447,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, iodev);
 
 	adc->auto_conversion_period = adc_pdata->auto_conversion_period_ms;
-	adc->irq = platform_get_irq(pdev, 0);
+	adc->irq = palmas_irq_get_virq(adc->palmas, PALMAS_GPADC_EOC_SW_IRQ);
 	ret = request_threaded_irq(adc->irq, NULL,
 		palmas_gpadc_irq,
 		IRQF_ONESHOT | IRQF_EARLY_RESUME, dev_name(adc->dev),
