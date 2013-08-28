@@ -89,6 +89,9 @@
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x1
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x1
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x2
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x2
 #else
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x70
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x62
@@ -2337,9 +2340,6 @@ static const struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.pdata = &sdhci_tegra20_pdata,
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
-		    NVQUIRK_SET_CALIBRATION_OFFSETS |
-#endif
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		   NVQUIRK_ENABLE_PADPIPE_CLKEN |
 		   NVQUIRK_DISABLE_SPI_MODE_CLKEN |
@@ -2355,6 +2355,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		    NVQUIRK_SET_DRIVE_STRENGTH |
 		    NVQUIRK_DISABLE_SDMMC4_CALIB |
+#else
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 #endif
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
