@@ -266,8 +266,8 @@ static struct dvfs core_dvfs_table[] = {
 	 * to the display block.  Disable auto-dvfs on the display clocks,
 	 * and let the display driver call tegra_dvfs_set_rate manually
 	 */
-	CORE_DVFS("disp1",  -1, -1, 0, KHZ,   108000, 120000, 144000, 192000,  240000),
-	CORE_DVFS("disp2",  -1, -1, 0, KHZ,   108000, 120000, 144000, 192000,  240000),
+	CORE_DVFS("disp1",  -1, -1, 0, KHZ,   108000, 120000, 144000, 297000,  474000),
+	CORE_DVFS("disp2",  -1, -1, 0, KHZ,   108000, 120000, 144000, 297000,  474000),
 
 	/* xusb clocks */
 	CORE_DVFS("xusb_falcon_src", -1, -1, 1, KHZ,  204000, 204000, 204000, 336000, 336000),
