@@ -60,12 +60,13 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 	tegra_xusb_plat_data.ls_rslew_pad0 = (0x3 << 14);
 	tegra_xusb_plat_data.ls_rslew_pad1 = (0x0 << 14);
 	tegra_xusb_plat_data.hs_disc_lvl = (0x5 << 2);
+	tegra_xusb_plat_data.spare_in = 0x0;
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra_xusb_plat_data.pmc_portmap = (TEGRA_XUSB_UTMIP_PMC_PORT0 << 0) |
 			(TEGRA_XUSB_UTMIP_PMC_PORT1 << 4) |
 			(TEGRA_XUSB_UTMIP_PMC_PORT2 << 8);
-	tegra_xusb_plat_data.rx_wander = (0x3 << 4);
-	tegra_xusb_plat_data.rx_eq = (0x3928 << 8);
+	tegra_xusb_plat_data.rx_wander = (0xF << 4);
+	tegra_xusb_plat_data.rx_eq = (0xF070 << 8);
 	tegra_xusb_plat_data.cdr_cntl = (0x26 << 24);
 	tegra_xusb_plat_data.dfe_cntl = 0x002008EE;
 	tegra_xusb_plat_data.hs_slew = (0xE << 6);
@@ -73,6 +74,7 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 	tegra_xusb_plat_data.ls_rslew_pad1 = (0x0 << 14);
 	tegra_xusb_plat_data.ls_rslew_pad2 = (0x0 << 14);
 	tegra_xusb_plat_data.hs_disc_lvl = (0x5 << 2);
+	tegra_xusb_plat_data.spare_in = 0x1;
 #endif
 	tegra_xusb_read_usb_calib();
 	tegra_xusb_plat_data.bdata = bdata;

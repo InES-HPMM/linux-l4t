@@ -53,6 +53,52 @@
 #define IOPHY_USB3_RXWANDER (0xF << 4)
 #define IOPHY_USB3_RXEQ (0xFFFF << 8)
 #define IOPHY_USB3_CDRCNTL (0xFF << 24)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define tegra_xhci_restore_ctle_context(hcd, port)	\
+	do {} while (0)
+#define tegra_xhci_save_ctle_context(hcd, port)	\
+	do {} while (0)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define tegra_xhci_restore_ctle_context(hcd, port) \
+	restore_ctle_context(hcd, port)
+#define tegra_xhci_save_ctle_context(hcd, port) \
+	save_ctle_context(hcd, port)
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define MISC_PAD_CTL_6_0(_p)			(0x88 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MISC_PAD_CTL_6_0(_p)			(0x98 + _p * 4)
+#endif
+#define MISC_OUT_SEL(x) ((x & 0xFF) << 16)
+#define MISC_OUT_TAP_VAL(reg) ((reg & (0x1F << 24)) >> 24)
+#define MISC_OUT_AMP_VAL(reg) ((reg & (0x7F << 24)) >> 24)
+#define MISC_OUT_G_Z_VAL(reg) ((reg & (0x3F << 24)) >> 24)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define USB3_PAD_CTL_4_0(_p)			(0x58 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define USB3_PAD_CTL_4_0(_p)			(0x68 + _p * 4)
+#endif
+#define DFE_CNTL_TAP_VAL(x) ((x & 0x1F) << 24)
+#define DFE_CNTL_AMP_VAL(x) ((x & 0x7F) << 16)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define USB3_PAD_CTL_2_0(_p)			(0x48 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define USB3_PAD_CTL_2_0(_p)			(0x58 + _p * 4)
+#endif
+#define RX_EQ_G_VAL(x) ((x & 0x3F) << 8)
+#define RX_EQ_Z_VAL(x) ((x & 0x3F) << 16)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define MISC_PAD_CTL_2_0(_p)			(0x68 + _p * 4)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MISC_PAD_CTL_2_0(_p)			(0x78 + _p * 4)
+#endif
+#define SPARE_IN(x) ((x & 0x3) << 28)
+
 #define SNPS_OC_MAP_CTRL1 (0x7 << 0)
 #define SNPS_OC_MAP_CTRL2 (0x7 << 3)
 #define SNPS_OC_MAP_CTRL3 (0x7 << 6)
@@ -468,7 +514,6 @@
 #define PRBS_ERROR				(1 << 24)
 #define PRBS_CHK_EN				(1 << 25)
 #define TEST_EN					(1 << 27)
-#define SPARE_IN(x)				(((x) & 0x3) << 28)
 #define SPARE_OUT(x)			(((x) & 0x3) << 30)
 
 #define IOPHY_MISC_PAD0_CTL_3_0	0x70
@@ -522,7 +567,6 @@
 #define IOPHY_MISC_PAD0_CTL_6_0		0x88
 #define IOPHY_MISC_PAD1_CTL_6_0		0x8c
 #define MISC_TEST(x)			(((x) & 0xffff) << 0)
-#define MISC_OUT_SEL(x)			(((x) & 0xff) << 16)
 #define MISC_OUT(x)				(((x) & 0xff) << 24)
 
 #define USB2_OTG_PAD0_CTL_0_0	0x90
