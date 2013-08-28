@@ -647,7 +647,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 					tegra_ehci_boost_cpu_frequency_work);
 	pm_qos_add_request(&tegra->boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
 					PM_QOS_DEFAULT_VALUE);
-	schedule_delayed_work(&tegra->boost_cpu_freq_work, 4000);
+	schedule_delayed_work(&tegra->boost_cpu_freq_work, 12000);
 	tegra->cpu_boost_in_work = true;
 #endif
 
