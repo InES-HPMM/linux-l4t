@@ -554,6 +554,12 @@
 #define USB_PLLS_USE_LOCKDET			(1<<6)
 #define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
 
+/* XUSB PLL PAD controls */
+#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0         0x40
+#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD    (1<<3)
+#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ        (1<<0)
+
+
 /* DFLL */
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
@@ -629,6 +635,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
 #define MISC_GP_TRANSACTOR_SCRATCH_0		0x864
 #define MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE	(0x1 << 1)
@@ -651,6 +658,10 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	__raw_writel(value,(void *)((u32)reg_pmc_base + (reg)))
 #define pmc_readl(reg) \
 	__raw_readl((void *)((u32)reg_pmc_base + (reg)))
+#define xusb_padctl_writel(value, reg) \
+	 __raw_writel(value, (u32)reg_xusb_padctl_base + (reg))
+#define xusb_padctl_readl(reg) \
+	__raw_readl((u32)reg_xusb_padctl_base + (reg))
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
@@ -2187,6 +2198,12 @@ static void tegra12_pll_clk_init(struct clk *c)
 		val = clk_readl(c->reg + PLL_BASE);
 		val &= ~PLLU_BASE_OVERRIDE;
 		clk_writel(val, c->reg + PLL_BASE);
+
+		/* Set XUSB PLL pad pwr override and iddq */
+		val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
+		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
+		xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 	}
 }
 
@@ -3780,6 +3797,13 @@ static void tegra12_plle_clk_disable(struct clk *c)
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLLE_MISC_IDDQ_SW_CTRL | PLLE_MISC_IDDQ_SW_VALUE;
 	pll_writel_delay(val, c->reg + PLL_MISC(c));
+
+	/* Set XUSB PLL pad pwr override and iddq */
+	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
+	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
+	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+
 }
 
 static int tegra12_plle_clk_enable(struct clk *c)
@@ -3870,6 +3894,13 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
 #endif
+
+	/* clear XUSB PLL pad pwr override and iddq */
+	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
+	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
+	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+
 	/* enable hw control of xusb brick pll */
 	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
 
