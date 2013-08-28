@@ -259,7 +259,18 @@ static int __init tegra_clocks_debug_init(void)
 		goto err_out;
 #endif
 
+/* FIXME: remove ifdef when track_clock gracefully handles "cannot get clock" */
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	ret = track_clock("c4bus");
+	if (0 != ret)
+		goto err_out;
+
+	ret = track_clock("gbus");
+	if (0 != ret)
+		goto err_out;
+#endif
 	return 0;
+
 
 err_out:
 	pr_err("*** clock_stats: cannot get clock\n");

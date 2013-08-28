@@ -7043,11 +7043,14 @@ static struct clk_ops tegra_clk_gbus_ops = {
 	.shared_bus_update = tegra12_clk_shared_connector_update, /* re-use */
 };
 
+static struct raw_notifier_head gbus_rate_change_nh;
+
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
 	.ops       = &tegra_clk_gbus_ops,
 	.parent    = &tegra_clk_gpu,
 	.max_rate  = 1000000000,
+	.rate_change_nh = &gbus_rate_change_nh,
 };
 
 static void tegra12_camera_mclk_init(struct clk *c)
