@@ -267,7 +267,7 @@ PALMAS_REGS_PDATA(smps9, 3300, 3300, NULL, 0, 0, 1, NORMAL,
 PALMAS_REGS_PDATA(smps10, 5000, 5000, NULL, 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo1, 1050, 1050, palmas_rails(smps6), 1, 1, 1, 0,
-	0, 0, 0, 0, 0);
+	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2, 1050, 1200, palmas_rails(smps6), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 3300, 3300, NULL, 0, 0, 1, 0,
