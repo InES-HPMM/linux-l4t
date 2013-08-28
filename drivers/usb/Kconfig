@@ -59,6 +59,7 @@ config USB_ARCH_HAS_XHCI
 menuconfig USB_SUPPORT
 	bool "USB support"
 	depends on HAS_IOMEM
+	select TEGRA_USB_SHARED_PAD
 	default y
 	---help---
 	  This option adds core support for Universal Serial Bus (USB).
@@ -70,6 +71,11 @@ config USB_COMMON
 	tristate
 	default y
 	depends on USB || USB_GADGET
+
+config TEGRA_USB_SHARED_PAD
+	bool "Enable shared pad control"
+	---help---
+	  Add shared pad controls for pcie and usb
 
 # Host-side USB depends on having a host controller
 # NOTE:  dummy_hcd is always an option, but it's ignored here ...
