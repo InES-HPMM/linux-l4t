@@ -1535,7 +1535,8 @@ retry:
 	return false;
 }
 
-static void tegra_pcie_enable_clock_clamp(int index)
+/* Enable various features of root port */
+static void tegra_pcie_enable_rp_features(int index)
 {
 	unsigned int data;
 
@@ -1547,24 +1548,12 @@ static void tegra_pcie_enable_clock_clamp(int index)
 		PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD |
 		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
-}
 
-static void tegra_pcie_enable_aspm_l1_support(int index)
-{
-	unsigned int data;
-
-	PR_FUNC_LINE;
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
 	data |= (NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE);
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
-}
 
-static void tegra_pcie_enable_pcie_master(int index)
-{
-	unsigned int data;
-
-	PR_FUNC_LINE;
 	/* enable PCIE mastering and accepting memory and IO requests */
 	data = rp_readl(NV_PCIE2_RP_DEV_CTRL, index);
 	data |= (PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED |
@@ -1579,9 +1568,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	unsigned int data;
 
 	PR_FUNC_LINE;
-	tegra_pcie_enable_clock_clamp(index);
-	tegra_pcie_enable_aspm_l1_support(index);
-	tegra_pcie_enable_pcie_master(index);
+	tegra_pcie_enable_rp_features(index);
 
 	pp = tegra_pcie.port + tegra_pcie.num_ports;
 	pp->index = -1;
@@ -1687,6 +1674,7 @@ static void tegra_pcie_enable_aspm_support(void)
 	struct pci_dev *pdev = NULL;
 	u16 val = 0, aspm = 0;
 
+	PR_FUNC_LINE;
 	for_each_pci_dev(pdev) {
 		/* Find ASPM capability */
 		pcie_capability_read_word(pdev, PCI_EXP_LNKCAP, &aspm);
@@ -1699,13 +1687,25 @@ static void tegra_pcie_enable_aspm_support(void)
 	}
 }
 
+static void tegra_pcie_enable_features(void)
+{
+	struct pci_dev *pdev = NULL;
+
+	PR_FUNC_LINE;
+	/* configure all links to gen2 speed by default */
+	for_each_pci_dev(pdev)
+		tegra_pcie_change_link_speed(pdev, true);
+
+	/* Enable ASPM support of all devices based on it's capability */
+	tegra_pcie_enable_aspm_support();
+}
+
 static int __init tegra_pcie_init(void)
 {
 	int err = 0;
 	int port;
 	int rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
-	struct pci_dev *pdev = NULL;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	pcibios_min_mem = 0x1000;
@@ -1779,13 +1779,7 @@ static int __init tegra_pcie_init(void)
 			return err;
 		}
 	}
-
-	/* configure all links to gen2 speed by default */
-	for_each_pci_dev(pdev)
-		tegra_pcie_change_link_speed(pdev, true);
-
-	/* Enable ASPM support of all devices based on it's capability */
-	tegra_pcie_enable_aspm_support();
+	tegra_pcie_enable_features();
 
 	return 0;
 err_irq:
@@ -1848,10 +1842,6 @@ static int tegra_pcie_resume(struct device *dev)
 	int ctrl_offset = AFI_PEX0_CTRL;
 
 	PR_FUNC_LINE;
-	/* return w/o resume if cardhu dock is not connected */
-	if (gpio_get_value(tegra_pcie.plat_data->gpio))
-		goto exit;
-
 	ret = tegra_pcie_power_on();
 	if (ret) {
 		pr_err("PCIE: Failed to power on: %d\n", ret);
@@ -1877,6 +1867,7 @@ static int tegra_pcie_resume(struct device *dev)
 
 	while ((bus = pci_find_next_bus(bus)) != NULL)
 		pci_rescan_bus(bus);
+	tegra_pcie_enable_features();
 
 exit:
 	return 0;
