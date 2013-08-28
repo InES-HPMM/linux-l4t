@@ -781,9 +781,10 @@ int tegra_emc_set_rate(unsigned long rate)
 	return 0;
 }
 
-long tegra_emc_round_rate(unsigned long rate)
+long tegra_emc_round_rate_updown(unsigned long rate, bool up)
 {
 	int i;
+	unsigned long table_rate;
 
 	if (!tegra_emc_table)
 		return clk_get_rate_locked(emc); /* no table - no rate change */
@@ -801,11 +802,15 @@ long tegra_emc_round_rate(unsigned long rate)
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
-		if (tegra_emc_table[i].rate >= rate) {
-			pr_debug("%s: using %lu\n",
-				 __func__, tegra_emc_table[i].rate);
+		table_rate = tegra_emc_table[i].rate;
+		if (table_rate >= rate) {
+			if (!up && i && (table_rate > rate)) {
+				i--;
+				table_rate = tegra_emc_table[i].rate;
+			}
+			pr_debug("%s: using %lu\n", __func__, table_rate);
 			last_round_idx = i;
-			return tegra_emc_table[i].rate * 1000;
+			return table_rate * 1000;
 		}
 	}
 

@@ -4653,8 +4653,7 @@ static long tegra12_emc_clk_round_updown(struct clk *c, unsigned long rate,
 {
 	unsigned long new_rate = max(rate, c->min_rate);
 
-	/* FIXME: emc updown rounding */
-	new_rate = tegra_emc_round_rate(new_rate);
+	new_rate = tegra_emc_round_rate_updown(new_rate, up);
 	if (IS_ERR_VALUE(new_rate))
 		new_rate = c->max_rate;
 
