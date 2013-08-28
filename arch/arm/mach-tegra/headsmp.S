@@ -306,8 +306,13 @@ cortex_a9:
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
 	isb
 
-	/* Invalidates L1 d-cache during initial cpu boot (corrupt r0-r6) */
-
+#if !defined(CONFIG_TRUSTED_LITTLE_KERNEL)
+	/*
+	 * Invalidates L1 d-cache during initial cpu boot (corrupt r0-r6).
+	 *
+	 * Skip this for CONFIG_TRUSTED_LITTLE_KERNEL builds as it has
+	 * already been done by the Secure OS.
+	 */
 	mov	r0, #0
 	mcr	p15, 2, r0, c0, c0, 0
 	mrc	p15, 1, r0, c0, c0, 0
@@ -337,6 +342,7 @@ cortex_a9:
 	bgt	1b
 	dsb
 	isb
+#endif
 	mov	pc, lr
 
 /*
