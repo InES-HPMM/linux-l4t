@@ -311,110 +311,158 @@ int __init tegra_init_core_cap(
 
 #define MAX_BUS_NUM	8
 
-static DEFINE_MUTEX(bus_cap_lock);
+static DEFINE_MUTEX(bus_limit_lock);
 static const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
+static const struct attribute *bus_floor_attributes[2 * MAX_BUS_NUM + 1];
 
-static int _cap_update(struct core_bus_limit_table *bus_cap,
-		       unsigned long qos_cap_level)
+static int _floor_update(struct core_bus_limit_table *bus_limit,
+			 unsigned long qos_limit_level)
 {
 	int ret = 0;
 	unsigned long level, max_level;
-	struct clk *c = bus_cap->limit_clk;
+	struct clk *c = bus_limit->limit_clk;
 
 	BUG_ON(!c);
 	max_level = clk_get_max_rate(c);
-	level = bus_cap->refcnt ? bus_cap->level : max_level;
+
+	if (!bus_limit->refcnt && !qos_limit_level) {
+		if (bus_limit->applied) {
+			tegra_clk_disable_unprepare(c);
+			bus_limit->applied = false;
+		}
+		return 0;
+	}
+
+	level = bus_limit->refcnt ? bus_limit->level : 0;
+
+	/* qos level is in kHz, bus floor level is in Hz */
+	if (qos_limit_level < max_level / 1000)
+		qos_limit_level *= 1000;
+	else
+		qos_limit_level = max_level;
+
+	level = max(level, qos_limit_level);
+
+
+	ret = clk_set_rate(c, level);
+	if (!bus_limit->applied)
+		ret = tegra_clk_prepare_enable(c);
+
+	if (ret) {
+		pr_err("%s: Failed to floor %s at level %lu\n",
+		       __func__, bus_limit->limit_clk_name, level);
+		return ret;
+	}
+	bus_limit->applied = true;
+
+	return 0;
+}
+
+static int _cap_update(struct core_bus_limit_table *bus_limit,
+		       unsigned long qos_limit_level)
+{
+	int ret = 0;
+	unsigned long level, max_level;
+	struct clk *c = bus_limit->limit_clk;
+
+	BUG_ON(!c);
+	max_level = clk_get_max_rate(c);
+	level = bus_limit->refcnt ? bus_limit->level : max_level;
 
 	/* qos level is in kHz, bus cap level is in Hz */
-	if (qos_cap_level < max_level / 1000)
-		qos_cap_level *= 1000;
+	if (qos_limit_level < max_level / 1000)
+		qos_limit_level *= 1000;
 	else
-		qos_cap_level = max_level;
+		qos_limit_level = max_level;
 
-	level = min(level, qos_cap_level);
+	level = min(level, qos_limit_level);
 
 	ret = clk_set_rate(c, level);
 	if (ret)
 		pr_err("%s: Failed to cap %s at level %lu\n",
-		       __func__, bus_cap->limit_clk_name, level);
+		       __func__, bus_limit->limit_clk_name, level);
 	return ret;
 }
 
-static int bus_cap_update(struct core_bus_limit_table *bus_cap)
+static int bus_limit_update(struct core_bus_limit_table *bus_limit)
 {
-	unsigned long qos_cap_level = ULONG_MAX;
-	if (bus_cap->pm_qos_class)
-		qos_cap_level = pm_qos_request(bus_cap->pm_qos_class);
-	return _cap_update(bus_cap, qos_cap_level);
+	unsigned long qos_limit_level;
+
+	if (bus_limit->pm_qos_class)
+		qos_limit_level = pm_qos_request(bus_limit->pm_qos_class);
+	else
+		qos_limit_level = bus_limit->update == _cap_update ?
+							ULONG_MAX : 0;
+	return bus_limit->update(bus_limit, qos_limit_level);
 }
 
 static ssize_t
-bus_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+bus_limit_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_limit_table *bus_cap = refcnt_to_bus(attr);
-	return sprintf(buf, "%d\n", bus_cap->refcnt ? 1 : 0);
+	struct core_bus_limit_table *bus_limit = refcnt_to_bus(attr);
+	return sprintf(buf, "%d\n", bus_limit->refcnt ? 1 : 0);
 }
 static ssize_t
-bus_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+bus_limit_state_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int state;
-	struct core_bus_limit_table *bus_cap = refcnt_to_bus(attr);
+	struct core_bus_limit_table *bus_limit = refcnt_to_bus(attr);
 
 	if (sscanf(buf, "%d", &state) != 1)
 		return -1;
 
-	mutex_lock(&bus_cap_lock);
+	mutex_lock(&bus_limit_lock);
 
 	if (state) {
-		bus_cap->refcnt++;
-		if (bus_cap->refcnt == 1)
-			bus_cap_update(bus_cap);
-	} else if (bus_cap->refcnt) {
-		bus_cap->refcnt--;
-		if (bus_cap->refcnt == 0)
-			bus_cap_update(bus_cap);
+		bus_limit->refcnt++;
+		if (bus_limit->refcnt == 1)
+			bus_limit_update(bus_limit);
+	} else if (bus_limit->refcnt) {
+		bus_limit->refcnt--;
+		if (bus_limit->refcnt == 0)
+			bus_limit_update(bus_limit);
 	}
 
-	mutex_unlock(&bus_cap_lock);
+	mutex_unlock(&bus_limit_lock);
 	return count;
 }
 
 static ssize_t
-bus_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
+bus_limit_level_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
-	struct core_bus_limit_table *bus_cap = level_to_bus(attr);
-	return sprintf(buf, "%d\n", bus_cap->level);
+	struct core_bus_limit_table *bus_limit = level_to_bus(attr);
+	return sprintf(buf, "%d\n", bus_limit->level);
 }
 static ssize_t
-bus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
+bus_limit_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 		     const char *buf, size_t count)
 {
 	int level;
-	struct core_bus_limit_table *bus_cap = level_to_bus(attr);
+	struct core_bus_limit_table *bus_limit = level_to_bus(attr);
 
 	if (sscanf(buf, "%d", &level) != 1)
 		return -1;
 
-	mutex_lock(&bus_cap_lock);
-	if (bus_cap->level != level) {
-		bus_cap->level = level;
-		bus_cap_update(bus_cap);
+	mutex_lock(&bus_limit_lock);
+	if (bus_limit->level != level) {
+		bus_limit->level = level;
+		bus_limit_update(bus_limit);
 	}
-	mutex_unlock(&bus_cap_lock);
+	mutex_unlock(&bus_limit_lock);
 	return count;
 }
 
-static int qos_cap_notify(struct notifier_block *nb,
-			  unsigned long qos_cap_level, void *p)
+static int qos_limit_notify(struct notifier_block *nb,
+			  unsigned long qos_limit_level, void *p)
 {
-	struct core_bus_limit_table *bus_cap = nb_to_bus(nb);
+	struct core_bus_limit_table *bus_limit = nb_to_bus(nb);
 
-	mutex_lock(&bus_cap_lock);
-	_cap_update(bus_cap, qos_cap_level);
-	mutex_unlock(&bus_cap_lock);
+	mutex_lock(&bus_limit_lock);
+	bus_limit->update(bus_limit, qos_limit_level);
+	mutex_unlock(&bus_limit_lock);
 	return NOTIFY_OK;
 }
 
@@ -438,14 +486,15 @@ int __init tegra_init_shared_bus_cap(
 		table[i].limit_clk = c;
 		table[i].level = clk_get_max_rate(c);
 		table[i].refcnt = 0;
-		table[i].refcnt_attr.show = bus_cap_state_show;
-		table[i].refcnt_attr.store = bus_cap_state_store;
-		table[i].level_attr.show = bus_cap_level_show;
-		table[i].level_attr.store = bus_cap_level_store;
+		table[i].refcnt_attr.show = bus_limit_state_show;
+		table[i].refcnt_attr.store = bus_limit_state_store;
+		table[i].level_attr.show = bus_limit_level_show;
+		table[i].level_attr.store = bus_limit_level_store;
+		table[i].update = _cap_update;
 		bus_cap_attributes[j++] = &table[i].refcnt_attr.attr;
 		bus_cap_attributes[j++] = &table[i].level_attr.attr;
 		if (table[i].pm_qos_class) {
-			table[i].qos_nb.notifier_call = qos_cap_notify;
+			table[i].qos_nb.notifier_call = qos_limit_notify;
 			if (pm_qos_add_notifier(
 				table[i].pm_qos_class, &table[i].qos_nb)) {
 				pr_err("%s: Failed register %s with PM QoS\n",
@@ -459,64 +508,6 @@ int __init tegra_init_shared_bus_cap(
 	if (!cap_kobj || sysfs_create_files(cap_kobj, bus_cap_attributes))
 		return -ENOMEM;
 	return 0;
-}
-
-static DEFINE_MUTEX(bus_floor_lock);
-const struct attribute *bus_floor_attributes[2 * MAX_BUS_NUM + 1];
-
-static ssize_t
-bus_floor_state_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	struct core_bus_limit_table *bus_floor = refcnt_to_bus(attr);
-	struct clk *c = bus_floor->limit_clk;
-	return sprintf(buf, "%d\n", tegra_is_clk_enabled(c) ? 1 : 0);
-}
-static ssize_t
-bus_floor_state_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int state;
-	struct core_bus_limit_table *bus_floor = refcnt_to_bus(attr);
-	struct clk *c = bus_floor->limit_clk;
-
-	if (sscanf(buf, "%d", &state) != 1)
-		return -EINVAL;
-
-	if (state) {
-		int ret = tegra_clk_prepare_enable(c);
-		if (ret)
-			return ret;
-	} else {
-		tegra_clk_disable_unprepare(c);
-	}
-	return count;
-}
-
-static ssize_t
-bus_floor_level_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	struct core_bus_limit_table *bus_floor = level_to_bus(attr);
-	return sprintf(buf, "%d\n", bus_floor->level);
-}
-static ssize_t
-bus_floor_level_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int level, ret;
-	struct core_bus_limit_table *bus_floor = level_to_bus(attr);
-	struct clk *c = bus_floor->limit_clk;
-
-	if (sscanf(buf, "%d", &level) != 1)
-		return -EINVAL;
-
-	mutex_lock(&bus_floor_lock);
-	ret = clk_set_rate(c, level);
-	if (!ret)
-		bus_floor->level = level;
-	mutex_unlock(&bus_floor_lock);
-	return ret ? : count;
 }
 
 int __init tegra_init_shared_bus_floor(
@@ -538,12 +529,22 @@ int __init tegra_init_shared_bus_floor(
 		}
 		table[i].limit_clk = c;
 		table[i].level = clk_get_max_rate(c);
-		table[i].refcnt_attr.show = bus_floor_state_show;
-		table[i].refcnt_attr.store = bus_floor_state_store;
-		table[i].level_attr.show = bus_floor_level_show;
-		table[i].level_attr.store = bus_floor_level_store;
+		table[i].refcnt_attr.show = bus_limit_state_show;
+		table[i].refcnt_attr.store = bus_limit_state_store;
+		table[i].level_attr.show = bus_limit_level_show;
+		table[i].level_attr.store = bus_limit_level_store;
+		table[i].update = _floor_update;
 		bus_floor_attributes[j++] = &table[i].refcnt_attr.attr;
 		bus_floor_attributes[j++] = &table[i].level_attr.attr;
+		if (table[i].pm_qos_class) {
+			table[i].qos_nb.notifier_call = qos_limit_notify;
+			if (pm_qos_add_notifier(
+				table[i].pm_qos_class, &table[i].qos_nb)) {
+				pr_err("%s: Failed register %s with PM QoS\n",
+					__func__, table[i].limit_clk_name);
+				table[i].pm_qos_class = 0;
+			}
+		}
 	}
 	bus_floor_attributes[j] = NULL;
 

@@ -32,6 +32,10 @@ struct core_bus_limit_table {
 	int level;
 	struct notifier_block qos_nb;
 	int pm_qos_class;
+	bool applied;
+	int (*update)(struct core_bus_limit_table *bus_limit,
+		      unsigned long qos_limit_level);
+
 };
 
 int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
