@@ -94,7 +94,8 @@
 #define FUSE_GPU_INFO_MASK	(1<<2)
 #define FUSE_SPARE_BIT		0x300
 /* fuse registers used in public fuse data read API */
-#define FUSE_TEST_PROGRAM_REVISION_0	0x128
+#define FUSE_FT_REV		0x128
+#define FUSE_CP_REV		0x190
 /* fuse spare bits are used to get Tj-ADT values */
 #define NUM_TSENSOR_SPARE_BITS	28
 /* tsensor calibration register */
@@ -132,10 +133,31 @@ DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
-int tegra_fuse_get_revision(u32 *rev)
+static inline int fuse_cp_rev_check(void)
 {
-	/* fuse revision */
-	*rev = tegra_fuse_readl(FUSE_TEST_PROGRAM_REVISION_0);
+	u32 rev, rev_major, rev_minor;
+
+	rev = tegra_fuse_readl(FUSE_CP_REV);
+	rev_minor = rev & 0x1f;
+	rev_major = (rev >> 5) & 0x3f;
+	/* CP rev < 00.4 is unsupported */
+	if ((rev_major == 0) && (rev_minor < 4))
+		return -EINVAL;
+
+	return 0;
+}
+
+static inline int fuse_ft_rev_check(void)
+{
+	u32 rev, rev_major, rev_minor;
+
+	rev = tegra_fuse_readl(FUSE_FT_REV);
+	rev_minor = rev & 0x1f;
+	rev_major = (rev >> 5) & 0x3f;
+	/* FT rev < 00.5 is unsupported */
+	if ((rev_major == 0) && (rev_minor < 5))
+		return -EINVAL;
+
 	return 0;
 }
 
@@ -238,8 +260,6 @@ unsigned long long tegra_chip_uid(void)
 	return uid;
 }
 
-
-
 static int tsensor_calib_offset[] = {
 	[0] = 0x198,
 	[1] = 0x184,
@@ -253,34 +273,34 @@ static int tsensor_calib_offset[] = {
 
 int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 {
-	if (index < 0 || index > 7)
+	if (index < 0 || index > ARRAY_SIZE(tsensor_calib_offset))
 		return -EINVAL;
 	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
 	return 0;
 }
-
 
 int tegra_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 {
 	s32 cp;
 	u32 val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
 
-	*base_cp = (((val) &
-		(FUSE_BASE_CP_MASK << FUSE_BASE_CP_SHIFT))
-		>> FUSE_BASE_CP_SHIFT);
+	if (fuse_cp_rev_check() || !val)
+		return -EINVAL;
 
-	if (!(*base_cp)) {
-		pr_warning("soctherm: WARNING: Improper FUSE_BASE_CP. Using hard coded value (1400).\n");
-		*base_cp = 1400;
+	if (base_cp && shifted_cp) {
+		*base_cp = (((val) & (FUSE_BASE_CP_MASK
+				<< FUSE_BASE_CP_SHIFT))
+				>> FUSE_BASE_CP_SHIFT);
+
+		val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
+		cp = (((val) & (FUSE_SHIFT_CP_MASK
+				<< FUSE_SHIFT_CP_SHIFT))
+				>> FUSE_SHIFT_CP_SHIFT);
+
+		*shifted_cp = ((s32)(cp)
+				<< (32 - FUSE_SHIFT_CP_BITS)
+				>> (32 - FUSE_SHIFT_CP_BITS));
 	}
-
-	val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
-	cp = (((val) &
-		(FUSE_SHIFT_CP_MASK << FUSE_SHIFT_CP_SHIFT))
-		>> FUSE_SHIFT_CP_SHIFT);
-	*shifted_cp = ((s32)(cp)
-		<< (32 - FUSE_SHIFT_CP_BITS)
-		>> (32 - FUSE_SHIFT_CP_BITS));
 	return 0;
 }
 
@@ -289,21 +309,22 @@ int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 	s32 ft;
 	u32 val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
 
-	*base_ft = (((val) &
-		(FUSE_BASE_FT_MASK << FUSE_BASE_FT_SHIFT))
-		>> FUSE_BASE_FT_SHIFT);
+	if (fuse_ft_rev_check() || !val)
+		return -EINVAL;
 
-	if (!(*base_ft)) {
-		pr_warning("soctherm: WARNING: Improper FUSE_BASE_FT. Using hard coded value (652).\n");
-		*base_ft = 652;
+	if (base_ft && shifted_ft) {
+		*base_ft = (((val) & (FUSE_BASE_FT_MASK
+				<< FUSE_BASE_FT_SHIFT))
+				>> FUSE_BASE_FT_SHIFT);
+
+		ft = (((val) & (FUSE_SHIFT_FT_MASK
+				<< FUSE_SHIFT_FT_SHIFT))
+				>> FUSE_SHIFT_FT_SHIFT);
+
+		*shifted_ft = ((s32)(ft)
+				<< (32 - FUSE_SHIFT_FT_BITS)
+				>> (32 - FUSE_SHIFT_FT_BITS));
 	}
-
-	ft = (((val) &
-		(FUSE_SHIFT_FT_MASK << FUSE_SHIFT_FT_SHIFT))
-		>> FUSE_SHIFT_FT_SHIFT);
-	*shifted_ft = ((s32)(ft) <<
-		(32 - FUSE_SHIFT_FT_BITS) >>
-		(32 - FUSE_SHIFT_FT_BITS));
 	return 0;
 }
 
