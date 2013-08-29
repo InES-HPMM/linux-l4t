@@ -198,4 +198,12 @@ config PWM_FAN
 	help
 	  Enables the fan driver that is controlled by pwm
 
+config PALMAS_THERMAL
+	tristate "TI Palmas Thermal driver"
+	depends on MFD_PALMAS
+	help
+	 Palmas series pmic chip supports hot die interrupt configurable for 4
+	 different critical temperature thresholds from which we can notify
+	 thermal core to orderly power off the system.
+
 endif
