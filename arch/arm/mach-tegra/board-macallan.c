@@ -663,7 +663,6 @@ static void __init tegra_macallan_late_init(void)
 	macallan_bt_st();
 	macallan_tegra_setup_st_host_wake();
 #endif
-	tegra_release_bootloader_fb();
 	macallan_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

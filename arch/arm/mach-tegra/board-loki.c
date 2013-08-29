@@ -820,7 +820,6 @@ static void __init tegra_loki_late_init(void)
 	loki_panel_init();
 	loki_kbc_init();
 	loki_pmon_init();
-	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif

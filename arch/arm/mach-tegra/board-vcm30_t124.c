@@ -459,7 +459,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 	isomgr_init();
 	/* vcm30_t124_panel_init(); */
 	/* vcm30_t124_pmon_init(); */
-	tegra_release_bootloader_fb();
 	vcm30_t124_pcie_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

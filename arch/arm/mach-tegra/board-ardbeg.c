@@ -1009,7 +1009,6 @@ static void __init tegra_ardbeg_late_init(void)
 		laguna_pm358_pmon_init();
 	else
 		ardbeg_pmon_init();
-	tegra_release_bootloader_fb();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)

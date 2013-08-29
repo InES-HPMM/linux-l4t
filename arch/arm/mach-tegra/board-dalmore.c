@@ -780,7 +780,6 @@ static void __init tegra_dalmore_late_init(void)
 #elif defined(CONFIG_BLUEDROID_PM) || defined(CONFIG_BLUEDROID_PM_MODULE)
 	dalmore_setup_bluedroid_pm();
 #endif
-	tegra_release_bootloader_fb();
 	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

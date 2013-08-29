@@ -2140,7 +2140,7 @@ int __init tegra_register_fuse(void)
 	return platform_device_register(&tegra_fuse_device);
 }
 
-void __init tegra_release_bootloader_fb(void)
+int __init tegra_release_bootloader_fb(void)
 {
 	/* Since bootloader fb is reserved in common.c, it is freed here. */
 	if (tegra_bootloader_fb_size) {
@@ -2159,7 +2159,9 @@ void __init tegra_release_bootloader_fb(void)
 			free_bootmem_late(tegra_bootloader_fb2_start,
 						tegra_bootloader_fb2_size);
 	}
+	return 0;
 }
+late_initcall(tegra_release_bootloader_fb);
 
 static struct platform_device *pinmux_devices[] = {
 	&tegra_gpio_device,

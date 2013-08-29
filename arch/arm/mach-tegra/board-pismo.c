@@ -702,7 +702,6 @@ static void __init tegra_pismo_init(void)
 #elif defined CONFIG_BLUEDROID_PM
 	pismo_setup_bluedroid_pm();
 #endif
-	tegra_release_bootloader_fb();
 	pismo_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

@@ -1351,7 +1351,6 @@ static void __init tegra_pluto_late_init(void)
 #elif defined CONFIG_BLUEDROID_PM
 	pluto_setup_bluedroid_pm();
 #endif
-	tegra_release_bootloader_fb();
 	pluto_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
