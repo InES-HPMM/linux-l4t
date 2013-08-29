@@ -699,9 +699,7 @@ static struct tegra_io_dpd tegra_list_io_dpd[] = {
 /* we want to cleanup bootloader io dpd setting in kernel */
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 
-/* FIXME! remove !t12x after t12x added dpd */
-#if defined(CONFIG_PM_SLEEP) && \
-	!defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined CONFIG_PM_SLEEP
 struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 {
 #ifdef CONFIG_TEGRA_IO_DPD
