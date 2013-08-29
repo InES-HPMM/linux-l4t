@@ -1,299 +1,320 @@
 /*
- * palmas-extcon.c -- Palmas VBUS detection in extcon framework.
+ * Palmas USB transceiver driver
+ *
+ * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
+ * Author: Graeme Gregory <gg@slimlogic.co.uk>
+ * Author: Kishon Vijay Abraham I <kishon@ti.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * Based on twl6030_usb.c
  *
- * This program is distributed "as is" WITHOUT ANY WARRANTY of any kind,
- * whether express or implied; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * Author: Hema HK <hemahk@ti.com>
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
+
 #include <linux/module.h>
-#include <linux/err.h>
-#include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
-#include <linux/slab.h>
-#include <linux/delay.h>
-#include <linux/i2c.h>
-#include <linux/pm.h>
+#include <linux/err.h>
 #include <linux/extcon.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/machine.h>
 #include <linux/mfd/palmas.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 
-#define MAX_INT_NAME	40
-struct palmas_extcon {
-	struct device		*dev;
-	struct palmas		*palmas;
-	struct extcon_dev	*edev;
-	int			vbus_irq;
-	int			id_irq;
-	char			vbus_irq_name[MAX_INT_NAME];
-	char			id_irq_name[MAX_INT_NAME];
-	bool			enable_vbus_detection;
-	bool			enable_id_pin_detection;
-};
-
-const char *palmas_excon_cable[] = {
+static const char *const palmas_extcon_cable[] = {
 	[0] = "USB",
 	[1] = "USB-Host",
 	NULL,
 };
 
-static int palmas_extcon_vbus_cable_update(
-		struct palmas_extcon *palma_econ)
+static const int mutually_exclusive[] = {0x3, 0x0};
+
+static void palmas_usb_wakeup(struct palmas *palmas, int enable)
 {
-	int ret;
-	unsigned int status;
-
-	ret = palmas_read(palma_econ->palmas, PALMAS_INTERRUPT_BASE,
-				PALMAS_INT3_LINE_STATE,	&status);
-	if (ret < 0) {
-		dev_err(palma_econ->dev,
-			"INT3_LINE_STATE read failed: %d\n", ret);
-		return ret;
-	}
-
-	if (status & PALMAS_INT3_LINE_STATE_VBUS)
-		extcon_set_cable_state(palma_econ->edev, "USB", true);
+	if (enable)
+		palmas_write(palmas, PALMAS_USB_OTG_BASE, PALMAS_USB_WAKEUP,
+			PALMAS_USB_WAKEUP_ID_WK_UP_COMP);
 	else
-		extcon_set_cable_state(palma_econ->edev, "USB", false);
-
-	dev_info(palma_econ->dev, "VBUS %s status: 0x%02x\n",
-		(status & PALMAS_INT3_LINE_STATE_VBUS) ? "Valid" : "Invalid",
-		status);
-
-	return 0;
+		palmas_write(palmas, PALMAS_USB_OTG_BASE, PALMAS_USB_WAKEUP, 0);
 }
 
-static int palmas_extcon_id_cable_update(
-		struct palmas_extcon *palma_econ)
+static irqreturn_t palmas_vbus_irq_handler(int irq, void *_palmas_usb)
 {
-	int ret;
-	unsigned int status;
+	struct palmas_usb *palmas_usb = _palmas_usb;
+	unsigned int vbus_line_state;
 
-	ret = palmas_read(palma_econ->palmas, PALMAS_INTERRUPT_BASE,
-				PALMAS_INT3_LINE_STATE,	&status);
-	if (ret < 0) {
-		dev_err(palma_econ->dev,
-			"INT3_LINE_STATE read failed: %d\n", ret);
-		return ret;
+	palmas_read(palmas_usb->palmas, PALMAS_INTERRUPT_BASE,
+		PALMAS_INT3_LINE_STATE, &vbus_line_state);
+
+	dev_info(palmas_usb->dev, "vbus-irq() INT3_LINE_STATE 0x%02x\n",
+			vbus_line_state);
+	if (vbus_line_state & PALMAS_INT3_LINE_STATE_VBUS) {
+		if (palmas_usb->vbus_linkstat != PALMAS_USB_STATE_VBUS) {
+			palmas_usb->vbus_linkstat = PALMAS_USB_STATE_VBUS;
+			extcon_set_cable_state(&palmas_usb->edev, "USB", true);
+			dev_info(palmas_usb->dev, "USB cable is attached\n");
+		} else {
+			dev_info(palmas_usb->dev,
+				"Spurious connect event detected\n");
+		}
+	} else if (!(vbus_line_state & PALMAS_INT3_LINE_STATE_VBUS)) {
+		if (palmas_usb->vbus_linkstat == PALMAS_USB_STATE_VBUS) {
+			palmas_usb->vbus_linkstat = PALMAS_USB_STATE_DISCONNECT;
+			extcon_set_cable_state(&palmas_usb->edev, "USB", false);
+			dev_info(palmas_usb->dev, "USB cable is detached\n");
+		} else {
+			dev_info(palmas_usb->dev,
+				"Spurious disconnect event detected\n");
+		}
 	}
-
-	if (status & PALMAS_INT3_LINE_STATE_ID)
-		extcon_set_cable_state(palma_econ->edev, "USB-Host", true);
-	else
-		extcon_set_cable_state(palma_econ->edev, "USB-Host", false);
-
-	dev_info(palma_econ->dev, "ID %s status: 0x%02x\n",
-		(status & PALMAS_INT3_LINE_STATE_ID) ? "Valid" : "Invalid",
-		status);
-
-	return 0;
-}
-
-static irqreturn_t palmas_extcon_irq(int irq, void *data)
-{
-	struct palmas_extcon *palma_econ = data;
-
-	if (irq == palma_econ->vbus_irq)
-		palmas_extcon_vbus_cable_update(palma_econ);
-	else if (irq == palma_econ->id_irq)
-		palmas_extcon_id_cable_update(palma_econ);
-	else
-		dev_err(palma_econ->dev, "Unknown interrupt %d\n", irq);
 
 	return IRQ_HANDLED;
 }
 
-static int palmas_extcon_probe(struct platform_device *pdev)
+static irqreturn_t palmas_id_irq_handler(int irq, void *_palmas_usb)
 {
+	unsigned int set;
+	struct palmas_usb *palmas_usb = _palmas_usb;
+
+	palmas_read(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_INT_LATCH_SET, &set);
+
+	dev_info(palmas_usb->dev, "id-irq() ID_INT_LATCH_SET 0x%02x\n", set);
+	if (set & PALMAS_USB_ID_INT_SRC_ID_GND) {
+		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+			PALMAS_USB_ID_INT_LATCH_CLR,
+			PALMAS_USB_ID_INT_EN_HI_CLR_ID_GND);
+		palmas_usb->id_linkstat = PALMAS_USB_STATE_ID;
+		extcon_set_cable_state(&palmas_usb->edev, "USB-Host", true);
+		dev_info(palmas_usb->dev, "USB-HOST cable is attached\n");
+	} else if (set & PALMAS_USB_ID_INT_SRC_ID_FLOAT) {
+		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+			PALMAS_USB_ID_INT_LATCH_CLR,
+			PALMAS_USB_ID_INT_EN_HI_CLR_ID_FLOAT);
+		palmas_usb->id_linkstat = PALMAS_USB_STATE_DISCONNECT;
+		extcon_set_cable_state(&palmas_usb->edev, "USB-Host", false);
+		dev_info(palmas_usb->dev, "USB-HOST cable is detached\n");
+	} else if ((palmas_usb->id_linkstat == PALMAS_USB_STATE_ID) &&
+				(!(set & PALMAS_USB_ID_INT_SRC_ID_GND))) {
+		palmas_usb->id_linkstat = PALMAS_USB_STATE_DISCONNECT;
+		extcon_set_cable_state(&palmas_usb->edev, "USB-Host", false);
+		dev_info(palmas_usb->dev, "USB-HOST cable is detached\n");
+	}
+
+	return IRQ_HANDLED;
+}
+
+static void palmas_enable_irq(struct palmas_usb *palmas_usb)
+{
+	palmas_usb->vbus_linkstat = PALMAS_USB_STATE_INIT;
+	palmas_usb->id_linkstat = PALMAS_USB_STATE_INIT;
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_VBUS_CTRL_SET,
+		PALMAS_USB_VBUS_CTRL_SET_VBUS_ACT_COMP);
+
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_CTRL_SET, PALMAS_USB_ID_CTRL_SET_ID_ACT_COMP);
+
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_INT_EN_HI_SET,
+		PALMAS_USB_ID_INT_EN_HI_SET_ID_GND |
+		PALMAS_USB_ID_INT_EN_HI_SET_ID_FLOAT);
+
+	if (palmas_usb->enable_vbus_detection)
+		palmas_vbus_irq_handler(palmas_usb->vbus_irq, palmas_usb);
+
+	/* cold plug for host mode needs this delay */
+	if (palmas_usb->enable_id_detection) {
+		msleep(30);
+		palmas_id_irq_handler(palmas_usb->id_irq, palmas_usb);
+	}
+}
+
+static int palmas_usb_probe(struct platform_device *pdev)
+{
+	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_platform_data *pdata;
 	struct palmas_extcon_platform_data *epdata = NULL;
-	struct palmas_extcon *palma_econ;
-	struct extcon_dev *edev;
-	int ret;
+	struct device_node *node = pdev->dev.of_node;
+	struct palmas_usb *palmas_usb;
+	int status;
+
+	palmas_usb = devm_kzalloc(&pdev->dev, sizeof(*palmas_usb), GFP_KERNEL);
+	if (!palmas_usb)
+		return -ENOMEM;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
 	if (pdata)
 		epdata = pdata->extcon_pdata;
-	if (!epdata) {
-		dev_err(&pdev->dev, "No platform data\n");
-		return -EINVAL;
+
+	if (node && !epdata) {
+		palmas_usb->wakeup = of_property_read_bool(node, "ti,wakeup");
+		palmas_usb->enable_id_detection = of_property_read_bool(node,
+						"ti,enable-id-detection");
+		palmas_usb->enable_vbus_detection = of_property_read_bool(node,
+						"ti,enable-vbus-detection");
+	} else {
+		palmas_usb->wakeup = true;
+		palmas_usb->enable_id_detection = true;
+		palmas_usb->enable_vbus_detection = true;
+
+		if (epdata) {
+			palmas_usb->wakeup = epdata->wakeup;
+			palmas_usb->enable_id_detection =
+					epdata->enable_id_pin_detection;
+			palmas_usb->enable_vbus_detection =
+					epdata->enable_vbus_detection;
+			if (palmas_usb->enable_id_detection)
+				palmas_usb->wakeup = true;
+		}
 	}
 
-	palma_econ = devm_kzalloc(&pdev->dev, sizeof(*palma_econ), GFP_KERNEL);
-	if (!palma_econ) {
-		dev_err(&pdev->dev, "Memory alloc failed for palma_econ\n");
-		return -ENOMEM;
-	}
+	palmas_usb->palmas = palmas;
+	palmas_usb->dev	 = &pdev->dev;
 
-	edev = devm_kzalloc(&pdev->dev, sizeof(*edev), GFP_KERNEL);
-	if (!edev) {
-		dev_err(&pdev->dev, "Memory allocation failed for edev\n");
-		return -ENOMEM;
-	}
+	palmas_usb->id_otg_irq = palmas_irq_get_virq(palmas, PALMAS_ID_OTG_IRQ);
+	palmas_usb->id_irq = palmas_irq_get_virq(palmas, PALMAS_ID_IRQ);
+	palmas_usb->vbus_otg_irq = palmas_irq_get_virq(palmas,
+						PALMAS_VBUS_OTG_IRQ);
+	palmas_usb->vbus_irq = palmas_irq_get_virq(palmas, PALMAS_VBUS_IRQ);
 
-	palma_econ->edev = edev;
-	palma_econ->edev->name = (epdata->connection_name) ?
-				epdata->connection_name : pdev->name;
-	palma_econ->edev->supported_cable = palmas_excon_cable;
+	palmas_usb_wakeup(palmas, palmas_usb->wakeup);
 
-	palma_econ->dev = &pdev->dev;
-	palma_econ->palmas = dev_get_drvdata(pdev->dev.parent);
-	dev_set_drvdata(&pdev->dev, palma_econ);
+	platform_set_drvdata(pdev, palmas_usb);
 
-	palma_econ->enable_vbus_detection = epdata->enable_vbus_detection;
-	palma_econ->enable_id_pin_detection = epdata->enable_id_pin_detection;
-	palma_econ->vbus_irq =
-		palmas_irq_get_virq(palma_econ->palmas, PALMAS_VBUS_IRQ);
-	palma_econ->id_irq =
-		palmas_irq_get_virq(palma_econ->palmas, PALMAS_ID_IRQ);
+	palmas_usb->edev.supported_cable = palmas_extcon_cable;
+	palmas_usb->edev.mutually_exclusive = mutually_exclusive;
+	palmas_usb->edev.name  = (epdata && epdata->connection_name) ?
+					epdata->connection_name : pdev->name;
 
-	ret = extcon_dev_register(palma_econ->edev, NULL);
-	if (ret < 0) {
+	status = extcon_dev_register(&palmas_usb->edev, palmas_usb->dev);
+	if (status < 0) {
 		dev_err(&pdev->dev, "failed to register extcon device\n");
-		return ret;
+		return status;
 	}
 
-	/* Set initial state */
-	if (epdata->enable_vbus_detection) {
-		ret = palmas_extcon_vbus_cable_update(palma_econ);
-		if (ret < 0) {
-			dev_err(&pdev->dev,
-				"VBUS Cable init failed: %d\n", ret);
-			goto out;
-		}
-		snprintf(palma_econ->vbus_irq_name, MAX_INT_NAME,
-			"vbus-%s\n", dev_name(palma_econ->dev));
-		ret = request_threaded_irq(palma_econ->vbus_irq, NULL,
-			palmas_extcon_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
-			palma_econ->vbus_irq_name, palma_econ);
-		if (ret < 0) {
-			dev_err(palma_econ->dev, "request irq %d failed: %d\n",
-				palma_econ->vbus_irq, ret);
-			goto out;
+	if (palmas_usb->enable_id_detection) {
+		status = devm_request_threaded_irq(palmas_usb->dev,
+				palmas_usb->id_irq,
+				NULL, palmas_id_irq_handler,
+				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING |
+				IRQF_ONESHOT | IRQF_EARLY_RESUME,
+				"palmas_usb_id", palmas_usb);
+		if (status < 0) {
+			dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
+					palmas_usb->id_irq, status);
+			goto fail_extcon;
 		}
 	}
 
-	if (epdata->enable_id_pin_detection) {
-		ret = palmas_update_bits(palma_econ->palmas,
-				PALMAS_USB_OTG_BASE,
-				PALMAS_USB_WAKEUP,
-				PALMAS_USB_WAKEUP_ID_WK_UP_COMP, 1);
-		if (ret < 0) {
-			dev_err(palma_econ->dev,
-				"USB_WAKEUP write failed: %d\n", ret);
-			goto out_free_vbus;
-		}
-
-		ret = palmas_extcon_id_cable_update(palma_econ);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "ID Cable init failed: %d\n", ret);
-			goto out;
-		}
-		snprintf(palma_econ->id_irq_name, MAX_INT_NAME,
-			"id-%s\n", dev_name(palma_econ->dev));
-		ret = request_threaded_irq(palma_econ->id_irq, NULL,
-			palmas_extcon_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
-			palma_econ->id_irq_name, palma_econ);
-		if (ret < 0) {
-			dev_err(palma_econ->dev, "request irq %d failed: %d\n",
-				palma_econ->id_irq, ret);
-			goto out_free_vbus;
+	if (palmas_usb->enable_vbus_detection) {
+		status = devm_request_threaded_irq(palmas_usb->dev,
+				palmas_usb->vbus_irq, NULL,
+				palmas_vbus_irq_handler,
+				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING |
+				IRQF_ONESHOT | IRQF_EARLY_RESUME,
+				"palmas_usb_vbus", palmas_usb);
+		if (status < 0) {
+			dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
+					palmas_usb->vbus_irq, status);
+			goto fail_extcon;
 		}
 	}
 
-	device_set_wakeup_capable(&pdev->dev, 1);
+	palmas_enable_irq(palmas_usb);
+	device_set_wakeup_capable(&pdev->dev, true);
 	return 0;
-out_free_vbus:
-	if (epdata->enable_vbus_detection)
-		free_irq(palma_econ->vbus_irq, palma_econ);
-out:
-	extcon_dev_unregister(palma_econ->edev);
-	return ret;
+
+fail_extcon:
+	extcon_dev_unregister(&palmas_usb->edev);
+
+	return status;
 }
 
-static int palmas_extcon_remove(struct platform_device *pdev)
+static int palmas_usb_remove(struct platform_device *pdev)
 {
-	struct palmas_extcon *palma_econ = dev_get_drvdata(&pdev->dev);
+	struct palmas_usb *palmas_usb = platform_get_drvdata(pdev);
 
-	extcon_dev_unregister(palma_econ->edev);
-	if (palma_econ->enable_vbus_detection)
-		free_irq(palma_econ->vbus_irq, palma_econ);
-	if (palma_econ->enable_id_pin_detection)
-		free_irq(palma_econ->id_irq, palma_econ);
+	extcon_dev_unregister(&palmas_usb->edev);
+
 	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int palmas_extcon_suspend(struct device *dev)
+static int palmas_usb_suspend(struct device *dev)
 {
-	struct palmas_extcon *palma_econ = dev_get_drvdata(dev);
+	struct palmas_usb *palmas_usb = dev_get_drvdata(dev);
 
 	if (device_may_wakeup(dev)) {
-		if (palma_econ->enable_vbus_detection)
-			enable_irq_wake(palma_econ->vbus_irq);
-		if (palma_econ->enable_id_pin_detection)
-			enable_irq_wake(palma_econ->id_irq);
+		if (palmas_usb->enable_vbus_detection)
+			enable_irq_wake(palmas_usb->vbus_irq);
+		if (palmas_usb->enable_id_detection)
+			enable_irq_wake(palmas_usb->id_irq);
 	}
 	return 0;
 }
 
-static int palmas_extcon_resume(struct device *dev)
+static int palmas_usb_resume(struct device *dev)
 {
-	struct palmas_extcon *palma_econ = dev_get_drvdata(dev);
+	struct palmas_usb *palmas_usb = dev_get_drvdata(dev);
 
 	if (device_may_wakeup(dev)) {
-		if (palma_econ->enable_vbus_detection)
-			disable_irq_wake(palma_econ->vbus_irq);
-		if (palma_econ->enable_id_pin_detection)
-			disable_irq_wake(palma_econ->id_irq);
+		if (palmas_usb->enable_vbus_detection)
+			disable_irq_wake(palmas_usb->vbus_irq);
+		if (palmas_usb->enable_id_detection)
+			disable_irq_wake(palmas_usb->id_irq);
 	}
 	return 0;
 };
 #endif
 
 static const struct dev_pm_ops palmas_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(palmas_extcon_suspend,
-				palmas_extcon_resume)
+	SET_SYSTEM_SLEEP_PM_OPS(palmas_usb_suspend,
+				palmas_usb_resume)
 };
 
-static struct platform_driver palmas_extcon_driver = {
-	.probe = palmas_extcon_probe,
-	.remove = palmas_extcon_remove,
+static struct of_device_id of_palmas_match_tbl[] = {
+	{ .compatible = "ti,palmas-usb", },
+	{ .compatible = "ti,twl6035-usb", },
+	{ /* end */ }
+};
+
+static struct platform_driver palmas_usb_driver = {
+	.probe = palmas_usb_probe,
+	.remove = palmas_usb_remove,
 	.driver = {
-		.name = "palmas-extcon",
+		.name = "palmas-usb",
+		.of_match_table = of_palmas_match_tbl,
 		.owner = THIS_MODULE,
 		.pm = &palmas_pm_ops,
 	},
 };
 
-static int __init palmas_extcon_driver_init(void)
+static int __init palmas_usb_driver_init(void)
 {
-	return platform_driver_register(&palmas_extcon_driver);
+	return platform_driver_register(&palmas_usb_driver);
 }
-subsys_initcall_sync(palmas_extcon_driver_init);
+subsys_initcall_sync(palmas_usb_driver_init);
 
-static void __exit palmas_extcon_driver_exit(void)
+static void __exit palmas_usb_driver_exit(void)
 {
-	platform_driver_unregister(&palmas_extcon_driver);
+	platform_driver_unregister(&palmas_usb_driver);
 }
-module_exit(palmas_extcon_driver_exit);
+module_exit(palmas_usb_driver_exit);
 
-MODULE_DESCRIPTION("palmas extcon driver");
-MODULE_AUTHOR("Laxman Dewangan<ldewangan@nvidia.com>");
-MODULE_ALIAS("platform:palmas-extcon");
-MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:palmas-usb");
+MODULE_AUTHOR("Graeme Gregory <gg@slimlogic.co.uk>");
+MODULE_DESCRIPTION("Palmas USB transceiver driver");
+MODULE_LICENSE("GPL");
+MODULE_DEVICE_TABLE(of, of_palmas_match_tbl);

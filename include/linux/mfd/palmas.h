@@ -24,6 +24,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/kthread.h>
 #include <linux/iio/machine.h>
+#include <linux/extcon.h>
 
 #define PALMAS_NUM_CLIENTS	4
 
@@ -550,6 +551,8 @@ struct palmas_extcon_platform_data {
 	const char *connection_name;
 	bool enable_vbus_detection;
 	bool enable_id_pin_detection;
+	/* Do we enable the wakeup comparator on probe */
+	int wakeup;
 };
 
 struct palmas_battery_platform_data {
@@ -707,26 +710,29 @@ struct palmas_resource {
 	struct device *dev;
 };
 
+enum palmas_usb_state {
+	PALMAS_USB_STATE_INIT,
+	PALMAS_USB_STATE_DISCONNECT,
+	PALMAS_USB_STATE_VBUS,
+	PALMAS_USB_STATE_ID,
+};
+
 struct palmas_usb {
 	struct palmas *palmas;
 	struct device *dev;
 
-	/* for vbus reporting with irqs disabled */
-	spinlock_t lock;
+	struct extcon_dev edev;
 
-	struct regulator *vbus_reg;
+	int id_otg_irq;
+	int id_irq;
+	int vbus_otg_irq;
+	int vbus_irq;
 
-	/* used to set vbus, in atomic path */
-	struct work_struct set_vbus_work;
-
-	int irq1;
-	int irq2;
-	int irq3;
-	int irq4;
-
-	int vbus_enable;
-
-	u8 linkstat;
+	enum palmas_usb_state id_linkstat;
+	enum palmas_usb_state vbus_linkstat;
+	int wakeup;
+	bool enable_vbus_detection;
+	bool enable_id_detection;
 };
 
 #define comparator_to_palmas(x) container_of((x), struct palmas_usb, comparator)
