@@ -161,7 +161,7 @@ static __initdata struct tegra_pingroup_config loki_pinmux_common[] = {
 	DEFAULT_PINMUX(SDMMC1_WP_N,   SPI4,        PULL_UP,   NORMAL,   OUTPUT),
 
 	/* CEC pinmux */
-	CEC_PINMUX(HDMI_CEC, CEC, NORMAL, NORMAL, INPUT, DEFAULT, DISABLE),
+	CEC_PINMUX(HDMI_CEC, CEC, NORMAL, NORMAL, INPUT, DEFAULT, ENABLE),
 
 	/* I2C4 pinmux */
 	DDC_PINMUX(DDC_SCL, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, NORMAL),

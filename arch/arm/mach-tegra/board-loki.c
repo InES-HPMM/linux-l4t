@@ -333,6 +333,9 @@ static struct platform_device *loki_devices[] __initdata = {
 	&bluetooth_dit_device,
 	&baseband_dit_device,
 	&tegra_hda_device,
+#if defined(CONFIG_TEGRA_CEC_SUPPORT)
+	&tegra_cec_device,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
