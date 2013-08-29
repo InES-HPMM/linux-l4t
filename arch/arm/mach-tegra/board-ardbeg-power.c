@@ -559,8 +559,8 @@ static struct palmas_extcon_platform_data palmas_extcon_pdata = {
 static struct palmas_pinctrl_config palmas_ti913_pincfg[] = {
 	PALMAS_PINMUX("powergood", "powergood", NULL, NULL),
 	PALMAS_PINMUX("vac", "vac", NULL, NULL),
-	PALMAS_PINMUX("gpio0", "id", NULL, NULL),
-	PALMAS_PINMUX("gpio1", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio0", "id", "pull-up", NULL),
+	PALMAS_PINMUX("gpio1", "vbus-det", NULL, NULL),
 	PALMAS_PINMUX("gpio2", "gpio", NULL, NULL),
 	PALMAS_PINMUX("gpio3", "gpio", NULL, NULL),
 	PALMAS_PINMUX("gpio4", "gpio", NULL, NULL),

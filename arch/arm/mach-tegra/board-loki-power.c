@@ -304,7 +304,7 @@ static struct palmas_reg_init *loki_reg_init[PALMAS_NUM_REGS] = {
 static struct palmas_pinctrl_config palmas_pincfg[] = {
 	PALMAS_PINMUX("powergood", "powergood", NULL, NULL),
 	PALMAS_PINMUX("vac", "vac", NULL, NULL),
-	PALMAS_PINMUX("gpio0", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio0", "id", "pull-up", NULL),
 	PALMAS_PINMUX("gpio1", "gpio", NULL, NULL),
 	PALMAS_PINMUX("gpio2", "gpio", NULL, NULL),
 	PALMAS_PINMUX("gpio3", "gpio", NULL, NULL),
