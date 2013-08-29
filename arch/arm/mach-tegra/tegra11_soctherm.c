@@ -1715,8 +1715,11 @@ static int soctherm_fuse_read_calib_base(void)
 	s32 calib_cp, calib_ft;
 	s32 nominal_calib_cp, nominal_calib_ft;
 
-	tegra_fuse_calib_base_get_cp(&fuse_calib_base_cp, &calib_cp);
-	tegra_fuse_calib_base_get_ft(&fuse_calib_base_ft, &calib_ft);
+	if (tegra_fuse_calib_base_get_cp(&fuse_calib_base_cp, &calib_cp) ||
+	    tegra_fuse_calib_base_get_ft(&fuse_calib_base_ft, &calib_ft)) {
+		pr_err("soctherm: ERROR: Improper CP or FT calib fuse.\n");
+		return -EINVAL;
+	}
 
 	nominal_calib_cp = 25;
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)

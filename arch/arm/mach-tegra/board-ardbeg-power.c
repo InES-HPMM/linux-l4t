@@ -40,6 +40,7 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 
 #include <asm/mach-types.h>
+#include <mach/tegra_fuse.h>
 
 #include "pm.h"
 #include "dvfs.h"
@@ -1275,5 +1276,10 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 
 int __init ardbeg_soctherm_init(void)
 {
-	return tegra11_soctherm_init(&ardbeg_soctherm_data);
+	/* do this only for supported CP,FT fuses */
+	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL))
+		return tegra11_soctherm_init(&ardbeg_soctherm_data);
+
+	return -EINVAL;
 }
