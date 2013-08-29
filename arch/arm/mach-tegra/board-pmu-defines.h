@@ -47,10 +47,10 @@
 
 #define PALMAS_PINMUX(_pin, _mux, _pud, _od)				\
 {									\
-	.pin_name = PALMAS_PIN_NAME_##_pin,				\
-	.pin_mux_option = PALMAS_PINMUX_##_mux,				\
-	.pin_pull_up_dn = PALMAS_PIN_CONFIG_##_pud,			\
-	.open_drain_state = PALMAS_PIN_CONFIG_OD_##_od,			\
+	.pin = _pin,							\
+	.function = _mux,						\
+	.prop_bias_pull = _pud,						\
+	.prop_open_drain = _od,						\
 }
 
 #define PALMAS_REGS_PDATA(_name, _minmv, _maxmv, _supply_reg,		\

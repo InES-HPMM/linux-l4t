@@ -233,6 +233,8 @@ config PINCTRL_MAX77660
 config PINCTRL_PALMAS
 	tristate "PALMAS Pincontrol support"
 	depends on MFD_PALMAS
+	select PINMUX
+	select GENERIC_PINCONF
 	help
 	  PALMAS is a PMIC series from TI for smartphone and tablets. This PMIC
 	  has some pins i.e. named as GPIOx which can be act as GPIO or in

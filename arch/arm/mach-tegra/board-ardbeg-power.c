@@ -548,16 +548,16 @@ static struct palmas_extcon_platform_data palmas_extcon_pdata = {
 };
 
 static struct palmas_pinctrl_config palmas_ti913_pincfg[] = {
-	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO0, ID, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO1, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO2, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO3, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO4, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO5, CLK32KGAUDIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO6, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO7, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX("powergood", "powergood", NULL, NULL),
+	PALMAS_PINMUX("vac", "vac", NULL, NULL),
+	PALMAS_PINMUX("gpio0", "id", NULL, NULL),
+	PALMAS_PINMUX("gpio1", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio2", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio3", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio4", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio5", "clk32kgaudio", NULL, NULL),
+	PALMAS_PINMUX("gpio6", "gpio", NULL, NULL),
+	PALMAS_PINMUX("gpio7", "gpio", NULL, NULL),
 };
 
 static struct palmas_pinctrl_platform_data palmas_ti913_pinctrl_pdata = {
