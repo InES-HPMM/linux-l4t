@@ -32,6 +32,7 @@
 #include <linux/debugfs.h>
 #include <linux/kthread.h>
 #include <linux/gpio.h>
+#include <linux/usb/otg.h>
 
 #include <mach/powergate.h>
 #include <mach/clk.h>
@@ -398,6 +399,10 @@ struct tegra_xhci_hcd {
 	bool usb3_rh_suspend;
 	bool hc_in_elpg;
 
+	/* otg transceiver */
+	struct usb_phy *transceiver;
+	struct notifier_block otgnb;
+
 	unsigned long usb2_rh_remote_wakeup_ports; /* one bit per port */
 	unsigned long usb3_rh_remote_wakeup_ports; /* one bit per port */
 	/* firmware loading related */
@@ -481,6 +486,16 @@ static void debug_print_portsc(struct xhci_hcd *xhci)
 }
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra);
 
+static bool is_otg_host(struct tegra_xhci_hcd *tegra)
+{
+	if (!tegra->transceiver)
+		return true;
+	else if (tegra->transceiver->state == OTG_STATE_A_HOST)
+		return true;
+	else
+		return false;
+}
+
 static int update_speed(struct tegra_xhci_hcd *tegra, u8 port)
 {
 	struct usb_hcd *hcd = xhci_to_hcd(tegra->xhci);
@@ -560,7 +575,12 @@ static void pmc_setup_wake_detect(struct tegra_xhci_hcd *tegra)
 			dev_dbg(dev, "%s utmi pad %d\n", __func__, pad);
 			pmc = &pmc_data[pad];
 			pmc->port_speed = update_speed(tegra, pad);
-			pmc->pmc_ops->setup_pmc_wake_detect(pmc);
+			if (pad == 0) {
+				if (is_otg_host(tegra))
+					pmc->pmc_ops->setup_pmc_wake_detect(
+									pmc);
+			} else
+				pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 		}
 	}
 }
@@ -1301,7 +1321,8 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		}
 	}
 
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)) {
+	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) &&
+					 !tegra->transceiver) {
 		tegra->xusb_s5p0v_reg = devm_regulator_get(&pdev->dev,
 						supply->s5p0v);
 		if (IS_ERR(tegra->xusb_s5p0v_reg)) {
@@ -1398,7 +1419,7 @@ err_put_s1p05v_reg:
 err_put_s1p8v_reg:
 	regulator_disable(tegra->xusb_s1p8v_reg);
 err_put_s5p0v_reg:
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0))
+	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) && !tegra->transceiver)
 		regulator_disable(tegra->xusb_s5p0v_reg);
 err_put_s3p3v_reg:
 	regulator_disable(tegra->xusb_s3p3v_reg);
@@ -1416,7 +1437,7 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 {
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	regulator_disable(tegra->xusb_s1p8v_reg);
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0))
+	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) && !tegra->transceiver)
 		regulator_disable(tegra->xusb_s5p0v_reg);
 	regulator_disable(tegra->xusb_s3p3v_reg);
 	if (tegra->bdata->uses_different_vbus_per_port) {
@@ -1871,6 +1892,11 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	reg |= (tegra->pdata->hs_iref_cap << 9) |
 		(tegra->pdata->hs_term_range_adj << 3);
 	writel(reg, tegra->padctl_base + ctl1_offset);
+
+	/*Release OTG port if not in host mode*/
+
+	if ((port == 0) && !is_otg_host(tegra))
+		tegra_xhci_release_otg_port(true);
 }
 
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
@@ -2328,7 +2354,8 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 
 	if (!release) {
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
-			reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0);
+			if (is_otg_host(tegra))
+				reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0);
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 			reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(1);
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
@@ -3784,6 +3811,24 @@ static struct tegra_xusb_padctl_regs t124_padregs_offset = {
 	.iophy_misc_pad_s0_ctl6_0	= 0x15c,
 };
 
+/* FIXME: using notifier to transfer control to host from suspend
+ * for otg port when xhci is in elpg. Find  better alternative
+ */
+static int tegra_xhci_otg_notify(struct notifier_block *nb,
+				   unsigned long event, void *unused)
+{
+	struct tegra_xhci_hcd *tegra = container_of(nb,
+					struct tegra_xhci_hcd, otgnb);
+
+	if ((event == USB_EVENT_ID))
+		if (tegra->hc_in_elpg) {
+			schedule_work(&tegra->host_elpg_exit_work);
+			tegra->host_resume_req = true;
+	}
+
+	return NOTIFY_OK;
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -3837,6 +3882,18 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) {
+		tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
+		if (IS_ERR_OR_NULL(tegra->transceiver)) {
+			dev_err(&pdev->dev, "failed to get usb phy\n");
+			tegra->transceiver = NULL;
+		} else {
+			otg_set_host(tegra->transceiver->otg, &hcd->self);
+			tegra->otgnb.notifier_call = tegra_xhci_otg_notify;
+			usb_register_notifier(tegra->transceiver,
+				&tegra->otgnb);
+		}
+	}
 	/* Enable power rails to the PAD,VBUS
 	 * and pull-up voltage.Initialize the regulators
 	 */
@@ -4080,6 +4137,8 @@ err_deinit_usb2_clocks:
 err_deinit_tegra_xusb_regulator:
 	tegra_xusb_regulator_deinit(tegra);
 err_deinit_xusb_partition_clk:
+	usb_unregister_notifier(tegra->transceiver,
+		&tegra->otgnb);
 	tegra_xusb_partitions_clk_deinit(tegra);
 
 	return ret;
@@ -4120,6 +4179,8 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	deinit_firmware(tegra);
 	fw_log_deinit(tegra);
 	tegra_xusb_regulator_deinit(tegra);
+	usb_unregister_notifier(tegra->transceiver,
+		&tegra->otgnb);
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);

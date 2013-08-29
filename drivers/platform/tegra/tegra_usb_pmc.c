@@ -330,6 +330,9 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
+	if (pmc_data->is_xhci)
+		return;
+
 	spin_lock_irqsave(&pmc_lock, flags);
 
 	/* power down UTMIP interfaces */
@@ -369,6 +372,9 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	unsigned  int inst = pmc_data->instance;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
+
+	if (pmc_data->is_xhci)
+		return;
 
 	spin_lock_irqsave(&pmc_lock, flags);
 

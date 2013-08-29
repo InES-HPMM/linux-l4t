@@ -37,6 +37,7 @@
 #include <linux/regulator/consumer.h>
 
 #include <mach/pm_domains.h>
+#include <mach/tegra_usb_pad_ctrl.h>
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -222,6 +223,22 @@ static unsigned long enable_interrupt(struct tegra_otg *tegra, bool en)
 	return val;
 }
 
+static void tegra_otg_vbus_enable(struct regulator *vbus_reg, int on)
+{
+	static int vbus_enable = 1;
+
+	if (vbus_reg == NULL)
+		return ;
+
+	if (on && vbus_enable) {
+		regulator_enable(vbus_reg);
+		vbus_enable = 0;
+	} else if (!on && !vbus_enable) {
+		regulator_disable(vbus_reg);
+		vbus_enable = 1;
+	}
+}
+
 static void tegra_start_host(struct tegra_otg *tegra)
 {
 	struct tegra_usb_otg_data *pdata = tegra->pdata;
@@ -232,6 +249,11 @@ static void tegra_start_host(struct tegra_otg *tegra)
 
 	if (tegra->pdev)
 		return;
+
+	if (pdata->is_xhci) {
+		tegra_xhci_release_otg_port(false);
+		return;
+	}
 
 	/* prepare device structure for registering host*/
 	pdev = platform_device_alloc(ehci_device->name, ehci_device->id);
@@ -274,6 +296,10 @@ static void tegra_stop_host(struct tegra_otg *tegra)
 
 	DBG("%s(%d) Begin\n", __func__, __LINE__);
 
+	if (tegra->pdata->is_xhci) {
+		tegra_xhci_release_otg_port(true);
+		return;
+	}
 	if (pdev) {
 		/* unregister host from otg */
 		platform_device_unregister(pdev);
@@ -287,22 +313,6 @@ static void tegra_otg_notify_event(struct tegra_otg *tegra, int event)
 {
 	tegra->phy.last_event = event;
 	atomic_notifier_call_chain(&tegra->phy.notifier, event, tegra->phy.otg->gadget);
-}
-
-static void tegra_otg_vbus_enable(struct regulator *vbus_reg, int on)
-{
-	static int vbus_enable = 1;
-
-	if (vbus_reg == NULL)
-		return ;
-
-	if (on && vbus_enable) {
-		regulator_enable(vbus_reg);
-		vbus_enable = 0;
-	} else if (!on && !vbus_enable) {
-		regulator_disable(vbus_reg);
-		vbus_enable = 1;
-	}
 }
 
 static int tegra_otg_start_host(struct tegra_otg *tegra, int on)

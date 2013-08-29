@@ -26,6 +26,26 @@ static DEFINE_SPINLOCK(xusb_padctl_lock);
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
 
+void tegra_xhci_release_otg_port(bool release)
+{
+	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 reg;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	reg = readl(padctl_base + XUSB_PADCTL_USB2_PAD_MUX_0);
+
+	reg &= ~USB2_OTG_PAD_PORT0_MASK;
+	if (release)
+		reg |= USB2_OTG_PAD_PORT0_SNPS;
+	else
+		reg |= USB2_OTG_PAD_PORT0_XUSB;
+
+	writel(reg, padctl_base + XUSB_PADCTL_USB2_PAD_MUX_0);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_xhci_release_otg_port);
+
 void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable)
 {
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
