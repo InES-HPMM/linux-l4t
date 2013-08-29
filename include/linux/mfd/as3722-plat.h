@@ -43,6 +43,11 @@ struct as3722_reg_init {
 
 extern const struct regmap_config as3722_regmap_config;
 
+
+#define AS3722_EXT_CONTROL_ENABLE1		0x1
+#define AS3722_EXT_CONTROL_ENABLE2		0x2
+#define AS3722_EXT_CONTROL_ENABLE3		0x3
+
 struct as3722_rtc {
 	struct rtc_device *rtc;
 	int alarm_enabled;      /* used for suspend/resume */
@@ -86,6 +91,7 @@ struct as3722_pinctrl_init_data {
 
 /*
  * as3722_regulator_platform_data: Regulator platform data.
+ * @ext_control: External control.
  * @oc_configure_enable: Enable overcurrent configuration.
  * @oc_trip_thres_perphase: Overcurrent trip threshold current in mA per pahse.
  *	This should be 2500, 3000, 3500.
