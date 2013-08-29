@@ -692,6 +692,7 @@ struct palmas_pmic {
 	int smps457;
 	bool smps10_regulator_enabled;
 	int ldo_vref0p425;
+	bool smps10_boost_disable_deferred;
 
 	int range[PALMAS_REG_SMPS10];
 	unsigned int ramp_delay[PALMAS_REG_SMPS10];

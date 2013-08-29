@@ -305,6 +305,9 @@ static unsigned int palmas_smps_ramp_delay[4] = {0, 10000, 5000, 2500};
 
 #define REGULATOR_SLAVE			0
 
+static void palmas_disable_smps10_boost(struct palmas *palmas);
+static void palmas_enable_smps10_boost(struct palmas *palmas);
+
 static int palmas_smps_read(struct palmas *palmas, unsigned int reg,
 		unsigned int *dest)
 {
@@ -635,6 +638,7 @@ static int palmas_enable_smps10(struct regulator_dev *dev)
 	if (!(EXT_PWR_REQ & pmic->roof_floor[id]))
 		ret = regulator_enable_regmap(dev);
 
+	palmas_enable_smps10_boost(pmic->palmas);
 	pmic->smps10_regulator_enabled = true;
 	return ret;
 }
@@ -649,6 +653,12 @@ static int palmas_disable_smps10(struct regulator_dev *dev)
 		ret = regulator_disable_regmap(dev);
 
 	pmic->smps10_regulator_enabled = false;
+
+	if (pmic->smps10_boost_disable_deferred) {
+		palmas_disable_smps10_boost(pmic->palmas);
+		pmic->smps10_boost_disable_deferred = false;
+	}
+
 	return ret;
 }
 
@@ -1797,9 +1807,12 @@ static int palmas_suspend(struct device *dev)
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 	int id;
 
-	if (pdata->disable_smps10_boost_suspend &&
-			!pmic->smps10_regulator_enabled)
-		palmas_disable_smps10_boost(palmas);
+	if (pdata->disable_smps10_boost_suspend) {
+		if (!pmic->smps10_regulator_enabled)
+			palmas_disable_smps10_boost(palmas);
+		else
+			pmic->smps10_boost_disable_deferred = true;
+	}
 
 	for (id = 0; id < PALMAS_NUM_REGS; id++) {
 		unsigned int cf = pmic->config_flags[id];
