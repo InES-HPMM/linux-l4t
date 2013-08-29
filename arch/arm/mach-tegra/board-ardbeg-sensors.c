@@ -110,6 +110,10 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	/* TN8 with diferent Compass address from ardbeg */
+	if (of_machine_is_compatible("nvidia,tn8"))
+		inv_mpu9250_i2c0_board_info[2].addr = MPU_COMPASS_ADDR_TN8;
+
 	inv_mpu9250_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));

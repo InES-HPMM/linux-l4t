@@ -46,6 +46,7 @@ int ardbeg_soctherm_init(void);
 #define MPU_GYRO_ORIENTATION	MTMAT_TOP_CCW_0
 #define MPU_COMPASS_NAME	"ak8975"
 #define MPU_COMPASS_ADDR	0x0C
+#define MPU_COMPASS_ADDR_TN8	0x0D
 #define MPU_COMPASS_ORIENTATION	MTMAT_BOT_CCW_270
 #define MPU_BMP_NAME		"bmp280"
 #define MPU_BMP_ADDR		0x77
