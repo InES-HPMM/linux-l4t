@@ -1188,26 +1188,26 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 0,
+			.num_trips = 3,
 			.trips = {
 				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 84000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 98000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 94000,
+					.trip_temp = 96000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 104000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 86000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
@@ -1216,8 +1216,25 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
-			.num_trips = 0,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 2,
 			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 100000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 88000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+/*
 				{
 					.cdev_type = "gk20a_cdev",
 					.trip_temp = 80000,
@@ -1227,18 +1244,12 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 90000,
+					.trip_temp = 98000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
+*/
 			},
 			.tzp = &soctherm_tzp,
 		},
@@ -1247,22 +1258,11 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 		},
 	},
 	.throttle = {
-		[THROTTLE_LIGHT] = {
-			.priority = 0x0f,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = false,
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = false,
-				},
-			},
-		},
 		[THROTTLE_HEAVY] = {
-			.priority = 0xf0,
+			.priority = 100,
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
-					.enable = false,
+					.enable = true,
 					.depth = 80,
 				},
 				[THROTTLE_DEV_GPU] = {
@@ -1278,8 +1278,13 @@ int __init ardbeg_soctherm_init(void)
 {
 	/* do this only for supported CP,FT fuses */
 	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
-	    !tegra_fuse_calib_base_get_ft(NULL, NULL))
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+		tegra_platform_edp_init(
+			ardbeg_soctherm_data.therm[THERM_CPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips,
+			8000); /* edp temperature margin */
 		return tegra11_soctherm_init(&ardbeg_soctherm_data);
+	}
 
 	return -EINVAL;
 }

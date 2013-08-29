@@ -29,6 +29,7 @@
 #include <media/as364x.h>
 #include <linux/pid_thermal_gov.h>
 #include <mach/edp.h>
+#include <mach/tegra_fuse.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -674,10 +675,27 @@ static int ardbeg_nct72_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
+	int i;
+	struct thermal_trip_info *trip_state;
 
-	tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
-				&ardbeg_nct72_pdata.num_trips,
-				12000);
+	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
+	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+		ardbeg_nct72_pdata.shutdown_ext_limit += 20;
+		for (i = 0; i < ardbeg_nct72_pdata.num_trips; i++) {
+			trip_state = &ardbeg_nct72_pdata.trips[i];
+			if (!strncmp(trip_state->cdev_type, "tegra-balanced",
+					THERMAL_NAME_LENGTH)) {
+				trip_state->cdev_type = "_none_";
+				break;
+			}
+		}
+	} else {
+		tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
+					&ardbeg_nct72_pdata.num_trips,
+					12000); /* edp temperature margin */
+	}
+
 
 /*
 	tegra_add_cdev_trips(ardbeg_nct72_pdata.trips,
