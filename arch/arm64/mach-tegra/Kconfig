@@ -58,6 +58,12 @@ config ARCH_TEGRA_21x_SOC
 	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
 	  NVIDIA Denver CPU
 
+config MACH_GRENADA
+	bool "Grenada board"
+	select TEGRA_FPGA_PLATFORM
+	help
+	  Support for NVIDIA GRENADA FPGA development platform
+
 config MACH_EXUMA
 	bool "Exuma board"
 	select TEGRA_FPGA_PLATFORM
