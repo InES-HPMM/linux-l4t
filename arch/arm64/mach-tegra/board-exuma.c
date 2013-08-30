@@ -55,3 +55,7 @@ int ardbeg_panel_init(void)
 	return bonaire_panel_init();
 }
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+void tegra_pd_in_idle(bool enable) {}
+#endif
+
