@@ -45,6 +45,7 @@
 #include "devices.h"
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
+#include "tegra_cpu_car.h"
 
 /* FIXME: Disable for initial Si bringup */
 #undef USE_PLLE_SS
@@ -560,6 +561,16 @@
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 #define DIVIDER_1_5_ALLOWED	0
+
+/* Tegra CPU clock and reset control regs */
+#define TEGRA_CLK_RST_CONTROLLER_CLK_CPU_CMPLX		0x4c
+#define TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET	0x340
+#define TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_CLR	0x344
+#define TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR	0x34c
+#define TEGRA30_CLK_RST_CONTROLLER_CPU_CMPLX_STATUS	0x470
+
+#define CPU_CLOCK(cpu)	(0x1 << (8 + cpu))
+#define CPU_RESET(cpu)	(0x111001ul << (cpu))
 
 /* PLLP default fixed rate in h/w controlled mode */
 #define PLLP_DEFAULT_FIXED_RATE		408000000
@@ -8212,6 +8223,60 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 };
 #endif
 
+/* Tegra12 CPU clock and reset control functions */
+static void tegra12_wait_cpu_in_reset(u32 cpu)
+{
+	unsigned int reg;
+
+	do {
+		reg = readl(reg_clk_base +
+			    TEGRA30_CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
+		cpu_relax();
+	} while (!(reg & (1 << cpu)));	/* check CPU been reset or not */
+
+	return;
+}
+
+static void tegra12_put_cpu_in_reset(u32 cpu)
+{
+	writel(CPU_RESET(cpu),
+	       reg_clk_base + TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET);
+	dmb();
+}
+
+static void tegra12_cpu_out_of_reset(u32 cpu)
+{
+	writel(CPU_RESET(cpu),
+	       reg_clk_base + TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_CLR);
+	wmb();
+}
+
+static void tegra12_enable_cpu_clock(u32 cpu)
+{
+	unsigned int reg;
+
+	writel(CPU_CLOCK(cpu),
+	       reg_clk_base + TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+	reg = readl(reg_clk_base +
+		    TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+}
+static void tegra12_disable_cpu_clock(u32 cpu)
+{
+}
+
+static struct tegra_cpu_car_ops tegra12_cpu_car_ops = {
+	.wait_for_reset	= tegra12_wait_cpu_in_reset,
+	.put_in_reset	= tegra12_put_cpu_in_reset,
+	.out_of_reset	= tegra12_cpu_out_of_reset,
+	.enable_clock	= tegra12_enable_cpu_clock,
+	.disable_clock	= tegra12_disable_cpu_clock,
+};
+
+void __init tegra12_cpu_car_ops_init(void)
+{
+	tegra_cpu_car_ops = &tegra12_cpu_car_ops;
+}
+
 static void tegra12_init_xusb_clocks(void)
 {
 	int i;
@@ -8281,6 +8346,8 @@ void __init tegra12x_init_clocks(void)
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
+
+	tegra12_cpu_car_ops_init();
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
