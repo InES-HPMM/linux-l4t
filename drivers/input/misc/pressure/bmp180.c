@@ -1620,10 +1620,8 @@ static int bmp_remove(struct i2c_client *client)
 
 	inf = i2c_get_clientdata(client);
 	if (inf != NULL) {
-		if (inf->idev) {
+		if (inf->idev)
 			input_unregister_device(inf->idev);
-			input_free_device(inf->idev);
-		}
 		if (inf->wq)
 			destroy_workqueue(inf->wq);
 		bmp_pm_exit(inf);
