@@ -148,7 +148,6 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 
 #define CLK_RST_CONTROLLER_PLLE_MISC_0		0x0ec
 #define CLK_RST_CONTROLLER_PLLE_AUX_0		0x48c
-#define CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE	0x00070300
 #define CLK_RST_CONTROLLER_PLLE_AUX_0_MASK	(1 << 1)
 
 #define CLR_SATACOLD_RST			(1 << 1)
@@ -224,7 +223,6 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define AUX_ELPG_CLAMP_EN_EARLY			(1 << 25)
 #define AUX_ELPG_VCORE_DOWN			(1 << 26)
 
-
 #define SATA_AXI_BAR5_START_0			0x54
 #define SATA_AXI_BAR5_SZ_0			0x14
 #define SATA_AXI_BAR5_START_VALUE		0x70020
@@ -232,6 +230,20 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define FPCI_BAR5_0_START_VALUE			0x0010000
 #define FPCI_BAR5_0_FINAL_VALUE			0x40020100
 #define FPCI_BAR5_0_ACCESS_TYPE			(1 << 0)
+
+#define XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0	0x148
+#define IDDQ_OVRD_MASK				(1 << 1)
+#define IDDQ_MASK				(1 << 0)
+
+/* for XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0 */
+#define PLL_PWR_OVRD_MASK			(1 << 3)
+#define PLL_RST_MASK				(1 << 1)
+#define PLL_IDDQ_MASK				(1 << 0)
+
+/* for CLK_RST_CONTROLLER_PLLE_MISC_0 */
+#define T124_PLLE_IDDQ_SWCTL_MASK		(1 << 14)
+#define PLLE_IDDQ_OVERRIDE_VALUE_MASK		(1 << 13)
+
 
 
 enum {
@@ -655,6 +667,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	struct clk *clk_sata_oob = NULL;
 	struct clk *clk_sata_cold = NULL;
 	struct clk *clk_pllp = NULL;
+	struct clk *clk_cml1 = NULL;
 	u32 val;
 	u32 timeout;
 
@@ -838,7 +851,11 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	timeout = 15;
 	while (timeout--) {
 		udelay(1);
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+#else
 		val = misc_readl(SATA_AUX_PAD_PLL_CNTL_1_REG);
+#endif
 		if (val & LOCKDET_FIELD)
 			break;
 	}
@@ -846,6 +863,38 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 		pr_err("%s: AUX_PAD_PLL_CNTL_1 (0x%x) is not locked in 15us.\n",
 			__func__, val);
 
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	/* clear SW control of SATA PADPLL, SATA PHY and PLLE */
+
+	/* for SATA PHY IDDQ */
+	val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	val &= ~(IDDQ_OVRD_MASK | IDDQ_MASK);
+	xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+
+	/* for SATA PADPLL IDDQ */
+	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	val &= ~(PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
+	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+
+	/* PLLE related stuff*/
+
+	val = clk_readl(CLK_RST_CONTROLLER_PLLE_MISC_0);
+	val &= ~(T124_PLLE_IDDQ_SWCTL_MASK | PLLE_IDDQ_OVERRIDE_VALUE_MASK);
+	clk_writel(val, CLK_RST_CONTROLLER_PLLE_MISC_0);
+
+	clk_cml1 = clk_get_sys(NULL, "cml1");
+	if (IS_ERR_OR_NULL(clk_cml1)) {
+		pr_err("%s: unable to get cml1 clock\n", __func__);
+		err = -ENODEV;
+		goto exit;
+	}
+	if (clk_prepare_enable(clk_cml1)) {
+		pr_err("%s: unable to enable cml1 clock\n", __func__);
+		err = -ENODEV;
+		goto exit;
+	}
+#else
 	/* clear SW control of SATA PADPLL, SATA PHY and PLLE */
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
 	val &= ~(PADPLL_IDDQ_SWCTL_MASK | PADPHY_IDDQ_SWCTL_MASK |
@@ -853,6 +902,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	val |= (PADPLL_IDDQ_SWCTL_OFF | PADPHY_IDDQ_SWCTL_OFF |
 		PLLE_IDDQ_SWCTL_OFF);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
+#endif
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~PADPLL_RESET_SWCTL_MASK;
@@ -861,15 +911,11 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	/* PLLE Programing for SATA */
-	clk_writel(CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE,
-			CLK_RST_CONTROLLER_PLLE_MISC_0);
 
 	val = clk_readl(CLK_RST_CONTROLLER_PLLE_AUX_0);
 	val |= CLK_RST_CONTROLLER_PLLE_AUX_0_MASK;
 	clk_writel(val, CLK_RST_CONTROLLER_PLLE_AUX_0);
-#endif
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	/* bring SATA IOPHY out of IDDQ */
 	val = xusb_readl(XUSB_PADCTL_USB3_PAD_MUX_0);
 	val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0;
@@ -884,6 +930,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	val = val | XUSB_PADCTL_PLL1_MODE;
 	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
 #endif
+
 	/* clear NVA2SATA_OOB_ON_POR in SATA_AUX_MISC_CNTL_1_REG */
 	val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
 	val &= ~NVA2SATA_OOB_ON_POR_MASK;
@@ -976,6 +1023,8 @@ exit:
 		clk_put(clk_sata_oob);
 	if (!IS_ERR_OR_NULL(clk_sata_cold))
 		clk_put(clk_sata_cold);
+	if (!IS_ERR_OR_NULL(clk_cml1))
+		clk_put(clk_cml1);
 
 	if (err) {
 		/* turn off all SATA power rails; ignore returned status */
@@ -1710,7 +1759,11 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	timeout = 15;
 	while (timeout--) {
 		udelay(1);
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+#else
 		val = misc_readl(SATA_AUX_PAD_PLL_CNTL_1_REG);
+#endif
 		if (val & LOCKDET_FIELD)
 			break;
 	}
