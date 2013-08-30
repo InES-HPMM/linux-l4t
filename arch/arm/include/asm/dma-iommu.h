@@ -21,6 +21,7 @@ struct dma_iommu_mapping {
 
 	spinlock_t		lock;
 	struct kref		kref;
+	struct list_head	list;
 };
 
 struct dma_iommu_mapping *
