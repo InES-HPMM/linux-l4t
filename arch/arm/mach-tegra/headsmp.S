@@ -51,6 +51,7 @@
 ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
 
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 	/* enable user space perf counter access */
 	/* only accessible in secure state       */
 	mrc	p15, 0, r0, c9, c12, 0
@@ -63,6 +64,7 @@ ENTRY(tegra_secondary_startup)
 	mcr	p15, 0, r1, c9, c14, 2
 	mov	r0, #1
 	mcr	p15, 0, r0, c9, c14, 0
+#endif
 
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
@@ -243,6 +245,7 @@ __invalidate_cpu_state:
 	teq	r1, r0
 	beq	cortex_a9
 
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 	mrc	p15, 0x1, r0, c15, c0, 3	@ L2 prefetch control reg
 	tst	r0, #0x1000
 	orreq	r0, r0, #0x1000			@ disable throttling
@@ -270,6 +273,7 @@ __invalidate_cpu_state:
 	mrc	p15, 0x1, r0, c15, c0, 0	@ L2 ACTLR
 	orr	r0, r0, #0x80			@ hazard detection timeout
 	mcr	p15, 0x1, r0, c15, c0, 0
+#endif
 __enable_i_cache_branch_pred:
 	mrc	p15, 0, r0, c1, c0, 0
 	orr	r0, r0, #0x1800
