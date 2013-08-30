@@ -51,7 +51,7 @@ struct ar0261_ae {
 
 struct ar0261_sensordata {
 	__u32 fuse_id_size;
-	__u16 fuse_id[16];
+	__u8 fuse_id[16];
 };
 
 #ifdef __KERNEL__
