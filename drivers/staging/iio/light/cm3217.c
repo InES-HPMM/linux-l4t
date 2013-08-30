@@ -678,7 +678,6 @@ static int cm3217_remove(struct i2c_client *client)
 
 	inf = i2c_get_clientdata(client);
 	input_unregister_device(inf->idev);
-	input_free_device(inf->idev);
 	destroy_workqueue(inf->wq);
 	pm_exit(inf);
 	mutex_destroy(&inf->mutex);
