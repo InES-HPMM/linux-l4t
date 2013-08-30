@@ -281,7 +281,7 @@ static struct dvfs core_dvfs_table[] = {
 /* TBD: fill in actual hw numbers */
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id =  0,
+		.speedo_id =  -1,
 		.process_id = -1,
 		.max_mv = 1100,
 		.min_mv = 800,

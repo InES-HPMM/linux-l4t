@@ -75,6 +75,27 @@ static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
 
+static void rev_sku_to_speedo_ids(int rev, int sku)
+{
+
+	switch (sku) {
+	case 0x00: /* Eng */
+	case 0x0F:
+		gpu_speedo_id = 0;
+		break;
+
+	case 0x07:
+	case 0x81:
+		gpu_speedo_id = 1;
+		break;
+
+	default:
+		pr_err("Tegra12 Unknown SKU %d\n", sku);
+		gpu_speedo_id = 0;
+		break;
+	}
+}
+
 void tegra_init_speedo_data(void)
 {
 	int i;
@@ -97,6 +118,8 @@ void tegra_init_speedo_data(void)
 		gpu_iddq_value = 0;
 		return;
 	}
+
+	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
