@@ -533,10 +533,6 @@ struct palmas_pm_platform_data {
 };
 
 struct palmas_pinctrl_config {
-	int pin_name;
-	int pin_mux_option;
-	int open_drain_state;
-	int pin_pull_up_dn;
 	const char *pin;
 	const char *function;
 	const char *prop_bias_pull;
