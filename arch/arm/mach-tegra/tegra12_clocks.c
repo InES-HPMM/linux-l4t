@@ -1032,8 +1032,10 @@ static void tegra12_super_clk_init(struct clk *c)
 	const struct clk_mux_sel *sel;
 	val = clk_readl(c->reg + SUPER_CLK_MUX);
 	c->state = ON;
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	BUG_ON(((val & SUPER_STATE_MASK) != SUPER_STATE_RUN) &&
 		((val & SUPER_STATE_MASK) != SUPER_STATE_IDLE));
+#endif
 	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	source = (val >> shift) & SUPER_SOURCE_MASK;
@@ -3911,7 +3913,9 @@ static void tegra12_pllre_clk_init(struct clk *c)
 	}
 
 	m = (val & PLLRE_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate));
+#endif
 
 	c->div = m;
 	c->mul = (val & PLLRE_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
