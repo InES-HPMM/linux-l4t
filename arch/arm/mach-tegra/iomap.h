@@ -954,7 +954,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
    address to lowest with each aperture base address adjusted as necessary
    for proper section mapping boundary (2 MB) rounding. */
 
-#define IO_LAST_ADDR		IOMEM(0xFEE00000)
+#define IO_LAST_ADDR		IOMEM(0xFEC00000)
 #define IO_HOST1X_VIRT		IOMEM((IO_LAST_ADDR - IO_VIRT_ROUND_UP(IO_HOST1X_SIZE)))
 #define IO_SDMMC_VIRT		IOMEM((IO_HOST1X_VIRT - IO_VIRT_ROUND_UP(IO_SDMMC_SIZE)))
 #define IO_USB_VIRT		IOMEM((IO_SDMMC_VIRT - IO_VIRT_ROUND_UP(IO_USB_SIZE)))

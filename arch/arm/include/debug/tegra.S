@@ -49,7 +49,7 @@
  * Must be 1MB-aligned since a 1MB mapping is used early on.
  * Must not overlap with regions in mach-tegra/io.c:tegra_io_desc[].
  */
-#define UART_VIRTUAL_BASE		0xfe100000
+#define UART_VIRTUAL_BASE		0xfec00000
 
 #define checkuart(rp, rv, lhu, bit, uart) \
 		/* Load address of CLK_RST register */ \
