@@ -2251,13 +2251,20 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 {
 	const char *s;
-	struct swgid_fixup *table = tegra_swgid_fixup;
+	struct swgid_fixup *table;
 
 	if (!dev)
 		return 0;
 
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)
+	switch (tegra_get_chipid()) {
+	case TEGRA_CHIPID_TEGRA12:
+	case TEGRA_CHIPID_TEGRA13:
 		table = tegra_swgid_fixup_t124;
+		break;
+	default:
+		table = tegra_swgid_fixup;
+		break;
+	}
 
 	while ((s = table->name) != NULL) {
 		if (!strncmp(s, dev_name(dev), strlen(s))) {
