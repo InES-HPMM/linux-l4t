@@ -20,6 +20,9 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 
+#include "pmc.h"
+#include "pm.h"
+
 #include "../../arm/mach-tegra/board-ardbeg.c"
 
 static const char * const tegra132_dt_board_compat[] = {

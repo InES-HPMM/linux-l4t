@@ -31,5 +31,12 @@ ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
 endif
 
+ifeq ($(CONFIG_PM_SLEEP),y)
+obj-y                                 += pm.o
+obj-y                                 += sleep.o
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += pm-tegra132.o
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += sleep-tegra132.o
+endif
+
 # To override the "-march=armv7-xxx" in arm/mach-tegra/Makefile
 AFLAGS_sleep.o :=

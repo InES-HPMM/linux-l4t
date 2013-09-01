@@ -48,6 +48,7 @@
 
 #include "pmc.h"
 #include "pm.h"
+#include "pm-tegra132.h"
 
 /* core power request enable */
 #define TEGRA_POWER_PWRREQ_OE		(1 << 9)
@@ -314,7 +315,7 @@ static bool tegra_lp1_iram_hook(void)
 {
 	switch (tegra_get_chipid()) {
 	case TEGRA_CHIPID_TEGRA13:
-		/* TODO */
+		tegra132_lp1_iram_hook();
 		break;
 	default:
 		break;
@@ -335,7 +336,7 @@ static bool tegra_sleep_core_init(void)
 {
 	switch (tegra_get_chipid()) {
 	case TEGRA_CHIPID_TEGRA13:
-		/* TODO */
+		tegra132_sleep_core_init();
 		break;
 	default:
 		break;
