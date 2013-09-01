@@ -29,10 +29,6 @@
 #include "common.h"
 #include "reset.h"
 
-void tegra_smp_clear_power_mask()
-{
-}
-
 static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
 	tegra_cpu_reset_handler_init();

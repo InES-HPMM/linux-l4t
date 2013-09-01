@@ -8,8 +8,6 @@ asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
 
 # Assemblies
 obj-y += sleep.o
-obj-y += sleep-t3.o
-obj-y += headsmp.o
 
 obj-$(CONFIG_SMP) += platsmp.o
 
