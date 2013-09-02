@@ -40,6 +40,15 @@ static const struct resource charger_resource[] = {
 	},
 };
 
+static const struct resource thermal_resource[] = {
+	{
+		.name = "palmas-junction-temp",
+		.start = PALMAS_HOTDIE_IRQ,
+		.end = PALMAS_HOTDIE_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 enum palmas_ids {
 	PALMAS_PIN_MUX_ID = 0,
 	PALMAS_PMIC_ID,
@@ -58,6 +67,7 @@ enum palmas_ids {
 	PALMAS_CHARGER_ID,
 	PALMAS_SIM_ID,
 	PALMAS_PM_ID,
+	PALMAS_THERM_ID,
 };
 
 static struct resource palmas_rtc_resources[] = {
@@ -74,8 +84,8 @@ static struct resource palmas_rtc_resources[] = {
 		BIT(PALMAS_RTC_ID) | BIT(PALMAS_PWRBUTTON_ID) |		\
 		BIT(PALMAS_GPADC_ID) |	BIT(PALMAS_RESOURCE_ID) |	\
 		BIT(PALMAS_CLK_ID) | BIT(PALMAS_PWM_ID)		| 	\
-		BIT(PALMAS_USB_ID) | BIT(PALMAS_EXTCON_ID))	|	\
-		BIT(PALMAS_PM_ID)
+		BIT(PALMAS_USB_ID) | BIT(PALMAS_EXTCON_ID)	|	\
+		BIT(PALMAS_PM_ID) | BIT(PALMAS_THERM_ID))
 
 #define TPS80036_SUB_MODULE	(TPS65913_SUB_MODULE |			\
 		BIT(PALMAS_BATTERY_GAUGE_ID) | BIT(PALMAS_CHARGER_ID) |	\
@@ -161,6 +171,12 @@ static const struct mfd_cell palmas_children[] = {
 	{
 		.name = "palmas-pm",
 		.id = PALMAS_PM_ID,
+	},
+	{
+		.name = "palmas-thermal",
+		.num_resources = ARRAY_SIZE(thermal_resource),
+		.resources = thermal_resource,
+		.id = PALMAS_THERM_ID,
 	},
 };
 
