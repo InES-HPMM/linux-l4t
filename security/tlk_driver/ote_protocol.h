@@ -40,9 +40,17 @@
 
 #define MAX_EXT_SMC_ARGS	12
 
-extern uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
-extern uint32_t tlk_extended_smc(uint32_t *args);
-extern void tlk_irq_handler(void);
+uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
+uint32_t tlk_extended_smc(uint32_t *args);
+void tlk_irq_handler(void);
+
+#ifdef CONFIG_SMP
+void switch_cpumask_to_cpu0(void);
+void restore_cpumask(void);
+#else
+static inline void switch_cpumask_to_cpu0(void) {};
+static inline void restore_cpumask(void) {};
+#endif
 
 struct tlk_device {
 	struct te_request *req_addr;
@@ -79,6 +87,10 @@ enum {
 	TE_SMC_OPEN_SESSION		= 0xFFFF1004,
 	TE_SMC_CLOSE_SESSION		= 0xFFFF1005,
 	TE_SMC_LAUNCH_OPERATION		= 0xFFFF1000,
+	TE_SMC_REGISTER_IRQ_HANDLER	= 0xFFFF1FF0,
+	TE_SMC_NS_IRQ_DONE		= 0xFFFF1FF1,
+	TE_SMC_REGISTER_FS_HANDLERS	= 0xFFFF1FF2,
+	TE_SMC_FS_OP_DONE		= 0xFFFF1FFF,
 };
 
 enum {

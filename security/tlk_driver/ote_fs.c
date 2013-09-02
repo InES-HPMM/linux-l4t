@@ -28,7 +28,6 @@
 
 #define TE_SHMEM_FNAME_SZ	SZ_64
 #define TE_SHMEM_DATA_SZ	SZ_128K
-#define TE_FS_READY_BIT		1
 
 struct te_file_req_shmem {
 	char	file_name[TE_SHMEM_FNAME_SZ];
@@ -44,11 +43,17 @@ static struct list_head req_list;
 static DECLARE_COMPLETION(req_ready);
 static DECLARE_COMPLETION(req_complete);
 static unsigned long secure_error;
-static unsigned long fs_ready;
+
+#define TLK_EXTENDED_SMC(arg0) \
+	do { \
+		switch_cpumask_to_cpu0(); \
+		tlk_extended_smc(arg0); \
+		restore_cpumask(); \
+	} while (0)
 
 static void indicate_complete(unsigned long ret)
 {
-	tlk_generic_smc(0xFFFF1FFF, ret, 0);
+	tlk_generic_smc(TE_SMC_FS_OP_DONE, ret, 0);
 }
 
 int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
@@ -62,11 +67,8 @@ int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 
 		ptr_user_req = (struct te_file_req *)ioctl_param;
 
-		set_bit(TE_FS_READY_BIT, &fs_ready);
-
 		/* wait for a new request */
 		if (wait_for_completion_interruptible(&req_ready)) {
-			clear_bit(TE_FS_READY_BIT, &fs_ready);
 			return -ENODATA;
 		}
 
@@ -147,12 +149,6 @@ static void _te_fs_file_operation(const char *name, void *buf, int len,
 	struct te_file_req *new_req;
 	struct te_file_req_node *req_node;
 
-	if (!test_and_clear_bit(TE_FS_READY_BIT, &fs_ready)) {
-		pr_err("%s: daemon not loaded yet\n", __func__);
-		secure_error = OTE_ERROR_NO_DATA;
-		goto fail;
-	}
-
 	BUG_ON(!name);
 
 	if (type == OTE_FILE_REQ_READ || type == OTE_FILE_REQ_WRITE)
@@ -185,7 +181,6 @@ static void _te_fs_file_operation(const char *name, void *buf, int len,
 
 	kfree(new_req);
 
-fail:
 	/* signal completion to the secure world */
 	indicate_complete(secure_error);
 }
@@ -223,14 +218,14 @@ static int __init tlk_fs_register_handlers(void)
 	init_completion(&req_ready);
 	init_completion(&req_complete);
 
-	smc_args[0] = 0xFFFF1FF2;
+	smc_args[0] = TE_SMC_REGISTER_FS_HANDLERS;
 	smc_args[1] = (uint32_t)tlk_fread;
 	smc_args[2] = (uint32_t)tlk_fwrite;
 	smc_args[3] = (uint32_t)tlk_fdelete;
 	smc_args[4] = (uint32_t)shmem_ptr->file_name;
 	smc_args[5] = (uint32_t)shmem_ptr->file_data;
 
-	tlk_extended_smc(smc_args);
+	TLK_EXTENDED_SMC(smc_args);
 
 	return 0;
 }

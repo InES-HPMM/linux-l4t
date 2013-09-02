@@ -32,7 +32,16 @@
 bool verbose_smc;
 core_param(verbose_smc, verbose_smc, bool, 0644);
 
+static unsigned long saved_regs[16];
+
 #define SET_RESULT(req, r, ro)	{ req->result = r; req->result_origin = ro; }
+
+#define TLK_GENERIC_SMC(arg0, arg1, arg2) \
+	do { \
+		switch_cpumask_to_cpu0(); \
+		tlk_generic_smc(arg0, arg1, arg2); \
+		restore_cpumask(); \
+	} while (0)
 
 static int te_pin_user_pages(void *buffer, size_t size,
 		unsigned long *pages_ptr)
@@ -191,18 +200,9 @@ static void te_unpin_temp_buffers(struct te_request *request,
 	}
 }
 
-uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
-{
 #ifdef CONFIG_SMP
-	cpumask_t saved_cpu_mask;
-#endif
-	uint32_t saved_regs[9];
-	register uint32_t r0 asm("r0");
-	register uint32_t r1 asm("r1");
-	register uint32_t r2 asm("r2");
-	register uint32_t r3 asm("r3");
-
-#ifdef CONFIG_SMP
+cpumask_t saved_cpu_mask;
+void switch_cpumask_to_cpu0(void)
 {
 	long ret;
 	cpumask_t local_cpu_mask = CPU_MASK_NONE;
@@ -213,31 +213,8 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 	if (ret)
 		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
 }
-#endif
 
-	r0 = arg0;
-	r1 = arg1;
-	r2 = arg2;
-	r3 = (uint32_t)saved_regs;
-
-	asm volatile(
-		__asmeq("%0", "r0")
-		__asmeq("%1", "r0")
-		__asmeq("%2", "r1")
-		__asmeq("%3", "r2")
-		__asmeq("%4", "r3")
-		"stmia	r3, {r4-r12}	@ save reg state\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec\n"
-#endif
-		"smc	#0		@ switch to secure world\n"
-		__asmeq("%4", "r3")
-		"ldmia	r3, {r4-r12}	@ restore saved regs\n"
-		: "=r" (r0)
-		: "r" (r0), "r" (r1), "r" (r2), "r" (r3)
-	);
-
-#ifdef CONFIG_SMP
+void restore_cpumask(void)
 {
 	long ret = sched_setaffinity(0, &saved_cpu_mask);
 	if (ret)
@@ -245,31 +222,40 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 }
 #endif
 
+uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+	register uint32_t r0 asm("r0") = arg0;
+	register uint32_t r1 asm("r1") = arg1;
+	register uint32_t r2 asm("r2") = arg2;
+	register uint32_t r3 asm("r3") =
+		(arg0 == TE_SMC_FS_OP_DONE) ? 0 : (uint32_t)saved_regs;
+
+	asm volatile(
+		__asmeq("%0", "r0")
+		__asmeq("%1", "r0")
+		__asmeq("%2", "r1")
+		__asmeq("%3", "r2")
+		__asmeq("%4", "r3")
+		"cmp	r3, #0					\n"
+		"beq	avoid_save_regs				\n"
+		"stmia	r3, {r4-r12}	@ save reg state	\n"
+		"avoid_save_regs:				\n"
+#ifdef REQUIRES_SEC
+		".arch_extension sec				\n"
+#endif
+		"smc	#0		@ switch to secure world\n"
+		__asmeq("%4", "r3")
+		"ldmia	r3, {r4-r12}	@ restore saved regs	\n"
+		: "=r" (r0)
+		: "r" (r0), "r" (r1), "r" (r2), "r" (r3)
+	);
+
 	return r0;
 }
 
 uint32_t tlk_extended_smc(uint32_t *regs)
 {
-#ifdef CONFIG_SMP
-	cpumask_t saved_cpu_mask;
-#endif
-
-	register uint32_t r0 asm("r0");
-
-#ifdef CONFIG_SMP
-{
-	long ret;
-	cpumask_t local_cpu_mask = CPU_MASK_NONE;
-
-	cpu_set(0, local_cpu_mask);
-	cpumask_copy(&saved_cpu_mask, tsk_cpus_allowed(current));
-	ret = sched_setaffinity(0, &local_cpu_mask);
-	if (ret)
-		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
-}
-#endif
-
-	r0 = (uint32_t)regs;
+	register uint32_t r0 asm("r0") = (uint32_t)regs;
 
 	/* allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers */
 	asm volatile(
@@ -286,14 +272,6 @@ uint32_t tlk_extended_smc(uint32_t *regs)
 		: "r" (r0)
 	);
 
-#ifdef CONFIG_SMP
-{
-	long ret = sched_setaffinity(0, &saved_cpu_mask);
-	if (ret)
-		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
-}
-#endif
-
 	return r0;
 }
 
@@ -308,7 +286,7 @@ static void do_smc(struct te_request *request)
 	if (request->params)
 		smc_params = virt_to_phys(request->params);
 
-	tlk_generic_smc(request->type, smc_args, smc_params);
+	TLK_GENERIC_SMC(request->type, smc_args, smc_params);
 }
 
 /*
@@ -385,23 +363,8 @@ void te_launch_operation(struct te_launchop *cmd,
 
 static int __init tlk_register_irq_handler(void)
 {
-	tlk_generic_smc(0xFFFF1FF0, (unsigned int)tlk_irq_handler, 0);
-
-#if 0
-	asm volatile (
-		"mov	r1, %0\n"
-		"movw	r0, #0x1FF0\n"
-		"movt	r0, #0xFFFF\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec\n"
-#endif
-		"smc	#0\n"
-		"cpsie	i\n"
-		: : "r" (tlk_irq_handler)
-		: "r0", "r1", "r13", "r14"
-	);
-#endif
-
+	TLK_GENERIC_SMC(TE_SMC_REGISTER_IRQ_HANDLER,
+		(unsigned int)tlk_irq_handler, 0);
 	return 0;
 }
 
