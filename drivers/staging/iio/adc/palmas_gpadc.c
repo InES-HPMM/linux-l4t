@@ -346,7 +346,7 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 		return -EINVAL;
 
 	switch (mask) {
-	case 0:
+	case IIO_CHAN_INFO_RAW:
 		mutex_lock(&indio_dev->mlock);
 		ret = palmas_gpadc_start_convertion(adc, adc_chan);
 		if (ret < 0) {
@@ -359,7 +359,7 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 		*val = ret;
 		mutex_unlock(&indio_dev->mlock);
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_CALIBSCALE:
+	case IIO_CHAN_INFO_PROCESSED:
 		mutex_lock(&indio_dev->mlock);
 		ret = palmas_gpadc_get_calibrated_code(adc, adc_chan);
 		if (ret < 0) {
@@ -385,7 +385,8 @@ static const struct iio_info palmas_gpadc_iio_info = {
 {									\
 	.datasheet_name = PALMAS_DATASHEET_NAME(chan),			\
 	.type = IIO_VOLTAGE, 						\
-	.info_mask_separate = 0 | BIT(IIO_CHAN_INFO_CALIBSCALE),	\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |			\
+			BIT(IIO_CHAN_INFO_CALIBSCALE),			\
 	.indexed = 1,							\
 	.channel = PALMAS_ADC_CH_##chan,				\
 }
