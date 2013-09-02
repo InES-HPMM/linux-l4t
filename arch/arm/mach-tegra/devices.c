@@ -1904,6 +1904,11 @@ struct platform_device baseband_dit_device = {
 	.id = 2,
 };
 
+struct platform_device tegra_pcm_device = {
+	.name = "tegra-pcm-audio",
+	.id = -1,
+};
+
 struct platform_device tegra_tdm_pcm_device = {
 	.name = "tegra-tdm-pcm-audio",
 	.id = -1,
