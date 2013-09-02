@@ -713,8 +713,12 @@ struct palmas_resource {
 enum palmas_usb_state {
 	PALMAS_USB_STATE_INIT,
 	PALMAS_USB_STATE_DISCONNECT,
+	PALMAS_USB_STATE_ID_FLOAT = PALMAS_USB_STATE_DISCONNECT,
 	PALMAS_USB_STATE_VBUS,
-	PALMAS_USB_STATE_ID,
+	PALMAS_USB_STATE_ID_GND,
+	PALMAS_USB_STATE_ID_A,
+	PALMAS_USB_STATE_ID_B,
+	PALMAS_USB_STATE_ID_C,
 };
 
 struct palmas_usb {
@@ -733,6 +737,9 @@ struct palmas_usb {
 	int wakeup;
 	bool enable_vbus_detection;
 	bool enable_id_detection;
+	struct delayed_work cable_update_wq;
+	int cable_debaunce_time;
+	int cur_cable_index;
 };
 
 #define comparator_to_palmas(x) container_of((x), struct palmas_usb, comparator)
