@@ -46,7 +46,7 @@
 #include <linux/platform_data/serial-tegra.h>
 #include <mach/clk.h>
 
-#define TEGRA_UART_TYPE				"TEGRA_UART"
+#define TEGRA_UART_TYPE				"SERIAL_TEGRA"
 #define TX_EMPTY_STATUS				(UART_LSR_TEMT | UART_LSR_THRE)
 #define BYTES_TO_ALIGN(x)			((unsigned long)(x) & 0x3)
 
@@ -1207,7 +1207,7 @@ static struct uart_ops tegra_uart_ops = {
 
 static struct uart_driver tegra_uart_driver = {
 	.owner		= THIS_MODULE,
-	.driver_name	= "tegra_hsuart",
+	.driver_name	= "serial-hs-tegra",
 	.dev_name	= "ttyHS",
 	.cons		= 0,
 	.nr		= TEGRA_UART_MAXIMUM,
@@ -1267,6 +1267,15 @@ static struct of_device_id tegra_uart_of_match[] = {
 		.data		= &tegra20_uart_chip_data,
 	}, {
 		.compatible     = "nvidia,tegra114-hsuart",
+		.data		= &tegra114_uart_chip_data,
+	}, {
+		.compatible	= "nvidia,tegra30-hs-serial",
+		.data		= &tegra30_uart_chip_data,
+	}, {
+		.compatible	= "nvidia,tegra20-hs-serial",
+		.data		= &tegra20_uart_chip_data,
+	}, {
+		.compatible     = "nvidia,tegra114-hs-serial",
 		.data		= &tegra114_uart_chip_data,
 	}, {
 	},
