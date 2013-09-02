@@ -7201,6 +7201,15 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
+	CLK_DUPLICATE("i2s0", NULL, "i2s0"),
+	CLK_DUPLICATE("i2s1", NULL, "i2s1"),
+	CLK_DUPLICATE("i2s2", NULL, "i2s2"),
+	CLK_DUPLICATE("i2s3", NULL, "i2s3"),
+	CLK_DUPLICATE("i2s4", NULL, "i2s4"),
+	CLK_DUPLICATE("dam0", NULL, "dam0"),
+	CLK_DUPLICATE("dam1", NULL, "dam1"),
+	CLK_DUPLICATE("dam2", NULL, "dam2"),
+	CLK_DUPLICATE("spdif_in", NULL, "spdif_in"),
 	CLK_DUPLICATE("mclk", NULL, "default_mclk"),
 };
 
