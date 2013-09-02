@@ -747,7 +747,9 @@ int __init ardbeg_sensors_init(void)
 	ardbeg_camera_init();
 	ardbeg_nct72_init();
 
-	i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
+	/* TN8 don't have ALS CM32181 */
+	if (!of_machine_is_compatible("nvidia,tn8"))
+		i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
 
 	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)

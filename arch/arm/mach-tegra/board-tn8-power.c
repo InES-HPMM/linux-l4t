@@ -123,7 +123,6 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_uart", NULL),
 	REGULATOR_SUPPLY("vddio_bb", NULL),
 	REGULATOR_SUPPLY("pwrdet_bb", NULL),
-	REGULATOR_SUPPLY("vdd_1v8b", "0-0048"),
 	REGULATOR_SUPPLY("vdd_dtv", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_eeprom", NULL),
 	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
