@@ -7316,7 +7316,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0x4b8,	500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
-	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	102000000, mux_plld,			PLLD),
+	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	500000000, mux_plld,			PLLD),
 	PERIPH_CLK("ispa",	"isp",			"ispa",	23,	0,	600000000, mux_isp,			PERIPH_ON_APB),
 	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	600000000, mux_isp,			PERIPH_ON_APB),
 	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
