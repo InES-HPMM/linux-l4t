@@ -500,10 +500,11 @@ static int tegra_rt5639_event_int_spk(struct snd_soc_dapm_widget *w,
 	struct snd_soc_card *card = dapm->card;
 	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	int ret = 0;
 
 	if (machine->spk_reg) {
 		if (SND_SOC_DAPM_EVENT_ON(event))
-			regulator_enable(machine->spk_reg);
+			ret = regulator_enable(machine->spk_reg);
 		else
 			regulator_disable(machine->spk_reg);
 	}
@@ -541,10 +542,11 @@ static int tegra_rt5639_event_int_mic(struct snd_soc_dapm_widget *w,
 	struct snd_soc_card *card = dapm->card;
 	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+    int ret = 0;
 
 	if (machine->dmic_reg) {
 		if (SND_SOC_DAPM_EVENT_ON(event))
-			regulator_enable(machine->dmic_reg);
+			ret = regulator_enable(machine->dmic_reg);
 		else
 			regulator_disable(machine->dmic_reg);
 	}
@@ -906,7 +908,7 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 		if (IS_ERR(machine->codec_reg))
 			machine->codec_reg = 0;
 		else
-			regulator_enable(machine->codec_reg);
+			ret = regulator_enable(machine->codec_reg);
 	}
 
 	/*
@@ -917,7 +919,7 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	if (IS_ERR(machine->digital_reg))
 		machine->digital_reg = 0;
 	else
-		regulator_enable(machine->digital_reg);
+		ret = regulator_enable(machine->digital_reg);
 
 	/*
 	*analog_reg - provided the analog power for the codec and must be
@@ -927,7 +929,7 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	if (IS_ERR(machine->analog_reg))
 		machine->analog_reg = 0;
 	else
-		regulator_enable(machine->analog_reg);
+		ret = regulator_enable(machine->analog_reg);
 
 	/*
 	*spk_reg - provided the speaker power and can be turned ON

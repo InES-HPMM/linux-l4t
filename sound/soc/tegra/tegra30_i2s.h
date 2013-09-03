@@ -1,7 +1,7 @@
 /*
  * tegra30_i2s.h - Definitions for Tegra30 I2S driver
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -174,9 +174,15 @@
 /* Fields in TEGRA30_I2S_SLOT_CTRL */
 
 /* Number of slots in frame, minus 1 */
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT		0
+#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US	0xf
+#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT)
+#else
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT		16
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US	7
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT)
+#endif
 
 /* TDM mode slot enable bitmask */
 #define TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT	8
@@ -248,15 +254,25 @@ struct dsp_config_t {
 	int tx_data_offset;
 };
 
+struct codec_config {
+	int i2s_id;
+	int rate;
+	int channels;
+	int bitsize;
+	int is_i2smaster;
+	int i2s_mode;
+	int bit_clk;
+};
 
 struct tegra30_i2s {
-	int id;
 	struct snd_soc_dai_driver dai;
+	struct device *dev;
 	int cif_id;
 	struct clk *clk_i2s;
 	struct clk *clk_i2s_sync;
 	struct clk *clk_audio_2x;
 	struct clk *clk_pll_a_out0;
+	int id;
 	enum tegra30_ahub_txcif capture_i2s_cif;
 	enum tegra30_ahub_rxcif capture_fifo_cif;
 	struct tegra_pcm_dma_params capture_dma_data;
@@ -264,12 +280,11 @@ struct tegra30_i2s {
 	enum tegra30_ahub_txcif playback_fifo_cif;
 	struct tegra_pcm_dma_params playback_dma_data;
 	struct regmap *regmap;
-	u32 reg_ch_ctrl;
+	int daifmt;
 	int dam_ifc;
 	int dam_ch_refcount;
 	int  playback_ref_count;
 	int  capture_ref_count;
-	int daifmt;
 	bool is_dam_used;
 #ifdef CONFIG_PM
 	#ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -281,18 +296,8 @@ struct tegra30_i2s {
 	int call_record_dam_ifc;
 	int call_record_dam_ifc2;
 	int is_call_mode_rec;
-
 	struct dsp_config_t dsp_config;
-};
-
-struct codec_config {
-	int i2s_id;
-	int rate;
-	int channels;
-	int bitsize;
-	int is_i2smaster;
-	int i2s_mode;
-	int bit_clk;
+	int i2s_bit_clk;
 };
 
 int tegra30_make_voice_call_connections(struct codec_config *codec_info,

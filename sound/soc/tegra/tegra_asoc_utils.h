@@ -2,8 +2,7 @@
  * tegra_asoc_utils.h - Definitions for Tegra DAS driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (c) 2010-12, NVIDIA CORPORATION. All rights reserved.
- *
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -37,12 +36,15 @@ struct device;
 enum tegra_asoc_utils_soc {
 	TEGRA_ASOC_UTILS_SOC_TEGRA20,
 	TEGRA_ASOC_UTILS_SOC_TEGRA30,
+	TEGRA_ASOC_UTILS_SOC_TEGRA11x,
+	TEGRA_ASOC_UTILS_SOC_TEGRA14x,
+	TEGRA_ASOC_UTILS_SOC_TEGRA12x,
 };
 
 struct tegra_asoc_utils_data {
 	struct device *dev;
-	enum tegra_asoc_utils_soc soc;
 	struct snd_soc_card *card;
+	enum tegra_asoc_utils_soc soc;
 	struct clk *clk_pll_a;
 	struct clk *clk_pll_a_out0;
 	struct clk *clk_cdev1;
@@ -53,8 +55,8 @@ struct tegra_asoc_utils_data {
 	int set_mclk;
 	int lock_count;
 	int avp_device_id;
-	unsigned int avp_dma_addr;
 	int headset_plug_state;
+	dma_addr_t avp_dma_addr;
 };
 
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,

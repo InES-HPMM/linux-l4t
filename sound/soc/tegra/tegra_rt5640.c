@@ -40,6 +40,7 @@
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
+#include <linux/pm_runtime.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_rt5640_pdata.h>
@@ -521,7 +522,7 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 
 	if (machine->spk_reg) {
 		if (SND_SOC_DAPM_EVENT_ON(event)) {
-			regulator_enable(machine->spk_reg);
+			ret =regulator_enable(machine->spk_reg);
 		}
 		else {
 			regulator_disable(machine->spk_reg);
@@ -604,10 +605,11 @@ static int tegra_rt5640_event_int_mic(struct snd_soc_dapm_widget *w,
 	struct snd_soc_card *card = dapm->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	int ret =0;
 
 	if (machine->dmic_reg) {
 		if (SND_SOC_DAPM_EVENT_ON(event))
-			regulator_enable(machine->dmic_reg);
+			ret=regulator_enable(machine->dmic_reg);
 		else
 			regulator_disable(machine->dmic_reg);
 	}
@@ -872,14 +874,18 @@ void tegra_asoc_enable_clocks()
 {
 	struct snd_soc_card *card = &snd_soc_tegra_rt5640;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
-	int reg;
+	unsigned int reg;
+	unsigned int reg_ctrl;
 	struct tegra30_i2s *i2s = i2s_tfa;
 	if (!i2s || !machine)
 		return;
 
-	reg = i2s->reg_ctrl | TEGRA30_I2S_CTRL_XFER_EN_TX;
-	if (!(i2s->reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
+	regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	reg = reg_ctrl | TEGRA30_I2S_CTRL_XFER_EN_TX;
+	if (!(reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
 		tegra_asoc_utils_clk_enable(&machine->util_data);
+		pm_runtime_get_sync(i2s->dev);
+		tegra30_ahub_enable_clocks();
 		tegra30_ahub_enable_tx_fifo(i2s->playback_fifo_cif);
 		regmap_write(i2s->regmap, TEGRA30_I2S_CTRL, reg);
 	}
@@ -890,17 +896,21 @@ void tegra_asoc_disable_clocks()
 {
 	struct snd_soc_card *card = &snd_soc_tegra_rt5640;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+	unsigned int reg_ctrl;
 	int dcnt = 10;
 	struct tegra30_i2s *i2s = i2s_tfa;
 	if (!i2s || !machine)
 		return;
 
-	if (!(i2s->reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
-		regmap_write(i2s->regmap, TEGRA30_I2S_CTRL, i2s->reg_ctrl);
+	regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	if (!(reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
+		regmap_write(i2s->regmap, TEGRA30_I2S_CTRL, reg_ctrl);
 		while (!tegra30_ahub_tx_fifo_is_empty(i2s->id) && dcnt--)
 			udelay(100);
 
 		tegra30_ahub_disable_tx_fifo(i2s->playback_fifo_cif);
+		tegra30_ahub_disable_clocks();
+		pm_runtime_put(i2s->dev);
 		tegra_asoc_utils_clk_disable(&machine->util_data);
 	}
 }
@@ -1008,7 +1018,7 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 					PTR_ERR(machine->cdc_en));
 			machine->cdc_en = 0;
 		} else {
-			regulator_enable(machine->cdc_en);
+			ret = regulator_enable(machine->cdc_en);
 		}
 	}
 

@@ -2,7 +2,7 @@
  * tegra30_dam.h - Tegra 30 DAM driver.
  *
  * Author: Nikesh Oswal <noswal@nvidia.com>
- * Copyright (C) 2011 - NVIDIA, Inc.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -155,17 +155,16 @@
 #define TEGRA30_DAM_DISABLE				0
 
 struct tegra30_dam_context {
+	struct device *dev;
 	int			outsamplerate;
 	bool			ch_alloc[TEGRA30_DAM_NUM_INPUT_CHANNELS];
 	int			ch_enable_refcnt[TEGRA30_DAM_NUM_INPUT_CHANNELS];
 	int			ch_insamplerate[TEGRA30_DAM_NUM_INPUT_CHANNELS];
-#ifdef CONFIG_PM
-	int			reg_cache[TEGRA30_DAM_CTRL_REGINDEX + 1];
-#endif
 	struct clk		*dam_clk;
 	bool			in_use;
 	void __iomem		*damregs;
 	struct dentry		*debug;
+	struct regmap *regmap;
 };
 
 struct tegra30_dam_src_step_table {
@@ -174,9 +173,6 @@ struct tegra30_dam_src_step_table {
 	int stepreset;
 };
 
-#ifdef CONFIG_PM
-int tegra30_dam_resume(int ifc);
-#endif
 void tegra30_dam_disable_clock(int ifc);
 int tegra30_dam_enable_clock(int ifc);
 int tegra30_dam_allocate_controller(void);
@@ -193,11 +189,6 @@ int tegra30_dam_set_acif_stereo_conv(int ifc, int chtype, int conv);
 void tegra30_dam_ch0_set_datasync(int ifc, int datasync);
 void tegra30_dam_ch1_set_datasync(int ifc, int datasync);
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
-void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout);
-void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout);
-void tegra30_dam_set_biquad_fixed_coef(int ifc);
-void tegra30_dam_enable_coeff_ram(int ifc);
-void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout);
 void tegra30_dam_enable_stereo_mixing(int ifc);
 #endif
 

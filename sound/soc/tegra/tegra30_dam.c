@@ -31,6 +31,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/pm_runtime.h>
 #include <sound/soc.h>
 #include "tegra30_dam.h"
 #include "tegra30_ahub.h"
@@ -38,6 +39,10 @@
 #define DRV_NAME "tegra30-dam"
 
 static struct tegra30_dam_context	*dams_cont_info[TEGRA30_NR_DAM_IFC];
+
+/*
+Static Tables used by DAM driver
+*/
 
 enum {
 	dam_ch_in0 = 0x0,
@@ -47,7 +52,7 @@ enum {
 } tegra30_dam_chtype;
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-struct tegra30_dam_src_step_table  step_table[] = {
+static struct tegra30_dam_src_step_table  step_table[] = {
 	{ 8000, 44100, 80 },
 	{ 8000, 48000, 1 },
 	{ 16000, 44100, 160 },
@@ -57,10 +62,8 @@ struct tegra30_dam_src_step_table  step_table[] = {
 	{ 44100, 16000, 441 },
 	{ 48000, 16000, 0 },
 };
-#endif
-
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-int coefRam16To44[64] = {
+#else
+static int coefRam16To44[64] = {
 				0x156105, // IIR Filter + interpolation
 				0x0000d649,
 				0x00e87afb, 0xff5f69d0, 0x003df3cf,
@@ -96,7 +99,7 @@ int coefRam16To44[64] = {
 				0,0,0,0,0,0
 };
 
-int coefRam8To48[64] = {
+static int coefRam8To48[64] = {
 				0x156105, // interpolation + FIlter
 				0x0000d649,
 				0x00e87afb, 0xff5f69d0, 0x003df3cf,
@@ -120,7 +123,7 @@ int coefRam8To48[64] = {
 				0
 };
 
-int coefRam16To48[64] = {
+static int coefRam16To48[64] = {
 				0x00a105, // interpolation + Filter
 				1924,
 				13390190,-13855175,5952947,
@@ -146,7 +149,7 @@ int coefRam16To48[64] = {
 				0,0
 };
 
-int coefRam44To16[64] = {
+static int coefRam44To16[64] = {
 				0x126104, // IIR Filter + interp0lation
 				2802,
 				5762750,-14772125,6628868,
@@ -180,7 +183,7 @@ int coefRam44To16[64] = {
 				0,0,0,0
 };
 
-int coefRam44To8[64] = {
+static int coefRam44To8[64] = {
 				0x120104, // IIR Filter
 				2802,
 				5762750,-14772125,6628868,
@@ -214,7 +217,7 @@ int coefRam44To8[64] = {
 				0,0
 };
 
-int coefRam48To16[64] = {
+static int coefRam48To16[64] = {
 				0x009105, // IIR FIlter + Decimation
 				1924,
 				13390190,-13855175,5952947,
@@ -232,7 +235,7 @@ int coefRam48To16[64] = {
 				0,0,0,0,0,0,0,0
 };
 
-int coefRam48To8[64] = {
+static int coefRam48To8[64] = {
 				0x0c9102,	//IIR Filter + decimation
 				0x00000e00,
 				0x00e2e000,0xff6e1a00,0x002aaa00,
@@ -256,7 +259,7 @@ int coefRam48To8[64] = {
 				0
 };
 
-int coefRam8To44[64] = {
+static int coefRam8To44[64] = {
 				0x0156105, // IIR filter +interpllation
 				0x0000d649,
 				0x00e87afb, 0xff5f69d0, 0x003df3cf,
@@ -289,7 +292,7 @@ int coefRam8To44[64] = {
 				0,0,0,0,0,0
 };
 
-int coefRam8To16[64] = {
+static int coefRam8To16[64] = {
 				0x00006105, // interpolation + IIR Filter
 				0x0000d649, // input gain
 				0x00e87afb, 0xff5f69d0, 0x003df3cf,
@@ -301,7 +304,7 @@ int coefRam8To16[64] = {
 				0x00000002, // ouptut gain
 };
 
-int coefRam16To8[64] = {
+static int coefRam16To8[64] = {
 				0x00005105,   //IIR Filter + Decimator
 				0x0000d649, //input gain
 				0x00e87afb, 0xff5f69d0, 0x003df3cf,
@@ -314,85 +317,110 @@ int coefRam16To8[64] = {
 };
 #endif
 
-static void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
-		int fsout);
-static void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam,
-		int fsin);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-static int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
-		int insample, int outsample);
-static void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step);
-#endif
+/*
+Internally used helper (static) function prototypes
+*/
 
 static inline void tegra30_dam_writel(struct tegra30_dam_context *dam,
-			u32 val, u32 reg)
-{
-#ifdef CONFIG_PM
-	dam->reg_cache[reg >> 2] = val;
+			u32 val, u32 reg);
+static inline u32 tegra30_dam_readl(struct tegra30_dam_context *dam,
+															u32 reg);
+static void tegra30_dam_set_output_samplerate(
+						struct tegra30_dam_context *dam, int fsout);
+static void tegra30_dam_set_input_samplerate(
+						struct tegra30_dam_context *dam, int fsin);
+static int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
+										int insample, int outsample);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam,
+															int step);
+#else
+static void tegra30_dam_write_coeff_ram(struct tegra30_dam_context *dam,
+												int fsin, int fsout);
+static void tegra30_dam_set_farrow_param(
+				struct tegra30_dam_context *dam, int fsin, int fsout);
+static void tegra30_dam_set_biquad_fixed_coef(
+									struct tegra30_dam_context *dam);
+static void tegra30_dam_enable_coeff_ram(
+									struct tegra30_dam_context *dam);
+static void tegra30_dam_set_filter_stages(
+				struct tegra30_dam_context *dam, int fsin, int fsout);
 #endif
-	__raw_writel(val, dam->damregs + reg);
+
+
+/*
+Regmap and Runtime PM callback function
+*/
+
+static bool tegra30_dam_wr_rd_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case TEGRA30_DAM_CTRL:
+	case TEGRA30_DAM_CLIP:
+	case TEGRA30_DAM_CLIP_THRESHOLD:
+	case TEGRA30_DAM_AUDIOCIF_OUT_CTRL:
+	case TEGRA30_DAM_CH0_CTRL:
+	case TEGRA30_DAM_CH0_CONV:
+	case TEGRA30_DAM_AUDIOCIF_CH0_CTRL:
+	case TEGRA30_DAM_CH1_CTRL:
+	case TEGRA30_DAM_CH1_CONV:
+	case TEGRA30_DAM_AUDIOCIF_CH1_CTRL:
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	case TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0:
+	case TEGRA30_DAM_FARROW_PARAM_0:
+	case TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0:
+	case TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0:
+#endif
+		return true;
+	default:
+		return false;
+	};
 }
 
-static inline u32 tegra30_dam_readl(struct tegra30_dam_context *dam, u32 reg)
-{
-	u32 val = __raw_readl(dam->damregs + reg);
+static const struct regmap_config tegra30_dam_regmap_config = {
+	.reg_bits = 32,
+	.reg_stride = 4,
+	.val_bits = 32,
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	.max_register = TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0,
+#else
+	.max_register = TEGRA30_DAM_AUDIOCIF_CH1_CTRL,
+#endif
+	.writeable_reg = tegra30_dam_wr_rd_reg,
+	.readable_reg = tegra30_dam_wr_rd_reg,
+	.cache_type = REGCACHE_RBTREE,
+};
 
-	return val;
+static int tegra30_dam_runtime_suspend(struct device *dev)
+{
+	struct tegra30_dam_context *dam = dev_get_drvdata(dev);
+
+	tegra30_ahub_disable_clocks();
+	regcache_cache_only(dam->regmap, true);
+	clk_disable_unprepare(dam->dam_clk);
+
+	return 0;
 }
 
-#ifdef CONFIG_PM
-int tegra30_dam_resume(int ifc)
+static int tegra30_dam_runtime_resume(struct device *dev)
 {
-	int i = 0;
-	struct tegra30_dam_context *dam;
+	struct tegra30_dam_context *dam = dev_get_drvdata(dev);
+	int ret;
 
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return -EINVAL;
-
-	dam = dams_cont_info[ifc];
-
-	if (dam->in_use) {
-		tegra30_dam_enable_clock(ifc);
-
-		for (i = 0; i <= TEGRA30_DAM_CTRL_REGINDEX; i++) {
-			if ((i == TEGRA30_DAM_CTRL_RSVD_6) ||
-				(i == TEGRA30_DAM_CTRL_RSVD_10))
-				continue;
-
-			tegra30_dam_writel(dam, dam->reg_cache[i],
-						(i << 2));
-		}
-
-		tegra30_dam_disable_clock(ifc);
+	tegra30_ahub_enable_clocks();
+	ret = clk_prepare_enable(dam->dam_clk);
+	if (ret) {
+		dev_err(dev, "clk_enable failed: %d\n", ret);
+		return ret;
 	}
+	regcache_cache_only(dam->regmap, false);
 
 	return 0;
 }
-#endif
 
-void tegra30_dam_disable_clock(int ifc)
-{
-	struct tegra30_dam_context *dam;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	dam =  dams_cont_info[ifc];
-	clk_disable(dam->dam_clk);
-}
-
-int tegra30_dam_enable_clock(int ifc)
-{
-	struct tegra30_dam_context *dam;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return -EINVAL;
-
-	dam =  dams_cont_info[ifc];
-	clk_enable(dam->dam_clk);
-
-	return 0;
-}
+/*
+DebugFs callback functions
+*/
 
 #ifdef CONFIG_DEBUG_FS
 static int tegra30_dam_show(struct seq_file *s, void *unused)
@@ -469,110 +497,24 @@ static inline void tegra30_dam_debug_remove(struct tegra30_dam_context *dam)
 }
 #endif
 
-int tegra30_dam_allocate_controller()
+/*
+Internally used helper (static) functions
+*/
+static inline void tegra30_dam_writel(struct tegra30_dam_context *dam,
+			u32 val, u32 reg)
 {
-	int i = 0;
-	struct tegra30_dam_context *dam = NULL;
-
-	for (i = 0; i < TEGRA30_NR_DAM_IFC; i++) {
-
-		dam =  dams_cont_info[i];
-
-		if (!dam->in_use) {
-			dam->in_use = true;
-			return i;
-		}
-	}
-
-	return -ENOENT;
+	regmap_write(dam->regmap, reg, val);
 }
 
-int tegra30_dam_allocate_channel(int ifc, int chid)
+static inline u32 tegra30_dam_readl(struct tegra30_dam_context *dam, u32 reg)
 {
-	struct tegra30_dam_context *dam = NULL;
+	u32 val;
 
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
-		(chid < dam_ch_in0) || (chid > dam_ch_in1))
-		return -EINVAL;
-
-	dam =  dams_cont_info[ifc];
-
-	if (!dam->ch_alloc[chid]) {
-		dam->ch_alloc[chid] = true;
-		return 0;
-	}
-
-	return -ENOENT;
+	regmap_read(dam->regmap, reg, &val);
+	return val;
 }
 
-int tegra30_dam_free_channel(int ifc, int chid)
-{
-	struct tegra30_dam_context *dam = NULL;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
-		(chid < dam_ch_in0) || (chid > dam_ch_in1))
-		return -EINVAL;
-
-	dam =  dams_cont_info[ifc];
-
-	if (dam->ch_alloc[chid]) {
-		dam->ch_alloc[chid] = false;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-int tegra30_dam_free_controller(int ifc)
-{
-	struct tegra30_dam_context *dam = NULL;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return -EINVAL;
-
-	dam =  dams_cont_info[ifc];
-
-	if (!dam->ch_alloc[dam_ch_in0] &&
-		!dam->ch_alloc[dam_ch_in1]) {
-		dam->in_use = false;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
-{
-	struct tegra30_dam_context *dam;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	dam = dams_cont_info[ifc];
-
-	switch (chid) {
-	case dam_ch_in0:
-		tegra30_dam_set_input_samplerate(dam, samplerate);
-		dam->ch_insamplerate[dam_ch_in0] = samplerate;
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-		tegra30_dam_set_step_reset(dam, samplerate, dam->outsamplerate);
-#endif
-		break;
-	case dam_ch_in1:
-		if (samplerate != dam->outsamplerate)
-			return;
-		dam->ch_insamplerate[dam_ch_in1] = samplerate;
-		break;
-	case dam_ch_out:
-		tegra30_dam_set_output_samplerate(dam, samplerate);
-		dam->outsamplerate = samplerate;
-		break;
-	default:
-		break;
-	}
-}
-
-void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
+static void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
 					int fsout)
 {
 	u32 val;
@@ -600,7 +542,8 @@ void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CTRL);
 }
 
-void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam, int fsin)
+static void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam,
+	int fsin)
 {
 	u32 val;
 
@@ -627,10 +570,10 @@ void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam, int fsin)
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
+static int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 		int insample, int outsample)
 {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	int step_reset = 0;
 	int i = 0;
 
@@ -641,11 +584,19 @@ int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 	}
 
 	tegra30_dam_ch0_set_step(dam, step_reset);
+#else
+	tegra30_dam_write_coeff_ram(dam, insample, outsample);
+	tegra30_dam_set_farrow_param(dam, insample, outsample);
+	tegra30_dam_set_biquad_fixed_coef(dam);
+	tegra30_dam_enable_coeff_ram(dam);
+	tegra30_dam_set_filter_stages(dam, insample, outsample);
+#endif
 
 	return 0;
 }
 
-void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
 {
 	u32 val;
 
@@ -654,12 +605,303 @@ void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
 	val |= step << TEGRA30_DAM_CH0_CTRL_STEP_SHIFT;
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
+#else
+static void tegra30_dam_write_coeff_ram(struct tegra30_dam_context *dam, int fsin, int fsout)
+{
+	u32 val;
+	int i, *coefRam = NULL;
+
+	tegra30_dam_writel(dam, 0x00002000,
+			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				coefRam = coefRam8To48;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				coefRam = coefRam8To44;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam8To16;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				coefRam = coefRam16To48;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				coefRam = coefRam16To44;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam16To8;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam44To8;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam44To16;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam48To8;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam48To16;
+			break;
+
+		default:
+			break;
+	}
+
+	tegra30_dam_writel(dam, 0x00005000,
+			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
+
+	for (i = 0; i < 64; i++) {
+		val = coefRam[i];
+		tegra30_dam_writel(dam, val,
+				TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0);
+	}
+}
+
+static void tegra30_dam_set_farrow_param(struct tegra30_dam_context *dam, int fsin, int fsout)
+{
+	u32 val = TEGRA30_FARROW_PARAM_RESET;
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				val = TEGRA30_FARROW_PARAM_2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				val = TEGRA30_FARROW_PARAM_2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_3;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_3;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		default:
+			break;
+	}
+
+	tegra30_dam_writel(dam, val,
+			TEGRA30_DAM_FARROW_PARAM_0);
+}
+
+static void tegra30_dam_set_biquad_fixed_coef(struct tegra30_dam_context *dam)
+{
+	u32 val = TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0_VAL;
+
+	tegra30_dam_writel(dam, val,
+			TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0);
+}
+
+static void tegra30_dam_enable_coeff_ram(struct tegra30_dam_context *dam)
+{
+	u32 val;
+
+	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH0_CTRL);
+	val |= TEGRA30_DAM_CH0_CTRL_COEFF_RAM_ENABLE;
+
+	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
+}
+
+static void tegra30_dam_set_filter_stages(struct tegra30_dam_context *dam, int fsin, int fsout)
+{
+	u32 val;
+	int filt_stages = 0;
+
+	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH0_CTRL);
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				filt_stages = 1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				filt_stages = 2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 0;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				filt_stages = 0;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				filt_stages = 3;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 0;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 2;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 0;
+			break;
+
+		default:
+			break;
+	}
+
+	val |= filt_stages << TEGRA30_DAM_CH0_CTRL_FILT_STAGES_SHIFT;
+
+	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
+}
 #endif
+
+/*
+DAM Driver API's
+*/
+
+int tegra30_dam_allocate_controller()
+{
+	int i = 0;
+	struct tegra30_dam_context *dam = NULL;
+
+	for (i = 0; i < TEGRA30_NR_DAM_IFC; i++) {
+
+		dam =  dams_cont_info[i];
+
+		if (!dam->in_use) {
+			dam->in_use = true;
+			return i;
+		}
+	}
+
+	return -ENOENT;
+}
+
+void tegra30_dam_disable_clock(int ifc)
+{
+	struct tegra30_dam_context *dam;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	dam =  dams_cont_info[ifc];
+	pm_runtime_put(dam->dev);
+}
+
+int tegra30_dam_enable_clock(int ifc)
+{
+	struct tegra30_dam_context *dam;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return -EINVAL;
+
+	dam =  dams_cont_info[ifc];
+	pm_runtime_get_sync(dam->dev);
+
+	return 0;
+}
+
+int tegra30_dam_allocate_channel(int ifc, int chid)
+{
+	struct tegra30_dam_context *dam = NULL;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return -EINVAL;
+
+	dam =  dams_cont_info[ifc];
+
+	if (!dam->ch_alloc[chid]) {
+		dam->ch_alloc[chid] = true;
+		return 0;
+	}
+
+	return -ENOENT;
+}
+
+int tegra30_dam_free_channel(int ifc, int chid)
+{
+	struct tegra30_dam_context *dam = NULL;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return -EINVAL;
+
+	dam =  dams_cont_info[ifc];
+
+	if (dam->ch_alloc[chid]) {
+		dam->ch_alloc[chid] = false;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+int tegra30_dam_free_controller(int ifc)
+{
+	struct tegra30_dam_context *dam = NULL;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return -EINVAL;
+
+	dam =  dams_cont_info[ifc];
+
+	if (!dam->ch_alloc[dam_ch_in0] &&
+		!dam->ch_alloc[dam_ch_in1]) {
+		dam->in_use = false;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
+{
+	struct tegra30_dam_context *dam = dams_cont_info[ifc];
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	switch (chid) {
+	case dam_ch_in0:
+		tegra30_dam_set_input_samplerate(dam, samplerate);
+		dam->ch_insamplerate[dam_ch_in0] = samplerate;
+		tegra30_dam_set_step_reset(dam, samplerate, dam->outsamplerate);
+		break;
+	case dam_ch_in1:
+		if (samplerate != dam->outsamplerate)
+			return;
+		dam->ch_insamplerate[dam_ch_in1] = samplerate;
+		break;
+	case dam_ch_out:
+		tegra30_dam_set_output_samplerate(dam, samplerate);
+		dam->outsamplerate = samplerate;
+		break;
+	default:
+		break;
+	}
+}
 
 int tegra30_dam_set_gain(int ifc, int chid, int gain)
 {
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
+	if (ifc >= TEGRA30_NR_DAM_IFC)
 		return -EINVAL;
 
 	switch (chid) {
@@ -685,7 +927,7 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 	unsigned int reg;
 	unsigned int value = 0;
 
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
+	if (ifc >= TEGRA30_NR_DAM_IFC)
 		return -EINVAL;
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
@@ -732,203 +974,6 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 
 	return 0;
 }
-
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout)
-{
-	u32 val;
-	int i, *coefRam = NULL;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	tegra30_dam_writel(dams_cont_info[ifc], 0x00002000,
-			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
-
-	switch(fsin) {
-		case TEGRA30_AUDIO_SAMPLERATE_8000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				coefRam = coefRam8To48;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				coefRam = coefRam8To44;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				coefRam = coefRam8To16;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_16000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				coefRam = coefRam16To48;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				coefRam = coefRam16To44;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				coefRam = coefRam16To8;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_44100:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				coefRam = coefRam44To8;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				coefRam = coefRam44To16;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_48000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				coefRam = coefRam48To8;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				coefRam = coefRam48To16;
-			break;
-
-		default:
-			break;
-	}
-
-	tegra30_dam_writel(dams_cont_info[ifc], 0x00005000,
-			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
-
-	for (i = 0; i < 64; i++) {
-		val = coefRam[i];
-		tegra30_dam_writel(dams_cont_info[ifc], val,
-				TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0);
-	}
-}
-
-void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout)
-{
-	u32 val = TEGRA30_FARROW_PARAM_RESET;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	switch(fsin) {
-		case TEGRA30_AUDIO_SAMPLERATE_8000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				val = TEGRA30_FARROW_PARAM_1;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				val = TEGRA30_FARROW_PARAM_2;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				val = TEGRA30_FARROW_PARAM_1;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_16000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				val = TEGRA30_FARROW_PARAM_1;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				val = TEGRA30_FARROW_PARAM_2;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				val = TEGRA30_FARROW_PARAM_1;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_44100:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				val = TEGRA30_FARROW_PARAM_3;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				val = TEGRA30_FARROW_PARAM_3;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_48000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				val = TEGRA30_FARROW_PARAM_1;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				val = TEGRA30_FARROW_PARAM_1;
-			break;
-
-		default:
-			break;
-	}
-
-	tegra30_dam_writel(dams_cont_info[ifc], val,
-			TEGRA30_DAM_FARROW_PARAM_0);
-}
-
-void tegra30_dam_set_biquad_fixed_coef(int ifc)
-{
-	u32 val = TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0_VAL;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	tegra30_dam_writel(dams_cont_info[ifc], val,
-			TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0);
-}
-
-void tegra30_dam_enable_coeff_ram(int ifc)
-{
-	u32 val;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
-	val |= TEGRA30_DAM_CH0_CTRL_COEFF_RAM_ENABLE;
-
-	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CH0_CTRL);
-}
-
-void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout)
-{
-	u32 val;
-	int filt_stages = 0;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
-
-	switch(fsin) {
-		case TEGRA30_AUDIO_SAMPLERATE_8000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				filt_stages = 1;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				filt_stages = 2;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				filt_stages = 0;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_16000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
-				filt_stages = 0;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
-				filt_stages = 3;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				filt_stages = 0;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_44100:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				filt_stages = 2;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				filt_stages = 2;
-			break;
-
-		case TEGRA30_AUDIO_SAMPLERATE_48000:
-			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
-				filt_stages = 1;
-			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
-				filt_stages = 0;
-			break;
-
-		default:
-			break;
-	}
-
-	val |= filt_stages << TEGRA30_DAM_CH0_CTRL_FILT_STAGES_SHIFT;
-
-	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CH0_CTRL);
-}
-
-void tegra30_dam_enable_stereo_mixing(int ifc)
-{
-	u32 val;
-
-	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
-		return;
-
-	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CTRL);
-	val |= TEGRA30_DAM_CTRL_STEREO_MIXING_ENABLE;
-
-	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CTRL);
-}
-#endif
 
 void tegra30_dam_enable(int ifc, int on, int chid)
 {
@@ -1069,14 +1114,16 @@ int tegra30_dam_set_acif_stereo_conv(int ifc, int chtype, int conv)
 	return 0;
 }
 
+
+/*
+DAM Driver probe and remove functions
+*/
+
 static int tegra30_dam_probe(struct platform_device *pdev)
 {
 	struct resource *res,  *region;
 	struct tegra30_dam_context *dam;
 	int ret = 0;
-#ifdef CONFIG_PM
-	int i;
-#endif
 	int clkm_rate;
 	u32 val32;
 
@@ -1100,7 +1147,10 @@ static int tegra30_dam_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto exit;
 	}
+	dams_cont_info[pdev->id]->dev = &pdev->dev;
+
 	dam = dams_cont_info[pdev->id];
+	dev_set_drvdata(&pdev->dev, dam);
 
 	dam->dam_clk = clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dam->dam_clk)) {
@@ -1136,28 +1186,28 @@ static int tegra30_dam_probe(struct platform_device *pdev)
 		goto err_clk_put_dam;
 	}
 
-#ifdef CONFIG_PM
-	/* cache the POR values of DAM regs*/
-	tegra30_dam_enable_clock(pdev->id);
-
-	for (i = 0; i <= TEGRA30_DAM_CTRL_REGINDEX; i++) {
-		if ((i == TEGRA30_DAM_CTRL_RSVD_6) ||
-			(i == TEGRA30_DAM_CTRL_RSVD_10))
-			continue;
-
-			dam->reg_cache[i] =
-				tegra30_dam_readl(dam, i << 2);
+	dam->regmap = devm_regmap_init_mmio(&pdev->dev, dam->damregs,
+				    &tegra30_dam_regmap_config);
+	if (IS_ERR(dam->regmap)) {
+		dev_err(&pdev->dev, "regmap init failed\n");
+		ret = PTR_ERR(dam->regmap);
+		goto err_clk_put_dam;
 	}
+	regcache_cache_only(dam->regmap, true);
 
-	tegra30_dam_disable_clock(pdev->id);
-#endif
-
-	platform_set_drvdata(pdev, dam);
+	pm_runtime_enable(&pdev->dev);
+	if (!pm_runtime_enabled(&pdev->dev)) {
+		ret = tegra30_dam_runtime_resume(&pdev->dev);
+		if (ret)
+			goto err_pm_disable;
+	}
 
 	tegra30_dam_debug_add(dam, pdev->id);
 
 	return 0;
 
+err_pm_disable:
+	pm_runtime_disable(&pdev->dev);
 err_clk_put_dam:
 	clk_put(dam->dam_clk);
 err_free:
@@ -1170,6 +1220,10 @@ static int tegra30_dam_remove(struct platform_device *pdev)
 {
 	struct tegra30_dam_context *dam;
 
+	pm_runtime_disable(&pdev->dev);
+	if (!pm_runtime_status_suspended(&pdev->dev))
+		tegra30_dam_runtime_suspend(&pdev->dev);
+
 	dam = platform_get_drvdata(pdev);
 	clk_put(dam->dam_clk);
 	tegra30_dam_debug_remove(dam);
@@ -1178,26 +1232,27 @@ static int tegra30_dam_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id tegra30_dam_of_match[] = {
+	{ .compatible = "nvidia,tegra30-dam",},
+	{},
+};
+
+static const struct dev_pm_ops tegra30_dam_pm_ops = {
+	SET_RUNTIME_PM_OPS(tegra30_dam_runtime_suspend,
+			   tegra30_dam_runtime_resume, NULL)
+};
+
 static struct platform_driver tegra30_dam_driver = {
-	.probe = tegra30_dam_probe,
-	.remove = tegra30_dam_remove,
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = tegra30_dam_of_match,
+		.pm = &tegra30_dam_pm_ops,
 	},
+	.probe = tegra30_dam_probe,
+	.remove = tegra30_dam_remove,
 };
-
-static int __init tegra30_dam_modinit(void)
-{
-	return platform_driver_register(&tegra30_dam_driver);
-}
-module_init(tegra30_dam_modinit);
-
-static void __exit tegra30_dam_modexit(void)
-{
-	platform_driver_unregister(&tegra30_dam_driver);
-}
-module_exit(tegra30_dam_modexit);
+module_platform_driver(tegra30_dam_driver);
 
 MODULE_AUTHOR("Nikesh Oswal <noswal@nvidia.com>");
 MODULE_DESCRIPTION("Tegra 30 DAM driver");

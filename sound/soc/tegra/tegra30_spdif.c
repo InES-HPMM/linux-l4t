@@ -36,7 +36,6 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/delay.h>
-#include <mach/iomap.h>
 #include <mach/hdmi-audio.h>
 #include <mach/clk.h>
 #include <sound/core.h>
@@ -62,10 +61,12 @@ static inline u32 tegra30_spdif_read(struct tegra30_spdif *spdif, u32 reg)
 static void tegra30_spdif_enable_clocks(struct tegra30_spdif *spdif)
 {
 	clk_enable(spdif->clk_spdif_out);
+	tegra30_ahub_enable_clocks();
 }
 
 static void tegra30_spdif_disable_clocks(struct tegra30_spdif *spdif)
 {
+	tegra30_ahub_disable_clocks();
 	clk_disable(spdif->clk_spdif_out);
 }
 
@@ -396,11 +397,15 @@ struct snd_soc_dai_driver tegra30_spdif_dai = {
 	.ops = &tegra30_spdif_dai_ops,
 };
 
+static const struct snd_soc_component_driver tegra30_spdif_component = {
+	.name		= DRV_NAME,
+};
+
 static int tegra30_spdif_platform_probe(struct platform_device *pdev)
 {
 	struct tegra30_spdif *spdif;
 	struct resource *mem, *memregion;
-	int ret;
+	int ret = 0;
 	u32 reg_val;
 
 	spdif = kzalloc(sizeof(struct tegra30_spdif), GFP_KERNEL);
@@ -453,17 +458,26 @@ static int tegra30_spdif_platform_probe(struct platform_device *pdev)
 
 	tegra30_spdif_disable_clocks(spdif);
 
-	ret = snd_soc_register_dai(&pdev->dev, &tegra30_spdif_dai);
+	ret = snd_soc_register_component(&pdev->dev, &tegra30_spdif_component,
+					 &tegra30_spdif_dai, 1);
 	if (ret) {
 		dev_err(&pdev->dev, "Could not register DAI: %d\n", ret);
 		ret = -ENOMEM;
 		goto err_unmap;
 	}
 
+	ret = tegra_pcm_platform_register(&pdev->dev);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not register PCM: %d\n", ret);
+		goto err_unregister_dai;
+	}
+
 	tegra30_spdif_debug_add(spdif);
 
 	return 0;
 
+err_unregister_dai:
+	snd_soc_unregister_component(&pdev->dev);
 err_unmap:
 	iounmap(spdif->regs);
 err_release:
@@ -481,7 +495,7 @@ static int tegra30_spdif_platform_remove(struct platform_device *pdev)
 	struct tegra30_spdif *spdif = dev_get_drvdata(&pdev->dev);
 	struct resource *res;
 
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 
 	tegra30_spdif_debug_remove(spdif);
 

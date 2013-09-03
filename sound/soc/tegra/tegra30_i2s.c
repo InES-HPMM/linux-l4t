@@ -2,13 +2,13 @@
  * tegra30_i2s.c - Tegra30 I2S driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2013, NVIDIA Corporation.
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION. All rights reserved.
  * Scott Peterson <speterson@nvidia.com>
+ * Manoj Gangwal <mgangwal@nvidia.com>
  *
  * Copyright (C) 2010 Google, Inc.
  * Iliyan Malchev <malchev@google.com>
@@ -36,11 +36,12 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
-#include <mach/tegra_asoc_pdata.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <asm/delay.h>
+#include <mach/tegra_asoc_pdata.h>
 
 #include "tegra30_ahub.h"
 #include "tegra30_dam.h"
@@ -48,8 +49,7 @@
 
 #define DRV_NAME "tegra30-i2s"
 
-static struct tegra30_i2s  i2scont[TEGRA30_NR_I2S_IFC];
-
+static struct tegra30_i2s *i2scont[TEGRA30_NR_I2S_IFC];
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static struct tegra30_i2s bbc1cont;
 #endif
@@ -57,6 +57,8 @@ static struct tegra30_i2s bbc1cont;
 static int tegra30_i2s_runtime_suspend(struct device *dev)
 {
 	struct tegra30_i2s *i2s = dev_get_drvdata(dev);
+
+	tegra30_ahub_disable_clocks();
 
 	regcache_cache_only(i2s->regmap, true);
 
@@ -69,6 +71,8 @@ static int tegra30_i2s_runtime_resume(struct device *dev)
 {
 	struct tegra30_i2s *i2s = dev_get_drvdata(dev);
 	int ret;
+
+	tegra30_ahub_enable_clocks();
 
 	ret = clk_prepare_enable(i2s->clk_i2s);
 	if (ret) {
@@ -98,8 +102,9 @@ int tegra30_i2s_startup(struct snd_pcm_substream *substream,
 		i2s->playback_dma_data.width = 32;
 
 		if (!i2s->is_dam_used)
-			tegra30_ahub_set_rx_cif_source(i2s->playback_i2s_cif,
-						       i2s->playback_fifo_cif);
+			tegra30_ahub_set_rx_cif_source(
+				i2s->playback_i2s_cif,
+				i2s->playback_fifo_cif);
 	} else {
 		i2s->capture_ref_count++;
 		ret = tegra30_ahub_allocate_rx_fifo(&i2s->capture_fifo_cif,
@@ -121,20 +126,35 @@ void tegra30_i2s_shutdown(struct snd_pcm_substream *substream,
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (i2s->playback_ref_count == 1)
-			tegra30_ahub_unset_rx_cif_source(i2s->playback_i2s_cif);
+			tegra30_ahub_unset_rx_cif_source(
+				i2s->playback_i2s_cif);
 
 		/* free the apbif dma channel*/
 		tegra30_ahub_free_tx_fifo(i2s->playback_fifo_cif);
-		i2s->txcif = -1;
+		i2s->playback_fifo_cif = -1;
 
 		/* decrement the playback ref count */
 		i2s->playback_ref_count--;
 	} else {
 		if (i2s->capture_ref_count == 1)
 			tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
+
+		/* free the apbif dma channel*/
 		tegra30_ahub_free_rx_fifo(i2s->capture_fifo_cif);
+
+		/* decrement the capture ref count */
 		i2s->capture_ref_count--;
 	}
+}
+
+static int tegra30_i2s_set_dai_sysclk(struct snd_soc_dai *dai,
+		int clk_id, unsigned int freq, int dir)
+{
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
+
+	i2s->i2s_bit_clk = freq;
+
+	return 0;
 }
 
 static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
@@ -143,12 +163,28 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	unsigned int mask, val;
 
+	mask = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK |
+		TEGRA30_I2S_CH_CTRL_HIGHZ_CTRL_MASK;
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
+		val = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK)
+			== SND_SOC_DAIFMT_DSP_A) {
+			val = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE |
+				TEGRA30_I2S_CH_CTRL_HIGHZ_CTRL_ON_HALF_BIT_CLK;
+		}
+		break;
+	case SND_SOC_DAIFMT_IB_NF:
+		val = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
+		if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK)
+			== SND_SOC_DAIFMT_DSP_A) {
+			val = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		}
 		break;
 	default:
 		return -EINVAL;
 	}
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CH_CTRL, mask, val);
 
 	mask = TEGRA30_I2S_CTRL_MASTER_ENABLE;
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
@@ -156,6 +192,7 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 		val = TEGRA30_I2S_CTRL_MASTER_ENABLE;
 		break;
 	case SND_SOC_DAIFMT_CBM_CFM:
+		val = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -163,41 +200,33 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 
 	mask |= TEGRA30_I2S_CTRL_FRAME_FORMAT_MASK |
 		TEGRA30_I2S_CTRL_LRCK_MASK;
-	i2s->reg_ch_ctrl &= ~TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK;
 	i2s->daifmt = fmt & SND_SOC_DAIFMT_FORMAT_MASK;
 	switch (i2s->daifmt) {
 	case SND_SOC_DAIFMT_DSP_A:
-		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
-		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC |
+		      TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
-		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
-		val |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC |
+		      TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		break;
 	case SND_SOC_DAIFMT_I2S:
-		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
-		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK |
+		      TEGRA30_I2S_CTRL_LRCK_L_LOW;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
-		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
-		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK |
+		      TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
-		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
-		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK |
+		      TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	pm_runtime_get_sync(dai->dev);
 	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
-	pm_runtime_put(dai->dev);
 
 	return 0;
 }
@@ -206,61 +235,79 @@ static void tegra30_i2s_set_channel_bit_count(struct tegra30_i2s *i2s,
 				int i2sclock, int srate)
 {
 	int sym_bitclk, bitcnt;
-	u32 val;
+	unsigned int mask, val;
 
 	bitcnt = (i2sclock / (2 * srate)) - 1;
 	sym_bitclk = !(i2sclock % (2 * srate));
 
+	mask = TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_MASK;
 	val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
 
+	mask |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 	if (!sym_bitclk)
 		val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 
-	regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_TIMING, mask, val);
 }
 
 static void tegra30_i2s_set_data_offset(struct tegra30_i2s *i2s)
 {
-	u32 val;
+	unsigned int mask, val;
 	int rx_data_offset = i2s->dsp_config.rx_data_offset;
 	int tx_data_offset = i2s->dsp_config.tx_data_offset;
 
-	val = (rx_data_offset <<
-				TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
-			(tx_data_offset <<
-				TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
+	mask = TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_MASK |
+	       TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_MASK;
+	val = (rx_data_offset << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
+	      (tx_data_offset << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
 
-	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_OFFSET, mask, val);
 }
 
 static void tegra30_i2s_set_slot_control(struct tegra30_i2s *i2s, int stream)
 {
-	u32 mask, val = 0;
+	unsigned int mask, val;
 	int tx_mask = i2s->dsp_config.tx_mask;
 	int rx_mask = i2s->dsp_config.rx_mask;
 
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		mask = TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK;
+		val = (tx_mask << TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT);
+#else
 		mask = TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
-		val |= (tx_mask << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
+		val = (tx_mask << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
+#endif
 	} else {
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		mask = TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK;
+		val = (rx_mask << TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT);
+#else
 		mask = TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
-		val |= (rx_mask << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
+		val = (rx_mask << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
+#endif
 	}
-
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL2, mask, val);
+	mask = TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
+	val = (i2s->dsp_config.num_slots - 1) <<
+	       TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
+#else
 	mask |= TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
-	val |= (i2s->dsp_config.num_slots - 1)
-			<< TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
-
+	val |= (i2s->dsp_config.num_slots - 1) <<
+	       TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
+#endif
 	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
 }
 
 static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 				struct tegra30_i2s *i2s, int *i2sclock)
 {
+	unsigned int val;
 	int ret;
 
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
-
+	regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &val);
+	if (val & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
 		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
 		if (ret) {
 			dev_err(dev, "Can't set parent of I2S clock\n");
@@ -273,7 +320,6 @@ static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 			return ret;
 		}
 	} else {
-
 		ret = clk_set_rate(i2s->clk_i2s_sync, *i2sclock);
 		if (ret) {
 			dev_err(dev, "Can't set I2S sync clock rate\n");
@@ -281,7 +327,7 @@ static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 		}
 
 		ret = clk_set_parent(clk_get_parent(i2s->clk_audio_2x),
-						i2s->clk_i2s_sync);
+						    i2s->clk_i2s_sync);
 		if (ret) {
 			dev_err(dev, "Can't set parent of audio2x clock\n");
 			return ret;
@@ -309,7 +355,7 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct device *dev = substream->pcm->card->dev;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
-	u32 val;
+	unsigned int mask, val;
 	int i2s_client_ch, i2s_audio_ch;
 	int i2s_audio_bits = 0, i2s_client_bits = 0;
 	int i2sclock, srate;
@@ -318,8 +364,8 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 	srate = params_rate(params);
 
 	i2sclock = srate *
-				i2s->dsp_config.num_slots *
-				i2s->dsp_config.slot_width;
+		   i2s->dsp_config.num_slots *
+		   i2s->dsp_config.slot_width;
 
 	ret = tegra30_i2s_tdm_setup_clocks(dev, i2s, &i2sclock);
 	if (ret)
@@ -333,37 +379,45 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 	i2s_client_ch = i2s->dsp_config.num_slots;
 	i2s_audio_ch = i2s->dsp_config.num_slots;
 
-	i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_BIT_SIZE_MASK;
+	mask = TEGRA30_I2S_CTRL_BIT_SIZE_MASK;
 	switch (i2s->dsp_config.slot_width) {
 	case 16:
 		i2s_audio_bits = TEGRA30_AUDIOCIF_BITS_16;
 		i2s_client_bits = TEGRA30_AUDIOCIF_BITS_16;
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_16;
+		val = TEGRA30_I2S_CTRL_BIT_SIZE_16;
 		break;
 	case 32:
 		i2s_audio_bits = TEGRA30_AUDIOCIF_BITS_32;
 		i2s_client_bits = TEGRA30_AUDIOCIF_BITS_32;
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_32;
+		val = TEGRA30_I2S_CTRL_BIT_SIZE_32;
 		break;
 	default:
 		dev_err(dev, "unknown slot_width %d\n",
 				i2s->dsp_config.slot_width);
 		return -EINVAL;
 	}
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
 
+	mask = TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_MASK |
+	       TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
+	       TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK |
+	       TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+	       TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK |
+	       TEGRA30_AUDIOCIF_CTRL_DIRECTION_MASK;
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
-			((i2s_audio_ch - 1) <<
-			 TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
-			((i2s_client_ch - 1) <<
-			 TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
-			(i2s_audio_bits <<
-			 TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
-			(i2s_client_bits <<
-			 TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+	      ((i2s_audio_ch - 1) <<
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((i2s_client_ch - 1) <<
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      (i2s_audio_bits <<
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      (i2s_client_bits <<
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_RX;
-		tegra30_i2s_write(i2s, TEGRA30_I2S_CIF_RX_CTRL, val);
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CIF_RX_CTRL,
+				   mask, val);
 
 		tegra30_ahub_set_tx_cif_channels(i2s->playback_fifo_cif,
 						i2s_audio_ch,
@@ -375,7 +429,8 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 
 	} else {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
-		tegra30_i2s_write(i2s, TEGRA30_I2S_CIF_TX_CTRL, val);
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CIF_TX_CTRL,
+				   mask, val);
 
 		tegra30_ahub_set_rx_cif_channels(i2s->capture_fifo_cif,
 						i2s_audio_ch,
@@ -390,10 +445,10 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 
 	tegra30_i2s_set_data_offset(i2s);
 
-	i2s->reg_ch_ctrl &= ~TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_MASK;
-	i2s->reg_ch_ctrl |= (i2s->dsp_config.slot_width - 1) <<
+	mask = TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_MASK;
+	val = (i2s->dsp_config.slot_width - 1) <<
 			TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CH_CTRL, mask, val);
 
 	return 0;
 }
@@ -404,14 +459,14 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 {
 	struct device *dev = dai->dev;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
-	unsigned int mask, val, reg, i;
+	unsigned int mask, val, reg, reg_ctrl, i;
 	int ret, sample_size, srate, i2sclock, bitcnt, sym_bitclk;
 	int i2s_client_ch;
 
 	mask = TEGRA30_I2S_CTRL_BIT_SIZE_MASK;
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S8:
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_8;
+		val = TEGRA30_I2S_CTRL_BIT_SIZE_8;
 		sample_size = 8;
 		break;
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -419,35 +474,37 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		sample_size = 16;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_24;
+		val = TEGRA30_I2S_CTRL_BIT_SIZE_24;
 		sample_size = 24;
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_32;
+		val = TEGRA30_I2S_CTRL_BIT_SIZE_32;
 		sample_size = 32;
 		break;
 	default:
 		return -EINVAL;
 	}
-
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
-
 	bitcnt = sample_size;
 	i = 0;
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
 
+	regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
 	/* TDM mode */
-	if ((i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) &&
+	if ((reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) &&
 		(i2s->dsp_config.slot_width > 2))
 		return tegra30_i2s_tdm_hw_params(substream, params, dai);
 
 	srate = params_rate(params);
 
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
+	if (reg_ctrl & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
 		i2sclock = srate * params_channels(params) * sample_size;
 
 		/* Additional "* 4" is needed for FSYNC mode */
-		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		if (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 			i2sclock *= 4;
+
+		if (i2s->i2s_bit_clk != 0)
+			i2sclock = i2s->i2s_bit_clk;
 
 		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
 		if (ret) {
@@ -461,32 +518,14 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 		}
 
-		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
+		if (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
 			bitcnt = (i2sclock / srate) - 1;
 			sym_bitclk = !(i2sclock % srate);
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-			val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL2);
-
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				val &=
-				  ~TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK;
-				val |= ((1 << params_channels(params)) - 1) <<
-				  TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
-			} else {
-				val &=
-				  ~TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK;
-				val |= ((1 << params_channels(params)) - 1) <<
-				  TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
-			}
-			tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL2, val);
-#endif
 		} else {
 			bitcnt = (i2sclock / (2 * srate)) - 1;
 			sym_bitclk = !(i2sclock % (2 * srate));
-			i2s_client_ch = 2;
 		}
 		val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
-
 		if (!sym_bitclk)
 			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 
@@ -495,7 +534,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		i2sclock = srate * params_channels(params) * sample_size;
 
 		/* Additional "* 2" is needed for FSYNC mode */
-		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		if (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 			i2sclock *= 2;
 
 		ret = clk_set_rate(i2s->clk_i2s_sync, i2sclock);
@@ -522,9 +561,10 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			dev_err(dev, "Can't set parent of audio2x clock\n");
 			return ret;
 		}
+
 	}
 
-	i2s_client_ch = (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) ?
+	i2s_client_ch = (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) ?
 			params_channels(params) : 2;
 
 	switch (sample_size) {
@@ -615,7 +655,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		}
 	} else {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
-		reg = TEGRA30_I2S_CIF_TX_CTRL;
+		reg = TEGRA30_I2S_CIF_TX_CTRL, val;
 
 		tegra30_ahub_set_rx_cif_channels(i2s->capture_fifo_cif,
 						 params_channels(params),
@@ -653,7 +693,6 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			break;
 		}
 	}
-
 	regmap_write(i2s->regmap, reg, val);
 
 	switch (i2s->daifmt) {
@@ -673,27 +712,46 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	default:
 		return -EINVAL;
 	}
+
 	val = (val << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
-		  (val << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
+	      (val << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
+
 	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
 
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	if (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
+		regmap_read(i2s->regmap, TEGRA30_I2S_SLOT_CTRL2, &val);
+
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			val &=
+				~TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK;
+			val |= ((1 << params_channels(params)) - 1) <<
+				TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
+		} else {
+			val &=
+				~TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK;
+			val |= ((1 << params_channels(params)) - 1) <<
+				TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
+		}
+		regmap_write(i2s->regmap, TEGRA30_I2S_SLOT_CTRL2, val);
+	}
 
 	val = 0;
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	mask = TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
+	if (reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		val = (params_channels(params) - 1) <<
+			TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
+#else
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		mask = TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
-		val |= (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
+		val = (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
 	} else {
 		mask = TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
-		val |= (1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
+		val = (1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 	}
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
-#else
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
-		val = params_channels(params) - 1;
-	regmap_write(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, val);
 #endif
+
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
 
 	return 0;
 }
@@ -701,18 +759,20 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 static int tegra30_i2s_soft_reset(struct tegra30_i2s *i2s)
 {
 	int dcnt = 10;
+	unsigned int val;
 
-	i2s->reg_ctrl |= TEGRA30_I2S_CTRL_SOFT_RESET;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CTRL, i2s->reg_ctrl);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_SOFT_RESET, TEGRA30_I2S_CTRL_SOFT_RESET);
 
-	while ((tegra30_i2s_read(i2s, TEGRA30_I2S_CTRL) &
-		       TEGRA30_I2S_CTRL_SOFT_RESET) && dcnt--)
+	do {
 		udelay(100);
+		regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &val);
+	} while ((val & TEGRA30_I2S_CTRL_SOFT_RESET) && dcnt--);
 
 	/* Restore reg_ctrl to ensure if a concurrent playback/capture
 	   session was active it continues after SOFT_RESET */
-	i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_SOFT_RESET;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CTRL, i2s->reg_ctrl);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_SOFT_RESET, 0);
 
 	return (dcnt < 0) ? -ETIMEDOUT : 0;
 }
@@ -735,6 +795,7 @@ static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 	if (i2s->playback_ref_count == 1) {
 		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
 				   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
+
 		while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
 			udelay(100);
 
@@ -758,7 +819,7 @@ static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 static void tegra30_i2s_start_capture(struct tegra30_i2s *i2s)
 {
 	tegra30_ahub_enable_rx_fifo(i2s->capture_fifo_cif);
-	if (!i2s->is_call_mode_rec && (i2s->capture_ref_count == 1))
+	if (!i2s->is_call_mode_rec)
 		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
 				   TEGRA30_I2S_CTRL_XFER_EN_RX,
 				   TEGRA30_I2S_CTRL_XFER_EN_RX);
@@ -767,6 +828,7 @@ static void tegra30_i2s_start_capture(struct tegra30_i2s *i2s)
 static void tegra30_i2s_stop_capture(struct tegra30_i2s *i2s)
 {
 	int dcnt = 10;
+
 	if (!i2s->is_call_mode_rec && (i2s->capture_ref_count == 1)) {
 		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
 				   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
@@ -788,7 +850,7 @@ static void tegra30_i2s_stop_capture(struct tegra30_i2s *i2s)
 			       dcnt--)
 				udelay(100);
 		}
-		tegra30_ahub_disable_rx_fifo(i2s->rxcif);
+		tegra30_ahub_disable_rx_fifo(i2s->capture_fifo_cif);
 	}
 }
 
@@ -858,57 +920,40 @@ int tegra30_i2s_set_tdm_slot(struct snd_soc_dai *cpu_dai,
 	return 0;
 }
 
-#ifdef CONFIG_PM
-int tegra30_i2s_resume(struct snd_soc_dai *cpu_dai)
-{
-	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
-	int ret = 0;
-
-	//tegra30_ahub_apbif_resume();
-
-	if (i2s->dam_ch_refcount)
-		ret = tegra30_dam_resume(i2s->dam_ifc);
-
-	return ret;
-}
-#else
-#define tegra30_i2s_resume NULL
-#endif
-
 static struct snd_soc_dai_ops tegra30_i2s_dai_ops = {
 	.startup	= tegra30_i2s_startup,
 	.shutdown	= tegra30_i2s_shutdown,
 	.set_fmt	= tegra30_i2s_set_fmt,
 	.hw_params	= tegra30_i2s_hw_params,
 	.trigger	= tegra30_i2s_trigger,
-	.set_tdm_slot = tegra30_i2s_set_tdm_slot,
+	.set_tdm_slot	= tegra30_i2s_set_tdm_slot,
+	.set_sysclk	= tegra30_i2s_set_dai_sysclk,
 };
 
-static const struct snd_soc_dai_driver tegra30_i2s_dai_template = {
+static struct snd_soc_dai_driver tegra30_i2s_dai_template = {
 	.probe = tegra30_i2s_probe,
-	.resume = tegra30_i2s_resume,
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
 		.channels_max = 16,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S8 |
-			   SNDRV_PCM_FMTBIT_S16_LE |
-			   SNDRV_PCM_FMTBIT_S24_LE |
-			   SNDRV_PCM_FMTBIT_S32_LE,
+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE |
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 16,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S8 |
-			   SNDRV_PCM_FMTBIT_S16_LE |
-			   SNDRV_PCM_FMTBIT_S24_LE |
-			   SNDRV_PCM_FMTBIT_S32_LE,
+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE |
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 	},
 	.ops = &tegra30_i2s_dai_ops,
 	.symmetric_rates = 1,
+};
+
+static const struct snd_soc_component_driver tegra30_i2s_component = {
+	.name		= DRV_NAME,
 };
 
 static bool tegra30_i2s_wr_rd_reg(struct device *dev, unsigned int reg)
@@ -936,6 +981,9 @@ static bool tegra30_i2s_wr_rd_reg(struct device *dev, unsigned int reg)
 	case TEGRA30_I2S_LCOEF_2_4_0:
 	case TEGRA30_I2S_LCOEF_2_4_1:
 	case TEGRA30_I2S_LCOEF_2_4_2:
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	case TEGRA30_I2S_SLOT_CTRL2:
+#endif
 		return true;
 	default:
 		return false;
@@ -959,7 +1007,11 @@ static const struct regmap_config tegra30_i2s_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	.max_register = TEGRA30_I2S_SLOT_CTRL2,
+#else
 	.max_register = TEGRA30_I2S_LCOEF_2_4_2,
+#endif
 	.writeable_reg = tegra30_i2s_wr_rd_reg,
 	.readable_reg = tegra30_i2s_wr_rd_reg,
 	.volatile_reg = tegra30_i2s_volatile_reg,
@@ -973,17 +1025,17 @@ int tegra30_i2s_set_cif_channels(struct tegra30_i2s  *i2s,
 {
 	unsigned int val;
 
-	tegra30_i2s_enable_clocks(i2s);
+	pm_runtime_get_sync(i2s->dev);
 
-	val = tegra30_i2s_read(i2s, cif_reg);
+	regmap_read(i2s->regmap, cif_reg, &val);
 	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
 		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
 	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
 	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
 
-	tegra30_i2s_write(i2s, cif_reg, val);
+	regmap_write(i2s->regmap, cif_reg, val);
 
-	tegra30_i2s_disable_clocks(i2s);
+	pm_runtime_put(i2s->dev);
 
 	return 0;
 }
@@ -995,17 +1047,17 @@ int tegra30_i2s_set_cif_bits(struct tegra30_i2s  *i2s,
 {
 	unsigned int val;
 
-	tegra30_i2s_enable_clocks(i2s);
+	pm_runtime_get_sync(i2s->dev);
 
-	val = tegra30_i2s_read(i2s, cif_reg);
+	regmap_read(i2s->regmap, cif_reg, &val);
 	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
 		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
 	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
 	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
 
-	tegra30_i2s_write(i2s, cif_reg, val);
+	regmap_write(i2s->regmap, cif_reg, val);
 
-	tegra30_i2s_disable_clocks(i2s);
+	pm_runtime_put(i2s->dev);
 
 	return 0;
 }
@@ -1016,15 +1068,15 @@ int tegra30_i2s_set_cif_stereo_conv(struct tegra30_i2s  *i2s,
 {
 	unsigned int val;
 
-	tegra30_i2s_enable_clocks(i2s);
+	pm_runtime_get_sync(i2s->dev);
 
-	val = tegra30_i2s_read(i2s, cif_reg);
+	regmap_read(i2s->regmap, cif_reg, &val);
 	val &= ~TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_MASK;
 	val |= conv;
 
-	tegra30_i2s_write(i2s, cif_reg, val);
+	regmap_write(i2s->regmap, cif_reg, val);
 
-	tegra30_i2s_disable_clocks(i2s);
+	pm_runtime_put(i2s->dev);
 
 	return 0;
 }
@@ -1032,20 +1084,16 @@ int tegra30_i2s_set_cif_stereo_conv(struct tegra30_i2s  *i2s,
 static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		int i2s_mode, int channels, int rate, int bitsize, int bit_clk)
 {
-	u32 val;
 	int i2sclock, bitcnt, ret, is_formatdsp;
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-	u32  i;
-#endif
+	unsigned int mask, mask1, val, val1;
 
 	is_formatdsp = (i2s_mode == TEGRA_DAIFMT_DSP_A) ||
 					(i2s_mode == TEGRA_DAIFMT_DSP_B);
-
 	if (bit_clk) {
 		i2sclock = bit_clk;
 	} else {
-	    i2sclock = rate * channels * bitsize * 2;
-	    /* additional 8 for baseband */
+		i2sclock = rate * channels * bitsize * 2;
+		/* additional 8 for baseband */
 		if (is_formatdsp)
 			i2sclock *= 8;
 	}
@@ -1082,60 +1130,58 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		}
 	}
 
-	i2s->reg_ctrl &= ~(TEGRA30_I2S_CTRL_FRAME_FORMAT_MASK |
-					TEGRA30_I2S_CTRL_LRCK_MASK |
-					TEGRA30_I2S_CTRL_MASTER_ENABLE);
-	i2s->reg_ch_ctrl &= ~TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK;
+	pm_runtime_get_sync(i2s->dev);
 
-	i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_16;
+	mask = (TEGRA30_I2S_CTRL_FRAME_FORMAT_MASK |
+	       TEGRA30_I2S_CTRL_LRCK_MASK |
+	       TEGRA30_I2S_CTRL_MASTER_ENABLE);
+	mask1 = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK;
 
+	val = TEGRA30_I2S_CTRL_BIT_SIZE_16;
 	if (is_i2smaster)
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
+		val |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 
 	if (i2s_mode == TEGRA_DAIFMT_DSP_A) {
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
+		val |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
+		val1 = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
 	} else if (i2s_mode == TEGRA_DAIFMT_DSP_B) {
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
+		val |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
+		val1 = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 	} else {
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
-		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
-		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
+		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
+		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
+		val1 = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 	}
-
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CH_CTRL, mask1, val1);
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	regmap_read(i2s->regmap, TEGRA30_I2S_SLOT_CTRL2, &val);
+	val &= ~TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK;
+	val |= ((1 << channels) - 1) <<
+		TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
+	val &= ~TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK;
+	val |= ((1 << channels) - 1) <<
+		TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
+	regmap_write(i2s->regmap, TEGRA30_I2S_SLOT_CTRL2, val);
+
 	val = 0;
-	for (i = 0; i < channels; i++)
-		val |= (1 << i);
-
-	val |= val <<
-	  TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
-	val |= val <<
-	  TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL2, val);
-
-	val = 0;
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
-		val = channels  - 1;
-
-	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
+	mask = TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
+	if (is_formatdsp)
+		val = (channels - 1) <<
+			TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
 #else
-	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
-	val &= ~(TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK |
-		TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK);
-	val |= (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT |
-		1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
-	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
+	mask = (TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK |
+	       TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK);
+	val = (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT |
+	      1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 #endif
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
 
 	val = (1 << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
 	      (1 << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
-	tegra30_i2s_write(i2s, TEGRA30_I2S_OFFSET, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
 
 	if (is_formatdsp) {
 		bitcnt = (i2sclock/rate) - 1;
@@ -1148,8 +1194,7 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		if (i2sclock % (2*rate))
 			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 	}
-
-	tegra30_i2s_write(i2s, TEGRA30_I2S_TIMING, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
 
 	/* configure the i2s cif*/
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
@@ -1158,11 +1203,13 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_16 |
 	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_16;
 	val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_RX;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CIF_RX_CTRL, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_CIF_RX_CTRL, val);
 
 	val &= ~TEGRA30_AUDIOCIF_CTRL_DIRECTION_MASK;
 	val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
-	tegra30_i2s_write(i2s, TEGRA30_I2S_CIF_TX_CTRL, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_CIF_TX_CTRL, val);
+
+	pm_runtime_put(i2s->dev);
 
 	return 0;
 }
@@ -1197,35 +1244,31 @@ static int configure_dam(struct tegra30_i2s  *i2s, int out_channel,
 			out_channel, out_bitsize, out_channel, out_bitsize);
 #endif
 
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-	if (in_rate != out_rate) {
-		tegra30_dam_write_coeff_ram(i2s->dam_ifc, in_rate, out_rate);
-		tegra30_dam_set_farrow_param(i2s->dam_ifc, in_rate, out_rate);
-		tegra30_dam_set_biquad_fixed_coef(i2s->dam_ifc);
-		tegra30_dam_enable_coeff_ram(i2s->dam_ifc);
-		tegra30_dam_set_filter_stages(i2s->dam_ifc, in_rate, out_rate);
-	} else {
-		tegra30_dam_enable_stereo_mixing(i2s->dam_ifc);
-	}
-#endif
-
 	return 0;
 }
-
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 int t14x_make_bt_voice_call_connections(struct codec_config *codec_info,
 				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
-	struct tegra30_i2s *bb_i2s = &bbc1cont;
+	struct tegra30_i2s  *codec_i2s;
+	struct tegra30_i2s  *bb_i2s;
+	unsigned int val;
+
+	codec_i2s = i2scont[codec_info->i2s_id];
+	bb_i2s = &bbc1cont;
+
+	if (codec_i2s == NULL || bb_i2s == NULL)
+		return -ENOENT;
 
 	/* increment the codec i2s playback ref count */
 	codec_i2s->playback_ref_count++;
 	bb_i2s->playback_ref_count++;
 	codec_i2s->capture_ref_count++;
 	bb_i2s->capture_ref_count++;
+
+	pm_runtime_get_sync(codec_i2s->dev);
 
 	/* Configure codec i2s */
 	configure_baseband_i2s(codec_i2s, codec_info->is_i2smaster,
@@ -1270,10 +1313,8 @@ int t14x_make_bt_voice_call_connections(struct codec_config *codec_info,
 	tegra30_dam_enable(bb_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
 		TEGRA30_DAM_CHIN0_SRC);
 
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl);
+	val = TEGRA30_I2S_CTRL_XFER_EN_TX | TEGRA30_I2S_CTRL_XFER_EN_RX;
+	regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL, val, val);
 
 	return 0;
 }
@@ -1282,15 +1323,14 @@ int t14x_break_bt_voice_call_connections(struct codec_config *codec_info,
 				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
+	struct tegra30_i2s *codec_i2s = i2scont[codec_info->i2s_id];
 	struct tegra30_i2s *bb_i2s = &bbc1cont;
 	int dcnt = 10;
 
 	/* Disable Codec I2S RX (TX to ahub) */
 	if (codec_i2s->capture_ref_count == 1)
-		codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
 
 	while (!tegra30_ahub_rx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1299,9 +1339,8 @@ int t14x_break_bt_voice_call_connections(struct codec_config *codec_info,
 
 	/* Disable Codec I2S TX (RX from ahub) */
 	if (codec_i2s->playback_ref_count == 1)
-			codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
 
 	while (!tegra30_ahub_tx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1349,18 +1388,10 @@ int t14x_break_bt_voice_call_connections(struct codec_config *codec_info,
 	bb_i2s->capture_ref_count--;
 
 	/* Soft reset */
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl | TEGRA30_I2S_CTRL_SOFT_RESET);
-
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_SOFT_RESET;
-
-	while ((tegra30_i2s_read(codec_i2s, TEGRA30_I2S_CTRL) &
-			TEGRA30_I2S_CTRL_SOFT_RESET)  && dcnt--)
-		udelay(100);
+	tegra30_i2s_soft_reset(codec_i2s);
 
 	/* Disable the clocks */
-	tegra30_i2s_disable_clocks(codec_i2s);
+	pm_runtime_put(codec_i2s->dev);
 
 	return 0;
 }
@@ -1369,8 +1400,9 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
+	struct tegra30_i2s *codec_i2s = i2scont[codec_info->i2s_id];
 	struct tegra30_i2s *bb_i2s = &bbc1cont;
+	unsigned int val;
 
 	/* increment the codec i2s playback ref count */
 	codec_i2s->playback_ref_count++;
@@ -1421,7 +1453,7 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 			(codec_i2s->dam_ifc*2), TEGRA30_AHUB_TXCIF_BBC1_TX0);
 
 	tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
-		(codec_i2s->dam_ifc*2), codec_i2s->txcif);
+		(codec_i2s->dam_ifc*2), codec_i2s->playback_i2s_cif);
 
 	tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_BBC1_RX0,
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + codec_info->i2s_id);
@@ -1438,10 +1470,8 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 	tegra30_dam_enable(codec_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
 			TEGRA30_DAM_CHIN1);
 
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl);
+	val = TEGRA30_I2S_CTRL_XFER_EN_TX | TEGRA30_I2S_CTRL_XFER_EN_RX;
+	regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL, val, val);
 
 	return 0;
 }
@@ -1450,15 +1480,18 @@ int t14x_break_voice_call_connections(struct codec_config *codec_info,
 				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
+	struct tegra30_i2s *codec_i2s = i2scont[codec_info->i2s_id];
 	struct tegra30_i2s *bb_i2s = &bbc1cont;
 	int dcnt = 10;
+	unsigned int reg_ctrl;
+
+	if (codec_i2s == NULL || bb_i2s == NULL)
+		return -ENOENT;
 
 	/* Disable Codec I2S RX (TX to ahub) */
 	if (codec_i2s->capture_ref_count == 1)
-		codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+			TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
 
 	while (!tegra30_ahub_rx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1467,9 +1500,8 @@ int t14x_break_voice_call_connections(struct codec_config *codec_info,
 
 	/* Disable Codec I2S TX (RX from ahub) */
 	if (codec_i2s->playback_ref_count == 1)
-		codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+			TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
 
 	while (!tegra30_ahub_tx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1512,33 +1544,38 @@ int t14x_break_voice_call_connections(struct codec_config *codec_info,
 	bb_i2s->capture_ref_count--;
 
 	/* Soft reset */
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl | TEGRA30_I2S_CTRL_SOFT_RESET);
+	regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_SOFT_RESET, TEGRA30_I2S_CTRL_SOFT_RESET);
 
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_SOFT_RESET;
-
-	while ((tegra30_i2s_read(codec_i2s, TEGRA30_I2S_CTRL) &
-			TEGRA30_I2S_CTRL_SOFT_RESET)  && dcnt--)
+	do {
 		udelay(100);
+		regmap_read(codec_i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	} while ((reg_ctrl & TEGRA30_I2S_CTRL_SOFT_RESET) && dcnt--);
+
+	dcnt = 10;
 
 	/* Disable the clocks */
-	tegra30_i2s_disable_clocks(codec_i2s);
+	pm_runtime_put(codec_i2s->dev);
+	tegra30_dam_disable_clock(codec_i2s->dam_ifc);
+	tegra30_dam_disable_clock(bb_i2s->dam_ifc);
 
 	return 0;
 }
 #endif
 
 int tegra30_make_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
-				int uses_voice_codec)
+			struct codec_config *bb_info, int uses_voice_codec)
 {
 	struct tegra30_i2s  *codec_i2s;
 	struct tegra30_i2s  *bb_i2s;
-	int reg;
+	unsigned int val;
+	unsigned int en_flwcntrl = 0;
 
-	codec_i2s = &i2scont[codec_info->i2s_id];
-	bb_i2s = &i2scont[bb_info->i2s_id];
+	codec_i2s = i2scont[codec_info->i2s_id];
+	bb_i2s = i2scont[bb_info->i2s_id];
+
+	if (codec_i2s == NULL || bb_i2s == NULL)
+		return -ENOENT;
 
 	/* increment the codec i2s playback ref count */
 	codec_i2s->playback_ref_count++;
@@ -1546,25 +1583,20 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	codec_i2s->capture_ref_count++;
 	bb_i2s->capture_ref_count++;
 
+	pm_runtime_get_sync(codec_i2s->dev);
+	pm_runtime_get_sync(bb_i2s->dev);
+
 	/* Make sure i2s is disabled during the configiration */
-	tegra30_i2s_enable_clocks(codec_i2s);
-	reg = codec_i2s->reg_ctrl;
-	reg &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl);
-	tegra30_i2s_disable_clocks(codec_i2s);
-
-	tegra30_i2s_enable_clocks(bb_i2s);
-	reg = bb_i2s->reg_ctrl;
-	reg &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
-		bb_i2s->reg_ctrl);
-	tegra30_i2s_disable_clocks(bb_i2s);
-
+	regmap_read(codec_i2s->regmap, TEGRA30_I2S_CTRL, &val);
+	val &= ~(TEGRA30_I2S_CTRL_TX_FLOWCTL_EN |
+		TEGRA30_I2S_CTRL_XFER_EN_TX |
+		TEGRA30_I2S_CTRL_XFER_EN_RX);
+	regmap_write(codec_i2s->regmap, TEGRA30_I2S_CTRL, val);
+	regmap_read(bb_i2s->regmap, TEGRA30_I2S_CTRL, &val);
+	val &= ~(TEGRA30_I2S_CTRL_TX_FLOWCTL_EN |
+		TEGRA30_I2S_CTRL_XFER_EN_TX |
+		TEGRA30_I2S_CTRL_XFER_EN_RX);
+	regmap_write(bb_i2s->regmap, TEGRA30_I2S_CTRL, val);
 	msleep(20);
 
 	/*Configure codec i2s*/
@@ -1590,45 +1622,46 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 			    codec_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
 			    bb_info->i2s_id);
 		if (!(codec_info->is_i2smaster && bb_info->is_i2smaster)) {
-			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_FLOWCTL,
+			regmap_write(codec_i2s->regmap, TEGRA30_I2S_FLOWCTL,
 				TEGRA30_I2S_FILTER_QUAD);
-			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_FLOWCTL,
+			regmap_write(bb_i2s->regmap, TEGRA30_I2S_FLOWCTL,
 				TEGRA30_I2S_FILTER_QUAD);
-			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_TX_STEP, 4);
-			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_TX_STEP, 4);
-			codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-			bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+			regmap_write(codec_i2s->regmap, TEGRA30_I2S_TX_STEP, 4);
+			regmap_write(bb_i2s->regmap, TEGRA30_I2S_TX_STEP, 4);
+			en_flwcntrl = 1;
 		}
 	} else {
-
 		/*configure codec dam*/
 		configure_dam(codec_i2s, codec_info->channels,
-		   codec_info->rate, codec_info->bitsize, bb_info->channels,
-		   bb_info->rate, bb_info->bitsize);
+			codec_info->rate, codec_info->bitsize,
+			bb_info->channels, bb_info->rate,
+			bb_info->bitsize);
 
 		/*configure bb dam*/
 		configure_dam(bb_i2s, bb_info->channels,
-			bb_info->rate, bb_info->bitsize, codec_info->channels,
-			codec_info->rate, codec_info->bitsize);
+			bb_info->rate, bb_info->bitsize,
+			codec_info->channels, codec_info->rate,
+			codec_info->bitsize);
 
 		/*make ahub connections*/
 
-		/*if this is the only user of i2s tx, make i2s rx connection*/
+		/* if this is the only user of i2s tx then make
+		ahub i2s rx connection*/
 		if (codec_i2s->playback_ref_count == 1) {
 			tegra30_ahub_set_rx_cif_source(
-			  TEGRA30_AHUB_RXCIF_I2S0_RX0 + codec_info->i2s_id,
-			  TEGRA30_AHUB_TXCIF_DAM0_TX0 + codec_i2s->dam_ifc);
+			TEGRA30_AHUB_RXCIF_I2S0_RX0 + codec_info->i2s_id,
+			TEGRA30_AHUB_TXCIF_DAM0_TX0 + codec_i2s->dam_ifc);
 		}
 
-		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
-				bb_info->i2s_id, TEGRA30_AHUB_TXCIF_DAM0_TX0 +
-				bb_i2s->dam_ifc);
-		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
-			(codec_i2s->dam_ifc*2), TEGRA30_AHUB_TXCIF_I2S0_TX0 +
-			bb_info->i2s_id);
-		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
-			(bb_i2s->dam_ifc*2), TEGRA30_AHUB_TXCIF_I2S0_TX0 +
-			codec_info->i2s_id);
+		tegra30_ahub_set_rx_cif_source(
+		TEGRA30_AHUB_RXCIF_I2S0_RX0 + bb_info->i2s_id,
+		TEGRA30_AHUB_TXCIF_DAM0_TX0 + bb_i2s->dam_ifc);
+		tegra30_ahub_set_rx_cif_source(
+		TEGRA30_AHUB_RXCIF_DAM0_RX0 + (codec_i2s->dam_ifc*2),
+		TEGRA30_AHUB_TXCIF_I2S0_TX0 + bb_info->i2s_id);
+		tegra30_ahub_set_rx_cif_source(
+		TEGRA30_AHUB_RXCIF_DAM0_RX0 + (bb_i2s->dam_ifc*2),
+		TEGRA30_AHUB_TXCIF_I2S0_TX0 + codec_info->i2s_id);
 
 		/*enable dam and i2s*/
 		tegra30_dam_enable(codec_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
@@ -1637,39 +1670,36 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 			TEGRA30_DAM_CHIN0_SRC);
 	}
 
-	msleep(20);
-
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl);
+	val = TEGRA30_I2S_CTRL_XFER_EN_TX | TEGRA30_I2S_CTRL_XFER_EN_RX;
+	if (en_flwcntrl)
+		val |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
 
 	msleep(20);
-
-	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
-		bb_i2s->reg_ctrl);
+	regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL, val, val);
+	msleep(20);
+	regmap_update_bits(bb_i2s->regmap, TEGRA30_I2S_CTRL, val, val);
 
 	return 0;
 }
 
 int tegra30_break_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
-				int uses_voice_codec)
+			struct codec_config *bb_info, int uses_voice_codec)
 {
 	struct tegra30_i2s  *codec_i2s;
 	struct tegra30_i2s  *bb_i2s;
 	int dcnt = 10;
+	unsigned int reg_ctrl;
 
-	codec_i2s = &i2scont[codec_info->i2s_id];
-	bb_i2s = &i2scont[bb_info->i2s_id];
+	codec_i2s = i2scont[codec_info->i2s_id];
+	bb_i2s = i2scont[bb_info->i2s_id];
+
+	if (codec_i2s == NULL || bb_i2s == NULL)
+		return -ENOENT;
 
 	/*Disable Codec I2S RX (TX to ahub)*/
 	if (codec_i2s->capture_ref_count == 1)
-		codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
 
 	while (!tegra30_ahub_rx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1677,8 +1707,8 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 	dcnt = 10;
 
 	/*Disable baseband I2S TX (RX from ahub)*/
-	bb_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL, bb_i2s->reg_ctrl);
+	regmap_update_bits(bb_i2s->regmap, TEGRA30_I2S_CTRL,
+			   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
 
 	while (!tegra30_ahub_tx_fifo_is_empty(bb_i2s->id) && dcnt--)
 		udelay(100);
@@ -1686,8 +1716,8 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 	dcnt = 10;
 
 	/*Disable baseband I2S RX (TX to ahub)*/
-	bb_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
-	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL, bb_i2s->reg_ctrl);
+	regmap_update_bits(bb_i2s->regmap, TEGRA30_I2S_CTRL,
+			   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
 
 	while (!tegra30_ahub_rx_fifo_is_empty(bb_i2s->id) && dcnt--)
 		udelay(100);
@@ -1696,9 +1726,8 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 
 	/*Disable Codec I2S TX (RX from ahub)*/
 	if (codec_i2s->playback_ref_count == 1)
-			codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL, codec_i2s->reg_ctrl);
+		regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
 
 	while (!tegra30_ahub_tx_fifo_is_empty(codec_i2s->id) && dcnt--)
 		udelay(100);
@@ -1711,15 +1740,15 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    codec_info->i2s_id);
 	} else {
-
 		/*Disable baseband DAM*/
 		tegra30_dam_enable(bb_i2s->dam_ifc, TEGRA30_DAM_DISABLE,
-				TEGRA30_DAM_CHIN0_SRC);
+			TEGRA30_DAM_CHIN0_SRC);
 		tegra30_dam_free_channel(bb_i2s->dam_ifc,
-				TEGRA30_DAM_CHIN0_SRC);
+			TEGRA30_DAM_CHIN0_SRC);
 		bb_i2s->dam_ch_refcount--;
 		if (!bb_i2s->dam_ch_refcount)
 			tegra30_dam_free_controller(bb_i2s->dam_ifc);
+
 
 		/*Disable Codec DAM*/
 		tegra30_dam_enable(codec_i2s->dam_ifc,
@@ -1735,19 +1764,19 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 		i2s rx connection */
 		if (codec_i2s->playback_ref_count == 1)
 			tegra30_ahub_unset_rx_cif_source(
-			   TEGRA30_AHUB_RXCIF_I2S0_RX0 + codec_info->i2s_id);
+				TEGRA30_AHUB_RXCIF_I2S0_RX0
+				+ codec_info->i2s_id);
 
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0
-					+ bb_info->i2s_id);
+			+ bb_info->i2s_id);
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0
-					+ (codec_i2s->dam_ifc*2));
+			+ (codec_i2s->dam_ifc*2));
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0
-					+ (bb_i2s->dam_ifc*2));
+			+ (bb_i2s->dam_ifc*2));
 
 		tegra30_dam_disable_clock(codec_i2s->dam_ifc);
 		tegra30_dam_disable_clock(bb_i2s->dam_ifc);
 	}
-
 	/* Decrement the codec and bb i2s playback ref count */
 	codec_i2s->playback_ref_count--;
 	bb_i2s->playback_ref_count--;
@@ -1755,23 +1784,25 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 	bb_i2s->capture_ref_count--;
 
 	/* Soft reset */
-	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl | TEGRA30_I2S_CTRL_SOFT_RESET);
-	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
-		bb_i2s->reg_ctrl | TEGRA30_I2S_CTRL_SOFT_RESET);
-
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	bb_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_SOFT_RESET;
-	bb_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_SOFT_RESET;
-
-	while ((tegra30_i2s_read(codec_i2s, TEGRA30_I2S_CTRL) &
-			TEGRA30_I2S_CTRL_SOFT_RESET)  && dcnt--)
+	regmap_update_bits(codec_i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_SOFT_RESET, TEGRA30_I2S_CTRL_SOFT_RESET);
+	do {
 		udelay(100);
+		regmap_read(codec_i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	} while ((reg_ctrl & TEGRA30_I2S_CTRL_SOFT_RESET) && dcnt--);
 	dcnt = 10;
-	while ((tegra30_i2s_read(bb_i2s, TEGRA30_I2S_CTRL) &
-			TEGRA30_I2S_CTRL_SOFT_RESET)  && dcnt--)
+
+	regmap_update_bits(bb_i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_SOFT_RESET, TEGRA30_I2S_CTRL_SOFT_RESET);
+	do {
 		udelay(100);
+		regmap_read(bb_i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	} while ((reg_ctrl & TEGRA30_I2S_CTRL_SOFT_RESET) && dcnt--);
+	dcnt = 10;
+
+	/* Disable the clocks */
+	pm_runtime_put(codec_i2s->dev);
+	pm_runtime_put(bb_i2s->dev);
 
 	return 0;
 }
@@ -1784,21 +1815,34 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	int ret;
 
-	/* This needs to be updated for DT */
-	return -ENODEV;
-
-	i2s = &i2scont[pdev->id];
-	dev_set_drvdata(&pdev->dev, i2s);
-	i2s->id = pdev->id;
-
-	ret = of_property_read_u32_array(pdev->dev.of_node,
-					 "nvidia,ahub-cif-ids", cif_ids,
-					 ARRAY_SIZE(cif_ids));
-	if (ret < 0)
+	i2s = devm_kzalloc(&pdev->dev, sizeof(struct tegra30_i2s), GFP_KERNEL);
+	if (!i2s) {
+		dev_err(&pdev->dev, "Can't allocate tegra30_i2s\n");
+		ret = -ENOMEM;
 		goto err;
+	}
+	dev_set_drvdata(&pdev->dev, i2s);
+	i2s->dev = &pdev->dev;
+	i2s->dai = tegra30_i2s_dai_template;
+	i2s->dai.name = dev_name(&pdev->dev);
 
-	i2s->playback_i2s_cif = cif_ids[0];
-	i2s->capture_i2s_cif = cif_ids[1];
+	if (pdev->dev.of_node) {
+		ret = of_property_read_u32_array(pdev->dev.of_node,
+						 "nvidia,ahub-cif-ids", cif_ids,
+						 ARRAY_SIZE(cif_ids));
+		if (ret < 0)
+			goto err;
+
+		i2s->playback_i2s_cif = cif_ids[0];
+		i2s->capture_i2s_cif = cif_ids[1];
+		i2s->id = i2s->playback_i2s_cif - TEGRA30_AHUB_RXCIF_I2S0_RX0;
+	} else {
+		i2s->id = pdev->id;
+		i2s->playback_i2s_cif = TEGRA30_AHUB_RXCIF_I2S0_RX0 + pdev->id;
+		i2s->capture_i2s_cif = TEGRA30_AHUB_TXCIF_I2S0_TX0 + pdev->id;
+	}
+
+	i2scont[i2s->id] = i2s;
 
 	i2s->clk_i2s = clk_get(&pdev->dev, "i2s");
 	if (IS_ERR(i2s->clk_i2s)) {
@@ -1806,11 +1850,12 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 		ret = PTR_ERR(i2s->clk_i2s);
 		goto err;
 	}
+
 	i2s->clk_i2s_sync = clk_get(&pdev->dev, "ext_audio_sync");
 	if (IS_ERR(i2s->clk_i2s_sync)) {
 		dev_err(&pdev->dev, "Can't retrieve i2s_sync clock\n");
 		ret = PTR_ERR(i2s->clk_i2s_sync);
-		goto err_i2s_clk_put;
+		goto err_clk_put;
 	}
 
 	i2s->clk_audio_2x = clk_get(&pdev->dev, "audio_sync_2x");
@@ -1865,7 +1910,9 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
-	ret = snd_soc_register_dai(&pdev->dev, NULL);
+	ret = snd_soc_register_component(&pdev->dev, &tegra30_i2s_component,
+					 &tegra30_i2s_dai_template, 1);
+
 	if (ret) {
 		dev_err(&pdev->dev, "Could not register DAI: %d\n", ret);
 		ret = -ENOMEM;
@@ -1881,7 +1928,7 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	return 0;
 
 err_unregister_dai:
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 err_suspend:
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra30_i2s_runtime_suspend(&pdev->dev);
@@ -1893,7 +1940,7 @@ err_audio_2x_clk_put:
 	clk_put(i2s->clk_audio_2x);
 err_i2s_sync_clk_put:
 	clk_put(i2s->clk_i2s_sync);
-err_i2s_clk_put:
+err_clk_put:
 	clk_put(i2s->clk_i2s);
 err:
 	return ret;
@@ -1908,7 +1955,7 @@ static int tegra30_i2s_platform_remove(struct platform_device *pdev)
 		tegra30_i2s_runtime_suspend(&pdev->dev);
 
 	tegra_pcm_platform_unregister(&pdev->dev);
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 
 	clk_put(i2s->clk_pll_a_out0);
 	clk_put(i2s->clk_audio_2x);

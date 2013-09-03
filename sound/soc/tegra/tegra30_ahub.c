@@ -102,6 +102,19 @@ void tegra30_ahub_clock_set_rate(int rate)
 {
 	clk_set_rate(ahub->clk_d_audio, rate);
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_clock_set_rate);
+
+void tegra30_ahub_enable_clocks(void)
+{
+	pm_runtime_get_sync(ahub->dev);
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_enable_clocks);
+
+void tegra30_ahub_disable_clocks(void)
+{
+	pm_runtime_put(ahub->dev);
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_disable_clocks);
 
 static int tegra30_ahub_soft_reset_rx_channel(int channel)
 {
@@ -149,8 +162,11 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AHUB_CHANNEL_CTRL_RX_THRESHOLD_MASK);
-	val |= (7 << TEGRA30_AHUB_CHANNEL_CTRL_RX_THRESHOLD_SHIFT);
+	val &= ~(TEGRA30_AHUB_CHANNEL_CTRL_RX_THRESHOLD_MASK |
+		 TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_MASK);
+	val |= (7 << TEGRA30_AHUB_CHANNEL_CTRL_RX_THRESHOLD_SHIFT) |
+	       TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN |
+	       TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_16;
 	tegra30_apbif_write(reg, val);
 
 	reg = TEGRA30_AHUB_CIF_RX_CTRL +
@@ -158,6 +174,8 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
 	      (1 << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
 	      (1 << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_16 |
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_16 |
 	      TEGRA30_AUDIOCIF_CTRL_DIRECTION_RX;
 	tegra30_apbif_write(reg, val);
 
@@ -174,6 +192,7 @@ int tegra30_ahub_rx_fifo_is_enabled(int i2s_id)
 	val &= mask;
 	return val;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_rx_fifo_is_enabled);
 
 int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
 {
@@ -185,6 +204,7 @@ int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
 
 	return val;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_tx_fifo_is_enabled);
 
 
 int tegra30_ahub_rx_fifo_is_empty(int i2s_id)
@@ -220,6 +240,7 @@ int tegra30_ahub_dam_ch0_is_enabled(int dam_id)
 
 	return val;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_dam_ch0_is_enabled);
 
 int tegra30_ahub_dam_ch1_is_enabled(int dam_id)
 {
@@ -232,6 +253,7 @@ int tegra30_ahub_dam_ch1_is_enabled(int dam_id)
 
 	return val;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_dam_ch1_is_enabled);
 
 int tegra30_ahub_dam_tx_is_enabled(int dam_id)
 {
@@ -244,6 +266,7 @@ int tegra30_ahub_dam_tx_is_enabled(int dam_id)
 
 	return val;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_dam_tx_is_enabled);
 
 
 int tegra30_ahub_dam_ch0_is_empty(int dam_id)
@@ -304,6 +327,7 @@ int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_rx_fifo_pack_mode);
 
 int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
 							unsigned int pack_mode)
@@ -326,6 +350,7 @@ int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_tx_fifo_pack_mode);
 
 int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 {
@@ -391,8 +416,11 @@ int tegra30_ahub_allocate_tx_fifo(enum tegra30_ahub_txcif *txcif,
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AHUB_CHANNEL_CTRL_TX_THRESHOLD_MASK);
-	val |= (7 << TEGRA30_AHUB_CHANNEL_CTRL_TX_THRESHOLD_SHIFT);
+	val &= ~(TEGRA30_AHUB_CHANNEL_CTRL_TX_THRESHOLD_MASK |
+		 TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_MASK);
+	val |= (7 << TEGRA30_AHUB_CHANNEL_CTRL_TX_THRESHOLD_SHIFT) |
+	       TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN |
+	       TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_16;
 	tegra30_apbif_write(reg, val);
 
 	reg = TEGRA30_AHUB_CIF_TX_CTRL +
@@ -400,6 +428,8 @@ int tegra30_ahub_allocate_tx_fifo(enum tegra30_ahub_txcif *txcif,
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
 	      (1 << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
 	      (1 << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_16 |
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_16 |
 	      TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
 	tegra30_apbif_write(reg, val);
 
@@ -474,6 +504,107 @@ int tegra30_ahub_unset_rx_cif_source(enum tegra30_ahub_rxcif rxcif)
 }
 EXPORT_SYMBOL_GPL(tegra30_ahub_unset_rx_cif_source);
 
+int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
+				     unsigned int audio_ch,
+				     unsigned int client_ch)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
+	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
+	tegra30_apbif_write(reg, val);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_rx_cif_channels);
+
+int tegra30_ahub_set_rx_cif_stereo_conv(enum tegra30_ahub_rxcif rxcif)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_MASK;
+	val |= TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_AVG;
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
+				     unsigned int audio_ch,
+				     unsigned int client_ch)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	unsigned int reg, val;
+
+	reg = TEGRA30_AHUB_CIF_TX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
+	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
+
+	tegra30_apbif_write(reg, val);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_tx_cif_channels);
+
+int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+	tegra30_apbif_write(reg, val);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_rx_cif_bits);
+
+int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	unsigned int reg, val;
+
+	reg = TEGRA30_AHUB_CIF_TX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+
+	tegra30_apbif_write(reg, val);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra30_ahub_set_tx_cif_bits);
+
 static const char * const configlink_clocks[] = {
 	"i2s0",
 	"i2s1",
@@ -483,7 +614,10 @@ static const char * const configlink_clocks[] = {
 	"dam0",
 	"dam1",
 	"dam2",
+/*No SPDIF in 14x*/
+#ifndef CONFIG_ARCH_TEGRA_14x_SOC
 	"spdif_in",
+#endif
 };
 
 struct of_dev_auxdata ahub_auxdata[] = {
@@ -625,104 +759,6 @@ static const struct regmap_config tegra30_ahub_ahub_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
-				     unsigned int audio_ch,
-				     unsigned int client_ch)
-{
-	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
-	unsigned int reg, val;
-
-	reg = TEGRA30_AHUB_CIF_RX_CTRL +
-	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
-	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
-		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
-	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
-	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
-	tegra30_apbif_write(reg, val);
-
-	return 0;
-}
-
-int tegra30_ahub_set_rx_cif_stereo_conv(enum tegra30_ahub_rxcif rxcif)
-{
-	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
-	unsigned int reg, val;
-
-	tegra30_ahub_enable_clocks();
-
-	reg = TEGRA30_AHUB_CIF_RX_CTRL +
-	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
-	val = tegra30_apbif_read(reg);
-	val &= ~TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_MASK;
-	val |= TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_AVG;
-	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
-
-	return 0;
-}
-
-int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
-				     unsigned int audio_ch,
-				     unsigned int client_ch)
-{
-	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
-	unsigned int reg, val;
-
-	reg = TEGRA30_AHUB_CIF_TX_CTRL +
-	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
-	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
-		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
-	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
-	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
-
-	tegra30_apbif_write(reg, val);
-
-	return 0;
-}
-
-int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
-				     unsigned int audio_bits,
-				     unsigned int client_bits)
-{
-	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
-	unsigned int reg, val;
-
-	reg = TEGRA30_AHUB_CIF_RX_CTRL +
-	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
-	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
-		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
-	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
-	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
-	tegra30_apbif_write(reg, val);
-
-	return 0;
-}
-
-int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
-				     unsigned int audio_bits,
-				     unsigned int client_bits)
-{
-	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
-	unsigned int reg, val;
-
-	reg = TEGRA30_AHUB_CIF_TX_CTRL +
-	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
-	val = tegra30_apbif_read(reg);
-	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
-		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
-	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
-	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
-
-	tegra30_apbif_write(reg, val);
-
-	return 0;
-}
-
-
 static int tegra30_ahub_probe(struct platform_device *pdev)
 {
 	struct clk *clk;
@@ -730,8 +766,8 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	struct resource *res0, *res1, *region;
 	u32 of_dma[2];
 	void __iomem *regs_apbif, *regs_ahub;
-	int ret = 0;
 	int clkm_rate;
+	int ret = 0;
 
 	if (ahub)
 		return -ENODEV;
@@ -784,15 +820,19 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		goto err_clk_put_d_audio;
 	}
 
-	if (of_property_read_u32_array(pdev->dev.of_node,
-				"nvidia,dma-request-selector",
-				of_dma, 2) < 0) {
-		dev_err(&pdev->dev,
-			"Missing property nvidia,dma-request-selector\n");
-		ret = -ENODEV;
-		goto err_clk_put_d_audio;
+	if (!(pdev->dev.of_node))
+		ahub->dma_sel = 1;
+	else {
+		if (of_property_read_u32_array(pdev->dev.of_node,
+					"nvidia,dma-request-selector",
+					of_dma, 2) < 0) {
+			dev_err(&pdev->dev,
+				"Missing property nvidia,dma-request-selector\n");
+			ret = -ENODEV;
+			goto err_clk_put_d_audio;
+		}
+		ahub->dma_sel = of_dma[1];
 	}
-	ahub->dma_sel = of_dma[1];
 
 	res0 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res0) {
@@ -866,8 +906,9 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
-	of_platform_populate(pdev->dev.of_node, NULL, ahub_auxdata,
-			     &pdev->dev);
+	if (pdev->dev.of_node)
+		of_platform_populate(pdev->dev.of_node, NULL, ahub_auxdata,
+				     &pdev->dev);
 
 	return 0;
 

@@ -46,6 +46,7 @@
 #endif
 
 #include <sound/soc.h>
+#include <sound/dmaengine_pcm.h>
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
@@ -211,11 +212,11 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 
 	rtd = &card->rtd[data->avp_device_id];
 	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = (struct tegra_runtime_data *)
-		snd_dmaengine_pcm_get_data(substream);
+	prtd = substream->runtime->private_data;
 
 	if (!prtd)
 		return 0;
@@ -223,8 +224,7 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	chan = snd_dmaengine_pcm_get_chan(substream);
 
 	ucontrol->value.integer.value[0] = -1;
-	ucontrol->value.integer.value[0] =
-		tegra_dma_get_channel_id(prtd->dma_chan);
+
 	return 0;
 }
 
@@ -244,14 +244,10 @@ static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
 	substream =
 	rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 
-	rtd = &card->rtd[data->avp_device_id];
-	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = (struct tegra_runtime_data *)
-		snd_dmaengine_pcm_get_data(substream);
-
+	prtd = substream->runtime->private_data;
 	if (!prtd)
 		return 0;
 
@@ -278,16 +274,15 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = (struct tegra_runtime_data *)
-		snd_dmaengine_pcm_get_data(substream);
+	prtd = substream->runtime->private_data;
 
 	if (!prtd)
 		return 0;
 
 	ucontrol->value.integer.value[0] = 0;
 	ucontrol->value.integer.value[0] = prtd->avp_dma_addr ?
-					   prtd->avp_dma_addr :
-					   substream->runtime->dma_addr;
+					   (long)prtd->avp_dma_addr :
+					   (long)substream->runtime->dma_addr;
 
 	return 0;
 }
@@ -385,6 +380,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 		clk_disable_unprepare(data->clk_pll_a);
 		reenable_clock = true;
 	}
+
 	err = clk_set_rate(data->clk_pll_a, new_baseclock);
 	if (err) {
 		dev_err(data->dev, "Can't set pll_a rate: %d\n", err);
@@ -405,7 +401,6 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 	}
 	if(reenable_clock)
 		clk_prepare_enable(data->clk_pll_a_out0);
-
 
 	data->set_baseclock = new_baseclock;
 	data->set_mclk = mclk;
@@ -428,7 +423,7 @@ int tegra_asoc_utils_clk_enable(struct tegra_asoc_utils_data *data)
 {
 	int err;
 
-	err = clk_enable(data->clk_cdev1);
+	err = clk_prepare_enable(data->clk_cdev1);
 	if (err) {
 		dev_err(data->dev, "Can't enable cdev1: %d\n", err);
 		return err;
@@ -440,7 +435,7 @@ EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_enable);
 
 int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data)
 {
-	clk_disable(data->clk_cdev1);
+	clk_disable_unprepare(data->clk_cdev1);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_disable);
@@ -480,23 +475,39 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 	data->dev = dev;
 	data->card = card;
 
-	if (of_machine_is_compatible("nvidia,tegra20"))
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
-	else if (of_machine_is_compatible("nvidia,tegra30"))
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA30;
-	else if (!dev->of_node)
-		/* non-DT is always Tegra20 */
-		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
-	else
-		/* DT boot, but unknown SoC */
-		return -EINVAL;
-
 	data->clk_pll_p_out1 = clk_get_sys(NULL, "pll_p_out1");
 	if (IS_ERR(data->clk_pll_p_out1)) {
 		dev_err(data->dev, "Can't retrieve clk pll_p_out1\n");
 		ret = PTR_ERR(data->clk_pll_p_out1);
 		goto err;
 	}
+
+	if (of_machine_is_compatible("nvidia,tegra20"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
+	else if (of_machine_is_compatible("nvidia,tegra30"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA30;
+	else if (of_machine_is_compatible("nvidia,tegra114"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA11x;
+	else if (of_machine_is_compatible("nvidia,tegra148"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA14x;
+	else if (of_machine_is_compatible("nvidia,tegra124"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA12x;
+	else if (!dev->of_node) {
+		/* non-DT is always Tegra20 */
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA30;
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA11x;
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA14x;
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA12x;
+#endif
+	} else
+		/* DT boot, but unknown SoC */
+		return -EINVAL;
 
 	data->clk_pll_a = clk_get_sys(NULL, "pll_a");
 	if (IS_ERR(data->clk_pll_a)) {
@@ -530,43 +541,41 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 		goto err_put_pll_a_out0;
 	}
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	data->clk_out1 = ERR_PTR(-ENOENT);
-#else
-	data->clk_out1 = clk_get_sys("clk_out_1", "extern1");
-	if (IS_ERR(data->clk_out1)) {
-		dev_err(data->dev, "Can't retrieve clk out1\n");
-		ret = PTR_ERR(data->clk_out1);
-		goto err_put_cdev1;
+	if (data->soc == TEGRA_ASOC_UTILS_SOC_TEGRA20)
+		data->clk_out1 = ERR_PTR(-ENOENT);
+	else {
+		data->clk_out1 = clk_get_sys("clk_out_1", "extern1");
+		if (IS_ERR(data->clk_out1)) {
+			dev_err(data->dev, "Can't retrieve clk out1\n");
+			ret = PTR_ERR(data->clk_out1);
+			goto err_put_cdev1;
+		}
 	}
-#endif
 
-	ret = clk_enable(data->clk_cdev1);
+	ret = clk_prepare_enable(data->clk_cdev1);
 	if (ret) {
 		dev_err(data->dev, "Can't enable clk cdev1/extern1");
 		goto err_put_out1;
 	}
 
 	if (!IS_ERR(data->clk_out1)) {
-		ret = clk_enable(data->clk_out1);
+		ret = clk_prepare_enable(data->clk_out1);
 		if (ret) {
 			dev_err(data->dev, "Can't enable clk out1");
 			goto err_put_out1;
 		}
 	}
 
-	ret = tegra_asoc_utils_set_rate(data, 44100, 256 * 44100);
+	ret = tegra_asoc_utils_set_rate(data, 48000, 256 * 48000);
 	if (ret)
-		goto err_put_cdev1;
+		goto err_put_out1;
 
 	return 0;
 
 err_put_out1:
 	if (!IS_ERR(data->clk_out1))
 		clk_put(data->clk_out1);
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 err_put_cdev1:
-#endif
 	clk_put(data->clk_cdev1);
 err_put_pll_a_out0:
 	clk_put(data->clk_pll_a_out0);
@@ -579,11 +588,13 @@ err:
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_init);
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 int tegra_asoc_utils_set_parent (struct tegra_asoc_utils_data *data,
 				int is_i2s_master)
 {
 	int ret = -ENODEV;
+
+	if (data->soc == TEGRA_ASOC_UTILS_SOC_TEGRA20)
+		return ret;
 
 	if (is_i2s_master) {
 		ret = clk_set_parent(data->clk_cdev1, data->clk_pll_a_out0);
@@ -605,7 +616,6 @@ int tegra_asoc_utils_set_parent (struct tegra_asoc_utils_data *data,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_set_parent);
-#endif
 
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 {
