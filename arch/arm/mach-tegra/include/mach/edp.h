@@ -89,7 +89,6 @@ struct tegra_core_edp_limits {
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
 void tegra_recalculate_cpu_edp_limits(void);
-void tegra_init_system_edp_limits(unsigned int power_limit_mW);
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size);
 unsigned int tegra_get_edp_limit(int *get_edp_thermal_index);
 void tegra_get_system_edp_limits(const unsigned int **limits);
@@ -105,8 +104,6 @@ static inline struct thermal_cooling_device *edp_cooling_device_create(
 static inline void tegra_init_cpu_edp_limits(int regulator_mA)
 {}
 static inline void tegra_recalculate_cpu_edp_limits(void)
-{}
-static inline void tegra_init_system_edp_limits(int power_limit_mW)
 {}
 static inline void tegra_get_cpu_edp_limits(struct tegra_edp_limits **limits,
 					    int *size)

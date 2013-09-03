@@ -405,56 +405,6 @@ static int init_cpu_edp_limits_calculated(void)
 	return 0;
 }
 
-static int __init init_cpu_edp_limits_lookup(void)
-{
-	int i, j;
-	struct tegra_edp_limits *e;
-	struct tegra_edp_vdd_cpu_entry *t;
-	int tsize = 0;
-	int cpu_speedo_id = tegra_cpu_speedo_id();
-
-	if (tegra_chip_id != TEGRA_CHIPID_TEGRA3)
-		return -EINVAL;
-
-	t = tegra3x_get_vdd_cpu_map(&tsize);
-
-	for (i = 0; i < tsize; i++) {
-		if (t[i].speedo_id == cpu_speedo_id &&
-		    t[i].regulator_100mA <= regulator_cur / 100)
-			break;
-	}
-
-	/* No entry found in tegra_edp_vdd_cpu_map */
-	if (i >= tsize)
-		return -EINVAL;
-
-	/* Find all rows for this entry */
-	for (j = i + 1; j < tsize; j++) {
-		if (t[i].speedo_id != t[j].speedo_id ||
-		    t[i].regulator_100mA != t[j].regulator_100mA)
-			break;
-	}
-
-	edp_limits_size = j - i;
-	e = kmalloc(sizeof(struct tegra_edp_limits) * edp_limits_size,
-		    GFP_KERNEL);
-	BUG_ON(!e);
-
-	for (j = 0; j < edp_limits_size; j++) {
-		e[j].temperature = (int)t[i+j].temperature;
-		e[j].freq_limits[0] = (unsigned int)t[i+j].freq_limits[0]*10000;
-		e[j].freq_limits[1] = (unsigned int)t[i+j].freq_limits[1]*10000;
-		e[j].freq_limits[2] = (unsigned int)t[i+j].freq_limits[2]*10000;
-		e[j].freq_limits[3] = (unsigned int)t[i+j].freq_limits[3]*10000;
-	}
-
-	if (edp_limits != edp_default_limits)
-		kfree(edp_limits);
-
-	edp_limits = e;
-	return 0;
-}
-
 void tegra_recalculate_cpu_edp_limits(void)
 {
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
@@ -473,16 +423,13 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 	regulator_cur = regulator_mA + OVERRIDE_DEFAULT;
 
 	switch (tegra_chip_id) {
-	case TEGRA_CHIPID_TEGRA3:
-		if (init_cpu_edp_limits_lookup() == 0)
-			return;
-		break;
 	case TEGRA_CHIPID_TEGRA11:
 	case TEGRA_CHIPID_TEGRA14:
 		if (init_cpu_edp_limits_calculated() == 0)
 			return;
 		break;
 	case TEGRA_CHIPID_TEGRA2:
+	case TEGRA_CHIPID_TEGRA3:
 	default:
 		BUG();
 		break;
@@ -500,58 +447,6 @@ void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size)
 {
 	*limits = edp_limits;
 	*size = edp_limits_size;
-}
-
-void __init tegra_init_system_edp_limits(unsigned int power_limit_mW)
-{
-	int cpu_speedo_id = tegra_cpu_speedo_id();
-	int i;
-	unsigned int *e;
-	struct tegra_system_edp_entry *t;
-	int tsize = 0;
-
-	if (tegra_chip_id != TEGRA_CHIPID_TEGRA3) {
-		e = NULL;
-		goto out;
-	}
-
-	t = tegra3x_get_system_edp_map(&tsize);
-
-	if (!power_limit_mW) {
-		e = NULL;
-		goto out;
-	}
-
-	for (i = 0; i < tsize; i++)
-		if (t[i].speedo_id == cpu_speedo_id)
-			break;
-
-	if (i >= tsize) {
-		e = NULL;
-		goto out;
-	}
-
-	do {
-		if (t[i].power_limit_100mW <= power_limit_mW / 100)
-			break;
-		i++;
-	} while (i < tsize && t[i].speedo_id == cpu_speedo_id);
-
-	if (i >= tsize || t[i].speedo_id != cpu_speedo_id)
-		i--; /* No low enough entry in the table, use best possible */
-
-	e = kmalloc(sizeof(unsigned int) * 4, GFP_KERNEL);
-	BUG_ON(!e);
-
-	e[0] = (unsigned int)t[i].freq_limits[0] * 10000;
-	e[1] = (unsigned int)t[i].freq_limits[1] * 10000;
-	e[2] = (unsigned int)t[i].freq_limits[2] * 10000;
-	e[3] = (unsigned int)t[i].freq_limits[3] * 10000;
-
-out:
-	kfree(system_edp_limits);
-
-	system_edp_limits = e;
 }
 
 void tegra_get_system_edp_limits(const unsigned int **limits)
