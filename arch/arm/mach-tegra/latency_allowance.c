@@ -352,7 +352,8 @@ static int __init tegra_latency_allowance_init(void)
 				if (574 > emc_freq_mhz)
 					val_2 = val_2 * 574 / emc_freq_mhz;
 
-				la_to_set = min3(T12X_MC_LA_MAX_VALUE,
+				la_to_set = min3((unsigned int)
+							T12X_MC_LA_MAX_VALUE,
 						val_1,
 						val_2);
 			} else if (cs.la_info_array[i].la_ref_clk_mhz != 0) {
@@ -366,14 +367,16 @@ static int __init tegra_latency_allowance_init(void)
 				if (cs.la_info_array[i].la_ref_clk_mhz <=
 					emc_freq_mhz) {
 					la_to_set =
-						min(cs.la_info_array[i].init_la,
+						min((unsigned long)
+						cs.la_info_array[i].init_la,
+						(unsigned long)
 							T12X_MC_LA_MAX_VALUE);
 				} else {
 					la_to_set =
 					min(cs.la_info_array[i].init_la *
 					cs.la_info_array[i].la_ref_clk_mhz /
 					emc_freq_mhz,
-					T12X_MC_LA_MAX_VALUE);
+					(unsigned long)T12X_MC_LA_MAX_VALUE);
 				}
 			} else
 				la_to_set = cs.la_info_array[i].init_la;
