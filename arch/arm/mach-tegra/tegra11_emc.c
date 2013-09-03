@@ -310,7 +310,7 @@ static void __iomem *burst_up_down_reg_addr[TEGRA11_EMC_MAX_NUM_REGS] = {
 
 #define DEFINE_REG(base, reg) (reg)
 #ifndef EMULATE_CLOCK_SWITCH
-static const u32 emc_trimmer_offs[TEGRA11_EMC_MAX_NUM_REGS] = {
+static u32 emc_trimmer_offs[TEGRA11_EMC_MAX_NUM_REGS] = {
 	EMC_TRIMMERS_REG_LIST
 };
 #endif
