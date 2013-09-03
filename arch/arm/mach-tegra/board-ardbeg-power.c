@@ -33,6 +33,7 @@
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/as3722-reg.h>
 #include <linux/mfd/as3722-plat.h>
+#include <linux/power/power_supply_extcon.h>
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
@@ -680,6 +681,18 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.min_residency_crail = 20000,
 };
 
+static struct power_supply_extcon_plat_data extcon_pdata = {
+	.extcon_name = "tegra-udc",
+};
+
+static struct platform_device power_supply_extcon_device = {
+	.name	= "power-supply-extcon",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &extcon_pdata,
+	},
+};
+
 int __init ardbeg_suspend_init(void)
 {
 	struct board_info pmu_board_info;
@@ -721,6 +734,7 @@ int __init ardbeg_regulator_init(void)
 		i2c_register_board_info(1, bq2471x_boardinfo,
 			ARRAY_SIZE(bq2471x_boardinfo));
 
+	platform_device_register(&power_supply_extcon_device);
 	return 0;
 }
 

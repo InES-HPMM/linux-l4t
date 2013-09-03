@@ -28,6 +28,7 @@
 
 #include <linux/gpio.h>
 #include <linux/power/bq2419x-charger.h>
+#include <linux/power/power_supply_extcon.h>
 #include <linux/max17048_battery.h>
 
 #include <mach/irqs.h>
@@ -422,6 +423,18 @@ static struct i2c_board_info palma_device[] = {
 	},
 };
 
+static struct power_supply_extcon_plat_data extcon_pdata = {
+	.extcon_name = "tegra-udc",
+};
+
+static struct platform_device power_supply_extcon_device = {
+	.name	= "power-supply-extcon",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &extcon_pdata,
+	},
+};
+
 int __init tn8_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -455,6 +468,8 @@ int __init tn8_regulator_init(void)
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
+
+	platform_device_register(&power_supply_extcon_device);
 	return 0;
 }
 /* Macro for defining fixed regulator sub device data */

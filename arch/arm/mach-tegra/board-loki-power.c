@@ -28,6 +28,7 @@
 #include <linux/gpio.h>
 #include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq27441_battery.h>
+#include <linux/power/power_supply_extcon.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -426,6 +427,18 @@ static struct i2c_board_info loki_i2c_board_info_bq27441[] = {
 	},
 };
 
+static struct power_supply_extcon_plat_data extcon_pdata = {
+	.extcon_name = "tegra-udc",
+};
+
+static struct platform_device power_supply_extcon_device = {
+	.name	= "power-supply-extcon",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &extcon_pdata,
+	},
+};
+
 int __init loki_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -451,6 +464,7 @@ int __init loki_regulator_init(void)
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);
 	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
 			ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	platform_device_register(&power_supply_extcon_device);
 	return 0;
 }
 /* Macro for defining fixed regulator sub device data */
