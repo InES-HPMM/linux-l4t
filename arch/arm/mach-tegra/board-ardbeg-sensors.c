@@ -655,7 +655,7 @@ static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 	.trips = {
 		{
 			.cdev_type = "skin-balanced",
-			.trip_temp = 200000,
+			.trip_temp = 50000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = THERMAL_NO_LIMIT,
 			.lower = THERMAL_NO_LIMIT,
