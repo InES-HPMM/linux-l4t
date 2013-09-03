@@ -1119,4 +1119,5 @@ DT_MACHINE_START(ARDBEG, "ardbeg")
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= ardbeg_dt_board_compat,
+	.init_late      = tegra_init_late
 MACHINE_END
