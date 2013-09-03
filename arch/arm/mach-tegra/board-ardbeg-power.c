@@ -1342,8 +1342,7 @@ int __init ardbeg_soctherm_init(void)
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
-		return tegra11_soctherm_init(&ardbeg_soctherm_data);
 	}
 
-	return -EINVAL;
+	return tegra11_soctherm_init(&ardbeg_soctherm_data);
 }
