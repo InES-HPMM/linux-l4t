@@ -463,7 +463,7 @@ PALMAS_REGS_PDATA(ti913_ldo4, 1200, 1200, palmas_rails(ti913_smps6),
 PALMAS_REGS_PDATA(ti913_ldo5, 2700, 2700, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo6, 1800, 1800, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo7, 2700, 2700, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ti913_ldo8, 1000, 1000, NULL, 1, 1, 1, 0, 0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ti913_ldo8, 900, 900, NULL, 1, 1, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo9, 1800, 3300, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldoln, 1050, 1050, palmas_rails(ti913_smps6),
 		0, 0, 1, 0, 0, 0, 0, 0, 0);
