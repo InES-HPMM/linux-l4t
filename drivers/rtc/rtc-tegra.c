@@ -425,10 +425,6 @@ static struct platform_driver tegra_rtc_driver = {
 		.of_match_table = tegra_rtc_dt_match,
 		.pm	= &tegra_rtc_pm_ops,
 	},
-#ifdef CONFIG_PM_SLEEP
-	.suspend	= tegra_rtc_suspend,
-	.resume		= tegra_rtc_resume,
-#endif
 };
 
 module_platform_driver_probe(tegra_rtc_driver, tegra_rtc_probe);
