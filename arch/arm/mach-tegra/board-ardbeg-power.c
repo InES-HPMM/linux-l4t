@@ -709,37 +709,6 @@ int __init ardbeg_suspend_init(void)
 	return 0;
 }
 
-int __init ardbeg_regulator_init(void)
-{
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if ((pmu_board_info.board_id == BOARD_E1733) ||
-		(pmu_board_info.board_id == BOARD_E1734)) {
-		i2c_register_board_info(0, tca6408_expander,
-				ARRAY_SIZE(tca6408_expander));
-		ardbeg_ams_regulator_init();
-		regulator_has_full_constraints();
-	} else if (pmu_board_info.board_id == BOARD_E1735) {
-		regulator_has_full_constraints();
-		ardbeg_tps65913_regulator_init();
-	} else if (pmu_board_info.board_id == BOARD_E1736) {
-		tn8_regulator_init();
-		return tn8_fixed_regulator_init();
-	} else {
-		pr_warn("PMU board id 0x%04x is not supported\n",
-			pmu_board_info.board_id);
-	}
-
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
-		i2c_register_board_info(1, bq2471x_boardinfo,
-			ARRAY_SIZE(bq2471x_boardinfo));
-
-	platform_device_register(&power_supply_extcon_device);
-	return 0;
-}
-
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply,			\
@@ -1177,6 +1146,39 @@ int __init ardbeg_rail_alignment_init(void)
 	return 0;
 }
 
+int __init ardbeg_regulator_init(void)
+{
+	struct board_info pmu_board_info;
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if ((pmu_board_info.board_id == BOARD_E1733) ||
+		(pmu_board_info.board_id == BOARD_E1734)) {
+		i2c_register_board_info(0, tca6408_expander,
+				ARRAY_SIZE(tca6408_expander));
+		ardbeg_ams_regulator_init();
+		regulator_has_full_constraints();
+	} else if (pmu_board_info.board_id == BOARD_E1735) {
+		regulator_has_full_constraints();
+		ardbeg_tps65913_regulator_init();
+	} else if (pmu_board_info.board_id == BOARD_E1736) {
+		tn8_regulator_init();
+		return tn8_fixed_regulator_init();
+	} else {
+		pr_warn("PMU board id 0x%04x is not supported\n",
+			pmu_board_info.board_id);
+	}
+
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		i2c_register_board_info(1, bq2471x_boardinfo,
+			ARRAY_SIZE(bq2471x_boardinfo));
+
+	platform_device_register(&power_supply_extcon_device);
+
+	ardbeg_cl_dvfs_init(pmu_board_info.board_id);
+	return 0;
+}
+
 static int __init ardbeg_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -1185,7 +1187,6 @@ static int __init ardbeg_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
-	ardbeg_cl_dvfs_init(pmu_board_info.board_id);
 
 	if (pmu_board_info.board_id == BOARD_E1733)
 		return platform_add_devices(fixed_reg_devs_e1733,
