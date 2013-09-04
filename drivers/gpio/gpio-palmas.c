@@ -125,7 +125,7 @@ static int palmas_gpio_input(struct gpio_chip *gc, unsigned offset)
 
 	ret = palmas_update_bits(palmas, PALMAS_GPIO_BASE, reg, BIT(offset), 0);
 	if (ret < 0)
-		dev_err(gc->dev, "Reg 0x%02x update failed, %d\n", ret);
+		dev_err(gc->dev, "Reg 0x%02x update failed, %d\n", reg, ret);
 	return ret;
 }
 
@@ -156,7 +156,7 @@ static int palmas_gpio_set_debounce(struct gpio_chip *gc, unsigned offset,
 	ret = palmas_update_bits(palmas, PALMAS_GPIO_BASE, reg,
 				BIT(offset), val);
 	if (ret < 0)
-		dev_err(gc->dev, "Reg 0x%02x update failed, %d\n", ret);
+		dev_err(gc->dev, "Reg 0x%02x update failed, %d\n", reg, ret);
 	return ret;
 }
 
@@ -186,6 +186,7 @@ static int palmas_gpio_probe(struct platform_device *pdev)
 	palmas_gpio->gpio_chip.to_irq = palmas_gpio_to_irq;
 	palmas_gpio->gpio_chip.set	= palmas_gpio_set;
 	palmas_gpio->gpio_chip.get	= palmas_gpio_get;
+	palmas_gpio->gpio_chip.set_debounce = palmas_gpio_set_debounce;
 	palmas_gpio->gpio_chip.dev = &pdev->dev;
 #ifdef CONFIG_OF_GPIO
 	palmas_gpio->gpio_chip.of_node = pdev->dev.of_node;
