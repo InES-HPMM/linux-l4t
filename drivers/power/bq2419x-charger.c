@@ -904,9 +904,11 @@ static int bq2419x_probe(struct i2c_client *client,
 		bq2419x_irq, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 			dev_name(bq2419x->dev), bq2419x);
 	if (ret < 0) {
-		dev_err(bq2419x->dev, "request IRQ %d fail, err = %d\n",
+		dev_warn(bq2419x->dev, "request IRQ %d fail, err = %d\n",
 				bq2419x->irq, ret);
-		goto scrub_kthread;
+		dev_info(bq2419x->dev,
+			"Supporting bq driver without intierrupt\n");
+		ret = 0;
 	}
 
 	/* enable charging */
@@ -916,7 +918,8 @@ static int bq2419x_probe(struct i2c_client *client,
 
 	return 0;
 scrub_irq:
-	free_irq(bq2419x->irq, bq2419x);
+	if (bq2419x->irq)
+		free_irq(bq2419x->irq, bq2419x);
 scrub_kthread:
 	bq2419x->stop_thread = true;
 	flush_kthread_worker(&bq2419x->bq_kworker);
@@ -936,7 +939,8 @@ static int bq2419x_remove(struct i2c_client *client)
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 
 	battery_charger_unregister(bq2419x->bc_dev);
-	free_irq(bq2419x->irq, bq2419x);
+	if (bq2419x->irq)
+		free_irq(bq2419x->irq, bq2419x);
 	bq2419x->stop_thread = true;
 	flush_kthread_worker(&bq2419x->bq_kworker);
 	kthread_stop(bq2419x->bq_kworker_task);
