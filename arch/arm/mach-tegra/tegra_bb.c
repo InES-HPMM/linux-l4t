@@ -30,10 +30,10 @@
 #include <asm/io.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
+#include <linux/clk/tegra.h>
 #include <linux/suspend.h>
 #include <linux/pm_runtime.h>
 
-#include <mach/clk.h>
 #include <mach/tegra_bb.h>
 #include <mach/tegra_bbc_proxy.h>
 #include <mach/pm_domains.h>

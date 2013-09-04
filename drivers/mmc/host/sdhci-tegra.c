@@ -40,12 +40,12 @@
 #include <linux/seq_file.h>
 #include <linux/reboot.h>
 #include <linux/devfreq.h>
+#include <linux/clk/tegra.h>
 
 #include <mach/hardware.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <mach/pinmux.h>
 #include <mach/pm_domains.h>
-#include <mach/clk.h>
 
 #include "sdhci-pltfm.h"
 

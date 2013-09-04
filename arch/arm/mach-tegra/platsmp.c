@@ -290,7 +290,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 			   - CPU mode switch is not allowed */
 			status = -EINVAL;
 		} else {
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && !defined(CONFIG_COMMON_CLK)
 			/* set cpu rate is within g-mode range before switch */
 			unsigned int speed = max(
 				(unsigned long)tegra_getspeed(0),

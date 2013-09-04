@@ -36,8 +36,8 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/of_platform.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
 #include <mach/io_dpd.h>

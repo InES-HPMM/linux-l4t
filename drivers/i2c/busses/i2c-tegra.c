@@ -38,6 +38,7 @@
 #include <linux/module.h>
 #include <linux/clk/tegra.h>
 #include <linux/spinlock.h>
+#include <linux/clk/tegra.h>
 
 #include <asm/unaligned.h>
 

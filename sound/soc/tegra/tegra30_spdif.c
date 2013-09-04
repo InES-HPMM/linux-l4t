@@ -36,8 +36,8 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/clk/tegra.h>
 #include <mach/hdmi-audio.h>
-#include <mach/clk.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>

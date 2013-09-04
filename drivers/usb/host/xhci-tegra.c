@@ -33,9 +33,9 @@
 #include <linux/kthread.h>
 #include <linux/gpio.h>
 #include <linux/usb/otg.h>
+#include <linux/clk/tegra.h>
 
 #include <mach/powergate.h>
-#include <mach/clk.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/pm_domains.h>

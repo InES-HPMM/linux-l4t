@@ -26,8 +26,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/pinmux.h>
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #include <mach/pinmux-tegra20.h>

@@ -47,6 +47,7 @@
 #include <linux/memblock.h>
 #include <linux/console.h>
 #include <linux/tegra_audio.h>
+#include <linux/clk/tegra.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>

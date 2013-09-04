@@ -46,7 +46,6 @@
 #include "devices.h"
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
-#include "tegra_cpu_car.h"
 
 /* FIXME: Disable for initial Si bringup */
 #undef USE_PLLE_SS

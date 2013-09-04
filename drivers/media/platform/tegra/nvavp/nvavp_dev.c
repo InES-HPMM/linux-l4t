@@ -37,8 +37,8 @@
 #include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 #include <linux/pm_runtime.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/hardware.h>
 #include <mach/legacy_irq.h>
 #include <mach/pm_domains.h>

@@ -19,9 +19,9 @@
 #include <linux/err.h>
 #include <linux/stringify.h>
 #include <linux/clk.h>
+#include <linux/clk/tegra.h>
 #include <asm/io.h>
 #include <mach/hardware.h>
-#include <mach/clk.h>
 #include <mach/latency_allowance.h>
 
 #include "iomap.h"

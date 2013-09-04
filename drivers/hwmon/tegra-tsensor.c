@@ -30,8 +30,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/tsensor.h>
 #include <mach/tegra_fuse.h>
 

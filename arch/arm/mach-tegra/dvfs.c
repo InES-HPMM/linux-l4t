@@ -33,6 +33,7 @@
 #include <linux/delay.h>
 #include <linux/clk/tegra.h>
 #include <linux/reboot.h>
+#include <linux/clk/tegra.h>
 
 #include <mach/hardware.h>
 

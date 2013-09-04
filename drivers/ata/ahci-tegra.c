@@ -45,7 +45,7 @@
 #include "ahci.h"
 
 #include <linux/clk.h>
-#include <mach/clk.h>
+#include <linux/clk/tegra.h>
 #include <mach/iomap.h>
 #include <mach/powergate.h>
 #include <linux/platform_data/tegra_ahci.h>

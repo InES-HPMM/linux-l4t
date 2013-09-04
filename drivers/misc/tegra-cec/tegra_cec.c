@@ -34,8 +34,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
-
-#include <mach/clk.h>
+#include <linux/clk/tegra.h>
 
 #include "tegra_cec.h"
 

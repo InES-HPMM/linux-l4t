@@ -46,8 +46,8 @@
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
 #include <linux/edp.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>

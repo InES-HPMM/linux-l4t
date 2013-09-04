@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/clk/tegra.h>
 #include <linux/string.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>

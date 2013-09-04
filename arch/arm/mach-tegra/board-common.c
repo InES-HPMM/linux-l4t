@@ -21,8 +21,8 @@
 
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/edp.h>
 
 #include "board.h"
@@ -118,8 +118,10 @@ int uart_console_debug_init(int default_debug_port)
 
 	if (!IS_ERR_OR_NULL(debug_uart_clk)) {
 		struct clk *c;
+#ifndef CONFIG_COMMON_CLK
 		pr_info("The debug console clock name is %s\n",
 						debug_uart_clk->name);
+#endif
 		c = tegra_get_clock_by_name("pll_p");
 		if (IS_ERR_OR_NULL(c))
 			pr_err("Not getting the parent clock pll_p\n");

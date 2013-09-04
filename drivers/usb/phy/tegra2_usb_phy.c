@@ -28,10 +28,10 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/clk/tegra.h>
 
 #include <asm/mach-types.h>
 
-#include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>

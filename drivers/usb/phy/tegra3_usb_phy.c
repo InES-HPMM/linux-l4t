@@ -26,7 +26,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <mach/clk.h>
+#include <linux/clk/tegra.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "tegra_usb_phy.h"

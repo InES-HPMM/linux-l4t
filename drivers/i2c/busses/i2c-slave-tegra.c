@@ -32,7 +32,7 @@
 #include <linux/i2c-slave.h>
 #include <linux/module.h>
 #include <asm/unaligned.h>
-#include <mach/clk.h>
+#include <linux/clk/tegra.h>
 #include <mach/pinmux.h>
 #include <linux/pm_runtime.h>
 #define BYTES_PER_FIFO_WORD 4

@@ -12,6 +12,7 @@
 #include <linux/smp.h>
 #include <linux/clk/tegra.h>
 #include <linux/cpu_pm.h>
+#include <linux/clk/tegra.h>
 
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>

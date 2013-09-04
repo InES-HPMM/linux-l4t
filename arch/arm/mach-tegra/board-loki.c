@@ -52,8 +52,8 @@
 #include <linux/edp.h>
 #include <linux/mfd/palmas.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>

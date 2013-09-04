@@ -18,11 +18,11 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/clk/tegra.h>
 #include <linux/err.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
 
-#include <mach/clk.h>
 #include <mach/powergate.h>
 
 #include "clock.h"

@@ -48,8 +48,8 @@
 #include <linux/of_platform.h>
 #include <linux/edp.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>

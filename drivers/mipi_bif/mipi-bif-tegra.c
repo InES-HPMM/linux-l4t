@@ -29,8 +29,8 @@
 #include <linux/slab.h>
 #include <linux/mipi-bif-tegra.h>
 #include <linux/pm_runtime.h>
+#include <linux/clk/tegra.h>
 
-#include <mach/clk.h>
 #define TEGRA_MIPIBIF_TIMEOUT 1000
 
 #define MIPIBIF_CTRL				0x0
