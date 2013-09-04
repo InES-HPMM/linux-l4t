@@ -772,43 +772,19 @@ static int palmas_getvoltage_chargepump(struct regulator_dev *rdev)
 	return 5000;
 }
 
-static int palmas_is_enabled_extreg(struct regulator_dev *dev)
+static int palmas_getvoltage_extreg(struct regulator_dev *rdev)
 {
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return true;
-	
-	return regulator_is_enabled_regmap(dev);
-}
-
-static int palmas_enable_extreg(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
-	
-	return regulator_enable_regmap(dev);
-}
-
-static int palmas_disable_extreg(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
-	
-	return regulator_disable_regmap(dev);
+	return 4300 * 1000;
 }
 
 static struct regulator_ops palmas_ops_extreg = {
-	.is_enabled		= palmas_is_enabled_extreg,
-	.enable			= palmas_enable_extreg,
-	.disable		= palmas_disable_extreg,
+	.is_enabled		= regulator_is_enabled_regmap,
+	.enable			= regulator_enable_regmap,
+	.disable		= regulator_disable_regmap,
+};
+
+static struct regulator_ops palmas_ops_extreg_extctrl = {
+	.get_voltage		= palmas_getvoltage_extreg,
 };
 
 static struct regulator_ops palmas_ops_chargepump = {
@@ -1163,7 +1139,8 @@ static int palmas_ldo_init(struct palmas *palmas, int id,
 	return 0;
 }
 
-static int palmas_extreg_init(struct palmas *palmas, int id,
+static int palmas_extreg_init(struct regulator_dev *rdev,
+		struct palmas *palmas, int id,
 		struct palmas_reg_init *reg_init)
 {
 	unsigned int addr;
@@ -1185,6 +1162,14 @@ static int palmas_extreg_init(struct palmas *palmas, int id,
 
 	if (reg_init->roof_floor) {
 		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		/* Always enable if externally controlled */
+		ret = regulator_enable_regmap(rdev);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in enabling regulator %d\n", id);
+			return ret;
+		}
 
 		ret = palmas_ext_power_req_config(palmas, sleep_id,
 			reg_init->roof_floor, true);
@@ -1617,6 +1602,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 	/* Start this loop from the id left from previous loop */
 	for (; id < PALMAS_NUM_REGS; id++) {
+		int roof_floor = 0;
+
 		if (palmas->id != TPS80036) {
 			if (id > PALMAS_REG_LDO9 && id < PALMAS_REG_LDOLN)
 				continue;
@@ -1626,6 +1613,13 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			if (id == PALMAS_REG_REGEN3)
 				continue;
 		}
+
+		if (pdata && pdata->reg_init) {
+			reg_init = pdata->reg_init[id];
+			if (reg_init)
+				roof_floor = reg_init->roof_floor;
+		}
+
 		/* Miss out regulators which are not available due
 		 * to alternate functions.
 		 */
@@ -1665,7 +1659,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->desc[id].ops = &palmas_ops_chargepump;
 		} else {
 			pmic->desc[id].n_voltages = 1;
-			pmic->desc[id].ops = &palmas_ops_extreg;
+			if (roof_floor)
+				pmic->desc[id].ops = &palmas_ops_extreg_extctrl;
+			else
+				pmic->desc[id].ops = &palmas_ops_extreg;
 			pmic->desc[id].enable_reg =
 					PALMAS_BASE_TO_REG(PALMAS_RESOURCE_BASE,
 						palmas_regs_info[id].ctrl_addr);
@@ -1706,7 +1703,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 					ret = palmas_ldo_init(palmas,
 							id, reg_init);
 				else
-					ret = palmas_extreg_init(palmas,
+					ret = palmas_extreg_init(rdev, palmas,
 							id, reg_init);
 				if (ret) {
 					regulator_unregister(pmic->rdev[id]);
