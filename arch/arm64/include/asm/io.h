@@ -242,6 +242,8 @@ extern void __iounmap(volatile void __iomem *addr);
 #define ARCH_HAS_IOREMAP_WC
 #include <asm-generic/iomap.h>
 
+#define IOMEM(x)	((void __force __iomem *)(x))
+
 /*
  * More restrictive address range checking than the default implementation
  * (PHYS_OFFSET and PHYS_MASK taken into account).
