@@ -36,13 +36,6 @@ static unsigned long saved_regs[16];
 
 #define SET_RESULT(req, r, ro)	{ req->result = r; req->result_origin = ro; }
 
-#define TLK_GENERIC_SMC(arg0, arg1, arg2) \
-	do { \
-		switch_cpumask_to_cpu0(); \
-		tlk_generic_smc(arg0, arg1, arg2); \
-		restore_cpumask(); \
-	} while (0)
-
 static int te_pin_user_pages(void *buffer, size_t size,
 		unsigned long *pages_ptr)
 {
@@ -278,13 +271,21 @@ uint32_t tlk_extended_smc(uint32_t *regs)
 /*
  * Do an SMC call
  */
-static void do_smc(struct te_request *request)
+static void do_smc(struct te_request *request, struct tlk_device *dev)
 {
-	phys_addr_t smc_args = virt_to_phys(request);
-	phys_addr_t smc_params = 0;
+	uint32_t smc_args;
+	uint32_t smc_params = 0;
 
-	if (request->params)
-		smc_params = virt_to_phys(request->params);
+	if (dev->req_param_buf) {
+		smc_args = (char *)request - dev->req_param_buf;
+		if (request->params)
+			smc_params = (char *)request->params -
+						dev->req_param_buf;
+	} else {
+		smc_args = (uint32_t)virt_to_phys(request);
+		if (request->params)
+			smc_params = (uint32_t)virt_to_phys(request->params);
+	}
 
 	TLK_GENERIC_SMC(request->type, smc_args, smc_params);
 }
@@ -317,7 +318,7 @@ void te_open_session(struct te_opensession *cmd,
 
 	request->type = TE_SMC_OPEN_SESSION;
 
-	do_smc(request);
+	do_smc(request, context->dev);
 
 	te_unpin_temp_buffers(request, context);
 }
@@ -326,12 +327,13 @@ void te_open_session(struct te_opensession *cmd,
  * Close session SMC (supporting client-based te_close_session() calls)
  */
 void te_close_session(struct te_closesession *cmd,
-		      struct te_request *request)
+		      struct te_request *request,
+		      struct tlk_context *context)
 {
 	request->session_id = cmd->session_id;
 	request->type = TE_SMC_CLOSE_SESSION;
 
-	do_smc(request);
+	do_smc(request, context->dev);
 	if (request->result)
 		pr_info("Error closing session: %08x\n", request->result);
 }
@@ -356,7 +358,7 @@ void te_launch_operation(struct te_launchop *cmd,
 	request->command_id = cmd->operation.command;
 	request->type = TE_SMC_LAUNCH_OPERATION;
 
-	do_smc(request);
+	do_smc(request, context->dev);
 
 	te_unpin_temp_buffers(request, context);
 }

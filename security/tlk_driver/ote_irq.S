@@ -16,6 +16,6 @@
 
 ENTRY(tlk_irq_handler)
 	movw	r0, #0x1FF1
-	movt	r0, #0xFFFF
+	movt	r0, #0xFFFF	@ TE_SMC_NS_IRQ_DONE
 	smc	#0
 ENDPROC(tlk_irq_handler)

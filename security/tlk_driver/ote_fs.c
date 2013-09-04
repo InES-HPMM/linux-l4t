@@ -44,13 +44,6 @@ static DECLARE_COMPLETION(req_ready);
 static DECLARE_COMPLETION(req_complete);
 static unsigned long secure_error;
 
-#define TLK_EXTENDED_SMC(arg0) \
-	do { \
-		switch_cpumask_to_cpu0(); \
-		tlk_extended_smc(arg0); \
-		restore_cpumask(); \
-	} while (0)
-
 static void indicate_complete(unsigned long ret)
 {
 	tlk_generic_smc(TE_SMC_FS_OP_DONE, ret, 0);

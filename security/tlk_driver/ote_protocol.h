@@ -38,6 +38,10 @@
 #define TE_IOCTL_MIN_NR	_IOC_NR(TE_IOCTL_OPEN_CLIENT_SESSION)
 #define TE_IOCTL_MAX_NR	_IOC_NR(TE_IOCTL_FILE_REQ_COMPLETE)
 
+/* shared buffer is 2 pages: 1st are requests, 2nd are params */
+#define TE_CMD_DESC_MAX	(PAGE_SIZE / sizeof(struct te_request))
+#define TE_PARAM_MAX	(PAGE_SIZE / sizeof(struct te_oper_param))
+
 #define MAX_EXT_SMC_ARGS	12
 
 uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
@@ -52,11 +56,37 @@ static inline void switch_cpumask_to_cpu0(void) {};
 static inline void restore_cpumask(void) {};
 #endif
 
+static inline uint32_t
+TLK_GENERIC_SMC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+	uint32_t retval;
+
+	switch_cpumask_to_cpu0();
+	retval = tlk_generic_smc(arg0, arg1, arg2);
+	restore_cpumask();
+
+	return retval;
+}
+
+static inline uint32_t
+TLK_EXTENDED_SMC(uint32_t *args)
+{
+	uint32_t retval;
+
+	switch_cpumask_to_cpu0();
+	retval = tlk_extended_smc(args);
+	restore_cpumask();
+
+	return retval;
+}
+
 struct tlk_device {
 	struct te_request *req_addr;
 	dma_addr_t req_addr_phys;
 	struct te_oper_param *param_addr;
 	dma_addr_t param_addr_phys;
+
+	char *req_param_buf;
 
 	unsigned long *param_bitmap;
 
@@ -90,6 +120,7 @@ enum {
 	TE_SMC_REGISTER_IRQ_HANDLER	= 0xFFFF1FF0,
 	TE_SMC_NS_IRQ_DONE		= 0xFFFF1FF1,
 	TE_SMC_REGISTER_FS_HANDLERS	= 0xFFFF1FF2,
+	TE_SMC_REGISTER_REQ_BUF		= 0xFFFF1FF3,
 	TE_SMC_FS_OP_DONE		= 0xFFFF1FFF,
 };
 
@@ -187,7 +218,8 @@ void te_open_session(struct te_opensession *cmd,
 	struct tlk_context *context);
 
 void te_close_session(struct te_closesession *cmd,
-	struct te_request *request);
+	struct te_request *request,
+	struct tlk_context *context);
 
 void te_launch_operation(struct te_launchop *cmd,
 	struct te_request *request,

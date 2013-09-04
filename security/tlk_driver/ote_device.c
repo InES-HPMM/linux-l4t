@@ -48,22 +48,44 @@ u32 notrace tegra_read_cycle(void)
 	return cycle_count;
 }
 
-/*
- * The maximum number of outstanding command requests.
- */
-#define TE_CMD_DESC_MAX		(PAGE_SIZE / sizeof(struct te_request))
-#define TE_PARAM_MAX		(PAGE_SIZE / sizeof(struct te_oper_param))
-
 static int te_create_free_cmd_list(struct tlk_device *dev)
 {
 	int cmd_desc_count, ret = 0;
 	struct te_cmd_req_desc *req_desc;
 	int bitmap_size;
+	bool use_reqbuf;
 
-	dev->req_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
-				&dev->req_addr_phys, GFP_KERNEL);
-	dev->param_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
-				&dev->param_addr_phys, GFP_KERNEL);
+	/*
+	 * Check if new shared req/param register SMC is supported.
+	 *
+	 * If it is, TLK can map in the shared req/param buffers and do_smc
+	 * only needs to send the offsets within each (with cache coherency
+	 * being maintained by HW through an NS mapping).
+	 *
+	 * If the SMC support is not yet present, then fallback to the old
+	 * mode of writing to an uncached buffer to maintain coherency (and
+	 * phys addresses are passed in do_smc).
+	 */
+	dev->req_param_buf = NULL;
+	use_reqbuf = !TLK_GENERIC_SMC(TE_SMC_REGISTER_REQ_BUF, 0, 0);
+
+	if (use_reqbuf) {
+		dev->req_param_buf = kmalloc((2 * PAGE_SIZE), GFP_KERNEL);
+
+		/* requests in the first page, params in the second */
+		dev->req_addr   = (struct te_request *) dev->req_param_buf;
+		dev->param_addr = (struct te_oper_param *)
+					(dev->req_param_buf + PAGE_SIZE);
+
+		TLK_GENERIC_SMC(TE_SMC_REGISTER_REQ_BUF,
+				(uint32_t)dev->req_addr, (2 * PAGE_SIZE));
+	} else {
+		dev->req_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
+					&dev->req_addr_phys, GFP_KERNEL);
+		dev->param_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
+					&dev->param_addr_phys, GFP_KERNEL);
+	}
+
 	if ((dev->req_addr == NULL) || (dev->param_addr == NULL)) {
 		ret = -ENOMEM;
 		goto error;
@@ -90,7 +112,6 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 	}
 error:
 	return ret;
-
 }
 
 static struct te_oper_param *te_get_free_params(struct tlk_device *dev,
@@ -331,7 +352,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 		memset(request, 0, sizeof(struct te_request));
 
 		/* close session cannot fail */
-		te_close_session(&cmd.closesession, request);
+		te_close_session(&cmd.closesession, request, context);
 		break;
 
 	case TE_IOCTL_LAUNCH_OPERATION:
