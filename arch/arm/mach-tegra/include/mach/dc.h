@@ -602,6 +602,7 @@ struct tegra_dc_out {
 /* Errands use the interrupts */
 #define V_BLANK_FLIP		0
 #define V_BLANK_NVSD		1
+#define V_BLANK_USER		2
 
 #define V_PULSE2_FLIP		0
 #define V_PULSE2_NVSD		1
@@ -792,6 +793,8 @@ bool tegra_dc_hpd(struct tegra_dc *dc);
 
 
 bool tegra_dc_has_vsync(struct tegra_dc *dc);
+void tegra_dc_vsync_enable(struct tegra_dc *dc);
+void tegra_dc_vsync_disable(struct tegra_dc *dc);
 int tegra_dc_wait_for_vsync(struct tegra_dc *dc);
 void tegra_dc_blank(struct tegra_dc *dc);
 
