@@ -93,7 +93,10 @@ enum {
 	TEGRA_DSI_GPIO_SET,
 	TEGRA_DSI_SEND_FRAME,
 };
-
+enum {
+	TEGRA_DSI_LINK0,
+	TEGRA_DSI_LINK1,
+};
 struct tegra_dsi_cmd {
 	u8	cmd_type;
 	u8	data_id;
@@ -108,6 +111,7 @@ struct tegra_dsi_cmd {
 		} sp;
 	} sp_len_dly;
 	u8	*pdata;
+	u8   link_id;
 };
 
 #define DSI_GENERIC_LONG_WRITE			0x29
@@ -128,12 +132,16 @@ struct tegra_dsi_cmd {
 #define DSI_NULL_PKT_NO_DATA			0x9
 #define DSI_BLANKING_PKT_NO_DATA		0x19
 
-#define DSI_CMD_SHORT(di, p0, p1)	{ \
+#define DSI_CMD_SHORT_LINK(di, p0, p1, lnk_id)	{ \
 					.cmd_type = TEGRA_DSI_PACKET_CMD, \
 					.data_id = di, \
 					.sp_len_dly.sp.data0 = p0, \
 					.sp_len_dly.sp.data1 = p1, \
+					.link_id = lnk_id, \
 					}
+#define DSI_CMD_SHORT(di, p0, p1)	DSI_CMD_SHORT_LINK(di,\
+						p0, p1, TEGRA_DSI_LINK0)
+
 #define DSI_DLY_MS(ms)	{ \
 			.cmd_type = TEGRA_DSI_DELAY_MS, \
 			.sp_len_dly.delay_ms = ms, \
@@ -145,12 +153,15 @@ struct tegra_dsi_cmd {
 					.sp_len_dly.gpio = rst_gpio, \
 					}
 
-#define DSI_CMD_LONG(di, ptr)	{ \
+#define DSI_CMD_LONG_LINK(di, ptr, lnk_id)	{ \
 				.cmd_type = TEGRA_DSI_PACKET_CMD, \
 				.data_id = di, \
 				.sp_len_dly.data_len = ARRAY_SIZE(ptr), \
 				.pdata = ptr, \
+				.link_id = lnk_id, \
 				}
+#define DSI_CMD_LONG(di, ptr)	DSI_CMD_LONG_LINK(di, ptr,\
+								TEGRA_DSI_LINK0)
 
 #define DSI_SEND_FRAME(cnt)	{ \
 			.cmd_type = TEGRA_DSI_SEND_FRAME, \
