@@ -351,6 +351,7 @@ struct tegra_pcie_info {
 	struct clk		*pll_e;
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
+	struct list_head busses;
 };
 
 static struct tegra_pcie_info tegra_pcie;
