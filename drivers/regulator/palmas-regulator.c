@@ -767,60 +767,6 @@ static struct regulator_ops palmas_ops_ldo = {
 	.map_voltage		= palmas_map_voltage_ldo,
 };
 
-static int palmas_is_enabled_chargepump(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	struct palmas *palmas = pmic->palmas;
-	int id = rdev_get_id(dev);
-	unsigned int reg;
-	int ret;
-
-	ret = regmap_read(palmas->regmap[REGULATOR_SLAVE],
-			palmas_regs_info[id].ctrl_addr, &reg);
-	if (ret < 0)
-		return ret;
-
-	reg &= PALMAS_PALMAS_CHARGE_PUMP_CTRL_STATUS;
-
-	return !!(reg);
-}
-
-static int palmas_enable_chargepump(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	struct palmas *palmas = pmic->palmas;
-	int id = rdev_get_id(dev);
-	unsigned int reg;
-	int ret;
-
-	ret = regmap_read(palmas->regmap[REGULATOR_SLAVE],
-			palmas_regs_info[id].ctrl_addr, &reg);
-	if (ret < 0)
-		return ret;
-
-	reg |= PALMAS_CHARGE_PUMP_CTRL_MODE_ACTIVE;
-	return regmap_write(palmas->regmap[REGULATOR_SLAVE],
-			palmas_regs_info[id].ctrl_addr, reg);
-}
-
-static int palmas_disable_chargepump(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	struct palmas *palmas = pmic->palmas;
-	int id = rdev_get_id(dev);
-	unsigned int reg;
-	int ret;
-
-	ret = regmap_read(palmas->regmap[REGULATOR_SLAVE],
-			palmas_regs_info[id].ctrl_addr, &reg);
-	if (ret < 0)
-		return ret;
-
-	reg &= ~PALMAS_CHARGE_PUMP_CTRL_MODE_ACTIVE;
-	return regmap_write(palmas->regmap[REGULATOR_SLAVE],
-			palmas_regs_info[id].ctrl_addr, reg);
-}
-
 static int palmas_getvoltage_chargepump(struct regulator_dev *rdev)
 {
 	return 5000;
@@ -866,9 +812,9 @@ static struct regulator_ops palmas_ops_extreg = {
 };
 
 static struct regulator_ops palmas_ops_chargepump = {
-	.is_enabled		= palmas_is_enabled_chargepump,
-	.enable			= palmas_enable_chargepump,
-	.disable		= palmas_disable_chargepump,
+	.is_enabled		= regulator_is_enabled_regmap,
+	.enable			= regulator_enable_regmap,
+	.disable		= regulator_disable_regmap,
 	.get_voltage		= palmas_getvoltage_chargepump,
 };
 
@@ -1711,6 +1657,12 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				pmic->desc[id].min_uV = 450000;
 				pmic->desc[id].uV_step = 25000;
 			}
+		} else if (id == PALMAS_REG_CHARGER_PUMP) {
+			pmic->desc[id].enable_reg =
+					palmas_regs_info[id].ctrl_addr;
+			pmic->desc[id].enable_mask =
+					PALMAS_CHARGE_PUMP_CTRL_MODE_ACTIVE;
+			pmic->desc[id].ops = &palmas_ops_chargepump;
 		} else {
 			pmic->desc[id].n_voltages = 1;
 			pmic->desc[id].ops = &palmas_ops_extreg;
@@ -1720,9 +1672,6 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->desc[id].enable_mask =
 					PALMAS_REGEN1_CTRL_MODE_ACTIVE;
 		}
-
-		if (id == PALMAS_REG_CHARGER_PUMP)
-			pmic->desc[id].ops = &palmas_ops_chargepump;
 
 		if (pdata)
 			config.init_data = pdata->reg_data[id];
