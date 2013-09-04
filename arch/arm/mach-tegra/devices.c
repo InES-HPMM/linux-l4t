@@ -2112,11 +2112,12 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 		if (!map[i].size)
 			continue;
 
-		p->size += map[i].size;
-		if (prev_end == map[i].start) {
-			prev_end += p->size;
+		if (prev_end && prev_end == map[i].start) {
+			(p - 1)->size += map[i].size;
+			prev_end += map[i].size;
 		} else {
 			p->start = map[i].start;
+			p->size = map[i].size;
 			prev_end = p->start + p->size;
 			p++;
 		}
