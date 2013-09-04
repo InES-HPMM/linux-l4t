@@ -22,12 +22,11 @@
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
 #include <linux/cpumask.h>
+#include <linux/tegra-powergate.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
-
-#include <mach/powergate.h>
 
 #include "fuse.h"
 #include "flowctrl.h"

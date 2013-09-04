@@ -31,13 +31,13 @@
 #include <linux/platform_device.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-powergate.h>
 
 #include <asm/clkdev.h>
 
 #include <mach/edp.h>
 #include <mach/hardware.h>
 #include <mach/mc.h>
-#include <mach/powergate.h>
 
 #include "clock.h"
 #include "fuse.h"

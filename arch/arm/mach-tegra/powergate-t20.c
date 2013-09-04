@@ -14,8 +14,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/delay.h>
-
-#include <mach/powergate.h>
+#include <linux/tegra-powergate.h>
 
 #include "powergate-priv.h"
 #include "powergate-ops-txx.h"

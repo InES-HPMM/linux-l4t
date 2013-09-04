@@ -15,10 +15,9 @@
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <linux/tegra-powergate.h>
 
 #include <asm/atomic.h>
-
-#include <mach/powergate.h>
 
 #include "powergate-priv.h"
 #include "powergate-ops-txx.h"

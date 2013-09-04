@@ -38,13 +38,13 @@
 #include <linux/workqueue.h>
 #include <linux/pm_runtime.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-powergate.h>
 
 #include <mach/hardware.h>
 #include <mach/legacy_irq.h>
 #include <mach/pm_domains.h>
 
 #include <linux/nvmap.h>
-#include <mach/powergate.h>
 
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"

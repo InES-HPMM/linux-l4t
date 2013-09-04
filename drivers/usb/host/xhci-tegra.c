@@ -34,8 +34,8 @@
 #include <linux/gpio.h>
 #include <linux/usb/otg.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-powergate.h>
 
-#include <mach/powergate.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/pm_domains.h>

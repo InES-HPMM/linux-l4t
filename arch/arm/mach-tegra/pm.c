@@ -48,6 +48,7 @@
 #include <linux/console.h>
 #include <linux/tegra_audio.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-powergate.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -62,7 +63,6 @@
 #include <asm/smp_plat.h>
 
 #include <mach/irqs.h>
-#include <mach/powergate.h>
 #include <mach/hardware.h>
 
 #include "board.h"

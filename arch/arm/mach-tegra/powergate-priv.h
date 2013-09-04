@@ -22,8 +22,7 @@
 #include <linux/err.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
-
-#include <mach/powergate.h>
+#include <linux/tegra-powergate.h>
 
 #include "clock.h"
 #include "fuse.h"

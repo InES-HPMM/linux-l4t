@@ -13,8 +13,7 @@
  */
 
 #include <linux/delay.h>
-
-#include <mach/powergate.h>
+#include <linux/tegra-powergate.h>
 
 #include "powergate-priv.h"
 

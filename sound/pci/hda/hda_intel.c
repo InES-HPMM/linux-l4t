@@ -68,7 +68,7 @@
 #include <linux/nvmap.h>
 #endif
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-#include <mach/powergate.h>
+#include <linux/tegra-powergate.h>
 #include <mach/pm_domains.h>
 #endif
 

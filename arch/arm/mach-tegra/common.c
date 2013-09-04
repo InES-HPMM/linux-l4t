@@ -37,6 +37,7 @@
 #include <linux/smsc911x.h>
 #endif
 #include <linux/pm.h>
+#include <linux/tegra-powergate.h>
 
 #include <linux/export.h>
 #include <linux/bootmem.h>
@@ -51,7 +52,6 @@
 #include <asm/dma-mapping.h>
 
 #include <mach/hardware.h>
-#include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
 #include <mach/nct.h>
 

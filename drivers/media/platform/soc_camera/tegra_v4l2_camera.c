@@ -24,8 +24,8 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/tegra-powergate.h>
 
-#include <mach/powergate.h>
 #include <mach/pm_domains.h>
 
 #include <media/soc_camera.h>
