@@ -451,7 +451,11 @@ int __init tn8_regulator_init(void)
 		pmic_platform.reg_init[i] = tn8_reg_init[i];
 	}
 
-	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	/* Default PJ0 is connected to charger stat,
+	 * HW rework is needed to connect to charger-int.
+	 * Do not configure the charger int by default.
+	 */
+	/* bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0); */
 	i2c_register_board_info(0, bq2419x_boardinfo,
 		ARRAY_SIZE(bq2419x_boardinfo));
 
