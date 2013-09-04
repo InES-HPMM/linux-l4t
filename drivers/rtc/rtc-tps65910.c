@@ -34,10 +34,6 @@ struct tps65910_rtc {
 /* Total number of RTC registers needed to set time*/
 #define NUM_TIME_REGS	(TPS65910_YEARS - TPS65910_SECONDS + 1)
 
-#define OS_REF_YEAR 1900
-
-#define RTC_YEAR_OFFSET 100
-
 static int tps65910_rtc_alarm_irq_enable(struct device *dev, unsigned enabled)
 {
 	struct tps65910 *tps = dev_get_drvdata(dev->parent);
@@ -48,21 +44,6 @@ static int tps65910_rtc_alarm_irq_enable(struct device *dev, unsigned enabled)
 
 	return regmap_write(tps->regmap, TPS65910_RTC_INTERRUPTS, val);
 }
-
-static int tps65910_rtc_valid_tm(struct rtc_time *tm)
-{
-	if (tm->tm_year >= (RTC_YEAR_OFFSET + 99)
-		|| tm->tm_year < (RTC_YEAR_OFFSET)
-		|| tm->tm_mon >= 12
-		|| tm->tm_mday < 1
-		|| tm->tm_mday > rtc_month_days(tm->tm_mon, tm->tm_year + OS_REF_YEAR)
-		|| tm->tm_hour >= 24
-		|| tm->tm_min >= 60
-		|| tm->tm_sec >= 60)
-		return -EINVAL;
-	return 0;
-}
-
 
 /*
  * Gets current tps65910 RTC time and date parameters.
@@ -248,7 +229,6 @@ static int tps65910_rtc_probe(struct platform_device *pdev)
 	int ret;
 	int irq;
 	u32 rtc_reg;
-	struct rtc_time tm;
 
 	tps65910 = dev_get_drvdata(pdev->dev.parent);
 
@@ -286,20 +266,6 @@ static int tps65910_rtc_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	rtc_reg = INT_MSK_RTC_ALARM_IT_MSK_MASK;
-	ret = regmap_write(tps65910->regmap, TPS65910_RTC_STATUS, rtc_reg);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to program RTC_STATUS reg\n");
-		return ret;
-	}
-
-	rtc_reg = TPS65910_RTC_INTERRUPTS_IT_ALARM;
-	ret = regmap_write(tps65910->regmap, TPS65910_RTC_INTERRUPTS, rtc_reg);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to program Interrupt Mask reg\n");
-		return ret;
-	}
-
 	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
 		tps65910_rtc_interrupt, IRQF_TRIGGER_LOW | IRQF_EARLY_RESUME,
 		dev_name(&pdev->dev), &pdev->dev);
@@ -309,18 +275,6 @@ static int tps65910_rtc_probe(struct platform_device *pdev)
 	}
 	tps_rtc->irq = irq;
 	device_set_wakeup_capable(&pdev->dev, 1);
-
-	tps65910_rtc_read_time(&pdev->dev, &tm);
-
-	if (tps65910_rtc_valid_tm(&tm) < 0) {
-		if (pmic_plat_data->time.tm_year < 2000 || pmic_plat_data->time.tm_year >= 2100) {
-			memset(&pmic_plat_data->time, 0, sizeof(pmic_plat_data->time));
-			pmic_plat_data->time.tm_year = 2000;
-			pmic_plat_data->time.tm_mday = 1;
-		}
-		pmic_plat_data->time.tm_year -= OS_REF_YEAR;
-		tps65910_rtc_set_time(&pdev->dev, &pmic_plat_data->time);
-	}
 
 	tps_rtc->rtc = devm_rtc_device_register(&pdev->dev, pdev->name,
 		&tps65910_rtc_ops, THIS_MODULE);
