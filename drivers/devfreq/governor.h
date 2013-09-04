@@ -53,11 +53,6 @@ extern int devfreq_remove_governor(struct devfreq_governor *governor);
 
 #else /* !CONFIG_PM_DEVFREQ */
 
-static inline int update_devfreq(struct devfreq *devfreq)
-{
-	return 0;
-}
-
 static inline void devfreq_monitor_start(struct devfreq *devfreq)
 {
 }
