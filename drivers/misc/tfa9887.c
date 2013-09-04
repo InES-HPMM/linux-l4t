@@ -1423,7 +1423,7 @@ fail:
 	return ret;
 }
 
-static __devinit int tfa9887R_i2c_probe(struct i2c_client *i2c,
+static int tfa9887R_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
 	unsigned int val;
@@ -1490,7 +1490,7 @@ err:
 	return ret;
 }
 
-static __devexit int tfa9887R_i2c_remove(struct i2c_client *client)
+static int tfa9887R_i2c_remove(struct i2c_client *client)
 {
 	struct tfa9887_priv *tfa9887R = i2c_get_clientdata(client);
 	regmap_exit(tfa9887R->regmap);
@@ -1531,12 +1531,12 @@ static struct i2c_driver tfa9887R_i2c_driver = {
 	 .of_match_table = tfa9887R_of_match,
 	 },
 	 .probe =    tfa9887R_i2c_probe,
-	 .remove =   __devexit_p(tfa9887R_i2c_remove),
+	 .remove =   tfa9887R_i2c_remove,
 	 .id_table = tfa9887R_i2c_id,
 	 .shutdown = tfa9887R_i2c_shutdown,
 };
 
-static __devinit int tfa9887L_i2c_probe(struct i2c_client *i2c,
+static int tfa9887L_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
 	unsigned int val;
@@ -1579,7 +1579,7 @@ err:
 	return ret;
 }
 
-static __devexit int tfa9887L_i2c_remove(struct i2c_client *client)
+static int tfa9887L_i2c_remove(struct i2c_client *client)
 {
 	struct tfa9887_priv *tfa9887L = i2c_get_clientdata(client);
 	regmap_exit(tfa9887L->regmap);
@@ -1616,7 +1616,7 @@ static struct i2c_driver tfa9887L_i2c_driver = {
 	 .of_match_table = tfa9887L_of_match,
 	 },
 	 .probe =    tfa9887L_i2c_probe,
-	 .remove =   __devexit_p(tfa9887L_i2c_remove),
+	 .remove =   tfa9887L_i2c_remove,
 	 .id_table = tfa9887L_i2c_id,
 	 .shutdown = tfa9887L_i2c_shutdown,
 };
