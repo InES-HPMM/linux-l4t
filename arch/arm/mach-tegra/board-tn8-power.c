@@ -30,10 +30,9 @@
 #include <linux/power/bq2419x-charger.h>
 #include <linux/power/power_supply_extcon.h>
 #include <linux/max17048_battery.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
-#include <mach/hardware.h>
-
 
 #include <asm/mach-types.h>
 

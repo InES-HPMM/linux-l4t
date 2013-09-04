@@ -34,6 +34,7 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -41,7 +42,6 @@
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
-#include <mach/hardware.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"

@@ -42,14 +42,13 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/timer.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/unaligned.h>
 #include <asm/dma.h>
-
-#include <mach/hardware.h>
 
 /* HACK! This needs to come from DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"

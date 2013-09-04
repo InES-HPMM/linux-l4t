@@ -34,8 +34,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-soc.h>
 
-#include <mach/hardware.h>
 #include <mach/legacy_irq.h>
 
 #include "../../arch/arm/mach-tegra/pm-irq.h"

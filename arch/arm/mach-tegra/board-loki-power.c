@@ -31,8 +31,6 @@
 #include <linux/power/power_supply_extcon.h>
 
 #include <mach/irqs.h>
-#include <mach/hardware.h>
-
 
 #include <asm/mach-types.h>
 

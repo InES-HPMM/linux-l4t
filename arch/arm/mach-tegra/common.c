@@ -41,6 +41,7 @@
 
 #include <linux/export.h>
 #include <linux/bootmem.h>
+#include <linux/tegra-soc.h>
 #include <trace/events/nvsecurity.h>
 
 #ifdef CONFIG_ARM64
@@ -51,7 +52,6 @@
 #endif
 #include <asm/dma-mapping.h>
 
-#include <mach/hardware.h>
 #include <mach/tegra_smmu.h>
 #include <mach/nct.h>
 

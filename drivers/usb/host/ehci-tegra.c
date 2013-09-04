@@ -26,10 +26,10 @@
 #include <linux/delay.h>
 #include <linux/of_gpio.h>
 #include <linux/pm_runtime.h>
+#include <linux/tegra-soc.h>
 
 #include <linux/usb/tegra_usb_phy.h>
 
-#include <mach/hardware.h>
 #include <mach/pm_domains.h>
 #include <linux/pm_qos.h>
 

@@ -34,9 +34,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/ctype.h>
 #include <linux/wakelock.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/tegra_fuse.h>
-#include <mach/hardware.h>
 #include <mach/gpufuse.h>
 
 #include "fuse.h"

@@ -24,7 +24,7 @@
 #include <linux/bug.h>
 
 #include <mach/tegra_fuse.h>
-#include <mach/hardware.h>
+#include <linux/tegra-soc.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 

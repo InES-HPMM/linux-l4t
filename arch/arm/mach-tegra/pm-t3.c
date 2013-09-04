@@ -31,11 +31,11 @@
 #include <linux/irqchip/arm-gic.h>
 #include <linux/sched.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 #include <mach/edp.h>
-#include <mach/hardware.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cputype.h>

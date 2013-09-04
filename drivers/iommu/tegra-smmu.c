@@ -38,12 +38,12 @@
 #include <linux/tegra-ahb.h>
 #include <linux/dma-mapping.h>
 #include <linux/bitops.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
 #include <asm/dma-iommu.h>
 
-#include <mach/hardware.h>
 #include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
 

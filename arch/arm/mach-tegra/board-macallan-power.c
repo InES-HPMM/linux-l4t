@@ -36,12 +36,12 @@
 #include <linux/edpdev.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/pid_thermal_gov.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
 
 #include <mach/irqs.h>
-#include <mach/hardware.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 

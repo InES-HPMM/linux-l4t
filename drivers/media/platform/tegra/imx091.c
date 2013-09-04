@@ -33,10 +33,9 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/tegra-soc.h>
 
 #include "nvc_utilities.h"
-
-#include <mach/hardware.h>
 
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>

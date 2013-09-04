@@ -30,11 +30,11 @@
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
+#include <linux/tegra-soc.h>
 #include <mach/irqs.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
-#include <mach/hardware.h>
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 #include <asm/dma-iommu.h>

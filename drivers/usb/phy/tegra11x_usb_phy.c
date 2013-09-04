@@ -28,10 +28,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 #include <mach/pinmux.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
-#include <mach/hardware.h>
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #include <mach/pinmux-t14.h>

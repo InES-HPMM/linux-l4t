@@ -34,8 +34,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/reboot.h>
 #include <linux/clk/tegra.h>
-
-#include <mach/hardware.h>
+#include <linux/tegra-soc.h>
 
 #include "board.h"
 #include "clock.h"

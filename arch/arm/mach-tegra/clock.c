@@ -35,9 +35,9 @@
 #include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/bug.h>
+#include <linux/tegra-soc.h>
 #include <trace/events/power.h>
 
-#include <mach/hardware.h>
 #include <mach/edp.h>
 
 #include "board.h"

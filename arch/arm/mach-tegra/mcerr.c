@@ -31,8 +31,8 @@
 #include <linux/seq_file.h>
 #include <linux/moduleparam.h>
 #include <linux/spinlock_types.h>
+#include <linux/tegra-soc.h>
 
-#include <mach/hardware.h>
 #include <mach/irqs.h>
 
 #include "iomap.h"

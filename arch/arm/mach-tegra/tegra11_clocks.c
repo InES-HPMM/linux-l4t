@@ -36,7 +36,6 @@
 #include <asm/clkdev.h>
 
 #include <mach/edp.h>
-#include <mach/hardware.h>
 #include <mach/mc.h>
 
 #include "clock.h"

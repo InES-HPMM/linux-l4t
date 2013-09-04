@@ -32,10 +32,9 @@
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 #include <trace/events/power.h>
 #include <asm/atomic.h>
-
-#include <mach/hardware.h>
 
 #include "clock.h"
 #include "fuse.h"

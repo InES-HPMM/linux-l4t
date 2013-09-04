@@ -34,6 +34,7 @@
 #include <linux/clk.h>
 #include <linux/cpu_pm.h>
 #include <linux/module.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/cacheflush.h>
 #include <asm/localtimer.h>
@@ -42,7 +43,6 @@
 #include <asm/cputype.h>
 
 #include <mach/irqs.h>
-#include <mach/hardware.h>
 
 #include <trace/events/nvpower.h>
 

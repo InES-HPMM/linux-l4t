@@ -34,9 +34,9 @@
 #include <linux/err.h>
 #include <linux/kref.h>
 #include <linux/sched.h>
+#include <linux/tegra-soc.h>
 #include <asm/processor.h>
 #include <asm/current.h>
-#include <mach/hardware.h>
 #include <mach/isomgr.h>
 #include <mach/mc.h>
 

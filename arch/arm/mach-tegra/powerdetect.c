@@ -25,8 +25,7 @@
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
-
-#include <mach/hardware.h>
+#include <linux/tegra-soc.h>
 
 #include "board.h"
 #include "fuse.h"

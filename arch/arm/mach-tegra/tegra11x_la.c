@@ -20,8 +20,8 @@
 #include <linux/stringify.h>
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 #include <asm/io.h>
-#include <mach/hardware.h>
 #include <mach/latency_allowance.h>
 
 #include "iomap.h"

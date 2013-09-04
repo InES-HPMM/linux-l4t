@@ -28,7 +28,6 @@
 #include <linux/edp.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/pid_thermal_gov.h>
-#include <mach/hardware.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/as3722-reg.h>

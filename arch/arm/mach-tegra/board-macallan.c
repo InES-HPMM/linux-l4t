@@ -47,6 +47,7 @@
 #include <linux/of_platform.h>
 #include <linux/edp.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -60,7 +61,6 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
-#include <mach/hardware.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"

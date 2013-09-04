@@ -27,12 +27,11 @@
 #include <linux/pwm_backlight.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
+#include <linux/tegra-soc.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
-#include <mach/hardware.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
-#include <mach/hardware.h>
 
 #include "board.h"
 #include "board-bonaire.h"

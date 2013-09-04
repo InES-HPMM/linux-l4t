@@ -39,6 +39,7 @@
 #include <linux/platform_data/serial-tegra.h>
 #include <linux/of_platform.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 #include <mach/gpio-tegra.h>
 
 #include <mach/io_dpd.h>
@@ -50,7 +51,6 @@
 #include <mach/usb_phy.h>
 #include <mach/nand.h>
 #include <mach/pci.h>
-#include <mach/hardware.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>

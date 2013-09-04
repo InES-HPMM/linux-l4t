@@ -27,7 +27,6 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 
-#include <mach/hardware.h>
 #include "common.h"
 #include "iomap.h"
 

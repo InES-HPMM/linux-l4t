@@ -40,7 +40,6 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 
-#include <mach/hardware.h>
 #include <mach/legacy_irq.h>
 #include <mach/pm_domains.h>
 

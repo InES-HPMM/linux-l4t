@@ -62,7 +62,6 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/edp.h>
-#include <mach/hardware.h>
 
 #include "board.h"
 #include "board-common.h"

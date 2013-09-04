@@ -26,8 +26,8 @@
 
 #include <mach/edp.h>
 #include <mach/irqs.h>
-#include <mach/hardware.h>
 #include <mach/io_dpd.h>
+#include <linux/tegra-soc.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>

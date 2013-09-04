@@ -29,10 +29,10 @@
 #include <linux/syscore_ops.h>
 #include <linux/bug.h>
 #include <linux/bitops.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
-#include <mach/hardware.h>
 #include "gpio-names.h"
 #include "iomap.h"
 

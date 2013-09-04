@@ -27,10 +27,10 @@
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-soc.h>
 #include <asm/bug.h>
 #include <asm/io.h>
 #include <asm/string.h>
-#include <mach/hardware.h>
 #include <mach/latency_allowance.h>
 #include "la_priv.h"
 

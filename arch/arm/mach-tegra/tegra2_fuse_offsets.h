@@ -16,9 +16,10 @@
  * 51 franklin street, fifth floor, boston, ma  02110-1301, usa.
  */
 
+#include <linux/tegra-soc.h>
+
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
-#include <mach/hardware.h>
 
 #include "apbio.h"
 #include "fuse.h"

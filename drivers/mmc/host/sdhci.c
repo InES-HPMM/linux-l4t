@@ -33,12 +33,11 @@
 #include <linux/mmc/slot-gpio.h>
 
 #include <linux/edp.h>
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+#include <linux/tegra-soc.h>
+#endif
 
 #include "sdhci.h"
-
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#include <mach/hardware.h>
-#endif
 
 #define DRIVER_NAME "sdhci"
 

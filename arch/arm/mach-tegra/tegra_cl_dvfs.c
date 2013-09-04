@@ -31,9 +31,9 @@
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
-#include <mach/hardware.h>
 #include <mach/pinmux.h>
 
 #include "tegra_cl_dvfs.h"

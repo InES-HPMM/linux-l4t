@@ -32,13 +32,13 @@
 #include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/mach-types.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
-#include <mach/hardware.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"

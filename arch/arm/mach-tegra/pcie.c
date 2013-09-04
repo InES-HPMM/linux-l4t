@@ -44,13 +44,13 @@
 #include <linux/vmalloc.h>
 #include <linux/pm_runtime.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
 
 #include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
-#include <mach/hardware.h>
 #include <mach/pm_domains.h>
 
 #include "board.h"

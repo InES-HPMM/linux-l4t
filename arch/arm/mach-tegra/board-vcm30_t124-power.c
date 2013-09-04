@@ -27,10 +27,10 @@
 #include <linux/regulator/max15569-regulator.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
-#include <mach/hardware.h>
 
 #include "pm.h"
 #include "board.h"
