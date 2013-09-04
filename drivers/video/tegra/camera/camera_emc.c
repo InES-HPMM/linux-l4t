@@ -19,7 +19,7 @@
 
 int tegra_camera_enable_emc(struct tegra_camera *camera)
 {
-	int ret = tegra_emc_disable_eack();
+	int ret = 0;
 
 	dev_dbg(camera->dev, "%s++\n", __func__);
 	clk_prepare_enable(camera->clock[CAMERA_EMC_CLK].clk);
@@ -47,7 +47,7 @@ int tegra_camera_disable_emc(struct tegra_camera *camera)
 		}
 	}
 #endif
-	return tegra_emc_enable_eack();
+	return 0;
 }
 
 #if defined(CONFIG_TEGRA_ISOMGR)
