@@ -76,6 +76,7 @@ extern void __flush_dcache_area(void *addr, size_t len);
 extern void __flush_cache_user_range(unsigned long start, unsigned long end);
 /* FIXME: see cache.S */
 extern void dmac_map_area(const void *, size_t, int);
+extern void dmac_unmap_area(const void *, size_t, int);
 extern void dmac_flush_range(const void *, const void *);
 
 static inline void flush_cache_mm(struct mm_struct *mm)

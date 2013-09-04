@@ -226,6 +226,19 @@ ENTRY(dmac_map_area)
 ENDPROC(dmac_map_area)
 
 /*
+ *	dmac_unmap_area(start, size, dir)
+ *	- start	- kernel virtual start address
+ *	- size	- size of region
+ *	- dir	- DMA direction
+ */
+ENTRY(dmac_unmap_area)
+	add	x1, x1, x0
+	cmp	x2, #DMA_FROM_DEVICE
+	b.ne	dmac_inv_range
+	ret
+ENDPROC(dmac_unmap_area)
+
+/*
  *	dmac_flush_range(start,end)
  *	- start   - virtual start address of region
  *	- end     - virtual end address of region
