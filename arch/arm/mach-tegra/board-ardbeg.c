@@ -497,7 +497,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_lsfslew = 0,
 		.xcvr_lsrslew = 3,
 		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 0,
+		.xcvr_use_fuses = 1,
 		.vbus_oc_map = 0x4,
 		.xcvr_hsslew_lsb = 2,
 	},
