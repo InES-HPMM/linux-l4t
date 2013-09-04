@@ -161,6 +161,87 @@ static void hp_stats_update(unsigned int cpu, bool up)
 	mutex_unlock(&tegra_cpq_lock_stats);
 }
 
+/* must be called with tegra_cpu_lock held */
+static void __update_target_cluster(unsigned int cpu_freq, bool suspend)
+{
+	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
+
+	if (num_online_cpus() > 1) {
+		cpq_target_cluster_state = TEGRA_CPQ_G;
+		del_timer(&updown_timer);
+
+		/* Call worker to take us to single core */
+		if (no_lp == -1)
+			queue_work(cpuquiet_wq, &cpuquiet_work);
+	} else if (no_lp == 1) {
+		if (is_lp_cluster()) {
+			cpq_target_cluster_state = TEGRA_CPQ_G;
+			del_timer(&updown_timer);
+			queue_work(cpuquiet_wq, &cpuquiet_work);
+		}
+	} else if (no_lp == -1) {
+		if (!is_lp_cluster()) {
+			cpq_target_cluster_state = TEGRA_CPQ_LP;
+			del_timer(&updown_timer);
+			queue_work(cpuquiet_wq, &cpuquiet_work);
+		}
+	} else {
+		if (min_cpus >= 1) {
+			if (is_lp_cluster()) {
+				cpq_target_cluster_state = TEGRA_CPQ_G;
+				del_timer(&updown_timer);
+				queue_work(cpuquiet_wq, &cpuquiet_work);
+			}
+			return;
+		}
+		/* Cpu frequency dependent cluster switches */
+
+		/* Switch to G cluster if suspend rate is high enough */
+		if (suspend && cpu_freq >= idle_bottom_freq) {
+			cpq_target_cluster_state = TEGRA_CPQ_G;
+			queue_work(cpuquiet_wq, &cpuquiet_work);
+			return;
+		}
+
+		if (is_lp_cluster()) {
+			if (cpu_freq >= idle_top_freq &&
+				cpq_target_cluster_state != TEGRA_CPQ_G) {
+
+				/* Switch to G cluster after up_delay */
+				cpq_target_cluster_state = TEGRA_CPQ_G;
+				mod_timer(&updown_timer,
+						jiffies + up_delay);
+			} else if (cpu_freq < idle_top_freq &&
+				   cpq_target_cluster_state == TEGRA_CPQ_G) {
+
+				/*
+				 * CPU frequency dropped below idle_top_freq
+				 * while waiting for up_delay, Cancel switch.
+				 */
+				cpq_target_cluster_state = TEGRA_CPQ_LP;
+				del_timer(&updown_timer);
+			}
+		} else {
+			if (cpu_freq <= idle_bottom_freq &&
+				cpq_target_cluster_state != TEGRA_CPQ_LP) {
+
+				/* Switch to slow cluster after down_delay */
+				mod_timer(&updown_timer, jiffies + down_delay);
+				cpq_target_cluster_state = TEGRA_CPQ_LP;
+			} else if (cpu_freq > idle_bottom_freq &&
+				   cpq_target_cluster_state == TEGRA_CPQ_LP) {
+
+				/*
+				 * CPU frequency raised above idle_bottom_freq.
+				 * Stay on the fast cluster.
+				 */
+				del_timer(&updown_timer);
+				cpq_target_cluster_state = TEGRA_CPQ_G;
+			}
+		}
+	}
+}
+
 static int update_core_config(unsigned int cpunumber, bool up)
 {
 	int ret = 0;
@@ -388,8 +469,6 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 	}
 
 	mutex_unlock(tegra_cpu_lock);
-	if (current_cluster == TEGRA_CPQ_G)
-		__apply_core_config();
 
 	if (current_cluster != new_cluster) {
 		current_cluster = __apply_cluster_config(current_cluster,
@@ -401,9 +480,10 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 			cpuquiet_device_busy();
 		else
 			cpuquiet_device_free();
-
 	}
 
+	if (current_cluster == TEGRA_CPQ_G)
+		__apply_core_config();
 }
 
 static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
@@ -415,11 +495,8 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 		return NOTIFY_OK;
 	}
 
-	if (n > 1)
-		cpq_target_cluster_state = TEGRA_CPQ_G;
-
+	__update_target_cluster(tegra_getspeed(0), false);
 	queue_work(cpuquiet_wq, &cpuquiet_work);
-
 	mutex_unlock(tegra_cpu_lock);
 
 	return NOTIFY_OK;
@@ -442,34 +519,17 @@ static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 {
 	switch (action) {
 	case CPU_POST_DEAD:
-		if (no_lp != 1 &&
-		    num_online_cpus() == 1 &&
-		    tegra_getspeed(0) <= idle_bottom_freq) {
+		if (num_online_cpus() == 1) {
 			mutex_lock(tegra_cpu_lock);
-
-			cpq_target_cluster_state = TEGRA_CPQ_LP;
-
-			/* Explicit LP cluster request: force switch now. */
-			if (no_lp == -1)
-				queue_work(cpuquiet_wq, &cpuquiet_work);
-			else
-				mod_timer(&updown_timer, jiffies + down_delay);
-
+			__update_target_cluster(tegra_getspeed(0), false);
 			mutex_unlock(tegra_cpu_lock);
 		}
 		break;
 	case CPU_ONLINE:
 	case CPU_ONLINE_FROZEN:
-		if (cpq_target_cluster_state == TEGRA_CPQ_LP) {
-			mutex_lock(tegra_cpu_lock);
-
-			if (cpq_target_cluster_state == TEGRA_CPQ_LP) {
-				cpq_target_cluster_state = TEGRA_CPQ_G;
-				del_timer(&updown_timer);
-			}
-
-			mutex_unlock(tegra_cpu_lock);
-		}
+		mutex_lock(tegra_cpu_lock);
+		__update_target_cluster(tegra_getspeed(0), false);
+		mutex_unlock(tegra_cpu_lock);
 		break;
 	}
 
@@ -486,13 +546,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		return;
 
 	if (suspend) {
-		/* Switch to fast cluster if suspend rate is high enough */
-		if (cpu_freq >= idle_bottom_freq) {
-
-			/* Force switch now */
-			cpq_target_cluster_state = TEGRA_CPQ_G;
-			queue_work(cpuquiet_wq, &cpuquiet_work);
-		}
+		__update_target_cluster(cpu_freq, suspend);
 		return;
 	}
 
@@ -503,41 +557,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 	if (num_online_cpus() > 1)
 		return;
 
-	if (is_lp_cluster()) {
-		if (cpu_freq >= idle_top_freq &&
-			cpq_target_cluster_state != TEGRA_CPQ_G) {
-
-			/* Switch to fast cluster after up_delay */
-			cpq_target_cluster_state = TEGRA_CPQ_G;
-			mod_timer(&updown_timer, jiffies + up_delay);
-		} else if (cpu_freq < idle_top_freq &&
-				cpq_target_cluster_state == TEGRA_CPQ_G) {
-
-			/*
-			 * CPU frequency dropped below idle_top_freq while
-			 * waiting for up_delay, Cancel switch request.
-			 */
-			cpq_target_cluster_state = TEGRA_CPQ_LP;
-			del_timer(&updown_timer);
-		}
-	} else {
-		if (cpu_freq <= idle_bottom_freq &&
-			cpq_target_cluster_state != TEGRA_CPQ_LP) {
-
-			/* Switch to slow cluster after down_delay */
-			cpq_target_cluster_state = TEGRA_CPQ_LP;
-			mod_timer(&updown_timer, jiffies + down_delay);
-		} else if (cpu_freq > idle_bottom_freq &&
-			cpq_target_cluster_state == TEGRA_CPQ_LP) {
-
-			/*
-			 * CPU frequency raised again above idle_bottom_freq.
-			 * Stay on the fast cluster.
-			 */
-			cpq_target_cluster_state = TEGRA_CPQ_G;
-			del_timer(&updown_timer);
-		}
-	}
+	__update_target_cluster(cpu_freq, suspend);
 }
 
 static struct notifier_block min_cpus_notifier = {
@@ -591,14 +611,12 @@ ssize_t store_no_lp(struct cpuquiet_attribute *attr,
 
 	mutex_lock(tegra_cpu_lock);
 
+	__update_target_cluster(tegra_getspeed(0), false);
+
 	/* Force switch if necessary. */
 	if (no_lp == 1 && is_lp_cluster()) {
-		cpq_target_cluster_state = TEGRA_CPQ_G;
-		queue_work(cpuquiet_wq, &cpuquiet_work);
 		lp_req = 0;
 	} else if (no_lp == -1 && !is_lp_cluster()) {
-		cpq_target_cluster_state = TEGRA_CPQ_LP;
-		queue_work(cpuquiet_wq, &cpuquiet_work);
 		lp_req = 1;
 	} else {
 		lp_req = is_lp_cluster();
