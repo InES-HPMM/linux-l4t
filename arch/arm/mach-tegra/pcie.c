@@ -180,7 +180,6 @@
 
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
-#define RP_VEND_XP_BIST						0x00000F4C
 
 #define  RP_TXBA1						0x00000E1C
 #define  RP_TXBA1_CM_OVER_PW_BURST_MASK			(0xF << 4)
@@ -240,6 +239,9 @@
 #define PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED			(1 << 0)
 #define PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED			(1 << 1)
 #define PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED			(1 << 2)
+
+#define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
+#define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /*
@@ -1337,7 +1339,7 @@ static int tegra_pcie_fpga_phy_init(void)
 	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
 
 	/* required for gen2 speed support on FPGA */
-	rp_writel(FPGA_GEN2_SPEED_SUPPORT, RP_VEND_XP_BIST, 0);
+	rp_writel(FPGA_GEN2_SPEED_SUPPORT, NV_PCIE2_RP_VEND_XP_BIST, 0);
 
 	return 0;
 }
@@ -1571,7 +1573,7 @@ static void tegra_pcie_enable_rp_features(int index)
 
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
-	data |= (NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE);
+	data |= NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
 
 	/* enable PCIE mastering and accepting memory and IO requests */
@@ -1580,6 +1582,12 @@ static void tegra_pcie_enable_rp_features(int index)
 		PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED |
 		PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED);
 	rp_writel(data, NV_PCIE2_RP_DEV_CTRL, index);
+
+	/* LTSSM wait for DLLP to finish before entering L1 or L2/L3 */
+	/* to avoid truncating of PM mesgs resulting in reciever errors */
+	data = rp_readl(NV_PCIE2_RP_VEND_XP_BIST, index);
+	data |= PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE;
+	rp_writel(data, NV_PCIE2_RP_VEND_XP_BIST, index);
 }
 
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
