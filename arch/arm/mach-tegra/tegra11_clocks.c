@@ -30,6 +30,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/clkdev.h>
 
@@ -568,7 +569,6 @@ static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
-#define MISC_GP_HIDREV				0x804
 #define MISC_GP_TRANSACTOR_SCRATCH_0		0x864
 #define MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE	(0x1 << 1)
 #define MISC_GP_TRANSACTOR_SCRATCH_DDS_ENABLE	(0x1 << 2)
@@ -590,8 +590,6 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
 	__raw_readl(reg_pmc_base + (reg))
-#define chipid_readl() \
-	__raw_readl(misc_gp_base + MISC_GP_HIDREV)
 #define xusb_padctl_writel(value, reg) \
 	__raw_writel(value, reg_xusb_padctl_base + (reg))
 #define xusb_padctl_readl(reg) \
@@ -4020,7 +4018,7 @@ static void tegra11_periph_clk_disable(struct clk *c)
 		 * flush the write operation in apb bus. This will avoid the
 		 * peripheral access after disabling clock*/
 		if (c->flags & PERIPH_ON_APB)
-			val = chipid_readl();
+			val = tegra_read_chipid();
 
 		clk_writel_delay(
 			PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_CLR_REG(c));
@@ -4044,7 +4042,7 @@ static void tegra11_periph_clk_reset(struct clk *c, bool assert)
 			 * will avoid the peripheral access after disabling
 			 * clock */
 			if (c->flags & PERIPH_ON_APB)
-				val = chipid_readl();
+				val = tegra_read_chipid();
 
 			clk_writel(PERIPH_CLK_TO_BIT(c),
 				   PERIPH_CLK_TO_RST_SET_REG(c));
