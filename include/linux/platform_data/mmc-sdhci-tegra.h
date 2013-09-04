@@ -28,7 +28,8 @@
  */
 #define MMC_OCR_1V8_MASK    0x00000008
 #define MMC_OCR_2V8_MASK    0x00010000
-#define MMC_OCR_3V2_MASK    0x00200000
+#define MMC_OCR_3V2_MASK    0x00100000
+#define MMC_OCR_3V3_MASK    0x00200000
 
 /* uhs mask can be used to mask any of the UHS modes support */
 #define MMC_UHS_MASK_SDR12	0x1
