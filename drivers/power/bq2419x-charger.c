@@ -857,6 +857,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	bq2419x_charger_bci.tz_name = pdata->bcharger_pdata->tz_name;
 	bq2419x->bc_dev = battery_charger_register(bq2419x->dev,
 			&bq2419x_charger_bci, bq2419x);
 	if (IS_ERR(bq2419x->bc_dev)) {
