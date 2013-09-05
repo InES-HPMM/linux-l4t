@@ -367,7 +367,8 @@ enum palmas_regulators {
 	PALMAS_REG_SMPS7,
 	PALMAS_REG_SMPS8,
 	PALMAS_REG_SMPS9,
-	PALMAS_REG_SMPS10,
+	PALMAS_REG_SMPS10_OUT2,
+	PALMAS_REG_SMPS10_OUT1,
 	/* LDO regulators */
 	PALMAS_REG_LDO1,
 	PALMAS_REG_LDO2,
@@ -702,10 +703,10 @@ struct palmas_pmic {
 	int ldo_vref0p425;
 	bool smps10_boost_disable_deferred;
 
-	int range[PALMAS_REG_SMPS10];
-	unsigned int ramp_delay[PALMAS_REG_SMPS10];
+	int range[PALMAS_REG_SMPS10_OUT1];
+	unsigned int ramp_delay[PALMAS_REG_SMPS10_OUT1];
 	bool ramp_delay_support[PALMAS_NUM_REGS];
-	unsigned int current_reg_mode[PALMAS_REG_SMPS10];
+	unsigned int current_reg_mode[PALMAS_REG_SMPS10_OUT1];
 	unsigned long roof_floor[PALMAS_NUM_REGS];
 	unsigned long config_flags[PALMAS_NUM_REGS];
 };
