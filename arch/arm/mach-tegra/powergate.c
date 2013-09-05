@@ -59,16 +59,17 @@ int tegra_powergate_set(int id, bool new_state)
 	unsigned long flags;
 	spinlock_t *lock;
 
-	if (tegra_cpu_is_asim())
-		return 0;
-
-	lock = tegra_get_powergate_lock();
 	/* 10us timeout for toggle operation if it takes affect*/
 	int toggle_timeout = 10;
 
 	/* 100 * 10 = 1000us timeout for toggle command to take affect in case
 	   of contention with h/w initiated CPU power gating */
 	int contention_timeout = 100;
+
+	if (tegra_cpu_is_asim())
+		return 0;
+
+	lock = tegra_get_powergate_lock();
 
 	spin_lock_irqsave(lock, flags);
 
