@@ -53,13 +53,6 @@ struct balanced_throttle {
 	struct throttle_table *throt_tab;
 };
 
-/* TODO : remove when GPU clock is available in Linux Clock Framework */
-struct gk20a_clk_cap_info {
-	struct gk20a *g;
-	int (*set_cap_thermal)(struct gk20a *g, unsigned long rate);
-	unsigned long (*get_max)(void);
-};
-
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 int tegra_throttle_init(struct mutex *cpu_lock);
 struct thermal_cooling_device *balanced_throttle_register(
@@ -68,8 +61,6 @@ struct thermal_cooling_device *balanced_throttle_register(
 void tegra_throttle_exit(void);
 bool tegra_is_throttling(int *count);
 unsigned long tegra_throttle_governor_speed(unsigned long requested_speed);
-/* TODO : remove when GPU clock is available in Linux Clock Framework */
-int tegra_throttle_gk20a_clk_cap_register(struct gk20a_clk_cap_info *gk20a_clk);
 #else
 static inline int tegra_throttle_init(struct mutex *cpu_lock)
 { return 0; }
@@ -84,10 +75,6 @@ static inline bool tegra_is_throttling(int *count)
 static inline unsigned long tegra_throttle_governor_speed(
 	unsigned long requested_speed)
 { return requested_speed; }
-/* TODO : remove when GPU clock is available in Linux Clock Framework */
-static int tegra_throttle_gk20a_clk_cap_register(
-				struct gk20a_clk_cap_info *gk20a_clk)
-{ return 0; }
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
 #endif	/* __MACH_THERMAL_H */

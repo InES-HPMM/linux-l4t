@@ -33,9 +33,6 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 
-/* TODO : remove when GPU clock is in Linux Clock Framework */
-struct gk20a_clk_cap_info *gk20a_clk_cap;
-
 /* cpu_throttle_lock is tegra_cpu_lock from cpu-tegra.c */
 static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
@@ -52,11 +49,9 @@ static struct {
 } cap_freqs_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 #ifdef CONFIG_TEGRA_GPU_DVFS
-	{ .cap_name = "cap.throttle.gpu" },
+	{ .cap_name = "cap.throttle.gbus" },
 #else
-	/* TODO : use c2bus and remove gpu when CONFIG_TEGRA_GPU_DVFS==y */
-	/* { .cap_name = "cap.throttle.c2bus" }, */
-	{ .cap_name = "cap.throttle.gpu" },
+	{ .cap_name = "cap.throttle.c2bus" },
 #endif
 	{ .cap_name = "cap.throttle.c3bus" },
 #else
@@ -147,40 +142,19 @@ static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
 					int cap_clk_index)
 {
 	unsigned long cap_rate, clk_rate;
-	struct nvhost_device_data *pdata;
 
 	if (tegra_throttle_init_failed)
 		return;
 
 	cap_rate = throt_tab->cap_freqs[cap_clk_index];
 
-	if (cap_rate == NO_CAP) {
-		/* TODO : remove when GPU clock is in Linux Clock Framework */
-		if (strcmp(CAP_TBL_CAP_NAME(cap_clk_index-1),
-					"cap.throttle.gpu") != 0)
-			clk_rate = clk_get_max_rate(
-					CAP_TBL_CAP_CLK(cap_clk_index-1));
-		else if (gk20a_clk_cap != NULL)
-			clk_rate = gk20a_clk_cap->get_max();
-
-		/* TODO : use when GPU clock is in Linux Clock Framework */
-		/* clk_rate = */
-		/* clk_get_max_rate(CAP_TBL_CAP_CLK(cap_clk_index-1)); */
-	} else
+	if (cap_rate == NO_CAP)
+		clk_rate = clk_get_max_rate(CAP_TBL_CAP_CLK(cap_clk_index-1));
+	else
 		clk_rate = cap_rate * 1000UL;
 
 	if (CAP_TBL_CAP_FREQ(cap_clk_index-1) != clk_rate) {
-		/* TODO : remove when GPU clock is in Linux Clock Framework */
-		if (strcmp(CAP_TBL_CAP_NAME(cap_clk_index-1),
-					"cap.throttle.gpu") != 0)
-			clk_set_rate(CAP_TBL_CAP_CLK(cap_clk_index-1),
-								clk_rate);
-		else if (gk20a_clk_cap != NULL)
-			gk20a_clk_cap->set_cap_thermal(gk20a_clk_cap->g,
-								clk_rate);
-
-		/* TODO : use when GPU clock is in Linux Clock Framework */
-		/* clk_set_rate(CAP_TBL_CAP_CLK(cap_clk_index-1), clk_rate); */
+		clk_set_rate(CAP_TBL_CAP_CLK(cap_clk_index-1), clk_rate);
 		CAP_TBL_CAP_FREQ(cap_clk_index-1) = clk_rate;
 	}
 }
@@ -372,12 +346,6 @@ struct thermal_cooling_device *balanced_throttle_register(
 	return bthrot->cdev;
 }
 
-/* TODO : remove when GPU clock is available in Linux clock framework */
-int tegra_throttle_gk20a_clk_cap_register(struct gk20a_clk_cap_info *gk20a_clk)
-{
-	gk20a_clk_cap = gk20a_clk;
-}
-
 int __init tegra_throttle_init(struct mutex *cpu_lock)
 {
 	int i;
@@ -398,22 +366,16 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 #endif
 
 	for (i = 0; i < ARRAY_SIZE(cap_freqs_table); i++) {
-		/* TODO : need to be modified when GPU clock is available in */
-		/* Linux Clock Framework */
-		if (strcmp(CAP_TBL_CAP_NAME(i),
-					"cap.throttle.gpu") != 0) {
-			c = tegra_get_clock_by_name(CAP_TBL_CAP_NAME(i));
-			if (!c) {
-				pr_err("tegra_throttle: cannot get clock %s\n",
-					CAP_TBL_CAP_NAME(i));
-				tegra_throttle_init_failed = true;
-				continue;
-			}
+		c = tegra_get_clock_by_name(CAP_TBL_CAP_NAME(i));
+		if (!c) {
+			pr_err("tegra_throttle: cannot get clock %s\n",
+				CAP_TBL_CAP_NAME(i));
+			tegra_throttle_init_failed = true;
+			continue;
+		}
 
-			CAP_TBL_CAP_CLK(i) = c;
-			CAP_TBL_CAP_FREQ(i) = clk_get_max_rate(c);
-		} else if (gk20a_clk_cap != NULL)
-			CAP_TBL_CAP_FREQ(i) = gk20a_clk_cap->get_max();
+		CAP_TBL_CAP_CLK(i) = c;
+		CAP_TBL_CAP_FREQ(i) = clk_get_max_rate(c);
 	}
 	pr_info("tegra_throttle : init %s\n",
 		tegra_throttle_init_failed ? "FAILED" : "passed");
