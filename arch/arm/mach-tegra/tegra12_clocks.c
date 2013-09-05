@@ -6973,7 +6973,7 @@ static struct clk_ops tegra_clk_gpu_ops = {
    dvfs to control voltage of gpu rail along with frequency change of actual
    gpu clock. So frequency here and in dvfs are based on the acutal gpu clock. */
 static struct clk tegra_clk_gpu = {
-	.name      = "gpu",
+	.name      = "gpu_ref",
 	.ops       = &tegra_clk_gpu_ops,
 	.parent    = &tegra_pll_ref,
 	.u.periph  = {
@@ -7601,7 +7601,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
-	CLK_DUPLICATE("gpu", "tegra_gk20a", "PLLG_ref"),
+	CLK_DUPLICATE("gpu_ref", "tegra_gk20a", "PLLG_ref"),
 	CLK_DUPLICATE("gbus", "tegra_gk20a", "PLLG_out"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a", "pwr"),
 	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp", "isp"),

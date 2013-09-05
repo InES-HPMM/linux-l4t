@@ -139,7 +139,7 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 	[TEGRA_POWERGATE_GPU] = {
 		.name = "gpu",
 		.clk_info = {
-			[0] = { .clk_name = "gpu", .clk_type = CLK_AND_RST },
+			[0] = { .clk_name = "gpu_ref", .clk_type = CLK_AND_RST },
 		},
 	},
 	[TEGRA_POWERGATE_VDEC] = {
