@@ -27,10 +27,15 @@
 #include <media/imx135.h>
 #include <media/dw9718.h>
 #include <media/as364x.h>
+#include <media/ov5693.h>
+#include <media/ov7695.h>
+#include <media/ad5823.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/power/sbs-battery.h>
 #include <mach/edp.h>
 #include <mach/tegra_fuse.h>
+#include <mach/pinmux-t12.h>
+#include <mach/pinmux.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -419,6 +424,158 @@ static struct as364x_platform_data ardbeg_as3648_data = {
 	.gpio_strobe	= CAM_FLASH_STROBE,
 };
 
+static int ardbeg_ov7695_power_on(struct ov7695_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+		return -EFAULT;
+
+	gpio_set_value(CAM2_PWDN, 0);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto ov7695_avdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto ov7695_iovdd_fail;
+	usleep_range(1000, 1020);
+
+	gpio_set_value(CAM2_PWDN, 1);
+	usleep_range(1000, 1020);
+
+	return 0;
+
+ov7695_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov7695_avdd_fail:
+
+	gpio_set_value(CAM_RSTN, 0);
+	return -ENODEV;
+}
+
+static int ardbeg_ov7695_power_off(struct ov7695_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+		return -EFAULT;
+	usleep_range(100, 120);
+
+	gpio_set_value(CAM2_PWDN, 0);
+	usleep_range(100, 120);
+
+	regulator_disable(pw->iovdd);
+	usleep_range(100, 120);
+
+	regulator_disable(pw->avdd);
+	return 0;
+}
+
+struct ov7695_platform_data ardbeg_ov7695_pdata = {
+	.power_on = ardbeg_ov7695_power_on,
+	.power_off = ardbeg_ov7695_power_off,
+	.mclk_name = "mclk2",
+};
+
+static int ardbeg_ov5693_power_on(struct ov5693_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
+		return -EFAULT;
+
+	if (ardbeg_get_extra_regulators())
+		goto ov5693_poweron_fail;
+
+	gpio_set_value(CAM1_PWDN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto ov5693_avdd_fail;
+
+	err = regulator_enable(pw->dovdd);
+	if (err)
+		goto ov5693_iovdd_fail;
+
+	udelay(2);
+	gpio_set_value(CAM1_PWDN, 1);
+
+	err = regulator_enable(ardbeg_vcmvdd);
+	if (unlikely(err))
+		goto ov5693_vcmvdd_fail;
+
+	usleep_range(300, 310);
+
+	return 0;
+
+ov5693_vcmvdd_fail:
+	regulator_disable(pw->dovdd);
+
+ov5693_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov5693_avdd_fail:
+	gpio_set_value(CAM1_PWDN, 0);
+
+ov5693_poweron_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
+		return -EFAULT;
+
+	usleep_range(21, 25);
+	gpio_set_value(CAM1_PWDN, 0);
+	udelay(2);
+
+	regulator_disable(ardbeg_vcmvdd);
+	regulator_disable(pw->dovdd);
+	regulator_disable(pw->avdd);
+
+	return 0;
+}
+
+static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
+	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
+};
+
+static struct ov5693_platform_data ardbeg_ov5693_pdata = {
+	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
+	.gpio		= ov5693_gpio_pdata,
+	.power_on	= ardbeg_ov5693_power_on,
+	.power_off	= ardbeg_ov5693_power_off,
+};
+
+static int ardbeg_ad5823_power_on(struct ad5823_platform_data *pdata)
+{
+	int err = 0;
+
+	pr_info("%s\n", __func__);
+	gpio_set_value_cansleep(pdata->gpio, 1);
+
+	return err;
+}
+
+static int ardbeg_ad5823_power_off(struct ad5823_platform_data *pdata)
+{
+	pr_info("%s\n", __func__);
+	gpio_set_value_cansleep(pdata->gpio, 0);
+
+	return 0;
+}
+
+static struct ad5823_platform_data ardbeg_ad5823_pdata = {
+	.gpio = CAM_AF_PWDN,
+	.power_on	= ardbeg_ad5823_power_on,
+	.power_off	= ardbeg_ad5823_power_off,
+};
 
 static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
 	{
@@ -439,14 +596,37 @@ static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
 	},
 };
 
+static struct i2c_board_info ardbeg_i2c_board_info_e1793[] = {
+	{
+		I2C_BOARD_INFO("ov5693", 0x10),
+		.platform_data = &ardbeg_ov5693_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ov7695", 0x21),
+		.platform_data = &ardbeg_ov7695_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ad5823", 0x0c),
+		.platform_data = &ardbeg_ad5823_pdata,
+	},
+	{
+		I2C_BOARD_INFO("as3648", 0x30),
+		.platform_data = &ardbeg_as3648_data,
+	},
+};
+
 
 static int ardbeg_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
 
-
-	i2c_register_board_info(2, ardbeg_i2c_board_info_e1823,
-			ARRAY_SIZE(ardbeg_i2c_board_info_e1823));
+	if (!of_machine_is_compatible("nvidia,tn8")) {
+		i2c_register_board_info(2, ardbeg_i2c_board_info_e1823,
+				ARRAY_SIZE(ardbeg_i2c_board_info_e1823));
+	} else {
+		i2c_register_board_info(2, ardbeg_i2c_board_info_e1793,
+				ARRAY_SIZE(ardbeg_i2c_board_info_e1793));
+	}
 	return 0;
 }
 

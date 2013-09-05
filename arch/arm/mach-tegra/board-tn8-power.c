@@ -182,6 +182,7 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("imx135_reg2", NULL),
 	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
 	REGULATOR_SUPPLY("vdig", "2-0010"),
+	REGULATOR_SUPPLY("dvdd", "2-0010"),
 	REGULATOR_SUPPLY("vdig", "2-0036"),
 };
 
@@ -196,6 +197,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2_cam", NULL),
 	REGULATOR_SUPPLY("avdd_cam3_cam", NULL),
 	REGULATOR_SUPPLY("vana", "2-0010"),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
 	REGULATOR_SUPPLY("vana", "2-0036"),
 };
 
@@ -216,6 +218,8 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd_cam1_1v8_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam2_1v8_cam", NULL),
 	REGULATOR_SUPPLY("vif", "2-0010"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vif2", "2-0021"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000c"),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
@@ -224,6 +228,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("avdd_af1_cam", NULL),
 	REGULATOR_SUPPLY("imx135_reg1", NULL),
+	REGULATOR_SUPPLY("vana", "2-0021"),
 	REGULATOR_SUPPLY("vdd", "2-000c"),
 };
 
