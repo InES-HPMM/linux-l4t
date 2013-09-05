@@ -184,11 +184,6 @@
 #define   UTMIP_FORCE_PDDR_POWERDOWN	(1 << 4)
 #define   UTMIP_XCVR_TERM_RANGE_ADJ(x)	(((x) & 0xf) << 18)
 
-#define UTMIP_BIAS_CFG1		0x83c
-#define   UTMIP_BIAS_PDTRK_COUNT(x) (((x) & 0x1f) << 3)
-#define   UTMIP_BIAS_PDTRK_POWERDOWN	(1 << 0)
-#define   UTMIP_BIAS_PDTRK_POWERUP	(1 << 1)
-
 #define UTMIP_MISC_CFG0		0x824
 #define   UTMIP_DPDM_OBSERVE		(1 << 26)
 #define   UTMIP_DPDM_OBSERVE_SEL(x) (((x) & 0xf) << 27)
@@ -212,10 +207,6 @@
 #define UTMIP_SPARE_CFG0	0x834
 #define   FUSE_SETUP_SEL		(1 << 3)
 #define   FUSE_ATERM_SEL		(1 << 4)
-
-#define UTMIP_BIAS_STS0			0x840
-#define   UTMIP_RCTRL_VAL(x)		(((x) & 0xffff) << 0)
-#define   UTMIP_TCTRL_VAL(x)		(((x) & (0xffff << 16)) >> 16)
 
 #define UHSIC_PLL_CFG1				0xc04
 #define   UHSIC_XTAL_FREQ_COUNT(x)		(((x) & 0xfff) << 0)
@@ -522,70 +513,6 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 		}
 	}
 	return false;
-}
-
-static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
-{
-	void __iomem *base = IO_ADDRESS(TEGRA_USB_BASE);
-	static bool init_done = false;
-	u32 val;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	/* Should be done only once after system boot */
-	if (init_done)
-		return;
-
-	clk_enable(phy->utmi_pad_clk);
-	/* Bias pad MASTER_ENABLE=1 */
-	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL, 0,
-			BIAS_MASTER_PROG_VAL);
-
-	/* Setting the tracking length time */
-	val = readl(base + UTMIP_BIAS_CFG1);
-	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
-	val |= UTMIP_BIAS_PDTRK_COUNT(5);
-	writel(val, base + UTMIP_BIAS_CFG1);
-
-	/* Bias PDTRK is Shared and MUST be done from USB1 ONLY, PD_TRK=0 */
-	val = readl(base + UTMIP_BIAS_CFG1);
-	val &= ~UTMIP_BIAS_PDTRK_POWERDOWN;
-	writel(val, base + UTMIP_BIAS_CFG1);
-
-	val = readl(base + UTMIP_BIAS_CFG1);
-	val |= UTMIP_BIAS_PDTRK_POWERUP;
-	writel(val, base + UTMIP_BIAS_CFG1);
-
-	/* Wait for 25usec */
-	udelay(25);
-
-	/* Bias pad MASTER_ENABLE=0 */
-	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL,
-			BIAS_MASTER_PROG_VAL, 0);
-
-	/* Wait for 1usec */
-	udelay(1);
-
-	/* Bias pad MASTER_ENABLE=1 */
-	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL, 0,
-			BIAS_MASTER_PROG_VAL);
-
-	/* Read RCTRL and TCTRL from UTMIP space */
-	val = readl(base + UTMIP_BIAS_STS0);
-	pmc_data[phy->inst].utmip_rctrl_val = 0xf + ffz(UTMIP_RCTRL_VAL(val));
-	pmc_data[phy->inst].utmip_tctrl_val = 0xf + ffz(UTMIP_TCTRL_VAL(val));
-
-	/* PD_TRK=1 */
-	val = readl(base + UTMIP_BIAS_CFG1);
-	val |= UTMIP_BIAS_PDTRK_POWERDOWN;
-	writel(val, base + UTMIP_BIAS_CFG1);
-
-	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	val = PMC_TCTRL_VAL(pmc_data[phy->inst].utmip_tctrl_val) |
-		PMC_RCTRL_VAL(pmc_data[phy->inst].utmip_rctrl_val);
-	tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG, 0xffffffff, val);
-	clk_disable(phy->utmi_pad_clk);
-	init_done = true;
 }
 
 static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
@@ -1138,7 +1065,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 
-	utmi_phy_enable_trking_data(phy);
+	utmi_phy_set_snps_trking_data();
 
 	if (phy->inst == 2)
 		writel(0, base + ICUSB_CTRL);
