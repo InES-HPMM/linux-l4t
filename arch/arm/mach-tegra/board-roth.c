@@ -611,9 +611,9 @@ struct spi_board_info rm31080a_roth_spi_board[1] = {
 static int __init roth_touch_init(void)
 {
 	struct board_info board_info;
+	int touch_panel_id = tegra_get_touch_panel_id();
 
 	tegra_get_board_info(&board_info);
-	int touch_panel_id = tegra_get_touch_panel_id();
 	if (touch_panel_id == PANEL_TPK ||
 			touch_panel_id == PANEL_WINTEK) {
 		int err;

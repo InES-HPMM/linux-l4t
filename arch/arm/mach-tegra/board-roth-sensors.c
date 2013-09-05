@@ -49,8 +49,6 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 
-static struct board_info board_info;
-
 static struct throttle_table tj_throttle_table[] = {
 	/* CPU_THROT_LOW cannot be used by other than CPU */
 	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
@@ -278,12 +276,6 @@ static int roth_nct1008_init(void)
 
 	return ret;
 }
-
-static struct i2c_board_info __initdata bq20z45_pdata[] = {
-	{
-		I2C_BOARD_INFO("sbs-battery", 0x0B),
-	},
-};
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_trip_info skin_trips[] = {

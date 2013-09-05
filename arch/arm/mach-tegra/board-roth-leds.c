@@ -94,7 +94,6 @@ static struct platform_device roth_leds_gpio_device = {
 
 int __init roth_led_init(void)
 {
-	int err;
 #ifdef CONFIG_LEDS_PWM
 	platform_device_register(&roth_leds_pwm_device);
 #else
