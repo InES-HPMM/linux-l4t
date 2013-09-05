@@ -677,44 +677,6 @@ static int palmas_ldo_enable_time(struct regulator_dev *dev)
 	return 500;
 }
 
-static int palmas_is_enabled_ldo(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-	unsigned int reg;
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return true;
-
-	palmas_ldo_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
-
-	reg &= PALMAS_LDO1_CTRL_STATUS;
-
-	return !!(reg);
-}
-
-static int palmas_enable_ldo(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
-
-	return regulator_enable_regmap(dev);
-}
-
-static int palmas_disable_ldo(struct regulator_dev *dev)
-{
-	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
-
-	return regulator_disable_regmap(dev);
-}
-
 static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 					unsigned selector)
 {
@@ -758,9 +720,16 @@ static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
 
 static struct regulator_ops palmas_ops_ldo = {
 	.enable_time		= palmas_ldo_enable_time,
-	.is_enabled		= palmas_is_enabled_ldo,
-	.enable			= palmas_enable_ldo,
-	.disable		= palmas_disable_ldo,
+	.is_enabled		= regulator_is_enabled_regmap,
+	.enable			= regulator_enable_regmap,
+	.disable		= regulator_disable_regmap,
+	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
+	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.list_voltage		= palmas_list_voltage_ldo,
+	.map_voltage		= palmas_map_voltage_ldo,
+};
+
+static struct regulator_ops palmas_ops_ldo_extctrl = {
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= palmas_list_voltage_ldo,
@@ -818,7 +787,7 @@ static int palmas_ldo5_tracking_init(struct palmas *palmas,
 		return ret;
 
 	if (reg_init->config_flags & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE) {
-		ret = palmas_disable_ldo(rdev);
+		ret = regulator_disable_regmap(rdev);
 		if (ret < 0)
 		return ret;
 	}
@@ -1075,7 +1044,8 @@ static int palmas_smps_init(struct palmas *palmas, int id,
 	return 0;
 }
 
-static int palmas_ldo_init(struct palmas *palmas, int id,
+static int palmas_ldo_init(struct regulator_dev *rdev,
+		struct palmas *palmas, int id,
 		struct palmas_reg_init *reg_init)
 {
 	unsigned int reg;
@@ -1104,6 +1074,14 @@ static int palmas_ldo_init(struct palmas *palmas, int id,
 
 	if (reg_init->roof_floor) {
 		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		/* Always enable if externally controlled */
+		ret = regulator_enable_regmap(rdev);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in enabling LOD regulator %d\n", id);
+			return ret;
+		}
 
 		ret = palmas_ext_power_req_config(palmas, sleep_id,
 			reg_init->roof_floor, true);
@@ -1632,7 +1610,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		if (id < PALMAS_REG_REGEN1) {
 			pmic->desc[id].n_voltages = PALMAS_LDO_NUM_VOLTAGES;
-			pmic->desc[id].ops = &palmas_ops_ldo;
+			if (roof_floor)
+				pmic->desc[id].ops = &palmas_ops_ldo_extctrl;
+			else
+				pmic->desc[id].ops = &palmas_ops_ldo;
 			pmic->desc[id].vsel_reg =
 					PALMAS_BASE_TO_REG(PALMAS_LDO_BASE,
 						palmas_regs_info[id].vsel_addr);
@@ -1700,8 +1681,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			if (reg_init) {
 				pmic->config_flags[id] = reg_init->config_flags;
 				if (id < PALMAS_REG_REGEN1)
-					ret = palmas_ldo_init(palmas,
-							id, reg_init);
+					ret = palmas_ldo_init(rdev, palmas, id,
+								reg_init);
 				else
 					ret = palmas_extreg_init(rdev, palmas,
 							id, reg_init);
