@@ -150,7 +150,6 @@ config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
 	select ARM_DMA_USE_IOMMU if IOMMU_API
 	select DMA_SHARED_BUFFER
-	select NVMAP_DMABUF_STASH
 	default y
 	help
 	  Say Y here to include the memory management driver for the Tegra
