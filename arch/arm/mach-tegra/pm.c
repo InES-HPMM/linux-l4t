@@ -1723,7 +1723,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		orig = ioremap(tegra_lp0_vec_start, tegra_lp0_vec_size);
 		WARN_ON(!orig);
 		if (!orig) {
-			pr_err("%s: Failed to map tegra_lp0_vec_start %08lx\n",
+			pr_err("%s: Failed to map tegra_lp0_vec_start %08x\n",
 				__func__, tegra_lp0_vec_start);
 			kfree(reloc_lp0);
 			goto out;
