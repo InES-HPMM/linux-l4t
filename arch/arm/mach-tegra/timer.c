@@ -59,11 +59,6 @@ static u32 system_timer = (TEGRA_TMR3_BASE - TEGRA_TMR1_BASE);
 static u32 system_timer = 0;
 #endif
 
-#define timer_writel(value, reg) \
-	__raw_writel(value, timer_reg_base + (reg))
-#define timer_readl(reg) \
-	__raw_readl(timer_reg_base + (reg))
-
 #if !defined(CONFIG_ARM_ARCH_TIMER) && !defined(CONFIG_HAVE_ARM_TWD)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 

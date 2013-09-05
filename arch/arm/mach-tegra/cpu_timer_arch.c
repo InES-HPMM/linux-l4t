@@ -42,11 +42,6 @@
 
 static u32 arch_timer_us_mult, arch_timer_us_shift;
 
-#define timer_writel(value, reg) \
-	__raw_writel(value, timer_reg_base + (reg))
-#define timer_readl(reg) \
-	__raw_readl(timer_reg_base + (reg))
-
 bool arch_timer_initialized;
 static struct delay_timer arch_delay_timer;
 
