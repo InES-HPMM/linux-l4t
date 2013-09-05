@@ -652,7 +652,7 @@ static int __init set_cpu_dvfs_data(
 static int __init set_gpu_dvfs_data(
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
-	int i, j, mv;
+	int i, mv;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_gpu_speedo_value();
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_gpu.alignment;
@@ -666,7 +666,7 @@ static int __init set_gpu_dvfs_data(
 	 * CVB entry specifies gpu frequency and CVB coefficients to calculate
 	 * the respective voltage.
 	 */
-	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
+	for (i = 0; i < MAX_DVFS_FREQS; i++) {
 		table = &d->cvb_table[i];
 		if (!table->freq)
 			break;
@@ -680,17 +680,12 @@ static int __init set_gpu_dvfs_data(
 
 		/* fill in gpu dvfs tables */
 		mv = max(mv, d->min_mv);
-		if (!j || (mv > gpu_millivolts[j - 1])) {
-			gpu_millivolts[j] = mv;
-			gpu_dvfs->freqs[j] = table->freq;
-			j++;
-		} else {
-			gpu_dvfs->freqs[j - 1] = table->freq;
-		}
+		gpu_millivolts[i] = mv;
+		gpu_dvfs->freqs[i] = table->freq;
 	}
 	/* Table must not be empty, must have at least one entry in range */
-	if (!i || !j || (gpu_millivolts[j - 1] <
-			 tegra12_dvfs_rail_vdd_gpu.min_millivolts)) {
+	if (!i || (gpu_millivolts[i - 1] <
+		   tegra12_dvfs_rail_vdd_gpu.min_millivolts)) {
 		pr_err("tegra14_dvfs: invalid gpu dvfs table\n");
 		return -ENOENT;
 	}
@@ -700,9 +695,9 @@ static int __init set_gpu_dvfs_data(
 	gpu_dvfs->process_id = d->process_id;
 	gpu_dvfs->freqs_mult = d->freqs_mult;
 	gpu_dvfs->dvfs_rail->nominal_millivolts =
-		min(d->max_mv, gpu_millivolts[j - 1]);
+		min(d->max_mv, gpu_millivolts[i - 1]);
 
-	*max_freq_index = j - 1;
+	*max_freq_index = i - 1;
 	return 0;
 }
 
