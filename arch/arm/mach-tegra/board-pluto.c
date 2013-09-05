@@ -1258,7 +1258,8 @@ static int __init pluto_touch_init(void)
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-dma", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000400, "sdhci-tegra.2",
