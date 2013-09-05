@@ -170,14 +170,6 @@ static inline void tegra_lp0_resume_mc(void) {}
 static inline void tegra_lp0_cpu_mode(bool enter) {}
 #endif
 
-#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
-#define INSTRUMENT_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
-#define DEBUG_CLUSTER_SWITCH 0		/* Should be zero for shipping code */
-#define PARAMETERIZE_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
-
-#define CLUSTER_SWITCH_TIME_AVG_SHIFT	4
-#define CLUSTER_SWITCH_AVG_SAMPLES	(0x1U << CLUSTER_SWITCH_TIME_AVG_SHIFT)
-
 enum tegra_cluster_switch_time_id {
 	tegra_cluster_switch_time_id_start = 0,
 	tegra_cluster_switch_time_id_prolog,
@@ -186,6 +178,14 @@ enum tegra_cluster_switch_time_id {
 	tegra_cluster_switch_time_id_end,
 	tegra_cluster_switch_time_id_max
 };
+
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
+#define INSTRUMENT_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
+#define DEBUG_CLUSTER_SWITCH 0		/* Should be zero for shipping code */
+#define PARAMETERIZE_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
+
+#define CLUSTER_SWITCH_TIME_AVG_SHIFT	4
+#define CLUSTER_SWITCH_AVG_SAMPLES	(0x1U << CLUSTER_SWITCH_TIME_AVG_SHIFT)
 
 static inline bool is_g_cluster_present(void)
 {
