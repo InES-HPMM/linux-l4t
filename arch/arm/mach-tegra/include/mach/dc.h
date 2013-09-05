@@ -806,6 +806,7 @@ int tegra_dc_set_default_videomode(struct tegra_dc *dc);
 u32 tegra_dc_get_syncpt_id(const struct tegra_dc *dc, int i);
 u32 tegra_dc_incr_syncpt_max(struct tegra_dc *dc, int i);
 void tegra_dc_incr_syncpt_min(struct tegra_dc *dc, int i, u32 val);
+struct sync_fence *tegra_dc_create_fence(struct tegra_dc *dc, int i, u32 val);
 
 /* tegra_dc_update_windows and tegra_dc_sync_windows do not support windows
  * with differenct dcs in one call
