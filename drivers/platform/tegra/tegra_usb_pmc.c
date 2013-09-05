@@ -35,6 +35,8 @@
 static void __iomem *pmc_base;
 static unsigned long flags;
 static DEFINE_SPINLOCK(pmc_lock);
+static u32 utmip_rctrl_val;
+static u32 utmip_tctrl_val;
 
 #ifdef KERNEL_WARNING
 static void usb_phy_power_down_pmc(struct tegra_usb_pmc_data *pmc_data)
@@ -91,6 +93,88 @@ static void usb_phy_power_down_pmc(struct tegra_usb_pmc_data *pmc_data)
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
 #endif
+
+void utmi_phy_update_trking_data(u32 tctrl, u32 rctrl)
+{
+	spin_lock_irqsave(&pmc_lock, flags);
+	utmip_tctrl_val = tctrl;
+	utmip_rctrl_val = rctrl;
+	spin_unlock_irqrestore(&pmc_lock, flags);
+}
+EXPORT_SYMBOL_GPL(utmi_phy_update_trking_data);
+
+int utmi_phy_set_snps_trking_data(void)
+{
+	void __iomem *base = IO_ADDRESS(TEGRA_USB_BASE);
+	u32 val;
+	struct clk *utmi_pad_clk;
+
+	utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
+	if (IS_ERR(utmi_pad_clk)) {
+		pr_err("%s: can't get utmip pad clock\n", __func__);
+		return PTR_ERR(utmi_pad_clk);
+	}
+
+	clk_enable(utmi_pad_clk);
+	spin_lock_irqsave(&pmc_lock, flags);
+	/* Bias pad MASTER_ENABLE=1 */
+	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	val |= BIAS_MASTER_PROG_VAL;
+	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+
+	/* Setting the tracking length time */
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
+	val |= UTMIP_BIAS_PDTRK_COUNT(5);
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	/* Bias PDTRK is Shared and MUST be done from USB1 ONLY, PD_TRK=0 */
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_PDTRK_POWERDOWN;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val |= UTMIP_BIAS_PDTRK_POWERUP;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	/* Wait for 25usec */
+	udelay(25);
+
+	/* Bias pad MASTER_ENABLE=0 */
+	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	val &= ~BIAS_MASTER_PROG_VAL;
+	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+
+	/* Wait for 1usec */
+	udelay(1);
+
+	/* Bias pad MASTER_ENABLE=1 */
+	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	val |= BIAS_MASTER_PROG_VAL;
+	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+
+	/* Read RCTRL and TCTRL from UTMIP space */
+	val = readl(base + UTMIP_BIAS_STS0);
+	utmip_rctrl_val = 0xf + ffz(UTMIP_RCTRL_VAL(val));
+	utmip_tctrl_val = 0xf + ffz(UTMIP_TCTRL_VAL(val));
+
+	/* PD_TRK=1 */
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val |= UTMIP_BIAS_PDTRK_POWERDOWN;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
+	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	val = PMC_TCTRL_VAL(utmip_tctrl_val) |
+		PMC_RCTRL_VAL(utmip_rctrl_val);
+	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	spin_unlock_irqrestore(&pmc_lock, flags);
+	clk_disable(utmi_pad_clk);
+	clk_put(utmi_pad_clk);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(utmi_phy_set_snps_trking_data);
 
 static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 {
@@ -239,10 +323,10 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	spin_lock_irqsave(&pmc_lock, flags);
 
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	if (pmc_data->utmip_tctrl_val | pmc_data->utmip_rctrl_val) {
+	if (utmip_tctrl_val | utmip_rctrl_val) {
 		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
-		val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
-			PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
+		val = PMC_TCTRL_VAL(utmip_tctrl_val) |
+			PMC_RCTRL_VAL(utmip_rctrl_val);
 		writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
 	}
 
@@ -348,10 +432,10 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	if (pmc_data->utmip_tctrl_val | pmc_data->utmip_rctrl_val) {
+	if (utmip_tctrl_val | utmip_rctrl_val) {
 		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
-		val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
-			PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
+		val = PMC_TCTRL_VAL(utmip_tctrl_val) |
+			PMC_RCTRL_VAL(utmip_rctrl_val);
 		writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
 	}
 
@@ -637,9 +721,6 @@ static struct tegra_usb_pmc_ops *pmc_ops[] = {
 
 void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data)
 {
-	static u32 utmip_rctrl_val;
-	static u32 utmip_tctrl_val;
-
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	if (!pmc_base)
@@ -649,8 +730,10 @@ void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data)
 	pmc_data->pmc_ops.power_down_pmc = usb_phy_power_down_pmc;
 #endif
 	if (pmc_data->phy_type == TEGRA_USB_PHY_INTF_UTMI) {
-		utmip_rctrl_val = pmc_data->utmip_rctrl_val;
-		utmip_tctrl_val = pmc_data->utmip_tctrl_val;
+		if (!utmip_rctrl_val)
+			utmip_rctrl_val = pmc_data->utmip_rctrl_val;
+		if (!utmip_tctrl_val)
+			utmip_tctrl_val = pmc_data->utmip_tctrl_val;
 	}
 	pmc_data->pmc_ops = pmc_ops[pmc_data->phy_type];
 }
