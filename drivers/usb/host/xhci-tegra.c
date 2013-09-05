@@ -2774,15 +2774,11 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
 		 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
 		 */
-		for (port = 0; port < XUSB_UTMI_COUNT; port++) {
-			pmc_data[port].utmip_rctrl_val =
-				0xf + ffz(utmip_rctrl_val);
-			pmc_data[port].utmip_tctrl_val =
-				0xf + ffz(utmip_tctrl_val);
-			xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
-					pmc_data[port].utmip_rctrl_val,
-					pmc_data[port].utmip_tctrl_val);
-		}
+		utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
+		utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
+		utmi_phy_update_trking_data(utmip_tctrl_val, utmip_rctrl_val);
+		xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
+					utmip_rctrl_val, utmip_tctrl_val);
 
 		/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
 		 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
@@ -2795,7 +2791,8 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		 * PMC override. This will be done as part of pmc setup
 		 */
 	} else {
-		/* TODO use common PMC API to use SNPS register space */
+		/* Use common PMC API to use SNPS register space */
+		utmi_phy_set_snps_trking_data();
 	}
 }
 
