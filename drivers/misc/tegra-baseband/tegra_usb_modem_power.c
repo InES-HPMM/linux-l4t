@@ -434,8 +434,10 @@ static int mdm_request_irq(struct tegra_usb_modem *modem,
 	/* request threaded irq for GPIO */
 	ret = request_threaded_irq(*irq, NULL, thread_fn, irq_flags, label,
 				   modem);
-	if (ret)
+	if (ret) {
+		*irq = 0;
 		return ret;
+	}
 
 	ret = enable_irq_wake(*irq);
 	*is_wakeable = (ret) ? false : true;
