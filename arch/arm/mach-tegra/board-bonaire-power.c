@@ -28,13 +28,13 @@
 #include <linux/regulator/fixed.h>
 
 #include <mach/gpio-tegra.h>
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
 
 #include "pm.h"
 #include "board.h"
 #include "gpio-names.h"
+#include "iomap.h"
 
 static int ac_online(void)
 {
