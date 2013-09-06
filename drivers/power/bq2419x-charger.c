@@ -90,7 +90,7 @@ struct bq2419x_chip {
 	int				suspended;
 	int				chg_restart_timeout;
 	int				chg_restart_time;
-	int				chg_enable;
+	int				battery_presense;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -108,7 +108,7 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	if (bq2419x->chg_enable) {
+	if (bq2419x->battery_presense) {
 		dev_info(bq2419x->dev, "Charging enabled\n");
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 				 BQ2419X_ENABLE_CHARGE_MASK, 0);
@@ -503,6 +503,12 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	dev_info(bq2419x->dev, "%s() Irq %d status 0x%02x\n",
 		__func__, irq, val);
 
+	if (val & BQ2419x_FAULT_BOOST_FAULT)
+		dev_err(bq2419x->dev, "Charging Fault: VBUS Overloaded\n");
+
+	if (!bq2419x->battery_presense)
+		return IRQ_HANDLED;
+
 	if (val & BQ2419x_FAULT_WATCHDOG_FAULT) {
 		dev_err(bq2419x->dev,
 			"Charging Fault: Watchdog Timer Expired\n");
@@ -525,9 +531,6 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			return ret;
 		}
 	}
-
-	if (val & BQ2419x_FAULT_BOOST_FAULT)
-		dev_err(bq2419x->dev, "Charging Fault: VBUS Overloaded\n");
 
 	switch (val & BQ2419x_FAULT_CHRG_FAULT_MASK) {
 	case BQ2419x_FAULT_CHRG_INPUT:
@@ -824,7 +827,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
 		bq2419x->chg_restart_time =
 					pdata->bcharger_pdata->chg_restart_time;
-		bq2419x->chg_enable	= true;
+		bq2419x->battery_presense	= true;
 	}
 
 	bq2419x->wdt_refresh_timeout = 25;
@@ -841,20 +844,36 @@ static int bq2419x_probe(struct i2c_client *client,
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
 		dev_err(&client->dev, "version read failed %d\n", ret);
-		return ret;
+		goto scrub_mutex;
+	}
+
+	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
+	if (ret < 0) {
+		dev_err(&client->dev, "VBUS regulator init failed %d\n", ret);
+		goto scrub_mutex;
+	}
+
+	if (!pdata->bcharger_pdata) {
+		dev_info(&client->dev, "No battery charger supported\n");
+		ret = bq2419x_watchdog_init(bq2419x, 0, "PROBE");
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "WDT disable failed: %d\n", ret);
+			goto scrub_vbus_reg;
+		}
+		goto skip_bcharger_init;
 	}
 
 	ret = bq2419x_charger_init(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "Charger init failed: %d\n", ret);
-		return ret;
+		goto scrub_vbus_reg;
 	}
 
 	ret = bq2419x_init_charger_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(&client->dev,
 			"Charger regualtor init failed %d\n", ret);
-		return ret;
+		goto scrub_vbus_reg;
 	}
 
 	bq2419x_charger_bci.tz_name = pdata->bcharger_pdata->tz_name;
@@ -866,14 +885,6 @@ static int bq2419x_probe(struct i2c_client *client,
 			ret);
 		goto scrub_chg_reg;
 	}
-
-	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"VBUS regualtor init failed %d\n", ret);
-		goto scrub_bchg_reg;
-	}
-
 	init_kthread_worker(&bq2419x->bq_kworker);
 	bq2419x->bq_kworker_task = kthread_run(kthread_worker_fn,
 				&bq2419x->bq_kworker,
@@ -881,7 +892,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	if (IS_ERR(bq2419x->bq_kworker_task)) {
 		ret = PTR_ERR(bq2419x->bq_kworker_task);
 		dev_err(&client->dev, "Kworker task creation failed %d\n", ret);
-		goto scrub_vbus_reg;
+		goto scrub_bchg_reg;
 	}
 
 	init_kthread_work(&bq2419x->bq_wdt_work, bq2419x_work_thread);
@@ -895,6 +906,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_kthread;
 	}
 
+skip_bcharger_init:
 	ret = bq2419x_fault_clear_sts(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
@@ -912,25 +924,32 @@ static int bq2419x_probe(struct i2c_client *client,
 		ret = 0;
 	}
 
-	/* enable charging */
-	ret = bq2419x_charger_enable(bq2419x);
-	if (ret < 0)
-		goto scrub_irq;
+	if (!pdata->bcharger_pdata) {
+		/* enable charging */
+		ret = bq2419x_charger_enable(bq2419x);
+		if (ret < 0)
+			goto scrub_irq;
+	}
 
 	return 0;
 scrub_irq:
 	if (bq2419x->irq)
 		free_irq(bq2419x->irq, bq2419x);
 scrub_kthread:
-	bq2419x->stop_thread = true;
-	flush_kthread_worker(&bq2419x->bq_kworker);
-	kthread_stop(bq2419x->bq_kworker_task);
+	if (pdata->bcharger_pdata) {
+		bq2419x->stop_thread = true;
+		flush_kthread_worker(&bq2419x->bq_kworker);
+		kthread_stop(bq2419x->bq_kworker_task);
+	}
+scrub_bchg_reg:
+	if (pdata->bcharger_pdata)
+		battery_charger_unregister(bq2419x->bc_dev);
+scrub_chg_reg:
+	if (pdata->bcharger_pdata)
+		regulator_unregister(bq2419x->chg_rdev);
 scrub_vbus_reg:
 	regulator_unregister(bq2419x->vbus_rdev);
-scrub_bchg_reg:
-	battery_charger_unregister(bq2419x->bc_dev);
-scrub_chg_reg:
-	regulator_unregister(bq2419x->chg_rdev);
+scrub_mutex:
 	mutex_destroy(&bq2419x->mutex);
 	return ret;
 }
@@ -939,14 +958,16 @@ static int bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 
-	battery_charger_unregister(bq2419x->bc_dev);
 	if (bq2419x->irq)
 		free_irq(bq2419x->irq, bq2419x);
-	bq2419x->stop_thread = true;
-	flush_kthread_worker(&bq2419x->bq_kworker);
-	kthread_stop(bq2419x->bq_kworker_task);
+	if (bq2419x->battery_presense) {
+		battery_charger_unregister(bq2419x->bc_dev);
+		regulator_unregister(bq2419x->chg_rdev);
+		bq2419x->stop_thread = true;
+		flush_kthread_worker(&bq2419x->bq_kworker);
+		kthread_stop(bq2419x->bq_kworker_task);
+	}
 	regulator_unregister(bq2419x->vbus_rdev);
-	regulator_unregister(bq2419x->chg_rdev);
 	mutex_destroy(&bq2419x->mutex);
 	return 0;
 }
@@ -956,6 +977,9 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 	int alarm_time = bq2419x->rtc_alarm_time;
+
+	if (!bq2419x->battery_presense)
+		return;
 
 	if (bq2419x->irq)
 		disable_irq(bq2419x->irq);
@@ -1001,6 +1025,9 @@ static int bq2419x_suspend(struct device *dev)
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
 
+	if (!bq2419x->battery_presense)
+		return 0;
+
 	mutex_lock(&bq2419x->mutex);
 	bq2419x->suspended = 1;
 	mutex_unlock(&bq2419x->mutex);
@@ -1026,6 +1053,9 @@ static int bq2419x_resume(struct device *dev)
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
 	unsigned int val;
+
+	if (!bq2419x->battery_presense)
+		return 0;
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_FAULT_REG, &val);
 	if (ret < 0) {
