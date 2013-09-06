@@ -40,13 +40,11 @@
 #include <linux/of_platform.h>
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
-#include <mach/iomap.h>
 
 #include <mach/io_dpd.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
-#include <mach/iomap.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/audio.h>
@@ -66,6 +64,7 @@
 #include "devices.h"
 #include "fuse.h"
 #include "gpio-names.h"
+#include "iomap.h"
 
 #define ENABLE_OTG 0
 /*#define USB_HOST_ONLY*/
