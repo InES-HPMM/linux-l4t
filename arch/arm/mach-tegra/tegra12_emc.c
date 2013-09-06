@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
@@ -40,6 +41,7 @@
 #include "dvfs.h"
 #include "iomap.h"
 #include "tegra12_emc.h"
+#include "tegra_emc_dt_parse.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
@@ -1367,6 +1369,9 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 	struct tegra12_emc_pdata *pdata;
 	struct resource *res;
 
+	if (tegra_emc_table)
+		return -EINVAL;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
@@ -1374,6 +1379,11 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 	}
 
 	pdata = pdev->dev.platform_data;
+
+	if (!pdata) {
+		pdata = tegra_emc_dt_parse_pdata(pdev);
+	}
+
 	if (!pdata) {
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
@@ -1382,10 +1392,16 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 	return init_emc_table(pdata->tables, pdata->num_tables);
 }
 
+static struct of_device_id tegra12_emc_of_match[] = {
+	{ .compatible = "nvidia,tegra12-emc", },
+	{ },
+};
+
 static struct platform_driver tegra12_emc_driver = {
 	.driver         = {
 		.name   = "tegra-emc",
 		.owner  = THIS_MODULE,
+		.of_match_table = tegra12_emc_of_match,
 	},
 	.probe          = tegra12_emc_probe,
 };

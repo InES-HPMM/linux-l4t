@@ -5471,8 +5471,13 @@ int __init ardbeg_emc_init(void)
 		switch (bi.board_id) {
 		case BOARD_E1780:
 		case BOARD_E1782:
-			pr_info("Loading Ardbeg EMC tables.\n");
-			tegra_emc_device.dev.platform_data = &ardbeg_emc_pdata;
+			if (of_machine_is_compatible("nvidia,tn8")) {
+				pr_info("Loading TN8 EMC tables from DeviceTree.\n");
+			} else {
+				pr_info("Loading Ardbeg EMC tables.\n");
+				tegra_emc_device.dev.platform_data =
+					&ardbeg_emc_pdata;
+			}
 			break;
 		case BOARD_E1792:
 			pr_info("Loading Ardbeg EMC tables.\n");

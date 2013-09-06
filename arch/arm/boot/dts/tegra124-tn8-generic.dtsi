@@ -248,3 +248,6 @@ regulators {
 		};
 	};
 };
+
+/include/ "tegra124-tn8-emc.dtsi"
+
