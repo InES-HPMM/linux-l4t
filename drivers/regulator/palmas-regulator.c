@@ -357,9 +357,6 @@ static int palmas_is_enabled_smps(struct regulator_dev *dev)
 	int id = rdev_get_id(dev);
 	unsigned int reg;
 
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return true;
-
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
 	reg &= PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
@@ -373,9 +370,6 @@ static int palmas_enable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
@@ -395,9 +389,6 @@ static int palmas_disable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
-
-	if (EXT_PWR_REQ & pmic->roof_floor[id])
-		return 0;
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
@@ -610,6 +601,18 @@ static struct regulator_ops palmas_ops_smps = {
 	.is_enabled		= palmas_is_enabled_smps,
 	.enable			= palmas_enable_smps,
 	.disable		= palmas_disable_smps,
+	.set_mode		= palmas_set_mode_smps,
+	.get_mode		= palmas_get_mode_smps,
+	.set_sleep_mode		= palmas_set_sleep_mode_smps,
+	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
+	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.list_voltage		= palmas_list_voltage_smps,
+	.map_voltage		= palmas_map_voltage_smps,
+	.set_voltage_time_sel	= palma_smps_set_voltage_smps_time_sel,
+	.set_ramp_delay		= palmas_smps_set_ramp_delay,
+};
+
+static struct regulator_ops palmas_ops_smps_extctrl = {
 	.set_mode		= palmas_set_mode_smps,
 	.get_mode		= palmas_get_mode_smps,
 	.set_sleep_mode		= palmas_set_sleep_mode_smps,
@@ -889,7 +892,8 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
  * supported by the regulator framework as it is controlled by toggling
  * pins on the PMIC such as PREQ, SYSEN, ...
  */
-static int palmas_smps_init(struct palmas *palmas, int id,
+static int palmas_smps_init(struct regulator_dev *rdev,
+		struct palmas *palmas, int id,
 		struct palmas_reg_init *reg_init)
 {
 	unsigned int reg;
@@ -936,6 +940,13 @@ static int palmas_smps_init(struct palmas *palmas, int id,
 			(id != PALMAS_REG_SMPS10_OUT2) &&
 			reg_init->roof_floor) {
 		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		ret = palmas_enable_smps(rdev);
+		if (ret < 0) {
+			dev_err(palmas->dev, "SMPS enable failed %d\n", ret);
+			return ret;
+		}
+
 		ret = palmas_ext_power_req_config(palmas, sleep_id,
 					reg_init->roof_floor, true);
 		if (ret < 0) {
@@ -1307,6 +1318,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	struct palmas_reg_init *reg_init;
 	int id = 0, ret;
 	unsigned int addr, reg;
+	int roof_floor;
 
 	if (node && !pdata) {
 		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
@@ -1354,7 +1366,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	for (id = 0; id < PALMAS_REG_LDO1; id++) {
 		bool ramp_delay_support = false;
 
-		reg_init = NULL;
+		reg_init = pdata->reg_init[id];
+		roof_floor = 0;
+		if (reg_init)
+			roof_floor = reg_init->roof_floor;
 
 		/*
 		 * Miss out regulators which are not available due
@@ -1409,14 +1424,6 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->ramp_delay[id] = pmic->desc[id].ramp_delay;
 		}
 
-		/* Initialise sleep/init values from platform data */
-		if (pdata && pdata->reg_init[id]) {
-			reg_init = pdata->reg_init[id];
-			ret = palmas_smps_init(palmas, id, reg_init);
-			if (ret)
-				goto err_unregister_regulator;
-		}
-
 		/* Register the regulators */
 		pmic->desc[id].name = palmas_regs_info[id].name;
 		pmic->desc[id].id = id;
@@ -1459,7 +1466,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			if (reg & PALMAS_SMPS12_VOLTAGE_RANGE)
 				pmic->range[id] = 1;
 
-			pmic->desc[id].ops = &palmas_ops_smps;
+			if (roof_floor)
+				pmic->desc[id].ops = &palmas_ops_smps_extctrl;
+			else
+				pmic->desc[id].ops = &palmas_ops_smps;
 			pmic->desc[id].n_voltages = PALMAS_SMPS_NUM_VOLTAGES;
 			pmic->desc[id].vsel_reg =
 					PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE,
@@ -1487,7 +1497,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
 		config.of_node = NULL;//palmas_matches[id].of_node;
-		if (reg_init && (reg_init->roof_floor & EXT_PWR_REQ)) {
+		if (roof_floor & EXT_PWR_REQ) {
 			config.ena_gpio = reg_init->enable_gpio;
 			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
 		} else {
@@ -1504,18 +1514,20 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			goto err_unregister_regulator;
 		}
 
-		if (reg_init && pdata->reg_data[id]) {
-			pmic->roof_floor[id] = reg_init->roof_floor;
-			pmic->config_flags[id] = reg_init->config_flags;
-		}
-
 		/* Save regulator for cleanup */
 		pmic->rdev[id] = rdev;
+
+		/* Initialise sleep/init values from platform data */
+		if (reg_init) {
+			pmic->config_flags[id] = reg_init->config_flags;
+			ret = palmas_smps_init(rdev, palmas, id, reg_init);
+			if (ret)
+				goto err_unregister_regulator;
+		}
 	}
 
 	/* Start this loop from the id left from previous loop */
 	for (; id < PALMAS_NUM_REGS; id++) {
-		int roof_floor = 0;
 
 		if (palmas->id != TPS80036) {
 			if (id > PALMAS_REG_LDO9 && id < PALMAS_REG_LDOLN)
@@ -1527,11 +1539,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				continue;
 		}
 
-		if (pdata && pdata->reg_init) {
-			reg_init = pdata->reg_init[id];
-			if (reg_init)
-				roof_floor = reg_init->roof_floor;
-		}
+		reg_init = pdata->reg_init[id];
+		roof_floor = 0;
+		if (reg_init)
+			roof_floor = reg_init->roof_floor;
 
 		/* Miss out regulators which are not available due
 		 * to alternate functions.
@@ -1593,7 +1604,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
 		config.of_node = NULL; //palmas_matches[id].of_node;
-		if (reg_init && (reg_init->roof_floor & EXT_PWR_REQ)) {
+		if (roof_floor) {
 			config.ena_gpio = reg_init->enable_gpio;
 			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
 		}
@@ -1611,22 +1622,17 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		pmic->rdev[id] = rdev;
 
 		/* Initialise sleep/init values from platform data */
-		if (pdata && (id != PALMAS_REG_CHARGER_PUMP)) {
-			reg_init = pdata->reg_init[id];
-			if (reg_init) {
-				pmic->config_flags[id] = reg_init->config_flags;
-				if (id < PALMAS_REG_REGEN1)
-					ret = palmas_ldo_init(rdev, palmas, id,
-								reg_init);
-				else
-					ret = palmas_extreg_init(rdev, palmas,
-							id, reg_init);
-				if (ret) {
-					regulator_unregister(pmic->rdev[id]);
-					goto err_unregister_regulator;
-				}
-			
-				pmic->roof_floor[id] = reg_init->roof_floor;
+		if (pdata && reg_init && (id != PALMAS_REG_CHARGER_PUMP)) {
+			pmic->config_flags[id] = reg_init->config_flags;
+			if (id < PALMAS_REG_REGEN1)
+				ret = palmas_ldo_init(rdev, palmas, id,
+							reg_init);
+			else
+				ret = palmas_extreg_init(rdev, palmas,
+						id, reg_init);
+			if (ret) {
+				regulator_unregister(pmic->rdev[id]);
+				goto err_unregister_regulator;
 			}
 		}
 	}
