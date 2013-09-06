@@ -27,11 +27,11 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/sdhci.h>
 #include <mach/hardware.h>
 #include "gpio-names.h"
 #include "board.h"
+#include "iomap.h"
 
 #define BONAIRE_SD_CD	TEGRA_GPIO_PV2
 #define BONAIRE_SD_WP	TEGRA_GPIO_PQ4
