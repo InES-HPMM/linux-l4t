@@ -1125,7 +1125,6 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
-	unsigned long flags;
 	u32 *pdir = page_address(as->pdir_page);
 	int err = 0;
 	unsigned long iova_base = iova;
@@ -1137,8 +1136,6 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	spin_lock_irqsave(&as->lock, flags);
-
 	while (total > 0) {
 		int pdn = SMMU_ADDR_TO_PDN(iova);
 		int ptn = SMMU_ADDR_TO_PTN(iova);
@@ -1148,11 +1145,15 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		u32 *ptbl;
 		u32 *pte;
 		int i;
+		unsigned long flags;
+
+		spin_lock_irqsave(&as->lock, flags);
 
 		if (pdir[pdn] == _PDE_VACANT(pdn)) {
 			tbl_page = alloc_ptbl(as, iova, !flush_all);
 			if (!tbl_page) {
 				err = -ENOMEM;
+				spin_unlock_irqrestore(&as->lock, flags);
 				goto out;
 			}
 
@@ -1182,14 +1183,14 @@ skip:
 		iova += PAGE_SIZE * count;
 		total -= count;
 		pages += count;
+
+		spin_unlock_irqrestore(&as->lock, flags);
 	}
 
 out:
 	if (flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
 				     iova_base + total * PAGE_SIZE);
-
-	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
 
