@@ -960,6 +960,7 @@ void __init tegra12x_init_early(void)
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
+	tegra30_hotplug_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
