@@ -29,7 +29,6 @@
 #include <linux/nvmap.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/hardware.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
@@ -40,6 +39,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "tegra12_host1x_devices.h"
+#include "iomap.h"
 
 /* Select panel to be used. */
 #define DSI_PANEL_219 0
