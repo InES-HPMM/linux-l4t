@@ -36,6 +36,7 @@ int loki_pmon_init(void);
 int loki_edp_init(void);
 int loki_rail_alignment_init(void);
 int loki_soctherm_init(void);
+int loki_emc_init(void);
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME		"mpu6050"
