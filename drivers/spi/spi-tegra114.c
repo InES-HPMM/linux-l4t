@@ -780,7 +780,7 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 			rx_tap_delay = min(cdata->rx_clk_tap_delay, 63);
 			tx_tap_delay = min(cdata->tx_clk_tap_delay, 63);
 			command2_reg = SPI_TX_TAP_DELAY(tx_tap_delay) |
-					SPI_RX_TAP_DELAY(tx_tap_delay);
+					SPI_RX_TAP_DELAY(rx_tap_delay);
 			tegra_spi_writel(tspi, command2_reg, SPI_COMMAND2);
 		} else {
 			tegra_spi_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
