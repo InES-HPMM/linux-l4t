@@ -1179,6 +1179,13 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void)
+{
+	if (tegra_gpu_rail)
+		return tegra_gpu_rail->vmin_cdev;
+	return NULL;
+}
+
 #ifdef CONFIG_THERMAL
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
 static int tegra_dvfs_rail_get_vmin_cdev_max_state(

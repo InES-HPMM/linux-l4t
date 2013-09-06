@@ -43,12 +43,19 @@ static bool tegra_dvfs_gpu_disabled;
 static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
+static int vdd_gpu_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_gpu_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
+
 static struct tegra_cooling_device cpu_cdev = {
 	.cdev_type = "cpu_cold",
 };
 
 static struct tegra_cooling_device core_cdev = {
 	.cdev_type = "core_cold",
+};
+
+static struct tegra_cooling_device gpu_cdev = {
+	.cdev_type = "gpu_cold",
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
@@ -80,6 +87,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.max_millivolts = 1350,
 	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
+	.vmin_cdev = &gpu_cdev,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
 	},
@@ -788,6 +796,8 @@ void __init tegra12x_init_dvfs(void)
 		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	init_rail_thermal_profile(vdd_core_therm_trips_table,
 		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);*/
+	init_rail_vmin_thermal_profile(vdd_gpu_therm_trips_table,
+		vdd_gpu_therm_floors_table, &tegra12_dvfs_rail_vdd_gpu, NULL);
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra12_dvfs_rails,
