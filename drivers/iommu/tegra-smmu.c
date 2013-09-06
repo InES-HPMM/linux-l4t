@@ -1196,7 +1196,6 @@ out:
 static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			     struct scatterlist *sgl, int nents, int prot)
 {
-	unsigned long flags;
 	unsigned int count;
 	struct scatterlist *s;
 	int err = 0;
@@ -1211,10 +1210,12 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	spin_lock_irqsave(&as->lock, flags);
 	for (count = 0, s = sgl; count < nents; s = sg_next(s)) {
 		phys_addr_t phys = page_to_phys(sg_page(s));
 		unsigned int len = PAGE_ALIGN(s->offset + s->length);
+		unsigned long flags;
+
+		spin_lock_irqsave(&as->lock, flags);
 
 		while (len) {
 			int pfn = __phys_to_pfn(phys);
@@ -1267,13 +1268,13 @@ skip:
 			count += num;
 		}
 
+		spin_unlock_irqrestore(&as->lock, flags);
 	}
 
 	if (flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
 				     iova_base + nents * PAGE_SIZE);
 
-	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
 
