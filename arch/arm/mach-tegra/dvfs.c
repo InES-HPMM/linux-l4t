@@ -1229,9 +1229,93 @@ static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vmin_cdev->cdev_type);
 }
+
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
 #endif
+
+/*
+ * Validate rail thermal profile, and get its size. Valid profile:
+ * - voltage limits are descending with temperature increasing
+ * - the lowest limit is above rail minimum voltage in pll and
+ *   in dfll mode (if applicable)
+ * - the highest limit is below rail nominal voltage
+ */
+static int __init get_thermal_profile_size(
+	int *trips_table, int *limits_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i, min_mv;
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (!limits_table[i+1])
+			break;
+
+		if ((trips_table[i] >= trips_table[i+1]) ||
+		    (limits_table[i] < limits_table[i+1])) {
+			pr_warn("%s: not ordered profile\n", rail->reg_id);
+			return -EINVAL;
+		}
+	}
+
+	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
+	if (limits_table[i] < min_mv) {
+		pr_warn("%s: thermal profile below Vmin\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	if (limits_table[0] > rail->nominal_millivolts) {
+		pr_warn("%s: thermal profile above Vmax\n", rail->reg_id);
+		return -EINVAL;
+	}
+	return i + 1;
+}
+
+void __init init_rail_vmax_thermal_profile(
+	int *therm_trips_table, int *therm_caps_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_caps_table, rail, d);
+	if (i <= 0) {
+		rail->vmax_cdev = NULL;
+		WARN(1, "%s: invalid Vmax thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal caps */
+	rail->therm_mv_caps = therm_caps_table;
+	rail->therm_mv_caps_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmax_cdev) {
+		rail->vmax_cdev->trip_temperatures_num = i;
+		rail->vmax_cdev->trip_temperatures = therm_trips_table;
+	}
+}
+
+void __init init_rail_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_floors_table, rail, d);
+	if (i <= 0) {
+		rail->vmin_cdev = NULL;
+		WARN(1, "%s: invalid Vmin thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal floors */
+	rail->therm_mv_floors = therm_floors_table;
+	rail->therm_mv_floors_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmin_cdev) {
+		rail->vmin_cdev->trip_temperatures_num = i;
+		rail->vmin_cdev->trip_temperatures = therm_trips_table;
+	}
+}
 
 /* Directly set cold temperature limit in dfll mode */
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
