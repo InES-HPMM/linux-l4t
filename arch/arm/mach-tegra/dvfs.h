@@ -91,7 +91,7 @@ struct dvfs_rail {
 	struct regulator *reg;
 	int millivolts;
 	int new_millivolts;
-	int offs_millivolts;
+	int dbg_mv_offs;
 	int boot_millivolts;
 	int disable_millivolts;
 	int suspend_millivolts;

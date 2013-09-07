@@ -364,7 +364,7 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 		millivolts = rail->override_millivolts;
 	} else {
 		/* apply offset and clip up to pll mode fixed mv */
-		millivolts += rail->offs_millivolts;
+		millivolts += rail->dbg_mv_offs;
 		if (!rail->dfll_mode && rail->fixed_millivolts &&
 		    (millivolts < rail->fixed_millivolts))
 			millivolts = rail->fixed_millivolts;
@@ -1469,7 +1469,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				rel->from->reg_id, rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
-		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
+		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
 		if (rail->therm_mv_floors) {
 			int i = rail->therm_floor_idx;
@@ -1573,7 +1573,7 @@ static int rail_offs_set(struct dvfs_rail *rail, int offs)
 {
 	if (rail) {
 		mutex_lock(&dvfs_lock);
-		rail->offs_millivolts = offs;
+		rail->dbg_mv_offs = offs;
 		dvfs_rail_update(rail);
 		mutex_unlock(&dvfs_lock);
 		return 0;
@@ -1584,7 +1584,7 @@ static int rail_offs_set(struct dvfs_rail *rail, int offs)
 static int cpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_cpu_rail) {
-		*val = (u64)tegra_cpu_rail->offs_millivolts;
+		*val = (u64)tegra_cpu_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;
@@ -1599,7 +1599,7 @@ DEFINE_SIMPLE_ATTRIBUTE(cpu_offs_fops, cpu_offs_get, cpu_offs_set, "%lld\n");
 static int gpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_gpu_rail) {
-		*val = (u64)tegra_gpu_rail->offs_millivolts;
+		*val = (u64)tegra_gpu_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;
@@ -1614,7 +1614,7 @@ DEFINE_SIMPLE_ATTRIBUTE(gpu_offs_fops, gpu_offs_get, gpu_offs_set, "%lld\n");
 static int core_offs_get(void *data, u64 *val)
 {
 	if (tegra_core_rail) {
-		*val = (u64)tegra_core_rail->offs_millivolts;
+		*val = (u64)tegra_core_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;
