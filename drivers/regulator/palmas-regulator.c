@@ -29,10 +29,6 @@
 #include <linux/of_platform.h>
 #include <linux/regulator/of_regulator.h>
 
-#define EXT_PWR_REQ (PALMAS_EXT_CONTROL_ENABLE1 |	\
-		     PALMAS_EXT_CONTROL_ENABLE2 |	\
-		     PALMAS_EXT_CONTROL_NSLEEP)
-
 struct regs_info {
 	char	*name;
 	char	*sname;
@@ -1544,7 +1540,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
 		config.of_node = palmas_matches[id].of_node;
-		if (roof_floor & EXT_PWR_REQ) {
+		if (roof_floor) {
 			config.ena_gpio = reg_init->enable_gpio;
 			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
 		} else {
