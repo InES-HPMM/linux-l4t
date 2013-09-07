@@ -1242,6 +1242,16 @@ static struct tegra_tsensor_pmu_data tpdata_palmas = {
 	.poweroff_reg_data = 0x0,
 };
 
+static struct tegra_tsensor_pmu_data tpdata_as3722 = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x40,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0x36,
+	.poweroff_reg_data = 0x2,
+};
+
 static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
@@ -1337,6 +1347,8 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 
 int __init ardbeg_soctherm_init(void)
 {
+	struct board_info pmu_board_info;
+
 	/* do this only for supported CP,FT fuses */
 	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
 	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
@@ -1345,6 +1357,18 @@ int __init ardbeg_soctherm_init(void)
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
 	}
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if ((pmu_board_info.board_id == BOARD_E1733) ||
+		(pmu_board_info.board_id == BOARD_E1734))
+		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_as3722;
+	else if (pmu_board_info.board_id == BOARD_E1735)
+		;/* tpdata_palmas is default */
+	else if (pmu_board_info.board_id == BOARD_E1736)
+		;/* FIXME: Not supporting tn8 yet - assumes palmas PMIC */
+	else
+		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");
 
 	return tegra11_soctherm_init(&ardbeg_soctherm_data);
 }
