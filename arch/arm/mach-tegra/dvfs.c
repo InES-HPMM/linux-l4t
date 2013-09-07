@@ -370,9 +370,7 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 			millivolts = rail->fixed_millivolts;
 	}
 
-	if (millivolts > rail->max_millivolts)
-		millivolts = rail->max_millivolts;
-	else if (millivolts < min_mv)
+	if (millivolts < min_mv)
 		millivolts = min_mv;
 
 	return millivolts;
