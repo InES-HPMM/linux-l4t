@@ -1278,7 +1278,7 @@ static int __init get_thermal_profile_size(
 	return i + 1;
 }
 
-void __init init_rail_vmax_thermal_profile(
+void __init tegra_dvfs_rail_init_vmax_thermal_profile(
 	int *therm_trips_table, int *therm_caps_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
 {
@@ -1301,7 +1301,7 @@ void __init init_rail_vmax_thermal_profile(
 	}
 }
 
-void __init init_rail_vmin_thermal_profile(
+void __init tegra_dvfs_rail_init_vmin_thermal_profile(
 	int *therm_trips_table, int *therm_floors_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
 {

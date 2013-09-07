@@ -796,7 +796,7 @@ void __init tegra12x_init_dvfs(void)
 		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	init_rail_thermal_profile(vdd_core_therm_trips_table,
 		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);*/
-	init_rail_vmin_thermal_profile(vdd_gpu_therm_trips_table,
+	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_gpu_therm_trips_table,
 		vdd_gpu_therm_floors_table, &tegra12_dvfs_rail_vdd_gpu, NULL);
 
 	/* Init rail structures and dependencies */

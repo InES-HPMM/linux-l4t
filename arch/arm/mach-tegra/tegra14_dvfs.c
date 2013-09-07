@@ -836,13 +836,14 @@ void __init tegra14x_init_dvfs(void)
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
 
 	/* Init thermal limits */
-	init_rail_vmax_thermal_profile(
+	tegra_dvfs_rail_init_vmax_thermal_profile(
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
-	init_rail_vmin_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
+	tegra_dvfs_rail_init_vmin_thermal_profile(
+		cpu_cvb_dvfs_table[i].therm_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
-	init_rail_vmin_thermal_profile(vdd_core_vmin_trips_table,
+	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_vmin_trips_table,
 		vdd_core_therm_floors_table, &tegra14_dvfs_rail_vdd_core, NULL);
 
 	/* Init rail structures and dependencies */
