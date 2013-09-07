@@ -637,11 +637,6 @@ static struct regulator_ops palmas_ops_smps10 = {
 	.get_bypass		= regulator_get_bypass_regmap,
 };
 
-static int palmas_ldo_enable_time(struct regulator_dev *dev)
-{
-	return 500;
-}
-
 static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 					unsigned selector)
 {
@@ -684,7 +679,6 @@ static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
 }
 
 static struct regulator_ops palmas_ops_ldo = {
-	.enable_time		= palmas_ldo_enable_time,
 	.is_enabled		= regulator_is_enabled_regmap,
 	.enable			= regulator_enable_regmap,
 	.disable		= regulator_disable_regmap,
@@ -1614,6 +1608,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 						palmas_regs_info[id].ctrl_addr);
 			pmic->desc[id].enable_mask =
 					PALMAS_LDO1_CTRL_MODE_ACTIVE;
+			pmic->desc[id].enable_time = 500;
 
 			/* Check if LDO8 is in tracking mode or not */
 			if (pdata && (id == PALMAS_REG_LDO8) &&
