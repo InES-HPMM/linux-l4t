@@ -33,7 +33,6 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
 endif
 
 obj-y += pinmux.o
-obj-y += pm.o
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 
 obj-y += tegra_fuse.o
