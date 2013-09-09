@@ -416,6 +416,8 @@ struct tegra_xhci_hcd {
 
 static struct tegra_usb_pmc_data pmc_data[XUSB_UTMI_COUNT];
 static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
+static void save_ctle_context(struct tegra_xhci_hcd *tegra,
+	u8 port)  __attribute__ ((unused));
 
 /* functions */
 static inline struct tegra_xhci_hcd *hcd_to_tegra_xhci(struct usb_hcd *hcd)
