@@ -35,6 +35,7 @@ enum mc_client {
 	MC_CLIENT_VIC		= 18,
 	MC_CLIENT_XUSB_HOST	= 19,
 	MC_CLIENT_XUSB_DEV	= 20,
+	MC_CLIENT_ISPB		= 35,
 	MC_CLIENT_GPU		= 34,
 	MC_CLIENT_LAST		= -1,
 };
@@ -70,8 +71,9 @@ static struct tegra12x_powergate_mc_client_info tegra12x_pg_mc_info[] = {
 	[TEGRA_POWERGATE_VENC] = {
 		.hot_reset_clients = {
 			[0] = MC_CLIENT_ISP,
-			[1] = MC_CLIENT_VI,
-			[2] = MC_CLIENT_LAST,
+			[1] = MC_CLIENT_ISPB,
+			[2] = MC_CLIENT_VI,
+			[3] = MC_CLIENT_LAST,
 		},
 	},
 	[TEGRA_POWERGATE_DISA] = {
