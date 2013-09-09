@@ -1,2 +1,2 @@
 /* FIXME: temporary */
-#include "../../arm/mach-tegra/board-bonaire-power.c"
+#include "../../arm/mach-tegra/board-ardbeg-power.c"

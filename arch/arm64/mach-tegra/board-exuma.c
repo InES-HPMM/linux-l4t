@@ -22,12 +22,6 @@
 
 #include "../../arm/mach-tegra/board-ardbeg.c"
 
-static void __init tegra132_dt_init(void)
-{
-	tegra_ardbeg_dt_init();
-	of_platform_populate(NULL, NULL, NULL, NULL);
-}
-
 static const char * const tegra132_dt_board_compat[] = {
 	"nvidia,tegra132",
 	NULL
@@ -39,7 +33,7 @@ DT_MACHINE_START(TEGRA132_DT, "exuma")
 	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_machine	= tegra132_dt_init,
+	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra132_dt_board_compat,
 MACHINE_END

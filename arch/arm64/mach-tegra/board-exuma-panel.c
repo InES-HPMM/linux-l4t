@@ -1,2 +1,2 @@
 /* FIXME: temporary */
-#include "../../arm/mach-tegra/board-bonaire-panel.c"
+#include "../../arm/mach-tegra/board-ardbeg-panel.c"

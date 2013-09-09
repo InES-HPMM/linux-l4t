@@ -1,2 +1,2 @@
 /* FIXME: temporary */
-#include "../../arm/mach-tegra/board-bonaire-pinmux.c"
+#include "../../arm/mach-tegra/board-ardbeg-pinmux.c"

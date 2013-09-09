@@ -1,2 +1,2 @@
 /* FIXME: temporary */
-#include "../../arm/mach-tegra/board-bonaire-sensors.c"
+#include "../../arm/mach-tegra/board-ardbeg-sensors.c"
