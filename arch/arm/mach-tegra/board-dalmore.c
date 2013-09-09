@@ -568,6 +568,7 @@ static const struct tegra_modem_operations baseband_operations = {
 
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.ops = &baseband_operations,
+	.regulator_name = "vdd_modem_3v3",
 	.wake_gpio = -1,
 	.boot_gpio = MDM_COLDBOOT,
 	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
