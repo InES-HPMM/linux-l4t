@@ -459,8 +459,6 @@
 #define INT_HDMI			(INT_TRI_BASE + 11)
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define INT_PMC_WAKE_INT		(INT_TRI_BASE + 12)
-#else
-#define IRQ_ETH				(INT_TRI_BASE + 12)
 #endif
 #define INT_MC_GENERAL			(INT_TRI_BASE + 13)
 #define INT_EMC_GENERAL			(INT_TRI_BASE + 14)
