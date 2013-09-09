@@ -899,6 +899,7 @@ static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #endif
 	{ .cap_name = "cap.sclk" },
 	{ .cap_name = "cap.emc" },
+	{ .cap_name = "cap.host1x" },
 };
 
 static struct core_bus_limit_table tegra12_gpu_cap_syfs = {
