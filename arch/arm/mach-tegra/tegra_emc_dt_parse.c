@@ -35,7 +35,7 @@ static struct device_node *tegra_emc_ramcode_devnode(
 	u32 reg;
 
 	for_each_child_of_node(np, iter) {
-		if (of_property_read_u32(np, "nvidia,ram-code", &reg))
+		if (of_property_read_u32(iter, "nvidia,ram-code", &reg))
 			continue;
 		if (reg == tegra_get_bct_strapping())
 			return of_node_get(iter);
