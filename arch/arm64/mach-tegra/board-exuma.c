@@ -20,11 +20,11 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 
-#include "../../arm/mach-tegra/board-bonaire.c"
+#include "../../arm/mach-tegra/board-ardbeg.c"
 
 static void __init tegra132_dt_init(void)
 {
-	tegra_bonaire_init();
+	tegra_ardbeg_dt_init();
 	of_platform_populate(NULL, NULL, NULL, NULL);
 }
 
@@ -36,10 +36,9 @@ static const char * const tegra132_dt_board_compat[] = {
 DT_MACHINE_START(TEGRA132_DT, "exuma")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
-	.reserve	= tegra_bonaire_reserve,
+	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.timer		= &tegra_sys_timer,
 	.init_machine	= tegra132_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra132_dt_board_compat,
