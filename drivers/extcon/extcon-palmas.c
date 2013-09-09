@@ -44,7 +44,7 @@ enum palmas_usb_cable_id {
 	USB_CABLE_ID_FLOAT,
 };
 
-static const char *const palmas_extcon_cable[] = {
+static char const *palmas_extcon_cable[] = {
 	[0] = "USB",
 	[1] = "USB-Host",
 	[2] = "USB-ID-A",
