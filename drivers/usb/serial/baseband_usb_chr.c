@@ -965,8 +965,8 @@ static void baseband_usb_close(struct baseband_usb *usb)
 	}
 
 	if (usb->ipc) {
-		flush_work_sync(&usb->ipc->work);
-		flush_work_sync(&usb->ipc->rx_work);
+		flush_work(&usb->ipc->work);
+		flush_work(&usb->ipc->rx_work);
 	}
 
 
