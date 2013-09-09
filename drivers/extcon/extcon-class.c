@@ -105,7 +105,7 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
 	int i, count = 0;
-	struct extcon_dev *edev = (struct extcon_dev *) dev_get_drvdata(dev);
+	struct extcon_dev *edev = dev_get_drvdata(dev);
 
 	if (edev->print_state) {
 		int ret = edev->print_state(edev, buf);
@@ -134,7 +134,7 @@ static ssize_t state_store(struct device *dev, struct device_attribute *attr,
 {
 	u32 state;
 	ssize_t ret = 0;
-	struct extcon_dev *edev = (struct extcon_dev *) dev_get_drvdata(dev);
+	struct extcon_dev *edev = dev_get_drvdata(dev);
 
 	ret = sscanf(buf, "0x%x", &state);
 	if (ret == 0)
@@ -151,7 +151,7 @@ static ssize_t state_store(struct device *dev, struct device_attribute *attr,
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
-	struct extcon_dev *edev = (struct extcon_dev *) dev_get_drvdata(dev);
+	struct extcon_dev *edev = dev_get_drvdata(dev);
 
 	/* Optional callback given by the user */
 	if (edev->print_name) {
@@ -469,7 +469,7 @@ int extcon_register_interest(struct extcon_specific_cable_nb *obj,
 			return -ENODEV;
 		class_dev_iter_init(&iter, extcon_class, NULL, NULL);
 		while ((dev = class_dev_iter_next(&iter))) {
-			extd = (struct extcon_dev *)dev_get_drvdata(dev);
+			extd = dev_get_drvdata(dev);
 
 			if (extcon_find_cable_index(extd, cable_name) < 0)
 				continue;
