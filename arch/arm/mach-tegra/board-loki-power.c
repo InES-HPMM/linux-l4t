@@ -31,6 +31,7 @@
 #include <linux/power/power_supply_extcon.h>
 
 #include <mach/irqs.h>
+#include <mach/edp.h>
 
 #include <asm/mach-types.h>
 
@@ -650,3 +651,16 @@ static int __init loki_fixed_regulator_init(void)
 }
 
 subsys_initcall_sync(loki_fixed_regulator_init);
+int __init loki_edp_init(void)
+{
+	unsigned int regulator_mA;
+
+	regulator_mA = get_maximum_cpu_current_supported();
+	if (!regulator_mA)
+		regulator_mA = 16000;
+
+	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
+	tegra_init_cpu_edp_limits(regulator_mA);
+
+	return 0;
+}
