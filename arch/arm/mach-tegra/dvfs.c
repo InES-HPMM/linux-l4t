@@ -1097,6 +1097,57 @@ struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id)
 	return NULL;
 }
 
+int tegra_dvfs_rail_power_up(struct dvfs_rail *rail)
+{
+	int ret = -ENOENT;
+
+	if (!rail || !rail->in_band_pm)
+		return -ENOSYS;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg) {
+		ret = regulator_enable(rail->reg);
+		if (!ret && !timekeeping_suspended)
+			tegra_dvfs_rail_on(rail, ktime_get());
+	}
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+int tegra_dvfs_rail_power_down(struct dvfs_rail *rail)
+{
+	int ret = -ENOENT;
+
+	if (!rail || !rail->in_band_pm)
+		return -ENOSYS;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg) {
+		ret = regulator_disable(rail->reg);
+		if (!ret && !timekeeping_suspended)
+			tegra_dvfs_rail_off(rail, ktime_get());
+	}
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail)
+{
+	bool ret = false;
+
+	if (!rail)
+		return false;
+
+	if (!rail->in_band_pm)
+		return true;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg)
+		ret = regulator_is_enabled(rail->reg) > 0;
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
 bool tegra_dvfs_rail_updating(struct clk *clk)
 {
 	return (!clk ? false :

@@ -80,6 +80,7 @@ struct dvfs_rail {
 	int step;
 	int step_up;
 	bool jmp_to_zero;
+	bool in_band_pm;
 	bool disabled;
 	bool updating;
 	bool resolving_to;
@@ -215,11 +216,15 @@ int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
+int tegra_dvfs_rail_power_up(struct dvfs_rail *rail);
+int tegra_dvfs_rail_power_down(struct dvfs_rail *rail);
+bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail);
 bool tegra_dvfs_rail_updating(struct clk *clk);
 void tegra_dvfs_rail_off(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_on(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_pause(struct dvfs_rail *rail, ktime_t delta, bool on);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
+
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate);
