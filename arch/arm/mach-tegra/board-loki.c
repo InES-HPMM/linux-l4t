@@ -871,12 +871,18 @@ static const char * const loki_dt_board_compat[] = {
 	NULL
 };
 
+static void __init tegra_loki_init_early(void)
+{
+	loki_rail_alignment_init();
+	tegra12x_init_early();
+}
+
 DT_MACHINE_START(LOKI, "loki")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_loki_reserve,
-	.init_early	= tegra12x_init_early,
+	.init_early	= tegra_loki_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_loki_dt_init,

@@ -26,6 +26,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq27441_battery.h>
 #include <linux/power/power_supply_extcon.h>
@@ -44,6 +45,8 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
+#include "dvfs.h"
+#include "tegra_cl_dvfs.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -633,7 +636,147 @@ FIXED_REG(11,	dvdd_lcd,	dvdd_lcd,
 static struct platform_device *fixed_reg_devs_e2545[] = {
 	LOKI_E2545_FIXED_REG
 };
+/************************ LOKI CL-DVFS DATA *********************/
+#define LOKI_CPU_VDD_MAP_SIZE		33
+#define LOKI_CPU_VDD_MIN_UV		705000
+#define LOKI_CPU_VDD_STEP_UV		19200
+#define LOKI_CPU_VDD_STEP_US		80
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+/* Macro definition of dfll bypass device */
+#define DFLL_BYPASS(_board, _min, _step, _size, _us_sel)		       \
+static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
+	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
+	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
+	.constraints = {						       \
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		       \
+				REGULATOR_MODE_STANDBY),		       \
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		       \
+				REGULATOR_CHANGE_STATUS |		       \
+				REGULATOR_CHANGE_VOLTAGE),		       \
+		.min_uV = (_min),					       \
+		.max_uV = ((_size) - 1) * (_step) + (_min),		       \
+		.always_on = 1,						       \
+		.boot_on = 1,						       \
+	},								       \
+};									       \
+static struct tegra_dfll_bypass_platform_data _board##_dfll_bypass_pdata = {   \
+	.reg_init_data = &_board##_dfll_bypass_init_data,		       \
+	.uV_step = (_step),						       \
+	.linear_min_sel = 0,						       \
+	.n_voltages = (_size),						       \
+	.voltage_time_sel = _us_sel,					       \
+};									       \
+static struct platform_device loki_dfll_bypass_dev = {			       \
+	.name = "tegra_dfll_bypass",					       \
+	.id = -1,							       \
+	.dev = {							       \
+		.platform_data = &_board##_dfll_bypass_pdata,		       \
+	},								       \
+}
+
+/* loki board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param loki_cl_dvfs_param = {
+	.sample_rate = 50000,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* loki RT8812C volatge map */
+static struct voltage_reg_map loki_cpu_vdd_map[LOKI_CPU_VDD_MAP_SIZE];
+static inline int loki_fill_reg_map(int nominal_mv)
+{
+	int i, uv, nominal_uv = 0;
+	for (i = 0; i < LOKI_CPU_VDD_MAP_SIZE; i++) {
+		loki_cpu_vdd_map[i].reg_value = i;
+		loki_cpu_vdd_map[i].reg_uV = uv =
+			LOKI_CPU_VDD_MIN_UV + LOKI_CPU_VDD_STEP_UV * i;
+		if (!nominal_uv && uv >= nominal_mv * 1000)
+			nominal_uv = uv;
+	}
+	return nominal_uv;
+}
+
+/* loki dfll bypass device for legacy dvfs control */
+static struct regulator_consumer_supply loki_dfll_bypass_consumers[] = {
+	REGULATOR_SUPPLY("vdd_cpu", NULL),
+};
+DFLL_BYPASS(loki, LOKI_CPU_VDD_MIN_UV, LOKI_CPU_VDD_STEP_UV,
+	    LOKI_CPU_VDD_MAP_SIZE, LOKI_CPU_VDD_STEP_US);
+
+static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
+	.u.pmu_pwm = {
+		.pwm_rate = 12750000,
+		.out_gpio = TEGRA_GPIO_PU6,
+		.out_enable_high = false,
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+		.dfll_bypass_dev = &loki_dfll_bypass_dev,
+#endif
+	},
+	.vdd_map = loki_cpu_vdd_map,
+	.vdd_map_size = LOKI_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &loki_cl_dvfs_param,
+};
+
+static void loki_suspend_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PU6, 1); /* tristate external PWM buffer */
+}
+
+static void loki_resume_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PU6, 0); /* enable PWM buffer operations */
+}
+static int __init loki_cl_dvfs_init(void)
+{
+	struct tegra_cl_dvfs_platform_data *data = NULL;
+	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
+
+	{
+		v = loki_fill_reg_map(v);
+		data = &loki_cl_dvfs_data;
+		if (data->u.pmu_pwm.dfll_bypass_dev) {
+			/* this has to be exact to 1uV level from table */
+			loki_dfll_bypass_init_data.constraints.init_uV = v;
+			loki_suspend_data.suspend_dfll_bypass =
+				loki_suspend_dfll_bypass;
+			loki_suspend_data.resume_dfll_bypass =
+				loki_resume_dfll_bypass;
+		} else {
+			(void)loki_dfll_bypass_dev;
+		}
+	}
+
+
+	if (data) {
+		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
+		tegra_cl_dvfs_device.dev.platform_data = data;
+		platform_device_register(&tegra_cl_dvfs_device);
+	}
+	return 0;
+}
+#else
+static inline int loki_cl_dvfs_init()
+{ return 0; }
+#endif
+
+int __init loki_rail_alignment_init(void)
+{
+
+	tegra12x_vdd_cpu_align(LOKI_CPU_VDD_STEP_UV,
+			LOKI_CPU_VDD_MIN_UV);
+	return 0;
+}
 static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -642,6 +785,7 @@ static int __init loki_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
+	loki_cl_dvfs_init();
 
 	if (pmu_board_info.board_id == BOARD_E2545)
 		return platform_add_devices(fixed_reg_devs_e2545,
