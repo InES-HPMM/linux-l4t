@@ -35,13 +35,14 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-timer.h>
 #include <linux/tegra-cpuidle.h>
+#ifndef CONFIG_ARM64
 #include <linux/sched_clock.h>
+#endif
 
 #include <linux/of.h>
 #include <linux/of_irq.h>
 
 #include <asm/mach/time.h>
-#include <asm/localtimer.h>
 #include <asm/smp_plat.h>
 
 #include <mach/irqs.h>
