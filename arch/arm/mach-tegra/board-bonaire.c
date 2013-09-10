@@ -650,6 +650,6 @@ MACHINE_START(BONAIRE, "bonaire")
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_machine	= tegra_bonaire_dt_init,
-	.timer		= &tegra_sys_timer,
+	.init_time      = tegra_init_timer,
 	.dt_compat	= bonaire_dt_board_compat,
 MACHINE_END
