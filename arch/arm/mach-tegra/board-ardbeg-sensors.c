@@ -267,7 +267,6 @@ static int ardbeg_imx135_power_on(struct imx135_power_rail *pw)
 		goto imx135_ext_reg2_fail;
 
 
-	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM_AF_PWDN, 1);
 	gpio_set_value(CAM1_PWDN, 0);
 	usleep_range(10, 20);
@@ -281,7 +280,6 @@ static int ardbeg_imx135_power_on(struct imx135_power_rail *pw)
 		goto imx135_iovdd_fail;
 
 	usleep_range(1, 2);
-	gpio_set_value(CAM_RSTN, 1);
 	gpio_set_value(CAM1_PWDN, 1);
 
 	usleep_range(300, 310);
@@ -311,10 +309,6 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
-
-	usleep_range(1, 2);
-	gpio_set_value(CAM_RSTN, 0);
-	usleep_range(1, 2);
 
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
