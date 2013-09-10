@@ -52,7 +52,6 @@
 #include <mach/pci.h>
 #include <mach/hardware.h>
 
-#include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
@@ -649,7 +648,6 @@ MACHINE_START(BONAIRE, "bonaire")
 	.reserve	= tegra_bonaire_reserve,
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.handle_irq	= gic_handle_irq,
 	.init_machine	= tegra_bonaire_dt_init,
 	.timer		= &tegra_sys_timer,
 	.dt_compat	= bonaire_dt_board_compat,
