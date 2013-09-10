@@ -183,6 +183,7 @@ static struct platform_device *pfixed_reg_devs[] = {
 	&fixed_reg_en_battery_dev,
 };
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct tegra_suspend_platform_data bonaire_suspend_data = {
 	.cpu_timer	= 2000,
 	.cpu_off_timer	= 0,
@@ -192,6 +193,7 @@ static struct tegra_suspend_platform_data bonaire_suspend_data = {
 	.corereq_high	= false,
 	.sysclkreq_high	= true,
 };
+#endif
 
 int __init bonaire_regulator_init(void)
 {
@@ -203,7 +205,9 @@ int __init bonaire_regulator_init(void)
 
 int __init bonaire_suspend_init(void)
 {
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	tegra_init_suspend(&bonaire_suspend_data);
+#endif
 	return 0;
 }
 
