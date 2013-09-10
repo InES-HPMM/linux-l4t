@@ -114,4 +114,53 @@ static struct as3722_regulator_platform_data as3722_##_name##_reg_pdata =	\
 	.ext_control = _ext_cntrl					\
 }									\
 
+
+/* Macro for defining fixed regulator sub device data */
+#define fixed_sync_supply(_name) "fixed_reg_en_"#_name
+
+#define FIXED_REG_DRV(_id, _drv, _var, _name, _in_supply,		\
+	_always_on, _boot_on, _gpio_nr, _open_drain,			\
+	_active_high, _boot_state, _millivolts, _sdelay)		\
+static struct regulator_init_data ri_data_##_var =			\
+{									\
+	.supply_regulator = _in_supply,					\
+	.num_consumer_supplies =					\
+			ARRAY_SIZE(fixed_reg_en_##_name##_supply),	\
+	.consumer_supplies = fixed_reg_en_##_name##_supply,		\
+	.constraints = {						\
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		\
+					REGULATOR_MODE_STANDBY),	\
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+		.always_on = _always_on,				\
+		.boot_on = _boot_on,					\
+	},								\
+};									\
+static struct fixed_voltage_config fixed_reg_en_##_var##_pdata =	\
+{									\
+	.supply_name = fixed_sync_supply(_name),			\
+	.microvolts = _millivolts * 1000,				\
+	.gpio = _gpio_nr,						\
+	.gpio_is_open_drain = _open_drain,				\
+	.enable_high = _active_high,					\
+	.enabled_at_boot = _boot_state,					\
+	.init_data = &ri_data_##_var,					\
+	.startup_delay = _sdelay					\
+};									\
+static struct platform_device fixed_reg_en_##_var##_dev = {		\
+	.name = #_drv,							\
+	.id = _id,							\
+	.dev = {							\
+		.platform_data = &fixed_reg_en_##_var##_pdata,		\
+	},								\
+}
+
+#define FIXED_SYNC_REG(_id, _var, _name, _in_supply,			\
+	_always_on, _boot_on, _gpio_nr, _open_drain,			\
+	_active_high, _boot_state, _millivolts, _sdelay)		\
+	FIXED_REG_DRV(_id, reg-fixed-sync-voltage, _var, _name, 	\
+	_in_supply, _always_on, _boot_on, _gpio_nr, _open_drain,	\
+	_active_high, _boot_state, _millivolts, _sdelay)
+
 #endif
