@@ -725,7 +725,8 @@ int __init ardbeg_regulator_init(void)
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 	} else if (pmu_board_info.board_id == BOARD_E1736) {
-		return tn8_regulator_init();
+		tn8_regulator_init();
+		return tn8_fixed_regulator_init();
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);

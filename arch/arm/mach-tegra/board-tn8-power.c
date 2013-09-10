@@ -523,7 +523,6 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_usb0_vbus_supply[] = {
-	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 };
 
@@ -565,41 +564,41 @@ FIXED_REG(0,	battery,	battery,	NULL,
 	0,	0,	-1,
 	false,	true,	0,	3300, 0);
 
-FIXED_REG(1,	usb0_vbus,	usb0_vbus,	NULL,
-	0,	0,	TEGRA_GPIO_PN4,
-	true,	true,	0,	5000,	0);
+FIXED_SYNC_REG(1,	usb0_vbus,	usb0_vbus,	NULL,
+		0,	0,	TEGRA_GPIO_PN4,
+		true,	true,	0,	5000,	0);
 
-FIXED_REG(2,	usb1_vbus,	usb1_vbus,	palmas_rails(smps10_out2),
-	0,	0,	TEGRA_GPIO_PN5,
-	true,	true,	0,	5000,	0);
+FIXED_SYNC_REG(2,	usb1_vbus,	usb1_vbus,	palmas_rails(smps10_out2),
+		0,	0,	TEGRA_GPIO_PN5,
+		true,	true,	0,	5000,	0);
 
-FIXED_REG(3,	usb2_vbus,	usb2_vbus,	palmas_rails(smps10_out2),
-	0,	0,	TEGRA_GPIO_PFF1,
-	true,	true,	0,	5000,	0);
+FIXED_SYNC_REG(3,	usb2_vbus,	usb2_vbus,	palmas_rails(smps10_out2),
+		0,	0,	TEGRA_GPIO_PFF1,
+		true,	true,	0,	5000,	0);
 
-FIXED_REG(4,	palmas_gpio3,	palmas_gpio3,	palmas_rails(smps9),
-	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,
-	false,	true,	0,	3300,	0);
+FIXED_SYNC_REG(4,	palmas_gpio3,	palmas_gpio3,	palmas_rails(smps9),
+		0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,
+		false,	true,	0,	3300,	0);
 
-FIXED_REG(5,	palmas_gpio4,	palmas_gpio4,	palmas_rails(smps8),
-	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,
-	false,	true,	0,	1200,	0);
+FIXED_SYNC_REG(5,	palmas_gpio4,	palmas_gpio4,	palmas_rails(smps8),
+		0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,
+		false,	true,	0,	1200,	0);
 
-FIXED_REG(6,	palmas_gpio6,	palmas_gpio6,	palmas_rails(smps8),
-	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,
-	false,	true,	0,	1200,	0);
+FIXED_SYNC_REG(6,	palmas_gpio6,	palmas_gpio6,	palmas_rails(smps8),
+		0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,
+		false,	true,	0,	1200,	0);
 
-FIXED_REG(7,	palmas_gpio7,	palmas_gpio7,	palmas_rails(smps8),
-	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO7,
-	false,	true,	0,	1800,	0);
+FIXED_SYNC_REG(7,	palmas_gpio7,	palmas_gpio7,	palmas_rails(smps8),
+		0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO7,
+		false,	true,	0,	1800,	0);
 
-FIXED_REG(8,	lcd_bl_en,	lcd_bl_en, NULL,
-	0,	0, TEGRA_GPIO_PH2,
-	false,	true,	0,	5000,	0);
+FIXED_SYNC_REG(8,	lcd_bl_en,	lcd_bl_en, NULL,
+		0,	0, TEGRA_GPIO_PH2,
+		false,	true,	0,	5000,	0);
 
-FIXED_REG(9,	vdd_hdmi_5v0,	vdd_hdmi_5v0, palmas_rails(smps10_out2),
-	0,	0, TEGRA_GPIO_PK6,
-	false,	true,	0,	5000,	0);
+FIXED_SYNC_REG(9,	vdd_hdmi_5v0,	vdd_hdmi_5v0, palmas_rails(smps10_out2),
+		0,	0, TEGRA_GPIO_PK6,
+		false,	true,	0,	5000,	0);
 
 /*
  * Creating fixed regulator device tables
@@ -622,7 +621,7 @@ static struct platform_device *fixed_reg_devs_e1736[] = {
 	TN8_E1736_FIXED_REG
 };
 
-static int __init tn8_fixed_regulator_init(void)
+int __init tn8_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
 
@@ -637,5 +636,3 @@ static int __init tn8_fixed_regulator_init(void)
 
 	return 0;
 }
-
-subsys_initcall_sync(tn8_fixed_regulator_init);
