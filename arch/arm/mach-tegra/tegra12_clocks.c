@@ -46,10 +46,6 @@
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
 
-/* FIXME: Disable for initial Si bringup */
-#undef USE_PLLE_SS
-#define USE_PLLE_SS 0
-
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
 #define RST_DEVICES_U			0x00C
@@ -503,6 +499,8 @@
 #define	PLLE_SS_INCINTRV_MASK		(0x3f<<PLLE_SS_INCINTRV_SHIFT)
 #define	PLLE_SS_INC_SHIFT		16
 #define	PLLE_SS_INC_MASK		(0xff<<PLLE_SS_INC_SHIFT)
+#define	PLLE_SS_CNTL_INVERT		(0x1 << 15)
+#define	PLLE_SS_CNTL_CENTER		(0x1 << 14)
 #define	PLLE_SS_CNTL_SSC_BYP		(0x1 << 12)
 #define	PLLE_SS_CNTL_INTERP_RESET	(0x1 << 11)
 #define	PLLE_SS_CNTL_BYPASS_SS		(0x1 << 10)
@@ -3850,6 +3848,7 @@ static int tegra12_plle_clk_enable(struct clk *c)
 		c, c->reg + PLL_MISC(c), PLLE_MISC_LOCK);
 #if USE_PLLE_SS
 	val = clk_readl(PLLE_SS_CTRL);
+	val &= ~(PLLE_SS_CNTL_CENTER | PLLE_SS_CNTL_INVERT);
 	val &= ~PLLE_SS_COEFFICIENTS_MASK;
 	val |= PLLE_SS_COEFFICIENTS_VAL;
 	clk_writel(val, PLLE_SS_CTRL);
