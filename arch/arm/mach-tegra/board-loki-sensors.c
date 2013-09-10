@@ -22,10 +22,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
-#include <media/ar0261.h>
-#include <media/imx135.h>
-#include <media/dw9718.h>
-#include <media/as364x.h>
+#include <media/mt9m114.h>
 #include <mach/gpio-tegra.h>
 #include <mach/edp.h>
 #include <mach/tegra_fuse.h>
@@ -108,322 +105,73 @@ static void loki_jsa1127_init(void)
 		ARRAY_SIZE(loki_i2c_jsa1127_board_info));
 }
 
-
-static struct regulator *loki_vcmvdd;
-
-static int loki_get_extra_regulators(void)
-{
-	if (!loki_vcmvdd) {
-		loki_vcmvdd = regulator_get(NULL, "avdd_af1_cam");
-		if (WARN_ON(IS_ERR(loki_vcmvdd))) {
-			pr_err("%s: can't get regulator avdd_af1_cam: %ld\n",
-					__func__, PTR_ERR(loki_vcmvdd));
-			regulator_put(loki_vcmvdd);
-			loki_vcmvdd = NULL;
-			return -ENODEV;
-		}
-	}
-
-	return 0;
-}
-
-
-static int loki_ar0261_power_on(struct ar0261_power_rail *pw)
+static int loki_mt9m114_power_on(struct mt9m114_power_rail *pw)
 {
 	int err;
-
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
 		return -EFAULT;
 
-	if (loki_get_extra_regulators())
-		goto loki_ar0261_poweron_fail;
-
 	gpio_set_value(CAM_RSTN, 0);
-	gpio_set_value(CAM_AF_PWDN, 1);
-
-
-	err = regulator_enable(loki_vcmvdd);
-	if (unlikely(err))
-		goto ar0261_vcm_fail;
-
-	err = regulator_enable(pw->dvdd);
-	if (unlikely(err))
-		goto ar0261_dvdd_fail;
-
-	err = regulator_enable(pw->avdd);
-	if (unlikely(err))
-		goto ar0261_avdd_fail;
-
-	err = regulator_enable(pw->iovdd);
-	if (unlikely(err))
-		goto ar0261_iovdd_fail;
-
-	usleep_range(1, 2);
 	gpio_set_value(CAM2_PWDN, 1);
-
-	gpio_set_value(CAM_RSTN, 1);
-
-	return 0;
-ar0261_iovdd_fail:
-	regulator_disable(pw->dvdd);
-
-ar0261_dvdd_fail:
-	regulator_disable(pw->avdd);
-
-ar0261_avdd_fail:
-	regulator_disable(loki_vcmvdd);
-
-ar0261_vcm_fail:
-	pr_err("%s vcmvdd failed.\n", __func__);
-	return -ENODEV;
-
-loki_ar0261_poweron_fail:
-	pr_err("%s failed.\n", __func__);
-	return -ENODEV;
-}
-
-static int loki_ar0261_power_off(struct ar0261_power_rail *pw)
-{
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd ||
-					!loki_vcmvdd)))
-		return -EFAULT;
-
-	gpio_set_value(CAM_RSTN, 0);
-
-	usleep_range(1, 2);
-
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->dvdd);
-	regulator_disable(pw->avdd);
-
-
-	regulator_disable(loki_vcmvdd);
-
-	return 0;
-}
-
-struct ar0261_platform_data loki_ar0261_data = {
-	.power_on = loki_ar0261_power_on,
-	.power_off = loki_ar0261_power_off,
-	.mclk_name = "vi_sensor2",
-};
-
-static int loki_imx135_get_extra_regulators(struct imx135_power_rail *pw)
-{
-	if (!pw->ext_reg1) {
-		pw->ext_reg1 = regulator_get(NULL, "imx135_reg1");
-		if (WARN_ON(IS_ERR(pw->ext_reg1))) {
-			pr_err("%s: can't get regulator imx135_reg1: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg1));
-			pw->ext_reg1 = NULL;
-			return -ENODEV;
-		}
-	}
-
-	if (!pw->ext_reg2) {
-		pw->ext_reg2 = regulator_get(NULL, "imx135_reg2");
-		if (WARN_ON(IS_ERR(pw->ext_reg2))) {
-			pr_err("%s: can't get regulator imx135_reg2: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg2));
-			pw->ext_reg2 = NULL;
-			return -ENODEV;
-		}
-	}
-
-	return 0;
-}
-
-static int loki_imx135_power_on(struct imx135_power_rail *pw)
-{
-	int err;
-
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
-		return -EFAULT;
-
-	if (loki_imx135_get_extra_regulators(pw))
-		goto imx135_poweron_fail;
-
-	err = regulator_enable(pw->ext_reg1);
-	if (unlikely(err))
-		goto imx135_ext_reg1_fail;
-
-	err = regulator_enable(pw->ext_reg2);
-	if (unlikely(err))
-		goto imx135_ext_reg2_fail;
-
-
-	gpio_set_value(CAM_RSTN, 0);
-	gpio_set_value(CAM_AF_PWDN, 1);
-	gpio_set_value(CAM1_PWDN, 0);
-	usleep_range(10, 20);
-
-	err = regulator_enable(pw->avdd);
-	if (err)
-		goto imx135_avdd_fail;
-
-	err = regulator_enable(pw->iovdd);
-	if (err)
-		goto imx135_iovdd_fail;
-
-	usleep_range(1, 2);
-	gpio_set_value(CAM_RSTN, 1);
-	gpio_set_value(CAM1_PWDN, 1);
-
-	usleep_range(300, 310);
-
-	return 1;
-
-
-imx135_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-imx135_avdd_fail:
-	if (pw->ext_reg2)
-		regulator_disable(pw->ext_reg2);
-
-imx135_ext_reg2_fail:
-	if (pw->ext_reg1)
-		regulator_disable(pw->ext_reg1);
-	gpio_set_value(CAM_AF_PWDN, 0);
-
-imx135_ext_reg1_fail:
-imx135_poweron_fail:
-	pr_err("%s failed.\n", __func__);
-	return -ENODEV;
-}
-
-static int loki_imx135_power_off(struct imx135_power_rail *pw)
-{
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
-		return -EFAULT;
-
-	usleep_range(1, 2);
-	gpio_set_value(CAM_RSTN, 0);
-	usleep_range(1, 2);
-
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->avdd);
-
-	regulator_disable(pw->ext_reg1);
-	regulator_disable(pw->ext_reg2);
-
-	return 0;
-}
-
-struct imx135_platform_data loki_imx135_data = {
-	.power_on = loki_imx135_power_on,
-	.power_off = loki_imx135_power_off,
-};
-
-static int loki_dw9718_power_on(struct dw9718_power_rail *pw)
-{
-	int err;
-	pr_info("%s\n", __func__);
-
-	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
-		return -EFAULT;
-
-	err = regulator_enable(pw->vdd);
-	if (unlikely(err))
-		goto dw9718_vdd_fail;
-
-	err = regulator_enable(pw->vdd_i2c);
-	if (unlikely(err))
-		goto dw9718_i2c_fail;
-
 	usleep_range(1000, 1020);
 
-	/* return 1 to skip the in-driver power_on sequence */
-	pr_debug("%s --\n", __func__);
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto mt9m114_iovdd_fail;
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto mt9m114_avdd_fail;
+
+	usleep_range(1000, 1020);
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_set_value(CAM2_PWDN, 0);
+	usleep_range(1000, 1020);
+
+	/* return 1 to skip the in-driver power_on swquence */
 	return 1;
 
-dw9718_i2c_fail:
-	regulator_disable(pw->vdd);
+mt9m114_avdd_fail:
+	regulator_disable(pw->iovdd);
 
-dw9718_vdd_fail:
-	pr_err("%s FAILED\n", __func__);
+mt9m114_iovdd_fail:
+	gpio_set_value(CAM_RSTN, 0);
 	return -ENODEV;
 }
 
-static int loki_dw9718_power_off(struct dw9718_power_rail *pw)
+static int loki_mt9m114_power_off(struct mt9m114_power_rail *pw)
 {
-	pr_info("%s\n", __func__);
-
-	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
 		return -EFAULT;
 
-	regulator_disable(pw->vdd);
-	regulator_disable(pw->vdd_i2c);
+	usleep_range(100, 120);
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(100, 120);
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->iovdd);
 
 	return 1;
 }
 
-static u16 dw9718_devid;
-static int loki_dw9718_detect(void *buf, size_t size)
-{
-	dw9718_devid = 0x9718;
-	return 0;
-}
-
-static struct nvc_focus_cap dw9718_cap = {
-	.settle_time = 30,
-	.slew_rate = 0x3A200C,
-	.focus_macro = 450,
-	.focus_infinity = 200,
-	.focus_hyper = 200,
+struct mt9m114_platform_data loki_mt9m114_pdata = {
+	.power_on = loki_mt9m114_power_on,
+	.power_off = loki_mt9m114_power_off,
 };
 
-static struct dw9718_platform_data loki_dw9718_data = {
-	.cfg = NVC_CFG_NODEV,
-	.num = 0,
-	.sync = 0,
-	.dev_name = "focuser",
-	.cap = &dw9718_cap,
-	.power_on = loki_dw9718_power_on,
-	.power_off = loki_dw9718_power_off,
-	.detect = loki_dw9718_detect,
-};
-
-static struct as364x_platform_data loki_as3648_data = {
-	.config		= {
-		.led_mask	= 3,
-		.max_total_current_mA = 1000,
-		.max_peak_current_mA = 600,
-		.vin_low_v_run_mV = 3070,
-		.strobe_type = 1,
-		},
-	.pinstate	= {
-		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
-		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
-		},
-	.dev_name	= "torch",
-	.type		= AS3648,
-	.gpio_strobe	= CAM_FLASH_STROBE,
-};
-
-
-static struct i2c_board_info loki_i2c_board_info_e1823[] = {
+static struct i2c_board_info loki_i2c_board_info_e2548[] = {
 	{
-		I2C_BOARD_INFO("imx135", 0x10),
-		.platform_data = &loki_imx135_data,
-	},
-	{
-		I2C_BOARD_INFO("ar0261", 0x36),
-		.platform_data = &loki_ar0261_data,
-	},
-	{
-		I2C_BOARD_INFO("dw9718", 0x0c),
-		.platform_data = &loki_dw9718_data,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &loki_as3648_data,
+		I2C_BOARD_INFO("mt9m114", 0x48),
+		.platform_data = &loki_mt9m114_pdata,
 	},
 };
-
 
 static int loki_camera_init(void)
 {
+	pr_debug("%s: ++\n", __func__);
+
+	i2c_register_board_info(2, loki_i2c_board_info_e2548,
+			ARRAY_SIZE(loki_i2c_board_info_e2548));
 	return 0;
 }
 
