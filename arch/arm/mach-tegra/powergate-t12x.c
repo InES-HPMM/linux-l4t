@@ -22,6 +22,7 @@
 #include "powergate-priv.h"
 #include "powergate-ops-txx.h"
 #include "powergate-ops-t1xx.h"
+#include "dvfs.h"
 
 enum mc_client {
 	MC_CLIENT_AFI		= 0,
@@ -247,7 +248,7 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 
 static DEFINE_SPINLOCK(tegra12x_powergate_lock);
 
-static struct regulator *gpu_reg;
+static struct dvfs_rail *gpu_rail;
 
 #define HOTRESET_READ_COUNT	5
 static bool tegra12x_stable_hotreset_check(u32 stat_reg, u32 *stat)
@@ -389,8 +390,8 @@ static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_in
 
 	udelay(10);
 
-	if (gpu_reg && tegra_powergate_is_powered(id)) {
-		ret = regulator_disable(gpu_reg);
+	if (gpu_rail && tegra_powergate_is_powered(id)) {
+		ret = tegra_dvfs_rail_power_down(gpu_rail);
 		if (ret)
 			goto err_power_off;
 	} else
@@ -408,17 +409,17 @@ static int tegra12x_gpu_unpowergate(int id,
 {
 	int ret = 0;
 
-	if (!gpu_reg) {
-		gpu_reg = regulator_get(NULL, "vdd_gpu");
-		if (IS_ERR_OR_NULL(gpu_reg)) {
+	if (!gpu_rail) {
+		gpu_rail = tegra_dvfs_get_rail_by_name("vdd_gpu");
+		if (IS_ERR_OR_NULL(gpu_rail)) {
 			WARN(1, "No GPU regulator?\n");
 			goto err_power;
 		}
+	} else {
+		ret = tegra_dvfs_rail_power_up(gpu_rail);
+		if (ret)
+			goto err_power;
 	}
-
-	ret = regulator_enable(gpu_reg);
-	if (ret)
-		goto err_power;
 
 	/* If first clk_ptr is null, fill clk info for the partition */
 	if (!pg_info->clk_info[0].clk_ptr)
@@ -619,8 +620,8 @@ bool tegra12x_powergate_is_powered(int id)
 	u32 status = 0;
 
 	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
-		if (gpu_reg)
-			return regulator_is_enabled(gpu_reg);
+		if (gpu_rail)
+			return tegra_dvfs_is_rail_up(gpu_rail);
 	} else {
 		status = pmc_read(PWRGATE_STATUS) & (1 << id);
 		return !!status;

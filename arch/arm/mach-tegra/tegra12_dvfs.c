@@ -84,6 +84,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.max_millivolts = 1350,
 	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
+	.in_band_pm = true,
 	.vmin_cdev = &gpu_vmin_cdev,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
