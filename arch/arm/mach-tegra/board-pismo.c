@@ -655,7 +655,7 @@ struct rm_spi_ts_platform_data rm31080ts_pismo_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
