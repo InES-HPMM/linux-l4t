@@ -793,9 +793,6 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-#if !defined(CONFIG_ANDROID)
-	val &= ~USB_MST_ID;
-#endif
 	ahb_gizmo_writel(val,
 		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 
@@ -803,9 +800,6 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-#if !defined(CONFIG_ANDROID)
-	val &= ~USB3_MST_ID;
-#endif
 	ahb_gizmo_writel(val,
 		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG3));
 
