@@ -604,20 +604,17 @@ static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 {
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
+	int volt;
 
-	if (!selector)
-		return 0;
+	volt = regulator_list_voltage_linear(dev, selector);
 
 	if (pmic->palmas->id == TPS80036) {
 		if (id == PALMAS_REG_LDO4 || id == PALMAS_REG_LDO5 ||
 				id == PALMAS_REG_LDO9)
 			if (pmic->ldo_vref0p425)
-				return  (850000 + (selector * 50000)) / 2;
-
+				return volt / 2;
 	}
-
-	/* voltage is 0.85V + (selector * 0.05v) */
-	return  850000 + (selector * 50000);
+	return volt;
 }
 
 static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
@@ -673,8 +670,7 @@ static struct regulator_ops palmas_ops_chargepump = {
 };
 
 static int palmas_ldo5_tracking_init(struct palmas *palmas,
-		struct palmas_reg_init *reg_init,
-		struct regulator_dev *rdev)
+		struct palmas_reg_init *reg_init, int id)
 {
 	unsigned int reg;
 	int ret;
@@ -696,33 +692,35 @@ static int palmas_ldo5_tracking_init(struct palmas *palmas,
 		return ret;
 
 	if (reg_init->config_flags & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE) {
-		ret = regulator_disable_regmap(rdev);
-		if (ret < 0)
-		return ret;
+		ret = palmas_update_bits(palmas, PALMAS_LDO_BASE,
+				palmas_regs_info[id].ctrl_addr,
+				PALMAS_LDO1_CTRL_MODE_ACTIVE, 0);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"LDO Reg 0x%02x update failed: %d\n",
+				palmas_regs_info[id].ctrl_addr, ret);
+			return ret;
+		}
 	}
 	return 0;
 }
 
 static void palmas_enable_ldo8_track(struct palmas *palmas)
 {
-	unsigned int reg;
+	unsigned int reg = 0;
 	unsigned int addr;
 	int ret;
 
 	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
-
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret) {
-		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
-		return;
-	}
-
-	reg |= PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
-	ret = palmas_ldo_write(palmas, addr, reg);
+	ret = palmas_update_bits(palmas, PALMAS_LDO_BASE, addr,
+			PALMAS_LDO8_CTRL_LDO_TRACKING_EN,
+			PALMAS_LDO8_CTRL_LDO_TRACKING_EN);
 	if (ret < 0) {
-		dev_err(palmas->dev, "Error in enabling tracking mode\n");
+		dev_err(palmas->dev,
+			"LDO Reg 0x%02x update failed: %d\n", addr, ret);
 		return;
 	}
+
 	/*
 	 * When SMPS45 is set to off and LDO8 tracking is enabled, the LDO8
 	 * output is defined by the LDO8_VOLTAGE.VSEL register divided by two,
@@ -748,22 +746,16 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 	 * when tracking is disabled, SW has to enabe Pull-Down.
 	 */
 	if (palmas_is_es_version_or_less(palmas, 2, 1)) {
-		addr = PALMAS_LDO_PD_CTRL1;
-		ret = palmas_ldo_read(palmas, addr, &reg);
+		ret = palmas_update_bits(palmas, PALMAS_LDO_BASE,
+			PALMAS_LDO_PD_CTRL1, PALMAS_LDO_PD_CTRL1_LDO8, 0);
 		if (ret < 0) {
 			dev_err(palmas->dev,
-				"Error in reading pulldown control reg\n");
-			return;
-		}
-		reg &= ~PALMAS_LDO_PD_CTRL1_LDO8;
-		ret = palmas_ldo_write(palmas, addr, reg);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"Error in setting pulldown control reg\n");
+				"LDO_PD_CTRL1 update failed: %d\n", ret);
 			return;
 		}
 	}
-
+	palmas->pmic->desc[PALMAS_REG_LDO8].min_uV = 450000;
+	palmas->pmic->desc[PALMAS_REG_LDO8].uV_step = 25000;
 	return;
 }
 
@@ -794,15 +786,11 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 
 	/* Disable the tracking mode */
 	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret) {
-		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
-		return;
-	}
-	reg &= ~PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
-	ret = palmas_ldo_write(palmas, addr, reg);
+	ret = palmas_update_bits(palmas, PALMAS_LDO_BASE, addr,
+			PALMAS_LDO8_CTRL_LDO_TRACKING_EN, 0);
 	if (ret < 0) {
-		dev_err(palmas->dev, "Error in disabling tracking mode\n");
+		dev_err(palmas->dev,
+			"LDO Reg 0x%02x update failed: %d\n", addr, ret);
 		return;
 	}
 
@@ -812,22 +800,17 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	 * when tracking is disabled, SW has to enabe Pull-Down.
 	 */
 	if (palmas_is_es_version_or_less(palmas, 2, 1)) {
-		addr = PALMAS_LDO_PD_CTRL1;
-		ret = palmas_ldo_read(palmas, addr, &reg);
+		ret = palmas_update_bits(palmas, PALMAS_LDO_BASE,
+			PALMAS_LDO_PD_CTRL1, PALMAS_LDO_PD_CTRL1_LDO8,
+			PALMAS_LDO_PD_CTRL1_LDO8);
 		if (ret < 0) {
 			dev_err(palmas->dev,
-				"Error in reading pulldown control reg\n");
-			return;
-		}
-		reg |= PALMAS_LDO_PD_CTRL1_LDO8;
-		ret = palmas_ldo_write(palmas, addr, reg);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"Error in setting pulldown control reg\n");
+				"LDO_PD_CTRL1 update failed: %d\n", ret);
 			return;
 		}
 	}
-
+	palmas->pmic->desc[PALMAS_REG_LDO8].min_uV = 900000;
+	palmas->pmic->desc[PALMAS_REG_LDO8].uV_step = 50000;
 	return;
 }
 
@@ -973,12 +956,20 @@ static int palmas_ldo_init(struct regulator_dev *rdev,
 			return ret;
 		}
 	}
+	return 0;
+}
 
-	/* Rail specific configuration */
+static int palmas_ldo_tracking_init(struct palmas *palmas, int id,
+		struct palmas_reg_init *reg_init)
+{
+	int ret;
+
+	if (!reg_init)
+		return 0;
+
 	switch (id) {
 	case PALMAS_REG_LDO5:
-		ret = palmas_ldo5_tracking_init(palmas, reg_init,
-					palmas->pmic->rdev[id]);
+		ret = palmas_ldo5_tracking_init(palmas, reg_init, id);
 		if (ret < 0) {
 			dev_err(palmas->dev,
 				"tracking mode init for rail %d failed: %d\n",
@@ -1544,10 +1535,14 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 		if (id < PALMAS_REG_REGEN1) {
 			pmic->desc[id].n_voltages = PALMAS_LDO_NUM_VOLTAGES;
+
 			if (roof_floor)
 				pmic->desc[id].ops = &palmas_ops_ldo_extctrl;
 			else
 				pmic->desc[id].ops = &palmas_ops_ldo;
+			pmic->desc[id].min_uV = 900000;
+			pmic->desc[id].uV_step = 50000;
+			pmic->desc[id].linear_min_sel = 1;
 			pmic->desc[id].vsel_reg =
 					PALMAS_BASE_TO_REG(PALMAS_LDO_BASE,
 						palmas_regs_info[id].vsel_addr);
@@ -1566,6 +1561,14 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 					PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE)) {
 				pmic->desc[id].min_uV = 450000;
 				pmic->desc[id].uV_step = 25000;
+			}
+
+			ret = palmas_ldo_tracking_init(palmas, id, reg_init);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"Track config of rail %d failed %d\n",
+					id, ret);
+				goto err_unregister_regulator;
 			}
 		} else if (id == PALMAS_REG_CHARGER_PUMP) {
 			pmic->desc[id].enable_reg =
