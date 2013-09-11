@@ -669,6 +669,7 @@ static struct tegra_xusb_platform_data xusb_pdata = {
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
 };
 
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static void ardbeg_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -724,6 +725,7 @@ static void ardbeg_xusb_init(void)
 	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
 		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
 }
+#endif
 
 static int baseband_init(void)
 {
@@ -1136,7 +1138,9 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	ardbeg_xusb_init();
+#endif
 	ardbeg_i2c_init();
 	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
