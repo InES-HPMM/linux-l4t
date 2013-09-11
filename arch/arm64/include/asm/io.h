@@ -244,6 +244,8 @@ extern void __iounmap(volatile void __iomem *addr);
 
 #define IOMEM(x)	((void __force __iomem *)(x))
 
+extern int pci_ioremap_io(unsigned int offset, phys_addr_t phys_addr);
+
 /*
  * More restrictive address range checking than the default implementation
  * (PHYS_OFFSET and PHYS_MASK taken into account).
