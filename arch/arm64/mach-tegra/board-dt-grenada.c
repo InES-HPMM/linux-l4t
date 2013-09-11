@@ -38,9 +38,34 @@ static void __init tegra_grenada_reserve(void)
         tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
 }
 
+struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvenc", TEGRA_NVENC_BASE, "msenc",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-vi", TEGRA_VI_BASE, "vi",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-isp", TEGRA_ISP_BASE, "isp.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-isp", TEGRA_ISPB_BASE, "isp.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-tsec", TEGRA_TSEC_BASE, "tsec",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-vic", TEGRA_VIC_BASE, "vic03",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvdec", TEGRA_NVDEC_BASE, "nvdec",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvjpg", TEGRA_NVJPG_BASE, "nvjpg",
+				NULL),
+	{}
+};
+
 static void __init tegra210_dt_init(void)
 {
-	of_platform_populate(NULL, NULL, NULL, NULL);
+	of_platform_populate(NULL,
+			of_default_bus_match_table,
+			t210_auxdata_lookup,
+			&platform_bus);
 }
 
 static const char * const tegra210_dt_board_compat[] = {
