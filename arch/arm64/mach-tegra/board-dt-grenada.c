@@ -33,6 +33,51 @@
 #include "clock.h"
 #include "common.h"
 
+static struct nvmap_platform_carveout t210_carveouts[] = {
+	[0] = {
+		.name		= "iram",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
+		.base		= TEGRA_IRAM_BASE,
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+		.size		= 0, /* DMA won't work in ASIM IRAM */
+#else
+		.size		= TEGRA_IRAM_SIZE,
+#endif
+		.buddy_size	= 0, /* no buddy allocation for IRAM */
+	},
+	[1] = {
+		.name		= "generic-0",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
+		.base		= 0,	/* Filled in by t210_panel_init() */
+		.size		= 0,	/* Filled in by t210_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
+	[2] = {
+		.name		= "vpr",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
+		.base		= 0,	/* Filled in by t210_panel_init() */
+		.size		= 0,	/* Filled in by t210_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
+};
+
+static struct nvmap_platform_data t210_nvmap_data = {
+	.carveouts	= t210_carveouts,
+	.nr_carveouts	= ARRAY_SIZE(t210_carveouts),
+};
+
+static struct platform_device t210_nvmap_device = {
+	.name	= "tegra-nvmap",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &t210_nvmap_data,
+	},
+};
+
+static struct platform_device *t210_gfx_devices[] __initdata = {
+	&t210_nvmap_device,
+};
+
 static void __init tegra_grenada_reserve(void)
 {
         tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
@@ -62,10 +107,17 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 
 static void __init tegra210_dt_init(void)
 {
+	platform_add_devices(t210_gfx_devices, ARRAY_SIZE(t210_gfx_devices));
 	of_platform_populate(NULL,
 			of_default_bus_match_table,
 			t210_auxdata_lookup,
 			&platform_bus);
+
+	/* HACK HACK HACK -- this should be done in panel init */
+	t210_carveouts[1].base = tegra_carveout_start;
+	t210_carveouts[1].size = tegra_carveout_size;
+	t210_carveouts[2].base = tegra_vpr_start;
+	t210_carveouts[2].size = tegra_vpr_size;
 }
 
 static const char * const tegra210_dt_board_compat[] = {
