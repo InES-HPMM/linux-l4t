@@ -187,6 +187,7 @@ struct cvb_dvfs {
 #define core_cvb_dvfs	cvb_dvfs
 
 extern struct dvfs_rail *tegra_cpu_rail;
+extern struct dvfs_rail *tegra_gpu_rail;
 extern struct dvfs_rail *tegra_core_rail;
 
 struct dvfs_data {

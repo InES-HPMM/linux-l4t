@@ -1158,6 +1158,7 @@ static int tegra_suspend_enter(suspend_state_t state)
 		delta = timespec_to_ktime(timespec_sub(ts_exit, ts_entry));
 
 		tegra_dvfs_rail_pause(tegra_cpu_rail, delta, false);
+		tegra_dvfs_rail_pause(tegra_gpu_rail, delta, false);
 		if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 			tegra_dvfs_rail_pause(tegra_core_rail, delta, false);
 		else

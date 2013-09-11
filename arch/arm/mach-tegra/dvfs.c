@@ -44,7 +44,7 @@
 
 struct dvfs_rail *tegra_cpu_rail;
 struct dvfs_rail *tegra_core_rail;
-static struct dvfs_rail *tegra_gpu_rail;
+struct dvfs_rail *tegra_gpu_rail;
 
 static LIST_HEAD(dvfs_rail_list);
 static DEFINE_MUTEX(dvfs_lock);
