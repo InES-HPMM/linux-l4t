@@ -825,6 +825,9 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	if (IS_ENABLED(CONFIG_PREEMPT) && !in_atomic())
 		gfp = GFP_KERNEL;
 
+	if (!IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_LINEAR))
+		gfp |= __GFP_ZERO;
+
 	/* Vacant - allocate a new page table */
 	dev_dbg(as->smmu->dev, "New PTBL pdn: %x\n", pdn);
 
@@ -834,9 +837,11 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 
 	SetPageReserved(page);
 	ptbl = (u32 *)page_address(page);
-	for (i = 0; i < SMMU_PTBL_COUNT; i++) {
-		ptbl[i] = _PTE_VACANT(addr);
-		addr += SMMU_PAGE_SIZE;
+	if (IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_LINEAR)) {
+		for (i = 0; i < SMMU_PTBL_COUNT; i++) {
+			ptbl[i] = _PTE_VACANT(addr);
+			addr += SMMU_PAGE_SIZE;
+		}
 	}
 
 	FLUSH_CPU_DCACHE(ptbl, page, SMMU_PTBL_SIZE);
