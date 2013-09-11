@@ -84,6 +84,9 @@ EXPORT_SYMBOL_GPL(pm_power_off);
 void (*arm_pm_restart)(char str, const char *cmd);
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
+void (*pm_power_reset)(void);
+EXPORT_SYMBOL(pm_power_reset);
+
 void arch_cpu_idle_prepare(void)
 {
 	local_fiq_enable();
