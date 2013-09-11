@@ -33,6 +33,7 @@ obj-$(CONFIG_BATTERY_WM97XX)	+= wm97xx_battery.o
 obj-$(CONFIG_BATTERY_SBS)	+= sbs-battery.o
 obj-$(CONFIG_CHARGER_BQ2419X)   += bq2419x-charger.o
 obj-$(CONFIG_CHARGER_BQ2471X)	+= bq2471x-charger.o
+obj-$(CONFIG_CHARGER_BQ2477X)	+= bq2477x-charger.o
 obj-$(CONFIG_BATTERY_BQ27x00)	+= bq27x00_battery.o
 obj-$(CONFIG_CHARGER_TPS8003X)	+= tps80031-charger.o
 obj-$(CONFIG_CHARGER_PALMAS)	+= palmas-charger.o
