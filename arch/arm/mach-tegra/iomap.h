@@ -881,6 +881,15 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 # define TEGRA_DEBUG_UART_BASE 0
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define TEGRA_NVENC_BASE		0x544c0000
+#define TEGRA_NVENC_SIZE		SZ_256K
+#define TEGRA_NVDEC_BASE		0x54480000
+#define TEGRA_NVDEC_SIZE		SZ_256K
+#define TEGRA_NVJPG_BASE		0x54380000
+#define TEGRA_NVJPG_SIZE		SZ_256K
+#endif
+
 /* On TEGRA, many peripherals are very closely packed in
  * two 256 MB io windows (that actually only use about 64 KB
  * at the start of each).
