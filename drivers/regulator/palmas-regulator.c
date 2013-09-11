@@ -657,16 +657,6 @@ static struct regulator_ops palmas_ops_ldo_extctrl = {
 	.map_voltage		= palmas_map_voltage_ldo,
 };
 
-static int palmas_getvoltage_chargepump(struct regulator_dev *rdev)
-{
-	return 5000;
-}
-
-static int palmas_getvoltage_extreg(struct regulator_dev *rdev)
-{
-	return 4300 * 1000;
-}
-
 static struct regulator_ops palmas_ops_extreg = {
 	.is_enabled		= regulator_is_enabled_regmap,
 	.enable			= regulator_enable_regmap,
@@ -674,14 +664,12 @@ static struct regulator_ops palmas_ops_extreg = {
 };
 
 static struct regulator_ops palmas_ops_extreg_extctrl = {
-	.get_voltage		= palmas_getvoltage_extreg,
 };
 
 static struct regulator_ops palmas_ops_chargepump = {
 	.is_enabled		= regulator_is_enabled_regmap,
 	.enable			= regulator_enable_regmap,
 	.disable		= regulator_disable_regmap,
-	.get_voltage		= palmas_getvoltage_chargepump,
 };
 
 static int palmas_ldo5_tracking_init(struct palmas *palmas,
@@ -1585,6 +1573,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->desc[id].enable_mask =
 					PALMAS_CHARGE_PUMP_CTRL_MODE_ACTIVE;
 			pmic->desc[id].ops = &palmas_ops_chargepump;
+			pmic->desc[id].fixed_uV = 5000 * 1000;
 		} else {
 			pmic->desc[id].n_voltages = 1;
 			if (roof_floor)
@@ -1596,6 +1585,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 						palmas_regs_info[id].ctrl_addr);
 			pmic->desc[id].enable_mask =
 					PALMAS_REGEN1_CTRL_MODE_ACTIVE;
+			pmic->desc[id].fixed_uV = 4300 * 1000;
 		}
 
 		if (pdata)
