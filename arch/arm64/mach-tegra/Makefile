@@ -72,6 +72,8 @@ endif
 obj-$(CONFIG_DENVER_CPU)              += denver-knobs.o
 obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
+obj-${CONFIG_MACH_GRENADA}            += board-dt-grenada.o
+
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
 endif
