@@ -4,20 +4,25 @@
  *  @brief This file contains WLAN client mode channel, frequency and power
  *  related code
  *
- *  Copyright (C) 2009-2012, Marvell International Ltd.
+ *  (C) Copyright 2009-2012 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /*************************************************************
@@ -235,60 +240,50 @@ static cfp_table_t cfp_table_BG[] = {
 	{
 	 0x01,			/* Brazil */
 	 channel_freq_power_BR_BG,
-	 sizeof(channel_freq_power_BR_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_BR_BG),
+	 },
 	{0x10,			/* US FCC */
 	 channel_freq_power_US_BG,
-	 sizeof(channel_freq_power_US_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_US_BG),
+	 },
 	{0x20,			/* CANADA IC */
 	 channel_freq_power_US_BG,
-	 sizeof(channel_freq_power_US_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_US_BG),
+	 },
 	{0x30,			/* EU */
 	 channel_freq_power_EU_BG,
-	 sizeof(channel_freq_power_EU_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_EU_BG),
+	 },
 	{0x32,			/* FRANCE */
 	 channel_freq_power_FR_BG,
-	 sizeof(channel_freq_power_FR_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_FR_BG),
+	 },
 	{0x40,			/* JAPAN */
 	 channel_freq_power_JPN40_BG,
-	 sizeof(channel_freq_power_JPN40_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPN40_BG),
+	 },
 	{0x41,			/* JAPAN */
 	 channel_freq_power_JPN41_BG,
-	 sizeof(channel_freq_power_JPN41_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPN41_BG),
+	 },
 	{0x50,			/* China */
 	 channel_freq_power_EU_BG,
-	 sizeof(channel_freq_power_EU_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_EU_BG),
+	 },
 	{
 	 0xfe,			/* JAPAN */
 	 channel_freq_power_JPNFE_BG,
-	 sizeof(channel_freq_power_JPNFE_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPNFE_BG),
+	 },
 	{0xff,			/* Special */
 	 channel_freq_power_SPECIAL_BG,
-	 sizeof(channel_freq_power_SPECIAL_BG) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_SPECIAL_BG),
+	 },
 /* Add new region here */
 };
 
 /** Number of the CFP tables for 2.4GHz */
-#define MLAN_CFP_TABLE_SIZE_BG  (sizeof(cfp_table_BG)/sizeof(cfp_table_t))
+#define MLAN_CFP_TABLE_SIZE_BG  (NELEMENTS(cfp_table_BG))
 
 /* Format { Channel, Frequency (MHz), MaxTxPower, DFS } */
 /** Band: 'A', Region: USA FCC, Spain, France */
@@ -572,127 +567,102 @@ static chan_freq_power_t channel_freq_power_low_high_band[] = {
 static cfp_table_t cfp_table_A[] = {
 	{0x1,			/* Low band (5150-5250 MHz) channels */
 	 channel_freq_power_low_band,
-	 sizeof(channel_freq_power_low_band) / sizeof(chan_freq_power_t)
-	 }
-	,
+	 NELEMENTS(channel_freq_power_low_band)
+	 },
 	{0x2,			/* Lower middle band (5250-5350 MHz) channels */
 	 channel_freq_power_lower_middle_band,
-	 sizeof(channel_freq_power_lower_middle_band) /
-	 sizeof(chan_freq_power_t)
-	 }
-	,
+	 NELEMENTS(channel_freq_power_lower_middle_band)
+	 },
 	{0x3,			/* Upper middle band (5470-5725 MHz) channels */
 	 channel_freq_power_upper_middle_band,
-	 sizeof(channel_freq_power_upper_middle_band) /
-	 sizeof(chan_freq_power_t)
-	 }
-	,
+	 NELEMENTS(channel_freq_power_upper_middle_band)
+	 },
 	{0x4,			/* High band (5725-5850 MHz) channels */
 	 channel_freq_power_high_band,
-	 sizeof(channel_freq_power_high_band) / sizeof(chan_freq_power_t)
-	 }
-	,
+	 NELEMENTS(channel_freq_power_high_band)
+	 },
 	{0x5,			/* Low band (5150-5250 MHz) and High band
 				   (5725-5850 MHz) channels */
 	 channel_freq_power_low_high_band,
-	 sizeof(channel_freq_power_low_high_band) / sizeof(chan_freq_power_t)
-	 }
-	,
+	 NELEMENTS(channel_freq_power_low_high_band)
+	 },
 	{0x06,			/* GERMANY */
 	 channel_freq_power_GRM_A,
-	 sizeof(channel_freq_power_GRM_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_GRM_A),
+	 },
 	{0x07,			/* SPAIN */
 	 channel_freq_power_SPN0_A,
-	 sizeof(channel_freq_power_SPN0_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_SPN0_A),
+	 },
 	{0x08,			/* SPAIN */
 	 channel_freq_power_SPN1_A,
-	 sizeof(channel_freq_power_SPN1_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_SPN1_A),
+	 },
 	{0x09,			/* SPAIN/Austria/Brazil */
 	 channel_freq_power_SPN2_A,
-	 sizeof(channel_freq_power_SPN2_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_SPN2_A),
+	 },
 	{0x0a,			/* SPAIN/Austria */
 	 channel_freq_power_SPN3_A,
-	 sizeof(channel_freq_power_SPN3_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_SPN3_A),
+	 },
 	{0x0b,			/* Austria */
 	 channel_freq_power_AT_A,
-	 sizeof(channel_freq_power_AT_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_AT_A),
+	 },
 	{0x0c,			/* Brazil */
 	 channel_freq_power_BR1_A,
-	 sizeof(channel_freq_power_BR1_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_BR1_A),
+	 },
 	{0x0e,			/* Brazil */
 	 channel_freq_power_BR2_A,
-	 sizeof(channel_freq_power_BR2_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_BR2_A),
+	 },
 	{0x0f,			/* Russia */
 	 channel_freq_power_RU_A,
-	 sizeof(channel_freq_power_RU_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_RU_A),
+	 },
 	{0x10,			/* US FCC */
 	 channel_freq_power_A,
-	 sizeof(channel_freq_power_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_A),
+	 },
 	{0x20,			/* CANADA IC */
 	 channel_freq_power_CAN_A,
-	 sizeof(channel_freq_power_CAN_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_CAN_A),
+	 },
 	{0x30,			/* EU */
 	 channel_freq_power_EU_A,
-	 sizeof(channel_freq_power_EU_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_EU_A),
+	 },
 	{0x32,			/* FRANCE */
 	 channel_freq_power_A,
-	 sizeof(channel_freq_power_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_A),
+	 },
 	{0x40,			/* JAPAN */
 	 channel_freq_power_JPN_A,
-	 sizeof(channel_freq_power_JPN_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPN_A),
+	 },
 	{0x41,			/* JAPAN */
 	 channel_freq_power_JPN_A,
-	 sizeof(channel_freq_power_JPN_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPN_A),
+	 },
 	{0x50,			/* China */
 	 channel_freq_power_CN_A,
-	 sizeof(channel_freq_power_CN_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_CN_A),
+	 },
 	{0xfe,			/* JAPAN */
 	 channel_freq_power_NULL_A,
-	 sizeof(channel_freq_power_NULL_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_NULL_A),
+	 },
 	{0xff,			/* Special */
 	 channel_freq_power_JPN_A,
-	 sizeof(channel_freq_power_JPN_A) / sizeof(chan_freq_power_t),
-	 }
-	,
+	 NELEMENTS(channel_freq_power_JPN_A),
+	 },
 /* Add new region here */
 };
 
 /** Number of the CFP tables for 5GHz */
-#define MLAN_CFP_TABLE_SIZE_A   (sizeof(cfp_table_A)/sizeof(cfp_table_t))
+#define MLAN_CFP_TABLE_SIZE_A   (NELEMENTS(cfp_table_A))
 
 /********************************************************
 			Global Variables

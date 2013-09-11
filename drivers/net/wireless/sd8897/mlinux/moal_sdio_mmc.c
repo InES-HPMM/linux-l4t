@@ -107,20 +107,18 @@ void
 woal_dump_sdio_reg(moal_handle * handle)
 {
 	int ret = 0;
-	t_u8 data, i, len;
+	t_u8 data, i;
 	int fun0_reg[] = { 0x05, 0x04 };
 	int fun1_reg[] = { 0x03, 0x04, 0x05, 0x06, 0x07, 0xC0, 0xC1 };
 
-	len = sizeof(fun0_reg) / sizeof(fun0_reg[0]);
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < ARRAY_SIZE(fun0_reg); i++) {
 		data = sdio_f0_readb(((struct sdio_mmc_card *)handle->card)->
 				     func, fun0_reg[i], &ret);
 		PRINTM(MMSG, "fun0: reg 0x%02x=0x%02x ret=%d\n", fun0_reg[i],
 		       data, ret);
 	}
 
-	len = sizeof(fun1_reg) / sizeof(fun1_reg[0]);
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < ARRAY_SIZE(fun1_reg); i++) {
 		data = sdio_readb(((struct sdio_mmc_card *)handle->card)->func,
 				  fun1_reg[i], &ret);
 		PRINTM(MMSG, "fun1: reg 0x%02x=0x%02x ret=%d\n", fun1_reg[i],
@@ -467,6 +465,85 @@ woal_read_reg(moal_handle * handle, t_u32 reg, t_u32 * data)
 }
 
 /**
+ *  @brief This function use SG mode to read/write data into card memory
+ *
+ *  @param handle   A Pointer to the moal_handle structure
+ *  @param pmbuf	Pointer to mlan_buffer structure
+ *  @param port		Port
+ *  @param write    write flag
+ *
+ *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+woal_sdio_rw_mb(moal_handle * handle, pmlan_buffer pmbuf_list, t_u32 port,
+		t_u8 write)
+{
+	struct scatterlist sg_list[SDIO_MP_AGGR_DEF_PKT_LIMIT];
+	int num_sg = pmbuf_list->use_count;
+	int i = 0;
+	mlan_buffer *pmbuf = NULL;
+	struct mmc_request mmc_req;
+	struct mmc_command mmc_cmd;
+	struct mmc_data mmc_dat;
+	struct sdio_func *func = ((struct sdio_mmc_card *)handle->card)->func;
+	t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
+	t_u32 blkcnt = pmbuf_list->data_len / MLAN_SDIO_BLOCK_SIZE;
+
+	if (num_sg > SDIO_MP_AGGR_DEF_PKT_LIMIT) {
+		PRINTM(MERROR, "ERROR: num_sg=%d", num_sg);
+		return MLAN_STATUS_FAILURE;
+	}
+	sg_init_table(sg_list, num_sg);
+	pmbuf = pmbuf_list->pnext;
+	for (i = 0; i < num_sg; i++) {
+		if (pmbuf == pmbuf_list)
+			break;
+		sg_set_buf(&sg_list[i], pmbuf->pbuf + pmbuf->data_offset,
+			   pmbuf->data_len);
+		pmbuf = pmbuf->pnext;
+	}
+	memset(&mmc_req, 0, sizeof(struct mmc_request));
+	memset(&mmc_cmd, 0, sizeof(struct mmc_command));
+	memset(&mmc_dat, 0, sizeof(struct mmc_data));
+
+	mmc_dat.sg = sg_list;
+	mmc_dat.sg_len = num_sg;
+	mmc_dat.blksz = MLAN_SDIO_BLOCK_SIZE;
+	mmc_dat.blocks = blkcnt;
+	mmc_dat.flags = write ? MMC_DATA_WRITE : MMC_DATA_READ;
+
+	mmc_cmd.opcode = SD_IO_RW_EXTENDED;
+	mmc_cmd.arg = write ? 1 << 31 : 0;
+	mmc_cmd.arg |= (func->num & 0x7) << 28;
+	mmc_cmd.arg |= 1 << 27;	/* block basic */
+	mmc_cmd.arg |= 0;	/* fix address */
+	mmc_cmd.arg |= (ioport & 0x1FFFF) << 9;
+	mmc_cmd.arg |= blkcnt & 0x1FF;
+	mmc_cmd.flags = MMC_RSP_SPI_R5 | MMC_RSP_R5 | MMC_CMD_ADTC;
+
+	mmc_req.cmd = &mmc_cmd;
+	mmc_req.data = &mmc_dat;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
+	sdio_claim_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
+	mmc_set_data_timeout(&mmc_dat,
+			     ((struct sdio_mmc_card *)handle->card)->func->
+			     card);
+	mmc_wait_for_req(((struct sdio_mmc_card *)handle->card)->func->card->
+			 host, &mmc_req);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
+	sdio_release_host(((struct sdio_mmc_card *)handle->card)->func);
+#endif
+	if (mmc_cmd.error || mmc_dat.error) {
+		PRINTM(MERROR, "CMD53 %s cmd_error = %d data_error=%d\n",
+		       write ? "write" : "read", mmc_cmd.error, mmc_dat.error);
+		return MLAN_STATUS_FAILURE;
+	}
+	return MLAN_STATUS_SUCCESS;
+}
+
+/**
  *  @brief This function writes multiple bytes into card memory
  *
  *  @param handle   A Pointer to the moal_handle structure
@@ -490,6 +567,9 @@ woal_write_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
 		 BLOCK_MODE) ? (pmbuf->data_len /
 				MLAN_SDIO_BLOCK_SIZE) : pmbuf->data_len;
 	t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
+	if (pmbuf->use_count > 1) {
+		return woal_sdio_rw_mb(handle, pmbuf, port, MTRUE);
+	}
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53w = 1;
 #endif
@@ -533,7 +613,9 @@ woal_read_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
 		 BLOCK_MODE) ? (pmbuf->data_len /
 				MLAN_SDIO_BLOCK_SIZE) : pmbuf->data_len;
 	t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
-
+	if (pmbuf->use_count > 1) {
+		return woal_sdio_rw_mb(handle, pmbuf, port, MFALSE);
+	}
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53r = 1;
 #endif

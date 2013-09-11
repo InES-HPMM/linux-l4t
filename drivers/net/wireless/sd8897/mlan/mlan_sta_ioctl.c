@@ -2,20 +2,25 @@
  *
  *  @brief This file contains the functions for station ioctl.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /******************************************************
@@ -2548,9 +2553,6 @@ wlan_sec_ioctl_auth_mode(IN pmlan_adapter pmadapter,
 		sec->param.auth_mode = pmpriv->sec_info.authentication_mode;
 	else {
 		pmpriv->sec_info.authentication_mode = sec->param.auth_mode;
-		if (pmpriv->sec_info.authentication_mode ==
-		    MLAN_AUTH_MODE_NETWORKEAP)
-			wlan_set_wpa_ie_helper(pmpriv, MNULL, 0);
 	}
 	pioctl_req->data_read_written = sizeof(t_u32) + MLAN_SUB_COMMAND_SIZE;
 	LEAVE();
@@ -2826,6 +2828,7 @@ wlan_sec_ioctl_set_wpa_key(IN pmlan_adapter pmadapter,
 		ret = MLAN_STATUS_FAILURE;
 		goto exit;
 	}
+
 	if ((pmpriv->bss_mode == MLAN_BSS_MODE_IBSS) &&
 	    pmpriv->sec_info.wpa_enabled) {
 		/*
@@ -2882,7 +2885,7 @@ wlan_sec_ioctl_set_wpa_key(IN pmlan_adapter pmadapter,
 	if (memcmp
 	    (pmadapter, sec->param.encrypt_key.mac_addr, broadcast_mac_addr,
 	     MLAN_MAC_ADDR_LENGTH))
-		sec->param.encrypt_key.key_index = MLAN_KEY_INDEX_UNICAST;
+		sec->param.encrypt_key.key_index |= MLAN_KEY_INDEX_UNICAST;
 
 	if (remove_key == MTRUE) {
 		/* Send request to firmware */
@@ -4937,6 +4940,7 @@ wlan_misc_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 		status = wlan_misc_ioctl_custom_ie_list(pmadapter, pioctl_req,
 							MTRUE);
 		break;
+
 	case MLAN_OID_MISC_MAC_CONTROL:
 		status = wlan_misc_ioctl_mac_control(pmadapter, pioctl_req);
 		break;

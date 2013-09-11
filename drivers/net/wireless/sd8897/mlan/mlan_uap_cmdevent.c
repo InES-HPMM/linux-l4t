@@ -2,20 +2,25 @@
  *
  *  @brief This file contains the handling of AP mode command and event
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -3082,6 +3087,10 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
 		ret = wlan_cmd_wifi_direct_mode(pmpriv, cmd_ptr, cmd_action,
 						pdata_buf);
 		break;
+	case HOST_CMD_P2P_PARAMS_CONFIG:
+		ret = wlan_cmd_p2p_params_config(pmpriv, cmd_ptr, cmd_action,
+						 pdata_buf);
+		break;
 #endif
 	case HostCmd_CMD_802_11_RF_ANTENNA:
 		ret = wlan_cmd_802_11_rf_antenna(pmpriv, cmd_ptr, cmd_action,
@@ -3279,6 +3288,9 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
 		break;
 	case HOST_CMD_WIFI_DIRECT_MODE_CONFIG:
 		ret = wlan_ret_wifi_direct_mode(pmpriv, resp, pioctl_buf);
+		break;
+	case HOST_CMD_P2P_PARAMS_CONFIG:
+		ret = wlan_ret_p2p_params_config(pmpriv, resp, pioctl_buf);
 		break;
 #endif
 	case HostCmd_CMD_802_11_RF_ANTENNA:
@@ -3555,7 +3567,7 @@ wlan_ops_uap_process_event(IN t_void * priv)
 	case EVENT_REMAIN_ON_CHANNEL_EXPIRED:
 		PRINTM(MEVENT, "EVENT: REMAIN_ON_CHANNEL_EXPIRED reason=%d\n",
 		       *(t_u16 *) pmadapter->event_body);
-		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_FLUSH_RX_WORK, MNULL);
 		pevent->event_id = MLAN_EVENT_ID_FW_REMAIN_ON_CHAN_EXPIRED;
 		break;
 #endif

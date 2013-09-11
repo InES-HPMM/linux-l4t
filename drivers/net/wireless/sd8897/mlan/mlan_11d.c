@@ -2,20 +2,24 @@
  *
  *  @brief This file contains functions for 802.11D.
  *
- *  Copyright (C) 2008-2012, Marvell International Ltd.
+ *  (C) Copyright 2008-2012 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
  *
  */
 /********************************************************
@@ -145,12 +149,11 @@ static t_u8 *
 wlan_11d_code_2_region(pmlan_adapter pmadapter, t_u8 code)
 {
 	t_u8 i;
-	t_u8 size = sizeof(region_code_mapping) / sizeof(region_code_mapping_t);
 
 	ENTER();
 
 	/* Look for code in mapping table */
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < NELEMENTS(region_code_mapping); i++) {
 		if (region_code_mapping[i].code == code) {
 			LEAVE();
 			return region_code_mapping[i].region;
@@ -441,12 +444,10 @@ wlan_11d_get_chan(pmlan_adapter pmadapter, t_u8 band, t_u8 first_chan,
 	ENTER();
 	if (band & (BAND_B | BAND_G | BAND_GN | BAND_GAC)) {
 		cfp = channel_freq_power_UN_BG;
-		cfp_no = sizeof(channel_freq_power_UN_BG) /
-			sizeof(chan_freq_power_t);
+		cfp_no = NELEMENTS(channel_freq_power_UN_BG);
 	} else if (band & (BAND_A | BAND_AN | BAND_AAC)) {
 		cfp = channel_freq_power_UN_AJ;
-		cfp_no = sizeof(channel_freq_power_UN_AJ) /
-			sizeof(chan_freq_power_t);
+		cfp_no = NELEMENTS(channel_freq_power_UN_AJ);
 	} else {
 		PRINTM(MERROR, "11D: Wrong Band[%d]\n", band);
 		LEAVE();
@@ -1065,12 +1066,10 @@ wlan_11d_chan_2_freq(pmlan_adapter pmadapter, t_u8 chan, t_u8 band)
 	/* Get channel-frequency-power trios */
 	if (band & (BAND_A | BAND_AN | BAND_AAC)) {
 		cf = channel_freq_power_UN_AJ;
-		cnt = sizeof(channel_freq_power_UN_AJ) /
-			sizeof(chan_freq_power_t);
+		cnt = NELEMENTS(channel_freq_power_UN_AJ);
 	} else {
 		cf = channel_freq_power_UN_BG;
-		cnt = sizeof(channel_freq_power_UN_BG) /
-			sizeof(chan_freq_power_t);
+		cnt = NELEMENTS(channel_freq_power_UN_BG);
 	}
 
 	/* Locate channel and return corresponding frequency */
@@ -1095,7 +1094,6 @@ mlan_status
 wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 {
 	mlan_adapter *pmadapter = pmpriv->adapter;
-	t_u16 size = sizeof(chan_freq_power_t);
 	t_u16 i = 0;
 
 	ENTER();
@@ -1108,7 +1106,7 @@ wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 	{
 		/* Set channel-frequency-power */
 		pmadapter->universal_channel[i].num_cfp =
-			(t_u8) (sizeof(channel_freq_power_UN_BG) / size);
+			NELEMENTS(channel_freq_power_UN_BG);
 		PRINTM(MINFO, "11D: BG-band num_cfp=%d\n",
 		       pmadapter->universal_channel[i].num_cfp);
 
@@ -1132,7 +1130,7 @@ wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 
 		/* Set channel-frequency-power */
 		pmadapter->universal_channel[i].num_cfp =
-			sizeof(channel_freq_power_UN_AJ) / size;
+			NELEMENTS(channel_freq_power_UN_AJ);
 		PRINTM(MINFO, "11D: AJ-band num_cfp=%d\n",
 		       pmadapter->universal_channel[i].num_cfp);
 

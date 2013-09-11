@@ -3,20 +3,25 @@
  *  @brief This file contains the handling of data packet
  *  transmission in MLAN module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -85,8 +90,10 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 
 	if (pmbuf->data_offset < (sizeof(TxPD) + INTF_HEADER_LEN +
 				  DMA_ALIGNMENT)) {
-		PRINTM(MERROR, "not enough space for TxPD: %d\n",
-		       pmbuf->data_len);
+		PRINTM(MERROR,
+		       "not enough space for TxPD: headroom=%d pkt_len=%d, required=%d\n",
+		       pmbuf->data_offset, pmbuf->data_len,
+		       sizeof(TxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT);
 		pmbuf->status_code = MLAN_ERROR_PKT_SIZE_INVALID;
 		goto done;
 	}
@@ -126,7 +133,6 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 				MRVDRV_TxPD_POWER_MGMT_LAST_PACKET;
 		}
 	}
-
 	/* Offset of actual data */
 	plocal_tx_pd->tx_pkt_offset =
 		(t_u16) ((t_ptr) pmbuf->pbuf + pmbuf->data_offset -
@@ -236,7 +242,6 @@ wlan_send_null_packet(pmlan_private priv, t_u8 flags)
 		pmadapter->tx_lock_flag = MTRUE;
 		break;
 	case MLAN_STATUS_PENDING:
-		pmadapter->data_sent = MFALSE;
 		pmadapter->tx_lock_flag = MTRUE;
 		break;
 	default:

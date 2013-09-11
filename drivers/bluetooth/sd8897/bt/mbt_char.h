@@ -43,6 +43,7 @@ struct char_dev {
 	int dev_type;
 	struct cdev cdev;
 	struct m_dev *m_dev;
+	struct kobject kobj;
 };
 
 /** Changes permissions of the dev */

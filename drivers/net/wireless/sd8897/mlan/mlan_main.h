@@ -4,20 +4,25 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  Copyright (C) 2008-2012, Marvell International Ltd.
+ *  (C) Copyright 2008-2012 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /******************************************************
@@ -41,11 +46,11 @@ extern t_u32 mlan_drvdbg;
 
 #ifdef	DEBUG_LEVEL2
 #define	PRINTM_MINFO(msg...)  do {if ((mlan_drvdbg & MINFO) && (print_callback)) \
-				  print_callback(MNULL, MINFO, msg); } while(0)
+				  print_callback(MNULL, MINFO, msg); } while (0)
 #define	PRINTM_MWARN(msg...)  do {if ((mlan_drvdbg & MWARN) && (print_callback)) \
-				  print_callback(MNULL, MWARN, msg); } while(0)
+				  print_callback(MNULL, MWARN, msg); } while (0)
 #define	PRINTM_MENTRY(msg...) do {if ((mlan_drvdbg & MENTRY) && (print_callback)) \
-				  print_callback(MNULL, MENTRY, msg); } while(0)
+				  print_callback(MNULL, MENTRY, msg); } while (0)
 #define PRINTM_GET_SYS_TIME(level, psec, pusec)              \
 do {                                                         \
 	if ((level & mlan_drvdbg) && (get_sys_time_callback))\
@@ -68,7 +73,7 @@ do {                \
 #define PRINTM_GET_SYS_TIME(level, psec, pusec)         \
 do {                                                    \
 	if ((level & mlan_drvdbg) && (get_sys_time_callback)     \
-	        && (level != MINFO) && (level != MWARN))    \
+			&& (level != MINFO) && (level != MWARN))    \
 	    get_sys_time_callback(MNULL, psec, pusec);      \
 } while (0)
 
@@ -78,30 +83,30 @@ do {                                                    \
 #endif /* DEBUG_LEVEL2 */
 
 #define	PRINTM_MFW_D(msg...)  do {if ((mlan_drvdbg & MFW_D) && (print_callback)) \
-				  print_callback(MNULL, MFW_D, msg); } while(0)
+				  print_callback(MNULL, MFW_D, msg); } while (0)
 #define	PRINTM_MCMD_D(msg...) do {if ((mlan_drvdbg & MCMD_D) && (print_callback)) \
-				  print_callback(MNULL, MCMD_D, msg); } while(0)
+				  print_callback(MNULL, MCMD_D, msg); } while (0)
 #define	PRINTM_MDAT_D(msg...) do {if ((mlan_drvdbg & MDAT_D) && (print_callback)) \
-				  print_callback(MNULL, MDAT_D, msg); } while(0)
+				  print_callback(MNULL, MDAT_D, msg); } while (0)
 #define	PRINTM_MIF_D(msg...) do {if ((mlan_drvdbg & MIF_D) && (print_callback)) \
-				  print_callback(MNULL, MIF_D, msg); } while(0)
+				  print_callback(MNULL, MIF_D, msg); } while (0)
 
 #define	PRINTM_MIOCTL(msg...) do {if ((mlan_drvdbg & MIOCTL) && (print_callback)) \
-				  print_callback(MNULL, MIOCTL, msg); } while(0)
+				  print_callback(MNULL, MIOCTL, msg); } while (0)
 #define	PRINTM_MINTR(msg...)  do {if ((mlan_drvdbg & MINTR) && (print_callback)) \
-				  print_callback(MNULL, MINTR, msg); } while(0)
+				  print_callback(MNULL, MINTR, msg); } while (0)
 #define	PRINTM_MEVENT(msg...) do {if ((mlan_drvdbg & MEVENT) && (print_callback)) \
-				  print_callback(MNULL, MEVENT, msg); } while(0)
+				  print_callback(MNULL, MEVENT, msg); } while (0)
 #define	PRINTM_MCMND(msg...)  do {if ((mlan_drvdbg & MCMND) && (print_callback)) \
-				  print_callback(MNULL, MCMND, msg); } while(0)
+				  print_callback(MNULL, MCMND, msg); } while (0)
 #define	PRINTM_MDATA(msg...)  do {if ((mlan_drvdbg & MDATA) && (print_callback)) \
-				  print_callback(MNULL, MDATA, msg); } while(0)
+				  print_callback(MNULL, MDATA, msg); } while (0)
 #define	PRINTM_MERROR(msg...) do {if ((mlan_drvdbg & MERROR) && (print_callback)) \
-				  print_callback(MNULL, MERROR, msg); } while(0)
+				  print_callback(MNULL, MERROR, msg); } while (0)
 #define	PRINTM_MFATAL(msg...) do {if ((mlan_drvdbg & MFATAL) && (print_callback)) \
-				  print_callback(MNULL, MFATAL, msg); } while(0)
+				  print_callback(MNULL, MFATAL, msg); } while (0)
 #define	PRINTM_MMSG(msg...)   do {if ((mlan_drvdbg & MMSG) && (print_callback)) \
-				  print_callback(MNULL, MMSG, msg); } while(0)
+				  print_callback(MNULL, MMSG, msg); } while (0)
 
 #define	PRINTM(level, msg...) PRINTM_##level((char *)msg)
 
@@ -110,7 +115,7 @@ do {                                                    \
 #define PRINTM_NETINTF(level, pmpriv)   \
 do {                                    \
 	if ((mlan_drvdbg & level) && pmpriv      \
-	        && pmpriv->adapter->callbacks.moal_print_netintf) \
+			&& pmpriv->adapter->callbacks.moal_print_netintf) \
 	    pmpriv->adapter->callbacks.moal_print_netintf( \
 		    pmpriv->adapter->pmoal_handle, \
 		    pmpriv->bss_index, level); \
@@ -139,7 +144,7 @@ do {                \
 /** Hexdump for debugging */
 #define HEXDUMP(x, y, z) do {} while (0)
 
-#define PRINTM_GET_SYS_TIME(level, psec, pusec) do { } while(0)
+#define PRINTM_GET_SYS_TIME(level, psec, pusec) do { } while (0)
 
 #endif /* DEBUG_LEVEL1 */
 
@@ -306,12 +311,12 @@ do {                                    \
 	if (!(cond)) {                      \
 	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
 	    if (assert_callback) {          \
-	        assert_callback(MNULL, (t_ptr)(cond)); \
+			assert_callback(MNULL, (t_ptr)(cond)); \
 	    } else {                        \
-	        do {} while(1);             \
+			do {} while (1);             \
 	    }                               \
 	}                                   \
-} while(0)
+} while (0)
 
 /** Upload size */
 #define WLAN_UPLD_SIZE                  (2312)
@@ -432,8 +437,8 @@ do {                                    \
 
 /** Is cmd_resp, event or data packet received? */
 #define IS_CARD_RX_RCVD(adapter) (adapter->cmd_resp_received || \
-	                          adapter->event_received || \
-	                          adapter->data_received)
+								adapter->event_received || \
+								adapter->data_received)
 /** Type command */
 #define MLAN_TYPE_CMD			1
 /** Type data */
@@ -447,12 +452,10 @@ do {                                    \
 
 /** Maximum port */
 #define MAX_PORT			32
-/** Multi port aggregation packet limit */
-#define SDIO_MP_AGGR_DEF_PKT_LIMIT       (16)
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 /** Multi port TX aggregation buffer size */
-#define SDIO_MP_TX_AGGR_DEF_BUF_SIZE        (16384)	/* 16K */
+#define SDIO_MP_TX_AGGR_DEF_BUF_SIZE        (32768)	/* 32K */
 #endif /* SDIO_MULTI_PORT_TX_AGGR */
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
@@ -554,6 +557,9 @@ typedef enum _PS_STATE {
 
 /** Minimum flush timer for win size of 1 is 50 ms */
 #define MIN_FLUSH_TIMER_MS 50
+/** Minimum flush timer for win size of 1 is 15 ms */
+#define MIN_FLUSH_TIMER_15_MS 15
+
 /** Tx BA stream table */
 typedef struct _TxBAStreamTbl TxBAStreamTbl;
 
@@ -1386,6 +1392,26 @@ typedef struct {
 
 } wlan_meas_state_t;
 
+#if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
+/**
+ *  @brief Link buffer into aggregate head buffer
+ *
+ *  @param pmbuf_aggr	Pointer to aggregation buffer
+ *  @param pmbuf		Pointer to buffer to copy
+ */
+static inline t_void
+wlan_link_buf_to_aggr(pmlan_buffer pmbuf_aggr, pmlan_buffer pmbuf)
+{
+	/* link new buf at end of list */
+	pmbuf->pnext = pmbuf_aggr;
+	pmbuf->pprev = pmbuf_aggr->pprev;
+	pmbuf->pparent = pmbuf_aggr;
+	pmbuf_aggr->pprev->pnext = pmbuf;
+	pmbuf_aggr->pprev = pmbuf;
+	pmbuf_aggr->use_count++;
+}
+#endif
+
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 /** data structure for SDIO MPA TX */
 typedef struct _sdio_mpa_tx {
@@ -1407,6 +1433,10 @@ typedef struct _sdio_mpa_tx {
 	t_u32 buf_size;
 	/** multiport tx aggregation pkt aggr limit */
 	t_u32 pkt_aggr_limit;
+    /** multiport write info */
+	t_u16 mp_wr_info[SDIO_MP_AGGR_DEF_PKT_LIMIT];
+    /** multiport rx aggregation mbuf array */
+	pmlan_buffer mbuf_arr[SDIO_MP_AGGR_DEF_PKT_LIMIT];
 } sdio_mpa_tx;
 #endif
 
@@ -1497,6 +1527,8 @@ typedef struct _mlan_adapter {
 	t_u32 mlan_rx_processing;
     /** rx_proc_lock for main_rx_process */
 	t_void *prx_proc_lock;
+    /** rx work enable flag */
+	t_u8 rx_work_flag;
 	/* number of rx pkts queued */
 	mlan_scalar rx_pkts_queued;
     /** more task flag */
@@ -1544,19 +1576,49 @@ typedef struct _mlan_adapter {
 	t_u8 curr_rd_port;
     /** Current available port for write */
 	t_u8 curr_wr_port;
+    /** last SDIO multiple port group registers */
+	t_u8 last_mp_regs[MAX_MP_REGS];
     /** Array to store values of SDIO multiple port group registers */
 	t_u8 *mp_regs;
     /** allocated buf to read SDIO multiple port group registers */
 	t_u8 *mp_regs_buf;
+#if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
+	/* see blk_queue_max_segment_size */
+	t_u32 max_seg_size;
+	/* see blk_queue_max_segments */
+	t_u8 max_segs;
+#endif
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 	/** data structure for SDIO MPA TX */
 	sdio_mpa_tx mpa_tx;
+    /** packet number for tx aggr */
+	t_u32 mpa_tx_count[SDIO_MP_AGGR_DEF_PKT_LIMIT];
+    /** no more packets count*/
+	t_u32 mpa_sent_last_pkt;
+    /** no write_ports count */
+	t_u32 mpa_sent_no_ports;
+    /** last wr_bitmap from FW */
+	t_u32 last_recv_wr_bitmap;
+    /** last mp_wr_bitmap */
+	t_u32 last_mp_wr_bitmap[SDIO_MP_DBG_NUM];
+    /** last ports for cmd53 write data */
+	t_u32 last_mp_wr_ports[SDIO_MP_DBG_NUM];
+    /** last length for cmd53 write data */
+	t_u32 last_mp_wr_len[SDIO_MP_DBG_NUM];
+    /** length info for cmd53 write data */
+	t_u16 last_mp_wr_info[SDIO_MP_DBG_NUM * SDIO_MP_AGGR_DEF_PKT_LIMIT];
+    /** last curr_wr_port */
+	t_u8 last_curr_wr_port[SDIO_MP_DBG_NUM];
+    /** last mp_index */
+	t_u8 last_mp_index;
 #endif				/* SDIO_MULTI_PORT_TX_AGGR */
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
 	/** data structure for SDIO MPA RX */
 	sdio_mpa_rx mpa_rx;
+    /** packet number for tx aggr */
+	t_u32 mpa_rx_count[SDIO_MP_AGGR_DEF_PKT_LIMIT];
 #endif				/* SDIO_MULTI_PORT_RX_AGGR */
 
     /** SDIO interrupt mode (0: INT_MODE_SDIO, 1: INT_MODE_GPIO) */
@@ -1616,6 +1678,8 @@ typedef struct _mlan_adapter {
 	t_void *pmlan_cmd_timer;
     /** Command timer set flag */
 	t_u8 cmd_timer_is_set;
+    /** time stamp for command dnld */
+	t_u32 dnld_cmd_in_secs;
 
     /** Command Queues */
     /** Free command buffers */
@@ -2050,6 +2114,15 @@ mlan_status wlan_cmd_remain_on_channel(IN pmlan_private pmpriv,
 mlan_status wlan_ret_remain_on_channel(IN pmlan_private pmpriv,
 				       IN HostCmd_DS_COMMAND * resp,
 				       IN mlan_ioctl_req * pioctl_buf);
+mlan_status wlan_cmd_p2p_params_config(IN pmlan_private pmpriv,
+				       IN HostCmd_DS_COMMAND * cmd,
+				       IN t_u16 cmd_action,
+				       IN t_void * pdata_buf);
+mlan_status wlan_ret_p2p_params_config(IN pmlan_private pmpriv,
+				       IN HostCmd_DS_COMMAND * resp,
+				       IN mlan_ioctl_req * pioctl_buf);
+mlan_status wlan_misc_p2p_config(IN pmlan_adapter pmadapter,
+				 IN pmlan_ioctl_req pioctl_req);
 #endif
 
 /** get pm info */
@@ -2640,9 +2713,9 @@ t_void wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u);
 
 /** Function to check if any command is pending in the queue */
 #define IS_COMMAND_PENDING(pmadapter) ((cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle, \
-	                                   &pmadapter->cmd_pending_q,\
-	                                   pmadapter->callbacks.moal_spin_lock,\
-	                                   pmadapter->callbacks.moal_spin_unlock))
+										&pmadapter->cmd_pending_q,\
+										pmadapter->callbacks.moal_spin_lock,\
+										pmadapter->callbacks.moal_spin_unlock))
 
 /** Get BSS number from priv */
 #define GET_BSS_NUM(priv)   ((priv)->bss_num)

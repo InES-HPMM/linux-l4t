@@ -90,6 +90,7 @@ woal_associate_ssid_bssid(moal_private * priv, struct iwreq *wrq)
 
 	ENTER();
 
+	memset(&ssid_bssid, 0, sizeof(ssid_bssid));
 	mac_idx = 0;
 	buflen = MIN(wrq->u.data.length, (sizeof(buf) - 1));
 	memset(buf, 0, sizeof(buf));
@@ -120,7 +121,9 @@ woal_associate_ssid_bssid(moal_private * priv, struct iwreq *wrq)
 		if (buf[i] == ':') {
 			mac_idx++;
 		} else {
-			ssid_bssid.bssid[mac_idx] = (t_u8) woal_atox(buf + i);
+			if (mac_idx < ETH_ALEN)
+				ssid_bssid.bssid[mac_idx] =
+					(t_u8) woal_atox((char *)buf + (int)i);
 
 			while ((isxdigit(buf[i + 1]) && (i < buflen))) {
 				/* Skip entire hex value */
@@ -3543,7 +3546,7 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 {
 	t_u16 len = 0;
 	char buf[256];
-	char *begin, *end, *opt;
+	char *begin = NULL, *end = NULL, *opt = NULL;
 	int ret = 0, action = -1, i;
 	mlan_ds_sec_cfg *sec = NULL;
 	mlan_ioctl_req *req = NULL;
@@ -3571,8 +3574,12 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 	/* Parse the buf to get the cmd_action */
 	begin = buf;
 	end = woal_strsep(&begin, ';', '/');
-	if (end)
-		action = woal_atox(end);
+	if (!end) {
+		PRINTM(MERROR, "Invalid option\n");
+		ret = -EINVAL;
+		goto done;
+	}
+	action = woal_atox(end);
 	if (action < 0 || action > 2 || end[1] != '\0') {
 		PRINTM(MERROR, "Invalid action argument %s\n", end);
 		ret = -EINVAL;
@@ -3611,8 +3618,7 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 			       sec->param.passphrase.ssid.ssid,
 			       (int)sec->param.passphrase.ssid.ssid_len);
 		} else if (!strnicmp(opt, "bssid", strlen(opt))) {
-			woal_mac2u8((t_u8 *) & sec->param.passphrase.bssid,
-				    end);
+			woal_mac2u8((t_u8 *) sec->param.passphrase.bssid, end);
 		} else if (!strnicmp(opt, "psk", strlen(opt)) &&
 			   req->action == MLAN_ACT_SET) {
 			if (strlen(end) != MLAN_PMK_HEXSTR_LENGTH) {
@@ -3775,7 +3781,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
 	unsigned int i;
 	t_u8 key_ascii[32];
 	t_u8 key_hex[16];
-	t_u8 *tmp;
+	t_u8 *tmp = NULL;
 	mlan_bss_info bss_info;
 	mlan_ds_sec_cfg *sec = NULL;
 	mlan_ioctl_req *req = NULL;
@@ -3804,7 +3810,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 	copy_len = data_length;
 
-	if (data_length) {
+	if (data_length > 0) {
 		if (data_length >= sizeof(buf)) {
 			PRINTM(MERROR, "Too many arguments\n");
 			ret = -EINVAL;
@@ -3843,7 +3849,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
 				tmp += sprintf((char *)tmp, "%02x", key_hex[i]);
 		} else if (data_length >= 2) {
 			/* Parse the buf to get the cmd_action */
-			action = woal_atox(&buf[0]);
+			action = woal_atox((char *)buf);
 			if (action < 1 || action > 2) {
 				PRINTM(MERROR, "Invalid action argument %d\n",
 				       action);
@@ -4027,7 +4033,7 @@ woal_set_get_ip_addr(moal_private * priv, struct iwreq *wrq)
 		misc->param.ipaddr_cfg.ip_addr_num = 1;
 		misc->param.ipaddr_cfg.ip_addr_type = IPADDR_TYPE_IPV4;
 	}
-	if (woal_atoi(&op_code, &buf[0]) != MLAN_STATUS_SUCCESS) {
+	if (woal_atoi(&op_code, buf) != MLAN_STATUS_SUCCESS) {
 		ret = -EINVAL;
 		goto done;
 	}
@@ -4991,7 +4997,7 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
 			ret = -EFAULT;
 			goto done;
 		}
-		wrq->u.data.length = sizeof(data) / sizeof(int);
+		wrq->u.data.length = ARRAY_SIZE(data);
 		goto done;
 	}
 
@@ -5122,7 +5128,7 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 			ret = -EFAULT;
 			goto done;
 		}
-		wrq->u.data.length = sizeof(data) / sizeof(int);
+		wrq->u.data.length = ARRAY_SIZE(data);
 	}
 done:
 	if (req)
@@ -5335,7 +5341,14 @@ woal_wmm_addts_req_ioctl(moal_private * priv, struct iwreq *wrq)
 		}
 
 		cfg->param.addts.timeout = addts_ioctl.timeout_ms;
-		cfg->param.addts.ie_data_len = (t_u8) addts_ioctl.ie_data_len;
+		cfg->param.addts.ie_data_len = addts_ioctl.ie_data_len;
+
+		if (cfg->param.addts.ie_data_len >
+		    sizeof(cfg->param.addts.ie_data)) {
+			PRINTM(MERROR, "IE data length too large\n");
+			ret = -EFAULT;
+			goto done;
+		}
 
 		memcpy(cfg->param.addts.ie_data,
 		       addts_ioctl.ie_data, cfg->param.addts.ie_data_len);
@@ -5428,6 +5441,13 @@ woal_wmm_delts_req_ioctl(moal_private * priv, struct iwreq *wrq)
 		cfg->param.delts.status_code =
 			(t_u32) delts_ioctl.ieee_reason_code;
 		cfg->param.delts.ie_data_len = (t_u8) delts_ioctl.ie_data_len;
+
+		if ((cfg->param.delts.ie_data_len) >
+		    sizeof(cfg->param.delts.ie_data)) {
+			PRINTM(MERROR, "IE data length too large\n");
+			ret = -EFAULT;
+			goto done;
+		}
 
 		memcpy(cfg->param.delts.ie_data,
 		       delts_ioctl.ie_data, cfg->param.delts.ie_data_len);

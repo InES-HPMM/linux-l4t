@@ -1,24 +1,27 @@
 /** @file mlan_sdio.h
-  *
-  * @brief This file contains definitions for SDIO interface.
-  * driver.
-  *
-  * Copyright (C) 2008-2011, Marvell International Ltd.
-  *
-  * This software file (the "File") is distributed by Marvell International
-  * Ltd. under the terms of the GNU General Public License Version 2, June 1991
-  * (the "License").  You may use, redistribute and/or modify this File in
-  * accordance with the terms and conditions of the License, a copy of which
-  * is available by writing to the Free Software Foundation, Inc.,
-  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
-  * worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-  *
-  * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
-  * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
-  * this warranty disclaimer.
-  *
-  */
+ *
+ *  @brief This file contains definitions for SDIO interface.
+ *
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
+ *
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
+ */
 /****************************************************
 Change log:
 ****************************************************/
@@ -278,6 +281,18 @@ Change log:
 #define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do {                  \
 	pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len], mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
 	a->mpa_tx.buf_len += mbuf->data_len;                        \
+    a->mpa_tx.mp_wr_info[a->mpa_tx.pkt_cnt] = *(t_u16 *)(mbuf->pbuf+mbuf->data_offset); \
+	if (!a->mpa_tx.pkt_cnt) {                                   \
+	    a->mpa_tx.start_port = port;                            \
+	}                                                           \
+	a->mpa_tx.ports |= (1 << port);                             \
+	a->mpa_tx.pkt_cnt++;                                        \
+} while (0);
+
+#define MP_TX_AGGR_BUF_PUT_SG(a, mbuf, port) do {               \
+	a->mpa_tx.buf_len += mbuf->data_len;                        \
+    a->mpa_tx.mp_wr_info[a->mpa_tx.pkt_cnt] = *(t_u16 *)(mbuf->pbuf+mbuf->data_offset); \
+    a->mpa_tx.mbuf_arr[a->mpa_tx.pkt_cnt] = mbuf;               \
 	if (!a->mpa_tx.pkt_cnt) {                                   \
 	    a->mpa_tx.start_port = port;                            \
 	}                                                           \
@@ -303,6 +318,7 @@ Change log:
 
 /** Reset SDIO Tx aggregation buffer parameters */
 #define MP_TX_AGGR_BUF_RESET(a) do {         \
+    memset(a, a->mpa_tx.mp_wr_info, 0, sizeof(a->mpa_tx.mp_wr_info)); \
 	a->mpa_tx.pkt_cnt = 0;                   \
 	a->mpa_tx.buf_len = 0;                   \
 	a->mpa_tx.ports = 0;                     \

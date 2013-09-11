@@ -615,11 +615,14 @@ woal_cfg80211_beacon_config(moal_private * priv,
 			sys_config.protocol = PROTOCOL_STATIC_WEP;
 			sys_config.key_mgmt = KEY_MGMT_NONE;
 			sys_config.wpa_cfg.length = 0;
-			sys_config.wep_cfg.key0.key_index = priv->key_index;
-			sys_config.wep_cfg.key0.is_default = 1;
-			sys_config.wep_cfg.key0.length = priv->key_len;
-			memcpy(sys_config.wep_cfg.key0.key, priv->key_material,
-			       priv->key_len);
+			memcpy(&sys_config.wep_cfg.key0, &priv->uap_wep_key[0],
+			       sizeof(wep_key));
+			memcpy(&sys_config.wep_cfg.key1, &priv->uap_wep_key[1],
+			       sizeof(wep_key));
+			memcpy(&sys_config.wep_cfg.key2, &priv->uap_wep_key[2],
+			       sizeof(wep_key));
+			memcpy(&sys_config.wep_cfg.key3, &priv->uap_wep_key[3],
+			       sizeof(wep_key));
 		}
 		break;
 	case WLAN_CIPHER_SUITE_TKIP:
@@ -832,7 +835,7 @@ woal_cfg80211_add_virt_if(struct wiphy *wiphy,
 {
 	int ret = 0;
 	struct net_device *ndev = NULL;
-	moal_private *priv, *new_priv;
+	moal_private *priv = NULL, *new_priv = NULL;
 	moal_handle *handle = (moal_handle *) woal_get_wiphy_priv(wiphy);
 	struct wireless_dev *wdev = NULL;
 
@@ -840,6 +843,11 @@ woal_cfg80211_add_virt_if(struct wiphy *wiphy,
 	ASSERT_RTNL();
 	priv = (moal_private *) woal_get_priv_bss_type(handle,
 						       MLAN_BSS_TYPE_WIFIDIRECT);
+	if (!priv || !priv->phandle) {
+		PRINTM(MERROR, "priv or handle is NULL\n");
+		LEAVE();
+		return -EFAULT;
+	}
 	if (priv->phandle->drv_mode.intf_num == priv->phandle->priv_num) {
 		PRINTM(MERROR, "max virtual interface limit reached\n");
 		LEAVE();
@@ -889,8 +897,11 @@ woal_cfg80211_add_virt_if(struct wiphy *wiphy,
 	if (ret) {
 		handle->priv[new_priv->bss_index] = NULL;
 		handle->priv_num--;
-		free_netdev(ndev);
-		ndev = NULL;
+		if (ndev->reg_state == NETREG_REGISTERED) {
+			unregister_netdevice(ndev);
+			free_netdev(ndev);
+			ndev = NULL;
+		}
 		PRINTM(MFATAL, "register net_device failed, ret=%d\n", ret);
 		goto done;
 	}
@@ -905,10 +916,6 @@ woal_cfg80211_add_virt_if(struct wiphy *wiphy,
 #endif /* PROC_DEBUG */
 #endif /* CONFIG_PROC_FS */
 done:
-	if (ret) {
-		if (ndev && ndev->reg_state == NETREG_REGISTERED)
-			unregister_netdevice(ndev);
-	}
 	LEAVE();
 	return ret;
 }
@@ -986,6 +993,11 @@ woal_cfg80211_del_virt_if(struct wiphy *wiphy, struct net_device *dev)
 		netif_carrier_off(dev);
 		netif_device_detach(dev);
 		woal_cancel_scan(vir_priv, MOAL_IOCTL_WAIT);
+		if (handle->is_remain_timer_set) {
+			woal_cancel_timer(&handle->remain_timer);
+			woal_remain_timer_func(handle);
+		}
+
 		/* cancel previous remain on channel to avoid firmware hang */
 		if (priv->phandle->remain_on_channel) {
 			t_u8 channel_status;
@@ -1555,7 +1567,7 @@ woal_cfg80211_del_beacon(struct wiphy *wiphy, struct net_device *dev)
 #endif
 
 	priv->cipher = 0;
-	priv->key_len = 0;
+	memset(priv->uap_wep_key, 0, sizeof(priv->uap_wep_key));
 	priv->channel = 0;
 	PRINTM(MMSG, "wlan: AP stopped\n");
 done:

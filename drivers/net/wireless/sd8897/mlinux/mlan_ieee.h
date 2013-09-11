@@ -63,6 +63,9 @@ typedef enum _WLAN_802_11_NETWORK_TYPE {
 #pragma pack(push, 1)
 #endif
 
+/* Reason codes */
+#define  IEEE_80211_REASONCODE_UNSPECIFIED       1
+
 /** IEEE Type definitions  */
 typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e {
 	SSID = 0,
@@ -169,7 +172,7 @@ typedef MLAN_PACK_START struct _TLV_Generic_t {
 
 /** Capability information mask */
 #define CAPINFO_MASK    (~(MBIT(15) | MBIT(14) |            \
-                           MBIT(12) | MBIT(11) | MBIT(9)))
+							MBIT(12) | MBIT(11) | MBIT(9)))
 
 /** Capability Bit Map*/
 #ifdef BIG_ENDIAN_SUPPORT

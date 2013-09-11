@@ -4,20 +4,24 @@
  *  it prepares command and sends it to firmware when
  *  it is ready.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
  *
  */
 
@@ -888,21 +892,23 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
 			wlan_cpu_to_le16(KEY_TYPE_ID_AES);
 		if (cmd_oid == KEY_INFO_ENABLED)
 			pkey_material->key_param_set.key_info =
-				wlan_cpu_to_le16(KEY_INFO_AES_ENABLED);
+				KEY_INFO_AES_ENABLED;
 		else
-			pkey_material->key_param_set.key_info =
-				!(wlan_cpu_to_le16(KEY_INFO_AES_ENABLED));
+			pkey_material->key_param_set.key_info = 0;
 
 		if (pkey->key_index & MLAN_KEY_INDEX_UNICAST)	/* AES pairwise
 								   key: unicast
 								 */
 			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_AES_UNICAST);
-		else {		/* AES group key: multicast */
-
+				KEY_INFO_AES_UNICAST;
+		else		/* AES group key: multicast */
 			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_AES_MCAST);
-		}
+				KEY_INFO_AES_MCAST;
+		/** pass key index to BIT(6) and BIT(7)	*/
+		pkey_material->key_param_set.key_info |=
+			(pkey->key_index & 0x03) << 6;
+		pkey_material->key_param_set.key_info =
+			wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
 	} else if ((pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK) &&
 		   pkey->key_len == WPA_IGTK_KEY_LEN) {
 		PRINTM(MCMND, "WPA_AES_CMAC\n");
@@ -921,18 +927,21 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
 		PRINTM(MCMND, "WPA_TKIP\n");
 		pkey_material->key_param_set.key_type_id =
 			wlan_cpu_to_le16(KEY_TYPE_ID_TKIP);
-		pkey_material->key_param_set.key_info =
-			wlan_cpu_to_le16(KEY_INFO_TKIP_ENABLED);
-
+		pkey_material->key_param_set.key_info = KEY_INFO_TKIP_ENABLED;
 		if (pkey->key_index & MLAN_KEY_INDEX_UNICAST)	/* TKIP
 								   pairwise
 								   key: unicast
 								 */
 			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_TKIP_UNICAST);
+				KEY_INFO_TKIP_UNICAST;
 		else		/* TKIP group key: multicast */
 			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_TKIP_MCAST);
+				KEY_INFO_TKIP_MCAST;
+		/** pass key index to BIT(6) and BIT(7)	*/
+		pkey_material->key_param_set.key_info |=
+			(pkey->key_index & 0x03) << 6;
+		pkey_material->key_param_set.key_info =
+			wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
 	}
 
 	if (pkey_material->key_param_set.key_type_id) {

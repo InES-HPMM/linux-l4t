@@ -47,10 +47,6 @@ Change log:
 #include <linux/wlan_plat.h>
 #include "moal_eth_ioctl.h"
 
-#include <linux/if_ether.h>
-#include <linux/in.h>
-#include <linux/tcp.h>
-#include <net/tcp.h>
 #include <net/dsfield.h>
 
 /********************************************************
@@ -134,6 +130,12 @@ char *cal_data_cfg;
 /** Init config file (MAC address, register etc.) */
 char *init_cfg;
 
+/** Set configuration data of Tx power limitation */
+char *txpwrlimit_cfg;
+
+/** Init hostcmd file */
+char *init_hostcmd_cfg;
+
 /** Enable minicard power-up/down */
 int minicard_pwrup = 1;
 /** Pointer to struct with control hooks */
@@ -155,6 +157,8 @@ int cfg80211_wext = STA_CFG80211_MASK | UAP_CFG80211_MASK;
 int wq_sched_prio;
 /** Work queue scheduling policy */
 int wq_sched_policy = SCHED_NORMAL;
+/** rx_work flag */
+int rx_work;
 
 int hw_test;
 
@@ -195,6 +199,7 @@ static mlan_callbacks woal_callbacks = {
 	.moal_print = moal_print,
 	.moal_print_netintf = moal_print_netintf,
 	.moal_assert = moal_assert,
+	.moal_tcp_ack_tx_ind = moal_tcp_ack_tx_ind,
 };
 
 /** Default Driver mode */
@@ -382,6 +387,43 @@ woal_go_timer_func(void *context)
 	LEAVE();
 	return;
 }
+
+/**
+ *  @brief Remain on Channel timeout function
+ *
+ *
+ *  @param context	A pointer to context
+ *  @return		N/A
+ */
+void
+woal_remain_timer_func(void *context)
+{
+	moal_handle *handle = (moal_handle *) context;
+	moal_private *priv = handle->priv[handle->remain_bss_index];
+
+	ENTER();
+
+	PRINTM(MEVENT, "remain_timer fired.\n");
+	if (handle->cookie) {
+		cfg80211_remain_on_channel_expired(
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+							  priv->netdev,
+#else
+							  priv->wdev,
+#endif
+							  handle->cookie,
+							  &handle->chan,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
+							  handle->channel_type,
+#endif
+							  GFP_ATOMIC);
+		handle->cookie = 0;
+	}
+	handle->is_remain_timer_set = MFALSE;
+
+	LEAVE();
+	return;
+}
 #endif
 #endif
 
@@ -440,6 +482,34 @@ woal_is_connected(moal_private * priv, mlan_ssid_bssid * ssid_bssid)
 done:
 	LEAVE();
 	return ret;
+}
+
+/**
+ * @brief Look up specific IE in a buf
+ *
+ * @param ie              Pointer to IEs
+ * @param len             Total length of ie
+ * @param id              Element id to lookup
+ *
+ * @return                Pointer of the specific IE -- success, NULL -- fail
+ */
+const t_u8 *
+woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id)
+{
+	int left_len = len;
+	const t_u8 *pos = ie;
+	int length;
+
+	/* IE format: | u8 | id | | u8 | len | | var | data | */
+	while (left_len >= 2) {
+		length = *(pos + 1);
+		if ((*pos == id) && (length + 2) <= left_len)
+			return pos;
+		pos += (length + 2);
+		left_len -= (length + 2);
+	}
+
+	return NULL;
 }
 
 /**
@@ -776,6 +846,12 @@ woal_init_sw(moal_handle * handle)
 
 	handle->is_go_timer_set = MFALSE;
 	handle->remain_on_channel = MFALSE;
+
+	/* Initialize the timer for remain on channel */
+	woal_initialize_timer(&handle->remain_timer,
+			      woal_remain_timer_func, handle);
+
+	handle->is_remain_timer_set = MFALSE;
 #endif
 #endif
 
@@ -797,6 +873,18 @@ woal_init_sw(moal_handle * handle)
 #if defined(STA_SUPPORT)
 	device.cfg_11d = (t_u32) cfg_11d;
 #endif
+#if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 36)
+	device.max_segs =
+		((struct sdio_mmc_card *)handle->card)->func->card->host->
+		max_segs;
+	device.max_seg_size =
+		((struct sdio_mmc_card *)handle->card)->func->card->host->
+		max_seg_size;
+#endif
+	PRINTM(MMSG, "SDIO: max_segs=%d max_seg_size=%d\n", device.max_segs,
+	       device.max_seg_size);
+#endif
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 #ifdef MMC_QUIRK_BLKSZ_FOR_BYTE_MODE
 	device.mpa_tx_cfg = MLAN_INIT_PARA_ENABLED;
@@ -812,6 +900,18 @@ woal_init_sw(moal_handle * handle)
 #endif
 #endif
 
+	if (rx_work == MLAN_INIT_PARA_ENABLED)
+		device.rx_work = MTRUE;
+	else if (rx_work == MLAN_INIT_PARA_DISABLED)
+		device.rx_work = MFALSE;
+	else {
+		if (num_possible_cpus() > 1)
+			device.rx_work = MTRUE;
+		else
+			device.rx_work = MFALSE;
+	}
+	PRINTM(MMSG, "rx_work=%d cpu_num=%d\n", device.rx_work,
+	       num_possible_cpus());
 	for (i = 0; i < handle->drv_mode.intf_num; i++) {
 		device.bss_attr[i].bss_type =
 			handle->drv_mode.bss_attr[i].bss_type;
@@ -893,6 +993,9 @@ woal_free_moal_handle(moal_handle * handle)
 		       atomic_read(&handle->malloc_count),
 		       atomic_read(&handle->mbufalloc_count));
 	}
+	/* Free allocated memory for fwdump filename */
+	if (handle->fwdump_fname)
+		kfree(handle->fwdump_fname);
 	/* Free the moal handle itself */
 	kfree(handle);
 	LEAVE();
@@ -1179,13 +1282,115 @@ done:
 }
 
 /**
+ *    @brief WOAL parse ASCII format raw data to hex format
+ *
+ *    @param handle       MOAL handle
+ *    @param data         Source data
+ *    @param size         data length
+ *    @return             MLAN_STATUS_SUCCESS--success, otherwise--fail
+ */
+static t_u32
+woal_process_hostcmd_cfg(moal_handle * handle, t_u8 * data, t_size size)
+{
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	t_u8 *pos = data;
+	t_u8 *intf_s, *intf_e;
+	t_u8 *buf = NULL;
+	t_u8 *ptr = NULL;
+	t_u32 cmd_len = 0;
+	t_u8 start_raw = MFALSE;
+
+#define CMD_STR     "MRVL_CMDhostcmd"
+#define CMD_BUF_LEN 2048
+
+	ENTER();
+
+	buf = (t_u8 *) kzalloc(CMD_BUF_LEN, GFP_ATOMIC | GFP_KERNEL);
+	if (!buf) {
+		PRINTM(MERROR, "Could not allocate buffer space!\n");
+		goto done;
+	}
+	ptr = buf;
+	strcpy(ptr, CMD_STR);
+	ptr = buf + strlen(CMD_STR) + sizeof(t_u32);
+	while ((pos - data) < size) {
+		while (*pos == ' ' || *pos == '\t')
+			pos++;
+		if (*pos == '#') {	/* Line comment */
+			while (*pos != '\n')
+				pos++;
+			pos++;
+		}
+		if ((*pos == '\r' && *(pos + 1) == '\n') ||
+		    *pos == '\n' || *pos == '\0') {
+			pos++;
+			continue;	/* Needn't process this line */
+		}
+
+		if (*pos == '}') {
+			cmd_len =
+				*((t_u16 *) (buf + strlen(CMD_STR) +
+					     sizeof(t_u32) + sizeof(t_u16)));
+			memcpy(buf + strlen(CMD_STR), &cmd_len, sizeof(t_u32));
+
+			/* fire the hostcommand from here */
+			woal_priv_hostcmd(handle->priv[0], buf, CMD_BUF_LEN);
+			memset(buf + strlen(CMD_STR), 0,
+			       CMD_BUF_LEN - strlen(CMD_STR));
+			ptr = buf + strlen(CMD_STR) + sizeof(t_u32);
+			start_raw = MFALSE;
+			pos++;
+			continue;
+		}
+
+		if (start_raw == MFALSE) {
+			intf_s = strchr(pos, '=');
+			if (intf_s) {
+				intf_e = strchr(intf_s, '{');
+			} else {
+				intf_e = NULL;
+			}
+
+			if (intf_s && intf_e) {
+				start_raw = MTRUE;
+				pos = intf_e + 1;
+				continue;
+			}
+		}
+
+		if (start_raw) {
+			/* Raw data block exists */
+			while (*pos != '\n') {
+				if ((*pos <= 'f' && *pos >= 'a') ||
+				    (*pos <= 'F' && *pos >= 'A') ||
+				    (*pos <= '9' && *pos >= '0')) {
+					*ptr++ = woal_atox(pos);
+					pos += 2;
+				} else
+					pos++;
+			}
+		}
+	}
+
+done:
+	if (buf)
+		kfree(buf);
+	LEAVE();
+	return ret;
+}
+
+#define INIT_CFG_DATA           0x00
+#define TXPWRLIMIT_CFG_DATA     0x01
+#define INIT_HOSTCMD_CFG_DATA   0x02
+
+/**
  *    @brief WOAL set user defined init data and param
  *
  *    @param handle       MOAL handle structure
  *    @return             MLAN_STATUS_SUCCESS--success, otherwise--fail
  */
 static t_u32
-woal_set_user_init_data(moal_handle * handle)
+woal_set_user_init_data(moal_handle * handle, int type)
 {
 	mlan_status ret = MLAN_STATUS_FAILURE;
 	t_u8 *cfg_data = NULL;
@@ -1193,19 +1398,50 @@ woal_set_user_init_data(moal_handle * handle)
 
 	ENTER();
 
-	if ((request_firmware
-	     (&handle->user_data, init_cfg, handle->hotplug_device)) < 0) {
-		PRINTM(MERROR, "Init config file request_firmware() failed\n");
-		goto done;
+	if (type == INIT_CFG_DATA) {
+		if ((request_firmware
+		     (&handle->user_data, init_cfg,
+		      handle->hotplug_device)) < 0) {
+			PRINTM(MERROR,
+			       "Init config file request_firmware() failed\n");
+			goto done;
+		}
+	} else if (type == TXPWRLIMIT_CFG_DATA) {
+		if ((request_firmware
+		     (&handle->user_data, txpwrlimit_cfg,
+		      handle->hotplug_device)) < 0) {
+			PRINTM(MERROR,
+			       "Init config file request_firmware() failed\n");
+			goto done;
+		}
+	} else if (type == INIT_HOSTCMD_CFG_DATA) {
+		if ((request_firmware
+		     (&handle->user_data, init_hostcmd_cfg,
+		      handle->hotplug_device)) < 0) {
+			PRINTM(MERROR,
+			       "Init config file request_firmware() failed\n");
+			goto done;
+		}
 	}
 
 	if (handle->user_data) {
 		cfg_data = (t_u8 *) (handle->user_data)->data;
 		len = (handle->user_data)->size;
-		if (MLAN_STATUS_SUCCESS !=
-		    woal_process_init_cfg(handle, cfg_data, len)) {
-			PRINTM(MERROR, "Can't process init config file\n");
-			goto done;
+		if (type == INIT_CFG_DATA) {
+			if (MLAN_STATUS_SUCCESS !=
+			    woal_process_init_cfg(handle, cfg_data, len)) {
+				PRINTM(MERROR,
+				       "Can't process init config file\n");
+				goto done;
+			}
+		} else if (type == TXPWRLIMIT_CFG_DATA ||
+			   type == INIT_HOSTCMD_CFG_DATA) {
+			if (MLAN_STATUS_SUCCESS !=
+			    woal_process_hostcmd_cfg(handle, cfg_data, len)) {
+				PRINTM(MERROR,
+				       "Can't process hostcmd config file\n");
+				goto done;
+			}
 		}
 		ret = MLAN_STATUS_SUCCESS;
 	}
@@ -1253,13 +1489,32 @@ woal_add_card_dpc(moal_handle * handle)
 	}
 	register_inetaddr_notifier(&woal_notifier);
 	if (init_cfg) {
-		if (MLAN_STATUS_SUCCESS != woal_set_user_init_data(handle)) {
+		if (MLAN_STATUS_SUCCESS !=
+		    woal_set_user_init_data(handle, INIT_CFG_DATA)) {
 			PRINTM(MFATAL, "Set user init data and param failed\n");
 			ret = MLAN_STATUS_FAILURE;
 			goto err;
 		}
 	}
-	wifi_register_hostwake_irq(handle);
+	if (txpwrlimit_cfg) {
+		if (MLAN_STATUS_SUCCESS !=
+		    woal_set_user_init_data(handle, TXPWRLIMIT_CFG_DATA)) {
+			PRINTM(MFATAL,
+			       "Set user tx power limit data and param failed\n");
+			ret = MLAN_STATUS_FAILURE;
+			goto err;
+		}
+	}
+	if (init_hostcmd_cfg) {
+		if (MLAN_STATUS_SUCCESS !=
+		    woal_set_user_init_data(handle, INIT_HOSTCMD_CFG_DATA)) {
+			PRINTM(MFATAL,
+			       "Set user init hostcmd data and param failed\n");
+			ret = MLAN_STATUS_FAILURE;
+			goto err;
+		}
+	}
+	wifi_register_hostwake_irq(NULL);
 err:
 	if (ret != MLAN_STATUS_SUCCESS) {
 		PRINTM(MERROR, "Failed to add interface\n");
@@ -1356,6 +1611,10 @@ woal_init_fw_dpc(moal_handle * handle)
 		woal_moal_debug_info(woal_get_priv(handle, MLAN_BSS_ROLE_ANY),
 				     handle, MTRUE);
 #if defined(DEBUG_LEVEL1)
+		if (drvdbg & MFW_D) {
+			drvdbg &= ~MFW_D;
+			woal_dump_firmware_info(handle);
+		}
 #endif
 		ret = MLAN_STATUS_FAILURE;
 		goto done;
@@ -1916,6 +2175,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
 				       "Cannot register STA with cfg80211\n");
 				goto error;
 			}
+		spin_lock_init(&priv->scan_req_lock);
 	}
 #endif /* STA_SUPPORT */
 #endif /* STA_CFG80211 */
@@ -2107,7 +2367,8 @@ woal_shutdown_fw(moal_private * priv, t_u8 wait_option)
 
 	/* Send IOCTL request to MLAN */
 	status = woal_request_ioctl(priv, req, wait_option);
-
+	/* add 100 ms delay to avoid back to back init/shutdown */
+	mdelay(100);
 done:
 	if (req)
 		kfree(req);
@@ -2249,6 +2510,7 @@ wifi_register_hostwake_irq(void *handle)
 		if (irq_registered < 0)
 			PRINTM(MERROR, "Couldn't acquire WIFI_HOST_WAKE IRQ\n");
 		else {
+			irq_registered = 1;
 			enable_irq_wake(wifi_irqres->start);
 			wifi_enable_hostwake_irq(MFALSE);
 		}
@@ -2297,8 +2559,7 @@ wifi_remove(struct platform_device *pdev)
 	ENTER();
 
 	if (wifi_irqres && irq_registered) {
-		PRINTM(MMSG, "Disable/Free hostwake IRQ wakeup\n");
-		wifi_enable_hostwake_irq(MFALSE);
+		PRINTM(MMSG, "Free hostwake IRQ wakeup\n");
 		free_irq(wifi_irqres->start, NULL);
 		irq_registered = 0;
 	}
@@ -2428,10 +2689,12 @@ woal_close(struct net_device *dev)
 	if (IS_STA_CFG80211(cfg80211_wext) &&
 	    (priv->bss_type == MLAN_BSS_TYPE_STA))
 		woal_clear_conn_params(priv);
+	spin_lock(&priv->scan_req_lock);
 	if (IS_STA_CFG80211(cfg80211_wext) && priv->scan_request) {
 		cfg80211_scan_done(priv->scan_request, MTRUE);
 		priv->scan_request = NULL;
 	}
+	spin_unlock(&priv->scan_req_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 	if (IS_STA_CFG80211(cfg80211_wext) && priv->sched_scanning) {
 		woal_stop_bg_scan(priv, MOAL_IOCTL_WAIT);
@@ -2527,10 +2790,21 @@ woal_check_driver_status(moal_handle * handle)
 	struct timeval t;
 	int i = 0;
 	ENTER();
+
 	priv = woal_get_priv(handle, MLAN_BSS_ROLE_ANY);
 	if (!priv || woal_get_debug_info(priv, MOAL_CMD_WAIT, &info)) {
 		PRINTM(MERROR,
 		       "Could not retrieve debug information from MLAN\n");
+		LEAVE();
+		return MTRUE;
+	}
+#define MOAL_CMD_TIMEOUT_MAX			9
+	do_gettimeofday(&t);
+	if (info.pending_cmd &&
+	    (t.tv_sec > (info.dnld_cmd_in_secs + MOAL_CMD_TIMEOUT_MAX))) {
+		PRINTM(MERROR, "Timeout cmd id = 0x%x wait=%d\n",
+		       info.pending_cmd,
+		       (int)(t.tv_sec - info.dnld_cmd_in_secs));
 		LEAVE();
 		return MTRUE;
 	}
@@ -2558,7 +2832,6 @@ woal_check_driver_status(moal_handle * handle)
 		}
 	}
 	if (info.pm_wakeup_card_req && info.pm_wakeup_fw_try) {
-		do_gettimeofday(&t);
 #define MAX_WAIT_TIME     3
 		if (t.tv_sec > (info.pm_wakeup_in_secs + MAX_WAIT_TIME)) {
 			PRINTM(MERROR,
@@ -2584,7 +2857,10 @@ void
 woal_mlan_debug_info(moal_private * priv)
 {
 	int i;
-	char str[11 * DBG_CMD_NUM + 1] = { 0 };
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	int j;
+#endif
+	char str[512] = { 0 };
 	char *s;
 
 	ENTER();
@@ -2668,6 +2944,22 @@ woal_mlan_debug_info(moal_private * priv)
 	       (unsigned int)info.mp_rd_bitmap, info.curr_rd_port);
 	PRINTM(MERROR, "mp_wr_bitmap=0x%x curr_wr_port=0x%x\n",
 	       (unsigned int)info.mp_wr_bitmap, info.curr_wr_port);
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	PRINTM(MERROR, "last_recv_wr_bitmap=0x%x last_mp_index = %d\n",
+	       info.last_recv_wr_bitmap, info.last_mp_index);
+	for (i = 0; i < SDIO_MP_DBG_NUM; i++) {
+		for (s = str, j = 0; j < SDIO_MP_AGGR_DEF_PKT_LIMIT; j++) {
+			s += sprintf(s, "0x%02x ",
+				     info.last_mp_wr_info[i *
+							  SDIO_MP_AGGR_DEF_PKT_LIMIT
+							  + j]);
+		}
+		PRINTM(MERROR,
+		       "mp_wr_bitmap: 0x%x mp_wr_ports=0x%x len=%d curr_wr_port=0x%x\n%s\n",
+		       info.last_mp_wr_bitmap[i], info.last_mp_wr_ports[i],
+		       info.last_mp_wr_len[i], info.last_curr_wr_port[i], str);
+	}
+#endif
 	PRINTM(MERROR, "------------mlan_debug_info End-------------\n");
 	LEAVE();
 }
@@ -2772,6 +3064,8 @@ woal_flush_tcp_sess_queue(moal_private * priv)
 		kfree(tcp_sess);
 	}
 	INIT_LIST_HEAD(&priv->tcp_sess_queue);
+	priv->tcp_ack_drop_cnt = 0;
+	priv->tcp_ack_cnt = 0;
 	spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
 }
 
@@ -2787,7 +3081,7 @@ woal_flush_tcp_sess_queue(moal_private * priv)
  *  @return          A pointer to the tcp session data structure, if found.
  *                   Otherwise, null
  */
-struct tcp_sess *
+static inline struct tcp_sess *
 woal_get_tcp_sess(moal_private * priv,
 		  t_u32 src_ip, t_u16 src_port, t_u32 dst_ip, t_u16 dst_port)
 {
@@ -2808,37 +3102,57 @@ woal_get_tcp_sess(moal_private * priv,
 }
 
 /**
- *  @brief This function process tcp ack packets
+ *  @brief This function free the tcp ack session node
  *
  *  @param priv      A pointer to moal_private structure
- *  @param pmbuf     A pointer to the mlan buffer associated with the skb
+ *  @param pmbuf     A pointer to mlan_buffer associated with a skb
  *
- *  @return          1, if a tcp ack packet has been dropped. Otherwise, 0.
+ *  @return	         N/A
+ */
+void
+woal_tcp_ack_tx_indication(moal_private * priv, mlan_buffer * pmbuf)
+{
+	struct tcp_sess *tcp_sess = NULL, *tmp = NULL;
+	unsigned long flags;
+	ENTER();
+
+	spin_lock_irqsave(&priv->tcp_sess_lock, flags);
+	list_for_each_entry_safe(tcp_sess, tmp, &priv->tcp_sess_queue, link) {
+		if (tcp_sess->ack_skb == pmbuf->pdesc) {
+			list_del(&tcp_sess->link);
+			kfree(tcp_sess);
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
+
+	LEAVE();
+	return;
+}
+
+/**
+ *  @brief This function get the tcp ack session node
+ *
+ *  @param priv      A pointer to moal_private structure
+ *  @param pmbuf     A pointer to mlan_buffer associated with a skb
+ *
+ *  @return          1, if it's dropped; 0, if not dropped
  */
 int
 woal_process_tcp_ack(moal_private * priv, mlan_buffer * pmbuf)
 {
 	int ret = 0;
+	unsigned long flags;
+	struct tcp_sess *tcp_session;
 	struct ethhdr *ethh = NULL;
 	struct iphdr *iph = NULL;
 	struct tcphdr *tcph = NULL;
-	struct tcp_sess *tcp_sess = NULL;
-	struct sk_buff *skb = NULL;
-	t_u32 ack_seq = 0;
-	t_u32 len = 0;
-	t_u8 opt = 0;
-	t_u8 opt_len = 0;
-	t_u8 *pos = NULL;
-	t_u32 win_size = 0;
-	unsigned long flags;
-
-#define TCP_ACK_DELAY   3
-#define TCP_ACK_INIT_WARMING_UP  1000	/* initial */
-#define TCP_ACK_RECV_WARMING_UP  1000	/* recovery */
+	t_u32 ack_seq;
+	struct sk_buff *skb;
 
 	ENTER();
 
-    /** check the tcp packet */
+	/** check the tcp packet */
 	ethh = (struct ethhdr *)(pmbuf->pbuf + pmbuf->data_offset);
 	if (ntohs(ethh->h_proto) != ETH_P_IP) {
 		LEAVE();
@@ -2851,124 +3165,57 @@ woal_process_tcp_ack(moal_private * priv, mlan_buffer * pmbuf)
 	}
 	tcph = (struct tcphdr *)((t_u8 *) iph + iph->ihl * 4);
 
-	spin_lock_irqsave(&priv->tcp_sess_lock, flags);
-	if (tcph->syn & tcph->ack) {
-		tcp_sess = woal_get_tcp_sess(priv, iph->saddr, tcph->source,
-					     iph->daddr, tcph->dest);
-		if (!tcp_sess) {
-			/* respond to a TCP request. create a tcp session */
-			if (!
-			    (tcp_sess =
-			     kmalloc(sizeof(struct tcp_sess), GFP_ATOMIC))) {
+	if (*((t_u8 *) tcph + 13) == 0x10) {
+		/* Only replace ACK */
+		priv->tcp_ack_cnt++;
+		if (ntohs(iph->tot_len) > (iph->ihl + tcph->doff) * 4) {
+			/* Don't drop ACK with payload */
+			/* TODO: should we delete previous TCP session */
+			LEAVE();
+			return ret;
+		}
+		spin_lock_irqsave(&priv->tcp_sess_lock, flags);
+		tcp_session = woal_get_tcp_sess(priv, iph->saddr,
+						tcph->source, iph->daddr,
+						tcph->dest);
+		if (!tcp_session) {
+			tcp_session =
+				kmalloc(sizeof(struct tcp_sess), GFP_ATOMIC);
+			if (!tcp_session) {
 				PRINTM(MERROR, "Fail to allocate tcp_sess.\n");
 				goto done;
 			}
-			memset(tcp_sess, 0, sizeof(struct tcp_sess));
-			tcp_sess->src_ip_addr = iph->saddr;	/* my ip addr */
-			tcp_sess->dst_ip_addr = iph->daddr;
-			tcp_sess->src_tcp_port = tcph->source;
-			tcp_sess->dst_tcp_port = tcph->dest;
-			INIT_LIST_HEAD(&tcp_sess->link);
-			list_add_tail(&tcp_sess->link, &priv->tcp_sess_queue);
-			PRINTM(MINFO,
-			       "create a tcp session. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
-			       iph->saddr, tcph->source, iph->daddr,
-			       tcph->dest);
+			tcp_session->ack_skb = pmbuf->pdesc;
+			tcp_session->src_ip_addr = iph->saddr;
+			tcp_session->dst_ip_addr = iph->daddr;
+			tcp_session->src_tcp_port = tcph->source;
+			tcp_session->dst_tcp_port = tcph->dest;
+			tcp_session->ack_seq = ntohl(tcph->ack_seq);
+			list_add_tail(&tcp_session->link,
+				      &priv->tcp_sess_queue);
+			pmbuf->flags |= MLAN_BUF_FLAG_TCP_ACK;
+			spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
+			LEAVE();
+			return ret;
 		}
-		tcp_sess->start_cnt = TCP_ACK_INIT_WARMING_UP;
-		/* parse tcp options for the window scale */
-		len = (tcph->doff * 4) - sizeof(struct tcphdr);
-		pos = (t_u8 *) (tcph + 1);
-		while (len > 0) {
-			opt = *pos++;
-			switch (opt) {
-			case TCPOPT_EOL:
-				len = 0;
-				continue;
-			case TCPOPT_NOP:
-				len--;
-				continue;
-			case TCPOPT_WINDOW:
-				opt_len = *pos++;
-				if (opt_len == TCPOLEN_WINDOW) {
-					tcp_sess->rx_win_scale = *pos;
-					tcp_sess->rx_win_opt = 1;
-					if (tcp_sess->rx_win_scale > 14)
-						tcp_sess->rx_win_scale = 14;
-					PRINTM(MINFO, "TCP Window Scale: %d \n",
-					       tcp_sess->rx_win_scale);
-				}
-				break;
-			default:
-				opt_len = *pos++;
-			}
-			len -= opt_len;
-			pos += opt_len - 2;
-		}
-	} else if (tcph->ack && !(tcph->syn) &&
-		   (ntohs(iph->tot_len) == (iph->ihl * 4 + tcph->doff * 4))) {
-	/** it is an ack packet, not a piggyback ack */
-		tcp_sess = woal_get_tcp_sess(priv, iph->saddr, tcph->source,
-					     iph->daddr, tcph->dest);
-		if (tcp_sess == NULL) {
-			goto done;
-		}
-	/** do not drop the ack packets initially */
-		if (tcp_sess->start_cnt) {
-			tcp_sess->start_cnt--;
-			goto done;
-		}
-
-		/* check the window size. */
-		win_size = ntohs(tcph->window);
-		if (tcp_sess->rx_win_opt) {
-			win_size <<= tcp_sess->rx_win_scale;
-			/* Note: it may depend on the rtd */
-			if ((win_size > 1500 * (TCP_ACK_DELAY + 5)) &&
-			    (tcp_sess->ack_cnt < TCP_ACK_DELAY)) {
-				/* if windiow is big enough, drop the ack
-				   packet */
-				if (tcp_sess->ack_seq != ntohl(tcph->ack_seq)) {
-					ack_seq = tcp_sess->ack_seq;
-					tcp_sess->ack_seq =
-						ntohl(tcph->ack_seq);
-					tcp_sess->ack_cnt++;
-					skb = (struct sk_buff *)pmbuf->pdesc;
-					if (skb)
-						dev_kfree_skb_any(skb);
-					ret = 1;
-				} else {
-					/* the ack packet is retransmitted.
-					   thus, stop dropping the ack packets */
-					tcp_sess->start_cnt =
-						TCP_ACK_RECV_WARMING_UP;
-					PRINTM(MINFO,
-					       "Recover the TCP session.\n ");
-				}
-			} else {
-				/* send the current ack pacekt */
-				ack_seq = tcp_sess->ack_seq;
-				tcp_sess->ack_seq = ntohl(tcph->ack_seq);
-				tcp_sess->ack_cnt = 0;
-			}
-		}
-	} else if (tcph->fin) {
-		tcp_sess = woal_get_tcp_sess(priv, iph->saddr, tcph->source,
-					     iph->daddr, tcph->dest);
-		if (tcp_sess != NULL) {
-			/* remove the tcp session from the queue */
-			PRINTM(MINFO,
-			       "Rx: release a tcp session in ul. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
-			       iph->saddr, tcph->source, iph->daddr,
-			       tcph->dest);
-			list_del(&tcp_sess->link);
-			kfree(tcp_sess);
+		ack_seq = ntohl(tcph->ack_seq);
+		if (likely(ack_seq > tcp_session->ack_seq)) {
+			skb = (struct sk_buff *)tcp_session->ack_skb;
+			memcpy(skb->data, pmbuf->pbuf + pmbuf->data_offset,
+			       pmbuf->data_len);
+			tcp_session->ack_seq = ack_seq;
+			ret = 1;
+			spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
+			skb = (struct sk_buff *)pmbuf->pdesc;
+			dev_kfree_skb_any(skb);
+			priv->tcp_ack_drop_cnt++;
 		} else {
-			PRINTM(MINFO, "released TCP session is not found.\n ");
+			spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
+			LEAVE();
+			return ret;
 		}
 	}
 done:
-	spin_unlock_irqrestore(&priv->tcp_sess_lock, flags);
 	LEAVE();
 	return ret;
 }
@@ -3328,7 +3575,7 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
 #ifdef STA_SUPPORT
 #endif
 
-	priv->enable_tcp_ack_enh = MFALSE;
+	priv->enable_tcp_ack_enh = MTRUE;
 
 	woal_request_get_fw_info(priv, wait_option, NULL);
 
@@ -3470,6 +3717,10 @@ woal_reset_intf(moal_private * priv, t_u8 wait_option, int all_intf)
 		woal_cancel_timer(&handle->go_timer);
 		handle->is_go_timer_set = MFALSE;
 	}
+	if (handle->is_remain_timer_set) {
+		woal_cancel_timer(&handle->remain_timer);
+		woal_remain_timer_func(handle);
+	}
 #endif
 #endif
 
@@ -3520,22 +3771,26 @@ woal_alloc_mlan_buffer(moal_handle * handle, int size)
 {
 	mlan_buffer *pmbuf = NULL;
 	struct sk_buff *skb;
+	gfp_t flag;
 
 	ENTER();
 
+	flag = in_atomic()? GFP_ATOMIC : GFP_KERNEL;
 	if (size <= 0) {
 		PRINTM(MERROR, "Buffer size must be positive\n");
 		LEAVE();
 		return NULL;
 	}
 
-	if (!(pmbuf = kmalloc(sizeof(mlan_buffer), GFP_ATOMIC))) {
+	pmbuf = kmalloc(sizeof(mlan_buffer), flag);
+	if (!pmbuf) {
 		PRINTM(MERROR, "%s: Fail to alloc mlan buffer\n", __FUNCTION__);
 		LEAVE();
 		return NULL;
 	}
 	memset((t_u8 *) pmbuf, 0, sizeof(mlan_buffer));
-	if (!(skb = dev_alloc_skb(size))) {
+	skb = __dev_alloc_skb(size, flag);
+	if (!skb) {
 		PRINTM(MERROR, "%s: No free skb\n", __FUNCTION__);
 		kfree(pmbuf);
 		LEAVE();
@@ -3559,14 +3814,15 @@ pmlan_ioctl_req
 woal_alloc_mlan_ioctl_req(int size)
 {
 	mlan_ioctl_req *req = NULL;
+	gfp_t flag;
 
 	ENTER();
 
-	if (!
-	    (req =
-	     (mlan_ioctl_req *)
-	     kmalloc((sizeof(mlan_ioctl_req) + size + sizeof(int) +
-		      sizeof(wait_queue)), GFP_ATOMIC))) {
+	flag = in_atomic()? GFP_ATOMIC : GFP_KERNEL;
+	req = (mlan_ioctl_req *)
+		kmalloc((sizeof(mlan_ioctl_req) + size + sizeof(int) +
+			 sizeof(wait_queue)), flag);
+	if (!req) {
 		PRINTM(MERROR, "%s: Fail to alloc ioctl buffer\n",
 		       __FUNCTION__);
 		LEAVE();
@@ -3644,10 +3900,9 @@ woal_broadcast_event(moal_private * priv, t_u8 * payload, t_u32 len)
 		/* Allocate skb */
 #ifdef WIFI_DIRECT_SUPPORT
 		if ((len + IFNAMSIZ) > NL_MAX_PAYLOAD) {
-			if (!
-			    (skb =
-			     alloc_skb(NLMSG_SPACE(NL_MAX_PAYLOAD * 2),
-				       GFP_ATOMIC))) {
+			skb = alloc_skb(NLMSG_SPACE(NL_MAX_PAYLOAD * 2),
+					GFP_ATOMIC);
+			if (!skb) {
 				PRINTM(MERROR,
 				       "Could not allocate skb for netlink\n");
 				ret = MLAN_STATUS_FAILURE;
@@ -3655,10 +3910,9 @@ woal_broadcast_event(moal_private * priv, t_u8 * payload, t_u32 len)
 			}
 		} else {
 #endif
-			if (!
-			    (skb =
-			     alloc_skb(NLMSG_SPACE(NL_MAX_PAYLOAD),
-				       GFP_ATOMIC))) {
+			skb = alloc_skb(NLMSG_SPACE(NL_MAX_PAYLOAD),
+					GFP_ATOMIC);
+			if (!skb) {
 				PRINTM(MERROR,
 				       "Could not allocate skb for netlink\n");
 				ret = MLAN_STATUS_FAILURE;
@@ -4026,6 +4280,7 @@ woal_reassoc_timer_func(void *context)
 #endif /* REASSOCIATION */
 
 #ifdef STA_SUPPORT
+
 /**
  *  @brief Sends disconnect event
  *
@@ -4068,7 +4323,6 @@ woal_send_disconnect_to_system(moal_private * priv)
 					      WLAN_REASON_DEAUTH_LEAVING, NULL,
 					      0, GFP_KERNEL);
 		}
-		priv->cfg_disconnect = 0;
 		if (!woal_is_any_interface_active(priv->phandle))
 			woal_set_scan_time(priv, ACTIVE_SCAN_CHAN_TIME,
 					   PASSIVE_SCAN_CHAN_TIME,
@@ -4084,6 +4338,281 @@ woal_send_disconnect_to_system(moal_private * priv)
 	LEAVE();
 }
 #endif /* STA_SUPPORT */
+
+/**
+ *  @brief  This function stores the FW dumps received from events in a file
+ *
+ *  @param priv		A pointer to moal_private
+ *  @param pmevent	A pointer to mlan_event structure
+ *
+ *  @return         N/A
+ */
+
+t_void
+woal_store_firmware_dump(moal_private * priv, mlan_event * pmevent)
+{
+	struct file *pfile_fwdump = NULL;
+	loff_t pos;
+
+	ENTER();
+	if (priv->phandle->fwdump_fname)
+		pfile_fwdump =
+			filp_open(priv->phandle->fwdump_fname,
+				  O_CREAT | O_WRONLY | O_APPEND, 0644);
+	else {
+		pfile_fwdump =
+			filp_open("/var/log/MRVL_fwdump.hex",
+				  O_CREAT | O_WRONLY | O_APPEND, 0644);
+		if (IS_ERR(pfile_fwdump))
+			pfile_fwdump =
+				filp_open("/data/MRVL_fwdump.hex",
+					  O_CREAT | O_WRONLY | O_APPEND, 0644);
+	}
+	if (IS_ERR(pfile_fwdump)) {
+		PRINTM(MERROR, "Cannot create firmware dump file\n");
+		LEAVE();
+		return;
+	}
+	vfs_write(pfile_fwdump, pmevent->event_buf, pmevent->event_len, &pos);
+	filp_close(pfile_fwdump, NULL);
+	LEAVE();
+	return;
+}
+
+#define DEBUG_HOST_READY		0xee
+#define DEBUG_FW_DONE			0xff
+#define DEBUG_ITCM_DONE			0xaa
+#define DEBUG_DTCM_DONE			0xbb
+#define DEBUG_SQRAM_DONE		0xcc
+#define MAX_POLL_TRIES			100
+
+#define DEBUG_DUMP_FIRST_REG		0xE2
+#define DEBUG_DUMP_CTRL_REG		0xE3
+#define DEBUG_DUMP_START_REG		0xE4
+#define DEBUG_DUMP_END_REG		0xEA
+#define ITCM_SIZE			0x10000
+#define SQRAM_SIZE			0x40000
+#define DTCM_SIZE			0x8000
+
+/**
+ *  @brief This function dump firmware memory to file
+ *
+
+ *  @param phandle   A pointer to moal_handle
+ *
+ *  @return         N/A
+ */
+void
+woal_dump_firmware_info(moal_handle * phandle)
+{
+
+	int ret = 0;
+	unsigned int reg, reg_start, reg_end;
+	t_u8 *ITCM_Ptr = NULL;
+	t_u8 *DTCM_Ptr = NULL;
+	t_u8 *SQRAM_Ptr = NULL;
+	t_u8 *dbg_ptr = NULL;
+	t_u32 sec, usec;
+	t_u8 ctrl_data = 0;
+	t_u32 dtcm_size = 0;
+	struct file *pfileITCM = NULL;
+	struct file *pfileDTCM = NULL;
+	struct file *pfileSQRAM = NULL;
+	mm_segment_t fs;
+	loff_t pos;
+	t_u8 *end_ptr = NULL;
+	int tries;
+
+	if (!phandle) {
+		PRINTM(MERROR, "Could not dump firmwware info\n");
+		return;
+	}
+
+	sdio_claim_host(((struct sdio_mmc_card *)phandle->card)->func);
+	/* start dump fw memory */
+	moal_get_system_time(phandle, &sec, &usec);
+	PRINTM(MMSG, "==== DEBUG MODE OUTPUT START: %u.%06u ====\n", sec, usec);
+	ret = moal_vmalloc(phandle, ITCM_SIZE + 1, (t_u8 **) & ITCM_Ptr);
+	if ((ret != MLAN_STATUS_SUCCESS) || !ITCM_Ptr) {
+		PRINTM(MERROR, "Error: vmalloc ITCM buffer failed!!!\n");
+		goto done;
+	}
+	dtcm_size = DTCM_SIZE;
+	PRINTM(MMSG, "DTCM_SIZE=0x%x\n", dtcm_size);
+	ret = moal_vmalloc(phandle, dtcm_size + 1, (t_u8 **) & DTCM_Ptr);
+	if ((ret != MLAN_STATUS_SUCCESS) || !DTCM_Ptr) {
+		PRINTM(MERROR, "Error: vmalloc DTCM buffer failed!!!\n");
+		goto done;
+	}
+	ret = moal_vmalloc(phandle, SQRAM_SIZE + 1, (t_u8 **) & SQRAM_Ptr);
+	if ((ret != MLAN_STATUS_SUCCESS) || !SQRAM_Ptr) {
+		PRINTM(MERROR, "Error: vmalloc SQRAM buffer failed!!!\n");
+		goto done;
+	}
+	dbg_ptr = ITCM_Ptr;
+	end_ptr = ITCM_Ptr + ITCM_SIZE;
+	moal_get_system_time(phandle, &sec, &usec);
+	PRINTM(MMSG, "Start ITCM output %u.%06u, please wait...\n", sec, usec);
+	reg_start = DEBUG_DUMP_START_REG;
+	reg_end = DEBUG_DUMP_END_REG;
+	do {
+		sdio_writeb(((struct sdio_mmc_card *)phandle->card)->func,
+			    DEBUG_HOST_READY, DEBUG_DUMP_CTRL_REG, &ret);
+		if (ret) {
+			PRINTM(MERROR, "SDIO Write ERR\n");
+			goto done;
+		}
+		for (tries = 0; tries < MAX_POLL_TRIES; tries++) {
+			ctrl_data =
+				sdio_readb(((struct sdio_mmc_card *)phandle->
+					    card)->func, DEBUG_DUMP_CTRL_REG,
+					   &ret);
+			if (ret) {
+				PRINTM(MERROR, "SDIO READ ERR\n");
+				goto done;
+			}
+			if ((ctrl_data == DEBUG_FW_DONE) ||
+			    (ctrl_data == DEBUG_ITCM_DONE)
+			    || (ctrl_data == DEBUG_DTCM_DONE) ||
+			    (ctrl_data == DEBUG_SQRAM_DONE))
+				break;
+			if (ctrl_data != DEBUG_HOST_READY) {
+				sdio_writeb(((struct sdio_mmc_card *)phandle->
+					     card)->func, DEBUG_HOST_READY,
+					    DEBUG_DUMP_CTRL_REG, &ret);
+				if (ret) {
+					PRINTM(MERROR, "SDIO Write ERR\n");
+					goto done;
+				}
+			}
+			udelay(100);
+		}
+		if (ctrl_data == DEBUG_HOST_READY) {
+			PRINTM(MERROR, "Fail to pull ctrl_data\n");
+			goto done;
+		}
+		reg = DEBUG_DUMP_FIRST_REG;
+		*dbg_ptr =
+			sdio_readb(((struct sdio_mmc_card *)phandle->card)->
+				   func, reg, &ret);
+		if (ret) {
+			PRINTM(MMSG, "SDIO READ ERR\n");
+			goto done;
+		}
+		if (dbg_ptr < end_ptr)
+			dbg_ptr++;
+		else {
+			PRINTM(MERROR, "pre-allocced buf is not enough\n");
+			goto done;
+		}
+		for (reg = reg_start; reg <= reg_end; reg++) {
+			*dbg_ptr =
+				sdio_readb(((struct sdio_mmc_card *)phandle->
+					    card)->func, reg, &ret);
+			if (ret) {
+				PRINTM(MMSG, "SDIO READ ERR\n");
+				goto done;
+			}
+			if (dbg_ptr < end_ptr)
+				dbg_ptr++;
+			else
+				PRINTM(MMSG,
+				       "pre-allocced buf is not enough\n");
+		}
+		switch (ctrl_data) {
+		case DEBUG_ITCM_DONE:
+			PRINTM(MMSG, "ITCM done: size=0x%x\n",
+			       dbg_ptr - ITCM_Ptr);
+			dbg_ptr = DTCM_Ptr;
+			end_ptr = DTCM_Ptr + DTCM_SIZE;
+			moal_get_system_time(phandle, &sec, &usec);
+			PRINTM(MMSG,
+			       "Start DTCM output %u.%06u, please wait...\n",
+			       sec, usec);
+			break;
+		case DEBUG_DTCM_DONE:
+			PRINTM(MMSG, "DTCM done: size=0x%x\n",
+			       dbg_ptr - DTCM_Ptr);
+			dbg_ptr = SQRAM_Ptr;
+			end_ptr = SQRAM_Ptr + SQRAM_SIZE;
+			moal_get_system_time(phandle, &sec, &usec);
+			PRINTM(MMSG,
+			       "Start SQRAM output %u.%06u, please wait...\n",
+			       sec, usec);
+			break;
+		case DEBUG_SQRAM_DONE:
+			PRINTM(MMSG, "SQRAM done: size=0x%x\n",
+			       dbg_ptr - SQRAM_Ptr);
+			PRINTM(MMSG, "End output!\n");
+			break;
+		default:
+			break;
+		}
+	} while (ctrl_data != DEBUG_SQRAM_DONE);
+
+	moal_get_system_time(phandle, &sec, &usec);
+	/* TODO file path should be config */
+	pfileITCM = filp_open("/data/file_ITCM", O_CREAT | O_RDWR, 0644);
+	if (IS_ERR(pfileITCM)) {
+		PRINTM(MMSG,
+		       "Now Start to save all the outputs to the /var directory: %u.%06u, please wait...\n",
+		       sec, usec);
+		pfileITCM = filp_open("/var/file_ITCM", O_CREAT | O_RDWR, 0644);
+		pfileDTCM = filp_open("/var/file_DTCM", O_CREAT | O_RDWR, 0644);
+		pfileSQRAM =
+			filp_open("/var/file_SQRAM", O_CREAT | O_RDWR, 0644);
+	} else {
+		PRINTM(MMSG,
+		       "Now Start to save all the outputs to the /data directory: %u.%06u, please wait...\n",
+		       sec, usec);
+		pfileDTCM =
+			filp_open("/data/file_DTCM", O_CREAT | O_RDWR, 0644);
+		pfileSQRAM =
+			filp_open("/data/file_SQRAM", O_CREAT | O_RDWR, 0644);
+	}
+	if (IS_ERR(pfileITCM)) {
+		PRINTM(MMSG, "Create ITCM file failed\n");
+		goto done;
+	}
+	if (IS_ERR(pfileDTCM)) {
+		PRINTM(MMSG, "Create DTCM file failed\n");
+		filp_close(pfileITCM, NULL);
+		goto done;
+	}
+	if (IS_ERR(pfileSQRAM)) {
+		PRINTM(MMSG, "Create SQRAM file failed\n");
+		filp_close(pfileITCM, NULL);
+		filp_close(pfileDTCM, NULL);
+		goto done;
+	}
+	PRINTM(MMSG, "Create ITCM/DTCM/SQRAM files OK\n");
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(pfileITCM, ITCM_Ptr, ITCM_SIZE, &pos);
+	pos = 0;
+	vfs_write(pfileDTCM, DTCM_Ptr, dtcm_size, &pos);
+	pos = 0;
+	vfs_write(pfileSQRAM, SQRAM_Ptr, SQRAM_SIZE, &pos);
+	filp_close(pfileITCM, NULL);
+	filp_close(pfileDTCM, NULL);
+	filp_close(pfileSQRAM, NULL);
+	set_fs(fs);
+	PRINTM(MMSG,
+	       "The output ITCM/DTCM/SQRAM have been saved to files successfully!\n");
+	moal_get_system_time(phandle, &sec, &usec);
+	PRINTM(MMSG, "==== DEBUG MODE OUTPUT END: %u.%06u ====\n", sec, usec);
+	/* end dump fw memory */
+done:
+	sdio_release_host(((struct sdio_mmc_card *)phandle->card)->func);
+	if (ITCM_Ptr)
+		moal_vfree(phandle, ITCM_Ptr);
+	if (DTCM_Ptr)
+		moal_vfree(phandle, DTCM_Ptr);
+	if (SQRAM_Ptr)
+		moal_vfree(phandle, SQRAM_Ptr);
+	return;
+}
 
 /**
  *  @brief This function reads and displays SDIO registers for debugging
@@ -4109,15 +4638,17 @@ woal_sdio_reg_dbg(moal_handle * phandle)
 		if (loop < 2) {
 			/* Read the registers of SDIO function0 and function1 */
 			func = loop;
-			reg_start = 0;
+			if (loop == 1)
+				reg_start = 4;
+			else
+				reg_start = 0;
 			reg_end = 0xB;
 		} else if (loop == 2) {
 			/* Read specific registers of SDIO function1 */
 			index = 0;
 			func = 1;
 			reg_start = reg_table[index++];
-			reg_end =
-				reg_table[sizeof(reg_table) / sizeof(int) - 1];
+			reg_end = reg_table[ARRAY_SIZE(reg_table) - 1];
 		} else {
 			/* Read the scratch registers of SDIO function1 */
 			if (loop == 4)
@@ -4241,6 +4772,13 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
 #endif
 	}
 
+	for (i = 0; i < phandle->priv_num; i++) {
+		priv = phandle->priv[i];
+		if (priv)
+			PRINTM(MERROR, "%s: num_tx_timeout = %d\n",
+			       priv->netdev->name, priv->num_tx_timeout);
+	}
+
 	/* Display SDIO registers */
 	if (flag &&
 	    ((phandle->main_state == MOAL_END_MAIN_PROCESS) ||
@@ -4301,6 +4839,10 @@ woal_main_work_queue(struct work_struct * work)
 		handle->sdio_reg_dbg = MFALSE;
 		woal_sdio_reg_dbg(handle);
 #if defined(DEBUG_LEVEL1)
+		if (drvdbg & MFW_D) {
+			drvdbg &= ~MFW_D;
+			woal_dump_firmware_info(handle);
+		}
 #endif
 		LEAVE();
 		return;
@@ -4361,7 +4903,6 @@ woal_interrupt(moal_handle * handle)
 	/* Call MLAN main process */
 	mlan_main_process(handle->pmlan_adapter);
 	handle->main_state = MOAL_END_MAIN_PROCESS;
-	queue_work(handle->rx_workqueue, &handle->rx_work);
 	LEAVE();
 }
 
@@ -4392,7 +4933,8 @@ woal_add_card(void *card)
 		goto exit_sem_err;
 
 	/* Allocate buffer for moal_handle */
-	if (!(handle = kmalloc(sizeof(moal_handle), GFP_KERNEL))) {
+	handle = kmalloc(sizeof(moal_handle), GFP_KERNEL);
+	if (!handle) {
 		PRINTM(MERROR, "Allocate buffer for moal_handle failed!\n");
 		goto err_handle;
 	}
@@ -4503,12 +5045,12 @@ woal_add_card(void *card)
 
 	MLAN_INIT_WORK(&handle->main_work, woal_main_work_queue);
 	/* Create workqueue for rx process */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	/* For kernel less than 2.6.14 name can not be * greater than 10
 	   characters */
 	handle->rx_workqueue = create_workqueue("MOAL_RX_WORKQ");
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
 	handle->rx_workqueue =
 		alloc_workqueue("MOAL_RX_WORK_QUEUE",
 				WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
@@ -4621,7 +5163,8 @@ woal_remove_card(void *card)
 
 	/* Stop data */
 	for (i = 0; i < MIN(handle->priv_num, MLAN_MAX_BSS_NUM); i++) {
-		if ((priv = handle->priv[i])) {
+		priv = handle->priv[i];
+		if (priv) {
 			woal_stop_queue(priv->netdev);
 			if (netif_carrier_ok(priv->netdev))
 				netif_carrier_off(priv->netdev);
@@ -4649,8 +5192,17 @@ woal_remove_card(void *card)
 		       atomic_read(&handle->ioctl_pending));
 	}
 	unregister_inetaddr_notifier(&woal_notifier);
+
 #if defined(WIFI_DIRECT_SUPPORT)
 #if defined(STA_CFG80211) && defined(UAP_CFG80211)
+	if (handle->is_go_timer_set) {
+		woal_cancel_timer(&handle->go_timer);
+		handle->is_go_timer_set = MFALSE;
+	}
+	if (handle->is_remain_timer_set) {
+		woal_cancel_timer(&handle->remain_timer);
+		woal_remain_timer_func(handle);
+	}
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
 	/* Remove virtual interface */
 	woal_remove_virtual_interface(handle);
@@ -4677,14 +5229,6 @@ woal_remove_card(void *card)
 		woal_sched_timeout(2);
 	}
 #endif /* REASSOCIATION */
-#if defined(WIFI_DIRECT_SUPPORT)
-#if defined(STA_CFG80211) && defined(UAP_CFG80211)
-	if (handle->is_go_timer_set) {
-		woal_cancel_timer(&handle->go_timer);
-		handle->is_go_timer_set = MFALSE;
-	}
-#endif
-#endif
 
 #ifdef CONFIG_PROC_FS
 	woal_proc_exit(handle);
@@ -4886,12 +5430,14 @@ woal_cleanup_module(void)
 				    (handle->priv[i]->bss_type ==
 				     MLAN_BSS_TYPE_STA))
 					woal_clear_conn_params(handle->priv[i]);
+				spin_lock(&handle->priv[i]->scan_req_lock);
 				if (IS_STA_CFG80211(cfg80211_wext) &&
 				    handle->priv[i]->scan_request) {
 					cfg80211_scan_done(handle->priv[i]->
 							   scan_request, MTRUE);
 					handle->priv[i]->scan_request = NULL;
 				}
+				spin_unlock(&handle->priv[i]->scan_req_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 				if (IS_STA_CFG80211(cfg80211_wext) &&
 				    handle->priv[i]->sched_scanning) {
@@ -5044,6 +5590,11 @@ module_param(init_cfg, charp, 0);
 MODULE_PARM_DESC(init_cfg, "Init config file name");
 module_param(cal_data_cfg, charp, 0);
 MODULE_PARM_DESC(cal_data_cfg, "Calibration data file name");
+module_param(txpwrlimit_cfg, charp, 0);
+MODULE_PARM_DESC(txpwrlimit_cfg,
+		 "Set configuration data of Tx power limitation");
+module_param(init_hostcmd_cfg, charp, 0);
+MODULE_PARM_DESC(init_hostcmd_cfg, "Init hostcmd file name");
 module_param(minicard_pwrup, int, 1);
 MODULE_PARM_DESC(minicard_pwrup,
 		 "1: Driver load clears PDn/Rst, unload sets (default); 0: Don't do this.");
@@ -5067,6 +5618,9 @@ module_param(wq_sched_policy, int, 0);
 MODULE_PARM_DESC(wq_sched_prio, "Priority of work queue");
 MODULE_PARM_DESC(wq_sched_policy,
 		 "0: SCHED_NORMAL; 1: SCHED_FIFO; 2: SCHED_RR; 3: SCHED_BATCH; 5: SCHED_IDLE");
+module_param(rx_work, int, 0);
+MODULE_PARM_DESC(rx_work,
+		 "0: default; 1: Enable rx_work_queue; 2: Disable rx_work_queue");
 MODULE_DESCRIPTION("M-WLAN Driver");
 MODULE_AUTHOR("Marvell International Ltd.");
 MODULE_VERSION(MLAN_RELEASE_VERSION);

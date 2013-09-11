@@ -3,20 +3,25 @@
  *  @brief This file contains the initialization for FW
  *  and HW.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -292,13 +297,14 @@ wlan_init_priv(pmlan_private priv)
 	priv->sec_info.wep_status = Wlan802_11WEPDisabled;
 	priv->sec_info.authentication_mode = MLAN_AUTH_MODE_AUTO;
 	priv->sec_info.encryption_mode = MLAN_ENCRYPTION_MODE_NONE;
-	for (i = 0; i < sizeof(priv->wep_key) / sizeof(priv->wep_key[0]); i++)
+	for (i = 0; i < MRVL_NUM_WEP_KEY; i++)
 		memset(pmadapter, &priv->wep_key[i], 0, sizeof(mrvl_wep_key_t));
 	priv->wep_key_curr_index = 0;
 	priv->ewpa_query = MFALSE;
 	priv->adhoc_aes_enabled = MFALSE;
 	priv->curr_pkt_filter =
 		HostCmd_ACT_MAC_STATIC_DYNAMIC_BW_ENABLE |
+		HostCmd_ACT_MAC_RTS_CTS_ENABLE |
 		HostCmd_ACT_MAC_RX_ON | HostCmd_ACT_MAC_TX_ON |
 		HostCmd_ACT_MAC_ETHERNETII_ENABLE;
 
@@ -380,6 +386,8 @@ wlan_init_priv(pmlan_private priv)
 
 	for (i = 0; i < MAX_NUM_TID; i++)
 		priv->addba_reject[i] = ADDBA_RSP_STATUS_ACCEPT;
+	priv->addba_reject[6] = ADDBA_RSP_STATUS_REJECT;
+	priv->addba_reject[7] = ADDBA_RSP_STATUS_REJECT;
 	priv->max_amsdu = 0;
 
 	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
@@ -833,8 +841,7 @@ wlan_free_lock_list(IN pmlan_adapter pmadapter)
 			    &pmadapter->rx_data_queue, pcb->moal_free_lock);
 
 	util_scalar_free((t_void *) pmadapter->pmoal_handle,
-			 &pmadapter->rx_pkts_queued,
-			 priv->adapter->callbacks.moal_free_lock);
+			 &pmadapter->rx_pkts_queued, pcb->moal_free_lock);
 
 	util_free_list_head((t_void *) pmadapter->pmoal_handle,
 			    &pmadapter->cmd_free_q,

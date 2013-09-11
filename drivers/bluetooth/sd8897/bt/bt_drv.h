@@ -54,6 +54,16 @@ typedef u32 t_ptr;
 /** Define maximum number of radio func supported */
 #define MAX_RADIO_FUNC     4
 
+/** MAC address print format */
+#ifndef MACSTR
+#define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+
+/** MAC address print arguments */
+#ifndef MAC2STR
+#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#endif
+
 /** Debug level : Message */
 #define	DBG_MSG			BIT(0)
 /** Debug level : Fatal */
@@ -435,6 +445,8 @@ typedef struct _bt_private {
 	spinlock_t driver_lock;
 	/** Driver lock flags */
 	ulong driver_flags;
+	/** Driver reference flags */
+	struct kobject kobj;
 	int debug_device_pending;
 	int debug_ocf_ogf[2];
 
@@ -566,6 +578,8 @@ int fm_set_intr_mask(bt_private * priv, u32 mask);
 /** default idle time */
 #define DEFAULT_IDLE_TIME           1000
 
+#define BT_CMD_HEADER_SIZE    3
+
 typedef struct _BT_CMD {
 	/** OCF OGF */
 	u16 ocf_ogf;
@@ -588,7 +602,10 @@ typedef struct _BT_EVENT {
 int check_evtpkt(bt_private * priv, struct sk_buff *skb);
 
 /* Prototype of global function */
-
+/** This function gets the priv reference */
+struct kobject *bt_priv_get(bt_private * priv);
+/** This function release the priv reference */
+void bt_priv_put(bt_private * priv);
 /** This function adds the card */
 bt_private *bt_add_card(void *card);
 /** This function removes the card */
@@ -690,6 +707,7 @@ int bt_init_config(bt_private * priv, char *cfg_file);
 int bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac);
 /** BT set user defined calibration data */
 int bt_cal_config(bt_private * priv, char *cfg_file, char *mac);
+int bt_init_mac_address(bt_private * priv, char *mac);
 
 typedef struct _BT_HCI_CMD {
 	/** OCF OGF */
