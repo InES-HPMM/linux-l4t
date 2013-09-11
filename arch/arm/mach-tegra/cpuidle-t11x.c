@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra11x CPUs
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,6 +88,9 @@ static bool stop_mc_clk_in_idle __read_mostly = false;
 module_param(stop_mc_clk_in_idle, bool, 0644);
 
 static struct clk *cpu_clk_for_dvfs;
+
+static DEFINE_SPINLOCK(vmin_lock);
+static unsigned long cpu_min_rate;
 
 static int pd_exit_latencies[5];
 
@@ -397,6 +400,19 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	return true;
 }
 
+static void tegra11x_restore_vmin(void)
+{
+	spin_lock(&vmin_lock);
+
+	if (cpu_min_rate) {
+		idle_stats.clk_gating_vmin++;
+		tegra_cpu_g_idle_rate_exchange(&cpu_min_rate);
+		cpu_min_rate = 0;
+	}
+
+	spin_unlock(&vmin_lock);
+}
+
 static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
@@ -449,6 +465,8 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #endif
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 
+	tegra11x_restore_vmin();
+
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
@@ -477,6 +495,37 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	}
 #endif
 	cpu_pm_exit();
+
+	return true;
+}
+
+static bool tegra11x_idle_enter_vmin(struct cpuidle_device *dev,
+			struct cpuidle_state *state)
+{
+	int status = -1;
+
+	spin_lock(&vmin_lock);
+
+	cpu_min_rate = 0;
+
+	if (!tegra_rail_off_is_allowed()) {
+		spin_unlock(&vmin_lock);
+		return false;
+	}
+
+	status = tegra_cpu_g_idle_rate_exchange(&cpu_min_rate);
+
+	if (status) {
+		cpu_min_rate = 0;
+		spin_unlock(&vmin_lock);
+		return false;
+	}
+
+	spin_unlock(&vmin_lock);
+
+	cpu_do_idle();
+
+	tegra11x_restore_vmin();
 
 	return true;
 }
@@ -511,22 +560,23 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 		else
 			power_gating_cpu_only = true;
 	} else {
-		if (num_online_cpus() > 1)
-			power_gating_cpu_only = true;
-		else {
-			if (tegra_dvfs_rail_updating(cpu_clk_for_dvfs))
-				clkgt_at_vmin = false;
-			else if (tegra_force_clkgt_at_vmin ==
-					TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
-				clkgt_at_vmin = true;
-			else if (tegra_force_clkgt_at_vmin ==
-					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
-				clkgt_at_vmin = false;
-			else if ((request >= tegra_min_residency_vmin_fmin()) &&
-				 ((request < tegra_min_residency_ncpu()) ||
-				   cpu_gating_only))
-				clkgt_at_vmin = true;
+		if (tegra_dvfs_rail_updating(cpu_clk_for_dvfs))
+			clkgt_at_vmin = false;
+		else if (tegra_force_clkgt_at_vmin ==
+				TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
+			clkgt_at_vmin = true;
+		else if (tegra_force_clkgt_at_vmin ==
+				TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
+			clkgt_at_vmin = false;
+		else if ((request >= tegra_min_residency_vmin_fmin()) &&
+			 ((request < tegra_min_residency_ncpu()) ||
+			   cpu_gating_only))
+			clkgt_at_vmin = true;
 
+		if (clkgt_at_vmin)
+			clkgt_at_vmin = tegra11x_idle_enter_vmin(dev, state);
+
+		if (!clkgt_at_vmin && (num_online_cpus() == 1)) {
 			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
 				if (fast_cluster_power_down_mode &
 						TEGRA_POWER_CLUSTER_FORCE_MASK)
@@ -542,16 +592,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	}
 
 	if (clkgt_at_vmin) {
-		rate = 0;
-		status = tegra_cpu_g_idle_rate_exchange(&rate);
-		if (!status) {
-			idle_stats.clk_gating_vmin++;
-			cpu_do_idle();
-			tegra_cpu_g_idle_rate_exchange(&rate);
-			power_down = true;
-		} else
-			power_down = tegra_cpu_core_power_down(dev, state,
-								request);
+		power_down = true;
 	} else if (!power_gating_cpu_only) {
 		if (is_lp_cluster()) {
 			rate = ULONG_MAX;
@@ -762,6 +803,7 @@ int __init tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *idle_ops)
 #endif
 	};
 
+	cpu_min_rate = 0;
 	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
 
 	for (i = 0; i < ARRAY_SIZE(pd_exit_latencies); i++)
