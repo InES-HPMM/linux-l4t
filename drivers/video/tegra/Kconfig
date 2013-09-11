@@ -21,6 +21,12 @@ config TEGRA_GRHOST_USE_NVMAP
 	help
 	  Use nvmap as the graphics memory manager.
 
+config TEGRA_GRHOST_FORCE_NVMAP
+	bool "Use nvmap as graphics memory manager"
+	default n
+	help
+	  Force using nvmap instead of dma mapping API
+
 config TEGRA_GRHOST_USE_DMABUF
 	bool "Support dmabuf buffers"
 	default y
