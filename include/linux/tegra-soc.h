@@ -30,6 +30,7 @@ enum tegra_chipid {
 	TEGRA_CHIPID_TEGRA11 = 0x35,
 	TEGRA_CHIPID_TEGRA12 = 0x40,
 	TEGRA_CHIPID_TEGRA13 = 0x13,
+	TEGRA_CHIPID_TEGRA21 = 0x21,
 };
 
 enum tegra_revision {
