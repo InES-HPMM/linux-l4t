@@ -115,6 +115,9 @@ int utmi_phy_set_snps_trking_data(void)
 		return PTR_ERR(utmi_pad_clk);
 	}
 
+	if (!pmc_base)
+		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
 	clk_enable(utmi_pad_clk);
 	spin_lock_irqsave(&pmc_lock, flags);
 	/* Bias pad MASTER_ENABLE=1 */
