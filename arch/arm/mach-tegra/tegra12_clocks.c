@@ -6878,7 +6878,7 @@ static struct clk tegra_clk_sclk = {
 	.inputs	= mux_sclk,
 	.reg	= 0x28,
 	.ops	= &tegra_super_ops,
-	.max_rate = 336000000,
+	.max_rate = 420000000,
 	.min_rate = 12000000,
 };
 
