@@ -213,7 +213,7 @@
 
 
 /* All non-GPIO pins follow */
-#define NUM_GPIOS	(TEGRA_PIN_SDMMC3_CLK_LB_IN_PEE5 + 1)
+#define NUM_GPIOS	(TEGRA_PIN_PFF2 + 1)
 #define _PIN(offset)	(NUM_GPIOS + (offset))
 
 /* Non-GPIO pins */
