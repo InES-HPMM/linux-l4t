@@ -60,7 +60,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		ranges = <0x54000000 0x54000000 0x01000000>;
+		ranges;
 
 		vi {
 			compatible = "nvidia,tegra210-vi";
