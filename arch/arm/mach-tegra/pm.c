@@ -443,10 +443,17 @@ static __init int create_suspend_pgtable(void)
 		return -ENOMEM;
 
 	/* Only identity-map size of lowmem (high_memory - PAGE_OFFSET) */
+#ifdef CONFIG_ARM64
+	identity_mapping_add(tegra_pgd,
+			phys_to_virt(PHYS_OFFSET), high_memory);
+	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
+			IO_IRAM_VIRT + SECTION_SIZE);
+#else
 	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
 		high_memory, 0);
 	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
 		IO_IRAM_VIRT + SECTION_SIZE, 0);
+#endif
 
 #if defined(CONFIG_ARM_LPAE)
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK);
