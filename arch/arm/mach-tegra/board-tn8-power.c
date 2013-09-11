@@ -149,6 +149,9 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vdd", "1-004d"),
 };
 
+static struct regulator_consumer_supply palmas_smps10_out1_supply[] = {
+};
+
 static struct regulator_consumer_supply palmas_smps10_out2_supply[] = {
 	REGULATOR_SUPPLY("vdd_5v0_mdm", NULL),
 	REGULATOR_SUPPLY("vdd_5v0_snsr", NULL),
@@ -264,6 +267,8 @@ PALMAS_REGS_PDATA(smps8, 1800, 1800, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps9, 3300, 3300, NULL, 0, 0, 1, NORMAL,
 	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(smps10_out1, 5000, 5000, NULL, 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps10_out2, 5000, 5000, NULL, 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo1, 1050, 1050, palmas_rails(smps6), 1, 1, 1, 0,
@@ -301,7 +306,7 @@ static struct regulator_init_data *tn8_reg_data[PALMAS_NUM_REGS] = {
 	PALMAS_REG_PDATA(smps8),
 	PALMAS_REG_PDATA(smps9),
 	PALMAS_REG_PDATA(smps10_out2),
-	NULL,
+	PALMAS_REG_PDATA(smps10_out1),
 	PALMAS_REG_PDATA(ldo1),
 	PALMAS_REG_PDATA(ldo2),
 	PALMAS_REG_PDATA(ldo3),
@@ -337,7 +342,7 @@ static struct palmas_reg_init *tn8_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps8),
 	PALMAS_REG_INIT_DATA(smps9),
 	PALMAS_REG_INIT_DATA(smps10_out2),
-	NULL,
+	PALMAS_REG_INIT_DATA(smps10_out1),
 	PALMAS_REG_INIT_DATA(ldo1),
 	PALMAS_REG_INIT_DATA(ldo2),
 	PALMAS_REG_INIT_DATA(ldo3),
@@ -596,7 +601,7 @@ FIXED_SYNC_REG(8,	lcd_bl_en,	lcd_bl_en, NULL,
 		0,	0, TEGRA_GPIO_PH2,
 		false,	true,	0,	5000,	0);
 
-FIXED_SYNC_REG(9,	vdd_hdmi_5v0,	vdd_hdmi_5v0, palmas_rails(smps10_out2),
+FIXED_SYNC_REG(9,	vdd_hdmi_5v0,	vdd_hdmi_5v0, palmas_rails(smps10_out1),
 		0,	0, TEGRA_GPIO_PK6,
 		false,	true,	0,	5000,	0);
 
