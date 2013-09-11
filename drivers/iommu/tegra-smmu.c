@@ -1195,13 +1195,13 @@ out:
 }
 
 static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
-			     struct scatterlist *sgl, int nents, int prot)
+			     struct scatterlist *sgl, int npages, int prot)
 {
 	unsigned int count;
 	struct scatterlist *s;
 	int err = 0;
 	unsigned long iova_base = iova;
-	bool flush_all = (nents > smmu_flush_all_th_pages) ? true : false;
+	bool flush_all = (npages > smmu_flush_all_th_pages) ? true : false;
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	int attrs = as->pte_attr;
@@ -1211,7 +1211,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	for (count = 0, s = sgl; count < nents; s = sg_next(s)) {
+	for (count = 0, s = sgl; count < npages; s = sg_next(s)) {
 		phys_addr_t phys = page_to_phys(sg_page(s));
 		unsigned int len = PAGE_ALIGN(s->offset + s->length);
 		unsigned long flags;
@@ -1274,7 +1274,7 @@ skip:
 
 	if (flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
-				     iova_base + nents * PAGE_SIZE);
+				     iova_base + npages * PAGE_SIZE);
 
 	return err;
 }
