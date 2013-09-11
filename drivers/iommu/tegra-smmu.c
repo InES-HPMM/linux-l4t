@@ -1161,9 +1161,6 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		}
 
-		if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
-			goto skip;
-
 		ptbl = page_address(tbl_page);
 		for (i = 0; i < count; i++) {
 			pte = &ptbl[ptn + i];
@@ -1179,7 +1176,7 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		if (!flush_all)
 			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
 						count);
-skip:
+
 		iova += PAGE_SIZE * count;
 		total -= count;
 		pages += count;
@@ -1238,9 +1235,6 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		}
 
-		if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
-			goto skip;
-
 		ptbl = page_address(tbl_page);
 		for (i = 0; i < count; i++) {
 
@@ -1264,7 +1258,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		if (!flush_all)
 			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
 						count);
-skip:
+
 		iova += PAGE_SIZE * count;
 		total -= count;
 
