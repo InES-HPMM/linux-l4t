@@ -2027,6 +2027,9 @@ static u32 tsc_resume_start;
 
 #define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define PMC_DPD_ENABLE_ON		(1 << 0)
+#endif
 
 #define PMC_TSC_MULT			0x2b4
 #define PMC_TSC_MULT_FREQ_STS		(1 << 16)
@@ -2050,6 +2053,14 @@ void tegra_tsc_resume(void)
 		u32 reg = pmc_readl(PMC_DPD_ENABLE);
 		BUG_ON(!(reg & PMC_DPD_ENABLE_TSC_MULT_ENABLE));
 		reg &= ~PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		/*
+		 * FIXME: T12x SW WAR -
+		 * Resume ensures DPD_ENABLE is 0 when writing
+		 * TSC_MULT_ENABLE, else PMC wake status gets reset
+		 */
+		reg &= ~PMC_DPD_ENABLE_ON;
+#endif
 		pmc_writel(reg, PMC_DPD_ENABLE);
 		tsc_resume_start = timer_readl(TIMERUS_CNTR_1US);
 	}
