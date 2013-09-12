@@ -30,3 +30,4 @@ obj-$(CONFIG_USB_HSIC_USB3503)		+= usb3503.o
 obj-$(CONFIG_USB_RENESAS_MODEM)         += boot_hsic_class.o
 
 obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
+obj-$(CONFIG_USB_NV_SHIELD_LED)	+= usb_nvshieldled.o
