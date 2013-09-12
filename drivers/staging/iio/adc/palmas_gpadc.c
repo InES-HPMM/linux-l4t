@@ -91,6 +91,7 @@ struct palmas_gpadc {
 	u8				ch0_current;
 	u8				ch3_current;
 	bool				ch3_dual_current;
+	bool				extended_delay;
 	int				irq;
 	int				irq_auto_0;
 	int				irq_auto_1;
@@ -204,6 +205,16 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 	int ret;
 
 	if (enable) {
+		val = (adc->extended_delay
+			<< PALMAS_GPADC_RT_CTRL_EXTEND_DELAY_SHIFT);
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+					PALMAS_GPADC_RT_CTRL,
+					PALMAS_GPADC_RT_CTRL_EXTEND_DELAY, val);
+		if (ret < 0) {
+			dev_err(adc->dev, "RT_CTRL update failed: %d\n", ret);
+			return ret;
+		}
+
 		mask = (PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
 			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK |
 			PALMAS_GPADC_CTRL1_GPADC_FORCE);
@@ -604,6 +615,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 			"Disable ch3_dual_current by wrong current setting\n");
 		adc->ch3_dual_current = false;
 	}
+
+	adc->extended_delay = adc_pdata->extended_delay;
 
 	iodev->name = MOD_NAME;
 	iodev->dev.parent = &pdev->dev;

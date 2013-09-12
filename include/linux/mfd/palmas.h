@@ -282,6 +282,7 @@ struct palmas_gpadc_platform_data {
 	 */
 	int ch0_current;
 	bool ch3_dual_current;
+	bool extended_delay;
 
 	/* default BAT_REMOVAL_DAT setting on device probe */
 	int bat_removal;
