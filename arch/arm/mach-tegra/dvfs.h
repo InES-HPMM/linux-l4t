@@ -177,7 +177,7 @@ struct cvb_dvfs {
 	int speedo_scale;
 	int voltage_scale;
 	struct cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
-	int therm_trips_table[MAX_THERMAL_LIMITS];
+	int vmin_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
 };
 

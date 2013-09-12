@@ -125,7 +125,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2040000, { 250050,  -6544,   0}, { 140000,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 	{
@@ -163,7 +163,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 	{
@@ -201,7 +201,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 	{
@@ -240,7 +240,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1912500, { 3395401, -181606, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 	{
@@ -278,7 +278,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 };
@@ -811,7 +811,7 @@ void __init tegra11x_init_dvfs(void)
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		&tegra11_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	tegra_dvfs_rail_init_vmin_thermal_profile(
-		cpu_cvb_dvfs_table[i].therm_trips_table,
+		cpu_cvb_dvfs_table[i].vmin_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra11_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_vmin_trips_table,

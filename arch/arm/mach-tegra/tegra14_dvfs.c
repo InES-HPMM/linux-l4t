@@ -126,7 +126,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1734000, { 2851134,  -136032,   2434}, { 1106216,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
-		.therm_trips_table = { 20 },
+		.vmin_trips_table = { 20 },
 		.therm_floors_table = { 900 },
 	},
 	{
@@ -167,7 +167,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2116500, { 3099135,  -141042,   2434}, { 1248368,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
-		.therm_trips_table = { 20 },
+		.vmin_trips_table = { 20 },
 		.therm_floors_table = { 900 },
 	},
 };
@@ -840,7 +840,7 @@ void __init tegra14x_init_dvfs(void)
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	tegra_dvfs_rail_init_vmin_thermal_profile(
-		cpu_cvb_dvfs_table[i].therm_trips_table,
+		cpu_cvb_dvfs_table[i].vmin_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_vmin_trips_table,
