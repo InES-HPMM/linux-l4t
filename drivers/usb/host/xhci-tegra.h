@@ -94,10 +94,18 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define MISC_PAD_CTL_2_0(_p)			(0x68 + _p * 4)
+#define MISC_PAD_S0_CTL_2_0				(0xffff)
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define MISC_PAD_CTL_2_0(_p)			(0x78 + _p * 4)
+#define MISC_PAD_S0_CTL_2_0				(0x14c)
 #endif
 #define SPARE_IN(x) ((x & 0x3) << 28)
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define MISC_PAD_S0_CTL_5_0				(0xffff)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MISC_PAD_S0_CTL_5_0				(0x158)
+#endif
 
 #define SNPS_OC_MAP_CTRL1 (0x7 << 0)
 #define SNPS_OC_MAP_CTRL2 (0x7 << 3)

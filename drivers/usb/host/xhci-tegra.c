@@ -2116,6 +2116,13 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 		tegra_xhci_release_otg_port(true);
 }
 
+static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
+{
+	return ((XUSB_DEVICE_ID_T114 == tegra->device_id) ? false
+	: ((tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+		&& (tegra->bdata->lane_owner & BIT(0))));
+}
+
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -2149,6 +2156,17 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	reg &= ~SPARE_IN(~0);
 	reg |= SPARE_IN(tegra->pdata->spare_in);
 	writel(reg, tegra->padctl_base + MISC_PAD_CTL_2_0(port));
+
+	if (xusb_use_sata_lane(tegra)) {
+		reg = readl(tegra->padctl_base + MISC_PAD_S0_CTL_5_0);
+		reg |= RX_QEYE_EN;
+		writel(reg, tegra->padctl_base + MISC_PAD_S0_CTL_5_0);
+
+		reg = readl(tegra->padctl_base + MISC_PAD_S0_CTL_2_0);
+		reg &= ~SPARE_IN(~0);
+		reg |= SPARE_IN(tegra->pdata->spare_in);
+		writel(reg, tegra->padctl_base + MISC_PAD_S0_CTL_2_0);
+	}
 
 	reg = readl(tegra->padctl_base + padregs->ss_port_map_0);
 	reg &= ~(port ? SS_PORT_MAP_P1 : SS_PORT_MAP_P0);
