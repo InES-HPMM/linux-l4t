@@ -286,7 +286,7 @@ obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-edp-1080p-14-0.o
-obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5.o
+obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-kbc.o
