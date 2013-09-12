@@ -38,6 +38,12 @@ DT_MACHINE_START(TEGRA132_DT, "exuma")
 	.dt_compat	= tegra132_dt_board_compat,
 MACHINE_END
 
+extern int bonaire_panel_init(void);
+int __init ardbeg_panel_init(void)
+{
+	return bonaire_panel_init();
+}
+
 /*******************************************************************
  * FIXME: fake missing symbols from arm64 until ported by ARM/NV.  *
  *******************************************************************/
