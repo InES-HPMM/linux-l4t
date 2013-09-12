@@ -359,7 +359,8 @@ static int __init arm64_device_init(void)
 #if defined(CONFIG_COMMON_CLK)
 	of_clk_init(NULL);
 #endif
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	if (!machine_desc->init_machine)
+		of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 	return 0;
 }
 arch_initcall(arm64_device_init);
