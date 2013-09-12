@@ -1901,8 +1901,8 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	/* Clear RTUNEP, SLEWP & SLEWN bit fields */
 	val &= ~(UHSIC_TX_RTUNEP | UHSIC_TX_SLEWP | UHSIC_TX_SLEWN);
 	/* set Rtune impedance to 50 ohm */
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	val |= UHSIC_TX_RTUNE_P(0xD);
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	val |= UHSIC_TX_RTUNE_P(0xA);
 #else
 	val |= UHSIC_TX_RTUNE_P(0xC);
 #endif
