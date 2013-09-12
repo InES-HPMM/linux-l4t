@@ -102,8 +102,10 @@ struct dvfs_rail {
 	bool dfll_mode;
 	bool dfll_mode_updating;
 	int therm_floor_idx;
+	int therm_scale_idx;
 	struct tegra_cooling_device *vmin_cdev;
 	struct tegra_cooling_device *vmax_cdev;
+	struct tegra_cooling_device *vts_cdev;
 	struct rail_alignment alignment;
 	struct rail_stats stats;
 };
@@ -149,6 +151,7 @@ struct dvfs {
 	int max_millivolts;
 	int num_freqs;
 	struct dvfs_dfll_data dfll_data;
+	bool therm_dvfs;
 
 	int cur_millivolts;
 	unsigned long cur_rate;

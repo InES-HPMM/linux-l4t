@@ -1290,7 +1290,7 @@ static int tegra_dvfs_rail_set_vmin_cdev_state(
 	return 0;
 }
 
-static struct thermal_cooling_device_ops tegra_dvfs_rail_cooling_ops = {
+static struct thermal_cooling_device_ops tegra_dvfs_vmin_cooling_ops = {
 	.get_max_state = tegra_dvfs_rail_get_vmin_cdev_max_state,
 	.get_cur_state = tegra_dvfs_rail_get_vmin_cdev_cur_state,
 	.set_cur_state = tegra_dvfs_rail_set_vmin_cdev_state,
@@ -1304,13 +1304,68 @@ static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 	/* just report error - initialized for cold temperature, anyway */
 	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
 		rail->vmin_cdev->cdev_type, (void *)rail,
-		&tegra_dvfs_rail_cooling_ops)))
+		&tegra_dvfs_vmin_cooling_ops)))
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vmin_cdev->cdev_type);
 }
 
+/* Cooling device to scale voltage with temperature in pll mode */
+static int tegra_dvfs_rail_get_vts_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->vts_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_vts_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->therm_scale_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_vts_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	struct dvfs *d;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->therm_scale_idx != cur_state) {
+		rail->therm_scale_idx = cur_state;
+		list_for_each_entry(d, &rail->dvfs, reg_node) {
+			if (d->therm_dvfs)
+				__tegra_dvfs_set_rate(d, d->cur_rate);
+		}
+	}
+	mutex_unlock(&dvfs_lock);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_vts_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_vts_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_vts_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_vts_cdev_state,
+};
+
+static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
+{
+	if (!rail->vts_cdev)
+		return;
+
+	/* just report error - initialized for cold temperature, anyway */
+	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
+		rail->vts_cdev->cdev_type, (void *)rail,
+		&tegra_dvfs_vts_cooling_ops)))
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->vts_cdev->cdev_type);
+}
+
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
+#define tegra_dvfs_rail_register_vts_cdev(rail)
 #endif
 
 /*
@@ -1455,8 +1510,10 @@ int __init tegra_dvfs_late_init(void)
 	register_pm_notifier(&tegra_dvfs_resume_nb);
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
 
-	list_for_each_entry(rail, &dvfs_rail_list, node)
-		tegra_dvfs_rail_register_vmin_cdev(rail);
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+			tegra_dvfs_rail_register_vmin_cdev(rail);
+			tegra_dvfs_rail_register_vts_cdev(rail);
+	}
 
 	return 0;
 }
