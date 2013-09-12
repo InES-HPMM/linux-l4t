@@ -29,7 +29,9 @@ struct gadc_thermal_platform_data {
 	const char *iio_channel_name;
 	const char *tz_name;
 	int temp_offset; /* mC */
-	int (*adc_to_temp)(struct gadc_thermal_platform_data *pdata, int val);
+	bool dual_mode;
+	int (*adc_to_temp)(struct gadc_thermal_platform_data *pdata, int val,
+			   int val2);
 	int *adc_temp_lookup;
 	unsigned int lookup_table_size;
 	int first_index_temp;
