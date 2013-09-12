@@ -192,6 +192,7 @@ struct dma_map_ops arm_dma_ops = {
 	.sync_sg_for_cpu	= arm_dma_sync_sg_for_cpu,
 	.sync_sg_for_device	= arm_dma_sync_sg_for_device,
 	.set_dma_mask		= arm_dma_set_mask,
+	.mapping_error		= arm_dma_mapping_error,
 };
 EXPORT_SYMBOL(arm_dma_ops);
 
@@ -208,6 +209,7 @@ struct dma_map_ops arm_coherent_dma_ops = {
 	.map_page		= arm_coherent_dma_map_page,
 	.map_sg			= arm_dma_map_sg,
 	.set_dma_mask		= arm_dma_set_mask,
+	.mapping_error		= arm_dma_mapping_error,
 };
 EXPORT_SYMBOL(arm_coherent_dma_ops);
 
@@ -1011,6 +1013,11 @@ int arm_dma_set_mask(struct device *dev, u64 dma_mask)
 	*dev->dma_mask = dma_mask;
 
 	return 0;
+}
+
+int arm_dma_mapping_error(struct device *dev, dma_addr_t dev_addr)
+{
+	return dev_addr == DMA_ERROR_CODE;
 }
 
 #define PREALLOC_DMA_DEBUG_ENTRIES	4096
@@ -2011,11 +2018,17 @@ static void arm_iommu_sync_single_for_device(struct device *dev,
 	__dma_page_cpu_to_dev(page, offset, size, dir);
 }
 
+int arm_iommu_mapping_error(struct device *dev, dma_addr_t dev_addr)
+{
+	return dev_addr == DMA_ERROR_CODE;
+}
+
 struct dma_map_ops iommu_ops = {
 	.alloc		= arm_iommu_alloc_attrs,
 	.free		= arm_iommu_free_attrs,
 	.mmap		= arm_iommu_mmap_attrs,
 	.get_sgtable	= arm_iommu_get_sgtable,
+	.mapping_error	= arm_iommu_mapping_error,
 
 	.map_page		= arm_iommu_map_page,
 	.map_pages		= arm_iommu_map_pages,
@@ -2041,6 +2054,7 @@ struct dma_map_ops iommu_coherent_ops = {
 	.free		= arm_iommu_free_attrs,
 	.mmap		= arm_iommu_mmap_attrs,
 	.get_sgtable	= arm_iommu_get_sgtable,
+	.mapping_error	= arm_iommu_mapping_error,
 
 	.map_page	= arm_coherent_iommu_map_page,
 	.unmap_page	= arm_coherent_iommu_unmap_page,

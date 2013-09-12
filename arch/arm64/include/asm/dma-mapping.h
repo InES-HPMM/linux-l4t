@@ -143,6 +143,8 @@ static inline void init_consistent_dma_size(unsigned long size) { }
 
 /* FIXME: copied from arch/arm */
 
+extern int arm_dma_mapping_error(struct device *dev, dma_addr_t dev_addr);
+
 extern int arm_dma_set_mask(struct device *dev, u64 dma_mask);
 /**
  * arm_dma_alloc - allocate consistent memory for DMA
