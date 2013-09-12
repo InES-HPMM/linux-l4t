@@ -38,8 +38,13 @@ DT_MACHINE_START(TEGRA132_DT, "exuma")
 	.dt_compat	= tegra132_dt_board_compat,
 MACHINE_END
 
+/* Needed by board-ardbeg.c */
+int __init laguna_pinmux_init(void) { return 0; }
+int __init laguna_regulator_init(void) { return 0; }
+int __init laguna_pm358_pmon_init(void) { return 0; }
+
 extern int bonaire_panel_init(void);
-int __init ardbeg_panel_init(void)
+int ardbeg_panel_init(void)
 {
 	return bonaire_panel_init();
 }
