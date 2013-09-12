@@ -88,8 +88,9 @@ static struct palmas_gpadc_info palmas_gpadc_info[] = {
 struct palmas_gpadc {
 	struct device			*dev;
 	struct palmas			*palmas;
-	u8				ich0;
-	u8				ich3;
+	u8				ch0_current;
+	u8				ch3_current;
+	bool				ch3_dual_current;
 	int				irq;
 	int				irq_auto_0;
 	int				irq_auto_1;
@@ -196,6 +197,63 @@ static int palmas_gpadc_start_mask_interrupt(struct palmas_gpadc *adc, int mask)
 	return ret;
 }
 
+static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
+			       int enable)
+{
+	unsigned int mask, val;
+	int ret;
+
+	if (enable) {
+		mask = (PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
+			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK);
+		val = (adc->ch0_current
+			<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT);
+		val |= (adc->ch3_current
+			<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_CTRL1, mask, val);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"Failed to update current setting: %d\n", ret);
+			return ret;
+		}
+
+		mask = (PALMAS_GPADC_SW_SELECT_SW_CONV0_SEL_MASK |
+			PALMAS_GPADC_SW_SELECT_SW_CONV_EN);
+		val = (adc_chan | PALMAS_GPADC_SW_SELECT_SW_CONV_EN);
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_SW_SELECT, mask, val);
+		if (ret < 0) {
+			dev_err(adc->dev, "SW_SELECT update failed: %d\n", ret);
+			return ret;
+		}
+	} else {
+		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_SW_SELECT, 0);
+		if (ret < 0)
+			dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
+	}
+
+	return ret;
+}
+
+static int palmas_gpadc_read_prepare(struct palmas_gpadc *adc, int adc_chan)
+{
+	int ret;
+
+	ret = palmas_gpadc_enable(adc, adc_chan, true);
+	if (ret < 0)
+		return ret;
+
+	return palmas_gpadc_start_mask_interrupt(adc, 0);
+}
+
+static void palmas_gpadc_read_done(struct palmas_gpadc *adc, int adc_chan)
+{
+	palmas_gpadc_start_mask_interrupt(adc, 1);
+	palmas_gpadc_enable(adc, adc_chan, false);
+}
+
 static int palmas_gpadc_calibrate(struct palmas_gpadc *adc, int adc_chan)
 {
 	int k;
@@ -237,36 +295,10 @@ scrub:
 	return ret;
 }
 
-static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
-					int enable)
-{
-	int ret;
-
-	if (enable)
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_SW_SELECT, adc_chan |
-				PALMAS_GPADC_SW_SELECT_SW_CONV_EN);
-	else
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_SW_SELECT, 0);
-	if (ret < 0)
-		dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
-	return ret;
-}
-
 static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 {
-	unsigned int adc_l;
-	unsigned int adc_h;
+	unsigned int val;
 	int ret;
-
-	ret = palmas_gpadc_enable(adc, adc_chan, true);
-	if (ret < 0)
-		return ret;
-
-	ret = palmas_gpadc_start_mask_interrupt(adc, 0);
-	if (ret < 0)
-		return ret;
 
 	INIT_COMPLETION(adc->conv_completion);
 	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
@@ -275,7 +307,7 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 				PALMAS_GPADC_SW_SELECT_SW_START_CONV0);
 	if (ret < 0) {
 		dev_err(adc->dev, "ADC_SW_START write failed: %d\n", ret);
-		goto scrub;
+		return ret;
 	}
 
 	ret = wait_for_completion_timeout(&adc->conv_completion,
@@ -283,97 +315,130 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	if (ret == 0) {
 		dev_err(adc->dev, "ADC conversion not completed\n");
 		ret = -ETIMEDOUT;
-		goto scrub;
+		return ret;
 	}
 
-	ret = palmas_read(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_SW_CONV0_LSB, &adc_l);
+	ret = palmas_bulk_read(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_SW_CONV0_LSB, &val, 2);
 	if (ret < 0) {
-		dev_err(adc->dev, "ADCDATAL read failed: %d\n", ret);
-		goto scrub;
+		dev_err(adc->dev, "ADCDATA read failed: %d\n", ret);
+		return ret;
 	}
 
-	ret = palmas_read(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_SW_CONV0_MSB, &adc_h);
-	if (ret < 0) {
-		dev_err(adc->dev, "ADCDATAH read failed: %d\n", ret);
-		goto scrub;
-	}
-
-	ret = ((adc_h & 0xF) << 8) | adc_l;
-
-scrub:
-	palmas_gpadc_enable(adc, adc_chan, false);
-	palmas_gpadc_start_mask_interrupt(adc, 1);
+	ret = (val & 0xFFF);
 	return ret;
 }
 
 static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
-						int adc_chan)
+						int adc_chan, int val)
 {
-	int ret;
-
-	ret = palmas_gpadc_start_convertion(adc, adc_chan);
-	if (ret < 0) {
-		dev_err(adc->dev, "ADC start coversion failed\n");
-		return ret;
-	}
-
-	if (((ret*1000) - adc->adc_info[adc_chan].offset) < 0) {
+	if (((val*1000) - adc->adc_info[adc_chan].offset) < 0) {
 		dev_err(adc->dev, "No Input Connected\n");
 		return 0;
 	}
 
-
 	if (!(adc->adc_info[adc_chan].is_correct_code))
-		ret  = ((ret*1000) - adc->adc_info[adc_chan].offset) /
+		val  = ((val*1000) - adc->adc_info[adc_chan].offset) /
 					adc->adc_info[adc_chan].gain_error;
-	ret = ret * adc->adc_info[adc_chan].gain;
 
-	ret = ret/1000;
-
-	return ret;
+	val = (val * adc->adc_info[adc_chan].gain) / 1000;
+	return val;
 }
 
 static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 	struct iio_chan_spec const *chan, int *val, int *val2, long mask)
 {
 	struct  palmas_gpadc *adc = iio_priv(indio_dev);
-	int ret;
 	int adc_chan = chan->channel;
+	int ret = 0;
 
-	if (chan->channel > PALMAS_ADC_CH_MAX)
+	if (adc_chan > PALMAS_ADC_CH_MAX)
 		return -EINVAL;
+
+	mutex_lock(&indio_dev->mlock);
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		mutex_lock(&indio_dev->mlock);
+	case IIO_CHAN_INFO_PROCESSED:
+		ret = palmas_gpadc_read_prepare(adc, adc_chan);
+		if (ret < 0)
+			goto out;
+
 		ret = palmas_gpadc_start_convertion(adc, adc_chan);
 		if (ret < 0) {
 			dev_err(adc->dev,
 			"ADC start coversion failed\n");
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
+			goto out;
 		}
 
+		if (mask == IIO_CHAN_INFO_PROCESSED)
+			ret = palmas_gpadc_get_calibrated_code(
+							adc, adc_chan, ret);
+
 		*val = ret;
-		mutex_unlock(&indio_dev->mlock);
-		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_PROCESSED:
-		mutex_lock(&indio_dev->mlock);
-		ret = palmas_gpadc_get_calibrated_code(adc, adc_chan);
+
+		ret = IIO_VAL_INT;
+		goto out;
+
+	case IIO_CHAN_INFO_RAW_DUAL:
+	case IIO_CHAN_INFO_PROCESSED_DUAL:
+		ret = palmas_gpadc_read_prepare(adc, adc_chan);
+		if (ret < 0)
+			goto out;
+
+		ret = palmas_gpadc_start_convertion(adc, adc_chan);
 		if (ret < 0) {
-			dev_err(adc->dev, "get_corrected_code failed\n");
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
+			dev_err(adc->dev,
+				"ADC start coversion failed\n");
+			goto out;
 		}
 
+		if (mask == IIO_CHAN_INFO_PROCESSED_DUAL)
+			ret = palmas_gpadc_get_calibrated_code(
+							adc, adc_chan, ret);
+
 		*val = ret;
-		mutex_unlock(&indio_dev->mlock);
-		return IIO_VAL_INT;
+
+		if ((adc_chan == PALMAS_ADC_CH_IN3)
+				&& adc->ch3_dual_current && val2) {
+			unsigned int reg_mask, reg_val;
+
+			reg_mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
+			reg_val = (adc->ch3_current
+				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+			ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+						PALMAS_GPADC_CTRL1,
+						reg_mask, reg_val);
+			if (ret < 0) {
+				dev_err(adc->dev, "CTRL1 update failed\n");
+				goto out;
+			}
+
+			ret = palmas_gpadc_start_convertion(adc, adc_chan);
+			if (ret < 0) {
+				dev_err(adc->dev,
+					"ADC start coversion failed\n");
+				goto out;
+			}
+
+			if (mask == IIO_CHAN_INFO_PROCESSED_DUAL)
+				ret = palmas_gpadc_get_calibrated_code(
+							adc, adc_chan, ret);
+
+			*val2 = ret;
+		}
+
+		ret = IIO_VAL_INT;
+		goto out;
 	}
 
-	return -EINVAL;
+	mutex_unlock(&indio_dev->mlock);
+	return ret;
+
+out:
+	palmas_gpadc_read_done(adc, adc_chan);
+	mutex_unlock(&indio_dev->mlock);
+	return ret;
 }
 
 static const struct iio_info palmas_gpadc_iio_info = {
@@ -391,11 +456,23 @@ static const struct iio_info palmas_gpadc_iio_info = {
 	.channel = PALMAS_ADC_CH_##chan,				\
 }
 
+#define PALMAS_ADC_CHAN_DUAL_IIO(chan)					\
+{									\
+	.datasheet_name = PALMAS_DATASHEET_NAME(chan),			\
+	.type = IIO_VOLTAGE,						\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |			\
+			BIT(IIO_CHAN_INFO_PROCESSED) |			\
+			BIT(IIO_CHAN_INFO_RAW_DUAL) |			\
+			BIT(IIO_CHAN_INFO_PROCESSED_DUAL),		\
+	.indexed = 1,							\
+	.channel = PALMAS_ADC_CH_##chan,				\
+}
+
 static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
 	PALMAS_ADC_CHAN_IIO(IN0),
 	PALMAS_ADC_CHAN_IIO(IN1),
 	PALMAS_ADC_CHAN_IIO(IN2),
-	PALMAS_ADC_CHAN_IIO(IN3),
+	PALMAS_ADC_CHAN_DUAL_IIO(IN3),
 	PALMAS_ADC_CHAN_IIO(IN4),
 	PALMAS_ADC_CHAN_IIO(IN5),
 	PALMAS_ADC_CHAN_IIO(IN6),
@@ -417,7 +494,6 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	struct palmas_gpadc_platform_data *adc_pdata;
 	struct iio_dev *iodev;
 	int ret, i;
-	unsigned int mask, val;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
 	if (!pdata || !pdata->gpadc_pdata) {
@@ -492,34 +568,31 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	}
 
 	if (adc_pdata->ch0_current == 0)
-		adc->ich0 = 0;
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_0;
 	else if (adc_pdata->ch0_current <= 5)
-		adc->ich0 = 1;
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_5;
 	else if (adc_pdata->ch0_current <= 15)
-		adc->ich0 = 2;
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_15;
 	else
-		adc->ich0 = 3;
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_20;
 
 	if (adc_pdata->ch3_current == 0)
-		adc->ich3 = 0;
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_0;
 	else if (adc_pdata->ch3_current <= 10)
-		adc->ich3 = 1;
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_10;
 	else if (adc_pdata->ch3_current <= 400)
-		adc->ich3 = 2;
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_400;
 	else
-		adc->ich3 = 3;
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_800;
 
-	/* Update GPADC current source setting */
-	mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
-			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
-	val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
-			(adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
-	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-					PALMAS_GPADC_CTRL1, mask, val);
-	if (ret < 0) {
-		dev_err(adc->dev,
-			"Failed to update current setting: %d\n", ret);
-		goto out_irq_auto1_free;
+	/* If ch3_dual_current is true, it will measure ch3 input signal with
+	 * ch3_current and the next current of ch3_current. */
+	adc->ch3_dual_current = adc_pdata->ch3_dual_current;
+	if (adc->ch3_dual_current &&
+			(adc->ch3_current == PALMAS_ADC_CH3_CURRENT_SRC_800)) {
+		dev_warn(adc->dev,
+			"Disable ch3_dual_current by wrong current setting\n");
+		adc->ch3_dual_current = false;
 	}
 
 	iodev->name = MOD_NAME;

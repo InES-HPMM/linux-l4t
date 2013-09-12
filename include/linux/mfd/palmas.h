@@ -281,6 +281,7 @@ struct palmas_gpadc_platform_data {
 	 * consumption depending on current level set here.
 	 */
 	int ch0_current;
+	bool ch3_dual_current;
 
 	/* default BAT_REMOVAL_DAT setting on device probe */
 	int bat_removal;
@@ -4096,6 +4097,22 @@ enum {
 	PALMAS_ADC_CH_IN15,
 
 	PALMAS_ADC_CH_MAX,
+};
+
+/* Palma GPADC Channel0 Current Source */
+enum {
+	PALMAS_ADC_CH0_CURRENT_SRC_0,
+	PALMAS_ADC_CH0_CURRENT_SRC_5,
+	PALMAS_ADC_CH0_CURRENT_SRC_15,
+	PALMAS_ADC_CH0_CURRENT_SRC_20,
+};
+
+/* Palma GPADC Channel3 Current Source */
+enum {
+	PALMAS_ADC_CH3_CURRENT_SRC_0,
+	PALMAS_ADC_CH3_CURRENT_SRC_10,
+	PALMAS_ADC_CH3_CURRENT_SRC_400,
+	PALMAS_ADC_CH3_CURRENT_SRC_800,
 };
 
 /* Palma Sleep requestor IDs IDs */
