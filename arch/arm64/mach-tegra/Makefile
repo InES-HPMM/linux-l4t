@@ -15,11 +15,15 @@ obj-$(CONFIG_SMP) += platsmp.o
 
 # Temp board files (should be gone when we go DT)
 obj-${CONFIG_MACH_EXUMA}              += board-exuma.o
+obj-${CONFIG_MACH_EXUMA}              += board-exuma-kbc.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-panel.o
+obj-${CONFIG_MACH_EXUMA}              += board-exuma-memory.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-pinmux.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-power.o
+obj-${CONFIG_MACH_EXUMA}              += board-exuma-powermon.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-sdhci.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-sensors.o
+obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
