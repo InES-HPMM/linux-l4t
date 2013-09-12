@@ -39,6 +39,7 @@ obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-y += tegra_fuse.o
 obj-y += kfuse.o
 obj-y += csi.o
+obj-y += apbio.o
 obj-y += mc.o
 obj-$(CONFIG_FIQ) += fiq.o
 
@@ -56,6 +57,7 @@ obj-y += latency_allowance.o
 obj-y += tegra3_la.o
 obj-y += tegra11x_la.o
 obj-y += tegra14x_la.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
 
@@ -68,12 +70,15 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += pinmux-t12-tables.o
 obj-y += pmc.o
 obj-y += flowctrl.o
 obj-y += reset.o
-obj-y += apbio.o
 obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
 
 obj-$(CONFIG_TEGRA_PCI) += pcie.o
+
+ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra11_soctherm.o
+endif
 
 obj-y += board-common.o
 
@@ -81,7 +86,6 @@ obj-y += mcerr.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += mcerr-t12.o
 
 obj-y += board-touch-raydium_spi.o
-obj-y += eeprom-wifi-mac.o
 
 obj-y += board-panel.o
 
