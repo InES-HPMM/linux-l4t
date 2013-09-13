@@ -102,6 +102,12 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 	/* Limit override range to maximum floor */
 	if (rail->therm_mv_floors)
 		rail->min_override_millivolts = rail->therm_mv_floors[0];
+
+	/* Only GPU thermal dvfs is supported */
+	if (rail->vts_cdev && (rail != tegra_gpu_rail)) {
+		rail->vts_cdev = NULL;
+		WARN(1, "%s: thermal dvfs is not supported\n", rail->reg_id);
+	}
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -134,14 +140,14 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 
 		list_add_tail(&rails[i]->node, &dvfs_rail_list);
 
-		dvfs_validate_cdevs(rails[i]);
-
 		if (!strcmp("vdd_cpu", rails[i]->reg_id))
 			tegra_cpu_rail = rails[i];
 		else if (!strcmp("vdd_gpu", rails[i]->reg_id))
 			tegra_gpu_rail = rails[i];
 		else if (!strcmp("vdd_core", rails[i]->reg_id))
 			tegra_core_rail = rails[i];
+
+		dvfs_validate_cdevs(rails[i]);
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -561,7 +567,7 @@ static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return d->dfll_millivolts;
 
-	return d->millivolts;
+	return tegra_dvfs_get_millivolts_pll(d);
 }
 
 static int
@@ -693,7 +699,7 @@ int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate)
 	if (!rate || !c->dvfs)
 		return 0;
 
-	millivolts = c->dvfs->millivolts;
+	millivolts = tegra_dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
 
@@ -706,6 +712,15 @@ int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate)
 
 	millivolts = c->dvfs->dfll_millivolts;
 	return predict_millivolts(c, millivolts, rate);
+}
+
+const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d)
+{
+	if (d->therm_dvfs) {
+		int therm_idx = d->dvfs_rail->therm_scale_idx;
+		return d->millivolts + therm_idx * MAX_DVFS_FREQS;
+	}
+	return d->millivolts;
 }
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
@@ -1451,6 +1466,60 @@ void __init tegra_dvfs_rail_init_vmin_thermal_profile(
 	}
 }
 
+/*
+ * Validate thermal dvfs settings:
+ * - trip-points are montonically increasing
+ * - voltages in any temperature range are montonically increasing with
+ *   frequency (can go up/down across ranges at iso frequency)
+ * - voltage for any frequency/thermal range combination must be within
+ *   rail minimum/maximum limits
+ */
+int __init tegra_dvfs_rail_init_thermal_dvfs_trips(
+	int *therm_trips_table, struct dvfs_rail *rail)
+{
+	int i;
+
+	if (!rail->vts_cdev) {
+		WARN(1, "%s: missing thermal dvfs cooling device\n",
+		     rail->reg_id);
+		return -ENOENT;
+	}
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (therm_trips_table[i] >= therm_trips_table[i+1])
+			break;
+	}
+
+	rail->vts_cdev->trip_temperatures_num = i + 1;
+	rail->vts_cdev->trip_temperatures = therm_trips_table;
+	return 0;
+}
+
+int __init tegra_dvfs_init_thermal_dvfs_voltages(
+	int *therm_voltages, int freqs_num, int ranges_num, struct dvfs *d)
+{
+	int *millivolts;
+	int freq_idx, therm_idx;
+
+	for (therm_idx = 0; therm_idx < ranges_num; therm_idx++) {
+		millivolts = therm_voltages + therm_idx * MAX_DVFS_FREQS;
+		for (freq_idx = 0; freq_idx < freqs_num; freq_idx++) {
+			int mv = millivolts[freq_idx];
+			if ((mv > d->dvfs_rail->max_millivolts) ||
+			    (mv < d->dvfs_rail->min_millivolts) ||
+			    (freq_idx && (mv < millivolts[freq_idx - 1]))) {
+				WARN(1, "%s: invalid thermal dvfs entry %d(%d, %d)\n",
+				     d->clk_name, mv, freq_idx, therm_idx);
+				return -EINVAL;
+			}
+		}
+	}
+
+	d->millivolts = therm_voltages;
+	d->therm_dvfs = true;
+	return 0;
+}
+
 /* Directly set cold temperature limit in dfll mode */
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 {
@@ -1786,10 +1855,11 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 		bool mv_done = false;
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
 			if (!mv_done) {
+				const int *m = tegra_dvfs_get_millivolts_pll(d);
 				mv_done = true;
 				seq_printf(s, "%-16s", rail->reg_id);
 				for (i = 0; i < d->num_freqs; i++) {
-					int mv = d->millivolts[i];
+					int mv = m[i];
 					seq_printf(s, "%7d", mv);
 				}
 				seq_printf(s, "\n");
