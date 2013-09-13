@@ -2908,8 +2908,14 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		writel(reg, tegra->padctl_base + padregs->usb2_bias_pad_ctl0_0);
 
 		/* Program these values into PMC regiseter and program the
-		 * PMC override. This will be done as part of pmc setup
+		 * PMC override.
 		 */
+		reg = PMC_TCTRL_VAL(utmip_tctrl_val) |
+				PMC_RCTRL_VAL(utmip_rctrl_val);
+		tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG,
+					0xffffffff, reg);
+		reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
+		tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
 	} else {
 		/* Use common PMC API to use SNPS register space */
 		utmi_phy_set_snps_trking_data();
