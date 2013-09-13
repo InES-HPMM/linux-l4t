@@ -255,6 +255,7 @@ config NVMAP_DEFERRED_CACHE_MAINT
 config NVMAP_DMABUF_STASH
 	bool "Enable stashing of IOVA maps with dmabuf"
 	depends on TEGRA_NVMAP
+	default y
 	help
 	  Set to Y if you would like nvmap to stash maps when using dma
 	  bufs. This will speed up remapping of the same handle at the cost
