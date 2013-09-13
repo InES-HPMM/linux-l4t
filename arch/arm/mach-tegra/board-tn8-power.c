@@ -65,6 +65,16 @@ static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
 	.consumer_supplies = bq2419x_vbus_supply,
 };
 
+static struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
+	.max_charge_current_mA = 3000,
+	.charging_term_current_mA = 100,
+	.consumer_supplies = bq2419x_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
+	.wdt_timeout    = 40,
+	.rtc_alarm_time = 3600,
+	.chg_restart_time = 1800,
+};
+
 struct bq2419x_platform_data tn8_bq2419x_pdata = {
 	.vbus_pdata = &bq2419x_vbus_pdata,
 };
@@ -468,6 +478,11 @@ int __init tn8_regulator_init(void)
 	 * Do not configure the charger int by default.
 	 */
 	/* bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0); */
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		tn8_bq2419x_pdata.bcharger_pdata = &bq2419x_charger_pdata;
+	else
+		tn8_bq2419x_pdata.bcharger_pdata = NULL;
+
 	i2c_register_board_info(0, bq2419x_boardinfo,
 		ARRAY_SIZE(bq2419x_boardinfo));
 
