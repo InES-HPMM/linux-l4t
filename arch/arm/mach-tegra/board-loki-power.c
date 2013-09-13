@@ -122,6 +122,9 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("vdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata_pll", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
@@ -173,6 +176,7 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("hvdd_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("hvdd_pex_pll_e", "tegra-pcie"),
+	REGULATOR_SUPPLY("hvdd_sata", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
