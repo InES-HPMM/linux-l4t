@@ -316,6 +316,17 @@ fail:
 	return -EIO;
 }
 
+static int bq27441_get_temperature(struct bq27441_chip *chip)
+{
+	int val;
+
+	val = bq27441_read_word(chip->client, BQ27441_TEMPERATURE);
+	if (val < 0) {
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+		return -EINVAL;
+	}
+	return val;
+}
 
 static enum power_supply_property bq27441_battery_props[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
@@ -324,6 +335,7 @@ static enum power_supply_property bq27441_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_TEMP,
 };
 
 static int bq27441_get_property(struct power_supply *psy,
@@ -351,6 +363,9 @@ static int bq27441_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = chip->capacity_level;
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		val->intval = bq27441_get_temperature(chip);
 		break;
 	default:
 		return -EINVAL;
@@ -537,7 +552,7 @@ static int __init bq27441_init(void)
 {
 	return i2c_add_driver(&bq27441_i2c_driver);
 }
-subsys_initcall(bq27441_init);
+fs_initcall_sync(bq27441_init);
 
 static void __exit bq27441_exit(void)
 {
