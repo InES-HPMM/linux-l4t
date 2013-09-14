@@ -90,10 +90,17 @@ int thermal_register_governor(struct thermal_governor *governor)
 			name = pos->tzp->governor_name;
 		else
 			name = DEFAULT_THERMAL_GOVERNOR;
-		if (!strnicmp(name, governor->name, THERMAL_NAME_LENGTH))
+		if (!strnicmp(name, governor->name, THERMAL_NAME_LENGTH)) {
+			if (governor->start) {
+				err = governor->start(pos);
+				if (err < 0)
+					goto exit;
+			}
 			pos->governor = governor;
+		}
 	}
 
+exit:
 	mutex_unlock(&thermal_list_lock);
 	mutex_unlock(&thermal_governor_lock);
 
@@ -116,8 +123,11 @@ void thermal_unregister_governor(struct thermal_governor *governor)
 
 	list_for_each_entry(pos, &thermal_tz_list, node) {
 		if (!strnicmp(pos->governor->name, governor->name,
-						THERMAL_NAME_LENGTH))
+						THERMAL_NAME_LENGTH)) {
+			if (pos->governor->stop)
+				pos->governor->stop(pos);
 			pos->governor = NULL;
+		}
 	}
 
 	mutex_unlock(&thermal_list_lock);
@@ -707,18 +717,63 @@ passive_show(struct device *dev, struct device_attribute *attr,
 }
 
 static ssize_t
+passive_delay_store(struct device *dev, struct device_attribute *attr,
+		    const char *buf, size_t count)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+	int passive_delay;
+
+	if (!sscanf(buf, "%d\n", &passive_delay))
+		return -EINVAL;
+
+	tz->passive_delay = passive_delay;
+	thermal_zone_device_update(tz);
+	return count;
+}
+
+static ssize_t
+passive_delay_show(struct device *dev, struct device_attribute *attr,
+		   char *buf)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+
+	return sprintf(buf, "%d\n", tz->passive_delay);
+}
+
+static ssize_t
 policy_store(struct device *dev, struct device_attribute *attr,
 		    const char *buf, size_t count)
 {
 	int ret = -EINVAL;
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	struct thermal_governor *gov;
+	char name[THERMAL_NAME_LENGTH];
 
 	mutex_lock(&thermal_governor_lock);
 
-	gov = __find_governor(buf);
+	if ((strlen(buf) >= THERMAL_NAME_LENGTH) || !sscanf(buf, "%s\n", name))
+		goto exit;
+
+	gov = __find_governor((const char *)name);
 	if (!gov)
 		goto exit;
+
+	if (gov == tz->governor) {
+		ret = count;
+		goto exit;
+	}
+
+	if (tz->governor && tz->governor->stop)
+		tz->governor->stop(tz);
+
+	if (gov->start) {
+		ret = gov->start(tz);
+		if (ret < 0) {
+			if (tz->governor && tz->governor->start)
+				tz->governor->start(tz);
+			goto exit;
+		}
+	}
 
 	tz->governor = gov;
 	ret = count;
@@ -734,6 +789,23 @@ policy_show(struct device *dev, struct device_attribute *devattr, char *buf)
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 
 	return sprintf(buf, "%s\n", tz->governor->name);
+}
+
+static ssize_t
+available_policies_show(struct device *dev, struct device_attribute *devattr,
+			char *buf)
+{
+	struct thermal_governor *pos;
+	ssize_t count = 0;
+
+	mutex_lock(&thermal_governor_lock);
+
+	list_for_each_entry(pos, &thermal_governor_list, governor_list)
+		count += sprintf(buf + count, "%s ", pos->name);
+	count += sprintf(buf + count, "\n");
+
+	mutex_unlock(&thermal_governor_lock);
+	return count;
 }
 
 #ifdef CONFIG_THERMAL_EMULATION
@@ -765,7 +837,10 @@ static DEVICE_ATTR(type, 0444, type_show, NULL);
 static DEVICE_ATTR(temp, 0444, temp_show, NULL);
 static DEVICE_ATTR(mode, 0644, mode_show, mode_store);
 static DEVICE_ATTR(passive, S_IRUGO | S_IWUSR, passive_show, passive_store);
+static DEVICE_ATTR(passive_delay, S_IRUGO | S_IWUSR,
+		   passive_delay_show, passive_delay_store);
 static DEVICE_ATTR(policy, S_IRUGO | S_IWUSR, policy_show, policy_store);
+static DEVICE_ATTR(available_policies, S_IRUGO, available_policies_show, NULL);
 
 /* sys I/F for cooling device */
 #define to_cooling_device(_dev)	\
@@ -1327,7 +1402,7 @@ thermal_cooling_device_register(char *type, void *devdata,
 	mutex_init(&cdev->lock);
 	INIT_LIST_HEAD(&cdev->thermal_instances);
 	cdev->ops = ops;
-	cdev->updated = true;
+	cdev->updated = false;
 	cdev->device.class = &thermal_class;
 	cdev->devdata = devdata;
 	dev_set_name(&cdev->device, "cooling_device%d", cdev->id);
@@ -1470,6 +1545,23 @@ void thermal_notify_framework(struct thermal_zone_device *tz, int trip)
 	handle_thermal_trip(tz, trip);
 }
 EXPORT_SYMBOL_GPL(thermal_notify_framework);
+
+struct thermal_zone_device *thermal_zone_device_find(void *data,
+	int (*match)(struct thermal_zone_device *, void *))
+{
+	struct thermal_zone_device *thz;
+
+	mutex_lock(&thermal_list_lock);
+	list_for_each_entry(thz, &thermal_tz_list, node)
+		if (match(thz, data)) {
+			mutex_unlock(&thermal_list_lock);
+			return thz;
+		}
+
+	mutex_unlock(&thermal_list_lock);
+	return NULL;
+}
+EXPORT_SYMBOL(thermal_zone_device_find);
 
 /**
  * create_trip_attrs() - create attributes for trip points
@@ -1700,13 +1792,37 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 	if (result)
 		goto unregister;
 
+	/* Create passive_delay attribute */
+	result = device_create_file(&tz->device, &dev_attr_passive_delay);
+	if (result)
+		goto unregister;
+
+	/* Create available_policies attribute */
+	result = device_create_file(&tz->device, &dev_attr_available_policies);
+	if (result)
+		goto unregister;
+
 	/* Update 'this' zone's governor information */
 	mutex_lock(&thermal_governor_lock);
 
 	if (tz->tzp)
 		tz->governor = __find_governor(tz->tzp->governor_name);
-	else
+
+	if (!tz->governor) {
 		tz->governor = __find_governor(DEFAULT_THERMAL_GOVERNOR);
+		if (!tz->governor) {
+			mutex_unlock(&thermal_governor_lock);
+			goto unregister;
+		}
+	}
+
+	if (tz->governor->start) {
+		result = tz->governor->start(tz);
+		if (result < 0) {
+			mutex_unlock(&thermal_governor_lock);
+			goto unregister;
+		}
+	}
 
 	mutex_unlock(&thermal_governor_lock);
 
@@ -1729,6 +1845,9 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 		return tz;
 
 unregister:
+	if (tz->governor && tz->governor->stop)
+		tz->governor->stop(tz);
+	tz->governor = NULL;
 	release_idr(&thermal_tz_idr, &thermal_idr_lock, tz->id);
 	device_unregister(&tz->device);
 	return ERR_PTR(result);
@@ -1789,8 +1908,13 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 	device_remove_file(&tz->device, &dev_attr_temp);
 	if (tz->ops->get_mode)
 		device_remove_file(&tz->device, &dev_attr_mode);
+	device_remove_file(&tz->device, &dev_attr_passive_delay);
 	device_remove_file(&tz->device, &dev_attr_policy);
+	device_remove_file(&tz->device, &dev_attr_available_policies);
 	remove_trip_attrs(tz);
+
+	if (tz->governor && tz->governor->stop)
+		tz->governor->stop(tz);
 	tz->governor = NULL;
 
 	thermal_remove_hwmon_sysfs(tz);
@@ -1954,6 +2078,10 @@ static int __init thermal_register_governors(void)
 	if (result)
 		return result;
 
+	result = pid_thermal_gov_register();
+	if (result)
+		return result;
+
 	return thermal_gov_user_space_register();
 }
 
@@ -1961,6 +2089,7 @@ static void thermal_unregister_governors(void)
 {
 	thermal_gov_step_wise_unregister();
 	thermal_gov_fair_share_unregister();
+	pid_thermal_gov_unregister();
 	thermal_gov_user_space_unregister();
 }
 

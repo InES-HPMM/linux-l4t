@@ -185,6 +185,16 @@ struct thermal_zone_device {
 /* Structure that holds thermal governor information */
 struct thermal_governor {
 	char name[THERMAL_NAME_LENGTH];
+
+	/*
+	 * The start and stop operations will be called when thermal zone is
+	 * registered and when change governor via sysfs. They will not be
+	 * called when cooling devices are registered or when cooling devices
+	 * are bound to thermal zones.
+	 */
+	int (*start)(struct thermal_zone_device *tz);
+	void (*stop)(struct thermal_zone_device *tz);
+
 	int (*throttle)(struct thermal_zone_device *tz, int trip);
 	struct list_head	governor_list;
 };
@@ -241,6 +251,8 @@ struct thermal_cooling_device *thermal_cooling_device_register(char *, void *,
 void thermal_cooling_device_unregister(struct thermal_cooling_device *);
 struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *name);
 int thermal_zone_get_temp(struct thermal_zone_device *tz, unsigned long *temp);
+struct thermal_zone_device *thermal_zone_device_find(void *data,
+	int (*match)(struct thermal_zone_device *, void *));
 
 int get_tz_trend(struct thermal_zone_device *, int);
 struct thermal_instance *get_thermal_instance(struct thermal_zone_device *,
