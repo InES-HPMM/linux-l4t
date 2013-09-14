@@ -50,6 +50,8 @@ obj-y                                   += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-y                                   += mc.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)	+= arb_sema.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
