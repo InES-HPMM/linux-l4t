@@ -25,8 +25,7 @@
 #include <linux/clkdev.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
-
-#include <mach/clk.h>
+#include <linux/clk/tegra.h>
 
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
