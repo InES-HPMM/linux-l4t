@@ -932,3 +932,18 @@ config ARCH_HAS_BARRIERS
 	help
 	  This option allows the use of custom mandatory barriers
 	  included via the mach/barriers.h file.
+
+config ARM_SAVE_DEBUG_CONTEXT
+	bool "Save CPU debug state across suspend/resume"
+	depends on PM_SLEEP && CPU_V7
+	help
+	  This option enables save/restore of the ARM debug registers
+	  across CPU powerdown.
+
+config CPA
+	bool "Change Page Attributes"
+	depends on CPU_V7
+	help
+	  This option enables Changing Page Attibutes for low memory.
+	  This is needed to avoid conflicting memory mappings for low memory,
+	  One from kernel page table and others from user process page tables.

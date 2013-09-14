@@ -106,17 +106,14 @@ int __kprobes arch_prepare_kprobe(struct kprobe *p)
 
 void __kprobes arch_arm_kprobe(struct kprobe *p)
 {
-	unsigned int brkp;
-	void *addr;
+	uintptr_t addr = (uintptr_t)p->addr & ~1; /* Remove any Thumb flag */
 
-	if (IS_ENABLED(CONFIG_THUMB2_KERNEL)) {
-		/* Remove any Thumb flag */
-		addr = (void *)((uintptr_t)p->addr & ~1);
-
-		if (is_wide_instruction(p->opcode))
-			brkp = KPROBE_THUMB32_BREAKPOINT_INSTRUCTION;
-		else
-			brkp = KPROBE_THUMB16_BREAKPOINT_INSTRUCTION;
+	if (!is_wide_instruction(p->opcode)) {
+		*(u16 *)addr = KPROBE_THUMB16_BREAKPOINT_INSTRUCTION;
+		flush_insns(addr, sizeof(u16));
+	} else if (addr & 2) {
+		/* A 32-bit instruction spanning two words needs special care */
+		stop_machine(set_t32_breakpoint, (void *)addr, cpu_online_mask);
 	} else {
 		kprobe_opcode_t insn = p->opcode;
 
