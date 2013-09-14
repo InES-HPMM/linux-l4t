@@ -11,6 +11,7 @@ config ARCH_TEGRA_2x_SOC
 	select ARM_ERRATA_754327 if SMP
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select COMMON_CLK
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
 	select PINCTRL
@@ -31,6 +32,7 @@ config ARCH_TEGRA_3x_SOC
 	select ARM_ERRATA_754322
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select COMMON_CLK
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
 	select PINCTRL
