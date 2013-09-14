@@ -62,5 +62,6 @@ obj-$(CONFIG_TRACELEVEL) += tracelevel.o
 obj-$(CONFIG_TRACEDUMP) += tracedump.o
 obj-$(CONFIG_PROBE_EVENTS) += trace_probe.o
 obj-$(CONFIG_UPROBE_EVENT) += trace_uprobe.o
+obj-$(CONFIG_GPU_TRACEPOINTS) += gpu-traces.o
 
 libftrace-y := ftrace.o
