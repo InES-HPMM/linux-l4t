@@ -154,7 +154,7 @@ config TEGRA_IOMMU_GART
 	  Enables support for remapping discontiguous physical memory
 	  shared with the operating system into contiguous I/O virtual
 	  space through the GART (Graphics Address Relocation Table)
-	  hardware included on Tegra SoCs.
+	  hardware included on Tegra 2 SoCs.
 
 config TEGRA_IOMMU_SMMU
 	bool "Tegra SMMU IOMMU Support"
@@ -165,6 +165,17 @@ config TEGRA_IOMMU_SMMU
 	  shared with the operating system into contiguous I/O virtual
 	  space through the SMMU (System Memory Management Unit)
 	  hardware included on Tegra SoCs.
+
+config TEGRA_IOMMU_SMMU_LINEAR
+	bool "Physical RAM IOVA Liner Mapping Support"
+	depends on TEGRA_IOMMU_SMMU
+	default y
+	help
+	  Enables support for linear mapping between physical address
+	  and IO virtual address for RAM. With this enabled, H/W can
+	  expect virt_to_phys() to work even if it's behined the
+	  IOMMU'able bus. Otherwise DMA API should be used correctly
+	  in device drivers.
 
 config EXYNOS_IOMMU
 	bool "Exynos IOMMU Support"

@@ -1,5 +1,5 @@
 /*
- * IOMMU API for SMMU in Tegra30
+ * IOMMU driver for SMMU on Tegra 3 series SoCs and later.
  *
  * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -36,9 +36,14 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/tegra-ahb.h>
+#include <linux/of_iommu.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
+#include <asm/dma-iommu.h>
+
+#include <mach/hardware.h>
+#include <mach/tegra_smmu.h>
 
 enum smmu_hwgrp {
 	HWGRP_AFI,
@@ -57,28 +62,20 @@ enum smmu_hwgrp {
 	HWGRP_SATA,
 	HWGRP_VDE,
 	HWGRP_VI,
+	HWGRP_MSENC,
+	HWGRP_TSEC,
+	HWGRP_PPCS1,
+	HWGRP_XUSB_HOST,
+	HWGRP_XUSB_DEV,
 
 	HWGRP_COUNT,
 
 	HWGRP_END = ~0,
 };
-
-#define HWG_AFI		(1 << HWGRP_AFI)
 #define HWG_AVPC	(1 << HWGRP_AVPC)
-#define HWG_DC		(1 << HWGRP_DC)
-#define HWG_DCB		(1 << HWGRP_DCB)
-#define HWG_EPP		(1 << HWGRP_EPP)
-#define HWG_G2		(1 << HWGRP_G2)
-#define HWG_HC		(1 << HWGRP_HC)
-#define HWG_HDA		(1 << HWGRP_HDA)
-#define HWG_ISP		(1 << HWGRP_ISP)
-#define HWG_MPE		(1 << HWGRP_MPE)
-#define HWG_NV		(1 << HWGRP_NV)
-#define HWG_NV2		(1 << HWGRP_NV2)
-#define HWG_PPCS	(1 << HWGRP_PPCS)
-#define HWG_SATA	(1 << HWGRP_SATA)
-#define HWG_VDE		(1 << HWGRP_VDE)
-#define HWG_VI		(1 << HWGRP_VI)
+
+/* REVISIT: With new configurations for t114/124/148 passed from DT */
+#define SKIP_SWGRP_CHECK
 
 /* bitmap of the page sizes currently supported */
 #define SMMU_IOMMU_PGSIZES	(SZ_4K)
@@ -86,11 +83,6 @@ enum smmu_hwgrp {
 #define SMMU_CONFIG				0x10
 #define SMMU_CONFIG_DISABLE			0
 #define SMMU_CONFIG_ENABLE			1
-
-/* REVISIT: To support multiple MCs */
-enum {
-	_MC = 0,
-};
 
 enum {
 	_TLB = 0,
@@ -158,12 +150,18 @@ enum {
 #define SMMU_HDA_ASID	0x254   /* High-def audio */
 #define SMMU_ISP_ASID	0x258   /* Image signal processor */
 #define SMMU_MPE_ASID	0x264   /* MPEG encoder */
+#define SMMU_MSENC_ASID 0x264	/* MPEG encoder */
 #define SMMU_NV_ASID	0x268   /* (3D) */
 #define SMMU_NV2_ASID	0x26c   /* (3D) */
 #define SMMU_PPCS_ASID	0x270   /* AHB */
 #define SMMU_SATA_ASID	0x278   /* SATA */
 #define SMMU_VDE_ASID	0x27c   /* Video decoder */
 #define SMMU_VI_ASID	0x280   /* Video input */
+#define SMMU_XUSB_HOST_ASID	0x288   /* USB host */
+#define SMMU_XUSB_DEV_ASID	0x28c   /* USB dev */
+#define SMMU_TSEC_ASID	0x294   /* TSEC */
+#define SMMU_PPCS1_ASID	0x298   /* AHB secondary */
+
 
 #define SMMU_PDE_NEXT_SHIFT		28
 
@@ -211,10 +209,17 @@ enum {
 
 #define _PDE_ATTR	(_READABLE | _WRITABLE | _NONSECURE)
 #define _PDE_ATTR_N	(_PDE_ATTR | _PDE_NEXT)
-#define _PDE_VACANT(pdn)	(((pdn) << 10) | _PDE_ATTR)
+#define _PDE_VACANT(pdn)	(0)
 
 #define _PTE_ATTR	(_READABLE | _WRITABLE | _NONSECURE)
-#define _PTE_VACANT(addr)	(((addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
+#define _PTE_VACANT(addr)	(0)
+
+#ifdef	CONFIG_TEGRA_IOMMU_SMMU_LINEAR
+#undef	_PDE_VACANT
+#undef	_PTE_VACANT
+#define	_PDE_VACANT(pdn)	(((pdn) << 10) | _PDE_ATTR)
+#define	_PTE_VACANT(addr)	(((addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
+#endif
 
 #define SMMU_MK_PDIR(page, attr)	\
 		((page_to_phys(page) >> SMMU_PDIR_SHIFT) | (attr))
@@ -237,7 +242,9 @@ enum {
 
 #define HWGRP_INIT(client) [HWGRP_##client] = SMMU_##client##_ASID
 
-static const u32 smmu_hwgrp_asid_reg[] = {
+static const u32 *smmu_hwgrp_asid_reg;
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static const u32 tegra3x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
 	HWGRP_INIT(AFI),
 	HWGRP_INIT(AVPC),
 	HWGRP_INIT(DC),
@@ -255,6 +262,29 @@ static const u32 smmu_hwgrp_asid_reg[] = {
 	HWGRP_INIT(VDE),
 	HWGRP_INIT(VI),
 };
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static const u32 tegra11x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
+	HWGRP_INIT(AVPC),
+	HWGRP_INIT(DC),
+	HWGRP_INIT(DCB),
+	HWGRP_INIT(EPP),
+	HWGRP_INIT(G2),
+	HWGRP_INIT(HC),
+	HWGRP_INIT(HDA),
+	HWGRP_INIT(ISP),
+	HWGRP_INIT(MSENC),
+	HWGRP_INIT(NV),
+	HWGRP_INIT(PPCS),
+	HWGRP_INIT(PPCS1),
+	HWGRP_INIT(TSEC),
+	HWGRP_INIT(VDE),
+	HWGRP_INIT(VI),
+	HWGRP_INIT(XUSB_DEV),
+	HWGRP_INIT(XUSB_HOST),
+};
+#endif
+
 #define HWGRP_ASID_REG(x) (smmu_hwgrp_asid_reg[x])
 
 /*
@@ -396,14 +426,30 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 		map = smmu_client_hwgrp(c);
 
 	for_each_set_bit(i, &map, HWGRP_COUNT) {
+
+		/* FIXME: PCIe client hasn't been registered as IOMMU */
+		if (i == HWGRP_AFI)
+			continue;
+
 		offs = HWGRP_ASID_REG(i);
 		val = smmu_read(smmu, offs);
 		if (on) {
-			if (WARN_ON(val & mask))
-				goto err_hw_busy;
+#if !defined(SKIP_SWGRP_CHECK)
+			if (WARN_ON(val & mask)) {
+				for_each_set_bit(i, &map, HWGRP_COUNT) {
+					offs = HWGRP_ASID_REG(i);
+					val = smmu_read(smmu, offs);
+					val &= ~mask;
+					smmu_write(smmu, val, offs);
+				}
+				return -EBUSY;
+			}
+#endif
 			val |= mask;
 		} else {
+#if !defined(SKIP_SWGRP_CHECK)
 			WARN_ON((val & mask) == mask);
+#endif
 			val &= ~mask;
 		}
 		smmu_write(smmu, val, offs);
@@ -412,14 +458,6 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 	c->hwgrp = map;
 	return 0;
 
-err_hw_busy:
-	for_each_set_bit(i, &map, HWGRP_COUNT) {
-		offs = HWGRP_ASID_REG(i);
-		val = smmu_read(smmu, offs);
-		val &= ~mask;
-		smmu_write(smmu, val, offs);
-	}
-	return -EBUSY;
 }
 
 static int smmu_client_set_hwgrp(struct smmu_client *c, u32 map, int on)
@@ -676,13 +714,14 @@ static int alloc_pdir(struct smmu_as *as)
 err_out:
 	spin_unlock_irqrestore(&as->lock, flags);
 
-	devm_kfree(smmu->dev, cnt);
 	if (page)
 		__free_page(page);
+	if (cnt)
+		devm_kfree(smmu->dev, cnt);
 	return err;
 }
 
-static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 {
 	unsigned long *pte;
 	struct page *page;
@@ -690,16 +729,18 @@ static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 
 	pte = locate_pte(as, iova, false, &page, &count);
 	if (WARN_ON(!pte))
-		return;
+		return -EINVAL;
 
-	if (WARN_ON(*pte == _PTE_VACANT(iova)))
-		return;
+	if (*pte == _PTE_VACANT(iova))
+		return -EINVAL;
 
 	*pte = _PTE_VACANT(iova);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(as->smmu, as, iova, pte, page, 0);
 	if (!--(*count))
 		free_ptbl(as, iova);
+
+	return 0;
 }
 
 static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
@@ -733,9 +774,6 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%08x\n", as->asid, iova, pa);
 
-	if (!pfn_valid(pfn))
-		return -ENOMEM;
-
 	spin_lock_irqsave(&as->lock, flags);
 	__smmu_iommu_map_pfn(as, iova, pfn);
 	spin_unlock_irqrestore(&as->lock, flags);
@@ -747,13 +785,14 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
+	int err;
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-	__smmu_iommu_unmap(as, iova);
+	err = __smmu_iommu_unmap(as, iova);
 	spin_unlock_irqrestore(&as->lock, flags);
-	return SMMU_PAGE_SIZE;
+	return err ? 0 : SMMU_PAGE_SIZE;
 }
 
 static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
@@ -763,14 +802,14 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 	unsigned long *pte;
 	unsigned int *count;
 	struct page *page;
-	unsigned long pfn;
+	unsigned long pfn = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&as->lock, flags);
 
-	pte = locate_pte(as, iova, true, &page, &count);
-	pfn = *pte & SMMU_PFN_MASK;
-	WARN_ON(!pfn_valid(pfn));
+	pte = locate_pte(as, iova, false, &page, &count);
+	if (pte)
+		pfn = *pte & SMMU_PFN_MASK;
 	dev_dbg(as->smmu->dev,
 		"iova:%08llx pfn:%08lx asid:%d\n", (unsigned long long)iova,
 		 pfn, as->asid);
@@ -799,9 +838,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		return -ENOMEM;
 	client->dev = dev;
 	client->as = as;
+
+#ifdef SKIP_SWGRP_CHECK
+	/* Enable all SWGRP blindly by default */
+	map = (1 << HWGRP_COUNT) - 1;
+#else
 	map = (unsigned long)dev->platform_data;
 	if (!map)
 		return -EINVAL;
+#endif
 
 	err = smmu_client_enable_hwgrp(client, map);
 	if (err)
@@ -829,7 +874,8 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		page = as->smmu->avp_vector_page;
 		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page));
 
-		pr_info("Reserve \"page zero\" for AVP vectors using a common dummy\n");
+		pr_debug("Reserve \"page zero\" \
+			for AVP vectors using a common dummy\n");
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
@@ -1107,7 +1153,7 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 			info->cache = j;
 
 			cache = debugfs_create_file(smmu_debugfs_cache[j],
-						    S_IWUGO | S_IRUGO, mc,
+						    S_IWUSR | S_IRUSR, mc,
 						    (void *)info,
 						    &smmu_debugfs_stats_fops);
 			if (!cache)
@@ -1154,6 +1200,23 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	if (smmu_handle)
 		return -EIO;
+
+	switch (tegra_get_chipid()) {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	case TEGRA_CHIPID_TEGRA3:
+		smmu_hwgrp_asid_reg = tegra3x_smmu_hwgrp_asid_reg;
+		break;
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	case TEGRA_CHIPID_TEGRA11:
+		smmu_hwgrp_asid_reg = tegra11x_smmu_hwgrp_asid_reg;
+		break;
+#endif
+	default:
+		dev_err(dev, "No SMMU support\n");
+		return -ENODEV;
+		break;
+	}
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 
@@ -1272,23 +1335,80 @@ static struct platform_driver tegra_smmu_driver = {
 	.remove		= tegra_smmu_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra-smmu",
+		.name	= "tegra_smmu",
 		.pm	= &tegra_smmu_pm_ops,
 		.of_match_table = tegra_smmu_of_match,
 	},
 };
 
+static int tegra_smmu_device_notifier(struct notifier_block *nb,
+				      unsigned long event, void *_dev)
+{
+	struct dma_iommu_mapping *map = tegra_smmu_get_map();
+	struct device *dev = _dev;
+	dma_addr_t base;
+	size_t size;
+	int err;
+
+	switch (event) {
+	case BUS_NOTIFY_ADD_DEVICE:
+		err = of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
+					&size);
+		if (!err)
+			map = arm_iommu_create_mapping(&platform_bus_type,
+						       base, size, 0);
+		if (IS_ERR_OR_NULL(map))
+			break;
+		if (arm_iommu_attach_device(dev, map)) {
+			arm_iommu_release_mapping(map);
+			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
+			break;
+		}
+		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block tegra_smmu_device_nb = {
+	.notifier_call = tegra_smmu_device_notifier,
+};
+
 static int tegra_smmu_init(void)
 {
-	return platform_driver_register(&tegra_smmu_driver);
+	int err;
+
+	err = platform_driver_register(&tegra_smmu_driver);
+	if (err)
+		return err;
+	if (IS_ENABLED(CONFIG_ARM_DMA_USE_IOMMU))
+		bus_register_notifier(&platform_bus_type,
+				      &tegra_smmu_device_nb);
+	return 0;
+}
+
+static int tegra_smmu_remove_map(struct device *dev, void *data)
+{
+	struct dma_iommu_mapping *map = to_dma_iommu_mapping(dev);
+	if (map)
+		arm_iommu_release_mapping(map);
+	return 0;
 }
 
 static void __exit tegra_smmu_exit(void)
 {
+	if (IS_ENABLED(CONFIG_ARM_DMA_USE_IOMMU)) {
+		bus_for_each_dev(&platform_bus_type, NULL, NULL,
+				 tegra_smmu_remove_map);
+		bus_unregister_notifier(&platform_bus_type,
+					&tegra_smmu_device_nb);
+	}
 	platform_driver_unregister(&tegra_smmu_driver);
 }
 
-subsys_initcall(tegra_smmu_init);
+core_initcall(tegra_smmu_init);
 module_exit(tegra_smmu_exit);
 
 MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra30");
