@@ -18,12 +18,33 @@
 #include <linux/mmc/host.h>
 #include <asm/mach/mmc.h>
 
+/*
+ * MMC_OCR_1V8_MASK will be used in board sdhci file
+ * Example for cardhu it will be used in board-cardhu-sdhci.c
+ * for built_in = 0 devices enabling ocr_mask to MMC_OCR_1V8_MASK
+ * sets the voltage to 1.8V
+ */
+#define MMC_OCR_1V8_MASK    0x00000008
+#define MMC_OCR_2V8_MASK    0x00010000
+
+/* uhs mask can be used to mask any of the UHS modes support */
+#define MMC_UHS_MASK_SDR25	1
+#define MMC_UHS_MASK_SDR50	2
+#define MMC_UHS_MASK_DDR50	4
+#define MMC_UHS_MASK_SDR104	8
+
 struct tegra_sdhci_platform_data {
 	int cd_gpio;
 	int wp_gpio;
 	int power_gpio;
 	int is_8bit;
 	int pm_flags;
+	int pm_caps;
+	unsigned int max_clk_limit;
+	unsigned int ddr_clk_limit;
+	unsigned int trim_delay;
+	unsigned int uhs_mask;
+	unsigned int base_clk;
 	struct mmc_platform_data mmc_data;
 };
 

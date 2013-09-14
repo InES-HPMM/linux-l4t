@@ -150,8 +150,11 @@ struct sdhci_host *sdhci_pltfm_init(struct platform_device *pdev,
 		host->ops = pdata->ops;
 	else
 		host->ops = &sdhci_pltfm_ops;
-	if (pdata)
+	if (pdata) {
 		host->quirks = pdata->quirks;
+		host->quirks2 = pdata->quirks2;
+	}
+
 	host->irq = platform_get_irq(pdev, 0);
 
 	if (!request_mem_region(iomem->start, resource_size(iomem),
@@ -237,15 +240,41 @@ EXPORT_SYMBOL_GPL(sdhci_pltfm_unregister);
 static int sdhci_pltfm_suspend(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+	int ret;
 
-	return sdhci_suspend_host(host);
+	ret = sdhci_suspend_host(host);
+	if (ret) {
+		dev_err(dev, "suspend failed, error = %d\n", ret);
+		return ret;
+	}
+
+	if (host->ops && host->ops->suspend)
+		ret = host->ops->suspend(host);
+	if (ret) {
+		dev_err(dev, "suspend hook failed, error = %d\n", ret);
+		sdhci_resume_host(host);
+	}
+
+	return ret;
 }
 
 static int sdhci_pltfm_resume(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+	int ret = 0;
 
-	return sdhci_resume_host(host);
+	if (host->ops && host->ops->resume)
+		ret = host->ops->resume(host);
+	if (ret) {
+		dev_err(dev, "resume hook failed, error = %d\n", ret);
+		return ret;
+	}
+
+	ret = sdhci_resume_host(host);
+	if (ret)
+		dev_err(dev, "resume failed, error = %d\n", ret);
+
+	return ret;
 }
 
 const struct dev_pm_ops sdhci_pltfm_pmops = {

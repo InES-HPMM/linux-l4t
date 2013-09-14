@@ -8,9 +8,15 @@ by mmc.txt and the properties used by the sdhci-tegra driver.
 
 Required properties:
 - compatible : Should be "nvidia,<chip>-sdhci"
+- base-clk : Integer.
 
 Optional properties:
 - power-gpios : Specify GPIOs for power control
+- tap-delay : Integer. Valid range 0...31.
+- trim-delay : Integer. Valid range 0...255.
+- ddr-clk-limit : Integer.
+- built-in : Boolean, indicates whether it is built-in card or not.
+- mmc-ocr-mask : 0: 1V8, 1: 2V8.
 
 Example:
 
@@ -22,4 +28,5 @@ sdhci@c8000200 {
 	wp-gpios = <&gpio 57 0>; /* gpio PH1 */
 	power-gpios = <&gpio 155 0>; /* gpio PT3 */
 	bus-width = <8>;
+	base-clk = <104000000>;
 };

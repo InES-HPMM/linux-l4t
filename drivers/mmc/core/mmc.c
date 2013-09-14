@@ -361,12 +361,29 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	card->ext_csd.raw_hc_erase_gap_size =
 		ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
-	card->ext_csd.raw_sec_trim_mult =
-		ext_csd[EXT_CSD_SEC_TRIM_MULT];
-	card->ext_csd.raw_sec_erase_mult =
-		ext_csd[EXT_CSD_SEC_ERASE_MULT];
-	card->ext_csd.raw_sec_feature_support =
-		ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+
+	/*
+	* Secure erase feature is deprecated in eMMC v4.5 specification.
+	* So, use this feature only for eMMC v4.41 or lower version cards
+	* In eMMC v4.5 secure feature support register, the Bit:0 is reserved,
+	* and Bit:6 is secure sanitize support, clearing these two bits in
+	* eMMC v4.5 cards as they set by default.
+	*/
+	if (card->ext_csd.rev < 6) {
+		card->ext_csd.raw_sec_trim_mult =
+			ext_csd[EXT_CSD_SEC_TRIM_MULT];
+		card->ext_csd.raw_sec_erase_mult =
+			ext_csd[EXT_CSD_SEC_ERASE_MULT];
+		card->ext_csd.raw_sec_feature_support =
+			ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+	}
+
+	else if (card->ext_csd.rev == 6) {
+		card->ext_csd.raw_sec_feature_support =
+			ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT] &
+			~(EXT_CSD_SEC_ER_EN | EXT_CSD_SEC_SANITIZE);
+	}
+
 	card->ext_csd.raw_trim_mult =
 		ext_csd[EXT_CSD_TRIM_MULT];
 	card->ext_csd.raw_partition_support = ext_csd[EXT_CSD_PARTITION_SUPPORT];
@@ -445,12 +462,22 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 					MMC_BLK_DATA_AREA_GP);
 			}
 		}
-		card->ext_csd.sec_trim_mult =
-			ext_csd[EXT_CSD_SEC_TRIM_MULT];
-		card->ext_csd.sec_erase_mult =
-			ext_csd[EXT_CSD_SEC_ERASE_MULT];
-		card->ext_csd.sec_feature_support =
-			ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+
+		if (card->ext_csd.rev < 6) {
+			card->ext_csd.sec_trim_mult =
+				ext_csd[EXT_CSD_SEC_TRIM_MULT];
+			card->ext_csd.sec_erase_mult =
+				ext_csd[EXT_CSD_SEC_ERASE_MULT];
+			card->ext_csd.sec_feature_support =
+				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+		}
+
+		if (card->ext_csd.rev == 6) {
+			card->ext_csd.sec_feature_support =
+				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT] &
+				~(EXT_CSD_SEC_ER_EN | EXT_CSD_SEC_SANITIZE);
+		}
+
 		card->ext_csd.trim_timeout = 300 *
 			ext_csd[EXT_CSD_TRIM_MULT];
 
@@ -1417,7 +1444,8 @@ static int mmc_suspend(struct mmc_host *host)
 
 	if (mmc_can_poweroff_notify(host->card))
 		err = mmc_poweroff_notify(host->card, EXT_CSD_POWER_OFF_SHORT);
-	else if (mmc_card_can_sleep(host))
+	else if (mmc_card_can_sleep(host) &&
+		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD))
 		err = mmc_card_sleep(host);
 	else if (!mmc_host_is_spi(host))
 		err = mmc_deselect_cards(host);

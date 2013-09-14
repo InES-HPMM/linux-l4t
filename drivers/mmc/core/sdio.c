@@ -601,7 +601,17 @@ try_again:
 	 * Inform the card of the voltage
 	 */
 	if (!powered_resume) {
-		err = mmc_send_io_op_cond(host, host->ocr, &ocr);
+		/*
+		 * If the host supports any of the UHS modes, check whether
+		 * the card supports 1.8V signalling voltage.
+		 */
+		if (host->caps &
+			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
+			MMC_CAP_UHS_DDR50)) {
+			ocr |= R4_18V_PRESENT;
+		}
+		err = mmc_send_io_op_cond(host, ocr, &ocr);
 		if (err)
 			goto err;
 	}
@@ -781,7 +791,7 @@ try_again:
 			goto remove;
 
 		/* Card is an ultra-high-speed card */
-		mmc_card_set_uhs(card);
+		mmc_sd_card_set_uhs(card);
 	} else {
 		/*
 		 * Switch to high-speed (if supported).
@@ -1040,8 +1050,7 @@ static int mmc_sdio_power_restore(struct mmc_host *host)
 		/* to query card if 1.8V signalling is supported */
 		host->ocr |= R4_18V_PRESENT;
 
-	ret = mmc_sdio_init_card(host, host->ocr, host->card,
-				mmc_card_keep_power(host));
+	ret = mmc_sdio_init_card(host, host->ocr, host->card, 0);
 	if (!ret && host->sdio_irqs)
 		mmc_signal_sdio_irq(host);
 
