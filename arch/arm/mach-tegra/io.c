@@ -7,6 +7,8 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (C) 2010-2011 NVIDIA Corporation
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -73,6 +75,18 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.length = IO_SDMMC_SIZE,
 		.type = MT_DEVICE,
 	},
+	{
+		.virtual = (unsigned long)IO_PPCS_VIRT,
+		.pfn = __phys_to_pfn(IO_PPCS_PHYS),
+		.length = IO_PPCS_SIZE,
+		.type = MT_DEVICE,
+	},
+	{
+		.virtual = (unsigned long)IO_PCIE_VIRT,
+		.pfn = __phys_to_pfn(IO_PCIE_PHYS),
+		.length = IO_PCIE_SIZE,
+		.type = MT_DEVICE,
+	}
 };
 
 void __init tegra_map_common_io(void)

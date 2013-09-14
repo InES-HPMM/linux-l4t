@@ -7,6 +7,8 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
+ * Copyright (C) 2010-2012, NVIDIA Corporation.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -21,11 +23,14 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
-#include <linux/clk-provider.h>
-#include <linux/clkdev.h>
-#include <linux/list.h>
-#include <linux/mutex.h>
-#include <linux/spinlock.h>
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
+#else
+#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
+#define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
+#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#endif
+
 #include <linux/clk/tegra.h>
 
 #define DIV_BUS			(1 << 0)
@@ -46,13 +51,26 @@
 #define PLLX                    (1 << 15)
 #define MUX_PWM                 (1 << 16)
 #define MUX8                    (1 << 17)
-#define DIV_U71_UART            (1 << 18)
+#define DIV_U151_UART           (1 << 18)
 #define MUX_CLK_OUT             (1 << 19)
 #define PLLM                    (1 << 20)
 #define DIV_U71_INT             (1 << 21)
 #define DIV_U71_IDLE            (1 << 22)
+#define DIV_U151		(1 << 23)
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB           (1 << 29)
+#define PERIPH_ON_CBUS		(1 << 30)
+
+#ifndef __ASSEMBLY__
+
+#include <linux/clk-provider.h>
+#include <linux/clkdev.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
+#include <linux/spinlock.h>
+#include <asm/cputime.h>
+
+#define MAX_SAME_LIMIT_SKU_IDS	16
 
 struct clk;
 
@@ -92,6 +110,24 @@ struct clk_ops {
 	void		(*reset)(struct clk *, bool);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
+	int		(*shared_bus_update)(struct clk *);
+};
+
+struct clk_stats {
+	cputime64_t 	time_on;
+	u64 		last_update;
+};
+
+enum cpu_mode {
+	MODE_G = 0,
+	MODE_LP,
+};
+
+enum shared_bus_users_mode {
+	SHARED_FLOOR = 0,
+	SHARED_BW,
+	SHARED_CEILING,
+	SHARED_AUTO,
 };
 
 struct clk {
@@ -119,12 +155,14 @@ struct clk {
 	struct clk		*parent;
 	u32			div;
 	u32			mul;
+	struct clk_stats 	stats;
 
 	const struct clk_mux_sel	*inputs;
 	u32				reg;
 	u32				reg_shift;
 
 	struct list_head		shared_bus_list;
+	struct clk_mux_sel		shared_bus_backup;
 
 	union {
 		struct {
@@ -142,19 +180,40 @@ struct clk {
 			unsigned long			fixed_rate;
 		} pll;
 		struct {
+			unsigned long			default_rate;
+		} pll_div;
+		struct {
 			u32				sel;
 			u32				reg_mask;
 		} mux;
 		struct {
 			struct clk			*main;
 			struct clk			*backup;
+			unsigned long			backup_rate;
+			enum cpu_mode			mode;
 		} cpu;
+		struct {
+			u32				div71;
+		} cclk;
+		struct {
+			struct clk			*pclk;
+			struct clk			*hclk;
+			struct clk			*sclk_low;
+			struct clk			*sclk_high;
+			unsigned long			threshold;
+		} system;
 		struct {
 			struct list_head		node;
 			bool				enabled;
 			unsigned long			rate;
+			const char			*client_id;
+			struct clk			*client;
+			u32				client_div;
+			enum shared_bus_users_mode	mode;
 		} shared_bus_user;
 	} u;
+
+	struct raw_notifier_head			*rate_change_nh;
 
 	struct mutex mutex;
 	spinlock_t spinlock;
@@ -232,15 +291,39 @@ struct tegra_clk_init_table {
 };
 
 #ifndef CONFIG_COMMON_CLK
+void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void clk_init(struct clk *clk);
 unsigned long clk_get_rate_locked(struct clk *c);
 void clk_set_cansleep(struct clk *c);
+unsigned long clk_get_min_rate(struct clk *c);
+unsigned long clk_get_max_rate(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
+int clk_set_parent_locked(struct clk *c, struct clk *parent);
 int clk_reparent(struct clk *c, struct clk *parent);
+long clk_round_rate_locked(struct clk *c, unsigned long rate);
+int tegra_clk_shared_bus_update(struct clk *c);
+void tegra3_set_cpu_skipper_delay(int delay);
+int tegra_emc_set_rate(unsigned long rate);
+long tegra_emc_round_rate(unsigned long rate);
+struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
+void tegra_emc_timing_invalidate(void);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
+{ return true; }
+#else
+bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
+#endif
 #endif /* !CONFIG_COMMON_CLK */
+
+struct tegra_sku_rate_limit {
+	const char *clk_name;
+	unsigned long max_rate;
+	int sku_ids[MAX_SAME_LIMIT_SKU_IDS];
+};
 
 void tegra2_init_clocks(void);
 void tegra30_init_clocks(void);
+void tegra_common_init_clock(void);
 struct clk *tegra_get_clock_by_name(const char *name);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
@@ -285,4 +368,24 @@ static inline void clk_lock_init(struct clk *c)
 }
 #endif
 
+#ifdef CONFIG_CPU_FREQ
+struct cpufreq_frequency_table;
+
+struct tegra_cpufreq_table_data {
+	struct cpufreq_frequency_table *freq_table;
+	int throttle_lowest_index;
+	int throttle_highest_index;
+	int suspend_index;
+};
+struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void);
+unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline int tegra_update_mselect_rate(unsigned long cpu_rate)
+{ return 0; }
+#else
+int tegra_update_mselect_rate(unsigned long cpu_rate);
+#endif
+#endif
+
+#endif
 #endif

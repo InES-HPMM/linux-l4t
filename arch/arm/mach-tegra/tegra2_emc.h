@@ -18,7 +18,4 @@
 #ifndef __MACH_TEGRA_TEGRA2_EMC_H_
 #define __MACH_TEGRA_TEGRA2_EMC_H
 
-int tegra_emc_set_rate(unsigned long rate);
-long tegra_emc_round_rate(unsigned long rate);
-
 #endif

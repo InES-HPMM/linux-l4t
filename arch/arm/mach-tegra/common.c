@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -17,6 +18,7 @@
  *
  */
 
+#include <linux/platform_device.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -25,10 +27,13 @@
 #include <linux/clk/tegra.h>
 #include <linux/highmem.h>
 #include <linux/memblock.h>
+#include <linux/bitops.h>
 
 #include <asm/hardware/cache-l2x0.h>
+#include <asm/system_info.h>
 
 #include <mach/powergate.h>
+#include <mach/tegra_smmu.h>
 
 #include "board.h"
 #include "common.h"
@@ -39,8 +44,42 @@
 #include "pmc.h"
 #include "apbio.h"
 #include "sleep.h"
+#include "reset.h"
+#include "devices.h"
 
-#define MC_SECURITY_CFG2 0x7c
+#define MC_SECURITY_CFG2	0x7c
+
+#define AHB_ARBITRATION_PRIORITY_CTRL		0x4
+#define   AHB_PRIORITY_WEIGHT(x)	(((x) & 0x7) << 29)
+#define   PRIORITY_SELECT_USB	BIT(6)
+#define   PRIORITY_SELECT_USB2	BIT(18)
+#define   PRIORITY_SELECT_USB3	BIT(17)
+
+#define AHB_GIZMO_AHB_MEM		0xc
+#define   ENB_FAST_REARBITRATE	BIT(2)
+#define   DONT_SPLIT_AHB_WR     BIT(7)
+
+#define   RECOVERY_MODE	BIT(31)
+#define   BOOTLOADER_MODE	BIT(30)
+#define   FORCED_RECOVERY_MODE	BIT(1)
+
+#define AHB_GIZMO_USB		0x1c
+#define AHB_GIZMO_USB2		0x78
+#define AHB_GIZMO_USB3		0x7c
+#define   IMMEDIATE	BIT(18)
+
+#define AHB_MEM_PREFETCH_CFG3	0xe0
+#define AHB_MEM_PREFETCH_CFG4	0xe4
+#define AHB_MEM_PREFETCH_CFG1	0xec
+#define AHB_MEM_PREFETCH_CFG2	0xf0
+#define   PREFETCH_ENB	BIT(31)
+#define   MST_ID(x)	(((x) & 0x1f) << 26)
+#define   AHBDMA_MST_ID	MST_ID(5)
+#define   USB_MST_ID	MST_ID(6)
+#define   USB2_MST_ID	MST_ID(18)
+#define   USB3_MST_ID	MST_ID(17)
+#define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
+#define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
 unsigned long tegra_bootloader_fb_start;
 unsigned long tegra_bootloader_fb_size;
@@ -50,9 +89,20 @@ unsigned long tegra_fb2_start;
 unsigned long tegra_fb2_size;
 unsigned long tegra_carveout_start;
 unsigned long tegra_carveout_size;
+unsigned long tegra_vpr_start;
+unsigned long tegra_vpr_size;
 unsigned long tegra_lp0_vec_start;
 unsigned long tegra_lp0_vec_size;
-unsigned long tegra_grhost_aperture;
+bool tegra_lp0_vec_relocate;
+unsigned long tegra_grhost_aperture = ~0ul;
+static   bool is_tegra_debug_uart_hsport;
+static struct board_info pmu_board_info;
+static struct board_info display_board_info;
+static struct board_info camera_board_info;
+
+static int pmu_core_edp = 1200;	/* default 1.2V EDP limit */
+static int board_panel_type;
+static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 
 /*
  * Storage for debug-macro.S's state.
@@ -87,55 +137,196 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
 
+	reg = readl_relaxed(reset + PMC_SCRATCH0);
+	/* Writing recovery kernel or Bootloader mode in SCRATCH0 31:30:1 */
+	if (cmd) {
+		if (!strcmp(cmd, "recovery"))
+			reg |= RECOVERY_MODE;
+		else if (!strcmp(cmd, "bootloader"))
+			reg |= BOOTLOADER_MODE;
+		else if (!strcmp(cmd, "forced-recovery"))
+			reg |= FORCED_RECOVERY_MODE;
+		else
+			reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
+	}
+	else {
+		/* Clearing SCRATCH0 31:30:1 on default reboot */
+		reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
+	}
+	writel_relaxed(reg, reset + PMC_SCRATCH0);
 	reg = readl_relaxed(reset);
 	reg |= 0x10;
 	writel_relaxed(reg, reset);
 }
+static int modem_id;
+int tegra_sku_override;
+static int debug_uart_port_id;
+static enum audio_codec_type audio_codec_name;
+static int max_cpu_current;
 
-void tegra_init_cache(u32 tag_latency, u32 data_latency)
+void tegra_init_cache(bool init)
 {
 #ifdef CONFIG_CACHE_L2X0
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl, cache_type;
+	u32 tag_latency, data_latency;
+	u32 speedo;
+	u32 tmp;
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	tag_latency = 0x331;
+	data_latency = 0x441;
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	if (is_lp_cluster()) {
+		tag_latency = 0x221;
+		data_latency = 0x221;
+	} else {
+		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
+		speedo = tegra_cpu_speedo_id;
+		if (speedo == 4 || speedo == 5 || speedo == 6 ||
+		    speedo == 12 || speedo == 13) {
+			tag_latency = 0x442;
+			data_latency = 0x552;
+		} else {
+			tag_latency = 0x441;
+			data_latency = 0x551;
+		}
+	}
+#else
+	tag_latency = 0x770;
+	data_latency = 0x770;
+#endif
+#endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
 	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+	writel(7, p + L2X0_PREFETCH_CTRL);
+	writel(2, p + L2X0_POWER_CTRL);
+#endif	
+#endif
+
+	writel(0x3, p + L2X0_POWER_CTRL);
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
 	aux_ctrl |= 0x7C400001;
-
-	l2x0_init(p, aux_ctrl, 0x8200c3fe);
+	if (init) {
+		l2x0_init(p, aux_ctrl, 0x8200c3fe);
+	} else {
+		tmp = aux_ctrl;
+		aux_ctrl = readl(p + L2X0_AUX_CTRL);
+		aux_ctrl &= 0x8200c3fe;
+		aux_ctrl |= tmp;
+		writel(aux_ctrl, p + L2X0_AUX_CTRL);
+	}
 #endif
-
 }
 
 static void __init tegra_init_power(void)
 {
-	tegra_powergate_power_off(TEGRA_POWERGATE_MPE);
-	tegra_powergate_power_off(TEGRA_POWERGATE_3D);
+#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
+        tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+#endif
+}
+
+static inline unsigned long gizmo_readl(unsigned long offset)
+{
+	return readl(IO_TO_VIRT(TEGRA_AHB_GIZMO_BASE + offset));
+}
+
+static inline void gizmo_writel(unsigned long value, unsigned long offset)
+{
+	writel(value, IO_TO_VIRT(TEGRA_AHB_GIZMO_BASE + offset));
+}
+
+static void __init tegra_init_ahb_gizmo_settings(void)
+{
+	unsigned long val;
+
+	val = gizmo_readl(AHB_GIZMO_AHB_MEM);
+	val |= ENB_FAST_REARBITRATE | IMMEDIATE | DONT_SPLIT_AHB_WR;
+	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
+
+	val = gizmo_readl(AHB_GIZMO_USB);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_USB);
+
+	val = gizmo_readl(AHB_GIZMO_USB2);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_USB2);
+
+	val = gizmo_readl(AHB_GIZMO_USB3);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_USB3);
+
+	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
+	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
+				| AHB_PRIORITY_WEIGHT(7);
+	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
+
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | AHBDMA_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG1);
+
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG2);
+
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG3);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG3);
+
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG4);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void __init tegra20_init_early(void)
 {
+#ifndef CONFIG_SMP
+	/* For SMP system, initializing the reset handler here is too
+	   late. For non-SMP systems, the function that calls the reset
+	   handler initializer is not called, so do it here for non-SMP. */
+	tegra_cpu_reset_handler_init();
+#endif
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache(0x331, 0x441);
+	tegra_init_cache(true);
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 	tegra_init_power();
+	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 void __init tegra30_init_early(void)
 {
+#ifndef CONFIG_SMP
+	/* For SMP system, initializing the reset handler here is too
+	   late. For non-SMP systems, the function that calls the reset
+	   handler initializer is not called, so do it here for non-SMP. */
+	tegra_cpu_reset_handler_init();
+#endif
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache(0x441, 0x551);
+	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
+	tegra_init_power();
+	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
 }
 #endif
 
@@ -146,6 +337,10 @@ static int __init tegra_lp0_vec_arg(char *options)
 	tegra_lp0_vec_size = memparse(p, &p);
 	if (*p == '@')
 		tegra_lp0_vec_start = memparse(p+1, &p);
+	if (!tegra_lp0_vec_size || !tegra_lp0_vec_start) {
+		tegra_lp0_vec_size = 0;
+		tegra_lp0_vec_start = 0;
+	}
 
 	return 0;
 }
@@ -165,6 +360,219 @@ static int __init tegra_bootloader_fb_arg(char *options)
 	return 0;
 }
 early_param("tegra_fbmem", tegra_bootloader_fb_arg);
+
+static int __init tegra_init_sku_override(char *id)
+{
+	char *p = id;
+
+	tegra_sku_override = memparse(p, &p);
+
+	return 0;
+}
+early_param("sku_override", tegra_init_sku_override);
+
+static int __init tegra_vpr_arg(char *options)
+{
+	char *p = options;
+
+	tegra_vpr_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_vpr_start = memparse(p+1, &p);
+	pr_info("Found vpr, start=0x%lx size=%lx",
+		tegra_vpr_start, tegra_vpr_size);
+	return 0;
+}
+early_param("vpr", tegra_vpr_arg);
+
+enum panel_type get_panel_type(void)
+{
+	return board_panel_type;
+}
+static int __init tegra_board_panel_type(char *options)
+{
+	if (!strcmp(options, "lvds"))
+		board_panel_type = panel_type_lvds;
+	else if (!strcmp(options, "dsi"))
+		board_panel_type = panel_type_dsi;
+	else
+		return 0;
+	return 1;
+}
+__setup("panel=", tegra_board_panel_type);
+
+enum power_supply_type get_power_supply_type(void)
+{
+	return pow_supply_type;
+}
+static int __init tegra_board_power_supply_type(char *options)
+{
+	if (!strcmp(options, "Adapter"))
+		pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
+	if (!strcmp(options, "Mains"))
+		pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
+	else if (!strcmp(options, "Battery"))
+		pow_supply_type = POWER_SUPPLY_TYPE_BATTERY;
+	else
+		return 0;
+	return 1;
+}
+__setup("power_supply=", tegra_board_power_supply_type);
+
+int get_core_edp(void)
+{
+	return pmu_core_edp;
+}
+static int __init tegra_pmu_core_edp(char *options)
+{
+	char *p = options;
+	int core_edp = memparse(p, &p);
+	if (core_edp != 0)
+		pmu_core_edp = core_edp;
+	return 0;
+}
+early_param("core_edp_mv", tegra_pmu_core_edp);
+
+int get_maximum_cpu_current_supported(void)
+{
+	return max_cpu_current;
+}
+static int __init tegra_max_cpu_current(char *options)
+{
+	char *p = options;
+	max_cpu_current = memparse(p, &p);
+	return 1;
+}
+__setup("max_cpu_cur_ma=", tegra_max_cpu_current);
+
+static int __init tegra_debug_uartport(char *info)
+{
+	char *p = info;
+	unsigned long long port_id;
+	if (!strncmp(p, "hsport", 6))
+		is_tegra_debug_uart_hsport = true;
+	else if (!strncmp(p, "lsport", 6))
+		is_tegra_debug_uart_hsport = false;
+
+	if (p[6] == ',') {
+		if (p[7] == '-') {
+			debug_uart_port_id = -1;
+		} else {
+			port_id = memparse(p + 7, &p);
+			debug_uart_port_id = (int) port_id;
+		}
+	} else {
+		debug_uart_port_id = -1;
+	}
+
+	return 1;
+}
+
+bool is_tegra_debug_uartport_hs(void)
+{
+	return is_tegra_debug_uart_hsport;
+}
+
+int get_tegra_uart_debug_port_id(void)
+{
+	return debug_uart_port_id;
+}
+__setup("debug_uartport=", tegra_debug_uartport);
+
+static int __init tegra_audio_codec_type(char *info)
+{
+	char *p = info;
+	if (!strncmp(p, "wm8903", 6))
+		audio_codec_name = audio_codec_wm8903;
+	else
+		audio_codec_name = audio_codec_none;
+
+	return 1;
+}
+
+enum audio_codec_type get_audio_codec_type(void)
+{
+	return audio_codec_name;
+}
+__setup("audio_codec=", tegra_audio_codec_type);
+
+
+void tegra_get_board_info(struct board_info *bi)
+{
+	bi->board_id = (system_serial_high >> 16) & 0xFFFF;
+	bi->sku = (system_serial_high) & 0xFFFF;
+	bi->fab = (system_serial_low >> 24) & 0xFF;
+	bi->major_revision = (system_serial_low >> 16) & 0xFF;
+	bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+}
+
+static int __init tegra_pmu_board_info(char *info)
+{
+	char *p = info;
+	pmu_board_info.board_id = memparse(p, &p);
+	pmu_board_info.sku = memparse(p+1, &p);
+	pmu_board_info.fab = memparse(p+1, &p);
+	pmu_board_info.major_revision = memparse(p+1, &p);
+	pmu_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_pmu_board_info(struct board_info *bi)
+{
+	memcpy(bi, &pmu_board_info, sizeof(struct board_info));
+}
+
+__setup("pmuboard=", tegra_pmu_board_info);
+
+static int __init tegra_display_board_info(char *info)
+{
+	char *p = info;
+	display_board_info.board_id = memparse(p, &p);
+	display_board_info.sku = memparse(p+1, &p);
+	display_board_info.fab = memparse(p+1, &p);
+	display_board_info.major_revision = memparse(p+1, &p);
+	display_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_display_board_info(struct board_info *bi)
+{
+	memcpy(bi, &display_board_info, sizeof(struct board_info));
+}
+
+__setup("displayboard=", tegra_display_board_info);
+
+static int __init tegra_camera_board_info(char *info)
+{
+	char *p = info;
+	camera_board_info.board_id = memparse(p, &p);
+	camera_board_info.sku = memparse(p+1, &p);
+	camera_board_info.fab = memparse(p+1, &p);
+	camera_board_info.major_revision = memparse(p+1, &p);
+	camera_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_camera_board_info(struct board_info *bi)
+{
+	memcpy(bi, &camera_board_info, sizeof(struct board_info));
+}
+
+__setup("cameraboard=", tegra_camera_board_info);
+
+static int __init tegra_modem_id(char *id)
+{
+	char *p = id;
+
+	modem_id = memparse(p, &p);
+	return 1;
+}
+
+int tegra_get_modem_id(void)
+{
+	return modem_id;
+}
+
+__setup("modem_id=", tegra_modem_id);
 
 /*
  * Tegra has a protected aperture that prevents access by most non-CPU
@@ -213,7 +621,7 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 		for (i = 0 ; i < size; i += PAGE_SIZE) {
 			page = phys_to_page(from + i);
 			from_virt = kmap(page);
-			memcpy_toio(to_io + i, from_virt, PAGE_SIZE);
+			memcpy(to_io + i, from_virt, PAGE_SIZE);
 			kunmap(page);
 		}
 	} else {
@@ -224,7 +632,7 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 			goto out;
 		}
 
-		for (i = 0; i < size; i+= 4)
+		for (i = 0; i < size; i += 4)
 			writel(readl(from_io + i), to_io + i);
 
 		iounmap(from_io);
@@ -236,35 +644,41 @@ out:
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
-	if (tegra_lp0_vec_size)
-		if (memblock_reserve(tegra_lp0_vec_start, tegra_lp0_vec_size))
-			pr_err("Failed to reserve lp0_vec %08lx@%08lx\n",
-				tegra_lp0_vec_size, tegra_lp0_vec_start);
+	if (carveout_size) {
+		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
+		if (memblock_remove(tegra_carveout_start, carveout_size)) {
+			pr_err("Failed to remove carveout %08lx@%08lx "
+				"from memory map\n",
+				carveout_size, tegra_carveout_start);
+			tegra_carveout_start = 0;
+			tegra_carveout_size = 0;
+		} else
+			tegra_carveout_size = carveout_size;
+	}
 
+	if (fb2_size) {
+		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
+		if (memblock_remove(tegra_fb2_start, fb2_size)) {
+			pr_err("Failed to remove second framebuffer "
+				"%08lx@%08lx from memory map\n",
+				fb2_size, tegra_fb2_start);
+			tegra_fb2_start = 0;
+			tegra_fb2_size = 0;
+		} else
+			tegra_fb2_size = fb2_size;
+	}
 
-	tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
-	if (memblock_remove(tegra_carveout_start, carveout_size))
-		pr_err("Failed to remove carveout %08lx@%08lx from memory "
-			"map\n",
-			tegra_carveout_start, carveout_size);
-	else
-		tegra_carveout_size = carveout_size;
-
-	tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
-	if (memblock_remove(tegra_fb2_start, fb2_size))
-		pr_err("Failed to remove second framebuffer %08lx@%08lx from "
-			"memory map\n",
-			tegra_fb2_start, fb2_size);
-	else
-		tegra_fb2_size = fb2_size;
-
-	tegra_fb_start = memblock_end_of_DRAM() - fb_size;
-	if (memblock_remove(tegra_fb_start, fb_size))
-		pr_err("Failed to remove framebuffer %08lx@%08lx from memory "
-			"map\n",
-			tegra_fb_start, fb_size);
-	else
-		tegra_fb_size = fb_size;
+	if (fb_size) {
+		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
+		if (memblock_remove(tegra_fb_start, fb_size)) {
+			pr_err("Failed to remove framebuffer %08lx@%08lx "
+				"from memory map\n",
+				fb_size, tegra_fb_start);
+			tegra_fb_start = 0;
+			tegra_fb_size = 0;
+		} else
+			tegra_fb_size = fb_size;
+	}
 
 	if (tegra_fb_size)
 		tegra_grhost_aperture = tegra_fb_start;
@@ -275,32 +689,68 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	if (tegra_carveout_size && tegra_carveout_start < tegra_grhost_aperture)
 		tegra_grhost_aperture = tegra_carveout_start;
 
-	/*
-	 * TODO: We should copy the bootloader's framebuffer to the framebuffer
-	 * allocated above, and then free this one.
-	 */
-	if (tegra_bootloader_fb_size)
-		if (memblock_reserve(tegra_bootloader_fb_start,
-				tegra_bootloader_fb_size))
+	if (tegra_lp0_vec_size &&
+	   (tegra_lp0_vec_start < memblock_end_of_DRAM())) {
+		if (memblock_reserve(tegra_lp0_vec_start, tegra_lp0_vec_size)) {
 			pr_err("Failed to reserve lp0_vec %08lx@%08lx\n",
 				tegra_lp0_vec_size, tegra_lp0_vec_start);
+			tegra_lp0_vec_start = 0;
+			tegra_lp0_vec_size = 0;
+		}
+		tegra_lp0_vec_relocate = false;
+	} else
+		tegra_lp0_vec_relocate = true;
+
+	/*
+	 * We copy the bootloader's framebuffer to the framebuffer allocated
+	 * above, and then free this one.
+	 * */
+	if (tegra_bootloader_fb_size) {
+		tegra_bootloader_fb_size = PAGE_ALIGN(tegra_bootloader_fb_size);
+		if (memblock_reserve(tegra_bootloader_fb_start,
+				tegra_bootloader_fb_size)) {
+			pr_err("Failed to reserve bootloader frame buffer "
+				"%08lx@%08lx\n", tegra_bootloader_fb_size,
+				tegra_bootloader_fb_start);
+			tegra_bootloader_fb_start = 0;
+			tegra_bootloader_fb_size = 0;
+		}
+	}
 
 	pr_info("Tegra reserved memory:\n"
 		"LP0:                    %08lx - %08lx\n"
 		"Bootloader framebuffer: %08lx - %08lx\n"
 		"Framebuffer:            %08lx - %08lx\n"
-		"2nd Framebuffer:         %08lx - %08lx\n"
-		"Carveout:               %08lx - %08lx\n",
+		"2nd Framebuffer:        %08lx - %08lx\n"
+		"Carveout:               %08lx - %08lx\n"
+		"Vpr:                    %08lx - %08lx\n",
 		tegra_lp0_vec_start,
-		tegra_lp0_vec_start + tegra_lp0_vec_size - 1,
+		tegra_lp0_vec_size ?
+			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
 		tegra_bootloader_fb_start,
-		tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1,
+		tegra_bootloader_fb_size ?
+			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
 		tegra_fb_start,
-		tegra_fb_start + tegra_fb_size - 1,
+		tegra_fb_size ?
+			tegra_fb_start + tegra_fb_size - 1 : 0,
 		tegra_fb2_start,
-		tegra_fb2_start + tegra_fb2_size - 1,
+		tegra_fb2_size ?
+			tegra_fb2_start + tegra_fb2_size - 1 : 0,
 		tegra_carveout_start,
-		tegra_carveout_start + tegra_carveout_size - 1);
+		tegra_carveout_size ?
+			tegra_carveout_start + tegra_carveout_size - 1 : 0,
+		tegra_vpr_start,
+		tegra_vpr_size ?
+			tegra_vpr_start + tegra_vpr_size - 1 : 0);
+}
+
+void __init tegra_release_bootloader_fb(void)
+{
+	/* Since bootloader fb is reserved in common.c, it is freed here. */
+	if (tegra_bootloader_fb_size)
+		if (memblock_free(tegra_bootloader_fb_start,
+						tegra_bootloader_fb_size))
+			pr_err("Failed to free bootloader fb.\n");
 }
 
 void __init tegra_init_late(void)

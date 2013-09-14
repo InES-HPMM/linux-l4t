@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/include/mach/gpio-names.h
  *
  * Copyright (c) 2010 Google, Inc
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -243,5 +244,28 @@
 #define TEGRA_GPIO_PBB5		221
 #define TEGRA_GPIO_PBB6		222
 #define TEGRA_GPIO_PBB7		223
-
+#define TEGRA_GPIO_PCC0		224
+#define TEGRA_GPIO_PCC1		225
+#define TEGRA_GPIO_PCC2		226
+#define TEGRA_GPIO_PCC3		227
+#define TEGRA_GPIO_PCC4		228
+#define TEGRA_GPIO_PCC5		229
+#define TEGRA_GPIO_PCC6		230
+#define TEGRA_GPIO_PCC7		231
+#define TEGRA_GPIO_PDD0		232
+#define TEGRA_GPIO_PDD1		233
+#define TEGRA_GPIO_PDD2		234
+#define TEGRA_GPIO_PDD3		235
+#define TEGRA_GPIO_PDD4		236
+#define TEGRA_GPIO_PDD5		237
+#define TEGRA_GPIO_PDD6		238
+#define TEGRA_GPIO_PDD7		239
+#define TEGRA_GPIO_PEE0		240
+#define TEGRA_GPIO_PEE1		241
+#define TEGRA_GPIO_PEE2		242
+#define TEGRA_GPIO_PEE3		243
+#define TEGRA_GPIO_PEE4		244
+#define TEGRA_GPIO_PEE5		245
+#define TEGRA_GPIO_INVALID	246
+#define TEGRA_MAX_GPIO		247
 #endif

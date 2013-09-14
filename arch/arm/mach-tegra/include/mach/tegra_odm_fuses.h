@@ -1,7 +1,7 @@
 /*
- * arch/arm/mach-tegra/include/mach/tegra2_fuse.h
+ * arch/arm/mach-tegra/include/mach/tegra_odm_fuses.h
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2011, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,33 +18,35 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef __MACH_TEGRA2_FUSE_H
-#define __MACH_TEGRA2_FUSE_H
+#ifndef __MACH_TEGRA_ODM_FUSES_H
+#define __MACH_TEGRA_ODM_FUSES_H
 
 #define SBK_DEVKEY_STATUS_SZ	sizeof(u32)
 
-/* fuse io parameters */
+/*
+ * fuse io parameters: params with sizes less than a byte are
+ * explicitly mentioned
+ */
 enum fuse_io_param {
 	DEVKEY,
-	JTAG_DIS,
+	JTAG_DIS, /* 1 bit long */
 	/*
 	 * Programming the odm production fuse at the same
 	 * time as the sbk or dev_key is not allowed as it is not possible to
 	 * verify that the sbk or dev_key were programmed correctly.
 	 */
-	ODM_PROD_MODE,
+	ODM_PROD_MODE, /* 1 bit long */
 	SEC_BOOT_DEV_CFG,
-	SEC_BOOT_DEV_SEL,
+	SEC_BOOT_DEV_SEL, /* 3 bits long */
 	SBK,
-	SW_RSVD,
-	IGNORE_DEV_SEL_STRAPS,
+	SW_RSVD, /* 4 bits long */
+	IGNORE_DEV_SEL_STRAPS, /* 1 bit long */
 	ODM_RSVD,
 	SBK_DEVKEY_STATUS,
-	MASTER_ENB,
 	_PARAMS_U32 = 0x7FFFFFFF
 };
 
-#define MAX_PARAMS ODM_RSVD
+#define MAX_PARAMS SBK_DEVKEY_STATUS
 
 /* the order of the members is pre-decided. please do not change */
 struct fuse_data {
@@ -76,16 +78,16 @@ enum {
  * @param: io_param_type - param type enum
  * @param: size - read size in bytes
  */
-int tegra_fuse_read(u32 io_param_type, u32 *data, int size);
+int tegra_fuse_read(enum fuse_io_param io_param_type, u32 *data, int size);
 
 #define FLAGS_DEVKEY			BIT(DEVKEY)
 #define FLAGS_JTAG_DIS			BIT(JTAG_DIS)
-#define FLAGS_SBK_DEVKEY_STATUS	BIT(SBK_DEVKEY_STATUS)
+#define FLAGS_SBK_DEVKEY_STATUS		BIT(SBK_DEVKEY_STATUS)
 #define FLAGS_ODM_PROD_MODE		BIT(ODM_PROD_MODE)
-#define FLAGS_SEC_BOOT_DEV_CFG	BIT(SEC_BOOT_DEV_CFG)
-#define FLAGS_SEC_BOOT_DEV_SEL	BIT(SEC_BOOT_DEV_SEL)
+#define FLAGS_SEC_BOOT_DEV_CFG		BIT(SEC_BOOT_DEV_CFG)
+#define FLAGS_SEC_BOOT_DEV_SEL		BIT(SEC_BOOT_DEV_SEL)
 #define FLAGS_SBK			BIT(SBK)
-#define FLAGS_SW_RSVD		BIT(SW_RSVD)
+#define FLAGS_SW_RSVD			BIT(SW_RSVD)
 #define FLAGS_IGNORE_DEV_SEL_STRAPS	BIT(IGNORE_DEV_SEL_STRAPS)
 #define FLAGS_ODMRSVD			BIT(ODM_RSVD)
 
@@ -101,4 +103,5 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags);
 /* Disables the fuse programming until the next system reset */
 void tegra_fuse_program_disable(void);
 
+extern int (*tegra_fuse_regulator_en)(int);
 #endif

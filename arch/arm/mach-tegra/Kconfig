@@ -4,19 +4,27 @@ comment "NVIDIA Tegra options"
 
 config ARCH_TEGRA_2x_SOC
 	bool "Enable support for Tegra20 family"
+	depends on !ARCH_TEGRA_3x_SOC
+	depends on !ARCH_TEGRA_11x_SOC
 	select ARCH_NEEDS_CPU_IDLE_COUPLED if SMP
+	select ARCH_SUPPORTS_MSI if TEGRA_PCI
+	select ARCH_TEGRA_HAS_PCIE
+	select ARM_ERRATA_716044
 	select ARM_ERRATA_720789
 	select ARM_ERRATA_742230 if SMP
 	select ARM_ERRATA_751472
 	select ARM_ERRATA_754327 if SMP
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select COMMON_CLK
+	select CPA
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
+	select PCI_MSI if TEGRA_PCI
 	select PINCTRL
 	select PINCTRL_TEGRA20
-	select PL310_ERRATA_727915 if CACHE_L2X0
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
@@ -27,17 +35,30 @@ config ARCH_TEGRA_2x_SOC
 
 config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
+	depends on !ARCH_TEGRA_11x_SOC
+	select ARCH_SUPPORTS_MSI if TEGRA_PCI
+	select ARCH_TEGRA_HAS_PCIE
+	select ARCH_TEGRA_HAS_SATA
+	select ARCH_TEGRA_HAS_DUAL_3D
+	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select ARM_ERRATA_743622
 	select ARM_ERRATA_751472
 	select ARM_ERRATA_754322
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select COMMON_CLK
+	select CPA
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
+	select GIC_SET_MULTIPLE_CPUS if SMP
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
+	select PCI_MSI if TEGRA_PCI
 	select PINCTRL
 	select PINCTRL_TEGRA30
 	select PL310_ERRATA_769419 if CACHE_L2X0
+	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select TEGRA_LP2_ARM_TWD if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
 	select USB_ULPI_VIEWPORT if USB_PHY
@@ -45,10 +66,39 @@ config ARCH_TEGRA_3x_SOC
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
 
+config ARCH_TEGRA_11x_SOC
+	bool "Tegra 11x family SOC"
+	select ARCH_REQUIRE_GPIOLIB
+	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	select ARM_GIC
+	select CPU_V7
+	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_EHCI_TEGRA if USB_SUPPORT
+	select USB_ULPI if USB_SUPPORT
+	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	help
+	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
+	  ARM Cortex-A15MP CPU
+
+config ARCH_TEGRA_HAS_DUAL_3D
+	bool
+
+config ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	bool
+
+config ARCH_TEGRA_HAS_PCIE
+	bool
+
+config ARCH_TEGRA_HAS_SATA
+	bool
+
 config TEGRA_PCI
-	bool "PCI Express support"
-	depends on ARCH_TEGRA_2x_SOC
+	bool "PCIe host controller driver"
 	select PCI
+	depends on ARCH_TEGRA_HAS_PCIE
+	help
+	  Adds PCIe Host controller driver for tegra based systems
 
 config TEGRA_AHB
 	bool "Enable AHB driver for NVIDIA Tegra SoCs"
@@ -60,31 +110,174 @@ config TEGRA_AHB
 
 comment "Tegra board type"
 
+choice
+       prompt "Tegra platform type"
+       default TEGRA_SILICON_PLATFORM
+
+config TEGRA_SILICON_PLATFORM
+        bool "Silicon"
+        help
+          This enables support for a Tegra silicon platform.
+
+config TEGRA_SIMULATION_PLATFORM
+        bool "Simulation"
+        help
+          This enables support for a Tegra simulation platform.
+          Select this only if you are an NVIDIA developer working
+          on a simulation platform.
+
+config TEGRA_FPGA_PLATFORM
+        bool "FPGA"
+        help
+          This enables support for a Tegra FPGA platform.
+          Select this only if you are an NVIDIA developer working
+          on a FPGA platform.
+endchoice
+
 config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"
-
-endif
+	depends on TEGRA_SILICON_PLATFORM
+	default n
 
 config TEGRA_CPU_DVFS
 	bool "Enable voltage scaling on Tegra CPU"
+	depends on TEGRA_SILICON_PLATFORM
 	default y
 
 config TEGRA_CORE_DVFS
 	bool "Enable voltage scaling on Tegra core"
+	depends on TEGRA_SILICON_PLATFORM
 	depends on TEGRA_CPU_DVFS
 	default y
+
+config TEGRA_AVP_KERNEL_ON_MMU
+	bool "Use AVP MMU to relocate AVP kernel"
+	depends on ARCH_TEGRA_2x_SOC
+	default y
+	help
+	  Use AVP MMU to relocate AVP kernel (nvrm_avp.bin).
+
+config TEGRA_AVP_KERNEL_ON_SMMU
+	bool "Use SMMU to relocate AVP kernel"
+	depends on TEGRA_IOVMM_SMMU
+	default y
+	help
+	  Use SMMU to relocate AVP kernel (nvrm_avp.bin).
 
 config TEGRA_ARB_SEMAPHORE
 	bool
 
 config TEGRA_THERMAL_THROTTLE
-       bool "Enable throttling of CPU speed on overtemp"
-       depends on CPU_FREQ
-       default y
-       help
-         Also requires enabling a temperature sensor such as NCT1008.
+	bool "Enable throttling of CPU speed on overtemp"
+	depends on TEGRA_SILICON_PLATFORM
+	depends on CPU_FREQ
+	depends on THERMAL
+	default y
+	help
+	  Also requires enabling a temperature sensor such as NCT1008.
 
 config WIFI_CONTROL_FUNC
 	bool "Enable WiFi control function abstraction"
 	help
 	  Enables Power/Reset/Carddetect function abstraction
+
+config TEGRA_CLOCK_DEBUG_WRITE
+	bool "Enable debugfs write access to clock tree"
+	depends on DEBUG_FS
+	default n
+
+config TEGRA_CLUSTER_CONTROL
+	bool
+	depends on ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	default y if PM_SLEEP
+
+config TEGRA_AUTO_HOTPLUG
+	bool "Enable automatic CPU hot-plugging"
+	depends on HOTPLUG_CPU && CPU_FREQ && !ARCH_CPU_PROBE_RELEASE && !ARCH_TEGRA_2x_SOC
+	default y
+	help
+	  This option enables turning CPUs off/on and switching tegra
+	  high/low power CPU clusters automatically, corresponding to
+	  CPU frequency scaling.
+
+config TEGRA_MC_EARLY_ACK
+	bool "Enable early acknowledgement from mermory controller"
+	depends on ARCH_TEGRA_3x_SOC
+	default y
+	help
+	  This option enables early acknowledgement from memory
+	  controller. This feature is used to improve CPU memory
+	  write performance.
+
+config TEGRA_EDP_LIMITS
+	bool "Enforce electrical design limits"
+	depends on TEGRA_SILICON_PLATFORM
+	depends on CPU_FREQ
+	default y if ARCH_TEGRA_3x_SOC
+	default n
+	help
+	  Limit maximum CPU frequency based on temperature and number
+	  of on-line CPUs to keep CPU rail current within power supply
+	  capabilities.
+
+config TEGRA_EMC_TO_DDR_CLOCK
+	int "EMC to DDR clocks ratio"
+	default "2" if ARCH_TEGRA_2x_SOC
+	default "1"
+
+config TEGRA_DYNAMIC_PWRDET
+	bool "Enable dynamic activation of IO level auto-detection"
+	depends on TEGRA_SILICON_PLATFORM
+	default n
+	help
+	  This option allows turning off tegra IO level auto-detection
+	  when IO power is stable. If set auto-detection cells are active
+	  only during power transitions, otherwise, the cells are active
+	  always
+
+config TEGRA_EDP_EXACT_FREQ
+	bool "Use maximum possible cpu frequency when EDP capping"
+	depends on TEGRA_EDP_LIMITS
+	default y
+	help
+	  When enabled the cpu will run at the exact frequency
+	  specified in the EDP table when EDP capping is applied; when
+	  disabled the next lower cpufreq frequency will be used.
+
+config TEGRA_USB_MODEM_POWER
+	bool "Enable tegra usb modem power management"
+	default n
+	help
+	  This option enables support for out-of_band remote wakeup, selective
+	  suspend and system suspend/resume.
+
+config TEGRA_PLLM_RESTRICTED
+	bool "Restrict PLLM usage as module clock source"
+	depends on !ARCH_TEGRA_2x_SOC
+	default n
+	help
+	  When enabled, PLLM usage may be restricted to modules with dividers
+	  capable of dividing maximum PLLM frequency at minimum voltage. When
+	  disabled, PLLM is used as a clock source with no restrictions (which
+	  may effectively increase lower limit for core voltage).
+
+config TEGRA_WDT_RECOVERY
+	bool "Enable suspend/resume watchdog recovery mechanism"
+	default n
+	help
+	  Enables watchdog recovery mechanism to protect against
+	  suspend/resume hangs.
+
+config TEGRA_LP2_ARM_TWD
+	bool
+
+config TEGRA_RAIL_OFF_MULTIPLE_CPUS
+	bool
+
+config TEGRA_SLOW_CSITE
+	bool "lower csite clock to 1 Mhz to reduce its power consumption"
+	default n
+	help
+	  When enabled, csite will be running at 1 Mhz and the performance of
+	  jtag, lauterbach and other debugger will be extremely slow.
+endif

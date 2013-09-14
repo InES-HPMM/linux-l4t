@@ -18,9 +18,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/const.h>
+#include <linux/init.h>
 #include <linux/linkage.h>
 
 #include <asm/assembler.h>
+#include <asm/cache.h>
+#include <asm/domain.h>
+#include <asm/memory.h>
+#include <asm/page.h>
+#include <asm/ptrace.h>
+#include <asm/asm-offsets.h>
+#include <asm/glue-cache.h>
+#include <asm/glue-proc.h>
+#include <asm/system.h>
 
 #include "sleep.h"
 #include "flowctrl.h"
@@ -47,6 +58,8 @@
 #define CLK_RESET_PLLX_BASE		0xe0
 #define CLK_RESET_PLLX_MISC		0xe4
 
+#define CLK_RESET_RST_CPU_CMPLX_SET 	0x340
+
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_hotplug_shutdown(void)
@@ -55,15 +68,17 @@
  * should never return
  */
 ENTRY(tegra20_hotplug_shutdown)
-	/* Turn off SMP coherency */
-	exit_smp r4, r5
+	mov	r6, lr
+	bl	tegra_cpu_exit_coherency
 
 	/* Put this CPU down */
 	cpu_id	r0
 	bl	tegra20_cpu_shutdown
-	mov	pc, lr			@ should never get here
+	mov	pc, r6			@ should never get here
 ENDPROC(tegra20_hotplug_shutdown)
+#endif
 
+#if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_cpu_shutdown(int cpu)
  *
@@ -81,13 +96,12 @@ ENTRY(tegra20_cpu_shutdown)
 	cmp	r0, #0
 	moveq	pc, lr			@ must not be called for CPU 0
 
-	ldr	r3, =TEGRA_PMC_VIRT
-	add	r1, r3, #PMC_SCRATCH41
+	mov32	r1, TEGRA_PMC_VIRT + PMC_SCRATCH41
 	mov	r12, #CPU_RESETTABLE
 	str	r12, [r1]
 
 	cpu_to_halt_reg r1, r0
-	ldr	r3, =TEGRA_FLOW_CTRL_VIRT
+	mov32	r3, TEGRA_FLOW_CTRL_VIRT
 	mov	r2, #FLOW_CTRL_WAITEVENT | FLOW_CTRL_JTAG_RESUME
 	str	r2, [r3, r1]		@ put flow controller in wait event mode
 	ldr	r2, [r3, r1]
@@ -95,8 +109,8 @@ ENTRY(tegra20_cpu_shutdown)
 	dsb
 	movw	r1, 0x1011
 	mov	r1, r1, lsl r0
-	ldr	r3, =TEGRA_CLK_RESET_VIRT
-	str	r1, [r3, #0x340]	@ put slave CPU in reset
+	mov32	r3, TEGRA_CLK_RESET_VIRT
+	str	r1, [r3, #CLK_RESET_RST_CPU_CMPLX_SET]	@ put slave CPU in reset
 	isb
 	dsb
 	cpu_id	r3
@@ -106,71 +120,112 @@ ENTRY(tegra20_cpu_shutdown)
 ENDPROC(tegra20_cpu_shutdown)
 #endif
 
-ENTRY(tegra_cpu_set_resettable_soon)
-	ldr	r3, =TEGRA_PMC_VIRT
-	add	r1, r3, #PMC_SCRATCH41
+#ifdef CONFIG_PM_SLEEP
+/*
+ * tegra2_cpu_clear_resettable(void)
+ *
+ * Called to clear the "resettable soon" flag in PMC_SCRATCH41 when
+ * it is expected that the secondary CPU will be idle soon.
+ */
+ENTRY(tegra2_cpu_clear_resettable)
+	mov32	r1, TEGRA_PMC_VIRT + PMC_SCRATCH41
+	mov	r12, #CPU_NOT_RESETTABLE
+	str	r12, [r1]
+	mov	pc, lr
+ENDPROC(tegra2_cpu_clear_resettable)
+
+/*
+ * tegra2_cpu_set_resettable_soon(void)
+ *
+ * Called to set the "resettable soon" flag in PMC_SCRATCH41 when
+ * it is expected that the secondary CPU will be idle soon.
+ */
+ENTRY(tegra2_cpu_set_resettable_soon)
+	mov32	r1, TEGRA_PMC_VIRT + PMC_SCRATCH41
 	mov	r12, #CPU_RESETTABLE_SOON
 	str	r12, [r1]
 	mov	pc, lr
-ENDPROC(tegra_cpu_set_resettable_soon)
+ENDPROC(tegra2_cpu_set_resettable_soon)
 
-ENTRY(tegra_cpu_is_resettable_soon)
-	ldr	r3, =TEGRA_PMC_VIRT
-	add	r1, r3, #PMC_SCRATCH41
+/*
+ * tegra2_cpu_is_resettable_soon(void)
+ *
+ * Returns true if the "resettable soon" flag in PMC_SCRATCH41 has been
+ * set because it is expected that the secondary CPU will be idle soon.
+ */
+ENTRY(tegra2_cpu_is_resettable_soon)
+	mov32	r1, TEGRA_PMC_VIRT + PMC_SCRATCH41
 	ldr	r12, [r1]
 	cmp	r12, #CPU_RESETTABLE_SOON
 	moveq	r0, #1
 	movne	r0, #0
 	mov	pc, lr
-ENDPROC(tegra_cpu_is_resettable_soon)
+ENDPROC(tegra2_cpu_is_resettable_soon)
 
 /*
- * tegra_sleep_core(unsigned long v2p)
+ * tegra2_sleep_core(unsigned long v2p)
  *
  * enters suspend in LP0 or LP1 by turning off the mmu and jumping to
- * tegra_tear_down_core in IRAM
+ * tegra2_tear_down_core in IRAM
  */
-ENTRY(tegra_sleep_core)
-	mov	r3, lr			@ set resume address to lr
-	bl	tegra_cpu_save
-
-	ldr	r1, =tegra_tear_down_core
-	ldr	r2, =tegra_iram_start
+ENTRY(tegra2_sleep_core_finish)
+	bl	tegra_cpu_exit_coherency
+	mov32	r1, tegra2_tear_down_core
+	mov32	r2, tegra2_iram_start
 	sub	r1, r1, r2
-	ldr	r2, =TEGRA_IRAM_CODE_AREA
+	mov32	r2, TEGRA_IRAM_CODE_AREA
 	add	r1, r1, r2
 	b	tegra_turn_off_mmu
-ENDPROC(tegra_sleep_core)
+ENDPROC(tegra2_sleep_core_finish)
 
 /*
- * tegra_sleep_wfi(unsigned long v2p)
+ * tegra2_sleep_wfi(unsigned long v2p)
  */
-ENTRY(tegra_sleep_wfi)
-	mov	r3, lr			@ set resume address to lr
-	mrc	p15, 0, r2, c1, c0, 1	@ save actlr before exiting coherency
-	bl	tegra_cpu_save
+ENTRY(tegra2_sleep_wfi)
+	stmfd	sp!, {r4 - r9, lr}
+	mov	r9, sp			@ save sp for aborted suspend
+	adr	r1, BSYM(tegra_sleep_cpu_save_finish)
+	bl	cpu_suspend
+	ldmfd	sp!, {r4 - r9, pc}
 
-	mov	r11, r2
+tegra_sleep_cpu_save_finish:
+	mrc	p15, 0, r11, c1, c0, 1	@ save actlr before exiting coherency
 
-	ldr	r3, =TEGRA_PMC_VIRT
-	add	r0, r3, #PMC_SCRATCH41
+	dsb
+#ifdef MULTI_CACHE
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
+	bl	__cpuc_flush_kern_all
+#endif
+
+	bl	tegra_cpu_exit_coherency
+
+	mov32	r0, TEGRA_PMC_VIRT + PMC_SCRATCH41
 	mov	r3, #CPU_RESETTABLE
 	str	r3, [r0]
 
 	bl	tegra_cpu_wfi
 
+	mov32	r0, TEGRA_PMC_VIRT + PMC_SCRATCH41
+	mov	r3, #CPU_NOT_RESETTABLE
+	str	r3, [r0]
+
 	/*
 	 * cpu may be reset while in wfi, which will return through
-	 * tegra_secondary_resume to cpu_resume to tegra_cpu_resume
+	 * tegra_resume to tegra_cpu_resume_phys to tegra_cpu_resume
 	 * or interrupt may wake wfi, which will return here
-	 * cpu state is unchanged - MMU is on, cache is on, coherency is off
+	 * cpu state is unchanged - MMU is on, cache is on, coherency
+	 * is off, and the data cache is off
 	 *
 	 * r11 contains the original actlr
 	 */
 
+	mov	sp, r9			@ restore SP for aborted suspend
 	bl	tegra_pen_lock
 
-	ldr	r3, =TEGRA_PMC_VIRT
+	mov32	r3, TEGRA_PMC_VIRT
 	add	r0, r3, #PMC_SCRATCH41
 	mov	r3, #CPU_NOT_RESETTABLE
 	str	r3, [r0]
@@ -179,113 +234,57 @@ ENTRY(tegra_sleep_wfi)
 
 	mcr	p15, 0, r11, c1, c0, 1	@ reenable coherency
 
+	/* Invalidate the TLBs & BTAC */
+	mov	r1, #0
+	mcr	p15, 0, r1, c8, c3, 0	@ invalidate shared TLBs
+	mcr	p15, 0, r1, c7, c1, 6	@ invalidate shared BTAC
+	dsb
+	isb
+
 	@ the cpu was running with coherency disabled, caches may be out of date
-	mov     r0, #0
-	mcr     p15, 0, r0, c8, c3, 0   @ invalidate TLB
-	mcr     p15, 0, r0, c7, c5, 6   @ flush BTAC
 #ifdef MULTI_CACHE
-	ldr	r10, =cpu_cache
+	mov32	r10, cpu_cache
 	mov	lr, pc
 	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
 #else
 	bl	__cpuc_flush_kern_all
 #endif
 
-	b	tegra_cpu_sleep_abort
-ENDPROC(tegra_sleep_wfi)
+#ifdef CONFIG_CACHE_L2X0
+	cpu_id  r2
+	cmp r2, #0
+	bne no_l2_sync
+	/* Issue a PL310 cache sync operation */
+	dsb
+	mov32	r2, TEGRA_PL310_VIRT
+	movw	r1, 0x730	@ cache sync
+	add	r2, r2, r1
+	mov	r1, #0
+	str	r1, [r2]
 
-tegra_tear_down_cpu:
+no_l2_sync:
+#endif
+
+	ldmfd	sp!, {r4 - r9, pc}
+ENDPROC(tegra2_sleep_wfi)
+
+/*
+ * tegra2_tear_down_cpu
+ *
+ * Switches the CPU cluster to PLL-P and enters sleep.
+ */
+ENTRY(tegra2_tear_down_cpu)
 	bl	tegra_cpu_pllp
-	b	tegra_enter_sleep
+	b	tegra2_enter_sleep
+ENDPROC(tegra2_tear_down_cpu)
 
 /* START OF ROUTINES COPIED TO IRAM */
 	.align L1_CACHE_SHIFT
-	.globl tegra_iram_start
-tegra_iram_start:
+	.globl tegra2_iram_start
+tegra2_iram_start:
 
 /*
- * tegra_tear_down_core
- *
- * copied into and executed from IRAM
- * puts memory in self-refresh for LP0 and LP1
- */
-tegra_tear_down_core:
-	bl	tegra_sdram_self_refresh
-	bl	tegra_cpu_clk32k
-	b	tegra_enter_sleep
-
-/*
- * tegra_cpu_clk32k
- *
- * In LP0 and LP1 all plls will be turned off.  Switch the CPU and system clock
- * to the 32khz clock (clks)
- */
-tegra_cpu_clk32k:
-	/* start by jumping to clkm to safely disable PLLs, then jump
-	 * to clks */
-	mov	r0, #(1 << 28)
-	str	r0, [r5, #CLK_RESET_SCLK_BURST]
-	str	r0, [r5, #CLK_RESET_CCLK_BURST]
-	mov	r0, #0
-	str	r0, [r5, #CLK_RESET_CCLK_DIVIDER]
-	str	r0, [r5, #CLK_RESET_SCLK_DIVIDER]
-
-	/* 2 us delay between changing sclk and disabling PLLs */
-	ldr	r7, =TEGRA_TMRUS_BASE
-	ldr	r1, [r7]
-	add	r1, r1, #3
-
-1:	ldr	r0, [r7]
-	cmp	r0, r1
-	dmb
-	bmi	1b
-
-	/* switch to CLKS */
-	mov	r0, #0	/* burst policy = 32KHz */
-	str	r0, [r5, #CLK_RESET_SCLK_BURST]
-
-	/* disable PLLP, PLLM, PLLC in LP0 and LP1 states */
-	ldr	r0, [r5, #CLK_RESET_PLLM_BASE]
-	bic	r0, r0, #(1 << 30)
-	str	r0, [r5, #CLK_RESET_PLLM_BASE]
-	ldr	r0, [r5, #CLK_RESET_PLLP_BASE]
-	bic	r0, r0, #(1 << 30)
-	str	r0, [r5, #CLK_RESET_PLLP_BASE]
-	ldr	r0, [r5, #CLK_RESET_PLLC_BASE]
-	bic	r0, r0, #(1 << 30)
-	str	r0, [r5, #CLK_RESET_PLLC_BASE]
-	mov	pc, lr
-
-/*
- * tegra_enter_sleep
- *
- * uses flow controller to enter sleep state
- * executes from IRAM with SDRAM in selfrefresh when target state is LP0 and LP1
- * executes from SDRAM with target state is LP2
- */
-tegra_enter_sleep:
-	ldr	r7, =TEGRA_TMRUS_BASE
-	ldr	r1, [r7]
-	ldr	r4, =TEGRA_PMC_BASE
-	str	r1, [r4, #PMC_SCRATCH38]
-	dsb
-	ldr	r6, =TEGRA_FLOW_CTRL_BASE
-
-	mov	r0, #FLOW_CTRL_STOP_UNTIL_IRQ
-	orr	r0, r0, #FLOW_CTRL_IRQ_RESUME | FLOW_CTRL_FIQ_RESUME
-	cpu_id	r1
-	cpu_to_halt_reg r1, r1
-	str	r0, [r6, r1]
-	dsb
-	ldr	r0, [r6, r1] /* memory barrier */
-
-halted: dsb
-	wfe	/* CPU should be power gated here */
-	isb
-	b	halted
-
-/*
- * tegra_lp1_reset
+ * tegra2_lp1_reset
  *
  * reset vector for LP1 restore; copied into IRAM during suspend.
  * brings the system back up to a safe starting point (SDRAM out of
@@ -294,14 +293,16 @@ halted: dsb
  * jumps to tegra_lp2_startup to restore PLLX and virtual addressing.
  * physical address of tegra_lp2_startup expected to be stored in
  * PMC_SCRATCH41
+ *
+ * NOTE: THIS *MUST* BE RELOCATED TO TEGRA_IRAM_CODE_AREA AND MUST BE FIRST.
  */
-ENTRY(tegra_lp1_reset)
+ENTRY(tegra2_lp1_reset)
 	/*
 	 * the CPU and system bus are running at 32KHz and executing from
 	 * IRAM when this code is executed; immediately switch to CLKM and
 	 * enable PLLP.
 	 */
-	ldr	r0, =TEGRA_CLK_RESET_BASE
+	mov32	r0, TEGRA_CLK_RESET_BASE
 	mov	r1, #(1 << 28)
 	str	r1, [r0, #CLK_RESET_SCLK_BURST]
 	str	r1, [r0, #CLK_RESET_CCLK_BURST]
@@ -322,8 +323,8 @@ ENTRY(tegra_lp1_reset)
 	orreq	r1, r1, #(1 << 30)
 	streq	r1, [r0, #CLK_RESET_PLLC_BASE]
 
-	adr	r2, tegra_sdram_pad_address
-	adr	r4, tegra_sdram_pad_save
+	adr	r2, tegra2_sdram_pad_address
+	adr	r4, tegra2_sdram_pad_save
 	mov	r5, #0
 
 padload:
@@ -333,12 +334,12 @@ padload:
 	str	r1, [r0]		@ set emc register to safe vals
 
 	add	r5, r5, #4
-	ldr	r0, tegra_sdram_pad_size
+	ldr	r0, tegra2_sdram_pad_size
 	cmp	r0, r5
 	bne	padload
 
 padload_done:
-	ldr	r7, =TEGRA_TMRUS_BASE
+	mov32	r7, TEGRA_TMRUS_BASE
 	ldr	r1, [r7]
 	add	r1, r1, #0xff		@ 255uS delay for PLL stabilization
 
@@ -347,14 +348,14 @@ padload_done:
 	dmb
 	bmi	1b
 
-	adr	r4, tegra_sclk_save
+	adr	r4, tegra2_sclk_save
 	ldr	r4, [r4]
-	ldr	r0, =TEGRA_CLK_RESET_BASE
+	mov32	r0, TEGRA_CLK_RESET_BASE
 	str	r4, [r0, #CLK_RESET_SCLK_BURST]
 	ldr	r4, =((1 << 28) | (4))	@ burst policy is PLLP
 	str	r4, [r0, #CLK_RESET_CCLK_BURST]
 
-	ldr	r0, =TEGRA_EMC_BASE
+	mov32	r0, TEGRA_EMC_BASE
 	ldr	r1, [r0, #EMC_CFG]
 	bic	r1, r1, #(1 << 31)	@ disable DRAM_CLK_STOP
 	str	r1, [r0, #EMC_CFG]
@@ -382,17 +383,98 @@ exit_selfrefresh_loop:
 	ldr	r0, =TEGRA_PMC_BASE
 	ldr	r0, [r0, #PMC_SCRATCH41]
 	mov	pc, r0
-ENDPROC(tegra_lp1_reset)
+ENDPROC(tegra2_lp1_reset)
 
 /*
- * tegra_sdram_self_refresh
+ * tegra2_tear_down_core
+ *
+ * copied into and executed from IRAM
+ * puts memory in self-refresh for LP0 and LP1
+ */
+tegra2_tear_down_core:
+	bl	tegra2_sdram_self_refresh
+	bl	tegra2_cpu_clk32k
+	b	tegra2_enter_sleep
+
+/*
+ * tegra2_cpu_clk32k
+ *
+ * In LP0 and LP1 all plls will be turned off.  Switch the CPU and system clock
+ * to the 32khz clock (clks)
+ */
+tegra2_cpu_clk32k:
+	/* start by jumping to clkm to safely disable PLLs, then jump
+	 * to clks */
+	mov	r0, #(1 << 28)
+	str	r0, [r5, #CLK_RESET_SCLK_BURST]
+	str	r0, [r5, #CLK_RESET_CCLK_BURST]
+	mov	r0, #0
+	str	r0, [r5, #CLK_RESET_CCLK_DIVIDER]
+	str	r0, [r5, #CLK_RESET_SCLK_DIVIDER]
+
+	/* 2 us delay between changing sclk and disabling PLLs */
+	mov32	r7, TEGRA_TMRUS_BASE
+	ldr	r1, [r7]
+	add	r1, r1, #3
+
+1:	ldr	r0, [r7]
+	cmp	r0, r1
+	dmb
+	bmi	1b
+
+	/* switch to CLKS */
+	mov	r0, #0	/* burst policy = 32KHz */
+	str	r0, [r5, #CLK_RESET_SCLK_BURST]
+
+	/* disable PLLP, PLLM, PLLC in LP0 and LP1 states */
+	ldr	r0, [r5, #CLK_RESET_PLLM_BASE]
+	bic	r0, r0, #(1 << 30)
+	str	r0, [r5, #CLK_RESET_PLLM_BASE]
+	ldr	r0, [r5, #CLK_RESET_PLLP_BASE]
+	bic	r0, r0, #(1 << 30)
+	str	r0, [r5, #CLK_RESET_PLLP_BASE]
+	ldr	r0, [r5, #CLK_RESET_PLLC_BASE]
+	bic	r0, r0, #(1 << 30)
+	str	r0, [r5, #CLK_RESET_PLLC_BASE]
+	mov	pc, lr
+
+/*
+ * tegra2_enter_sleep
+ *
+ * uses flow controller to enter sleep state
+ * executes from IRAM with SDRAM in selfrefresh when target state is LP0 and LP1
+ * executes from SDRAM with target state is LP2
+ */
+tegra2_enter_sleep:
+	mov32	r7, TEGRA_TMRUS_BASE
+	ldr	r1, [r7]
+	mov32	r4, TEGRA_PMC_BASE
+	str	r1, [r4, #PMC_SCRATCH38]
+	dsb
+	mov32	r6, TEGRA_FLOW_CTRL_BASE
+
+	mov	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
+	orr	r0, r0, #FLOW_CTRL_HALT_CPU_IRQ | FLOW_CTRL_HALT_CPU_FIQ
+	cpu_id	r1
+	cpu_to_halt_reg r1, r1
+	str	r0, [r6, r1]
+	dsb
+	ldr	r0, [r6, r1] /* memory barrier */
+
+halted: dsb
+	wfe	/* CPU should be power gated here */
+	isb
+	b	halted
+
+/*
+ * tegra2_sdram_self_refresh
  *
  * called with MMU off and caches disabled
  * puts sdram in self refresh
  * must execute from IRAM
  */
-tegra_sdram_self_refresh:
-	ldr	r1, =TEGRA_EMC_BASE
+tegra2_sdram_self_refresh:
+	mov32	r1, TEGRA_EMC_BASE
 	mov	r2, #3
 	str	r2, [r1, #EMC_REQ_CTRL]		@ stall incoming DRAM requests
 
@@ -413,9 +495,9 @@ emcself:ldr	r3, [r1, #EMC_EMC_STATUS]
 	cmp	r3, r2
 	bne	emcself				@ loop until DDR in self-refresh
 
-	adr	r2, tegra_sdram_pad_address
-	adr	r3, tegra_sdram_pad_safe
-	adr	r4, tegra_sdram_pad_save
+	adr	r2, tegra2_sdram_pad_address
+	adr	r3, tegra2_sdram_pad_safe
+	adr	r4, tegra2_sdram_pad_save
 	mov	r5, #0
 
 padsave:
@@ -428,19 +510,19 @@ padsave:
 	str	r1, [r0]			@ set emc register to safe vals
 
 	add	r5, r5, #4
-	ldr	r0, tegra_sdram_pad_size
+	ldr	r0, tegra2_sdram_pad_size
 	cmp	r0, r5
 	bne	padsave
 padsave_done:
 
-	ldr	r5, =TEGRA_CLK_RESET_BASE
+	mov32	r5, TEGRA_CLK_RESET_BASE
 	ldr	r0, [r5, #CLK_RESET_SCLK_BURST]
-	adr	r2, tegra_sclk_save
+	adr	r2, tegra2_sclk_save
 	str	r0, [r2]
 	dsb
 	mov	pc, lr
 
-tegra_sdram_pad_address:
+tegra2_sdram_pad_address:
 	.word	TEGRA_APB_MISC_BASE + 0x8c8 /* XM2CFGCPADCTRL */
 	.word	TEGRA_APB_MISC_BASE + 0x8cc /* XM2CFGDPADCTRL */
 	.word	TEGRA_APB_MISC_BASE + 0x8d0 /* XM2CLKCFGPADCTRL */
@@ -449,10 +531,10 @@ tegra_sdram_pad_address:
 	.word	TEGRA_APB_MISC_BASE + 0x8e4 /* XM2CFGCPADCTRL2 */
 	.word	TEGRA_APB_MISC_BASE + 0x8e8 /* XM2CFGDPADCTRL2 */
 
-tegra_sdram_pad_size:
-	.word	tegra_sdram_pad_size - tegra_sdram_pad_address
+tegra2_sdram_pad_size:
+	.word	tegra2_sdram_pad_size - tegra2_sdram_pad_address
 
-tegra_sdram_pad_safe:
+tegra2_sdram_pad_safe:
 	.word	0x8
 	.word	0x8
 	.word	0x0
@@ -461,10 +543,10 @@ tegra_sdram_pad_safe:
 	.word	0x08080040
 	.word	0x0
 
-tegra_sclk_save:
+tegra2_sclk_save:
 	.word	0x0
 
-tegra_sdram_pad_save:
+tegra2_sdram_pad_save:
 	.word	0
 	.word	0
 	.word	0
@@ -476,6 +558,7 @@ tegra_sdram_pad_save:
 	.ltorg
 /* dummy symbol for end of IRAM */
 	.align L1_CACHE_SHIFT
-	.globl tegra_iram_end
-tegra_iram_end:
+	.globl tegra2_iram_end
+tegra2_iram_end:
 	b	.
+#endif

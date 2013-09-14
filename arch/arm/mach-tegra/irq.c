@@ -4,7 +4,7 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010, NVIDIA Corporation
+ * Copyright (C) 2010-2012, NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,7 +25,10 @@
 #include <linux/irqchip/arm-gic.h>
 #include <linux/syscore_ops.h>
 
+#include <mach/legacy_irq.h>
+
 #include "board.h"
+#include "gic.h"
 #include "iomap.h"
 #include "pm-irq.h"
 
@@ -56,7 +59,7 @@ static void __iomem *ictlr_reg_base[] = {
 	IO_ADDRESS(TEGRA_QUINARY_ICTLR_BASE),
 };
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static u32 cop_ier[ARRAY_SIZE(ictlr_reg_base)];
 static u32 cpu_ier[ARRAY_SIZE(ictlr_reg_base)];
 static u32 cpu_iep[ARRAY_SIZE(ictlr_reg_base)];
@@ -124,7 +127,7 @@ static int tegra_set_type(struct irq_data *d, unsigned int flow_type)
 }
 
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int tegra_set_wake(struct irq_data *d, unsigned int enable)
 {
 	return tegra_pm_irq_set_wake(d->irq, enable);
@@ -200,6 +203,7 @@ void __init tegra_init_irq(void)
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(~0, ictlr + ICTLR_CPU_IER_CLR);
 		writel(0, ictlr + ICTLR_CPU_IEP_CLASS);
+		writel(~0, ictlr + ICTLR_CPU_IEP_FIR_CLR);
 	}
 
 	gic_arch_extn.irq_ack = tegra_ack;
@@ -216,6 +220,16 @@ void __init tegra_init_irq(void)
 	 * initialized elsewhere under DT.
 	 */
 	if (!of_have_populated_dt())
-		gic_init(0, 29, distbase,
-			IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100));
+		tegra_gic_init();
+}
+
+void tegra_init_legacy_irq_cop(void)
+{
+	int i;
+
+	for (i = 0; i < num_ictlrs; i++) {
+		void __iomem *ictlr = ictlr_reg_base[i];
+		writel(~0, ictlr + ICTLR_COP_IER_CLR);
+		writel(0, ictlr + ICTLR_COP_IEP_CLASS);
+	}
 }

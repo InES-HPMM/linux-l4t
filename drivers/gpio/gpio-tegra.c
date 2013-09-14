@@ -26,6 +26,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/irqdomain.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/pinctrl/consumer.h>
@@ -108,14 +109,50 @@ static void tegra_gpio_mask_write(u32 reg, int gpio, int value)
 	tegra_gpio_writel(val, reg);
 }
 
+int tegra_gpio_get_bank_int_nr(int gpio)
+{
+	int bank;
+	int irq;
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return -EINVAL;
+	}
+	bank = gpio >> 5;
+	irq = tegra_gpio_banks[bank].irq;
+	return irq;
+}
+
 static void tegra_gpio_enable(int gpio)
 {
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
 }
 
 static void tegra_gpio_disable(int gpio)
 {
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 0);
+}
+
+void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value)
+{
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
+	if (is_input) {
+		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 0);
+	} else {
+		tegra_gpio_mask_write(GPIO_MSK_OUT(gpio), gpio, value);
+		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 1);
+	}
+	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
 }
 
 static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
@@ -160,9 +197,25 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 	return 0;
 }
 
+static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
+				unsigned debounce)
+{
+	return -ENOSYS;
+}
+
 static int tegra_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	return irq_find_mapping(irq_domain, offset);
+}
+
+static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
+{
+	return 0;
+}
+
+static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
+{
+	tegra_gpio_disable(offset);
 }
 
 static struct gpio_chip tegra_gpio_chip = {
@@ -173,6 +226,7 @@ static struct gpio_chip tegra_gpio_chip = {
 	.get			= tegra_gpio_get,
 	.direction_output	= tegra_gpio_direction_output,
 	.set			= tegra_gpio_set,
+	.set_debounce		= tegra_gpio_set_debounce,
 	.to_irq			= tegra_gpio_to_irq,
 	.base			= 0,
 };
@@ -182,6 +236,15 @@ static void tegra_gpio_irq_ack(struct irq_data *d)
 	int gpio = d->hwirq;
 
 	tegra_gpio_writel(1 << GPIO_BIT(gpio), GPIO_INT_CLR(gpio));
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA platforms have a serializer between the GPIO
+	   block and interrupt controller. Allow time for
+	   clearing of the GPIO interrupt to propagate to the
+	   interrupt controller before re-enabling the IRQ
+	   to prevent double interrupts. */
+	udelay(15);
+#endif
 }
 
 static void tegra_gpio_irq_mask(struct irq_data *d)
@@ -461,6 +524,7 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			tegra_gpio_writel(0x00, GPIO_INT_ENB(gpio));
+			tegra_gpio_writel(0x00, GPIO_INT_STA(gpio));
 		}
 	}
 
@@ -484,11 +548,12 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 	for (i = 0; i < tegra_gpio_bank_count; i++) {
 		bank = &tegra_gpio_banks[i];
 
-		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
-		irq_set_handler_data(bank->irq, bank);
-
 		for (j = 0; j < 4; j++)
 			spin_lock_init(&bank->lvl_lock[j]);
+
+		irq_set_handler_data(bank->irq, bank);
+		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
+
 	}
 
 	return 0;

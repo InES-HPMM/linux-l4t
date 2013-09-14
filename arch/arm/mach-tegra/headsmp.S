@@ -1,12 +1,35 @@
+/*
+ * arch/arm/mach-tegra/headsmp.S
+ *
+ * CPU initialization routines for Tegra SoCs
+ *
+ * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2011 Google, Inc.
+ * Author: Colin Cross <ccross@android.com>
+ *         Gary King <gking@nvidia.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
 #include <linux/linkage.h>
 #include <linux/init.h>
 
 #include <asm/cache.h>
+#include <asm/page.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
 #include "reset.h"
 #include "sleep.h"
+
+#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
 
 #define APB_MISC_GP_HIDREV	0x804
 #define PMC_SCRATCH41	0x140
@@ -17,7 +40,38 @@
 	__CPUINIT
 
 /*
- * Tegra specific entry point for secondary CPUs.
+ *	__invalidate_cpu_state
+ *
+ *	  Invalidates volatile CPU state (SCU tags, caches, branch address
+ *	  arrays, exclusive monitor, etc.) so that they can be safely enabled
+ *	  instruction caching and branch predicition enabled
+ */
+__invalidate_cpu_state:
+	clrex
+	mov	r0, #0
+	mcr	p15, 0, r0, c1, c0, 1	@ disable SMP, prefetch, broadcast
+	isb
+	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
+	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
+	mcr	p15, 0, r0, c8, c7, 0	@ invalidate unified TLB
+	dsb
+	isb
+
+	cpu_id	r0
+	cmp	r0, #0
+	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
+	movne	r0, r0, lsl #2
+	movne	r2, #0xf
+	movne	r2, r2, lsl r0
+	strne	r2, [r1]		@ invalidate SCU tags for CPU
+
+	dsb
+	mov	r0, #0x1800
+	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
+	isb
+	/* fall through */
+
+/*
  *   The secondary kernel init calls v7_flush_dcache_all before it enables
  *   the L1; however, the L1 comes out of reset in an undefined state, so
  *   the clean + invalidate performed by v7_flush_dcache_all causes a bunch
@@ -60,13 +114,59 @@ ENTRY(v7_invalidate_l1)
 ENDPROC(v7_invalidate_l1)
 
 
+#ifdef CONFIG_SMP
+/* 
+ *	tegra_secondary_startup
+ *
+ *	 Initial secondary processor boot vector; jumps to kernel's
+ *	 secondary_startup routine. Used for initial boot and hotplug
+ *	 of secondary CPUs.
+ */
 ENTRY(tegra_secondary_startup)
-        bl      v7_invalidate_l1
-	/* Enable coresight */
-	mov32	r0, 0xC5ACCE55
-	mcr	p14, 0, r0, c7, c12, 6
+	bl	__invalidate_cpu_state
         b       secondary_startup
 ENDPROC(tegra_secondary_startup)
+#endif
+
+#ifdef CONFIG_PM_SLEEP
+/*
+ *	tegra_resume
+ *
+ *	  CPU boot vector when restarting the a CPU following
+ *	  an LP2 transition. Also branched to by LP0 and LP1 resume after
+ *	  re-enabling sdram.
+ */
+ENTRY(tegra_resume)
+	bl	__invalidate_cpu_state
+
+	cpu_id	r0
+	cmp	r0, #0				@ CPU0?
+	bne	cpu_resume			@ no
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	@ Clear the flow controller flags for this CPU.
+	mov32	r2, TEGRA_FLOW_CTRL_BASE+8	@ CPU0 CSR
+	ldr	r1, [r2]
+	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
+	movw	r0, #0x0FFD	@ enable, cluster_switch, immed, & bitmaps
+	bic	r1, r1, r0
+	str	r1, [r2]
+#endif
+
+	/* enable SCU */
+	mov32	r0, TEGRA_ARM_PERIF_BASE
+	ldr	r1, [r0]
+	orr	r1, r1, #1
+#if defined(CONFIG_HAVE_ARM_SCU)
+	orr	r1, r1, #(1 << 3)	@ Enable SCU speculative line fill.
+	orr	r1, r1, #(1 << 5)	@ Enable IC standby.
+	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
+#endif
+	str	r1, [r0]
+
+	b	cpu_resume
+ENDPROC(tegra_resume)
+#endif
 
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_start)
@@ -92,7 +192,26 @@ ENTRY(__tegra_cpu_reset_handler_start)
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler)
 
+#if DEBUG_CPU_RESET_HANDLER
+	b	.
+#endif
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 	cpsid	aif, 0x13			@ SVC mode, interrupts disabled
+	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
+	and	r5, r0, #0x00f00000		@ variant
+	and	r6, r0, #0x0000000f		@ revision
+	orr	r6, r6, r5, lsr #20-4		@ combine variant and revision
+#ifdef CONFIG_ARM_ERRATA_743622
+	teq	r6, #0x20			@ present in r2p0
+	teqne	r6, #0x21			@ present in r2p1
+	teqne	r6, #0x22			@ present in r2p2
+	teqne	r6, #0x27			@ present in r2p7
+	teqne	r6, #0x29			@ present in r2p9
+	mrceq	p15, 0, r10, c15, c0, 1		@ read diagnostic register
+	orreq	r10, r10, #1 << 6		@ set bit #6
+	mcreq	p15, 0, r10, c15, c0, 1		@ write diagnostic register
+#endif
+#endif
 	mrc	p15, 0, r10, c0, c0, 5		@ MPIDR
 	and	r10, r10, #0x3			@ R10 = CPU number
 	mov	r11, #1
@@ -121,6 +240,30 @@ ENTRY(__tegra_cpu_reset_handler)
 1:
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+	/* Waking up from LP1? */
+	ldr	r8, [r12, #RESET_DATA(MASK_LP1)]
+	tst	r8, r11				@ if in_lp1
+	beq	__is_not_lp1
+	cmp	r10, #0
+	bne	__die				@ only CPU0 can be here
+	ldr	lr, [r12, #RESET_DATA(STARTUP_LP1)]
+	cmp	lr, #0
+	bleq	__die				@ no LP1 startup handler
+	bx	lr
+__is_not_lp1:
+#endif
+
+	/* Waking up from LP2? */
+	ldr	r9, [r12, #RESET_DATA(MASK_LP2)]
+	tst	r9, r11				@ if in_lp2
+	beq	__is_not_lp2
+	ldr	lr, [r12, #RESET_DATA(STARTUP_LP2)]
+	cmp	lr, #0
+	bleq	__die				@ no LP2 startup handler
+	bx	lr
+
+__is_not_lp2:
 #ifdef CONFIG_SMP
 	/*
 	 * Can only be secondary boot (initial or hotplug) but CPU 0

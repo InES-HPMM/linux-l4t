@@ -7,7 +7,7 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
- *  Copyright (C) 2010 NVIDIA Corporation
+ *  Copyright (C) 2010-2011 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,7 +21,9 @@
 #include <linux/jiffies.h>
 #include <linux/smp.h>
 #include <linux/io.h>
+#include <linux/clk.h>
 #include <linux/clk/tegra.h>
+#include <linux/cpumask.h>
 
 #include <asm/smp_scu.h>
 
@@ -30,23 +32,80 @@
 #include "fuse.h"
 #include "flowctrl.h"
 #include "reset.h"
+#include "pm.h"
+#include "clock.h"
 
 #include "common.h"
 #include "iomap.h"
 
-#define EVP_CPU_RESET_VECTOR \
-	(IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x100)
+bool tegra_all_cpus_booted;
 
-extern void tegra_secondary_startup(void);
+static DECLARE_BITMAP(tegra_cpu_init_bits, CONFIG_NR_CPUS) __read_mostly;
+const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits);
+#define tegra_cpu_init_map	(*(cpumask_t *)tegra_cpu_init_mask)
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#define CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR \
+	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x34c)
+#define CAR_BOND_OUT_V \
+	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x390)
+#define CAR_BOND_OUT_V_CPU_G	(1<<0)
+#endif
 
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 
+static unsigned int available_cpus(void)
+{
+	static unsigned int ncores;
+
+	if (ncores == 0) {
+		ncores = scu_get_core_count(scu_base);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		if (ncores > 1) {
+			u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
+			ncores -= FUSE_SKU_NUM_DISABLED_CPUS(fuse_sku);
+			BUG_ON((int)ncores <= 0);
+		}
+#endif
+	}
+	return ncores;
+}
+
+static int is_g_cluster_available(unsigned int cpu)
+{
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
+	u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
+	u32 bond_out = readl(CAR_BOND_OUT_V);
+
+	/* Does the G CPU complex exist at all? */
+	if ((fuse_sku & FUSE_SKU_DISABLE_ALL_CPUS) ||
+	    (bond_out & CAR_BOND_OUT_V_CPU_G))
+		return -EPERM;
+
+	if (cpu >= available_cpus())
+		return -EPERM;
+
+	/* FIXME: The G CPU can be unavailable for a number of reasons
+	 *	  (e.g., low battery, over temperature, etc.). Add checks for
+	 *	  these conditions. */
+	return 0;
+#else
+	return -EPERM;
+#endif
+}
+
 static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
+	cpumask_set_cpu(cpu, to_cpumask(tegra_cpu_init_bits));
+	if (!tegra_all_cpus_booted)
+		if (cpumask_equal(tegra_cpu_init_mask, cpu_present_mask))
+			tegra_all_cpus_booted = true;
 }
 
 static int tegra20_power_up_cpu(unsigned int cpu)
 {
+	int status;
+
 	/* Enable the CPU clock. */
 	tegra_enable_cpu_clock(cpu);
 
@@ -61,13 +120,29 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	int ret, pwrgateid;
 	unsigned long timeout;
 
+	BUG_ON(is_lp_cluster());
+
 	pwrgateid = tegra_cpu_powergate_id(cpu);
 	if (pwrgateid < 0)
 		return pwrgateid;
 
+	/* If this cpu has booted this function is entered after
+	 * CPU has been already un-gated by flow controller. Wait
+	 * for confirmation that cpu is powered and remove clamps.
+	 * On first boot entry do not wait - go to direct ungate.
+	 */
+	if (cpu_isset(cpu, tegra_cpu_init_map)) {
+		timeout = jiffies + 5;
+		do {
+			if (tegra_powergate_is_powered(pwrgateid))
+				goto remove_clamps;
+			udelay(10);
+		} while (time_before(jiffies, timeout));
+	}
+
 	/* If this is the first boot, toggle powergates directly. */
 	if (!tegra_powergate_is_powered(pwrgateid)) {
-		ret = tegra_powergate_power_on(pwrgateid);
+		ret = tegra_unpowergate_partition(pwrgateid);
 		if (ret)
 			return ret;
 
@@ -80,6 +155,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 		}
 	}
 
+remove_clamps:
 	/* CPU partition is powered. Enable the CPU clock. */
 	tegra_enable_cpu_clock(cpu);
 	udelay(10);
@@ -94,12 +170,21 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
 
-	return 0;
+done:
+	return status;
 }
 
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
+
+	BUG_ON(cpu == smp_processor_id());
+
+	/* Avoid timer calibration on slave cpus. Use the value calibrated
+	 * on master cpu. This reduces the bringup time for each slave cpu
+	 * by around 260ms.
+	 */
+	preset_lpj = loops_per_jiffy;
 
 	/*
 	 * Force the CPU into reset. The CPU must remain in reset when the
@@ -145,7 +230,8 @@ done:
  */
 static void __init tegra_smp_init_cpus(void)
 {
-	unsigned int i, ncores = scu_get_core_count(scu_base);
+	unsigned int ncores = available_cpus();
+	unsigned int i;
 
 	if (ncores > nr_cpu_ids) {
 		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",
@@ -155,11 +241,42 @@ static void __init tegra_smp_init_cpus(void)
 
 	for (i = 0; i < ncores; i++)
 		set_cpu_possible(i, true);
+
+	/* If only one CPU is possible, platform_smp_prepare_cpus() will
+	   never get called. We must therefore initialize the reset handler
+	   here. If there is more than one CPU, we must wait until after
+	   the cpu_present_mask has been updated with all present CPUs in
+	   platform_smp_prepare_cpus() before initializing the reset handler. */
+	if (ncores == 1) {
+		tegra_cpu_reset_handler_init();
+		tegra_all_cpus_booted = true;
+	}
 }
 
 static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
+
+	/* Always mark the boot CPU as initialized. */
+	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
+
+	if (max_cpus == 1)
+		tegra_all_cpus_booted = true;
+
+	/* If we're here, it means that more than one CPU was found by
+	   smp_init_cpus() which also means that it did not initialize the
+	   reset handler. Do it now before the secondary CPUs are started. */
 	tegra_cpu_reset_handler_init();
+
+#if defined(CONFIG_HAVE_ARM_SCU)
+	{
+		u32 scu_ctrl = __raw_readl(scu_base) |
+				1 << 3 | /* Enable speculative line fill*/
+				1 << 5 | /* Enable IC standby */
+				1 << 6; /* Enable SCU standby */
+		if (!(scu_ctrl & 1))
+			__raw_writel(scu_ctrl, scu_base);
+	}
+#endif
 	scu_enable(scu_base);
 }
 

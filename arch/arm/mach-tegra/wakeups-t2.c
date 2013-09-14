@@ -23,8 +23,6 @@
 #include "gpio-names.h"
 #include "iomap.h"
 
-#define NUM_WAKE_EVENTS 31
-
 /* TODO: We could populate the other table from this one at runtime
  * instead of always searching twice */
 static int tegra_gpio_wakes[] = {
@@ -59,14 +57,6 @@ static int tegra_gpio_wakes[] = {
 	[28] = TEGRA_GPIO_PQ6,
 	[29] = TEGRA_GPIO_PQ7,
 	[30] = TEGRA_GPIO_PN2,
-	[31] = -EINVAL,
-	[32] = -EINVAL,
-	[33] = -EINVAL,
-	[34] = -EINVAL,
-	[35] = -EINVAL,
-	[36] = -EINVAL,
-	[37] = -EINVAL,
-	[38] = -EINVAL,
 };
 
 static int tegra_wake_event_irq[] = {
@@ -89,7 +79,7 @@ static int tegra_wake_event_irq[] = {
 	[16] = INT_RTC,
 	[17] = INT_KBC,
 	[18] = INT_EXTERNAL_PMU,
-	[19] = -EINVAL,	 /* TEGRA_USB1_VBUS, */
+	[19] = -EINVAL, /* TEGRA_USB1_VBUS, */
 	[20] = -EINVAL, /* TEGRA_USB3_VBUS, */
 	[21] = -EINVAL, /* TEGRA_USB1_ID, */
 	[22] = -EINVAL, /* TEGRA_USB3_ID, */
@@ -101,39 +91,38 @@ static int tegra_wake_event_irq[] = {
 	[28] = -EAGAIN,
 	[29] = -EAGAIN,
 	[30] = -EAGAIN,
-	[31] = -EINVAL,
-	/*
-	 * The gpio bank irqs aren't actually wake sources, but they don't
-	 * prevent lp0 because the gpio chained irq is requested directly
-	 */
-	[32] = INT_GPIO1,
-	[33] = INT_GPIO2,
-	[34] = INT_GPIO3,
-	[35] = INT_GPIO4,
-	[36] = INT_GPIO5,
-	[37] = INT_GPIO6,
-	[38] = INT_GPIO7,
 };
 
 int tegra_irq_to_wake(int irq)
 {
 	int i;
+	static int last_wake = -1;
+
 	for (i = 0; i < ARRAY_SIZE(tegra_wake_event_irq); i++)
 		if (tegra_wake_event_irq[i] == irq)
-			break;
+			goto out;
 
-	if (i == ARRAY_SIZE(tegra_wake_event_irq)) {
-		for (i = 0; i < ARRAY_SIZE(tegra_gpio_wakes); i++)
-			if (gpio_to_irq(tegra_gpio_wakes[i]) == irq)
-				break;
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_wakes); i++)
+		if (gpio_to_irq(tegra_gpio_wakes[i]) == irq)
+			goto out;
 
-		if (i == ARRAY_SIZE(tegra_gpio_wakes))
-			return -ENOTSUPP;
-	}
+	/* Two level wake irq search for gpio based wakeups -
+	 * 1. check for GPIO irq(based on tegra_wake_event_irq table)
+	 * e.g. for a board, wake7 based on GPIO PU6 and irq==358 done first
+	 * 2. check for gpio bank irq assuming search for GPIO irq
+	 *    preceded this search.
+	 * e.g. in this step check for gpio bank irq GPIO6 irq==119
+	 */
+	if (last_wake < 0 || last_wake >= ARRAY_SIZE(tegra_gpio_wakes))
+		return -EINVAL;
 
-	if (i > NUM_WAKE_EVENTS)
-		return -EALREADY;
+	if (tegra_gpio_get_bank_int_nr(tegra_gpio_wakes[last_wake]) == irq)
+		return last_wake;
 
+	return -EINVAL;
+
+out:
+	last_wake = i;
 	return i;
 }
 
@@ -144,7 +133,7 @@ int tegra_wake_to_irq(int wake)
 	if (wake < 0)
 		return -EINVAL;
 
-	if (wake >= NUM_WAKE_EVENTS)
+	if (wake >= ARRAY_SIZE(tegra_wake_event_irq))
 		return -EINVAL;
 
 	ret = tegra_wake_event_irq[wake];

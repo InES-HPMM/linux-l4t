@@ -42,31 +42,22 @@
 
 #include <mach/irqs.h>
 
+#include <trace/events/power.h>
+
+#include "cpuidle.h"
 #include "pm.h"
 #include "sleep.h"
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index);
+#ifdef CONFIG_PM_SLEEP
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index);
+#endif
 
-#define TEGRA_CPUIDLE_BOTH_IDLE		INT_QUAD_RES_24
-#define TEGRA_CPUIDLE_TEAR_DOWN		INT_QUAD_RES_25
-
-static bool lp2_in_idle __read_mostly = true;
-module_param(lp2_in_idle, bool, 0644);
-
-static struct {
-	unsigned int cpu_ready_count[2];
-	unsigned long long cpu_wants_lp2_time[2];
-	unsigned long long in_lp2_time;
-	unsigned int both_idle_count;
-	unsigned int tear_down_count;
-	unsigned int lp2_count;
-	unsigned int lp2_count_bin[32];
-	unsigned int lp2_int_count[NR_IRQS];
-	unsigned int last_lp2_int_count[NR_IRQS];
-} idle_stats;
+int tegra_lp2_exit_latency;
+static int tegra_lp2_power_off_time;
+static unsigned int tegra_lp2_min_residency;
 
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
@@ -82,6 +73,7 @@ struct cpuidle_driver tegra_idle_driver = {
 			.name			= "LP3",
 			.desc			= "CPU flow-controlled",
 		},
+#ifdef CONFIG_PM_SLEEP
 		[1] = {
 			.enter			= tegra_idle_enter_lp2,
 			.power_usage		= 0,
@@ -89,21 +81,19 @@ struct cpuidle_driver tegra_idle_driver = {
 			.name			= "LP2",
 			.desc			= "CPU power-gate",
 		},
+#endif
 	},
 };
 
 static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
-
-static inline unsigned int time_to_bin(unsigned int time)
-{
-	return fls(time);
-}
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	struct cpuidle_driver *drv, int index)
 {
 	ktime_t enter, exit;
 	s64 us;
+
+	trace_power_start(POWER_CSTATE, 1, dev->cpu);
 
 	local_irq_disable();
 	local_fiq_disable();
@@ -123,36 +113,87 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	return index;
 }
 
+static bool lp2_in_idle __read_mostly = false;
+
+#ifdef CONFIG_PM_SLEEP
+static bool lp2_in_idle_modifiable __read_mostly = true;
+static bool lp2_disabled_by_suspend;
+
+void tegra_lp2_in_idle(bool enable)
+{
+	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
+	if (lp2_in_idle_modifiable) {
+		lp2_in_idle = enable;
+		lp2_in_idle_modifiable = enable;
+		if (!enable)
+			pr_warn("LP2 in idle disabled\n");
+	}
+}
+
+void tegra_lp2_update_target_residency(struct cpuidle_state *state)
+{
+	state->target_residency = state->exit_latency +
+		tegra_lp2_power_off_time;
+	if (state->target_residency < tegra_lp2_min_residency)
+		state->target_residency = tegra_lp2_min_residency;
+}
+
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	struct cpuidle_driver *drv, int index)
 {
 	ktime_t enter, exit;
 	s64 us;
 
+	if (!lp2_in_idle || lp2_disabled_by_suspend ||
+	    !tegra_lp2_is_allowed(dev, state)) {
+		dev->last_state = &dev->states[0];
+		return tegra_idle_enter_lp3(dev, state);
+	}
+
 	local_irq_disable();
-	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	enter = ktime_get();
 
-	idle_stats.cpu_ready_count[dev->cpu]++;
-
-	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	tegra_idle_lp2();
-	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
+	tegra_cpu_idle_stats_lp2_ready(dev->cpu);
+	tegra_idle_lp2(dev, state);
 
 	exit = ktime_sub(ktime_get(), enter);
 	us = ktime_to_us(exit);
 
-	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 	local_irq_enable();
+
+	/* cpu clockevents may have been reset by powerdown */
+	hrtimer_peek_ahead_timers();
 
 	smp_rmb();
 
-	idle_stats.cpu_wants_lp2_time[dev->cpu] += us;
+	/* Update LP2 latency provided no fall back to LP3 */
+	if (state == dev->last_state) {
+		tegra_lp2_set_global_latency(state);
+		tegra_lp2_update_target_residency(state);
+	}
+	tegra_cpu_idle_stats_lp2_time(dev->cpu, us);
 
 	dev->last_residency = us;
 
 	return index;
 }
+
+static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
+	unsigned long event, void *dummy)
+{
+#ifdef CONFIG_PM_SLEEP
+	if (event == PM_SUSPEND_PREPARE)
+		lp2_disabled_by_suspend = true;
+	else if (event == PM_POST_SUSPEND)
+		lp2_disabled_by_suspend = false;
+#endif
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra_cpuidle_pm_notifier = {
+	.notifier_call = tegra_cpuidle_pm_notify,
+};
 
 static int __init tegra_cpuidle_init(void)
 {
@@ -161,9 +202,23 @@ static int __init tegra_cpuidle_init(void)
 	struct cpuidle_device *dev;
 	struct cpuidle_driver *drv = &tegra_idle_driver;
 
+#ifdef CONFIG_PM_SLEEP
+	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
+	tegra_lp2_exit_latency = tegra_cpu_power_good_time();
+	tegra_lp2_power_off_time = tegra_cpu_power_off_time();
+
+	ret = tegra_cpudile_init_soc();
+	if (ret)
+		return ret;
+
 	tegra_idle_driver.states[1].exit_latency = tegra_cpu_power_good_time();
 	tegra_idle_driver.states[1].target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();
+	if (tegra_idle_driver.states[1].target_residency < tegra_lp2_min_residency)
+		tegra_idle_driver.states[1].target_residency = tegra_lp2_min_residency;
+#endif
+	
+	drv->state_count = ARRAY_SIZE(drv->states);
 
 	ret = cpuidle_register_driver(&tegra_idle_driver);
 	if (ret) {
@@ -183,73 +238,38 @@ static int __init tegra_cpuidle_init(void)
 			return ret;
 		}
 	}
+	register_pm_notifier(&tegra_cpuidle_pm_notifier);
+
 	return 0;
 }
 device_initcall(tegra_cpuidle_init);
 
-#ifdef CONFIG_DEBUG_FS
-static int tegra_lp2_debug_show(struct seq_file *s, void *data)
+static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
 {
-	int bin;
-	int i;
-	seq_printf(s, "                                    cpu0     cpu1\n");
-	seq_printf(s, "-------------------------------------------------\n");
-	seq_printf(s, "cpu ready:                      %8u %8u\n",
-		idle_stats.cpu_ready_count[0],
-		idle_stats.cpu_ready_count[1]);
-	seq_printf(s, "both idle:      %8u        %7u%% %7u%%\n",
-		idle_stats.both_idle_count,
-		idle_stats.both_idle_count * 100 /
-			(idle_stats.cpu_ready_count[0] ?: 1),
-		idle_stats.both_idle_count * 100 /
-			(idle_stats.cpu_ready_count[1] ?: 1));
-	seq_printf(s, "tear down:      %8u %7u%%\n", idle_stats.tear_down_count,
-		idle_stats.tear_down_count * 100 /
-			(idle_stats.both_idle_count ?: 1));
-	seq_printf(s, "lp2:            %8u %7u%%\n", idle_stats.lp2_count,
-		idle_stats.lp2_count * 100 /
-			(idle_stats.both_idle_count ?: 1));
+#ifdef CONFIG_PM_SLEEP
+	int ret;
 
-	seq_printf(s, "\n");
-	seq_printf(s, "cpu ready time:                 %8llu %8llu ms\n",
-		div64_u64(idle_stats.cpu_wants_lp2_time[0], 1000),
-		div64_u64(idle_stats.cpu_wants_lp2_time[1], 1000));
-	seq_printf(s, "lp2 time:       %8llu ms     %7d%% %7d%%\n",
-		div64_u64(idle_stats.in_lp2_time, 1000),
-		(int)div64_u64(idle_stats.in_lp2_time * 100,
-			idle_stats.cpu_wants_lp2_time[0] ?: 1),
-		(int)div64_u64(idle_stats.in_lp2_time * 100,
-			idle_stats.cpu_wants_lp2_time[1] ?: 1));
-
-	seq_printf(s, "\n");
-	seq_printf(s, "%19s %8s\n", "", "lp2");
-	seq_printf(s, "-------------------------------------------------\n");
-	for (bin = 0; bin < 32; bin++) {
-		if (idle_stats.lp2_count_bin[bin] == 0)
-			continue;
-		seq_printf(s, "%6u - %6u ms: %8u\n",
-			1 << (bin - 1), 1 << bin,
-			idle_stats.lp2_count_bin[bin]);
+	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
+	if (lp2_in_idle_modifiable) {
+		ret = param_set_bool(arg, kp);
+		return ret;
 	}
-
-	seq_printf(s, "\n");
-	seq_printf(s, "%3s %20s %6s %10s\n",
-		"int", "name", "count", "last count");
-	seq_printf(s, "--------------------------------------------\n");
-	for (i = 0; i < NR_IRQS; i++) {
-		if (idle_stats.lp2_int_count[i] == 0)
-			continue;
-		seq_printf(s, "%3d %20s %6d %10d\n",
-			i, irq_to_desc(i)->action ?
-				irq_to_desc(i)->action->name ?: "???" : "???",
-			idle_stats.lp2_int_count[i],
-			idle_stats.lp2_int_count[i] -
-				idle_stats.last_lp2_int_count[i]);
-		idle_stats.last_lp2_int_count[i] = idle_stats.lp2_int_count[i];
-	};
-	return 0;
+#endif
+	return -ENODEV;
 }
 
+static int lp2_in_idle_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_bool(buffer, kp);
+}
+
+static struct kernel_param_ops lp2_in_idle_ops = {
+	.set = lp2_in_idle_set,
+	.get = lp2_in_idle_get,
+};
+module_param_cb(lp2_in_idle, &lp2_in_idle_ops, &lp2_in_idle, 0644);
+
+#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_PM_SLEEP)
 static int tegra_lp2_debug_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, tegra_lp2_debug_show, inode->i_private);

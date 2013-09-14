@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2011 NVIDIA Corporation
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -24,6 +25,7 @@
 
 #include "iomap.h"
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static DEFINE_SPINLOCK(tegra_mc_lock);
 
 void tegra_mc_set_priority(unsigned long client, unsigned long prio)
@@ -40,4 +42,33 @@ void tegra_mc_set_priority(unsigned long client, unsigned long prio)
 	val |= prio << field;
 	writel(val, mc_base + reg);
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
+
 }
+
+int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
+{
+	return 1;
+}
+
+#else
+	/* !!!FIXME!!! IMPLEMENT tegra_mc_set_priority() */
+
+#include "tegra3_emc.h"
+
+/*
+ * If using T30/DDR3, the 2nd 16 bytes part of DDR3 atom is 2nd line and is
+ * discarded in tiling mode.
+ */
+int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
+{
+	int type;
+
+	type = tegra_emc_get_dram_type();
+	WARN_ONCE(type == -1, "unknown type DRAM because DVFS is disabled\n");
+
+	if (type == DRAM_TYPE_DDR3)
+		return 2;
+	else
+		return 1;
+}
+#endif
