@@ -96,6 +96,12 @@ config REGULATOR_ARIZONA
 	  Support for the regulators found on Wolfson Arizona class
 	  devices.
 
+config REGULATOR_BQ2419X
+	tristate "BQ24190, BQ24191, BQ24192 Charger VBUS regualtor"
+	depends on MFD_BQ2419X
+	help
+	  Say y here to support the VBUS regulator support from BQ2419X.
+
 config REGULATOR_DA903X
 	tristate "Dialog Semiconductor DA9030/DA9034 regulators"
 	depends on PMIC_DA903X
@@ -242,6 +248,14 @@ config REGULATOR_MAX8998
 	  via I2C bus. The provided regulator is suitable for S3C6410
 	  and S5PC1XX chips to control VCC_CORE and VCC_USIM voltages.
 
+config REGULATOR_MAX8907C
+	tristate "Maxim 8907C voltage regulator"
+	depends on MFD_MAX8907C
+	help
+	  This driver controls a Maxim 8907C voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs.
+
 config REGULATOR_MAX77686
 	tristate "Maxim 77686 regulator"
 	depends on MFD_MAX77686
@@ -249,6 +263,63 @@ config REGULATOR_MAX77686
 	  This driver controls a Maxim 77686 regulator
 	  via I2C bus. The provided regulator is suitable for
 	  Exynos-4 chips to control VARM and VINT voltages.
+
+config REGULATOR_MAX77663
+	tristate "Maxim 77663 voltage regulator"
+	depends on MFD_MAX77663
+	help
+	  This driver controls a Maxim 77663 voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs.
+
+config REGULATOR_TWL4030
+	bool "TI TWL4030/TWL5030/TWL6030/TPS659x0 PMIC"
+	depends on TWL4030_CORE
+	help
+	  This driver supports the voltage regulators provided by
+	  this family of companion chips.
+
+config REGULATOR_WM831X
+	tristate "Wolfson Microelcronics WM831x PMIC regulators"
+	depends on MFD_WM831X
+	help
+	  Support the voltage and current regulators of the WM831x series
+	  of PMIC devices.
+
+config REGULATOR_WM8350
+	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
+	depends on MFD_WM8350
+	help
+	  This driver provides support for the voltage and current regulators
+          of the WM8350 AudioPlus PMIC.
+
+config REGULATOR_WM8400
+	tristate "Wolfson Microelectronics WM8400 AudioPlus PMIC"
+	depends on MFD_WM8400
+	help
+	  This driver provides support for the voltage regulators of the
+	  WM8400 AudioPlus PMIC.
+
+config REGULATOR_WM8994
+	tristate "Wolfson Microelectronics WM8994 CODEC"
+	depends on MFD_WM8994
+	help
+	  This driver provides support for the voltage regulators on the
+	  WM8994 CODEC.
+
+config REGULATOR_DA903X
+	tristate "Support regulators on Dialog Semiconductor DA9030/DA9034 PMIC"
+	depends on PMIC_DA903X
+	help
+	  Say y here to support the BUCKs and LDOs regulators found on
+	  Dialog Semiconductor DA9030/DA9034 PMIC.
+
+config REGULATOR_DA9052
+	tristate "Dialog DA9052/DA9053 regulators"
+	depends on PMIC_DA9052
+	help
+	  This driver supports the voltage regulators of DA9052-BC and
+	  DA9053-AA/Bx PMIC.
 
 config REGULATOR_PCAP
 	tristate "Motorola PCAP2 regulator driver"
@@ -493,6 +564,32 @@ config REGULATOR_WM8350
 	  This driver provides support for the voltage and current regulators
 	  of the WM8350 AudioPlus PMIC.
 
+config REGULATOR_TPS65910
+	tristate "TI TPS65910/TPS65911 Power Regulators"
+	depends on MFD_TPS65910
+	help
+	  This driver supports TPS65910/TPS65911 voltage regulator chips.
+
+config REGULATOR_TPS62360
+	tristate "TI TPS62360 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports TPS62360 voltage regulator chip. This
+	  regulator is meant for processor core supply. This chip is
+	  high-frequency synchronous step down dc-dc converter optimized
+	  for battery-powered portable applications.
+
+config REGULATOR_TPS6238X0
+	tristate "TI TPS623850/TPS623860/TPS623870 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports TPS6238X0 voltage regulator chip. This
+	  regulator is meant for processor core supply. This chip is
+	  high-frequency synchronous step down dc-dc converter optimized
+	  for battery-powered portable applications.
+
 config REGULATOR_WM8400
 	tristate "Wolfson Microelectronics WM8400 AudioPlus PMIC"
 	depends on MFD_WM8400
@@ -513,6 +610,26 @@ config REGULATOR_AS3711
 	help
 	  This driver provides support for the voltage regulators on the
 	  AS3711 PMIC
+
+config REGULATOR_TPS6591X
+	tristate "TI TPS6591X Power regulators"
+	depends on MFD_TPS6591X
+	help
+	  This driver supports TPS6591X voltage regulator chips.
+
+config REGULATOR_RICOH583
+	tristate "RICOH 583 Power regulators"
+	depends on MFD_RICOH583
+	default n
+	help
+	  This driver supports regulator driver for RICOH583 PMIC.
+
+config REGULATOR_AAT2870
+	tristate "AnalogicTech AAT2870 Regulators"
+	depends on MFD_AAT2870_CORE
+	help
+	  If you have a AnalogicTech AAT2870 say Y to enable the
+	  regulator driver.
 
 endif
 

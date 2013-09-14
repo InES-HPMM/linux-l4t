@@ -78,11 +78,17 @@ struct tps65090 {
  *     DCDC1, DCDC2 and DCDC3.
  * @gpio: Gpio number if external control is enabled and controlled through
  *     gpio.
+ * @wait_timeout_us: wait timeout in microseconds;
+ *	>0 : specify minimum wait timeout in us for FETx, will update WTFET[1:0]
+ *	     in FETx_CTRL reg;
+ *	 0 : not to update WTFET[1:0] in FETx_CTRL reg for FETx;
+ *	-1 : for non-FETx.
  */
 struct tps65090_regulator_plat_data {
 	struct regulator_init_data *reg_init_data;
 	bool enable_ext_control;
 	int gpio;
+	int wait_timeout_us;
 };
 
 struct tps65090_platform_data {

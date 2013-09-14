@@ -61,11 +61,19 @@ struct tps6586x_regulator {
 
 	int enable_bit[2];
 	int enable_reg[2];
+	int delay; /* delay in us for regulator to stabilize */
 };
 
 static inline struct device *to_tps6586x_dev(struct regulator_dev *rdev)
 {
 	return rdev_get_dev(rdev)->parent;
+}
+
+static int tps6586x_regulator_enable_time(struct regulator_dev *rdev)
+{
+	struct tps6586x_regulator *ri = rdev_get_drvdata(rdev);
+
+	return ri->delay;
 }
 
 static struct regulator_ops tps6586x_regulator_ops = {
@@ -74,6 +82,7 @@ static struct regulator_ops tps6586x_regulator_ops = {
 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 
+	.enable_time = tps6586x_regulator_enable_time,
 	.is_enabled = regulator_is_enabled_regmap,
 	.enable = regulator_enable_regmap,
 	.disable = regulator_disable_regmap,
@@ -112,7 +121,8 @@ static const unsigned int tps6586x_dvm_voltages[] = {
 };
 
 #define TPS6586X_REGULATOR(_id, _pin_name, vdata, vreg, shift, nbits,	\
-			   ereg0, ebit0, ereg1, ebit1, goreg, gobit)	\
+			   ereg0, ebit0, ereg1, ebit1, goreg, gobit,	\
+			   en_time)					\
 	.desc	= {							\
 		.supply_name = _pin_name,				\
 		.name	= "REG-" #_id,					\
@@ -132,20 +142,22 @@ static const unsigned int tps6586x_dvm_voltages[] = {
 	.enable_reg[0]	= TPS6586X_SUPPLY##ereg0,			\
 	.enable_bit[0]	= (ebit0),					\
 	.enable_reg[1]	= TPS6586X_SUPPLY##ereg1,			\
-	.enable_bit[1]	= (ebit1),
+	.enable_bit[1]	= (ebit1),					\
+	.delay		= en_time,
 
 #define TPS6586X_LDO(_id, _pname, vdata, vreg, shift, nbits,		\
-		     ereg0, ebit0, ereg1, ebit1)			\
+		     ereg0, ebit0, ereg1, ebit1, en_time)		\
 {									\
 	TPS6586X_REGULATOR(_id, _pname, vdata, vreg, shift, nbits,	\
-			   ereg0, ebit0, ereg1, ebit1, 0, 0)		\
+			   ereg0, ebit0, ereg1, ebit1, 0, 0, en_time)	\
 }
 
 #define TPS6586X_DVM(_id, _pname, vdata, vreg, shift, nbits,		\
-		     ereg0, ebit0, ereg1, ebit1, goreg, gobit)		\
+		     ereg0, ebit0, ereg1, ebit1, goreg, gobit, en_time)	\
 {									\
 	TPS6586X_REGULATOR(_id, _pname, vdata, vreg, shift, nbits,	\
-			   ereg0, ebit0, ereg1, ebit1, goreg, gobit)	\
+			   ereg0, ebit0, ereg1, ebit1, goreg, gobit,	\
+			   en_time)					\
 }
 
 #define TPS6586X_SYS_REGULATOR()					\
@@ -162,25 +174,25 @@ static const unsigned int tps6586x_dvm_voltages[] = {
 
 static struct tps6586x_regulator tps6586x_regulator[] = {
 	TPS6586X_SYS_REGULATOR(),
-	TPS6586X_LDO(LDO_0, "vinldo01", ldo0, SUPPLYV1, 5, 3, ENC, 0, END, 0),
-	TPS6586X_LDO(LDO_3, "vinldo23", ldo, SUPPLYV4, 0, 3, ENC, 2, END, 2),
-	TPS6586X_LDO(LDO_5, "REG-SYS", ldo, SUPPLYV6, 0, 3, ENE, 6, ENE, 6),
-	TPS6586X_LDO(LDO_6, "vinldo678", ldo, SUPPLYV3, 0, 3, ENC, 4, END, 4),
-	TPS6586X_LDO(LDO_7, "vinldo678", ldo, SUPPLYV3, 3, 3, ENC, 5, END, 5),
-	TPS6586X_LDO(LDO_8, "vinldo678", ldo, SUPPLYV2, 5, 3, ENC, 6, END, 6),
-	TPS6586X_LDO(LDO_9, "vinldo9", ldo, SUPPLYV6, 3, 3, ENE, 7, ENE, 7),
-	TPS6586X_LDO(LDO_RTC, "REG-SYS", ldo, SUPPLYV4, 3, 3, V4, 7, V4, 7),
-	TPS6586X_LDO(LDO_1, "vinldo01", dvm, SUPPLYV1, 0, 5, ENC, 1, END, 1),
-	TPS6586X_LDO(SM_2, "vin-sm2", sm2, SUPPLYV2, 0, 5, ENC, 7, END, 7),
+	TPS6586X_LDO(LDO_0, "vinldo01", ldo0, SUPPLYV1, 5, 3, ENC, 0, END, 0, 4000),
+	TPS6586X_LDO(LDO_1, "vinldo01", dvm, SUPPLYV1, 0, 5, ENC, 1, END, 1, 4000),
+	TPS6586X_LDO(LDO_3, "vinldo23", ldo, SUPPLYV4, 0, 3, ENC, 2, END, 2, 3000),
+	TPS6586X_LDO(LDO_5, NULL, ldo, SUPPLYV6, 0, 3, ENE, 6, ENE, 6, 3000),
+	TPS6586X_LDO(LDO_6, "vinldo678", ldo, SUPPLYV3, 0, 3, ENC, 4, END, 4, 15000),
+	TPS6586X_LDO(LDO_7, "vinldo678", ldo, SUPPLYV3, 3, 3, ENC, 5, END, 5, 15000),
+	TPS6586X_LDO(LDO_8, "vinldo678", ldo, SUPPLYV2, 5, 3, ENC, 6, END, 6, 15000),
+	TPS6586X_LDO(LDO_9, "vinldo9", ldo, SUPPLYV6, 3, 3, ENE, 7, ENE, 7, 3000),
+	TPS6586X_LDO(LDO_RTC, NULL, ldo, SUPPLYV4, 3, 3, V4, 7, V4, 7, 0),
+	TPS6586X_LDO(SM_2, "vin-sm2", sm2, SUPPLYV2, 0, 5, ENC, 7, END, 7, 0),
 
 	TPS6586X_DVM(LDO_2, "vinldo23", dvm, LDO2BV1, 0, 5, ENA, 3,
-					ENB, 3, TPS6586X_VCC2, BIT(6)),
+					ENB, 3, TPS6586X_VCC2, BIT(6), 3000),
 	TPS6586X_DVM(LDO_4, "vinldo4", ldo4, LDO4V1, 0, 5, ENC, 3,
-					END, 3, TPS6586X_VCC1, BIT(6)),
+					END, 3, TPS6586X_VCC1, BIT(6), 15000),
 	TPS6586X_DVM(SM_0, "vin-sm0", dvm, SM0V1, 0, 5, ENA, 1,
-					ENB, 1, TPS6586X_VCC1, BIT(2)),
+					ENB, 1, TPS6586X_VCC1, BIT(2), 4000),
 	TPS6586X_DVM(SM_1, "vin-sm1", dvm, SM1V1, 0, 5, ENA, 0,
-					ENB, 0, TPS6586X_VCC1, BIT(0)),
+					ENB, 0, TPS6586X_VCC1, BIT(0), 4000),
 };
 
 /*
@@ -254,6 +266,39 @@ static int tps6586x_regulator_set_slew_rate(struct platform_device *pdev,
 			setting->slew_rate & TPS6586X_SLEW_RATE_MASK);
 }
 
+static inline int tps6586x_regulator_set_pwm_mode(struct platform_device *pdev,
+			int id, struct regulator_init_data *p)
+{
+	struct device *parent = pdev->dev.parent;
+	struct tps6586x_settings *setting = p->driver_data;
+	int ret = 0;
+	uint8_t mask;
+
+	if (setting == NULL)
+		return 0;
+
+	switch (id) {
+	case TPS6586X_ID_SM_0:
+		mask = 1 << SM0_PWM_BIT;
+		break;
+	case TPS6586X_ID_SM_1:
+		mask = 1 << SM1_PWM_BIT;
+		break;
+	case TPS6586X_ID_SM_2:
+		mask = 1 << SM2_PWM_BIT;
+		break;
+	default:
+		/* not all regulators have PWM/PFM option */
+		return 0;
+	}
+
+	if (setting->sm_pwm_mode == PWM_ONLY)
+		ret = tps6586x_set_bits(parent, TPS6586X_SMODE1, mask);
+	else if (setting->sm_pwm_mode == AUTO_PWM_PFM)
+		ret = tps6586x_clr_bits(parent, TPS6586X_SMODE1, mask);
+
+	return ret;
+}
 static inline struct tps6586x_regulator *find_regulator_info(int id)
 {
 	struct tps6586x_regulator *ri;
@@ -414,6 +459,8 @@ static int tps6586x_regulator_probe(struct platform_device *pdev)
 				regulator_unregister(rdev[id]);
 				goto fail;
 			}
+
+			tps6586x_regulator_set_pwm_mode(pdev, id, reg_data);
 		}
 	}
 
