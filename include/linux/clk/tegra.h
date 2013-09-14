@@ -120,9 +120,34 @@ static inline void tegra_cpu_clock_resume(void)
 }
 #endif
 
+enum tegra_clk_ex_param {
+	TEGRA_CLK_VI_INP_SEL,
+	TEGRA_CLK_DTV_INVERT,
+	TEGRA_CLK_NAND_PAD_DIV2_ENB,
+	TEGRA_CLK_PLLD_CSI_OUT_ENB,
+	TEGRA_CLK_PLLD_DSI_OUT_ENB,
+	TEGRA_CLK_PLLD_MIPI_MUX_SEL,
+};
+
 void tegra_periph_reset_deassert(struct clk *c);
 void tegra_periph_reset_assert(struct clk *c);
+
+#ifdef CONFIG_COMMON_CLK
 void tegra_clocks_init(void);
 void tegra_clocks_apply_init_table(void);
+
+static inline int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
+{
+	return -EINVAL;
+}
+#else
+static inline void tegra_clocks_init(void)
+{}
+static inline void tegra_clocks_apply_init_table(void)
+{}
+
+unsigned long clk_get_rate_all_locked(struct clk *c);
+int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
+#endif
 
 #endif /* __LINUX_CLK_TEGRA_H_ */

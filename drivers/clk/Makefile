@@ -28,7 +28,9 @@ obj-$(CONFIG_ARCH_SUNXI)	+= sunxi/
 obj-$(CONFIG_ARCH_U8500)	+= ux500/
 obj-$(CONFIG_ARCH_VT8500)	+= clk-vt8500.o
 obj-$(CONFIG_ARCH_ZYNQ)		+= clk-zynq.o
+ifeq ($(CONFIG_COMMON_CLK), y)
 obj-$(CONFIG_ARCH_TEGRA)	+= tegra/
+endif
 obj-$(CONFIG_PLAT_SAMSUNG)	+= samsung/
 
 obj-$(CONFIG_X86)		+= x86/
