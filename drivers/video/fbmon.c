@@ -553,6 +553,9 @@ static int get_dst_timing(unsigned char *block,
 static void get_detailed_timing(unsigned char *block,
 				struct fb_videomode *mode)
 {
+	int v_size = V_SIZE;
+	int h_size = H_SIZE;
+
 	mode->xres = H_ACTIVE;
 	mode->yres = V_ACTIVE;
 	mode->pixclock = PIXEL_CLOCK;
@@ -581,11 +584,18 @@ static void get_detailed_timing(unsigned char *block,
 	}
 	mode->flag = FB_MODE_IS_DETAILED;
 
+	/* get aspect ratio */
+	if (h_size * 18 > v_size * 31 && h_size * 18 < v_size * 33)
+		mode->flag |= FB_FLAG_RATIO_16_9;
+	if (h_size * 18 > v_size * 23 && h_size * 18 < v_size * 25)
+		mode->flag |= FB_FLAG_RATIO_4_3;
+
 	DPRINTK("      %d MHz ",  PIXEL_CLOCK/1000000);
 	DPRINTK("%d %d %d %d ", H_ACTIVE, H_ACTIVE + H_SYNC_OFFSET,
 	       H_ACTIVE + H_SYNC_OFFSET + H_SYNC_WIDTH, H_ACTIVE + H_BLANKING);
 	DPRINTK("%d %d %d %d ", V_ACTIVE, V_ACTIVE + V_SYNC_OFFSET,
 	       V_ACTIVE + V_SYNC_OFFSET + V_SYNC_WIDTH, V_ACTIVE + V_BLANKING);
+	DPRINTK("%dmm %dmm ", H_SIZE, V_SIZE);
 	DPRINTK("%sHSync %sVSync\n\n", (HSYNC_POSITIVE) ? "+" : "-",
 	       (VSYNC_POSITIVE) ? "+" : "-");
 }
@@ -984,16 +994,86 @@ void fb_edid_to_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 	DPRINTK("========================================\n");
 }
 
+#define SUPPORTS_AI		(1 << 7)
+#define DC_48BIT		(1 << 6)
+#define DC_36BIT		(1 << 5)
+#define DC_30BIT		(1 << 4)
+#define DC_Y444			(1 << 3)
+#define DVI_DUAL		(1 << 0)
+
+#define LATENCY_PRESENT		(1 << 7)
+#define I_LATENCY_PRESENT	(1 << 6)
+#define HDMI_VIDEO_PRESENT	(1 << 5)
+
+#define HDMI_3D_PRESENT		(1 << 7)
+#define HDMI_3D_MULTI_PRESENT	(0x3 << 5)
+#define IMAGE_SIZE		(0x3 << 3)
+
+#define HDMI_VIC_LEN_MASK	(0x7)
+#define HDMI_3D_LEN_MASK	(0x1F)
+
+#define MAX_HDMI_VIC_LEN	HDMI_VIC_LEN_MASK
+#define MAX_HDMI_3D_LEN		HDMI_3D_LEN_MASK
+
+struct hdmi_vendor_block {
+	u16 source_physical_address;
+	u8 max_tdms_clock;
+	u8 video_latency;
+	u8 audio_latency;
+	u8 i_video_latency;
+	u8 i_audio_latency;
+	u8 hdmi_vic_len;
+	u8 hdmi_3d_len;
+	u8 hdmi_vic[MAX_HDMI_VIC_LEN];
+	u16 hdmi_3d_structure_all;
+	u16 hdmi_3d_mask;
+	u8 hdmi_2d_vic_order[MAX_HDMI_3D_LEN];
+	u8 hdmi_3d_structure[MAX_HDMI_3D_LEN];
+	u8 hdmi_2d_detail[MAX_HDMI_3D_LEN];
+};
+
+static void fb_hvd_parse(unsigned char *edid, struct hdmi_vendor_block *hvd,
+	u8 start)
+{
+	char mask;
+	int i;
+
+	hvd->source_physical_address = (edid[start + 1] << 8) | edid[start];
+	start += 3;
+
+	hvd->max_tdms_clock = edid[start++];
+
+	mask = edid[start++];
+	if (mask & LATENCY_PRESENT) {
+		hvd->video_latency = edid[start++];
+		hvd->audio_latency = edid[start++];
+	}
+	if (mask & I_LATENCY_PRESENT) {
+		hvd->i_video_latency = edid[start++];
+		hvd->i_audio_latency = edid[start++];
+	}
+	/* TODO
+	 * Parse 3D masks and structures
+	 */
+	start++;
+	hvd->hdmi_vic_len = (edid[start] >> 5) & HDMI_VIC_LEN_MASK;
+	hvd->hdmi_3d_len = edid[start] & HDMI_3D_LEN_MASK;
+	start++;
+	for (i = 0; i < hvd->hdmi_vic_len; i++)
+		hvd->hdmi_vic[i] = edid[start++];
+}
+
 /**
  * fb_edid_add_monspecs() - add monitor video modes from E-EDID data
  * @edid:	128 byte array with an E-EDID block
- * @spacs:	monitor specs to be extended
+ * @specs:	monitor specs to be extended
  */
 void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 {
 	unsigned char *block;
 	struct fb_videomode *m;
-	int num = 0, i;
+	struct hdmi_vendor_block hvd = {0};
+	int num = 0, i, j, hdmi_num = 0;
 	u8 svd[64], edt[(128 - 4) / DETAILED_TIMING_DESCRIPTION_SIZE];
 	u8 pos = 4, svd_n = 0;
 
@@ -1004,7 +1084,7 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 		return;
 
 	if (edid[0] != 0x2 ||
-	    edid[2] < 4 || edid[2] > 128 - DETAILED_TIMING_DESCRIPTION_SIZE)
+	    edid[2] < 4 || edid[2] > 128)
 		return;
 
 	DPRINTK("  Short Video Descriptors\n");
@@ -1012,14 +1092,25 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 	while (pos < edid[2]) {
 		u8 len = edid[pos] & 0x1f, type = (edid[pos] >> 5) & 7;
 		pr_debug("Data block %u of %u bytes\n", type, len);
-		if (type == 2)
+
+		pos++;
+		if (type == 2) {
 			for (i = pos; i < pos + len; i++) {
-				u8 idx = edid[pos + i] & 0x7f;
+				u8 idx = edid[i] & 0x7f;
 				svd[svd_n++] = idx;
 				pr_debug("N%sative mode #%d\n",
-					 edid[pos + i] & 0x80 ? "" : "on-n", idx);
+					 edid[i] & 0x80 ? "" : "on-n", idx);
 			}
-		pos += len + 1;
+		} else if (type == 3 && len >= 3) {
+			u32 ieee_reg = edid[pos] | (edid[pos + 1] << 8) |
+				(edid[pos + 2] << 16);
+			if (ieee_reg == 0x000c03)
+				specs->misc |= FB_MISC_HDMI;
+			fb_hvd_parse(edid, &hvd, pos + 3);
+			hdmi_num = hvd.hdmi_vic_len;
+		}
+
+		pos += len;
 	}
 
 	block = edid + edid[2];
@@ -1035,7 +1126,7 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 	if (!(num + svd_n))
 		return;
 
-	m = kzalloc((specs->modedb_len + num + svd_n) *
+	m = kzalloc((specs->modedb_len + num + svd_n + hdmi_num) *
 		       sizeof(struct fb_videomode), GFP_KERNEL);
 
 	if (!m)
@@ -1052,10 +1143,8 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 
 	for (i = specs->modedb_len + num; i < specs->modedb_len + num + svd_n; i++) {
 		int idx = svd[i - specs->modedb_len - num];
-		if (!idx || idx > 63) {
+		if (!idx || idx > (CEA_MODEDB_SIZE - 1)) {
 			pr_warning("Reserved SVD code %d\n", idx);
-		} else if (idx > ARRAY_SIZE(cea_modes) || !cea_modes[idx].xres) {
-			pr_warning("Unimplemented SVD code %d\n", idx);
 		} else {
 			memcpy(&m[i], cea_modes + idx, sizeof(m[i]));
 			pr_debug("Adding SVD #%d: %ux%u@%u\n", idx,
@@ -1063,9 +1152,21 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 		}
 	}
 
+	for (j = 0; j < hdmi_num; j++) {
+		unsigned vic = hvd.hdmi_vic[j];
+
+		if (vic >= HDMI_EXT_MODEDB_SIZE) {
+			pr_warning("Unsupported HDMI VIC %d, ignoring\n", vic);
+			continue;
+		}
+
+		memcpy(&m[i], &hdmi_ext_modes[vic], sizeof(m[i]));
+		i++;
+	}
+
 	kfree(specs->modedb);
 	specs->modedb = m;
-	specs->modedb_len = specs->modedb_len + num + svd_n;
+	specs->modedb_len = specs->modedb_len + num + svd_n + j;
 }
 
 /*
