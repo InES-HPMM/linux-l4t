@@ -430,6 +430,14 @@ config SPI_TEGRA20_SLINK
 	help
 	  SPI driver for Nvidia Tegra20/Tegra30 SLINK Controller interface.
 
+config SPI_TEGRA114
+	tristate "Nvidia Tegra114 SPI Controller"
+	depends on ARCH_TEGRA && TEGRA20_APB_DMA
+	help
+	  SPI driver for Nvidia Tegra114 SPI Controller interface. This controller
+	  is different than the older SoCs spi controller and register interface
+	  also get changed with this controller.
+
 config SPI_TI_SSP
 	tristate "TI Sequencer Serial Port - SPI Support"
 	depends on MFD_TI_SSP
