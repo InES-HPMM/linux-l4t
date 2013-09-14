@@ -4,6 +4,8 @@
  * Copyright 2005 Phil Blundell
  * Copyright 2010, 2011 David Jander <david@protonic.nl>
  *
+ * Copyright 2010-2011 NVIDIA Corporation
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -827,16 +829,31 @@ static int gpio_keys_suspend(struct device *dev)
 
 static int gpio_keys_resume(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
+	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	struct input_dev *input = ddata->input;
+	int wakeup_key = KEY_RESERVED;
 	int error = 0;
 	int i;
+
+	if (pdata && pdata->wakeup_key)
+		wakeup_key = pdata->wakeup_key();
 
 	if (device_may_wakeup(dev)) {
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
-			if (bdata->button->wakeup)
+			if (bdata->button->wakeup) {
 				disable_irq_wake(bdata->irq);
+
+				if (wakeup_key == bdata->button->code) {
+					unsigned int type = bdata->button->type ?: EV_KEY;
+
+					input_event(ddata->input, type, bdata->button->code, 1);
+					input_event(ddata->input, type, bdata->button->code, 0);
+					input_sync(ddata->input);
+				}
+			}
 		}
 	} else {
 		mutex_lock(&input->mutex);

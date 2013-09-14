@@ -176,6 +176,15 @@ config INPUT_MC13783_PWRBUTTON
 	  To compile this driver as a module, choose M here: the module
 	  will be called mc13783-pwrbutton.
 
+config INPUT_MAX77665_HAPTIC
+	tristate "MAXIM MAX77665 haptic controller support"
+	depends on HAVE_PWM && MFD_MAX77665
+	select INPUT_FF_MEMLESS
+	help
+	  This option enables device driver support for the haptic controller
+	  on MAXIM MAX77665 chip. This driver supports ff-memless interface
+	  from input framework.
+
 config INPUT_MMA8450
 	tristate "MMA8450 - Freescale's 3-Axis, 8/12-bit Digital Accelerometer"
 	depends on I2C
@@ -636,5 +645,33 @@ config INPUT_XEN_KBDDEV_FRONTEND
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
+
+config INPUT_ALPS_GPIO_SCROLLWHEEL
+	tristate "Alps GPIO Scrollwheel"
+	depends on GENERIC_GPIO
+	help
+	  This driver implements support for Alps SRBE
+          ScrollWheel connected to GPIO pins of various
+          CPUs (and some other chips).
+
+	  Say Y here if your device has ScrollWheel connected
+	  directly to such GPIO pins.  Your board-specific
+	  setup logic must also provide a platform device,
+	  with configuration data saying which GPIOs are used.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called alps_gpio_scrollwheel.
+
+config INPUT_CAPELLA_CM3217
+	tristate "CM3217 light sensor"
+	depends on I2C
+	help
+	  Say Y here to enable the CM3217 Ambient Light Sensor.
+
+config INPUT_CAPELLA_CM3218
+	tristate "CM3218 light sensor"
+	depends on I2C
+	help
+	  Say Y here to enable the CM3218 Ambient Light Sensor.
 
 endif
