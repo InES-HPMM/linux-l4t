@@ -710,9 +710,18 @@ config I2C_STU300
 config I2C_TEGRA
 	tristate "NVIDIA Tegra internal I2C controller"
 	depends on ARCH_TEGRA
+	select I2C_ALGO_BUSCLEAR
 	help
 	  If you say yes to this option, support will be included for the
 	  I2C controller embedded in NVIDIA Tegra SOCs
+
+config I2C_SLAVE_TEGRA
+	tristate "NVIDIA Tegra internal I2C slave controller"
+	depends on ARCH_TEGRA && I2C_SLAVE
+	default n
+	help
+	  If you say yes to this option, support will be included for the
+	  I2C slave controller embedded in NVIDIA Tegra SOCs
 
 config I2C_VERSATILE
 	tristate "ARM Versatile/Realview I2C bus support"
@@ -952,5 +961,13 @@ config SCx200_ACB
 
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
+
+config I2C_PCA_GMI
+	tristate "PCA9564/PCA9665 on an GMI bus"
+	select I2C_ALGOPCA
+	default n
+	help
+	  This driver supports boards using the Philips PCA9564/PCA9665 parallel
+          bus to I2C bus controller connected on Nvidia Tegra GMI bus.
 
 endmenu
