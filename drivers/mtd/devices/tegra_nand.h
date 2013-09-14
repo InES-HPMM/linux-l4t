@@ -19,7 +19,7 @@
 #ifndef __MTD_DEV_TEGRA_NAND_H
 #define __MTD_DEV_TEGRA_NAND_H
 
-#include <mach/io.h>
+#include <mach/iomap.h>
 
 #define __BITMASK0(len)				((1 << (len)) - 1)
 #define __BITMASK(start, len)			(__BITMASK0(len) << (start))
@@ -99,6 +99,7 @@
 #define CONFIG_SKIP_SPARE			REG_BIT(23)
 #define CONFIG_COM_BSY				REG_BIT(22)
 #define CONFIG_BUS_WIDTH			REG_BIT(21)
+#define CONFIG_EDO_MODE				REG_BIT(19)
 #define CONFIG_PAGE_SIZE_SEL(val)		REG_FIELD((val), 16, 3)
 #define CONFIG_SKIP_SPARE_SEL(val)		REG_FIELD((val), 14, 2)
 #define CONFIG_TAG_BYTE_SIZE(val)		REG_FIELD((val), 0, 8)
