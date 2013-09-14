@@ -42,6 +42,7 @@
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -49,6 +50,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <asm/div64.h>
+#include <sound/jack.h>
 
 #include "wm8753.h"
 
@@ -153,6 +155,9 @@ struct wm8753_priv {
 	unsigned int hifi_fmt;
 
 	int dai_func;
+	int irq;
+	struct snd_soc_jack *headset_jack;
+	unsigned int debounce_time_hp;
 };
 
 #define wm8753_reset(c) snd_soc_write(c, WM8753_RESET, 0)
@@ -252,7 +257,8 @@ static int wm8753_set_dai(struct snd_kcontrol *kcontrol,
 		return 0;
 
 	if (codec->active)
-		return -EBUSY;
+		printk(KERN_WARNING
+			"Trying to Change the Dai Mode when codec is active\n");
 
 	ioctl = snd_soc_read(codec, WM8753_IOCTL);
 
@@ -954,6 +960,10 @@ static int wm8753_pcm_hw_params(struct snd_pcm_substream *substream,
 	/* sample rate */
 	if (params_rate(params) * 384 == wm8753->pcmclk)
 		srate |= 0x80;
+
+	/* ADC and V-DAC at same sample rate */
+	srate |= 1<<8;
+
 	snd_soc_write(codec, WM8753_SRATE1, srate);
 
 	snd_soc_write(codec, WM8753_PCM, voice);
@@ -1172,6 +1182,10 @@ static int wm8753_i2s_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "wm8753 invalid MCLK or rate\n");
 		return coeff;
 	}
+
+	/* ADC and HiFi-DAC at same sample rate */
+	srate &= ~(1<<8);
+
 	snd_soc_write(codec, WM8753_SRATE1, srate | (coeff_div[coeff].sr << 1) |
 		coeff_div[coeff].usb);
 
@@ -1439,18 +1453,36 @@ static void wm8753_work(struct work_struct *work)
 
 static int wm8753_suspend(struct snd_soc_codec *codec)
 {
+	struct wm8753_priv *wm8753 = snd_soc_codec_get_drvdata(codec);
+
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	disable_irq(wm8753->irq);
+
 	codec->cache_sync = 1;
 	return 0;
 }
 
 static int wm8753_resume(struct snd_soc_codec *codec)
 {
+	u16 *reg_cache = codec->reg_cache;
 	struct wm8753_priv *wm8753 = snd_soc_codec_get_drvdata(codec);
+	int i;
 
-	regcache_sync(wm8753->regmap);
+	/* Sync reg_cache with the hardware */
+	for (i = 1; i < ARRAY_SIZE(wm8753_reg_defaults); i++) {
+		if (i == WM8753_RESET)
+			continue;
+
+		/* No point in writing hardware default values back */
+		if (reg_cache[i] == wm8753_reg_defaults[i].def)
+			continue;
+
+		snd_soc_write(codec, i, reg_cache[i]);
+	}
 
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+
+	enable_irq(wm8753->irq);
 
 	/* charge wm8753 caps */
 	if (codec->dapm.suspend_bias_level == SND_SOC_BIAS_ON) {
@@ -1462,6 +1494,70 @@ static int wm8753_resume(struct snd_soc_codec *codec)
 
 	return 0;
 }
+
+static irqreturn_t wm8753_jack_handler(int irq, void *data)
+{
+	struct snd_soc_codec *codec = data;
+	struct wm8753_priv *wm8753 = snd_soc_codec_get_drvdata(codec);
+	unsigned int value;
+
+	/* GPIO4 interrupt disable */
+	snd_soc_update_bits(codec, WM8753_INTEN, WM8753_GPIO4IEN_MASK,
+		WM8753_GPIO4IEN_DIS);
+
+	/* sleep for debounce time */
+	msleep(wm8753->debounce_time_hp);
+
+	/* Invert GPIO4 interrupt polarity */
+	value = snd_soc_read(codec, WM8753_INTPOL);
+	if (value & WM8753_GPIO4IPOL_LOW) {
+		snd_soc_jack_report(wm8753->headset_jack, SND_JACK_HEADPHONE,
+			SND_JACK_HEADPHONE);
+		/* interupt when high i.e Headphone disconnected */
+		snd_soc_update_bits(codec, WM8753_INTPOL, WM8753_GPIO4IPOL_MASK,
+			WM8753_GPIO4IPOL_HIGH);
+	} else {
+		snd_soc_jack_report(wm8753->headset_jack, 0,
+			SND_JACK_HEADPHONE);
+		/* interupt when low i.e Headphone connected */
+		snd_soc_update_bits(codec, WM8753_INTPOL, WM8753_GPIO4IPOL_MASK,
+			WM8753_GPIO4IPOL_LOW);
+	}
+
+	/* GPIO4 interrupt enable */
+	snd_soc_update_bits(codec, WM8753_INTEN, WM8753_GPIO4IEN_MASK,
+		WM8753_GPIO4IEN_EN);
+
+	return IRQ_HANDLED;
+}
+
+int wm8753_headphone_detect(struct snd_soc_codec *codec,
+	struct snd_soc_jack *jack, enum snd_jack_types type,
+	unsigned int debounce_time_hp)
+{
+	struct wm8753_priv *wm8753 = snd_soc_codec_get_drvdata(codec);
+
+	wm8753->headset_jack = jack;
+	wm8753->debounce_time_hp = debounce_time_hp;
+
+	if (wm8753->irq && (type & SND_JACK_HEADPHONE)) {
+		/* Configure GPIO2 pin to generate the interrupt */
+		snd_soc_update_bits(codec, WM8753_GPIO2, WM8753_GP2M_MASK,
+			WM8753_GP2M_INT);
+		/* Active low Interrupt */
+		snd_soc_update_bits(codec, WM8753_GPIO1, WM8753_INTCON_MASK,
+			WM8753_INTCON_AL);
+		/* interupt when low i.e Headphone connected */
+		snd_soc_update_bits(codec, WM8753_INTPOL, WM8753_GPIO4IPOL_MASK,
+			WM8753_GPIO4IPOL_LOW);
+		/* GPIO4 interrupt enable */
+		snd_soc_update_bits(codec, WM8753_INTEN, WM8753_GPIO4IEN_MASK,
+			WM8753_GPIO4IEN_EN);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(wm8753_headphone_detect);
 
 static int wm8753_probe(struct snd_soc_codec *codec)
 {
@@ -1481,6 +1577,19 @@ static int wm8753_probe(struct snd_soc_codec *codec)
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to issue reset: %d\n", ret);
 		return ret;
+	}
+
+	if (wm8753->irq) {
+	    /* register an audio interrupt */
+		ret = request_threaded_irq(wm8753->irq, NULL,
+			wm8753_jack_handler,
+			IRQF_TRIGGER_FALLING,
+			"wm8753", codec);
+
+		if (ret) {
+			dev_err(codec->dev, "Failed to request IRQ: %d\n", ret);
+			return ret;
+		}
 	}
 
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
@@ -1608,6 +1717,7 @@ static int wm8753_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	i2c_set_clientdata(i2c, wm8753);
+	wm8753->irq = i2c->irq;
 
 	wm8753->regmap = devm_regmap_init_i2c(i2c, &wm8753_regmap);
 	if (IS_ERR(wm8753->regmap)) {

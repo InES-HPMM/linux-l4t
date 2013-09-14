@@ -36,6 +36,11 @@
 #include <sound/jack.h>
 #include <sound/asoundef.h>
 #include <sound/tlv.h>
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+#include <mach/hdmi-audio.h>
+#endif
+
 #include "hda_codec.h"
 #include "hda_local.h"
 #include "hda_jack.h"
@@ -1122,6 +1127,21 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 	per_pin = get_pin(spec, pin_idx);
 	eld = &per_pin->sink_eld;
 
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	if ((codec->preset->id == 0x10de0020) &&
+	    (!eld->monitor_present || !eld->info.lpcm_sad_ready)) {
+		if (!eld->monitor_present) {
+			if (tegra_hdmi_setup_hda_presence() < 0) {
+				snd_printk(KERN_WARNING
+					   "HDMI: No HDMI device connected\n");
+				return -ENODEV;
+			}
+		}
+		if (!eld->info.lpcm_sad_ready)
+			return -ENODEV;
+	}
+#endif
+
 	/* Dynamically assign converter to stream */
 	for (cvt_idx = 0; cvt_idx < spec->num_cvts; cvt_idx++) {
 		per_cvt = get_cvt(spec, cvt_idx);
@@ -1159,7 +1179,7 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 	hinfo->maxbps = per_cvt->maxbps;
 
 	/* Restrict capabilities by ELD if this isn't disabled */
-	if (!static_hdmi_pcm && eld->eld_valid) {
+	if (!static_hdmi_pcm && (eld->eld_valid || eld->info.lpcm_sad_ready)) {
 		snd_hdmi_eld_update_pcm_info(&eld->info, hinfo);
 		if (hinfo->channels_min > hinfo->channels_max ||
 		    !hinfo->rates || !hinfo->formats) {
@@ -1408,8 +1428,8 @@ static int hdmi_parse_codec(struct hda_codec *codec)
 	 * can be lost and presence sense verb will become inaccurate if the
 	 * HDA link is powered off at hot plug or hw initialization time.
 	 */
-	else if (!(snd_hda_param_read(codec, codec->afg, AC_PAR_POWER_STATE) &
-	      AC_PWRST_EPSS))
+	else if ((!(snd_hda_param_read(codec, codec->afg, AC_PAR_POWER_STATE) &
+	      AC_PWRST_EPSS)) && (codec->preset->id != 0x10de0020))
 		codec->bus->power_keep_link_on = 1;
 #endif
 
@@ -1448,6 +1468,27 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	bool non_pcm;
 
 	non_pcm = check_non_pcm_per_cvt(codec, cvt_nid);
+
+#if defined(CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA) && defined(CONFIG_TEGRA_DC)
+	if (codec->preset->id == 0x10de0020) {
+		int err = 0;
+
+		if (substream->runtime->channels == 2)
+			tegra_hdmi_audio_null_sample_inject(true);
+		else
+			tegra_hdmi_audio_null_sample_inject(false);
+
+		/* Set hdmi:audio freq and source selection*/
+		err = tegra_hdmi_setup_audio_freq_source(
+					substream->runtime->rate, HDA);
+		if ( err < 0 ) {
+			snd_printk(KERN_ERR
+				"Unable to set hdmi audio freq to %d \n",
+						substream->runtime->rate);
+			return err;
+		}
+	}
+#endif
 
 	hdmi_set_channel_count(codec, cvt_nid, substream->runtime->channels);
 
@@ -1738,6 +1779,14 @@ static int generic_hdmi_init_per_pins(struct hda_codec *codec)
 {
 	struct hdmi_spec *spec = codec->spec;
 	int pin_idx;
+
+	switch (codec->preset->id) {
+	case 0x10de0020:
+		snd_hda_codec_write(codec, 4, 0,
+				    AC_VERB_SET_DIGI_CONVERT_1, 0x11);
+	default:
+		break;
+	}
 
 	for (pin_idx = 0; pin_idx < spec->num_pins; pin_idx++) {
 		struct hdmi_spec_per_pin *per_pin = get_pin(spec, pin_idx);
@@ -2530,6 +2579,7 @@ static const struct hda_codec_preset snd_hda_preset_hdmi[] = {
 { .id = 0x10de001a, .name = "GPU 1a HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de001b, .name = "GPU 1b HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de001c, .name = "GPU 1c HDMI/DP",	.patch = patch_generic_hdmi },
+{ .id = 0x10de0020, .name = "Tegra30 HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de0040, .name = "GPU 40 HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de0041, .name = "GPU 41 HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de0042, .name = "GPU 42 HDMI/DP",	.patch = patch_generic_hdmi },
@@ -2583,6 +2633,7 @@ MODULE_ALIAS("snd-hda-codec-id:10de0019");
 MODULE_ALIAS("snd-hda-codec-id:10de001a");
 MODULE_ALIAS("snd-hda-codec-id:10de001b");
 MODULE_ALIAS("snd-hda-codec-id:10de001c");
+MODULE_ALIAS("snd-hda-codec-id:10de0020");
 MODULE_ALIAS("snd-hda-codec-id:10de0040");
 MODULE_ALIAS("snd-hda-codec-id:10de0041");
 MODULE_ALIAS("snd-hda-codec-id:10de0042");

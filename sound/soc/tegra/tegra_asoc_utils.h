@@ -23,6 +23,11 @@
 #ifndef __TEGRA_ASOC_UTILS_H__
 #define __TEGRA_ASOC_UTILS_H_
 
+
+#define TEGRA30_I2S_MASTER_PLAYBACK 1
+#define TEGRA_ALSA_MAX_DEVICES 6
+#define TEGRA_DMA_MAX_CHANNELS 32
+
 struct clk;
 struct device;
 
@@ -34,17 +39,28 @@ enum tegra_asoc_utils_soc {
 struct tegra_asoc_utils_data {
 	struct device *dev;
 	enum tegra_asoc_utils_soc soc;
+	struct snd_soc_card *card;
 	struct clk *clk_pll_a;
 	struct clk *clk_pll_a_out0;
 	struct clk *clk_cdev1;
+	struct clk *clk_out1;
+	struct clk *clk_m;
+	struct clk *clk_pll_p_out1;
 	int set_baseclock;
 	int set_mclk;
+	int lock_count;
+	int avp_device_id;
 };
 
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 			      int mclk);
+void tegra_asoc_utils_lock_clk_rate(struct tegra_asoc_utils_data *data,
+				    int lock);
 int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
-			  struct device *dev);
+			  struct device *dev, struct snd_soc_card *card);
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data);
+int tegra_asoc_utils_clk_enable(struct tegra_asoc_utils_data *data);
+int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data);
+int tegra_asoc_utils_register_ctls(struct tegra_asoc_utils_data *data);
 
 #endif

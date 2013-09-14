@@ -395,6 +395,14 @@
 /* This register repeats once for each entry in enum tegra30_ahub_rxcif */
 /* The fields in this register are 1 bit per entry in tegra30_ahub_txcif */
 
+/* apbif register count */
+#define TEGRA30_APBIF_CACHE_REG_COUNT_PER_CHANNEL		((TEGRA30_AHUB_CIF_RX_CTRL>>2) + 1)
+#define TEGRA30_APBIF_CACHE_REG_COUNT				((TEGRA30_APBIF_CACHE_REG_COUNT_PER_CHANNEL + 1) * TEGRA30_AHUB_CHANNEL_CTRL_COUNT)
+
+/* cache index to be skipped */
+#define TEGRA30_APBIF_CACHE_REG_INDEX_RSVD			TEGRA30_APBIF_CACHE_REG_COUNT_PER_CHANNEL
+#define TEGRA30_APBIF_CACHE_REG_INDEX_RSVD_STRIDE		(TEGRA30_APBIF_CACHE_REG_COUNT_PER_CHANNEL + 1)
+
 /*
  * Terminology:
  * AHUB: Audio Hub; a cross-bar switch between the audio devices: DMA FIFOs,
@@ -450,23 +458,48 @@ enum tegra30_ahub_rxcif {
 	TEGRA30_AHUB_RXCIF_SPDIF_RX1,
 };
 
+extern void tegra30_ahub_clock_set_rate(int rate);
+
 extern int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 					 unsigned long *fiforeg,
 					 unsigned long *reqsel);
+extern int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
+					    unsigned int audio_ch,
+					    unsigned int client_ch);
+extern int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
+					    unsigned int audio_bits,
+					    unsigned int client_bits);
 extern int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif);
 extern int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif);
+extern int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
+						unsigned int pack_mode);
 extern int tegra30_ahub_free_rx_fifo(enum tegra30_ahub_rxcif rxcif);
 
 extern int tegra30_ahub_allocate_tx_fifo(enum tegra30_ahub_txcif *txcif,
 					 unsigned long *fiforeg,
 					 unsigned long *reqsel);
+extern int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
+					    unsigned int audio_ch,
+					    unsigned int client_ch);
+extern int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
+					    unsigned int audio_bits,
+					    unsigned int client_bits);
 extern int tegra30_ahub_enable_tx_fifo(enum tegra30_ahub_txcif txcif);
 extern int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif);
+extern int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
+						unsigned int pack_mode);
 extern int tegra30_ahub_free_tx_fifo(enum tegra30_ahub_txcif txcif);
 
 extern int tegra30_ahub_set_rx_cif_source(enum tegra30_ahub_rxcif rxcif,
 					  enum tegra30_ahub_txcif txcif);
 extern int tegra30_ahub_unset_rx_cif_source(enum tegra30_ahub_rxcif rxcif);
+
+extern int tegra30_ahub_rx_fifo_is_enabled(int i2s_id);
+extern int tegra30_ahub_tx_fifo_is_enabled(int i2s_id);
+
+#ifdef CONFIG_PM
+extern int tegra30_ahub_apbif_resume(void);
+#endif
 
 struct tegra30_ahub {
 	struct device *dev;

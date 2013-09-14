@@ -29,6 +29,7 @@
  *
  */
 
+#include <asm/mach-types.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -47,11 +48,11 @@ static const struct snd_pcm_hardware tegra_pcm_hardware = {
 				  SNDRV_PCM_INFO_RESUME |
 				  SNDRV_PCM_INFO_INTERLEAVED,
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
-	.channels_min		= 2,
+	.channels_min		= 1,
 	.channels_max		= 2,
-	.period_bytes_min	= 1024,
-	.period_bytes_max	= PAGE_SIZE,
-	.periods_min		= 2,
+	.period_bytes_min	= 128,
+	.period_bytes_max	= PAGE_SIZE * 2,
+	.periods_min		= 1,
 	.periods_max		= 8,
 	.buffer_bytes_max	= PAGE_SIZE * 8,
 	.fifo_size		= 4,
@@ -65,6 +66,12 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 
 	/* Set HW params now that initialization is complete */
 	snd_soc_set_runtime_hwparams(substream, &tegra_pcm_hardware);
+
+	/* Ensure period size is multiple of 8 */
+	ret = snd_pcm_hw_constraint_step(substream->runtime, 0,
+		SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 0x8);
+	if (ret < 0)
+		goto err;
 
 	ret = snd_dmaengine_pcm_open_request_chan(substream, NULL, NULL);
 	if (ret) {
@@ -129,6 +136,13 @@ static int tegra_pcm_hw_free(struct snd_pcm_substream *substream)
 
 static int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tegra_pcm_dma_params * dmap;a
+
+	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	if (!dmap)
+		return 0;
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -247,10 +261,19 @@ static void tegra_pcm_free(struct snd_pcm *pcm)
 	tegra_pcm_deallocate_dma_buffer(pcm, SNDRV_PCM_STREAM_PLAYBACK);
 }
 
+static int tegra_pcm_probe(struct snd_soc_platform *platform)
+{
+	if(machine_is_kai() || machine_is_tegra_enterprise())
+		platform->dapm.idle_bias_off = 1;
+
+	return 0;
+}
+
 static struct snd_soc_platform_driver tegra_pcm_platform = {
 	.ops		= &tegra_pcm_ops,
 	.pcm_new	= tegra_pcm_new,
 	.pcm_free	= tegra_pcm_free,
+	.probe		= tegra_pcm_probe,
 };
 
 int tegra_pcm_platform_register(struct device *dev)

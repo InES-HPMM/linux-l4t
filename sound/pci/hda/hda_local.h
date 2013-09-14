@@ -729,6 +729,7 @@ struct parsed_hdmi_eld {
 	/*
 	 * all fields will be cleared before updating ELD
 	 */
+	bool	lpcm_sad_ready;
 	int	baseline_len;
 	int	eld_ver;
 	int	cea_edid_ver;
