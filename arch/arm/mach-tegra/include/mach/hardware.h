@@ -27,4 +27,6 @@
 #define pcibios_assign_all_busses()		0
 #endif
 
+#include <linux/tegra-soc.h>
+
 #endif
