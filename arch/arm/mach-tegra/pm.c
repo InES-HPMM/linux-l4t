@@ -2022,9 +2022,9 @@ static u32 tsc_suspend_start;
 static u32 tsc_resume_start;
 
 #define pmc_writel(value, reg) \
-		writel(value, (uintptr_t)pmc + (reg))
+		writel(value, pmc + (reg))
 #define pmc_readl(reg) \
-		readl((uintptr_t)pmc + (reg))
+		readl(pmc + (reg))
 
 #define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)

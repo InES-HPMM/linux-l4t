@@ -659,9 +659,9 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 #define pmc_readl(reg) \
 	__raw_readl((void *)((u32)reg_pmc_base + (reg)))
 #define xusb_padctl_writel(value, reg) \
-	 __raw_writel(value, (u32)reg_xusb_padctl_base + (reg))
+	 __raw_writel(value, reg_xusb_padctl_base + (reg))
 #define xusb_padctl_readl(reg) \
-	__raw_readl((u32)reg_xusb_padctl_base + (reg))
+	__raw_readl(reg_xusb_padctl_base + (reg))
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
