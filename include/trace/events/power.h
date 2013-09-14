@@ -46,6 +46,13 @@ enum {
 };
 
 enum {
+	POWER_CPU_UP_START,
+	POWER_CPU_UP_DONE,
+	POWER_CPU_DOWN_START,
+	POWER_CPU_DOWN_DONE,
+};
+
+enum {
 	POWER_CPU_CLUSTER_START,
 	POWER_CPU_CLUSTER_DONE,
 };
@@ -67,6 +74,27 @@ TRACE_EVENT(cpu_suspend,
 	),
 
 	TP_printk("state=%lu", (unsigned long)__entry->state)
+);
+
+TRACE_EVENT(cpu_hotplug,
+
+	TP_PROTO(unsigned int cpu_id, int state),
+
+	TP_ARGS(cpu_id, state),
+
+	TP_STRUCT__entry(
+		__field(u32, cpu_id)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->cpu_id = cpu_id;
+		__entry->state = state;
+	),
+
+	TP_printk("cpu_id=%lu, state=%lu",
+		  (unsigned long)__entry->cpu_id,
+		  (unsigned long)__entry->state)
 );
 
 TRACE_EVENT(cpu_cluster,
