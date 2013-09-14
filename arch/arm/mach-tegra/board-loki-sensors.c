@@ -582,12 +582,83 @@ static int loki_nct72_init(void)
 	return ret;
 }
 
+static int loki_fan_est_match(struct thermal_zone_device *thz, void *data)
+{
+	return (strcmp((char *)data, thz->type) == 0);
+}
+
+static int loki_fan_est_get_temp(void *data, long *temp)
+{
+	struct thermal_zone_device *thz;
+
+	thz = thermal_zone_device_find(data, loki_fan_est_match);
+
+	if (!thz || thz->ops->get_temp(thz, temp))
+		*temp = 25000;
+
+	return 0;
+}
+
+/*Fan thermal estimator data for P2548*/
+static struct therm_fan_est_data fan_est_data_p2548 = {
+	.toffset = 0,
+	.polling_period = 1100,
+	.ndevs = 2,
+	.devs = {
+			{
+				.dev_data = "Tdiode_soc",
+				.get_temp = loki_fan_est_get_temp,
+				.coeffs = {
+					100, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+			{
+				.dev_data = "Tboard_soc",
+				.get_temp = loki_fan_est_get_temp,
+				.coeffs = {
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+	},
+	.cdev_type = "pwm-fan",
+	.active_trip_temps = {0, 47000, 55000, 67000, 103000,
+				140000, 150000, 160000, 170000, 180000},
+	.active_hysteresis = {0, 12000, 7000, 10000, 0, 0, 0, 0, 0, 0},
+};
+
+static struct platform_device loki_fan_therm_est_device_p2548 = {
+	.name   = "therm-fan-est",
+	.id     = -1,
+	.num_resources  = 0,
+	.dev = {
+		.platform_data = &fan_est_data_p2548,
+	},
+};
+
+static int __init loki_fan_est_init(void)
+{
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	platform_device_register(&loki_fan_therm_est_device_p2548);
+
+	return 0;
+}
 int __init loki_sensors_init(void)
 {
 	mpuirq_init();
 	loki_camera_init();
 	loki_nct72_init();
 	loki_jsa1127_init();
+	loki_fan_est_init();
 
 	return 0;
 }
