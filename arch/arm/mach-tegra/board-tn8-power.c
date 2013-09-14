@@ -299,8 +299,8 @@ static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 
 PALMAS_REGS_PDATA(smps123, 900, 1400, NULL, 1, 1, 1, NORMAL,
 	0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
-PALMAS_REGS_PDATA(smps45, 900, 1400, NULL, 1, 1, 1, NORMAL,
-	0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0, 0);
+PALMAS_REGS_PDATA(smps45, 700, 1400, NULL, 0, 1, 1, NORMAL,
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps6, 1350, 1350, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps7, 900, 1400, NULL, 1, 1, 1, NORMAL,
