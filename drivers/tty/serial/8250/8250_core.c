@@ -266,7 +266,8 @@ static const struct serial8250_config uart_config[] = {
 		.tx_loadsz	= 8,
 		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_01 |
 				  UART_FCR_T_TRIG_01,
-		.flags		= UART_CAP_FIFO | UART_CAP_RTOIE,
+		.flags		= UART_CAP_FIFO | UART_CAP_RTOIE |
+				  UART_CAP_HW_CTSRTS,
 	},
 	[PORT_XR17D15X] = {
 		.name		= "XR17D15X",
@@ -916,6 +917,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 		return;
 	}
 
+#ifdef CONFIG_HAS_NS_SUPER_IO_CHIP
 	/*
 	 * Check for a National Semiconductor SuperIO chip.
 	 * Attempt to switch to bank 2, read the value of the LOOP bit
@@ -955,6 +957,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 			return;
 		}
 	}
+#endif
 
 	/*
 	 * No EFR.  Try to detect a TI16750, which only sets bit 5 of
@@ -1821,8 +1824,13 @@ static void serial8250_set_mctrl(struct uart_port *port, unsigned int mctrl)
 		container_of(port, struct uart_8250_port, port);
 	unsigned char mcr = 0;
 
-	if (mctrl & TIOCM_RTS)
-		mcr |= UART_MCR_RTS;
+	if (up->port.type == PORT_TEGRA) {
+		if (mctrl & TIOCM_RTS)
+			mcr |= UART_MCR_HW_RTS;
+	} else {
+		if (mctrl & TIOCM_RTS)
+			mcr |= UART_MCR_RTS;
+	}
 	if (mctrl & TIOCM_DTR)
 		mcr |= UART_MCR_DTR;
 	if (mctrl & TIOCM_OUT1)
@@ -2412,6 +2420,19 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 			serial_port_out(port, UART_EFR, efr);
 	}
 
+	if (up->capabilities & UART_CAP_HW_CTSRTS) {
+		unsigned char mcr = serial_port_in(port, UART_MCR);
+		/*
+		 * TEGRA UART core support the auto control of the RTS and CTS
+		 * flow control.
+		 */
+		if (termios->c_cflag & CRTSCTS)
+			mcr |= UART_MCR_HW_CTS;
+		else
+			mcr &= ~UART_MCR_HW_CTS;
+		serial_port_out(port, UART_MCR, mcr);
+	}
+
 	/* Workaround to enable 115200 baud on OMAP1510 internal ports */
 	if (is_omap1510_8250(up)) {
 		if (baud == 115200) {
@@ -2668,6 +2689,9 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 
 	/* if access method is AU, it is a 16550 with a quirk */
 	if (port->type == PORT_16550A && port->iotype == UPIO_AU)
+		up->bugs |= UART_BUG_NOMSR;
+
+	if (port->type == PORT_TEGRA)
 		up->bugs |= UART_BUG_NOMSR;
 
 	if (port->type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
@@ -3374,6 +3398,7 @@ out:
 	return ret;
 }
 
+#ifdef MODULE
 static void __exit serial8250_exit(void)
 {
 	struct platform_device *isa_dev = serial8250_isa_devs;
@@ -3399,6 +3424,9 @@ static void __exit serial8250_exit(void)
 
 module_init(serial8250_init);
 module_exit(serial8250_exit);
+#else
+postcore_initcall(serial8250_init);
+#endif
 
 EXPORT_SYMBOL(serial8250_suspend_port);
 EXPORT_SYMBOL(serial8250_resume_port);

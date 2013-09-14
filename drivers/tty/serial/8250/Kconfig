@@ -184,6 +184,13 @@ config SERIAL_8250_MANY_PORTS
 	  say N here to save some memory. You can also say Y if you have an
 	  "intelligent" multiport card such as Cyclades, Digiboards, etc.
 
+config HAS_NS_SUPER_IO_CHIP
+	bool "Support National Semiconductor SuperIO chip"
+	depends on SERIAL_8250
+	default n
+	help
+	  Say Y here If you wish to use National Semiconductor SuperIO chip
+
 #
 # Multi-port serial cards
 #
