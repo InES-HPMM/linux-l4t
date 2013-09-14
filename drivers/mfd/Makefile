@@ -65,6 +65,7 @@ obj-$(CONFIG_MFD_TPS65912)	+= tps65912.o
 obj-$(CONFIG_MFD_TPS65912_I2C)	+= tps65912-i2c.o
 obj-$(CONFIG_MFD_TPS65912_SPI)  += tps65912-spi.o
 obj-$(CONFIG_MFD_TPS80031)	+= tps80031.o
+obj-$(CONFIG_GPADC_TPS80031)	+= tps8003x-gpadc.o
 obj-$(CONFIG_MENELAUS)		+= menelaus.o
 
 obj-$(CONFIG_TWL4030_CORE)	+= twl-core.o twl4030-irq.o twl6030-irq.o
@@ -155,3 +156,8 @@ obj-$(CONFIG_MFD_LM3533)	+= lm3533-core.o lm3533-ctrlbank.o
 obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o vexpress-sysreg.o
 obj-$(CONFIG_MFD_RETU)		+= retu-mfd.o
 obj-$(CONFIG_MFD_AS3711)	+= as3711.o
+obj-$(CONFIG_MFD_TPS6591X)	+= tps6591x.o
+obj-$(CONFIG_MFD_MAX8907C)	+= max8907c.o
+obj-$(CONFIG_MFD_MAX8907C)	+= max8907c-irq.o
+obj-$(CONFIG_MFD_MAX77663)	+= max77663-core.o
+obj-$(CONFIG_MFD_RICOH583)	+= ricoh583.o
