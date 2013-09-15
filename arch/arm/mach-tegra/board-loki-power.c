@@ -364,7 +364,7 @@ static struct i2c_board_info palma_device[] = {
 };
 
 static struct tegra_suspend_platform_data loki_suspend_data = {
-	.cpu_timer      = 500,
+	.cpu_timer      = 2000,
 	.cpu_off_timer  = 300,
 	.suspend_mode   = TEGRA_SUSPEND_NONE,
 	.core_timer     = 0x157e,
@@ -377,13 +377,6 @@ static struct tegra_suspend_platform_data loki_suspend_data = {
 
 int __init loki_suspend_init(void)
 {
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if (pmu_board_info.board_id == BOARD_E1735)
-		loki_suspend_data.cpu_timer = 2500;
-
 	tegra_init_suspend(&loki_suspend_data);
 	return 0;
 }
@@ -450,34 +443,6 @@ static struct platform_device power_supply_extcon_device = {
 	},
 };
 
-int __init loki_regulator_init(void)
-{
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-	int i;
-
-	/* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
-		pmic_platform.reg_data[i] = loki_reg_data[i];
-		pmic_platform.reg_init[i] = loki_reg_init[i];
-	}
-	/* Set vdd_gpu init uV to 1V */
-	reg_idata_smps123.constraints.init_uV = 1000000;
-
-	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
-	i2c_register_board_info(4, palma_device,
-			ARRAY_SIZE(palma_device));
-	i2c_register_board_info(0, bq2419x_boardinfo, 1);
-	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
-			ARRAY_SIZE(loki_i2c_board_info_bq27441));
-	platform_device_register(&power_supply_extcon_device);
-	return 0;
-}
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply,			\
@@ -646,7 +611,7 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 };
 /************************ LOKI CL-DVFS DATA *********************/
 #define LOKI_CPU_VDD_MAP_SIZE		33
-#define LOKI_CPU_VDD_MIN_UV		705000
+#define LOKI_CPU_VDD_MIN_UV		704000
 #define LOKI_CPU_VDD_STEP_UV		19200
 #define LOKI_CPU_VDD_STEP_US		80
 
@@ -785,6 +750,38 @@ int __init loki_rail_alignment_init(void)
 			LOKI_CPU_VDD_MIN_UV);
 	return 0;
 }
+
+int __init loki_regulator_init(void)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 pmc_ctrl;
+	int i;
+
+	/* TPS65913: Normal state of INT request line is LOW.
+	 * configure the power management controller to trigger PMU
+	 * interrupts when HIGH.
+	 */
+	pmc_ctrl = readl(pmc + PMC_CTRL);
+	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
+		pmic_platform.reg_data[i] = loki_reg_data[i];
+		pmic_platform.reg_init[i] = loki_reg_init[i];
+	}
+	/* Set vdd_gpu init uV to 1V */
+	reg_idata_smps123.constraints.init_uV = 1000000;
+
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	i2c_register_board_info(4, palma_device,
+			ARRAY_SIZE(palma_device));
+	i2c_register_board_info(0, bq2419x_boardinfo, 1);
+	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
+			ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	platform_device_register(&power_supply_extcon_device);
+
+	loki_cl_dvfs_init();
+	return 0;
+}
+
 static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -793,7 +790,6 @@ static int __init loki_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
-	loki_cl_dvfs_init();
 
 	if (pmu_board_info.board_id == BOARD_E2545)
 		return platform_add_devices(fixed_reg_devs_e2545,
