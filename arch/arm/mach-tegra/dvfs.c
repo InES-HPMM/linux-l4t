@@ -392,6 +392,10 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	if (!rail->reg)
 		return 0;
 
+	/* if no clock has requested voltage since boot, defer update */
+	if (!rail->rate_set)
+		return 0;
+
 	/* if rail update is entered while resolving circular dependencies,
 	   abort recursion */
 	if (rail->resolving_to)
@@ -612,6 +616,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 
 	d->cur_rate = rate;
 
+	d->dvfs_rail->rate_set = true;
 	ret = dvfs_rail_update(d->dvfs_rail);
 	if (ret)
 		pr_err("Failed to set regulator %s for clock %s to %d mV\n",

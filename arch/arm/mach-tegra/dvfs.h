@@ -84,6 +84,7 @@ struct dvfs_rail {
 	bool disabled;
 	bool updating;
 	bool resolving_to;
+	bool rate_set;
 
 	struct list_head node;  /* node in dvfs_rail_list */
 	struct list_head dvfs;  /* list head of attached dvfs clocks */
