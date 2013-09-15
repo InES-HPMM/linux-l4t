@@ -541,6 +541,16 @@ static int round_cvb_voltage(int mv, int v_scale, struct rail_alignment *align)
 	return uv / 1000;
 }
 
+static int round_voltage(int mv, struct rail_alignment *align, bool up)
+{
+	if (align->step_uv) {
+		int uv = max(mv * 1000, align->offset_uv) - align->offset_uv;
+		uv = (uv + (up ? align->step_uv - 1 : 0)) / align->step_uv;
+		return (uv * align->step_uv + align->offset_uv) / 1000;
+	}
+	return mv;
+}
+
 static int __init set_cpu_dvfs_data(
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
@@ -553,8 +563,8 @@ static int __init set_cpu_dvfs_data(
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_cpu.alignment;
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
-	min_dfll_mv =  round_cvb_voltage(min_dfll_mv * 1000, 1000, align);
-	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000, align);
+	min_dfll_mv =  round_voltage(min_dfll_mv, align, true);
+	d->max_mv = round_voltage(d->max_mv, align, false);
 	BUG_ON(min_dfll_mv < tegra12_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
@@ -667,8 +677,8 @@ static int __init set_gpu_dvfs_data(
 	int speedo = tegra_gpu_speedo_value();
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_gpu.alignment;
 
-	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000, align);
-	d->min_mv = round_cvb_voltage(d->min_mv * 1000, 1000, align);
+	d->max_mv = round_voltage(d->max_mv, align, false);
+	d->min_mv = round_voltage(d->min_mv, align, true);
 	BUG_ON(d->min_mv < tegra12_dvfs_rail_vdd_gpu.min_millivolts);
 
 	/*
