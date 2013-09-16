@@ -6962,7 +6962,11 @@ static struct clk tegra_clk_sbus_cmplx = {
 		.pclk = &tegra_clk_pclk,
 		.hclk = &tegra_clk_hclk,
 		.sclk_low = &tegra_pll_p_out2,
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		.sclk_high = &tegra_pll_c_out1,
+#else
 		.sclk_high = &tegra_pll_m_out1,
+#endif
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
 };
