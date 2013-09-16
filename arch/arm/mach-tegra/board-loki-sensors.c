@@ -28,6 +28,7 @@
 #include <media/as364x.h>
 #include <mach/gpio-tegra.h>
 #include <mach/edp.h>
+#include <mach/tegra_fuse.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>
@@ -509,7 +510,7 @@ static struct nct1008_platform_data loki_nct72_pdata = {
 
 	.passive_delay = 2000,
 
-	.num_trips = 2,
+	.num_trips = 3,
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
@@ -551,14 +552,30 @@ static int loki_nct72_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
+	int i;
+	struct thermal_trip_info *trip_state;
 
-/*
-	tegra_add_cdev_trips(loki_nct72_pdata.trips,
-				&loki_nct72_pdata.num_trips);
-*/
-	tegra_platform_edp_init(loki_nct72_pdata.trips,
-				&loki_nct72_pdata.num_trips,
-				12000); /* edp temperature margin */
+	/* Raise NCT's thresholds if soctherm CP,FT fuses are ok */
+	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+		/* Raise NCT's shutdown point by 20C */
+		loki_nct72_pdata.shutdown_ext_limit += 20;
+		/* Remove tegra-balanced cooling device from NCT pdata */
+		for (i = 0; i < loki_nct72_pdata.num_trips; i++) {
+			trip_state = &loki_nct72_pdata.trips[i];
+			if (!strncmp(trip_state->cdev_type, "tegra-balanced",
+					THERMAL_NAME_LENGTH)) {
+				trip_state->cdev_type = "_none_";
+				break;
+			}
+		}
+	} else {
+		tegra_platform_edp_init(loki_nct72_pdata.trips,
+					&loki_nct72_pdata.num_trips,
+					12000); /* edp temperature margin */
+	}
+
+
 	tegra_add_cdev_trips(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips);
 	tegra_add_tj_trips(loki_nct72_pdata.trips,

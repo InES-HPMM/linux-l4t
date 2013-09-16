@@ -33,6 +33,8 @@
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
+#include <mach/tegra_fuse.h>
+#include <linux/pid_thermal_gov.h>
 
 #include <asm/mach-types.h>
 
@@ -47,6 +49,8 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 #include "tegra_cl_dvfs.h"
+#include "tegra11_soctherm.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -811,4 +815,128 @@ int __init loki_edp_init(void)
 	tegra_init_cpu_edp_limits(regulator_mA);
 
 	return 0;
+}
+
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 20,
+	.down_compensation = 20,
+};
+
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
+};
+
+static struct soctherm_platform_data loki_soctherm_data = {
+	.therm = {
+		[THERM_CPU] = {
+			.zone_enable = true,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 3,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 98000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 96000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 86000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_GPU] = {
+			.zone_enable = true,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 2,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 100000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 88000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+/*
+				{
+					.cdev_type = "gk20a_cdev",
+					.trip_temp = 80000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 98000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+*/
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_PLL] = {
+			.zone_enable = true,
+		},
+	},
+	.throttle = {
+		[THROTTLE_HEAVY] = {
+			.priority = 100,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 80,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+					.throttling_depth = "heavy_throttling",
+				},
+			},
+		},
+	},
+};
+
+int __init loki_soctherm_init(void)
+{
+	/* do this only for supported CP,FT fuses */
+	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+		tegra_platform_edp_init(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips,
+			8000); /* edp temperature margin */
+	}
+
+	/* Always do soctherm init here.
+	 * Allowing access to raw soctherm regs for debugging purposes */
+	return tegra11_soctherm_init(&loki_soctherm_data);
 }
