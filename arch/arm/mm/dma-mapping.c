@@ -1030,16 +1030,20 @@ static unsigned int gap_page_count = 1;
 #define PG_PAGES (prefetch_page_count + gap_page_count)
 
 static struct page *iova_gap_pages;
+static phys_addr_t iova_gap_phys;
 
 static int __init iova_gap_pages_init(void)
 {
 	unsigned long order = get_order(PF_PAGES_SIZE);
 
 	iova_gap_pages = alloc_pages(GFP_KERNEL, order);
-	if (WARN_ON(!iova_gap_pages))
+	if (WARN_ON(!iova_gap_pages)) {
 		prefetch_page_count = 0;
-	else
-		__dma_clear_buffer(iova_gap_pages, PAGE_SIZE << order);
+		return 0;
+	}
+
+	__dma_clear_buffer(iova_gap_pages, PAGE_SIZE << order);
+	iova_gap_phys = page_to_phys(iova_gap_pages);
 	return 0;
 }
 core_initcall(iova_gap_pages_init);
@@ -1049,7 +1053,7 @@ static int pg_iommu_map(struct iommu_domain *domain, unsigned long iova,
 {
 	int err;
 
-	err = iommu_map(domain, iova + len, page_to_phys(iova_gap_pages),
+	err = iommu_map(domain, iova + len, iova_gap_phys,
 			   PF_PAGES_SIZE, prot);
 	if (err)
 		return err;
@@ -1067,7 +1071,7 @@ static size_t pg_iommu_unmap(struct iommu_domain *domain,
 	phys_addr_t phys_addr;
 
 	phys_addr = iommu_iova_to_phys(domain, iova + len);
-	BUG_ON(phys_addr != page_to_phys(iova_gap_pages));
+	BUG_ON(phys_addr != iova_gap_phys);
 	iommu_unmap(domain, iova + len, PF_PAGES_SIZE);
 	return iommu_unmap(domain, iova, len);
 }
@@ -1078,7 +1082,7 @@ static int pg_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	int err;
 
 	err = iommu_map(domain, iova + (count << PAGE_SHIFT),
-			   page_to_phys(iova_gap_pages),
+			   iova_gap_phys,
 			   PF_PAGES_SIZE, prot);
 	if (err)
 		return err;
@@ -1096,7 +1100,7 @@ static int pg_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	int err;
 
 	err = iommu_map(domain, iova + (nents << PAGE_SHIFT),
-			   page_to_phys(iova_gap_pages),
+			   iova_gap_phys,
 			   PF_PAGES_SIZE, prot);
 	if (err)
 		return err;
