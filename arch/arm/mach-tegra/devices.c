@@ -2106,21 +2106,14 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 {
 	int i;
 	struct iommu_linear_map *p = &tegra_fb_linear_map[0];
-	dma_addr_t prev_end = 0;
 
 	for (i = 0; i < ARRAY_SIZE(tegra_fb_linear_map) - 1; i++) {
 		if (!map[i].size)
 			continue;
 
-		if (prev_end && prev_end == map[i].start) {
-			(p - 1)->size += map[i].size;
-			prev_end += map[i].size;
-		} else {
-			p->start = map[i].start;
-			p->size = map[i].size;
-			prev_end = p->start + p->size;
-			p++;
-		}
+		p->start = map[i].start;
+		p->size = map[i].size;
+		p++;
 	}
 }
 
