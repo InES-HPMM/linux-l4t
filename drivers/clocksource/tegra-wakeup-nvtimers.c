@@ -43,10 +43,7 @@
 
 #include <mach/irqs.h>
 
-#include "board.h"
-#include "clock.h"
-#include "iomap.h"
-#include "fuse.h"
+#include <../../arch/arm/mach-tegra/iomap.h>
 
 #if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)
 

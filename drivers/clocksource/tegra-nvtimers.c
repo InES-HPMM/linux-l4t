@@ -40,10 +40,8 @@
 #include <asm/localtimer.h>
 #endif
 
-#include "board.h"
-#include "clock.h"
-#include "iomap.h"
-#include "fuse.h"
+#include "../../arch/arm/mach-tegra/iomap.h"
+#include <linux/tegra-soc.h>
 
 static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
@@ -416,7 +414,7 @@ void __init tegra_init_timer(void)
 		pr_warn("Unable to get timer clock. Assuming 12Mhz input clock.\n");
 		rate = 12000000;
 	} else {
-		tegra_clk_prepare_enable(clk);
+		clk_prepare_enable(clk);
 		rate = clk_get_rate(clk);
 	}
 
@@ -428,7 +426,7 @@ void __init tegra_init_timer(void)
 	if (IS_ERR(clk))
 		pr_warn("Unable to get rtc-tegra clock\n");
 	else
-		tegra_clk_prepare_enable(clk);
+		clk_prepare_enable(clk);
 
 	switch (rate) {
 	case 12000000:
