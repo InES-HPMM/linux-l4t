@@ -1052,14 +1052,17 @@ static int pg_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			phys_addr_t phys, size_t len, int prot)
 {
 	int err;
+	struct dma_attrs *attrs = (struct dma_attrs *)prot;
 
-	err = iommu_map(domain, iova + len, iova_gap_phys,
-			   PF_PAGES_SIZE, prot);
-	if (err)
-		return err;
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs)) {
+		err = iommu_map(domain, iova + len, iova_gap_phys,
+				PF_PAGES_SIZE, prot);
+		if (err)
+			return err;
+	}
 
 	err = iommu_map(domain, iova, phys, len, prot);
-	if (err)
+	if (err && !dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
 		iommu_unmap(domain, iova + len, PF_PAGES_SIZE);
 
 	return err;
@@ -1068,11 +1071,16 @@ static int pg_iommu_map(struct iommu_domain *domain, unsigned long iova,
 static size_t pg_iommu_unmap(struct iommu_domain *domain,
 			     unsigned long iova, size_t len, int prot)
 {
-	phys_addr_t phys_addr;
+	struct dma_attrs *attrs = (struct dma_attrs *)prot;
 
-	phys_addr = iommu_iova_to_phys(domain, iova + len);
-	BUG_ON(phys_addr != iova_gap_phys);
-	iommu_unmap(domain, iova + len, PF_PAGES_SIZE);
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs)) {
+		phys_addr_t phys_addr;
+
+		phys_addr = iommu_iova_to_phys(domain, iova + len);
+		BUG_ON(phys_addr != iova_gap_phys);
+		iommu_unmap(domain, iova + len, PF_PAGES_SIZE);
+	}
+
 	return iommu_unmap(domain, iova, len);
 }
 
@@ -1080,15 +1088,17 @@ static int pg_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		    struct page **pages, size_t count, int prot)
 {
 	int err;
+	struct dma_attrs *attrs = (struct dma_attrs *)prot;
 
-	err = iommu_map(domain, iova + (count << PAGE_SHIFT),
-			   iova_gap_phys,
-			   PF_PAGES_SIZE, prot);
-	if (err)
-		return err;
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs)) {
+		err = iommu_map(domain, iova + (count << PAGE_SHIFT),
+				iova_gap_phys, PF_PAGES_SIZE, prot);
+		if (err)
+			return err;
+	}
 
 	err = iommu_map_pages(domain, iova, pages, count, prot);
-	if (err)
+	if (err && !dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
 		iommu_unmap(domain, iova + (count << PAGE_SHIFT), PF_PAGES_SIZE);
 
 	return err;
@@ -1098,16 +1108,19 @@ static int pg_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		 struct scatterlist *sgl, int nents, int prot)
 {
 	int err;
+	struct dma_attrs *attrs = (struct dma_attrs *)prot;
 
-	err = iommu_map(domain, iova + (nents << PAGE_SHIFT),
-			   iova_gap_phys,
-			   PF_PAGES_SIZE, prot);
-	if (err)
-		return err;
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs)) {
+		err = iommu_map(domain, iova + (nents << PAGE_SHIFT),
+				iova_gap_phys, PF_PAGES_SIZE, prot);
+		if (err)
+			return err;
+	}
 
 	err = iommu_map_sg(domain, iova, sgl, nents, prot);
-	if (err)
+	if (err && !dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
 		iommu_unmap(domain, iova + (nents << PAGE_SHIFT), PF_PAGES_SIZE);
+
 	return err;
 }
 
@@ -1163,7 +1176,7 @@ static size_t arm_iommu_iova_get_free_max(struct device *dev)
 }
 
 static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
-				      size_t size, struct dma_attrs *attr)
+				      size_t size, struct dma_attrs *attrs)
 {
 	unsigned int order = get_order(size);
 	unsigned int align = 0;
@@ -1173,8 +1186,11 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 	if (order > CONFIG_ARM_DMA_IOMMU_ALIGNMENT)
 		order = CONFIG_ARM_DMA_IOMMU_ALIGNMENT;
 
-	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) + PG_PAGES +
+	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) +
 		 (1 << mapping->order) - 1) >> mapping->order;
+
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
+		count += PG_PAGES;
 
 	if (order > mapping->order)
 		align = (1 << (order - mapping->order)) - 1;
@@ -1201,8 +1217,12 @@ static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
 	unsigned long flags;
 	size_t bytes;
 
-	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) + PG_PAGES +
+	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) +
 		 (1 << mapping->order) - 1) >> mapping->order;
+
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
+		count += PG_PAGES;
+
 	bytes = count << (mapping->order + PAGE_SHIFT);
 
 	spin_lock_irqsave(&mapping->lock, flags);
@@ -1253,9 +1273,12 @@ static inline void __free_iova(struct dma_iommu_mapping *mapping,
 {
 	unsigned int start = (addr - mapping->base) >>
 			     (mapping->order + PAGE_SHIFT);
-	unsigned int count = ((size >> PAGE_SHIFT) + PG_PAGES +
+	unsigned int count = ((size >> PAGE_SHIFT) +
 			      (1 << mapping->order) - 1) >> mapping->order;
 	unsigned long flags;
+
+	if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
+		count += PG_PAGES;
 
 	spin_lock_irqsave(&mapping->lock, flags);
 	bitmap_clear(mapping->bitmap, start, count);
