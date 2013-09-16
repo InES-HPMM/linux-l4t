@@ -349,6 +349,11 @@ static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	},
 };
 
+static struct palmas_extcon_platform_data palmas_extcon_pdata = {
+	.connection_name = "palmas-extcon",
+	.enable_vbus_detection = true,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
@@ -356,6 +361,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
+	.extcon_pdata = &palmas_extcon_pdata,
 };
 
 static struct i2c_board_info palma_device[] = {
