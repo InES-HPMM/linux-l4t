@@ -169,14 +169,14 @@ static unsigned int uhs_max_freq_MHz[] = {
 /* update PAD_E_INPUT_OR_E_PWRD bit */
 #define NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD	BIT(18)
 /* Shadow write xfer mode reg and write it alongwith CMD register */
-#define NVQUIRK_SHADOW_XFER_MODE_REG		BIT(18)
+#define NVQUIRK_SHADOW_XFER_MODE_REG		BIT(19)
 /* In SDR50 mode, run the sdmmc controller at freq greater than
  * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
  * is below 1.2V, CRC errors would occur during data transfers
  */
-#define NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK	BIT(19)
+#define NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK	BIT(20)
 /* Set Pipe stages value o zero */
-#define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(20)
+#define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(21)
 
 struct sdhci_tegra_soc_data {
 	const struct sdhci_pltfm_data *pdata;
