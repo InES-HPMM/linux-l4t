@@ -499,16 +499,15 @@ static struct tegra_xusb_board_data xusb_bdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
 	.supply = {
-		.s5p0v = "usb_vbus0",
-		.s5p0v1 = "usb_vbus1",
-		.s5p0v2 = "usb_vbus2",
+		.utmi_vbuses = {
+			NULL, NULL, NULL
+		},
 		.s3p3v = "hvdd_usb",
 		.s1p8v = "avdd_pll_utmip",
 		.vddio_hsic = "vddio_hsic",
 		.s1p05v = "avddio_usb",
 	},
 	.uses_external_pmic = false,
-	.uses_different_vbus_per_port = true,
 };
 
 static void loki_xusb_init(void)

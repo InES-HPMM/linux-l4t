@@ -364,9 +364,8 @@ struct tegra_xhci_hcd {
 	u32 cmd_type;
 	u32 cmd_data;
 
-	struct regulator *xusb_s5p0v_reg;
-	struct regulator *xusb_s5p0v1_reg;
-	struct regulator *xusb_s5p0v2_reg;
+	struct regulator *xusb_utmi_vbus_regs[XUSB_UTMI_COUNT];
+
 	struct regulator *xusb_s1p05v_reg;
 	struct regulator *xusb_s3p3v_reg;
 	struct regulator *xusb_s1p8v_reg;
@@ -1452,6 +1451,7 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		struct platform_device *pdev)
 {
 	struct tegra_xusb_regulator_name *supply = &tegra->bdata->supply;
+	int i;
 	int err = 0;
 
 	tegra->xusb_s3p3v_reg =
@@ -1470,24 +1470,33 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		}
 	}
 
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) &&
-					 !tegra->transceiver) {
-		tegra->xusb_s5p0v_reg = devm_regulator_get(&pdev->dev,
-						supply->s5p0v);
-		if (IS_ERR(tegra->xusb_s5p0v_reg)) {
-			dev_err(&pdev->dev, "5p0v regulator not found: %ld."
-				, PTR_ERR(tegra->xusb_s5p0v_reg));
-			err = PTR_ERR(tegra->xusb_s5p0v_reg);
-			goto err_put_s3p3v_reg;
-		} else {
-			err = regulator_enable(tegra->xusb_s5p0v_reg);
-			if (err < 0) {
+	/* enable utmi vbuses */
+	memset(tegra->xusb_utmi_vbus_regs, 0,
+			sizeof(tegra->xusb_utmi_vbus_regs));
+	for (i = 0; i < XUSB_UTMI_COUNT; i++) {
+		struct regulator *reg = NULL;
+		const char *reg_name = supply->utmi_vbuses[i];
+		if (BIT(XUSB_UTMI_INDEX + i) & tegra->bdata->portmap) {
+			if (i == 0 && tegra->transceiver)
+				continue;
+			reg = devm_regulator_get(&pdev->dev, reg_name);
+			if (IS_ERR(reg)) {
 				dev_err(&pdev->dev,
-					"5p0v: regulator enable failed:%d\n",
-					err);
-				goto err_put_s3p3v_reg;
+					"%s regulator not found: %ld.",
+					reg_name, PTR_ERR(reg));
+				err = PTR_ERR(reg);
+			} else {
+				err = regulator_enable(reg);
+				if (err < 0) {
+					dev_err(&pdev->dev,
+					"%s: regulator enable failed: %d\n",
+					reg_name, err);
+				}
 			}
+			if (err)
+				goto err_put_utmi_vbus_reg;
 		}
+		tegra->xusb_utmi_vbus_regs[i] = reg;
 	}
 
 	tegra->xusb_s1p8v_reg =
@@ -1496,13 +1505,13 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		dev_err(&pdev->dev, "1p8v regulator not found: %ld."
 			, PTR_ERR(tegra->xusb_s1p8v_reg));
 		err = PTR_ERR(tegra->xusb_s1p8v_reg);
-		goto err_put_s5p0v_reg;
+		goto err_put_utmi_vbus_reg;
 	} else {
 		err = regulator_enable(tegra->xusb_s1p8v_reg);
 		if (err < 0) {
 			dev_err(&pdev->dev,
 			"1p8v: regulator enable failed:%d\n", err);
-			goto err_put_s5p0v_reg;
+			goto err_put_utmi_vbus_reg;
 		}
 	}
 
@@ -1522,60 +1531,20 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		}
 	}
 
-	if (tegra->bdata->uses_different_vbus_per_port) {
-		tegra->xusb_s5p0v1_reg = devm_regulator_get(&pdev->dev,
-						supply->s5p0v1);
-		if (IS_ERR(tegra->xusb_s5p0v1_reg)) {
-			dev_err(&pdev->dev, "5p0v1 regulator not found: %ld."
-				, PTR_ERR(tegra->xusb_s5p0v1_reg));
-			err = PTR_ERR(tegra->xusb_s5p0v1_reg);
-			goto err_put_s1p05v_reg;
-		} else {
-			if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-				err = regulator_enable(tegra->xusb_s5p0v1_reg);
-			if (err < 0) {
-				dev_err(&pdev->dev,
-				"5p0v1: regulator enable failed:%d\n", err);
-				goto err_put_s1p05v_reg;
-			}
-		}
-
-		tegra->xusb_s5p0v2_reg = devm_regulator_get(&pdev->dev,
-						supply->s5p0v2);
-		if (IS_ERR(tegra->xusb_s5p0v2_reg)) {
-			dev_err(&pdev->dev, "5p0v2 regulator not found: %ld."
-				, PTR_ERR(tegra->xusb_s5p0v2_reg));
-			err = PTR_ERR(tegra->xusb_s5p0v2_reg);
-			goto err_put_s1p5v1_reg;
-		} else {
-			if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
-				err = regulator_enable(tegra->xusb_s5p0v2_reg);
-			if (err < 0) {
-				dev_err(&pdev->dev,
-				"5p0v2: regulator enable failed:%d\n", err);
-				goto err_put_s1p5v1_reg;
-			}
-		}
-	}
 	return err;
 
-err_put_s1p5v1_reg:
-	if (tegra->bdata->uses_different_vbus_per_port &&
-		tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-		regulator_disable(tegra->xusb_s5p0v1_reg);
-err_put_s1p05v_reg:
-	regulator_disable(tegra->xusb_s1p05v_reg);
 err_put_s1p8v_reg:
 	regulator_disable(tegra->xusb_s1p8v_reg);
-err_put_s5p0v_reg:
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) && !tegra->transceiver)
-		regulator_disable(tegra->xusb_s5p0v_reg);
-err_put_s3p3v_reg:
+err_put_utmi_vbus_reg:
+	for (i = 0; i < XUSB_UTMI_COUNT; i++) {
+		struct regulator *reg = tegra->xusb_utmi_vbus_regs[i];
+		if (!IS_ERR_OR_NULL(reg))
+			regulator_disable(reg);
+	}
 	regulator_disable(tegra->xusb_s3p3v_reg);
 err_null_regulator:
-	tegra->xusb_s5p0v_reg = NULL;
-	tegra->xusb_s5p0v1_reg = NULL;
-	tegra->xusb_s5p0v2_reg = NULL;
+	for (i = 0; i < XUSB_UTMI_COUNT; i++)
+		tegra->xusb_utmi_vbus_regs[i] = NULL;
 	tegra->xusb_s1p05v_reg = NULL;
 	tegra->xusb_s3p3v_reg = NULL;
 	tegra->xusb_s1p8v_reg = NULL;
@@ -1584,23 +1553,24 @@ err_null_regulator:
 
 static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 {
+	int i;
+
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	regulator_disable(tegra->xusb_s1p8v_reg);
-	if ((tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) && !tegra->transceiver)
-		regulator_disable(tegra->xusb_s5p0v_reg);
-	regulator_disable(tegra->xusb_s3p3v_reg);
-	if (tegra->bdata->uses_different_vbus_per_port) {
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-			regulator_disable(tegra->xusb_s5p0v1_reg);
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
-			regulator_disable(tegra->xusb_s5p0v2_reg);
+
+	for (i = 0; i < XUSB_UTMI_COUNT; i++) {
+		if (BIT(XUSB_UTMI_INDEX + i) & tegra->bdata->portmap) {
+			struct regulator *reg = tegra->xusb_utmi_vbus_regs[i];
+			if (!IS_ERR_OR_NULL(reg))
+				regulator_disable(reg);
+			tegra->xusb_utmi_vbus_regs[i] = NULL;
+		}
 	}
+
+	regulator_disable(tegra->xusb_s3p3v_reg);
 
 	tegra->xusb_s1p05v_reg = NULL;
 	tegra->xusb_s1p8v_reg = NULL;
-	tegra->xusb_s5p0v_reg = NULL;
-	tegra->xusb_s5p0v1_reg = NULL;
-	tegra->xusb_s5p0v2_reg = NULL;
 	tegra->xusb_s3p3v_reg = NULL;
 }
 

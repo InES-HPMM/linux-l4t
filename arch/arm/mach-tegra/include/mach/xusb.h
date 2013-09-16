@@ -27,9 +27,11 @@
  */
 #define TEGRA_XUSB_SS_P0	(1 << 0)
 #define TEGRA_XUSB_SS_P1	(1 << 1)
-#define TEGRA_XUSB_USB2_P0	(1 << 8)
-#define TEGRA_XUSB_USB2_P1	(1 << 9)
-#define TEGRA_XUSB_USB2_P2	(1 << 10)
+#define XUSB_UTMI_INDEX	(8)
+#define XUSB_UTMI_COUNT	(3)
+#define TEGRA_XUSB_USB2_P0	BIT(XUSB_UTMI_INDEX)
+#define TEGRA_XUSB_USB2_P1	BIT(XUSB_UTMI_INDEX + 1)
+#define TEGRA_XUSB_USB2_P2	BIT(XUSB_UTMI_INDEX + 2)
 #define XUSB_HSIC_INDEX	(16)
 #define XUSB_HSIC_COUNT	(2)
 #define XUSB_SS_PORT_COUNT	(2)
@@ -50,9 +52,7 @@
 #define TEGRA_XUSB_UTMIP_PMC_PORT2	(0x2)
 
 struct tegra_xusb_regulator_name {
-	u8 *s5p0v;
-	u8 *s5p0v1;
-	u8 *s5p0v2;
+	const char *utmi_vbuses[XUSB_UTMI_COUNT];
 	u8 *s3p3v;
 	u8 *s1p8v;
 	const char *vddio_hsic;
@@ -80,7 +80,6 @@ struct tegra_xusb_board_data {
 	u8	ss_portmap;
 	u8	ulpicap;
 	u8	lane_owner;
-	bool uses_different_vbus_per_port;
 	bool uses_external_pmic;
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;

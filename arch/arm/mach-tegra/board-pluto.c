@@ -1112,7 +1112,9 @@ static struct tegra_xusb_board_data xusb_bdata = {
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
 	.uses_external_pmic = true,
 	.supply = {
-		.s5p0v = "usb_vbus",
+		.utmi_vbuses = {
+			NULL, "usb_vbus", NULL
+		},
 		.s3p3v = "hvdd_usb",
 		.s1p8v = "avdd_usb_pll",
 		.vddio_hsic = "vddio_hsic",
