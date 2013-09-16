@@ -537,6 +537,10 @@ static void tegra_sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 }
 
 #ifdef CONFIG_MMC_FREQ_SCALING
+
+static bool disable_scaling __read_mostly;
+module_param(disable_scaling, bool, 0644);
+
 /*
  * Dynamic frequency calculation.
  * The active load for the current period and the average active load
@@ -661,6 +665,9 @@ static unsigned long sdhci_tegra_get_target_freq(struct sdhci_host *sdhci,
 			"No gov data. Continue using current freq %ld", freq);
 		return freq;
 	}
+
+	if (disable_scaling)
+		return freq;
 
 	/*
 	 * If clock gating is enabled and clock is currently disabled, then
