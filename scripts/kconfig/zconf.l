@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "lkc.h"
 
@@ -293,6 +295,15 @@ void zconf_initscan(const char *name)
 
 	current_file = file_lookup(name);
 	current_file->lineno = 1;
+}
+
+void zconf_trynextfile(const char *name)
+{
+	struct stat stat;
+
+	if (lstat(name, &stat) && errno == ENOENT)
+		return;
+	zconf_nextfile(name);
 }
 
 void zconf_nextfile(const char *name)
