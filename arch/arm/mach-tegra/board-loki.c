@@ -470,22 +470,11 @@ static void loki_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 	int modem_id = tegra_get_modem_id();
-	struct board_info bi;
 
-	tegra_get_pmu_board_info(&bi);
-
-	switch (bi.board_id) {
-	case BOARD_E1733:
-		/* Host cable is detected through USB ID */
-		tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
-		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
-		break;
-	case BOARD_E1735:
-		/* Host cable is detected through PMU Interrupt */
-		tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
-		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
-		tegra_otg_pdata.id_extcon_dev_name = "palmas-extcon";
-	}
+	/* Device cable is detected through PMU Interrupt */
+	tegra_udc_pdata.support_pmu_vbus = true;
+	tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
+	tegra_otg_pdata.vbus_extcon_dev_name = "palmas-extcon";
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
