@@ -1369,15 +1369,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		DEFINE_DMA_ATTRS(attrs);
 		size_t size = PAGE_ALIGN(area->size);
 
+		dma_set_attr(DMA_ATTR_SKIP_IOVA_GAP, &attrs);
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
 		if (err == DMA_ERROR_CODE)
-			dev_err(dev, "Failed to map %016llx(%x)\n",
-				(u64)area->start,
-				size);
+			dev_err(dev, "Failed IOVA linear map %016llx(%x)\n",
+				(u64)area->start, size);
 		else
-			dev_info(dev, "map %016llx(%x)\n", (u64)area->start,
-				size);
+			dev_info(dev, "IOVA linear map %016llx(%x)\n",
+				 (u64)area->start, size);
 
 		area++;
 	}
