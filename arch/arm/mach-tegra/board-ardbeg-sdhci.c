@@ -156,7 +156,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.power_gpio = -1,
 	.tap_delay = 0,
 	.trim_delay = 0x3,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
+/*FIXME: Enable UHS modes for SD */
+	.uhs_mask = MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
+                MMC_UHS_MASK_SDR104 |
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 /*	.max_clk = 12000000, */
 };
