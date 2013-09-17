@@ -217,6 +217,7 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 {
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
+	bool empty_command = false;
 
 	if (tegra_platform_is_fpga() || NEVER_RESET) {
 		pr_info("tegra_assert_system_reset() ignored.....");
@@ -232,15 +233,17 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 			reg |= BOOTLOADER_MODE;
 		else if (!strcmp(cmd, "forced-recovery"))
 			reg |= FORCED_RECOVERY_MODE;
-		else
+		else {
 			reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
+			empty_command = true;
+		}
 	}
 	else {
 		/* Clearing SCRATCH0 31:30:1 on default reboot */
 		reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
 	}
 	writel_relaxed(reg, reset + PMC_SCRATCH0);
-	if (!cmd && pm_power_reset) {
+	if ((!cmd || empty_command) && pm_power_reset) {
 		pm_power_reset();
 	} else {
 		reg = readl_relaxed(reset);
