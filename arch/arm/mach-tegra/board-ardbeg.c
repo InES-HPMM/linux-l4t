@@ -1093,6 +1093,7 @@ DT_MACHINE_START(LAGUNA, "laguna")
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= laguna_dt_board_compat,
+	.init_late      = tegra_init_late
 MACHINE_END
 
 DT_MACHINE_START(TN8, "tn8")
@@ -1106,6 +1107,7 @@ DT_MACHINE_START(TN8, "tn8")
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tn8_dt_board_compat,
+	.init_late      = tegra_init_late
 MACHINE_END
 
 DT_MACHINE_START(ARDBEG, "ardbeg")
