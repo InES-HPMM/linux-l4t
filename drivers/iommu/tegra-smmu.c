@@ -1111,7 +1111,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
 		  int prot);
 
-	dev_dbg(as->smmu->dev, "[%d] %08lx:%llx\n", as->asid, iova, (u64)pa);
+	dev_dbg(as->smmu->dev, "[%d] %08lx:%pa\n", as->asid, iova, &pa);
 
 	switch (bytes) {
 	case SZ_4K:
