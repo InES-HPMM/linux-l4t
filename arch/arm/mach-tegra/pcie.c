@@ -52,6 +52,7 @@
 #include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/pm_domains.h>
+#include <mach/io_dpd.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -1366,6 +1367,21 @@ static void tegra_pcie_pme_turnoff(void)
 	} while (!(data & AFI_PCIE_PME_ACK));
 }
 
+static struct tegra_io_dpd pexbias_io = {
+	.name			= "PEX_BIAS",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 4,
+};
+static struct tegra_io_dpd pexclk1_io = {
+	.name			= "PEX_CLK1",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 5,
+};
+static struct tegra_io_dpd pexclk2_io = {
+	.name			= "PEX_CLK2",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 6,
+};
 static int tegra_pcie_power_on(void)
 {
 	int err = 0;
@@ -1379,6 +1395,10 @@ static int tegra_pcie_power_on(void)
 	pm_runtime_get_sync(tegra_pcie.dev);
 
 	if (!tegra_platform_is_fpga()) {
+		/* disable PEX IOs DPD mode to turn on pcie */
+		tegra_io_dpd_disable(&pexbias_io);
+		tegra_io_dpd_disable(&pexclk1_io);
+		tegra_io_dpd_disable(&pexclk2_io);
 		err = tegra_pcie_enable_regulators();
 		if (err) {
 			pr_err("PCIE: Failed to enable regulators\n");
@@ -1436,6 +1456,10 @@ static int tegra_pcie_power_off(void)
 		err = tegra_pcie_disable_regulators();
 		if (err)
 			goto err_exit;
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
 	}
 	pm_runtime_put(tegra_pcie.dev);
 
