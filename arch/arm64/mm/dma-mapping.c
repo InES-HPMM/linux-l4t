@@ -1056,7 +1056,7 @@ static int __init prefetch_pages_init(void)
 core_initcall(prefetch_pages_init);
 
 static int pg_iommu_map(struct iommu_domain *domain, unsigned long iova,
-			phys_addr_t phys, size_t len, int prot)
+			phys_addr_t phys, size_t len, unsigned long prot)
 {
 	int err;
 
@@ -1084,7 +1084,7 @@ static size_t pg_iommu_unmap(struct iommu_domain *domain,
 }
 
 static int pg_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
-		    struct page **pages, size_t count, int prot)
+		    struct page **pages, size_t count, unsigned long prot)
 {
 	int err;
 
@@ -1102,7 +1102,7 @@ static int pg_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 }
 
 static int pg_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
-		 struct scatterlist *sgl, int nents, int prot)
+		 struct scatterlist *sgl, int nents, unsigned long prot)
 {
 	int err;
 

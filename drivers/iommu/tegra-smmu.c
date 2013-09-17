@@ -1051,7 +1051,7 @@ static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
 }
 
 static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
-				unsigned long pfn, int prot)
+				unsigned long pfn, unsigned long prot)
 {
 	struct smmu_device *smmu = as->smmu;
 	u32 *pte;
@@ -1079,7 +1079,7 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 }
 
 static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
-				 phys_addr_t pa, int prot)
+				 phys_addr_t pa, unsigned long prot)
 {
 	unsigned long pfn = __phys_to_pfn(pa);
 
@@ -1087,7 +1087,7 @@ static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
 }
 
 static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
-				 phys_addr_t pa, int prot)
+				 phys_addr_t pa, unsigned long prot)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
 	u32 *pdir = (u32 *)page_address(as->pdir_page);
@@ -1109,13 +1109,13 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 }
 
 static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
-			  phys_addr_t pa, size_t bytes, int prot)
+			  phys_addr_t pa, size_t bytes, unsigned long prot)
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
 	int err;
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
-		  int prot);
+		  unsigned long prot);
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%pa\n", as->asid, iova, &pa);
 
@@ -1138,7 +1138,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 }
 
 static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
-				struct page **pages, size_t total, int prot)
+				struct page **pages, size_t total, unsigned long prot)
 {
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
@@ -1209,7 +1209,7 @@ out:
 }
 
 static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
-			     struct scatterlist *sgl, int npages, int prot)
+			     struct scatterlist *sgl, int npages, unsigned long prot)
 {
 	int err = 0;
 	unsigned long iova_base = iova;
