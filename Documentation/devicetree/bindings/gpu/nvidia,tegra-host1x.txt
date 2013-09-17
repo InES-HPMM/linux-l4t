@@ -9,6 +9,7 @@ Required properties:
 - #size-cells: The number of cells used to represent the size of an address
   range in the host1x address space. Should be 1.
 - ranges: The mapping of the host1x address space to the CPU address space.
+- nvidia,memory-clients: memory client ID of the controller.
 
 The host1x top-level node defines a number of children, each representing one
 of the following host1x client modules:
@@ -26,6 +27,7 @@ of the following host1x client modules:
   - compatible: "nvidia,tegra<chip>-vi"
   - reg: Physical base address and length of the controller's registers.
   - interrupts: The interrupt outputs from the controller.
+  - nvidia,memory-clients: memory client ID of the controller.
 
 - epp: encoder pre-processor
 
@@ -40,6 +42,7 @@ of the following host1x client modules:
   - compatible: "nvidia,tegra<chip>-isp"
   - reg: Physical base address and length of the controller's registers.
   - interrupts: The interrupt outputs from the controller.
+  - nvidia,memory-clients: memory client ID of the controller.
 
 - gr2d: 2D graphics engine
 
@@ -60,6 +63,7 @@ of the following host1x client modules:
   - compatible: "nvidia,tegra<chip>-dc"
   - reg: Physical base address and length of the controller's registers.
   - interrupts: The interrupt outputs from the controller.
+  - nvidia,memory-clients: memory client ID of the controller.
 
   Each display controller node has a child node, named "rgb", that represents
   the RGB output associated with the controller. It can take the following
@@ -95,6 +99,35 @@ of the following host1x client modules:
   - compatible: "nvidia,tegra<chip>-dsi"
   - reg: Physical base address and length of the controller's registers.
 
+- msenc: Multi-Stream Encoder
+
+  Required properties:
+  - compatible: "nvidia,tegra<chip>-msenc"
+  - reg: Physical base address and length of the controller's registers.
+  - nvidia,memory-clients: memory client ID of the controller.
+
+- tsec: Tegra Security Engine Controller
+
+  Required properties:
+  - compatible: "nvidia,tegra<chip>-tsec"
+  - reg: Physical base address and length of the controller's registers.
+  - nvidia,memory-clients: memory client ID of the controller.
+
+- vic: Video Image Compositor
+
+  Required properties:
+  - compatible: "nvidia,tegra<chip>-vic"
+  - reg: Physical base address and length of the controller's registers.
+  - nvidia,memory-clients: memory client ID of the controller.
+
+- gk20a: Kepler GPU
+
+  Required properties:
+  - compatible: "nvidia,tegra<chip>-gk20a"
+  - reg: Physical base address and length of the controller's registers.
+  - interrupts: The interrupt outputs from the controller.
+  - nvidia,memory-clients: memory client ID of the controller.
+
 Example:
 
 / {
@@ -105,6 +138,7 @@ Example:
 		reg = <0x50000000 0x00024000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
+		nvidia,memory-clients = <6>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -121,6 +155,7 @@ Example:
 			compatible = "nvidia,tegra20-vi";
 			reg = <0x54080000 0x00040000>;
 			interrupts = <0 69 0x04>;
+			nvidia,memory-clients = <18>;
 		};
 
 		epp {
@@ -133,6 +168,7 @@ Example:
 			compatible = "nvidia,tegra20-isp";
 			reg = <0x54100000 0x00040000>;
 			interrupts = <0 71 0x04>;
+			nvidia,memory-clients = <8>;
 		};
 
 		gr2d {
@@ -150,6 +186,7 @@ Example:
 			compatible = "nvidia,tegra20-dc";
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
+			nvidia,memory-clients = <2>;
 
 			rgb {
 				status = "disabled";
@@ -160,6 +197,7 @@ Example:
 			compatible = "nvidia,tegra20-dc";
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
+			nvidia,memory-clients = <3>;
 
 			rgb {
 				status = "disabled";
@@ -185,6 +223,35 @@ Example:
 			reg = <0x54300000 0x00040000>;
 			status = "disabled";
 		};
+
+                vic {
+                        compatible = "nvidia,tegra124-vic";
+                        reg = <0x54340000 0x00040000>;
+                        nvidia,memory-clients = <19>;
+                };
+
+                msenc {
+                        compatible = "nvidia,tegra124-msenc";
+                        reg = <0x544c0000 0x00040000>;
+                        nvidia,memory-clients = <11>;
+                };
+
+                tsec {
+                        compatible = "nvidia,tegra124-tsec";
+                        reg = <0x54500000 0x00040000>;
+                        nvidia,memory-clients = <23>;
+                };
+
+                gk20a {
+                        compatible = "nvidia,tegra124-gk20a";
+                        reg = <0x538F0000 0x00001000>,
+                              <0x57000000 0x01000000>,
+                              <0x58000000 0x01000000>;
+                        interrupts = <0 157 0x04
+                                      0 158 0x04>;
+                        nvidia,memory-clients = <56 57>;
+                };
+
 	};
 
 	...
