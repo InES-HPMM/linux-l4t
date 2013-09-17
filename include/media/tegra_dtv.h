@@ -46,6 +46,10 @@ struct tegra_dtv_profile {
 	unsigned int bitrate;     /*< BITRATE of stream */
 };
 
+struct tegra_dtv_platform_data {
+	int dma_req_selector;
+};
+
 #define TEGRA_DTV_IOCTL_SET_HW_CONFIG  _IOW(TEGRA_DTV_MAGIC, 2,		\
 					   const struct tegra_dtv_hw_config *)
 #define TEGRA_DTV_IOCTL_GET_HW_CONFIG  _IOR(TEGRA_DTV_MAGIC, 3,		\
