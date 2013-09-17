@@ -1113,6 +1113,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
 	case 0x14:
+	case 0x15:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:
@@ -1372,6 +1373,33 @@ static const struct file_operations emc_stats_fops = {
 	.release	= single_release,
 };
 
+static int emc_table_info_show(struct seq_file *s, void *data)
+{
+	int i;
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_clk_sel[i].input == NULL)
+			continue;
+		seq_printf(s, "Table info:\n   Rev: 0x%02x\n"
+		"   Table ID: %s\n", tegra_emc_table[i].rev,
+		tegra_emc_table[i].table_id);
+		seq_printf(s, "    %lu\n", tegra_emc_table[i].rate);
+	}
+
+	return 0;
+}
+
+static int emc_table_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, emc_table_info_show, inode->i_private);
+}
+
+static const struct file_operations emc_table_info_fops = {
+	.open		= emc_table_info_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int dram_temperature_get(void *data, u64 *val)
 {
 	*val = tegra_emc_get_dram_temperature();
@@ -1421,7 +1449,12 @@ static int __init tegra_emc_debug_init(void)
 				 emc_debugfs_root, NULL, &efficiency_fops))
 		goto err_out;
 
+
 	if (tegra_emc_iso_usage_debugfs_init(emc_debugfs_root))
+		goto err_out;
+
+	if (!debugfs_create_file("table_info", S_IRUGO,
+				 emc_debugfs_root, NULL, &emc_table_info_fops))
 		goto err_out;
 
 	return 0;
