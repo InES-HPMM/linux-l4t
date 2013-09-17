@@ -1932,6 +1932,9 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
 		smmu->ptc_cache_size = SZ_32K;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_21x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21))
+		smmu->swgids = 0x06f9000001be494e;
 	} else {
 		smmu->num_translation_enable = 3;
 		smmu->num_asid_security = 1;
