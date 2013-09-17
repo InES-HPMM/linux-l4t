@@ -721,7 +721,7 @@ zcal_done:
 	mov32	r1, TEGRA_EMC1_BASE
 	cmp	r0, r1
 	movne	r0, r1
-	addne	r5, r5, #0x20
+	addne	r5, r5, #0x24
 	bne	exit_self_refresh
 #endif
 
