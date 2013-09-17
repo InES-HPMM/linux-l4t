@@ -1429,6 +1429,12 @@ static struct mpu_platform_data *akm_parse_dt(struct i2c_client *client)
 		return ERR_PTR(-EINVAL);
 	}
 
+	if (of_property_read_u32(np, "sec-slave-id",
+				&pdata->sec_slave_id) < 0) {
+		dev_err(&client->dev, "Cannot read sec-slave-id\n");
+		return ERR_PTR(-EINVAL);
+	}
+
 	return pdata;
 }
 
@@ -1469,6 +1475,11 @@ static int akm_probe(struct i2c_client *client,
 
 	mutex_init(&inf->mutex_data);
 	err = akm_input_create(inf);
+	if (err)
+		goto akm_probe_err;
+
+	if (!inf->initd)
+		err = akm_init_hw(inf);
 	if (err)
 		goto akm_probe_err;
 
