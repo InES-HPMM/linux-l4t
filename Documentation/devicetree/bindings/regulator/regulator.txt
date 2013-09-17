@@ -11,6 +11,7 @@ Optional properties:
 - regulator-boot-on: bootloader/firmware enabled regulator
 - <name>-supply: phandle to the parent supply/regulator node
 - regulator-ramp-delay: ramp delay for regulator(in uV/uS)
+- regulator-init-microvolt: Initial microvolt need to be set during registration
 
 Deprecated properties:
 - regulator-compatible: If a regulator chip contains multiple
