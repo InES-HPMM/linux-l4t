@@ -31,6 +31,7 @@
 #include <linux/power/power_supply_extcon.h>
 #include <linux/max17048_battery.h>
 #include <linux/tegra-soc.h>
+#include <linux/generic_adc_thermal.h>
 
 #include <mach/irqs.h>
 
@@ -45,9 +46,35 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
+#include "battery-ini-model-data.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
+
+/* -40 to 125 degC */
+static int tn8_batt_temperature_table[] = {
+	259, 266, 272, 279, 286, 293, 301, 308,
+	316, 324, 332, 340, 349, 358, 367, 376,
+	386, 395, 405, 416, 426, 437, 448, 459,
+	471, 483, 495, 508, 520, 533, 547, 561,
+	575, 589, 604, 619, 634, 650, 666, 682,
+	699, 716, 733, 751, 769, 787, 806, 825,
+	845, 865, 885, 905, 926, 947, 969, 990,
+	1013, 1035, 1058, 1081, 1104, 1127, 1151, 1175,
+	1199, 1224, 1249, 1273, 1298, 1324, 1349, 1374,
+	1400, 1426, 1451, 1477, 1503, 1529, 1554, 1580,
+	1606, 1631, 1657, 1682, 1707, 1732, 1757, 1782,
+	1807, 1831, 1855, 1878, 1902, 1925, 1948, 1970,
+	1992, 2014, 2036, 2057, 2077, 2097, 2117, 2136,
+	2155, 2174, 2192, 2209, 2227, 2243, 2259, 2275,
+	2291, 2305, 2320, 2334, 2347, 2361, 2373, 2386,
+	2397, 2409, 2420, 2430, 2441, 2450, 2460, 2469,
+	2478, 2486, 2494, 2502, 2509, 2516, 2523, 2529,
+	2535, 2541, 2547, 2552, 2557, 2562, 2567, 2571,
+	2575, 2579, 2583, 2587, 2590, 2593, 2596, 2599,
+	2602, 2605, 2607, 2609, 2611, 2614, 2615, 2617,
+	2619, 2621, 2622, 2624, 2625, 2626,
+};
 
 /* BQ2419X VBUS regulator */
 static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
@@ -414,6 +441,49 @@ static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	},
 };
 
+struct max17048_platform_data tn8_max17048_pdata = {
+	.model_data = &tn8_yoku_4100mA_max17048_battery,
+	.tz_name = "battery-temp",
+};
+
+static struct i2c_board_info __initdata tn8_max17048_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("max17048", 0x36),
+		.platform_data = &tn8_max17048_pdata,
+	},
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_battery_pdata = {
+	.iio_channel_name = "battery-temp-channel",
+	.tz_name = "battery-temp",
+	.temp_offset = 0,
+	.adc_to_temp = NULL,
+	.adc_temp_lookup = tn8_batt_temperature_table,
+	.lookup_table_size = ARRAY_SIZE(tn8_batt_temperature_table),
+	.first_index_temp = 125,
+	.last_index_temp = -40,
+};
+
+static struct platform_device gadc_thermal_battery = {
+	.name   = "generic-adc-thermal",
+	.id     = 0,
+	.dev    = {
+		.platform_data = &gadc_thermal_battery_pdata,
+	},
+};
+
+static struct iio_map palmas_iio_map[] = {
+	PALMAS_GPADC_IIO_MAP(IN1, "generic-adc-thermal.0", "battery-temp-channel"),
+	PALMAS_GPADC_IIO_MAP(IN6, "palmas-battery", "vbat_channel"),
+	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
+};
+
+struct palmas_gpadc_platform_data gpadc_pdata = {
+	.ch0_current = 0,
+	.ch3_current = 0,
+	.iio_maps = palmas_iio_map,
+};
+
 static struct palmas_extcon_platform_data palmas_extcon_pdata = {
 	.connection_name = "palmas-extcon",
 	.enable_vbus_detection = true,
@@ -433,6 +503,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.extcon_pdata = &palmas_extcon_pdata,
+	.gpadc_pdata = &gpadc_pdata,
 	.pm_pdata = &palmas_pm_pdata,
 };
 
@@ -478,9 +549,12 @@ int __init tn8_regulator_init(void)
 	 * Do not configure the charger int by default.
 	 */
 	/* bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0); */
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
 		tn8_bq2419x_pdata.bcharger_pdata = &bq2419x_charger_pdata;
-	else
+		/* Only register fuel gauge when using battery. */
+		i2c_register_board_info(0, tn8_max17048_boardinfo,
+			ARRAY_SIZE(tn8_max17048_boardinfo));
+	} else
 		tn8_bq2419x_pdata.bcharger_pdata = NULL;
 
 	i2c_register_board_info(0, bq2419x_boardinfo,
@@ -499,6 +573,7 @@ int __init tn8_regulator_init(void)
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 
+	platform_device_register(&gadc_thermal_battery);
 	platform_device_register(&power_supply_extcon_device);
 	return 0;
 }
