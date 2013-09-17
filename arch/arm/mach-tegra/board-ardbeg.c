@@ -53,6 +53,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/mfd/palmas.h>
 #include <linux/clk/tegra.h>
+#include <media/tegra_dtv.h>
 
 #include <mach/irqs.h>
 #include <mach/pci.h>
@@ -965,6 +966,16 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("ardbeg");
 }
 
+static struct tegra_dtv_platform_data ardbeg_dtv_pdata = {
+	.dma_req_selector = 11,
+};
+
+static void __init ardbeg_dtv_init(void)
+{
+	tegra_dtv_device.dev.platform_data = &ardbeg_dtv_pdata;
+	platform_device_register(&tegra_dtv_device);
+}
+
 static void __init tegra_ardbeg_late_init(void)
 {
 	struct board_info board_info;
@@ -997,6 +1008,7 @@ static void __init tegra_ardbeg_late_init(void)
 		laguna_regulator_init();
 	else
 		ardbeg_regulator_init();
+	ardbeg_dtv_init();
 	ardbeg_suspend_init();
 /* TODO: add support for laguna board when dvfs table is ready */
 	if (board_info.board_id == BOARD_E1780 &&
