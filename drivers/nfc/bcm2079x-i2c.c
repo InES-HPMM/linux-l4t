@@ -162,6 +162,7 @@ static void change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 		dev_info(&client->dev, "%s: discarding as " \
 		"NFC in shutdown state\n", __func__);
 		mutex_unlock(&bcm2079x_dev->read_mutex);
+		return;
 	}
 	ret = i2c_master_send(client, addr_data+offset,
 		sizeof(addr_data)-offset);
