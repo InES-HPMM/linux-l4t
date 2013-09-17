@@ -617,26 +617,6 @@ static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 	return volt;
 }
 
-static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
-		int min_uV, int max_uV)
-{
-	int ret, voltage;
-
-	if (min_uV == 0)
-		return 0;
-
-	if (min_uV < 900000)
-		min_uV = 900000;
-	ret = DIV_ROUND_UP(min_uV - 900000, 50000) + 1;
-
-	/* Map back into a voltage to verify we're still in bounds */
-	voltage = palmas_list_voltage_ldo(rdev, ret);
-	if (voltage < min_uV || voltage > max_uV)
-		return -EINVAL;
-
-	return ret;
-}
-
 static struct regulator_ops palmas_ops_ldo = {
 	.is_enabled		= regulator_is_enabled_regmap,
 	.enable			= regulator_enable_regmap,
@@ -644,14 +624,12 @@ static struct regulator_ops palmas_ops_ldo = {
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= palmas_list_voltage_ldo,
-	.map_voltage		= palmas_map_voltage_ldo,
 };
 
 static struct regulator_ops palmas_ops_ldo_extctrl = {
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= palmas_list_voltage_ldo,
-	.map_voltage		= palmas_map_voltage_ldo,
 };
 
 static struct regulator_ops palmas_ops_extreg = {
