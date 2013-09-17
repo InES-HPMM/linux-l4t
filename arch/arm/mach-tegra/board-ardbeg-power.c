@@ -445,7 +445,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 
 PALMAS_REGS_PDATA(ti913_smps123, 700, 1400, NULL, 0, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ti913_smps45, 900, 1400, NULL, 1, 1, 1, NORMAL,
+PALMAS_REGS_PDATA(ti913_smps45, 700, 1400, NULL, 1, 1, 1, NORMAL,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_smps6, 1800, 1800, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
