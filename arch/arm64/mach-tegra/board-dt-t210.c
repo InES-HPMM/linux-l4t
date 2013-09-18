@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-dt-grenada.c
+ * arch/arm/mach-tegra/board-dt-t210.c
  *
  * NVIDIA Tegra210 device tree board support
  *
@@ -129,7 +129,7 @@ DT_MACHINE_START(TEGRA210_DT, "grenada")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_grenada_reserve,
-	.init_early	= tegra12x_init_early,
+	.init_early	= tegra21x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.timer		= &tegra_sys_timer,
 	.init_machine	= tegra210_dt_init,

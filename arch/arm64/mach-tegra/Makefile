@@ -72,7 +72,8 @@ endif
 obj-$(CONFIG_DENVER_CPU)              += denver-knobs.o
 obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
-obj-${CONFIG_MACH_GRENADA}            += board-dt-grenada.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-dt-t210.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
