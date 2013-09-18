@@ -304,6 +304,8 @@ static struct dvfs core_dvfs_table[] = {
 	/* FIXME: Finalize these values for NOR after qual */
 	CORE_DVFS("nor",    -1, -1, 1, KHZ,   102000, 102000, 102000, 102000,  102000, 102000, 102000, 102000),
 
+	CORE_DVFS("pciex",  -1,  -1, 1, KHZ,  250000, 250000, 250000, 500000,  500000, 500000, 500000, 500000),
+
 	/*
 	 * The clock rate for the display controllers that determines the
 	 * necessary core voltage depends on a divider that is internal

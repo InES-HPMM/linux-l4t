@@ -4833,7 +4833,48 @@ static struct clk_ops tegra_dsi_clk_ops = {
 };
 
 /* pciex clock support only reset function */
+static void tegra12_pciex_clk_init(struct clk *c)
+{
+	c->state = c->parent->state;
+}
+
+static int tegra12_pciex_clk_enable(struct clk *c)
+{
+	return 0;
+}
+
+static void tegra12_pciex_clk_disable(struct clk *c)
+{
+}
+
+static int tegra12_pciex_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	unsigned long parent_rate = clk_get_rate(c->parent);
+
+	/*
+	 * the only supported pcie configurations:
+	 * Gen1: plle = 100MHz, link at 250MHz
+	 * Gen2: plle = 100MHz, link at 500MHz
+	 */
+	if (parent_rate == 100000000) {
+		if (rate == 500000000) {
+			c->mul = 5;
+			c->div = 1;
+			return 0;
+		} else if (rate == 250000000) {
+			c->mul = 5;
+			c->div = 2;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
 static struct clk_ops tegra_pciex_clk_ops = {
+	.init     = tegra12_pciex_clk_init,
+	.enable	  = tegra12_pciex_clk_enable,
+	.disable  = tegra12_pciex_clk_disable,
+	.set_rate = tegra12_pciex_clk_set_rate,
 	.reset    = tegra12_periph_clk_reset,
 };
 
@@ -6645,7 +6686,7 @@ static struct clk tegra_pciex_clk = {
 	.name      = "pciex",
 	.parent    = &tegra_pll_e,
 	.ops       = &tegra_pciex_clk_ops,
-	.max_rate  = 100000000,
+	.max_rate  = 500000000,
 	.u.periph  = {
 		.clk_num   = 74,
 	},
