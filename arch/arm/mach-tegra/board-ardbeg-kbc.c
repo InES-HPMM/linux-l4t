@@ -58,7 +58,7 @@
 		.debounce_interval = _deb,	\
 	}
 
-#define PMC_WAKE2_STATUS         0x160
+#define PMC_WAKE2_STATUS         0x168
 #define TEGRA_WAKE_PWR_INT      (1UL << 19)
 
 static int ardbeg_wakeup_key(void);
