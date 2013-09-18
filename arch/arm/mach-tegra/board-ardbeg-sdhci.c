@@ -42,6 +42,11 @@
 #define ARDBEG_WLAN_RST	TEGRA_GPIO_PCC5
 #define ARDBEG_WLAN_PWR	TEGRA_GPIO_PX7
 #define ARDBEG_WLAN_WOW	TEGRA_GPIO_PU5
+#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+#define ON 1020 /* 1019.16mW */
+#define OFF 0
+static unsigned int wifi_states[] = {ON, OFF};
+#endif
 
 #define ARDBEG_SD_CD	TEGRA_GPIO_PV2
 
@@ -57,6 +62,16 @@ static struct wifi_platform_data ardbeg_wifi_control = {
 	.set_power	= ardbeg_wifi_power,
 	.set_reset	= ardbeg_wifi_reset,
 	.set_carddetect	= ardbeg_wifi_set_carddetect,
+#if defined (CONFIG_BCMDHD_EDP_SUPPORT)
+	/* wifi edp client information */
+	.client_info	= {
+		.name		= "wifi_edp_client",
+		.states		= wifi_states,
+		.num_states	= ARRAY_SIZE(wifi_states),
+		.e0_index	= 0,
+		.priority	= EDP_MAX_PRIO,
+	},
+#endif
 };
 
 static struct resource wifi_resource[] = {
