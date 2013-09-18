@@ -108,7 +108,7 @@ static const struct usb_device_id modem_list[] = {
 	/* .driver_info = TEGRA_MODEM_AUTOSUSPEND, */
 	 },
 	{USB_DEVICE(0x1983, 0x1007),	/* Icera 500 Bruce */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 .driver_info = TEGRA_USB_HOST_RELOAD|TEGRA_MODEM_AUTOSUSPEND,
 	 },
 	{}
 };
