@@ -42,7 +42,16 @@ enum nct_id_type {
 	NCT_ID_RAMDUMP,
 	NCT_ID_TEST,
 	NCT_ID_BOARD_INFO,
-	NCT_ID_END = NCT_ID_BOARD_INFO,
+	NCT_ID_GPS_ID,
+	NCT_ID_LCD_ID,
+	NCT_ID_ACCELEROMETER_ID,
+	NCT_ID_COMPASS_ID,
+	NCT_ID_GYROSCOPE_ID,
+	NCT_ID_LIGHT_ID,
+	NCT_ID_CHARGER_ID,
+	NCT_ID_TOUCH_ID,
+	NCT_ID_FUELGAUGE_ID,
+	NCT_ID_END = NCT_ID_FUELGAUGE_ID,
 	NCT_ID_DISABLED = 0xEEEE,
 	NCT_ID_MAX = 0xFFFF
 };
@@ -92,6 +101,15 @@ union nct_item_type {
 	struct nct_factory_mode_type	factory_mode;
 	struct nct_ramdump_type		ramdump;
 	struct nct_board_info_type	board_info;
+	struct nct_lbh_id_type          gps_id;
+	struct nct_lbh_id_type          lcd_id;
+	struct nct_lbh_id_type          accelerometer_id;
+	struct nct_lbh_id_type          compass_id;
+	struct nct_lbh_id_type          gyroscope_id;
+	struct nct_lbh_id_type          light_id;
+	struct nct_lbh_id_type          charger_id;
+	struct nct_lbh_id_type          touch_id;
+	u8      fuelgauge_id[MAX_NCT_DATA_SIZE];
 	u8	u8[MAX_NCT_DATA_SIZE];
 	u16	u16[MAX_NCT_DATA_SIZE/2];
 	u32	u32[MAX_NCT_DATA_SIZE/4];
