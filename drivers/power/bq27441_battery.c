@@ -344,6 +344,7 @@ static int bq27441_get_property(struct power_supply *psy,
 {
 	struct bq27441_chip *chip = container_of(psy,
 				struct bq27441_chip, battery);
+	int temperature;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -365,7 +366,8 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = chip->capacity_level;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = bq27441_get_temperature(chip);
+		temperature = bq27441_get_temperature(chip);
+		val->intval = temperature / 10;
 		break;
 	default:
 		return -EINVAL;
