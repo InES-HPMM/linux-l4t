@@ -5634,7 +5634,7 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 		    (c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO)) {
 			unsigned long request_rate = c->u.shared_bus_user.rate;
 			if (!(c->flags & DIV_BUS))
-				rate *=	c->div ? : 1;
+				request_rate *=	c->div ? : 1;
 			usage_flags |= c->u.shared_bus_user.usage_flag;
 
 			switch (c->u.shared_bus_user.mode) {
