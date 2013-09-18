@@ -26,7 +26,6 @@
 #include "gpio-names.h"
 
 int ardbeg_pinmux_init(void);
-int ardbeg_edp_init(void);
 int ardbeg_emc_init(void);
 int ardbeg_panel_init(void);
 int ardbeg_kbc_init(void);
@@ -37,6 +36,10 @@ int ardbeg_suspend_init(void);
 int ardbeg_pmon_init(void);
 int ardbeg_rail_alignment_init(void);
 int ardbeg_soctherm_init(void);
+int ardbeg_edp_init(void);
+void ardbeg_sysedp_init(void);
+void ardbeg_sysedp_psydepl_init(void);
+void ardbeg_sysedp_core_init(void);
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME		"mpu9250"
@@ -142,6 +145,7 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 int laguna_pinmux_init(void);
 int laguna_regulator_init(void);
 int laguna_pm358_pmon_init(void);
+int laguna_edp_init(void);
 
 /* AUO Display related GPIO */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
@@ -161,5 +165,9 @@ int laguna_pm358_pmon_init(void);
 
 int tn8_regulator_init(void);
 int tn8_fixed_regulator_init(void);
+int tn8_edp_init(void);
+void tn8_sysedp_init(void);
+void tn8_sysedp_psydepl_init(void);
+void tn8_sysedp_core_init(void);
 
 #endif

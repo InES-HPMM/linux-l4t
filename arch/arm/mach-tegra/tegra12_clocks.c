@@ -7973,6 +7973,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
 	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,   &tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("battery.emc",	"battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
@@ -7990,6 +7991,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_LIMIT("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 	SHARED_CLK("override.c3bus",	"override.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,  0, SHARED_OVERRIDE),
+	SHARED_CLK("battery.c2bus",	"battery_edp",		"gpu",	 &tegra_clk_c2bus, NULL, 0, SHARED_CEILING),
 #else
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
 	SHARED_CLK("msenc.cbus","tegra_msenc",		"msenc",&tegra_clk_cbus, "msenc", 0, 0),

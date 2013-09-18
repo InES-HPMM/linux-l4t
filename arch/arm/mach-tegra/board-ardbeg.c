@@ -1024,8 +1024,87 @@ static int __init ardbeg_touch_init(void)
 	return 0;
 }
 
+static void __init sysedp_init(void)
+{
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	switch (bi.board_id) {
+	case BOARD_E1780:
+		if (bi.sku == 1100)
+			tn8_sysedp_init();
+		break;
+	case BOARD_PM358:
+	case BOARD_PM359:
+	default:
+		break;
+	}
+}
+
+static void __init sysedp_core_init(void)
+{
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	switch (bi.board_id) {
+	case BOARD_E1780:
+		if (bi.sku == 1100)
+			tn8_sysedp_core_init();
+		break;
+	case BOARD_PM358:
+	case BOARD_PM359:
+	default:
+		break;
+	}
+}
+
+
+static void __init sysedp_psydepl_init(void)
+{
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	switch (bi.board_id) {
+	case BOARD_E1780:
+		if (bi.sku == 1100)
+			tn8_sysedp_psydepl_init();
+		break;
+	case BOARD_PM358:
+	case BOARD_PM359:
+	default:
+		break;
+	}
+}
+
+static void __init edp_init(void)
+{
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	switch (bi.board_id) {
+	case BOARD_E1780:
+		if (bi.sku == 1100)
+			tn8_edp_init();
+		else
+			ardbeg_edp_init();
+		break;
+	case BOARD_PM358:
+	case BOARD_PM359:
+			laguna_edp_init();
+			break;
+	default:
+			ardbeg_edp_init();
+			break;
+	}
+}
+
 static void __init tegra_ardbeg_early_init(void)
 {
+	sysedp_init();
 	tegra_clk_init_from_table(ardbeg_clk_init_table);
 	tegra_clk_verify_parents();
 	if (of_machine_is_compatible("nvidia,laguna"))
@@ -1103,7 +1182,7 @@ static void __init tegra_ardbeg_late_init(void)
 		(board_info.board_id == BOARD_E1792))
 		ardbeg_emc_init();
 
-	ardbeg_edp_init();
+	edp_init();
 	isomgr_init();
 	ardbeg_touch_init();
 	ardbeg_panel_init();
@@ -1133,7 +1212,9 @@ static void __init tegra_ardbeg_late_init(void)
 
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
-	ardbeg_sata_init();
+
+	sysedp_core_init();
+	sysedp_psydepl_init();
 }
 
 static void __init ardbeg_ramconsole_reserve(unsigned long size)
