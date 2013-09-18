@@ -25,4 +25,21 @@
                 compatible = "nvidia,tegra114-hsuart";
                 status = "okay";
         };
+
+	ahub {
+		status = "okay";
+
+		i2s@70301000 {
+			status = "okay";
+		};
+		i2s@70301400 {
+			status = "okay";
+		};
+		amx@70303000 {
+			status = "okay";
+		};
+		adx@70303800 {
+			status = "okay";
+		};
+	};
 };

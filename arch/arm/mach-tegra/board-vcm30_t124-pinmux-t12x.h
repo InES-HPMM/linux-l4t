@@ -122,8 +122,8 @@ static __initdata struct tegra_pingroup_config vcm30_t124_pinmux_common[] = {
 	/* I2S4 pinmux */
 	DEFAULT_PINMUX(GPIO_PBB6,     I2S4,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GPIO_PBB7,     I2S4,        NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GPIO_PCC1,     I2S4,        NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GPIO_PCC2,     I2S4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GPIO_PCC1,     I2S4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GPIO_PCC2,     I2S4,        NORMAL,    NORMAL,   INPUT),
 
 	/* I2C2 pinmux */
 	I2C_PINMUX(GEN2_I2C_SCL, I2C2, NORMAL, NORMAL, INPUT, DISABLE, ENABLE),
