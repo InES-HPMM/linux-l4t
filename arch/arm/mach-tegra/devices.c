@@ -704,6 +704,7 @@ struct platform_device tegra11_spi_slave_device6 = {
 };
 #endif
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource resources_nor[] = {
 	[0] = {
 		.start = INT_SNOR,
@@ -733,7 +734,9 @@ struct platform_device tegra_nor_device = {
 		.coherent_dma_mask = 0xffffffff,
 	},
 };
+#endif
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource dtv_resource[] = {
 	[0] = {
 		.start  = TEGRA_DTV_BASE,
@@ -757,6 +760,7 @@ struct platform_device tegra_dtv_device = {
 		.coherent_dma_mask = 0xffffffff,
 	},
 };
+#endif
 
 static struct resource sdhci_resource1[] = {
 	[0] = {
@@ -771,6 +775,7 @@ static struct resource sdhci_resource1[] = {
 	},
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource sdhci_resource2[] = {
 	[0] = {
 		.start	= INT_SDMMC2,
@@ -830,6 +835,7 @@ struct platform_device tegra_sdhci_device1 = {
 	.num_resources	= ARRAY_SIZE(sdhci_resource1),
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct platform_device tegra_sdhci_device2 = {
 	.name		= "sdhci-tegra",
 	.id		= 1,
@@ -1040,6 +1046,7 @@ static struct resource tegra_uartd_resources[] = {
 	},
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource tegra_uarte_resources[] = {
 	[0] = {
 		.start	= TEGRA_UARTE_BASE,
@@ -1099,6 +1106,7 @@ struct platform_device tegra_uartd_device = {
 	},
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct platform_device tegra_uarte_device = {
 	.name	= "serial-tegra",
 	.id	= 4,
@@ -1169,7 +1177,7 @@ static struct plat_serial8250_port debug_uartd_platform_data[] = {
 	},
 };
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct plat_serial8250_port debug_uarte_platform_data[] = {
 	{
 		.membase        = IO_ADDRESS(TEGRA_UARTE_BASE),
@@ -1218,7 +1226,7 @@ struct platform_device debug_uartd_device = {
 	},
 };
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct platform_device debug_uarte_device = {
 	.name = "serial8250",
 	.id = PLAT8250_DEV_PLATFORM,
@@ -1463,6 +1471,7 @@ struct platform_device tegra_dam_device2 = {
 	.num_resources = ARRAY_SIZE(dam_resource2),
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static u64 tegra_hda_dma_mask = DMA_BIT_MASK(32);
 static struct resource hda_platform_resources[] = {
 	[0] = {
@@ -2422,6 +2431,7 @@ struct platform_device tegra_disp1_device = {
 	.num_resources	= ARRAY_SIZE(tegra_disp1_resources),
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource tegra_disp2_resources[] = {
 	{
 		.name	= "irq",
@@ -2601,7 +2611,7 @@ void __init tegra_init_debug_uart_rate(void)
 	debug_uartb_platform_data[0].uartclk = uartclk;
 	debug_uartc_platform_data[0].uartclk = uartclk;
 	debug_uartd_platform_data[0].uartclk = uartclk;
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	debug_uarte_platform_data[0].uartclk = uartclk;
 #endif
 }

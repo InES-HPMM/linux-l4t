@@ -97,7 +97,7 @@ int uart_console_debug_init(int default_debug_port)
 		uart_console_debug_device = &debug_uartd_device;
 		break;
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	case 4:
 		/* UARTE is the debug port. */
 		pr_info("Selecting UARTE as the debug console\n");
