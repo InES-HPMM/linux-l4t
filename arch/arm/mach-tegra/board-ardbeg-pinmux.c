@@ -29,8 +29,6 @@
 #include "board-ardbeg-pinmux-t12x.h"
 
 static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
-	/*Set DAP2 drive (required for Codec Master Mode)*/
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
 
 	/* SDMMC1 */
 	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 32, 42, FASTEST, FASTEST),

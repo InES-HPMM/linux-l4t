@@ -559,7 +559,14 @@ const int gpio_to_pingroup_non_fpga[TEGRA_MAX_GPIO + 1] = {
 	}
 
 static __initdata struct tegra_drive_pingroup_config t12x_def_drive_pinmux[] = {
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
+
+	/* updated the CFG2TMC_DAP1CFG_CAL_DRVUP/DN value to avoid
+	undershoot/overshoot of volt.  Ref Bug 1333599 */
+	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 5, 6, FASTEST, FASTEST),
+	SET_DRIVE(DAP1, DISABLE, ENABLE, DIV_1, 5, 6, FASTEST, FASTEST),
+	SET_DRIVE(DAP3, DISABLE, ENABLE, DIV_1, 5, 6, FASTEST, FASTEST),
+	SET_DRIVE(DAP4, DISABLE, ENABLE, DIV_1, 5, 6, FASTEST, FASTEST),
+	SET_DRIVE(DAP5, DISABLE, ENABLE, DIV_1, 5, 6, FASTEST, FASTEST),
 
 	SET_DRIVE(DBG, ENABLE, ENABLE, DIV_8, 0, 0, FASTEST, FASTEST),
 
