@@ -32,6 +32,7 @@
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>
+#include <linux/platform_device.h>
 
 #include "board.h"
 #include "board-common.h"
