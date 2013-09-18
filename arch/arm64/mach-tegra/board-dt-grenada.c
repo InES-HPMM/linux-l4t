@@ -138,17 +138,3 @@ DT_MACHINE_START(TEGRA210_DT, "grenada")
 MACHINE_END
 
 void tegra_pd_in_idle(bool enable) {}
-
-/*******************************************************************
- * FIXME: fake missing symbols from arm64 until ported by ARM/NV.  *
- *******************************************************************/
-/*
- * Defined in arch/arm/kernel/suspend.c
- */
-int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
-{
-	return 0;
-}
-void cpu_resume(void)
-{
-}
