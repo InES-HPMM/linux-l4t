@@ -600,7 +600,7 @@ static void handle_once_dma_done(struct tegra_dma_channel *tdc,
 	list_add_tail(&sgreq->node, &tdc->free_sg_req);
 
 	/* Do not start DMA if it is going to be terminate */
-	if (list_empty(&tdc->pending_sg_req)) {
+	if (list_empty(&tdc->pending_sg_req) && (!to_terminate)) {
 		clk_disable_unprepare(tdc->tdma->dma_clk);
 		pm_runtime_put(tdc->tdma->dev);
 	}
