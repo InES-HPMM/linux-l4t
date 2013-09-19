@@ -67,7 +67,8 @@ struct imx132_info {
 #define IMX132_TABLE_END 1
 
 #define IMX132_WAIT_MS 5
-#define IMX132_FUSE_ID_SIZE 8
+#define IMX132_FUSE_ID_SIZE 7
+#define IMX132_FUSE_ID_DELAY 5
 
 static struct regulator *imx132_ext_reg1;
 static struct regulator *imx132_ext_reg2;
@@ -748,10 +749,11 @@ static int imx132_get_fuse_id(struct imx132_info *info)
 	 * TBD 1: If the sensor does not have power at this point
 	 * Need to supply the power, e.g. by calling power on function
 	 */
+	msleep_range(IMX132_FUSE_ID_DELAY);
 
-	ret |= imx132_write_reg(info->i2c_client, 0x34C9, 0x10);
 	for (i = 0; i < IMX132_FUSE_ID_SIZE ; i++) {
-		ret |= imx132_read_reg(info->i2c_client, 0x3580 + i, &bak);
+		ret |= imx132_read_reg(info->i2c_client,
+					IMX132_FUSE_ID_REG + i, &bak);
 		info->fuse_id.data[i] = bak;
 	}
 

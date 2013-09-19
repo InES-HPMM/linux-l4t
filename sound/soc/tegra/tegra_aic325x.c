@@ -301,6 +301,8 @@ static int tegra_aic325x_call_mode_put(struct snd_kcontrol *kcontrol,
 			machine->pcard->dai_link[i].ignore_suspend = 1;
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_asoc_utils_tristate_dap(
+		machine->codec_info[codec_index].i2s_id, false);
 	if (machine->is_device_bt) {
 		t14x_make_bt_voice_call_connections(
 			&machine->codec_info[codec_index],
@@ -316,7 +318,7 @@ static int tegra_aic325x_call_mode_put(struct snd_kcontrol *kcontrol,
 			&machine->codec_info[BASEBAND], 0);
 #endif
 	} else {
- #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 		if (machine->is_device_bt) {
 			t14x_break_bt_voice_call_connections(
 				&machine->codec_info[codec_index],
@@ -326,6 +328,8 @@ static int tegra_aic325x_call_mode_put(struct snd_kcontrol *kcontrol,
 			&machine->codec_info[codec_index],
 			&machine->ahub_bbc1_info, 0);
 		}
+		tegra_asoc_utils_tristate_dap(
+			machine->codec_info[codec_index].i2s_id, true);
 #else
 		tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],

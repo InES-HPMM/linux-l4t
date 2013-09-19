@@ -44,6 +44,13 @@ config TEGRA_GRHOST_SYNC
 	  Add tegra host backend for the cross driver synchronization framework.
 	  Allows creating sync fence file descriptors from Tegra host syncpoints.
 
+config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
+	bool "Use physical addressing for gk20a page tables"
+	default y if TEGRA_SIMULATION_PLATFORM
+	help
+	  Use physical addressing for gk20a page tables. If this is off, we
+	  use SMMU translation.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
@@ -142,6 +149,7 @@ config TEGRA_DC_EXTENSIONS
 config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
 	select ARM_DMA_USE_IOMMU if IOMMU_API
+	select DMA_SHARED_BUFFER
 	default y
 	help
 	  Say Y here to include the memory management driver for the Tegra
@@ -243,6 +251,23 @@ config NVMAP_DEFERRED_CACHE_MAINT
 	  of earlier requests are already flushed. Also, if total size of
 	  deferred ranges is big enough, we flush whole inner or outer
 	  cache.
+
+config NVMAP_DMABUF_STASH
+	bool "Enable stashing of IOVA maps with dmabuf"
+	depends on TEGRA_NVMAP
+	default y
+	help
+	  Set to Y if you would like nvmap to stash maps when using dma
+	  bufs. This will speed up remapping of the same handle at the cost
+	  of using more IOVA space.
+
+config NVMAP_DMABUF_STASH_STATS
+	bool "Enable stat tracking on the stash"
+	depends on NVMAP_DMABUF_STASH
+	help
+	  Say Y to enable tracking of basic cache statistics on the dmabuf
+	  stash. This adds some overhead but should be very useful for
+	  debugging memory leaks.
 
 config NVMAP_VPR
 	bool "Enable VPR Heap."

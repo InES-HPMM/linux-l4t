@@ -498,6 +498,7 @@ void tegra14x_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
 	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
 	const int **gpiomap, int *gpiomap_max);
 void tegra11x_default_pinmux(void);
+void tegra12x_default_pinmux(void);
 
 int tegra_pinmux_get_func(int pg);
 int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate);

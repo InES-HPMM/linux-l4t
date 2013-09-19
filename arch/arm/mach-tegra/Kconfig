@@ -179,7 +179,9 @@ config ARCH_TEGRA_12x_SOC
 	select THERMAL
 	select PM_GENERIC_DOMAINS if PM
 	select PINCTRL
+	select PINCTRL_TEGRA124
 	select TEGRA_DC_TEMPORAL_DITHER
+	select TEGRA_VDD_CORE_OVERRIDE if TEGRA_EMC_SCALING_ENABLE
 	select REGULATOR_TEGRA_DFLL_BYPASS
 	select HAVE_ARM_ARCH_TIMER
 	help
@@ -277,14 +279,6 @@ config TEGRA_AHB
 	  performance parameters(priority, prefech size).
 
 comment "Tegra board type"
-
-config MACH_CURACAO
-       bool "Curacao board"
-       depends on ARCH_TEGRA_11x_SOC
-       select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
-       select TEGRA_FPGA_PLATFORM
-       help
-         Support for NVIDIA Curacao FPGA development platform
 
 config MACH_BONAIRE
        bool "Bonaire board"

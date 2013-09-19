@@ -825,6 +825,9 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	if (IS_ENABLED(CONFIG_PREEMPT) && !in_atomic())
 		gfp = GFP_KERNEL;
 
+	if (!IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_LINEAR))
+		gfp |= __GFP_ZERO;
+
 	/* Vacant - allocate a new page table */
 	dev_dbg(as->smmu->dev, "New PTBL pdn: %x\n", pdn);
 
@@ -834,9 +837,11 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 
 	SetPageReserved(page);
 	ptbl = (u32 *)page_address(page);
-	for (i = 0; i < SMMU_PTBL_COUNT; i++) {
-		ptbl[i] = _PTE_VACANT(addr);
-		addr += SMMU_PAGE_SIZE;
+	if (IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_LINEAR)) {
+		for (i = 0; i < SMMU_PTBL_COUNT; i++) {
+			ptbl[i] = _PTE_VACANT(addr);
+			addr += SMMU_PAGE_SIZE;
+		}
 	}
 
 	FLUSH_CPU_DCACHE(ptbl, page, SMMU_PTBL_SIZE);
@@ -1125,7 +1130,6 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
-	unsigned long flags;
 	u32 *pdir = page_address(as->pdir_page);
 	int err = 0;
 	unsigned long iova_base = iova;
@@ -1137,8 +1141,6 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	spin_lock_irqsave(&as->lock, flags);
-
 	while (total > 0) {
 		int pdn = SMMU_ADDR_TO_PDN(iova);
 		int ptn = SMMU_ADDR_TO_PTN(iova);
@@ -1148,20 +1150,21 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		u32 *ptbl;
 		u32 *pte;
 		int i;
+		unsigned long flags;
+
+		spin_lock_irqsave(&as->lock, flags);
 
 		if (pdir[pdn] == _PDE_VACANT(pdn)) {
 			tbl_page = alloc_ptbl(as, iova, !flush_all);
 			if (!tbl_page) {
 				err = -ENOMEM;
+				spin_unlock_irqrestore(&as->lock, flags);
 				goto out;
 			}
 
 		} else {
 			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		}
-
-		if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
-			goto skip;
 
 		ptbl = page_address(tbl_page);
 		for (i = 0; i < count; i++) {
@@ -1178,102 +1181,99 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		if (!flush_all)
 			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
 						count);
-skip:
+
 		iova += PAGE_SIZE * count;
 		total -= count;
 		pages += count;
+
+		spin_unlock_irqrestore(&as->lock, flags);
 	}
 
 out:
 	if (flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
 				     iova_base + total * PAGE_SIZE);
-
-	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
 
 static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
-			     struct scatterlist *sgl, int nents, int prot)
+			     struct scatterlist *sgl, int npages, int prot)
 {
-	unsigned long flags;
-	unsigned int count;
-	struct scatterlist *s;
 	int err = 0;
 	unsigned long iova_base = iova;
-	bool flush_all = (nents > smmu_flush_all_th_pages) ? true : false;
+	bool flush_all = (npages > smmu_flush_all_th_pages) ? true : false;
 	struct smmu_as *as = domain->priv;
+	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
 	int attrs = as->pte_attr;
+	size_t total = npages;
+	size_t sg_remaining = sgl->length >> PAGE_SHIFT;
+	unsigned long sg_pfn = page_to_pfn(sg_page(sgl));
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	spin_lock_irqsave(&as->lock, flags);
-	for (count = 0, s = sgl; count < nents; s = sg_next(s)) {
-		phys_addr_t phys = page_to_phys(sg_page(s));
-		unsigned int len = PAGE_ALIGN(s->offset + s->length);
+	while (total > 0) {
+		int pdn = SMMU_ADDR_TO_PDN(iova);
+		int ptn = SMMU_ADDR_TO_PTN(iova);
+		unsigned int *rest = &as->pte_count[pdn];
+		int count = min_t(size_t, SMMU_PTBL_COUNT - ptn, total);
+		struct page *tbl_page;
+		u32 *ptbl;
+		u32 *pte;
+		int i;
+		unsigned long flags;
 
-		while (len) {
-			int pfn = __phys_to_pfn(phys);
-			u32 *pte;
-			u32 *pdir = page_address(as->pdir_page);
-			int ptn = SMMU_ADDR_TO_PTN(iova);
-			int pdn = SMMU_ADDR_TO_PDN(iova);
-			u32 *ptbl;
-			struct page *tbl_page;
-			size_t num = min_t(int, SMMU_PTBL_COUNT - ptn,
-					   len >> PAGE_SHIFT);
-			int i;
+		spin_lock_irqsave(&as->lock, flags);
 
-			if (pdir[pdn] != _PDE_VACANT(pdn)) {
-				tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
-			} else {
-				tbl_page = alloc_ptbl(as, iova, !flush_all);
-				if (!tbl_page) {
-					err = -ENOMEM;
-					break;
-				}
+		if (pdir[pdn] == _PDE_VACANT(pdn)) {
+			tbl_page = alloc_ptbl(as, iova, !flush_all);
+			if (!tbl_page) {
+				err = -ENOMEM;
+				spin_unlock_irqrestore(&as->lock, flags);
+				break;
 			}
 
-			if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
-				goto skip;
-
-			ptbl = page_address(tbl_page);
-			for (i = 0; i < num; i++) {
-				pte = &ptbl[ptn + i];
-				if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE)) {
-					unsigned int *rest;
-
-					rest = &as->pte_count[pdn];
-					(*rest)++;
-				}
-
-				*pte = SMMU_PFN_TO_PTE(pfn + i, attrs);
-			}
-
-			pte = &ptbl[ptn];
-			FLUSH_CPU_DCACHE(pte, tbl_page, num * sizeof(*pte));
-			if (!flush_all)
-				flush_ptc_and_tlb_range(smmu, as, iova, pte,
-							tbl_page, num);
-
-skip:
-			iova += num * PAGE_SIZE;
-			phys += num * PAGE_SIZE;
-			len -= num * PAGE_SIZE;
-			count += num;
+		} else {
+			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		}
 
+		ptbl = page_address(tbl_page);
+		for (i = 0; i < count; i++) {
+
+			pte = &ptbl[ptn + i];
+			if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE))
+				(*rest)++;
+
+			*pte = SMMU_PFN_TO_PTE(sg_pfn++, attrs);
+			if (--sg_remaining)
+				continue;
+
+			sgl = sg_next(sgl);
+			if (sgl) {
+				sg_pfn = page_to_pfn(sg_page(sgl));
+				sg_remaining = sgl->length >> PAGE_SHIFT;
+			}
+		}
+
+		pte = &ptbl[ptn];
+		FLUSH_CPU_DCACHE(pte, tbl_page, count * sizeof(u32 *));
+		if (!flush_all)
+			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
+						count);
+
+		iova += PAGE_SIZE * count;
+		total -= count;
+
+		spin_unlock_irqrestore(&as->lock, flags);
 	}
 
 	if (flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
-				     iova_base + nents * PAGE_SIZE);
+				     iova_base + npages * PAGE_SIZE);
 
-	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
 

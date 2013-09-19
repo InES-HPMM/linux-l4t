@@ -209,7 +209,7 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 };
 
-static struct regulator_consumer_supply palmas_smps10_supply[] = {
+static struct regulator_consumer_supply palmas_smps10_out2_supply[] = {
 	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
 	REGULATOR_SUPPLY("vdd_5v0", NULL),
 };
@@ -278,7 +278,7 @@ PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 1, 1, 0, NORMAL);
 PALMAS_PDATA_INIT(smps457, 900,  1400, NULL, 1, 1, 0, NORMAL);
 PALMAS_PDATA_INIT(smps8, 1050,  1050, NULL, 1, 1, 1, NORMAL);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 0, NORMAL);
-PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0, 0);
+PALMAS_PDATA_INIT(smps10_out2, 5000,  5000, NULL, 0, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo2, 2800,  2800, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, NULL, 1, 1, 1, 0);
 PALMAS_PDATA_INIT(ldo4, 1800,  1800, NULL, 0, 0, 1, 0);
@@ -301,7 +301,8 @@ static struct regulator_init_data *roth_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_PDATA(smps8),
 	PALMAS_REG_PDATA(smps9),
-	PALMAS_REG_PDATA(smps10),
+	PALMAS_REG_PDATA(smps10_out2),
+	NULL,
 	NULL,	/* LDO1 */
 	PALMAS_REG_PDATA(ldo2),
 	PALMAS_REG_PDATA(ldo3),
@@ -343,7 +344,7 @@ PALMAS_REG_INIT(smps6, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps9, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps10, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps10_out2, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo1, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo2, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo3, 0, 0, 0, 0);
@@ -372,7 +373,8 @@ static struct palmas_reg_init *roth_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps7),
 	PALMAS_REG_INIT_DATA(smps8),
 	PALMAS_REG_INIT_DATA(smps9),
-	PALMAS_REG_INIT_DATA(smps10),
+	PALMAS_REG_INIT_DATA(smps10_out2),
+	NULL,
 	PALMAS_REG_INIT_DATA(ldo1),
 	PALMAS_REG_INIT_DATA(ldo2),
 	PALMAS_REG_INIT_DATA(ldo3),
@@ -519,11 +521,11 @@ static struct regulator_consumer_supply fixed_reg_dvdd_lcd_supply[] = {
 	}
 
 FIXED_REG(0,	fan_5v0,	fan_5v0,
-	palmas_rails(smps10),	0,	0,
+	palmas_rails(smps10_out2),	0,	0,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	5000);
 
 FIXED_REG(1,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
-	palmas_rails(smps10),	0,	0,
+	palmas_rails(smps10_out2),	0,	0,
 	TEGRA_GPIO_PK1,	false,	true,	0,	5000);
 
 FIXED_REG(2,	lcd_bl_en,	lcd_bl_en,

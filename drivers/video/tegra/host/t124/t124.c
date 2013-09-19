@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/tegra-powergate.h>
 
+#include <mach/mc.h>
+
 #include "dev.h"
 #include "nvhost_job.h"
 #include "class_ids.h"
@@ -37,6 +39,7 @@
 #include "tsec/tsec.h"
 #include "vi/vi.h"
 #include "isp/isp.h"
+#include "gr3d/pod_scaling.h"
 
 #include "nvhost_memmgr.h"
 #include "chip_support.h"
@@ -45,7 +48,6 @@
 static int t124_num_alloc_channels = 0;
 
 #define HOST_EMC_FLOOR 300000000
-/* FIXME: Tune Powergate and clockgate delays */
 #define VI_CLOCKGATE_DELAY 60
 #define VI_POWERGATE_DELAY 500
 #define ISP_CLOCKGATE_DELAY 60
@@ -130,7 +132,7 @@ static struct host1x_device_info host1x04_info = {
 };
 
 struct nvhost_device_data t124_host1x_info = {
-	.clocks		= {{"host1x", 81600000}, {"actmon", UINT_MAX}, {} },
+	.clocks		= {{"host1x", 81600000}, {"actmon", UINT_MAX} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
 	.private_data	= &host1x04_info,
 };
@@ -168,8 +170,7 @@ struct nvhost_device_data t124_isp_info = {
 	.can_powergate   = false,
 	.clockgate_delay = ISP_CLOCKGATE_DELAY,
 	.powergate_delay = ISP_POWERGATE_DELAY,
-	.clocks          = { {"isp", UINT_MAX} },
-	.slave           = &tegra_isp01b_device,
+	.clocks          = { {"isp", UINT_MAX, 0, TEGRA_MC_CLIENT_ISP} },
 	.finalize_poweron = nvhost_isp_t124_finalize_poweron,
 };
 static struct platform_device tegra_isp01_device = {
@@ -202,7 +203,7 @@ struct nvhost_device_data t124_ispb_info = {
 	.can_powergate   = false,
 	.clockgate_delay = ISP_CLOCKGATE_DELAY,
 	.powergate_delay = ISP_POWERGATE_DELAY,
-	.clocks          = { {"isp", UINT_MAX} },
+	.clocks          = { {"isp", UINT_MAX, 0, TEGRA_MC_CLIENT_ISPB} },
 	.finalize_poweron = nvhost_isp_t124_finalize_poweron,
 };
 
@@ -239,7 +240,7 @@ struct nvhost_device_data t124_vi_info = {
 	.clockgate_delay  = VI_CLOCKGATE_DELAY,
 	.powergate_delay  = VI_POWERGATE_DELAY,
 	.clocks           = {
-		{"vi", UINT_MAX},
+		{"vi", UINT_MAX, 0},
 		{"csi", 0},
 		{"cilab", 102000000} },
 	.init             = nvhost_vi_init,
@@ -247,6 +248,7 @@ struct nvhost_device_data t124_vi_info = {
 	.prepare_poweroff = nvhost_vi_prepare_poweroff,
 	.finalize_poweron = nvhost_vi_finalize_poweron,
 	.ctrl_ops         = &tegra_vi_ctrl_ops,
+	.reset            = nvhost_vi_reset,
 	.slave         = &tegra_vi01b_device,
 };
 
@@ -281,6 +283,7 @@ struct nvhost_device_data t124_vib_info = {
 	.deinit           = nvhost_vi_deinit,
 	.prepare_poweroff = nvhost_vi_prepare_poweroff,
 	.finalize_poweron = nvhost_vi_finalize_poweron,
+	.master           = &tegra_vi01_device,
 };
 
 static struct platform_device tegra_vi01b_device = {
@@ -305,12 +308,16 @@ struct nvhost_device_data t124_msenc_info = {
 	.syncpts	= {NVSYNCPT_MSENC, NVSYNCPT_MSENC_SLICE},
 	.waitbases	= {NVWAITBASE_MSENC},
 	.class		= NV_VIDEO_ENCODE_MSENC_CLASS_ID,
-	.clocks		= {{"msenc", UINT_MAX}, {"emc", HOST_EMC_FLOOR} },
+	.clocks		= {{"msenc", UINT_MAX, 0, TEGRA_MC_CLIENT_MSENC},
+			  {"emc", HOST_EMC_FLOOR} },
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
 	.moduleid	= NVHOST_MODULE_MSENC,
 	.powergate_ids	= { TEGRA_POWERGATE_MPE, -1 },
 	.powergate_delay = 100,
 	.can_powergate	= true,
+	.init           = nvhost_msenc_init,
+	.deinit         = nvhost_msenc_deinit,
+	.finalize_poweron = nvhost_msenc_finalize_poweron,
 	.scaling_init	= nvhost_scale_init,
 	.scaling_deinit	= nvhost_scale_deinit,
 	.actmon_regs	= HOST1X_CHANNEL_ACTMON1_REG_BASE,
@@ -342,10 +349,13 @@ struct nvhost_device_data t124_tsec_info = {
 	.waitbases     = {NVWAITBASE_TSEC},
 	.class         = NV_TSEC_CLASS_ID,
 	.exclusive     = true,
-	.clocks = {{"tsec", UINT_MAX}, {"emc", HOST_EMC_FLOOR} },
+	.clocks	       = {{"tsec", UINT_MAX, 0, TEGRA_MC_CLIENT_TSEC},
+			 {"emc", HOST_EMC_FLOOR} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
 	.moduleid      = NVHOST_MODULE_TSEC,
+	.init          = nvhost_tsec_init,
+	.deinit        = nvhost_tsec_deinit,
 };
 
 static struct platform_device tegra_tsec01_device = {
@@ -358,10 +368,110 @@ static struct platform_device tegra_tsec01_device = {
 	},
 };
 
+#ifdef CONFIG_ARCH_TEGRA_VIC
+static struct resource vic03_resources[] = {
+	{
+	.name = "base",
+	.start = TEGRA_VIC_BASE,
+	.end = TEGRA_VIC_BASE + TEGRA_VIC_SIZE - 1,
+	.flags = IORESOURCE_MEM,
+	},
+};
 
+struct nvhost_device_data t124_vic_info = {
+	/*.syncpts*/
+	/*.modulemutexes*/
+	.clocks			= {{"vic03", UINT_MAX, 0, TEGRA_MC_CLIENT_VIC},
+				  {"emc", UINT_MAX} },
+	NVHOST_MODULE_NO_POWERGATE_IDS,
+	NVHOST_DEFAULT_CLOCKGATE_DELAY,
+	.moduleid      = NVHOST_MODULE_VIC,
+	.alloc_hwctx_handler = nvhost_vic03_alloc_hwctx_handler,
+	.can_powergate		= true,
+	.powergate_delay	= 500,
+	.powergate_ids		= { TEGRA_POWERGATE_VIC, -1 },
+	.init			= nvhost_vic03_init,
+	.deinit			= nvhost_vic03_deinit,
+	.alloc_hwctx_handler	= nvhost_vic03_alloc_hwctx_handler,
+	.finalize_poweron	= nvhost_vic03_finalize_poweron,
+	.prepare_poweroff	= nvhost_vic03_prepare_poweroff,
+	.scaling_init		= nvhost_scale_init,
+	.scaling_deinit		= nvhost_scale_deinit,
+	.actmon_regs		= HOST1X_CHANNEL_ACTMON2_REG_BASE,
+	.actmon_enabled		= true,
+};
+
+struct platform_device tegra_vic03_device = {
+	.name	       = "vic03",
+	.num_resources = 1,
+	.resource      = vic03_resources,
+	.dev           = {
+		.platform_data = &t124_vic_info,
+	},
+};
+#endif
+
+#if defined(CONFIG_TEGRA_GK20A)
+struct resource gk20a_resources[] = {
+	{
+	.start = TEGRA_GK20A_BAR0_BASE,
+	.end   = TEGRA_GK20A_BAR0_BASE + TEGRA_GK20A_BAR0_SIZE - 1,
+	.flags = IORESOURCE_MEM,
+	},
+	{
+	.start = TEGRA_GK20A_BAR1_BASE,
+	.end   = TEGRA_GK20A_BAR1_BASE + TEGRA_GK20A_BAR1_SIZE - 1,
+	.flags = IORESOURCE_MEM,
+	},
+};
+
+struct nvhost_device_data tegra_gk20a_info = {
+	/* the following are set by the platform (e.g. t124) support
+	.syncpts,
+	.syncpt_base,
+	.waitbases,
+	.modulemutexes,
+	*/
+	.class			= NV_GRAPHICS_GPU_CLASS_ID,
+	.clocks			= {{"PLLG_ref", UINT_MAX},
+				   {"pwr", 204000000},
+				   {"emc", UINT_MAX},
+				   {} },
+	.powergate_ids		= { TEGRA_POWERGATE_GPU, -1 },
+	NVHOST_DEFAULT_CLOCKGATE_DELAY,
+	.powergate_delay	= 1000*60*60*24,
+	.can_powergate		= true,
+	.alloc_hwctx_handler	= nvhost_gk20a_alloc_hwctx_handler,
+	.ctrl_ops		= &tegra_gk20a_ctrl_ops,
+	.moduleid		= NVHOST_MODULE_GPU,
+	.init			= nvhost_gk20a_init,
+	.deinit			= nvhost_gk20a_deinit,
+	.alloc_hwctx_handler	= nvhost_gk20a_alloc_hwctx_handler,
+	.prepare_poweroff	= nvhost_gk20a_prepare_poweroff,
+	.finalize_poweron	= nvhost_gk20a_finalize_poweron,
+#ifdef CONFIG_TEGRA_GK20A_DEVFREQ
+	.busy			= nvhost_gk20a_scale_notify_busy,
+	.idle			= nvhost_gk20a_scale_notify_idle,
+	.scaling_init		= nvhost_gk20a_scale_init,
+	.scaling_deinit		= nvhost_gk20a_scale_deinit,
+	.suspend_ndev		= nvhost_scale3d_suspend,
+	.devfreq_governor	= &nvhost_podgov,
+#endif
+};
+
+struct platform_device tegra_gk20a_device = {
+	.name		= "gk20a",
+	.resource	= gk20a_resources,
+	.num_resources	= 2, /* this is num ioresource_mem, not the sum */
+	.dev		= {
+		.platform_data = &tegra_gk20a_info,
+	},
+};
+#endif
 
 static struct platform_device *t124_devices[] = {
 	&tegra_isp01_device,
+	&tegra_isp01b_device,
 	&tegra_vi01_device,
 	&tegra_msenc03_device,
 	&tegra_tsec01_device,

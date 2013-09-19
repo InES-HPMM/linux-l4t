@@ -433,7 +433,7 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
-	{ "gpu",	NULL,		0,		true},
+	{ "gpu_ref",	NULL,		0,		true},
 #ifdef CONFIG_TEGRA_PLLM_SCALED
 	{ "vi",		"pll_p",	0,		false},
 	{ "isp",	"pll_p",	0,		false},
@@ -2140,7 +2140,7 @@ int __init tegra_register_fuse(void)
 	return platform_device_register(&tegra_fuse_device);
 }
 
-void __init tegra_release_bootloader_fb(void)
+int __init tegra_release_bootloader_fb(void)
 {
 	/* Since bootloader fb is reserved in common.c, it is freed here. */
 	if (tegra_bootloader_fb_size) {
@@ -2159,7 +2159,9 @@ void __init tegra_release_bootloader_fb(void)
 			free_bootmem_late(tegra_bootloader_fb2_start,
 						tegra_bootloader_fb2_size);
 	}
+	return 0;
 }
+late_initcall(tegra_release_bootloader_fb);
 
 static struct platform_device *pinmux_devices[] = {
 	&tegra_gpio_device,

@@ -66,7 +66,7 @@ static int nvhost_scale_make_freq_table(struct nvhost_device_profile *profile)
 {
 	struct gk20a *g = get_gk20a(profile->pdev);
 	unsigned long *freqs;
-	int num_freqs, err, i;
+	int num_freqs, err;
 
 	/* make sure the clock is available */
 	if (!gk20a_clk_get(g))
@@ -78,20 +78,8 @@ static int nvhost_scale_make_freq_table(struct nvhost_device_profile *profile)
 	if (err)
 		return -ENOSYS;
 
-	/* allocate space for a duplicate table */
-	profile->devfreq_profile.freq_table =
-		kzalloc(num_freqs * sizeof(unsigned int), GFP_KERNEL);
-	if (!profile->devfreq_profile.freq_table)
-		return -ENOMEM;
-
-	/* copy the table */
-	memcpy(profile->devfreq_profile.freq_table, freqs,
-	       num_freqs * sizeof(unsigned int));
+	profile->devfreq_profile.freq_table = (unsigned int *)freqs;
 	profile->devfreq_profile.max_state = num_freqs;
-
-	/* convert gpc2clk to gpcclk */
-	for (i = 0; i < num_freqs; i++)
-		profile->devfreq_profile.freq_table[i] /= 2;
 
 	return 0;
 }
@@ -202,12 +190,12 @@ static int gk20a_scale_get_dev_status(struct device *dev,
 	update_load_estimate_gpmu(to_platform_device(dev));
 
 	/* Copy the contents of the current device status */
+	profile->ext_stat.busy = profile->last_event_type;
 	*stat = profile->dev_stat;
 
 	/* Finally, clear out the local values */
 	profile->dev_stat.total_time = 0;
 	profile->dev_stat.busy_time = 0;
-	profile->last_event_type = DEVICE_UNKNOWN;
 
 	return 0;
 }
@@ -229,13 +217,13 @@ void nvhost_gk20a_scale_init(struct platform_device *pdev)
 	if (!profile)
 		return;
 	profile->pdev = pdev;
-	profile->last_event_type = DEVICE_UNKNOWN;
+	profile->last_event_type = DEVICE_IDLE;
 
 	/* Initialize devfreq related structures */
 	profile->dev_stat.private_data = &profile->ext_stat;
 	profile->ext_stat.min_freq = gk20a_clk_round_rate(g, 0);
 	profile->ext_stat.max_freq = gk20a_clk_round_rate(g, UINT_MAX);
-	profile->ext_stat.busy = DEVICE_UNKNOWN;
+	profile->ext_stat.busy = DEVICE_IDLE;
 
 	if (profile->ext_stat.min_freq == profile->ext_stat.max_freq) {
 		dev_warn(&pdev->dev, "max rate = min rate (%lu), disabling scaling\n",

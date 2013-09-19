@@ -80,6 +80,7 @@ struct dvfs_rail {
 	int step;
 	int step_up;
 	bool jmp_to_zero;
+	bool in_band_pm;
 	bool disabled;
 	bool updating;
 	bool resolving_to;
@@ -91,7 +92,7 @@ struct dvfs_rail {
 	struct regulator *reg;
 	int millivolts;
 	int new_millivolts;
-	int offs_millivolts;
+	int dbg_mv_offs;
 	int boot_millivolts;
 	int disable_millivolts;
 	int suspend_millivolts;
@@ -177,7 +178,7 @@ struct cvb_dvfs {
 	int speedo_scale;
 	int voltage_scale;
 	struct cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
-	int therm_trips_table[MAX_THERMAL_LIMITS];
+	int vmin_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
 };
 
@@ -186,6 +187,7 @@ struct cvb_dvfs {
 #define core_cvb_dvfs	cvb_dvfs
 
 extern struct dvfs_rail *tegra_cpu_rail;
+extern struct dvfs_rail *tegra_gpu_rail;
 extern struct dvfs_rail *tegra_core_rail;
 
 struct dvfs_data {
@@ -215,11 +217,15 @@ int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
+int tegra_dvfs_rail_power_up(struct dvfs_rail *rail);
+int tegra_dvfs_rail_power_down(struct dvfs_rail *rail);
+bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail);
 bool tegra_dvfs_rail_updating(struct clk *clk);
 void tegra_dvfs_rail_off(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_on(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_pause(struct dvfs_rail *rail, ktime_t delta, bool on);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
+
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate);
@@ -229,9 +235,17 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event);
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
+
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
+struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void);
+void tegra_dvfs_rail_init_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
+void tegra_dvfs_rail_init_vmax_thermal_profile(
+	int *therm_trips_table, int *therm_caps_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);
 
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC

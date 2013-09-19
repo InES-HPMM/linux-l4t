@@ -1459,19 +1459,19 @@ static int tfa9887R_i2c_probe(struct i2c_client *i2c,
 	dev_info(&i2c->dev, "TFA9887 revision %d\n",val);
 	tfa9887_kobj = kobject_create_and_add("tfa9887", kernel_kobj);
 
-	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_config);
+	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_config.attr);
 	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
 	}
-	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_cal);
+	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_cal.attr);
 	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
 	}
-	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_vol);
+	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_vol.attr);
 	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
@@ -1494,9 +1494,9 @@ static int tfa9887R_i2c_remove(struct i2c_client *client)
 {
 	struct tfa9887_priv *tfa9887R = i2c_get_clientdata(client);
 	regmap_exit(tfa9887R->regmap);
-	sysfs_remove_file(tfa9887_kobj, &tfa9887_config);
-	sysfs_remove_file(tfa9887_kobj, &tfa9887_cal);
-	sysfs_remove_file(tfa9887_kobj, &tfa9887_vol);
+	sysfs_remove_file(tfa9887_kobj, &tfa9887_config.attr);
+	sysfs_remove_file(tfa9887_kobj, &tfa9887_cal.attr);
+	sysfs_remove_file(tfa9887_kobj, &tfa9887_vol.attr);
 	kobject_del(tfa9887_kobj);
 	return 0;
 }

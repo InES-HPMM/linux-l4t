@@ -29,7 +29,7 @@ struct core_bus_limit_table {
 	struct kobj_attribute refcnt_attr;
 	struct kobj_attribute level_attr;
 	int refcnt;
-	int level;
+	unsigned long level;
 	struct notifier_block qos_nb;
 	int pm_qos_class;
 	bool applied;
@@ -38,11 +38,21 @@ struct core_bus_limit_table {
 
 };
 
+struct core_bus_rates_table {
+	const char *bus_clk_name;
+	struct clk *bus_clk;
+	struct kobj_attribute rate_attr;
+	struct kobj_attribute available_rates_attr;
+	unsigned long available_rates[MAX_DVFS_FREQS];
+};
+
 int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
 	const int *millivolts, int millivolts_num, struct kobject *cap_kobj);
 int tegra_init_shared_bus_cap(struct core_bus_limit_table *table,
 	int table_size, struct kobject *cap_kobj);
 int tegra_init_shared_bus_floor(struct core_bus_limit_table *table,
+	int table_size, struct kobject *floor_kobj);
+int tegra_init_sysfs_shared_bus_rate(struct core_bus_rates_table *table,
 	int table_size, struct kobject *floor_kobj);
 
 #endif /* _MACH_TEGRA_CORE_SYSFS_LIMITS_H_ */

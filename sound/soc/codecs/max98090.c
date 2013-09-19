@@ -2665,8 +2665,6 @@ static int max98090_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 	struct snd_soc_codec *codec = codec_dai->codec;
 	int regval;
 
-	dev_info(codec->dev, "max98090_dai_digital_mute\n");
-
 	regval = mute ? M98090_DAI_LVL_DVM_MASK : 0;
 	snd_soc_update_bits(codec, M98090_REG_27_DAI_LVL,
 		M98090_DAI_LVL_DVM_MASK, regval);

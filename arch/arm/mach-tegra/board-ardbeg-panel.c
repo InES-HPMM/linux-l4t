@@ -257,39 +257,38 @@ static int ardbeg_hdmi_hotplug_init(struct device *dev)
 	return 0;
 }
 
-/* Electrical characteristics for HDMI, all modes must be declared here */
 struct tmds_config ardbeg_tmds_config[] = {
-	{ /* 480p : 27 MHz and below */
-		.pclk = 27000000,
-		.pll0 = 0x01003010,
-		.pll1 = 0x00301b00,
-		.drive_current = 0x23232323,
-		.pe_current = 0x00000000,
-		.peak_current = 0x00000000,
+	{ /* 480p/576p / 25.2MHz/27MHz modes */
+	.pclk = 27000000,
+	.pll0 = 0x01003110,
+	.pll1 = 0x00300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x2e2e2e2e,
+	.peak_current = 0x00000000,
 	},
-	{ /* 720p : 74.25MHz modes */
-		.pclk = 74250000,
-		.pll0 = 0x01003110,
-		.pll1 = 0x00301b00,
-		.drive_current = 0x25252525,
-		.pe_current = 0x00000000,
-		.peak_current = 0x03030303,
+	{ /* 720p / 74.25MHz modes */
+	.pclk = 74250000,
+	.pll0 =  0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x20202020,
+	.peak_current = 0x00000000,
 	},
-	{ /* 1080p : 148.5MHz modes */
-		.pclk = 148500000,
-		.pll0 = 0x01003310,
-		.pll1 = 0x00301b00,
-		.drive_current = 0x27272727,
-		.pe_current = 0x00000000,
-		.peak_current = 0x03030303,
+	{ /* 1080p / 148.5MHz modes */
+	.pclk = 148500000,
+	.pll0 = 0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x20202020,
+	.peak_current = 0x00000000,
 	},
-	{ /* 4K : 297MHz modes */
-		.pclk = INT_MAX,
-		.pll0 = 0x01003f10,
-		.pll1 = 0x00300f00,
-		.drive_current = 0x303f3f3f,
-		.pe_current = 0x00000000,
-		.peak_current = 0x040f0f0f,
+	{
+	.pclk = INT_MAX,
+	.pll0 = 0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x3A353536, /* lane3 needs a slightly lower current */
+	.peak_current = 0x00000000,
 	},
 };
 
@@ -377,21 +376,18 @@ static struct nvmap_platform_carveout ardbeg_carveouts[] = {
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
 		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
 		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.buddy_size	= 0, /* no buddy allocation for IRAM */
 	},
 	[1] = {
 		.name		= "generic-0",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
 		.base		= 0, /* Filled in by ardbeg_panel_init() */
 		.size		= 0, /* Filled in by ardbeg_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 	[2] = {
 		.name		= "vpr",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
 		.base		= 0, /* Filled in by ardbeg_panel_init() */
 		.size		= 0, /* Filled in by ardbeg_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 };
 

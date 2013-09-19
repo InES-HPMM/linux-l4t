@@ -1038,7 +1038,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	fuse_pgm_cycles = fuse_get_pgm_cycles(index);
 	pr_debug("%s: use %d programming cycles\n", __func__,
 						fuse_pgm_cycles);
-	if (fuse_pgm_cycles)
+	if (fuse_pgm_cycles == 0)
 		return -EPERM;
 
 	clk_enable(clk_fuse);

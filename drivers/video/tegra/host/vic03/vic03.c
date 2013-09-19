@@ -43,42 +43,12 @@
 #include "hw_tfbif_vic03.h"
 
 #include "t124/hardware_t124.h" /* for nvhost opcodes*/
+#include "t124/t124.h"
 
 #include <mach/pm_domains.h>
 
 #include "../../../../../arch/arm/mach-tegra/iomap.h"
 
-static struct resource vic03_resources[] = {
-{
-	.name = "base",
-	.start = TEGRA_VIC_BASE,
-	.end = TEGRA_VIC_BASE + TEGRA_VIC_SIZE - 1,
-	.flags = IORESOURCE_MEM,
-},
-};
-
-struct nvhost_device_data vic03_info = {
-	/*.syncpts*/
-	/*.modulemutexes*/
-	.clocks = {{"vic03", UINT_MAX}, {"emc", UINT_MAX}, {} },
-	NVHOST_MODULE_NO_POWERGATE_IDS,
-	NVHOST_DEFAULT_CLOCKGATE_DELAY,
-	.moduleid      = NVHOST_MODULE_VIC,
-	.alloc_hwctx_handler = nvhost_vic03_alloc_hwctx_handler,
-	.can_powergate		= true,
-	.powergate_delay	= 500,
-	.powergate_ids		= { TEGRA_POWERGATE_VIC, -1 },
-	.prepare_poweroff	= nvhost_vic03_prepare_poweroff,
-};
-
-struct platform_device tegra_vic03_device = {
-	.name	       = "vic03",
-	.num_resources = 1,
-	.resource      = vic03_resources,
-	.dev           = {
-		.platform_data = &vic03_info,
-	},
-};
 static inline struct vic03 *get_vic03(struct platform_device *dev)
 {
 	return (struct vic03 *)nvhost_get_private_data(dev);
@@ -278,7 +248,7 @@ static int vic03_read_ucode(struct platform_device *dev)
 		err = PTR_ERR(v->ucode.sgt);
 		goto clean_up;
 	}
-	v->ucode.pa = sg_dma_address(v->ucode.sgt->sgl);
+	v->ucode.pa = nvhost_memmgr_dma_addr(v->ucode.sgt);
 
 	v->ucode.va = nvhost_memmgr_mmap(v->ucode.mem_r);
 	if (!v->ucode.va) {
@@ -522,7 +492,7 @@ static struct nvhost_hwctx *vic03_alloc_hwctx(struct nvhost_hwctx_handler *h,
 			ctx->restore, &ch->dev->dev);
 	if (IS_ERR(ctx->restore_sgt))
 		goto fail_pin;
-	ctx->restore_phys = sg_dma_address(ctx->restore_sgt->sgl);
+	ctx->restore_phys = nvhost_memmgr_dma_addr(ctx->restore_sgt);
 
 	ctx->restore_size = nvhost_vic03_restore_size;
 	ctx->hwctx.restore_incrs = 1;
@@ -633,7 +603,7 @@ int nvhost_vic03_prepare_poweroff(struct platform_device *dev)
 
 static struct of_device_id tegra_vic_of_match[] = {
 	{ .compatible = "nvidia,tegra124-vic",
-		.data = (struct nvhost_device_data *)&vic03_info },
+		.data = (struct nvhost_device_data *)&t124_vic_info },
 	{ },
 };
 
@@ -653,21 +623,14 @@ static int vic03_probe(struct platform_device *dev)
 
 	nvhost_dbg_fn("dev:%p pdata:%p", dev, pdata);
 
-	pdata->init			= nvhost_vic03_init;
-	pdata->deinit			= nvhost_vic03_deinit;
-	pdata->finalize_poweron		= nvhost_vic03_finalize_poweron;
-	pdata->alloc_hwctx_handler	= nvhost_vic03_alloc_hwctx_handler;
-
-	pdata->scaling_init		= nvhost_scale_init;
-	pdata->scaling_deinit		= nvhost_scale_deinit;
-	pdata->actmon_regs		= HOST1X_CHANNEL_ACTMON2_REG_BASE;
-	pdata->actmon_enabled		= true;
-
 	pdata->pdev = dev;
-
 	mutex_init(&pdata->lock);
-
 	platform_set_drvdata(dev, pdata);
+
+	err = nvhost_client_device_get_resources(dev);
+	if (err)
+		return err;
+
 	dev->dev.platform_data = NULL;
 
 	nvhost_module_init(dev);
@@ -677,10 +640,6 @@ static int vic03_probe(struct platform_device *dev)
 
 	err = nvhost_module_add_domain(&pdata->pd, dev);
 #endif
-
-	err = nvhost_client_device_get_resources(dev);
-	if (err)
-		return err;
 
 	err = nvhost_client_device_init(dev);
 	if (err) {

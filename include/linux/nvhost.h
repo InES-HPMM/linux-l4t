@@ -175,6 +175,7 @@ struct nvhost_device_data {
 	int		powergate_delay;/* Delay before power gated */
 	struct nvhost_clock clocks[NVHOST_MODULE_MAX_CLOCKS];/* Clock names */
 
+	struct platform_device *master;	/* Master of a slave device */
 	struct platform_device *slave;	/* Slave device to create in probe */
 
 	int		num_clks;	/* Number of clocks opened for dev */
@@ -219,6 +220,12 @@ struct nvhost_device_data {
 
 	/* Finalize power on. Can be used for context restore. */
 	int (*finalize_poweron)(struct platform_device *dev);
+
+	/*
+	 * Reset the unit. Used for timeout recovery, resetting the unit on
+	 * probe and when un-powergating.
+	 */
+	void (*reset)(struct platform_device *dev);
 
 	/* Device is busy. */
 	void (*busy)(struct platform_device *);
@@ -271,9 +278,8 @@ struct nvhost_device_data *nvhost_get_devdata(struct platform_device *pdev)
 }
 
 enum nvhost_devfreq_busy {
-	DEVICE_UNKNOWN = 0,
-	DEVICE_IDLE = 1,
-	DEVICE_BUSY = 2
+	DEVICE_IDLE = 0,
+	DEVICE_BUSY = 1
 };
 
 struct nvhost_devfreq_ext_stat {

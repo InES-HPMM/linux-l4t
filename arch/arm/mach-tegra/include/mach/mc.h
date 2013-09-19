@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/include/mach/mc.h
  *
  * Copyright (C) 2010-2012 Google, Inc.
+ * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -133,5 +134,27 @@ static inline unsigned tegra_emc_dvfs_latency(unsigned int freq_khz)
 	 */
 	return 4;
 }
+
+#define TEGRA_MC_CLIENT_AFI		0
+#define TEGRA_MC_CLIENT_DC		2
+#define TEGRA_MC_CLIENT_DCB		3
+#define TEGRA_MC_CLIENT_EPP		4
+#define TEGRA_MC_CLIENT_G2		5
+#define TEGRA_MC_CLIENT_ISP		8
+#define TEGRA_MC_CLIENT_MSENC		11
+#define TEGRA_MC_CLIENT_MPE		11
+#define TEGRA_MC_CLIENT_NV		12
+#define TEGRA_MC_CLIENT_SATA		15
+#define TEGRA_MC_CLIENT_VDE		16
+#define TEGRA_MC_CLIENT_VI		17
+#define TEGRA_MC_CLIENT_VIC		18
+#define TEGRA_MC_CLIENT_XUSB_HOST	19
+#define TEGRA_MC_CLIENT_XUSB_DEV	20
+#define TEGRA_MC_CLIENT_TSEC		22
+#define TEGRA_MC_CLIENT_ISPB		33
+#define TEGRA_MC_CLIENT_GPU		34
+
+int tegra_mc_flush(int id);
+int tegra_mc_flush_done(int id);
 
 #endif

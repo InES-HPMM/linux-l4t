@@ -170,7 +170,7 @@ static int mhi_dgram_sendmsg(
 
 	if (msg->msg_flags & ~mflags) {
 		printk(KERN_WARNING "%s: incompatible msg_flags: 0x%08X\n",
-			msg->msg_flags, __func__);
+			__func__, msg->msg_flags);
 		err = -EOPNOTSUPP;
 		goto out;
 	}
@@ -179,7 +179,7 @@ static int mhi_dgram_sendmsg(
 				  (msg->msg_flags & MSG_DONTWAIT), &err);
 	if (!skb) {
 		printk(KERN_ERR "%s: sock_alloc_send_skb failed: %d\n",
-				err, __func__);
+				__func__, err);
 		goto out;
 	}
 
@@ -189,7 +189,7 @@ static int mhi_dgram_sendmsg(
 	err = memcpy_fromiovec((void *)skb_put(skb, len), msg->msg_iov, len);
 	if (err < 0) {
 		printk(KERN_ERR "%s: memcpy_fromiovec failed: %d\n",
-				err, __func__);
+				__func__, err);
 		goto drop;
 	}
 
@@ -198,13 +198,13 @@ static int mhi_dgram_sendmsg(
 
 	if (!dev) {
 		printk(KERN_ERR "%s: no device for ifindex:%d\n",
-				msk->sk_ifindex, __func__);
+				__func__, msk->sk_ifindex);
 		goto drop;
 	}
 
 	if (!(dev->flags & IFF_UP)) {
 		printk(KERN_ERR "%s: device %d not IFF_UP\n",
-				msk->sk_ifindex, __func__);
+				__func__, msk->sk_ifindex);
 		err = -ENETDOWN;
 		goto drop;
 	}
@@ -255,7 +255,7 @@ static int mhi_dgram_recvmsg(
 
 	if (flags & ~mflags) {
 		printk(KERN_WARNING "%s: incompatible socket flags: 0x%08X",
-				flags, __func__);
+				__func__, flags);
 		goto out2;
 	}
 

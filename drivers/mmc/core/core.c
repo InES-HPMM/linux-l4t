@@ -153,11 +153,11 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 {
 	struct mmc_command *cmd = mrq->cmd;
 	int err = cmd->error;
+#ifdef CONFIG_MMC_FREQ_SCALING
 	ktime_t t;
 	unsigned long time;
 	unsigned long flags;
 
-#ifdef CONFIG_MMC_FREQ_SCALING
 	if (host->dev_stats) {
 		t = ktime_get();
 		time = ktime_us_delta(t, host->dev_stats->t_busy);
@@ -3036,13 +3036,14 @@ EXPORT_SYMBOL(mmc_cache_ctrl);
 int mmc_suspend_host(struct mmc_host *host)
 {
 	int err = 0;
-	ktime_t t;
 
 	if (mmc_bus_needs_resume(host))
 		return 0;
 
 #ifdef CONFIG_MMC_FREQ_SCALING
 	if (host->df) {
+		ktime_t t;
+
 		cancel_delayed_work_sync(&host->dfs_work);
 
 		t = ktime_get();

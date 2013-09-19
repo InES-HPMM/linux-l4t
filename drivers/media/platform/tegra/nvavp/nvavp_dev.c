@@ -143,6 +143,7 @@ struct nvavp_info {
 
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
 	bool				pending;
+	bool				stay_on;
 
 	u32				syncpt_id;
 	u32				syncpt_value;
@@ -230,8 +231,13 @@ static void nvavp_set_channel_control_area(struct nvavp_info *nvavp, int channel
 		control->put (0x%08x) control->get (0x%08x)\n",
 		channel_id, (u32) &control->put, (u32) &control->get);
 
-	/* enable avp VDE clock control and disable iram clock gating */
-	writel(0x0, &control->idle_clk_enable);
+	/* Clock gating disabled for video and enabled for audio  */
+	if (IS_VIDEO_CHANNEL_ID(channel_id))
+		writel(0x1, &control->idle_clk_enable);
+	else
+		writel(0x0, &control->idle_clk_enable);
+
+	/* Disable iram clock gating */
 	writel(0x0, &control->iram_clk_gating);
 
 	/* enable avp idle timeout interrupt */
@@ -320,7 +326,7 @@ static void nvavp_clks_enable(struct nvavp_info *nvavp)
 
 static void nvavp_clks_disable(struct nvavp_info *nvavp)
 {
-	if (--nvavp->clk_enabled == 0) {
+	if ((--nvavp->clk_enabled == 0) && !nvavp->stay_on) {
 		clk_disable_unprepare(nvavp->bsev_clk);
 		clk_disable_unprepare(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
@@ -385,7 +391,7 @@ static int nvavp_service(struct nvavp_info *nvavp)
 	if (!(inbox & NVAVP_INBOX_VALID))
 		inbox = 0x00000000;
 
-	if (inbox & NVE276_OS_INTERRUPT_VIDEO_IDLE)
+	if ((inbox & NVE276_OS_INTERRUPT_VIDEO_IDLE) && (!nvavp->stay_on))
 		schedule_work(&nvavp->clock_disable_work);
 
 	if (inbox & NVE276_OS_INTERRUPT_SYNCPT_INCR_TRAP) {
@@ -1316,15 +1322,22 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 		return -EINVAL;
 	}
 
-	mutex_lock(&nvavp->open_lock);
 	if (clock.state) {
-		if (clientctx->clk_reqs++ == 0)
+		mutex_lock(&nvavp->open_lock);
+		if (clientctx->clk_reqs++ == 0) {
 			nvavp_clks_enable(nvavp);
+			nvavp->stay_on = true;
+		}
+		mutex_unlock(&nvavp->open_lock);
+		cancel_work_sync(&nvavp->clock_disable_work);
 	} else {
-		if (--clientctx->clk_reqs == 0)
+		mutex_lock(&nvavp->open_lock);
+		if (--clientctx->clk_reqs == 0) {
+			nvavp->stay_on = false;
 			nvavp_clks_disable(nvavp);
+		}
+		mutex_unlock(&nvavp->open_lock);
 	}
-	mutex_unlock(&nvavp->open_lock);
 	return 0;
 }
 

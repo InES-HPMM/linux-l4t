@@ -274,7 +274,7 @@ static int tsensor_calib_offset[] = {
 
 int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 {
-	if (index < 0 || index > ARRAY_SIZE(tsensor_calib_offset))
+	if (index < 0 || index >= ARRAY_SIZE(tsensor_calib_offset))
 		return -EINVAL;
 	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
 	return 0;

@@ -497,7 +497,7 @@ static int cm3218_suspend(struct device *dev)
 		return ret;
 	}
 
-	if (regulator_is_enabled(chip->consumers[0].consumer))
+	if (chip->i2c_xfer_state != I2C_XFER_NOT_ENABLED)
 		ret = cm3218_activate_standby_mode(chip);
 	if (ret)
 		dev_err(&chip->client->dev,

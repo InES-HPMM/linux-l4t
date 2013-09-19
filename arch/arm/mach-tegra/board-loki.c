@@ -752,7 +752,7 @@ struct rm_spi_ts_platform_data rm31080ts_loki_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
@@ -813,14 +813,13 @@ static void __init tegra_loki_late_init(void)
 	loki_suspend_init();
 #if 0
 	loki_emc_init();
-	loki_edp_init();
 #endif
+	loki_edp_init();
 	isomgr_init();
 	loki_touch_init();
 	loki_panel_init();
 	loki_kbc_init();
 	loki_pmon_init();
-	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
@@ -872,12 +871,18 @@ static const char * const loki_dt_board_compat[] = {
 	NULL
 };
 
+static void __init tegra_loki_init_early(void)
+{
+	loki_rail_alignment_init();
+	tegra12x_init_early();
+}
+
 DT_MACHINE_START(LOKI, "loki")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_loki_reserve,
-	.init_early	= tegra12x_init_early,
+	.init_early	= tegra_loki_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_loki_dt_init,

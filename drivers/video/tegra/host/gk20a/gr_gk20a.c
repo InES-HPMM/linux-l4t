@@ -238,8 +238,36 @@ static int gr_gk20a_wait_idle(struct gk20a *g, unsigned long end_jiffies,
 
 static int gr_gk20a_ctx_reset(struct gk20a *g, u32 rst_mask)
 {
+	u32 delay = GR_IDLE_CHECK_DEFAULT;
+	unsigned long end_jiffies = jiffies +
+		msecs_to_jiffies(gk20a_get_gr_idle_timeout(g));
+	u32 reg;
+
 	nvhost_dbg_fn("");
-	/* FE_PWR_MODE_MODE_FORCE_ON for RTLSim and EMulation? */
+
+	/* Force clocks on */
+	gk20a_writel(g, NV_PGRAPH_PRI_FE_PWR_MODE,
+			NV_PGRAPH_PRI_FE_PWR_MODE_REQ_SEND |
+			NV_PGRAPH_PRI_FE_PWR_MODE_MODE_FORCE_ON);
+
+	/* Wait for the clocks to indicate that they are on */
+	do {
+		reg = gk20a_readl(g, NV_PGRAPH_PRI_FE_PWR_MODE);
+
+		if ((reg & NV_PGRAPH_PRI_FE_PWR_MODE_REQ_MASK) ==
+			NV_PGRAPH_PRI_FE_PWR_MODE_REQ_DONE)
+			break;
+
+		usleep_range(delay, delay * 2);
+		delay = min_t(u32, delay << 1, GR_IDLE_CHECK_MAX);
+
+	} while (time_before(jiffies, end_jiffies));
+
+	if (!time_before(jiffies, end_jiffies)) {
+		nvhost_err(dev_from_gk20a(g),
+			   "failed to force the clocks on\n");
+		WARN_ON(1);
+	}
 
 	if (rst_mask) {
 		gk20a_writel(g, gr_fecs_ctxsw_reset_ctl_r(), rst_mask);
@@ -273,7 +301,31 @@ static int gr_gk20a_ctx_reset(struct gk20a *g, u32 rst_mask)
 	/* Delay for > 10 nvclks after writing reset. */
 	gk20a_readl(g, gr_fecs_ctxsw_reset_ctl_r());
 
-	/* FE_PWR_MODE_MODE_AUTO for RTLSim and EMulation? */
+	end_jiffies = jiffies + msecs_to_jiffies(gk20a_get_gr_idle_timeout(g));
+
+	/* Set power mode back to auto */
+	gk20a_writel(g, NV_PGRAPH_PRI_FE_PWR_MODE,
+			NV_PGRAPH_PRI_FE_PWR_MODE_REQ_SEND |
+			NV_PGRAPH_PRI_FE_PWR_MODE_MODE_AUTO);
+
+	/* Wait for the request to complete */
+	do {
+		reg = gk20a_readl(g, NV_PGRAPH_PRI_FE_PWR_MODE);
+
+		if ((reg & NV_PGRAPH_PRI_FE_PWR_MODE_REQ_MASK) ==
+			NV_PGRAPH_PRI_FE_PWR_MODE_REQ_DONE)
+			break;
+
+		usleep_range(delay, delay * 2);
+		delay = min_t(u32, delay << 1, GR_IDLE_CHECK_MAX);
+
+	} while (time_before(jiffies, end_jiffies));
+
+	if (!time_before(jiffies, end_jiffies)) {
+		nvhost_err(dev_from_gk20a(g),
+			   "failed to set power mode to auto\n");
+		WARN_ON(1);
+	}
 
 	return 0;
 }
@@ -1962,16 +2014,8 @@ static void gk20a_remove_gr_support(struct gr_gk20a *gr)
 
 	nvhost_memmgr_free_sg_table(memmgr, gr->mmu_wr_mem.mem.ref,
 			gr->mmu_wr_mem.mem.sgt);
-	nvhost_memmgr_free_sg_table(memmgr, gr->mmu_rd_mem.mem.ref,
-			gr->mmu_rd_mem.mem.sgt);
-#ifdef CONFIG_TEGRA_IOMMU_SMMU
-	if (sg_dma_address(gr->compbit_store.mem.sgt->sgl))
-		nvhost_memmgr_smmu_unmap(gr->compbit_store.mem.sgt,
-				gr->compbit_store.mem.size,
-				dev_from_gk20a(g));
-#endif
-	nvhost_memmgr_free_sg_table(memmgr, gr->compbit_store.mem.ref,
-			gr->compbit_store.mem.sgt);
+	nvhost_memmgr_unpin(memmgr, gr->mmu_rd_mem.mem.ref,
+			dev_from_gk20a(g), gr->mmu_rd_mem.mem.sgt);
 	nvhost_memmgr_put(memmgr, gr->mmu_wr_mem.mem.ref);
 	nvhost_memmgr_put(memmgr, gr->mmu_rd_mem.mem.ref);
 	nvhost_memmgr_put(memmgr, gr->compbit_store.mem.ref);
@@ -2499,17 +2543,12 @@ static int gr_gk20a_init_comptag(struct gk20a *g, struct gr_gk20a *gr)
 	gr->compbit_store.mem.size = compbit_backing_size;
 
 	gr->compbit_store.mem.sgt =
-		nvhost_memmgr_sg_table(memmgr, gr->compbit_store.mem.ref);
+		nvhost_memmgr_pin(memmgr, gr->compbit_store.mem.ref,
+				dev_from_gk20a(g));
 	if (IS_ERR(gr->compbit_store.mem.sgt)) {
 		ret = PTR_ERR(gr->compbit_store.mem.sgt);
 		goto clean_up;
 	}
-#ifdef CONFIG_TEGRA_IOMMU_SMMU
-	ret = nvhost_memmgr_smmu_map(gr->compbit_store.mem.sgt,
-			compbit_backing_size, dev_from_gk20a(g));
-	if (ret)
-		goto clean_up;
-#endif
 	gr->compbit_store.base_pa =
 		gk20a_mm_iova_addr(gr->compbit_store.mem.sgt->sgl);
 
@@ -2804,6 +2843,7 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 	struct zbc_depth_table *d_tbl;
 	u32 i, ret = -ENOMEM;
 	bool added = false;
+	u32 entries;
 
 	/* no endian swap ? */
 
@@ -2881,8 +2921,11 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 		return -EINVAL;
 	}
 
-	if (added && ret == 0) {
-		/* update zbc for elpg */
+	if (!added && ret == 0) {
+		/* update zbc for elpg only when new entry is added */
+		entries = max(gr->max_used_color_index,
+					gr->max_used_depth_index);
+		pmu_save_zbc(g, entries);
 	}
 
 	return ret;
@@ -3328,8 +3371,9 @@ static int gk20a_init_gr_setup_hw(struct gk20a *g)
 	gr_gk20a_slcg_perf_load_gating_prod(g, g->slcg_enabled);
 
 	/* init mmu debug buffer */
-	addr_lo = u64_lo32(sg_phys(gr->mmu_wr_mem.mem.sgt->sgl));
-	addr_hi = u64_hi32(sg_phys(gr->mmu_wr_mem.mem.sgt->sgl));
+	addr = gk20a_mm_iova_addr(gr->mmu_wr_mem.mem.sgt->sgl);
+	addr_lo = u64_lo32(addr);
+	addr_hi = u64_hi32(addr);
 	addr = (addr_lo >> fb_mmu_debug_wr_addr_alignment_v()) |
 		(addr_hi << (32 - fb_mmu_debug_wr_addr_alignment_v()));
 
@@ -3338,8 +3382,9 @@ static int gk20a_init_gr_setup_hw(struct gk20a *g)
 		     fb_mmu_debug_wr_vol_false_f() |
 		     fb_mmu_debug_wr_addr_v(addr));
 
-	addr_lo = u64_lo32(sg_phys(gr->mmu_rd_mem.mem.sgt->sgl));
-	addr_hi = u64_hi32(sg_phys(gr->mmu_rd_mem.mem.sgt->sgl));
+	addr = gk20a_mm_iova_addr(gr->mmu_rd_mem.mem.sgt->sgl);
+	addr_lo = u64_lo32(addr);
+	addr_hi = u64_hi32(addr);
 	addr = (addr_lo >> fb_mmu_debug_rd_addr_alignment_v()) |
 		(addr_hi << (32 - fb_mmu_debug_rd_addr_alignment_v()));
 

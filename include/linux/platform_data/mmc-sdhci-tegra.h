@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Palm, Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Yvonne Yip <y@palm.com>
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
@@ -28,7 +29,8 @@
  */
 #define MMC_OCR_1V8_MASK    0x00000008
 #define MMC_OCR_2V8_MASK    0x00010000
-#define MMC_OCR_3V2_MASK    0x00200000
+#define MMC_OCR_3V2_MASK    0x00100000
+#define MMC_OCR_3V3_MASK    0x00200000
 
 /* uhs mask can be used to mask any of the UHS modes support */
 #define MMC_UHS_MASK_SDR12	0x1
@@ -47,6 +49,7 @@ struct tegra_sdhci_platform_data {
 	int pm_caps;
 	int nominal_vcore_mv;
 	int min_vcore_override_mv;
+	int boot_vcore_mv;
 	unsigned int max_clk_limit;
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
@@ -59,6 +62,7 @@ struct tegra_sdhci_platform_data {
 	bool edp_support;
 	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool cd_wakeup_incapable;
+	bool en_nominal_vcore_tuning;
 };
 
 #endif

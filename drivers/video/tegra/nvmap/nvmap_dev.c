@@ -25,6 +25,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
+#include <linux/device.h>
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/oom.h>
@@ -48,7 +49,6 @@
 
 #include "nvmap_priv.h"
 #include "nvmap_ioctl.h"
-#include "nvmap_mru.h"
 
 #define NVMAP_NUM_PTES		64
 #define NVMAP_CARVEOUT_KILLER_RETRY_TIME 100 /* msecs */
@@ -90,6 +90,8 @@ struct nvmap_device {
 	struct nvmap_deferred_ops deferred_ops;
 };
 
+struct platform_device *nvmap_pdev;
+EXPORT_SYMBOL(nvmap_pdev);
 struct nvmap_device *nvmap_dev;
 EXPORT_SYMBOL(nvmap_dev);
 struct nvmap_share *nvmap_share;
@@ -234,10 +236,14 @@ pte_t **nvmap_vaddr_to_pte(struct nvmap_device *dev, unsigned long vaddr)
 	return &(dev->ptes[bit]);
 }
 
-/* verifies that the handle ref value "ref" is a valid handle ref for the
- * file. caller must hold the file's ref_lock prior to calling this function */
-struct nvmap_handle_ref *_nvmap_validate_id_locked(struct nvmap_client *c,
-						   unsigned long id)
+/*
+ * Verifies that the passed ID is a valid handle ID. Then the passed client's
+ * reference to the handle is returned.
+ *
+ * Note: to call this function make sure you own the client ref lock.
+ */
+struct nvmap_handle_ref *__nvmap_validate_id_locked(struct nvmap_client *c,
+						    unsigned long id)
 {
 	struct rb_node *n = c->handle_refs.rb_node;
 
@@ -262,7 +268,7 @@ struct nvmap_handle *nvmap_get_handle_id(struct nvmap_client *client,
 	struct nvmap_handle *h = NULL;
 
 	nvmap_ref_lock(client);
-	ref = _nvmap_validate_id_locked(client, id);
+	ref = __nvmap_validate_id_locked(client, id);
 	if (ref)
 		h = ref->handle;
 	if (h)
@@ -539,13 +545,10 @@ struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 
 	client->name = name;
 	client->super = true;
+	client->kernel_client = true;
 	client->handle_refs = RB_ROOT;
 
 	atomic_set(&client->iovm_commit, 0);
-
-#ifdef CONFIG_IOMMU_API
-	client->iovm_limit = nvmap_mru_vm_size(nvmap_share->iovmm);
-#endif
 
 	for (i = 0; i < dev->nr_carveouts; i++) {
 		INIT_LIST_HEAD(&client->carveout_commit[i].list);
@@ -588,10 +591,12 @@ static void destroy_client(struct nvmap_client *client)
 		int pins, dupes;
 
 		ref = rb_entry(n, struct nvmap_handle_ref, node);
-		rb_erase(&ref->node, &client->handle_refs);
 
 		smp_rmb();
 		pins = atomic_read(&ref->pin);
+
+		while (pins--)
+			nvmap_unpin(client, ref);
 
 		if (ref->handle->owner == client) {
 			ref->handle->owner = NULL;
@@ -599,9 +604,7 @@ static void destroy_client(struct nvmap_client *client)
 		}
 
 		dma_buf_put(ref->handle->dmabuf);
-
-		while (pins--)
-			nvmap_unpin_handles(client, &ref->handle, 1);
+		rb_erase(&ref->node, &client->handle_refs);
 
 		dupes = atomic_read(&ref->dupes);
 		while (dupes--)
@@ -676,6 +679,7 @@ static int nvmap_open(struct inode *inode, struct file *filp)
 		return -ENOMEM;
 	trace_nvmap_open(priv, priv->name);
 
+	priv->kernel_client = false;
 	priv->super = (filp->f_op == &nvmap_super_fops);
 
 	filp->f_mapping->backing_dev_info = &nvmap_bdi;
@@ -1249,25 +1253,10 @@ static int nvmap_probe(struct platform_device *pdev)
 		nvmap_page_pool_init(&dev->iovmm_master.pools[i], i);
 #endif
 
-	dev->iovmm_master.iovmm =
-		tegra_iovmm_alloc_client(&pdev->dev, NULL,
-			&(dev->dev_user));
-#if defined(CONFIG_TEGRA_IOVMM) || defined(CONFIG_IOMMU_API)
-	if (!dev->iovmm_master.iovmm) {
-		e = PTR_ERR(dev->iovmm_master.iovmm);
-		dev_err(&pdev->dev, "couldn't create iovmm client\n");
-		goto fail;
-	}
-#endif
-	dev->vm_rgn = alloc_vm_area(NVMAP_NUM_PTES * PAGE_SIZE, 0);
+	dev->vm_rgn = alloc_vm_area(NVMAP_NUM_PTES * PAGE_SIZE, NULL);
 	if (!dev->vm_rgn) {
 		e = -ENOMEM;
 		dev_err(&pdev->dev, "couldn't allocate remapping region\n");
-		goto fail;
-	}
-	e = nvmap_mru_init(&dev->iovmm_master);
-	if (e) {
-		dev_err(&pdev->dev, "couldn't initialize MRU lists\n");
 		goto fail;
 	}
 
@@ -1335,6 +1324,9 @@ static int nvmap_probe(struct platform_device *pdev)
 		S_IRUGO|S_IWUSR, nvmap_debug_root,
 		(u32 *)&dev->deferred_ops.enable_deferred_cache_maintenance);
 
+	debugfs_create_u32("max_handle_count", S_IRUGO,
+			nvmap_debug_root, &nvmap_max_handle_count);
+
 	debugfs_create_u64("deferred_maint_inner_requested", S_IRUGO|S_IWUSR,
 			nvmap_debug_root,
 			&dev->deferred_ops.deferred_maint_inner_requested);
@@ -1359,9 +1351,12 @@ static int nvmap_probe(struct platform_device *pdev)
 					(node->base - co->base), PAGE_SIZE);
 		if (!co->size)
 			continue;
+
+		dev_info(&pdev->dev, "heap (%s) base (0x%x) size (%d)\n",
+			co->name, node->base, node->size);
+
 		node->carveout = nvmap_heap_create(dev->dev_user.this_device,
-				   co->name, node->base, node->size,
-				   co->buddy_size, node);
+				   co->name, node->base, node->size, node);
 		if (!node->carveout) {
 			e = -ENOMEM;
 			dev_err(&pdev->dev, "couldn't create %s\n", co->name);
@@ -1432,8 +1427,14 @@ static int nvmap_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, dev);
+	nvmap_pdev = pdev;
 	nvmap_dev = dev;
 	nvmap_share = &dev->iovmm_master;
+
+	nvmap_dmabuf_debugfs_init(nvmap_debug_root);
+	e = nvmap_dmabuf_stash_init();
+	if (e)
+		goto fail_heaps;
 
 	return 0;
 fail_heaps:
@@ -1444,13 +1445,10 @@ fail_heaps:
 	}
 fail:
 	kfree(dev->heaps);
-	nvmap_mru_destroy(&dev->iovmm_master);
 	if (dev->dev_super.minor != MISC_DYNAMIC_MINOR)
 		misc_deregister(&dev->dev_super);
 	if (dev->dev_user.minor != MISC_DYNAMIC_MINOR)
 		misc_deregister(&dev->dev_user);
-	if (!IS_ERR_OR_NULL(dev->iovmm_master.iovmm))
-		tegra_iovmm_free_client(dev->iovmm_master.iovmm);
 	if (dev->vm_rgn)
 		free_vm_area(dev->vm_rgn);
 	kfree(dev);
@@ -1473,11 +1471,6 @@ static int nvmap_remove(struct platform_device *pdev)
 		rb_erase(&h->node, &dev->handles);
 		kfree(h);
 	}
-
-	if (!IS_ERR_OR_NULL(dev->iovmm_master.iovmm))
-		tegra_iovmm_free_client(dev->iovmm_master.iovmm);
-
-	nvmap_mru_destroy(&dev->iovmm_master);
 
 	for (i = 0; i < dev->nr_carveouts; i++) {
 		struct nvmap_carveout_node *node = &dev->heaps[i];

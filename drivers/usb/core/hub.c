@@ -2267,10 +2267,15 @@ int usb_new_device(struct usb_device *udev)
 	pm_runtime_use_autosuspend(&udev->dev);
 	pm_runtime_enable(&udev->dev);
 
+#ifdef CONFIG_USB_EHCI_TEGRA
+	/* enable autosuspend for all connected devices on tegra */
+	usb_enable_autosuspend(udev);
+#else
 	/* By default, forbid autosuspend for all devices.  It will be
 	 * allowed for hubs during binding.
 	 */
 	usb_disable_autosuspend(udev);
+#endif
 
 	err = usb_enumerate_device(udev);	/* Read descriptors */
 	if (err < 0)

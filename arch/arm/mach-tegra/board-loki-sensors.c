@@ -27,6 +27,7 @@
 #include <media/dw9718.h>
 #include <media/as364x.h>
 #include <mach/gpio-tegra.h>
+#include <mach/edp.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>
@@ -503,7 +504,7 @@ static struct nct1008_platform_data loki_nct72_pdata = {
 	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 91, /* C */
+	.shutdown_ext_limit = 95, /* C */
 	.shutdown_local_limit = 120, /* C */
 
 	.passive_delay = 2000,
@@ -513,11 +514,11 @@ static struct nct1008_platform_data loki_nct72_pdata = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "tegra-balanced",
-			.trip_temp = 80000,
+			.trip_temp = 83000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = THERMAL_NO_LIMIT,
 			.lower = THERMAL_NO_LIMIT,
-			.hysteresis = 0,
+			.hysteresis = 1000,
 		},
 		[1] = {
 			.cdev_type = "tegra-hard",
@@ -555,12 +556,9 @@ static int loki_nct72_init(void)
 	tegra_add_cdev_trips(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips);
 */
-/*
 	tegra_platform_edp_init(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips,
-				0);
-*/
-	 /* edp temperature margin */
+				12000); /* edp temperature margin */
 	tegra_add_cdev_trips(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips);
 	tegra_add_tj_trips(loki_nct72_pdata.trips,

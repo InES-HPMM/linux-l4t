@@ -568,6 +568,7 @@ static const struct tegra_modem_operations baseband_operations = {
 
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.ops = &baseband_operations,
+	.regulator_name = "vdd_modem_3v3",
 	.wake_gpio = -1,
 	.boot_gpio = MDM_COLDBOOT,
 	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
@@ -649,7 +650,7 @@ struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
@@ -780,7 +781,6 @@ static void __init tegra_dalmore_late_init(void)
 #elif defined(CONFIG_BLUEDROID_PM) || defined(CONFIG_BLUEDROID_PM_MODULE)
 	dalmore_setup_bluedroid_pm();
 #endif
-	tegra_release_bootloader_fb();
 	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

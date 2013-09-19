@@ -26,11 +26,13 @@
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq27441_battery.h>
 #include <linux/power/power_supply_extcon.h>
 
 #include <mach/irqs.h>
+#include <mach/edp.h>
 
 #include <asm/mach-types.h>
 
@@ -43,6 +45,8 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
+#include "dvfs.h"
+#include "tegra_cl_dvfs.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -92,14 +96,13 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vlogic", "0-0068"),
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),
-	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 };
 
-static struct regulator_consumer_supply palmas_smps10_supply[] = {
+static struct regulator_consumer_supply palmas_smps10_out1_supply[] = {
 	REGULATOR_SUPPLY("vdd_5v0_cam", NULL),
 	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639.0"),
 	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645.0"),
@@ -190,7 +193,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	*/
 };
 
-PALMAS_REGS_PDATA(smps123, 1000,  1000, NULL, 1, 1, 0, NORMAL,
+PALMAS_REGS_PDATA(smps123, 700,  1400, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
@@ -202,11 +205,11 @@ PALMAS_REGS_PDATA(smps8, 1800,  1800, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps9, 2800,  2800, NULL, 0, 0, 1, NORMAL,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(smps10, 5000,  5000, NULL, 1, 1, 1, 0,
+PALMAS_REGS_PDATA(smps10_out1, 5000,  5000, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo1, 1050,  1050, NULL, 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo2, 2800,  2800, palmas_rails(smps6), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo2, 3000,  3000, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
@@ -241,7 +244,8 @@ static struct regulator_init_data *loki_reg_data[PALMAS_NUM_REGS] = {
 	PALMAS_REG_PDATA(smps7),
 	PALMAS_REG_PDATA(smps8),
 	PALMAS_REG_PDATA(smps9),
-	PALMAS_REG_PDATA(smps10),
+	NULL,
+	PALMAS_REG_PDATA(smps10_out1),
 	PALMAS_REG_PDATA(ldo1),
 	PALMAS_REG_PDATA(ldo2),
 	PALMAS_REG_PDATA(ldo3),
@@ -276,7 +280,8 @@ static struct palmas_reg_init *loki_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps7),
 	PALMAS_REG_INIT_DATA(smps8),
 	PALMAS_REG_INIT_DATA(smps9),
-	PALMAS_REG_INIT_DATA(smps10),
+	NULL,
+	PALMAS_REG_INIT_DATA(smps10_out1),
 	PALMAS_REG_INIT_DATA(ldo1),
 	PALMAS_REG_INIT_DATA(ldo2),
 	PALMAS_REG_INIT_DATA(ldo3),
@@ -508,6 +513,8 @@ static struct platform_device fixed_reg_en_##_var##_dev = {	\
 /* Always ON Battery regulator */
 static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
+		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
+		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_modem_3v3_supply[] = {
@@ -554,11 +561,16 @@ static struct regulator_consumer_supply fixed_reg_en_com_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "bluedroid_pm.0"),
 };
 
+/* EN_1V8_DISPLAY From TEGRA_GPIO_PU4 */
+static struct regulator_consumer_supply fixed_reg_en_dvdd_lcd_supply[] = {
+	REGULATOR_SUPPLY("dvdd_lcd", NULL),
+};
+
 FIXED_REG(0,	battery,	battery,	NULL,
 	0,	0,	-1,
 	false,	true,	0,	3300, 0);
 
-FIXED_REG(1,	modem_3v3,	modem_3v3,	palmas_rails(smps10),
+FIXED_REG(1,	modem_3v3,	modem_3v3,	palmas_rails(smps10_out1),
 	0,	0,	TEGRA_GPIO_PS2,
 	false,	true,	0,	3700,	0);
 
@@ -598,6 +610,10 @@ FIXED_REG(10,	com_1v8,	com_1v8,
 	palmas_rails(smps8),	0,	0,
 	TEGRA_GPIO_PX7,	false,	true,	0,	1800, 1000);
 
+FIXED_REG(11,	dvdd_lcd,	dvdd_lcd,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PU4,	false,	true,	1,	1800, 0);
+
 /*
  * Creating fixed regulator device tables
  */
@@ -613,13 +629,154 @@ FIXED_REG(10,	com_1v8,	com_1v8,
 	ADD_FIXED_REG(vdd_cpu_fixed),	\
 	ADD_FIXED_REG(lcd_bl), \
 	ADD_FIXED_REG(com_3v3), \
-	ADD_FIXED_REG(com_1v8),
+	ADD_FIXED_REG(com_1v8), \
+	ADD_FIXED_REG(dvdd_lcd),
 
 
 static struct platform_device *fixed_reg_devs_e2545[] = {
 	LOKI_E2545_FIXED_REG
 };
+/************************ LOKI CL-DVFS DATA *********************/
+#define LOKI_CPU_VDD_MAP_SIZE		33
+#define LOKI_CPU_VDD_MIN_UV		705000
+#define LOKI_CPU_VDD_STEP_UV		19200
+#define LOKI_CPU_VDD_STEP_US		80
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+/* Macro definition of dfll bypass device */
+#define DFLL_BYPASS(_board, _min, _step, _size, _us_sel)		       \
+static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
+	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
+	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
+	.constraints = {						       \
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		       \
+				REGULATOR_MODE_STANDBY),		       \
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		       \
+				REGULATOR_CHANGE_STATUS |		       \
+				REGULATOR_CHANGE_VOLTAGE),		       \
+		.min_uV = (_min),					       \
+		.max_uV = ((_size) - 1) * (_step) + (_min),		       \
+		.always_on = 1,						       \
+		.boot_on = 1,						       \
+	},								       \
+};									       \
+static struct tegra_dfll_bypass_platform_data _board##_dfll_bypass_pdata = {   \
+	.reg_init_data = &_board##_dfll_bypass_init_data,		       \
+	.uV_step = (_step),						       \
+	.linear_min_sel = 0,						       \
+	.n_voltages = (_size),						       \
+	.voltage_time_sel = _us_sel,					       \
+};									       \
+static struct platform_device loki_dfll_bypass_dev = {			       \
+	.name = "tegra_dfll_bypass",					       \
+	.id = -1,							       \
+	.dev = {							       \
+		.platform_data = &_board##_dfll_bypass_pdata,		       \
+	},								       \
+}
+
+/* loki board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param loki_cl_dvfs_param = {
+	.sample_rate = 50000,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* loki RT8812C volatge map */
+static struct voltage_reg_map loki_cpu_vdd_map[LOKI_CPU_VDD_MAP_SIZE];
+static inline int loki_fill_reg_map(int nominal_mv)
+{
+	int i, uv, nominal_uv = 0;
+	for (i = 0; i < LOKI_CPU_VDD_MAP_SIZE; i++) {
+		loki_cpu_vdd_map[i].reg_value = i;
+		loki_cpu_vdd_map[i].reg_uV = uv =
+			LOKI_CPU_VDD_MIN_UV + LOKI_CPU_VDD_STEP_UV * i;
+		if (!nominal_uv && uv >= nominal_mv * 1000)
+			nominal_uv = uv;
+	}
+	return nominal_uv;
+}
+
+/* loki dfll bypass device for legacy dvfs control */
+static struct regulator_consumer_supply loki_dfll_bypass_consumers[] = {
+	REGULATOR_SUPPLY("vdd_cpu", NULL),
+};
+DFLL_BYPASS(loki, LOKI_CPU_VDD_MIN_UV, LOKI_CPU_VDD_STEP_UV,
+	    LOKI_CPU_VDD_MAP_SIZE, LOKI_CPU_VDD_STEP_US);
+
+static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
+	.u.pmu_pwm = {
+		.pwm_rate = 12750000,
+		.out_gpio = TEGRA_GPIO_PU6,
+		.out_enable_high = false,
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+		.dfll_bypass_dev = &loki_dfll_bypass_dev,
+#endif
+	},
+	.vdd_map = loki_cpu_vdd_map,
+	.vdd_map_size = LOKI_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &loki_cl_dvfs_param,
+};
+
+static void loki_suspend_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PU6, 1); /* tristate external PWM buffer */
+}
+
+static void loki_resume_dfll_bypass(void)
+{
+	__gpio_set_value(TEGRA_GPIO_PU6, 0); /* enable PWM buffer operations */
+}
+static int __init loki_cl_dvfs_init(void)
+{
+	struct tegra_cl_dvfs_platform_data *data = NULL;
+	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
+
+	{
+		v = loki_fill_reg_map(v);
+		data = &loki_cl_dvfs_data;
+		if (data->u.pmu_pwm.dfll_bypass_dev) {
+			/* this has to be exact to 1uV level from table */
+			loki_dfll_bypass_init_data.constraints.init_uV = v;
+			loki_suspend_data.suspend_dfll_bypass =
+				loki_suspend_dfll_bypass;
+			loki_suspend_data.resume_dfll_bypass =
+				loki_resume_dfll_bypass;
+		} else {
+			(void)loki_dfll_bypass_dev;
+		}
+	}
+
+
+	if (data) {
+		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
+		tegra_cl_dvfs_device.dev.platform_data = data;
+		platform_device_register(&tegra_cl_dvfs_device);
+	}
+	return 0;
+}
+#else
+static inline int loki_cl_dvfs_init()
+{ return 0; }
+#endif
+
+int __init loki_rail_alignment_init(void)
+{
+
+	tegra12x_vdd_cpu_align(LOKI_CPU_VDD_STEP_UV,
+			LOKI_CPU_VDD_MIN_UV);
+	return 0;
+}
 static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -628,6 +785,7 @@ static int __init loki_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
+	loki_cl_dvfs_init();
 
 	if (pmu_board_info.board_id == BOARD_E2545)
 		return platform_add_devices(fixed_reg_devs_e2545,
@@ -637,3 +795,16 @@ static int __init loki_fixed_regulator_init(void)
 }
 
 subsys_initcall_sync(loki_fixed_regulator_init);
+int __init loki_edp_init(void)
+{
+	unsigned int regulator_mA;
+
+	regulator_mA = get_maximum_cpu_current_supported();
+	if (!regulator_mA)
+		regulator_mA = 16000;
+
+	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
+	tegra_init_cpu_edp_limits(regulator_mA);
+
+	return 0;
+}

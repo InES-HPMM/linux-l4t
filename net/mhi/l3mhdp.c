@@ -341,7 +341,7 @@ mhdp_netdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
 			tunnel->free_pdn = 0;
 
-			strcpy(&k_parms.name, tunnel->dev->name);
+			strcpy((char *) &k_parms.name, tunnel->dev->name);
 
 			if (copy_to_user(u_parms, &k_parms,
 					sizeof(struct mhdp_tunnel_parm)))
@@ -512,7 +512,7 @@ mhdp_netdev_rx(struct sk_buff *skb, struct net_device *dev)
 
 	for (i = 0; i < mhdpHdr->packet_count; i++) {
 
-		DPRINTK(" packet_info[%d] - PDNID:%d, packet_offset: %d,
+		DPRINTK(" packet_info[%d] - PDNID:%d, packet_offset: %d,\
 			packet_length: %d\n", i, mhdpHdr->info[i].pdn_id,
 			mhdpHdr->info[i].packet_offset,
 			mhdpHdr->info[i].packet_length);

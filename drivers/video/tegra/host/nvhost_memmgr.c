@@ -331,7 +331,7 @@ int nvhost_memmgr_pin_array_ids(struct mem_mgr *mgr,
 		if (IS_ERR(sgt))
 			return PTR_ERR(sgt);
 
-		phys_addr[ids[i].index] = sg_dma_address(sgt->sgl);
+		phys_addr[ids[i].index] = nvhost_memmgr_dma_addr(sgt);
 		unpin_data[pin_count].h = h;
 		unpin_data[pin_count++].mem = sgt;
 
@@ -405,30 +405,6 @@ void nvhost_memmgr_free_sg_table(struct mem_mgr *mgr,
 	}
 	return;
 }
-
-#ifdef CONFIG_TEGRA_IOMMU_SMMU
-int nvhost_memmgr_smmu_map(struct sg_table *sgt, size_t size,
-			   struct device *dev)
-{
-	int ents;
-	DEFINE_DMA_ATTRS(attrs);
-
-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	ents = dma_map_sg_attrs(dev, sgt->sgl, sgt->nents, 0, &attrs);
-	if (!ents)
-		return -EINVAL;
-	return 0;
-}
-
-void nvhost_memmgr_smmu_unmap(struct sg_table *sgt, size_t size,
-		struct device *dev)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	/* dma_unmap_sg_attrs will also free the iova */
-	dma_unmap_sg_attrs(dev, sgt->sgl, sgt->nents, 0, &attrs);
-}
-#endif
 
 void nvhost_memmgr_get_comptags(struct mem_handle *mem,
 				struct nvhost_comptags *comptags)

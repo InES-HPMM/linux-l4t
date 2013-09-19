@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/pm_qos.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -42,12 +43,16 @@ static bool tegra_dvfs_gpu_disabled;
 static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
-static struct tegra_cooling_device cpu_cdev = {
+static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
 };
 
 static struct tegra_cooling_device core_cdev = {
 	.cdev_type = "core_cold",
+};
+
+static struct tegra_cooling_device gpu_vmin_cdev = {
+	.cdev_type = "gpu_cold",
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
@@ -56,7 +61,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-	.vmin_cdev = &cpu_cdev,
+	.vmin_cdev = &cpu_vmin_cdev,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
 	},
@@ -79,6 +84,8 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.max_millivolts = 1350,
 	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
+	.in_band_pm = true,
+	.vmin_cdev = &gpu_vmin_cdev,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
 	},
@@ -103,12 +110,13 @@ void __init tegra12x_vdd_cpu_align(int step_uv, int offset_uv)
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
-		.process_id = 0,
+		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x00f0409f,
-			.tune0_high_mv	= 0x00f0409f,
-			.tune1		= 0x000000a0,
+			.tune0		= 0x00662FFF,
+			.tune0_high_mv	= 0x006640FF,
+			.tune1		= 0x0000006E,
 			.droop_rate_min = 1000000,
+			.tune_high_min_millivolts = 900,
 			.min_millivolts = 800,
 		},
 		.max_mv = 1260,
@@ -117,37 +125,38 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{408000 , {2244479,  -117955,  2292}, { 960000,  0,  0}},
-			{510000 , {2279779,  -119575,  2292}, { 960000,  0,  0}},
-			{612000 , {2317504,  -121185,  2292}, { 960000,  0,  0}},
-			{714000 , {2357653,  -122795,  2292}, { 972000,  0,  0}},
-			{816000 , {2400228,  -124415,  2292}, { 984000,  0,  0}},
-			{918000 , {2445228,  -126025,  2292}, { 996000,  0,  0}},
-			{1020000, {2492653,  -127635,  2292}, { 1020000, 0,  0}},
-			{1122000, {2542502,  -129255,  2292}, { 1032000, 0,  0}},
-			{1224000, {2594777,  -130865,  2292}, { 1056000, 0,  0}},
-			{1326000, {2649477,  -132475,  2292}, { 1092000, 0,  0}},
-			{1428000, {2706601,  -134095,  2292}, { 1116000, 0,  0}},
-			{1530000, {2766150,  -135705,  2292}, { 1152000, 0,  0}},
-			{1632000, {2828125,  -137315,  2292}, { 1188000, 0,  0}},
-			{1734000, {2892524,  -138935,  2292}, { 1224000, 0,  0}},
-			{1836000, {2959348,  -140545,  2292}, { 1260000, 0,  0}},
-			{1913000, {3028598,  -142155,  2292}, { 1308000, 0,  0}},
-			{2015000, {3100272,  -143775,  2292}, { 1356000, 0,  0}},
-			{2117000, {3174371,  -145385,  2292}, { 1404000, 0,  0}},
-			{      0, {      0,        0,     0}, {       0, 0,  0}},
+			{306000  , {1141577,  -30185,  454}, { 777000   , 0, 0}},
+			{408000  , {1180454,  -31625,  454}, { 787500   , 0, 0}},
+			{510000  , {1221370,  -33065,  454}, { 798000   , 0, 0}},
+			{612000  , {1264325,  -34505,  454}, { 819000   , 0, 0}},
+			{714000  , {1309319,  -35945,  454}, { 840000   , 0, 0}},
+			{816000  , {1356353,  -37385,  454}, { 850500   , 0, 0}},
+			{918000  , {1405425,  -38825,  454}, { 882000   , 0, 0}},
+			{1020000 , {1456537,  -40265,  454}, { 903000   , 0, 0}},
+			{1122000 , {1509687,  -41705,  454}, { 934500   , 0, 0}},
+			{1224000 , {1564877,  -43145,  454}, { 955500   , 0, 0}},
+			{1326000 , {1622106,  -44585,  454}, { 987000   , 0, 0}},
+			{1428000 , {1681374,  -46025,  454}, { 1029000  , 0, 0}},
+			{1530000 , {1742681,  -47465,  454}, { 1060500  , 0, 0}},
+			{1632000 , {1806027,  -48915,  454}, { 1102500  , 0, 0}},
+			{1734000 , {1871412,  -50355,  454}, { 1134000  , 0, 0}},
+			{1836000 , {1938836,  -51795,  454}, { 1176000  , 0, 0}},
+			{1938000 , {2008300,  -53235,  454}, { 1228500  , 0, 0}},
+			{2014500 , {2061382,  -54305,  454}, { 1260000  , 0, 0}},
+			{      0 , {      0,       0,    0}, {       0  , 0, 0}},
 		},
-		.therm_trips_table = { 20, },
-		.therm_floors_table = { 1000, },
+		.vmin_trips_table = { 20, },
+		.therm_floors_table = { 900, },
 	},
 	{
-		.speedo_id = 0,
-		.process_id = 1,
+		.speedo_id = 1,
+		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x00f0409f,
-			.tune0_high_mv	= 0x00f0409f,
-			.tune1		= 0x000000a0,
+			.tune0		= 0x00662FFF,
+			.tune0_high_mv	= 0x006640FF,
+			.tune1		= 0x0000006E,
 			.droop_rate_min = 1000000,
+			.tune_high_min_millivolts = 900,
 			.min_millivolts = 800,
 		},
 		.max_mv = 1260,
@@ -156,30 +165,31 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{408000 , {2244479,  -117955,  2292}, { 912000	, 0,	0}},
-			{510000 , {2279779,  -119575,  2292}, { 912000	, 0,	0}},
-			{612000 , {2317504,  -121185,  2292}, { 924000	, 0,	0}},
-			{714000 , {2357653,  -122795,  2292}, { 924000	, 0,	0}},
-			{816000 , {2400228,  -124415,  2292}, { 936000	, 0,	0}},
-			{918000 , {2445228,  -126025,  2292}, { 948000	, 0,	0}},
-			{1020000, {2492653,  -127635,  2292}, { 960000	, 0,	0}},
-			{1122000, {2542502,  -129255,  2292}, { 972000	, 0,	0}},
-			{1224000, {2594777,  -130865,  2292}, { 996000	, 0,	0}},
-			{1326000, {2649477,  -132475,  2292}, { 1020000 , 0,    0}},
-			{1428000, {2706601,  -134095,  2292}, { 1044000	, 0,	0}},
-			{1530000, {2766150,  -135705,  2292}, { 1068000	, 0,	0}},
-			{1632000, {2828125,  -137315,  2292}, { 1104000	, 0,	0}},
-			{1734000, {2892524,  -138935,  2292}, { 1140000	, 0,	0}},
-			{1836000, {2959348,  -140545,  2292}, { 1176000	, 0,	0}},
-			{1913000, {3028598,  -142155,  2292}, { 1224000	, 0,	0}},
-			{2015000, {3100272,  -143775,  2292}, { 1260000	, 0,	0}},
-			{2117000, {3174371,  -145385,  2292}, { 1308000	, 0,	0}},
-			{2219000, {3250895,  -146995,  2292}, { 1356000	, 0,	0}},
-			{2321000, {3329844,  -148615,  2292}, { 1404000	, 0,	0}},
-			{      0, {      0,        0,     0}, {       0,  0,    0}},
+			{306000  , {1141577,  -30185,  454}, { 735000   , 0, 0}},
+			{408000  , {1180454,  -31625,  454}, { 745500   , 0, 0}},
+			{510000  , {1221370,  -33065,  454}, { 756000   , 0, 0}},
+			{612000  , {1264325,  -34505,  454}, { 766500   , 0, 0}},
+			{714000  , {1309319,  -35945,  454}, { 777000   , 0, 0}},
+			{816000  , {1356353,  -37385,  454}, { 798000   , 0, 0}},
+			{918000  , {1405425,  -38825,  454}, { 819000   , 0, 0}},
+			{1020000 , {1456537,  -40265,  454}, { 840000   , 0, 0}},
+			{1122000 , {1509687,  -41705,  454}, { 861000   , 0, 0}},
+			{1224000 , {1564877,  -43145,  454}, { 882000   , 0, 0}},
+			{1326000 , {1622106,  -44585,  454}, { 913500   , 0, 0}},
+			{1428000 , {1681374,  -46025,  454}, { 945000   , 0, 0}},
+			{1530000 , {1742681,  -47465,  454}, { 976500   , 0, 0}},
+			{1632000 , {1806027,  -48915,  454}, { 1008000  , 0, 0}},
+			{1734000 , {1871412,  -50355,  454}, { 1039500  , 0, 0}},
+			{1836000 , {1938836,  -51795,  454}, { 1081500  , 0, 0}},
+			{1938000 , {2008300,  -53235,  454}, { 1123500  , 0, 0}},
+			{2014500 , {2061382,  -54305,  454}, { 1144500  , 0, 0}},
+			{2116500 , {2134404,  -55745,  454}, { 1197000  , 0, 0}},
+			{2218500 , {2209465,  -57185,  454}, { 1239000  , 0, 0}},
+			{2320500 , {2286565,  -58625,  454}, { 1291500  , 0, 0}},
+			{      0 , {      0,       0,    0}, {       0  , 0, 0}},
 		},
-		.therm_trips_table = { 20, },
-		.therm_floors_table = { 1000, },
+		.vmin_trips_table = { 20, },
+		.therm_floors_table = { 900, },
 	},
 };
 
@@ -259,6 +269,8 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sdmmc4", -1, -1, 1, KHZ,   102000, 102000, 178200, 178200,  178200),
 
 	CORE_DVFS("hdmi",   -1, -1, 1, KHZ,    99000, 118800, 148500, 198000,  198000),
+	/* FIXME: Finalize these values for NOR after qual */
+	CORE_DVFS("nor",    -1, -1, 1, KHZ,   102000, 102000, 102000, 102000,  102000),
 
 	/*
 	 * The clock rate for the display controllers that determines the
@@ -281,23 +293,59 @@ static struct dvfs core_dvfs_table[] = {
 /* TBD: fill in actual hw numbers */
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id =  0,
+		.speedo_id =   0,
 		.process_id = -1,
-		.max_mv = 1100,
+		.max_mv = 1200,
 		.min_mv = 800,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f        dfll  pll:   c0,     c1,   c2 */
-			{  204000, {  }, {  810000,      0,   0}, },
-			{  264000, {  }, {  860000,      0,   0}, },
-			{  351000, {  }, {  900000,      0,   0}, },
-			{  492000, {  }, {  990000,      0,   0}, },
-			{  624000, {  }, { 1080000,      0,   0}, },
+			{   72000, {  }, {  975248, -10755,  -56}, },
+			{  108000, {  }, {  995948, -11645,  -56}, },
+			{  180000, {  }, { 1041350, -13415,  -56}, },
+			{  252000, {  }, { 1092088, -15195,  -56}, },
+			{  324000, {  }, { 1148163, -16975,  -56}, },
+			{  396000, {  }, { 1209574, -18745,  -56}, },
+			{  468000, {  }, { 1276322, -20525,  -56}, },
+			{  540000, {  }, { 1348406, -22295,  -56}, },
+			{  612000, {  }, { 1425827, -24075,  -56}, },
+			{  648000, {  }, { 1466538, -24965,  -56}, },
 			{       0, {  }, {       0,      0,   0}, },
 		},
+		.vmin_trips_table = { 20, },
+		.therm_floors_table = { 900, },
 	},
+	{
+		.speedo_id =   1,
+		.process_id = -1,
+		.max_mv = 1200,
+		.min_mv = 800,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f        dfll  pll:   c0,     c1,   c2 */
+			{   72000, {  }, {  975248, -10755,  -56}, },
+			{  108000, {  }, {  995948, -11645,  -56}, },
+			{  180000, {  }, { 1041350, -13415,  -56}, },
+			{  252000, {  }, { 1092088, -15195,  -56}, },
+			{  324000, {  }, { 1148163, -16975,  -56}, },
+			{  396000, {  }, { 1209574, -18745,  -56}, },
+			{  468000, {  }, { 1276322, -20525,  -56}, },
+			{  540000, {  }, { 1348406, -22295,  -56}, },
+			{  612000, {  }, { 1425827, -24075,  -56}, },
+			{  648000, {  }, { 1466538, -24965,  -56}, },
+			{  684000, {  }, { 1508583, -25855,  -56}, },
+			{  708000, {  }, { 1537355, -26445,  -56}, },
+			{  756000, {  }, { 1596677, -27625,  -56}, },
+			{  804000, {  }, { 1658370, -28815,  -56}, },
+			{       0, {  }, {       0,      0,   0}, },
+		},
+		.vmin_trips_table = { 20, },
+		.therm_floors_table = { 900, },
+	}
 };
 
 static int gpu_millivolts[MAX_DVFS_FREQS];
@@ -391,46 +439,6 @@ module_param_cb(disable_cpu, &tegra_dvfs_disable_cpu_ops,
 	&tegra_dvfs_cpu_disabled, 0644);
 module_param_cb(disable_gpu, &tegra_dvfs_disable_gpu_ops,
 	&tegra_dvfs_gpu_disabled, 0644);
-
-/*
- * Install rail thermal profile provided:
- * - voltage floors are descending with temperature increasing
- * - and the lowest floor is above rail minimum voltage in pll and
- *   in dfll mode (if applicable)
- */
-static void __init init_rail_thermal_profile(
-	int *therm_trips_table, int *therm_floors_table,
-	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
-{
-	int i, min_mv;
-
-	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
-		if (!therm_floors_table[i+1])
-			break;
-
-		if ((therm_trips_table[i] >= therm_trips_table[i+1]) ||
-		    (therm_floors_table[i] < therm_floors_table[i+1])) {
-			WARN(1, "%s: invalid thermal floors\n", rail->reg_id);
-			return;
-		}
-	}
-
-	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
-	if (therm_floors_table[i] < min_mv) {
-		WARN(1, "%s: thermal floor below Vmin\n", rail->reg_id);
-		return;
-	}
-
-	/* Install validated thermal floors */
-	rail->therm_mv_floors = therm_floors_table;
-	rail->therm_mv_floors_num = i + 1;
-
-	/* Setup trip-points, use the same trips in dfll mode (if applicable) */
-	if (rail->vmin_cdev) {
-		rail->vmin_cdev->trip_temperatures_num = i + 1;
-		rail->vmin_cdev->trip_temperatures = therm_trips_table;
-	}
-}
 
 static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 {
@@ -643,13 +651,18 @@ static int __init set_cpu_dvfs_data(
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
 
+	/* Init cpu thermal floors */
+	tegra_dvfs_rail_init_vmin_thermal_profile(
+		d->vmin_trips_table, d->therm_floors_table,
+		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+
 	return 0;
 }
 
 static int __init set_gpu_dvfs_data(
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
-	int i, j, mv;
+	int i, mv;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_gpu_speedo_value();
 	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_gpu.alignment;
@@ -663,7 +676,7 @@ static int __init set_gpu_dvfs_data(
 	 * CVB entry specifies gpu frequency and CVB coefficients to calculate
 	 * the respective voltage.
 	 */
-	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
+	for (i = 0; i < MAX_DVFS_FREQS; i++) {
 		table = &d->cvb_table[i];
 		if (!table->freq)
 			break;
@@ -677,17 +690,12 @@ static int __init set_gpu_dvfs_data(
 
 		/* fill in gpu dvfs tables */
 		mv = max(mv, d->min_mv);
-		if (!j || (mv > gpu_millivolts[j - 1])) {
-			gpu_millivolts[j] = mv;
-			gpu_dvfs->freqs[j] = table->freq;
-			j++;
-		} else {
-			gpu_dvfs->freqs[j - 1] = table->freq;
-		}
+		gpu_millivolts[i] = mv;
+		gpu_dvfs->freqs[i] = table->freq;
 	}
 	/* Table must not be empty, must have at least one entry in range */
-	if (!i || !j || (gpu_millivolts[j - 1] <
-			 tegra12_dvfs_rail_vdd_gpu.min_millivolts)) {
+	if (!i || (gpu_millivolts[i - 1] <
+		   tegra12_dvfs_rail_vdd_gpu.min_millivolts)) {
 		pr_err("tegra14_dvfs: invalid gpu dvfs table\n");
 		return -ENOENT;
 	}
@@ -697,9 +705,14 @@ static int __init set_gpu_dvfs_data(
 	gpu_dvfs->process_id = d->process_id;
 	gpu_dvfs->freqs_mult = d->freqs_mult;
 	gpu_dvfs->dvfs_rail->nominal_millivolts =
-		min(d->max_mv, gpu_millivolts[j - 1]);
+		min(d->max_mv, gpu_millivolts[i - 1]);
 
-	*max_freq_index = j - 1;
+	*max_freq_index = i - 1;
+
+	/* Init thermal floors */
+	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
+		d->therm_floors_table, &tegra12_dvfs_rail_vdd_gpu, NULL);
+
 	return 0;
 }
 
@@ -825,10 +838,7 @@ void __init tegra12x_init_dvfs(void)
 
 	/* Init thermal floors */
 	/* FIXME: Uncomment when proper values are available later */
-	/* init_rail_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
-		cpu_cvb_dvfs_table[i].therm_floors_table,
-		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
-	init_rail_thermal_profile(vdd_core_therm_trips_table,
+	/* init_rail_thermal_profile(vdd_core_therm_trips_table,
 		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);*/
 
 	/* Init rail structures and dependencies */
@@ -886,6 +896,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
+static struct kobject *gpu_kobj;
 
 static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -896,24 +907,28 @@ static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #endif
 	{ .cap_name = "cap.sclk" },
 	{ .cap_name = "cap.emc" },
+	{ .cap_name = "cap.host1x" },
 };
 
-/*
- * Keep sys file names the same for dual and single cbus configurations to
- * avoid changes in user space GPU capping interface.
- */
-static struct core_bus_limit_table tegra12_bus_cap_table[] = {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .limit_clk_name = "cap.profile.c2bus",
-	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
-	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
-	},
-#else
-	{ .limit_clk_name = "cap.profile.cbus",
-	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
-	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
-	},
-#endif
+static struct core_bus_limit_table tegra12_gpu_cap_syfs = {
+	.limit_clk_name = "cap.profile.gbus",
+	.refcnt_attr = {.attr = {.name = "gpu_cap_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_cap_level", .mode = 0644} },
+	.pm_qos_class = PM_QOS_GPU_FREQ_MAX,
+};
+
+static struct core_bus_limit_table tegra12_gpu_floor_sysfs = {
+	.limit_clk_name = "floor.profile.gbus",
+	.refcnt_attr = {.attr = {.name = "gpu_floor_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_floor_level", .mode = 0644} },
+	.pm_qos_class = PM_QOS_GPU_FREQ_MIN,
+};
+
+static struct core_bus_rates_table tegra12_gpu_rates_sysfs = {
+	.bus_clk_name = "gbus",
+	.rate_attr = {.attr = {.name = "gpu_rate", .mode = 0444} },
+	.available_rates_attr = {
+		.attr = {.name = "gpu_available_rates", .mode = 0444} },
 };
 
 static int __init tegra12_dvfs_init_core_cap(void)
@@ -923,16 +938,6 @@ static int __init tegra12_dvfs_init_core_cap(void)
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
 		pr_err("tegra12_dvfs: failed to create sysfs cap object\n");
-		return 0;
-	}
-
-	ret = tegra_init_shared_bus_cap(
-		tegra12_bus_cap_table, ARRAY_SIZE(tegra12_bus_cap_table),
-		cap_kobj);
-	if (ret) {
-		pr_err("tegra12_dvfs: failed to init bus cap interface (%d)\n",
-		       ret);
-		kobject_del(cap_kobj);
 		return 0;
 	}
 
@@ -947,6 +952,40 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
+
+	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);
+	if (!gpu_kobj) {
+		pr_err("tegra12_dvfs: failed to create sysfs gpu object\n");
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_cap(&tegra12_gpu_cap_syfs,
+					1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu cap interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_floor(&tegra12_gpu_floor_sysfs,
+					  1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu floor interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+
+	ret = tegra_init_sysfs_shared_bus_rate(&tegra12_gpu_rates_sysfs,
+					       1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init gpu rates interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
 
 	return 0;
 }

@@ -204,14 +204,6 @@ obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-power.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sdhci.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sensors.o
 
-obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-power.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-sdhci.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-sensors.o
-obj-${CONFIG_MACH_CURACAO}              += board-curacao-memory.o
-
 obj-y                                   += board-touch-raydium_spi.o
 obj-y                                   += board-touch-synaptics-spi.o
 
@@ -294,6 +286,8 @@ obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-edp-1080p-14-0.o
+obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
+obj-${CONFIG_MACH_LOKI}               	+= panel-j-1440-810-5-8.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-kbc.o

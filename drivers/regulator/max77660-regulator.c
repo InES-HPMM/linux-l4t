@@ -447,7 +447,6 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	int power_mode = (pdata->flags & GLPM_ENABLE) ?
 			 POWER_MODE_GLPM : POWER_MODE_NORMAL;
-	int ret;
 
 	if (reg->external_flags & MAX77660_EXTERNAL_ENABLE)
 		return 0;
@@ -476,7 +475,6 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 static int max77660_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
-	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	int power_mode = POWER_MODE_DISABLE;
 
 	if (reg->external_flags & MAX77660_EXTERNAL_ENABLE)

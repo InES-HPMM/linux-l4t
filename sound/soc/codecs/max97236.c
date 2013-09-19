@@ -28,6 +28,11 @@
 
 #include <linux/version.h>
 
+#include <mach/../../board.h>
+#include <mach/../../tegra-board-id.h>
+
+static struct board_info board_info;
+
 #define DEBUG
 #define EXTMIC_METHOD
 #define EXTMIC_METHOD_TEST
@@ -589,6 +594,14 @@ static int max97236_jacksw_active(struct max97236_priv *max97236)
 #endif
 	int ret;
 
+	/* Overwrite above code using board id */
+	if ((board_info.board_id == BOARD_E1680) ||
+		(board_info.board_id == BOARD_E1681)) {
+		test_value = 4;
+	} else { /* FFD */
+		test_value = 0;
+	}
+
 	regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &reg);
 	ret = (reg & M97236_JACKSW_MASK) == test_value;
 
@@ -1003,6 +1016,13 @@ int max97236_mic_detect(struct snd_soc_codec *codec,
 #else
 		test_value = 0;
 #endif
+		/* Overwrite above code using board id */
+		if ((board_info.board_id == BOARD_E1680) ||
+			(board_info.board_id == BOARD_E1681)) {
+			test_value = 4;
+		} else { /* FFD */
+			test_value = 0;
+		}
 
 		if ((reg & M97236_JACKSW_MASK) == test_value) {
 			schedule_delayed_work(&max97236->jack_work,
@@ -1265,6 +1285,8 @@ static int max97236_i2c_probe(struct i2c_client *i2c,
 
 	if (ret < 0)
 		regmap_exit(max97236->regmap);
+
+	tegra_get_board_info(&board_info);
 
 err_enable:
 	return ret;

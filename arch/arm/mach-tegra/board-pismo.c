@@ -655,7 +655,7 @@ struct rm_spi_ts_platform_data rm31080ts_pismo_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
@@ -702,7 +702,6 @@ static void __init tegra_pismo_init(void)
 #elif defined CONFIG_BLUEDROID_PM
 	pismo_setup_bluedroid_pm();
 #endif
-	tegra_release_bootloader_fb();
 	pismo_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

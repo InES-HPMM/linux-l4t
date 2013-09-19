@@ -173,6 +173,32 @@ static struct isoclient_info tegra14x_isoclients[] = {
 	},
 };
 
+static struct isoclient_info tegra12x_isoclients[] = {
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_0,
+		.name = "disp_0",
+		.dev_name = "tegradc.0",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_1,
+		.name = "disp_1",
+		.dev_name = "tegradc.1",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+		.dev_name = "vi",
+		.emc_clk_name = "emc",
+	},
+	/* This must be last entry*/
+	{
+		.client = TEGRA_ISO_CLIENT_COUNT,
+		.name = NULL,
+	},
+};
+
 static void isomgr_scatter(int client);
 
 static struct isoclient_info *get_iso_client_info(void)
@@ -189,6 +215,10 @@ static struct isoclient_info *get_iso_client_info(void)
 	case TEGRA_CHIPID_TEGRA14:
 		cinfo = tegra14x_isoclients;
 		iso_bw_percentage = 50;
+		break;
+	case TEGRA_CHIPID_TEGRA12:
+		cinfo = tegra12x_isoclients;
+		iso_bw_percentage = 45;
 		break;
 	default:
 		cinfo = tegra_null_isoclients;

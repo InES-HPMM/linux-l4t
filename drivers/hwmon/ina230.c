@@ -505,6 +505,7 @@ static s32 show_current2(struct device *dev,
 	mutex_unlock(&data->mutex);
 
 	voltage_uV = shuntv_register_to_uv(voltage_uV);
+	voltage_uV = abs(voltage_uV);
 
 	inverse_shunt_resistor = 1000 / data->pdata->resistor;
 	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
@@ -594,6 +595,7 @@ static s32 show_power2(struct device *dev,
 	voltage_mV = busv_register_to_mv(voltage_mV);
 
 	voltage_uV = shuntv_register_to_uv(voltage_uV);
+	voltage_uV = abs(voltage_uV);
 
 	inverse_shunt_resistor = 1000 / data->pdata->resistor;
 	current_mA = voltage_uV * inverse_shunt_resistor / 1000;

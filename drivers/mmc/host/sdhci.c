@@ -852,10 +852,10 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 					SDHCI_ADMA_ADDRESS);
 
 				if ((host->version >= SDHCI_SPEC_400) &&
-				    (host->quirks &
-				     SDHCI_QUIRK_SUPPORT_64BIT_DMA)) {
-					if (host->quirks &
-					    SDHCI_QUIRK_USE_64BIT_ADDR) {
+				    (host->quirks2 &
+				     SDHCI_QUIRK2_SUPPORT_64BIT_DMA)) {
+					if (host->quirks2 &
+					    SDHCI_QUIRK2_USE_64BIT_ADDR) {
 
 						sdhci_writel(host,
 						(host->adma_addr >> 32)
@@ -1165,8 +1165,8 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	int div = 0; /* Initialized for compiler warning */
 	int real_div = div, clk_mul = 1;
 	u16 clk = 0;
-	u8 ctrl;
 	unsigned long timeout;
+	u32 caps;
 
 	if (clock && clock == host->clock)
 		return;
@@ -1175,12 +1175,17 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 
 	if (host->quirks & SDHCI_QUIRK_NONSTANDARD_CLOCK)
 		return;
-	if (host->quirks & SDHCI_QUIRK_DISABLE_CARD_CLOCK) {
-		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
-		clk &= ~SDHCI_CLOCK_CARD_EN;
-		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
-		clk = 0;
-	}
+
+	/*
+	 * If the entire clock control register is updated with zero, some
+	 * controllers might first update clock divisor fields and then update
+	 * the INT_CLK_EN and CARD_CLK_EN fields. Disable card clock first
+	 * to ensure there is no abnormal clock behavior.
+	 */
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+	clk = 0;
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
 	if (clock == 0)
@@ -1266,11 +1271,18 @@ clock_set:
 	clk |= SDHCI_CLOCK_INT_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
 
-	/* Do a dummy write */
-	if (host->quirks & SDHCI_QUIRK_DO_DUMMY_WRITE) {
-		ctrl = sdhci_readb(host, SDHCI_CAPABILITIES);
-		ctrl |= 1;
-		sdhci_writeb(host, ctrl, SDHCI_CAPABILITIES);
+	/*
+	 * For Tegra3 sdmmc controller, internal clock will not be stable bit
+	 * will get set only after some other register write is done. To
+	 * handle, do a dummy reg write to the caps reg if
+	 * SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE is set.
+	 */
+	if (host->quirks2 & SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE) {
+		udelay(5);
+
+		caps = sdhci_readl(host, SDHCI_CAPABILITIES);
+		caps |= 1;
+		sdhci_writel(host, caps, SDHCI_CAPABILITIES);
 	}
 
 	/* Wait max 20 ms */
@@ -1451,6 +1463,12 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 				host->mrq = mrq;
 			}
 		}
+
+		/* For a data cmd, check for plat specific preparation */
+		spin_unlock_irqrestore(&host->lock, flags);
+		if (mrq->data)
+			host->ops->platform_get_bus(host);
+		spin_lock_irqsave(&host->lock, flags);
 
 		if (mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23))
 			sdhci_send_command(host, mrq->sbc);
@@ -1667,6 +1685,8 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
 		(!ios->clock && host->ops->set_clock))
 		host->ops->set_clock(host, ios->clock);
+	if ((ios->power_mode == MMC_POWER_OFF) && host->ops->platform_power_off)
+		host->ops->platform_power_off(host, ios->power_mode);
 }
 
 static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
@@ -1815,7 +1835,7 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 	if (host->version < SDHCI_SPEC_300)
 		return 0;
 
-	if (host->quirks & SDHCI_QUIRK_NON_STD_VOLTAGE_SWITCHING) {
+	if (host->quirks2 & SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING) {
 		if (host->ops->switch_signal_voltage)
 			return host->ops->switch_signal_voltage(
 				host, ios->signal_voltage);
@@ -1939,17 +1959,16 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	sdhci_runtime_pm_get(host);
 	disable_irq(host->irq);
-	spin_lock(&host->lock);
 
-	if ((host->quirks & SDHCI_QUIRK_NON_STANDARD_TUNING) &&
+	if ((host->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING) &&
 		host->ops->execute_freq_tuning) {
 		err = host->ops->execute_freq_tuning(host, opcode);
-		spin_unlock(&host->lock);
 		enable_irq(host->irq);
 		sdhci_runtime_pm_put(host);
 		return err;
 	}
 
+	spin_lock(&host->lock);
 	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	/*
@@ -3158,7 +3177,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (host->quirks & SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK)
 		host->timeout_clk = mmc->f_max / 1000;
 
-	if (!(host->quirks & SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO))
+	if (!(host->quirks2 & SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO))
 		mmc->max_discard_to = (1 << 27) / host->timeout_clk;
 
 	if (host->quirks & SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12)
@@ -3177,7 +3196,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (host->version >= SDHCI_SPEC_400) {
 		ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
 		ctrl |= SDHCI_HOST_VERSION_4_EN;
-		if (host->quirks & SDHCI_QUIRK_SUPPORT_64BIT_DMA)
+		if (host->quirks2 & SDHCI_QUIRK2_SUPPORT_64BIT_DMA)
 			ctrl |= SDHCI_ADDRESSING_64BIT_EN;
 		sdhci_writel(host, ctrl, SDHCI_ACMD12_ERR);
 	}

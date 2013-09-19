@@ -2112,11 +2112,12 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 		if (!map[i].size)
 			continue;
 
-		p->size += map[i].size;
-		if (prev_end == map[i].start) {
-			prev_end += p->size;
+		if (prev_end && prev_end == map[i].start) {
+			(p - 1)->size += map[i].size;
+			prev_end += map[i].size;
 		} else {
 			p->start = map[i].start;
+			p->size = map[i].size;
 			prev_end = p->start + p->size;
 			p++;
 		}
@@ -2276,6 +2277,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
 	{ .name = "tegra124-apbdma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
+	{ .name = "tegra-nor",	.swgids = SWGID(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif

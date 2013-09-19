@@ -42,6 +42,11 @@
 #include "vi.h"
 
 #define MAX_DEVID_LENGTH	16
+#define T12_VI_CFG_CG_CTRL	0x2e
+#define T12_CG_2ND_LEVEL_EN	1
+#define T12_VI_CSI_0_SW_RESET	0x40
+#define T12_VI_CSI_1_SW_RESET	0x80
+#define T12_VI_CSI_SW_RESET_MCCIF_RESET 3
 
 static struct of_device_id tegra_vi_of_match[] = {
 #ifdef TEGRA_2X_OR_HIGHER_CONFIG
@@ -90,6 +95,14 @@ static int vi_probe(struct platform_device *dev)
 		return -ENODATA;
 	}
 
+	pdata->pdev = dev;
+	mutex_init(&pdata->lock);
+	platform_set_drvdata(dev, pdata);
+
+	err = nvhost_client_device_get_resources(dev);
+	if (err)
+		return err;
+
 	i2c_ctrl = pdata->private_data;
 
 	dev_info(&dev->dev, "%s: ++\n", __func__);
@@ -116,9 +129,6 @@ static int vi_probe(struct platform_device *dev)
 	}
 #endif
 
-	pdata->pdev = dev;
-	mutex_init(&pdata->lock);
-	platform_set_drvdata(dev, pdata);
 	nvhost_module_init(dev);
 
 #ifdef CONFIG_PM_GENERIC_DOMAINS
@@ -129,10 +139,6 @@ static int vi_probe(struct platform_device *dev)
 	err = nvhost_module_add_domain(&pdata->pd, dev);
 #endif
 
-	err = nvhost_client_device_get_resources(dev);
-	if (err)
-		goto camera_unregister;
-
 	err = nvhost_client_device_init(dev);
 	if (err)
 		goto camera_unregister;
@@ -142,8 +148,8 @@ static int vi_probe(struct platform_device *dev)
 camera_unregister:
 #ifdef CONFIG_TEGRA_CAMERA
 	tegra_camera_unregister(tegra_vi->camera);
-#endif
 camera_i2c_unregister:
+#endif
 	if (i2c_ctrl && i2c_ctrl->remove_devices)
 		i2c_ctrl->remove_devices(dev);
 	pdata->private_data = i2c_ctrl;
@@ -310,6 +316,10 @@ int nvhost_vi_finalize_poweron(struct platform_device *dev)
 				"%s: enable csi regulator failed.\n",
 				__func__);
 	}
+
+	if (nvhost_client_can_writel(dev))
+		nvhost_client_writel(dev,
+				T12_CG_2ND_LEVEL_EN, T12_VI_CFG_CG_CTRL);
 	return ret;
 }
 
@@ -398,6 +408,23 @@ const struct file_operations tegra_vi_ctrl_ops = {
 	.release = tegra_vi_release,
 };
 #endif
+
+void nvhost_vi_reset(struct platform_device *pdev)
+{
+	u32 reset_reg;
+
+	if (pdev->id == 0)
+		reset_reg = T12_VI_CSI_0_SW_RESET;
+	else
+		reset_reg = T12_VI_CSI_1_SW_RESET;
+
+	nvhost_client_writel(pdev, T12_VI_CSI_SW_RESET_MCCIF_RESET,
+			reset_reg);
+
+	udelay(10);
+
+	nvhost_client_writel(pdev, 0, reset_reg);
+}
 
 late_initcall(vi_init);
 module_exit(vi_exit);

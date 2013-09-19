@@ -155,5 +155,6 @@ int laguna_pm358_pmon_init(void);
 /* TN8 specific */
 
 int tn8_regulator_init(void);
+int tn8_fixed_regulator_init(void);
 
 #endif

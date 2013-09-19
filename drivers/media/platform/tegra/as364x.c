@@ -110,6 +110,7 @@ struct as364x_caps_struct {
 	u32 txmask_step_boost_uA;
 	u32 num_regs;
 	u32 max_peak_curr_mA;
+	u32 max_torch_curr_mA;
 	u32 min_ilimit_mA;
 	u32 max_assist_curr_mA;
 	u32 max_indicator_curr_mA;
@@ -162,13 +163,13 @@ struct as364x_info {
 };
 
 static const struct as364x_caps_struct as364x_caps[] = {
-	{"as3643", 5098, 0, 81600, 0, 11, 1300, 1000,
+	{"as3643", 5098, 0, 81600, 0, 11, 1300, 1300, 1000,
 		AS364X_MAX_ASSIST_CURRENT(5098),
 		AS364X_MAX_INDICATOR_CURRENT(5098), false},
-	{"as3647", 6274, 0, 100400, 0, 11, 1600, 2000,
+	{"as3647", 6274, 0, 100400, 0, 11, 1600, 1600, 2000,
 		AS364X_MAX_ASSIST_CURRENT(6274),
 		AS364X_MAX_INDICATOR_CURRENT(6274), false},
-	{"as3648", 3529, 3921, 56467, 62747, 14, 1000, 2000,
+	{"as3648", 3529, 3921, 56467, 62747, 14, 1000, 1000, 2000,
 		AS364X_MAX_ASSIST_CURRENT(3529),
 		AS364X_MAX_INDICATOR_CURRENT(3529), true},
 };
@@ -197,6 +198,7 @@ static const struct as364x_config default_cfg = {
 	.freq_switch_on = 0,
 	.led_off_when_vin_low = 0,
 	.max_peak_current_mA = 900,
+	.max_torch_current_mA = 900,
 	.max_sustained_current_mA = 0,
 	.max_peak_duration_ms = 0,
 	.min_current_mA = 0,
@@ -714,6 +716,14 @@ static int as364x_configure(struct as364x_info *info, bool update)
 		pcfg->max_peak_current_mA = pcap->max_peak_curr_mA;
 	}
 
+	if (pcfg->max_torch_current_mA > pcap->max_torch_curr_mA ||
+		!pcfg->max_torch_current_mA) {
+		dev_notice(info->dev,
+			"max_torch_current_mA of %d invalid changing to %d\n",
+			pcfg->max_torch_current_mA, pcap->max_torch_curr_mA);
+		pcfg->max_torch_current_mA = pcap->max_torch_curr_mA;
+	}
+
 	info->led_num = 1;
 	if (!pcfg->synchronized_led && pcap->led2_support &&
 		(info->led_mask & 3) == 3)
@@ -730,6 +740,12 @@ static int as364x_configure(struct as364x_info *info, bool update)
 		pcfg->max_total_current_mA = val;
 	pcfg->max_peak_current_mA =
 		info->config.max_total_current_mA / info->led_num;
+
+	val = pcfg->max_torch_current_mA * info->led_num;
+
+	if (pcfg->max_total_current_mA && pcfg->max_total_current_mA < val)
+		pcfg->max_torch_current_mA =
+			info->config.max_total_current_mA / info->led_num;
 
 	if (pcfg->max_sustained_current_mA > pcap->max_assist_curr_mA ||
 		!pcfg->max_sustained_current_mA) {

@@ -556,7 +556,7 @@ struct rm_spi_ts_platform_data rm31080ts_macallan_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
@@ -663,7 +663,6 @@ static void __init tegra_macallan_late_init(void)
 	macallan_bt_st();
 	macallan_tegra_setup_st_host_wake();
 #endif
-	tegra_release_bootloader_fb();
 	macallan_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

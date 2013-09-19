@@ -20,6 +20,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#define pr_fmt(fmt)	"nvmap: %s() " fmt, __func__
+
 #include <linux/dma-mapping.h>
 #include <linux/export.h>
 #include <linux/fs.h>
@@ -107,6 +109,15 @@ ulong nvmap_ref_to_user_id(struct nvmap_handle_ref *ref)
 		return 0;
 	return (ulong)marshal_kernel_handle(nvmap_ref_to_id(ref));
 }
+EXPORT_SYMBOL(nvmap_ref_to_user_id);
+
+ulong nvmap_ref_to_id(struct nvmap_handle_ref *ref)
+{
+	if (!virt_addr_valid(ref))
+		return 0;
+	return (unsigned long)ref->handle;
+}
+EXPORT_SYMBOL(nvmap_ref_to_id);
 
 int nvmap_ioctl_pinop(struct file *filp, bool is_pin, void __user *arg)
 {
@@ -185,11 +196,11 @@ int nvmap_ioctl_pinop(struct file *filp, bool is_pin, void __user *arg)
 		unsigned long addr;
 
 		h = (struct nvmap_handle *)refs[i];
-
 		if (h->heap_pgalloc && h->pgalloc.contig)
 			addr = page_to_phys(h->pgalloc.pages[0]);
 		else if (h->heap_pgalloc)
-			addr = h->pgalloc.area->iovm_start;
+			addr = sg_dma_address(
+				((struct sg_table *)h->attachment->priv)->sgl);
 		else
 			addr = h->carveout->base;
 
@@ -507,7 +518,7 @@ int nvmap_ioctl_get_param(struct file *filp, void __user* arg)
 		return -EINVAL;
 
 	nvmap_ref_lock(client);
-	ref = _nvmap_validate_id_locked(client, handle);
+	ref = __nvmap_validate_id_locked(client, handle);
 	if (IS_ERR_OR_NULL(ref)) {
 		err = ref ? PTR_ERR(ref) : -EINVAL;
 		goto ref_fail;

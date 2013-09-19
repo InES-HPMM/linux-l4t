@@ -44,7 +44,7 @@
 
 struct dvfs_rail *tegra_cpu_rail;
 struct dvfs_rail *tegra_core_rail;
-static struct dvfs_rail *tegra_gpu_rail;
+struct dvfs_rail *tegra_gpu_rail;
 
 static LIST_HEAD(dvfs_rail_list);
 static DEFINE_MUTEX(dvfs_lock);
@@ -364,15 +364,13 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 		millivolts = rail->override_millivolts;
 	} else {
 		/* apply offset and clip up to pll mode fixed mv */
-		millivolts += rail->offs_millivolts;
+		millivolts += rail->dbg_mv_offs;
 		if (!rail->dfll_mode && rail->fixed_millivolts &&
 		    (millivolts < rail->fixed_millivolts))
 			millivolts = rail->fixed_millivolts;
 	}
 
-	if (millivolts > rail->max_millivolts)
-		millivolts = rail->max_millivolts;
-	else if (millivolts < min_mv)
+	if (millivolts < min_mv)
 		millivolts = min_mv;
 
 	return millivolts;
@@ -1099,6 +1097,57 @@ struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id)
 	return NULL;
 }
 
+int tegra_dvfs_rail_power_up(struct dvfs_rail *rail)
+{
+	int ret = -ENOENT;
+
+	if (!rail || !rail->in_band_pm)
+		return -ENOSYS;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg) {
+		ret = regulator_enable(rail->reg);
+		if (!ret && !timekeeping_suspended)
+			tegra_dvfs_rail_on(rail, ktime_get());
+	}
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+int tegra_dvfs_rail_power_down(struct dvfs_rail *rail)
+{
+	int ret = -ENOENT;
+
+	if (!rail || !rail->in_band_pm)
+		return -ENOSYS;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg) {
+		ret = regulator_disable(rail->reg);
+		if (!ret && !timekeeping_suspended)
+			tegra_dvfs_rail_off(rail, ktime_get());
+	}
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail)
+{
+	bool ret = false;
+
+	if (!rail)
+		return false;
+
+	if (!rail->in_band_pm)
+		return true;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->reg)
+		ret = regulator_is_enabled(rail->reg) > 0;
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
 bool tegra_dvfs_rail_updating(struct clk *clk)
 {
 	return (!clk ? false :
@@ -1179,6 +1228,13 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void)
+{
+	if (tegra_gpu_rail)
+		return tegra_gpu_rail->vmin_cdev;
+	return NULL;
+}
+
 #ifdef CONFIG_THERMAL
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
 static int tegra_dvfs_rail_get_vmin_cdev_max_state(
@@ -1229,9 +1285,93 @@ static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vmin_cdev->cdev_type);
 }
+
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
 #endif
+
+/*
+ * Validate rail thermal profile, and get its size. Valid profile:
+ * - voltage limits are descending with temperature increasing
+ * - the lowest limit is above rail minimum voltage in pll and
+ *   in dfll mode (if applicable)
+ * - the highest limit is below rail nominal voltage
+ */
+static int __init get_thermal_profile_size(
+	int *trips_table, int *limits_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i, min_mv;
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (!limits_table[i+1])
+			break;
+
+		if ((trips_table[i] >= trips_table[i+1]) ||
+		    (limits_table[i] < limits_table[i+1])) {
+			pr_warn("%s: not ordered profile\n", rail->reg_id);
+			return -EINVAL;
+		}
+	}
+
+	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
+	if (limits_table[i] < min_mv) {
+		pr_warn("%s: thermal profile below Vmin\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	if (limits_table[0] > rail->nominal_millivolts) {
+		pr_warn("%s: thermal profile above Vmax\n", rail->reg_id);
+		return -EINVAL;
+	}
+	return i + 1;
+}
+
+void __init tegra_dvfs_rail_init_vmax_thermal_profile(
+	int *therm_trips_table, int *therm_caps_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_caps_table, rail, d);
+	if (i <= 0) {
+		rail->vmax_cdev = NULL;
+		WARN(1, "%s: invalid Vmax thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal caps */
+	rail->therm_mv_caps = therm_caps_table;
+	rail->therm_mv_caps_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmax_cdev) {
+		rail->vmax_cdev->trip_temperatures_num = i;
+		rail->vmax_cdev->trip_temperatures = therm_trips_table;
+	}
+}
+
+void __init tegra_dvfs_rail_init_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_floors_table, rail, d);
+	if (i <= 0) {
+		rail->vmin_cdev = NULL;
+		WARN(1, "%s: invalid Vmin thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal floors */
+	rail->therm_mv_floors = therm_floors_table;
+	rail->therm_mv_floors_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmin_cdev) {
+		rail->vmin_cdev->trip_temperatures_num = i;
+		rail->vmin_cdev->trip_temperatures = therm_trips_table;
+	}
+}
 
 /* Directly set cold temperature limit in dfll mode */
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
@@ -1378,7 +1518,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				rel->from->reg_id, rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
-		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
+		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
 		if (rail->therm_mv_floors) {
 			int i = rail->therm_floor_idx;
@@ -1482,7 +1622,7 @@ static int rail_offs_set(struct dvfs_rail *rail, int offs)
 {
 	if (rail) {
 		mutex_lock(&dvfs_lock);
-		rail->offs_millivolts = offs;
+		rail->dbg_mv_offs = offs;
 		dvfs_rail_update(rail);
 		mutex_unlock(&dvfs_lock);
 		return 0;
@@ -1493,7 +1633,7 @@ static int rail_offs_set(struct dvfs_rail *rail, int offs)
 static int cpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_cpu_rail) {
-		*val = (u64)tegra_cpu_rail->offs_millivolts;
+		*val = (u64)tegra_cpu_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;
@@ -1508,7 +1648,7 @@ DEFINE_SIMPLE_ATTRIBUTE(cpu_offs_fops, cpu_offs_get, cpu_offs_set, "%lld\n");
 static int gpu_offs_get(void *data, u64 *val)
 {
 	if (tegra_gpu_rail) {
-		*val = (u64)tegra_gpu_rail->offs_millivolts;
+		*val = (u64)tegra_gpu_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;
@@ -1523,7 +1663,7 @@ DEFINE_SIMPLE_ATTRIBUTE(gpu_offs_fops, gpu_offs_get, gpu_offs_set, "%lld\n");
 static int core_offs_get(void *data, u64 *val)
 {
 	if (tegra_core_rail) {
-		*val = (u64)tegra_core_rail->offs_millivolts;
+		*val = (u64)tegra_core_rail->dbg_mv_offs;
 		return 0;
 	}
 	*val = 0;

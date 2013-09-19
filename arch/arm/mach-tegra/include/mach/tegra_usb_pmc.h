@@ -201,6 +201,15 @@
 #define PMC_UTMIP_BIAS_MASTER_CNTRL 0x270
 #define BIAS_MASTER_PROG_VAL		(1 << 1)
 
+#define UTMIP_BIAS_CFG1		0x83c
+#define   UTMIP_BIAS_PDTRK_COUNT(x) (((x) & 0x1f) << 3)
+#define   UTMIP_BIAS_PDTRK_POWERDOWN	(1 << 0)
+#define   UTMIP_BIAS_PDTRK_POWERUP	(1 << 1)
+
+#define UTMIP_BIAS_STS0			0x840
+#define   UTMIP_RCTRL_VAL(x)		(((x) & 0xffff) << 0)
+#define   UTMIP_TCTRL_VAL(x)		(((x) & (0xffff << 16)) >> 16)
+
 #define PMC_UTMIP_MASTER_CONFIG		0x274
 #define UTMIP_PWR(inst)		(1 << (inst))
 
@@ -265,6 +274,8 @@ struct tegra_usb_pmc_data {
 };
 
 void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data);
+int utmi_phy_set_snps_trking_data(void);
+void utmi_phy_update_trking_data(u32 tctrl, u32 rctrl);
 void tegra_usb_pmc_reg_update(u32 reg_offset, u32 mask, u32 val);
 u32 tegra_usb_pmc_reg_read(u32 reg_offset);
 void tegra_usb_pmc_reg_write(u32 reg_offset, u32 val);

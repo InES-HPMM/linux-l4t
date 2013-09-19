@@ -758,8 +758,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 	}
 
 	/* 17. set zcal wait count */
-	if (zcal_long)
-		emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
+	emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
 	/* 18. update restored timing */
 	udelay(2);
@@ -1781,6 +1780,74 @@ static u8 iso_share_calc_t114_lpddr3_dc(unsigned long iso_bw)
 
 static struct dentry *emc_debugfs_root;
 
+#define INFO_CALC_REV_OFFSET 1
+#define INFO_SCRIPT_REV_OFFSET 2
+#define INFO_FREQ_OFFSET 3
+
+static int emc_table_info_show(struct seq_file *s, void *data)
+{
+	int i;
+	const u32 *info;
+	u32 freq, calc_rev, script_rev;
+	const struct tegra11_emc_table *entry;
+	bool found = false;
+
+	if (!tegra_emc_table) {
+		seq_printf(s, "EMC DFS table is not installed\n");
+		return 0;
+	}
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		entry = &tegra_emc_table[i];
+		info =
+		&entry->burst_up_down_regs[entry->burst_up_down_regs_num];
+
+		seq_printf(s, "%s: ", tegra_emc_clk_sel[i].input != NULL ?
+			   "accepted" : "rejected");
+
+		/* system validation tag for metadata */
+		if (*info != 0x4E564441) {
+			seq_printf(s, "emc dvfs frequency %6lu\n", entry->rate);
+			continue;
+		}
+
+		found = true;
+
+		calc_rev = *(info + INFO_CALC_REV_OFFSET);
+		script_rev = *(info + INFO_SCRIPT_REV_OFFSET);
+		freq = *(info + INFO_FREQ_OFFSET);
+
+		seq_printf(s, "emc dvfs frequency %6u: ", freq);
+		seq_printf(s, "calc_rev: %02u.%02u.%02u.%02u ",
+			   (calc_rev >> 24) & 0xff,
+			   (calc_rev >> 16) & 0xff,
+			   (calc_rev >>  8) & 0xff,
+			   (calc_rev >>  0) & 0xff);
+		seq_printf(s, "script_rev: %02u.%02u.%02u.%02u\n",
+			   (script_rev >> 24) & 0xff,
+			   (script_rev >> 16) & 0xff,
+			   (script_rev >>  8) & 0xff,
+			   (script_rev >>  0) & 0xff);
+	}
+
+	if (!found)
+		seq_printf(s, "no metdata in EMC DFS table\n");
+
+	return 0;
+}
+
+static int emc_table_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, emc_table_info_show, inode->i_private);
+}
+
+static const struct file_operations emc_table_info_fops = {
+	.open		= emc_table_info_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int emc_stats_show(struct seq_file *s, void *data)
 {
 	int i;
@@ -1854,12 +1921,17 @@ DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 
 static int __init tegra_emc_debug_init(void)
 {
-	if (!tegra_emc_table)
-		return 0;
-
 	emc_debugfs_root = debugfs_create_dir("tegra_emc", NULL);
 	if (!emc_debugfs_root)
 		return -ENOMEM;
+
+	if (!debugfs_create_file(
+		"table_info", S_IRUGO, emc_debugfs_root, NULL,
+		&emc_table_info_fops))
+		goto err_out;
+
+	if (!tegra_emc_table)
+		return 0;
 
 	if (!debugfs_create_file(
 		"stats", S_IRUGO, emc_debugfs_root, NULL, &emc_stats_fops))

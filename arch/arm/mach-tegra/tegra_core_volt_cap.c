@@ -312,8 +312,7 @@ int __init tegra_init_core_cap(
 #define MAX_BUS_NUM	8
 
 static DEFINE_MUTEX(bus_limit_lock);
-static const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
-static const struct attribute *bus_floor_attributes[2 * MAX_BUS_NUM + 1];
+static const struct attribute *bus_attributes[2 * MAX_BUS_NUM + 1];
 
 static int _floor_update(struct core_bus_limit_table *bus_limit,
 			 unsigned long qos_limit_level)
@@ -434,7 +433,7 @@ bus_limit_level_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
 	struct core_bus_limit_table *bus_limit = level_to_bus(attr);
-	return sprintf(buf, "%d\n", bus_limit->level);
+	return sprintf(buf, "%lu\n", bus_limit->level);
 }
 static ssize_t
 bus_limit_level_store(struct kobject *kobj, struct kobj_attribute *attr,
@@ -491,8 +490,8 @@ int __init tegra_init_shared_bus_cap(
 		table[i].level_attr.show = bus_limit_level_show;
 		table[i].level_attr.store = bus_limit_level_store;
 		table[i].update = _cap_update;
-		bus_cap_attributes[j++] = &table[i].refcnt_attr.attr;
-		bus_cap_attributes[j++] = &table[i].level_attr.attr;
+		bus_attributes[j++] = &table[i].refcnt_attr.attr;
+		bus_attributes[j++] = &table[i].level_attr.attr;
 		if (table[i].pm_qos_class) {
 			table[i].qos_nb.notifier_call = qos_limit_notify;
 			if (pm_qos_add_notifier(
@@ -503,9 +502,9 @@ int __init tegra_init_shared_bus_cap(
 			}
 		}
 	}
-	bus_cap_attributes[j] = NULL;
+	bus_attributes[j] = NULL;
 
-	if (!cap_kobj || sysfs_create_files(cap_kobj, bus_cap_attributes))
+	if (!cap_kobj || sysfs_create_files(cap_kobj, bus_attributes))
 		return -ENOMEM;
 	return 0;
 }
@@ -534,8 +533,8 @@ int __init tegra_init_shared_bus_floor(
 		table[i].level_attr.show = bus_limit_level_show;
 		table[i].level_attr.store = bus_limit_level_store;
 		table[i].update = _floor_update;
-		bus_floor_attributes[j++] = &table[i].refcnt_attr.attr;
-		bus_floor_attributes[j++] = &table[i].level_attr.attr;
+		bus_attributes[j++] = &table[i].refcnt_attr.attr;
+		bus_attributes[j++] = &table[i].level_attr.attr;
 		if (table[i].pm_qos_class) {
 			table[i].qos_nb.notifier_call = qos_limit_notify;
 			if (pm_qos_add_notifier(
@@ -546,9 +545,98 @@ int __init tegra_init_shared_bus_floor(
 			}
 		}
 	}
-	bus_floor_attributes[j] = NULL;
+	bus_attributes[j] = NULL;
 
-	if (!floor_kobj || sysfs_create_files(floor_kobj, bus_floor_attributes))
+	if (!floor_kobj || sysfs_create_files(floor_kobj, bus_attributes))
+		return -ENOMEM;
+	return 0;
+}
+
+/* sysfs interfaces to read tegra core shared bus current / available rates */
+#define rate_to_bus(attr) \
+	container_of(attr, struct core_bus_rates_table, rate_attr)
+#define available_rates_to_bus(attr) \
+	container_of(attr, struct core_bus_rates_table, available_rates_attr)
+
+
+static ssize_t
+bus_rate_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct core_bus_rates_table *bus = rate_to_bus(attr);
+	struct clk *c = bus->bus_clk;
+	return sprintf(buf, "%lu\n", clk_get_rate(c));
+}
+
+static ssize_t
+bus_available_rates_show(struct kobject *kobj, struct kobj_attribute *attr,
+			 char *buf)
+{
+	int i;
+	ssize_t n = 0;
+	struct core_bus_rates_table *bus = available_rates_to_bus(attr);
+
+	for (i = 0; i < MAX_DVFS_FREQS; i++) {
+		unsigned long rate = bus->available_rates[i];
+		if (!rate || ((n + 10) > PAGE_SIZE))
+			break;
+
+		n += sprintf(&buf[n], "%lu ", rate);
+	}
+	n = n ? n-1 : 0;
+	n += sprintf(&buf[n], "\n");
+	return n;
+}
+
+static int get_available_rates(struct clk *c, struct core_bus_rates_table *t)
+{
+	int i = 0;
+	unsigned long rate = 0;
+	unsigned long max_rate = clk_get_max_rate(c);
+
+	/* available rates search below applied to shared bus only */
+	if (!c->ops || !c->ops->round_rate || !c->ops->shared_bus_update) {
+		pr_err("%s: cannot find %s rates ladder\n", __func__, c->name);
+		return -ENOSYS;
+	}
+
+	/* shared bus clock must round up, unless top of range reached */
+	while ((rate <= max_rate) && (i <= MAX_DVFS_FREQS)) {
+		unsigned long rounded_rate = clk_round_rate(c, rate);
+		if (IS_ERR_VALUE(rounded_rate) || (rounded_rate <= rate))
+			break;
+
+		rate = rounded_rate + 2000;	/* 2kHz resolution */
+		t->available_rates[i++] = rounded_rate;
+	}
+	return 0;
+}
+
+int __init tegra_init_sysfs_shared_bus_rate(
+	struct core_bus_rates_table *table, int table_size,
+	struct kobject *floor_kobj)
+{
+	int i, j;
+	struct clk *c = NULL;
+
+	if (!table || !table_size || (table_size > MAX_BUS_NUM))
+		return -EINVAL;
+
+	for (i = 0, j = 0; i < table_size; i++) {
+		c = tegra_get_clock_by_name(table[i].bus_clk_name);
+		if (!c || get_available_rates(c, &table[i])) {
+			pr_err("%s: failed to initialize %s table\n",
+			       __func__, table[i].bus_clk_name);
+			continue;
+		}
+		table[i].bus_clk = c;
+		table[i].rate_attr.show = bus_rate_show;
+		table[i].available_rates_attr.show = bus_available_rates_show;
+		bus_attributes[j++] = &table[i].rate_attr.attr;
+		bus_attributes[j++] = &table[i].available_rates_attr.attr;
+	}
+	bus_attributes[j] = NULL;
+
+	if (!floor_kobj || sysfs_create_files(floor_kobj, bus_attributes))
 		return -ENOMEM;
 	return 0;
 }

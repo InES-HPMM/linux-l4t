@@ -45,6 +45,7 @@ struct gadc_thermal_driver_data {
 	int first_index_temp;
 	int last_index_temp;
 	int temp_offset;
+	bool dual_mode;
 };
 
 static int gadc_thermal_thermistor_adc_to_temp(
@@ -88,14 +89,33 @@ static int gadc_thermal_thermistor_adc_to_temp(
 	return temp;
 }
 
+static int gadc_thermal_read_channel(struct gadc_thermal_driver_data *drvdata,
+				     int *val, int *val2)
+{
+	int ret;
+
+	if (drvdata->dual_mode) {
+		ret = iio_read_channel_processed_dual(drvdata->channel, val,
+						      val2);
+		if (ret < 0)
+			ret = iio_read_channel_raw_dual(drvdata->channel, val,
+							val2);
+	} else {
+		ret = iio_read_channel_processed(drvdata->channel, val);
+		if (ret < 0)
+			ret = iio_read_channel_raw(drvdata->channel, val);
+	}
+	return ret;
+}
+
 static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 				 unsigned long *temp)
 {
 	struct gadc_thermal_driver_data *drvdata = tz->devdata;
-	int val;
+	int val = 0, val2 = 0;
 	int ret;
 
-	ret = iio_read_channel_raw(drvdata->channel, &val);
+	ret = gadc_thermal_read_channel(drvdata, &val, &val2);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
@@ -103,7 +123,7 @@ static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 	}
 
 	if (drvdata->pdata->adc_to_temp)
-		*temp = drvdata->pdata->adc_to_temp(drvdata->pdata, val);
+		*temp = drvdata->pdata->adc_to_temp(drvdata->pdata, val, val2);
 	else if (drvdata->pdata->adc_temp_lookup)
 		*temp = gadc_thermal_thermistor_adc_to_temp(drvdata, val);
 	else
@@ -121,10 +141,10 @@ static struct thermal_zone_device_ops gadc_thermal_ops = {
 static int adc_temp_show(struct seq_file *s, void *p)
 {
 	struct gadc_thermal_driver_data *drvdata = s->private;
-	int adc, temp;
+	int val = 0, val2 = 0, temp = 0;
 	int ret;
 
-	ret = iio_read_channel_raw(drvdata->channel, &adc);
+	ret = gadc_thermal_read_channel(drvdata, &val, &val2);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
@@ -132,13 +152,14 @@ static int adc_temp_show(struct seq_file *s, void *p)
 	}
 
 	if (drvdata->pdata->adc_to_temp)
-		temp = drvdata->pdata->adc_to_temp(drvdata->pdata, adc);
+		temp = drvdata->pdata->adc_to_temp(drvdata->pdata, val, val2);
+	else if (drvdata->pdata->adc_temp_lookup)
+		temp = gadc_thermal_thermistor_adc_to_temp(drvdata, val);
 	else
-		temp = adc;
+		temp = val;
 
-	temp += drvdata->pdata->temp_offset;
-
-	seq_printf(s, "%d %d\n", adc, temp);
+	temp += drvdata->temp_offset;
+	seq_printf(s, "%d %d %d\n", val, val2, temp);
 	return 0;
 }
 
@@ -262,6 +283,7 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 	drvdata->first_index_temp = pdata->first_index_temp;
 	drvdata->last_index_temp = pdata->last_index_temp;
 	drvdata->temp_offset = pdata->temp_offset;
+	drvdata->dual_mode = pdata->dual_mode;
 	if (drvdata->lookup_table_size)
 		memcpy(drvdata->adc_temp_lookup, pdata->adc_temp_lookup,
 			pdata->lookup_table_size * sizeof(unsigned int));

@@ -640,6 +640,123 @@ static struct core_edp_entry core_edp_table[] = {
 			},
 		},
 	},
+	/* SKU 8 */
+	{
+		.sku		= 0x8,		/* SKU = 8 */
+		.process_id	= -1,		/* any process id */
+		.cap_mA		= 6000,		/* 6A cap */
+		.mult		= 1000000,	/* MHZ */
+		.cap_scpu_on	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 636 },
+				 { 744, 636 },
+				 { 744, 576 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 636 },
+				 { 744, 636 },
+				 { 744, 576 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 624, 672 },
+				 { 624, 672 },
+				 { 624, 636 },
+				}
+			},
+		},
+		.cap_scpu_off	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				}
+			},
+		},
+	},
+	{
+		.sku		= 0x8,		/* SKU = 8 */
+		.process_id	= -1,		/* any process id */
+		.cap_mA		= 8000,		/* 8A cap */
+		.mult		= 1000000,	/* MHZ */
+		.cap_scpu_on	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				}
+			},
+		},
+		.cap_scpu_off	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 744, 672 },
+				 { 744, 672 },
+				 { 744, 672 },
+				 { 744, 648 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 792, 828 },
+				 { 792, 816 },
+				 { 792, 804 },
+				 { 792, 648 },
+				}
+			},
+		},
+	},
 };
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
@@ -757,6 +874,25 @@ static struct tegra_edp_cpu_leakage_params t11x_leakage_params[] = {
 		},
 		LEAKAGE_PARAMS_COMMON_PART,
 	},
+	{
+		.cpu_speedo_id	    = 3,
+		.safety_cap = { 1810500, 1810500, 1810500, 1810500 },
+		.max_current_cap = { /* fixed values */
+			{ .max_cur = 9000, .max_temp = 105,
+				{ 1810500, 1810500, 1530000, 1530000 }
+			},
+			{ .max_cur = 9000, .max_temp = 90,
+				{ 1810500, 1810500, 1606500, 1606500 }
+			},
+			{ .max_cur = 12000, .max_temp = 105,
+				{ 1810500, 1810500, 1708500, 1708500 }
+			},
+			{ .max_cur = 15000, .max_temp = 105,
+				{ 1810500, 1810500, 1810500, 1810500 }
+			},
+		},
+		LEAKAGE_PARAMS_COMMON_PART,
+	},
 };
 
 struct tegra_edp_cpu_leakage_params *tegra11x_get_leakage_params(int index,
@@ -777,7 +913,7 @@ static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
 	if ((sku == 0x5) || (sku == 0x6)) {
 		if (regulator_mA >= 8000)
 			return NULL;		/* no edp limits above 8A */
-	} else if ((sku == 0x3) || (sku == 0x4)) {
+	} else if ((sku == 0x3) || (sku == 0x4) || (sku == 0x8)) {
 		if (regulator_mA >= 8000)
 			regulator_mA = 8000;	/* apply 8A table above 8A */
 	} else {

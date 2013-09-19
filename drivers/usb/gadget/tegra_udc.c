@@ -109,6 +109,8 @@ static struct pm_qos_request boost_cpu_freq_req;
 static u32 ep_queue_request_count;
 static u8 boost_cpufreq_work_flag, set_cpufreq_normal_flag;
 static struct timer_list boost_timer;
+static bool boost_enable = true;
+module_param(boost_enable, bool, 0644);
 #endif
 
 static char *const tegra_udc_extcon_cable[] = {
@@ -2343,8 +2345,11 @@ static void tegra_udc_boost_cpu_frequency_work(struct work_struct *work)
 	/* If CPU frequency is not boosted earlier boost it, and modify
 	 * timer expiry time to 2sec */
 	if (boost_cpufreq_work_flag) {
-		pm_qos_update_request(&boost_cpu_freq_req,
-			(s32)CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ * 1000);
+		if (boost_enable)
+			pm_qos_update_request(
+				&boost_cpu_freq_req,
+				(s32)(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+				      * 1000));
 		boost_cpufreq_work_flag = 0;
 		DBG("%s(%d) boost CPU frequency\n", __func__, __LINE__);
 	}

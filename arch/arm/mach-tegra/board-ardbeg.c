@@ -663,15 +663,16 @@ static struct tegra_xusb_board_data xusb_bdata = {
 		.s1p05v = "avddio_usb",
 	},
 
-	.hsic = {
+	.hsic[0] = {
 		.rx_strobe_trim = 0x1,
 		.rx_data_trim = 0x1,
 		.tx_rtune_n = 0x8,
-		.tx_rtune_p = 0xc,
+		.tx_rtune_p = 0xa,
 		.tx_slew_n = 0,
 		.tx_slew_p = 0,
 		.auto_term_en = true,
 		.strb_trim_val = 0x22,
+		.pretend_connect = false,
 	},
 	.uses_external_pmic = false,
 	.uses_different_vbus_per_port = true,
@@ -821,7 +822,8 @@ static void ardbeg_modem_init(void)
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
 			platform_device_register(&tegra_ehci2_device);
-		}
+		} else
+			xusb_bdata.hsic[0].pretend_connect = true;
 		break;
 	default:
 		return;
@@ -922,7 +924,7 @@ struct rm_spi_ts_platform_data rm31080ts_ardbeg_data = {
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
+	.rx_clk_tap_delay = 16,
 	.tx_clk_tap_delay = 16,
 };
 
@@ -1009,7 +1011,6 @@ static void __init tegra_ardbeg_late_init(void)
 		laguna_pm358_pmon_init();
 	else
 		ardbeg_pmon_init();
-	tegra_release_bootloader_fb();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)

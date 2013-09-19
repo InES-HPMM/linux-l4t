@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -21,17 +21,23 @@
 #include <linux/export.h>
 #include <linux/io.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 
 #include <mach/mc.h>
 
 #include "iomap.h"
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static DEFINE_SPINLOCK(tegra_mc_lock);
+static void __iomem *mc_base = (void __iomem *)IO_TO_VIRT(TEGRA_MC_BASE);
+#define MC_CLIENT_HOTRESET_CTRL		0x200
+#define MC_CLIENT_HOTRESET_STAT		0x204
+#define MC_CLIENT_HOTRESET_CTRL_1	0x970
+#define MC_CLIENT_HOTRESET_STAT_1	0x974
+
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 
 void tegra_mc_set_priority(unsigned long client, unsigned long prio)
 {
-	void __iomem *mc_base = (void __iomem *)IO_TO_VIRT(TEGRA_MC_BASE);
 	unsigned long reg = client >> 8;
 	int field = client & 0xff;
 	unsigned long val;
@@ -104,3 +110,88 @@ unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_khz)
 	return bw;
 }
 EXPORT_SYMBOL_GPL(tegra_emc_freq_req_to_bw);
+
+#define HOTRESET_READ_COUNT	5
+static bool tegra_stable_hotreset_check(u32 stat_reg, u32 *stat)
+{
+	int i;
+	u32 cur_stat;
+	u32 prv_stat;
+	unsigned long flags;
+
+	spin_lock_irqsave(&tegra_mc_lock, flags);
+	prv_stat = readl(mc_base + stat_reg);
+	for (i = 0; i < HOTRESET_READ_COUNT; i++) {
+		cur_stat = readl(mc_base + stat_reg);
+		if (cur_stat != prv_stat) {
+			spin_unlock_irqrestore(&tegra_mc_lock, flags);
+			return false;
+		}
+	}
+	*stat = cur_stat;
+	spin_unlock_irqrestore(&tegra_mc_lock, flags);
+	return true;
+}
+
+int tegra_mc_flush(int id)
+{
+	u32 rst_ctrl, rst_stat;
+	u32 rst_ctrl_reg, rst_stat_reg;
+	unsigned long flags;
+	bool ret;
+
+	if (id < 32) {
+		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
+		rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
+	} else {
+		id %= 32;
+		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
+		rst_stat_reg = MC_CLIENT_HOTRESET_STAT_1;
+	}
+
+	spin_lock_irqsave(&tegra_mc_lock, flags);
+
+	rst_ctrl = readl(mc_base + rst_ctrl_reg);
+	rst_ctrl |= (1 << id);
+	writel(rst_ctrl, mc_base + rst_ctrl_reg);
+
+	spin_unlock_irqrestore(&tegra_mc_lock, flags);
+
+	do {
+		udelay(10);
+		rst_stat = 0;
+		ret = tegra_stable_hotreset_check(rst_stat_reg, &rst_stat);
+		if (!ret)
+			continue;
+	} while (!(rst_stat & (1 << id)));
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_mc_flush);
+
+int tegra_mc_flush_done(int id)
+{
+	u32 rst_ctrl;
+	u32 rst_ctrl_reg, rst_stat_reg;
+	unsigned long flags;
+
+	if (id < 32) {
+		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
+		rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
+	} else {
+		id %= 32;
+		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
+		rst_stat_reg = MC_CLIENT_HOTRESET_STAT_1;
+	}
+
+	spin_lock_irqsave(&tegra_mc_lock, flags);
+
+	rst_ctrl = readl(mc_base + rst_ctrl_reg);
+	rst_ctrl &= ~(1 << id);
+	writel(rst_ctrl, mc_base + rst_ctrl_reg);
+
+	spin_unlock_irqrestore(&tegra_mc_lock, flags);
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_mc_flush_done);

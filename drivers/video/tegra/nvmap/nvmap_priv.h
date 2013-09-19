@@ -33,10 +33,16 @@
 #include <linux/dma-buf.h>
 #include <linux/syscalls.h>
 #include <linux/nvmap.h>
-#include "nvmap_heap.h"
+
 #include <linux/workqueue.h>
+#include <linux/dma-mapping.h>
+#include <linux/dma-direction.h>
+#include <linux/platform_device.h>
+
 #include <asm/tlbflush.h>
 #include <asm/cacheflush.h>
+
+#include "nvmap_heap.h"
 
 struct nvmap_device;
 struct nvmap_share;
@@ -46,6 +52,10 @@ struct tegra_iovmm_area;
 extern const struct file_operations nvmap_fd_fops;
 void _nvmap_handle_free(struct nvmap_handle *h);
 extern struct nvmap_share *nvmap_share;
+/* holds max number of handles allocted per process at any time */
+extern u32 nvmap_max_handle_count;
+
+extern struct platform_device *nvmap_pdev;
 
 #if defined(CONFIG_TEGRA_NVMAP)
 #define nvmap_err(_client, _fmt, ...)				\
@@ -59,8 +69,6 @@ extern struct nvmap_share *nvmap_share;
 #define nvmap_debug(_client, _fmt, ...)				\
 	dev_dbg(nvmap_client_to_device(_client),		\
 		"%s: "_fmt, __func__, ##__VA_ARGS__)
-
-#define nvmap_ref_to_id(_ref)		((unsigned long)(_ref)->handle)
 
 #define CACHE_MAINT_IMMEDIATE		0
 #define CACHE_MAINT_ALLOW_DEFERRED	1
@@ -107,7 +115,17 @@ struct nvmap_handle {
 			original client destroy ref, this field
 			has to be set to zero. In this case ref should be
 			obtained through validation */
+
+	/*
+	 * dma_buf necessities. An attachment is made on dma_buf allocation to
+	 * facilitate the nvmap_pin* APIs.
+	 *
+	 * TODO: remove all all places where "pins" are used so that the pin
+	 * APIs can be removed.
+	 */
 	struct dma_buf *dmabuf;
+	struct dma_buf_attachment *attachment;
+
 	struct nvmap_device *dev;
 	union {
 		struct nvmap_pgalloc pgalloc;
@@ -184,12 +202,13 @@ struct nvmap_client {
 	const char			*name;
 	struct rb_root			handle_refs;
 	atomic_t			iovm_commit;
-	size_t				iovm_limit;
 	struct mutex			ref_lock;
 	bool				super;
+	bool				kernel_client;
 	atomic_t			count;
 	struct task_struct		*task;
 	struct list_head		list;
+	u32				handle_count;
 	struct nvmap_carveout_commit	carveout_commit[0];
 };
 
@@ -289,7 +308,7 @@ struct nvmap_handle *nvmap_get_handle_id(struct nvmap_client *client,
 
 void nvmap_handle_put(struct nvmap_handle *h);
 
-struct nvmap_handle_ref *_nvmap_validate_id_locked(struct nvmap_client *priv,
+struct nvmap_handle_ref *__nvmap_validate_id_locked(struct nvmap_client *priv,
 						   unsigned long id);
 
 struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
@@ -321,9 +340,6 @@ int nvmap_handle_remove(struct nvmap_device *dev, struct nvmap_handle *h);
 void nvmap_handle_add(struct nvmap_device *dev, struct nvmap_handle *h);
 
 int is_nvmap_vma(struct vm_area_struct *vma);
-
-int _nvmap_pin(struct nvmap_client *c, struct nvmap_handle_ref *r, 
-	phys_addr_t *phys);
 
 void nvmap_unpin_handles(struct nvmap_client *client,
 			 struct nvmap_handle **h, int nr);
@@ -383,9 +399,6 @@ struct sg_table *__nvmap_sg_table(struct nvmap_client *client,
 				  struct nvmap_handle *h);
 void __nvmap_free_sg_table(struct nvmap_client *client,
 			   struct nvmap_handle *h, struct sg_table *sgt);
-int __nvmap_pin(struct nvmap_client *client, struct nvmap_handle *h,
-		phys_addr_t *phys);
-void __nvmap_unpin(struct nvmap_client *client, struct nvmap_handle *h);
 void *__nvmap_kmap(struct nvmap_handle *h, unsigned int pagenum);
 void __nvmap_kunmap(struct nvmap_handle *h, unsigned int pagenum, void *addr);
 void *__nvmap_mmap(struct nvmap_handle *h);
@@ -397,5 +410,7 @@ int __nvmap_cache_maint(struct nvmap_client *client, struct nvmap_handle *h,
 			unsigned long start, unsigned long end,
 			unsigned int op, unsigned int allow_deferred);
 
+void nvmap_dmabuf_debugfs_init(struct dentry *nvmap_root);
+int nvmap_dmabuf_stash_init(void);
 
 #endif /* __VIDEO_TEGRA_NVMAP_NVMAP_H */

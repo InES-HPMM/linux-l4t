@@ -281,6 +281,8 @@ struct palmas_gpadc_platform_data {
 	 * consumption depending on current level set here.
 	 */
 	int ch0_current;
+	bool ch3_dual_current;
+	bool extended_delay;
 
 	/* default BAT_REMOVAL_DAT setting on device probe */
 	int bat_removal;
@@ -367,7 +369,8 @@ enum palmas_regulators {
 	PALMAS_REG_SMPS7,
 	PALMAS_REG_SMPS8,
 	PALMAS_REG_SMPS9,
-	PALMAS_REG_SMPS10,
+	PALMAS_REG_SMPS10_OUT2,
+	PALMAS_REG_SMPS10_OUT1,
 	/* LDO regulators */
 	PALMAS_REG_LDO1,
 	PALMAS_REG_LDO2,
@@ -702,11 +705,10 @@ struct palmas_pmic {
 	int ldo_vref0p425;
 	bool smps10_boost_disable_deferred;
 
-	int range[PALMAS_REG_SMPS10];
-	unsigned int ramp_delay[PALMAS_REG_SMPS10];
+	int range[PALMAS_REG_SMPS10_OUT1];
+	unsigned int ramp_delay[PALMAS_REG_SMPS10_OUT1];
 	bool ramp_delay_support[PALMAS_NUM_REGS];
-	unsigned int current_reg_mode[PALMAS_REG_SMPS10];
-	unsigned long roof_floor[PALMAS_NUM_REGS];
+	unsigned int current_reg_mode[PALMAS_REG_SMPS10_OUT1];
 	unsigned long config_flags[PALMAS_NUM_REGS];
 };
 
@@ -4096,6 +4098,22 @@ enum {
 	PALMAS_ADC_CH_IN15,
 
 	PALMAS_ADC_CH_MAX,
+};
+
+/* Palma GPADC Channel0 Current Source */
+enum {
+	PALMAS_ADC_CH0_CURRENT_SRC_0,
+	PALMAS_ADC_CH0_CURRENT_SRC_5,
+	PALMAS_ADC_CH0_CURRENT_SRC_15,
+	PALMAS_ADC_CH0_CURRENT_SRC_20,
+};
+
+/* Palma GPADC Channel3 Current Source */
+enum {
+	PALMAS_ADC_CH3_CURRENT_SRC_0,
+	PALMAS_ADC_CH3_CURRENT_SRC_10,
+	PALMAS_ADC_CH3_CURRENT_SRC_400,
+	PALMAS_ADC_CH3_CURRENT_SRC_800,
 };
 
 /* Palma Sleep requestor IDs IDs */

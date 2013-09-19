@@ -2164,7 +2164,7 @@ int arm_iommu_attach_device(struct device *dev,
 			    struct dma_iommu_mapping *mapping)
 {
 	int err;
-	const struct dma_map_ops *org_ops;
+	struct dma_map_ops *org_ops;
 	struct dma_iommu_mapping *org_map;
 
 	org_ops = get_dma_ops(dev);

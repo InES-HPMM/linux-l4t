@@ -23,7 +23,6 @@
 #include <linux/firmware.h>
 #include <linux/nvmap.h>
 #include <linux/module.h>
-#include <linux/debugfs.h>
 
 #include "../dev.h"
 #include "../bus_client.h"
@@ -1116,7 +1115,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 	ptr[1] = 0; ptr[2] = 1; ptr[3] = 0;
 	ptr[4] = 0; ptr[5] = 0; ptr[6] = 0; ptr[7] = 0;
 
-	pmu->seq_buf.mem.size = 8;
+	pmu->seq_buf.mem.size = 4096;
 
 	nvhost_memmgr_munmap(pmu->seq_buf.mem.ref, ptr);
 
@@ -1293,6 +1292,14 @@ int gk20a_init_pmu_setup_hw(struct gk20a *g)
 		return -EBUSY;
 	}
 
+	/*
+	 * FIXME: To enable ELPG, we increase the PMU ext2priv timeout unit to
+	 * 7. This prevents PMU stalling on Host register accesses. Once the
+	 * cause for this hang is discovered and fixed, this WAR should be
+	 * removed.
+	 */
+	gk20a_writel(g, 0x10a164, 0x109ff);
+
 	return 0;
 }
 
@@ -1322,6 +1329,9 @@ int gk20a_init_pmu_support(struct gk20a *g)
 			return err;
 
 		pmu->initialized = true;
+
+		/* Save zbc table after PMU is initialized. */
+		pmu_save_zbc(g, 0xf);
 	}
 
 	return err;
@@ -1487,29 +1497,6 @@ static int pmu_init_perfmon(struct pmu_gk20a *pmu)
 			pwr_pmu_idle_ctrl_value_always_f() |
 			pwr_pmu_idle_ctrl_filter_disabled_f());
 	gk20a_writel(g, pwr_pmu_idle_ctrl_r(6), data);
-
-
-	/* We don't want to disturb counters #3 and #6, which are used by
-	 * perfmon, so we perfmon the same wiring for #1 and #2 and use
-	 * them to keep track of GPU load.
-	 */
-	gk20a_writel(g, pwr_pmu_idle_mask_r(1),
-		pwr_pmu_idle_mask_gr_enabled_f() |
-		pwr_pmu_idle_mask_ce_2_enabled_f());
-
-	data = gk20a_readl(g, pwr_pmu_idle_ctrl_r(1));
-	data = set_field(data, pwr_pmu_idle_ctrl_value_m() |
-			pwr_pmu_idle_ctrl_filter_m(),
-			pwr_pmu_idle_ctrl_value_busy_f() |
-			pwr_pmu_idle_ctrl_filter_disabled_f());
-	gk20a_writel(g, pwr_pmu_idle_ctrl_r(1), data);
-
-	data = gk20a_readl(g, pwr_pmu_idle_ctrl_r(2));
-	data = set_field(data, pwr_pmu_idle_ctrl_value_m() |
-			pwr_pmu_idle_ctrl_filter_m(),
-			pwr_pmu_idle_ctrl_value_always_f() |
-			pwr_pmu_idle_ctrl_filter_disabled_f());
-	gk20a_writel(g, pwr_pmu_idle_ctrl_r(2), data);
 
 	pmu->sample_buffer = 0;
 	err = pmu->dmem.alloc(&pmu->dmem, &pmu->sample_buffer, 2 * sizeof(u16));
@@ -1758,6 +1745,27 @@ static int pmu_response_handle(struct pmu_gk20a *pmu,
 	/* TBD: notify client waiting for available dmem */
 
 	nvhost_dbg_fn("done");
+
+	return 0;
+}
+
+void pmu_save_zbc(struct gk20a *g, u32 entries)
+{
+	struct pmu_gk20a *pmu = &g->pmu;
+	struct pmu_cmd cmd;
+	u32 seq;
+
+	if (!pmu->pmu_ready || !entries)
+		return;
+
+	memset(&cmd, 0, sizeof(struct pmu_cmd));
+	cmd.hdr.unit_id = PMU_UNIT_PG;
+	cmd.hdr.size = PMU_CMD_HDR_SIZE + sizeof(struct pmu_zbc_cmd);
+	cmd.cmd.zbc.cmd_type = PMU_PG_CMD_ID_ZBC_TABLE_UPDATE;
+	cmd.cmd.zbc.entry_mask = ZBC_MASK(entries);
+
+	gk20a_pmu_cmd_post(g, &cmd, NULL, NULL, PMU_COMMAND_QUEUE_HPQ,
+					NULL, pmu, &seq, ~0);
 
 	return 0;
 }
@@ -2370,12 +2378,6 @@ int gk20a_pmu_enable_elpg(struct gk20a *g)
 
 	nvhost_dbg_fn("");
 
-	/* Until ZBC save/restore is implemented, we keep ELPG off */
-	nvhost_err(dev_from_gk20a(g),
-		"ELPG functionality currently disabled\n");
-
-	return -EINVAL;
-
 	if (!pmu->elpg_ready)
 		return 0;
 
@@ -2584,102 +2586,3 @@ int gk20a_pmu_load_norm(struct gk20a *g, u32 *load)
 
 	return 0;
 }
-
-#ifdef CONFIG_DEBUG_FS
-static int load_get(void *data, u64 *val)
-{
-	struct gk20a *g = (struct gk20a *)data;
-	struct pmu_gk20a *pmu = &(g->pmu);
-	unsigned long busy_cycles;
-	unsigned long total_cycles;
-	u64 busy_64, total_64;
-	u32 reg_val;
-
-	if (!pmu->initialized) {
-		nvhost_err(dev_from_gk20a(g),
-			"PMU isn't ready, can't retrieve stats\n");
-		return -ENODEV;
-	}
-
-	/* The counters will very easily overflow. Therefore we reset */
-	reg_val = pwr_pmu_idle_count_reset_f(1);
-
-	/* total cycles should always be larger than busy cycles. therefore,
-	 * enforce the order.
-	 * Counter #2, counting total cycles, resets first, then Counter #1*/
-	gk20a_writel(g, pwr_pmu_idle_count_r(2), reg_val);
-	wmb();
-	gk20a_writel(g, pwr_pmu_idle_count_r(1), reg_val);
-
-	/* Wait for 300ms as a sampling period */
-	msleep(300);
-
-	/* total cycles should always be larger than busy cycles. therefore,
-	 * enforce the order */
-	busy_cycles = pwr_pmu_idle_count_value_v(
-		gk20a_readl(g, pwr_pmu_idle_count_r(1)));
-	rmb();
-	total_cycles = pwr_pmu_idle_count_value_v(
-		gk20a_readl(g, pwr_pmu_idle_count_r(2)));
-
-	/* Result scaled to 10000 */
-	busy_64 = ((u64)busy_cycles * (u64)10000);
-	total_64 = total_cycles;
-
-
-	if (total_cycles)
-		*val = div64_u64(busy_64, total_64);
-	else
-		*val = 0;
-
-	return 0;
-}
-DEFINE_SIMPLE_ATTRIBUTE(load_fops, load_get, NULL, "%llu\n");
-
-static int elpg_stats_show(struct seq_file *s, void *data)
-{
-	/* FIXME: Add call to dump elpg stats */
-	seq_printf(s," ELPG: Stats will be dumped here\n");
-	return 0;
-}
-
-static int elpg_stats_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, elpg_stats_show, inode->i_private);
-}
-
-static const struct file_operations elpg_stats_fops = {
-	.open		= elpg_stats_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
-int pmu_gk20a_debugfs_init(struct platform_device *dev)
-{
-	struct dentry *d, *pmu_dir;
-	struct nvhost_device_data *pdata = platform_get_drvdata(dev);
-	struct gk20a *g = get_gk20a(dev);
-
-	pmu_dir = debugfs_create_dir("pmu", pdata->debugfs);
-	if (!pmu_dir)
-		goto err_out;
-
-	d = debugfs_create_file(
-		"gpu_load", S_IRUGO|S_IWUSR, pmu_dir, g, &load_fops);
-	if (!d)
-		goto err_out;
-
-	d = debugfs_create_file(
-		"elpg_stats", S_IRUGO|S_IWUSR, pmu_dir, g, &elpg_stats_fops);
-	if (!d)
-		goto err_out;
-
-	return 0;
-
-err_out:
-	pr_err("%s: Failed to make debugfs node\n", __func__);
-	debugfs_remove_recursive(pmu_dir);
-	return -ENOMEM;
-}
-#endif

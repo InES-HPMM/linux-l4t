@@ -211,6 +211,7 @@ static inline void gk20a_gr_flush_channel_tlb(struct gr_gk20a *gr)
  * 2. client opens gk20a ctrl node.
  */
 int nvhost_gk20a_init(struct platform_device *dev);
+void nvhost_gk20a_deinit(struct platform_device *dev);
 
 /* classes that the device supports */
 /* TBD: get these from an open-sourced SDK? */
@@ -233,12 +234,25 @@ static inline int support_gk20a_pmu(void){return 0;}
 
 int nvhost_gk20a_finalize_poweron(struct platform_device *dev);
 int nvhost_gk20a_prepare_poweroff(struct platform_device *dev);
+void nvhost_gk20a_scale_notify_idle(struct platform_device *pdev);
+void nvhost_gk20a_scale_notify_busy(struct platform_device *pdev);
+void nvhost_gk20a_scale_init(struct platform_device *pdev);
+void nvhost_gk20a_scale_deinit(struct platform_device *pdev);
 
 void gk20a_create_sysfs(struct platform_device *dev);
 
 #ifdef CONFIG_DEBUG_FS
 int clk_gk20a_debugfs_init(struct platform_device *dev);
-int pmu_gk20a_debugfs_init(struct platform_device *dev);
 #endif
+
+extern const struct file_operations tegra_gk20a_ctrl_ops;
+struct nvhost_hwctx_handler *nvhost_gk20a_alloc_hwctx_handler(u32 syncpt,
+		u32 waitbase, struct nvhost_channel *ch);
+
+#define GK20A_BAR0_IORESOURCE_MEM 0
+#define GK20A_BAR1_IORESOURCE_MEM 1
+#define GK20A_SIM_IORESOURCE_MEM 2
+#define TEGRA_GK20A_SIM_BASE 0x538F0000 /*tbd: get from iomap.h */
+#define TEGRA_GK20A_SIM_SIZE 0x1000     /*tbd: this is a high-side guess */
 
 #endif /* _NVHOST_GK20A_H_ */

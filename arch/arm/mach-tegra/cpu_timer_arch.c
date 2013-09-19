@@ -33,6 +33,7 @@
 #include <asm/system.h>
 #include <asm/arch_timer.h>
 #include <asm/sched_clock.h>
+#include <asm/delay.h>
 
 #include "clock.h"
 #include "iomap.h"
@@ -47,6 +48,7 @@ static u32 arch_timer_us_mult, arch_timer_us_shift;
 	__raw_readl(timer_reg_base + (reg))
 
 bool arch_timer_initialized;
+static struct delay_timer arch_delay_timer;
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
@@ -77,6 +79,14 @@ static int local_timer_is_architected(void)
 	return (cpu_architecture() >= CPU_ARCH_ARMv7) &&
 	       ((read_cpuid_ext(CPUID_EXT_PFR1) >> 16) & 0xf) == 1;
 #endif
+}
+
+static unsigned long arch_timer_read_current_timer(void)
+{
+	cycle_t cval = 0;
+
+	asm volatile("mrrc p15, 0, %Q0, %R0, c14" : "=r" (cval));
+	return cval;
 }
 
 void __init tegra_cpu_timer_init(void)
@@ -121,6 +131,12 @@ void __init tegra_cpu_timer_init(void)
 #endif
 	clocks_calc_mult_shift(&arch_timer_us_mult, &arch_timer_us_shift,
 				tsc_ref_freq, USEC_PER_SEC, 0);
+
+	/* register arch timer as delay timer */
+	arch_delay_timer.read_current_timer = &arch_timer_read_current_timer;
+	arch_delay_timer.freq = tsc_ref_freq;
+	register_current_timer_delay(&arch_delay_timer);
+
 	return;
 }
 

@@ -33,7 +33,9 @@
 
 #define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 
+#define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
+#define CORE_PROCESS_CORNERS_NUM		2
 
 #define FUSE_CPU_SPEEDO_0	0x114
 #define FUSE_CPU_SPEEDO_1	0x12c
@@ -69,11 +71,50 @@ static int gpu_speedo_value;
 
 static int enable_app_profiles;
 
-static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
+static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{1950,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{2190,	UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
+
+static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
+/* proc_id  0,	1 */
+	{1965,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+};
+
+static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
+/* proc_id  0,	1 */
+	{2101,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+};
+
+static void rev_sku_to_speedo_ids(int rev, int sku)
+{
+	switch (sku) {
+	case 0x00: /* Engg sku */
+	case 0x0F:
+		cpu_speedo_id = 0;
+		soc_speedo_id = 0;
+		gpu_speedo_id = 0;
+		threshold_index = 0;
+		break;
+	case 0x07:
+	case 0x81:
+		cpu_speedo_id = 1;
+		soc_speedo_id = 1;
+		gpu_speedo_id = 1;
+		threshold_index = 1;
+		break;
+	default:
+		pr_warn("Tegra12: Unknown SKU %d\n", sku);
+		cpu_speedo_id = 0;
+		soc_speedo_id = 0;
+		gpu_speedo_id = 0;
+		threshold_index = 0;
+		break;
+	}
+}
 
 void tegra_init_speedo_data(void)
 {
@@ -98,7 +139,6 @@ void tegra_init_speedo_data(void)
 		return;
 	}
 
-	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 
@@ -113,32 +153,45 @@ void tegra_init_speedo_data(void)
 	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
 	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
 
-	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {
-		if (gpu_speedo_value <
-			gpu_process_speedos[threshold_index][i]) {
-			break;
-		}
-	}
-
-	gpu_process_id = i;
-	pr_info("Tegra12: GPU Speedo %d", gpu_speedo_value);
-
 	/* cpu_speedo_value = TEGRA124_CPU_SPEEDO; */
 	cpu_speedo_value = cpu_speedo_0_value;
-
-	if (cpu_speedo_value > 2200)
-		cpu_process_id = 1;
-	else
-		cpu_process_id = 0;
-
-	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
-		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 
 	if (cpu_speedo_value == 0) {
 		cpu_speedo_value = 1900;
 		pr_warn("Tegra12: Warning: Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
 		pr_warn("Tegra12: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
+
+	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
+
+	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {
+		if (gpu_speedo_value <
+			gpu_process_speedos[threshold_index][i]) {
+			break;
+		}
+	}
+	gpu_process_id = i;
+
+	for (i = 0; i < CPU_PROCESS_CORNERS_NUM; i++) {
+                if (cpu_speedo_value <
+                        cpu_process_speedos[threshold_index][i]) {
+                        break;
+                }
+        }
+	cpu_process_id = i;
+
+	for (i = 0; i < CORE_PROCESS_CORNERS_NUM; i++) {
+                if (soc_speedo_0_value <
+                        core_process_speedos[threshold_index][i]) {
+                        break;
+                }
+        }
+	core_process_id = i;
+
+	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d\n",
+		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
+	pr_info("Tegra12: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
+		 cpu_process_id, core_process_id, gpu_process_id);
 }
 
 int tegra_cpu_process_id(void)
@@ -225,6 +278,8 @@ int tegra_core_speedo_mv(void)
 {
 	switch (soc_speedo_id) {
 	case 0:
+		return 1100;
+	case 1:
 		return 1100;
 	default:
 		BUG();
