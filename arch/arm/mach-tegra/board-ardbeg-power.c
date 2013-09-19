@@ -702,6 +702,10 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.corereq_high   = true,
 	.sysclkreq_high = true,
 	.cpu_lp2_min_residency = 1000,
+	.min_residency_vmin_fmin = 1000,
+	.min_residency_ncpu_fast = 8000,
+	.min_residency_ncpu_slow = 5000,
+	.min_residency_mclk_stop = 5000,
 	.min_residency_crail = 20000,
 };
 

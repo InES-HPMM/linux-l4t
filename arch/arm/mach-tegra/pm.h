@@ -82,7 +82,7 @@ struct tegra_suspend_platform_data {
 	unsigned long min_residency_crail;
 	bool crail_up_early;
 #endif
-	unsigned long min_residency_mc_clk;
+	unsigned long min_residency_mclk_stop;
 	bool usb_vbus_internal_wake; /* support for internal vbus wake */
 	bool usb_id_internal_wake; /* support for internal id wake */
 

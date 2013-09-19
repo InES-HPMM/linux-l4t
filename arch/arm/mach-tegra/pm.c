@@ -331,9 +331,13 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 	return pdata->cpu_lp2_min_residency;
 }
 
+#define TEGRA_MIN_RESIDENCY_MCLK_STOP	20000
+
 unsigned long tegra_mc_clk_stop_min_residency(void)
 {
-	return 20000;
+	return pdata && pdata->min_residency_mclk_stop
+			? pdata->min_residency_mclk_stop
+			: TEGRA_MIN_RESIDENCY_MCLK_STOP;
 }
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
@@ -1669,7 +1673,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		pdata->min_residency_crail = plat->min_residency_crail;
 		pdata->crail_up_early = plat->crail_up_early;
 #endif
-		pdata->min_residency_mc_clk = plat->min_residency_mc_clk;
+		pdata->min_residency_mclk_stop = plat->min_residency_mclk_stop;
 		pdata->usb_vbus_internal_wake = plat->usb_vbus_internal_wake;
 		pdata->usb_id_internal_wake = plat->usb_id_internal_wake;
 		pdata->suspend_dfll_bypass = plat->suspend_dfll_bypass;
