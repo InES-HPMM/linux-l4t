@@ -30,6 +30,7 @@
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 
 #include "board.h"
 #include "board-common.h"
