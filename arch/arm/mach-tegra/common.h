@@ -19,3 +19,6 @@ extern int tegra_cpu_kill(unsigned int cpu);
 extern phys_addr_t tegra_avp_kernel_start;
 extern phys_addr_t tegra_avp_kernel_size;
 void ahb_gizmo_writel(unsigned long val, void __iomem *reg);
+
+extern struct device tegra_generic_cma_dev;
+extern struct device tegra_vpr_cma_dev;

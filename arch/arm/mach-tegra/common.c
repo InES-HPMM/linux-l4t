@@ -43,6 +43,7 @@
 #include <linux/bootmem.h>
 #include <linux/tegra-soc.h>
 #include <trace/events/nvsecurity.h>
+#include <linux/dma-contiguous.h>
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/gic.h>
@@ -169,6 +170,9 @@ static u8 power_config;
 static u8 display_config;
 
 static int tegra_split_mem_set;
+
+struct device tegra_generic_cma_dev;
+struct device tegra_vpr_cma_dev;
 
 /*
  * Storage for debug-macro.S's state.
@@ -1783,7 +1787,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
 	const size_t avp_kernel_reserve = SZ_32M;
-	int i = 0;
 	struct iommu_linear_map map[4];
 
 #if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
@@ -1807,6 +1810,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 #endif
 
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	if (carveout_size) {
 		/*
 		 * Place the carveout below the 4 GB physical address limit
@@ -1823,6 +1827,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		} else
 			tegra_carveout_size = carveout_size;
 	}
+#endif
 
 	if (fb2_size) {
 		/*
@@ -2086,6 +2091,21 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_nck_size ?
 				tegra_nck_start + tegra_nck_size - 1 : 0);
 	}
+#endif
+
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	/* Keep these at the end */
+	if (carveout_size) {
+		if (dma_declare_contiguous(&tegra_generic_cma_dev,
+			carveout_size, 0, memblock_end_of_4G()))
+			pr_err("dma_declare_contiguous failed for generic\n");
+		tegra_carveout_size = carveout_size;
+	}
+
+	if (tegra_vpr_size)
+		if (dma_declare_contiguous(&tegra_vpr_cma_dev,
+			tegra_vpr_size, 0, memblock_end_of_4G()))
+			pr_err("dma_declare_contiguous failed VPR carveout\n");
 #endif
 
 	tegra_fb_linear_set(map);
