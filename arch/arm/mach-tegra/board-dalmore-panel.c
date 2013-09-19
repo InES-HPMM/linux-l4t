@@ -512,6 +512,13 @@ int __init dalmore_panel_init(void)
 	dalmore_carveouts[1].size = tegra_carveout_size;
 	dalmore_carveouts[2].base = tegra_vpr_start;
 	dalmore_carveouts[2].size = tegra_vpr_size;
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	dalmore_carveouts[1].cma_dev =  &tegra_generic_cma_dev;
+	dalmore_carveouts[1].resize = false;
+	dalmore_carveouts[2].cma_dev =  &tegra_vpr_cma_dev;
+	dalmore_carveouts[2].resize = true;
+	dalmore_carveouts[2].cma_chunk_size = SZ_32M;
+#endif
 
 	err = platform_device_register(&dalmore_nvmap_device);
 	if (err) {
