@@ -55,6 +55,7 @@
 
 #include "board.h"
 #include "iomap.h"
+#include "clock.h"
 
 #define MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE				5
 
@@ -1284,6 +1285,12 @@ static int tegra_pcie_power_regate(void)
 		pr_err("PCIE: plle clk enable failed: %d\n", err);
 		return err;
 	}
+	/* pciex is reset only but need to be enabled for dvfs support */
+	err = clk_enable(tegra_pcie.pcie_xclk);
+	if (err) {
+		pr_err("PCIE: pciex clk enable failed: %d\n", err);
+		return err;
+	}
 	return 0;
 }
 
@@ -1416,6 +1423,8 @@ static int tegra_pcie_power_off(void)
 #endif
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_unmap_resources();
+	if (tegra_pcie.pcie_xclk)
+		clk_disable(tegra_pcie.pcie_xclk);
 	if (tegra_pcie.pll_e)
 		clk_disable_unprepare(tegra_pcie.pll_e);
 
@@ -1627,7 +1636,24 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
-static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
+static int tegra_pcie_scale_voltage(bool isGen2)
+{
+	unsigned long rate;
+	int err;
+
+	PR_FUNC_LINE;
+	if (isGen2) {
+		/* Scale up voltage for Gen2 speed */
+		rate = 500000000;
+	} else {
+		/* Scale down voltage for Gen1 speed */
+		rate = 250000000;
+	}
+	err = clk_set_rate(tegra_pcie.pcie_xclk, rate);
+	return err;
+}
+
+static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 {
 	u16 val, link_up_spd, link_dn_spd;
 	struct pci_dev *up_dev, *dn_dev;
@@ -1693,9 +1719,34 @@ static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 	val |= RP_LINK_CONTROL_STATUS_RETRAIN_LINK;
 	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL, val);
 
+	return true;
 skip:
-	return 0;
+	return false;
 }
+
+bool tegra_pcie_link_speed(bool isGen2)
+{
+	struct pci_dev *pdev = NULL;
+	bool ret = false;
+
+	PR_FUNC_LINE;
+	/* Voltage scaling should happen before any device transition */
+	/* to Gen2 or after all devices has transitioned to Gen1 */
+	if (isGen2)
+		if (tegra_pcie_scale_voltage(isGen2))
+			return ret;
+
+	for_each_pci_dev(pdev) {
+		if (tegra_pcie_change_link_speed(pdev, isGen2))
+			ret = true;
+	}
+	if (!isGen2)
+		if (tegra_pcie_scale_voltage(isGen2))
+			ret = false;
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra_pcie_link_speed);
 
 static void tegra_pcie_enable_aspm_support(void)
 {
@@ -1717,12 +1768,10 @@ static void tegra_pcie_enable_aspm_support(void)
 
 static void tegra_pcie_enable_features(void)
 {
-	struct pci_dev *pdev = NULL;
-
 	PR_FUNC_LINE;
 	/* configure all links to gen2 speed by default */
-	for_each_pci_dev(pdev)
-		tegra_pcie_change_link_speed(pdev, true);
+	if (!tegra_pcie_link_speed(true))
+		pr_info("PCIE: Link speed change failed\n");
 
 	/* Enable ASPM support of all devices based on it's capability */
 	tegra_pcie_enable_aspm_support();
