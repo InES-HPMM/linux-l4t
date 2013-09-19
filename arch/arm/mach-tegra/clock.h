@@ -85,6 +85,8 @@ struct clk;
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
 
+#define SHARED_BUS_RETENTION	(1 << 0)
+
 #ifdef CONFIG_COMMON_CLK
 struct clk_tegra;
 #define to_clk_tegra(_hw) container_of(_hw, struct clk_tegra, hw)
@@ -191,6 +193,7 @@ struct clk {
 	struct clk_backup		shared_bus_backup;
 	struct clk			*child_bus;
 	unsigned long			override_rate;
+	u32				shared_bus_flags;
 
 	union {
 		struct {

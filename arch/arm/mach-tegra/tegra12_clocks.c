@@ -5619,9 +5619,12 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 	unsigned long ceiling = bus->max_rate;
 	unsigned long ceiling_but_iso = bus->max_rate;
 	u32 usage_flags = 0;
+	bool rate_set = false;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
+		bool cap_user = (c->u.shared_bus_user.mode == SHARED_CEILING) ||
+			(c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO);
 		/*
 		 * Ignore requests from disabled floor and bw users, and from
 		 * auto-users riding the bus. Always honor ceiling users, even
@@ -5629,13 +5632,14 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 		 * bus just because ceiling is set. Ignore SCLK/AHB/APB dividers
 		 * to propagate flat max request.
 		 */
-		if (c->u.shared_bus_user.enabled ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING) ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO)) {
+		if (c->u.shared_bus_user.enabled || cap_user) {
 			unsigned long request_rate = c->u.shared_bus_user.rate;
 			if (!(c->flags & DIV_BUS))
 				request_rate *=	c->div ? : 1;
 			usage_flags |= c->u.shared_bus_user.usage_flag;
+
+			if (!cap_user)
+				rate_set = true;
 
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_ISO_BW:
@@ -5702,7 +5706,13 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 		*bus_slow = slow;
 		*rate_cap = ceiling;
 	} else {
-		/* If satic bus dvfs table, complete rounding and aggregation */
+		/*
+		 * If satic bus dvfs table, complete rounding and aggregation.
+		 * In case when no user requested bus rate, and bus retention
+		 * is enabled, don't scale down - keep current rate.
+		 */
+		if (!rate_set && (bus->shared_bus_flags & SHARED_BUS_RETENTION))
+			rate = clk_get_rate_locked(bus);
 		rate = tegra12_clk_cap_shared_bus(bus, rate, ceiling);
 	}
 

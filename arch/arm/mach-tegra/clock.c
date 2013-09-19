@@ -1684,6 +1684,11 @@ static int clk_debugfs_register_one(struct clk *c)
 	if (!d)
 		goto err_out;
 
+	d = debugfs_create_x32("shared_bus_flags", S_IRUGO, c->dent,
+			       (u32 *)&c->shared_bus_flags);
+	if (!d)
+		goto err_out;
+
 	d = debugfs_create_file(
 		"max", parent_rate_mode, c->dent, c, &max_fops);
 	if (!d)
