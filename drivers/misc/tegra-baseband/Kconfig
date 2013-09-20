@@ -13,6 +13,7 @@ if TEGRA_BB_SUPPORT
 
 config TEGRA_USB_MODEM_POWER
         bool "Tegra USB modem power driver"
+	depends on USB
         ---help---
          Say Y if you want to use one of the following modems
           i450
