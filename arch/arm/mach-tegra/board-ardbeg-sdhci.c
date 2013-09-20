@@ -164,7 +164,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.trim_delay = 0x3,
 /*FIXME: Enable UHS modes for SD */
 	.uhs_mask = MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
-                MMC_UHS_MASK_SDR104 |
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
@@ -338,10 +337,12 @@ int __init ardbeg_sdhci_init(void)
 	}
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1780)
+	if (board_info.board_id == BOARD_E1780) {
 		tegra_sdhci_platform_data3.max_clk_limit = 200000000;
-	else
+		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
+	} else {
 		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
+	}
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
