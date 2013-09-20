@@ -1567,6 +1567,8 @@ static void tegra_pm_enter_shutdown(void)
 static struct syscore_ops tegra_pm_enter_syscore_ops = {
 	.suspend = tegra_pm_enter_suspend,
 	.resume = tegra_pm_enter_resume,
+	.save = tegra_pm_enter_suspend,
+	.restore = tegra_pm_enter_resume,
 	.shutdown = tegra_pm_enter_shutdown,
 };
 
@@ -1947,6 +1949,8 @@ static void tegra_debug_uart_resume(void)
 static struct syscore_ops tegra_debug_uart_syscore_ops = {
 	.suspend = tegra_debug_uart_suspend,
 	.resume = tegra_debug_uart_resume,
+	.save = tegra_debug_uart_suspend,
+	.restore = tegra_debug_uart_resume,
 };
 
 struct clk *debug_uart_clk = NULL;

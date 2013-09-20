@@ -279,6 +279,8 @@ static void tegra_timer_resume(void)
 static struct syscore_ops tegra_timer_syscore_ops = {
 	.suspend = tegra_timer_suspend,
 	.resume = tegra_timer_resume,
+	.save = tegra_timer_suspend,
+	.restore = tegra_timer_resume,
 };
 
 #if !defined(CONFIG_HAVE_ARM_TWD) && !defined(CONFIG_ARM_ARCH_TIMER)

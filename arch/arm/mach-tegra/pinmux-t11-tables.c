@@ -448,6 +448,8 @@ static void tegra11x_pinmux_resume(void)
 static struct syscore_ops tegra_pinmux_syscore_ops = {
 	.suspend = tegra11x_pinmux_suspend,
 	.resume = tegra11x_pinmux_resume,
+	.save = tegra11x_pinmux_suspend,
+	.restore = tegra11x_pinmux_resume,
 };
 #endif
 

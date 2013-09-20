@@ -264,6 +264,8 @@ static void tegra_legacy_irq_resume(void)
 static struct syscore_ops tegra_legacy_irq_syscore_ops = {
 	.suspend = tegra_legacy_irq_suspend,
 	.resume = tegra_legacy_irq_resume,
+	.save = tegra_legacy_irq_suspend,
+	.restore = tegra_legacy_irq_resume,
 };
 
 static int tegra_legacy_irq_syscore_init(void)

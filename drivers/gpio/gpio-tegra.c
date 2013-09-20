@@ -472,6 +472,8 @@ fail:
 static struct syscore_ops tegra_gpio_syscore_ops = {
 	.suspend = tegra_gpio_suspend,
 	.resume = tegra_gpio_resume,
+	.save = tegra_gpio_suspend,
+	.restore = tegra_gpio_resume,
 };
 
 static struct irq_chip tegra_gpio_irq_chip = {

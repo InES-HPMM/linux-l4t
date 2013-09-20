@@ -199,6 +199,8 @@ void tegra_ahbgizmo_resume(void)
 static struct syscore_ops tegra_ahbgizmo_syscore_ops = {
 	.suspend = tegra_ahbgizmo_suspend,
 	.resume = tegra_ahbgizmo_resume,
+	.save = tegra_ahbgizmo_suspend,
+	.restore = tegra_ahbgizmo_resume,
 };
 
 static int __init tegra_init_ahb_gizmo(void)

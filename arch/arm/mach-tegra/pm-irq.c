@@ -487,6 +487,8 @@ skip_usb_any_wake:
 static struct syscore_ops tegra_pm_irq_syscore_ops = {
 	.suspend = tegra_pm_irq_syscore_suspend,
 	.resume = tegra_pm_irq_syscore_resume,
+	.save = tegra_pm_irq_syscore_suspend,
+	.restore = tegra_pm_irq_syscore_resume,
 };
 
 static int tegra_pm_irq_syscore_init(void)

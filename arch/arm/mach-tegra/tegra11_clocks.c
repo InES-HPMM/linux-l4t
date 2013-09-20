@@ -7956,6 +7956,8 @@ static void tegra11_clk_resume(void)
 static struct syscore_ops tegra_clk_syscore_ops = {
 	.suspend = tegra11_clk_suspend,
 	.resume = tegra11_clk_resume,
+	.save = tegra11_clk_suspend,
+	.restore = tegra11_clk_resume,
 };
 #endif
 

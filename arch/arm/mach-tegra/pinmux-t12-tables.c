@@ -635,6 +635,8 @@ static void tegra12x_pinmux_resume(void)
 static struct syscore_ops tegra_pinmux_syscore_ops = {
 	.suspend = tegra12x_pinmux_suspend,
 	.resume = tegra12x_pinmux_resume,
+	.save = tegra12x_pinmux_suspend,
+	.restore = tegra12x_pinmux_resume,
 };
 #endif
 

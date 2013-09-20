@@ -222,6 +222,8 @@ static void cpu_pm_resume(void)
 static struct syscore_ops cpu_pm_syscore_ops = {
 	.suspend = cpu_pm_suspend,
 	.resume = cpu_pm_resume,
+	.save = cpu_pm_suspend,
+	.restore = cpu_pm_resume,
 };
 
 static int cpu_pm_init(void)
