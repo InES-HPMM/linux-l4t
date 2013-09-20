@@ -6922,7 +6922,7 @@ static struct clk tegra_clk_cclk_lp = {
 	.inputs	= mux_cclk_lp,
 	.reg	= 0x370,
 	.ops	= &tegra_super_ops,
-	.max_rate = 700000000,
+	.max_rate = 1350000000,
 };
 
 static struct clk tegra_clk_sclk = {
@@ -6951,7 +6951,7 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 	.name      = "cpu_lp",
 	.parent    = &tegra_clk_cclk_lp,
 	.ops       = &tegra_cpu_ops,
-	.max_rate  = 700000000,
+	.max_rate  = 1350000000,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p_out4,
@@ -7309,7 +7309,7 @@ static struct clk tegra_clk_host1x = {
 	.reg       = 0x180,
 	.inputs    = mux_pllm_pllc_pllp_plla,
 	.flags     = MUX | DIV_U71 | DIV_U71_INT,
-	.max_rate  = 408000000,
+	.max_rate  = 500000000,
 	.min_rate  = 12000000,
 	.u.periph = {
 		.clk_num   = 28,
@@ -7345,7 +7345,7 @@ static struct clk tegra_clk_c3bus = {
 	.name      = "c3bus",
 	.parent    = &tegra_pll_c3,
 	.ops       = &tegra_clk_cbus_ops,
-	.max_rate  = 700000000,
+	.max_rate  = 900000000,
 	.mul       = 1,
 	.div       = 1,
 	.flags     = PERIPH_ON_CBUS,
@@ -7553,7 +7553,7 @@ static struct clk tegra_clk_isp = {
 	.name = "isp",
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x144,
-	.max_rate = 600000000,
+	.max_rate = 700000000,
 	.inputs = mux_pllm_pllc_pllp_plla_clkm_pllc4,
 	.flags = MUX | DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
 };
@@ -7569,7 +7569,7 @@ static struct clk tegra_clk_c4bus = {
 	.name	   = "c4bus",
 	.parent    = &tegra_pll_c4,
 	.ops       = &tegra_clk_cbus_ops,
-	.max_rate  = 600000000,
+	.max_rate  = 700000000,
 	.mul	   = 1,
 	.div	   = 1,
 	.shared_bus_backup = {
@@ -7763,13 +7763,13 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 #ifdef CONFIG_ARCH_TEGRA_VIC
-	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | DIV_U71),
+	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	900000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | DIV_U71),
 #endif
-	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
+	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	700000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
-	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	900000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	594000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX),
@@ -7784,8 +7784,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	750000000, mux_plld,			PLLD),
-	PERIPH_CLK("ispa",	"isp",			"ispa",	23,	0,	600000000, mux_isp,			PERIPH_ON_APB),
-	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	600000000, mux_isp,			PERIPH_ON_APB),
+	PERIPH_CLK("ispa",	"isp",			"ispa",	23,	0,	700000000, mux_isp,			PERIPH_ON_APB),
+	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	700000000, mux_isp,			PERIPH_ON_APB),
 	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vim2_clk",	"vi",			"vim2_clk",	171,	0,	150000000, mux_clk_m,		PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"vi",			"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
