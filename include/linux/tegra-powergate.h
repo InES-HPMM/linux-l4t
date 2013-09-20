@@ -88,6 +88,7 @@
 #define TEGRA_IS_GPU_POWERGATE_ID(id)  ((id) == TEGRA_POWERGATE_GPU)
 #define TEGRA_IS_DISP_POWERGATE_ID(id) (((id) == TEGRA_POWERGATE_DISA) || \
 					((id) == TEGRA_POWERGATE_DISB))
+#define TEGRA_IS_VENC_POWERGATE_ID(id)  ((id) == TEGRA_POWERGATE_VENC)
 #endif
 
 int  __init tegra_powergate_init(void);
