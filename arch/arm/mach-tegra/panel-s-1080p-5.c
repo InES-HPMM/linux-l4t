@@ -458,20 +458,6 @@ struct tegra_dc_mode dsi_s_1080p_5_modes[] = {
 		.h_front_porch = 100,
 		.v_front_porch = 4,
 	},
-	/* 1080x1920@53Hz */
-	{
-		.pclk = 143700000,
-		.h_ref_to_sync = 4,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 10,
-		.v_sync_width = 2,
-		.h_back_porch = 50,
-		.v_back_porch = 4,
-		.h_active = 1080,
-		.v_active = 1920,
-		.h_front_porch = 100,
-		.v_front_porch = 259,
-	},
 };
 static int dsi_s_1080p_5_reg_get(void)
 {
