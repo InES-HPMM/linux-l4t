@@ -714,7 +714,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	rhdev = hcd->self.root_hub;
 	pdata = dev_get_platdata(&pdev->dev);
 
-	if (!IS_ERR(tegra->transceiver))
+	if (!IS_ERR_OR_NULL(tegra->transceiver))
 		otg_set_host(tegra->transceiver->otg, NULL);
 
 	if (tegra->irq)
