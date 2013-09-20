@@ -144,6 +144,12 @@ static struct resource ardbeg_disp1_edp_resources[] = {
 		.end    = TEGRA_DPAUX_BASE + TEGRA_DPAUX_SIZE - 1,
 		.flags  = IORESOURCE_MEM,
 	},
+	{
+		.name	= "irq_dp",
+		.start	= INT_DPAUX,
+		.end	= INT_DPAUX,
+		.flags	= IORESOURCE_IRQ,
+	},
 };
 
 static struct resource ardbeg_disp2_resources[] = {
