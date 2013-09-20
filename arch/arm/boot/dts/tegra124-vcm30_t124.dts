@@ -9,7 +9,6 @@
 	#size-cells = <1>;
 
 	chosen {
-		bootargs = "tegraid=40.1.1.0.0 vpr=64M@3008M tsec=32M@2976M mem=928M@2048M commchip_id=0 usb_port_owner_info=0 emc_max_dvfs=0 video=tegrafb debug_uartport=lsport,2 usbcore.old_scheme_first=1 modem_id=0 no_console_suspend  console=ttyS0,115200n8 root=/dev/nfs ip=:::::eth0:on rw netdevwait";
 	};
 
         serial@70006000 {
