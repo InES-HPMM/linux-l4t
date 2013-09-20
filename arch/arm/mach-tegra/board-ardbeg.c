@@ -34,6 +34,7 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
+#include <linux/maxim_sti.h>
 #include <linux/memblock.h>
 #include <linux/spi/spi-tegra.h>
 #include <linux/nfc/pn544.h>
@@ -77,6 +78,7 @@
 #include "board-ardbeg.h"
 #include "board-common.h"
 #include "board-touch-raydium.h"
+#include "board-touch-maxim_sti.h"
 #include "clock.h"
 #include "common.h"
 #include "devices.h"
@@ -924,6 +926,36 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 };
 #endif
 
+struct maxim_sti_pdata maxim_sti_pdata = {
+	.touch_fusion         = "/vendor/bin/touch_fusion",
+	.config_file          = "/vendor/firmware/touch_fusion.cfg",
+	.fw_name              = "maxim_fp35.bin",
+	.nl_family            = TF_FAMILY_NAME,
+	.nl_mc_groups         = 5,
+	.chip_access_method   = 2,
+	.default_reset_state  = 0,
+	.tx_buf_size          = 4100,
+	.rx_buf_size          = 4100,
+	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
+	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
+};
+
+static struct tegra_spi_device_controller_data maxim_dev_cdata = {
+	.rx_clk_tap_delay = 0,
+	.is_hw_based_cs = true,
+	.tx_clk_tap_delay = 0,
+};
+
+struct spi_board_info maxim_sti_spi_board = {
+	.modalias = MAXIM_STI_NAME,
+	.bus_num = TOUCH_SPI_ID,
+	.chip_select = TOUCH_SPI_CS,
+	.max_speed_hz = 12 * 1000 * 1000,
+	.mode = SPI_MODE_0,
+	.platform_data = &maxim_sti_pdata,
+	.controller_data = &maxim_dev_cdata,
+};
+
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       false},
@@ -958,14 +990,23 @@ struct spi_board_info rm31080a_ardbeg_spi_board[1] = {
 
 static int __init ardbeg_touch_init(void)
 {
-	tegra_clk_init_from_table(touch_clk_init_table);
-	rm31080a_ardbeg_spi_board[0].irq =
-		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
-	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+	if (tegra_get_touch_vendor_id() == MAXIM_TOUCH) {
+		pr_info("%s init maxim touch\n", __func__);
+#if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
+	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
+		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
+#endif
+	} else if (tegra_get_touch_vendor_id() == RAYDIUM_TOUCH) {
+		pr_info("%s init raydium touch\n", __func__);
+		tegra_clk_init_from_table(touch_clk_init_table);
+		rm31080a_ardbeg_spi_board[0].irq =
+			gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,
 				&rm31080ts_ardbeg_data,
 				&rm31080a_ardbeg_spi_board[0],
 				ARRAY_SIZE(rm31080a_ardbeg_spi_board));
+	}
 	return 0;
 }
 

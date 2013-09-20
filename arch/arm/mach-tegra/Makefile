@@ -204,6 +204,7 @@ obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sensors.o
 
 obj-y                                   += board-touch-raydium_spi.o
 obj-y                                   += board-touch-synaptics-spi.o
+obj-y                                   += board-touch-maxim_sti-spi.o
 
 obj-y                                   += board-panel.o
 

@@ -211,6 +211,7 @@ enum panel_type {
 enum touch_type {
 	RAYDIUM_TOUCH  = 0,
 	SYNAPTIC_TOUCH = 1,
+	MAXIM_TOUCH = 2,
 };
 
 enum audio_codec_type {

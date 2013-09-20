@@ -101,6 +101,9 @@ enum tegra_bb_type {
 #define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
 #define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
 
+#define TOUCH_GPIO_IRQ_MAXIM_STI_SPI	TEGRA_GPIO_PK2
+#define TOUCH_GPIO_RST_MAXIM_STI_SPI	TEGRA_GPIO_PK4
+
 /* Audio-related GPIOs */
 /*Same GPIO's used for T114(Interposer) and T124*/
 /*Below GPIO's are same for Laguna and Ardbeg*/
