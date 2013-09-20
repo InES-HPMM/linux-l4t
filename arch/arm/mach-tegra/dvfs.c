@@ -408,6 +408,15 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	/* Apply offset and min/max limits if any clock is requesting voltage */
 	if (millivolts)
 		millivolts = dvfs_rail_apply_limits(rail, millivolts);
+	/* Keep current voltage if regulator is to be disabled via explicitly */
+	else if (rail->in_band_pm)
+		return 0;
+	/* Keep current voltage if regulator must not be disabled at run time */
+	else if (!rail->jmp_to_zero) {
+		WARN(1, "%s cannot be turned off by dvfs\n");
+		return 0;
+	}
+	/* else: fall thru if regulator is turned off by side band signaling */
 
 	/* retry update if limited by from-relationship to account for
 	   circular dependencies */
@@ -1524,7 +1533,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		int thermal_mv_floor = 0;
 
-		seq_printf(s, "%s %d mV%s:\n", rail->reg_id, rail->millivolts,
+		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
+			   rail->stats.off ? 0 : rail->millivolts,
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
