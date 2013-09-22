@@ -22,6 +22,8 @@
 #include <mach/pinmux.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t12.h>
+#include <linux/i2c.h>
+#include <linux/i2c/pca953x.h>
 
 #include "board.h"
 #include "board-vcm30_t124.h"
@@ -77,5 +79,78 @@ int __init vcm30_t124_pinmux_init(void)
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
 
+	return 0;
+}
+
+/*
+ * GPIO init table for PCA9539 MISC IO GPIOs
+ * that have to be brought up to a known good state
+ * except for WiFi as it is handled via the
+ * WiFi stack.
+ */
+static struct gpio vcm30_t124_system_gpios[] = {
+	{MISCIO_BT_WAKEUP_GPIO,	GPIOF_OUT_INIT_HIGH,	"bt_wk"},
+	{MISCIO_ABB_RST_GPIO,	GPIOF_OUT_INIT_HIGH,	"ebb_rst"},
+	{MISCIO_USER_LED2_GPIO,	GPIOF_OUT_INIT_LOW,	"usr_led2"},
+	{MISCIO_USER_LED1_GPIO, GPIOF_OUT_INIT_LOW,	"usr_led1"},
+};
+
+static int __init vcm30_t124_system_gpio_init(void)
+{
+	int ret, pin_count = 0;
+	struct gpio *gpios_info = NULL;
+	gpios_info = vcm30_t124_system_gpios;
+	pin_count = ARRAY_SIZE(vcm30_t124_system_gpios);
+
+	/* Set required system GPIOs to initial bootup values */
+	ret = gpio_request_array(gpios_info, pin_count);
+
+	if (ret)
+		pr_err("%s gpio_request_array failed(%d)\r\n",
+				 __func__, ret);
+
+	/* Export the LED GPIOs to userland for any check */
+	gpio_export(MISCIO_USER_LED2_GPIO, false);
+	gpio_export(MISCIO_USER_LED1_GPIO, false);
+
+	return ret;
+}
+
+/*
+ * TODO: Check for the correct pca953x before invoking client
+ *  init functions
+ */
+static int pca953x_client_setup(struct i2c_client *client,
+				unsigned gpio, unsigned ngpio,
+				void *context)
+{
+	int ret = 0;
+
+	ret = vcm30_t124_system_gpio_init();
+	if (ret < 0)
+		goto fail;
+
+	return 0;
+fail:
+	pr_err("%s failed(%d)\r\n", __func__, ret);
+	return ret;
+}
+
+static struct pca953x_platform_data vcm30_t124_miscio_pca9539_data = {
+	.gpio_base  = PCA953X_MISCIO_GPIO_BASE,
+	.setup = pca953x_client_setup,
+};
+
+static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539[] = {
+	{
+		I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_ADDR),
+		.platform_data = &vcm30_t124_miscio_pca9539_data,
+	},
+};
+
+int __init vcm30_t124_pca953x_init(void)
+{
+	i2c_register_board_info(1, vcm30_t124_i2c2_board_info_pca9539,
+		ARRAY_SIZE(vcm30_t124_i2c2_board_info_pca9539));
 	return 0;
 }

@@ -497,6 +497,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_i2c_init();
 	vcm30_t124_spi_init();
 	vcm30_t124_uart_init();
+	vcm30_t124_pca953x_init();
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
 	tegra_io_dpd_init();
