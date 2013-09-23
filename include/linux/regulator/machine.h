@@ -98,7 +98,7 @@ struct regulator_state {
  * @initial_state: Suspend state to set by default.
  * @initial_mode: Mode to set at startup.
  * @ramp_delay: Time to settle down after voltage change (unit: uV/us)
- * @startup_delay: Time to settle down after rail enable (unit: us)
+ * @enable_time: Turn-on time of the rails (unit: microseconds)
  */
 struct regulation_constraints {
 
@@ -137,6 +137,7 @@ struct regulation_constraints {
 	unsigned int sleep_mode;
 
 	unsigned int ramp_delay;
+	unsigned int enable_time;
 
 	unsigned int startup_delay;
 

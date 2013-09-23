@@ -12,6 +12,11 @@ Optional properties:
 - <name>-supply: phandle to the parent supply/regulator node
 - regulator-ramp-delay: ramp delay for regulator(in uV/uS)
 - regulator-init-microvolt: Initial microvolt need to be set during registration
+- regulator-enable-ramp-delay: The time taken, in microseconds, for the supply
+  rail to reach the target voltage, plus/minus whatever tolerance the board
+  design requires. This property describes the total system ramp time
+  required due to the combination of internal ramping of the regulator itself,
+  and board design issues such as trace capacitance and load on the supply.
 
 Deprecated properties:
 - regulator-compatible: If a regulator chip contains multiple
