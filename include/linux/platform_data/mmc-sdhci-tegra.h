@@ -65,6 +65,7 @@ struct tegra_sdhci_platform_data {
 	bool en_nominal_vcore_tuning;
 	unsigned int calib_3v3_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	unsigned int calib_1v8_offsets;	/* Format to be filled: 0xXXXXPDPU */
+	bool disable_clock_gate; /* no clock gate when true */
 };
 
 #endif

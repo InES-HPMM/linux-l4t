@@ -314,6 +314,7 @@ struct mmc_host {
 				 MMC_CAP2_PACKED_WR)
 #define MMC_CAP2_NO_PRESCAN_POWERUP (1 << 14)	/* Don't power up before scan */
 #define MMC_CAP2_FREQ_SCALING	(1 << 15)	/* Allow frequency scaling */
+#define MMC_CAP2_CLOCK_GATING	(1 << 16)	/* Enable Clock Gating */
 
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
