@@ -64,6 +64,7 @@
 
 #define AS364X_LEVEL_OFF		0
 #define AS364X_TORCH_TIMER_FOREVER	0xFFFFFFFF
+#define AS364X_MAX_NAME_LEN		16
 
 #define SUSTAINTIME_DEF			558
 #define DEFAULT_FLASHTIME	((SUSTAINTIME_DEF > 256) ? \
@@ -1475,7 +1476,7 @@ static int as364x_probe(
 	const struct i2c_device_id *id)
 {
 	struct as364x_info *info;
-	char dname[16];
+	static char dname[AS364X_MAX_NAME_LEN];
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);

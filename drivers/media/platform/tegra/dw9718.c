@@ -108,6 +108,7 @@
 #define dw9718_POS_LOW_DEFAULT		0
 #define dw9718_POS_HIGH_DEFAULT		1023
 #define dw9718_POS_CLAMP		0x03ff
+#define dw9718_MAX_NAME_LEN		16
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define dw9718_VCM_THRESHOLD	20 */
 
@@ -878,7 +879,7 @@ static int dw9718_probe(
 		const struct i2c_device_id *id)
 {
 	struct dw9718_info *info;
-	char dname[16];
+	static char dname[dw9718_MAX_NAME_LEN];
 	int err;
 	dev_dbg(&client->dev, "%s\n", __func__);
 	pr_info("dw9718: probing focuser.\n");
