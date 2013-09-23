@@ -440,6 +440,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
 	REGULATOR_SUPPLY("vdd", "0-0069"),
 	REGULATOR_SUPPLY("vdd", "0-0048"),
+	REGULATOR_SUPPLY("vdd", "stm8t143.2"),
 	REGULATOR_SUPPLY("vdd", "0-000c"),
 	REGULATOR_SUPPLY("vdd", "0-0077"),
 };
