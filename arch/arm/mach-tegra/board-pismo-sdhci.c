@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-pismo-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,7 +14,6 @@
  * GNU General Public License for more details.
  *
  */
-
 #include <linux/resource.h>
 #include <linux/platform_device.h>
 #include <linux/wlan_plat.h>
@@ -149,6 +148,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.ddr_clk_limit = 41000000,
 	.uhs_mask = MMC_UHS_MASK_SDR104 |
 		MMC_UHS_MASK_DDR50,
+	.disable_clock_gate = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {

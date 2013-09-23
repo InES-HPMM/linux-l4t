@@ -114,6 +114,7 @@ struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0 = {
 /*FIXME: Enable UHS modes for WiFI */
 	.uhs_mask = MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50 |
 		MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25,
+	.disable_clock_gate = true,
 };
 
 static struct resource sdhci_resource0[] = {

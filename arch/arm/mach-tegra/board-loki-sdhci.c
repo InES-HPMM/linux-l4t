@@ -156,6 +156,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
+	.disable_clock_gate = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {

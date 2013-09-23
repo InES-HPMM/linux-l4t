@@ -91,6 +91,7 @@ struct tegra_sdhci_platform_data macallan_tegra_sdhci_platform_data0 = {
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.disable_clock_gate = true,
 };
 
 #ifndef CONFIG_USE_OF
