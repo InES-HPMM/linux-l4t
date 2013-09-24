@@ -530,6 +530,7 @@ struct tegra_dc_out {
 
 	unsigned			height; /* mm */
 	unsigned			width; /* mm */
+	unsigned			rotation; /* degrees */
 
 	struct tegra_dc_out_pin		*out_pins;
 	unsigned			n_out_pins;
