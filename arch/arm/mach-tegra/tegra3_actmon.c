@@ -257,6 +257,14 @@ irqreturn_t actmon_dev_isr(int irq, void *dev_id)
 		}
 		actmon_writel(val, offs(ACTMON_DEV_CTRL));
 	}
+	if (dev->avg_dependency_threshold) {
+		val = actmon_readl(offs(ACTMON_DEV_CTRL));
+		if (dev->avg_count >= dev->avg_dependency_threshold)
+			val |= ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+		else if (dev->boost_freq == 0)
+			val &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+		actmon_writel(val, offs(ACTMON_DEV_CTRL));
+	}
 
 	actmon_writel(0xffffffff, offs(ACTMON_DEV_INTR_STATUS)); /* clr all */
 	actmon_wmb();
