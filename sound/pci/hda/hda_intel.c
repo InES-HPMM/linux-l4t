@@ -2837,9 +2837,9 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 				err = (int)chip->sgt;
 				goto sgt_fail;
 			}
-			chip->paddr = sg_dma_address(chip->sgt);
+			chip->paddr = sg_dma_address(chip->sgt->sgl);
 			snd_printk(KERN_DEBUG SFX
-			  "paddr=%08x vaddr=%08x\n", chip->paddr, chip->vaddr);
+			  "paddr=%08llx vaddr=%p\n", chip->paddr, chip->vaddr);
 			substream->dma_buffer.area = chip->vaddr;
 			substream->dma_buffer.addr = chip->paddr;
 			substream->dma_buffer.bytes = size;
