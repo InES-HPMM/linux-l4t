@@ -4595,8 +4595,6 @@ lpfc_disable_pci_dev(struct lpfc_hba *phba)
 	/* Release PCI resource and disable PCI device */
 	pci_release_selected_regions(pdev, bars);
 	pci_disable_device(pdev);
-	/* Null out PCI private reference to driver */
-	pci_set_drvdata(pdev, NULL);
 
 	return;
 }
@@ -9427,7 +9425,6 @@ lpfc_pci_remove_one_s3(struct pci_dev *pdev)
 	/* Disable interrupt */
 	lpfc_sli_disable_intr(phba);
 
-	pci_set_drvdata(pdev, NULL);
 	scsi_host_put(shost);
 
 	/*
