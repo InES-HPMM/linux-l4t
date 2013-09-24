@@ -91,6 +91,15 @@ enum tegra_bb_type {
 #define HSIC1_PORT_OWNER_XUSB   0x8
 
 /* Touchscreen definitions */
+enum touch_panel_id {
+	TOUCH_PANEL_RESERVED = 0,
+	TOUCH_PANEL_WINTEK,
+	TOUCH_PANEL_TPK,
+	TOUCH_PANEL_TOUCHTURNS,
+	TOUCH_PANEL_THOR_WINTEK,
+	TOUCH_PANEL_LOKI_WINTEK_5_66_UNLAMIN,
+};
+
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
 #define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
