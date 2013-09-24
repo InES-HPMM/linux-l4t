@@ -24,6 +24,7 @@ config ARM64
 	select HAVE_DEBUG_KMEMLEAK
 	select HAVE_DMA_API_DEBUG
 	select HAVE_DMA_ATTRS
+	select HAVE_DMA_CONTIGUOUS if MMU
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_HW_BREAKPOINT if PERF_EVENTS
@@ -89,6 +90,9 @@ config ARCH_DMA_ADDR_T_64BIT
 config NEED_DMA_MAP_STATE
 	def_bool y
 
+config ARM_HAS_SG_CHAIN
+	def_bool y
+
 config NEED_SG_DMA_LENGTH
 	def_bool y
 
@@ -97,6 +101,11 @@ config SWIOTLB
 
 config IOMMU_HELPER
 	def_bool SWIOTLB
+
+config ARM_DMA_USE_IOMMU
+	select NEED_SG_DMA_LENGTH
+	select ARM_HAS_SG_CHAIN
+	bool
 
 config MULTI_IRQ_HANDLER
         bool
