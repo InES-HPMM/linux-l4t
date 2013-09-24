@@ -236,6 +236,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 	REGULATOR_SUPPLY("vana", "2-0010"),
 	REGULATOR_SUPPLY("avdd", "2-0010"),
 	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("avdd_ov5693", "2-0010"),
 };
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
