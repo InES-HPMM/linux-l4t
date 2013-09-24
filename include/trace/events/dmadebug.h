@@ -30,9 +30,7 @@
 #include <linux/tracepoint.h>
 #include <linux/types.h>
 #include <linux/device.h>
-
-/* get architecture specific interesting data */
-char *debug_dma_platformdata(struct device *dev);
+#include <linux/dma-debug.h>
 
 DECLARE_EVENT_CLASS(dmadebug,
 	TP_PROTO(struct device *dev, dma_addr_t dma_addr, size_t size, \

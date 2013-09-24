@@ -752,14 +752,6 @@ out_unlock:
 	return count;
 }
 
-char *__weak debug_dma_platformdata(struct device *dev)
-{
-	/* empty string by default */
-	static char buf[1];
-
-	return buf;
-}
-
 static inline void seq_print_ip_sym(struct seq_file *s, unsigned long ip)
 {
 	seq_printf(s, "[<%p>] %pS\n", (void *)ip, (void *)ip);
