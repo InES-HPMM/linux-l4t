@@ -84,11 +84,6 @@ config VIDEOBUF2_DMA_SG
 	select VIDEOBUF2_CORE
 	select VIDEOBUF2_MEMOPS
 
-config VIDEOBUF2_DMA_NVMAP
-	select VIDEOBUF2_CORE
-	select VIDEOBUF2_MEMOPS
-	tristate
-
 config VIDEO_V4L2_INT_DEVICE
 	tristate "V4L2 int device (DEPRECATED)"
 	depends on VIDEO_V4L2
