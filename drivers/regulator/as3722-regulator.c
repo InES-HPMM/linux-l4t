@@ -401,7 +401,6 @@ static int as3722_ldo3_get_current_limit(struct regulator_dev *dev)
 
 static int as3722_ldo3_set_mode(struct regulator_dev *dev, u8 mode)
 {
-	u32 val;
 	struct as3722 *as3722 = rdev_get_drvdata(dev);
 
 	if (mode != AS3722_LDO3_MODE_PMOS && mode
