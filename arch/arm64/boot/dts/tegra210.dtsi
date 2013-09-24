@@ -75,9 +75,9 @@
 			nvidia,memory-clients = <8>;
 		};
 
-		isp@54800000 {
+		isp@54680000 {
 			compatible = "nvidia,tegra210-isp";
-			reg = <0x54800000 0x00040000>;
+			reg = <0x54680000 0x00040000>;
 			nvidia,memory-clients = <8>;
 		};
 
