@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
+#include <media/camera.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
 #include <media/dw9718.h>
@@ -30,6 +31,7 @@
 #include <media/ov7695.h>
 #include <media/mt9m114.h>
 #include <media/ad5823.h>
+#include <media/max77387.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/power/sbs-battery.h>
 #include <mach/edp.h>
@@ -441,6 +443,44 @@ static struct dw9718_platform_data ardbeg_dw9718_data = {
 	.detect = ardbeg_dw9718_detect,
 };
 
+/* estate values under 1000/200/0/0mA, 3.5V input */
+static unsigned max77387_estates[] = {3500, 710, 0};
+
+static struct max77387_platform_data ardbeg_max77387_pdata = {
+	.config		= {
+		.led_mask		= 3,
+		.flash_trigger_mode	= 1,
+		/* use ONE-SHOOT flash mode - flash triggered at the
+		 * raising edge of strobe or strobe signal.
+		*/
+		.flash_mode		= 1,
+		.def_ftimer		= 0x24,
+		.max_total_current_mA	= 1000,
+		.max_peak_current_mA	= 600,
+		.led_config[0]	= {
+			.flash_torch_ratio	= 18100,
+			.granularity		= 1000,
+			.flash_levels		= 0,
+			.lumi_levels	= NULL,
+			},
+		.led_config[1]	= {
+			.flash_torch_ratio	= 18100,
+			.granularity		= 1000,
+			.flash_levels		= 0,
+			.lumi_levels		= NULL,
+			},
+		},
+	.cfg		= 0,
+	.dev_name	= "torch",
+	.gpio_strobe	= CAM_FLASH_STROBE,
+	.edpc_config	= {
+		.states		= max77387_estates,
+		.num_states	= ARRAY_SIZE(max77387_estates),
+		.e0_index	= ARRAY_SIZE(max77387_estates) - 1,
+		.priority	= EDP_MAX_PRIO + 2,
+		},
+};
+
 static struct as364x_platform_data ardbeg_as3648_data = {
 	.config		= {
 		.led_mask	= 3,
@@ -684,88 +724,111 @@ static struct ad5823_platform_data ardbeg_ad5823_pdata = {
 	.power_off	= ardbeg_ad5823_power_off,
 };
 
-static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
-	{
-		I2C_BOARD_INFO("imx135", 0x10),
-		.platform_data = &ardbeg_imx135_data,
-	},
-	{
-		I2C_BOARD_INFO("ar0261", 0x36),
-		.platform_data = &ardbeg_ar0261_data,
-	},
-	{
-		I2C_BOARD_INFO("dw9718", 0x0c),
-		.platform_data = &ardbeg_dw9718_data,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &ardbeg_as3648_data,
-	},
+static struct i2c_board_info	ardbeg_i2c_board_info_imx135 = {
+	I2C_BOARD_INFO("imx135", 0x10),
+	.platform_data = &ardbeg_imx135_data,
 };
 
-static struct i2c_board_info ardbeg_i2c_board_info_e1793[] = {
-	{
-		I2C_BOARD_INFO("ov5693", 0x10),
-		.platform_data = &ardbeg_ov5693_pdata,
-	},
-	{
-		I2C_BOARD_INFO("ov7695", 0x21),
-		.platform_data = &ardbeg_ov7695_pdata,
-	},
-	{
-		I2C_BOARD_INFO("ad5823", 0x0c),
-		.platform_data = &ardbeg_ad5823_pdata,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &ardbeg_as3648_data,
-	},
+static struct i2c_board_info	ardbeg_i2c_board_info_ar0261 = {
+	I2C_BOARD_INFO("ar0261", 0x36),
+	.platform_data = &ardbeg_ar0261_data,
 };
 
-static struct i2c_board_info ardbeg_i2c_board_info_e1806[] = {
-	{
-		I2C_BOARD_INFO("ov5693", 0x10),
-		.platform_data = &ardbeg_ov5693_pdata,
-	},
-	{
-		I2C_BOARD_INFO("mt9m114", 0x48),
-		.platform_data = &ardbeg_mt9m114_pdata,
-	},
-	{
-		I2C_BOARD_INFO("ad5823", 0x0c),
-		.platform_data = &ardbeg_ad5823_pdata,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &ardbeg_as3648_data,
-	},
+static struct i2c_board_info	ardbeg_i2c_board_info_dw9718 = {
+	I2C_BOARD_INFO("dw9718", 0x0c),
+	.platform_data = &ardbeg_dw9718_data,
 };
 
+static struct i2c_board_info	ardbeg_i2c_board_info_ov5693 = {
+	I2C_BOARD_INFO("ov5693", 0x10),
+	.platform_data = &ardbeg_ov5693_pdata,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_ov7695 = {
+	I2C_BOARD_INFO("ov7695", 0x21),
+	.platform_data = &ardbeg_ov7695_pdata,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_mt9m114 = {
+	I2C_BOARD_INFO("mt9m114", 0x48),
+	.platform_data = &ardbeg_mt9m114_pdata,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_ad5823 = {
+	I2C_BOARD_INFO("ad5823", 0x0c),
+	.platform_data = &ardbeg_ad5823_pdata,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_as3648 = {
+		I2C_BOARD_INFO("as3648", 0x30),
+		.platform_data = &ardbeg_as3648_data,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_max77387 = {
+	I2C_BOARD_INFO("max77387", 0x4A),
+	.platform_data = &ardbeg_max77387_pdata,
+};
+
+static struct camera_module ardbeg_camera_module_info[] = {
+	/* E1823 camera board */
+	{
+		/* rear camera */
+		.sensor = &ardbeg_i2c_board_info_imx135,
+		.focuser = &ardbeg_i2c_board_info_dw9718,
+		.flash = &ardbeg_i2c_board_info_as3648,
+	},
+	{
+		/* front camera */
+		.sensor = &ardbeg_i2c_board_info_ar0261,
+	},
+	/* E1793 camera board */
+	{
+		/* rear camera */
+		.sensor = &ardbeg_i2c_board_info_ov5693,
+		.focuser = &ardbeg_i2c_board_info_ad5823,
+		.flash = &ardbeg_i2c_board_info_as3648,
+	},
+	{
+		/* front camera */
+		.sensor = &ardbeg_i2c_board_info_ov7695,
+	},
+	/* E1806 camera board has the same rear camera module as E1793,
+	   but the front camera is different */
+	{
+		/* front camera */
+		.sensor = &ardbeg_i2c_board_info_mt9m114,
+	},
+
+	{}
+};
+
+static struct camera_platform_data ardbeg_pcl_pdata = {
+	.cfg = 0xAA55AA55,
+	.modules = ardbeg_camera_module_info,
+};
+
+static struct platform_device ardbeg_camera_generic = {
+	.name = "pcl-generic",
+	.id = -1,
+};
 
 static int ardbeg_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
 
 	if (!of_machine_is_compatible("nvidia,tn8")) {
-		i2c_register_board_info(2, ardbeg_i2c_board_info_e1823,
-				ARRAY_SIZE(ardbeg_i2c_board_info_e1823));
-
 		/* put CSIA/B/E IOs into DPD mode to
 		 * save additional power for ardbeg
 		 */
 		tegra_io_dpd_enable(&csia_io);
 		tegra_io_dpd_enable(&csib_io);
 		tegra_io_dpd_enable(&csie_io);
-	} else {
-
-#ifdef CAM_BOARD_E1793
-		i2c_register_board_info(2, ardbeg_i2c_board_info_e1793,
-				ARRAY_SIZE(ardbeg_i2c_board_info_e1793));
-#elif defined CAM_BOARD_E1806
-		i2c_register_board_info(2, ardbeg_i2c_board_info_e1806,
-				ARRAY_SIZE(ardbeg_i2c_board_info_e1806));
-#endif
 	}
+
+	platform_device_add_data(&ardbeg_camera_generic,
+		&ardbeg_pcl_pdata, sizeof(ardbeg_pcl_pdata));
+	platform_device_register(&ardbeg_camera_generic);
+
 	return 0;
 }
 

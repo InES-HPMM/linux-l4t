@@ -84,7 +84,10 @@ static struct regulator_consumer_supply as3722_ldo1_supply[] = {
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000c"),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
-
+	REGULATOR_SUPPLY("vif2", "2-0021"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd", "2-004a"),
+	REGULATOR_SUPPLY("vif", "2-0048"),
 };
 
 static struct regulator_consumer_supply as3722_ldo2_supply[] = {
@@ -112,7 +115,7 @@ static struct regulator_consumer_supply as3722_ldo4_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2_cam", NULL),
 	REGULATOR_SUPPLY("avdd_cam3_cam", NULL),
 	REGULATOR_SUPPLY("vana", "2-0010"),
-	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("avdd_ov5693", "2-0010"),
 };
 
 static struct regulator_consumer_supply as3722_ldo5_supply[] = {
@@ -129,6 +132,8 @@ static struct regulator_consumer_supply as3722_ldo6_supply[] = {
 static struct regulator_consumer_supply as3722_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_cam_1v1_cam", NULL),
 	REGULATOR_SUPPLY("imx135_reg2", NULL),
+	REGULATOR_SUPPLY("vdig_lv", "2-0010"),
+	REGULATOR_SUPPLY("dvdd", "2-0010"),
 };
 
 static struct regulator_consumer_supply as3722_ldo9_supply[] = {
@@ -140,6 +145,11 @@ static struct regulator_consumer_supply as3722_ldo10_supply[] = {
 	REGULATOR_SUPPLY("imx135_reg1", NULL),
 	REGULATOR_SUPPLY("vdd", "2-000c"),
 	REGULATOR_SUPPLY("vin", "2-0030"),
+	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("vana", "2-0021"),
+	REGULATOR_SUPPLY("vdd_af1", "2-0010"),
+	REGULATOR_SUPPLY("vin", "2-004a"),
+	REGULATOR_SUPPLY("vana", "2-0048"),
 };
 
 static struct regulator_consumer_supply as3722_ldo11_supply[] = {
