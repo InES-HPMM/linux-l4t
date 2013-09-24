@@ -1040,6 +1040,8 @@ int __init dalmore_palmas_regulator_init(void)
 	/* Enable regulator full constraints */
 	regulator_has_full_constraints();
 
+	reg_idata_ldo6.constraints.enable_time = 1000;
+
 	/* Tracking configuration */
 	reg_init_data_ldo8.config_flags =
 			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
