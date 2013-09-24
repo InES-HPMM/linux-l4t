@@ -1441,8 +1441,6 @@ int __init dalmore_soctherm_init(void)
 			6000); /* edp temperature margin */
 	tegra_add_tj_trips(dalmore_soctherm_data.therm[THERM_CPU].trips,
 			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
-	tegra_add_vc_trips(dalmore_soctherm_data.therm[THERM_CPU].trips,
-			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
 
 	return tegra11_soctherm_init(&dalmore_soctherm_data);
 }

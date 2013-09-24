@@ -939,8 +939,6 @@ int __init pluto_soctherm_init(void)
 			6000);  /* edp temperature margin */
 	tegra_add_tj_trips(pluto_soctherm_data.therm[THERM_CPU].trips,
 			&pluto_soctherm_data.therm[THERM_CPU].num_trips);
-	tegra_add_vc_trips(pluto_soctherm_data.therm[THERM_CPU].trips,
-			&pluto_soctherm_data.therm[THERM_CPU].num_trips);
 
 	return tegra11_soctherm_init(&pluto_soctherm_data);
 }
