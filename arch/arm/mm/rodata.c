@@ -174,8 +174,8 @@ void kernel_map_pages(struct page *page, int numpages, int enable)
 
 	addr = (unsigned long)phys_to_virt(page_to_phys(page));
 	if (enable)
-		set_memory_rw(addr, numpages);
+		set_page_attributes(addr, numpages, pte_mkvalid);
 	else
-		set_memory_ro(addr, numpages);
+		set_page_attributes(addr, numpages, pte_mkinvalid);
 }
 #endif
