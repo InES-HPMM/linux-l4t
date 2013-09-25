@@ -7777,9 +7777,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartb",	"serial-tegra.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	900000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | DIV_U71),
-#endif
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	700000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
@@ -7871,9 +7869,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
 	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,   &tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0),
-#endif
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
@@ -7884,18 +7880,14 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	 &tegra_clk_c2bus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.c2bus",         "edp.c2bus",            NULL,   &tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c3bus, "vic03", 0, 0),
-#endif
 	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c3bus,  "tsec", 0, 0),
 	SHARED_CLK("cap.c3bus",		"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 	SHARED_CLK("override.c3bus",	"override.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,  0, SHARED_OVERRIDE),
 #else
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
-#endif
 	SHARED_CLK("msenc.cbus","tegra_msenc",		"msenc",&tegra_clk_cbus, "msenc", 0, 0),
 	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
 	SHARED_CLK("vde.cbus",	"tegra-avp",		"vde",	&tegra_clk_cbus, "vde", 0, 0),

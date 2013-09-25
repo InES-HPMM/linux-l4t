@@ -176,7 +176,6 @@ config ARCH_TEGRA_12x_SOC
 	select NVMAP_HANDLE_MARSHAL if TEGRA_NVMAP
 	select ARCH_TEGRA_HAS_CL_DVFS
 	select TEGRA_DUAL_CBUS
-	select ARCH_TEGRA_VIC
 	select SOC_BUS
 	select THERMAL
 	select PM_GENERIC_DOMAINS if PM
@@ -921,6 +920,7 @@ config TEGRA_PLLM_SCALED
 	  granularity of possible memory rate steps. In this case PLLC
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
+
 config ARCH_TEGRA_VIC
 	bool "Tegra Video Image Compositor present"
 	default y
