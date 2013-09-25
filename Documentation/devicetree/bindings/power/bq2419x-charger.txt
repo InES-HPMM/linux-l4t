@@ -1,0 +1,65 @@
+* bq2419x charger devicetree bindings
+
+Required properties:
+- compatible : Should be from the list
+  ti,bq2419x
+                          to be drawn by the charger from the power source.
+
+Required nodes:
+- regulators: There must a regulator subnode each for the following purposes:
+              (1) Setting battery charging current.
+              (2) Enabling current supply to vbus (To enable otg mode)
+              Each of these regulator nodes must have atleast one consumer
+              subnode which in turn must have certain mandatory properties
+              supplied. To know about these mandatory properties and more about
+              consumer subnodes, please refer
+              Documentation/devicetree/bindings/regulator/regulator.txt
+
+Additional properties to be added to charger regulator subnode:
+
+Required properties:
+- auto-recharge-time      : Time interval in seconds after which the charging
+                            should be restarted after the charging is complete.
+
+Optional properties:
+- watchdog-timeout        : Watchdog timer expiry timeout value in seconds.
+                            When not specified, watchdog timer functionality
+                            will be disabled.
+- rtc-alarm-time          : Time setting in seconds for the rtc alarm timer
+                            which wakes the board up for charging after shutdown.
+
+Example
+bq2419x: bq2419x@6b {
+	compatible = "ti,bq2419x";
+	reg = <0x6b>;
+	charging-term-current-mA = <100>;
+	charger {
+			regulator-name = "batt_regulator";
+			regulator-max-microamp = <3000>;
+			watchdog-timeout = <40>;
+			rtc-alarm-time = <3600>;
+			auto-recharge-time = <1800>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "usb_bat_chg";
+					regulator-consumer-device = "tegra-udc.0";
+				};
+			};
+	};
+	vbus {
+		regulator-name = "vbus_regulator";
+		consumers {
+			c1 {
+				regulator-consumer-supply = "usb_vbus";
+				regulator-consumer-device = "tegra-ehci.0";
+			};
+
+			c2 {
+				regulator-consumer-supply = "usb_vbus";
+				regulator-consumer-device = "tegra-otg";
+			};
+		};
+	};
+};
+
+

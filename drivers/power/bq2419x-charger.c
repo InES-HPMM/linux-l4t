@@ -38,6 +38,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
+#include <linux/regulator/of_regulator.h>
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
@@ -794,6 +795,74 @@ static struct battery_charger_info bq2419x_charger_bci = {
 	.bc_ops = &bq2419x_charger_bci_ops,
 };
 
+static struct bq2419x_platform_data *
+bq2419x_dt_parse(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct bq2419x_platform_data *pdata;
+	struct device_node *batt_reg_node;
+	struct device_node *vbus_reg_node;
+	int wdt_timeout;
+	int rtc_alarm_time;
+	int num_consumer_supplies;
+	int chg_restart_time;
+	struct regulator_init_data *batt_init_data;
+	struct regulator_init_data *vbus_init_data;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return PTR_ERR(-ENOMEM);
+
+	pdata->vbus_pdata = devm_kzalloc(&client->dev,
+			sizeof(*(pdata->vbus_pdata)), GFP_KERNEL);
+	if (!pdata->vbus_pdata)
+		return NULL;
+
+	batt_reg_node = of_find_node_by_name(np, "charger");
+	if (!batt_reg_node)
+		return NULL;
+
+	if (batt_reg_node) {
+		of_property_read_u32(batt_reg_node, "watchdog-timeout", &wdt_timeout);
+		of_property_read_u32(batt_reg_node, "rtc-alarm-time", &rtc_alarm_time);
+		of_property_read_u32(batt_reg_node, "auto-recharge-time", &chg_restart_time);
+		pdata->bcharger_pdata = devm_kzalloc(&client->dev,
+				sizeof(*(pdata->bcharger_pdata)), GFP_KERNEL);
+		if (!pdata->bcharger_pdata)
+			return PTR_ERR(-ENOMEM);
+		batt_init_data = of_get_regulator_init_data(&client->dev,
+								batt_reg_node);
+		if (!batt_init_data)
+			return NULL;
+
+		pdata->bcharger_pdata->consumer_supplies =
+					batt_init_data->consumer_supplies;
+		pdata->bcharger_pdata->num_consumer_supplies =
+					batt_init_data->num_consumer_supplies;
+		pdata->bcharger_pdata->max_charge_current_mA =
+						batt_init_data->constraints.max_uA;
+		pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
+		pdata->bcharger_pdata->rtc_alarm_time = rtc_alarm_time;
+		pdata->bcharger_pdata->chg_restart_time = chg_restart_time;
+	}
+
+	vbus_reg_node = of_find_node_by_name(np, "vbus");
+	if (!vbus_reg_node)
+		return NULL;
+
+	vbus_init_data = of_get_regulator_init_data(&client->dev,
+							vbus_reg_node);
+	if (!vbus_init_data)
+		return NULL;
+
+	pdata->vbus_pdata->consumer_supplies =
+				vbus_init_data->consumer_supplies;
+	pdata->vbus_pdata->num_consumer_supplies =
+				vbus_init_data->num_consumer_supplies;
+
+	return pdata;
+}
+
 static int bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -801,7 +870,11 @@ static int bq2419x_probe(struct i2c_client *client,
 	struct bq2419x_platform_data *pdata;
 	int ret = 0;
 
-	pdata = client->dev.platform_data;
+	if (client->dev.platform_data)
+		pdata = client->dev.platform_data;
+	else if (client->dev.of_node)
+		pdata = bq2419x_dt_parse(client);
+
 	if (!pdata) {
 		dev_err(&client->dev, "No Platform data");
 		return -EINVAL;
