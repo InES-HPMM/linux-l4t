@@ -38,6 +38,7 @@
 #include <trace/events/nvsecurity.h>
 
 struct tlk_device tlk_dev;
+static DEFINE_MUTEX(smc_lock);
 
 u32 notrace tegra_read_cycle(void)
 {
@@ -423,7 +424,9 @@ static long tlk_device_ioctl(struct file *file, unsigned int ioctl_num,
 	case TE_IOCTL_OPEN_CLIENT_SESSION:
 	case TE_IOCTL_CLOSE_CLIENT_SESSION:
 	case TE_IOCTL_LAUNCH_OPERATION:
+		mutex_lock(&smc_lock);
 		err = te_handle_trustedapp_ioctl(file, ioctl_num, ioctl_param);
+		mutex_unlock(&smc_lock);
 		break;
 
 	case TE_IOCTL_FILE_NEW_REQ:
