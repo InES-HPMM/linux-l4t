@@ -22,6 +22,28 @@
 
 #include <linux/types.h>
 
+#define MEASURE_BUS_VOLT 1
+
+/*
+Config register for ina230 (/ ina226):
+Some of these values may be needed to calculate platform_data values
+D15|D14 D13 D12|D11 D10 D09|D08 D07 D06|D05 D04 D03|D02 D01 D00
+rst|-   -   -  |AVG        |Vbus_CT    |Vsh_CT     |MODE
+*/
+#define INA230_RESET		(1 << 15)
+#define INA230_VBUS_CT		(0 << 6) /* Vbus 140us conversion time */
+#define INA230_VSH_CT		(0 << 3) /* Vshunt 140us conversion time */
+
+#if MEASURE_BUS_VOLT
+#define INA230_CONT_MODE	7	/* Continuous Bus and shunt measure */
+#define INA230_TRIG_MODE	3	/* Triggered Bus and shunt measure */
+#else
+#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
+#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
+#endif
+
+#define INA230_POWER_DOWN	0
+
 #define INA3221_RAIL_NAME_SIZE	32
 
 struct ina230_platform_data {
@@ -31,6 +53,8 @@ struct ina230_platform_data {
 	s32 min_cores_online;
 	u32 calibration_data;
 	u32 power_lsb;
+	u16 trig_conf;
+	u16 cont_conf;
 	u16 divisor;
 	u32 shunt_resistor;
 	u32 precision_multiplier;

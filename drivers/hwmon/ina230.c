@@ -48,7 +48,6 @@
 
 
 #define DRIVER_NAME "ina230"
-#define MEASURE_BUS_VOLT 1
 
 /* ina230 (/ ina226)register offsets */
 #define INA230_CONFIG	0
@@ -59,30 +58,6 @@
 #define INA230_CAL	5
 #define INA230_MASK	6
 #define INA230_ALERT	7
-
-/*
-Config register for ina230 (/ ina226):
-D15|D14 D13 D12|D11 D10 D09|D08 D07 D06|D05 D04 D03|D02 D01 D00
-rst|-   -   -  |AVG        |Vbus_CT    |Vsh_CT     |MODE
-*/
-#define INA230_RESET		(1 << 15)
-#define INA230_AVG		(0 << 9) /* 0 Averages */
-#define INA230_VBUS_CT		(0 << 6) /* Vbus 140us conversion time */
-#define INA230_VSH_CT		(0 << 3) /* Vshunt 140us conversion time */
-
-#if MEASURE_BUS_VOLT
-#define INA230_CONT_MODE	7	/* Continuous Bus and shunt measure */
-#define INA230_TRIG_MODE	3	/* Triggered Bus and shunt measure */
-#else
-#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
-#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
-#endif
-
-#define INA230_POWER_DOWN	0
-#define INA230_CONT_CONFIG	(INA230_AVG | INA230_VBUS_CT | \
-				 INA230_VSH_CT | INA230_CONT_MODE)
-#define INA230_TRIG_CONFIG	(INA230_AVG | INA230_VBUS_CT | \
-				 INA230_VSH_CT | INA230_TRIG_MODE)
 
 /*
 Mask register for ina230 (/ina 226):
@@ -103,15 +78,12 @@ struct ina230_data {
 	struct notifier_block nb;
 };
 
-
 /* bus voltage resolution: 1.25mv */
 #define busv_register_to_mv(x) (((x) * 5) >> 2)
 
 /* shunt voltage resolution: 2.5uv */
 #define shuntv_register_to_uv(x) (((x) * 5) >> 1)
 #define uv_to_alert_register(x) (((x) << 1) / 5)
-
-
 
 static s32 ensure_enabled_start(struct i2c_client *client)
 {
@@ -122,7 +94,7 @@ static s32 ensure_enabled_start(struct i2c_client *client)
 		return 0;
 
 	retval = i2c_smbus_write_word_data(client, INA230_CONFIG,
-				    __constant_cpu_to_be16(INA230_TRIG_CONFIG));
+			   __constant_cpu_to_be16(data->pdata->trig_conf));
 	if (retval < 0)
 		dev_err(&client->dev, "config data write failed sts: 0x%x\n",
 			retval);
@@ -200,7 +172,7 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 	}
 
 	retval = i2c_smbus_write_word_data(client, INA230_CONFIG,
-				    __constant_cpu_to_be16(INA230_CONT_CONFIG));
+			    __constant_cpu_to_be16(data->pdata->cont_conf));
 	if (retval < 0) {
 		dev_err(&client->dev, "config data write failed sts: 0x%x\n",
 			retval);
