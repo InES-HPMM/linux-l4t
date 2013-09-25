@@ -46,9 +46,10 @@
 
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
-#include <mach/iomap.h>
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_ahci.h>
+
+#include "../../arch/arm/mach-tegra/iomap.h"
 
 #define DRV_NAME	"tegra-sata"
 #define DRV_VERSION	"1.0"
