@@ -21,7 +21,6 @@
 
 #include <linux/mfd/as3722-reg.h>
 #include <mach/gpio-tegra.h>
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"

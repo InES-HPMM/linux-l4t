@@ -29,11 +29,10 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
-#include <mach/sdhci.h>
 #include <mach/board_id.h>
 #include <linux/i2c.h>
 
+#include "iomap.h"
 #include "gpio-names.h"
 #include "board.h"
 #include "board-vcm30_t124.h"
