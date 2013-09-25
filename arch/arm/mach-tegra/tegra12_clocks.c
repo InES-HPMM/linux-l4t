@@ -5101,32 +5101,43 @@ static int tegra12_emc_clk_set_rate(struct clk *c, unsigned long rate)
 static int tegra12_clk_emc_bus_update(struct clk *bus)
 {
 	struct clk *p = NULL;
-	unsigned long rate, parent_rate, backup_rate;
+	unsigned long rate, old_rate, parent_rate, backup_rate;
 
 	if (detach_shared_bus)
 		return 0;
 
 	rate = tegra12_clk_shared_bus_update(bus, NULL, NULL, NULL);
 
-	if (rate == clk_get_rate_locked(bus))
+	old_rate = clk_get_rate_locked(bus);
+	if (rate == old_rate)
 		return 0;
 
 	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
 		if (bus->parent == p) {
 			/* need backup to re-lock current parent */
-			if (IS_ERR_VALUE(backup_rate) ||
-			    clk_set_rate_locked(bus, backup_rate)) {
-				pr_err("%s: Failed to backup %s for rate %lu\n",
+			int ret;
+			if (IS_ERR_VALUE(backup_rate)) {
+				pr_err("%s: No backup for %s rate %lu\n",
 				       __func__, bus->name, rate);
 				return -EINVAL;
 			}
 
-			if (p->refcnt) {
-				pr_err("%s: %s has other than emc child\n",
-				       __func__, p->name);
+			if (backup_rate < old_rate) /* skip lowering voltage */
+				bus->auto_dvfs = false;
+			ret = clk_set_rate_locked(bus, backup_rate);
+			bus->auto_dvfs = true;
+			if (ret) {
+				pr_err("%s: Failed to backup %s for rate %lu\n",
+				       __func__, bus->name, rate);
 				return -EINVAL;
 			}
 		}
+		if (p->refcnt) {
+			pr_err("%s: %s has other than emc child\n",
+			       __func__, p->name);
+			return -EINVAL;
+		}
+
 		if (clk_set_rate(p, parent_rate)) {
 			pr_err("%s: Failed to set %s rate %lu\n",
 			       __func__, p->name, parent_rate);
