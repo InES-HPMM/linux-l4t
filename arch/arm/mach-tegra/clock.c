@@ -1,12 +1,10 @@
 /*
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
- *
- * Copyright (c) 2019-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1101,6 +1099,7 @@ out:
 	clk_unlock_restore(c, &flags);
 	return ret;
 }
+EXPORT_SYMBOL(tegra_clk_cfg_ex);
 
 int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb)
 {
