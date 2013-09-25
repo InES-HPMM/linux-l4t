@@ -490,11 +490,16 @@ static void dalmore_usb_init(void)
 	tegra_set_usb_wake_source();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-		platform_device_register(&tegra_otg_device);
-		/* Setup the udc platform data */
-		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+		tegra_otg_pdata.is_xhci = false;
+		tegra_udc_pdata.u_data.dev.is_xhci = false;
+	} else {
+		tegra_otg_pdata.is_xhci = true;
+		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
@@ -503,13 +508,14 @@ static void dalmore_usb_init(void)
 }
 
 static struct tegra_xusb_board_data xusb_bdata = {
-	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P1,
+	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P1 |
+			TEGRA_XUSB_USB2_P0,
 	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 0),
 	.uses_external_pmic = false,
 	.supply = {
 		.utmi_vbuses = {
-			NULL, "usb_vbus", NULL
+			"usb_vbus", "usb_vbus1", NULL
 		},
 		.s3p3v = "hvdd_usb",
 		.s1p8v = "avdd_usb_pll",
@@ -522,7 +528,11 @@ static void dalmore_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	if (usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+		xusb_bdata.portmap &= ~TEGRA_XUSB_USB2_P0;
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+		xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0);
+	if (xusb_bdata.portmap)
 		tegra_xusb_init(&xusb_bdata);
 }
 

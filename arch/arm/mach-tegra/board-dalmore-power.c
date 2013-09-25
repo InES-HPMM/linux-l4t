@@ -846,6 +846,7 @@ static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
 };
 
 /* EN_3V3_FUSE From TEGRA GPIO PX4 */
@@ -856,7 +857,7 @@ static struct regulator_consumer_supply fixed_reg_vpp_fuse_supply[] = {
 /* EN_USB3_VBUS From TEGRA GPIO PM5 */
 static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus1", "tegra-xhci"),
 };
 
 /* EN_1V8_TS From TEGRA_GPIO_PH5 */
