@@ -1780,7 +1780,10 @@ static long tegra12_sbus_cmplx_round_updown(struct clk *c, unsigned long rate,
 
 	round_rate = source_rate * 2 / (divider + 2);
 	if (round_rate > c->max_rate) {
-		divider = max(2, (divider + 1));
+		divider += new_parent->flags & DIV_U71_INT ? 2 : 1;
+#if !DIVIDER_1_5_ALLOWED
+		divider = max(2, divider);
+#endif
 		round_rate = source_rate * 2 / (divider + 2);
 	}
 
