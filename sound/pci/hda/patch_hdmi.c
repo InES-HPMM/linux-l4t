@@ -1900,7 +1900,7 @@ static void generic_hdmi_free(struct hda_codec *codec)
 	kfree(spec);
 }
 
-static int generic_hdmi_suspend(struct hda_codec *codec, pm_message_t state)
+static int generic_hdmi_suspend(struct hda_codec *codec)
 {
 	struct hdmi_spec *spec = codec->spec;
 	int pin_idx;
