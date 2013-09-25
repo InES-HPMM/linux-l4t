@@ -25,6 +25,14 @@
 
 #define PRECISION_MULTIPLIER_MACALLAN 1000
 
+#define AVG_32_SAMPLES (4 << 9)
+
+/* AVG is specified from platform data */
+#define INA230_CONT_CONFIG	(AVG_32_SAMPLES | INA230_VBUS_CT | \
+				INA230_VSH_CT | INA230_CONT_MODE)
+#define INA230_TRIG_CONFIG	(AVG_32_SAMPLES | INA230_VBUS_CT | \
+				 INA230_VSH_CT | INA230_TRIG_MODE)
+
 enum {
 	VD_CPU,
 	VD_SOC,
@@ -231,6 +239,8 @@ static struct ina230_platform_data power_mon_ina230_info[] = {
 		.calibration_data  = 0x20c4,
 		.power_lsb = 3.051757813 * PRECISION_MULTIPLIER_MACALLAN,
 		.rail_name = "VDD_CELL",
+		.trig_conf = INA230_TRIG_CONFIG,
+		.cont_conf = INA230_CONT_CONFIG,
 		.resistor = 5,
 		.min_cores_online = 2,
 		.divisor = 25,
