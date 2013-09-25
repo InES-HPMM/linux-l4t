@@ -2341,7 +2341,7 @@ static int rt5639_remove(struct snd_soc_codec *codec)
 }
 
 #ifdef CONFIG_PM
-static int rt5639_suspend(struct snd_soc_codec *codec, pm_message_t state)
+static int rt5639_suspend(struct snd_soc_codec *codec)
 {
 	rt5639_reset(codec);
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
