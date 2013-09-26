@@ -84,12 +84,7 @@
 	dev_dbg(_dev, "%s: %s @%x = 0x%x\n", __func__, #_reg,		\
 		_reg, readl(_base + _reg))
 
-/* PMC register definition */
-#define PMC_PORT_UTMIP_P0		0
-#define PMC_PORT_UTMIP_P1		1
-#define PMC_PORT_UTMIP_P2		2
-#define PMC_PORT_UHSIC_P0		3
-#define PMC_PORT_NUM			4
+#define PMC_PORTMAP_MASK(map, pad)	(((map) >> 4*(pad)) & 0xF)
 
 #define PMC_USB_DEBOUNCE_DEL_0			0xec
 #define   UTMIP_LINE_DEB_CNT(x)		(((x) & 0xf) << 16)
@@ -577,9 +572,14 @@ static void pmc_init(struct tegra_xhci_hcd *tegra)
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->portmap) {
 			dev_dbg(dev, "%s utmi pad %d\n", __func__, pad);
 			pmc = &pmc_data[pad];
-			pmc->instance = pad;
+			if (tegra->pdata->pmc_portmap)
+				pmc->instance = PMC_PORTMAP_MASK(
+						tegra->pdata->pmc_portmap,
+						pad);
+			else
+				pmc->instance = pad;
 			pmc->phy_type = TEGRA_USB_PHY_INTF_UTMI;
-			pmc->port_speed = USB_PMC_PORT_SPEED_HIGH;
+			pmc->port_speed = USB_PMC_PORT_SPEED_UNKNOWN;
 			pmc->controller_type = TEGRA_USB_3_0;
 			tegra_usb_pmc_init(pmc);
 		}
