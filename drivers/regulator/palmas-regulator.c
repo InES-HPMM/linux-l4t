@@ -1490,6 +1490,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				continue;
 			if (id > PALMAS_REG_REGEN3 && id < PALMAS_REG_SYSEN1)
 				continue;
+			if (id == PALMAS_REG_CHARGER_PUMP)
+				continue;
 		} else {
 			if (id == PALMAS_REG_REGEN3)
 				continue;
