@@ -26,6 +26,8 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/palmas.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/power/reset/system-pmic.h>
 
 struct palmas_pm {
@@ -166,6 +168,7 @@ static int palmas_pm_probe(struct platform_device *pdev)
 	struct palmas_platform_data *palmas_pdata;
 	struct palmas_pm_platform_data *pm_pdata = NULL;
 	struct system_pmic_config config;
+	struct device_node *node = pdev->dev.of_node;
 	int i;
 
 	palmas_pm = devm_kzalloc(&pdev->dev, sizeof(*palmas_pm),
@@ -206,8 +209,15 @@ static int palmas_pm_probe(struct platform_device *pdev)
 		config.allow_power_off = pm_pdata->use_power_off;
 		config.allow_power_reset = pm_pdata->use_power_reset;
 	} else {
-		config.allow_power_off = true;
-		config.allow_power_reset = false;
+		if (node) {
+			config.allow_power_off = of_property_read_bool(node,
+				"system-pmic-power-off");
+			config.allow_power_reset = of_property_read_bool(node,
+				"system-pmic-power-reset");
+		} else {
+			config.allow_power_off = true;
+			config.allow_power_reset = false;
+		}
 	}
 
 	palmas_pm->system_pmic_dev = system_pmic_register(&pdev->dev,
@@ -229,12 +239,19 @@ static int palmas_pm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id of_palmas_pm_match_tbl[] = {
+	{ .compatible = "ti,palmas-pm", },
+	{ /* end */ }
+};
+MODULE_DEVICE_TABLE(of, of_palmas_pm_match_tbl);
+
 static struct platform_driver palmas_pm_driver = {
 	.probe		= palmas_pm_probe,
 	.remove		= palmas_pm_remove,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "palmas-pm",
+		.of_match_table = of_palmas_pm_match_tbl,
 	},
 };
 

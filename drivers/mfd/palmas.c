@@ -964,25 +964,6 @@ static int palmas_set_pdata_irq_flag(struct i2c_client *i2c,
 	return 0;
 }
 
-static void palmas_dt_to_pdata(struct i2c_client *i2c,
-		struct palmas_platform_data *pdata)
-{
-	struct device_node *node = i2c->dev.of_node;
-	int ret;
-	u32 prop;
-
-	/* The default for this register is all masked */
-	ret = of_property_read_u32(node, "ti,power-ctrl", &prop);
-	if (!ret)
-		pdata->power_ctrl = prop;
-	else
-		pdata->power_ctrl = PALMAS_POWER_CTRL_NSLEEP_MASK |
-					PALMAS_POWER_CTRL_ENABLE1_MASK |
-					PALMAS_POWER_CTRL_ENABLE2_MASK;
-	if (i2c->irq)
-		palmas_set_pdata_irq_flag(i2c, pdata);
-}
-
 static int palmas_read_version_information(struct palmas *palmas)
 {
 	unsigned int sw_rev, des_rev;
@@ -1037,20 +1018,6 @@ static int palmas_read_version_information(struct palmas *palmas)
 	dev_info(palmas->dev, "ES version %d.%d: ChipRevision 0x%02X%02X\n",
 		palmas->es_major_version, palmas->es_minor_version,
 		palmas->design_revision, palmas->sw_otp_version);
-	return 0;
-}
-
-static int palmas_set_pdata_irq_flag(struct i2c_client *i2c,
-		struct palmas_platform_data *pdata)
-{
-	struct irq_data *irq_data = irq_get_irq_data(i2c->irq);
-	if (!irq_data) {
-		dev_err(&i2c->dev, "Invalid IRQ: %d\n", i2c->irq);
-		return -EINVAL;
-	}
-
-	pdata->irq_type = irqd_get_trigger_type(irq_data);
-	dev_info(&i2c->dev, "Irq flag is 0x%08x\n", pdata->irq_type);
 	return 0;
 }
 
