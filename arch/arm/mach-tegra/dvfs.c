@@ -1841,6 +1841,70 @@ static int core_override_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");
 
+static int gpu_dvfs_t_show(struct seq_file *s, void *data)
+{
+	int i, j;
+	int num_ranges = 1;
+	int *trips = NULL;
+	struct dvfs *d;
+	struct dvfs_rail *rail = tegra_gpu_rail;
+
+	if (!tegra_gpu_rail) {
+		seq_printf(s, "Only supported for T124 or higher\n");
+		return -ENOSYS;
+	}
+
+	mutex_lock(&dvfs_lock);
+
+	d = list_first_entry(&rail->dvfs, struct dvfs, reg_node);
+	if (rail->vts_cdev && d->therm_dvfs) {
+		num_ranges = rail->vts_cdev->trip_temperatures_num + 1;
+		trips = rail->vts_cdev->trip_temperatures;
+	}
+
+	seq_printf(s, "%-11s", "T(C)\\F(kHz)");
+	for (i = 0; i < d->num_freqs; i++) {
+		unsigned int f = d->freqs[i]/100;
+		seq_printf(s, " %7u", f);
+	}
+	seq_printf(s, "\n");
+
+	for (j = 0; j < num_ranges; j++) {
+		seq_printf(s, "%s", j == rail->therm_scale_idx ? ">" : " ");
+
+		if (!trips || (num_ranges == 1))
+			seq_printf(s, "%4s..%-4s", "", "");
+		else if (j == 0)
+			seq_printf(s, "%4s..%-4d", "", trips[j]);
+		else if (j == num_ranges - 1)
+			seq_printf(s, "%4d..%-4s", trips[j], "");
+		else
+			seq_printf(s, "%4d..%-4d", trips[j-1], trips[j]);
+
+		for (i = 0; i < d->num_freqs; i++) {
+			int mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
+			seq_printf(s, " %7d", mv);
+		}
+		seq_printf(s, " mV\n");
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
+
+static int gpu_dvfs_t_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpu_dvfs_t_show, NULL);
+}
+
+static const struct file_operations gpu_dvfs_t_fops = {
+	.open           = gpu_dvfs_t_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 static int dvfs_table_show(struct seq_file *s, void *data)
 {
 	int i;
@@ -1937,6 +2001,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("gpu_dvfs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &gpu_dvfs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("gpu_dvfs_t", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &gpu_dvfs_t_fops);
 	if (!d)
 		return -ENOMEM;
 
