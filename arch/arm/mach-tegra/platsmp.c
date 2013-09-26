@@ -23,6 +23,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/cpumask.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-timer.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
@@ -35,7 +36,6 @@
 #include "clock.h"
 #include "sleep.h"
 #include "cpu-tegra.h"
-#include "timer.h"
 
 #include "common.h"
 #include "iomap.h"

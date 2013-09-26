@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/cpu_pm.h>
 #include <linux/of.h>
+#include <linux/tegra-timer.h>
 
 #include <asm/mach/time.h>
 #include <asm/cputype.h>
@@ -37,7 +38,6 @@
 
 #include "clock.h"
 #include "iomap.h"
-#include "timer.h"
 #include "fuse.h"
 
 static u32 arch_timer_us_mult, arch_timer_us_shift;

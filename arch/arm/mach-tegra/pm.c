@@ -50,6 +50,8 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-timer.h>
+#include <linux/tegra-cpuidle.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -69,7 +71,6 @@
 #include "board.h"
 #include "clock.h"
 #include "common.h"
-#include "cpuidle.h"
 #include "fuse.h"
 #include "gic.h"
 #include "iomap.h"
@@ -78,7 +79,6 @@
 #include "reset.h"
 #include "pmc.h"
 #include "sleep.h"
-#include "timer.h"
 #include "dvfs.h"
 #include "cpu-tegra.h"
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)

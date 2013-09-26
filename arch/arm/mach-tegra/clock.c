@@ -37,6 +37,7 @@
 #include <linux/bug.h>
 #include <linux/tegra-soc.h>
 #include <trace/events/power.h>
+#include <linux/tegra-timer.h>
 
 #include <mach/edp.h>
 
@@ -44,7 +45,6 @@
 #include "clock.h"
 #include "dvfs.h"
 #include "iomap.h"
-#include "timer.h"
 #include "tegra_emc.h"
 
 /* Global data of Tegra CPU CAR ops */

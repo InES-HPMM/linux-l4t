@@ -40,6 +40,8 @@
 #include <linux/module.h>
 #include <linux/hrtimer.h>
 #include <linux/pm_domain.h>
+#include <linux/tegra-timer.h>
+#include <linux/tegra-cpuidle.h>
 
 #include <asm/proc-fns.h>
 #include <asm/cpuidle.h>
@@ -48,10 +50,8 @@
 
 #include <trace/events/nvpower.h>
 
-#include "cpuidle.h"
 #include "pm.h"
 #include "sleep.h"
-#include "timer.h"
 
 #define DRAM_SELF_REFRESH_EXIT_LATENCY	3000
 

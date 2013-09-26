@@ -33,6 +33,8 @@
 #include <linux/cpu.h>
 #include <linux/export.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-timer.h>
+#include <linux/tegra-cpuidle.h>
 
 #include <asm/mach/time.h>
 #include <asm/localtimer.h>
@@ -43,9 +45,7 @@
 
 #include "board.h"
 #include "clock.h"
-#include "cpuidle.h"
 #include "iomap.h"
-#include "timer.h"
 #include "fuse.h"
 
 #if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)

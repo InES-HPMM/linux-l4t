@@ -32,6 +32,7 @@
 #include <linux/sched.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-cpuidle.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -41,7 +42,6 @@
 #include <asm/cputype.h>
 
 #include "clock.h"
-#include "cpuidle.h"
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"
