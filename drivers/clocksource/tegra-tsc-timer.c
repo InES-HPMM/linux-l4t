@@ -28,6 +28,8 @@
 #include <linux/cpu_pm.h>
 #include <linux/of.h>
 #include <linux/tegra-timer.h>
+#include <linux/tegra-soc.h>
+#include <linux/of_address.h>
 
 #include <asm/mach/time.h>
 #include <asm/cputype.h>
@@ -47,7 +49,7 @@ static struct delay_timer arch_delay_timer;
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 /* Time Stamp Counter (TSC) base address */
-static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
+static void __iomem *tsc;
 #endif
 
 #define TSC_CNTCR		0		/* TSC control registers */
@@ -196,8 +198,6 @@ int __init tegra_init_arch_timer(void)
 	if (!local_timer_is_architected())
 		return -ENODEV;
 
-	clocksource_of_init();
-
 	register_cpu_notifier(&arch_timer_cpu_nb);
 	cpu_pm_register_notifier(&arch_timer_cpu_pm_nb);
 	arch_timer_initialized = true;
@@ -222,3 +222,17 @@ int tegra_cpu_timer_get_remain(s64 *time)
 
 	return ret;
 }
+
+
+#if defined(CONFIG_TEGRA_PRE_SILICON_SUPPORT) && \
+			!defined(CONFIG_TRUSTED_FOUNDATIONS)
+static void __init tegra_init_tsc(struct device_node *np)
+{
+	tsc = of_iomap(np, 0);
+	if (!tsc) {
+		pr_err("%s: Can't map tsc registers", __func__);
+		BUG();
+	}
+}
+CLOCKSOURCE_OF_DECLARE(tegra_tsc, "nvidia,tegra-tsc", tegra_init_tsc);
+#endif

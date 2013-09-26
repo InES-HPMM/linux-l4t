@@ -31,6 +31,9 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
+#include <linux/of_address.h>
+#include <linux/tegra-soc.h>
 #include <linux/tegra-timer.h>
 
 #include <asm/mach/time.h>
@@ -40,11 +43,8 @@
 #include <asm/localtimer.h>
 #endif
 
-#include "../../arch/arm/mach-tegra/iomap.h"
-#include <linux/tegra-soc.h>
-
-static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
-static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
+void __iomem *timer_reg_base;
+static void __iomem *rtc_base;
 
 static u64 persistent_ms, last_persistent_ms;
 static struct timespec persistent_ts;
@@ -59,11 +59,6 @@ static u32 system_timer = 0;
 
 #if !defined(CONFIG_ARM_ARCH_TIMER) && !defined(CONFIG_HAVE_ARM_TWD)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-
-#define TIMER3_OFFSET (TEGRA_TMR3_BASE-TEGRA_TMR1_BASE)
-#define TIMER4_OFFSET (TEGRA_TMR4_BASE-TEGRA_TMR1_BASE)
-#define TIMER5_OFFSET (TEGRA_TMR5_BASE-TEGRA_TMR1_BASE)
-#define TIMER6_OFFSET (TEGRA_TMR6_BASE-TEGRA_TMR1_BASE)
 
 struct tegra_clock_event_device {
 	struct clock_event_device *evt;
@@ -256,11 +251,6 @@ static struct irqaction tegra_timer_irq = {
 	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_HIGH,
 	.handler	= tegra_timer_interrupt,
 	.dev_id		= &tegra_clockevent,
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	.irq		= INT_TMR3,
-#else
-	.irq		= INT_TMR1,
-#endif
 };
 
 static int tegra_timer_suspend(void)
@@ -409,7 +399,22 @@ void __init tegra_init_timer(struct device_node *np)
 	int ret;
 	unsigned long rate;
 
-	clk = clk_get_sys("timer", NULL);
+	timer_reg_base = of_iomap(np, 0);
+	if (!timer_reg_base) {
+		pr_err("%s:Can't map timer registers\n", __func__);
+		BUG();
+	}
+
+	tegra_timer_irq.irq = irq_of_parse_and_map(np, 0);
+	if (tegra_timer_irq.irq <= 0) {
+		pr_err("%s:Failed to map timer IRQ\n", __func__);
+		BUG();
+	}
+
+	clk = of_clk_get(np, 0);
+	if (IS_ERR(clk))
+		clk = clk_get_sys("timer", NULL);
+
 	if (IS_ERR(clk)) {
 		pr_warn("Unable to get timer clock. Assuming 12Mhz input clock.\n");
 		rate = 12000000;
@@ -417,16 +422,6 @@ void __init tegra_init_timer(struct device_node *np)
 		clk_prepare_enable(clk);
 		rate = clk_get_rate(clk);
 	}
-
-	/*
-	 * rtc registers are used by read_persistent_clock, keep the rtc clock
-	 * enabled
-	 */
-	clk = clk_get_sys("rtc-tegra", NULL);
-	if (IS_ERR(clk))
-		pr_warn("Unable to get rtc-tegra clock\n");
-	else
-		clk_prepare_enable(clk);
 
 	switch (rate) {
 	case 12000000:
@@ -460,6 +455,8 @@ void __init tegra_init_timer(struct device_node *np)
 		WARN(1, "Unknown clock rate");
 	}
 
+	hotplug_cpu_register(np);
+	of_node_put(np);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra20_init_timer();
 #else
@@ -505,11 +502,36 @@ void __init tegra_init_timer(struct device_node *np)
 
 	late_time_init = tegra_init_late_timer;
 
-#ifndef CONFIG_ARM64 /* FIXME */
-	register_persistent_clock(NULL, tegra_read_persistent_clock);
-#endif
-
 	//arm_delay_ops.delay		= __tegra_delay;
 	//arm_delay_ops.const_udelay	= __tegra_const_udelay;
 	//arm_delay_ops.udelay		= __tegra_udelay;
 }
+CLOCKSOURCE_OF_DECLARE(tegra_timer, "nvidia,tegra-nvtimer", tegra_init_timer);
+
+static void __init tegra_init_rtc(struct device_node *np)
+{
+	struct clk *clk;
+	/*
+	 * rtc registers are used by read_persistent_clock, keep the rtc clock
+	 * enabled
+	 */
+	rtc_base = of_iomap(np, 0);
+	if (!rtc_base) {
+		pr_err("%s: Can't map RTC registers", __func__);
+		BUG();
+	}
+
+	clk = of_clk_get(np, 0);
+	if (IS_ERR(clk))
+		clk = clk_get_sys("rtc-tegra", NULL);
+
+	of_node_put(np);
+
+	if (IS_ERR(clk))
+		pr_warn("Unable to get rtc-tegra clock\n");
+	else
+		clk_prepare_enable(clk);
+
+	register_persistent_clock(NULL, tegra_read_persistent_clock);
+}
+CLOCKSOURCE_OF_DECLARE(tegra_rtc, "nvidia,tegra-rtc", tegra_init_rtc);

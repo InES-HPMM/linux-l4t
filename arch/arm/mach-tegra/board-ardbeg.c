@@ -55,6 +55,7 @@
 #include <linux/mfd/palmas.h>
 #include <linux/clk/tegra.h>
 #include <media/tegra_dtv.h>
+#include <linux/clocksource.h>
 
 #include <mach/irqs.h>
 #include <mach/pci.h>
@@ -1171,7 +1172,7 @@ DT_MACHINE_START(LAGUNA, "laguna")
 	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra_ardbeg_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_time	= tegra_init_timer,
+	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= laguna_dt_board_compat,
@@ -1185,7 +1186,7 @@ DT_MACHINE_START(TN8, "tn8")
 	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra_ardbeg_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_time	= tegra_init_timer,
+	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tn8_dt_board_compat,
@@ -1199,7 +1200,7 @@ DT_MACHINE_START(ARDBEG, "ardbeg")
 	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra_ardbeg_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_time	= tegra_init_timer,
+	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= ardbeg_dt_board_compat,

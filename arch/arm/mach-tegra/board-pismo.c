@@ -49,6 +49,7 @@
 #include <linux/edp.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
+#include <linux/clocksource.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -765,7 +766,7 @@ MACHINE_START(PISMO, "pismo")
 	.reserve	= tegra_pismo_reserve,
 	.init_early	= tegra11x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_time	= tegra_init_timer,
+	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_pismo_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= pismo_dt_board_compat,

@@ -26,6 +26,7 @@
 #include <linux/spi/spi-tegra.h>
 #include <linux/of_platform.h>
 #include <linux/kernel.h>
+#include <linux/clocksource.h>
 
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/pci.h>
@@ -558,7 +559,7 @@ DT_MACHINE_START(VCM30_T124, "vcm30_t124")
 	.reserve	= tegra_vcm30_t124_reserve,
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-        .init_time      = tegra_init_timer,
+        .init_time      = clocksource_of_init,
 	.init_machine	= tegra_vcm30_t124_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= vcm30_t124_dt_board_compat,

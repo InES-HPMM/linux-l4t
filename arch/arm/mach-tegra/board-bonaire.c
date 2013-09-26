@@ -41,6 +41,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/clocksource.h>
 
 #include <mach/gpio-tegra.h>
 
@@ -650,6 +651,6 @@ MACHINE_START(BONAIRE, "bonaire")
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_machine	= tegra_bonaire_dt_init,
-	.init_time      = tegra_init_timer,
+	.init_time      = clocksource_of_init,
 	.dt_compat	= bonaire_dt_board_compat,
 MACHINE_END

@@ -25,10 +25,16 @@
 #define TIMERUS_USEC_CFG	0x14
 #define TIMERUS_CNTR_FREEZE	0x4c
 
-#define TIMER1_BASE		0x0
-#define TIMER2_BASE		0x8
-#define TIMER3_BASE		0x50
-#define TIMER4_BASE		0x58
+#define TIMER1_OFFSET		0x0
+#define TIMER2_OFFSET		0x8
+#define TIMER3_OFFSET 		0x50
+#define TIMER4_OFFSET 		0x58
+#define TIMER5_OFFSET 		0x60
+#define TIMER6_OFFSET 		0x68
+#define TIMER7_OFFSET		0x70
+#define TIMER8_OFFSET		0x78
+#define TIMER9_OFFSET		0x80
+#define TIMER10_OFFSET		0x88
 
 #define TIMER_PTV		0x0
 #define TIMER_PCR		0x4
@@ -45,10 +51,11 @@ struct tegra_twd_context {
 	u32 twd_cnt;
 };
 
+extern void __iomem *timer_reg_base;
 #define timer_writel(value, reg) \
-	__raw_writel(value, IO_ADDRESS(TEGRA_TMR1_BASE) + (reg))
+	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
-	__raw_readl(IO_ADDRESS(TEGRA_TMR1_BASE) + (reg))
+	__raw_readl(timer_reg_base + (reg))
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 int __init tegra_init_arch_timer(void);
@@ -90,4 +97,5 @@ static inline void tegra_tsc_wait_for_resume(void) {};
 
 u64 tegra_rtc_read_ms(void);
 
+int hotplug_cpu_register(struct device_node *);
 #endif /* _MACH_TEGRA_TIMER_H_ */

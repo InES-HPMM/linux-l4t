@@ -48,6 +48,7 @@
 #include <linux/edp.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/clocksource.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -721,7 +722,7 @@ MACHINE_START(MACALLAN, "macallan")
 	.reserve	= tegra_macallan_reserve,
 	.init_early	= tegra11x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.init_time	= tegra_init_timer,
+	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_macallan_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= macallan_dt_board_compat,

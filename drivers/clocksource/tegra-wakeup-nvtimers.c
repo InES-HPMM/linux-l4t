@@ -36,6 +36,9 @@
 #include <linux/tegra-timer.h>
 #include <linux/tegra-cpuidle.h>
 
+#include <linux/of.h>
+#include <linux/of_irq.h>
+
 #include <asm/mach/time.h>
 #include <asm/localtimer.h>
 #include <asm/sched_clock.h>
@@ -43,7 +46,6 @@
 
 #include <mach/irqs.h>
 
-#include <../../arch/arm/mach-tegra/iomap.h>
 
 #if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)
 
@@ -62,13 +64,6 @@
  * TMR9 - Free.
  * TMR10 - watchdog, suspend/resume recovery
 */
-
-#define TIMER1_OFFSET (TEGRA_TMR1_BASE-TEGRA_TMR1_BASE)
-#define TIMER2_OFFSET (TEGRA_TMR2_BASE-TEGRA_TMR1_BASE)
-#define TIMER3_OFFSET (TEGRA_TMR3_BASE-TEGRA_TMR1_BASE)
-#define TIMER4_OFFSET (TEGRA_TMR4_BASE-TEGRA_TMR1_BASE)
-#define TIMER5_OFFSET (TEGRA_TMR5_BASE-TEGRA_TMR1_BASE)
-#define TIMER6_OFFSET (TEGRA_TMR6_BASE-TEGRA_TMR1_BASE)
 
 #if defined(CONFIG_PM_SLEEP)
 static cpumask_t wake_timer_canceled;
@@ -95,19 +90,19 @@ static irqreturn_t tegra_lp2wake_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-#define LP2_TIMER_IRQ_ACTION(cpu, irqnum) {			\
+#define LP2_TIMER_IRQ_ACTION(cpu) {				\
 	.name		= "tmr_lp2wake_cpu" __stringify(cpu),	\
 	.flags		= IRQF_DISABLED,			\
 	.handler	= tegra_lp2wake_interrupt,		\
 	.dev_id		= (void*)cpu,				\
-	.irq		= irqnum }
+	}
 
 static struct irqaction tegra_lp2wake_irq[] = {
-	LP2_TIMER_IRQ_ACTION(0, INT_TMR3),
+	LP2_TIMER_IRQ_ACTION(0),
 #ifdef CONFIG_SMP
-	LP2_TIMER_IRQ_ACTION(1, INT_TMR4),
-	LP2_TIMER_IRQ_ACTION(2, INT_TMR5),
-	LP2_TIMER_IRQ_ACTION(3, INT_TMR6),
+	LP2_TIMER_IRQ_ACTION(1),
+	LP2_TIMER_IRQ_ACTION(2),
+	LP2_TIMER_IRQ_ACTION(3),
 #endif
 };
 
@@ -275,10 +270,19 @@ static struct notifier_block __cpuinitdata hotplug_notifier_block = {
 	.notifier_call = hotplug_notify,
 };
 
-static int __init hotplug_cpu_register(void)
+int __init hotplug_cpu_register(struct device_node *np)
 {
+	int cpu;
+	for (cpu = 0;cpu < 4;cpu++) {
+		tegra_lp2wake_irq[cpu].irq =
+				irq_of_parse_and_map(np, cpu + 2);
+
+	if (tegra_lp2wake_irq[cpu].irq <= 0) {
+			pr_err("Failed to map wakeup timer IRQ\n");
+			BUG();
+		}
+	}
 	return register_cpu_notifier(&hotplug_notifier_block);
 }
-early_initcall(hotplug_cpu_register);
 #endif
 #endif
