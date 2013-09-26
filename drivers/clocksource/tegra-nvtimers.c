@@ -403,7 +403,7 @@ extern void __tegra_delay(unsigned long cycles);
 extern void __tegra_const_udelay(unsigned long loops);
 extern void __tegra_udelay(unsigned long usecs);
 
-void __init tegra_init_timer(void)
+void __init tegra_init_timer(struct device_node *np)
 {
 	struct clk *clk;
 	int ret;
