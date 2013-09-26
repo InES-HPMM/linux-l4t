@@ -1,7 +1,7 @@
 /*
  * Common function shared by Linux WEXT, cfg80211 and p2p drivers
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2012, Broadcom Corporation
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -109,7 +109,6 @@ s32 wldev_iovar_setbuf(
 		ret = wldev_ioctl(dev, WLC_SET_VAR, buf, iovar_len, TRUE);
 	else
 		ret = BCME_BUFTOOSHORT;
-
 	if (buf_sync)
 		mutex_unlock(buf_sync);
 	return ret;
@@ -335,55 +334,6 @@ int wldev_set_band(
 	return error;
 }
 
-int wldev_set_country(
-	struct net_device *dev, char *country_code, bool notify, bool user_enforced)
-{
-	int error = -1;
-	wl_country_t cspec = {{0}, 0, {0}};
-	scb_val_t scbval;
-	char smbuf[WLC_IOCTL_SMLEN];
-
-	if (!country_code)
-		return error;
-
-	bzero(&scbval, sizeof(scb_val_t));
-	error = wldev_iovar_getbuf(dev, "country", NULL, 0, &cspec, sizeof(cspec), NULL);
-	if (error < 0) {
-		WLDEV_ERROR(("%s: get country failed = %d\n", __FUNCTION__, error));
-		return error;
-	}
-
-	if ((error < 0) ||
-	    (strncmp(country_code, cspec.ccode, WLC_CNTRY_BUF_SZ) != 0)) {
-
-		if (user_enforced) {
-			bzero(&scbval, sizeof(scb_val_t));
-			error = wldev_ioctl(dev, WLC_DISASSOC, &scbval, sizeof(scb_val_t), true);
-			if (error < 0) {
-				WLDEV_ERROR(("%s: set country failed due to Disassoc error %d\n",
-					__FUNCTION__, error));
-				return error;
-			}
-		}
-
-		cspec.rev = -1;
-		memcpy(cspec.country_abbrev, country_code, WLC_CNTRY_BUF_SZ);
-		memcpy(cspec.ccode, country_code, WLC_CNTRY_BUF_SZ);
-		get_customized_country_code((char *)&cspec.country_abbrev, &cspec);
-		error = wldev_iovar_setbuf(dev, "country", &cspec, sizeof(cspec),
-			smbuf, sizeof(smbuf), NULL);
-		if (error < 0) {
-			WLDEV_ERROR(("%s: set country for %s as %s rev %d failed\n",
-				__FUNCTION__, country_code, cspec.ccode, cspec.rev));
-			return error;
-		}
-		dhd_bus_country_set(dev, &cspec, notify);
-		WLDEV_ERROR(("%s: set country for %s as %s rev %d\n",
-			__FUNCTION__, country_code, cspec.ccode, cspec.rev));
-	}
-	return 0;
-}
-
 /* tuning performance for miracast */
 int wldev_miracast_tuning(
 	struct net_device *dev, char *command, int total_len)
@@ -406,7 +356,7 @@ int wldev_miracast_tuning(
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
-		ampdu_mpdu = -1;	/* FW default */
+		ampdu_mpdu = -1;
 #if defined(ROAM_ENABLE)
 		roam_off = 0;	/* roam enable */
 #elif defined(DISABLE_BUILTIN_ROAM)
@@ -419,7 +369,7 @@ int wldev_miracast_tuning(
 	}
 	else if (mode == 1) {
 		/* Miracast source mode */
-		ampdu_mpdu = 8;	/* for tx latency */
+		ampdu_mpdu = 8;
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
@@ -430,7 +380,7 @@ int wldev_miracast_tuning(
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
-		ampdu_mpdu = -1;	/* FW default */
+		ampdu_mpdu = 8;
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
@@ -480,3 +430,51 @@ int wldev_miracast_tuning(
 	return error;
 }
 
+int wldev_set_country(
+	struct net_device *dev, char *country_code, bool notify, bool user_enforced)
+{
+	int error = -1;
+	wl_country_t cspec = {{0}, 0, {0}};
+	scb_val_t scbval;
+	char smbuf[WLC_IOCTL_SMLEN];
+
+	if (!country_code)
+		return error;
+
+	bzero(&scbval, sizeof(scb_val_t));
+	error = wldev_iovar_getbuf(dev, "country", NULL, 0, &cspec, sizeof(cspec), NULL);
+	if (error < 0) {
+		WLDEV_ERROR(("%s: get country failed = %d\n", __FUNCTION__, error));
+		return error;
+	}
+
+	if ((error < 0) ||
+	    (strncmp(country_code, cspec.ccode, WLC_CNTRY_BUF_SZ) != 0)) {
+
+		if (user_enforced) {
+			bzero(&scbval, sizeof(scb_val_t));
+			error = wldev_ioctl(dev, WLC_DISASSOC, &scbval, sizeof(scb_val_t), true);
+			if (error < 0) {
+				WLDEV_ERROR(("%s: set country failed due to Disassoc error %d\n",
+					__FUNCTION__, error));
+				return error;
+			}
+		}
+
+		cspec.rev = -1;
+		memcpy(cspec.country_abbrev, country_code, WLC_CNTRY_BUF_SZ);
+		memcpy(cspec.ccode, country_code, WLC_CNTRY_BUF_SZ);
+		get_customized_country_code((char *)&cspec.country_abbrev, &cspec);
+		error = wldev_iovar_setbuf(dev, "country", &cspec, sizeof(cspec),
+			smbuf, sizeof(smbuf), NULL);
+		if (error < 0) {
+			WLDEV_ERROR(("%s: set country for %s as %s rev %d failed\n",
+				__FUNCTION__, country_code, cspec.ccode, cspec.rev));
+			return error;
+		}
+		dhd_bus_country_set(dev, &cspec, notify);
+		WLDEV_ERROR(("%s: set country for %s as %s rev %d\n",
+			__FUNCTION__, country_code, cspec.ccode, cspec.rev));
+	}
+	return 0;
+}

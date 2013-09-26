@@ -1,7 +1,7 @@
 /*
  * Linux cfgp2p driver
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2012, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgp2p.h 401719 2013-05-13 12:47:24Z $
+ * $Id: wl_cfgp2p.h 386594 2013-02-21 07:02:10Z $
  */
 #ifndef _wl_cfgp2p_h_
 #define _wl_cfgp2p_h_
@@ -72,13 +72,12 @@ struct p2p_bss {
 struct p2p_info {
 	bool on;    /* p2p on/off switch */
 	bool scan;
-	int16 search_state;
 	bool vif_created;
 	s8 vir_ifname[IFNAMSIZ];
 	unsigned long status;
 	struct ether_addr dev_addr;
 	struct ether_addr int_addr;
-	struct p2p_bss bss[P2PAPI_BSSCFG_MAX];
+	struct p2p_bss bss_idx[P2PAPI_BSSCFG_MAX];
 	struct timer_list listen_timer;
 	wl_p2p_sched_t noa;
 	wl_p2p_ops_t ops;
@@ -116,11 +115,11 @@ enum wl_cfgp2p_status {
 };
 
 
-#define wl_to_p2p_bss_ndev(wl, type)		((wl)->p2p->bss[type].dev)
-#define wl_to_p2p_bss_bssidx(wl, type)		((wl)->p2p->bss[type].bssidx)
-#define wl_to_p2p_bss_saved_ie(wl, type)	((wl)->p2p->bss[type].saved_ie)
-#define wl_to_p2p_bss_private(wl, type)		((wl)->p2p->bss[type].private_data)
-#define wl_to_p2p_bss(wl, type)			((wl)->p2p->bss[type])
+#define wl_to_p2p_bss_ndev(wl, type)		((wl)->p2p->bss_idx[type].dev)
+#define wl_to_p2p_bss_bssidx(wl, type)		((wl)->p2p->bss_idx[type].bssidx)
+#define wl_to_p2p_bss_saved_ie(wl, type)	((wl)->p2p->bss_idx[type].saved_ie)
+#define wl_to_p2p_bss_private(wl, type)		((wl)->p2p->bss_idx[type].private_data)
+#define wl_to_p2p_bss(wl, type)			((wl)->p2p->bss_idx[type])
 #define wl_get_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : test_bit(WLP2P_STATUS_ ## stat, \
 									&(wl)->p2p->status))
 #define wl_set_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : set_bit(WLP2P_STATUS_ ## stat, \
@@ -176,22 +175,6 @@ enum wl_cfgp2p_status {
 		timer->data = (unsigned long) wl; \
 		add_timer(timer); \
 	} while (0);
-
-#if !0 && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-#define WL_CFG80211_P2P_DEV_IF
-#endif 
-
-#if defined(WL_ENABLE_P2P_IF) && (0 || (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)))
-#error Disable 'WL_ENABLE_P2P_IF', if 'WL_CFG80211_P2P_DEV_IF' is enabled \
-	or kernel version is 3.8.0 or above
-#endif 
-
-#if !defined(WLP2P) && defined(WL_ENABLE_P2P_IF)
-#error WLP2P not defined
-#endif 
-
-#define bcm_struct_cfgdev	struct net_device
-
 extern void
 wl_cfgp2p_listen_expired(unsigned long data);
 extern bool
@@ -257,16 +240,14 @@ extern s32
 wl_cfgp2p_clear_management_ie(struct wl_priv *wl, s32 bssidx);
 
 extern s32
-wl_cfgp2p_find_idx(struct wl_priv *wl, struct net_device *ndev, s32 *index);
+wl_cfgp2p_find_idx(struct wl_priv *wl, struct net_device *ndev);
 extern struct net_device *
 wl_cfgp2p_find_ndev(struct wl_priv *wl, s32 bssidx);
-extern s32
-wl_cfgp2p_find_type(struct wl_priv *wl, s32 bssidx, s32 *type);
 
 
 extern s32
-wl_cfgp2p_listen_complete(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
-	const wl_event_msg_t *e, void *data);
+wl_cfgp2p_listen_complete(struct wl_priv *wl, struct net_device *ndev,
+            const wl_event_msg_t *e, void *data);
 extern s32
 wl_cfgp2p_discover_listen(struct wl_priv *wl, s32 channel, u32 duration_ms);
 
@@ -274,9 +255,8 @@ extern s32
 wl_cfgp2p_discover_enable_search(struct wl_priv *wl, u8 enable);
 
 extern s32
-wl_cfgp2p_action_tx_complete(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
-	const wl_event_msg_t *e, void *data);
-
+wl_cfgp2p_action_tx_complete(struct wl_priv *wl, struct net_device *ndev,
+            const wl_event_msg_t *e, void *data);
 extern s32
 wl_cfgp2p_tx_action_frame(struct wl_priv *wl, struct net_device *dev,
 	wl_af_params_t *af_params, s32 bssidx);
@@ -326,7 +306,6 @@ wl_cfgp2p_unregister_ndev(struct wl_priv *wl);
 
 extern bool
 wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops);
-
 
 /* WiFi Direct */
 #define SOCIAL_CHAN_1 1
