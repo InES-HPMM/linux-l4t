@@ -1085,7 +1085,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 				dev_err(palmas->dev,
 					"can't attach client %d\n", i);
 				ret = -ENOMEM;
-				goto err;
+				goto free_i2c_client;
 			}
 			palmas->i2c_clients[i]->dev.of_node = of_node_get(node);
 		}
@@ -1096,13 +1096,13 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			dev_err(palmas->dev,
 				"Failed to allocate regmap %d, err: %d\n",
 				i, ret);
-			goto err;
+			goto free_i2c_client;
 		}
 	}
 
 	ret = palmas_read_version_information(palmas);
 	if (ret < 0)
-		goto err;
+		goto free_i2c_client;
 
 	/* Change interrupt line output polarity */
 	if (pdata->irq_flags & IRQ_TYPE_LEVEL_HIGH)
@@ -1114,7 +1114,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			reg);
 	if (ret < 0) {
 		dev_err(palmas->dev, "POLARITY_CTRL updat failed: %d\n", ret);
-		goto err;
+		goto free_i2c_client;
 	}
 
 	/* Change IRQ into clear on read mode for efficiency */
@@ -1128,7 +1128,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			IRQF_ONESHOT | pdata->irq_flags, pdata->irq_base,
 			&palmas->irq_chip_data);
 	if (ret < 0)
-		goto err;
+		goto free_i2c_client;
 
 	if (palmas->id != TPS80036)
 		palmas->ngpio = 8;
@@ -1142,7 +1142,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	ret = regmap_write(palmas->regmap[slave], addr, reg);
 	if (ret)
-		goto err_irq;
+		goto free_irq;
 
 	/*
 	 * If we are probing with DT do this the DT way and return here
@@ -1151,7 +1151,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (node) {
 		ret = of_platform_populate(node, NULL, NULL, &i2c->dev);
 		if (ret < 0)
-			goto err_irq;
+			goto free_irq;
 		else
 			return ret;
 	}
@@ -1171,7 +1171,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			dev_err(palmas->dev,
 				"Failed to update palmas long press delay"
 				"(hard shutdown delay), err: %d\n", ret);
-			goto err;
+			goto free_irq;
 		}
 	}
 
@@ -1183,7 +1183,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			GFP_KERNEL);
 	if (!children) {
 		ret = -ENOMEM;
-		goto err_irq;
+		goto free_irq;
 	}
 
 	child_count = 0;
@@ -1215,7 +1215,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	kfree(children);
 
 	if (ret < 0)
-		goto err_devices;
+		goto free_irq;
 
 	if (pdata->auto_ldousb_en)
 		/* VBUS detection enables the LDOUSB */
@@ -1224,20 +1224,28 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	return ret;
 
-err_devices:
-	mfd_remove_devices(palmas->dev);
-err_irq:
-	palmas_del_irq_chip(palmas->irq, palmas->irq_chip_data);
-err:
+free_irq:
+		palmas_del_irq_chip(palmas->irq, palmas->irq_chip_data);
+free_i2c_client:
+		for (i = 1; i < PALMAS_NUM_CLIENTS; i++) {
+		if (palmas->i2c_clients[i])
+			i2c_unregister_device(palmas->i2c_clients[i]);
+	}
 	return ret;
 }
 
 static int palmas_i2c_remove(struct i2c_client *i2c)
 {
 	struct palmas *palmas = i2c_get_clientdata(i2c);
+	int i;
 
 	mfd_remove_devices(palmas->dev);
 	palmas_del_irq_chip(palmas->irq, palmas->irq_chip_data);
+
+	for (i = 1; i < PALMAS_NUM_CLIENTS; i++) {
+		if (palmas->i2c_clients[i])
+			i2c_unregister_device(palmas->i2c_clients[i]);
+	}
 
 	return 0;
 }
