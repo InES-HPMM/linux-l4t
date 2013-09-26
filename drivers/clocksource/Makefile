@@ -31,3 +31,4 @@ obj-$(CONFIG_CLKSRC_METAG_GENERIC)	+= metag_generic.o
 
 obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-nvtimers.o
 obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-wakeup-nvtimers.o
+obj-$(CONFIG_ARM_ARCH_TIMER)            += tegra-tsc-timer.o

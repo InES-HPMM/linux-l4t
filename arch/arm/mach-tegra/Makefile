@@ -15,7 +15,6 @@ ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
 obj-y                                   += timer.o
 endif
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
-obj-$(CONFIG_ARM_ARCH_TIMER)            += cpu_timer_arch.o
 obj-y                                   += timerinfo.o
 ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)

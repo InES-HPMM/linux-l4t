@@ -1,5 +1,5 @@
 /*
- * arch/arch/mach-tegra/cpu_timer_arch.c
+ * drivers/clocksource/tegra-tsc-timer.c
  *
  * Copyright (C) 2010 Google, Inc.
  *
@@ -36,9 +36,8 @@
 #include <asm/sched_clock.h>
 #include <asm/delay.h>
 
-#include "clock.h"
-#include "iomap.h"
-#include "fuse.h"
+#include "../../arch/arm/mach-tegra/clock.h"
+
 
 static u32 arch_timer_us_mult, arch_timer_us_shift;
 
@@ -194,8 +193,6 @@ static struct notifier_block arch_timer_cpu_pm_nb = {
 
 int __init tegra_init_arch_timer(void)
 {
-	int err;
-
 	if (!local_timer_is_architected())
 		return -ENODEV;
 
