@@ -5122,15 +5122,24 @@ static int tegra12_clk_emc_bus_update(struct clk *bus)
 				return -EINVAL;
 			}
 
-			if (backup_rate < old_rate) /* skip lowering voltage */
-				bus->auto_dvfs = false;
-			ret = clk_set_rate_locked(bus, backup_rate);
-			bus->auto_dvfs = true;
+			/* set volatge for backup rate if going up */
+			if (backup_rate > old_rate) {
+				ret = tegra_dvfs_set_rate(bus, backup_rate);
+				if (ret) {
+					pr_err("%s: dvfs failed on %s rate %lu\n",
+					      __func__, bus->name, backup_rate);
+					return -EINVAL;
+				}
+			}
+
+			trace_clock_set_rate(bus->name, backup_rate, 0);
+			ret = bus->ops->set_rate(bus, backup_rate);
 			if (ret) {
 				pr_err("%s: Failed to backup %s for rate %lu\n",
 				       __func__, bus->name, rate);
 				return -EINVAL;
 			}
+			clk_rate_change_notify(bus, backup_rate);
 		}
 		if (p->refcnt) {
 			pr_err("%s: %s has other than emc child\n",

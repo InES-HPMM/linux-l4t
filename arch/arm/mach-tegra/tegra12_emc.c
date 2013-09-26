@@ -880,7 +880,7 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	struct clk *p = NULL;
 	unsigned long p_rate = 0;
 
-	if (!tegra_emc_table || !emc_enable)
+	if (!tegra_emc_table)
 		return true;
 
 	pr_debug("%s: %lu\n", __func__, rate);
