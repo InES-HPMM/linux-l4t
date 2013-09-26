@@ -311,6 +311,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	struct palmas_usb *palmas_usb;
 	int status;
+	const char *ext_name = NULL;
 
 	palmas_usb = devm_kzalloc(&pdev->dev, sizeof(*palmas_usb), GFP_KERNEL);
 	if (!palmas_usb)
@@ -326,6 +327,9 @@ static int palmas_usb_probe(struct platform_device *pdev)
 						"ti,enable-id-detection");
 		palmas_usb->enable_vbus_detection = of_property_read_bool(node,
 						"ti,enable-vbus-detection");
+		status = of_property_read_string(node, "extcon-name", &ext_name);
+		if (status < 0)
+			ext_name = NULL;
 	} else {
 		palmas_usb->wakeup = true;
 		palmas_usb->enable_id_detection = true;
@@ -339,6 +343,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 					epdata->enable_vbus_detection;
 			if (palmas_usb->enable_id_detection)
 				palmas_usb->wakeup = true;
+			ext_name = epdata->connection_name;
 		}
 	}
 
@@ -358,8 +363,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 
 	palmas_usb->edev.supported_cable = palmas_extcon_cable;
 	palmas_usb->edev.mutually_exclusive = mutually_exclusive;
-	palmas_usb->edev.name  = (epdata && epdata->connection_name) ?
-					epdata->connection_name : pdev->name;
+	palmas_usb->edev.name  = (ext_name) ? ext_name : dev_name(&pdev->dev);
 
 	status = extcon_dev_register(&palmas_usb->edev, palmas_usb->dev);
 	if (status < 0) {
