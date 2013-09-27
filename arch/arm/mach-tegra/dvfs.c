@@ -419,7 +419,7 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 		return 0;
 	/* Keep current voltage if regulator must not be disabled at run time */
 	else if (!rail->jmp_to_zero) {
-		WARN(1, "%s cannot be turned off by dvfs\n");
+		WARN(1, "%s cannot be turned off by dvfs\n", rail->reg_id);
 		return 0;
 	}
 	/* else: fall thru if regulator is turned off by side band signaling */
