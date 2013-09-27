@@ -508,6 +508,7 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 		return ERR_PTR(-ENOMEM);
 
 	pdata->model_data = model_data;
+	of_property_read_string(np, "tz-name", &pdata->tz_name);
 
 	ret = of_property_read_u32(np, "bits", &val);
 	if (ret < 0)
