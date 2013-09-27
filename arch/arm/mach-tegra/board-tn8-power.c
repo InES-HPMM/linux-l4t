@@ -46,7 +46,6 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
-#include "battery-ini-model-data.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -442,18 +441,6 @@ static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	},
 };
 
-struct max17048_platform_data tn8_max17048_pdata = {
-	.model_data = &tn8_yoku_4100mA_max17048_battery,
-	.tz_name = "battery-temp",
-};
-
-static struct i2c_board_info __initdata tn8_max17048_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max17048", 0x36),
-		.platform_data = &tn8_max17048_pdata,
-	},
-};
-
 static struct gadc_thermal_platform_data gadc_thermal_battery_pdata = {
 	.iio_channel_name = "battery-temp-channel",
 	.tz_name = "battery-temp",
@@ -550,12 +537,9 @@ int __init tn8_regulator_init(void)
 	 * Do not configure the charger int by default.
 	 */
 	/* bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0); */
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
 		tn8_bq2419x_pdata.bcharger_pdata = &bq2419x_charger_pdata;
-		/* Only register fuel gauge when using battery. */
-		i2c_register_board_info(0, tn8_max17048_boardinfo,
-			ARRAY_SIZE(tn8_max17048_boardinfo));
-	} else
+	else
 		tn8_bq2419x_pdata.bcharger_pdata = NULL;
 
 	i2c_register_board_info(0, bq2419x_boardinfo,
