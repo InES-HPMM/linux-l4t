@@ -2088,15 +2088,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 #endif
 
-	map[0].start = tegra_fb_start;
-	map[0].size = tegra_fb_size;
-	map[1].start = tegra_fb2_start;
-	map[1].size = tegra_fb2_size;
-	map[2].start = tegra_bootloader_fb_start;
-	map[2].size = tegra_bootloader_fb_size;
-	map[3].start = tegra_bootloader_fb2_start;
-	map[3].size = tegra_bootloader_fb2_size;
-
 	tegra_fb_linear_set(map);
 }
 
