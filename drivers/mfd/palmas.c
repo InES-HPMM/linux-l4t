@@ -722,8 +722,8 @@ struct palmas_sleep_requestor_info {
 };
 
 #define SLEEP_REQUESTOR(_id, _offset, _pos)		\
-	[PALMAS_SLEEP_REQSTR_ID_##_id] = {		\
-		.id = PALMAS_SLEEP_REQSTR_ID_##_id,	\
+	[PALMAS_EXTERNAL_REQSTR_ID_##_id] = {		\
+		.id = PALMAS_EXTERNAL_REQSTR_ID_##_id,	\
 		.reg_offset = _offset,			\
 		.bit_pos = _pos,			\
 	}
@@ -773,10 +773,10 @@ struct palmas_clk32k_info {
 static struct palmas_clk32k_info palmas_clk32k_info[] = {
 	{
 		.control_reg = PALMAS_CLK32KG_CTRL,
-		.sleep_reqstr_id = PALMAS_SLEEP_REQSTR_ID_CLK32KG,
+		.sleep_reqstr_id = PALMAS_EXTERNAL_REQSTR_ID_CLK32KG,
 	}, {
 		.control_reg = PALMAS_CLK32KGAUDIO_CTRL,
-		.sleep_reqstr_id = PALMAS_SLEEP_REQSTR_ID_CLK32KGAUDIO,
+		.sleep_reqstr_id = PALMAS_EXTERNAL_REQSTR_ID_CLK32KGAUDIO,
 	},
 };
 
@@ -815,29 +815,29 @@ int palmas_ext_power_req_config(struct palmas *palmas,
 	if (!(ext_pwr_ctrl & EXT_PWR_REQ))
 		return 0;
 
-	if (id >= PALMAS_SLEEP_REQSTR_ID_MAX)
+	if (id >= PALMAS_EXTERNAL_REQSTR_ID_MAX)
 		return 0;
 
-	if (palmas->id == TPS80036 && id == PALMAS_SLEEP_REQSTR_ID_REGEN3)
+	if (palmas->id == TPS80036 && id == PALMAS_EXTERNAL_REQSTR_ID_REGEN3)
 		return 0;
 
-	if (palmas->id != TPS80036 && id > PALMAS_SLEEP_REQSTR_ID_LDO14)
+	if (palmas->id != TPS80036 && id > PALMAS_EXTERNAL_REQSTR_ID_LDO14)
 		return 0;
 
 	if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_NSLEEP) {
-		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+		if (id <= PALMAS_EXTERNAL_REQSTR_ID_REGEN4)
 			base_reg = PALMAS_NSLEEP_RES_ASSIGN;
 		else
 			base_reg = PALMAS_NSLEEP_RES_ASSIGN2;
 		preq_mask_bit = 0;
 	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE1) {
-		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+		if (id <= PALMAS_EXTERNAL_REQSTR_ID_REGEN4)
 			base_reg = PALMAS_ENABLE1_RES_ASSIGN;
 		else
 			base_reg = PALMAS_ENABLE1_RES_ASSIGN2;
 		preq_mask_bit = 1;
 	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE2) {
-		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+		if (id <= PALMAS_EXTERNAL_REQSTR_ID_REGEN4)
 			base_reg = PALMAS_ENABLE2_RES_ASSIGN;
 		else
 			base_reg = PALMAS_ENABLE2_RES_ASSIGN2;
