@@ -160,7 +160,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			return ret;
 	}
 
-	return sprintf(buf, "%s\n", dev_name(edev->dev));
+	return sprintf(buf, "%s\n", dev_name(&edev->dev));
 }
 
 static ssize_t cable_name_show(struct device *dev,
@@ -227,7 +227,7 @@ int extcon_update_state(struct extcon_dev *edev, u32 mask, u32 state)
 		/* This could be in interrupt handler */
 		prop_buf = (char *)get_zeroed_page(GFP_ATOMIC);
 		if (prop_buf) {
-			length = name_show(edev->dev, NULL, prop_buf);
+			length = name_show(&edev->dev, NULL, prop_buf);
 			if (length > 0) {
 				if (prop_buf[length - 1] == '\n')
 					prop_buf[length - 1] = 0;
@@ -235,7 +235,7 @@ int extcon_update_state(struct extcon_dev *edev, u32 mask, u32 state)
 					"NAME=%s", prop_buf);
 				envp[env_offset++] = name_buf;
 			}
-			length = state_show(edev->dev, NULL, prop_buf);
+			length = state_show(&edev->dev, NULL, prop_buf);
 			if (length > 0) {
 				if (prop_buf[length - 1] == '\n')
 					prop_buf[length - 1] = 0;
@@ -247,14 +247,14 @@ int extcon_update_state(struct extcon_dev *edev, u32 mask, u32 state)
 			/* Unlock early before uevent */
 			spin_unlock_irqrestore(&edev->lock, flags);
 
-			kobject_uevent_env(&edev->dev->kobj, KOBJ_CHANGE, envp);
+			kobject_uevent_env(&edev->dev.kobj, KOBJ_CHANGE, envp);
 			free_page((unsigned long)prop_buf);
 		} else {
 			/* Unlock early before uevent */
 			spin_unlock_irqrestore(&edev->lock, flags);
 
-			dev_err(edev->dev, "out of memory in extcon_set_state\n");
-			kobject_uevent(&edev->dev->kobj, KOBJ_CHANGE);
+			dev_err(&edev->dev, "out of memory in extcon_set_state\n");
+			kobject_uevent(&edev->dev.kobj, KOBJ_CHANGE);
 		}
 	} else {
 		/* No changes */
@@ -554,7 +554,6 @@ static int create_extcon_class(void)
 
 static void extcon_dev_release(struct device *dev)
 {
-	kfree(dev);
 }
 
 static const char *muex_name = "mutually_exclusive";
@@ -592,19 +591,16 @@ int extcon_dev_register(struct extcon_dev *edev, struct device *dev)
 	}
 
 	if (index > SUPPORTED_CABLE_MAX) {
-		dev_err(edev->dev, "extcon: maximum number of supported cables exceeded.\n");
+		dev_err(&edev->dev, "extcon: maximum number of supported cables exceeded.\n");
 		return -EINVAL;
 	}
 
-	edev->dev = kzalloc(sizeof(struct device), GFP_KERNEL);
-	if (!edev->dev)
-		return -ENOMEM;
-	edev->dev->parent = dev;
-	edev->dev->class = extcon_class;
-	edev->dev->release = extcon_dev_release;
+	edev->dev.parent = dev;
+	edev->dev.class = extcon_class;
+	edev->dev.release = extcon_dev_release;
 
 	edev->name = edev->name ? edev->name : dev_name(dev);
-	dev_set_name(edev->dev, "%s", edev->name);
+	dev_set_name(&edev->dev, "%s", edev->name);
 
 	if (edev->max_supported) {
 		char buf[10];
@@ -712,7 +708,7 @@ int extcon_dev_register(struct extcon_dev *edev, struct device *dev)
 			goto err_alloc_groups;
 		}
 
-		edev->extcon_dev_type.name = dev_name(edev->dev);
+		edev->extcon_dev_type.name = dev_name(&edev->dev);
 		edev->extcon_dev_type.release = dummy_sysfs_dev_release;
 
 		for (index = 0; index < edev->max_supported; index++)
@@ -722,25 +718,24 @@ int extcon_dev_register(struct extcon_dev *edev, struct device *dev)
 			edev->extcon_dev_type.groups[index] =
 				&edev->attr_g_muex;
 
-		edev->dev->type = &edev->extcon_dev_type;
+		edev->dev.type = &edev->extcon_dev_type;
 	}
 
-	ret = device_register(edev->dev);
+	ret = device_register(&edev->dev);
 	if (ret) {
-		put_device(edev->dev);
+		put_device(&edev->dev);
 		goto err_dev;
 	}
 #if defined(CONFIG_ANDROID)
 	if (switch_class)
-		ret = class_compat_create_link(switch_class, edev->dev,
-					       NULL);
+		ret = class_compat_create_link(switch_class, &edev->dev, NULL);
 #endif /* CONFIG_ANDROID */
 
 	spin_lock_init(&edev->lock);
 
 	RAW_INIT_NOTIFIER_HEAD(&edev->nh);
 
-	dev_set_drvdata(edev->dev, edev);
+	dev_set_drvdata(&edev->dev, edev);
 	edev->state = 0;
 
 	mutex_lock(&extcon_dev_list_lock);
@@ -766,7 +761,6 @@ err_alloc_cables:
 	if (edev->max_supported)
 		kfree(edev->cables);
 err_sysfs_alloc:
-	kfree(edev->dev);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(extcon_dev_register);
@@ -786,9 +780,9 @@ void extcon_dev_unregister(struct extcon_dev *edev)
 	list_del(&edev->entry);
 	mutex_unlock(&extcon_dev_list_lock);
 
-	if (IS_ERR_OR_NULL(get_device(edev->dev))) {
-		dev_err(edev->dev, "Failed to unregister extcon_dev (%s)\n",
-				dev_name(edev->dev));
+	if (IS_ERR_OR_NULL(get_device(&edev->dev))) {
+		dev_err(&edev->dev, "Failed to unregister extcon_dev (%s)\n",
+				dev_name(&edev->dev));
 		return;
 	}
 
@@ -810,10 +804,10 @@ void extcon_dev_unregister(struct extcon_dev *edev)
 
 #if defined(CONFIG_ANDROID)
 	if (switch_class)
-		class_compat_remove_link(switch_class, edev->dev, NULL);
+		class_compat_remove_link(switch_class, &edev->dev, NULL);
 #endif
-	device_unregister(edev->dev);
-	put_device(edev->dev);
+	device_unregister(&edev->dev);
+	put_device(&edev->dev);
 }
 EXPORT_SYMBOL_GPL(extcon_dev_unregister);
 
