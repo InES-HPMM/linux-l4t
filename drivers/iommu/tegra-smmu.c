@@ -453,7 +453,7 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 
 static u64 tegra_smmu_of_get_swgids(struct device *dev)
 {
-	size_t bytes;
+	size_t bytes = 0;
 	const char *propname = "nvidia,memory-clients";
 	const __be32 *prop;
 	int i;
