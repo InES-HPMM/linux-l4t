@@ -77,6 +77,23 @@ static struct platform_device ardbeg_wifi_device = {
 	},
 };
 
+static struct resource mrvl_wifi_resource[] = {
+	[0] = {
+		.name   = "mrvl_wlan_irq",
+		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct platform_device marvell_wifi_device = {
+	.name           = "mrvl_wlan",
+	.id             = 1,
+	.num_resources  = 1,
+	.resource       = mrvl_wifi_resource,
+	.dev            = {
+		.platform_data = &ardbeg_wifi_control,
+	},
+};
+
 static struct resource sdhci_resource0[] = {
 	[0] = {
 		.start  = INT_SDMMC1,
@@ -287,6 +304,11 @@ static int __init ardbeg_wifi_init(void)
 		gpio_to_irq(ARDBEG_WLAN_WOW);
 
 	platform_device_register(&ardbeg_wifi_device);
+
+	mrvl_wifi_resource[0].start = mrvl_wifi_resource[0].end =
+		gpio_to_irq(ARDBEG_WLAN_WOW);
+	platform_device_register(&marvell_wifi_device);
+
 	return 0;
 }
 
