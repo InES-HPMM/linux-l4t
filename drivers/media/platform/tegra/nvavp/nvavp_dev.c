@@ -1313,10 +1313,11 @@ target_dmabuf_fail:
 	}
 
 err_reloc_info:
-err_dmabuf_vmap:
 	dma_buf_vunmap(cmdbuf_dmabuf, (void *)virt_addr);
-err_dmabuf_map:
+err_dmabuf_vmap:
 	dma_buf_unmap_attachment(cmdbuf_attach, cmdbuf_sgt, DMA_BIDIRECTIONAL);
+err_dmabuf_map:
+	dma_buf_detach(cmdbuf_dmabuf, cmdbuf_attach);
 err_dmabuf_attach:
 	dma_buf_put(cmdbuf_dmabuf);
 	return ret;
