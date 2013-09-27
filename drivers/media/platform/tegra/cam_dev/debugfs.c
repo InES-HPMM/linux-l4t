@@ -30,25 +30,43 @@
 #include <media/camera.h>
 
 static struct camera_platform_info *cam_desc;
+static const char *device_type[] = {
+	"sensor",
+	"focuser",
+	"flash",
+	"rom",
+	"other1",
+	"other2",
+	"other3",
+	"other4",
+	"unsupported type"
+};
 
 static int camera_debugfs_layout(struct seq_file *s)
 {
 	struct cam_device_layout *layout = cam_desc->layout;
 	int num = cam_desc->size_layout / sizeof(*layout);
+	const char *pt;
 
 	if (!layout)
 		return -EEXIST;
 
 	if (unlikely(num * sizeof(*layout) != cam_desc->size_layout)) {
-		seq_printf(s, "WHAT? layout size is incorrect!\n");
+		seq_printf(s, "WHAT? layout size mismatch: %d vs %d x %d\n",
+			cam_desc->size_layout, num, sizeof(*layout));
 		return -EFAULT;
 	}
 
 	while (num--) {
-		seq_printf(s, "%.20s %016llx %1x %1x %02x %1x %.20s\n",
-			layout->name, layout->guid, layout->is_front,
+		if (layout->type < ARRAY_SIZE(device_type))
+			pt = device_type[layout->type];
+		else
+			pt = device_type[ARRAY_SIZE(device_type) - 1];
+		seq_printf(s,
+			"%016llx %.20s %.20s %1x %1x %.2x %1x %.8x %x %.20s\n",
+			layout->guid, pt, layout->alt_name, layout->pos,
 			layout->bus, layout->addr, layout->addr_byte,
-			layout->alt_name);
+			layout->dev_id, layout->index, layout->name);
 		layout++;
 	}
 

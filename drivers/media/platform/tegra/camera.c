@@ -283,7 +283,6 @@ static struct camera_chip *camera_chip_chk(char *name)
 			return ccp;
 		}
 	mutex_unlock(cam_desc.c_mutex);
-	dev_err(cam_desc.dev, "%s device %s not found\n", __func__, name);
 	return NULL;
 }
 
@@ -296,7 +295,7 @@ int camera_chip_add(struct camera_chip *chip)
 	mutex_lock(cam_desc.c_mutex);
 	list_for_each_entry(ccp, cam_desc.chip_list, list)
 		if (!strcmp(ccp->name, chip->name)) {
-			dev_err(cam_desc.dev, "%s device %s already added.\n",
+			dev_notice(cam_desc.dev, "%s chip %s already added.\n",
 				__func__, chip->name);
 			mutex_unlock(cam_desc.c_mutex);
 			return -EEXIST;
@@ -369,6 +368,8 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 
 	c_chip = camera_chip_chk(dev_info.name);
 	if (c_chip == NULL) {
+		dev_err(cam->dev, "%s device %s not found\n",
+			__func__, dev_info.name);
 		err = -ENODEV;
 		goto new_device_end;
 	}
@@ -524,7 +525,7 @@ static int camera_layout_update(struct camera_info *cam, unsigned long arg)
 	dev_dbg(cam->dev, "%s %lx", __func__, arg);
 	mutex_lock(cam_desc.u_mutex);
 	if (cam_desc.layout) {
-		dev_err(cam->dev, "layout already there.\n");
+		dev_notice(cam->dev, "layout already there.\n");
 		err = -EEXIST;
 		goto layout_end;
 	}
@@ -567,7 +568,7 @@ static int camera_layout_get(struct camera_info *cam, unsigned long arg)
 
 	dev_dbg(cam->dev, "%s %lx", __func__, arg);
 	if (!cam_desc.layout) {
-		dev_err(cam->dev, "layout empty.\n");
+		dev_notice(cam->dev, "layout empty.\n");
 		err = -EEXIST;
 		goto getlayout_end;
 	}
@@ -752,7 +753,7 @@ static long camera_ioctl(struct file *file,
 
 ioctl_end:
 	if (err)
-		dev_err(cam->dev, "err = %d\n", err);
+		dev_dbg(cam->dev, "err = %d\n", err);
 
 	return err;
 }

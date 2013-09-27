@@ -1331,6 +1331,18 @@ static void __init map_lowmem(void)
 		map.type = MT_MEMORY;
 
 		create_mapping(&map, false);
+
+#ifdef CONFIG_DEBUG_PAGEALLOC
+		start &= PMD_MASK;
+		end = ALIGN(end, PMD_SIZE);
+
+		map.pfn = __phys_to_pfn(start);
+		map.virtual = __phys_to_virt(start);
+		map.length = end - start;
+		map.type = MT_MEMORY;
+
+		create_mapping(&map, true);
+#endif
 	}
 
 #ifdef CONFIG_DEBUG_RODATA

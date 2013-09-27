@@ -383,7 +383,7 @@ unsigned int fraction2dda_fp(unsigned int fraction_fp,
 			dda++;		/* to round up dda value */
 	}
 
-	return min(dda, T12X_MAX_DDA_RATE);
+	return min(dda, (unsigned int)T12X_MAX_DDA_RATE);
 }
 
 static void program_ptsa(void)
@@ -603,7 +603,7 @@ static void t12x_init_ptsa(void)
 {
 	struct clk *emc_clk __attribute__((unused));
 	unsigned long emc_freq_mhz __attribute__((unused));
-	unsigned long mc_freq_mhz __attribute__((unused));
+	unsigned int mc_freq_mhz;
 	unsigned long same_freq __attribute__((unused));
 	struct ptsa_info *p = &cs->ptsa_info;
 	unsigned int mpcorer_ptsa_rate_fp = 0;
@@ -618,13 +618,13 @@ static void t12x_init_ptsa(void)
 	same_freq = (readl(T12X_MC_RA(EMEM_ARB_MISC0_0)) >>
 			T12X_MC_EMC_SAME_FREQ_BIT) & 0x1;
 	mc_freq_mhz = same_freq ? emc_freq_mhz : emc_freq_mhz / 2;
-	la_debug("**** mc clk_rate=%luMHz", mc_freq_mhz);
+	la_debug("**** mc clk_rate=%uMHz", mc_freq_mhz);
 
 	/* compute initial value for grant dec */
 	p->ptsa_grant_dec = min(mc_freq_mhz *
 				T12X_MAX_GRANT_DEC /
 				T12X_MC_MAX_FREQ_MHZ,
-				T12X_MAX_GRANT_DEC);
+				(unsigned int)T12X_MAX_GRANT_DEC);
 
 	/* initialize PTSA reg values */
 	/* FIXME:- Program inital ptsa rates */
@@ -812,7 +812,10 @@ static void t12x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 				/* avp_bw_fp + */
 				total_dc0_bw_fp +
 				total_dc1_bw_fp;
+#if 0
+	/* Adeel want this to remain commented out */
 	unsigned int ring1_soft_iso_bw_fp = ve2_bw_fp;
+#endif
 	unsigned int total_iso_bw_fp = ve_bw_fp +
 					isp_bw_fp +
 					total_dc0_bw_fp +
@@ -968,7 +971,7 @@ static int t12x_set_la(enum tegra_la_id id,
 	} else if (id == ID(MSENCSRD)) {
 		/* This is a special case. */
 		struct clk *emc_clk = clk_get(NULL, "emc");
-		unsigned long emc_freq_mhz = clk_get_rate(emc_clk) /
+		unsigned int emc_freq_mhz = clk_get_rate(emc_clk) /
 						T12X_LA_HZ_TO_MHZ_FACTOR;
 		unsigned int val_1 = 53;
 		unsigned int val_2 = 24;
@@ -979,23 +982,22 @@ static int t12x_set_la(enum tegra_la_id id,
 		if (574 > emc_freq_mhz)
 			val_2 = val_2 * 574 / emc_freq_mhz;
 
-		la_to_set = min3(T12X_MC_LA_MAX_VALUE,
+		la_to_set = min3((unsigned int)T12X_MC_LA_MAX_VALUE,
 				val_1,
 				val_2);
 	} else if (ci->la_ref_clk_mhz != 0) {
 		/* In this case we need to scale LA with emc frequency. */
 		struct clk *emc_clk = clk_get(NULL, "emc");
 		unsigned long emc_freq_mhz = clk_get_rate(emc_clk) /
-						T12X_LA_HZ_TO_MHZ_FACTOR;
+					(unsigned long)T12X_LA_HZ_TO_MHZ_FACTOR;
 
 		if (ci->la_ref_clk_mhz <= emc_freq_mhz) {
 			la_to_set = min(ci->init_la,
-					T12X_MC_LA_MAX_VALUE);
+				(unsigned int)T12X_MC_LA_MAX_VALUE);
 		} else {
-			la_to_set = min(ci->init_la *
-						ci->la_ref_clk_mhz /
-						emc_freq_mhz,
-					T12X_MC_LA_MAX_VALUE);
+			la_to_set = min((unsigned int)(ci->init_la *
+					 ci->la_ref_clk_mhz / emc_freq_mhz),
+				(unsigned int)T12X_MC_LA_MAX_VALUE);
 		}
 	} else {
 		/* In this case we have a client with a static LA value. */
@@ -1075,10 +1077,10 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 
 
 	la_nsec = min(la_bw_upper_bound_nsec,
-			T12X_MAX_LA_NSEC);
+			(unsigned int)T12X_MAX_LA_NSEC);
 
 	la_to_set = min(la_nsec / cs->ns_per_tick,
-			T12X_MC_LA_MAX_VALUE);
+			(unsigned int)T12X_MC_LA_MAX_VALUE);
 
 	program_la(ci, la_to_set);
 	return 0;
@@ -1116,8 +1118,6 @@ static void t12x_la_resume(void)
 
 void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 {
-	int i = 0;
-
 	cs_la->ns_per_tick = 30;
 	cs_la->atom_size = 64;
 	cs_la->la_max_value = T12X_MC_LA_MAX_VALUE;

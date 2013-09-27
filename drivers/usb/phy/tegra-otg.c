@@ -333,13 +333,10 @@ static int tegra_otg_start_gadget(struct tegra_otg *tegra, int on)
 {
 	struct usb_otg *otg = tegra->phy.otg;
 
-	if (on) {
+	if (on)
 		usb_gadget_vbus_connect(otg->gadget);
-		tegra_otg_notify_event(tegra, USB_EVENT_VBUS);
-	} else {
+	else
 		usb_gadget_vbus_disconnect(otg->gadget);
-		tegra_otg_notify_event(tegra, USB_EVENT_NONE);
-	}
 
 	return 0;
 }

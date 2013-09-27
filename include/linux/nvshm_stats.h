@@ -43,7 +43,7 @@ struct nvshm_stats_desc;
 
 struct nvshm_stats_iter {
 	const struct nvshm_stats_desc *desc;
-	const char *data;
+	char *data;
 };
 
 /**
@@ -106,7 +106,7 @@ int nvshm_stats_elems(const struct nvshm_stats_iter *it);
  * @param index Array index if applicable
  * @return Entry value pointer, or error pointer on failure
  */
-const u32 *nvshm_stats_valueptr_uint32(
+u32 *nvshm_stats_valueptr_uint32(
 	const struct nvshm_stats_iter *it,
 	int index);
 
@@ -116,7 +116,7 @@ const u32 *nvshm_stats_valueptr_uint32(
  * @param index Array index if applicable
  * @return Entry value pointer, or error pointer on failure
  */
-const s32 *nvshm_stats_valueptr_sint32(
+s32 *nvshm_stats_valueptr_sint32(
 	const struct nvshm_stats_iter *it,
 	int index);
 
@@ -126,7 +126,7 @@ const s32 *nvshm_stats_valueptr_sint32(
  * @param index Array index if applicable
  * @return Entry value pointer, or error pointer on failure
  */
-const u64 *nvshm_stats_valueptr_uint64(
+u64 *nvshm_stats_valueptr_uint64(
 	const struct nvshm_stats_iter *it,
 	int index);
 

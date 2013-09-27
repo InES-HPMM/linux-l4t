@@ -23,6 +23,9 @@
 Change log:
     01/05/2012: initial version
 ********************************************************/
+#if defined(STA_CFG80211) || defined(UAP_CFG80211)
+#include    "moal_cfg80211.h"
+#endif
 
 #ifndef _WOAL_ETH_PRIV_H_
 #define _WOAL_ETH_PRIV_H_
@@ -186,6 +189,8 @@ Change log:
 #define PRIV_CMD_SD_CMD53_RW        "sdcmd53rw"
 #define PRIV_CMD_MULTI_CHAN_CFG "mc_cfg"
 #define PRIV_CMD_MULTI_CHAN_POLICY "mc_policy"
+#if defined(WIFI_DIRECT_SUPPORT)
+#endif
 
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)

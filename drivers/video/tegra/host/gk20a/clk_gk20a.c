@@ -424,9 +424,7 @@ static int set_pll_freq(struct gk20a *g, u32 freq, u32 old_freq)
 		return 0;
 
 	/* change frequency only if power is on */
-	/* FIXME: Need a lock to protect power gating state during
-	   clk_program_gpc_pll(g, clk) */
-	if (g->power_on)
+	if (g->clk.clk_hw_on)
 		err = clk_program_gpc_pll(g, clk);
 
 	/* Just report error but not restore PLL since dvfs could already change
@@ -475,7 +473,7 @@ static void gk20a_clk_export_disable(void *data)
 	struct clk_gk20a *clk = &g->clk;
 
 	mutex_lock(&clk->clk_mutex);
-	if (g->power_on)
+	if (g->clk.clk_hw_on)
 		clk_disable_gpcpll(g);
 	mutex_unlock(&clk->clk_mutex);
 }
@@ -540,7 +538,12 @@ int gk20a_init_clk_support(struct gk20a *g)
 	if (err)
 		return err;
 
+	mutex_lock(&clk->clk_mutex);
+	clk->clk_hw_on = true;
+
 	err = gk20a_init_clk_setup_hw(g);
+	mutex_unlock(&clk->clk_mutex);
+
 	if (err)
 		return err;
 
@@ -626,9 +629,15 @@ int gk20a_clk_init_cap_freqs(struct gk20a *g)
 	return 0;
 }
 
-int gk20a_clk_disable_gpcpll(struct gk20a *g)
+int gk20a_suspend_clk_support(struct gk20a *g)
 {
-	return clk_disable_gpcpll(g);
+	int ret;
+
+	mutex_lock(&g->clk.clk_mutex);
+	ret = clk_disable_gpcpll(g);
+	g->clk.clk_hw_on = false;
+	mutex_unlock(&g->clk.clk_mutex);
+	return ret;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -685,8 +694,10 @@ static int pll_reg_show(struct seq_file *s, void *data)
 	struct gk20a *g = s->private;
 	u32 reg, m, n, pl, f;
 
-	if (!g->power_on) {
+	mutex_lock(&g->clk.clk_mutex);
+	if (!g->clk.clk_hw_on) {
 		seq_printf(s, "gk20a powered down - no access to registers\n");
+		mutex_unlock(&g->clk.clk_mutex);
 		return 0;
 	}
 
@@ -702,6 +713,7 @@ static int pll_reg_show(struct seq_file *s, void *data)
 	f = g->clk.gpc_pll.clk_in * n / (m * pl_to_div[pl]);
 	seq_printf(s, "coef = 0x%x : m = %u : n = %u : pl = %u", reg, m, n, pl);
 	seq_printf(s, " : pll_f(gpu_f) = %u(%u) MHz\n", f, f/2);
+	mutex_unlock(&g->clk.clk_mutex);
 	return 0;
 }
 
@@ -722,25 +734,26 @@ static int monitor_get(void *data, u64 *val)
 	struct gk20a *g = (struct gk20a *)data;
 	struct clk_gk20a *clk = &g->clk;
 
-	u32 NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CFG = 0x00134124;
-	u32 NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CNT = 0x00134128;
 	u32 ncycle = 100; /* count GPCCLK for ncycle of clkin */
 	u32 clkin = clk->gpc_pll.clk_in;
 	u32 count1, count2;
 
-	gk20a_writel(g, NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CFG,
-		(1<<24)); /* reset */
-	gk20a_writel(g, NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CFG,
-		(1<<20) | (1<<16) | ncycle); /* start */
+	gk20a_writel(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0),
+		     trim_gpc_clk_cntr_ncgpcclk_cfg_reset_asserted_f());
+	gk20a_writel(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0),
+		     trim_gpc_clk_cntr_ncgpcclk_cfg_enable_asserted_f() |
+		     trim_gpc_clk_cntr_ncgpcclk_cfg_write_en_asserted_f() |
+		     trim_gpc_clk_cntr_ncgpcclk_cfg_noofipclks_f(ncycle));
+	/* start */
 
 	/* It should take about 8us to finish 100 cycle of 12MHz.
 	   But longer than 100us delay is required here. */
 	udelay(2000);
 
-	count1 = gk20a_readl(g, NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CNT);
+	count1 = gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cnt_r(0));
 	udelay(100);
-	count2 = gk20a_readl(g, NV_PTRIM_GPC_CLK_CNTR_NCGPCCLK_CNT);
-	*val = (u64)(count2 * clkin / ncycle);
+	count2 = gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cnt_r(0));
+	*val = (u64)(trim_gpc_clk_cntr_ncgpcclk_cnt_value_v(count2) * clkin / ncycle);
 
 	if (count1 != count2)
 		return -EBUSY;

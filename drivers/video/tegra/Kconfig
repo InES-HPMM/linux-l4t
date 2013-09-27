@@ -21,6 +21,12 @@ config TEGRA_GRHOST_USE_NVMAP
 	help
 	  Use nvmap as the graphics memory manager.
 
+config TEGRA_GRHOST_FORCE_NVMAP
+	bool "Use nvmap as graphics memory manager"
+	default n
+	help
+	  Force using nvmap instead of dma mapping API
+
 config TEGRA_GRHOST_USE_DMABUF
 	bool "Support dmabuf buffers"
 	default y
@@ -155,16 +161,6 @@ config TEGRA_NVMAP
 	  Say Y here to include the memory management driver for the Tegra
 	  GPU, multimedia and display subsystems
 
-config NVMAP_RECLAIM_UNPINNED_VM
-	bool "Virtualize IOVMM memory in nvmap"
-	depends on TEGRA_NVMAP && IOMMU_API
-	default y
-	help
-	  Say Y here to enable nvmap to reclaim I/O virtual memory after
-	  it has been unpinned, and re-use it for other handles. This can
-	  allow a larger virtual I/O VM space than would normally be
-	  supported by the hardware, at a slight cost in performance.
-
 config NVMAP_HIGHMEM_ONLY
 	bool "Use only HIGHMEM for nvmap"
 	depends on TEGRA_NVMAP && IOMMU_API && HIGHMEM
@@ -285,6 +281,17 @@ config NVMAP_FORCE_ZEROED_USER_PAGES
 	  avoids leaking kernel secure data to user space. This can add
 	  significant overhead to allocation operations depending on the
 	  allocation size requested.
+
+config NVMAP_USE_FD_FOR_HANDLE
+	bool "Use Fd's to represent NvMap handles"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to use Fd's for representing NvMap handles
+	  in user space. Enabling this config returns DmaBuf
+	  compatible Fd's to user space during handle creation
+	  requests. The kernel component that receives these Fd's
+	  can use either NvMap interface or DmaBuf interface in order
+	  to access NvMap handle memory.
 
 config TEGRA_DSI
 	bool "Enable DSI panel."

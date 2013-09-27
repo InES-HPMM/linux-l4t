@@ -819,7 +819,7 @@ static inline bool fw_log_available(struct tegra_xhci_hcd *tegra)
 static inline bool fw_log_wait_empty_timeout(struct tegra_xhci_hcd *tegra,
 		unsigned timeout)
 {
-	u32 target = jiffies + msecs_to_jiffies(timeout);
+	unsigned long target = jiffies + msecs_to_jiffies(timeout);
 	bool ret;
 
 	mutex_lock(&tegra->log.mutex);
@@ -2116,6 +2116,13 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 		tegra_xhci_release_otg_port(true);
 }
 
+static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
+{
+	return ((XUSB_DEVICE_ID_T114 == tegra->device_id) ? false
+	: ((tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+		&& (tegra->bdata->lane_owner & BIT(0))));
+}
+
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -2149,6 +2156,17 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	reg &= ~SPARE_IN(~0);
 	reg |= SPARE_IN(tegra->pdata->spare_in);
 	writel(reg, tegra->padctl_base + MISC_PAD_CTL_2_0(port));
+
+	if (xusb_use_sata_lane(tegra)) {
+		reg = readl(tegra->padctl_base + MISC_PAD_S0_CTL_5_0);
+		reg |= RX_QEYE_EN;
+		writel(reg, tegra->padctl_base + MISC_PAD_S0_CTL_5_0);
+
+		reg = readl(tegra->padctl_base + MISC_PAD_S0_CTL_2_0);
+		reg &= ~SPARE_IN(~0);
+		reg |= SPARE_IN(tegra->pdata->spare_in);
+		writel(reg, tegra->padctl_base + MISC_PAD_S0_CTL_2_0);
+	}
 
 	reg = readl(tegra->padctl_base + padregs->ss_port_map_0);
 	reg &= ~(port ? SS_PORT_MAP_P1 : SS_PORT_MAP_P0);
@@ -2908,8 +2926,14 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		writel(reg, tegra->padctl_base + padregs->usb2_bias_pad_ctl0_0);
 
 		/* Program these values into PMC regiseter and program the
-		 * PMC override. This will be done as part of pmc setup
+		 * PMC override.
 		 */
+		reg = PMC_TCTRL_VAL(utmip_tctrl_val) |
+				PMC_RCTRL_VAL(utmip_rctrl_val);
+		tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG,
+					0xffffffff, reg);
+		reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
+		tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
 	} else {
 		/* Use common PMC API to use SNPS register space */
 		utmi_phy_set_snps_trking_data();

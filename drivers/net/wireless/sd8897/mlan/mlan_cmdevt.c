@@ -3,20 +3,25 @@
  *
  *  @brief This file contains the handling of CMD/EVENT in MLAN
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /*************************************************************
@@ -135,6 +140,9 @@ wlan_dump_info(mlan_adapter * pmadapter, t_u8 reason)
 	t_u32 sec = 0, usec = 0;
 #endif
 	t_u8 i;
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	t_u8 j;
+#endif
 	t_u16 cmd_id, cmd_act;
 	mlan_private *pmpriv = MNULL;
 
@@ -266,6 +274,25 @@ wlan_dump_info(mlan_adapter * pmadapter, t_u8 reason)
 	       pmadapter->mp_rd_bitmap, pmadapter->curr_rd_port);
 	PRINTM(MERROR, "mp_wr_bitmap=0x%x curr_wr_port=0x%x\n",
 	       pmadapter->mp_wr_bitmap, pmadapter->curr_wr_port);
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	PRINTM(MERROR, "last_recv_wr_bitmap=0x%x last_mp_index=%d\n",
+	       pmadapter->last_recv_wr_bitmap, pmadapter->last_mp_index);
+	for (i = 0; i < SDIO_MP_DBG_NUM; i++) {
+		PRINTM(MERROR,
+		       "mp_wr_bitmap: 0x%x mp_wr_ports=0x%x len=%d curr_wr_port=0x%x\n",
+		       pmadapter->last_mp_wr_bitmap[i],
+		       pmadapter->last_mp_wr_ports[i],
+		       pmadapter->last_mp_wr_len[i],
+		       pmadapter->last_curr_wr_port[i]);
+		for (j = 0; j < SDIO_MP_AGGR_DEF_PKT_LIMIT; j++) {
+			PRINTM(MERROR, "0x%02x ",
+			       pmadapter->last_mp_wr_info[i *
+							  SDIO_MP_AGGR_DEF_PKT_LIMIT
+							  + j]);
+		}
+		PRINTM(MERROR, "\n");
+	}
+#endif
 	if (reason != REASON_CODE_CMD_TIMEOUT) {
 		if ((pmadapter->dbg.num_no_cmd_node >= 5)
 		    || (pmadapter->pm_wakeup_card_req &&
@@ -332,7 +359,7 @@ wlan_atox(t_u8 * a)
  *  @brief This function parse cal data from ASCII to hex
  *
  *  @param src          A pointer to source data
- *  @param len          Source dara length
+ *  @param len          Source data length
  *  @param dst          A pointer to a buf to store the parsed data
  *
  *  @return             The parsed hex data length
@@ -681,6 +708,7 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
 	mlan_ioctl_req *pioctl_buf = MNULL;
 	t_u16 cmd_code;
 	t_u16 cmd_size;
+	t_u32 age_ts_usec;
 #ifdef DEBUG_LEVEL1
 	t_u32 sec = 0, usec = 0;
 #endif
@@ -785,6 +813,9 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
 		}
 		goto done;
 	}
+	pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
+						  &pmadapter->dnld_cmd_in_secs,
+						  &age_ts_usec);
 
 	/* Setup the timer after transmit command */
 	pcb->moal_start_timer(pmadapter->pmoal_handle,
@@ -811,7 +842,7 @@ static mlan_status
 wlan_dnld_sleep_confirm_cmd(mlan_adapter * pmadapter)
 {
 	mlan_status ret = MLAN_STATUS_SUCCESS;
-	static t_u32 i = 0;
+	static t_u32 i;
 	t_u16 cmd_len = 0;
 	opt_sleep_confirm_buffer *sleep_cfm_buf =
 		(opt_sleep_confirm_buffer *) (pmadapter->psleep_cfm->pbuf +
@@ -2877,43 +2908,32 @@ wlan_cmd_tx_rate_cfg(IN pmlan_private pmpriv,
 			wlan_cpu_to_le16(pbitmap_rates[0]);
 		rate_scope->ofdm_rate_bitmap =
 			wlan_cpu_to_le16(pbitmap_rates[1]);
-		for (i = 0;
-		     i < sizeof(rate_scope->ht_mcs_rate_bitmap) / sizeof(t_u16);
-		     i++)
+		for (i = 0; i < NELEMENTS(rate_scope->ht_mcs_rate_bitmap); i++)
 			rate_scope->ht_mcs_rate_bitmap[i] =
 				wlan_cpu_to_le16(pbitmap_rates[2 + i]);
-		for (i = 0;
-		     i <
-		     sizeof(rate_scope->vht_mcs_rate_bitmap) / sizeof(t_u16);
-		     i++)
+		for (i = 0; i < NELEMENTS(rate_scope->vht_mcs_rate_bitmap); i++)
 			rate_scope->vht_mcs_rate_bitmap[i] =
 				wlan_cpu_to_le16(pbitmap_rates
 						 [2 +
-						  sizeof(rate_scope->
-							 ht_mcs_rate_bitmap) /
-						  sizeof(t_u16) + i]);
+						  NELEMENTS(rate_scope->
+							    ht_mcs_rate_bitmap)
+						  + i]);
 	} else {
 		rate_scope->hr_dsss_rate_bitmap =
 			wlan_cpu_to_le16(pmpriv->bitmap_rates[0]);
 		rate_scope->ofdm_rate_bitmap =
 			wlan_cpu_to_le16(pmpriv->bitmap_rates[1]);
-		for (i = 0;
-		     i < sizeof(rate_scope->ht_mcs_rate_bitmap) / sizeof(t_u16);
-		     i++)
+		for (i = 0; i < NELEMENTS(rate_scope->ht_mcs_rate_bitmap); i++)
 			rate_scope->ht_mcs_rate_bitmap[i] =
 				wlan_cpu_to_le16(pmpriv->bitmap_rates[2 + i]);
-		for (i = 0;
-		     i <
-		     sizeof(rate_scope->vht_mcs_rate_bitmap) / sizeof(t_u16);
-		     i++)
+		for (i = 0; i < NELEMENTS(rate_scope->vht_mcs_rate_bitmap); i++)
 			rate_scope->vht_mcs_rate_bitmap[i] =
 				wlan_cpu_to_le16(pmpriv->
 						 bitmap_rates[2 +
-							      sizeof
+							      NELEMENTS
 							      (rate_scope->
 							       ht_mcs_rate_bitmap)
-							      / sizeof(t_u16) +
-							      i]);
+							      + i]);
 	}
 
 	rate_drop = (MrvlRateDropPattern_t *) ((t_u8 *) rate_scope +
@@ -2983,16 +3003,14 @@ wlan_ret_tx_rate_cfg(IN pmlan_private pmpriv,
 			pmpriv->bitmap_rates[1] =
 				wlan_le16_to_cpu(prate_scope->ofdm_rate_bitmap);
 			for (i = 0;
-			     i <
-			     sizeof(prate_scope->ht_mcs_rate_bitmap) /
-			     sizeof(t_u16); i++)
+			     i < NELEMENTS(prate_scope->ht_mcs_rate_bitmap);
+			     i++)
 				pmpriv->bitmap_rates[2 + i] =
 					wlan_le16_to_cpu(prate_scope->
 							 ht_mcs_rate_bitmap[i]);
 			for (i = 0;
-			     i <
-			     sizeof(prate_scope->vht_mcs_rate_bitmap) /
-			     sizeof(t_u16); i++)
+			     i < NELEMENTS(prate_scope->vht_mcs_rate_bitmap);
+			     i++)
 				pmpriv->bitmap_rates[2 +
 						     sizeof(prate_scope->
 							    ht_mcs_rate_bitmap)
@@ -3398,18 +3416,15 @@ wlan_cmd_multi_chan_policy(IN pmlan_private pmpriv,
 
 	cmd->command = wlan_cpu_to_le16(HostCmd_CMD_MULTI_CHAN_POLICY);
 	pmulti_chan_policy->action = wlan_cpu_to_le16(cmd_action);
+	cmd->size =
+		wlan_cpu_to_le16(S_DS_GEN +
+				 sizeof(HostCmd_DS_MULTI_CHAN_POLICY));
 	if (cmd_action == HostCmd_ACT_GEN_SET) {
 		policy = *((t_u16 *) pdata_buf);
 		pmulti_chan_policy->policy = wlan_cpu_to_le16(policy);
 		PRINTM(MCMND, "Set multi-channel policy: %d\n",
 		       pmulti_chan_policy->policy);
-		cmd->size =
-			wlan_cpu_to_le16(S_DS_GEN +
-					 sizeof(HostCmd_DS_MULTI_CHAN_POLICY));
-	} else {
-		cmd->size = wlan_cpu_to_le16(S_DS_GEN + sizeof(cmd_action));
 	}
-
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
 }
@@ -3941,6 +3956,186 @@ wlan_ret_wifi_direct_mode(IN pmlan_private pmpriv,
 		bss = (mlan_ds_bss *) pioctl_buf->pbuf;
 		bss->param.wfd_mode = wlan_le16_to_cpu(wfd_mode->mode);
 		pioctl_buf->data_read_written = sizeof(mlan_ds_bss);
+	}
+	LEAVE();
+	return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief This function prepares command of p2p_params_config.
+ *
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
+ *  @param cmd_action   The action: GET or SET
+ *  @param pdata_buf    A pointer to data buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_cmd_p2p_params_config(IN pmlan_private pmpriv,
+			   IN HostCmd_DS_COMMAND * cmd,
+			   IN t_u16 cmd_action, IN t_void * pdata_buf)
+{
+	HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG *p2p_config =
+		&cmd->params.p2p_params_config;
+	mlan_ds_wifi_direct_config *cfg =
+		(mlan_ds_wifi_direct_config *) pdata_buf;
+	MrvlIEtypes_NoA_setting_t *pNoA_tlv = MNULL;
+	MrvlIEtypes_OPP_PS_setting_t *pOPP_PS_tlv = MNULL;
+	t_u8 *tlv = MNULL;
+	ENTER();
+
+	cmd->size = sizeof(HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG) + S_DS_GEN;
+	cmd->command = wlan_cpu_to_le16(HOST_CMD_P2P_PARAMS_CONFIG);
+	p2p_config->action = wlan_cpu_to_le16(cmd_action);
+	if (cmd_action == HostCmd_ACT_GEN_SET) {
+		tlv = (t_u8 *) p2p_config +
+			sizeof(HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG);
+		if (cfg->flags & WIFI_DIRECT_NOA) {
+			pNoA_tlv = (MrvlIEtypes_NoA_setting_t *) tlv;
+			pNoA_tlv->header.type =
+				wlan_cpu_to_le16(TLV_TYPE_WIFI_DIRECT_NOA);
+			pNoA_tlv->header.len =
+				wlan_cpu_to_le16(sizeof
+						 (MrvlIEtypes_NoA_setting_t) -
+						 sizeof(MrvlIEtypesHeader_t));
+			pNoA_tlv->enable = cfg->noa_enable;
+			pNoA_tlv->index = wlan_cpu_to_le16(cfg->index);
+			pNoA_tlv->noa_count = cfg->noa_count;
+			pNoA_tlv->noa_duration =
+				wlan_cpu_to_le32(cfg->noa_duration);
+			pNoA_tlv->noa_interval =
+				wlan_cpu_to_le32(cfg->noa_interval);
+			cmd->size += sizeof(MrvlIEtypes_NoA_setting_t);
+			tlv += sizeof(MrvlIEtypes_NoA_setting_t);
+			PRINTM(MCMND,
+			       "Set NOA: enable=%d index=%d, count=%d, duration=%d interval=%d\n",
+			       cfg->noa_enable, cfg->index, cfg->noa_count,
+			       (int)cfg->noa_duration, (int)cfg->noa_interval);
+		}
+		if (cfg->flags & WIFI_DIRECT_OPP_PS) {
+			pOPP_PS_tlv = (MrvlIEtypes_OPP_PS_setting_t *) tlv;
+			pOPP_PS_tlv->header.type =
+				wlan_cpu_to_le16(TLV_TYPE_WIFI_DIRECT_OPP_PS);
+			pOPP_PS_tlv->header.len =
+				wlan_cpu_to_le16(sizeof
+						 (MrvlIEtypes_OPP_PS_setting_t)
+						 - sizeof(MrvlIEtypesHeader_t));
+			pOPP_PS_tlv->enable = cfg->opp_ps_enable;
+			pOPP_PS_tlv->ct_window = cfg->ct_window;
+			cmd->size += sizeof(MrvlIEtypes_OPP_PS_setting_t);
+			PRINTM(MCMND, "Set OPP_PS: enable=%d ct_win=%d\n",
+			       cfg->opp_ps_enable, cfg->ct_window);
+		}
+	}
+	cmd->size = wlan_cpu_to_le16(cmd->size);
+	LEAVE();
+	return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief This function handles the command response of p2p_params_config
+ *
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param resp         A pointer to HostCmd_DS_COMMAND
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_ret_p2p_params_config(IN pmlan_private pmpriv,
+			   IN HostCmd_DS_COMMAND * resp,
+			   IN mlan_ioctl_req * pioctl_buf)
+{
+	HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG *p2p_config =
+		&resp->params.p2p_params_config;
+	mlan_ds_misc_cfg *cfg = MNULL;
+	MrvlIEtypes_NoA_setting_t *pNoA_tlv = MNULL;
+	MrvlIEtypes_OPP_PS_setting_t *pOPP_PS_tlv = MNULL;
+	MrvlIEtypesHeader_t *tlv = MNULL;
+	t_u16 tlv_buf_left = 0;
+	t_u16 tlv_type = 0;
+	t_u16 tlv_len = 0;
+
+	ENTER();
+	if (wlan_le16_to_cpu(p2p_config->action) == HostCmd_ACT_GEN_GET) {
+		if (pioctl_buf) {
+			cfg = (mlan_ds_misc_cfg *) pioctl_buf->pbuf;
+			tlv = (MrvlIEtypesHeader_t *) ((t_u8 *) p2p_config +
+						       sizeof
+						       (HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG));
+			tlv_buf_left =
+				resp->size -
+				(sizeof(HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG) +
+				 S_DS_GEN);
+			while (tlv_buf_left >= sizeof(MrvlIEtypesHeader_t)) {
+				tlv_type = wlan_le16_to_cpu(tlv->type);
+				tlv_len = wlan_le16_to_cpu(tlv->len);
+				if (tlv_buf_left <
+				    (tlv_len + sizeof(MrvlIEtypesHeader_t))) {
+					PRINTM(MERROR,
+					       "Error processing p2p param config TLVs, bytes left < TLV length\n");
+					break;
+				}
+				switch (tlv_type) {
+				case TLV_TYPE_WIFI_DIRECT_NOA:
+					pNoA_tlv =
+						(MrvlIEtypes_NoA_setting_t *)
+						tlv;
+					cfg->param.p2p_config.flags |=
+						WIFI_DIRECT_NOA;
+					cfg->param.p2p_config.noa_enable =
+						pNoA_tlv->enable;
+					cfg->param.p2p_config.index =
+						wlan_le16_to_cpu(pNoA_tlv->
+								 index);
+					cfg->param.p2p_config.noa_count =
+						pNoA_tlv->noa_count;
+					cfg->param.p2p_config.noa_duration =
+						wlan_le32_to_cpu(pNoA_tlv->
+								 noa_duration);
+					cfg->param.p2p_config.noa_interval =
+						wlan_le32_to_cpu(pNoA_tlv->
+								 noa_interval);
+					PRINTM(MCMND,
+					       "Get NOA: enable=%d index=%d, count=%d, duration=%d interval=%d\n",
+					       cfg->param.p2p_config.noa_enable,
+					       cfg->param.p2p_config.index,
+					       cfg->param.p2p_config.noa_count,
+					       (int)cfg->param.p2p_config.
+					       noa_duration,
+					       (int)cfg->param.p2p_config.
+					       noa_interval);
+					break;
+				case TLV_TYPE_SSID:
+					pOPP_PS_tlv =
+						(MrvlIEtypes_OPP_PS_setting_t *)
+						tlv;
+					cfg->param.p2p_config.flags |=
+						WIFI_DIRECT_OPP_PS;
+					cfg->param.p2p_config.opp_ps_enable =
+						pOPP_PS_tlv->enable;
+					cfg->param.p2p_config.ct_window =
+						pOPP_PS_tlv->ct_window;
+					PRINTM(MCMND,
+					       "Get OPP_PS: enable=%d ct_win=%d\n",
+					       cfg->param.p2p_config.
+					       opp_ps_enable,
+					       cfg->param.p2p_config.ct_window);
+					break;
+				default:
+					break;
+				}
+				tlv_buf_left -=
+					tlv_len + sizeof(MrvlIEtypesHeader_t);
+				tlv = (MrvlIEtypesHeader_t *) ((t_u8 *) tlv +
+							       tlv_len +
+							       sizeof
+							       (MrvlIEtypesHeader_t));
+			}
+			pioctl_buf->data_read_written =
+				sizeof(mlan_ds_wifi_direct_config);
+		}
 	}
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;

@@ -583,7 +583,7 @@ int tegra_ahci_get_rails(struct regulator *regulators[])
 	int ret = 0;
 
 	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i) {
-		reg = regulator_get(NULL, sata_power_rails[i]);
+		reg = regulator_get(g_tegra_hpriv->dev, sata_power_rails[i]);
 		if (IS_ERR_OR_NULL(reg)) {
 			pr_err("%s: can't get regulator %s\n",
 				__func__, sata_power_rails[i]);

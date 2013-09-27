@@ -86,6 +86,7 @@ t_void moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN char *pformat,
 t_void moal_print_netintf(IN t_void * pmoal_handle, IN t_u32 bss_index,
 			  IN t_u32 level);
 t_void moal_assert(IN t_void * pmoal_handle, IN t_u32 cond);
+t_void moal_tcp_ack_tx_ind(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf);
 mlan_status moal_init_timer(IN t_void * pmoal_handle,
 			    OUT t_void ** pptimer,
 			    IN t_void(*callback) (t_void * pcontext),

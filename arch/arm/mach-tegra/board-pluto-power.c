@@ -224,6 +224,7 @@ static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
 	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("vana_imx132", "2-0036"),
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
@@ -590,6 +591,7 @@ static struct tegra_cl_dvfs_platform_data pluto_cl_dvfs_data = {
 	},
 	.vdd_map = pmu_cpu_vdd_map,
 	.vdd_map_size = PMU_CPU_VDD_MAP_SIZE,
+	.pmu_undershoot_gb = 100,
 
 	.cfg_param = &pluto_cl_dvfs_param,
 };

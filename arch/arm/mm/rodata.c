@@ -88,7 +88,7 @@ static int set_page_attributes(unsigned long virt, int numpages,
 		pmd_end = min(ALIGN(virt + 1, PMD_SIZE), end);
 
 		if ((pmd_val(*pmd) & PMD_TYPE_MASK) != PMD_TYPE_TABLE) {
-			pr_err("%s: pmd %p=%08lx for %08lx not page table\n",
+			pr_err("%s: pmd %p=%08x for %08lx not page table\n",
 				__func__, pmd, pmd_val(*pmd), virt);
 			virt = pmd_end;
 			continue;
@@ -149,11 +149,33 @@ void set_kernel_text_ro(void)
 	set_memory_ro(start, size >> PAGE_SHIFT);
 }
 
+void __weak set_platform_text_rw(void)
+{
+	/* For exceptional case */
+}
+
 void mark_rodata_ro(void)
 {
 	kernel_set_to_readonly = 1;
 
 	set_kernel_text_ro();
+	set_platform_text_rw();
 
 	rodata_test();
 }
+
+#ifdef CONFIG_DEBUG_PAGEALLOC
+void kernel_map_pages(struct page *page, int numpages, int enable)
+{
+	unsigned long addr;
+
+	if (PageHighMem(page))
+		return;
+
+	addr = (unsigned long)phys_to_virt(page_to_phys(page));
+	if (enable)
+		set_memory_rw(addr, numpages);
+	else
+		set_memory_ro(addr, numpages);
+}
+#endif

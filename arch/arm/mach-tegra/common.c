@@ -217,6 +217,7 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 {
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
+	bool empty_command = false;
 
 	if (tegra_platform_is_fpga() || NEVER_RESET) {
 		pr_info("tegra_assert_system_reset() ignored.....");
@@ -232,15 +233,17 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 			reg |= BOOTLOADER_MODE;
 		else if (!strcmp(cmd, "forced-recovery"))
 			reg |= FORCED_RECOVERY_MODE;
-		else
+		else {
 			reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
+			empty_command = true;
+		}
 	}
 	else {
 		/* Clearing SCRATCH0 31:30:1 on default reboot */
 		reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
 	}
 	writel_relaxed(reg, reset + PMC_SCRATCH0);
-	if (!cmd && pm_power_reset) {
+	if ((!cmd || empty_command) && pm_power_reset) {
 		pm_power_reset();
 	} else {
 		reg = readl_relaxed(reset);
@@ -1790,32 +1793,11 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	tegra_avp_kernel_size = SECTION_SIZE;
 
 	/*
-	 * Choose a DRAM region in which to allocate the AVP kernel, using the
-	 * following guidelines:
-	 *     - Choose a DRAM region which exists below the 4 GB physical
-	 *       address limit. This is necessary because AVP is a 32 bit
-	 *       processor and it cannot access physical addresses above 4 GB.
-	 *     - Out of the applicable DRAM regions (i.e. those which exist
-	 *       below 4 GB), choose the region with the highest starting
-	 *       physical address.
+	 * Place the AVP kernel below the 4 GB physical address limit because
+	 * AVP is a 32 bit processor.
 	 */
-	for (i = memblock.memory.cnt - 1; i >= 0; i--) {
-		if ((u64)(memblock.memory.regions[i].base) +
-			(u64)(memblock.memory.regions[i].size) <
-			(u64)(SZ_2G)*(u64)(2)) {
-			tegra_avp_kernel_start =
-				memblock.memory.regions[i].base +
-				memblock.memory.regions[i].size -
-				avp_kernel_reserve;
-			break;
-		}
-	}
-	/*
-	 * If tegra_avp_kernel_start is still 0, that means we didn't find any
-	 * DRAM region below the 4 GB physical address limit. This is a problem
-	 * because the AVP kernel must reside below 4 GB.
-	 */
-	BUG_ON(tegra_avp_kernel_start == 0);
+	BUG_ON(memblock_end_of_4G() == 0);
+	tegra_avp_kernel_start = memblock_end_of_4G() - avp_kernel_reserve;
 
 	if (memblock_remove(tegra_avp_kernel_start, avp_kernel_reserve)) {
 		pr_err("Failed to remove AVP kernel load area %08lx@%08llx "
@@ -1827,7 +1809,12 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #endif
 
 	if (carveout_size) {
-		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
+		/*
+		 * Place the carveout below the 4 GB physical address limit
+		 * because IOVAs are only 32 bit wide.
+		 */
+		BUG_ON(memblock_end_of_4G() == 0);
+		tegra_carveout_start = memblock_end_of_4G() - carveout_size;
 		if (memblock_remove(tegra_carveout_start, carveout_size)) {
 			pr_err("Failed to remove carveout %08lx@%08llx "
 				"from memory map\n",
@@ -1839,7 +1826,12 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 	if (fb2_size) {
-		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
+		/*
+		 * Place fb2 below the 4 GB physical address limit because
+		 * IOVAs are only 32 bit wide.
+		 */
+		BUG_ON(memblock_end_of_4G() == 0);
+		tegra_fb2_start = memblock_end_of_4G() - fb2_size;
 		if (memblock_remove(tegra_fb2_start, fb2_size)) {
 			pr_err("Failed to remove second framebuffer "
 				"%08lx@%08llx from memory map\n",
@@ -1851,7 +1843,12 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 	if (fb_size) {
-		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
+		/*
+		 * Place fb below the 4 GB physical address limit because
+		 * IOVAs are only 32 bit wide.
+		 */
+		BUG_ON(memblock_end_of_4G() == 0);
+		tegra_fb_start = memblock_end_of_4G() - fb_size;
 		if (memblock_remove(tegra_fb_start, fb_size)) {
 			pr_err("Failed to remove framebuffer %08lx@%08llx "
 				"from memory map\n",

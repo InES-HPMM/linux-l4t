@@ -229,7 +229,7 @@ static int channel_gk20a_setup_ramfc(struct channel_gk20a *c,
 		fifo_pb_timeslice_timescale_0_f() |
 		fifo_pb_timeslice_enable_true_f());
 
-	mem_wr32(inst_ptr, ram_fc_chid_w(), ram_fc_chid_f(c->hw_chid));
+	mem_wr32(inst_ptr, ram_fc_chid_w(), ram_fc_chid_id_f(c->hw_chid));
 
 	/* TBD: alwasy priv mode? */
 	mem_wr32(inst_ptr, ram_fc_hce_ctrl_w(),
@@ -361,38 +361,41 @@ static void channel_gk20a_free_inst(struct gk20a *g,
 	memset(&ch->inst_block, 0, sizeof(struct inst_desc));
 }
 
-static int channel_gk20a_update_runlist(struct channel_gk20a *c,
-					bool add)
+static int channel_gk20a_update_runlist(struct channel_gk20a *c, bool add)
 {
-	return gk20a_fifo_update_runlist(c->g,
-		ENGINE_GR_GK20A, c->hw_chid, add);
+	return gk20a_fifo_update_runlist(c->g, 0, c->hw_chid, add, true);
+}
+
+void gk20a_disable_channel_no_update(struct channel_gk20a *ch)
+{
+	struct nvhost_device_data *pdata = nvhost_get_devdata(ch->g->dev);
+	struct nvhost_master *host = host_from_gk20a_channel(ch);
+
+	/* ensure no fences are pending */
+	nvhost_syncpt_set_min_eq_max(&host->syncpt,
+				     ch->hw_chid + pdata->syncpt_base);
+
+	/* disable channel */
+	gk20a_writel(ch->g, ccsr_channel_r(ch->hw_chid),
+		     gk20a_readl(ch->g,
+		     ccsr_channel_r(ch->hw_chid)) |
+		     ccsr_channel_enable_clr_true_f());
 }
 
 void gk20a_disable_channel(struct channel_gk20a *ch,
 			   bool finish,
 			   unsigned long finish_timeout)
 {
-	struct nvhost_device_data *pdata = nvhost_get_devdata(ch->g->dev);
-	struct nvhost_master *host = host_from_gk20a_channel(ch);
-	int err;
-
 	if (finish) {
-		err = gk20a_channel_finish(ch, finish_timeout);
+		int err = gk20a_channel_finish(ch, finish_timeout);
 		WARN_ON(err);
 	}
 
-	/* ensure no fences are pending */
-	nvhost_syncpt_set_min_eq_max(&host->syncpt,
-			ch->hw_chid + pdata->syncpt_base);
-
-	/* disable channel */
-	gk20a_writel(ch->g, ccsr_channel_r(ch->hw_chid),
-		gk20a_readl(ch->g, ccsr_channel_r(ch->hw_chid)) |
-		ccsr_channel_enable_clr_true_f());
+	/* disable the channel from hw and increment syncpoints */
+	gk20a_disable_channel_no_update(ch);
 
 	/* preempt the channel */
-	gk20a_fifo_preempt_channel(ch->g,
-		ENGINE_GR_GK20A, ch->hw_chid);
+	gk20a_fifo_preempt_channel(ch->g, ch->hw_chid);
 
 	/* remove channel from runlist */
 	channel_gk20a_update_runlist(ch, false);
@@ -1492,6 +1495,7 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 #if defined(CONFIG_TEGRA_GPU_CYCLE_STATS)
 	mutex_init(&c->cyclestate.cyclestate_buffer_mutex);
 #endif
+	mutex_init(&c->dbg_s_lock);
 	return 0;
 }
 
@@ -1663,15 +1667,14 @@ int gk20a_channel_suspend(struct gk20a *g)
 				gk20a_readl(g, ccsr_channel_r(chid)) |
 				ccsr_channel_enable_clr_true_f());
 			/* preempt the channel */
-			gk20a_fifo_preempt_channel(g,
-				ENGINE_GR_GK20A, chid);
+			gk20a_fifo_preempt_channel(g, chid);
 
 			channels_in_use = true;
 		}
 	}
 
 	if (channels_in_use) {
-		gk20a_fifo_update_runlist(g, ENGINE_GR_GK20A, ~0, false);
+		gk20a_fifo_update_runlist(g, 0, ~0, false, true);
 
 		for (chid = 0; chid < f->num_channels; chid++) {
 			if (f->channel[chid].in_use)
@@ -1702,7 +1705,7 @@ int gk20a_channel_resume(struct gk20a *g)
 	}
 
 	if (channels_in_use)
-		gk20a_fifo_update_runlist(g, ENGINE_GR_GK20A, ~0, true);
+		gk20a_fifo_update_runlist(g, 0, ~0, true, true);
 
 	nvhost_dbg_fn("done");
 	return 0;

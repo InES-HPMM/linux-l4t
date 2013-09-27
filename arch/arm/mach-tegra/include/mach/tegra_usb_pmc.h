@@ -269,8 +269,6 @@ struct tegra_usb_pmc_data {
 	struct tegra_usb_pmc_ops *pmc_ops;
 	bool is_xhci;
 	void __iomem *usb_base;
-	u32 utmip_rctrl_val;
-	u32 utmip_tctrl_val;
 };
 
 void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data);

@@ -33,6 +33,8 @@
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
+#include <mach/tegra_fuse.h>
+#include <linux/pid_thermal_gov.h>
 
 #include <asm/mach-types.h>
 
@@ -47,6 +49,8 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 #include "tegra_cl_dvfs.h"
+#include "tegra11_soctherm.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -96,6 +100,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vlogic", "0-0068"),
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),
+	REGULATOR_SUPPLY("vif", "2-0048"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -122,16 +127,21 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("vdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata_pll", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
+	REGULATOR_SUPPLY("vana", "2-0048"),
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi.0"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
@@ -173,6 +183,7 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("hvdd_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("hvdd_pex_pll_e", "tegra-pcie"),
+	REGULATOR_SUPPLY("hvdd_sata", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
@@ -193,7 +204,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	*/
 };
 
-PALMAS_REGS_PDATA(smps123, 700,  1400, NULL, 1, 1, 1, NORMAL,
+PALMAS_REGS_PDATA(smps123, 700,  1400, NULL, 0, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
@@ -209,7 +220,7 @@ PALMAS_REGS_PDATA(smps10_out1, 5000,  5000, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo1, 1050,  1050, NULL, 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo2, 3000,  3000, palmas_rails(smps6), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo2, 2800,  3000, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
@@ -338,6 +349,11 @@ static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	},
 };
 
+static struct palmas_extcon_platform_data palmas_extcon_pdata = {
+	.connection_name = "palmas-extcon",
+	.enable_vbus_detection = true,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
@@ -345,6 +361,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
+	.extcon_pdata = &palmas_extcon_pdata,
 };
 
 static struct i2c_board_info palma_device[] = {
@@ -356,9 +373,9 @@ static struct i2c_board_info palma_device[] = {
 };
 
 static struct tegra_suspend_platform_data loki_suspend_data = {
-	.cpu_timer      = 500,
+	.cpu_timer      = 2000,
 	.cpu_off_timer  = 300,
-	.suspend_mode   = TEGRA_SUSPEND_NONE,
+	.suspend_mode   = TEGRA_SUSPEND_LP0,
 	.core_timer     = 0x157e,
 	.core_off_timer = 2000,
 	.corereq_high   = true,
@@ -369,13 +386,6 @@ static struct tegra_suspend_platform_data loki_suspend_data = {
 
 int __init loki_suspend_init(void)
 {
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if (pmu_board_info.board_id == BOARD_E1735)
-		loki_suspend_data.cpu_timer = 2500;
-
 	tegra_init_suspend(&loki_suspend_data);
 	return 0;
 }
@@ -442,34 +452,6 @@ static struct platform_device power_supply_extcon_device = {
 	},
 };
 
-int __init loki_regulator_init(void)
-{
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-	int i;
-
-	/* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
-		pmic_platform.reg_data[i] = loki_reg_data[i];
-		pmic_platform.reg_init[i] = loki_reg_init[i];
-	}
-	/* Set vdd_gpu init uV to 1V */
-	reg_idata_smps123.constraints.init_uV = 1000000;
-
-	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
-	i2c_register_board_info(4, palma_device,
-			ARRAY_SIZE(palma_device));
-	i2c_register_board_info(0, bq2419x_boardinfo, 1);
-	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
-			ARRAY_SIZE(loki_i2c_board_info_bq27441));
-	platform_device_register(&power_supply_extcon_device);
-	return 0;
-}
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply,			\
@@ -638,7 +620,7 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 };
 /************************ LOKI CL-DVFS DATA *********************/
 #define LOKI_CPU_VDD_MAP_SIZE		33
-#define LOKI_CPU_VDD_MIN_UV		705000
+#define LOKI_CPU_VDD_MIN_UV		704000
 #define LOKI_CPU_VDD_STEP_UV		19200
 #define LOKI_CPU_VDD_STEP_US		80
 
@@ -777,6 +759,38 @@ int __init loki_rail_alignment_init(void)
 			LOKI_CPU_VDD_MIN_UV);
 	return 0;
 }
+
+int __init loki_regulator_init(void)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 pmc_ctrl;
+	int i;
+
+	/* TPS65913: Normal state of INT request line is LOW.
+	 * configure the power management controller to trigger PMU
+	 * interrupts when HIGH.
+	 */
+	pmc_ctrl = readl(pmc + PMC_CTRL);
+	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
+		pmic_platform.reg_data[i] = loki_reg_data[i];
+		pmic_platform.reg_init[i] = loki_reg_init[i];
+	}
+	/* Set vdd_gpu init uV to 1V */
+	reg_idata_smps123.constraints.init_uV = 1000000;
+
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	i2c_register_board_info(4, palma_device,
+			ARRAY_SIZE(palma_device));
+	i2c_register_board_info(0, bq2419x_boardinfo, 1);
+	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
+			ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	platform_device_register(&power_supply_extcon_device);
+
+	loki_cl_dvfs_init();
+	return 0;
+}
+
 static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -785,7 +799,6 @@ static int __init loki_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
-	loki_cl_dvfs_init();
 
 	if (pmu_board_info.board_id == BOARD_E2545)
 		return platform_add_devices(fixed_reg_devs_e2545,
@@ -807,4 +820,139 @@ int __init loki_edp_init(void)
 	tegra_init_cpu_edp_limits(regulator_mA);
 
 	return 0;
+}
+
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 20,
+	.down_compensation = 20,
+};
+
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
+};
+
+static struct tegra_tsensor_pmu_data tpdata_palmas = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x58,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0xa0,
+	.poweroff_reg_data = 0x0,
+};
+
+static struct soctherm_platform_data loki_soctherm_data = {
+	.therm = {
+		[THERM_CPU] = {
+			.zone_enable = true,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 3,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 98000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 96000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 86000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_GPU] = {
+			.zone_enable = true,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 2,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 100000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 88000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+/*
+				{
+					.cdev_type = "gk20a_cdev",
+					.trip_temp = 80000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 98000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+*/
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_PLL] = {
+			.zone_enable = true,
+		},
+	},
+	.throttle = {
+		[THROTTLE_HEAVY] = {
+			.priority = 100,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 80,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+					.throttling_depth = "heavy_throttling",
+				},
+			},
+		},
+	},
+	.tshut_pmu_trip_data = &tpdata_palmas,
+};
+
+int __init loki_soctherm_init(void)
+{
+	/* do this only for supported CP,FT fuses */
+	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
+	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+		tegra_platform_edp_init(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips,
+			8000); /* edp temperature margin */
+	}
+
+	/* Always do soctherm init here.
+	 * Allowing access to raw soctherm regs for debugging purposes */
+	return tegra11_soctherm_init(&loki_soctherm_data);
 }

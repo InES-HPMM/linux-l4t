@@ -264,14 +264,14 @@ static int bq2471x_probe(struct i2c_client *client,
 	ret = gpio_request(pdata->gpio, "bq2471x-charger");
 	if (ret) {
 		dev_err(&client->dev, "Failed to request gpio pin: %d\n", ret);
-		goto psy_error;
+		return ret;
 	}
 
 	ret = gpio_direction_output(pdata->gpio, 1);
 	if (ret) {
 		dev_err(&client->dev,
 			"Failed to set gpio to output: %d\n", ret);
-		goto psy_error;
+		goto gpio_err;
 	}
 
 	gpio_set_value(pdata->gpio, 1);
@@ -281,7 +281,8 @@ static int bq2471x_probe(struct i2c_client *client,
 	bq2471x = devm_kzalloc(&client->dev, sizeof(*bq2471x), GFP_KERNEL);
 	if (!bq2471x) {
 		dev_err(&client->dev, "Memory allocation failed\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto gpio_err;
 	}
 	bq2471x->dev = &client->dev;
 
@@ -290,6 +291,7 @@ static int bq2471x_probe(struct i2c_client *client,
 	bq2471x->dac_minsv = pdata->dac_minsv;
 	bq2471x->dac_iin = pdata->dac_iin;
 	bq2471x->wdt_refresh_timeout = pdata->wdt_refresh_timeout;
+	bq2471x->gpio = pdata->gpio;
 
 	i2c_set_clientdata(client, bq2471x);
 	bq2471x->irq = client->irq;
@@ -301,19 +303,19 @@ static int bq2471x_probe(struct i2c_client *client,
 	if (IS_ERR(bq2471x->regmap)) {
 		ret = PTR_ERR(bq2471x->regmap);
 		dev_err(&client->dev, "regmap init failed with err %d\n", ret);
-		return ret;
+		goto gpio_err;
 	}
 
 	ret = bq2471x_check_manufacturer(bq2471x);
 	if (ret < 0) {
 		dev_err(bq2471x->dev, "manufacturer check failed %d\n", ret);
-		return ret;
+		goto gpio_err;
 	}
 
 	ret = bq2471x_show_chip_version(bq2471x);
 	if (ret < 0) {
 		dev_err(bq2471x->dev, "version read failed %d\n", ret);
-		return ret;
+		goto gpio_err;
 	}
 
 	bq2471x->ac.name	= "bq2471x-ac";
@@ -326,13 +328,13 @@ static int bq2471x_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(bq2471x->dev,
 			"AC power supply register failed %d\n", ret);
-		return ret;
+		goto gpio_err;
 	}
 
 	ret = bq2471x_hw_init(bq2471x);
 	if (ret < 0) {
 		dev_err(bq2471x->dev, "Hardware init failed %d\n", ret);
-		goto gpio_err;
+		goto psy_err;
 	}
 
 	init_kthread_worker(&bq2471x->bq_kworker);
@@ -342,7 +344,7 @@ static int bq2471x_probe(struct i2c_client *client,
 	if (IS_ERR(bq2471x->bq_kworker_task)) {
 		ret = PTR_ERR(bq2471x->bq_kworker_task);
 		dev_err(&client->dev, "Kworker task creation failed %d\n", ret);
-		goto gpio_err;
+		goto psy_err;
 	}
 
 	init_kthread_work(&bq2471x->bq_wdt_work, bq2471x_work_thread);
@@ -354,7 +356,7 @@ static int bq2471x_probe(struct i2c_client *client,
 
 	return ret;
 
-psy_error:
+psy_err:
 	power_supply_unregister(&bq2471x->ac);
 gpio_err:
 	gpio_free(bq2471x->gpio);

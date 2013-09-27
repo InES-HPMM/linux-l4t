@@ -3,20 +3,25 @@
  *  @brief This file contains the handling of RX in MLAN
  *  module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -155,7 +160,6 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		HEXDUMP("RX Data: LLC/SNAP",
 			(t_u8 *) & prx_pkt->rfc1042_hdr,
 			sizeof(prx_pkt->rfc1042_hdr));
-
 		/* Chop off the RxPD */
 		hdr_chop =
 			(t_u32) ((t_ptr) & prx_pkt->eth803_hdr -
@@ -173,7 +177,6 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 	DBG_HEXDUMP(MDAT_D, "Rx Payload",
 		    ((t_u8 *) prx_pd + prx_pd->rx_pkt_offset),
 		    MIN(prx_pd->rx_pkt_length, MAX_DATA_DUMP_LEN));
-
 	priv->rxpd_rate = prx_pd->rx_rate;
 	priv->rxpd_rate_info = prx_pd->rate_info;
 
@@ -288,6 +291,15 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 		memcpy(pmadapter, ta,
 		       priv->curr_bss_params.bss_descriptor.mac_address,
 		       MLAN_MAC_ADDR_LENGTH);
+	}
+
+	if ((priv->port_ctrl_mode == MTRUE && priv->port_open == MFALSE) &&
+	    (rx_pkt_type != PKT_TYPE_BAR)) {
+		mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num, prx_pd->priority,
+				       ta, (t_u8) prx_pd->rx_pkt_type,
+				       (t_void *) RX_PKT_DROPPED_IN_FW);
+		wlan_process_rx_packet(pmadapter, pmbuf);
+		goto done;
 	}
 
 	/* Reorder and send to OS */

@@ -34,6 +34,8 @@
 #include <linux/spinlock.h>
 #include <linux/tegra-powergate.h>
 
+#include <linux/suspend.h>
+
 #include <mach/pm_domains.h>
 
 #include "dev.h"
@@ -47,6 +49,7 @@
 #include "hw_sim_gk20a.h"
 #include "gk20a_scale.h"
 #include "gr3d/pod_scaling.h"
+#include "dbg_gpu_gk20a.h"
 
 #include "../../../../../arch/arm/mach-tegra/iomap.h"
 
@@ -85,6 +88,17 @@ const struct file_operations tegra_gk20a_ctrl_ops = {
 	.release = gk20a_ctrl_dev_release,
 	.open = gk20a_ctrl_dev_open,
 	.unlocked_ioctl = gk20a_ctrl_dev_ioctl,
+};
+
+const struct file_operations tegra_gk20a_dbg_gpu_ops = {
+	.owner = THIS_MODULE,
+	.release        = gk20a_dbg_gpu_dev_release,
+	.open           = gk20a_dbg_gpu_dev_open,
+	.unlocked_ioctl = gk20a_dbg_gpu_dev_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
+#endif
+
 };
 
 static inline void sim_writel(struct gk20a *g, u32 r, u32 v)
@@ -530,6 +544,8 @@ int nvhost_init_gk20a_support(struct platform_device *dev)
 			goto fail;
 	}
 
+	mutex_init(&g->dbg_sessions_lock);
+
 	/* nvhost_as alloc_share can be called before gk20a is powered on.
 	   It requires mm sw states configured so init mm sw early here. */
 	err = gk20a_init_mm_setup_sw(g);
@@ -665,12 +681,8 @@ int nvhost_gk20a_prepare_poweroff(struct platform_device *dev)
 	ret |= gk20a_gr_suspend(g);
 	ret |= gk20a_mm_suspend(g);
 
-	/* Disable GPCPLL.
-	 * TODO: Remove this once gk20a clock driver is moved to
-	 * common clock framework
-	 */
-	ret |= gk20a_clk_disable_gpcpll(g);
-
+	/* Disable GPCPLL */
+	ret |= gk20a_suspend_clk_support(g);
 	g->power_on = false;
 
 	return ret;
@@ -787,6 +799,18 @@ static struct thermal_cooling_device_ops tegra_gpu_cooling_ops = {
 	.set_cur_state = tegra_gpu_set_cur_state,
 };
 
+static int gk20a_suspend_notifier(struct notifier_block *notifier,
+				  unsigned long pm_event, void *unused)
+{
+	struct gk20a *g = container_of(notifier, struct gk20a,
+				       system_suspend_notifier);
+
+	if (pm_event == PM_USERSPACE_FROZEN)
+		return g->power_on ? NOTIFY_BAD : NOTIFY_OK;
+
+	return NOTIFY_DONE;
+}
+
 static int gk20a_probe(struct platform_device *dev)
 {
 	struct gk20a *gk20a;
@@ -831,6 +855,12 @@ static int gk20a_probe(struct platform_device *dev)
 
 	err = nvhost_module_add_domain(&pdata->pd, dev);
 #endif
+
+	if (pdata->can_powergate) {
+		gk20a->system_suspend_notifier.notifier_call =
+			gk20a_suspend_notifier;
+		register_pm_notifier(&gk20a->system_suspend_notifier);
+	}
 
 	err = nvhost_client_device_init(dev);
 	if (err) {

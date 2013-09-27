@@ -31,9 +31,9 @@
 /** Max retry number of CMD53 write */
 #define MAX_WRITE_IOMEM_RETRY	2
 /** Firmware name */
-static char *fw_name = NULL;
+static char *fw_name;
 /** request firmware nowait */
-static int req_fw_nowait = 0;
+static int req_fw_nowait;
 static int multi_fn = BIT(2);
 #define DEFAULT_FW_NAME "mrvl/sd8897_uapsta_a0.bin"
 
@@ -56,7 +56,7 @@ MODULE_DEVICE_TABLE(sdio, bt_ids);
 		Global Variables
 ********************************************************/
 /** unregiser bus driver flag */
-static u8 unregister = 0;
+static u8 unregister;
 #ifdef SDIO_SUSPEND_RESUME
 /** PM keep power */
 extern int mbt_pm_keep_power;
@@ -342,7 +342,7 @@ sd_probe_card(struct sdio_func *func, const struct sdio_device_id *id)
 		goto done;
 	}
 	card->func = func;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
 	/* wait for chip fully wake up */
 	if (!func->enable_timeout)
 		func->enable_timeout = 200;
@@ -383,7 +383,7 @@ int
 sd_verify_fw_download(bt_private * priv, int pollnum)
 {
 	int ret = BT_STATUS_FAILURE;
-	u16 firmwarestat;
+	u16 firmwarestat = 0;
 	int tries;
 
 	ENTER();
@@ -399,7 +399,10 @@ sd_verify_fw_download(bt_private * priv, int pollnum)
 		}
 		mdelay(100);
 	}
-
+	if ((pollnum > 1) && (ret != BT_STATUS_SUCCESS))
+		PRINTM(ERROR,
+		       "Fail to poll firmware status: firmwarestat=0x%x\n",
+		       firmwarestat);
 	LEAVE();
 	return ret;
 }
@@ -654,7 +657,7 @@ sd_request_fw_dpc(const struct firmware *fw_firmware, void *context)
 		goto done;
 	}
 	if (fw_firmware) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,32)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
 		if (!req_fw_nowait)
 #endif
 			release_firmware(fw_firmware);
@@ -664,7 +667,7 @@ sd_request_fw_dpc(const struct firmware *fw_firmware, void *context)
 
 done:
 	if (fw_firmware) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,32)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
 		if (!req_fw_nowait)
 #endif
 			release_firmware(fw_firmware);
@@ -731,25 +734,24 @@ sd_download_firmware_w_helper(bt_private * priv)
 	cur_fw_name = fw_name;
 
 	if (req_fw_nowait) {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,32)
-		if ((ret =
-		     request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-					     cur_fw_name, priv->hotplug_device,
-					     GFP_KERNEL, priv,
-					     sd_request_fw_callback)) < 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+		ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+					      cur_fw_name, priv->hotplug_device,
+					      GFP_KERNEL, priv,
+					      sd_request_fw_callback);
 #else
-		if ((ret =
-		     request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-					     cur_fw_name, priv->hotplug_device,
-					     priv, sd_request_fw_callback)) < 0)
+		ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+					      cur_fw_name, priv->hotplug_device,
+					      priv, sd_request_fw_callback);
 #endif
+		if (ret < 0)
 			PRINTM(FATAL,
 			       "BT: request_firmware_nowait() failed, error code = %#x\n",
 			       ret);
 	} else {
-		if ((err =
-		     request_firmware(&priv->firmware, cur_fw_name,
-				      priv->hotplug_device)) < 0) {
+		err = request_firmware(&priv->firmware, cur_fw_name,
+				       priv->hotplug_device);
+		if (err < 0) {
 			PRINTM(FATAL,
 			       "BT: request_firmware() failed, error code = %#x\n",
 			       err);
@@ -988,7 +990,7 @@ sd_card_to_host(bt_private * priv)
 		}
 		break;
 	case MRVL_VENDOR_PKT:
-		// Just think here need to back compatible FM
+		/* Just think here need to back compatible FM */
 		bt_cb(skb)->pkt_type = HCI_VENDOR_PKT;
 		skb_put(skb, buf_len);
 		skb_pull(skb, BT_HEADER_LEN);

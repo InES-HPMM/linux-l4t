@@ -28,8 +28,6 @@
 #include <mach/pinmux-t12.h>
 
 static __initdata struct tegra_drive_pingroup_config loki_drive_pinmux[] = {
-	/*Set DAP2 drive (required for Codec Master Mode)*/
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
 
 	/* SDMMC1 */
 	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 54, 70, FASTEST, FASTEST),

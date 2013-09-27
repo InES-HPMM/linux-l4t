@@ -145,12 +145,12 @@ void nvhost_memmgr_put(struct mem_mgr *mgr, struct mem_handle *handle)
 }
 
 struct sg_table *nvhost_memmgr_pin(struct mem_mgr *mgr,
-		struct mem_handle *handle, struct device *dev)
+		struct mem_handle *handle, struct device *dev, int rw_flag)
 {
 	switch (nvhost_memmgr_type((u32)((uintptr_t)handle))) {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
 	case mem_mgr_type_nvmap:
-		return nvhost_nvmap_pin(mgr, handle, dev);
+		return nvhost_nvmap_pin(mgr, handle, dev, rw_flag);
 		break;
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
@@ -327,7 +327,7 @@ int nvhost_memmgr_pin_array_ids(struct mem_mgr *mgr,
 		if (IS_ERR(h))
 			return -EINVAL;
 
-		sgt = nvhost_memmgr_pin(mgr, h, &dev->dev);
+		sgt = nvhost_memmgr_pin(mgr, h, &dev->dev, mem_flag_none);
 		if (IS_ERR(sgt))
 			return PTR_ERR(sgt);
 
@@ -346,8 +346,8 @@ u32 nvhost_memmgr_handle_to_id(struct mem_handle *handle)
 	switch (nvhost_memmgr_type((u32)handle)) {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
 	case mem_mgr_type_nvmap:
-		return (u32)nvmap_ref_to_user_id(
-				(struct nvmap_handle_ref *)handle);
+		return (u32)nvmap_dmabuf_to_user_id(
+				(struct dma_buf *)handle);
 		break;
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
@@ -368,8 +368,7 @@ struct sg_table *nvhost_memmgr_sg_table(struct mem_mgr *mgr,
 	switch (nvhost_memmgr_type((ulong)handle)) {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
 	case mem_mgr_type_nvmap:
-		return nvmap_sg_table((struct nvmap_client *)mgr,
-				(struct nvmap_handle_ref *)handle);
+		return nvmap_dmabuf_sg_table((struct dma_buf *)handle);
 		break;
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
@@ -391,8 +390,8 @@ void nvhost_memmgr_free_sg_table(struct mem_mgr *mgr,
 	switch (nvhost_memmgr_type((ulong)handle)) {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
 	case mem_mgr_type_nvmap:
-		return nvmap_free_sg_table((struct nvmap_client *)mgr,
-				(struct nvmap_handle_ref *)handle, sgt);
+		return nvmap_dmabuf_free_sg_table(
+					(struct dma_buf *)handle, sgt);
 		break;
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF

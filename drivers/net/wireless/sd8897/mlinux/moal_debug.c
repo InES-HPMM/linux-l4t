@@ -161,6 +161,14 @@ static struct debug_data items[] = {
 	{"last_int_status", item_size(last_int_status),
 	 item_addr(last_int_status)}
 	,
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	{"mpa_sent_last_pkt", item_size(mpa_sent_last_pkt),
+	 item_addr(mpa_sent_last_pkt)}
+	,
+	{"mpa_sent_no_ports", item_size(mpa_sent_no_ports),
+	 item_addr(mpa_sent_no_ports)}
+	,
+#endif
 	{"num_evt_deauth", item_size(num_event_deauth),
 	 item_addr(num_event_deauth)}
 	,
@@ -340,6 +348,14 @@ static struct debug_data uap_items[] = {
 	{"last_int_status", item_size(last_int_status),
 	 item_addr(last_int_status)}
 	,
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	{"mpa_sent_last_pkt", item_size(mpa_sent_last_pkt),
+	 item_addr(mpa_sent_last_pkt)}
+	,
+	{"mpa_sent_no_ports", item_size(mpa_sent_no_ports),
+	 item_addr(mpa_sent_no_ports)}
+	,
+#endif
 	{"cmd_sent", item_size(cmd_sent), item_addr(cmd_sent)}
 	,
 	{"data_sent", item_size(data_sent), item_addr(data_sent)}
@@ -418,6 +434,9 @@ woal_debug_read(struct seq_file *sfp, void *data)
 {
 	int val = 0;
 	unsigned int i;
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	unsigned int j;
+#endif
 	struct debug_data_priv *items_priv =
 		(struct debug_data_priv *)sfp->private;
 	struct debug_data *d = items_priv->items;
@@ -464,6 +483,35 @@ woal_debug_read(struct seq_file *sfp, void *data)
 		else
 			seq_printf(sfp, "%s=%d\n", d[i].name, val);
 	}
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	seq_printf(sfp, "last_recv_wr_bitmap=0x%x last_mp_index=%d\n",
+		   info.last_recv_wr_bitmap, info.last_mp_index);
+	for (i = 0; i < SDIO_MP_DBG_NUM; i++) {
+		seq_printf(sfp,
+			   "mp_wr_bitmap: 0x%x mp_wr_ports=0x%x len=%d curr_wr_port=0x%x\n",
+			   info.last_mp_wr_bitmap[i], info.last_mp_wr_ports[i],
+			   info.last_mp_wr_len[i], info.last_curr_wr_port[i]);
+		for (j = 0; j < SDIO_MP_AGGR_DEF_PKT_LIMIT; j++) {
+			seq_printf(sfp, "0x%02x ",
+				   info.last_mp_wr_info[i *
+							SDIO_MP_AGGR_DEF_PKT_LIMIT
+							+ j]);
+		}
+		seq_printf(sfp, "\n");
+	}
+	seq_printf(sfp, "SDIO MPA Tx: ");
+	for (i = 0; i < SDIO_MP_AGGR_DEF_PKT_LIMIT; i++)
+		seq_printf(sfp, "%d ", info.mpa_tx_count[i]);
+	seq_printf(sfp, "\n");
+#endif
+#ifdef SDIO_MULTI_PORT_RX_AGGR
+	seq_printf(sfp, "SDIO MPA Rx: ");
+	for (i = 0; i < SDIO_MP_AGGR_DEF_PKT_LIMIT; i++)
+		seq_printf(sfp, "%d ", info.mpa_rx_count[i]);
+	seq_printf(sfp, "\n");
+#endif
+	seq_printf(sfp, "tcp_ack_drop_cnt=%d\n", priv->tcp_ack_drop_cnt);
+	seq_printf(sfp, "tcp_ack_cnt=%d\n", priv->tcp_ack_cnt);
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 	for (i = 0; i < 4; i++)
 		seq_printf(sfp, "wmm_tx_pending[%d]:%d\n", i,
@@ -668,8 +716,7 @@ woal_debug_entry(moal_private * priv)
 			return;
 		}
 		memcpy(priv->items_priv.items, items, sizeof(items));
-		priv->items_priv.num_of_items =
-			sizeof(items) / sizeof(items[0]);
+		priv->items_priv.num_of_items = ARRAY_SIZE(items);
 	}
 #endif
 #ifdef UAP_SUPPORT
@@ -684,8 +731,7 @@ woal_debug_entry(moal_private * priv)
 			return;
 		}
 		memcpy(priv->items_priv.items, uap_items, sizeof(uap_items));
-		priv->items_priv.num_of_items =
-			sizeof(uap_items) / sizeof(uap_items[0]);
+		priv->items_priv.num_of_items = ARRAY_SIZE(uap_items);
 	}
 #endif
 

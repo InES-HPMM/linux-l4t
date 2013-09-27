@@ -55,6 +55,8 @@
 #define APB_MISC_GP_MIPI_PAD_CTRL_0	(TEGRA_APB_MISC_BASE + 0x820)
 #define DSIB_MODE_ENABLE		0x2
 
+#define DSI_USE_SYNC_POINTS 0
+
 #define S_TO_MS(x)			(1000 * (x))
 #define MS_TO_US(x)			(1000 * (x))
 
@@ -808,8 +810,10 @@ static void tegra_dsi_init_sw(struct tegra_dc *dc,
 
 	dev_info(&dc->ndev->dev, "DSI: HS clock rate is %d\n",
 					dsi->target_hs_clk_khz);
-	if (!tegra_cpu_is_asim())
-		dsi->syncpt_id = NVSYNCPT_DSI;
+
+#if DSI_USE_SYNC_POINTS
+	dsi->syncpt_id = NVSYNCPT_DSI;
+#endif
 
 	/*
 	 * Force video clock to be continuous mode if
@@ -2888,8 +2892,9 @@ static struct dsi_status *tegra_dsi_prepare_host_transmission(
 	if (restart_dc_stream)
 		init_status->dc_stream = DSI_DC_STREAM_ENABLE;
 
-	if (atomic_read(&dsi_syncpt_rst) && !tegra_cpu_is_asim())
-		tegra_dsi_syncpt_reset(dsi);
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS)
+		if (atomic_read(&dsi_syncpt_rst))
+			tegra_dsi_syncpt_reset(dsi);
 
 	return init_status;
 fail:
@@ -2942,7 +2947,7 @@ static int tegra_dsi_host_trigger(struct tegra_dc_dsi_data *dsi)
 	tegra_dsi_controller_writel(dsi,
 		DSI_TRIGGER_HOST_TRIGGER(TEGRA_DSI_ENABLE), DSI_TRIGGER, 0);
 
-	if (!tegra_cpu_is_asim()) {
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS) {
 		status = tegra_dsi_syncpt(dsi);
 		if (status < 0) {
 			dev_err(&dsi->dc->ndev->dev,
@@ -3238,8 +3243,9 @@ int tegra_dsi_start_host_cmd_v_blank_dcs(struct tegra_dc_dsi_data * dsi,
 	tegra_dc_io_start(dc);
 	tegra_dc_dsi_hold_host(dc);
 
-	if (!tegra_cpu_is_asim())
-		atomic_set(&dsi_syncpt_rst, 1);
+#if DSI_USE_SYNC_POINTS
+	atomic_set(&dsi_syncpt_rst, 1);
+#endif
 
 	err = tegra_dsi_dcs_pkt_seq_ctrl_init(dsi, cmd);
 	if (err < 0) {
@@ -3278,11 +3284,12 @@ void tegra_dsi_stop_host_cmd_v_blank_dcs(struct tegra_dc_dsi_data * dsi)
 	tegra_dc_io_start(dc);
 	tegra_dc_dsi_hold_host(dc);
 
-	if (atomic_read(&dsi_syncpt_rst) && !tegra_cpu_is_asim()) {
-		tegra_dsi_wait_frame_end(dc, dsi, 2);
-		tegra_dsi_syncpt_reset(dsi);
-		atomic_set(&dsi_syncpt_rst, 0);
-	}
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS)
+		if (atomic_read(&dsi_syncpt_rst)) {
+			tegra_dsi_wait_frame_end(dc, dsi, 2);
+			tegra_dsi_syncpt_reset(dsi);
+			atomic_set(&dsi_syncpt_rst, 0);
+		}
 
 	tegra_dsi_writel(dsi, TEGRA_DSI_DISABLE, DSI_INIT_SEQ_CONTROL);
 
@@ -3306,17 +3313,17 @@ static int tegra_dsi_bta(struct tegra_dc_dsi_data *dsi)
 	val |= DSI_HOST_DSI_CONTROL_IMM_BTA(TEGRA_DSI_ENABLE);
 	tegra_dsi_controller_writel(dsi, val, DSI_HOST_DSI_CONTROL, 0);
 
-	if (!tegra_cpu_is_asim()) {
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS) {
 		err = tegra_dsi_syncpt(dsi);
 		if (err < 0) {
 			dev_err(&dsi->dc->ndev->dev,
-					"DSI syncpt for bta failed\n");
+				"DSI syncpt for bta failed\n");
 		}
 	} else {
 		if (tegra_dsi_read_busy(dsi)) {
 			err = -EBUSY;
 			dev_err(&dsi->dc->ndev->dev,
-					"Timeout wating on read completion\n");
+				"Timeout wating on read completion\n");
 		}
 	}
 
@@ -3607,19 +3614,20 @@ static int tegra_dsi_enter_ulpm(struct tegra_dc_dsi_data *dsi)
 	if (dsi->info.ulpm_not_supported)
 		return 0;
 
-	if (atomic_read(&dsi_syncpt_rst) && !tegra_cpu_is_asim())
-		tegra_dsi_syncpt_reset(dsi);
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS)
+		if (atomic_read(&dsi_syncpt_rst))
+			tegra_dsi_syncpt_reset(dsi);
 
 	val = tegra_dsi_readl(dsi, DSI_HOST_DSI_CONTROL);
 	val &= ~DSI_HOST_DSI_CONTROL_ULTRA_LOW_POWER(3);
 	val |= DSI_HOST_DSI_CONTROL_ULTRA_LOW_POWER(ENTER_ULPM);
 	tegra_dsi_writel(dsi, val, DSI_HOST_DSI_CONTROL);
 
-	if (!tegra_cpu_is_asim()) {
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS) {
 		ret = tegra_dsi_syncpt(dsi);
 		if (ret < 0) {
 			dev_err(&dsi->dc->ndev->dev,
-					"DSI syncpt for ulpm enter failed\n");
+				"DSI syncpt for ulpm enter failed\n");
 			return ret;
 		}
 	} else {
@@ -3636,20 +3644,20 @@ static int tegra_dsi_exit_ulpm(struct tegra_dc_dsi_data *dsi)
 	u32 val;
 	int ret = 0;
 
-	if (atomic_read(&dsi_syncpt_rst) && !tegra_cpu_is_asim())
-		tegra_dsi_syncpt_reset(dsi);
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS)
+		if (atomic_read(&dsi_syncpt_rst))
+			tegra_dsi_syncpt_reset(dsi);
 
 	val = tegra_dsi_readl(dsi, DSI_HOST_DSI_CONTROL);
 	val &= ~DSI_HOST_DSI_CONTROL_ULTRA_LOW_POWER(3);
 	val |= DSI_HOST_DSI_CONTROL_ULTRA_LOW_POWER(EXIT_ULPM);
 	tegra_dsi_writel(dsi, val, DSI_HOST_DSI_CONTROL);
 
-
-	if (!tegra_cpu_is_asim()) {
+	if (!tegra_cpu_is_asim() && DSI_USE_SYNC_POINTS) {
 		ret = tegra_dsi_syncpt(dsi);
 		if (ret < 0) {
 			dev_err(&dsi->dc->ndev->dev,
-					"DSI syncpt for ulpm exit failed\n");
+				"DSI syncpt for ulpm exit failed\n");
 			return ret;
 		}
 	} else {

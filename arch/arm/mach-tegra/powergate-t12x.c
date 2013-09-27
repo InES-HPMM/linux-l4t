@@ -463,6 +463,7 @@ err_power:
 
 static atomic_t ref_count_dispa = ATOMIC_INIT(0);
 static atomic_t ref_count_dispb = ATOMIC_INIT(0);
+static atomic_t ref_count_venc = ATOMIC_INIT(0);
 
 #define CHECK_RET(x)			\
 	do {				\
@@ -488,6 +489,37 @@ static inline int tegra12x_unpowergate(int id)
 	return 0;
 }
 
+static int tegra12x_venc_powergate(int id)
+{
+	int ret = 0;
+	int ref_count = atomic_read(&ref_count_venc);
+
+	if (!TEGRA_IS_VENC_POWERGATE_ID(id))
+		return -EINVAL;
+
+	ref_count = atomic_dec_return(&ref_count_venc);
+
+	if (ref_count > 0)
+		return ret;
+
+	if (ref_count <= 0)
+		ret = tegra12x_powergate(id);
+
+	return ret;
+}
+
+static int tegra12x_venc_unpowergate(int id)
+{
+	int ret = 0;
+
+	if (!TEGRA_IS_VENC_POWERGATE_ID(id))
+		return -EINVAL;
+
+	atomic_inc(&ref_count_venc);
+	ret = tegra12x_unpowergate(id);
+
+	return ret;
+}
 
 static int tegra12x_disp_powergate(int id)
 {
@@ -548,6 +580,8 @@ int tegra12x_powergate_partition(int id)
 		ret = tegra12x_disp_powergate(id);
 	else if (id == TEGRA_POWERGATE_CRAIL)
 		ret = tegra_powergate_set(id, false);
+	else if (id == TEGRA_POWERGATE_VENC)
+		ret = tegra12x_venc_powergate(id);
 	else {
 		/* call common power-gate API for t1xx */
 		ret = tegra1xx_powergate(id,
@@ -568,6 +602,8 @@ int tegra12x_unpowergate_partition(int id)
 		ret = tegra12x_disp_unpowergate(id);
 	else if (id == TEGRA_POWERGATE_CRAIL)
 		ret = tegra_powergate_set(id, true);
+	else if (id == TEGRA_POWERGATE_VENC)
+		ret = tegra12x_venc_unpowergate(id);
 	else {
 		ret = tegra1xx_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);

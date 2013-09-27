@@ -130,16 +130,16 @@ struct fifo_gk20a {
 
 	} intr;
 
-	/* Override for MMU fault in case of recovery procedure */
-	struct channel_gk20a *mmu_fault_channel;
+	u32 mmu_fault_engines;
+
+	struct work_struct fault_restore_thread;
 };
 
 int gk20a_init_fifo_support(struct gk20a *g);
 
 void gk20a_fifo_isr(struct gk20a *g);
 
-int gk20a_fifo_preempt_channel(struct gk20a *g,
-			u32 engine_id, u32 hw_chid);
+int gk20a_fifo_preempt_channel(struct gk20a *g, u32 hw_chid);
 
 int gk20a_fifo_enable_engine_activity(struct gk20a *g,
 			struct fifo_engine_info_gk20a *eng_info);
@@ -147,8 +147,8 @@ int gk20a_fifo_disable_engine_activity(struct gk20a *g,
 			struct fifo_engine_info_gk20a *eng_info,
 			bool wait_for_idle);
 
-int gk20a_fifo_update_runlist(struct gk20a *g,
-			u32 engine_id, u32 hw_chid, bool add);
+int gk20a_fifo_update_runlist(struct gk20a *g, u32 engine_id, u32 hw_chid,
+			      bool add, bool wait_for_finish);
 
 int gk20a_fifo_suspend(struct gk20a *g);
 

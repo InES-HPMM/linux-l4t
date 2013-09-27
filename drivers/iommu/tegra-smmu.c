@@ -1343,6 +1343,24 @@ static int smmu_iommu_domain_has_cap(struct iommu_domain *domain,
 	return 0;
 }
 
+#if defined(CONFIG_DMA_API_DEBUG) || defined(CONFIG_FTRACE)
+char *debug_dma_platformdata(struct device *dev)
+{
+	static char buf[21];
+	struct dma_iommu_mapping *mapping = to_dma_iommu_mapping(dev);
+	struct smmu_as *as;
+	int asid = -1;
+
+	if (mapping) {
+		as = mapping->domain->priv;
+		asid = as->asid;
+	}
+
+	sprintf(buf, "%d", asid);
+	return buf;
+}
+#endif
+
 static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 				 struct device *dev)
 {
@@ -1369,15 +1387,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		DEFINE_DMA_ATTRS(attrs);
 		size_t size = PAGE_ALIGN(area->size);
 
+		dma_set_attr(DMA_ATTR_SKIP_IOVA_GAP, &attrs);
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
 		if (err == DMA_ERROR_CODE)
-			dev_err(dev, "Failed to map %016llx(%x)\n",
-				(u64)area->start,
-				size);
+			dev_err(dev, "Failed IOVA linear map %016llx(%x)\n",
+				(u64)area->start, size);
 		else
-			dev_info(dev, "map %016llx(%x)\n", (u64)area->start,
-				size);
+			dev_info(dev, "IOVA linear map %016llx(%x)\n",
+				 (u64)area->start, size);
 
 		area++;
 	}

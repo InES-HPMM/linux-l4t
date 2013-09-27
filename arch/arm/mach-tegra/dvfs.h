@@ -84,6 +84,7 @@ struct dvfs_rail {
 	bool disabled;
 	bool updating;
 	bool resolving_to;
+	bool rate_set;
 
 	struct list_head node;  /* node in dvfs_rail_list */
 	struct list_head dvfs;  /* list head of attached dvfs clocks */
@@ -142,6 +143,7 @@ struct dvfs {
 	const int *dfll_millivolts;
 	struct dvfs_rail *dvfs_rail;
 	bool auto_dvfs;
+	bool can_override;
 
 	/* Filled in by tegra_dvfs_init */
 	int max_millivolts;

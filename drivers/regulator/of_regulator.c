@@ -16,11 +16,64 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 
+static void of_get_regulator_consumer_list(struct device *dev,
+		struct device_node *np,
+		struct regulator_consumer_supply **consumer_list,
+		int *num_consumer)
+{
+	struct device_node *np_consumer;
+	struct device_node *child;
+	int n_consumer;
+	struct regulator_consumer_supply *consumer;
+	int ncount;
+	int ret;
+
+	*consumer_list = NULL;
+	*num_consumer = 0;
+
+	np_consumer = of_get_child_by_name(np, "consumers");
+	if (!np_consumer)
+		return;
+
+	n_consumer = of_get_child_count(np_consumer);
+	if (!n_consumer)
+		return;
+
+	consumer = devm_kzalloc(dev, n_consumer * sizeof(*consumer),
+			GFP_KERNEL);
+	if (!consumer) {
+		dev_err(dev, "Memory allocation failed\n");
+		return;
+	}
+
+	ncount = 0;
+	for_each_child_of_node(np_consumer, child) {
+		ret = of_property_read_string(child,
+				"regulator-consumer-supply",
+				&consumer[ncount].supply);
+		if (ret < 0) {
+			dev_err(dev, "Consumer %s does not have supply\n",
+				child->name);
+			continue;
+		}
+		ret = of_property_read_string(child,
+				"regulator-consumer-device",
+				&consumer[ncount].dev_name);
+		if (ret < 0)
+			dev_warn(dev, "Consumer %s does not have device name\n",
+					child->name);
+		ncount++;
+	}
+	*consumer_list = consumer;
+	*num_consumer = ncount;
+}
+
 static void of_get_regulation_constraints(struct device_node *np,
 					struct regulator_init_data **init_data)
 {
 	const __be32 *min_uV, *max_uV, *uV_offset;
 	const __be32 *min_uA, *max_uA, *ramp_delay;
+	const __be32 *init_uV;
 	struct regulation_constraints *constraints = &(*init_data)->constraints;
 
 	constraints->name = of_get_property(np, "regulator-name", NULL);
@@ -31,6 +84,9 @@ static void of_get_regulation_constraints(struct device_node *np,
 	max_uV = of_get_property(np, "regulator-max-microvolt", NULL);
 	if (max_uV)
 		constraints->max_uV = be32_to_cpu(*max_uV);
+	init_uV = of_get_property(np, "regulator-init-microvolt", NULL);
+	if (init_uV)
+		constraints->init_uV = be32_to_cpu(*init_uV);
 
 	/* Voltage change possible? */
 	if (constraints->min_uV != constraints->max_uV)
@@ -87,6 +143,10 @@ struct regulator_init_data *of_get_regulator_init_data(struct device *dev,
 		return NULL; /* Out of memory? */
 
 	of_get_regulation_constraints(node, &init_data);
+	of_get_regulator_consumer_list(dev, node, &init_data->consumer_supplies,
+					&init_data->num_consumer_supplies);
+	dev_dbg(dev, "Adding %d consumers for node %s\n",
+			init_data->num_consumer_supplies, node->name);
 	return init_data;
 }
 EXPORT_SYMBOL_GPL(of_get_regulator_init_data);

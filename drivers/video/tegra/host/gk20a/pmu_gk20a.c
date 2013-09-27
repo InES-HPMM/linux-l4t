@@ -1121,6 +1121,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 
 	INIT_DELAYED_WORK(&pmu->elpg_enable, pmu_elpg_enable_allow);
 	mutex_init(&pmu->elpg_mutex);
+	mutex_init(&pmu->isr_mutex);
 
 	pmu->perfmon_counter.index = 3; /* GR & CE2 */
 	pmu->perfmon_counter.group_id = PMU_DOMAIN_GROUP_PSTATE;
@@ -1332,6 +1333,9 @@ int gk20a_init_pmu_support(struct gk20a *g)
 
 		/* Save zbc table after PMU is initialized. */
 		pmu_save_zbc(g, 0xf);
+
+		/* wait for pmu idle */
+		err = pmu_idle(pmu);
 	}
 
 	return err;
@@ -1766,8 +1770,6 @@ void pmu_save_zbc(struct gk20a *g, u32 entries)
 
 	gk20a_pmu_cmd_post(g, &cmd, NULL, NULL, PMU_COMMAND_QUEUE_HPQ,
 					NULL, pmu, &seq, ~0);
-
-	return 0;
 }
 
 static int pmu_perfmon_start_sampling(struct pmu_gk20a *pmu)
@@ -1926,6 +1928,28 @@ static int pmu_process_message(struct pmu_gk20a *pmu)
 	return 0;
 }
 
+static int pmu_wait_message_cond(struct pmu_gk20a *pmu, u32 timeout,
+				 u32 *var, u32 val)
+{
+	struct gk20a *g = pmu->g;
+	unsigned long end_jiffies = jiffies + msecs_to_jiffies(timeout);
+	unsigned long delay = GR_IDLE_CHECK_DEFAULT;
+
+	do {
+		if (*var == val)
+			return 0;
+
+		if (gk20a_readl(g, pwr_falcon_irqstat_r()))
+			gk20a_pmu_isr(g);
+
+		usleep_range(delay, delay * 2);
+		delay = min_t(u32, delay << 1, GR_IDLE_CHECK_MAX);
+	} while (time_before(jiffies, end_jiffies) |
+			!tegra_platform_is_silicon());
+
+	return -ETIMEDOUT;
+}
+
 static void pmu_dump_elpg_stats(struct pmu_gk20a *pmu)
 {
 	struct gk20a *g = pmu->g;
@@ -2003,112 +2027,112 @@ static void pmu_dump_falcon_stats(struct pmu_gk20a *pmu)
 	struct gk20a *g = pmu->g;
 	int i;
 
-	nvhost_dbg_pmu("pwr_falcon_os_r : %d",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_os_r : %d",
 		gk20a_readl(g, pwr_falcon_os_r()));
-	nvhost_dbg_pmu("pwr_falcon_cpuctl_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_cpuctl_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_cpuctl_r()));
-	nvhost_dbg_pmu("pwr_falcon_idlestate_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_idlestate_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_idlestate_r()));
-	nvhost_dbg_pmu("pwr_falcon_mailbox0_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_mailbox0_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_mailbox0_r()));
-	nvhost_dbg_pmu("pwr_falcon_mailbox1_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_mailbox1_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_mailbox1_r()));
-	nvhost_dbg_pmu("pwr_falcon_irqstat_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_irqstat_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_irqstat_r()));
-	nvhost_dbg_pmu("pwr_falcon_irqmode_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_irqmode_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_irqmode_r()));
-	nvhost_dbg_pmu("pwr_falcon_irqmask_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_irqmask_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_irqmask_r()));
-	nvhost_dbg_pmu("pwr_falcon_irqdest_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_irqdest_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_irqdest_r()));
 
 	for (i = 0; i < pwr_pmu_mailbox__size_1_v(); i++)
-		nvhost_dbg_pmu("pwr_pmu_mailbox_r(%d) : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_mailbox_r(%d) : 0x%x",
 			i, gk20a_readl(g, pwr_pmu_mailbox_r(i)));
 
 	for (i = 0; i < pwr_pmu_debug__size_1_v(); i++)
-		nvhost_dbg_pmu("pwr_pmu_debug_r(%d) : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_debug_r(%d) : 0x%x",
 			i, gk20a_readl(g, pwr_pmu_debug_r(i)));
 
 	for (i = 0; i < 6/*NV_PPWR_FALCON_ICD_IDX_RSTAT__SIZE_1*/; i++) {
 		gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 			pwr_pmu_falcon_icd_cmd_opc_rstat_f() |
 			pwr_pmu_falcon_icd_cmd_idx_f(i));
-		nvhost_dbg_pmu("pmu_rstat (%d) : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pmu_rstat (%d) : 0x%x",
 			i, gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 	}
 
 	i = gk20a_readl(g, pwr_pmu_bar0_error_status_r());
-	nvhost_dbg_pmu("pwr_pmu_bar0_error_status_r : 0x%x", i);
+	nvhost_err(dev_from_gk20a(g), "pwr_pmu_bar0_error_status_r : 0x%x", i);
 	if (i != 0) {
-		nvhost_dbg_pmu("pwr_pmu_bar0_addr_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_bar0_addr_r : 0x%x",
 			gk20a_readl(g, pwr_pmu_bar0_addr_r()));
-		nvhost_dbg_pmu("pwr_pmu_bar0_data_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_bar0_data_r : 0x%x",
 			gk20a_readl(g, pwr_pmu_bar0_data_r()));
-		nvhost_dbg_pmu("pwr_pmu_bar0_timeout_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_bar0_timeout_r : 0x%x",
 			gk20a_readl(g, pwr_pmu_bar0_timeout_r()));
-		nvhost_dbg_pmu("pwr_pmu_bar0_ctl_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_pmu_bar0_ctl_r : 0x%x",
 			gk20a_readl(g, pwr_pmu_bar0_ctl_r()));
 	}
 
 	i = gk20a_readl(g, pwr_falcon_exterrstat_r());
-	nvhost_dbg_pmu("pwr_falcon_exterrstat_r : 0x%x", i);
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_exterrstat_r : 0x%x", i);
 	if (pwr_falcon_exterrstat_valid_v(i) ==
 			pwr_falcon_exterrstat_valid_true_v()) {
-		nvhost_dbg_pmu("pwr_falcon_exterraddr_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "pwr_falcon_exterraddr_r : 0x%x",
 			gk20a_readl(g, pwr_falcon_exterraddr_r()));
-		nvhost_dbg_pmu("top_fs_status_r : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "top_fs_status_r : 0x%x",
 			gk20a_readl(g, top_fs_status_r()));
 	}
 
-	nvhost_dbg_pmu("pwr_falcon_engctl_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_engctl_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_engctl_r()));
-	nvhost_dbg_pmu("pwr_falcon_curctx_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_curctx_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_curctx_r()));
-	nvhost_dbg_pmu("pwr_falcon_nxtctx_r : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "pwr_falcon_nxtctx_r : 0x%x",
 		gk20a_readl(g, pwr_falcon_nxtctx_r()));
 
 	gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 		pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 		pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_IMB));
-	nvhost_dbg_pmu("PMU_FALCON_REG_IMB : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_IMB : 0x%x",
 		gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 	gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 		pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 		pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_DMB));
-	nvhost_dbg_pmu("PMU_FALCON_REG_DMB : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_DMB : 0x%x",
 		gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 	gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 		pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 		pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_CSW));
-	nvhost_dbg_pmu("PMU_FALCON_REG_CSW : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_CSW : 0x%x",
 		gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 	gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 		pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 		pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_CTX));
-	nvhost_dbg_pmu("PMU_FALCON_REG_CTX : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_CTX : 0x%x",
 		gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 	gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 		pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 		pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_EXCI));
-	nvhost_dbg_pmu("PMU_FALCON_REG_EXCI : 0x%x",
+	nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_EXCI : 0x%x",
 		gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 	for (i = 0; i < 4; i++) {
 		gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 			pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 			pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_PC));
-		nvhost_dbg_pmu("PMU_FALCON_REG_PC : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_PC : 0x%x",
 			gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 
 		gk20a_writel(g, pwr_pmu_falcon_icd_cmd_r(),
 			pwr_pmu_falcon_icd_cmd_opc_rreg_f() |
 			pwr_pmu_falcon_icd_cmd_idx_f(PMU_FALCON_REG_SP));
-		nvhost_dbg_pmu("PMU_FALCON_REG_SP : 0x%x",
+		nvhost_err(dev_from_gk20a(g), "PMU_FALCON_REG_SP : 0x%x",
 			gk20a_readl(g, pwr_pmu_falcon_icd_rdata_r()));
 	}
 }
@@ -2122,6 +2146,8 @@ void gk20a_pmu_isr(struct gk20a *g)
 
 	nvhost_dbg_fn("");
 
+	mutex_lock(&pmu->isr_mutex);
+
 	mask = gk20a_readl(g, pwr_falcon_irqmask_r()) &
 		gk20a_readl(g, pwr_falcon_irqdest_r());
 
@@ -2129,12 +2155,15 @@ void gk20a_pmu_isr(struct gk20a *g)
 
 	nvhost_dbg_pmu("received falcon interrupt: 0x%08x", intr);
 
-	if (!intr)
+	if (!intr) {
+		mutex_unlock(&pmu->isr_mutex);
 		return;
+	}
 
 	if (intr & pwr_falcon_irqstat_halt_true_f()) {
 		nvhost_err(dev_from_gk20a(g),
 			"pmu halt intr not implemented");
+		pmu_dump_falcon_stats(pmu);
 	}
 	if (intr & pwr_falcon_irqstat_exterr_true_f()) {
 		nvhost_err(dev_from_gk20a(g),
@@ -2154,6 +2183,8 @@ void gk20a_pmu_isr(struct gk20a *g)
 			gk20a_writel(g, pwr_falcon_irqsset_r(),
 				pwr_falcon_irqsset_swgen0_set_f());
 	}
+
+	mutex_unlock(&pmu->isr_mutex);
 }
 
 static bool pmu_validate_cmd(struct pmu_gk20a *pmu, struct pmu_cmd *cmd,
@@ -2452,7 +2483,6 @@ static int gk20a_pmu_disable_elpg_defer_enable(struct gk20a *g, bool enable)
 	struct pmu_gk20a *pmu = &g->pmu;
 	struct pmu_cmd cmd;
 	u32 seq;
-	long remain;
 	int ret = 0;
 
 	nvhost_dbg_fn("");
@@ -2476,14 +2506,13 @@ static int gk20a_pmu_disable_elpg_defer_enable(struct gk20a *g, bool enable)
 	}
 	/* wait if on_pending */
 	else if (pmu->elpg_stat == PMU_ELPG_STAT_ON_PENDING) {
-		remain = wait_event_timeout(
-			pmu->pg_wq,
-			pmu->elpg_stat == PMU_ELPG_STAT_ON,
-			msecs_to_jiffies(gk20a_get_gr_idle_timeout(g)));
+
+		pmu_wait_message_cond(pmu, gk20a_get_gr_idle_timeout(g),
+				      &pmu->elpg_stat, PMU_ELPG_STAT_ON);
+
 		if (pmu->elpg_stat != PMU_ELPG_STAT_ON) {
 			nvhost_err(dev_from_gk20a(g),
-				"ELPG_ALLOW_ACK failed, remaining timeout 0x%lx",
-				remain);
+				"ELPG_ALLOW_ACK failed");
 			ret = -EBUSY;
 			goto exit_unlock;
 		}
@@ -2506,14 +2535,11 @@ static int gk20a_pmu_disable_elpg_defer_enable(struct gk20a *g, bool enable)
 	gk20a_pmu_cmd_post(g, &cmd, NULL, NULL, PMU_COMMAND_QUEUE_HPQ,
 			pmu_handle_pg_elpg_msg, pmu, &seq, ~0);
 
-	remain = wait_event_timeout(
-			pmu->pg_wq,
-			pmu->elpg_stat == PMU_ELPG_STAT_OFF,
-			msecs_to_jiffies(gk20a_get_gr_idle_timeout(g)));
+	pmu_wait_message_cond(pmu, gk20a_get_gr_idle_timeout(g),
+			      &pmu->elpg_stat, PMU_ELPG_STAT_OFF);
 	if (pmu->elpg_stat != PMU_ELPG_STAT_OFF) {
 		nvhost_err(dev_from_gk20a(g),
-			"ELPG_DISALLOW_ACK failed, remaining timeout 0x%lx",
-			remain);
+			"ELPG_DISALLOW_ACK failed");
 		pmu_dump_elpg_stats(pmu);
 		ret = -EBUSY;
 		goto exit_unlock;

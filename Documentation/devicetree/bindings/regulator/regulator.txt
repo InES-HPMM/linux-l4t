@@ -11,6 +11,7 @@ Optional properties:
 - regulator-boot-on: bootloader/firmware enabled regulator
 - <name>-supply: phandle to the parent supply/regulator node
 - regulator-ramp-delay: ramp delay for regulator(in uV/uS)
+- regulator-init-microvolt: Initial microvolt need to be set during registration
 
 Deprecated properties:
 - regulator-compatible: If a regulator chip contains multiple
@@ -18,6 +19,27 @@ Deprecated properties:
   describes each regulator, then this property indicates which regulator
   this child node is intended to configure. If this property is missing,
   the node's name will be used instead.
+
+Consumer name support from DT:
+To support the consumer list of the rails from DT to map the power tree
+so that driver who uses the regualtor can still be non-dt, adding following
+properties.
+The consumer list will be provided under subnode of each regualtor called
+"consumer". The consumer list has the supply name and device name. This can
+be set with properties:
+regulator-consumer-supply: Consumer supply name.
+regulator-consumer-device: Consumer device name.
+The properties will be passed as
+	consumers {
+		c1 {
+			regulator-consumer-supply = "vana";
+			regulator-consumer-device = "2-0010";
+		};
+
+		c2 {
+			regulator-consumer-supply = "vana";
+			regulator-consumer-device = "2-0036";
+		};
 
 Example:
 
@@ -59,4 +81,36 @@ regulators (twl_reg1 and twl_reg2),
 		...
 		vmmc-supply = <&twl_reg1>;
 		vmmcaux-supply = <&twl_reg2>;
+	};
+
+
+Example: Consumer list from DT
+	ldo3 {
+		regulator-name = "vdd_rtc";
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <800000>;
+		regulator-always-on;
+		ams,enable-tracking;
+		consumers {
+			c1 {
+				regulator-consumer-supply = "vdd_rtc";
+			};
+		};
+	};
+
+	ldo4 {
+		regulator-name = "avdd_cam";
+		regulator-min-microvolt = <2700000>;
+		regulator-max-microvolt = <2700000>;
+		regulator-always-on;
+		consumers {
+			c1 {
+				regulator-consumer-supply = "vana";
+				regulator-consumer-device = "2-0010";
+			};
+			c2 {
+				regulator-consumer-supply = "vana";
+				regulator-consumer-device = "2-0036";
+			};
+		};
 	};

@@ -193,8 +193,6 @@
 	}
 
 static __initdata struct tegra_drive_pingroup_config laguna_drive_pinmux[] = {
-	/*Set DAP2 drive (required for Codec Master Mode)*/
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
 
 	/* FIXME: update settings for t124 laguna */
 	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),

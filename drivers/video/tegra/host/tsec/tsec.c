@@ -412,7 +412,7 @@ int tsec_read_ucode(struct platform_device *dev, const char *fw_name)
 	}
 
 	m->pa = nvhost_memmgr_pin(nvhost_get_host(dev)->memmgr, m->mem_r,
-			&dev->dev);
+			&dev->dev, mem_flag_read_only);
 	if (IS_ERR(m->pa)) {
 		dev_err(&dev->dev, "nvmap pin failed for ucode");
 		err = PTR_ERR(m->pa);
@@ -586,9 +586,11 @@ static int tsec_probe(struct platform_device *dev)
 
 	nvhost_module_busy(dev);
 	/* Reset TSEC at boot-up. Otherwise it starts sending interrupts. */
-	tegra_periph_reset_assert(pdata->clk[0]);
-	udelay(10);
-	tegra_periph_reset_deassert(pdata->clk[0]);
+	if (pdata->clocks[0].reset) {
+		tegra_periph_reset_assert(pdata->clk[0]);
+		udelay(10);
+		tegra_periph_reset_deassert(pdata->clk[0]);
+	}
 	nvhost_module_idle(dev);
 
 	return err;

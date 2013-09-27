@@ -2,20 +2,25 @@
  *
  *  @brief This file contains MLAN event handling.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -671,7 +676,7 @@ wlan_ops_sta_process_event(IN t_void * priv)
 	case EVENT_REMAIN_ON_CHANNEL_EXPIRED:
 		PRINTM(MEVENT, "EVENT: REMAIN_ON_CHANNEL_EXPIRED reason=%d\n",
 		       *(t_u16 *) pmadapter->event_body);
-		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_FLUSH_RX_WORK, MNULL);
 		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_REMAIN_ON_CHAN_EXPIRED,
 				MNULL);
 		break;
@@ -693,6 +698,23 @@ wlan_ops_sta_process_event(IN t_void * priv)
 		wlan_handle_event_multi_chan_info(pmpriv, pmbuf);
 		break;
 
+	case EVENT_FW_DUMP_INFO:
+		PRINTM(MEVENT, "EVENT: Dump FW info\n");
+		/* Allocate memory for event buffer */
+		ret = pcb->moal_malloc(pmadapter->pmoal_handle, MAX_EVENT_SIZE,
+				       MLAN_MEM_DEF, &evt_buf);
+		if ((ret == MLAN_STATUS_SUCCESS) && evt_buf) {
+			pevent = (pmlan_event) evt_buf;
+			pevent->bss_index = pmpriv->bss_index;
+			pevent->event_id = MLAN_EVENT_ID_FW_DUMP_INFO;
+			pevent->event_len = pmbuf->data_len;
+			memcpy(pmadapter, (t_u8 *) pevent->event_buf,
+			       pmbuf->pbuf + pmbuf->data_offset,
+			       pevent->event_len);
+			wlan_recv_event(pmpriv, pevent->event_id, pevent);
+			pcb->moal_mfree(pmadapter->pmoal_handle, evt_buf);
+		}
+		break;
 	default:
 		PRINTM(MEVENT, "EVENT: unknown event id: %#x\n", eventcause);
 		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_UNKNOWN, MNULL);

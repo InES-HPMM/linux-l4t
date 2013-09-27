@@ -4,20 +4,25 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /******************************************************
@@ -102,7 +107,7 @@ typedef MLAN_PACK_START struct {
 #ifdef STA_SUPPORT
 /** Firmware multiple bands support */
 #define FW_MULTI_BANDS_SUPPORT  (MBIT(8)  | MBIT(9)  | MBIT(10) | MBIT(11) | \
-	                         MBIT(12) | MBIT(13))
+							MBIT(12) | MBIT(13))
 #else
 /** Firmware multiple bands support */
 #define FW_MULTI_BANDS_SUPPORT  (MBIT(8) | MBIT(9) | MBIT(10))
@@ -490,7 +495,7 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define DEFAULT_11N_CAP_MASK_BG (HWSPEC_SHORTGI20_SUPP | HWSPEC_RXSTBC_SUPP)
 /** Default 11n capability mask for 5GHz */
 #define DEFAULT_11N_CAP_MASK_A  (HWSPEC_CHANBW40_SUPP | HWSPEC_SHORTGI20_SUPP | \
-	                         HWSPEC_SHORTGI40_SUPP | HWSPEC_RXSTBC_SUPP)
+							HWSPEC_SHORTGI40_SUPP | HWSPEC_RXSTBC_SUPP)
 /** Bits to ignore in hw_dev_cap as these bits are set in get_hw_spec */
 #define IGN_HW_DEV_CAP		(CAPINFO_40MHZ_INTOLARENT)
 
@@ -667,6 +672,12 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define SET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 1)
 /** ExtCap : Reset support Operation Mode Notification */
 #define RESET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 0)
+/** ExtCap : Support for QosMap */
+#define ISSUPP_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map)
+/** ExtCap : Set Support QosMap */
+#define SET_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map = 1)
+/** ExtCap : Reset support QosMap */
+#define RESET_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map = 0)
 
 /** LLC/SNAP header len   */
 #define LLC_SNAP_LEN    8
@@ -1056,6 +1067,8 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define HostCmd_CMD_CFG_TX_DATA_PAUSE           0x0103
 
 #ifdef WIFI_DIRECT_SUPPORT
+/** Host Command ID: P2P PARAMS CONFIG */
+#define HOST_CMD_P2P_PARAMS_CONFIG              0x00ea
 /** Host Command ID: WIFI_DIRECT_MODE_CONFIG */
 #define HOST_CMD_WIFI_DIRECT_MODE_CONFIG	0x00eb
 /** Host Command ID: Remain On Channel */
@@ -1349,6 +1362,7 @@ typedef enum _ENH_PS_MODES {
 /** Event ID: Multi Chan Info*/
 #define EVENT_MULTI_CHAN_INFO               0x0000006a
 
+#define EVENT_FW_DUMP_INFO		0x0000FFFE
 /** Event ID mask */
 #define EVENT_ID_MASK                   0xffff
 
@@ -2793,6 +2807,41 @@ typedef MLAN_PACK_START struct _HostCmd_DS_WIFI_DIRECT_MODE {
     /**0:disable 1:listen 2:GO 3:p2p client 4:find 5:stop find*/
 	t_u16 mode;
 } MLAN_PACK_END HostCmd_DS_WIFI_DIRECT_MODE;
+
+/** MrvlIEtypes_NoA_setting_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_NoA_setting_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** enable/disable */
+	t_u8 enable;
+    /** index */
+	t_u16 index;
+    /** NoA count */
+	t_u8 noa_count;
+    /** NoA duration */
+	t_u32 noa_duration;
+    /** NoA interval */
+	t_u32 noa_interval;
+} MLAN_PACK_END MrvlIEtypes_NoA_setting_t;
+
+/** MrvlIEtypes_NoA_setting_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_OPP_PS_setting_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** enable/disable */
+	t_u8 enable;
+    /** CT window value */
+	t_u8 ct_window;
+} MLAN_PACK_END MrvlIEtypes_OPP_PS_setting_t;
+
+/** HostCmd_DS_REMAIN_ON_CHANNEL */
+typedef MLAN_PACK_START struct _HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG {
+    /** Action 0-GET, 1-SET */
+	t_u16 action;
+    /** MrvlIEtypes_NoA_setting_t
+     *  MrvlIEtypes_OPP_PS_setting_t
+     */
+} MLAN_PACK_END HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG;
 #endif
 
 #ifdef STA_SUPPORT
@@ -3967,6 +4016,10 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_MacAddr_t {
 #ifdef WIFI_DIRECT_SUPPORT
 /** TLV type : AP PSK */
 #define TLV_TYPE_UAP_PSK   (PROPRIETARY_TLV_BASE_ID + 0xa8)	/* 0x01a8 */
+/** TLV type : p2p NOA */
+#define TLV_TYPE_WIFI_DIRECT_NOA            (PROPRIETARY_TLV_BASE_ID + 0x83)
+/** TLV type : p2p opp ps */
+#define TLV_TYPE_WIFI_DIRECT_OPP_PS         (PROPRIETARY_TLV_BASE_ID + 0x84)
 #endif /* WIFI_DIRECT_SUPPORT */
 
 /** MrvlIEtypes_beacon_period_t */
@@ -4911,6 +4964,7 @@ typedef struct MLAN_PACK_START _HostCmd_DS_COMMAND {
 #ifdef WIFI_DIRECT_SUPPORT
 		HostCmd_DS_REMAIN_ON_CHANNEL remain_on_chan;
 		HostCmd_DS_WIFI_DIRECT_MODE wifi_direct_mode;
+		HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG p2p_params_config;
 #endif
 		HostCmd_DS_HS_WAKEUP_REASON hs_wakeup_reason;
 		HostCmd_DS_MULTI_CHAN_CFG multi_chan_cfg;

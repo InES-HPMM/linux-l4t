@@ -889,6 +889,9 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 	if (cld->calibration_range_min < cld->safe_dvfs->freqs[0])
 		cld->calibration_range_min = cld->safe_dvfs->freqs[0];
 	cld->calibration_range_max = cld->dvco_rate_min + 24 * RATE_STEP(cld);
+	rate = cld->safe_dvfs->freqs[cld->safe_dvfs->num_freqs - 1];
+	if (cld->calibration_range_max > rate)
+		cld->calibration_range_max = rate;
 }
 
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
@@ -961,7 +964,7 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 				cld->out_map[j++] = m;
 		}
 
-		v = millivolts[i];
+		v = (j == MAX_CL_DVFS_VOLTAGES - 1) ? v_max : millivolts[i];
 		m = find_vdd_map_entry(cld, v, true);
 		BUG_ON(!m);
 		if (m != cld->out_map[j - 1])
@@ -972,8 +975,10 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 			cld->clk_dvfs_map[i] = cld->out_map[j - 1]->reg_value;
 			BUG_ON(cld->clk_dvfs_map[i] > OUT_MASK + 1);
 		}
+
+		if (v >= v_max)
+			break;
 	}
-	BUG_ON(j > MAX_CL_DVFS_VOLTAGES);
 	cld->num_voltages = j;
 }
 

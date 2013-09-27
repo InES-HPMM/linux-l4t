@@ -72,7 +72,7 @@ static int camera_dev_rd(struct camera_device *cdev, u32 reg, u32 *val)
 	if (cdev->is_power_on)
 		ret = regmap_read(cdev->regmap, reg, val);
 	else
-		dev_err(cdev->dev, "%s: power is off.\n", __func__);
+		dev_notice(cdev->dev, "%s: power is off.\n", __func__);
 	mutex_unlock(&cdev->mutex);
 	camera_dev_dump(cdev, reg, (u8 *)val, sizeof(*val));
 	return ret;
@@ -109,7 +109,7 @@ static int camera_dev_wr_blk(
 	if (cdev->is_power_on)
 		ret = regmap_raw_write(cdev->regmap, reg, buf, len);
 	else
-		dev_err(cdev->dev, "%s: power is off.\n", __func__);
+		dev_notice(cdev->dev, "%s: power is off.\n", __func__);
 	mutex_unlock(&cdev->mutex);
 	return ret;
 }
@@ -368,7 +368,8 @@ int camera_regulator_get(struct device *dev,
 	}
 	reg = regulator_get(dev, vreg_name);
 	if (unlikely(IS_ERR_OR_NULL(reg))) {
-		dev_err(dev, "%s %s ERR: %d\n", __func__, vreg_name, (int)reg);
+		dev_notice(dev, "%s %s not there: %d\n",
+			__func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);
 		nvc_reg->vreg = NULL;
 	} else {

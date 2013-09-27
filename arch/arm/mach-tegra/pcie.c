@@ -52,9 +52,11 @@
 #include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/pm_domains.h>
+#include <mach/io_dpd.h>
 
 #include "board.h"
 #include "iomap.h"
+#include "clock.h"
 
 #define MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE				5
 
@@ -180,7 +182,6 @@
 
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
-#define RP_VEND_XP_BIST						0x00000F4C
 
 #define  RP_TXBA1						0x00000E1C
 #define  RP_TXBA1_CM_OVER_PW_BURST_MASK			(0xF << 4)
@@ -240,6 +241,9 @@
 #define PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED			(1 << 0)
 #define PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED			(1 << 1)
 #define PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED			(1 << 2)
+
+#define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
+#define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /*
@@ -1282,6 +1286,12 @@ static int tegra_pcie_power_regate(void)
 		pr_err("PCIE: plle clk enable failed: %d\n", err);
 		return err;
 	}
+	/* pciex is reset only but need to be enabled for dvfs support */
+	err = clk_enable(tegra_pcie.pcie_xclk);
+	if (err) {
+		pr_err("PCIE: pciex clk enable failed: %d\n", err);
+		return err;
+	}
 	return 0;
 }
 
@@ -1337,7 +1347,7 @@ static int tegra_pcie_fpga_phy_init(void)
 	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
 
 	/* required for gen2 speed support on FPGA */
-	rp_writel(FPGA_GEN2_SPEED_SUPPORT, RP_VEND_XP_BIST, 0);
+	rp_writel(FPGA_GEN2_SPEED_SUPPORT, NV_PCIE2_RP_VEND_XP_BIST, 0);
 
 	return 0;
 }
@@ -1357,6 +1367,21 @@ static void tegra_pcie_pme_turnoff(void)
 	} while (!(data & AFI_PCIE_PME_ACK));
 }
 
+static struct tegra_io_dpd pexbias_io = {
+	.name			= "PEX_BIAS",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 4,
+};
+static struct tegra_io_dpd pexclk1_io = {
+	.name			= "PEX_CLK1",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 5,
+};
+static struct tegra_io_dpd pexclk2_io = {
+	.name			= "PEX_CLK2",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 6,
+};
 static int tegra_pcie_power_on(void)
 {
 	int err = 0;
@@ -1370,6 +1395,10 @@ static int tegra_pcie_power_on(void)
 	pm_runtime_get_sync(tegra_pcie.dev);
 
 	if (!tegra_platform_is_fpga()) {
+		/* disable PEX IOs DPD mode to turn on pcie */
+		tegra_io_dpd_disable(&pexbias_io);
+		tegra_io_dpd_disable(&pexclk1_io);
+		tegra_io_dpd_disable(&pexclk2_io);
 		err = tegra_pcie_enable_regulators();
 		if (err) {
 			pr_err("PCIE: Failed to enable regulators\n");
@@ -1414,6 +1443,8 @@ static int tegra_pcie_power_off(void)
 #endif
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_unmap_resources();
+	if (tegra_pcie.pcie_xclk)
+		clk_disable(tegra_pcie.pcie_xclk);
 	if (tegra_pcie.pll_e)
 		clk_disable_unprepare(tegra_pcie.pll_e);
 
@@ -1425,6 +1456,10 @@ static int tegra_pcie_power_off(void)
 		err = tegra_pcie_disable_regulators();
 		if (err)
 			goto err_exit;
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
 	}
 	pm_runtime_put(tegra_pcie.dev);
 
@@ -1571,7 +1606,7 @@ static void tegra_pcie_enable_rp_features(int index)
 
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
-	data |= (NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE);
+	data |= NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
 
 	/* enable PCIE mastering and accepting memory and IO requests */
@@ -1580,6 +1615,12 @@ static void tegra_pcie_enable_rp_features(int index)
 		PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED |
 		PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED);
 	rp_writel(data, NV_PCIE2_RP_DEV_CTRL, index);
+
+	/* LTSSM wait for DLLP to finish before entering L1 or L2/L3 */
+	/* to avoid truncating of PM mesgs resulting in reciever errors */
+	data = rp_readl(NV_PCIE2_RP_VEND_XP_BIST, index);
+	data |= PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE;
+	rp_writel(data, NV_PCIE2_RP_VEND_XP_BIST, index);
 }
 
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
@@ -1619,7 +1660,24 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
-static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
+static int tegra_pcie_scale_voltage(bool isGen2)
+{
+	unsigned long rate;
+	int err;
+
+	PR_FUNC_LINE;
+	if (isGen2) {
+		/* Scale up voltage for Gen2 speed */
+		rate = 500000000;
+	} else {
+		/* Scale down voltage for Gen1 speed */
+		rate = 250000000;
+	}
+	err = clk_set_rate(tegra_pcie.pcie_xclk, rate);
+	return err;
+}
+
+static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 {
 	u16 val, link_up_spd, link_dn_spd;
 	struct pci_dev *up_dev, *dn_dev;
@@ -1685,9 +1743,34 @@ static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 	val |= RP_LINK_CONTROL_STATUS_RETRAIN_LINK;
 	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL, val);
 
+	return true;
 skip:
-	return 0;
+	return false;
 }
+
+bool tegra_pcie_link_speed(bool isGen2)
+{
+	struct pci_dev *pdev = NULL;
+	bool ret = false;
+
+	PR_FUNC_LINE;
+	/* Voltage scaling should happen before any device transition */
+	/* to Gen2 or after all devices has transitioned to Gen1 */
+	if (isGen2)
+		if (tegra_pcie_scale_voltage(isGen2))
+			return ret;
+
+	for_each_pci_dev(pdev) {
+		if (tegra_pcie_change_link_speed(pdev, isGen2))
+			ret = true;
+	}
+	if (!isGen2)
+		if (tegra_pcie_scale_voltage(isGen2))
+			ret = false;
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra_pcie_link_speed);
 
 static void tegra_pcie_enable_aspm_support(void)
 {
@@ -1709,12 +1792,10 @@ static void tegra_pcie_enable_aspm_support(void)
 
 static void tegra_pcie_enable_features(void)
 {
-	struct pci_dev *pdev = NULL;
-
 	PR_FUNC_LINE;
 	/* configure all links to gen2 speed by default */
-	for_each_pci_dev(pdev)
-		tegra_pcie_change_link_speed(pdev, true);
+	if (!tegra_pcie_link_speed(true))
+		pr_info("PCIE: Link speed change failed\n");
 
 	/* Enable ASPM support of all devices based on it's capability */
 	tegra_pcie_enable_aspm_support();

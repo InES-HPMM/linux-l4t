@@ -62,6 +62,7 @@
 #include <asm/tlbflush.h>
 #include <asm/suspend.h>
 #include <asm/smp_plat.h>
+#include <asm/rodata.h>
 
 #include <mach/irqs.h>
 
@@ -2022,9 +2023,9 @@ static u32 tsc_suspend_start;
 static u32 tsc_resume_start;
 
 #define pmc_writel(value, reg) \
-		writel(value, (uintptr_t)pmc + (reg))
+		writel(value, pmc + (reg))
 #define pmc_readl(reg) \
-		readl((uintptr_t)pmc + (reg))
+		readl(pmc + (reg))
 
 #define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
@@ -2146,4 +2147,11 @@ static int __init tegra_pm_core_debug_init(void)
 }
 
 late_initcall(tegra_pm_core_debug_init);
+#endif
+
+#ifdef CONFIG_DEBUG_RODATA
+void set_platform_text_rw(void)
+{
+	set_memory_rw((unsigned long)tegra_generic_smc, 1);
+}
 #endif

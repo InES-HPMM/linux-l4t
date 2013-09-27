@@ -1094,7 +1094,7 @@ static int imx132_power_get(struct imx132_info *info)
 	struct imx132_power_rail *pw = &info->power;
 
 	imx132_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
-	imx132_regulator_get(info, &pw->avdd, "vana"); /* analog 2.7v */
+	imx132_regulator_get(info, &pw->avdd, "vana_imx132"); /* analog 2.7v */
 	imx132_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
 
 	return 0;

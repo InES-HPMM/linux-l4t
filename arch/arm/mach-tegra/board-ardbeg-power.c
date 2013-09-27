@@ -39,6 +39,7 @@
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2471x-charger.h>
+#include <linux/power/bq2477x-charger.h>
 
 #include <asm/mach-types.h>
 #include <mach/tegra_fuse.h>
@@ -445,7 +446,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 
 PALMAS_REGS_PDATA(ti913_smps123, 700, 1400, NULL, 0, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ti913_smps45, 900, 1400, NULL, 1, 1, 1, NORMAL,
+PALMAS_REGS_PDATA(ti913_smps45, 700, 1400, NULL, 1, 1, 1, NORMAL,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_smps6, 1800, 1800, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
@@ -667,6 +668,22 @@ static struct i2c_board_info __initdata bq2471x_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("bq2471x", 0x09),
 		.platform_data	= &ardbeg_bq2471x_pdata,
+	},
+};
+
+struct bq2477x_platform_data ardbeg_bq2477x_pdata = {
+	.dac_ichg		= 2240,
+	.dac_v			= 9008,
+	.dac_minsv		= 4608,
+	.dac_iin		= 4992,
+	.wdt_refresh_timeout	= 40,
+	.gpio			= TEGRA_GPIO_PK5,
+};
+
+static struct i2c_board_info __initdata bq2477x_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("bq2477x", 0x6A),
+		.platform_data	= &ardbeg_bq2477x_pdata,
 	},
 };
 
@@ -1094,6 +1111,46 @@ static struct tegra_cl_dvfs_platform_data e1733_cl_dvfs_data = {
 	.cfg_param = &e1733_ardbeg_cl_dvfs_param,
 };
 
+static struct tegra_cl_dvfs_cfg_param e1736_ardbeg_cl_dvfs_param = {
+	.sample_rate = 12500, /* i2c freq */
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* E1736 volatge map. Fixed 10mv steps from 700mv to 1400mv */
+#define E1736_CPU_VDD_MAP_SIZE ((1400000 - 700000) / 10000 + 1)
+static struct voltage_reg_map e1736_cpu_vdd_map[E1736_CPU_VDD_MAP_SIZE];
+static inline void e1736_fill_reg_map(void)
+{
+	int i;
+	for (i = 0; i < E1736_CPU_VDD_MAP_SIZE; i++) {
+		/* 0.7V corresponds to 0b0011010 = 26 */
+		/* 1.4V corresponds to 0b1100000 = 96 */
+		e1736_cpu_vdd_map[i].reg_value = i + 26;
+		e1736_cpu_vdd_map[i].reg_uV = 700000 + 10000 * i;
+	}
+}
+
+static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
+	.u.pmu_i2c = {
+		.fs_rate = 400000,
+		.slave_addr = 0xb0, /* pmu i2c address */
+		.reg = 0x23,        /* vdd_cpu rail reg address */
+	},
+	.vdd_map = e1736_cpu_vdd_map,
+	.vdd_map_size = E1736_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &e1736_ardbeg_cl_dvfs_param,
+};
 static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
@@ -1118,6 +1175,11 @@ static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 	if (pmu_board_id == BOARD_E1733) {
 		e1733_fill_reg_map();
 		data = &e1733_cl_dvfs_data;
+	}
+
+	if (pmu_board_id == BOARD_E1736) {
+		e1736_fill_reg_map();
+		data = &e1736_cl_dvfs_data;
 	}
 
 	if (data) {
@@ -1163,15 +1225,19 @@ int __init ardbeg_regulator_init(void)
 		ardbeg_tps65913_regulator_init();
 	} else if (pmu_board_info.board_id == BOARD_E1736) {
 		tn8_regulator_init();
+		ardbeg_cl_dvfs_init(pmu_board_info.board_id);
 		return tn8_fixed_regulator_init();
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);
 	}
 
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
 		i2c_register_board_info(1, bq2471x_boardinfo,
 			ARRAY_SIZE(bq2471x_boardinfo));
+		i2c_register_board_info(1, bq2477x_boardinfo,
+			ARRAY_SIZE(bq2477x_boardinfo));
+	}
 
 	platform_device_register(&power_supply_extcon_device);
 

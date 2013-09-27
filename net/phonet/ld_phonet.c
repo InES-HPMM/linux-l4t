@@ -322,7 +322,6 @@ static void ld_phonet_ldisc_initiate_transfer \
 
 	struct sk_buff *skb = NULL;
 	unsigned int msglen = 0;
-	int i = 0;
 
 	struct phonethdr *ph = NULL;
 

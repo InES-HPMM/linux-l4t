@@ -18,6 +18,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/err.h>
 
 #include <linux/tegra_profiler.h>
 
@@ -32,6 +33,7 @@
 #include "power_clk.h"
 #include "auth.h"
 #include "version.h"
+#include "quadd_proc.h"
 
 static struct quadd_ctx ctx;
 
@@ -428,9 +430,9 @@ static int __init quadd_module_init(void)
 	}
 
 	ctx.mmap = quadd_mmap_init(&ctx);
-	if (!ctx.mmap) {
+	if (IS_ERR(ctx.mmap)) {
 		pr_err("error: MMAP init failed\n");
-		return -ENODEV;
+		return PTR_ERR(ctx.mmap);
 	}
 
 	err = quadd_power_clk_init(&ctx);
@@ -451,6 +453,9 @@ static int __init quadd_module_init(void)
 		return err;
 	}
 
+	get_capabilities(&ctx.cap);
+	quadd_proc_init(&ctx);
+
 	return 0;
 }
 
@@ -463,6 +468,7 @@ static void __exit quadd_module_exit(void)
 	quadd_power_clk_deinit();
 	quadd_comm_events_exit();
 	quadd_auth_deinit();
+	quadd_proc_deinit();
 }
 
 module_init(quadd_module_init);

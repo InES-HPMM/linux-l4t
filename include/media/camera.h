@@ -158,14 +158,29 @@ struct cam_update {
 	u32 size;
 };
 
+enum {
+	DEVICE_SENSOR,
+	DEVICE_FOCUSER,
+	DEVICE_FLASH,
+	DEVICE_ROM,
+	DEVICE_OTHER,
+	DEVICE_OTHER2,
+	DEVICE_OTHER3,
+	DEVICE_OTHER4,
+	DEVICE_MAX_NUM,
+};
+
 struct cam_device_layout {
 	__u64 guid;
 	__u8 name[CAMERA_MAX_NAME_LENGTH];
+	__u8 type;
 	__u8 alt_name[CAMERA_MAX_NAME_LENGTH];
-	__u8 is_front;
+	__u8 pos;
 	__u8 bus;
 	__u8 addr;
 	__u8 addr_byte;
+	__u32 dev_id;
+	__u32 index;
 	__u32 reserved1;
 	__u32 reserved2;
 };

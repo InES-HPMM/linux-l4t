@@ -4332,6 +4332,51 @@ static int nvi_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int of_nvi_parse_platform_data(struct i2c_client *client,
+				struct mpu_platform_data *pdata)
+{
+	struct device_node *np = client->dev.of_node;
+	char const *pchar;
+	u32 tmp;
+	int len;
+
+	if (!pdata) {
+		dev_err(&client->dev, "Platform data hasn't been allocated\n");
+		return -EINVAL;
+	}
+
+	if (!of_property_read_u32_array(np, "invensense,int_config", &tmp, 1))
+		pdata->int_config = (u8)tmp;
+	else
+		dev_err(&client->dev, "Can't read int_config property\n");
+
+	if (!of_property_read_u32_array(np, "invensense,level_shifter",
+							&tmp, 1))
+		pdata->level_shifter = (u8)tmp;
+	else
+		dev_err(&client->dev, "Can't read level_shifter property\n");
+
+	pchar = of_get_property(np, "invensense,orientation", &len);
+	if (pchar && len == sizeof(pdata->orientation))
+		memcpy(pdata->orientation, pchar, len);
+	else
+		dev_err(&client->dev, "Can't read orientation property\n");
+
+	if (!of_property_read_u32_array(np, "invensense,sec_slave_type",
+							&tmp, 1))
+		pdata->sec_slave_type = (enum secondary_slave_type)tmp;
+	else
+		dev_err(&client->dev, "Can't read sec_slave_type property\n");
+
+	pchar = of_get_property(np, "invensense,key", &len);
+	if (pchar && len == sizeof(pdata->key))
+		memcpy(pdata->key, pchar, len);
+	else
+		dev_err(&client->dev, "Can't read key property\n");
+
+	return 0;
+}
+
 static int nvi_probe(struct i2c_client *client,
 		     const struct i2c_device_id *id)
 {
@@ -4357,7 +4402,13 @@ static int nvi_probe(struct i2c_client *client,
 	st->reg = (struct inv_reg_map_s *)&chip_reg ;
 	st->hw_s = (struct inv_hw_s *)hw_info;
 	st->i2c_addr = client->addr;
-	st->plat_data =
+
+	if (client->dev.of_node) {
+		result = of_nvi_parse_platform_data(client, &st->plat_data);
+		if (result)
+			goto out_free;
+	} else
+		st->plat_data =
 		   *(struct mpu_platform_data *)dev_get_platdata(&client->dev);
 
 	result = nvi_dev_init(st, id);
@@ -4426,6 +4477,21 @@ static struct i2c_device_id nvi_mpu_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, nvi_mpu_id);
 
+#ifdef CONFIG_OF
+static const struct of_device_id nvi_mpu_of_match[] = {
+	{ .compatible = "invensense,itg3500", },
+	{ .compatible = "invensense,mpu3050", },
+	{ .compatible = "invensense,mpu6050", },
+	{ .compatible = "invensense,mpu9150", },
+	{ .compatible = "invensense,mpu6500", },
+	{ .compatible = "invensense,mpu9250", },
+	{ .compatible = "invensense,mpu6xxx", },
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, nvi_mpu_of_match);
+#endif
+
 static struct i2c_driver inv_mod_driver = {
 	.class = I2C_CLASS_HWMON,
 	.probe		=	nvi_probe,
@@ -4434,6 +4500,7 @@ static struct i2c_driver inv_mod_driver = {
 	.driver = {
 		.owner	=	THIS_MODULE,
 		.name	=	"inv_dev",
+		.of_match_table = of_match_ptr(nvi_mpu_of_match),
 #ifdef CONFIG_PM
 		.pm	=	&nvi_pm_ops,
 #endif

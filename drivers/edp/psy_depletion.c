@@ -289,7 +289,25 @@ static int capacity_get(void *data, u64 *val)
 	return 0;
 }
 
+static int vsysmin_set(void *data, u64 val)
+{
+	struct depl_driver *drv = data;
+
+	drv->pdata->vsys_min = val;
+	flush_delayed_work_sync(&drv->work);
+
+	return 0;
+}
+
+static int vsysmin_get(void *data, u64 *val)
+{
+	struct depl_driver *drv = data;
+	*val = drv->pdata->vsys_min;
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(capacity_fops, capacity_get, capacity_set, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(vsysmin_fops, vsysmin_get, vsysmin_set, "%lld\n");
 
 static void init_debug(struct depl_driver *drv)
 {
@@ -299,6 +317,13 @@ static void init_debug(struct depl_driver *drv)
 		WARN_ON(1);
 		return;
 	}
+
+	d = debugfs_create_file("vsys_min", S_IRUGO | S_IWUSR,
+			drv->client.dentry, drv, &vsysmin_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
+
+	if (!drv->emulator_mode)
+		return;
 
 	d = debugfs_create_file("capacity", S_IRUGO | S_IWUSR,
 			drv->client.dentry, drv, &capacity_fops);
@@ -362,8 +387,7 @@ static int depl_probe(struct platform_device *pdev)
 	INIT_DEFERRABLE_WORK(&drv->work, depl_update);
 	schedule_delayed_work(&drv->work, 0);
 
-	if (drv->emulator_mode)
-		init_debug(drv);
+	init_debug(drv);
 
 	return 0;
 

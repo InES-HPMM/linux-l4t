@@ -1,22 +1,27 @@
 /**
  * @file mlan_misc.c
  *
- *  @brief This file include miscellaneous functions for MLAN module
+ *  @brief This file include Miscellaneous functions for MLAN module
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /*************************************************************
@@ -373,246 +378,233 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 	pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	mlan_ds_get_info *info;
+	mlan_debug_info *debug_info = MNULL;
 	t_u8 *ptid;
 
 	ENTER();
 
 	info = (mlan_ds_get_info *) pioctl_req->pbuf;
+	debug_info = (mlan_debug_info *) info->param.debug_info;
 
 	if (pioctl_req->action == MLAN_ACT_SET) {
 		pmadapter->max_tx_buf_size =
-			(t_u16) info->param.debug_info.max_tx_buf_size;
-		pmadapter->tx_buf_size =
-			(t_u16) info->param.debug_info.tx_buf_size;
+			(t_u16) debug_info->max_tx_buf_size;
+		pmadapter->tx_buf_size = (t_u16) debug_info->tx_buf_size;
 		pmadapter->curr_tx_buf_size =
-			(t_u16) info->param.debug_info.curr_tx_buf_size;
-		pmadapter->ps_mode = info->param.debug_info.ps_mode;
-		pmadapter->ps_state = info->param.debug_info.ps_state;
+			(t_u16) debug_info->curr_tx_buf_size;
+		pmadapter->ps_mode = debug_info->ps_mode;
+		pmadapter->ps_state = debug_info->ps_state;
 #ifdef STA_SUPPORT
-		pmadapter->is_deep_sleep = info->param.debug_info.is_deep_sleep;
+		pmadapter->is_deep_sleep = debug_info->is_deep_sleep;
 #endif /* STA_SUPPORT */
-		pmadapter->pm_wakeup_card_req =
-			info->param.debug_info.pm_wakeup_card_req;
-		pmadapter->pm_wakeup_fw_try =
-			info->param.debug_info.pm_wakeup_fw_try;
-		pmadapter->pm_wakeup_in_secs =
-			info->param.debug_info.pm_wakeup_in_secs;
-		pmadapter->is_hs_configured =
-			info->param.debug_info.is_hs_configured;
-		pmadapter->hs_activated = info->param.debug_info.hs_activated;
-		pmadapter->pps_uapsd_mode =
-			info->param.debug_info.pps_uapsd_mode;
-		pmadapter->sleep_period.period =
-			info->param.debug_info.sleep_pd;
-		pmpriv->wmm_qosinfo = info->param.debug_info.qos_cfg;
-		pmadapter->tx_lock_flag = info->param.debug_info.tx_lock_flag;
-		pmpriv->port_open = info->param.debug_info.port_open;
-		pmadapter->bypass_pkt_count =
-			info->param.debug_info.bypass_pkt_count;
-		pmadapter->scan_processing =
-			info->param.debug_info.scan_processing;
+		pmadapter->pm_wakeup_card_req = debug_info->pm_wakeup_card_req;
+		pmadapter->pm_wakeup_fw_try = debug_info->pm_wakeup_fw_try;
+		pmadapter->pm_wakeup_in_secs = debug_info->pm_wakeup_in_secs;
+		pmadapter->is_hs_configured = debug_info->is_hs_configured;
+		pmadapter->hs_activated = debug_info->hs_activated;
+		pmadapter->pps_uapsd_mode = debug_info->pps_uapsd_mode;
+		pmadapter->sleep_period.period = debug_info->sleep_pd;
+		pmpriv->wmm_qosinfo = debug_info->qos_cfg;
+		pmadapter->tx_lock_flag = debug_info->tx_lock_flag;
+		pmpriv->port_open = debug_info->port_open;
+		pmadapter->bypass_pkt_count = debug_info->bypass_pkt_count;
+		pmadapter->scan_processing = debug_info->scan_processing;
 		pmadapter->dbg.num_cmd_host_to_card_failure =
-			info->param.debug_info.num_cmd_host_to_card_failure;
+			debug_info->num_cmd_host_to_card_failure;
 		pmadapter->dbg.num_cmd_sleep_cfm_host_to_card_failure =
-			info->param.debug_info.
-			num_cmd_sleep_cfm_host_to_card_failure;
+			debug_info->num_cmd_sleep_cfm_host_to_card_failure;
 		pmadapter->dbg.num_tx_host_to_card_failure =
-			info->param.debug_info.num_tx_host_to_card_failure;
+			debug_info->num_tx_host_to_card_failure;
 		pmadapter->dbg.num_cmdevt_card_to_host_failure =
-			info->param.debug_info.num_cmdevt_card_to_host_failure;
+			debug_info->num_cmdevt_card_to_host_failure;
 		pmadapter->dbg.num_rx_card_to_host_failure =
-			info->param.debug_info.num_rx_card_to_host_failure;
+			debug_info->num_rx_card_to_host_failure;
 		pmadapter->dbg.num_int_read_failure =
-			info->param.debug_info.num_int_read_failure;
-		pmadapter->dbg.last_int_status =
-			info->param.debug_info.last_int_status;
-		pmadapter->dbg.num_event_deauth =
-			info->param.debug_info.num_event_deauth;
+			debug_info->num_int_read_failure;
+		pmadapter->dbg.last_int_status = debug_info->last_int_status;
+		pmadapter->dbg.num_event_deauth = debug_info->num_event_deauth;
 		pmadapter->dbg.num_event_disassoc =
-			info->param.debug_info.num_event_disassoc;
+			debug_info->num_event_disassoc;
 		pmadapter->dbg.num_event_link_lost =
-			info->param.debug_info.num_event_link_lost;
-		pmadapter->dbg.num_cmd_deauth =
-			info->param.debug_info.num_cmd_deauth;
+			debug_info->num_event_link_lost;
+		pmadapter->dbg.num_cmd_deauth = debug_info->num_cmd_deauth;
 		pmadapter->dbg.num_cmd_assoc_success =
-			info->param.debug_info.num_cmd_assoc_success;
+			debug_info->num_cmd_assoc_success;
 		pmadapter->dbg.num_cmd_assoc_failure =
-			info->param.debug_info.num_cmd_assoc_failure;
-		pmadapter->dbg.num_tx_timeout =
-			info->param.debug_info.num_tx_timeout;
-		pmadapter->dbg.num_cmd_timeout =
-			info->param.debug_info.num_cmd_timeout;
-		pmadapter->dbg.timeout_cmd_id =
-			info->param.debug_info.timeout_cmd_id;
-		pmadapter->dbg.timeout_cmd_act =
-			info->param.debug_info.timeout_cmd_act;
+			debug_info->num_cmd_assoc_failure;
+		pmadapter->dbg.num_tx_timeout = debug_info->num_tx_timeout;
+		pmadapter->dbg.num_cmd_timeout = debug_info->num_cmd_timeout;
+		pmadapter->dbg.timeout_cmd_id = debug_info->timeout_cmd_id;
+		pmadapter->dbg.timeout_cmd_act = debug_info->timeout_cmd_act;
 		memcpy(pmadapter, pmadapter->dbg.last_cmd_id,
-		       info->param.debug_info.last_cmd_id,
+		       debug_info->last_cmd_id,
 		       sizeof(pmadapter->dbg.last_cmd_id));
 		memcpy(pmadapter, pmadapter->dbg.last_cmd_act,
-		       info->param.debug_info.last_cmd_act,
+		       debug_info->last_cmd_act,
 		       sizeof(pmadapter->dbg.last_cmd_act));
-		pmadapter->dbg.last_cmd_index =
-			info->param.debug_info.last_cmd_index;
+		pmadapter->dbg.last_cmd_index = debug_info->last_cmd_index;
 		memcpy(pmadapter, pmadapter->dbg.last_cmd_resp_id,
-		       info->param.debug_info.last_cmd_resp_id,
+		       debug_info->last_cmd_resp_id,
 		       sizeof(pmadapter->dbg.last_cmd_resp_id));
 		pmadapter->dbg.last_cmd_resp_index =
-			info->param.debug_info.last_cmd_resp_index;
+			debug_info->last_cmd_resp_index;
 		memcpy(pmadapter, pmadapter->dbg.last_event,
-		       info->param.debug_info.last_event,
+		       debug_info->last_event,
 		       sizeof(pmadapter->dbg.last_event));
-		pmadapter->dbg.last_event_index =
-			info->param.debug_info.last_event_index;
-		pmadapter->dbg.num_no_cmd_node =
-			info->param.debug_info.num_no_cmd_node;
-
-		pmadapter->data_sent = info->param.debug_info.data_sent;
-		pmadapter->cmd_sent = info->param.debug_info.cmd_sent;
-		pmadapter->mp_rd_bitmap = info->param.debug_info.mp_rd_bitmap;
-		pmadapter->mp_wr_bitmap = info->param.debug_info.mp_wr_bitmap;
-		pmadapter->curr_rd_port = info->param.debug_info.curr_rd_port;
-		pmadapter->curr_wr_port = info->param.debug_info.curr_wr_port;
-		pmadapter->cmd_resp_received =
-			info->param.debug_info.cmd_resp_received;
+		pmadapter->dbg.last_event_index = debug_info->last_event_index;
+		pmadapter->dbg.num_no_cmd_node = debug_info->num_no_cmd_node;
+		pmadapter->dnld_cmd_in_secs = debug_info->dnld_cmd_in_secs;
+		pmadapter->data_sent = debug_info->data_sent;
+		pmadapter->cmd_sent = debug_info->cmd_sent;
+		pmadapter->mp_rd_bitmap = debug_info->mp_rd_bitmap;
+		pmadapter->mp_wr_bitmap = debug_info->mp_wr_bitmap;
+		pmadapter->curr_rd_port = debug_info->curr_rd_port;
+		pmadapter->curr_wr_port = debug_info->curr_wr_port;
+		pmadapter->cmd_resp_received = debug_info->cmd_resp_received;
 #ifdef UAP_SUPPORT
-		pmadapter->pending_bridge_pkts =
-			info->param.debug_info.num_bridge_pkts;
-		pmpriv->num_drop_pkts = info->param.debug_info.num_drop_pkts;
+		pmadapter->pending_bridge_pkts = debug_info->num_bridge_pkts;
+		pmpriv->num_drop_pkts = debug_info->num_drop_pkts;
 #endif
-		pmadapter->mlan_processing =
-			info->param.debug_info.mlan_processing;
-		pmadapter->mlan_rx_processing =
-			info->param.debug_info.mlan_rx_processing;
+		pmadapter->mlan_processing = debug_info->mlan_processing;
+		pmadapter->mlan_rx_processing = debug_info->mlan_rx_processing;
 	} else {		/* MLAN_ACT_GET */
 		ptid = ac_to_tid[WMM_AC_BK];
-		info->param.debug_info.wmm_ac_bk =
+		debug_info->wmm_ac_bk =
 			pmpriv->wmm.packets_out[ptid[0]] +
 			pmpriv->wmm.packets_out[ptid[1]];
 		ptid = ac_to_tid[WMM_AC_BE];
-		info->param.debug_info.wmm_ac_be =
+		debug_info->wmm_ac_be =
 			pmpriv->wmm.packets_out[ptid[0]] +
 			pmpriv->wmm.packets_out[ptid[1]];
 		ptid = ac_to_tid[WMM_AC_VI];
-		info->param.debug_info.wmm_ac_vi =
+		debug_info->wmm_ac_vi =
 			pmpriv->wmm.packets_out[ptid[0]] +
 			pmpriv->wmm.packets_out[ptid[1]];
 		ptid = ac_to_tid[WMM_AC_VO];
-		info->param.debug_info.wmm_ac_vo =
+		debug_info->wmm_ac_vo =
 			pmpriv->wmm.packets_out[ptid[0]] +
 			pmpriv->wmm.packets_out[ptid[1]];
-		info->param.debug_info.max_tx_buf_size =
+		debug_info->max_tx_buf_size =
 			(t_u32) pmadapter->max_tx_buf_size;
-		info->param.debug_info.tx_buf_size =
-			(t_u32) pmadapter->tx_buf_size;
-		info->param.debug_info.curr_tx_buf_size =
+		debug_info->tx_buf_size = (t_u32) pmadapter->tx_buf_size;
+		debug_info->curr_tx_buf_size =
 			(t_u32) pmadapter->curr_tx_buf_size;
-		info->param.debug_info.rx_tbl_num =
-			wlan_get_rxreorder_tbl(pmpriv,
-					       info->param.debug_info.rx_tbl);
-		info->param.debug_info.tx_tbl_num =
-			wlan_get_txbastream_tbl(pmpriv,
-						info->param.debug_info.tx_tbl);
-		info->param.debug_info.ps_mode = pmadapter->ps_mode;
-		info->param.debug_info.ps_state = pmadapter->ps_state;
+		debug_info->rx_tbl_num =
+			wlan_get_rxreorder_tbl(pmpriv, debug_info->rx_tbl);
+		debug_info->tx_tbl_num =
+			wlan_get_txbastream_tbl(pmpriv, debug_info->tx_tbl);
+		debug_info->ps_mode = pmadapter->ps_mode;
+		debug_info->ps_state = pmadapter->ps_state;
 #ifdef STA_SUPPORT
-		info->param.debug_info.is_deep_sleep = pmadapter->is_deep_sleep;
+		debug_info->is_deep_sleep = pmadapter->is_deep_sleep;
 #endif /* STA_SUPPORT */
-		info->param.debug_info.pm_wakeup_card_req =
-			pmadapter->pm_wakeup_card_req;
-		info->param.debug_info.pm_wakeup_fw_try =
-			pmadapter->pm_wakeup_fw_try;
-		info->param.debug_info.pm_wakeup_in_secs =
-			pmadapter->pm_wakeup_in_secs;
-		info->param.debug_info.is_hs_configured =
-			pmadapter->is_hs_configured;
-		info->param.debug_info.hs_activated = pmadapter->hs_activated;
-		info->param.debug_info.pps_uapsd_mode =
-			pmadapter->pps_uapsd_mode;
-		info->param.debug_info.sleep_pd =
-			pmadapter->sleep_period.period;
-		info->param.debug_info.qos_cfg = pmpriv->wmm_qosinfo;
-		info->param.debug_info.tx_lock_flag = pmadapter->tx_lock_flag;
-		info->param.debug_info.port_open = pmpriv->port_open;
-		info->param.debug_info.bypass_pkt_count =
-			pmadapter->bypass_pkt_count;
-		info->param.debug_info.scan_processing =
-			pmadapter->scan_processing;
-		info->param.debug_info.num_cmd_host_to_card_failure =
-			pmadapter->dbg.num_cmd_host_to_card_failure;
-		info->param.debug_info.num_cmd_sleep_cfm_host_to_card_failure =
-			pmadapter->dbg.num_cmd_sleep_cfm_host_to_card_failure;
-		info->param.debug_info.num_tx_host_to_card_failure =
-			pmadapter->dbg.num_tx_host_to_card_failure;
-		info->param.debug_info.num_cmdevt_card_to_host_failure =
-			pmadapter->dbg.num_cmdevt_card_to_host_failure;
-		info->param.debug_info.num_rx_card_to_host_failure =
-			pmadapter->dbg.num_rx_card_to_host_failure;
-		info->param.debug_info.num_int_read_failure =
+		debug_info->pm_wakeup_card_req = pmadapter->pm_wakeup_card_req;
+		debug_info->pm_wakeup_fw_try = pmadapter->pm_wakeup_fw_try;
+		debug_info->pm_wakeup_in_secs = pmadapter->pm_wakeup_in_secs;
+		debug_info->is_hs_configured = pmadapter->is_hs_configured;
+		debug_info->hs_activated = pmadapter->hs_activated;
+		debug_info->pps_uapsd_mode = pmadapter->pps_uapsd_mode;
+		debug_info->sleep_pd = pmadapter->sleep_period.period;
+		debug_info->qos_cfg = pmpriv->wmm_qosinfo;
+		debug_info->tx_lock_flag = pmadapter->tx_lock_flag;
+		debug_info->port_open = pmpriv->port_open;
+		debug_info->bypass_pkt_count = pmadapter->bypass_pkt_count;
+		debug_info->scan_processing = pmadapter->scan_processing;
+		debug_info->num_cmd_host_to_card_failure
+			= pmadapter->dbg.num_cmd_host_to_card_failure;
+		debug_info->num_cmd_sleep_cfm_host_to_card_failure
+			= pmadapter->dbg.num_cmd_sleep_cfm_host_to_card_failure;
+		debug_info->num_tx_host_to_card_failure
+			= pmadapter->dbg.num_tx_host_to_card_failure;
+		debug_info->num_cmdevt_card_to_host_failure
+			= pmadapter->dbg.num_cmdevt_card_to_host_failure;
+		debug_info->num_rx_card_to_host_failure
+			= pmadapter->dbg.num_rx_card_to_host_failure;
+		debug_info->num_int_read_failure =
 			pmadapter->dbg.num_int_read_failure;
-		info->param.debug_info.last_int_status =
-			pmadapter->dbg.last_int_status;
-		info->param.debug_info.num_event_deauth =
-			pmadapter->dbg.num_event_deauth;
-		info->param.debug_info.num_event_disassoc =
+		debug_info->last_int_status = pmadapter->dbg.last_int_status;
+		debug_info->num_event_deauth = pmadapter->dbg.num_event_deauth;
+		debug_info->num_event_disassoc =
 			pmadapter->dbg.num_event_disassoc;
-		info->param.debug_info.num_event_link_lost =
+		debug_info->num_event_link_lost =
 			pmadapter->dbg.num_event_link_lost;
-		info->param.debug_info.num_cmd_deauth =
-			pmadapter->dbg.num_cmd_deauth;
-		info->param.debug_info.num_cmd_assoc_success =
+		debug_info->num_cmd_deauth = pmadapter->dbg.num_cmd_deauth;
+		debug_info->num_cmd_assoc_success =
 			pmadapter->dbg.num_cmd_assoc_success;
-		info->param.debug_info.num_cmd_assoc_failure =
+		debug_info->num_cmd_assoc_failure =
 			pmadapter->dbg.num_cmd_assoc_failure;
-		info->param.debug_info.num_tx_timeout =
-			pmadapter->dbg.num_tx_timeout;
-		info->param.debug_info.num_cmd_timeout =
-			pmadapter->dbg.num_cmd_timeout;
-		info->param.debug_info.timeout_cmd_id =
-			pmadapter->dbg.timeout_cmd_id;
-		info->param.debug_info.timeout_cmd_act =
-			pmadapter->dbg.timeout_cmd_act;
-		memcpy(pmadapter, info->param.debug_info.last_cmd_id,
+		debug_info->num_tx_timeout = pmadapter->dbg.num_tx_timeout;
+		debug_info->num_cmd_timeout = pmadapter->dbg.num_cmd_timeout;
+		debug_info->timeout_cmd_id = pmadapter->dbg.timeout_cmd_id;
+		debug_info->timeout_cmd_act = pmadapter->dbg.timeout_cmd_act;
+		memcpy(pmadapter, debug_info->last_cmd_id,
 		       pmadapter->dbg.last_cmd_id,
 		       sizeof(pmadapter->dbg.last_cmd_id));
-		memcpy(pmadapter, info->param.debug_info.last_cmd_act,
+		memcpy(pmadapter, debug_info->last_cmd_act,
 		       pmadapter->dbg.last_cmd_act,
 		       sizeof(pmadapter->dbg.last_cmd_act));
-		info->param.debug_info.last_cmd_index =
-			pmadapter->dbg.last_cmd_index;
-		memcpy(pmadapter, info->param.debug_info.last_cmd_resp_id,
+		debug_info->last_cmd_index = pmadapter->dbg.last_cmd_index;
+		memcpy(pmadapter, debug_info->last_cmd_resp_id,
 		       pmadapter->dbg.last_cmd_resp_id,
 		       sizeof(pmadapter->dbg.last_cmd_resp_id));
-		info->param.debug_info.last_cmd_resp_index =
+		debug_info->last_cmd_resp_index =
 			pmadapter->dbg.last_cmd_resp_index;
-		memcpy(pmadapter, info->param.debug_info.last_event,
+		memcpy(pmadapter, debug_info->last_event,
 		       pmadapter->dbg.last_event,
 		       sizeof(pmadapter->dbg.last_event));
-		info->param.debug_info.last_event_index =
-			pmadapter->dbg.last_event_index;
-		info->param.debug_info.num_no_cmd_node =
-			pmadapter->dbg.num_no_cmd_node;
-		info->param.debug_info.mp_rd_bitmap = pmadapter->mp_rd_bitmap;
-		info->param.debug_info.mp_wr_bitmap = pmadapter->mp_wr_bitmap;
-		info->param.debug_info.curr_rd_port = pmadapter->curr_rd_port;
-		info->param.debug_info.curr_wr_port = pmadapter->curr_wr_port;
-		info->param.debug_info.data_sent = pmadapter->data_sent;
-		info->param.debug_info.cmd_sent = pmadapter->cmd_sent;
-		info->param.debug_info.cmd_resp_received =
-			pmadapter->cmd_resp_received;
-		info->param.debug_info.tx_pkts_queued =
+		debug_info->last_event_index = pmadapter->dbg.last_event_index;
+		debug_info->num_no_cmd_node = pmadapter->dbg.num_no_cmd_node;
+		debug_info->pending_cmd =
+			(pmadapter->curr_cmd) ? pmadapter->dbg.
+			last_cmd_id[pmadapter->dbg.last_cmd_index] : 0;
+		debug_info->dnld_cmd_in_secs = pmadapter->dnld_cmd_in_secs;
+		debug_info->mp_rd_bitmap = pmadapter->mp_rd_bitmap;
+		debug_info->mp_wr_bitmap = pmadapter->mp_wr_bitmap;
+		debug_info->curr_rd_port = pmadapter->curr_rd_port;
+		debug_info->curr_wr_port = pmadapter->curr_wr_port;
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+		memcpy(pmadapter, debug_info->mpa_tx_count,
+		       pmadapter->mpa_tx_count,
+		       sizeof(pmadapter->mpa_tx_count));
+		debug_info->mpa_sent_last_pkt = pmadapter->mpa_sent_last_pkt;
+		debug_info->mpa_sent_no_ports = pmadapter->mpa_sent_no_ports;
+		debug_info->last_recv_wr_bitmap =
+			pmadapter->last_recv_wr_bitmap;
+		debug_info->last_mp_index = pmadapter->last_mp_index;
+		memcpy(pmadapter, debug_info->last_mp_wr_bitmap,
+		       pmadapter->last_mp_wr_bitmap,
+		       sizeof(pmadapter->last_mp_wr_bitmap));
+		memcpy(pmadapter, debug_info->last_mp_wr_ports,
+		       pmadapter->last_mp_wr_ports,
+		       sizeof(pmadapter->last_mp_wr_ports));
+		memcpy(pmadapter, debug_info->last_mp_wr_len,
+		       pmadapter->last_mp_wr_len,
+		       sizeof(pmadapter->last_mp_wr_len));
+		memcpy(pmadapter, debug_info->last_mp_wr_info,
+		       pmadapter->last_mp_wr_info,
+		       sizeof(pmadapter->last_mp_wr_info));
+		memcpy(pmadapter, debug_info->last_curr_wr_port,
+		       pmadapter->last_curr_wr_port,
+		       sizeof(pmadapter->last_curr_wr_port));
+#endif
+#ifdef SDIO_MULTI_PORT_RX_AGGR
+		memcpy(pmadapter, debug_info->mpa_rx_count,
+		       pmadapter->mpa_rx_count,
+		       sizeof(pmadapter->mpa_rx_count));
+#endif
+		debug_info->data_sent = pmadapter->data_sent;
+		debug_info->cmd_sent = pmadapter->cmd_sent;
+		debug_info->cmd_resp_received = pmadapter->cmd_resp_received;
+		debug_info->tx_pkts_queued =
 			util_scalar_read(pmadapter->pmoal_handle,
 					 &pmpriv->wmm.tx_pkts_queued, MNULL,
 					 MNULL);
 #ifdef UAP_SUPPORT
-		info->param.debug_info.num_bridge_pkts =
-			pmadapter->pending_bridge_pkts;
-		info->param.debug_info.num_drop_pkts = pmpriv->num_drop_pkts;
+		debug_info->num_bridge_pkts = pmadapter->pending_bridge_pkts;
+		debug_info->num_drop_pkts = pmpriv->num_drop_pkts;
 #endif
-		info->param.debug_info.mlan_processing =
-			pmadapter->mlan_processing;
-		info->param.debug_info.mlan_rx_processing =
-			pmadapter->mlan_rx_processing;
+		debug_info->mlan_processing = pmadapter->mlan_processing;
+		debug_info->mlan_rx_processing = pmadapter->mlan_rx_processing;
 	}
 
 	pioctl_req->data_read_written =
@@ -2830,6 +2822,45 @@ wlan_radio_ioctl_remain_chan_cfg(IN pmlan_adapter pmadapter,
 			       0,
 			       (t_void *) pioctl_req,
 			       &radio_cfg->param.remain_chan);
+
+	if (ret == MLAN_STATUS_SUCCESS)
+		ret = MLAN_STATUS_PENDING;
+
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief Set/Get p2p config
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_SUCCESS --success, otherwise fail
+ */
+mlan_status
+wlan_misc_p2p_config(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_ds_misc_cfg *misc_cfg = MNULL;
+	t_u16 cmd_action = 0;
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+
+	ENTER();
+
+	misc_cfg = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+	if (pioctl_req->action == MLAN_ACT_SET)
+		cmd_action = HostCmd_ACT_GEN_SET;
+	else
+		cmd_action = HostCmd_ACT_GEN_GET;
+
+	/* Send request to firmware */
+	ret = wlan_prepare_cmd(pmpriv,
+			       HOST_CMD_P2P_PARAMS_CONFIG,
+			       cmd_action,
+			       0,
+			       (t_void *) pioctl_req,
+			       &misc_cfg->param.p2p_config);
 
 	if (ret == MLAN_STATUS_SUCCESS)
 		ret = MLAN_STATUS_PENDING;
