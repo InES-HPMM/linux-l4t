@@ -110,6 +110,7 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT_DURATION),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_EXTRA),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_WIDTH),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_BGBIAS_CTL0),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_ADJ),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_1),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_2),		\
@@ -365,6 +366,37 @@ static inline void ccfifo_writel(u32 val, unsigned long addr)
 	writel(addr, emc_base + EMC_CCFIFO_ADDR);
 }
 
+static inline u32 disable_power_features(u32 inreg)
+{
+	u32 mod_reg = inreg;
+	mod_reg &= ~(EMC_CFG_DYN_SREF);
+	mod_reg &= ~(EMC_CFG_DRAM_ACPD);
+	mod_reg &= ~(EMC_CFG_DRAM_CLKSTOP_SR);
+	mod_reg &= ~(EMC_CFG_DRAM_CLKSTOP_PD);
+	mod_reg &= ~(EMC_CFG_DSR_VTTGEN_DRV_EN);
+	return mod_reg;
+}
+
+static inline u32 emc_sel_dpd_ctrl_enabled(u32 inreg)
+{
+	if (dram_type == DRAM_TYPE_DDR3)
+		return inreg & (EMC_SEL_DPD_CTRL_DDR3_MASK);
+	else
+		return inreg & (EMC_SEL_DPD_CTRL_MASK);
+}
+
+static inline u32 disable_emc_sel_dpd_ctrl(u32 inreg)
+{
+	u32 mod_reg = inreg;
+	mod_reg &= ~(EMC_SEL_DPD_CTRL_DATA_SEL_DPD);
+	mod_reg &= ~(EMC_SEL_DPD_CTRL_ODT_SEL_DPD);
+	if (dram_type == DRAM_TYPE_DDR3)
+		mod_reg &= ~(EMC_SEL_DPD_CTRL_RESET_SEL_DPD);
+	mod_reg &= ~(EMC_SEL_DPD_CTRL_CA_SEL_DPD);
+	mod_reg &= ~(EMC_SEL_DPD_CTRL_CLK_SEL_DPD);
+	return mod_reg;
+}
+
 static int last_round_idx;
 static inline int get_start_idx(unsigned long rate)
 {
@@ -435,6 +467,27 @@ static inline bool dqs_preset(const struct tegra12_emc_table *next_timing,
 {
 	bool ret = false;
 	int data;
+	data = last_timing->burst_regs[EMC_BGBIAS_CTL0_INDEX];
+#define BGBIAS_SET(reg, bit, program_condition) \
+	do {						\
+		if (((next_timing->burst_regs[EMC_##reg##_INDEX] & \
+		(0x1<<EMC_##reg##_##bit##_SHIFT)) == \
+		(program_condition << EMC_##reg##_##bit##_SHIFT)) && \
+		(((data & (0x1<<EMC_##reg##_##bit##_SHIFT))) !=	 \
+			(program_condition << EMC_##reg##_##bit##_SHIFT))) { \
+				data = (data & \
+					~(0x1<<EMC_##reg##_##bit##_SHIFT)) | \
+					(program_condition << \
+						EMC_##reg##_##bit##_SHIFT); \
+						ret = 1;	\
+			}					\
+	} while (0)
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_RX, 0);
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_VTTGEN, 0);
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD, 0);
+	if (ret == 1)
+		emc_writel(data, EMC_BGBIAS_CTL0);
+
 #define DQS_SET(reg, bit)						\
 	do {						\
 		data = emc_readl(EMC_XM2DQSPADCTRL2); \
@@ -450,7 +503,6 @@ static inline bool dqs_preset(const struct tegra12_emc_table *next_timing,
 	} while (0)
 	DQS_SET(XM2DQSPADCTRL2, VREF);
 	DQS_SET(XM2DQSPADCTRL2, RX_FT_REC);
-
 	return ret;
 }
 
@@ -555,12 +607,12 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 {
 #ifndef EMULATE_CLOCK_SWITCH
 	int i, dll_change, pre_wait, ctt_term_changed;
-	bool dyn_sref_enabled, zcal_long;
-
+	bool cfg_pow_features_enabled, zcal_long;
+	u32 assert_var;
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
+	u32 sel_dpd_ctrl = emc_readl(EMC_SEL_DPD_CTRL);
 	u32 emc_cfg_2_reg = emc_readl(EMC_CFG_2);
-
-	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
+	cfg_pow_features_enabled = (emc_cfg_reg & EMC_CFG_PWR_MASK);
 	dll_change = get_dll_change(next_timing, last_timing);
 	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0) &&
 		(last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
@@ -568,18 +620,19 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	/* 1. clear clkchange_complete interrupts */
 	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
 
-
-	/* 1.5 On t124,  prelock the DLL - assuming the DLL is enabled. */
-	/* TODO: implement. */
-
 	/* 2. disable dynamic self-refresh and preset dqs vref, then wait for
 	   possible self-refresh entry/exit and/or dqs vref settled - waiting
 	   before the clock change decreases worst case change stall time */
 	pre_wait = 0;
-	if (dyn_sref_enabled) {
-		emc_cfg_reg &= ~EMC_CFG_DYN_SREF_ENABLE;
+	if (cfg_pow_features_enabled) {
+		emc_cfg_reg = disable_power_features(emc_cfg_reg);
 		emc_writel(emc_cfg_reg, EMC_CFG);
 		pre_wait = 5;		/* 5us+ for self-refresh entry/exit */
+	}
+	/* 2.1 disable sel_dpd_ctrl before starting clock change */
+	if (emc_sel_dpd_ctrl_enabled(sel_dpd_ctrl)) {
+		sel_dpd_ctrl = disable_emc_sel_dpd_ctrl(sel_dpd_ctrl);
+		emc_writel(sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
 	}
 
 	/* 2.5 check dq/dqs vref delay */
@@ -605,7 +658,6 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 		emc_timing_update();
 		udelay(pre_wait);
 	}
-
 	/* 3. disable auto-cal if vref mode is switching - removed */
 
 	/* 4. program burst shadow registers */
@@ -614,10 +666,9 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 			continue;
 		__raw_writel(next_timing->burst_regs[i], burst_reg_addr[i]);
 	}
-
-	emc_cfg_reg &= ~EMC_CFG_UPDATE_MASK;
-	emc_cfg_reg |= next_timing->emc_cfg & EMC_CFG_UPDATE_MASK;
-	emc_writel(emc_cfg_reg, EMC_CFG);
+	emc_cfg_reg = next_timing->emc_cfg;
+	emc_cfg_reg = disable_power_features(emc_cfg_reg);
+	ccfifo_writel(emc_cfg_reg, EMC_CFG);
 	wmb();
 	barrier();
 
@@ -627,7 +678,7 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 		overwrite_mrs_wait_cnt(next_timing, zcal_long);
 
 	/* 5.2 disable auto-refresh to save time after clock change */
-	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+	/* move to ccfifo in step 6.1 */
 
 	/* 5.3 post cfg_2 write and dis ob clock gate */
 	emc_cfg_2_reg = next_timing->emc_cfg_2;
@@ -635,25 +686,24 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	if (emc_cfg_2_reg & EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR)
 		emc_cfg_2_reg &= ~EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR;
 	ccfifo_writel(emc_cfg_2_reg, EMC_CFG_2);
-
-	/* 5.4 program sel_dpd */
-	ccfifo_writel(next_timing->emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
-
 	/* 6. turn Off dll and enter self-refresh on DDR3  */
 	if (dram_type == DRAM_TYPE_DDR3) {
 		if (dll_change == DLL_CHANGE_OFF)
 			ccfifo_writel(next_timing->emc_mode_1, EMC_EMRS);
+	}
+	/* 6.1, disable refresh controller using ccfifo  */
+	ccfifo_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+	if (dram_type == DRAM_TYPE_DDR3) {
 		ccfifo_writel(DRAM_BROADCAST(dram_dev_num) |
 			      EMC_SELF_REF_CMD_ENABLED, EMC_SELF_REF);
 	}
-
 	/* 7. flow control marker 2 */
 	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
 
 	/* 8. exit self-refresh on DDR3 */
 	if (dram_type == DRAM_TYPE_DDR3)
 		ccfifo_writel(DRAM_BROADCAST(dram_dev_num), EMC_SELF_REF);
-
+	ccfifo_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
 	/* 9. set dram mode registers */
 	set_dram_mode(next_timing, last_timing, dll_change);
 
@@ -666,7 +716,6 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 
 	/* 10.1 dummy write to RO register to remove stall after change */
 	ccfifo_writel(0, EMC_CCFIFO_STATUS);
-
 
 	/* 11.1 DIS_STP_OB_CLK_DURING_NON_WR ->0 */
 	if (next_timing->emc_cfg_2 & EMC_CFG_2_DIS_STP_OB_CLK_DURING_NON_WR) {
@@ -686,9 +735,6 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	   change EMC clock source register wait for clk change completion */
 	do_clock_change(clk_setting);
 
-	/* 14.1 re-enable auto-refresh */
-	emc_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
-
 	/* 14.2 program burst_up_down registers if emc rate is going up */
 	if (next_timing->rate > last_timing->rate) {
 		for (i = 0; i < next_timing->burst_up_down_regs_num; i++)
@@ -703,8 +749,8 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 			EMC_AUTO_CAL_INTERVAL);
 
 	/* 16. restore dynamic self-refresh */
-	if (next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
-		emc_cfg_reg |= EMC_CFG_DYN_SREF_ENABLE;
+	if (next_timing->emc_cfg & EMC_CFG_PWR_MASK) {
+		emc_cfg_reg = next_timing->emc_cfg;
 		emc_writel(emc_cfg_reg, EMC_CFG);
 	}
 
@@ -712,13 +758,18 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
 	/* 18. update restored timing */
-	udelay(2);
+	udelay(4);
+	/* 18.1. program sel_dpd at end so if any enabling needs to happen.*/
+	/* It happens at last,as dpd should off during clock change. */
+	/* bug 1342517 */
+	emc_writel(next_timing->emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
 	emc_timing_update();
 #else
 	/* FIXME: implement */
 	pr_info("tegra12_emc: Configuring EMC rate %lu (setting: 0x%x)\n",
 		next_timing->rate, clk_setting);
 #endif
+
 }
 
 static inline void emc_get_timing(struct tegra12_emc_table *timing)
@@ -1133,8 +1184,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
-	case 0x14:
-	case 0x15:
+	case 0x16:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:
