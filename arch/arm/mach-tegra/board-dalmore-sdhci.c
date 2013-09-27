@@ -111,7 +111,9 @@ struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0 = {
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 82000000,
-	.uhs_mask = MMC_UHS_MASK_DDR50,
+/*FIXME: Enable UHS modes for WiFI */
+	.uhs_mask = MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50 |
+		MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25,
 };
 
 static struct resource sdhci_resource0[] = {
