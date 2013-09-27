@@ -43,7 +43,7 @@ int loki_emc_init(void);
 #define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PR2
 #define MPU_GYRO_ADDR		0x68
 #define MPU_GYRO_BUS_NUM	0
-#define MPU_GYRO_ORIENTATION	MTMAT_TOP_CCW_0
+#define MPU_GYRO_ORIENTATION	MTMAT_BOT_CCW_90
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6
