@@ -1029,7 +1029,8 @@ static int tegra_otg_start(struct platform_device *pdev)
 		tegra->edev->name = "tegra-otg";
 		tegra->edev->supported_cable =
 				(const char **) tegra_otg_extcon_cable;
-		err = extcon_dev_register(tegra->edev, &pdev->dev);
+		tegra->edev->dev.parent = &pdev->dev;
+		err = extcon_dev_register(tegra->edev);
 		if (err) {
 			dev_err(&pdev->dev, "failed to register extcon device\n");
 			kfree(tegra->edev);

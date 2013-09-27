@@ -191,7 +191,8 @@ static int max77665_muic_probe(struct platform_device *pdev)
 	muic->edev.name = (pdata->ext_conn_name) ?
 			pdata->ext_conn_name : DEV_NAME;
 	muic->edev.supported_cable = max77665_extcon_cable;
-	ret = extcon_dev_register(&muic->edev, NULL);
+	muic->edev.dev.parent = &pdev->dev;
+	ret = extcon_dev_register(&muic->edev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "extcon device register failed %d\n", ret);
 		return ret;

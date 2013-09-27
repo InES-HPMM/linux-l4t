@@ -3066,7 +3066,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 	udc->edev->name = driver_name;
 	udc->edev->supported_cable = (const char **) tegra_udc_extcon_cable;
-	err = extcon_dev_register(udc->edev, &pdev->dev);
+	udc->edev->dev.parent = &pdev->dev;
+	err = extcon_dev_register(udc->edev);
 	if (err) {
 		dev_err(&pdev->dev, "failed to register extcon device\n");
 		kfree(udc->edev);

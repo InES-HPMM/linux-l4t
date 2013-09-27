@@ -1716,8 +1716,9 @@ static int bq2419x_probe(struct i2c_client *client,
 	if (bq2419x->ext_name) {
 		bq2419x->edev.supported_cable = bq2419x_extcon_cable;
 		bq2419x->edev.name = bq2419x->ext_name;
+		bq2419x->edev.dev.parent = bq2419x->dev;
 
-		ret = extcon_dev_register(&bq2419x->edev, bq2419x->dev);
+		ret = extcon_dev_register(&bq2419x->edev);
 		if (ret < 0) {
 			dev_err(bq2419x->dev, "failed to register extcon device\n");
 			return ret;
