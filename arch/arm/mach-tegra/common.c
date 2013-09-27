@@ -458,7 +458,7 @@ static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ "c2bus",	"pll_c2",	250000000,	false },
 	{ "c3bus",	"pll_c3",	250000000,	false },
-	{ "pll_c",	NULL,		792000000,	false },
+	{ "pll_c",	NULL,		600000000,	false },
 #else
 	{ "cbus",	"pll_c",	200000000,	false },
 #endif
