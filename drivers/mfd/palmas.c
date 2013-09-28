@@ -765,21 +765,6 @@ static struct palmas_sleep_requestor_info sleep_reqt_info[] = {
 	SLEEP_REQUESTOR(REGEN7, 18, 2),
 };
 
-struct palmas_clk32k_info {
-	unsigned int control_reg;
-	unsigned int sleep_reqstr_id;
-};
-
-static struct palmas_clk32k_info palmas_clk32k_info[] = {
-	{
-		.control_reg = PALMAS_CLK32KG_CTRL,
-		.sleep_reqstr_id = PALMAS_EXTERNAL_REQSTR_ID_CLK32KG,
-	}, {
-		.control_reg = PALMAS_CLK32KGAUDIO_CTRL,
-		.sleep_reqstr_id = PALMAS_EXTERNAL_REQSTR_ID_CLK32KGAUDIO,
-	},
-};
-
 static int palmas_resource_write(struct palmas *palmas, unsigned int reg,
 	unsigned int value)
 {
@@ -888,68 +873,6 @@ static void palmas_init_ext_control(struct palmas *palmas)
 	if (ret < 0)
 		dev_err(palmas->dev, "Power control reg write failed\n");
 }
-
-static void palmas_clk32k_init(struct palmas *palmas,
-	struct palmas_platform_data *pdata)
-{
-	int ret;
-	struct palmas_clk32k_init_data *clk32_idata = pdata->clk32k_init_data;
-	int data_size = pdata->clk32k_init_data_size;
-	unsigned int reg;
-	int i;
-	int id;
-
-	if (!clk32_idata || !data_size)
-		return;
-
-	for (i = 0; i < data_size; ++i) {
-		struct palmas_clk32k_init_data *clk32_pd =  &clk32_idata[i];
-
-		reg = palmas_clk32k_info[clk32_pd->clk32k_id].control_reg;
-		if (clk32_pd->enable)
-			ret = palmas_resource_update(palmas, reg,
-					PALMAS_CLK32KG_CTRL_MODE_ACTIVE,
-					PALMAS_CLK32KG_CTRL_MODE_ACTIVE);
-		else
-			ret = palmas_resource_update(palmas, reg,
-					PALMAS_CLK32KG_CTRL_MODE_ACTIVE, 0);
-		if (ret < 0) {
-			dev_err(palmas->dev, "Error in updating clk reg\n");
-			return;
-		}
-
-		/* Sleep control */
-		id = palmas_clk32k_info[clk32_pd->clk32k_id].sleep_reqstr_id;
-		if (clk32_pd->sleep_control) {
-			ret = palmas_ext_power_req_config(palmas, id,
-					clk32_pd->sleep_control, true);
-			if (ret < 0) {
-				dev_err(palmas->dev,
-					"Error in ext power control reg\n");
-				return;
-			}
-
-			ret = palmas_resource_update(palmas, reg,
-					PALMAS_CLK32KG_CTRL_MODE_SLEEP,
-					PALMAS_CLK32KG_CTRL_MODE_SLEEP);
-			if (ret < 0) {
-				dev_err(palmas->dev,
-					"Error in updating clk reg\n");
-				return;
-			}
-		} else {
-
-			ret = palmas_resource_update(palmas, reg,
-					PALMAS_CLK32KG_CTRL_MODE_SLEEP, 0);
-			if (ret < 0) {
-				dev_err(palmas->dev,
-					"Error in updating clk reg\n");
-				return;
-			}
-		}
-	}
-}
-
 static int palmas_set_pdata_irq_flag(struct i2c_client *i2c,
 		struct palmas_platform_data *pdata)
 {
@@ -1189,7 +1112,6 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	palmas_init_ext_control(palmas);
 
-	palmas_clk32k_init(palmas, pdata);
 
 	/*
 	 * If we are probing with DT do this the DT way and return here
