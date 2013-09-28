@@ -1275,6 +1275,33 @@ struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void)
 	return NULL;
 }
 
+static void make_safe_thermal_dvfs_one(struct dvfs *d,
+				  struct tegra_cooling_device *cdev)
+{
+	int i, j, mv;
+
+	/* Make 1st row (therm_idx = 0) voltages max across thermal ranges */
+	for (i = 0; i < d->num_freqs; i++) {
+		for (j = 1; j <= cdev->trip_temperatures_num; j++) {
+			mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
+			if (d->millivolts[i] < mv)
+				((int *)d->millivolts)[i] = mv;
+		}
+	}
+}
+
+static void make_safe_thermal_dvfs(struct dvfs_rail *rail)
+{
+	struct dvfs *d;
+
+	mutex_lock(&dvfs_lock);
+	list_for_each_entry(d, &rail->dvfs, reg_node) {
+		if (d->therm_dvfs)
+			make_safe_thermal_dvfs_one(d, rail->vts_cdev);
+	}
+	mutex_unlock(&dvfs_lock);
+}
+
 #ifdef CONFIG_THERMAL
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
 static int tegra_dvfs_rail_get_vmin_cdev_max_state(
@@ -1369,20 +1396,27 @@ static struct thermal_cooling_device_ops tegra_dvfs_vts_cooling_ops = {
 
 static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 {
+	struct thermal_cooling_device *dev;
+
 	if (!rail->vts_cdev)
 		return;
 
-	/* just report error - initialized for cold temperature, anyway */
-	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
-		rail->vts_cdev->cdev_type, (void *)rail,
-		&tegra_dvfs_vts_cooling_ops)))
+	dev = thermal_cooling_device_register(rail->vts_cdev->cdev_type,
+		(void *)rail, &tegra_dvfs_vts_cooling_ops);
+	/* report error & set max limits across thermal ranges as safe dvfs */
+	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vts_cdev->cdev_type);
+		make_safe_thermal_dvfs(rail);
+	}
 }
 
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
-#define tegra_dvfs_rail_register_vts_cdev(rail)
+static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
+{
+	make_safe_thermal_dvfs(rail);
+}
 #endif
 
 /*
