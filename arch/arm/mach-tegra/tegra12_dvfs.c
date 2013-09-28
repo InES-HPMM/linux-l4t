@@ -975,14 +975,14 @@ static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 static struct core_bus_limit_table tegra12_gpu_cap_syfs = {
 	.limit_clk_name = "cap.profile.gbus",
 	.refcnt_attr = {.attr = {.name = "gpu_cap_state", .mode = 0644} },
-	.level_attr  = {.attr = {.name = "gpu_cap_level", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_cap_rate", .mode = 0644} },
 	.pm_qos_class = PM_QOS_GPU_FREQ_MAX,
 };
 
 static struct core_bus_limit_table tegra12_gpu_floor_sysfs = {
 	.limit_clk_name = "floor.profile.gbus",
 	.refcnt_attr = {.attr = {.name = "gpu_floor_state", .mode = 0644} },
-	.level_attr  = {.attr = {.name = "gpu_floor_level", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "gpu_floor_rate", .mode = 0644} },
 	.pm_qos_class = PM_QOS_GPU_FREQ_MIN,
 };
 
