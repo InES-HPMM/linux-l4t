@@ -1275,6 +1275,13 @@ struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void)
+{
+	if (tegra_gpu_rail)
+		return tegra_gpu_rail->vts_cdev;
+	return NULL;
+}
+
 static void make_safe_thermal_dvfs_one(struct dvfs *d,
 				  struct tegra_cooling_device *cdev)
 {
