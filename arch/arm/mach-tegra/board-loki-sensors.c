@@ -323,6 +323,8 @@ static int loki_nct72_init(void)
 		tegra_platform_edp_init(loki_nct72_pdata.trips,
 					&loki_nct72_pdata.num_trips,
 					12000); /* edp temperature margin */
+		tegra_add_tgpu_trips(loki_nct72_pdata.trips,
+				     &loki_nct72_pdata.num_trips);
 	}
 
 

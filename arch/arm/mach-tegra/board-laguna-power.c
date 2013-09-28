@@ -925,6 +925,8 @@ int __init laguna_soctherm_init(void)
 			8000); /* edp temperature margin */
 	tegra_add_tj_trips(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_tgpu_trips(laguna_soctherm_data.therm[THERM_GPU].trips,
+			&laguna_soctherm_data.therm[THERM_GPU].num_trips);
 
 	return tegra11_soctherm_init(&laguna_soctherm_data);
 }
