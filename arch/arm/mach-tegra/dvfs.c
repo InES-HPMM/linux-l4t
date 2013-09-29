@@ -1953,32 +1953,41 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 	int i;
 	struct dvfs *d;
 	struct dvfs_rail *rail;
+	const int *v_pll, *last_v_pll = NULL;
+	const int *v_dfll, *last_v_dfll = NULL;
 
-	seq_printf(s, "DVFS tables: units mV/MHz\n\n");
+	seq_printf(s, "DVFS tables: units mV/MHz\n");
 
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
-		bool mv_done = false;
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
-			if (!mv_done) {
-				const int *m = tegra_dvfs_get_millivolts_pll(d);
-				mv_done = true;
-				seq_printf(s, "%-16s", rail->reg_id);
-				for (i = 0; i < d->num_freqs; i++) {
-					int mv = m[i];
-					seq_printf(s, "%7d", mv);
-				}
-				seq_printf(s, "\n");
-				if (d->dfll_millivolts) {
-					seq_printf(s, "%-8s (dfll) ",
-						   rail->reg_id);
-					for (i = 0; i < d->num_freqs; i++) {
-						int mv = d->dfll_millivolts[i];
-						seq_printf(s, "%7d", mv);
-					}
+			bool mv_done = false;
+			v_pll = tegra_dvfs_get_millivolts_pll(d);
+			v_dfll = d->dfll_millivolts;
+
+			if (v_pll && (last_v_pll != v_pll)) {
+				if (!mv_done) {
 					seq_printf(s, "\n");
+					mv_done = true;
 				}
+				last_v_pll = v_pll;
+				seq_printf(s, "%-16s", rail->reg_id);
+				for (i = 0; i < d->num_freqs; i++)
+					seq_printf(s, "%7d", v_pll[i]);
+				seq_printf(s, "\n");
+			}
+
+			if (v_dfll && (last_v_dfll != v_dfll)) {
+				if (!mv_done) {
+					seq_printf(s, "\n");
+					mv_done = true;
+				}
+				last_v_dfll = v_dfll;
+				seq_printf(s, "%-8s (dfll) ", rail->reg_id);
+				for (i = 0; i < d->num_freqs; i++)
+					seq_printf(s, "%7d", v_dfll[i]);
+				seq_printf(s, "\n");
 			}
 
 			seq_printf(s, "%-16s", d->clk_name);
@@ -1988,7 +1997,6 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 			}
 			seq_printf(s, "\n");
 		}
-		seq_printf(s, "\n");
 	}
 
 	mutex_unlock(&dvfs_lock);

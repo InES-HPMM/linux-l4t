@@ -1020,30 +1020,38 @@ static int find_matching_input(const struct tegra12_emc_table *table,
 	return 0;
 }
 
+
+static int emc_core_millivolts[MAX_DVFS_FREQS];
+
 static void adjust_emc_dvfs_table(const struct tegra12_emc_table *table,
 				  int table_size)
 {
-	int i, j;
+	int i, j, mv;
 	unsigned long rate;
 
-	for (i = 0; i < MAX_DVFS_FREQS; i++) {
-		int mv = emc->dvfs->millivolts[i];
-		if (!mv)
-			break;
+	BUG_ON(table_size > MAX_DVFS_FREQS);
 
-		/* For each dvfs voltage find maximum supported rate;
-		   use 1MHz placeholder if not found */
-		for (rate = 1000, j = 0; j < table_size; j++) {
-			if (tegra_emc_clk_sel[j].input == NULL)
-				continue;	/* invalid entry */
+	for (i = 0, j = 0; j < table_size; j++) {
+		if (tegra_emc_clk_sel[j].input == NULL)
+			continue;	/* invalid entry */
 
-			if ((mv >= table[j].emc_min_mv) &&
-			    (rate < table[j].rate))
-				rate = table[j].rate;
+		rate = table[j].rate * 1000;
+		mv = table[j].emc_min_mv;
+
+		if ((i == 0) || (mv > emc_core_millivolts[i-1])) {
+			/* advance: either regular or ll voltage increased -
+			   assure the same set of dvfs freqs in both modes */
+			emc->dvfs->freqs[i] = rate;
+			emc_core_millivolts[i] = mv;
+			i++;
+		} else {
+			/* squash: voltage has not increased */
+			emc->dvfs->freqs[i-1] = rate;
 		}
-		/* Table entries specify rate in kHz */
-		emc->dvfs->freqs[i] = rate * 1000;
 	}
+
+	emc->dvfs->millivolts = emc_core_millivolts;
+	emc->dvfs->num_freqs = i;
 }
 
 #ifdef CONFIG_TEGRA_PLLM_SCALED
@@ -1126,10 +1134,13 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	for (i = 0; i < tegra_emc_table_size; i++) {
 		unsigned long table_rate = table[i].rate;
 
-		/* Skip "no-rate" entry, or entry violating ascending order */
-		if (!table_rate ||
-		    (i && (table_rate <= table[i-1].rate)))
-			continue;
+		/* Stop: "no-rate" entry, or entry violating ascending order */
+		if (!table_rate || (i && ((table_rate <= table[i-1].rate) ||
+			(table[i].emc_min_mv < table[i-1].emc_min_mv)))) {
+			pr_warn("tegra: EMC rate entry %lu is not ascending\n",
+				table_rate);
+			break;
+		}
 
 		BUG_ON(table[i].rev != table[0].rev);
 
