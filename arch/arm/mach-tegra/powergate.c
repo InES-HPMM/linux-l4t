@@ -330,7 +330,7 @@ int tegra_powergate_remove_clamping(int id)
 		udelay(1);
 		contention_timeout--;
 	} while ((contention_timeout > 0)
-			&& (pmc_read(REMOVE_CLAMPING) & mask));
+			&& (pmc_read(PWRGATE_CLAMP_STATUS) & mask));
 
 	WARN(contention_timeout <= 0, "Couldn't remove clamping");
 
