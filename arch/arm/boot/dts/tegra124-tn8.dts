@@ -14,6 +14,33 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	i2c@7000c000 {
+		status = "okay";
+		clock-frequency = <100000>;
+		bq2419x: bq2419x@6b {
+			compatible = "ti,bq2419x";
+			reg = <0x6b>;
+			charging-term-current-mA = <100>;
+			watchdog-timeout = <40>;
+			rtc-alarm-time = <3600>;
+			auto-recharge-time = <1800>;
+			vbus {
+				regulator-name = "vbus_regulator";
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_vbus";
+						regulator-consumer-device = "tegra-ehci.0";
+					};
+
+					c2 {
+						regulator-consumer-supply = "usb_vbus";
+						regulator-consumer-device = "tegra-otg";
+					};
+				};
+			};
+		};
+	};
+
 /include/ "tegra124-tn8-generic.dtsi"
 
 };
