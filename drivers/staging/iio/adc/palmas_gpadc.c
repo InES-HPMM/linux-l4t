@@ -864,7 +864,7 @@ static int __init palmas_gpadc_init(void)
 {
 	return platform_driver_register(&palmas_gpadc_driver);
 }
-subsys_initcall(palmas_gpadc_init);
+module_init(palmas_gpadc_init);
 
 static void __exit palmas_gpadc_exit(void)
 {

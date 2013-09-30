@@ -288,7 +288,7 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 		memcpy(drvdata->adc_temp_lookup, pdata->adc_temp_lookup,
 			pdata->lookup_table_size * sizeof(unsigned int));
 
-	drvdata->channel = iio_channel_get(dev_name(&pdev->dev),
+	drvdata->channel = iio_channel_get(&pdev->dev,
 					pdata->iio_channel_name);
 	if (IS_ERR(drvdata->channel)) {
 		dev_err(&pdev->dev, "%s: Failed to get channel %s, %ld\n",
