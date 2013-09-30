@@ -839,26 +839,16 @@ static int gpio_keys_suspend(struct device *dev)
 
 static int gpio_keys_resume(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
-	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	struct input_dev *input = ddata->input;
-	int wakeup_key = KEY_RESERVED;
 	int error = 0;
 	int i;
-
-	if (pdata && pdata->wakeup_key)
-		wakeup_key = pdata->wakeup_key();
 
 	if (device_may_wakeup(dev)) {
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
-			if (bdata->button->wakeup) {
+			if (bdata->button->wakeup)
 				disable_irq_wake(bdata->irq);
-
-				if (wakeup_key == bdata->button->code)
-					gpio_keys_gpio_report_wake(bdata);
-			}
 		}
 	} else {
 		mutex_lock(&input->mutex);
@@ -870,12 +860,45 @@ static int gpio_keys_resume(struct device *dev)
 	if (error)
 		return error;
 
+	return 0;
+}
+
+static int gpio_keys_suspend_noirq(struct device *dev)
+{
+	return 0;
+}
+
+static int gpio_keys_resume_noirq(struct device *dev)
+{
+	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
+	int wakeup_key = KEY_RESERVED;
+	int i;
+
+	if (pdata && pdata->wakeup_key)
+		wakeup_key = pdata->wakeup_key();
+
+	if (device_may_wakeup(dev)) {
+		for (i = 0; i < ddata->pdata->nbuttons; i++) {
+			struct gpio_button_data *bdata = &ddata->data[i];
+			if (bdata->button->wakeup &&
+				wakeup_key == bdata->button->code)
+				gpio_keys_gpio_report_wake(bdata);
+		}
+	}
+
 	gpio_keys_report_state(ddata);
 	return 0;
 }
-#endif
 
-static SIMPLE_DEV_PM_OPS(gpio_keys_pm_ops, gpio_keys_suspend, gpio_keys_resume);
+static const struct dev_pm_ops gpio_keys_pm_ops = {
+	.suspend = gpio_keys_suspend,
+	.resume = gpio_keys_resume,
+	.suspend_noirq = gpio_keys_suspend_noirq,
+	.resume_noirq = gpio_keys_resume_noirq,
+};
+#endif
 
 static struct platform_driver gpio_keys_device_driver = {
 	.probe		= gpio_keys_probe,
@@ -883,7 +906,9 @@ static struct platform_driver gpio_keys_device_driver = {
 	.driver		= {
 		.name	= "gpio-keys",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
 		.pm	= &gpio_keys_pm_ops,
+#endif
 		.of_match_table = of_match_ptr(gpio_keys_of_match),
 	}
 };
