@@ -110,7 +110,24 @@ static u32 ep_queue_request_count;
 static u8 boost_cpufreq_work_flag, set_cpufreq_normal_flag;
 static struct timer_list boost_timer;
 static bool boost_enable = true;
-module_param(boost_enable, bool, 0644);
+static int boost_enable_set(const char *arg, const struct kernel_param *kp)
+{
+	bool old_boost = boost_enable;
+	int ret = param_set_bool(arg, kp);
+	if (ret == 0 && old_boost && !boost_enable)
+		pm_qos_update_request(&boost_cpu_freq_req,
+				      PM_QOS_DEFAULT_VALUE);
+	return ret;
+}
+static int boost_enable_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_bool(buffer, kp);
+}
+static struct kernel_param_ops boost_enable_ops = {
+	.set = boost_enable_set,
+	.get = boost_enable_get,
+};
+module_param_cb(boost_enable, &boost_enable_ops, &boost_enable, 0644);
 #endif
 
 static char *const tegra_udc_extcon_cable[] = {
