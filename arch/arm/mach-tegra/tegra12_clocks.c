@@ -7841,6 +7841,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("usb2.sclk", "tegra-ehci.1",	"sclk",	&tegra_clk_ahb,        NULL, 0, 0),
 	SHARED_SCLK("usb3.sclk", "tegra-ehci.2",	"sclk",	&tegra_clk_ahb,        NULL, 0, 0),
 	SHARED_SCLK("wake.sclk", "wake_sclk",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_SCLK("camera.sclk",	"vi",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_SCLK("mon.avp",	"tegra_actmon",		"avp",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_SCLK("cap.sclk",	"cap_sclk",		NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_CEILING),
 	SHARED_SCLK("cap.throttle.sclk", "cap_throttle", NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_CEILING),
