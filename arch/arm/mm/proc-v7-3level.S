@@ -55,7 +55,6 @@
  */
 ENTRY(cpu_v7_switch_mm)
 #ifdef CONFIG_MMU
-	ldr	r2, [r2, #MM_CONTEXT_ID]	@ get mm->context.id
 	mmid	r2, r2				@ get mm->context.id
 	asid	r2, r2
 	mov	r2, r2, lsl #(48 - 32)		@ ASID
