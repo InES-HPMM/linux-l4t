@@ -106,11 +106,6 @@ struct bq2419x_vbus_platform_data {
  * struct bq2419x_charger_platform_data - bq2419x charger platform data.
  */
 struct bq2419x_charger_platform_data {
-	int use_usb;
-	int use_mains;
-	int (*battery_check)(void);
-
-	int max_charge_volt_mV;
 	int max_charge_current_mA;
 	int charging_term_current_mA;
 	int wdt_timeout;
