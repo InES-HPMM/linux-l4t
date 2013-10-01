@@ -628,6 +628,10 @@ palmas: tps65913 {
 						regulator-consumer-supply = "vi2c";
 						regulator-consumer-device = "2-0030";
 					};
+					c9 {
+						regulator-consumer-supply = "vif";
+						regulator-consumer-device = "2-0048";
+					};
 				};
 			};
 
@@ -650,6 +654,10 @@ palmas: tps65913 {
 					c4 {
 						regulator-consumer-supply = "vdd";
 						regulator-consumer-device = "2-000c";
+					};
+					c5 {
+						regulator-consumer-supply = "vana";
+						regulator-consumer-device = "2-0048";
 					};
 				};
 			};

@@ -29,6 +29,7 @@
 #include <media/as364x.h>
 #include <media/ov5693.h>
 #include <media/ov7695.h>
+#include <media/mt9m114.h>
 #include <media/ad5823.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/power/sbs-battery.h>
@@ -515,6 +516,62 @@ struct ov7695_platform_data ardbeg_ov7695_pdata = {
 	.mclk_name = "mclk2",
 };
 
+static int ardbeg_mt9m114_power_on(struct mt9m114_power_rail *pw)
+{
+	int err;
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM2_PWDN, 1);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto mt9m114_iovdd_fail;
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto mt9m114_avdd_fail;
+
+	usleep_range(1000, 1020);
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_set_value(CAM2_PWDN, 0);
+	usleep_range(1000, 1020);
+
+	/* return 1 to skip the in-driver power_on swquence */
+	return 1;
+
+mt9m114_avdd_fail:
+	regulator_disable(pw->iovdd);
+
+mt9m114_iovdd_fail:
+	gpio_set_value(CAM_RSTN, 0);
+	return -ENODEV;
+}
+
+static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	usleep_range(100, 120);
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(100, 120);
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->iovdd);
+
+	return 1;
+}
+
+struct mt9m114_platform_data ardbeg_mt9m114_pdata = {
+	.power_on = ardbeg_mt9m114_power_on,
+	.power_off = ardbeg_mt9m114_power_off,
+	.mclk_name = "mclk2",
+};
+
+
 static int ardbeg_ov5693_power_on(struct ov5693_power_rail *pw)
 {
 	int err;
@@ -650,6 +707,25 @@ static struct i2c_board_info ardbeg_i2c_board_info_e1793[] = {
 	},
 };
 
+static struct i2c_board_info ardbeg_i2c_board_info_e1806[] = {
+	{
+		I2C_BOARD_INFO("ov5693", 0x10),
+		.platform_data = &ardbeg_ov5693_pdata,
+	},
+	{
+		I2C_BOARD_INFO("mt9m114", 0x48),
+		.platform_data = &ardbeg_mt9m114_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ad5823", 0x0c),
+		.platform_data = &ardbeg_ad5823_pdata,
+	},
+	{
+		I2C_BOARD_INFO("as3648", 0x30),
+		.platform_data = &ardbeg_as3648_data,
+	},
+};
+
 
 static int ardbeg_camera_init(void)
 {
@@ -666,8 +742,14 @@ static int ardbeg_camera_init(void)
 		tegra_io_dpd_enable(&csib_io);
 		tegra_io_dpd_enable(&csie_io);
 	} else {
+
+#ifdef CAM_BOARD_E1793
 		i2c_register_board_info(2, ardbeg_i2c_board_info_e1793,
 				ARRAY_SIZE(ardbeg_i2c_board_info_e1793));
+#elif defined CAM_BOARD_E1806
+		i2c_register_board_info(2, ardbeg_i2c_board_info_e1806,
+				ARRAY_SIZE(ardbeg_i2c_board_info_e1806));
+#endif
 	}
 	return 0;
 }

@@ -77,6 +77,7 @@ int ardbeg_soctherm_init(void);
 #define CAM2_PWDN TEGRA_GPIO_PBB6
 #define CAM1_PWDN TEGRA_GPIO_PBB5
 #define CAM_AF_PWDN TEGRA_GPIO_PBB7
+#define CAM_BOARD_E1806
 
 /* Modem related GPIOs */
 #define MODEM_EN		TEGRA_GPIO_PS4
