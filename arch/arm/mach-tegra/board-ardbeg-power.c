@@ -202,9 +202,12 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("vddio_cam", "vi"),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("dvdd", "spi0.0"),
-        REGULATOR_SUPPLY("vlogic", "0-0069"),
-        REGULATOR_SUPPLY("vid", "0-000c"),
-        REGULATOR_SUPPLY("vddio", "0-0077"),
+	REGULATOR_SUPPLY("vlogic", "0-0069"),
+	REGULATOR_SUPPLY("vid", "0-000c"),
+	REGULATOR_SUPPLY("vddio", "0-0077"),
+	REGULATOR_SUPPLY("vdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata_pll", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply as3722_sd6_supply[] = {
@@ -443,6 +446,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd", "stm8t143.2"),
 	REGULATOR_SUPPLY("vdd", "0-000c"),
 	REGULATOR_SUPPLY("vdd", "0-0077"),
+	REGULATOR_SUPPLY("hvdd_sata", "tegra-sata.0"),
 };
 
 PALMAS_REGS_PDATA(ti913_smps123, 700, 1400, NULL, 0, 1, 1, NORMAL,
