@@ -42,7 +42,6 @@
 #include <asm/tlbflush.h>
 #include <asm/pgtable.h>
 
-#include <mach/iovmm.h>
 #include <trace/events/nvmap.h>
 
 #include "nvmap_priv.h"
@@ -824,26 +823,6 @@ int nvmap_alloc_handle_id(struct nvmap_client *client,
 		goto out;
 	}
 
-	/*
-	 * This takes out 1 ref on the dambuf. This corresponds to the
-	 * handle_ref that gets automatically made by nvmap_create_handle().
-	 */
-	h->dmabuf = __nvmap_make_dmabuf(client, h);
-	if (!h->dmabuf) {
-		err = -ENOMEM;
-		goto out;
-	}
-
-	/*
-	 * Pre-attach nvmap to this new dmabuf. This gets unattached during the
-	 * dma_buf_release() operation.
-	 */
-	h->attachment = dma_buf_attach(h->dmabuf, &nvmap_pdev->dev);
-	if (IS_ERR(h->attachment)) {
-		err = PTR_ERR(h->attachment);
-		goto out;
-	}
-
 	alloc_policy = (nr_page == 1) ? heap_policy_small : heap_policy_large;
 
 	while (!h->alloc && *alloc_policy) {
@@ -872,36 +851,6 @@ out:
 	err = (h->alloc) ? 0 : err;
 	nvmap_handle_put(h);
 	return err;
-}
-
-/*
- * Free handle without slow validation step
- */
-void _nvmap_free(struct nvmap_client *client, struct nvmap_handle_ref *r)
-{
-	int dupes;
-	struct nvmap_handle *h = r->handle;
-
-	if (!r ||
-	    WARN_ON(!virt_addr_valid(client)) ||
-	    WARN_ON(!virt_addr_valid(r)))
-		return;
-
-	nvmap_ref_lock(client);
-retry:
-	dupes = atomic_read(&r->dupes);
-	if (r->handle->owner == client && dupes > 1) {
-		if (atomic_cmpxchg(&r->dupes, dupes, dupes - 1) != dupes)
-			goto retry;
-		nvmap_ref_unlock(client);
-		nvmap_handle_put(h);
-		return;
-	} else {
-		/* slow path */
-		nvmap_ref_unlock(client);
-		nvmap_free(client, r);
-		return;
-	}
 }
 
 void nvmap_free_handle_id(struct nvmap_client *client, unsigned long id)
@@ -1001,6 +950,7 @@ static void add_handle_ref(struct nvmap_client *client,
 struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 					     size_t size)
 {
+	void *err = ERR_PTR(-ENOMEM);
 	struct nvmap_handle *h;
 	struct nvmap_handle_ref *ref = NULL;
 
@@ -1015,10 +965,8 @@ struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 		return ERR_PTR(-ENOMEM);
 
 	ref = kzalloc(sizeof(*ref), GFP_KERNEL);
-	if (!ref) {
-		kfree(h);
-		return ERR_PTR(-ENOMEM);
-	}
+	if (!ref)
+		goto ref_alloc_fail;
 
 	atomic_set(&h->ref, 1);
 	atomic_set(&h->pin, 0);
@@ -1030,6 +978,25 @@ struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 	h->flags = NVMAP_HANDLE_WRITE_COMBINE;
 	mutex_init(&h->lock);
 
+	/*
+	 * This takes out 1 ref on the dambuf. This corresponds to the
+	 * handle_ref that gets automatically made by nvmap_create_handle().
+	 */
+	h->dmabuf = __nvmap_make_dmabuf(client, h);
+	if (IS_ERR(h->dmabuf)) {
+		err = h->dmabuf;
+		goto make_dmabuf_fail;
+	}
+
+	/*
+	 * Pre-attach nvmap to this new dmabuf. This gets unattached during the
+	 * dma_buf_release() operation.
+	 */
+	h->attachment = dma_buf_attach(h->dmabuf, &nvmap_pdev->dev);
+	if (IS_ERR(h->attachment)) {
+		err = h->attachment;
+		goto dma_buf_attach_fail;
+	}
 	nvmap_handle_add(nvmap_dev, h);
 
 	/*
@@ -1042,6 +1009,14 @@ struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 	add_handle_ref(client, ref);
 	trace_nvmap_create_handle(client, client->name, h, size, ref);
 	return ref;
+
+dma_buf_attach_fail:
+	dma_buf_put(h->dmabuf);
+make_dmabuf_fail:
+	kfree(ref);
+ref_alloc_fail:
+	kfree(h);
+	return err;
 }
 
 struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
@@ -1112,15 +1087,6 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 
 	trace_nvmap_duplicate_handle_id(client, id, ref);
 	return ref;
-}
-
-struct nvmap_handle_ref *nvmap_duplicate_handle_user_id(
-						struct nvmap_client *client,
-						unsigned long user_id)
-{
-	if (!virt_addr_valid(client))
-		return ERR_PTR(-EINVAL);
-	return nvmap_duplicate_handle_id(client, unmarshal_user_id(user_id), 0);
 }
 
 struct nvmap_handle_ref *nvmap_create_handle_from_fd(

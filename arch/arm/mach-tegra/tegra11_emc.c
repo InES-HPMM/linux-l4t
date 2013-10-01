@@ -693,7 +693,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 		overwrite_mrs_wait_cnt(next_timing, zcal_long);
 
 	/* 5.2 disable auto-refresh to save time after clock change */
-	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+	ccfifo_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
 	/* 6. turn Off dll and enter self-refresh on DDR3 */
 	if (dram_type == DRAM_TYPE_DDR3) {
@@ -709,6 +709,9 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 	/* 8. exit self-refresh on DDR3 */
 	if (dram_type == DRAM_TYPE_DDR3)
 		ccfifo_writel(DRAM_BROADCAST(dram_dev_num), EMC_SELF_REF);
+
+	/* 8.1 re-enable auto-refresh */
+	ccfifo_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
 	/* 9. set dram mode registers */
 	set_dram_mode(next_timing, last_timing, dll_change);
@@ -735,8 +738,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 	   change EMC clock source register wait for clk change completion */
 	do_clock_change(clk_setting);
 
-	/* 14.1 re-enable auto-refresh */
-	emc_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
+	/* 14.1 re-enable auto-refresh - moved to ccfifo in 8.1 */
 
 	/* 14.2 program burst_up_down registers if emc rate is going up */
 	if (next_timing->rate > last_timing->rate) {

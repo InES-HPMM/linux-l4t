@@ -164,6 +164,9 @@ static __initdata struct tegra_pingroup_config laguna_pinmux_common[] = {
 	/* EXTPERIPH3 pinmux */
 	DEFAULT_PINMUX(CLK3_OUT,      EXTPERIPH3,  NORMAL,    NORMAL,   OUTPUT),
 
+	/* DP pinmux */
+	DEFAULT_PINMUX(DP_HPD,      DP,  NORMAL,    NORMAL,   INPUT),
+
 	/* I2S3 pinmux */
 	/*Tristated by default, will be turned on/off as required by audio machine driver*/
 	DEFAULT_PINMUX(DAP4_DIN,      I2S3,        NORMAL,    TRISTATE,   INPUT),

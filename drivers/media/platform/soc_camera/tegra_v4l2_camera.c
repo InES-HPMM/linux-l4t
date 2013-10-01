@@ -30,7 +30,7 @@
 
 #include <media/soc_camera.h>
 #include <media/soc_mediabus.h>
-#include <media/videobuf2-dma-nvmap.h>
+#include <media/videobuf2-dma-contig.h>
 #include <media/tegra_v4l2_camera.h>
 
 #include "dev.h"
@@ -1169,7 +1169,7 @@ static int tegra_camera_init_buffer(struct tegra_buffer *buf)
 	case V4L2_PIX_FMT_YVYU:
 	case V4L2_PIX_FMT_SBGGR8:
 	case V4L2_PIX_FMT_SBGGR10:
-		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
+		buf->buffer_addr = vb2_dma_contig_plane_dma_addr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
 
 		if (pdata->flip_v)
@@ -1183,7 +1183,7 @@ static int tegra_camera_init_buffer(struct tegra_buffer *buf)
 
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_YVU420:
-		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
+		buf->buffer_addr = vb2_dma_contig_plane_dma_addr(&buf->vb, 0);
 		buf->buffer_addr_u = buf->buffer_addr +
 				     icd->user_width * icd->user_height;
 		buf->buffer_addr_v = buf->buffer_addr_u +
@@ -1440,7 +1440,7 @@ static int tegra_camera_init_videobuf(struct vb2_queue *q,
 	q->io_modes = VB2_MMAP | VB2_USERPTR;
 	q->drv_priv = icd;
 	q->ops = &tegra_camera_videobuf_ops;
-	q->mem_ops = &vb2_dma_nvmap_memops;
+	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct tegra_buffer);
 
 	dev_dbg(icd->parent, "Finished tegra_camera_init_videobuf()\n");
@@ -1843,7 +1843,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(&pdev->dev, ndata->clockgate_delay);
 	pm_runtime_enable(&pdev->dev);
 
-	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(&pdev->dev);
+	pcdev->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
 	if (IS_ERR(pcdev->alloc_ctx)) {
 		err = PTR_ERR(pcdev->alloc_ctx);
 		goto exit_pm_disable;
@@ -1860,7 +1860,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 exit_cleanup_alloc_ctx:
 	platform_set_drvdata(pdev, pcdev->ndata);
-	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
+	vb2_dma_contig_cleanup_ctx(pcdev->alloc_ctx);
 exit_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 exit_put_regulator:
@@ -1896,7 +1896,7 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, pcdev->ndata);
 	nvhost_client_device_release(pdev);
 
-	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
+	vb2_dma_contig_cleanup_ctx(pcdev->alloc_ctx);
 
 	pm_runtime_disable(&pdev->dev);
 

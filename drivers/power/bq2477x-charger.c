@@ -40,6 +40,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/sched/rt.h>
 
 struct bq2477x_chip {
 	struct device	*dev;

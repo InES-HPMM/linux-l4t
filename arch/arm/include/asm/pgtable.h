@@ -277,6 +277,8 @@ PTE_BIT_FUNC(mkclean,   &= ~L_PTE_DIRTY);
 PTE_BIT_FUNC(mkdirty,   |= L_PTE_DIRTY);
 PTE_BIT_FUNC(mkold,     &= ~L_PTE_YOUNG);
 PTE_BIT_FUNC(mkyoung,   |= L_PTE_YOUNG);
+PTE_BIT_FUNC(mkinvalid, &= ~L_PTE_VALID);
+PTE_BIT_FUNC(mkvalid,   |= L_PTE_VALID);
 
 static inline pte_t pte_mkspecial(pte_t pte) { return pte; }
 

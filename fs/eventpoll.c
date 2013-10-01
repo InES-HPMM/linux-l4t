@@ -1738,7 +1738,6 @@ struct task_struct *get_epoll_file_task(struct file *file)
 	struct epitem *epi = NULL;
 	struct eppoll_entry *pwq = NULL;
 	struct task_struct *task = NULL;
-	wait_queue_head_t *whead = NULL;
 	wait_queue_t *wq = NULL;
 
 	lh = &file->f_ep_links;

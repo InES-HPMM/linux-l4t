@@ -821,6 +821,7 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("dvdd", "2-0010"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
@@ -829,6 +830,7 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_e1611_supply[] = {
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("dvdd", "2-0010"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
@@ -1037,6 +1039,8 @@ int __init dalmore_palmas_regulator_init(void)
 
 	/* Enable regulator full constraints */
 	regulator_has_full_constraints();
+
+	reg_idata_ldo6.constraints.enable_time = 1000;
 
 	/* Tracking configuration */
 	reg_init_data_ldo8.config_flags =

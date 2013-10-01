@@ -534,8 +534,9 @@ struct azx {
 #endif
 
 #ifdef CONFIG_SND_HDA_VPR
-	struct nvmap_client *hda_vpr;
-	struct nvmap_handle_ref *handle_ref;
+	struct dma_buf *dmabuf;
+	struct dma_buf_attachment *attach;
+	struct sg_table *sgt;
 	unsigned char *vaddr;
 	phys_addr_t paddr;
 #endif
@@ -2810,19 +2811,35 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
 #ifdef CONFIG_SND_HDA_VPR
-	chip->hda_vpr = nvmap_create_client(nvmap_dev, "hda_vpr");
 	for (s = 0; s < 2; s++) {
 		struct snd_pcm_substream *substream;
 		for (substream = pcm->streams[s].substream;
 		  substream; substream = substream->next) {
-			chip->handle_ref = nvmap_alloc(chip->hda_vpr, size, 32,
+			chip->dmabuf = nvmap_alloc_dmabuf(size, 32,
 			  NVMAP_HANDLE_WRITE_COMBINE, NVMAP_HEAP_CARVEOUT_VPR);
-			chip->vaddr =
-			  (unsigned char *) nvmap_mmap(chip->handle_ref);
-			chip->paddr =
-			  nvmap_pin(chip->hda_vpr, chip->handle_ref);
+			if (IS_ERR(chip->dmabuf)) {
+				err = (int)chip->dmabuf;
+				goto dmabuf_fail;
+			}
+			chip->vaddr = dma_buf_vmap(chip->dmabuf);
+			if (!chip->vaddr) {
+				err = -ENOMEM;
+				goto vmap_fail;
+			}
+			chip->attach = dma_buf_attach(chip->dmabuf, chip->dev);
+			if (IS_ERR(chip->attach)) {
+				err = (int)chip->attach;
+				goto attach_fail;
+			}
+			chip->sgt = dma_buf_map_attachment(chip->attach,
+				DMA_BIDIRECTIONAL);
+			if (IS_ERR(chip->sgt)) {
+				err = (int)chip->sgt;
+				goto sgt_fail;
+			}
+			chip->paddr = sg_dma_address(chip->sgt->sgl);
 			snd_printk(KERN_DEBUG SFX
-			  "paddr=%08x vaddr=%08x\n", chip->paddr, chip->vaddr);
+			  "paddr=%08llx vaddr=%p\n", chip->paddr, chip->vaddr);
 			substream->dma_buffer.area = chip->vaddr;
 			substream->dma_buffer.addr = chip->paddr;
 			substream->dma_buffer.bytes = size;
@@ -2831,6 +2848,16 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 				substream->buffer_bytes_max =
 				   substream->dma_buffer.bytes;
 			substream->dma_max = MAX_PREALLOC_SIZE;
+			continue;
+sgt_fail:
+			dma_buf_detach(chip->dmabuf, chip->attach);
+attach_fail:
+			dma_buf_vunmap(chip->dmabuf, chip->vaddr);
+vmap_fail:
+			dma_buf_put(chip->dmabuf);
+dmabuf_fail:
+			chip->dmabuf = NULL;
+			return err;
 		}
 	}
 #else
@@ -3459,10 +3486,13 @@ static int azx_free(struct azx *chip)
 #endif
 	kfree(chip);
 #ifdef CONFIG_SND_HDA_VPR
-	if(chip->handle_ref) {
-		nvmap_unpin(chip->hda_vpr, chip->handle_ref);
-		nvmap_munmap(chip->handle_ref, chip->vaddr);
-		nvmap_free(chip->hda_vpr, chip->handle_ref);
+	if (chip->dmabuf) {
+		dma_buf_unmap_attachment(chip->attach, chip->sgt,
+					 DMA_BIDIRECTIONAL);
+		dma_buf_detach(chip->dmabuf, chip->attach);
+		dma_buf_vunmap(chip->dmabuf, chip->vaddr);
+		dma_buf_put(chip->dmabuf);
+		chip->dmabuf = NULL;
 	}
 #endif
 

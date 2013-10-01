@@ -464,7 +464,7 @@ PALMAS_REGS_PDATA(ti913_ldo4, 1200, 1200, palmas_rails(ti913_smps6),
 PALMAS_REGS_PDATA(ti913_ldo5, 2700, 2700, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo6, 1800, 1800, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo7, 2700, 2700, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ti913_ldo8, 900, 900, NULL, 1, 1, 1, 0, 0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ti913_ldo8, 800, 800, NULL, 1, 1, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldo9, 1800, 3300, NULL, 0, 0, 1, 0, 0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ti913_ldoln, 1050, 1050, palmas_rails(ti913_smps6),
 		0, 0, 1, 0, 0, 0, 0, 0, 0);
@@ -622,8 +622,7 @@ int __init ardbeg_tps65913_regulator_init(void)
 
 	/* Tracking configuration */
 	reg_init_data_ti913_ldo8.config_flags =
-		PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
-		PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
+		PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE;
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_ti913_platform.reg_data[i] = ardbeg_1735_reg_data[i];

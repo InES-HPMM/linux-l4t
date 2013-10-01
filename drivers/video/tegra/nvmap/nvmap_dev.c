@@ -41,10 +41,9 @@
 #include <linux/security.h>
 #include <linux/stat.h>
 
+#include <asm/cputype.h>
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
-
-#include <mach/iovmm.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvmap.h>
@@ -56,7 +55,7 @@
 #define NVMAP_CARVEOUT_KILLER_RETRY_TIME 100 /* msecs */
 
 #ifdef CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS
-size_t cache_maint_inner_threshold = 8 << PAGE_SHIFT;
+size_t cache_maint_inner_threshold = SZ_2M;
 #endif
 #ifdef CONFIG_NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
 size_t cache_maint_outer_threshold = SZ_1M;
@@ -277,17 +276,6 @@ struct nvmap_handle *nvmap_get_handle_id(struct nvmap_client *client,
 		h = nvmap_handle_get(h);
 	nvmap_ref_unlock(client);
 	return h;
-}
-
-ulong nvmap_get_handle_user_id(struct nvmap_client *client,
-					 unsigned long user_id)
-{
-	struct nvmap_handle *h;
-
-	if (!virt_addr_valid(client))
-		return 0;
-	h = nvmap_get_handle_id(client, unmarshal_user_id(user_id));
-	return (ulong)marshal_kernel_handle((ulong)h);
 }
 
 unsigned long nvmap_carveout_usage(struct nvmap_client *c,
@@ -1428,16 +1416,24 @@ static int nvmap_probe(struct platform_device *pdev)
 #endif
 		}
 #ifdef CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS
-		debugfs_create_size_t("cache_maint_inner_threshold", 0600,
+		debugfs_create_size_t("cache_maint_inner_threshold",
+				      S_IRUSR | S_IWUSR,
 				      nvmap_debug_root,
 				      &cache_maint_inner_threshold);
-		if (IS_ENABLED(CONFIG_ARCH_TEGRA_11x_SOC))
-			cache_maint_inner_threshold = SZ_2M;
+
+		/* cortex-a9 */
+		if ((read_cpuid_id() >> 4 & 0xfff) == 0xc09)
+			cache_maint_inner_threshold = SZ_32K;
+		pr_info("nvmap:inner cache maint threshold=%d",
+			cache_maint_inner_threshold);
 #endif
 #ifdef CONFIG_NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
-		debugfs_create_size_t("cache_maint_outer_threshold", 0600,
+		debugfs_create_size_t("cache_maint_outer_threshold",
+				      S_IRUSR | S_IWUSR,
 				      nvmap_debug_root,
 				      &cache_maint_outer_threshold);
+		pr_info("nvmap:outer cache maint threshold=%d",
+			cache_maint_outer_threshold);
 #endif
 	}
 

@@ -566,31 +566,6 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 	s->cpu_boost_flag = 1;
 	dtv_boost_cpu(s);
 
-	/* set the bottom line of cpu-dma latency
-	 *
-	 * The value of this parameter is about cpu snooping on DMAed
-	 * memory. It means that CPU should keep snooping to mark
-	 * corresponding entries invalid in cache if any entry is
-	 * associated to DMAed memory.
-	 *
-	 * DTV device really doesn't like DMA snoopying takes longer
-	 * than
-	 *
-	 *  (bufsize / bitrate of signal) second
-	 *
-	 * . For example, if we have 4096 bytes available in each buffer
-	 * and capture ISDB-T full-seg data, latency should never be
-	 * longer than
-	 *
-	 *  4K bytes / (416 * 13)kbps ~= 6usec
-	 *
-	 * This will push a lot of pressure on DMA controller and CPU,
-	 * especially on Tegra 3 SoC. Please set buffer size to 8192
-	 * bytes at lease in this case.
-	 */
-	pm_qos_update_request(&dtv_ctx->cpudma_lat,
-			      s->buf_size / dtv_ctx->profile.bitrate);
-
 	s->last_queued = s->num_bufs - 1;
 
 	/* too late ? */
@@ -605,8 +580,9 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 
 static int try_start_fill_buf(struct dtv_stream *s, size_t size)
 {
-	int ret = 0;
+	int ret = -1;
 	unsigned long flags;
+	struct tegra_dtv_context *dtv_ctx = to_ctx(s);
 
 	pr_debug("%s called\n", __func__);
 
@@ -622,6 +598,33 @@ static int try_start_fill_buf(struct dtv_stream *s, size_t size)
 		}
 	}
 	spin_unlock_irqrestore(&s->dma_req_lock, flags);
+
+	if (!ret) {
+		/* set the bottom line of cpu-dma latency
+		 *
+		 * The value of this parameter is about cpu snooping on DMAed
+		 * memory. It means that CPU should keep snooping to mark
+		 * corresponding entries invalid in cache if any entry is
+		 * associated to DMAed memory.
+		 *
+		 * DTV device really doesn't like DMA snoopying takes longer
+		 * than
+		 *
+		 *  (bufsize / bitrate of signal) second
+		 *
+		 * . For example, if we have 4096 bytes available in each buffer
+		 * and capture ISDB-T full-seg data, latency should never be
+		 * longer than
+		 *
+		 *  4K bytes / (416 * 13)kbps ~= 6usec
+		 *
+		 * This will push a lot of pressure on DMA controller and CPU,
+		 * especially on Tegra 3 SoC. Please set buffer size to 8192
+		 * bytes at lease in this case.
+		 */
+		pm_qos_update_request(&dtv_ctx->cpudma_lat,
+				      s->buf_size / dtv_ctx->profile.bitrate);
+	}
 
 	return ret;
 }

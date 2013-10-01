@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/irqs.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2013 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -713,7 +713,7 @@
 #define INT_CAR				(INT_QUAD_BASE + 30)
 #define INT_HIER_GROUP1_CPU		(INT_QUAD_BASE + 31)
 
-/* Quintary Interrupt Controller */
+/* Quinary Interrupt Controller */
 #define INT_QUINT_BASE			(INT_QUAD_BASE + 32)
 #define INT_APB_DMA_CH16		(INT_QUINT_BASE + 0)
 #define INT_APB_DMA_CH17		(INT_QUINT_BASE + 1)
@@ -746,7 +746,7 @@
 #define INT_TMR10			(INT_QUINT_BASE + 28)
 #define INT_GPU 			(INT_QUINT_BASE + 29)
 #define INT_GPU_NONSTALL		(INT_QUINT_BASE + 30)
-#define INT_QUINT_RES_31		(INT_QUINT_BASE + 31)
+#define INT_DPAUX			(INT_QUINT_BASE + 31)
 
 #define INT_GIC_NR			(INT_QUINT_BASE + 32)
 

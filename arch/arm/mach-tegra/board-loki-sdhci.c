@@ -150,6 +150,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 		/* FIXME: Enable UHS mode */
 		MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+	.calib_3v3_offsets = 0x7676,
+	.calib_1v8_offsets = 0x7676,
+	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -162,7 +165,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 		/* FIXME: Enable UHS mode */
 		MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
-/*	.max_clk = 12000000, */
+	.calib_3v3_offsets = 0x7676,
+	.calib_1v8_offsets = 0x7676,
+	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -180,7 +185,11 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.uhs_mask = MMC_MASK_HS200,
 	.ddr_clk_limit = 51000000,
 	.max_clk_limit = 102000000,
-/*	.max_clk = 12000000, */
+	.calib_3v3_offsets = 0x0202,
+	.calib_1v8_offsets = 0x0202,
+	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50 |
+		MMC_1V8_CALIB_OFFSET_HS200,
+
 };
 
 static struct platform_device tegra_sdhci_device0 = {

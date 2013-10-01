@@ -954,7 +954,6 @@ void __init tegra12x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
-	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();

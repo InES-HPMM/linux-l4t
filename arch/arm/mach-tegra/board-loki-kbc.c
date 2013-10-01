@@ -60,11 +60,22 @@
 
 #define PMC_WAKE_STATUS         0x14
 #define TEGRA_WAKE_PWR_INT      (1UL << 18)
+#define PMC_WAKE2_STATUS        0x168
 
 static int loki_wakeup_key(void);
 
 static struct gpio_keys_button loki_int_keys[] = {
 	[0] = GPIO_IKEY(KEY_POWER, 0, 1, 10),
+	[1] = {
+		.code = SW_LID,
+		.gpio = TEGRA_GPIO_HALL,
+		.irq = -1,
+		.type = EV_SW,
+		.desc = "Hall Effect Sensor",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 0,
+	},
 };
 
 static struct gpio_keys_platform_data loki_int_keys_pdata = {
@@ -83,12 +94,20 @@ static struct platform_device loki_int_keys_device = {
 
 static int loki_wakeup_key(void)
 {
+	int wakeup_key;
 	u32 status;
-	status = __raw_readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
+	status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
+		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
+		+ PMC_WAKE2_STATUS) << 32;
 
-	pr_info("%s: Power key pressed\n", __func__);
+	if (status & TEGRA_WAKE_PWR_INT)
+		wakeup_key = KEY_POWER;
+	else if (status & (1UL << TEGRA_WAKE_GPIO_PS0))
+		wakeup_key = SW_LID;
+	else
+		wakeup_key = -1;
 
-	return (status & TEGRA_WAKE_PWR_INT) ? KEY_POWER : KEY_RESERVED;
+	return wakeup_key;
 }
 
 int __init loki_kbc_init(void)

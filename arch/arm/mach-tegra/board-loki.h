@@ -75,6 +75,9 @@ int loki_soctherm_init(void);
 #define MDM_RST			TEGRA_GPIO_PS3
 #define MDM_COLDBOOT		TEGRA_GPIO_PO5
 
+/* Hall Effect Sensor GPIO */
+#define TEGRA_GPIO_HALL		TEGRA_GPIO_PS0
+
 /* Baseband IDs */
 enum tegra_bb_type {
 	TEGRA_BB_BRUCE = 1,
