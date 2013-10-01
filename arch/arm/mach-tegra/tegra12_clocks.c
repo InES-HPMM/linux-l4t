@@ -955,8 +955,10 @@ static void tegra12_super_clk_init(struct clk *c)
 		c->mul = 2;
 		c->div = 2;
 
-		/* Make sure 7.1 divider is 1:1, clear s/w skipper control */
-		/* FIXME: set? preserve? thermal h/w skipper control */
+		/*
+		 * Make sure 7.1 divider is 1:1; clear h/w skipper control -
+		 * it will be enabled by soctherm later
+		 */
 		val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
 		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
 		val = 0;
@@ -6521,9 +6523,6 @@ static struct clk tegra_pll_x_out0 = {
 	.max_rate  = 700000000,
 };
 
-/* FIXME: remove; for now, should be always checked-in as "0" */
-#define USE_LP_CPU_TO_TEST_DFLL		0
-
 static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
 	.flags     = DFLL,
@@ -6907,9 +6906,6 @@ static struct clk_mux_sel mux_cclk_lp[] = {
 	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra12x */
 	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra12x */
 	{ .input = &tegra_pll_x_out0,	.value = 8},
-#if USE_LP_CPU_TO_TEST_DFLL
-	{ .input = &tegra_dfll_cpu,	.value = 15},
-#endif
 	{ .input = &tegra_pll_x,	.value = 8 | SUPER_LP_DIV2_BYPASS},
 	{ 0, 0},
 };
@@ -6974,9 +6970,6 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p_out4,
-#if USE_LP_CPU_TO_TEST_DFLL
-		.dynamic   = &tegra_dfll_cpu,
-#endif
 		.mode      = MODE_LP,
 	},
 };
@@ -8706,7 +8699,6 @@ static void tegra12_clk_resume(void)
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL1);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL2);
 
-	/* FIXME: DFLL? */
 	/* Since we are going to reset devices and switch clock sources in this
 	 * function, plls and secondary dividers is required to be enabled. The
 	 * actual value will be restored back later. Note that boot plls: pllm,
@@ -8800,7 +8792,6 @@ static void tegra12_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_U);
 
 	/* For LP0 resume, clk to lpcpu is required to be on */
-	/* FIXME: should be saved as on? */
 	val = *ctx++;
 	val |= CLK_OUT_ENB_V_CLK_ENB_CPULP_EN;
 	clk_writel(val, CLK_OUT_ENB_V);
