@@ -5650,7 +5650,7 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 				request_rate *=	c->div ? : 1;
 			usage_flags |= c->u.shared_bus_user.usage_flag;
 
-			if (!cap_user)
+			if (!(c->flags & BUS_RATE_LIMIT))
 				rate_set = true;
 
 			switch (c->u.shared_bus_user.mode) {
@@ -7661,6 +7661,22 @@ static struct clk tegra_clk_c4bus = {
 			.mode = _mode,			\
 		},					\
 	}
+#define SHARED_LIMIT(_name, _dev, _con, _parent, _id, _div, _mode)\
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id    = _con,		\
+		},					\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
+		.parent = _parent,			\
+		.flags     = BUS_RATE_LIMIT,		\
+		.u.shared_bus_user = {			\
+			.client_id = _id,		\
+			.client_div = _div,		\
+			.mode = _mode,			\
+		},					\
+	}
 #define SHARED_CONNECT(_name, _dev, _con, _parent, _id, _div, _mode)\
 	{						\
 		.name      = _name,			\
@@ -7875,16 +7891,17 @@ struct clk tegra_list_clks[] = {
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
 	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	 &tegra_clk_c2bus, "vde",   0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra12-se",		NULL,	 &tegra_clk_c2bus, "se",    0, 0),
-	SHARED_CLK("cap.c2bus",		"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.c2bus", "cap_throttle",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
-	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
+	SHARED_LIMIT("cap.c2bus",	"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
+	SHARED_LIMIT("cap.throttle.c2bus", "cap_throttle",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
+	SHARED_LIMIT("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	 &tegra_clk_c2bus, NULL,  0, SHARED_OVERRIDE),
-	SHARED_CLK("edp.c2bus",         "edp.c2bus",            NULL,   &tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("edp.c2bus",       "edp.c2bus",            NULL,    &tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
+
 	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c3bus, "vic03", 0, 0),
 	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c3bus,  "tsec", 0, 0),
-	SHARED_CLK("cap.c3bus",		"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
-	SHARED_CLK("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
+	SHARED_LIMIT("cap.c3bus",	"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
+	SHARED_LIMIT("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
+	SHARED_LIMIT("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 	SHARED_CLK("override.c3bus",	"override.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,  0, SHARED_OVERRIDE),
 #else
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
@@ -7892,24 +7909,24 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
 	SHARED_CLK("vde.cbus",	"tegra-avp",		"vde",	&tegra_clk_cbus, "vde", 0, 0),
 	SHARED_CLK("se.cbus",	"tegra12-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
-	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.cbus",	"cap_throttle",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
+	SHARED_LIMIT("cap.cbus", "cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("cap.throttle.cbus", "cap_throttle", NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("floor.cbus", "floor.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, 0),
 	SHARED_CLK("override.cbus", "override.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_OVERRIDE),
-	SHARED_CLK("edp.cbus",	"edp.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("edp.cbus", "edp.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
 	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
-	SHARED_CLK("cap.gbus",		"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("cap.profile.gbus",	"profile.gbus", "cap",	&tegra_clk_gbus, NULL, 0, SHARED_CEILING),
+	SHARED_LIMIT("cap.gbus",	"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("cap.throttle.gbus", "cap_throttle", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("cap.profile.gbus", "profile.gbus", "cap",	&tegra_clk_gbus, NULL, 0, SHARED_CEILING),
 	SHARED_CLK("override.gbus",	"override.gbus", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE),
-	SHARED_CLK("floor.gbus",	"floor.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, 0),
-	SHARED_CLK("floor.profile.gbus", "profile.gbus", "floor", &tegra_clk_gbus, NULL,  0, 0),
+	SHARED_LIMIT("floor.gbus",	"floor.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, 0),
+	SHARED_LIMIT("floor.profile.gbus", "profile.gbus", "floor", &tegra_clk_gbus, NULL,  0, 0),
 
 	SHARED_CLK("nv.host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("vi.host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
-	SHARED_CLK("cap.host1x", "cap.host1x",		NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
+	SHARED_LIMIT("cap.host1x", "cap.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("override.host1x", "override.host1x", NULL,    &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
 };
 
