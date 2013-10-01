@@ -71,6 +71,7 @@
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/xusb.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_ahci.h>
 
 #include "board.h"
 #include "board-ardbeg.h"
@@ -390,6 +391,11 @@ static struct platform_device tegra_rtc_device = {
 #ifdef CONFIG_SATA_AHCI_TEGRA
 static void bonaire_sata_init(void)
 {
+	struct tegra_ahci_platform_data *pdata;
+
+	pdata = tegra_sata_device.dev.platform_data;
+	pdata->pexp_gpio = PMU_TCA6416_GPIO(9);
+
 	platform_device_register(&tegra_sata_device);
 }
 #else
