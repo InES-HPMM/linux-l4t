@@ -97,7 +97,7 @@ config NEED_SG_DMA_LENGTH
 	def_bool y
 
 config SWIOTLB
-	def_bool y
+	def_bool y if !ARM_DMA_USE_IOMMU
 
 config IOMMU_HELPER
 	def_bool SWIOTLB

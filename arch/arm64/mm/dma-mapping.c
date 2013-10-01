@@ -51,6 +51,7 @@
 struct dma_map_ops *dma_ops;
 EXPORT_SYMBOL(dma_ops);
 
+#ifdef CONFIG_SWIOTLB
 static void *arm64_swiotlb_alloc_coherent(struct device *dev, size_t size,
 					  dma_addr_t *dma_handle, gfp_t flags,
 					  struct dma_attrs *attrs)
@@ -88,6 +89,7 @@ void __init arm64_swiotlb_init(void)
 	dma_ops = &arm64_swiotlb_dma_ops;
 	swiotlb_init(1);
 }
+#endif /* CONFIG_SWIOTLB */
 
 /*
  *FIXME: from arm
