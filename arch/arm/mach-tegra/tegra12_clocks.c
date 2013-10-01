@@ -6215,7 +6215,11 @@ static struct clk tegra_pll_c = {
 static struct clk tegra_pll_c_out1 = {
 	.name      = "pll_c_out1",
 	.ops       = &tegra_pll_div_ops,
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	.flags     = DIV_U71 | DIV_U71_INT,
+#else
 	.flags     = DIV_U71 | DIV_U71_INT | PERIPH_ON_CBUS,
+#endif
 	.parent    = &tegra_pll_c,
 	.reg       = 0x84,
 	.reg_shift = 0,
