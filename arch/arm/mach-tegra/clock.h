@@ -84,6 +84,7 @@ struct clk;
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
+#define BUS_RATE_LIMIT		(1 << 31)
 
 #define SHARED_BUS_RETENTION	(1 << 0)
 
