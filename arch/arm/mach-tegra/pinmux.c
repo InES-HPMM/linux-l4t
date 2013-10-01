@@ -207,6 +207,9 @@ void pg_writel(u32 val, u32 bank, u32 reg)
 
 int tegra_pinmux_get_pingroup(int gpio_nr)
 {
+	if (!gpio_to_pingroups_map)
+		return -EINVAL;
+
 	return gpio_to_pingroups_map[gpio_nr];
 }
 EXPORT_SYMBOL_GPL(tegra_pinmux_get_pingroup);
