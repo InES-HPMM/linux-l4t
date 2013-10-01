@@ -1975,7 +1975,7 @@ static u64 tegra_sata_dma_mask = DMA_BIT_MASK(64);
 
 static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
 	.gen2_rx_eq = -1,
-	.pexp_gpio = PMU_TCA6416_GPIO(9),
+	.pexp_gpio = -1,
 };
 
 static struct resource tegra_sata_resources[] = {
