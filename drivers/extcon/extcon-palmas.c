@@ -119,7 +119,7 @@ src_again:
 		return -EAGAIN;
 	}
 
-	/* If two ID states shows sign then allow for debauncing to settled. */
+	/* If two ID states show sign then allow debouncing to settle */
 	if (id_src & (id_src - 1)) {
 		dev_info(palmas_usb->dev,
 			"ID states are not settled, try later\n");
@@ -221,7 +221,7 @@ static void palmas_usb_id_st_wq(struct work_struct *work)
 	ret = palmas_usb_id_state_update(palmas_usb);
 	if (ret == -EAGAIN)
 		schedule_delayed_work(&palmas_usb->cable_update_wq,
-			msecs_to_jiffies(palmas_usb->cable_debaunce_time));
+			msecs_to_jiffies(palmas_usb->cable_debounce_time));
 }
 
 
@@ -270,7 +270,7 @@ static irqreturn_t palmas_id_irq_handler(int irq, void *_palmas_usb)
 		PALMAS_USB_ID_INT_LATCH_CLR, set);
 
 	schedule_delayed_work(&palmas_usb->cable_update_wq,
-			msecs_to_jiffies(palmas_usb->cable_debaunce_time));
+			msecs_to_jiffies(palmas_usb->cable_debounce_time));
 	return IRQ_HANDLED;
 }
 
@@ -295,11 +295,11 @@ static void palmas_enable_irq(struct palmas_usb *palmas_usb)
 
 	if (palmas_usb->enable_id_detection) {
 		/* Wait for the comparator to update status */
-		msleep(palmas_usb->cable_debaunce_time);
+		msleep(palmas_usb->cable_debounce_time);
 		ret = palmas_usb_id_state_update(palmas_usb);
 		if (ret == -EAGAIN)
 			schedule_delayed_work(&palmas_usb->cable_update_wq,
-			    msecs_to_jiffies(palmas_usb->cable_debaunce_time));
+			    msecs_to_jiffies(palmas_usb->cable_debounce_time));
 	}
 }
 
@@ -349,7 +349,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 
 	palmas_usb->palmas = palmas;
 	palmas_usb->dev	 = &pdev->dev;
-	palmas_usb->cable_debaunce_time = 300;
+	palmas_usb->cable_debounce_time = 300;
 
 	palmas_usb->id_otg_irq = palmas_irq_get_virq(palmas, PALMAS_ID_OTG_IRQ);
 	palmas_usb->id_irq = palmas_irq_get_virq(palmas, PALMAS_ID_IRQ);

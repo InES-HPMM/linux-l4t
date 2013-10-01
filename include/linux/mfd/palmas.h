@@ -745,7 +745,7 @@ struct palmas_usb {
 	bool enable_vbus_detection;
 	bool enable_id_detection;
 	struct delayed_work cable_update_wq;
-	int cable_debaunce_time;
+	int cable_debounce_time;
 	int cur_cable_index;
 };
 
