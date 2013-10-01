@@ -4774,7 +4774,7 @@ wl_cfg80211_change_bss(struct wiphy *wiphy,
 }
 
 static s32
-wl_cfg80211_set_channel(struct wiphy *wiphy,
+wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 	struct ieee80211_channel *chan,
 	enum nl80211_channel_type channel_type)
 {
@@ -4790,7 +4790,6 @@ wl_cfg80211_set_channel(struct wiphy *wiphy,
 		u32 bw_cap;
 	} param = {0, 0};
 	struct wl_priv *wl = wiphy_priv(wiphy);
-	struct net_device *dev = wl_to_prmry_ndev(wl);
 
 	if (wl->p2p_net == dev) {
 		dev = wl_to_prmry_ndev(wl);
@@ -5700,6 +5699,13 @@ wl_cfg80211_start_ap(
 		P2PAPI_BSSCFG_CONNECTION))) {
 		dev_role = NL80211_IFTYPE_P2P_GO;
 		WL_DBG(("Start AP req on P2P connection iface\n"));
+	}
+
+	if ((err = wl_cfg80211_set_channel(wiphy, dev,
+		dev->ieee80211_ptr->preset_chandef.chan,
+		NL80211_CHAN_HT20) < 0)) {
+		WL_ERR(("Set channel failed \n"));
+		goto fail;
 	}
 
 	if ((err = wl_cfg80211_bcn_set_params(info, dev,
