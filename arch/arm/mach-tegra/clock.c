@@ -915,12 +915,12 @@ void __init tegra_clk_preset_emc_monitor(unsigned long rate)
  * (peripherals that are taken out of reset by boot-loader must be at safe rate
  * already - that will be checked by tegra_clk_verify_rates()).
  */
-void __init tegra_periph_clk_safe_rate_init(struct clk *c)
+void tegra_periph_clk_safe_rate_init(struct clk *c)
 {
 	int ret;
 	unsigned long rate = tegra_clk_measure_input_freq();
 
-	if (clk_get_rate(c->parent) <= rate)
+	if (c->boot_rate || (clk_get_rate(c->parent) <= rate))
 		return;
 
 	if (c->ops && c->ops->set_rate && (c->flags & PERIPH_DIV)) {
