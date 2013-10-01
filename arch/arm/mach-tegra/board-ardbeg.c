@@ -809,9 +809,11 @@ static void ardbeg_modem_init(void)
 {
 	int modem_id = tegra_get_modem_id();
 	struct board_info board_info;
+	struct board_info pmu_board_info;
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	tegra_get_board_info(&board_info);
+	tegra_get_pmu_board_info(&pmu_board_info);
 	pr_info("%s: modem_id = %d\n", __func__, modem_id);
 
 	switch (modem_id) {
@@ -820,6 +822,8 @@ static void ardbeg_modem_init(void)
 			/* Set specific USB wake source for Ardbeg */
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
+			if (pmu_board_info.board_id == BOARD_E1736)
+				baseband_pdata.regulator_name = NULL;
 			platform_device_register(&icera_bruce_device);
 		}
 		break;
