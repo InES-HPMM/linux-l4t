@@ -162,7 +162,7 @@ static int palmas_clk_probe(struct platform_device *pdev)
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_platform_data *palmas_pdata;
 	struct palmas_clk32k_init_data *clk32_idata = NULL;
-	int clk_idata_size;
+	int clk_idata_size = 0;
 	struct palmas_clk *palmas_clks;
 	int i, ret;
 
@@ -180,7 +180,7 @@ static int palmas_clk_probe(struct platform_device *pdev)
 	}
 
 	if (!clk32_idata)
-		return -EINVAL;
+		dev_info(&pdev->dev, "No clock platform data\n");
 
 	palmas_clks = devm_kzalloc(&pdev->dev, sizeof(*palmas_clks) *
 				PALMAS_CLOCK32K_NR, GFP_KERNEL);
