@@ -9110,4 +9110,12 @@ void __init tegra12x_init_clocks(void)
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
 #endif
+
 }
+
+static int __init tegra12x_clk_late_init(void)
+{
+	clk_disable(&tegra_pll_re_vco);
+	return 0;
+}
+late_initcall(tegra12x_clk_late_init);
