@@ -518,7 +518,9 @@
 #define PLLE_AUX_PLLRE_SEL		(1<<28)
 #define PLLE_AUX_SEQ_STATE_SHIFT	26
 #define PLLE_AUX_SEQ_STATE_MASK		(0x3<<PLLE_AUX_SEQ_STATE_SHIFT)
+#define PLLE_AUX_SEQ_START_STATE	(1<<25)
 #define PLLE_AUX_SEQ_ENABLE		(1<<24)
+#define PLLE_AUX_SS_SWCTL		(1<<6)
 #define PLLE_AUX_ENABLE_SWCTL		(1<<4)
 #define PLLE_AUX_USE_LOCKDET		(1<<3)
 #define PLLE_AUX_PLLP_SEL		(1<<2)
@@ -528,6 +530,7 @@
 
 /* USB PLLs PD HW controls */
 #define XUSBIO_PLL_CFG0				0x51c
+#define XUSBIO_PLL_CFG0_SEQ_START_STATE		(1<<25)
 #define XUSBIO_PLL_CFG0_SEQ_ENABLE		(1<<24)
 #define XUSBIO_PLL_CFG0_PADPLL_USE_LOCKDET	(1<<6)
 #define XUSBIO_PLL_CFG0_CLK_ENABLE_SWCTL	(1<<2)
@@ -544,6 +547,7 @@
 #define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
 
 #define PLLU_HW_PWRDN_CFG0			0x530
+#define PLLU_HW_PWRDN_CFG0_SEQ_START_STATE	(1<<25)
 #define PLLU_HW_PWRDN_CFG0_SEQ_ENABLE		(1<<24)
 #define PLLU_HW_PWRDN_CFG0_USE_LOCKDET		(1<<6)
 #define PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
@@ -2053,7 +2057,7 @@ static int tegra12_pll_clk_wait_for_lock(
 static void usb_plls_hw_control_enable(u32 reg)
 {
 	u32 val = clk_readl(reg);
-	val |= USB_PLLS_USE_LOCKDET;
+	val |= USB_PLLS_USE_LOCKDET | USB_PLLS_SEQ_START_STATE;
 	val &= ~USB_PLLS_ENABLE_SWCTL;
 	val |= USB_PLLS_SEQ_START_STATE;
 	pll_writel_delay(val, reg);
@@ -3887,11 +3891,6 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	val &= ~PLLE_BASE_LOCK_OVERRIDE;
 	clk_writel(val, c->reg + PLL_BASE);
 
-	val = clk_readl(PLLE_AUX);
-	val |= PLLE_AUX_ENABLE_SWCTL;
-	val &= ~PLLE_AUX_SEQ_ENABLE;
-	pll_writel_delay(val, PLLE_AUX);
-
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLLE_MISC_LOCK_ENABLE;
 	val |= PLLE_MISC_IDDQ_SW_CTRL;
@@ -3939,8 +3938,8 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	clk_writel(val, c->reg + PLL_MISC(c));
 
 	val = clk_readl(PLLE_AUX);
-	val |= PLLE_AUX_USE_LOCKDET;
-	val &= ~PLLE_AUX_ENABLE_SWCTL;
+	val |= PLLE_AUX_USE_LOCKDET | PLLE_AUX_SEQ_START_STATE;
+	val &= ~(PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL);
 	pll_writel_delay(val, PLLE_AUX);
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
