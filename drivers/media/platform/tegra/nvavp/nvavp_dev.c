@@ -1213,7 +1213,11 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 	}
 
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+	cmdbuf_dmabuf = dma_buf_get(hdr.cmdbuf.mem);
+#else
 	cmdbuf_dmabuf = nvmap_dmabuf_export(clientctx->nvmap, hdr.cmdbuf.mem);
+#endif
 	if (IS_ERR(cmdbuf_dmabuf)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
@@ -1260,8 +1264,12 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		reloc_addr = cmdbuf_data +
 			     (clientctx->relocs[i].cmdbuf_offset >> 2);
 
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+		target_dmabuf = dma_buf_get(clientctx->relocs[i].target);
+#else
 		target_dmabuf = nvmap_dmabuf_export(clientctx->nvmap,
 				clientctx->relocs[i].target);
+#endif
 		if (IS_ERR(target_dmabuf)) {
 			ret = PTR_ERR(target_dmabuf);
 			goto target_dmabuf_fail;
