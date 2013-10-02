@@ -807,6 +807,38 @@ static void modify_reworked_rail_data(void)
 					= VDD_SOC_SD1_REWORKED;
 }
 
+static void modify_tn8_rail_data(void)
+{
+	/* E1780-A02 TN8 w/ E1736-A00 PMU*/
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BAT]
+		.calibration_data  = 0x3547;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BAT]
+		.power_lsb = 3.128284087 * PRECISION_MULTIPLIER_ARDBEG;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BAT]
+		.resistor = 3;
+
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKSOC]
+		.calibration_data  = 0x2ED7;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKSOC]
+		.power_lsb = 1.067467267 * PRECISION_MULTIPLIER_ARDBEG;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_SYS_BUCKSOC]
+		.resistor = 10;
+
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_3V3A_LDO1_6]
+		.calibration_data  = 0x7FFF;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_3V3A_LDO1_6]
+		.power_lsb = 0.390636921 * PRECISION_MULTIPLIER_ARDBEG;
+	ardbeg_A01_power_mon_info_1[ARDBEG_A01_VDD_3V3A_LDO1_6]
+		.resistor = 10;
+
+	ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_1V8A_LDO2_5_7]
+		.calibration_data  = 0x7FFF;
+	ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_1V8A_LDO2_5_7]
+		.power_lsb = 0.390636921 * PRECISION_MULTIPLIER_ARDBEG;
+	ardbeg_A01_power_mon_info_2[ARDBEG_A01_VDD_1V8A_LDO2_5_7]
+		.resistor = 10;
+}
+
 int __init ardbeg_pmon_init(void)
 {
 	/*
@@ -822,6 +854,9 @@ int __init ardbeg_pmon_init(void)
 		modify_reworked_rail_data();
 
 	tegra_get_board_info(&bi);
+
+	if (bi.sku == 1100)
+		modify_tn8_rail_data();
 
 	i2c_register_board_info(1, ardbeg_i2c2_board_info,
 		ARRAY_SIZE(ardbeg_i2c2_board_info));
