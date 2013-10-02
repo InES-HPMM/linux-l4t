@@ -336,19 +336,31 @@ out_fail:
 })
 
 /* update ELD information relevant for getting PCM info */
-static int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
-				     struct hdmi_eld *e, int size)
+int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
+				     struct hdmi_eld *e)
 {
 	int i, j;
 	u32 val, sad_base;
+	int size;
 	struct cea_sad *a;
 
+	size = snd_hdmi_get_eld_size(codec, nid);
+	if (size == 0) {
+		/* wfg: workaround for ASUS P5E-VM HDMI board */
+		snd_printd(KERN_INFO "HDMI: ELD buf size is 0, force 128\n");
+		size = 128;
+	}
+	if (size < ELD_FIXED_BYTES || size > ELD_MAX_SIZE) {
+		snd_printd(KERN_INFO "HDMI: invalid ELD buf size %d\n", size);
+		return -ERANGE;
+	}
+
 	val = hdmi_get_eld_byte(codec, nid, 0);
-	e->eld_ver = GET_BITS(val, 3, 5);
-	if (e->eld_ver != ELD_VER_CEA_861D &&
-	    e->eld_ver != ELD_VER_PARTIAL) {
+	e->info.eld_ver = GET_BITS(val, 3, 5);
+	if (e->info.eld_ver != ELD_VER_CEA_861D &&
+	    e->info.eld_ver != ELD_VER_PARTIAL) {
 		snd_printd(KERN_INFO "HDMI: Unknown ELD version %d\n",
-								e->eld_ver);
+								e->info.eld_ver);
 		goto out_fail;
 	}
 
@@ -357,14 +369,14 @@ static int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
 	sad_base += ELD_FIXED_BYTES;
 
 	val = hdmi_get_eld_byte(codec, nid, 5);
-	e->sad_count = GET_BITS(val, 4, 4);
+	e->info.sad_count = GET_BITS(val, 4, 4);
 
-	for (i = 0; i < e->sad_count; i++, sad_base += 3) {
+	for (i = 0; i < e->info.sad_count; i++, sad_base += 3) {
 		if ((sad_base + 3) > size) {
 			snd_printd(KERN_INFO "HDMI: out of range SAD %d\n", i);
 			goto out_fail;
 		}
-		a = &e->sad[i];
+		a = &e->info.sad[i];
 
 		val = hdmi_get_eld_byte(codec, nid, sad_base);
 		a->format = GET_BITS(val, 3, 4);
@@ -392,10 +404,27 @@ static int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
 	}
 
 	e->info.lpcm_sad_ready = 1;
+
+	codec->recv_dec_cap = 0;
+	codec->max_pcm_channels = 0;
+	for (i = 0; i < e->info.sad_count; i++) {
+		if (e->info.sad[i].format == AUDIO_CODING_TYPE_AC3) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_AC3);
+		} else if (e->info.sad[i].format == AUDIO_CODING_TYPE_DTS) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_DTS);
+		} else if (e->info.sad[i].format == AUDIO_CODING_TYPE_EAC3) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_EAC3);
+		} else if (e->info.sad[i].format == AUDIO_CODING_TYPE_LPCM) {
+			codec->max_pcm_channels =
+				e->info.sad[i].channels > codec->max_pcm_channels ?
+				e->info.sad[i].channels : codec->max_pcm_channels;
+		}
+	}
+
 	return 0;
 
 out_fail:
-	e->eld_ver = 0;
+	e->info.eld_ver = 0;
 	return -EINVAL;
 }
 
@@ -428,24 +457,6 @@ int snd_hdmi_get_eld(struct hda_codec *codec, hda_nid_t nid,
 		return -ERANGE;
 	}
 
-	if (!eld->info.lpcm_sad_ready)
-		hdmi_update_lpcm_sad_eld(codec, nid, eld, size);
-
-	codec->recv_dec_cap = 0;
-	codec->max_pcm_channels = 0;
-	for (i = 0; i < eld->sad_count; i++) {
-		if (eld->sad[i].format == AUDIO_CODING_TYPE_AC3) {
-			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_AC3);
-		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_DTS) {
-			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_DTS);
-		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_EAC3) {
-			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_EAC3);
-		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_LPCM) {
-			codec->max_pcm_channels =
-				eld->sad[i].channels > codec->max_pcm_channels ?
-				eld->sad[i].channels : codec->max_pcm_channels;
-		}
-	}
 
 	/* set ELD buffer */
 	for (i = 0; i < size; i++) {

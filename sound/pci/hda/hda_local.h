@@ -766,6 +766,8 @@ int snd_hdmi_parse_eld(struct parsed_hdmi_eld *e,
 void snd_hdmi_show_eld(struct parsed_hdmi_eld *e);
 void snd_hdmi_eld_update_pcm_info(struct parsed_hdmi_eld *e,
 			      struct hda_pcm_stream *hinfo);
+int hdmi_update_lpcm_sad_eld (struct hda_codec *codec, hda_nid_t nid,
+				     struct hdmi_eld *e);
 
 #ifdef CONFIG_PROC_FS
 int snd_hda_eld_proc_new(struct hda_codec *codec, struct hdmi_eld *eld,

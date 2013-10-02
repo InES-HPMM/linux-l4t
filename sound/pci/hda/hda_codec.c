@@ -1424,8 +1424,10 @@ int snd_hda_codec_new(struct hda_bus *bus,
 #ifdef CONFIG_PM
 	codec->d3_stop_clk = snd_hda_codec_get_supported_ps(codec, fg,
 					AC_PWRST_CLKSTOP);
+#ifndef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 	if (!codec->d3_stop_clk)
 		bus->power_keep_link_on = 1;
+#endif
 #endif
 	codec->epss = snd_hda_codec_get_supported_ps(codec, fg,
 					AC_PWRST_EPSS);
@@ -3945,6 +3947,9 @@ static unsigned int hda_call_codec_suspend(struct hda_codec *codec, bool in_wq)
 	codec->power_jiffies = jiffies;
 	spin_unlock(&codec->power_lock);
 	codec->in_pm = 0;
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	state |= AC_PWRST_CLK_STOP_OK;
+#endif
 	return state;
 }
 

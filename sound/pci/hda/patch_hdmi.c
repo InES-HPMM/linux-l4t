@@ -965,7 +965,8 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 	int pin_idx;
 	struct hda_jack_tbl *jack;
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	struct hdmi_eld *eld = &spec->pins[pin_idx].sink_eld;
+	struct hdmi_eld *eld;
+	struct hdmi_spec_per_pin *per_pin;
 #endif
 
 	jack = snd_hda_jack_tbl_get_from_tag(codec, tag);
@@ -986,6 +987,9 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 	hdmi_present_sense(get_pin(spec, pin_idx), 1);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	per_pin = get_pin(spec, pin_idx);
+	eld = &per_pin->sink_eld;
+
 	if (((codec->preset->id == 0x10de0020) ||
 		(codec->preset->id == 0x10de0022) ||
 		(codec->preset->id == 0x10de0028) ||
@@ -995,8 +999,8 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 		 * in console or for audio devices. Assume the highest speakers
 		 * configuration, to _not_ prohibit multi-channel audio playback
 		 */
-		if (!eld->spk_alloc)
-			eld->spk_alloc = 0xffff;
+		if (!eld->info.spk_alloc)
+			eld->info.spk_alloc = 0xffff;
 	}
 #endif
 
@@ -1254,6 +1258,7 @@ static void hdmi_present_sense(struct hdmi_spec_per_pin *per_pin, int repoll)
 	struct hdmi_eld *eld = &spec->temp_eld;
 	struct hdmi_eld *pin_eld = &per_pin->sink_eld;
 	hda_nid_t pin_nid = per_pin->pin_nid;
+
 	/*
 	 * Always execute a GetPinSense verb here, even when called from
 	 * hdmi_intrinsic_event; for some NVIDIA HW, the unsolicited
@@ -1277,14 +1282,27 @@ static void hdmi_present_sense(struct hdmi_spec_per_pin *per_pin, int repoll)
 		codec->addr, pin_nid, pin_eld->monitor_present, eld->eld_valid);
 
 	if (eld->eld_valid) {
+
+		if (!pin_eld->info.lpcm_sad_ready) {
+			memset(&eld->info, 0, sizeof(struct parsed_hdmi_eld));
+			hdmi_update_lpcm_sad_eld(codec, pin_nid, eld);
+		}
+
 		if (snd_hdmi_get_eld(codec, pin_nid, eld->eld_buffer,
 						     &eld->eld_size) < 0)
 			eld->eld_valid = false;
 		else {
-			memset(&eld->info, 0, sizeof(struct parsed_hdmi_eld));
 			if (snd_hdmi_parse_eld(&eld->info, eld->eld_buffer,
 						    eld->eld_size) < 0)
 				eld->eld_valid = false;
+		}
+
+		if(!eld->eld_valid && !pin_eld->info.lpcm_sad_ready) {
+			mutex_lock(&pin_eld->lock);
+			pin_eld->info = eld->info;
+			memcpy(pin_eld->eld_buffer, eld->eld_buffer,
+			       eld->eld_size);
+			mutex_unlock(&pin_eld->lock);
 		}
 
 		if (eld->eld_valid) {
@@ -1347,8 +1365,8 @@ static void hdmi_repoll_eld(struct work_struct *work)
 		 * in console or for audio devices. Assume the highest speakers
 		 * configuration, to _not_ prohibit multi-channel audio playback
 		 */
-		if (!eld->spk_alloc)
-			eld->spk_alloc = 0xffff;
+		if (!eld->info.spk_alloc)
+			eld->info.spk_alloc = 0xffff;
 	}
 #endif
 }
@@ -1906,7 +1924,7 @@ static int generic_hdmi_suspend(struct hda_codec *codec)
 	int pin_idx;
 
 	for (pin_idx = 0; pin_idx < spec->num_pins; pin_idx++) {
-		struct hdmi_spec_per_pin *per_pin = &spec->pins[pin_idx];
+		struct hdmi_spec_per_pin *per_pin = get_pin(spec, pin_idx);
 		struct hdmi_eld *eld = &per_pin->sink_eld;
 
 		cancel_delayed_work_sync(&per_pin->work);

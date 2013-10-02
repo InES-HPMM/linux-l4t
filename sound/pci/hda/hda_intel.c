@@ -203,7 +203,8 @@ MODULE_DESCRIPTION("Intel HDA driver");
 #define SFX	"hda-intel "
 #endif
 
-#if defined(CONFIG_PM) && defined(CONFIG_VGA_SWITCHEROO)
+#if defined(CONFIG_PM) && defined(CONFIG_VGA_SWITCHEROO) && \
+	!defined(CONFIG_SND_HDA_PLATFORM_DRIVER)
 #ifdef CONFIG_SND_HDA_CODEC_HDMI
 #define SUPPORT_VGA_SWITCHEROO
 #endif
@@ -671,7 +672,7 @@ enum {
 /* quirks for Nvidia */
 #define AZX_DCAPS_PRESET_NVIDIA \
 	(AZX_DCAPS_NVIDIA_SNOOP | AZX_DCAPS_RIRB_DELAY | AZX_DCAPS_NO_MSI |\
-	 AZX_DCAPS_ALIGN_BUFSIZE | AZX_DCAPS_NO_64BIT)
+	 AZX_DCAPS_ALIGN_BUFSIZE | AZX_DCAPS_NO_64BIT  | AZX_DCAPS_PM_RUNTIME)
 
 #define AZX_DCAPS_PRESET_CTHDA \
 	(AZX_DCAPS_NO_MSI | AZX_DCAPS_POSFIX_LPIB | AZX_DCAPS_4K_BDLE_BOUNDARY)
@@ -1566,7 +1567,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 	int i, ok;
 
 #ifdef CONFIG_PM_RUNTIME
-	if (chip->pci->dev.power.runtime_status != RPM_ACTIVE)
+	if (chip->dev->power.runtime_status != RPM_ACTIVE)
 		return IRQ_NONE;
 #endif
 
@@ -3071,9 +3072,10 @@ static void azx_power_notify(struct hda_bus *bus, bool power_up)
 		return;
 
 	if (power_up)
-		pm_runtime_get_sync(&chip->pci->dev);
+		pm_runtime_get_sync(chip->dev);
 	else
-		pm_runtime_put_sync(&chip->pci->dev);
+		pm_runtime_put_sync(chip->dev);
+
 }
 
 static DEFINE_MUTEX(card_list_lock);
@@ -3150,11 +3152,13 @@ static int azx_suspend(struct device *dev)
 	}
 
 	if (chip->pci) {
+		struct pci_dev *pci = to_pci_dev(dev);
+
 		if (chip->msi)
 			pci_disable_msi(chip->pci);
-		pci_disable_device(chip->pci);
-		pci_save_state(chip->pci);
-		pci_set_power_state(chip->pci, PCI_D3hot);
+		pci_disable_device(pci);
+		pci_save_state(pci);
+		pci_set_power_state(pci, PCI_D3hot);
 	}
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
@@ -3227,11 +3231,18 @@ static int azx_runtime_suspend(struct device *dev)
 	struct snd_card *card = dev_get_drvdata(dev);
 	struct azx *chip = card->private_data;
 
+	if (!power_save_controller ||
+		!(chip->driver_caps & AZX_DCAPS_PM_RUNTIME))
+		return -EAGAIN;
+
 	azx_stop_chip(chip);
-#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
-	azx_platform_disable_clocks(chip);
-#endif
 	azx_clear_irq_pending(chip);
+
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	if (chip->pdev)
+		azx_platform_disable_clocks(chip);
+#endif
+
 	return 0;
 }
 
@@ -3240,9 +3251,14 @@ static int azx_runtime_resume(struct device *dev)
 	struct snd_card *card = dev_get_drvdata(dev);
 	struct azx *chip = card->private_data;
 
-	azx_init_pci(chip);
+	if (chip->pci)
+		azx_init_pci(chip);
+
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
-	azx_platform_enable_clocks(chip);
+	if (chip->pdev) {
+		azx_platform_enable_clocks(chip);
+		azx_init_platform(chip);
+	}
 #endif
 	azx_init_chip(chip, 1);
 	return 0;
@@ -3756,6 +3772,10 @@ static int azx_create(struct snd_card *card, struct pci_dev *pci,
 		err = pci_enable_device(pci);
 		if (err < 0)
 			return err;
+	} else if (pdev) {
+		err = pm_runtime_set_active(&pdev->dev);
+		if (err < 0)
+			return err;
 	}
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
@@ -4033,6 +4053,11 @@ static int azx_first_init(struct azx *chip)
 	/* initialize chip */
 	if (chip->pci)
 		azx_init_pci(chip);
+
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	if (chip->pdev)
+		azx_init_platform(chip);
+#endif
 	azx_init_chip(chip, (probe_only[dev] & 2) == 0);
 
 	/* codec detection */
@@ -4168,8 +4193,22 @@ static int azx_probe(struct pci_dev *pci,
 			goto out_free;
 	}
 
+	if (pci) {
+		pci_set_drvdata(pci, card);
+
 	if (pci_dev_run_wake(pci))
 		pm_runtime_put_noidle(&pci->dev);
+	} else if (pdev) {
+		dev_set_drvdata(&pdev->dev, card);
+		pm_runtime_enable(&pdev->dev);
+	}
+
+	err = register_vga_switcheroo(chip);
+	if (err < 0) {
+		snd_printk(KERN_ERR SFX
+			   "Error registering VGA-switcheroo client\n");
+		goto out_free;
+	}
 
 	dev++;
 	complete_all(&chip->probe_wait);
@@ -4225,6 +4264,11 @@ static int azx_probe_continue(struct azx *chip)
 	err = snd_card_register(chip->card);
 	if (err < 0)
 		goto out_free;
+
+	if (chip->pci)
+		pci_set_drvdata(chip->pci, chip->card);
+	else
+		dev_set_drvdata(&chip->pdev->dev, chip->card);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 	pm_runtime_enable(chip->dev);
@@ -4465,7 +4509,8 @@ static int azx_remove_platform(struct platform_device *pdev)
 static const struct platform_device_id azx_platform_ids[] = {
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 	{ "tegra30-hda",
-	  .driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_RIRB_DELAY },
+	  .driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_RIRB_DELAY |
+											AZX_DCAPS_PM_RUNTIME },
 #endif
 	{ },
 };
