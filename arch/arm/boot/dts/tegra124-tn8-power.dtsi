@@ -367,14 +367,14 @@ palmas: tps65913 {
 				};
 			};
 
-			palmas_smps10_out2: smps10_out2 {
-				regulator-name = "vdd-out2-5v0";
+			palmas_smps10_out1: smps10_out1 {
+				regulator-name = "vdd-out1-5v0";
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5000000>;
 			};
 
-			smps10_out1 {
-				regulator-name = "vdd-out1-5v0";
+			palmas_smps10_out2: smps10_out2 {
+				regulator-name = "vdd-out2-5v0";
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5000000>;
 
@@ -535,6 +535,10 @@ palmas: tps65913 {
 					c7 {
 						regulator-consumer-supply = "vana";
 						regulator-consumer-device = "2-0036";
+					};
+					c8 {
+						regulator-consumer-supply = "avdd_ov5693";
+						regulator-consumer-device = "2-0010";
 					};
 				};
 			};

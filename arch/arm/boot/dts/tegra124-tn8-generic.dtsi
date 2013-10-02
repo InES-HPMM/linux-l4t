@@ -128,6 +128,7 @@ regulators {
 		enable-active-high;
 		gpio = <&gpio 109 0>; /* TEGRA_PN5 */
 		gpio-open-drain;
+		vin-supply = <&palmas_smps10_out2>;
 
 		consumers {
 			c1 {
@@ -150,6 +151,7 @@ regulators {
 		enable-active-high;
 		gpio = <&gpio 249 0>; /* TEGRA_PFF1 */
 		gpio-open-drain;
+		vin-supply = <&palmas_smps10_out2>;
 
 		consumers {
 			c1 {
@@ -171,6 +173,7 @@ regulators {
 		regulator-max-microvolt = <3300000>;
 		gpio = <&palmas_gpio 3 0>;
 		enable-active-high;
+		vin-supply = <&palmas_smps9>;
 
 		consumers {
 			c1 {
@@ -187,6 +190,7 @@ regulators {
 		regulator-max-microvolt = <1200000>;
 		enable-active-high;
 		gpio = <&palmas_gpio 4 0>;
+		vin-supply = <&palmas_smps8>;
 
 		consumers {
 			c1 {
@@ -203,6 +207,7 @@ regulators {
 		regulator-max-microvolt = <1200000>;
 		enable-active-high;
 		gpio = <&palmas_gpio 6 0>;
+		vin-supply = <&palmas_smps8>;
 
 		consumers {
 			c1 {
@@ -220,6 +225,7 @@ regulators {
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
 		gpio = <&palmas_gpio 7 0>;
+		vin-supply = <&palmas_smps8>;
 
 		consumers {
 			c1 {
@@ -252,6 +258,7 @@ regulators {
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
 		gpio = <&gpio 86 0>; /* TEGRA_PK6 */
+		vin-supply = <&palmas_smps10_out1>;
 
 		consumers {
 			c1 {
