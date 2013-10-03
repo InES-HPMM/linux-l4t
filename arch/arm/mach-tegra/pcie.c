@@ -909,6 +909,10 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 	u32 code, signature;
 
 	PR_FUNC_LINE;
+	if (!tegra_pcie.regs) {
+		pr_info("PCIE: PCI/AFI registers are unmapped\n");
+		return IRQ_HANDLED;
+	}
 	code = afi_readl(AFI_INTR_CODE) & AFI_INTR_CODE_MASK;
 	signature = afi_readl(AFI_INTR_SIGNATURE);
 
