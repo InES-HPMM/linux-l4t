@@ -1892,7 +1892,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	num_as = SMMU_NUM_ASIDS;
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12 ||
-		tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)
+		tegra_get_chipid() == TEGRA_CHIPID_TEGRA13 ||
+		tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
 		num_as = SMMU_NUM_ASIDS_TEGRA12;
 
 	bytes = sizeof(*smmu) + num_as * sizeof(*smmu->as);
@@ -1932,9 +1933,14 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
 		smmu->ptc_cache_size = SZ_32K;
+	}
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_21x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21))
-		smmu->swgids = 0x06f9000001be494e;
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)) {
+		smmu->swgids = 0xfff90000018cc9cf;
+		smmu->num_translation_enable = 4;
+		smmu->num_asid_security = 8;
+		smmu->ptc_cache_size = SZ_32K;
+
 	} else {
 		smmu->num_translation_enable = 3;
 		smmu->num_asid_security = 1;
