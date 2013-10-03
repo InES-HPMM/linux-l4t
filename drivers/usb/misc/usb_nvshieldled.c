@@ -46,8 +46,8 @@
 #define PID 0x7205
 
 static const struct usb_device_id nvshield_table[] = {
-	{ USB_INTERFACE_INFO(INTF_CLASS, INTF_SUBCLASS, INTF_PROTOCOL) },
-	{ USB_DEVICE(VID, PID)},
+	{ USB_DEVICE_AND_INTERFACE_INFO(VID, PID,
+			INTF_CLASS, INTF_SUBCLASS, INTF_PROTOCOL) },
 	{}
 };
 MODULE_DEVICE_TABLE(usb, nvshield_table);
