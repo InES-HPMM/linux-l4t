@@ -29,18 +29,23 @@
 #include <linux/of_gpio.h>
 #include <media/ad5823.h>
 
-#define POS_LOW		(32)
-#define POS_HIGH	(850)
-#define SETTLETIME_MS	(70)
+#define AD5823_ACTUATOR_RANGE	1023
+#define AD5823_POS_LOW_DEFAULT	(0)
+#define AD5823_POS_HIGH_DEFAULT	(1023)
+#define AD5823_FOCUS_MACRO	(568)
+#define AD5823_FOCUS_INFINITY	(146)
+
+#define SETTLETIME_MS	(15)
 #define FOCAL_LENGTH	(4.507f)
 #define FNUMBER		(2.8f)
+#define	AD5823_MOVE_TIME_VALUE	(0x43)
 
 #define AD5823_MAX_RETRIES (3)
 
 struct ad5823_info {
 	struct i2c_client *i2c_client;
 	struct regulator *regulator;
-	struct ad5823_config config;
+	struct nv_focuser_config config;
 	struct ad5823_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct regmap *regmap;
@@ -50,18 +55,20 @@ static int ad5823_set_position(struct ad5823_info *info, u32 position)
 {
 	int ret = 0;
 
-	if (position < info->config.pos_low ||
-		position > info->config.pos_high) {
+	if (position < info->config.pos_actual_low ||
+		position > info->config.pos_actual_high) {
 		dev_err(&info->i2c_client->dev,
 			"%s: position(%d) out of bound([%d, %d])\n",
-			__func__, position, info->config.pos_low,
-			info->config.pos_high);
-		if (position < info->config.pos_low)
-			position = info->config.pos_low;
-		else
-			position = info->config.pos_high;
+			__func__, position, info->config.pos_actual_low,
+			info->config.pos_actual_high);
+		if (position < info->config.pos_actual_low)
+			position = info->config.pos_actual_low;
+		if (position > info->config.pos_actual_high)
+			position = info->config.pos_actual_high;
 	}
 
+	ret |= regmap_write(info->regmap, AD5823_VCM_MOVE_TIME,
+				AD5823_MOVE_TIME_VALUE);
 	ret |= regmap_write(info->regmap, AD5823_MODE, 0);
 	ret |= regmap_write(info->regmap, AD5823_VCM_CODE_MSB,
 		((position >> 8) & 0x3) | (1 << 2));
@@ -75,6 +82,7 @@ static long ad5823_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	struct ad5823_info *info = file->private_data;
+	struct ad5823_cal_data cal;
 
 	switch (cmd) {
 	case AD5823_IOCTL_GET_CONFIG:
@@ -91,6 +99,45 @@ static long ad5823_ioctl(struct file *file,
 	}
 	case AD5823_IOCTL_SET_POSITION:
 		return ad5823_set_position(info, (u32) arg);
+
+	case AD5823_IOCTL_SET_CAL_DATA:
+		if (copy_from_user(&cal, (const void __user *)arg,
+					sizeof(struct ad5823_cal_data))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to get mode from user.\n",
+				__func__);
+			return -EFAULT;
+		}
+		info->config.pos_working_low = cal.pos_low;
+		info->config.pos_working_high = cal.pos_high;
+		break;
+
+	case AD5823_IOCTL_SET_CONFIG:
+	{
+		if (info->config.pos_working_low != 0)
+			cal.pos_low = info->config.pos_working_low;
+		if (info->config.pos_working_high != 0)
+			cal.pos_high = info->config.pos_working_high;
+
+		if (copy_from_user(&info->config, (const void __user *)arg,
+			sizeof(struct nv_focuser_config))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to get config from user.\n",
+				__func__);
+		return -EFAULT;
+		}
+
+		if (cal.pos_low != 0) {
+			info->config.pos_working_low = cal.pos_low;
+			info->config.focuser_set[0].inf = cal.pos_low;
+		}
+		if (cal.pos_high != 0) {
+			info->config.pos_working_high = cal.pos_high;
+			info->config.focuser_set[0].macro = cal.pos_high;
+		}
+	}
+	break;
+
 	default:
 		return -EINVAL;
 	}
@@ -111,7 +158,6 @@ static int ad5823_open(struct inode *inode, struct file *file)
 		err = info->pdata->power_on(info->pdata);
 
 	file->private_data = info;
-	msleep(100);
 	return err;
 }
 
@@ -119,12 +165,12 @@ int ad5823_release(struct inode *inode, struct file *file)
 {
 	struct ad5823_info *info = file->private_data;
 
+	if (info->pdata->power_off)
+		info->pdata->power_off(info->pdata);
+
 	if (info->regulator)
 		regulator_disable(info->regulator);
 	file->private_data = NULL;
-
-	if (info->pdata->power_off)
-		info->pdata->power_off(info->pdata);
 
 	return 0;
 }
@@ -256,13 +302,23 @@ static int ad5823_probe(struct i2c_client *client,
 	if (info->regulator)
 		regulator_disable(info->regulator);
 
-	info->i2c_client		= client;
-	info->config.settle_time	= SETTLETIME_MS;
-	info->config.focal_length	= FOCAL_LENGTH;
-	info->config.fnumber		= FNUMBER;
-	info->config.pos_low		= POS_LOW;
-	info->config.pos_high		= POS_HIGH;
-	info->miscdev			= ad5823_device;
+	info->config.focal_length = FOCAL_LENGTH;
+	info->config.fnumber = FNUMBER;
+	info->config.max_aperture = FNUMBER;
+	info->config.range_ends_reversed = 0;
+
+	info->config.pos_working_low = AD5823_FOCUS_INFINITY;
+	info->config.pos_working_high = AD5823_FOCUS_MACRO;
+	info->config.pos_actual_low = AD5823_POS_LOW_DEFAULT;
+	info->config.pos_actual_high = AD5823_POS_HIGH_DEFAULT;
+
+	info->config.num_focuser_sets = 1;
+	info->config.focuser_set[0].macro = AD5823_FOCUS_MACRO;
+	info->config.focuser_set[0].hyper = AD5823_FOCUS_INFINITY;
+	info->config.focuser_set[0].inf = AD5823_FOCUS_INFINITY;
+	info->config.focuser_set[0].settle_time = SETTLETIME_MS;
+
+	info->miscdev   = ad5823_device;
 
 	i2c_set_clientdata(client, info);
 
