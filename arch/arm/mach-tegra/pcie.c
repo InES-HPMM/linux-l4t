@@ -380,9 +380,7 @@ struct tegra_pcie_bus {
 
 static struct resource pcie_mem_space;
 static struct resource pcie_prefetch_mem_space;
-/* disable read write while noirq operation
- * is performed since pcie is powered off */
-static bool is_pcie_noirq_op = false;
+
 /* enable and init msi once during boot or resume */
 static bool msi_enable;
 /* this flag is used for enumeration by hotplug */
@@ -554,10 +552,6 @@ static int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 	struct tegra_pcie_port *pp = bus_to_port(bus->number);
 	void __iomem *addr;
 
-	/* read reg is disabled without intr to avoid hang in suspend noirq */
-	if (is_pcie_noirq_op)
-		return 0;
-
 	if (pp) {
 		if (devfn != 0) {
 			*val = 0xffffffff;
@@ -596,9 +590,6 @@ static int tegra_pcie_write_conf(struct pci_bus *bus, unsigned int devfn,
 	u32 mask;
 	u32 tmp;
 
-	/* write reg is disabled without intr to avoid hang in resume noirq */
-	if (is_pcie_noirq_op)
-		return 0;
 	/* pcie core is supposed to enable bus mastering and io/mem responses
 	 * if its not setting then enable corresponding bits in pci_command
 	 */
@@ -754,8 +745,8 @@ static struct hw_pci __initdata tegra_pcie_hw = {
 };
 
 #ifdef CONFIG_PM
-static int tegra_pcie_suspend(struct device *dev);
-static int tegra_pcie_resume(struct device *dev);
+static int tegra_pcie_suspend_noirq(struct device *dev);
+static int tegra_pcie_resume_noirq(struct device *dev);
 
 #ifdef HOTPLUG_ON_SYSTEM_BOOT
 /* It enumerates the devices when dock is connected after system boot */
@@ -805,7 +796,7 @@ static int tegra_pcie_attach(void)
 	if (!hotplug_event)
 		return err;
 #ifdef CONFIG_PM
-	err =  tegra_pcie_resume(NULL);
+	err =  tegra_pcie_resume_noirq(NULL);
 #endif
 	hotplug_event = false;
 	return err;
@@ -818,7 +809,7 @@ static int tegra_pcie_detach(void)
 	if (hotplug_event)
 		return err;
 #ifdef CONFIG_PM
-	err =  tegra_pcie_suspend(NULL);
+	err =  tegra_pcie_suspend_noirq(NULL);
 #endif
 	hotplug_event = true;
 	return err;
@@ -1201,6 +1192,7 @@ static int tegra_pcie_enable_controller(void)
 	return ret;
 }
 
+#ifdef USE_REGULATORS
 static int tegra_pcie_enable_regulators(void)
 {
 	PR_FUNC_LINE;
@@ -1290,6 +1282,7 @@ static int tegra_pcie_disable_regulators(void)
 err_exit:
 	return err;
 }
+#endif
 
 static int tegra_pcie_power_regate(void)
 {
@@ -1426,11 +1419,6 @@ static int tegra_pcie_power_on(void)
 		tegra_io_dpd_disable(&pexbias_io);
 		tegra_io_dpd_disable(&pexclk1_io);
 		tegra_io_dpd_disable(&pexclk2_io);
-		err = tegra_pcie_enable_regulators();
-		if (err) {
-			pr_err("PCIE: Failed to enable regulators\n");
-			goto err_exit;
-		}
 	}
 	err = tegra_pcie_power_regate();
 	if (err) {
@@ -1480,9 +1468,6 @@ static int tegra_pcie_power_off(void)
 		goto err_exit;
 
 	if (!tegra_platform_is_fpga()) {
-		err = tegra_pcie_disable_regulators();
-		if (err)
-			goto err_exit;
 		/* put PEX pads into DPD mode to save additional power */
 		tegra_io_dpd_enable(&pexbias_io);
 		tegra_io_dpd_enable(&pexclk1_io);
@@ -1988,8 +1973,7 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[2] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[2]);
 #endif
-	/* Enable Runtime PM for PCIe */
-	tegra_pd_add_device(tegra_pcie.dev);
+	/* Enable Runtime PM for PCIe, TODO: Need to add PCIe host device */
 	pm_runtime_enable(tegra_pcie.dev);
 
 	ret = tegra_pcie_init();
@@ -2000,30 +1984,18 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int tegra_pcie_suspend(struct device *dev)
+static int tegra_pcie_suspend_noirq(struct device *dev)
 {
-	struct pci_dev *pdev = NULL;
-
 	PR_FUNC_LINE;
-	async_synchronize_full();
-
-	for_each_pci_dev(pdev) {
-		pci_stop_and_remove_bus_device(pdev);
-		break;
-	}
-
-	/* disable read/write registers before powering off */
-	is_pcie_noirq_op = true;
 	/* reset number of ports since fresh initialization occurs in resume */
 	tegra_pcie.num_ports = 0;
 
 	return tegra_pcie_power_off();
 }
 
-static int tegra_pcie_resume(struct device *dev)
+static int tegra_pcie_resume_noirq(struct device *dev)
 {
 	int ret = 0;
-	struct pci_bus *bus = NULL;
 	int port, rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
 
@@ -2033,8 +2005,6 @@ static int tegra_pcie_resume(struct device *dev)
 		pr_err("PCIE: Failed to power on: %d\n", ret);
 		return ret;
 	}
-	/* enable read/write registers after powering on */
-	is_pcie_noirq_op = false;
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 
@@ -2051,11 +2021,14 @@ static int tegra_pcie_resume(struct device *dev)
 	}
 	msi_enable = false;
 
-	while ((bus = pci_find_next_bus(bus)) != NULL)
-		pci_rescan_bus(bus);
-	tegra_pcie_enable_features();
-
 exit:
+	return 0;
+}
+
+static int tegra_pcie_resume(struct device *dev)
+{
+	PR_FUNC_LINE;
+	tegra_pcie_enable_features();
 	return 0;
 }
 #endif
@@ -2076,7 +2049,8 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 static const struct dev_pm_ops tegra_pcie_pm_ops = {
-	.suspend = tegra_pcie_suspend,
+	.suspend_noirq  = tegra_pcie_suspend_noirq,
+	.resume_noirq = tegra_pcie_resume_noirq,
 	.resume = tegra_pcie_resume,
 	};
 #endif
