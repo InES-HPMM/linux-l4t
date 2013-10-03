@@ -41,10 +41,6 @@
 static const char *min_name = "min";
 static const char *max_name = "max";
 
-static const char *num_syncpts_name = "num_pts";
-static const char *num_mutexes_name = "num_mlocks";
-static const char *num_waitbases_name = "num_bases";
-
 /**
  * Resets syncpoint and waitbase values to sw shadows
  */
@@ -525,7 +521,10 @@ int nvhost_syncpt_patch_wait(struct nvhost_syncpt *sp, void *patch_addr)
 struct nvhost_sync_timeline *nvhost_syncpt_timeline(struct nvhost_syncpt *sp,
 		int idx)
 {
-	return sp->timeline[idx];
+	if (idx != NVSYNCPT_INVALID)
+		return sp->timeline[idx];
+	else
+		return sp->timeline_invalid;
 }
 #endif
 
@@ -552,28 +551,40 @@ static ssize_t syncpt_max_show(struct kobject *kobj,
 				syncpt_attr->id));
 }
 
-
-static ssize_t nvhost_capability_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
+static int nvhost_syncpt_timeline_attr(struct nvhost_master *host,
+				       struct nvhost_syncpt *sp,
+				       struct nvhost_syncpt_attr *min,
+				       struct nvhost_syncpt_attr *max,
+				       int i)
 {
-	struct nvhost_capability_node *node =
-		container_of(attr, struct nvhost_capability_node, attr);
+	char name[MAX_SYNCPT_LENGTH];
+	struct kobject *kobj;
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", node->func(node->sp));
-}
+	/* Create one directory per sync point */
+	snprintf(name, sizeof(name), "%d", i);
+	kobj = kobject_create_and_add(name, sp->kobj);
+	if (!kobj)
+		return -EIO;
 
-static inline int nvhost_syncpt_set_sysfs_capability_node(
-				struct nvhost_syncpt *sp, const char *name,
-				struct nvhost_capability_node *node,
-				int (*func)(struct nvhost_syncpt *sp))
-{
-	node->attr.attr.name = name;
-	node->attr.attr.mode = S_IRUGO;
-	node->attr.show = nvhost_capability_show;
-	node->func = func;
-	node->sp = sp;
+	min->id = i;
+	min->host = host;
+	min->attr.attr.name = min_name;
+	min->attr.attr.mode = S_IRUGO;
+	min->attr.show = syncpt_min_show;
+	sysfs_attr_init(&min->attr.attr);
+	if (sysfs_create_file(kobj, &min->attr.attr))
+		return -EIO;
 
-	return sysfs_create_file(sp->caps_kobj, &node->attr.attr);
+	max->id = i;
+	max->host = host;
+	max->attr.attr.name = max_name;
+	max->attr.attr.mode = S_IRUGO;
+	max->attr.show = syncpt_max_show;
+	sysfs_attr_init(&max->attr.attr);
+	if (sysfs_create_file(kobj, &max->attr.attr))
+		return -EIO;
+
+	return 0;
 }
 
 int nvhost_syncpt_init(struct platform_device *dev,
@@ -593,8 +604,6 @@ int nvhost_syncpt_init(struct platform_device *dev,
 	sp->lock_counts =
 		kzalloc(sizeof(atomic_t) * nvhost_syncpt_nb_mlocks(sp),
 			GFP_KERNEL);
-	sp->caps_nodes = kzalloc(sizeof(struct nvhost_capability_node) * 3,
-			GFP_KERNEL);
 #ifdef CONFIG_TEGRA_GRHOST_SYNC
 	sp->timeline = kzalloc(sizeof(struct nvhost_sync_timeline *) *
 			nvhost_syncpt_nb_pts(sp), GFP_KERNEL);
@@ -604,8 +613,7 @@ int nvhost_syncpt_init(struct platform_device *dev,
 	}
 #endif
 
-	if (!(sp->min_val && sp->max_val && sp->base_val && sp->lock_counts &&
-		sp->caps_nodes)) {
+	if (!(sp->min_val && sp->max_val && sp->base_val && sp->lock_counts)) {
 		/* frees happen in the deinit */
 		err = -ENOMEM;
 		goto fail;
@@ -613,30 +621,6 @@ int nvhost_syncpt_init(struct platform_device *dev,
 
 	sp->kobj = kobject_create_and_add("syncpt", &dev->dev.kobj);
 	if (!sp->kobj) {
-		err = -EIO;
-		goto fail;
-	}
-
-	sp->caps_kobj = kobject_create_and_add("capabilities", &dev->dev.kobj);
-	if (!sp->caps_kobj) {
-		err = -EIO;
-		goto fail;
-	}
-
-	if (nvhost_syncpt_set_sysfs_capability_node(sp, num_syncpts_name,
-		sp->caps_nodes, &nvhost_syncpt_nb_pts)) {
-		err = -EIO;
-		goto fail;
-	}
-
-	if (nvhost_syncpt_set_sysfs_capability_node(sp, num_waitbases_name,
-		sp->caps_nodes + 1, &nvhost_syncpt_nb_bases)) {
-		err = -EIO;
-		goto fail;
-	}
-
-	if (nvhost_syncpt_set_sysfs_capability_node(sp, num_mutexes_name,
-		sp->caps_nodes + 2, &nvhost_syncpt_nb_mlocks)) {
 		err = -EIO;
 		goto fail;
 	}
@@ -651,40 +635,13 @@ int nvhost_syncpt_init(struct platform_device *dev,
 
 	/* Fill in the attributes */
 	for (i = 0; i < nvhost_syncpt_nb_pts(sp); i++) {
-		char name[MAX_SYNCPT_LENGTH];
-		struct kobject *kobj;
 		struct nvhost_syncpt_attr *min = &sp->syncpt_attrs[i*2];
 		struct nvhost_syncpt_attr *max = &sp->syncpt_attrs[i*2+1];
 
-		/* Create one directory per sync point */
-		snprintf(name, sizeof(name), "%d", i);
-		kobj = kobject_create_and_add(name, sp->kobj);
-		if (!kobj) {
-			err = -EIO;
+		err = nvhost_syncpt_timeline_attr(host, sp, min, max, i);
+		if (err)
 			goto fail;
-		}
 
-		min->id = i;
-		min->host = host;
-		min->attr.attr.name = min_name;
-		min->attr.attr.mode = S_IRUGO;
-		min->attr.show = syncpt_min_show;
-		sysfs_attr_init(&min->attr.attr);
-		sysfs_attr_init(&max->attr.attr);
-		if (sysfs_create_file(kobj, &min->attr.attr)) {
-			err = -EIO;
-			goto fail;
-		}
-
-		max->id = i;
-		max->host = host;
-		max->attr.attr.name = max_name;
-		max->attr.attr.mode = S_IRUGO;
-		max->attr.show = syncpt_max_show;
-		if (sysfs_create_file(kobj, &max->attr.attr)) {
-			err = -EIO;
-			goto fail;
-		}
 #ifdef CONFIG_TEGRA_GRHOST_SYNC
 		sp->timeline[i] = nvhost_sync_timeline_create(sp, i);
 		if (!sp->timeline[i]) {
@@ -693,6 +650,21 @@ int nvhost_syncpt_init(struct platform_device *dev,
 		}
 #endif
 	}
+
+#ifdef CONFIG_TEGRA_GRHOST_SYNC
+	err = nvhost_syncpt_timeline_attr(host, sp, &sp->invalid_min_attr,
+					  &sp->invalid_max_attr,
+					  NVSYNCPT_INVALID);
+	if (err)
+		goto fail;
+
+	sp->timeline_invalid = nvhost_sync_timeline_create(sp,
+							   NVSYNCPT_INVALID);
+	if (!sp->timeline_invalid) {
+		err = -ENOMEM;
+		goto fail;
+	}
+#endif
 
 	return err;
 
@@ -713,13 +685,15 @@ static void nvhost_syncpt_deinit_timeline(struct nvhost_syncpt *sp)
 	}
 	kfree(sp->timeline);
 	sp->timeline = NULL;
+	if (sp->timeline_invalid)
+		sync_timeline_destroy(
+			(struct sync_timeline *)sp->timeline_invalid);
 #endif
 }
 
 void nvhost_syncpt_deinit(struct nvhost_syncpt *sp)
 {
 	kobject_put(sp->kobj);
-	kobject_put(sp->caps_kobj);
 
 	kfree(sp->min_val);
 	sp->min_val = NULL;
@@ -735,9 +709,6 @@ void nvhost_syncpt_deinit(struct nvhost_syncpt *sp)
 
 	kfree(sp->syncpt_attrs);
 	sp->syncpt_attrs = NULL;
-
-	kfree(sp->caps_nodes);
-	sp->caps_nodes = NULL;
 
 	nvhost_syncpt_deinit_timeline(sp);
 }

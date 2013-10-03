@@ -39,6 +39,8 @@
 #define nvhost_dbg_pmu(fmt, arg...) \
 	nvhost_dbg(dbg_pmu, fmt, ##arg)
 
+static void pmu_dump_falcon_stats(struct pmu_gk20a *pmu);
+
 static void pmu_copy_from_dmem(struct pmu_gk20a *pmu,
 			u32 src, u8* dst, u32 size, u8 port)
 {
@@ -1045,7 +1047,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 
 	pmu->ucode.pmu_va = vm->map(vm, memmgr, pmu->ucode.mem.ref,
 			/*offset_align, flags, kind*/
-			0, 0, 0, NULL, false);
+			0, 0, 0, NULL, false, mem_flag_read_only);
 	if (!pmu->ucode.pmu_va) {
 		nvhost_err(d, "failed to map pmu ucode memory!!");
 		return err;
@@ -1076,7 +1078,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 
 	pmu->pg_buf.pmu_va = vm->map(vm, memmgr, pmu->pg_buf.mem.ref,
 			 /*offset_align, flags, kind*/
-			0, 0, 0, NULL, false);
+			0, 0, 0, NULL, false, mem_flag_none);
 	if (!pmu->pg_buf.pmu_va) {
 		nvhost_err(d, "failed to map fecs pg buffer");
 		err = -ENOMEM;
@@ -1096,7 +1098,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 
 	pmu->seq_buf.pmu_va = vm->map(vm, memmgr, pmu->seq_buf.mem.ref,
 			/*offset_align, flags, kind*/
-			0, 0, 0, NULL, false);
+			0, 0, 0, NULL, false, mem_flag_none);
 	if (!pmu->seq_buf.pmu_va) {
 		nvhost_err(d, "failed to map zbc buffer");
 		err = -ENOMEM;
@@ -1221,6 +1223,7 @@ int gk20a_init_pmu_setup_hw(struct gk20a *g)
 	if (status == 0) {
 		nvhost_err(dev_from_gk20a(g),
 			"PG_INIT_ACK failed, remaining timeout : 0x%lx", remain);
+		pmu_dump_falcon_stats(pmu);
 		return -EBUSY;
 	}
 
@@ -2420,6 +2423,9 @@ int gk20a_pmu_enable_elpg(struct gk20a *g)
 		goto exit_unlock;
 	}
 
+	if (!g->elpg_enabled)
+		goto exit_unlock;
+
 	/* do NOT enable elpg until golden ctx is created,
 	   which is related with the ctx that ELPG save and restore. */
 	if (unlikely(!gr->ctx_vars.golden_image_initialized)) {
@@ -2513,6 +2519,8 @@ static int gk20a_pmu_disable_elpg_defer_enable(struct gk20a *g, bool enable)
 		if (pmu->elpg_stat != PMU_ELPG_STAT_ON) {
 			nvhost_err(dev_from_gk20a(g),
 				"ELPG_ALLOW_ACK failed");
+			pmu_dump_elpg_stats(pmu);
+			pmu_dump_falcon_stats(pmu);
 			ret = -EBUSY;
 			goto exit_unlock;
 		}
@@ -2541,6 +2549,7 @@ static int gk20a_pmu_disable_elpg_defer_enable(struct gk20a *g, bool enable)
 		nvhost_err(dev_from_gk20a(g),
 			"ELPG_DISALLOW_ACK failed");
 		pmu_dump_elpg_stats(pmu);
+		pmu_dump_falcon_stats(pmu);
 		ret = -EBUSY;
 		goto exit_unlock;
 	}

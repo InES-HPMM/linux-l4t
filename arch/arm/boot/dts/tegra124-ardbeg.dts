@@ -86,4 +86,10 @@
 		nvidia,core-power-req-active-high;
 		nvidia,sys-clock-req-active-high;
 	};
+
+	stm8t143 {
+		compatible = "stm,stm8t143";
+		pout-gpio = <&gpio 190 0>;
+		tout-gpio = <&gpio 112 0>;
+	};
 };

@@ -28,6 +28,7 @@
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
+#include <linux/edp.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
@@ -73,6 +74,7 @@ const char *tegra_rt5639_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 struct tegra_rt5639 {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_asoc_platform_data *pdata;
+	struct edp_client *spk_edp_client;
 	int gpio_requested;
 #ifdef CONFIG_SWITCH
 	int jack_status;
@@ -493,6 +495,51 @@ static struct snd_soc_jack_pin tegra_rt5639_hp_jack_pins[] = {
 
 #endif
 
+static void tegra_speaker_edp_set_volume(struct snd_soc_codec *codec,
+					 int l_vol,
+					 int r_vol)
+{
+	snd_soc_update_bits(codec,
+			    RT5639_SPK_VOL,
+			    RT5639_L_VOL_MASK,
+			    l_vol << RT5639_L_VOL_SFT);
+	snd_soc_update_bits(codec,
+			    RT5639_SPK_VOL,
+			    RT5639_R_VOL_MASK,
+			    r_vol << RT5639_R_VOL_SFT);
+}
+
+static void tegra_speaker_throttle(unsigned int new_state,  void *priv_data)
+{
+	struct tegra_rt5639 *machine = priv_data;
+	struct snd_soc_card *card;
+	struct snd_soc_codec *codec;
+
+	if (!machine)
+		return;
+
+	card = machine->pcard;
+	codec = card->rtd[DAI_LINK_HIFI].codec;
+
+	/* set codec volume to reflect the new E-state */
+	switch (new_state) {
+	case TEGRA_SPK_EDP_NEG_1:
+		/* set codec voulme to 0 dB (100%), E-1 state */
+		tegra_speaker_edp_set_volume(codec, 0x8, 0x8);
+		break;
+	case TEGRA_SPK_EDP_ZERO:
+		/* set codec volume to -16.5dB (78%), E0 state */
+		tegra_speaker_edp_set_volume(codec, 0x13, 0x13);
+		break;
+	default:
+		pr_err("%s: New E-state %d don't support!\n",
+			__func__, new_state);
+		break;
+	}
+
+}
+
+
 static int tegra_rt5639_event_int_spk(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -501,14 +548,48 @@ static int tegra_rt5639_event_int_spk(struct snd_soc_dapm_widget *w,
 	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int ret = 0;
+	int err;
+	struct snd_soc_codec *codec = card->rtd[DAI_LINK_HIFI].codec;
+	unsigned int approved = TEGRA_SPK_EDP_NUM_STATES;
 
-	if (machine->spk_reg) {
-		if (SND_SOC_DAPM_EVENT_ON(event))
-			ret = regulator_enable(machine->spk_reg);
-		else
-			regulator_disable(machine->spk_reg);
+
+	if (machine->spk_edp_client == NULL) {
+		if (machine->spk_reg) {
+			if (SND_SOC_DAPM_EVENT_ON(event))
+				err = regulator_enable(machine->spk_reg);
+			else
+				regulator_disable(machine->spk_reg);
+		}
+		goto err_null_spk_edp_client;
 	}
 
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		ret = edp_update_client_request(machine->spk_edp_client,
+						TEGRA_SPK_EDP_NEG_1,
+						&approved);
+		err = regulator_enable(machine->spk_reg);
+		if (ret || approved != TEGRA_SPK_EDP_NEG_1) {
+			if (approved == TEGRA_SPK_EDP_ZERO)
+				/* set codec volume to -16.5dB (78%),E0 state */
+				tegra_speaker_edp_set_volume(codec, 0x13, 0x13);
+		} else {
+			/* set codec voulme to 0 dB (100%), E-1 state */
+			tegra_speaker_edp_set_volume(codec, 0x8, 0x8);
+		}
+	} else {
+		/* turn off codec volume,-46.5 dB, E1 state */
+		tegra_speaker_edp_set_volume(codec, 0x27, 0x27);
+		regulator_disable(machine->spk_reg);
+		ret = edp_update_client_request(machine->spk_edp_client,
+						TEGRA_SPK_EDP_1,
+						NULL);
+		if (ret) {
+			dev_err(card->dev,
+				"E+1 state transition failed\n");
+		}
+	}
+
+err_null_spk_edp_client:
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
 		return 0;
 
@@ -808,6 +889,8 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct tegra_rt5639 *machine;
 	struct tegra_asoc_platform_data *pdata = NULL;
+	struct snd_soc_codec *codec;
+	struct edp_manager *battery_manager = NULL;
 	int ret;
 	int codec_id;
 	u32 val32[7];
@@ -997,6 +1080,56 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 		goto err_unregister_card;
 	}
 #endif
+
+
+	if (!pdata->edp_support)
+		return 0;
+
+	machine->spk_edp_client = devm_kzalloc(&pdev->dev,
+				sizeof(struct edp_client), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(machine->spk_edp_client)) {
+		dev_err(&pdev->dev, "could not allocate edp client\n");
+		return 0;
+	}
+
+	strncpy(machine->spk_edp_client->name, "speaker", EDP_NAME_LEN - 1);
+	machine->spk_edp_client->name[EDP_NAME_LEN - 1] = '\0';
+	machine->spk_edp_client->states = pdata->edp_states;
+	machine->spk_edp_client->num_states = TEGRA_SPK_EDP_NUM_STATES;
+	machine->spk_edp_client->e0_index = TEGRA_SPK_EDP_ZERO;
+	machine->spk_edp_client->priority = EDP_MAX_PRIO + 2;
+	machine->spk_edp_client->throttle = tegra_speaker_throttle;
+	machine->spk_edp_client->private_data = machine;
+
+	battery_manager = edp_get_manager("battery");
+	if (!battery_manager) {
+		dev_err(&pdev->dev, "unable to get edp manager\n");
+	} else {
+		/* register speaker edp client */
+		ret = edp_register_client(battery_manager,
+			machine->spk_edp_client);
+		if (ret) {
+			dev_err(&pdev->dev, "unable to register edp client\n");
+				devm_kfree(&pdev->dev, machine->spk_edp_client);
+				machine->spk_edp_client = NULL;
+				return 0;
+		}
+		codec = card->rtd[DAI_LINK_HIFI].codec;
+
+		/* Default turn off codec, set E1 state */
+		tegra_speaker_edp_set_volume(codec, 0x27, 0x27);
+		ret = edp_update_client_request(machine->spk_edp_client,
+						TEGRA_SPK_EDP_1,
+						NULL);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"unable to set E1 EDP state\n");
+			edp_unregister_client(machine->spk_edp_client);
+			devm_kfree(&pdev->dev, machine->spk_edp_client);
+			machine->spk_edp_client = NULL;
+			return 0;
+		}
+	}
 
 	return 0;
 

@@ -127,7 +127,7 @@ struct palmas_gpadc {
  *	After 100us, force the GPADC state machine to be OFF by using the
  *		GPADC_CTRL1.  GPADC_FORCE bit = 0
  */
-static int palams_disable_auto_conversion(struct palmas_gpadc *adc)
+static int palmas_disable_auto_conversion(struct palmas_gpadc *adc)
 {
 	int ret;
 
@@ -175,7 +175,7 @@ static irqreturn_t palmas_gpadc_irq_auto(int irq, void *data)
 	struct palmas_gpadc *adc = data;
 
 	dev_info(adc->dev, "Threshold interrupt %d occurs\n", irq);
-	palams_disable_auto_conversion(adc);
+	palmas_disable_auto_conversion(adc);
 	return IRQ_HANDLED;
 }
 
@@ -564,7 +564,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		ret = request_threaded_irq(adc->irq_auto_0, NULL,
 				palmas_gpadc_irq_auto,
 				IRQF_ONESHOT | IRQF_EARLY_RESUME,
-				"palams-adc-auto-0", adc);
+				"palmas-adc-auto-0", adc);
 		if (ret < 0) {
 			dev_err(adc->dev, "request auto0 irq %d failed: %dn",
 				adc->irq_auto_0, ret);
@@ -580,7 +580,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		ret = request_threaded_irq(adc->irq_auto_1, NULL,
 				palmas_gpadc_irq_auto,
 				IRQF_ONESHOT | IRQF_EARLY_RESUME,
-				"palams-adc-auto-1", adc);
+				"palmas-adc-auto-1", adc);
 		if (ret < 0) {
 			dev_err(adc->dev, "request auto1 irq %d failed: %dn",
 				adc->irq_auto_1, ret);
@@ -650,7 +650,8 @@ out_irq_auto0_free:
 out_irq_free:
 	free_irq(adc->irq, adc);
 out_unregister_map:
-	iio_map_array_unregister(iodev);
+	if (adc_pdata->iio_maps)
+		iio_map_array_unregister(iodev);
 out:
 	iio_device_free(iodev);
 	return ret;
@@ -661,8 +662,8 @@ static int palmas_gpadc_remove(struct platform_device *pdev)
 	struct iio_dev *iodev = dev_to_iio_dev(&pdev->dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
 	struct palmas_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
-
-	iio_map_array_unregister(iodev);
+	if (pdata->gpadc_pdata->iio_maps)
+		iio_map_array_unregister(iodev);
 	iio_device_unregister(iodev);
 	free_irq(adc->irq, adc);
 	if (adc->wakeup1_enable)
@@ -674,7 +675,7 @@ static int palmas_gpadc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int palams_adc_wakeup_configure(struct palmas_gpadc *adc)
+static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
 {
 	int adc_period, conv;
 	int i;
@@ -780,7 +781,7 @@ static int palams_adc_wakeup_configure(struct palmas_gpadc *adc)
 	return 0;
 }
 
-static int palams_adc_wakeup_reset(struct palmas_gpadc *adc)
+static int palmas_adc_wakeup_reset(struct palmas_gpadc *adc)
 {
 	int ret;
 
@@ -791,7 +792,7 @@ static int palams_adc_wakeup_reset(struct palmas_gpadc *adc)
 		return ret;
 	}
 
-	ret = palams_disable_auto_conversion(adc);
+	ret = palmas_disable_auto_conversion(adc);
 	if (ret < 0) {
 		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
 		return ret;
@@ -809,7 +810,7 @@ static int palmas_gpadc_suspend(struct device *dev)
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palams_adc_wakeup_configure(adc);
+	ret = palmas_adc_wakeup_configure(adc);
 	if (ret < 0)
 		return ret;
 
@@ -831,7 +832,7 @@ static int palmas_gpadc_resume(struct device *dev)
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palams_adc_wakeup_reset(adc);
+	ret = palmas_adc_wakeup_reset(adc);
 	if (ret < 0)
 		return ret;
 

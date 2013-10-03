@@ -11,14 +11,14 @@
  */
 
 #include <linux/i2c.h>
-#include <linux/input.h>
 #include <linux/module.h>
-#include <linux/miscdevice.h>
+#include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/regulator/consumer.h>
-
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
 
 /* IT = Integration Time.  The amount of time the photons hit the sensor.
  * STEP = the value from HW which is the photon count during IT.
@@ -47,68 +47,30 @@
 #define CM3217_INPUT_LUX_MAX		(119156)
 #define CM3217_INPUT_LUX_FUZZ		(0)
 #define CM3217_INPUT_LUX_FLAT		(0)
+#define CM3217_MAX_REGULATORS		(1)
 
+enum als_state {
+	CHIP_POWER_OFF,
+	CHIP_POWER_ON_ALS_OFF,
+	CHIP_POWER_ON_ALS_ON,
+};
 
-/* regulator names in order of powering on */
-static char *cm3217_vregs[] = {
-	"vdd",
+enum i2c_state {
+	I2C_XFER_NOT_ENABLED,
+	I2c_XFER_OK_REG_NOT_SYNC,
+	I2c_XFER_OK_REG_SYNC,
 };
 
 struct cm3217_inf {
 	struct i2c_client *i2c;
-	struct mutex mutex;
-	struct input_dev *idev;
-	struct device *dev;
 	struct workqueue_struct *wq;
 	struct delayed_work dw;
-	struct regulator_bulk_data vreg[ARRAY_SIZE(cm3217_vregs)];
-	s64 timestamp;			/* timestamp at last report */
-	unsigned int queue_delay;	/* workqueue delay time (ms) */
-	unsigned int poll_delay;	/* OS requested reporting delay (ms) */
-	unsigned long mult;		/* used to calc lux from HW values */
-	unsigned int index;		/* index into HW IT settings table */
-	unsigned int resolution;	/* report when new lux outside this */
-	int lux;			/* the final value that is reported */
-	bool enable;			/* global enable flag */
-	bool hw_change;			/* HW changed so drop first sample */
-	bool hw_sync;			/* queue time match HW sample time */
-	bool report;			/* used to report first valid sample */
+	struct regulator_bulk_data vreg[CM3217_MAX_REGULATORS];
+	int raw_illuminance_val;
+	int als_state;
 };
 
-struct cm3217_it {			/* integration time */
-	unsigned int ms;		/* time ms */
-	__u8 fd_it;			/* FD_IT HW */
-	__u8 it_t;			/* IT_T HW */
-};
-
-static struct cm3217_it cm3217_it_tbl[] = {
-	{3200, 0, 3},			/* 800ms * 4 */
-	{1600, 0, 2},			/* 800ms * 2 */
-	{1064, 2, 3},			/* 266ms * 4 */
-	{800, 0, 1},			/* 800ms * 1 */
-	{532, 2, 2},			/* 266ms * 2 */
-	{520, 4, 3},			/* 130ms * 4 */
-	{400, 1, 1},			/* 400ms * 1 */
-	{320, 6, 3},			/* 80ms * 4 */
-	{266, 2, 1},			/* 200ms * 1 */
-	{264, 7, 3},			/* 66ms * 4 */
-	{260, 4, 2},			/* 130ms * 2 */
-	{200, 3, 1},			/* 200ms * 1 */
-	{160, 6, 2},			/* 80ms * 2 */
-	{133, 2, 0},			/* 266ms / 2 */
-	{132, 7, 2},			/* 66ms * 2 */
-	{130, 4, 1},			/* 130ms * 1 */
-	{100, 5, 1},			/* 100ms * 1 */
-	{80, 6, 1},			/* 80ms * 1 */
-	{66, 7, 1},			/* 66ms * 1 */
-	{65, 4, 0},			/* 130ms / 2 */
-	{50, 5, 0},			/* 100ms / 2 */
-	{40, 6, 0},			/* 80ms / 2 */
-	{33, 7, 0}			/* 66ms / 2 */
-};
-
-
-static int cm3217_i2c_rd(struct cm3217_inf *inf, __u16 *val)
+static int cm3217_i2c_rd(struct cm3217_inf *inf)
 {
 	struct i2c_msg msg[2];
 	__u8 buf[2];
@@ -124,7 +86,7 @@ static int cm3217_i2c_rd(struct cm3217_inf *inf, __u16 *val)
 	if (i2c_transfer(inf->i2c->adapter, msg, 2) != 2)
 		return -EIO;
 
-	*val = (__u16)((buf[1] << 8) | buf[0]);
+	inf->raw_illuminance_val = (__u16)((buf[1] << 8) | buf[0]);
 	return 0;
 }
 
@@ -156,7 +118,7 @@ static int cm3217_cmd_wr(struct cm3217_inf *inf, __u8 it_t, __u8 fd_it)
 	int err;
 
 	cmd1 = (CM3217_HW_CMD1_DFLT);
-	if (!inf->enable)
+	if (!inf->als_state)
 		cmd1 |= (1 << CM3217_HW_CMD1_BIT_SD);
 	cmd1 |= (it_t << CM3217_HW_CMD1_BIT_IT_T);
 	cmd2 = fd_it << CM3217_HW_CMD2_BIT_FD_IT;
@@ -186,7 +148,7 @@ static int cm3217_vreg_dis_all(struct cm3217_inf *inf)
 	unsigned int i;
 	int err = 0;
 
-	for (i = ARRAY_SIZE(cm3217_vregs); i > 0; i--)
+	for (i = CM3217_MAX_REGULATORS; i > 0; i--)
 		err |= cm3217_vreg_dis(inf, (i - 1));
 	return err;
 }
@@ -215,7 +177,7 @@ static int cm3217_vreg_en_all(struct cm3217_inf *inf)
 	unsigned i;
 	int err = 0;
 
-	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++)
+	for (i = 0; i < CM3217_MAX_REGULATORS; i++)
 		err |= cm3217_vreg_en(inf, i);
 	return err;
 }
@@ -224,7 +186,7 @@ static void cm3217_vreg_exit(struct cm3217_inf *inf)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++) {
+	for (i = 0; i < CM3217_MAX_REGULATORS; i++) {
 		regulator_put(inf->vreg[i].consumer);
 		inf->vreg[i].consumer = NULL;
 	}
@@ -233,13 +195,18 @@ static void cm3217_vreg_exit(struct cm3217_inf *inf)
 static int cm3217_vreg_init(struct cm3217_inf *inf)
 {
 	unsigned int i;
-	int err;
+	int err = 0;
 
-	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++) {
+	/* regulator names in order of powering on */
+	char *cm3217_vregs[] = {
+		"vdd",
+	};
+
+	for (i = 0; i < CM3217_MAX_REGULATORS; i++) {
 		inf->vreg[i].supply = cm3217_vregs[i];
 		inf->vreg[i].ret = 0;
 		inf->vreg[i].consumer = regulator_get(&inf->i2c->dev,
-						      inf->vreg[i].supply);
+							inf->vreg[i].supply);
 		if (IS_ERR(inf->vreg[i].consumer)) {
 			err = PTR_ERR(inf->vreg[i].consumer);
 			dev_err(&inf->i2c->dev, "%s err %d for %s\n",
@@ -250,438 +217,221 @@ static int cm3217_vreg_init(struct cm3217_inf *inf)
 	return err;
 }
 
-static int cm3217_pm(struct cm3217_inf *inf, bool en)
+static ssize_t cm3217_chan_regulator_enable_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
-	int err = 0;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	unsigned int enable = 0;
 
-	mutex_lock(&inf->mutex);
-	if (inf->enable != en) {
-		inf->enable = en;
-		if (en) {
-			cm3217_vreg_en_all(inf);
-		} else {
-			err = cm3217_vreg_en_all(inf);
-			if (err)
-				mdelay(CM3217_HW_DELAY);
-			err = cm3217_cmd_wr(inf, 0, 0);
-			cm3217_vreg_dis_all(inf);
-		}
-	}
-	dev_dbg(&inf->i2c->dev, "%s enable=%x err=%d\n",
-		__func__, inf->enable, err);
-	mutex_unlock(&inf->mutex);
-	return err;
+	if (inf->als_state != CHIP_POWER_OFF)
+		enable = 1;
+	return sprintf(buf, "%d\n", inf->als_state);
 }
 
-static void pm_exit(struct cm3217_inf *inf)
+static ssize_t cm3217_chan_regulator_enable(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
-	cm3217_vreg_dis_all(inf);
-	cm3217_vreg_exit(inf);
-}
+	u8 enable;
+	int ret = 0;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
 
-static int pm_init(struct cm3217_inf *inf)
-{
-	int err;
+	if (kstrtou8(buf, 10, &enable))
+		return -EINVAL;
 
-	cm3217_vreg_init(inf);
-	inf->enable = true;
-	err = cm3217_pm(inf, false);
-	return err;
-}
+	if ((enable != 0) && (enable != 1))
+		return -EINVAL;
 
-static s64 cm3217_timestamp_ns(void)
-{
-	struct timespec ts;
-	s64 ns;
+	if (enable == (inf->als_state != CHIP_POWER_OFF))
+		return 1;
 
-	ktime_get_ts(&ts);
-	ns = timespec_to_ns(&ts);
-	return ns;
-}
+	if (!inf->vreg)
+		goto success;
 
-static void cm3217_delay(struct cm3217_inf *inf, bool hw_sync)
-{
-	unsigned int ms;
-
-	if (inf->poll_delay < CM3217_POLL_DELAY_MS_MIN)
-		inf->poll_delay = CM3217_POLL_DELAY_MS_MIN;
-	if (hw_sync)
-		inf->hw_sync = true;
-	ms = cm3217_it_tbl[inf->index].ms;
-	ms += CM3217_HW_DELAY;
-	if ((ms < inf->poll_delay) && !hw_sync)
-		inf->queue_delay = inf->poll_delay;
+	if (enable)
+		ret = cm3217_vreg_en_all(inf);
 	else
-		/* we're either outside the HW integration time (IT) window and
-		 * want to get within the window as fast as HW allows us
-		 * (hw_sync = true)
-		 * OR
-		 * HW IT is not as fast as requested polling time
-		 */
-		inf->queue_delay = ms;
-	dev_dbg(&inf->i2c->dev, "%s queue delay=%ums\n",
-		__func__, inf->queue_delay);
-}
+		ret = cm3217_vreg_dis_all(inf);
 
-static int cm3217_it_wr(struct cm3217_inf *inf, unsigned int ms)
-{
-	unsigned int i;
-	int err;
-
-	/* get the HW settings for integration time (IT) ms */
-	for (i = 0; i < ARRAY_SIZE(cm3217_it_tbl); i++) {
-		if (ms >= cm3217_it_tbl[i].ms)
-			break;
-	}
-	if (i >= ARRAY_SIZE(cm3217_it_tbl))
-		i = (ARRAY_SIZE(cm3217_it_tbl) - 1);
-	err = cm3217_cmd_wr(inf, cm3217_it_tbl[i].it_t,
-			    cm3217_it_tbl[i].fd_it);
-	if (!err) {
-		inf->hw_change = true;
-		inf->index = i;
-		ms = cm3217_it_tbl[i].ms;
-		inf->mult = CM3217_RESOLUTION_STEP / (long)ms;
-		inf->lux = 0;
-	}
-	dev_dbg(&inf->i2c->dev, "%s IT=%u err=%d\n",
-		__func__, cm3217_it_tbl[i].ms, err);
-	return err;
-}
-
-static int cm3217_rd(struct cm3217_inf *inf)
-{
-	__u16 step;
-	s64 timestamp;
-	unsigned long calc;
-	unsigned int ms;
-	bool report;
-	int lux;
-	int limit_hi;
-	int limit_lo;
-	int err;
-
-	if ((inf->hw_change) || !inf->enable) {
-		inf->hw_change = false;
-		/* drop first sample or !enable */
-		return 0;
+	if (ret != enable) {
+		dev_err(&inf->i2c->dev,
+				"func:%s line:%d err:%d fails\n",
+				__func__, __LINE__, ret);
+		goto fail;
 	}
 
-	err = cm3217_i2c_rd(inf, &step);
-	if (err)
-		return err;
-
-	calc = (unsigned long)step;
-	calc *= inf->mult;
-	calc /= CM3217_RESOLUTION_DIVIDER;
-	lux = (int)calc;
-	if ((step == 0xFFFF) && (inf->index <
-				 (ARRAY_SIZE(cm3217_it_tbl) - 1))) {
-		/* too many photons - need to decrease integration time */
-		ms = cm3217_it_tbl[inf->index + 1].ms;
-		err = cm3217_it_wr(inf, ms);
-		if (!err)
-			cm3217_delay(inf, true);
-	} else if ((lux <= CM3217_INPUT_LUX_DIVISOR) && (inf->index > 0)) {
-		/* not enough photons - need to increase integration time */
-		ms = cm3217_it_tbl[inf->index - 1].ms;
-		err = cm3217_it_wr(inf, ms);
-		if (!err)
-			cm3217_delay(inf, true);
-	} else if (inf->hw_sync) {
-		/* adjust queue time to max(polling delay, HW IT) */
-		inf->hw_sync = false;
-		cm3217_delay(inf, false);
-	}
-	timestamp = cm3217_timestamp_ns();
-	if (inf->report) {
-		ms = 0;
-	} else {
-		ms = (unsigned int)(timestamp - inf->timestamp);
-		ms /= 1000000;
-	}
-	/* Use of resolution:
-	 * - if resolution == 0 then report every polling delay.
-	 * - if resolution == 1 then report every polling delay
-	 *      only when lux changes.
-	 * - if resolution > 1 then report every polling delay
-	 *      only when lux is outside the resolution window.
-	 */
-	if (inf->resolution) {
-		limit_hi = inf->lux;
-		limit_lo = inf->lux;
-		limit_hi += (inf->resolution / 2);
-		limit_lo -= (inf->resolution / 2);
-		if (limit_lo < 0)
-			limit_lo = 0;
-		if ((lux > limit_hi) || (lux < limit_lo))
-			report = true;
-		else
-			report = false;
-	} else {
-		report = true;
-	}
-	/* report if:
-	 * - inf->report (usually used to report the first sample regardless)
-	 * - time since last report >= polling delay &&
-	 *    - lux outside resolution window from last reported lux
-	 *    OR
-	 *    - lux on every polling delay regardless of change
-	 */
-	if (inf->report || (report && (ms >= inf->poll_delay))) {
-		inf->lux = lux;
-		inf->timestamp = timestamp;
-		input_report_abs(inf->idev, ABS_MISC, lux);
-		input_sync(inf->idev);
-		inf->report = false;
-		dev_dbg(&inf->i2c->dev, "%s elapsed=%ums hw=%u lux=%d\n",
-			__func__, ms, step, lux);
-	}
-	return err;
+success:
+	inf->als_state = enable;
+fail:
+	return ret ? ret : 1;
 }
 
 static void cm3217_work(struct work_struct *ws)
 {
 	struct cm3217_inf *inf;
+	struct iio_dev *indio_dev;
 
 	inf = container_of(ws, struct cm3217_inf, dw.work);
-	cm3217_rd(inf);
-	if (inf->enable) {
-		queue_delayed_work(inf->wq, &inf->dw,
-				   msecs_to_jiffies(inf->queue_delay));
-	}
-}
-
-static int cm3217_enable(struct cm3217_inf *inf, bool en)
-{
-	int err;
-
-	if (en) {
-		cm3217_pm(inf, true);
-		inf->index = 0;
-		inf->report = true;
-		err = cm3217_it_wr(inf, inf->poll_delay);
-		cm3217_delay(inf, true);
-		queue_delayed_work(inf->wq, &inf->dw, CM3217_HW_DELAY);
-	} else {
-		cancel_delayed_work_sync(&inf->dw);
-		err = cm3217_pm(inf, false);
-		inf->poll_delay = CM3217_POLL_DELAY_MS_DFLT;
-	}
-	return err;
+	indio_dev = iio_priv_to_dev(inf);
+	mutex_lock(&indio_dev->mlock);
+	cm3217_i2c_rd(inf);
+	mutex_unlock(&indio_dev->mlock);
 }
 
 static ssize_t cm3217_enable_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
-	struct cm3217_inf *inf;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
 	unsigned int enable = 0;
 
-	inf = dev_get_drvdata(dev);
-	if (inf->enable)
+	if (inf->als_state == CHIP_POWER_ON_ALS_ON)
 		enable = 1;
 	return sprintf(buf, "%u\n", enable);
 }
 
 static ssize_t cm3217_enable_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
-	struct cm3217_inf *inf;
-	unsigned long enable;
-	bool en;
-	int err;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	u8 enable;
+	int err = 0;
 
-	inf = dev_get_drvdata(dev);
-	if (kstrtoul(buf, 10, &enable))
+	if (kstrtou8(buf, 10, &enable))
 		return -EINVAL;
 
-	if (enable)
-		en = true;
-	else
-		en = false;
-	if (en == inf->enable)
-		return count;
+	if ((enable != 0) && (enable != 1))
+		return -EINVAL;
 
-	err = cm3217_enable(inf, en);
+	if (enable == (inf->als_state - 1))
+		goto success;
+
+	mutex_lock(&indio_dev->mlock);
+	if (enable) {
+		err = cm3217_cmd_wr(inf, 0, 0);
+		queue_delayed_work(inf->wq, &inf->dw, CM3217_HW_DELAY);
+	} else {
+		cancel_delayed_work_sync(&inf->dw);
+	}
+	mutex_unlock(&indio_dev->mlock);
 	if (err)
 		return err;
 
+success:
+	inf->als_state = enable + 1;
 	return count;
 }
 
-static ssize_t cm3217_delay_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
+static ssize_t cm3217_raw_illuminance_val_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
-	struct cm3217_inf *inf;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
 
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%u\n", (CM3217_POLL_DELAY_MS_MIN * 1000));
+	if (inf->als_state != CHIP_POWER_ON_ALS_ON)
+		return sprintf(buf, "-1\n");
+	queue_delayed_work(inf->wq, &inf->dw, 0);
+	return sprintf(buf, "%d\n", inf->raw_illuminance_val);
 }
 
-static ssize_t cm3217_delay_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	struct cm3217_inf *inf;
-	unsigned int delay;
-
-	inf = dev_get_drvdata(dev);
-	if (kstrtouint(buf, 10, &delay))
-		return -EINVAL;
-
-	/* us => ms */
-	delay /= 1000;
-	if (delay == inf->poll_delay)
-		return count;
-
-	inf->poll_delay = delay;
-	cm3217_delay(inf, false);
-	return count;
-}
-
-static ssize_t cm3217_resolution_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	struct cm3217_inf *inf;
-
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", CM3217_RESOLUTION);
-}
-
-static ssize_t cm3217_resolution_store(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t count)
-{
-	struct cm3217_inf *inf;
-	unsigned int resolution;
-
-	inf = dev_get_drvdata(dev);
-	if (kstrtouint(buf, 10, &resolution))
-		return -EINVAL;
-
-	inf->resolution = resolution;
-	return count;
-}
-
-static ssize_t cm3217_divisor_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
-{
-	struct cm3217_inf *inf;
-
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", CM3217_INPUT_LUX_DIVISOR);
-}
-
-static ssize_t cm3217_max_range_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct cm3217_inf *inf;
-
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", (CM3217_INPUT_LUX_MAX *
-				     CM3217_INPUT_LUX_DIVISOR));
-}
-
-static ssize_t cm3217_microamp_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct cm3217_inf *inf;
-
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", CM3217_POWER_UA);
-}
-
-static ssize_t cm3217_lux_show(struct device *dev,
-			       struct device_attribute *attr, char *buf)
-{
-	struct cm3217_inf *inf;
-
-	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", inf->lux);
-}
-
-static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWOTH,
-		   cm3217_enable_show, cm3217_enable_store);
-static DEVICE_ATTR(delay, S_IRUGO | S_IWUSR | S_IWOTH,
-		   cm3217_delay_show, cm3217_delay_store);
-static DEVICE_ATTR(resolution, S_IRUGO | S_IWUSR | S_IWOTH,
-		   cm3217_resolution_show, cm3217_resolution_store);
-static DEVICE_ATTR(divisor, S_IRUGO,
-		   cm3217_divisor_show, NULL);
-static DEVICE_ATTR(max_range, S_IRUGO,
-		   cm3217_max_range_show, NULL);
-static DEVICE_ATTR(microamp, S_IRUGO,
-		   cm3217_microamp_show, NULL);
-static DEVICE_ATTR(lux, S_IRUGO,
-		   cm3217_lux_show, NULL);
+static IIO_DEVICE_ATTR(in_illuminance_regulator_enable,
+			S_IRUGO | S_IWUSR | S_IWOTH,
+			cm3217_chan_regulator_enable_show,
+			cm3217_chan_regulator_enable, 0);
+static IIO_DEVICE_ATTR(in_illuminance_enable,
+			S_IRUGO | S_IWUSR | S_IWOTH,
+			cm3217_enable_show, cm3217_enable_store, 0);
+static IIO_DEVICE_ATTR(in_illuminance_raw, S_IRUGO,
+		   cm3217_raw_illuminance_val_show, NULL, 0);
+static IIO_CONST_ATTR(vendor, "Capella");
+/* FD_IT = 000b, IT_TIMES = 1/2T i.e., 00b nano secs */
+static IIO_CONST_ATTR(in_illuminance_integration_time, "480000");
+/* WDM = 0b, IT_TIMES = 1/2T i.e., 00b raw_illuminance_val */
+static IIO_CONST_ATTR(in_illuminance_max_range, "78643.2");
+/* WDM = 0b, IT_TIMES = 1/2T i.e., 00b  mLux */
+static IIO_CONST_ATTR(in_illuminance_resolution, "307");
+static IIO_CONST_ATTR(in_illuminance_power_consumed, "1670"); /* milli Watt */
 
 static struct attribute *cm3217_attrs[] = {
-	&dev_attr_enable.attr,
-	&dev_attr_delay.attr,
-	&dev_attr_resolution.attr,
-	&dev_attr_divisor.attr,
-	&dev_attr_max_range.attr,
-	&dev_attr_microamp.attr,
-	&dev_attr_lux.attr,
+	&iio_dev_attr_in_illuminance_enable.dev_attr.attr,
+	&iio_dev_attr_in_illuminance_regulator_enable.dev_attr.attr,
+	&iio_dev_attr_in_illuminance_raw.dev_attr.attr,
+	&iio_const_attr_vendor.dev_attr.attr,
+	&iio_const_attr_in_illuminance_integration_time.dev_attr.attr,
+	&iio_const_attr_in_illuminance_max_range.dev_attr.attr,
+	&iio_const_attr_in_illuminance_resolution.dev_attr.attr,
+	&iio_const_attr_in_illuminance_power_consumed.dev_attr.attr,
 	NULL
 };
 
 static struct attribute_group cm3217_attr_group = {
-	.name = "cm3217",
+	.name = CM3217_NAME,
 	.attrs = cm3217_attrs
 };
 
-static int cm3217_sysfs_create(struct cm3217_inf *inf)
-{
-	int err;
+static const struct iio_info cm3217_iio_info = {
+	.attrs = &cm3217_attr_group,
+	.driver_module = THIS_MODULE
+};
 
-	err = sysfs_create_group(&inf->idev->dev.kobj, &cm3217_attr_group);
-	return err;
+#ifdef CONFIG_PM_SLEEP
+static int cm3217_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	int ret = 0;
+
+	if (inf->als_state != CHIP_POWER_OFF)
+		ret = cm3217_vreg_dis_all(inf);
+
+	if (ret)
+		dev_err(&client->adapter->dev,
+				"%s err in reg enable\n", __func__);
+	return ret;
 }
 
-static void cm3217_input_close(struct input_dev *idev)
+static int cm3217_resume(struct device *dev)
 {
-	struct cm3217_inf *inf;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	int ret = 0;
 
-	inf = input_get_drvdata(idev);
-	cm3217_enable(inf, false);
+	if (inf->als_state != CHIP_POWER_OFF)
+		ret = cm3217_vreg_en_all(inf);
+
+	if (ret)
+		dev_err(&client->adapter->dev,
+				"%s err in reg enable\n", __func__);
+	if (inf->als_state == CHIP_POWER_ON_ALS_ON)
+		ret = cm3217_cmd_wr(inf, 0, 0);
+	if (ret)
+		dev_err(&client->adapter->dev,
+				"%s err in cm3217 write\n", __func__);
+	return ret;
 }
 
-static int cm3217_input_create(struct cm3217_inf *inf)
-{
-	int err;
-
-	inf->idev = input_allocate_device();
-	if (!inf->idev) {
-		dev_err(inf->dev, "%s ERR\n", __func__);
-		return -ENOMEM;
-	}
-
-	inf->idev->name = CM3217_NAME;
-	inf->idev->dev.parent = &inf->i2c->dev;
-	inf->idev->close = cm3217_input_close;
-	input_set_drvdata(inf->idev, inf);
-	input_set_capability(inf->idev, EV_ABS, ABS_MISC);
-	input_set_abs_params(inf->idev, ABS_MISC,
-			     CM3217_INPUT_LUX_MIN, CM3217_INPUT_LUX_MAX,
-			     CM3217_INPUT_LUX_FUZZ, CM3217_INPUT_LUX_FLAT);
-	err = input_register_device(inf->idev);
-	if (err)
-		input_free_device(inf->idev);
-	return err;
-}
+static SIMPLE_DEV_PM_OPS(cm3217_pm_ops, cm3217_suspend, cm3217_resume);
+#define CM3217_PM_OPS (&cm3217_pm_ops)
+#else
+#define CM3217_PM_OPS NULL
+#endif
 
 static int cm3217_remove(struct i2c_client *client)
 {
 	struct cm3217_inf *inf;
+	struct iio_dev *indio_dev;
 
-	inf = i2c_get_clientdata(client);
-	input_unregister_device(inf->idev);
+	indio_dev = i2c_get_clientdata(client);
+	inf = iio_priv(indio_dev);
+	cm3217_vreg_exit(inf);
 	destroy_workqueue(inf->wq);
-	pm_exit(inf);
-	mutex_destroy(&inf->mutex);
-	kfree(inf);
+	iio_device_free(indio_dev);
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 	return 0;
 }
@@ -695,20 +445,28 @@ static int cm3217_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct cm3217_inf *inf;
+	struct iio_dev *indio_dev;
 	int err;
 
-	inf = kzalloc(sizeof(*inf), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(inf)) {
-		dev_err(&client->dev, "%s kzalloc err\n", __func__);
+	indio_dev = iio_device_alloc(sizeof(*inf));
+	if (indio_dev == NULL) {
+		dev_err(&client->dev, "%s iio_device_alloc err\n", __func__);
 		return -ENOMEM;
 	}
 
+	inf = iio_priv(indio_dev);
+
 	inf->i2c = client;
 	i2c_set_clientdata(client, inf);
-	mutex_init(&inf->mutex);
-	err = cm3217_input_create(inf);
-	if (err)
-		goto err_mutex;
+	indio_dev->info = &cm3217_iio_info;
+	indio_dev->name = id->name;
+	indio_dev->dev.parent = &client->dev;
+	indio_dev->modes = INDIO_DIRECT_MODE;
+	err = iio_device_register(indio_dev);
+	if (err) {
+		dev_err(&client->dev, "%s iio_device_register err\n", __func__);
+		goto err_iio_register;
+	}
 
 	inf->wq = create_singlethread_workqueue(CM3217_NAME);
 	if (!inf->wq) {
@@ -717,22 +475,23 @@ static int cm3217_probe(struct i2c_client *client,
 		goto err_wq;
 	}
 
-	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
-	pm_init(inf);
-	err = cm3217_sysfs_create(inf);
-	if (err)
-		goto err_pm;
+	err = cm3217_vreg_init(inf);
+	if (err) {
+		dev_info(&client->dev,
+			"%s regulator init failed, assume always on", __func__);
+	}
 
-	dev_dbg(&client->dev, "%s\n", __func__);
+	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
+	inf->als_state = 0;
+
+	dev_info(&client->dev, "%s success\n", __func__);
 	return 0;
 
-err_pm:
-	pm_exit(inf);
 err_wq:
 	destroy_workqueue(inf->wq);
-err_mutex:
-	mutex_destroy(&inf->mutex);
-	kfree(inf);
+	iio_device_unregister(indio_dev);
+err_iio_register:
+	iio_device_free(indio_dev);
 	dev_err(&client->dev, "%s err=%d\n", __func__, err);
 	return err;
 }
@@ -753,7 +512,6 @@ MODULE_DEVICE_TABLE(of, cm3217_of_match);
 #endif
 
 static struct i2c_driver cm3217_driver = {
-	.class		= I2C_CLASS_HWMON,
 	.probe		= cm3217_probe,
 	.remove		= cm3217_remove,
 	.id_table	= cm3217_i2c_device_id,
@@ -761,6 +519,7 @@ static struct i2c_driver cm3217_driver = {
 		.name	= "cm3217",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(cm3217_of_match),
+		.pm = CM3217_PM_OPS,
 	},
 	.shutdown	= cm3217_shutdown,
 };
@@ -769,4 +528,3 @@ module_i2c_driver(cm3217_driver);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("CM3217 driver");
 MODULE_AUTHOR("NVIDIA Corp");
-

@@ -277,7 +277,7 @@ static int capacity_set(void *data, u64 val)
 	struct depl_driver *drv = data;
 
 	drv->capacity = clamp_t(int, val, 0, 100);
-	flush_delayed_work_sync(&drv->work);
+	flush_delayed_work(&drv->work);
 
 	return 0;
 }
@@ -294,7 +294,7 @@ static int vsysmin_set(void *data, u64 val)
 	struct depl_driver *drv = data;
 
 	drv->pdata->vsys_min = val;
-	flush_delayed_work_sync(&drv->work);
+	flush_delayed_work(&drv->work);
 
 	return 0;
 }

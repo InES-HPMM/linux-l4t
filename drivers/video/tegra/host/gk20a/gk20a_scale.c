@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/platform_data/tegra_edp.h>
 
 #include <governor.h>
 
@@ -46,9 +47,13 @@ static ssize_t nvhost_gk20a_scale_load_show(struct device *dev,
 	u32 busy_time;
 	ssize_t res;
 
-	nvhost_module_busy(g->dev);
-	gk20a_pmu_load_norm(g, &busy_time);
-	nvhost_module_idle(g->dev);
+	if (!g->power_on) {
+		busy_time = 0;
+	} else {
+		nvhost_module_busy(g->dev);
+		gk20a_pmu_load_norm(g, &busy_time);
+		nvhost_module_idle(g->dev);
+	}
 
 	res = snprintf(buf, PAGE_SIZE, "%u\n", busy_time);
 
@@ -67,13 +72,18 @@ void nvhost_gk20a_scale_callback(struct nvhost_device_profile *profile,
 				 unsigned long freq)
 {
 	struct gk20a *g = get_gk20a(profile->pdev);
-	struct nvhost_device_data *pdata =
-		platform_get_drvdata(profile->pdev);
+	struct nvhost_device_data *pdata = platform_get_drvdata(profile->pdev);
 	struct nvhost_emc_params *emc_params = profile->private_data;
 	long after = gk20a_clk_get_rate(g);
 	long emc_target = nvhost_scale3d_get_emc_rate(emc_params, after);
 
-	clk_set_rate(pdata->clk[2], emc_target);
+	nvhost_module_set_devfreq_rate(profile->pdev, 2, emc_target);
+
+	if (pdata->gpu_edp_device) {
+		u32 avg = 0;
+		gk20a_pmu_load_norm(g, &avg);
+		tegra_edp_notify_gpu_load(avg);
+	}
 }
 
 /*
@@ -259,7 +269,8 @@ void nvhost_gk20a_scale_init(struct platform_device *pdev)
 	}
 
 	nvhost_scale3d_calibrate_emc(emc_params,
-				     gk20a_clk_get(g), pdata->clk[2]);
+				     gk20a_clk_get(g), pdata->clk[2],
+				     pdata->linear_emc);
 
 	if (device_create_file(&pdev->dev, &dev_attr_load))
 		goto err_create_sysfs_entry;

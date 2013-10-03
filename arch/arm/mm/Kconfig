@@ -951,7 +951,7 @@ config ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
 
 config CPA
 	bool "Change Page Attributes"
-	depends on CPU_V7
+	depends on CPU_V7 && !ARM_LPAE
 	help
 	  This option enables Changing Page Attibutes for low memory.
 	  This is needed to avoid conflicting memory mappings for low memory,

@@ -50,7 +50,7 @@ struct ar0261_info {
 
 static struct ar0261_reg mode_1920x1080[] = {
 	{0x301A, 0x0019},
-	{AR0261_TABLE_WAIT_MS, 100},
+	{AR0261_TABLE_WAIT_MS, 10},
 	{0x301A, 0x0218},
 	{0x31B0, 0x0062},
 	{0x31B2, 0x0046},
@@ -65,7 +65,7 @@ static struct ar0261_reg mode_1920x1080[] = {
 	{0x3EE6, 0x60AD},
 	{0x3EDC, 0xDBFA},
 	{0x301A, 0x0218},
-	{AR0261_TABLE_WAIT_MS, 100},
+	{AR0261_TABLE_WAIT_MS, 10},
 	{0x3D00, 0x0481},
 	{0x3D02, 0xFFFF},
 	{0x3D04, 0xFFFF},

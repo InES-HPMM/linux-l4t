@@ -246,3 +246,10 @@ config USB_RENESAS_MODEM
 
           To compile this driver as a module, choose M here: the
           module will be called renesas modem.
+
+config USB_NV_SHIELD_LED
+	tristate "USB Nvidia Shield LED driver support"
+	depends on USB
+	help
+	  This driver communicates with the microcontroller on Nvidia Shield
+	  to control the center button LED.

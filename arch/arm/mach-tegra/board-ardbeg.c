@@ -256,6 +256,8 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	.gpio_codec1 = -1,
 	.gpio_codec2 = -1,
 	.gpio_codec3 = -1,
+	.edp_support = true,
+	.edp_states = {1530, 765, 0},
 	.i2s_param[HIFI_CODEC]       = {
 		.audio_port_id = 1,
 		.is_i2s_master = 0,
@@ -497,7 +499,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_lsfslew = 0,
 		.xcvr_lsrslew = 3,
 		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 0,
+		.xcvr_use_fuses = 1,
 		.vbus_oc_map = 0x4,
 		.xcvr_hsslew_lsb = 2,
 	},
@@ -807,9 +809,11 @@ static void ardbeg_modem_init(void)
 {
 	int modem_id = tegra_get_modem_id();
 	struct board_info board_info;
+	struct board_info pmu_board_info;
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	tegra_get_board_info(&board_info);
+	tegra_get_pmu_board_info(&pmu_board_info);
 	pr_info("%s: modem_id = %d\n", __func__, modem_id);
 
 	switch (modem_id) {
@@ -818,6 +822,8 @@ static void ardbeg_modem_init(void)
 			/* Set specific USB wake source for Ardbeg */
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
+			if (pmu_board_info.board_id == BOARD_E1736)
+				baseband_pdata.regulator_name = NULL;
 			platform_device_register(&icera_bruce_device);
 		}
 		break;

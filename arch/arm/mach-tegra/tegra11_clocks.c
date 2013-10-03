@@ -3932,6 +3932,13 @@ static void tegra11_periph_clk_init(struct clk *c)
 		c->parent = c->inputs[0].input;
 	}
 
+	/* if peripheral is left under reset - enforce safe rate */
+	if (!(c->flags & PERIPH_NO_RESET) &&
+	    (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))) {
+		tegra_periph_clk_safe_rate_init(c);
+		 val = clk_readl(c->reg);
+	}
+
 	if (c->flags & DIV_U71) {
 		u32 divu71 = val & PERIPH_CLK_SOURCE_DIVU71_MASK;
 		if (c->flags & DIV_U71_IDLE) {
@@ -6976,9 +6983,12 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("override.sclk", "override_sclk",	NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_OVERRIDE),
 
 	SHARED_EMC_CLK("avp.emc",	"tegra-avp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
-	SHARED_EMC_CLK("cpu.emc",	"cpu",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
-	SHARED_EMC_CLK("disp1.emc",	"tegradc.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC1)),
-	SHARED_EMC_CLK("disp2.emc",	"tegradc.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC2)),
+	SHARED_EMC_CLK("disp1.emc", "tegradc.0",	"emc",	&tegra_clk_emc,
+				NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC1)),
+	SHARED_EMC_CLK("disp2.emc", "tegradc.1",	"emc",	&tegra_clk_emc,
+				NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC2)),
+	SHARED_EMC_CLK("mon_cpu.emc",	"tegra_mon",		"cpu_emc",
+						&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("hdmi.emc",	"hdmi",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("usbd.emc",	"tegra-udc.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("usb1.emc",	"tegra-ehci.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),

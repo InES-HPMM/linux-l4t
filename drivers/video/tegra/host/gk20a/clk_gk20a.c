@@ -284,6 +284,7 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 		cfg = set_field(cfg, trim_sys_gpcpll_cfg_iddq_m(),
 				trim_sys_gpcpll_cfg_iddq_power_on_v());
 		gk20a_writel(g, trim_sys_gpcpll_cfg_r(), cfg);
+		gk20a_readl(g, trim_sys_gpcpll_cfg_r());
 		udelay(2);
 	}
 
@@ -316,12 +317,12 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 	}
 
 	/* wait pll lock */
-	timeout = clk->pll_delay / 100 + 1;
+	timeout = clk->pll_delay / 2 + 1;
 	do {
 		cfg = gk20a_readl(g, trim_sys_gpcpll_cfg_r());
 		if (cfg & trim_sys_gpcpll_cfg_pll_lock_true_f())
 			goto pll_locked;
-		udelay(100);
+		udelay(2);
 	} while (--timeout > 0);
 
 	/* PLL is messed up. What can we do here? */
@@ -385,6 +386,8 @@ static int gk20a_init_clk_setup_sw(struct gk20a *g)
 	static int initialized;
 	unsigned long *freqs;
 	int err, num_freqs;
+	struct clk *ref;
+	unsigned long ref_rate;
 
 	nvhost_dbg_fn("");
 
@@ -393,11 +396,22 @@ static int gk20a_init_clk_setup_sw(struct gk20a *g)
 		return 0;
 	}
 
+	if (!gk20a_clk_get(g))
+		return -EINVAL;
+
+	ref = clk_get_parent(clk_get_parent(clk->tegra_clk));
+	if (IS_ERR(ref)) {
+		nvhost_err(dev_from_gk20a(g),
+			"failed to get GPCPLL reference clock");
+		return -EINVAL;
+	}
+	ref_rate = clk_get_rate(ref);
+
 	/* TBD: set this according to different environments */
 	clk->pll_delay = 5000000; /* usec */
 
 	clk->gpc_pll.id = GK20A_GPC_PLL;
-	clk->gpc_pll.clk_in = 12; /* MHz */
+	clk->gpc_pll.clk_in = ref_rate / 1000000; /* MHz */
 
 	/* Decide initial frequency */
 	if (!initialized) {
@@ -408,9 +422,6 @@ static int gk20a_init_clk_setup_sw(struct gk20a *g)
 		clk->gpc_pll.PL = 0;
 		clk->gpc_pll.freq = clk->gpc_pll.clk_in * clk->gpc_pll.N;
 	}
-
-	if (!gk20a_clk_get(g))
-		return -EINVAL;
 
 	err = tegra_dvfs_get_freqs(clk_get_parent(clk->tegra_clk),
 				   &freqs, &num_freqs);
@@ -460,10 +471,10 @@ static int gk20a_init_clk_setup_hw(struct gk20a *g)
 			trim_sys_gpc2clk_out_bypdiv_m(),
 			trim_sys_gpc2clk_out_sdiv14_indiv4_mode_f() |
 			trim_sys_gpc2clk_out_vcodiv_by1_f() |
-			trim_sys_gpc2clk_out_bypdiv_by31_f());
+			trim_sys_gpc2clk_out_bypdiv_f(0));
 	gk20a_writel(g, trim_sys_gpc2clk_out_r(), data);
 
-	return clk_program_gpc_pll(g, clk, 0);
+	return 0;
 }
 
 static int set_pll_target(struct gk20a *g, u32 freq, u32 old_freq)
@@ -588,10 +599,6 @@ static int gk20a_clk_register_export_ops(struct gk20a *g)
 	ret = tegra_clk_register_export_ops(clk_get_parent(c),
 					    &gk20a_clk_export_ops);
 
-	/* FIXME: this effectively prevents host level clock gating */
-	if (!ret)
-		ret = clk_enable(c);
-
 	return ret;
 }
 
@@ -617,11 +624,22 @@ int gk20a_init_clk_support(struct gk20a *g)
 
 	err = gk20a_init_clk_setup_hw(g);
 	mutex_unlock(&clk->clk_mutex);
-
 	if (err)
 		return err;
 
 	err = gk20a_clk_register_export_ops(g);
+	if (err)
+		return err;
+
+	/* FIXME: this effectively prevents host level clock gating */
+	err = clk_enable(g->clk.tegra_clk);
+	if (err)
+		return err;
+
+	/* The prev call may not enable PLL if gbus is unbalanced - force it */
+	mutex_lock(&clk->clk_mutex);
+	err = set_pll_freq(g, clk->gpc_pll.freq, clk->gpc_pll.freq);
+	mutex_unlock(&clk->clk_mutex);
 	if (err)
 		return err;
 
@@ -654,6 +672,9 @@ int gk20a_suspend_clk_support(struct gk20a *g)
 {
 	int ret;
 
+	clk_disable(g->clk.tegra_clk);
+
+	/* The prev call may not disable PLL if gbus is unbalanced - force it */
 	mutex_lock(&g->clk.clk_mutex);
 	ret = clk_disable_gpcpll(g);
 	g->clk.clk_hw_on = false;
@@ -735,6 +756,7 @@ static int monitor_get(void *data, u64 *val)
 
 	/* It should take about 8us to finish 100 cycle of 12MHz.
 	   But longer than 100us delay is required here. */
+	gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0));
 	udelay(2000);
 
 	count1 = gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cnt_r(0));

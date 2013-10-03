@@ -229,7 +229,7 @@
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
 #define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT			(0xE << 0)
 #define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT			(0xF << 0)
-#define PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD		(0xF << 16)
+#define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_THRESHOLD		(0xF << 16)
 #define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		(1 << 23)
 #define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_THRESHOLD		(0xF << 24)
 #define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE		(1 << 31)
@@ -1127,17 +1127,6 @@ static int tegra_pcie_enable_controller(void)
 			}
 		} while (!(val & PADS_PLL_CTL_LOCKDET));
 
-		/* Wait for clock to latch (min of 100us) */
-		udelay(100);
-
-		/* deassert PEX reset signal */
-		for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
-			reg = pex_controller_registers[i];
-			val = afi_readl(reg);
-			val |= AFI_PEX_CTRL_RST;
-			afi_writel(val, reg);
-		}
-
 		/* turn off IDDQ override */
 		val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
 		pads_writel(val, PADS_CTL);
@@ -1150,7 +1139,15 @@ static int tegra_pcie_enable_controller(void)
 		}
 #endif
 	}
+	/* Wait for clock to latch (min of 100us) */
+	udelay(100);
 
+	/* deassert PEX reset signal */
+	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
+		val = afi_readl(pex_controller_registers[i]);
+		val |= AFI_PEX_CTRL_RST;
+		afi_writel(val, pex_controller_registers[i]);
+	}
 	/* Take the PCIe interface module out of reset */
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
@@ -1597,24 +1594,19 @@ static void tegra_pcie_enable_rp_features(int index)
 
 	PR_FUNC_LINE;
 	/* Power mangagement settings */
-	/* Enable clock clamping by default */
-	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
-		PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT |
-		PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD |
-		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE;
+	/* Enable clock clamping by default and enable card detect */
+	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_THRESHOLD |
+		PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
+		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_THRESHOLD |
+		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE |
+		PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT;
+;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
 
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
 	data |= NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
-
-	/* enable PCIE mastering and accepting memory and IO requests */
-	data = rp_readl(NV_PCIE2_RP_DEV_CTRL, index);
-	data |= (PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED |
-		PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED |
-		PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED);
-	rp_writel(data, NV_PCIE2_RP_DEV_CTRL, index);
 
 	/* LTSSM wait for DLLP to finish before entering L1 or L2/L3 */
 	/* to avoid truncating of PM mesgs resulting in reciever errors */

@@ -27,6 +27,8 @@
 #include <linux/throughput_ioctl.h>
 #include <linux/module.h>
 #include <linux/nvhost.h>
+#include <linux/notifier.h>
+#include <linux/tegra-throughput.h>
 #include <mach/dc.h>
 
 #define DEFAULT_SYNC_RATE 60000 /* 60 Hz */
@@ -46,11 +48,21 @@ static int throughput_hint;
 static int sync_rate;
 static int throughput_active_app_count;
 
+BLOCKING_NOTIFIER_HEAD(throughput_notifier_list);
+EXPORT_SYMBOL(throughput_notifier_list);
+
 static void set_throughput_hint(struct work_struct *work)
 {
 	/* notify throughput hint clients here */
-	nvhost_scale3d_set_throughput_hint(throughput_hint);
+	blocking_notifier_call_chain(&throughput_notifier_list,
+				     throughput_hint, NULL);
 }
+
+int tegra_throughput_get_hint(void)
+{
+	return throughput_hint;
+}
+EXPORT_SYMBOL(tegra_throughput_get_hint);
 
 static void throughput_flip_callback(void)
 {

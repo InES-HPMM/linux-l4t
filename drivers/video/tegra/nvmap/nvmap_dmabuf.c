@@ -35,6 +35,12 @@
 #include "nvmap_priv.h"
 #include "nvmap_ioctl.h"
 
+#ifdef CONFIG_IOMMU_API
+#define nvmap_masid_mapping(attach)   to_dma_iommu_mapping((attach)->dev)
+#else
+#define nvmap_masid_mapping(attach)   NULL
+#endif
+
 struct nvmap_handle_info {
 	struct nvmap_handle *handle;
 	struct list_head maps;
@@ -245,7 +251,7 @@ static int __nvmap_dmabuf_prep_sgt_locked(struct dma_buf_attachment *attach,
 		return -ENOMEM;
 	}
 
-	nvmap_sgt->mapping = attach->dev->archdata.mapping;
+	nvmap_sgt->mapping = nvmap_masid_mapping(attach);
 	nvmap_sgt->dir = dir;
 	nvmap_sgt->sgt = sgt;
 	nvmap_sgt->dev = attach->dev;
@@ -307,8 +313,9 @@ static struct sg_table *__nvmap_dmabuf_get_sgt_locked(
 
 	pr_debug("Getting SGT from stash.\n");
 	list_for_each_entry(nvmap_sgt, &info->maps, maps_entry) {
-		if (attach->dev->archdata.mapping != nvmap_sgt->mapping)
+		if (nvmap_masid_mapping(attach) != nvmap_sgt->mapping)
 			continue;
+
 		/* We have a hit. */
 		pr_debug("Stash hit (%s)!\n", dev_name(attach->dev));
 		sgt = nvmap_sgt->sgt;
@@ -390,8 +397,6 @@ static void nvmap_dmabuf_unmap_dma_buf(struct dma_buf_attachment *attach,
 				       enum dma_data_direction dir)
 {
 	struct nvmap_handle_info *info = attach->dmabuf->priv;
-	/* Not used when dmabufs are being stashed. */
-	__attribute__((unused)) DEFINE_DMA_ATTRS(attrs);
 
 	mutex_lock(&info->maps_lock);
 	if (!atomic_add_unless(&info->handle->pin, -1, 0)) {
@@ -604,7 +609,7 @@ struct dma_buf *nvmap_dmabuf_export(struct nvmap_client *client,
  * user_id. You must dma_buf_put() the dma_buf object when you are done with
  * it.
  */
-struct dma_buf *nvmap_dmabuf_export_from_ref(struct nvmap_handle_ref *ref)
+struct dma_buf *__nvmap_dmabuf_export_from_ref(struct nvmap_handle_ref *ref)
 {
 	if (!virt_addr_valid(ref))
 		return ERR_PTR(-EINVAL);
@@ -612,7 +617,6 @@ struct dma_buf *nvmap_dmabuf_export_from_ref(struct nvmap_handle_ref *ref)
 	get_dma_buf(ref->handle->dmabuf);
 	return ref->handle->dmabuf;
 }
-EXPORT_SYMBOL(nvmap_dmabuf_export_from_ref);
 
 /*
  * Returns the nvmap handle ID associated with the passed dma_buf's fd. This
@@ -728,6 +732,59 @@ ulong nvmap_dmabuf_to_user_id(struct dma_buf *dmabuf)
 	return (ulong)marshal_kernel_handle((ulong)info->handle);
 }
 
+/*
+ * List detailed info for all buffers allocated.
+ */
+static int __nvmap_dmabuf_stashes_show(struct seq_file *s, void *data)
+{
+	struct nvmap_handle_sgt *nvmap_sgt;
+	struct nvmap_handle *handle;
+	struct nvmap_client *client;
+	const char *name;
+
+	mutex_lock(&nvmap_stashed_maps_lock);
+	list_for_each_entry(nvmap_sgt, &nvmap_stashed_maps, stash_entry) {
+		handle = nvmap_sgt->owner->handle;
+		client = nvmap_client_get(handle->owner);
+		name = "unknown";
+
+		if (client) {
+			if (strcmp(client->name, "user") == 0)
+				name = client->task->comm;
+			else
+				name = client->name;
+		}
+
+		seq_printf(s, "%s: ", name);
+		seq_printf(s, " flags = 0x%08lx, refs = %d\n",
+			   handle->flags, atomic_read(&handle->ref));
+
+		seq_printf(s, "  device = %s\n",
+			   dev_name(handle->attachment->dev));
+		seq_printf(s, "  IO addr = 0x%08x + 0x%x\n",
+			   sg_dma_address(nvmap_sgt->sgt->sgl), handle->size);
+
+		/* Cleanup. */
+		nvmap_client_put(client);
+	}
+	mutex_unlock(&nvmap_stashed_maps_lock);
+
+	return 0;
+}
+
+static int __nvmap_dmabuf_stashes_open(struct inode *inode,
+				       struct file *file)
+{
+	return single_open(file, __nvmap_dmabuf_stashes_show, NULL);
+}
+
+static const struct file_operations nvmap_dmabuf_stashes_fops = {
+	.open    = __nvmap_dmabuf_stashes_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 #define NVMAP_DMABUF_WO_TRIGGER_NODE(trigger, name)			\
 	DEFINE_SIMPLE_ATTRIBUTE(__nvmap_dmabuf_##name##_fops, NULL,	\
 				trigger, "%llu");
@@ -783,4 +840,14 @@ void nvmap_dmabuf_debugfs_init(struct dentry *nvmap_root)
 	CACHE_STAT(dmabuf_root, stashed_maps);
 	NVMAP_DMABUF_WO_DEBUGFS(clear_stats, dmabuf_root);
 #endif
+
+#define DMABUF_INFO_FILE(root, file)					\
+	do {								\
+		if (!debugfs_create_file(__stringify(file), S_IRUGO,	\
+					 root, NULL,			\
+					 &nvmap_dmabuf_##file##_fops))	\
+			return;						\
+	} while (0)
+
+	DMABUF_INFO_FILE(dmabuf_root, stashes);
 }

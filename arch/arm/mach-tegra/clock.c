@@ -910,6 +910,27 @@ void __init tegra_clk_preset_emc_monitor(unsigned long rate)
 	}
 }
 
+/*
+ * Set osc (safe) rate. Called only for peripherals left after boot under reset
+ * (peripherals that are taken out of reset by boot-loader must be at safe rate
+ * already - that will be checked by tegra_clk_verify_rates()).
+ */
+void tegra_periph_clk_safe_rate_init(struct clk *c)
+{
+	int ret;
+	unsigned long rate = tegra_clk_measure_input_freq();
+
+	if (c->boot_rate || (clk_get_rate(c->parent) <= rate))
+		return;
+
+	if (c->ops && c->ops->set_rate && (c->flags & PERIPH_DIV)) {
+		ret = c->ops->set_rate(c, rate);
+		if (ret)
+			pr_err("%s: failed to init %s rate %lu\n",
+			       __func__, c->name, rate);
+	}
+}
+
 static void __init tegra_clk_verify_rates(void)
 {
 	struct clk *c;
@@ -1681,6 +1702,11 @@ static int clk_debugfs_register_one(struct clk *c)
 		goto err_out;
 
 	d = debugfs_create_x32("flags", S_IRUGO, c->dent, (u32 *)&c->flags);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_x32("shared_bus_flags", S_IRUGO, c->dent,
+			       (u32 *)&c->shared_bus_flags);
 	if (!d)
 		goto err_out;
 

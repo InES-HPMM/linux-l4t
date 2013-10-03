@@ -30,6 +30,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <media/ov5693.h>
+#include <media/nvc.h>
 
 #define OV5693_ID			0x5693
 #define OV5693_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
@@ -66,7 +67,7 @@ struct ov5693_info {
 	unsigned test_pattern;
 	struct nvc_imager_static_nvc sdata;
 	u8 bin_en;
-	struct ov5693_fuseid fuseid;
+	struct nvc_fuseid fuseid;
 	struct regmap *regmap;
 	struct regulator *ext_vcm_vdd;
 };
@@ -1779,11 +1780,11 @@ ov5693_mode_wr_err:
 
 static int ov5693_get_fuse_id(struct ov5693_info *info)
 {
-	ov5693_i2c_rd8(info, 0x300A, &info->fuseid.id[0]);
-	ov5693_i2c_rd8(info, 0x300B, &info->fuseid.id[1]);
+	ov5693_i2c_rd8(info, 0x300A, &info->fuseid.data[0]);
+	ov5693_i2c_rd8(info, 0x300B, &info->fuseid.data[1]);
 	info->fuseid.size = 2;
 	dev_dbg(&info->i2c_client->dev, "ov5693 fuse_id: %x,%x\n",
-		info->fuseid.id[0], info->fuseid.id[1]);
+		info->fuseid.data[0], info->fuseid.data[1]);
 	return 0;
 }
 
@@ -1849,7 +1850,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		if (copy_to_user((void __user *)arg,
 				&info->fuseid,
-				sizeof(struct ov5693_fuseid))) {
+				sizeof(struct nvc_fuseid))) {
 			dev_dbg(&info->i2c_client->dev, "%s:Fail copy fuse id to user space\n",
 				__func__);
 			return -EFAULT;

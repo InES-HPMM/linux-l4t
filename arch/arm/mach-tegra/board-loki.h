@@ -36,13 +36,14 @@ int loki_pmon_init(void);
 int loki_edp_init(void);
 int loki_rail_alignment_init(void);
 int loki_soctherm_init(void);
+int loki_emc_init(void);
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME		"mpu6050"
 #define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PR2
 #define MPU_GYRO_ADDR		0x68
 #define MPU_GYRO_BUS_NUM	0
-#define MPU_GYRO_ORIENTATION	MTMAT_TOP_CCW_0
+#define MPU_GYRO_ORIENTATION	MTMAT_BOT_CCW_90
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6

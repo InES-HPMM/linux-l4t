@@ -228,7 +228,7 @@ static int nvhost_channelopen(struct inode *inode, struct file *filp)
 	priv->priority = NVHOST_PRIORITY_MEDIUM;
 	priv->clientid = atomic_add_return(1,
 			&nvhost_get_host(ch->dev)->clientid);
-	pdata = platform_get_drvdata(ch->dev);
+	pdata = dev_get_drvdata(ch->dev->dev.parent);
 	priv->timeout = pdata->nvhost_timeout_default;
 	priv->timeout_debug_dump = true;
 	if (!tegra_platform_is_silicon())
@@ -359,9 +359,10 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		(struct nvhost_syncpt_incr *)(uintptr_t)args->syncpt_incrs;
 	u32 __user *waitbases = (u32 *)(uintptr_t)args->waitbases;
 	u32 __user *fences = (u32 *)(uintptr_t)args->fences;
+	u32 __user *class_ids = (u32 *)(uintptr_t)args->class_ids;
 
 	struct nvhost_master *host = nvhost_get_host(ctx->ch->dev);
-	u32 *local_waitbases = NULL;
+	u32 *local_waitbases = NULL, *local_class_ids = NULL;
 	int err, i, hwctx_syncpt_idx = -1;
 
 	if (num_syncpt_incrs > host->info.nb_pts)
@@ -383,16 +384,36 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	job->priority = ctx->priority;
 	job->clientid = ctx->clientid;
 
-	while (num_cmdbufs) {
+	/* mass copy class_ids */
+	if (args->class_ids) {
+		local_class_ids = kzalloc(sizeof(u32) * num_cmdbufs,
+			GFP_KERNEL);
+		if (!local_class_ids) {
+			err = -ENOMEM;
+			goto fail;
+		}
+		err = copy_from_user(local_class_ids, class_ids,
+			sizeof(u32) * num_cmdbufs);
+		if (err) {
+			err = -EINVAL;
+			goto fail;
+		}
+	}
+
+	for (i = 0; i < num_cmdbufs; ++i) {
 		struct nvhost_cmdbuf cmdbuf;
-		err = copy_from_user(&cmdbuf, cmdbufs, sizeof(cmdbuf));
+		u32 class_id = class_ids ? local_class_ids[i] : 0;
+
+		err = copy_from_user(&cmdbuf, cmdbufs + i, sizeof(cmdbuf));
 		if (err)
 			goto fail;
-		nvhost_job_add_gather(job,
-				cmdbuf.mem, cmdbuf.words, cmdbuf.offset);
-		num_cmdbufs--;
-		cmdbufs++;
+
+		nvhost_job_add_gather(job, cmdbuf.mem, cmdbuf.words,
+				cmdbuf.offset, class_id);
 	}
+
+	kfree(local_class_ids);
+	local_class_ids = NULL;
 
 	err = copy_from_user(job->relocarray,
 			relocs, sizeof(*relocs) * num_relocs);
@@ -426,8 +447,8 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		}
 	}
 
-	/* set valid id for hwctx_syncpt_idx if no hwctx is present */
-	if (!ctx->hwctx)
+	/* set valid id for hwctx_syncpt_idx if hwctx does not provide one */
+	if (ctx->hwctx->h->syncpt == NVSYNCPT_INVALID)
 		hwctx_syncpt_idx = 0;
 
 	/*
@@ -527,6 +548,7 @@ fail_submit:
 	nvhost_job_unpin(job);
 fail:
 	nvhost_job_put(job);
+	kfree(local_class_ids);
 	kfree(local_waitbases);
 	return err;
 }
@@ -1106,10 +1128,10 @@ int nvhost_client_user_init(struct platform_device *dev)
 	struct nvhost_channel *ch = pdata->channel;
 
 	BUG_ON(!ch);
-	/* reserve 4 minor #s for <dev> and as-<dev>, ctrl-<dev>
-	 * and dbg-<dev> */
+	/* reserve 5 minor #s for <dev> and as-<dev>, ctrl-<dev>,
+	 * dbg-<dev> and prof-<dev> */
 
-	err = alloc_chrdev_region(&devno, 0, 4, IFACE_NAME);
+	err = alloc_chrdev_region(&devno, 0, 5, IFACE_NAME);
 	if (err < 0) {
 		dev_err(&dev->dev, "failed to allocate devno\n");
 		goto fail;
@@ -1125,6 +1147,7 @@ int nvhost_client_user_init(struct platform_device *dev)
 	if (ch->as_node == NULL)
 		goto fail;
 
+	/* module control (npn-channel based, global) interface */
 	if (pdata->ctrl_ops) {
 		++devno;
 		pdata->ctrl_node = nvhost_client_device_create(dev,
@@ -1134,6 +1157,7 @@ int nvhost_client_user_init(struct platform_device *dev)
 			goto fail;
 	}
 
+	/* module debugger interface (per channel and global) */
 	if (pdata->dbg_ops) {
 		++devno;
 		pdata->dbg_node = nvhost_client_device_create(dev,
@@ -1142,6 +1166,17 @@ int nvhost_client_user_init(struct platform_device *dev)
 		if (pdata->dbg_node == NULL)
 			goto fail;
 	}
+
+	/* module profiler interface (per channel and global) */
+	if (pdata->prof_ops) {
+		++devno;
+		pdata->prof_node = nvhost_client_device_create(dev,
+					&pdata->prof_cdev, "prof-",
+					devno, pdata->prof_ops);
+		if (pdata->prof_node == NULL)
+			goto fail;
+	}
+
 
 
 	return 0;

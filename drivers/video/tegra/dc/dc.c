@@ -1507,13 +1507,11 @@ u32 tegra_dc_read_checksum_latched(struct tegra_dc *dc)
 		goto crc_error;
 	}
 
-	if (!tegra_platform_is_linsim()) {
-		INIT_COMPLETION(dc->crc_complete);
-		if (dc->crc_pending &&
-		    wait_for_completion_interruptible(&dc->crc_complete)) {
-			pr_err("CRC read interrupted.\n");
-			goto crc_error;
-		}
+	INIT_COMPLETION(dc->crc_complete);
+	if (dc->crc_pending &&
+	    wait_for_completion_interruptible(&dc->crc_complete)) {
+		pr_err("CRC read interrupted.\n");
+		goto crc_error;
 	}
 
 	mutex_lock(&dc->lock);
@@ -2403,8 +2401,8 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 		/* disable windows */
 		w->flags &= ~TEGRA_WIN_FLAG_ENABLED;
 
-		/* flush any pending syncpt waits */
-		while (dc->syncpt[i].min < dc->syncpt[i].max) {
+		/* flush any pending syncpt waits. Add 1 for sync framework. */
+		while (dc->syncpt[i].min < (dc->syncpt[i].max + 1)) {
 			trace_display_syncpt_flush(dc, dc->syncpt[i].id,
 				dc->syncpt[i].min, dc->syncpt[i].max);
 			dc->syncpt[i].min++;

@@ -163,6 +163,27 @@ static int tegra_wake_event_irq[] = {
 
 static int last_gpio = -1;
 
+int tegra_set_wake_gpio(unsigned int wake, int gpio)
+{
+	if (wake < 0 || wake >= ARRAY_SIZE(tegra_gpio_wakes))
+		return -EINVAL;
+
+	tegra_wake_event_irq[wake] = -EAGAIN;
+	tegra_gpio_wakes[wake] = gpio;
+
+	return 0;
+}
+
+int tegra_set_wake_irq(unsigned int wake, int irq)
+{
+	if (wake < 0 || wake >= ARRAY_SIZE(tegra_wake_event_irq))
+		return -EINVAL;
+
+	tegra_wake_event_irq[wake] = irq;
+
+	return 0;
+}
+
 #ifdef CONFIG_TEGRA_INTERNAL_USB_CABLE_WAKE_SUPPORT
 /* USB1 VBUS and ID wake sources are handled as special case
  * Note: SD card detect is an ANY wake source but is

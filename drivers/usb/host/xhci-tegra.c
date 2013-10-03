@@ -4346,8 +4346,9 @@ err_deinit_usb2_clocks:
 err_deinit_tegra_xusb_regulator:
 	tegra_xusb_regulator_deinit(tegra);
 err_deinit_xusb_partition_clk:
-	usb_unregister_notifier(tegra->transceiver,
-		&tegra->otgnb);
+	if (tegra->transceiver)
+		usb_unregister_notifier(tegra->transceiver, &tegra->otgnb);
+
 	tegra_xusb_partitions_clk_deinit(tegra);
 
 	return ret;
@@ -4383,8 +4384,10 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	deinit_firmware(tegra);
 	fw_log_deinit(tegra);
 	tegra_xusb_regulator_deinit(tegra);
-	usb_unregister_notifier(tegra->transceiver,
-		&tegra->otgnb);
+
+	if (tegra->transceiver)
+		usb_unregister_notifier(tegra->transceiver, &tegra->otgnb);
+
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);

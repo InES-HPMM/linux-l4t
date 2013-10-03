@@ -36,6 +36,9 @@
 #include "hw_mc_gk20a.h"
 #include "hw_gr_gk20a.h"
 
+static int gk20a_fifo_update_runlist_locked(struct gk20a *g, u32 runlist_id,
+					    u32 hw_chid, bool add,
+					    bool wait_for_finish);
 static void gk20a_fifo_handle_mmu_fault_thread(struct work_struct *work);
 
 /*
@@ -50,7 +53,6 @@ static inline u32 gk20a_engine_id_to_mmu_id(u32 engine_id)
 	case ENGINE_CE2_GK20A:
 		return 0x1b;
 	default:
-		WARN_ON(true);
 		return ~0;
 	}
 }
@@ -63,7 +65,6 @@ static inline u32 gk20a_mmu_id_to_engine_id(u32 engine_id)
 	case 0x1b:
 		return ENGINE_CE2_GK20A;
 	default:
-		WARN_ON(true);
 		return ~0;
 	}
 }
@@ -510,7 +511,8 @@ static int gk20a_init_fifo_setup_sw(struct gk20a *g)
 					    /*offset_align, flags, kind*/
 					    4096, 0, 0,
 					    &f->userd.mem.sgt,
-					    false);
+					    false,
+					    mem_flag_none);
 	f->userd.cpu_pa = gk20a_mm_iova_addr(f->userd.mem.sgt->sgl);
 	nvhost_dbg(dbg_map, "userd physical address : 0x%08llx - 0x%08llx",
 			f->userd.cpu_pa, f->userd.cpu_pa + f->userd_total_size);
@@ -815,7 +817,12 @@ static void gk20a_fifo_handle_mmu_fault_thread(struct work_struct *work)
 
 	/* Restore the runlist */
 	for (i = 0; i < g->fifo.max_runlists; i++)
-		gk20a_fifo_update_runlist(g, i, ~0, true, true);
+		gk20a_fifo_update_runlist_locked(g, i, ~0, true, true);
+
+	/* unlock all runlists */
+	for (i = 0; i < g->fifo.max_runlists; i++)
+		mutex_unlock(&g->fifo.runlist_info[i].mutex);
+
 }
 
 static void gk20a_fifo_handle_mmu_fault(struct gk20a *g)
@@ -837,10 +844,13 @@ static void gk20a_fifo_handle_mmu_fault(struct gk20a *g)
 		fault_id = g->fifo.mmu_fault_engines;
 		g->fifo.mmu_fault_engines = 0;
 		fake_fault = true;
-	} else
+	} else {
 		fault_id = gk20a_readl(g, fifo_intr_mmu_fault_id_r());
+		fake_fault = false;
+	}
 
-	/* lock all runlists */
+	/* lock all runlists. Note that locks are are released in
+	 * gk20a_fifo_handle_mmu_fault_thread() */
 	for (i = 0; i < g->fifo.max_runlists; i++)
 		mutex_lock(&g->fifo.runlist_info[i].mutex);
 
@@ -849,13 +859,11 @@ static void gk20a_fifo_handle_mmu_fault(struct gk20a *g)
 		/* bits in fifo_intr_mmu_fault_id_r do not correspond 1:1 to
 		 * engines. Convert engine_mmu_id to engine_id */
 		u32 engine_id = gk20a_mmu_id_to_engine_id(engine_mmu_id);
-		u32 runlist_id = g->fifo.engine_info[engine_id].runlist_id;
-		struct fifo_runlist_info_gk20a *runlist =
-			&g->fifo.runlist_info[runlist_id];
+		struct fifo_runlist_info_gk20a *runlist = g->fifo.runlist_info;
 		struct fifo_mmu_fault_info_gk20a f;
 		struct channel_gk20a *ch = NULL;
 
-		get_exception_mmu_fault_info(g, engine_id, &f);
+		get_exception_mmu_fault_info(g, engine_mmu_id, &f);
 		trace_nvhost_gk20a_mmu_fault(f.fault_hi_v,
 					     f.fault_lo_v,
 					     f.fault_info_v,
@@ -931,20 +939,17 @@ static void gk20a_fifo_handle_mmu_fault(struct gk20a *g)
 			nvhost_err(dev_from_gk20a(g), "couldn't locate channel for mmu fault");
 	}
 
-	/* unlock all runlists */
-	for (i = 0; i < g->fifo.max_runlists; i++)
-		mutex_unlock(&g->fifo.runlist_info[i].mutex);
-
 	/* reset engines */
 	for_each_set_bit(engine_mmu_id, &fault_id, BITS_PER_LONG) {
 		u32 engine_id = gk20a_mmu_id_to_engine_id(engine_mmu_id);
-		gk20a_fifo_reset_engine(g, engine_id);
+		if (engine_id != ~0)
+			gk20a_fifo_reset_engine(g, engine_id);
 	}
 
 	/* CLEAR the runlists. Do not wait for runlist to start as
 	 * some engines may not be available right now */
 	for (i = 0; i < g->fifo.max_runlists; i++)
-		gk20a_fifo_update_runlist(g, i, ~0, false, false);
+		gk20a_fifo_update_runlist_locked(g, i, ~0, false, false);
 
 	/* clear interrupt */
 	gk20a_writel(g, fifo_intr_mmu_fault_id_r(), fault_id);
@@ -1460,13 +1465,11 @@ static int gk20a_fifo_runlist_wait_pending(struct gk20a *g, u32 runlist_id)
 	return 0;
 }
 
-/* add/remove a channel from runlist
-   special cases below: runlist->active_channels will NOT be changed.
-   (hw_chid == ~0 && !add) means remove all active channels from runlist.
-   (hw_chid == ~0 &&  add) means restore all active channels on runlist. */
-int gk20a_fifo_update_runlist(struct gk20a *g, u32 runlist_id, u32 hw_chid,
-			      bool add, bool wait_for_finish)
+static int gk20a_fifo_update_runlist_locked(struct gk20a *g, u32 runlist_id,
+					    u32 hw_chid, bool add,
+					    bool wait_for_finish)
 {
+	u32 ret = 0;
 	struct fifo_gk20a *f = &g->fifo;
 	struct fifo_runlist_info_gk20a *runlist = NULL;
 	u32 *runlist_entry_base = NULL;
@@ -1475,18 +1478,8 @@ int gk20a_fifo_update_runlist(struct gk20a *g, u32 runlist_id, u32 hw_chid,
 	u32 old_buf, new_buf;
 	u32 chid;
 	u32 count = 0;
-	u32 ret = 0;
-	u32 token = PMU_INVALID_MUTEX_OWNER_ID;
-	u32 elpg_off;
 
 	runlist = &f->runlist_info[runlist_id];
-
-	mutex_lock(&runlist->mutex);
-
-	/* disable elpg if failed to acquire pmu mutex */
-	elpg_off = pmu_mutex_acquire(&g->pmu, PMU_MUTEX_ID_FIFO, &token);
-	if (elpg_off)
-		gk20a_pmu_disable_elpg(g);
 
 	/* valid channel, add/remove it from active list.
 	   Otherwise, keep active list untouched for suspend/resume. */
@@ -1494,11 +1487,11 @@ int gk20a_fifo_update_runlist(struct gk20a *g, u32 runlist_id, u32 hw_chid,
 		if (add) {
 			if (test_and_set_bit(hw_chid,
 				runlist->active_channels) == 1)
-				goto done;
+				return 0;
 		} else {
 			if (test_and_clear_bit(hw_chid,
 				runlist->active_channels) == 0)
-				goto done;
+				return 0;
 		}
 	}
 
@@ -1562,7 +1555,34 @@ int gk20a_fifo_update_runlist(struct gk20a *g, u32 runlist_id, u32 hw_chid,
 clean_up:
 	nvhost_memmgr_munmap(runlist->mem[new_buf].ref,
 			     runlist_entry_base);
-done:
+
+	return ret;
+}
+
+/* add/remove a channel from runlist
+   special cases below: runlist->active_channels will NOT be changed.
+   (hw_chid == ~0 && !add) means remove all active channels from runlist.
+   (hw_chid == ~0 &&  add) means restore all active channels on runlist. */
+int gk20a_fifo_update_runlist(struct gk20a *g, u32 runlist_id, u32 hw_chid,
+			      bool add, bool wait_for_finish)
+{
+	struct fifo_runlist_info_gk20a *runlist = NULL;
+	struct fifo_gk20a *f = &g->fifo;
+	u32 token = PMU_INVALID_MUTEX_OWNER_ID;
+	u32 elpg_off;
+	u32 ret = 0;
+
+	runlist = &f->runlist_info[runlist_id];
+
+	mutex_lock(&runlist->mutex);
+
+	/* disable elpg if failed to acquire pmu mutex */
+	elpg_off = pmu_mutex_acquire(&g->pmu, PMU_MUTEX_ID_FIFO, &token);
+	if (elpg_off)
+		gk20a_pmu_disable_elpg(g);
+
+	ret = gk20a_fifo_update_runlist_locked(g, runlist_id, hw_chid, add,
+					       wait_for_finish);
 
 	/* re-enable elpg or release pmu mutex */
 	if (elpg_off)

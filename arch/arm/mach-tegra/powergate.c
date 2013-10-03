@@ -58,17 +58,19 @@ int tegra_powergate_set(int id, bool new_state)
 	bool status;
 	unsigned long flags;
 	spinlock_t *lock;
+	u32 reg;
 
-	if (tegra_cpu_is_asim())
-		return 0;
-
-	lock = tegra_get_powergate_lock();
 	/* 10us timeout for toggle operation if it takes affect*/
 	int toggle_timeout = 10;
 
 	/* 100 * 10 = 1000us timeout for toggle command to take affect in case
 	   of contention with h/w initiated CPU power gating */
 	int contention_timeout = 100;
+
+	if (tegra_cpu_is_asim())
+		return 0;
+
+	lock = tegra_get_powergate_lock();
 
 	spin_lock_irqsave(lock, flags);
 
@@ -87,7 +89,38 @@ int tegra_powergate_set(int id, bool new_state)
 		return 0;
 	}
 
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* Wait if PMC is already processing some other power gating request */
+	do {
+		udelay(1);
+		reg = pmc_read(PWRGATE_TOGGLE);
+		contention_timeout--;
+	} while ((contention_timeout > 0) && (status & PWRGATE_TOGGLE_START));
+
+	if (contention_timeout > 0)
+		pr_err(" Timed out waiting for PMC to submit \
+				new power gate request \n");
+	contention_timeout = 100;
+#endif
+
+	/* Submit power gate request */
 	pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
+
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* Wait while PMC accepts the request */
+	do {
+		udelay(1);
+		reg = pmc_read(PWRGATE_TOGGLE);
+		contention_timeout--;
+	} while ((contention_timeout > 0) && (status & PWRGATE_TOGGLE_START));
+
+	if (contention_timeout > 0)
+		pr_err(" Timed out waiting for PMC to accept \
+				new power gate request \n");
+	contention_timeout = 100;
+#endif
+
+	/* Check power gate status */
 	do {
 		do {
 			udelay(1);
@@ -329,7 +362,7 @@ int tegra_powergate_remove_clamping(int id)
 		udelay(1);
 		contention_timeout--;
 	} while ((contention_timeout > 0)
-			&& (pmc_read(REMOVE_CLAMPING) & mask));
+			&& (pmc_read(PWRGATE_CLAMP_STATUS) & mask));
 
 	WARN(contention_timeout <= 0, "Couldn't remove clamping");
 

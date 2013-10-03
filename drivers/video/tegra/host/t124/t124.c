@@ -41,6 +41,7 @@
 #include "vi/vi.h"
 #include "isp/isp.h"
 #include "gr3d/pod_scaling.h"
+#include "gr3d/scale3d.h"
 
 #include "nvhost_memmgr.h"
 #include "chip_support.h"
@@ -397,10 +398,16 @@ struct nvhost_device_data t124_vic_info = {
 	.alloc_hwctx_handler	= nvhost_vic03_alloc_hwctx_handler,
 	.finalize_poweron	= nvhost_vic03_finalize_poweron,
 	.prepare_poweroff	= nvhost_vic03_prepare_poweroff,
-	.scaling_init		= nvhost_scale_init,
-	.scaling_deinit		= nvhost_scale_deinit,
+	.scaling_init		= nvhost_scale3d_init,
+	.scaling_deinit		= nvhost_scale3d_deinit,
+	.busy			= nvhost_scale_notify_busy,
+	.idle			= nvhost_scale_notify_idle,
+	.suspend_ndev		= nvhost_scale3d_suspend,
+	.scaling_post_cb	= &nvhost_scale3d_callback,
+	.devfreq_governor	= &nvhost_podgov,
 	.actmon_regs		= HOST1X_CHANNEL_ACTMON2_REG_BASE,
 	.actmon_enabled		= true,
+	.linear_emc		= true,
 };
 
 struct platform_device tegra_vic03_device = {
@@ -437,11 +444,12 @@ struct nvhost_device_data tegra_gk20a_info = {
 				   {} },
 	.powergate_ids		= { TEGRA_POWERGATE_GPU, -1 },
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
-	.powergate_delay	= 1000*60*60*24,
+	.powergate_delay	= 500,
 	.can_powergate		= true,
 	.alloc_hwctx_handler	= nvhost_gk20a_alloc_hwctx_handler,
 	.ctrl_ops		= &tegra_gk20a_ctrl_ops,
 	.dbg_ops                = &tegra_gk20a_dbg_gpu_ops,
+	.prof_ops                = &tegra_gk20a_prof_gpu_ops,
 	.moduleid		= NVHOST_MODULE_GPU,
 	.init			= nvhost_gk20a_init,
 	.deinit			= nvhost_gk20a_deinit,
@@ -456,6 +464,7 @@ struct nvhost_device_data tegra_gk20a_info = {
 	.suspend_ndev		= nvhost_scale3d_suspend,
 	.devfreq_governor	= &nvhost_podgov,
 	.scaling_post_cb	= nvhost_gk20a_scale_callback,
+	.gpu_edp_device		= true,
 #endif
 };
 

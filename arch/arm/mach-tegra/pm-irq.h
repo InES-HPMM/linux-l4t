@@ -29,12 +29,22 @@ u64 tegra_read_pmc_wake_status(void);
 int tegra_pm_irq_set_wake(int wake, int enable);
 int tegra_pm_irq_set_wake_type(int wake, int flow_type);
 bool tegra_pm_irq_lp0_allowed(void);
+int tegra_set_wake_gpio(unsigned int wake, int gpio);
+int tegra_set_wake_irq(unsigned int wake, int irq);
 int tegra_gpio_to_wake(int gpio);
 void tegra_irq_to_wake(int irq, int *wak_list, int *wak_size);
 int tegra_wake_to_irq(int wake);
 int tegra_set_wake_source(int wake, int wake_int);
 int tegra_disable_wake_source(int wake);
 #else
+static inline int tegra_set_wake_gpio(unsigned int wake, int gpio)
+{
+	return 0;
+}
+static inline int tegra_set_wake_irq(unsigned int wake, int irq)
+{
+	return 0;
+}
 static inline int tegra_pm_irq_set_wake_type(int wake, int flow_type)
 {
 	return 0;

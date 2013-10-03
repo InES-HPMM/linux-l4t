@@ -360,7 +360,7 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	*/
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS5, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS6, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR2, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR2, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, true, 0),

@@ -41,6 +41,12 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
 
+#include <linux/notifier.h>
+#include <linux/tegra-throughput.h>
+
+#include <linux/notifier.h>
+#include <linux/tegra-throughput.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvhost_podgov.h>
 
@@ -127,6 +133,7 @@ struct podgov_info_rec {
 	unsigned int		hint_avg;
 	int			block;
 
+	struct notifier_block	throughput_hint_notifier;
 };
 
 /*******************************************************************************
@@ -144,10 +151,6 @@ enum podgov_adjustment_type {
 	ADJUSTMENT_DEVICE_REQ = 1
 };
 
-
-/* Some functions cannot get pointer to podgov anywhere :-(
- * Yes, this should be fixed */
-struct podgov_info_rec *local_podgov;
 
 /*******************************************************************************
  * scaling_limit(df, freq)
@@ -693,21 +696,25 @@ static void podgov_idle_handler(struct work_struct *work)
  * required throughput
  ******************************************************************************/
 
-void nvhost_scale3d_set_throughput_hint(int hint)
+static int nvhost_scale3d_set_throughput_hint(struct notifier_block *nb,
+					      unsigned long action, void *data)
 {
-	struct podgov_info_rec *podgov = local_podgov;
+	struct podgov_info_rec *podgov =
+		container_of(nb, struct podgov_info_rec,
+			     throughput_hint_notifier);
 	struct devfreq *df;
 
+	int hint = tegra_throughput_get_hint();
 	long idle;
 	long curr, target;
 	int avg_idle, avg_hint, scale_score;
 	unsigned int smooth;
 
 	if (!podgov)
-		return;
+		return NOTIFY_DONE;
 	df = podgov->power_manager;
 	if (!df)
-		return;
+		return NOTIFY_DONE;
 
 	mutex_lock(&podgov->power_manager->lock);
 
@@ -717,7 +724,7 @@ void nvhost_scale3d_set_throughput_hint(int hint)
 		!podgov->p_use_throughput_hint ||
 		podgov->block > 0) {
 		mutex_unlock(&podgov->power_manager->lock);
-		return;
+		return NOTIFY_DONE;
 	}
 
 	trace_podgov_hint(podgov->idle_estimate, hint);
@@ -760,8 +767,8 @@ void nvhost_scale3d_set_throughput_hint(int hint)
 		avg_hint);
 
 	mutex_unlock(&podgov->power_manager->lock);
+	return NOTIFY_OK;
 }
-EXPORT_SYMBOL(nvhost_scale3d_set_throughput_hint);
 
 /*******************************************************************************
  * debugfs interface for controlling 3d clock scaling on the fly
@@ -1050,10 +1057,6 @@ static int nvhost_pod_init(struct devfreq *df)
 		goto err_alloc_podgov;
 	df->data = (void *)podgov;
 
-	/* This should be removed after the governor include also the hint
-	 * interface */
-	local_podgov = podgov;
-
 	/* Initialise workers */
 	INIT_WORK(&podgov->work, podgov_clocks_handler);
 	INIT_DELAYED_WORK(&podgov->idle_timer, podgov_idle_handler);
@@ -1064,39 +1067,49 @@ static int nvhost_pod_init(struct devfreq *df)
 	podgov->block = 0;
 	podgov->p_use_throughput_hint = 1;
 
-	switch (cid) {
-	case TEGRA_CHIPID_TEGRA14:
-		podgov->idle_min = podgov->p_idle_min = 500;
+	if (!strcmp(d->name, "vic03")) {
+		podgov->idle_min = podgov->p_idle_min = 300;
 		podgov->idle_max = podgov->p_idle_max = 700;
-		podgov->p_hint_lo_limit = 500;
-		podgov->p_hint_hi_limit = 997;
-		podgov->p_scaleup_limit = 1500;
-		podgov->p_scaledown_limit = 1700;
-		podgov->p_smooth = 3;
-		break;
-	case TEGRA_CHIPID_TEGRA11:
-	case TEGRA_CHIPID_TEGRA12:
-		podgov->idle_min = podgov->p_idle_min = 400;
-		podgov->idle_max = podgov->p_idle_max = 500;
 		podgov->p_hint_lo_limit = 500;
 		podgov->p_hint_hi_limit = 997;
 		podgov->p_scaleup_limit = 1100;
 		podgov->p_scaledown_limit = 1300;
 		podgov->p_smooth = 3;
-		break;
-	case TEGRA_CHIPID_TEGRA3:
-		podgov->idle_min = podgov->p_idle_min = 100;
-		podgov->idle_max = podgov->p_idle_max = 150;
-		podgov->p_hint_lo_limit = 800;
-		podgov->p_hint_hi_limit = 1015;
-		podgov->p_scaleup_limit = 1275;
-		podgov->p_scaledown_limit = 1475;
-		podgov->p_smooth = 7;
-		break;
-	default:
-		pr_err("%s: un-supported chip id\n", __func__);
-		goto err_unsupported_chip_id;
-		break;
+	} else {
+		switch (cid) {
+		case TEGRA_CHIPID_TEGRA14:
+			podgov->idle_min = podgov->p_idle_min = 500;
+			podgov->idle_max = podgov->p_idle_max = 700;
+			podgov->p_hint_lo_limit = 500;
+			podgov->p_hint_hi_limit = 997;
+			podgov->p_scaleup_limit = 1500;
+			podgov->p_scaledown_limit = 1700;
+			podgov->p_smooth = 3;
+			break;
+		case TEGRA_CHIPID_TEGRA11:
+		case TEGRA_CHIPID_TEGRA12:
+			podgov->idle_min = podgov->p_idle_min = 400;
+			podgov->idle_max = podgov->p_idle_max = 500;
+			podgov->p_hint_lo_limit = 500;
+			podgov->p_hint_hi_limit = 997;
+			podgov->p_scaleup_limit = 1100;
+			podgov->p_scaledown_limit = 1300;
+			podgov->p_smooth = 3;
+			break;
+		case TEGRA_CHIPID_TEGRA3:
+			podgov->idle_min = podgov->p_idle_min = 100;
+			podgov->idle_max = podgov->p_idle_max = 150;
+			podgov->p_hint_lo_limit = 800;
+			podgov->p_hint_hi_limit = 1015;
+			podgov->p_scaleup_limit = 1275;
+			podgov->p_scaledown_limit = 1475;
+			podgov->p_smooth = 7;
+			break;
+		default:
+			pr_err("%s: un-supported chip id\n", __func__);
+			goto err_unsupported_chip_id;
+			break;
+		}
 	}
 	podgov->p_estimation_window = 10000;
 	podgov->adjustment_type = ADJUSTMENT_DEVICE_REQ;
@@ -1151,6 +1164,12 @@ static int nvhost_pod_init(struct devfreq *df)
 
 	nvhost_scale3d_debug_init(df);
 
+	/* register the governor to throughput hint notifier chain */
+	podgov->throughput_hint_notifier.notifier_call =
+		&nvhost_scale3d_set_throughput_hint;
+	blocking_notifier_chain_register(&throughput_notifier_list,
+					 &podgov->throughput_hint_notifier);
+
 	return 0;
 
 err_get_freqs:
@@ -1177,6 +1196,8 @@ static void nvhost_pod_exit(struct devfreq *df)
 	struct podgov_info_rec *podgov = df->data;
 	struct platform_device *d = to_platform_device(df->dev.parent);
 
+	blocking_notifier_chain_unregister(&throughput_notifier_list,
+					   &podgov->throughput_hint_notifier);
 	cancel_work_sync(&podgov->work);
 	cancel_delayed_work(&podgov->idle_timer);
 
@@ -1187,7 +1208,6 @@ static void nvhost_pod_exit(struct devfreq *df)
 	nvhost_scale3d_debug_deinit(df);
 
 	kfree(podgov);
-	local_podgov = NULL;
 }
 
 static int nvhost_pod_event_handler(struct devfreq *df,

@@ -195,6 +195,11 @@ struct nvhost_device_data {
 	struct cdev dbg_cdev;
 	const struct file_operations *dbg_ops;
 
+	/* module profiler */
+	struct device *prof_node;
+	struct cdev prof_cdev;
+	const struct file_operations *prof_ops;
+
 	struct kobject *power_kobj;	/* kobject to hold power sysfs entries */
 	struct nvhost_device_power_attr *power_attrib;	/* sysfs attributes */
 	struct dentry *debugfs;		/* debugfs directory */
@@ -207,6 +212,10 @@ struct nvhost_device_data {
 	struct nvhost_device_profile	*power_profile;
 	/* Should we read load estimate from hardware? */
 	bool				actmon_enabled;
+	/* Should we do linear emc scaling? */
+	bool				linear_emc;
+	/* Should the load value be delivered forward to edp? */
+	bool				gpu_edp_device;
 	/* Offset to actmon registers */
 	u32				actmon_regs;
 	/* Devfreq governor name */
@@ -310,8 +319,6 @@ void nvhost_syncpt_cpu_incr_ext(struct platform_device *dev, u32 id);
 u32 nvhost_syncpt_read_ext(struct platform_device *dev, u32 id);
 int nvhost_syncpt_wait_timeout_ext(struct platform_device *dev, u32 id, u32 thresh,
 	u32 timeout, u32 *value, struct timespec *ts);
-
-void nvhost_scale3d_set_throughput_hint(int hint);
 
 /* Hacky way to get access to struct nvhost_device_data for VI device. */
 extern struct nvhost_device_data t20_vi_info;

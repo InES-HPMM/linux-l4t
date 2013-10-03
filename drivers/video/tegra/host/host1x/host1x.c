@@ -61,11 +61,22 @@
 
 #define DRIVER_NAME		"host1x"
 
+static const char *num_syncpts_name = "num_pts";
+static const char *num_mutexes_name = "num_mlocks";
+static const char *num_waitbases_name = "num_bases";
+static const char *gather_filter_enabled_name = "gather_filter_enabled";
+
 struct nvhost_master *nvhost;
 
 struct nvhost_ctrl_userctx {
 	struct nvhost_master *dev;
 	u32 *mod_locks;
+};
+
+struct nvhost_capability_node {
+	struct kobj_attribute attr;
+	struct nvhost_master *host;
+	int (*func)(struct nvhost_syncpt *sp);
 };
 
 static int nvhost_ctrlrelease(struct inode *inode, struct file *filp)
@@ -212,7 +223,8 @@ static int nvhost_ioctl_ctrl_sync_fence_create(struct nvhost_ctrl_userctx *ctx,
 	}
 
 	for (i = 0; i < args->num_pts; i++) {
-		if (pts[i].id >= nvhost_syncpt_nb_pts(&ctx->dev->syncpt)) {
+		if (pts[i].id >= nvhost_syncpt_nb_pts(&ctx->dev->syncpt) &&
+		    pts[i].id != NVSYNCPT_INVALID) {
 			err = -EINVAL;
 			goto out;
 		}
@@ -453,6 +465,35 @@ static int clock_off_host(struct platform_device *dev)
 }
 #endif
 
+static int nvhost_gather_filter_enabled(struct nvhost_syncpt *sp)
+{
+	return 0;
+}
+
+static ssize_t nvhost_syncpt_capability_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	struct nvhost_capability_node *node =
+		container_of(attr, struct nvhost_capability_node, attr);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			node->func(&node->host->syncpt));
+}
+
+static inline int nvhost_set_sysfs_capability_node(
+				struct nvhost_master *host, const char *name,
+				struct nvhost_capability_node *node,
+				int (*func)(struct nvhost_syncpt *sp))
+{
+	node->attr.attr.name = name;
+	node->attr.attr.mode = S_IRUGO;
+	node->attr.show = nvhost_syncpt_capability_show;
+	node->func = func;
+	node->host = host;
+
+	return sysfs_create_file(host->caps_kobj, &node->attr.attr);
+}
+
 static int nvhost_user_init(struct nvhost_master *host)
 {
 	int err, devno;
@@ -480,6 +521,45 @@ static int nvhost_user_init(struct nvhost_master *host)
 	if (IS_ERR(host->ctrl)) {
 		err = PTR_ERR(host->ctrl);
 		dev_err(&host->dev->dev, "failed to create ctrl device\n");
+		goto fail;
+	}
+
+	host->caps_nodes = devm_kzalloc(&host->dev->dev,
+			sizeof(struct nvhost_capability_node) * 4, GFP_KERNEL);
+	if (!host->caps_nodes) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	host->caps_kobj = kobject_create_and_add("capabilities",
+			&host->dev->dev.kobj);
+	if (!host->caps_kobj) {
+		err = -EIO;
+		goto fail;
+	}
+
+	if (nvhost_set_sysfs_capability_node(host, num_syncpts_name,
+		host->caps_nodes, &nvhost_syncpt_nb_pts)) {
+		err = -EIO;
+		goto fail;
+	}
+
+	if (nvhost_set_sysfs_capability_node(host, num_waitbases_name,
+		host->caps_nodes + 1, &nvhost_syncpt_nb_bases)) {
+		err = -EIO;
+		goto fail;
+	}
+
+	if (nvhost_set_sysfs_capability_node(host, num_mutexes_name,
+		host->caps_nodes + 2, &nvhost_syncpt_nb_mlocks)) {
+		err = -EIO;
+		goto fail;
+	}
+
+	if (nvhost_set_sysfs_capability_node(host,
+		gather_filter_enabled_name, host->caps_nodes + 3,
+		nvhost_gather_filter_enabled)) {
+		err = -EIO;
 		goto fail;
 	}
 

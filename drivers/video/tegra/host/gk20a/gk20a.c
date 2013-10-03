@@ -33,7 +33,7 @@
 #include <linux/debugfs.h>
 #include <linux/spinlock.h>
 #include <linux/tegra-powergate.h>
-
+#include <linux/fb.h>
 #include <linux/suspend.h>
 
 #include <mach/pm_domains.h>
@@ -98,8 +98,27 @@ const struct file_operations tegra_gk20a_dbg_gpu_ops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
 #endif
-
 };
+
+/*
+ * Note: We use a different 'open' to trigger handling of the profiler session.
+ * Most of the code is shared between them...  Though, at some point if the
+ * code does get too tangled trying to handle each in the same path we can
+ * separate them cleanly.
+ */
+const struct file_operations tegra_gk20a_prof_gpu_ops = {
+	.owner = THIS_MODULE,
+	.release        = gk20a_dbg_gpu_dev_release,
+	.open           = gk20a_prof_gpu_dev_open,
+	.unlocked_ioctl = gk20a_dbg_gpu_dev_ioctl,
+	/* .mmap           = gk20a_prof_gpu_dev_mmap,*/
+	/*int (*mmap) (struct file *, struct vm_area_struct *);*/
+	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
+#endif
+};
+
 
 static inline void sim_writel(struct gk20a *g, u32 r, u32 v)
 {
@@ -797,14 +816,47 @@ static struct thermal_cooling_device_ops tegra_gpu_cooling_ops = {
 	.set_cur_state = tegra_gpu_set_cur_state,
 };
 
+static void gk20a_set_railgating(struct gk20a *g, int new_status)
+{
+	struct nvhost_device_data *pdata = platform_get_drvdata(g->dev);
+	bool can_powergate = new_status == FB_BLANK_UNBLANK ? 0 : 1;
+
+	mutex_lock(&pdata->lock);
+	if (pdata->can_powergate && !can_powergate) {
+		dev_pm_qos_add_request(dev_from_gk20a(g), &g->no_poweroff_req,
+				DEV_PM_QOS_FLAGS, PM_QOS_FLAG_NO_POWER_OFF);
+		pdata->can_powergate = can_powergate;
+	} else if (!pdata->can_powergate && can_powergate) {
+		dev_pm_qos_remove_request(&g->no_poweroff_req);
+		pdata->can_powergate = can_powergate;
+	}
+	mutex_unlock(&pdata->lock);
+}
+
 static int gk20a_suspend_notifier(struct notifier_block *notifier,
-				  unsigned long pm_event, void *unused)
+				  unsigned long pm_event, void *data)
 {
 	struct gk20a *g = container_of(notifier, struct gk20a,
 				       system_suspend_notifier);
 
 	if (pm_event == PM_USERSPACE_FROZEN)
 		return g->power_on ? NOTIFY_BAD : NOTIFY_OK;
+
+	return NOTIFY_DONE;
+}
+
+static int gk20a_fb_notifier(struct notifier_block *notifier,
+				  unsigned long pm_event, void *data)
+{
+	struct gk20a *g = container_of(notifier, struct gk20a,
+				       fb_notifier);
+	struct fb_event *fb_event = data;
+
+	switch (pm_event) {
+	case FB_EVENT_BLANK:
+		gk20a_set_railgating(g, *((int *)fb_event->data));
+		break;
+	}
 
 	return NOTIFY_DONE;
 }
@@ -858,6 +910,8 @@ static int gk20a_probe(struct platform_device *dev)
 		gk20a->system_suspend_notifier.notifier_call =
 			gk20a_suspend_notifier;
 		register_pm_notifier(&gk20a->system_suspend_notifier);
+		gk20a->fb_notifier.notifier_call = gk20a_fb_notifier;
+		fb_register_client(&gk20a->fb_notifier);
 	}
 
 	err = nvhost_client_device_init(dev);
@@ -890,6 +944,7 @@ static int gk20a_probe(struct platform_device *dev)
 	gk20a->slcg_enabled = true;
 	gk20a->blcg_enabled = true;
 	gk20a->elcg_enabled = true;
+	gk20a->elpg_enabled = true;
 
 	gk20a_create_sysfs(dev);
 

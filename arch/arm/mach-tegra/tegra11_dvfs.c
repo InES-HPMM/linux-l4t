@@ -878,6 +878,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 static struct kobject *floor_kobj;
+static struct kobject *gpu_kobj;
 
 static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -931,6 +932,13 @@ static struct core_bus_limit_table tegra11_bus_floor_table[] = {
 #endif
 };
 
+static struct core_bus_rates_table tegra11_gpu_rates_sysfs = {
+	.bus_clk_name = "c2bus",
+	.rate_attr = {.attr = {.name = "gpu_rate", .mode = 0444} },
+	.available_rates_attr = {
+		.attr = {.name = "gpu_available_rates", .mode = 0444} },
+};
+
 static int __init tegra11_dvfs_init_core_limits(void)
 {
 	int ret;
@@ -979,6 +987,22 @@ static int __init tegra11_dvfs_init_core_limits(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs floor interface is initialized\n");
+
+	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);
+	if (!gpu_kobj) {
+		pr_err("tegra11_dvfs: failed to create sysfs gpu object\n");
+		return 0;
+	}
+
+	ret = tegra_init_sysfs_shared_bus_rate(&tegra11_gpu_rates_sysfs,
+					       1, gpu_kobj);
+	if (ret) {
+		pr_err("tegra11_dvfs: failed to init gpu rates interface (%d)\n",
+		       ret);
+		kobject_del(gpu_kobj);
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
 
 	return 0;
 }

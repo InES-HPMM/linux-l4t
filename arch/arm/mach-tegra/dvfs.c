@@ -102,6 +102,12 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 	/* Limit override range to maximum floor */
 	if (rail->therm_mv_floors)
 		rail->min_override_millivolts = rail->therm_mv_floors[0];
+
+	/* Only GPU thermal dvfs is supported */
+	if (rail->vts_cdev && (rail != tegra_gpu_rail)) {
+		rail->vts_cdev = NULL;
+		WARN(1, "%s: thermal dvfs is not supported\n", rail->reg_id);
+	}
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -134,14 +140,14 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 
 		list_add_tail(&rails[i]->node, &dvfs_rail_list);
 
-		dvfs_validate_cdevs(rails[i]);
-
 		if (!strcmp("vdd_cpu", rails[i]->reg_id))
 			tegra_cpu_rail = rails[i];
 		else if (!strcmp("vdd_gpu", rails[i]->reg_id))
 			tegra_gpu_rail = rails[i];
 		else if (!strcmp("vdd_core", rails[i]->reg_id))
 			tegra_core_rail = rails[i];
+
+		dvfs_validate_cdevs(rails[i]);
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -408,6 +414,15 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	/* Apply offset and min/max limits if any clock is requesting voltage */
 	if (millivolts)
 		millivolts = dvfs_rail_apply_limits(rail, millivolts);
+	/* Keep current voltage if regulator is to be disabled via explicitly */
+	else if (rail->in_band_pm)
+		return 0;
+	/* Keep current voltage if regulator must not be disabled at run time */
+	else if (!rail->jmp_to_zero) {
+		WARN(1, "%s cannot be turned off by dvfs\n");
+		return 0;
+	}
+	/* else: fall thru if regulator is turned off by side band signaling */
 
 	/* retry update if limited by from-relationship to account for
 	   circular dependencies */
@@ -552,7 +567,7 @@ static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return d->dfll_millivolts;
 
-	return d->millivolts;
+	return tegra_dvfs_get_millivolts_pll(d);
 }
 
 static int
@@ -673,7 +688,9 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 	if (!rate || !c->dvfs)
 		return 0;
 
-	millivolts = dvfs_get_millivolts(c->dvfs, rate);
+	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
+		c->dvfs->dfll_millivolts :
+		tegra_dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
 
@@ -684,7 +701,7 @@ int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate)
 	if (!rate || !c->dvfs)
 		return 0;
 
-	millivolts = c->dvfs->millivolts;
+	millivolts = tegra_dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
 
@@ -697,6 +714,15 @@ int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate)
 
 	millivolts = c->dvfs->dfll_millivolts;
 	return predict_millivolts(c, millivolts, rate);
+}
+
+const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d)
+{
+	if (d->therm_dvfs) {
+		int therm_idx = d->dvfs_rail->therm_scale_idx;
+		return d->millivolts + therm_idx * MAX_DVFS_FREQS;
+	}
+	return d->millivolts;
 }
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
@@ -1249,6 +1275,40 @@ struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void)
+{
+	if (tegra_gpu_rail)
+		return tegra_gpu_rail->vts_cdev;
+	return NULL;
+}
+
+static void make_safe_thermal_dvfs_one(struct dvfs *d,
+				  struct tegra_cooling_device *cdev)
+{
+	int i, j, mv;
+
+	/* Make 1st row (therm_idx = 0) voltages max across thermal ranges */
+	for (i = 0; i < d->num_freqs; i++) {
+		for (j = 1; j <= cdev->trip_temperatures_num; j++) {
+			mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
+			if (d->millivolts[i] < mv)
+				((int *)d->millivolts)[i] = mv;
+		}
+	}
+}
+
+static void make_safe_thermal_dvfs(struct dvfs_rail *rail)
+{
+	struct dvfs *d;
+
+	mutex_lock(&dvfs_lock);
+	list_for_each_entry(d, &rail->dvfs, reg_node) {
+		if (d->therm_dvfs)
+			make_safe_thermal_dvfs_one(d, rail->vts_cdev);
+	}
+	mutex_unlock(&dvfs_lock);
+}
+
 #ifdef CONFIG_THERMAL
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
 static int tegra_dvfs_rail_get_vmin_cdev_max_state(
@@ -1281,7 +1341,7 @@ static int tegra_dvfs_rail_set_vmin_cdev_state(
 	return 0;
 }
 
-static struct thermal_cooling_device_ops tegra_dvfs_rail_cooling_ops = {
+static struct thermal_cooling_device_ops tegra_dvfs_vmin_cooling_ops = {
 	.get_max_state = tegra_dvfs_rail_get_vmin_cdev_max_state,
 	.get_cur_state = tegra_dvfs_rail_get_vmin_cdev_cur_state,
 	.set_cur_state = tegra_dvfs_rail_set_vmin_cdev_state,
@@ -1295,13 +1355,75 @@ static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 	/* just report error - initialized for cold temperature, anyway */
 	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
 		rail->vmin_cdev->cdev_type, (void *)rail,
-		&tegra_dvfs_rail_cooling_ops)))
+		&tegra_dvfs_vmin_cooling_ops)))
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vmin_cdev->cdev_type);
 }
 
+/* Cooling device to scale voltage with temperature in pll mode */
+static int tegra_dvfs_rail_get_vts_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->vts_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_vts_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->therm_scale_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_vts_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	struct dvfs *d;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->therm_scale_idx != cur_state) {
+		rail->therm_scale_idx = cur_state;
+		list_for_each_entry(d, &rail->dvfs, reg_node) {
+			if (d->therm_dvfs)
+				__tegra_dvfs_set_rate(d, d->cur_rate);
+		}
+	}
+	mutex_unlock(&dvfs_lock);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_vts_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_vts_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_vts_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_vts_cdev_state,
+};
+
+static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
+{
+	struct thermal_cooling_device *dev;
+
+	if (!rail->vts_cdev)
+		return;
+
+	dev = thermal_cooling_device_register(rail->vts_cdev->cdev_type,
+		(void *)rail, &tegra_dvfs_vts_cooling_ops);
+	/* report error & set max limits across thermal ranges as safe dvfs */
+	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->vts_cdev->cdev_type);
+		make_safe_thermal_dvfs(rail);
+	}
+}
+
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
+static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
+{
+	make_safe_thermal_dvfs(rail);
+}
 #endif
 
 /*
@@ -1387,6 +1509,60 @@ void __init tegra_dvfs_rail_init_vmin_thermal_profile(
 	}
 }
 
+/*
+ * Validate thermal dvfs settings:
+ * - trip-points are montonically increasing
+ * - voltages in any temperature range are montonically increasing with
+ *   frequency (can go up/down across ranges at iso frequency)
+ * - voltage for any frequency/thermal range combination must be within
+ *   rail minimum/maximum limits
+ */
+int __init tegra_dvfs_rail_init_thermal_dvfs_trips(
+	int *therm_trips_table, struct dvfs_rail *rail)
+{
+	int i;
+
+	if (!rail->vts_cdev) {
+		WARN(1, "%s: missing thermal dvfs cooling device\n",
+		     rail->reg_id);
+		return -ENOENT;
+	}
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (therm_trips_table[i] >= therm_trips_table[i+1])
+			break;
+	}
+
+	rail->vts_cdev->trip_temperatures_num = i + 1;
+	rail->vts_cdev->trip_temperatures = therm_trips_table;
+	return 0;
+}
+
+int __init tegra_dvfs_init_thermal_dvfs_voltages(
+	int *therm_voltages, int freqs_num, int ranges_num, struct dvfs *d)
+{
+	int *millivolts;
+	int freq_idx, therm_idx;
+
+	for (therm_idx = 0; therm_idx < ranges_num; therm_idx++) {
+		millivolts = therm_voltages + therm_idx * MAX_DVFS_FREQS;
+		for (freq_idx = 0; freq_idx < freqs_num; freq_idx++) {
+			int mv = millivolts[freq_idx];
+			if ((mv > d->dvfs_rail->max_millivolts) ||
+			    (mv < d->dvfs_rail->min_millivolts) ||
+			    (freq_idx && (mv < millivolts[freq_idx - 1]))) {
+				WARN(1, "%s: invalid thermal dvfs entry %d(%d, %d)\n",
+				     d->clk_name, mv, freq_idx, therm_idx);
+				return -EINVAL;
+			}
+		}
+	}
+
+	d->millivolts = therm_voltages;
+	d->therm_dvfs = true;
+	return 0;
+}
+
 /* Directly set cold temperature limit in dfll mode */
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 {
@@ -1446,8 +1622,10 @@ int __init tegra_dvfs_late_init(void)
 	register_pm_notifier(&tegra_dvfs_resume_nb);
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
 
-	list_for_each_entry(rail, &dvfs_rail_list, node)
-		tegra_dvfs_rail_register_vmin_cdev(rail);
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+			tegra_dvfs_rail_register_vmin_cdev(rail);
+			tegra_dvfs_rail_register_vts_cdev(rail);
+	}
 
 	return 0;
 }
@@ -1524,7 +1702,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		int thermal_mv_floor = 0;
 
-		seq_printf(s, "%s %d mV%s:\n", rail->reg_id, rail->millivolts,
+		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
+			   rail->stats.off ? 0 : rail->millivolts,
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
@@ -1705,6 +1884,70 @@ static int core_override_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");
 
+static int gpu_dvfs_t_show(struct seq_file *s, void *data)
+{
+	int i, j;
+	int num_ranges = 1;
+	int *trips = NULL;
+	struct dvfs *d;
+	struct dvfs_rail *rail = tegra_gpu_rail;
+
+	if (!tegra_gpu_rail) {
+		seq_printf(s, "Only supported for T124 or higher\n");
+		return -ENOSYS;
+	}
+
+	mutex_lock(&dvfs_lock);
+
+	d = list_first_entry(&rail->dvfs, struct dvfs, reg_node);
+	if (rail->vts_cdev && d->therm_dvfs) {
+		num_ranges = rail->vts_cdev->trip_temperatures_num + 1;
+		trips = rail->vts_cdev->trip_temperatures;
+	}
+
+	seq_printf(s, "%-11s", "T(C)\\F(kHz)");
+	for (i = 0; i < d->num_freqs; i++) {
+		unsigned int f = d->freqs[i]/100;
+		seq_printf(s, " %7u", f);
+	}
+	seq_printf(s, "\n");
+
+	for (j = 0; j < num_ranges; j++) {
+		seq_printf(s, "%s", j == rail->therm_scale_idx ? ">" : " ");
+
+		if (!trips || (num_ranges == 1))
+			seq_printf(s, "%4s..%-4s", "", "");
+		else if (j == 0)
+			seq_printf(s, "%4s..%-4d", "", trips[j]);
+		else if (j == num_ranges - 1)
+			seq_printf(s, "%4d..%-4s", trips[j], "");
+		else
+			seq_printf(s, "%4d..%-4d", trips[j-1], trips[j]);
+
+		for (i = 0; i < d->num_freqs; i++) {
+			int mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
+			seq_printf(s, " %7d", mv);
+		}
+		seq_printf(s, " mV\n");
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
+
+static int gpu_dvfs_t_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpu_dvfs_t_show, NULL);
+}
+
+static const struct file_operations gpu_dvfs_t_fops = {
+	.open           = gpu_dvfs_t_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 static int dvfs_table_show(struct seq_file *s, void *data)
 {
 	int i;
@@ -1719,10 +1962,11 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 		bool mv_done = false;
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
 			if (!mv_done) {
+				const int *m = tegra_dvfs_get_millivolts_pll(d);
 				mv_done = true;
 				seq_printf(s, "%-16s", rail->reg_id);
 				for (i = 0; i < d->num_freqs; i++) {
-					int mv = d->millivolts[i];
+					int mv = m[i];
 					seq_printf(s, "%7d", mv);
 				}
 				seq_printf(s, "\n");
@@ -1800,6 +2044,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("gpu_dvfs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &gpu_dvfs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("gpu_dvfs_t", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &gpu_dvfs_t_fops);
 	if (!d)
 		return -ENOMEM;
 

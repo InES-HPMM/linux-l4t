@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -113,6 +113,7 @@ struct actmon_dev {
 	unsigned long	avg_band_freq;
 	unsigned int	avg_sustain_coef;
 	u32		avg_count;
+	u32		avg_dependency_threshold;
 
 	unsigned long	boost_freq;
 	unsigned long	boost_freq_step;
@@ -257,6 +258,14 @@ irqreturn_t actmon_dev_isr(int irq, void *dev_id)
 		}
 		actmon_writel(val, offs(ACTMON_DEV_CTRL));
 	}
+	if (dev->avg_dependency_threshold) {
+		val = actmon_readl(offs(ACTMON_DEV_CTRL));
+		if (dev->avg_count >= dev->avg_dependency_threshold)
+			val |= ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+		else if (dev->boost_freq == 0)
+			val &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+		actmon_writel(val, offs(ACTMON_DEV_CTRL));
+	}
 
 	actmon_writel(0xffffffff, offs(ACTMON_DEV_INTR_STATUS)); /* clr all */
 	actmon_wmb();
@@ -269,6 +278,15 @@ irqreturn_t actmon_dev_fn(int irq, void *dev_id)
 {
 	unsigned long flags, freq;
 	struct actmon_dev *dev = (struct actmon_dev *)dev_id;
+	unsigned long cpu_freq = 0;
+	unsigned long static_cpu_emc_freq = 0;
+
+	if (dev->avg_dependency_threshold) {
+		cpu_freq = clk_get_rate(tegra_get_clock_by_name("cpu")) / 1000;
+		static_cpu_emc_freq = tegra_emc_to_cpu_ratio(cpu_freq) / 1000;
+		pr_debug("dev->avg_count%u, cpu_freq: %lu, static_cpu_emc_freq:%lu\n",
+			dev->avg_count, cpu_freq, static_cpu_emc_freq);
+	}
 
 	spin_lock_irqsave(&dev->lock, flags);
 
@@ -281,13 +299,19 @@ irqreturn_t actmon_dev_fn(int irq, void *dev_id)
 	dev->avg_actv_freq = freq;
 	freq = do_percent(freq, dev->avg_sustain_coef);
 	freq += dev->boost_freq;
+
+	if (dev->avg_dependency_threshold &&
+		(dev->avg_count >= dev->avg_dependency_threshold))
+			freq = static_cpu_emc_freq;
+
 	dev->target_freq = freq;
 
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	pr_debug("%s.%s(kHz): avg: %lu, target: %lu current: %lu\n",
-			dev->dev_id, dev->con_id, dev->avg_actv_freq,
-			dev->target_freq, dev->cur_freq);
+	pr_debug("%s.%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
+	dev->dev_id, dev->con_id, dev->avg_actv_freq, dev->boost_freq,
+	dev->target_freq, dev->cur_freq);
+
 	clk_set_rate(dev->clk, freq * 1000);
 
 	return IRQ_HANDLED;
@@ -561,9 +585,47 @@ static struct actmon_dev actmon_dev_avp = {
 	},
 };
 
+
+#define CPU_AVG_ACT_THRESHOLD 50000
+/* EMC-cpu activity monitor: frequency sampling device:
+ * activity counter is incremented every 256 memory transactions, and
+ * each transaction takes 2 EMC clocks; count_weight = 512 on Tegra3.
+ * On Tegra11 there is only 1 clock per transaction, hence weight = 256.
+ */
+static struct actmon_dev actmon_dev_cpu_emc = {
+	.reg = 0x200,
+	.glb_status_irq_mask = (0x1 << 25),
+	.dev_id = "tegra_mon",
+	.con_id = "cpu_emc",
+
+	.boost_freq_step	= 16000,
+	.boost_up_coef		= 800,
+	.boost_down_coef	= 90,
+	.boost_up_threshold	= 27,
+	.boost_down_threshold	= 10,
+	.avg_dependency_threshold	= CPU_AVG_ACT_THRESHOLD,
+
+	.up_wmark_window	= 1,
+	.down_wmark_window	= 3,
+	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	.count_weight		= 0x200,
+#else
+	.count_weight		= 0x100,
+#endif
+
+	.type			= ACTMON_FREQ_SAMPLER,
+	.state			= ACTMON_UNINITIALIZED,
+
+	.rate_change_nb = {
+		.notifier_call = actmon_rate_notify_cb,
+	},
+};
+
 static struct actmon_dev *actmon_devices[] = {
 	&actmon_dev_emc,
 	&actmon_dev_avp,
+	&actmon_dev_cpu_emc,
 };
 
 /* Activity monitor suspend/resume */
@@ -805,6 +867,11 @@ static int actmon_debugfs_create_dev(struct actmon_dev *dev)
 
 	d = debugfs_create_file(
 		"state", RW_MODE, dir, dev, &state_fops);
+
+	d = debugfs_create_u32(
+		"avg_act_threshold", RW_MODE, dir,
+		(u32 *)&dev->avg_dependency_threshold);
+
 	if (!d)
 		return -ENOMEM;
 
