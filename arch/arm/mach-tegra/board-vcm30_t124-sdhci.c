@@ -102,40 +102,48 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = false,
-	.tap_delay = 0x06,
-	.max_clk_limit = 52000000,
-	.ddr_clk_limit = 30000000,
-	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.tap_delay = 0x4,
+	.trim_delay = 0x4,
+	.ddr_trim_delay = 0x4,
 	.mmc_data = {
 		.built_in = 1,
-	}
+		.ocr_mask = MMC_OCR_1V8_MASK,
+	},
+	.uhs_mask = MMC_MASK_HS200,
+	.ddr_clk_limit = 30000000,
+	.max_clk_limit = 52000000,
+	/*      .max_clk = 12000000, */
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.cd_gpio = TEGRA_GPIO_PQ5,
 	.wp_gpio = TEGRA_GPIO_PQ4,
 	.power_gpio = -1,
-	.is_8bit = false,
-	/* WAR: Operating SDR104 cards at upto 104 MHz, as signal errors are
-	 * seen when they are operated at any higher frequency.
-	 */
-	.max_clk_limit = 104000000,
-	.ddr_clk_limit = 30000000,
+	.tap_delay = 0x0,
+	.trim_delay = 0x3,
+	.uhs_mask = MMC_UHS_MASK_SDR104 |
+		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.mmc_data = {
 		.ocr_mask = MMC_OCR_2V8_MASK,
 	},
-	.cd_wakeup_incapable = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data4 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	.is_8bit = true,
-	.tap_delay = 0x06,
-	.max_clk_limit = 52000000,
+	.is_8bit = 0,
+	.tap_delay = 0x4,
+	.trim_delay = 0x4,
+	.ddr_trim_delay = 0x4,
+	.mmc_data = {
+		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
+	},
+	.uhs_mask = MMC_MASK_HS200,
 	.ddr_clk_limit = 51000000,
-	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.max_clk_limit = 102000000,
+	/*      .max_clk = 12000000, */
 };
 
 static int vcm30_t124_wifi_status_register(
@@ -203,14 +211,15 @@ int __init vcm30_t124_sdhci_init(void)
 	tegra_sdhci_device3.dev.platform_data = &tegra_sdhci_platform_data3;
 	tegra_sdhci_device4.dev.platform_data = &tegra_sdhci_platform_data4;
 
-	is_e1860 = tegra_is_board(NULL, "61860", NULL, NULL, NULL);
-	if (is_e1860)
-		tegra_sdhci_platform_data3.mmc_data.ocr_mask = MMC_OCR_3V2_MASK;
+/* FIXME: Enable this check after SKU support is working */
+/*	is_e1860 = tegra_is_board(NULL, "61860", NULL, NULL, NULL);
+	if (is_e1860)*/
+		tegra_sdhci_platform_data3.mmc_data.ocr_mask = MMC_OCR_3V3_MASK;
 
-	platform_device_register(&tegra_sdhci_device1);
-	platform_device_register(&tegra_sdhci_device2);
+/*	platform_device_register(&tegra_sdhci_device1); */
+/*	platform_device_register(&tegra_sdhci_device2); */
 	platform_device_register(&tegra_sdhci_device3);
-	platform_device_register(&tegra_sdhci_device4);
+/*	platform_device_register(&tegra_sdhci_device4); */
 
 	return 0;
 }

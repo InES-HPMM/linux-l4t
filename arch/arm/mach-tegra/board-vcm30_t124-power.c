@@ -66,6 +66,9 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
 	REGULATOR_SUPPLY("vdd_emmc", NULL),
 };
@@ -86,6 +89,7 @@ static struct regulator_consumer_supply max77663_sd3_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("hvdd_sata", NULL),
 };
 
 static struct regulator_consumer_supply max77663_sd4_supply[] = {
@@ -141,6 +145,9 @@ static struct regulator_consumer_supply max77663_ldo7_supply[] = {
 };
 
 static struct regulator_consumer_supply max77663_ldo8_supply[] = {
+	REGULATOR_SUPPLY("avdd_sata", NULL),
+	REGULATOR_SUPPLY("vdd_sata", NULL),
+	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
 };
 
 static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
@@ -195,6 +202,8 @@ static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
 		.flags = _flags, \
 	}
 
+/* FIXME: Revisit maximum constraint value for all supplies */
+
 MAX77663_PDATA_INIT(SD0, sd0,  600000, 3387500, NULL, 1, 0, 0,
 		FPS_SRC_NONE, -1, -1, 0);
 
@@ -225,7 +234,7 @@ MAX77663_PDATA_INIT(LDO3, ldo3, 800000, 3950000, NULL, 1, 1, 0,
 MAX77663_PDATA_INIT(LDO4, ldo4, 1000000, 1000000, NULL, 0, 1, 0,
 		FPS_SRC_0, -1, -1, 0);
 
-MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 2800000, NULL, 0, 1, 0,
+MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 3950000, NULL, 0, 1, 0,
 		FPS_SRC_NONE, -1, -1, 0);
 
 MAX77663_PDATA_INIT(LDO6, ldo6, 800000, 3950000, NULL, 0, 0, 0,

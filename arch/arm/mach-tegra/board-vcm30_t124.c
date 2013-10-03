@@ -21,8 +21,11 @@
 #include <linux/i2c.h>
 #include <linux/platform_data/serial-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/platform_data/tegra_nor.h>
+#include <linux/platform_data/tegra_ahci.h>
 #include <linux/spi/spi-tegra.h>
 #include <linux/of_platform.h>
+#include <linux/kernel.h>
 
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/pci.h>
@@ -78,6 +81,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "uartb",	"pll_p",	408000000,	false},
 	{ "uartc",	"pll_p",	408000000,	false},
 	{ "uartd",	"pll_p",	408000000,	false},
+	{ "nor",	"pll_p",	102000000,	true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -111,6 +115,58 @@ static struct tegra_i2c_platform_data vcm30_t124_i2c5_platform_data = {
 	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
 	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
 };
+
+static struct tegra_nor_platform_data vcm30_t124_nor_data = {
+	.flash = {
+		.map_name = "cfi_probe",
+		.width = 2,
+	},
+	.chip_parms = {
+		.MuxMode = NorMuxMode_ADNonMux,
+		.ReadMode = NorReadMode_Page,
+		.PageLength = NorPageLength_8Word,
+		.ReadyActive = NorReadyActive_WithData,
+		/* FIXME: Need to use characterized value */
+		.timing_default = {
+			.timing0 = 0x30300273,
+			.timing1 = 0x00030302,
+		},
+		.timing_read = {
+			.timing0 = 0x30300273,
+			.timing1 = 0x00030302,
+		},
+	},
+};
+
+static struct cs_info vcm30_t124_cs_info[] = {
+	{
+		.cs = CS_0,
+		.num_cs_gpio = 0,
+		.virt = IO_ADDRESS(TEGRA_NOR_FLASH_BASE),
+		.size = SZ_64M,
+		.phys = TEGRA_NOR_FLASH_BASE,
+	},
+};
+
+static void vcm30_t124_nor_init(void)
+{
+	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE + SZ_64M - 1;
+
+	vcm30_t124_nor_data.info.cs = kzalloc(sizeof(struct cs_info) *
+					ARRAY_SIZE(vcm30_t124_cs_info),
+					GFP_KERNEL);
+        if (!vcm30_t124_nor_data.info.cs)
+                BUG();
+
+        vcm30_t124_nor_data.info.num_chips = ARRAY_SIZE(vcm30_t124_cs_info);
+
+        memcpy(vcm30_t124_nor_data.info.cs, vcm30_t124_cs_info,
+                                sizeof(struct cs_info) * ARRAY_SIZE(vcm30_t124_cs_info));
+
+	tegra_nor_device.dev.platform_data = &vcm30_t124_nor_data;
+	platform_device_register(&tegra_nor_device);
+}
+
 
 static void vcm30_t124_i2c_init(void)
 {
@@ -224,6 +280,20 @@ static void vcm30_t124_pcie_init(void)
 	platform_device_register(&tegra_pci_device);
 #endif
 }
+
+#ifdef CONFIG_SATA_AHCI_TEGRA
+static struct tegra_ahci_platform_data ahci_plat_data = {
+        .gen2_rx_eq = 7,
+};
+
+static void vcm30_t124_sata_init(void)
+{
+        tegra_sata_device.dev.platform_data = &ahci_plat_data;
+        platform_device_register(&tegra_sata_device);
+}
+#else
+static void vcm30_t124_sata_init(void) { }
+#endif
 
 /* FIXME: Check which devices are needed from the below list */
 static struct platform_device *vcm30_t124_devices[] __initdata = {
@@ -410,13 +480,14 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_pinmux_init();
 	vcm30_t124_usb_init();
 /*	vcm30_t124_xusb_init(); */
+	vcm30_t124_nor_init();
 	vcm30_t124_i2c_init();
 	vcm30_t124_spi_init();
 	vcm30_t124_uart_init();
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
 	tegra_io_dpd_init();
-	/* vcm30_t124_sdhci_init(); */
+	vcm30_t124_sdhci_init();
 	vcm30_t124_regulator_init();
 	/* vcm30_t124_suspend_init(); */
 #if 0
@@ -427,6 +498,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	/* vcm30_t124_panel_init(); */
 	/* vcm30_t124_pmon_init(); */
 	vcm30_t124_pcie_init();
+	vcm30_t124_sata_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
