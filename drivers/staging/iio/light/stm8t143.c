@@ -114,7 +114,7 @@ static const struct iio_chan_spec_ext_info stm8t143_ext_info[] = {
 static const struct iio_chan_spec stm8t143_channels[] = {
 	{
 		.type = IIO_PROXIMITY,
-		.info_mask = BIT(IIO_CHAN_INFO_RAW),
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 		.ext_info = stm8t143_ext_info,
 	},
 };
