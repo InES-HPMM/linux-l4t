@@ -497,20 +497,49 @@ static struct regulator_consumer_supply fixed_reg_aon_1v2_supply[] = {
 };
 
 /* EN_USB0_VBUS From TEGRA GPIO PN4 */
-static struct regulator_consumer_supply fixed_reg_usb0_vbus_supply[] = {
+static struct regulator_consumer_supply fixed_reg_usb0_vbus_pm358_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 };
 
 /* EN_USB1_USB2_VBUS From TEGRA GPIO PN5 */
-static struct regulator_consumer_supply fixed_reg_usb1_usb2_vbus_supply[] = {
+static struct regulator_consumer_supply fixed_reg_usb1_usb2_vbus_pm358_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("usb_vbus1", "tegra-xhci"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("usb_vbus2", "tegra-xhci"),
 };
 
+/* EN_USB0_VBUS From TEGRA GPIO PN4 */
+static struct regulator_consumer_supply fixed_reg_usb0_usb1_vbus_pm359_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("usb_vbus1", "tegra-xhci"),
+};
+
+/* EN_USB1_USB2_VBUS From TEGRA GPIO PN5 */
+static struct regulator_consumer_supply fixed_reg_usb2_vbus_pm359_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("usb_vbus2", "tegra-xhci"),
+};
+
+/* EN_USB0_VBUS From TEGRA GPIO PN4 */
+static struct regulator_consumer_supply fixed_reg_usb2_vbus_pm363_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("usb_vbus2", "tegra-xhci"),
+};
+
+/* EN_USB1_USB2_VBUS From TEGRA GPIO PN5 */
+static struct regulator_consumer_supply fixed_reg_usb0_usb1_vbus_pm363_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("usb_vbus1", "tegra-xhci"),
+};
 
 /* Gated by GPIO_PK6  in FAB B and further*/
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
@@ -690,51 +719,69 @@ FIXED_REG(5,	vdd_hdmi,	vdd_hdmi,	AS3722_SUPPLY(sd4),
 		0,	0,
 		TEGRA_GPIO_PH7,	false,	false,	0,	3300,	0);
 
-FIXED_REG(6,	usb0_vbus,	usb0_vbus,	NULL,	0,	0,
+FIXED_REG(6,	usb0_vbus_pm358,	usb0_vbus_pm358,	NULL,
+		0,	0,
 		TEGRA_GPIO_PN4,	true,	true,	0,	5000,	0);
 
-FIXED_REG(7,	usb1_usb2_vbus,	usb1_usb2_vbus,	NULL,	0,	0,
+FIXED_REG(7,	usb1_usb2_vbus_pm358,	usb1_usb2_vbus_pm358,	NULL,
+		0,	0,
 		TEGRA_GPIO_PN5,	true,	true,	0,	5000, 0);
 
-FIXED_REG(8,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
+FIXED_REG(8,	usb0_usb1_vbus_pm359,	usb0_usb1_vbus_pm359,	NULL,
+		0,	0,
+		TEGRA_GPIO_PN4,	true,	true,	0,	5000,	0);
+
+FIXED_REG(9,	usb2_vbus_pm359,	usb2_vbus_pm359,	NULL,
+		0,	0,
+		TEGRA_GPIO_PN5,	true,	true,	0,	5000, 0);
+
+FIXED_REG(10,	usb2_vbus_pm363,	usb2_vbus_pm363,	NULL,
+		0,	0,
+		TEGRA_GPIO_PN4,	true,	true,	0,	5000,	0);
+
+FIXED_REG(11,	usb0_usb1_vbus_pm363,	usb0_usb1_vbus_pm363,	NULL,
+		0,	0,
+		TEGRA_GPIO_PN5,	true,	true,	0,	5000, 0);
+
+FIXED_REG(12,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
 		TEGRA_GPIO_PP2,	false,	true,	0,	3300, 0);
 
-FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
+FIXED_REG(13,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
 		TEGRA_GPIO_PH2,	false,	true,	0,	5000,	0);
 
-FIXED_REG(10,	3v3,		3v3,		NULL,	0,	0,
+FIXED_REG(14,	3v3,		3v3,		NULL,	0,	0,
 		-1,	false,	true,	0,	3300,	0);
 
-FIXED_REG(11,	5v0,		5v0,		NULL,	0,	0,
+FIXED_REG(15,	5v0,		5v0,		NULL,	0,	0,
 		-1,	false,	true,	0,	5000,	0);
 
-FIXED_REG(12,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
+FIXED_REG(16,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
 		-1,	false,	true,	0,	1800,	0);
 
-FIXED_REG(13,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
+FIXED_REG(17,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
 		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200,
 		0);
 
-FIXED_REG(14,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
+FIXED_REG(18,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,
 		3300,	0);
 
-FIXED_REG(15,	lcd,		lcd,		NULL,	0,	0,
+FIXED_REG(19,	lcd,		lcd,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,
 		3300,	0);
 
-FIXED_REG(16,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
+FIXED_REG(20,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
 		TEGRA_GPIO_PR0,		false,	true,	0,	3300,	0);
 
-FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,
+FIXED_REG(21,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,
 		0,	PMU_TCA6416_GPIO(2),	false,	true,	0,
 		1200,	250000);
 
-FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,
+FIXED_REG(22,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,
 		0,	PMU_TCA6416_GPIO(3),	false,	true,	0,
 		1200,	0);
 
-FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
+FIXED_REG(23,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(13),	false,	true,	0,	3300,	0);
 /*
  * Creating the fixed regulator device tables
@@ -749,8 +796,6 @@ FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
 	ADD_FIXED_REG(aon_1v2),			\
 	ADD_FIXED_REG(vdd_hdmi_5v0),		\
 	ADD_FIXED_REG(vdd_hdmi),		\
-	ADD_FIXED_REG(usb0_vbus),		\
-	ADD_FIXED_REG(usb1_usb2_vbus),		\
 	ADD_FIXED_REG(vdd_lcd_bl),		\
 	ADD_FIXED_REG(lcd_bl_en),		\
 	ADD_FIXED_REG(3v3),			\
@@ -760,16 +805,23 @@ FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
 	ADD_FIXED_REG(lcd),			\
 	ADD_FIXED_REG(sdmmc_en)
 
-#define LAGUNA_PM358_FIXED_REG		\
-	ADD_FIXED_REG(dcdc_1v2),	\
-	ADD_FIXED_REG(vdd_cdc_1v2_aud),	\
-	ADD_FIXED_REG(vdd_amp_shut_aud), \
+#define LAGUNA_PM358_FIXED_REG			\
+	ADD_FIXED_REG(usb0_vbus_pm358),		\
+	ADD_FIXED_REG(usb1_usb2_vbus_pm358),	\
+	ADD_FIXED_REG(dcdc_1v2),		\
+	ADD_FIXED_REG(vdd_cdc_1v2_aud),		\
+	ADD_FIXED_REG(vdd_amp_shut_aud),	 \
 	ADD_FIXED_REG(vdd_dsi_mux)
 
-#define LAGUNA_PM359_FIXED_REG		\
-	ADD_FIXED_REG(dcdc_1v2),	\
+#define LAGUNA_PM359_FIXED_REG			\
+	ADD_FIXED_REG(usb0_usb1_vbus_pm359),	\
+	ADD_FIXED_REG(usb2_vbus_pm359),		\
+	ADD_FIXED_REG(dcdc_1v2),		\
 	ADD_FIXED_REG(vdd_cdc_1v2_aud)
 
+#define LAGUNA_PM363_FIXED_REG			\
+	ADD_FIXED_REG(usb2_vbus_pm363),		\
+	ADD_FIXED_REG(usb0_usb1_vbus_pm363),
 
 /* Gpio switch regulator platform data for laguna pm358 ERS*/
 static struct platform_device *fixed_reg_devs_pm358[] = {
@@ -785,7 +837,8 @@ static struct platform_device *fixed_reg_devs_pm359[] = {
 
 /* Gpio switch regulator platform data for laguna pm363 FFD*/
 static struct platform_device *fixed_reg_devs_pm363[] = {
-	LAGUNA_COMMON_FIXED_REG
+	LAGUNA_COMMON_FIXED_REG,
+	LAGUNA_PM363_FIXED_REG
 };
 
 static int __init laguna_fixed_regulator_init(void)
