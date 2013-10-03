@@ -8599,7 +8599,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 25];
+			   PERIPH_CLK_SOURCE_NUM + 26];
 
 static int tegra12_clk_suspend(void)
 {
@@ -8670,12 +8670,13 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(MISC_CLK_ENB);
 	*ctx++ = clk_readl(CLK_MASK_ARM);
 
+	*ctx++ = clk_get_rate_all_locked(&tegra_clk_emc);
 	return 0;
 }
 
 static void tegra12_clk_resume(void)
 {
-	unsigned long off;
+	unsigned long off, rate;
 	const u32 *ctx = clk_rst_suspend;
 	u32 val;
 	u32 plla_base;
@@ -8847,21 +8848,31 @@ static void tegra12_clk_resume(void)
 	p = tegra_clk_emc.parent;
 	tegra12_periph_clk_init(&tegra_clk_emc);
 
+	/* Turn Off pll_m if it was OFF before suspend, and emc was not switched
+	   to pll_m across suspend; re-init pll_m to sync s/w and h/w states */
+	if ((tegra_pll_m.state == OFF) &&
+	    (&tegra_pll_m != tegra_clk_emc.parent))
+		tegra12_pllm_clk_disable(&tegra_pll_m);
+	tegra12_pllm_clk_init(&tegra_pll_m);
+
 	if (p != tegra_clk_emc.parent) {
-		/* FIXME: old parent is left enabled here even if EMC was its
-		   only child before suspend (may happen on Tegra11 !!) */
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
 			p->name, p->refcnt, tegra_clk_emc.parent->name,
 			tegra_clk_emc.parent->refcnt);
 
-		BUG_ON(!p->refcnt);
-		p->refcnt--;
+		/* emc switched to the new parent by low level code, but ref
+		   count and s/w state need to be updated */
+		clk_disable(p);
+		clk_enable(tegra_clk_emc.parent);
+	}
 
-		/* the new parent is enabled by low level code, but ref count
-		   need to be updated up to the root */
-		p = tegra_clk_emc.parent;
-		while (p && ((p->refcnt++) == 0))
-			p = p->parent;
+	rate = clk_get_rate_all_locked(&tegra_clk_emc);
+	if (*ctx != rate) {
+		tegra_dvfs_set_rate(&tegra_clk_emc, rate);
+		if (p == tegra_clk_emc.parent) {
+			rate = clk_get_rate_all_locked(p);
+			tegra_dvfs_set_rate(p, rate);
+		}
 	}
 	tegra_emc_timing_invalidate();
 
