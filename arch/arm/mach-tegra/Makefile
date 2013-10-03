@@ -314,6 +314,7 @@ obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-pinmux.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-panel.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o

@@ -461,6 +461,15 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				"serial-tegra.1", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTD_BASE,
 				"serial-tegra.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", 0x538F0000, "gk20a", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-msenc", TEGRA_MSENC_BASE, "msenc",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
 	{}
 };
 #endif
@@ -514,6 +523,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_soctherm_init();
 #endif
 	tegra_register_fuse();
+	vcm30_t124_panel_init();
 }
 
 static void __init vcm30_t124_ramconsole_reserve(unsigned long size)

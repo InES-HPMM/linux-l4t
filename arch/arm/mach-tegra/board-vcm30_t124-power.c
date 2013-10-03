@@ -104,12 +104,22 @@ static struct max77663_regulator_platform_data *max77663_reg_pdata[] = {
 	MAX77663_REG(LDO5, ldo5),
 };
 
+static struct max77663_gpio_config max77663_gpio_cfgs[] = {
+	{
+		.gpio = MAX77663_GPIO5,
+		.dir = GPIO_DIR_OUT,
+		.dout = GPIO_DOUT_HIGH,
+		.out_drv = GPIO_OUT_DRV_PUSH_PULL,
+		.alternate = GPIO_ALT_DISABLE,
+	},
+};
+
 static struct max77663_platform_data max77663_pdata = {
 	.irq_base	= MAX77663_IRQ_BASE,
 	.gpio_base	= MAX77663_GPIO_BASE,
 
-	.num_gpio_cfgs	= 0,
-	.gpio_cfgs	= NULL,
+	.num_gpio_cfgs	= ARRAY_SIZE(max77663_gpio_cfgs),
+	.gpio_cfgs	= max77663_gpio_cfgs,
 
 	.regulator_pdata = max77663_reg_pdata,
 	.num_regulator_pdata = ARRAY_SIZE(max77663_reg_pdata),

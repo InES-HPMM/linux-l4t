@@ -32,6 +32,7 @@ int vcm30_t124_sensors_init(void);
 int vcm30_t124_regulator_init(void);
 int vcm30_t124_suspend_init(void);
 int vcm30_t124_pmon_init(void);
+int vcm30_t124_panel_init(void);
 
 /* FIXME: Needed? */
 #define AS3722_GPIO_BASE	TEGRA_NR_GPIOS
