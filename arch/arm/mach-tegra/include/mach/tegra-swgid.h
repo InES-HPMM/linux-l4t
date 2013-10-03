@@ -35,6 +35,7 @@
 #define SWGID_DC12	10	/* 0xa88 *//* 532: Exceptionally non-linear */
 #define SWGID_MPE	11	/* 0x264 */
 #define SWGID_MSENC	SWGID_MPE
+#define SWGID_NVENC	SWGID_MPE
 #define SWGID_NV	12	/* 0x268 */
 #define SWGID_NV2	13	/* 0x26c */
 #define SWGID_PPCS	14	/* 0x270 */
@@ -56,6 +57,15 @@
 #define SWGID_GPU	30	/* 0xaa8 */
 #define SWGID_GPUB	31	/* 0xaac */
 #define SWGID_PPCS2	32	/* 0xab0 */
+#define SWGID_NVDEC	33	/* 0xab1 */
+#define SWGID_APE	34	/* 0xab2 */
+#define SWGID_SE	35	/* 0xab3 */
+#define SWGID_NVJPG	36	/* 0xab4 */
+#define SWGID_HC1	37	/* 0xab5 */
+#define SWGID_SE1	38	/* 0xab6 */
+#define SWGID_AXIAP	39	/* 0xab7 */
+#define SWGID_ETR	40	/* 0xab8 */
+#define SWGID_TSECB	41	/* 0xab9 */
 
 #define SWGID(x)	(1ULL << SWGID_##x)
 

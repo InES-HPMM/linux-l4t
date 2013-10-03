@@ -1934,6 +1934,95 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{},
 };
 
+struct swgid_fixup tegra_swgid_fixup_t210[] = {
+	{ .name = "54200000.dc",	.swgids = SWGID(DC), },
+	{ .name = "54240000.dc",	.swgids = SWGID(DCB), },
+	{ .name = "dc",	.swgids = SWGID(DC) | SWGID(DCB) },
+	{ .name = "host1x",	.swgids = SWGID(HC) | SWGID(NVDEC) |
+	  SWGID(VIC) | SWGID(HDA), },
+	{ .name = "isp",	.swgids = SWGID(ISP2) | SWGID(ISP2B), },
+	{ .name = "max77660",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "max8831",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "msenc",	.swgids = SWGID(MSENC), },
+	{ .name = "nvdec",	.swgids = SWGID(NVDEC), },
+	{ .name = "nvjpg",	.swgids = SWGID(NVJPG), },
+	{ .name = "ape",	.swgids = SWGID(APE), },
+	{ .name = "tegra-aes",	.swgids = SWGID(NVDEC), },
+	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
+	{ .name = "serial8250",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "serial-tegra",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "snd-soc-dummy",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "spdif-dit",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra12-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "spi-tegra114",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra14-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-ahub",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-dam",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
+	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegradc.0", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12),
+	  .linear_map = tegra_fb_linear_map, },
+	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
+	{ .name = "tegra_bb",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_dma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-fuse",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
+	{ .name = "tegra-otg",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-pcm-audio",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-rtc",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-sata",	.swgids = SWGID(SATA2), },
+	{ .name = "tegra-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-snd",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-tzram",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_uart",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-udc",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS) |
+	  SWGID(PPCS1) | SWGID(PPCS2), },
+	{ .name = "tsec",	.swgids = SWGID(TSEC), },
+	/* vic must be before vi to prevent incorrect matching */
+	{ .name = "vic",	.swgids = SWGID(VIC), },
+	{ .name = "vi",	.swgids = SWGID(VI), },
+	{ .name = "therm_est",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
+	{ .name = "tegra124-apbdma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
+#endif
+	{ .name = "tegra-xhci",	.swgids = SWGID(XUSB_HOST), },
+	{},
+};
+
 u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 {
 	const char *s;
@@ -1946,6 +2035,9 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 	case TEGRA_CHIPID_TEGRA12:
 	case TEGRA_CHIPID_TEGRA13:
 		table = tegra_swgid_fixup_t124;
+		break;
+	case TEGRA_CHIPID_TEGRA21:
+		table = tegra_swgid_fixup_t210;
 		break;
 	default:
 		table = tegra_swgid_fixup;
