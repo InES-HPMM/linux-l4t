@@ -1045,6 +1045,22 @@ static void __init ardbeg_dtv_init(void)
 	platform_device_register(&tegra_dtv_device);
 }
 
+static struct tegra_io_dpd pexbias_io = {
+	.name			= "PEX_BIAS",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 4,
+};
+static struct tegra_io_dpd pexclk1_io = {
+	.name			= "PEX_CLK1",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 5,
+};
+static struct tegra_io_dpd pexclk2_io = {
+	.name			= "PEX_CLK2",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 6,
+};
+
 static void __init tegra_ardbeg_late_init(void)
 {
 	struct board_info board_info;
@@ -1097,6 +1113,13 @@ static void __init tegra_ardbeg_late_init(void)
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_pcie_init();
+	else {
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
+	}
+
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
