@@ -6,6 +6,10 @@
 	model = "grenada";
 	compatible = "nvidia,grenada", "nvidia,tegra210";
 
+	chosen {
+		bootargs ="mem=1024M@2048M vmalloc=192M console=ttyS0,2400 lpj=2482176 androidboot.console=ttyS0 earlyprintk=uart8250-32bit,0x70006000";
+        };
+
 	/* chosen */
 
 	memory@80000000 {
