@@ -92,6 +92,8 @@ struct bq2419x_chip {
 	int				chg_restart_timeout;
 	int				chg_restart_time;
 	int				battery_presense;
+	bool				cable_connected;
+	int				last_charging_current;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -275,11 +277,14 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	if (max_uA == 0 && val != 0)
 		return ret;
 
+	bq_charger->last_charging_current = max_uA;
 	bq_charger->in_current_limit = max_uA/1000;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
+		bq_charger->cable_connected = 0;
 		bq_charger->in_current_limit = 500;
 		bq_charger->chg_status = BATTERY_DISCHARGING;
 	} else {
+		bq_charger->cable_connected = 1;
 		bq_charger->chg_status = BATTERY_CHARGING;
 	}
 	ret = bq2419x_init(bq_charger);
@@ -586,6 +591,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		bq2419x->chg_status = BATTERY_CHARGING_DONE;
 		battery_charging_status_update(bq2419x->bc_dev,
 					bq2419x->chg_status);
+		battery_charging_restart(bq2419x->bc_dev,
+					bq2419x->chg_restart_time);
 	}
 
 	if ((val & BQ2419x_VSYS_STAT_MASK) ==
@@ -602,6 +609,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			bq2419x->chg_status = BATTERY_DISCHARGING;
 			battery_charging_status_update(bq2419x->bc_dev,
 					bq2419x->chg_status);
+			battery_charging_restart(bq2419x->bc_dev,
+					bq2419x->chg_restart_time);
 		}
 	}
 
@@ -791,8 +800,30 @@ static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 	return bq2419x->chg_status;
 }
 
+static int bq2419x_charging_restart(struct battery_charger_dev *bc_dev)
+{
+        struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+        int ret;
+
+        if (!bq2419x->cable_connected)
+                return 0;
+
+        dev_info(bq2419x->dev, "Restarting the charging\n");
+        ret = bq2419x_set_charging_current(bq2419x->chg_rdev,
+                        bq2419x->last_charging_current,
+                        bq2419x->last_charging_current);
+        if (ret < 0) {
+                dev_err(bq2419x->dev, "restarting of charging failed: %d\n", ret);
+                battery_charging_restart(bq2419x->bc_dev,
+                                bq2419x->chg_restart_time);
+        }
+        return ret;
+}
+
+
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
+	.restart_charging = bq2419x_charging_restart,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {
