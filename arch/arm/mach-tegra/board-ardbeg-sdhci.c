@@ -181,7 +181,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.trim_delay = 0x3,
 /*FIXME: Enable UHS modes for SD */
 	.uhs_mask = MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
-		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+		MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_DDR50 |
+		MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
 	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50,
