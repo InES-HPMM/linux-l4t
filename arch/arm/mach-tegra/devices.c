@@ -1938,16 +1938,10 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "54200000.dc",	.swgids = SWGID(DC), },
 	{ .name = "54240000.dc",	.swgids = SWGID(DCB), },
 	{ .name = "dc",	.swgids = SWGID(DC) | SWGID(DCB) },
-	{ .name = "host1x",	.swgids = SWGID(HC) | SWGID(NVDEC) |
-	  SWGID(VIC) | SWGID(HDA), },
-	{ .name = "isp",	.swgids = SWGID(ISP2) | SWGID(ISP2B), },
 	{ .name = "max77660",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "max8831",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
-	{ .name = "msenc",	.swgids = SWGID(MSENC), },
-	{ .name = "nvdec",	.swgids = SWGID(NVDEC), },
-	{ .name = "nvjpg",	.swgids = SWGID(NVJPG), },
 	{ .name = "ape",	.swgids = SWGID(APE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(NVDEC), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
@@ -2007,10 +2001,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	  SWGID(PPCS2), },
 	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS) |
 	  SWGID(PPCS1) | SWGID(PPCS2), },
-	{ .name = "tsec",	.swgids = SWGID(TSEC), },
-	/* vic must be before vi to prevent incorrect matching */
-	{ .name = "vic",	.swgids = SWGID(VIC), },
-	{ .name = "vi",	.swgids = SWGID(VI), },
 	{ .name = "therm_est",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
