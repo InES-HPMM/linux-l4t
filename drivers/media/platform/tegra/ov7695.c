@@ -87,42 +87,52 @@ static struct ov7695_reg mode_640x480_30fps[] = {
 	{0x5001, 0x3f},
 	{0x5002, 0x48},
 	{0x5910, 0x00},
-	{0x3a0f, 0x38},
-	{0x3a10, 0x30},
-	{0x3a1b, 0x3a},
-	{0x3a1e, 0x2e},
+	{0x3a0f, 0x48},
+	{0x3a10, 0x40},
 	{0x3a11, 0x90},
-	{0x3a1f, 0x12},
+	{0x3a1b, 0x4a},
+	{0x3a1e, 0x3e},
+	{0x3a1f, 0x18},
 	{0x3a18, 0x00},
 	{0x3a19, 0xf8},
 	{0x3503, 0x00},
+	{0x3a00, 0x7c},
+	{0x382a, 0x08},
+	{0x3a02, 0x03},
+	{0x3a03, 0x20},
+	{0x3a14, 0x03},
+	{0x3a15, 0x20},
+	{0x3a0d, 0x04},
+	{0x3a0e, 0x03},
+	{0x3a17, 0x02},
 	{0x5100, 0x01},
-	{0x5101, 0xbf},
+	{0x5101, 0x50},
 	{0x5102, 0x00},
-	{0x5103, 0xaa},
-	{0x5104, 0x3f},
-	{0x5105, 0x05},
-	{0x5106, 0xff},
-	{0x5107, 0x0f},
+	{0x5103, 0xf8},
+	{0x5104, 0x03},
+	{0x5105, 0x00},
+	{0x5106, 0x00},
+	{0x5107, 0x00},
 	{0x5108, 0x01},
-	{0x5109, 0xff},
+	{0x5109, 0x50},
 	{0x510a, 0x00},
-	{0x510b, 0x72},
-	{0x510c, 0x45},
-	{0x510d, 0x06},
-	{0x510e, 0xff},
-	{0x510f, 0x0f},
+	{0x510b, 0xf8},
+	{0x510c, 0x02},
+	{0x510d, 0x00},
+	{0x510e, 0x00},
+	{0x510f, 0x00},
 	{0x5110, 0x01},
-	{0x5111, 0xfe},
+	{0x5111, 0x50},
 	{0x5112, 0x00},
-	{0x5113, 0x70},
-	{0x5114, 0x21},
-	{0x5115, 0x05},
-	{0x5116, 0xff},
-	{0x5117, 0x0f},
+	{0x5113, 0xf8},
+	{0x5114, 0x02},
+	{0x5115, 0x00},
+	{0x5116, 0x00},
+	{0x5117, 0x00},
+	{0x5201, 0xd0},
 	{0x520a, 0xf4},
 	{0x520b, 0xf4},
-	{0x520c, 0x84},
+	{0x520c, 0xf4},
 	{0x5301, 0x05},
 	{0x5302, 0x0c},
 	{0x5303, 0x1c},
@@ -142,12 +152,12 @@ static struct ov7695_reg mode_640x480_30fps[] = {
 	{0x5003, 0x80},
 	{0x5500, 0x08},
 	{0x5501, 0x48},
-	{0x5502, 0x18},
-	{0x5503, 0x04},
+	{0x5502, 0x16},
+	{0x5503, 0x08},
 	{0x5504, 0x08},
 	{0x5505, 0x48},
-	{0x5506, 0x03},
-	{0x5507, 0x18},
+	{0x5506, 0x02},
+	{0x5507, 0x16},
 	{0x5508, 0x2d},
 	{0x5509, 0x08},
 	{0x550a, 0x48},
@@ -155,22 +165,128 @@ static struct ov7695_reg mode_640x480_30fps[] = {
 	{0x550c, 0x04},
 	{0x550d, 0x01},
 	{0x5600, 0x00},
-	{0x5601, 0x31},
-	{0x5602, 0x3A},
-	{0x5603, 0x16},
-	{0x5604, 0x0A},
-	{0x5605, 0x61},
-	{0x5606, 0x6B},
-	{0x5607, 0x65},
-	{0x5608, 0x4F},
-	{0x5609, 0x16},
+	{0x5601, 0x2c},
+	{0x5602, 0x5a},
+	{0x5603, 0x06},
+	{0x5604, 0x1c},
+	{0x5605, 0x65},
+	{0x5606, 0x81},
+	{0x5607, 0x9f},
+	{0x5608, 0x8a},
+	{0x5609, 0x15},
 	{0x560a, 0x01},
-	{0x560b, 0x98},
+	{0x560b, 0x9c},
 	{0x5800, 0x02},
-	{0x5803, 0x40},
-	{0x5804, 0x34},
+	{0x5803, 0x2e},
+	{0x5804, 0x20},
 	{0x0100, 0x01},
 	{OV7695_TABLE_END, 0x01},
+};
+
+static struct ov7695_reg ov7695_Whitebalance_Auto[] = {
+	{0x5200, 0x00},
+	{0x5204, 0x04},
+	{0x5205, 0x00},
+	{0x5206, 0x04},
+	{0x5207, 0x00},
+	{0x5208, 0x04},
+	{0x5209, 0x00},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_Whitebalance_Daylight[] = {
+	{0x5200, 0x20},
+	{0x5204, 0x05},
+	{0x5205, 0x7b},
+	{0x5206, 0x04},
+	{0x5207, 0x00},
+	{0x5208, 0x05},
+	{0x5209, 0x15},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_Whitebalance_Cloudy[] = {
+	{0x5200, 0x20},
+	{0x5204, 0x06},
+	{0x5205, 0x00},
+	{0x5206, 0x04},
+	{0x5207, 0x00},
+	{0x5208, 0x04},
+	{0x5209, 0x80},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_Whitebalance_Incandescent[] = {
+	{0x5200, 0x20},
+	{0x5204, 0x04},
+	{0x5205, 0x00},
+	{0x5206, 0x04},
+	{0x5207, 0xdc},
+	{0x5208, 0x0b},
+	{0x5209, 0xb4},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_Whitebalance_Fluorescent[] = {
+	{0x5200, 0x20},
+	{0x5204, 0x05},
+	{0x5205, 0xa0},
+	{0x5206, 0x04},
+	{0x5207, 0x00},
+	{0x5208, 0x08},
+	{0x5209, 0x4e},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+
+static struct ov7695_reg ov7695_EV_zero[] = {
+	{0x3a0f, 0x48},
+	{0x3a10, 0x40},
+	{0x3a11, 0x90},
+	{0x3a1b, 0x4a},
+	{0x3a1e, 0x3e},
+	{0x3a1f, 0x18},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_EV_plus_1[] = {
+	{0x3a0f, 0x50},
+	{0x3a10, 0x48},
+	{0x3a11, 0x98},
+	{0x3a1b, 0x52},
+	{0x3a1e, 0x46},
+	{0x3a1f, 0x20},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_EV_plus_2[] = {
+	{0x3a0f, 0x58},
+	{0x3a10, 0x50},
+	{0x3a11, 0xa0},
+	{0x3a1b, 0x5a},
+	{0x3a1e, 0x4e},
+	{0x3a1f, 0x28},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_EV_minus_1[] = {
+	{0x3a0f, 0x40},
+	{0x3a10, 0x38},
+	{0x3a11, 0x88},
+	{0x3a1b, 0x42},
+	{0x3a1e, 0x36},
+	{0x3a1f, 0x10},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct ov7695_reg ov7695_EV_minus_2[] = {
+	{0x3a0f, 0x38},
+	{0x3a10, 0x30},
+	{0x3a11, 0x80},
+	{0x3a1b, 0x3a},
+	{0x3a1e, 0x2e},
+	{0x3a1f, 0x08},
+	{OV7695_TABLE_END, 0x0000}
 };
 
 struct ov7695_info {
@@ -250,7 +366,7 @@ static int ov7695_write_table(
 	const struct ov7695_reg *next;
 	u16 val;
 
-	dev_info(&info->i2c_client->dev, "yuv %s\n", __func__);
+	dev_dbg(&info->i2c_client->dev, "yuv %s\n", __func__);
 
 	for (next = table; next->addr != OV7695_TABLE_END; next++) {
 		if (next->addr == OV7695_WAIT_MS) {
@@ -260,7 +376,7 @@ static int ov7695_write_table(
 
 		val = next->val;
 
-		dev_info(&info->i2c_client->dev,
+		dev_dbg(&info->i2c_client->dev,
 			"%s: addr = 0x%4x, val = 0x%2x\n",
 			__func__, next->addr, val);
 		err = ov7695_write_reg8(info, next->addr, val);
@@ -300,7 +416,7 @@ static int ov7695_open(struct inode *inode, struct file *file)
 	info = container_of(miscdev, struct ov7695_info, miscdev_info);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
-		dev_info(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
+		dev_err(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
 		return -EBUSY;
 	}
 
@@ -424,11 +540,11 @@ static const struct file_operations ov7695_stats_fops = {
 static int debug_i2c_offset_w(void *data, u64 val)
 {
 	struct ov7695_info *info = (struct ov7695_info *)(data);
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s setting i2c offset to 0x%X\n",
 			__func__, (u32)val);
 	info->debug_i2c_offset = (u32)val;
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s new i2c offset is 0x%X\n", __func__,
 			info->debug_i2c_offset);
 	return 0;
@@ -438,7 +554,7 @@ static int debug_i2c_offset_r(void *data, u64 *val)
 {
 	struct ov7695_info *info = (struct ov7695_info *)(data);
 	*val = (u64)info->debug_i2c_offset;
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s reading i2c offset is 0x%X\n", __func__,
 			info->debug_i2c_offset);
 	return 0;
@@ -449,7 +565,7 @@ static int debug_i2c_read(void *data, u64 *val)
 	struct ov7695_info *info = (struct ov7695_info *)(data);
 	u8 temp1 = 0;
 	u8 temp2 = 0;
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s reading offset 0x%X\n", __func__,
 			info->debug_i2c_offset);
 	if (ov7695_read_reg(info, info->debug_i2c_offset, &temp1)
@@ -458,7 +574,7 @@ static int debug_i2c_read(void *data, u64 *val)
 				"ov7695:%s failed\n", __func__);
 		return -EIO;
 	}
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s read value is 0x%X\n", __func__,
 			temp1<<8 | temp2);
 	*val = (u64)(temp1<<8 | temp2);
@@ -468,7 +584,7 @@ static int debug_i2c_read(void *data, u64 *val)
 static int debug_i2c_write(void *data, u64 val)
 {
 	struct ov7695_info *info = (struct ov7695_info *)(data);
-	dev_info(&info->i2c_client->dev,
+	dev_dbg(&info->i2c_client->dev,
 			"ov7695:%s writing 0x%X to offset 0x%X\n", __func__,
 			(u16)val, info->debug_i2c_offset);
 	if (ov7695_write_reg16(info, info->debug_i2c_offset, (u16)val)) {
@@ -608,6 +724,104 @@ static long ov7695_ioctl(struct file *file,
 		}
 		err = ov7695_set_mode(info, &mode);
 		break;
+	}
+
+	case OV7695_SENSOR_IOCTL_SET_WHITE_BALANCE:
+	{
+		u8 whitebalance;
+
+		if (copy_from_user(&whitebalance, (const void __user *)arg,
+			sizeof(whitebalance))) {
+			return -EFAULT;
+		}
+
+		switch (whitebalance) {
+		case OV7695_YUV_Whitebalance_Auto:
+			err = ov7695_write_table(info,
+					ov7695_Whitebalance_Auto);
+			break;
+		case OV7695_YUV_Whitebalance_Daylight:
+			err = ov7695_write_table(info,
+					ov7695_Whitebalance_Daylight);
+			break;
+		case OV7695_YUV_Whitebalance_CloudyDaylight:
+			err = ov7695_write_table(info,
+					ov7695_Whitebalance_Cloudy);
+			break;
+		case OV7695_YUV_Whitebalance_Incandescent:
+			err = ov7695_write_table(info,
+					ov7695_Whitebalance_Incandescent);
+			break;
+		case OV7695_YUV_Whitebalance_Fluorescent:
+			err = ov7695_write_table(info,
+					ov7695_Whitebalance_Fluorescent);
+			break;
+		default:
+			break;
+		}
+
+		if (err)
+			return err;
+
+		return 0;
+	}
+
+	case OV7695_SENSOR_IOCTL_SET_EV:
+	{
+		short ev;
+
+		if (copy_from_user(&ev,
+				(const void __user *)arg,
+				sizeof(short)))
+			return -EFAULT;
+
+		if (ev == -2)
+			err = ov7695_write_table(info, ov7695_EV_minus_2);
+		else if (ev == -1)
+			err = ov7695_write_table(info, ov7695_EV_minus_1);
+		else if (ev == 0)
+			err = ov7695_write_table(info, ov7695_EV_zero);
+		else if (ev == 1)
+			err = ov7695_write_table(info, ov7695_EV_plus_1);
+		else if (ev == 2)
+			err = ov7695_write_table(info, ov7695_EV_plus_2);
+		else
+			err = -1;
+
+		if (err)
+			return err;
+		return 0;
+	}
+
+	case OV7695_SENSOR_IOCTL_GET_EV:
+	{
+		short ev;
+		u8 val;
+
+		err = ov7695_read_reg(info->i2c_client, 0x3a0f, &val);
+
+		if (err) {
+			dev_err(&info->i2c_client->dev,
+				"IOCTL_GET_EV fail: err= 0x%x\n", err);
+			return err;
+		}
+
+		if (val == 0x38)
+			ev = -2;
+		else if (val == 0x40)
+			ev = -1;
+		else if (val == 0x48)
+			ev = 0;
+		else if (val == 0x50)
+			ev = 1;
+		else if (val == 0x58)
+			ev = 2;
+		if (copy_to_user((void __user *)arg, &ev, sizeof(short)))
+			return -EFAULT;
+		if (err)
+			return err;
+
+		return 0;
 	}
 
 	default:

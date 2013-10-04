@@ -46,6 +46,8 @@
 #define OV7695_SENSOR_IOCTL_SET_AF_MODE        _IOW('o', 6, __u8)
 #define OV7695_SENSOR_IOCTL_GET_AF_STATUS      _IOR('o', 7, __u8)
 #define OV7695_SENSOR_IOCTL_SET_CAMERA         _IOW('o', 8, __u8)
+#define OV7695_SENSOR_IOCTL_SET_EV             _IOW('o', 9, __s16)
+#define OV7695_SENSOR_IOCTL_GET_EV             _IOR('o', 10, __s16)
 
 struct ov7695_mode {
 	int xres;
