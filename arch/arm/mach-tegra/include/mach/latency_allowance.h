@@ -24,7 +24,13 @@
 /* Note:- When adding new display realted IDs, please add them adjacent/amongst
 	  the existing display related IDs. This is required because certain
 	  display related macros/strcuts assume that all display related
-	  tegra_la_ids are adjacent to each other.*/
+	  tegra_la_ids are adjacent to each other.
+
+	  Please observe the same guidelines as display clients, when adding new
+	  camera clients. All camera clients need to be located adjacent to each
+	  other in tegra_la_id. This is required because certain camera related
+	  macros/structs assume that all camera related tegra_la_ids are
+	  adjacent to each other. */
 enum tegra_la_id {
 	TEGRA_LA_AFIR = 0,			/* T30 specific */
 	TEGRA_LA_AFIW,				/* T30 specific */
@@ -173,6 +179,10 @@ int tegra_set_disp_latency_allowance(enum tegra_la_id id,
 
 int tegra_set_latency_allowance(enum tegra_la_id id,
 				unsigned int bandwidth_in_mbps);
+
+int tegra_set_camera_ptsa(enum tegra_la_id id,
+			unsigned int bw_mbps,
+			int is_hiso);
 
 void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick);
 

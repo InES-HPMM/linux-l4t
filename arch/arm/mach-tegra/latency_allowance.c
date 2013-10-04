@@ -199,6 +199,17 @@ int tegra_set_latency_allowance(enum tegra_la_id id, unsigned int bw_mbps)
 	return 0;
 }
 
+int tegra_set_camera_ptsa(enum tegra_la_id id,
+			unsigned int bw_mbps,
+			int is_hiso)
+{
+	if (cs.update_camera_ptsa_rate)
+		return cs.update_camera_ptsa_rate(id, bw_mbps, is_hiso);
+	else if (cs.set_la)
+		return cs.set_la(id, bw_mbps);
+	return 0;
+}
+
 /* Thresholds for scaling are specified in % of fifo freeness.
  * If threshold_low is specified as 20%, it means when the fifo free
  * between 0 to 20%, use la as programmed_la.

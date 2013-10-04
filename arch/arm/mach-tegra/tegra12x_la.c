@@ -156,8 +156,10 @@
 #define T12X_MC_RING1_PTSA_MAX_0	0x484
 #define T12X_MC_A9AVPPC_PTSA_MIN_0	0x48c
 #define T12X_MC_A9AVPPC_PTSA_MAX_0	0x490
+#define T12X_MC_VE2_PTSA_RATE_0		0x494
 #define T12X_MC_VE2_PTSA_MIN_0		0x498
 #define T12X_MC_VE2_PTSA_MAX_0		0x49c
+#define T12X_MC_ISP_PTSA_RATE_0		0x4a0
 #define T12X_MC_ISP_PTSA_MIN_0		0x4a4
 #define T12X_MC_ISP_PTSA_MAX_0		0x4a8
 #define T12X_MC_PCX_PTSA_MIN_0		0x4b0
@@ -246,11 +248,11 @@
 	  T12X_DDA_BW_MARGIN_FP has been increased to 1150 to compensate for
 	  fixed point arithmetic errors. */
 #define T12X_DDA_BW_MARGIN_FP					1100
+#define T12X_1_DDA_FRAC_FP					10
 #define T12X_MPCORER_CPU_RD_MARGIN_FP				100
 #define T12X_MIN_CYCLES_PER_GRANT				2
 #define T12X_EMEM_PTSA_MINMAX_WIDTH				5
 #define T12X_EMEM_PTSA_RATE_WIDTH				8
-#define T12X_VI_WRITE_BW					2000
 #define T12X_RING1_FEEDER_SISO_ALLOC_DIV			2
 #define T12X_LA_USEC_TO_NSEC_FACTOR				1000
 #define T12X_LA_HZ_TO_MHZ_FACTOR				1000000
@@ -343,7 +345,7 @@ static struct la_chip_specific *cs;
 const struct disp_client *tegra_la_disp_clients_info;
 static unsigned int total_dc0_bw;
 static unsigned int total_dc1_bw;
-DEFINE_MUTEX(total_dc_bw_lock);
+DEFINE_MUTEX(disp_and_camera_ptsa_lock);
 
 
 unsigned int tegra12x_la_real_to_fp(unsigned int val)
@@ -359,6 +361,12 @@ unsigned int tegra12x_la_fp_to_real(unsigned int val)
 static inline bool is_display_client(enum tegra_la_id id)
 {
 	return ((id >= FIRST_DISP_CLIENT_ID) && (id <= LAST_DISP_CLIENT_ID));
+}
+
+static inline bool is_camera_client(enum tegra_la_id id)
+{
+	return ((id >= FIRST_CAMERA_CLIENT_ID) &&
+		(id <= LAST_CAMERA_CLIENT_ID));
 }
 
 unsigned int fraction2dda_fp(unsigned int fraction_fp,
@@ -405,6 +413,7 @@ static void program_ptsa(void)
 	writel(p->ve_ptsa_min, T12X_MC_RA(VE_PTSA_MIN_0));
 	writel(p->ve_ptsa_max, T12X_MC_RA(VE_PTSA_MAX_0));
 
+	writel(p->ve2_ptsa_rate, T12X_MC_RA(VE2_PTSA_RATE_0));
 	writel(p->ve2_ptsa_min, T12X_MC_RA(VE2_PTSA_MIN_0));
 	writel(p->ve2_ptsa_max, T12X_MC_RA(VE2_PTSA_MAX_0));
 
@@ -435,6 +444,7 @@ static void program_ptsa(void)
 	/* FIXME:- Is heg_extra_snap_level required for T124?
 	writel(p->heg_extra_snap_level, T12X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0)); */
 
+	writel(p->isp_ptsa_rate, T12X_MC_RA(ISP_PTSA_RATE_0));
 	writel(p->isp_ptsa_min, T12X_MC_RA(ISP_PTSA_MIN_0));
 	writel(p->isp_ptsa_max, T12X_MC_RA(ISP_PTSA_MAX_0));
 
@@ -511,6 +521,7 @@ static void save_ptsa(void)
 	p->ve_ptsa_min = readl(T12X_MC_RA(VE_PTSA_MIN_0));
 	p->ve_ptsa_max = readl(T12X_MC_RA(VE_PTSA_MAX_0));
 
+	p->ve2_ptsa_rate = readl(T12X_MC_RA(VE2_PTSA_RATE_0));
 	p->ve2_ptsa_min = readl(T12X_MC_RA(VE2_PTSA_MIN_0));
 	p->ve2_ptsa_max = readl(T12X_MC_RA(VE2_PTSA_MAX_0));
 
@@ -541,6 +552,7 @@ static void save_ptsa(void)
 	/* FIXME:- Is heg_extra_snap_level required for T124?
 	p->heg_extra_snap_level = readl(T12X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0)); */
 
+	p->isp_ptsa_rate = readl(T12X_MC_RA(ISP_PTSA_RATE_0));
 	p->isp_ptsa_min = readl(T12X_MC_RA(ISP_PTSA_MIN_0));
 	p->isp_ptsa_max = readl(T12X_MC_RA(ISP_PTSA_MAX_0));
 
@@ -784,42 +796,17 @@ static void t12x_init_ptsa(void)
 	program_ptsa();
 }
 
-static void t12x_update_display_ptsa_rate(unsigned int *disp_bw_array)
+static void t12x_calc_disp_and_camera_ptsa(void)
 {
 	struct ptsa_info *p = &cs->ptsa_info;
+	unsigned int ve_bw_fp = cs->camera_bw_array[CAMERA_IDX(VI_W)] *
+				T12X_DDA_BW_MARGIN_FP;
+	unsigned int ve2_bw_fp = 0;
+	unsigned int isp_bw_fp = 0;
 	unsigned int total_dc0_bw_fp = total_dc0_bw *
 					T12X_DDA_BW_MARGIN_FP;
 	unsigned int total_dc1_bw_fp = total_dc1_bw *
 					T12X_DDA_BW_MARGIN_FP;
-	struct clk *vi_clk = tegra_get_clock_by_name("vi");
-	struct clk *isp_clk = tegra_get_clock_by_name("isp");
-	bool camera_is_enabled = ((tegra_is_clk_enabled(vi_clk)) ||
-					(tegra_is_clk_enabled(isp_clk)));
-	/* FIXME:- VE bw needs to programmed properly once camera driver starts
-		   using the LA driver. */
-	unsigned int ve_bw_fp = camera_is_enabled ?
-				T12X_VI_WRITE_BW * T12X_DDA_BW_MARGIN_FP :
-				0;
-	unsigned int ve2_bw_fp = T12X_LA_REAL_TO_FP(cs->ispa_read_bw +
-						cs->ispa_write_bw +
-						cs->ispb_write_bw);
-	unsigned int isp_bw_fp = ve2_bw_fp * T12X_DDA_BW_MARGIN_FP;
-	/* FIXME:- Do we need avp_bw_fp?
-	unsigned int avp_bw_fp = T12X_LA_REAL_TO_FP(280); */
-	unsigned int ring1_bw_fp = ve_bw_fp +
-				isp_bw_fp +
-				ve2_bw_fp +
-				/* avp_bw_fp + */
-				total_dc0_bw_fp +
-				total_dc1_bw_fp;
-#if 0
-	/* Adeel want this to remain commented out */
-	unsigned int ring1_soft_iso_bw_fp = ve2_bw_fp;
-#endif
-	unsigned int total_iso_bw_fp = ve_bw_fp +
-					isp_bw_fp +
-					total_dc0_bw_fp +
-					total_dc1_bw_fp;
 	unsigned int low_freq_bw_fp = T12X_EMC_MIN_FREQ_MHZ_FP *
 					2 *
 					T12X_LA_DRAM_WIDTH_BITS /
@@ -832,41 +819,76 @@ static void t12x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 						T12X_LOW_GD_FPA *
 						total_dc1_bw_fp /
 						low_freq_bw_fp);
+	unsigned int ring1_bw_fp = total_dc0_bw_fp +
+					total_dc1_bw_fp +
+					ve_bw_fp;
+	unsigned int total_iso_bw_fp = total_dc0_bw_fp + total_dc1_bw_fp;
+	unsigned int siso_bw_fp = 0;
 	int max_max = (1 << T12X_EMEM_PTSA_MINMAX_WIDTH) - 1;
-	unsigned int siso_bw_fp = total_iso_bw_fp /
-				T12X_RING1_FEEDER_SISO_ALLOC_DIV;
-	struct clk *emc_clk __attribute__((unused));
-	unsigned long emc_freq_mhz __attribute__((unused));
-	unsigned long mc_freq_mhz __attribute__((unused));
-	unsigned long same_freq __attribute__((unused));
+	int i = 0;
 
 
-	p->dis_ptsa_min = (unsigned int)(-5) &
+	if (cs->agg_camera_array[AGG_CAMERA_ID(VE2)].is_hiso) {
+		ve2_bw_fp = (cs->camera_bw_array[CAMERA_IDX(ISP_RAB)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WAB)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WBB)]) *
+				T12X_DDA_BW_MARGIN_FP;
+	} else {
+		ve2_bw_fp = T12X_LA_REAL_TO_FP(
+				cs->camera_bw_array[CAMERA_IDX(ISP_RAB)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WAB)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WBB)]);
+	}
+
+	if (cs->agg_camera_array[AGG_CAMERA_ID(ISP)].is_hiso) {
+		isp_bw_fp = (cs->camera_bw_array[CAMERA_IDX(ISP_RA)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WA)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WB)]) *
+				T12X_DDA_BW_MARGIN_FP;
+	} else {
+		isp_bw_fp = T12X_LA_REAL_TO_FP(
+				cs->camera_bw_array[CAMERA_IDX(ISP_RA)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WA)] +
+				cs->camera_bw_array[CAMERA_IDX(ISP_WB)]);
+	}
+
+	cs->agg_camera_array[AGG_CAMERA_ID(VE)].bw_fp = ve_bw_fp;
+	cs->agg_camera_array[AGG_CAMERA_ID(VE2)].bw_fp = ve2_bw_fp;
+	cs->agg_camera_array[AGG_CAMERA_ID(ISP)].bw_fp = isp_bw_fp;
+
+	ring1_bw_fp += ve2_bw_fp + isp_bw_fp;
+
+
+	for (i = 0; i < TEGRA_LA_AGG_CAMERA_NUM_CLIENTS; i++) {
+		struct agg_camera_client_info *agg_client =
+						&cs->agg_camera_array[i];
+
+		if (agg_client->is_hiso) {
+			agg_client->frac_fp = T12X_LA_FPA_TO_FP(
+						T12X_LOW_GD_FPA *
+						agg_client->bw_fp /
+						low_freq_bw_fp);
+			agg_client->ptsa_min = (unsigned int)(-5) &
+						T12X_MC_PTSA_MIN_DEFAULT_MASK;
+			agg_client->ptsa_max = (unsigned int)(max_max) &
+						T12X_MC_PTSA_MAX_DEFAULT_MASK;
+
+			total_iso_bw_fp += agg_client->bw_fp;
+		} else {
+			agg_client->frac_fp = T12X_1_DDA_FRAC_FP;
+			agg_client->ptsa_min = (unsigned int)(-2) &
+						T12X_MC_PTSA_MIN_DEFAULT_MASK;
+			agg_client->ptsa_max = (unsigned int)(0) &
+						T12X_MC_PTSA_MAX_DEFAULT_MASK;
+		}
+	}
+
+
+	p->ring1_ptsa_min = (unsigned int)(-5) &
 					T12X_MC_PTSA_MIN_DEFAULT_MASK;
-	p->dis_ptsa_max = (unsigned int)(max_max) &
+	p->ring1_ptsa_max = (unsigned int)(max_max) &
 					T12X_MC_PTSA_MAX_DEFAULT_MASK;
-	p->dis_ptsa_rate = fraction2dda_fp(dis_frac_fp,
-					4,
-					T12X_MC_PTSA_RATE_DEFAULT_MASK) &
-					T12X_MC_PTSA_RATE_DEFAULT_MASK;
-	writel(p->dis_ptsa_min, T12X_MC_RA(DIS_PTSA_MIN_0));
-	writel(p->dis_ptsa_max, T12X_MC_RA(DIS_PTSA_MAX_0));
-	writel(p->dis_ptsa_rate, T12X_MC_RA(DIS_PTSA_RATE_0));
-
-
-	p->disb_ptsa_min = (unsigned int)(-5) &
-					T12X_MC_PTSA_MIN_DEFAULT_MASK;
-	p->disb_ptsa_max = (unsigned int)(max_max) &
-					T12X_MC_PTSA_MAX_DEFAULT_MASK;
-	p->disb_ptsa_rate = fraction2dda_fp(disb_frac_fp,
-					4,
-					T12X_MC_PTSA_RATE_DEFAULT_MASK) &
-					T12X_MC_PTSA_RATE_DEFAULT_MASK;
-	writel(p->disb_ptsa_min, T12X_MC_RA(DISB_PTSA_MIN_0));
-	writel(p->disb_ptsa_max, T12X_MC_RA(DISB_PTSA_MAX_0));
-	writel(p->disb_ptsa_rate, T12X_MC_RA(DISB_PTSA_RATE_0));
-
-
+	siso_bw_fp = total_iso_bw_fp / T12X_RING1_FEEDER_SISO_ALLOC_DIV;
 	ring1_bw_fp += siso_bw_fp;
 	p->ring1_ptsa_rate =
 			(fraction2dda_fp(T12X_LOW_GD_FP *
@@ -878,7 +900,147 @@ static void t12x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 			T12X_MC_PTSA_RATE_DEFAULT_MASK;
 	if (p->ring1_ptsa_rate == 0)
 		p->ring1_ptsa_rate = 0x1;
+
+	p->dis_ptsa_min = (unsigned int)(-5) &
+					T12X_MC_PTSA_MIN_DEFAULT_MASK;
+	p->dis_ptsa_max = (unsigned int)(max_max) &
+					T12X_MC_PTSA_MAX_DEFAULT_MASK;
+	p->dis_ptsa_rate = fraction2dda_fp(dis_frac_fp,
+					4,
+					T12X_MC_PTSA_RATE_DEFAULT_MASK) &
+					T12X_MC_PTSA_RATE_DEFAULT_MASK;
+
+	p->disb_ptsa_min = (unsigned int)(-5) &
+					T12X_MC_PTSA_MIN_DEFAULT_MASK;
+	p->disb_ptsa_max = (unsigned int)(max_max) &
+					T12X_MC_PTSA_MAX_DEFAULT_MASK;
+	p->disb_ptsa_rate = fraction2dda_fp(disb_frac_fp,
+					4,
+					T12X_MC_PTSA_RATE_DEFAULT_MASK) &
+					T12X_MC_PTSA_RATE_DEFAULT_MASK;
+
+	p->ve_ptsa_min = cs->agg_camera_array[AGG_CAMERA_ID(VE)].ptsa_min &
+					T12X_MC_PTSA_MIN_DEFAULT_MASK;
+	p->ve_ptsa_max = cs->agg_camera_array[AGG_CAMERA_ID(VE)].ptsa_max &
+					T12X_MC_PTSA_MAX_DEFAULT_MASK;
+	p->ve_ptsa_rate = fraction2dda_fp(
+				cs->agg_camera_array[AGG_CAMERA_ID(VE)].frac_fp,
+				4,
+				T12X_MC_PTSA_RATE_DEFAULT_MASK) &
+				T12X_MC_PTSA_RATE_DEFAULT_MASK;
+
+	p->ve2_ptsa_min = cs->agg_camera_array[AGG_CAMERA_ID(VE2)].ptsa_min &
+					T12X_MC_PTSA_MIN_DEFAULT_MASK;
+	p->ve2_ptsa_max = cs->agg_camera_array[AGG_CAMERA_ID(VE2)].ptsa_max &
+					T12X_MC_PTSA_MAX_DEFAULT_MASK;
+	p->ve2_ptsa_rate = fraction2dda_fp(
+			cs->agg_camera_array[AGG_CAMERA_ID(VE2)].frac_fp,
+			4,
+			T12X_MC_PTSA_RATE_DEFAULT_MASK) &
+			T12X_MC_PTSA_RATE_DEFAULT_MASK;
+
+	p->isp_ptsa_min = cs->agg_camera_array[AGG_CAMERA_ID(ISP)].ptsa_min &
+					T12X_MC_PTSA_MIN_DEFAULT_MASK;
+	p->isp_ptsa_max = cs->agg_camera_array[AGG_CAMERA_ID(ISP)].ptsa_max &
+					T12X_MC_PTSA_MAX_DEFAULT_MASK;
+	p->isp_ptsa_rate = fraction2dda_fp(
+			cs->agg_camera_array[AGG_CAMERA_ID(ISP)].frac_fp,
+			4,
+			T12X_MC_PTSA_RATE_DEFAULT_MASK) &
+			T12X_MC_PTSA_RATE_DEFAULT_MASK;
+}
+
+static void t12x_update_display_ptsa_rate(unsigned int *disp_bw_array)
+{
+	struct ptsa_info *p = &cs->ptsa_info;
+
+	t12x_calc_disp_and_camera_ptsa();
+
+	writel(p->ring1_ptsa_min, T12X_MC_RA(RING1_PTSA_MIN_0));
+	writel(p->ring1_ptsa_max, T12X_MC_RA(RING1_PTSA_MAX_0));
 	writel(p->ring1_ptsa_rate, T12X_MC_RA(RING1_PTSA_RATE_0));
+
+	writel(p->dis_ptsa_min, T12X_MC_RA(DIS_PTSA_MIN_0));
+	writel(p->dis_ptsa_max, T12X_MC_RA(DIS_PTSA_MAX_0));
+	writel(p->dis_ptsa_rate, T12X_MC_RA(DIS_PTSA_RATE_0));
+
+	writel(p->disb_ptsa_min, T12X_MC_RA(DISB_PTSA_MIN_0));
+	writel(p->disb_ptsa_max, T12X_MC_RA(DISB_PTSA_MAX_0));
+	writel(p->disb_ptsa_rate, T12X_MC_RA(DISB_PTSA_RATE_0));
+}
+
+static int t12x_update_camera_ptsa_rate(enum tegra_la_id id,
+					unsigned int bw_mbps,
+					int is_hiso)
+{
+	struct ptsa_info *p = NULL;
+	int ret_code = 0;
+
+
+	mutex_lock(&disp_and_camera_ptsa_lock);
+
+
+	if (!is_camera_client(id)) {
+		/* Non-camera clients should be handled by t12x_set_la(...) or
+		   t12x_set_disp_la(...). */
+		pr_err("%s: Ignoring request from a non-camera client.\n",
+			__func__);
+		pr_err("%s: Non-camera clients should be handled by "
+			"t12x_set_la(...) or t12x_set_disp_la(...).\n",
+			__func__);
+		ret_code = -1;
+		goto exit;
+	}
+
+	if ((id == ID(VI_W)) &&
+		(!is_hiso)) {
+		pr_err("%s: VI is stating that its not HISO.\n", __func__);
+		pr_err("%s: Ignoring and assuming that VI is HISO because VI "
+			"is always supposed to be HISO.\n",
+			__func__);
+		is_hiso = 1;
+	}
+
+
+	p = &cs->ptsa_info;
+
+	if (id == ID(VI_W)) {
+		cs->agg_camera_array[AGG_CAMERA_ID(VE)].is_hiso = is_hiso;
+	} else if ((id == ID(ISP_RAB)) ||
+			(id == ID(ISP_WAB)) ||
+			(id == ID(ISP_WBB))) {
+		cs->agg_camera_array[AGG_CAMERA_ID(VE2)].is_hiso = is_hiso;
+	} else {
+		cs->agg_camera_array[AGG_CAMERA_ID(ISP)].is_hiso = is_hiso;
+	}
+
+	cs->camera_bw_array[CAMERA_LA_IDX(id)] = bw_mbps;
+
+
+	t12x_calc_disp_and_camera_ptsa();
+
+
+	writel(p->ring1_ptsa_min, T12X_MC_RA(RING1_PTSA_MIN_0));
+	writel(p->ring1_ptsa_max, T12X_MC_RA(RING1_PTSA_MAX_0));
+	writel(p->ring1_ptsa_rate, T12X_MC_RA(RING1_PTSA_RATE_0));
+
+	writel(p->ve_ptsa_min, T12X_MC_RA(VE_PTSA_MIN_0));
+	writel(p->ve_ptsa_max, T12X_MC_RA(VE_PTSA_MAX_0));
+	writel(p->ve_ptsa_rate, T12X_MC_RA(VE_PTSA_RATE_0));
+
+	writel(p->ve2_ptsa_min, T12X_MC_RA(VE2_PTSA_MIN_0));
+	writel(p->ve2_ptsa_max, T12X_MC_RA(VE2_PTSA_MAX_0));
+	writel(p->ve2_ptsa_rate, T12X_MC_RA(VE2_PTSA_RATE_0));
+
+	writel(p->isp_ptsa_min, T12X_MC_RA(ISP_PTSA_MIN_0));
+	writel(p->isp_ptsa_max, T12X_MC_RA(ISP_PTSA_MAX_0));
+	writel(p->isp_ptsa_rate, T12X_MC_RA(ISP_PTSA_RATE_0));
+
+
+exit:
+	mutex_unlock(&disp_and_camera_ptsa_lock);
+
+	return ret_code;
 }
 
 
@@ -1031,11 +1193,11 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 		return -1;
 	}
 
-	mutex_lock(&total_dc_bw_lock);
+	mutex_lock(&disp_and_camera_ptsa_lock);
 	total_dc0_bw = disp_params.total_dc0_bw;
 	total_dc1_bw = disp_params.total_dc1_bw;
 	cs->update_display_ptsa_rate(cs->disp_bw_array);
-	mutex_unlock(&total_dc_bw_lock);
+	mutex_unlock(&disp_and_camera_ptsa_lock);
 
 	idx = cs->id_to_index[id];
 	ci = &cs->la_info_array[idx];
@@ -1118,6 +1280,8 @@ static void t12x_la_resume(void)
 
 void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 {
+	int i = 0;
+
 	cs_la->ns_per_tick = 30;
 	cs_la->atom_size = 64;
 	cs_la->la_max_value = T12X_MC_LA_MAX_VALUE;
@@ -1135,18 +1299,25 @@ void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 
 	cs_la->init_ptsa = t12x_init_ptsa;
 	cs_la->update_display_ptsa_rate = t12x_update_display_ptsa_rate;
+	cs_la->update_camera_ptsa_rate = t12x_update_camera_ptsa_rate;
 	cs_la->set_la = t12x_set_la;
 	cs_la->set_disp_la = t12x_set_disp_la;
 	cs_la->suspend = t12x_la_suspend;
 	cs_la->resume = t12x_la_resume;
 	cs = cs_la;
 
-	/* zero out certain values */
-	cs_la->ispa_read_bw = 0;
-	cs_la->ispa_write_bw = 0;
-	cs_la->ispb_write_bw = 0;
-
 	tegra_la_disp_clients_info = cs_la->disp_clients;
+
+	/* set some entries to zero */
+	for (i = 0; i < NUM_CAMERA_CLIENTS; i++)
+		cs_la->camera_bw_array[i] = 0;
+	for (i = 0; i < TEGRA_LA_AGG_CAMERA_NUM_CLIENTS; i++) {
+		cs_la->agg_camera_array[i].bw_fp = 0;
+		cs_la->agg_camera_array[i].frac_fp = 0;
+		cs_la->agg_camera_array[i].ptsa_min = 0;
+		cs_la->agg_camera_array[i].ptsa_max = 0;
+		cs_la->agg_camera_array[i].is_hiso = false;
+	}
 
 	/* set mccif_size_bytes values */
 	cs_la->disp_clients[DISP_CLIENT_ID(DISPLAY_0A)].mccif_size_bytes = 4096;

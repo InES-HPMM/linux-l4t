@@ -58,8 +58,27 @@ do { \
 #define NUM_DISP_CLIENTS	(LAST_DISP_CLIENT_ID - FIRST_DISP_CLIENT_ID + 1)
 #define DISP_CLIENT_ID(id)	(ID(id) - FIRST_DISP_CLIENT_ID)
 
+#define FIRST_CAMERA_CLIENT_ID	ID(VI_W)
+#define LAST_CAMERA_CLIENT_ID	ID(ISP_WBB)
+#define NUM_CAMERA_CLIENTS	(LAST_CAMERA_CLIENT_ID - \
+				FIRST_CAMERA_CLIENT_ID + \
+				1)
+#define CAMERA_IDX(id)		(ID(id) - FIRST_CAMERA_CLIENT_ID)
+#define CAMERA_LA_IDX(id)	(id - FIRST_CAMERA_CLIENT_ID)
+#define AGG_CAMERA_ID(id)	TEGRA_LA_AGG_CAMERA_##id
+
 #define T12X_MC_LA_MAX_VALUE	255
 
+
+/* The following enum defines IDs for aggregated camera clients. In some cases
+   we have to deal with groups of camera clients rather than individual
+   clients. */
+enum agg_camera_client_id {
+	TEGRA_LA_AGG_CAMERA_VE = 0,
+	TEGRA_LA_AGG_CAMERA_VE2,
+	TEGRA_LA_AGG_CAMERA_ISP,
+	TEGRA_LA_AGG_CAMERA_NUM_CLIENTS
+};
 
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
@@ -73,6 +92,14 @@ struct la_client_info {
 	unsigned int init_la;		/* initial la to set for client */
 	unsigned int la_set;
 	unsigned int la_ref_clk_mhz;
+};
+
+struct agg_camera_client_info {
+	unsigned int bw_fp;
+	unsigned int frac_fp;
+	unsigned int ptsa_min;
+	unsigned int ptsa_max;
+	bool is_hiso;
 };
 
 struct la_scaling_info {
@@ -107,6 +134,7 @@ struct ptsa_info {
 	unsigned int ve_ptsa_rate;
 	unsigned int ve_ptsa_min;
 	unsigned int ve_ptsa_max;
+	unsigned int ve2_ptsa_rate;
 	unsigned int ve2_ptsa_min;
 	unsigned int ve2_ptsa_max;
 	unsigned int ring2_ptsa_rate;
@@ -130,6 +158,7 @@ struct ptsa_info {
 	unsigned int ptsa_grant_dec;
 	unsigned int bbcll_earb_cfg;
 
+	unsigned int isp_ptsa_rate;
 	unsigned int isp_ptsa_min;
 	unsigned int isp_ptsa_max;
 	unsigned int a9avppc_ptsa_min;
@@ -181,10 +210,10 @@ struct la_chip_specific {
 	unsigned short id_to_index[ID(MAX_ID) + 1];
 	unsigned int disp_bw_array[NUM_DISP_CLIENTS];
 	struct disp_client disp_clients[NUM_DISP_CLIENTS];
-	unsigned int ispa_read_bw;
-	unsigned int ispa_write_bw;
-	unsigned int ispb_write_bw;
 	unsigned int bbc_bw_array[ID(BBCLLR) - ID(BBCR) + 1];
+	unsigned int camera_bw_array[NUM_CAMERA_CLIENTS];
+	struct agg_camera_client_info
+			agg_camera_array[TEGRA_LA_AGG_CAMERA_NUM_CLIENTS];
 	struct la_scaling_info scaling_info[ID(MAX_ID)];
 	int la_scaling_enable_count;
 	struct dentry *latency_debug_dir;
@@ -197,6 +226,9 @@ struct la_chip_specific {
 
 	void (*init_ptsa)(void);
 	void (*update_display_ptsa_rate)(unsigned int *disp_bw_array);
+	int (*update_camera_ptsa_rate)(enum tegra_la_id id,
+					unsigned int bw_mbps,
+					int is_hiso);
 	int (*set_disp_la)(enum tegra_la_id id,
 				unsigned int bw_mbps,
 				struct dc_to_la_params disp_params);
