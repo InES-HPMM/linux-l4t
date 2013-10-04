@@ -603,7 +603,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail_io;
 	}
 
-	err = usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
+	err = tegra_usb_phy_power_on(tegra->phy);
 	if (err) {
 		dev_err(&pdev->dev, "failed to power on the phy\n");
 		goto fail_phy;
@@ -673,7 +673,7 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	if (pdata->u_data.host.turn_off_vbus_on_lp0)
 		tegra_usb_enable_vbus(tegra->phy, true);
-	return usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
+	return tegra_usb_phy_power_on(tegra->phy);
 }
 
 static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
@@ -686,7 +686,7 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 	if (tegra->bus_suspended_fail)
 		return -EBUSY;
 	else {
-		err = usb_phy_set_suspend(get_usb_phy(tegra->phy), 1);
+		err = tegra_usb_phy_power_off(tegra->phy);
 		if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 			tegra_usb_enable_vbus(tegra->phy, false);
 			tegra_usb_phy_pmc_disable(tegra->phy);
