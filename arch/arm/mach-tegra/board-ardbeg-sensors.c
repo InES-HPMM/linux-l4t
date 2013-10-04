@@ -40,6 +40,11 @@
 #include <media/ad5823.h>
 #include <media/max77387.h>
 
+#include <linux/platform_device.h>
+#include <media/soc_camera.h>
+#include <media/soc_camera_platform.h>
+#include <media/tegra_v4l2_camera.h>
+
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "board.h"
@@ -126,6 +131,78 @@ static void mpuirq_init(void)
 	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));
 }
+
+/*
+ * Soc Camera platform driver for testing
+ */
+#if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
+static int ardbeg_soc_camera_add(struct soc_camera_device *icd);
+static void ardbeg_soc_camera_del(struct soc_camera_device *icd);
+
+static int ardbeg_soc_camera_set_capture(struct soc_camera_platform_info *info,
+		int enable)
+{
+	/* TODO: probably add clk opertaion here */
+	return 0; /* camera sensor always enabled */
+}
+
+static struct soc_camera_platform_info ardbeg_soc_camera_info = {
+	.format_name = "RGB4",
+	.format_depth = 32,
+	.format = {
+		.code = V4L2_MBUS_FMT_RGBA8888_4X8_LE,
+		.colorspace = V4L2_COLORSPACE_SRGB,
+		.field = V4L2_FIELD_NONE,
+		.width = 1280,
+		.height = 720,
+	},
+	.set_capture = ardbeg_soc_camera_set_capture,
+};
+
+static struct tegra_camera_platform_data ardbeg_camera_platform_data = {
+	.flip_v                 = 0,
+	.flip_h                 = 0,
+	.port                   = TEGRA_CAMERA_PORT_CSI_A,
+	.lanes                  = 4,
+	.continuous_clk         = 0,
+};
+
+static struct soc_camera_link ardbeg_soc_camera_link = {
+	.bus_id         = 0, /* This must match the .id of tegra_vi01_device */
+	.add_device     = ardbeg_soc_camera_add,
+	.del_device     = ardbeg_soc_camera_del,
+	.module_name    = "soc_camera_platform",
+	.priv		= &ardbeg_camera_platform_data,
+	.dev_priv	= &ardbeg_soc_camera_info,
+};
+
+static struct platform_device *ardbeg_pdev;
+
+static void ardbeg_soc_camera_release(struct device *dev)
+{
+	soc_camera_platform_release(&ardbeg_pdev);
+}
+
+static int ardbeg_soc_camera_add(struct soc_camera_device *icd)
+{
+	return soc_camera_platform_add(icd, &ardbeg_pdev,
+			&ardbeg_soc_camera_link,
+			ardbeg_soc_camera_release, 0);
+}
+
+static void ardbeg_soc_camera_del(struct soc_camera_device *icd)
+{
+	soc_camera_platform_del(icd, ardbeg_pdev, &ardbeg_soc_camera_link);
+}
+
+static struct platform_device ardbeg_soc_camera_device = {
+	.name   = "soc-camera-pdrv",
+	.id     = 0,
+	.dev    = {
+		.platform_data = &ardbeg_soc_camera_link,
+	},
+};
+#endif
 
 static struct regulator *ardbeg_vcmvdd;
 
@@ -842,6 +919,10 @@ static int ardbeg_camera_init(void)
 	platform_device_add_data(&ardbeg_camera_generic,
 		&ardbeg_pcl_pdata, sizeof(ardbeg_pcl_pdata));
 	platform_device_register(&ardbeg_camera_generic);
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
+	platform_device_register(&ardbeg_soc_camera_device);
+#endif
 
 	return 0;
 }
