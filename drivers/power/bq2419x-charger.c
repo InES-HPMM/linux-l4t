@@ -588,6 +588,11 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 					bq2419x->chg_status);
 	}
 
+	if ((val & BQ2419x_VSYS_STAT_MASK) ==
+				BQ2419x_VSYS_STAT_BATT_LOW)
+		dev_info(bq2419x->dev,
+			"In VSYSMIN regulation, battery is too low\n");
+
 	/*
 	* Update Charging status based on STAT register
 	*/
