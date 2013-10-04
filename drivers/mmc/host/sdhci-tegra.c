@@ -910,7 +910,6 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 		tegra_host->tuning_status = TUNING_STATUS_RETUNE;
 		tegra_host->force_retune = true;
 		tegra_host->calib_1v8_offsets_done = false;
-		tegra_host->force_retune = true;
 	}
 
 	tasklet_schedule(&sdhost->card_tasklet);
