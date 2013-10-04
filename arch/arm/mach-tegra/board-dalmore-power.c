@@ -1041,6 +1041,7 @@ int __init dalmore_palmas_regulator_init(void)
 	regulator_has_full_constraints();
 
 	reg_idata_ldo6.constraints.enable_time = 1000;
+	ri_data_fet1.constraints.disable_time = 1500;
 
 	/* Tracking configuration */
 	reg_init_data_ldo8.config_flags =
