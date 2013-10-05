@@ -183,11 +183,11 @@ struct cvb_dvfs {
 
 	struct dvfs_dfll_data dfll_tune_data;
 	int max_mv;
-	int min_mv;
 	int freqs_mult;
 	int speedo_scale;
 	int voltage_scale;
 	int thermal_scale;
+	struct cvb_dvfs_table cvb_vmin;
 	struct cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
 	int vmin_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
