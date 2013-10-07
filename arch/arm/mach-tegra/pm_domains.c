@@ -229,6 +229,12 @@ static int tegra_core_power_off(struct generic_pm_domain *genpd)
 	return 0;
 }
 
+static struct tegra_pm_domain tegra_host1x = {
+	.gpd.name = "tegra-host1x",
+	.gpd.power_off = tegra_core_power_off,
+	.gpd.power_on = tegra_core_power_on,
+};
+
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
 	.gpd.power_off = tegra_mc_clk_power_off,
@@ -290,26 +296,27 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra_bb", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
 #else
-	{ .name = "gr2d", .domain = &tegra_mc_clk.gpd },
-	{ .name = "gr3d", .domain = &tegra_mc_clk.gpd },
-	{ .name = "msenc", .domain = &tegra_mc_clk.gpd },
-	{ .name = "isp", .domain = &tegra_mc_clk.gpd },
+	{ .name = "gr2d", .domain = &tegra_host1x.gpd },
+	{ .name = "gr3d", .domain = &tegra_host1x.gpd },
+	{ .name = "msenc", .domain = &tegra_host1x.gpd },
+	{ .name = "isp", .domain = &tegra_host1x.gpd },
 	{ .name = "tegradc", .domain = &tegra_mc_clk.gpd },
-	{ .name = "vi", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra30-hda", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-otg", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-ehci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-xhci", .domain = &tegra_mc_clk.gpd },
-	{ .name = "host1x", .domain = &tegra_mc_clk.gpd },
+	{ .name = "host1x", .domain = &tegra_host1x.gpd },
+	{ .name = "tegra-host1x", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tsec", .domain = &tegra_mc_clk.gpd },
 	{ .name = "nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra12-se", .domain = &tegra_mc_clk.gpd },
-	{ .name = "vic03", .domain = &tegra_mc_clk.gpd },
-	{ .name = "ve", .domain = &tegra_mc_clk.gpd },
-	{ .name = "gk20a", .domain = &tegra_mc_clk.gpd },
+	{ .name = "vic03", .domain = &tegra_host1x.gpd },
+	{ .name = "ve", .domain = &tegra_host1x.gpd },
+	{ .name = "vi", .domain = &tegra_host1x.gpd },
+	{ .name = "gk20a", .domain = &tegra_host1x.gpd },
 	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-pcie", .domain = &tegra_mc_clk.gpd },
 #endif
@@ -319,6 +326,10 @@ static struct domain_client client_list[] = {
 static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
+
+	pm_genpd_init(&tegra_host1x.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_host1x.gpd);
+	pm_genpd_set_poweroff_delay(&tegra_host1x.gpd, 2000);
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	pm_genpd_init(&tegra_mc_chain_a.gpd, &simple_qos_governor, false);
