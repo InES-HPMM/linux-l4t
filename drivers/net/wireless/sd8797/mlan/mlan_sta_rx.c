@@ -155,7 +155,6 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		HEXDUMP("RX Data: LLC/SNAP",
 			(t_u8 *) & prx_pkt->rfc1042_hdr,
 			sizeof(prx_pkt->rfc1042_hdr));
-
 		/* Chop off the RxPD */
 		hdr_chop =
 			(t_u32) ((t_ptr) & prx_pkt->eth803_hdr -
@@ -173,7 +172,6 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 	DBG_HEXDUMP(MDAT_D, "Rx Payload",
 		    ((t_u8 *) prx_pd + prx_pd->rx_pkt_offset),
 		    MIN(prx_pd->rx_pkt_length, MAX_DATA_DUMP_LEN));
-
 	priv->rxpd_rate = prx_pd->rx_rate;
 	priv->rxpd_htinfo = prx_pd->ht_info;
 
@@ -288,6 +286,15 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 		memcpy(pmadapter, ta,
 		       priv->curr_bss_params.bss_descriptor.mac_address,
 		       MLAN_MAC_ADDR_LENGTH);
+	}
+
+	if ((priv->port_ctrl_mode == MTRUE && priv->port_open == MFALSE) &&
+	    (rx_pkt_type != PKT_TYPE_BAR)) {
+		mlan_11n_rxreorder_pkt(priv, prx_pd->seq_num, prx_pd->priority,
+				       ta, (t_u8) prx_pd->rx_pkt_type,
+				       (t_void *) RX_PKT_DROPPED_IN_FW);
+		wlan_process_rx_packet(pmadapter, pmbuf);
+		goto done;
 	}
 
 	/* Reorder and send to OS */

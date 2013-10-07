@@ -3062,6 +3062,10 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
 		ret = wlan_cmd_wifi_direct_mode(pmpriv, cmd_ptr, cmd_action,
 						pdata_buf);
 		break;
+	case HOST_CMD_P2P_PARAMS_CONFIG:
+		ret = wlan_cmd_p2p_params_config(pmpriv, cmd_ptr, cmd_action,
+						 pdata_buf);
+		break;
 #endif
 	case HostCmd_CMD_802_11_RF_ANTENNA:
 		ret = wlan_cmd_802_11_rf_antenna(pmpriv, cmd_ptr, cmd_action,
@@ -3253,6 +3257,9 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
 		break;
 	case HOST_CMD_WIFI_DIRECT_MODE_CONFIG:
 		ret = wlan_ret_wifi_direct_mode(pmpriv, resp, pioctl_buf);
+		break;
+	case HOST_CMD_P2P_PARAMS_CONFIG:
+		ret = wlan_ret_p2p_params_config(pmpriv, resp, pioctl_buf);
 		break;
 #endif
 	case HostCmd_CMD_802_11_RF_ANTENNA:
@@ -3520,7 +3527,7 @@ wlan_ops_uap_process_event(IN t_void * priv)
 	case EVENT_REMAIN_ON_CHANNEL_EXPIRED:
 		PRINTM(MEVENT, "EVENT: REMAIN_ON_CHANNEL_EXPIRED reason=%d\n",
 		       *(t_u16 *) pmadapter->event_body);
-		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_FLUSH_RX_WORK, MNULL);
 		pevent->event_id = MLAN_EVENT_ID_FW_REMAIN_ON_CHAN_EXPIRED;
 		break;
 #endif

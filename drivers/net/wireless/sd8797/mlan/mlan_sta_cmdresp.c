@@ -46,6 +46,7 @@ Change log:
 /********************************************************
 			Local Functions
 ********************************************************/
+
 /**
  *  @brief This function handles the command response error
  *

@@ -110,20 +110,18 @@ void
 woal_dump_sdio_reg(moal_handle * handle)
 {
 	int ret = 0;
-	t_u8 data, i, len;
+	t_u8 data, i;
 	int fun0_reg[] = { 0x05, 0x04 };
 	int fun1_reg[] = { 0x03, 0x04, 0x05, 0x60, 0x61 };
 
-	len = sizeof(fun0_reg) / sizeof(fun0_reg[0]);
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < ARRAY_SIZE(fun0_reg); i++) {
 		data = sdio_f0_readb(((struct sdio_mmc_card *)handle->card)->
 				     func, fun0_reg[i], &ret);
 		PRINTM(MMSG, "fun0: reg 0x%02x=0x%02x ret=%d\n", fun0_reg[i],
 		       data, ret);
 	}
 
-	len = sizeof(fun1_reg) / sizeof(fun1_reg[0]);
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < ARRAY_SIZE(fun1_reg); i++) {
 		data = sdio_readb(((struct sdio_mmc_card *)handle->card)->func,
 				  fun1_reg[i], &ret);
 		PRINTM(MMSG, "fun1: reg 0x%02x=0x%02x ret=%d\n", fun1_reg[i],
@@ -554,7 +552,6 @@ woal_read_data_sync(moal_handle * handle, mlan_buffer * pmbuf, t_u32 port,
 		 BLOCK_MODE) ? (pmbuf->data_len /
 				MLAN_SDIO_BLOCK_SIZE) : pmbuf->data_len;
 	t_u32 ioport = (port & MLAN_SDIO_IO_PORT_MASK);
-
 #ifdef SDIO_MMC_DEBUG
 	handle->cmd53r = 1;
 #endif

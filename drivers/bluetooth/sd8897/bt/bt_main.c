@@ -115,6 +115,8 @@ static int minicard_pwrup = 1;
 /** Pointer to struct with control hooks */
 static struct wifi_platform_data *bt_control_data;
 
+void mdev_poweroff(struct m_dev *m_dev);
+
 /**
  *  @brief Alloc bt device
  *
@@ -1523,6 +1525,7 @@ init_m_dev(struct m_dev *m_dev)
 	m_dev->ioctl = mdev_ioctl;
 	m_dev->query = mdev_query;
 	m_dev->owner = THIS_MODULE;
+	m_dev->poweroff = mdev_poweroff;
 
 }
 
@@ -2275,6 +2278,19 @@ bt_set_power(int on, unsigned long msec)
 	if (msec)
 		mdelay(msec);
 	return 0;
+}
+
+void
+mdev_poweroff(struct m_dev *m_dev)
+{
+	ENTER();
+
+	if (minicard_pwrup) {
+		bt_set_power(0, 0);
+		bt_set_carddetect(0);
+	}
+
+	LEAVE();
 }
 
 /**

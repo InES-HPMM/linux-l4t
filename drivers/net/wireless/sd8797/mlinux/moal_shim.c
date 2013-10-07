@@ -895,7 +895,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
 	ENTER();
 
-	PRINTM(MEVENT, "event id:0x%x\n", pmevent->event_id);
+	if (pmevent->event_id != MLAN_EVENT_ID_DRV_DEFER_RX_WORK)
+		PRINTM(MEVENT, "event id:0x%x\n", pmevent->event_id);
 	priv = woal_bss_index_to_priv(pmoal_handle, pmevent->bss_index);
 	if (priv == NULL) {
 		PRINTM(MERROR, "%s: priv is null\n", __FUNCTION__);
@@ -966,6 +967,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 		if (!netif_carrier_ok(priv->netdev))
 			netif_carrier_on(priv->netdev);
 		woal_wake_queue(priv->netdev);
+
 		break;
 
 	case MLAN_EVENT_ID_DRV_SCAN_REPORT:
@@ -976,6 +978,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 		}
 
 		if (priv->report_scan_result) {
+			priv->report_scan_result = MFALSE;
 #ifdef STA_WEXT
 			if (IS_STA_WEXT(cfg80211_wext)) {
 				memset(&wrqu, 0, sizeof(union iwreq_data));
@@ -991,10 +994,14 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 					woal_inform_bss_from_scan_result(priv,
 									 NULL,
 									 MOAL_NO_WAIT);
+				}
+				spin_lock(&priv->scan_req_lock);
+				if (priv->scan_request) {
 					cfg80211_scan_done(priv->scan_request,
 							   MFALSE);
 					priv->scan_request = NULL;
 				}
+				spin_unlock(&priv->scan_req_lock);
 				if (!priv->phandle->first_scan_done) {
 					priv->phandle->first_scan_done = MTRUE;
 					woal_set_scan_time(priv,
@@ -1007,7 +1014,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
 			woal_broadcast_event(priv, (t_u8 *) & pmevent->event_id,
 					     sizeof(mlan_event_id));
-			priv->report_scan_result = MFALSE;
+
 		}
 		break;
 
@@ -1309,8 +1316,12 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 	case MLAN_EVENT_ID_DRV_DEFER_HANDLING:
 		queue_work(priv->phandle->workqueue, &priv->phandle->main_work);
 		break;
-	case MLAN_EVENT_ID_FLUSH_RX_WORK:
+	case MLAN_EVENT_ID_DRV_FLUSH_RX_WORK:
 		flush_workqueue(priv->phandle->rx_workqueue);
+		break;
+	case MLAN_EVENT_ID_DRV_DEFER_RX_WORK:
+		queue_work(priv->phandle->rx_workqueue,
+			   &priv->phandle->rx_work);
 		break;
 	case MLAN_EVENT_ID_DRV_DBG_DUMP:
 		priv->phandle->driver_state = MTRUE;
@@ -1530,7 +1541,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 			       "FW_REMAIN_ON_CHANNEL_EXPIRED cookie = %#llx\n",
 			       priv->phandle->cookie);
 			priv->phandle->remain_on_channel = MFALSE;
-			if (priv->phandle->cookie) {
+			if (priv->phandle->cookie &&
+			    !priv->phandle->is_remain_timer_set) {
 				cfg80211_remain_on_channel_expired(
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
 									  priv->
@@ -1691,14 +1703,9 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 					pmevent->event_len -
 					sizeof(pmevent->event_id)
 					- PACKET_ADDR4_POS - ETH_ALEN);
-				PRINTM(MIOCTL,
-				       "Mgmt RX %s <= framectrl = 0x%x freq = %d roc = %d\n",
-				       priv->netdev->name,
-				       ((struct ieee80211_mgmt *)pkt)->
-				       frame_control, freq,
-				       priv->phandle->remain_on_channel);
-				if (((struct ieee80211_mgmt *)pkt)->
-				    frame_control == IEEE80211_STYPE_ACTION)
+				if (ieee80211_is_action
+				    (((struct ieee80211_mgmt *)pkt)->
+				     frame_control))
 					woal_cfg80211_display_p2p_actframe(pkt,
 									   pmevent->
 									   event_len
@@ -1814,7 +1821,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 				PRINTM(MMSG, "BSS START Complete!\n");
 			}
 		}
-
+		break;
 	default:
 		break;
 	}
@@ -1916,4 +1923,20 @@ moal_assert(IN t_void * pmoal_handle, IN t_u32 cond)
 	if (!cond) {
 		panic("Assert failed: Panic!");
 	}
+}
+
+/**
+ *  @brief This function indicate tcp ack tx
+ *
+ *  @param pmoal_handle     A pointer to moal_private structure
+ *  @param pmbuf		    Pointer to the mlan buffer structure
+ *
+ *  @return		    		N/A
+ */
+t_void
+moal_tcp_ack_tx_ind(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
+{
+	moal_handle *phandle = (moal_handle *) pmoal_handle;
+	pmbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
+	woal_tcp_ack_tx_indication(phandle->priv[pmbuf->bss_index], pmbuf);
 }

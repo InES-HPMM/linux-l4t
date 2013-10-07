@@ -363,7 +363,7 @@ typedef struct _domain_info_param {
 
 /** MAX domain TLV length */
 #define MAX_DOMAIN_TLV_LEN      (TLV_HEADER_LEN + COUNTRY_CODE_LEN \
-                                 + (SUB_BAND_LEN * MAX_SUB_BANDS))
+								+ (SUB_BAND_LEN * MAX_SUB_BANDS))
 
 void woal_uap_set_multicast_list(struct net_device *dev);
 int woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);

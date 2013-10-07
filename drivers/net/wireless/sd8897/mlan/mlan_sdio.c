@@ -1049,12 +1049,15 @@ wlan_send_mp_aggr_buf(mlan_adapter * pmadapter)
 			wlan_link_buf_to_aggr(&mbuf_aggr,
 					      pmadapter->mpa_tx.mbuf_arr[i]);
 			if (pmadapter->mpa_tx.mbuf_arr[i]->
-			    flags & MLAN_BUF_FLAG_TCP_ACK)
+			    flags & MLAN_BUF_FLAG_TCP_ACK) {
+				pmadapter->mpa_tx.mbuf_arr[i]->flags &=
+					~MLAN_BUF_FLAG_TCP_ACK;
 				pmadapter->callbacks.
 					moal_tcp_ack_tx_ind(pmadapter->
 							    pmoal_handle,
 							    pmadapter->mpa_tx.
 							    mbuf_arr[i]);
+			}
 		}
 	} else {
 		mbuf_aggr.pbuf = (t_u8 *) pmadapter->mpa_tx.buf;
@@ -1206,10 +1209,12 @@ wlan_host_to_card_mp_aggr(mlan_adapter * pmadapter, mlan_buffer * mbuf,
 			MP_TX_AGGR_BUF_PUT_SG(pmadapter, mbuf, port);
 			aggr_sg = MTRUE;
 		} else {
-			if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK)
+			if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK) {
+				mbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
 				pmadapter->callbacks.
 					moal_tcp_ack_tx_ind(pmadapter->
 							    pmoal_handle, mbuf);
+			}
 			MP_TX_AGGR_BUF_PUT(pmadapter, mbuf, port);
 		}
 		if (MP_TX_AGGR_PKT_LIMIT_REACHED(pmadapter) ||
@@ -1228,10 +1233,12 @@ tx_curr_single:
 	if (f_send_cur_buf) {
 		PRINTM(MINFO, "host_2_card_mp_aggr: writing to port #%d\n",
 		       port);
-		if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK)
+		if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK) {
+			mbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
 			pmadapter->callbacks.moal_tcp_ack_tx_ind(pmadapter->
 								 pmoal_handle,
 								 mbuf);
+		}
 		ret = wlan_write_data_sync(pmadapter, mbuf,
 					   pmadapter->ioport + port);
 		if (!(pmadapter->mp_wr_bitmap & (1 << pmadapter->curr_wr_port)))
@@ -1263,10 +1270,12 @@ tx_curr_single:
 			MP_TX_AGGR_BUF_PUT_SG(pmadapter, mbuf, port);
 			aggr_sg = MTRUE;
 		} else {
-			if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK)
+			if (mbuf->flags & MLAN_BUF_FLAG_TCP_ACK) {
+				mbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
 				pmadapter->callbacks.
 					moal_tcp_ack_tx_ind(pmadapter->
 							    pmoal_handle, mbuf);
+			}
 			MP_TX_AGGR_BUF_PUT(pmadapter, mbuf, port);
 		}
 	}
@@ -1775,10 +1784,12 @@ wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type, mlan_buffer * pmbuf,
 			ret = wlan_host_to_card_mp_aggr(pmadapter, pmbuf, port,
 							0);
 #else
-		if (pmbuf->flags & MLAN_BUF_FLAG_TCP_ACK)
+		if (pmbuf->flags & MLAN_BUF_FLAG_TCP_ACK) {
+			pmbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
 			pmadapter->callbacks.moal_tcp_ack_tx_ind(pmadapter->
 								 pmoal_handle,
 								 pmbuf);
+		}
 		ret = wlan_write_data_sync(pmadapter, pmbuf,
 					   pmadapter->ioport + port);
 #endif /* SDIO_MULTI_PORT_TX_AGGR */

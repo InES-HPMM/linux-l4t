@@ -219,6 +219,7 @@ Change log:
 #define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do {                  \
 	pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len], mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
 	a->mpa_tx.buf_len += mbuf->data_len;                        \
+	a->mpa_tx.mp_wr_info[a->mpa_tx.pkt_cnt] = *(t_u16 *)(mbuf->pbuf+mbuf->data_offset); \
 	if (!a->mpa_tx.pkt_cnt) {                                   \
 	    a->mpa_tx.start_port = port;                            \
 	}                                                           \
@@ -241,6 +242,7 @@ Change log:
 
 /** Reset SDIO Tx aggregation buffer parameters */
 #define MP_TX_AGGR_BUF_RESET(a) do {         \
+    memset(a, a->mpa_tx.mp_wr_info, 0, sizeof(a->mpa_tx.mp_wr_info)); \
 	a->mpa_tx.pkt_cnt = 0;                   \
 	a->mpa_tx.buf_len = 0;                   \
 	a->mpa_tx.ports = 0;                     \

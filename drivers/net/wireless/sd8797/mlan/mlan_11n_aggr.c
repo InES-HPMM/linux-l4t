@@ -419,6 +419,11 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
 						      priv->wmm.
 						      ra_list_spinlock);
 
+		if (pmbuf_src->flags & MLAN_BUF_FLAG_TCP_ACK)
+			pmadapter->callbacks.moal_tcp_ack_tx_ind(pmadapter->
+								 pmoal_handle,
+								 pmbuf_src);
+
 		pkt_size += wlan_11n_form_amsdu_pkt(pmadapter,
 						    (data + pkt_size),
 						    pmbuf_src->pbuf +
