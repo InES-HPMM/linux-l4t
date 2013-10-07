@@ -78,7 +78,7 @@
 		isp@54680000 {
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x54680000 0x00040000>;
-			nvidia,memory-clients = <8>;
+			nvidia,memory-clients = <55>;
 		};
 
 		vic {
