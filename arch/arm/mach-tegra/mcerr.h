@@ -133,6 +133,7 @@ extern void __iomem *mc;
 
 struct mc_client {
 	const char *name;
+	const char *swgid;
 	unsigned int intr_counts[INTR_COUNT];
 };
 
@@ -195,13 +196,13 @@ struct mcerr_chip_specific {
 	 * Show the statistics for each client. This is called from a debugfs
 	 * context - that means you can sleep and do general kernel stuff here.
 	 */
-	int		 (*mcerr_debugfs_show)(struct seq_file *s, void *v);
+	int (*mcerr_debugfs_show)(struct seq_file *s, void *v);
 
 	/* Numeric fields that must be set by the different architectures. */
 	unsigned int	 nr_clients;
 };
 
-#define client(_name) { .name = _name }
+#define client(_swgid, _name) { .swgid = _swgid, .name = _name }
 #define MC_ERR(_sig, _msg, _flags, _stat_reg, _addr_reg)		\
 	{ .sig = _sig, .msg = _msg, .flags = _flags,			\
 			.stat_reg = _stat_reg, .addr_reg = _addr_reg }
