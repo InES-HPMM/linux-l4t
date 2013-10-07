@@ -168,13 +168,15 @@ static void mcerr_t12x_info_update(struct mc_client *c, u32 stat)
 		c->intr_counts[7]++;
 }
 
+#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-10s %-10s %-9s\n"
+#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-10u %-10u %-9u\n"
 static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 {
 	int i, j;
 	int do_print;
 
-	seq_printf(s, "%-18s %-9s %-9s %-9s %-10s %-10s %-10s %-10s %-9s\n",
-		   "client", "decerr", "secerr", "smmuerr",
+	seq_printf(s, fmt_hdr,
+		   "swgid", "client", "decerr", "secerr", "smmuerr",
 		   "apberr", "decerr-VPR", "secerr-SEC",
 		   "decerr_MST", "unknown");
 	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
@@ -189,8 +191,8 @@ static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 			}
 		}
 		if (do_print)
-			seq_printf(s, "%-18s %-9u %-9u %-9u %-10u "
-					"%-10u %-10u %-10u %-9u\n",
+			seq_printf(s, fmt_cli,
+				   mc_clients[i].swgid,
 				   mc_clients[i].name,
 				   mc_clients[i].intr_counts[0],
 				   mc_clients[i].intr_counts[1],
