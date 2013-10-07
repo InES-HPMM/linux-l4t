@@ -47,12 +47,11 @@ static struct {
 	struct clk *cap_clk;
 	unsigned long cap_freq;
 } cap_freqs_table[] = {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-#ifdef CONFIG_TEGRA_GPU_DVFS
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	{ .cap_name = "cap.throttle.gbus" },
-#else
-	{ .cap_name = "cap.throttle.c2bus" },
 #endif
+#ifdef CONFIG_TEGRA_GPU_DVFS
+	{ .cap_name = "cap.throttle.c2bus" },
 	{ .cap_name = "cap.throttle.c3bus" },
 #else
 	{ .cap_name = "cap.throttle.cbus" },

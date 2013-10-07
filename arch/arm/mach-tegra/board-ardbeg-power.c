@@ -54,7 +54,6 @@
 #include "board-pmu-defines.h"
 #include "devices.h"
 #include "iomap.h"
-#include "tegra-board-id.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra11_soctherm.h"
 #include "tegra3_tsensor.h"
@@ -1361,7 +1360,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-balanced",
+					.cdev_type = "cpu-balanced",
 					.trip_temp = 89000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
@@ -1384,7 +1383,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-balanced",
+					.cdev_type = "gpu-balanced",
 					.trip_temp = 91000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,

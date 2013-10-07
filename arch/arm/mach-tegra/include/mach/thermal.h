@@ -30,15 +30,20 @@ struct tegra_cooling_device {
 #define NO_CAP			(ULONG_MAX) /* no cap */
 #define CPU_THROT_LOW		0 /* lowest throttle freq. only used for CPU */
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#define GBUS_CNT		1
+#else
+#define GBUS_CNT		0
+#endif
+
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-#ifdef CONFIG_TEGRA_GPU_DVFS
-#define NUM_OF_CAP_FREQS	5 /* cpu, gpu, c3bus, sclk, emc */
+#define CBUS_CNT		2
 #else
-#define NUM_OF_CAP_FREQS	5 /* cpu, c2bus, c3bus, sclk, emc */
+#define CBUS_CNT		1
 #endif
-#else
-#define NUM_OF_CAP_FREQS	4 /* cpu, cbus, sclk, emc */
-#endif
+
+/* cpu, gpu(0|1), cbus(1|2), sclk, emc */
+#define NUM_OF_CAP_FREQS	(1 + GBUS_CNT + CBUS_CNT + 1 + 1)
 
 struct throttle_table {
 	unsigned long cap_freqs[NUM_OF_CAP_FREQS];
