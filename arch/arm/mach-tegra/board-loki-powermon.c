@@ -23,11 +23,13 @@
 
 #include "board.h"
 #include "board-loki.h"
+#include "tegra-board-id.h"
 
 enum {
 	VDD_CPU_BAT_VBUS,
 	VDD_DDR_SOC_GPU,
 	VDD_3V3_EMMC_MDM,
+	VDD_BAT_VBUS_MODEM,
 };
 
 static struct ina3221_platform_data power_mon_info[] = {
@@ -52,6 +54,13 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
 	},
+	[VDD_BAT_VBUS_MODEM] = {
+		.rail_name = {"VDD_BATT", "VDD_VBUS",
+							"VDD_MODEM"},
+		.shunt_resistor = {10, 10, 10},
+		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
+		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+	},
 };
 
 enum {
@@ -60,7 +69,7 @@ enum {
 	INA_I2C_ADDR_42,
 };
 
-static struct i2c_board_info loki_i2c1_ina3221_board_info[] = {
+static struct i2c_board_info loki_i2c1_ina3221_board_e2548_info[] = {
 	[INA_I2C_ADDR_40] = {
 		I2C_BOARD_INFO("ina3221", 0x40),
 		.platform_data = &power_mon_info[VDD_CPU_BAT_VBUS],
@@ -78,11 +87,26 @@ static struct i2c_board_info loki_i2c1_ina3221_board_info[] = {
 	},
 };
 
+static struct i2c_board_info loki_i2c1_ina3221_board_e2549_info[] = {
+	[INA_I2C_ADDR_40] = {
+		I2C_BOARD_INFO("ina3221", 0x40),
+		.platform_data = &power_mon_info[VDD_BAT_VBUS_MODEM],
+		.irq = -1,
+	},
+};
+
 int __init loki_pmon_init(void)
 {
-	pr_info("INA3221: registering device\n");
-	i2c_register_board_info(1, loki_i2c1_ina3221_board_info,
-		ARRAY_SIZE(loki_i2c1_ina3221_board_info));
-
+	struct board_info info;
+	tegra_get_board_info(&info);
+	if (info.board_id == BOARD_E2548) {
+		pr_info("INA3221: registering for E2548\n");
+		i2c_register_board_info(1, loki_i2c1_ina3221_board_e2548_info,
+			ARRAY_SIZE(loki_i2c1_ina3221_board_e2548_info));
+	} else {
+		pr_info("INA3221: registering for E2549/P2530\n");
+		i2c_register_board_info(1, loki_i2c1_ina3221_board_e2549_info,
+			ARRAY_SIZE(loki_i2c1_ina3221_board_e2549_info));
+	}
 	return 0;
 }
