@@ -499,9 +499,12 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
-	if (tegra->support_usb_id)
-		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
+	if (tegra->support_usb_id) {
+		val = otg_readl(tegra, USB_PHY_WAKEUP);
+		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
+		otg_writel(tegra, val, USB_PHY_WAKEUP);
+	}
 	clk_disable_unprepare(tegra->clk);
 	pm_runtime_mark_last_busy(tegra->phy.dev);
 	pm_runtime_put_autosuspend(tegra->phy.dev);
