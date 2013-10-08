@@ -4489,6 +4489,8 @@ static int nvi_suspend(struct device *dev)
 	spin_unlock_irqrestore(&inf->time_stamp_lock, flags);
 	synchronize_irq(inf->i2c->irq);
 
+	flush_work_sync(&inf->work_struct);
+
 	mutex_lock(&inf->mutex);
 	inf->suspend = true;
 	err = nvi_pm(inf, NVI_PM_OFF);
@@ -4531,29 +4533,34 @@ static void nvi_shutdown(struct i2c_client *client)
 	int i;
 	unsigned long flags;
 	inf = i2c_get_clientdata(client);
+	if (inf == NULL)
+		return;
+
 	spin_lock_irqsave(&inf->time_stamp_lock, flags);
 	if (!inf->irq_disabled)
 		disable_irq_nosync(client->irq);
 	inf->irq_disabled = true;
 	spin_unlock_irqrestore(&inf->time_stamp_lock, flags);
 	synchronize_irq(inf->i2c->irq);
-	if (inf != NULL) {
-		for (i = 0; i < AUX_PORT_SPECIAL; i++) {
-			if (inf->aux.port[i].nmp.shutdown_bypass) {
-				nvi_aux_bypass_enable(inf, true);
-				break;
-			}
+
+	flush_work_sync(&inf->work_struct);
+
+	mutex_lock(&inf->mutex);
+	for (i = 0; i < AUX_PORT_SPECIAL; i++) {
+		if (inf->aux.port[i].nmp.shutdown_bypass) {
+			nvi_aux_bypass_enable(inf, true);
+			break;
 		}
-		inf->shutdown = true;
-		if (inf->inv_dev)
-			remove_sysfs_interfaces(inf);
-		kfifo_free(&inf->trigger.timestamps);
-		free_irq(client->irq, inf);
-		if (inf->idev)
-			input_unregister_device(inf->idev);
-		if ((INV_ITG3500 != inf->chip_type) && (inf->idev_dmp))
-			input_unregister_device(inf->idev_dmp);
 	}
+	inf->shutdown = true;
+	if (inf->inv_dev)
+		remove_sysfs_interfaces(inf);
+	free_irq(client->irq, inf);
+	mutex_unlock(&inf->mutex);
+	if (inf->idev)
+		input_unregister_device(inf->idev);
+	if ((INV_ITG3500 != inf->chip_type) && (inf->idev_dmp))
+		input_unregister_device(inf->idev_dmp);
 }
 
 static int nvi_remove(struct i2c_client *client)
@@ -4564,6 +4571,7 @@ static int nvi_remove(struct i2c_client *client)
 	inf = i2c_get_clientdata(client);
 	if (inf != NULL) {
 		nvi_pm_exit(inf);
+		kfifo_free(&inf->trigger.timestamps);
 		kfree(inf);
 	}
 	dev_info(&client->dev, "%s\n", __func__);
@@ -4624,7 +4632,10 @@ static void nvi_work_func(struct work_struct *work)
 	mutex_lock(&inf->mutex);
 	nvi_pm_current = inf->pm;
 	nvi_pm(inf, NVI_PM_OFF_FORCE);
-	if (!(inf->suspend || inf->shutdown)) {
+	/*
+	 * If suspending, no need to revive the power state
+	 */
+	if (!(inf->suspend)) {
 		nvi_pm(inf, nvi_pm_current);
 		nvi_reset(inf, true, true);
 		nvi_global_delay(inf);
