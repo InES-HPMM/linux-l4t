@@ -229,18 +229,18 @@ static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
 			rate = next_rate;
 			next_rate = clk_round_rate(c->parent, rate + 1000);
 			if (IS_ERR_VALUE(next_rate)) {
-				pr_debug("tegra11_dvfs: failed to round %s rate %lu\n",
-					 c->name, rate);
+				pr_debug("%s: failed to round %s rate %lu\n",
+					 __func__, c->parent->name, rate);
 				return -EINVAL;
 			}
 			if (rate == next_rate)
 				break;
 
-			next_v = tegra_dvfs_predict_millivolts(
+			next_v = tegra_dvfs_predict_peak_millivolts(
 				c->parent, next_rate);
 			if (IS_ERR_VALUE(next_v)) {
-				pr_debug("tegra11_dvfs: failed to predict %s mV for rate %lu\n",
-					 c->name, next_rate);
+				pr_debug("%s: failed to predict %s mV for rate %lu\n",
+					 __func__, c->parent->name, next_rate);
 				return -EINVAL;
 			}
 			if (next_v > v)
@@ -249,8 +249,8 @@ static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
 
 		if (rate == 0) {
 			rate = next_rate;
-			pr_warn("tegra11_dvfs: minimum %s rate %lu requires %d mV\n",
-				c->name, rate, next_v);
+			pr_info("%s: %s V=%dmV @ min F=%luHz above Vmin=%dmV\n",
+				__func__, c->parent->name, next_v, rate, v);
 		}
 		freqs[i] = rate;
 		next_rate = rate;

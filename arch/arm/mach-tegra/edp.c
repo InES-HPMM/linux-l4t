@@ -232,7 +232,8 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 		 i++, freq += FREQ_STEP) {
 
 		/* Predict voltages */
-		voltage_mV = tegra_dvfs_predict_millivolts(clk_cpu_g, freq);
+		voltage_mV = tegra_dvfs_predict_peak_millivolts(
+			clk_cpu_g, freq);
 		if (voltage_mV < 0) {
 			pr_err("%s: couldn't predict voltage: freq %u; err %d",
 			       __func__, freq, voltage_mV);

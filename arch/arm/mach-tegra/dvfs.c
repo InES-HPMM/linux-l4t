@@ -626,6 +626,13 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 				__func__, d->clk_name, mv, detach_mv);
 			return -EINVAL;
 		}
+
+		detach_mv = d->dvfs_rail->override_millivolts;
+		if (detach_mv && (mv > detach_mv)) {
+			pr_warn("%s: %s: voltage %d above override level %d\n",
+				__func__, d->clk_name, mv, detach_mv);
+			return -EINVAL;
+		}
 		d->cur_millivolts = millivolts[i];
 	}
 
@@ -691,6 +698,19 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
 		c->dvfs->dfll_millivolts :
 		tegra_dvfs_get_millivolts_pll(c->dvfs);
+	return predict_millivolts(c, millivolts, rate);
+}
+
+int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
+{
+	const int *millivolts;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
+			c->dvfs->dfll_millivolts : c->dvfs->peak_millivolts ? :
+			tegra_dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
 
@@ -877,7 +897,7 @@ int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	 */
 	if (i && c->ops && !c->ops->shared_bus_update &&
 	    !(c->flags & PERIPH_ON_CBUS) && !d->can_override) {
-		int mv = tegra_dvfs_predict_millivolts(c, d->freqs[i-1]);
+		int mv = tegra_dvfs_predict_peak_millivolts(c, d->freqs[i-1]);
 		if (d->dvfs_rail->min_override_millivolts < mv)
 			d->dvfs_rail->min_override_millivolts = mv;
 	}
