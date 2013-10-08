@@ -122,6 +122,7 @@ struct soc_camera_subdev_desc {
 
 	/* sensor driver private platform data */
 	void *drv_priv;
+	void *dev_priv;
 
 	/* Optional regulators that have to be managed on power on/off events */
 	struct regulator_bulk_data *regulators;
@@ -177,6 +178,7 @@ struct soc_camera_link {
 	unsigned long flags;
 
 	void *priv;
+	void *dev_priv;
 
 	/* Optional regulators that have to be managed on power on/off events */
 	struct regulator_bulk_data *regulators;
