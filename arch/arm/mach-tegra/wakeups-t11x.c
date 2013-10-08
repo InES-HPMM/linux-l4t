@@ -116,7 +116,7 @@ static int tegra_wake_event_irq[] = {
 	-EINVAL, /* SDMMC1 DAT1 */		/* wake13 */
 	-EAGAIN,				/* wake14 */
 	INT_EDP,				/* wake15 */
-	-EINVAL, /* Tegra RTC */		/* wake16 */
+	INT_RTC, /* Tegra RTC */		/* wake16 */
 	INT_KBC, /* Tegra KBC */		/* wake17 */
 	INT_EXTERNAL_PMU,			/* wake18 */
 	INT_USB,				/* wake19 */
