@@ -75,7 +75,7 @@ of_get_fixed_voltage_config(struct device *dev)
 		return ERR_PTR(-EINVAL);
 	}
 
-	if (init_data->constraints.boot_on)
+	if (init_data->constraints.boot_on | init_data->constraints.always_on)
 		config->enabled_at_boot = true;
 
 	config->gpio = of_get_named_gpio(np, "gpio", 0);
