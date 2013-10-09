@@ -489,6 +489,48 @@ static inline int tegra12x_unpowergate(int id)
 	return 0;
 }
 
+static int tegra12x_disp_powergate(int id)
+{
+	int ret = 0;
+	int ref_counta = atomic_read(&ref_count_dispa);
+	int ref_countb = atomic_read(&ref_count_dispb);
+	int ref_countve = atomic_read(&ref_count_venc);
+
+	if (id == TEGRA_POWERGATE_DISA) {
+		ref_counta = atomic_dec_return(&ref_count_dispa);
+		WARN_ONCE(ref_counta < 0, "DISPA ref count underflow");
+	} else if (id == TEGRA_POWERGATE_DISB) {
+		if (ref_countb > 0)
+			ref_countb = atomic_dec_return(&ref_count_dispb);
+		if (ref_countb <= 0)
+			CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
+	}
+
+	if ((ref_counta <= 0) && (ref_countb <= 0) && (ref_countve <= 0)) {
+		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_SOR));
+		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISA));
+	}
+	return ret;
+}
+
+static int tegra12x_disp_unpowergate(int id)
+{
+	int ret;
+
+	/* always unpowergate dispA and SOR partition */
+	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_DISA));
+	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_SOR));
+
+	if (id == TEGRA_POWERGATE_DISA)
+		atomic_inc(&ref_count_dispa);
+	else if (id == TEGRA_POWERGATE_DISB) {
+		atomic_inc(&ref_count_dispb);
+		ret = tegra12x_unpowergate(TEGRA_POWERGATE_DISB);
+	}
+
+	return ret;
+}
+
 static int tegra12x_venc_powergate(int id)
 {
 	int ret = 0;
@@ -502,8 +544,10 @@ static int tegra12x_venc_powergate(int id)
 	if (ref_count > 0)
 		return ret;
 
-	if (ref_count <= 0)
-		ret = tegra12x_powergate(id);
+	if (ref_count <= 0) {
+		CHECK_RET(tegra12x_powergate(id));
+		CHECK_RET(tegra12x_disp_powergate(id));
+	}
 
 	return ret;
 }
@@ -515,59 +559,13 @@ static int tegra12x_venc_unpowergate(int id)
 	if (!TEGRA_IS_VENC_POWERGATE_ID(id))
 		return -EINVAL;
 
+	CHECK_RET(tegra12x_disp_unpowergate(id));
+
 	atomic_inc(&ref_count_venc);
-	ret = tegra12x_unpowergate(id);
+	CHECK_RET(tegra12x_unpowergate(id));
 
 	return ret;
 }
-
-static int tegra12x_disp_powergate(int id)
-{
-	int ret = 0;
-	int ref_counta = atomic_read(&ref_count_dispa);
-	int ref_countb = atomic_read(&ref_count_dispb);
-
-	if (!TEGRA_IS_DISP_POWERGATE_ID(id))
-		return -EINVAL;
-
-	if (id == TEGRA_POWERGATE_DISA) {
-		ref_counta = atomic_dec_return(&ref_count_dispa);
-		WARN_ONCE(ref_counta < 0, "DISPA ref count underflow");
-	} else {
-		if (ref_countb > 0)
-			ref_countb = atomic_dec_return(&ref_count_dispb);
-		if (ref_countb <= 0)
-			CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
-	}
-
-	if ((ref_counta <= 0) && (ref_countb <= 0)) {
-		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_SOR));
-		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISA));
-	}
-	return ret;
-}
-
-static int tegra12x_disp_unpowergate(int id)
-{
-	int ret;
-
-	if (!TEGRA_IS_DISP_POWERGATE_ID(id))
-		return -EINVAL;
-
-	/* always unpowergate dispA and SOR partition */
-	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_DISA));
-	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_SOR));
-
-	if (id == TEGRA_POWERGATE_DISA)
-		atomic_inc(&ref_count_dispa);
-	else {
-		atomic_inc(&ref_count_dispb);
-		ret = tegra12x_unpowergate(TEGRA_POWERGATE_DISB);
-	}
-
-	return ret;
-}
-
 
 int tegra12x_powergate_partition(int id)
 {
