@@ -59,6 +59,10 @@
 #define CPU_THRESHOLD 2
 #define CPU_FREQ_THRESHOLD 1000000
 
+/* Assume power can not exceed +-524W */
+#define MAX_POWER_MW 0x000FFFFF
+#define POWER_SHFT 12
+
 struct ina3221_data {
 	struct device *hwmon_dev;
 	struct i2c_client *client;
@@ -80,7 +84,7 @@ static s32 __locked_power_down_ina3221(struct i2c_client *client)
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
 		INA3221_POWER_DOWN);
 	if (ret < 0)
-		dev_err(&client->dev, "Power dowm failure status: 0x%x", ret);
+		dev_err(&client->dev, "Power down failure status: 0x%x", ret);
 	return ret;
 }
 
@@ -130,7 +134,7 @@ static s32 show_voltage(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, bus_volt_reg_addr;
 	s32 ret;
-	s32 voltage_mV;
+	s32 voltage_mv;
 
 	mutex_lock(&data->mutex);
 	if (data->shutdown_complete) {
@@ -151,14 +155,15 @@ static s32 show_voltage(struct device *dev,
 	}
 
 	/* getting voltage readings in milli volts*/
-	voltage_mV =
-		be16_to_cpu(i2c_smbus_read_word_data(client,
-			bus_volt_reg_addr));
-	DEBUG_INA3221(("Ina3221 voltage reg Value: 0x%x\n", voltage_mV));
-	if (voltage_mV < 0)
+	ret = i2c_smbus_read_word_data(client,
+			bus_volt_reg_addr);
+	if (ret < 0)
 		goto error;
-	voltage_mV = busv_register_to_mv(voltage_mV);
-	DEBUG_INA3221(("Ina3221 voltage in mv: %d\n", voltage_mV));
+	DEBUG_INA3221(("Ina3221 bus voltage reg Value: 0x%x\n", voltage_mv));
+	voltage_mv = be16_to_cpu(ret);
+	voltage_mv = (voltage_mv << 16) >> 16;
+	voltage_mv = busv_register_to_mv(voltage_mv);
+	DEBUG_INA3221(("Ina3221 bus voltage in mv: %d\n", voltage_mv));
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
@@ -167,9 +172,9 @@ static s32 show_voltage(struct device *dev,
 			goto error;
 	}
 
-	DEBUG_INA3221(("%s volt = %d\n", __func__, voltage_mV));
+	DEBUG_INA3221(("%s volt = %d\n", __func__, voltage_mv));
 	mutex_unlock(&data->mutex);
-	return sprintf(buf, "%d mV\n", voltage_mV);
+	return sprintf(buf, "%d mV\n", voltage_mv);
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
@@ -185,8 +190,8 @@ static s32 show_current(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, shunt_volt_reg_addr;
 	s32 ret;
-	s32 voltage_uV;
-	s32 current_mA;
+	s32 voltage_uv;
+	s32 current_ma;
 	s32 inverse_shunt_resistor;
 
 	mutex_lock(&data->mutex);
@@ -208,18 +213,19 @@ static s32 show_current(struct device *dev,
 	}
 
 	/* getting voltage readings in micro volts*/
-	voltage_uV =
-		be16_to_cpu(i2c_smbus_read_word_data(client,
-			shunt_volt_reg_addr));
-	DEBUG_INA3221(("Ina3221 voltage reg Value: 0x%x\n", voltage_uV));
-	if (voltage_uV < 0)
+	ret = i2c_smbus_read_word_data(client,
+			shunt_volt_reg_addr);
+	if (ret < 0)
 		goto error;
-	voltage_uV = shuntv_register_to_uv(voltage_uV);
-	DEBUG_INA3221(("Ina3221 voltage in uv: %d\n", voltage_uV));
+	voltage_uv = be16_to_cpu(ret);
+	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
+	voltage_uv = (voltage_uv << 16) >> 16;
+	voltage_uv = shuntv_register_to_uv(voltage_uv);
+	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
 
 	/* shunt_resistor is received in mOhms */
 	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_mA = (voltage_uV * inverse_shunt_resistor) / 1000;
+	current_ma = (voltage_uv * inverse_shunt_resistor) / 1000;
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
@@ -228,9 +234,67 @@ static s32 show_current(struct device *dev,
 			goto error;
 	}
 
-	DEBUG_INA3221(("%s current = %d\n", __func__, current_mA));
+	DEBUG_INA3221(("%s current = %d\n", __func__, current_ma));
 	mutex_unlock(&data->mutex);
-	return sprintf(buf, "%d mA\n", current_mA);
+	return sprintf(buf, "%d mA\n", current_ma);
+error:
+	mutex_unlock(&data->mutex);
+	dev_err(dev, "%s: failed\n", __func__);
+	return ret;
+}
+
+static s32 show_current2(struct device *dev,
+		struct device_attribute *devattr,
+		char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	u8 index, shunt_volt_reg_addr;
+	s32 ret;
+	s32 voltage_uv;
+	s32 current_ma;
+	s32 inverse_shunt_resistor;
+
+	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
+
+	/*return 0 if INA is off*/
+	if (data->mode == TRIGGERED) {
+		mutex_unlock(&data->mutex);
+		return sprintf(buf, "%d mA\n", 0);
+	}
+
+	index = attr->index;
+	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
+	/* getting voltage readings in micro volts*/
+	ret = i2c_smbus_read_word_data(client,
+			shunt_volt_reg_addr);
+	if (ret < 0)
+		goto error;
+	voltage_uv = be16_to_cpu(ret);
+	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
+	voltage_uv = (voltage_uv << 16) >> 16;
+	voltage_uv = shuntv_register_to_uv(voltage_uv);
+	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
+
+	/* shunt_resistor is received in mOhms */
+	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
+	current_ma = (voltage_uv * inverse_shunt_resistor) / 1000;
+
+	if (data->mode == TRIGGERED) {
+		/* set ina3221 to power down mode */
+		ret = __locked_power_down_ina3221(client);
+		if (ret < 0)
+			goto error;
+	}
+
+	DEBUG_INA3221(("%s current = %d\n", __func__, current_ma));
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "%d mA\n", current_ma);
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
@@ -244,36 +308,39 @@ static s32 __locked_calculate_power(struct i2c_client *client,
 {
 
 	struct ina3221_data *data = i2c_get_clientdata(client);
-	s32 voltage_mV;
-	s32 voltage_uV;
+	s32 voltage_mv;
+	s32 voltage_uv;
 	s32 inverse_shunt_resistor;
-	s32 current_mA;
-	s32 power_mW;
+	s32 current_ma;
+	s32 power_mw;
+	s32 ret;
 	/* getting voltage readings in micro volts*/
-	voltage_uV =
-		be16_to_cpu(i2c_smbus_read_word_data(client,
-			shunt_volt_reg_addr));
-	DEBUG_INA3221(("Ina3221 voltage reg Value: 0x%x\n", voltage_uV));
-	if (voltage_uV < 0)
+	ret = i2c_smbus_read_word_data(client,
+			shunt_volt_reg_addr);
+	if (ret < 0)
 		goto error;
-	voltage_uV = shuntv_register_to_uv(voltage_uV);
-	DEBUG_INA3221(("Ina3221 voltage in uv: %d\n", voltage_uV));
+	voltage_uv = be16_to_cpu(ret);
+	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
+	voltage_uv = (voltage_uv << 16) >> 16;
+	voltage_uv = shuntv_register_to_uv(voltage_uv);
+	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
 
 	/* getting voltage readings in milli volts*/
-	voltage_mV =
-		be16_to_cpu(i2c_smbus_read_word_data(client,
-			bus_volt_reg_addr));
-	DEBUG_INA3221(("Ina3221 voltage reg Value: 0x%x\n", voltage_mV));
-	if (voltage_mV < 0)
+	ret = i2c_smbus_read_word_data(client,
+			bus_volt_reg_addr);
+	if (ret < 0)
 		goto error;
-	voltage_mV = busv_register_to_mv(voltage_mV);
-	DEBUG_INA3221(("Ina3221 voltage in mv: %d\n", voltage_mV));
+	voltage_mv = be16_to_cpu(ret);
+	DEBUG_INA3221(("Ina3221 bus voltage reg Value: 0x%x\n", voltage_mv));
+	voltage_mv = (voltage_mv << 16) >> 16;
+	voltage_mv = busv_register_to_mv(voltage_mv);
+	DEBUG_INA3221(("Ina3221 bus voltage in mv: %d\n", voltage_mv));
 
 	/* shunt_resistor is received in mOhms */
 	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
-	power_mW = voltage_mV * current_mA / 1000;
-	return power_mW;
+	current_ma = voltage_uv * inverse_shunt_resistor / 1000;
+	power_mw = voltage_mv * current_ma / 1000;
+	return power_mw & MAX_POWER_MW;
 error:
 	return -EIO;
 }
@@ -287,7 +354,7 @@ static s32 show_power(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
 	s32 ret;
-	s32 power_mW;
+	s32 power_mw;
 
 	mutex_lock(&data->mutex);
 	if (data->shutdown_complete) {
@@ -308,10 +375,10 @@ static s32 show_power(struct device *dev,
 		}
 	}
 	/*Will get -EIO on error*/
-	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
+	power_mw = __locked_calculate_power(client, shunt_volt_reg_addr,
 						bus_volt_reg_addr, index);
-	if (power_mW < 0) {
-		ret = power_mW;
+	if (power_mw < 0) {
+		ret = power_mw;
 		goto error;
 	}
 
@@ -321,9 +388,10 @@ static s32 show_power(struct device *dev,
 		if (ret < 0)
 			goto error;
 	}
-	DEBUG_INA3221(("%s power = %d\n", __func__, power_mW));
+	power_mw = (power_mw << POWER_SHFT) >> POWER_SHFT;
+	DEBUG_INA3221(("%s power = %d\n", __func__, power_mw));
 	mutex_unlock(&data->mutex);
-	return sprintf(buf, "%d mW\n", power_mW);
+	return sprintf(buf, "%d mW\n", power_mw);
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
@@ -338,7 +406,7 @@ static s32 show_power2(struct device *dev,
 	struct ina3221_data *data = i2c_get_clientdata(client);
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
-	s32 power_mW;
+	s32 power_mw;
 	s32 ret;
 
 	mutex_lock(&data->mutex);
@@ -356,16 +424,16 @@ static s32 show_power2(struct device *dev,
 	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
 	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
 
-	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
+	power_mw = __locked_calculate_power(client, shunt_volt_reg_addr,
 						bus_volt_reg_addr, index);
-	if (power_mW < 0) {
-		ret = power_mW;
+	if (power_mw < 0) {
+		ret = power_mw;
 		goto error;
 	}
-
-	DEBUG_INA3221(("%s power = %d\n", __func__, power_mW));
+	power_mw = (power_mw << POWER_SHFT) >> POWER_SHFT;
+	DEBUG_INA3221(("%s power = %d\n", __func__, power_mw));
 	mutex_unlock(&data->mutex);
-	return sprintf(buf, "%d mW\n", power_mW);
+	return sprintf(buf, "%d mW\n", power_mw);
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
@@ -482,16 +550,19 @@ static struct sensor_device_attribute ina3221[] = {
 	SENSOR_ATTR(rail_name_0, S_IRUGO, show_rail_name, NULL, 0),
 	SENSOR_ATTR(in1_input_0, S_IRUGO, show_voltage, NULL, 0),
 	SENSOR_ATTR(curr1_input_0, S_IRUGO, show_current, NULL, 0),
+	SENSOR_ATTR(curr2_input_0, S_IRUGO, show_current2, NULL, 0),
 	SENSOR_ATTR(power1_input_0, S_IRUGO, show_power, NULL, 0),
 	SENSOR_ATTR(power2_input_0, S_IRUGO, show_power2, NULL, 0),
 	SENSOR_ATTR(rail_name_1, S_IRUGO, show_rail_name, NULL, 1),
 	SENSOR_ATTR(in1_input_1, S_IRUGO, show_voltage, NULL, 1),
 	SENSOR_ATTR(curr1_input_1, S_IRUGO, show_current, NULL, 1),
+	SENSOR_ATTR(curr2_input_1, S_IRUGO, show_current2, NULL, 1),
 	SENSOR_ATTR(power1_input_1, S_IRUGO, show_power, NULL, 1),
 	SENSOR_ATTR(power2_input_1, S_IRUGO, show_power2, NULL, 1),
 	SENSOR_ATTR(rail_name_2, S_IRUGO, show_rail_name, NULL, 2),
 	SENSOR_ATTR(in1_input_2, S_IRUGO, show_voltage, NULL, 2),
 	SENSOR_ATTR(curr1_input_2, S_IRUGO, show_current, NULL, 2),
+	SENSOR_ATTR(curr2_input_2, S_IRUGO, show_current2, NULL, 2),
 	SENSOR_ATTR(power1_input_2, S_IRUGO, show_power, NULL, 2),
 	SENSOR_ATTR(power2_input_2, S_IRUGO, show_power2, NULL, 2),
 	SENSOR_ATTR(running_mode, S_IRUGO, show_mode, NULL, 0),
