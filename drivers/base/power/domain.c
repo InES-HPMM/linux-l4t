@@ -434,9 +434,19 @@ static int genpd_dev_pm_qos_notifier(struct notifier_block *nb,
 		spin_unlock_irq(&dev->power.lock);
 
 		if (!IS_ERR(genpd)) {
+			enum pm_qos_flags_status stat;
+
 			mutex_lock(&genpd->lock);
 			genpd->max_off_time_changed = true;
+
+			stat = dev_pm_qos_flags(pdd->dev,
+					PM_QOS_FLAG_NO_POWER_OFF
+						| PM_QOS_FLAG_REMOTE_WAKEUP);
+
 			mutex_unlock(&genpd->lock);
+
+			if (stat)
+				pm_genpd_poweron(genpd);
 		}
 
 		dev = dev->parent;
