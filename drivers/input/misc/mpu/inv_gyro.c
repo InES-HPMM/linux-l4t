@@ -4486,6 +4486,7 @@ static int nvi_suspend(struct device *dev)
 	if (!inf->irq_disabled)
 		disable_irq_nosync(inf->i2c->irq);
 	inf->irq_disabled = true;
+	inf->stop_workqueue = true;
 	spin_unlock_irqrestore(&inf->time_stamp_lock, flags);
 	synchronize_irq(inf->i2c->irq);
 
@@ -4511,6 +4512,7 @@ static int nvi_resume(struct device *dev)
 	if (inf->irq_disabled)
 		enable_irq(inf->i2c->irq);
 	inf->irq_disabled = false;
+	inf->stop_workqueue = false;
 	spin_unlock_irqrestore(&inf->time_stamp_lock, flags);
 
 	mutex_lock(&inf->mutex);
@@ -4540,6 +4542,7 @@ static void nvi_shutdown(struct i2c_client *client)
 	if (!inf->irq_disabled)
 		disable_irq_nosync(client->irq);
 	inf->irq_disabled = true;
+	inf->stop_workqueue = true;
 	spin_unlock_irqrestore(&inf->time_stamp_lock, flags);
 	synchronize_irq(inf->i2c->irq);
 
@@ -4642,7 +4645,8 @@ static void nvi_work_func(struct work_struct *work)
 	}
 
 	spin_lock_irqsave(&inf->time_stamp_lock, flags);
-	if (inf->irq_disabled && !(inf->suspend || inf->shutdown)) {
+	if (inf->irq_disabled && !inf->stop_workqueue
+		&& !(inf->suspend || inf->shutdown)) {
 		enable_irq(inf->i2c->irq);
 		inf->irq_disabled = false;
 	}

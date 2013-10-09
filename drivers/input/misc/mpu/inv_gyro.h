@@ -442,6 +442,7 @@ struct inv_gyro_state_s {
 	u16 fifo_sample_size;
 	bool shutdown;
 	bool suspend;
+	bool stop_workqueue;
 	bool fifo_reset_3050;
 	bool mot_det_en;
 	s64 fifo_ts;
