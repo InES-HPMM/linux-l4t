@@ -395,6 +395,7 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 		modem->system_suspend = 1;
 #ifdef CONFIG_PM
 		if (modem->capability & TEGRA_MODEM_AUTOSUSPEND &&
+		    modem->wake_irq &&
 		    modem->udev &&
 		    modem->udev->state != USB_STATE_NOTATTACHED) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
