@@ -3,13 +3,12 @@
  * MAX98090 codec.
  *
  * Author: Kamal Kannan Balagopalan <kbalagopalan@nvidia.com>
- * Copyright (C) 2012 - NVIDIA, Inc.
  *
  * Copyright 2007 Wolfson Microelectronics PLC.
  * Author: Graeme Gregory
  *         graeme.gregory@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -901,7 +900,8 @@ static int tegra_max98090_jack_notifier(struct notifier_block *self,
 		state = BIT_NO_HEADSET;
 	}
 
-	switch_set_state(&tegra_max98090_headset_switch, state);
+	if (action == jack->status)
+		switch_set_state(&tegra_max98090_headset_switch, state);
 
 	return NOTIFY_OK;
 }
@@ -1151,7 +1151,8 @@ static struct snd_soc_dai_link tegra_max98090_dai[] = {
 		.name = "MAX97236",
 		.stream_name = "MAX97236 HIFI",
 		.codec_name = "max97236.5-0040",
-		.codec_dai_name = "HiFi",
+		.platform_name = "tegra-pcm-audio",
+		.codec_dai_name = "max97236-HiFi",
 		.ops = NULL,
 	},
 };
@@ -1264,6 +1265,10 @@ static int tegra_late_probe(struct snd_soc_card *card)
 			"Headphone Jack",
 			SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00,
 			&tegra_max98090_hp_jack);
+	if (ret) {
+		dev_err(codec236->dev, "snd_soc_jack_new returned %d\n", ret);
+		return ret;
+	}
 
 #ifdef CONFIG_SWITCH
 	snd_soc_jack_notifier_register(&tegra_max98090_hp_jack,
@@ -1275,9 +1280,6 @@ static int tegra_late_probe(struct snd_soc_card *card)
 #endif
 
 	max97236_mic_detect(codec236, &tegra_max98090_hp_jack);
-
-	if (ret < 0)
-		return ret;
 
 	return 0;
 }

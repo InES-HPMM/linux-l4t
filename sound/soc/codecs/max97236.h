@@ -1,5 +1,5 @@
 /*
- * max97236.h -- MAX97236 ALSA SoC Audio driver
+ * max97236.h -- MAX97236 Jack Detection Driver
  *
  * Copyright 2012-2013 Maxim Integrated Products
  *
@@ -11,8 +11,6 @@
 #ifndef _MAX97236_H
 #define _MAX97236_H
 
-#include <linux/version.h>
-
 /* Controls detection mode, either DETECT0 or DETECT1 */
 #undef MAX97236_AUTOMODE1_JACK_DETECTION
 
@@ -22,10 +20,11 @@
 /*
  * Driver major.minor.build number
  */
-#define MAX97236_REVISION			"0.00.0328"
+#define MAX97236_REVISION			"0.00.0581"
 
 /* EXTCLK frequency default value */
-#define EXTCLK_FREQUENCY			12288000
+#define EXTCLK_FREQUENCY			19200000
+#define EXTCLK_FREQUENCY_SUSPEND	19200000
 
 /*
  * MAX97236 Register Definitions
@@ -320,10 +319,10 @@
 #define M97236_KEYDATA_WIDTH		6
 #define M97236_KEYDATA_NUM		(1<<M97236_KEYDATA_WIDTH)
 
-#define	M97236_KEY_THRESH_0		8
-#define	M97236_KEY_THRESH_1		16
-#define	M97236_KEY_THRESH_2		24
-#define	M97236_KEY_THRESH_3		31
+#define	M97236_KEY_THRESH_0		47
+#define	M97236_KEY_THRESH_1		99
+#define	M97236_KEY_THRESH_2		128
+#define	M97236_KEY_THRESH_3		128
 
 /*
  * M97236_REG_18_DC_TEST_SLEW_CONTROL
@@ -428,7 +427,8 @@
 #define M97236_JACK_STATE_UNKNOWN	0x00
 
 #define M97236_DEFAULT_JACK_DETECT_DELAY		250
-#define M97236_DEFAULT_RETRIES					10
+#define M97236_TEST1_DEFAULT_RETRIES			10
+#define M97236_TEST2_DEFAULT_RETRIES			5
 
 #define M97236_BYTE1(w) ((w >> 8) & 0xff)
 #define M97236_BYTE0(w) (w & 0xff)
@@ -457,6 +457,7 @@ struct max97236_priv {
 	struct delayed_work jack_work;
 	struct snd_soc_jack *jack;
 	unsigned int dai_fmt;
+	unsigned int status0;
 };
 
 int max97236_mic_detect(struct snd_soc_codec *codec,
