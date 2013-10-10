@@ -989,7 +989,9 @@ void __init tegra12x_init_early(void)
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
 	tegra_pmc_init();
 	tegra_powergate_init();
+#ifndef CONFIG_ARM64
 	tegra30_hotplug_init();
+#endif
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
