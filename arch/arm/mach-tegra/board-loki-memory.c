@@ -2737,8 +2737,24 @@ static struct tegra12_emc_pdata loki_emc_pdata = {
 
 int __init loki_emc_init(void)
 {
-	pr_info("Loading loki EMC tables.\n");
-	tegra_emc_device.dev.platform_data = &loki_emc_pdata;
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	if (bi.board_id == BOARD_E2548) {
+		switch (bi.sku) {
+		case 0x0:
+			pr_info("Loading loki EMC tables.\n");
+			tegra_emc_device.dev.platform_data = &loki_emc_pdata;
+			break;
+		default:
+			WARN(1, "B00 EMC not yet supported: %u\n", bi.sku);
+			return -EINVAL;
+		}
+	} else {
+		WARN(1, "B00 EMC not yet supported: %u\n", bi.sku);
+		return -EINVAL;
+	}
 	platform_device_register(&tegra_emc_device);
 	tegra12_emc_init();
 	return 0;

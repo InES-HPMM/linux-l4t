@@ -49,6 +49,9 @@
 #define BOARD_PM358   0x0166
 #define BOARD_PM359   0x0167
 #define BOARD_PM363   0x016B
+#define BOARD_E2548   0x09F4
+#define BOARD_E2549   0x09F5
+
 
 /* Panel board ID */
 #define    BOARD_E1605    0x0645
@@ -63,7 +66,6 @@
 #define    BOARD_E1549    0x060D
 
 #define    BOARD_E1563    0x061b
-#define BOARD_P2560   0x0A00
 
 
 /* PMIC board ID */
