@@ -293,6 +293,14 @@ config NVMAP_USE_FD_FOR_HANDLE
 	  can use either NvMap interface or DmaBuf interface in order
 	  to access NvMap handle memory.
 
+config NVMAP_USE_CMA_FOR_CARVEOUT
+	bool "Use CMA memory for carveouts"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to reserve carveout memory using CMA
+	  API. CMA reserved memory can be used by applications
+	  when it is not in use by the device that reserved it.
+
 config TEGRA_DSI
 	bool "Enable DSI panel."
 	default n
