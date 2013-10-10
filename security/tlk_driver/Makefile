@@ -25,5 +25,6 @@ tlk_driver-objs += ote_device.o
 tlk_driver-objs += ote_comms.o
 tlk_driver-objs += ote_fs.o
 tlk_driver-objs += ote_irq.o
+tlk_driver-objs += ote_log.o
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL) += tlk_driver.o

@@ -122,6 +122,8 @@ enum {
 	TE_SMC_REGISTER_FS_HANDLERS	= 0xFFFF1FF2,
 	TE_SMC_REGISTER_REQ_BUF		= 0xFFFF1FF3,
 	TE_SMC_FS_OP_DONE		= 0xFFFF1FFF,
+	TE_SMC_INIT_LOGGER		= 0xFFFF1FF4,
+
 };
 
 enum {
@@ -246,4 +248,6 @@ struct te_file_req {
 
 int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
+void ote_print_logs(void);
+
 #endif
