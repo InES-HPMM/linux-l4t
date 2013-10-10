@@ -82,6 +82,7 @@ int ardbeg_soctherm_init(void);
 #define MODEM_EN		TEGRA_GPIO_PS4
 #define MDM_RST			TEGRA_GPIO_PS3
 #define MDM_COLDBOOT		TEGRA_GPIO_PO5
+#define MDM_SAR0		TEGRA_GPIO_PG2
 
 /* Baseband IDs */
 enum tegra_bb_type {

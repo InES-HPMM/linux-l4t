@@ -560,6 +560,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 static struct gpio modem_gpios[] = { /* Bruce modem */
 	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
 	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
+	{MDM_SAR0, GPIOF_OUT_INIT_LOW, "MODEM SAR0"},
 };
 
 static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
@@ -774,6 +775,7 @@ static int baseband_init(void)
 
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MDM_RST, false);
+	gpio_export(MDM_SAR0, false);
 
 	return 0;
 }
