@@ -50,7 +50,7 @@ struct tegra_usb_modem_power_platform_data {
 	int autosuspend_delay;		/* autosuspend delay in milliseconds */
 	int short_autosuspend_delay;	/* short autosuspend delay in ms */
 	const struct platform_device *tegra_ehci_device; /* USB host device */
-	const struct tegra_usb_platform_data *tegra_ehci_pdata;
+	struct tegra_usb_platform_data *tegra_ehci_pdata;
 	struct edp_client *modem_boot_edp_client;
 	char *edp_manager_name;
 	unsigned int i_breach_ppm;

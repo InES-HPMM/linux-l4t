@@ -446,6 +446,27 @@ static int mdm_request_irq(struct tegra_usb_modem *modem,
 	return 0;
 }
 
+static void tegra_usb_modem_post_remote_wakeup(void)
+{
+	struct device *dev;
+	struct tegra_usb_modem *modem;
+
+	dev = bus_find_device_by_name(&platform_bus_type, NULL,
+					"MDM");
+	if (!dev) {
+		pr_warn("%s unable to find device name\n", __func__);
+		return;
+	}
+
+	modem = dev_get_drvdata(dev);
+
+	mutex_lock(&modem->lock);
+	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
+	mutex_unlock(&modem->lock);
+
+	return;
+}
+
 /* load USB host controller */
 static struct platform_device *tegra_usb_host_register(
 				const struct tegra_usb_modem *modem)
@@ -711,6 +732,10 @@ static struct device_attribute *edp_attributes[] = {
 	NULL
 };
 
+static struct tegra_usb_phy_platform_ops tegra_usb_modem_platform_ops = {
+	.post_remote_wakeup = tegra_usb_modem_post_remote_wakeup,
+};
+
 static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 {
 	struct tegra_usb_modem_power_platform_data *pdata =
@@ -811,6 +836,9 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 			dev_err(&pdev->dev, "request wake irq error\n");
 			goto error;
 		}
+	} else {
+		modem->pdata->tegra_ehci_pdata->ops =
+						&tegra_usb_modem_platform_ops;
 	}
 
 	if (gpio_is_valid(pdata->boot_gpio)) {
