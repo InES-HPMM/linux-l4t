@@ -835,14 +835,26 @@ EXPORT_SYMBOL_GPL(iommu_map);
 int iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		    struct page **pages, size_t count, int prot)
 {
-	return domain->ops->map_pages(domain, iova, pages, count, prot);
+	int err;
+
+	err = domain->ops->map_pages(domain, iova, pages, count, prot);
+	if (err)
+		iommu_unmap(domain, iova, count << PAGE_SHIFT);
+
+	return err;
 }
 EXPORT_SYMBOL_GPL(iommu_map_pages);
 
 int iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		 struct scatterlist *sgl, int nents, int prot)
 {
-	return domain->ops->map_sg(domain, iova, sgl, nents, prot);
+	int err;
+
+	err = domain->ops->map_sg(domain, iova, sgl, nents, prot);
+	if (err)
+		iommu_unmap(domain, iova, sgl->length);
+
+	return err;
 }
 
 size_t iommu_unmap(struct iommu_domain *domain, unsigned long iova, size_t size)
