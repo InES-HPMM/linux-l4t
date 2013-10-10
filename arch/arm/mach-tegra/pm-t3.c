@@ -671,14 +671,15 @@ void tegra_lp0_resume_mc(void)
 	tegra_mc_timing_restore();
 }
 
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 static int __init get_clock_cclk_lp(void)
 {
 	if (!cclk_lp)
 		cclk_lp = tegra_get_clock_by_name("cclk_lp");
 	return 0;
 }
-
 subsys_initcall(get_clock_cclk_lp);
+#endif
 
 void tegra_lp0_cpu_mode(bool enter)
 {
@@ -689,8 +690,10 @@ void tegra_lp0_cpu_mode(bool enter)
 		entered_on_g = !is_lp_cluster();
 
 	if (entered_on_g) {
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 		if (enter)
 			tegra_clk_prepare_enable(cclk_lp);
+#endif
 
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
@@ -698,8 +701,10 @@ void tegra_lp0_cpu_mode(bool enter)
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 #endif
 		if (!tegra_cluster_control(0, flags)) {
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 			if (!enter)
 				tegra_clk_disable_unprepare(cclk_lp);
+#endif
 			pr_info("Tegra: switched to %s cluster %s LP0\n",
 				enter ? "LP" : "G",
 				enter ? "before entering" : "after exiting");
