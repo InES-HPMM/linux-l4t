@@ -1,7 +1,7 @@
 /*
  * rt5639.h  --  RT5639 ALSA SoC audio driver
  *
- * Copyright 2011 Realtek Microelectronics
+ * Copyright (c) 2011-2013 REALTEK SEMICONDUCTOR CORP. All rights reserved.
  * Author: Johnny Hsu <johnnyhsu@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,8 @@
 #define RT5639_HP_VOL				0x02
 #define RT5639_OUTPUT				0x03
 #define RT5639_MONO_OUT			0x04
+/* Dummy */
+#define RT5639_DUMMY_PR3F				0x05
 /* I/O - Input */
 #define RT5639_IN1_IN2				0x0d
 #define RT5639_IN3_IN4				0x0e
@@ -137,13 +139,20 @@
 #define RT5639_HP_CALIB2			0xd7
 #define RT5639_SV_ZCD1				0xd9
 #define RT5639_SV_ZCD2				0xda
-/* Dummy Register */
-#define RT5639_DUMMY1				0xfa
-#define RT5639_DUMMY2				0xfb
-#define RT5639_DUMMY3				0xfc
+/* General Control */
+#define RT5639_GEN_CTRL1			0xfa
+#define RT5639_GEN_CTRL2			0xfb
+#define RT5639_GEN_CTRL3			0xfc
 
 
 /* Index of Codec Private Register definition */
+#define RT5639_BIAS_CUR1			0x12
+#define RT5639_BIAS_CUR3			0x14
+#define RT5639_CLSD_INT_REG1			0x1c
+#define RT5639_CHPUMP_INT_REG1			0x24
+#define RT5639_MAMP_INT_REG2			0x37
+#define RT5639_CHOP_DAC_ADC			0x3d
+#define RT5639_MIXER_INT_REG			0x3f
 #define RT5639_3D_SPK				0x63
 #define RT5639_WND_1				0x6c
 #define RT5639_WND_2				0x6d
@@ -152,6 +161,7 @@
 #define RT5639_WND_5				0x70
 #define RT5639_WND_8				0x73
 #define RT5639_DIP_SPK_INF			0x75
+#define RT5639_HP_DCC_INT1			0x77
 #define RT5639_EQ_BW_LOP			0xa0
 #define RT5639_EQ_GN_LOP			0xa1
 #define RT5639_EQ_FC_BP1			0xa2
@@ -191,7 +201,9 @@
 
 /* IN1 and IN2 Control (0x0d) */
 /* IN3 and IN4 Control (0x0e) */
+#define RT5639_BST_MASK1			(0xf<<12)
 #define RT5639_BST_SFT1				12
+#define RT5639_BST_MASK2			(0xf<<8)
 #define RT5639_BST_SFT2				8
 #define RT5639_IN_DF1				(0x1 << 7)
 #define RT5639_IN_SFT1				7
@@ -1204,6 +1216,14 @@
 #define RT5639_CP_FQ2_SFT			4
 #define RT5639_CP_FQ3_MASK			(0x7)
 #define RT5639_CP_FQ3_SFT			0
+#define RT5639_CP_FQ_1_5_KHZ			0
+#define RT5639_CP_FQ_3_KHZ			1
+#define RT5639_CP_FQ_6_KHZ			2
+#define RT5639_CP_FQ_12_KHZ			3
+#define RT5639_CP_FQ_24_KHZ			4
+#define RT5639_CP_FQ_48_KHZ			5
+#define RT5639_CP_FQ_96_KHZ			6
+#define RT5639_CP_FQ_192_KHZ			7
 
 /* HPOUT charge pump (0x91) */
 #define RT5639_OSW_L_MASK			(0x1 << 11)
@@ -1335,6 +1355,7 @@
 #define RT5639_EQ_LPF_SFT			0
 #define RT5639_EQ_LPF_DIS			(0x0)
 #define RT5639_EQ_LPF_EN			(0x1)
+#define RT5639_EQ_CTRL_MASK			(0x7f)
 
 /* Memory Test (0xb2) */
 #define RT5639_MT_MASK				(0x1 << 15)
@@ -1700,6 +1721,7 @@
 #define RT5639_DSP_R_EN				(0x1 << 9)
 #define RT5639_DSP_W_EN			(0x1 << 8)
 #define RT5639_DSP_CMD_MASK			(0xff)
+#define RT5639_DSP_CMD_PE			(0x0d)	/* Patch Entry */
 #define RT5639_DSP_CMD_MW			(0x3b)	/* Memory Write */
 #define RT5639_DSP_CMD_MR			(0x37)	/* Memory Read */
 #define RT5639_DSP_CMD_RR			(0x60)	/* Register Read */
@@ -2017,13 +2039,31 @@ enum {
 #define RT5639_EQ_PST_VOL_MASK		(0xffff)
 #define RT5639_EQ_PST_VOL_SFT			0
 
+/* General Control1 (0xfa) */
+#define RT5639_M_MAMIX_L			(0x1 << 13)
+#define RT5639_M_MAMIX_R			(0x1 << 12)
+
+/* General Control2 (0xfb) */
+#define RT5639_RXDC_SRC_MASK		(0x1 << 7)
+#define RT5639_RXDC_SRC_STO		(0x0 << 7)
+#define RT5639_RXDC_SRC_MONO		(0x1 << 7)
+#define RT5639_RXDC_SRC_SFT		(7)
+#define RT5639_RXDP2_SEL_MASK		(0x1 << 3)
+#define RT5639_RXDP2_SEL_IF2		(0x0 << 3)
+#define RT5639_RXDP2_SEL_ADC		(0x1 << 3)
+#define RT5639_RXDP2_SEL_SFT		(3)
+
+
+/* Vendor ID (0xfd) */
+#define RT5639_VER_C				0x2
+#define RT5639_VER_D				0x3
 
 
 /* Volume Rescale */
 #define RT5639_VOL_RSCL_MAX 0x27
 #define RT5639_VOL_RSCL_RANGE 0x1F
 /* Debug String Length */
-#define RT5639_REG_DISP_LEN 10
+#define RT5639_REG_DISP_LEN 23
 
 #define RT5639_NO_JACK		BIT(0)
 #define RT5639_HEADSET_DET	BIT(1)
@@ -2084,6 +2124,7 @@ struct rt5639_pll_code {
 
 struct rt5639_priv {
 	struct snd_soc_codec *codec;
+	struct delayed_work patch_work;
 
 	int aif_pu;
 	int sysclk;
@@ -2100,5 +2141,8 @@ struct rt5639_priv {
 	int dsp_sw;
 };
 
+int rt5639_conn_mux_path(struct snd_soc_codec *codec,
+		char *widget_name, char *path_name);
 
+int rt5639_irq_jd_reg_init(struct snd_soc_codec *codec);
 #endif /* __RT5639_H__ */
