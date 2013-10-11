@@ -16,21 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <linux/i2c.h>
-#include <linux/platform_device.h>
-#include <linux/resource.h>
 #include <linux/io.h>
-#include <linux/regulator/machine.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/fixed.h>
 #include <linux/mfd/max77663-core.h>
 #include <linux/regulator/max77663-regulator.h>
 #include <linux/regulator/max15569-regulator.h>
-#include <linux/gpio.h>
-#include <linux/interrupt.h>
-#include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
-#include <mach/gpio-tegra.h>
 
 #include "pm.h"
 #include "board.h"
@@ -45,109 +36,11 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
-/* FIXME: remove power supplies not in use. */
-
-/* MAX77663 consumer rails */
-static struct regulator_consumer_supply max77663_sd0_supply[] = {
-	REGULATOR_SUPPLY("vddio_ddr", NULL),
-	REGULATOR_SUPPLY("vddio_ddr0", NULL),
-	REGULATOR_SUPPLY("vddio_ddr1", NULL),
-};
-
-static struct regulator_consumer_supply max77663_sd1_supply[] = {
-	/* REGULATOR_SUPPLY("vdd_core", NULL), */
-};
-
-static struct regulator_consumer_supply max77663_sd2_supply[] = {
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("vddio_cam", "vi"),
-	REGULATOR_SUPPLY("pwrdet_cam", NULL),
-	REGULATOR_SUPPLY("avdd_osc", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
-	REGULATOR_SUPPLY("vdd_emmc", NULL),
-};
-
-static struct regulator_consumer_supply max77663_sd3_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
-	REGULATOR_SUPPLY("pwrdet_hv", NULL),
-	REGULATOR_SUPPLY("vddio_bb", NULL),
-	REGULATOR_SUPPLY("pwrdet_bb", NULL),
-	REGULATOR_SUPPLY("vddio_audio", NULL),
-	REGULATOR_SUPPLY("pwrdet_audio", NULL),
-	REGULATOR_SUPPLY("vddio_uart", NULL),
-	REGULATOR_SUPPLY("pwrdet_uart", NULL),
-	REGULATOR_SUPPLY("vddio_gmi", NULL),
-	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
-	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
-	REGULATOR_SUPPLY("hvdd_sata", NULL),
-};
-
-static struct regulator_consumer_supply max77663_sd4_supply[] = {
-	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.0"),
-	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi", "vi"),
-	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
-};
-
-static struct regulator_consumer_supply max77663_ldo0_supply[] = {
-	REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
-};
-
-static struct regulator_consumer_supply max77663_ldo1_supply[] = {
-	REGULATOR_SUPPLY("avdd_pllx", NULL),
-	REGULATOR_SUPPLY("avdd_pllm", NULL),
-	REGULATOR_SUPPLY("avdd_pllu", NULL),
-	REGULATOR_SUPPLY("avdd_plle", NULL),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
-};
-
-
-static struct regulator_consumer_supply max77663_ldo2_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
-};
-
-static struct regulator_consumer_supply max77663_ldo3_supply[] = {
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
-};
-
-static struct regulator_consumer_supply max77663_ldo4_supply[] = {
-	REGULATOR_SUPPLY("vdd_rtc", NULL),
-};
 
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
-};
-
-static struct regulator_consumer_supply max77663_ldo6_supply[] = {
-	REGULATOR_SUPPLY("vddio_sys", NULL),
-};
-
-/* FIXME: PCI rails should be added? */
-static struct regulator_consumer_supply max77663_ldo7_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb", "tegra-xhci"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
-};
-
-static struct regulator_consumer_supply max77663_ldo8_supply[] = {
-	REGULATOR_SUPPLY("avdd_sata", NULL),
-	REGULATOR_SUPPLY("vdd_sata", NULL),
-	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
 };
 
 static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
@@ -202,92 +95,21 @@ static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
 		.flags = _flags, \
 	}
 
-/* FIXME: Revisit maximum constraint value for all supplies */
-
-MAX77663_PDATA_INIT(SD0, sd0,  600000, 3387500, NULL, 1, 0, 0,
-		FPS_SRC_NONE, -1, -1, 0);
-
-MAX77663_PDATA_INIT(SD1, sd1,  800000, 1587500, NULL, 1, 1, 0,
-		FPS_SRC_1, FPS_POWER_PERIOD_1, FPS_POWER_PERIOD_6, 0);
-
-MAX77663_PDATA_INIT(SD2, sd2,  1800000, 1800000, NULL, 1, 1, 0,
-		FPS_SRC_0, -1, -1, 0);
-
-MAX77663_PDATA_INIT(SD3, sd3,  600000, 3387500, NULL, 1, 1, 0,
-		FPS_SRC_0, -1, -1, 0);
-
-MAX77663_PDATA_INIT(SD4, sd4,  1200000, 1200000, NULL, 1, 1, 0,
-		FPS_SRC_0, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO0, ldo0, 800000, 2350000, NULL, 1, 1, 0,
-		FPS_SRC_1, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO1, ldo1, 800000, 2350000, NULL, 0, 0, 0,
-		FPS_SRC_NONE, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO2, ldo2, 800000, 3950000, NULL, 1, 1, 0,
-		FPS_SRC_1, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO3, ldo3, 800000, 3950000, NULL, 1, 1, 0,
-		FPS_SRC_1, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO4, ldo4, 1000000, 1000000, NULL, 0, 1, 0,
-		FPS_SRC_0, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 3950000, NULL, 0, 1, 0,
-		FPS_SRC_NONE, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO6, ldo6, 800000, 3950000, NULL, 0, 0, 0,
-		FPS_SRC_NONE, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO7, ldo7, 800000, 3950000, NULL, 0, 0, 0,
-		FPS_SRC_NONE, -1, -1, 0);
-
-MAX77663_PDATA_INIT(LDO8, ldo8, 800000, 3950000, NULL, 0, 1, 0,
-		FPS_SRC_1, -1, -1, 0);
+MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 2800000, NULL, 0, 1, 0,
+		FPS_SRC_1, FPS_POWER_PERIOD_7, FPS_POWER_PERIOD_0, 0);
 
 #define MAX77663_REG(_id, _data) (&max77663_regulator_pdata_##_data)
 
 static struct max77663_regulator_platform_data *max77663_reg_pdata[] = {
-	MAX77663_REG(SD0, sd0),
-	MAX77663_REG(SD1, sd1),
-	MAX77663_REG(SD2, sd2),
-	MAX77663_REG(SD3, sd3),
-	MAX77663_REG(SD4, sd4),
-	MAX77663_REG(LDO0, ldo0),
-	MAX77663_REG(LDO1, ldo1),
-	MAX77663_REG(LDO2, ldo2),
-	MAX77663_REG(LDO3, ldo3),
-	MAX77663_REG(LDO4, ldo4),
 	MAX77663_REG(LDO5, ldo5),
-	MAX77663_REG(LDO6, ldo6),
-	MAX77663_REG(LDO7, ldo7),
-	MAX77663_REG(LDO8, ldo8),
-};
-
-static struct max77663_gpio_config max77663_gpio_cfgs[] = {
-	{
-		.gpio = MAX77663_GPIO0,
-		.dir = GPIO_DIR_OUT,
-		.dout = GPIO_DOUT_LOW,
-		.out_drv = GPIO_OUT_DRV_PUSH_PULL,
-		.alternate = GPIO_ALT_DISABLE,
-	},
-	{
-		.gpio = MAX77663_GPIO5,
-		.dir = GPIO_DIR_OUT,
-		.dout = GPIO_DOUT_LOW,
-		.out_drv = GPIO_OUT_DRV_PUSH_PULL,
-		.alternate = GPIO_ALT_DISABLE,
-	},
 };
 
 static struct max77663_platform_data max77663_pdata = {
 	.irq_base	= MAX77663_IRQ_BASE,
 	.gpio_base	= MAX77663_GPIO_BASE,
 
-	.num_gpio_cfgs	= ARRAY_SIZE(max77663_gpio_cfgs),
-	.gpio_cfgs	= max77663_gpio_cfgs,
+	.num_gpio_cfgs	= 0,
+	.gpio_cfgs	= NULL,
 
 	.regulator_pdata = max77663_reg_pdata,
 	.num_regulator_pdata = ARRAY_SIZE(max77663_reg_pdata),
@@ -306,137 +128,6 @@ static struct i2c_board_info __initdata max77663_regulators[] = {
 	},
 };
 
-/* MAX15569 switching regulator for vdd_cpu */
-static struct regulator_consumer_supply max15569_vddcpu_supply[] = {
-	REGULATOR_SUPPLY("vdd_cpu", NULL),
-};
-
-static struct regulator_init_data max15569_vddcpu_init_data = {
-	.constraints = {
-		.min_uV = 500000,
-		.max_uV = 1520000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					 REGULATOR_CHANGE_CONTROL |
-					REGULATOR_CHANGE_VOLTAGE),
-		.always_on = 1,
-		.boot_on =  1,
-		.apply_uV = 0,
-	},
-	.num_consumer_supplies = ARRAY_SIZE(max15569_vddcpu_supply),
-		.consumer_supplies = max15569_vddcpu_supply,
-};
-
-static struct max15569_regulator_platform_data max15569_vddcpu_pdata = {
-	.reg_init_data = &max15569_vddcpu_init_data,
-	.max_voltage_uV = 1520000,
-	.base_voltage_uV = 1200000,
-	.slew_rate_mv_per_us = 44,
-};
-
-static struct i2c_board_info __initdata max15569_vddcpu_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max15569", 0x3a),
-		.platform_data	= &max15569_vddcpu_pdata,
-	},
-};
-
-/* MAX15569 switching regulator for vdd_core */
-static struct regulator_consumer_supply max15569_vddcore_supply[] = {
-	REGULATOR_SUPPLY("vdd_core", NULL),
-};
-
-static struct regulator_init_data max15569_vddcore_init_data = {
-	.constraints = {
-		.min_uV = 500000,
-		.max_uV = 1520000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					 REGULATOR_CHANGE_CONTROL |
-					REGULATOR_CHANGE_VOLTAGE),
-		.always_on = 1,
-		.boot_on =  1,
-		.apply_uV = 0,
-	},
-	.num_consumer_supplies = ARRAY_SIZE(max15569_vddcore_supply),
-		.consumer_supplies = max15569_vddcore_supply,
-};
-
-static struct max15569_regulator_platform_data max15569_vddcore_pdata = {
-	.reg_init_data = &max15569_vddcore_init_data,
-	.max_voltage_uV = 1300000,
-	.base_voltage_uV = 1150000,
-	.slew_rate_mv_per_us = 44,
-};
-
-static struct i2c_board_info __initdata max15569_vddcore_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max15569", 0x39),
-		.platform_data	= &max15569_vddcore_pdata,
-	},
-};
-
-/* MAX15569 switching regulator for vdd_gpu */
-static struct regulator_consumer_supply max15569_vddgpu_supply[] = {
-	REGULATOR_SUPPLY("vdd_gpu", NULL),
-};
-
-static struct regulator_init_data max15569_vddgpu_init_data = {
-	.constraints = {
-		.min_uV = 500000,
-		.max_uV = 1520000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					 REGULATOR_CHANGE_CONTROL |
-					REGULATOR_CHANGE_VOLTAGE),
-		.always_on = 0,
-		.boot_on =  0,
-		.apply_uV = 0,
-	},
-	.num_consumer_supplies = ARRAY_SIZE(max15569_vddgpu_supply),
-		.consumer_supplies = max15569_vddgpu_supply,
-};
-
-static struct max15569_regulator_platform_data max15569_vddgpu_pdata = {
-	.reg_init_data = &max15569_vddgpu_init_data,
-	.max_voltage_uV = 1400000,
-	.base_voltage_uV = 1200000,
-	.slew_rate_mv_per_us = 44,
-};
-
-static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max15569", 0x38),
-		.platform_data	= &max15569_vddgpu_pdata,
-	},
-};
-
-static struct tegra_suspend_platform_data vcm30_t124_suspend_data = {
-	.cpu_timer	= 500,
-	.cpu_off_timer	= 300,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
-	.core_timer	= 0x157e,
-	.core_off_timer = 2000,
-	.corereq_high	= true,
-	.sysclkreq_high	= true,
-	.cpu_lp2_min_residency = 1000,
-	.min_residency_crail = 20000,
-#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
-	.lp1_lowvolt_support = false,
-	.i2c_base_addr = 0,
-	.pmuslave_addr = 0,
-	.core_reg_addr = 0,
-	.lp1_core_volt_low = 0,
-	.lp1_core_volt_high = 0,
-#endif
-};
-
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param vcm30_t124_cl_dvfs_param = {
@@ -451,7 +142,6 @@ static struct tegra_cl_dvfs_cfg_param vcm30_t124_cl_dvfs_param = {
 	.droop_restore_ramp = 0x0,
 	.scale_out_ramp = 0x0,
 };
-#endif
 
 /* MAX15569: fixed 10mV steps from 600mV to 1400mV, with offset 0x0b */
 #define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
@@ -465,8 +155,6 @@ static inline void fill_reg_map(void)
 	}
 }
 
-/* FIXME: Needed? */
-#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct tegra_cl_dvfs_platform_data vcm30_t124_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
@@ -518,11 +206,19 @@ int __init vcm30_t124_regulator_init(void)
 #endif
 	vcm30_t124_max77663_regulator_init();
 
-	i2c_register_board_info(4, max15569_vddcpu_boardinfo, 1);
-	i2c_register_board_info(4, max15569_vddcore_boardinfo, 1);
-	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
 	return 0;
 }
+
+static struct tegra_suspend_platform_data vcm30_t124_suspend_data = {
+	.cpu_timer	= 2000,
+	.cpu_off_timer	= 2000,
+	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	.core_timer	= 0xfefe,
+	.core_off_timer = 2000,
+	.corereq_high	= true,
+	.sysclkreq_high	= true,
+	.cpu_lp2_min_residency = 1000,
+};
 
 int __init vcm30_t124_suspend_init(void)
 {
