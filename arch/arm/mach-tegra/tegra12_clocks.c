@@ -2303,7 +2303,9 @@ unsigned long get_pll_cfreq_common(struct clk *c, unsigned long input_rate,
 static u8 get_pll_cpcon(struct clk *c, u16 n)
 {
 	if (c->flags & PLLD) {
-		if (n >= 600)
+		if (n >= 1000)
+			return 15;
+		else if (n >= 600)
 			return 12;
 		else if (n >= 300)
 			return 8;
