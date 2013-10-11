@@ -349,7 +349,6 @@ static struct platform_device ardbeg_audio_device_rt5639 = {
 
 static void __init ardbeg_uart_init(void)
 {
-	int debug_port_id;
 
 #ifndef CONFIG_USE_OF
 	tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
@@ -360,16 +359,19 @@ static void __init ardbeg_uart_init(void)
 #endif
 	tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
 	if (!is_tegra_debug_uartport_hs()) {
-		debug_port_id = uart_console_debug_init(3);
+		int debug_port_id = uart_console_debug_init(3);
 		if (debug_port_id < 0)
 			return;
 
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+		tegra_serial_debug_init_irq_mode(TEGRA_UARTD_BASE, INT_UARTD, NULL, -1, -1);
+#else
 		platform_device_register(uart_console_debug_device);
+#endif
 	} else {
 		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
 		platform_device_register(&tegra_uartd_device);
 	}
-
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -1075,12 +1077,13 @@ static void __init tegra_ardbeg_late_init(void)
 		laguna_pinmux_init();
 	else
 		ardbeg_pinmux_init();
+
+	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 	ardbeg_xusb_init();
 	ardbeg_i2c_init();
 	ardbeg_spi_init();
-	ardbeg_uart_init();
 	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	//tegra_ram_console_debug_init();
@@ -1122,7 +1125,6 @@ static void __init tegra_ardbeg_late_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 
 	ardbeg_sensors_init();
 
@@ -1131,7 +1133,6 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
 	ardbeg_sata_init();
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init ardbeg_ramconsole_reserve(unsigned long size)
