@@ -938,7 +938,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #else
 #define IO_NOR_PHYS	0x48000000
 #if defined(CONFIG_TEGRA_GMI)
-#define IO_NOR_SIZE	(SZ_128M)
+#define IO_NOR_SIZE	((CONFIG_MTD_NOR_TEGRA_VMALLOC_SIZE) * SZ_1M)
 #else
 #define IO_NOR_SIZE	(SZ_64M)
 #endif
