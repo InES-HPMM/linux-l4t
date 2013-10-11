@@ -320,7 +320,7 @@ static struct platform_device *vcm30_t124_devices[] __initdata = {
 };
 
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-	.port_otg = true,
+	.port_otg = false,
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
@@ -328,8 +328,9 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.u_data.host = {
 		.vbus_gpio = -1,
 		.hot_plug = false,
-		.remote_wakeup_supported = true,
+		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
+		.turn_off_vbus_on_lp0 = true,
 	},
 	.u_cfg.utmi = {
 		.hssync_start_delay = 0,
@@ -355,8 +356,9 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 		/* FIXME: Set this only for E1855. */
 		.vbus_gpio = TEGRA_GPIO_PN5,
 		.hot_plug = false,
-		.remote_wakeup_supported = true,
+		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
+		.turn_off_vbus_on_lp0 = true,
 	},
 	.u_cfg.utmi = {
 		.hssync_start_delay = 0,
@@ -381,8 +383,9 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.u_data.host = {
 		.vbus_gpio = -1,
 		.hot_plug = false,
-		.remote_wakeup_supported = true,
+		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
+		.turn_off_vbus_on_lp0 = true,
 	},
 	.u_cfg.utmi = {
 	.hssync_start_delay = 0,
@@ -489,7 +492,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	tegra_io_dpd_init();
 	vcm30_t124_sdhci_init();
 	vcm30_t124_regulator_init();
-	/* vcm30_t124_suspend_init(); */
+	vcm30_t124_suspend_init();
 #if 0
 	vcm30_t124_emc_init();
 	vcm30_t124_edp_init();
