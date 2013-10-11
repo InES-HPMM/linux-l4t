@@ -2424,6 +2424,11 @@ static struct resource tegra_wdt_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	[2] = {
+		.start	= TEGRA_PMC_BASE,
+		.end	= TEGRA_PMC_BASE + TEGRA_PMC_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[3] = {
 		.start	= INT_TMR1,
 		.end	= INT_TMR1,
 		.flags	= IORESOURCE_IRQ,
@@ -2449,16 +2454,34 @@ static struct resource tegra_wdt0_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	[2] = {
+		.start	= TEGRA_PMC_BASE,
+		.end	= TEGRA_PMC_BASE + TEGRA_PMC_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[3] = {
 		.start	= INT_WDT_CPU,
 		.end	= INT_WDT_CPU,
 		.flags	= IORESOURCE_IRQ,
 	},
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
-	[3] = {
+	[4] = {
 		.start	= TEGRA_QUATERNARY_ICTLR_BASE,
 		.end	= TEGRA_QUATERNARY_ICTLR_BASE + \
 				TEGRA_QUATERNARY_ICTLR_SIZE -1,
 		.flags	= IORESOURCE_MEM,
+	},
+#endif
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	[5] = {
+		.start  = TEGRA_WDT4_BASE,
+		.end    = TEGRA_WDT4_BASE + TEGRA_WDT4_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[6] = {
+		.start  = INT_WDT_AVP,
+		.end    = INT_WDT_AVP,
+		.flags  = IORESOURCE_IRQ,
 	},
 #endif
 };

@@ -434,6 +434,9 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
+#if defined(CONFIG_TEGRA_WATCHDOG)
+	&tegra_wdt0_device,
+#endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -1098,7 +1101,6 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
 	bonaire_sata_init();
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init ardbeg_ramconsole_reserve(unsigned long size)

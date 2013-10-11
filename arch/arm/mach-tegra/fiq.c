@@ -1,9 +1,11 @@
 /*
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Brian Swetland <swetland@google.com>
  *	Iliyan Malchev <malchev@google.com>
+ *	Lucas Dai <lucasd@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -81,7 +83,12 @@ static void tegra_fiq_unmask(struct irq_data *d)
 
 void tegra_fiq_enable(int irq)
 {
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	void __iomem *base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
+#else
+	void __iomem *base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x2000);
+#endif
 	/* enable FIQ */
 	u32 val = readl(base + GIC_CPU_CTRL);
 	val &= ~8; /* pass FIQs through */
