@@ -137,7 +137,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2117000, {3174371,  -145385,  2292}, { 1404000, 0,  0}},
 			{      0, {      0,        0,     0}, {       0, 0,  0}},
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 	{
@@ -178,7 +178,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2321000, {3329844,  -148615,  2292}, { 1404000	, 0,	0}},
 			{      0, {      0,        0,     0}, {       0,  0,    0}},
 		},
-		.therm_trips_table = { 20, },
+		.vmin_trips_table = { 20, },
 		.therm_floors_table = { 1000, },
 	},
 };
