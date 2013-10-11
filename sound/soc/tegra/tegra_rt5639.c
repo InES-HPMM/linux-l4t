@@ -1104,6 +1104,8 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	battery_manager = edp_get_manager("battery");
 	if (!battery_manager) {
 		dev_err(&pdev->dev, "unable to get edp manager\n");
+		devm_kfree(&pdev->dev, machine->spk_edp_client);
+		machine->spk_edp_client = NULL;
 	} else {
 		/* register speaker edp client */
 		ret = edp_register_client(battery_manager,
