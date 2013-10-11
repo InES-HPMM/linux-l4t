@@ -439,4 +439,11 @@ config MTD_NOR_TEGRA_GMI
 	  This enables access routines for the flash chips on the NVIDIA Tegra
 	  based embedded entertainment boards. Supports extended gpio &
 	  cs extension capability.
+config MTD_NOR_TEGRA_VMALLOC_SIZE
+	int "static mapping size for tegra NOR"
+	depends on MTD_NOR_TEGRA_GMI
+	default "64"
+	help
+	  This sets static mapping size for tegra NOR. Default value is 64 MB. This will be
+	  used by vmalloc() and ioremap(). Specify the size in MB.
 endmenu
