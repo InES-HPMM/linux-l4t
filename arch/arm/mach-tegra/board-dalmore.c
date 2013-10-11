@@ -818,7 +818,7 @@ static void __init tegra_dalmore_reserve(void)
 	/* 1920*1200*4*2 = 18432000 bytes */
 	tegra_reserve(0, SZ_16M + SZ_2M, SZ_16M);
 #else
-	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+	tegra_reserve(SZ_512M, SZ_16M + SZ_2M, SZ_4M);
 #endif
 	dalmore_ramconsole_reserve(SZ_1M);
 }
