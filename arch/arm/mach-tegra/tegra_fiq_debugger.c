@@ -124,7 +124,7 @@ static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 
 static int tegra_fiq_debugger_id;
 
-void tegra_serial_debug_init(unsigned int base, int irq,
+static void __tegra_serial_debug_init(unsigned int base, int fiq, int irq,
 			   struct clk *clk, int signal_irq, int wakeup_irq)
 {
 	struct tegra_fiq_debugger *t;
@@ -162,10 +162,17 @@ void tegra_serial_debug_init(unsigned int base, int irq,
 		goto out3;
 	};
 
-	res[0].flags = IORESOURCE_IRQ;
-	res[0].start = irq;
-	res[0].end = irq;
-	res[0].name = "fiq";
+	if (fiq >= 0) {
+		res[0].flags = IORESOURCE_IRQ;
+		res[0].start = fiq;
+		res[0].end = fiq;
+		res[0].name = "fiq";
+	} else {
+		res[0].flags = IORESOURCE_IRQ;
+		res[0].start = irq;
+		res[0].end = irq;
+		res[0].name = "uart_irq";
+	}
 
 	res[1].flags = IORESOURCE_IRQ;
 	res[1].start = signal_irq;
@@ -202,4 +209,16 @@ out2:
 	iounmap(t->debug_port_base);
 out1:
 	kfree(t);
+}
+
+void tegra_serial_debug_init(unsigned int base, int fiq,
+			   struct clk *clk, int signal_irq, int wakeup_irq)
+{
+	__tegra_serial_debug_init(base, fiq, -1, clk, signal_irq, wakeup_irq);
+}
+
+void tegra_serial_debug_init_irq_mode(unsigned int base, int irq,
+			   struct clk *clk, int signal_irq, int wakeup_irq)
+{
+	__tegra_serial_debug_init(base, -1, irq, clk, signal_irq, wakeup_irq);
 }
