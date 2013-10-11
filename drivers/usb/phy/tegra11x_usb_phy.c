@@ -1542,9 +1542,11 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 	int wait_time_us = FPR_WAIT_TIME_US; /* FPR should be set by this time */
 	bool irq_disabled = false;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
+	bool remote_wakeup_detected;
 
 	DBG("%s(%d)\n", __func__, __LINE__);
 
+	remote_wakeup_detected = phy->pmc_remote_wakeup;
 	/*
 	 * check whether we wake up from the remote wake detected before putting
 	 * controller in suspend in usb_phy_bringup_host_controller.
@@ -1610,6 +1612,9 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 		pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
 		return;
 	}
+	if (remote_wakeup_detected && phy->pdata->ops &&
+					phy->pdata->ops->post_remote_wakeup)
+		phy->pdata->ops->post_remote_wakeup();
 }
 
 static int uhsic_rail_enable(struct tegra_usb_phy *phy)

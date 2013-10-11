@@ -87,6 +87,7 @@ struct tegra_usb_phy_platform_ops {
 	void (*post_suspend)(void);
 	void (*pre_resume)(void);
 	void (*post_resume)(void);
+	void (*post_remote_wakeup)(void);
 	void (*pre_phy_off)(void);
 	void (*post_phy_off)(void);
 	void (*pre_phy_on)(void);
