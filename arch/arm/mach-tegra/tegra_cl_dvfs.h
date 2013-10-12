@@ -34,6 +34,12 @@ enum tegra_cl_dvfs_pmu_if {
 	TEGRA_CL_DVFS_PMU_PWM,
 };
 
+enum tegra_cl_dvfs_pwm_bus {
+	TEGRA_CL_DVFS_PWM_1WIRE_BUFFER,
+	TEGRA_CL_DVFS_PWM_1WIRE_DIRECT,
+	TEGRA_CL_DVFS_PWM_2WIRE,
+};
+
 /* CL DVFS plaform flags*/
 /* set if output to PMU can be disabled only between I2C transactions */
 #define TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET	(0x1UL << 0)
@@ -77,7 +83,9 @@ struct tegra_cl_dvfs_platform_data {
 			unsigned long		pwm_rate;
 			bool			delta_mode;
 
+			enum tegra_cl_dvfs_pwm_bus pwm_bus;
 			int			pwm_pingroup;
+			int			pwm_clk_pingroup;
 			int			out_gpio;
 			bool			out_enable_high;
 			struct platform_device	*dfll_bypass_dev;

@@ -34,6 +34,8 @@
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/tegra_fuse.h>
+#include <mach/pinmux-t12.h>
+
 #include <linux/pid_thermal_gov.h>
 
 #include <asm/mach-types.h>
@@ -698,6 +700,8 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
 	.u.pmu_pwm = {
 		.pwm_rate = 12750000,
+		.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_BUFFER,
+		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PU6,
 		.out_enable_high = false,
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
