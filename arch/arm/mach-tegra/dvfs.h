@@ -266,13 +266,6 @@ int tegra_dvfs_init_thermal_dvfs_voltages(
 	int *millivolts, int freqs_num, int ranges_num, struct dvfs *d);
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-int read_gpu_dvfs_table(int **millivolts, unsigned long **freqs);
-#else
-static inline int read_gpu_dvfs_table(int **millivolts, unsigned long **freqs)
-{ return -EINVAL; }
-#endif
-
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);
 int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail);

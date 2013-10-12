@@ -409,15 +409,6 @@ static struct dvfs gpu_dvfs = {
 	.dvfs_rail	= &tegra12_dvfs_rail_vdd_gpu,
 };
 
-int read_gpu_dvfs_table(int **millivolts, unsigned long **freqs)
-{
-	*millivolts = gpu_dvfs.millivolts;
-	*freqs = gpu_dvfs.freqs;
-
-	return 0;
-}
-EXPORT_SYMBOL(read_gpu_dvfs_table);
-
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
