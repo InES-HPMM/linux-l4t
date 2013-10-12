@@ -1039,8 +1039,7 @@ static void adjust_emc_dvfs_table(const struct tegra12_emc_table *table,
 		mv = table[j].emc_min_mv;
 
 		if ((i == 0) || (mv > emc_core_millivolts[i-1])) {
-			/* advance: either regular or ll voltage increased -
-			   assure the same set of dvfs freqs in both modes */
+			/* advance: voltage has increased */
 			emc->dvfs->freqs[i] = rate;
 			emc_core_millivolts[i] = mv;
 			i++;
