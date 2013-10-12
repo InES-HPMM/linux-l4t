@@ -40,7 +40,7 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_common[] = {
 	DEFAULT_PINMUX(DAP2_SCLK,     I2S1,        NORMAL,    TRISTATE,   INPUT),
 
 	/* CLDVFS pinmux */
-	DEFAULT_PINMUX(DVFS_PWM,      CLDVFS,      NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(DVFS_PWM,      CLDVFS,      NORMAL,    TRISTATE, OUTPUT),
 	DEFAULT_PINMUX(DVFS_CLK,      CLDVFS,      NORMAL,    NORMAL,   OUTPUT),
 
 	/* SPI1 pinmux */
