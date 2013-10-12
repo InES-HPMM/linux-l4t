@@ -1302,29 +1302,17 @@ struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void)
 	return NULL;
 }
 
-static void make_safe_thermal_dvfs_one(struct dvfs *d,
-				  struct tegra_cooling_device *cdev)
-{
-	int i, j, mv;
-
-	/* Make 1st row (therm_idx = 0) voltages max across thermal ranges */
-	for (i = 0; i < d->num_freqs; i++) {
-		for (j = 1; j <= cdev->trip_temperatures_num; j++) {
-			mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
-			if (d->millivolts[i] < mv)
-				((int *)d->millivolts)[i] = mv;
-		}
-	}
-}
-
 static void make_safe_thermal_dvfs(struct dvfs_rail *rail)
 {
 	struct dvfs *d;
 
 	mutex_lock(&dvfs_lock);
 	list_for_each_entry(d, &rail->dvfs, reg_node) {
-		if (d->therm_dvfs)
-			make_safe_thermal_dvfs_one(d, rail->vts_cdev);
+		if (d->therm_dvfs) {
+			BUG_ON(!d->peak_millivolts);
+			d->millivolts = d->peak_millivolts;
+			d->therm_dvfs = false;
+		}
 	}
 	mutex_unlock(&dvfs_lock);
 }
@@ -1558,8 +1546,8 @@ int __init tegra_dvfs_rail_init_thermal_dvfs_trips(
 	return 0;
 }
 
-int __init tegra_dvfs_init_thermal_dvfs_voltages(
-	int *therm_voltages, int freqs_num, int ranges_num, struct dvfs *d)
+int __init tegra_dvfs_init_thermal_dvfs_voltages(int *therm_voltages,
+	int *peak_voltages, int freqs_num, int ranges_num, struct dvfs *d)
 {
 	int *millivolts;
 	int freq_idx, therm_idx;
@@ -1575,10 +1563,13 @@ int __init tegra_dvfs_init_thermal_dvfs_voltages(
 				     d->clk_name, mv, freq_idx, therm_idx);
 				return -EINVAL;
 			}
+			if (mv > peak_voltages[freq_idx])
+				peak_voltages[freq_idx] = mv;
 		}
 	}
 
 	d->millivolts = therm_voltages;
+	d->peak_millivolts = peak_voltages;
 	d->therm_dvfs = true;
 	return 0;
 }
@@ -1917,6 +1908,12 @@ static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 		}
 		seq_printf(s, " mV\n");
 	}
+
+	seq_printf(s, "%3s%-8s\n", "", "------");
+	seq_printf(s, "%3s%-8s", "", "max(T)");
+	for (i = 0; i < d->num_freqs; i++)
+		seq_printf(s, " %7d", d->peak_millivolts[i]);
+	seq_printf(s, " mV\n");
 
 	mutex_unlock(&dvfs_lock);
 

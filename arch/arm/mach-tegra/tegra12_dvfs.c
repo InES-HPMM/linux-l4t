@@ -407,6 +407,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 };
 
 static int gpu_vmin[MAX_THERMAL_RANGES];
+static int gpu_peak_millivolts[MAX_DVFS_FREQS];
 static int gpu_millivolts[MAX_THERMAL_RANGES][MAX_DVFS_FREQS];
 static struct dvfs gpu_dvfs = {
 	.clk_name	= "gbus",
@@ -759,7 +760,7 @@ static int __init set_gpu_dvfs_data(
 		     thermal_ranges);
 
 	/*
-	 *
+	 * Use CVB table to calculate Vmin for each temperature range
 	 */
 	mv = get_cvb_voltage(
 		speedo, d->speedo_scale, &d->cvb_vmin.cvb_pll_param);
@@ -825,8 +826,8 @@ static int __init set_gpu_dvfs_data(
 	 * must specify monotonically increasing voltage on frequency dependency
 	 * in each temperature range.
 	 */
-	if (!i || tegra_dvfs_init_thermal_dvfs_voltages(
-		&gpu_millivolts[0][0], i, thermal_ranges, gpu_dvfs)) {
+	if (!i || tegra_dvfs_init_thermal_dvfs_voltages(&gpu_millivolts[0][0],
+		gpu_peak_millivolts, i, thermal_ranges, gpu_dvfs)) {
 		pr_err("tegra12_dvfs: invalid gpu dvfs table\n");
 		return -ENOENT;
 	}

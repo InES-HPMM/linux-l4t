@@ -265,8 +265,8 @@ void tegra_dvfs_rail_init_vmax_thermal_profile(
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
 int tegra_dvfs_rail_init_thermal_dvfs_trips(
 	int *therm_trips_table, struct dvfs_rail *rail);
-int tegra_dvfs_init_thermal_dvfs_voltages(
-	int *millivolts, int freqs_num, int ranges_num, struct dvfs *d);
+int tegra_dvfs_init_thermal_dvfs_voltages(int *millivolts,
+	int *peak_millivolts, int freqs_num, int ranges_num, struct dvfs *d);
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
