@@ -1506,8 +1506,13 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	int retval = -EINVAL;
 	unsigned int old_target_freq = target_freq;
 
-	if (cpufreq_disabled())
+	trace_cpu_scale(policy->cpu, policy->cur, POWER_CPU_SCALE_START);
+
+	if (cpufreq_disabled()) {
+		trace_cpu_scale(policy->cpu, target_freq,
+				POWER_CPU_SCALE_DONE);
 		return -ENODEV;
+	}
 
 	/* Make sure that target_freq is within supported range */
 	if (target_freq > policy->max)
@@ -1524,9 +1529,9 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 		return 0;
 	}
 
-	trace_cpu_scale(policy->cpu, policy->cur, POWER_CPU_SCALE_START);
 	if (cpufreq_driver->target)
 		retval = cpufreq_driver->target(policy, target_freq, relation);
+
 	trace_cpu_scale(policy->cpu, target_freq, POWER_CPU_SCALE_DONE);
 
 	return retval;
