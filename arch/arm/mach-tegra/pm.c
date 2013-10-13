@@ -221,6 +221,7 @@ extern int tegra_smmu_suspend(struct device *dev);
 static struct clk *tegra_dfll;
 #endif
 static struct clk *tegra_pclk;
+static struct clk *tegra_clk_m;
 static struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
 
@@ -1064,6 +1065,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 	case TEGRA_SUSPEND_LP1:
 		__raw_writel(virt_to_phys(tegra_resume), pmc + PMC_SCRATCH41);
 		wmb();
+		rate = clk_get_rate(tegra_clk_m);
 		break;
 	case TEGRA_SUSPEND_LP2:
 		rate = clk_get_rate(tegra_pclk);
@@ -1594,6 +1596,8 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 #endif
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
+	tegra_clk_m = clk_get_sys(NULL, "clk_m");
+	BUG_ON(IS_ERR(tegra_clk_m));
 
 	/* create the pdata from DT information */
 	pm_dat = tegra_get_pm_data();
