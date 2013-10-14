@@ -47,12 +47,15 @@
 #include "gpio-names.h"
 
 /* Min temp granularity specified as X in 2^X.
- * -1: Hi precision option: 2^-1 = 0.5C
+ * -1: Hi precision option: 2^-1 = 0.5C (T12x onwards)
  *  0: Lo precision option: 2^0  = 1.0C
- *  NB: We must use lower precision (0) due to cp_fuse corrections
- *  (see Sec9.2 T35_Thermal_Sensing_IAS.docx)
  */
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+static const int precision = -1; /* Use high precision on T12x */
+#else
 static const int precision; /* default 0 -> low precision */
+#endif
+
 #define LOWER_PRECISION_FOR_CONV(val)	((!precision) ? ((val)*2) : (val))
 #define LOWER_PRECISION_FOR_TEMP(val)	((!precision) ? ((val)/2) : (val))
 #define PRECISION_IS_LOWER()		((!precision))
@@ -2009,6 +2012,7 @@ static int soctherm_init_platform_data(void)
 		sensor_defaults = default_t12x_sensor_params;
 	else
 		BUG();
+
 	/* initialize default values for unspecified params */
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		therm = &plat_data.therm[tsensor2therm_map[i]];
