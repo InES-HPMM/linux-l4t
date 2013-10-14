@@ -79,18 +79,26 @@ static void init_chip_specific(void)
 	cid = tegra_get_chipid();
 
 	switch (cid) {
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	case TEGRA_CHIPID_TEGRA3:
 		tegra_la_get_t3_specific(&cs);
 		break;
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	case TEGRA_CHIPID_TEGRA11:
 		tegra_la_get_t11x_specific(&cs);
 		break;
+#endif
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	case TEGRA_CHIPID_TEGRA14:
 		tegra_la_get_t14x_specific(&cs);
 		break;
+#endif
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	case TEGRA_CHIPID_TEGRA12:
 		tegra_la_get_t12x_specific(&cs);
 		break;
+#endif
 	default:
 		cs.set_la = NULL;
 	}

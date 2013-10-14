@@ -109,10 +109,10 @@ obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra_emc_therm.o
 
 obj-y                                   += latency_allowance.o
-obj-y                                   += tegra3_la.o
-obj-y                                   += tegra11x_la.o
-obj-y                                   += tegra14x_la.o
-obj-y                                   += tegra12x_la.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_la.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11x_la.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14x_la.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 obj-$(CONFIG_TEGRA_CORE_EDP_LIMITS)     += edp_core.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_edp.o
