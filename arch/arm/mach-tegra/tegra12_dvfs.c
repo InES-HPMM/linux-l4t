@@ -18,6 +18,7 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/module.h>
+#include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
@@ -29,6 +30,7 @@
 #include "board.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra_core_sysfs_limits.h"
+#include "pm.h"
 
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
@@ -717,6 +719,7 @@ static int __init set_cpu_dvfs_data(
 	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
+	cpu_dvfs->dfll_data.is_bypass_down = is_lp_cluster;
 
 	/* Init cpu thermal floors */
 	tegra_dvfs_rail_init_vmin_thermal_profile(

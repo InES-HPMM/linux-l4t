@@ -130,6 +130,7 @@ struct dvfs_dfll_data {
 	int min_millivolts;
 	enum dfll_range	range;
 	void (*tune_trimmers)(bool trim_high);
+	unsigned int (*is_bypass_down)(void);
 };
 
 struct dvfs {

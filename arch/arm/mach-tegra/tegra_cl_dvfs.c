@@ -1588,7 +1588,10 @@ static int tegra_cl_dvfs_force_output(void *data, unsigned int out_sel)
 		val |= CL_DVFS_OUTPUT_FORCE_ENABLE;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
 		cl_dvfs_wmb(cld);
-		output_enable(cld);
+		/* enable output only if bypass h/w is alive */
+		if (!cld->safe_dvfs->dfll_data.is_bypass_down ||
+		    !cld->safe_dvfs->dfll_data.is_bypass_down())
+			output_enable(cld);
 	}
 
 	clk_unlock_restore(cld->dfll_clk, &flags);
