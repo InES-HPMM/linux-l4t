@@ -424,14 +424,12 @@ static inline struct tegra_xhci_hcd *hcd_to_tegra_xhci(struct usb_hcd *hcd)
 	return (struct tegra_xhci_hcd *) dev_get_drvdata(hcd->self.controller);
 }
 
-#if defined(CONFIG_DEBUG_MUTEXES) || defined(CONFIG_SMP)
 static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 {
+#if defined(CONFIG_DEBUG_MUTEXES) || defined(CONFIG_SMP)
 	WARN_ON(tegra->sync_lock.owner != current);
-}
-#else
-static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 #endif
+}
 
 #define for_each_enabled_hsic_pad(_pad, _tegra_xhci_hcd)		\
 	for (_pad = find_next_enabled_hsic_pad(_tegra_xhci_hcd, 0);	\
