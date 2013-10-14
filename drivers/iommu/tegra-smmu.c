@@ -303,21 +303,15 @@ static const u32 smmu_asid_security_ofs[] = {
 	SMMU_ASID_SECURITY_7,
 };
 
-static size_t tegra_smmu_get_offset(int id)
+static size_t tegra_smmu_get_offset_base(int id)
 {
-	switch (id) {
-	case SWGID_DC14:
-		return 0x490;
-	case SWGID_DC12:
-		return 0xa88;
-	case SWGID_AFI...SWGID_ISP:
-	case SWGID_MPE...SWGID_PPCS1:
-		return (id - SWGID_AFI) * sizeof(u32) + SMMU_AFI_ASID;
-	case SWGID_SDMMC1A...63:
-		return (id - SWGID_SDMMC1A) * sizeof(u32) + 0xa94;
-	};
+	if (!(id & BIT(5)))
+		return SMMU_SWGRP_ASID_BASE;
 
-	BUG();
+	if (id & BIT(4))
+		return  0xa88 - SWGID_DC12 * sizeof(u32);
+
+	return 0x490 - SWGID_DC14 * sizeof(u32);
 }
 
 /*
@@ -486,7 +480,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		if (i == SWGID_AFI)
 			continue;
 
-		offs = tegra_smmu_get_offset(i);
+		offs = i * sizeof(u32) + tegra_smmu_get_offset_base(i);
 		val = smmu_read(smmu, offs);
 		val &= ~3; /* always overwrite ASID */
 
