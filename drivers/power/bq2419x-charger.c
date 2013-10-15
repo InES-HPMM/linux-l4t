@@ -44,6 +44,8 @@
 #include <linux/alarmtimer.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 
+#define MAX_STR_PRINT 50
+
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -793,6 +795,107 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
+static int fchg_curr_to_reg(int curr)
+{
+	int ret;
+
+	ret = (curr - 500) / 64;
+	ret = ret << 2;
+
+	return ret;
+}
+
+static int fchg_reg_to_curr(int reg_val)
+{
+	int ret;
+
+	ret = (reg_val * 64) + 500;
+
+	return ret;
+}
+
+static ssize_t bq2419x_show_output_charging_current(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int reg_val, curr_val, ret;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, &reg_val);
+
+	reg_val &= (~3);
+	reg_val = reg_val >> 2;
+
+	curr_val = fchg_reg_to_curr(reg_val);
+
+	return snprintf(buf, MAX_STR_PRINT, "%d mA\n", curr_val);
+}
+
+static ssize_t bq2419x_set_output_charging_current(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int curr_val, ret, i;
+
+	if (kstrtouint(buf, 0, &curr_val)) {
+		dev_err(dev, "\nfile: %s, line=%d return %s()",
+					__FILE__, __LINE__, __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i <= 63; i++) {
+		if (curr_val == fchg_reg_to_curr(i))
+			break;
+	}
+
+	if (i == 64) {
+		dev_err(dev, "Invalid output current value..\n");
+		return -EINVAL;
+	}
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG,
+				BQ2419X_CHARGE_CURRENT_MASK,
+				fchg_curr_to_reg(curr_val));
+
+	return count;
+}
+
+static ssize_t bq2419x_show_output_charging_current_values(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	int i, ret = 0;
+
+	for (i = 0; i <= 63; i++) {
+		ret +=
+		snprintf(buf + strlen(buf), MAX_STR_PRINT,
+				"%d mA\n", fchg_reg_to_curr(i));
+	}
+
+	return ret;
+}
+
+static DEVICE_ATTR(output_charging_current, (S_IRUGO | (S_IWUSR | S_IWGRP)),
+		bq2419x_show_output_charging_current,
+		bq2419x_set_output_charging_current);
+
+static DEVICE_ATTR(output_current_allowed_values, S_IRUGO,
+		bq2419x_show_output_charging_current_values, NULL);
+
+static struct attribute *bq2419x_attributes[] = {
+	&dev_attr_output_charging_current.attr,
+	&dev_attr_output_current_allowed_values.attr,
+	NULL
+};
+
+static const struct attribute_group bq2419x_attr_group = {
+	.attrs = bq2419x_attributes,
+};
+
 static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 {
 	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
@@ -945,6 +1048,8 @@ static int bq2419x_probe(struct i2c_client *client,
 
 	if (bq2419x->rtc_alarm_time)
 		bq2419x->rtc = alarmtimer_get_rtcdev();
+
+	ret = sysfs_create_group(&client->dev.kobj, &bq2419x_attr_group);
 
 	mutex_init(&bq2419x->mutex);
 	bq2419x->suspended = 0;
