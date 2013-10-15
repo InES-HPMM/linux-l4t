@@ -40,17 +40,6 @@
 #define MMC_UHS_MASK_SDR104	0x10
 #define MMC_MASK_HS200		0x20
 
-/*
- * Flags to indicate uhs modes that require different calibration offsets
- * at 1.8V.
- */
-#define MMC_1V8_CALIB_OFFSET_SDR12	0x1
-#define MMC_1V8_CALIB_OFFSET_SDR25	0x2
-#define MMC_1V8_CALIB_OFFSET_SDR50	0x4
-#define MMC_1V8_CALIB_OFFSET_DDR50	0x8
-#define MMC_1V8_CALIB_OFFSET_SDR104	0x10
-#define MMC_1V8_CALIB_OFFSET_HS200      0x20
-
 struct tegra_sdhci_platform_data {
 	int cd_gpio;
 	int wp_gpio;
@@ -76,7 +65,6 @@ struct tegra_sdhci_platform_data {
 	bool en_nominal_vcore_tuning;
 	unsigned int calib_3v3_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	unsigned int calib_1v8_offsets;	/* Format to be filled: 0xXXXXPDPU */
-	unsigned int calib_1v8_offsets_uhs_modes;
 };
 
 #endif
