@@ -1496,7 +1496,6 @@ unsigned int serial8250_modem_status(struct uart_8250_port *up)
 }
 EXPORT_SYMBOL_GPL(serial8250_modem_status);
 
-#define NOINTR_COUNTER 1000
 /*
  * This handles the interrupt from one port.
  */
@@ -1507,52 +1506,15 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 	struct uart_8250_port *up =
 		container_of(port, struct uart_8250_port, port);
 	int dma_err = 0;
-#ifdef CONFIG_ARCH_TEGRA
-	static int tegra_nointr_count = 0;
 
-	if ((iir & UART_IIR_NO_INT)) {
-		tegra_nointr_count++;
-		if (tegra_nointr_count > NOINTR_COUNTER) {
-			up->mcr = serial_port_in(port, UART_MCR)
-					| UART_MCR_LOOP;
-			serial_port_out(port, UART_MCR, up->mcr);
-			up->ier = serial_port_in(port, UART_IER)
-					| UART_IER_MSI;
-			serial_port_out(port, UART_IER, up->ier);
-			up->mcr |= UART_MCR_RTS;
-			serial_port_out(port, UART_MCR, up->mcr);
-		}
-
-		return 0;
-	} else
-		tegra_nointr_count = 0;
-#else
 	if (iir & UART_IIR_NO_INT)
 		return 0;
-#endif
 
 	spin_lock_irqsave(&port->lock, flags);
 
 	status = serial_port_in(port, UART_LSR);
 
 	DEBUG_INTR("status = %x...", status);
-
-#ifdef CONFIG_ARCH_TEGRA
-	if ((iir & 0xf) == UART_IIR_MSI) {
-		if (up->mcr & UART_MCR_LOOP) {
-			serial_port_out(port, UART_TX, 0xff);
-			up->mcr &= ~UART_MCR_LOOP;
-			serial_port_out(port, UART_MCR, up->mcr);
-			up->ier &= ~UART_IER_MSI;
-			serial_port_out(port, UART_IER, up->ier);
-			up->mcr &= ~UART_MCR_RTS;
-			serial_port_out(port, UART_MCR, up->mcr);
-		}
-		serial8250_modem_status(up);
-	}
-#else
-	serial8250_modem_status(up);
-#endif
 
 	if (status & (UART_LSR_DR | UART_LSR_BI)) {
 		if (up->dma)
@@ -1561,7 +1523,7 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 		if (!up->dma || dma_err)
 			status = serial8250_rx_chars(up, status);
 	}
-
+	serial8250_modem_status(up);
 	if (status & UART_LSR_THRE)
 		serial8250_tx_chars(up);
 
@@ -1683,7 +1645,6 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 	struct irq_info *i = dev_id;
 	struct list_head *l, *end = NULL;
 	int pass_counter = 0, handled = 0;
-	u8 iir, tegra_handled;
 
 	DEBUG_INTR("serial8250_interrupt(%d)...", irq);
 
@@ -1696,12 +1657,6 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 
 		up = list_entry(l, struct uart_8250_port, list);
 		port = &up->port;
-		iir = serial_port_in(port, UART_IIR);
-
-		if (iir & UART_IIR_NO_INT && port->type == PORT_TEGRA)
-			tegra_handled = 1;
-		else
-			tegra_handled = 0;
 
 		if (port->handle_irq(port)) {
 			handled = 1;
@@ -1726,8 +1681,6 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 	spin_unlock(&i->lock);
 
 	DEBUG_INTR("end.\n");
-	if (tegra_handled)
-		handled = 1;
 
 	return IRQ_RETVAL(handled);
 }
