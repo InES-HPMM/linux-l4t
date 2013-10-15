@@ -99,7 +99,6 @@ static int palmas_usb_id_state_update(struct palmas_usb *palmas_usb)
 	int new_state;
 	int new_cable_index;
 	int retry = 5;
-	unsigned int line_state;
 
 src_again:
 	ret = palmas_read(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
@@ -145,27 +144,6 @@ src_again:
 		dev_info(palmas_usb->dev, "ID_SRC is not valid\n");
 		new_state = PALMAS_USB_STATE_ID_FLOAT;
 		new_cable_index = 0;
-	}
-
-	ret = palmas_read(palmas_usb->palmas, PALMAS_INTERRUPT_BASE,
-			PALMAS_INT3_LINE_STATE, &line_state);
-	if (ret < 0) {
-		dev_err(palmas_usb->dev,
-			"INT3_LINE_STATE read failed: %d\n", ret);
-		return ret;
-	}
-
-	/* Reconfirm the state by Line State */
-	if (line_state & PALMAS_INT3_LINE_STATE_ID) {
-		if (new_state == PALMAS_USB_STATE_ID_FLOAT) {
-			new_state = PALMAS_USB_STATE_ID_GND;
-			new_cable_index = 1;
-		}
-	} else {
-		if (new_state != PALMAS_USB_STATE_ID_FLOAT) {
-			new_state = PALMAS_USB_STATE_ID_FLOAT;
-			new_cable_index = 0;
-		}
 	}
 
 	if (palmas_usb->id_linkstat == new_state) {
