@@ -610,6 +610,8 @@ static struct actmon_dev actmon_dev_cpu_emc = {
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.count_weight		= 0x200,
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	.count_weight		= 0x400,
 #else
 	.count_weight		= 0x100,
 #endif
