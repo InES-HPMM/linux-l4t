@@ -156,6 +156,11 @@ unsigned long clk_get_min_rate(struct clk *c)
 		return c->min_rate;
 }
 
+bool tegra_is_clk_initialized(struct clk *c)
+{
+	return c->state != UNINITIALIZED;
+}
+
 /* Must be called with clk_lock(c) held */
 unsigned long clk_get_rate_locked(struct clk *c)
 {

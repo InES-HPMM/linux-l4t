@@ -4083,11 +4083,17 @@ static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	unsigned long c_flags, p_flags;
 	unsigned int old_use_dfll;
 	struct clk *c = tegra_get_clock_by_name("cpu");
+	struct clk *dfll = tegra_get_clock_by_name("dfll_cpu");
 
-	if (!c->parent || !c->parent->dvfs)
+	if (!c->parent || !c->parent->dvfs || !dfll)
 		return -ENOSYS;
 
 	clk_lock_save(c, &c_flags);
+	if (dfll->state == UNINITIALIZED) {
+		pr_err("%s: DFLL is not initialized\n", __func__);
+		clk_unlock_restore(c, &c_flags);
+		return -ENOSYS;
+	}
 	if (c->parent->u.cpu.mode == MODE_LP) {
 		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
 		clk_unlock_restore(c, &c_flags);
