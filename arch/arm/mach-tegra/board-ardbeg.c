@@ -892,7 +892,7 @@ static void __init ardbeg_spi_init(void)
 #endif
 
 #ifdef CONFIG_USE_OF
-struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
+static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
@@ -977,7 +977,7 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	{ NULL,         NULL,           0,              0},
 };
 
-struct rm_spi_ts_platform_data rm31080ts_ardbeg_data = {
+static struct rm_spi_ts_platform_data rm31080ts_ardbeg_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
 	.platform_id = RM_PLATFORM_A010,
@@ -990,7 +990,7 @@ static struct tegra_spi_device_controller_data dev_cdata = {
 	.tx_clk_tap_delay = 16,
 };
 
-struct spi_board_info rm31080a_ardbeg_spi_board[1] = {
+static struct spi_board_info rm31080a_ardbeg_spi_board[1] = {
 	{
 		.modalias = "rm_ts_spidev",
 		.bus_num = TOUCH_SPI_ID,
