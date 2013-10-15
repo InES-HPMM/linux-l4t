@@ -1580,16 +1580,6 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		goto abort;
 	}
 
-	/* Disabling old parent scales old mode voltage rail */
-	if (c->refcnt)
-		clk_disable(c->parent);
-	if (p_source_old) {
-		clk_disable(p->parent);
-		clk_disable(p_source_old);
-	}
-
-	clk_reparent(c, p);
-
 	/*
 	 * Lock DFLL now (resume closed loop VDD_CPU control).
 	 * G CPU operations are resumed on DFLL if it was the last G CPU
@@ -1605,6 +1595,16 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 			tegra_dvfs_dfll_mode_set(p->dvfs, rate);
 		}
 	}
+
+	/* Disabling old parent scales old mode voltage rail */
+	if (c->refcnt)
+		clk_disable(c->parent);
+	if (p_source_old) {
+		clk_disable(p->parent);
+		clk_disable(p_source_old);
+	}
+
+	clk_reparent(c, p);
 
 	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return 0;
