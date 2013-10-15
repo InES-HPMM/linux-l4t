@@ -221,7 +221,9 @@
 #define  PADS_PLL_CTL_TXCLKREF_DIV10				(0 << 20)
 #define  PADS_PLL_CTL_TXCLKREF_DIV5				(1 << 20)
 
+#define  PADS_REFCLK_CFG0					0x000000C8
 #define  PADS_REFCLK_CFG1					0x000000CC
+#define  PADS_REFCLK_BIAS					0x000000D0
 
 #define NV_PCIE2_RP_RSR					0x000000A0
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
@@ -237,13 +239,15 @@
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
 #define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE	1 << 21
 
-#define NV_PCIE2_RP_DEV_CTRL					0x00000004
-#define PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED			(1 << 0)
-#define PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED			(1 << 1)
-#define PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED			(1 << 2)
-
 #define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
+
+#define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
+#define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
+
+#define BOARD_PM359						0x0167
+#define BOARD_PM358						0x0166
+
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /*
@@ -1042,13 +1046,10 @@ static int tegra_pcie_enable_controller(void)
 		if (lane_owner == PCIE_LANES_X2_X1)
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
 		else {
-#define BOARD_PM359	0x0167
 			int err = 0;
-			struct board_info board_info;
 
-			tegra_get_board_info(&board_info);
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
-			if ((board_info.board_id == BOARD_PM359) &&
+			if ((tegra_pcie.plat_data->board_id == BOARD_PM359) &&
 					(lane_owner == PCIE_LANES_X4_X1)) {
 				/* X1 works only on ERS-S board
 				   with X4_X1 config */
@@ -1117,7 +1118,7 @@ static int tegra_pcie_enable_controller(void)
 		 * Hack, set the clock voltage to the DEFAULT provided
 		 * by hw folks. This doesn't exist in the documentation
 		 */
-		pads_writel(0xfa5cfa5c, 0xc8);
+		pads_writel(0xfa5cfa5c, PADS_REFCLK_CFG0);
 		pads_writel(0x0000FA5C, PADS_REFCLK_CFG1);
 
 		/* Wait for the PLL to lock */
@@ -1135,6 +1136,9 @@ static int tegra_pcie_enable_controller(void)
 		val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
 		pads_writel(val, PADS_CTL);
 #else
+		/* WAR for Eye diagram failure on lanes for T124 platforms */
+		pads_writel(0x34ac34ac, PADS_REFCLK_CFG0);
+		pads_writel(0x00000028, PADS_REFCLK_BIAS);
 		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
 		ret = pcie_phy_pad_enable(lane_owner);
 		if (ret) {
@@ -1591,6 +1595,19 @@ retry:
 	return false;
 }
 
+static void tegra_pcie_apply_sw_war(int index)
+{
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	unsigned int data;
+
+	PR_FUNC_LINE;
+	/* WAR for Eye diagram failure on lanes for T124 platforms */
+	data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
+	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
+	rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
+#endif
+}
+
 /* Enable various features of root port */
 static void tegra_pcie_enable_rp_features(int index)
 {
@@ -1617,6 +1634,8 @@ static void tegra_pcie_enable_rp_features(int index)
 	data = rp_readl(NV_PCIE2_RP_VEND_XP_BIST, index);
 	data |= PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP_BIST, index);
+
+	tegra_pcie_apply_sw_war(index);
 }
 
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)

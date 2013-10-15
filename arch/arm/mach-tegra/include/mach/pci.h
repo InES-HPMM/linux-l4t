@@ -3,7 +3,7 @@
  *
  *  Header file containing constants for the tegra PCIe driver.
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -35,5 +35,6 @@ struct tegra_pci_platform_data {
 	bool use_dock_detect;
 	int gpio;
 	int gpio_x1_slot;
+	int board_id;
 };
 #endif
