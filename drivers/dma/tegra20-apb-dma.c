@@ -1345,6 +1345,8 @@ static struct platform_device_id tegra_dma_devtype[] = {
 	},
 };
 
+static struct device *dma_device;
+
 static int tegra_dma_probe(struct platform_device *pdev)
 {
 	struct resource	*res;
@@ -1395,6 +1397,8 @@ static int tegra_dma_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&tdma->global_lock);
+
+	dma_device = &pdev->dev;
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -1612,6 +1616,16 @@ static int tegra_dma_pm_resume(struct device *dev)
 	return 0;
 }
 #endif
+
+int tegra_dma_save(void)
+{
+	return tegra_dma_pm_suspend(dma_device);
+}
+
+int tegra_dma_restore(void)
+{
+	return tegra_dma_pm_resume(dma_device);
+}
 
 static const struct dev_pm_ops tegra_dma_dev_pm_ops = {
 #ifdef CONFIG_PM_RUNTIME

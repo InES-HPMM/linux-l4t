@@ -30,6 +30,9 @@ struct tegra_pm_domain {
 
 #define to_tegra_pd(_pd) container_of(_pd, struct tegra_pm_domain, gpd);
 
+int tegra_dma_restore(void);
+int tegra_dma_save(void);
+
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 void tegra_pd_add_device(struct device *dev);
 void tegra_pd_remove_device(struct device *dev);
