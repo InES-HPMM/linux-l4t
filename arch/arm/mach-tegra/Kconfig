@@ -185,6 +185,7 @@ config ARCH_TEGRA_12x_SOC
 	select TEGRA_VDD_CORE_OVERRIDE if TEGRA_EMC_SCALING_ENABLE
 	select REGULATOR_TEGRA_DFLL_BYPASS
 	select HAVE_ARM_ARCH_TIMER
+	select ARCH_HAS_PASR
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
