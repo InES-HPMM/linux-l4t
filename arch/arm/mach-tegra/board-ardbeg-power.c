@@ -59,6 +59,8 @@
 #include "tegra11_soctherm.h"
 #include "tegra3_tsensor.h"
 
+#define E1735_EMULATE_E1767_SKU	1001
+
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
 
@@ -727,7 +729,8 @@ int __init ardbeg_suspend_init(void)
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
-	if (pmu_board_info.board_id == BOARD_E1735) {
+	if ((pmu_board_info.board_id == BOARD_E1735) &&
+	    (pmu_board_info.sku != E1735_EMULATE_E1767_SKU)) {
 		ardbeg_suspend_data.cpu_timer = 2000;
 		ardbeg_suspend_data.crail_up_early = true;
 	}
@@ -1060,7 +1063,6 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
 	.u.pmu_pwm = {
 		.pwm_rate = 12750000,
-		.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_BUFFER,
 		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PS5,
 		.out_enable_high = false,
@@ -1082,6 +1084,16 @@ static void e1735_suspend_dfll_bypass(void)
 static void e1735_resume_dfll_bypass(void)
 {
 	__gpio_set_value(TEGRA_GPIO_PS5, 0); /* enable PWM buffer operations */
+}
+
+static void e1767_suspend_dfll_bypass(void)
+{
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DVFS_PWM, TEGRA_TRI_TRISTATE);
+}
+
+static void e1767_resume_dfll_bypass(void)
+{
+	 tegra_pinmux_set_tristate(TEGRA_PINGROUP_DVFS_PWM, TEGRA_TRI_NORMAL);
 }
 
 static struct tegra_cl_dvfs_cfg_param e1733_ardbeg_cl_dvfs_param = {
@@ -1163,20 +1175,29 @@ static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
 
 	.cfg_param = &e1736_ardbeg_cl_dvfs_param,
 };
-static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
+static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 {
+	u16 pmu_board_id = pmu_board_info->board_id;
 	struct tegra_cl_dvfs_platform_data *data = NULL;
 	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
 
 	if (pmu_board_id == BOARD_E1735) {
+		bool e1767 = pmu_board_info->sku == E1735_EMULATE_E1767_SKU;
 		v = e1735_fill_reg_map(v);
 		data = &e1735_cl_dvfs_data;
+
+		data->u.pmu_pwm.pwm_bus = e1767 ?
+			TEGRA_CL_DVFS_PWM_1WIRE_DIRECT :
+			TEGRA_CL_DVFS_PWM_1WIRE_BUFFER;
+
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
 			/* this has to be exact to 1uV level from table */
 			e1735_dfll_bypass_init_data.constraints.init_uV = v;
-			ardbeg_suspend_data.suspend_dfll_bypass =
+			ardbeg_suspend_data.suspend_dfll_bypass = e1767 ?
+				e1767_suspend_dfll_bypass :
 				e1735_suspend_dfll_bypass;
-			ardbeg_suspend_data.resume_dfll_bypass =
+			ardbeg_suspend_data.resume_dfll_bypass = e1767 ?
+				e1767_resume_dfll_bypass :
 				e1735_resume_dfll_bypass;
 		} else {
 			(void)e1735_dfll_bypass_dev;
@@ -1202,7 +1223,7 @@ static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
 	return 0;
 }
 #else
-static inline int ardbeg_cl_dvfs_init(u16 pmu_board_id)
+static inline int ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 { return 0; }
 #endif
 
@@ -1237,7 +1258,7 @@ int __init ardbeg_regulator_init(void)
 		ardbeg_tps65913_regulator_init();
 	} else if (pmu_board_info.board_id == BOARD_E1736) {
 		tn8_regulator_init();
-		ardbeg_cl_dvfs_init(pmu_board_info.board_id);
+		ardbeg_cl_dvfs_init(&pmu_board_info);
 		return tn8_fixed_regulator_init();
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
@@ -1253,7 +1274,7 @@ int __init ardbeg_regulator_init(void)
 
 	platform_device_register(&power_supply_extcon_device);
 
-	ardbeg_cl_dvfs_init(pmu_board_info.board_id);
+	ardbeg_cl_dvfs_init(&pmu_board_info);
 	return 0;
 }
 
