@@ -1753,6 +1753,11 @@ int tegra_smmu_suspend(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_suspend);
 
+int tegra_smmu_save(void)
+{
+	return tegra_smmu_suspend(save_smmu_device);
+}
+
 struct device *get_smmu_device(void)
 {
 	return save_smmu_device;
@@ -1771,6 +1776,11 @@ int tegra_smmu_resume(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_resume);
 
+int tegra_smmu_restore(void)
+{
+	return tegra_smmu_resume(save_smmu_device);
+}
+
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
 	struct smmu_device *smmu;
@@ -1783,6 +1793,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		return -EIO;
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
+
+	save_smmu_device = dev;
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);

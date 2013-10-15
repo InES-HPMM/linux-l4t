@@ -17,6 +17,9 @@
 #ifndef __ARCH_ARM_MACH_TEGRA_SMMU_H
 #define __ARCH_ARM_MACH_TEGRA_SMMU_H
 
+int tegra_smmu_save(void);
+int tegra_smmu_restore(void);
+
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 extern struct resource *tegra_smmu_window(int wnum);
 extern int tegra_smmu_window_count(void);
