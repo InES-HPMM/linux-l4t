@@ -39,6 +39,9 @@
 #define PMC_DPD_SAMPLE		0x20
 #define PMC_IO_DPD_REQ		0x1B8
 #define PMC_IO_DPD2_REQ		0x1C0
+#define PMC_IO_DPD_STATUS	0x1BC
+#define PMC_IO_DPD2_STATUS	0x1C4
+#define PMC_IO_DPD_ENABLE_MASK	0x80000000
 
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
@@ -586,10 +589,17 @@ static __initdata struct tegra_drive_pingroup_config t12x_def_drive_pinmux[] = {
 
 static u32 pinmux_reg[TEGRA_MAX_PINGROUP + ARRAY_SIZE(tegra_soc_drive_pingroups)];
 
+static u32 dpd_status, dpd2_status;
+
 static int tegra12x_pinmux_suspend(void)
 {
+	static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
+
+	/* Save DPD status */
+	dpd_status = readl(pmc + PMC_IO_DPD_STATUS);
+	dpd2_status = readl(pmc + PMC_IO_DPD2_STATUS);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
@@ -630,6 +640,10 @@ static void tegra12x_pinmux_resume(void)
 
 	/* Clear DPD sample */
 	writel(0x0, pmc + PMC_DPD_SAMPLE);
+
+	/* Recover DPD status */
+	writel(PMC_IO_DPD_ENABLE_MASK + dpd_status, pmc + PMC_IO_DPD_REQ);
+	writel(PMC_IO_DPD_ENABLE_MASK + dpd2_status, pmc + PMC_IO_DPD2_REQ);
 }
 
 static struct syscore_ops tegra_pinmux_syscore_ops = {
