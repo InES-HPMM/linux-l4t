@@ -1210,7 +1210,7 @@ static struct uart_ops tegra_uart_ops = {
 static struct uart_driver tegra_uart_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= "serial-hs-tegra",
-	.dev_name	= "ttyHS",
+	.dev_name	= "ttyTHS",
 	.cons		= 0,
 	.nr		= TEGRA_UART_MAXIMUM,
 };
