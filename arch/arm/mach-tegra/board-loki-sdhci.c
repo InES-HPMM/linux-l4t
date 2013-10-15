@@ -152,7 +152,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
-	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -167,7 +166,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
-	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -187,9 +185,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.max_clk_limit = 102000000,
 	.calib_3v3_offsets = 0x0202,
 	.calib_1v8_offsets = 0x0202,
-	.calib_1v8_offsets_uhs_modes = MMC_1V8_CALIB_OFFSET_DDR50 |
-		MMC_1V8_CALIB_OFFSET_HS200,
-
 };
 
 static struct platform_device tegra_sdhci_device0 = {
