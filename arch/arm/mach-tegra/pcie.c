@@ -53,6 +53,8 @@
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/pm_domains.h>
 #include <mach/io_dpd.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-t12.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -169,6 +171,11 @@
 #define AFI_PEX_CTRL_RST					(1 << 0)
 #define AFI_PEX_CTRL_CLKREQ_EN					(1 << 1)
 #define AFI_PEX_CTRL_REFCLK_EN					(1 << 3)
+#define AFI_PEX_CTRL_OVERRIDE_EN				(1 << 4)
+
+#define AFI_PLLE_CONTROL					0x160
+#define AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL		(1 << 9)
+#define AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN			(1 << 1)
 
 #define AFI_PEXBIAS_CTRL_0					0x168
 #define AFI_WR_SCRATCH_0					0x120
@@ -1023,10 +1030,20 @@ static int tegra_pcie_enable_controller(void)
 		reg = pex_controller_registers[i];
 		val = afi_readl(reg) | AFI_PEX_CTRL_REFCLK_EN |
 			AFI_PEX_CTRL_CLKREQ_EN;
-
+		/* Since CLKREQ# pinmux pins may float in some platfoms */
+		/* resulting in disappear of refclk specially at higher temp */
+		/* overrided CLKREQ to always drive refclk */
+		val |= AFI_PEX_CTRL_OVERRIDE_EN;
 		val &= ~AFI_PEX_CTRL_RST;
 		afi_writel(val, reg);
 	}
+
+	/* Enable PLL power down */
+	val = afi_readl(AFI_PLLE_CONTROL);
+	val &= ~AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
+	val |= AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN;
+	afi_writel(val, AFI_PLLE_CONTROL);
+
 	afi_writel(0, AFI_PEXBIAS_CTRL_0);
 
 	lane_owner = 0;
@@ -1370,6 +1387,11 @@ static void tegra_pcie_pme_turnoff(void)
 	do {
 		data = afi_readl(AFI_PCIE_PME);
 	} while (!(data & AFI_PCIE_PME_ACK));
+
+	/* Required for PLL power down */
+	data = afi_readl(AFI_PLLE_CONTROL);
+	data |= AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
+	afi_writel(data, AFI_PLLE_CONTROL);
 }
 
 static struct tegra_io_dpd pexbias_io = {
@@ -1787,6 +1809,53 @@ bool tegra_pcie_link_speed(bool isGen2)
 }
 EXPORT_SYMBOL(tegra_pcie_link_speed);
 
+/* support PLL power down in L1 dynamically based on platform */
+static void tegra_pcie_pll_pdn(void)
+{
+	struct pci_dev *pdev = NULL;
+
+	PR_FUNC_LINE;
+	/* CLKREQ# to PD if device connected to RP doesn't have CLKREQ# */
+	/* capability(no PLL power down in L1 here) and PU if they have */
+	for_each_pci_dev(pdev) {
+		if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
+			continue;
+
+		if ((pci_pcie_type(pdev->bus->self) ==
+			PCI_EXP_TYPE_ROOT_PORT)) {
+			u32 i, val = 0;
+
+			pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &val);
+			if (val & PCI_EXP_LNKCAP_CLKPM) {
+				tegra_pinmux_set_pullupdown(
+					TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+					TEGRA_PUPD_PULL_UP);
+				tegra_pinmux_set_pullupdown(
+					TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+					TEGRA_PUPD_PULL_UP);
+
+				/* revert WAR applied in enable ctlr to */
+				/* revert device CLKREQ capability override */
+				for (i = 0; i < ARRAY_SIZE(pex_controller_registers);
+							i++) {
+					val = afi_readl(pex_controller_registers[i]);
+					val &= ~AFI_PEX_CTRL_OVERRIDE_EN;
+					afi_writel(val, pex_controller_registers[i]);
+				}
+			} else {
+				tegra_pinmux_set_pullupdown(
+					TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+					TEGRA_PUPD_PULL_DOWN);
+				tegra_pinmux_set_pullupdown(
+					TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+					TEGRA_PUPD_PULL_DOWN);
+			}
+			break;
+		}
+	}
+}
+
+/* Enable ASPM support of all devices based on it's capability */
 static void tegra_pcie_enable_aspm_support(void)
 {
 	struct pci_dev *pdev = NULL;
@@ -1808,11 +1877,12 @@ static void tegra_pcie_enable_aspm_support(void)
 static void tegra_pcie_enable_features(void)
 {
 	PR_FUNC_LINE;
+
 	/* configure all links to gen2 speed by default */
 	if (!tegra_pcie_link_speed(true))
 		pr_info("PCIE: Link speed change failed\n");
 
-	/* Enable ASPM support of all devices based on it's capability */
+	tegra_pcie_pll_pdn();
 	tegra_pcie_enable_aspm_support();
 }
 
