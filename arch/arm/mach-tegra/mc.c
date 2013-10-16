@@ -21,7 +21,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/export.h>
-#include <linux/io.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/debugfs.h>
@@ -52,10 +51,10 @@ void tegra_mc_set_priority(unsigned long client, unsigned long prio)
 	unsigned long flags;
 
 	spin_lock_irqsave(&tegra_mc_lock, flags);
-	val = readl(mc + reg);
+	val = mc_readl(reg);
 	val &= ~(TEGRA_MC_PRIO_MASK << field);
 	val |= prio << field;
-	writel(val, mc + reg);
+	mc_writel(val, reg);
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
 
 }
@@ -128,9 +127,9 @@ static bool tegra_stable_hotreset_check(u32 stat_reg, u32 *stat)
 	unsigned long flags;
 
 	spin_lock_irqsave(&tegra_mc_lock, flags);
-	prv_stat = readl(mc + stat_reg);
+	prv_stat = mc_readl(stat_reg);
 	for (i = 0; i < HOTRESET_READ_COUNT; i++) {
-		cur_stat = readl(mc + stat_reg);
+		cur_stat = mc_readl(stat_reg);
 		if (cur_stat != prv_stat) {
 			spin_unlock_irqrestore(&tegra_mc_lock, flags);
 			return false;
@@ -159,9 +158,9 @@ int tegra_mc_flush(int id)
 
 	spin_lock_irqsave(&tegra_mc_lock, flags);
 
-	rst_ctrl = readl(mc + rst_ctrl_reg);
+	rst_ctrl = mc_readl(rst_ctrl_reg);
 	rst_ctrl |= (1 << id);
-	writel(rst_ctrl, mc + rst_ctrl_reg);
+	mc_writel(rst_ctrl, rst_ctrl_reg);
 
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
 
@@ -194,9 +193,9 @@ int tegra_mc_flush_done(int id)
 
 	spin_lock_irqsave(&tegra_mc_lock, flags);
 
-	rst_ctrl = readl(mc + rst_ctrl_reg);
+	rst_ctrl = mc_readl(rst_ctrl_reg);
 	rst_ctrl &= ~(1 << id);
-	writel(rst_ctrl, mc + rst_ctrl_reg);
+	mc_writel(rst_ctrl, rst_ctrl_reg);
 
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
 
@@ -214,17 +213,17 @@ static int __init tegra_mc_init(void)
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	reg = 0x0f7f1010;
-	writel(reg, mc + MC_RESERVED_RSV);
+	mc_writel(reg, MC_RESERVED_RSV);
 #endif
 
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
-	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
+	reg = mc_readl(MC_EMEM_ARB_OVERRIDE);
 	reg |= 3;
 #if defined(CONFIG_TEGRA_ERRATA_1157520)
 	if (tegra_revision == TEGRA_REVISION_A01)
 		reg &= ~2;
 #endif
-	writel(reg, mc + MC_EMEM_ARB_OVERRIDE);
+	mc_writel(reg, MC_EMEM_ARB_OVERRIDE);
 #endif
 
 	mc_debugfs_dir = debugfs_create_dir("mc", NULL);

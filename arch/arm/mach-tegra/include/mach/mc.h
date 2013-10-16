@@ -114,6 +114,37 @@ extern void __iomem *mc;
 extern void __iomem *mc1;
 #endif
 
+#include <linux/io.h>
+
+/*
+ * Read and write functions for hitting the MC. mc_ind corresponds to the MC
+ * you wish to write to: 0 -> MC0, 1 -> MC1. If a chip does not have a
+ * secondary MC then reads/writes to said MC are silently dropped.
+ */
+static inline u32 __mc_readl(int mc_ind, u32 reg)
+{
+	if (!mc_ind)
+		return readl(mc + reg);
+#ifdef MC_DUAL_CHANNEL
+	else
+		return readl(mc1 + reg);
+#endif
+	return 0;
+}
+
+static inline void __mc_writel(int mc_ind, u32 val, u32 reg)
+{
+	if (!mc_ind)
+		writel(val, mc + reg);
+#ifdef MC_DUAL_CHANNEL
+	else
+		writel(val, mc1 + reg);
+#endif
+}
+
+#define mc_readl(reg)       __mc_readl(0, reg)
+#define mc_writel(val, reg) __mc_writel(0, val, reg)
+
 int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);
 
 /*
