@@ -402,11 +402,40 @@ ENTRY(tegra3_lp1_reset)
 	 * IRAM when this code is executed; immediately switch to CLKM and
 	 * enable PLLP, PLLM, PLLC, and PLLX. */
 
+	/* If resuming from MC clock stop state then enable EMC clock
+	 * other PLLs are not disabled */
 	ldr	r8, [r12, #RESET_DATA(MASK_MC_CLK)]
 	tst	r8, r11		@ if memory clock stopped
 	mov32	r2, TEGRA_PMC_BASE
 	beq	resume_lp1
 
+	/* If PLLM was enabled before entering MC clock stop state
+	 * then enable it else continue enabling EMC clock */
+	mov32	r0, TEGRA_CLK_RESET_BASE
+	ldr	r1, pllm_state
+	tst	r1, #0
+	bne	enable_mc
+
+	pll_iddq_exit r1, r0, CLK_RESET_PLLM_MISC, CLK_RESET_PLLM_MISC_IDDQ
+
+	mov32	r7, TEGRA_TMRUS_BASE
+	ldr	r1, [r7]
+	add	r1, r1, #2
+	wait_until r1, r7, r3
+	/* enable PLLM via PMC */
+	ldr	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
+	orr	r1, r1, #(1<<12)
+	str	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
+
+	pll_enable r1, r0, CLK_RESET_PLLM_BASE, 0
+	pll_locked r1, r0, CLK_RESET_PLLM_BASE
+
+	mov32	r7, TEGRA_TMRUS_BASE
+	ldr	r1, [r7]
+	add	r1, r1, #LOCK_DELAY
+	wait_until r1, r7, r3
+
+enable_mc:
 	mov32	r0, TEGRA_CLK_RESET_BASE
 	mov	r1, #(1 << 25)
 	str	r1, [r0, #CLK_RESET_CLK_ENB_H_SET]
@@ -822,6 +851,9 @@ lp1_register_core_highvolt:
 	.word	0
 #endif
 
+pllm_state:
+	.word	0
+
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 lp_enter_state:
 	.word	0
@@ -966,6 +998,36 @@ tegra3_stop_mc_clk:
 	bl	tegra3_sdram_self_refresh
 	mov	r1, #(1 << 25)
 	str	r1, [r5, #CLK_RESET_CLK_ENB_H_CLR]
+
+	/* Store PLLM state
+	 * If PLLP_WB0_OVERRIDE(Bit 11) is set then store
+	 * value OVERRIDE_ENABLE(Bit 12) else store CAR value */
+	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
+	and	r1, r0, #(1 << 12)
+	lsr	r1, #12
+	and	r0, r0, #(1 << 11)
+	lsr	r0, #11
+	and	r1, r1, r0
+
+	ldr	r2, [r4, #CLK_RESET_PLLM_BASE]
+	and	r2, r2, #(1 << 30)
+	lsr	r2, #30
+	bic	r2, r2, r0
+
+	orr	r1, r1, r2
+
+	str	r1, pllm_state
+
+	/* disable PLLM via PMC in LP1 */
+	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
+	bic	r0, r0, #(1 << 12)
+	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
+
+	/* disable PLLM in CAR */
+	ldr	r0, [r4, #CLK_RESET_PLLM_BASE]
+	bic	r0, r0, #(1 << 30)
+	str	r0, [r4, #CLK_RESET_PLLM_BASE]
+
 	b	tegra3_enter_sleep
 
 /*
