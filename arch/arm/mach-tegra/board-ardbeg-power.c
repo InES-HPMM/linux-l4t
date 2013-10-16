@@ -861,6 +861,10 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_cpu_fixed_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu_fixed", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_en_avdd_3v3_dp_supply[] = {
+	REGULATOR_SUPPLY("avdd_3v3_dp", NULL),
+};
+
 #define fixed_reg_en_ti913_gpio2_supply fixed_reg_en_as3722_gpio1_supply
 #define fixed_reg_en_ti913_gpio3_supply fixed_reg_en_as3722_gpio4_supply
 #define fixed_reg_en_ti913_gpio4_supply fixed_reg_en_tca6408_p0_supply
@@ -952,6 +956,10 @@ FIXED_REG(20,	vdd_cpu_fixed,	vdd_cpu_fixed,
 	NULL,	0,	1,	-1,
 	false,	true,	0,	1000,	0);
 
+FIXED_REG(21,	avdd_3v3_dp,	avdd_3v3_dp,
+	NULL,	0,	0,	TEGRA_GPIO_PH3,
+	false,	true,	0,	3300,	0);
+
 /*
  * Creating fixed regulator device tables
  */
@@ -983,6 +991,9 @@ FIXED_REG(20,	vdd_cpu_fixed,	vdd_cpu_fixed,
 	ADD_FIXED_REG(ti913_gpio7),		\
 	ADD_FIXED_REG(vdd_cpu_fixed),
 
+#define ARDBEG_E1824_FIXED_REG			\
+	ADD_FIXED_REG(avdd_3v3_dp),
+
 static struct platform_device *fixed_reg_devs_e1733[] = {
 	ARDBEG_COMMON_FIXED_REG
 	ARDBEG_E1733_FIXED_REG
@@ -991,6 +1002,10 @@ static struct platform_device *fixed_reg_devs_e1733[] = {
 static struct platform_device *fixed_reg_devs_e1735[] = {
 	ARDBEG_COMMON_FIXED_REG
 	ARDBEG_E1735_FIXED_REG
+};
+
+static struct platform_device *fixed_reg_devs_e1824[] = {
+	ARDBEG_E1824_FIXED_REG
 };
 
 /************************ ARDBEG CL-DVFS DATA *********************/
@@ -1265,9 +1280,16 @@ int __init ardbeg_regulator_init(void)
 static int __init ardbeg_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
+	struct board_info display_board_info;
 
 	if (!of_machine_is_compatible("nvidia,ardbeg"))
 		return 0;
+
+	tegra_get_display_board_info(&display_board_info);
+
+	if (display_board_info.board_id == BOARD_E1824)
+		platform_add_devices(fixed_reg_devs_e1824,
+			ARRAY_SIZE(fixed_reg_devs_e1824));
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
