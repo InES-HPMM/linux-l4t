@@ -409,11 +409,17 @@ dhd_wlfc_queue_bw_complete(wlfc_mac_descriptor_t* entry)
 static wlfc_mac_descriptor_t *
 dhd_wlfc_queue_bw_p2p_entry(dhd_pub_t *dhdp)
 {
-	wlfc_mac_descriptor_t* interfaces =
-		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.interfaces;
-	wlfc_mac_descriptor_t* nodes =
-		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.nodes;
+	wlfc_mac_descriptor_t* interfaces = NULL;
+	wlfc_mac_descriptor_t* nodes = NULL;
 	uint8 i, j;
+
+	if (dhdp->wlfc_state == NULL)
+		return NULL;
+
+	interfaces =
+		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.interfaces;
+	nodes =
+		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.nodes;
 
 	ASSERT(interfaces != NULL);
 	ASSERT(nodes != NULL);
