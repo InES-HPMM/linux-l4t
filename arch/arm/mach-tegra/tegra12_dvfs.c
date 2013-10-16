@@ -81,6 +81,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
+	.step_up = 1400,
 	.vmin_cdev = &core_vmin_cdev,
 };
 
