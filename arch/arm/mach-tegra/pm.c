@@ -1361,7 +1361,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	 * restore power mask and disable mem_req interrupt PMC
 	 */
 	if (enter_state) {
-		pr_info("Exited state is LP1/LP1BB\n");
+		pr_debug("Exited state is LP1/LP1BB\n");
 		tegra_disable_lp1bb_interrupt();
 		tegra_smp_restore_power_mask();
 	}
