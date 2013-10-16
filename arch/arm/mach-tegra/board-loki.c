@@ -79,7 +79,6 @@
 #include "board-loki.h"
 #include "devices.h"
 #include "gpio-names.h"
-#include "fuse.h"
 #include "pm.h"
 #include "pm-irq.h"
 #include "common.h"

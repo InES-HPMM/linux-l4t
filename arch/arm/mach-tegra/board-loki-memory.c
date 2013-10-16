@@ -21,7 +21,6 @@
 #include "board-loki.h"
 #include "tegra-board-id.h"
 #include "tegra12_emc.h"
-#include "fuse.h"
 #include "devices.h"
 
 static struct tegra12_emc_table loki_emc_table[] = {

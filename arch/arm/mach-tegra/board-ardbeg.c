@@ -83,7 +83,6 @@
 #include "clock.h"
 #include "common.h"
 #include "devices.h"
-#include "fuse.h"
 #include "gpio-names.h"
 #include "iomap.h"
 #include "pm.h"
