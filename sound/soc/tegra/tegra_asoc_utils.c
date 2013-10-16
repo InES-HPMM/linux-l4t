@@ -169,7 +169,8 @@ static int tegra_set_avp_device(struct snd_kcontrol *kcontrol,
 		substream =
 			rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 		if (substream && substream->runtime) {
-			prtd = substream->runtime->private_data;
+			prtd = (struct tegra_runtime_data *)
+				snd_dmaengine_pcm_get_data(substream);
 			if (!prtd)
 				return -EINVAL;
 			if (prtd->running)
@@ -183,7 +184,8 @@ static int tegra_set_avp_device(struct snd_kcontrol *kcontrol,
 		substream =
 			rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 		if (substream && substream->runtime) {
-			prtd = substream->runtime->private_data;
+			prtd = (struct tegra_runtime_data *)
+				snd_dmaengine_pcm_get_data(substream);
 			if (!prtd)
 				return -EINVAL;
 			if (prtd->running)
@@ -216,14 +218,15 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
 
 	if (!prtd)
 		return 0;
 
 	chan = snd_dmaengine_pcm_get_chan(substream);
 
-	ucontrol->value.integer.value[0] = -1;
+	ucontrol->value.integer.value[0] = chan->chan_id;
 
 	return 0;
 }
@@ -247,7 +250,9 @@ static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
+
 	if (!prtd)
 		return 0;
 
@@ -274,7 +279,8 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
 
 	if (!prtd)
 		return 0;

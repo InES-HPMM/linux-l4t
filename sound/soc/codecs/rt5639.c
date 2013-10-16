@@ -2318,7 +2318,7 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 	rt5639_reg_init(codec);
 #endif
 
-	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
+	codec->dapm.bias_level = SND_SOC_BIAS_OFF;
 
 	snd_soc_add_codec_controls(codec, rt5639_snd_controls,
 		ARRAY_SIZE(rt5639_snd_controls));

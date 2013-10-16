@@ -93,6 +93,8 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 		return ret;
 	}
 
+	snd_dmaengine_pcm_set_data(substream, prtd);
+
 	return 0;
 }
 
@@ -152,8 +154,13 @@ int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tegra_pcm_dma_params * dmap;
+	struct tegra_runtime_data *prtd;
 
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+
+
+	prtd = (struct tegra_runtime_data *)
+	snd_dmaengine_pcm_get_data(substream);
 
 	if (!dmap)
 		return 0;
@@ -162,6 +169,13 @@ int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		prtd->running = 1;
+		if (prtd->disable_intr) {
+			substream->runtime->dma_addr = prtd->avp_dma_addr;
+			substream->runtime->no_period_wakeup = 1;
+		} else {
+			substream->runtime->no_period_wakeup = 0;
+		}
 
 		return snd_dmaengine_pcm_trigger(substream,
 					SNDRV_PCM_TRIGGER_START);
@@ -169,6 +183,7 @@ int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		prtd->running = 0;
 
 		return snd_dmaengine_pcm_trigger(substream,
 					SNDRV_PCM_TRIGGER_STOP);
