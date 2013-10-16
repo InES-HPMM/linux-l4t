@@ -284,8 +284,8 @@ static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
 
 		if (rate == 0) {
 			rate = next_rate;
-			pr_info("%s: %s V=%dmV @ min F=%luHz above Vmin=%dmV\n",
-				__func__, c->parent->name, next_v, rate, v);
+			pr_debug("%s: %s V=%dmV @ min F=%luHz above Vmin=%dmV\n",
+				 __func__, c->parent->name, next_v, rate, v);
 		}
 		freqs[i] = rate;
 		next_rate = rate;
