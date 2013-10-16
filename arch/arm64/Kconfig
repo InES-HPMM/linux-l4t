@@ -112,13 +112,6 @@ config MULTI_IRQ_HANDLER
         help
 	  Allow each machine to specify it's own IRQ handler at run time.
 
-config NEED_MACH_IO_H
-	bool
-	help
-	  Select this when mach/io.h is required to provide special
-	  definitions for this platform.  The need for mach/io.h should
-	  be avoided when possible. (HACK: copied from arch/arm)
-
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
@@ -143,8 +136,7 @@ config ARCH_TEGRA
 	select GENERIC_GPIO
 	select HAVE_CLK
 	select HAVE_SMP
-	select MIGHT_HAVE_CACHE_L2X0
-	select NEED_MACH_IO_H
+	select NEED_MACH_MEMORY_H
 	select PCI
 	help
 	  This enables support for NVIDIA Tegra based systems (Tegra APX,
