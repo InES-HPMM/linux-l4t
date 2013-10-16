@@ -20,8 +20,9 @@
 
 #include <linux/io.h>
 
+#include <mach/mcerr.h>
+
 #include "iomap.h"
-#include "mcerr.h"
 
 #define MC_LA_REG(mod) MC_LATENCY_ALLOWANCE_ ## mod
 

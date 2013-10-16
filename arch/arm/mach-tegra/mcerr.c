@@ -35,9 +35,9 @@
 
 #include <mach/mc.h>
 #include <mach/irqs.h>
+#include <mach/mcerr.h>
 
 #include "iomap.h"
-#include "mcerr.h"
 
 static bool mcerr_throttle_enabled = true;
 

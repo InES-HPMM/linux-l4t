@@ -3,7 +3,7 @@
  *
  * Tegra 3 SoC-specific initialization.
  *
- * Copyright (c) 2009-2012 NVIDIA Corporation.
+ * Copyright (C) 2009-2013, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,9 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 
+#include <mach/mcerr.h>
+
 #include "iomap.h"
-#include "mcerr.h"
 
 #define MC_TIMING_REG_NUM1					\
 	((MC_EMEM_ARB_TIMING_W2R - MC_EMEM_ARB_CFG) / 4 + 1)
