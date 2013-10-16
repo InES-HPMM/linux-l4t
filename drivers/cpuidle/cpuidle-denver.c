@@ -23,20 +23,18 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
+#include <linux/debugfs.h>
 
 void tegra_pd_in_idle(bool enable) {}
 
-static int pmstate_map[CPUIDLE_STATE_MAX] = { -1 };
+static u32 pmstate_map[CPUIDLE_STATE_MAX] = { -1 };
 
 static int denver_enter_c_state(
 		struct cpuidle_device *dev,
 		struct cpuidle_driver *drv,
 		int index)
 {
-	uintptr_t pmstate = pmstate_map[index];
-	BUG_ON(pmstate < 0);
-
-	asm volatile("msr actlr_el1, %0\n" : : "r" (pmstate));
+	asm volatile("msr actlr_el1, %0\n" : : "r" (pmstate_map[index]));
 	asm volatile("wfi\n");
 
 	local_irq_enable();
@@ -55,8 +53,18 @@ static int __init denver_power_states_init(void)
 	struct device_node *child;
 	struct cpuidle_state *state;
 	const char *name;
+	struct dentry *cpuidle_denver_dir;
+	struct dentry *idle_node;
 	u32 state_count = 0;
 	u32 prop;
+
+	cpuidle_denver_dir = debugfs_create_dir("cpuidle_denver", NULL);
+	if (!cpuidle_denver_dir) {
+		pr_err("%s: Couldn't create the \"cpuidle_denver\" debugfs "
+			"node.\n",
+			__func__);
+		return -1;
+	}
 
 	of_states = of_find_node_by_name(NULL, "denver_power_states");
 	if (!of_states)
@@ -84,6 +92,19 @@ static int __init denver_power_states_init(void)
 		if (of_property_read_u32(child, "pmstate", &prop) != 0)
 			continue;
 		pmstate_map[state_count] = prop;
+
+		/* Create a debugfs node for the idle state */
+		idle_node = debugfs_create_dir(child->name,
+					       cpuidle_denver_dir);
+		if (!idle_node) {
+				return -1;
+		}
+		if (!debugfs_create_x32("pmstate", S_IRUGO | S_IWUSR, idle_node,
+				       &pmstate_map[state_count])) {
+			pr_err("%s: Couldn't create the pmstate debugfs node"
+			       "for %s.\n",__func__, child->name);
+			return -1;
+		}
 
 		state_count++;
 	}
