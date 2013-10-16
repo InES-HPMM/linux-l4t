@@ -604,6 +604,7 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 {
 	struct snd_card *card;
 	struct list_head *p, *n;
+	int i;
 
 	if (chip == (void *)-1L)
 		return;
@@ -617,7 +618,12 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 	chip->num_interfaces--;
 
 #ifdef CONFIG_SWITCH
-	switch_set_state(&usb_switch_dev, STATE_DISCONNECTED);
+	for (i = 0; i < chip->index; i++) {
+		if (usb_chip[i])
+			break;
+	}
+	if (i == chip->index)
+		switch_set_state(&usb_switch_dev, STATE_DISCONNECTED);
 #endif
 
 	if (chip->num_interfaces <= 0) {
