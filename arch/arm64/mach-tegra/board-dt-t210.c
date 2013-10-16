@@ -132,6 +132,7 @@ DT_MACHINE_START(TEGRA210_DT, "grenada")
 	.init_early	= tegra21x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.timer		= &tegra_sys_timer,
+	.init_late	= tegra_init_late,
 	.init_machine	= tegra210_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra210_dt_board_compat,
