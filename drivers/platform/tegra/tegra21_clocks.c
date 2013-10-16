@@ -32,7 +32,6 @@
 
 #include <asm/clkdev.h>
 
-#include <mach/iomap.h>
 #include <mach/edp.h>
 #include <mach/hardware.h>
 #include <mach/mc.h>

@@ -17,7 +17,6 @@
 #include <linux/init.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
 
