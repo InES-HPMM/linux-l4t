@@ -91,6 +91,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.max_millivolts = 1350,
 	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
+	.step_up = 1350,
 	.in_band_pm = true,
 	.vts_cdev = &gpu_vts_cdev,
 	.vmin_cdev = &gpu_vmin_cdev,
