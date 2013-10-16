@@ -35,7 +35,7 @@
 #define SET_ANSWER(a, r, ro)	{ a.result = r; a.result_origin = ro; }
 
 struct tlk_device tlk_dev;
-static DEFINE_MUTEX(smc_lock);
+DEFINE_MUTEX(smc_lock);
 
 static int te_create_free_cmd_list(struct tlk_device *dev)
 {

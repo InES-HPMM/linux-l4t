@@ -44,6 +44,8 @@
 
 #define MAX_EXT_SMC_ARGS	12
 
+extern struct mutex smc_lock;
+
 uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
 uint32_t tlk_extended_smc(uint32_t *args);
 void tlk_irq_handler(void);
@@ -121,6 +123,7 @@ enum {
 	TE_SMC_NS_IRQ_DONE		= 0xFFFF1FF1,
 	TE_SMC_REGISTER_FS_HANDLERS	= 0xFFFF1FF2,
 	TE_SMC_REGISTER_REQ_BUF		= 0xFFFF1FF3,
+	TE_SMC_PROGRAM_VPR		= 0xFFFF1FF5,
 	TE_SMC_FS_OP_DONE		= 0xFFFF1FFF,
 	TE_SMC_INIT_LOGGER		= 0xFFFF1FF4,
 
