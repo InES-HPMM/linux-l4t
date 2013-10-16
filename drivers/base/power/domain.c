@@ -99,20 +99,31 @@ static int genpd_summary_show(struct seq_file *s, void *data)
 	struct pm_domain_data *pdd;
 	struct gpd_link *link;
 
+	seq_printf(s, " device/domain                   state      ref count     suspend time     \n");
+	seq_printf(s, "---------------------------------------------------------------------------\n");
 	mutex_lock(&gpd_list_lock);
 
 	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
-		seq_printf(s, "%*s%-*s %-11s\n", 1, "", 27, gpd->name,
+		seq_printf(s, "%*s%-*s %-11s\n", 1, "", 31, gpd->name,
 			genpd_get_status(gpd->status));
 		list_for_each_entry(link, &gpd->master_links, master_node) {
 			slave = link->slave;
-			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24, slave->name,
+			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 25, slave->name,
 				genpd_get_status(slave->status));
 		}
-		list_for_each_entry(pdd, &gpd->dev_list, list_node)
-			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24,
-				dev_name(pdd->dev),
-				genpd_get_device_status(pdd->dev));
+		list_for_each_entry(pdd, &gpd->dev_list, list_node) {
+			struct device *dev = pdd->dev;
+			struct dev_pm_info *power = &dev->power;
+
+			spin_lock_irq(&power->lock);
+			update_pm_runtime_accounting(dev);
+			seq_printf(s, "%*s%-*s %-11s %-13d %-17u\n", 7, "", 25,
+				dev_name(dev),
+				genpd_get_device_status(dev),
+				atomic_read(&power->usage_count),
+				jiffies_to_msecs(power->suspended_jiffies));
+			spin_unlock_irq(&power->lock);
+		}
 	}
 
 	mutex_unlock(&gpd_list_lock);
