@@ -105,6 +105,15 @@ void tegra_mc_set_priority(unsigned long client, unsigned long prio);
 	do { /* nothing for now */ } while (0)
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define MC_DUAL_CHANNEL
+#endif
+
+extern void __iomem *mc;
+#ifdef MC_DUAL_CHANNEL
+extern void __iomem *mc1;
+#endif
+
 int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);
 
 /*
@@ -156,5 +165,10 @@ static inline unsigned tegra_emc_dvfs_latency(unsigned int freq_khz)
 
 int tegra_mc_flush(int id);
 int tegra_mc_flush_done(int id);
+
+/*
+ * MC driver sub-initializations.
+ */
+int __init tegra_mcerr_init(struct dentry *mc_parent);
 
 #endif

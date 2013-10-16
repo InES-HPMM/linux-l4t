@@ -20,30 +20,27 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#define pr_fmt(fmt) "mc-err: " fmt
+
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
+#include <linux/io.h>
 #include <linux/stat.h>
 #include <linux/sched.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/moduleparam.h>
 #include <linux/spinlock_types.h>
-#include <linux/tegra-soc.h>
 
+#include <mach/mc.h>
 #include <mach/irqs.h>
 
 #include "iomap.h"
 #include "mcerr.h"
 
 static bool mcerr_throttle_enabled = true;
-
-void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
-#ifdef MC_DUAL_CHANNEL
-void __iomem *mc1 = IO_ADDRESS(TEGRA_MC1_BASE);
-#endif
 
 static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp);
 static int arb_intr_mma_get(char *buff, const struct kernel_param *kp);
@@ -391,25 +388,15 @@ static int __set_throttle(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(mcerr_throttle_debugfs_fops, __get_throttle,
 			__set_throttle, "%llu\n");
 
-static int __init tegra_mcerr_init(void)
+/*
+ * This will always e successful. However, if something goes wrong in the
+ * init a message will be printed to the kernel log. Since this is a
+ * non-essential piece of the kernel no reason to fail the entire MC init
+ * if this fails.
+ */
+int __init tegra_mcerr_init(struct dentry *mc_parent)
 {
 	u32 reg;
-	int ret = 0;
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	reg = 0x0f7f1010;
-	writel(reg, mc + MC_RESERVED_RSV);
-#endif
-
-#if defined(CONFIG_TEGRA_MC_EARLY_ACK)
-	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
-	reg |= 3;
-#if defined(CONFIG_TEGRA_ERRATA_1157520)
-	if (tegra_revision == TEGRA_REVISION_A01)
-		reg &= ~2;
-#endif
-	writel(reg, mc + MC_EMEM_ARB_OVERRIDE);
-#endif
 
 	chip_specific.mcerr_info         = mcerr_default_info;
 	chip_specific.mcerr_info_update  = mcerr_default_info_update;
@@ -426,18 +413,13 @@ static int __init tegra_mcerr_init(void)
 	if (request_irq(INT_MC_GENERAL, tegra_mc_error_isr, 0,
 			"mc_status", NULL)) {
 		pr_err("%s: unable to register MC error interrupt\n", __func__);
-		ret = -ENXIO;
+		goto done;
 	} else {
 		reg = MC_INT_EN_MASK;
 		writel(reg, mc + MC_INT_MASK);
 	}
 
-	/*
-	 * Init the debugfs node for reporting errors from the MC. If this
-	 * fails thats a shame, but not a big enough deal to warrent failing
-	 * the init of the MC itself.
-	 */
-	mcerr_debugfs_dir = debugfs_create_dir("mc", NULL);
+	mcerr_debugfs_dir = debugfs_create_dir("err", mc_parent);
 	if (mcerr_debugfs_dir == NULL) {
 		pr_err("Failed to make debugfs node: %ld\n",
 		       PTR_ERR(mcerr_debugfs_dir));
@@ -448,7 +430,9 @@ static int __init tegra_mcerr_init(void)
 	debugfs_create_file("mcerr_throttle", S_IRUGO | S_IWUSR,
 			    mcerr_debugfs_dir, NULL,
 			    &mcerr_throttle_debugfs_fops);
+
+	pr_info("Started MC error interface!\n");
+
 done:
-	return ret;
+	return 0;
 }
-arch_initcall(tegra_mcerr_init);
