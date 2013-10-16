@@ -531,3 +531,11 @@ static int __init customize_machine(void)
 	return 0;
 }
 arch_initcall(customize_machine);
+
+static int __init init_machine_late(void)
+{
+	if (machine_desc->init_late)
+		machine_desc->init_late();
+	return 0;
+}
+late_initcall(init_machine_late);
