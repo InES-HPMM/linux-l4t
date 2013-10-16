@@ -1015,4 +1015,20 @@
 			clock-frequency = <32768>;
 		};
 	};
+
+	xusb@70090000 {
+		nvidia,uses_external_pmic;
+		/* nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x101>; /* SSP0, USB2P0 */
+		nvidia,ss_portmap = <0x0>; /* SSP0 on USB2P0 */
+		nvidia,lane_owner = <0>; /* NULL */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,supply_utmi_vbuses = "usb_vbus", "", "";
+		nvidia,supply_s3p3v = "hvdd_usb";
+		nvidia,supply_s1p8v = "avdd_usb_pll";
+		nvidia,supply_vddio_hsic = "vddio_hsic";
+		nvidia,supply_s1p05v = "avddio_usb";
+		status = "okay";
+	};
 };
