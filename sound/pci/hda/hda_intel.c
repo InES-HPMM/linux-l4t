@@ -1183,14 +1183,20 @@ static unsigned int azx_single_get_response(struct hda_bus *bus,
 static int azx_send_cmd(struct hda_bus *bus, unsigned int val)
 {
 	struct azx *chip = bus->private_data;
+	unsigned int ret = 0;
 
 	if (chip->disabled)
 		return 0;
+
+	pm_runtime_get_sync(chip->dev);
 	chip->last_cmd[azx_command_addr(val)] = val;
 	if (chip->single_cmd)
-		return azx_single_send_cmd(bus, val);
+		ret = azx_single_send_cmd(bus, val);
 	else
-		return azx_corb_send_cmd(bus, val);
+		ret = azx_corb_send_cmd(bus, val);
+	pm_runtime_put(chip->dev);
+
+	return ret;
 }
 
 /* get a response */
@@ -1198,12 +1204,17 @@ static unsigned int azx_get_response(struct hda_bus *bus,
 				     unsigned int addr)
 {
 	struct azx *chip = bus->private_data;
+	unsigned int ret = 0;
 	if (chip->disabled)
-		return 0;
+		return ret;
+	pm_runtime_get_sync(chip->dev);
 	if (chip->single_cmd)
-		return azx_single_get_response(bus, addr);
+		ret = azx_single_get_response(bus, addr);
 	else
-		return azx_rirb_get_response(bus, addr);
+		ret = azx_rirb_get_response(bus, addr);
+	pm_runtime_put(chip->dev);
+
+	return ret;
 }
 
 #ifdef CONFIG_PM
@@ -1514,15 +1525,13 @@ static void azx_init_platform(struct azx *chip)
 	return;
 }
 
-static void azx_platform_enable_clocks(struct azx *chip)
+
+static void __azx_platform_enable_clocks(struct azx *chip)
 {
 	int i;
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	pm_runtime_get_sync(chip->dev);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
-#endif
 #endif
 
 	for (i = 0; i < chip->platform_clk_count; i++)
@@ -1532,7 +1541,15 @@ static void azx_platform_enable_clocks(struct azx *chip)
 
 }
 
-static void azx_platform_disable_clocks(struct azx *chip)
+static void azx_platform_enable_clocks(struct azx *chip)
+{
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	pm_runtime_get_sync(chip->dev);
+#endif
+	__azx_platform_enable_clocks(chip);
+}
+
+static void __azx_platform_disable_clocks(struct azx *chip)
 {
 	int i;
 
@@ -1543,14 +1560,20 @@ static void azx_platform_disable_clocks(struct azx *chip)
 		clk_disable(chip->platform_clks[i]);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
-	pm_runtime_put(chip->dev);
-#endif
 #endif
 
 	chip->platform_clk_enable--;
 }
+
+static void azx_platform_disable_clocks(struct azx *chip)
+{
+	__azx_platform_disable_clocks(chip);
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	pm_runtime_put(chip->dev);
+#endif
+}
+
 #endif /* CONFIG_SND_HDA_PLATFORM_DRIVER */
 
 static int azx_position_ok(struct azx *chip, struct azx_dev *azx_dev);
@@ -3136,7 +3159,7 @@ static int azx_suspend(struct device *dev)
 
 #if defined(CONFIG_SND_HDA_PLATFORM_DRIVER)
 	if (chip->pdev)
-		azx_platform_enable_clocks(chip);
+		__azx_platform_enable_clocks(chip);
 #endif
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
@@ -3165,7 +3188,7 @@ static int azx_suspend(struct device *dev)
 	if (chip->pdev) {
 		/* Disable all clk references */
 		while (chip->platform_clk_enable)
-			azx_platform_disable_clocks(chip);
+			__azx_platform_disable_clocks(chip);
 	}
 #endif
 
@@ -3182,7 +3205,7 @@ static int azx_resume(struct device *dev)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
 	if (chip->pdev)
-		azx_platform_enable_clocks(chip);
+		__azx_platform_enable_clocks(chip);
 #endif
 
 	if (chip->pci) {
@@ -3221,6 +3244,11 @@ static int azx_resume(struct device *dev)
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	if (chip->pdev)
+		pm_runtime_put(chip->dev);
+#endif
+
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP || SUPPORT_VGA_SWITCHEROO */
@@ -3240,7 +3268,7 @@ static int azx_runtime_suspend(struct device *dev)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
 	if (chip->pdev)
-		azx_platform_disable_clocks(chip);
+		__azx_platform_disable_clocks(chip);
 #endif
 
 	return 0;
@@ -3256,7 +3284,7 @@ static int azx_runtime_resume(struct device *dev)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
 	if (chip->pdev) {
-		azx_platform_enable_clocks(chip);
+		__azx_platform_enable_clocks(chip);
 		azx_init_platform(chip);
 	}
 #endif
@@ -3776,6 +3804,8 @@ static int azx_create(struct snd_card *card, struct pci_dev *pci,
 		err = pm_runtime_set_active(&pdev->dev);
 		if (err < 0)
 			return err;
+		pm_runtime_get_noresume(&pdev->dev);
+		pm_runtime_enable(&pdev->dev);
 	}
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
@@ -3839,6 +3869,7 @@ static int azx_create(struct snd_card *card, struct pci_dev *pci,
 	}
 
 	*rchip = chip;
+
 	return 0;
 }
 
@@ -4200,7 +4231,10 @@ static int azx_probe(struct pci_dev *pci,
 		pm_runtime_put_noidle(&pci->dev);
 	} else if (pdev) {
 		dev_set_drvdata(&pdev->dev, card);
-		pm_runtime_enable(&pdev->dev);
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+		tegra_pd_add_device(chip->dev);
+#endif
+		pm_runtime_put(chip->dev);
 	}
 
 	err = register_vga_switcheroo(chip);
@@ -4212,6 +4246,10 @@ static int azx_probe(struct pci_dev *pci,
 
 	dev++;
 	complete_all(&chip->probe_wait);
+
+	if (pdev)
+		pm_runtime_put(chip->dev);
+
 	return 0;
 
 out_free:
@@ -4269,11 +4307,6 @@ static int azx_probe_continue(struct azx *chip)
 		pci_set_drvdata(chip->pci, chip->card);
 	else
 		dev_set_drvdata(&chip->pdev->dev, chip->card);
-
-#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	pm_runtime_enable(chip->dev);
-	tegra_pd_add_device(chip->dev);
-#endif
 
 	chip->running = 1;
 	power_down_all_codecs(chip);
