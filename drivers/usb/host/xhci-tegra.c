@@ -3148,19 +3148,13 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 			xhci_err(xhci, "%s: could not set required ss rate.\n",
 				__func__);
 		goto send_sw_response;
+
 	case MBOX_CMD_SET_BW:
 		/* fw sends BW request in MByte/sec */
 		freq_khz = tegra_emc_bw_to_freq_req(tegra->cmd_data << 10);
 		clk_set_rate(tegra->emc_clk, freq_khz * 1000);
-
-		/* clear MBOX_SMI_INT_EN bit */
-		cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-		cmd &= ~MBOX_SMI_INT_EN;
-		writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-
-		/* clear mbox owner as ACK will not be sent for this request */
-		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
 		break;
+
 	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
 		tegra_xhci_save_dfe_context(tegra, tegra->cmd_data);
 		tegra_xhci_save_ctle_context(tegra, tegra->cmd_data);
@@ -3205,17 +3199,24 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		goto send_sw_response;
 
 	case MBOX_CMD_ACK:
-		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+		xhci_dbg(xhci, "%s firmware responds with ACK\n", __func__);
 		break;
 	case MBOX_CMD_NACK:
-		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+		xhci_warn(xhci, "%s firmware responds with NACK\n", __func__);
 		break;
 	default:
 		xhci_err(xhci, "%s: invalid cmdtype %d\n",
 				__func__, tegra->cmd_type);
 	}
+
+	/* clear MBOX_SMI_INT_EN bit */
+	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	cmd &= ~MBOX_SMI_INT_EN;
+	writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+
+	/* clear mailbox ownership */
+	writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+
 	mutex_unlock(&tegra->mbox_lock);
 	return;
 
