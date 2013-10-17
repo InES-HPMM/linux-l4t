@@ -1683,7 +1683,8 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	 * be shutdown after all the register accesses are done.
 	 */
 	if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
-		(!ios->clock && host->ops->set_clock))
+		(!ios->clock && host->ops->set_clock) &&
+		!host->mmc->skip_host_clkgate)
 		host->ops->set_clock(host, ios->clock);
 	if ((ios->power_mode == MMC_POWER_OFF) && host->ops->platform_power_off)
 		host->ops->platform_power_off(host, ios->power_mode);
