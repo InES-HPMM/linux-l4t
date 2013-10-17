@@ -455,7 +455,10 @@ void __init tegra_init_timer(struct device_node *np)
 		WARN(1, "Unknown clock rate");
 	}
 
+
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
 	hotplug_cpu_register(np);
+#endif
 	of_node_put(np);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra20_init_timer();
