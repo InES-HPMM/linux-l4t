@@ -42,6 +42,8 @@ static unsigned int regulator_cur;
 /* Value to subtract from regulator current limit */
 static unsigned int edp_reg_override_mA = OVERRIDE_DEFAULT;
 
+static struct tegra_edp_limits *reg_mode_limits;
+
 static const unsigned int *system_edp_limits;
 
 static struct tegra_system_edp_entry *power_edp_limits;
@@ -504,6 +506,18 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size)
 {
 	*limits = edp_limits;
+	*size = edp_limits_size;
+}
+
+void __init tegra_init_cpu_reg_mode_limits(unsigned int regulator_mA,
+					   unsigned int mode)
+{
+}
+
+void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
+				   int *size, unsigned int mode)
+{
+	*limits = reg_mode_limits;
 	*size = edp_limits_size;
 }
 

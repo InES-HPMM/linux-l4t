@@ -1208,6 +1208,22 @@ bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail)
 	return ret;
 }
 
+int tegra_dvfs_rail_set_mode(struct dvfs_rail *rail, unsigned int mode)
+{
+	int ret = -ENOENT;
+
+	pr_debug("%s: updating %s mode from %u to %u\n", __func__,
+		 rail->reg_id, regulator_get_mode(rail->reg), mode);
+
+	if (rail && rail->reg)
+		ret = regulator_set_mode(rail->reg, mode);
+
+	if (ret)
+		pr_err("Failed to set dvfs regulator %s mode %u\n",
+		       rail->reg_id, mode);
+	return ret;
+}
+
 bool tegra_dvfs_rail_updating(struct clk *clk)
 {
 	return (!clk ? false :

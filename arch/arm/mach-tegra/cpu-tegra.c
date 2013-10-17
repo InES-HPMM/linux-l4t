@@ -33,6 +33,7 @@
 #include <linux/suspend.h>
 #include <linux/debugfs.h>
 #include <linux/cpu.h>
+#include <linux/regulator/consumer.h>
 
 #include <mach/edp.h>
 
@@ -181,6 +182,10 @@ static struct attribute_group stats_attr_grp = {
 
 static const struct tegra_edp_limits *cpu_edp_limits;
 static int cpu_edp_limits_size;
+
+static const struct tegra_edp_limits *cpu_reg_idle_limits;
+static unsigned int reg_mode;
+static bool reg_mode_force_normal;
 
 static const unsigned int *system_edp_limits;
 static bool system_edp_alarm;
@@ -358,7 +363,8 @@ static int tegra_cpu_edp_notify(
 
 		cpu_speed = tegra_getspeed(0);
 		new_speed = edp_governor_speed(cpu_speed);
-		if (new_speed < cpu_speed) {
+		if (new_speed < cpu_speed ||
+		    (!is_suspended && cpu_reg_idle_limits)) {
 			ret = tegra_cpu_set_speed_cap_locked(NULL);
 			printk(KERN_DEBUG "cpu-tegra:%sforce EDP limit %u kHz"
 				"\n", ret ? " failed to " : " ", new_speed);
@@ -422,6 +428,69 @@ static void tegra_cpu_edp_exit(void)
 	unregister_hotcpu_notifier(&tegra_cpu_edp_notifier);
 }
 
+static unsigned int cpu_reg_mode_predict_idle_limit(void)
+{
+	unsigned int cpus, limit;
+
+	if (!cpu_reg_idle_limits)
+		return 0;
+
+	cpus = cpumask_weight(&edp_cpumask);
+	BUG_ON(cpus == 0);
+	BUG_ON(edp_thermal_index >= cpu_edp_limits_size);
+	limit = cpu_reg_idle_limits[edp_thermal_index].freq_limits[cpus - 1];
+	return limit ? : 1; /* bump 0 to 1kHz to differentiate from no-table */
+}
+
+static int cpu_reg_mode_limits_init(void)
+{
+	int limits_size;
+
+	tegra_get_cpu_reg_mode_limits(&cpu_reg_idle_limits, &limits_size,
+				      REGULATOR_MODE_IDLE);
+
+	if (!cpu_reg_idle_limits) {
+		reg_mode = -ENOENT;
+		return -ENOENT;
+	}
+
+	if (!cpu_edp_limits || (limits_size != cpu_edp_limits_size)) {
+		pr_err("cpu-tegra: EDP and regulator mode tables mismatch\n");
+		cpu_reg_idle_limits = NULL;
+		reg_mode = -EINVAL;
+		return -EINVAL;
+	}
+
+	reg_mode_force_normal = false;
+	return 0;
+}
+
+int tegra_cpu_reg_mode_force_normal(bool force)
+{
+	int ret = 0;
+
+	mutex_lock(&tegra_cpu_lock);
+	if (cpu_reg_idle_limits) {
+		reg_mode_force_normal = force;
+		ret = tegra_cpu_set_speed_cap_locked(NULL);
+	}
+	mutex_unlock(&tegra_cpu_lock);
+	return ret;
+}
+
+int tegra_update_cpu_edp_limits(void)
+{
+	int ret;
+
+	mutex_lock(&tegra_cpu_lock);
+	tegra_recalculate_cpu_edp_limits();
+	cpu_reg_mode_limits_init();
+	ret = tegra_cpu_set_speed_cap_locked(NULL);
+	mutex_unlock(&tegra_cpu_lock);
+
+	return ret;
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static int system_edp_alarm_get(void *data, u64 *val)
@@ -440,10 +509,37 @@ static int system_edp_alarm_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(system_edp_alarm_fops,
 			system_edp_alarm_get, system_edp_alarm_set, "%llu\n");
 
+static int reg_mode_force_normal_get(void *data, u64 *val)
+{
+	*val = (u64)reg_mode_force_normal;
+	return 0;
+}
+static int reg_mode_force_normal_set(void *data, u64 val)
+{
+	return tegra_cpu_reg_mode_force_normal(val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(force_normal_fops, reg_mode_force_normal_get,
+			reg_mode_force_normal_set, "%llu\n");
+
+static int reg_mode_get(void *data, u64 *val)
+{
+	*val = (u64)reg_mode;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(reg_mode_fops, reg_mode_get, NULL, "0x%llx\n");
+
 static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 {
 	if (!debugfs_create_file("edp_alarm", 0644, cpu_tegra_debugfs_root,
 				 NULL, &system_edp_alarm_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("reg_mode_force_normal", 0644,
+			cpu_tegra_debugfs_root, NULL, &force_normal_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("reg_mode", 0444,
+			cpu_tegra_debugfs_root, NULL, &reg_mode_fops))
 		return -ENOMEM;
 
 	return 0;
@@ -455,6 +551,8 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 #define tegra_cpu_edp_init(resume)
 #define tegra_cpu_edp_exit()
 #define tegra_edp_debug_init(cpu_tegra_debugfs_root) (0)
+#define cpu_reg_mode_predict_idle_limit() (0)
+static unsigned int reg_mode;
 #endif	/* CONFIG_TEGRA_EDP_LIMITS */
 
 #ifdef CONFIG_DEBUG_FS
@@ -507,6 +605,7 @@ int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
+	unsigned int mode, mode_limit = cpu_reg_mode_predict_idle_limit();
 
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
@@ -515,8 +614,19 @@ int tegra_update_cpu_speed(unsigned long rate)
 	if (!IS_ERR_VALUE(rate))
 		freqs.new = rate / 1000;
 
+	mode = REGULATOR_MODE_NORMAL;
+	if (mode_limit && (mode_limit < freqs.new || reg_mode_force_normal)) {
+		mode_limit = 0;		/* prevent further mode controls */
+		if (reg_mode != mode) {
+			ret = tegra_dvfs_rail_set_mode(tegra_cpu_rail, mode);
+			if (ret)
+				return ret;
+			reg_mode = mode;
+		}
+	}
+
 	if (freqs.old == freqs.new)
-		return ret;
+		goto _out;
 
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
@@ -551,6 +661,11 @@ int tegra_update_cpu_speed(unsigned long rate)
 
 	if (freqs.old > freqs.new)
 		tegra_update_mselect_rate(freqs.new);
+_out:
+	mode = REGULATOR_MODE_IDLE;
+	if ((mode_limit >= freqs.new) && (reg_mode != mode))
+		if (!tegra_dvfs_rail_set_mode(tegra_cpu_rail, mode))
+			reg_mode = mode;
 
 	return 0;
 }
@@ -706,6 +821,8 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	mutex_lock(&tegra_cpu_lock);
 	if (event == PM_SUSPEND_PREPARE) {
 		is_suspended = true;
+		if (cpu_reg_idle_limits)
+			reg_mode_force_normal = true;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[suspend_index].frequency);
 		tegra_update_cpu_speed(freq_table[suspend_index].frequency);
@@ -714,6 +831,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	} else if (event == PM_POST_SUSPEND) {
 		unsigned int freq;
 		is_suspended = false;
+		reg_mode_force_normal = false;
 		tegra_cpu_edp_init(true);
 		tegra_cpu_set_speed_cap_locked(&freq);
 		pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n",

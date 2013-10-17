@@ -44,6 +44,7 @@
 #include "devices.h"
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
+#include "cpu-tegra.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -4094,15 +4095,23 @@ static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	if (!c->parent || !c->parent->dvfs || !dfll)
 		return -ENOSYS;
 
+	ret = tegra_cpu_reg_mode_force_normal(true);
+	if (ret) {
+		pr_err("%s: Failed to force regulator normal mode\n", __func__);
+		return ret;
+	}
+
 	clk_lock_save(c, &c_flags);
 	if (dfll->state == UNINITIALIZED) {
 		pr_err("%s: DFLL is not initialized\n", __func__);
 		clk_unlock_restore(c, &c_flags);
+		tegra_cpu_reg_mode_force_normal(false);
 		return -ENOSYS;
 	}
 	if (c->parent->u.cpu.mode == MODE_LP) {
 		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
 		clk_unlock_restore(c, &c_flags);
+		tegra_cpu_reg_mode_force_normal(false);
 		return -ENOSYS;
 	}
 
@@ -4126,7 +4135,7 @@ static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	}
 	clk_unlock_restore(c->parent, &p_flags);
 	clk_unlock_restore(c, &c_flags);
-	tegra_recalculate_cpu_edp_limits();
+	tegra_update_cpu_edp_limits();
 	return ret;
 }
 
