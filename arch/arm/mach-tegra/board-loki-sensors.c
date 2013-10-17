@@ -39,6 +39,8 @@
 #include "dvfs.h"
 #include "cpu-tegra.h"
 
+static struct board_info board_info;
+
 /* MPU board file definition    */
 static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config     = 0x10,
@@ -50,6 +52,16 @@ static struct mpu_platform_data mpu6050_gyro_data = {
 			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
+/* MPU board file definition    */
+static struct mpu_platform_data mpu6050_gyro_data_t_1_95 = {
+	.int_config     = 0x10,
+	.level_shifter  = 0,
+	/* Located in board_[platformname].h */
+	.orientation    = MPU_GYRO_ORIENTATION_T_1_95,
+	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
+	.key            = {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
 
 static struct i2c_board_info __initdata inv_mpu6050_i2c0_board_info[] = {
 	{
@@ -82,6 +94,9 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	if (board_info.board_id == BOARD_E2549)
+		inv_mpu6050_i2c0_board_info[0].platform_data =
+						&mpu6050_gyro_data_t_1_95;
 	inv_mpu6050_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c0_board_info));
@@ -414,15 +429,14 @@ static struct platform_device loki_fan_therm_est_device_p2548 = {
 
 static int __init loki_fan_est_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
 	platform_device_register(&loki_fan_therm_est_device_p2548);
 
 	return 0;
 }
+
 int __init loki_sensors_init(void)
 {
+	tegra_get_board_info(&board_info);
 	mpuirq_init();
 	loki_camera_init();
 	loki_nct72_init();
