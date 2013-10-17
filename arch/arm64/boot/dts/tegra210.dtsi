@@ -64,7 +64,7 @@
 	};
 
 	intc: interrupt-controller {
-		compatible = "arm,cortex-a9-gic";
+		compatible = "arm,cortex-a15-gic";
 		#interrupt-cells = <3>;
 		interrupt-controller;
 		reg = <0x0 0x50041000 0x0 0x1000
@@ -73,7 +73,10 @@
 
 	timer {
 		compatible = "arm,armv8-timer";
-		interrupts = <1 14 0xff01>;
+		interrupts = <1 13 0xf01
+			      1 14 0xf01
+			      1 11 0xf01
+			      1 10 0xf01>;
 		clock-frequency = <12000000>;
 	};
 
