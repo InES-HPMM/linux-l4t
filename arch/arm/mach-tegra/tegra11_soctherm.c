@@ -2139,9 +2139,9 @@ static void soctherm_suspend_locked(void)
 		soctherm_writel((u32)-1, OC_INTR_DISABLE);
 		disable_irq(INT_THERMAL);
 		disable_irq(INT_EDP);
-		soctherm_clk_enable(false);
 		soctherm_init_platform_done = false;
 		soctherm_suspended = true;
+		/* soctherm_clk_enable(false);*/
 	}
 }
 
@@ -2156,8 +2156,8 @@ static int soctherm_suspend(void)
 static void soctherm_resume_locked(void)
 {
 	if (soctherm_suspended) {
+		/* soctherm_clk_enable(true);*/
 		soctherm_suspended = false;
-		soctherm_clk_enable(true);
 		soctherm_init_platform_data();
 		soctherm_init_platform_done = true;
 		soctherm_update();
