@@ -2021,8 +2021,10 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		"Bootloader framebuffer2: %08llx - %08llx\n"
 		"Framebuffer:            %08llx - %08llx\n"
 		"2nd Framebuffer:        %08llx - %08llx\n"
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 		"Carveout:               %08llx - %08llx\n"
 		"Vpr:                    %08llx - %08llx\n"
+#endif
 		"Tsec:                   %08llx - %08llx\n",
 		(u64)tegra_lp0_vec_start,
 		(u64)(tegra_lp0_vec_size ?
@@ -2041,12 +2043,14 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		(u64)tegra_fb2_start,
 		(u64)(tegra_fb2_size ?
 			tegra_fb2_start + tegra_fb2_size - 1 : 0),
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 		(u64)tegra_carveout_start,
 		(u64)(tegra_carveout_size ?
 			tegra_carveout_start + tegra_carveout_size - 1 : 0),
 		(u64)tegra_vpr_start,
 		(u64)(tegra_vpr_size ?
 			tegra_vpr_start + tegra_vpr_size - 1 : 0),
+#endif
 		(u64)tegra_tsec_start,
 		(u64)(tegra_tsec_size ?
 			tegra_tsec_start + tegra_tsec_size - 1 : 0));
