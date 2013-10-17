@@ -46,6 +46,8 @@
 #include "gpio-names.h"
 #include "common.h"
 
+static const int MAX_HIGH_TEMP = 128000;
+
 /* Min temp granularity specified as X in 2^X.
  * -1: Hi precision option: 2^-1 = 0.5C (T12x onwards)
  *  0: Lo precision option: 2^0  = 1.0C
@@ -781,7 +783,6 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 
 static void soctherm_update_zone(int zn)
 {
-	const int MAX_HIGH_TEMP = 128000;
 	long low_temp = 0, high_temp = MAX_HIGH_TEMP;
 	long trip_temp, passive_low_temp = MAX_HIGH_TEMP, zone_temp;
 	enum thermal_trip_type trip_type;
@@ -944,8 +945,15 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 {
 	int i, index = ((int)thz->devdata) - TSENSE_SIZE;
 	struct thermal_trip_info *trip_state;
+	u32 base_cp, base_ft;
+	s32 shft_cp, shft_ft;
 
 	if (index < 0)
+		return 0;
+
+	/* skip binding cooling devices on improperly fused soctherm */
+	if (tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) < 0 ||
+	    tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) < 0)
 		return 0;
 
 	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
@@ -2052,6 +2060,7 @@ static int soctherm_init_platform_data(void)
 	struct soctherm_sensor sensor_defaults;
 	int i, j, k;
 	long rem;
+	long gsh = MAX_HIGH_TEMP;
 	u32 r;
 
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
@@ -2178,9 +2187,19 @@ static int soctherm_init_platform_data(void)
 		if (!therm->zone_enable)
 			continue;
 
-		for (j = 0; j < therm->num_trips; j++)
-			if (therm->trips[j].trip_type == THERMAL_TRIP_CRITICAL)
-				prog_hw_shutdown(&therm->trips[j], i);
+		for (j = 0; j < therm->num_trips; j++) {
+			if (therm->trips[j].trip_type != THERMAL_TRIP_CRITICAL)
+				continue;
+			if (i == THERM_GPU) {
+				gsh = therm->trips[j].trip_temp;
+			} else if ((i == THERM_MEM) &&
+				   (gsh != MAX_HIGH_TEMP) &&
+				   (therm->trips[j].trip_temp != gsh)) {
+				pr_warn("soctherm: Force TRIP temp: MEM = GPU");
+				therm->trips[j].trip_temp = gsh;
+			}
+			prog_hw_shutdown(&therm->trips[j], i);
+		}
 	}
 
 	return 0;
@@ -2504,8 +2523,6 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, " MEM(%ld)\n", temp_translate(state));
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (i == THERM_MEM)
-			continue;
 		seq_printf(s, "%s:\n", therm_names[i]);
 		for (level = 0; level < 4; level++) {
 			r = soctherm_readl(TS_THERM_REG_OFFSET(CTL_LVL0_CPU0,
@@ -2554,14 +2571,22 @@ static int regs_show(struct seq_file *s, void *data)
 	r = soctherm_readl(THERMTRIP);
 	state = REG_GET(r, THERMTRIP_ANY_EN);
 	seq_printf(s, "ThermTRIP ANY En(%d)\n", state);
+
 	state = REG_GET(r, THERMTRIP_CPU_EN);
 	seq_printf(s, "     CPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_CPU_THRESH);
 	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+
 	state = REG_GET(r, THERMTRIP_GPU_EN);
 	seq_printf(s, "     GPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
 	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+
+	state = REG_GET(r, THERMTRIP_MEM_EN);
+	seq_printf(s, "     MEM En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
+	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+
 	state = REG_GET(r, THERMTRIP_TSENSE_EN);
 	seq_printf(s, "    PLLX En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
