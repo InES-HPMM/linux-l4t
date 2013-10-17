@@ -9,9 +9,6 @@ obj-y                                   += devices.o
 obj-y                                   += board-info.o
 obj-y                                   += io.o
 obj-y                                   += clock.o
-ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
-obj-y                                   += timer.o
-endif
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
 obj-y                                   += timerinfo.o
 
@@ -22,9 +19,6 @@ ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
 obj-y                                   += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
-ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
-obj-y                                   += timer-t2.o
-endif
 obj-$(CONFIG_PM_SLEEP)                  += wakeups-t2.o
 ifeq ($(CONFIG_CPU_IDLE),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
@@ -33,9 +27,6 @@ else
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
 obj-$(CONFIG_DEBUG_FS)                  += clocks_stats.o
-ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
-obj-y                                   += timer-t3.o
-endif
 obj-y                                   += tegra_core_volt_cap.o
 obj-$(CONFIG_TEGRA_USE_SIMON)           += tegra_simon.o
 ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
