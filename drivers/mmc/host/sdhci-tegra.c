@@ -142,6 +142,7 @@
 #define NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD	BIT(20)
 /* Shadow write xfer mode reg and write it alongwith CMD register */
 #define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(21)
+#define NVQUIRK_HIGH_FREQ_TAP_PROCEDURE		BIT(22)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1695,9 +1696,16 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 
 	tuning_data = sdhci_tegra_get_tuning_data(sdhci, sdhci->max_clk);
 	if (freq_band == TUNING_LOW_FREQ) {
-		tuning_data->nom_best_tap_value =
-			calculate_low_freq_tap_value(sdhci,
-				tuning_data->tap_data[0]);
+		if (tegra_host->soc_data->nvquirks &
+			NVQUIRK_HIGH_FREQ_TAP_PROCEDURE)
+			tuning_data->nom_best_tap_value =
+				calculate_high_freq_tap_value(sdhci,
+				tuning_data->tap_data[0],
+				tuning_data->tap_data[1]);
+		else
+			tuning_data->nom_best_tap_value =
+				calculate_low_freq_tap_value(sdhci,
+					tuning_data->tap_data[0]);
 		tuning_data->best_tap_value = tuning_data->nom_best_tap_value;
 	} else if (freq_band == TUNING_HIGH_FREQ) {
 		tuning_data->nom_best_tap_value =
@@ -2055,6 +2063,12 @@ static u8 sdhci_tegra_setup_freq_constraints(struct sdhci_host *sdhci,
 		tuning_data->freq_band = freq_band;
 		tuning_data->constraints =
 			tuning_vcore_constraints[freq_band];
+		if (tegra_host->soc_data->nvquirks &
+				NVQUIRK_HIGH_FREQ_TAP_PROCEDURE) {
+			if (tuning_data->freq_band == TUNING_LOW_FREQ)
+				tuning_data->constraints.vcore_mask |=
+					MIN_OVERRIDE_VCORE_TUN;
+		}
 		if (!tegra_host->plat->en_nominal_vcore_tuning)
 			tuning_data->constraints.vcore_mask &=
 				~NOMINAL_VCORE_TUN;
@@ -2077,6 +2091,12 @@ static u8 sdhci_tegra_setup_freq_constraints(struct sdhci_host *sdhci,
 			tuning_data->freq_band = i;
 			tuning_data->constraints =
 				tuning_vcore_constraints[i];
+			if (tegra_host->soc_data->nvquirks &
+					NVQUIRK_HIGH_FREQ_TAP_PROCEDURE) {
+				if (i == TUNING_LOW_FREQ)
+					tuning_data->constraints.vcore_mask |=
+						MIN_OVERRIDE_VCORE_TUN;
+			}
 			if (!tegra_host->plat->en_nominal_vcore_tuning)
 				tuning_data->constraints.vcore_mask &=
 					~NOMINAL_VCORE_TUN;
@@ -2781,6 +2801,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 		    NVQUIRK_ENABLE_HS200 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
+		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
 		    NVQUIRK_SET_CALIBRATION_OFFSETS,
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 0, 200000000},
