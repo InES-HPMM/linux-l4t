@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regmap.h>
 #include <media/ar0261.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
@@ -41,12 +42,19 @@ struct ar0261_info {
 	struct i2c_client *i2c_client;
 	struct ar0261_platform_data *pdata;
 	struct clk *mclk;
+	struct regmap *regmap;
 	atomic_t in_use;
 	int mode;
 };
 
 #define AR0261_TABLE_WAIT_MS 0
 #define AR0261_TABLE_END 1
+
+static const struct regmap_config sensor_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 8,
+	.cache_type = REGCACHE_RBTREE,
+};
 
 static struct ar0261_reg mode_1920x1080[] = {
 	{0x301A, 0x0019},
@@ -663,89 +671,41 @@ ar0261_get_gain_reg(struct ar0261_reg *regs, u16 gain)
 }
 
 static int
-ar0261_read_reg(struct i2c_client *client, u16 addr, u16 *val)
+ar0261_read_reg(struct ar0261_info *info, u16 addr, u16 *val)
 {
 	int err;
-	struct i2c_msg msg[2];
-	unsigned char data[4];
+	unsigned char data[2];
 
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = data;
-
-	/* high byte goes out first */
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 2;
-	msg[1].buf = data + 2;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-
-	if (err != 2)
-		return -EINVAL;
-
-	*val = data[2] << 8 | data[3];
-
-	return 0;
-}
-
-static int
-ar0261_write_reg(struct i2c_client *client, u16 addr, u16 val)
-{
-	int err;
-	struct i2c_msg msg;
-	unsigned char data[4];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val >> 8);
-	data[3] = (u8) (val & 0xff);
-
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 4;
-	msg.buf = data;
-
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err == 1)
-		return 0;
-
-	dev_err(&client->dev, "%s:i2c write failed, %x = %x\n",
-			__func__, addr, val);
+	err = regmap_raw_read(info->regmap, addr, data, sizeof(data));
+	if (!err)
+		*val = (u16)data[0] << 8 | data[1];
 
 	return err;
 }
 
-static int ar0261_i2c_wr8(struct i2c_client *client, u16 reg, u8 val)
+static int
+ar0261_write_reg(struct ar0261_info *info, u16 addr, u16 val)
 {
-	struct i2c_msg msg;
-	u8 buf[3];
+	int err;
+	unsigned char data[2];
 
-	buf[0] = (reg >> 8);
-	buf[1] = (reg & 0xFF);
-	buf[2] = val;
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 3;
-	msg.buf = &buf[0];
-	if (i2c_transfer(client->adapter, &msg, 1) != 1)
-		return -EIO;
+	data[0] = (u8) (val >> 8);
+	data[1] = (u8) (val & 0xff);
+	err = regmap_raw_write(info->regmap, addr, data, sizeof(data));
+	if (err)
+		dev_err(&info->i2c_client->dev,
+			"%s:i2c write failed, %x = %x\n", __func__, addr, val);
 
-	return 0;
+	return err;
+}
+
+static inline int ar0261_i2c_wr8(struct ar0261_info *info, u16 reg, u8 val)
+{
+	return regmap_write(info->regmap, reg, val);
 }
 
 static int
-ar0261_write_table(struct i2c_client *client,
+ar0261_write_table(struct ar0261_info *info,
 			 const struct ar0261_reg table[],
 			 const struct ar0261_reg override_list[],
 			 int num_override_regs)
@@ -755,7 +715,7 @@ ar0261_write_table(struct i2c_client *client,
 	int i;
 	u16 val;
 
-	dev_info(&client->dev, "ar0261_write_table\n");
+	dev_info(&info->i2c_client->dev, "ar0261_write_table\n");
 
 	for (next = table; next->addr != AR0261_TABLE_END; next++) {
 
@@ -777,7 +737,7 @@ ar0261_write_table(struct i2c_client *client,
 			}
 		}
 
-		err = ar0261_write_reg(client, next->addr, val);
+		err = ar0261_write_reg(info, next->addr, val);
 		if (err)
 			break;
 	}
@@ -828,7 +788,7 @@ ar0261_set_mode(struct ar0261_info *info, struct ar0261_mode *mode)
 			reg_list + 5, mode->coarse_time_short);
 	}
 
-	err = ar0261_write_table(info->i2c_client, mode_table[sensor_mode],
+	err = ar0261_write_table(info, mode_table[sensor_mode],
 			reg_list, mode->hdr_en ? HDR_MODE_OVERRIDE_REGS :
 			NORMAL_MODE_OVERRIDE_REGS);
 	if (err)
@@ -859,22 +819,19 @@ ar0261_set_frame_length(struct ar0261_info *info,
 	ar0261_get_frame_length_regs(reg_list, frame_length);
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x01);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x01);
 		if (ret)
 			return ret;
 	}
 
 	for (i = 0; i < NUM_OF_FRAME_LEN_REG; i++) {
-		ret = ar0261_i2c_wr8(info->i2c_client, reg_list[i].addr,
-			reg_list[i].val);
+		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x0);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -895,23 +852,19 @@ ar0261_set_coarse_time(struct ar0261_info *info,
 	ar0261_get_coarse_time_regs(reg_list, coarse_time);
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD,
-					0x01);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x01);
 		if (ret)
 			return ret;
 	}
 
 	for (i = 0; i < NUM_OF_COARSE_TIME_REG; i++) {
-		ret = ar0261_i2c_wr8(info->i2c_client, reg_list[i].addr,
-			reg_list[i].val);
+		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x0);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -934,33 +887,29 @@ ar0261_set_hdr_coarse_time(struct ar0261_info *info,
 	/* set group hold */
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-			AR0261_GROUP_PARAM_HOLD, 0x1);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x1);
 		if (ret)
 			return ret;
 	}
 	/* writing long exposure */
 	for (i = 0; i < 2; i++) {
-		ret = ar0261_i2c_wr8(info->i2c_client, reg_list[i].addr,
-			 reg_list[i].val);
+		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 	/* writing short exposure */
 	for (i = 0; i < 2; i++) {
-		ret = ar0261_i2c_wr8(info->i2c_client, reg_list_short[i].addr,
+		ret = ar0261_i2c_wr8(info, reg_list_short[i].addr,
 			 reg_list_short[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-			AR0261_GROUP_PARAM_HOLD, 0x0);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
 	}
-
 	return 0;
 }
 
@@ -973,19 +922,17 @@ ar0261_set_gain(struct ar0261_info *info, u16 gain, bool group_hold)
 	ar0261_get_gain_reg(&reg_list, gain);
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x1);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x1);
 		if (ret)
 			return ret;
 	}
 
-	ret = ar0261_i2c_wr8(info->i2c_client, reg_list.addr, reg_list.val);
+	ret = ar0261_i2c_wr8(info, reg_list.addr, reg_list.val);
 	if (ret)
 		return ret;
 
 	if (group_hold) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x0);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -1013,8 +960,7 @@ ar0261_set_group_hold(struct ar0261_info *info, struct ar0261_ae *ae)
 		grouphold_enabled = true;
 
 	if (grouphold_enabled) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x1);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x1);
 		if (ret)
 			return ret;
 	}
@@ -1028,8 +974,7 @@ ar0261_set_group_hold(struct ar0261_info *info, struct ar0261_ae *ae)
 		ar0261_set_frame_length(info, ae->frame_length, false);
 
 	if (grouphold_enabled) {
-		ret = ar0261_i2c_wr8(info->i2c_client,
-					AR0261_GROUP_PARAM_HOLD, 0x0);
+		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -1047,17 +992,17 @@ static int ar0261_get_sensor_id(struct ar0261_info *info)
 	if (info->sensor_data.fuse_id_size)
 		return 0;
 
-	ret |= ar0261_write_reg(info->i2c_client, 0x301A, 0x0210);
-	ret |= ar0261_write_reg(info->i2c_client, 0x3054, 0x0500);
-	ret |= ar0261_write_reg(info->i2c_client, 0x3052, 0x0000);
-	ret |= ar0261_write_reg(info->i2c_client, 0x304A, 0x0400);
-	ret |= ar0261_write_reg(info->i2c_client, 0x304C, 0x02FF);
-	ret |= ar0261_write_reg(info->i2c_client, 0x304A, 0x0410);
+	ret |= ar0261_write_reg(info, 0x301A, 0x0210);
+	ret |= ar0261_write_reg(info, 0x3054, 0x0500);
+	ret |= ar0261_write_reg(info, 0x3052, 0x0000);
+	ret |= ar0261_write_reg(info, 0x304A, 0x0400);
+	ret |= ar0261_write_reg(info, 0x304C, 0x02FF);
+	ret |= ar0261_write_reg(info, 0x304A, 0x0410);
 
 	msleep_range(10);
 
 	for (i = 0; i < 16; i += 2) {
-		ret |= ar0261_read_reg(info->i2c_client, 0x3804 + i, &store);
+		ret |= ar0261_read_reg(info, 0x3804 + i, &store);
 		info->sensor_data.fuse_id[i] = store;
 		info->sensor_data.fuse_id[i+1] = store >> 8;
 	}
@@ -1311,6 +1256,13 @@ ar0261_probe(struct i2c_client *client,
 		pr_err("[ar0261]:%s:Unable to allocate memory!\n", __func__);
 		return -ENOMEM;
 	}
+	info->regmap = devm_regmap_init_i2c(client, &sensor_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		dev_err(&client->dev,
+			"regmap init failed: %ld\n", PTR_ERR(info->regmap));
+		return -ENODEV;
+	}
+
 
 	info->pdata = client->dev.platform_data;
 	info->i2c_client = client;

@@ -27,6 +27,7 @@
 #include <linux/seq_file.h>
 #include <linux/atomic.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regmap.h>
 #include <linux/export.h>
 #include <linux/module.h>
 
@@ -179,6 +180,7 @@ struct ov7695_info {
 	struct i2c_client		*i2c_client;
 	struct clk			*mclk;
 	struct ov7695_platform_data	*pdata;
+	struct regmap			*regmap;
 	atomic_t			in_use;
 	const struct ov7695_reg		*mode;
 #ifdef CONFIG_DEBUG_FS
@@ -204,6 +206,12 @@ static struct ov7695_mode_desc mode_table[] = {
 	{ },
 };
 
+static const struct regmap_config sensor_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 8,
+	.cache_type = REGCACHE_RBTREE,
+};
+
 static long ov7695_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg);
 
@@ -212,96 +220,26 @@ static inline void ov7695_msleep(u32 t)
 	usleep_range(t*1000, t*1000 + 500);
 }
 
-static int ov7695_read_reg(struct i2c_client *client, u16 addr, u8 *val)
+static inline int ov7695_read_reg(struct ov7695_info *info, u16 addr, u8 *val)
 {
-	int err;
-	struct i2c_msg msg[2];
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = data;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = data + 2;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-
-	if (err != 2)
-		return -EINVAL;
-
-	*val = data[2];
-
-	return 0;
+	return regmap_read(info->regmap, addr, val);
 }
 
-static int ov7695_write_bulk_reg(struct i2c_client *client, u8 *data, int len)
+static int ov7695_write_reg8(struct ov7695_info *info, u16 addr, u8 val)
 {
-	int err;
-	struct i2c_msg msg;
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = len;
-	msg.buf = data;
-
-	dev_dbg(&client->dev,
-		"%s {0x%04x,", __func__, (int)data[0] << 8 | data[1]);
-	for (err = 2; err < len; err++)
-		dev_dbg(&client->dev, " 0x%02x", data[err]);
-	dev_dbg(&client->dev, "},\n");
-
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err == 1)
-		return 0;
-
-	dev_err(&client->dev, "ov7695: i2c bulk transfer failed at %x\n",
-		(int)data[0] << 8 | data[1]);
-
-	return err;
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_write(info->regmap, addr, val);
 }
 
-static int ov7695_write_reg8(struct i2c_client *client, u16 addr, u8 val)
+static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
 {
-	unsigned char data[3];
+	unsigned char data[2];
 
-	if (!client->adapter)
-		return -ENODEV;
+	data[0] = (u8) (val >> 8);
+	data[1] = (u8) (val & 0xff);
 
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val & 0xff);
-
-	dev_dbg(&client->dev, "0x%x = 0x%x\n", addr, val);
-	return ov7695_write_bulk_reg(client, data, sizeof(data));
-}
-
-static int ov7695_write_reg16(struct i2c_client *client, u16 addr, u16 val)
-{
-	unsigned char data[4];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val >> 8);
-	data[3] = (u8) (val & 0xff);
-
-	dev_dbg(&client->dev, "0x%x = 0x%x\n", addr, val);
-	return ov7695_write_bulk_reg(client, data, sizeof(data));
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
 }
 
 static int ov7695_write_table(
@@ -325,7 +263,7 @@ static int ov7695_write_table(
 		dev_info(&info->i2c_client->dev,
 			"%s: addr = 0x%4x, val = 0x%2x\n",
 			__func__, next->addr, val);
-		err = ov7695_write_reg8(info->i2c_client, next->addr, val);
+		err = ov7695_write_reg8(info, next->addr, val);
 		if (err)
 			return err;
 	}
@@ -514,10 +452,8 @@ static int debug_i2c_read(void *data, u64 *val)
 	dev_info(&info->i2c_client->dev,
 			"ov7695:%s reading offset 0x%X\n", __func__,
 			info->debug_i2c_offset);
-	if (ov7695_read_reg(info->i2c_client,
-				info->debug_i2c_offset, &temp1)
-		|| ov7695_read_reg(info->i2c_client,
-			info->debug_i2c_offset+1, &temp2)) {
+	if (ov7695_read_reg(info, info->debug_i2c_offset, &temp1)
+		|| ov7695_read_reg(info, info->debug_i2c_offset+1, &temp2)) {
 		dev_err(&info->i2c_client->dev,
 				"ov7695:%s failed\n", __func__);
 		return -EIO;
@@ -535,8 +471,7 @@ static int debug_i2c_write(void *data, u64 val)
 	dev_info(&info->i2c_client->dev,
 			"ov7695:%s writing 0x%X to offset 0x%X\n", __func__,
 			(u16)val, info->debug_i2c_offset);
-	if (ov7695_write_reg16(info->i2c_client,
-				info->debug_i2c_offset, (u16)val)) {
+	if (ov7695_write_reg16(info, info->debug_i2c_offset, (u16)val)) {
 		dev_err(&info->i2c_client->dev,
 			"ov7695:%s failed\n", __func__);
 		return -EIO;
@@ -580,8 +515,7 @@ static int ov7695_debug_init(struct ov7695_info *info)
 
 err_out:
 	dev_err(&info->i2c_client->dev, "ERROR:%s failed", __func__);
-	if (info->debugfs_root)
-		debugfs_remove_recursive(info->debugfs_root);
+	debugfs_remove_recursive(info->debugfs_root);
 	return -ENOMEM;
 }
 #endif	/* CONFIG_DEBUG_FS */
@@ -701,6 +635,13 @@ static int ov7695_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	info->regmap = devm_regmap_init_i2c(client, &sensor_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		dev_err(&client->dev,
+			"regmap init failed: %ld\n", PTR_ERR(info->regmap));
+		return -ENODEV;
+	}
+
 	info->pdata = client->dev.platform_data;
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
@@ -751,8 +692,7 @@ static int ov7695_remove(struct i2c_client *client)
 	kfree(info);
 
 #ifdef CONFIG_DEBUG_FS
-	if (info->debugfs_root)
-		debugfs_remove_recursive(info->debugfs_root);
+	debugfs_remove_recursive(info->debugfs_root);
 #endif
 
 	return 0;

@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regmap.h>
 #include <media/imx135.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
@@ -50,9 +51,16 @@ struct imx135_info {
 	struct i2c_client		*i2c_client;
 	struct imx135_platform_data	*pdata;
 	struct clk			*mclk;
+	struct regmap			*regmap;
 	struct mutex			imx135_camera_lock;
 	struct dentry			*debugdir;
 	atomic_t			in_use;
+};
+
+static const struct regmap_config sensor_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 8,
+	.cache_type = REGCACHE_RBTREE,
 };
 
 #define IMX135_TABLE_WAIT_MS 0
@@ -1848,70 +1856,28 @@ imx135_get_gain_short_reg(struct imx135_reg *regs, u16 gain)
 	regs->val = gain;
 }
 
-static int
-imx135_read_reg(struct i2c_client *client, u16 addr, u8 *val)
+static inline int
+imx135_read_reg(struct imx135_info *info, u16 addr, u8 *val)
 {
-	int err;
-	struct i2c_msg msg[2];
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = data;
-
-	/* high byte goes out first */
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = data + 2;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-
-	if (err != 2)
-		return -EINVAL;
-
-	*val = data[2];
-	return 0;
+	return regmap_read(info->regmap, addr, val);
 }
 
 static int
-imx135_write_reg(struct i2c_client *client, u16 addr, u8 val)
+imx135_write_reg(struct imx135_info *info, u16 addr, u8 val)
 {
 	int err;
-	struct i2c_msg msg;
-	unsigned char data[3];
 
-	if (!client->adapter)
-		return -ENODEV;
+	err = regmap_write(info->regmap, addr, val);
 
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val & 0xff);
-
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 3;
-	msg.buf = data;
-
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err == 1)
-		return 0;
-
-	pr_err("%s:i2c write failed, %x = %x\n",
+	if (err)
+		pr_err("%s:i2c write failed, %x = %x\n",
 			__func__, addr, val);
 
 	return err;
 }
 
 static int
-imx135_write_table(struct i2c_client *client,
+imx135_write_table(struct imx135_info *info,
 				 const struct imx135_reg table[],
 				 const struct imx135_reg override_list[],
 				 int num_override_regs)
@@ -1940,7 +1906,7 @@ imx135_write_table(struct i2c_client *client,
 			}
 		}
 
-		err = imx135_write_reg(client, next->addr, val);
+		err = imx135_write_reg(info, next->addr, val);
 		if (err) {
 			pr_err("%s:imx135_write_table:%d", __func__, err);
 			return err;
@@ -1961,7 +1927,7 @@ static int imx135_set_flash_output(struct imx135_info *info)
 	dev_dbg(&info->i2c_client->dev, "edg: %x, st: %x, rpt: %x, dly: %x\n",
 		fctl->edge_trig_en, fctl->start_edge,
 		fctl->repeat, fctl->delay_frm);
-	return imx135_write_table(info->i2c_client, flash_strobe_mod, NULL, 0);
+	return imx135_write_table(info, flash_strobe_mod, NULL, 0);
 }
 
 static int imx135_get_flash_cap(struct imx135_info *info)
@@ -1988,7 +1954,7 @@ static inline int imx135_set_flash_control(
 	struct imx135_info *info, struct imx135_flash_control *fc)
 {
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
-	return imx135_write_reg(info->i2c_client, 0x0802, 0x01);
+	return imx135_write_reg(info, 0x0802, 0x01);
 }
 
 static int
@@ -2039,17 +2005,17 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 			reg_list + 6, mode->coarse_time_short);
 	}
 
-	err = imx135_write_table(info->i2c_client,
+	err = imx135_write_table(info,
 				mode_table[sensor_mode],
 				reg_list, mode->hdr_en ? 8 : 5);
 	if (err)
 		return err;
 	if (quality_hdr)
-		err = imx135_write_table(info->i2c_client,
+		err = imx135_write_table(info,
 				mode_table[IMX135_MODE_QUALITY_HDR],
 				reg_list, 0);
 	else
-		err = imx135_write_table(info->i2c_client,
+		err = imx135_write_table(info,
 				mode_table[IMX135_MODE_QUALITY],
 				reg_list, 0);
 	if (err)
@@ -2080,20 +2046,20 @@ imx135_set_frame_length(struct imx135_info *info, u32 frame_length,
 	imx135_get_frame_length_regs(reg_list, frame_length);
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x0104, 0x01);
+		ret = imx135_write_reg(info, 0x0104, 0x01);
 		if (ret)
 			return ret;
 	}
 
 	for (i = 0; i < 2; i++) {
-		ret = imx135_write_reg(info->i2c_client, reg_list[i].addr,
+		ret = imx135_write_reg(info, reg_list[i].addr,
 			 reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x0104, 0x0);
+		ret = imx135_write_reg(info, 0x0104, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -2113,20 +2079,20 @@ imx135_set_coarse_time(struct imx135_info *info, u32 coarse_time,
 	imx135_get_coarse_time_regs(reg_list, coarse_time);
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x01);
+		ret = imx135_write_reg(info, 0x104, 0x01);
 		if (ret)
 			return ret;
 	}
 
 	for (i = 0; i < 2; i++) {
-		ret = imx135_write_reg(info->i2c_client, reg_list[i].addr,
+		ret = imx135_write_reg(info, reg_list[i].addr,
 			 reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x0);
+		ret = imx135_write_reg(info, 0x104, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -2142,19 +2108,19 @@ imx135_set_gain(struct imx135_info *info, u16 gain, bool group_hold)
 	imx135_get_gain_reg(&reg_list, gain);
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x1);
+		ret = imx135_write_reg(info, 0x104, 0x1);
 		if (ret)
 			return ret;
 	}
 
-	ret = imx135_write_reg(info->i2c_client, reg_list.addr, reg_list.val);
+	ret = imx135_write_reg(info, reg_list.addr, reg_list.val);
 	/* writing second gain register for HDR */
-	ret = imx135_write_reg(info->i2c_client, 0x233, reg_list.val);
+	ret = imx135_write_reg(info, 0x233, reg_list.val);
 	if (ret)
 		return ret;
 
 	if (group_hold) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x0);
+		ret = imx135_write_reg(info, 0x104, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -2173,28 +2139,28 @@ imx135_set_hdr_coarse_time(struct imx135_info *info, struct imx135_hdr *values)
 	imx135_get_coarse_time_short_regs(reg_list_short,
 			values->coarse_time_short);
 	/* set to direct mode */
-	ret = imx135_write_reg(info->i2c_client, 0x238, 0x1);
+	ret = imx135_write_reg(info, 0x238, 0x1);
 	if (ret)
 		return ret;
 	/* set group hold */
-	ret = imx135_write_reg(info->i2c_client, 0x104, 0x1);
+	ret = imx135_write_reg(info, 0x104, 0x1);
 	if (ret)
 		return ret;
 	/* writing long exposure */
 	for (i = 0; i < 2; i++) {
-		ret = imx135_write_reg(info->i2c_client, reg_list[i].addr,
+		ret = imx135_write_reg(info, reg_list[i].addr,
 			 reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 	/* writing short exposure */
 	for (i = 0; i < 2; i++) {
-		ret = imx135_write_reg(info->i2c_client, reg_list_short[i].addr,
+		ret = imx135_write_reg(info, reg_list_short[i].addr,
 			 reg_list_short[i].val);
 		if (ret)
 			return ret;
 	}
-	ret = imx135_write_reg(info->i2c_client, 0x104, 0x0);
+	ret = imx135_write_reg(info, 0x104, 0x0);
 	if (ret)
 		return ret;
 
@@ -2222,7 +2188,7 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 		group_hold_enabled = true;
 
 	if (group_hold_enabled) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x1);
+		ret = imx135_write_reg(info, 0x104, 0x1);
 		if (ret)
 			return ret;
 	}
@@ -2235,7 +2201,7 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 		imx135_set_frame_length(info, ae->frame_length, false);
 
 	if (group_hold_enabled) {
-		ret = imx135_write_reg(info->i2c_client, 0x104, 0x0);
+		ret = imx135_write_reg(info, 0x104, 0x0);
 		if (ret)
 			return ret;
 	}
@@ -2256,9 +2222,9 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 	/* Note 1: If the sensor does not have power at this point
 	Need to supply the power, e.g. by calling power on function */
 
-	ret |= imx135_write_reg(info->i2c_client, 0x3B02, 0x00);
-	ret |= imx135_write_reg(info->i2c_client, 0x3B00, 0x01);
-	for (i = 0; i < 9 ; i++) {
+	ret |= imx135_write_reg(info, 0x3B02, 0x00);
+	ret |= imx135_write_reg(info, 0x3B00, 0x01);
+	for (i = 0; i < 9; i++) {
 		ret |= imx135_read_reg(info->i2c_client, 0x3B24 + i, &bak);
 		info->sensor_data.fuse_id[i] = bak;
 	}
@@ -2462,9 +2428,9 @@ static ssize_t imx135_debugfs_write(
 set_attr:
 	dev_info(&i2c_client->dev,
 			"new address = %x, data = %x\n", address, data);
-	ret |= imx135_write_reg(i2c_client, address, data);
+	ret |= imx135_write_reg(dev, address, data);
 read:
-	ret |= imx135_read_reg(i2c_client, address, &readback);
+	ret |= imx135_read_reg(dev, address, &readback);
 	dev_dbg(&i2c_client->dev,
 			"wrote to address 0x%x with value 0x%x\n",
 			address, readback);
@@ -2800,6 +2766,13 @@ imx135_probe(struct i2c_client *client,
 	if (!info) {
 		pr_err("%s:Unable to allocate memory!\n", __func__);
 		return -ENOMEM;
+	}
+
+	info->regmap = devm_regmap_init_i2c(client, &sensor_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		dev_err(&client->dev,
+			"regmap init failed: %ld\n", PTR_ERR(info->regmap));
+		return -ENODEV;
 	}
 
 	if (client->dev.of_node)

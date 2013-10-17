@@ -26,6 +26,7 @@
 #include <linux/seq_file.h>
 #include <linux/atomic.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regmap.h>
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/clk.h>
@@ -347,8 +348,9 @@ struct mt9m114_info {
 	struct mt9m114_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
 	struct mt9m114_platform_data	*pdata;
+	struct regmap			*regmap;
 	atomic_t			in_use;
-	const struct mt9m114_reg		*mode;
+	const struct mt9m114_reg	*mode;
 	u8				i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
 	struct clk *mclk;
 };
@@ -369,6 +371,12 @@ static struct mt9m114_mode_desc mode_table[] = {
 	{ },
 };
 
+static const struct regmap_config sensor_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 8,
+	.cache_type = REGCACHE_RBTREE,
+};
+
 static long mt9m114_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg);
 
@@ -377,96 +385,21 @@ static inline void mt9m114_msleep(u32 t)
 	usleep_range(t*1000, t*1000 + 500);
 }
 
-static int mt9m114_read_reg(struct i2c_client *client, u16 addr, u8 *val)
+static int mt9m114_write_reg8(struct mt9m114_info *info, u16 addr, u8 val)
 {
-	int err;
-	struct i2c_msg msg[2];
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = data;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = data + 2;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-
-	if (err != 2)
-		return -EINVAL;
-
-	*val = data[2];
-
-	return 0;
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_write(info->regmap, addr, val);
 }
 
-static int mt9m114_write_bulk_reg(struct i2c_client *client, u8 *data, int len)
+static int mt9m114_write_reg16(struct mt9m114_info *info, u16 addr, u16 val)
 {
-	int err;
-	struct i2c_msg msg;
+	unsigned char data[2];
 
-	if (!client->adapter)
-		return -ENODEV;
+	data[0] = (u8) (val >> 8);
+	data[1] = (u8) (val & 0xff);
 
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = len;
-	msg.buf = data;
-
-	dev_dbg(&client->dev,
-		"%s {0x%04x,", __func__, (int)data[0] << 8 | data[1]);
-	for (err = 2; err < len; err++)
-		dev_dbg(&client->dev, " 0x%02x", data[err]);
-	dev_dbg(&client->dev, "},\n");
-
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err == 1)
-		return 0;
-
-	dev_err(&client->dev, "mt9m114: i2c bulk transfer failed at %x\n",
-		(int)data[0] << 8 | data[1]);
-
-	return err;
-}
-
-static int mt9m114_write_reg8(struct i2c_client *client, u16 addr, u8 val)
-{
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val & 0xff);
-
-	dev_dbg(&client->dev, "0x%x = 0x%x\n", addr, val);
-	return mt9m114_write_bulk_reg(client, data, sizeof(data));
-}
-
-static int mt9m114_write_reg16(struct i2c_client *client, u16 addr, u16 val)
-{
-	unsigned char data[4];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val >> 8);
-	data[3] = (u8) (val & 0xff);
-
-	dev_dbg(&client->dev, "0x%x = 0x%x\n", addr, val);
-	return mt9m114_write_bulk_reg(client, data, sizeof(data));
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
 }
 
 static int mt9m114_write_table(
@@ -488,11 +421,9 @@ static int mt9m114_write_table(
 		val = next->val;
 
 		if (next->cmd == MT9M114_SENSOR_BYTE_WRITE)
-			err = mt9m114_write_reg8(info->i2c_client,
-					next->addr, val);
+			err = mt9m114_write_reg8(info, next->addr, val);
 		else if (next->cmd == MT9M114_SENSOR_WORD_WRITE)
-			err = mt9m114_write_reg16(info->i2c_client,
-					next->addr, val);
+			err = mt9m114_write_reg16(info, next->addr, val);
 		if (err)
 			return err;
 	}
@@ -729,6 +660,13 @@ static int mt9m114_probe(struct i2c_client *client,
 	if (info == NULL) {
 		dev_err(&client->dev, "%s: kzalloc error\n", __func__);
 		return -ENOMEM;
+	}
+
+	info->regmap = devm_regmap_init_i2c(client, &sensor_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		dev_err(&client->dev,
+			"regmap init failed: %ld\n", PTR_ERR(info->regmap));
+		return -ENODEV;
 	}
 
 	info->pdata = client->dev.platform_data;
