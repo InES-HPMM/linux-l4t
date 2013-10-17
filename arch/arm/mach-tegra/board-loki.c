@@ -881,4 +881,5 @@ DT_MACHINE_START(LOKI, "loki")
 	.init_machine	= tegra_loki_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= loki_dt_board_compat,
+	.init_late	= tegra_init_late
 MACHINE_END
