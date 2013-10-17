@@ -1795,6 +1795,8 @@ static int __init tegra_pcie_init(void)
 		}
 	}
 	tegra_pcie_enable_features();
+	/* register pcie device as wakeup source */
+	device_init_wakeup(tegra_pcie.dev, true);
 
 	return 0;
 err_irq:
@@ -1827,7 +1829,19 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int tegra_pcie_suspend_noirq(struct device *dev)
 {
+	int ret = 0;
+
 	PR_FUNC_LINE;
+	/* configure PE_WAKE signal as wake sources */
+	if (device_may_wakeup(dev)) {
+		ret = enable_irq_wake(gpio_to_irq(
+			tegra_pcie.plat_data->gpio_wake));
+		if (ret < 0) {
+			dev_err(dev,
+				"ID wake-up event failed with error %d\n", ret);
+			return ret;
+		}
+	}
 	return tegra_pcie_power_off();
 }
 
@@ -1837,6 +1851,16 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 
 	PR_FUNC_LINE;
 	resume_path = true;
+
+	if (device_may_wakeup(dev)) {
+		ret = disable_irq_wake(gpio_to_irq(
+			tegra_pcie.plat_data->gpio_wake));
+		if (ret < 0) {
+			dev_err(dev,
+				"ID wake-up event failed with error %d\n", ret);
+			return ret;
+		}
+	}
 	ret = tegra_pcie_power_on();
 	if (ret) {
 		pr_err("PCIE: Failed to power on: %d\n", ret);
