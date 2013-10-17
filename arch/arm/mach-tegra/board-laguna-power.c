@@ -31,6 +31,7 @@
 #include <linux/mfd/as3722-plat.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
+#include <linux/pid_thermal_gov.h>
 
 #include <asm/mach-types.h>
 
@@ -842,6 +843,21 @@ int __init laguna_edp_init(void)
 	return 0;
 }
 
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 20,
+	.down_compensation = 20,
+};
+
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
+};
 
 static struct soctherm_platform_data laguna_soctherm_data = {
 	.therm = {
@@ -852,27 +868,28 @@ static struct soctherm_platform_data laguna_soctherm_data = {
 			.num_trips = 3,
 			.trips = {
 				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 103000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 100000,
+					.trip_temp = 101000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 91000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 			},
+			.tzp = &soctherm_tzp,
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
@@ -881,27 +898,37 @@ static struct soctherm_platform_data laguna_soctherm_data = {
 			.num_trips = 3,
 			.trips = {
 				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 104000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
+					.trip_temp = 92000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+/*
+				{
+					.cdev_type = "gk20a_cdev",
+					.trip_temp = 102000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 100000,
+					.trip_temp = 102000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
+*/
 			},
+			.tzp = &soctherm_tzp,
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
@@ -909,9 +936,15 @@ static struct soctherm_platform_data laguna_soctherm_data = {
 	},
 	.throttle = {
 		[THROTTLE_HEAVY] = {
+			.priority = 100,
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
-					.enable = 1,
+					.enable = true,
+					.depth = 80,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+					.throttling_depth = "heavy_throttling",
 				},
 			},
 		},
@@ -922,7 +955,7 @@ int __init laguna_soctherm_init(void)
 {
 	tegra_platform_edp_init(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips,
-			8000); /* edp temperature margin */
+			7000); /* edp temperature margin */
 	tegra_add_tj_trips(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_tgpu_trips(laguna_soctherm_data.therm[THERM_GPU].trips,
