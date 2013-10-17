@@ -165,9 +165,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.tap_delay = 0,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
-/*FIXME: Enable UHS modes for WiFI */
-	.uhs_mask = MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
-		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+	.uhs_mask = MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_DDR50 |
+		MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
 };
@@ -178,10 +177,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.power_gpio = -1,
 	.tap_delay = 0,
 	.trim_delay = 0x3,
-/*FIXME: Enable UHS modes for SD */
-	.uhs_mask = MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25 |
-		MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_DDR50 |
-		MMC_UHS_MASK_SDR50,
+	.uhs_mask = MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
 };
