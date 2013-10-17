@@ -636,7 +636,7 @@ int tegra_powergate_init_refcount(void)
 
 int __init tegra_powergate_init(void)
 {
-	switch (tegra_chip_id) {
+	switch (tegra_get_chip_id()) {
 		case TEGRA_CHIPID_TEGRA2:
 			pg_ops = tegra2_powergate_init_chip_support();
 			break;

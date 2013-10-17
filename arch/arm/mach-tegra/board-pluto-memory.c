@@ -4376,7 +4376,8 @@ static struct tegra11_emc_pdata *pluto_get_emc_data(void)
 	tegra_get_board_info(&board_info);
 
 	/* Load AP40 Table */
-	if (board_info.board_id == BOARD_E1580 && tegra_sku_id == 0x6) {
+	if (board_info.board_id == BOARD_E1580
+			&& tegra_get_sku_id() == 0x6) {
 		/* Get the memory size */
 		mem = memblock_phys_mem_size();
 		if (mem > SZ_1G)

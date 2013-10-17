@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (C) 2013, NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -285,7 +286,7 @@ static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 	for_each_child_of_node(np, iter) {
 		if (of_property_read_u32(np, "nvidia,ram-code", &reg))
 			continue;
-		if (reg == tegra_bct_strapping)
+		if (reg == tegra_get_bct_strapping())
 			return of_node_get(iter);
 	}
 
@@ -299,10 +300,12 @@ static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
 	struct device_node *tnp, *iter;
 	struct tegra_emc_pdata *pdata;
 	int ret, i, num_tables;
+	u32 tegra_bct_strapping;
 
 	if (!np)
 		return NULL;
 
+	tegra_bct_strapping = tegra_get_bct_strapping();
 	if (of_find_property(np, "nvidia,use-ram-code", NULL)) {
 		tnp = tegra_emc_ramcode_devnode(np);
 		if (!tnp)

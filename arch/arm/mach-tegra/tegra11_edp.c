@@ -966,7 +966,7 @@ int __init tegra11x_select_core_edp_table(unsigned int regulator_mA,
 					  struct tegra_core_edp_limits *limits)
 {
 	int i;
-	int sku = tegra_sku_id;
+	int sku;
 	unsigned long *cap_rates;
 	struct core_edp_entry *edp_entry;
 
@@ -982,6 +982,7 @@ int __init tegra11x_select_core_edp_table(unsigned int regulator_mA,
 		cap_clks[i] = c;
 	}
 
+	sku = tegra_get_sku_id();
 	edp_entry = find_edp_entry(sku, regulator_mA);
 	if (!edp_entry) {
 		pr_info("%s: no core edp table for sku %d, %d mA\n",

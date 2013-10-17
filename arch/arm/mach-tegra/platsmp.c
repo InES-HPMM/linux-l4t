@@ -85,7 +85,7 @@ static void __init setup_core_count(void)
 
 	/* Dual core SKU */
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) {
-		if (tegra_sku_id == 0x20) {
+		if (tegra_get_sku_id() == 0x20) {
 			number_of_cores = 2;
 			return;
 		}
@@ -316,7 +316,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 	tegra_put_cpu_in_reset(cpu);
 #endif
 
-	switch (tegra_chip_id) {
+	switch (tegra_get_chip_id()) {
 	case TEGRA_CHIPID_TEGRA2:
 		/*
 		 * Unhalt the CPU. If the flow controller was used to power-gate

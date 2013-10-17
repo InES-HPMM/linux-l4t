@@ -8697,7 +8697,9 @@ static struct tegra11_emc_pdata e1611_h5tc4g63mfr_pba_T40S_pdata = {
 static struct tegra11_emc_pdata *dalmore_get_emc_data(void)
 {
 	struct board_info board_info;
+	u32 tegra_sku_id;
 
+	tegra_sku_id = tegra_get_sku_id();
 	tegra_get_board_info(&board_info);
 
 	/* load T40T/T40X Table */

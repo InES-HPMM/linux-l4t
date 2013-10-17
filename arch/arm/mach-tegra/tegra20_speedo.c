@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -64,11 +64,13 @@ void tegra20_init_speedo_data(void)
 	u32 reg;
 	u32 val;
 	int i;
+	u32 tegra_sku_id;
 
 	BUILD_BUG_ON(ARRAY_SIZE(cpu_process_speedos) != SPEEDO_ID_COUNT);
 	BUILD_BUG_ON(ARRAY_SIZE(core_process_speedos) != SPEEDO_ID_COUNT);
 
 	tegra_package_id = -1;
+	tegra_sku_id = tegra_get_sku_id();
 
 	if (SPEEDO_ID_SELECT_0(tegra_revision))
 		tegra_soc_speedo_id = SPEEDO_ID_0;

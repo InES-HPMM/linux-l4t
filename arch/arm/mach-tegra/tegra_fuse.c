@@ -80,8 +80,10 @@ struct tegra_id {
 
 static struct tegra_id tegra_id;
 
-int tegra_sku_id;
-int tegra_chip_id;
+static u32 tegra_fuse_sku_id;
+static u32 tegra_fuse_chip_id;
+static u32 tegra_fuse_bct_strapping;
+
 enum tegra_revision tegra_revision;
 static unsigned int tegra_fuse_vp8_enable;
 static int tegra_gpu_num_pixel_pipes;
@@ -110,7 +112,6 @@ DEFINE_MUTEX(fuse_lock);
 /* The BCT to use at boot is specified by board straps that can be read
  * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
  */
-int tegra_bct_strapping;
 
 #define STRAP_OPT 0x008
 #define GMI_AD0 BIT(4)
@@ -1277,22 +1278,57 @@ u32 tegra_read_chipid(void)
 	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
 }
 
-void tegra_init_fuse(void)
+static void tegra_set_sku_id(void)
+{
+	u32 reg;
+
+	reg = tegra_fuse_readl(FUSE_SKU_INFO);
+	tegra_fuse_sku_id = reg & 0xFF;
+}
+
+static void tegra_set_chip_id(void)
 {
 	u32 id;
+
+	id = tegra_read_chipid();
+	tegra_fuse_chip_id = (id >> 8) & 0xff;
+}
+
+static void tegra_set_bct_strapping(void)
+{
+	u32 reg;
+
+	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
+	tegra_fuse_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
+}
+
+u32 tegra_get_sku_id(void)
+{
+	return tegra_fuse_sku_id;
+}
+
+u32 tegra_get_chip_id(void)
+{
+	return tegra_fuse_chip_id;
+}
+
+u32 tegra_get_bct_strapping(void)
+{
+	return tegra_fuse_bct_strapping;
+}
+
+void tegra_init_fuse(void)
+{
+	u32 sku_id;
 
 	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 	reg |= BIT(28);
 	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 
-	reg = tegra_fuse_readl(FUSE_SKU_INFO);
-	tegra_sku_id = reg & 0xFF;
-
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
-	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
-
-	id = tegra_read_chipid();
-	tegra_chip_id = (id >> 8) & 0xff;
+	tegra_set_sku_id();
+	sku_id = tegra_get_sku_id();
+	tegra_set_bct_strapping();
+	tegra_set_chip_id();
 
 	tegra_revision = tegra_get_revision();
 
@@ -1300,7 +1336,7 @@ void tegra_init_fuse(void)
 
 	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
 		tegra_revision_name[tegra_revision],
-		tegra_sku_id, tegra_cpu_process_id(),
+		sku_id, tegra_cpu_process_id(),
 		tegra_core_process_id());
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT

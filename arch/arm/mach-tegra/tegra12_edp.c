@@ -169,7 +169,7 @@ int __init tegra12x_select_core_edp_table(unsigned int regulator_mA,
 					  struct tegra_core_edp_limits *limits)
 {
 	int i;
-	int sku = tegra_sku_id;
+	int sku;
 	unsigned long *cap_rates;
 	struct core_edp_entry *edp_entry;
 
@@ -186,6 +186,7 @@ int __init tegra12x_select_core_edp_table(unsigned int regulator_mA,
 		cap_clks[i] = c;
 	}
 
+	sku = tegra_get_sku_id();
 	if (sku == 0x0)
 		sku = 0x7;
 

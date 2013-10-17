@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -307,8 +307,10 @@ void tegra30_init_speedo_data(void)
 	u32 cpu_speedo_val;
 	u32 core_speedo_val;
 	int i;
-	int fuse_sku = tegra_sku_id;
-	int new_sku = fuse_sku;
+	int fuse_sku, new_sku;
+
+	fuse_sku = tegra_get_sku_id();
+	new_sku = fuse_sku;
 
 	BUILD_BUG_ON(ARRAY_SIZE(cpu_process_speedos) !=
 			THRESHOLD_INDEX_COUNT);

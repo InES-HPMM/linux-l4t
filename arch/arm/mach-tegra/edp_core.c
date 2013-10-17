@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/edp_core.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -168,7 +168,9 @@ void __init tegra_init_core_edp_limits(unsigned int regulator_mA)
 {
 	int i;
 	unsigned long *cap_rates;
+	u32 tegra_chip_id;
 
+	tegra_chip_id = tegra_get_chip_id();
 	switch (tegra_chip_id) {
 	case TEGRA_CHIPID_TEGRA11:
 		if (tegra11x_select_core_edp_table(

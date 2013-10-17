@@ -596,7 +596,7 @@ static inline void override_min_millivolts(struct cpu_cvb_dvfs *d)
 	 * override pll min_millivolts for T40DC sku (the only parameter
 	 * that seprated it from all skus with speedo_id 1)
 	 */
-	if (tegra_sku_id == 0x20)
+	if (tegra_get_sku_id() == 0x20)
 		d->cvb_table[0].cvb_pll_param.c0 = 940 * d->voltage_scale;
 }
 
@@ -711,6 +711,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	int mv = tegra_core_speedo_mv();
 	int core_edp_voltage = get_core_edp();
 	int core_edp_current = get_maximum_core_current_supported();
+	u32 tegra_sku_id;
 
 	/*
 	 * If core regulator current limit is below minimum required to reach
@@ -736,6 +737,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	if (!core_edp_voltage)
 		core_edp_voltage = TEGRA11_CORE_VOLTAGE_CAP;
 
+	tegra_sku_id = tegra_get_sku_id();
 	if ((core_edp_voltage <= TEGRA11_CORE_VOLTAGE_CAP) ||
 	    ((tegra_sku_id != 0x4) && (tegra_sku_id != 0x8)))
 		mv = min(mv, core_edp_voltage);

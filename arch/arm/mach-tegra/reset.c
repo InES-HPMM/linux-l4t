@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/reset.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -64,7 +64,7 @@ static void tegra_cpu_reset_handler_enable(void)
 	 * Prevent further modifications to the physical reset vector.
 	 *  NOTE: Has no effect on chips prior to Tegra30.
 	 */
-	if (tegra_chip_id != TEGRA_CHIPID_TEGRA2) {
+	if (tegra_get_chip_id() != TEGRA_CHIPID_TEGRA2) {
 		reg = readl(sb_ctrl);
 		reg |= 2;
 		writel(reg, sb_ctrl);

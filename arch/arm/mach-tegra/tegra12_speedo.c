@@ -162,7 +162,8 @@ void tegra_init_speedo_data(void)
 		pr_warn("Tegra12: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
 
-	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
+
+	rev_sku_to_speedo_ids(tegra_revision, tegra_get_sku_id());
 
 	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {
 		if (gpu_speedo_value <

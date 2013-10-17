@@ -94,10 +94,11 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 void tegra_init_speedo_data(void)
 {
 	int i;
+
 	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
 
-	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
+	rev_sku_to_speedo_ids(tegra_revision, tegra_get_sku_id());
 
 	for (i = 0; i < CPU_PROCESS_CORNERS_NUM; i++) {
 		if (cpu_speedo_value <

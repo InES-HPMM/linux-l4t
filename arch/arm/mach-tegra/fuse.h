@@ -168,10 +168,10 @@ struct fuse_data {
 	u32 odm_lock;
 };
 
-extern int tegra_sku_id;
-extern int tegra_chip_id;
-extern int tegra_bct_strapping;
 
+u32 tegra_get_sku_id(void);
+u32 tegra_get_chip_id(void);
+u32 tegra_get_bct_strapping(void);
 u32 tegra_fuse_readl(unsigned long offset);
 void tegra_fuse_writel(u32 val, unsigned long offset);
 

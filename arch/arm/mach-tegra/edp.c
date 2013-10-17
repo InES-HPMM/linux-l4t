@@ -263,7 +263,7 @@ static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 	int i, array_size;
 	struct tegra_edp_cpu_leakage_params *params;
 
-	switch (tegra_chip_id) {
+	switch (tegra_get_chip_id()) {
 	case TEGRA_CHIPID_TEGRA11:
 		params = tegra11x_get_leakage_params(0, &array_size);
 		break;
@@ -313,7 +313,7 @@ static int init_cpu_edp_limits_calculated(void)
 	if (ret)
 		return ret;
 
-	switch (tegra_chip_id) {
+	switch (tegra_get_chip_id()) {
 	case TEGRA_CHIPID_TEGRA11:
 		params = tegra11x_get_leakage_params(cpu_speedo_idx, NULL);
 		break;
@@ -448,6 +448,9 @@ static int init_cpu_edp_limits_calculated(void)
 
 void tegra_recalculate_cpu_edp_limits(void)
 {
+	u32 tegra_chip_id;
+
+	tegra_chip_id = tegra_get_chip_id();
 	if (tegra_chip_id != TEGRA_CHIPID_TEGRA11 &&
 	    tegra_chip_id != TEGRA_CHIPID_TEGRA14 &&
 	    tegra_chip_id != TEGRA_CHIPID_TEGRA12)
@@ -474,7 +477,7 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 		goto end;
 	regulator_cur = regulator_mA + OVERRIDE_DEFAULT;
 
-	switch (tegra_chip_id) {
+	switch (tegra_get_chip_id()) {
 	case TEGRA_CHIPID_TEGRA11:
 	case TEGRA_CHIPID_TEGRA14:
 	case TEGRA_CHIPID_TEGRA12:
@@ -653,7 +656,9 @@ static int edp_reg_override_write(struct file *file,
 	char buf[32], *end;
 	unsigned int edp_reg_override_mA_temp;
 	unsigned int edp_reg_override_mA_prev = edp_reg_override_mA;
+	u32 tegra_chip_id;
 
+	tegra_chip_id = tegra_get_chip_id();
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
 		tegra_chip_id == TEGRA_CHIPID_TEGRA14 ||
 		tegra_chip_id == TEGRA_CHIPID_TEGRA12))

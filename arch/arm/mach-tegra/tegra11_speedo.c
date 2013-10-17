@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_speedo.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (C) 2012-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -142,7 +142,7 @@ void tegra_init_speedo_data(void)
 		pr_warn("Tegra11: CPU IDDQ and speedo may be bogus");
 	}
 
-	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
+	rev_sku_to_speedo_ids(tegra_revision, tegra_get_sku_id());
 
 	pr_info("Tegra11: CPU Speedo ID %d, Soc Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id);
@@ -209,6 +209,9 @@ int tegra_cpu_speedo_mv(void)
 
 int tegra_core_speedo_mv(void)
 {
+	u32 tegra_sku_id;
+
+	tegra_sku_id = tegra_get_sku_id();
 	switch (soc_speedo_id) {
 	case 0:
 		if (core_process_id == 1)
