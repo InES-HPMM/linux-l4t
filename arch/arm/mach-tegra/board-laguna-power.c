@@ -921,6 +921,19 @@ static struct soctherm_platform_data laguna_soctherm_data = {
 			},
 			.tzp = &soctherm_tzp,
 		},
+		[THERM_MEM] = {
+			.zone_enable = true,
+			.num_trips = 1,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 104000, /* = GPU shut */
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+		},
 		[THERM_PLL] = {
 			.zone_enable = true,
 		},
