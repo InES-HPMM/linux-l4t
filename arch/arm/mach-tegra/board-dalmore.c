@@ -574,7 +574,9 @@ static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.regulator_name = "vdd_modem_3v3",
 	.wake_gpio = -1,
 	.boot_gpio = MDM_COLDBOOT,
-	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.boot_irq_flags = IRQF_TRIGGER_RISING |
+				    IRQF_TRIGGER_FALLING |
+				    IRQF_ONESHOT,
 	.autosuspend_delay = 2000,
 	.short_autosuspend_delay = 50,
 	.tegra_ehci_device = &tegra_ehci2_device,
