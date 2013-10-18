@@ -25,6 +25,7 @@ struct tegra_dfll_bypass_platform_data {
 	int (*set_bypass_sel)(void *dfll_data, unsigned int sel);
 	unsigned int (*get_bypass_sel)(void *dfll_data);
 	void *dfll_data;
+	int msel_gpio;
 };
 
 #endif /* __LINUX_TEGRA_DFLL_BYPASS_H */

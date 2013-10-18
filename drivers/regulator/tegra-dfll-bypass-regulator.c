@@ -23,6 +23,7 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
+#include <linux/gpio.h>
 
 struct tegra_dfll_bypass_regulator {
 	struct device *dev;
@@ -56,12 +57,49 @@ static int tegra_dfll_bypass_set_voltage_time_sel(struct regulator_dev *reg,
 	return tdb->pdata->voltage_time_sel;
 }
 
+static int tegra_dfll_bypass_set_mode(struct regulator_dev *reg,
+					unsigned int mode)
+{
+	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
+
+	if (!gpio_is_valid(tdb->pdata->msel_gpio))
+		return -EINVAL;
+
+	switch (mode) {
+	case REGULATOR_MODE_IDLE:
+		gpio_set_value(tdb->pdata->msel_gpio, 0);
+		break;
+	case REGULATOR_MODE_NORMAL:
+		gpio_set_value(tdb->pdata->msel_gpio, 1);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static unsigned int tegra_dfll_bypass_get_mode(struct regulator_dev *reg)
+{
+	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
+
+	if (!gpio_is_valid(tdb->pdata->msel_gpio))
+		return 0;
+
+	if (gpio_get_value(tdb->pdata->msel_gpio))
+		return REGULATOR_MODE_NORMAL;
+	else
+		return REGULATOR_MODE_IDLE;
+}
+
 static struct regulator_ops tegra_dfll_bypass_rops = {
 	.set_voltage_sel = tegra_dfll_bypass_set_voltage_sel,
 	.get_voltage_sel = tegra_dfll_bypass_get_voltage_sel,
 	.list_voltage = regulator_list_voltage_linear,
 	.map_voltage = regulator_map_voltage_linear,
 	.set_voltage_time_sel = tegra_dfll_bypass_set_voltage_time_sel,
+	.set_mode = tegra_dfll_bypass_set_mode,
+	.get_mode = tegra_dfll_bypass_get_mode,
 };
 
 static int tegra_dfll_bypass_probe(struct platform_device *pdev)
@@ -114,6 +152,14 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 		return PTR_ERR(rdev);
 	}
 
+	if (gpio_is_valid(tdb->pdata->msel_gpio)) {
+		if (gpio_request_one(pdata->msel_gpio, GPIOF_INIT_HIGH,
+					"CPUREG_MODE_SEL")) {
+			dev_err(&pdev->dev, "MODE_SEL gpio request failed\n");
+			tdb->pdata->msel_gpio = -EINVAL;
+		}
+	}
+
 	platform_set_drvdata(pdev, rdev);
 	return 0;
 }
@@ -121,6 +167,10 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 static int tegra_dfll_bypass_remove(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev = platform_get_drvdata(pdev);
+	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(rdev);
+
+	if (gpio_is_valid(tdb->pdata->msel_gpio))
+		gpio_free(tdb->pdata->msel_gpio);
 	regulator_unregister(rdev);
 	return 0;
 }
