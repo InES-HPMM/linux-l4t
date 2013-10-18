@@ -1189,7 +1189,8 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 		data = &e1733_cl_dvfs_data;
 	}
 
-	if (pmu_board_id == BOARD_E1736) {
+	if (pmu_board_id == BOARD_E1736 ||
+		pmu_board_id == BOARD_E1769) {
 		e1736_fill_reg_map();
 		data = &e1736_cl_dvfs_data;
 	}
@@ -1235,7 +1236,8 @@ int __init ardbeg_regulator_init(void)
 	} else if (pmu_board_info.board_id == BOARD_E1735) {
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
-	} else if (pmu_board_info.board_id == BOARD_E1736) {
+	} else if (pmu_board_info.board_id == BOARD_E1736 ||
+		pmu_board_info.board_id == BOARD_E1769) {
 		tn8_regulator_init();
 		ardbeg_cl_dvfs_init(&pmu_board_info);
 		return tn8_fixed_regulator_init();
@@ -1448,7 +1450,8 @@ int __init ardbeg_soctherm_init(void)
 		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_as3722;
 	else if (pmu_board_info.board_id == BOARD_E1735)
 		;/* tpdata_palmas is default */
-	else if (pmu_board_info.board_id == BOARD_E1736)
+	else if (pmu_board_info.board_id == BOARD_E1736 ||
+		pmu_board_info.board_id == BOARD_E1769)
 		;/* FIXME: Not supporting tn8 yet - assumes palmas PMIC */
 	else
 		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");

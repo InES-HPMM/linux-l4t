@@ -641,6 +641,7 @@ static void ardbeg_usb_init(void)
 			tegra_otg_pdata.id_extcon_dev_name = "as3722-extcon";
 			break;
 		case BOARD_E1736:
+		case BOARD_E1769:
 		case BOARD_E1735:
 			/* Device cable is detected through PMU Interrupt */
 			tegra_udc_pdata.support_pmu_vbus = true;
@@ -841,7 +842,8 @@ static void ardbeg_modem_init(void)
 			/* Set specific USB wake source for Ardbeg */
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
-			if (pmu_board_info.board_id == BOARD_E1736)
+			if (pmu_board_info.board_id == BOARD_E1736 ||
+				pmu_board_info.board_id == BOARD_E1769)
 				baseband_pdata.regulator_name = NULL;
 			platform_device_register(&icera_bruce_device);
 		}
