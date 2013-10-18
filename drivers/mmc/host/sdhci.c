@@ -33,6 +33,8 @@
 #include <linux/mmc/slot-gpio.h>
 
 #include <linux/edp.h>
+#include <linux/sysedp.h>
+
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #include <linux/tegra-soc.h>
 #endif
@@ -2214,6 +2216,8 @@ int sdhci_enable(struct mmc_host *mmc)
 	if (!mmc->card || !(mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 		return 0;
 
+	sysedp_set_state(host->sysedpc, 1);
+
 	if (mmc->ios.clock) {
 		if (host->ops->set_clock)
 			host->ops->set_clock(host, mmc->ios.clock);
@@ -2242,6 +2246,8 @@ int sdhci_disable(struct mmc_host *mmc)
 	sdhci_set_clock(host, 0);
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
+
+	sysedp_set_state(host->sysedpc, 0);
 
 	if (host->sd_edp_client) {
 		ret = edp_update_client_request(host->sd_edp_client,
@@ -3488,6 +3494,9 @@ int sdhci_add_host(struct sdhci_host *host)
 
 	sdhci_init(host, 0);
 
+	host->sysedpc = sysedp_create_consumer(dev_name(mmc_dev(mmc)),
+					       dev_name(mmc_dev(mmc)));
+
 	if (host->edp_support == true) {
 		battery_manager = edp_get_manager("battery");
 		if (!battery_manager)
@@ -3635,6 +3644,9 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 
 	host->adma_desc = NULL;
 	host->align_buffer = NULL;
+
+	sysedp_free_consumer(host->sysedpc);
+	host->sysedpc = NULL;
 }
 
 EXPORT_SYMBOL_GPL(sdhci_remove_host);

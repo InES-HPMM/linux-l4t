@@ -17,6 +17,7 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/mmc/host.h>
+#include <linux/sysedp.h>
 
 struct sdhci_host {
 	/* Data set by hardware interface driver */
@@ -197,6 +198,7 @@ struct sdhci_host {
 	struct edp_client *sd_edp_client;
 	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool edp_support;
+	struct sysedp_consumer *sysedpc;
 
 	unsigned long private[0] ____cacheline_aligned;
 };
