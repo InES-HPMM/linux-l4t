@@ -12,6 +12,9 @@
 #include <linux/mutex.h>
 #include <linux/notifier.h>
 #include <linux/list.h>
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+#include <linux/sysedp.h>
+#endif
 
 /* Notes on locking:
  *
@@ -103,8 +106,16 @@ struct backlight_device {
 
 	struct device dev;
 	struct list_head devices_list;
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+	struct sysedp_consumer *sysedpc;
+#endif
 };
 
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+
+void backlight_update_status(struct backlight_device *bd);
+
+#else
 static inline void backlight_update_status(struct backlight_device *bd)
 {
 	mutex_lock(&bd->update_lock);
@@ -112,6 +123,8 @@ static inline void backlight_update_status(struct backlight_device *bd)
 		bd->ops->update_status(bd);
 	mutex_unlock(&bd->update_lock);
 }
+#endif
+
 extern struct backlight_device *get_backlight_device_by_name(char *name);
 
 extern struct backlight_device *backlight_device_register(const char *name,
