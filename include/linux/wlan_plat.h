@@ -17,6 +17,7 @@
 #define _LINUX_WLAN_PLAT_H_
 
 #include <linux/edp.h>
+#include <linux/sysedp.h>
 
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
 typedef enum e_edp_state {
@@ -35,6 +36,7 @@ struct wifi_platform_data {
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
 	struct edp_client client_info;
 #endif
+	struct sysedp_consumer *sysedpc;
 };
 
 #endif

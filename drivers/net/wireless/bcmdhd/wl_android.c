@@ -1300,9 +1300,13 @@ int wifi_set_power(int on, unsigned long msec)
 		}
 		mutex_unlock(&edp_reg_mutex);
 #endif
+
+		if (on)
+			sysedp_set_state(wifi_control_data->sysedpc, 1);
 		if (wifi_control_data->set_power)
 			wifi_control_data->set_power(on);
-
+		if (!on)
+			sysedp_set_state(wifi_control_data->sysedpc, 0);
 		if (msec)
 			msleep(msec);
 		return 0;
@@ -1395,6 +1399,8 @@ static int wifi_probe(struct platform_device *pdev)
 	mutex_init(&edp_reg_mutex);
 	wifi_register_edp_client(&(wifi_ctrl->client_info));
 #endif
+	wifi_control_data->sysedpc = sysedp_create_consumer("wifi", "wifi");
+
 	wifi_set_power(1, 0);	/* Power On */
 	wifi_set_carddetect(1);	/* CardDetect (0->1) */
 
@@ -1443,6 +1449,9 @@ static int wifi_remove(struct platform_device *pdev)
 #if defined(WIFIEDP)
 	wifi_unregister_edp_client(&(wifi_ctrl->client_info));
 #endif
+	sysedp_free_consumer(wifi_ctrl->sysedpc);
+	wifi_ctrl->sysedpc = 0;
+
 	up(&wifi_control_sem);
 	return 0;
 }
