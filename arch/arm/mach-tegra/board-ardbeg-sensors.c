@@ -22,6 +22,13 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
+#include <linux/pid_thermal_gov.h>
+#include <linux/power/sbs-battery.h>
+#include <mach/edp.h>
+#include <mach/tegra_fuse.h>
+#include <mach/pinmux-t12.h>
+#include <mach/pinmux.h>
+#include <mach/io_dpd.h>
 #include <media/camera.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
@@ -32,13 +39,6 @@
 #include <media/mt9m114.h>
 #include <media/ad5823.h>
 #include <media/max77387.h>
-#include <linux/pid_thermal_gov.h>
-#include <linux/power/sbs-battery.h>
-#include <mach/edp.h>
-#include <mach/tegra_fuse.h>
-#include <mach/pinmux-t12.h>
-#include <mach/pinmux.h>
-#include <mach/io_dpd.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -240,15 +240,21 @@ static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->dvdd);
 	regulator_disable(pw->avdd);
-
-
 	regulator_disable(ardbeg_vcmvdd);
 	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
 	tegra_io_dpd_enable(&csie_io);
 	return 0;
 }
 
+static unsigned ar0261_estates[] = { 302, 0 };
+
 struct ar0261_platform_data ardbeg_ar0261_data = {
+	.edpc_config = {
+		.states = ar0261_estates,
+		.num_states = ARRAY_SIZE(ar0261_estates),
+		.e0_index = ARRAY_SIZE(ar0261_estates) - 1,
+		.priority = EDP_MAX_PRIO + 1,
+	},
 	.power_on = ardbeg_ar0261_power_on,
 	.power_off = ardbeg_ar0261_power_off,
 	.mclk_name = "mclk2",
@@ -362,7 +368,15 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 	return 0;
 }
 
+static unsigned imx135_estates[] = { 486, 0 };
+
 struct imx135_platform_data ardbeg_imx135_data = {
+	.edpc_config = {
+		.states = imx135_estates,
+		.num_states = ARRAY_SIZE(imx135_estates),
+		.e0_index = ARRAY_SIZE(imx135_estates) - 1,
+		.priority = EDP_MAX_PRIO + 1,
+	},
 	.flash_cap = {
 		.enable = 1,
 		.edge_trig_en = 1,
