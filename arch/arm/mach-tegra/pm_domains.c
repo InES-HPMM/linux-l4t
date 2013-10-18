@@ -235,6 +235,24 @@ static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.power_on = tegra_mc_clk_power_on,
 };
 
+int tegra_restore_i2c(void)
+{
+	struct generic_pm_domain *genpd = &tegra_mc_clk.gpd;
+	struct pm_domain_data *pdd;
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
+		if (!strncmp("tegra12-i2c", dev_name(pdd->dev), strlen("tegra12-i2c")))
+			tegra_i2c_restore(pdd->dev);
+	}
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
+		if (!strncmp("tegra11-i2c", dev_name(pdd->dev), strlen("tegra11-i2c")))
+			tegra_i2c_restore(pdd->dev);
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 static struct tegra_pm_domain tegra_mc_chain_a = {
 	.gpd.name = "tegra_mc_chain_a",

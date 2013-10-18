@@ -42,6 +42,8 @@
 
 #include <asm/unaligned.h>
 
+#include <mach/pm_domains.h>
+
 #define TEGRA_I2C_TIMEOUT			(msecs_to_jiffies(1000))
 #define TEGRA_I2C_RETRIES			3
 #define BYTES_PER_FIFO_WORD			4
@@ -704,6 +706,21 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	return err;
 }
+
+int tegra_i2c_restore(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+
+	i2c_lock_adapter(&i2c_dev->adapter);
+
+	tegra_i2c_init(i2c_dev);
+
+	i2c_unlock_adapter(&i2c_dev->adapter);
+
+	return 0;
+}
+
 static int tegra_i2c_copy_next_to_current(struct tegra_i2c_dev *i2c_dev)
 {
 	i2c_dev->msg_buf = i2c_dev->next_msg_buf;
@@ -1514,6 +1531,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
 	i2c_dev->scl_gpio = pdata->scl_gpio;
