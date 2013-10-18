@@ -197,12 +197,15 @@ static int cm3217_vreg_init(struct cm3217_inf *inf)
 	unsigned int i;
 	int err = 0;
 
-	/* regulator names in order of powering on */
+	/*
+	 * regulator names in order of powering on.
+	 * ARRAY_SIZE(cm3217_vregs) must be < CM3217_MAX_REGULATORS
+	 */
 	char *cm3217_vregs[] = {
 		"vdd",
 	};
 
-	for (i = 0; i < CM3217_MAX_REGULATORS; i++) {
+	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++) {
 		inf->vreg[i].supply = cm3217_vregs[i];
 		inf->vreg[i].ret = 0;
 		inf->vreg[i].consumer = regulator_get(&inf->i2c->dev,
@@ -214,6 +217,8 @@ static int cm3217_vreg_init(struct cm3217_inf *inf)
 			inf->vreg[i].consumer = NULL;
 		}
 	}
+	for (; i < CM3217_MAX_REGULATORS; i++)
+		inf->vreg[i].consumer = NULL;
 	return err;
 }
 
