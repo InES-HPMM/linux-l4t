@@ -628,38 +628,6 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 #define LOKI_CPU_VDD_STEP_US		80
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-/* Macro definition of dfll bypass device */
-#define DFLL_BYPASS(_board, _min, _step, _size, _us_sel)		       \
-static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
-	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
-	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
-	.constraints = {						       \
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		       \
-				REGULATOR_MODE_STANDBY),		       \
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		       \
-				REGULATOR_CHANGE_STATUS |		       \
-				REGULATOR_CHANGE_VOLTAGE),		       \
-		.min_uV = (_min),					       \
-		.max_uV = ((_size) - 1) * (_step) + (_min),		       \
-		.always_on = 1,						       \
-		.boot_on = 1,						       \
-	},								       \
-};									       \
-static struct tegra_dfll_bypass_platform_data _board##_dfll_bypass_pdata = {   \
-	.reg_init_data = &_board##_dfll_bypass_init_data,		       \
-	.uV_step = (_step),						       \
-	.linear_min_sel = 0,						       \
-	.n_voltages = (_size),						       \
-	.voltage_time_sel = _us_sel,					       \
-};									       \
-static struct platform_device loki_dfll_bypass_dev = {			       \
-	.name = "tegra_dfll_bypass",					       \
-	.id = -1,							       \
-	.dev = {							       \
-		.platform_data = &_board##_dfll_bypass_pdata,		       \
-	},								       \
-}
-
 /* loki board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param loki_cl_dvfs_param = {
 	.sample_rate = 50000,
@@ -694,7 +662,7 @@ static struct regulator_consumer_supply loki_dfll_bypass_consumers[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
 DFLL_BYPASS(loki, LOKI_CPU_VDD_MIN_UV, LOKI_CPU_VDD_STEP_UV,
-	    LOKI_CPU_VDD_MAP_SIZE, LOKI_CPU_VDD_STEP_US);
+	    LOKI_CPU_VDD_MAP_SIZE, LOKI_CPU_VDD_STEP_US, -1);
 
 static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
