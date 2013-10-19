@@ -150,6 +150,7 @@ void tegra_init_speedo_data(void)
 		gpu_speedo_id   = 0;
 		package_id = -1;
 		cpu_speedo_value = 1777;
+		gpu_speedo_value = 2000;
 		cpu_speedo_0_value = 0;
 		cpu_speedo_1_value = 0;
 		soc_speedo_0_value = 0;
