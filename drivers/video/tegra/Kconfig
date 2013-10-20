@@ -333,6 +333,12 @@ config TEGRA_LVDS
 	help
 	  Say Y here to enable LVDS panel.
 
+config TEGRA_NVSR
+	bool "Enable NVSR support."
+	default  n
+	help
+	   Say Y here to enable NVSR support.
+
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && IOMMU_API
