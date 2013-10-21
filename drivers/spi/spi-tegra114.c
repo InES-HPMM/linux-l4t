@@ -781,20 +781,33 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 			u32 command2_reg;
 			u32 rx_tap_delay;
 			u32 tx_tap_delay;
+			int rx_clk_tap_delay;
+
+			rx_clk_tap_delay = cdata->rx_clk_tap_delay;
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
-			if (cdata->rx_clk_tap_delay == 0) {
+			if (rx_clk_tap_delay == 0)
 				if (speed > SPI_SPEED_TAP_DELAY_MARGIN)
-					cdata->rx_clk_tap_delay =
+					rx_clk_tap_delay =
 						SPI_DEFAULT_RX_TAP_DELAY;
-			}
 #endif
-			rx_tap_delay = min(cdata->rx_clk_tap_delay, 63);
+			rx_tap_delay = min(rx_clk_tap_delay, 63);
 			tx_tap_delay = min(cdata->tx_clk_tap_delay, 63);
 			command2_reg = SPI_TX_TAP_DELAY(tx_tap_delay) |
 					SPI_RX_TAP_DELAY(rx_tap_delay);
 			tegra_spi_writel(tspi, command2_reg, SPI_COMMAND2);
 		} else {
-			tegra_spi_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
+			u32 command2_reg;
+			command2_reg = tspi->def_command2_reg;
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+			if (speed > SPI_SPEED_TAP_DELAY_MARGIN) {
+				command2_reg = command2_reg &
+					(~SPI_RX_TAP_DELAY(63));
+				command2_reg = command2_reg |
+					SPI_RX_TAP_DELAY(
+					SPI_DEFAULT_RX_TAP_DELAY);
+			}
+#endif
+			tegra_spi_writel(tspi, command2_reg, SPI_COMMAND2);
 		}
 	} else {
 		command1 = tspi->command1_reg;
