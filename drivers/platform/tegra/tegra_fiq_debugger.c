@@ -4,7 +4,7 @@
  * Serial Debugger Interface for Tegra
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -67,12 +67,18 @@ static int debug_port_init(struct platform_device *pdev)
 	struct tegra_fiq_debugger *t;
 	t = container_of(dev_get_platdata(&pdev->dev), typeof(*t), pdata);
 
-	if (tegra_read(t, UART_LSR) & UART_LSR_DR)
-		(void)tegra_read(t, UART_RX);
+	/* enable and clear FIFO */
+	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
+	tegra_write(t, UART_FCR_ENABLE_FIFO | UART_FCR_CLEAR_RCVR |
+				UART_FCR_CLEAR_XMIT, UART_FCR);
+	tegra_write(t, 0, UART_FCR);
+	tegra_write(t, UART_FCR, UART_FCR_ENABLE_FIFO);
+
+	/* clear LSR */
+	tegra_read(t, UART_LSR);
+
 	/* enable rx and lsr interrupt */
 	tegra_write(t, UART_IER_RLSI | UART_IER_RDI, UART_IER);
-	/* interrupt on every character */
-	tegra_write(t, 0, UART_IIR);
 
 	return 0;
 }
@@ -116,6 +122,22 @@ static void debug_flush(struct platform_device *pdev)
 		cpu_relax();
 }
 
+static int debug_suspend(struct platform_device *pdev)
+{
+	struct tegra_fiq_debugger *t;
+	t = container_of(dev_get_platdata(&pdev->dev), typeof(*t), pdata);
+
+	tegra_write(t, 0, UART_IER);
+
+	return 0;
+}
+
+static int debug_resume(struct platform_device *pdev)
+{
+	return debug_port_init(pdev);
+}
+
+
 static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 {
 	if (on)
@@ -144,6 +166,8 @@ static void __tegra_serial_debug_init(unsigned int base, int fiq, int irq,
 	t->pdata.uart_getc = debug_getc;
 	t->pdata.uart_putc = debug_putc;
 	t->pdata.uart_flush = debug_flush;
+	t->pdata.uart_dev_suspend = debug_suspend;
+	t->pdata.uart_dev_resume = debug_resume;
 	t->pdata.fiq_enable = fiq_enable;
 
 	t->debug_port_base = ioremap(base, PAGE_SIZE);
