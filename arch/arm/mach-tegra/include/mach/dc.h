@@ -782,6 +782,8 @@ struct tegra_dc_bw_data {
 #define TEGRA_DC_FLAG_CMU_DISABLE	(0 << 1)
 #define TEGRA_DC_FLAG_CMU_ENABLE	(1 << 1)
 
+struct drm_mode_modeinfo;
+
 int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win);
 struct tegra_dc *tegra_dc_get_dc(unsigned idx);
 struct tegra_dc_win *tegra_dc_get_window(struct tegra_dc *dc, unsigned win);
@@ -817,6 +819,8 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode);
 struct fb_videomode;
 int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
 	const struct tegra_dc_mode *mode);
+int tegra_dc_set_drm_mode(struct tegra_dc *dc,
+	const struct drm_mode_modeinfo *dmode, bool stereo_mode);
 int tegra_dc_set_fb_mode(struct tegra_dc *dc, const struct fb_videomode *fbmode,
 	bool stereo_mode);
 
