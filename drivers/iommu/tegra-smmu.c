@@ -1335,9 +1335,8 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 		pa = pdir[pdn] << SMMU_PDE_SHIFT;
 	}
 
-	dev_dbg(as->smmu->dev,
-		"iova:%08llx pfn:%08llx asid:%d\n", (unsigned long long)iova,
-		 (u64)pa, as->asid);
+	dev_dbg(as->smmu->dev, "iova:%pa pfn:%pa asid:%d\n",
+		&iova, &pa, as->asid);
 
 	spin_unlock_irqrestore(&as->lock, flags);
 	return pa;
@@ -1397,11 +1396,11 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
 		if (err == DMA_ERROR_CODE)
-			dev_err(dev, "Failed IOVA linear map %016llx(%x)\n",
-				(u64)area->start, size);
+			dev_err(dev, "Failed IOVA linear map %pa(%x)\n",
+				&area->start, size);
 		else
-			dev_info(dev, "IOVA linear map %016llx(%x)\n",
-				 (u64)area->start, size);
+			dev_info(dev, "IOVA linear map %pa(%x)\n",
+				 &area->start, size);
 
 		area++;
 	}
