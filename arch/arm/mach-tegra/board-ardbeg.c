@@ -682,103 +682,63 @@ static void ardbeg_usb_init(void)
 	}
 }
 
-static struct tegra_xusb_board_data xusb_bdata = {
+static struct tegra_xusb_platform_data xusb_pdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
-	.supply = {
-		.utmi_vbuses = {
-			"usb_vbus0", "usb_vbus1", "usb_vbus2"
-		},
-		.s3p3v = "hvdd_usb",
-		.s1p8v = "avdd_pll_utmip",
-		.vddio_hsic = "vddio_hsic",
-		.s1p05v = "avddio_usb",
-	},
-
-	.hsic[0] = {
-		.rx_strobe_trim = 0x1,
-		.rx_data_trim = 0x1,
-		.tx_rtune_n = 0x8,
-		.tx_rtune_p = 0xa,
-		.tx_slew_n = 0,
-		.tx_slew_p = 0,
-		.auto_term_en = true,
-		.strb_trim_val = 0x22,
-		.pretend_connect = false,
-	},
-	.uses_external_pmic = false,
 };
 
 static void ardbeg_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	xusb_bdata.lane_owner = (u8) tegra_get_lane_owner_info();
+	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
 		pr_info("Laguna ERS. 0x%x\n", board_info.board_id);
-		xusb_bdata.gpio_controls_muxed_ss_lanes = true;
-		/* D[0:15] = gpio number and D[16:31] = output value */
-		xusb_bdata.gpio_ss1_sata = PMU_TCA6416_GPIO(9) | (0 << 16);
-		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4);
 
 		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
 				TEGRA_XUSB_SS_P0);
 
 		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
 				TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P2);
 
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	} else {
 		/* Ardbeg */
-		xusb_bdata.gpio_controls_muxed_ss_lanes = false;
-
 		if (board_info.board_id == BOARD_E1781) {
 			pr_info("Shield ERS-S. 0x%x\n", board_info.board_id);
 			/* Shield ERS-S */
-			xusb_bdata.ss_portmap =
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 0) |
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
-
 			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
 
 			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(
+				xusb_pdata.portmap &= ~(
 					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0 |
 					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
 		} else {
 			pr_info("Shield ERS 0x%x\n", board_info.board_id);
 			/* Shield ERS */
-			xusb_bdata.ss_portmap =
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
-
 			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
 					TEGRA_XUSB_SS_P0);
 
 			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
 					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
 		}
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	}
 
 	if (usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)
-		xusb_bdata.portmap |= TEGRA_XUSB_HSIC_P0;
+		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P0;
 
 	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
-		xusb_bdata.portmap |= TEGRA_XUSB_HSIC_P1;
-
-	if (xusb_bdata.portmap)
-		tegra_xusb_init(&xusb_bdata);
+		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
 }
 
 static int baseband_init(void)
@@ -860,7 +820,7 @@ static void ardbeg_modem_init(void)
 				tegra_set_wake_source(42, INT_USB2);
 			platform_device_register(&tegra_ehci2_device);
 		} else
-			xusb_bdata.hsic[0].pretend_connect = true;
+			xusb_pdata.pretend_connect_0 = true;
 		break;
 	default:
 		return;
@@ -943,6 +903,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
+				&xusb_pdata),
 	{}
 };
 #endif

@@ -499,83 +499,56 @@ static void loki_usb_init(void)
 	}
 }
 
-static struct tegra_xusb_board_data xusb_bdata = {
+static struct tegra_xusb_platform_data xusb_pdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
-	.supply = {
-		.utmi_vbuses = {
-			NULL, NULL, NULL
-		},
-		.s3p3v = "hvdd_usb",
-		.s1p8v = "avdd_pll_utmip",
-		.vddio_hsic = "vddio_hsic",
-		.s1p05v = "avddio_usb",
-	},
-	.uses_external_pmic = false,
 };
 
 static void loki_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	xusb_bdata.lane_owner = (u8) tegra_get_lane_owner_info();
+	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
-		xusb_bdata.gpio_controls_muxed_ss_lanes = true;
-		/* D[0:15] = gpio number and D[16:31] = output value*/
-		xusb_bdata.gpio_ss1_sata = PMU_TCA6416_GPIO(11) | (0 << 16);
-		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4);
-
 		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
 				TEGRA_XUSB_SS_P0);
 
 		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
 				TEGRA_XUSB_SS_P1);
 
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	} else {
 		/* Loki */
-		xusb_bdata.gpio_controls_muxed_ss_lanes = false;
-
 		if (board_info.board_id == BOARD_E1781) {
 			pr_info("Shield ERS-S. 0x%x\n", board_info.board_id);
 			/* Shield ERS-S */
-			xusb_bdata.ss_portmap =
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 0) |
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
-
 			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
 
 			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(
+				xusb_pdata.portmap &= ~(
 					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0 |
 					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
 		} else {
 			pr_info("Shield ERS 0x%x\n", board_info.board_id);
 			/* Shield ERS */
-			xusb_bdata.ss_portmap =
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
 
 			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
 					TEGRA_XUSB_SS_P0);
 
 			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
 					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
 		}
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	}
-	if (xusb_bdata.portmap)
-		tegra_xusb_init(&xusb_bdata);
 }
 
 static int baseband_init(void)
@@ -790,6 +763,8 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
+				&xusb_pdata),
 	{}
 };
 #endif

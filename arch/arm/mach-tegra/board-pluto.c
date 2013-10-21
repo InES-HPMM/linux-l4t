@@ -1107,28 +1107,17 @@ static void pluto_modem_init(void)
 	}
 }
 
-static struct tegra_xusb_board_data xusb_bdata = {
+static struct tegra_xusb_platform_data xusb_pdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0,
-	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
-	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
-	.uses_external_pmic = true,
-	.supply = {
-		.utmi_vbuses = {
-			NULL, "usb_vbus", NULL
-		},
-		.s3p3v = "hvdd_usb",
-		.s1p8v = "avdd_usb_pll",
-		.vddio_hsic = "vddio_hsic",
-		.s1p05v = "avddio_usb",
-	},
 };
 
 static void pluto_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	if (usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)
-		tegra_xusb_init(&xusb_bdata);
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+				TEGRA_XUSB_SS_P0);
 }
 #else
 static void pluto_usb_init(void) { }
@@ -1309,6 +1298,8 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-xhci", 0x70090000, "tegra-xhci",
+				&xusb_pdata),
 	{}
 };
 #endif
