@@ -416,12 +416,9 @@ static void actmon_dev_disable(struct actmon_dev *dev)
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
-static void actmon_dev_suspend(struct actmon_dev *dev)
+static void actmon_dev_save(struct actmon_dev *dev)
 {
 	u32 val;
-	unsigned long flags;
-
-	spin_lock_irqsave(&dev->lock, flags);
 
 	if ((dev->state == ACTMON_ON) || (dev->state == ACTMON_OFF)){
 		dev->saved_state = dev->state;
@@ -433,19 +430,26 @@ static void actmon_dev_suspend(struct actmon_dev *dev)
 		actmon_writel(0xffffffff, offs(ACTMON_DEV_INTR_STATUS));
 		actmon_wmb();
 	}
+}
+
+static void actmon_dev_suspend(struct actmon_dev *dev)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->lock, flags);
+
+	actmon_dev_save(dev);
+
 	spin_unlock_irqrestore(&dev->lock, flags);
 
 	if (dev->suspend_freq)
 		clk_set_rate(dev->clk, dev->suspend_freq * 1000);
 }
 
-static void actmon_dev_resume(struct actmon_dev *dev)
+static void actmon_dev_restore(struct actmon_dev *dev)
 {
 	u32 val;
-	unsigned long flags;
 	unsigned long freq = clk_get_rate(dev->clk) / 1000;
-
-	spin_lock_irqsave(&dev->lock, flags);
 
 	if (dev->state == ACTMON_SUSPENDED) {
 		actmon_dev_configure(dev, freq);
@@ -457,6 +461,16 @@ static void actmon_dev_resume(struct actmon_dev *dev)
 			actmon_wmb();
 		}
 	}
+}
+
+static void actmon_dev_resume(struct actmon_dev *dev)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->lock, flags);
+
+	actmon_dev_restore(dev);
+
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
@@ -629,6 +643,28 @@ static struct actmon_dev *actmon_devices[] = {
 	&actmon_dev_avp,
 	&actmon_dev_cpu_emc,
 };
+
+int tegra_actmon_save(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++)
+		actmon_dev_save(actmon_devices[i]);
+
+	return 0;
+}
+
+int tegra_actmon_restore(void)
+{
+	int i;
+
+	actmon_writel(actmon_sampling_period - 1,
+		      ACTMON_GLB_PERIOD_CTRL);
+	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++)
+		actmon_dev_restore(actmon_devices[i]);
+
+	return 0;
+}
 
 /* Activity monitor suspend/resume */
 static int actmon_pm_notify(struct notifier_block *nb,
