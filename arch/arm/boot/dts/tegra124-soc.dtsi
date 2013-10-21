@@ -299,11 +299,6 @@
 		clocks = <&tegra_car 5>;
 	};
 
-	timer@700f0000 {
-		compatible = "nvidia,tegra-rtc";
-		reg = <0x700f0000 0x00010000>;
-	};
-
 	rtc {
 		compatible = "nvidia,tegra-rtc";
 		reg = <0x7000e000 0x100>;
