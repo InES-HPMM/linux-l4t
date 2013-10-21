@@ -1,9 +1,7 @@
 /*
- * include/trace/events/nvhost.h
- *
  * Nvhost event logging to ftrace.
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -920,9 +918,9 @@ DECLARE_EVENT_CLASS(nvhost_map,
 		__entry->iova = iova;
 	),
 
-	TP_printk("dev=%s, handle=%p, size=%d, iova=%08x",
+	TP_printk("dev=%s, handle=%p, size=%d, iova=%08llx",
 		__entry->devname, __entry->handle, __entry->size,
-		__entry->iova)
+		(u64)__entry->iova)
 );
 
 DEFINE_EVENT(nvhost_map, nvhost_nvmap_pin,
