@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (C) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (C) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,10 @@
 #include <linux/mmc/slot-gpio.h>
 
 #include <linux/sysedp.h>
+#ifdef CONFIG_DEBUG_FS
+#include <linux/debugfs.h>
+#include <linux/ktime.h>
+#endif
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #include <linux/tegra-soc.h>
@@ -62,6 +66,10 @@
 		((host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE) && \
 		(IS_SDIO_CARD_OR_EMMC(host)) && \
 		(host->mmc->caps2 & MMC_CAP2_CLOCK_GATING))
+
+#ifdef CONFIG_DEBUG_FS
+#define IS_32_BIT(x)	(x < (1ULL << 32))
+#endif
 
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
@@ -986,6 +994,214 @@ static void sdhci_set_transfer_mode(struct sdhci_host *host,
 	sdhci_writew(host, mode, SDHCI_TRANSFER_MODE);
 }
 
+#ifdef CONFIG_DEBUG_FS
+static void get_kbps_from_size_n_usec_32bit(
+		u32 size_in_bits_x1000, u32 time_usecs,
+		u32 *speed_in_kbps)
+{
+	*speed_in_kbps = DIV_ROUND_CLOSEST(size_in_bits_x1000, time_usecs);
+}
+
+static void get_kbps_from_size_n_usec_64bit(
+		u64 size_in_bits_x1000, u32 time_usecs,
+		u32 *speed_in_kbps)
+{
+	u32 speed_32bit;
+	u64 cp_size_bits_x1000;
+	u32 cp_usecs;
+	int i;
+
+	cp_size_bits_x1000 = size_in_bits_x1000;
+	cp_usecs = time_usecs;
+	/* convert 64 bit into 32 bits */
+	i = 0;
+	while (!(IS_32_BIT(cp_size_bits_x1000) && IS_32_BIT(cp_usecs))) {
+		/* shift right both the operands bytes and time */
+		cp_size_bits_x1000 >>= 1;
+		cp_usecs >>= 1;
+		i++;
+	}
+	if (i)
+		pr_debug("%s right shifted operands by %d, size=%lld, time=%d usec\n",
+			__func__, i, size_in_bits_x1000, time_usecs);
+	/* check for 32 bit operations first */
+	get_kbps_from_size_n_usec_32bit(
+		(u32)cp_size_bits_x1000, cp_usecs,
+		&speed_32bit);
+	*speed_in_kbps = speed_32bit;
+	return;
+}
+
+static void free_stats_nodes(struct sdhci_host *host)
+{
+	struct data_stat_entry *ptr, *ptr2;
+
+	ptr = host->sdhci_data_stat.head;
+	while (ptr) {
+		ptr2 = ptr->next;
+		host->sdhci_data_stat.stat_size--;
+		kfree(ptr);
+		ptr = ptr2;
+	}
+	if (host->sdhci_data_stat.stat_size)
+		pr_err("stat_size=%d after free %s\n",
+			host->sdhci_data_stat.stat_size,
+			__func__);
+}
+
+static struct data_stat_entry *add_entry_sorted(struct sdhci_host *host,
+	unsigned int blk_size, unsigned int blk_count)
+{
+	struct data_stat_entry *node, *ptr;
+
+	node = devm_kzalloc(host->mmc->parent, sizeof(struct data_stat_entry),
+		GFP_KERNEL);
+	if (!node) {
+		pr_err("%s, %s, line=%d: unable to allocate data_stat_entry\n",
+			__FILE__, __func__, __LINE__);
+		return NULL;
+	}
+	node->stat_blk_size = blk_size;
+	node->stat_blks_per_transfer = blk_count;
+	host->sdhci_data_stat.stat_size++;
+	/* assume existing list is sorted and try to insert this new node
+	 * into the increasing order sorted array
+	 */
+	ptr = host->sdhci_data_stat.head;
+	if (!ptr) {
+		/* first element */
+		host->sdhci_data_stat.head = node;
+		return node;
+	}
+	if (ptr && ((ptr->stat_blk_size > blk_size) ||
+		((ptr->stat_blk_size == blk_size) &&
+		(ptr->stat_blks_per_transfer > blk_count)))) {
+		host->sdhci_data_stat.head = node;
+		/* update new head */
+		node->next = ptr;
+		return node;
+	}
+	while (ptr->next) {
+		if ((ptr->next->stat_blk_size < blk_size) ||
+			((ptr->next->stat_blk_size == blk_size) &&
+			(ptr->next->stat_blks_per_transfer < blk_count)))
+			ptr = ptr->next;
+		else
+			break;
+	}
+	/* We are here if -
+	 * 1. ptr->next is null or
+	 * 2. blk_size of ptr->next is greater than new blk size, so we should
+	 *    place the new node between ptr and ptr->next
+	 */
+	if (!ptr->next) {
+		ptr->next = node;
+		return node;
+	}
+	if ((ptr->next->stat_blk_size > blk_size) ||
+		((ptr->next->stat_blk_size == blk_size) &&
+		(ptr->next->stat_blks_per_transfer > blk_count))) {
+		node->next = ptr->next;
+		ptr->next = node;
+		return node;
+	}
+	pr_err("%s line=%d should be unreachable\n", __func__, __LINE__);
+	return NULL;
+}
+
+static void free_data_entry(struct sdhci_host *host,
+				unsigned int blk_size, unsigned int blk_count)
+{
+	struct data_stat_entry *ptr, *ptr2;
+
+	ptr = host->sdhci_data_stat.head;
+	if (!ptr)
+		return;
+	if ((ptr->stat_blk_size == blk_size) &&
+		(ptr->stat_blks_per_transfer == blk_count)) {
+		host->sdhci_data_stat.head = ptr->next;
+		devm_kfree(host->mmc->parent, ptr);
+		return;
+	}
+	if ((!ptr->next) && ((ptr->stat_blk_size == blk_size) &&
+		(ptr->stat_blks_per_transfer == blk_count))) {
+		pr_err("Error %s: only data_entry found has blk_size=%d, given blk_size=%d not found\n",
+			__func__, ptr->stat_blk_size, blk_size);
+		return;
+	}
+	while (ptr->next) {
+		if ((ptr->next->stat_blk_size == blk_size) &&
+			(ptr->next->stat_blks_per_transfer == blk_count)) {
+			ptr2 = ptr->next->next;
+			devm_kfree(host->mmc->parent, ptr->next);
+			ptr->next = ptr2;
+			return;
+		}
+		ptr = ptr->next;
+	}
+	pr_err("Error %s: given blk_size=%d not found\n", __func__, blk_size);
+	return;
+}
+
+static void update_stat(struct sdhci_host *host, u32 blk_size, u8 blk_count,
+			bool is_start_stat, bool is_data_error)
+{
+	u32 new_kbps;
+	struct data_stat_entry *stat;
+	ktime_t t;
+
+	if (!host->enable_sdhci_perf_stats)
+		return;
+
+	stat = host->sdhci_data_stat.head;
+	while (stat) {
+		if ((stat->stat_blk_size == blk_size) &&
+			(stat->stat_blks_per_transfer == blk_count))
+			break;
+		stat = stat->next;
+	}
+	if (!stat) {
+		/* allocate an entry */
+		stat = add_entry_sorted(host, blk_size, blk_count);
+		if (!stat) {
+			pr_err("%s line=%d: stat entry not found\n",
+				__func__, __LINE__);
+			return;
+		}
+	}
+
+	if (is_start_stat) {
+		stat->start_ktime = ktime_get();
+	} else {
+		if (is_data_error) {
+			memset(&stat->start_ktime, 0, sizeof(ktime_t));
+			if (!stat->total_bytes)
+				free_data_entry(host, blk_size, blk_count);
+			return;
+		}
+		t = ktime_get();
+		stat->duration_usecs = ktime_us_delta(t, stat->start_ktime);
+		stat->current_transferred_bytes = (blk_size * blk_count);
+		get_kbps_from_size_n_usec_32bit(
+			(((u32)stat->current_transferred_bytes << 3) * 1000),
+			stat->duration_usecs,
+			&new_kbps);
+		if (stat->max_kbps == 0) {
+			stat->max_kbps = new_kbps;
+			stat->min_kbps = new_kbps;
+		} else {
+			if (new_kbps > stat->max_kbps)
+				stat->max_kbps = new_kbps;
+			if (new_kbps < stat->min_kbps)
+				stat->min_kbps = new_kbps;
+		}
+		/* update the total bytes figure for this entry */
+		stat->total_usecs += stat->duration_usecs;
+		stat->total_bytes += stat->current_transferred_bytes;
+	}
+}
+#endif
+
 static void sdhci_finish_data(struct sdhci_host *host)
 {
 	struct mmc_data *data;
@@ -1038,6 +1254,15 @@ static void sdhci_finish_data(struct sdhci_host *host)
 		sdhci_send_command(host, data->stop);
 	} else
 		tasklet_schedule(&host->finish_tasklet);
+#ifdef CONFIG_DEBUG_FS
+	if (data->bytes_xfered) {
+		update_stat(host, data->blksz, data->blocks, false, false);
+	} else {
+		host->no_data_transfer_count++;
+		/* performance stats does not include cases of data error */
+		update_stat(host, data->blksz, data->blocks, false, true);
+	}
+#endif
 }
 
 static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
@@ -1416,6 +1641,12 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	u32 tuning_opcode;
 
 	host = mmc_priv(mmc);
+
+#ifdef CONFIG_DEBUG_FS
+	if (mrq->data)
+		update_stat(host, mrq->data->blksz, mrq->data->blocks,
+			true, false);
+#endif
 
 	sdhci_runtime_pm_get(host);
 
@@ -2219,10 +2450,9 @@ int sdhci_enable(struct mmc_host *mmc)
 	if (!mmc->card || !(mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 		return 0;
 
-	if (IS_DELAYED_CLK_GATE(host)) {
+	if (IS_DELAYED_CLK_GATE(host))
 		/* cancel sdio clk gate work */
 		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
-	}
 
 	sysedp_set_state(host->sysedpc, 1);
 
@@ -2637,16 +2867,15 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		}
 
 		if (intmask & SDHCI_INT_DATA_END) {
-			if (host->cmd) {
+			if (host->cmd)
 				/*
 				 * Data managed to finish before the
 				 * command completed. Make sure we do
 				 * things in the proper order.
 				 */
 				host->data_early = 1;
-			} else {
+			else
 				sdhci_finish_data(host);
-			}
 		}
 	}
 }
@@ -3039,6 +3268,135 @@ struct sdhci_host *sdhci_alloc_host(struct device *dev,
 }
 
 EXPORT_SYMBOL_GPL(sdhci_alloc_host);
+
+#ifdef CONFIG_DEBUG_FS
+static int show_sdhci_perf_stats(struct seq_file *s, void *data)
+{
+	struct sdhci_host *host = s->private;
+	int i;
+	u32 avg_perf2;
+	u32 last_perf_in_class;
+	struct data_stat_entry *stat = NULL;
+	char buf[250];
+
+	seq_printf(s, "SDHCI(%s): perf statistics stat_size=%d\n",
+		mmc_hostname(host->mmc),
+		host->sdhci_data_stat.stat_size
+		);
+	if (host->sdhci_data_stat.stat_size) {
+		seq_printf(s, "SDHCI(%s): perf statistics:\n",
+			mmc_hostname(host->mmc));
+		seq_puts(s,
+		"Note: Performance figures in kilo bits per sec(kbps)\n");
+		seq_puts(s,
+		"S.No.    Block       Num blks/        Total                Total          Last            Last usec          Avg kbps        Last kbps           Min kbps   Max kbps\n");
+		seq_puts(s,
+		"         Size        transfer         Bytes                Time(usec)     Bytes           Duration           Perf            Perf                Perf       Perf\n");
+	}
+	for (i = 0; i < host->sdhci_data_stat.stat_size; i++) {
+		if (!stat)
+			stat = host->sdhci_data_stat.head;
+		else
+			stat = stat->next;
+		get_kbps_from_size_n_usec_64bit(
+			((stat->total_bytes << 3) * 1000),
+			stat->total_usecs, &avg_perf2);
+		get_kbps_from_size_n_usec_32bit(
+			(((u32)stat->current_transferred_bytes << 3) * 1000),
+			stat->duration_usecs,
+			&last_perf_in_class);
+		snprintf(buf, 250,
+			"%2d    %4d      %8d    %16lld            %8d    %8d            %8d           %8d         %8d         %8d    %8d\n",
+			(i + 1),
+			stat->stat_blk_size,
+			stat->stat_blks_per_transfer,
+			stat->total_bytes,
+			stat->total_usecs,
+			stat->current_transferred_bytes,
+			stat->duration_usecs,
+			avg_perf2,
+			last_perf_in_class,
+			stat->min_kbps,
+			stat->max_kbps
+			);
+		seq_puts(s, buf);
+	}
+
+	return 0;
+}
+
+static int sdhci_perf_stats_dump(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_sdhci_perf_stats, inode->i_private);
+}
+
+static const struct file_operations flush_sdhci_perf_stats_fops = {
+	.open		= sdhci_perf_stats_dump,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int restart_sdhci_perf_stats(struct seq_file *s, void *data)
+{
+	struct sdhci_host *host = s->private;
+
+	free_stats_nodes(host);
+	return 0;
+}
+
+static int sdhci_perf_stats_restart(struct inode *inode, struct file *file)
+{
+	return single_open(file, restart_sdhci_perf_stats, inode->i_private);
+}
+
+static const struct file_operations reset_sdhci_perf_stats_fops = {
+	.open		= sdhci_perf_stats_restart,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static void sdhci_debugfs_init(struct sdhci_host *host)
+{
+	struct dentry *root = host->debugfs_root;
+
+	/*
+	 * debugfs nodes earlier were created from sdhci-tegra,
+	 * In this change root debugfs node is created first-come-first-serve
+	 */
+	if (!root) {
+		root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
+		if (IS_ERR_OR_NULL(root))
+			goto err_root;
+		host->debugfs_root = root;
+	}
+
+	if (!debugfs_create_u32("enable_sdhci_perf_stats", S_IRUGO | S_IWUSR,
+		root, (u32 *)&host->enable_sdhci_perf_stats))
+		goto err_root;
+
+	if (!debugfs_create_file("reset_sdhci_perf_stats", S_IRUGO,
+		root, host, &reset_sdhci_perf_stats_fops))
+		goto err_root;
+
+	if (!debugfs_create_file("sdhci_perf_stats", S_IRUGO,
+		root, host, &flush_sdhci_perf_stats_fops))
+		goto err_root;
+
+	if (!debugfs_create_u32("sdhci_perf_no_data_transfer_count", S_IRUGO,
+		root, (u32 *)&host->no_data_transfer_count))
+		goto err_root;
+
+	return;
+
+err_root:
+	debugfs_remove_recursive(root);
+	host->debugfs_root = NULL;
+
+	return;
+}
+#endif
 
 int sdhci_add_host(struct sdhci_host *host)
 {
@@ -3545,6 +3903,10 @@ int sdhci_add_host(struct sdhci_host *host)
 		(host->flags & SDHCI_USE_SDMA) ? "DMA" : "PIO");
 
 	sdhci_enable_card_detection(host);
+#ifdef CONFIG_DEBUG_FS
+	/* Add debugfs nodes */
+	sdhci_debugfs_init(host);
+#endif
 
 	return 0;
 
