@@ -236,6 +236,7 @@ enum regulator_type {
  * @bypass_mask: Mask for control when using regmap set_bypass
  *
  * @enable_time: Time taken for initial enable of regulator (in uS).
+ * @disable_time: Time taken for regulator to off completely (in uS).
  */
 struct regulator_desc {
 	const char *name;
@@ -270,6 +271,7 @@ struct regulator_desc {
 	unsigned int bypass_mask;
 
 	unsigned int enable_time;
+	unsigned int disable_time;
 };
 
 /**

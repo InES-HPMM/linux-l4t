@@ -99,6 +99,7 @@ struct regulator_state {
  * @initial_mode: Mode to set at startup.
  * @ramp_delay: Time to settle down after voltage change (unit: uV/us)
  * @enable_time: Turn-on time of the rails (unit: microseconds)
+ * @disable_time: Turn-off time of the rails (unit: microseconds)
  */
 struct regulation_constraints {
 
@@ -138,6 +139,7 @@ struct regulation_constraints {
 
 	unsigned int ramp_delay;
 	unsigned int enable_time;
+	unsigned int disable_time;
 
 	unsigned int startup_delay;
 
