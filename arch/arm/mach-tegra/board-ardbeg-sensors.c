@@ -1114,13 +1114,23 @@ static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
 	}
 };
 
+static struct i2c_board_info laguna_i2c_nct72_board_info[] = {
+	{
+		I2C_BOARD_INFO("nct72", 0x4c),
+		.platform_data = &ardbeg_nct72_pdata,
+		.irq = -1,
+	},
+};
+
 static int ardbeg_nct72_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
 	int i;
 	struct thermal_trip_info *trip_state;
+	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
 	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
 	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
@@ -1157,7 +1167,13 @@ static int ardbeg_nct72_init(void)
 	}
 
 	/* ardbeg has thermal sensor on GEN2-I2C i.e. instance 1 */
-	i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
+	if (board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM363)
+		i2c_register_board_info(1, laguna_i2c_nct72_board_info,
+		ARRAY_SIZE(laguna_i2c_nct72_board_info));
+	else
+		i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
 		ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
 
 	return ret;
