@@ -113,9 +113,16 @@ config FB_TEGRA
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
-	default FB
+	default FB && !ADF
 	help
 	  Framebuffer device support for the Tegra display controller.
+
+config ADF_TEGRA
+	tristate "Tegra ADF driver"
+	depends on TEGRA_DC && ADF
+	default ADF
+	help
+	  ADF device support for the Tegra display controller.
 
 config TEGRA_DC_EXTENSIONS
 	bool "Tegra Display Controller Extensions"
