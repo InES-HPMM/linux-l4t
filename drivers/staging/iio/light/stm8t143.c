@@ -132,7 +132,7 @@ static int stm8t143_read_raw(struct iio_dev *indio_dev,
 		return -EINVAL;
 
 	*val = !gpio_get_value(chip->tout_gpio);
-	pr_info("proximity value:%d\n", *val);
+	pr_debug("proximity value:%d\n", *val);
 
 	return IIO_VAL_INT;
 }
