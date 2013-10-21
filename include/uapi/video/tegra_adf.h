@@ -36,6 +36,14 @@ enum tegra_adf_interface_type {
 	TEGRA_ADF_INTF_LVDS = ADF_INTF_TYPE_DEVICE_CUSTOM + 1,
 };
 
+#define TEGRA_ADF_EVENT_BANDWIDTH_RENEGOTIATE	ADF_EVENT_DEVICE_CUSTOM
+struct tegra_adf_event_bandwidth {
+	struct adf_event base;
+	__u32 total_bw;
+	__u32 avail_bw;
+	__u32 resvd_bw;
+};
+
 #define TEGRA_ADF_CAPABILITIES_CURSOR_MODE	(1 << 0)
 #define TEGRA_ADF_CAPABILITIES_BLOCKLINEAR	(1 << 1)
 struct tegra_adf_capabilities {
