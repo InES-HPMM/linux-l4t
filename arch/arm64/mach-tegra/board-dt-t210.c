@@ -25,13 +25,12 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
-#include <mach/io.h>
-#include <mach/iomap.h>
 #include <linux/nvmap.h>
 
 #include "board.h"
 #include "clock.h"
 #include "common.h"
+#include "iomap.h"
 
 static struct nvmap_platform_carveout t210_carveouts[] = {
 	[0] = {
@@ -131,7 +130,6 @@ DT_MACHINE_START(TEGRA210_DT, "grenada")
 	.reserve	= tegra_grenada_reserve,
 	.init_early	= tegra21x_init_early,
 	.init_irq	= tegra_dt_init_irq,
-	.timer		= &tegra_sys_timer,
 	.init_late	= tegra_init_late,
 	.init_machine	= tegra210_dt_init,
 	.restart	= tegra_assert_system_reset,
