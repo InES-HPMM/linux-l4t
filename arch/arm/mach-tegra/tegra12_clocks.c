@@ -222,6 +222,7 @@
 #define PLLU_BASE_POST_DIV		(1<<20)
 
 /* PLLD */
+#define PLLD_BASE_DIVN_MASK		(0x7FF<<8)
 #define PLLD_BASE_CSI_CLKENABLE		(1<<26)
 #define PLLD_BASE_DSI_MUX_SHIFT		25
 #define PLLD_BASE_DSI_MUX_MASK		(1<<PLLD_BASE_DSI_MUX_SHIFT)
@@ -2161,6 +2162,8 @@ static void tegra12_utmi_param_configure(struct clk *c)
 static void tegra12_pll_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg + PLL_BASE);
+	u32 divn_mask = c->flags & PLLD ?
+		PLLD_BASE_DIVN_MASK : PLL_BASE_DIVN_MASK;
 
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
@@ -2183,7 +2186,7 @@ static void tegra12_pll_clk_init(struct clk *c)
 		c->mul = 1;
 		c->div = 1;
 	} else {
-		c->mul = (val & PLL_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
+		c->mul = (val & divn_mask) >> PLL_BASE_DIVN_SHIFT;
 		c->div = (val & PLL_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
 		if (c->flags & PLLU)
 			c->div *= (val & PLLU_BASE_POST_DIV) ? 1 : 2;
@@ -2329,6 +2332,8 @@ static int tegra12_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	unsigned long input_rate;
 	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg;
+	u32 divn_mask = c->flags & PLLD ?
+		PLLD_BASE_DIVN_MASK : PLL_BASE_DIVN_MASK;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
@@ -2384,7 +2389,7 @@ static int tegra12_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		cfg.cpcon = get_pll_cpcon(c, cfg.n);
 
 		if ((cfg.m > (PLL_BASE_DIVM_MASK >> PLL_BASE_DIVM_SHIFT)) ||
-		    (cfg.n > (PLL_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
+		    (cfg.n > (divn_mask >> PLL_BASE_DIVN_SHIFT)) ||
 		    (p_div > (PLL_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT)) ||
 		    (cfg.output_rate > c->u.pll.vco_max)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
@@ -2398,7 +2403,7 @@ static int tegra12_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	c->div = sel->m * sel->p;
 
 	old_base = val = clk_readl(c->reg + PLL_BASE);
-	val &= ~(PLL_BASE_DIVM_MASK | PLL_BASE_DIVN_MASK |
+	val &= ~(PLL_BASE_DIVM_MASK | divn_mask |
 		 ((c->flags & PLLU) ? PLLU_BASE_POST_DIV : PLL_BASE_DIVP_MASK));
 	val |= (sel->m << PLL_BASE_DIVM_SHIFT) |
 		(sel->n << PLL_BASE_DIVN_SHIFT) | p_div;
