@@ -1024,7 +1024,10 @@ static int tegra_pcie_enable_controller(void)
 		/* Since CLKREQ# pinmux pins may float in some platfoms */
 		/* resulting in disappear of refclk specially at higher temp */
 		/* overrided CLKREQ to always drive refclk */
-		val |= AFI_PEX_CTRL_OVERRIDE_EN;
+		if ((tegra_pcie.plat_data->board_id == BOARD_PM358) ||
+			(tegra_pcie.plat_data->board_id == BOARD_PM359)) {
+			val |= AFI_PEX_CTRL_OVERRIDE_EN;
+		}
 		val &= ~AFI_PEX_CTRL_RST;
 		afi_writel(val, reg);
 	}
