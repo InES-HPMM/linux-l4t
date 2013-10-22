@@ -116,9 +116,14 @@ void __init tegra12x_vdd_cpu_align(int step_uv, int offset_uv)
 }
 
 /* CPU DVFS tables */
+static unsigned long cpu_max_freq[] = {
+/* speedo_id	0	 1		*/
+		2014500, 2320500,
+};
+
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id = 0,
+		.speedo_id = -1,
 		.process_id = -1,
 		.dfll_tune_data  = {
 			.tune0		= 0x005020FF,
@@ -152,49 +157,9 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1836000,	{1936696, -49855, 402}, {1140000, 0, 0}},
 			{1938000,	{2003687, -51145, 402}, {1180000, 0, 0}},
 			{2014500,	{2054787, -52095, 402}, {1220000, 0, 0}},
-			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
-		},
-		.vmin_trips_table = { 20, },
-		.therm_floors_table = { 900, },
-	},
-	{
-		.speedo_id = 1,
-		.process_id = -1,
-		.dfll_tune_data  = {
-			.tune0		= 0x005020FF,
-			.tune0_high_mv	= 0x005040FF,
-			.tune1		= 0x00000060,
-			.droop_rate_min = 1000000,
-			.tune_high_min_millivolts = 900,
-			.min_millivolts = 800,
-		},
-		.max_mv = 1260,
-		.freqs_mult = KHZ,
-		.speedo_scale = 100,
-		.voltage_scale = 1000,
-		.cvb_table = {
-			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{306000,	{1150460, -30585, 402}, {710000, 0, 0}},
-			{408000,	{1190122, -31865, 402}, {730000, 0, 0}},
-			{510000,	{1231606, -33155, 402}, {740000, 0, 0}},
-			{612000,	{1274912, -34435, 402}, {750000, 0, 0}},
-			{714000,	{1320040, -35725, 402}, {770000, 0, 0}},
-			{816000,	{1366990, -37005, 402}, {790000, 0, 0}},
-			{918000,	{1415762, -38295, 402}, {810000, 0, 0}},
-			{1020000,	{1466355, -39575, 402}, {830000, 0, 0}},
-			{1122000,	{1518771, -40865, 402}, {860000, 0, 0}},
-			{1224000,	{1573009, -42145, 402}, {890000, 0, 0}},
-			{1326000,	{1629068, -43435, 402}, {920000, 0, 0}},
-			{1428000,	{1686950, -44715, 402}, {950000, 0, 0}},
-			{1530000,	{1746653, -46005, 402}, {980000, 0, 0}},
-			{1632000,	{1808179, -47285, 402}, {1010000, 0, 0}},
-			{1734000,	{1871526, -48575, 402}, {1050000, 0, 0}},
-			{1836000,	{1936696, -49855, 402}, {1090000, 0, 0}},
-			{1938000,	{2003687, -51145, 402}, {1130000, 0, 0}},
-			{2014500,	{2054787, -52095, 402}, {1160000, 0, 0}},
-			{2116500,	{2124957, -53385, 402}, {1200000, 0, 0}},
-			{2218500,	{2196950, -54665, 402}, {1250000, 0, 0}},
-			{2320500,	{2270765, -55955, 402}, {1300000, 0, 0}},
+			{2116500,	{2124957, -53385, 402}, {1260000, 0, 0}},
+			{2218500,	{2196950, -54665, 402}, {1310000, 0, 0}},
+			{2320500,	{2270765, -55955, 402}, {1360000, 0, 0}},
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
 		.vmin_trips_table = { 20, },
@@ -614,10 +579,10 @@ static int round_voltage(int mv, struct rail_alignment *align, bool up)
 	return mv;
 }
 
-static int __init set_cpu_dvfs_data(
+static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
-	int i, j, mv, dfll_mv, min_dfll_mv;
+	int j, mv, dfll_mv, min_dfll_mv;
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
@@ -641,9 +606,9 @@ static int __init set_cpu_dvfs_data(
 	 * applied to both sources, but differently: directly clip voltage for
 	 * DFLL, and limit maximum frequency for PLL.
 	 */
-	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
-		table = &d->cvb_table[i];
-		if (!table->freq)
+	for (j = 0; j < MAX_DVFS_FREQS; j++) {
+		table = &d->cvb_table[j];
+		if (!table->freq || (table->freq > max_freq))
 			break;
 
 		dfll_mv = get_cvb_voltage(
@@ -683,20 +648,10 @@ static int __init set_cpu_dvfs_data(
 		cpu_dvfs->freqs[j] = table->freq;
 		cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
 		cpu_millivolts[j] = mv;
-		j++;
-
-		/*
-		 * "Round-up" frequency list cut-off (keep first entry that
-		 *  exceeds max voltage - the voltage limit will be enforced
-		 *  anyway, so when requested this frequency dfll will settle
-		 *  at whatever high frequency it can on the particular chip)
-		 */
-		if (dfll_mv > d->max_mv)
-			break;
 	}
 
 	/* Table must not be empty, must have at least one entry above Vmin */
-	if (!i || !j || !fmax_at_vmin) {
+	if (!j || !fmax_at_vmin) {
 		pr_err("tegra12_dvfs: invalid cpu dvfs table\n");
 		return -ENOENT;
 	}
@@ -945,11 +900,13 @@ void __init tegra12x_init_dvfs(void)
 	 * voltage limit is not violated). Error when cpu dvfs table can not
 	 * be constructed must never happen.
 	 */
+	BUG_ON(cpu_speedo_id >= ARRAY_SIZE(cpu_max_freq));
 	for (ret = 0, i = 0; i <  ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
 		struct cpu_cvb_dvfs *d = &cpu_cvb_dvfs_table[i];
+		unsigned long max_freq = cpu_max_freq[cpu_speedo_id];
 		if (match_dvfs_one("cpu cvb", d->speedo_id, d->process_id,
 				   cpu_speedo_id, cpu_process_id)) {
-			ret = set_cpu_dvfs_data(
+			ret = set_cpu_dvfs_data(max_freq,
 				d, &cpu_dvfs, &cpu_max_freq_index);
 			break;
 		}
