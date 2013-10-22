@@ -285,9 +285,11 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq_charger->cable_connected = 0;
 		bq_charger->in_current_limit = 500;
 		bq_charger->chg_status = BATTERY_DISCHARGING;
+		battery_charger_release_wake_lock(bq_charger->bc_dev);
 	} else {
 		bq_charger->cable_connected = 1;
 		bq_charger->chg_status = BATTERY_CHARGING;
+		battery_charger_acquire_wake_lock(bq_charger->bc_dev);
 	}
 	ret = bq2419x_init(bq_charger);
 	if (ret < 0)
@@ -595,6 +597,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 					bq2419x->chg_status);
 		battery_charging_restart(bq2419x->bc_dev,
 					bq2419x->chg_restart_time);
+		battery_charger_release_wake_lock(bq2419x->bc_dev);
 	}
 
 	if ((val & BQ2419x_VSYS_STAT_MASK) ==
