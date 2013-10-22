@@ -52,6 +52,8 @@
 			invensense,sec_slave_type = <0>;
 			invensense,key = [4e cc 7e eb f6 1e 35 22
 					  00 34 0d 65 32 e9 94 89];
+			vlogic-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
 		};
 
 		ak8963c@0d {
@@ -59,6 +61,8 @@
 			reg = <0x0d>;
 			orientation = [00 01 00 01 00 00 00 00 ff];
 			config = "mpu";
+			vid-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
 		};
 	};
 
