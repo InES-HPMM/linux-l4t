@@ -58,7 +58,7 @@ obj-y += tegra11x_la.o
 obj-y += tegra14x_la.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra13_speedo.o
 
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra3_actmon.o
 
