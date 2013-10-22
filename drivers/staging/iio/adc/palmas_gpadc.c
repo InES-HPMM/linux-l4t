@@ -30,6 +30,8 @@
 #include <linux/pm.h>
 #include <linux/mfd/palmas.h>
 #include <linux/completion.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/machine.h>
 #include <linux/iio/driver.h>
@@ -508,20 +510,102 @@ static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
 	PALMAS_ADC_CHAN_IIO(IN15),
 };
 
+static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
+	struct palmas_gpadc_platform_data **gpadc_pdata)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct palmas_gpadc_platform_data *gp_data;
+	struct device_node *map_node;
+	struct device_node *child;
+	struct iio_map *palmas_iio_map;
+	int ret;
+	u32 pval;
+	int nmap, nvalid_map;
+
+	gp_data = devm_kzalloc(&pdev->dev, sizeof(*gp_data), GFP_KERNEL);
+	if (!gp_data)
+		return -ENOMEM;
+
+	ret = of_property_read_u32(np, "ti,channel0-current-microamp", &pval);
+	if (!ret)
+		gp_data->ch0_current = pval;
+
+	ret = of_property_read_u32(np, "ti,channel3-current-microamp", &pval);
+	if (!ret)
+		gp_data->ch3_current = pval;
+
+	gp_data->ch3_dual_current = of_property_read_bool(np,
+					"ti,enable-channel3-dual-current");
+
+	gp_data->extended_delay = of_property_read_bool(np,
+					"ti,enable-extended-delay");
+
+	map_node = of_get_child_by_name(np, "iio_map");
+	if (!map_node) {
+		dev_warn(&pdev->dev, "IIO map table not found\n");
+		goto done;
+	}
+
+	nmap = of_get_child_count(map_node);
+	if (!nmap)
+		goto done;
+
+	nmap++;
+	palmas_iio_map = devm_kzalloc(&pdev->dev,
+				sizeof(*palmas_iio_map) * nmap, GFP_KERNEL);
+	if (!palmas_iio_map)
+		goto done;
+
+	nvalid_map = 0;
+	for_each_child_of_node(map_node, child) {
+		ret = of_property_read_u32(child, "ti,adc-channel-number",
+					&pval);
+		if (!ret && pval < ARRAY_SIZE(palmas_gpadc_iio_channel))
+			palmas_iio_map[nvalid_map].adc_channel_label =
+				palmas_gpadc_iio_channel[pval].datasheet_name;
+		of_property_read_string(child, "ti,adc-consumer-device",
+				&palmas_iio_map[nvalid_map].consumer_dev_name);
+		of_property_read_string(child, "ti,adc-consumer-channel",
+				&palmas_iio_map[nvalid_map].consumer_channel);
+		dev_dbg(&pdev->dev,
+			"Channel %s consumer dev %s and consumer channel %s\n",
+				palmas_iio_map[nvalid_map].adc_channel_label,
+				palmas_iio_map[nvalid_map].consumer_dev_name,
+				palmas_iio_map[nvalid_map].consumer_channel);
+		nvalid_map++;
+	}
+	palmas_iio_map[nvalid_map].adc_channel_label = NULL;
+	palmas_iio_map[nvalid_map].consumer_dev_name = NULL;
+	palmas_iio_map[nvalid_map].consumer_channel = NULL;
+
+	gp_data->iio_maps = palmas_iio_map;
+
+done:
+	*gpadc_pdata = gp_data;
+	return 0;
+}
+
 static int palmas_gpadc_probe(struct platform_device *pdev)
 {
 	struct palmas_gpadc *adc;
 	struct palmas_platform_data *pdata;
-	struct palmas_gpadc_platform_data *adc_pdata;
+	struct palmas_gpadc_platform_data *gpadc_pdata = NULL;
 	struct iio_dev *iodev;
 	int ret, i;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
-	if (!pdata || !pdata->gpadc_pdata) {
+	if (pdata && pdata->gpadc_pdata)
+		gpadc_pdata = pdata->gpadc_pdata;
+
+	if (!gpadc_pdata && pdev->dev.of_node) {
+		ret = palmas_gpadc_get_adc_dt_data(pdev, &gpadc_pdata);
+		if (ret < 0)
+			return ret;
+	}
+	if (!gpadc_pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODEV;
 	}
-	adc_pdata = pdata->gpadc_pdata;
 
 	iodev = iio_device_alloc(sizeof(*adc));
 	if (!iodev) {
@@ -529,8 +613,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (adc_pdata->iio_maps) {
-		ret = iio_map_array_register(iodev, adc_pdata->iio_maps);
+	if (gpadc_pdata->iio_maps) {
+		ret = iio_map_array_register(iodev, gpadc_pdata->iio_maps);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "iio_map_array_register failed\n");
 			goto out;
@@ -544,7 +628,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	init_completion(&adc->conv_completion);
 	dev_set_drvdata(&pdev->dev, iodev);
 
-	adc->auto_conversion_period = adc_pdata->auto_conversion_period_ms;
+	adc->auto_conversion_period = gpadc_pdata->auto_conversion_period_ms;
 	adc->irq = palmas_irq_get_virq(adc->palmas, PALMAS_GPADC_EOC_SW_IRQ);
 	ret = request_threaded_irq(adc->irq, NULL,
 		palmas_gpadc_irq,
@@ -556,8 +640,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		goto out_unregister_map;
 	}
 
-	if (adc_pdata->adc_wakeup1_data) {
-		memcpy(&adc->wakeup1_data, adc_pdata->adc_wakeup1_data,
+	if (gpadc_pdata->adc_wakeup1_data) {
+		memcpy(&adc->wakeup1_data, gpadc_pdata->adc_wakeup1_data,
 			sizeof(adc->wakeup1_data));
 		adc->wakeup1_enable = true;
 		adc->irq_auto_0 =  platform_get_irq(pdev, 1);
@@ -572,8 +656,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (adc_pdata->adc_wakeup2_data) {
-		memcpy(&adc->wakeup2_data, adc_pdata->adc_wakeup2_data,
+	if (gpadc_pdata->adc_wakeup2_data) {
+		memcpy(&adc->wakeup2_data, gpadc_pdata->adc_wakeup2_data,
 				sizeof(adc->wakeup2_data));
 		adc->wakeup2_enable = true;
 		adc->irq_auto_1 =  platform_get_irq(pdev, 2);
@@ -588,27 +672,27 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (adc_pdata->ch0_current == 0)
+	if (gpadc_pdata->ch0_current == 0)
 		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_0;
-	else if (adc_pdata->ch0_current <= 5)
+	else if (gpadc_pdata->ch0_current <= 5)
 		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_5;
-	else if (adc_pdata->ch0_current <= 15)
+	else if (gpadc_pdata->ch0_current <= 15)
 		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_15;
 	else
 		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_20;
 
-	if (adc_pdata->ch3_current == 0)
+	if (gpadc_pdata->ch3_current == 0)
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_0;
-	else if (adc_pdata->ch3_current <= 10)
+	else if (gpadc_pdata->ch3_current <= 10)
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_10;
-	else if (adc_pdata->ch3_current <= 400)
+	else if (gpadc_pdata->ch3_current <= 400)
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_400;
 	else
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_800;
 
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
 	 * ch3_current and the next current of ch3_current. */
-	adc->ch3_dual_current = adc_pdata->ch3_dual_current;
+	adc->ch3_dual_current = gpadc_pdata->ch3_dual_current;
 	if (adc->ch3_dual_current &&
 			(adc->ch3_current == PALMAS_ADC_CH3_CURRENT_SRC_800)) {
 		dev_warn(adc->dev,
@@ -616,7 +700,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		adc->ch3_dual_current = false;
 	}
 
-	adc->extended_delay = adc_pdata->extended_delay;
+	adc->extended_delay = gpadc_pdata->extended_delay;
 
 	iodev->name = MOD_NAME;
 	iodev->dev.parent = &pdev->dev;
@@ -642,15 +726,15 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	return 0;
 
 out_irq_auto1_free:
-	if (adc_pdata->adc_wakeup2_data)
+	if (gpadc_pdata->adc_wakeup2_data)
 		free_irq(adc->irq_auto_1, adc);
 out_irq_auto0_free:
-	if (adc_pdata->adc_wakeup1_data)
+	if (gpadc_pdata->adc_wakeup1_data)
 		free_irq(adc->irq_auto_0, adc);
 out_irq_free:
 	free_irq(adc->irq, adc);
 out_unregister_map:
-	if (adc_pdata->iio_maps)
+	if (gpadc_pdata->iio_maps)
 		iio_map_array_unregister(iodev);
 out:
 	iio_device_free(iodev);
@@ -851,6 +935,12 @@ static const struct dev_pm_ops palmas_pm_ops = {
 				palmas_gpadc_resume)
 };
 
+static struct of_device_id of_palmas_gpadc_match_tbl[] = {
+	{ .compatible = "ti,palmas-gpadc", },
+	{ /* end */ }
+};
+MODULE_DEVICE_TABLE(of, of_palmas_gpadc_match_tbl);
+
 static struct platform_driver palmas_gpadc_driver = {
 	.probe = palmas_gpadc_probe,
 	.remove = palmas_gpadc_remove,
@@ -858,6 +948,7 @@ static struct platform_driver palmas_gpadc_driver = {
 		.name = MOD_NAME,
 		.owner = THIS_MODULE,
 		.pm = &palmas_pm_ops,
+		.of_match_table = of_palmas_gpadc_match_tbl,
 	},
 };
 
