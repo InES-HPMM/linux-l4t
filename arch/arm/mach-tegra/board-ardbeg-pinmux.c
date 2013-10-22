@@ -59,7 +59,8 @@ static void __init ardbeg_gpio_init_configure(void)
 
 int __init ardbeg_pinmux_init(void)
 {
-	ardbeg_gpio_init_configure();
+	if (!of_machine_is_compatible("nvidia,tn8"))
+		ardbeg_gpio_init_configure();
 
 	tegra_pinmux_config_table(ardbeg_pinmux_common, ARRAY_SIZE(ardbeg_pinmux_common));
 	tegra_drive_pinmux_config_table(ardbeg_drive_pinmux,
