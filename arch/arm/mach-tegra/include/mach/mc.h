@@ -105,6 +105,25 @@ void tegra_mc_set_priority(unsigned long client, unsigned long prio);
 	do { /* nothing for now */ } while (0)
 #endif
 
+/*
+ * Number of unique interrupts we have for this chip.
+ */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INTR_COUNT	6
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INTR_COUNT	8
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define INTR_COUNT	8
+#else
+#define INTR_COUNT	4
+#endif
+
+struct mc_client {
+	const char *name;
+	const char *swgid;
+	unsigned int intr_counts[INTR_COUNT];
+};
+
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define MC_DUAL_CHANNEL
 #endif
@@ -115,6 +134,7 @@ extern void __iomem *mc1;
 #endif
 
 #include <linux/io.h>
+#include <linux/debugfs.h>
 
 /*
  * Read and write functions for hitting the MC. mc_ind corresponds to the MC
