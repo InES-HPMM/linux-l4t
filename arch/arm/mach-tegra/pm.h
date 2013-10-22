@@ -113,6 +113,12 @@ bool tegra_set_cpu_in_pd(int cpu);
 void tegra_mc_clk_prepare(void);
 void tegra_mc_clk_finish(void);
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
+#ifdef CONFIG_TEGRA_LP0_IN_IDLE
+int tegra_enter_lp0(unsigned long sleep_time);
+#else
+static inline int tegra_enter_lp0(unsigned long sleep_time)
+{ return 0; }
+#endif
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 int tegra_is_lp1_suspend_mode(void);
 #endif

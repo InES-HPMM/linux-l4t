@@ -69,6 +69,8 @@
 #include <asm/rodata.h>
 
 #include <mach/irqs.h>
+#include <mach/tegra_smmu.h>
+#include <mach/pm_domains.h>
 
 #include "board.h"
 #include "clock.h"
@@ -1262,6 +1264,46 @@ static void tegra_suspend_powergate_control(int partid, bool turn_off)
 	else
 		tegra_unpowergate_partition(partid);
 }
+
+#ifdef CONFIG_TEGRA_LP0_IN_IDLE
+int tegra_enter_lp0(unsigned long sleep_time)
+{
+	int err = 0;
+
+	/* This state is managed by power domains, hence no voice call expected if
+	 * we are entering this state */
+
+	tegra_rtc_set_trigger(sleep_time);
+
+	tegra_actmon_save();
+
+	tegra_dma_save();
+
+	tegra_smmu_save();
+
+	err = syscore_save();
+	if (err) {
+		tegra_smmu_restore();
+		tegra_dma_restore();
+		tegra_rtc_set_trigger(0);
+		return err;
+	}
+
+	tegra_suspend_dram(TEGRA_SUSPEND_LP0, 0);
+
+	syscore_restore();
+
+	tegra_smmu_restore();
+
+	tegra_dma_restore();
+
+	tegra_actmon_restore();
+
+	tegra_rtc_set_trigger(0);
+
+	return 0;
+}
+#endif
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {
