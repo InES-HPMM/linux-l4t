@@ -1715,6 +1715,10 @@ void tegra_ahci_put_sata_in_iddq()
 	val |= (PADPLL_IDDQ_SWCTL_ON | PADPLL_IDDQ_OVERRIDE_VALUE_ON);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
+	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	val |= (PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
+	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+
 }
 void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
 {
