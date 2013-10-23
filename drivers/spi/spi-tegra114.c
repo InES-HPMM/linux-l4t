@@ -624,7 +624,7 @@ static int tegra_spi_init_dma_param(struct tegra_spi_data *tspi,
 	dma_buf = dma_alloc_coherent(tspi->dev, tspi->dma_buf_size,
 				&dma_phys, GFP_KERNEL);
 	if (!dma_buf) {
-		dev_err(tspi->dev, " Not able to allocate the dma buffer\n");
+		dev_err(tspi->dev, "Not able to allocate the dma buffer\n");
 		dma_release_channel(dma_chan);
 		return -ENOMEM;
 	}
@@ -960,7 +960,7 @@ static int tegra_spi_transfer_one_message(struct spi_master *master,
 						SPI_DMA_TIMEOUT);
 		if (WARN_ON(ret == 0)) {
 			dev_err(tspi->dev,
-				"spi trasfer timeout, err %d\n", ret);
+				"spi transfer timeout, err %d\n", ret);
 			ret = -EIO;
 			goto exit;
 		}
