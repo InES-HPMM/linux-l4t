@@ -712,7 +712,7 @@ static irqreturn_t max77660_chg_wdt_irq(int irq, void *data)
 
 static int max77660_vbus_enable_time(struct regulator_dev *rdev)
 {
-	 return 500000;
+	 return 500;
 }
 
 static int max77660_vbus_is_enabled(struct regulator_dev *rdev)
