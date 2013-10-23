@@ -118,7 +118,7 @@ palmas: tps65913 {
 		regulators {
 			smps123 {
 				regulator-name = "vdd-cpu";
-				regulator-min-microvolt = <900000>;
+				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1400000>;
 				regulator-always-on;
 				regulator-boot-on;
@@ -170,7 +170,7 @@ palmas: tps65913 {
 
 			smps7 {
 				regulator-name = "vdd-core";
-				regulator-min-microvolt = <900000>;
+				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1400000>;
 				regulator-always-on;
 				regulator-boot-on;
