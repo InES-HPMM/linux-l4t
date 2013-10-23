@@ -279,15 +279,22 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 	return 0;
 }
 
+/*
+ * Finds the maximum frequency whose corresponding voltage is <= volt
+ * If no such frequency is found, the least possible frequency is returned
+ */
 unsigned int tegra_edp_find_maxf(int volt)
 {
 	unsigned int i;
 
 	for (i = 0; i < freq_voltage_lut_size_saved; i++) {
-		if (freq_voltage_lut_saved[i].voltage_mV > volt)
+		if (freq_voltage_lut_saved[i].voltage_mV > volt) {
+			if (!i)
+				return freq_voltage_lut_saved[i].freq;
 			break;
+		}
 	}
-	return freq_voltage_lut[i - 1].freq;
+	return freq_voltage_lut_saved[i - 1].freq;
 }
 
 
