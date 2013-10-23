@@ -20,6 +20,7 @@
 #define __MT9M114_H__
 
 #include <linux/ioctl.h>  /* For IOCTL macros */
+#include <linux/edp.h>
 
 #define SENSOR_NAME     "mt9m114"
 #define DEV(x)          "/dev/"x
@@ -108,6 +109,7 @@ struct mt9m114_platform_data {
 	int (*power_on)(struct mt9m114_power_rail *pw);
 	int (*power_off)(struct mt9m114_power_rail *pw);
 	const char *mclk_name;
+	struct edp_client edpc_config;
 };
 #endif /* __KERNEL__ */
 
