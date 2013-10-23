@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra3 CPUs
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.   All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/module.h>
 #include <linux/tegra-soc.h>
+#include <linux/irqchip/tegra.h>
 
 #include <asm/cacheflush.h>
 #include <asm/localtimer.h>
@@ -56,7 +57,6 @@
 #include "cpuidle.h"
 #include "dvfs.h"
 #include "fuse.h"
-#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"

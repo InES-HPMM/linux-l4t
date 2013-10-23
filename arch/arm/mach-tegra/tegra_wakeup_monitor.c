@@ -21,6 +21,7 @@
 #include <linux/completion.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
+#include <linux/irqchip/tegra.h>
 
 #include <net/ip.h>
 #include <linux/netfilter_ipv4.h>
@@ -29,7 +30,6 @@
 
 #include <mach/tegra_wakeup_monitor.h>
 
-#include "pm-irq.h"
 
 #define MAX_PACKET_NUM 6
 #define MONITOR_HTABLE_SIZE 256

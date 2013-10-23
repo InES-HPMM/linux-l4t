@@ -71,6 +71,7 @@
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/xusb.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
+#include <linux/irqchip/tegra.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -80,7 +81,6 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "pm.h"
-#include "pm-irq.h"
 #include "common.h"
 #include "tegra-board-id.h"
 #include "iomap.h"

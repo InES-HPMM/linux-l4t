@@ -74,6 +74,7 @@
 #include <mach/xusb.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/platform_data/tegra_ahci.h>
+#include <linux/irqchip/tegra.h>
 
 #include "board.h"
 #include "board-ardbeg.h"
@@ -86,7 +87,6 @@
 #include "gpio-names.h"
 #include "iomap.h"
 #include "pm.h"
-#include "pm-irq.h"
 #include "tegra-board-id.h"
 
 static struct board_info board_info, display_board_info;

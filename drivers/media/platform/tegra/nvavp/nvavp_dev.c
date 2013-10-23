@@ -39,8 +39,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
+#include <linux/irqchip/tegra.h>
 
-#include <mach/legacy_irq.h>
 #include <mach/pm_domains.h>
 
 #include <linux/nvmap.h>

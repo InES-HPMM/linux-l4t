@@ -35,6 +35,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/module.h>
 #include <linux/tegra-soc.h>
+#include <linux/irqchip/tegra.h>
 
 #include <asm/cacheflush.h>
 #include <asm/localtimer.h>
@@ -50,7 +51,6 @@
 #include "cpuidle.h"
 #include "dvfs.h"
 #include "fuse.h"
-#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"

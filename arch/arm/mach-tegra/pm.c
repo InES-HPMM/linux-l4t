@@ -52,6 +52,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-timer.h>
 #include <linux/tegra-cpuidle.h>
+#include <linux/irqchip/tegra.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -72,10 +73,8 @@
 #include "clock.h"
 #include "common.h"
 #include "fuse.h"
-#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
-#include "pm-irq.h"
 #include "reset.h"
 #include "pmc.h"
 #include "sleep.h"

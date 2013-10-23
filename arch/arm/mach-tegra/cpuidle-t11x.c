@@ -43,6 +43,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-timer.h>
 #include <linux/tegra-cpuidle.h>
+#include <linux/irqchip/tegra.h>
 
 #include <asm/cacheflush.h>
 #include <asm/localtimer.h>
@@ -55,7 +56,6 @@
 
 #include "clock.h"
 #include "dvfs.h"
-#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"

@@ -2,7 +2,7 @@
  *
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
- *  Copyright (c) 2010, 2012 NVIDIA Corporation. All rights reserved.
+ *  Copyright (C) 2010-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,11 +13,11 @@
 #include <linux/clk/tegra.h>
 #include <linux/cpu_pm.h>
 #include <linux/clk/tegra.h>
+#include <linux/irqchip/tegra.h>
 
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
 
-#include "gic.h"
 #include "sleep.h"
 
 static void (*tegra_hotplug_shutdown)(void);

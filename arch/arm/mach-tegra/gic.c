@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012, NVIDIA Corporation
+ * Copyright (C) 2010-2013, NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,10 +18,10 @@
 #include <linux/irqnr.h>
 #include <linux/cpu_pm.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
 
-#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
 

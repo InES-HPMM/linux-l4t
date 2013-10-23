@@ -50,6 +50,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
 #include <linux/clocksource.h>
+#include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -75,7 +76,6 @@
 #include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
-#include "pm-irq.h"
 #include "common.h"
 #include "tegra-board-id.h"
 

@@ -18,6 +18,7 @@
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
@@ -25,7 +26,6 @@
 #include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "iomap.h"
-#include "pm-irq.h"
 
 /* Tegra USB1 wake source index */
 #define USB1_VBUS_WAKE 19

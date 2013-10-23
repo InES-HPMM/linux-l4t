@@ -35,10 +35,7 @@
 #include <linux/pm.h>
 #include <linux/syscore_ops.h>
 #include <linux/tegra-soc.h>
-
-#include <mach/legacy_irq.h>
-
-#include "../../arch/arm/mach-tegra/pm-irq.h"
+#include <linux/irqchip/tegra.h>
 
 #define GPIO_BANK(x)		((x) >> 5)
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)

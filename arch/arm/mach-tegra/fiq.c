@@ -26,8 +26,6 @@
 #include <linux/slab.h>
 #include <linux/irqchip/arm-gic.h>
 
-#include <mach/fiq.h>
-
 #include "board.h"
 #include "iomap.h"
 

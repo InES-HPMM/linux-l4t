@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra2 CPUs
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.   All rights reserved.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -39,6 +39,7 @@
 #include <linux/suspend.h>
 #include <linux/tick.h>
 #include <linux/cpu_pm.h>
+#include <linux/irqchip/tegra.h>
 
 #include <asm/suspend.h>
 
@@ -46,7 +47,6 @@
 #include <mach/irqs.h>
 
 #include "cpuidle.h"
-#include "gic.h"
 #include "pm.h"
 #include "sleep.h"
 #include "timer.h"
