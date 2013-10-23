@@ -5470,6 +5470,7 @@ int __init ardbeg_emc_init(void)
 
 		switch (bi.board_id) {
 		case BOARD_E1780:
+		case BOARD_E1782:
 			pr_info("Loading Ardbeg EMC tables.\n");
 			tegra_emc_device.dev.platform_data = &ardbeg_emc_pdata;
 			break;
