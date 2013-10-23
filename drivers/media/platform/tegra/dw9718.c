@@ -1,7 +1,7 @@
 /*
  * dw9718.c - dw9718 focuser driver
  *
- * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -108,7 +108,6 @@
 #define dw9718_POS_LOW_DEFAULT		0
 #define dw9718_POS_HIGH_DEFAULT		1023
 #define dw9718_POS_CLAMP		0x03ff
-#define dw9718_MAX_NAME_LEN		16
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define dw9718_VCM_THRESHOLD	20 */
 
@@ -128,6 +127,7 @@ struct dw9718_info {
 	int status;
 	u32 cur_pos;
 	u8 s_mode;
+	char devname[16];
 };
 
 /**
@@ -879,7 +879,6 @@ static int dw9718_probe(
 		const struct i2c_device_id *id)
 {
 	struct dw9718_info *info;
-	static char dname[dw9718_MAX_NAME_LEN];
 	int err;
 	dev_dbg(&client->dev, "%s\n", __func__);
 	pr_info("dw9718: probing focuser.\n");
@@ -929,20 +928,21 @@ static int dw9718_probe(
 	}
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "dw9718");
+		strncpy(info->devname, "dw9718", sizeof(info->devname) - 1);
 
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname),
-			"%s.%u", dname, info->pdata->num);
+		snprintf(info->devname, sizeof(info->devname),
+			"%s.%u", info->devname, info->pdata->num);
 
-	info->miscdev.name = dname;
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &dw9718_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-			__func__, dname);
+			__func__, info->devname);
 		dw9718_del(info);
 		return -ENODEV;
 	}

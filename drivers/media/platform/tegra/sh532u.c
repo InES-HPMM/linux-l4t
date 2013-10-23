@@ -1,7 +1,7 @@
 /*
  * SH532U focuser driver.
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -165,6 +165,7 @@ struct sh532u_info {
 	u32 pos_rel;
 	s16 pos_abs;
 	long pos_time_wr;
+	char devname[16];
 };
 
 static struct sh532u_pdata_info sh532u_default_info = {
@@ -1966,7 +1967,6 @@ static int sh532u_probe(
 	const struct i2c_device_id *id)
 {
 	struct sh532u_info *info;
-	char dname[16];
 	int err;
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -2013,18 +2013,21 @@ static int sh532u_probe(
 	}
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "sh532u");
+		strncpy(info->devname, "sh532u", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
+
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &sh532u_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-			__func__, dname);
+			__func__, info->devname);
 		sh532u_del(info);
 		return -ENODEV;
 	}

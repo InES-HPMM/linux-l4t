@@ -1,7 +1,7 @@
 /*
  * ssl3250a.c - ssl3250a flash/torch kernel driver
  *
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -164,6 +164,7 @@ struct ssl3250a_info {
 	struct nvc_regulator vreg_i2c;
 	u8 s_mode;
 	struct ssl3250a_info *s_info;
+	char devname[16];
 };
 
 static struct nvc_torch_pin_state ssl3250a_default_pinstate = {
@@ -900,7 +901,6 @@ static int ssl3250a_probe(
 	const struct i2c_device_id *id)
 {
 	struct ssl3250a_info *info;
-	char dname[16];
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
@@ -937,18 +937,21 @@ static int ssl3250a_probe(
 	}
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "ssl3250a");
+		strncpy(info->devname, "ssl3250a", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
+
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &ssl3250a_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-				__func__, dname);
+				__func__, info->devname);
 		ssl3250a_del(info);
 		return -ENODEV;
 	}

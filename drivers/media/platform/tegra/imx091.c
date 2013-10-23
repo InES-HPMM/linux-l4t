@@ -115,6 +115,7 @@ struct imx091_info {
 	struct nvc_debugfs_info debugfs_info;
 #endif
 	struct nvc_fuseid fuse_id;
+	char devname[16];
 };
 
 struct imx091_reg {
@@ -3405,7 +3406,6 @@ static int imx091_probe(
 	const struct i2c_device_id *id)
 {
 	struct imx091_info *info;
-	char dname[16];
 	unsigned long clock_probe_rate;
 	int err;
 	const char *mclk_name;
@@ -3496,24 +3496,26 @@ static int imx091_probe(
 	imx091_edp_register(info);
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "imx091");
+		strncpy(info->devname, "imx091", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &imx091_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-			__func__, dname);
+			__func__, info->devname);
 		imx091_del(info);
 		return -ENODEV;
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	info->debugfs_info.name = dname;
+	info->debugfs_info.name = info->devname;
 	info->debugfs_info.i2c_client = info->i2c_client;
 	info->debugfs_info.i2c_addr_limit = 0xFFFF;
 	info->debugfs_info.i2c_rd8 = imx091_i2c_rd8;

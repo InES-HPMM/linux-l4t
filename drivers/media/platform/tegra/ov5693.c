@@ -74,6 +74,7 @@ struct ov5693_info {
 	struct ov5693_cal_data cal;
 	struct edp_client *edpc;
 	unsigned int edp_state;
+	char devname[16];
 };
 
 struct ov5693_reg {
@@ -3371,7 +3372,6 @@ static int ov5693_probe(
 	const struct i2c_device_id *id)
 {
 	struct ov5693_info *info;
-	char dname[16];
 	unsigned long clock_probe_rate;
 	int err;
 	const char *mclk_name;
@@ -3454,19 +3454,21 @@ static int ov5693_probe(
 			info->pdata->probe_clock(0);
 	}
 	if (info->pdata->dev_name != NULL)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "ov5693");
+		strncpy(info->devname, "ov5693", sizeof(info->devname) - 1);
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
+
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &ov5693_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	info->miscdev.parent = &client->dev;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-			__func__, dname);
+			__func__, info->devname);
 		ov5693_del(info);
 		return -ENODEV;
 	}

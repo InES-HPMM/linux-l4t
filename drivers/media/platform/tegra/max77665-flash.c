@@ -276,6 +276,7 @@ struct max77665_f_info {
 	u8 ttimer_mode;
 	u8 new_ftimer;
 	u8 new_ttimer;
+	char devname[16];
 };
 
 static const struct max77665_f_caps_struct max77665_f_caps = {
@@ -1574,7 +1575,6 @@ static int max77665_f_probe(struct platform_device *pdev)
 {
 	struct max77665_f_info *info;
 	struct max77665 *maxim;
-	char dname[16];
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 
@@ -1618,18 +1618,21 @@ static int max77665_f_probe(struct platform_device *pdev)
 	mutex_init(&info->mutex);
 
 	if (info->pdata->dev_name != NULL)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "max77665_f");
+		strncpy(info->devname, "max77665_f", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-				dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+				info->devname, info->pdata->num);
+
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &max77665_f_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&pdev->dev, "%s unable to register misc device %s\n",
-				__func__, dname);
+				__func__, info->devname);
 		max77665_f_del(info);
 		return -ENODEV;
 	}

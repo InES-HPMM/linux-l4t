@@ -1,7 +1,7 @@
 /*
  * tps61050.c - tps61050 flash/torch kernel driver
  *
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -145,6 +145,7 @@ struct tps61050_info {
 	struct nvc_regulator vreg_i2c;
 	u8 s_mode;
 	struct tps61050_info *s_info;
+	char devname[16];
 };
 
 static struct nvc_torch_pin_state tps61050_default_pinstate = {
@@ -904,7 +905,6 @@ static int tps61050_probe(
 	const struct i2c_device_id *id)
 {
 	struct tps61050_info *info;
-	char dname[16];
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
@@ -941,18 +941,21 @@ static int tps61050_probe(
 	}
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strcpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "tps61050");
+		strcpy(info->devname, "tps61050", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
+
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &tps61050_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-				__func__, dname);
+				__func__, info->devname);
 		tps61050_del(info);
 		return -ENODEV;
 	}

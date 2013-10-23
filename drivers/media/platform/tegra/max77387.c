@@ -1,12 +1,21 @@
 /*
  * MAX77387.c - MAX77387 flash/torch kernel driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
-
- * This file is licensed under the terms of the GNU General Public License
- * version 2. This program is licensed "as is" without any warranty of any
- * kind, whether express or implied.
+ * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 
 /* Implementation
  * --------------
@@ -270,6 +279,7 @@ struct max77387_info {
 	u8 ftimer_mode;
 	u8 ttimer_mode;
 	u8 new_timer;
+	char devname[16];
 };
 
 static const struct max77387_caps_struct max77387_caps = {
@@ -1746,7 +1756,6 @@ static int max77387_probe(
 	struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct max77387_info *info;
-	char dname[16];
 
 	dev_info(&client->dev, "%s\n", __func__);
 
@@ -1798,18 +1807,20 @@ static int max77387_probe(
 	}
 
 	if (info->pdata->dev_name != NULL)
-		strncpy(dname, info->pdata->dev_name, sizeof(dname));
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strncpy(dname, "max77387", sizeof(dname));
+		strncpy(info->devname, "max77387", sizeof(info->devname) - 1);
+
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-				dname, info->pdata->num);
-	info->miscdev.name = dname;
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+				info->devname, info->pdata->num);
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &max77387_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-				__func__, dname);
+				__func__, info->devname);
 		max77387_del(info);
 		return -ENODEV;
 	}
