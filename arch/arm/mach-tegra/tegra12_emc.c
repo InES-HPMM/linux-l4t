@@ -1169,7 +1169,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	emc_stats.last_update = get_jiffies_64();
 	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
 
-	if (dram_type != DRAM_TYPE_DDR3) {
+	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
 		return -ENODATA;
 	}
