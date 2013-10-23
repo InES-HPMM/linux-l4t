@@ -12,6 +12,8 @@ obj-y                                   += mipi-cal.o
 endif
 endif
 
+obj-y += mc/
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -96,9 +98,6 @@ obj-$(CONFIG_TEGRA_USE_SIMON)    += tegra_simon.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_edp.o
 
 obj-y += board-common.o
-
-obj-y += mcerr.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += mcerr-t12.o
 
 obj-y += board-touch-raydium_spi.o
 

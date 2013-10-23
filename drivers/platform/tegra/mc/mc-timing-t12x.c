@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/mc-timing-t12x.c
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include <mach/mcerr.h>
 
-#include "iomap.h"
+#include "../../../../arch/arm/mach-tegra/iomap.h"
 
 #define MC_LA_REG(mod) MC_LATENCY_ALLOWANCE_ ## mod
 

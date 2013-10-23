@@ -1,9 +1,7 @@
 /*
- * arch/arm/mach-tegra/mcerr-t14.c
+ * Tegra 12x SoC-specific mcerr code.
  *
- * Tegra 14x SoC-specific mcerr code.
- *
- * Copyright (c) 2012-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,37 +27,37 @@
 struct mc_client mc_clients[] = {
 	client("ptc", "csr_ptcr"),
 	client("dc", "csr_display0a"),
-	client("dcb", "cbr_display0ab"),
+	client("dcb", "csr_display0ab"),
 	client("dc", "csr_display0b"),
 	client("dcb", "csr_display0bb"),
 	client("dc", "csr_display0c"),
-	client("dcb", "cbr_display0cb"),
-	dummy_client,
-	dummy_client,
-	client("epp", "cbr_eppup"),
-	client("g2", "cbr_g2pr"),
-	client("g2", "cbr_g2sr"),
+	client("dcb", "csr_display0cb"),
 	dummy_client,
 	dummy_client,
 	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("afi", "csr_afir"),
 	client("avpc", "csr_avpcarm7r"),
 	client("dc", "csr_displayhc"),
 	client("dcb", "csr_displayhcb"),
-	client("nv", "csr_fdcdrd"),
-	client("nv", "csr_fdcdrd2"),
-	client("g2", "csr_g2dr"),
+	dummy_client,
+	dummy_client,
+	dummy_client,
 	client("hda", "csr_hdar"),
 	client("hc", "csr_host1xdmar"),
 	client("hc", "csr_host1xr"),
-	client("nv", "csr_idxsrd"),
+	dummy_client,
 	dummy_client,
 	dummy_client,
 	dummy_client,
 	client("msenc", "csr_msencsrd"),
 	client("ppcs", "csr_ppcsahbdmar"),
 	client("ppcs", "csr_ppcsahbslvr"),
+	client("sata", "csr_satar"),
 	dummy_client,
-	client("nv", "csr_texl2srd"),
 	dummy_client,
 	client("vde", "csr_vdebsevr"),
 	client("vde", "csr_vdember"),
@@ -67,64 +65,87 @@ struct mc_client mc_clients[] = {
 	client("vde", "csr_vdetper"),
 	client("mpcorelp", "csr_mpcorelpr"),
 	client("mpcore", "csr_mpcorer"),
-	client("epp", "cbw_eppu"),
-	client("epp", "cbw_eppv"),
-	client("epp", "cbw_eppy"),
-	client("msenc", "csw_msencswr"),
-	client("vi", "cbw_viwsb"),
-	client("vi", "cbw_viwu"),
-	client("vi", "cbw_viwv"),
-	client("vi", "cbw_viwy"),
-	client("g2", "ccw_g2dw"),
 	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("msenc", "csw_msencswr"),
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("afi", "csw_afiw"),
 	client("avpc", "csw_avpcarm7w"),
-	client("nv", "csw_fdcdwr"),
-	client("nv", "csw_fdcdwr2"),
+	dummy_client,
+	dummy_client,
 	client("hda", "csw_hdaw"),
 	client("hc", "csw_host1xw"),
-	client("isp", "csw_ispw"),
+	dummy_client,
 	client("mpcorelp", "csw_mpcorelpw"),
 	client("mpcore", "csw_mpcorew"),
 	dummy_client,
 	client("ppcs", "csw_ppcsahbdmaw"),
 	client("ppcs", "csw_ppcsahbslvw"),
-	dummy_client,
+	client("sata", "csw_sataw"),
 	client("vde", "csw_vdebsevw"),
 	client("vde", "csw_vdedbgw"),
 	client("vde", "csw_vdembew"),
 	client("vde", "csw_vdetpmw"),
 	dummy_client,
 	dummy_client,
-	client("isp", "csr_ispra"),
+	client("isp2", "csr_ispra"),
 	dummy_client,
-	client("isp", "csw_ispwa"),
-	client("isp", "csw_ispwb"),
-	dummy_client,
-	dummy_client,
+	client("isp2", "csw_ispwa"),
+	client("isp2", "csw_ispwb"),
 	dummy_client,
 	dummy_client,
+	client("xusb_host", "csr_xusb_hostr"),
+	client("xusb_host", "csw_xusb_hostw"),
+	client("xusb_dev", "csr_xusb_devr"),
+	client("xusb_dev", "csw_xusb_devw"),
+	client("isp2b", "csr_isprab"),
+	dummy_client,
+	client("isp2b", "csw_ispwab"),
+	client("isp2b", "csw_ispwbb"),
 	dummy_client,
 	dummy_client,
-	dummy_client,
-	dummy_client,
-	dummy_client,
-	dummy_client,
-	client("emucif", "csr_emucifr"),
-	client("emucif", "csw_emucifw"),
 	client("tsec", "csr_tsecsrd"),
 	client("tsec", "csw_tsecswr"),
-	client("vi", "csw_viw"),
-	client("bbmci", "csr_bbcr"),
-	client("bbmci", "csw_bbcw"),
-	client("bbmcill", "csr_bbcllr"),
+	client("a9avp", "csr_a9avpscr"),
+	client("a9avp", "csw_a9avpscw"),
+	client("gpu", "csr_gpusrd"),
+	client("gpu", "csw_gpuswr"),
 	client("dc", "csr_displayt"),
 	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("sdmmc1a", "csr_sdmmcra"),
+	client("sdmmc2a", "csr_sdmmcraa"),
+	client("sdmmc3a", "csr_sdmmcr"),
+	client("sdmmc4a", "csr_sdmmcrab"),
+	client("sdmmc1a", "csw_sdmmcwa"),
+	client("sdmmc2a", "csw_sdmmcwaa"),
+	client("sdmmc3a", "csw_sdmmcw"),
+	client("sdmmc4a", "csw_sdmmcwab"),
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("vic", "csr_vicsrd"),
+	client("vic", "csw_vicswr"),
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	client("vi", "csw_viw"),
 	client("dc", "csr_displayd"),
 };
 int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 /*** Done. ***/
 
-static void mcerr_t14x_info_update(struct mc_client *c, u32 stat)
+static void mcerr_t12x_info_update(struct mc_client *c, u32 stat)
 {
 	if (stat & MC_INT_DECERR_EMEM)
 		c->intr_counts[0]++;
@@ -132,30 +153,30 @@ static void mcerr_t14x_info_update(struct mc_client *c, u32 stat)
 		c->intr_counts[1]++;
 	if (stat & MC_INT_INVALID_SMMU_PAGE)
 		c->intr_counts[2]++;
-	if (stat & MC_INT_DECERR_VPR)
+	if (stat & MC_INT_INVALID_APB_ASID_UPDATE)
 		c->intr_counts[3]++;
-	if (stat & MC_INT_SECERR_SEC)
+	if (stat & MC_INT_DECERR_VPR)
 		c->intr_counts[4]++;
-	if (stat & MC_INT_BBC_PRIVATE_MEM_VIOLATION)
+	if (stat & MC_INT_SECERR_SEC)
 		c->intr_counts[5]++;
-	if (stat & MC_INT_DECERR_BBC)
+	if (stat & MC_INT_DECERR_MTS)
 		c->intr_counts[6]++;
 
 	if (stat & ~MC_INT_EN_MASK)
 		c->intr_counts[7]++;
 }
 
-#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-9s %-9s %-9s\n"
-#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-9u %-9u %-9u\n";
-static int mcerr_t14x_debugfs_show(struct seq_file *s, void *v)
+#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-10s %-10s %-9s\n"
+#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-10u %-10u %-9u\n"
+static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 {
 	int i, j;
 	int do_print;
 
 	seq_printf(s, fmt_hdr,
 		   "swgid", "client", "decerr", "secerr", "smmuerr",
-		   "decerr-VPR", "secerr-SEC", "priv-bbc", "decerr-bbc",
-		   "unknown");
+		   "apberr", "decerr-VPR", "secerr-SEC",
+		   "decerr_MST", "unknown");
 	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
 		do_print = 0;
 		if (strcmp(mc_clients[i].name, "dummy") == 0)
@@ -189,8 +210,9 @@ static int mcerr_t14x_debugfs_show(struct seq_file *s, void *v)
  */
 void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec)
 {
-	spec->mcerr_info_update = mcerr_t14x_info_update;
-	spec->mcerr_debugfs_show = mcerr_t14x_debugfs_show;
+	spec->mcerr_info_update = mcerr_t12x_info_update;
+	spec->mcerr_debugfs_show = mcerr_t12x_debugfs_show;
 	spec->nr_clients = ARRAY_SIZE(mc_clients);
 	return;
 }
+

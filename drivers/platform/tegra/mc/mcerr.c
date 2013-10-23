@@ -37,8 +37,6 @@
 #include <mach/irqs.h>
 #include <mach/mcerr.h>
 
-#include "iomap.h"
-
 static bool mcerr_throttle_enabled = true;
 
 static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp);

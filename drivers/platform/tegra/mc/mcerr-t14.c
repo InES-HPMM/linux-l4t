@@ -1,9 +1,7 @@
 /*
- * arch/arm/mach-tegra/mcerr-t11.c
+ * Tegra 14x SoC-specific mcerr code.
  *
- * Tegra 11x SoC-specific mcerr code.
- *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,11 +27,11 @@
 struct mc_client mc_clients[] = {
 	client("ptc", "csr_ptcr"),
 	client("dc", "csr_display0a"),
-	client("dcb", "csr_display0ab"),
+	client("dcb", "cbr_display0ab"),
 	client("dc", "csr_display0b"),
 	client("dcb", "csr_display0bb"),
 	client("dc", "csr_display0c"),
-	client("dcb", "csr_display0cb"),
+	client("dcb", "cbr_display0cb"),
 	dummy_client,
 	dummy_client,
 	client("epp", "cbr_eppup"),
@@ -95,29 +93,36 @@ struct mc_client mc_clients[] = {
 	client("vde", "csw_vdetpmw"),
 	dummy_client,
 	dummy_client,
+	client("isp", "csr_ispra"),
+	dummy_client,
+	client("isp", "csw_ispwa"),
+	client("isp", "csw_ispwb"),
 	dummy_client,
 	dummy_client,
 	dummy_client,
 	dummy_client,
 	dummy_client,
 	dummy_client,
-	client("xusb_host", "csr_xusb_hostr"),
-	client("xusb_host", "csw_xusb_hostw"),
-	client("xusb_dev", "csr_xusb_devr"),
-	client("xusb_dev", "csw_xusb_devw"),
-	client("nv", "csw_fdcdwr3"),
-	client("nv", "csr_fdcdrd3"),
-	client("nv", "csw_fdcdwr4"),
-	client("nv", "csr_fdcdrd4"),
+	dummy_client,
+	dummy_client,
+	dummy_client,
+	dummy_client,
 	client("emucif", "csr_emucifr"),
 	client("emucif", "csw_emucifw"),
 	client("tsec", "csr_tsecsrd"),
 	client("tsec", "csw_tsecswr"),
+	client("vi", "csw_viw"),
+	client("bbmci", "csr_bbcr"),
+	client("bbmci", "csw_bbcw"),
+	client("bbmcill", "csr_bbcllr"),
+	client("dc", "csr_displayt"),
+	dummy_client,
+	client("dc", "csr_displayd"),
 };
 int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 /*** Done. ***/
 
-static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
+static void mcerr_t14x_info_update(struct mc_client *c, u32 stat)
 {
 	if (stat & MC_INT_DECERR_EMEM)
 		c->intr_counts[0]++;
@@ -129,38 +134,26 @@ static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
 		c->intr_counts[3]++;
 	if (stat & MC_INT_SECERR_SEC)
 		c->intr_counts[4]++;
+	if (stat & MC_INT_BBC_PRIVATE_MEM_VIOLATION)
+		c->intr_counts[5]++;
+	if (stat & MC_INT_DECERR_BBC)
+		c->intr_counts[6]++;
 
 	if (stat & ~MC_INT_EN_MASK)
-		c->intr_counts[5]++;
+		c->intr_counts[7]++;
 }
 
-/*
- * T11x reports addresses in a 32 byte range thus we can only give an
- * approximate location for the invalid memory request, not the exact address.
- */
-static void mcerr_t11x_print(const struct mc_error *err,
-			     const struct mc_client *client,
-			     u32 status, phys_addr_t addr,
-			     int secure, int rw, const char *smmu_info)
-{
-	pr_err("[mcerr] (%s) %s: %s\n", client->swgid, client->name, err->msg);
-	pr_err("[mcerr]   status = 0x%08x; addr = [0x%08lx -> 0x%08lx]",
-	       status, (ulong)(addr & ~0x1f), (ulong)(addr | 0x1f));
-	pr_err("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
-	       secure ? "yes" : "no", rw ? "write" : "read",
-	       smmu_info ? smmu_info : "none");
-}
-
-#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-9s\n"
-#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-9u\n"
-static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
+#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-9s %-9s %-9s\n"
+#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-9u %-9u %-9u\n";
+static int mcerr_t14x_debugfs_show(struct seq_file *s, void *v)
 {
 	int i, j;
 	int do_print;
 
 	seq_printf(s, fmt_hdr,
 		   "swgid", "client", "decerr", "secerr", "smmuerr",
-		   "decerr-VPR", "secerr-SEC", "unknown");
+		   "decerr-VPR", "secerr-SEC", "priv-bbc", "decerr-bbc",
+		   "unknown");
 	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
 		do_print = 0;
 		if (strcmp(mc_clients[i].name, "dummy") == 0)
@@ -181,7 +174,9 @@ static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
 				   mc_clients[i].intr_counts[2],
 				   mc_clients[i].intr_counts[3],
 				   mc_clients[i].intr_counts[4],
-				   mc_clients[i].intr_counts[5]);
+				   mc_clients[i].intr_counts[5],
+				   mc_clients[i].intr_counts[6],
+				   mc_clients[i].intr_counts[7]);
 	}
 	return 0;
 }
@@ -192,9 +187,8 @@ static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
  */
 void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec)
 {
-	spec->mcerr_print = mcerr_t11x_print;
-	spec->mcerr_info_update = mcerr_t11x_info_update;
-	spec->mcerr_debugfs_show = mcerr_t11x_debugfs_show;
+	spec->mcerr_info_update = mcerr_t14x_info_update;
+	spec->mcerr_debugfs_show = mcerr_t14x_debugfs_show;
 	spec->nr_clients = ARRAY_SIZE(mc_clients);
 	return;
 }

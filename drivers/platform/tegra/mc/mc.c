@@ -29,7 +29,7 @@
 #include <mach/mc.h>
 #include <mach/mcerr.h>
 
-#include "iomap.h"
+#include "../../../../arch/arm/mach-tegra/iomap.h"
 
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204

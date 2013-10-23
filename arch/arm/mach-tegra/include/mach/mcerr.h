@@ -1,10 +1,8 @@
 /*
- * arch/arm/mach-tegra/mcerr.h
- *
  * MC error interrupt handling header file. Various defines and declarations
- * across T20, T30, and T11x.
+ * across tegra chips.
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,16 +30,16 @@
 
 /* Pull in chip specific EMC header. */
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#include "../../tegra3_emc.h"
+#include "../../../../arch/arm/mach-tegra/tegra3_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#include "../../tegra11_emc.h"
+#include "../../../../arch/arm/mach-tegra/tegra11_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#include "../../tegra14_emc.h"
+#include "../../../../arch/arm/mach-tegra/tegra14_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include "../../tegra12_emc.h"
+#include "../../../../arch/arm/mach-tegra/tegra12_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #endif
 

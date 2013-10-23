@@ -42,10 +42,6 @@ ifeq ($(CONFIG_ARCH_TEGRA_12x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)			+= wakeups-t12x.o
 endif
 
-ifeq ($(CONFIG_PM_SLEEP),y)
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
-endif
-
 ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuidle-t3.o
@@ -80,7 +76,6 @@ obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += powergate-t14x.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
-obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-$(CONFIG_PM_GENERIC_DOMAINS)        += pm_domains.o
 obj-y                                   += dvfs.o
@@ -173,15 +168,6 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
 obj-y					+= board-common.o
 obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
-
-# MC error reporting.
-ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),)
-obj-y                                   += mcerr.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += mcerr-t3.o
-obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += mcerr-t11.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mcerr-t12.o
-obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += mcerr-t14.o
-endif
 
 obj-$(CONFIG_TEGRA_USE_SECURE_KERNEL)   += tegra_tzram.o
 

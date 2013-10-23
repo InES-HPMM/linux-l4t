@@ -1,9 +1,7 @@
 /*
- * arch/arm/mach-tegra/mcerr-t3.c
- *
  * Tegra 3 SoC-specific mcerr code.
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
