@@ -22,6 +22,7 @@
 
 #include "board.h"
 #include "board-loki.h"
+#include "tegra-board-id.h"
 #include "devices.h"
 #include "gpio-names.h"
 
@@ -48,6 +49,9 @@ static void __init loki_gpio_init_configure(void)
 	int len;
 	int i;
 	struct gpio_init_pin_info *pins_info;
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
 
 	len = ARRAY_SIZE(init_gpio_mode_loki_common);
 	pins_info = init_gpio_mode_loki_common;
@@ -57,13 +61,33 @@ static void __init loki_gpio_init_configure(void)
 			pins_info->is_input, pins_info->value);
 		pins_info++;
 	}
+
+	if (bi.board_id == BOARD_P2530) {
+		len = ARRAY_SIZE(init_gpio_mode_loki_ffd_common);
+		pins_info = init_gpio_mode_loki_ffd_common;
+
+		for (i = 0; i < len; ++i) {
+			tegra_gpio_init_configure(pins_info->gpio_nr,
+				pins_info->is_input, pins_info->value);
+			pins_info++;
+		}
+	}
 }
 
 int __init loki_pinmux_init(void)
 {
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
 	loki_gpio_init_configure();
 
 	tegra_pinmux_config_table(loki_pinmux_common, ARRAY_SIZE(loki_pinmux_common));
+
+	if (bi.board_id == BOARD_P2530)
+		tegra_pinmux_config_table(loki_ffd_pinmux_common,
+			ARRAY_SIZE(loki_ffd_pinmux_common));
+
 	tegra_drive_pinmux_config_table(loki_drive_pinmux,
 					ARRAY_SIZE(loki_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,

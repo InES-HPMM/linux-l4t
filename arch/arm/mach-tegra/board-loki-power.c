@@ -767,12 +767,19 @@ int __init loki_regulator_init(void)
 static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
+	struct board_info bi;
+
 
 	if (!of_machine_is_compatible("nvidia,loki"))
 		return 0;
 
+	tegra_get_board_info(&bi);
 	tegra_get_pmu_board_info(&pmu_board_info);
 
+	if (bi.board_id == BOARD_P2530) {
+		fixed_reg_en_vdd_hdmi_5v0_pdata.gpio = TEGRA_GPIO_PFF0;
+		fixed_reg_en_vdd_hdmi_5v0_pdata.enable_high = false;
+	}
 	if (pmu_board_info.board_id == BOARD_E2545)
 		return platform_add_devices(fixed_reg_devs_e2545,
 			ARRAY_SIZE(fixed_reg_devs_e2545));
