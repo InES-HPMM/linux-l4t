@@ -65,6 +65,11 @@
 			vid-supply = <&palmas_smps8>;
 			vdd-supply = <&palmas_smps9>;
 		};
+
+		cm3217@10 {
+			compatible = "capella,cm3217";
+			reg = <0x10>;
+		};
 	};
 
 /include/ "tegra124-tn8-generic.dtsi"
