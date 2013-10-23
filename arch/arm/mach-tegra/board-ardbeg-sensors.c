@@ -22,7 +22,6 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
-#include <linux/pid_thermal_gov.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
 #include <media/dw9718.h>
@@ -565,7 +564,15 @@ static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
 	return 1;
 }
 
+static unsigned mt9m114_estates[] = { 150, 0 };
+
 struct mt9m114_platform_data ardbeg_mt9m114_pdata = {
+	.edpc_config = {
+		.states = mt9m114_estates,
+		.num_states = ARRAY_SIZE(mt9m114_estates),
+		.e0_index = ARRAY_SIZE(mt9m114_estates) - 1,
+		.priority = EDP_MAX_PRIO + 1,
+	},
 	.power_on = ardbeg_mt9m114_power_on,
 	.power_off = ardbeg_mt9m114_power_off,
 	.mclk_name = "mclk2",
@@ -638,7 +645,15 @@ static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
 };
 
+static unsigned ov5693_estates[] = { 300, 0 };
+
 static struct ov5693_platform_data ardbeg_ov5693_pdata = {
+	.edpc_config = {
+		.states = ov5693_estates,
+		.num_states = ARRAY_SIZE(ov5693_estates),
+		.e0_index = ARRAY_SIZE(ov5693_estates) - 1,
+		.priority = EDP_MAX_PRIO + 1,
+	},
 	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
 	.gpio		= ov5693_gpio_pdata,
 	.power_on	= ardbeg_ov5693_power_on,
