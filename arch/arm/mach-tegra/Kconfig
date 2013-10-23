@@ -308,8 +308,6 @@ config MACH_LOKI
 config MACH_VCM30_T124
        bool "VCM30_T124(Automotive) board"
        depends on ARCH_TEGRA_12x_SOC
-       select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
-       select MACH_HAS_SND_SOC_TEGRA_RT5645 if SND_SOC
        help
          Support for NVIDIA VCM30_T124 Automotive Development platform
 
