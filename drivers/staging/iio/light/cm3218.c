@@ -428,9 +428,22 @@ static int cm3218_read_raw(struct iio_dev *indio_dev,
 }
 
 IIO_CONST_ATTR(vendor, CM3218_VENDOR);
+/*
+ * FIX ME!!! pass the following through Device Tree instead of here.
+ * The following properties can vary depending on the board being used
+ * These values are specific to T124 Ardbeg.
+ */
+static IIO_CONST_ATTR(in_illuminance_integration_time, "600000"); /* 600 ms */
+static IIO_CONST_ATTR(in_illuminance_max_range, "27525.1"); /* lux */
+static IIO_CONST_ATTR(in_illuminance_resolution, "102"); /* mLux/step */
+static IIO_CONST_ATTR(in_illuminance_power_consumed, "1680"); /* milli Watt */
 
 static struct attribute *cm3218_attributes[] = {
 	&iio_const_attr_vendor.dev_attr.attr,
+	&iio_const_attr_in_illuminance_integration_time.dev_attr.attr,
+	&iio_const_attr_in_illuminance_max_range.dev_attr.attr,
+	&iio_const_attr_in_illuminance_resolution.dev_attr.attr,
+	&iio_const_attr_in_illuminance_power_consumed.dev_attr.attr,
 	NULL,
 };
 
