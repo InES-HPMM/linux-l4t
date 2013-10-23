@@ -45,6 +45,12 @@ void __init tegra20_init_timer(void);
 void __init tegra30_init_timer(void);
 #endif
 
+#ifdef CONFIG_TEGRA_LP0_IN_IDLE
+void tegra_rtc_set_trigger(unsigned long cycles);
+#else
+static inline void tegra_rtc_set_trigger(unsigned long cycles) {}
+#endif
+
 struct tegra_twd_context {
 	u32 twd_ctrl;
 	u32 twd_load;
