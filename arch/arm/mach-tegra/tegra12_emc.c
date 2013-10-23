@@ -52,20 +52,42 @@ static int pasr_enable;
 
 u8 tegra_emc_bw_efficiency = 100;
 
-static struct emc_iso_usage tegra12_emc_iso_usage[] = {
-	{ BIT(EMC_USER_DC1),                     80 },
-	{ BIT(EMC_USER_DC2),                     80 },
-	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),	50 },
-	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),  50 },
-	{ BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),  50 },
-	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_VI2),  50 },
-	{ BIT(EMC_USER_DC2) | BIT(EMC_USER_VI2),  50 },
-	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_ISP1),  50 },
-	{ BIT(EMC_USER_DC2) | BIT(EMC_USER_ISP1),  50 },
-	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_ISP2),  50 },
-	{ BIT(EMC_USER_DC2) | BIT(EMC_USER_ISP2),  50 },
+static u32 bw_calc_freqs[] = {
+	20, 40, 60, 80, 100, 120, 140, 160, 200, 300, 400, 600, 800
 };
 
+static u32 tegra12_emc_usage_shared_os_idle[] = {
+	11, 27, 29, 34, 39, 42, 46, 47, 51, 51, 51, 51, 51, 51
+};
+static u32 tegra12_emc_usage_shared_general[] = {
+	11, 18, 22, 25, 28, 31, 34, 38, 44, 44, 44, 44, 44, 51
+};
+
+static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw);
+static u8 iso_share_calc_t124_general(unsigned long iso_bw);
+
+
+static struct emc_iso_usage tegra12_emc_iso_usage[] = {
+	{
+		BIT(EMC_USER_DC1),
+		80, iso_share_calc_t124_os_idle
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
+		45, iso_share_calc_t124_general
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),
+		45, iso_share_calc_t124_general
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),
+		45, iso_share_calc_t124_general
+	},
+};
+
+#define MHZ 1000000
+#define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM 13
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
@@ -1481,6 +1503,7 @@ int tegra_emc_get_dram_temperature(void)
 	return mr4;
 }
 
+
 #ifdef CONFIG_TEGRA_USE_NCT
 int tegra12_nct_emc_table_init(struct tegra12_emc_pdata *nct_emc_pdata)
 {
@@ -1562,6 +1585,39 @@ done:
 	return ret;
 }
 #endif
+
+static inline int bw_calc_get_freq_idx(unsigned long bw)
+{
+	int idx = 0;
+
+	if (bw > bw_calc_freqs[TEGRA_EMC_ISO_USE_FREQ_MAX_NUM-1] * MHZ)
+		idx = TEGRA_EMC_ISO_USE_FREQ_MAX_NUM;
+
+	for (; idx < TEGRA_EMC_ISO_USE_FREQ_MAX_NUM; idx++) {
+		u32 freq = bw_calc_freqs[idx] * MHZ;
+		if (bw < freq) {
+			if (idx)
+				idx--;
+			break;
+		} else if (bw == freq)
+			break;
+	}
+
+	return idx;
+}
+
+static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+	return tegra12_emc_usage_shared_os_idle[freq_idx];
+}
+
+static u8 iso_share_calc_t124_general(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+	return tegra12_emc_usage_shared_general[freq_idx];
+}
+
 
 #ifdef CONFIG_DEBUG_FS
 
