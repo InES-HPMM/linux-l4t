@@ -33,6 +33,8 @@
 #include <linux/device.h>
 #endif
 
+#include <trace/events/nvsecurity.h>
+
 #include "tf_protocol.h"
 #include "tf_defs.h"
 #include "tf_util.h"
@@ -47,9 +49,6 @@
 #endif
 
 #include "s_version.h"
-
-#define CREATE_TRACE_POINTS
-#include <trace/events/nvsecurity.h>
 
 /*----------------------------------------------------------------------------
  * Forward Declarations
