@@ -998,6 +998,7 @@ static struct platform_device *fixed_reg_devs_e1735[] = {
 #define E1735_CPU_VDD_MIN_UV		675000
 #define E1735_CPU_VDD_STEP_UV		18750
 #define E1735_CPU_VDD_STEP_US		80
+#define E1735_CPU_VDD_IDLE_MA		5000
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
@@ -1178,6 +1179,8 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 			ardbeg_suspend_data.resume_dfll_bypass = e1767 ?
 				e1767_resume_dfll_bypass :
 				e1735_resume_dfll_bypass;
+			tegra_init_cpu_reg_mode_limits(E1735_CPU_VDD_IDLE_MA,
+						       REGULATOR_MODE_IDLE);
 		} else {
 			(void)e1735_dfll_bypass_dev;
 		}
