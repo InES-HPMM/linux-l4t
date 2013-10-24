@@ -253,43 +253,7 @@ int tegra_restore_i2c(void)
 	return 0;
 }
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-static struct tegra_pm_domain tegra_mc_chain_a = {
-	.gpd.name = "tegra_mc_chain_a",
-	.gpd.power_off = tegra_mc_clk_power_off,
-	.gpd.power_on = tegra_mc_clk_power_on,
-};
-
-static struct tegra_pm_domain tegra_mc_chain_b = {
-	.gpd.name = "tegra_mc_chain_b",
-	.gpd.power_off = tegra_mc_clk_power_off,
-	.gpd.power_on = tegra_mc_clk_power_on,
-};
-#endif
-
 static struct domain_client client_list[] = {
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	{ .name = "tegra_mc_chain_a", .domain = &tegra_mc_clk.gpd },
-	{ .name = "tegra_mc_chain_b", .domain = &tegra_mc_clk.gpd },
-	{ .name = "gr2d", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "gr3d", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "msenc", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "isp", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "tegradc", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "vi", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "tegra30-hda", .domain = &tegra_mc_chain_a.gpd },
-	{ .name = "tegra-apbdma", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tegra-otg", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tegra-ehci", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tegra-xhci", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "host1x", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tsec", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "nvavp", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "sdhci-tegra", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tegra11-se", .domain = &tegra_mc_chain_b.gpd },
-	{ .name = "tegra_bb", .domain = &tegra_mc_clk.gpd },
-	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
-#else
 	{ .name = "gr2d", .domain = &tegra_mc_clk.gpd },
 	{ .name = "gr3d", .domain = &tegra_mc_clk.gpd },
 	{ .name = "msenc", .domain = &tegra_mc_clk.gpd },
@@ -312,7 +276,6 @@ static struct domain_client client_list[] = {
 	{ .name = "gk20a", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-apbdma", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-pcie", .domain = &tegra_mc_clk.gpd },
-#endif
 	{},
 };
 
@@ -320,13 +283,6 @@ static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	pm_genpd_init(&tegra_mc_chain_a.gpd, &simple_qos_governor, false);
-	tegra_pd_add_sd(&tegra_mc_chain_a.gpd);
-
-	pm_genpd_init(&tegra_mc_chain_b.gpd, &simple_qos_governor, false);
-	tegra_pd_add_sd(&tegra_mc_chain_b.gpd);
-#endif
 	return 0;
 }
 core_initcall(tegra_init_pm_domain);
