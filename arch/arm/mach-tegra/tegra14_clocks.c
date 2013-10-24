@@ -1874,7 +1874,6 @@ static struct clk_ops tegra_blink_clk_ops = {
 static int tegra14_pll_clk_wait_for_lock(
 	struct clk *c, u32 lock_reg, u32 lock_bits)
 {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 #if USE_PLL_LOCK_BITS
 	int i;
 	u32 val = 0;
@@ -1907,7 +1906,6 @@ static int tegra14_pll_clk_wait_for_lock(
 	}
 #endif
 	udelay(c->u.pll.lock_delay);
-#endif
 	return 0;
 }
 
@@ -2504,9 +2502,7 @@ static void tegra14_pllcx_clk_init(struct clk *c)
 	 * and no enabled module clocks should use it as a source during clock
 	 * init.
 	 */
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	BUG_ON(c->state == ON);
-#endif
 	/*
 	 * Most of PLLCX register fields are shadowed, and can not be read
 	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
@@ -2727,9 +2723,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 
 	/* Only s/w dyn ramp control is supported */
 	val = clk_readl(PLLX_HW_CTRL_CFG);
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	BUG_ON(!(val & PLLX_HW_CTRL_CFG_SWCTRL));
-#endif
 
 	pllxc_get_dyn_steps(c, input_rate, &step_a, &step_b);
 	val = step_a << PLLX_MISC2_DYNRAMP_STEPA_SHIFT;
@@ -2748,9 +2742,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	/* Check/set IDDQ */
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
 	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 		BUG_ON(val & PLLX_MISC3_IDDQ);
-#endif
 	} else {
 		val |= PLLX_MISC3_IDDQ;
 		clk_writel(val, c->reg + PLL_MISCN(c, 3));

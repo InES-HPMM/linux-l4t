@@ -214,7 +214,6 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 
 
 static struct dvfs core_dvfs_table[] = {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	/* Core voltages (mV):		             800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1230 */
 	CORE_DVFS("cpu_lp",   0,  0, 1, KHZ,      249600, 364800, 460800, 556800, 633600, 691200, 729600, 768000, 768000, 768000),
 	CORE_DVFS("cpu_lp",   0,  1, 1, KHZ,      307200, 393600, 489600, 556800, 652800, 729600, 768000, 768000, 768000, 768000),
@@ -308,7 +307,6 @@ static struct dvfs core_dvfs_table[] = {
 	 */
 	CORE_DVFS("disp1",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
 	CORE_DVFS("disp2",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
-#endif
 };
 
 /* C2BUS dvfs tables */
