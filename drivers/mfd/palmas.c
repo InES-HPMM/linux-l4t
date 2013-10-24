@@ -933,6 +933,11 @@ static int palmas_read_version_information(struct palmas *palmas)
 		palmas->es_minor_version = 2;
 		palmas->design_revision = 0xB2;
 		break;
+	case 4:
+		palmas->es_major_version = 2;
+		palmas->es_minor_version = 3;
+		palmas->design_revision = 0xB3;
+		break;
 	default:
 		dev_err(palmas->dev, "Invalid design revision\n");
 		return -EINVAL;
