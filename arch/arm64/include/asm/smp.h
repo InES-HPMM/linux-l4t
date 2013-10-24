@@ -60,8 +60,7 @@ struct secondary_data {
 	void *stack;
 };
 extern struct secondary_data secondary_data;
-extern void secondary_holding_pen(void);
-extern volatile unsigned long secondary_holding_pen_release;
+extern void secondary_entry(void);
 
 extern int __cpu_disable(void);
 extern void __cpu_die(unsigned int cpu);
