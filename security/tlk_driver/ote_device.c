@@ -34,20 +34,8 @@
 
 #define SET_ANSWER(a, r, ro)	{ a.result = r; a.result_origin = ro; }
 
-#define CREATE_TRACE_POINTS
-#include <trace/events/nvsecurity.h>
-
 struct tlk_device tlk_dev;
 static DEFINE_MUTEX(smc_lock);
-
-u32 notrace tegra_read_cycle(void)
-{
-	u32 cycle_count;
-
-	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(cycle_count));
-
-	return cycle_count;
-}
 
 static int te_create_free_cmd_list(struct tlk_device *dev)
 {
