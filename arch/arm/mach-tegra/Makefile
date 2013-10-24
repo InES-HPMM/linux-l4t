@@ -156,7 +156,6 @@ else
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
 endif
-obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_soctherm.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra11_soctherm.o

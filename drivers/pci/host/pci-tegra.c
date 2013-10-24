@@ -56,10 +56,6 @@
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
 
-#include "board.h"
-#include "iomap.h"
-#include "clock.h"
-
 /* register definitions */
 #define AFI_OFFSET							0x3800
 #define PADS_OFFSET							0x3000
@@ -272,7 +268,7 @@ struct tegra_pcie_port {
 	char			mem_space_name[16];
 	char			prefetch_space_name[20];
 	struct resource		res[2];
-	struct pci_bus*		bus;
+	struct pci_bus		*bus;
 };
 
 struct tegra_pcie_info {
@@ -284,7 +280,7 @@ struct tegra_pcie_info {
 	struct resource		*res_mmio;
 	int			power_rails_enabled;
 	int			pcie_power_enabled;
-	struct work_struct 	hotplug_detect;
+	struct work_struct	hotplug_detect;
 
 	struct regulator	*regulator_hvdd;
 	struct regulator	*regulator_pexio;
@@ -614,7 +610,8 @@ static void tegra_pcie_preinit(void)
 
 	pcie_prefetch_mem_space.name = "PCIe PREFETCH MEM Space";
 	pcie_prefetch_mem_space.start = PREFETCH_MEM_BASE_0;
-	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0 - 1;
+	pcie_prefetch_mem_space.end = (PREFETCH_MEM_BASE_0
+			+ PREFETCH_MEM_SIZE_0 - 1);
 	pcie_prefetch_mem_space.flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
 	if (request_resource(&iomem_resource, &pcie_prefetch_mem_space))
 		panic("can't allocate PCIe PREFETCH MEM space");
@@ -633,8 +630,10 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 	pp->root_bus_nr = sys->busnr;
 
 	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
-	pci_add_resource_offset(&sys->resources, &pcie_mem_space, sys->mem_offset);
-	pci_add_resource_offset(&sys->resources, &pcie_prefetch_mem_space, sys->mem_offset);
+	pci_add_resource_offset(
+		&sys->resources, &pcie_mem_space, sys->mem_offset);
+	pci_add_resource_offset(
+		&sys->resources, &pcie_prefetch_mem_space, sys->mem_offset);
 
 	return 1;
 }
@@ -706,7 +705,8 @@ static void __init tegra_pcie_hotplug_init(void)
 				pci_add_resource_offset(&sys->resources,
 					 &iomem_resource, sys->mem_offset);
 			}
-			pci_create_root_bus(NULL, nr, &tegra_pcie_ops, sys, &sys->resources);
+			pci_create_root_bus(NULL, nr, &tegra_pcie_ops,
+					sys, &sys->resources);
 		}
 	}
 	is_dock_conn_at_boot = true;
@@ -784,8 +784,8 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 
 static void notify_device_isr(u32 mesg)
 {
-	printk(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
-	/* TODO: Need to call pcie device isr instead of ignoring the interrupt */
+	pr_info(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
+	/* TODO: Need to call pcie device isr instead of ignoring interrupt */
 	/* same comment applies to below handler also */
 }
 
@@ -1052,8 +1052,7 @@ static int tegra_pcie_enable_regulators(void)
 	tegra_pcie.power_rails_enabled = 1;
 
 	if (tegra_pcie.regulator_hvdd == NULL) {
-		printk(KERN_INFO "PCIE.C: %s : regulator hvdd_pex\n",
-					__func__);
+		pr_info("PCIE.C: %s : regulator hvdd_pex\n", __func__);
 		tegra_pcie.regulator_hvdd =
 			regulator_get(tegra_pcie.dev, "hvdd_pex");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_hvdd)) {
@@ -1064,7 +1063,7 @@ static int tegra_pcie_enable_regulators(void)
 	}
 
 	if (tegra_pcie.regulator_pexio == NULL) {
-		printk(KERN_INFO "PCIE.C: %s : regulator pexio\n", __func__);
+		pr_info("PCIE.C: %s : regulator pexio\n", __func__);
 		tegra_pcie.regulator_pexio =
 			regulator_get(tegra_pcie.dev, "avdd_pex_pll");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_pexio)) {
@@ -1078,8 +1077,7 @@ static int tegra_pcie_enable_regulators(void)
 	* So if use default board, you have to turn on (LDO2) AVDD_PLLE.
 	 */
 	if (tegra_pcie.regulator_avdd_plle == NULL) {
-		printk(KERN_INFO "PCIE.C: %s : regulator avdd_plle\n",
-				__func__);
+		pr_info("PCIE.C: %s : regulator avdd_plle\n", __func__);
 		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
 						"avdd_pll_erefe");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_avdd_plle)) {
@@ -1175,10 +1173,11 @@ static bool tegra_pcie_is_fpga_pcie(void)
 {
 #define CLK_RST_BOND_OUT_REG		0x60006078
 #define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
-	int val = 0;
+	static int val;
 
 	PR_FUNC_LINE;
-	val = readl(IO_ADDRESS(CLK_RST_BOND_OUT_REG));
+	if (!val)
+		val = readl(ioremap(CLK_RST_BOND_OUT_REG, 4));
 	/* return if current netlist does not contain PCIE */
 	if (val & CLK_RST_BOND_OUT_REG_PCIE)
 		return false;
@@ -1495,7 +1494,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 
 	if (!pp->link_up) {
 		pp->base = NULL;
-		printk(KERN_INFO "PCIE: port %d: link down, ignoring\n", index);
+		pr_info("PCIE: port %d: link down, ignoring\n", index);
 		return;
 	}
 	/*
@@ -1982,11 +1981,11 @@ static irqreturn_t tegra_pcie_msi_isr(int irq, void *arg)
 				if (msi_map[index].used)
 					generic_handle_irq(msi_map[index].irq);
 				else
-					printk(KERN_INFO "unexpected MSI (1)\n");
+					pr_info("unexpected MSI (1)\n");
 			} else {
 				/* that's weird who triggered this?*/
 				/* just clear it*/
-				printk(KERN_INFO "unexpected MSI (2)\n");
+				pr_info("unexpected MSI (2)\n");
 			}
 			/* see if there's any more pending in this vector */
 			reg = afi_readl(AFI_MSI_VEC0_0 + i * 4);

@@ -59,6 +59,7 @@
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/pci-tegra.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
 #include <mach/tegra_fiq_debugger.h>

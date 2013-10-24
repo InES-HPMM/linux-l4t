@@ -243,7 +243,6 @@ int tegra_get_touch_panel_id(void);
 int get_core_edp(void);
 enum panel_type get_panel_type(void);
 int tegra_get_usb_port_owner_info(void);
-int tegra_get_lane_owner_info(void);
 int tegra_get_modem_id(void);
 int tegra_get_commchip_id(void);
 u8 get_power_config(void);
