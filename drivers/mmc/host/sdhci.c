@@ -1307,7 +1307,14 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		mdelay(1);
 	}
 
-	mod_timer(&host->timer, jiffies + 10 * HZ);
+	if ((cmd->opcode == MMC_SWITCH) &&
+		(((cmd->arg >> 16) & EXT_CSD_SANITIZE_START)
+		== EXT_CSD_SANITIZE_START))
+		timeout = 100;
+	else
+		timeout = 10;
+
+	mod_timer(&host->timer, jiffies + timeout * HZ);
 
 	host->cmd = cmd;
 
