@@ -302,7 +302,8 @@ char *sata_power_rails[] = {
 	"avdd_sata",
 	"vdd_sata",
 	"hvdd_sata",
-	"avdd_sata_pll"
+	"avdd_sata_pll",
+	"vddio_pex_sata"
 };
 
 #define NUM_SATA_POWER_RAILS	ARRAY_SIZE(sata_power_rails)
