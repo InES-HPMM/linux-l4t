@@ -222,6 +222,8 @@
 
 #define UHSIC_TX_CFG0				0xc10
 #define   UHSIC_HS_READY_WAIT_FOR_VALID	(1 << 9)
+#define   UHSIC_HS_POSTAMBLE_OUTPUT_ENABLE	(1 << 6)
+
 
 #define UHSIC_MISC_CFG0				0xc14
 #define   UHSIC_SUSPEND_EXIT_ON_EDGE		(1 << 7)
@@ -1905,6 +1907,10 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	val = readl(base + USB_PORTSC);
 	val &= ~(USB_PORTSC_WKOC | USB_PORTSC_WKDS);
 	writel(val, base + USB_PORTSC);
+
+	val = readl(base + UHSIC_TX_CFG0);
+	val |= UHSIC_HS_POSTAMBLE_OUTPUT_ENABLE;
+	writel(val, base + UHSIC_TX_CFG0);
 
 	val = readl(base + UHSIC_PADS_CFG0);
 	/* Clear RTUNEP, SLEWP & SLEWN bit fields */
