@@ -1,0 +1,160 @@
+/*
+ * tegra210_axbar.h - Tegra Audio AXBAR driver header.
+ *
+ * Author: Sumit Bhattacharya <sumitb@nvidia.com>
+ * Based on code by Stephen Warren <swarren@nvidia.com>
+ *
+ * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ */
+
+#ifndef __TEGRA210_AXBAR_H
+#define __TEGRA210_AXBAR_H
+
+#include "tegra210_ahub_utils.h"
+
+/* Register offsets from TEGRA_AXBAR_BASE */
+#define TEGRA210_AXBAR_PART_0_BASE	0x0
+#define TEGRA210_AXBAR_PART_1_BASE	0x200
+#define TEGRA210_AXBAR_PART_2_BASE	0x400
+
+#define TEGRA210_AXBAR_ADMAIF_RX1	0x0
+#define TEGRA210_AXBAR_ADMAIF_RX2	0x4
+#define TEGRA210_AXBAR_ADMAIF_RX3	0x8
+#define TEGRA210_AXBAR_ADMAIF_RX4	0xc
+#define TEGRA210_AXBAR_ADMAIF_RX5	0x10
+#define TEGRA210_AXBAR_ADMAIF_RX6	0x14
+#define TEGRA210_AXBAR_ADMAIF_RX7	0x18
+#define TEGRA210_AXBAR_ADMAIF_RX8	0x1c
+#define TEGRA210_AXBAR_ADMAIF_RX9	0x20
+#define TEGRA210_AXBAR_ADMAIF_RX10	0x24
+#define TEGRA210_AXBAR_I2S1_RX0		0x40
+#define TEGRA210_AXBAR_I2S2_RX0		0x44
+#define TEGRA210_AXBAR_I2S3_RX0		0x48
+#define TEGRA210_AXBAR_I2S4_RX0		0x4c
+#define TEGRA210_AXBAR_I2S5_RX0		0x50
+#define TEGRA210_AXBAR_SFC1_RX0		0x60
+#define TEGRA210_AXBAR_SFC2_RX0		0x64
+#define TEGRA210_AXBAR_SFC3_RX0		0x68
+#define TEGRA210_AXBAR_SFC4_RX0		0x6c
+#define TEGRA210_AXBAR_MIXER1_RX1	0x80
+#define TEGRA210_AXBAR_MIXER1_RX2	0x84
+#define TEGRA210_AXBAR_MIXER1_RX3	0x88
+#define TEGRA210_AXBAR_MIXER1_RX4	0x8c
+#define TEGRA210_AXBAR_MIXER1_RX5	0x90
+#define TEGRA210_AXBAR_MIXER1_RX6	0x94
+#define TEGRA210_AXBAR_MIXER1_RX7	0x98
+#define TEGRA210_AXBAR_MIXER1_RX8	0x9c
+#define TEGRA210_AXBAR_MIXER1_RX9	0xa0
+#define TEGRA210_AXBAR_MIXER1_RX10	0xa4
+#define TEGRA210_AXBAR_SPDIF1_RX0	0xc0
+#define TEGRA210_AXBAR_SPDIF1_RX1	0xc4
+#define TEGRA210_AXBAR_AFC1_RX0		0xd0
+#define TEGRA210_AXBAR_AFC2_RX0		0xd4
+#define TEGRA210_AXBAR_AFC3_RX0		0xd8
+#define TEGRA210_AXBAR_AFC4_RX0		0xdc
+#define TEGRA210_AXBAR_AFC5_RX0		0xe0
+#define TEGRA210_AXBAR_AFC6_RX0		0xe4
+#define TEGRA210_AXBAR_OPE1_RX0		0x100
+#define TEGRA210_AXBAR_OPE2_RX0		0x104
+#define TEGRA210_AXBAR_SPKPROT1_RX0	0x110
+#define TEGRA210_AXBAR_MVC1_RX0		0x120
+#define TEGRA210_AXBAR_MVC2_RX0		0x124
+#define TEGRA210_AXBAR_AMX1_RX0		0x140
+#define TEGRA210_AXBAR_AMX1_RX1		0x144
+#define TEGRA210_AXBAR_AMX1_RX2		0x148
+#define TEGRA210_AXBAR_AMX1_RX3		0x14c
+#define TEGRA210_AXBAR_AMX2_RX0		0x150
+#define TEGRA210_AXBAR_AMX2_RX1		0x154
+#define TEGRA210_AXBAR_AMX2_RX2		0x158
+#define TEGRA210_AXBAR_AMX2_RX3		0x15c
+#define TEGRA210_AXBAR_ADX1_RX0		0x160
+#define TEGRA210_AXBAR_ADX2_RX0		0x164
+
+/*
+ Bit-position corresponding to each AHUB module TX port in RX registers .
+ If TX port of module A needs to be connected with RX port of module B,
+ bit corresponding to module A needs to be set to the AHUB register
+ corresponding to module B.
+*/
+
+/* Fields for TEGRA210_AXBAR_PART_0 registers */
+#define TEGRA210_AXBAR_ADMAIF_TX1_SHIFT		0
+#define TEGRA210_AXBAR_ADMAIF_TX2_SHIFT		1
+#define TEGRA210_AXBAR_ADMAIF_TX3_SHIFT		2
+#define TEGRA210_AXBAR_ADMAIF_TX4_SHIFT		3
+#define TEGRA210_AXBAR_ADMAIF_TX5_SHIFT		4
+#define TEGRA210_AXBAR_ADMAIF_TX6_SHIFT		5
+#define TEGRA210_AXBAR_ADMAIF_TX7_SHIFT		6
+#define TEGRA210_AXBAR_ADMAIF_TX8_SHIFT		7
+#define TEGRA210_AXBAR_ADMAIF_TX9_SHIFT		8
+#define TEGRA210_AXBAR_ADMAIF_TX10_SHIFT	9
+#define TEGRA210_AXBAR_I2S1_TX0_SHIFT		16
+#define TEGRA210_AXBAR_I2S2_TX0_SHIFT		17
+#define TEGRA210_AXBAR_I2S3_TX0_SHIFT		18
+#define TEGRA210_AXBAR_I2S4_TX0_SHIFT		19
+#define TEGRA210_AXBAR_I2S5_TX0_SHIFT		20
+#define TEGRA210_AXBAR_SFC1_TX0_SHIFT		24
+#define TEGRA210_AXBAR_SFC2_TX0_SHIFT		25
+#define TEGRA210_AXBAR_SFC3_TX0_SHIFT		26
+#define TEGRA210_AXBAR_SFC4_TX0_SHIFT		27
+
+/* Fields for TEGRA210_AXBAR_PART_1 registers */
+#define TEGRA210_AXBAR_MIXER1_TX1_SHIFT		0
+#define TEGRA210_AXBAR_MIXER1_TX2_SHIFT		1
+#define TEGRA210_AXBAR_MIXER1_TX3_SHIFT		2
+#define TEGRA210_AXBAR_MIXER1_TX4_SHIFT		3
+#define TEGRA210_AXBAR_MIXER1_TX5_SHIFT		4
+#define TEGRA210_AXBAR_AMX1_TX0_SHIFT		8
+#define TEGRA210_AXBAR_AMX2_TX0_SHIFT		9
+#define TEGRA210_AXBAR_SPDIF1_TX0_SHIFT		20
+#define TEGRA210_AXBAR_SPDIF1_TX1_SHIFT		21
+#define TEGRA210_AXBAR_AFC1_TX0_SHIFT		24
+#define TEGRA210_AXBAR_AFC2_TX0_SHIFT		25
+#define TEGRA210_AXBAR_AFC3_TX0_SHIFT		26
+#define TEGRA210_AXBAR_AFC4_TX0_SHIFT		27
+#define TEGRA210_AXBAR_AFC5_TX0_SHIFT		28
+#define TEGRA210_AXBAR_AFC6_TX0_SHIFT		29
+
+/* Fields for TEGRA210_AXBAR_PART_2 registers */
+#define TEGRA210_AXBAR_OPE1_TX0_SHIFT		0
+#define TEGRA210_AXBAR_OPE2_TX0_SHIFT		1
+#define TEGRA210_AXBAR_SPKPROT1_TX0_SHIFT	4
+#define TEGRA210_AXBAR_MVC1_TX0_SHIFT		8
+#define TEGRA210_AXBAR_MVC2_TX0_SHIFT		9
+#define TEGRA210_AXBAR_IQC1_TX1_SHIFT		12
+#define TEGRA210_AXBAR_IQC2_TX1_SHIFT		13
+#define TEGRA210_AXBAR_DMIC1_TX0_SHIFT		18
+#define TEGRA210_AXBAR_DMIC2_TX0_SHIFT		19
+#define TEGRA210_AXBAR_DMIC3_TX0_SHIFT		20
+#define TEGRA210_AXBAR_ADX1_TX0_SHIFT		24
+#define TEGRA210_AXBAR_ADX1_TX1_SHIFT		25
+#define TEGRA210_AXBAR_ADX1_TX2_SHIFT		26
+#define TEGRA210_AXBAR_ADX1_TX3_SHIFT		27
+#define TEGRA210_AXBAR_ADX2_TX0_SHIFT		28
+#define TEGRA210_AXBAR_ADX2_TX1_SHIFT		29
+#define TEGRA210_AXBAR_ADX2_TX2_SHIFT		30
+#define TEGRA210_AXBAR_ADX2_TX3_SHIFT		31
+
+/* Tegra210 AXBAR exported APIs */
+void tegra210_axbar_enable_clk(void);
+void tegra210_axbar_disable_clk(void);
+
+int tegra210_axbar_set_rx_cif_source(enum tegra210_ahub_cifs rxcif,
+				     enum tegra210_ahub_cifs txcif);
+int tegra210_axbar_unset_rx_cif_source(enum tegra210_ahub_cifs rxcif);
+#endif

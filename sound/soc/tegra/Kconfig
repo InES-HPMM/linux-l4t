@@ -111,6 +111,14 @@ config SND_SOC_TEGRA30_AVP
 	  module. You will also need to select the individual machine drivers to
 	  support below.
 
+config SND_SOC_TEGRA210_AXBAR
+	tristate
+	depends on SND_SOC_TEGRA
+	help
+	  Say Y or M if you want to add support for the Tegra210 AXBAR module.
+	  You will also need to select the individual machine drivers to
+	  support below.
+
 config SND_SOC_TEGRA_WM8753
 	tristate "SoC Audio support for Tegra boards using a WM8753 codec"
 	depends on SND_SOC_TEGRA && I2C
