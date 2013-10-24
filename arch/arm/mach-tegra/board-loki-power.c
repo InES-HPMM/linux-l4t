@@ -499,6 +499,7 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
 		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
 		REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
+		REGULATOR_SUPPLY("vddio_pex_sata", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_modem_3v3_supply[] = {

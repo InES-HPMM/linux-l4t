@@ -169,6 +169,7 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("vddio_pex_sata", "tegra-sata.0"),
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {

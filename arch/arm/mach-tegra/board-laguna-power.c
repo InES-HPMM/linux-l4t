@@ -473,6 +473,7 @@ static int __init laguna_cl_dvfs_init(void)
 /* Always ON /Battery regulator */
 static struct regulator_consumer_supply fixed_reg_battery_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_bl", NULL),
+	REGULATOR_SUPPLY("vddio_pex_sata", "tegra-sata.0"),
 };
 
 /* Always ON 1.8v */
