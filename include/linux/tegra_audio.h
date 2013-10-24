@@ -1,6 +1,7 @@
 /* include/linux/tegra_audio.h
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *     Iliyan Malchev <malchev@google.com>
@@ -81,6 +82,32 @@ struct dmic_params_t {
 	unsigned int captured_data_size;
 };
 
+enum tegra210_audio_test_id {
+	TEST_ID_LOOPBACK = 0x1,
+	TEST_ID_REG_ACCESS = 0x2,
+};
+
+struct tegra210_audio_axbar_test_param {
+	u32 rx_cif;
+	u32 tx_cif;
+};
+
+struct tegra210_audio_admaif_test_param {
+	int admaif_id;
+	int test_id;
+	unsigned int in_channels;
+	unsigned int out_channels;
+	unsigned int in_bps;
+	unsigned int out_bps;
+};
+
+struct tegra210_audio_sfc_test_param {
+	int sfc_id;
+	int test_id;
+	unsigned int in_rate;
+	unsigned int out_rate;
+};
+
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
 			const struct tegra_audio_in_config *)
 #define TEGRA_AUDIO_IN_GET_CONFIG	_IOR(TEGRA_AUDIO_MAGIC, 3, \
@@ -147,6 +174,16 @@ struct dmic_params_t {
 #define TEGRA_AUDIO_TEST_SET_PARAMS		_IO(TEGRA_AUDIO_MAGIC, 62)
 #define TEGRA_AUDIO_TEST_GET_PARAMS		_IO(TEGRA_AUDIO_MAGIC, 63)
 #define TEGRA_AUDIO_TEST_STOP			_IO(TEGRA_AUDIO_MAGIC, 64)
+
+/* Tegra210 AHUB test specific macros */
+#define TEGRA210_AUDIO_TEST_EXEC	_IOW(TEGRA_AUDIO_MAGIC, 71, \
+					     unsigned int *)
+#define TEGRA210_AUDIO_AXBAR_CONNECT	_IOW(TEGRA_AUDIO_MAGIC, 72, \
+				    struct tegra210_audio_axbar_test_param *)
+#define TEGRA210_AUDIO_ADMAIF_TEST_PARAM _IOW(TEGRA_AUDIO_MAGIC, 73, \
+				    struct tegra210_audio_admaif_test_param *)
+#define TEGRA210_AUDIO_SFC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 74, \
+				    struct tegra210_audio_sfc_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
