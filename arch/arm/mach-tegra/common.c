@@ -42,7 +42,6 @@
 #include <linux/export.h>
 #include <linux/bootmem.h>
 #include <linux/tegra-soc.h>
-#include <trace/events/nvsecurity.h>
 #include <linux/dma-contiguous.h>
 
 #ifdef CONFIG_ARM64
@@ -173,6 +172,18 @@ static int tegra_split_mem_set;
 
 struct device tegra_generic_cma_dev;
 struct device tegra_vpr_cma_dev;
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvsecurity.h>
+
+u32 notrace tegra_read_cycle(void)
+{
+	u32 cycle_count;
+
+	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(cycle_count));
+
+	return cycle_count;
+}
 
 /*
  * Storage for debug-macro.S's state.
@@ -2377,3 +2388,4 @@ static int __init set_tegra_split_mem(char *options)
 	return 0;
 }
 early_param("tegra_split_mem", set_tegra_split_mem);
+
