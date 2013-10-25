@@ -23,6 +23,7 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/edp.h>
+#include <linux/sysedp.h>
 #include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
@@ -753,10 +754,13 @@ static const struct file_operations edp_reg_override_debugfs_fops = {
 	.release	= single_release,
 };
 
-#ifdef CONFIG_EDP_FRAMEWORK
+#if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)
 static __init struct dentry *tegra_edp_debugfs_dir(void)
 {
-	return edp_debugfs_dir;
+	if (edp_debugfs_dir)
+		return edp_debugfs_dir;
+	else
+		return debugfs_create_dir("edp", NULL);
 }
 #else
 static __init struct dentry *tegra_edp_debugfs_dir(void)
