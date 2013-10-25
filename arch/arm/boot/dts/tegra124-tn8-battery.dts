@@ -49,22 +49,23 @@
 		bq2419x: bq2419x@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
-			charging-term-current-mA = <100>;
 			interrupt-parent = <&gpio>;
 			interrupts = <72 0x0>;
+
 			charger {
-					regulator-name = "batt_regulator";
-					regulator-max-microamp = <3000>;
-					watchdog-timeout = <40>;
-					rtc-alarm-time = <3600>;
-					auto-recharge-time = <1800>;
-					consumers {
-						c1 {
-							regulator-consumer-supply = "usb_bat_chg";
-							regulator-consumer-device = "tegra-udc.0";
-						};
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000>;
+				watchdog-timeout = <40>;
+				rtc-alarm-time = <3600>;
+				auto-recharge-time = <1800>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
 					};
+				};
 			};
+
 			vbus {
 				regulator-name = "vbus_regulator";
 				consumers {

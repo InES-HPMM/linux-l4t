@@ -22,10 +22,7 @@
 		bq2419x: bq2419x@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
-			charging-term-current-mA = <100>;
-			watchdog-timeout = <40>;
-			rtc-alarm-time = <3600>;
-			auto-recharge-time = <1800>;
+
 			vbus {
 				regulator-name = "vbus_regulator";
 				consumers {
