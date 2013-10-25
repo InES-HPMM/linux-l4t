@@ -1423,7 +1423,9 @@ static void tegra12_cpu_cmplx_clk_init(struct clk *c)
 	int i = !!is_lp_cluster();
 
 	BUG_ON(c->inputs[0].input->u.cpu.mode != MODE_G);
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	BUG_ON(c->inputs[1].input->u.cpu.mode != MODE_LP);
+#endif
 	c->parent = c->inputs[i].input;
 }
 
@@ -7038,6 +7040,7 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ 0, 0},
 };
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c,	.value = 1},
@@ -7051,6 +7054,7 @@ static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_pll_x,	.value = 8 | SUPER_LP_DIV2_BYPASS},
 	{ 0, 0},
 };
+#endif
 
 static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
@@ -7073,6 +7077,7 @@ static struct clk tegra_clk_cclk_g = {
 	.max_rate = 3000000000UL,
 };
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk tegra_clk_cclk_lp = {
 	.name	= "cclk_lp",
 	.flags  = DIV_2 | DIV_U71 | DIV_U71_INT | MUX,
@@ -7081,6 +7086,7 @@ static struct clk tegra_clk_cclk_lp = {
 	.ops	= &tegra_super_ops,
 	.max_rate = 1350000000,
 };
+#endif
 
 static struct clk tegra_clk_sclk = {
 	.name	= "sclk",
@@ -7105,6 +7111,7 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	},
 };
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk tegra_clk_virtual_cpu_lp = {
 	.name      = "cpu_lp",
 	.parent    = &tegra_clk_cclk_lp,
@@ -7117,10 +7124,13 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 		.mode      = MODE_LP,
 	},
 };
+#endif
 
 static struct clk_mux_sel mux_cpu_cmplx[] = {
 	{ .input = &tegra_clk_virtual_cpu_g,	.value = 0},
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	{ .input = &tegra_clk_virtual_cpu_lp,	.value = 1},
+#endif
 	{ 0, 0},
 };
 
@@ -8422,12 +8432,16 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
 	&tegra_clk_cclk_g,
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	&tegra_clk_cclk_lp,
+#endif
 	&tegra_clk_sclk,
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
 	&tegra_clk_virtual_cpu_g,
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	&tegra_clk_virtual_cpu_lp,
+#endif
 	&tegra_clk_cpu_cmplx,
 	&tegra_clk_blink,
 	&tegra_clk_cop,
@@ -8630,9 +8644,11 @@ static void tegra12_pllp_init_dependencies(unsigned long pllp_rate)
 	backup_rate = pllp_rate / div;
 	tegra_clk_virtual_cpu_g.u.cpu.backup_rate = backup_rate;
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
 	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
+#endif
 }
 
 static void tegra12_init_one_clock(struct clk *c)
@@ -8973,8 +8989,10 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
+#endif
 
 	*ctx++ = clk_readl(tegra_clk_sclk.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
@@ -9085,10 +9103,12 @@ static void tegra12_clk_resume(void)
 	pll_c_out1 = *ctx++;
 	clk_writel(pll_c_out1 | val, tegra_pll_c_out1.reg);
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	val = *ctx++;
 	tegra12_super_clk_resume(&tegra_clk_cclk_lp,
 		tegra_clk_virtual_cpu_lp.u.cpu.backup, val);
 	clk_writel(*ctx++, tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
+#endif
 
 	clk_writel(*ctx++, tegra_clk_sclk.reg);
 	clk_writel(*ctx++, tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
