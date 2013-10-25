@@ -5,7 +5,8 @@
 # Rewritten to use lists instead of if-statements.
 #
 
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp/
+obj-$(CONFIG_EDP_FRAMEWORK)    += edp/
+obj-$(CONFIG_SYSEDP_FRAMEWORK) += edp/
 obj-$(CONFIG_CPUQUIET_FRAMEWORK) += cpuquiet/
 
 obj-y				+= irqchip/

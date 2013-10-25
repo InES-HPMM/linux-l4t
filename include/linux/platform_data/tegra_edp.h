@@ -48,7 +48,7 @@ struct tegra_sysedp_platform_data {
 	const char *bbc;
 };
 
-#ifdef CONFIG_EDP_FRAMEWORK
+#if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)
 void tegra_edp_notify_gpu_load(unsigned int load);
 #else
 static inline void tegra_edp_notify_gpu_load(unsigned int load) {}
