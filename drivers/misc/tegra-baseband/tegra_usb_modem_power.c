@@ -395,7 +395,6 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 		modem->system_suspend = 1;
 #ifdef CONFIG_PM
 		if (modem->capability & TEGRA_MODEM_AUTOSUSPEND &&
-		    modem->wake_irq &&
 		    modem->udev &&
 		    modem->udev->state != USB_STATE_NOTATTACHED) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
@@ -461,6 +460,16 @@ static void tegra_usb_modem_post_remote_wakeup(void)
 	modem = dev_get_drvdata(dev);
 
 	mutex_lock(&modem->lock);
+#ifdef CONFIG_PM
+	if (modem->capability & TEGRA_MODEM_AUTOSUSPEND &&
+	    modem->udev &&
+	    modem->udev->state != USB_STATE_NOTATTACHED &&
+	    modem->short_autosuspend_enabled) {
+		pm_runtime_set_autosuspend_delay(&modem->udev->dev,
+				modem->pdata->autosuspend_delay);
+		modem->short_autosuspend_enabled = 0;
+	}
+#endif
 	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
 	mutex_unlock(&modem->lock);
 
