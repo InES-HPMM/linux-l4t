@@ -322,7 +322,7 @@
  * mapped. Rest are mapped on demand by the PCI device drivers.
  */
 #define MMIO_BASE		(PCIE_CFG_OFF + PCIE_CFG_SZ)
-#define MMIO_SIZE		SZ_1M
+#define MMIO_SIZE		SZ_64K
 #define MEM_BASE_0		SZ_128M
 #define MEM_SIZE_0		SZ_256M
 #define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
@@ -1886,7 +1886,7 @@ static int __init tegra_pcie_init(void)
 	pcibios_min_io = 0;
 #else
 	pcibios_min_mem = 0x03000000ul;
-	pcibios_min_io = 0x10000000ul;
+	pcibios_min_io = 0x1000ul;
 #endif
 
 	PR_FUNC_LINE;
