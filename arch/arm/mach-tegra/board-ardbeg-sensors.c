@@ -945,6 +945,41 @@ static int __init ardbeg_tj_throttle_init(void)
 }
 module_init(ardbeg_tj_throttle_init);
 
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 43000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	}
+};
+
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "Tdiode_tegra",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "Tboard_tegra",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
+
 static struct pid_thermal_gov_params skin_pid_params = {
 	.max_err_temp = 4000,
 	.max_err_gain = 1000,
@@ -959,6 +994,19 @@ static struct pid_thermal_gov_params skin_pid_params = {
 static struct thermal_zone_params skin_tzp = {
 	.governor_name = "pid_thermal_gov",
 	.governor_params = &skin_pid_params,
+};
+
+static struct therm_est_data skin_data = {
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
+	.toffset = 9793,
+	.polling_period = 1100,
+	.passive_delay = 15000,
+	.tc1 = 10,
+	.tc2 = 1,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
+	.tzp = &skin_tzp,
 };
 
 static struct throttle_table skin_throttle_table[] = {
@@ -1038,9 +1086,12 @@ static struct balanced_throttle skin_throttle = {
 static int __init ardbeg_skin_init(void)
 {
 	balanced_throttle_register(&skin_throttle, "skin-balanced");
+	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+	platform_device_register(&tegra_skin_therm_est_device);
 	return 0;
 }
 late_initcall(ardbeg_skin_init);
+#endif
 
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.loc_name = "tegra",
@@ -1075,6 +1126,7 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	},
 };
 
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 	.loc_name = "skin",
 
@@ -1100,6 +1152,7 @@ static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 		},
 	},
 };
+#endif
 
 static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
 	{
@@ -1107,11 +1160,13 @@ static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
 		.platform_data = &ardbeg_nct72_pdata,
 		.irq = -1,
 	},
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
 		I2C_BOARD_INFO("nct72", 0x4d),
 		.platform_data = &ardbeg_nct72_tskin_pdata,
 		.irq = -1,
 	}
+#endif
 };
 
 static struct i2c_board_info laguna_i2c_nct72_board_info[] = {
