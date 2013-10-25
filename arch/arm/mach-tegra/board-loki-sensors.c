@@ -438,10 +438,10 @@ static struct therm_fan_est_data fan_est_data_p2548 = {
 	.ndevs = 2,
 	.devs = {
 			{
-				.dev_data = "Tdiode_soc",
+				.dev_data = "CPU-therm",
 				.get_temp = loki_fan_est_get_temp,
 				.coeffs = {
-					100, 0, 0, 0,
+					50, 0, 0, 0,
 					0, 0, 0, 0,
 					0, 0, 0, 0,
 					0, 0, 0, 0,
@@ -449,10 +449,10 @@ static struct therm_fan_est_data fan_est_data_p2548 = {
 				},
 			},
 			{
-				.dev_data = "Tboard_soc",
+				.dev_data = "GPU-therm",
 				.get_temp = loki_fan_est_get_temp,
 				.coeffs = {
-					0, 0, 0, 0,
+					50, 0, 0, 0,
 					0, 0, 0, 0,
 					0, 0, 0, 0,
 					0, 0, 0, 0,
