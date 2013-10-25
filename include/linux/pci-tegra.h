@@ -1,7 +1,5 @@
 /*
- *  arch/arm/mach-tegra/include/mach/pci.h
- *
- *  Header file containing constants for the tegra PCIe driver.
+ *  Header file contains constants and structures for tegra PCIe driver.
  *
  * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *

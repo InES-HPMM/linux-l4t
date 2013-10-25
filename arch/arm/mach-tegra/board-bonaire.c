@@ -43,6 +43,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/pci-tegra.h>
 
 #include <mach/gpio-tegra.h>
 
@@ -53,7 +54,6 @@
 #include <mach/i2s.h>
 #include <mach/audio.h>
 #include <mach/nand.h>
-#include <mach/pci.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>

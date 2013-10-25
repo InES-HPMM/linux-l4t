@@ -58,7 +58,6 @@
 #include <linux/irqchip.h>
 
 #include <mach/irqs.h>
-#include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
 
 #include <mach/pinmux.h>

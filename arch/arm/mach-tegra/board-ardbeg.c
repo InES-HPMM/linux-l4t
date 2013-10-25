@@ -58,9 +58,9 @@
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
+#include <linux/pci-tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
 
 #include <mach/pinmux.h>

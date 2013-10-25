@@ -28,9 +28,9 @@
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/pci-tegra.h>
 
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/pci.h>
 #include <mach/io_dpd.h>
 #include <asm/mach/arch.h>
 #include <mach/isomgr.h>

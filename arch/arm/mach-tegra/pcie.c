@@ -45,11 +45,11 @@
 #include <linux/pm_runtime.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
+#include <linux/pci-tegra.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
 
-#include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/pm_domains.h>
 #include <mach/io_dpd.h>
@@ -244,7 +244,7 @@
 #define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE		(1 << 31)
 
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
-#define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE	1 << 21
+#define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT	(1 << 21)
 
 #define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
@@ -370,7 +370,8 @@ struct tegra_pcie_info {
 	struct list_head busses;
 };
 
-static struct tegra_pcie_info tegra_pcie;
+struct tegra_pcie_info tegra_pcie;
+EXPORT_SYMBOL(tegra_pcie);
 
 struct tegra_pcie_bus {
 	struct vm_struct *area;
@@ -386,8 +387,6 @@ static bool msi_enable;
 /* this flag is used for enumeration by hotplug */
 /* when dock is not connected while system boot */
 static bool is_dock_conn_at_boot = true;
-/* used to identify if init is through boot or resume path */
-static bool is_resume_path;
 /* used to avoid successive hotplug disconnect or connect */
 static bool hotplug_event;
 
@@ -489,6 +488,7 @@ static struct tegra_pcie_bus *tegra_pcie_bus_alloc(unsigned int busnr)
 	unsigned int i;
 	int err;
 
+	PR_FUNC_LINE;
 	bus = kzalloc(sizeof(*bus), GFP_KERNEL);
 	if (!bus)
 		return ERR_PTR(-ENOMEM);
@@ -546,7 +546,7 @@ static void __iomem *tegra_pcie_bus_map(unsigned int busnr)
 	return bus->area->addr;
 }
 
-static int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
+int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 				int where, int size, u32 *val)
 {
 	struct tegra_pcie_port *pp = bus_to_port(bus->number);
@@ -580,6 +580,7 @@ static int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 
 	return PCIBIOS_SUCCESSFUL;
 }
+EXPORT_SYMBOL(tegra_pcie_read_conf);
 
 static int tegra_pcie_write_conf(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 val)
@@ -1636,7 +1637,7 @@ static void tegra_pcie_enable_rp_features(int index)
 
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
-	data |= NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE;
+	data |= NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
 
 	/* LTSSM wait for DLLP to finish before entering L1 or L2/L3 */
@@ -1652,6 +1653,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
 	unsigned int data;
+	static bool is_boot_path = true;
 
 	PR_FUNC_LINE;
 	tegra_pcie_enable_rp_features(index);
@@ -1679,11 +1681,30 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 
 	tegra_pcie.num_ports++;
 	pp->index = index;
-	/* don't initialize root bus in resume path but boot path only */
-	if (!is_resume_path)
+	/* initialize root bus in boot path only */
+	if (is_boot_path)
 		pp->root_bus_nr = -1;
+	is_boot_path = false;
+
 	memset(pp->res, 0, sizeof(pp->res));
 }
+
+void tegra_pcie_check_ports(void)
+{
+	int port, rp_offset = 0;
+	int ctrl_offset = AFI_PEX0_CTRL;
+
+	/* reset number of ports */
+	tegra_pcie.num_ports = 0;
+
+	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
+		ctrl_offset += (port * 8);
+		rp_offset = (rp_offset + RP_OFFSET) * port;
+		if (tegra_pcie.plat_data->port_status[port])
+			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
+	}
+}
+EXPORT_SYMBOL(tegra_pcie_check_ports);
 
 static int tegra_pcie_scale_voltage(bool isGen2)
 {
@@ -1877,9 +1898,6 @@ static void tegra_pcie_enable_features(void)
 static int __init tegra_pcie_init(void)
 {
 	int err = 0;
-	int port;
-	int rp_offset = 0;
-	int ctrl_offset = AFI_PEX0_CTRL;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	pcibios_min_mem = 0x1000;
@@ -1902,12 +1920,7 @@ static int __init tegra_pcie_init(void)
 
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations();
-	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
-		ctrl_offset += (port * 8);
-		rp_offset = (rp_offset + RP_OFFSET) * port;
-		if (tegra_pcie.plat_data->port_status[port])
-			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
-	}
+	tegra_pcie_check_ports();
 
 	if (tegra_pcie.plat_data->use_dock_detect) {
 		int irq;
@@ -1990,17 +2003,12 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 static int tegra_pcie_suspend_noirq(struct device *dev)
 {
 	PR_FUNC_LINE;
-	/* reset number of ports since fresh initialization occurs in resume */
-	tegra_pcie.num_ports = 0;
-
 	return tegra_pcie_power_off();
 }
 
 static int tegra_pcie_resume_noirq(struct device *dev)
 {
 	int ret = 0;
-	int port, rp_offset = 0;
-	int ctrl_offset = AFI_PEX0_CTRL;
 
 	PR_FUNC_LINE;
 	ret = tegra_pcie_power_on();
@@ -2011,13 +2019,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 
-	is_resume_path = true;
-	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
-		ctrl_offset += (port * 8);
-		rp_offset = (rp_offset + 0x1000) * port;
-		if (tegra_pcie.plat_data->port_status[port])
-			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
-	}
+	tegra_pcie_check_ports();
 	if (!tegra_pcie.num_ports) {
 		tegra_pcie_power_off();
 		goto exit;
@@ -2042,8 +2044,8 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 
 	list_for_each_entry(bus, &tegra_pcie.busses, list) {
 		vunmap(bus->area->addr);
+		kfree(bus);
 	}
-	kfree(bus);
 	tegra_pcie_detach();
 	tegra_pd_remove_device(tegra_pcie.dev);
 
