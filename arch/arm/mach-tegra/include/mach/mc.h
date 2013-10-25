@@ -217,9 +217,4 @@ static inline unsigned tegra_emc_dvfs_latency(unsigned int freq_khz)
 int tegra_mc_flush(int id);
 int tegra_mc_flush_done(int id);
 
-/*
- * MC driver sub-initializations.
- */
-int __init tegra_mcerr_init(struct dentry *mc_parent);
-
 #endif

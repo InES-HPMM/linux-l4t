@@ -27,6 +27,7 @@
 #include <linux/tegra-soc.h>
 
 #include <mach/mc.h>
+#include <mach/mcerr.h>
 
 #include "iomap.h"
 
@@ -66,8 +67,6 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 
 #else
 	/* !!!FIXME!!! IMPLEMENT tegra_mc_set_priority() */
-
-#include "tegra3_emc.h"
 
 /*
  * If using T30/DDR3, the 2nd 16 bytes part of DDR3 atom is 2nd line and is

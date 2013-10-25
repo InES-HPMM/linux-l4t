@@ -117,6 +117,8 @@
 #define MC_INT_EN_MASK	(_MC_INT_EN_MASK)
 #endif
 
+int __init tegra_mcerr_init(struct dentry *mc_parent);
+
 extern void __iomem *mc;
 
 /*
