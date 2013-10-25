@@ -40,6 +40,10 @@
 #define TEGRA_POWERGATE_CPU2	10
 #define TEGRA_POWERGATE_CPU3	11
 
+#define PMC_DPD_SAMPLE		0x20
+#define PMC_IO_DPD_REQ		0x1B8
+#define PMC_IO_DPD2_REQ		0x1C0
+
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
 	TEGRA_POWERGATE_CPU1,
@@ -81,6 +85,25 @@ static inline void tegra_pmc_writel(u32 val, u32 reg)
 {
 	writel(val, tegra_pmc_base + reg);
 }
+
+void tegra_pmc_set_dpd_sample()
+{
+	tegra_pmc_writel(0x1, PMC_DPD_SAMPLE);
+}
+EXPORT_SYMBOL(tegra_pmc_set_dpd_sample);
+
+void tegra_pmc_clear_dpd_sample()
+{
+	tegra_pmc_writel(0x0, PMC_DPD_SAMPLE);
+}
+EXPORT_SYMBOL(tegra_pmc_clear_dpd_sample);
+
+void tegra_pmc_remove_dpd_req()
+{
+	tegra_pmc_writel(0x400fffff, PMC_IO_DPD_REQ);
+	tegra_pmc_writel(0x40001fff, PMC_IO_DPD2_REQ);
+}
+EXPORT_SYMBOL(tegra_pmc_remove_dpd_req);
 
 static int tegra_pmc_get_cpu_powerdomain_id(int cpuid)
 {
