@@ -26,6 +26,7 @@
 #include <linux/regmap.h>
 #include <linux/mfd/palmas.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/regulator/of_regulator.h>
 
@@ -1233,6 +1234,10 @@ static void palmas_dt_to_pdata(struct device *dev,
 			pdata->reg_init[idx]->roof_floor = econtrol;
 		}
 
+		pdata->reg_init[idx]->enable_gpio = of_get_named_gpio(
+						palmas_matches[idx].of_node,
+						"ti,ext-enable-gpio", 0);
+
 		ret = of_property_read_u32(palmas_matches[idx].of_node,
 				"ti,mode-sleep", &prop);
 		if (!ret)
@@ -1581,6 +1586,9 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		if (roof_floor) {
 			config.ena_gpio = reg_init->enable_gpio;
 			config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+		} else {
+			config.ena_gpio = -EINVAL;
+			config.ena_gpio_flags = 0;
 		}
 
 		rdev = regulator_register(&pmic->desc[id], &config);
