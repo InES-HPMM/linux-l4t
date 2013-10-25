@@ -197,7 +197,7 @@ static void resume_devices_in_domain(struct generic_pm_domain *genpd)
 		dev = pdd->dev;
 
 		if (dev->pm_domain && dev->pm_domain->ops.resume)
-			dev->pm_domain->ops.suspend(dev);
+			dev->pm_domain->ops.resume(dev);
 	}
 }
 
