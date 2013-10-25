@@ -378,6 +378,7 @@ struct spi_master {
 	int (*unprepare_transfer_hardware)(struct spi_master *master);
 	/* gpio chip select */
 	int			*cs_gpios;
+	int (*spi_cs_low)(struct spi_device *spi, bool state);
 };
 
 static inline void *spi_master_get_devdata(struct spi_master *master)
@@ -915,5 +916,12 @@ spi_unregister_device(struct spi_device *spi)
 
 extern const struct spi_device_id *
 spi_get_device_id(const struct spi_device *sdev);
+
+/**
+ * spi_cs_low - set chip select pin state
+ * @spi: device for which chip select pin state to be set
+ * state: if true chip select pin will be kept low else high
+ */
+extern int spi_cs_low(struct spi_device *spi, bool state);
 
 #endif /* __LINUX_SPI_H */
