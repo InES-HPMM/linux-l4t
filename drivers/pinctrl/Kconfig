@@ -256,10 +256,15 @@ config PINCTRL_XWAY
 	depends on PINCTRL_LANTIQ
 
 config PINCTRL_AS3722
-	tristate "AS3722 Pincontrol support"
-	depends on MFD_AS3722
+	bool "Pinctrl and GPIO driver for ams AS3722 PMIC"
+	depends on MFD_AS3722 && GPIOLIB
+	select PINMUX
+	select GENERIC_PINCONF
 	help
-	  AS3722 is a PMIC from AMS for smartphone and tablets.
+	  AS3722 device supports the configuration of GPIO pins for different
+	  functionality. This driver supports the pinmux, push-pull and
+	  open drain configuration for the GPIO pins of AS3722 devices. It also
+	  supports the GPIO functionality through gpiolib.
 
 endmenu
 
