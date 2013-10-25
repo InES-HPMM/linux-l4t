@@ -329,6 +329,29 @@ static struct palmas_reg_init *loki_reg_init[PALMAS_NUM_REGS] = {
 	NULL,
 };
 
+#define PALMAS_GPADC_IIO_MAP(_ch, _dev_name, _name)		\
+	{							\
+		.adc_channel_label = PALMAS_DATASHEET_NAME(_ch),\
+		.consumer_dev_name = _dev_name,			\
+		.consumer_channel = _name,			\
+	}
+
+static struct iio_map palmas_adc_iio_maps[] = {
+	PALMAS_GPADC_IIO_MAP(IN1, "generic-adc-thermal.0", "thermistor"),
+	PALMAS_GPADC_IIO_MAP(IN3, "generic-adc-thermal.1", "tdiode"),
+	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
+};
+
+static struct palmas_gpadc_platform_data palmas_adc_pdata = {
+	/* If ch3_dual_current is true, it will measure ch3 input signal with
+	 * ch3_current and the next current of ch3_current.
+	 * So this system will use 400uA and 800uA for ch3 measurement. */
+	.ch3_current = 400,	/* 0uA, 10uA, 400uA, 800uA */
+	.ch3_dual_current = true,
+	.extended_delay = true,
+	.iio_maps = palmas_adc_iio_maps,
+};
+
 static struct palmas_pinctrl_config palmas_pincfg[] = {
 	PALMAS_PINMUX("powergood", "powergood", NULL, NULL),
 	PALMAS_PINMUX("vac", "vac", NULL, NULL),
@@ -371,6 +394,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
+	.gpadc_pdata = &palmas_adc_pdata,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),

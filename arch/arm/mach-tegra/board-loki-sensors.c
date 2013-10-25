@@ -32,6 +32,7 @@
 #include <linux/iio/light/jsa1127.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/generic_adc_thermal.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -545,9 +546,208 @@ static int __init loki_fan_est_init(void)
 	return 0;
 }
 
+struct ntc_thermistor_adc_table {
+	int temp; /* degree C */
+	int adc;
+};
+
+/* This values are only for TegraTab platform. */
+static struct ntc_thermistor_adc_table loki_nff_thermistor_table[] = {
+	{ -40, 2725 }, { -39, 2725 }, { -38, 2724 }, { -37, 2723 },
+	{ -36, 2723 }, { -35, 2722 }, { -34, 2721 }, { -33, 2721 },
+	{ -32, 2720 }, { -31, 2719 }, { -30, 2718 }, { -29, 2717 },
+	{ -28, 2716 }, { -27, 2715 }, { -26, 2714 }, { -25, 2713 },
+	{ -24, 2712 }, { -23, 2711 }, { -22, 2709 }, { -21, 2708 },
+	{ -20, 2707 }, { -19, 2705 }, { -18, 2704 }, { -17, 2702 },
+	{ -16, 2701 }, { -15, 2699 }, { -14, 2697 }, { -13, 2696 },
+	{ -12, 2694 }, { -11, 2692 }, { -10, 2689 }, {  -9, 2687 },
+	{  -8, 2685 }, {  -7, 2683 }, {  -6, 2681 }, {  -5, 2678 },
+	{  -4, 2676 }, {  -3, 2673 }, {  -2, 2670 }, {  -1, 2667 },
+	{   0, 2664 }, {   1, 2661 }, {   2, 2658 }, {   3, 2655 },
+	{   4, 2651 }, {   5, 2647 }, {   6, 2644 }, {   7, 2641 },
+	{   8, 2637 }, {   9, 2633 }, {  10, 2628 }, {  11, 2624 },
+	{  12, 2620 }, {  13, 2615 }, {  14, 2610 }, {  15, 2605 },
+	{  16, 2600 }, {  17, 2596 }, {  18, 2590 }, {  19, 2585 },
+	{  20, 2578 }, {  21, 2573 }, {  22, 2567 }, {  23, 2561 },
+	{  24, 2555 }, {  25, 2548 }, {  26, 2542 }, {  27, 2535 },
+	{  28, 2528 }, {  29, 2521 }, {  30, 2513 }, {  31, 2506 },
+	{  32, 2498 }, {  33, 2491 }, {  34, 2482 }, {  35, 2473 },
+	{  36, 2465 }, {  37, 2457 }, {  38, 2448 }, {  39, 2439 },
+	{  40, 2429 }, {  41, 2420 }, {  42, 2411 }, {  43, 2401 },
+	{  44, 2390 }, {  45, 2379 }, {  46, 2370 }, {  47, 2359 },
+	{  48, 2349 }, {  49, 2337 }, {  50, 2325 }, {  51, 2314 },
+	{  52, 2303 }, {  53, 2291 }, {  54, 2278 }, {  55, 2265 },
+	{  56, 2254 }, {  57, 2241 }, {  58, 2229 }, {  59, 2215 },
+	{  60, 2201 }, {  61, 2188 }, {  62, 2175 }, {  63, 2161 },
+	{  64, 2147 }, {  65, 2132 }, {  66, 2118 }, {  67, 2104 },
+	{  68, 2089 }, {  69, 2074 }, {  70, 2058 }, {  71, 2044 },
+	{  72, 2029 }, {  73, 2014 }, {  74, 1998 }, {  75, 1981 },
+	{  76, 1966 }, {  77, 1950 }, {  78, 1934 }, {  79, 1918 },
+	{  80, 1900 }, {  81, 1885 }, {  82, 1868 }, {  83, 1851 },
+	{  84, 1834 }, {  85, 1816 }, {  86, 1799 }, {  87, 1783 },
+	{  88, 1765 }, {  89, 1747 }, {  90, 1728 }, {  91, 1711 },
+	{  92, 1694 }, {  93, 1676 }, {  94, 1657 }, {  95, 1638 },
+	{  96, 1621 }, {  97, 1603 }, {  98, 1585 }, {  99, 1566 },
+	{ 100, 1547 }, { 101, 1530 }, { 102, 1512 }, { 103, 1494 },
+	{ 104, 1475 }, { 105, 1456 }, { 106, 1438 }, { 107, 1421 },
+	{ 108, 1403 }, { 109, 1384 }, { 110, 1365 }, { 111, 1348 },
+	{ 112, 1331 }, { 113, 1313 }, { 114, 1294 }, { 115, 1276 },
+	{ 116, 1259 }, { 117, 1242 }, { 118, 1225 }, { 119, 1207 },
+	{ 120, 1189 }, { 121, 1173 }, { 122, 1157 }, { 123, 1140 },
+	{ 124, 1123 }, { 125, 1106 },
+};
+
+static struct ntc_thermistor_adc_table loki_ffd_thermistor_table[] = {
+	{ -40, 4082 }, { -39, 4082 }, { -38, 4081 }, { -37, 4079 },
+	{ -36, 4078 }, { -35, 4077 }, { -34, 4075 }, { -33, 4074 },
+	{ -32, 4072 }, { -31, 4071 }, { -30, 4068 }, { -29, 4067 },
+	{ -28, 4065 }, { -27, 4063 }, { -26, 4060 }, { -25, 4058 },
+	{ -24, 4055 }, { -23, 4053 }, { -22, 4050 }, { -21, 4047 },
+	{ -20, 4043 }, { -19, 4040 }, { -18, 4036 }, { -17, 4033 },
+	{ -16, 4028 }, { -15, 4023 }, { -14, 4019 }, { -13, 4015 },
+	{ -12, 4010 }, { -11, 4004 }, { -10, 3998 }, {  -9, 3992 },
+	{  -8, 3987 }, {  -7, 3980 }, {  -6, 3973 }, {  -5, 3964 },
+	{  -4, 3958 }, {  -3, 3950 }, {  -2, 3942 }, {  -1, 3932 },
+	{   0, 3922 }, {   1, 3913 }, {   2, 3904 }, {   3, 3893 },
+	{   4, 3881 }, {   5, 3868 }, {   6, 3857 }, {   7, 3845 },
+	{   8, 3832 }, {   9, 3817 }, {  10, 3801 }, {  11, 3788 },
+	{  12, 3773 }, {  13, 3757 }, {  14, 3739 }, {  15, 3719 },
+	{  16, 3703 }, {  17, 3685 }, {  18, 3666 }, {  19, 3644 },
+	{  20, 3621 }, {  21, 3601 }, {  22, 3580 }, {  23, 3557 },
+	{  24, 3532 }, {  25, 3504 }, {  26, 3481 }, {  27, 3456 },
+	{  28, 3429 }, {  29, 3400 }, {  30, 3368 }, {  31, 3342 },
+	{  32, 3314 }, {  33, 3283 }, {  34, 3250 }, {  35, 3214 },
+	{  36, 3184 }, {  37, 3153 }, {  38, 3119 }, {  39, 3082 },
+	{  40, 3043 }, {  41, 3010 }, {  42, 2975 }, {  43, 2938 },
+	{  44, 2899 }, {  45, 2856 }, {  46, 2821 }, {  47, 2784 },
+	{  48, 2744 }, {  49, 2702 }, {  50, 2658 }, {  51, 2621 },
+	{  52, 2582 }, {  53, 2541 }, {  54, 2498 }, {  55, 2452 },
+	{  56, 2414 }, {  57, 2374 }, {  58, 2332 }, {  59, 2288 },
+	{  60, 2242 }, {  61, 2204 }, {  62, 2164 }, {  63, 2123 },
+	{  64, 2079 }, {  65, 2034 }, {  66, 1996 }, {  67, 1958 },
+	{  68, 1917 }, {  69, 1875 }, {  70, 1832 }, {  71, 1795 },
+	{  72, 1758 }, {  73, 1719 }, {  74, 1679 }, {  75, 1638 },
+	{  76, 1604 }, {  77, 1568 }, {  78, 1532 }, {  79, 1495 },
+	{  80, 1456 }, {  81, 1424 }, {  82, 1392 }, {  83, 1358 },
+	{  84, 1324 }, {  85, 1289 }, {  86, 1259 }, {  87, 1229 },
+	{  88, 1199 }, {  89, 1167 }, {  90, 1135 }, {  91, 1109 },
+	{  92, 1082 }, {  93, 1054 }, {  94, 1026 }, {  95,  997 },
+	{  96,  973 }, {  97,  949 }, {  98,  924 }, {  99,  899 },
+	{ 100,  874 }, { 101,  853 }, { 102,  831 }, { 103,  809 },
+	{ 104,  787 }, { 105,  765 }, { 106,  746 }, { 107,  727 },
+	{ 108,  707 }, { 109,  688 }, { 110,  668 }, { 111,  652 },
+	{ 112,  635 }, { 113,  618 }, { 114,  601 }, { 115,  584 },
+	{ 116,  569 }, { 117,  555 }, { 118,  540 }, { 119,  525 },
+	{ 120,  510 }, { 121,  498 }, { 122,  485 }, { 123,  472 },
+	{ 124,  459 }, { 125,  446 },
+};
+
+static struct ntc_thermistor_adc_table *thermistor_table;
+static int thermistor_table_size;
+
+static int gadc_thermal_thermistor_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val, int val2)
+{
+	int temp = 0, adc_hi, adc_lo;
+	int i;
+
+	for (i = 0; i < thermistor_table_size; i++)
+		if (val >= thermistor_table[i].adc)
+			break;
+
+	if (i == 0) {
+		temp = thermistor_table[i].temp * 1000;
+	} else if (i >= (thermistor_table_size - 1)) {
+		temp = thermistor_table[thermistor_table_size - 1].temp * 1000;
+	} else {
+		adc_hi = thermistor_table[i - 1].adc;
+		adc_lo = thermistor_table[i].adc;
+		temp = thermistor_table[i].temp * 1000;
+		temp -= ((val - adc_lo) * 1000 / (adc_hi - adc_lo));
+	}
+
+	return temp;
+};
+
+#define TDIODE_PRECISION_MULTIPLIER	1000000000LL
+#define TDIODE_MIN_TEMP			-25000LL
+#define TDIODE_MAX_TEMP			125000LL
+
+static int gadc_thermal_tdiode_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val, int val2)
+{
+	/*
+	 * Series resistance cancellation using multi-current ADC measurement.
+	 * diode temp = ((adc2 - k * adc1) - (b2 - k * b1)) / (m2 - k * m1)
+	 * - adc1 : ADC raw with current source 400uA
+	 * - m1, b1 : calculated with current source 400uA
+	 * - adc2 : ADC raw with current source 800uA
+	 * - m2, b2 : calculated with current source 800uA
+	 * - k : 2 (= 800uA / 400uA)
+	 */
+	const s64 m1 = -0.00571005 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b1 = 2524.29891 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 m2 = -0.005519811 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b2 = 2579.354349 * TDIODE_PRECISION_MULTIPLIER;
+	s64 temp = TDIODE_PRECISION_MULTIPLIER;
+
+	temp *= (s64)((val2) - 2 * (val));
+	temp -= (b2 - 2 * b1);
+	temp = div64_s64(temp, (m2 - 2 * m1));
+	temp = min_t(s64, max_t(s64, temp, TDIODE_MIN_TEMP), TDIODE_MAX_TEMP);
+	return temp;
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
+	.iio_channel_name = "thermistor",
+	.tz_name = "Tboard",
+	.temp_offset = 0,
+	.adc_to_temp = gadc_thermal_thermistor_adc_to_temp,
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
+	.iio_channel_name = "tdiode",
+	.tz_name = "Tdiode",
+	.temp_offset = 0,
+	.adc_to_temp = gadc_thermal_tdiode_adc_to_temp,
+};
+
+static struct platform_device gadc_thermal_thermistor = {
+	.name   = "generic-adc-thermal",
+	.id     = 0,
+	.dev	= {
+		.platform_data = &gadc_thermal_thermistor_pdata,
+	},
+};
+
+static struct platform_device gadc_thermal_tdiode = {
+	.name   = "generic-adc-thermal",
+	.id     = 1,
+	.dev	= {
+		.platform_data = &gadc_thermal_tdiode_pdata,
+	},
+};
+
+static struct platform_device *gadc_thermal_devices[] = {
+	&gadc_thermal_thermistor,
+	&gadc_thermal_tdiode,
+};
+
 int __init loki_sensors_init(void)
 {
 	tegra_get_board_info(&board_info);
+	platform_add_devices(gadc_thermal_devices,
+			ARRAY_SIZE(gadc_thermal_devices));
+
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_E2549) {
+		thermistor_table = &loki_nff_thermistor_table;
+		thermistor_table_size = ARRAY_SIZE(loki_nff_thermistor_table);
+	} else if (board_info.board_id == BOARD_P2530) {
+		thermistor_table = &loki_ffd_thermistor_table;
+		thermistor_table_size = ARRAY_SIZE(loki_ffd_thermistor_table);
+	}
+
 	mpuirq_init();
 	loki_camera_init();
 
