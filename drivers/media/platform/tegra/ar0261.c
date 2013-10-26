@@ -1091,20 +1091,30 @@ static int ar0261_get_sensor_id(struct ar0261_info *info)
 	if (info->sensor_data.fuse_id_size)
 		return 0;
 
-	ret |= ar0261_write_reg(info, 0x301A, 0x0210);
+	ret |= ar0261_write_reg(info, 0x301A, 0x0018);
 	ret |= ar0261_write_reg(info, 0x3054, 0x0500);
 	ret |= ar0261_write_reg(info, 0x3052, 0x0000);
 	ret |= ar0261_write_reg(info, 0x304A, 0x0400);
-	ret |= ar0261_write_reg(info, 0x304C, 0x02FF);
+	ret |= ar0261_write_reg(info, 0x304C, 0x0220);
 	ret |= ar0261_write_reg(info, 0x304A, 0x0410);
 
-	msleep_range(10);
+	i = 0;
+	do {
+		ret |= ar0261_read_reg(info, 0x304A, &store);
+		usleep_range(1000, 1500);
+		i++;
+	} while (!(store & (0x1 << 5)) && (i <= 10));
+
+	if (!(store & (0x1 << 6)))
+		return 0;
 
 	for (i = 0; i < 16; i += 2) {
 		ret |= ar0261_read_reg(info, 0x3804 + i, &store);
 		info->sensor_data.fuse_id[i] = store;
 		info->sensor_data.fuse_id[i+1] = store >> 8;
 	}
+
+	ret |= ar0261_write_reg(info, 0x301A, 0x001C);
 
 	if (!ret)
 		info->sensor_data.fuse_id_size = i;
