@@ -439,7 +439,12 @@ int __init loki_sensors_init(void)
 	tegra_get_board_info(&board_info);
 	mpuirq_init();
 	loki_camera_init();
-	loki_nct72_init();
+
+	if (board_info.board_id == BOARD_E2549)
+		pr_info("Skipping nct72 init for 0x%x\n", board_info.board_id);
+	else
+		loki_nct72_init();
+
 	loki_jsa1127_init();
 	loki_fan_est_init();
 
