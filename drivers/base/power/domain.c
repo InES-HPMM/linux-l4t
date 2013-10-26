@@ -52,6 +52,21 @@
 static LIST_HEAD(gpd_list);
 static DEFINE_MUTEX(gpd_list_lock);
 
+static void update_genpd_accounting(struct generic_pm_domain *genpd)
+{
+	unsigned long now = jiffies;
+	unsigned long delta;
+
+	delta = now - genpd->accounting_timestamp;
+
+	genpd->accounting_timestamp = now;
+
+	if (genpd->status == GPD_STATE_POWER_OFF)
+		genpd->power_off_jiffies += delta;
+	else
+		genpd->power_on_jiffies += delta;
+}
+
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *rootdir;
 
@@ -104,12 +119,27 @@ static int genpd_summary_show(struct seq_file *s, void *data)
 	mutex_lock(&gpd_list_lock);
 
 	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
-		seq_printf(s, "%*s%-*s %-11s\n", 1, "", 31, gpd->name,
-			genpd_get_status(gpd->status));
+
+		mutex_lock(&gpd->lock);
+
+		update_genpd_accounting(gpd);
+		seq_printf(s, "%*s%-*s %-11s %-13s %-17u\n", 1, "", 31,
+			gpd->name, genpd_get_status(gpd->status), "",
+			jiffies_to_msecs(gpd->power_off_jiffies));
+
+		mutex_unlock(&gpd->lock);
+
 		list_for_each_entry(link, &gpd->master_links, master_node) {
 			slave = link->slave;
-			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 25, slave->name,
-				genpd_get_status(slave->status));
+
+			mutex_lock(&slave->lock);
+
+			update_genpd_accounting(slave);
+			seq_printf(s, "%*s%-*s %-11s %-13s %-17u\n", 7, "", 25,
+				slave->name, genpd_get_status(slave->status),
+				"", jiffies_to_msecs(slave->power_off_jiffies));
+
+			mutex_unlock(&slave->lock);
 		}
 		list_for_each_entry(pdd, &gpd->dev_list, list_node) {
 			struct device *dev = pdd->dev;
@@ -160,6 +190,13 @@ static struct generic_pm_domain *pm_genpd_lookup_name(const char *domain_name)
 	}
 	mutex_unlock(&gpd_list_lock);
 	return genpd;
+}
+
+static void __update_genpd_status(struct generic_pm_domain *genpd,
+						enum gpd_status status)
+{
+	update_genpd_accounting(genpd);
+	genpd->status = status;
 }
 
 #ifdef CONFIG_PM
@@ -232,7 +269,7 @@ static void genpd_release_lock(struct generic_pm_domain *genpd)
 static void genpd_set_active(struct generic_pm_domain *genpd)
 {
 	if (genpd->resume_count == 0)
-		genpd->status = GPD_STATE_ACTIVE;
+		__update_genpd_status(genpd, GPD_STATE_ACTIVE);
 }
 
 static void genpd_recalc_cpu_exit_latency(struct generic_pm_domain *genpd)
@@ -311,7 +348,7 @@ static int __pm_genpd_poweron(struct generic_pm_domain *genpd)
 		 * The "wait for parent" status is guaranteed not to change
 		 * while the master is powering on.
 		 */
-		genpd->status = GPD_STATE_POWER_OFF;
+		__update_genpd_status(genpd, GPD_STATE_POWER_OFF);
 		wake_up_all(&genpd->status_wait_queue);
 		if (ret) {
 			genpd_sd_counter_dec(link->master);
@@ -630,7 +667,7 @@ static int pm_genpd_poweroff(struct generic_pm_domain *genpd)
 		 * removed from the current domain prematurely as a result of
 		 * cutting off the masters' power.
 		 */
-		genpd->status = GPD_STATE_POWER_OFF;
+		__update_genpd_status(genpd, GPD_STATE_POWER_OFF);
 		cpuidle_pause_and_lock();
 		genpd->cpu_data->idle_state->disabled = false;
 		cpuidle_resume_and_unlock();
@@ -673,7 +710,7 @@ static int pm_genpd_poweroff(struct generic_pm_domain *genpd)
 		}
 	}
 
-	genpd->status = GPD_STATE_POWER_OFF;
+	__update_genpd_status(genpd, GPD_STATE_POWER_OFF);
 
 	list_for_each_entry(link, &genpd->slave_links, slave_node) {
 		genpd_sd_counter_dec(link->master);
@@ -964,7 +1001,7 @@ static void pm_genpd_sync_poweroff(struct generic_pm_domain *genpd)
 	if (genpd->power_off)
 		genpd->power_off(genpd);
 
-	genpd->status = GPD_STATE_POWER_OFF;
+	__update_genpd_status(genpd, GPD_STATE_POWER_OFF);
 
 	list_for_each_entry(link, &genpd->slave_links, slave_node) {
 		genpd_sd_counter_dec(link->master);
@@ -1410,7 +1447,7 @@ static int pm_genpd_restore_noirq(struct device *dev)
 		 * so make it appear as powered off to pm_genpd_sync_poweron(),
 		 * so that it tries to power it on in case it was really off.
 		 */
-		genpd->status = GPD_STATE_POWER_OFF;
+		__update_genpd_status(genpd, GPD_STATE_POWER_OFF);
 		if (genpd->suspend_power_off) {
 			/*
 			 * If the domain was off before the hibernation, make
@@ -2305,7 +2342,9 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	genpd->in_progress = 0;
 	genpd->power_off_delay = 0;
 	atomic_set(&genpd->sd_count, 0);
-	genpd->status = is_off ? GPD_STATE_POWER_OFF : GPD_STATE_ACTIVE;
+	genpd->accounting_timestamp = jiffies;
+	__update_genpd_status(genpd, is_off ?
+				GPD_STATE_POWER_OFF : GPD_STATE_ACTIVE);
 	init_waitqueue_head(&genpd->status_wait_queue);
 	genpd->poweroff_task = NULL;
 	genpd->resume_count = 0;
@@ -2355,9 +2394,92 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	mutex_unlock(&gpd_list_lock);
 }
 
+#ifdef CONFIG_DEBUG_FS
+/* Genpd status debugfs */
+static int genpd_status_show(struct seq_file *s, void *data)
+{
+	struct generic_pm_domain *gpd = s->private;
+
+	mutex_lock(&gpd->lock);
+
+	seq_printf(s, "%s\n", genpd_get_status(gpd->status));
+
+	mutex_unlock(&gpd->lock);
+
+	return 0;
+}
+
+static int genpd_status_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, genpd_status_show, inode->i_private);
+}
+
+static const struct file_operations genpd_status_fops = {
+	.open		= genpd_status_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+/* Genpd power off time debugfs */
+static int genpd_power_off_time_show(struct seq_file *s, void *data)
+{
+	struct generic_pm_domain *gpd = s->private;
+
+	mutex_lock(&gpd->lock);
+
+	update_genpd_accounting(gpd);
+	seq_printf(s, "%i\n", jiffies_to_msecs(gpd->power_off_jiffies));
+
+	mutex_unlock(&gpd->lock);
+
+	return 0;
+}
+
+static int genpd_power_off_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, genpd_power_off_time_show, inode->i_private);
+}
+
+static const struct file_operations genpd_power_off_time_fops = {
+	.open		= genpd_power_off_time_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+/* Genpd power on time debugfs */
+static int genpd_power_on_time_show(struct seq_file *s, void *data)
+{
+	struct generic_pm_domain *gpd = s->private;
+
+	mutex_lock(&gpd->lock);
+
+	update_genpd_accounting(gpd);
+	seq_printf(s, "%i\n", jiffies_to_msecs(gpd->power_on_jiffies));
+
+	mutex_unlock(&gpd->lock);
+
+	return 0;
+}
+
+static int genpd_power_on_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, genpd_power_on_time_show, inode->i_private);
+}
+
+static const struct file_operations genpd_power_on_time_fops = {
+	.open		= genpd_power_on_time_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init pm_genpd_debug_init(void)
 {
 	struct dentry *d;
+	struct dentry *domain_dir;
+	struct generic_pm_domain *gpd;
 
 	rootdir = debugfs_create_dir("pm_domains", NULL);
 
@@ -2369,6 +2491,31 @@ static int __init pm_genpd_debug_init(void)
 	if (!d)
 		return -ENOMEM;
 
+	mutex_lock(&gpd_list_lock);
+
+	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
+		domain_dir = debugfs_create_dir(gpd->name, rootdir);
+		if (!domain_dir)
+			return -ENOMEM;
+
+		d = debugfs_create_file("status", S_IRUGO, domain_dir,
+				gpd, &genpd_status_fops);
+		if (!d)
+			return -ENOMEM;
+
+		d = debugfs_create_file("power_on_time", S_IRUGO, domain_dir,
+				gpd, &genpd_power_on_time_fops);
+		if (!d)
+			return -ENOMEM;
+
+		d = debugfs_create_file("power_off_time", S_IRUGO, domain_dir,
+				gpd, &genpd_power_off_time_fops);
+		if (!d)
+			return -ENOMEM;
+	}
+
+	mutex_unlock(&gpd_list_lock);
 	return 0;
 }
 late_initcall(pm_genpd_debug_init);
+#endif
