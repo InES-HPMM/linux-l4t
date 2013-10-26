@@ -319,7 +319,6 @@ static int init_cpu_edp_limits_calculated(void)
 
 	/* Determine all inputs to EDP formula */
 	iddq_mA = tegra_get_cpu_iddq_value();
-	iddq_mA = 1281; /* hard code for testing */
 	ret = edp_find_speedo_idx(cpu_speedo_id, &cpu_speedo_idx);
 	if (ret)
 		return ret;
