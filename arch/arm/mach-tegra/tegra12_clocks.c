@@ -5053,7 +5053,6 @@ static void tegra12_emc_clk_init(struct clk *c)
 {
 	tegra12_periph_clk_init(c);
 	tegra_emc_dram_type_init(c);
-	c->max_rate = clk_get_rate(c->parent);
 }
 
 static long tegra12_emc_clk_round_updown(struct clk *c, unsigned long rate,
