@@ -1147,6 +1147,8 @@ static int ardbeg_nct72_init(void)
 		tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
 					&ardbeg_nct72_pdata.num_trips,
 					12000); /* edp temperature margin */
+		tegra_add_tj_trips(ardbeg_nct72_pdata.trips,
+				&ardbeg_nct72_pdata.num_trips);
 		tegra_add_tgpu_trips(ardbeg_nct72_pdata.trips,
 				     &ardbeg_nct72_pdata.num_trips);
 	}

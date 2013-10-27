@@ -1441,6 +1441,9 @@ int __init ardbeg_soctherm_init(void)
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
+		tegra_add_tj_trips(
+			ardbeg_soctherm_data.therm[THERM_CPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);
 		tegra_add_tgpu_trips(
 			ardbeg_soctherm_data.therm[THERM_GPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_GPU].num_trips);
