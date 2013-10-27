@@ -923,6 +923,9 @@ int __init loki_soctherm_init(void)
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
+		tegra_add_tj_trips(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips);
 		tegra_add_tgpu_trips(
 			loki_soctherm_data.therm[THERM_GPU].trips,
 			&loki_soctherm_data.therm[THERM_GPU].num_trips);

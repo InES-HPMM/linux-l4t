@@ -338,6 +338,8 @@ static int loki_nct72_init(void)
 		tegra_platform_edp_init(loki_nct72_pdata.trips,
 					&loki_nct72_pdata.num_trips,
 					12000); /* edp temperature margin */
+		tegra_add_tj_trips(loki_nct72_pdata.trips,
+					&loki_nct72_pdata.num_trips);
 		tegra_add_tgpu_trips(loki_nct72_pdata.trips,
 				     &loki_nct72_pdata.num_trips);
 	}
@@ -345,8 +347,7 @@ static int loki_nct72_init(void)
 
 	tegra_add_cdev_trips(loki_nct72_pdata.trips,
 				&loki_nct72_pdata.num_trips);
-	tegra_add_tj_trips(loki_nct72_pdata.trips,
-				&loki_nct72_pdata.num_trips);
+
 	loki_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 
 	ret = gpio_request(nct72_port, "temp_alert");
