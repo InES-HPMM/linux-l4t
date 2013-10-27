@@ -1932,6 +1932,12 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 
 #ifdef CONFIG_DEBUG_FS
 
+static inline int get_mv(struct tegra_cl_dvfs *cld, u32 out_val)
+{
+	return is_i2c(cld) ? cld->out_map[out_val]->reg_uV / 1000 :
+		cld->p_data->vdd_map[out_val].reg_uV / 1000;
+}
+
 static int lock_get(void *data, u64 *val)
 {
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
@@ -1981,8 +1987,7 @@ static int output_get(void *data, u64 *val)
 	clk_lock_save(c, &flags);
 
 	v = cl_dvfs_get_output(cld);
-	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
-		cld->p_data->vdd_map[v].reg_uV / 1000;
+	*val = get_mv(cld, v);
 
 	clk_unlock_restore(c, &flags);
 	clk_disable(cld->soc_clk);
@@ -1995,8 +2000,7 @@ static int vmax_get(void *data, u64 *val)
 	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 	v = cld->lut_max;
-	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
-		cld->p_data->vdd_map[v].reg_uV / 1000;
+	*val = get_mv(cld, v);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmax_fops, vmax_get, NULL, "%llu\n");
@@ -2006,8 +2010,7 @@ static int vmin_get(void *data, u64 *val)
 	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 	v = cld->lut_min;
-	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
-		cld->p_data->vdd_map[v].reg_uV / 1000;
+	*val = get_mv(cld, v);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmin_fops, vmin_get, NULL, "%llu\n");
@@ -2134,6 +2137,40 @@ static int undershoot_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(undershoot_fops, undershoot_get, undershoot_set,
 			"%llu\n");
 
+static int cl_profiles_show(struct seq_file *s, void *data)
+{
+	int i, *trips;
+	struct clk *c = s->private;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+	seq_printf(s, "FLOORS:\n");
+	for (i = 0; i < cld->therm_floors_num; i++) {
+		u8 v = cld->thermal_out_floors[i];
+		trips = cld->safe_dvfs->dvfs_rail->vmin_cdev->trip_temperatures;
+		seq_printf(s, "%3dC %5dmV\n", trips[i], get_mv(cld, v));
+	}
+
+	seq_printf(s, "CAPS:\n");
+	for (i = 0; i < cld->therm_caps_num; i++) {
+		u8 v = cld->thermal_out_caps[i];
+		trips = cld->safe_dvfs->dvfs_rail->vmax_cdev->trip_temperatures;
+		seq_printf(s, "%3dC %5dmV\n", trips[i], get_mv(cld, v));
+	}
+	return 0;
+}
+
+static int cl_profiles_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cl_profiles_show, inode->i_private);
+}
+
+static const struct file_operations cl_profiles_fops = {
+	.open		= cl_profiles_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int cl_register_show(struct seq_file *s, void *data)
 {
 	u32 offs;
@@ -2259,6 +2296,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	if (!debugfs_create_file("pmu_undershoot_gb", S_IRUGO,
 		cl_dvfs_dentry, dfll_clk, &undershoot_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("profiles", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &cl_profiles_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
