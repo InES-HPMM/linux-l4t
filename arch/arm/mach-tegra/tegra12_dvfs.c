@@ -45,6 +45,13 @@ static bool tegra_dvfs_gpu_disabled;
 static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
 
+static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72,   82, };
+static int vdd_cpu_therm_caps_table[MAX_THERMAL_LIMITS] = { 1230, 1210, 1180, };
+
+static struct tegra_cooling_device cpu_vmax_cdev = {
+	.cdev_type = "cpu_hot",
+};
+
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
 };
@@ -68,6 +75,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
+	.vmax_cdev = &cpu_vmax_cdev,
 	.alignment = {
 		.step_uv = 10000, /* 10mV */
 	},
@@ -685,6 +693,11 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	/* Init cpu thermal floors */
 	tegra_dvfs_rail_init_vmin_thermal_profile(
 		d->vmin_trips_table, d->therm_floors_table,
+		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+
+	/* Init cpu thermal caps */
+	tegra_dvfs_rail_init_vmax_thermal_profile(
+		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
 
 	return 0;
