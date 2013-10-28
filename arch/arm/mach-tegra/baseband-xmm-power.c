@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -252,9 +252,6 @@ static int xmm_power_on(struct platform_device *device)
 		xmm_power_reset_on(pdata);
 	}
 
-	ret = enable_irq_wake(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
-	if (ret < 0)
-		pr_err("%s: enable_irq_wake error\n", __func__);
 	pr_debug("%s }\n", __func__);
 
 	return 0;
@@ -288,10 +285,6 @@ static int xmm_power_off(struct platform_device *device)
 	spin_lock_irqsave(&xmm_lock, flags);
 	ipc_ap_wake_state = IPC_AP_WAKE_UNINIT;
 	spin_unlock_irqrestore(&xmm_lock, flags);
-
-	ret = disable_irq_wake(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
-	if (ret < 0)
-		pr_err("%s: disable_irq_wake error\n", __func__);
 
 	/* unregister usb host controller */
 	if (pdata->hsic_unregister)
@@ -919,11 +912,6 @@ static int xmm_power_driver_probe(struct platform_device *device)
 				__func__);
 			return err;
 		}
-		err = enable_irq_wake(gpio_to_irq(
-					pdata->modem.xmm.ipc_ap_wake));
-		if (err < 0)
-			pr_err("%s: enable_irq_wake error\n", __func__);
-
 		pr_debug("%s: set state IPC_AP_WAKE_IRQ_READY\n", __func__);
 		/* ver 1130 or later start in IRQ_READY state */
 		ipc_ap_wake_state = IPC_AP_WAKE_IRQ_READY;
@@ -1002,6 +990,9 @@ static int xmm_power_driver_remove(struct platform_device *device)
 #ifdef CONFIG_PM
 static int xmm_power_driver_suspend(struct device *dev)
 {
+	int err = 0;
+	struct platform_device *device = to_platform_device(dev);
+	struct baseband_power_platform_data *pdata = device->dev.platform_data;
 	pr_debug("%s\n", __func__);
 
 	/* check if modem is on */
@@ -1009,19 +1000,36 @@ static int xmm_power_driver_suspend(struct device *dev)
 		pr_debug("%s - flight mode - nop\n", __func__);
 		return 0;
 	}
+
+	if (pdata->modem.xmm.ipc_ap_wake) {
+		err = enable_irq_wake(gpio_to_irq(
+				pdata->modem.xmm.ipc_ap_wake));
+		if (err < 0)
+			pr_err("%s: enable_irq_wake error=%d\n", __func__, err);
+	}
 	/* PMC is driving hsic bus
 	 */
-	return 0;
+	return err;
 }
 
 static int xmm_power_driver_resume(struct device *dev)
 {
+	int err = 0;
+	struct platform_device *device = to_platform_device(dev);
+	struct baseband_power_platform_data *pdata = device->dev.platform_data;
 	pr_debug("%s\n", __func__);
 
 	/* check if modem is on */
 	if (power_onoff == 0) {
 		pr_debug("%s - flight mode - nop\n", __func__);
 		return 0;
+	}
+	if (pdata->modem.xmm.ipc_ap_wake) {
+		err = disable_irq_wake(
+			gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
+		if (err < 0)
+			pr_err("%s: disable_irq_wake error=%d\n",
+				__func__, err);
 	}
 	/* PMC is driving hsic bus
 	 */
