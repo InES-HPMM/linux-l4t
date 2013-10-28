@@ -5454,6 +5454,7 @@ static struct tegra12_emc_pdata ardbeg_lpddr3_emc_pdata = {
 int __init ardbeg_emc_init(void)
 {
 	struct board_info bi;
+	int use_dt_emc_table = 0;
 
 	/*
 	 * If the EMC table is successfully read from the NCT partition,
@@ -5473,6 +5474,7 @@ int __init ardbeg_emc_init(void)
 		case BOARD_E1782:
 			if (of_machine_is_compatible("nvidia,tn8")) {
 				pr_info("Loading TN8 EMC tables from DeviceTree.\n");
+				use_dt_emc_table = true;
 			} else {
 				pr_info("Loading Ardbeg EMC tables.\n");
 				tegra_emc_device.dev.platform_data =
@@ -5491,7 +5493,9 @@ int __init ardbeg_emc_init(void)
 	}
 	#endif
 
-	platform_device_register(&tegra_emc_device);
+	if (!use_dt_emc_table)
+		platform_device_register(&tegra_emc_device);
+
 	tegra12_emc_init();
 	return 0;
 }
