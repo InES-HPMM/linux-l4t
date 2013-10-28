@@ -233,6 +233,7 @@ struct thermal_zone_params {
 struct thermal_genl_event {
 	u32 orig;
 	enum events event;
+	int temp;
 };
 
 /* Function declarations */
@@ -265,10 +266,10 @@ void thermal_notify_framework(struct thermal_zone_device *, int);
 
 #ifdef CONFIG_NET
 extern int thermal_generate_netlink_event(struct thermal_zone_device *tz,
-						enum events event);
+						enum events event, int temp);
 #else
 static inline int thermal_generate_netlink_event(struct thermal_zone_device *tz,
-						enum events event)
+						enum events event, int temp)
 {
 	return 0;
 }
