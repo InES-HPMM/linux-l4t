@@ -1,4 +1,6 @@
 /*
+ * arch/arm/mach-tegra/include/mach/iomap.h
+ *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
@@ -55,17 +57,8 @@
 #define TEGRA_ARM_PERIF_BASE		0x50040000
 #define TEGRA_ARM_PERIF_SIZE		SZ_8K
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
-
 #define TEGRA_MSELECT_BASE		0x50042000
 #define TEGRA_MSELECT_SIZE		80
-
-#else
-
-#define TEGRA_MSELECT_BASE		0x50060000
-#define TEGRA_MSELECT_SIZE		SZ_4K
-
-#endif
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 
@@ -84,11 +77,37 @@
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 
-#define TEGRA_GK20A_BAR0_BASE  0x57000000
-#define TEGRA_GK20A_BAR0_SIZE  SZ_16M
+#define TEGRA_GK20A_BAR0_BASE		0x57000000
+#define TEGRA_GK20A_BAR0_SIZE		SZ_16M
 
-#define TEGRA_GK20A_BAR1_BASE  0x58000000
-#define TEGRA_GK20A_BAR1_SIZE  SZ_16M
+#define TEGRA_GK20A_BAR1_BASE		0x58000000
+#define TEGRA_GK20A_BAR1_SIZE		SZ_16M
+
+#define TEGRA_AFC0_BASE			0x70307000
+#define TEGRA_AFC0_SIZE			SZ_256
+
+#define TEGRA_AFC1_BASE			0x70307100
+#define TEGRA_AFC1_SIZE			SZ_256
+
+#define TEGRA_AFC2_BASE			0x70307200
+#define TEGRA_AFC2_SIZE			SZ_256
+
+#define TEGRA_AFC3_BASE			0x70307300
+#define TEGRA_AFC3_SIZE			SZ_256
+
+#define TEGRA_AFC4_BASE			0x70307400
+#define TEGRA_AFC4_SIZE			SZ_256
+
+#define TEGRA_AFC5_BASE			0x70307500
+#define TEGRA_AFC5_SIZE			SZ_256
+
+#define TEGRA_VDE_BASE			0x60030000
+#define TEGRA_VDE_SIZE			SZ_16K
+
+#else
+
+#define TEGRA_VDE_BASE			0x6001A000
+#define TEGRA_VDE_SIZE			0x3c00
 
 #endif
 
@@ -708,12 +727,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_KFUSE_BASE		0x7000FC00
 #define TEGRA_KFUSE_SIZE		SZ_1K
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define TEGRA_CSITE_BASE		0x70040000
-#else
-#define TEGRA_CSITE_BASE		0x70800000
-#endif
 #define TEGRA_CSITE_SIZE		SZ_256K
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
@@ -831,226 +845,29 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_MIPI_BIF_SIZE		SZ_1K
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#define TEGRA_AFC0_BASE		0x70307000
-#define TEGRA_AFC0_SIZE		SZ_256
-
-#define TEGRA_AFC1_BASE		0x70307100
-#define TEGRA_AFC1_SIZE		SZ_256
-
-#define TEGRA_AFC2_BASE		0x70307200
-#define TEGRA_AFC2_SIZE		SZ_256
-
-#define TEGRA_AFC3_BASE		0x70307300
-#define TEGRA_AFC3_SIZE		SZ_256
-
-#define TEGRA_AFC4_BASE		0x70307400
-#define TEGRA_AFC4_SIZE		SZ_256
-
-#define TEGRA_AFC5_BASE		0x70307500
-#define TEGRA_AFC5_SIZE		SZ_256
-
-#define TEGRA_VDE_BASE			0x60030000
-#define TEGRA_VDE_SIZE			SZ_16K
-
+#if defined(CONFIG_TEGRA_DEBUG_UARTA)
+# define TEGRA_DEBUG_UART_BASE TEGRA_UARTA_BASE
+#elif defined(CONFIG_TEGRA_DEBUG_UARTB)
+# define TEGRA_DEBUG_UART_BASE TEGRA_UARTB_BASE
+#elif defined(CONFIG_TEGRA_DEBUG_UARTC)
+# define TEGRA_DEBUG_UART_BASE TEGRA_UARTC_BASE
+#elif defined(CONFIG_TEGRA_DEBUG_UARTD)
+# define TEGRA_DEBUG_UART_BASE TEGRA_UARTD_BASE
+#elif defined(CONFIG_TEGRA_DEBUG_UARTE)
+# define TEGRA_DEBUG_UART_BASE TEGRA_UARTE_BASE
 #else
-
-#define TEGRA_VDE_BASE			0x6001A000
-#define TEGRA_VDE_SIZE			0x3c00
-
+# define TEGRA_DEBUG_UART_BASE 0
 #endif
 
-/* On TEGRA, many peripherals are very closely packed in
- * two 256 MB io windows (that actually only use about 64 KB
- * at the start of each).
- *
- * We will just map the first 1 MB of each window (to minimize
- * pt entries needed) and provide a macro to transform physical
- * io addresses to an appropriate void __iomem *.
- *
- * Always map simulation specific devices to lowest address.
- *
- * The base address of each aperture must be aligned to a PMD
- * (2 MB boundary).
- *
- */
+#if defined(CONFIG_ARCH_TEGRA_17x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 
-#ifdef CONFIG_ARM_LPAE
-#define ROUND_UP(x, n)		(((x) + (n) - 1) & ~((n) - 1))
-#define IO_VIRT_ROUND_UP(x)	ROUND_UP(x, SZ_2M)
-#else
-#define IO_VIRT_ROUND_UP(x)	(x)
+#define TEGRA_NVENC_BASE		0x544c0000
+#define TEGRA_NVENC_SIZE		SZ_256K
+#define TEGRA_NVDEC_BASE		0x54480000
+#define TEGRA_NVDEC_SIZE		SZ_256K
+#define TEGRA_NVJPG_BASE		0x54380000
+#define TEGRA_NVJPG_SIZE		SZ_256K
+
 #endif
-
-/* Define physical aperture limits */
-#ifdef CONFIG_TEGRA_GK20A
-#define IO_GK20A_B0_PHYS	0x57000000
-#define IO_GK20A_B0_SIZE	0x01000000
-
-#define IO_GK20A_B1_PHYS	0x58000000
-#define IO_GK20A_B1_SIZE	0x01000000
-#endif
-
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#define IO_SMC_PHYS	0x77000000
-#define IO_SMC_SIZE	SZ_1M
-
-#define IO_SIM_ESCAPE_PHYS	0x538f0000
-#define IO_SIM_ESCAPE_SIZE	SZ_4K
-#endif
-
-#define IO_IRAM_PHYS	0x40000000
-#define IO_IRAM_SIZE	SZ_256K
-
-#define IO_CPU_PHYS	0x50000000
-#define IO_CPU_SIZE	SZ_1M
-
-#define IO_PPSB_PHYS	0x60000000
-#define IO_PPSB_SIZE	SZ_1M
-
-#define IO_APB_PHYS	0x70000000
-#define IO_APB_SIZE	SZ_4M
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_USB_PHYS	0xC5000000
-#else
-#define IO_USB_PHYS	0x7D000000
-#endif
-#define IO_USB_SIZE	SZ_1M
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_SDMMC_PHYS	0xC8000000
-#else
-#define IO_SDMMC_PHYS	0x78000000
-#endif
-#define IO_SDMMC_SIZE	SZ_1M
-
-#define IO_HOST1X_PHYS	0x54000000
-#define IO_HOST1X_SIZE	SZ_8M
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_PPCS_PHYS	0xC4000000
-#else
-#define IO_PPCS_PHYS	0x7C000000
-#endif
-#define IO_PPCS_SIZE	SZ_1M
-
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#define IO_PCIE_PHYS	0x80000000
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#define IO_PCIE_PHYS	0x00000000
-#else
-#define IO_PCIE_PHYS	0x01000000
-#endif
-#if defined(CONFIG_TEGRA_PCI)
-#define IO_PCIE_SIZE	(SZ_16M * 2)
-#else
-#define IO_PCIE_SIZE	0
-#endif
-
-#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_TEGRA_GMI)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_NOR_PHYS	0xD0000000
-#define IO_NOR_SIZE	(SZ_64M)
-#else
-#define IO_NOR_PHYS	0x48000000
-#if defined(CONFIG_TEGRA_GMI)
-#define IO_NOR_SIZE	((CONFIG_MTD_NOR_TEGRA_VMALLOC_SIZE) * SZ_1M)
-#else
-#define IO_NOR_SIZE	(SZ_64M)
-#endif
-#endif
-#else
-#define IO_NOR_PHYS	0x0
-#define IO_NOR_SIZE	0
-#endif
-
-
-
-/* Virtual aperture limits are packed into the I/O space from the higest
-   address to lowest with each aperture base address adjusted as necessary
-   for proper section mapping boundary (2 MB) rounding. */
-#ifdef CONFIG_ARM64
-#define IO_LAST_ADDR		VMALLOC_END
-#else
-#define IO_LAST_ADDR		IOMEM(0xFEC00000)
-#endif
-#define IO_HOST1X_VIRT		IOMEM((IO_LAST_ADDR - IO_VIRT_ROUND_UP(IO_HOST1X_SIZE)))
-#define IO_SDMMC_VIRT		IOMEM((IO_HOST1X_VIRT - IO_VIRT_ROUND_UP(IO_SDMMC_SIZE)))
-#define IO_USB_VIRT		IOMEM((IO_SDMMC_VIRT - IO_VIRT_ROUND_UP(IO_USB_SIZE)))
-#define IO_APB_VIRT		IOMEM((IO_USB_VIRT - IO_VIRT_ROUND_UP(IO_APB_SIZE)))
-#define IO_PPSB_VIRT		IOMEM((IO_APB_VIRT - IO_VIRT_ROUND_UP(IO_PPSB_SIZE)))
-#define IO_CPU_VIRT		IOMEM((IO_PPSB_VIRT - IO_VIRT_ROUND_UP(IO_CPU_SIZE)))
-#define IO_IRAM_VIRT		IOMEM((IO_CPU_VIRT - IO_VIRT_ROUND_UP(IO_IRAM_SIZE)))
-#define IO_PPCS_VIRT		IOMEM((IO_IRAM_VIRT - IO_VIRT_ROUND_UP(IO_PPCS_SIZE)))
-#define IO_PCIE_VIRT		IOMEM((IO_PPCS_VIRT - IO_VIRT_ROUND_UP(IO_PCIE_SIZE)))
-#define IO_NOR_VIRT		IOMEM((IO_PCIE_VIRT - IO_VIRT_ROUND_UP(IO_NOR_SIZE)))
-#ifdef CONFIG_TEGRA_GK20A
-#define IO_GK20A_B0_VIRT	(IO_NOR_VIRT - IO_VIRT_ROUND_UP(IO_GK20A_B0_SIZE))
-#define IO_GK20A_B1_VIRT	(IO_GK20A_B0_VIRT - IO_VIRT_ROUND_UP(IO_GK20A_B1_SIZE))
-#else
-#define IO_GK20A_B0_VIRT	IO_NOR_VIRT
-#define IO_GK20A_B1_VIRT	IO_NOR_VIRT
-#endif
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#define IO_SIM_ESCAPE_VIRT	IOMEM((IO_GK20A_B1_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE)))
-#define IO_SMC_VIRT		IOMEM((IO_SIM_ESCAPE_VIRT - IO_VIRT_ROUND_UP(IO_SMC_SIZE)))
-#endif
-
-#define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
-#define IO_TO_VIRT_XLATE(p, pst, vst)	((void *)((p) - (pst) + (vst)))
-
-#ifdef CONFIG_TEGRA_GK20A
-#define IO_TO_VIRT_GK20A_B0(n) \
-	IO_TO_VIRT_BETWEEN((n), IO_GK20A_B0_PHYS, IO_GK20A_B0_SIZE) ?	\
-		IO_TO_VIRT_XLATE((n), IO_GK20A_B0_PHYS, IO_GK20A_B0_VIRT) :
-#define IO_TO_VIRT_GK20A_B1(n) \
-	IO_TO_VIRT_BETWEEN((n), IO_GK20A_B1_PHYS, IO_GK20A_B1_SIZE) ?	\
-		IO_TO_VIRT_XLATE((n), IO_GK20A_B1_PHYS, IO_GK20A_B1_VIRT) :
-#else
-#define IO_TO_VIRT_GK20A_B0(n)
-#define IO_TO_VIRT_GK20A_B1(n)
-#endif
-
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#define IO_TO_VIRT_SMC(n) \
-	IO_TO_VIRT_BETWEEN((n), IO_SMC_PHYS, IO_SMC_SIZE) ?             \
-		IO_TO_VIRT_XLATE((n), IO_SMC_PHYS, IO_SMC_VIRT) :
-#define IO_TO_VIRT_SIM_ESCAPE(n) \
-	IO_TO_VIRT_BETWEEN((n), IO_SIM_ESCAPE_PHYS, IO_SIM_ESCAPE_SIZE) ? \
-		IO_TO_VIRT_XLATE((n), IO_SIM_ESCAPE_PHYS, IO_SIM_ESCAPE_VIRT) :
-#else
-#define IO_TO_VIRT_SMC(n)
-#define IO_TO_VIRT_SIM_ESCAPE(n)
-#endif
-
-#define IO_TO_VIRT(n) ( \
-	IO_TO_VIRT_BETWEEN((n), IO_PPSB_PHYS, IO_PPSB_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_PPSB_PHYS, IO_PPSB_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_APB_PHYS, IO_APB_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_APB_PHYS, IO_APB_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_CPU_PHYS, IO_CPU_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_CPU_PHYS, IO_CPU_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_IRAM_PHYS, IO_IRAM_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_IRAM_PHYS, IO_IRAM_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_HOST1X_PHYS, IO_HOST1X_SIZE) ?	\
-		IO_TO_VIRT_XLATE((n), IO_HOST1X_PHYS, IO_HOST1X_VIRT) :	\
-	IO_TO_VIRT_GK20A_B0(n) \
-	IO_TO_VIRT_GK20A_B1(n) \
-	IO_TO_VIRT_BETWEEN((n), IO_USB_PHYS, IO_USB_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_USB_PHYS, IO_USB_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_SDMMC_PHYS, IO_SDMMC_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_SDMMC_PHYS, IO_SDMMC_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_PPCS_PHYS, IO_PPCS_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_PPCS_PHYS, IO_PPCS_VIRT) :	\
-	IO_TO_VIRT_BETWEEN((n), IO_PCIE_PHYS, IO_PCIE_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_PCIE_PHYS, IO_PCIE_VIRT) :	\
-	IO_TO_VIRT_SMC((n))		\
-	IO_TO_VIRT_SIM_ESCAPE((n))	\
-	IO_TO_VIRT_BETWEEN((n), IO_NOR_PHYS, IO_NOR_SIZE) ?		\
-		IO_TO_VIRT_XLATE((n), IO_NOR_PHYS, IO_NOR_VIRT) :	\
-	NULL)
-
-#define IO_ADDRESS(n) (IO_TO_VIRT(n))
 
 #endif

@@ -460,6 +460,9 @@
 #define SUPER_CLOCK_DIV_U71_SHIFT	16
 #define SUPER_CLOCK_DIV_U71_MASK	(0xff << SUPER_CLOCK_DIV_U71_SHIFT)
 
+#define CLK13_SOURCE_SHIFT		28
+#define CLK13_SOURCE_MASK		0xF
+
 #define BUS_CLK_DISABLE			(1<<3)
 #define BUS_CLK_DIV_MASK		0x3
 
@@ -662,6 +665,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 };
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+static void __iomem *reg_clk13_base = IO_ADDRESS(TEGRA_CLK13_RESET_BASE);
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
@@ -683,6 +687,10 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	__raw_writel(value, reg_clk_base + (reg))
 #define clk_readl(reg) \
 	__raw_readl(reg_clk_base + (reg))
+#define clk13_writel(value, reg) \
+	__raw_writel(value, reg_clk13_base + (reg))
+#define clk13_readl(reg) \
+	__raw_readl(reg_clk13_base + (reg))
 #define pmc_writel(value, reg) \
 	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
@@ -696,6 +704,13 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	do {								\
 		__raw_writel((value), reg_clk_base + (reg));		\
 		__raw_readl(reg_clk_base + (reg));			\
+		udelay(2);						\
+	} while (0)
+
+#define clk13_writel_delay(value, reg) 					\
+	do {								\
+		clk13_writel(value, reg);					\
+		clk13_readl(reg);						\
 		udelay(2);						\
 	} while (0)
 
@@ -1122,6 +1137,127 @@ static struct clk_ops tegra_super_ops = {
 	.disable		= tegra12_super_clk_disable,
 	.set_parent		= tegra12_super_clk_set_parent,
 	.set_rate		= tegra12_super_clk_set_rate,
+};
+
+static void tegra13_cpu_clk_init(struct clk *c)
+{
+	u32 val;
+	int source;
+	int shift;
+	const struct clk_mux_sel *sel;
+	val = clk13_readl(c->reg + SUPER_CLK_MUX);
+	c->state = ON;
+
+	shift  = CLK13_SOURCE_SHIFT;
+	source = (val >> shift) & CLK13_SOURCE_MASK;
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->value == source)
+			break;
+	}
+	BUG_ON(sel->input == NULL);
+	c->parent = sel->input;
+
+	if (c->flags & DIV_U71) {
+		c->mul = 2;
+		c->div = 2;
+
+		/*
+		 * Make sure 7.1 divider is 1:1; clear h/w skipper control -
+		 * it will be enabled by soctherm later
+		 */
+		val = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
+		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
+		val = 0;
+		clk13_writel(val, c->reg + SUPER_CLK_DIVIDER);
+	}
+	else
+		clk13_writel(0, c->reg + SUPER_CLK_DIVIDER);
+}
+
+static int tegra13_cpu_clk_enable(struct clk *c)
+{
+	return 0;
+}
+
+static void tegra13_cpu_clk_disable(struct clk *c)
+{
+	/* since tegra 3 has 2 CPU super clocks - low power lp-mode clock and
+	   geared up g-mode super clock - mode switch may request to disable
+	   either of them; accept request with no affect on h/w */
+}
+
+static int tegra13_cpu_clk_set_parent(struct clk *c, struct clk *p)
+{
+	u32 val;
+	const struct clk_mux_sel *sel;
+	int shift;
+
+	val = clk13_readl(c->reg);
+	shift = CLK13_SOURCE_SHIFT;
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == p) {
+			val &= ~(CLK13_SOURCE_MASK << shift);
+			val |= (sel->value & CLK13_SOURCE_MASK) << shift;
+
+			if (c->flags & DIV_U71) {
+				/* Make sure 7.1 divider is 1:1 */
+				u32 div = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
+				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK);
+			}
+
+			if (c->refcnt)
+				clk_enable(p);
+
+			clk13_writel_delay(val, c->reg);
+
+			if (c->refcnt && c->parent)
+				clk_disable(c->parent);
+
+			clk_reparent(c, p);
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+/*
+ * Do not use super clocks "skippers", since dividing using a clock skipper
+ * does not allow the voltage to be scaled down. Instead adjust the rate of
+ * the parent clock. This requires that the parent of a super clock have no
+ * other children, otherwise the rate will change underneath the other
+ * children.
+ */
+static int tegra13_cpu_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	/* In tegra12_cpu_clk_set_plls() and  tegra12_sbus_cmplx_set_rate()
+	 * this call is skipped by directly setting rate of source plls. If we
+	 * ever use 7.1 divider at other than 1:1 setting, or exercise s/w
+	 * skipper control, not only this function, but cpu and sbus set_rate
+	 * APIs should be changed accordingly.
+	 */
+	return clk_set_rate(c->parent, rate);
+}
+
+#ifdef CONFIG_PM_SLEEP
+static void tegra13_cpu_clk_resume(struct clk *c, struct clk *backup,
+				     u32 setting)
+{
+	/* For sclk and cclk_g super clock just restore saved value */
+	if (!(c->flags & DIV_2)) {
+		clk13_writel_delay(setting, c->reg);
+		return;
+	}
+	BUG();
+}
+#endif
+
+static struct clk_ops tegra13_cpu_ops = {
+	.init			= tegra13_cpu_clk_init,
+	.enable			= tegra13_cpu_clk_enable,
+	.disable		= tegra13_cpu_clk_disable,
+	.set_parent		= tegra13_cpu_clk_set_parent,
+	.set_rate		= tegra13_cpu_clk_set_rate,
 };
 
 /* virtual cpu clock functions */
@@ -7025,7 +7161,29 @@ static void init_clk_out_mux(void)
 	}
 }
 
+static struct clk_mux_sel mux_sclk[] = {
+	{ .input = &tegra_clk_m,	.value = 0},
+	{ .input = &tegra_pll_c_out1,	.value = 1},
+	{ .input = &tegra_pll_p_out4,	.value = 2},
+	{ .input = &tegra_pll_p,	.value = 3},
+	{ .input = &tegra_pll_p_out2,	.value = 4},
+	{ .input = &tegra_pll_c,	.value = 5},
+	{ .input = &tegra_clk_32k,	.value = 6},
+	{ .input = &tegra_pll_m_out1,	.value = 7},
+	{ 0, 0},
+};
+
+static struct clk tegra_clk_sclk = {
+	.name	= "sclk",
+	.inputs	= mux_sclk,
+	.reg	= 0x28,
+	.ops	= &tegra_super_ops,
+	.max_rate = 420000000,
+	.min_rate = 12000000,
+};
+
 /* Peripheral muxes */
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk_mux_sel mux_cclk_g[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c,	.value = 1},
@@ -7040,7 +7198,6 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ 0, 0},
 };
 
-#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c,	.value = 1},
@@ -7054,20 +7211,27 @@ static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_pll_x,	.value = 8 | SUPER_LP_DIV2_BYPASS},
 	{ 0, 0},
 };
-#endif
+#else
 
-static struct clk_mux_sel mux_sclk[] = {
-	{ .input = &tegra_clk_m,	.value = 0},
-	{ .input = &tegra_pll_c_out1,	.value = 1},
-	{ .input = &tegra_pll_p_out4,	.value = 2},
-	{ .input = &tegra_pll_p,	.value = 3},
-	{ .input = &tegra_pll_p_out2,	.value = 4},
-	{ .input = &tegra_pll_c,	.value = 5},
-	{ .input = &tegra_clk_32k,	.value = 6},
-	{ .input = &tegra_pll_m_out1,	.value = 7},
-	{ 0, 0},
+static struct clk_mux_sel mux_cclk_g[] = {
+        { .input = &tegra_clk_m,        .value = 0},
+        /* { .input = ,        		.value = 1}, - testclk */
+        { .input = &tegra_clk_m,        .value = 2},
+        { .input = &tegra_pll_ref,      .value = 3},
+        { .input = &tegra_pll_m,        .value = 4},
+        { .input = &tegra_pll_p,        .value = 5},
+        { .input = &tegra_clk_sclk,	.value = 6},
+        { .input = &tegra_clk_m,        .value = 7},
+        { .input = &tegra_pll_x,        .value = 8},
+        /* { .input = ,        		.value = 9},  - High jitter DFLL */
+        /* { .input = ,        		.value = 14}, - High jitter PLLX */
+        { .input = &tegra_dfll_cpu,     .value = 15},
+        { 0, 0},
 };
 
+#endif
+
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
 	.flags  = DIV_U71 | DIV_U71_INT | MUX,
@@ -7077,7 +7241,6 @@ static struct clk tegra_clk_cclk_g = {
 	.max_rate = 3000000000UL,
 };
 
-#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct clk tegra_clk_cclk_lp = {
 	.name	= "cclk_lp",
 	.flags  = DIV_2 | DIV_U71 | DIV_U71_INT | MUX,
@@ -7086,16 +7249,19 @@ static struct clk tegra_clk_cclk_lp = {
 	.ops	= &tegra_super_ops,
 	.max_rate = 1350000000,
 };
-#endif
+#else
 
-static struct clk tegra_clk_sclk = {
-	.name	= "sclk",
-	.inputs	= mux_sclk,
-	.reg	= 0x28,
-	.ops	= &tegra_super_ops,
-	.max_rate = 408000000,
-	.min_rate = 12000000,
+static struct clk tegra_clk_cclk_g = {
+	.name	= "cclk_g",
+	.flags  = DIV_U71 | DIV_U71_INT | MUX,
+	.inputs	= mux_cclk_g,
+	.reg	= 0x20,
+	/*.ops	= &tegra_super_ops,*/
+	.ops	= &tegra13_cpu_ops,
+	.max_rate = 3000000000UL,
 };
+
+#endif
 
 static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
