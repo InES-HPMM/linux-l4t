@@ -29,6 +29,7 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/irqchip.h>
 
 #include <asm/mach/arch.h>
 
@@ -81,7 +82,7 @@ DT_MACHINE_START(TEGRA30_DT, "NVIDIA Tegra30 (Flattened Device Tree)")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.init_early	= tegra30_init_early,
-	.init_irq	= tegra_dt_init_irq,
+	.init_irq	= irqchip_init,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra30_dt_init,
 	.init_late	= tegra_init_late,

@@ -9,7 +9,6 @@ obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += board-info.o
 obj-y                                   += io.o
-obj-y                                   += irq.o
 obj-y                                   += clock.o
 ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
 obj-y                                   += timer.o
@@ -74,7 +73,6 @@ obj-y                                   += delay.o
 obj-y                                   += pm.o
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
-obj-y                                   += gic.o
 
 obj-y                                   += sleep.o
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
@@ -98,7 +96,6 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
 obj-y                                   += mc.o
-obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-$(CONFIG_PM_GENERIC_DOMAINS)        += pm_domains.o

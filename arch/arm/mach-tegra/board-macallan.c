@@ -49,6 +49,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
 #include <linux/clocksource.h>
+#include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
@@ -721,7 +722,7 @@ MACHINE_START(MACALLAN, "macallan")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_macallan_reserve,
 	.init_early	= tegra11x_init_early,
-	.init_irq	= tegra_dt_init_irq,
+	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_macallan_dt_init,
 	.restart	= tegra_assert_system_reset,

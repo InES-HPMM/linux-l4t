@@ -27,6 +27,7 @@
 #include <linux/of_platform.h>
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
+#include <linux/irqchip.h>
 
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/pci.h>
@@ -579,7 +580,7 @@ DT_MACHINE_START(VCM30_T124, "vcm30_t124")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_vcm30_t124_reserve,
 	.init_early	= tegra12x_init_early,
-	.init_irq	= tegra_dt_init_irq,
+	.init_irq	= irqchip_init,
         .init_time      = clocksource_of_init,
 	.init_machine	= tegra_vcm30_t124_dt_init,
 	.restart	= tegra_assert_system_reset,

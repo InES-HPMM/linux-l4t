@@ -14,6 +14,16 @@
 		      <0x50042000 0x0100>;
 	};
 
+	lic: interrupt-controller@60004000 {
+		compatible = "nvidia,tegra-gic";
+		interrupt-controller;
+		reg = <0x60004000 0x40>,
+		      <0x60004100 0x40>,
+		      <0x60004200 0x40>,
+		      <0x60004300 0x40>,
+		      <0x60004400 0x40>;
+        };
+
 	timer {
 		compatible = "arm,armv7-timer";
 		interrupts = <1 13 0xf04

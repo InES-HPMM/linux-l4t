@@ -54,6 +54,8 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
 #include <linux/clocksource.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
+#include <linux/irqchip.h>
 
 #include <mach/irqs.h>
 #include <mach/pci.h>
@@ -875,7 +877,7 @@ DT_MACHINE_START(LOKI, "loki")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_loki_reserve,
 	.init_early	= tegra_loki_init_early,
-	.init_irq	= tegra_dt_init_irq,
+	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_loki_dt_init,
 	.restart	= tegra_assert_system_reset,

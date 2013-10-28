@@ -96,7 +96,6 @@ void __init tegra11x_init_early(void);
 void __init tegra12x_init_early(void);
 void __init tegra14x_init_early(void);
 void __init tegra_map_common_io(void);
-void __init tegra_dt_init_irq(void);
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size);
 int __init tegra_release_bootloader_fb(void);

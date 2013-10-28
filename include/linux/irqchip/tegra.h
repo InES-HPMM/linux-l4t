@@ -45,7 +45,6 @@ void tegra_gic_affinity_to_cpu0(void);
 #endif
 
 u32 tegra_gic_version(void);
-void __init tegra_gic_init(bool is_dt);
 
 #if defined(CONFIG_PM_SLEEP)
 u64 tegra_read_pmc_wake_status(void);
