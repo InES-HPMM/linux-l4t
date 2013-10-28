@@ -463,6 +463,7 @@ static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
 static bool soctherm_suspended;
 static bool soctherm_high_voltage_range = true;
+static u32 tegra_chip_id;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
@@ -856,7 +857,6 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 	struct thermal_trip_info *trip_state = cdev->devdata;
 	u32 r, m, n;
 	int i, j;
-	u32 tegra_chip_id;
 
 	if (!trip_state)
 		return 0;
@@ -865,7 +865,6 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 	if (trip_state->trip_type != THERMAL_TRIP_HOT)
 		return 0;
 
-	tegra_chip_id = tegra_get_chip_id();
 	for (j = 0; j < THROTTLE_DEV_SIZE; j++) {
 		r = soctherm_readl(CPU_PSKIP_STATUS + (j * 4));
 		if (!REG_GET(r, CPU_PSKIP_STATUS_ENABLED))
@@ -1575,14 +1574,12 @@ static irqreturn_t soctherm_edp_isr(int irq, void *arg)
 static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 {
 	u32 r;
-	u32 tegra_chip_id;
 	int i;
 	u8 gk20a_throt;
 	bool throt_enable = false;
 	struct soctherm_throttle_dev *dev;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 
-	tegra_chip_id = tegra_get_chip_id();
 	for (i = 0; i < THROTTLE_DEV_SIZE; i++) {
 		dev = &data->devs[i];
 		if (!dev->enable)
@@ -1684,7 +1681,6 @@ static int __init soctherm_clk_init(void)
 {
 	unsigned long default_soctherm_clk_rate;
 	unsigned long default_tsensor_clk_rate;
-	u32 tegra_chip_id;
 
 	soctherm_clk = clk_get_sys("soc_therm", NULL);
 	tsensor_clk = clk_get_sys("tegra-tsensor", NULL);
@@ -1696,7 +1692,6 @@ static int __init soctherm_clk_init(void)
 		return -EINVAL;
 	}
 
-	tegra_chip_id = tegra_get_chip_id();
 	/* initialize default clock rates */
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
 		default_soctherm_clk_rate =
@@ -1753,7 +1748,6 @@ static int soctherm_fuse_read_calib_base(void)
 {
 	s32 calib_cp, calib_ft;
 	s32 nominal_calib_cp, nominal_calib_ft;
-	u32 tegra_chip_id;
 
 	if (tegra_fuse_calib_base_get_cp(&fuse_calib_base_cp, &calib_cp) < 0 ||
 	    tegra_fuse_calib_base_get_ft(&fuse_calib_base_ft, &calib_ft) < 0) {
@@ -1762,7 +1756,6 @@ static int soctherm_fuse_read_calib_base(void)
 	}
 
 	nominal_calib_cp = 25;
-	tegra_chip_id = tegra_get_chip_id();
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
 		nominal_calib_ft = 90;
 	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
@@ -1869,7 +1862,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	s32 calib, delta_sens, delta_temp;
 	s16 therm_a, therm_b;
 	s32 div, mult, actual_tsensor_ft, actual_tsensor_cp;
-	u32 tegra_chip_id;
 	int fuse_rev;
 
 	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &value);
@@ -1899,7 +1891,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				     ((s64)actual_tsensor_cp * actual_temp_ft)),
 				    (s64)delta_sens);
 
-	tegra_chip_id = tegra_get_chip_id();
 	/* FUSE corrections for Tegra when precision is set LOW */
 	if (PRECISION_IS_LOWER()) {
 		if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
@@ -2058,9 +2049,7 @@ static int soctherm_init_platform_data(void)
 	int i, j, k;
 	long rem;
 	u32 r;
-	u32 tegra_chip_id;
 
-	tegra_chip_id = tegra_get_chip_id();
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
 		sensor_defaults = default_t11x_sensor_params;
 	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
@@ -2376,7 +2365,6 @@ static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int ret;
-	u32 tegra_chip_id;
 
 	tegra_chip_id = tegra_get_chip_id();
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
@@ -2439,7 +2427,6 @@ static int regs_show(struct seq_file *s, void *data)
 	u32 state;
 	int tcpu[TSENSE_SIZE];
 	int i, j, level;
-	u32 tegra_chip_id;
 
 	if (soctherm_suspended) {
 		seq_printf(s, "SOC_THERM is SUSPENDED\n");
@@ -2598,7 +2585,6 @@ static int regs_show(struct seq_file *s, void *data)
 	state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
 	seq_printf(s, "enabled(%d)\n", state);
 
-	tegra_chip_id = tegra_get_chip_id();
 	r = soctherm_readl(CPU_PSKIP_STATUS + 4);
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
 		state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
