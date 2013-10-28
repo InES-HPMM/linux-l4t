@@ -655,7 +655,6 @@ static void nct1008_update(struct nct1008_data *data)
 	struct thermal_trip_info *trip_state;
 	long temp, trip_temp, hysteresis_temp;
 	int count;
-	enum events type = 0;
 
 	if (!thz)
 		return;
@@ -672,18 +671,13 @@ static void nct1008_update(struct nct1008_data *data)
 		    !trip_state->tripped)
 			hysteresis_temp = trip_temp;
 
-		if ((trip_temp >= temp) && (trip_temp < high_temp)) {
+		if ((trip_temp >= temp) && (trip_temp < high_temp))
 			high_temp = trip_temp;
-			type = THERMAL_AUX1;
-		}
 
-		if ((hysteresis_temp < temp) && (hysteresis_temp > low_temp)) {
+		if ((hysteresis_temp < temp) && (hysteresis_temp > low_temp))
 			low_temp = hysteresis_temp;
-			type = THERMAL_AUX0;
-		}
 	}
 
-	thermal_generate_netlink_event(thz, type);
 	nct1008_thermal_set_limits(data, low_temp, high_temp);
 }
 
