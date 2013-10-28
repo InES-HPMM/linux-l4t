@@ -54,18 +54,20 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	struct tegra12_emc_pdata *pdata = NULL;
 	const char *comp = "nvidia,tegra12-emc-table";
+	const char *emc_mode = "nvidia,emc-mode-0";
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	struct tegra11_emc_pdata *pdata = NULL;
 	const char *comp = "nvidia,tegra11-emc-table";
+	const char *emc_mode = "nvidia,emc-mode-reset";
 #endif
-
-	tegra_bct_strapping = tegra_get_bct_strapping();
 
 	if (!np) {
 		dev_err(&pdev->dev,
 			"Unable to find memory-controller node\n");
 		return NULL;
 	}
+
+	tegra_bct_strapping = tegra_get_bct_strapping();
 
 	if (of_find_property(np, "nvidia,use-ram-code", NULL)) {
 		tnp = tegra_emc_ramcode_devnode(np);
@@ -216,11 +218,10 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 		}
 		pdata->tables[i].emc_cfg = u;
 
-		ret = of_property_read_u32(iter, "nvidia,emc-mode-reset", &u);
+		ret = of_property_read_u32(iter, emc_mode, &u);
 		if (ret) {
-			dev_err(&pdev->dev,
-				"malformed emc-mode-reset property in %s\n",
-				iter->full_name);
+			dev_err(&pdev->dev, "malformed %s property in %s\n",
+				emc_mode, iter->full_name);
 			continue;
 		}
 		pdata->tables[i].emc_mode_reset = u;
