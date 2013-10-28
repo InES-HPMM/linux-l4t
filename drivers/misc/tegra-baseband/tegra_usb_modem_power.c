@@ -908,17 +908,11 @@ error:
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
 
-	if (modem->wake_irq) {
-		if (modem->wake_irq_wakeable)
-			disable_irq_wake(modem->wake_irq);
+	if (modem->wake_irq)
 		free_irq(modem->wake_irq, modem);
-	}
 
-	if (modem->boot_irq) {
-		if (modem->boot_irq_wakeable)
-			disable_irq_wake(modem->boot_irq);
+	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
-	}
 
 	if (modem->edp_initialized) {
 		edp_attrs = edp_attributes;
@@ -973,15 +967,11 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 	unregister_pm_notifier(&modem->pm_notifier);
 	usb_unregister_notify(&modem->usb_notifier);
 
-	if (modem->wake_irq) {
-		disable_irq_wake(modem->wake_irq);
+	if (modem->wake_irq)
 		free_irq(modem->wake_irq, modem);
-	}
 
-	if (modem->boot_irq) {
-		disable_irq_wake(modem->boot_irq);
+	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
-	}
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
@@ -1029,16 +1019,47 @@ static int tegra_usb_modem_suspend(struct platform_device *pdev,
 				   pm_message_t state)
 {
 	struct tegra_usb_modem *modem = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	/* send L3 hint to modem */
 	if (modem->ops && modem->ops->suspend)
 		modem->ops->suspend();
-	return 0;
+
+	if (modem->wake_irq) {
+		ret = enable_irq_wake(modem->wake_irq);
+		if (ret) {
+			pr_info("%s, wake irq=%d, error=%d\n",
+				__func__, modem->wake_irq, ret);
+			goto fail;
+		}
+	}
+
+	if (modem->boot_irq) {
+		ret = enable_irq_wake(modem->boot_irq);
+		if (ret)
+			pr_info("%s, wake irq=%d, error=%d\n",
+				__func__, modem->boot_irq, ret);
+	}
+fail:
+	return ret;
 }
 
 static int tegra_usb_modem_resume(struct platform_device *pdev)
 {
 	struct tegra_usb_modem *modem = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	if (modem->boot_irq) {
+		ret = disable_irq_wake(modem->boot_irq);
+		if (ret)
+			pr_err("Failed to disable modem boot_irq\n");
+	}
+
+	if (modem->wake_irq) {
+		ret = disable_irq_wake(modem->wake_irq);
+		if (ret)
+			pr_err("Failed to disable modem wake_irq\n");
+	}
 
 	/* send L3->L0 hint to modem */
 	if (modem->ops && modem->ops->resume)
