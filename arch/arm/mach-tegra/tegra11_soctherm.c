@@ -900,6 +900,8 @@ static int soctherm_hw_action_set_cur_state(struct thermal_cooling_device *cdev,
 	return 0; /* hw sets this state */
 }
 
+static struct thermal_cooling_device *soctherm_hw_critical_cdev;
+static struct thermal_cooling_device *soctherm_hw_hot_cdev;
 static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.get_max_state = soctherm_hw_action_get_max_state,
 	.get_cur_state = soctherm_hw_action_get_cur_state,
@@ -1237,7 +1239,10 @@ static int __init soctherm_thermal_sys_init(void)
 		for (j = 0; j < therm->num_trips; j++) {
 			switch (therm->trips[j].trip_type) {
 			case THERMAL_TRIP_CRITICAL:
-				thermal_cooling_device_register(
+				if (soctherm_hw_critical_cdev)
+					break;
+				soctherm_hw_critical_cdev =
+					thermal_cooling_device_register(
 						therm->trips[j].cdev_type,
 						&therm->trips[j],
 						&soctherm_hw_action_ops);
@@ -1279,10 +1284,13 @@ static int __init soctherm_thermal_sys_init(void)
 					     && k == THROTTLE_OC5))
 						continue;
 
-					thermal_cooling_device_register(
-						therm->trips[j].cdev_type,
-						&therm->trips[j],
-						&soctherm_hw_action_ops);
+					if (soctherm_hw_hot_cdev)
+						continue;
+					soctherm_hw_hot_cdev =
+						thermal_cooling_device_register(
+						      therm->trips[j].cdev_type,
+						      &therm->trips[j],
+						      &soctherm_hw_action_ops);
 				}
 				break;
 
