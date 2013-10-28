@@ -361,19 +361,14 @@ static void tegra_change_otg_state(struct tegra_otg *tegra,
 		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
 
 		if (from == OTG_STATE_A_SUSPEND) {
-			pm_runtime_get_sync(tegra->phy.dev);
 			if (to == OTG_STATE_B_PERIPHERAL && otg->gadget)
 				tegra_otg_start_gadget(tegra, 1);
 			else if (to == OTG_STATE_A_HOST)
 				tegra_otg_start_host(tegra, 1);
 		} else if (from == OTG_STATE_A_HOST && to == OTG_STATE_A_SUSPEND) {
 			tegra_otg_start_host(tegra, 0);
-			pm_runtime_mark_last_busy(tegra->phy.dev);
-			pm_runtime_put_autosuspend(tegra->phy.dev);
 		} else if (from == OTG_STATE_B_PERIPHERAL && otg->gadget && to == OTG_STATE_A_SUSPEND) {
 			tegra_otg_start_gadget(tegra, 0);
-			pm_runtime_mark_last_busy(tegra->phy.dev);
-			pm_runtime_put_autosuspend(tegra->phy.dev);
 		}
 	}
 }
