@@ -1455,7 +1455,8 @@ static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
  * - voltage limits are descending with temperature increasing
  * - the lowest limit is above rail minimum voltage in pll and
  *   in dfll mode (if applicable)
- * - the highest limit is below rail nominal voltage
+ * - the highest limit is below rail nominal voltage (required only
+ *   for Vmin profile)
  */
 static int __init get_thermal_profile_size(
 	int *trips_table, int *limits_table,
@@ -1480,10 +1481,6 @@ static int __init get_thermal_profile_size(
 		return -EINVAL;
 	}
 
-	if (limits_table[0] > rail->nominal_millivolts) {
-		pr_warn("%s: thermal profile above Vmax\n", rail->reg_id);
-		return -EINVAL;
-	}
 	return i + 1;
 }
 
@@ -1516,7 +1513,8 @@ void __init tegra_dvfs_rail_init_vmin_thermal_profile(
 {
 	int i = get_thermal_profile_size(therm_trips_table,
 					 therm_floors_table, rail, d);
-	if (i <= 0) {
+
+	if (i <= 0 || therm_floors_table[0] > rail->nominal_millivolts) {
 		rail->vmin_cdev = NULL;
 		WARN(1, "%s: invalid Vmin thermal profile\n", rail->reg_id);
 		return;
