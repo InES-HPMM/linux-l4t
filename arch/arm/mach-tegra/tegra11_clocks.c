@@ -7061,6 +7061,13 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("override.host1x", "override.host1x", NULL,    &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("floor.profile.host1x", "profile.host1x", NULL, &tegra_clk_host1x, NULL,  0, 0),
+
+	SHARED_CLK("sbc1.sclk", "spi_tegra.0", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("sbc2.sclk", "spi_tegra.1", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("sbc3.sclk", "spi_tegra.2", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("sbc4.sclk", "spi_tegra.3", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("sbc5.sclk", "spi_tegra.4", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("sbc6.sclk", "spi_tegra.5", "sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
 };
 
 
