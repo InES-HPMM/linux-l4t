@@ -21,6 +21,8 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/export.h>
+#include <linux/tegra-pmc.h>
+
 
 #include "pmc.h"
 

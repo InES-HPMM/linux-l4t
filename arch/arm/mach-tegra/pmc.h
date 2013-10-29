@@ -52,8 +52,4 @@ struct pmc_pm_data {
 };
 struct pmc_pm_data *tegra_get_pm_data(void);
 
-extern void tegra_pmc_set_dpd_sample(void);
-extern void tegra_pmc_clear_dpd_sample(void);
-extern void tegra_pmc_remove_dpd_req(void);
-
 #endif
