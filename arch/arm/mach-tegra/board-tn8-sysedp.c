@@ -24,6 +24,8 @@
 #include "board-panel.h"
 
 /* --- EDP consumers data --- */
+static unsigned int ov5693_states[] = { 0, 300 };
+static unsigned int mt9m114_states[] = { 0, 150 };
 static unsigned int sdhci_states[] = { 0, 966 };
 static unsigned int speaker_states[] = { 0, 1080 };
 static unsigned int wifi_states[] = { 0, 1020 };
@@ -33,6 +35,8 @@ static unsigned int pwm_backlight_states[] = {
 };
 
 static struct sysedp_consumer_data tn8_sysedp_consumer_data[] = {
+	SYSEDP_CONSUMER_DATA("ov5693", ov5693_states),
+	SYSEDP_CONSUMER_DATA("mt9m114", mt9m114_states),
 	SYSEDP_CONSUMER_DATA("speaker", speaker_states),
 	SYSEDP_CONSUMER_DATA("wifi", wifi_states),
 	SYSEDP_CONSUMER_DATA("pwm-backlight", pwm_backlight_states),
