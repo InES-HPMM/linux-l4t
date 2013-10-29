@@ -271,6 +271,22 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define T124_PLLE_IDDQ_SWCTL_MASK		(1 << 14)
 #define PLLE_IDDQ_OVERRIDE_VALUE_MASK		(1 << 13)
 
+/* Spread Settings */
+#define SATA0_CHX_PHY_CTRL11_0			0x6D0
+#define SATA0_CHX_PHY_CTRL2_0			0x69c
+#define GEN2_RX_EQ				(0x2800 << 16)
+#define CDR_CNTL_GEN1				0x23
+
+#define CLK_RST_CONTROLLER_PLLE_SS_CNTL_0	0x68
+#define PLLE_SSCCENTER				(1 << 14)
+#define PLLE_SSCINVERT				(1 << 15)
+#define PLLE_SSCMAX				(0x25)
+#define PLLE_SSCINCINTRV			(0x20 << 24)
+#define PLLE_SSCINC				(1 << 16)
+#define PLLE_BYPASS_SS				(1 << 10)
+#define PLLE_SSCBYP				(1 << 12)
+#define PLLE_INTERP_RESET			(1 << 11)
+
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 
 /* create a work for handling the async transfers */
@@ -557,9 +573,9 @@ struct sata_pad_cntrl {
 
 static const struct sata_pad_cntrl sata_calib_pad_val[] = {
 	{	/* SATA_CALIB[1:0]  = 00 */
-		0x0c,
+		0x18,
 		0x04,
-		0x0e,
+		0x18,
 		0x0a
 	},
 	{	/* SATA_CALIB[1:0]  = 01 */
@@ -598,6 +614,21 @@ static void tegra_ahci_set_pad_cntrl_regs(
 
 	calib_val = fuse_readl(FUSE_SATA_CALIB_OFFSET) & FUSE_SATA_CALIB_MASK;
 
+	val = clk_readl(CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+	val &= ~(PLLE_SSCCENTER | PLLE_SSCINVERT);
+	val |= (PLLE_SSCMAX | PLLE_SSCINCINTRV | PLLE_SSCINC);
+	clk_writel(val, CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+
+	val = clk_readl(CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+	val &= ~(PLLE_BYPASS_SS | PLLE_SSCBYP);
+	clk_writel(val, CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+
+	udelay(2);
+
+	val = clk_readl(CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+	val &= ~(PLLE_INTERP_RESET);
+	clk_writel(val, CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
+
 	for (i = 0; i < TEGRA_AHCI_NUM_PORTS; ++i) {
 		scfg_writel((1 << i), T_SATA0_INDEX_OFFSET);
 
@@ -625,20 +656,11 @@ static void tegra_ahci_set_pad_cntrl_regs(
 			SATA0_CHX_PHY_CTRL1_GEN2_TX_PEAK_SHIFT);
 		scfg_writel(val, T_SATA0_CHX_PHY_CTRL1_GEN2_OFFSET);
 
-		/* set 2 to SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ field */
-		val = scfg_readl(T_SATA0_CHX_PHY_CTRL1_GEN2_OFFSET);
-		val &= ~SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_MASK;
+		val = GEN2_RX_EQ;
+		scfg_writel(val, SATA0_CHX_PHY_CTRL11_0);
 
-		if ((ahci_pdata) && (ahci_pdata->gen2_rx_eq > 0)) {
-			val |= (ahci_pdata->gen2_rx_eq <<
-					SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT);
-		} else {
-			/* Default set 2 to SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ
-								field */
-			val |= (2 << SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT);
-		}
-
-		scfg_writel(val, T_SATA0_CHX_PHY_CTRL1_GEN2_OFFSET);
+		val = CDR_CNTL_GEN1;
+		scfg_writel(val, SATA0_CHX_PHY_CTRL2_0);
 	}
 	scfg_writel(SATA0_NONE_SELECTED, T_SATA0_INDEX_OFFSET);
 }
