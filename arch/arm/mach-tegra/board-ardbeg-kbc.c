@@ -91,11 +91,16 @@ static struct platform_device ardbeg_int_keys_device = {
 static int ardbeg_wakeup_key(void)
 {
 	u32 status;
+	int is_power_key;
+
 	status = __raw_readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE2_STATUS);
 
-	pr_info("%s: Power key pressed\n", __func__);
-
-	return (status & TEGRA_WAKE_PWR_INT) ? KEY_POWER : KEY_RESERVED;
+	is_power_key = !!(status & TEGRA_WAKE_PWR_INT);
+	if (is_power_key) {
+		pr_info("%s: Power key pressed\n", __func__);
+		return KEY_POWER;
+	}
+	return KEY_RESERVED;
 }
 
 int __init ardbeg_kbc_init(void)
