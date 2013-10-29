@@ -140,7 +140,7 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 
 	if (new.gpu != cur_caps.gpu) {
 		r = clk_set_rate(gpu_cap_clk, new.gpu * 1000);
-		WARN_ON(r);
+		WARN_ON(r && (r != -ENOENT));
 	}
 
 	pr_caps(&cur_caps, &new, devcap->cpu_power);
