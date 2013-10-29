@@ -8006,7 +8006,6 @@ struct clk tegra_list_clks[] = {
 	SHARED_LIMIT("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 	SHARED_CLK("override.c3bus",	"override.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,  0, SHARED_OVERRIDE),
-	SHARED_CLK("battery.c2bus",	"battery_edp",		"gpu",	 &tegra_clk_c2bus, NULL, 0, SHARED_CEILING),
 #else
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
 	SHARED_CLK("msenc.cbus","tegra_msenc",		"msenc",&tegra_clk_cbus, "msenc", 0, 0),
@@ -8022,6 +8021,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
 	SHARED_LIMIT("cap.gbus",	"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("edp.gbus",	"edp.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
+	SHARED_LIMIT("battery.gbus",	"battery_edp",	"gpu",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("cap.throttle.gbus", "cap_throttle", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("cap.profile.gbus", "profile.gbus", "cap",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("override.gbus",	"override.gbus", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE),
