@@ -1119,11 +1119,11 @@ tegra3_cpu_clk32k:
 	beq	lp1_clocks_prepare
 
 	/* enable PLLM auto-restart via PMC in LP0; restore override settings */
+	ldr	r0, [r4, #PMC_SCRATCH2]
+	str	r0, [r4, #PMC_PLLM_WB0_OVERRIDE]
 	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 	orr	r0, r0, #((1 << 12) | (1 << 11))
 	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
-	ldr	r0, [r4, #PMC_SCRATCH2]
-	str	r0, [r4, #PMC_PLLM_WB0_OVERRIDE]
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	ldr r1, [r4, #PMC_SCRATCH1_ECO]
