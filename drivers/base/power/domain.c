@@ -74,17 +74,23 @@ static char *genpd_get_device_status(struct device *dev)
 {
 	enum rpm_status status = dev->power.runtime_status;
 
-	switch (status) {
-	case RPM_ACTIVE:
-		return "active";
-	case RPM_RESUMING:
-		return "resuming";
-	case RPM_SUSPENDED:
-		return "suspended";
-	case RPM_SUSPENDING:
-		return "suspending";
-	default:
-		return "invalid";
+	if (dev->power.runtime_error) {
+		return "error";
+	} else if (dev->power.disable_depth) {
+		return "unsupported";
+	} else {
+		switch (status) {
+		case RPM_ACTIVE:
+			return "active";
+		case RPM_RESUMING:
+			return "resuming";
+		case RPM_SUSPENDED:
+			return "suspended";
+		case RPM_SUSPENDING:
+			return "suspending";
+		default:
+			return "invalid";
+		}
 	}
 	return NULL;
 }
