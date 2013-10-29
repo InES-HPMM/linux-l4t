@@ -726,6 +726,10 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
+				NULL),
+	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
+				NULL),
 	{}
 };
 #endif

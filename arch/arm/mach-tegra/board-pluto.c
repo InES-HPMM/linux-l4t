@@ -1310,6 +1310,10 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
+				NULL),
+	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
+				NULL),
 	{}
 };
 #endif

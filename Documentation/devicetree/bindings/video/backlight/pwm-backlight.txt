@@ -11,13 +11,23 @@ Required properties:
   - default-brightness-level: the default brightness level (index into the
       array defined by the "brightness-levels" property)
 
+   The following fields are mutually exclusive  with "brightness-levels"
+   and "default-brightness-level".It is used in case where levels are
+   not available on the backlight device and the device can interpolate
+   values.In this case the minium value that is considered is 0.
+
+  - max-brightness: the maximum brighness value that is allowed by the
+       backlight device.
+  - default-brightness: the default brighness value that is allowed by the
+       backlight device.
+
 Optional properties:
   - pwm-names: a list of names for the PWM devices specified in the
                "pwms" property (see PWM binding[0])
 
 [0]: Documentation/devicetree/bindings/pwm/pwm.txt
 
-Example:
+Examples:
 
 	backlight {
 		compatible = "pwm-backlight";
@@ -25,4 +35,11 @@ Example:
 
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 1 1000000>;
+		max-brightness = <255>;
+		default-brightness = <224>;
 	};

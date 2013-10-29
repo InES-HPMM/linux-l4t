@@ -25,6 +25,13 @@
 		};
 	};
 
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 1 40000>;
+		max-brightness = <255>;
+		default-brightness = <77>;
+	};
+
 	pmc {
 		status = "okay";
 		nvidia,invert-interrupt;

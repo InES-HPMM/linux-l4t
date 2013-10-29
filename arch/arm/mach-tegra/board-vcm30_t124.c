@@ -481,6 +481,10 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000,
 				"tegra30-ahub-apbif", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
+				NULL),
+	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
+				NULL),
 	{}
 };
 #endif

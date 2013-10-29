@@ -708,6 +708,10 @@ struct of_dev_auxdata roth_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
+				NULL),
+	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
+				NULL),
 	{}
 };
 #endif

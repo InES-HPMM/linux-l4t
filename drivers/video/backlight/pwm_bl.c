@@ -150,29 +150,17 @@ static const struct backlight_ops pwm_backlight_ops = {
 };
 
 #ifdef CONFIG_OF
-static int pwm_backlight_parse_dt(struct device *dev,
-				  struct platform_pwm_backlight_data *data)
+static int parse_level_brightness_dt(struct device *dev,
+				  struct platform_pwm_backlight_data *data,
+				  int max_brightness)
 {
 	struct device_node *node = dev->of_node;
-	struct property *prop;
-	int length;
-	u32 value;
-	int ret;
-
-	if (!node)
-		return -ENODEV;
-
-	memset(data, 0, sizeof(*data));
-
-	/* determine the number of brightness levels */
-	prop = of_find_property(node, "brightness-levels", &length);
-	if (!prop)
-		return -EINVAL;
-
-	data->max_brightness = length / sizeof(u32);
+	data->max_brightness = max_brightness;
 
 	/* read brightness levels from DT property */
 	if (data->max_brightness > 0) {
+		u32 value;
+		int ret;
 		size_t size = sizeof(*data->levels) * data->max_brightness;
 
 		data->levels = devm_kzalloc(dev, size, GFP_KERNEL);
@@ -200,13 +188,55 @@ static int pwm_backlight_parse_dt(struct device *dev,
 		data->max_brightness--;
 	}
 
+	return 0;
+}
+
+static int parse_interpole_brightness_dt(struct device *dev,
+				  struct platform_pwm_backlight_data *data)
+{
+	int ret = 0;
+	struct device_node *node = dev->of_node;
+
+	ret = of_property_read_u32(node, "max-brightness",
+					&data->max_brightness);
+	if (ret < 0)
+		goto end;
+
+	ret = of_property_read_u32(node, "default-brightness",
+					&data->dft_brightness);
+	if (ret < 0)
+		goto end;
+end:
+	return ret;
+}
+
+static int pwm_backlight_parse_dt(struct device *dev,
+				  struct platform_pwm_backlight_data *data)
+{
+	struct device_node *node = dev->of_node;
+	struct property *prop;
+	int length;
+
+	if (!node)
+		return -ENODEV;
+
+	memset(data, 0, sizeof(*data));
+
 	/*
 	 * TODO: Most users of this driver use a number of GPIOs to control
 	 *       backlight power. Support for specifying these needs to be
 	 *       added.
 	 */
 
-	return 0;
+	/* determine the number of brightness levels if available else
+	 * use the interpolation method to get the maximum brightness
+	 * that can be set*/
+	prop = of_find_property(node, "brightness-levels", &length);
+	if (prop)
+		return parse_level_brightness_dt(dev,
+					data, length / sizeof(u32));
+	else
+		return parse_interpole_brightness_dt(dev, data);
 }
 
 static struct of_device_id pwm_backlight_of_match[] = {

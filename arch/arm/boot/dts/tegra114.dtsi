@@ -291,7 +291,6 @@
 		reg = <0x7000a000 0x100>;
 		#pwm-cells = <2>;
 		clocks = <&tegra_car 17>;
-		status = "disabled";
 	};
 
 	i2c1: i2c@7000c000 {

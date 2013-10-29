@@ -85,4 +85,11 @@
 		nvidia,core-power-req-active-high;
 		nvidia,sys-clock-req-active-high;
 	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 1 40000>;
+		max-brightness = <255>;
+		default-brightness = <77>;
+	};
 };
