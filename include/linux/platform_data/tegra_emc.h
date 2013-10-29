@@ -178,6 +178,10 @@ struct tegra12_emc_table {
 	u32 emc_cfg_2;
 	u32 emc_sel_dpd_ctrl;
 	u32 emc_cfg_dig_dll;
+	u32 emc_bgbias_ctl0;
+	u32 emc_auto_cal_config2;
+	u32 emc_auto_cal_config3;
+	u32 emc_auto_cal_config;
 	u32 emc_mode_reset;
 	u32 emc_mode_1;
 	u32 emc_mode_2;
