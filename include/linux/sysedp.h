@@ -114,6 +114,7 @@ struct sysedp_batmon_calc_platform_data {
 extern struct dentry *edp_debugfs_dir;
 
 void sysedp_set_state(struct sysedp_consumer *, unsigned int);
+unsigned int sysedp_get_state(struct sysedp_consumer *);
 struct sysedp_consumer *sysedp_create_consumer(const char *, const char *);
 int sysedp_register_consumer(struct sysedp_consumer *);
 void sysedp_unregister_consumer(struct sysedp_consumer *);
@@ -122,6 +123,8 @@ void sysedp_free_consumer(struct sysedp_consumer *);
 #else
 static inline void sysedp_set_state(struct sysedp_consumer *c, unsigned int i)
 { return; }
+static inline unsigned int sysedp_get_state(struct sysedp_consumer *c)
+{ return 0; }
 static inline struct sysedp_consumer *sysedp_create_consumer(const char *c,
 							     const char *s)
 { return NULL; }

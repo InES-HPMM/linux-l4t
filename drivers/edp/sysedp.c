@@ -180,6 +180,21 @@ void sysedp_set_state(struct sysedp_consumer *consumer, unsigned int new_state)
 }
 EXPORT_SYMBOL(sysedp_set_state);
 
+unsigned int sysedp_get_state(struct sysedp_consumer *consumer)
+{
+	unsigned int state;
+	if (!consumer)
+		return 0;
+
+	mutex_lock(&sysedp_lock);
+	state = consumer->state;
+	mutex_unlock(&sysedp_lock);
+
+	return state;
+}
+EXPORT_SYMBOL(sysedp_get_state);
+
+
 static int sysedp_probe(struct platform_device *pdev)
 {
 	pdata = pdev->dev.platform_data;
