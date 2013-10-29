@@ -2732,9 +2732,25 @@ struct platform_device tegra_hier_ictlr_device = {
 };
 #endif
 #ifdef CONFIG_TEGRA_BPMP
+static struct tegra_bpmp_platform_data bpmp_platform_data;
+
 void tegra_bpmp_linear_set(phys_addr_t start, phys_addr_t size)
 {
 	tegra_bpmp_linear_map[0].start = start;
 	tegra_bpmp_linear_map[0].size = size;
+	bpmp_platform_data.phys_start = start;
+	bpmp_platform_data.size = size;
 }
+
+static struct platform_device bpmp_device = {
+	.name = "bpmp",
+	.id = -1,
+	.dev = { .platform_data = &bpmp_platform_data }
+};
+
+int __init tegra_init_bpmp_device(void)
+{
+	return platform_device_register(&bpmp_device);
+}
+postcore_initcall(tegra_init_bpmp_device);
 #endif
