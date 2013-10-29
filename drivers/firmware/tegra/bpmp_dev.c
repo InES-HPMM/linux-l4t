@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <mach/clk.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include "bpmp_private.h"
 
 #define FLOW_CTRL_HALT_COP_EVENTS	IO_ADDRESS(TEGRA_FLOW_CTRL_BASE + 0x4)
 #define FLOW_MODE_STOP			(0x2 << 29)
@@ -156,6 +157,8 @@ static inline int bpmp_init_debug(struct platform_device *pdev) { return 0; }
 
 static int bpmp_probe(struct platform_device *pdev)
 {
+	int r;
+
 	device = &pdev->dev;
 	platform_data = device->platform_data;
 
@@ -186,6 +189,13 @@ static int bpmp_probe(struct platform_device *pdev)
 	clk_prepare_enable(emc_clk);
 	clk_set_rate(sclk, ULONG_MAX);
 	clk_set_rate(emc_clk, ULONG_MAX);
+
+	writel(SET_CLK_ENB_ATOMICS, CLK_ENB_V_SET);
+
+	r = request_irq(INT_SHR_SEM_INBOX_IBF, bpmp_inbox_irq, 0,
+			dev_name(&pdev->dev), NULL);
+	if (r)
+		return r;
 
 	return bpmp_init_debug(pdev);
 }
