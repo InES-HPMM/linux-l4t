@@ -33,6 +33,9 @@ static unsigned int wifi_states[] = { 0, 1020 };
 static unsigned int pwm_backlight_states[] = {
 	0, 425, 851, 1276, 1702, 2127, 2553, 2978, 3404, 3829, 4255
 };
+static unsigned int as364x_states[] = {
+	0, 350, 700, 1050, 1400, 1750, 2100, 2450, 2800, 3150, 3500
+};
 
 static struct sysedp_consumer_data tn8_sysedp_consumer_data[] = {
 	SYSEDP_CONSUMER_DATA("ov5693", ov5693_states),
@@ -42,6 +45,7 @@ static struct sysedp_consumer_data tn8_sysedp_consumer_data[] = {
 	SYSEDP_CONSUMER_DATA("pwm-backlight", pwm_backlight_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.2", sdhci_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.3", sdhci_states),
+	SYSEDP_CONSUMER_DATA("as364x", as364x_states),
 };
 
 static struct sysedp_platform_data tn8_sysedp_platform_data = {
