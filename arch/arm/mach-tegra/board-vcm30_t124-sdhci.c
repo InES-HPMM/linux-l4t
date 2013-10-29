@@ -95,7 +95,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.tap_delay = 0x0F,
 	.ddr_clk_limit = 30000000,
 	.is_8bit = false,
-	.disable_clock_gate = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
