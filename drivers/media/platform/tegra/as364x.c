@@ -30,6 +30,7 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/edp.h>
+#include <linux/sysedp.h>
 #include <linux/regmap.h>
 #include <media/nvc.h>
 #include <media/as364x.h>
@@ -148,6 +149,7 @@ struct as364x_info {
 	struct as364x_config config;
 	struct as364x_reg_cache regs;
 	struct edp_client *edpc;
+	struct sysedp_consumer *sysedpc;
 	unsigned edp_state;
 	atomic_t in_use;
 	int flash_cap_size;
@@ -419,11 +421,31 @@ static int as364x_edp_req(struct as364x_info *info,
 	return 0;
 }
 
+static unsigned int as364x_sysedp_count_state(struct as364x_info *info,
+					      u8 mask, u8 curr1, u8 curr2)
+{
+	unsigned curr = 0;
+	unsigned state;
+	if (mask & 1)
+		curr += curr1;
+	if (mask & 2)
+		curr += curr2;
+	curr = GET_CURRENT_BY_INDEX(info, curr);
+
+	if (curr && info->config.max_total_current_mA)
+		state = 1 + curr * 10 / info->config.max_total_current_mA;
+	else
+		state = 0;
+
+	return state;
+}
+
 static int as364x_set_leds(struct as364x_info *info,
 			u8 mask, u8 curr1, u8 curr2)
 {
 	int err = 0;
 	u8 regs[6];
+	unsigned int new_state, old_state;
 
 	if (mask & 1) {
 		if (info->op_mode == AS364X_REG_CONTROL_MODE_FLASH) {
@@ -460,8 +482,16 @@ static int as364x_set_leds(struct as364x_info *info,
 		regs[5] = info->op_mode & (~0x08);
 	else
 		regs[5] = info->op_mode | 0x08;
+
+	old_state = sysedp_get_state(info->sysedpc);
+	new_state = as364x_sysedp_count_state(info, mask, curr1, curr2);
+
+	if (new_state > old_state)
+		sysedp_set_state(info->sysedpc, new_state);
 	err = as364x_reg_raw_wr(
 		info, AS364X_REG_LED1_SET_CURR, regs, sizeof(regs));
+	if (new_state < old_state)
+		sysedp_set_state(info->sysedpc, new_state);
 	if (!err) {
 		info->regs.led1_curr = curr1;
 		info->regs.led2_curr = curr2;
@@ -931,6 +961,7 @@ static int as364x_power_on(struct as364x_info *info)
 	if (!err)
 		info->power_on = 1;
 	as364x_edp_lowest(info);
+	sysedp_set_state(info->sysedpc, 0);
 power_on_end:
 	mutex_unlock(&info->mutex);
 
@@ -972,6 +1003,7 @@ static int as364x_power_off(struct as364x_info *info)
 	if (!err)
 		info->power_on = 0;
 	as364x_edp_lowest(info);
+	sysedp_set_state(info->sysedpc, 0);
 power_off_end:
 	mutex_unlock(&info->mutex);
 	return err;
@@ -1437,6 +1469,7 @@ static int as364x_remove(struct i2c_client *client)
 
 	dev_dbg(info->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
+	sysedp_free_consumer(info->sysedpc);
 	as364x_del(info);
 	return 0;
 }
@@ -1524,6 +1557,7 @@ static int as364x_probe(
 
 	as364x_power_get(info);
 	as364x_edp_register(info);
+	info->sysedpc = sysedp_create_consumer("as364x", "as364x");
 
 	err = as364x_get_dev_id(info);
 	if (err < 0) {
