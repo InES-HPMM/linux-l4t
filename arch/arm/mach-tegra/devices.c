@@ -25,6 +25,7 @@
 #include <linux/serial_8250.h>
 #include <linux/mipi-bif-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
@@ -1787,6 +1788,7 @@ void carveout_linear_set(struct device *cma_dev)
 	map->size = stats.size;
 }
 #endif
+static struct iommu_linear_map tegra_bpmp_linear_map[2];
 
 struct swgid_fixup {
 	const char * const name;
@@ -1945,6 +1947,11 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "ape",	.swgids = SWGID(APE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(NVDEC), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
+	{
+		.name = "bpmp",
+		.swgids = SWGID(AVPC),
+		.linear_map = tegra_bpmp_linear_map
+	},
 	{ .name = "serial8250",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "serial-tegra",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
@@ -2723,4 +2730,11 @@ struct platform_device tegra_hier_ictlr_device = {
 	.resource	= tegra_hier_ictlr_resource,
 	.num_resources	= ARRAY_SIZE(tegra_hier_ictlr_resource),
 };
+#endif
+#ifdef CONFIG_TEGRA_BPMP
+void tegra_bpmp_linear_set(phys_addr_t start, phys_addr_t size)
+{
+	tegra_bpmp_linear_map[0].start = start;
+	tegra_bpmp_linear_map[0].size = size;
+}
 #endif
