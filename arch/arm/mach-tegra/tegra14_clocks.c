@@ -1202,9 +1202,6 @@ static int tegra14_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 		(c->u.cpu.dynamic->state != UNINITIALIZED);
 	bool is_dfll = c->parent->parent == c->u.cpu.dynamic;
 
-	/* On SILICON allow CPU rate change only if cpu regulator is connected.
-	   Ignore regulator connection on FPGA and SIMULATION platforms. */
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
@@ -1215,7 +1212,6 @@ static int tegra14_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 			return -ENOSYS;
 		}
 	}
-#endif
 	if (has_dfll && c->dvfs && c->dvfs->dvfs_rail) {
 		if (tegra_dvfs_is_dfll_range(c->dvfs, rate))
 			return tegra14_cpu_clk_dfll_on(c, rate, old_rate);
@@ -2773,11 +2769,9 @@ static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 #endif
 	clk_writel(val, c->reg + PLL_MISC(c));
 
-	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	if (c->state == ON)
 		BUG_ON(val & PLLC_MISC_IDDQ);
-#endif
-	} else {
+	else {
 		val |= PLLC_MISC_IDDQ;
 		clk_writel(val, c->reg + PLL_MISC(c));
 	}
@@ -2995,10 +2989,8 @@ static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state != ON)
 		val |= PLLM_MISC_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
 		BUG_ON(val & PLLM_MISC_IDDQ);
-#endif
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
@@ -6317,11 +6309,7 @@ static struct clk tegra_clk_msenc = {
 		.dev_id = "msenc",
 	},
 	.ops       = &tegra_1xbus_clk_ops,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.reg       = 0x170,
-#else
 	.reg       = 0x1f0,
-#endif
 	.inputs    = mux_pllm_pllc_pllp_plla,
 	.flags     = MUX | DIV_U71 | DIV_U71_INT,
 	.max_rate  = 600000000,
