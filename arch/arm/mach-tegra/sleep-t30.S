@@ -68,6 +68,12 @@
 #define PMC_IO_DPD2_REQ_DISC_BIAS	(1 << 27)
 #define PMC_SCRATCH1_ECO		0x264
 #define PMC_POR_DPD_CTRL		0x264
+#define PMC_IO_DPD3_REQ			0x45c
+#define PMC_IO_DPD3_STATUS		0x460
+
+#define EMC_SEL_DPD_CTRL		0x3d8
+
+#define PMC_POR_DPD_CTRL		0x264
 
 #define FLOW_IPC_STS			0x500
 #define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
@@ -653,11 +659,60 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	add	r5, pc, #tegra11_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	/* Take BGBIAS pads out of DPD */
+	mov32	r1, 0x40020000
+	str	r1, [r2, #PMC_IO_DPD3_REQ]
+
+dram_exit_sr_wait4:
+	ldr	r1, [r2, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 17)
+	bne	dram_exit_sr_wait4
+
+	/* Take VTTGEN pads out of DPD */
+	mov32	r1, 0x4CD00000
+	str	r1, [r2, #PMC_IO_DPD3_REQ]
+
+dram_exit_sr_wait3:
+	ldr	r1, [r2, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 20)
+	bne	dram_exit_sr_wait3
+
+	/* Take func pads out of dpd explicitly */
+	mov32	r1, 0x430DFFFF
+	str	r1, [r2, #PMC_IO_DPD3_REQ]
+
+dram_exit_sr_wait2:
+	ldr	r1, [r2, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 18)
+	bne	dram_exit_sr_wait2
+
+	mov32	r1, 0x40400000
+	str	r1, [r2, #PMC_IO_DPD_REQ]
+
+dram_exit_sr_wait1:
+	ldr	r1, [r2, #PMC_IO_DPD_STATUS]
+	tst	r1, #(1 << 22)
+	bne	dram_exit_sr_wait1
+
+	ldr	r1, [r2, #PMC_POR_DPD_CTRL]
+	bic	r1, r1, #0x80000003
+	str	r1, [r2, #PMC_POR_DPD_CTRL]
+#endif
+
 	ldr	r1, [r5, #0x14]	@ PMC_IO_DPD_STATUS
 	mvn	r1, r1
 	bic	r1, r1, #(0x1<<31)
 	orr	r1, r1, #(0x1<<30)
 	str	r1, [r2, #PMC_IO_DPD_REQ]
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	ldr	r1, [r5, #0x24]	@ PMC_IO_DPD3_STATUS
+	mvn	r1, r1
+	bic	r1, r1, #(0x1<<31)
+	orr	r1, r1, #(0x1<<30)
+	str	r1, [r2, #PMC_IO_DPD3_REQ]
+#endif
 
 exit_self_refresh:
 	ldr	r1, [r5, #0xC]
@@ -804,6 +859,7 @@ tegra3_sdram_pad_save:
 	.word	0
 	.word	0
 	.word	0
+	.word	0
 
 tegra3_sdram_pad_address:
 	.word	TEGRA_EMC_BASE + EMC_CFG				@0x0
@@ -815,6 +871,7 @@ tegra3_sdram_pad_address:
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CLK_SOURCE_MSELECT	@0x18
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_SCLK_BURST		@0x1c
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CCLK_BURST		@0x20
+	.word	TEGRA_PMC_BASE + PMC_IO_DPD3_STATUS			@0x24
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	.align	L1_CACHE_SHIFT
@@ -1346,7 +1403,6 @@ padsave_done:
 	mov	pc, lr
 
 tegra3_sdram_self_refresh:
-
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
 defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
@@ -1355,6 +1411,13 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
 #endif
 enter_self_refresh:
+	/* Enable SEL_DPD */
+	ldr	r1, [r0, #EMC_SEL_DPD_CTRL]
+	orr	r1, r1, #0xF
+	orr	r1, r1, #0xF0
+	orr	r1, r1, #0x100
+	str	r1, [r0, #EMC_SEL_DPD_CTRL]
+
 	mov	r1, #0
 	str	r1, [r0, #EMC_ZCAL_INTERVAL]
 	str	r1, [r0, #EMC_AUTO_CAL_INTERVAL]
@@ -1422,8 +1485,52 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	ldr	r1, [r4, #PMC_CTRL]
 	tst	r1, #PMC_CTRL_SIDE_EFFECT_LP0
 	bne	pmc_io_dpd_skip
+
+	ldr	r1, [r4, #PMC_POR_DPD_CTRL]
+	orr	r1, r1, #0x80000003
+	str	r1, [r4, #PMC_POR_DPD_CTRL]
+
+#if !defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r1, 0x8EC00000
 	str	r1, [r4, #PMC_IO_DPD_REQ]
+#endif
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	/* Put func pads in dpd explicitly */
+	mov32	r1, 0x80400000
+	str	r1, [r4, #PMC_IO_DPD_REQ]
+
+dram_sr_wait1:
+	ldr	r1, [r4, #PMC_IO_DPD_STATUS]
+	tst	r1, #(1 << 22)
+	beq	dram_sr_wait1
+
+	mov32	r1, 0x830DFFFF
+	str	r1, [r4, #PMC_IO_DPD3_REQ]
+
+dram_sr_wait2:
+	ldr	r1, [r4, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 18)
+	beq	dram_sr_wait2
+
+	/* Put VTTGEN pads in DPD */
+	mov32	r1, 0x8CD00000
+	str	r1, [r4, #PMC_IO_DPD3_REQ]
+
+dram_sr_wait3:
+	ldr	r1, [r4, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 20)
+	beq	dram_sr_wait3
+
+	/* Put BGBIAS pads in DPD */
+	mov32	r1, 0x80020000
+	str	r1, [r4, #PMC_IO_DPD3_REQ]
+
+dram_sr_wait4:
+	ldr	r1, [r4, #PMC_IO_DPD3_STATUS]
+	tst	r1, #(1 << 17)
+	beq	dram_sr_wait4
+
+#endif
 	dsb
 	mov	pc, lr
 
