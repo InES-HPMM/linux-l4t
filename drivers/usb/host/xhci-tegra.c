@@ -36,6 +36,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 #include <linux/firmware.h>
+#include <linux/pm_runtime.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/pm_domains.h>
@@ -4385,6 +4386,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	utmi_phy_iddq_override(false);
 
 	tegra_pd_add_device(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 	return 0;
 
