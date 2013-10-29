@@ -38,7 +38,44 @@ struct palmas_pm {
 	int int_mask_reg_add[PALMAS_MAX_INTERRUPT_MASK_REG];
 	int int_status_reg_add[PALMAS_MAX_INTERRUPT_MASK_REG];
 	int int_mask_val[PALMAS_MAX_INTERRUPT_MASK_REG];
+	bool need_rtc_power_on;
 };
+
+static void palmas_auto_power_on(struct palmas_pm *palmas_pm)
+{
+	struct palmas *palmas = palmas_pm->palmas;
+	int ret;
+
+	dev_info(palmas_pm->dev, "Resetting Palmas through RTC\n");
+
+	ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+			PALMAS_SWOFF_COLDRST, PALMAS_SWOFF_COLDRST_SW_RST, 0x0);
+	if (ret < 0) {
+		dev_err(palmas_pm->dev, "SWOFF_COLDRST update failed: %d\n",
+			ret);
+		goto scrub;
+	}
+
+	ret = palmas_update_bits(palmas, PALMAS_INTERRUPT_BASE,
+			PALMAS_INT2_MASK, PALMAS_INT2_MASK_RTC_TIMER, 0);
+	if (ret < 0) {
+		dev_err(palmas_pm->dev, "INT2_MASK update failed: %d\n", ret);
+		goto scrub;
+	}
+
+	ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+			PALMAS_DEV_CTRL, PALMAS_DEV_CTRL_SW_RST,
+			PALMAS_DEV_CTRL_SW_RST);
+	if (ret < 0) {
+		dev_err(palmas_pm->dev, "DEV_CTRL update failed: %d\n", ret);
+		goto scrub;
+	}
+
+	while (1)
+		dev_err(palmas_pm->dev, "Device should not be here\n");
+scrub:
+	return;
+}
 
 static void palmas_power_off(void *drv_data)
 {
@@ -47,6 +84,8 @@ static void palmas_power_off(void *drv_data)
 	unsigned int val;
 	int i;
 	int ret;
+	if (palmas_pm->need_rtc_power_on)
+		palmas_auto_power_on(palmas_pm);
 
 	for (i = 0; i < palmas_pm->num_int_mask_regs; ++i) {
 		ret = palmas_write(palmas, PALMAS_INTERRUPT_BASE,
@@ -132,7 +171,7 @@ static void palmas_power_reset(void *drv_data)
 		}
 
 		ret = palmas_update_bits(palmas, PALMAS_INTERRUPT_BASE,
-				PALMAS_INT2_MASK, PALMAS_INT2_MASK_RTC_TIMER, 0);
+			PALMAS_INT2_MASK, PALMAS_INT2_MASK_RTC_TIMER, 0);
 		if (ret < 0) {
 			dev_err(palmas_pm->dev,
 				"INT2_MASK update failed: %d\n", ret);
@@ -156,9 +195,27 @@ reset_direct:
 				PALMAS_DEV_CTRL, 0x2, 0x2);
 }
 
+static int palmas_configure_power_on(void *drv_data,
+	enum system_pmic_power_on_event event, void *event_data)
+{
+	struct palmas_pm *palmas_pm = drv_data;
+
+	switch (event) {
+	case SYSTEM_PMIC_RTC_ALARM:
+		dev_info(palmas_pm->dev, "Resetting Palmas through RTC\n");
+		palmas_pm->need_rtc_power_on = true;
+		break;
+	default:
+		dev_err(palmas_pm->dev, "power on event does not support\n");
+		break;
+	}
+	return 0;
+}
+
 static struct system_pmic_ops palmas_pm_ops = {
 	.power_off = palmas_power_off,
 	.power_reset = palmas_power_reset,
+	.configure_power_on = palmas_configure_power_on,
 };
 
 static int palmas_pm_probe(struct platform_device *pdev)
