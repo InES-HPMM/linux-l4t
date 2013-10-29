@@ -382,8 +382,9 @@ struct tegra_pcie_bus {
 static struct resource pcie_mem_space;
 static struct resource pcie_prefetch_mem_space;
 
-/* enable and init msi once during boot or resume */
-static bool msi_enable;
+/* this flag enables features required either after boot or resume */
+/* also required to enable msi from host both after boot and resume */
+static bool resume_path;
 /* this flag is used for enumeration by hotplug */
 /* when dock is not connected while system boot */
 static bool is_dock_conn_at_boot = true;
@@ -1653,7 +1654,6 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
 	unsigned int data;
-	static bool is_boot_path = true;
 
 	PR_FUNC_LINE;
 	tegra_pcie_enable_rp_features(index);
@@ -1682,9 +1682,8 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	tegra_pcie.num_ports++;
 	pp->index = index;
 	/* initialize root bus in boot path only */
-	if (is_boot_path)
+	if (!resume_path)
 		pp->root_bus_nr = -1;
-	is_boot_path = false;
 
 	memset(pp->res, 0, sizeof(pp->res));
 }
@@ -2002,6 +2001,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 	int ret = 0;
 
 	PR_FUNC_LINE;
+	resume_path = true;
 	ret = tegra_pcie_power_on();
 	if (ret) {
 		pr_err("PCIE: Failed to power on: %d\n", ret);
@@ -2015,7 +2015,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 		tegra_pcie_power_off();
 		goto exit;
 	}
-	msi_enable = false;
+	resume_path = false;
 
 exit:
 	return 0;
@@ -2183,7 +2183,7 @@ static bool tegra_pcie_enable_msi(void)
 
 	PR_FUNC_LINE;
 	/* this only happens once. */
-	if (msi_enable) {
+	if (resume_path) {
 		retval = true;
 		goto exit;
 	}
@@ -2230,7 +2230,7 @@ static bool tegra_pcie_enable_msi(void)
 
 	set_irq_flags(INT_PCIE_MSI, IRQF_VALID);
 
-	msi_enable = true;
+	resume_path = true;
 	retval = true;
 exit:
 	if (!retval) {
