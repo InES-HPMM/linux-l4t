@@ -30,6 +30,7 @@
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/sysedp.h>
 
 #include <media/mt9m114.h>
 
@@ -355,6 +356,7 @@ struct mt9m114_info {
 	struct clk *mclk;
 	struct edp_client *edpc;
 	unsigned int edp_state;
+	struct sysedp_consumer *sysedpc;
 };
 
 struct mt9m114_mode_desc {
@@ -574,6 +576,7 @@ int mt9m114_release(struct inode *inode, struct file *file)
 	if (info->pdata && info->pdata->power_off) {
 		info->pdata->power_off(&info->power);
 		mt9m114_edp_lowest(info);
+		sysedp_set_state(info->sysedpc, 0);
 	}
 	file->private_data = NULL;
 
@@ -706,6 +709,7 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 			"%s: ERROR cannot set edp state! %d\n", __func__, err);
 		return err;
 	}
+	sysedp_set_state(info->sysedpc, 1);
 
 	err = mt9m114_write_table(
 		info, sensor_mode->mode_tbl);
@@ -788,6 +792,7 @@ static int mt9m114_probe(struct i2c_client *client,
 
 	mt9m114_power_get(info);
 	mt9m114_edp_register(info);
+	info->sysedpc = sysedp_create_consumer("mt9m114", "mt9m114");
 	mt9m114_mode_info_init(info);
 
 	memcpy(&info->miscdev_info,
@@ -809,6 +814,7 @@ static int mt9m114_remove(struct i2c_client *client)
 	struct mt9m114_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&mt9m114_device);
+	sysedp_free_consumer(info->sysedpc);
 	kfree(info);
 
 	return 0;

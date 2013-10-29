@@ -29,6 +29,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/sysedp.h>
 #include <media/ov5693.h>
 #include <media/nvc.h>
 
@@ -74,6 +75,7 @@ struct ov5693_info {
 	struct ov5693_cal_data cal;
 	struct edp_client *edpc;
 	unsigned int edp_state;
+	struct sysedp_consumer *sysedpc;
 	char devname[16];
 };
 
@@ -2729,6 +2731,7 @@ static int ov5693_power_off(struct ov5693_info *info)
 		ov5693_gpio_pwrdn(info, 1);
 		ov5693_mclk_disable(info);
 		ov5693_edp_lowest(info);
+		sysedp_set_state(info->sysedpc, 0);
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_off function\n", __func__);
@@ -2952,6 +2955,7 @@ static int ov5693_set_mode(struct ov5693_info *info,
 			"%s: ERROR cannot set edp state! %d\n", __func__, err);
 		return err;
 	}
+	sysedp_set_state(info->sysedpc, 1);
 
 	if (!info->mode_valid || (info->mode_index != mode_index))
 		err = ov5693_mode_wr_full(info, mode_index);
@@ -3234,6 +3238,7 @@ static int ov5693_remove(struct i2c_client *client)
 
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
+	sysedp_free_consumer(info->sysedpc);
 	ov5693_del(info);
 	return 0;
 }
@@ -3440,6 +3445,7 @@ static int ov5693_probe(
 		return -EFAULT;
 
 	ov5693_edp_register(info);
+	info->sysedpc = sysedp_create_consumer("ov5693", "ov5693");
 
 	ov5693_sdata_init(info);
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
