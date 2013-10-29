@@ -21,6 +21,7 @@
 #include <linux/platform_data/tegra_bpmp.h>
 #include <linux/spinlock.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include "bpmp_abi.h"
 #include "bpmp_private.h"
 
 #define RES_SEMA_SHRD_INBOX	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x10)
@@ -235,4 +236,9 @@ static int bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
 	bpmp_empty_ib();
 
 	return 0;
+}
+
+int bpmp_ping(void)
+{
+	return bpmp_send_receive(MRQ_PING, NULL, 0, NULL, 0);
 }

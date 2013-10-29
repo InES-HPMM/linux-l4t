@@ -129,6 +129,14 @@ static int bpmp_reset_store(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_reset_fops, NULL, bpmp_reset_store, "%lld\n");
 
+static int bpmp_ping_show(void *data, u64 *val)
+{
+	*val = bpmp_ping();
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(bpmp_ping_fops, bpmp_ping_show, NULL, "%lld\n");
+
 static int bpmp_init_debug(struct platform_device *pdev)
 {
 	struct dentry *root;
@@ -141,6 +149,10 @@ static int bpmp_init_debug(struct platform_device *pdev)
 	}
 
 	d = debugfs_create_file("reset", S_IWUSR, root, pdev, &bpmp_reset_fops);
+	if (IS_ERR_OR_NULL(d))
+		goto clean;
+
+	d = debugfs_create_file("ping", S_IRUSR, root, pdev, &bpmp_ping_fops);
 	if (IS_ERR_OR_NULL(d))
 		goto clean;
 

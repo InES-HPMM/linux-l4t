@@ -14,13 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BPMP_PRIVATE_H
-#define _BPMP_PRIVATE_H
+#ifndef _BPMP_ABI_H
+#define _BPMP_ABI_H
 
-#include <linux/interrupt.h>
-#include <linux/kernel.h>
-
-irqreturn_t bpmp_inbox_irq(int irq, void *data);
-int bpmp_ping(void);
+#define MRQ_PING		0
 
 #endif
