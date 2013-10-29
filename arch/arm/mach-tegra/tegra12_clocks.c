@@ -8213,7 +8213,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("gpu_ref", "tegra_gk20a", "PLLG_ref"),
 	CLK_DUPLICATE("gbus", "tegra_gk20a", "PLLG_out"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a", "pwr"),
-	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp.0", "isp"),
+	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp", "isp"),
 	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
 	CLK_DUPLICATE("via.vi.c4bus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("vib.vi.c4bus", "tegra_vi.1", "vi"),
