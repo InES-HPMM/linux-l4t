@@ -2661,6 +2661,8 @@ dhd_open(struct net_device *net)
 	/* WAR : to prevent calling dhd_open abnormally in quick succession after hang event */
 	if (dhd->pub.hang_was_sent == 1) {
 		DHD_ERROR(("%s: HANG was sent up earlier\n", __FUNCTION__));
+		/* Clear the status of driver before return */
+		dhd_stop(net);
 		return -1;
 	}
 
