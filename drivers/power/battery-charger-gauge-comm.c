@@ -21,6 +21,7 @@
  * 02111-1307, USA
  */
 
+#include <linux/alarmtimer.h>
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/export.h>
@@ -31,7 +32,11 @@
 #include <linux/mutex.h>
 #include <linux/thermal.h>
 #include <linux/list.h>
+#include <linux/rtc.h>
+#include <linux/time.h>
+#include <linux/timer.h>
 #include <linux/power/battery-charger-gauge-comm.h>
+#include <linux/power/reset/system-pmic.h>
 #include <linux/wakelock.h>
 
 #define JETI_TEMP_COLD		0
@@ -56,6 +61,8 @@ struct battery_charger_dev {
 	struct thermal_zone_device	*battery_tz;
 	bool				start_monitoring;
 	struct wake_lock		charger_wake_lock;
+	bool				locked;
+	struct rtc_device		*rtc;
 };
 
 struct battery_gauge_dev {
@@ -166,14 +173,20 @@ EXPORT_SYMBOL_GPL(battery_charger_thermal_stop_monitoring);
 
 int battery_charger_acquire_wake_lock(struct battery_charger_dev *bc_dev)
 {
-	wake_lock(&bc_dev->charger_wake_lock);
+	if (!bc_dev->locked) {
+		wake_lock(&bc_dev->charger_wake_lock);
+		bc_dev->locked = true;
+	}
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_charger_acquire_wake_lock);
 
 int battery_charger_release_wake_lock(struct battery_charger_dev *bc_dev)
 {
-	wake_unlock(&bc_dev->charger_wake_lock);
+	if (bc_dev->locked) {
+		wake_unlock(&bc_dev->charger_wake_lock);
+		bc_dev->locked = false;
+	}
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_charger_release_wake_lock);
@@ -190,6 +203,72 @@ int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_charging_restart);
+
+void battery_charging_restart_cancel(struct battery_charger_dev *bc_dev)
+{
+	if (!bc_dev->ops->restart_charging) {
+		dev_err(bc_dev->parent_dev,
+			"No callback for restart charging\n");
+		return;
+	}
+	cancel_delayed_work(&bc_dev->restart_charging_wq);
+}
+EXPORT_SYMBOL_GPL(battery_charging_restart_cancel);
+
+int battery_charging_wakeup(struct battery_charger_dev *bc_dev, int after_sec)
+{
+	int ret;
+	unsigned long now;
+	struct rtc_wkalrm alm;
+	int alarm_time = after_sec;
+
+	if (!alarm_time)
+		return 0;
+
+	bc_dev->rtc = alarmtimer_get_rtcdev();
+	if (!bc_dev->rtc) {
+		dev_err(bc_dev->parent_dev, "No RTC device found\n");
+		return -ENODEV;
+	}
+
+	alm.enabled = true;
+	ret = rtc_read_time(bc_dev->rtc, &alm.time);
+	if (ret < 0) {
+		dev_err(bc_dev->parent_dev, "RTC read time failed %d\n", ret);
+		return ret;
+	}
+	rtc_tm_to_time(&alm.time, &now);
+
+	rtc_time_to_tm(now + alarm_time, &alm.time);
+	ret = rtc_set_alarm(bc_dev->rtc, &alm);
+	if (ret < 0) {
+		dev_err(bc_dev->parent_dev, "RTC set alarm failed %d\n", ret);
+		alm.enabled = false;
+		return ret;
+	}
+	alm.enabled = false;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charging_wakeup);
+
+int battery_charging_system_reset_after(struct battery_charger_dev *bc_dev,
+	int after_sec)
+{
+	struct system_pmic_rtc_data rtc_data;
+	int ret;
+
+	dev_info(bc_dev->parent_dev, "Setting system on after %d sec\n",
+		after_sec);
+	battery_charging_wakeup(bc_dev, after_sec);
+	rtc_data.power_on_after_sec = after_sec;
+
+	ret = system_pmic_set_power_on_event(SYSTEM_PMIC_RTC_ALARM, &rtc_data);
+	if (ret < 0)
+		dev_err(bc_dev->parent_dev,
+			"Setting power on event failed: %d\n", ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(battery_charging_system_reset_after);
 
 struct battery_charger_dev *battery_charger_register(struct device *dev,
 	struct battery_charger_info *bci, void *drv_data)
@@ -218,14 +297,18 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->drv_data = drv_data;
 
 	/* Thermal monitoring */
-	bc_dev->polling_time_sec = bci->polling_time_sec;
-	strcpy(bc_dev->tz_name, bci->tz_name ? : "");
-	bc_dev->battery_tz = thermal_zone_device_find_by_name(bc_dev->tz_name);
-	if (!bc_dev->battery_tz)
-		dev_info(dev, "Battery thermal zone %s is not registered yet\n",
-			bc_dev->tz_name);
-	INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
-			battery_charger_thermal_monitor_wq);
+	if (!bc_dev->tz_name) {
+		bc_dev->polling_time_sec = bci->polling_time_sec;
+		strcpy(bc_dev->tz_name, bci->tz_name ? : "");
+		bc_dev->battery_tz = thermal_zone_device_find_by_name(
+						bc_dev->tz_name);
+		if (!bc_dev->battery_tz)
+			dev_info(dev,
+			    "Battery thermal zone %s is not registered yet\n",
+				bc_dev->tz_name);
+		INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
+				battery_charger_thermal_monitor_wq);
+	}
 
 	INIT_DELAYED_WORK(&bc_dev->restart_charging_wq,
 			battery_charger_restart_charging_wq);
@@ -242,7 +325,8 @@ void battery_charger_unregister(struct battery_charger_dev *bc_dev)
 {
 	mutex_lock(&charger_gauge_list_mutex);
 	list_del(&bc_dev->list);
-	cancel_delayed_work(&bc_dev->poll_temp_monitor_wq);
+	if (bc_dev->polling_time_sec)
+		cancel_delayed_work(&bc_dev->poll_temp_monitor_wq);
 	cancel_delayed_work(&bc_dev->restart_charging_wq);
 	wake_lock_destroy(&bc_dev->charger_wake_lock);
 	mutex_unlock(&charger_gauge_list_mutex);
