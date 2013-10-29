@@ -108,6 +108,14 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 		.cpu_speedo_id      = 1, /* Prod SKU */
 		EDP_PARAMS_COMMON_PART,
 	},
+	{
+		.cpu_speedo_id      = 2, /* Prod SKU */
+		EDP_PARAMS_COMMON_PART,
+	},
+	{
+		.cpu_speedo_id      = 3, /* Prod SKU */
+		EDP_PARAMS_COMMON_PART,
+	},
 };
 
 struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,

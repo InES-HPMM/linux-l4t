@@ -72,21 +72,21 @@ static int gpu_speedo_value;
 static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	1 */
-	{2190,	UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+/* proc_id  0,	   1 */
+	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,	   UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	1 */
-	{1965,	UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+/* proc_id  0,	   1 */
+	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,	   UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
 	{2071,	UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+	{0,	UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static void rev_sku_to_speedo_ids(int rev, int sku)
@@ -94,7 +94,8 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	switch (sku) {
 	case 0x00: /* Engg sku */
 	case 0x0F:
-		cpu_speedo_id = 0;
+	case 0x83:
+		cpu_speedo_id = sku == 0x83 ? 2 : 0;
 		soc_speedo_id = 0;
 		gpu_speedo_id = 0;
 		threshold_index = 0;
