@@ -2544,14 +2544,6 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 		return -EFAULT;
 	}
 
-	/* TODO move this into firmware to avoid race */
-	writel(0x0, tegra->fpci_base + XUSB_CFG_ARU_C11PAGESEL0);
-	writel(0x1000, tegra->fpci_base + XUSB_CFG_ARU_C11PAGESEL1);
-	writel(0x10, tegra->fpci_base + XUSB_CFG_HSPX_CORE_HSICWRAP);
-	reg_dump(&pdev->dev, tegra->fpci_base, XUSB_CFG_ARU_C11PAGESEL0);
-	reg_dump(&pdev->dev, tegra->fpci_base, XUSB_CFG_ARU_C11PAGESEL1);
-	reg_dump(&pdev->dev, tegra->fpci_base, XUSB_CFG_HSPX_CORE_HSICWRAP);
-
 	return 0;
 }
 
