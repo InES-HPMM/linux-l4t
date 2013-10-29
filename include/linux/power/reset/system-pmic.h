@@ -37,6 +37,10 @@ struct system_pmic_config {
 	bool allow_power_off;
 };
 
+struct system_pmic_rtc_data {
+	int power_on_after_sec;
+};
+
 struct system_pmic_ops {
 	int (*configure_power_on)(void *pmic_data,
 		enum system_pmic_power_on_event event, void *event_data);
