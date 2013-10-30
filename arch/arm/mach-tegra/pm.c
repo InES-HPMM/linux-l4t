@@ -53,6 +53,7 @@
 #include <linux/tegra-timer.h>
 #include <linux/tegra-cpuidle.h>
 #include <linux/irqchip/tegra.h>
+#include <linux/tegra-pm.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -131,6 +132,8 @@ static u64 resume_entry_time;
 static u64 suspend_time;
 static u64 suspend_entry_time;
 #endif
+
+static RAW_NOTIFIER_HEAD(tegra_pm_chain_head);
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static void update_pmc_registers(unsigned long rate);
@@ -274,6 +277,25 @@ void tegra_cluster_switch_time(unsigned int flags, int id)
 			  stats->avg) >> CLUSTER_SWITCH_TIME_AVG_SHIFT;
 }
 #endif
+
+int tegra_register_pm_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
+}
+EXPORT_SYMBOL(tegra_register_pm_notifier);
+
+int tegra_unregister_pm_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_unregister(&tegra_pm_chain_head, nb);
+}
+EXPORT_SYMBOL(tegra_unregister_pm_notifier);
+
+static int tegra_pm_notifier_call_chain(unsigned int val)
+{
+	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
+
+	return notifier_to_errno(ret);
+}
 
 #ifdef CONFIG_PM_SLEEP
 static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
