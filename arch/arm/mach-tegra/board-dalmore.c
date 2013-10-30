@@ -74,7 +74,6 @@
 #include "board-dalmore.h"
 #include "devices.h"
 #include "gpio-names.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
 #include "common.h"

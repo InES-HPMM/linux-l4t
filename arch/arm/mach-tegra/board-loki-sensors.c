@@ -22,10 +22,10 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
+#include <linux/tegra-fuse.h>
 #include <media/mt9m114.h>
 #include <mach/gpio-tegra.h>
 #include <mach/edp.h>
-#include <mach/tegra_fuse.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>

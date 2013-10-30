@@ -21,12 +21,13 @@
 #include <linux/kobject.h>
 #include <linux/err.h>
 #include <linux/suspend.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
 #include <mach/thermal.h>
 
 #include "clock.h"
-#include "fuse.h"
+#include "common.h"
 
 static DEFINE_MUTEX(core_edp_lock);
 

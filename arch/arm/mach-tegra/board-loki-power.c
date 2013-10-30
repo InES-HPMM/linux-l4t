@@ -30,10 +30,10 @@
 #include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq27441_battery.h>
 #include <linux/power/power_supply_extcon.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
-#include <mach/tegra_fuse.h>
 #include <mach/pinmux-t12.h>
 
 #include <linux/pid_thermal_gov.h>

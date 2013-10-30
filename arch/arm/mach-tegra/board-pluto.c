@@ -82,7 +82,6 @@
 #include "tegra-board-id.h"
 #include "devices.h"
 #include "gpio-names.h"
-#include "fuse.h"
 #include "pm.h"
 #include "common.h"
 #include "iomap.h"

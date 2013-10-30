@@ -37,14 +37,15 @@
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
 #include <linux/bug.h>
+#include <linux/tegra-fuse.h>
 
-#include <mach/tegra_fuse.h>
 
 #include "iomap.h"
 #include "tegra3_tsensor.h"
 #include "fuse.h"
 #include "tegra11_soctherm.h"
 #include "gpio-names.h"
+#include "common.h"
 
 /* Min temp granularity specified as X in 2^X.
  * -1: Hi precision option: 2^-1 = 0.5C (T12x onwards)

@@ -72,7 +72,6 @@
 #include "board-pismo.h"
 #include "devices.h"
 #include "gpio-names.h"
-#include "fuse.h"
 #include "pm.h"
 #include "common.h"
 #include "tegra-board-id.h"

@@ -26,13 +26,14 @@
 #include <linux/sysedp.h>
 #include <linux/tegra-soc.h>
 #include <linux/regulator/consumer.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/edp.h>
 
-#include "fuse.h"
 #include "dvfs.h"
 #include "clock.h"
 #include "cpu-tegra.h"
+#include "common.h"
 
 #define FREQ_STEP 12750000
 #define OVERRIDE_DEFAULT 6000

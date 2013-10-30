@@ -25,8 +25,8 @@
 
 #include "tegra-board-id.h"
 #include "tegra11_emc.h"
-#include "fuse.h"
 #include "devices.h"
+#include "common.h"
 
 static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40S_table[] = {
 	{

@@ -24,8 +24,8 @@
 #include <linux/nct1008.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/power/sbs-battery.h>
+#include <linux/tegra-fuse.h>
 #include <mach/edp.h>
-#include <mach/tegra_fuse.h>
 #include <mach/pinmux-t12.h>
 #include <mach/pinmux.h>
 #include <mach/io_dpd.h>

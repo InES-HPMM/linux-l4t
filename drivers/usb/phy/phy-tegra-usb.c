@@ -37,7 +37,6 @@
 
 #include "../../../arch/arm/mach-tegra/clock.h"
 #include "tegra_usb_phy.h"
-#include "../../../arch/arm/mach-tegra/fuse.h"
 #include "../../../arch/arm/mach-tegra/common.h"
 
 /* HACK! This needs to come from DT */

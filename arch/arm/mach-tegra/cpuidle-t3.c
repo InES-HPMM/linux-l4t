@@ -56,13 +56,11 @@
 #include "clock.h"
 #include "cpuidle.h"
 #include "dvfs.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
 #include "timer.h"
-#include "fuse.h"
 
 #define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)

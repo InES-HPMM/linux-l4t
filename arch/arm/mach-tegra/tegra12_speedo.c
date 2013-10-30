@@ -23,7 +23,6 @@
 #include <linux/err.h>
 #include <linux/bug.h>			/* For BUG_ON.  */
 
-#include <mach/tegra_fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>

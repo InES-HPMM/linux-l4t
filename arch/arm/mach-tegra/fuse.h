@@ -17,7 +17,6 @@
  *
  */
 
-#include <mach/tegra_fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/sysfs.h>
 #include <linux/kobject.h>

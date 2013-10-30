@@ -28,8 +28,8 @@
 #include "board-pluto.h"
 #include "tegra-board-id.h"
 #include "tegra11_emc.h"
-#include "fuse.h"
 #include "devices.h"
+#include "common.h"
 
 static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_2gb_table[] = {
 	{

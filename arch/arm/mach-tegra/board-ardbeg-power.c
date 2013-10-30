@@ -40,9 +40,9 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2471x-charger.h>
 #include <linux/power/bq2477x-charger.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/mach-types.h>
-#include <mach/tegra_fuse.h>
 #include <mach/pinmux-t12.h>
 
 #include "pm.h"
