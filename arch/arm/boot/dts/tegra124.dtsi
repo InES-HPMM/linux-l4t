@@ -1,4 +1,9 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 /include/ "tegra124-soc.dtsi"
+
+#include "skeleton.dtsi"
 
 / {
 	compatible = "nvidia,tegra124";

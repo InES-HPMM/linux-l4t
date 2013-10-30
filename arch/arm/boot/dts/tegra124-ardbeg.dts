@@ -1,6 +1,6 @@
 /dts-v1/;
 
-/include/ "tegra124.dtsi"
+#include "tegra124.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Ardbeg";

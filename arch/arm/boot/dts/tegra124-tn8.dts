@@ -1,8 +1,7 @@
 /dts-v1/;
 
-/include/ "tegra124.dtsi"
+#include "tegra124-tn8-generic.dtsi"
 
-#include <dt-bindings/gpio/tegra-gpio.h>
 / {
 	model = "NVIDIA Tegra124 TN8";
 	compatible = "nvidia,tn8", "nvidia,tegra124";
@@ -144,8 +143,6 @@
 			vdd-supply = <&palmas_smps9>;
 		};
 	};
-
-/include/ "tegra124-tn8-generic.dtsi"
 
 };
 

@@ -1,6 +1,6 @@
 /dts-v1/;
 
-/include/ "tegra124.dtsi"
+#include "tegra124-tn8-generic.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 tn8 fury";
@@ -46,7 +46,4 @@
 				0x18 0x20 0x15 0x40 0x0E 0xA0 0x0E 0xA0>;
 		};
 	};
-
-/include/ "tegra124-tn8-generic.dtsi"
-
 };

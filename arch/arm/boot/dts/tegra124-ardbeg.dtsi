@@ -1,1 +1,1 @@
-/include/ "tegra124.dtsi"
+#include "tegra124.dtsi"

@@ -1,6 +1,6 @@
 /dts-v1/;
 
-/include/ "tegra124.dtsi"
+#include "tegra124-tn8-generic.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8";
@@ -40,8 +40,5 @@
 			};
 		};
 	};
-
-/include/ "tegra124-tn8b-generic.dtsi"
-
 };
 
