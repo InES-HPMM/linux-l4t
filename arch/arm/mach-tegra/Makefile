@@ -35,7 +35,6 @@ ifeq ($(CONFIG_CPU_IDLE),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
 endif
 else
-obj-y                                   += common-t3.o
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
 obj-$(CONFIG_DEBUG_FS)                  += clocks_stats.o

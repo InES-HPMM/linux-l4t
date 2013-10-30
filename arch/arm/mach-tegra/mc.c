@@ -31,42 +31,96 @@
 
 #include "iomap.h"
 
+#define MC_CLIENT_HOTRESET_CTRL		0x200
+#define MC_CLIENT_HOTRESET_STAT		0x204
+#define MC_CLIENT_HOTRESET_CTRL_1	0x970
+#define MC_CLIENT_HOTRESET_STAT_1	0x974
+
+#define MC_TIMING_REG_NUM1					\
+	((MC_EMEM_ARB_TIMING_W2R - MC_EMEM_ARB_CFG) / 4 + 1)
+#define MC_TIMING_REG_NUM2					\
+	((MC_EMEM_ARB_MISC1 - MC_EMEM_ARB_DA_TURNS) / 4 + 1)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MC_TIMING_REG_NUM3	T12X_MC_LATENCY_ALLOWANCE_NUM_REGS
+#else
+#define MC_TIMING_REG_NUM3						\
+	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_BASE) / 4 + 1)
+#endif
+
 static DEFINE_SPINLOCK(tegra_mc_lock);
 void __iomem *mc = (void __iomem *)IO_ADDRESS(TEGRA_MC_BASE);
 #ifdef MC_DUAL_CHANNEL
 void __iomem *mc1 = (void __iomem *)IO_ADDRESS(TEGRA_MC1_BASE);
 #endif
 
-#define MC_CLIENT_HOTRESET_CTRL		0x200
-#define MC_CLIENT_HOTRESET_STAT		0x204
-#define MC_CLIENT_HOTRESET_CTRL_1	0x970
-#define MC_CLIENT_HOTRESET_STAT_1	0x974
+#ifdef CONFIG_PM_SLEEP
+static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
+			  + MC_TIMING_REG_NUM3 + 4];
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-
-void tegra_mc_set_priority(unsigned long client, unsigned long prio)
+static void tegra_mc_timing_save(void)
 {
-	unsigned long reg = client >> 8;
-	int field = client & 0xff;
-	unsigned long val;
-	unsigned long flags;
+	u32 off;
+	u32 *ctx = mc_boot_timing;
 
-	spin_lock_irqsave(&tegra_mc_lock, flags);
-	val = mc_readl(reg);
-	val &= ~(TEGRA_MC_PRIO_MASK << field);
-	val |= prio << field;
-	mc_writel(val, reg);
-	spin_unlock_irqrestore(&tegra_mc_lock, flags);
+	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
+		*ctx++ = readl(mc + off);
 
-}
+	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
+		*ctx++ = readl(mc + off);
 
-int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
-{
-	return 1;
-}
+	*ctx++ = readl(mc + MC_EMEM_ARB_RING3_THROTTLE);
+	*ctx++ = readl(mc + MC_EMEM_ARB_OVERRIDE);
+	*ctx++ = readl(mc + MC_RESERVED_RSV);
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	tegra12_mc_latency_allowance_save(&ctx);
 #else
-	/* !!!FIXME!!! IMPLEMENT tegra_mc_set_priority() */
+	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
+		off += 4)
+		*ctx++ = readl(IOMEM(mc + off));
+#endif
+
+	*ctx++ = readl(IOMEM((uintptr_t)mc + MC_INT_MASK));
+}
+
+void tegra_mc_timing_restore(void)
+{
+	u32 off;
+	u32 *ctx = mc_boot_timing;
+
+	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
+		__raw_writel(*ctx++, mc + off);
+
+	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
+		__raw_writel(*ctx++, mc + off);
+
+	__raw_writel(*ctx++, mc + MC_EMEM_ARB_RING3_THROTTLE);
+	__raw_writel(*ctx++, mc + MC_EMEM_ARB_OVERRIDE);
+	__raw_writel(*ctx++, mc + MC_RESERVED_RSV);
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	tegra12_mc_latency_allowance_restore(&ctx);
+#else
+	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
+		off += 4)
+		__raw_writel(*ctx++, IOMEM(mc + off));
+#endif
+
+	writel(*ctx++, IOMEM(mc + MC_INT_MASK));
+	off = readl(IOMEM(mc + MC_INT_MASK));
+
+	writel(0x1, mc + MC_TIMING_CONTROL);
+	off = readl(mc + MC_TIMING_CONTROL);
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* Bug 1059264
+	 * Set extra snap level to avoid VI starving and dropping data.
+	 */
+	writel(1, mc + MC_VE_EXTRA_SNAP_LEVELS);
+#endif
+}
+#else
+#define tegra_mc_timing_save()
+#endif
 
 /*
  * If using T30/DDR3, the 2nd 16 bytes part of DDR3 atom is 2nd line and is
@@ -77,14 +131,12 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 	int type;
 
 	type = tegra_emc_get_dram_type();
-	/*WARN_ONCE(type == -1, "unknown type DRAM because DVFS is disabled\n");*/
 
 	if (type == DRAM_TYPE_DDR3)
 		return 2;
 	else
 		return 1;
 }
-#endif
 
 /* API to get EMC freq to be requested, for Bandwidth.
  * bw_kbps: BandWidth passed is in KBps.
@@ -209,6 +261,8 @@ static int __init tegra_mc_init(void)
 {
 	u32 reg;
 	struct dentry *mc_debugfs_dir;
+
+	tegra_mc_timing_save();
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	reg = 0x0f7f1010;
