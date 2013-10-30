@@ -21,6 +21,8 @@ obj-y                                   += mipi-cal.o
 endif
 endif
 
+obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
+
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
 obj-y                                   += pm-t2.o

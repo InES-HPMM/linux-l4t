@@ -46,6 +46,10 @@ void tegra_gic_affinity_to_cpu0(void);
 
 u32 tegra_gic_version(void);
 
+extern int *tegra_gpio_wake_table;
+extern int *tegra_irq_wake_table;
+extern int tegra_wake_table_len;
+
 #if defined(CONFIG_PM_SLEEP)
 u64 tegra_read_pmc_wake_status(void);
 int tegra_pm_irq_set_wake(int wake, int enable);
