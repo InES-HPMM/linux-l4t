@@ -68,6 +68,9 @@ struct tegra_usb_phy_ops {
 	int (*power_on)(struct tegra_usb_phy *phy);
 	bool (*charger_detect)(struct tegra_usb_phy *phy);
 	bool (*nv_charger_detect)(struct tegra_usb_phy *phy);
+	bool (*apple_charger_1000ma_detect)(struct tegra_usb_phy *phy);
+	bool (*apple_charger_2000ma_detect)(struct tegra_usb_phy *phy);
+	bool (*apple_charger_500ma_detect)(struct tegra_usb_phy *phy);
 	void (*pmc_disable) (struct tegra_usb_phy *phy);
 };
 

@@ -604,6 +604,36 @@ bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy)
 	return status;
 }
 
+bool tegra_usb_phy_apple_1000ma_charger_detected(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->ops && phy->ops->apple_charger_1000ma_detect)
+		status = phy->ops->apple_charger_1000ma_detect(phy);
+
+	return status;
+}
+
+bool tegra_usb_phy_apple_2000ma_charger_detected(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->ops && phy->ops->apple_charger_2000ma_detect)
+		status = phy->ops->apple_charger_2000ma_detect(phy);
+
+	return status;
+}
+
+bool tegra_usb_phy_apple_500ma_charger_detected(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->ops && phy->ops->apple_charger_500ma_detect)
+		status = phy->ops->apple_charger_500ma_detect(phy);
+
+	return status;
+}
+
 bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy)
 {
 	if (!phy->hw_accessible)

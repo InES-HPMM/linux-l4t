@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2010 Google, Inc.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -99,6 +99,24 @@ bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy);
  * if nvidia proprietary charger is detected then returns true else false
  */
 bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy);
+
+/**
+ * Indicates whether apple 1A charger is connected or not
+ * if apple 1A charger is detected then returns true else false
+ */
+bool tegra_usb_phy_apple_1000ma_charger_detected(struct tegra_usb_phy *phy);
+
+/**
+ * Indicates whether apple 2A charger is connected or not
+ * if apple 2A charger is detected then returns true else false
+ */
+bool tegra_usb_phy_apple_2000ma_charger_detected(struct tegra_usb_phy *phy);
+
+/**
+ * Indicates whether apple 0.5A charger is connected or not
+ * if apple 0.5A charger is detected then returns true else false
+ */
+bool tegra_usb_phy_apple_500ma_charger_detected(struct tegra_usb_phy *phy);
 
 /**
  * Indicates whether phy resumed due to the pmc remote/hotplug wake event
