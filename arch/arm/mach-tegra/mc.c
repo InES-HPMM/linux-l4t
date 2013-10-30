@@ -63,24 +63,24 @@ static void tegra_mc_timing_save(void)
 	u32 *ctx = mc_boot_timing;
 
 	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
-		*ctx++ = readl(mc + off);
+		*ctx++ = mc_readl(off);
 
 	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
-		*ctx++ = readl(mc + off);
+		*ctx++ = mc_readl(off);
 
-	*ctx++ = readl(mc + MC_EMEM_ARB_RING3_THROTTLE);
-	*ctx++ = readl(mc + MC_EMEM_ARB_OVERRIDE);
-	*ctx++ = readl(mc + MC_RESERVED_RSV);
+	*ctx++ = mc_readl(MC_EMEM_ARB_RING3_THROTTLE);
+	*ctx++ = mc_readl(MC_EMEM_ARB_OVERRIDE);
+	*ctx++ = mc_readl(MC_RESERVED_RSV);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra12_mc_latency_allowance_save(&ctx);
 #else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
-		*ctx++ = readl(IOMEM(mc + off));
+		*ctx++ = mc_readl(off);
 #endif
 
-	*ctx++ = readl(IOMEM((uintptr_t)mc + MC_INT_MASK));
+	*ctx++ = mc_readl(MC_INT_MASK);
 }
 
 void tegra_mc_timing_restore(void)
@@ -89,33 +89,33 @@ void tegra_mc_timing_restore(void)
 	u32 *ctx = mc_boot_timing;
 
 	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
-		__raw_writel(*ctx++, mc + off);
+		__mc_raw_writel(0, *ctx++, off);
 
 	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
-		__raw_writel(*ctx++, mc + off);
+		__mc_raw_writel(0, *ctx++, off);
 
-	__raw_writel(*ctx++, mc + MC_EMEM_ARB_RING3_THROTTLE);
-	__raw_writel(*ctx++, mc + MC_EMEM_ARB_OVERRIDE);
-	__raw_writel(*ctx++, mc + MC_RESERVED_RSV);
+	__mc_raw_writel(0, *ctx++, MC_EMEM_ARB_RING3_THROTTLE);
+	__mc_raw_writel(0, *ctx++, MC_EMEM_ARB_OVERRIDE);
+	__mc_raw_writel(0, *ctx++, MC_RESERVED_RSV);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra12_mc_latency_allowance_restore(&ctx);
 #else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
-		__raw_writel(*ctx++, IOMEM(mc + off));
+		__mc_raw_writel(0, *ctx++, off);
 #endif
 
-	writel(*ctx++, IOMEM(mc + MC_INT_MASK));
-	off = readl(IOMEM(mc + MC_INT_MASK));
+	mc_writel(*ctx++, MC_INT_MASK);
+	off = mc_readl(MC_INT_MASK);
 
-	writel(0x1, mc + MC_TIMING_CONTROL);
-	off = readl(mc + MC_TIMING_CONTROL);
+	mc_writel(0x1, MC_TIMING_CONTROL);
+	off = mc_readl(MC_TIMING_CONTROL);
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* Bug 1059264
 	 * Set extra snap level to avoid VI starving and dropping data.
 	 */
-	writel(1, mc + MC_VE_EXTRA_SNAP_LEVELS);
+	mc_writel(1, MC_VE_EXTRA_SNAP_LEVELS);
 #endif
 }
 #else
