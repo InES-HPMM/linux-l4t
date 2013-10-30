@@ -32,8 +32,6 @@ struct tegra_pm_domain {
 
 int tegra_dma_restore(void);
 int tegra_dma_save(void);
-int tegra_i2c_restore(struct device *dev);
-int tegra_pd_i2c_restore(void);
 int tegra_actmon_save(void);
 int tegra_actmon_restore(void);
 
