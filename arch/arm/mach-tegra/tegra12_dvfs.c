@@ -319,36 +319,14 @@ static struct dvfs core_dvfs_table[] = {
 
 };
 
+/* GPU DVFS tables */
+static unsigned long gpu_max_freq[] = {
+/* speedo_id	0	1	*/
+		648000, 852000,
+};
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id =   0,
-		.process_id = -1,
-		.max_mv = 1200,
-		.freqs_mult = KHZ,
-		.speedo_scale = 100,
-		.thermal_scale = 10,
-		.voltage_scale = 1000,
-		.cvb_table = {
-			/*f        dfll  pll:   c0,     c1,   c2,   c3,      c4,   c5 */
-			{   72000, {  }, { 1013806, -14060, -127,   954, -27008,  781}, },
-			{  108000, {  }, {  983062,  -9373, -263,   954, -26703,  650}, },
-			{  180000, {  }, { 1040909, -12008, -224,   775, -23193,  376}, },
-			{  252000, {  }, { 1150002, -20683,  -17,   298, -13428,  232}, },
-			{  324000, {  }, { 1081549, -10827, -274,   179, -10681,  238}, },
-			{  396000, {  }, { 1136931, -12086, -274,   119, -10071,  238}, },
-			{  468000, {  }, { 1195664, -13329, -274,    60,  -8850,  221}, },
-			{  540000, {  }, { 1257766, -14587, -274,     0,  -7019,  179}, },
-			{  612000, {  }, { 1323069, -15830, -274,     0,  -4578,  113}, },
-			{  648000, {  }, { 1356986, -16459, -274,     0,  -3204,   72}, },
-			{       0, {  }, { }, },
-		},
-		.cvb_vmin =  {  0, {  }, { 1180000, -18900,    0,     0,  -6110,    0}, },
-		.vmin_trips_table = { 15, },
-		.therm_floors_table = { 900, },
-		.vts_trips_table = { -10, 10, 30, 50, 70, },
-	},
-	{
-		.speedo_id =   1,
+		.speedo_id =  -1,
 		.process_id = -1,
 		.max_mv = 1200,
 		.freqs_mult = KHZ,
@@ -703,7 +681,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	return 0;
 }
 
-static int __init set_gpu_dvfs_data(
+static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
 	int i, j, thermal_ranges, mv;
@@ -757,7 +735,7 @@ static int __init set_gpu_dvfs_data(
 	 */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
 		table = &d->cvb_table[i];
-		if (!table->freq)
+		if (!table->freq || (table->freq > max_freq))
 			break;
 
 		mv = get_cvb_voltage(
@@ -933,11 +911,13 @@ void __init tegra12x_init_dvfs(void)
 	 * gpu rail, and gpu maximum frequency. Error when gpu dvfs table can
 	 * not be constructed must never happen.
 	 */
+	BUG_ON(gpu_speedo_id >= ARRAY_SIZE(gpu_max_freq));
 	for (ret = 0, i = 0; i < ARRAY_SIZE(gpu_cvb_dvfs_table); i++) {
 		struct gpu_cvb_dvfs *d = &gpu_cvb_dvfs_table[i];
+		unsigned long max_freq = gpu_max_freq[gpu_speedo_id];
 		if (match_dvfs_one("gpu cvb", d->speedo_id, d->process_id,
 				   gpu_speedo_id, gpu_process_id)) {
-			ret = set_gpu_dvfs_data(
+			ret = set_gpu_dvfs_data(max_freq,
 				d, &gpu_dvfs, &gpu_max_freq_index);
 			break;
 		}
