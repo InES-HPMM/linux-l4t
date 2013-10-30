@@ -1114,6 +1114,7 @@ static void __init tegra_ardbeg_late_init(void)
 	else
 		ardbeg_pinmux_init();
 
+	ardbeg_display_init();
 	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();

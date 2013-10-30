@@ -29,6 +29,7 @@
 #include <linux/pwm_backlight.h>
 #include <linux/of.h>
 #include <linux/dma-contiguous.h>
+#include <linux/clk.h>
 
 #include <mach/irqs.h>
 #include <mach/dc.h>
@@ -41,6 +42,7 @@
 #include "common.h"
 #include "iomap.h"
 #include "tegra12_host1x_devices.h"
+#include "dvfs.h"
 
 
 struct platform_device * __init ardbeg_host1x_init(void)
@@ -261,7 +263,7 @@ static int ardbeg_hdmi_hotplug_init(struct device *dev)
 				__func__, PTR_ERR(ardbeg_hdmi_vddio));
 				ardbeg_hdmi_vddio = NULL;
 		} else {
-			regulator_enable(ardbeg_hdmi_vddio);
+			return regulator_enable(ardbeg_hdmi_vddio);
 		}
 	}
 
@@ -486,15 +488,19 @@ static struct tegra_dc_sd_settings ardbeg_sd_settings = {
 	.use_vpulse2 = true,
 };
 
-static void ardbeg_panel_select(void)
+/* can be called multiple times */
+static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
+	u8 *dsi_instance_out)
 {
 	struct tegra_panel *panel = NULL;
-	struct board_info board;
 	u8 dsi_instance;
+	struct board_info boardtmp;
 
-	tegra_get_display_board_info(&board);
+	if (!board_out)
+		board_out = &boardtmp;
+	tegra_get_display_board_info(board_out);
 
-	switch (board.board_id) {
+	switch (board_out->board_id) {
 	case BOARD_E1639:
 	case BOARD_E1813:
 		panel = &dsi_s_wqxga_10_1;
@@ -532,6 +538,18 @@ static void ardbeg_panel_select(void)
 		dsi_instance = DSI_INSTANCE_0;
 		break;
 	}
+	if (dsi_instance_out)
+		*dsi_instance_out = dsi_instance;
+	return panel;
+}
+
+static void ardbeg_panel_select(void)
+{
+	struct tegra_panel *panel = NULL;
+	struct board_info board;
+	u8 dsi_instance;
+
+	panel = ardbeg_panel_configure(&board, &dsi_instance);
 
 	if (panel) {
 		if (panel->init_sd_settings)
@@ -645,4 +663,55 @@ int __init ardbeg_panel_init(void)
 	}
 #endif
 	return err;
+}
+
+int __init ardbeg_display_init(void)
+{
+	struct clk *disp1_clk = clk_get_sys("tegradc.0", NULL);
+	struct clk *disp2_clk = clk_get_sys("tegradc.1", NULL);
+	struct tegra_panel *panel;
+	struct board_info board;
+	long disp1_rate;
+	long disp2_rate;
+
+	if (WARN_ON(IS_ERR(disp1_clk))) {
+		if (disp2_clk && !IS_ERR(disp2_clk))
+			clk_put(disp2_clk);
+		return PTR_ERR(disp1_clk);
+	}
+
+	if (WARN_ON(IS_ERR(disp2_clk))) {
+		clk_put(disp1_clk);
+		return PTR_ERR(disp1_clk);
+	}
+
+	panel = ardbeg_panel_configure(&board, NULL);
+
+	if (panel && panel->init_dc_out) {
+		panel->init_dc_out(&ardbeg_disp1_out);
+		if (ardbeg_disp1_out.n_modes && ardbeg_disp1_out.modes)
+			disp1_rate = ardbeg_disp1_out.modes[0].pclk;
+	} else {
+		disp1_rate = 0;
+		if (!panel || !panel->init_dc_out)
+			printk(KERN_ERR "disp1 panel output not specified!\n");
+	}
+
+	printk(KERN_DEBUG "disp1 pclk=%ld\n", disp1_rate);
+	if (disp1_rate)
+		tegra_dvfs_resolve_override(disp1_clk, disp1_rate);
+
+
+	/* set up disp2 */
+	if (ardbeg_disp2_out.max_pixclock)
+		disp2_rate = PICOS2KHZ(ardbeg_disp2_out.max_pixclock) * 1000;
+	else
+		disp2_rate = 297000000; /* HDMI 4K */
+	printk(KERN_DEBUG "disp2 pclk=%ld\n", disp2_rate);
+	if (disp2_rate)
+		tegra_dvfs_resolve_override(disp2_clk, disp2_rate);
+
+	clk_put(disp1_clk);
+	clk_put(disp2_clk);
+	return 0;
 }
