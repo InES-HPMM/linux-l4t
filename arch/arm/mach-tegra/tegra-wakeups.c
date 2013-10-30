@@ -18,11 +18,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/irqchip/tegra.h>
+#include <linux/system-wakeup.h>
 
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
@@ -148,3 +152,27 @@ int tegra_disable_wake_source(int wake)
 {
 	return tegra_set_wake_source(wake, -EINVAL);
 }
+
+int get_wakeup_reason_irq(void)
+{
+	unsigned long long wake_status = tegra_read_pmc_wake_status();
+	unsigned long long mask_ll = 1ULL;
+	int irq;
+	struct irq_desc *desc;
+	int i;
+
+	for (i = 0; i < tegra_wake_table_len; ++i) {
+		if (mask_ll & wake_status) {
+			irq = tegra_wake_to_irq(i);
+			if (!irq)
+				continue;
+			desc = irq_to_desc(irq);
+			if (!desc || !desc->action || !desc->action->name)
+				continue;
+			return irq;
+		}
+		mask_ll <<= 1;
+	}
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(get_wakeup_reason_irq);
