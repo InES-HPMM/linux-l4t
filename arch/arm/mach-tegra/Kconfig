@@ -969,4 +969,8 @@ config TEGRA_SOC_TIMERS
 	help
 	  When enabled, cpu clock events will be using SOC timers instead
 	  of arm private timers.
+
+config TEGRA_LP0_IN_IDLE
+	bool "Enable support LP0-in-idle state"
+	default n
 endif
