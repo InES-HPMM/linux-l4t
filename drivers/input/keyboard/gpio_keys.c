@@ -31,6 +31,7 @@
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
+#include <linux/system-wakeup.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -874,6 +875,7 @@ static int gpio_keys_resume_noirq(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	int wakeup_key = KEY_RESERVED;
+	int wakeup_irq = get_wakeup_reason_irq();
 	int i;
 
 	if (pdata && pdata->wakeup_key)
@@ -883,7 +885,8 @@ static int gpio_keys_resume_noirq(struct device *dev)
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
 			if (bdata->button->wakeup &&
-				wakeup_key == bdata->button->code)
+				((wakeup_key == bdata->button->code) ||
+				(dev->of_node && (wakeup_irq == bdata->irq))))
 				gpio_keys_gpio_report_wake(bdata);
 		}
 	}
