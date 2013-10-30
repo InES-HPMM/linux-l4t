@@ -1004,13 +1004,11 @@ int __init roth_panel_init(int board_id)
 		return err;
 
 #if IS_EXTERNAL_PWM
-	if (!of_have_populated_dt()) {
-		err = platform_add_devices(roth_bl_device,
+	err = platform_add_devices(roth_bl_device,
 				ARRAY_SIZE(roth_bl_device));
-		if (err) {
-			pr_err("disp1 bl dev registration failed");
-			return err;
-		}
+	if (err) {
+		pr_err("disp1 bl device registration failed");
+		return err;
 	}
 #endif
 

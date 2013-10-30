@@ -758,9 +758,6 @@ static struct platform_device bonaire_nvmap_device = {
 
 static struct platform_device *bonaire_gfx_devices[] __initdata = {
 	&bonaire_nvmap_device,
-};
-
-static struct platform_device *bonaire_backlight_devices[] __initdata = {
 	&tegra_pwfm_device,
 	&bonaire_backlight_device,
 };
@@ -798,12 +795,6 @@ int __init bonaire_panel_init(void)
 
 	err = platform_add_devices(bonaire_gfx_devices,
 				   ARRAY_SIZE(bonaire_gfx_devices));
-
-	if (!of_have_populated_dt()) {
-		/* if error then appened the error */
-		err = platform_add_devices(bonaire_backlight_devices,
-			ARRAY_SIZE(bonaire_backlight_devices));
-	}
 
 #ifdef CONFIG_TEGRA_GRHOST
 	phost1x = bonaire_host1x_init();

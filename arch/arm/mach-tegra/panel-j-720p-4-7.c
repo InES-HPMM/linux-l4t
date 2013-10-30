@@ -135,18 +135,16 @@ static struct tegra_dsi_out dsi_j_720p_4_7_pdata;
 static int dsi_j_720p_4_7_register_bl_dev(void)
 {
 	int err = 0;
-	if (!of_have_populated_dt()) {
-		err = platform_device_register(&tegra_pwfm_device);
-		if (err) {
-			pr_err("disp1 pwm device registration failed");
-			return err;
-		}
+	err = platform_device_register(&tegra_pwfm_device);
+	if (err) {
+		pr_err("disp1 pwm device registration failed");
+		return err;
+	}
 
-		err = platform_device_register(&dsi_j_720p_4_7_bl_device);
-		if (err) {
-			pr_err("disp1 bl device registration failed");
-			return err;
-		}
+	err = platform_device_register(&dsi_j_720p_4_7_bl_device);
+	if (err) {
+		pr_err("disp1 bl device registration failed");
+		return err;
 	}
 
 	err = gpio_request(dsi_j_720p_4_7_pdata.dsi_panel_bl_pwm_gpio,

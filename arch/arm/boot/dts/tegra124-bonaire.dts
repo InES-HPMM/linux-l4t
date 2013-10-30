@@ -19,11 +19,4 @@
 		device_type = "memory";
 		reg = <0x80000000 0x20000000>;
 	};
-
-	backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm 2 5000000>;
-		max-brightness = <255>;
-		default-brightness = <224>;
-	};
 };

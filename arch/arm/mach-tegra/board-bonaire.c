@@ -616,10 +616,6 @@ struct of_dev_auxdata tegra_bonaire_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
-				NULL),
-	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
-				NULL),
 	{}
 };
 #endif

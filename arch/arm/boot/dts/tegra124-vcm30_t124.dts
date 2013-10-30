@@ -42,11 +42,4 @@
 			status = "okay";
 		};
 	};
-
-	backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm 1 1000000>;
-		max-brightness = <255>;
-		default-brightness = <224>;
-	};
 };

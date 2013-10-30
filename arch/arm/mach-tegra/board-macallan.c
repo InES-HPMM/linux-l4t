@@ -626,10 +626,6 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-pwm", TEGRA_PWFM_BASE, "tegra-pwm",
-				NULL),
-	OF_DEV_AUXDATA("pwm-backlight", NULL, "pwm-backlight",
-				NULL),
 	{}
 };
 #endif
