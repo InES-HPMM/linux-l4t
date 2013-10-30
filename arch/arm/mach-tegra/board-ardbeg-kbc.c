@@ -112,6 +112,10 @@ int __init ardbeg_kbc_init(void)
 	pr_info("Boardid:SKU = 0x%04x:0x%04x\n",
 			board_info.board_id, board_info.sku);
 
+	/* GPIO-Keys from DT for TN8 */
+	if (of_machine_is_compatible("nvidia,tn8"))
+		return 0;
+
 	ardbeg_int_keys[0].gpio = TEGRA_GPIO_PQ0;
 	ardbeg_int_keys[0].active_low = 1;
 
