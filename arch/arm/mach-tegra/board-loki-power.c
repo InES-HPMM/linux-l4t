@@ -206,7 +206,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	*/
 };
 
-PALMAS_REGS_PDATA(smps123, 700,  1400, NULL, 0, 1, 1, NORMAL,
+PALMAS_REGS_PDATA(smps123, 650,  1400, NULL, 0, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 700,  1250, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
