@@ -25,6 +25,7 @@
 #include <linux/workqueue.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/debugfs.h>
+#include <trace/events/sysedp.h>
 
 #include "sysedp_internal.h"
 
@@ -120,6 +121,7 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 {
 	struct freqcap new;
 	int r;
+	int do_trace = 0;
 
 	core_policy.cpu = get_cpufreq_lim(devcap->cpu_power +
 			cpu_power_balance);
@@ -130,19 +132,26 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 	new.gpu = forced_caps.gpu ?: core_policy.gpu;
 	new.emc = forced_caps.emc ?: core_policy.emc;
 
-	if (new.cpu != cur_caps.cpu)
+	if (new.cpu != cur_caps.cpu) {
 		pm_qos_update_request(&cpufreq_qos, new.cpu);
+		do_trace = 1;
+	}
 
 	if (new.emc != cur_caps.emc) {
 		r = clk_set_rate(emc_cap_clk, new.emc * 1000);
 		WARN_ON(r);
+		do_trace = 1;
 	}
 
 	if (new.gpu != cur_caps.gpu) {
 		r = clk_set_rate(gpu_cap_clk, new.gpu * 1000);
 		WARN_ON(r && (r != -ENOENT));
+		do_trace = 1;
 	}
 
+	if (do_trace)
+		trace_sysedp_dynamic_capping(new.cpu, new.gpu,
+					     new.emc, gpu_busy);
 	pr_caps(&cur_caps, &new, devcap->cpu_power);
 	cur_caps = new;
 }
