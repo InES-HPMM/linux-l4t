@@ -251,7 +251,7 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra-otg", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-ehci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-xhci", .domain = &tegra_mc_clk.gpd },
-	{ .name = "host1x", .domain = &tegra_mc_clk.gpd },
+	{ .name = "tegra-host1x", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tsec", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra_nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "nvavp", .domain = &tegra_nvavp.gpd },
