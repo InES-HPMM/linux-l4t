@@ -31,6 +31,9 @@
 #include "rmi_driver.h"
 #include "rmi_f01.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/touchscreen_synaptics.h>
+
 #define CONFIG_RMI4_DEBUG 1
 
 #define HAS_NONSTANDARD_PDT_MASK 0x40
@@ -296,6 +299,8 @@ static irqreturn_t rmi_irq_thread(int irq, void *p)
 	struct rmi_driver_data *data;
 
 	data = dev_get_drvdata(&rmi_dev->dev);
+
+	trace_touchscreen_synaptics_irq("Synaptics_interrupt");
 
 	if IRQ_DEBUG(data)
 		dev_dbg(phys->dev, "ATTN gpio, value: %d.\n",
