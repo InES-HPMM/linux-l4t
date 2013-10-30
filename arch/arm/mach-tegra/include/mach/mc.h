@@ -82,6 +82,27 @@ static inline void __mc_writel(int mc_ind, u32 val, u32 reg)
 #endif
 }
 
+static inline u32 __mc_raw_readl(int mc_ind, u32 reg)
+{
+	if (!mc_ind)
+		return __raw_readl(mc + reg);
+#ifdef MC_DUAL_CHANNEL
+	else
+		return __raw_readl(mc1 + reg);
+#endif
+	return 0;
+}
+
+static inline void __mc_raw_writel(int mc_ind, u32 val, u32 reg)
+{
+	if (!mc_ind)
+		__raw_writel(val, mc + reg);
+#ifdef MC_DUAL_CHANNEL
+	else
+		__raw_writel(val, mc1 + reg);
+#endif
+}
+
 #define mc_readl(reg)       __mc_readl(0, reg)
 #define mc_writel(val, reg) __mc_writel(0, val, reg)
 
