@@ -39,6 +39,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-pm.h>
 
 #include <asm/unaligned.h>
 
@@ -230,6 +231,7 @@ struct tegra_i2c_dev {
 	const struct i2c_algorithm *bit_algo;
 	bool bit_banging_xfer_after_shutdown;
 	bool is_shutdown;
+	struct notifier_block pm_nb;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -1263,6 +1265,22 @@ static const struct i2c_algorithm tegra_i2c_algo = {
 	.functionality	= tegra_i2c_func,
 };
 
+static int __tegra_i2c_suspend_noirq(struct tegra_i2c_dev *i2c_dev);
+static int __tegra_i2c_resume_noirq(struct tegra_i2c_dev *i2c_dev);
+
+static int tegra_i2c_pm_notifier(struct notifier_block *nb,
+		unsigned long event, void *data)
+{
+	struct tegra_i2c_dev *i2c_dev = container_of(nb, struct tegra_i2c_dev, pm_nb);
+
+	if (event == TEGRA_PM_SUSPEND)
+		__tegra_i2c_suspend_noirq(i2c_dev);
+	else if (event == TEGRA_PM_RESUME)
+		__tegra_i2c_resume_noirq(i2c_dev);
+
+	return NOTIFY_OK;
+}
+
 static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 	struct platform_device *pdev)
 {
@@ -1560,6 +1578,10 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	i2c_dev->pm_nb.notifier_call = tegra_i2c_pm_notifier;
+
+	tegra_register_pm_notifier(&i2c_dev->pm_nb);
+
 	of_i2c_register_devices(&i2c_dev->adapter);
 	pm_runtime_enable(&i2c_dev->adapter.dev);
 	tegra_i2c_gpio_init(i2c_dev);
@@ -1570,6 +1592,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 static int tegra_i2c_remove(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+
+	tegra_unregister_pm_notifier(&i2c_dev->pm_nb);
 	i2c_del_adapter(&i2c_dev->adapter);
 	pm_runtime_disable(&i2c_dev->adapter.dev);
 
@@ -1588,6 +1612,15 @@ static void tegra_i2c_shutdown(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int __tegra_i2c_suspend_noirq(struct tegra_i2c_dev *i2c_dev)
+{
+	i2c_dev->is_suspended = true;
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_disable(i2c_dev);
+
+	return 0;
+}
+
 static int tegra_i2c_suspend_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -1595,11 +1628,26 @@ static int tegra_i2c_suspend_noirq(struct device *dev)
 
 	i2c_lock_adapter(&i2c_dev->adapter);
 
-	i2c_dev->is_suspended = true;
-	if (i2c_dev->is_clkon_always)
-		tegra_i2c_clock_disable(i2c_dev);
+	__tegra_i2c_suspend_noirq(i2c_dev);
 
 	i2c_unlock_adapter(&i2c_dev->adapter);
+
+	return 0;
+}
+
+
+static int __tegra_i2c_resume_noirq(struct tegra_i2c_dev *i2c_dev)
+{
+	int ret;
+
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_enable(i2c_dev);
+
+	ret = tegra_i2c_init(i2c_dev);
+	if (ret)
+		return ret;
+
+	i2c_dev->is_suspended = false;
 
 	return 0;
 }
@@ -1608,21 +1656,10 @@ static int tegra_i2c_resume_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
-	int ret;
 
 	i2c_lock_adapter(&i2c_dev->adapter);
 
-	if (i2c_dev->is_clkon_always)
-		tegra_i2c_clock_enable(i2c_dev);
-
-	ret = tegra_i2c_init(i2c_dev);
-
-	if (ret) {
-		i2c_unlock_adapter(&i2c_dev->adapter);
-		return ret;
-	}
-
-	i2c_dev->is_suspended = false;
+	__tegra_i2c_resume_noirq(i2c_dev);
 
 	i2c_unlock_adapter(&i2c_dev->adapter);
 
