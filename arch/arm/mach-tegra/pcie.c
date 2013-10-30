@@ -1832,7 +1832,7 @@ static void tegra_pcie_pll_pdn(void)
 
 		if ((pci_pcie_type(pdev->bus->self) ==
 			PCI_EXP_TYPE_ROOT_PORT)) {
-			u32 i, val = 0;
+			u32 val = 0;
 
 			pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &val);
 			if (val & PCI_EXP_LNKCAP_CLKPM) {
@@ -1842,15 +1842,6 @@ static void tegra_pcie_pll_pdn(void)
 				tegra_pinmux_set_pullupdown(
 					TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
 					TEGRA_PUPD_PULL_UP);
-
-				/* revert WAR applied in enable ctlr to */
-				/* revert device CLKREQ capability override */
-				for (i = 0; i < ARRAY_SIZE(pex_controller_registers);
-							i++) {
-					val = afi_readl(pex_controller_registers[i]);
-					val &= ~AFI_PEX_CTRL_OVERRIDE_EN;
-					afi_writel(val, pex_controller_registers[i]);
-				}
 			} else {
 				tegra_pinmux_set_pullupdown(
 					TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
