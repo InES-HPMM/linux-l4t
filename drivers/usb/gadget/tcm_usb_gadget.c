@@ -29,6 +29,11 @@
 
 USB_GADGET_COMPOSITE_OPTIONS();
 
+/* This is the offset of the UASP Interface Descriptors in
+ * the uasp_ss_function_desc super speed descriptors structure
+ */
+#define SS_ALT_IFC_1_UASP_OFFSET     5
+
 static struct target_fabric_configfs *usbg_fabric_configfs;
 
 static inline struct f_uas *to_f_uas(struct usb_function *f)
@@ -859,8 +864,17 @@ static void uasp_set_alt(struct f_uas *fu)
 
 	fu->flags = USBG_IS_UAS;
 
-	if (gadget->speed == USB_SPEED_SUPER)
+	if (gadget->speed == USB_SPEED_SUPER) {
 		fu->flags |= USBG_USE_STREAMS;
+		/* Config_ep_by_speed searches the function descriptors for
+		 * a suitable descriptor for an endpoint and then assigns the
+		 * next companion descriptor for the ep. Making the Composite
+		 * driver to search starting with the UASP descriptors to
+		 * avoid assigning a bot companion descriptor to the endpoint
+		 */
+		if (f->ss_descriptors != NULL)
+			f->ss_descriptors += SS_ALT_IFC_1_UASP_OFFSET;
+	}
 
 	config_ep_by_speed(gadget, f, fu->ep_in);
 	ret = usb_ep_enable(fu->ep_in);
@@ -886,6 +900,9 @@ static void uasp_set_alt(struct f_uas *fu)
 		goto err_wq;
 	fu->flags |= USBG_ENABLED;
 
+	if ((gadget->speed == USB_SPEED_SUPER) && (f->ss_descriptors != NULL))
+		f->ss_descriptors -= SS_ALT_IFC_1_UASP_OFFSET;
+
 	pr_info("Using the UAS protocol\n");
 	return;
 err_wq:
@@ -898,6 +915,9 @@ err_b_out:
 	usb_ep_disable(fu->ep_in);
 err_b_in:
 	fu->flags = 0;
+	if ((gadget->speed == USB_SPEED_SUPER) && (f->ss_descriptors != NULL))
+		f->ss_descriptors -= SS_ALT_IFC_1_UASP_OFFSET;
+
 }
 
 static int get_cmd_dir(const unsigned char *cdb)

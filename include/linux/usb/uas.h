@@ -3,7 +3,9 @@
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
-
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ */
 /* Common header for all IUs */
 struct iu {
 	__u8 iu_id;
