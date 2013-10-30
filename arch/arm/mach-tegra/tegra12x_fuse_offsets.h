@@ -134,6 +134,12 @@ DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
+/*
+ * Check CP fuse revision.
+ *  ERROR:    -ve:	Negative return value
+ *  CP/FT:	1:	Old style CP/FT fuse
+ *  CP1/CP2:	0:	New style CP1/CP2 fuse (default)
+ */
 static inline int fuse_cp_rev_check(void)
 {
 	u32 rev, rev_major, rev_minor;
@@ -141,20 +147,38 @@ static inline int fuse_cp_rev_check(void)
 	rev = tegra_fuse_readl(FUSE_CP_REV);
 	rev_minor = rev & 0x1f;
 	rev_major = (rev >> 5) & 0x3f;
+
 	/* CP rev < 00.4 is unsupported */
 	if ((rev_major == 0) && (rev_minor < 4))
 		return -EINVAL;
 
+	/* CP rev < 00.8 is CP/FT (old style) */
+	if ((rev_major == 0) && (rev_minor < 8))
+		return 1;
+
 	return 0;
 }
 
+/*
+ * Check FT fuse revision.
+ * We check CP-rev and if it shows NEW style, we return ERROR.
+ *  ERROR:    -ve:	Negative return value
+ *  CP/FT:	0:	Old style CP/FT fuse (default)
+ */
 static inline int fuse_ft_rev_check(void)
 {
 	u32 rev, rev_major, rev_minor;
+	int check_cp = fuse_cp_rev_check();
+
+	if (check_cp < 0)
+		return check_cp;
+	if (check_cp == 0)
+		return -ENODEV; /* No FT rev in CP1/CP2 mode */
 
 	rev = tegra_fuse_readl(FUSE_FT_REV);
 	rev_minor = rev & 0x1f;
 	rev_major = (rev >> 5) & 0x3f;
+
 	/* FT rev < 00.5 is unsupported */
 	if ((rev_major == 0) && (rev_minor < 5))
 		return -EINVAL;
@@ -280,53 +304,83 @@ int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 	return 0;
 }
 
+/*
+ * Returns CP or CP1 fuse dep on CP/FT or CP1/CP2 style fusing
+ *   return value:
+ *   -ve: ERROR
+ *     0: New style CP1/CP2 fuse (default)
+ *     1: Old style CP/FT fuse
+ */
 int tegra_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 {
 	s32 cp;
-	u32 val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
+	u32 val;
+	int check_cp = fuse_cp_rev_check();
 
-	if (fuse_cp_rev_check() || !val)
+	if (check_cp < 0)
+		return check_cp;
+
+	val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
+	if (!val)
 		return -EINVAL;
 
-	if (base_cp && shifted_cp) {
+	if (base_cp)
 		*base_cp = (((val) & (FUSE_BASE_CP_MASK
 				<< FUSE_BASE_CP_SHIFT))
 				>> FUSE_BASE_CP_SHIFT);
 
-		val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
-		cp = (((val) & (FUSE_SHIFT_CP_MASK
+	val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
+	cp = (((val) & (FUSE_SHIFT_CP_MASK
 				<< FUSE_SHIFT_CP_SHIFT))
 				>> FUSE_SHIFT_CP_SHIFT);
 
+	if (shifted_cp)
 		*shifted_cp = ((s32)(cp)
 				<< (32 - FUSE_SHIFT_CP_BITS)
 				>> (32 - FUSE_SHIFT_CP_BITS));
-	}
-	return 0;
+
+	return check_cp; /* return tri-state: 0, 1, or -ve */
 }
 
+/*
+ * Returns FT or CP2 fuse dep on CP/FT or CP1/CP2 style fusing
+ *   return value:
+ *   -ve: ERROR
+ *     0: New style CP1/CP2 fuse (default)
+ *     1: Old style CP/FT fuse
+ */
 int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 {
-	s32 ft;
-	u32 val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
+	s32 ft_or_cp2;
+	u32 val;
+	int check_cp = fuse_cp_rev_check();
+	int check_ft = fuse_ft_rev_check();
 
-	if (fuse_ft_rev_check() || !val)
+	if (check_cp < 0)
+		return check_cp;
+	/* when check_cp is 1, check_ft must be valid */
+	if (check_cp != 0 && check_ft != 0)
 		return -EINVAL;
 
-	if (base_ft && shifted_ft) {
+	val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
+	if (!val)
+		return -EINVAL;
+
+	if (base_ft)
 		*base_ft = (((val) & (FUSE_BASE_FT_MASK
 				<< FUSE_BASE_FT_SHIFT))
 				>> FUSE_BASE_FT_SHIFT);
 
-		ft = (((val) & (FUSE_SHIFT_FT_MASK
+	ft_or_cp2 = (((val) & (FUSE_SHIFT_FT_MASK
 				<< FUSE_SHIFT_FT_SHIFT))
 				>> FUSE_SHIFT_FT_SHIFT);
 
-		*shifted_ft = ((s32)(ft)
+	if (shifted_ft)
+		*shifted_ft = ((s32)(ft_or_cp2)
 				<< (32 - FUSE_SHIFT_FT_BITS)
 				>> (32 - FUSE_SHIFT_FT_BITS));
-	}
-	return 0;
+
+	return check_cp; /* return tri-state: 0, 1, or -ve */
 }
 
 int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
