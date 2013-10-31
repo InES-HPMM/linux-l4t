@@ -137,6 +137,9 @@ static char *const tegra_udc_extcon_cable[] = {
 	[CONNECT_TYPE_CDP] = "Charge-downstream",
 	[CONNECT_TYPE_NV_CHARGER] = "Fast-charger",
 	[CONNECT_TYPE_NON_STANDARD_CHARGER] = "Slow-charger",
+	[CONNECT_TYPE_APPLE_500MA]  = "Apple 500mA-charger",
+	[CONNECT_TYPE_APPLE_1000MA] = "Apple 1A-charger",
+	[CONNECT_TYPE_APPLE_2000MA] = "Apple 2A-charger",
 	NULL,
 };
 
@@ -1427,6 +1430,21 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
+	case CONNECT_TYPE_APPLE_500MA:
+		dev_info(dev, "connected to Apple 0.5A charger\n");
+		max_ua = USB_CHARGING_APPLE_CHARGER_500mA_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
+	case CONNECT_TYPE_APPLE_1000MA:
+		dev_info(dev, "connected to Apple 1A charger\n");
+		max_ua = USB_CHARGING_APPLE_CHARGER_1000mA_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
+	case CONNECT_TYPE_APPLE_2000MA:
+		dev_info(dev, "connected to Apple 2A charger\n");
+		max_ua = USB_CHARGING_APPLE_CHARGER_2000mA_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
 	default:
 		dev_info(dev, "connected to unknown USB port\n");
 		max_ua = 0;
@@ -1493,6 +1511,14 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 {
 	if (tegra_usb_phy_charger_detected(udc->phy))
 		tegra_detect_charging_type_is_cdp_or_dcp(udc);
+#if !defined(CONFIG_ARCH_TEGRA_11x_SOC) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	else if (tegra_usb_phy_apple_500ma_charger_detected(udc->phy))
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_APPLE_500MA);
+	else if (tegra_usb_phy_apple_1000ma_charger_detected(udc->phy))
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_APPLE_1000MA);
+	else if (tegra_usb_phy_apple_2000ma_charger_detected(udc->phy))
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_APPLE_2000MA);
+#endif
 	else if (tegra_usb_phy_nv_charger_detected(udc->phy))
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_NV_CHARGER);
 	else
