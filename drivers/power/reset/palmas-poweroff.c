@@ -39,6 +39,7 @@ struct palmas_pm {
 	int int_status_reg_add[PALMAS_MAX_INTERRUPT_MASK_REG];
 	int int_mask_val[PALMAS_MAX_INTERRUPT_MASK_REG];
 	bool need_rtc_power_on;
+	bool need_usb_event_power_on;
 };
 
 static void palmas_auto_power_on(struct palmas_pm *palmas_pm)
@@ -61,6 +62,17 @@ static void palmas_auto_power_on(struct palmas_pm *palmas_pm)
 	if (ret < 0) {
 		dev_err(palmas_pm->dev, "INT2_MASK update failed: %d\n", ret);
 		goto scrub;
+	}
+
+	if (palmas_pm->need_usb_event_power_on) {
+		ret = palmas_update_bits(palmas, PALMAS_INTERRUPT_BASE,
+			PALMAS_INT3_MASK,
+			PALMAS_INT3_MASK_VBUS | PALMAS_INT3_MASK_VBUS_OTG, 0);
+		if (ret < 0) {
+			dev_err(palmas_pm->dev,
+				"INT3_MASK update failed: %d\n", ret);
+			goto scrub;
+		}
 	}
 
 	ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
@@ -102,6 +114,15 @@ static void palmas_power_off(void *drv_data)
 			dev_err(palmas_pm->dev,
 				"register 0x%02x read failed: %d\n",
 				palmas_pm->int_status_reg_add[i], ret);
+	}
+
+	if (palmas_pm->need_usb_event_power_on) {
+		ret = palmas_update_bits(palmas, PALMAS_INTERRUPT_BASE,
+			PALMAS_INT3_MASK,
+			PALMAS_INT3_MASK_VBUS | PALMAS_INT3_MASK_VBUS_OTG, 0);
+		if (ret < 0)
+			dev_err(palmas_pm->dev,
+				"INT3_MASK update failed: %d\n", ret);
 	}
 
 	/* Mask all COLD RST condition */
@@ -205,6 +226,11 @@ static int palmas_configure_power_on(void *drv_data,
 		dev_info(palmas_pm->dev, "Resetting Palmas through RTC\n");
 		palmas_pm->need_rtc_power_on = true;
 		break;
+
+	case SYSTEM_PMIC_USB_VBUS_INSERTION:
+		palmas_pm->need_usb_event_power_on = true;
+		break;
+
 	default:
 		dev_err(palmas_pm->dev, "power on event does not support\n");
 		break;
