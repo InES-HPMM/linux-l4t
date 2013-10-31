@@ -1117,6 +1117,8 @@ static void bq2419x_shutdown(struct i2c_client *client)
 				"System reset after %d config failed %d\n",
 				bq2419x->wdt_refresh_timeout, ret);
 	}
+
+	battery_charging_system_power_on_usb_event(bq2419x->bc_dev);
 }
 
 #ifdef CONFIG_PM_SLEEP
