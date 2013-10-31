@@ -774,7 +774,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11)
 		val |= WR_WAIT_COMMIT_ON_1K;
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	val |= WR_WAIT_COMMIT_ON_1K | EN_USB_WAIT_COMMIT_ON_1K_STALL;
 #endif
 	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
