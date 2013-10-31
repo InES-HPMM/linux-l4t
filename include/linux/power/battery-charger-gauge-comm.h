@@ -76,6 +76,8 @@ int battery_charger_release_wake_lock(struct battery_charger_dev *bc_dev);
 int battery_charging_wakeup(struct battery_charger_dev *bc_dev, int after_sec);
 int battery_charging_system_reset_after(struct battery_charger_dev *bc_dev,
 	int after_sec);
+int battery_charging_system_power_on_usb_event(
+	struct battery_charger_dev *bc_dev);
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp);
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
