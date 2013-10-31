@@ -24,7 +24,6 @@
 
 #include "clock.h"
 #include "dvfs.h"
-#include "fuse.h"
 #include "board.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra_core_sysfs_limits.h"

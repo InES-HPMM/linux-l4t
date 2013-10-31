@@ -18,12 +18,6 @@
 
 #include <linux/tegra-soc.h>
 
-#include <mach/iomap.h>
-#include <mach/tegra_fuse.h>
-
-#include "apbio.h"
-#include "fuse.h"
-
 #ifndef __TEGRA2_FUSE_OFFSETS_H
 #define __TEGRA2_FUSE_OFFSETS_H
 

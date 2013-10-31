@@ -35,6 +35,7 @@
 #include <linux/ctype.h>
 #include <linux/wakelock.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/gpufuse.h>
 

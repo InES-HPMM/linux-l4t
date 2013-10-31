@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_tsensor.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,9 +19,9 @@
 #include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/slab.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/tsensor.h>
-#include <mach/tegra_fuse.h>
 #include <mach/tsensor.h>
 
 #include "cpu-tegra.h"

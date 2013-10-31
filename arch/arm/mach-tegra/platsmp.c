@@ -24,12 +24,12 @@
 #include <linux/cpumask.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-timer.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
 
-#include "fuse.h"
 #include "flowctrl.h"
 #include "reset.h"
 #include "pm.h"

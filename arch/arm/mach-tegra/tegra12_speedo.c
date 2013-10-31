@@ -26,9 +26,10 @@
 #include <linux/tegra-soc.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/tegra-fuse.h>
 
-#include "fuse.h"
 #include "iomap.h"
+#include "common.h"
 
 #define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 

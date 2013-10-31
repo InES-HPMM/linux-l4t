@@ -27,7 +27,7 @@
 #include <linux/platform_data/tegra_emc.h>
 
 #include "tegra2_emc.h"
-#include "fuse.h"
+#include "common.h"
 
 #define TEGRA_MRR_DIVLD        (1<<20)
 #define TEGRA_EMC_STATUS       0x02b4

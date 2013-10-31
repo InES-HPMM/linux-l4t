@@ -40,7 +40,6 @@
 #include "clock.h"
 #include "dvfs.h"
 #include "tegra3_emc.h"
-#include "fuse.h"
 #include "iomap.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE

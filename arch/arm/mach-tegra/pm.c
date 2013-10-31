@@ -75,7 +75,6 @@
 #include "board.h"
 #include "clock.h"
 #include "common.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"

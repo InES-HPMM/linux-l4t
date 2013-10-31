@@ -25,8 +25,8 @@
 #include "apbio.h"
 #include "iomap.h"
 
-#ifndef __TEGRA_FUSE_H
-#define __TEGRA_FUSE_H
+#ifndef __FUSE_H
+#define __FUSE_H
 
 #define FUSE_SKU_INFO		0x110
 #define FUSE_VP8_ENABLE_0	0x1c4
@@ -65,6 +65,7 @@
 #define FUSE_DIS_PGM		0x02C
 #define FUSE_WRITE_ACCESS	0x030
 #define FUSE_PWR_GOOD_SW	0x034
+#define FUSE_VP8_ENABLE_0	0x1c4
 
 #define FUSE_NAME_LEN	30
 
@@ -84,12 +85,6 @@
 #define START_DATA		BIT(0)
 #define SKIP_RAMREPAIR		BIT(1)
 #define FUSE_PGM_TIMEOUT_MS	50
-#define SKU_ID_T20	8
-#define SKU_ID_T25SE	20
-#define SKU_ID_AP25	23
-#define SKU_ID_T25	24
-#define SKU_ID_AP25E	27
-#define SKU_ID_T25E	28
 
 #define SBK_DEVKEY_STATUS_SZ	sizeof(u32)
 
@@ -218,106 +213,4 @@ static inline int tegra_apply_fuse(void)
 	return -ENOENT;
 }
 #endif
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static inline int tegra_fuse_get_revision(u32 *rev)
-{
-	return -ENOENT;
-}
-
-static inline int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
-{
-	return -ENOENT;
-}
-static inline int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
-{
-	return -ENOENT;
-}
-int tegra_fuse_get_priv(char *priv);
-#else
-int tegra_fuse_get_revision(u32 *rev);
-int tegra_fuse_get_tsensor_calibration_data(u32 *calib);
-int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits);
-static inline int tegra_fuse_get_priv(char *priv)
-{
-	return -ENOENT;
-}
-#endif
-
-unsigned long long tegra_chip_uid(void);
-void tegra_init_fuse(void);
-bool tegra_spare_fuse(int bit);
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-void tegra20_init_speedo_data(void);
-#else
-static inline void tegra20_init_speedo_data(void) {}
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-void tegra30_init_speedo_data(void);
-#else
-static inline void tegra30_init_speedo_data(void) {}
-#endif
-
-/*
- * read the fuse settings
- * @param: io_param_type - param type enum
- * @param: size - read size in bytes
- */
-int tegra_fuse_read(enum fuse_io_param io_param_type, u32 *data, int size);
-
-/*
- * Prior to invoking this routine, the caller is responsible for supplying
- * valid fuse programming voltage.
- *
- * @param: pgm_data - entire data to be programmed
- * @flags: program flags (e.g. FLAGS_DEVKEY)
- */
-int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags);
-
-/* Disables the fuse programming until the next system reset */
-void tegra_fuse_program_disable(void);
-
-extern int (*tegra_fuse_regulator_en)(int);
-int tegra_soc_speedo_id(void);
-void tegra_init_speedo_data(void);
-int tegra_cpu_process_id(void);
-int tegra_core_process_id(void);
-int tegra_gpu_process_id(void);
-int tegra_get_age(void);
-
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-int tegra_package_id(void);
-int tegra_cpu_speedo_id(void);
-int tegra_cpu_speedo_mv(void);
-int tegra_cpu_speedo_value(void);
-int tegra_core_speedo_mv(void);
-int tegra_gpu_speedo_id(void);
-int tegra_get_sku_override(void);
-int tegra_get_cpu_iddq_value(void);
-#else
-static inline int tegra_package_id(void) { return -1; }
-static inline int tegra_cpu_speedo_id(void) { return 0; }
-static inline int tegra_cpu_speedo_value(void) { return 1777; }
-static inline int tegra_cpu_speedo_mv(void) { return 1000; }
-static inline int tegra_core_speedo_mv(void) { return 1200; }
-static inline int tegra_get_cpu_iddq_value(void) { return 0; }
-#endif /* CONFIG_ARCH_TEGRA_2x_SOC */
-
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-int tegra_cpu_speedo_0_value(void);
-int tegra_cpu_speedo_1_value(void);
-int tegra_soc_speedo_0_value(void);
-int tegra_soc_speedo_1_value(void);
-int tegra_soc_speedo_2_value(void);
-int tegra_get_soc_iddq_value(void);
-int tegra_get_gpu_iddq_value(void);
-int tegra_gpu_speedo_value(void);
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-int tegra_core_speedo_value(void);
-#endif
-
-#endif /* TEGRA_FUSE_H */
+#endif /* FUSE_H */

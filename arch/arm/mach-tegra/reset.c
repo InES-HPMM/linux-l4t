@@ -19,6 +19,7 @@
 #include <linux/cpumask.h>
 #include <linux/bitops.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/cacheflush.h>
 
@@ -27,7 +28,7 @@
 #include "reset.h"
 #include "sleep.h"
 #include "pm.h"
-#include "fuse.h"
+#include "common.h"
 
 #define TEGRA_IRAM_RESET_BASE (TEGRA_IRAM_BASE + \
 				TEGRA_IRAM_RESET_HANDLER_OFFSET)

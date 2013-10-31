@@ -26,7 +26,7 @@
 
 #include <linux/platform_data/tegra_emc.h>
 
-#include "fuse.h"
+#include "common.h"
 
 #ifdef CONFIG_OF
 static struct device_node *tegra_emc_ramcode_devnode(

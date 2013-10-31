@@ -37,9 +37,9 @@
 #include <asm/atomic.h>
 
 #include "clock.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "powergate-priv.h"
+#include "common.h"
 
 static struct powergate_ops *pg_ops;
 

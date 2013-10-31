@@ -42,7 +42,6 @@
 
 #include "iomap.h"
 #include "tegra3_tsensor.h"
-#include "fuse.h"
 #include "tegra11_soctherm.h"
 #include "gpio-names.h"
 #include "common.h"

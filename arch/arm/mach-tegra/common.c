@@ -43,6 +43,7 @@
 #include <linux/bootmem.h>
 #include <linux/tegra-soc.h>
 #include <linux/dma-contiguous.h>
+#include <linux/tegra-fuse.h>
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/gic.h>
@@ -60,7 +61,6 @@
 #include "clock.h"
 #include "common.h"
 #include "dvfs.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"

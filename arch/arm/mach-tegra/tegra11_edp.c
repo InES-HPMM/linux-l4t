@@ -23,11 +23,12 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/edp.h>
 
 #include "clock.h"
-#include "fuse.h"
+#include "common.h"
 
 #define CORE_MODULES_STATES 1
 #define TEMPERATURE_RANGES 4

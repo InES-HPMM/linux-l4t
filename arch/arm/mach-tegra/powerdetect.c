@@ -26,9 +26,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-fuse.h>
 
 #include "board.h"
-#include "fuse.h"
 #include "iomap.h"
 
 #define PMC_PWR_IO_DISABLE	0x44

@@ -18,8 +18,8 @@
 #include <linux/bug.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/tegra-fuse.h>
 
-#include "fuse.h"
 
 #define CORE_PROCESS_CORNERS_NUM	1
 #define CPU_PROCESS_CORNERS_NUM		7

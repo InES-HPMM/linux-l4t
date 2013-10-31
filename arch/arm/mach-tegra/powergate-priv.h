@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,7 +25,6 @@
 #include <linux/tegra-powergate.h>
 
 #include "clock.h"
-#include "fuse.h"
 #include "iomap.h"
 
 #define MAX_CLK_EN_NUM			9

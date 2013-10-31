@@ -39,7 +39,6 @@
 #include "board.h"
 #include "iomap.h"
 #include "tegra11_emc.h"
-#include "fuse.h"
 #include "tegra_emc_dt_parse.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE

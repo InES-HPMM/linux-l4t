@@ -23,13 +23,13 @@
 #include <linux/err.h>
 #include <linux/bug.h>			/* For BUG_ON.  */
 
-#include <mach/tegra_fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/tegra-fuse.h>
 
-#include "fuse.h"
 #include "iomap.h"
+#include "common.h"
 
 #define CORE_PROCESS_CORNERS_NUM	2
 #define CPU_PROCESS_CORNERS_NUM		2

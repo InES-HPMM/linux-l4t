@@ -23,10 +23,10 @@
 #include <linux/kobject.h>
 #include <linux/err.h>
 #include <linux/pm_qos.h>
+#include <linux/tegra-fuse.h>
 
 #include "clock.h"
 #include "dvfs.h"
-#include "fuse.h"
 #include "board.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra_core_sysfs_limits.h"

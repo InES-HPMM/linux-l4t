@@ -19,7 +19,7 @@
 #include <linux/types.h>
 #include <mach/xusb.h>
 #include "devices.h"
-#include "fuse.h"
+#include <linux/tegra-fuse.h>
 
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static struct tegra_xusb_platform_data tegra_xusb_plat_data = {};

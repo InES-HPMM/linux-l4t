@@ -38,7 +38,6 @@
 #include <mach/tegra_bb.h>
 
 #include "clock.h"
-#include "fuse.h"
 #include "dvfs.h"
 #include "iomap.h"
 #include "pm.h"
