@@ -2223,7 +2223,12 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra-fuse",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
-	{ .name = "tegra-otg",	.swgids = SWGID(PPCS), },
+	/*
+	 * PPCS1 selection for USB2 needs AHB_ARBC register program
+	 * in warm boot and cold boot paths in BL as it needs
+	 * secure write.
+	 */
+	{ .name = "tegra-otg",	.swgids = SWGID(PPCS1), },
 	{ .name = "tegra-pcm-audio",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-rtc",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-sata",	.swgids = SWGID(SATA2), },
