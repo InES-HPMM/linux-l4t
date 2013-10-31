@@ -444,6 +444,9 @@ static void laguna_pcie_init(void)
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
+#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
+	&tegratab_tegra_wakeup_monitor_device,
+#endif
 	&tegra_udc_device,
 #if defined(CONFIG_TEGRA_WATCHDOG)
 	&tegra_wdt0_device,
