@@ -44,7 +44,7 @@
 #include <media/tegra_dtv.h>
 
 #include <linux/uaccess.h>
-#include <mach/iomap.h>
+#include "../../../../arch/arm/mach-tegra/iomap.h"
 #include <linux/dmaengine.h>
 #include <mach/dtv.h>
 
@@ -916,10 +916,6 @@ static void tear_down_dma(struct tegra_dtv_context *dtv_ctx)
 	if (dtv_ctx->stream.dma_chan) {
 		for (i = 0; i < dtv_ctx->stream.num_bufs; i++) {
 			buf = &stream->bufs[i];
-			dma_unmap_single(dev,
-					 buf->data_phy,
-					 stream->buf_size,
-					 DMA_FROM_DEVICE);
 			buf->data_phy = 0;
 		}
 		dma_release_channel(stream->dma_chan);
