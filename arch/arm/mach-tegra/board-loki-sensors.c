@@ -53,6 +53,17 @@ static struct mpu_platform_data mpu6050_gyro_data = {
 };
 
 /* MPU board file definition    */
+static struct mpu_platform_data mpu6050_gyro_data_fab_0 = {
+	.int_config     = 0x10,
+	.level_shifter  = 0,
+	/* Located in board_[platformname].h */
+	.orientation    = MPU_GYRO_ORIENTATION_FAB0,
+	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
+	.key            = {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
+/* MPU board file definition    */
 static struct mpu_platform_data mpu6050_gyro_data_t_1_95 = {
 	.int_config     = 0x10,
 	.level_shifter  = 0,
@@ -97,6 +108,13 @@ static void mpuirq_init(void)
 	if (board_info.board_id == BOARD_E2549)
 		inv_mpu6050_i2c0_board_info[0].platform_data =
 						&mpu6050_gyro_data_t_1_95;
+	else {
+		struct board_info displayboard_info;
+		tegra_get_display_board_info(&displayboard_info);
+		if (displayboard_info.fab == 0x0)
+			inv_mpu6050_i2c0_board_info[0].platform_data =
+				&mpu6050_gyro_data_fab_0;
+	}
 	inv_mpu6050_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c0_board_info));
