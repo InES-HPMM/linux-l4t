@@ -209,19 +209,6 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
 	}
 
-#define OVRRD_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
-	{							\
-		.clk_name	= _clk_name,			\
-		.speedo_id	= _speedo_id,			\
-		.process_id	= _process_id,			\
-		.freqs		= {_freqs},			\
-		.freqs_mult	= _mult,			\
-		.millivolts	= core_millivolts,		\
-		.auto_dvfs	= _auto,			\
-		.can_override	= true,				\
-		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
-	}
-
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
 	/* Clock limits for internal blocks, PLLs */
@@ -298,30 +285,93 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sbc5",   -1, -1, 1, KHZ,    33000,  33000,  33000,  33000,   33000,  33000,  51000,  51000),
 	CORE_DVFS("sbc6",   -1, -1, 1, KHZ,    33000,  33000,  33000,  33000,   33000,  33000,  51000,  51000),
 
-	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
-	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
-	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 200000),
-
 	CORE_DVFS("hdmi",   -1, -1, 1, KHZ,        1, 148500, 148500, 297000,  297000, 297000, 297000, 297000),
 	/* FIXME: Finalize these values for NOR after qual */
 	CORE_DVFS("nor",    -1, -1, 1, KHZ,   102000, 102000, 102000, 102000,  102000, 102000, 102000, 102000),
 
 	CORE_DVFS("pciex",  -1,  -1, 1, KHZ,  250000, 250000, 250000, 500000,  500000, 500000, 500000, 500000),
         CORE_DVFS("mselect", -1, -1, 1, KHZ,  102000, 102000, 204000, 204000,  408000, 408000, 408000, 408000),
+};
 
+/*
+ * Separate sdmmc and display dvfs table to handle dependency of sdmmc
+ * tuning on display maximum rate.
+ *
+ * FIXME: details
+ */
+#define OVRRD_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
+	{							\
+		.clk_name	= _clk_name,			\
+		.speedo_id	= _speedo_id,			\
+		.process_id	= _process_id,			\
+		.freqs		= {_freqs},			\
+		.freqs_mult	= _mult,			\
+		.millivolts	= core_millivolts,		\
+		.auto_dvfs	= _auto,			\
+		.can_override	= true,				\
+		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
+	}
+
+#define DEFER_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
+	{							\
+		.clk_name	= _clk_name,			\
+		.speedo_id	= _speedo_id,			\
+		.process_id	= _process_id,			\
+		.freqs		= {_freqs},			\
+		.freqs_mult	= _mult,			\
+		.millivolts	= core_millivolts,		\
+		.auto_dvfs	= _auto,			\
+		.defer_override = true,				\
+		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
+	}
+
+	/* Core voltages (mV):		         800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
+static struct dvfs sdmmc_dvfs_table[] = {
+	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 204000),
+	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 204000),
+	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 200000),
+};
+
+static struct dvfs sdmmc_tune2_dvfs_table[] = {
+	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 200000),
+};
+
+static struct dvfs disp_dvfs_table[] = {
 	/*
 	 * The clock rate for the display controllers that determines the
 	 * necessary core voltage depends on a divider that is internal
 	 * to the display block.  Disable auto-dvfs on the display clocks,
 	 * and let the display driver call tegra_dvfs_set_rate manually
 	 */
-        CORE_DVFS("disp1",       0, -1, 0, KHZ,  180000, 240000, 282000, 330000, 388000, 408000, 456000, 490000),
-        CORE_DVFS("disp1",       1, -1, 0, KHZ,  192000, 247000, 306000, 342000, 400000, 432000, 474000, 533000),
+	DEFER_DVFS("disp1",       0, -1, 0, KHZ,  180000, 240000, 282000, 330000, 388000, 408000, 456000, 490000),
+	DEFER_DVFS("disp1",       1, -1, 0, KHZ,  192000, 247000, 306000, 342000, 400000, 432000, 474000, 533000),
 
-        CORE_DVFS("disp2",       0, -1, 0, KHZ,  180000, 240000, 282000, 330000, 388000, 408000, 456000, 490000),
-        CORE_DVFS("disp2",       1, -1, 0, KHZ,  192000, 247000, 306000, 342000, 400000, 432000, 474000, 533000),
-
+	DEFER_DVFS("disp2",       0, -1, 0, KHZ,  180000, 240000, 282000, 330000, 388000, 408000, 456000, 490000),
+	DEFER_DVFS("disp2",       1, -1, 0, KHZ,  192000, 247000, 306000, 342000, 400000, 432000, 474000, 533000),
 };
+
+static int resolve_core_override(int min_override_mv)
+{
+	int i, j;
+	struct dvfs *d = sdmmc_dvfs_table;
+	struct dvfs *d_tune = sdmmc_tune2_dvfs_table;
+
+	BUILD_BUG_ON(ARRAY_SIZE(sdmmc_dvfs_table) !=
+		     ARRAY_SIZE(sdmmc_tune2_dvfs_table));
+
+	if (min_override_mv >=
+	    tegra12_dvfs_rail_vdd_core.nominal_millivolts)
+		return 0;
+
+	/* Override range is not 0: 2+ points for SDMMC tuning are available */
+	for (i = 0; i < ARRAY_SIZE(sdmmc_dvfs_table); i++, d++, d_tune++) {
+		for (j = 0; j < d->num_freqs; j++)
+			d->freqs[j] = d_tune->freqs[j] * d_tune->freqs_mult;
+	}
+	return 0;
+}
 
 /* GPU DVFS tables */
 static unsigned long gpu_max_freq[] = {
@@ -842,6 +892,17 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
+#define INIT_CORE_DVFS_TABLE(table, table_size)				       \
+	do {								       \
+		for (i = 0; i < (table_size); i++) {			       \
+			struct dvfs *d = &(table)[i];			       \
+			if (!match_dvfs_one(d->clk_name, d->speedo_id,	       \
+				d->process_id, soc_speedo_id, core_process_id))\
+				continue;				       \
+			init_dvfs_one(d, core_nominal_mv_index);	       \
+		}							       \
+	} while (0)
+
 int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event)
 {
@@ -895,6 +956,8 @@ void __init tegra12x_init_dvfs(void)
 	tegra12_dvfs_rail_vdd_core.nominal_millivolts =
 		core_millivolts[core_nominal_mv_index];
 
+	tegra12_dvfs_rail_vdd_core.resolve_override = resolve_core_override;
+
 	/*
 	 * Setup cpu dvfs and dfll tables from cvb data, determine nominal
 	 * voltage for cpu rail, and cpu maximum frequency. Note that entire
@@ -947,13 +1010,12 @@ void __init tegra12x_init_dvfs(void)
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
 	if (!tegra_platform_is_linsim()) {
-		for (i = 0; i <  ARRAY_SIZE(core_dvfs_table); i++) {
-			struct dvfs *d = &core_dvfs_table[i];
-			if (!match_dvfs_one(d->clk_name, d->speedo_id,
-				d->process_id, soc_speedo_id, core_process_id))
-				continue;
-			init_dvfs_one(d, core_nominal_mv_index);
-		}
+		INIT_CORE_DVFS_TABLE(core_dvfs_table,
+				     ARRAY_SIZE(core_dvfs_table));
+		INIT_CORE_DVFS_TABLE(sdmmc_dvfs_table,
+				     ARRAY_SIZE(sdmmc_dvfs_table));
+		INIT_CORE_DVFS_TABLE(disp_dvfs_table,
+				     ARRAY_SIZE(disp_dvfs_table));
 	}
 
 	/* Initialize matching gpu dvfs entry already found when nominal
