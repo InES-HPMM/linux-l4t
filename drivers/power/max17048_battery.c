@@ -202,6 +202,9 @@ static int max17048_get_property(struct power_supply *psy,
 			return -EINVAL;
 		val->intval = temp;
 		break;
+	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = 1;
+		break;
 	default:
 	return -EINVAL;
 	}
@@ -300,7 +303,7 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
-	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_TEMP,
 };
 
