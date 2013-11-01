@@ -45,6 +45,10 @@
 #include <linux/semaphore.h>
 #include <linux/version.h>
 
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #ifndef FALSE
 #define FALSE  0
@@ -57,13 +61,24 @@
 struct mtk_gps_hardware{
 	int (*ext_power_on)(int);
 	int (*ext_power_off)(int);
+	int ext_force_on;
 };
 
-/*struct mtk_gps_hardware mt3332_gps_hw = {
+
+struct mtk_gps_hardware mt3332_gps_hw = {
 	.ext_power_on = NULL,
 	.ext_power_off = NULL,
-};*/
+	.ext_force_on = -1,
+};
 
+
+struct mtk_gps_gpios {
+	int force_on;
+};
+
+struct mtk_gps_gpios mt3332_gpios = {
+	.force_on = -1,
+};
 
 /******************************************************************************
 * Function Configuration
@@ -204,6 +219,34 @@ static char *str_reason[] = {"none", "init", "monitor", "wakeup", "TTFF", "force
 /******************************************************************************
 * Functions
 ******************************************************************************/
+static int mt3332_gps_ext_power_on(int force_on)
+{
+	int ret = 0;
+
+	if (gpio_is_valid(mt3332_gpios.force_on)) {
+		gpio_set_value(mt3332_gpios.force_on, force_on);
+		GPS_DBG("(enable gps)\n");
+		mdelay(10);
+	} else {
+		GPS_ERR("enable gpio not init\n");
+	}
+	return ret;
+}
+
+int mt3332_gps_ext_power_off(int force_on)
+{
+	int ret = 0;
+
+	if (gpio_is_valid(mt3332_gpios.force_on)) {
+		gpio_set_value(mt3332_gpios.force_on, 0);
+		GPS_DBG("(disable gps)\n");
+		mdelay(10);
+	} else {
+		GPS_ERR("disable gpio not init\n");
+	}
+	return ret;
+}
+
 static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
 									unsigned int on, unsigned int force)
 {
@@ -892,12 +935,84 @@ static void mt3332_gps_hw_exit(struct mtk_gps_hardware *hw)
 	mt3332_gps_power(hw, 0, FALSE);
 }
 /*****************************************************************************/
+
+static struct of_device_id mt3332_of_match[] = {
+	{.compatible = "mtk,mt3332", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, mt3332_of_match);
+
+static int mtk_request_gpio(struct mtk_gps_gpios *pgpios)
+{
+
+	int ret = 0;
+
+	if (gpio_is_valid(pgpios->force_on)) {
+		GPS_DBG("enable gpio = %d\n", pgpios->force_on);
+
+		ret = gpio_request(pgpios->force_on, "force-on-gpios");
+		GPS_DBG("gpio_request ret = %d\n", ret);
+
+		if (ret)
+			return ret;
+		GPS_DBG("gpio_request ok\n");
+
+		/* output mode */
+		gpio_direction_output(pgpios->force_on, 1);
+	} else {
+		pgpios->force_on = -1;
+		GPS_ERR("enable gpio  is not registered\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int mt3332_gps_parse_dt(struct platform_device *pdev,
+					struct mtk_gps_gpios *pgpios)
+{
+	struct device_node *np = pdev->dev.of_node;
+
+	pgpios->force_on = of_get_named_gpio(np, "force-on-gpios", 0);
+	return mtk_request_gpio(pgpios);
+}
+
 static int mt3332_gps_probe(struct platform_device *dev)
 {
+	struct mtk_gps_hardware *hw = NULL;
+	struct mtk_gps_gpios *p_mtk_gps_gpios = NULL;
 	int ret = 0, err = 0;
 	struct gps_drv_obj *drvobj = NULL;
-	struct mtk_gps_hardware *hw = (struct mtk_gps_hardware *)dev->dev.platform_data;
 	struct gps_dev_obj *devobj = NULL;
+	/* init mtk_gps_gpios */
+	p_mtk_gps_gpios = &mt3332_gpios;
+
+	if (dev->dev.of_node) {
+
+		if (mt3332_gps_parse_dt(dev, &mt3332_gpios)) {
+			GPS_ERR("fail to find gpio\n");
+			goto free_res;
+		}
+	} else if (dev->dev.platform_data) {
+		p_mtk_gps_gpios->force_on =
+			((struct mtk_gps_hardware *)
+				dev->dev.platform_data)->ext_force_on;
+		if (gpio_is_valid(p_mtk_gps_gpios->force_on)) {
+			ret = mtk_request_gpio(p_mtk_gps_gpios);
+			if (ret) {
+				GPS_ERR("fail to request gpio\n");
+				goto free_res;
+			}
+		} else {
+			GPS_ERR("could not find gpio\n");
+			goto free_res;
+		}
+	} else {
+		goto free_res;
+	}
+	/*set drv data */
+	mt3332_gps_hw.ext_power_on = &mt3332_gps_ext_power_on;
+	mt3332_gps_hw.ext_power_off = &mt3332_gps_ext_power_off;
+	hw = &mt3332_gps_hw;
 
 	devobj = kzalloc(sizeof(*devobj), GFP_KERNEL);
 	if (!devobj) {
@@ -905,9 +1020,9 @@ static int mt3332_gps_probe(struct platform_device *dev)
 		err = -ENOMEM;
 		goto error;
 	}
-
 	mt3332_gps_hw_init(hw);
 
+	/* init devobj */
 	GPS_DBG("Registering chardev\n");
 	ret = alloc_chrdev_region(&devobj->devno, 0, 1, GPS_DEVNAME);
 	if (ret) {
@@ -936,13 +1051,13 @@ static int mt3332_gps_probe(struct platform_device *dev)
 		goto error;
 	}
 	devobj->dev = device_create(devobj->cls, NULL, devobj->devno, drvobj, "gps");
-	drvobj->hw		= hw;
-	drvobj->pwrctl	= 0;
+	drvobj->hw = hw;
+	drvobj->pwrctl = 0;
 	drvobj->suspend = 0;
-	drvobj->state	= GPS_STATE_UNSUPPORTED;
+	drvobj->state = GPS_STATE_UNSUPPORTED;
 	drvobj->pwrsave = GPS_PWRSAVE_UNSUPPORTED;
-	drvobj->rdelay	= 50;
-	drvobj->kobj	= &devobj->dev->kobj;
+	drvobj->rdelay = 50;
+	drvobj->kobj = &devobj->dev->kobj;
 	mutex_init(&drvobj->sem);
 
 	err = mt3332_gps_create_attr(devobj->dev);
@@ -969,10 +1084,18 @@ static int mt3332_gps_probe(struct platform_device *dev)
 	return 0;
 
 error:
+	mt3332_gps_hw.ext_power_on = NULL;
+	mt3332_gps_hw.ext_power_off = NULL;
 	if (err == 0)
 		cdev_del(&devobj->chdev);
 	if (ret == 0)
 		unregister_chrdev_region(devobj->devno, 1);
+	return -1;
+free_res:
+	if (gpio_is_valid(p_mtk_gps_gpios->force_on)) {
+		gpio_free(p_mtk_gps_gpios->force_on);
+		p_mtk_gps_gpios->force_on =  -1;
+	}
 	return -1;
 }
 /*****************************************************************************/
@@ -1042,6 +1165,7 @@ static int mt3332_gps_resume(struct platform_device *dev)
 /*****************************************************************************/
 #endif /* CONFIG_PM */
 /*****************************************************************************/
+
 static struct platform_driver mt3332_gps_driver = {
 	.probe		= mt3332_gps_probe,
 	.remove		= mt3332_gps_remove,
@@ -1052,16 +1176,10 @@ static struct platform_driver mt3332_gps_driver = {
 #endif
 	.driver		= {
 		.name = GPS_DEVNAME,
+		.of_match_table = of_match_ptr(mt3332_of_match),
 		.bus	= &platform_bus_type,
 	},
 };
-/*struct platform_device mt3332_device_gps = {
-		.name		   = "mt3332-gps",
-		.id			   = -1,
-		.dev = {
-		.platform_data = &mt3332_gps_hw,
-	},
-};*/
 /*****************************************************************************/
 static int __init mt3332_gps_mod_init(void)
 {
@@ -1070,7 +1188,7 @@ static int __init mt3332_gps_mod_init(void)
 
 	/*ret = driver_register(&mt3332_gps_driver);*/
 	ret = platform_driver_register(&mt3332_gps_driver);
-
+	GPS_DBG("platform_driver_register ret = %d\n", ret);
 	return ret;
 }
 
