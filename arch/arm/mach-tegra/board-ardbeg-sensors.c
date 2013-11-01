@@ -1394,6 +1394,8 @@ static struct i2c_board_info laguna_i2c_nct72_board_info[] = {
 
 static int ardbeg_nct72_init(void)
 {
+	s32 base_cp, shft_cp;
+	u32 base_ft, shft_ft;
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
 	int i;
@@ -1402,8 +1404,8 @@ static int ardbeg_nct72_init(void)
 
 	tegra_get_board_info(&board_info);
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
-	if (!tegra_fuse_calib_base_get_cp(NULL, NULL) &&
-	    !tegra_fuse_calib_base_get_ft(NULL, NULL)) {
+	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
+	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
 		ardbeg_nct72_pdata.shutdown_ext_limit += 20;
 		for (i = 0; i < ardbeg_nct72_pdata.num_trips; i++) {
 			trip_state = &ardbeg_nct72_pdata.trips[i];

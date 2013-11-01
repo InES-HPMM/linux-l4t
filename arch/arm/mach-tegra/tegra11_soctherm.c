@@ -1862,6 +1862,12 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	s16 therm_a, therm_b;
 	s32 div, mult, actual_tsensor_ft, actual_tsensor_cp;
 	int fuse_rev;
+	u32 base_cp;
+	s32 shft_cp;
+
+	fuse_rev = tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp);
+	if (fuse_rev < 0)
+		return -EINVAL;
 
 	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &value);
 
@@ -1913,7 +1919,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 		}
 	} else {
 		if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
-			fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
 			if (fuse_rev == 0) { /* new CP1/CP2 */
 				t12x_fuse_corr_alpa2[sensor] =
 					t12x_fuse_corr_alpa2[sensor] ?: 1000000;
