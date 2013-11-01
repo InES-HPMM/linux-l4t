@@ -420,7 +420,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	}
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (cntfrq));
+	cntfrq = tegra_clk_measure_input_freq();
 	cntp_tval = (request - state->exit_latency) * (cntfrq / 1000000);
 	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(cntp_tval));
 #endif
