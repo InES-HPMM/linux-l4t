@@ -625,70 +625,6 @@ static void loki_modem_init(void)
 	}
 }
 
-#define LOKI_GPS_FORCE_ON	TEGRA_GPIO_PH5
-
-static int mt3332_gps_ext_power_on(int force_on)
-{
-	int ret = 0;
-	gpio_set_value(LOKI_GPS_FORCE_ON, 1);
-	mdelay(10);
-	pr_err("MTK: GPIO set to 1\n");
-	return ret;
-}
-
-static int mt3332_gps_ext_power_off(int force_off)
-{
-	int ret = 0;
-	gpio_set_value(LOKI_GPS_FORCE_ON, 0);
-	mdelay(10);
-	pr_err("MTK: GPIO set to 0\n");
-	return ret;
-}
-
-struct mtk_gps_hardware {
-	int (*ext_power_on)(int);
-	int (*ext_power_off)(int);
-};
-
-struct mtk_gps_hardware mt3332_gps_hw = {
-	.ext_power_on = mt3332_gps_ext_power_on,
-	.ext_power_off = mt3332_gps_ext_power_off,
-};
-
-struct platform_device mt3332_device_gps = {
-	.name	= "mt3332-gps",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mt3332_gps_hw,
-	},
-};
-
-static void __init mtk_gps_register(void)
-{
-	int ret = 0;
-	ret = gpio_request(LOKI_GPS_FORCE_ON, "gps_en");
-	if (ret) {
-		pr_err("failed to get gps_en\n");
-		return;
-	}
-
-	ret = gpio_direction_output(LOKI_GPS_FORCE_ON, 1);
-	if (ret) {
-		pr_err("failed to direct gps_en to out\n");
-		gpio_free(LOKI_GPS_FORCE_ON);
-		return;
-	}
-
-	ret = platform_device_register(&mt3332_device_gps);
-	if (ret)
-		pr_err("mtk: failed to register gps device: %d\n", ret);
-}
-
-static void __init loki_gps_init(void)
-{
-	mtk_gps_register();
-}
-
 #ifndef CONFIG_USE_OF
 static struct platform_device *loki_spi_devices[] __initdata = {
 	&tegra11_spi_device1,
@@ -853,7 +789,6 @@ static void __init tegra_loki_late_init(void)
 	loki_emc_init();
 	loki_edp_init();
 	isomgr_init();
-	loki_gps_init();
 	loki_touch_init();
 	loki_panel_init();
 	loki_kbc_init();
