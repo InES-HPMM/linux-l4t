@@ -78,6 +78,11 @@ struct nvavp_num_cpus_args {
 	__u32 min_online_cpus;
 };
 
+struct nvavp_map_args {
+	__s32 fd;
+	__u32 addr;
+};
+
 #define NVAVP_IOCTL_MAGIC		'n'
 
 #define NVAVP_IOCTL_SET_NVMAP_FD	_IOW(NVAVP_IOCTL_MAGIC, 0x60, \
@@ -100,8 +105,12 @@ struct nvavp_num_cpus_args {
 					struct nvavp_clock_args)
 #define NVAVP_IOCTL_SET_MIN_ONLINE_CPUS _IOWR(NVAVP_IOCTL_MAGIC, 0x70, \
 					struct nvavp_num_cpus_args)
+#define NVAVP_IOCTL_MAP_IOVA		_IOWR(NVAVP_IOCTL_MAGIC, 0x71, \
+					struct nvavp_map_args)
+#define NVAVP_IOCTL_UNMAP_IOVA		_IOW(NVAVP_IOCTL_MAGIC, 0x72, \
+					struct nvavp_map_args)
 
 #define NVAVP_IOCTL_MIN_NR		_IOC_NR(NVAVP_IOCTL_SET_NVMAP_FD)
-#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_SET_MIN_ONLINE_CPUS)
+#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_UNMAP_IOVA)
 
 #endif /* __LINUX_TEGRA_NVAVP_H */

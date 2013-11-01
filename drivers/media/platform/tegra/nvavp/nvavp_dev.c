@@ -175,6 +175,8 @@ struct nvavp_clientctx {
 	struct nvavp_info *nvavp;
 	int channel_id;
 	u32 clk_reqs;
+	spinlock_t iova_lock;
+	struct rb_root iova_handles;
 };
 
 static int nvavp_runtime_get(struct nvavp_info *nvavp)
@@ -191,6 +193,207 @@ static void nvavp_runtime_put(struct nvavp_info *nvavp)
 {
 	pm_runtime_mark_last_busy(&nvavp->nvhost_dev->dev);
 	pm_runtime_put_autosuspend(&nvavp->nvhost_dev->dev);
+}
+
+static struct device_dma_parameters nvavp_dma_parameters = {
+	.max_segment_size = UINT_MAX,
+};
+
+struct nvavp_iova_info {
+	struct rb_node node;
+	atomic_t ref;
+	dma_addr_t addr;
+	struct dma_buf *dmabuf;
+	struct dma_buf_attachment *attachment;
+	struct sg_table *sgt;
+};
+
+/*
+ * Unmap's dmabuf and removes the iova info from rb tree
+ * Call with client iova_lock held.
+ */
+static void nvavp_remove_iova_info_locked(
+	struct nvavp_clientctx *clientctx,
+	struct nvavp_iova_info *b)
+{
+	struct nvavp_info *nvavp = clientctx->nvavp;
+
+	dev_dbg(&nvavp->nvhost_dev->dev,
+		"remove iova addr (0x%x))\n", b->addr);
+	dma_buf_unmap_attachment(b->attachment,
+		b->sgt, DMA_BIDIRECTIONAL);
+	dma_buf_detach(b->dmabuf, b->attachment);
+	dma_buf_put(b->dmabuf);
+	rb_erase(&b->node, &clientctx->iova_handles);
+	kfree(b);
+}
+
+/*
+ * Searches the given addr in rb tree and return valid pointer if present
+ * Call with client iova_lock held.
+ */
+static struct nvavp_iova_info *nvavp_search_iova_info_locked(
+	struct nvavp_clientctx *clientctx, struct dma_buf *dmabuf,
+	struct rb_node **curr_parent)
+{
+	struct rb_node *parent = NULL;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct rb_node **p = &clientctx->iova_handles.rb_node;
+
+	while (*p) {
+		struct nvavp_iova_info *b;
+		parent = *p;
+		b = rb_entry(parent, struct nvavp_iova_info, node);
+		if (b->dmabuf == dmabuf)
+			return b;
+		else if (dmabuf > b->dmabuf)
+			p = &parent->rb_right;
+		else
+			p = &parent->rb_left;
+	}
+	*curr_parent = parent;
+	return NULL;
+}
+
+/*
+ * Adds a newly-created iova info handle to the rb tree
+ * Call with client iova_lock held.
+ */
+static void nvavp_add_iova_info_locked(struct nvavp_clientctx *clientctx,
+	struct nvavp_iova_info *h, struct rb_node *parent)
+{
+	struct nvavp_iova_info *b;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct rb_node **p = &clientctx->iova_handles.rb_node;
+
+	dev_info(&nvavp->nvhost_dev->dev,
+		"add iova addr (0x%x))\n", h->addr);
+
+	if (parent) {
+		b = rb_entry(parent, struct nvavp_iova_info, node);
+		if (h->dmabuf > b->dmabuf)
+			p = &parent->rb_right;
+		else
+			p = &parent->rb_left;
+	}
+	rb_link_node(&h->node, parent, p);
+	rb_insert_color(&h->node, &clientctx->iova_handles);
+}
+
+/*
+ * Maps and adds the iova address if already not present in rb tree
+ * if present, update ref count and return iova return iova address
+ */
+static int nvavp_get_iova_addr(struct nvavp_clientctx *clientctx,
+	struct dma_buf *dmabuf, dma_addr_t *addr)
+{
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_iova_info *h;
+	struct nvavp_iova_info *b = NULL;
+	struct rb_node *curr_parent = NULL;
+	int ret = 0;
+
+	spin_lock(&clientctx->iova_lock);
+	b = nvavp_search_iova_info_locked(clientctx, dmabuf, &curr_parent);
+	if (b) {
+		/* dmabuf already present in rb tree */
+		atomic_inc(&b->ref);
+		*addr = b->addr;
+		dev_dbg(&nvavp->nvhost_dev->dev,
+			"found iova addr (0x%pa) ref count(%d))\n",
+			&(b->addr), atomic_read(&b->ref));
+		goto out;
+	}
+	spin_unlock(&clientctx->iova_lock);
+
+	/* create new iova_info node */
+	h = kzalloc(sizeof(*h), GFP_KERNEL);
+	if (!h)
+		return -ENOMEM;
+
+	h->dmabuf = dmabuf;
+	h->attachment = dma_buf_attach(dmabuf, &nvavp->nvhost_dev->dev);
+	if (IS_ERR(h->attachment)) {
+		dev_err(&nvavp->nvhost_dev->dev, "cannot attach dmabuf\n");
+		ret = PTR_ERR(h->attachment);
+		goto err_put;
+	}
+
+	h->sgt = dma_buf_map_attachment(h->attachment, DMA_BIDIRECTIONAL);
+	if (IS_ERR(h->sgt)) {
+		dev_err(&nvavp->nvhost_dev->dev, "cannot map dmabuf\n");
+		ret = PTR_ERR(h->sgt);
+		goto err_map;
+	}
+
+	h->addr = sg_dma_address(h->sgt->sgl);
+	atomic_set(&h->ref, 1);
+
+	spin_lock(&clientctx->iova_lock);
+	b = nvavp_search_iova_info_locked(clientctx, dmabuf, &curr_parent);
+	if (b) {
+		dev_dbg(&nvavp->nvhost_dev->dev,
+			"found iova addr (0x%pa) ref count(%d))\n",
+			&(b->addr), atomic_read(&b->ref));
+		atomic_inc(&b->ref);
+		*addr = b->addr;
+		spin_unlock(&clientctx->iova_lock);
+		goto err_exist;
+	}
+	nvavp_add_iova_info_locked(clientctx, h, curr_parent);
+	*addr = h->addr;
+
+out:
+	spin_unlock(&clientctx->iova_lock);
+	return 0;
+err_exist:
+	dma_buf_unmap_attachment(h->attachment, h->sgt, DMA_BIDIRECTIONAL);
+err_map:
+	dma_buf_detach(dmabuf, h->attachment);
+err_put:
+	dma_buf_put(dmabuf);
+	kfree(h);
+	return ret;
+}
+
+/*
+ * Release the given iova address if it is last client otherwise dec ref count.
+ */
+static void nvavp_release_iova_addr(struct nvavp_clientctx *clientctx,
+	struct dma_buf *dmabuf, dma_addr_t addr)
+{
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_iova_info *b = NULL;
+	struct rb_node *curr_parent;
+
+	spin_lock(&clientctx->iova_lock);
+	b = nvavp_search_iova_info_locked(clientctx, dmabuf, &curr_parent);
+	if (!b) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"error iova addr (0x%pa) is not found\n", &addr);
+		goto out;
+	}
+	/* if it is last reference, release iova info */
+	if (atomic_sub_return(1, &b->ref) == 0)
+		nvavp_remove_iova_info_locked(clientctx, b);
+out:
+	spin_unlock(&clientctx->iova_lock);
+}
+
+/*
+ * Release all the iova addresses in rb tree
+ */
+static void nvavp_remove_iova_mapping(struct nvavp_clientctx *clientctx)
+{
+	struct rb_node *p = NULL;
+	struct nvavp_iova_info *b;
+
+	spin_lock(&clientctx->iova_lock);
+	while ((p = rb_first(&clientctx->iova_handles))) {
+		b = rb_entry(p, struct nvavp_iova_info, node);
+		nvavp_remove_iova_info_locked(clientctx, b);
+	}
+	spin_unlock(&clientctx->iova_lock);
 }
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -1160,6 +1363,85 @@ static int nvcpu_set_clock(struct nvavp_info *nvavp,
 	return 0;
 }
 
+static int nvavp_map_iova(struct file *filp, unsigned int cmd,
+							unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_map_args map_arg;
+	struct dma_buf *dmabuf;
+	dma_addr_t addr = 0;
+	int ret = 0;
+
+	if (copy_from_user(&map_arg, (void __user *)arg,
+		sizeof(struct nvavp_map_args))) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"failed to copy memory handle\n");
+		return -EFAULT;
+	}
+	if (!map_arg.fd) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"invalid memory handle %08x\n", map_arg.fd);
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+	dmabuf = dma_buf_get(map_arg.fd);
+#else
+	dmabuf = nvmap_dmabuf_export(clientctx->nvmap, map_arg.fd);
+#endif
+	if (IS_ERR(dmabuf)) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"invalid buffer handle %08x\n", map_arg.fd);
+		return PTR_ERR(dmabuf);
+	}
+
+	ret = nvavp_get_iova_addr(clientctx, dmabuf, &addr);
+	if (ret)
+		goto out;
+
+	map_arg.addr = (__u32)addr;
+
+	if (copy_to_user((void __user *)arg, &map_arg,
+		sizeof(struct nvavp_map_args))) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"failed to copy phys addr\n");
+		ret = -EFAULT;
+	}
+
+out:
+	return ret;
+}
+
+static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_map_args map_arg;
+	struct dma_buf *dmabuf;
+
+	if (copy_from_user(&map_arg, (void __user *)arg,
+		sizeof(struct nvavp_map_args))) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"failed to copy memory handle\n");
+		return -EFAULT;
+	}
+
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+	dmabuf = dma_buf_get(map_arg.fd);
+#else
+	dmabuf = nvmap_dmabuf_export(clientctx->nvmap, map_arg.fd);
+#endif
+	if (IS_ERR(dmabuf)) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"invalid buffer handle %08x\n", map_arg.fd);
+		return PTR_ERR(dmabuf);
+	}
+
+	nvavp_release_iova_addr(clientctx, dmabuf, (dma_addr_t)map_arg.addr);
+	return 0;
+}
+
 static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 							unsigned long arg)
 {
@@ -1572,6 +1854,7 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_
 	}
 
 	clientctx->nvavp = nvavp;
+	clientctx->iova_handles = RB_ROOT;
 
 	filp->private_data = clientctx;
 
@@ -1630,6 +1913,7 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp, int chann
 out:
 	nvmap_client_put(clientctx->nvmap);
 	mutex_unlock(&nvavp->open_lock);
+	nvavp_remove_iova_mapping(clientctx);
 	kfree(clientctx);
 	return ret;
 }
@@ -1686,6 +1970,12 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_SET_MIN_ONLINE_CPUS:
 		ret = nvavp_set_min_online_cpus_ioctl(filp, cmd, arg);
+
+	case NVAVP_IOCTL_MAP_IOVA:
+		ret = nvavp_map_iova(filp, cmd, arg);
+		break;
+	case NVAVP_IOCTL_UNMAP_IOVA:
+		ret = nvavp_unmap_iova(filp, arg);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1750,6 +2040,9 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 		dev_err(&ndev->dev, "invalid nvhost data\n");
 		return -EINVAL;
 	}
+
+	/* Set the max segment size supported. */
+	ndev->dev.dma_parms = &nvavp_dma_parameters;
 
 	nvavp = kzalloc(sizeof(struct nvavp_info), GFP_KERNEL);
 	if (!nvavp) {
