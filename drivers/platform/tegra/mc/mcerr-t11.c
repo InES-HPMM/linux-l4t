@@ -128,7 +128,7 @@ static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
 	if (stat & MC_INT_SECERR_SEC)
 		c->intr_counts[4]++;
 
-	if (stat & ~MC_INT_EN_MASK)
+	if (stat & ~mc_int_mask)
 		c->intr_counts[5]++;
 }
 
@@ -164,7 +164,7 @@ static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
 		if (strcmp(mc_clients[i].name, "dummy") == 0)
 			continue;
 		/* Only print clients who actually have errors. */
-		for (j = 0; j < INTR_COUNT; j++) {
+		for (j = 0; j < mc_intr_count; j++) {
 			if (mc_clients[i].intr_counts[j]) {
 				do_print = 1;
 				break;
