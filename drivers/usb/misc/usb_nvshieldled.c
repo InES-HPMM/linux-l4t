@@ -21,6 +21,8 @@
 #include <linux/module.h>
 #include <linux/usb.h>
 #include <linux/slab.h>
+#include <linux/reboot.h>
+#include <linux/notifier.h>
 
 #define DRIVER_AUTHOR "Jun Yan, juyan@nvidia.com"
 #define DRIVER_DESC "NVIDIA Shield USB LED Driver"
@@ -44,6 +46,8 @@
 
 #define VID 0x0955
 #define PID 0x7205
+
+struct nvshield_led *g_dev;
 
 static const struct usb_device_id nvshield_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(VID, PID,
@@ -108,10 +112,10 @@ static ssize_t set_brightness(struct device *dev,
 {
 	struct usb_interface *intf = to_usb_interface(dev);
 	struct nvshield_led *led = usb_get_intfdata(intf);
-	int brightness_val;
+	unsigned long brightness_val;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
-		led->brightness = brightness_val;
+		led->brightness = (unsigned char)brightness_val;
 		send_command(led);
 	}
 	return count;
@@ -172,6 +176,21 @@ static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR,
 static DEVICE_ATTR(state, S_IRUGO | S_IWUSR,
 		show_ledstate, set_ledstate);
 
+
+static int nvshieldled_reboot_callback(struct notifier_block *nb,
+		unsigned long code,
+		void *unused) {
+	if (!g_dev)
+		return NOTIFY_DONE;
+	g_dev->state = LED_NORMAL;
+	send_command(g_dev);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block nvshieldled_notifier = {
+	.notifier_call = nvshieldled_reboot_callback,
+};
+
 static int nvshieldled_probe(struct usb_interface *interface,
 		const struct usb_device_id *id)
 {
@@ -190,19 +209,26 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	dev->brightness = 255;
 
 	usb_set_intfdata(interface, dev);
+	g_dev = dev;
 
 	retval = device_create_file(&interface->dev, &dev_attr_brightness);
 	if (retval)
 		goto error;
 	retval = device_create_file(&interface->dev, &dev_attr_state);
 	if (retval)
-		goto error;
+		goto error2;
 	dev_info(&interface->dev, "Nvidia Shield LED attached\n");
+
+	retval = register_reboot_notifier(&nvshieldled_notifier);
+	if (retval)
+		goto error3;
 	return 0;
 
-error:
+error3:
 	device_remove_file(&interface->dev, &dev_attr_brightness);
+error2:
 	device_remove_file(&interface->dev, &dev_attr_state);
+error:
 	usb_set_intfdata(interface, NULL);
 	usb_put_dev(dev->udev);
 	kfree(dev);
@@ -216,6 +242,7 @@ static void nvshieldled_disconnect(struct usb_interface *interface)
 
 	dev = usb_get_intfdata(interface);
 
+	unregister_reboot_notifier(&nvshieldled_notifier);
 	device_remove_file(&interface->dev, &dev_attr_brightness);
 	device_remove_file(&interface->dev, &dev_attr_state);
 
