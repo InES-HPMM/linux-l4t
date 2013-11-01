@@ -2325,7 +2325,7 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 	ret |= imx135_write_reg(info, 0x3B02, 0x00);
 	ret |= imx135_write_reg(info, 0x3B00, 0x01);
 	for (i = 0; i < 9; i++) {
-		ret |= imx135_read_reg(info->i2c_client, 0x3B24 + i, &bak);
+		ret |= imx135_read_reg(info, 0x3B24 + i, &bak);
 		info->sensor_data.fuse_id[i] = bak;
 	}
 
