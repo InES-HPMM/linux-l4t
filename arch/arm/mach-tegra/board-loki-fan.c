@@ -47,6 +47,7 @@ static struct pwm_fan_platform_data fan_data_delta_6k = {
 	.state_cap = 2,
 	.precision_multiplier = 1024,
 	.tach_gpio = TEGRA_GPIO_PU2,
+	.pwm_gpio = TEGRA_GPIO_PU3,
 };
 
 static struct platform_device pwm_fan_therm_cooling_device_delta_6k = {
@@ -70,7 +71,6 @@ int __init loki_fan_init(void)
 		pr_err("FAN:gpio request failed\n");
 		return err;
 	}
-	gpio_free(TEGRA_GPIO_PU3);
 
 	platform_device_register(
 		&pwm_fan_therm_cooling_device_delta_6k);
