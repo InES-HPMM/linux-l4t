@@ -316,6 +316,12 @@ static inline u8 get_output_top(struct tegra_cl_dvfs *cld)
 		cld->out_map[cld->num_voltages - 1]->reg_value;
 }
 
+static inline int get_mv(struct tegra_cl_dvfs *cld, u32 out_val)
+{
+	return is_i2c(cld) ? cld->out_map[out_val]->reg_uV / 1000 :
+		cld->p_data->vdd_map[out_val].reg_uV / 1000;
+}
+
 static int output_enable(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
@@ -898,17 +904,17 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
 {
-	u8 force_out_min = 0;
+	u8 force_out_min = get_output_bottom(cld);
 	int force_mv_min = cld->p_data->pmu_undershoot_gb;
 
 	if (!force_mv_min) {
-		cld->force_out_min = 0;
+		cld->force_out_min = force_out_min;
 		return;
 	}
 
 	if (cld->therm_floor_idx < cld->therm_floors_num)
 		force_out_min = cld->thermal_out_floors[cld->therm_floor_idx];
-	force_mv_min += cld->out_map[force_out_min]->reg_uV / 1000;
+	force_mv_min += get_mv(cld, force_out_min);
 	force_out_min = find_mv_out_cap(cld, force_mv_min);
 	if (force_out_min == cld->safe_output)
 		force_out_min++;
@@ -1931,12 +1937,6 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 }
 
 #ifdef CONFIG_DEBUG_FS
-
-static inline int get_mv(struct tegra_cl_dvfs *cld, u32 out_val)
-{
-	return is_i2c(cld) ? cld->out_map[out_val]->reg_uV / 1000 :
-		cld->p_data->vdd_map[out_val].reg_uV / 1000;
-}
 
 static int lock_get(void *data, u64 *val)
 {
