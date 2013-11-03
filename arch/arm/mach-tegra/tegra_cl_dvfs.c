@@ -176,6 +176,7 @@ struct dfll_rate_req {
 
 struct tegra_cl_dvfs {
 	void					*cl_base;
+	void					*cl_i2c_base;
 	struct tegra_cl_dvfs_platform_data	*p_data;
 
 	struct dvfs			*safe_dvfs;
@@ -246,12 +247,42 @@ static const char *mode_name[] = {
 	[TEGRA_CL_DVFS_CLOSED_LOOP] = "closed_loop",
 };
 
+/*
+ * In some h/w configurations CL-DVFS module registers have two different
+ * address bases: one for I2C control/status registers, and one for all other
+ * registers. Registers accessors are separated below accordingly just by
+ * comparing register offset with start of I2C section - CL_DVFS_I2C_CFG. One
+ * special case is CL_DVFS_OUTPUT_CFG register: when I2C controls are separated
+ * I2C_ENABLE bit of this register is accessed from I2C base, and all other bits
+ * are accessed from the main base.
+ */
+static inline u32 cl_dvfs_i2c_readl(struct tegra_cl_dvfs *cld, u32 offs)
+{
+	return __raw_readl(cld->cl_i2c_base + offs);
+}
+static inline void cl_dvfs_i2c_writel(struct tegra_cl_dvfs *cld,
+				      u32 val, u32 offs)
+{
+	__raw_writel(val, cld->cl_i2c_base + offs);
+}
+static inline void cl_dvfs_i2c_wmb(struct tegra_cl_dvfs *cld)
+{
+	wmb();
+	cl_dvfs_i2c_readl(cld, CL_DVFS_I2C_CFG);
+}
+
 static inline u32 cl_dvfs_readl(struct tegra_cl_dvfs *cld, u32 offs)
 {
+	if (offs >= CL_DVFS_I2C_CFG)
+		return cl_dvfs_i2c_readl(cld, offs);
 	return __raw_readl((void *)cld->cl_base + offs);
 }
 static inline void cl_dvfs_writel(struct tegra_cl_dvfs *cld, u32 val, u32 offs)
 {
+	if (offs >= CL_DVFS_I2C_CFG) {
+		cl_dvfs_i2c_writel(cld, val, offs);
+		return;
+	}
 	__raw_writel(val, (void *)cld->cl_base + offs);
 }
 static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
@@ -324,11 +355,13 @@ static inline int get_mv(struct tegra_cl_dvfs *cld, u32 out_val)
 
 static int output_enable(struct tegra_cl_dvfs *cld)
 {
-	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-
 	if (is_i2c(cld)) {
+		u32 val = cl_dvfs_i2c_readl(cld, CL_DVFS_OUTPUT_CFG);
 		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+		cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_i2c_wmb(cld);
 	} else {
+		u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 		struct tegra_cl_dvfs_platform_data *d = cld->p_data;
 		if (d->u.pmu_pwm.pwm_bus == TEGRA_CL_DVFS_PWM_1WIRE_BUFFER) {
 			int gpio = d->u.pmu_pwm.out_gpio;
@@ -344,10 +377,10 @@ static int output_enable(struct tegra_cl_dvfs *cld)
 		}
 
 		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
+		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_wmb(cld);
 	}
 
-	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-	cl_dvfs_wmb(cld);
 	return  0;
 }
 
@@ -380,7 +413,7 @@ static noinline int output_flush_disable(struct tegra_cl_dvfs *cld)
 {
 	int i;
 	u32 sts;
-	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	u32 val = cl_dvfs_i2c_readl(cld, CL_DVFS_OUTPUT_CFG);
 
 	/* Flush transactions in flight, and then disable */
 	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT / 2; i++) {
@@ -390,7 +423,7 @@ static noinline int output_flush_disable(struct tegra_cl_dvfs *cld)
 			sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
 			if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING)) {
 				val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+				cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 				wmb();
 				sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
 				if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
@@ -398,7 +431,7 @@ static noinline int output_flush_disable(struct tegra_cl_dvfs *cld)
 
 				/* Re-enable, continue wait */
 				val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+				cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 				wmb();
 			}
 		}
@@ -406,8 +439,8 @@ static noinline int output_flush_disable(struct tegra_cl_dvfs *cld)
 
 	/* I2C request is still pending - disable, anyway, but report error */
 	val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-	cl_dvfs_wmb(cld);
+	cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_i2c_wmb(cld);
 	return -ETIMEDOUT;
 }
 
@@ -415,12 +448,12 @@ static noinline int output_disable_flush(struct tegra_cl_dvfs *cld)
 {
 	int i;
 	u32 sts;
-	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	u32 val = cl_dvfs_i2c_readl(cld, CL_DVFS_OUTPUT_CFG);
 
 	/* Disable output interface right away */
 	val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-	cl_dvfs_wmb(cld);
+	cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_i2c_wmb(cld);
 
 	/* Flush possible transaction in flight */
 	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT / 2; i++) {
@@ -531,20 +564,20 @@ static inline void _load_lut(struct tegra_cl_dvfs *cld)
 	for (; i < cld->num_voltages; i++)
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_LUT + i * 4);
 
-	cl_dvfs_wmb(cld);
+	cl_dvfs_i2c_wmb(cld);
 }
 
 static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 {
-	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	u32 val = cl_dvfs_i2c_readl(cld, CL_DVFS_OUTPUT_CFG);
 	bool disable_out_for_load =
 		!(cld->p_data->flags & TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET) &&
 		(val & CL_DVFS_OUTPUT_CFG_I2C_ENABLE);
 
 	if (disable_out_for_load) {
 		val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-		cl_dvfs_wmb(cld);
+		cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_i2c_wmb(cld);
 		udelay(2); /* 2us (big margin) window for disable propafation */
 	}
 
@@ -552,8 +585,8 @@ static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 
 	if (disable_out_for_load) {
 		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-		cl_dvfs_wmb(cld);
+		cl_dvfs_i2c_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_i2c_wmb(cld);
 	}
 }
 
@@ -1162,7 +1195,7 @@ static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
 	}
 	val |= (div - 1) << CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT;
 	cl_dvfs_writel(cld, val, CL_DVFS_I2C_CLK_DIVISOR);
-	cl_dvfs_wmb(cld);
+	cl_dvfs_i2c_wmb(cld);
 }
 
 static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
@@ -1205,6 +1238,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		cld->lut_max = get_output_cap(cld, NULL);
 	}
 
+	cl_dvfs_i2c_writel(cld, 0, CL_DVFS_OUTPUT_CFG);
 	val = (cld->safe_output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		(out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
 		(out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT);
@@ -1633,7 +1667,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct tegra_cl_dvfs_platform_data *p_data;
-	struct resource *res;
+	struct resource *res, *res_i2c = NULL;
 	struct tegra_cl_dvfs *cld;
 	struct clk *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk, *dfll_clk;
 
@@ -1642,6 +1676,14 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
 		return -ENOMEM;
+	}
+
+	if (pdev->num_resources > 1) {
+		res_i2c = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (!res_i2c) {
+			dev_err(&pdev->dev, "missing i2c register base\n");
+			return -ENOMEM;
+		}
 	}
 
 	p_data = pdev->dev.platform_data;
@@ -1680,6 +1722,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	cld->cl_base = IO_ADDRESS(res->start);
+	cld->cl_i2c_base = res_i2c ? IO_ADDRESS(res_i2c->start) : cld->cl_base;
 	cld->p_data = p_data;
 	cld->ref_clk = ref_clk;
 	cld->soc_clk = soc_clk;
