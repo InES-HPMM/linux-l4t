@@ -1314,19 +1314,20 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 		}
 		cld->i2c_rate = clk_get_rate(cld->i2c_clk);
 	} else if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_PWM) {
-		if (cld->p_data->u.pmu_pwm.pwm_bus >
-		    TEGRA_CL_DVFS_PWM_1WIRE_DIRECT) {
+		int pwm_bus = cld->p_data->u.pmu_pwm.pwm_bus;
+		if (pwm_bus > TEGRA_CL_DVFS_PWM_1WIRE_DIRECT) {
 			/* FIXME: PWM 2-wire support */
 			pr_err("%s: not supported PWM 2-wire bus\n", __func__);
 			return -ENOSYS;
-		}
-		gpio = cld->p_data->u.pmu_pwm.out_gpio;
-		flags = cld->p_data->u.pmu_pwm.out_enable_high ?
-			GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
-		if (gpio && gpio_request_one(gpio, flags, "cl_dvfs_pwm")) {
-			pr_err("%s: Failed to request pwm gpio %d\n",
-			       __func__, gpio);
-			return -EPERM;
+		} else if (pwm_bus == TEGRA_CL_DVFS_PWM_1WIRE_BUFFER) {
+			gpio = cld->p_data->u.pmu_pwm.out_gpio;
+			flags = cld->p_data->u.pmu_pwm.out_enable_high ?
+				GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+			if (gpio_request_one(gpio, flags, "cl_dvfs_pwm")) {
+				pr_err("%s: Failed to request pwm gpio %d\n",
+				       __func__, gpio);
+				return -EPERM;
+			}
 		}
 	} else {
 		pr_err("%s: unknown PMU interface\n", __func__);
