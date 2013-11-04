@@ -24,6 +24,7 @@
 #include <linux/nct1008.h>
 #include <linux/tegra-fuse.h>
 #include <media/mt9m114.h>
+#include <media/ov7695.h>
 #include <mach/gpio-tegra.h>
 #include <mach/edp.h>
 #include <linux/gpio.h>
@@ -193,10 +194,69 @@ struct mt9m114_platform_data loki_mt9m114_pdata = {
 	.power_off = loki_mt9m114_power_off,
 };
 
+static int loki_ov7695_power_on(struct ov7695_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+		return -EFAULT;
+
+	gpio_set_value(CAM2_PWDN, 0);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto ov7695_avdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto ov7695_iovdd_fail;
+	usleep_range(1000, 1020);
+
+	gpio_set_value(CAM2_PWDN, 1);
+	usleep_range(1000, 1020);
+
+	return 0;
+
+ov7695_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov7695_avdd_fail:
+
+	gpio_set_value(CAM_RSTN, 0);
+	return -ENODEV;
+}
+
+static int loki_ov7695_power_off(struct ov7695_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+		return -EFAULT;
+	usleep_range(100, 120);
+
+	regulator_disable(pw->iovdd);
+	usleep_range(100, 120);
+
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+
+	gpio_set_value(CAM2_PWDN, 0);
+	return 0;
+}
+
+struct ov7695_platform_data loki_ov7695_pdata = {
+	.power_on = loki_ov7695_power_on,
+	.power_off = loki_ov7695_power_off,
+};
+
 static struct i2c_board_info loki_i2c_board_info_e2548[] = {
 	{
 		I2C_BOARD_INFO("mt9m114", 0x48),
 		.platform_data = &loki_mt9m114_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ov7695", 0x21),
+		.platform_data = &loki_ov7695_pdata,
 	},
 };
 
