@@ -150,6 +150,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 		.od_bit = 6,					\
 		.lock_bit = 7,					\
 		.ioreset_bit = 8,				\
+		.rcv_sel_bit = 9,				\
 	}
 
 /* !!!FIXME!!! FILL IN fSafe COLUMN IN TABLE ....... */
