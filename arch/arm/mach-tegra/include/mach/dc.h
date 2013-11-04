@@ -341,10 +341,6 @@ struct tegra_dsi_out {
 	bool		ulpm_not_supported;
 };
 
-struct tegra_dp_out {
-	bool tx_pu_disable;
-};
-
 enum {
 	TEGRA_DC_STEREO_MODE_2D,
 	TEGRA_DC_STEREO_MODE_3D
@@ -883,6 +879,20 @@ struct tmds_config {
 struct tegra_hdmi_out {
 	struct tmds_config *tmds_config;
 	int n_tmds_config;
+};
+
+struct tegra_dc_dp_lt_settings {
+	int drive_current;
+	int lane_preemphasis;
+	int post_cursor;
+	int tx_pu;
+	int load_adj;
+};
+
+struct tegra_dp_out {
+	struct tegra_dc_dp_lt_settings *lt_settings;
+	int n_lt_settings;
+	bool tx_pu_disable;
 };
 
 #ifdef CONFIG_PM_SLEEP
