@@ -176,11 +176,9 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 		cpu_ops[cpu]->cpu_postboot();
 
 	/*
-	 * Enable local interrupts.
+	 * Enable GIC and timers.
 	 */
 	notify_cpu_starting(cpu);
-	local_irq_enable();
-	local_fiq_enable();
 
 	/*
 	 * OK, now it's safe to let the boot CPU continue.  Wait for
@@ -189,6 +187,9 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 */
 	set_cpu_online(cpu, true);
 	complete(&cpu_running);
+
+	local_irq_enable();
+	local_fiq_enable();
 
 	/*
 	 * OK, it's off to the idle thread for us
