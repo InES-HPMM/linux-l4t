@@ -590,6 +590,17 @@ config TEGRA_CPU_EDP_FIXED_LIMITS
 	  chip SKU. By default, the max frequency is determined optimally
 	  for each individual chip.
 
+config TEGRA_GPU_EDP
+       bool "enable GPU EDP "
+       depends on THERMAL
+       depends on TEGRA_EDP_LIMITS
+       depends on ARCH_TEGRA_12x_SOC
+       default n
+       help
+         Limit maximum GPU frequency based on temperature
+         to keep GPU rail current within power supply
+         capabilities.
+
 config TEGRA_EMC_TO_DDR_CLOCK
 	int "EMC to DDR clocks ratio"
 	default "2" if ARCH_TEGRA_2x_SOC

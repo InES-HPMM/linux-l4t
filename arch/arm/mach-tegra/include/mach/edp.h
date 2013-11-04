@@ -37,6 +37,11 @@ struct tegra_edp_limits {
 	unsigned int freq_limits[4];
 };
 
+struct tegra_edp_gpu_limits {
+	int temperature;
+	unsigned int freq_limits;
+};
+
 struct tegra_edp_voltage_temp_constraint {
 	int temperature;
 	unsigned int voltage_limit_mV;
@@ -66,6 +71,21 @@ struct tegra_edp_cpu_leakage_params {
 	unsigned int safety_cap[4];
 	struct tegra_edp_maximum_current_constraint max_current_cap[9];
 	struct tegra_edp_voltage_temp_constraint volt_temp_cap;
+};
+
+struct tegra_edp_gpu_leakage_params {
+	unsigned int temp_scaled;
+
+	unsigned int dyn_scaled;
+	int dyn_consts_n;	 /* pre-multiplied by 'scaled */
+
+	unsigned int consts_scaled;
+	int leakage_consts_n;	 /* pre-multiplied by 'scaled */
+
+	unsigned int ijk_scaled;
+	int leakage_consts_ijk[4][4][4]; /* pre-multiplied by 'scaled */
+	unsigned int leakage_min;	 /* minimum leakage current */
+
 };
 
 struct tegra_edp_freq_voltage_table {
@@ -141,13 +161,6 @@ static inline unsigned int tegra_edp_find_maxf(int volt)
 { return -1; }
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static inline void tegra_edp_throttle_cpu_now(u8 factor)
-{}
-#else
-void tegra_edp_throttle_cpu_now(u8 factor);
-#endif
-
 #ifdef CONFIG_TEGRA_CORE_EDP_LIMITS
 void tegra_init_core_edp_limits(unsigned int regulator_mA);
 int tegra_core_edp_debugfs_init(struct dentry *edp_dir);
@@ -162,6 +175,30 @@ static inline int tegra_core_edp_cpu_state_update(bool scpu_state)
 { return 0; }
 static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
 { return NULL; }
+#endif
+
+#ifdef CONFIG_TEGRA_GPU_EDP
+void tegra_init_gpu_edp_limits(unsigned int regulator_mA);
+void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin);
+struct tegra_edp_gpu_leakage_params *tegra12x_get_gpu_leakage_params(void);
+#else
+static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin)
+{}
+static inline void tegra_init_gpu_edp_limits(unsigned int regulator_mA)
+{}
+static inline struct tegra_edp_gpu_leakage_params
+					*tegra12x_get_gpu_leakage_params(void)
+{ return NULL; }
+#endif
+
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline void tegra_edp_throttle_cpu_now(u8 factor)
+{}
+#else
+void tegra_edp_throttle_cpu_now(u8 factor);
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
