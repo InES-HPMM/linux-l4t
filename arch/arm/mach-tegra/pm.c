@@ -2227,6 +2227,8 @@ late_initcall(tegra_pm_core_debug_init);
 #ifdef CONFIG_DEBUG_RODATA
 void set_platform_text_rw(void)
 {
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	set_memory_rw((unsigned long)tegra_generic_smc, 1);
+#endif
 }
 #endif
