@@ -118,7 +118,7 @@ palmas: tps65913 {
 		regulators {
 			smps123 {
 				regulator-name = "vdd-cpu";
-				regulator-min-microvolt = <900000>;
+				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1400000>;
 				regulator-always-on;
 				regulator-boot-on;
@@ -170,7 +170,7 @@ palmas: tps65913 {
 
 			smps7 {
 				regulator-name = "vdd-core";
-				regulator-min-microvolt = <900000>;
+				regulator-min-microvolt = <700000>;
 				regulator-max-microvolt = <1400000>;
 				regulator-always-on;
 				regulator-boot-on;
@@ -299,14 +299,6 @@ palmas: tps65913 {
 						regulator-consumer-supply = "dvdd";
 						regulator-consumer-device = "spi0.0";
 					};
-					c32 {
-						regulator-consumer-supply = "vlogic";
-						regulator-consumer-device = "0-0069";
-					};
-					c33 {
-						regulator-consumer-supply = "vid";
-						regulator-consumer-device = "0-000d";
-					};
 					c34 {
 						regulator-consumer-supply = "vddio";
 						regulator-consumer-device = "0-0077";
@@ -343,14 +335,6 @@ palmas: tps65913 {
 					};
 					c5 {
 						regulator-consumer-supply = "vdd_3v3_nfc";
-					};
-					c6 {
-						regulator-consumer-supply = "vdd";
-						regulator-consumer-device = "0-0069";
-					};
-					c7 {
-						regulator-consumer-supply = "vdd";
-						regulator-consumer-device = "0-000d";
 					};
 					c8 {
 						regulator-consumer-supply = "vdd";
