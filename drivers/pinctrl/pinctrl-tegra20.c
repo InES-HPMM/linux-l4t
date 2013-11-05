@@ -2886,7 +2886,7 @@ static int __init tegra20_pinctrl_init(void)
 {
 	return platform_driver_register(&tegra20_pinctrl_driver);
 }
-arch_initcall(tegra20_pinctrl_init);
+postcore_initcall_sync(tegra20_pinctrl_init);
 
 static void __exit tegra20_pinctrl_exit(void)
 {

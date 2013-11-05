@@ -3143,7 +3143,7 @@ static int __init tegra124_pinctrl_init(void)
 {
 	return platform_driver_register(&tegra124_pinctrl_driver);
 }
-arch_initcall(tegra124_pinctrl_init);
+postcore_initcall_sync(tegra124_pinctrl_init);
 
 static void __exit tegra124_pinctrl_exit(void)
 {

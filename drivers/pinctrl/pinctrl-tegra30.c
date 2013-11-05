@@ -3750,7 +3750,7 @@ static int __init tegra30_pinctrl_init(void)
 {
 	return platform_driver_register(&tegra30_pinctrl_driver);
 }
-arch_initcall(tegra30_pinctrl_init);
+postcore_initcall_sync(tegra30_pinctrl_init);
 
 static void __exit tegra30_pinctrl_exit(void)
 {
