@@ -7980,6 +7980,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("sbc1.sclk", "tegra12-spi.0",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 	SHARED_SCLK("sbc2.sclk", "tegra12-spi.1",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 	SHARED_SCLK("sbc3.sclk", "tegra12-spi.2",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("sbc4.sclk", "tegra12-spi.3",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("sbc5.sclk", "tegra12-spi.4",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("sbc6.sclk", "tegra12-spi.5",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 
 	SHARED_EMC_CLK("avp.emc",	"tegra-avp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("mon_cpu.emc", "tegra_mon", "cpu_emc",
