@@ -87,6 +87,8 @@ struct tegra_pingroup {
 	unsigned npins;
 	unsigned funcs[4];
 	unsigned func_safe;
+	unsigned funcs_non_dt[4];
+	unsigned func_safe_non_dt;
 	s16 mux_reg;
 	s16 pupd_reg;
 	s16 tri_reg;
@@ -128,6 +130,7 @@ struct tegra_pingroup {
 	u32 slwr_width:6;
 	u32 slwf_width:6;
 	u32 drvtype_width:6;
+	const char *dev_id;
 };
 
 /**

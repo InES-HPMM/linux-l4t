@@ -24,6 +24,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
 
+#include "mach/pinmux.h"
 #include "pinctrl-tegra.h"
 
 /*
@@ -1346,83 +1347,83 @@ static const unsigned drive_dev3_pins[] = {
 	TEGRA_PIN_CLK3_REQ_PEE1,
 };
 
-enum tegra_mux {
-	TEGRA_MUX_BLINK,
-	TEGRA_MUX_CEC,
-	TEGRA_MUX_CLDVFS,
-	TEGRA_MUX_CLK12,
-	TEGRA_MUX_CPU,
-	TEGRA_MUX_DAP,
-	TEGRA_MUX_DAP1,
-	TEGRA_MUX_DAP2,
-	TEGRA_MUX_DEV3,
-	TEGRA_MUX_DISPLAYA,
-	TEGRA_MUX_DISPLAYA_ALT,
-	TEGRA_MUX_DISPLAYB,
-	TEGRA_MUX_DTV,
-	TEGRA_MUX_EMC_DLL,
-	TEGRA_MUX_EXTPERIPH1,
-	TEGRA_MUX_EXTPERIPH2,
-	TEGRA_MUX_EXTPERIPH3,
-	TEGRA_MUX_GMI,
-	TEGRA_MUX_GMI_ALT,
-	TEGRA_MUX_HDA,
-	TEGRA_MUX_HSI,
-	TEGRA_MUX_I2C1,
-	TEGRA_MUX_I2C2,
-	TEGRA_MUX_I2C3,
-	TEGRA_MUX_I2C4,
-	TEGRA_MUX_I2CPWR,
-	TEGRA_MUX_I2S0,
-	TEGRA_MUX_I2S1,
-	TEGRA_MUX_I2S2,
-	TEGRA_MUX_I2S3,
-	TEGRA_MUX_I2S4,
-	TEGRA_MUX_IRDA,
-	TEGRA_MUX_KBC,
-	TEGRA_MUX_NAND,
-	TEGRA_MUX_NAND_ALT,
-	TEGRA_MUX_OWR,
-	TEGRA_MUX_PMI,
-	TEGRA_MUX_PWM0,
-	TEGRA_MUX_PWM1,
-	TEGRA_MUX_PWM2,
-	TEGRA_MUX_PWM3,
-	TEGRA_MUX_PWRON,
-	TEGRA_MUX_RESET_OUT_N,
-	TEGRA_MUX_RSVD1,
-	TEGRA_MUX_RSVD2,
-	TEGRA_MUX_RSVD3,
-	TEGRA_MUX_RSVD4,
-	TEGRA_MUX_SDMMC1,
-	TEGRA_MUX_SDMMC2,
-	TEGRA_MUX_SDMMC3,
-	TEGRA_MUX_SDMMC4,
-	TEGRA_MUX_SOC,
-	TEGRA_MUX_SPDIF,
-	TEGRA_MUX_SPI1,
-	TEGRA_MUX_SPI2,
-	TEGRA_MUX_SPI3,
-	TEGRA_MUX_SPI4,
-	TEGRA_MUX_SPI5,
-	TEGRA_MUX_SPI6,
-	TEGRA_MUX_SYSCLK,
-	TEGRA_MUX_TRACE,
-	TEGRA_MUX_UARTA,
-	TEGRA_MUX_UARTB,
-	TEGRA_MUX_UARTC,
-	TEGRA_MUX_UARTD,
-	TEGRA_MUX_ULPI,
-	TEGRA_MUX_USB,
-	TEGRA_MUX_VGP1,
-	TEGRA_MUX_VGP2,
-	TEGRA_MUX_VGP3,
-	TEGRA_MUX_VGP4,
-	TEGRA_MUX_VGP5,
-	TEGRA_MUX_VGP6,
-	TEGRA_MUX_VI,
-	TEGRA_MUX_VI_ALT1,
-	TEGRA_MUX_VI_ALT3,
+enum tegra_mux_dt {
+	TEGRA_MUX_DT_BLINK,
+	TEGRA_MUX_DT_CEC,
+	TEGRA_MUX_DT_CLDVFS,
+	TEGRA_MUX_DT_CLK12,
+	TEGRA_MUX_DT_CPU,
+	TEGRA_MUX_DT_DAP,
+	TEGRA_MUX_DT_DAP1,
+	TEGRA_MUX_DT_DAP2,
+	TEGRA_MUX_DT_DEV3,
+	TEGRA_MUX_DT_DISPLAYA,
+	TEGRA_MUX_DT_DISPLAYA_ALT,
+	TEGRA_MUX_DT_DISPLAYB,
+	TEGRA_MUX_DT_DTV,
+	TEGRA_MUX_DT_EMC_DLL,
+	TEGRA_MUX_DT_EXTPERIPH1,
+	TEGRA_MUX_DT_EXTPERIPH2,
+	TEGRA_MUX_DT_EXTPERIPH3,
+	TEGRA_MUX_DT_GMI,
+	TEGRA_MUX_DT_GMI_ALT,
+	TEGRA_MUX_DT_HDA,
+	TEGRA_MUX_DT_HSI,
+	TEGRA_MUX_DT_I2C1,
+	TEGRA_MUX_DT_I2C2,
+	TEGRA_MUX_DT_I2C3,
+	TEGRA_MUX_DT_I2C4,
+	TEGRA_MUX_DT_I2CPWR,
+	TEGRA_MUX_DT_I2S0,
+	TEGRA_MUX_DT_I2S1,
+	TEGRA_MUX_DT_I2S2,
+	TEGRA_MUX_DT_I2S3,
+	TEGRA_MUX_DT_I2S4,
+	TEGRA_MUX_DT_IRDA,
+	TEGRA_MUX_DT_KBC,
+	TEGRA_MUX_DT_NAND,
+	TEGRA_MUX_DT_NAND_ALT,
+	TEGRA_MUX_DT_OWR,
+	TEGRA_MUX_DT_PMI,
+	TEGRA_MUX_DT_PWM0,
+	TEGRA_MUX_DT_PWM1,
+	TEGRA_MUX_DT_PWM2,
+	TEGRA_MUX_DT_PWM3,
+	TEGRA_MUX_DT_PWRON,
+	TEGRA_MUX_DT_RESET_OUT_N,
+	TEGRA_MUX_DT_RSVD1,
+	TEGRA_MUX_DT_RSVD2,
+	TEGRA_MUX_DT_RSVD3,
+	TEGRA_MUX_DT_RSVD4,
+	TEGRA_MUX_DT_SDMMC1,
+	TEGRA_MUX_DT_SDMMC2,
+	TEGRA_MUX_DT_SDMMC3,
+	TEGRA_MUX_DT_SDMMC4,
+	TEGRA_MUX_DT_SOC,
+	TEGRA_MUX_DT_SPDIF,
+	TEGRA_MUX_DT_SPI1,
+	TEGRA_MUX_DT_SPI2,
+	TEGRA_MUX_DT_SPI3,
+	TEGRA_MUX_DT_SPI4,
+	TEGRA_MUX_DT_SPI5,
+	TEGRA_MUX_DT_SPI6,
+	TEGRA_MUX_DT_SYSCLK,
+	TEGRA_MUX_DT_TRACE,
+	TEGRA_MUX_DT_UARTA,
+	TEGRA_MUX_DT_UARTB,
+	TEGRA_MUX_DT_UARTC,
+	TEGRA_MUX_DT_UARTD,
+	TEGRA_MUX_DT_ULPI,
+	TEGRA_MUX_DT_USB,
+	TEGRA_MUX_DT_VGP1,
+	TEGRA_MUX_DT_VGP2,
+	TEGRA_MUX_DT_VGP3,
+	TEGRA_MUX_DT_VGP4,
+	TEGRA_MUX_DT_VGP5,
+	TEGRA_MUX_DT_VGP6,
+	TEGRA_MUX_DT_VI,
+	TEGRA_MUX_DT_VI_ALT1,
+	TEGRA_MUX_DT_VI_ALT3,
 };
 
 static const char * const blink_groups[] = {
@@ -2450,12 +2451,19 @@ static const struct tegra_function  tegra114_functions[] = {
 		.pins = pg_name##_pins,					\
 		.npins = ARRAY_SIZE(pg_name##_pins),			\
 		.funcs = {						\
+			TEGRA_MUX_DT_##f0,				\
+			TEGRA_MUX_DT_##f1,				\
+			TEGRA_MUX_DT_##f2,				\
+			TEGRA_MUX_DT_##f3,				\
+		},							\
+		.func_safe = TEGRA_MUX_DT_##f_safe,			\
+		.funcs_non_dt = {					\
 			TEGRA_MUX_##f0,					\
 			TEGRA_MUX_##f1,					\
 			TEGRA_MUX_##f2,					\
 			TEGRA_MUX_##f3,					\
 		},							\
-		.func_safe = TEGRA_MUX_##f_safe,			\
+		.func_safe_non_dt = TEGRA_MUX_##f_safe,			\
 		.mux_reg = PINGROUP_REG_Y(r),				\
 		.mux_bank = 1,						\
 		.mux_bit = 0,						\
@@ -2487,10 +2495,10 @@ static const struct tegra_function  tegra114_functions[] = {
 #define DRV_PINGROUP_DVRTYPE_Y(r) ((r) - DRV_PINGROUP_REG_START)
 #define DRV_PINGROUP_DVRTYPE_N(r) -1
 
-#define DRV_PINGROUP(pg_name, r, hsm_b, schmitt_b, lpmd_b,		\
+#define DRV_PINGROUP_NAME(pg_name, r, hsm_b, schmitt_b, lpmd_b,		\
 			drvdn_b, drvdn_w, drvup_b, drvup_w,		\
 			slwr_b, slwr_w, slwf_b, slwf_w,			\
-			drvtype)					\
+			drvtype, dev_name)				\
 	{								\
 		.name = "drive_" #pg_name,				\
 		.pins = drive_##pg_name##_pins,				\
@@ -2519,7 +2527,17 @@ static const struct tegra_function  tegra114_functions[] = {
 		.drvtype_reg = DRV_PINGROUP_DVRTYPE_##drvtype(r),	\
 		.drvtype_bank = 0,					\
 		.drvtype_bit = 6,					\
+		.dev_id = dev_name,					\
 	}
+
+#define DRV_PINGROUP(pg_name, r, hsm_b, schmitt_b, lpmd_b,		\
+			drvdn_b, drvdn_w, drvup_b, drvup_w,		\
+			slwr_b, slwr_w, slwf_b, slwf_w,			\
+			drvtype)					\
+	DRV_PINGROUP_NAME(pg_name, r, hsm_b, schmitt_b, lpmd_b,		\
+			drvdn_b, drvdn_w, drvup_b, drvup_w,		\
+			slwr_b, slwr_w, slwf_b, slwf_w,			\
+			drvtype, NULL)
 
 static const struct tegra_pingroup tegra114_groups[] = {
 	/*       pg_name,                f0,         f1,         f2,           f3,          safe,     r,      od, ior, rcv_sel */
@@ -2714,15 +2732,15 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	DRV_PINGROUP(dap3,  0x898,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(dap4,  0x89c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(dbg,   0x8a0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(sdio3, 0x8b0,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N),
+	DRV_PINGROUP_NAME(sdio3, 0x8b0,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N, "sdhci-tegra.2"),
 	DRV_PINGROUP(spi,   0x8b4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(uaa,   0x8b8,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(uab,   0x8bc,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(uart2, 0x8c0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(uart3, 0x8c4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(sdio1, 0x8ec,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N),
+	DRV_PINGROUP_NAME(sdio1, 0x8ec,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N, "sdhci-tegra.1"),
 	DRV_PINGROUP(ddc,   0x8fc,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gma,   0x900,  2,  3,  4,  14,  5,  20,  5,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP_NAME(gma,   0x900,  2,  3,  4,  14,  5,  20,  5,  28,  2,  30,  2,  Y, "sdhci-tegra.3"),
 	DRV_PINGROUP(gme,   0x910,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(gmf,   0x914,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(gmg,   0x918,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
