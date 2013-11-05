@@ -700,8 +700,10 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 	} while (pmd++, addr = next, addr != end);
 
 	if ((stash_phys >= PHYS_OFFSET) && (stash_phys < arm_lowmem_limit)) {
+#ifdef CONFIG_CPA
 		update_page_count(PG_LEVEL_2M, pages_2m);
 		update_page_count(PG_LEVEL_4K, pages_4k);
+#endif
 	}
 }
 
