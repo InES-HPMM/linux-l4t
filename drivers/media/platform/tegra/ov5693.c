@@ -77,6 +77,8 @@ struct ov5693_info {
 	unsigned int edp_state;
 	struct sysedp_consumer *sysedpc;
 	char devname[16];
+	struct ov5693_eeprom_data eeprom[OV5693_EEPROM_NUM_BLOCKS];
+	u8 eeprom_buf[OV5693_EEPROM_SIZE];
 };
 
 struct ov5693_reg {
@@ -3050,6 +3052,66 @@ static int ov5693_read_otp_bank(struct ov5693_info *info,
 	return err;
 }
 
+static int
+ov5693_eeprom_device_release(struct ov5693_info *info)
+{
+	int i;
+
+	for (i = 0; i < OV5693_EEPROM_NUM_BLOCKS; i++) {
+		if (info->eeprom[i].i2c_client != NULL) {
+			i2c_unregister_device(info->eeprom[i].i2c_client);
+			info->eeprom[i].i2c_client = NULL;
+		}
+	}
+
+	return 0;
+}
+
+static int
+ov5693_eeprom_device_init(struct ov5693_info *info)
+{
+	char *dev_name = "eeprom_ov5693";
+	static struct regmap_config eeprom_regmap_config = {
+		.reg_bits = 8,
+		.val_bits = 8,
+	};
+	int i;
+	int err;
+
+	for (i = 0; i < OV5693_EEPROM_NUM_BLOCKS; i++)	{
+		info->eeprom[i].adap = i2c_get_adapter(
+				info->i2c_client->adapter->nr);
+		memset(&info->eeprom[i].brd, 0, sizeof(info->eeprom[i].brd));
+		strncpy(info->eeprom[i].brd.type, dev_name,
+				sizeof(info->eeprom[i].brd.type));
+		info->eeprom[i].brd.addr = OV5693_EEPROM_ADDRESS + i;
+		info->eeprom[i].i2c_client = i2c_new_device(
+				info->eeprom[i].adap, &info->eeprom[i].brd);
+
+		info->eeprom[i].regmap = devm_regmap_init_i2c(
+			info->eeprom[i].i2c_client, &eeprom_regmap_config);
+		if (IS_ERR(info->eeprom[i].regmap)) {
+			err = PTR_ERR(info->eeprom[i].regmap);
+			ov5693_eeprom_device_release(info);
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static int
+ov5693_read_eeprom(struct ov5693_info *info, u8 reg, u16 length, u8 *buf)
+{
+	return regmap_raw_read(info->eeprom[0].regmap, reg, &buf[reg], length);
+}
+
+static int
+ov5693_write_eeprom(struct ov5693_info *info, u16 addr, u8 val)
+{
+	return regmap_write(info->eeprom[addr >> 8].regmap, addr & 0xFF, val);
+}
+
 static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct ov5693_info *info = file->private_data;
@@ -3170,6 +3232,42 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 	}
 
+	case OV5693_IOCTL_GET_EEPROM_DATA:
+		{
+			ov5693_read_eeprom(info,
+				0,
+				OV5693_EEPROM_SIZE,
+				info->eeprom_buf);
+
+			if (copy_to_user((void __user *)arg,
+				info->eeprom_buf, OV5693_EEPROM_SIZE)) {
+				dev_err(&info->i2c_client->dev,
+					"%s:Failed to copy status to user\n",
+					__func__);
+				return -EFAULT;
+			}
+		}
+		return 0;
+
+	case OV5693_IOCTL_SET_EEPROM_DATA:
+		{
+			int i;
+			if (copy_from_user(info->eeprom_buf,
+				(const void __user *)arg, OV5693_EEPROM_SIZE)) {
+				dev_err(&info->i2c_client->dev,
+						"%s:Failed to read from user buffer\n",
+						__func__);
+				return -EFAULT;
+			}
+			for (i = 0; i < OV5693_EEPROM_SIZE; i++) {
+				ov5693_write_eeprom(info,
+					i,
+					info->eeprom_buf[i]);
+				msleep(20);
+			}
+		}
+		return 0;
+
 	default:
 		dev_err(&info->i2c_client->dev, "%s unsupported ioctl: %x\n",
 			__func__, cmd);
@@ -3239,6 +3337,7 @@ static int ov5693_remove(struct i2c_client *client)
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
 	sysedp_free_consumer(info->sysedpc);
+	ov5693_eeprom_device_release(info);
 	ov5693_del(info);
 	return 0;
 }
@@ -3380,7 +3479,7 @@ static int ov5693_probe(
 	unsigned long clock_probe_rate;
 	int err;
 	const char *mclk_name;
-	static struct regmap_config ad5823_regmap_config = {
+	static struct regmap_config ov5693_regmap_config = {
 		.reg_bits = 16,
 		.val_bits = 8,
 	};
@@ -3422,11 +3521,18 @@ static int ov5693_probe(
 		}
 	}
 
-	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
+	info->regmap = devm_regmap_init_i2c(client, &ov5693_regmap_config);
 	if (IS_ERR(info->regmap)) {
 		err = PTR_ERR(info->regmap);
 		dev_err(&client->dev,
 			"Failed to allocate register map: %d\n", err);
+		return err;
+	}
+
+	err = ov5693_eeprom_device_init(info);
+	if (err) {
+		dev_err(&client->dev,
+			"Failed to allocate eeprom register map: %d\n", err);
 		return err;
 	}
 
