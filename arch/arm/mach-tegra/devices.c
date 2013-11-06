@@ -2803,11 +2803,24 @@ struct platform_device tegra_cec_device = {
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct resource cl_dvfs_resource[] = {
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	[0] = {
 		.start	= TEGRA_CL_DVFS_BASE,
 		.end	= TEGRA_CL_DVFS_BASE + TEGRA_CL_DVFS_SIZE-1,
 		.flags	= IORESOURCE_MEM,
-	}
+	},
+#else
+	[0] = {
+		.start	= TEGRA_CLK13_RESET_BASE + 0x84,
+		.end	= TEGRA_CLK13_RESET_BASE + 0x84 + TEGRA_CL_DVFS_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= TEGRA_CL_DVFS_BASE,
+		.end	= TEGRA_CL_DVFS_BASE + TEGRA_CL_DVFS_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
 };
 
 struct platform_device tegra_cl_dvfs_device = {

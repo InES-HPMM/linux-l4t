@@ -596,7 +596,11 @@
 
 
 /* DFLL */
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 #define DFLL_BASE				0x2f4
+#else
+#define DFLL_BASE				0x80
+#endif
 #define DFLL_BASE_RESET				(1<<0)
 
 #define	LVL2_CLK_GATE_OVRE			0x554
@@ -4331,7 +4335,7 @@ static int tegra12_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 static void tegra12_dfll_clk_reset(struct clk *c, bool assert)
 {
 	u32 val = assert ? DFLL_BASE_RESET : 0;
-	clk_writel_delay(val, c->reg);
+	clk_writelx_delay(val, c->reg);
 }
 
 static int
@@ -4346,7 +4350,7 @@ tegra12_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 #ifdef CONFIG_PM_SLEEP
 static void tegra12_dfll_clk_resume(struct clk *c)
 {
-	if (!(clk_readl(c->reg) & DFLL_BASE_RESET))
+	if (!(clk_readlx(c->reg) & DFLL_BASE_RESET))
 		return;		/* already resumed */
 
 	if (c->state != UNINITIALIZED) {
@@ -6937,7 +6941,11 @@ static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
 	.flags     = DFLL,
 	.ops       = &tegra_dfll_ops,
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	.reg	   = 0x2f4,
+#else
+	.reg	   = 0x80,
+#endif
 	.max_rate  = 3000000000UL,
 };
 
