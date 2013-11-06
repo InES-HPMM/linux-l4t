@@ -213,6 +213,9 @@
 #define TEGRA_PIN_PWR_INT_N			_PIN(2)
 #define TEGRA_PIN_RESET_OUT_N			_PIN(3)
 #define TEGRA_PIN_OWR				_PIN(4)
+#define TEGRA_PIN_CLK32K_IN			_PIN(5)
+#define TEGRA_PIN_NAND_GMI_CLK_LB		_PIN(6)
+#define TEGRA_PIN_JTAG_RTCK			_PIN(7)
 
 static const struct pinctrl_pin_desc  tegra114_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_CLK_32K_OUT_PA0, "CLK_32K_OUT PA0"),
@@ -389,6 +392,9 @@ static const struct pinctrl_pin_desc  tegra114_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_OWR, "OWR"),
 	PINCTRL_PIN(TEGRA_PIN_PWR_INT_N, "PWR_INT_N"),
 	PINCTRL_PIN(TEGRA_PIN_RESET_OUT_N, "RESET_OUT_N"),
+	PINCTRL_PIN(TEGRA_PIN_CLK32K_IN, "CLK32K_IN"),
+	PINCTRL_PIN(TEGRA_PIN_NAND_GMI_CLK_LB, "NAND_GMI_CLK_LB"),
+	PINCTRL_PIN(TEGRA_PIN_JTAG_RTCK, "JTAG_RTCK"),
 };
 
 static const unsigned clk_32k_out_pa0_pins[] = {
@@ -1087,6 +1093,18 @@ static const unsigned reset_out_n_pins[] = {
 	TEGRA_PIN_RESET_OUT_N,
 };
 
+static const unsigned jtag_rtck_pins[] = {
+	TEGRA_PIN_CLK32K_IN,
+};
+
+static const unsigned clk_32k_in_pins[] = {
+	TEGRA_PIN_CLK32K_IN,
+};
+
+static const unsigned nand_gmi_clk_lb_pins[] = {
+	TEGRA_PIN_JTAG_RTCK,
+};
+
 static const unsigned drive_ao1_pins[] = {
 	TEGRA_PIN_KB_ROW0_PR0,
 	TEGRA_PIN_KB_ROW1_PR1,
@@ -1347,6 +1365,18 @@ static const unsigned drive_dev3_pins[] = {
 	TEGRA_PIN_CLK3_REQ_PEE1,
 };
 
+static const unsigned drive_cec_pins[] = {
+};
+
+static const unsigned drive_at6_pins[] = {
+};
+
+static const unsigned drive_dap5_pins[] = {
+};
+
+static const unsigned drive_vbus_pins[] = {
+};
+
 enum tegra_mux_dt {
 	TEGRA_MUX_DT_BLINK,
 	TEGRA_MUX_DT_CEC,
@@ -1424,6 +1454,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_VI,
 	TEGRA_MUX_DT_VI_ALT1,
 	TEGRA_MUX_DT_VI_ALT3,
+	TEGRA_MUX_DT_RTCK,
+	TEGRA_MUX_DT_CLK,
 };
 
 static const char * const blink_groups[] = {
@@ -2353,6 +2385,14 @@ static const char * const vi_alt3_groups[] = {
 	"pbb0",
 };
 
+static const char * const rtck_groups[] = {
+	"jtag_rtck",
+};
+
+static const char * const clk_groups[] = {
+	"clk_32k_in",
+};
+
 #define FUNCTION(fname)					\
 	{						\
 		.name = #fname,				\
@@ -2437,6 +2477,8 @@ static const struct tegra_function  tegra114_functions[] = {
 	FUNCTION(vi),
 	FUNCTION(vi_alt1),
 	FUNCTION(vi_alt3),
+	FUNCTION(rtck),
+	FUNCTION(clk),
 };
 
 #define DRV_PINGROUP_REG_START			0x868	/* bank 0 */
@@ -2653,6 +2695,7 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	PINGROUP(pbb6,                   VGP6,       DISPLAYA,   DISPLAYB,     RSVD4,       RSVD4,    0x32a4,  N,  N,  N),
 	PINGROUP(pbb7,                   I2S4,       RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x32a8,  N,  N,  N),
 	PINGROUP(pcc2,                   I2S4,       RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x32ac,  N,  N,  N),
+	PINGROUP(jtag_rtck,              RTCK,       RSVD2,      RSVD3,        RSVD4,       RSVD2,    0x32b0,  N,  N,  N),
 	PINGROUP(pwr_i2c_scl_pz6,        I2CPWR,     RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x32b4,  Y,  N,  N),
 	PINGROUP(pwr_i2c_sda_pz7,        I2CPWR,     RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x32b8,  Y,  N,  N),
 	PINGROUP(kb_row0_pr0,            KBC,        RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x32bc,  N,  N,  N),
@@ -2679,6 +2722,7 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	PINGROUP(core_pwr_req,           PWRON,      RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x3324,  N,  N,  N),
 	PINGROUP(cpu_pwr_req,            CPU,        RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x3328,  N,  N,  N),
 	PINGROUP(pwr_int_n,              PMI,        RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x332c,  N,  N,  N),
+	PINGROUP(clk_32k_in,             CLK,        RSVD2,      RSVD3,        RSVD4,       RSVD2,    0x3330,  N,  N,  N),
 	PINGROUP(owr,                    OWR,        RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x3334,  N,  N,  Y),
 	PINGROUP(dap1_fs_pn0,            I2S0,       HDA,        GMI,          RSVD4,       RSVD4,    0x3338,  N,  N,  N),
 	PINGROUP(dap1_din_pn1,           I2S0,       HDA,        GMI,          RSVD4,       RSVD4,    0x333c,  N,  N,  N),
@@ -2715,6 +2759,7 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	PINGROUP(usb_vbus_en1_pn5,       USB,        RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x33f8,  Y,  N,  N),
 	PINGROUP(sdmmc3_clk_lb_in_pee5,  SDMMC3,     RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x33fc,  N,  N,  N),
 	PINGROUP(sdmmc3_clk_lb_out_pee4, SDMMC3,     RSVD2,      RSVD3,        RSVD4,       RSVD4,    0x3400,  N,  N,  N),
+	PINGROUP(nand_gmi_clk_lb,        GMI,        SDMMC2,     NAND,         GMI,	    RSVD3,    0x3404,  N,  N,  N),
 	PINGROUP(reset_out_n,            RSVD1,      RSVD2,      RSVD3,        RESET_OUT_N, RSVD3,    0x3408,  N,  N,  N),
 
 	/* pg_name, r, hsm_b, schmitt_b, lpmd_b, drvdn_b, drvdn_w, drvup_b, drvup_w, slwr_b, slwr_w, slwf_b, slwf_w, drvtype */
@@ -2747,6 +2792,11 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	DRV_PINGROUP(gmh,   0x91c,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(owr,   0x920,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(uda,   0x924,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dev3,  0x92c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(cec,   0x938,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(at6,   0x994,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dap5,  0x998,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(vbus,  0x99c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 };
 
 static const struct tegra_pinctrl_soc_data tegra114_pinctrl = {
