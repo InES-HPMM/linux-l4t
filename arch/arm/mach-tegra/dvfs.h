@@ -249,7 +249,7 @@ int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate);
 const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d);
 
-int tegra_dvfs_core_cap_level_apply(int level);
+int tegra_dvfs_override_core_cap_apply(int level);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
 int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event);

@@ -812,7 +812,7 @@ static int dvfs_override_core_voltage(int override_mv)
 	}
 
 	if (override_mv) {
-		ret = tegra_dvfs_core_cap_level_apply(override_mv);
+		ret = tegra_dvfs_override_core_cap_apply(override_mv);
 		if (ret) {
 			pr_err("%s: failed to set cap for override level %d\n",
 			       __func__, override_mv);
@@ -842,7 +842,7 @@ static int dvfs_override_core_voltage(int override_mv)
 	mutex_unlock(&dvfs_lock);
 
 	if (!override_mv || ret)
-		tegra_dvfs_core_cap_level_apply(0);
+		tegra_dvfs_override_core_cap_apply(0);
 out:
 	mutex_unlock(&rail_override_lock);
 	return ret;

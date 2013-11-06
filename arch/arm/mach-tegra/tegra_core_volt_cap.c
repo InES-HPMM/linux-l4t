@@ -44,7 +44,7 @@ struct core_cap {
 };
 
 static struct core_cap core_buses_cap;
-static struct core_cap kdvfs_core_cap;
+static struct core_cap override_core_cap;
 static struct core_cap user_core_cap;
 
 static struct core_dvfs_cap_table *core_cap_table;
@@ -101,8 +101,8 @@ static int core_cap_update(void)
 		return -ENOENT;
 
 	new_level = core_nominal_mv;
-	if (kdvfs_core_cap.refcnt)
-		new_level = min(new_level, kdvfs_core_cap.level);
+	if (override_core_cap.refcnt)
+		new_level = min(new_level, override_core_cap.level);
 	if (user_core_cap.refcnt)
 		new_level = min(new_level, user_core_cap.level);
 
@@ -187,27 +187,27 @@ const struct attribute *cap_attributes[] = {
 	NULL,
 };
 
-int tegra_dvfs_core_cap_level_apply(int level)
+int tegra_dvfs_override_core_cap_apply(int level)
 {
 	int ret = 0;
 
 	mutex_lock(&core_cap_lock);
 
 	if (level) {
-		if (kdvfs_core_cap.refcnt) {
+		if (override_core_cap.refcnt) {
 			pr_err("%s: core cap is already set\n", __func__);
 			ret = -EPERM;
 		} else {
-			kdvfs_core_cap.level = level;
-			kdvfs_core_cap.refcnt = 1;
+			override_core_cap.level = level;
+			override_core_cap.refcnt = 1;
 			ret = core_cap_enable(true);
 			if (ret) {
-				kdvfs_core_cap.refcnt = 0;
+				override_core_cap.refcnt = 0;
 				core_cap_enable(false);
 			}
 		}
-	} else if (kdvfs_core_cap.refcnt) {
-		kdvfs_core_cap.refcnt = 0;
+	} else if (override_core_cap.refcnt) {
+		override_core_cap.refcnt = 0;
 		core_cap_enable(false);
 	}
 
