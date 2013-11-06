@@ -28,6 +28,15 @@ Optional properties:
 - rtc-alarm-time          : Time setting in seconds for the rtc alarm timer
                             which wakes the board up for charging after shutdown.
 
+Subnode properties:
+==================
+There is two optional subnodes, vbus and charger.
+
+vbus properties:
+================
+otg-iusb-gpio-isub-gpio: The GPIO which is connected to OTG/IUSB pin.
+
+
 Example
 bq2419x: bq2419x@6b {
 	compatible = "ti,bq2419x";
