@@ -41,6 +41,8 @@ static inline void v7_flush_kern_cache_all_arg(void *arg)
 	v7_flush_kern_cache_all();
 }
 
+#if defined(CONFIG_CPA)
+
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
 static void inner_flush_cache_all(void)
 {
@@ -51,8 +53,6 @@ static void inner_flush_cache_all(void)
 #endif
 }
 #endif
-
-#if defined(CONFIG_CPA)
 
 /*
  * The arm kernel uses different cache policies(CPOLICY_WRITEBACK,
@@ -1081,61 +1081,6 @@ int set_pages_array_iwb(struct page **pages, int addrinarray)
 			L_PTE_MT_INNER_WB, L_PTE_MT_MASK);
 }
 EXPORT_SYMBOL(set_pages_array_iwb);
-
-#else /* CONFIG_CPA */
-
-void update_page_count(int level, unsigned long pages)
-{
-}
-
-static void flush_cache(struct page **pages, int numpages)
-{
-	unsigned int i;
-	bool flush_inner = true;
-	unsigned long base;
-
-#if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
-	if (numpages >= (inner_cache_maint_threshold >> PAGE_SHIFT)) {
-		inner_flush_cache_all();
-		flush_inner = false;
-	}
-#endif
-
-	for (i = 0; i < numpages; i++) {
-		if (flush_inner)
-			__flush_dcache_page(page_mapping(pages[i]), pages[i]);
-		base = page_to_phys(pages[i]);
-		outer_flush_range(base, base + PAGE_SIZE);
-	}
-}
-
-int set_pages_array_uc(struct page **pages, int addrinarray)
-{
-	flush_cache(pages, addrinarray);
-	return 0;
-}
-EXPORT_SYMBOL(set_pages_array_uc);
-
-int set_pages_array_wc(struct page **pages, int addrinarray)
-{
-	flush_cache(pages, addrinarray);
-	return 0;
-}
-EXPORT_SYMBOL(set_pages_array_wc);
-
-int set_pages_array_wb(struct page **pages, int addrinarray)
-{
-	return 0;
-}
-EXPORT_SYMBOL(set_pages_array_wb);
-
-int set_pages_array_iwb(struct page **pages, int addrinarray)
-{
-	flush_cache(pages, addrinarray);
-	return 0;
-}
-EXPORT_SYMBOL(set_pages_array_iwb);
-
 #endif
 
 static __init int init_cache_size(void)
