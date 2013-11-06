@@ -40,7 +40,6 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 #include <linux/irqchip/tegra.h>
-#include <linux/sched.h>
 
 #include <mach/pm_domains.h>
 
@@ -154,7 +153,6 @@ struct nvavp_info {
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	struct miscdevice		audio_misc_dev;
 #endif
-	struct task_struct		*init_task;
 };
 
 struct nvavp_clientctx {
@@ -167,22 +165,6 @@ struct nvavp_clientctx {
 	int channel_id;
 	u32 clk_reqs;
 };
-
-static int nvavp_runtime_get(struct nvavp_info *nvavp)
-{
-	if (nvavp->init_task != current)
-		pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
-	else
-		pm_runtime_get_noresume(&nvavp->nvhost_dev->dev);
-
-	return 0;
-}
-
-static void nvavp_runtime_put(struct nvavp_info *nvavp)
-{
-	pm_runtime_mark_last_busy(&nvavp->nvhost_dev->dev);
-	pm_runtime_put_autosuspend(&nvavp->nvhost_dev->dev);
-}
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 static int nvavp_get_audio_init_status(struct nvavp_info *nvavp)
@@ -327,9 +309,8 @@ static int nvavp_unpowergate_vde(struct nvavp_info *nvavp)
 
 static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
-	if (nvavp->clk_enabled == 0) {
-		nvavp_runtime_get(nvavp);
-		nvavp->clk_enabled++;
+	if (nvavp->clk_enabled++ == 0) {
+		pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
 		nvhost_module_busy_ext(nvavp->nvhost_dev);
 		clk_prepare_enable(nvavp->bsev_clk);
 		clk_prepare_enable(nvavp->vde_clk);
@@ -340,8 +321,6 @@ static void nvavp_clks_enable(struct nvavp_info *nvavp)
 				__func__, nvavp->sclk_rate);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: setting emc_clk to %lu\n",
 				__func__, nvavp->emc_clk_rate);
-	} else {
-		nvavp->clk_enabled++;
 	}
 }
 
@@ -357,7 +336,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 			clk_set_rate(nvavp->sclk, 0);
 		nvavp_powergate_vde(nvavp);
 		nvhost_module_idle_ext(nvavp->nvhost_dev);
-		nvavp_runtime_put(nvavp);
+		pm_runtime_put(&nvavp->nvhost_dev->dev);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
@@ -426,7 +405,7 @@ static int nvavp_service(struct nvavp_info *nvavp)
 	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE) {
 		if (audio_enabled) {
 			audio_enabled = false;
-			nvavp_runtime_put(nvavp);
+			pm_runtime_put(&nvavp->nvhost_dev->dev);
 		}
 		pr_debug("nvavp_service NVE276_OS_INTERRUPT_AUDIO_IDLE\n");
 	}
@@ -638,7 +617,6 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	u32 index, value = -1;
 	int ret = 0;
 
-	nvavp_runtime_get(nvavp);
 	channel_info = nvavp_get_channel_info(nvavp, channel_id);
 
 	control = channel_info->os_control;
@@ -728,7 +706,7 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 		if (IS_AUDIO_CHANNEL_ID(channel_id)) {
 			pr_debug("Wake up Audio Channel\n");
 			if (!audio_enabled) {
-				nvavp_runtime_get(nvavp);
+				pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
 				audio_enabled = true;
 			}
 			ret = nvavp_outbox_write(0xA0000002);
@@ -745,7 +723,6 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 
 err_exit:
 	mutex_unlock(&channel_info->pushbuffer_lock);
-	nvavp_runtime_put(nvavp);
 
 	return 0;
 }
@@ -1007,8 +984,6 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
 
-	nvavp->init_task = current;
-
 	ret = nvavp_os_init(nvavp);
 	if (ret) {
 		dev_err(&nvavp->nvhost_dev->dev,
@@ -1040,7 +1015,6 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 #endif
 
 err_exit:
-	nvavp->init_task = NULL;
 	return ret;
 }
 
@@ -1067,8 +1041,6 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	/* Video and Audio both are uninitialized */
 	if (!video_initialized && !audio_initialized)
 		return;
-
-	nvavp->init_task = current;
 
 	if (video_initialized) {
 		pr_debug("nvavp_uninit nvavp->video_initialized\n");
@@ -1108,8 +1080,6 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	/* write a 1 to the intr_clr field to clear the interrupt */
 	reg = TIMER_PCR_INTR;
 	writel(reg, IO_ADDRESS(TEGRA_TMR2_BASE + TIMER_PCR));
-
-	nvavp->init_task = NULL;
 }
 
 static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
@@ -1820,8 +1790,6 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	platform_set_drvdata(ndev, nvavp);
 
 	tegra_pd_add_device(&ndev->dev);
-	pm_runtime_use_autosuspend(&ndev->dev);
-	pm_runtime_set_autosuspend_delay(&ndev->dev, 2000);
 	pm_runtime_enable(&ndev->dev);
 
 	ret = device_create_file(&ndev->dev, &dev_attr_boost_sclk);
@@ -1899,11 +1867,13 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 }
 
 #ifdef CONFIG_PM
-static int tegra_nvavp_runtime_suspend(struct device *dev)
+static int tegra_nvavp_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
 	int ret = 0;
+
+	mutex_lock(&nvavp->open_lock);
 
 	if (nvavp->refcount) {
 		if (!nvavp->clk_enabled) {
@@ -1926,36 +1896,8 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 	 */
 	nvavp_unpowergate_vde(nvavp);
 
-	return ret;
-}
-
-static int tegra_nvavp_runtime_resume(struct device *dev)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
-
-	if (nvavp->refcount) {
-		nvavp_init(nvavp, NVAVP_VIDEO_CHANNEL);
-#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-		nvavp_init(nvavp, NVAVP_AUDIO_CHANNEL);
-#endif
-	}
-
-	return 0;
-}
-
-static int tegra_nvavp_suspend(struct device *dev)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
-
-	mutex_lock(&nvavp->open_lock);
-
-	tegra_nvavp_runtime_suspend(dev);
-
 	mutex_unlock(&nvavp->open_lock);
-
-	return 0;
+	return ret;
 }
 
 static int tegra_nvavp_resume(struct device *dev)
@@ -1965,16 +1907,18 @@ static int tegra_nvavp_resume(struct device *dev)
 
 	mutex_lock(&nvavp->open_lock);
 
-	tegra_nvavp_runtime_resume(dev);
-
+	if (nvavp->refcount) {
+		nvavp_init(nvavp, NVAVP_VIDEO_CHANNEL);
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+		nvavp_init(nvavp, NVAVP_AUDIO_CHANNEL);
+#endif
+	}
 	mutex_unlock(&nvavp->open_lock);
 
 	return 0;
 }
 
 static const struct dev_pm_ops nvavp_pm_ops = {
-	.runtime_suspend = tegra_nvavp_runtime_suspend,
-	.runtime_resume = tegra_nvavp_runtime_resume,
 	.suspend = tegra_nvavp_suspend,
 	.resume = tegra_nvavp_resume,
 };
