@@ -589,8 +589,10 @@ int __init ardbeg_panel_init(void)
 	ardbeg_carveouts[2].base = tegra_vpr_start;
 	ardbeg_carveouts[2].size = tegra_vpr_size;
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	carveout_linear_set(&tegra_generic_cma_dev);
 	ardbeg_carveouts[1].cma_dev = &tegra_generic_cma_dev;
 	ardbeg_carveouts[1].resize = false;
+	carveout_linear_set(&tegra_vpr_cma_dev);
 	ardbeg_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
 	ardbeg_carveouts[2].resize = true;
 	ardbeg_carveouts[2].cma_chunk_size = SZ_32M;

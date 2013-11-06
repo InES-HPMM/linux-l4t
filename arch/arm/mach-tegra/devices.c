@@ -34,6 +34,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
+#include <linux/dma-contiguous.h>
 
 #ifdef CONFIG_TEGRA_WAKEUP_MONITOR
 #include <mach/tegra_wakeup_monitor.h>
@@ -2152,9 +2153,28 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 	LINEAR_MAP_ADD(tegra_fb2);
 	LINEAR_MAP_ADD(tegra_bootloader_fb);
 	LINEAR_MAP_ADD(tegra_bootloader_fb2);
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	LINEAR_MAP_ADD(tegra_vpr);
 	LINEAR_MAP_ADD(tegra_carveout);
+#endif
 }
+
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+void carveout_linear_set(struct device *cma_dev)
+{
+	struct dma_contiguous_stats stats;
+	struct iommu_linear_map *map = &tegra_fb_linear_map[0];
+
+	if (dma_get_contiguous_stats(cma_dev, &stats))
+		return;
+
+	/* get the free slot at end and add carveout entry */
+	while (map && map->size)
+		map++;
+	map->start = stats.base;
+	map->size = stats.size;
+}
+#endif
 
 struct swgid_fixup {
 	const char * const name;

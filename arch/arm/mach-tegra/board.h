@@ -162,6 +162,12 @@ void tegra_fb_linear_set(struct iommu_linear_map *map);
 static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}
 #endif
 
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+void carveout_linear_set(struct device *cma_dev);
+#else
+static inline void carveout_linear_set(struct device *cma_dev) {}
+#endif
+
 void tegra_init_late(void);
 
 #ifdef CONFIG_DEBUG_FS
