@@ -103,7 +103,6 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	DEFAULT_DRIVE_PINGROUP(UART3,		0x8c4),
 	SET_DRIVE_PINGROUP(SDIO1,		0x8ec,	12,	0x7F,	20,
 		0x7F,	28,	0x3,	30,	0x3),
-	DEFAULT_DRIVE_PINGROUP(CRT,		0x8f8),
 	DEFAULT_DRIVE_PINGROUP(DDC,		0x8fc),
 	SET_DRIVE_PINGROUP(GMA,			0x900,	14,	0x1F,	20,
 		0x1F,	28,	0x3,	30,	0x3),
@@ -120,6 +119,10 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	DEFAULT_DRIVE_PINGROUP(AT6,		0x994),
 	DEFAULT_DRIVE_PINGROUP(DAP5,		0x998),
 	DEFAULT_DRIVE_PINGROUP(VBUS,		0x99C),
+	DEFAULT_DRIVE_PINGROUP(AO3,		0x9a8),
+	DEFAULT_DRIVE_PINGROUP(HV0,		0x9b4),
+	DEFAULT_DRIVE_PINGROUP(SDIO4,		0x9c4),
+	DEFAULT_DRIVE_PINGROUP(AO4,		0x9c8),
 };
 
 #define PINGROUP(pg_name, gpio_nr, vdd, f0, f1, f2, f3, fs, iod, reg)	\
