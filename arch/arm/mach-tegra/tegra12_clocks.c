@@ -7624,7 +7624,7 @@ static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
 	.ops       = &tegra_clk_gbus_ops,
 	.parent    = &tegra_clk_gpu,
-	.max_rate  = 1000000000,
+	.max_rate  = 1032000000,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
 	.rate_change_nh = &gbus_rate_change_nh,
 };
