@@ -154,10 +154,15 @@ struct tegra_pinctrl_soc_data {
 	unsigned nfunctions;
 	const struct tegra_pingroup *groups;
 	unsigned ngroups;
+	int (*suspend)(u32 *pg_data);
+	void (*resume)(u32 *pg_data);
 };
 
 int tegra_pinctrl_probe(struct platform_device *pdev,
 			const struct tegra_pinctrl_soc_data *soc_data);
 int tegra_pinctrl_remove(struct platform_device *pdev);
+
+u32 tegra_pinctrl_readl(u32 bank, u32 reg);
+void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
 
 #endif

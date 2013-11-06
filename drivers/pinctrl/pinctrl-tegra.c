@@ -52,6 +52,7 @@ struct tegra_pmx {
 	int *regs_size;
 
 	u32 *pg_data;
+	unsigned drive_group_start_index;
 };
 
 static struct tegra_pmx *pmx;
@@ -744,6 +745,9 @@ static int pinctrl_suspend(void)
 	u32 *pg_data = pmx->pg_data;
 	u32 *regs;
 
+	if (pmx->soc->suspend)
+		return pmx->soc->suspend(pg_data);
+
 	for (i = 0; i < pmx->nbanks; i++) {
 		regs = pmx->regs[i];
 		for (j = 0; j < pmx->regs_size[i] / 4; j++)
@@ -757,6 +761,11 @@ static void pinctrl_resume(void)
 	int i, j;
 	u32 *pg_data = pmx->pg_data;
 	u32 *regs;
+
+	if (pmx->soc->resume) {
+		pmx->soc->resume(pg_data);
+		return;
+	}
 
 	for (i = 0; i < pmx->nbanks; i++) {
 		regs = pmx->regs[i];
@@ -785,6 +794,15 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 	}
 	pmx->dev = &pdev->dev;
 	pmx->soc = soc_data;
+
+	pmx->drive_group_start_index = -1;
+
+	for (i = 0; i < pmx->soc->ngroups; ++i) {
+		if (pmx->soc->groups[i].drv_reg < 0)
+			continue;
+		pmx->drive_group_start_index =i;
+		break;
+	}
 
 	tegra_pinctrl_gpio_range.npins = pmx->soc->ngpios;
 	tegra_pinctrl_desc.name = dev_name(&pdev->dev);
@@ -1053,6 +1071,18 @@ static const char *slew_name(unsigned long val)
 
 	return tegra_pinctrl_slew_names[val];
 }
+
+u32 tegra_pinctrl_readl(u32 bank, u32 reg)
+{
+	return readl(pmx->regs[bank] + reg);
+}
+EXPORT_SYMBOL_GPL(tegra_pinctrl_readl);
+
+void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg)
+{
+	writel(val, pmx->regs[bank] + reg);
+}
+EXPORT_SYMBOL_GPL(tegra_pinctrl_writel);
 
 int tegra_pinctrl_gpio_to_pingroup(int gpio_nr)
 {
