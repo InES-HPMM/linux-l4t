@@ -68,6 +68,7 @@
 
 			vbus {
 				regulator-name = "vbus_regulator";
+				otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_vbus";
