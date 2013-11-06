@@ -5566,11 +5566,18 @@ EXPORT_SYMBOL_HDA(snd_hda_add_imux_item);
 int snd_hda_suspend(struct hda_bus *bus)
 {
 	struct hda_codec *codec;
+	unsigned int state;
 
 	list_for_each_entry(codec, &bus->codec_list, list) {
 		cancel_delayed_work_sync(&codec->jackpoll_work);
-		if (hda_codec_is_power_on(codec))
-			hda_call_codec_suspend(codec, false);
+		if (hda_codec_is_power_on(codec)) {
+			state = hda_call_codec_suspend(codec, false);
+			codec->pm_down_notified = 0;
+			if (!bus->power_keep_link_on && (state & AC_PWRST_CLK_STOP_OK)) {
+				codec->pm_down_notified = 1;
+				hda_call_pm_notify(bus, false);
+			}
+		}
 	}
 	return 0;
 }
