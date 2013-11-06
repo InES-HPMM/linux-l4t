@@ -29,8 +29,12 @@ static unsigned int mt9m114_states[] = { 0, 150 };
 static unsigned int sdhci_states[] = { 0, 966 };
 static unsigned int speaker_states[] = { 0, 1080 };
 static unsigned int wifi_states[] = { 0, 1020 };
-/* 10" panel */
 static unsigned int pwm_backlight_states[] = {
+	0, 125, 250, 375, 500, 625, 750, 875, 1000, 1125, 1250
+};
+
+/* (optional) 10" panel */
+static unsigned int pwm_backlight_10_states[] = {
 	0, 425, 851, 1276, 1702, 2127, 2553, 2978, 3404, 3829, 4255
 };
 static unsigned int as364x_states[] = {
@@ -63,6 +67,14 @@ static struct platform_device tn8_sysedp_device = {
 void __init tn8_new_sysedp_init(void)
 {
 	int r;
+	struct board_info board;
+
+	tegra_get_display_board_info(&board);
+
+	/* Some TN8 boards use non-default display */
+	if (board.board_id != BOARD_E1549)
+		memcpy(pwm_backlight_states, pwm_backlight_10_states,
+		       sizeof(pwm_backlight_states));
 
 	r = platform_device_register(&tn8_sysedp_device);
 	WARN_ON(r);
