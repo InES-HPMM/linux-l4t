@@ -338,7 +338,7 @@ static inline void ov7695_msleep(u32 t)
 
 static inline int ov7695_read_reg(struct ov7695_info *info, u16 addr, u8 *val)
 {
-	return regmap_read(info->regmap, addr, val);
+	return regmap_read(info->regmap, addr, (unsigned int *) val);
 }
 
 static int ov7695_write_reg8(struct ov7695_info *info, u16 addr, u8 val)
@@ -798,7 +798,7 @@ static long ov7695_ioctl(struct file *file,
 		short ev;
 		u8 val;
 
-		err = ov7695_read_reg(info->i2c_client, 0x3a0f, &val);
+		err = ov7695_read_reg(info, 0x3a0f, &val);
 
 		if (err) {
 			dev_err(&info->i2c_client->dev,

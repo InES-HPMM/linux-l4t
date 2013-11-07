@@ -1951,7 +1951,7 @@ imx135_get_gain_short_reg(struct imx135_reg *regs, u16 gain)
 static inline int
 imx135_read_reg(struct imx135_info *info, u16 addr, u8 *val)
 {
-	return regmap_read(info->regmap, addr, val);
+	return regmap_read(info->regmap, addr, (unsigned int *) val);
 }
 
 static int
