@@ -40,6 +40,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
@@ -49,7 +50,7 @@
 
 #include "xhci-tegra.h"
 #include "xhci.h"
-#include "../../../arch/arm/mach-tegra/fuse.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 /* macros */
 #define FW_IOCTL_LOG_DEQUEUE_LOW	(4)
