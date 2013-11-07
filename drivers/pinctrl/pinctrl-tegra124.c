@@ -18,6 +18,7 @@
 #include <linux/platform_device.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
+#include <linux/tegra-pmc.h>
 
 #include "mach/pinmux.h"
 #include "pinctrl-tegra.h"
@@ -3117,6 +3118,53 @@ static const struct tegra_pingroup tegra124_groups[] = {
 
 };
 
+static int tegra124_pinctrl_suspend(u32 *pg_data)
+{
+	int i;
+	u32 *ctx = pg_data;
+
+	for (i = 0; i <  ARRAY_SIZE(tegra124_groups); i++) {
+		if (tegra124_groups[i].drv_reg < 0)
+			*ctx++ = tegra_pinctrl_readl(tegra124_groups[i].mux_bank,
+						tegra124_groups[i].mux_reg);
+		else
+			*ctx++ = tegra_pinctrl_readl(tegra124_groups[i].drv_bank,
+						tegra124_groups[i].drv_reg);
+	}
+
+	return 0;
+}
+
+static void tegra124_pinctrl_resume(u32 *pg_data)
+{
+	int i;
+	u32 *ctx = pg_data;
+	u32 *tmp = pg_data;
+	u32 reg_value;
+
+	for (i = 0; i < ARRAY_SIZE(tegra124_groups); i++) {
+		if (tegra124_groups[i].drv_reg < 0) {
+			reg_value = *tmp++;
+			reg_value |= BIT(4);
+			tegra_pinctrl_writel(reg_value,
+					tegra124_groups[i].mux_bank,
+					tegra124_groups[i].mux_reg);
+		}
+	}
+
+	tegra_pmc_remove_dpd_req();
+	for (i = 0; i <  ARRAY_SIZE(tegra124_groups); i++) {
+		if (tegra124_groups[i].drv_reg < 0)
+			tegra_pinctrl_writel(*ctx++, tegra124_groups[i].mux_bank,
+						tegra124_groups[i].mux_reg);
+		else
+			tegra_pinctrl_writel(*ctx++, tegra124_groups[i].drv_bank,
+						tegra124_groups[i].drv_reg);
+	}
+	/* Clear DPD sample */
+	tegra_pmc_clear_dpd_sample();
+}
+
 static const struct tegra_pinctrl_soc_data tegra124_pinctrl = {
 	.ngpios = NUM_GPIOS,
 	.pins = tegra124_pins,
@@ -3125,6 +3173,8 @@ static const struct tegra_pinctrl_soc_data tegra124_pinctrl = {
 	.nfunctions = ARRAY_SIZE(tegra124_functions),
 	.groups = tegra124_groups,
 	.ngroups = ARRAY_SIZE(tegra124_groups),
+	.suspend = tegra124_pinctrl_suspend,
+	.resume = tegra124_pinctrl_resume,
 };
 
 static int tegra124_pinctrl_probe(struct platform_device *pdev)
