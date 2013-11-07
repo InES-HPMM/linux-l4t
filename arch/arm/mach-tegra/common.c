@@ -2389,3 +2389,129 @@ static int __init set_tegra_split_mem(char *options)
 }
 early_param("tegra_split_mem", set_tegra_split_mem);
 
+#define FUSE_SKU_INFO       0x110
+#define STRAP_OPT 0x008
+#define GMI_AD0 BIT(4)
+#define GMI_AD1 BIT(5)
+#define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
+#define RAM_CODE_SHIFT 4
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+static enum tegra_platform tegra_platform;
+static bool cpu_is_asim;
+static bool cpu_is_dsim;
+static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
+	[TEGRA_PLATFORM_SILICON] = "silicon",
+	[TEGRA_PLATFORM_QT]      = "quickturn",
+	[TEGRA_PLATFORM_LINSIM]  = "linsim",
+	[TEGRA_PLATFORM_FPGA]    = "fpga",
+};
+#endif
+
+static u32 tegra_chip_sku_id;
+static u32 tegra_chip_id;
+static u32 tegra_chip_bct_strapping;
+enum tegra_revision tegra_revision;
+
+u32 tegra_read_pmc_reg(int offset)
+{
+	return readl(IO_ADDRESS(TEGRA_PMC_BASE) + offset);
+}
+
+u32 tegra_read_clk_ctrl_reg(int offset)
+{
+	return readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + offset);
+}
+
+u32 tegra_read_apb_misc_reg(int offset)
+{
+	return readl(IO_ADDRESS(TEGRA_APB_MISC_BASE) + offset);
+}
+
+u32 tegra_fuse_readl(unsigned long offset)
+{
+	return readl(IO_ADDRESS(TEGRA_FUSE_BASE + offset));
+}
+
+void tegra_fuse_writel(u32 val, unsigned long offset)
+{
+	writel(val, IO_ADDRESS(TEGRA_FUSE_BASE + offset));
+}
+
+u32 tegra_read_chipid(void)
+{
+	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE)
+			+ 0x804);
+}
+
+static void tegra_set_sku_id(void)
+{
+	u32 reg;
+
+	reg = tegra_fuse_readl(FUSE_SKU_INFO);
+	tegra_chip_sku_id = reg & 0xFF;
+}
+
+static void tegra_set_chip_id(void)
+{
+	u32 id;
+
+	id = tegra_read_chipid();
+	tegra_chip_id = (id >> 8) & 0xff;
+}
+
+static void tegra_set_bct_strapping(void)
+{
+	u32 reg;
+
+	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
+	tegra_chip_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
+}
+
+u32 tegra_get_sku_id(void)
+{
+	return tegra_chip_sku_id;
+}
+
+u32 tegra_get_chip_id(void)
+{
+	return tegra_chip_id;
+}
+
+u32 tegra_get_bct_strapping(void)
+{
+	return tegra_chip_bct_strapping;
+}
+
+static void tegra_fuse_cfg_reg_visible(void)
+{
+	/* Make all fuse registers visible */
+	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+	reg |= BIT(28);
+	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+}
+
+void tegra_init_fuse(void)
+{
+	u32 sku_id;
+
+	tegra_fuse_cfg_reg_visible();
+	tegra_set_sku_id();
+	sku_id = tegra_get_sku_id();
+	tegra_set_bct_strapping();
+	tegra_set_chip_id();
+	tegra_revision = tegra_chip_get_revision();
+	tegra_init_speedo_data();
+	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
+		tegra_revision_name[tegra_revision],
+		sku_id, tegra_cpu_process_id(),
+		tegra_core_process_id());
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (!tegra_platform_is_silicon()) {
+		pr_info("Tegra Platform: %s%s%s\n",
+			tegra_cpu_is_asim() ? "ASIM+" : "",
+			tegra_cpu_is_dsim() ? "DSIM+" : "",
+			tegra_platform_name[tegra_platform]);
+	}
+#endif
+}

@@ -74,6 +74,8 @@ static inline void tegra30_init_speedo_data(void) {}
    FUSE Programming cycles */
 extern u32 tegra_read_pmc_reg(int offset);
 extern u32 tegra_read_clk_ctrl_reg(int offset);
+extern u32 tegra_read_apb_misc_reg(int offset);
+extern enum tegra_revision tegra_chip_get_revision(void);
 
 extern int (*tegra_fuse_regulator_en)(int);
 int tegra_soc_speedo_id(void);

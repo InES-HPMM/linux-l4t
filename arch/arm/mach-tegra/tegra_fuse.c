@@ -40,8 +40,6 @@
 #include <mach/gpufuse.h>
 
 #include "fuse.h"
-#include "iomap.h"
-#include "apbio.h"
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #include "tegra2_fuse_offsets.h"
@@ -80,11 +78,6 @@ struct tegra_id {
 
 static struct tegra_id tegra_id;
 
-static u32 tegra_fuse_sku_id;
-static u32 tegra_fuse_chip_id;
-static u32 tegra_fuse_bct_strapping;
-
-enum tegra_revision tegra_revision;
 static unsigned int tegra_fuse_vp8_enable;
 static int tegra_gpu_num_pixel_pipes;
 static int tegra_gpu_num_alus_per_pixel_pipe;
@@ -94,8 +87,8 @@ static u32 fuse_pgm_mask[NFUSES / 2];
 static u32 tmp_fuse_pgm_data[NFUSES / 2];
 
 static struct fuse_data fuse_info;
-struct regulator *fuse_regulator;
-struct clk *clk_fuse;
+static struct regulator *fuse_regulator;
+static struct clk *clk_fuse;
 
 struct param_info {
 	u32 *addr;
@@ -118,16 +111,6 @@ DEFINE_MUTEX(fuse_lock);
 #define GMI_AD1 BIT(5)
 #define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
 #define RAM_CODE_SHIFT 4
-
-static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
-	[TEGRA_REVISION_UNKNOWN] = "unknown",
-	[TEGRA_REVISION_A01]     = "A01",
-	[TEGRA_REVISION_A02]     = "A02",
-	[TEGRA_REVISION_A03]     = "A03",
-	[TEGRA_REVISION_A03p]    = "A03 prime",
-	[TEGRA_REVISION_A04]     = "A04",
-	[TEGRA_REVISION_A04p]    = "A04 prime",
-};
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static enum tegra_platform tegra_platform;
@@ -264,16 +247,6 @@ static struct param_info fuse_info_tbl[] = {
 	},
 };
 
-u32 tegra_fuse_readl(unsigned long offset)
-{
-	return readl(IO_ADDRESS(TEGRA_FUSE_BASE + offset));
-}
-
-void tegra_fuse_writel(u32 val, unsigned long offset)
-{
-	writel(val, IO_ADDRESS(TEGRA_FUSE_BASE + offset));
-}
-
 bool tegra_spare_fuse(int bit)
 {
 	return tegra_fuse_readl(FUSE_SPARE_BIT + bit * 4);
@@ -311,7 +284,7 @@ int tegra_get_age(void)
 int tegra_gpu_register_sets(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_DUAL_3D
-	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + FUSE_GPU_INFO));
+	u32 reg = tegra_read_clk_ctrl_reg(FUSE_GPU_INFO);
 	if (reg & FUSE_GPU_INFO_MASK)
 		return 1;
 	else
@@ -484,9 +457,8 @@ static void tegra_set_tegraid(u32 chipid,
 
 static void tegra_get_tegraid_from_hw(void)
 {
-	void __iomem *netlist = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860;
 	u32 cid = tegra_read_chipid();
-	u32 nlist = readl(netlist);
+	u32 nlist = tegra_read_apb_misc_reg(0x860);
 	char *priv = NULL;
 
 	tegra_fuse_get_priv(priv);
@@ -506,7 +478,7 @@ enum tegra_chipid tegra_get_chipid(void)
 	return tegra_id.chipid;
 }
 
-enum tegra_revision tegra_get_revision(void)
+enum tegra_revision tegra_chip_get_revision(void)
 {
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
@@ -1028,11 +1000,11 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	/* calculate the number of program cycles from the oscillator freq */
-	reg = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_PLLP_OVERRIDE);
+	reg = tegra_read_pmc_reg(PMC_PLLP_OVERRIDE);
 	if (reg & PMC_OSC_OVERRIDE) {
 		index = (reg & PMC_OSC_FREQ_MASK) >> PMC_OSC_FREQ_SHIFT;
 	} else {
-		reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + CAR_OSC_CTRL);
+		reg = tegra_read_clk_ctrl_reg(CAR_OSC_CTRL);
 		index = reg >> CAR_OSC_FREQ_SHIFT;
 	}
 
@@ -1271,82 +1243,6 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 
 	strcat(buf, "\n");
 	return strlen(buf);
-}
-
-u32 tegra_read_chipid(void)
-{
-	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
-}
-
-static void tegra_set_sku_id(void)
-{
-	u32 reg;
-
-	reg = tegra_fuse_readl(FUSE_SKU_INFO);
-	tegra_fuse_sku_id = reg & 0xFF;
-}
-
-static void tegra_set_chip_id(void)
-{
-	u32 id;
-
-	id = tegra_read_chipid();
-	tegra_fuse_chip_id = (id >> 8) & 0xff;
-}
-
-static void tegra_set_bct_strapping(void)
-{
-	u32 reg;
-
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
-	tegra_fuse_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
-}
-
-u32 tegra_get_sku_id(void)
-{
-	return tegra_fuse_sku_id;
-}
-
-u32 tegra_get_chip_id(void)
-{
-	return tegra_fuse_chip_id;
-}
-
-u32 tegra_get_bct_strapping(void)
-{
-	return tegra_fuse_bct_strapping;
-}
-
-void tegra_init_fuse(void)
-{
-	u32 sku_id;
-
-	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-	reg |= BIT(28);
-	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-
-	tegra_set_sku_id();
-	sku_id = tegra_get_sku_id();
-	tegra_set_bct_strapping();
-	tegra_set_chip_id();
-
-	tegra_revision = tegra_get_revision();
-
-	tegra_init_speedo_data();
-
-	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
-		tegra_revision_name[tegra_revision],
-		sku_id, tegra_cpu_process_id(),
-		tegra_core_process_id());
-
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	if (!tegra_platform_is_silicon()) {
-		pr_info("Tegra Platform: %s%s%s\n",
-			tegra_cpu_is_asim() ? "ASIM+" : "",
-			tegra_cpu_is_dsim() ? "DSIM+" : "",
-			tegra_platform_name[tegra_platform]);
-	}
-#endif
 }
 
 static int tegra_fuse_probe(struct platform_device *pdev)
