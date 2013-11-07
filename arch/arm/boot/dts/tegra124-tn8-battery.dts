@@ -21,6 +21,8 @@
 		max17048@36 {
 			compatible = "maxim,max17048";
 			reg = <0x36>;
+			interrupt-parent = <&gpio>;
+			interrupts = <133 0x0>;        /* gpio PQ5 */
 			tz-name = "battery-temp";
 			alert-threshold = <0>;          /* 1% SOC */
 			one-percent-alerts = <1>;
