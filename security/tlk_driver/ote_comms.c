@@ -297,6 +297,28 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 }
 
 /*
+ * VPR programming SMC
+ */
+int te_set_vpr_params(void *vpr_base, size_t vpr_size)
+{
+	uint32_t retval;
+
+	/* Share the same lock used when request is send from user side */
+	mutex_lock(&smc_lock);
+
+	retval = TLK_GENERIC_SMC(TE_SMC_PROGRAM_VPR, vpr_base, vpr_size);
+
+	mutex_unlock(&smc_lock);
+
+	if (retval != OTE_SUCCESS) {
+		pr_err("te_set_vpr_params failed err (0x%x)\n", retval);
+		return -EINVAL;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(te_set_vpr_params);
+
+/*
  * Open session SMC (supporting client-based te_open_session() calls)
  */
 void te_open_session(struct te_opensession *cmd,

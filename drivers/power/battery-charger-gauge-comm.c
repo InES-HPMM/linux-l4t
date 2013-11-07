@@ -270,6 +270,23 @@ int battery_charging_system_reset_after(struct battery_charger_dev *bc_dev,
 }
 EXPORT_SYMBOL_GPL(battery_charging_system_reset_after);
 
+int battery_charging_system_power_on_usb_event(
+	struct battery_charger_dev *bc_dev)
+{
+	int ret;
+
+	dev_info(bc_dev->parent_dev,
+		"Setting system on with USB connect/disconnect\n");
+
+	ret = system_pmic_set_power_on_event(SYSTEM_PMIC_USB_VBUS_INSERTION,
+		NULL);
+	if (ret < 0)
+		dev_err(bc_dev->parent_dev,
+			"Setting power on event failed: %d\n", ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(battery_charging_system_power_on_usb_event);
+
 struct battery_charger_dev *battery_charger_register(struct device *dev,
 	struct battery_charger_info *bci, void *drv_data)
 {

@@ -31,6 +31,7 @@
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/power/bq2419x-charger.h>
@@ -927,6 +928,9 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 				vbus_init_data->consumer_supplies;
 		pdata->vbus_pdata->num_consumer_supplies =
 				vbus_init_data->num_consumer_supplies;
+		pdata->vbus_pdata->gpio_otg_iusb =
+				of_get_named_gpio(vbus_reg_node,
+					"otg-iusb-gpio", 0);
 	}
 
 	return pdata;
@@ -1117,6 +1121,8 @@ static void bq2419x_shutdown(struct i2c_client *client)
 				"System reset after %d config failed %d\n",
 				bq2419x->wdt_refresh_timeout, ret);
 	}
+
+	battery_charging_system_power_on_usb_event(bq2419x->bc_dev);
 }
 
 #ifdef CONFIG_PM_SLEEP

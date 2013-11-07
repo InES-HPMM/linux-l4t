@@ -1115,6 +1115,14 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 			xhci_writel(xhci, tmp, addr);
 		}
 	}
+
+	/* Wait for port enter U3 state */
+	if (bus_state->bus_suspended) {
+		spin_unlock_irqrestore(&xhci->lock, flags);
+		msleep(10);
+		spin_lock_irqsave(&xhci->lock, flags);
+	}
+
 	hcd->state = HC_STATE_SUSPENDED;
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(10);
 	spin_unlock_irqrestore(&xhci->lock, flags);
