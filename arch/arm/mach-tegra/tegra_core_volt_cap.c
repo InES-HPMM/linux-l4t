@@ -47,6 +47,7 @@ struct core_cap {
 
 static struct core_cap core_buses_cap;
 static struct core_cap override_core_cap;
+static struct core_cap vmax_core_cap;
 static struct core_cap user_core_cap;
 
 static struct core_dvfs_cap_table *core_cap_table;
@@ -105,6 +106,8 @@ static int core_cap_update(void)
 	new_level = core_nominal_mv;
 	if (override_core_cap.refcnt)
 		new_level = min(new_level, override_core_cap.level);
+	if (vmax_core_cap.refcnt)
+		new_level = min(new_level, vmax_core_cap.level);
 	if (user_core_cap.refcnt)
 		new_level = min(new_level, user_core_cap.level);
 
@@ -213,6 +216,36 @@ int tegra_dvfs_override_core_cap_apply(int level)
 		core_cap_enable(false);
 	}
 
+	mutex_unlock(&core_cap_lock);
+	return ret;
+}
+
+int tegra_dvfs_therm_vmax_core_cap_apply(int *cap_idx, int new_idx, int level)
+{
+	int ret = 0;
+
+	mutex_lock(&core_cap_lock);
+	if (*cap_idx == new_idx)
+		goto _out;
+
+	*cap_idx = new_idx;
+
+	if (level) {
+		if (!vmax_core_cap.refcnt) {
+			vmax_core_cap.level = level;
+			vmax_core_cap.refcnt = 1;
+			/* just report error (cannot revert temperature) */
+			ret = core_cap_enable(true);
+		} else if (vmax_core_cap.level != level) {
+			vmax_core_cap.level = level;
+			/* just report error (cannot revert temperature) */
+			ret = core_cap_update();
+		}
+	} else if (vmax_core_cap.refcnt) {
+		vmax_core_cap.refcnt = 0;
+		core_cap_enable(false);
+	}
+_out:
 	mutex_unlock(&core_cap_lock);
 	return ret;
 }

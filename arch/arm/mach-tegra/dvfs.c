@@ -1419,6 +1419,13 @@ struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_core_vmax_cdev(void)
+{
+	if (tegra_core_rail)
+		return tegra_core_rail->vmax_cdev;
+	return NULL;
+}
+
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 {
 	if (tegra_core_rail)
@@ -1506,6 +1513,64 @@ static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 		       rail->vmin_cdev->cdev_type);
 }
 
+/*
+ * Cooling device limits frequencies of the clocks in pll mode based on rail
+ * vmax thermal profile. Supported for core rail only, and applied only to
+ * shared buses selected by platform specific code.
+ */
+static int tegra_dvfs_rail_get_vmax_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->vmax_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_vmax_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->therm_cap_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_vmax_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	int cur_cap = cur_state ? rail->therm_mv_caps[cur_state - 1] : 0;
+
+	return tegra_dvfs_therm_vmax_core_cap_apply(&rail->therm_cap_idx,
+						    cur_state, cur_cap);
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_vmax_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_vmax_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_vmax_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_vmax_cdev_state,
+};
+
+void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
+{
+	struct thermal_cooling_device *dev;
+
+	if (!rail || !rail->vmax_cdev || (rail != tegra_core_rail))
+		return;
+
+	dev = thermal_cooling_device_register(rail->vmax_cdev->cdev_type,
+		(void *)rail, &tegra_dvfs_vmax_cooling_ops);
+
+	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
+		/* report error & set the most agressive caps */
+		int cur_state = rail->vmax_cdev->trip_temperatures_num;
+		int cur_cap = rail->therm_mv_caps[cur_state - 1];
+		tegra_dvfs_therm_vmax_core_cap_apply(&rail->therm_cap_idx,
+						     cur_state, cur_cap);
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->vmax_cdev->cdev_type);
+	}
+}
+
 /* Cooling device to scale voltage with temperature in pll mode */
 static int tegra_dvfs_rail_get_vts_cdev_max_state(
 	struct thermal_cooling_device *cdev, unsigned long *max_state)
@@ -1566,6 +1631,8 @@ static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 
 #else
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
+void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
+{ }
 static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 {
 	make_safe_thermal_dvfs(rail);
