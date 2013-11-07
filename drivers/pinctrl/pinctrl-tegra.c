@@ -781,6 +781,75 @@ static struct syscore_ops pinctrl_syscore_ops = {
 
 #endif
 
+static int tegra_pinctrl_get_group(struct tegra_pmx *pmx, const char *name)
+{
+	int i;
+
+	for (i = 0; i< pmx->soc->ngroups; ++i) {
+		if (!strcmp(pmx->soc->groups[i].name, name))
+			return i;
+	}
+	return -EINVAL;
+}
+
+int tegra_pinctrl_set_config(struct pinctrl_dev *pctldev,
+	int pg, int param, int val)
+{
+	unsigned long config;
+
+	config = TEGRA_PINCONF_PACK(param, val);
+	return tegra_pinconf_group_set(pmx->pctl, pg, config);
+}
+
+static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
+{
+	struct tegra_pinctrl_group_config_data *cdata;
+	int group;
+	int i;
+
+	for (i = 0; i < pmx->soc->nconfig_data; ++i) {
+		cdata = &pmx->soc->config_data[i];
+		group = tegra_pinctrl_get_group(pmx, cdata->name);
+		if (group < 0) {
+			dev_warn(pmx->dev, "Group name %s not found\n",
+				cdata->name);
+			continue;
+		}
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
+				cdata->high_speed_mode);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_SCHMITT,
+				cdata->schmitt);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_LOW_POWER_MODE,
+				cdata->low_power_mode);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_DRIVE_DOWN_STRENGTH,
+				cdata->pull_down_strength);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
+				cdata->pull_up_strength);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
+				cdata->slew_rate_falling);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
+				cdata->slew_rate_rising);
+
+		tegra_pinctrl_set_config(pmx->pctl, group,
+				TEGRA_PINCONF_PARAM_DRIVE_TYPE,
+				cdata->drive_type);
+	}
+}
+
 int tegra_pinctrl_probe(struct platform_device *pdev,
 			const struct tegra_pinctrl_soc_data *soc_data)
 {
@@ -800,7 +869,7 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 	for (i = 0; i < pmx->soc->ngroups; ++i) {
 		if (pmx->soc->groups[i].drv_reg < 0)
 			continue;
-		pmx->drive_group_start_index =i;
+		pmx->drive_group_start_index = i;
 		break;
 	}
 
@@ -876,6 +945,8 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 	pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
 
 	platform_set_drvdata(pdev, pmx);
+
+	tegra_pinctrl_default_soc_init(pmx);
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&pinctrl_syscore_ops);
@@ -1218,15 +1289,6 @@ int tegra_pinctrl_get_func(int pg)
 	val = pmx_readl(pmx, g->mux_bank, g->mux_reg);
 	mux = (val >> g->mux_bit) & 0x3;
 	return g->funcs_non_dt[mux];
-}
-
-int tegra_pinctrl_set_config(struct pinctrl_dev *pctldev,
-	int pg, int param, int val)
-{
-	unsigned long config;
-
-	config = TEGRA_PINCONF_PACK(param, val);
-	return tegra_pinconf_group_set(pmx->pctl, pg, config);
 }
 
 int tegra_pinctrl_set_tristate(int pg, int tristate)

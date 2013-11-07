@@ -133,6 +133,29 @@ struct tegra_pingroup {
 	const char *dev_id;
 };
 
+/* struct tegra_pinctrl_driver_config_data: Drive pingroup default data.
+ * @name: Name of the group;
+ * @high_speed_mode: Enable high speed mode
+ * @schmitt: Enable schimit.
+ * @low_power_mode: Low power mode value.
+ * @pull_down_strength: Pull down strength.
+ * @pull_up_strength: Pull up strength.
+ * @slew_rate_rising: Rising slew rate.
+ * @slew_rate_falling: Falling slew rate.
+ * @drive_type: Drive type.
+ */
+struct tegra_pinctrl_group_config_data {
+	const char *name;
+	int high_speed_mode;
+	int schmitt;
+	int low_power_mode;
+	int pull_down_strength;
+	int pull_up_strength;
+	int slew_rate_rising;
+	int slew_rate_falling;
+	int drive_type;
+};
+
 /**
  * struct tegra_pinctrl_soc_data - Tegra pin controller driver configuration
  * @ngpios:	The number of GPIO pins the pin controller HW affects.
@@ -145,6 +168,8 @@ struct tegra_pingroup {
  * @nfunctions:	The numbmer of entries in @functions.
  * @groups:	An array describing all pin groups the pin SoC supports.
  * @ngroups:	The numbmer of entries in @groups.
+ * @config_data: List of configuration data which is SoC specific.
+ * @nconfig_data: Number of config data.
  */
 struct tegra_pinctrl_soc_data {
 	unsigned ngpios;
@@ -154,6 +179,8 @@ struct tegra_pinctrl_soc_data {
 	unsigned nfunctions;
 	const struct tegra_pingroup *groups;
 	unsigned ngroups;
+	struct tegra_pinctrl_group_config_data *config_data;
+	unsigned nconfig_data;
 	int (*suspend)(u32 *pg_data);
 	void (*resume)(u32 *pg_data);
 };
@@ -164,5 +191,21 @@ int tegra_pinctrl_remove(struct platform_device *pdev);
 
 u32 tegra_pinctrl_readl(u32 bank, u32 reg);
 void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
+
+/* Some macro for usage */
+#define TEGRA_PINCTRL_SET_DRIVE(_name, _hsm, _schmitt, _drive,		\
+	_pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew,	\
+	_drive_type)							\
+	{								\
+		.name = _name,						\
+		.high_speed_mode = _hsm,				\
+		.schmitt = _schmitt,					\
+		.low_power_mode = _drive,				\
+		.pull_down_strength = _pulldn_drive,			\
+		.pull_up_strength = _pullup_drive,			\
+		.slew_rate_rising = _pullup_slew,			\
+		.slew_rate_falling = _pulldn_slew,			\
+		.drive_type = _drive_type,				\
+	}
 
 #endif
