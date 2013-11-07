@@ -154,6 +154,8 @@ struct as3722_platform_data {
 	struct as3722_pinctrl_platform_data *pinctrl_pdata;
 	int num_pinctrl;
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
+	int watchdog_timer_initial_period;
+	int watchdog_timer_mode;
 	bool enable_clk32k_out;
 };
 

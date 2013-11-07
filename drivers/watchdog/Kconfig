@@ -53,6 +53,15 @@ comment "Watchdog Device Drivers"
 
 # Architecture Independent
 
+config AS3722_WATCHDOG
+	tristate "AS3722 watchdog"
+	depends on MFD_AS3722
+	select WATCHDOG_CORE
+	help
+	  Support for the watchdog in the AMS AS3722 PMIC.  When
+	  the watchdog triggers the system will be reset/Off based on
+	  configuration.
+
 config PALMAS_WATCHDOG
 	tristate "PALMAS watchdog"
 	depends on MFD_PALMAS
