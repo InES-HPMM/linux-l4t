@@ -541,19 +541,23 @@ palmas: tps65913 {
 					};
 					c6 {
 						regulator-consumer-supply = "avdd_dsi_csi";
-						regulator-consumer-device = "vi";
+						regulator-consumer-device = "vi.0";
 					};
 					c7 {
-						regulator-consumer-supply = "pwrdet_mipi";
+						regulator-consumer-supply = "avdd_dsi_csi";
+						regulator-consumer-device = "vi.1";
 					};
 					c8 {
-						regulator-consumer-supply = "avdd_hsic_com";
+						regulator-consumer-supply = "pwrdet_mipi";
 					};
 					c9 {
+						regulator-consumer-supply = "avdd_hsic_com";
+					};
+					c10 {
 						regulator-consumer-supply = "avdd_hsic_mdm";
 
 					};
-					c10 {
+					c11 {
 						regulator-consumer-supply = "vdd_lcd_bl";
 					};
 
