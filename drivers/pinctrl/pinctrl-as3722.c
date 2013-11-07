@@ -361,19 +361,13 @@ static int as3722_pinconf_get(struct pinctrl_dev *pctldev,
 }
 
 static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
-			unsigned pin, unsigned long *configs,
-			unsigned num_configs)
+		unsigned pin, unsigned long config)
 {
 	struct as3722_pctrl_info *as_pci = pinctrl_dev_get_drvdata(pctldev);
-	enum pin_config_param param;
-	int mode_prop;
-	int i;
+	enum pin_config_param param = pinconf_to_config_param(config);
+	int mode_prop = as_pci->gpio_control[pin].mode_prop;
 
-	for (i = 0; i < num_configs; i++) {
-		param = pinconf_to_config_param(configs[i]);
-		mode_prop = as_pci->gpio_control[pin].mode_prop;
-
-		switch (param) {
+	switch (param) {
 		case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
 			break;
 
@@ -400,10 +394,9 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 		default:
 			dev_err(as_pci->dev, "Properties not supported\n");
 			return -ENOTSUPP;
-		}
-
-		as_pci->gpio_control[pin].mode_prop = mode_prop;
 	}
+
+	as_pci->gpio_control[pin].mode_prop = mode_prop;
 	return 0;
 }
 
@@ -622,7 +615,19 @@ static struct platform_driver as3722_pinctrl_driver = {
 	.probe = as3722_pinctrl_probe,
 	.remove = as3722_pinctrl_remove,
 };
-module_platform_driver(as3722_pinctrl_driver);
+
+static int __init as3722_pinctrl_init(void)
+{
+	return platform_driver_register(&as3722_pinctrl_driver);
+}
+subsys_initcall(as3722_pinctrl_init);
+
+static void __exit as3722_pinctrl_exit(void)
+{
+	platform_driver_unregister(&as3722_pinctrl_driver);
+}
+module_exit(as3722_pinctrl_exit);
+
 
 MODULE_ALIAS("platform:as3722-pinctrl");
 MODULE_DESCRIPTION("AS3722 pin control and GPIO driver");
