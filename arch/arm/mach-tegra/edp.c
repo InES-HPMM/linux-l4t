@@ -450,7 +450,7 @@ static int init_cpu_edp_limits_calculated(void)
 			power_edp_calc_limits[pwr_idx].power_limit_100mW =
 				power_cap_levels[pwr_idx] / 100;
 			limit = edp_calculate_maxf(params,
-						   50,
+						   90,
 						   power_cap_levels[pwr_idx],
 						   0,
 						   iddq_mA,
