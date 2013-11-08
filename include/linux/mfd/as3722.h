@@ -28,10 +28,35 @@
 #define AS3722_RTC_IRQMODE				BIT(3)
 #define AS3722_RTC_CLK32K_OUT_EN			BIT(5)
 
-static inline int as3722_update_bits(struct as3722 *as3722, u32 reg,
-                u32 mask, u8 val)
+
+#define AS3722_GPIOn_SIGNAL(n)                          BIT(n)
+#define AS3722_GPIOn_CONTROL_REG(n)             (AS3722_GPIO0_CONTROL_REG + n)
+
+#define AS3722_GPIO_MODE_INPUT_PULL_UP                  0x04
+#define AS3722_GPIO_MODE_INPUT_PULL_DOWN                0x05
+#define AS3722_GPIO_MODE_IO_OPEN_DRAIN_PULL_UP          0x06
+
+#define AS3722_GPIO_IOSF_VAL(n)                         (((n) & 0xF) << 3)
+
+static inline int as3722_read(struct as3722 *as3722, u32 reg, u32 *dest)
 {
-        return regmap_update_bits(as3722->regmap, reg, mask, val);
+	return regmap_read(as3722->regmap, reg, dest);
+}
+
+static inline int as3722_write(struct as3722 *as3722, u32 reg, u32 value)
+{
+	return regmap_write(as3722->regmap, reg, value);
+}
+
+static inline int as3722_update_bits(struct as3722 *as3722, u32 reg,
+		u32 mask, u8 val)
+{
+	return regmap_update_bits(as3722->regmap, reg, mask, val);
+}
+
+static inline int as3722_irq_get_virq(struct as3722 *as3722, int irq)
+{
+	return regmap_irq_get_virq(as3722->irq_data, irq);
 }
 
 #endif
