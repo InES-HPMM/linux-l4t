@@ -76,10 +76,19 @@ static struct mpu_platform_data mpu6050_gyro_data_t_1_95 = {
 			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
+static struct mpu_platform_data mpu_compass_data = {
+	.orientation	= MPU_COMPASS_ORIENTATION,
+	.config		= NVI_CONFIG_BOOT_HOST,
+};
+
 static struct i2c_board_info __initdata inv_mpu6050_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu6050_gyro_data,
+	},
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &mpu_compass_data,
 	},
 };
 

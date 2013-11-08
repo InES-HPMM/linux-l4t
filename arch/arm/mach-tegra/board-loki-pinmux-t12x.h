@@ -168,7 +168,7 @@ static __initdata struct tegra_pingroup_config loki_pinmux_common[] = {
 	DDC_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, NORMAL),
 
 	/* GPIO pinmux */
-	GPIO_PINMUX_NON_OD(GPIO_X6_AUD, PULL_UP, NORMAL, INPUT),
+	GPIO_PINMUX_NON_OD(GPIO_X3_AUD, PULL_UP, NORMAL, INPUT),
 	GPIO_PINMUX_NON_OD(GPIO_X7_AUD, PULL_DOWN, NORMAL, OUTPUT),
 	GPIO_PINMUX_NON_OD(GPIO_W3_AUD, NORMAL, NORMAL, INPUT),
 	GPIO_PINMUX_NON_OD(GPIO_X1_AUD, PULL_DOWN, NORMAL, OUTPUT),
@@ -238,7 +238,7 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(GPIO_X4_AUD),
 	UNUSED_PINMUX(GPIO_X5_AUD),
 	UNUSED_PINMUX(GPIO_W2_AUD),
-	UNUSED_PINMUX(GPIO_X3_AUD),
+	UNUSED_PINMUX(GPIO_X6_AUD),
 	UNUSED_PINMUX(DAP3_DIN),
 	UNUSED_PINMUX(DAP3_DOUT),
 	UNUSED_PINMUX(DAP3_FS),
@@ -284,7 +284,7 @@ static struct gpio_init_pin_info init_gpio_mode_loki_ffd_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PFF0, false, 0),
 };
 static struct gpio_init_pin_info init_gpio_mode_loki_common[] = {
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX6, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX1, false, 0),

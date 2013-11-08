@@ -45,6 +45,9 @@ int loki_emc_init(void);
 #define MPU_GYRO_ORIENTATION		MTMAT_BOT_CCW_0
 #define MPU_GYRO_ORIENTATION_FAB0	MTMAT_BOT_CCW_90
 #define MPU_GYRO_ORIENTATION_T_1_95	{ 0, 1, 0, 0, 0, 1, 1, 0, 0 }
+#define MPU_COMPASS_NAME		"ak8975"
+#define MPU_COMPASS_ADDR		0x0C
+#define MPU_COMPASS_ORIENTATION		MTMAT_BOT_CCW_180
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6
