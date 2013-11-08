@@ -44,6 +44,7 @@ enum as3722_ids {
 	AS3722_RTC_ID,
 	AS3722_ADC,
 	AS3722_POWER_OFF_ID,
+	AS3722_CLK_ID,
 };
 
 static const struct resource as3722_rtc_resource[] = {
@@ -72,6 +73,10 @@ static struct mfd_cell as3722_devs[] = {
 	{
 		.name = "as3722-regulator",
 		.id = AS3722_REGULATOR_ID,
+	},
+	{
+		.name = "as3722-clk",
+		.id = AS3722_CLK_ID,
 	},
 	{
 		.name = "as3722-rtc",
