@@ -48,17 +48,11 @@ extern const struct regmap_config as3722_regmap_config;
 #define AS3722_EXT_CONTROL_ENABLE2		0x2
 #define AS3722_EXT_CONTROL_ENABLE3		0x3
 
-struct as3722_rtc {
-	struct rtc_device *rtc;
-	int alarm_enabled;      /* used for suspend/resume */
-};
-
 struct as3722 {
 	struct device *dev;
 	struct regmap *regmap;
 	struct regmap_irq_chip_data *irq_data;
 	struct regulator_dev *rdevs[AS3722_NUM_REGULATORS];
-	struct as3722_rtc rtc;
 	int chip_irq;
 };
 
