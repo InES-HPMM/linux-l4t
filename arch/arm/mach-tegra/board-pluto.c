@@ -71,6 +71,7 @@
 #include <mach/tegra_wakeup_monitor.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <mach/xusb.h>
+#include <media/tegra_dtv.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -1304,8 +1305,13 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 };
 #endif
 
+static struct tegra_dtv_platform_data pluto_dtv_pdata = {
+	.dma_req_selector = 11,
+};
+
 static void __init pluto_dtv_init(void)
 {
+	tegra_dtv_device.dev.platform_data = &pluto_dtv_pdata;
 	platform_device_register(&tegra_dtv_device);
 }
 
