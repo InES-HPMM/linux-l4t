@@ -379,9 +379,13 @@ static void __cpuinit __apply_core_config(void)
 	unsigned int cpu;
 	int nr_cpus;
 	struct cpumask online, offline, cpu_online;
-	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? :
-				num_present_cpus();
+	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS);
 	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
+
+	if (min_cpus > num_possible_cpus())
+		min_cpus = 0;
+	if (max_cpus <= 0)
+		max_cpus = num_present_cpus();
 
 	mutex_lock(tegra_cpu_lock);
 
