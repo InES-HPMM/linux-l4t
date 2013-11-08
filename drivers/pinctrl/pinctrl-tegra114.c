@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
+#include <linux/tegra-pmc.h>
 
 #include "mach/pinmux.h"
 #include "pinctrl-tegra.h"
@@ -2802,6 +2803,59 @@ static const struct tegra_pingroup tegra114_groups[] = {
 static struct tegra_pinctrl_group_config_data t114_pin_drive_group_soc_data[] = {
 	TEGRA_PINCTRL_SET_DRIVE(at2, 0, 0, 0, 48, 55, 0, 0, 0),
 };
+static int tegra114_pinctrl_suspend(u32 *pg_data)
+{
+	int i;
+	u32 *ctx = pg_data;
+	u32 reg_value;
+
+	for (i = 0; i <  ARRAY_SIZE(tegra114_groups); i++) {
+		if (tegra114_groups[i].drv_reg < 0) {
+			*ctx++ = tegra_pinctrl_readl(tegra114_groups[i].mux_bank,
+						tegra114_groups[i].mux_reg);
+			if (tegra114_groups[i].name == "gmi_wr_n_pi0") {
+				reg_value = *(pg_data - 1) | BIT(4);
+				tegra_pinctrl_writel(reg_value,
+						tegra114_groups[i].mux_bank,
+						tegra114_groups[i].mux_reg);
+			}
+		} else
+			*ctx++ = tegra_pinctrl_readl(tegra114_groups[i].drv_bank,
+						tegra114_groups[i].drv_reg);
+	}
+
+	return 0;
+}
+
+static void tegra114_pinctrl_resume(u32 *pg_data)
+{
+	int i;
+	u32 *ctx = pg_data;
+	u32 *tmp = pg_data;
+	u32 reg_value;
+
+	for (i = 0; i < ARRAY_SIZE(tegra114_groups); i++) {
+		if (tegra114_groups[i].drv_reg < 0) {
+			reg_value = *tmp++;
+			reg_value |= BIT(4);
+			tegra_pinctrl_writel(reg_value,
+					tegra114_groups[i].mux_bank,
+					tegra114_groups[i].mux_reg);
+		}
+	}
+
+	tegra_pmc_remove_dpd_req();
+	for (i = 0; i <  ARRAY_SIZE(tegra114_groups); i++) {
+		if (tegra114_groups[i].drv_reg < 0)
+			tegra_pinctrl_writel(*ctx++, tegra114_groups[i].mux_bank,
+						tegra114_groups[i].mux_reg);
+		else
+			tegra_pinctrl_writel(*ctx++, tegra114_groups[i].drv_bank,
+						tegra114_groups[i].drv_reg);
+	}
+	/* Clear DPD sample */
+	tegra_pmc_clear_dpd_sample();
+}
 
 static const struct tegra_pinctrl_soc_data tegra114_pinctrl = {
 	.ngpios = NUM_GPIOS,
@@ -2813,6 +2867,8 @@ static const struct tegra_pinctrl_soc_data tegra114_pinctrl = {
 	.ngroups = ARRAY_SIZE(tegra114_groups),
 	.config_data = t114_pin_drive_group_soc_data,
 	.nconfig_data = ARRAY_SIZE(t114_pin_drive_group_soc_data),
+	.suspend = tegra114_pinctrl_suspend,
+	.resume = tegra114_pinctrl_resume,
 };
 
 static int tegra114_pinctrl_probe(struct platform_device *pdev)
