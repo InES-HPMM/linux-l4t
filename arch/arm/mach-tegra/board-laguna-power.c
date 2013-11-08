@@ -272,10 +272,6 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	},
 };
 
-static struct as3722_rtc_platform_data as3722_rtc_pdata = {
-	.enable_clk32k  = 1,
-};
-
 static struct as3722_adc_extcon_platform_data as3722_adc_extcon_pdata = {
 	.connection_name = "as3722-extcon",
 	.enable_adc1_continuous_mode = true,
@@ -312,7 +308,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.use_internal_i2c_pullup = 0,
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
 	.gpio_cfgs     = as3722_gpio_cfgs,
-	.rtc_pdata	= &as3722_rtc_pdata,
 	.enable_clk32k_out = true,
 	.use_power_off = true,
 	.enable_ldo3_tracking = true,
