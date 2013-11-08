@@ -39,11 +39,13 @@ static bool tegra_dvfs_gpu_disabled;
 #define KHZ 1000
 #define MHZ 1000000
 
-/* FIXME: need tegra12 step */
 #define VDD_SAFE_STEP			100
 
-static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
+
+static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72,   82, };
+static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS] = { 1130, 1100, 1060, };
 
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
 static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72,   82, };
@@ -56,6 +58,10 @@ static struct tegra_cooling_device cpu_vmax_cdev = {
 
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
+};
+
+static struct tegra_cooling_device core_vmax_cdev = {
+	.cdev_type = "core_hot",
 };
 
 static struct tegra_cooling_device core_vmin_cdev = {
@@ -95,6 +101,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.step = VDD_SAFE_STEP,
 	.step_up = 1400,
 	.vmin_cdev = &core_vmin_cdev,
+	.vmax_cdev = &core_vmax_cdev,
 };
 
 /* TBD: fill in actual hw number */
@@ -1015,8 +1022,10 @@ void __init tegra12x_init_dvfs(void)
 	BUG_ON((i == ARRAY_SIZE(gpu_cvb_dvfs_table)) || ret);
 
 	/* Init core thermal profile */
-	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_therm_trips_table,
+	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_vmin_trips_table,
 		vdd_core_therm_floors_table, &tegra12_dvfs_rail_vdd_core, NULL);
+	tegra_dvfs_rail_init_vmax_thermal_profile(vdd_core_vmax_trips_table,
+		vdd_core_therm_caps_table, &tegra12_dvfs_rail_vdd_core, NULL);
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra12_dvfs_rails,
@@ -1127,6 +1136,10 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		kobject_del(cap_kobj);
 		return 0;
 	}
+
+	/* core cap must be initialized for vmax cdev operations */
+	tegra_dvfs_rail_register_vmax_cdev(&tegra12_dvfs_rail_vdd_core);
+
 	tegra_core_cap_debug_init();
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
@@ -1163,6 +1176,8 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
+
+
 
 	return 0;
 }
