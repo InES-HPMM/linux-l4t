@@ -462,6 +462,8 @@ static int loki_nct72_init(void)
 				     &loki_nct72_pdata.num_trips);
 		tegra_add_vc_trips(loki_nct72_pdata.trips,
 				     &loki_nct72_pdata.num_trips);
+		tegra_add_tpll_trips(loki_nct72_pdata.trips,
+				     &loki_nct72_pdata.num_trips);
 	}
 
 

@@ -955,6 +955,7 @@ static struct soctherm_platform_data loki_soctherm_data = {
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+			.tzp = &soctherm_tzp,
 		},
 	},
 	.throttle = {
@@ -1015,6 +1016,9 @@ int __init loki_soctherm_init(void)
 		tegra_add_vc_trips(
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_tpll_trips(
+			loki_soctherm_data.therm[THERM_PLL].trips,
+			&loki_soctherm_data.therm[THERM_PLL].num_trips);
 	}
 
 	return tegra11_soctherm_init(&loki_soctherm_data);

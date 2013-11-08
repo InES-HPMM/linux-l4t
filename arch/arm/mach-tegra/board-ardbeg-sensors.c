@@ -1440,6 +1440,8 @@ static int ardbeg_nct72_init(void)
 				     &ardbeg_nct72_pdata.num_trips);
 		tegra_add_vc_trips(ardbeg_nct72_pdata.trips,
 				     &ardbeg_nct72_pdata.num_trips);
+		tegra_add_tpll_trips(ardbeg_nct72_pdata.trips,
+				     &ardbeg_nct72_pdata.num_trips);
 	}
 
 	tegra_add_cdev_trips(ardbeg_nct72_pdata.trips,

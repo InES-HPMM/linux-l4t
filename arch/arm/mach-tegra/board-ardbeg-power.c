@@ -1381,6 +1381,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+			.tzp = &soctherm_tzp,
 		},
 	},
 	.throttle = {
@@ -1427,6 +1428,9 @@ int __init ardbeg_soctherm_init(void)
 		tegra_add_vc_trips(
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_tpll_trips(
+			ardbeg_soctherm_data.therm[THERM_PLL].trips,
+			&ardbeg_soctherm_data.therm[THERM_PLL].num_trips);
 	}
 
 	tegra_get_pmu_board_info(&pmu_board_info);

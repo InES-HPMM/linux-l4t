@@ -932,6 +932,7 @@ static struct soctherm_platform_data laguna_soctherm_data = {
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+			.tzp = &soctherm_tzp,
 		},
 	},
 	.throttle = {
@@ -966,6 +967,8 @@ int __init laguna_soctherm_init(void)
 			&laguna_soctherm_data.therm[THERM_GPU].num_trips);
 	tegra_add_vc_trips(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_tpll_trips(laguna_soctherm_data.therm[THERM_PLL].trips,
+			&laguna_soctherm_data.therm[THERM_PLL].num_trips);
 
 	return tegra11_soctherm_init(&laguna_soctherm_data);
 }
