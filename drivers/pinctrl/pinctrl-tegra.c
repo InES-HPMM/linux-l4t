@@ -1,7 +1,7 @@
 /*
  * Driver for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Derived from code:
  * Copyright (C) 2010 Google, Inc.
@@ -1240,7 +1240,7 @@ int tegra_pinctrl_set_func(const struct tegra_pingroup_config *config)
 			g->name,
 			tegra_pinctrl_function_name(g->funcs_non_dt[mux]),
 			tegra_pinctrl_function_name(func));
-	if (mux > 0) {
+	if (mux >= 0) {
 		func = g->funcs_non_dt[mux];
 		func_dt = g->funcs[mux];
 	}
