@@ -275,16 +275,12 @@ static int as3722_rtc_probe(struct platform_device *pdev)
 {
 	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
 	struct as3722_rtc *rtc = &as3722->rtc;
-	struct as3722_platform_data *pdata = as3722->dev->platform_data;
-	struct as3722_rtc_platform_data *rtc_pdata = NULL;
 
 	int alarm_irq = regmap_irq_get_virq(as3722->irq_data,
 						AS3722_IRQ_RTC_ALARM);
 	int ret = 0;
 	u32 ctrl;
 
-	if (pdata)
-		rtc_pdata = pdata->rtc_pdata;
 	/* enable the RTC if it's not already enabled */
 	as3722_reg_read(as3722, AS3722_RTC_CONTROL_REG, &ctrl);
 	if (!(ctrl &  AS3722_RTC_ON_MASK)) {
@@ -298,29 +294,6 @@ static int as3722_rtc_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
-
-	if (rtc_pdata && rtc_pdata->enable_clk32k) {
-		/* Enable CLK32OUT Pin*/
-		ret = as3722_set_bits(as3722, AS3722_RTC_CONTROL_REG,
-				AS3722_RTC_32KCLK_MASK,
-				AS3722_RTC_32KCLK_MASK);
-		if (ret < 0) {
-			dev_err(&pdev->dev,
-				"failed to enable clk32k: %d\n", ret);
-			return ret;
-		}
-	} else {
-		/* Disable CLK32OUT Pin*/
-		ret = as3722_set_bits(as3722, AS3722_RTC_CONTROL_REG,
-				AS3722_RTC_32KCLK_MASK,
-				0);
-		if (ret < 0) {
-			dev_err(&pdev->dev,
-				"failed to disable clk32k: %d\n", ret);
-			return ret;
-		}
-	}
-
 
 	/* enable alarm wakeup */
 	as3722_set_bits(as3722, AS3722_RTC_CONTROL_REG,
@@ -338,7 +311,7 @@ static int as3722_rtc_probe(struct platform_device *pdev)
 	}
 
 	ret = request_threaded_irq(alarm_irq, NULL, as3722_alarm_irq,
-			pdata->irq_type, "RTC alarm",
+			IRQF_ONESHOT | IRQF_EARLY_RESUME, "RTC alarm",
 			rtc->rtc);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Failed to request alarm IRQ %d: %d\n",
