@@ -30,7 +30,7 @@
 #include <linux/workqueue.h>
 
 #define THERMAL_TRIPS_NONE	-1
-#define THERMAL_MAX_TRIPS	32
+#define THERMAL_MAX_TRIPS	48
 #define THERMAL_NAME_LENGTH	20
 
 /* invalid cooling state */
@@ -217,7 +217,7 @@ struct thermal_bind_params {
 	 * thermal zone and cdev, for a particular trip point.
 	 * See Documentation/thermal/sysfs-api.txt for more information.
 	 */
-	int trip_mask;
+	u64 trip_mask;
 	int (*match) (struct thermal_zone_device *tz,
 			struct thermal_cooling_device *cdev);
 };
@@ -237,7 +237,7 @@ struct thermal_genl_event {
 };
 
 /* Function declarations */
-struct thermal_zone_device *thermal_zone_device_register(const char *, int, int,
+struct thermal_zone_device *thermal_zone_device_register(const char *, int, u64,
 		void *, const struct thermal_zone_device_ops *,
 		const struct thermal_zone_params *, int, int);
 void thermal_zone_device_unregister(struct thermal_zone_device *);

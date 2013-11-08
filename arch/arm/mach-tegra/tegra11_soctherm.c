@@ -1312,7 +1312,7 @@ static int __init soctherm_thermal_sys_init(void)
 		thz[i] = thermal_zone_device_register(
 					name,
 					therm->num_trips,
-					(1 << therm->num_trips) - 1,
+					(1ULL << therm->num_trips) - 1,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
 					therm->tzp,

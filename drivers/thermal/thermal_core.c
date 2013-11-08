@@ -210,13 +210,13 @@ static void print_bind_err_msg(struct thermal_zone_device *tz,
 				tz->type, cdev->type, ret);
 }
 
-static void __bind(struct thermal_zone_device *tz, int mask,
+static void __bind(struct thermal_zone_device *tz, u64 mask,
 			struct thermal_cooling_device *cdev)
 {
 	int i, ret;
 
 	for (i = 0; i < tz->trips; i++) {
-		if (mask & (1 << i)) {
+		if (mask & (1ULL << i)) {
 			ret = thermal_zone_bind_cooling_device(tz, i, cdev,
 					THERMAL_NO_LIMIT, THERMAL_NO_LIMIT);
 			if (ret)
@@ -225,13 +225,13 @@ static void __bind(struct thermal_zone_device *tz, int mask,
 	}
 }
 
-static void __unbind(struct thermal_zone_device *tz, int mask,
+static void __unbind(struct thermal_zone_device *tz, u64 mask,
 			struct thermal_cooling_device *cdev)
 {
 	int i;
 
 	for (i = 0; i < tz->trips; i++)
-		if (mask & (1 << i))
+		if (mask & (1ULL << i))
 			thermal_zone_unbind_cooling_device(tz, i, cdev);
 }
 
@@ -1623,7 +1623,7 @@ EXPORT_SYMBOL(thermal_zone_device_find_by_name);
  *
  * Return: 0 on success, the proper error value otherwise.
  */
-static int create_trip_attrs(struct thermal_zone_device *tz, int mask)
+static int create_trip_attrs(struct thermal_zone_device *tz, u64 mask)
 {
 	int indx;
 	int size = sizeof(struct thermal_attr) * tz->trips;
@@ -1671,7 +1671,7 @@ static int create_trip_attrs(struct thermal_zone_device *tz, int mask)
 						tz->trip_temp_attrs[indx].name;
 		tz->trip_temp_attrs[indx].attr.attr.mode = S_IRUGO;
 		tz->trip_temp_attrs[indx].attr.show = trip_point_temp_show;
-		if (mask & (1 << indx)) {
+		if (mask & (1ULL << indx)) {
 			tz->trip_temp_attrs[indx].attr.attr.mode |= S_IWUSR;
 			tz->trip_temp_attrs[indx].attr.store =
 							trip_point_temp_store;
@@ -1746,7 +1746,7 @@ static void remove_trip_attrs(struct thermal_zone_device *tz)
  * IS_ERR*() helpers.
  */
 struct thermal_zone_device *thermal_zone_device_register(const char *type,
-	int trips, int mask, void *devdata,
+	int trips, u64 mask, void *devdata,
 	const struct thermal_zone_device_ops *ops,
 	const struct thermal_zone_params *tzp,
 	int passive_delay, int polling_delay)

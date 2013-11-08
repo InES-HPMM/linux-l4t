@@ -743,7 +743,7 @@ static int therm_est_probe(struct platform_device *pdev)
 
 	est->thz = thermal_zone_device_register(dev_name(&pdev->dev),
 						est->num_trips,
-						(1 << est->num_trips) - 1,
+						(1ULL << est->num_trips) - 1,
 						est,
 						&therm_est_ops,
 						est->tzp,
