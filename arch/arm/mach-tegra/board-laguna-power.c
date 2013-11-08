@@ -313,6 +313,7 @@ static struct as3722_platform_data as3722_pdata = {
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
 	.gpio_cfgs     = as3722_gpio_cfgs,
 	.rtc_pdata	= &as3722_rtc_pdata,
+	.enable_clk32k_out = true,
 	.use_power_off = true,
 	.enable_ldo3_tracking = true,
 	.disabe_ldo3_tracking_suspend = true,
