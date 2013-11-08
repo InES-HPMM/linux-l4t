@@ -475,4 +475,6 @@ AS3722_LDO11,
 #define AS3722_WATCHDOG_SW_SIG_MASK            (1<<0)
 #define AS3722_WATCHDOG_SW_SIG                 (1<<0)
 
+#define AS3722_FORCE_RESET			BIT(0)
+#define AS3722_POWER_OFF			BIT(1)
 #endif
