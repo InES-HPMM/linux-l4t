@@ -109,11 +109,14 @@ static inline void __mc_raw_writel(int mc_ind, u32 val, u32 reg)
 int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);
 
 /*
- * On Tegra11 dual channel MC effectively operates as 64-bit bus
+ * Tegra11 has dual 32-bit memory channels, while
+ * Tegra12 has single 64-bit memory channel.
+ * MC effectively operates as 64-bit bus.
  */
 static inline int tegra_mc_get_effective_bytes_width(void)
 {
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	return 8;
 #else
 	return 4;
