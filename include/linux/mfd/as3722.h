@@ -22,6 +22,12 @@
 #include <linux/mfd/as3722-reg.h>
 #include <linux/mfd/as3722-plat.h>
 
+#define AS3722_RTC_REP_WAKEUP_EN			BIT(0)
+#define AS3722_RTC_ALARM_WAKEUP_EN			BIT(1)
+#define AS3722_RTC_ON					BIT(2)
+#define AS3722_RTC_IRQMODE				BIT(3)
+#define AS3722_RTC_CLK32K_OUT_EN			BIT(5)
+
 static inline int as3722_update_bits(struct as3722 *as3722, u32 reg,
                 u32 mask, u8 val)
 {

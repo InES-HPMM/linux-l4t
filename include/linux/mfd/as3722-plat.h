@@ -141,6 +141,7 @@ struct as3722_platform_data {
 
 	bool enable_ldo3_tracking;
 	bool disabe_ldo3_tracking_suspend;
+	bool enable_clk32k_out;
 };
 
 static inline int as3722_reg_read(struct as3722 *as3722, u32 reg, u32 *dest)

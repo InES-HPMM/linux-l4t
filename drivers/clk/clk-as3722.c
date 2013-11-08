@@ -28,25 +28,11 @@
 struct as3722_clks {
 	struct device *dev;
 	struct as3722 *as3722;
-	struct clk_hw hw;
-	struct clk *clk;
-	struct clk_onecell_data clk_data;
+	bool enabled_at_boot;
 };
 
-static inline struct as3722_clks *to_as3722_clks(struct clk_hw *hw)
+static int as3722_clks_prepare(struct as3722_clks *as3722_clks)
 {
-	return container_of(hw, struct as3722_clks, hw);
-}
-
-static unsigned long as3722_clks_recalc_rate(struct clk_hw *hw,
-	unsigned long parent_rate)
-{
-	return 32768;
-}
-
-static int as3722_clks_prepare(struct clk_hw *hw)
-{
-	struct as3722_clks *as3722_clks = to_as3722_clks(hw);
 	int ret;
 
 	ret = as3722_update_bits(as3722_clks->as3722, AS3722_RTC_CONTROL_REG,
@@ -58,9 +44,8 @@ static int as3722_clks_prepare(struct clk_hw *hw)
 	return ret;
 }
 
-static void as3722_clks_unprepare(struct clk_hw *hw)
+static void as3722_clks_unprepare(struct as3722_clks *as3722_clks)
 {
-	struct as3722_clks *as3722_clks = to_as3722_clks(hw);
 	int ret;
 
 	ret = as3722_update_bits(as3722_clks->as3722, AS3722_RTC_CONTROL_REG,
@@ -70,77 +55,44 @@ static void as3722_clks_unprepare(struct clk_hw *hw)
 			ret);
 }
 
-static int as3722_clks_is_prepared(struct clk_hw *hw)
-{
-	struct as3722_clks *as3722_clks = to_as3722_clks(hw);
-	int ret;
-	u32 val;
-
-	ret = as3722_read(as3722_clks->as3722, AS3722_RTC_CONTROL_REG, &val);
-	if (ret < 0) {
-		dev_err(as3722_clks->dev, "RTC_CONTROL_REG read failed, %d\n",
-			ret);
-		return ret;
-	}
-
-	return !!(val & AS3722_RTC_CLK32K_OUT_EN);
-}
-
-static struct clk_ops as3722_clks_ops = {
-	.prepare	= as3722_clks_prepare,
-	.unprepare	= as3722_clks_unprepare,
-	.is_prepared	= as3722_clks_is_prepared,
-	.recalc_rate	= as3722_clks_recalc_rate,
-};
-
-static struct clk_init_data as3722_clks_hw_init = {
-	.name = "clk32k",
-	.ops = &as3722_clks_ops,
-	.flags = CLK_IS_ROOT | CLK_IGNORE_UNUSED,
-};
-
 static int as3722_clks_probe(struct platform_device *pdev)
 {
 	struct as3722_clks *as3722_clks;
-	struct clk *clk;
+	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
+	struct device_node *np = pdev->dev.parent->of_node;
+	struct as3722_platform_data *pdata = as3722->dev->platform_data;
+	bool clk32k_enable = false;
 	int ret;
+
+	if (pdata) {
+		clk32k_enable = pdata->enable_clk32k_out;
+	} else {
+		if (np)
+			clk32k_enable = of_property_read_bool(np,
+						"ams,enable-clock32k-out");
+	}
 
 	as3722_clks = devm_kzalloc(&pdev->dev, sizeof(*as3722_clks),
 				GFP_KERNEL);
 	if (!as3722_clks)
 		return -ENOMEM;
 
-	as3722_clks->clk_data.clks = devm_kzalloc(&pdev->dev,
-			sizeof(*as3722_clks->clk_data.clks), GFP_KERNEL);
-	if (!as3722_clks->clk_data.clks)
-		return -ENOMEM;
-
 	platform_set_drvdata(pdev, as3722_clks);
 
-	as3722_clks->as3722 = dev_get_drvdata(pdev->dev.parent);
 	as3722_clks->dev = &pdev->dev;
-	as3722_clks->hw.init = &as3722_clks_hw_init;
+	as3722_clks->as3722 = as3722;
+	as3722_clks->enabled_at_boot = clk32k_enable;
 
-	clk = devm_clk_register(&pdev->dev, &as3722_clks->hw);
-	if (IS_ERR(clk)) {
-		ret = PTR_ERR(clk);
-		dev_err(&pdev->dev, "Fail to register clock %s, %d\n",
-			as3722_clks_hw_init.name, ret);
+	if (clk32k_enable) {
+		ret = as3722_clks_prepare(as3722_clks);
+		if (ret < 0)
+			dev_err(&pdev->dev,
+				"Fail to enable clk32k out %d\n", ret);
 		return ret;
+	} else {
+		as3722_clks_unprepare(as3722_clks);
 	}
-	as3722_clks->clk = clk;
-	as3722_clks->clk_data.clks[0] = clk;
-	as3722_clks->clk_data.clk_num = 1;
-	ret = of_clk_add_provider(pdev->dev.parent->of_node,
-			of_clk_src_simple_get, &as3722_clks->clk_data);
-	if (ret < 0)
-		dev_err(&pdev->dev, "Fail to add clock driver, %d\n", ret);
-	return ret;
-}
 
-static int as3722_clks_remove(struct platform_device *pdev)
-{
-	of_clk_del_provider(pdev->dev.parent->of_node);
 	return 0;
 }
 
@@ -150,10 +102,19 @@ static struct platform_driver as3722_clks_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = as3722_clks_probe,
-	.remove = as3722_clks_remove,
 };
 
-module_platform_driver(as3722_clks_driver);
+static int __init as3722_clk_init(void)
+{
+	return platform_driver_register(&as3722_clks_driver);
+}
+subsys_initcall(as3722_clk_init);
+
+static void __exit as3722_clk_exit(void)
+{
+	platform_driver_unregister(&as3722_clks_driver);
+}
+module_exit(as3722_clk_exit);
 
 MODULE_DESCRIPTION("Clock driver for ams AS3722 PMIC Device");
 MODULE_ALIAS("platform:as3722-clk");
