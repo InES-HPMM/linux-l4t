@@ -29,6 +29,7 @@ static unsigned int mt9m114_states[] = { 0, 150 };
 static unsigned int sdhci_states[] = { 0, 966 };
 static unsigned int speaker_states[] = { 0, 1080 };
 static unsigned int wifi_states[] = { 0, 1020 };
+static unsigned int modem_states[] = { 0, 4100 };
 static unsigned int pwm_backlight_states[] = {
 	0, 125, 250, 375, 500, 625, 750, 875, 1000, 1125, 1250
 };
@@ -50,6 +51,7 @@ static struct sysedp_consumer_data tn8_sysedp_consumer_data[] = {
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.2", sdhci_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.3", sdhci_states),
 	SYSEDP_CONSUMER_DATA("as364x", as364x_states),
+	SYSEDP_CONSUMER_DATA("modem", modem_states),
 };
 
 static struct sysedp_platform_data tn8_sysedp_platform_data = {

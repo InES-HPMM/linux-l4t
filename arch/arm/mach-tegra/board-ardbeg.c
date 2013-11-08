@@ -757,6 +757,7 @@ static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.short_autosuspend_delay = 50,
 	.tegra_ehci_device = &tegra_ehci2_device,
 	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
+	.sysedpc_name = "modem",
 };
 
 static struct platform_device icera_bruce_device = {
