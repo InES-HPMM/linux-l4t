@@ -79,10 +79,6 @@ struct as3722_gpio_config {
 	int output_state;
 };
 
-struct as3722_rtc_platform_data {
-	bool enable_clk32k;
-};
-
 struct as3722_pinctrl_init_data {
 	int pin_id;
 	int usage;
@@ -134,7 +130,6 @@ struct as3722_platform_data {
 	bool use_power_off;
 	bool use_power_reset;
 	struct as3722_gpio_config *gpio_cfgs;
-	struct as3722_rtc_platform_data *rtc_pdata;
 	struct as3722_pinctrl_init_data *pinctrl_pdata;
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
 	int pinctrl_init_data_size;
