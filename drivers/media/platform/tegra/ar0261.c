@@ -590,7 +590,6 @@ static struct ar0261_reg mode_1920x1080_HDR[] = {
 	{0x301A, 0x021C},
 	{0x0342, 0x10CC},
 	{0x0340, 0x04A4},
-	{0x0202, 0x0496},
 	{0x0312, 0x045D},
 	{0x0202, 0x1952},
 	{0x3088, 0x0244},
@@ -642,28 +641,22 @@ msleep_range(unsigned int delay_base)
 static inline void
 ar0261_get_frame_length_regs(struct ar0261_reg *regs, u32 frame_length)
 {
-	regs->addr = AR0261_FRAME_LEN_LINES_15_8;
-	regs->val = (frame_length >> 8) & 0xff;
-	(regs + 1)->addr = AR0261_FRAME_LEN_LINES_7_0;
-	(regs + 1)->val = (frame_length) & 0xff;
+	regs->addr = AR0261_FRAME_LEN_LINES;
+	regs->val = frame_length;
 }
 
 static inline void
 ar0261_get_coarse_time_regs(struct ar0261_reg *regs, u32 coarse_time)
 {
-	regs->addr = AR0261_COARSE_INTEGRATION_TIME_15_8;
-	regs->val = (coarse_time >> 8) & 0xff;
-	(regs + 1)->addr = AR0261_COARSE_INTEGRATION_TIME_7_0;
-	(regs + 1)->val = (coarse_time) & 0xff;
+	regs->addr = AR0261_COARSE_INTEGRATION_TIME;
+	regs->val = coarse_time;
 }
 
 static inline void
 ar0261_get_coarse_time_short_regs(struct ar0261_reg *regs, u32 coarse_time)
 {
-	regs->addr = AR0261_COARSE_INTEGRATION_SHORT_TIME_15_8;
-	regs->val = (coarse_time >> 8) & 0xff;
-	(regs + 1)->addr = AR0261_COARSE_INTEGRATION_SHORT_TIME_7_0;
-	(regs + 1)->val = (coarse_time) & 0xff;
+	regs->addr = AR0261_COARSE_INTEGRATION_SHORT_TIME;
+	regs->val = coarse_time;
 }
 
 static inline void
@@ -879,12 +872,12 @@ ar0261_set_mode(struct ar0261_info *info, struct ar0261_mode *mode)
 	 * coarse integration time, and gain.
 	 */
 	ar0261_get_frame_length_regs(reg_list, mode->frame_length);
-	ar0261_get_coarse_time_regs(reg_list + 2, mode->coarse_time);
-	ar0261_get_gain_reg(reg_list + 4, mode->gain);
+	ar0261_get_coarse_time_regs(reg_list + 1, mode->coarse_time);
+	ar0261_get_gain_reg(reg_list + 2, mode->gain);
 	/* if HDR is enabled */
 	if (mode->hdr_en == 1) {
 		ar0261_get_coarse_time_short_regs(
-			reg_list + 5, mode->coarse_time_short);
+			reg_list + 3, mode->coarse_time_short);
 	}
 
 	err = ar0261_write_table(info, mode_table[sensor_mode],
@@ -911,11 +904,10 @@ ar0261_set_frame_length(struct ar0261_info *info,
 				u32 frame_length,
 				bool group_hold)
 {
-	struct ar0261_reg reg_list[2];
-	int i = 0;
+	struct ar0261_reg reg_list;
 	int ret;
 
-	ar0261_get_frame_length_regs(reg_list, frame_length);
+	ar0261_get_frame_length_regs(&reg_list, frame_length);
 
 	if (group_hold) {
 		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x01);
@@ -923,11 +915,9 @@ ar0261_set_frame_length(struct ar0261_info *info,
 			return ret;
 	}
 
-	for (i = 0; i < NUM_OF_FRAME_LEN_REG; i++) {
-		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
-		if (ret)
-			return ret;
-	}
+	ret = ar0261_write_reg(info, reg_list.addr, reg_list.val);
+	if (ret)
+		return ret;
 
 	if (group_hold) {
 		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
@@ -944,11 +934,9 @@ ar0261_set_coarse_time(struct ar0261_info *info,
 				bool group_hold)
 {
 	int ret;
+	struct ar0261_reg reg_list;
 
-	struct ar0261_reg reg_list[2];
-	int i = 0;
-
-	ar0261_get_coarse_time_regs(reg_list, coarse_time);
+	ar0261_get_coarse_time_regs(&reg_list, coarse_time);
 
 	if (group_hold) {
 		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x01);
@@ -956,11 +944,9 @@ ar0261_set_coarse_time(struct ar0261_info *info,
 			return ret;
 	}
 
-	for (i = 0; i < NUM_OF_COARSE_TIME_REG; i++) {
-		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
-		if (ret)
-			return ret;
-	}
+	ret = ar0261_write_reg(info, reg_list.addr, reg_list.val);
+	if (ret)
+		return ret;
 
 	if (group_hold) {
 		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
@@ -975,13 +961,13 @@ ar0261_set_hdr_coarse_time(struct ar0261_info *info,
 				struct ar0261_hdr *values,
 				bool group_hold)
 {
-	struct ar0261_reg reg_list[2];
-	struct ar0261_reg reg_list_short[2];
-	int ret, i = 0;
+	struct ar0261_reg reg_list;
+	struct ar0261_reg reg_list_short;
+	int ret;
 
 	/* get long and short coarse time registers */
-	ar0261_get_coarse_time_regs(reg_list, values->coarse_time_long);
-	ar0261_get_coarse_time_short_regs(reg_list_short,
+	ar0261_get_coarse_time_regs(&reg_list, values->coarse_time_long);
+	ar0261_get_coarse_time_short_regs(&reg_list_short,
 			values->coarse_time_short);
 	/* set group hold */
 
@@ -990,19 +976,16 @@ ar0261_set_hdr_coarse_time(struct ar0261_info *info,
 		if (ret)
 			return ret;
 	}
+
 	/* writing long exposure */
-	for (i = 0; i < 2; i++) {
-		ret = ar0261_i2c_wr8(info, reg_list[i].addr, reg_list[i].val);
-		if (ret)
-			return ret;
-	}
+	ret = ar0261_write_reg(info, reg_list.addr, reg_list.val);
+	if (ret)
+		return ret;
 	/* writing short exposure */
-	for (i = 0; i < 2; i++) {
-		ret = ar0261_i2c_wr8(info, reg_list_short[i].addr,
-			 reg_list_short[i].val);
-		if (ret)
-			return ret;
-	}
+	ret = ar0261_write_reg(info, reg_list_short.addr,
+		 reg_list_short.val);
+	if (ret)
+		return ret;
 
 	if (group_hold) {
 		ret = ar0261_i2c_wr8(info, AR0261_GROUP_PARAM_HOLD, 0x0);
