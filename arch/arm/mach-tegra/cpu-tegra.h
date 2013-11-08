@@ -74,5 +74,11 @@ static inline int tegra_update_cpu_edp_limits(void)
 static inline int tegra_cpu_reg_mode_force_normal(bool force)
 { return 0; }
 #endif
+#ifdef CONFIG_TEGRA_CPU_VOLT_CAP
+struct tegra_cooling_device *tegra_vc_get_cdev(void);
+#else
+static inline struct tegra_cooling_device *tegra_vc_get_cdev(void)
+{ return NULL; }
+#endif
 
 #endif /* __MACH_TEGRA_CPU_TEGRA_H */

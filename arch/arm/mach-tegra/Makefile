@@ -22,6 +22,7 @@ endif
 
 obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
 
+obj-$(CONFIG_TEGRA_CPU_VOLT_CAP)	+= tegra_volt_cap.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
 obj-y                                   += pm-t2.o

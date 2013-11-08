@@ -30,6 +30,7 @@
 #include "devices.h"
 #include "clock.h"
 #include "dvfs.h"
+#include "cpu-tegra.h"
 
 extern unsigned long  debug_uart_port_base;
 extern struct clk *debug_uart_clk;
@@ -183,4 +184,9 @@ void tegra_add_tj_trips(struct thermal_trip_info *trips, int *num_trips)
 void tegra_add_tgpu_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_gpu_vts_cdev());
+}
+
+void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips)
+{
+	tegra_add_trip_points(trips, num_trips, tegra_vc_get_cdev());
 }
