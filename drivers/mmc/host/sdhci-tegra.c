@@ -221,6 +221,7 @@ struct sdhci_tegra_soc_data {
 	u32 nvquirks;
 	const char *parent_clk_list[2];
 	unsigned int tuning_freq_list[TUNING_FREQ_COUNT];
+	unsigned int tuning_min_volt_list[TUNING_FREQ_COUNT];
 };
 
 
@@ -1728,6 +1729,9 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tegra_tuning_data *tuning_data;
+	unsigned int vdd_core;
+	int delta_vdd;
+	unsigned int voltage = 0;
 
 	SDHCI_TEGRA_DBG("%s: calculating best tap for freq band %d\n",
 		mmc_hostname(sdhci->mmc), freq_band);
@@ -1737,6 +1741,36 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 		"same as");
 
 	tuning_data = sdhci_tegra_get_tuning_data(sdhci, sdhci->max_clk);
+
+	if (tuning_data->tap_data[0] && tuning_data->tap_data[1] &&
+			NVQUIRK_HIGH_FREQ_TAP_PROCEDURE) {
+		voltage = tuning_data->tap_data[0]->voltage -
+			tuning_data->tap_data[1]->voltage;
+
+		if (voltage > 0 && (freq_band == TUNING_LOW_FREQ ||
+				freq_band == TUNING_HIGH_FREQ)) {
+			vdd_core =
+			tegra_host->soc_data->tuning_min_volt_list[freq_band];
+			delta_vdd = vdd_core -
+				tuning_data->tap_data[1]->voltage;
+			tuning_data->tap_data[1]->partial_win =
+				((tuning_data->tap_data[0]->partial_win -
+				  tuning_data->tap_data[1]->partial_win) *
+				  delta_vdd) / voltage +
+				tuning_data->tap_data[1]->partial_win;
+			tuning_data->tap_data[1]->full_win_begin =
+				((tuning_data->tap_data[0]->full_win_begin -
+				  tuning_data->tap_data[1]->full_win_begin) *
+				 delta_vdd) / voltage +
+				tuning_data->tap_data[1]->full_win_begin;
+			tuning_data->tap_data[1]->full_win_end =
+				((tuning_data->tap_data[0]->full_win_end -
+				  tuning_data->tap_data[1]->full_win_end) *
+				 delta_vdd) / voltage +
+				tuning_data->tap_data[1]->full_win_end;
+		}
+	}
+
 	if (freq_band == TUNING_LOW_FREQ) {
 		if (tegra_host->soc_data->nvquirks &
 			NVQUIRK_HIGH_FREQ_TAP_PROCEDURE)
@@ -2911,7 +2945,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
 	.parent_clk_list = {"pll_p", "pll_c"},
-	.tuning_freq_list = {81600000, 0, 200000000},
+	.tuning_freq_list = {81600000, 136000000, 200000000},
+	.tuning_min_volt_list = {950, 1000, 0},
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
