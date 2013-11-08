@@ -32,6 +32,7 @@
 #include <linux/pm_qos.h>
 #include <linux/regulator/consumer.h>
 #include <linux/edp.h>
+#include <linux/sysedp.h>
 #include <mach/gpio-tegra.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 
@@ -87,6 +88,9 @@ struct tegra_usb_modem {
 	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
 	struct work_struct edp_work;
 	struct mutex edp_lock;
+	struct sysedp_consumer *sysedpc;
+	unsigned int sysedpc_state_updated;
+	struct work_struct sysedp_work;
 };
 
 
@@ -186,6 +190,19 @@ done:
 	mutex_unlock(&modem->edp_lock);
 }
 
+static void sysedp_work(struct work_struct *ws)
+{
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     sysedp_work);
+
+	mutex_lock(&modem->lock);
+
+	sysedp_set_state(modem->sysedpc, 1);
+	modem->sysedpc_state_updated = 1;
+
+	mutex_unlock(&modem->lock);
+}
+
 static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 {
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
@@ -239,6 +256,9 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 
 	if (modem->edp_initialized && !v)
 		queue_work(modem->wq, &modem->edp_work);
+
+	if (modem->sysedpc && !modem->sysedpc_state_updated)
+		queue_work(modem->wq, &modem->sysedp_work);
 
 	/* USB disconnect maybe on going... */
 	mutex_lock(&modem->lock);
@@ -821,6 +841,11 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		modem->edp_initialized = 1;
 	}
 
+	modem->sysedpc = sysedp_create_consumer(modem->pdata->sysedpc_name,
+						modem->pdata->sysedpc_name);
+	if (modem->sysedpc)
+		INIT_WORK(&modem->sysedp_work, sysedp_work);
+
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
 
@@ -914,6 +939,11 @@ error:
 	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
 
+	if (modem->sysedpc) {
+		cancel_work_sync(&modem->sysedp_work);
+		sysedp_free_consumer(modem->sysedpc);
+	}
+
 	if (modem->edp_initialized) {
 		edp_attrs = edp_attributes;
 		while ((attr = *edp_attrs++))
@@ -975,6 +1005,11 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
+
+	if (modem->sysedpc) {
+		cancel_work_sync(&modem->sysedp_work);
+		sysedp_free_consumer(modem->sysedpc);
+	}
 
 	if (modem->edp_initialized) {
 		cancel_work_sync(&modem->edp_work);

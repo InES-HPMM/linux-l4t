@@ -56,6 +56,7 @@ struct tegra_usb_modem_power_platform_data {
 	unsigned int i_breach_ppm;
 	unsigned int i_thresh_3g_adjperiod;
 	unsigned int i_thresh_lte_adjperiod;
+	char *sysedpc_name;		/* sysedp consumer name */
 };
 
 #endif /* __MACH_TEGRA_USB_MODEM_POWER_H */
