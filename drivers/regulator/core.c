@@ -1492,12 +1492,10 @@ static struct regulator *_regulator_get(struct device *dev, const char *id,
 
 	/*
 	 * If we have return value from dev_lookup fail, we do not expect to
-	 * succeed, so, quit with appropriate error value
+	 * succeed, so, set the regulator with appropriate error pointer.
 	 */
-	if (ret) {
+	if (ret)
 		regulator = ERR_PTR(ret);
-		goto out;
-	}
 
 	if (board_wants_dummy_regulator) {
 		rdev = dummy_regulator_rdev;
