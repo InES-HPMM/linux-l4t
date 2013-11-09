@@ -751,6 +751,7 @@ int __init loki_regulator_init(void)
 	}
 	/* Set vdd_gpu init uV to 1V */
 	reg_idata_smps123.constraints.init_uV = 1000000;
+	reg_idata_smps9.constraints.enable_time = 250;
 
 	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(4, palma_device,
