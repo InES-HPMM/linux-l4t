@@ -800,6 +800,11 @@ int __init loki_edp_init(void)
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
 
+	/* gpu maximum current */
+	regulator_mA = 12000;
+	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
+
+	tegra_init_gpu_edp_limits(regulator_mA);
 	return 0;
 }
 
@@ -934,6 +939,10 @@ int __init loki_soctherm_init(void)
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
+		tegra_platform_gpu_edp_init(
+			loki_soctherm_data.therm[THERM_GPU].trips,
+			&loki_soctherm_data.therm[THERM_GPU].num_trips,
+			8000);
 		tegra_add_tj_trips(
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips);

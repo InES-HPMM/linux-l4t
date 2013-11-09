@@ -1250,6 +1250,11 @@ int __init ardbeg_edp_init(void)
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
 
+	/* gpu maximum current */
+	regulator_mA = 12000;
+	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
+
+	tegra_init_gpu_edp_limits(regulator_mA);
 	return 0;
 }
 
@@ -1396,6 +1401,10 @@ int __init ardbeg_soctherm_init(void)
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
+		tegra_platform_gpu_edp_init(
+			ardbeg_soctherm_data.therm[THERM_GPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_GPU].num_trips,
+			8000);
 		tegra_add_tj_trips(
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);

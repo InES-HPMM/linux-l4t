@@ -816,7 +816,6 @@ int __init laguna_suspend_init(void)
 
 int __init laguna_edp_init(void)
 {
-#ifdef CONFIG_TEGRA_EDP_LIMITS
 	unsigned int regulator_mA;
 
 	regulator_mA = get_maximum_cpu_current_supported();
@@ -826,7 +825,12 @@ int __init laguna_edp_init(void)
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 
 	tegra_init_cpu_edp_limits(regulator_mA);
-#endif
+
+	/* gpu maximum current */
+	regulator_mA = 8000;
+	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
+
+	tegra_init_gpu_edp_limits(regulator_mA);
 	return 0;
 }
 
@@ -943,6 +947,10 @@ int __init laguna_soctherm_init(void)
 	tegra_platform_edp_init(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips,
 			7000); /* edp temperature margin */
+	tegra_platform_gpu_edp_init(
+			laguna_soctherm_data.therm[THERM_GPU].trips,
+			&laguna_soctherm_data.therm[THERM_GPU].num_trips,
+			7000);
 	tegra_add_tj_trips(laguna_soctherm_data.therm[THERM_CPU].trips,
 			&laguna_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_tgpu_trips(laguna_soctherm_data.therm[THERM_GPU].trips,
