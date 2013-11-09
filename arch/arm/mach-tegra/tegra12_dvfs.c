@@ -72,8 +72,8 @@ static struct tegra_cooling_device gpu_vts_cdev = {
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1400,
-	.min_millivolts = 800,
+	.max_millivolts = 1300,
+	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
@@ -143,7 +143,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune1		= 0x00000060,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 800,
+			.min_millivolts = 750,
 		},
 		.max_mv = 1260,
 		.freqs_mult = KHZ,
@@ -151,11 +151,11 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{204000,        {1112619, -29295, 402}, {720000, 0, 0}},
-			{306000,	{1150460, -30585, 402}, {740000, 0, 0}},
-			{408000,	{1190122, -31865, 402}, {750000, 0, 0}},
-			{510000,	{1231606, -33155, 402}, {760000, 0, 0}},
-			{612000,	{1274912, -34435, 402}, {780000, 0, 0}},
+			{204000,        {1112619, -29295, 402}, {800000, 0, 0}},
+			{306000,	{1150460, -30585, 402}, {800000, 0, 0}},
+			{408000,	{1190122, -31865, 402}, {800000, 0, 0}},
+			{510000,	{1231606, -33155, 402}, {800000, 0, 0}},
+			{612000,	{1274912, -34435, 402}, {800000, 0, 0}},
 			{714000,	{1320040, -35725, 402}, {800000, 0, 0}},
 			{816000,	{1366990, -37005, 402}, {820000, 0, 0}},
 			{918000,	{1415762, -38295, 402}, {840000, 0, 0}},
@@ -177,8 +177,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2524500,	{2437299, -58535, 402}, {1400000, 0, 0}},
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
-		.vmin_trips_table = { 20, },
-		.therm_floors_table = { 900, },
+		.vmin_trips_table = { 20, 35, 55, 75, },
+		.therm_floors_table = { 900, 800, 790, 770, },
 	},
 };
 
