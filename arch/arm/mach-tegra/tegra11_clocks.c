@@ -4897,7 +4897,10 @@ static long tegra11_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 			c->dvfs->freqs[n-2] + CBUS_FINE_GRANULARITY_RANGE);
 		threshold -= CBUS_FINE_GRANULARITY_RANGE;
 
-		if (rate <= threshold)
+		if (rate == threshold)
+			return threshold;
+
+		if (rate < threshold)
 			return up ? threshold : c->dvfs->freqs[n-2];
 
 		rate = (up ? DIV_ROUND_UP(rate, CBUS_FINE_GRANULARITY) :
