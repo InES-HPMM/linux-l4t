@@ -300,10 +300,8 @@ static int as3722_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
 		return mode;
 	}
 
-	if (as_pci->gpio_control[offset].enable_gpio_invert)
-		mode |= AS3722_GPIO_INV;
-
-	return as3722_write(as3722, AS3722_GPIOn_CONTROL_REG(offset), mode);
+	return as3722_update_bits(as3722, AS3722_GPIOn_CONTROL_REG(offset),
+				AS3722_GPIO_MODE_MASK, mode);
 }
 
 static const struct pinmux_ops as3722_pinmux_ops = {
@@ -368,32 +366,32 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 	int mode_prop = as_pci->gpio_control[pin].mode_prop;
 
 	switch (param) {
-		case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
-			break;
+	case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
+		break;
 
-		case PIN_CONFIG_BIAS_DISABLE:
-			mode_prop &= ~(AS3722_GPIO_MODE_PULL_UP |
-					AS3722_GPIO_MODE_PULL_DOWN);
-			break;
-		case PIN_CONFIG_BIAS_PULL_UP:
-			mode_prop |= AS3722_GPIO_MODE_PULL_UP;
-			break;
+	case PIN_CONFIG_BIAS_DISABLE:
+		mode_prop &= ~(AS3722_GPIO_MODE_PULL_UP |
+				AS3722_GPIO_MODE_PULL_DOWN);
+		break;
+	case PIN_CONFIG_BIAS_PULL_UP:
+		mode_prop |= AS3722_GPIO_MODE_PULL_UP;
+		break;
 
-		case PIN_CONFIG_BIAS_PULL_DOWN:
-			mode_prop |= AS3722_GPIO_MODE_PULL_DOWN;
-			break;
+	case PIN_CONFIG_BIAS_PULL_DOWN:
+		mode_prop |= AS3722_GPIO_MODE_PULL_DOWN;
+		break;
 
-		case PIN_CONFIG_BIAS_HIGH_IMPEDANCE:
-			mode_prop |= AS3722_GPIO_MODE_HIGH_IMPED;
-			break;
+	case PIN_CONFIG_BIAS_HIGH_IMPEDANCE:
+		mode_prop |= AS3722_GPIO_MODE_HIGH_IMPED;
+		break;
 
-		case PIN_CONFIG_DRIVE_OPEN_DRAIN:
-			mode_prop |= AS3722_GPIO_MODE_OPEN_DRAIN;
-			break;
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		mode_prop |= AS3722_GPIO_MODE_OPEN_DRAIN;
+		break;
 
-		default:
-			dev_err(as_pci->dev, "Properties not supported\n");
-			return -ENOTSUPP;
+	default:
+		dev_err(as_pci->dev, "Properties not supported\n");
+		return -ENOTSUPP;
 	}
 
 	as_pci->gpio_control[pin].mode_prop = mode_prop;
@@ -529,11 +527,159 @@ static const struct gpio_chip as3722_gpio_chip = {
 	.base			= -1,
 };
 
+static int as3722_pinctrl_set_single_pin_config(
+	struct as3722_pctrl_info *as_pci,
+	struct as3722_pinctrl_platform_data *as_pdata)
+{
+	int pin_id;
+	int group_nr;
+	int param_val;
+	int param;
+	int ret = 0;
+	int mux_opt;
+	int i;
+	unsigned long config;
+
+	if (!as_pdata->pin) {
+		dev_err(as_pci->dev, "No pin name\n");
+		return -EINVAL;
+	}
+
+	pin_id = pin_get_from_name(as_pci->pctl, as_pdata->pin);
+	if (pin_id < 0) {
+		dev_err(as_pci->dev, " Pin %s not found\n", as_pdata->pin);
+		return ret;
+	}
+
+	/* Configure bias pull */
+	if (!as_pdata->prop_bias_pull)
+		goto skip_bias_pull;
+
+	if (!strcmp(as_pdata->prop_bias_pull, "pull-up"))
+		param = PIN_CONFIG_BIAS_PULL_UP;
+	else if (!strcmp(as_pdata->prop_bias_pull, "pull-down"))
+		param = PIN_CONFIG_BIAS_PULL_DOWN;
+	else if (!strcmp(as_pdata->prop_bias_pull, "normal"))
+		param = PIN_CONFIG_BIAS_DISABLE;
+	else {
+		dev_err(as_pci->dev, "Unknown bias-pull setting %s\n",
+			as_pdata->prop_bias_pull);
+		goto skip_bias_pull;
+	}
+	config = pinconf_to_config_packed(param, 0);
+	ret = as3722_pinconf_set(as_pci->pctl, pin_id, config);
+	if (ret < 0) {
+		dev_err(as_pci->dev, "bias-pull setting failed: %d\n", ret);
+		return ret;
+	}
+
+skip_bias_pull:
+	/* Configure open drain */
+	if (!as_pdata->prop_open_drain)
+		goto skip_open_drain;
+
+	param = PIN_CONFIG_DRIVE_OPEN_DRAIN;
+	if (!strcmp(as_pdata->prop_bias_pull, "enable"))
+		param_val = 1;
+	else
+		param_val = 0;
+	config = pinconf_to_config_packed(param, param_val);
+	ret = as3722_pinconf_set(as_pci->pctl, pin_id, config);
+	if (ret < 0) {
+		dev_err(as_pci->dev, "Opendrain setting failed: %d\n", ret);
+		return ret;
+	}
+
+skip_open_drain:
+	/* Configure high impedance */
+	if (!as_pdata->prop_high_impedance)
+		goto skip_high_impedance;
+
+	param = PIN_CONFIG_BIAS_HIGH_IMPEDANCE;
+	if (!strcmp(as_pdata->prop_high_impedance, "enable"))
+		param_val = 1;
+	else
+		param_val = 0;
+	config = pinconf_to_config_packed(param, param_val);
+	ret = as3722_pinconf_set(as_pci->pctl, pin_id, config);
+	if (ret < 0) {
+		dev_err(as_pci->dev, "hi-impedance setting failed: %d\n", ret);
+		return ret;
+	}
+
+skip_high_impedance:
+	/* Configure function */
+	if (!as_pdata->function)
+		goto skip_function;
+
+	for (group_nr = 0; group_nr < as_pci->num_pin_groups; ++group_nr) {
+		if (as_pci->pin_groups[group_nr].pins[0] == pin_id)
+			break;
+	}
+
+	if (group_nr == as_pci->num_pin_groups) {
+		dev_err(as_pci->dev,
+			"Pinconf is not supported for pin-id %d\n", pin_id);
+		return -ENOTSUPP;
+	}
+
+	mux_opt = -1;
+	for (i = 0; i < as_pci->num_functions; ++i) {
+		if (!strcmp(as_pdata->function, as_pci->functions[i].name)) {
+			mux_opt = i;
+			break;
+		}
+	}
+	if (mux_opt < 0) {
+		dev_err(as_pci->dev, "Pinmux function %s not supported\n",
+			as_pdata->function);
+		return -EINVAL;
+	}
+
+
+	if (!strcmp(as_pdata->function, "gpio") && as_pdata->prop_gpio_mode) {
+		bool gpio_input = false;
+		int gpio_val = 0;
+
+		if (!strcmp(as_pdata->prop_gpio_mode, "input"))
+			gpio_input = true;
+		else if (!strcmp(as_pdata->prop_gpio_mode, "output-low"))
+			gpio_val = 0;
+		else if (!strcmp(as_pdata->prop_gpio_mode, "output-high"))
+			gpio_val = 1;
+		else {
+			dev_err(as_pci->dev, "Invalid gpio mode %s\n",
+				as_pdata->prop_gpio_mode);
+			goto skip_gpio_config;
+		}
+		if (gpio_input)
+			as3722_gpio_direction_input(&as_pci->gpio_chip, pin_id);
+		else
+			as3722_gpio_direction_output(&as_pci->gpio_chip, pin_id,
+					gpio_val);
+	}
+
+skip_gpio_config:
+	ret = as3722_pinctrl_enable(as_pci->pctl, mux_opt, group_nr);
+	if (ret < 0) {
+		dev_err(as_pci->dev,
+			"Pinconf config for pin %s failed %d\n",
+			as_pdata->pin, ret);
+		return ret;
+	}
+
+skip_function:
+	return ret;
+}
+
 static int as3722_pinctrl_probe(struct platform_device *pdev)
 {
 	struct as3722_pctrl_info *as_pci;
+	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
+	struct as3722_platform_data *pdata = as3722->dev->platform_data;
 	int ret;
 	int tret;
+	int i;
 
 	as_pci = devm_kzalloc(&pdev->dev, sizeof(*as_pci), GFP_KERNEL);
 	if (!as_pci)
@@ -541,8 +687,18 @@ static int as3722_pinctrl_probe(struct platform_device *pdev)
 
 	as_pci->dev = &pdev->dev;
 	as_pci->dev->of_node = pdev->dev.parent->of_node;
-	as_pci->as3722 = dev_get_drvdata(pdev->dev.parent);
+	as_pci->as3722 = as3722;
 	platform_set_drvdata(pdev, as_pci);
+
+	for (i = 0; i < ARRAY_SIZE(as3722_pingroups); ++i) {
+		int gpio_cntr_reg = AS3722_GPIOn_CONTROL_REG(i);
+		u32 val;
+
+		ret = as3722_read(as3722, gpio_cntr_reg, &val);
+		if (!ret)
+			as_pci->gpio_control[i].enable_gpio_invert =
+					!!(val & AS3722_GPIO_INV);
+	}
 
 	as_pci->pins = as3722_pins_desc;
 	as_pci->num_pins = ARRAY_SIZE(as3722_pins_desc);
@@ -561,6 +717,8 @@ static int as3722_pinctrl_probe(struct platform_device *pdev)
 	}
 
 	as_pci->gpio_chip = as3722_gpio_chip;
+	if (pdata && pdata->gpio_base)
+		as_pci->gpio_chip.base = pdata->gpio_base;
 	as_pci->gpio_chip.dev = &pdev->dev;
 	as_pci->gpio_chip.of_node = pdev->dev.parent->of_node;
 	ret = gpiochip_add(&as_pci->gpio_chip);
@@ -574,6 +732,20 @@ static int as3722_pinctrl_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Couldn't add pin range, %d\n", ret);
 		goto fail_range_add;
+	}
+
+	if (pdata) {
+		struct as3722_pinctrl_platform_data *as_pdata;
+
+		for (i = 0; i < pdata->num_pinctrl; ++i) {
+			as_pdata = &pdata->pinctrl_pdata[i];
+			ret = as3722_pinctrl_set_single_pin_config(as_pci,
+					as_pdata);
+			if (ret < 0)
+				dev_warn(&pdev->dev,
+					"Pin config of pin %s failed %d\n",
+					as_pdata->pin, ret);
+		}
 	}
 
 	return 0;

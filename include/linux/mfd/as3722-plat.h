@@ -73,10 +73,23 @@ struct as3722_gpio_config {
 	int output_state;
 };
 
-struct as3722_pinctrl_init_data {
-	int pin_id;
-	int usage;
-	int mode;
+/*
+ * struct as3722_pinctrl_platform_data: Pincontrol platform data.
+ * @pin: name of pin.
+ * @function: Function option of pin. NULL for default.
+ * @prop_bias_pull: Pull up, pull down and normal option. NULL for default.
+ * @prop_open_drain: Open drain enable/disable. NULL for default.
+ * @prop_high_impedance: High impedance enable/disable. NULL for default.
+ * @prop_gpio_mode: GPIO mode, if pin function is in gpio, gpio mode
+ *			like input, output-high and output-low.
+ */
+struct as3722_pinctrl_platform_data {
+	const char *pin;
+	const char *function;
+	const char *prop_bias_pull;
+	const char *prop_open_drain;
+	const char *prop_high_impedance;
+	const char *prop_gpio_mode;
 };
 
 /*
@@ -124,9 +137,9 @@ struct as3722_platform_data {
 	bool use_power_off;
 	bool use_power_reset;
 	struct as3722_gpio_config *gpio_cfgs;
-	struct as3722_pinctrl_init_data *pinctrl_pdata;
+	struct as3722_pinctrl_platform_data *pinctrl_pdata;
+	int num_pinctrl;
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
-	int pinctrl_init_data_size;
 
 	bool enable_ldo3_tracking;
 	bool disabe_ldo3_tracking_suspend;
