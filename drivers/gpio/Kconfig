@@ -325,15 +325,6 @@ config GPIO_ARIZONA
 	help
 	  Support for GPIOs on Wolfson Arizona class devices.
 
-config GPIO_AS3722
-	tristate "ams AS3722 GPIO support"
-	depends on MFD_AS3722
-	help
-	  This option enables support for on-chip GPIOs found on
-	  AS3722 PMIC from ams.
-	  To compile this driver as a module, choose M here: the module will
-	  be called as3722-gpio.
-
 config GPIO_MAX7300
 	tristate "Maxim MAX7300 GPIO expander"
 	depends on I2C
