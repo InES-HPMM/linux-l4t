@@ -197,81 +197,6 @@ AMS_PDATA_INIT(ldo9, NULL, 3300000, 3300000, 0, 1, 1, 0);
 AMS_PDATA_INIT(ldo10, NULL, 2700000, 2700000, 0, 0, 1, 0);
 AMS_PDATA_INIT(ldo11, NULL, 1800000, 1800000, 0, 0, 1, 0);
 
-/* config settings are OTP plus initial state
- * GPIOsignal_out at 20h not configurable through OTP and is initialized to
- * zero. To enable output, the invert bit must be turned on.
- * GPIOxcontrol register format
- * bit(s)  bitname
- * ---------------------
- *  7     gpiox_invert   invert input or output
- * 6:3    gpiox_iosf     0: normal
- * 2:0    gpiox_mode     0: input, 1: output push/pull, 3: ADC input (tristate)
- *
- * Examples:
- * otp  meaning
- * ------------
- * 0x3  gpiox_invert=0(no invert), gpiox_iosf=0(normal), gpiox_mode=3(ADC input)
- * 0x81 gpiox_invert=1(invert), gpiox_iosf=0(normal), gpiox_mode=1(output)
- *
- * Note: output state should be defined for gpiox_mode = output.  Do not change
- * the state of the invert bit for critical devices such as GPIO 7 which enables
- * SDRAM. Driver applies invert mask to output state to configure GPIOsignal_out
- * register correctly.
- * E.g. Invert = 1, (requested) output state = 1 => GPIOsignal_out = 0
- */
-static struct as3722_gpio_config as3722_gpio_cfgs[] = {
-	{
-		/* otp = 0x3 IGPU_PRDGD*/
-		.gpio = AS3722_GPIO0,
-		.mode = AS3722_GPIO_MODE_OUTPUT_VDDL,
-	},
-	{
-		/* otp = 0x1  => REGEN_3 = LP0 gate (1.8V, 5 V)*/
-		.gpio = AS3722_GPIO1,
-		.invert     = AS3722_GPIO_CFG_INVERT, /* don't go into LP0 */
-		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
-		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
-	},
-	{
-		/* otp = 0x3 PMU_REGEN1*/
-		.gpio = AS3722_GPIO2,
-		.invert     = AS3722_GPIO_CFG_INVERT, /* don't go into LP0 */
-		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
-		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
-	},
-	{
-		/* otp = 0x03 AP THERMISTOR */
-		.gpio = AS3722_GPIO3,
-		.mode = AS3722_GPIO_MODE_ADC_IN,
-	},
-	{
-		/* otp = 0x81 => on by default
-		 * gates EN_AVDD_LCD
-		 */
-		.gpio       = AS3722_GPIO4,
-		.invert     = AS3722_GPIO_CFG_NO_INVERT,
-		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
-		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
-	},
-	{
-		/* otp = 0x3  CLK 23KHZ WIFI */
-		.gpio = AS3722_GPIO5,
-		.mode = AS3722_GPIO_MODE_ADC_IN,
-	},
-	{
-		/* otp = 0x3  SKIN TEMP */
-		.gpio = AS3722_GPIO6,
-		.mode = AS3722_GPIO_MODE_ADC_IN,
-	},
-	{
-		/* otp = 0x81  1.6V LP0*/
-		.gpio       = AS3722_GPIO7,
-		.invert     = AS3722_GPIO_CFG_NO_INVERT,
-		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
-		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
-	},
-};
-
 static struct as3722_pinctrl_platform_data as3722_pctrl_pdata[] = {
 	AS3722_PIN_CONTROL("gpio0", "gpio", NULL, NULL, NULL, "output-low"),
 	AS3722_PIN_CONTROL("gpio1", "gpio", NULL, NULL, NULL, "output-high"),
@@ -317,8 +242,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.irq_base = AS3722_IRQ_BASE,
 	.use_internal_int_pullup = 0,
 	.use_internal_i2c_pullup = 0,
-	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
-	.gpio_cfgs     = as3722_gpio_cfgs,
 	.pinctrl_pdata = as3722_pctrl_pdata,
 	.num_pinctrl = ARRAY_SIZE(as3722_pctrl_pdata),
 	.enable_clk32k_out = true,
