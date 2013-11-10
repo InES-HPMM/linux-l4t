@@ -39,7 +39,7 @@
 #define AS3722_DRIVER_VERSION  "v0.9.0"
 
 enum as3722_ids {
-	AS3722_GPIO_ID,
+	AS3722_PINCTRL_ID,
 	AS3722_REGULATOR_ID,
 	AS3722_RTC_ID,
 	AS3722_ADC,
@@ -67,8 +67,8 @@ static const struct resource as3722_adc_resource[] = {
 
 static struct mfd_cell as3722_devs[] = {
 	{
-		.name = "as3722-gpio",
-		.id = AS3722_GPIO_ID,
+		.name = "as3722-pinctrl",
+		.id = AS3722_PINCTRL_ID,
 	},
 	{
 		.name = "as3722-regulator",
