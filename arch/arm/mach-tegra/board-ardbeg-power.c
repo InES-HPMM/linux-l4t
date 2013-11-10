@@ -323,6 +323,17 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	},
 };
 
+static struct as3722_pinctrl_platform_data as3722_pctrl_pdata[] = {
+	AS3722_PIN_CONTROL("gpio0", "gpio", "pull-down", NULL, NULL, "output-low"),
+	AS3722_PIN_CONTROL("gpio1", "gpio", NULL, NULL, NULL, "output-high"),
+	AS3722_PIN_CONTROL("gpio2", "gpio", NULL, NULL, NULL, "output-high"),
+	AS3722_PIN_CONTROL("gpio3", "gpio", NULL, NULL, "enabled", NULL),
+	AS3722_PIN_CONTROL("gpio4", "gpio", NULL, NULL, NULL, "output-high"),
+	AS3722_PIN_CONTROL("gpio5", "clk32k-out", "pull-down", NULL, NULL, NULL),
+	AS3722_PIN_CONTROL("gpio6", "gpio", NULL, NULL, "enabled", NULL),
+	AS3722_PIN_CONTROL("gpio7", "gpio", NULL, NULL, NULL, "output-low"),
+};
+
 static struct as3722_adc_extcon_platform_data as3722_adc_extcon_pdata = {
 	.connection_name = "as3722-extcon",
 	.enable_adc1_continuous_mode = true,
@@ -357,6 +368,8 @@ static struct as3722_platform_data as3722_pdata = {
 	.use_internal_i2c_pullup = 0,
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
 	.gpio_cfgs     = as3722_gpio_cfgs,
+	.pinctrl_pdata = as3722_pctrl_pdata,
+	.num_pinctrl = ARRAY_SIZE(as3722_pctrl_pdata),
 	.enable_clk32k_out = true,
 	.use_power_off = true,
 	.enable_ldo3_tracking = true,

@@ -114,6 +114,15 @@ static struct as3722_regulator_platform_data as3722_##_name##_reg_pdata =	\
 	.ext_control = _ext_cntrl					\
 }									\
 
+#define AS3722_PIN_CONTROL(_pin, _func, _bias_pull, _od, _hi_imp, _gpio_mode)  \
+	{							\
+		.pin = _pin,					\
+		.function = _func,				\
+		.prop_bias_pull = _bias_pull,			\
+		.prop_open_drain = _od,				\
+		.prop_high_impedance = _hi_imp,			\
+		.prop_gpio_mode = _gpio_mode,			\
+	}
 
 /* Macro for defining fixed regulator sub device data */
 #define fixed_sync_supply(_name) "fixed_reg_en_"#_name
