@@ -143,6 +143,7 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 		.name = "gpu",
 		.clk_info = {
 			[0] = { .clk_name = "gpu_ref", .clk_type = CLK_AND_RST },
+			[1] = { .clk_name = "pll_p_out5", .clk_type = CLK_ONLY },
 		},
 	},
 	[TEGRA_POWERGATE_VDEC] = {
@@ -366,12 +367,6 @@ static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_in
 	if (!pg_info->clk_info[0].clk_ptr)
 		get_clk_info(pg_info);
 
-	ret = partition_clk_enable(pg_info);
-	if (ret)
-		WARN(1, "Couldn't enable clock");
-
-	udelay(10);
-
 	tegra_powergate_mc_flush(id);
 
 	udelay(10);
@@ -385,7 +380,10 @@ static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_in
 
 	udelay(10);
 
-	/* Powergating is done only if refcnt of all clks is 0 */
+	/*
+	 * GPCPLL is already disabled before entering this function; reference
+	 * clocks are enabled until now - disable them just before rail gating
+	 */
 	partition_clk_disable(pg_info);
 
 	udelay(10);
@@ -408,6 +406,7 @@ static int tegra12x_gpu_unpowergate(int id,
 	struct powergate_partition_info *pg_info)
 {
 	int ret = 0;
+	bool first = false;
 
 	if (!gpu_rail) {
 		gpu_rail = tegra_dvfs_get_rail_by_name("vdd_gpu");
@@ -415,6 +414,7 @@ static int tegra12x_gpu_unpowergate(int id,
 			WARN(1, "No GPU regulator?\n");
 			goto err_power;
 		}
+		first = true;
 	} else {
 		ret = tegra_dvfs_rail_power_up(gpu_rail);
 		if (ret)
@@ -425,10 +425,17 @@ static int tegra12x_gpu_unpowergate(int id,
 	if (!pg_info->clk_info[0].clk_ptr)
 		get_clk_info(pg_info);
 
-	/* Un-Powergating fails if all clks are not enabled */
-	ret = partition_clk_enable(pg_info);
-	if (ret)
-		goto err_clk_on;
+	/*
+	 * GPU reference clocks are initially enabled - skip clock enable if
+	 * 1st unpowergate, and in any case leave reference clock enabled on
+	 * exit. GPCPLL is still disabled, and will be enabled by driver.
+	 */
+	if (!first) {
+		/* Un-Powergating fails if all clks are not enabled */
+		ret = partition_clk_enable(pg_info);
+		if (ret)
+			goto err_clk_on;
+	}
 
 	udelay(10);
 
@@ -448,9 +455,6 @@ static int tegra12x_gpu_unpowergate(int id,
 	tegra_powergate_mc_flush_done(id);
 
 	udelay(10);
-
-	/* Disable all clks enabled earlier. Drivers should enable clks */
-	partition_clk_disable(pg_info);
 
 	return 0;
 
