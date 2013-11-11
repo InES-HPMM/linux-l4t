@@ -2,7 +2,7 @@
  * battery-charger-gauge-comm.c -- Communication between battery charger and
  *	battery gauge driver.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -128,7 +128,7 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 
 	if (temperature <= JETI_TEMP_COLD || temperature >= JETI_TEMP_HOT) {
 		charger_enable_state = false;
-	} else if (temperature <= JETI_TEMP_COOL &&
+	} else if (temperature <= JETI_TEMP_COOL ||
 				temperature >= JETI_TEMP_WARM) {
 		charger_current_half = true;
 		battery_thersold_voltage = 4100;
