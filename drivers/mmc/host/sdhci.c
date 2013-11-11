@@ -55,14 +55,14 @@
 
 #define SDIO_CLK_GATING_TICK_TMOUT (HZ / 50)
 
-/*
- * type is MMC_TYPE_SDIO after SDIO enumeration. So the
- * delayed sdio clock gate implementation will have aggressive
- * clock gating till card gets enumerated.
- */
-#define IS_SDIO_DELAYED_CLK_GATE(host) \
-		((host->quirks2 & SDHCI_QUIRK2_SDIO_DELAYED_CLK_GATE) && \
-		(host->mmc->card && host->mmc->card->type == MMC_TYPE_SDIO) && \
+#define IS_SDIO_CARD_OR_EMMC(host) \
+		(host->mmc->card && \
+		((host->mmc->card->type == MMC_TYPE_SDIO) || \
+		(host->mmc->card->type == MMC_TYPE_MMC)))
+
+#define IS_DELAYED_CLK_GATE(host) \
+		((host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE) && \
+		(IS_SDIO_CARD_OR_EMMC(host)) && \
 		(host->mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 
 static unsigned int debug_quirks = 0;
@@ -2211,7 +2211,7 @@ int sdhci_enable(struct mmc_host *mmc)
 	if (!mmc->card || !(mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 		return 0;
 
-	if (IS_SDIO_DELAYED_CLK_GATE(host)) {
+	if (IS_DELAYED_CLK_GATE(host)) {
 		/* cancel sdio clk gate work */
 		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 	}
@@ -2284,7 +2284,7 @@ int sdhci_disable(struct mmc_host *mmc)
 	if (!mmc->card || !(mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 		return 0;
 
-	if (IS_SDIO_DELAYED_CLK_GATE(host)) {
+	if (IS_DELAYED_CLK_GATE(host)) {
 		schedule_delayed_work(&host->delayed_clk_gate_wrk,
 			SDIO_CLK_GATING_TICK_TMOUT);
 		return 0;

@@ -113,8 +113,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_SUPPORT_64BIT_DMA			(1<<9)
 /* Use 64 BIT addressing */
 #define SDHCI_QUIRK2_USE_64BIT_ADDR			(1<<10)
-/* sdio delayed clock gate */
-#define SDHCI_QUIRK2_SDIO_DELAYED_CLK_GATE		(1<<11)
+/* delayed clock gate */
+#define SDHCI_QUIRK2_DELAYED_CLK_GATE			(1<<11)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
