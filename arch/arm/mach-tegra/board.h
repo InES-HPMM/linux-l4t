@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -130,9 +130,10 @@ void set_sd_uart_port_id(int);
 int __init tegra_register_fuse(void);
 
 #ifdef CONFIG_PSTORE_RAM
-void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
+void __init tegra_reserve_ramoops_memory(unsigned long ram_console_size);
 #else
-static inline void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
+static inline void __init
+	tegra_reserve_ramoops_memory(unsigned long ram_console_size)
 {}
 #endif
 
