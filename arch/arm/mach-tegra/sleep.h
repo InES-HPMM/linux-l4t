@@ -217,6 +217,18 @@
 	moveq	\rd, #8
 .endm
 
+/* Issue a Dummy DVM op to make subsequent DSB issue a DVM_SYNC
+   in A15. This is for a bug where DSB-lite( with no DVM_SYNC component)
+   doesn't trigger the logic returned to drain all other DSBs. */
+.macro dummy_dvm_op, tmp1, tmp2
+	mrc	p15, 0, \tmp1, c0, c0, 0
+	movw	\tmp2, #0xC0F0			@ Cortex a15 part number
+	and	\tmp1, \tmp1, \tmp2
+	cmp	\tmp1, \tmp2
+	moveq	\tmp1, #0
+	mcreq	p15, 0, \tmp1, c7, c5, 6
+.endm
+
 /* returns the ID of the current processor */
 .macro cpu_id, rd
 	mrc	p15, 0, \rd, c0, c0, 5
@@ -241,6 +253,7 @@
 #endif
 	mcr	p15, 0, \tmp1, c1, c0, 1	@ ACTLR
 	isb
+	dummy_dvm_op	\tmp1, \tmp2		@ dummy dvm op for cortex_a15
 	dsb
 #ifdef CONFIG_HAVE_ARM_SCU
 	cpu_id	\tmp1
