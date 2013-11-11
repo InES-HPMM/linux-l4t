@@ -99,6 +99,9 @@ static struct emc_iso_usage tegra12_emc_iso_usage[] = {
 #define TEGRA_EMC_MRW_DEV1	2
 #define TEGRA_EMC_MRW_DEV2	1
 
+#define MC_EMEM_DEV_SIZE_MASK	0xF
+#define MC_EMEM_DEV_SIZE_SHIFT	16
+
 enum {
 	DLL_CHANGE_NONE = 0,
 	DLL_CHANGE_ON,
@@ -1314,11 +1317,28 @@ static void tegra12_pasr_apply_mask(u16 *mem_reg, void *cookie)
 			(int)cookie, *mem_reg, val);
 }
 
+static void tegra12_pasr_remove_mask(phys_addr_t base, void *cookie)
+{
+	u16 mem_reg = 0;
+
+	if (!pasr_register_mask_function(base, NULL, cookie))
+			tegra12_pasr_apply_mask(&mem_reg, cookie);
+
+}
+
+static int tegra12_pasr_set_mask(phys_addr_t base, void *cookie)
+{
+	return pasr_register_mask_function(base, &tegra12_pasr_apply_mask,
+					cookie);
+}
+
 static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 {
 	unsigned int old_pasr_enable;
 	void *cookie;
-	u16 mem_reg;
+	int num_devices;
+	u64 device_size;
+	int ret = 0;
 
 	if (!tegra12_is_lpddr3())
 		return -ENOSYS;
@@ -1327,34 +1347,52 @@ static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 	param_set_int(arg, kp);
 
 	if (old_pasr_enable == pasr_enable)
-		return 0;
+		return ret;
+
+	num_devices = 1 << (mc_readl(MC_EMEM_ADR_CFG) & BIT(0));
 
 	/* Cookie represents the device number to write to MRW register.
 	 * 0x2 to for only dev0, 0x1 for dev1.
 	 */
 	if (pasr_enable == 0) {
-		mem_reg = 0;
-
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV1;
-		if (!pasr_register_mask_function(TEGRA_DRAM_BASE,
-							NULL, cookie))
-			tegra12_pasr_apply_mask(&mem_reg, cookie);
+
+		tegra12_pasr_remove_mask(TEGRA_DRAM_BASE, cookie);
+
+		if (num_devices == 1)
+			goto exit;
 
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV2;
-		if (!pasr_register_mask_function(TEGRA_DRAM_BASE + SZ_1G,
-							NULL, cookie))
-			tegra12_pasr_apply_mask(&mem_reg, cookie);
+		/* Next device is located after first device, so read DEV0 size
+		 * to decide base address for DEV1 */
+		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
+					MC_EMEM_DEV_SIZE_SHIFT) &
+					MC_EMEM_DEV_SIZE_MASK);
+		device_size *= SZ_4M;
+
+		tegra12_pasr_remove_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	} else {
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV1;
-		pasr_register_mask_function(TEGRA_DRAM_BASE,
-					&tegra12_pasr_apply_mask, cookie);
+
+		ret = tegra12_pasr_set_mask(TEGRA_DRAM_BASE, cookie);
+
+		if (num_devices == 1 || ret)
+			goto exit;
 
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV2;
-		pasr_register_mask_function(TEGRA_DRAM_BASE + SZ_1G,
-					&tegra12_pasr_apply_mask, cookie);
+
+		/* Next device is located after first device, so read DEV0 size
+		 * to decide base address for DEV1 */
+		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
+					MC_EMEM_DEV_SIZE_SHIFT) &
+					MC_EMEM_DEV_SIZE_MASK);
+		device_size *= SZ_4M;
+
+		ret = tegra12_pasr_set_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	}
 
-	return 0;
+exit:
+	return ret;
 }
 
 static struct kernel_param_ops tegra12_pasr_enable_ops = {
