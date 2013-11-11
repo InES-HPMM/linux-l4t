@@ -303,6 +303,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("nor",    -1, -1, 1, KHZ,   102000, 102000, 102000, 102000,  102000, 102000, 102000, 102000),
 
 	CORE_DVFS("pciex",  -1,  -1, 1, KHZ,  250000, 250000, 250000, 500000,  500000, 500000, 500000, 500000),
+        CORE_DVFS("mselect", -1, -1, 1, KHZ,  102000, 102000, 204000, 204000,  408000, 408000, 408000, 408000),
 
 	/*
 	 * The clock rate for the display controllers that determines the
