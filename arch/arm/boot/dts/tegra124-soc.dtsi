@@ -35,6 +35,13 @@
 		interrupt-controller;
 	};
 
+	se: se@70012000 {
+		compatible = "nvidia,tegra124-se";
+		reg = <0x70012000 0x2000 /* SE base */
+			0x7000e400 0x400>; /* PMC base */
+		interrupts = <0 58 0x04>;
+	};
+
 	tegra_car: clock {
 		compatible = "nvidia,tegra124-car";
 		reg = <0x60006000 0x1000>;
