@@ -32,6 +32,7 @@
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
 #include <linux/system-wakeup.h>
+#include <linux/tegra-pm.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -46,6 +47,7 @@ struct gpio_button_data {
 };
 
 struct gpio_keys_drvdata {
+	struct notifier_block pm_nb;
 	const struct gpio_keys_platform_data *pdata;
 	struct input_dev *input;
 	struct mutex disable_lock;
@@ -696,6 +698,8 @@ static void gpio_remove_key(struct gpio_button_data *bdata)
 	if (gpio_is_valid(bdata->button->gpio))
 		gpio_free(bdata->button->gpio);
 }
+static int gpio_keys_pm_notifier(struct notifier_block *nb,
+	unsigned long event, void *data);
 
 static int gpio_keys_probe(struct platform_device *pdev)
 {
@@ -771,6 +775,9 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(&pdev->dev, wakeup);
+
+	ddata->pm_nb.notifier_call = gpio_keys_pm_notifier;
+	tegra_register_pm_notifier(&ddata->pm_nb);
 
 	return 0;
 
@@ -901,6 +908,22 @@ static const struct dev_pm_ops gpio_keys_pm_ops = {
 	.suspend_noirq = gpio_keys_suspend_noirq,
 	.resume_noirq = gpio_keys_resume_noirq,
 };
+
+static int gpio_keys_pm_notifier(struct notifier_block *nb,
+	unsigned long event, void *data)
+{
+	struct gpio_keys_drvdata *ddata =
+			container_of(nb, struct gpio_keys_drvdata, pm_nb);
+	struct device *dev = ddata->input->dev.parent;
+
+	if (event == TEGRA_PM_SUSPEND)
+		gpio_keys_suspend_noirq(dev);
+	else if (event == TEGRA_PM_RESUME)
+		gpio_keys_resume_noirq(dev);
+
+	return NOTIFY_OK;
+}
+
 #endif
 
 static struct platform_driver gpio_keys_device_driver = {
