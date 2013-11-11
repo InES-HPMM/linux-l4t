@@ -66,13 +66,6 @@ static struct mutex gov_lock;
 static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
 
 /*
- * The minimum amount of time to spend at a frequency before we can ramp down.
- */
-
-#define DEFAULT_MIN_SAMPLE_TIME (30 * USEC_PER_MSEC)
-static unsigned long min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
-
-/*
  * The sample rate of the timer used to increase frequency
  */
 #define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
@@ -100,7 +93,7 @@ struct cpufreq_interactive_tunables {
 	 * The minimum amount of time to spend at a frequency before we can ramp
 	 * down.
 	 */
-#define DEFAULT_MIN_SAMPLE_TIME (80 * USEC_PER_MSEC)
+#define DEFAULT_MIN_SAMPLE_TIME (30 * USEC_PER_MSEC)
 	unsigned long min_sample_time;
 
 	/*
