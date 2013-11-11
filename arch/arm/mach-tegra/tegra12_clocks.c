@@ -6513,7 +6513,7 @@ static struct clk tegra_pll_d_out0 = {
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_2 | PLLD,
 	.parent    = &tegra_pll_d,
-	.max_rate  = 500000000,
+	.max_rate  = 750000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_u_freq_table[] = {
