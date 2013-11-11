@@ -18,14 +18,14 @@
 #define NR_INT 8
 
 struct ddr_die {
+	u64 size;
 	phys_addr_t addr;
-	unsigned long size;
 };
 
 struct interleaved_area {
 	phys_addr_t addr1;
 	phys_addr_t addr2;
-	unsigned long size;
+	u64 size;
 };
 
 struct pasr_info {
@@ -38,12 +38,12 @@ struct pasr_info {
 
 static struct pasr_info __initdata pasr_info;
 static struct pasr_map pasr_map;
-unsigned long section_size;
+u64 section_size;
 unsigned int section_bit;
 
-static void add_ddr_die(phys_addr_t addr, unsigned long size);
+static void add_ddr_die(phys_addr_t addr, u64 size);
 static void add_interleaved_area(phys_addr_t a1,
-		phys_addr_t a2, unsigned long size);
+		phys_addr_t a2, u64 size);
 
 static int __init section_param(char *p)
 {
@@ -57,7 +57,7 @@ early_param("section", section_param);
 static int __init ddr_die_param(char *p)
 {
 	phys_addr_t start;
-	unsigned long size;
+	u64 size;
 
 	size = memparse(p, &p);
 
@@ -77,7 +77,7 @@ early_param("ddr_die", ddr_die_param);
 static int __init interleaved_param(char *p)
 {
 	phys_addr_t start1, start2;
-	unsigned long size;
+	u64 size;
 
 	size = memparse(p, &p);
 
@@ -99,7 +99,7 @@ err:
 }
 early_param("interleaved", interleaved_param);
 
-void __init add_ddr_die(phys_addr_t addr, unsigned long size)
+void __init add_ddr_die(phys_addr_t addr, u64 size)
 {
 	BUG_ON(pasr_info.nr_dies >= NR_DIES);
 
@@ -108,7 +108,7 @@ void __init add_ddr_die(phys_addr_t addr, unsigned long size)
 }
 
 void __init add_interleaved_area(phys_addr_t a1, phys_addr_t a2,
-		unsigned long size)
+		u64 size)
 {
 	BUG_ON(pasr_info.nr_int >= NR_INT);
 
@@ -128,9 +128,9 @@ static void __init pasr_print_info(struct pasr_info *info)
 	pr_info("DDR Dies layout:\n");
 	pr_info("\tid - start address - end address\n");
 	for (i = 0; i < info->nr_dies; i++)
-		pr_info("\t- %d : %#08x - %#08x\n",
-			i, (unsigned int)info->die[i].addr,
-			(unsigned int)(info->die[i].addr
+		pr_info("\t- %d : %#09llx - %#09llx\n",
+			i, (u64)info->die[i].addr,
+			(u64)(info->die[i].addr
 				+ info->die[i].size - 1));
 
 	if (info->nr_int == 0) {
@@ -141,13 +141,13 @@ static void __init pasr_print_info(struct pasr_info *info)
 	pr_info("Interleaving layout:\n");
 	pr_info("\tid - start @1 - end @2 : start @2 - end @2\n");
 	for (i = 0; i < info->nr_int; i++)
-		pr_info("\t-%d - %#08x - %#08x : %#08x - %#08x\n"
+		pr_info("\t-%d - %#09llx - %#09llx : %#09llx - %#09llx\n"
 			, i
-			, (unsigned int)info->int_area[i].addr1
-			, (unsigned int)(info->int_area[i].addr1
+			, (u64)info->int_area[i].addr1
+			, (u64)(info->int_area[i].addr1
 				+ info->int_area[i].size - 1)
-			, (unsigned int)info->int_area[i].addr2
-			, (unsigned int)(info->int_area[i].addr2
+			, (u64)info->int_area[i].addr2
+			, (u64)(info->int_area[i].addr2
 				+ info->int_area[i].size - 1));
 }
 #else
@@ -224,9 +224,9 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 
 		/*  Check die is aligned on section boundaries */
 		if (((d1->addr & ~(section_size - 1)) != d1->addr)
-			|| ((d1->size & ~(section_size - 1)) != d1->size)) {
-			pr_err("%s: DDR die at %#x (size %#lx) \
-				is not aligned on section boundaries %#lx\n",
+			|| (((d1->size & ~(section_size - 1))) != d1->size)) {
+			pr_err("%s: DDR die at %#x (size %#llx) \
+				is not aligned on section boundaries %#llx\n",
 				__func__, d1->addr, d1->size, section_size);
 			return -EINVAL;
 		}
@@ -310,7 +310,7 @@ static void __init pasr_print_map(struct pasr_map *map)
 		pr_info("Die %d:\n", i);
 		for (j = 0; j < die->nr_sections; j++) {
 			struct pasr_section *s = &die->section[j];
-			pr_info("\tSection %d: @ = %#08x, Pair = %s @%#08x\n"
+			pr_info("\tSection %d: @ = %#09llx, Pair = %s @%#09llx\n"
 					, j, s->start, s->pair ? "Yes" : "No",
 					s->pair ? s->pair->start : 0);
 		}
@@ -385,7 +385,7 @@ static int pasr_print_meminfo(struct seq_file *s, void *data)
 
 			percentage = (u64)section->free_size * 100;
 			do_div(percentage, section_size);
-			seq_printf(s, "section %d %lu %llu\n", j, section->free_size,
+			seq_printf(s, "section %d %llu %llu\n", j, section->free_size,
 					percentage);
 		}
 	}

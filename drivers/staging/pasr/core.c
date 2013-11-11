@@ -32,7 +32,7 @@ void pasr_update_mask(struct pasr_section *section, enum pasr_state state)
 	else
 		die->mem_reg |= (1 << bit);
 
-	pr_debug("%s(): %s refresh section 0x%08x. segment %#08x Die%d mem_reg = 0x%02x\n"
+	pr_debug("%s(): %s refresh section 0x%08x. segment %#9llx Die%d mem_reg = 0x%02x\n"
 			, __func__, state == PASR_REFRESH ? "Start" : "Stop"
 			, bit, section->start, die->idx, die->mem_reg);
 
@@ -42,10 +42,10 @@ void pasr_update_mask(struct pasr_section *section, enum pasr_state state)
 	return;
 }
 
-void pasr_put(phys_addr_t paddr, unsigned long size)
+void pasr_put(phys_addr_t paddr, u64 size)
 {
 	struct pasr_section *s;
-	unsigned long cur_sz;
+	u64 cur_sz;
 	unsigned long flags = 0;
 
 	if (!pasr.map) {
@@ -92,10 +92,10 @@ out:
 	return;
 }
 
-void pasr_get(phys_addr_t paddr, unsigned long size)
+void pasr_get(phys_addr_t paddr, u64 size)
 {
 	unsigned long flags = 0;
-	unsigned long cur_sz;
+	u64 cur_sz;
 	struct pasr_section *s;
 
 	if (!pasr.map) {

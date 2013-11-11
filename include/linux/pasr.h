@@ -14,7 +14,7 @@
 #define PASR_MAX_SECTION_NR_PER_DIE	8
 #define PASR_MAX_DIE_NR			4
 
-extern unsigned long section_size;
+extern u64 section_size;
 extern unsigned int section_bit;
 
 /**
@@ -31,7 +31,7 @@ extern unsigned int section_bit;
 struct pasr_section {
 	phys_addr_t start;
 	struct pasr_section *pair;
-	unsigned long free_size;
+	u64 free_size;
 	spinlock_t *lock;
 	struct pasr_die *die;
 };
@@ -101,7 +101,7 @@ int pasr_register_mask_function(phys_addr_t die_addr,
  * This function has only to be called for unused memory, otherwise retention
  * cannot be guaranteed.
  */
-void pasr_put(phys_addr_t paddr, unsigned long size);
+void pasr_put(phys_addr_t paddr, u64 size);
 
 /**
  * pasr_get()
@@ -114,7 +114,7 @@ void pasr_put(phys_addr_t paddr, unsigned long size);
  * If pasr_put() is used by the allocator, using this function is mandatory to
  * guarantee retention.
  */
-void pasr_get(phys_addr_t paddr, unsigned long size);
+void pasr_get(phys_addr_t paddr, u64 size);
 
 
 static inline void pasr_kput(struct page *page, int order)
