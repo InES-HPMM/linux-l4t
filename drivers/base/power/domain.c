@@ -710,7 +710,7 @@ static int pm_genpd_poweroff(struct generic_pm_domain *genpd)
 			genpd->power_off_latency_ns = elapsed_ns;
 			genpd->max_off_time_changed = true;
 			if (genpd->name)
-				pr_warning("%s: Power-off latency exceeded, "
+				pr_debug("%s: Power-off latency exceeded, "
 					"new value %lld ns\n", genpd->name,
 					elapsed_ns);
 		}
