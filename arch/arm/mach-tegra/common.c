@@ -603,9 +603,9 @@ static void tegra_cache_smc(bool enable, u32 arg)
 	local_irq_save(flags);
 	l2x0_enabled = readl_relaxed(p + L2X0_CTRL) & 1;
 	if (enable && !l2x0_enabled)
-		tegra_generic_smc(0xFFFFF100, 0x00000001, arg);
+		tegra_generic_smc(0x82000002, 0x00000001, arg);
 	else if (!enable && l2x0_enabled)
-		tegra_generic_smc(0xFFFFF100, 0x00000002, arg);
+		tegra_generic_smc(0x82000002, 0x00000002, arg);
 	local_irq_restore(flags);
 
 	if (need_affinity_switch && can_switch_affinity) {

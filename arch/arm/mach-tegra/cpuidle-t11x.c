@@ -441,7 +441,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 
 #ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	if ((cpu == 0) || (cpu == 4)) {
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE7,
+		tegra_generic_smc(0x84000001, ((1 << 16) | 5),
 				(TEGRA_RESET_HANDLER_BASE +
 				tegra_cpu_reset_handler_offset));
 	}

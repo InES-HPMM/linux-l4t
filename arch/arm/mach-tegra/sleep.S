@@ -209,8 +209,8 @@ ENDPROC(tegra_flush_l1_cache)
 ENTRY(tegra_sleep_cpu_finish)
 	mov	r4, r0
 #if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	ldr	r0, =0xFFFFFFFC
-	ldr	r1, =0xFFFFFFE4
+	ldr	r0, =0x84000001
+	ldr	r1, =((1 << 16) | 4)
 	ldr	r2, =TEGRA_RESET_HANDLER_BASE
 	bl	tegra_generic_smc
 #else
@@ -350,17 +350,18 @@ ENDPROC(tegra_cpu_pllp)
  * the specified parameters.
  */
 ENTRY(tegra_generic_smc)
-	adr	r3, __tegra_smc_stack
-	stmia	r3, {r4-r12, lr}
 	mov	r3, #0
-	mov	r4, #0
 	dsb
 	smc	#0
-	adr	r3, __tegra_smc_stack
-	ldmia	r3, {r4-r12, pc}
+restart:
+	ldr	r3, =0xFFFFFFFD
+	cmp	r0, r3
+	bne	done
+	mov	r0, #(60 << 24)
+	dsb
+	smc	#0
+	b	restart
+done:
+	mov	pc, lr
 ENDPROC(tegra_generic_smc)
-	.type   __tegra_smc_stack, %object
-__tegra_smc_stack:
-	.long   0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	.size   __tegra_smc_stack, . - __tegra_smc_stack
 #endif

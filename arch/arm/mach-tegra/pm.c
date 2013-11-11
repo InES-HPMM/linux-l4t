@@ -708,12 +708,12 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 	if (mode == TEGRA_SUSPEND_LP0) {
 		trace_smc_sleep_core(NVSEC_SMC_START);
 
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE3,
+		tegra_generic_smc(0x84000001, ((1 << 16) | (1 << 24) | 1),
 				  virt_to_phys(tegra_resume));
 	} else {
 		trace_smc_sleep_core(NVSEC_SMC_START);
 
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
+		tegra_generic_smc(0x84000001, ((1 << 16) | 2),
 				  (TEGRA_RESET_HANDLER_BASE +
 				   tegra_cpu_reset_handler_offset));
 	}
@@ -740,7 +740,7 @@ static inline void tegra_stop_mc_clk(unsigned long v2p)
 			  __pa(&tegra_resume_timestamps_end));
 	trace_smc_sleep_core(NVSEC_SMC_START);
 
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE5,
+	tegra_generic_smc(0x84000001, ((1 << 16) | 3),
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
 
