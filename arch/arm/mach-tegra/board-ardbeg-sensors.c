@@ -69,6 +69,16 @@ static struct mpu_platform_data mpu9250_gyro_data = {
 			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
+static struct mpu_platform_data mpu9250_gyro_data_e1762 = {
+	.int_config     = 0x10,
+	.level_shifter  = 0,
+	/* Located in board_[platformname].h */
+	.orientation    = MPU_GYRO_ORIENTATION_E1762,
+	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
+	.key            = {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
 static struct mpu_platform_data mpu_compass_data = {
 	.orientation    = MPU_COMPASS_ORIENTATION,
 	.config         = NVI_CONFIG_BOOT_MPU,
@@ -105,11 +115,13 @@ static void mpuirq_init(void)
 	unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
 	unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
 	char *gyro_name = MPU_GYRO_NAME;
+	struct board_info board_info;
 
 	pr_info("*** MPU START *** mpuirq_init...\n");
 
-	ret = gpio_request(gyro_irq_gpio, gyro_name);
+	tegra_get_board_info(&board_info);
 
+	ret = gpio_request(gyro_irq_gpio, gyro_name);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
 		return;
@@ -127,6 +139,9 @@ static void mpuirq_init(void)
 	if (of_machine_is_compatible("nvidia,tn8"))
 		inv_mpu9250_i2c0_board_info[2].addr = MPU_COMPASS_ADDR_TN8;
 
+	if (board_info.board_id == BOARD_E1762)
+		inv_mpu9250_i2c0_board_info[0].platform_data =
+					&mpu9250_gyro_data_e1762;
 	inv_mpu9250_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));

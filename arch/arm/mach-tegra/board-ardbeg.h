@@ -39,17 +39,18 @@ int ardbeg_soctherm_init(void);
 int ardbeg_edp_init(void);
 
 /* Invensense MPU Definitions */
-#define MPU_GYRO_NAME		"mpu9250"
-#define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PS0
-#define MPU_GYRO_ADDR		0x69
-#define MPU_GYRO_BUS_NUM	0
-#define MPU_GYRO_ORIENTATION	MTMAT_TOP_CCW_0
-#define MPU_COMPASS_NAME	"ak8975"
-#define MPU_COMPASS_ADDR	0x0C
-#define MPU_COMPASS_ADDR_TN8	0x0D
-#define MPU_COMPASS_ORIENTATION	MTMAT_BOT_CCW_270
-#define MPU_BMP_NAME		"bmp280"
-#define MPU_BMP_ADDR		0x77
+#define MPU_GYRO_NAME			"mpu9250"
+#define MPU_GYRO_IRQ_GPIO		TEGRA_GPIO_PS0
+#define MPU_GYRO_ADDR			0x69
+#define MPU_GYRO_BUS_NUM		0
+#define MPU_GYRO_ORIENTATION		MTMAT_TOP_CCW_0
+#define MPU_GYRO_ORIENTATION_E1762	MTMAT_TOP_CCW_270
+#define MPU_COMPASS_NAME		"ak8975"
+#define MPU_COMPASS_ADDR		0x0C
+#define MPU_COMPASS_ADDR_TN8		0x0D
+#define MPU_COMPASS_ORIENTATION		MTMAT_BOT_CCW_270
+#define MPU_BMP_NAME			"bmp280"
+#define MPU_BMP_ADDR			0x77
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6
