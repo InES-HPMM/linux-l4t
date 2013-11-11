@@ -601,7 +601,7 @@ static void handle_once_dma_done(struct tegra_dma_channel *tdc,
 
 	/* Do not start DMA if it is going to be terminate */
 	if (list_empty(&tdc->pending_sg_req) && (!to_terminate)) {
-		clk_disable_unprepare(tdc->tdma->dma_clk);
+		clk_disable(tdc->tdma->dma_clk);
 		pm_runtime_put(tdc->tdma->dev);
 	}
 
@@ -717,7 +717,7 @@ static void tegra_dma_issue_pending(struct dma_chan *dc)
 	}
 
 	pm_runtime_get(tdc->tdma->dev);
-	ret = clk_prepare_enable(tdc->tdma->dma_clk);
+	ret = clk_enable(tdc->tdma->dma_clk);
 	if (ret < 0) {
 		dev_err(tdc2dev(tdc), "clk_enable failed: %d\n", ret);
 		return;
@@ -786,7 +786,7 @@ static void tegra_dma_terminate_all(struct dma_chan *dc)
 				get_current_xferred_count(tdc, sgreq, wcount);
 	}
 	tegra_dma_resume(tdc);
-	clk_disable_unprepare(tdc->tdma->dma_clk);
+	clk_disable(tdc->tdma->dma_clk);
 	pm_runtime_put(tdc->tdma->dev);
 
 skip_dma_stop:
@@ -1210,6 +1210,7 @@ static int tegra_dma_alloc_chan_resources(struct dma_chan *dc)
 {
 	struct tegra_dma_channel *tdc = to_tegra_dma_chan(dc);
 
+	clk_prepare(tdc->tdma->dma_clk);
 	dma_cookie_init(&tdc->dma_chan);
 	tdc->config_init = false;
 	return 0;
@@ -1231,7 +1232,7 @@ static void tegra_dma_free_chan_resources(struct dma_chan *dc)
 
 	if (tdc->busy)
 		tegra_dma_terminate_all(dc);
-
+	clk_unprepare(tdc->tdma->dma_clk);
 	spin_lock_irqsave(&tdc->lock, flags);
 	list_splice_init(&tdc->pending_sg_req, &sg_req_list);
 	list_splice_init(&tdc->free_sg_req, &sg_req_list);
@@ -1537,7 +1538,7 @@ static int tegra_dma_runtime_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_dma *tdma = platform_get_drvdata(pdev);
 
-	clk_disable_unprepare(tdma->dma_clk);
+	clk_disable(tdma->dma_clk);
 	return 0;
 }
 
@@ -1547,7 +1548,7 @@ static int tegra_dma_runtime_resume(struct device *dev)
 	struct tegra_dma *tdma = platform_get_drvdata(pdev);
 	int ret;
 
-	ret = clk_prepare_enable(tdma->dma_clk);
+	ret = clk_enable(tdma->dma_clk);
 	if (ret < 0) {
 		dev_err(dev, "clk_enable failed: %d\n", ret);
 		return ret;
