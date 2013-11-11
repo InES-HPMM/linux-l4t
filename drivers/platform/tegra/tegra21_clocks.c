@@ -767,38 +767,31 @@ static unsigned long tegra21_clk_m_autodetect_rate(struct clk *c)
 	switch (c->rate) {
 	case 12000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	case 13000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	case 19200000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	case 26000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	case 16800000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	case 38400000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_2);
 		BUG_ON(divisor != 1);
 		spare_update |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 48000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_4);
 		BUG_ON(divisor != 3);
 		spare_update |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
@@ -806,7 +799,6 @@ static unsigned long tegra21_clk_m_autodetect_rate(struct clk *c)
 	case 230400:	/* fake 13M for QT */
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		c->rate = 13000000;
-		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 		BUG_ON(divisor != 0);
 		break;
 	default:
@@ -814,6 +806,7 @@ static unsigned long tegra21_clk_m_autodetect_rate(struct clk *c)
 		BUG();
 	}
 
+	BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 	clk_writel(auto_clock_control, OSC_CTRL);
 	clk_writel(spare_update, SPARE_REG);
 
