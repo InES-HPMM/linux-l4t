@@ -342,6 +342,7 @@
 			regulator-max-microvolt = <1800000>;
 			enable-active-high;
 			gpio = <&palmas_gpio 4 0>; /* PMIC GPIO4  */
+			vin-supply = <&palmas_smps8>;
 
 			consumers {
 				c1 {
@@ -375,41 +376,12 @@
 					regulator-consumer-device = "2-0030";
 				};
 				c9 {
+					regulator-consumer-supply = "vdd";
+					regulator-consumer-device = "2-004a";
+				};
+				c10 {
 					regulator-consumer-supply = "vif";
 					regulator-consumer-device = "2-0048";
-				};
-			};
-		};
-		vdd_cam: regulator@9 {
-			compatible = "regulator-fixed-sync";
-			reg = <9>;
-			regulator-name = "vdd-cam";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			enable-active-high;
-			gpio = <&palmas_gpio 4 0>; /* PMIC GPIO4  */
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_cam_1v1_cam";
-				};
-				c2 {
-					regulator-consumer-supply = "imx135_reg2";
-				};
-				c3 {
-					regulator-consumer-supply = "vdd_1v2_cam";
-				};
-				c4 {
-					regulator-consumer-supply = "vdig";
-					regulator-consumer-device = "2-0010";
-				};
-				c5 {
-					regulator-consumer-supply = "dvdd";
-					regulator-consumer-device = "2-0010";
-				};
-				c6 {
-					regulator-consumer-supply = "vdig";
-					regulator-consumer-device = "2-0036";
 				};
 			};
 		};

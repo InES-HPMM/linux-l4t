@@ -506,10 +506,6 @@ palmas: tps65913 {
 						regulator-consumer-device = "2-0010";
 					};
 					c7 {
-						regulator-consumer-supply = "vana";
-						regulator-consumer-device = "2-0036";
-					};
-					c8 {
 						regulator-consumer-supply = "avdd_ov5693";
 						regulator-consumer-device = "2-0010";
 					};
@@ -597,6 +593,22 @@ palmas: tps65913 {
 						regulator-consumer-device = "2-000c";
 					};
 					c5 {
+						regulator-consumer-supply = "vdd_af1";
+						regulator-consumer-device = "2-0010";
+					};
+					c6 {
+						regulator-consumer-supply = "vin";
+						regulator-consumer-device = "2-0030";
+					};
+					c7 {
+						regulator-consumer-supply = "vin";
+						regulator-consumer-device = "2-004a";
+					};
+					c8 {
+						regulator-consumer-supply = "vana";
+						regulator-consumer-device = "2-0036";
+					};
+					c9 {
 						regulator-consumer-supply = "vana";
 						regulator-consumer-device = "2-0048";
 					};
@@ -708,6 +720,7 @@ palmas: tps65913 {
 				regulator-name = "vdd-cam";
 				regulator-min-microvolt = <1050000>;
 				regulator-max-microvolt = <1200000>;
+				vin-supply = <&palmas_smps8>;
 
 				consumers {
 					c1 {
@@ -730,6 +743,10 @@ palmas: tps65913 {
 					c6 {
 						regulator-consumer-supply = "vdig";
 						regulator-consumer-device = "2-0036";
+					};
+					c7 {
+						regulator-consumer-supply = "vdig_lv";
+						regulator-consumer-device = "2-0010";
 					};
 				};
 			};
