@@ -904,7 +904,7 @@ static void tegra21_super_clk_init(struct clk *c)
 	 * case of booting on LP CPU, cclk_lp will be updated during the cpu
 	 * rate change after boot, and cclk_g after the cluster switch.)
 	 */
-	if ((c->flags & DIV_U71) && (!is_lp_cluster())) {
+	if (c->flags & DIV_U71) {
 		val |= SUPER_LP_DIV2_BYPASS;
 		clk_writel_delay(val, c->reg);
 	}
@@ -1078,7 +1078,7 @@ static struct clk_ops tegra_super_ops = {
  */
 static void tegra21_cpu_clk_init(struct clk *c)
 {
-	c->state = (!is_lp_cluster() == (c->u.cpu.mode == MODE_G))? ON : OFF;
+	c->state = ON;
 }
 
 static int tegra21_cpu_clk_enable(struct clk *c)
@@ -1367,11 +1367,7 @@ static struct clk_ops tegra_cpu_ops = {
 
 static void tegra21_cpu_cmplx_clk_init(struct clk *c)
 {
-	int i = !!is_lp_cluster();
-
-	BUG_ON(c->inputs[0].input->u.cpu.mode != MODE_G);
-	BUG_ON(c->inputs[1].input->u.cpu.mode != MODE_LP);
-	c->parent = c->inputs[i].input;
+	c->parent = c->inputs[0].input;
 }
 
 /* cpu complex clock provides second level vitualization (on top of
@@ -1433,7 +1429,6 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	struct clk *p_source;
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
-	BUG_ON(c->parent->u.cpu.mode != (is_lp_cluster() ? MODE_LP : MODE_G));
 
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p)
@@ -1472,8 +1467,7 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 		delay = 0;
 	}
-	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
-		TEGRA_POWER_CLUSTER_G;
+	flags |= TEGRA_POWER_CLUSTER_G;
 
 	if (p == c->parent) {
 		if (flags & TEGRA_POWER_CLUSTER_FORCE) {
@@ -3920,11 +3914,6 @@ static int tegra21_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 		return -ENOSYS;
 
 	clk_lock_save(c, &c_flags);
-	if (c->parent->u.cpu.mode == MODE_LP) {
-		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
-		clk_unlock_restore(c, &c_flags);
-		return -ENOSYS;
-	}
 
 	clk_lock_save(c->parent, &p_flags);
 	old_use_dfll = use_dfll;
@@ -6454,32 +6443,11 @@ static void init_clk_out_mux(void)
 /* Peripheral muxes */
 static struct clk_mux_sel mux_cclk_g[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
-	{ .input = &tegra_pll_c,	.value = 1},
 	{ .input = &tegra_clk_32k,	.value = 2},
-	{ .input = &tegra_pll_m,	.value = 3},
 	{ .input = &tegra_pll_p,	.value = 4},
 	{ .input = &tegra_pll_p_out4,	.value = 5},
-	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra21x */
-	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra21x */
 	{ .input = &tegra_pll_x,	.value = 8},
 	{ .input = &tegra_dfll_cpu,	.value = 15},
-	{ 0, 0},
-};
-
-static struct clk_mux_sel mux_cclk_lp[] = {
-	{ .input = &tegra_clk_m,	.value = 0},
-	{ .input = &tegra_pll_c,	.value = 1},
-	{ .input = &tegra_clk_32k,	.value = 2},
-	{ .input = &tegra_pll_m,	.value = 3},
-	{ .input = &tegra_pll_p,	.value = 4},
-	{ .input = &tegra_pll_p_out4,	.value = 5},
-	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra21x */
-	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra21x */
-	{ .input = &tegra_pll_x_out0,	.value = 8},
-#if USE_LP_CPU_TO_TEST_DFLL
-	{ .input = &tegra_dfll_cpu,	.value = 15},
-#endif
-	{ .input = &tegra_pll_x,	.value = 8 | SUPER_LP_DIV2_BYPASS},
 	{ 0, 0},
 };
 
@@ -6504,15 +6472,6 @@ static struct clk tegra_clk_cclk_g = {
 	.max_rate = 3000000000UL,
 };
 
-static struct clk tegra_clk_cclk_lp = {
-	.name	= "cclk_lp",
-	.flags  = DIV_2 | DIV_U71 | DIV_U71_INT | MUX,
-	.inputs	= mux_cclk_lp,
-	.reg	= 0x370,
-	.ops	= &tegra_super_ops,
-	.max_rate = 700000000,
-};
-
 static struct clk tegra_clk_sclk = {
 	.name	= "sclk",
 	.inputs	= mux_sclk,
@@ -6535,24 +6494,8 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	},
 };
 
-static struct clk tegra_clk_virtual_cpu_lp = {
-	.name      = "cpu_lp",
-	.parent    = &tegra_clk_cclk_lp,
-	.ops       = &tegra_cpu_ops,
-	.max_rate  = 700000000,
-	.u.cpu = {
-		.main      = &tegra_pll_x,
-		.backup    = &tegra_pll_p_out4,
-#if USE_LP_CPU_TO_TEST_DFLL
-		.dynamic   = &tegra_dfll_cpu,
-#endif
-		.mode      = MODE_LP,
-	},
-};
-
 static struct clk_mux_sel mux_cpu_cmplx[] = {
 	{ .input = &tegra_clk_virtual_cpu_g,	.value = 0},
-	{ .input = &tegra_clk_virtual_cpu_lp,	.value = 1},
 	{ 0, 0},
 };
 
@@ -6752,13 +6695,8 @@ static struct clk_mux_sel mux_pllp_pllc_pllm[] = {
 };
 
 static struct clk_mux_sel mux_pllp_clkm1[] = {
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 2},
-#else
-	{ .input = &tegra_pll_p, .value = 0},
-	{ .input = &tegra_clk_m, .value = 1},
-#endif
 	{ 0, 0},
 };
 
@@ -7650,12 +7588,10 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
 	&tegra_clk_cclk_g,
-	&tegra_clk_cclk_lp,
 	&tegra_clk_sclk,
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
 	&tegra_clk_virtual_cpu_g,
-	&tegra_clk_virtual_cpu_lp,
 	&tegra_clk_cpu_cmplx,
 	&tegra_clk_blink,
 	&tegra_clk_cop,
@@ -7773,7 +7709,6 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 
 	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
-	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
 }
 
 static void tegra21_init_one_clock(struct clk *c)
@@ -8072,9 +8007,6 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
 
-	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
-	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
-
 	*ctx++ = clk_readl(tegra_clk_sclk.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
 	*ctx++ = clk_readl(tegra_clk_pclk.reg);
@@ -8185,9 +8117,6 @@ static void tegra21_clk_resume(void)
 	clk_writel(pll_c_out1 | val, tegra_pll_c_out1.reg);
 
 	val = *ctx++;
-	tegra21_super_clk_resume(&tegra_clk_cclk_lp,
-		tegra_clk_virtual_cpu_lp.u.cpu.backup, val);
-	clk_writel(*ctx++, tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
 	clk_writel(*ctx++, tegra_clk_sclk.reg);
 	clk_writel(*ctx++, tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
