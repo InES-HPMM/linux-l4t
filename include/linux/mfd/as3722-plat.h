@@ -95,19 +95,10 @@ struct as3722_pinctrl_platform_data {
 /*
  * as3722_regulator_platform_data: Regulator platform data.
  * @ext_control: External control.
- * @oc_configure_enable: Enable overcurrent configuration.
- * @oc_trip_thres_perphase: Overcurrent trip threshold current in mA per pahse.
- *	This should be 2500, 3000, 3500.
- * @oc_alarm_thres_perphase: Overcurrent alarm threshold current in mA per
- *	pahse. This should be 0 (for disable), 1600, 1800, 2000, 2200, 2400,
- *	2600, 2800.
  */
 struct as3722_regulator_platform_data {
 	struct regulator_init_data *reg_init;
 	int ext_control;
-	bool oc_configure_enable;
-	int oc_trip_thres_perphase;
-	int oc_alarm_thres_perphase;
 	bool enable_tracking;
 	bool disable_tracking_suspend;
 };
@@ -143,8 +134,6 @@ struct as3722_platform_data {
 	int num_pinctrl;
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
 
-	bool enable_ldo3_tracking;
-	bool disabe_ldo3_tracking_suspend;
 	bool enable_clk32k_out;
 };
 
