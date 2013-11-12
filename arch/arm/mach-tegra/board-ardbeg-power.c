@@ -174,7 +174,6 @@ static struct regulator_consumer_supply as3722_sd2_supply[] = {
 static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi","tegradc.1"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
 	REGULATOR_SUPPLY("avdd_pex_pll", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
@@ -384,6 +383,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("hvdd_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("hvdd_pex_pll_e", "tegra-pcie"),
 	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
+	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
 	REGULATOR_SUPPLY("vdd", "0-0069"),
 	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd", "stm8t143.2"),
