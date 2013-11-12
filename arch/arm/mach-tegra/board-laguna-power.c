@@ -246,8 +246,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.num_pinctrl = ARRAY_SIZE(as3722_pctrl_pdata),
 	.enable_clk32k_out = true,
 	.use_power_off = true,
-	.enable_ldo3_tracking = true,
-	.disabe_ldo3_tracking_suspend = true,
 	.extcon_pdata = &as3722_adc_extcon_pdata,
 };
 
@@ -299,21 +297,12 @@ int __init laguna_as3722_regulator_init(void)
 	/* Set overcurrent of rails. */
 	as3722_sd6_reg_idata.constraints.min_uA = 3500000;
 	as3722_sd6_reg_idata.constraints.max_uA = 3500000;
-	as3722_sd6_reg_pdata.oc_configure_enable = true;
-	as3722_sd6_reg_pdata.oc_trip_thres_perphase = 3500;
-	as3722_sd6_reg_pdata.oc_alarm_thres_perphase = 0;
 
 	as3722_sd0_reg_idata.constraints.min_uA = 3500000;
 	as3722_sd0_reg_idata.constraints.max_uA = 3500000;
-	as3722_sd0_reg_pdata.oc_configure_enable = true;
-	as3722_sd0_reg_pdata.oc_trip_thres_perphase = 3500;
-	as3722_sd0_reg_pdata.oc_alarm_thres_perphase = 0;
 
 	as3722_sd1_reg_idata.constraints.min_uA = 2500000;
 	as3722_sd1_reg_idata.constraints.max_uA = 2500000;
-	as3722_sd1_reg_pdata.oc_configure_enable = true;
-	as3722_sd1_reg_pdata.oc_trip_thres_perphase = 2500;
-	as3722_sd1_reg_pdata.oc_alarm_thres_perphase = 0;
 
 	as3722_ldo3_reg_pdata.enable_tracking = true;
 	as3722_ldo3_reg_pdata.disable_tracking_suspend = true;
