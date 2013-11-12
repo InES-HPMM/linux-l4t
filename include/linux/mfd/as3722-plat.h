@@ -108,6 +108,8 @@ struct as3722_regulator_platform_data {
 	bool oc_configure_enable;
 	int oc_trip_thres_perphase;
 	int oc_alarm_thres_perphase;
+	bool enable_tracking;
+	bool disable_tracking_suspend;
 };
 
 /*
