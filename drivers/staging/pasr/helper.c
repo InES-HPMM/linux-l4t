@@ -38,8 +38,8 @@ struct pasr_die *pasr_addr2die(struct pasr_map *map, phys_addr_t addr)
 			right = mid;
 	}
 
-	pr_err("%s: No die found for address %#x",
-			__func__, addr);
+	pr_debug("%s: No die found for address %#9llx",
+			__func__, (u64)addr);
 	return NULL;
 }
 
@@ -79,8 +79,8 @@ struct pasr_section *pasr_addr2section(struct pasr_map *map
 
 err:
 	/* Provided address isn't in any declared section */
-	pr_err("%s: No section found for address %#x",
-			__func__, addr);
+	pr_debug("%s: No section found for address %#9llx",
+			__func__, (u64)addr);
 
 	return NULL;
 }

@@ -57,8 +57,12 @@ void pasr_put(phys_addr_t paddr, u64 size)
 
 	do {
 		s = pasr_addr2section(pasr.map, paddr);
-		if (!s)
+		if (!s) {
+			pasr.map = NULL;
+			WARN_ONCE(1, KERN_INFO"%s(): Segment missing,\
+					PASR disabled\n", __func__);
 			goto out;
+		}
 
 		cur_sz = ((paddr + size - 1) < (s->start + section_size - 1)) ?
 			size : s->start + section_size - paddr;
@@ -107,8 +111,12 @@ void pasr_get(phys_addr_t paddr, u64 size)
 
 	do {
 		s = pasr_addr2section(pasr.map, paddr);
-		if (!s)
+		if (!s) {
+			pasr.map = NULL;
+			WARN_ONCE(1, KERN_INFO"%s(): Segment missing,\
+					PASR disabled\n", __func__);
 			goto out;
+		}
 
 		cur_sz = ((paddr + size - 1) < (s->start + section_size - 1)) ?
 			size : s->start + section_size - paddr;
@@ -146,14 +154,14 @@ int pasr_register_mask_function(phys_addr_t addr, void *function, void *cookie)
 	struct pasr_die *die = pasr_addr2die(pasr.map, addr);
 
 	if (!die) {
-		pr_err("%s: No DDR die corresponding to address 0x%08x\n",
-				__func__, addr);
+		pr_err("%s: No DDR die corresponding to address 0x%09llx\n",
+				__func__, (u64)addr);
 		return -EINVAL;
 	}
 
 	if (addr != die->start)
-		pr_warning("%s: Addresses mismatch (Die = 0x%08x, addr = 0x%08x\n"
-				, __func__, die->start, addr);
+		pr_warn("%s: Addresses mismatch (Die = 0x%09llx, addr = 0x%09llx\n"
+				, __func__, (u64)die->start, (u64)addr);
 
 	die->cookie = cookie;
 	die->apply_mask = function;
