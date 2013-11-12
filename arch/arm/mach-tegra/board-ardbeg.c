@@ -396,27 +396,6 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-#ifdef CONFIG_SATA_AHCI_TEGRA
-static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
-	.gen2_rx_eq = -1,
-	.pexp_gpio = PMU_TCA6416_GPIO(9),
-};
-
-static void ardbeg_sata_init(void)
-{
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_PM363)
-		tegra_ahci_platform_data0.pexp_gpio = -1;
-
-	tegra_sata_device.dev.platform_data = &tegra_ahci_platform_data0;
-	platform_device_register(&tegra_sata_device);
-}
-#else
-static void ardbeg_sata_init(void) { }
-#endif
-
 static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[0]	= 1,
 	.port_status[1]	= 1,
@@ -1144,6 +1123,7 @@ static void __init tegra_ardbeg_late_init(void)
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	ardbeg_sdhci_init();
+	ardbeg_sata_init();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)
