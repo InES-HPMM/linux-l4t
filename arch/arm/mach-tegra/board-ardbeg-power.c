@@ -324,17 +324,26 @@ int __init ardbeg_as3722_regulator_init(void)
 	/* Set vdd_gpu init uV to 1V */
 	as3722_sd6_reg_idata.constraints.init_uV = 900000;
 
+	as3722_sd6_reg_idata.constraints.min_uA = 3500000;
+	as3722_sd6_reg_idata.constraints.max_uA = 3500000;
 	as3722_sd6_reg_pdata.oc_configure_enable = true;
 	as3722_sd6_reg_pdata.oc_trip_thres_perphase = 3500;
 	as3722_sd6_reg_pdata.oc_alarm_thres_perphase = 0;
 
+	as3722_sd0_reg_idata.constraints.min_uA = 3500000;
+	as3722_sd0_reg_idata.constraints.max_uA = 3500000;
 	as3722_sd0_reg_pdata.oc_configure_enable = true;
 	as3722_sd0_reg_pdata.oc_trip_thres_perphase = 3500;
 	as3722_sd0_reg_pdata.oc_alarm_thres_perphase = 0;
 
+	as3722_sd1_reg_idata.constraints.min_uA = 2500000;
+	as3722_sd1_reg_idata.constraints.max_uA = 2500000;
 	as3722_sd1_reg_pdata.oc_configure_enable = true;
 	as3722_sd1_reg_pdata.oc_trip_thres_perphase = 2500;
 	as3722_sd1_reg_pdata.oc_alarm_thres_perphase = 0;
+
+	as3722_ldo3_reg_pdata.enable_tracking = true;
+	as3722_ldo3_reg_pdata.disable_tracking_suspend = true;
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1792) {
