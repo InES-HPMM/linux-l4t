@@ -38,6 +38,72 @@
 
 #define AS3722_GPIO_IOSF_VAL(n)                         (((n) & 0xF) << 3)
 
+
+
+
+#define AS3722_SDn_CTRL(n)                              BIT(n)
+
+#define AS3722_ENABLE_CTRL1_REG                         0x3C
+#define AS3722_ENABLE_CTRL2_REG                         0x3D
+#define AS3722_ENABLE_CTRL3_REG                         0x3E
+#define AS3722_ENABLE_CTRL4_REG                         0x3F
+#define AS3722_ENABLE_CTRL5_REG                         0x40
+
+#define AS3722_OVCURRENT_REG                            0x5A
+#define AS3722_OVCURRENT_DEB_REG                        0x5B
+
+#define AS3722_SD0_EXT_ENABLE_MASK                      0x03
+#define AS3722_SD1_EXT_ENABLE_MASK                      0x0C
+#define AS3722_SD2_EXT_ENABLE_MASK                      0x30
+#define AS3722_SD3_EXT_ENABLE_MASK                      0xC0
+#define AS3722_SD4_EXT_ENABLE_MASK                      0x03
+#define AS3722_SD5_EXT_ENABLE_MASK                      0x0C
+#define AS3722_SD6_EXT_ENABLE_MASK                      0x30
+#define AS3722_LDO0_EXT_ENABLE_MASK                     0x03
+#define AS3722_LDO1_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO2_EXT_ENABLE_MASK                     0x30
+#define AS3722_LDO3_EXT_ENABLE_MASK                     0xC0
+#define AS3722_LDO4_EXT_ENABLE_MASK                     0x03
+#define AS3722_LDO5_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO6_EXT_ENABLE_MASK                     0x30
+#define AS3722_LDO7_EXT_ENABLE_MASK                     0xC0
+#define AS3722_LDO9_EXT_ENABLE_MASK                     0x0C
+#define AS3722_LDO10_EXT_ENABLE_MASK                    0x30
+#define AS3722_LDO11_EXT_ENABLE_MASK                    0xC0
+
+
+/* AS3722 register bits and bit masks */
+#define AS3722_LDO0_VSEL_MASK                           0x1F
+#define AS3722_LDO0_VSEL_MIN                            0x01
+#define AS3722_LDO0_VSEL_MAX                            0x12
+#define AS3722_LDO0_NUM_VOLT                            0x12
+#define AS3722_LDO3_VSEL_MASK                           0x3F
+#define AS3722_LDO3_VSEL_MIN                            0x01
+#define AS3722_LDO3_NUM_VOLT                            0x2D
+#define AS3722_LDO_VSEL_MASK                            0x7F
+#define AS3722_LDO_VSEL_MIN                             0x01
+#define AS3722_LDO_VSEL_MAX                             0x7F
+#define AS3722_LDO_VSEL_DNU_MIN                         0x25
+#define AS3722_LDO_VSEL_DNU_MAX                         0x3F
+
+#define AS3722_LDO0_CTRL                                BIT(0)
+#define AS3722_LDO1_CTRL                                BIT(1)
+#define AS3722_LDO2_CTRL                                BIT(2)
+#define AS3722_LDO3_CTRL                                BIT(3)
+#define AS3722_LDO4_CTRL                                BIT(4)
+#define AS3722_LDO5_CTRL                                BIT(5)
+#define AS3722_LDO6_CTRL                                BIT(6)
+#define AS3722_LDO7_CTRL                                BIT(7)
+#define AS3722_LDO9_CTRL                                BIT(1)
+#define AS3722_LDO10_CTRL                               BIT(2)
+#define AS3722_LDO11_CTRL                               BIT(3)
+
+
+
+
+
+
+
 static inline int as3722_read(struct as3722 *as3722, u32 reg, u32 *dest)
 {
 	return regmap_read(as3722->regmap, reg, dest);

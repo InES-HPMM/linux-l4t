@@ -1,9 +1,10 @@
 /*
- * as3722-regulator.c - voltage regulator support for AS3722
+ * Voltage regulator support for AMS AS3722 PMIC
  *
  * Copyright (C) 2013 ams
  *
  * Author: Florian Lobmaier <florian.lobmaier@ams.com>
+ * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,1191 +22,904 @@
  *
  */
 
-#include <linux/bug.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
-#include <linux/regulator/driver.h>
-#include <linux/export.h>
 #include <linux/module.h>
-#include <linux/mfd/as3722-reg.h>
-#include <linux/mfd/as3722-plat.h>
+#include <linux/mfd/as3722.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
+#include <linux/regulator/of_regulator.h>
+#include <linux/slab.h>
+
+/* Initialize struct regulator_linear_range */
+#define AS3722_REG_LIN_RANGE(_min_uV, _min_sel, _max_sel, _step_uV)   \
+{									\
+	.min_uV		= _min_uV,					\
+	.max_uV		= _min_uV + (_max_sel - _min_sel) * _step_uV,	\
+	.min_sel	= _min_sel,					\
+	.max_sel	= _max_sel,					\
+	.uV_step	= _step_uV,					\
+}
+
+/* Regulator IDs */
+enum as3722_regulators_id {
+	AS3722_REGULATOR_ID_SD0,
+	AS3722_REGULATOR_ID_SD1,
+	AS3722_REGULATOR_ID_SD2,
+	AS3722_REGULATOR_ID_SD3,
+	AS3722_REGULATOR_ID_SD4,
+	AS3722_REGULATOR_ID_SD5,
+	AS3722_REGULATOR_ID_SD6,
+	AS3722_REGULATOR_ID_LDO0,
+	AS3722_REGULATOR_ID_LDO1,
+	AS3722_REGULATOR_ID_LDO2,
+	AS3722_REGULATOR_ID_LDO3,
+	AS3722_REGULATOR_ID_LDO4,
+	AS3722_REGULATOR_ID_LDO5,
+	AS3722_REGULATOR_ID_LDO6,
+	AS3722_REGULATOR_ID_LDO7,
+	AS3722_REGULATOR_ID_LDO9,
+	AS3722_REGULATOR_ID_LDO10,
+	AS3722_REGULATOR_ID_LDO11,
+	AS3722_REGULATOR_ID_MAX,
+};
 
 struct as3722_register_mapping {
-	u8 reg_id;
-	u8 reg_vsel;
-	u32 reg_enable;
-	u8 enable_bit;
+	u8 regulator_id;
+	const char *name;
+	const char *sname;
+	u8 vsel_reg;
+	u8 vsel_mask;
+	int n_voltages;
+	u32 enable_reg;
+	u8 enable_mask;
+	u32 control_reg;
+	u8 mode_mask;
 	u32 sleep_ctrl_reg;
-	u8 sleep_ctrl_bit_mask_mask;
+	u8 sleep_ctrl_mask;
 };
 
-struct as3722_register_mapping as3722_reg_lookup[] = {
+struct as3722_regulator_config_data {
+	struct regulator_init_data *reg_init;
+	bool enable_tracking;
+	bool disable_tracking_suspend;
+	int ext_control;
+};
+
+struct as3722_regulators {
+	struct device *dev;
+	struct as3722 *as3722;
+	struct regulator_dev *rdevs[AS3722_REGULATOR_ID_MAX];
+	struct regulator_desc desc[AS3722_REGULATOR_ID_MAX];
+	struct as3722_regulator_config_data
+			reg_config_data[AS3722_REGULATOR_ID_MAX];
+};
+
+static const struct as3722_register_mapping as3722_reg_lookup[] = {
 	{
-		.reg_id = AS3722_SD0,
-		.reg_vsel = AS3722_SD0_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD0_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD0_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD0,
+		.name = "as3722-sd0",
+		.vsel_reg = AS3722_SD0_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(0),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.sleep_ctrl_mask = AS3722_SD0_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD0_CONTROL_REG,
+		.mode_mask = AS3722_SD0_MODE_FAST,
+		.n_voltages = AS3722_SD0_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD1,
-		.reg_vsel = AS3722_SD1_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD1_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD1_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD1,
+		.name = "as3722-sd1",
+		.vsel_reg = AS3722_SD1_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(1),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.sleep_ctrl_mask = AS3722_SD1_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD1_CONTROL_REG,
+		.mode_mask = AS3722_SD1_MODE_FAST,
+		.n_voltages = AS3722_SD0_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD2,
-		.reg_vsel = AS3722_SD2_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD2_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD2_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD2,
+		.name = "as3722-sd2",
+		.sname = "vsup-sd2",
+		.vsel_reg = AS3722_SD2_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(2),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.sleep_ctrl_mask = AS3722_SD2_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD23_CONTROL_REG,
+		.mode_mask = AS3722_SD2_MODE_FAST,
+		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD3,
-		.reg_vsel = AS3722_SD3_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD3_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD3_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD3,
+		.name = "as3722-sd3",
+		.sname = "vsup-sd3",
+		.vsel_reg = AS3722_SD3_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(3),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.sleep_ctrl_mask = AS3722_SD3_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD23_CONTROL_REG,
+		.mode_mask = AS3722_SD3_MODE_FAST,
+		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD4,
-		.reg_vsel = AS3722_SD4_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD4_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD4_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD4,
+		.name = "as3722-sd4",
+		.sname = "vsup-sd4",
+		.vsel_reg = AS3722_SD4_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(4),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.sleep_ctrl_mask = AS3722_SD4_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD4_CONTROL_REG,
+		.mode_mask = AS3722_SD4_MODE_FAST,
+		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD5,
-		.reg_vsel = AS3722_SD5_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD5_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD5_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD5,
+		.name = "as3722-sd5",
+		.sname = "vsup-sd5",
+		.vsel_reg = AS3722_SD5_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(5),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.sleep_ctrl_mask = AS3722_SD5_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD5_CONTROL_REG,
+		.mode_mask = AS3722_SD5_MODE_FAST,
+		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_SD6,
-		.reg_vsel = AS3722_SD6_VOLTAGE_REG,
-		.reg_enable = AS3722_SD_CONTROL_REG,
-		.enable_bit = AS3722_SD6_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
-		.sleep_ctrl_bit_mask_mask = AS3722_SD6_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_SD6,
+		.name = "as3722-sd6",
+		.vsel_reg = AS3722_SD6_VOLTAGE_REG,
+		.vsel_mask = AS3722_SD_VSEL_MASK,
+		.enable_reg = AS3722_SD_CONTROL_REG,
+		.enable_mask = AS3722_SDn_CTRL(6),
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.sleep_ctrl_mask = AS3722_SD6_EXT_ENABLE_MASK,
+		.control_reg = AS3722_SD6_CONTROL_REG,
+		.mode_mask = AS3722_SD6_MODE_FAST,
+		.n_voltages = AS3722_SD0_VSEL_MAX + 1,
 	},
 	{
-		.reg_id = AS3722_LDO0,
-		.reg_vsel = AS3722_LDO0_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO0_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO0_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO0,
+		.name = "as3722-ldo0",
+		.sname = "vin-ldo0",
+		.vsel_reg = AS3722_LDO0_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO0_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO0_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.sleep_ctrl_mask = AS3722_LDO0_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO0_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO1,
-		.reg_vsel = AS3722_LDO1_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO1_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO1_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO1,
+		.name = "as3722-ldo1",
+		.sname = "vin-ldo1-6",
+		.vsel_reg = AS3722_LDO1_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO1_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.sleep_ctrl_mask = AS3722_LDO1_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO2,
-		.reg_vsel = AS3722_LDO2_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO2_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO2_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO2,
+		.name = "as3722-ldo2",
+		.sname = "vin-ldo2-5-7",
+		.vsel_reg = AS3722_LDO2_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO2_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.sleep_ctrl_mask = AS3722_LDO2_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO3,
-		.reg_vsel = AS3722_LDO3_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO3_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO3_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO3,
+		.name = "as3722-ldo3",
+		.name = "vin-ldo3-4",
+		.vsel_reg = AS3722_LDO3_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO3_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO3_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.sleep_ctrl_mask = AS3722_LDO3_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO3_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO4,
-		.reg_vsel = AS3722_LDO4_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO4_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO4_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO4,
+		.name = "as3722-ldo4",
+		.name = "vin-ldo3-4",
+		.vsel_reg = AS3722_LDO4_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO4_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.sleep_ctrl_mask = AS3722_LDO4_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO5,
-		.reg_vsel = AS3722_LDO5_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO5_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO5_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO5,
+		.name = "as3722-ldo5",
+		.sname = "vin-ldo2-5-7",
+		.vsel_reg = AS3722_LDO5_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO5_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.sleep_ctrl_mask = AS3722_LDO5_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO6,
-		.reg_vsel = AS3722_LDO6_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO6_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO6_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO6,
+		.name = "as3722-ldo6",
+		.sname = "vin-ldo1-6",
+		.vsel_reg = AS3722_LDO6_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO6_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.sleep_ctrl_mask = AS3722_LDO6_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO7,
-		.reg_vsel = AS3722_LDO7_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL0_REG,
-		.enable_bit = AS3722_LDO7_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO7_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO7,
+		.name = "as3722-ldo7",
+		.sname = "vin-ldo2-5-7",
+		.vsel_reg = AS3722_LDO7_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL0_REG,
+		.enable_mask = AS3722_LDO7_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.sleep_ctrl_mask = AS3722_LDO7_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO9,
-		.reg_vsel = AS3722_LDO9_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL1_REG,
-		.enable_bit = AS3722_LDO9_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO9_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO9,
+		.name = "as3722-ldo9",
+		.sname = "vin-ldo9-10",
+		.vsel_reg = AS3722_LDO9_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL1_REG,
+		.enable_mask = AS3722_LDO9_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.sleep_ctrl_mask = AS3722_LDO9_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO10,
-		.reg_vsel = AS3722_LDO10_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL1_REG,
-		.enable_bit = AS3722_LDO10_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO10_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO10,
+		.name = "as3722-ldo10",
+		.sname = "vin-ldo9-10",
+		.vsel_reg = AS3722_LDO10_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL1_REG,
+		.enable_mask = AS3722_LDO10_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.sleep_ctrl_mask = AS3722_LDO10_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
-		.reg_id = AS3722_LDO11,
-		.reg_vsel = AS3722_LDO11_VOLTAGE_REG,
-		.reg_enable = AS3722_LDOCONTROL1_REG,
-		.enable_bit = AS3722_LDO11_ON,
-		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
-		.sleep_ctrl_bit_mask_mask = AS3722_LDO11_EXTERNAL_ENABLE_MASK,
+		.regulator_id = AS3722_REGULATOR_ID_LDO11,
+		.name = "as3722-ldo11",
+		.sname = "vin-ldo11",
+		.vsel_reg = AS3722_LDO11_VOLTAGE_REG,
+		.vsel_mask = AS3722_LDO_VSEL_MASK,
+		.enable_reg = AS3722_LDOCONTROL1_REG,
+		.enable_mask = AS3722_LDO11_CTRL,
+		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.sleep_ctrl_mask = AS3722_LDO11_EXT_ENABLE_MASK,
+		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 };
 
-/*
- * as3722 ldo0 extended input range (0.825-1.25V)  */
-static int as3722_ldo0_is_enabled(struct regulator_dev *dev)
+
+static const int as3722_ldo_current[] = { 150000, 300000 };
+static const int as3722_sd016_current[] = { 2500000, 3000000, 3500000 };
+
+static int as3722_current_to_index(int min_uA, int max_uA,
+		const int *curr_table, int n_currents)
 {
-	u32 val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, AS3722_LDOCONTROL0_REG, &val);
-	return (val & AS3722_LDO0_CTRL_MASK) != 0;
-}
-
-static int as3722_ldo0_enable(struct regulator_dev *dev)
-{
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_enable,
-			AS3722_LDO0_CTRL_MASK, AS3722_LDO0_ON);
-}
-
-static int as3722_ldo0_disable(struct regulator_dev *dev)
-{
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_enable,
-			AS3722_LDO0_CTRL_MASK, 0);
-}
-
-static int as3722_ldo0_list_voltage(struct regulator_dev *dev,
-		unsigned selector)
-{
-	if (selector >= AS3722_LDO0_VSEL_MAX)
-		return -EINVAL;
-
-	return 800000 + (selector + 1) * 25000;
-}
-
-static int as3722_ldo0_get_voltage(struct regulator_dev *dev)
-{
-	u32 val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel, &val);
-	val &= AS3722_LDO_VSEL_MASK;
-	if (val > 0)
-		val--;  /* ldo vsel has min value of 1, selector starts
-			   at 0 */
-
-	return as3722_ldo0_list_voltage(dev, val);
-}
-
-static int as3722_ldo0_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
-{
-	u8 reg_val;
-	int val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	if (min_uV > 1250000 || max_uV < 825000)
-		return -EINVAL;
-
-	/* 25mV steps from 0.825V-1.25V */
-	val = (min_uV - 800001) / 25000 + 1;
-	if (val < 1)
-		val = 1;
-
-	reg_val = (u8) val;
-	if (reg_val * 25000 + 800000 > max_uV)
-		return -EINVAL;
-
-	BUG_ON(reg_val * 25000 + 800000 < min_uV);
-	BUG_ON(reg_val > AS3722_LDO0_VSEL_MAX);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
-			AS3722_LDO_VSEL_MASK, reg_val);
-}
-
-static int as3722_ldo0_get_current_limit(struct regulator_dev *dev)
-{
-	u32 val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
-			&val);
-	val &= AS3722_LDO_ILIMIT_MASK;
-
-	/* return ldo specific values */
-	if (val)
-		return 300000;
-
-	return 150000;
-}
-
-static int as3722_ldo0_set_current_limit(struct regulator_dev *dev,
-		int min_uA, int max_uA)
-{
-	u8 val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	/* we check the values in case the constraints are wrong */
-	if (min_uA <= 150000 && max_uA >= 150000)
-		val = 0;
-	else if (min_uA > 150000 && max_uA >= 300000)
-		val = AS3722_LDO_ILIMIT_BIT;
-	else
-		return -EINVAL;
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
-			AS3722_LDO_ILIMIT_MASK, val);
-}
-
-static struct regulator_ops as3722_ldo0_ops = {
-	.is_enabled = as3722_ldo0_is_enabled,
-	.enable = as3722_ldo0_enable,
-	.disable = as3722_ldo0_disable,
-	.list_voltage = as3722_ldo0_list_voltage,
-	.get_voltage = as3722_ldo0_get_voltage,
-	.set_voltage = as3722_ldo0_set_voltage,
-	.get_current_limit = as3722_ldo0_get_current_limit,
-	.set_current_limit = as3722_ldo0_set_current_limit,
-};
-
-/*
- * as3722 ldo3 low output range (0.61V-1.5V)  */
-static int as3722_ldo3_is_enabled(struct regulator_dev *dev)
-{
-	u32 val = 0;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[rdev_get_id(dev)].reg_enable,
-			&val);
-	return (val & AS3722_LDO3_CTRL_MASK) != 0;
-}
-
-static int as3722_ldo3_enable(struct regulator_dev *dev)
-{
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_enable,
-			AS3722_LDO3_CTRL_MASK, AS3722_LDO3_ON);
-}
-
-static int as3722_ldo3_disable(struct regulator_dev *dev)
-{
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_enable,
-			AS3722_LDO3_CTRL_MASK, 0);
-}
-
-static int as3722_ldo3_list_voltage(struct regulator_dev *dev,
-		unsigned selector)
-{
-	if (selector >= AS3722_LDO3_VSEL_MAX)
-		return -EINVAL;
-
-	return 600000 + (selector + 1) * 20000;
-}
-
-static int as3722_ldo3_get_voltage(struct regulator_dev *dev)
-{
-	u32 val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel, &val);
-	val &= AS3722_LDO3_VSEL_MASK;
-	if (val > 0)
-		val--;  /* ldo vsel has min value 1, selector starts at
-			   0 */
-
-	return as3722_ldo3_list_voltage(dev, val);
-}
-
-static int as3722_ldo3_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
-{
-	u8 reg_val;
-	int val;
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-
-	if (min_uV > 1500000 || max_uV < 620000)
-		return -EINVAL;
-
-	/* 20mV steps from 0.62V to 1.5V */
-	val = (min_uV - 600001) / 20000 + 1;
-	if (val < 1)
-		val = 1;
-
-	reg_val = (u8) val;
-	if (reg_val * 20000 + 600000 > max_uV)
-		return -EINVAL;
-
-	BUG_ON(reg_val * 20000 + 600000 < min_uV);
-	BUG_ON(reg_val > AS3722_LDO3_VSEL_MAX);
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
-			AS3722_LDO3_VSEL_MASK, reg_val);
-}
-
-static int as3722_ldo3_get_current_limit(struct regulator_dev *dev)
-{
-	return 150000;
-}
-
-static int as3722_ldo3_set_mode(struct regulator_dev *dev, u8 mode)
-{
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	if (mode != AS3722_LDO3_MODE_PMOS && mode
-		!= AS3722_LDO3_MODE_PMOS_TRACKING && mode
-		!= AS3722_LDO3_MODE_NMOS && mode != AS3722_LDO3_MODE_SWITCH)
-		return -EINVAL;
-
-	return as3722_set_bits(as3722,
-			as3722_reg_lookup[rdev_get_id(dev)].reg_vsel,
-			AS3722_LDO3_MODE_MASK, mode);
-}
-
-static struct regulator_ops as3722_ldo3_ops = {
-	.is_enabled = as3722_ldo3_is_enabled,
-	.enable = as3722_ldo3_enable,
-	.disable = as3722_ldo3_disable,
-	.list_voltage = as3722_ldo3_list_voltage,
-	.get_voltage = as3722_ldo3_get_voltage,
-	.set_voltage = as3722_ldo3_set_voltage,
-	.get_current_limit = as3722_ldo3_get_current_limit,
-};
-
-/*
- * as3722 ldo 1-2 and 4-11 (0.8V-3.3V)
- */
-static int as3722_ldo_is_enabled(struct regulator_dev *dev)
-{
-	u32 val = 0;
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[id].reg_enable, &val);
-	return (val & as3722_reg_lookup[id].enable_bit) != 0;
-}
-
-static int as3722_ldo_enable(struct regulator_dev *dev)
-{
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_enable,
-			as3722_reg_lookup[id].enable_bit,
-			as3722_reg_lookup[id].enable_bit);
-}
-
-static int as3722_ldo_disable(struct regulator_dev *dev)
-{
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_enable,
-			as3722_reg_lookup[id].enable_bit, 0);
-}
-
-static int as3722_ldo_list_voltage(struct regulator_dev *dev,
-		unsigned selector)
-{
-	if (selector >= AS3722_LDO_NUM_VOLT)
-		return -EINVAL;
-
-	selector++;     /* ldo vsel min value is 1, selector starts at 0. */
-	return 800000 + selector * 25000;
-}
-
-static int as3722_ldo_get_voltage(struct regulator_dev *dev)
-{
-	u32 val;
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[id].reg_vsel, &val);
-	val &= AS3722_LDO_VSEL_MASK;
-	/* ldo vsel has a gap from 0x25 to 0x3F (27 values). */
-	if (val > AS3722_LDO_VSEL_DNU_MAX)
-		val -= 27;
-	/* ldo vsel min value is 1, selector starts at 0. */
-	if (val > 0)
-		val--;
-
-	return as3722_ldo_list_voltage(dev, val);
-}
-
-static int as3722_ldo_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
-{
-	u8 reg_val;
-	int val;
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-
-	if (min_uV > 3300000 || max_uV < 825000)
-		return -EINVAL;
-
-	if (min_uV <= 1700000) {
-		/* 25mV steps from 0.825V to 1.7V */
-		val = (min_uV - 800001) / 25000 + 1;
-		if (val < 1)
-			val = 1;
-		reg_val = (u8) val;
-		if (reg_val * 25000 + 800000 > max_uV)
-			return -EINVAL;
-		BUG_ON(reg_val * 25000 + 800000 < min_uV);
-	} else {
-		/* 25mV steps from 1.725V to 3.3V */
-		reg_val = (min_uV - 1700001) / 25000 + 0x40;
-		if ((reg_val - 0x40) * 25000 + 1725000 > max_uV)
-			return -EINVAL;
-		BUG_ON((reg_val - 0x40) * 25000 + 1725000 < min_uV);
-	}
-
-	BUG_ON(reg_val > AS3722_LDO_VSEL_MAX);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_vsel,
-			AS3722_LDO_VSEL_MASK, reg_val);
-}
-
-static int as3722_ldo_get_current_limit(struct regulator_dev *dev)
-{
-	u32 val;
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[id].reg_vsel, &val);
-	val &= AS3722_LDO_ILIMIT_MASK;
-
-	/* return ldo specific values */
-	if (val)
-		return 300000;
-
-	return 150000;
-}
-
-static int as3722_ldo_set_current_limit(struct regulator_dev *dev,
-		int min_uA, int max_uA)
-{
-	u8 val;
-	int loweruA = 150000;
-	int id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	/* we check the values in case the constraints are wrong */
-	if (min_uA <= loweruA && max_uA >= loweruA)
-		val = 0;
-	else if (min_uA > loweruA && max_uA >= 300000)
-		val = AS3722_LDO_ILIMIT_BIT;
-	else
-		return -EINVAL;
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_vsel,
-			AS3722_LDO_ILIMIT_MASK, val);
-}
-
-static int as3722_ldo_enable_time(struct regulator_dev *dev)
-{
-	return 2000;
-}
-
-static struct regulator_ops as3722_ldo_ops = {
-	.is_enabled = as3722_ldo_is_enabled,
-	.enable = as3722_ldo_enable,
-	.disable = as3722_ldo_disable,
-	.list_voltage = as3722_ldo_list_voltage,
-	.get_voltage = as3722_ldo_get_voltage,
-	.set_voltage = as3722_ldo_set_voltage,
-	.get_current_limit = as3722_ldo_get_current_limit,
-	.set_current_limit = as3722_ldo_set_current_limit,
-	.enable_time = as3722_ldo_enable_time,
-};
-
-/*
- * as3722 step down
- */
-static int as3722_sd_is_enabled(struct regulator_dev *dev)
-{
-	u32 val;
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, as3722_reg_lookup[id].reg_enable, &val);
-
-	return (val & as3722_reg_lookup[id].enable_bit) != 0;
-}
-
-static int as3722_sd_enable(struct regulator_dev *dev)
-{
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_enable,
-			as3722_reg_lookup[id].enable_bit,
-			as3722_reg_lookup[id].enable_bit);
-}
-
-static int as3722_sd_disable(struct regulator_dev *dev)
-{
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_enable,
-			as3722_reg_lookup[id].enable_bit, 0);
-}
-
-static unsigned int as3722_sd_get_mode(struct regulator_dev *dev)
-{
-	u32 val;
-	u8 reg_id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	as3722_reg_read(as3722, AS3722_SD_CONTROL_REG, &val);
-
-	switch (rdev_get_id(dev)) {
-	case AS3722_SD0:
-		as3722_reg_read(as3722, AS3722_SD0_CONTROL_REG, &val);
-		if ((val & AS3722_SD0_MODE_MASK) == AS3722_SD0_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD1:
-		as3722_reg_read(as3722, AS3722_SD1_CONTROL_REG, &val);
-		if ((val & AS3722_SD1_MODE_MASK) == AS3722_SD1_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD2:
-		as3722_reg_read(as3722, AS3722_SD23_CONTROL_REG, &val);
-		if ((val & AS3722_SD2_MODE_MASK) == AS3722_SD2_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD3:
-		as3722_reg_read(as3722, AS3722_SD23_CONTROL_REG, &val);
-		if ((val & AS3722_SD3_MODE_MASK) == AS3722_SD3_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD4:
-		as3722_reg_read(as3722, AS3722_SD4_CONTROL_REG, &val);
-		if ((val & AS3722_SD1_MODE_MASK) == AS3722_SD1_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD5:
-		as3722_reg_read(as3722, AS3722_SD5_CONTROL_REG, &val);
-		if ((val & AS3722_SD1_MODE_MASK) == AS3722_SD1_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	case AS3722_SD6:
-		as3722_reg_read(as3722, AS3722_SD6_CONTROL_REG, &val);
-		if ((val & AS3722_SD1_MODE_MASK) == AS3722_SD1_MODE_FAST)
-			return REGULATOR_MODE_FAST;
-		else
-			return REGULATOR_MODE_NORMAL;
-	default:
-		dev_err(as3722->dev, "regulator id %d invalid.\n",
-				reg_id);
-	}
-
-	return -ERANGE;
-}
-
-static int as3722_sd_set_mode(struct regulator_dev *dev,
-		unsigned int mode)
-{
-	u8 val, mask, reg;
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
-
-	if (mode != REGULATOR_MODE_FAST && mode != REGULATOR_MODE_NORMAL)
-		return -EINVAL;
-
-	switch (id) {
-	case AS3722_SD0:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD0_MODE_FAST;
-		else
-			val = AS3722_SD0_MODE_NORMAL;
-
-		reg = AS3722_SD0_CONTROL_REG;
-		mask = AS3722_SD0_MODE_MASK;
-		break;
-	case AS3722_SD1:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD1_MODE_FAST;
-		else
-			val = AS3722_SD1_MODE_NORMAL;
-
-		reg = AS3722_SD1_CONTROL_REG;
-		mask = AS3722_SD1_MODE_MASK;
-		break;
-	case AS3722_SD2:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD2_MODE_FAST;
-		else
-			val = AS3722_SD2_MODE_NORMAL;
-
-		reg = AS3722_SD23_CONTROL_REG;
-		mask = AS3722_SD2_MODE_MASK;
-		break;
-	case AS3722_SD3:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD3_MODE_FAST;
-		else
-			val = AS3722_SD3_MODE_NORMAL;
-
-		reg = AS3722_SD23_CONTROL_REG;
-		mask = AS3722_SD3_MODE_MASK;
-		break;
-	case AS3722_SD4:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD4_MODE_FAST;
-		else
-			val = AS3722_SD4_MODE_NORMAL;
-
-		reg = AS3722_SD4_CONTROL_REG;
-		mask = AS3722_SD4_MODE_MASK;
-		break;
-	case AS3722_SD5:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD5_MODE_FAST;
-		else
-			val = AS3722_SD5_MODE_NORMAL;
-
-		reg = AS3722_SD5_CONTROL_REG;
-		mask = AS3722_SD5_MODE_MASK;
-		break;
-	case AS3722_SD6:
-		if (mode == REGULATOR_MODE_FAST)
-			val = AS3722_SD6_MODE_FAST;
-		else
-			val = AS3722_SD6_MODE_NORMAL;
-
-		reg = AS3722_SD6_CONTROL_REG;
-		mask = AS3722_SD6_MODE_MASK;
-		break;
-	default:
-		dev_err(as3722->dev, "regulator id %d invalid.\n",
-				id);
-		return -EINVAL;
-	}
-
-	return as3722_set_bits(as3722, reg, mask, val);
-}
-
-static int as3722_sd_list_voltage(struct regulator_dev *dev, unsigned
-		selector) {
-	u8 id = rdev_get_id(dev);
-
-	if (id == AS3722_SD0 || id == AS3722_SD1 || id == AS3722_SD6) {
-		if (selector >= AS3722_SD0_VSEL_MAX)
-			return -EINVAL;
-
-		return 600000 + (selector + 1) * 10000;
-	} else {
-		if (selector > AS3722_SD2_VSEL_MAX)
-			return -EINVAL;
-
-		/* ldo vsel min value is 1, selector starts at 0. */
-		selector++;
-		if (selector <= 0x40)
-			return 600000 + selector * 12500;
-		if (selector <= 0x70)
-			return 1400000 + (selector - 0x40) * 25000;
-		if (selector <= 0x7F)
-			return 2600000 + (selector - 0x70) * 50000;
-
-		return -ERANGE;
+	int i;
+
+	for (i = n_currents - 1; i >= 0; i--) {
+		if ((min_uA <= curr_table[i]) && (curr_table[i] <= max_uA))
+			return i;
 	}
 	return -EINVAL;
 }
 
-static int as3722_sd_get_voltage(struct regulator_dev *dev)
+static int as3722_ldo_get_current_limit(struct regulator_dev *rdev)
 {
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	int id = rdev_get_id(rdev);
 	u32 val;
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
+	int ret;
 
-	as3722_reg_read(as3722, as3722_reg_lookup[id].reg_vsel, &val);
-	val &= AS3722_SD_VSEL_MASK;
-	if (val > 0)
-		val--;  /* ldo vsel min value is 1, selector starts at
-			   0. */
-
-	return as3722_sd_list_voltage(dev, val);
+	ret = as3722_read(as3722, as3722_reg_lookup[id].vsel_reg, &val);
+	if (ret < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x read failed: %d\n",
+			as3722_reg_lookup[id].vsel_reg, ret);
+		return ret;
+	}
+	if (val & AS3722_LDO_ILIMIT_MASK)
+		return 300000;
+	return 150000;
 }
 
-static int as3722_sd_lowpower_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
+static int as3722_ldo_set_current_limit(struct regulator_dev *rdev,
+		int min_uA, int max_uA)
 {
-	u8 reg_val;
-	int val;
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	int id = rdev_get_id(rdev);
+	int ret;
+	u32 reg = 0;
 
-	/*       0 ... 0        0x00 : not allowed as voltage setting
-	 *  610000 ... 1500000: 0x01 - 0x40, 10mV steps */
-
-	if (min_uV > 1500000 || max_uV < 610000)
-		return -EINVAL;
-
-	val = (min_uV - 600001) / 10000 + 1;
-	if (val < 1)
-		val = 1;
-
-	reg_val = (u8) val;
-	if (reg_val * 10000 + 600000 > max_uV)
-		return -EINVAL;
-	BUG_ON(reg_val * 10000 + 600000 < min_uV);
-
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_vsel,
-			AS3722_SD_VSEL_MASK, reg_val);
+	ret = as3722_current_to_index(min_uA, max_uA, as3722_ldo_current,
+				ARRAY_SIZE(as3722_ldo_current));
+	if (ret < 0) {
+		dev_err(as3722_regs->dev,
+			"Current range min:max = %d:%d does not support\n",
+			min_uA, max_uA);
+		return ret;
+	}
+	if (ret)
+		reg = AS3722_LDO_ILIMIT_BIT;
+	return as3722_update_bits(as3722, as3722_reg_lookup[id].vsel_reg,
+			AS3722_LDO_ILIMIT_MASK, reg);
 }
 
-static int as3722_sd_nom_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
+static struct regulator_ops as3722_ldo0_ops = {
+	.is_enabled = regulator_is_enabled_regmap,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.list_voltage = regulator_list_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_ldo_get_current_limit,
+	.set_current_limit = as3722_ldo_set_current_limit,
+};
+
+static struct regulator_ops as3722_ldo0_extcntrl_ops = {
+	.list_voltage = regulator_list_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_ldo_get_current_limit,
+	.set_current_limit = as3722_ldo_set_current_limit,
+};
+
+static int as3722_ldo3_set_tracking_mode(struct as3722_regulators *as3722_reg,
+		int id, u8 mode)
 {
-	u8 reg_val;
-	int val;
-	u8 id = rdev_get_id(dev);
-	struct as3722 *as3722 = rdev_get_drvdata(dev);
+	struct as3722 *as3722 = as3722_reg->as3722;
 
-	/*       0 ... 0        0x00 : not allowed as voltage setting
-	 *  612500 ... 1400000: 0x01 - 0x40, 12.5mV steps
-	 * 1425000 ... 2600000: 0x41 - 0x70, 25mV steps
-	 * 2650000 ... 3350000: 0x41 - 0x70, 50mV steps */
+	switch (mode) {
+	case AS3722_LDO3_MODE_PMOS:
+	case AS3722_LDO3_MODE_PMOS_TRACKING:
+	case AS3722_LDO3_MODE_NMOS:
+	case AS3722_LDO3_MODE_SWITCH:
+		return as3722_update_bits(as3722,
+			as3722_reg_lookup[id].vsel_reg,
+			AS3722_LDO3_MODE_MASK, mode);
 
-	if (min_uV > 3350000 || max_uV < 612500)
+	default:
 		return -EINVAL;
+	}
+}
 
-	if (min_uV <= 1400000) {
-		val = (min_uV - 600001) / 12500 + 1;
-		if (val < 1)
-			val = 1;
+static int as3722_ldo3_get_current_limit(struct regulator_dev *rdev)
+{
+	return 150000;
+}
 
-		reg_val = (u8) val;
-		if ((reg_val * 12500) + 600000 > max_uV)
-			return -EINVAL;
+static struct regulator_ops as3722_ldo3_ops = {
+	.is_enabled = regulator_is_enabled_regmap,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.list_voltage = regulator_list_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_ldo3_get_current_limit,
+};
 
-		BUG_ON((reg_val * 12500) + 600000 < min_uV);
+static struct regulator_ops as3722_ldo3_extcntrl_ops = {
+	.list_voltage = regulator_list_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_ldo3_get_current_limit,
+};
 
-	} else if (min_uV <= 2600000) {
-		reg_val = (min_uV - 1400001) / 25000 + 1;
+static const struct regulator_linear_range as3722_ldo_ranges[] = {
+	AS3722_REG_LIN_RANGE(825000, 0x01, 0x24, 25000),
+	AS3722_REG_LIN_RANGE(1725000, 0x40, 0x7F, 25000),
+};
 
-		if ((reg_val * 25000) + 1400000 > max_uV)
-			return -EINVAL;
+static struct regulator_ops as3722_ldo_ops = {
+	.is_enabled = regulator_is_enabled_regmap,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.map_voltage = regulator_map_voltage_linear_range,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.list_voltage = regulator_list_voltage_linear_range,
+	.get_current_limit = as3722_ldo_get_current_limit,
+	.set_current_limit = as3722_ldo_set_current_limit,
+};
 
-		BUG_ON((reg_val * 25000) + 1400000 < min_uV);
+static struct regulator_ops as3722_ldo_extcntrl_ops = {
+	.map_voltage = regulator_map_voltage_linear_range,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.list_voltage = regulator_list_voltage_linear_range,
+	.get_current_limit = as3722_ldo_get_current_limit,
+	.set_current_limit = as3722_ldo_set_current_limit,
+};
 
-		reg_val += 0x40;
+static unsigned int as3722_sd_get_mode(struct regulator_dev *rdev)
+{
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	int id = rdev_get_id(rdev);
+	u32 val;
+	int ret;
 
-	} else {
+	if (!as3722_reg_lookup[id].control_reg)
+		return -ENOTSUPP;
 
-		reg_val = (min_uV - 2600001) / 50000 + 1;
-
-		if ((reg_val * 50000) + 2600000 > max_uV)
-			return -EINVAL;
-
-		BUG_ON((reg_val * 50000) + 2600000 < min_uV);
-
-		reg_val += 0x70;
+	ret = as3722_read(as3722, as3722_reg_lookup[id].control_reg, &val);
+	if (ret < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x read failed: %d\n",
+			as3722_reg_lookup[id].control_reg, ret);
+		return ret;
 	}
 
-	return as3722_set_bits(as3722, as3722_reg_lookup[id].reg_vsel,
-			AS3722_SD_VSEL_MASK, reg_val);
-}
-
-static int as3722_sd_set_voltage(struct regulator_dev *dev,
-		int min_uV, int max_uV, unsigned *selector)
-{
-	u8 id = rdev_get_id(dev);
-
-	if (id == AS3722_SD0 || id == AS3722_SD1 || id == AS3722_SD6)
-		return as3722_sd_lowpower_set_voltage(dev, min_uV, max_uV,
-							selector);
+	if (val & as3722_reg_lookup[id].mode_mask)
+		return REGULATOR_MODE_FAST;
 	else
-		return as3722_sd_nom_set_voltage(dev, min_uV, max_uV,
-							selector);
+		return REGULATOR_MODE_NORMAL;
 }
 
-static int as3722_sd_enable_time(struct regulator_dev *dev)
+static int as3722_sd_set_mode(struct regulator_dev *rdev,
+		unsigned int mode)
 {
-	return 2000;
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	u8 id = rdev_get_id(rdev);
+	u8 val = 0;
+	int ret;
+
+	if (!as3722_reg_lookup[id].control_reg)
+		return -ERANGE;
+
+	switch (mode) {
+	case REGULATOR_MODE_FAST:
+		val = as3722_reg_lookup[id].mode_mask;
+	case REGULATOR_MODE_NORMAL: /* fall down */
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = as3722_update_bits(as3722, as3722_reg_lookup[id].control_reg,
+			as3722_reg_lookup[id].mode_mask, val);
+	if (ret < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x update failed: %d\n",
+			as3722_reg_lookup[id].control_reg, ret);
+		return ret;
+	}
+	return ret;
 }
 
-static struct regulator_ops as3722_sd_ops = {
-	.is_enabled = as3722_sd_is_enabled,
-	.enable = as3722_sd_enable,
-	.disable = as3722_sd_disable,
-	.list_voltage = as3722_sd_list_voltage,
-	.get_voltage = as3722_sd_get_voltage,
-	.set_voltage = as3722_sd_set_voltage,
+static int as3722_sd016_get_current_limit(struct regulator_dev *rdev)
+{
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	int id = rdev_get_id(rdev);
+	u32 val, reg;
+	int mask;
+	int ret;
+
+	switch (id) {
+	case AS3722_REGULATOR_ID_SD0:
+		reg = AS3722_OVCURRENT_REG;
+		mask = AS3722_OVCURRENT_SD0_TRIP_MASK;
+		break;
+	case AS3722_REGULATOR_ID_SD1:
+		reg = AS3722_OVCURRENT_REG;
+		mask = AS3722_OVCURRENT_SD1_TRIP_MASK;
+		break;
+	case AS3722_REGULATOR_ID_SD6:
+		reg = AS3722_OVCURRENT_DEB_REG;
+		mask = AS3722_OVCURRENT_SD6_TRIP_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+	ret = as3722_read(as3722, reg, &val);
+	if (ret < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x read failed: %d\n",
+			reg, ret);
+		return ret;
+	}
+	val &= mask;
+	val >>= ffs(mask) - 1;
+	if (val == 3)
+		return -EINVAL;
+	return as3722_sd016_current[val];
+}
+
+static int as3722_sd016_set_current_limit(struct regulator_dev *rdev,
+		int min_uA, int max_uA)
+{
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	struct as3722 *as3722 = as3722_regs->as3722;
+	int id = rdev_get_id(rdev);
+	int ret;
+	int val;
+	int mask;
+	u32 reg;
+
+	ret = as3722_current_to_index(min_uA, max_uA, as3722_sd016_current,
+				ARRAY_SIZE(as3722_sd016_current));
+	if (ret < 0) {
+		dev_err(as3722_regs->dev,
+			"Current range min:max = %d:%d does not support\n",
+			min_uA, max_uA);
+		return ret;
+	}
+
+	switch (id) {
+	case AS3722_REGULATOR_ID_SD0:
+		reg = AS3722_OVCURRENT_REG;
+		mask = AS3722_OVCURRENT_SD0_TRIP_MASK;
+		break;
+	case AS3722_REGULATOR_ID_SD1:
+		reg = AS3722_OVCURRENT_REG;
+		mask = AS3722_OVCURRENT_SD1_TRIP_MASK;
+		break;
+	case AS3722_REGULATOR_ID_SD6:
+		reg = AS3722_OVCURRENT_DEB_REG;
+		mask = AS3722_OVCURRENT_SD6_TRIP_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+	val = ret & mask;
+	val <<= ffs(mask) - 1;
+	return as3722_update_bits(as3722, reg, mask, val);
+}
+
+static const struct regulator_linear_range as3722_sd2345_ranges[] = {
+	AS3722_REG_LIN_RANGE(612500, 0x01, 0x40, 12500),
+	AS3722_REG_LIN_RANGE(1425000, 0x41, 0x70, 25000),
+	AS3722_REG_LIN_RANGE(2650000, 0x71, 0x7F, 50000),
+};
+
+static struct regulator_ops as3722_sd016_ops = {
+	.is_enabled = regulator_is_enabled_regmap,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.list_voltage = regulator_list_voltage_linear,
+	.map_voltage = regulator_map_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_sd016_get_current_limit,
+	.set_current_limit = as3722_sd016_set_current_limit,
 	.get_mode = as3722_sd_get_mode,
 	.set_mode = as3722_sd_set_mode,
-	.enable_time = as3722_sd_enable_time,
 };
 
-static struct regulator_desc regulators[] = {
-	{
-		.name = "as3722-sd0",
-		.id = AS3722_SD0,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD0_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd1",
-		.id = AS3722_SD1,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD0_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd2",
-		.id = AS3722_SD2,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD2_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd3",
-		.id = AS3722_SD3,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD2_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd4",
-		.id = AS3722_SD4,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD2_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd5",
-		.id = AS3722_SD5,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD2_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-sd6",
-		.id = AS3722_SD6,
-		.ops = &as3722_sd_ops,
-		.n_voltages = AS3722_SD0_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo0",
-		.id = AS3722_LDO0,
-		.ops = &as3722_ldo0_ops,
-		.n_voltages = AS3722_LDO0_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo1",
-		.id = AS3722_LDO1,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo2",
-		.id = AS3722_LDO2,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo3",
-		.id = AS3722_LDO3,
-		.ops = &as3722_ldo3_ops,
-		.n_voltages = AS3722_LDO3_VSEL_MAX,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo4",
-		.id = AS3722_LDO4,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo5",
-		.id = AS3722_LDO5,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo6",
-		.id = AS3722_LDO6,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo7",
-		.id = AS3722_LDO7,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo9",
-		.id = AS3722_LDO9,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo10",
-		.id = AS3722_LDO10,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
-	{
-		.name = "as3722-ldo11",
-		.id = AS3722_LDO11,
-		.ops = &as3722_ldo_ops,
-		.n_voltages = AS3722_LDO_NUM_VOLT,
-		.type = REGULATOR_VOLTAGE,
-		.owner = THIS_MODULE,
-	},
+static struct regulator_ops as3722_sd016_extcntrl_ops = {
+	.list_voltage = regulator_list_voltage_linear,
+	.map_voltage = regulator_map_voltage_linear,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_current_limit = as3722_sd016_get_current_limit,
+	.set_current_limit = as3722_sd016_set_current_limit,
+	.get_mode = as3722_sd_get_mode,
+	.set_mode = as3722_sd_set_mode,
 };
 
-static int as3722_extreg_init(struct as3722 *as3722, int id, int ext_pwr_ctrl)
+static struct regulator_ops as3722_sd2345_ops = {
+	.is_enabled = regulator_is_enabled_regmap,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.list_voltage = regulator_list_voltage_linear_range,
+	.map_voltage = regulator_map_voltage_linear_range,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.get_mode = as3722_sd_get_mode,
+	.set_mode = as3722_sd_set_mode,
+};
+
+static struct regulator_ops as3722_sd2345_extcntrl_ops = {
+	.list_voltage = regulator_list_voltage_linear_range,
+	.map_voltage = regulator_map_voltage_linear_range,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.get_mode = as3722_sd_get_mode,
+	.set_mode = as3722_sd_set_mode,
+};
+
+static int as3722_extreg_init(struct as3722_regulators *as3722_regs, int id,
+		int ext_pwr_ctrl)
 {
 	int ret;
-	u32 sleep_ctrl_mask = 0;
-	u32 shift_count = 0;
+	unsigned int val;
 
 	if ((ext_pwr_ctrl < AS3722_EXT_CONTROL_ENABLE1) ||
 		(ext_pwr_ctrl > AS3722_EXT_CONTROL_ENABLE3))
 		return -EINVAL;
 
-	sleep_ctrl_mask = as3722_reg_lookup[id].sleep_ctrl_bit_mask_mask;
-	while (!(sleep_ctrl_mask & (0x1 << shift_count))) {
-		shift_count++;
+	val =  ext_pwr_ctrl << (ffs(as3722_reg_lookup[id].sleep_ctrl_mask) - 1);
+	ret = as3722_update_bits(as3722_regs->as3722,
+			as3722_reg_lookup[id].sleep_ctrl_reg,
+			as3722_reg_lookup[id].sleep_ctrl_mask, val);
+	if (ret < 0)
+		dev_err(as3722_regs->dev, "Reg 0x%02x update failed: %d\n",
+			as3722_reg_lookup[id].sleep_ctrl_reg, ret);
+	return ret;
+}
+
+static struct of_regulator_match as3722_regulator_matches[] = {
+	{ .name = "sd0", },
+	{ .name = "sd1", },
+	{ .name = "sd2", },
+	{ .name = "sd3", },
+	{ .name = "sd4", },
+	{ .name = "sd5", },
+	{ .name = "sd6", },
+	{ .name = "ldo0", },
+	{ .name = "ldo1", },
+	{ .name = "ldo2", },
+	{ .name = "ldo3", },
+	{ .name = "ldo4", },
+	{ .name = "ldo5", },
+	{ .name = "ldo6", },
+	{ .name = "ldo7", },
+	{ .name = "ldo9", },
+	{ .name = "ldo10", },
+	{ .name = "ldo11", },
+};
+
+static int as3722_get_regulator_dt_data(struct platform_device *pdev,
+		struct as3722_regulators *as3722_regs)
+{
+	struct device_node *np;
+	struct as3722_regulator_config_data *reg_config;
+	u32 prop;
+	int id;
+	int ret;
+
+	np = of_get_child_by_name(pdev->dev.parent->of_node, "regulators");
+	if (!np) {
+		dev_err(&pdev->dev, "Device is not having regulators node\n");
+		return -ENODEV;
+	}
+	pdev->dev.of_node = np;
+
+	ret = of_regulator_match(&pdev->dev, np, as3722_regulator_matches,
+			ARRAY_SIZE(as3722_regulator_matches));
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Parsing of regulator node failed: %d\n",
+			ret);
+		return ret;
 	}
 
-	ret = as3722_set_bits(as3722, as3722_reg_lookup[id].sleep_ctrl_reg,
-			as3722_reg_lookup[id].sleep_ctrl_bit_mask_mask,
-			ext_pwr_ctrl << shift_count);
-	if (ret < 0)
-		return ret;
+	for (id = 0; id < ARRAY_SIZE(as3722_regulator_matches); ++id) {
+		struct device_node *reg_node;
 
+		reg_config = &as3722_regs->reg_config_data[id];
+		reg_config->reg_init = as3722_regulator_matches[id].init_data;
+		reg_node = as3722_regulator_matches[id].of_node;
+
+		if (!reg_config->reg_init || !reg_node)
+			continue;
+
+		ret = of_property_read_u32(reg_node, "ams,ext-control", &prop);
+		if (!ret) {
+			if (prop < 3)
+				reg_config->ext_control = prop;
+			else
+				dev_warn(&pdev->dev,
+					"ext-control have invalid option: %u\n",
+					prop);
+		}
+		reg_config->enable_tracking =
+			of_property_read_bool(reg_node, "ams,enable-tracking");
+	}
 	return 0;
 }
 
-static int oc_alarm_table[] = {0, 1600, 1800, 2000, 2200, 2400, 2600, 2800};
-
-static int as3722_overcurrent_init(struct as3722 *as3722, int id,
-		struct as3722_regulator_platform_data *rpdata)
+static int as3722_get_regulator_platform_data(struct platform_device *pdev,
+		struct as3722_regulators *as3722_regs)
 {
-	int ret;
-	int oc_trip = rpdata->oc_trip_thres_perphase;
-	int oc_alarm = rpdata->oc_alarm_thres_perphase;
-	int mask;
-	int reg;
-	int trip_val;
-	int alarm_val;
-	int i;
-	int val;
+	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
+	struct as3722_platform_data *pdata = as3722->dev->platform_data;
+	struct as3722_regulator_config_data *reg_config;
+	struct as3722_regulator_platform_data *rpdata;
+	int id;
 
-	if (oc_trip <= 2500)
-		trip_val = 0;
-	else if (oc_trip <= 3000)
-		trip_val = 1;
-	else
-		trip_val = 2;
+	if (!pdata)
+		return -EINVAL;
 
-	for (i = 0; i < ARRAY_SIZE(oc_alarm_table); ++i) {
-		if (oc_alarm <=  oc_alarm_table[i])
-			break;
+	for (id = 0; id < AS3722_REGULATOR_ID_MAX; ++id) {
+		rpdata = pdata->reg_pdata[id];
+		if (!rpdata || !rpdata->reg_init)
+			continue;
+
+		reg_config = &as3722_regs->reg_config_data[id];
+		reg_config->reg_init = rpdata->reg_init;
+		reg_config->ext_control = rpdata->ext_control;
+		reg_config->enable_tracking = rpdata->enable_tracking;
+		reg_config->disable_tracking_suspend =
+					rpdata->disable_tracking_suspend;
 	}
-	alarm_val = i;
-
-	switch (id) {
-	case AS3722_SD0:
-		mask = AS3722_OVCURRENT_SD0_ALARM_MASK |
-				AS3722_OVCURRENT_SD0_TRIP_MASK;
-		val = (trip_val << AS3722_OVCURRENT_SD0_TRIP_SHIFT) |
-				(alarm_val << AS3722_OVCURRENT_SD0_ALARM_SHIFT);
-		reg = AS3722_OVCURRENT;
-		break;
-
-	case AS3722_SD1:
-		mask = AS3722_OVCURRENT_SD1_TRIP_MASK;
-		val = (trip_val << AS3722_OVCURRENT_SD1_TRIP_SHIFT);
-		reg = AS3722_OVCURRENT;
-		break;
-
-	case AS3722_SD6:
-		mask = AS3722_OVCURRENT_SD6_ALARM_MASK |
-				AS3722_OVCURRENT_SD6_TRIP_MASK;
-		val = (trip_val << AS3722_OVCURRENT_SD6_TRIP_SHIFT) |
-				(alarm_val << AS3722_OVCURRENT_SD6_ALARM_SHIFT);
-		reg = AS3722_OVCURRENT_DEB;
-		break;
-	default:
-		return 0;
-	}
-	ret = as3722_set_bits(as3722, reg, mask, val);
-	if (ret < 0)
-		dev_err(as3722->dev, "Reg 0x%02x update failed %d\n", reg, ret);
-	return ret;
+	return 0;
 }
 
 static int as3722_regulator_probe(struct platform_device *pdev)
 {
+	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
+	struct as3722_regulators *as3722_regs;
+	struct as3722_regulator_config_data *reg_config;
 	struct regulator_dev *rdev;
 	struct regulator_config config = { };
-	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
-	struct as3722_platform_data *pdata = as3722->dev->platform_data;
-	int regulator;
+	struct regulator_ops *ops;
+	int id;
 	int ret;
-	int ext_control_num;
 
-	if (WARN_ON(pdev->id < 0 || pdev->id >= AS3722_NUM_REGULATORS))
-		return -EINVAL;
+	as3722_regs = devm_kzalloc(&pdev->dev, sizeof(*as3722_regs),
+				GFP_KERNEL);
+	if (!as3722_regs)
+		return -ENOMEM;
 
-	config.dev = pdev->dev.parent;
-	config.driver_data = as3722;
+	as3722_regs->dev = &pdev->dev;
+	as3722_regs->as3722 = as3722;
+	platform_set_drvdata(pdev, as3722_regs);
+
+	ret = as3722_get_regulator_platform_data(pdev, as3722_regs);
+	if (ret < 0) {
+		ret = as3722_get_regulator_dt_data(pdev, as3722_regs);
+		if (ret < 0)
+			return ret;
+	}
+
+	config.dev = &pdev->dev;
+	config.driver_data = as3722_regs;
 	config.regmap = as3722->regmap;
 
-	for (regulator = 0; regulator < AS3722_NUM_REGULATORS; regulator++) {
-		if (!(pdata->reg_pdata[regulator] &&
-			pdata->reg_pdata[regulator]->reg_init))
-			continue;
+	for (id = 0; id < AS3722_REGULATOR_ID_MAX; id++) {
+		reg_config = &as3722_regs->reg_config_data[id];
 
-		if (pdata->reg_pdata[regulator]->oc_configure_enable) {
-			ret = as3722_overcurrent_init(as3722, regulator,
-					pdata->reg_pdata[regulator]);
-			if (ret < 0) {
-				dev_err(&pdev->dev,
-					"OC init for regulator %d failed %d\n",
-					regulator, ret);
-				return ret;
+		as3722_regs->desc[id].name = as3722_reg_lookup[id].name;
+		as3722_regs->desc[id].supply_name = as3722_reg_lookup[id].sname;
+		as3722_regs->desc[id].id = as3722_reg_lookup[id].regulator_id;
+		as3722_regs->desc[id].n_voltages =
+					as3722_reg_lookup[id].n_voltages;
+		as3722_regs->desc[id].type = REGULATOR_VOLTAGE;
+		as3722_regs->desc[id].owner = THIS_MODULE;
+		as3722_regs->desc[id].enable_reg =
+					as3722_reg_lookup[id].enable_reg;
+		as3722_regs->desc[id].enable_mask =
+					as3722_reg_lookup[id].enable_mask;
+		as3722_regs->desc[id].vsel_reg = as3722_reg_lookup[id].vsel_reg;
+		as3722_regs->desc[id].vsel_mask =
+					as3722_reg_lookup[id].vsel_mask;
+		switch (id) {
+		case AS3722_REGULATOR_ID_LDO0:
+			if (reg_config->ext_control)
+				ops = &as3722_ldo0_extcntrl_ops;
+			else
+				ops = &as3722_ldo0_ops;
+			as3722_regs->desc[id].min_uV = 825000;
+			as3722_regs->desc[id].uV_step = 25000;
+			as3722_regs->desc[id].linear_min_sel = 1;
+			as3722_regs->desc[id].enable_time = 500;
+			break;
+		case AS3722_REGULATOR_ID_LDO3:
+			if (reg_config->ext_control)
+				ops = &as3722_ldo3_extcntrl_ops;
+			else
+				ops = &as3722_ldo3_ops;
+			as3722_regs->desc[id].min_uV = 620000;
+			as3722_regs->desc[id].uV_step = 20000;
+			as3722_regs->desc[id].linear_min_sel = 1;
+			as3722_regs->desc[id].enable_time = 500;
+			if (reg_config->enable_tracking) {
+				ret = as3722_ldo3_set_tracking_mode(as3722_regs,
+					id, AS3722_LDO3_MODE_PMOS_TRACKING);
+				if (ret < 0) {
+					dev_err(&pdev->dev,
+						"LDO3 tracking failed: %d\n",
+						ret);
+					return ret;
+				}
 			}
+			break;
+		case AS3722_REGULATOR_ID_SD0:
+		case AS3722_REGULATOR_ID_SD1:
+		case AS3722_REGULATOR_ID_SD6:
+			if (reg_config->ext_control)
+				ops = &as3722_sd016_extcntrl_ops;
+			else
+				ops = &as3722_sd016_ops;
+			as3722_regs->desc[id].min_uV = 610000;
+			as3722_regs->desc[id].uV_step = 10000;
+			as3722_regs->desc[id].linear_min_sel = 1;
+			break;
+		case AS3722_REGULATOR_ID_SD2:
+		case AS3722_REGULATOR_ID_SD3:
+		case AS3722_REGULATOR_ID_SD4:
+		case AS3722_REGULATOR_ID_SD5:
+			if (reg_config->ext_control)
+				ops = &as3722_sd2345_extcntrl_ops;
+			else
+				ops = &as3722_sd2345_ops;
+			as3722_regs->desc[id].linear_ranges =
+						as3722_sd2345_ranges;
+			as3722_regs->desc[id].n_linear_ranges =
+					ARRAY_SIZE(as3722_sd2345_ranges);
+			break;
+		default:
+			if (reg_config->ext_control)
+				ops = &as3722_ldo_extcntrl_ops;
+			else
+				ops = &as3722_ldo_ops;
+			as3722_regs->desc[id].min_uV = 825000;
+			as3722_regs->desc[id].uV_step = 25000;
+			as3722_regs->desc[id].linear_min_sel = 1;
+			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].linear_ranges = as3722_ldo_ranges;
+			as3722_regs->desc[id].n_linear_ranges =
+						ARRAY_SIZE(as3722_ldo_ranges);
+			break;
 		}
-		config.init_data = pdata->reg_pdata[regulator]->reg_init;
-		rdev = regulator_register(&regulators[regulator],
-				&config);
+		as3722_regs->desc[id].ops = ops;
+		config.init_data = reg_config->reg_init;
+		config.of_node = as3722_regulator_matches[id].of_node;
+		rdev = devm_regulator_register(&pdev->dev,
+					&as3722_regs->desc[id], &config);
 		if (IS_ERR(rdev)) {
-			dev_err(&pdev->dev, "as3722 register"
-				"regulator nr %d err\n", regulator);
-			return PTR_ERR(rdev);
-		}
-		as3722->rdevs[regulator] = rdev;
-		ext_control_num = pdata->reg_pdata[regulator]->ext_control;
-		if (ext_control_num) {
-			ret = as3722_extreg_init(as3722, regulator, ext_control_num);
-			if (ret < 0) {
-				dev_err(&pdev->dev, "as3722 external reg init "
-					"failed for regulator nr %d err\n", regulator);
-				return ret;
-			}
-		}
-	}
-
-	/* Check if LDO3 need to work in tracking mode or not */
-	rdev = as3722->rdevs[AS3722_LDO3];
-	if (pdata->enable_ldo3_tracking) {
-		ret = as3722_ldo3_set_mode(rdev,
-		AS3722_LDO3_MODE_PMOS_TRACKING);
-		if (ret < 0) {
-			dev_err(&pdev->dev,
-				"as3722 track enable failed for LDO3 err\n");
+			ret = PTR_ERR(rdev);
+			dev_err(&pdev->dev, "regulator %d register failed %d\n",
+				id, ret);
 			return ret;
 		}
-	}
-	return 0;
-}
 
-static int as3722_regulator_remove(struct platform_device *pdev)
-{
-	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
-	int regulator;
-
-	if (WARN_ON(pdev->id < 0 || pdev->id >= AS3722_NUM_REGULATORS))
-		return -EINVAL;
-
-	for (regulator = 0; regulator < AS3722_NUM_REGULATORS; regulator++) {
-		if (as3722->rdevs[regulator]) {
-			regulator_unregister(as3722->rdevs[regulator]);
-			as3722->rdevs[regulator] = NULL;
+		as3722_regs->rdevs[id] = rdev;
+		if (reg_config->ext_control) {
+			ret = regulator_enable_regmap(rdev);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"Regulator %d enable failed: %d\n",
+					id, ret);
+				return ret;
+			}
+			ret = as3722_extreg_init(as3722_regs, id,
+					reg_config->ext_control);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"AS3722 ext control failed: %d", ret);
+				return ret;
+			}
 		}
 	}
 	return 0;
@@ -1214,18 +928,17 @@ static int as3722_regulator_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int as3722_regulator_suspend(struct device *dev)
 {
-	struct as3722 *as3722 = dev_get_drvdata(dev->parent);
-	struct as3722_platform_data *pdata = as3722->dev->platform_data;
-	struct regulator_dev *rdev;
+	struct as3722_regulators *as3722_regs = dev_get_drvdata(dev);
+	struct as3722_regulator_config_data *reg_config;
 	int ret;
-	/* Check and set LDO3 working mode in LP0 */
-	rdev = as3722->rdevs[AS3722_LDO3];
-	if (pdata->disabe_ldo3_tracking_suspend) {
-		ret = as3722_ldo3_set_mode(rdev,
-		AS3722_LDO3_MODE_NMOS);
+
+	reg_config = &as3722_regs->reg_config_data[AS3722_REGULATOR_ID_LDO3];
+	if (reg_config->enable_tracking &&
+		reg_config->disable_tracking_suspend) {
+		ret = as3722_ldo3_set_tracking_mode(as3722_regs,
+			AS3722_REGULATOR_ID_LDO3, AS3722_LDO3_MODE_NMOS);
 		if (ret < 0) {
-			dev_err(as3722->dev,
-			"as3722 ldo3 tracking disable failed err\n");
+			dev_err(dev, "LDO3 tracking failed: %d\n", ret);
 			return ret;
 		}
 	}
@@ -1234,41 +947,43 @@ static int as3722_regulator_suspend(struct device *dev)
 
 static int as3722_regulator_resume(struct device *dev)
 {
-	struct as3722 *as3722 = dev_get_drvdata(dev->parent);
-	struct as3722_platform_data *pdata = as3722->dev->platform_data;
-	struct regulator_dev *rdev;
+	struct as3722_regulators *as3722_regs = dev_get_drvdata(dev);
+	struct as3722_regulator_config_data *reg_config;
 	int ret;
 
-	/* Check if LDO3 need to be set to tracking mode*/
-	rdev = as3722->rdevs[AS3722_LDO3];
-	if (pdata->enable_ldo3_tracking) {
-		ret = as3722_ldo3_set_mode(rdev,
-			AS3722_LDO3_MODE_PMOS_TRACKING);
+	reg_config = &as3722_regs->reg_config_data[AS3722_REGULATOR_ID_LDO3];
+	if (reg_config->enable_tracking &&
+		reg_config->disable_tracking_suspend) {
+		ret = as3722_ldo3_set_tracking_mode(as3722_regs,
+			AS3722_REGULATOR_ID_LDO3, AS3722_LDO3_MODE_NMOS);
 		if (ret < 0) {
-			dev_err(as3722->dev,
-				"as3722 ldo3 tracking disable failed err\n");
+			dev_err(dev, "LDO3 tracking failed: %d\n", ret);
 			return ret;
 		}
 	}
 	return 0;
 }
+#endif
 
 static const struct dev_pm_ops as3722_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(as3722_regulator_suspend,
 	as3722_regulator_resume)
 };
-#endif
+
+static const struct of_device_id of_as3722_regulator_match[] = {
+	{ .compatible = "ams,as3722-regulator", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, of_as3722_regulator_match);
 
 static struct platform_driver as3722_regulator_driver = {
 	.driver = {
 		.name = "as3722-regulator",
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM_SLEEP
+		.of_match_table = of_as3722_regulator_match,
 		.pm = &as3722_pm_ops,
-#endif
 	},
 	.probe = as3722_regulator_probe,
-	.remove = as3722_regulator_remove,
 };
 
 static int __init as3722_regulator_init(void)
@@ -1285,7 +1000,8 @@ static void __exit as3722_regulator_exit(void)
 
 module_exit(as3722_regulator_exit);
 
-MODULE_AUTHOR("Florian Lobmaier <florian.lobmaier@ams.com>");
-MODULE_DESCRIPTION("AS3722 regulator driver");
-MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:as3722-regulator");
+MODULE_DESCRIPTION("AS3722 regulator driver");
+MODULE_AUTHOR("Florian Lobmaier <florian.lobmaier@ams.com>");
+MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
+MODULE_LICENSE("GPL");

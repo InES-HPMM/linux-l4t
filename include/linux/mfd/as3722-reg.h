@@ -49,7 +49,7 @@
 #define AS3722_REG_INIT_TERMINATE              0xFF
 
 /* regulator IDs */
-enum as3722_regulators{
+enum as3722_regulators_id_ {
 AS3722_SD0,
 AS3722_SD1,
 AS3722_SD2,
@@ -274,7 +274,7 @@ AS3722_LDO11,
 #define AS3722_LDO_VSEL_MAX                    0x7F
 #define AS3722_LDO_VSEL_DNU_MIN                0x25
 #define AS3722_LDO_VSEL_DNU_MAX                0x3F
-#define AS3722_LDO_NUM_VOLT                    100
+#define AS3722_LDO_NUM_VOLT                    0x80
 
 #define AS3722_LDO0_ON                         (1 << 0)
 #define AS3722_LDO0_OFF                        (0 << 0)
