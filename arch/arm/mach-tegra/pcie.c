@@ -226,37 +226,33 @@
  *  address map for PCIe.
  *
  *  That address space is split into different regions, with sizes and
- *  offsets as follows. Exepct for the Register space, SW is free to slice the
+ *  offsets as follows. Except for the Register space, SW is free to slice the
  *  regions as it chooces.
  *
  *  The split below seems to work fine for now.
  *
- *  0x0100_0000 to 0x01ff_ffff - Register space          16MB.
- *  0x0200_0000 to 0x05ff_ffff - Extended Config space   64MB.
- *  0x0600_0000 to 0x0600_ffff - Downstream IO space
+ *  0x0100_0000 to 0x01ff_ffff - Register space           16MB.
+ *  0x0200_0000 to 0x11ff_ffff - Config space             256MB.
+ *  0x1200_0000 to 0x1200_ffff - Downstream IO space
  *   ... Will be filled with other BARS like MSI/upstream IO etc.
- *  0x0800_0000 to 0x17ff_ffff - non-prefetchable memory aperture
- *  0x1800_0000 to 0x3fff_ffff - Prefetchable memory aperture
- *
- *  Config and Extended config sizes are choosen to support
- *  maximum of 256 devices,
- *  which is good enough for all the current use cases.
- *
+ *  0x1210_0000 to 0x320f_ffff - Prefetchable memory aperture
+ *  0x3210_0000 to 0x3fff_ffff - non-prefetchable memory aperture
  */
 #define TEGRA_PCIE_BASE	0x01000000
 
 #define PCIE_REGS_SZ		SZ_16M
-#define PCIE_CFG_OFF		SZ_32M
-#define PCIE_CFG_SZ		SZ_64M
+#define PCIE_CFG_OFF		(TEGRA_PCIE_BASE + PCIE_REGS_SZ)
+#define PCIE_CFG_SZ		SZ_256M
 /* During the boot only registers/config and extended config apertures are
  * mapped. Rest are mapped on demand by the PCI device drivers.
  */
 #define MMIO_BASE		(PCIE_CFG_OFF + PCIE_CFG_SZ)
 #define MMIO_SIZE		SZ_64K
-#define MEM_BASE_0		SZ_128M
-#define MEM_SIZE_0		SZ_256M
-#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
-#define PREFETCH_MEM_SIZE_0	(SZ_128M + SZ_512M)
+#define PREFETCH_MEM_BASE_0	(MMIO_BASE + SZ_1M)
+#define PREFETCH_MEM_SIZE_0	SZ_512M
+#define MEM_BASE_0		(PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0)
+#define MEM_SIZE_0		(SZ_1G - MEM_BASE_0)
+
 
 #define DEBUG 0
 #if DEBUG
@@ -430,11 +426,15 @@ static struct tegra_pcie_bus *tegra_pcie_bus_alloc(unsigned int busnr)
 		goto free;
 	}
 
-	/* map each of the 16 chunks of 64 KiB each */
+	/* map each of the 16 chunks of 64 KiB each.
+	 *
+	 * Note that each chunk still needs to increment by 16 MiB in
+	 * physical space.
+	 */
 	for (i = 0; i < 16; i++) {
 		unsigned long virt = (unsigned long)bus->area->addr +
 				     i * SZ_64K;
-		phys_addr_t phys = cs + i * SZ_1M + busnr * SZ_64K;
+		phys_addr_t phys = cs + i * SZ_16M + busnr * SZ_64K;
 
 		err = ioremap_page_range(virt, virt + SZ_64K, phys, prot);
 		if (err < 0) {
