@@ -22,9 +22,6 @@
 #include <linux/kobject.h>
 #include <linux/platform_device.h>
 
-#include "apbio.h"
-#include "iomap.h"
-
 #ifndef __FUSE_H
 #define __FUSE_H
 
@@ -162,55 +159,8 @@ struct fuse_data {
 	u32 odm_lock;
 };
 
-
-u32 tegra_get_sku_id(void);
-u32 tegra_get_chip_id(void);
-u32 tegra_get_bct_strapping(void);
-u32 tegra_fuse_readl(unsigned long offset);
-void tegra_fuse_writel(u32 val, unsigned long offset);
-
 ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 								char *buf);
 ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count);
-
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#define PUBLIC_KEY_START_OFFSET	0x0
-#define PUBLIC_KEY_START_BIT	0
-
-#define PKC_DISABLE_START_OFFSET	0x0
-#define PKC_DISABLE_START_BIT		0
-
-#define VP8_ENABLE_START_OFFSET	0x0
-#define VP8_ENABLE_START_BIT	0
-
-#define ODM_LOCK_START_OFFSET	0x0
-#define ODM_LOCK_START_BIT	0
-
-static inline int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
-					bool odm_prod_mode)
-{
-	return -ENOENT;
-}
-
-static inline int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
-{
-	return -ENOENT;
-}
-
-static inline int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
-{
-	return -ENOENT;
-}
-
-static inline int tegra_apply_fuse(void)
-{
-	return 0;
-}
-#else
-static inline int tegra_apply_fuse(void)
-{
-	return -ENOENT;
-}
-#endif
 #endif /* FUSE_H */

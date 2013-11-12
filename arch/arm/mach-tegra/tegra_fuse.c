@@ -41,16 +41,10 @@
 
 #include "fuse.h"
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#include "tegra2_fuse_offsets.h"
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#include "tegra3_fuse_offsets.h"
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #include "tegra11x_fuse_offsets.h"
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #include "tegra12x_fuse_offsets.h"
-#else
-#include "tegra14x_fuse_offsets.h"
 #endif
 
 DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
@@ -294,24 +288,14 @@ int tegra_gpu_register_sets(void)
 #endif
 }
 
-void tegra_gpu_get_info(struct gpu_info *pInfo)
+void tegra_gpu_get_info(struct gpu_info *info)
 {
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) {
-		pInfo->num_pixel_pipes = 4;
-		pInfo->num_alus_per_pixel_pipe = 3;
-	} else if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14) {
-		u32 reg = readl(IO_TO_VIRT(TEGRA_FUSE_BASE +
-			FUSE_SKU_DIRECT_CONFIG_0));
-		pInfo->num_pixel_pipes = 2;
-		pInfo->num_alus_per_pixel_pipe = 6;
-		if (reg & FUSE_SKU_GPU_1_PIXEL_PIPE)
-			pInfo->num_pixel_pipes = 1;
-
-		if (reg & FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE)
-			pInfo->num_alus_per_pixel_pipe = 1;
+		info->num_pixel_pipes = 4;
+		info->num_alus_per_pixel_pipe = 3;
 	} else {
-		pInfo->num_pixel_pipes = 1;
-		pInfo->num_alus_per_pixel_pipe = 1;
+		info->num_pixel_pipes = 1;
+		info->num_alus_per_pixel_pipe = 1;
 	}
 }
 
@@ -382,7 +366,7 @@ static struct chip_revision tegra_chip_revisions[] = {
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 {
 	enum tegra_revision revision = TEGRA_REVISION_UNKNOWN;
-	int i ;
+	int i;
 	char prime;
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
@@ -461,7 +445,6 @@ static void tegra_get_tegraid_from_hw(void)
 	u32 nlist = tegra_read_apb_misc_reg(0x860);
 	char *priv = NULL;
 
-	tegra_fuse_get_priv(priv);
 	tegra_set_tegraid((cid >> 8) & 0xff,
 			  (cid >> 4) & 0xf,
 			  (cid >> 16) & 0xf,
@@ -500,7 +483,7 @@ void tegra_get_netlist_revision(u32 *netlist, u32 *patchid)
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
 
-	if (   !tegra_platform_is_fpga()
+	if (!tegra_platform_is_fpga()
 	    && !tegra_platform_is_qt()
 	    && !tegra_platform_is_linsim())
 		BUG();
@@ -565,11 +548,7 @@ static int get_revision(char *val, const struct kernel_param *kp)
 
 static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
 {
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA2 ||
-		 tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
-		tegra_fuse_vp8_enable = 0;
-	else
-		tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+	tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
 
 	return param_get_uint(val, kp);
 }
@@ -908,12 +887,6 @@ static int fuse_set(enum fuse_io_param io_param, u32 *param, int size)
 	return 0;
 }
 
-/*
- * Function pointer to optional board specific function
- */
-int (*tegra_fuse_regulator_en)(int);
-EXPORT_SYMBOL(tegra_fuse_regulator_en);
-
 static int fuse_get_pgm_cycles(int index)
 {
 	int cycles;
@@ -981,7 +954,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	if (IS_ERR_OR_NULL(clk_fuse) ||
-	   (!tegra_fuse_regulator_en && IS_ERR_OR_NULL(fuse_regulator))) {
+	   (IS_ERR_OR_NULL(fuse_regulator))) {
 		pr_err("fuse write disabled");
 		return -ENODEV;
 	}
@@ -1036,10 +1009,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 			fuse_info_tbl[i].sz);
 	}
 
-	if (tegra_fuse_regulator_en)
-		ret = tegra_fuse_regulator_en(1);
-	else
-		ret = regulator_enable(fuse_regulator);
+	ret = regulator_enable(fuse_regulator);
 
 	if (ret)
 		BUG_ON("regulator enable fail\n");
@@ -1053,29 +1023,11 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
-	if (tegra_fuse_regulator_en)
-		tegra_fuse_regulator_en(0);
-	else
-		regulator_disable(fuse_regulator);
-
+	regulator_disable(fuse_regulator);
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
 	tegra_fuse_writel(1, FUSE_WRITE_ACCESS);
-
-	if (!tegra_apply_fuse()) {
-
-		fuse_cmd_sense();
-		tegra_fuse_writel(START_DATA | SKIP_RAMREPAIR, FUSE_PRIV2INTFC);
-
-		/* check sense and shift done in addition to IDLE */
-		do {
-			mdelay(1);
-			reg = tegra_fuse_readl(FUSE_CTRL);
-			reg &= (FUSE_SENSE_DONE_BIT | STATE_IDLE);
-		} while ((reg != (FUSE_SENSE_DONE_BIT | STATE_IDLE))
-						&& (--delay > 0));
-	}
 
 	clk_disable(clk_fuse);
 
@@ -1236,7 +1188,7 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 	}
 
 	strcpy(buf, "0x");
-	for (i = (fuse_info_tbl[param].sz/sizeof(u32)) - 1; i >= 0 ; i--) {
+	for (i = (fuse_info_tbl[param].sz/sizeof(u32)) - 1; i >= 0; i--) {
 		sprintf(str, "%08x", data[i]);
 		strcat(buf, str);
 	}
@@ -1247,13 +1199,11 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
-	if (!tegra_fuse_regulator_en) {
-		/* get fuse_regulator regulator */
-		fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
-		if (IS_ERR_OR_NULL(fuse_regulator))
-			pr_err("%s: no fuse_regulator. fuse write disabled\n",
+	/* get fuse_regulator regulator */
+	fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
+	if (IS_ERR_OR_NULL(fuse_regulator))
+		pr_err("%s: no fuse_regulator. fuse write disabled\n",
 				__func__);
-	}
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR_OR_NULL(clk_fuse)) {
