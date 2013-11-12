@@ -35,6 +35,10 @@
 #define AMB_CONF_REG_ADDR	0x02
 #define PROX_CONF_REG_ADDR	0x03
 #define AMB_CLEAR_HIGH_ADDR	0x04
+#define AMB_RED_HIGH_ADDR	0x06
+#define AMB_GREEN_HIGH_ADDR	0x08
+#define AMB_BLUE_HIGH_ADDR	0x0A
+#define IR_HIGH_ADDR		0x0C
 #define PROX_HIGH_ADDR		0x10
 
 #define MAX_SHDN_ENABLE		0x08
@@ -75,6 +79,7 @@
 			return sprintf(buf, "-1");			 \
 		}							 \
 		mutex_unlock(&chip->lock);				 \
+		value &= 0x3FFFF;					 \
 		return sprintf(buf, "%d", value);			 \
 	} while (0);							 \
 
@@ -235,10 +240,9 @@ static bool max44005_power(struct max44005_chip *chip, int power_on)
 }
 
 /* assumes power is on */
-/*
 static bool max44005_restore_state(struct max44005_chip *chip)
 {
-	int ret;
+	int ret = false;
 
 	if (PROXIMITY_ENABLED)
 		ret = set_led_drive_strength(chip, LED_DRV_STRENGTH);
@@ -256,16 +260,15 @@ static bool max44005_restore_state(struct max44005_chip *chip)
 		ret = set_main_conf(chip, MODE_PROX_ONLY);
 		break;
 	case 2:
-		ret = set_main_conf(chip, MODE_CLEAR_ONLY);
+		ret = set_main_conf(chip, MODE_CRGB);
 		break;
 	case 3:
 		ret = set_main_conf(chip, MODE_CLEAR_PROX);
 		break;
 	}
 
-	return false;
+	return ret;
 }
-*/
 
 /* sysfs name begin */
 static ssize_t show_name(struct device *dev,
@@ -282,6 +285,30 @@ static ssize_t show_amb_clear_value(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, AMB_CLEAR_HIGH_ADDR, 2);
+}
+
+static ssize_t show_amb_red_value(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, AMB_RED_HIGH_ADDR, 2);
+}
+
+static ssize_t show_amb_green_value(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, AMB_GREEN_HIGH_ADDR, 2);
+}
+
+static ssize_t show_amb_blue_value(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, AMB_BLUE_HIGH_ADDR, 2);
+}
+
+static ssize_t show_ir_value(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, IR_HIGH_ADDR, 2);
 }
 
 static ssize_t amb_clear_enable(struct device *dev,
@@ -306,7 +333,8 @@ static ssize_t amb_clear_enable(struct device *dev,
 		if (!max44005_power(chip, true))
 			goto fail;
 
-		if (!PROXIMITY_ENABLED)
+		if (!PROXIMITY_ENABLED &&
+				set_main_conf(chip, MODE_CRGB))
 			goto success;
 
 		/* if clear not enabled and LED enabled
@@ -399,6 +427,14 @@ fail:
 static IIO_DEVICE_ATTR(name, S_IRUGO, show_name, NULL, 0);
 static IIO_DEVICE_ATTR(amb_clear, S_IRUGO | S_IWUSR, show_amb_clear_value,
 			amb_clear_enable, 0);
+static IIO_DEVICE_ATTR(red, S_IRUGO, show_amb_red_value,
+			NULL, 0);
+static IIO_DEVICE_ATTR(green, S_IRUGO, show_amb_green_value,
+			NULL, 0);
+static IIO_DEVICE_ATTR(blue, S_IRUGO, show_amb_blue_value,
+			NULL, 0);
+static IIO_DEVICE_ATTR(ir, S_IRUGO, show_ir_value,
+			NULL, 0);
 static IIO_DEVICE_ATTR(proximity, S_IRUGO | S_IWUSR, show_prox_value,
 			prox_enable, 0);
 
@@ -407,6 +443,10 @@ static struct attribute *max44005_iio_attr[] = {
 	&iio_dev_attr_name.dev_attr.attr,
 	&iio_dev_attr_amb_clear.dev_attr.attr,
 	&iio_dev_attr_proximity.dev_attr.attr,
+	&iio_dev_attr_red.dev_attr.attr,
+	&iio_dev_attr_green.dev_attr.attr,
+	&iio_dev_attr_blue.dev_attr.attr,
+	&iio_dev_attr_ir.dev_attr.attr,
 	NULL
 };
 
@@ -506,30 +546,25 @@ static int max44005_probe(struct i2c_client *client,
 static int max44005_suspend(struct device *dev)
 {
 	int ret = 0;
-/* Keep suspend/resume disabled till LP0 is stable on ceres.
- * iio core adds NULL pm_ops if driver doesnt have them.
- * This causes crash during suspend/resume. Hence, instead
- * of removing them, make them "noop".
- *
- * struct iio_dev *indio_dev = i2c_get_clientdata(client);
- * struct max44005_chip *chip = iio_priv(indio_dev);
- * mutex_lock(&chip->lock);
- * max44005_power(chip, false);
- * mutex_unlock(&chip->lock);
- */
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct max44005_chip *chip = iio_priv(indio_dev);
+	mutex_lock(&chip->lock);
+	max44005_power(chip, false);
+	mutex_unlock(&chip->lock);
 	return ret;
 }
 
 static int max44005_resume(struct device *dev)
 {
 	int ret = 0;
-/* struct iio_dev *indio_dev = i2c_get_clientdata(client);
- * struct max44005_chip *chip = iio_priv(indio_dev);
- * mutex_lock(&chip->lock);
- * max44005_power(chip, true);
- * max44005_restore_state(chip);
- * mutex_unlock(&chip->lock);
- */
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct max44005_chip *chip = iio_priv(indio_dev);
+	mutex_lock(&chip->lock);
+	max44005_power(chip, true);
+	max44005_restore_state(chip);
+	mutex_unlock(&chip->lock);
 	return ret;
 }
 
@@ -577,11 +612,21 @@ static const struct i2c_device_id max44005_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, max44005_id);
 
+#ifdef CONFIG_OF
+static const struct of_device_id max44005_of_match[] = {
+	{.compatible = "maxim,max44005", },
+	{.compatible = "maxim,max44006", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, max44005_of_match);
+#endif
+
 static struct i2c_driver max44005_driver = {
 	.class	= I2C_CLASS_HWMON,
 	.driver  = {
 		.name = "max44005",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(max44005_of_match),
 		.pm = MAX44005_PM_OPS,
 	},
 	.probe	 = max44005_probe,
