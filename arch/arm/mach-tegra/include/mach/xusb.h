@@ -59,6 +59,7 @@ struct tegra_xusb_regulator_name {
 	const char *s1p05v;
 };
 
+/* Ensure dt compatiblity when changing order */
 struct tegra_xusb_hsic_config {
 	u8 rx_strobe_trim;
 	u8 rx_data_trim;
@@ -66,9 +67,9 @@ struct tegra_xusb_hsic_config {
 	u8 tx_rtune_p;
 	u8 tx_slew_n;
 	u8 tx_slew_p;
-	bool auto_term_en;
+	u8 auto_term_en;
 	u8 strb_trim_val;
-	bool pretend_connect;
+	u8 pretend_connect;
 };
 
 struct tegra_xusb_board_data {

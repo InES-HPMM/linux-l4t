@@ -4183,9 +4183,13 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 					&bdata->supply.vddio_hsic);
 	ret = of_property_read_string(node, "nvidia,supply_s1p05v",
 					&bdata->supply.s1p05v);
-	/* TODO: add read for tegra_xusb_hsic_config
-	 * Add error conditions check
-	 */
+	ret = of_property_read_u8_array(node, "nvidia,hsic0",
+					(u8 *) &bdata->hsic[0],
+					sizeof(bdata->hsic[0]));
+	ret = of_property_read_u8_array(node, "nvidia,hsic1",
+					(u8 *) &bdata->hsic[1],
+					sizeof(bdata->hsic[0]));
+	/* TODO: Add error conditions check */
 }
 
 static void tegra_xusb_read_calib_data(struct tegra_xhci_hcd *tegra)
@@ -4309,6 +4313,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra_xusb_read_board_data(tegra);
 	tegra->pdata = dev_get_platdata(&pdev->dev);
 	tegra->bdata->portmap = tegra->pdata->portmap;
+	tegra->bdata->hsic[0].pretend_connect =
+				tegra->pdata->pretend_connect_0;
 	if (tegra->bdata->portmap == NULL)
 		return -ENODEV;
 	tegra->bdata->lane_owner = tegra->pdata->lane_owner;
