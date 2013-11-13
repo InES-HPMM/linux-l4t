@@ -1226,6 +1226,8 @@ static int __init ardbeg_fixed_regulator_init(void)
 	else if (pmu_board_info.board_id == BOARD_E1735)
 		return platform_add_devices(fixed_reg_devs_e1735,
 			ARRAY_SIZE(fixed_reg_devs_e1735));
+	else if (pmu_board_info.board_id == BOARD_E1736)
+		return 0;
 	else
 		pr_warn("The PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);
