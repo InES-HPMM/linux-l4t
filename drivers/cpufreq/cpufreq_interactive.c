@@ -124,6 +124,12 @@ struct cpufreq_interactive_tunables {
 	int timer_slack_val;
 
 	bool io_is_busy;
+
+	/* Base of exponential raise to max speed; if 0 - jump to
+	 * hispeed_freq
+	 */
+#define DEFAULT_BOOST_FACTOR 0
+	unsigned int boost_factor;
 };
 
 /* For cases where we have single governor instance for system */
@@ -380,7 +386,11 @@ static void cpufreq_interactive_timer(unsigned long data)
 
 	if (cpu_load >= tunables->go_hispeed_load || boosted) {
 		if (pcpu->target_freq < tunables->hispeed_freq) {
-			new_freq = tunables->hispeed_freq;
+			if (tunables->boost_factor)
+				new_freq = min((pcpu->target_freq
+					* tunables->boost_factor), tunables->hispeed_freq);
+			else
+				new_freq = tunables->hispeed_freq;
 		} else {
 			new_freq = choose_freq(pcpu, loadadjfreq);
 
@@ -814,6 +824,24 @@ static ssize_t store_hispeed_freq(struct cpufreq_interactive_tunables *tunables,
 	tunables->hispeed_freq = val;
 	return count;
 }
+static ssize_t show_boost_factor(struct cpufreq_interactive_tunables *tunables,
+		char *buf)
+{
+	return sprintf(buf, "%u\n", tunables->boost_factor);
+}
+
+static ssize_t store_boost_factor(struct cpufreq_interactive_tunables *tunables,
+		const char *buf, size_t count)
+{
+	int ret;
+	long unsigned int val;
+
+	ret = kstrtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	tunables->boost_factor = val;
+	return count;
+}
 
 static ssize_t show_go_hispeed_load(struct cpufreq_interactive_tunables
 		*tunables, char *buf)
@@ -1015,6 +1043,7 @@ store_gov_pol_sys(file_name)
 show_store_gov_pol_sys(target_loads);
 show_store_gov_pol_sys(above_hispeed_delay);
 show_store_gov_pol_sys(hispeed_freq);
+show_store_gov_pol_sys(boost_factor);
 show_store_gov_pol_sys(go_hispeed_load);
 show_store_gov_pol_sys(min_sample_time);
 show_store_gov_pol_sys(timer_rate);
@@ -1027,6 +1056,7 @@ show_store_gov_pol_sys(io_is_busy);
 gov_sys_pol_attr_rw(target_loads);
 gov_sys_pol_attr_rw(above_hispeed_delay);
 gov_sys_pol_attr_rw(hispeed_freq);
+gov_sys_pol_attr_rw(boost_factor);
 gov_sys_pol_attr_rw(go_hispeed_load);
 gov_sys_pol_attr_rw(min_sample_time);
 gov_sys_pol_attr_rw(timer_rate);
@@ -1054,6 +1084,7 @@ static struct attribute *interactive_attributes_gov_sys[] = {
 	&boostpulse_gov_sys.attr,
 	&boostpulse_duration_gov_sys.attr,
 	&io_is_busy_gov_sys.attr,
+	&boost_factor_gov_sys.attr,
 	NULL,
 };
 
@@ -1075,6 +1106,7 @@ static struct attribute *interactive_attributes_gov_pol[] = {
 	&boostpulse_gov_pol.attr,
 	&boostpulse_duration_gov_pol.attr,
 	&io_is_busy_gov_pol.attr,
+	&boost_factor_gov_pol.attr,
 	NULL,
 };
 
@@ -1296,6 +1328,7 @@ static int __init cpufreq_interactive_init(void)
 	tunables->timer_rate = DEFAULT_TIMER_RATE;
 	tunables->boostpulse_duration_val = DEFAULT_MIN_SAMPLE_TIME;
 	tunables->timer_slack_val = DEFAULT_TIMER_SLACK;
+	tunables->boost_factor = DEFAULT_BOOST_FACTOR;
 
 	spin_lock_init(&tunables->target_loads_lock);
 	spin_lock_init(&tunables->above_hispeed_delay_lock);
