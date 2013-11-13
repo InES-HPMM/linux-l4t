@@ -242,3 +242,31 @@ int bpmp_ping(void)
 {
 	return bpmp_send_receive(MRQ_PING, NULL, 0, NULL, 0);
 }
+
+int tegra_bpmp_pm_target(int cpu, int tolerance)
+{
+	u32 pkt[2] = { (u32)cpu, (u32)tolerance };
+	u32 pm;
+
+	if (bpmp_send_receive_spin(MRQ_PM_TARGET, pkt, sizeof(pkt),
+			&pm, sizeof(pm))) {
+		WARN_ON(1);
+		return min(TEGRA_PM_C7, tolerance);
+	}
+
+	return pm;
+}
+
+int tegra_bpmp_pm_target_entered(void)
+{
+	u32 pm;
+	int r;
+
+	r = bpmp_send_receive_spin(MRQ_PM_TARGET_ENTERED, NULL, 0,
+			&pm, sizeof(pm));
+
+	/* no recovery */
+	BUG_ON(r);
+
+	return pm;
+}

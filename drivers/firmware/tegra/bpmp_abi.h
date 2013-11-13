@@ -18,5 +18,8 @@
 #define _BPMP_ABI_H
 
 #define MRQ_PING		0
+#define MRQ_LEGACY_LP0		1
+#define MRQ_PM_TARGET		2
+#define MRQ_PM_TARGET_ENTERED	3
 
 #endif
