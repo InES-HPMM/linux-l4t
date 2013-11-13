@@ -501,7 +501,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-	platform_device_register(&tegra_pinmux_device);
+	platform_device_register(&tegra124_pinctrl_device);
 	vcm30_t124_pinmux_init();
 	vcm30_t124_usb_init();
 /*	vcm30_t124_xusb_init(); */
