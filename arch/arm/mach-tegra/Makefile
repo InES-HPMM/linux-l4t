@@ -3,7 +3,6 @@ GCOV_PROFILE := y
 asflags-y				+= -march=armv7-a
 #subdir-ccflags-y := -Werror
 
-obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
