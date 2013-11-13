@@ -1867,10 +1867,10 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 		if (!pmx->soc->groups[i].name)
 			continue;
 
-		if (pmx->soc->groups[i].drv_reg < 0)
+		if (pmx->soc->groups[i].mux_reg < 0)
 			continue;
 
-		seq_printf(s, "\t{TEGRA_PINGROUP_%s", pmx->soc->groups[i].name);
+		seq_printf(s, "\t{%s", pmx->soc->groups[i].name);
 		len = strlen(pmx->soc->groups[i].name);
 		dbg_pad_field(s, 15 - len);
 
@@ -2049,10 +2049,9 @@ static int dbg_drive_pinmux_show(struct seq_file *s, void *unused)
 		if (pmx->soc->groups[i].drv_reg < 0)
 			continue;
 
-		seq_printf(s, "\t{TEGRA_DRIVE_PINGROUP_%s",
-			pmx->soc->groups[i].name);
+		seq_printf(s, "\t{%s", pmx->soc->groups[i].name);
 		len = strlen(pmx->soc->groups[i].name);
-		dbg_pad_field(s, 7 - len);
+		dbg_pad_field(s, 15 - len);
 
 
 		reg = pmx_readl(pmx, pmx->soc->groups[i].drv_bank,
@@ -2116,6 +2115,9 @@ static const struct file_operations debug_drive_fops = {
 
 static int __init tegra_pinctrl_debuginit(void)
 {
+	if (!pmx)
+		return 0;
+
 	(void) debugfs_create_file("tegra_pinctrl", S_IRUGO | S_IWUGO,
 					NULL, NULL, &debug_fops);
 	(void) debugfs_create_file("tegra_pinctrl_drive", S_IRUGO,
