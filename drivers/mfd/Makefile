@@ -175,4 +175,4 @@ obj-$(CONFIG_MFD_MAX77663)	+= max77663-core.o
 obj-$(CONFIG_MFD_RICOH583)	+= ricoh583.o
 obj-$(CONFIG_MFD_RC5T583)	+= rc5t583.o rc5t583-irq.o
 obj-$(CONFIG_MFD_MAX77660)	+= max77660-core.o
-obj-$(CONFIG_MFD_AS3722)	+= as3722-core.o
+obj-$(CONFIG_MFD_AS3722)	+= as3722.o

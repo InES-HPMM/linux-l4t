@@ -718,19 +718,16 @@ config MFD_STMPE
 		Touchscreen: stmpe-ts
 
 config MFD_AS3722
-	tristate "Support for ams AS3722 PMIC"
+	bool "ams AS3722 Power Management IC"
 	select MFD_CORE
 	select REGMAP_I2C
-        select REGMAP_IRQ
+	select REGMAP_IRQ
 	depends on I2C=y
 	help
-	  Core support for the ams AS3722 PMIC. Additional
-	  drivers must be enabled in order to use the functionality of the
-	  device.
-	  Related drivers are:
-		* ams AS3722 PMIC regulators
-		* ams AS3722 GPIO
-		* ams AS3722 RTC
+	  The ams AS3722 is a compact system PMU suitable for mobile phones,
+	  tablets etc. It has 4 DC/DC step-down regulators, 3 DC/DC step-down
+	  controllers, 11 LDOs, RTC, automatic battery, temperature and
+	  over current monitoring, GPIOs, ADC and a watchdog.
 
 menu "STMicroelectronics STMPE Interface Drivers"
 depends on MFD_STMPE
