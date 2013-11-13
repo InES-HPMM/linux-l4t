@@ -265,11 +265,22 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 		.audio_port_id = 1,
 		.is_i2s_master = 0,
 		.i2s_mode = TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.channels       = 2,
 	},
 	.i2s_param[BT_SCO] = {
 		.audio_port_id = 3,
 		.is_i2s_master = 1,
 		.i2s_mode = TEGRA_DAIFMT_DSP_A,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 16000,
+		.channels	= 2,
+		.bit_clk	= 1024000,
 	},
 };
 
@@ -287,11 +298,22 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5645 = {
 		.audio_port_id = 1,
 		.is_i2s_master = 0,
 		.i2s_mode = TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.channels       = 2,
 	},
 	.i2s_param[BT_SCO] = {
 		.audio_port_id = 3,
 		.is_i2s_master = 1,
 		.i2s_mode = TEGRA_DAIFMT_DSP_A,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 16000,
+		.channels	= 2,
+		.bit_clk	= 1024000,
 	},
 };
 
@@ -442,6 +464,7 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
+	&tegra_i2s_device0,
 	&tegra_i2s_device1,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
@@ -449,6 +472,7 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
+	&baseband_dit_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
