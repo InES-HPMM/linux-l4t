@@ -1422,6 +1422,9 @@ int __init ardbeg_soctherm_init(void)
 		tegra_add_tgpu_trips(
 			ardbeg_soctherm_data.therm[THERM_GPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_GPU].num_trips);
+		tegra_add_vc_trips(
+			ardbeg_soctherm_data.therm[THERM_CPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);
 	}
 
 	tegra_get_pmu_board_info(&pmu_board_info);

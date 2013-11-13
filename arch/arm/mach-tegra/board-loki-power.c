@@ -978,6 +978,9 @@ int __init loki_soctherm_init(void)
 		tegra_add_tgpu_trips(
 			loki_soctherm_data.therm[THERM_GPU].trips,
 			&loki_soctherm_data.therm[THERM_GPU].num_trips);
+		tegra_add_vc_trips(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips);
 	}
 
 	return tegra11_soctherm_init(&loki_soctherm_data);
