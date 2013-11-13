@@ -3166,21 +3166,21 @@ static void tegra124_pinctrl_resume(u32 *pg_data)
 }
 
 static struct tegra_pinctrl_group_config_data t124_pin_drv_group_soc_data[] = {
-	TEGRA_PINCTRL_SET_DRIVE("dap2", 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("dap1", 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("dap3", 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("dap4", 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("dap5", 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("dbg", 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("at5", 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("gme", 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("ddc", 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("ao1", 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("uart2", 0, 0, 3, 0, 0, 3, 3, 0),
-	TEGRA_PINCTRL_SET_DRIVE("uart3", 0, 0, 3, 0, 0, 3, 3, 0),
-	TEGRA_PINCTRL_SET_DRIVE("at2", 0, 0, 0, 55, 63, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE("uda", 0, 0, 0, 23, 23, 3, 3, 0),
-	TEGRA_PINCTRL_SET_DRIVE("uaa", 0, 0, 0, 23, 23, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap2, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap1, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap3, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap4, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap5, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dbg, 1, 1, 0, 5, 5, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(at5, 1, 1, 0, 5, 5, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(gme, 1, 1, 0, 5, 5, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(ddc, 1, 1, 0, 5, 5, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(ao1, 1, 1, 0, 5, 5, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uart2, 0, 0, 3, 0, 0, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uart3, 0, 0, 3, 0, 0, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(at2, 0, 0, 0, 55, 63, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uda, 0, 0, 0, 23, 23, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uaa, 0, 0, 0, 23, 23, 3, 3, 0),
 };
 
 static const struct tegra_pinctrl_soc_data tegra124_pinctrl = {

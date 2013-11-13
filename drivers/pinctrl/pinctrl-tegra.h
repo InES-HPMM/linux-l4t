@@ -197,7 +197,7 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
 	_pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew,	\
 	_drive_type)							\
 	{								\
-		.name = _name,						\
+		.name = "drive_"#_name,					\
 		.high_speed_mode = _hsm,				\
 		.schmitt = _schmitt,					\
 		.low_power_mode = _drive,				\

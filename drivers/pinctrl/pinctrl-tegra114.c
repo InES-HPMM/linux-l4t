@@ -2800,7 +2800,7 @@ static const struct tegra_pingroup tegra114_groups[] = {
 };
 
 static struct tegra_pinctrl_group_config_data t114_pin_drive_group_soc_data[] = {
-	TEGRA_PINCTRL_SET_DRIVE("at2", 0, 0, 0, 48, 55, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(at2, 0, 0, 0, 48, 55, 0, 0, 0),
 };
 
 static const struct tegra_pinctrl_soc_data tegra114_pinctrl = {
