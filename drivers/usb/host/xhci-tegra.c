@@ -4163,12 +4163,12 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 					&bdata->gpio_ss1_sata);
 	ret = of_property_read_u32(node, "nvidia,portmap",
 					&bdata->portmap);
-	ret = of_property_read_u8(node, "nvidia,ss_portmap",
-					&bdata->ss_portmap);
-	ret = of_property_read_u8(node, "nvidia,lane_owner",
-					&bdata->lane_owner);
-	ret = of_property_read_u8(node, "nvidia,ulpicap",
-					&bdata->ulpicap);
+	ret = of_property_read_u32(node, "nvidia,ss_portmap",
+					(u32 *) &bdata->ss_portmap);
+	ret = of_property_read_u32(node, "nvidia,lane_owner",
+					(u32 *) &bdata->lane_owner);
+	ret = of_property_read_u32(node, "nvidia,ulpicap",
+					(u32 *) &bdata->ulpicap);
 	ret = of_property_read_string_index(node, "nvidia,supply_utmi_vbuses",
 					0, &bdata->supply.utmi_vbuses[0]);
 	ret = of_property_read_string_index(node, "nvidia,supply_utmi_vbuses",
