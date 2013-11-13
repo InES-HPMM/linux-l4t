@@ -191,6 +191,50 @@ struct platform_device tegra_pinmux_device = {
 	.num_resources	= ARRAY_SIZE(pinmux_resource),
 };
 
+static struct resource tegra124_pinctrl_resource[] = {
+	[0] = {
+		/* Drive registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x868,
+		.end	= TEGRA_APB_MISC_BASE + 0x9c8 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		/* Mux registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x3000,
+		.end	= TEGRA_APB_MISC_BASE + 0x3430 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device tegra124_pinctrl_device = {
+	.name		= "tegra124-pinctrl",
+	.id		= -1,
+	.resource	= tegra124_pinctrl_resource,
+	.num_resources	= ARRAY_SIZE(tegra124_pinctrl_resource),
+};
+
+static struct resource tegra114_pinctrl_resource[] = {
+	[0] = {
+		/* Drive registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x868,
+		.end	= TEGRA_APB_MISC_BASE + 0x938 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		/* Mux registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x3000,
+		.end	= TEGRA_APB_MISC_BASE + 0x3408 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device tegra114_pinctrl_device = {
+	.name		= "tegra114-pinctrl",
+	.id		= -1,
+	.resource	= tegra114_pinctrl_resource,
+	.num_resources	= ARRAY_SIZE(tegra114_pinctrl_resource),
+};
+
 static struct resource apbdma_resource[] = {
 	[0] = {
 		.start	= TEGRA_APB_DMA_BASE,
