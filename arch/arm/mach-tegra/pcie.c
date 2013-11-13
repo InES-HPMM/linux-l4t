@@ -60,8 +60,6 @@
 #include "iomap.h"
 #include "clock.h"
 
-#define MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE				5
-
 /* register definitions */
 #define AFI_OFFSET							0x3800
 #define PADS_OFFSET							0x3000
@@ -117,7 +115,6 @@
 
 #define AFI_CONFIGURATION						0xac
 #define AFI_CONFIGURATION_EN_FPCI				(1 << 0)
-#define AFI_CONFIGURATION_DFPCI_RSPPASSPW			(1 << 2)
 
 #define AFI_FPCI_ERROR_MASKS						0xb0
 
@@ -145,29 +142,21 @@
 #define AFI_INTR_EN_PRSNT_SENSE					(1 << 8)
 
 #define AFI_PCIE_PME						0x0f0
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#define AFI_PCIE_PME_TURN_OFF					0x10101
-#define AFI_PCIE_PME_ACK					0x40420
-#else
 #define AFI_PCIE_PME_TURN_OFF					0x101
 #define AFI_PCIE_PME_ACK					0x420
-#endif
 
 #define AFI_PCIE_CONFIG						0x0f8
 #define AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE			(1 << 1)
 #define AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE			(1 << 2)
-#define AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE			(1 << 3)
 #define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK		(0xf << 20)
 #define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1		(0x0 << 20)
 #define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1		(0x1 << 20)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411			(0x2 << 20)
 
 #define AFI_FUSE							0x104
 #define AFI_FUSE_PCIE_T0_GEN2_DIS				(1 << 2)
 
 #define AFI_PEX0_CTRL							0x110
 #define AFI_PEX1_CTRL							0x118
-#define AFI_PEX2_CTRL							0x128
 #define AFI_PEX_CTRL_RST					(1 << 0)
 #define AFI_PEX_CTRL_CLKREQ_EN					(1 << 1)
 #define AFI_PEX_CTRL_REFCLK_EN					(1 << 3)
@@ -205,29 +194,6 @@
 #define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1		(0x1 << 0)
 #define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2		(0x2 << 0)
 
-#define PADS_CTL_SEL						0x0000009C
-
-#define PADS_CTL						0x000000A0
-#define PADS_CTL_IDDQ_1L					(1 << 0)
-#define PADS_CTL_TX_DATA_EN_1L					(1 << 6)
-#define PADS_CTL_RX_DATA_EN_1L					(1 << 10)
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define  PADS_PLL_CTL						0x000000B8
-#else
-#define  PADS_PLL_CTL						0x000000B4
-#endif
-#define  PADS_PLL_CTL_RST_B4SM					(1 << 1)
-#define  PADS_PLL_CTL_LOCKDET					(1 << 8)
-#define  PADS_PLL_CTL_REFCLK_MASK				(0x3 << 16)
-#define  PADS_PLL_CTL_REFCLK_INTERNAL_CML			(0 << 16)
-#define  PADS_PLL_CTL_REFCLK_INTERNAL_CMOS			(1 << 16)
-#define  PADS_PLL_CTL_REFCLK_EXTERNAL				(2 << 16)
-#define  PADS_PLL_CTL_TXCLKREF_MASK				(0x1 << 20)
-#define  PADS_PLL_CTL_TXCLKREF_BUF_EN				(1 << 22)
-#define  PADS_PLL_CTL_TXCLKREF_DIV10				(0 << 20)
-#define  PADS_PLL_CTL_TXCLKREF_DIV5				(1 << 20)
-
 #define  PADS_REFCLK_CFG0					0x000000C8
 #define  PADS_REFCLK_CFG1					0x000000CC
 #define  PADS_REFCLK_BIAS					0x000000D0
@@ -255,37 +221,6 @@
 #define BOARD_PM359						0x0167
 #define BOARD_PM358						0x0166
 
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-/*
- * Tegra2 defines 1GB in the AXI address map for PCIe.
- *
- * That address space is split into different regions, with sizes and
- * offsets as follows:
- *
- * 0x80000000 - 0x80003fff - PCI controller registers
- * 0x80004000 - 0x80103fff - PCI configuration space
- * 0x80104000 - 0x80203fff - PCI extended configuration space
- * 0x80203fff - 0x803fffff - unused
- * 0x80400000 - 0x8040ffff - downstream IO
- * 0x80410000 - 0x8fffffff - unused
- * 0x90000000 - 0x9fffffff - non-prefetchable memory
- * 0xa0000000 - 0xbfffffff - prefetchable memory
- */
-#define PCIE_REGS_SZ		SZ_16K
-#define PCIE_CFG_OFF		PCIE_REGS_SZ
-#define PCIE_CFG_SZ		SZ_1M
-#define PCIE_EXT_CFG_OFF	(PCIE_CFG_SZ + PCIE_CFG_OFF)
-#define PCIE_EXT_CFG_SZ		SZ_1M
-#define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ + PCIE_EXT_CFG_SZ)
-
-#define MEM_BASE_0		(TEGRA_PCIE_BASE + SZ_256M)
-#define MEM_SIZE_0		SZ_256M
-#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
-#define PREFETCH_MEM_SIZE_0	SZ_512M
-
-#else
-
 /*
  * AXI address map for the PCIe aperture , defines 1GB in the AXI
  *  address map for PCIe.
@@ -296,24 +231,19 @@
  *
  *  The split below seems to work fine for now.
  *
- *  0x0000_0000 to 0x00ff_ffff - Register space          16MB.
- *  0x0100_0000 to 0x01ff_ffff - Config space            16MB.
- *  0x0200_0000 to 0x02ff_ffff - Extended config space   16MB.
- *  0x0300_0000 to 0x03ff_ffff - Downstream IO space
+ *  0x0100_0000 to 0x01ff_ffff - Register space          16MB.
+ *  0x0200_0000 to 0x05ff_ffff - Extended Config space   64MB.
+ *  0x0600_0000 to 0x0600_ffff - Downstream IO space
  *   ... Will be filled with other BARS like MSI/upstream IO etc.
- *  0x0400_0000 to 0x0fff_ffff - non-prefetchable memory aperture
- *  0x1000_0000 to 0x3fff_ffff - Prefetchable memory aperture
+ *  0x0800_0000 to 0x17ff_ffff - non-prefetchable memory aperture
+ *  0x1800_0000 to 0x3fff_ffff - Prefetchable memory aperture
  *
  *  Config and Extended config sizes are choosen to support
  *  maximum of 256 devices,
  *  which is good enough for all the current use cases.
  *
  */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#define TEGRA_PCIE_BASE	0x00000000
-#else
 #define TEGRA_PCIE_BASE	0x01000000
-#endif
 
 #define PCIE_REGS_SZ		SZ_16M
 #define PCIE_CFG_OFF		SZ_32M
@@ -327,7 +257,6 @@
 #define MEM_SIZE_0		SZ_256M
 #define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
 #define PREFETCH_MEM_SIZE_0	(SZ_128M + SZ_512M)
-#endif
 
 #define DEBUG 0
 #if DEBUG
@@ -405,9 +334,6 @@ static inline u32 afi_readl(unsigned long offset)
 static u32 pex_controller_registers[] = {
 	AFI_PEX0_CTRL,
 	AFI_PEX1_CTRL,
-#if MAX_PCIE_SUPPORTED_PORTS == 3
-	AFI_PEX2_CTRL,
-#endif
 };
 
 static inline void pads_writel(u32 value, unsigned long offset)
@@ -665,13 +591,8 @@ static void tegra_pcie_fixup_class(struct pci_dev *dev)
 	dev->class = PCI_CLASS_BRIDGE_PCI << 8;
 }
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA, 0x0bf0, tegra_pcie_fixup_class);
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA, 0x0bf1, tegra_pcie_fixup_class);
-#else
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA, 0x0e1c, tegra_pcie_fixup_class);
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA, 0x0e1d, tegra_pcie_fixup_class);
-#endif
 
 /* Tegra PCIE requires relaxed ordering */
 static void tegra_pcie_relax_enable(struct pci_dev *dev)
@@ -817,7 +738,6 @@ static int tegra_pcie_detach(void)
 	return err;
 }
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static void tegra_pcie_prsnt_map_override(bool prsnt)
 {
 	unsigned int data;
@@ -834,7 +754,6 @@ static void tegra_pcie_prsnt_map_override(bool prsnt)
 		data |= PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, 0);
 }
-#endif
 
 static void work_hotplug_handler(struct work_struct *work)
 {
@@ -862,19 +781,15 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static void notify_device_isr(u32 mesg)
 {
 	printk(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
 	/* TODO: Need to call pcie device isr instead of ignoring the interrupt */
 	/* same comment applies to below handler also */
 }
-#endif
 
 static void handle_sb_intr(void)
 {
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-	/* Handle sideband intr differently for T124 */
 	u32 mesg;
 
 	PR_FUNC_LINE;
@@ -892,7 +807,6 @@ static void handle_sb_intr(void)
 		rp_writel(mesg, NV_PCIE2_RP_RSR, idx);
 	} else
 		afi_writel(mesg, AFI_MSG_0);
-#endif
 }
 
 static irqreturn_t tegra_pcie_isr(int irq, void *arg)
@@ -1008,16 +922,9 @@ static void tegra_pcie_setup_translations(void)
 static int tegra_pcie_enable_controller(void)
 {
 	u32 val, reg;
-	int i, timeout, ret = 0, lane_owner;
-	void __iomem *reg_mselect_base;
+	int i, ret = 0, lane_owner;
 
 	PR_FUNC_LINE;
-	reg_mselect_base = IO_ADDRESS(TEGRA_MSELECT_BASE);
-	/* select the PCIE APERTURE in MSELECT config */
-	reg = readl(reg_mselect_base);
-	reg |= 1 << MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE;
-	writel(reg, reg_mselect_base);
-
 	/* Enable slot clock and ensure reset signal is assert */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		reg = pex_controller_registers[i];
@@ -1046,7 +953,6 @@ static int tegra_pcie_enable_controller(void)
 	val = afi_readl(AFI_PCIE_CONFIG);
 	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	if (tegra_platform_is_fpga()) {
 		/* FPGA supports only x2_x1 bar config */
 		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
@@ -1083,70 +989,13 @@ static int tegra_pcie_enable_controller(void)
 			}
 		}
 	}
-#else
-	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
-	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
-#endif
 	afi_writel(val, AFI_PCIE_CONFIG);
 
 	/* Enable Gen 2 capability of PCIE */
 	val = afi_readl(AFI_FUSE) & ~AFI_FUSE_PCIE_T0_GEN2_DIS;
 	afi_writel(val, AFI_FUSE);
 
-	timeout = 0;
 	if (!tegra_platform_is_fpga()) {
-#ifndef CONFIG_ARCH_TEGRA_12x_SOC
-		/* override IDDQ to 1 on all 4 lanes */
-		val = pads_readl(PADS_CTL) | PADS_CTL_IDDQ_1L;
-		pads_writel(val, PADS_CTL);
-
-		/*
-		 * set up PHY PLL inputs select PLLE output as refclock,
-		 * set pll TX clock ref to div10 (not div5)
-		 * set pll ref clock buf to enable.
-		 */
-		val = pads_readl(PADS_PLL_CTL);
-		val &= ~(PADS_PLL_CTL_REFCLK_MASK | PADS_PLL_CTL_TXCLKREF_MASK);
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-		val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML
-				 | PADS_PLL_CTL_TXCLKREF_DIV10);
-#else
-		val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML
-				 | PADS_PLL_CTL_TXCLKREF_BUF_EN);
-#endif
-		val |= PADS_PLL_CTL_RST_B4SM;
-		pads_writel(val, PADS_PLL_CTL);
-
-		/* put PLL into reset  */
-		val = pads_readl(PADS_PLL_CTL) & ~PADS_PLL_CTL_RST_B4SM;
-		pads_writel(val, PADS_PLL_CTL);
-
-		/* take PLL out of reset  */
-		val = pads_readl(PADS_PLL_CTL) | PADS_PLL_CTL_RST_B4SM;
-		pads_writel(val, PADS_PLL_CTL);
-
-		/*
-		 * Hack, set the clock voltage to the DEFAULT provided
-		 * by hw folks. This doesn't exist in the documentation
-		 */
-		pads_writel(0xfa5cfa5c, PADS_REFCLK_CFG0);
-		pads_writel(0x0000FA5C, PADS_REFCLK_CFG1);
-
-		/* Wait for the PLL to lock */
-		timeout = 300;
-		do {
-			val = pads_readl(PADS_PLL_CTL);
-			usleep_range(1000, 1000);
-			if (--timeout == 0) {
-				pr_err("Tegra PCIe error: timeout waiting for PLL\n");
-				return -EBUSY;
-			}
-		} while (!(val & PADS_PLL_CTL_LOCKDET));
-
-		/* turn off IDDQ override */
-		val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
-		pads_writel(val, PADS_CTL);
-#else
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
 		pads_writel(0x34ac34ac, PADS_REFCLK_CFG0);
 		pads_writel(0x00000028, PADS_REFCLK_BIAS);
@@ -1156,7 +1005,6 @@ static int tegra_pcie_enable_controller(void)
 			pr_err("%s unable to initalize pads\n", __func__);
 			return ret;
 		}
-#endif
 	}
 	/* Wait for clock to latch (min of 100us) */
 	udelay(100);
@@ -1171,10 +1019,6 @@ static int tegra_pcie_enable_controller(void)
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
 	val = afi_readl(AFI_CONFIGURATION);
-	/* T30 WAR avoid hang on CPU read/write while gpu transfers in progress */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	val |= AFI_CONFIGURATION_DFPCI_RSPPASSPW;
-#endif
 	/* Finally enable PCIe */
 	val |=  AFI_CONFIGURATION_EN_FPCI;
 	afi_writel(val, AFI_CONFIGURATION);
@@ -1219,13 +1063,8 @@ static int tegra_pcie_enable_regulators(void)
 
 	if (tegra_pcie.regulator_pexio == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator pexio\n", __func__);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-		tegra_pcie.regulator_pexio =
-			regulator_get(tegra_pcie.dev, "vdd_pexb");
-#else
 		tegra_pcie.regulator_pexio =
 			regulator_get(tegra_pcie.dev, "avdd_pex_pll");
-#endif
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_pexio)) {
 			pr_err("%s: unable to get pexio regulator\n", __func__);
 			tegra_pcie.regulator_pexio = 0;
@@ -1239,13 +1078,8 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_avdd_plle == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator avdd_plle\n",
 				__func__);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
-						"avdd_plle");
-#else
 		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
 						"avdd_pll_erefe");
-#endif
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_avdd_plle)) {
 			pr_err("%s: unable to get avdd_plle regulator\n",
 				__func__);
@@ -1456,9 +1290,7 @@ static int tegra_pcie_power_off(void)
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
 	}
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-		tegra_pcie_prsnt_map_override(false);
-#endif
+	tegra_pcie_prsnt_map_override(false);
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pcie_xclk)
@@ -1607,7 +1439,6 @@ retry:
 
 static void tegra_pcie_apply_sw_war(int index)
 {
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	unsigned int data;
 
 	PR_FUNC_LINE;
@@ -1615,7 +1446,6 @@ static void tegra_pcie_apply_sw_war(int index)
 	data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
 	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
 	rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
-#endif
 }
 
 /* Enable various features of root port */
@@ -1887,13 +1717,8 @@ static int __init tegra_pcie_init(void)
 {
 	int err = 0;
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	pcibios_min_mem = 0x1000;
-	pcibios_min_io = 0;
-#else
 	pcibios_min_mem = 0x03000000ul;
 	pcibios_min_io = 0x1000ul;
-#endif
 
 	PR_FUNC_LINE;
 	INIT_LIST_HEAD(&tegra_pcie.busses);
@@ -1973,10 +1798,7 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 		__func__, tegra_pcie.plat_data->port_status[0]);
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[1] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[1]);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[2] %d\n",
-		__func__, tegra_pcie.plat_data->port_status[2]);
-#endif
+
 	/* Enable Runtime PM for PCIe, TODO: Need to add PCIe host device */
 	pm_runtime_enable(tegra_pcie.dev);
 
@@ -2201,12 +2023,7 @@ static bool tegra_pcie_enable_msi(void)
 	msi_aligned = ((msi_base + ((1<<12) - 1)) & ~((1<<12) - 1));
 	msi_aligned = virt_to_phys((void *)msi_aligned);
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	afi_writel(msi_aligned, AFI_MSI_FPCI_BAR_ST);
-#else
-	/* different from T20!*/
 	afi_writel(msi_aligned>>8, AFI_MSI_FPCI_BAR_ST);
-#endif
 	afi_writel(msi_aligned, AFI_MSI_AXI_BAR_ST);
 	/* this register is in 4K increments */
 	afi_writel(1, AFI_MSI_BAR_SZ);

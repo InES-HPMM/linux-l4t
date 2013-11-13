@@ -22,11 +22,7 @@
 
 #include <linux/pci.h>
 
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-	#define MAX_PCIE_SUPPORTED_PORTS 2
-#else
-	#define MAX_PCIE_SUPPORTED_PORTS 3
-#endif
+#define MAX_PCIE_SUPPORTED_PORTS 2
 
 struct tegra_pci_platform_data {
 	int port_status[MAX_PCIE_SUPPORTED_PORTS];
