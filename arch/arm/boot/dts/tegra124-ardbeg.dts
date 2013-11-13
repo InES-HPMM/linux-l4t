@@ -117,6 +117,8 @@
 		nvidia,supply_s1p8v = "avdd_pll_utmip";
 		nvidia,supply_vddio_hsic = "vddio_hsic";
 		nvidia,supply_s1p05v = "avddio_usb";
+		/* hsic config values in order defined in structure */
+		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 		status = "okay";
 	};
 };
