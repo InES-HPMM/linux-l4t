@@ -1338,6 +1338,7 @@ static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 	void *cookie;
 	int num_devices;
 	u64 device_size;
+	u64 size_mul;
 	int ret = 0;
 
 	if (!tegra12_is_lpddr3())
@@ -1350,6 +1351,7 @@ static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 		return ret;
 
 	num_devices = 1 << (mc_readl(MC_EMEM_ADR_CFG) & BIT(0));
+	size_mul = 1 << ((emc_readl(EMC_FBIO_CFG5) >> 4) & BIT(0));
 
 	/* Cookie represents the device number to write to MRW register.
 	 * 0x2 to for only dev0, 0x1 for dev1.
@@ -1368,7 +1370,7 @@ static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
 					MC_EMEM_DEV_SIZE_SHIFT) &
 					MC_EMEM_DEV_SIZE_MASK);
-		device_size *= SZ_4M;
+		device_size = device_size * size_mul * SZ_4M;
 
 		tegra12_pasr_remove_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	} else {
@@ -1386,7 +1388,7 @@ static int tegra12_pasr_enable(const char *arg, const struct kernel_param *kp)
 		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
 					MC_EMEM_DEV_SIZE_SHIFT) &
 					MC_EMEM_DEV_SIZE_MASK);
-		device_size *= SZ_4M;
+		device_size = device_size * size_mul * SZ_4M;
 
 		ret = tegra12_pasr_set_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	}
