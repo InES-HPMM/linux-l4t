@@ -43,7 +43,7 @@
 #define ARDBEG_WLAN_PWR	TEGRA_GPIO_PX7
 #define ARDBEG_WLAN_WOW	TEGRA_GPIO_PU5
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
-#define ON 1020 /* 1019.16mW */
+#define ON 3070 /* 3069mW */
 #define OFF 0
 static unsigned int wifi_states[] = {ON, OFF};
 #endif
