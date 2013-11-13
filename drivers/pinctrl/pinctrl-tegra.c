@@ -844,9 +844,10 @@ static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
 				TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
 				cdata->slew_rate_rising);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_DRIVE_TYPE,
-				cdata->drive_type);
+		if (pmx->soc->groups[i].drvtype_reg >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
+					TEGRA_PINCONF_PARAM_DRIVE_TYPE,
+					cdata->drive_type);
 	}
 }
 
