@@ -3060,7 +3060,7 @@ static const struct tegra_pingroup tegra124_groups[] = {
 	PINGROUP(hdmi_cec_pee3,		CEC,		RSVD2,		RSVD3,		RSVD4,		CEC,		0x33e0,  Y,  N,  N),
 	PINGROUP(sdmmc1_wp_n_pv3,	SDMMC1,		CLK12,		SPI4,		UARTA,		SDMMC1,		0x33e4,  N,  N,  N),
 	PINGROUP(sdmmc3_cd_n_pv2,	SDMMC3,		OWR,		RSVD3,		RSVD4,		SDMMC3,		0x33e8,  N,  N,  N),
-	PINGROUP(gpio_w2_aud_pw2,	SPI6,		RSVD2,		SPI2,		I2C1,		RSVD1,		0x33ec,  N,  N,  N),
+	PINGROUP(gpio_w2_aud_pw2,	SPI6,		RSVD2,		SPI2,		I2C1,		RSVD2,		0x33ec,  N,  N,  N),
 	PINGROUP(gpio_w3_aud_pw3,	SPI6,		SPI1,		SPI2,		I2C1,		SPI1,		0x33f0,  N,  N,  N),
 	PINGROUP(usb_vbus_en0_pn4,	USB,		RSVD2,		RSVD3,		RSVD4,		USB,		0x33f4,  Y,  N,  N),
 	PINGROUP(usb_vbus_en1_pn5,	USB,		RSVD2,		RSVD3,		RSVD4,		USB,		0x33f8,  Y,  N,  N),
