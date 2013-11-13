@@ -77,3 +77,4 @@ obj-$(CONFIG_SIM_PALMAS)	+= palmas-sim.o
 obj-y				+= issp/
 obj-$(CONFIG_TEGRA_PROFILER)    += tegra-profiler/
 obj-$(CONFIG_MTK_GPS)		+= gps/
+obj-y		+= tegra-fuse/

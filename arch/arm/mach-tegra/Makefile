@@ -81,7 +81,6 @@ obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
-obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 
 obj-y                                   += powergate.o
