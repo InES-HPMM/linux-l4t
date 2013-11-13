@@ -20,7 +20,7 @@
 #ifndef _MACH_TEGRA_BOARD_ARDBEG_H
 #define _MACH_TEGRA_BOARD_ARDBEG_H
 
-#include <linux/mfd/as3722-reg.h>
+#include <linux/mfd/as3722-plat.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"

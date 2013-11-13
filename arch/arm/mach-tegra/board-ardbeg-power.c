@@ -30,7 +30,6 @@
 #include <linux/pid_thermal_gov.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
-#include <linux/mfd/as3722-reg.h>
 #include <linux/mfd/as3722-plat.h>
 #include <linux/power/power_supply_extcon.h>
 #include <linux/regulator/tps51632-regulator.h>
@@ -284,7 +283,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.reg_pdata[AS3722_LDO9] = &as3722_ldo9_reg_pdata,
 	.reg_pdata[AS3722_LDO10] = &as3722_ldo10_reg_pdata,
 	.reg_pdata[AS3722_LDO11] = &as3722_ldo11_reg_pdata,
-	.core_init_data = NULL,
 	.gpio_base = AS3722_GPIO_BASE,
 	.irq_base = AS3722_IRQ_BASE,
 	.use_internal_int_pullup = 0,

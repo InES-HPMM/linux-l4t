@@ -27,7 +27,6 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
-#include <linux/mfd/as3722-reg.h>
 #include <linux/mfd/as3722-plat.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -237,7 +236,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.reg_pdata[AS3722_SD5] = &as3722_sd5_reg_pdata,
 	.reg_pdata[AS3722_SD6] = &as3722_sd6_reg_pdata,
 
-	.core_init_data = NULL,
 	.gpio_base = AS3722_GPIO_BASE,
 	.irq_base = AS3722_IRQ_BASE,
 	.use_internal_int_pullup = 0,
