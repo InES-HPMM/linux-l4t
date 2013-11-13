@@ -462,7 +462,7 @@ static int cm3217_probe(struct i2c_client *client,
 	inf = iio_priv(indio_dev);
 
 	inf->i2c = client;
-	i2c_set_clientdata(client, inf);
+	i2c_set_clientdata(client, indio_dev);
 	indio_dev->info = &cm3217_iio_info;
 	indio_dev->name = id->name;
 	indio_dev->dev.parent = &client->dev;
