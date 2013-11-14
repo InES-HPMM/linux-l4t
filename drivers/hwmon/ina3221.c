@@ -57,7 +57,7 @@
 #define shuntv_register_to_uv(x) ((x >> 3) * 40)
 
 #define CPU_THRESHOLD 2
-#define CPU_FREQ_THRESHOLD 1000000
+#define CPU_FREQ_THRESHOLD 102000
 
 /* Assume power can not exceed +-524W */
 #define MAX_POWER_MW 0x000FFFFF
