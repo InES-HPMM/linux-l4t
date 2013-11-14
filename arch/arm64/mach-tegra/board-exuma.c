@@ -35,7 +35,6 @@ DT_MACHINE_START(TEGRA132_DT, "exuma")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_ardbeg_reserve,
 	.init_early	= tegra12x_init_early,
-	.init_irq	= tegra_dt_init_irq,
 	.init_late	= tegra_init_late,
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
@@ -46,6 +45,9 @@ MACHINE_END
 int __init laguna_pinmux_init(void) { return 0; }
 int __init laguna_regulator_init(void) { return 0; }
 int __init laguna_pm358_pmon_init(void) { return 0; }
+int __init laguna_edp_init(void) { return 0; }
+void __init tn8_new_sysedp_init(void) {}
+void __init tn8_sysedp_dynamic_capping_init(void) {}
 
 extern int bonaire_panel_init(void);
 int ardbeg_panel_init(void)
