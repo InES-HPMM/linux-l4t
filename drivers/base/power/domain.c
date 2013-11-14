@@ -516,6 +516,9 @@ static int __pm_genpd_save_device(struct pm_domain_data *pdd,
 	if (gpd_data->need_restore)
 		return 0;
 
+	if (!gpd_data->need_save)
+		goto out;
+
 	mutex_unlock(&genpd->lock);
 
 	genpd_start_dev(genpd, dev);
@@ -524,6 +527,7 @@ static int __pm_genpd_save_device(struct pm_domain_data *pdd,
 
 	mutex_lock(&genpd->lock);
 
+out:
 	if (!ret)
 		gpd_data->need_restore = true;
 
@@ -1637,6 +1641,7 @@ int __pm_genpd_add_device(struct generic_pm_domain *genpd, struct device *dev,
 	gpd_data->base.dev = dev;
 	list_add_tail(&gpd_data->base.list_node, &genpd->dev_list);
 	gpd_data->need_restore = genpd->status == GPD_STATE_POWER_OFF;
+	gpd_data->need_save = true;
 	gpd_data->td.constraint_changed = true;
 	gpd_data->td.effective_constraint_ns = -1;
 	mutex_unlock(&gpd_data->lock);
@@ -1755,6 +1760,26 @@ int pm_genpd_remove_device(struct generic_pm_domain *genpd,
 
 	return ret;
 }
+
+/**
+ * pm_genpd_dev_needsave - Set/unset the device's "need save" flag.
+ * @dev: Device to set/unset the flag for.
+ * @val: The new value of the device's "need save" flag.
+ */
+void pm_genpd_dev_need_save(struct device *dev, bool val)
+{
+	struct pm_subsys_data *psd;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->power.lock, flags);
+
+	psd = dev_to_psd(dev);
+	if (psd && psd->domain_data)
+		to_gpd_data(psd->domain_data)->need_save = val;
+
+	spin_unlock_irqrestore(&dev->power.lock, flags);
+}
+EXPORT_SYMBOL_GPL(pm_genpd_dev_need_save);
 
 /**
  * pm_genpd_dev_need_restore - Set/unset the device's "need restore" flag.
