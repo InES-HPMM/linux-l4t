@@ -129,7 +129,6 @@ DT_MACHINE_START(TEGRA210_DT, "grenada")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_grenada_reserve,
 	.init_early	= tegra21x_init_early,
-	.init_irq	= tegra_dt_init_irq,
 	.init_late	= tegra_init_late,
 	.init_machine	= tegra210_dt_init,
 	.restart	= tegra_assert_system_reset,
