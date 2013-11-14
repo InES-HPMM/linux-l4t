@@ -966,6 +966,12 @@ config ARCH_TEGRA_VIC
 	  Say Y here if the SOC supports the Tegra Video Image Compositor.
 	  Note that this not the same as the ARM Vectored Interrupt Controller.
 
+config ARCH_TEGRA_APE
+	bool "Tegra Audio Processing Engine(APE) present"
+	default n
+	help
+	  Say Y here if the SOC supports the Tegra Audio Processing Engine.
+
 config TEGRA_USE_NCT
 	bool "Enable NCT partition access"
 	help
