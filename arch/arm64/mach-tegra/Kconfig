@@ -51,6 +51,7 @@ config ARCH_TEGRA_21x_SOC
 	select TEGRA_DYNAMIC_CBUS
 	select TEGRA_DUAL_CBUS
 	select ARCH_TEGRA_VIC
+	select ARCH_TEGRA_APE
 	select SOC_BUS
 	select THERMAL
 	select PM_GENERIC_DOMAINS if PM

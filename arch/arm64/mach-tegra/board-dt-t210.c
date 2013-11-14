@@ -101,6 +101,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-nvjpg", TEGRA_NVJPG_BASE, "nvjpg",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-axbar",  TEGRA_AXBAR_BASE,
+				"tegra210-axbar", NULL),
 	{}
 };
 
