@@ -1546,6 +1546,59 @@ struct platform_device tegra_axbar_device = {
 	.resource      = tegra_axbar_resource,
 	.num_resources = ARRAY_SIZE(tegra_axbar_resource),
 };
+
+static struct resource tegra_ope_resource0[] = {
+	[0] = {
+		.start = TEGRA_OPE1_BASE,
+		.end   = TEGRA_OPE1_BASE + TEGRA_OPE1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_ope_device0 = {
+	.name = "tegra210-ope",
+	.id = 0,
+	.resource      = tegra_ope_resource0,
+	.num_resources = ARRAY_SIZE(tegra_ope_resource0),
+};
+
+static struct resource tegra_ope_resource1[] = {
+	[0] = {
+		.start = TEGRA_OPE2_BASE,
+		.end   = TEGRA_OPE2_BASE + TEGRA_OPE2_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+static struct resource tegra_peq_resource0[] = {
+	[0] = {
+		.start = TEGRA_PEQ1_BASE,
+		.end   = TEGRA_PEQ1_BASE + TEGRA_PEQ1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_peq_device0 = {
+	.name = "tegra210-peq",
+	.id = 0,
+	.resource      = tegra_peq_resource0,
+	.num_resources = ARRAY_SIZE(tegra_peq_resource0),
+};
+
+static struct resource tegra_peq_resource1[] = {
+	[0] = {
+		.start = TEGRA_PEQ2_BASE,
+		.end   = TEGRA_PEQ2_BASE + TEGRA_PEQ2_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_peq_device1 = {
+	.name = "tegra210-peq",
+	.id = 1,
+	.resource      = tegra_peq_resource1,
+	.num_resources = ARRAY_SIZE(tegra_peq_resource1),
+};
 #endif
 
 struct platform_device spdif_dit_device = {

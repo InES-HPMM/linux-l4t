@@ -114,6 +114,10 @@ extern struct platform_device tegra_sata_device;
 #endif
 #ifdef CONFIG_ARCH_TEGRA_APE
 extern struct platform_device tegra_axbar_device;
+extern struct platform_device tegra_ope_device0;
+extern struct platform_device tegra_ope_device1;
+extern struct platform_device tegra_peq_device0;
+extern struct platform_device tegra_peq_device1;
 #endif
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_gart_device;
