@@ -38,6 +38,7 @@
 #include "board-loki.h"
 #include "iomap.h"
 #include "dvfs.h"
+#include "tegra-board-id.h"
 
 #define LOKI_WLAN_RST	TEGRA_GPIO_PR3
 #define LOKI_WLAN_PWR	TEGRA_GPIO_PCC5
@@ -452,6 +453,14 @@ int __init loki_sdhci_init(void)
 	int nominal_core_mv;
 	int min_vcore_override_mv;
 	int boot_vcore_mv;
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+
+	if (bi.board_id == BOARD_E2548 && bi.sku == 0x0 && bi.fab == 0x0) {
+		tegra_sdhci_platform_data3.uhs_mask |= MMC_MASK_HS200;
+		tegra_sdhci_platform_data3.max_clk_limit = 102000000;
+	}
 
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
