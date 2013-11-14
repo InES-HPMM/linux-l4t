@@ -109,4 +109,5 @@
 		nvidia,supply_s1p05v = "avddio_usb";
 		status = "okay";
 	};
+/include/ "tegra124-tn8-regulator.dtsi"
 };

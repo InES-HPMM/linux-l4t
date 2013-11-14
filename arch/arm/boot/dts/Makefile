@@ -210,6 +210,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-tn8-fury.dtb \
 	tegra124-tn8-battery.dtb \
 	tegra124-tn8-a03-00.dtb \
+	tegra124-e1782_sku1100.dtb \
 	tegra124-vcm30_t124.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
