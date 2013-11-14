@@ -169,5 +169,41 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0x702d0000 0x0 0x702d0000 0x00010000>;
+
+		ope@702d8000 {
+			compatible = "nvidia,tegra210-ope";
+			reg = <0x702d8000 0x100>;
+			nvidia,ahub-ope-id = <0>;
+			status = "disabled";
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			peq@702d8100 {
+				compatible = "nvidia,tegra210-peq";
+				reg = <0x702d8100 0x100>;
+				nvidia,ahub-peq-id = <0>;
+				status = "disabled";
+			};
+		};
+
+		ope@702d8400 {
+			compatible = "nvidia,tegra210-ope";
+			reg = <0x702d8400 0x100>;
+			nvidia,ahub-ope-id = <1>;
+			status = "disabled";
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			peq@702d8500 {
+				compatible = "nvidia,tegra210-peq";
+				reg = <0x702d8500 0x100>;
+				nvidia,ahub-peq-id = <1>;
+				status = "disabled";
+			};
+		};
 	};
 };

@@ -19,5 +19,21 @@
 
 	ahub {
 		status = "okay";
+
+		ope@702d8000 {
+			status = "okay";
+
+			peq@702d8100 {
+				status = "okay";
+			};
+		};
+
+		ope@702d8400 {
+			status = "okay";
+
+			peq@702d8500 {
+				status = "okay";
+			};
+		};
 	};
 };
