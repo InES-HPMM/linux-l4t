@@ -785,6 +785,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	struct regulator_ops *ops;
 	int id;
 	int ret;
+	u32 val;
 
 	as3722_regs = devm_kzalloc(&pdev->dev, sizeof(*as3722_regs),
 				GFP_KERNEL);
@@ -861,7 +862,14 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 				ops = &as3722_sd016_extcntrl_ops;
 			else
 				ops = &as3722_sd016_ops;
-			as3722_regs->desc[id].min_uV = 610000;
+			if (id == AS3722_REGULATOR_ID_SD0) {
+				as3722_read(as3722, AS3722_FUSE15, &val);
+				if ((val & AS3722_NCELL_MASK) == 1)
+					as3722_regs->desc[id].min_uV = 610000;
+				else if ((val & AS3722_NCELL_MASK) == 2)
+					as3722_regs->desc[id].min_uV = 410000;
+			} else
+				as3722_regs->desc[id].min_uV = 610000;
 			as3722_regs->desc[id].uV_step = 10000;
 			as3722_regs->desc[id].linear_min_sel = 1;
 			break;
