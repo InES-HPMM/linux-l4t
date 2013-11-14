@@ -17,6 +17,9 @@ snd-soc-tegra30-avp-objs := tegra30_avp.o
 snd-soc-tegra-dmic-objs := tegra_dmic.o
 snd-soc-tegra210-axbar-objs := tegra210_axbar.o
 snd-soc-tegra210-axbar-objs += tegra210_ahub_utils.o
+snd-soc-tegra210-ope-objs := tegra210_ope.o
+snd-soc-tegra210-peq-objs := tegra210_peq.o
+
 
 obj-$(CONFIG_SND_SOC_TEGRA) += snd-soc-tegra-pcm.o
 obj-$(CONFIG_SND_SOC_TEGRA) += snd-soc-tegra-utils.o
@@ -32,6 +35,8 @@ obj-$(CONFIG_SND_SOC_TEGRA30_AVP) += snd-soc-tegra30-avp.o
 obj-$(CONFIG_SND_SOC_TEGRA_DMIC) += snd-soc-tegra-dmic.o
 
 obj-$(CONFIG_SND_SOC_TEGRA210_AXBAR) += snd-soc-tegra210-axbar.o
+obj-$(CONFIG_SND_SOC_TEGRA210_OPE) += snd-soc-tegra210-ope.o
+obj-$(CONFIG_SND_SOC_TEGRA210_PEQ) += snd-soc-tegra210-peq.o
 
 # Tegra machine Support
 snd-soc-tegra-wm8753-objs := tegra_wm8753.o

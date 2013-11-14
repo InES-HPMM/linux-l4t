@@ -119,6 +119,25 @@ config SND_SOC_TEGRA210_AXBAR
 	  You will also need to select the individual machine drivers to
 	  support below.
 
+config SND_SOC_TEGRA210_OPE
+	tristate
+	depends on SND_SOC
+	select SND_SOC_TEGRA210_AXBAR
+	help
+	  Say Y or M if you want to add support for the Tegra210 OPE module.
+	  You will also need to select the individual machine drivers to
+	  support below.
+
+config SND_SOC_TEGRA210_PEQ
+	tristate
+	depends on SND_SOC
+	select SND_SOC_TEGRA210_AXBAR
+	select SND_SOC_TEGRA210_OPE
+	help
+	  Say Y or M if you want to add support for the Tegra210 PEQ module.
+	  You will also need to select the individual machine drivers to
+	  support below.
+
 config SND_SOC_TEGRA_WM8753
 	tristate "SoC Audio support for Tegra boards using a WM8753 codec"
 	depends on SND_SOC_TEGRA && I2C

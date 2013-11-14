@@ -29,6 +29,8 @@
 
 #include <linux/clk.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -256,6 +258,24 @@ static int tegra210_axbar_runtime_resume(struct device *dev)
 	return 0;
 }
 
+struct of_dev_auxdata axbar_auxdata[] = {
+	OF_DEV_AUXDATA("nvidia,tegra210-ope", 0x702D8000, "tegra210-ope.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-ope", 0x702D8400, "tegra210-ope.1",
+				NULL),
+	{}
+};
+
+static int tegra210_axbar_remove_child(struct device *dev, void *data)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	dev_dbg(dev, "%s", __func__);
+
+	of_device_unregister(pdev);
+	return 0;
+}
+
 /*
 AXBAR Driver probe and remove functions
 */
@@ -331,6 +351,11 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
+
+	if (pdev->dev.of_node)
+		of_platform_populate(pdev->dev.of_node, NULL, axbar_auxdata,
+				     &pdev->dev);
+
 	dev_dbg(axbar->dev, "ahub probe successful");
 
 	return 0;
@@ -357,6 +382,7 @@ static int tegra210_axbar_remove(struct platform_device *pdev)
 	axbar = platform_get_drvdata(pdev);
 	/* clk_put(axbar->clk); */
 	tegra210_axbar = NULL;
+	device_for_each_child(&pdev->dev, NULL, tegra210_axbar_remove_child);
 
 	dev_dbg(&pdev->dev, "%s AXBAR removed", __func__);
 
