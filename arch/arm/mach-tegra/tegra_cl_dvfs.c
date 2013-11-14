@@ -315,6 +315,38 @@ static inline void disable_forced_output(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
+/*
+ * Reading monitor data concurrently with the update may render intermediate
+ * (neither "old" nor "new") values. Synchronization with the "rising edge"
+ * of DATA_NEW makes it very unlikely, but still possible. Use simple filter:
+ * compare 2 consecutive readings for data consistency within 2 LSb range.
+ * Return error otherwise.
+ */
+static int filter_monitor_data(struct tegra_cl_dvfs *cld, u32 *data)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+		CL_DVFS_MONITOR_DATA_MASK;
+	*data &= CL_DVFS_MONITOR_DATA_MASK;
+	if (abs(*data - val) <= 2)
+		return 0;
+
+	*data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+		CL_DVFS_MONITOR_DATA_MASK;
+	if (abs(*data - val) <= 2)
+		return 0;
+
+	return -EINVAL;
+}
+
+static inline void wait_data_new(struct tegra_cl_dvfs *cld, u32 *data)
+{
+	cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA); /* clear data new */
+	do {
+		*data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
+	} while (!(*data & CL_DVFS_MONITOR_DATA_NEW) &&
+		 (cld->mode > TEGRA_CL_DVFS_DISABLED));
+}
+
 static inline u32 get_last_output(struct tegra_cl_dvfs *cld)
 {
 	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
@@ -322,13 +354,16 @@ static inline u32 get_last_output(struct tegra_cl_dvfs *cld)
 		CL_DVFS_MONITOR_DATA_MASK;
 }
 
-/* out minitored before forced value applied - return the latter if enabled */
+/* out monitored before forced value applied - return the latter if enabled */
 static inline u32 cl_dvfs_get_output(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	if (val & CL_DVFS_OUTPUT_FORCE_ENABLE)
 		return val & OUT_MASK;
-	return get_last_output(cld);
+
+	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
+	wait_data_new(cld, &val);
+	return filter_monitor_data(cld, &val) ? : val;
 }
 
 static inline bool is_i2c(struct tegra_cl_dvfs *cld)
@@ -732,9 +767,9 @@ static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 {
-	u32 val;
+	u32 val, data;
 	ktime_t now;
-	unsigned long data;
+	unsigned long rate;
 	unsigned long step = RATE_STEP(cld);
 	unsigned long rate_min = cld->dvco_rate_min;
 	u8 out_min = get_output_min(cld);
@@ -756,13 +791,14 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 
 	/* Synchronize with sample period, and get rate measurements */
 	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
-	data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
-	do {
-		data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
-	} while (!(data & CL_DVFS_MONITOR_DATA_NEW));
-	do {
-		data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
-	} while (!(data & CL_DVFS_MONITOR_DATA_NEW));
+	wait_data_new(cld, &data);
+	wait_data_new(cld, &data);
+
+	/* Defer calibration if data reading is not consistent */
+	if (filter_monitor_data(cld, &data)) {
+		calibration_timer_update(cld);
+		return;
+	}
 
 	if (is_i2c(cld)) {
 		/* Defer calibration if I2C transaction is pending */
@@ -781,15 +817,20 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		}
 		/* Get last output (there is no such thing as pending PWM) */
 		val = get_last_output(cld);
+
+		/* Defer calibration if data reading is not consistent */
+		if (filter_monitor_data(cld, &val)) {
+			calibration_timer_update(cld);
+			return;
+		}
 	}
 
 	/* Adjust minimum rate */
-	data &= CL_DVFS_MONITOR_DATA_MASK;
-	data = GET_MONITORED_RATE(data, cld->ref_rate);
-	if ((val > out_min) || (data < (rate_min - step)))
+	rate = GET_MONITORED_RATE(data, cld->ref_rate);
+	if ((val > out_min) || (rate < (rate_min - step)))
 		rate_min -= step;
-	else if (data > (cld->dvco_rate_min + step))
-		rate_min += (data - rate_min) / step * step;
+	else if (rate > (cld->dvco_rate_min + step))
+		rate_min += step;
 	else {
 		cld->dvco_rate_floors[cld->therm_floor_idx] = rate_min;
 		return;
@@ -2006,9 +2047,9 @@ static int monitor_get(void *data, u64 *val)
 	clk_lock_save(c, &flags);
 
 	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
+	wait_data_new(cld, &v);
+	filter_monitor_data(cld, &v); /* ignore error, use "some value" */
 
-	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
-		CL_DVFS_MONITOR_DATA_MASK;
 	v = GET_MONITORED_RATE(v, cld->ref_rate);
 	s = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
 	s = (s & CL_DVFS_FREQ_REQ_SCALE_MASK) >> CL_DVFS_FREQ_REQ_SCALE_SHIFT;
@@ -2031,6 +2072,8 @@ static int output_get(void *data, u64 *val)
 	clk_lock_save(c, &flags);
 
 	v = cl_dvfs_get_output(cld);
+	if (IS_ERR_VALUE(v))
+		v = get_last_output(cld); /* ignore error, use "some value" */
 	*val = get_mv(cld, v);
 
 	clk_unlock_restore(c, &flags);
