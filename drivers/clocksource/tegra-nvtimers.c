@@ -612,6 +612,7 @@ void __init tegra_init_timer(struct device_node *np)
 	tegra_clockevent.irq = tegra_timer_irq.irq;
 	clockevents_register_device(&tegra_clockevent);
 
+#ifndef CONFIG_ARM64
 #ifdef CONFIG_ARM_ARCH_TIMER
 	/* Architectural timers take precedence over broadcast timers.
 	   Only register a broadcast clockevent device if architectural
@@ -621,10 +622,13 @@ void __init tegra_init_timer(struct device_node *np)
 		/* Architectural timers do not exist or cannot be initialzied.
 		   Fall back to using the broadcast timer as the sched clock. */
 		setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
+#endif
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
 
+#ifndef CONFIG_ARM64
 	late_time_init = tegra_init_late_timer;
+#endif
 
 	//arm_delay_ops.delay		= __tegra_delay;
 	//arm_delay_ops.const_udelay	= __tegra_const_udelay;
