@@ -407,9 +407,13 @@ static void tegra_set_tegraid(u32 chipid,
 
 static void tegra_get_tegraid_from_hw(void)
 {
+	u32 cid;
+	u32 nlist;
+	char *priv = NULL;
+
 #ifndef CONFIG_ARM64
-	u32 cid = tegra_read_chipid();
-	u32 nlist = tegra_read_apb_misc_reg(0x860);
+	cid = tegra_read_chipid();
+	nlist = tegra_read_apb_misc_reg(0x860);
 #else
 	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
 	void __iomem *netlist = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860;
@@ -438,10 +442,9 @@ static void tegra_get_tegraid_from_hw(void)
 		netlist = early_base + 0x860;
 	}
 
-	u32 cid = readl(chip_id);
-	u32 nlist = readl(netlist);
+	cid = readl(chip_id);
+	nlist = readl(netlist);
 #endif
-	char *priv = NULL;
 
 	tegra_set_tegraid((cid >> 8) & 0xff,
 			  (cid >> 4) & 0xf,
