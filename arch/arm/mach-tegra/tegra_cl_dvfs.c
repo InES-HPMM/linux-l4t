@@ -2183,23 +2183,37 @@ DEFINE_SIMPLE_ATTRIBUTE(undershoot_fops, undershoot_get, undershoot_set,
 
 static int cl_profiles_show(struct seq_file *s, void *data)
 {
+	u8 v;
 	int i, *trips;
+	unsigned long r;
 	struct clk *c = s->private;
 	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
 
-	seq_printf(s, "FLOORS:\n");
-	for (i = 0; i < cld->therm_floors_num; i++) {
-		u8 v = cld->thermal_out_floors[i];
-		trips = cld->safe_dvfs->dvfs_rail->vmin_cdev->trip_temperatures;
-		seq_printf(s, "%3dC %5dmV\n", trips[i], get_mv(cld, v));
+	seq_printf(s, "THERM CAPS:%s\n", cld->therm_caps_num ? "" : " NONE");
+	for (i = 0; i < cld->therm_caps_num; i++) {
+		v = cld->thermal_out_caps[i];
+		trips = cld->safe_dvfs->dvfs_rail->vmax_cdev->trip_temperatures;
+		seq_printf(s, "%4dC%5dmV\n", trips[i], get_mv(cld, v));
 	}
 
-	seq_printf(s, "CAPS:\n");
-	for (i = 0; i < cld->therm_caps_num; i++) {
-		u8 v = cld->thermal_out_caps[i];
-		trips = cld->safe_dvfs->dvfs_rail->vmax_cdev->trip_temperatures;
-		seq_printf(s, "%3dC %5dmV\n", trips[i], get_mv(cld, v));
+	seq_puts(s, "TUNE HIGH:\n");
+	seq_printf(s, "start%5dmV\n", get_mv(cld, cld->tune_high_out_start));
+	seq_printf(s, "min  %5dmV\n", get_mv(cld, cld->tune_high_out_min));
+
+	seq_printf(s, "THERM FLOORS:%s\n", cld->therm_caps_num ? "" : " NONE");
+	for (i = 0; i < cld->therm_floors_num; i++) {
+		v = cld->thermal_out_floors[i];
+		r = cld->dvco_rate_floors[i];
+		trips = cld->safe_dvfs->dvfs_rail->vmin_cdev->trip_temperatures;
+		seq_printf(s, "%4dC%5dmV%9lukHz%s\n", trips[i], get_mv(cld, v),
+			   (r ? : find_dvco_rate_min(cld, v)) / 1000,
+			   r ? " (calibrated)"  : "");
 	}
+	r = cld->dvco_rate_floors[i];
+	seq_printf(s, "vmin:%5dmV%9lukHz%s\n", cld->out_map[0]->reg_uV / 1000,
+		   (r ? : cld->safe_dvfs->dfll_data.out_rate_min) / 1000,
+		   r ? " (calibrated)"  : "");
+
 	return 0;
 }
 
