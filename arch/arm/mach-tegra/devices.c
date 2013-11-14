@@ -1287,7 +1287,7 @@ struct platform_device tegra_i2s_device2 = {
 	.resource	= i2s_resource2,
 	.num_resources	= ARRAY_SIZE(i2s_resource2),
 };
-#else
+#elif !defined(CONFIG_ARCH_TEGRA_APE)
 static struct resource i2s_resource0[] = {
 	[0] = {
 		.start	= TEGRA_I2S0_BASE,
@@ -1389,7 +1389,7 @@ struct platform_device tegra_spdif_device = {
 	.resource	= spdif_resource,
 	.num_resources	= ARRAY_SIZE(spdif_resource),
 };
-#else
+#elif !defined(CONFIG_ARCH_TEGRA_APE)
 static struct resource spdif_resource[] = {
 	[0] = {
 		.start	= TEGRA_SPDIF_BASE,
@@ -1406,7 +1406,7 @@ struct platform_device tegra_spdif_device = {
 };
 #endif
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_APE)
 static struct resource ahub_resource[] = {
 	[0] = {
 		.start	= TEGRA_APBIF0_BASE,
@@ -1528,6 +1528,23 @@ struct platform_device tegra_dmic_device1 = {
 	.id = 1,
 	.resource      = dmic_resource1,
 	.num_resources = ARRAY_SIZE(dmic_resource1),
+};
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_APE)
+static struct resource tegra_axbar_resource[] = {
+	[0] = {
+		.start = TEGRA_AXBAR_BASE,
+		.end   = TEGRA_AXBAR_BASE + TEGRA_AXBAR_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_axbar_device = {
+	.name = "tegra210-axbar",
+	.id = -1,
+	.resource      = tegra_axbar_resource,
+	.num_resources = ARRAY_SIZE(tegra_axbar_resource),
 };
 #endif
 
