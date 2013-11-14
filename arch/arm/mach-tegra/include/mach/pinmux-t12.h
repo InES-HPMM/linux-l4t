@@ -165,6 +165,18 @@
 		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,	\
 	}
 
+#define GPIO_PINMUX_NON_OD(_pingroup, _pupd, _tri, _io)	\
+	{							\
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,	\
+		.func       = TEGRA_MUX_SAFE,			\
+		.pupd       = TEGRA_PUPD_##_pupd,		\
+		.tristate   = TEGRA_TRI_##_tri,			\
+		.io         = TEGRA_PIN_##_io,			\
+		.lock       = TEGRA_PIN_LOCK_DEFAULT,		\
+		.od         = TEGRA_PIN_OD_DEFAULT,		\
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,	\
+	}
+
 #define UNUSED_PINMUX(_pingroup)	\
 	{							\
 		.pingroup   = TEGRA_PINGROUP_##_pingroup,	\
