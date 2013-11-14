@@ -2,6 +2,7 @@
 
 #include "tegra124.dtsi"
 
+
 / {
 	model = "NVIDIA Tegra124 Ardbeg";
 	compatible = "nvidia,ardbeg", "nvidia,tegra124";
@@ -58,7 +59,7 @@
 		status = "okay";
 		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
-/include/ "tegra124-tn8-power.dtsi"
+/include/ "tegra124-e1791-power.dtsi"
 	};
 
 	i2c@7000d100 {
@@ -109,4 +110,5 @@
 		nvidia,supply_s1p05v = "avddio_usb";
 		status = "okay";
 	};
+/include/ "tegra124-tn8-regulator.dtsi"
 };
