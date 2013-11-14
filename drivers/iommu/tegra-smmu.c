@@ -1333,10 +1333,10 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
 		if (err == DMA_ERROR_CODE)
-			dev_err(dev, "Failed IOVA linear map %pa(%x)\n",
+			dev_err(dev, "Failed IOVA linear map %pa(%zx)\n",
 				&area->start, size);
 		else
-			dev_info(dev, "IOVA linear map %pa(%x)\n",
+			dev_info(dev, "IOVA linear map %pa(%zx)\n",
 				 &area->start, size);
 
 		area++;
