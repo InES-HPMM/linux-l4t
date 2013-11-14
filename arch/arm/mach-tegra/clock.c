@@ -958,8 +958,10 @@ static void __init tegra_clk_verify_rates(void)
 
 void __init tegra_common_init_clock(void)
 {
+#ifndef CONFIG_ARM64
 #if defined(CONFIG_HAVE_ARM_TWD) || defined(CONFIG_ARM_ARCH_TIMER)
 	tegra_cpu_timer_init();
+#endif
 #endif
 	tegra_clk_verify_rates();
 }
