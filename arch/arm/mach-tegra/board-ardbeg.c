@@ -1143,7 +1143,6 @@ static void __init tegra_ardbeg_late_init(void)
 	isomgr_init();
 	ardbeg_touch_init();
 	ardbeg_panel_init();
-	ardbeg_kbc_init();
 	if (board_info.board_id == BOARD_PM358)
 		laguna_pm358_pmon_init();
 	else

@@ -28,7 +28,6 @@
 int ardbeg_pinmux_init(void);
 int ardbeg_emc_init(void);
 int ardbeg_panel_init(void);
-int ardbeg_kbc_init(void);
 int ardbeg_sdhci_init(void);
 int ardbeg_sata_init(void);
 int ardbeg_sensors_init(void);

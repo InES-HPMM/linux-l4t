@@ -258,7 +258,6 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-j-720p-4-7.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-s-1080p-5.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
-obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-kbc.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sata.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sensors.o
@@ -299,7 +298,6 @@ obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-j-1440-810-5-8.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
-obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-kbc.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sata.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sensors.o
