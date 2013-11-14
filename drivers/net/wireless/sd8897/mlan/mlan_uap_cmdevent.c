@@ -80,7 +80,7 @@ uap_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
 
 /**
  *  @brief This function will return the pointer to station entry in station list
- *  		table which matches the give mac address
+ *          table which matches the give mac address
  *
  *  @param priv    A pointer to mlan_private
  *
@@ -317,8 +317,8 @@ wlan_process_tx_pause_event(pmlan_private priv, pmlan_buffer pevent)
 /**
  *  @brief This function prepares command for config uap settings
  *
- *  @param pmpriv		A pointer to mlan_private structure
- *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
  *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -1061,8 +1061,8 @@ wlan_uap_cmd_ap_config(pmlan_private pmpriv,
 /**
  *  @brief This function prepares command of sys_config
  *
- *  @param pmpriv		A pointer to mlan_private structure
- *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
  *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -2010,8 +2010,8 @@ wlan_uap_ret_sys_config(IN pmlan_private pmpriv,
 /**
  *  @brief This function prepares command of snmp_mib
  *
- *  @param pmpriv		A pointer to mlan_private structure
- *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
  *  @param cmd_oid      Cmd oid: treated as sub command
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -2249,8 +2249,8 @@ wlan_uap_ret_snmp_mib(IN pmlan_private pmpriv,
 /**
  *  @brief This function prepares command of deauth station
  *
- *  @param pmpriv		A pointer to mlan_private structure
- *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param pdata_buf    A pointer to data buffer
  *  @return         MLAN_STATUS_SUCCESS
  */
@@ -2291,191 +2291,204 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
 	HostCmd_DS_802_11_KEY_MATERIAL *pkey_material =
 		&cmd->params.key_material;
 	mlan_ds_encrypt_key *pkey = (mlan_ds_encrypt_key *) pdata_buf;
-	MrvlIEtypes_MacAddr_t *tlv = MNULL;
-	const t_u8 bc_mac[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-	t_u16 key_param_len = 0;
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	sta_node *sta_ptr = MNULL;
 
 	ENTER();
-
+	if (!pkey) {
+		ret = MLAN_STATUS_FAILURE;
+		goto done;
+	}
 	cmd->command = wlan_cpu_to_le16(HostCmd_CMD_802_11_KEY_MATERIAL);
 	pkey_material->action = wlan_cpu_to_le16(cmd_action);
-
 	if (cmd_action == HostCmd_ACT_GEN_GET) {
 		cmd->size =
 			wlan_cpu_to_le16(sizeof(pkey_material->action) +
 					 S_DS_GEN);
 		goto done;
 	}
-
 	memset(pmpriv->adapter, &pkey_material->key_param_set, 0,
-	       sizeof(MrvlIEtype_KeyParamSet_t));
-	if (pkey->is_wapi_key) {
-		PRINTM(MINFO, "Set WAPI Key\n");
-		pkey_material->key_param_set.key_type_id =
-			wlan_cpu_to_le16(KEY_TYPE_ID_WAPI);
-		if (cmd_oid == KEY_INFO_ENABLED)
-			pkey_material->key_param_set.key_info =
-				wlan_cpu_to_le16(KEY_INFO_WAPI_ENABLED);
-		else
-			pkey_material->key_param_set.key_info =
-				!(wlan_cpu_to_le16(KEY_INFO_WAPI_ENABLED));
-
-		pkey_material->key_param_set.key[0] = pkey->key_index;
-		if (!pmpriv->sec_info.wapi_key_on)
-			pkey_material->key_param_set.key[1] = 1;
-		else
-			pkey_material->key_param_set.key[1] = 0;	/* set
-									   0
-									   when
-									   re-key
-									 */
-
-		if (0 != memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac))) {	/* WAPI
-												   pairwise
-												   key:
-												   unicast
-												 */
+	       sizeof(MrvlIEtype_KeyParamSetV2_t));
+	if (pkey->key_flags & KEY_FLAG_REMOVE_KEY) {
+		pkey_material->action =
+			wlan_cpu_to_le16(HostCmd_ACT_GEN_REMOVE);
+		pkey_material->key_param_set.type =
+			wlan_cpu_to_le16(TLV_TYPE_KEY_PARAM_V2);
+		pkey_material->key_param_set.length =
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN);
+		pkey_material->key_param_set.key_idx =
+			pkey->key_index & KEY_INDEX_MASK;
+		pkey_material->key_param_set.key_info =
+			KEY_INFO_MCAST_KEY | KEY_INFO_UCAST_KEY;
+		memcpy(pmpriv->adapter, pkey_material->key_param_set.mac_addr,
+		       pkey->mac_addr, MLAN_MAC_ADDR_LENGTH);
+		cmd->size =
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Remove Key\n");
+		goto done;
+	}
+	pkey_material->action = wlan_cpu_to_le16(HostCmd_ACT_GEN_SET);
+	pkey_material->key_param_set.key_idx = pkey->key_index & KEY_INDEX_MASK;
+	pkey_material->key_param_set.type =
+		wlan_cpu_to_le16(TLV_TYPE_KEY_PARAM_V2);
+	pkey_material->key_param_set.key_info = KEY_INFO_ENABLE_KEY;
+	memcpy(pmpriv->adapter, pkey_material->key_param_set.mac_addr,
+	       pkey->mac_addr, MLAN_MAC_ADDR_LENGTH);
+	if (pkey->key_len <= MAX_WEP_KEY_SIZE) {
+		pkey_material->key_param_set.length =
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN +
+					 sizeof(wep_param_t));
+		pkey_material->key_param_set.key_type =
+			wlan_cpu_to_le16(KEY_TYPE_ID_WEP);
+		pkey_material->key_param_set.key_info |=
+			KEY_INFO_MCAST_KEY | KEY_INFO_UCAST_KEY;
+		if (pkey_material->key_param_set.key_idx ==
+		    (pmpriv->wep_key_curr_index & KEY_INDEX_MASK))
 			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_WAPI_UNICAST);
+				KEY_INFO_DEFAULT_KEY;
+		pkey_material->key_param_set.key_info =
+			wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
+		pkey_material->key_param_set.key_params.wep.key_len =
+			wlan_cpu_to_le16(pkey->key_len);
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.wep.key,
+		       pkey->key_material, pkey->key_len);
+		cmd->size =
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(wep_param_t) +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Set WEP Key\n");
+		goto done;
+	}
+	if (pkey->key_flags & KEY_FLAG_GROUP_KEY)
+		pkey_material->key_param_set.key_info |= KEY_INFO_MCAST_KEY;
+	else
+		pkey_material->key_param_set.key_info |= KEY_INFO_UCAST_KEY;
+	if (pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK)
+		pkey_material->key_param_set.key_info = KEY_INFO_CMAC_AES_KEY;
+	if (pkey->key_flags & KEY_FLAG_SET_TX_KEY)
+		pkey_material->key_param_set.key_info |=
+			KEY_INFO_TX_KEY | KEY_INFO_RX_KEY;
+	else
+		pkey_material->key_param_set.key_info |= KEY_INFO_TX_KEY;
+	if (pkey->is_wapi_key) {
+		pkey_material->key_param_set.key_type =
+			wlan_cpu_to_le16(KEY_TYPE_ID_WAPI);
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.wapi.pn,
+		       pkey->pn, PN_SIZE);
+		pkey_material->key_param_set.key_params.wapi.key_len =
+			MIN(WAPI_KEY_SIZE, wlan_cpu_to_le16(pkey->key_len));
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.wapi.key,
+		       pkey->key_material, MIN(WAPI_KEY_SIZE, pkey->key_len));
+		if (!pmpriv->sec_info.wapi_key_on)
+			pkey_material->key_param_set.key_info |=
+				KEY_INFO_DEFAULT_KEY;
+		if (pkey->key_flags & KEY_FLAG_GROUP_KEY) {
+			pmpriv->sec_info.wapi_key_on = MTRUE;
+		} else {
+			/* WAPI pairwise key: unicast */
 			sta_ptr =
 				wlan_add_station_entry(pmpriv, pkey->mac_addr);
 			if (sta_ptr) {
 				PRINTM(MCMND, "station: wapi_key_on\n");
 				sta_ptr->wapi_key_on = MTRUE;
 			}
-		} else {	/* WAPI group key: multicast */
-			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_WAPI_MCAST);
-			pmpriv->sec_info.wapi_key_on = MTRUE;
 		}
-		pkey_material->key_param_set.type =
-			wlan_cpu_to_le16(TLV_TYPE_KEY_MATERIAL);
-		pkey_material->key_param_set.key_len =
-			wlan_cpu_to_le16(WAPI_KEY_LEN);
-		memcpy(pmpriv->adapter, &pkey_material->key_param_set.key[2],
-		       pkey->key_material, pkey->key_len);
+		pkey_material->key_param_set.key_info =
+			wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
 		pkey_material->key_param_set.length =
-			wlan_cpu_to_le16(WAPI_KEY_LEN + KEYPARAMSET_FIXED_LEN);
-
-		key_param_len =
-			(WAPI_KEY_LEN + KEYPARAMSET_FIXED_LEN) +
-			sizeof(MrvlIEtypesHeader_t);
-		tlv = (MrvlIEtypes_MacAddr_t *) ((t_u8 *) & pkey_material->
-						 key_param_set + key_param_len);
-		tlv->header.type = wlan_cpu_to_le16(TLV_TYPE_STA_MAC_ADDRESS);
-		tlv->header.len = wlan_cpu_to_le16(MLAN_MAC_ADDR_LENGTH);
-		memcpy(pmpriv->adapter, tlv->mac, pkey->mac_addr,
-		       MLAN_MAC_ADDR_LENGTH);
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN +
+					 sizeof(wapi_param));
 		cmd->size =
-			wlan_cpu_to_le16(key_param_len +
-					 sizeof(pkey_material->action) +
-					 S_DS_GEN +
-					 sizeof(MrvlIEtypes_MacAddr_t));
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(wapi_param) +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Set WAPI Key\n");
 		goto done;
 	}
-	/* IGTK key length is the same as AES key length */
+	pkey_material->key_param_set.key_info |= KEY_INFO_DEFAULT_KEY;
+	pkey_material->key_param_set.key_info =
+		wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
 	if (pkey->key_len == WPA_AES_KEY_LEN &&
 	    !(pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK)) {
-		PRINTM(MCMND, "WPA_AES\n");
-		pkey_material->key_param_set.key_type_id =
+		if (pkey->
+		    key_flags & (KEY_FLAG_RX_SEQ_VALID | KEY_FLAG_TX_SEQ_VALID))
+			memcpy(pmpriv->adapter,
+			       pkey_material->key_param_set.key_params.aes.pn,
+			       pkey->pn, SEQ_MAX_SIZE);
+		pkey_material->key_param_set.key_type =
 			wlan_cpu_to_le16(KEY_TYPE_ID_AES);
-		if (cmd_oid == KEY_INFO_ENABLED)
-			pkey_material->key_param_set.key_info =
-				wlan_cpu_to_le16(KEY_INFO_AES_ENABLED);
-		else
-			pkey_material->key_param_set.key_info =
-				!(wlan_cpu_to_le16(KEY_INFO_AES_ENABLED));
-
-		if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))	/* AES
-											   pairwise
-											   key:
-											   unicast
-											 */
-			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_AES_UNICAST);
-		else		/* AES group key: multicast */
-			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_AES_MCAST);
-	} else if ((pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK) &&
-		   pkey->key_len == WPA_IGTK_KEY_LEN) {
-		PRINTM(MCMND, "WPA_AES_CMAC\n");
-		pkey_material->key_param_set.key_type_id =
-			wlan_cpu_to_le16(KEY_TYPE_ID_AES_CMAC);
-		if (cmd_oid == KEY_INFO_ENABLED)
-			pkey_material->key_param_set.key_info =
-				wlan_cpu_to_le16(KEY_INFO_AES_ENABLED);
-		else
-			pkey_material->key_param_set.key_info =
-				!(wlan_cpu_to_le16(KEY_INFO_AES_ENABLED));
-
-		pkey_material->key_param_set.key_info |=
-			wlan_cpu_to_le16(KEY_INFO_AES_MCAST_IGTK);
-	} else if (pkey->key_len == WPA_TKIP_KEY_LEN) {
-		PRINTM(MCMND, "WPA_TKIP\n");
-		pkey_material->key_param_set.key_type_id =
-			wlan_cpu_to_le16(KEY_TYPE_ID_TKIP);
-		pkey_material->key_param_set.key_info =
-			wlan_cpu_to_le16(KEY_INFO_TKIP_ENABLED);
-
-		if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))	/* TKIP
-											   pairwise
-											   key:
-											   unicast
-											 */
-			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_TKIP_UNICAST);
-		else		/* TKIP group key: multicast */
-			pkey_material->key_param_set.key_info |=
-				wlan_cpu_to_le16(KEY_INFO_TKIP_MCAST);
-	}
-
-	if (pkey_material->key_param_set.key_type_id) {
-		pkey_material->key_param_set.type =
-			wlan_cpu_to_le16(TLV_TYPE_KEY_MATERIAL);
-		pkey_material->key_param_set.key_len =
+		pkey_material->key_param_set.key_params.aes.key_len =
 			wlan_cpu_to_le16(pkey->key_len);
-		memcpy(pmpriv->adapter, pkey_material->key_param_set.key,
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.aes.key,
 		       pkey->key_material, pkey->key_len);
 		pkey_material->key_param_set.length =
-			wlan_cpu_to_le16((t_u16) pkey->key_len +
-					 KEYPARAMSET_FIXED_LEN);
-		key_param_len =
-			(pkey->key_len + KEYPARAMSET_FIXED_LEN) +
-			sizeof(MrvlIEtypesHeader_t);
-		/* key format with pn field is defined in Key Material V1 */
-		if (pkey_material->key_param_set.key_type_id ==
-		    wlan_cpu_to_le16(KEY_TYPE_ID_AES_CMAC)) {
-			cmac_param *param;
-			param = (cmac_param *) pkey_material->key_param_set.key;
-			memcpy(pmpriv->adapter, param->ipn, pkey->pn,
-			       SEQ_MAX_SIZE);
-			memcpy(pmpriv->adapter, param->key, pkey->key_material,
-			       pkey->key_len);
-
-			pkey_material->key_param_set.key_len =
-				wlan_cpu_to_le16((t_u16) sizeof(cmac_param));
-			pkey_material->key_param_set.length =
-				wlan_cpu_to_le16((t_u16) sizeof(cmac_param) +
-						 KEYPARAMSET_FIXED_LEN);
-			key_param_len =
-				(t_u16) (sizeof(cmac_param) +
-					 KEYPARAMSET_FIXED_LEN) +
-				sizeof(MrvlIEtypesHeader_t);
-		}
-
-		tlv = (MrvlIEtypes_MacAddr_t *) ((t_u8 *) & pkey_material->
-						 key_param_set + key_param_len);
-		tlv->header.type = wlan_cpu_to_le16(TLV_TYPE_STA_MAC_ADDRESS);
-		tlv->header.len = wlan_cpu_to_le16(MLAN_MAC_ADDR_LENGTH);
-		memcpy(pmpriv->adapter, tlv->mac, pkey->mac_addr,
-		       MLAN_MAC_ADDR_LENGTH);
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN +
+					 sizeof(aes_param));
 		cmd->size =
-			wlan_cpu_to_le16(key_param_len +
-					 sizeof(pkey_material->action) +
-					 S_DS_GEN +
-					 sizeof(MrvlIEtypes_MacAddr_t));
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(aes_param) +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Set AES Key\n");
+		goto done;
+	}
+	if (pkey->key_len == WPA_IGTK_KEY_LEN &&
+	    (pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK)) {
+		if (pkey->
+		    key_flags & (KEY_FLAG_RX_SEQ_VALID | KEY_FLAG_TX_SEQ_VALID))
+			memcpy(pmpriv->adapter,
+			       pkey_material->key_param_set.key_params.cmac_aes.
+			       ipn, pkey->pn, SEQ_MAX_SIZE);
+		pkey_material->key_param_set.key_info &= ~KEY_INFO_MCAST_KEY;
+		pkey_material->key_param_set.key_info |=
+			wlan_cpu_to_le16(KEY_INFO_AES_MCAST_IGTK);
+		pkey_material->key_param_set.key_type = KEY_TYPE_ID_AES_CMAC;
+		pkey_material->key_param_set.key_params.cmac_aes.key_len =
+			wlan_cpu_to_le16(pkey->key_len);
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.cmac_aes.key,
+		       pkey->key_material, pkey->key_len);
+		pkey_material->key_param_set.length =
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN +
+					 sizeof(cmac_aes_param));
+		cmd->size =
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(cmac_aes_param) +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Set CMAC AES Key\n");
+		goto done;
+	}
+	if (pkey->key_len == WPA_TKIP_KEY_LEN) {
+		if (pkey->
+		    key_flags & (KEY_FLAG_RX_SEQ_VALID | KEY_FLAG_TX_SEQ_VALID))
+			memcpy(pmpriv->adapter,
+			       pkey_material->key_param_set.key_params.tkip.pn,
+			       pkey->pn, SEQ_MAX_SIZE);
+		pkey_material->key_param_set.key_type =
+			wlan_cpu_to_le16(KEY_TYPE_ID_TKIP);
+		pkey_material->key_param_set.key_params.tkip.key_len =
+			wlan_cpu_to_le16(pkey->key_len);
+		memcpy(pmpriv->adapter,
+		       pkey_material->key_param_set.key_params.tkip.key,
+		       pkey->key_material, pkey->key_len);
+		pkey_material->key_param_set.length =
+			wlan_cpu_to_le16(KEY_PARAMS_FIXED_LEN +
+					 sizeof(tkip_param));
+		cmd->size =
+			wlan_cpu_to_le16(sizeof(MrvlIEtypesHeader_t) +
+					 S_DS_GEN + KEY_PARAMS_FIXED_LEN +
+					 sizeof(tkip_param) +
+					 sizeof(pkey_material->action));
+		PRINTM(MCMND, "Set TKIP Key\n");
 	}
 done:
 	LEAVE();
@@ -2673,8 +2686,8 @@ wlan_check_uap_capability(pmlan_private priv, pmlan_buffer pevent)
 		(MrvlIEtypesHeader_t *) (pevent->pbuf + pevent->data_offset +
 					 BSS_START_EVENT_FIX_SIZE);
 	const t_u8 wmm_oui[4] = { 0x00, 0x50, 0xf2, 0x02 };
-	IEEEtypes_WmmParameter_t WmmParamIe;
-	MrvlIEtypes_channel_band_t *pChanInfo;
+	IEEEtypes_WmmParameter_t wmm_param_ie;
+	MrvlIEtypes_channel_band_t *pchan_info;
 	priv->wmm_enabled = MFALSE;
 	priv->pkt_fwd = MFALSE;
 	priv->is_11n_enabled = MFALSE;
@@ -2711,13 +2724,13 @@ wlan_check_uap_capability(pmlan_private priv, pmlan_buffer pevent)
 				priv->wmm_enabled = MFALSE;
 				wlan_wmm_setup_ac_downgrade(priv);
 				priv->wmm_enabled = MTRUE;
-				memcpy(priv->adapter, &WmmParamIe,
+				memcpy(priv->adapter, &wmm_param_ie,
 				       ((t_u8 *) tlv + 2),
 				       sizeof(IEEEtypes_WmmParameter_t));
-				WmmParamIe.vend_hdr.len = (t_u8) tlv_len;
-				WmmParamIe.vend_hdr.element_id = WMM_IE;
+				wmm_param_ie.vend_hdr.len = (t_u8) tlv_len;
+				wmm_param_ie.vend_hdr.element_id = WMM_IE;
 				wlan_wmm_setup_queue_priorities(priv,
-								&WmmParamIe);
+								&wmm_param_ie);
 			}
 		}
 		if (tlv_type == TLV_TYPE_UAP_PKT_FWD_CTL) {
@@ -2735,8 +2748,8 @@ wlan_check_uap_capability(pmlan_private priv, pmlan_buffer pevent)
 		if (tlv_type == TLV_TYPE_UAP_CHAN_BAND_CONFIG) {
 			DBG_HEXDUMP(MCMD_D, "chan_band_config tlv", tlv,
 				    tlv_len + sizeof(MrvlIEtypesHeader_t));
-			pChanInfo = (MrvlIEtypes_channel_band_t *) tlv;
-			priv->uap_channel = pChanInfo->channel;
+			pchan_info = (MrvlIEtypes_channel_band_t *) tlv;
+			priv->uap_channel = pchan_info->channel;
 			PRINTM(MCMND, "uap_channel FW: 0x%x\n",
 			       priv->uap_channel);
 		}
@@ -2810,7 +2823,7 @@ wlan_update_wapi_info_tlv(pmlan_private priv, pmlan_buffer pevent)
 
 /**
  *  @brief This function send sta_assoc_event to moal
- *  	   payload with sta mac address and assoc ie.
+ *          payload with sta mac address and assoc ie.
  *
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to mlan_event buffer
@@ -3401,7 +3414,7 @@ wlan_ops_uap_process_event(IN t_void * priv)
 		wlan_delete_station_list(pmpriv);
 		break;
 	case EVENT_PS_AWAKE:
-		PRINTM(MINFO, "EVENT: AWAKE \n");
+		PRINTM(MINFO, "EVENT: AWAKE\n");
 		PRINTM(MEVENT, "||");
 		/* Handle unexpected PS AWAKE event */
 		if (pmadapter->ps_state == PS_STATE_SLEEP_CFM)
@@ -3612,10 +3625,10 @@ done:
 /**
  *  @brief  This function issues commands to initialize firmware
  *
- *  @param priv     	A pointer to mlan_private structure
- *  @param first_bss	flag for first BSS
+ *  @param priv         A pointer to mlan_private structure
+ *  @param first_bss    flag for first BSS
  *
- *  @return		MLAN_STATUS_SUCCESS or MLAN_STATUS_PENDING or MLAN_STATUS_FAILURE
+ *  @return   MLAN_STATUS_SUCCESS or MLAN_STATUS_PENDING or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_ops_uap_init_cmd(IN t_void * priv, IN t_u8 first_bss)

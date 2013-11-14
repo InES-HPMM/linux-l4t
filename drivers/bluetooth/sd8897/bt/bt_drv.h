@@ -96,11 +96,14 @@ extern u32 mbt_drvdbg;
 
 #ifdef	DEBUG_LEVEL2
 /** Print informative message */
-#define	PRINTM_INFO(msg...)  do {if (mbt_drvdbg & DBG_INFO)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_INFO(msg...)  do {if (mbt_drvdbg & DBG_INFO)  \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print warning message */
-#define	PRINTM_WARN(msg...)  do {if (mbt_drvdbg & DBG_WARN)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_WARN(msg...)  do {if (mbt_drvdbg & DBG_WARN)  \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print entry message */
-#define	PRINTM_ENTRY(msg...) do {if (mbt_drvdbg & DBG_ENTRY) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_ENTRY(msg...) do {if (mbt_drvdbg & DBG_ENTRY) \
+									printk(KERN_DEBUG msg); } while (0)
 #else
 /** Print informative message */
 #define	PRINTM_INFO(msg...)  do {} while (0)
@@ -111,24 +114,33 @@ extern u32 mbt_drvdbg;
 #endif /* DEBUG_LEVEL2 */
 
 /** Print interrupt message */
-#define	PRINTM_INTR(msg...)  do {if (mbt_drvdbg & DBG_INTR)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_INTR(msg...)  do {if (mbt_drvdbg & DBG_INTR)  \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print event message */
-#define	PRINTM_EVENT(msg...) do {if (mbt_drvdbg & DBG_EVENT) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_EVENT(msg...) do {if (mbt_drvdbg & DBG_EVENT) \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print command message */
-#define	PRINTM_CMD(msg...)   do {if (mbt_drvdbg & DBG_CMD)   printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_CMD(msg...)   do {if (mbt_drvdbg & DBG_CMD)   \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print data message */
-#define	PRINTM_DATA(msg...)  do {if (mbt_drvdbg & DBG_DATA)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_DATA(msg...)  do {if (mbt_drvdbg & DBG_DATA)  \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print error message */
-#define	PRINTM_ERROR(msg...) do {if (mbt_drvdbg & DBG_ERROR) printk(KERN_ERR msg); } while (0)
+#define	PRINTM_ERROR(msg...) do {if (mbt_drvdbg & DBG_ERROR) \
+									printk(KERN_ERR msg); } while (0)
 /** Print fatal message */
-#define	PRINTM_FATAL(msg...) do {if (mbt_drvdbg & DBG_FATAL) printk(KERN_ERR msg); } while (0)
+#define	PRINTM_FATAL(msg...) do {if (mbt_drvdbg & DBG_FATAL) \
+									printk(KERN_ERR msg); } while (0)
 /** Print message */
-#define	PRINTM_MSG(msg...)   do {if (mbt_drvdbg & DBG_MSG)   printk(KERN_ALERT msg); } while (0)
+#define	PRINTM_MSG(msg...)   do {if (mbt_drvdbg & DBG_MSG)   \
+									printk(KERN_ALERT msg); } while (0)
 
 /** Print data dump message */
-#define	PRINTM_DAT_D(msg...)  do {if (mbt_drvdbg & DBG_DAT_D)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_DAT_D(msg...)  do {if (mbt_drvdbg & DBG_DAT_D)  \
+									printk(KERN_DEBUG msg); } while (0)
 /** Print data dump message */
-#define	PRINTM_CMD_D(msg...)  do {if (mbt_drvdbg & DBG_CMD_D)  printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_CMD_D(msg...)  do {if (mbt_drvdbg & DBG_CMD_D)  \
+									printk(KERN_DEBUG msg); } while (0)
 
 /** Print message with required level */
 #define	PRINTM(level, msg...) PRINTM_##level(msg)
@@ -164,28 +176,30 @@ hexdump(char *prompt, u8 * buf, int len)
 }
 
 /** Debug hexdump of debug data */
-#define DBG_HEXDUMP_DAT_D(x, y, z)     do {if (mbt_drvdbg & DBG_DAT_D) hexdump(x, y, z); } while (0)
+#define DBG_HEXDUMP_DAT_D(x, y, z)     do {if (mbt_drvdbg & DBG_DAT_D) \
+											hexdump(x, y, z); } while (0)
 /** Debug hexdump of debug command */
-#define DBG_HEXDUMP_CMD_D(x, y, z)     do {if (mbt_drvdbg & DBG_CMD_D) hexdump(x, y, z); } while (0)
+#define DBG_HEXDUMP_CMD_D(x, y, z)     do {if (mbt_drvdbg & DBG_CMD_D) \
+											hexdump(x, y, z); } while (0)
 
 /** Debug hexdump */
 #define	DBG_HEXDUMP(level, x, y, z)    DBG_HEXDUMP_##level(x, y, z)
 
 /** Mark entry point */
-#define	ENTER()			PRINTM(ENTRY, "Enter: %s, %s:%i\n", __FUNCTION__, \
+#define	ENTER()			PRINTM(ENTRY, "Enter: %s, %s:%i\n", __func__, \
 							__FILE__, __LINE__)
 /** Mark exit point */
-#define	LEAVE()			PRINTM(ENTRY, "Leave: %s, %s:%i\n", __FUNCTION__, \
+#define	LEAVE()			PRINTM(ENTRY, "Leave: %s, %s:%i\n", __func__, \
 							__FILE__, __LINE__)
 #else
 /** Do nothing */
-#define	PRINTM(level, msg...) do {} while (0);
+#define	PRINTM(level, msg...) do {} while (0)
 /** Do nothing */
-#define DBG_HEXDUMP(level, x, y, z)    do {} while (0);
+#define DBG_HEXDUMP(level, x, y, z)    do {} while (0)
 /** Do nothing */
-#define	ENTER()  do {} while (0);
+#define	ENTER()  do {} while (0)
 /** Do nothing */
-#define	LEAVE()  do {} while (0);
+#define	LEAVE()  do {} while (0)
 #endif /* DEBUG_LEVEL1 */
 
 /** Bluetooth upload size */
@@ -278,7 +292,7 @@ os_sched_timeout(u32 millisec)
 #endif
 
 #ifndef __ATTRIB_PACK__
-#define __ATTRIB_PACK__ __attribute__ ((packed))
+#define __ATTRIB_PACK__ __attribute__((packed))
 #endif
 
 /** Data structure for the Marvell Bluetooth device */
@@ -453,9 +467,11 @@ typedef struct _bt_private {
 } bt_private, *pbt_private;
 
 /** Disable interrupt */
-#define OS_INT_DISABLE	spin_lock_irqsave(&priv->driver_lock, priv->driver_flags)
+#define OS_INT_DISABLE	spin_lock_irqsave(&priv->driver_lock, \
+											priv->driver_flags)
 /** Enable interrupt */
-#define	OS_INT_RESTORE	spin_unlock_irqrestore(&priv->driver_lock, priv->driver_flags)
+#define	OS_INT_RESTORE	spin_unlock_irqrestore(&priv->driver_lock, \
+											priv->driver_flags)
 
 #ifndef HCI_BT_AMP
 /** BT_AMP flag for device type */

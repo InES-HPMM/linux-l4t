@@ -76,6 +76,7 @@ struct m_dev {
 	int (*ioctl) (struct m_dev * m_dev, unsigned int cmd,
 		      unsigned long arg);
 	void (*query) (struct m_dev * m_dev, unsigned long arg);
+	void (*poweroff) (struct m_dev * m_dev);
 
 };
 

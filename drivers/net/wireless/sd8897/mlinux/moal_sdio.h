@@ -49,13 +49,6 @@ Change log:
 #define FIXED_ADDRESS	0
 #endif
 
-/** SD8897 chip revision ID */
-#define SD8897_A0       0x10
-#define SD8897_B0       0x20
-
-#define SD8897_A0_FW_NAME "mrvl/sd8897_uapsta_a0.bin"
-#define SD8897_B0_FW_NAME "mrvl/sd8897_uapsta.bin"
-
 #ifdef STA_SUPPORT
 /** Default firmware name */
 

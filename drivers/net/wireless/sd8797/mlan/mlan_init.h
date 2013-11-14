@@ -3,20 +3,25 @@
  *  @brief This file defines the FW initialization data
  *  structures.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /******************************************************
@@ -32,7 +37,7 @@ Change log:
 /** Rx buffer size for firmware download*/
 #define FW_DNLD_RX_BUF_SIZE       2048
 /** Max firmware retry */
-#define MAX_FW_RETRY        	3
+#define MAX_FW_RETRY              3
 
 /** Firmware has last block */
 #define FW_HAS_LAST_BLOCK		0x00000004
@@ -71,13 +76,17 @@ typedef struct _FWSyncHeader {
 } FWSyncHeader;
 
 #ifdef BIG_ENDIAN_SUPPORT
-/** Convert sequence number and command fields of fwheader to correct endian format */
+/** Convert sequence number and command fields
+ *  of fwheader to correct endian format
+ */
 #define endian_convert_syncfwheader(x)  { \
 		(x)->cmd = wlan_le32_to_cpu((x)->cmd); \
 		(x)->seq_num = wlan_le32_to_cpu((x)->seq_num); \
 	}
 #else
-/** Convert sequence number and command fields of fwheader to correct endian format */
+/** Convert sequence number and command fields
+ *  of fwheader to correct endian format
+ */
 #define endian_convert_syncfwheader(x)
 #endif /* BIG_ENDIAN_SUPPORT */
 

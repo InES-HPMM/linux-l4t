@@ -229,7 +229,9 @@ woal_get_active_intf_freq(moal_private * priv)
 			    (handle->priv[i]->bss_type == priv->bss_type))
 				return ieee80211_channel_to_frequency(handle->
 								      priv[i]->
-								      channel,
+								      channel
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39) || defined(COMPAT_WIRELESS)
+								      ,
 								      (handle->
 								       priv[i]->
 								       channel
@@ -237,7 +239,10 @@ woal_get_active_intf_freq(moal_private * priv)
 								       14 ?
 								       IEEE80211_BAND_2GHZ
 								       :
-								       IEEE80211_BAND_5GHZ));
+								       IEEE80211_BAND_5GHZ)
+#endif
+					);
+
 		}
 #endif
 #ifdef UAP_SUPPORT
@@ -246,7 +251,9 @@ woal_get_active_intf_freq(moal_private * priv)
 			    (handle->priv[i]->bss_type == priv->bss_type))
 				return ieee80211_channel_to_frequency(handle->
 								      priv[i]->
-								      channel,
+								      channel
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39) || defined(COMPAT_WIRELESS)
+								      ,
 								      (handle->
 								       priv[i]->
 								       channel
@@ -254,7 +261,9 @@ woal_get_active_intf_freq(moal_private * priv)
 								       14 ?
 								       IEEE80211_BAND_2GHZ
 								       :
-								       IEEE80211_BAND_5GHZ));
+								       IEEE80211_BAND_5GHZ)
+#endif
+					);
 		}
 #endif
 	}
@@ -436,7 +445,7 @@ woal_cfg80211_set_key(moal_private * priv, t_u8 is_enable_wep,
 	}
 
 done:
-	if (req && (ret != MLAN_STATUS_PENDING))
+	if (ret != MLAN_STATUS_PENDING)
 		kfree(req);
 	LEAVE();
 	return ret;
@@ -922,6 +931,15 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		PRINTM(MINFO, "Already set to required type\n");
 		goto done;
 	}
+#ifdef UAP_SUPPORT
+	if ((priv->bss_type == MLAN_BSS_TYPE_UAP) && (priv->bss_index > 0)) {
+		priv->wdev->iftype = type;
+		PRINTM(MMSG, "%s: Skip change virtual intf on uap: type=%d\n",
+		       dev->name, type);
+		goto done;
+	}
+#endif
+
 	PRINTM(MIOCTL, "%s: change virturl intf=%d\n", dev->name, type);
 #if defined(WIFI_DIRECT_SUPPORT)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
@@ -1108,8 +1126,7 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1289,12 +1306,6 @@ woal_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
 	if (priv->phandle->driver_state) {
 		PRINTM(MERROR,
 		       "Block woal_cfg80211_del_key in abnormal driver state\n");
-		LEAVE();
-		return 0;
-	}
-#define MRVL_NUM_WEP_KEY         4
-	if (key_index >= MRVL_NUM_WEP_KEY) {
-		PRINTM(MINFO, "Skip Crypto keys delete %d\n", key_index);
 		LEAVE();
 		return 0;
 	}
@@ -1564,8 +1575,7 @@ woal_cfg80211_set_antenna(struct wiphy *wiphy, u32 tx_ant, u32 rx_ant)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	/* Driver must return -EINVAL to cfg80211 */
 	if (ret)
 		ret = -EINVAL;
@@ -2158,10 +2168,8 @@ woal_cfg80211_custom_ie(moal_private * priv,
 		ret = -EFAULT;
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
-	if (custom_ie)
-		kfree(custom_ie);
+	kfree(ioctl_req);
+	kfree(custom_ie);
 	LEAVE();
 	return ret;
 }
@@ -2183,7 +2191,7 @@ woal_get_first_p2p_ie(const t_u8 * ie, int len, t_u8 * ie_out)
 	int length;
 	t_u8 id = 0;
 	t_u16 out_len = 0;
-	IEEEtypes_VendorSpecific_t *pVendorIe = NULL;
+	IEEEtypes_VendorSpecific_t *pvendor_ie = NULL;
 	const u8 p2p_oui[4] = { 0x50, 0x6f, 0x9a, 0x09 };
 
 	while (left_len >= 2) {
@@ -2192,11 +2200,11 @@ woal_get_first_p2p_ie(const t_u8 * ie, int len, t_u8 * ie_out)
 		if ((length + 2) > left_len)
 			break;
 		if (id == VENDOR_SPECIFIC_221) {
-			pVendorIe = (IEEEtypes_VendorSpecific_t *) pos;
+			pvendor_ie = (IEEEtypes_VendorSpecific_t *) pos;
 			if (!memcmp
-			    (pVendorIe->vend_hdr.oui, p2p_oui,
-			     sizeof(pVendorIe->vend_hdr.oui)) &&
-			    pVendorIe->vend_hdr.oui_type == p2p_oui[3]) {
+			    (pvendor_ie->vend_hdr.oui, p2p_oui,
+			     sizeof(pvendor_ie->vend_hdr.oui)) &&
+			    pvendor_ie->vend_hdr.oui_type == p2p_oui[3]) {
 				memcpy(ie_out + out_len, pos, length + 2);
 				out_len += length + 2;
 				break;
@@ -2226,7 +2234,7 @@ woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out, t_u16 wps_flag)
 	int length;
 	t_u8 id = 0;
 	t_u16 out_len = 0;
-	IEEEtypes_VendorSpecific_t *pVendorIe = NULL;
+	IEEEtypes_VendorSpecific_t *pvendor_ie = NULL;
 	const u8 wps_oui[4] = { 0x00, 0x50, 0xf2, 0x04 };
 	const u8 p2p_oui[4] = { 0x50, 0x6f, 0x9a, 0x09 };
 	const u8 wfd_oui[4] = { 0x50, 0x6f, 0x9a, 0x0a };
@@ -2248,24 +2256,24 @@ woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out, t_u16 wps_flag)
 			break;
 		case VENDOR_SPECIFIC_221:
 			/* filter out wmm ie */
-			pVendorIe = (IEEEtypes_VendorSpecific_t *) pos;
+			pvendor_ie = (IEEEtypes_VendorSpecific_t *) pos;
 			if (!memcmp
-			    (pVendorIe->vend_hdr.oui, wmm_oui,
-			     sizeof(pVendorIe->vend_hdr.oui)) &&
-			    pVendorIe->vend_hdr.oui_type == wmm_oui[3])
+			    (pvendor_ie->vend_hdr.oui, wmm_oui,
+			     sizeof(pvendor_ie->vend_hdr.oui)) &&
+			    pvendor_ie->vend_hdr.oui_type == wmm_oui[3])
 				break;
 			/* filter out wps ie */
 			if ((!memcmp
-			     (pVendorIe->vend_hdr.oui, wps_oui,
-			      sizeof(pVendorIe->vend_hdr.oui)) &&
-			     pVendorIe->vend_hdr.oui_type == wps_oui[3]) &&
+			     (pvendor_ie->vend_hdr.oui, wps_oui,
+			      sizeof(pvendor_ie->vend_hdr.oui)) &&
+			     pvendor_ie->vend_hdr.oui_type == wps_oui[3]) &&
 			    (wps_flag & IE_MASK_WPS))
 				break;
 			/* filter out first p2p ie */
 			if ((!memcmp
-			     (pVendorIe->vend_hdr.oui, p2p_oui,
-			      sizeof(pVendorIe->vend_hdr.oui)) &&
-			     pVendorIe->vend_hdr.oui_type == p2p_oui[3])) {
+			     (pvendor_ie->vend_hdr.oui, p2p_oui,
+			      sizeof(pvendor_ie->vend_hdr.oui)) &&
+			     pvendor_ie->vend_hdr.oui_type == p2p_oui[3])) {
 				if (!find_p2p_ie && (wps_flag & IE_MASK_P2P)) {
 					find_p2p_ie = MTRUE;
 					break;
@@ -2273,9 +2281,9 @@ woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out, t_u16 wps_flag)
 			}
 			/* filter out wfd ie */
 			if ((!memcmp
-			     (pVendorIe->vend_hdr.oui, wfd_oui,
-			      sizeof(pVendorIe->vend_hdr.oui)) &&
-			     pVendorIe->vend_hdr.oui_type == wfd_oui[3]) &&
+			     (pvendor_ie->vend_hdr.oui, wfd_oui,
+			      sizeof(pvendor_ie->vend_hdr.oui)) &&
+			     pvendor_ie->vend_hdr.oui_type == wfd_oui[3]) &&
 			    (wps_flag & IE_MASK_WFD))
 				break;
 			memcpy(ie_out + out_len, pos, length + 2);
@@ -2344,7 +2352,7 @@ woal_is_selected_registrar_on(const t_u8 * ie, int len)
 	const t_u8 *pos = ie;
 	int length;
 	t_u8 id = 0;
-	IEEEtypes_VendorSpecific_t *pVendorIe = NULL;
+	IEEEtypes_VendorSpecific_t *pvendor_ie = NULL;
 	const u8 wps_oui[4] = { 0x00, 0x50, 0xf2, 0x04 };
 
 	while (left_len >= 2) {
@@ -2354,11 +2362,11 @@ woal_is_selected_registrar_on(const t_u8 * ie, int len)
 			break;
 		switch (id) {
 		case VENDOR_SPECIFIC_221:
-			pVendorIe = (IEEEtypes_VendorSpecific_t *) pos;
+			pvendor_ie = (IEEEtypes_VendorSpecific_t *) pos;
 			if (!memcmp
-			    (pVendorIe->vend_hdr.oui, wps_oui,
-			     sizeof(pVendorIe->vend_hdr.oui)) &&
-			    pVendorIe->vend_hdr.oui_type == wps_oui[3]) {
+			    (pvendor_ie->vend_hdr.oui, wps_oui,
+			     sizeof(pvendor_ie->vend_hdr.oui)) &&
+			    pvendor_ie->vend_hdr.oui_type == wps_oui[3]) {
 				PRINTM(MIOCTL, "Find WPS ie\n");
 				return is_selected_registrar_on(pos,
 								length + 2);
@@ -2696,14 +2704,10 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
 	PRINTM(MIOCTL, "beacon=%x assocresp=%x proberesp=%x probereq=%x\n",
 	       beacon_index, assocresp_index, proberesp_index, probereq_index);
 done:
-	if (beacon_ies_data)
-		kfree(beacon_ies_data);
-	if (proberesp_ies_data)
-		kfree(proberesp_ies_data);
-	if (assocresp_ies_data)
-		kfree(assocresp_ies_data);
-	if (probereq_ies_data)
-		kfree(probereq_ies_data);
+	kfree(beacon_ies_data);
+	kfree(proberesp_ies_data);
+	kfree(assocresp_ies_data);
+	kfree(probereq_ies_data);
 
 	LEAVE();
 

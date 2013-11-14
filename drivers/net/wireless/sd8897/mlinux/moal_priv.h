@@ -124,9 +124,9 @@ Change log:
 /** Private command ID to turn on/off radio */
 #define WOAL_SET_RADIO              3
 /** Private command ID to enable WMM */
-#define WOAL_WMM_ENABLE	    	    4
+#define WOAL_WMM_ENABLE             4
 /** Private command ID to enable 802.11D */
-#define WOAL_11D_ENABLE	    	    5
+#define WOAL_11D_ENABLE             5
 /** Private command ID to set/get QoS configuration */
 #define WOAL_SET_GET_QOS_CFG        7
 #if defined(REASSOCIATION)

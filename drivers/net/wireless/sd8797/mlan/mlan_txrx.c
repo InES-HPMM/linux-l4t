@@ -3,20 +3,25 @@
  *
  *  @brief This file contains the handling of TX/RX in MLAN
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /*************************************************************
@@ -92,7 +97,7 @@ wlan_handle_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *  @param tx_param A pointer to mlan_tx_param structure
  *
- *  @return 	    MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
+ *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
  */
 mlan_status
 wlan_process_tx(pmlan_private priv, pmlan_buffer pmbuf,
@@ -142,7 +147,6 @@ done:
 		wlan_write_data_complete(pmadapter, pmbuf, ret);
 		break;
 	case MLAN_STATUS_PENDING:
-
 		pmadapter->data_sent = MFALSE;
 		DBG_HEXDUMP(MDAT_D, "Tx", head_ptr + INTF_HEADER_LEN,
 			    MIN(pmbuf->data_len + sizeof(TxPD),
@@ -188,6 +192,12 @@ wlan_write_data_complete(IN pmlan_adapter pmadapter,
 	MASSERT(pmadapter && pmbuf);
 
 	pcb = &pmadapter->callbacks;
+
+	if (pmbuf->flags & MLAN_BUF_FLAG_TCP_ACK) {
+		pmbuf->flags &= ~MLAN_BUF_FLAG_TCP_ACK;
+		pcb->moal_tcp_ack_tx_ind(pmadapter->pmoal_handle, pmbuf);
+	}
+
 	if ((pmbuf->buf_type == MLAN_BUF_TYPE_DATA) ||
 	    (pmbuf->buf_type == MLAN_BUF_TYPE_RAW_DATA)) {
 		PRINTM(MINFO, "wlan_write_data_complete: DATA %p\n", pmbuf);
@@ -270,16 +280,15 @@ wlan_add_buf_bypass_txqueue(mlan_adapter * pmadapter, pmlan_buffer pmbuf)
 	pmlan_private priv = pmadapter->priv[pmbuf->bss_index];
 	ENTER();
 
-	if (pmbuf->buf_type != MLAN_BUF_TYPE_RAW_DATA) {
+	if (pmbuf->buf_type != MLAN_BUF_TYPE_RAW_DATA)
 		pmbuf->buf_type = MLAN_BUF_TYPE_DATA;
-	}
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
-					    priv->wmm.ra_list_spinlock);
+					    priv->bypass_txq.plock);
 	pmadapter->bypass_pkt_count++;
 	util_enqueue_list_tail(pmadapter->pmoal_handle, &priv->bypass_txq,
 			       (pmlan_linked_list) pmbuf, MNULL, MNULL);
 	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
-					      priv->wmm.ra_list_spinlock);
+					      priv->bypass_txq.plock);
 	LEAVE();
 }
 
@@ -310,7 +319,7 @@ wlan_cleanup_bypass_txq(mlan_private * priv)
 	mlan_adapter *pmadapter = priv->adapter;
 	ENTER();
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
-					    priv->wmm.ra_list_spinlock);
+					    priv->bypass_txq.plock);
 	while ((pmbuf =
 		(pmlan_buffer) util_peek_list(pmadapter->pmoal_handle,
 					      &priv->bypass_txq, MNULL,
@@ -321,7 +330,7 @@ wlan_cleanup_bypass_txq(mlan_private * priv)
 		pmadapter->bypass_pkt_count--;
 	}
 	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
-					      priv->wmm.ra_list_spinlock);
+					      priv->bypass_txq.plock);
 	LEAVE();
 }
 
@@ -382,14 +391,15 @@ wlan_process_bypass_tx(pmlan_adapter pmadapter)
 					pmadapter->callbacks.
 						moal_spin_lock(pmadapter->
 							       pmoal_handle,
-							       priv->wmm.
-							       ra_list_spinlock);
+							       priv->bypass_txq.
+							       plock);
 					pmadapter->bypass_pkt_count--;
 					pmadapter->callbacks.
 						moal_spin_unlock(pmadapter->
 								 pmoal_handle,
-								 priv->wmm.
-								 ra_list_spinlock);
+								 priv->
+								 bypass_txq.
+								 plock);
 				}
 				break;
 			} else {

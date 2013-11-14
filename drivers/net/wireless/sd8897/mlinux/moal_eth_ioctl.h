@@ -195,6 +195,9 @@ Change log:
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)
 
+/** Private command ID to send TLD configuration */
+#define	WOAL_TDLS_CONFIG            (SIOCDEVPRIVATE + 5)
+
 /** Private command ID to pass mgmt frame */
 #define WOAL_MGMT_FRAME_TX          WOAL_MGMT_FRAME_TX_IOCTL
 

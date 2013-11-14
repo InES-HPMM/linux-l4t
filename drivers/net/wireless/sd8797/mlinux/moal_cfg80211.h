@@ -51,6 +51,8 @@
 #define IE_MASK_P2P						0x0002
 #define IE_MASK_WFD						0x0004
 
+#define MRVL_PKT_TYPE_MGMT_FRAME 0xE5
+
 /**
  * If multiple wiphys are registered e.g. a regular netdev with
  * assigned ieee80211_ptr and you won't know whether it points
@@ -279,9 +281,6 @@ int woal_cfg80211_del_beacon(struct wiphy *wiphy, struct net_device *dev);
 int woal_cfg80211_del_station(struct wiphy *wiphy,
 			      struct net_device *dev, u8 * mac_addr);
 #endif
-
-const t_u8 *woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id);
-
 void woal_clear_all_mgmt_ies(moal_private * priv);
 int woal_cfg80211_mgmt_frame_ie(moal_private * priv,
 				const t_u8 * beacon_ies, size_t beacon_ies_len,

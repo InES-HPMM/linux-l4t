@@ -55,9 +55,9 @@ Change log:
 /**
  *  @brief This function adds a BSS priority table
  *
- *  @param priv		A pointer to mlan_private structure
+ *  @param priv     A pointer to mlan_private structure
  *
- *  @return		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
 wlan_add_bsspriotbl(pmlan_private priv)
@@ -87,9 +87,8 @@ wlan_add_bsspriotbl(pmlan_private priv)
 			= pbssprio;
 
 	util_enqueue_list_tail(pmadapter->pmoal_handle,
-			       &pmadapter->bssprio_tbl[priv->
-						       bss_priority].bssprio_head,
-			       (pmlan_linked_list) pbssprio,
+			       &pmadapter->bssprio_tbl[priv->bss_priority].
+			       bssprio_head, (pmlan_linked_list) pbssprio,
 			       pmadapter->callbacks.moal_spin_lock,
 			       pmadapter->callbacks.moal_spin_unlock);
 
@@ -100,9 +99,9 @@ wlan_add_bsspriotbl(pmlan_private priv)
 /**
  *  @brief This function deletes the BSS priority table
  *
- *  @param priv		A pointer to mlan_private structure
+ *  @param priv     A pointer to mlan_private structure
  *
- *  @return		N/A
+ *  @return         N/A
  */
 static t_void
 wlan_delete_bsspriotbl(pmlan_private priv)
@@ -168,11 +167,11 @@ wlan_delete_bsspriotbl(pmlan_private priv)
 
 /**
  *  @brief This function allocates buffer for the members of adapter
- *  		structure like command buffer and BSSID list.
+ *          structure like command buffer and BSSID list.
  *
- *  @param pmadapter A pointer to mlan_adapter structure
+ *  @param pmadapter    A pointer to mlan_adapter structure
  *
- *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_allocate_adapter(pmlan_adapter pmadapter)
@@ -268,11 +267,11 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 
 /**
  *  @brief This function initializes the private structure
- *  		and sets default values to the members of mlan_private.
+ *          and sets default values to the members of mlan_private.
  *
- *  @param priv    A pointer to mlan_private structure
+ *  @param priv     A pointer to mlan_private structure
  *
- *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_init_priv(pmlan_private priv)
@@ -377,6 +376,7 @@ wlan_init_priv(pmlan_private priv)
 	priv->wmm_required = MTRUE;
 	priv->wmm_enabled = MFALSE;
 	priv->wmm_qosinfo = 0;
+	priv->saved_wmm_qosinfo = 0;
 #ifdef STA_SUPPORT
 	priv->pcurr_bcn_buf = MNULL;
 	priv->curr_bcn_size = 0;
@@ -390,11 +390,10 @@ wlan_init_priv(pmlan_private priv)
 	priv->addba_reject[7] = ADDBA_RSP_STATUS_REJECT;
 	priv->max_amsdu = 0;
 
-	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
+	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA)
 		priv->port_ctrl_mode = MTRUE;
-	} else {
+	else
 		priv->port_ctrl_mode = MFALSE;
-	}
 	priv->port_open = MFALSE;
 
 	ret = wlan_add_bsspriotbl(priv);
@@ -405,11 +404,11 @@ wlan_init_priv(pmlan_private priv)
 
 /**
  *  @brief This function initializes the adapter structure
- *  		and sets default values to the members of adapter.
+ *          and sets default values to the members of adapter.
  *
- *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pmadapter    A pointer to mlan_adapter structure
  *
- *  @return		N/A
+ *  @return             N/A
  */
 t_void
 wlan_init_adapter(pmlan_adapter pmadapter)
@@ -423,11 +422,10 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 					      data_offset);
 
 #ifdef MFG_CMD_SUPPORT
-	if (pmadapter->init_para.mfg_mode == MLAN_INIT_PARA_DISABLED) {
+	if (pmadapter->init_para.mfg_mode == MLAN_INIT_PARA_DISABLED)
 		pmadapter->mfg_mode = MFALSE;
-	} else {
+	else
 		pmadapter->mfg_mode = pmadapter->init_para.mfg_mode;
-	}
 #endif
 
 	pmadapter->int_mode = pmadapter->init_para.int_mode;
@@ -449,13 +447,12 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 	pmadapter->mpa_tx.pkt_cnt = 0;
 	pmadapter->mpa_tx.start_port = 0;
 
-	if (!pmadapter->init_para.mpa_tx_cfg) {
+	if (!pmadapter->init_para.mpa_tx_cfg)
 		pmadapter->mpa_tx.enabled = MFALSE;
-	} else if (pmadapter->init_para.mpa_tx_cfg == MLAN_INIT_PARA_DISABLED) {
+	else if (pmadapter->init_para.mpa_tx_cfg == MLAN_INIT_PARA_DISABLED)
 		pmadapter->mpa_tx.enabled = MFALSE;
-	} else {
+	else
 		pmadapter->mpa_tx.enabled = MTRUE;
-	}
 	pmadapter->mpa_tx.pkt_aggr_limit = SDIO_MP_AGGR_DEF_PKT_LIMIT;
 #endif /* SDIO_MULTI_PORT_TX_AGGR */
 
@@ -464,13 +461,12 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 	pmadapter->mpa_rx.pkt_cnt = 0;
 	pmadapter->mpa_rx.start_port = 0;
 
-	if (!pmadapter->init_para.mpa_rx_cfg) {
+	if (!pmadapter->init_para.mpa_rx_cfg)
 		pmadapter->mpa_rx.enabled = MFALSE;
-	} else if (pmadapter->init_para.mpa_rx_cfg == MLAN_INIT_PARA_DISABLED) {
+	else if (pmadapter->init_para.mpa_rx_cfg == MLAN_INIT_PARA_DISABLED)
 		pmadapter->mpa_rx.enabled = MFALSE;
-	} else {
+	else
 		pmadapter->mpa_rx.enabled = MTRUE;
-	}
 	pmadapter->mpa_rx.pkt_aggr_limit = SDIO_MP_AGGR_DEF_PKT_LIMIT;
 #endif /* SDIO_MULTI_PORT_RX_AGGR */
 
@@ -510,6 +506,7 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 	pmadapter->num_in_scan_table = 0;
 	memset(pmadapter, pmadapter->pscan_table, 0,
 	       (sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST));
+	pmadapter->ext_scan = 0;
 	pmadapter->scan_probes = DEFAULT_PROBES;
 
 	memset(pmadapter, pmadapter->bcn_buf, 0, pmadapter->bcn_buf_size);
@@ -570,6 +567,7 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 #ifdef STA_SUPPORT
 	pmadapter->chan_bandwidth = 0;
 	pmadapter->adhoc_11n_enabled = MFALSE;
+	pmadapter->tdls_status = TDLS_NOT_SETUP;
 #endif /* STA_SUPPORT */
 
 	pmadapter->hw_dot_11ac_dev_cap = 0;
@@ -604,6 +602,8 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 	       sizeof(pmadapter->sleep_params));
 	memset(pmadapter, &pmadapter->sleep_period, 0,
 	       sizeof(pmadapter->sleep_period));
+	memset(pmadapter, &pmadapter->saved_sleep_period, 0,
+	       sizeof(pmadapter->saved_sleep_period));
 	pmadapter->tx_lock_flag = MFALSE;
 	pmadapter->null_pkt_interval = 0;
 	pmadapter->fw_bands = 0;
@@ -772,6 +772,11 @@ wlan_init_lock_list(IN pmlan_adapter pmadapter)
 					    &priv->sta_list, MTRUE,
 					    pmadapter->callbacks.
 					    moal_init_lock);
+			/* Initialize tdls_pending_txq */
+			util_init_list_head((t_void *) pmadapter->pmoal_handle,
+					    &priv->tdls_pending_txq, MTRUE,
+					    pmadapter->callbacks.
+					    moal_init_lock);
 			/* Initialize bypass_txq */
 			util_init_list_head((t_void *) pmadapter->pmoal_handle,
 					    &priv->bypass_txq, MTRUE,
@@ -866,6 +871,10 @@ wlan_free_lock_list(IN pmlan_adapter pmadapter)
 			util_free_list_head((t_void *) pmadapter->pmoal_handle,
 					    &priv->sta_list,
 					    priv->adapter->callbacks.
+					    moal_free_lock);
+			util_free_list_head((t_void *) pmadapter->pmoal_handle,
+					    &priv->tdls_pending_txq,
+					    pmadapter->callbacks.
 					    moal_free_lock);
 			util_free_list_head((t_void *) pmadapter->pmoal_handle,
 					    &priv->bypass_txq,
@@ -1019,7 +1028,7 @@ done:
 /**
  *  @brief This function frees the structure of adapter
  *
- *  @param pmadapter      A pointer to mlan_adapter structure
+ *  @param pmadapter    A pointer to mlan_adapter structure
  *
  *  @return             N/A
  */
@@ -1089,9 +1098,9 @@ wlan_free_adapter(pmlan_adapter pmadapter)
 /**
  *  @brief This function frees the structure of priv
  *
- *  @param pmpriv  A pointer to mlan_private structure
+ *  @param pmpriv   A pointer to mlan_private structure
  *
- *  @return        N/A
+ *  @return         N/A
  */
 t_void
 wlan_free_priv(mlan_private * pmpriv)
@@ -1136,12 +1145,13 @@ wlan_init_fw_complete(IN pmlan_adapter pmadapter)
 }
 
 /**
- *  @brief The cmdresp handler calls this function for shutdown_fw_complete callback
+ *  @brief The cmdresp handler calls this function
+ *          for shutdown_fw_complete callback
  *
- *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pmadapter    A pointer to mlan_adapter structure
  *
- *  @return		MLAN_STATUS_SUCCESS
- *                      	The firmware shutdown callback succeeded.
+ *  @return             MLAN_STATUS_SUCCESS
+ *                      The firmware shutdown callback succeeded.
  */
 mlan_status
 wlan_shutdown_fw_complete(IN pmlan_adapter pmadapter)

@@ -47,21 +47,300 @@ Change log:
 
 /**
  *  @brief This function handles link lost, deauth and
- *  		disassoc events.
+ *          disassoc events.
  *
- *  @param pmpriv  A pointer to mlan_private structure
- *  @return        N/A
+ *  @param pmpriv   A pointer to mlan_private structure
+ *  @return         N/A
  */
 static t_void
 wlan_handle_disconnect_event(pmlan_private pmpriv)
 {
 	ENTER();
 
-	if (pmpriv->media_connected == MTRUE) {
+	if (pmpriv->media_connected == MTRUE)
 		wlan_reset_connect_state(pmpriv, MTRUE);
-	}
 
 	LEAVE();
+}
+
+/**
+ *  @brief This function will parse the TDLS event for further wlan action
+ *
+ *  @param priv     A pointer to mlan_private
+ *  @param pevent   A pointer to event buf
+ *
+ *  @return         N/A
+ */
+static void
+wlan_parse_tdls_event(pmlan_private priv, pmlan_buffer pevent)
+{
+	Event_tdls_generic *tdls_event = (Event_tdls_generic *)
+		(pevent->pbuf + pevent->data_offset + sizeof(mlan_event_id));
+	sta_node *sta_ptr = MNULL;
+	pmlan_adapter pmadapter = priv->adapter;
+	t_u8 i = 0;
+	IEEEtypes_HTCap_t *pht_cap = MNULL;
+	t_u16 ie_len = 0;
+	mlan_ds_misc_tdls_oper tdls_oper;
+	t_u8 event_buf[100];
+	mlan_event *ptdls_event = (mlan_event *) event_buf;
+	tdls_tear_down_event *tdls_evt =
+		(tdls_tear_down_event *) ptdls_event->event_buf;
+	ENTER();
+
+	/* reason code is not mandatory, hence less by sizeof(t_u16) */
+	if (pevent->data_len < (sizeof(Event_tdls_generic) -
+				sizeof(t_u16) - sizeof(mlan_event_id))) {
+		PRINTM(MERROR, "Invalid length %d for TDLS event\n",
+		       pevent->data_len);
+		LEAVE();
+		return;
+	}
+	sta_ptr = wlan_get_station_entry(priv, tdls_event->peer_mac_addr);
+	PRINTM(MEVENT, "TDLS_EVENT: %d " MACSTR "\n",
+	       wlan_le16_to_cpu(tdls_event->event_type),
+	       MAC2STR(tdls_event->peer_mac_addr));
+	switch (wlan_le16_to_cpu(tdls_event->event_type)) {
+	case TDLS_EVENT_TYPE_SETUP_REQ:
+		if (sta_ptr == MNULL) {
+			sta_ptr =
+				wlan_add_station_entry(priv,
+						       tdls_event->
+						       peer_mac_addr);
+			if (sta_ptr) {
+				sta_ptr->status = TDLS_SETUP_INPROGRESS;
+				wlan_hold_tdls_packets(priv,
+						       tdls_event->
+						       peer_mac_addr);
+			}
+		}
+		break;
+
+	case TDLS_EVENT_TYPE_LINK_ESTABLISHED:
+		if (sta_ptr) {
+			sta_ptr->status = TDLS_SETUP_COMPLETE;
+			/* parse the TLV for station's capability */
+			ie_len = wlan_le16_to_cpu(tdls_event->u.ie_data.
+						  ie_length);
+			if (ie_len) {
+				pht_cap =
+					(IEEEtypes_HTCap_t *)
+					wlan_get_specific_ie(priv,
+							     tdls_event->u.
+							     ie_data.ie_ptr,
+							     ie_len,
+							     HT_CAPABILITY);
+				if (pht_cap) {
+					sta_ptr->is_11n_enabled = MTRUE;
+					if (GETHT_MAXAMSDU
+					    (pht_cap->ht_cap.ht_cap_info))
+						sta_ptr->max_amsdu =
+							MLAN_TX_DATA_BUF_SIZE_8K;
+					else
+						sta_ptr->max_amsdu =
+							MLAN_TX_DATA_BUF_SIZE_4K;
+				}
+			}
+			for (i = 0; i < MAX_NUM_TID; i++) {
+				if (sta_ptr->is_11n_enabled)
+					sta_ptr->ampdu_sta[i] =
+						priv->aggr_prio_tbl[i].
+						ampdu_user;
+				else
+					sta_ptr->ampdu_sta[i] =
+						BA_STREAM_NOT_ALLOWED;
+			}
+			memset(priv->adapter, sta_ptr->rx_seq, 0xff,
+			       sizeof(sta_ptr->rx_seq));
+			wlan_restore_tdls_packets(priv,
+						  tdls_event->peer_mac_addr,
+						  TDLS_SETUP_COMPLETE);
+			pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+		}
+		break;
+
+	case TDLS_EVENT_TYPE_SETUP_FAILURE:
+		wlan_restore_tdls_packets(priv, tdls_event->peer_mac_addr,
+					  TDLS_SETUP_FAILURE);
+		if (sta_ptr)
+			wlan_delete_station_entry(priv,
+						  tdls_event->peer_mac_addr);
+		if (MTRUE == wlan_is_station_list_empty(priv))
+			pmadapter->tdls_status = TDLS_NOT_SETUP;
+		else
+			pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+		break;
+	case TDLS_EVENT_TYPE_LINK_TORN_DOWN:
+		if (sta_ptr) {
+			if (sta_ptr->external_tdls) {
+				PRINTM(MMSG,
+				       "Receive TDLS TEAR DOWN event, Disable TDLS LINK\n");
+				memset(pmadapter, &tdls_oper, 0,
+				       sizeof(tdls_oper));
+				tdls_oper.tdls_action = WLAN_TDLS_DISABLE_LINK;
+				memcpy(priv->adapter, tdls_oper.peer_mac,
+				       tdls_event->peer_mac_addr,
+				       MLAN_MAC_ADDR_LENGTH);
+				/* Send command to firmware to delete tdls link */
+				wlan_prepare_cmd(priv,
+						 HostCmd_CMD_TDLS_OPERATION,
+						 HostCmd_ACT_GEN_SET,
+						 0,
+						 (t_void *) MNULL, &tdls_oper);
+				ptdls_event->bss_index = priv->bss_index;
+				ptdls_event->event_id =
+					MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ;
+				ptdls_event->event_len =
+					sizeof(tdls_tear_down_event);
+				memcpy(priv->adapter,
+				       (t_u8 *) tdls_evt->peer_mac_addr,
+				       tdls_event->peer_mac_addr,
+				       MLAN_MAC_ADDR_LENGTH);
+				tdls_evt->reason_code =
+					wlan_le16_to_cpu(tdls_event->u.
+							 reason_code);
+				wlan_recv_event(priv,
+						MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ,
+						ptdls_event);
+				/* Signal MOAL to trigger mlan_main_process */
+				wlan_recv_event(priv,
+						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+						MNULL);
+			}
+			wlan_restore_tdls_packets(priv,
+						  tdls_event->peer_mac_addr,
+						  TDLS_TEAR_DOWN);
+			if (sta_ptr->is_11n_enabled) {
+				wlan_cleanup_reorder_tbl(priv,
+							 tdls_event->
+							 peer_mac_addr);
+				pmadapter->callbacks.moal_spin_lock(pmadapter->
+								    pmoal_handle,
+								    priv->wmm.
+								    ra_list_spinlock);
+				wlan_11n_cleanup_txbastream_tbl(priv,
+								tdls_event->
+								peer_mac_addr);
+				pmadapter->callbacks.
+					moal_spin_unlock(pmadapter->
+							 pmoal_handle,
+							 priv->wmm.
+							 ra_list_spinlock);
+			}
+			wlan_delete_station_entry(priv,
+						  tdls_event->peer_mac_addr);
+			if (MTRUE == wlan_is_station_list_empty(priv))
+				pmadapter->tdls_status = TDLS_NOT_SETUP;
+			else
+				pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+		}
+		break;
+	case TDLS_EVENT_TYPE_CHAN_SWITCH_RESULT:
+		PRINTM(MEVENT,
+		       "TDLS_CHAN_SWITCH_RESULT: status=0x%x, reason=0x%x current_channel=%d\n",
+		       tdls_event->u.switch_result.status,
+		       tdls_event->u.switch_result.reason,
+		       (int)tdls_event->u.switch_result.current_channel);
+		if (tdls_event->u.switch_result.status == MLAN_STATUS_SUCCESS) {
+			if (tdls_event->u.switch_result.current_channel ==
+			    TDLS_BASE_CHANNEL) {
+				/* enable traffic to AP */
+				if (pmadapter->tdls_status !=
+				    TDLS_IN_BASE_CHANNEL) {
+					wlan_update_non_tdls_ralist(priv,
+								    tdls_event->
+								    peer_mac_addr,
+								    MFALSE);
+					pmadapter->tdls_status =
+						TDLS_IN_BASE_CHANNEL;
+				}
+			} else if (tdls_event->u.switch_result.
+				   current_channel == TDLS_OFF_CHANNEL) {
+				/* pause traffic to AP */
+				if (pmadapter->tdls_status !=
+				    TDLS_IN_OFF_CHANNEL) {
+					wlan_update_non_tdls_ralist(priv,
+								    tdls_event->
+								    peer_mac_addr,
+								    MTRUE);
+					pmadapter->tdls_status =
+						TDLS_IN_OFF_CHANNEL;
+				}
+			}
+		} else {
+			if (tdls_event->u.switch_result.current_channel ==
+			    TDLS_BASE_CHANNEL)
+				pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+			else if (tdls_event->u.switch_result.current_channel ==
+				 TDLS_OFF_CHANNEL)
+				pmadapter->tdls_status = TDLS_IN_OFF_CHANNEL;
+		}
+		break;
+	case TDLS_EVENT_TYPE_START_CHAN_SWITCH:
+		PRINTM(MEVENT, "TDLS start channel switch....\n");
+		pmadapter->tdls_status = TDLS_SWITCHING_CHANNEL;
+		break;
+	case TDLS_EVENT_TYPE_CHAN_SWITCH_STOPPED:
+		PRINTM(MEVENT, "TDLS channel switch stopped, reason=%d\n",
+		       tdls_event->u.cs_stop_reason);
+		break;
+	case TDLS_EVENT_TYPE_DEBUG:
+	case TDLS_EVENT_TYPE_PACKET:
+		break;
+	default:
+		PRINTM(MERROR, "unknown event type %d\n",
+		       wlan_le16_to_cpu(tdls_event->event_type));
+		break;
+	}
+	LEAVE();
+}
+
+/**
+ *  @brief This function send the tdls teardown request event.
+ *
+ *  @param priv    A pointer to mlan_private
+ *
+ *  @return		   N/A
+ */
+void
+wlan_send_tdls_tear_down_request(pmlan_private priv)
+{
+	t_u8 event_buf[100];
+	mlan_event *ptdls_event = (mlan_event *) event_buf;
+	tdls_tear_down_event *tdls_evt =
+		(tdls_tear_down_event *) ptdls_event->event_buf;
+	sta_node *sta_ptr = MNULL;
+
+	ENTER();
+
+	sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
+					      &priv->sta_list,
+					      priv->adapter->callbacks.
+					      moal_spin_lock,
+					      priv->adapter->callbacks.
+					      moal_spin_unlock);
+	if (!sta_ptr) {
+		LEAVE();
+		return;
+	}
+	while (sta_ptr != (sta_node *) & priv->sta_list) {
+		if (sta_ptr->external_tdls) {
+			ptdls_event->bss_index = priv->bss_index;
+			ptdls_event->event_id =
+				MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ;
+			ptdls_event->event_len = sizeof(tdls_tear_down_event);
+			memcpy(priv->adapter, (t_u8 *) tdls_evt->peer_mac_addr,
+			       sta_ptr->mac_addr, MLAN_MAC_ADDR_LENGTH);
+			tdls_evt->reason_code =
+				WLAN_REASON_TDLS_TEARDOWN_UNSPECIFIED;
+			wlan_recv_event(priv,
+					MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ,
+					ptdls_event);
+		}
+		sta_ptr = sta_ptr->pnext;
+	}
+	LEAVE();
+	return;
 }
 
 /********************************************************
@@ -69,14 +348,14 @@ wlan_handle_disconnect_event(pmlan_private pmpriv)
 ********************************************************/
 /**
  *  @brief This function handles disconnect event, reports disconnect
- *  		to upper layer, cleans tx/rx packets,
- *  		resets link state etc.
+ *          to upper layer, cleans tx/rx packets,
+ *          resets link state etc.
  *
- *  @param priv            A pointer to mlan_private structure
- *  @param drv_disconnect  Flag indicating the driver should disconnect
- *                         and flush pending packets.
+ *  @param priv             A pointer to mlan_private structure
+ *  @param drv_disconnect   Flag indicating the driver should disconnect
+ *                          and flush pending packets.
  *
- *  @return        N/A
+ *  @return                 N/A
  */
 t_void
 wlan_reset_connect_state(pmlan_private priv, t_u8 drv_disconnect)
@@ -148,6 +427,11 @@ wlan_reset_connect_state(pmlan_private priv, t_u8 drv_disconnect)
 		       &priv->curr_bss_params, 0x00,
 		       sizeof(priv->curr_bss_params));
 	}
+	wlan_send_tdls_tear_down_request(priv);
+	wlan_delete_station_list(priv);
+	pmadapter->tdls_status = TDLS_NOT_SETUP;
+	priv->wmm_qosinfo = priv->saved_wmm_qosinfo;
+	pmadapter->sleep_period.period = pmadapter->saved_sleep_period.period;
 	pmadapter->tx_lock_flag = MFALSE;
 	pmadapter->pps_uapsd_mode = MFALSE;
 	pmadapter->delay_null_pkt = MFALSE;
@@ -214,11 +498,79 @@ wlan_2040_coex_event(pmlan_private pmpriv)
 }
 
 /**
+ *  @brief This function will process tx pause event
+ *
+ *
+ *  @param priv    A pointer to mlan_private
+ *  @param pevent  A pointer to event buf
+ *
+ *  @return	       N/A
+ */
+static void
+wlan_process_sta_tx_pause_event(pmlan_private priv, pmlan_buffer pevent)
+{
+	t_u16 tlv_type, tlv_len;
+	int tlv_buf_left = pevent->data_len - sizeof(t_u32);
+	MrvlIEtypesHeader_t *tlv =
+		(MrvlIEtypesHeader_t *) (pevent->pbuf + pevent->data_offset +
+					 sizeof(t_u32));
+	MrvlIEtypes_tx_pause_t *tx_pause_tlv;
+	sta_node *sta_ptr = MNULL;
+	tdlsStatus_e status;
+	ENTER();
+
+	while (tlv_buf_left >= (int)sizeof(MrvlIEtypesHeader_t)) {
+		tlv_type = wlan_le16_to_cpu(tlv->type);
+		tlv_len = wlan_le16_to_cpu(tlv->len);
+		if ((sizeof(MrvlIEtypesHeader_t) + tlv_len) >
+		    (unsigned int)tlv_buf_left) {
+			PRINTM(MERROR, "wrong tlv: tlvLen=%d, tlvBufLeft=%d\n",
+			       tlv_len, tlv_buf_left);
+			break;
+		}
+		if (tlv_type == TLV_TYPE_TX_PAUSE) {
+			tx_pause_tlv = (MrvlIEtypes_tx_pause_t *) tlv;
+			PRINTM(MCMND,
+			       "TDLS TxPause: " MACSTR " pause=%d, pkts=%d\n",
+			       MAC2STR(tx_pause_tlv->peermac),
+			       tx_pause_tlv->tx_pause, tx_pause_tlv->pkt_cnt);
+			status = wlan_get_tdls_link_status(priv,
+							   tx_pause_tlv->
+							   peermac);
+			if (MTRUE == wlan_is_tdls_link_setup(status)) {
+				sta_ptr =
+					wlan_get_station_entry(priv,
+							       tx_pause_tlv->
+							       peermac);
+				if (sta_ptr) {
+					if (sta_ptr->tx_pause !=
+					    tx_pause_tlv->tx_pause) {
+						sta_ptr->tx_pause =
+							tx_pause_tlv->tx_pause;
+						wlan_update_ralist_tx_pause
+							(priv,
+							 tx_pause_tlv->peermac,
+							 tx_pause_tlv->
+							 tx_pause);
+					}
+				}
+			}
+		}
+		tlv_buf_left -= (sizeof(MrvlIEtypesHeader_t) + tlv_len);
+		tlv = (MrvlIEtypesHeader_t *) ((t_u8 *) tlv + tlv_len +
+					       sizeof(MrvlIEtypesHeader_t));
+	}
+
+	LEAVE();
+	return;
+}
+
+/**
  *  @brief This function handles events generated by firmware
  *
- *  @param priv	A pointer to mlan_private structure
+ *  @param priv A pointer to mlan_private structure
  *
- *  @return		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return     MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_ops_sta_process_event(IN t_void * priv)
@@ -314,7 +666,7 @@ wlan_ops_sta_process_event(IN t_void * priv)
 		break;
 
 	case EVENT_PS_AWAKE:
-		PRINTM(MINFO, "EVENT: AWAKE \n");
+		PRINTM(MINFO, "EVENT: AWAKE\n");
 		PRINTM(MEVENT, "|");
 		if (!pmadapter->pps_uapsd_mode &&
 		    pmpriv->media_connected &&
@@ -491,6 +843,12 @@ wlan_ops_sta_process_event(IN t_void * priv)
 		}
 		/* Send up this Event to unblock MOAL waitqueue */
 		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_MEAS_REPORT, MNULL);
+		break;
+	case EVENT_EXT_SCAN_REPORT:
+		PRINTM(MEVENT, "EVENT: EXT_SCAN Report (%d)\n",
+		       pmbuf->data_len);
+		if (pmadapter->pscan_ioctl_req && pmadapter->ext_scan)
+			ret = wlan_handle_event_ext_scan_report(priv, pmbuf);
 		break;
 	case EVENT_MEAS_REPORT_RDY:
 		PRINTM(MEVENT, "EVENT: Measurement Report Ready (%#x)\n",
@@ -682,15 +1040,38 @@ wlan_ops_sta_process_event(IN t_void * priv)
 		break;
 #endif /* WIFI_DIRECT_SUPPORT */
 
+	case EVENT_TDLS_GENERIC_EVENT:
+		PRINTM(MEVENT, "EVENT: TDLS event %d\n", eventcause);
+		wlan_parse_tdls_event(pmpriv, pmbuf);
+		/* Allocate memory for event buffer */
+		ret = pcb->moal_malloc(pmadapter->pmoal_handle, MAX_EVENT_SIZE,
+				       MLAN_MEM_DEF, &evt_buf);
+		if ((ret == MLAN_STATUS_SUCCESS) && evt_buf) {
+			pevent = (pmlan_event) evt_buf;
+			pevent->bss_index = pmpriv->bss_index;
+			pevent->event_id = MLAN_EVENT_ID_DRV_PASSTHRU;
+			pevent->event_len = pmbuf->data_len;
+			memcpy(pmadapter, (t_u8 *) pevent->event_buf,
+			       pmbuf->pbuf + pmbuf->data_offset,
+			       pevent->event_len);
+			wlan_recv_event(pmpriv, pevent->event_id, pevent);
+			pcb->moal_mfree(pmadapter->pmoal_handle, evt_buf);
+		}
+		break;
+	case EVENT_TX_DATA_PAUSE:
+		PRINTM(MEVENT, "EVENT: TDLS TX_DATA_PAUSE\n");
+		wlan_process_sta_tx_pause_event(priv, pmbuf);
+		break;
+
 	case EVENT_SAD_REPORT:
 		{
-			t_u8 *pEvtDat =
+			t_u8 *pevt_dat =
 				pmbuf->pbuf + pmbuf->data_offset +
 				sizeof(t_u32);
 			PRINTM(MEVENT,
 			       "EVENT: Antenna Diversity %d  (%d, %d, %d, %d)\n",
-			       eventcause, pEvtDat[0] + 1, pEvtDat[1] + 1,
-			       pEvtDat[2], pEvtDat[3]);
+			       eventcause, pevt_dat[0] + 1, pevt_dat[1] + 1,
+			       pevt_dat[2], pevt_dat[3]);
 		}
 		break;
 	case EVENT_MULTI_CHAN_INFO:

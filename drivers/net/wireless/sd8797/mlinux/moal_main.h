@@ -52,7 +52,6 @@ Change log:
 #include        <linux/ptrace.h>
 #include        <linux/string.h>
 #include        <linux/irqreturn.h>
-#include        <linux/list.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18)
 #include       <linux/config.h>
@@ -165,12 +164,12 @@ typedef struct _HostCmd_Header {
 
 #ifndef MIN
 /** Find minimum */
-#define MIN(a,b)		((a) < (b) ? (a) : (b))
+#define MIN(a, b)		((a) < (b) ? (a) : (b))
 #endif
 
 /** Find maximum */
 #ifndef MAX
-#define MAX(a,b)                ((a) > (b) ? (a) : (b))
+#define MAX(a, b)                ((a) > (b) ? (a) : (b))
 #endif
 
 /*
@@ -247,15 +246,15 @@ woal_initialize_timer(pmoal_drv_timer timer,
  *  @brief Modify timer
  *
  *  @param timer		Timer structure
- *  @param MillisecondPeriod	Time period in millisecond
+ *  @param millisecondperiod	Time period in millisecond
  *
  *  @return			N/A
  */
 static inline void
-woal_mod_timer(pmoal_drv_timer timer, t_u32 MillisecondPeriod)
+woal_mod_timer(pmoal_drv_timer timer, t_u32 millisecondperiod)
 {
-	timer->time_period = MillisecondPeriod;
-	mod_timer(&timer->tl, jiffies + (MillisecondPeriod * HZ) / 1000);
+	timer->time_period = millisecondperiod;
+	mod_timer(&timer->tl, jiffies + (millisecondperiod * HZ) / 1000);
 	timer->timer_is_canceled = MFALSE;
 }
 
@@ -449,9 +448,8 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 			goto cont;
 		}
 		w = (w * 10) + c;
-		if ((w & 0xffff) > 255) {
+		if ((w & 0xffff) > 255)
 			goto out;
-		}
 cont:
 		if (i >= 4)
 			goto out;
@@ -482,14 +480,14 @@ out:
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE(x)    	init_MUTEX(x)
+#define MOAL_INIT_SEMAPHORE(x)      init_MUTEX(x)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE_LOCKED(x) 	init_MUTEX_LOCKED(x)
+#define MOAL_INIT_SEMAPHORE_LOCKED(x)   init_MUTEX_LOCKED(x)
 #else
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE(x)    	sema_init(x, 1)
+#define MOAL_INIT_SEMAPHORE(x)      sema_init(x, 1)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE_LOCKED(x) 	sema_init(x, 0)
+#define MOAL_INIT_SEMAPHORE_LOCKED(x)   sema_init(x, 0)
 #endif
 
 /** Acquire semaphore and with blocking */
@@ -497,7 +495,7 @@ out:
 /** Acquire semaphore without blocking */
 #define MOAL_ACQ_SEMAPHORE_NOBLOCK(x)	down_trylock(x)
 /** Release semaphore */
-#define MOAL_REL_SEMAPHORE(x) 		up(x)
+#define MOAL_REL_SEMAPHORE(x)       up(x)
 
 /** Request FW timeout in second */
 #define REQUEST_FW_TIMEOUT		30
@@ -534,9 +532,9 @@ out:
 /** Custom event : AdHoc link lost */
 #define CUS_EVT_ADHOC_LINK_LOST		"EVENT=ADHOC_LINK_LOST"
 /** Custom event : MIC failure, unicast */
-#define CUS_EVT_MLME_MIC_ERR_UNI	"MLME-MICHAELMICFAILURE.indication unicast "
+#define CUS_EVT_MLME_MIC_ERR_UNI	"MLME-MICHAELMICFAILURE.indication unicast"
 /** Custom event : MIC failure, multicast */
-#define CUS_EVT_MLME_MIC_ERR_MUL	"MLME-MICHAELMICFAILURE.indication multicast "
+#define CUS_EVT_MLME_MIC_ERR_MUL	"MLME-MICHAELMICFAILURE.indication multicast"
 /** Custom event : Beacon RSSI low */
 #define CUS_EVT_BEACON_RSSI_LOW		"EVENT=BEACON_RSSI_LOW"
 /** Custom event : Beacon SNR low */
@@ -566,9 +564,9 @@ out:
 #define CUS_EVT_DEEP_SLEEP_AWAKE	"EVENT=DS_AWAKE"
 
 /** Custom event : Host Sleep activated */
-#define CUS_EVT_HS_ACTIVATED		"HS_ACTIVATED "
+#define CUS_EVT_HS_ACTIVATED		"HS_ACTIVATED"
 /** Custom event : Host Sleep deactivated */
-#define CUS_EVT_HS_DEACTIVATED		"HS_DEACTIVATED "
+#define CUS_EVT_HS_DEACTIVATED		"HS_DEACTIVATED"
 /** Custom event : Host Sleep wakeup */
 #define CUS_EVT_HS_WAKEUP		"HS_WAKEUP"
 
@@ -621,7 +619,7 @@ out:
 #define NL_MULTICAST_GROUP  1
 
 /** MAX Tx Pending count */
-#define MAX_TX_PENDING    	100
+#define MAX_TX_PENDING      100
 
 /** LOW Tx Pending count */
 #define LOW_TX_PENDING      80
@@ -772,14 +770,10 @@ struct tcp_sess {
 	t_u32 dst_ip_addr;
 	t_u16 src_tcp_port;
 	t_u16 dst_tcp_port;
-    /** tcp window info */
-	t_u8 rx_win_opt;
-	t_u32 rx_win_scale;
-    /** warming up counter */
-	t_u32 start_cnt;
     /** tx ack packet info */
 	t_u32 ack_seq;
-	t_u32 ack_cnt;
+	/** tcp ack buffer */
+	void *ack_skb;
 };
 
 /** Private structure for MOAL */
@@ -800,6 +794,10 @@ struct _moal_private {
 	t_u8 current_addr[ETH_ALEN];
 	/** Media connection status */
 	BOOLEAN media_connected;
+	/** Statistics of tcp ack tx dropped */
+	t_u32 tcp_ack_drop_cnt;
+	/** Statistics of tcp ack tx in total from kernel */
+	t_u32 tcp_ack_cnt;
 #ifdef UAP_SUPPORT
 	/** uAP started or not */
 	BOOLEAN bss_started;
@@ -851,14 +849,12 @@ struct _moal_private {
 	struct net_device *pa_netdev;
 	/** channel parameter for UAP/GO */
 	t_u16 channel;
+#ifdef UAP_SUPPORT
+    /** wep key */
+	wep_key uap_wep_key[4];
 	/** cipher */
 	t_u32 cipher;
-	/** key index */
-	t_u8 key_index;
-	/** key len */
-	t_u16 key_len;
-	/** key data */
-	t_u8 key_material[MLAN_MAX_KEY_LENGTH];
+#endif
 	/** beacon ie index */
 	t_u16 beacon_index;
 	/** proberesp ie index */
@@ -878,6 +874,8 @@ struct _moal_private {
 #ifdef STA_SUPPORT
 	/** CFG80211 scan request description */
 	struct cfg80211_scan_request *scan_request;
+	/** lock for scan_request */
+	spinlock_t scan_req_lock;
 	/** CFG80211 association description */
 	t_u8 cfg_bssid[ETH_ALEN];
 	/** Disconnect request from CFG80211 */
@@ -898,6 +896,7 @@ struct _moal_private {
 	u8 mrvl_rssi_low;
 	/** last event */
 	u32 last_event;
+
 #endif				/* STA_SUPPORT */
 #endif				/* STA_CFG80211 */
 	/** IOCTL wait queue */
@@ -971,6 +970,7 @@ struct _moal_private {
 	t_u8 enable_tcp_ack_enh;
     /** TCP session spin lock */
 	spinlock_t tcp_sess_lock;
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
 	atomic_t wmm_tx_pending[4];
 #endif
@@ -1097,6 +1097,10 @@ struct _moal_handle {
 	BOOLEAN is_go_timer_set;
 	/** GO timer */
 	moal_drv_timer go_timer __ATTRIB_ALIGN__;
+	/** remain_on_channel timer set flag */
+	BOOLEAN is_remain_timer_set;
+	/** remani_on_channel_timer */
+	moal_drv_timer remain_timer __ATTRIB_ALIGN__;
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 	/** cfg80211_suspend status */
@@ -1155,8 +1159,6 @@ struct _moal_handle {
 #endif
 	/** Driver spin lock */
 	spinlock_t driver_lock;
-	/** Card type */
-	t_u16 card_type;
 	/** Card specific driver version */
 	t_s8 driver_version[MLAN_MAX_VER_STR_LEN];
 };
@@ -1173,9 +1175,8 @@ woal_set_trans_start(struct net_device *dev)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
 	unsigned int i;
-	for (i = 0; i < dev->num_tx_queues; i++) {
+	for (i = 0; i < dev->num_tx_queues; i++)
 		netdev_get_tx_queue(dev, i)->trans_start = jiffies;
-	}
 #endif
 	dev->trans_start = jiffies;
 }
@@ -1252,75 +1253,75 @@ extern t_u32 drvdbg;
 #define LOG_CTRL(level)     (0)
 
 #ifdef	DEBUG_LEVEL2
-#define	PRINTM_MINFO(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MINFO) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MWARN(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MWARN) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MENTRY(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MENTRY) printk(KERN_DEBUG msg);} while(0)
+#define	PRINTM_MINFO(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MINFO) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MWARN(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MWARN) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MENTRY(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MENTRY) printk(KERN_DEBUG msg); } while (0)
 #else
-#define	PRINTM_MINFO(level,msg...)  do {} while (0)
-#define	PRINTM_MWARN(level,msg...)  do {} while (0)
-#define	PRINTM_MENTRY(level,msg...) do {} while (0)
+#define	PRINTM_MINFO(level, msg...)  do {} while (0)
+#define	PRINTM_MWARN(level, msg...)  do {} while (0)
+#define	PRINTM_MENTRY(level, msg...) do {} while (0)
 #endif /* DEBUG_LEVEL2 */
 
-#define	PRINTM_MFW_D(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MFW_D) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MCMD_D(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MCMD_D) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MDAT_D(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MDAT_D) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MIF_D(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MIF_D) printk(KERN_DEBUG msg);} while(0)
+#define	PRINTM_MFW_D(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MFW_D) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MCMD_D(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MCMD_D) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MDAT_D(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MDAT_D) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MIF_D(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MIF_D) printk(KERN_DEBUG msg); } while (0)
 
-#define	PRINTM_MIOCTL(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MIOCTL) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MINTR(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MINTR) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MEVENT(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MEVENT) printk(msg);} while(0)
-#define	PRINTM_MCMND(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MCMND) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MDATA(level,msg...)  do {woal_print(level,msg); \
-		if (drvdbg & MDATA) printk(KERN_DEBUG msg);} while(0)
-#define	PRINTM_MERROR(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MERROR) printk(KERN_ERR msg);} while(0)
-#define	PRINTM_MFATAL(level,msg...) do {woal_print(level,msg); \
-		if (drvdbg & MFATAL) printk(KERN_ERR msg);} while(0)
-#define	PRINTM_MMSG(level,msg...)   do {woal_print(level,msg); \
-		if (drvdbg & MMSG) printk(KERN_ALERT msg);} while(0)
+#define	PRINTM_MIOCTL(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MIOCTL) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MINTR(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MINTR) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MEVENT(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MEVENT) printk(msg); } while (0)
+#define	PRINTM_MCMND(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MCMND) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MDATA(level, msg...)  do {woal_print(level, msg); \
+		if (drvdbg & MDATA) printk(KERN_DEBUG msg); } while (0)
+#define	PRINTM_MERROR(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MERROR) printk(KERN_ERR msg); } while (0)
+#define	PRINTM_MFATAL(level, msg...) do {woal_print(level, msg); \
+		if (drvdbg & MFATAL) printk(KERN_ERR msg); } while (0)
+#define	PRINTM_MMSG(level, msg...)   do {woal_print(level, msg); \
+		if (drvdbg & MMSG) printk(KERN_ALERT msg); } while (0)
 
 static inline void
 woal_print(t_u32 level, char *fmt, ...)
 {
 }
 
-#define	PRINTM(level,msg...) PRINTM_##level(level,msg)
+#define	PRINTM(level, msg...) PRINTM_##level(level, msg)
 
 #else
 
-#define	PRINTM(level,msg...) do {} while (0)
+#define	PRINTM(level, msg...) do {} while (0)
 
 #endif /* DEBUG_LEVEL1 */
 
 /** Wait until a condition becomes true */
 #define MASSERT(cond)                   \
 do {                                    \
-    if (!(cond)) {                      \
-        PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
-        panic("Assert failed: Panic!"); \
-    }                                   \
-} while(0)
+	if (!(cond)) {                      \
+	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __func__, __LINE__); \
+	    panic("Assert failed: Panic!"); \
+	}                                   \
+} while (0)
 
 /** Log entry point for debugging */
 #define	ENTER()			PRINTM(MENTRY, "Enter: %s\n", \
-                                    __FUNCTION__)
+									__func__)
 /** Log exit point for debugging */
 #define	LEAVE()			PRINTM(MENTRY, "Leave: %s\n", \
-                                    __FUNCTION__)
+									__func__)
 
 #ifdef DEBUG_LEVEL1
-#define DBG_DUMP_BUF_LEN 	64
+#define DBG_DUMP_BUF_LEN	64
 #define MAX_DUMP_PER_LINE	16
 
 static inline void
@@ -1350,17 +1351,17 @@ hexdump(t_u32 level, char *prompt, t_u8 * buf, int len)
 }
 
 #define DBG_HEXDUMP_MERROR(x, y, z)  do {if ((drvdbg & MERROR) || \
-		LOG_CTRL(MERROR)) hexdump(MERROR, x, y, z);} while(0)
+		LOG_CTRL(MERROR)) hexdump(MERROR, x, y, z); } while (0)
 #define DBG_HEXDUMP_MCMD_D(x, y, z)  do {if ((drvdbg & MCMD_D) || \
-		LOG_CTRL(MCMD_D)) hexdump(MCMD_D, x, y, z);} while(0)
+		LOG_CTRL(MCMD_D)) hexdump(MCMD_D, x, y, z); } while (0)
 #define DBG_HEXDUMP_MDAT_D(x, y, z)  do {if ((drvdbg & MDAT_D) || \
-		LOG_CTRL(MDAT_D)) hexdump(MDAT_D, x, y, z);} while(0)
+		LOG_CTRL(MDAT_D)) hexdump(MDAT_D, x, y, z); } while (0)
 #define DBG_HEXDUMP_MIF_D(x, y, z)   do {if ((drvdbg & MIF_D)  || \
-		LOG_CTRL(MIF_D))  hexdump(MIF_D, x, y, z);} while(0)
+		LOG_CTRL(MIF_D))  hexdump(MIF_D, x, y, z); } while (0)
 #define DBG_HEXDUMP_MEVT_D(x, y, z)  do {if ((drvdbg & MEVT_D) || \
-		LOG_CTRL(MEVT_D)) hexdump(MEVT_D, x, y, z);} while(0)
+		LOG_CTRL(MEVT_D)) hexdump(MEVT_D, x, y, z); } while (0)
 #define DBG_HEXDUMP_MFW_D(x, y, z)   do {if ((drvdbg & MFW_D)  || \
-		LOG_CTRL(MFW_D))  hexdump(MFW_D, x, y, z);} while(0)
+		LOG_CTRL(MFW_D))  hexdump(MFW_D, x, y, z); } while (0)
 #define	DBG_HEXDUMP(level, x, y, z)    DBG_HEXDUMP_##level(x, y, z)
 
 #else
@@ -1370,7 +1371,7 @@ hexdump(t_u32 level, char *prompt, t_u8 * buf, int len)
 
 #ifdef DEBUG_LEVEL2
 #define HEXDUMP(x, y, z)            do {if ((drvdbg & MINFO) || \
-		LOG_CTRL(MINFO)) hexdump(MINFO, x, y, z);} while(0)
+		LOG_CTRL(MINFO)) hexdump(MINFO, x, y, z); } while (0)
 #else
 /** Do nothing since debugging is not turned on */
 #define HEXDUMP(x, y, z)            do {} while (0)
@@ -1484,11 +1485,6 @@ typedef struct _HostCmd_DS_802_11_CFG_DATA {
 	t_u8 data[1];
 } __ATTRIB_PACK__ HostCmd_DS_802_11_CFG_DATA;
 
-/** SD8797 card type */
-#define CARD_TYPE_SD8797    0x01
-/** SD8782 card type */
-#define CARD_TYPE_SD8782    0x02
-
 /** combo scan header */
 #define WEXT_CSCAN_HEADER		"CSCAN S\x01\x00\x00S\x00"
 /** combo scan header size */
@@ -1552,6 +1548,8 @@ typedef struct _HostCmd_DS_802_11_CFG_DATA {
 
 /**  Convert ASCII string to hex value */
 int woal_ascii2hex(t_u8 * d, char *s, t_u32 dlen);
+/** parse ie */
+const t_u8 *woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id);
 /**  Convert mac address from string to t_u8 buffer */
 void woal_mac2u8(t_u8 * mac_addr, char *buf);
 /**  Extract token from string */
@@ -1641,6 +1639,10 @@ int woal_enable_hs(moal_private * priv);
 #define HS_ACTIVE_TIMEOUT  (2 * HZ)
 #endif
 
+void woal_dump_drv_info(moal_handle * phandle);
+
+void woal_dump_firmware_info(moal_handle * phandle);
+
 /** get deep sleep */
 int woal_get_deep_sleep(moal_private * priv, t_u32 * data);
 /** set deep sleep */
@@ -1694,7 +1696,7 @@ mlan_status woal_set_get_tx_power(moal_private * priv, t_u32 action,
 				  mlan_power_cfg_t * pwr);
 /** Set/Get power IEEE management */
 mlan_status woal_set_get_power_mgmt(moal_private * priv, t_u32 action,
-				    int *disabled, int type);
+				    int *disabled, int type, t_u8 wait_option);
 /** Get data rate */
 mlan_status woal_set_get_data_rate(moal_private * priv, t_u8 action,
 				   mlan_rate_cfg_t * datarate);
@@ -1751,6 +1753,8 @@ int woal_custom_ie_ioctl(struct net_device *dev, struct ifreq *req);
 int woal_send_host_packet(struct net_device *dev, struct ifreq *req);
 /** Private command ID to pass mgmt frame */
 #define WOAL_MGMT_FRAME_TX_IOCTL          (SIOCDEVPRIVATE + 12)
+/** common ioctl for TDLS */
+int woal_tdls_config_ioctl(struct net_device *dev, struct ifreq *req);
 
 int woal_get_bss_type(struct net_device *dev, struct ifreq *req);
 #if defined(STA_WEXT) || defined(UAP_WEXT)
@@ -1776,6 +1780,9 @@ mlan_status woal_set_remain_channel_ioctl(moal_private * priv, t_u8 wait_option,
 					  mlan_ds_remain_chan * pchan);
 mlan_status woal_wifi_direct_mode_cfg(moal_private * priv, t_u16 action,
 				      t_u16 * mode);
+mlan_status woal_p2p_config(moal_private * priv, t_u32 action,
+			    mlan_ds_wifi_direct_config * p2p_config);
+void woal_remain_timer_func(void *context);
 #endif /* WIFI_DIRECT_SUPPORT */
 
 #ifdef CONFIG_PROC_FS
@@ -1845,12 +1852,13 @@ mlan_status woal_set_band(moal_private * priv, char *pband);
 mlan_status woal_add_rxfilter(moal_private * priv, char *rxfilter);
 mlan_status woal_remove_rxfilter(moal_private * priv, char *rxfilter);
 mlan_status woal_priv_qos_cfg(moal_private * priv, t_u32 action, char *qos_cfg);
-int woal_set_sleeppd(moal_private * priv, char *psleeppd);
+mlan_status woal_set_sleeppd(moal_private * priv, char *psleeppd);
 int woal_set_scan_cfg(moal_private * priv, char *buf, int length);
+
 /* EVENT: BCN_RSSI_LOW */
-#define EVENT_BCN_RSSI_LOW 		   0x0001
+#define EVENT_BCN_RSSI_LOW			0x0001
 /* EVENT: PRE_BCN_LOST */
-#define EVENT_PRE_BCN_LOST		   0x0002
+#define EVENT_PRE_BCN_LOST			0x0002
 mlan_status woal_set_rssi_low_threshold(moal_private * priv, char *rssi,
 					t_u8 wait_option);
 mlan_status woal_set_rssi_threshold(moal_private * priv, t_u32 event_id,
@@ -1879,4 +1887,7 @@ int wlan_get_scan_table_ret_entry(BSSDescriptor_t * pbss_desc, t_u8 ** ppbuffer,
 BOOLEAN woal_ssid_valid(mlan_802_11_ssid * pssid);
 int woal_is_connected(moal_private * priv, mlan_ssid_bssid * ssid_bssid);
 void wifi_enable_hostwake_irq(int flag);
+int woal_priv_hostcmd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen);
+void woal_tcp_ack_tx_indication(moal_private * priv, mlan_buffer * pmbuf);
+mlan_status woal_request_country_power_table(moal_private * priv, char *region);
 #endif /* _MOAL_MAIN_H */

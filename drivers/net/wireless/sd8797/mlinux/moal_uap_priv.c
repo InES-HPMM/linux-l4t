@@ -47,9 +47,9 @@ Change log:
 /**
  *  @brief ioctl function for wireless IOCTLs
  *
- *  @param dev		A pointer to net_device structure
- *  @param req	   	A pointer to ifreq structure
- *  @param cmd 		Command
+ *  @param dev      A pointer to net_device structure
+ *  @param req      A pointer to ifreq structure
+ *  @param cmd      Command
  *
  *  @return          0 --success, otherwise fail
  */
@@ -156,10 +156,10 @@ woal_uap_do_priv_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 /**
  *  @brief Handle get info resp
  *
- *  @param priv 	Pointer to moal_private structure
- *  @param info 	Pointer to mlan_ds_get_info structure
+ *  @param priv     Pointer to moal_private structure
+ *  @param info     Pointer to mlan_ds_get_info structure
  *
- *  @return    		N/A
+ *  @return         N/A
  */
 void
 woal_ioctl_get_uap_info_resp(moal_private * priv, mlan_ds_get_info * info)

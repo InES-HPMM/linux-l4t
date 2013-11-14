@@ -37,7 +37,7 @@ Change log:
 /** Rx buffer size for firmware download*/
 #define FW_DNLD_RX_BUF_SIZE       2048
 /** Max firmware retry */
-#define MAX_FW_RETRY        	3
+#define MAX_FW_RETRY              3
 
 /** Firmware has last block */
 #define FW_HAS_LAST_BLOCK		0x00000004
@@ -76,13 +76,17 @@ typedef struct _FWSyncHeader {
 } FWSyncHeader;
 
 #ifdef BIG_ENDIAN_SUPPORT
-/** Convert sequence number and command fields of fwheader to correct endian format */
+/** Convert sequence number and command fields
+ *  of fwheader to correct endian format
+ */
 #define endian_convert_syncfwheader(x)  { \
 		(x)->cmd = wlan_le32_to_cpu((x)->cmd); \
 		(x)->seq_num = wlan_le32_to_cpu((x)->seq_num); \
 	}
 #else
-/** Convert sequence number and command fields of fwheader to correct endian format */
+/** Convert sequence number and command fields
+ *  of fwheader to correct endian format
+ */
 #define endian_convert_syncfwheader(x)
 #endif /* BIG_ENDIAN_SUPPORT */
 

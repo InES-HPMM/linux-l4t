@@ -372,6 +372,9 @@ chardev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case MBTCHAR_IOCTL_QUERY_TYPE:
 		m_dev->query(m_dev, arg);
 		break;
+	case MBTCHAR_IOCTL_POWER_OFF:
+		m_dev->poweroff(m_dev);
+		break;
 	default:
 		break;
 	}

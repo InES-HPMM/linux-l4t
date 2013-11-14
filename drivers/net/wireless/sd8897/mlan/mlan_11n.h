@@ -80,6 +80,9 @@ int wlan_cmd_append_11n_tlv(IN mlan_private * pmpriv,
 /** wlan fill HT cap tlv */
 void wlan_fill_ht_cap_tlv(mlan_private * priv, MrvlIETypes_HTCap_t * pht_cap,
 			  t_u8 band);
+/** wlan fill HT cap IE */
+void wlan_fill_ht_cap_ie(mlan_private * priv, IEEEtypes_HTCap_t * pht_cap,
+			 t_u8 bands);
 #endif /* STA_SUPPORT */
 /** Miscellaneous configuration handler */
 mlan_status wlan_11n_cfg_ioctl(IN pmlan_adapter pmadapter,
@@ -123,6 +126,8 @@ mlan_status wlan_cmd_amsdu_aggr_ctrl(mlan_private * priv,
 
 t_u8 wlan_validate_chan_offset(IN mlan_private * pmpriv,
 			       IN t_u8 band, IN t_u32 chan, IN t_u8 chan_bw);
+/** get channel offset */
+t_u8 wlan_get_second_channel_offset(int chan);
 
 /** clean up txbastream_tbl */
 void wlan_11n_cleanup_txbastream_tbl(mlan_private * priv, t_u8 * ra);
@@ -138,9 +143,8 @@ is_station_11n_enabled(mlan_private * priv, t_u8 * mac)
 {
 	sta_node *sta_ptr = MNULL;
 	sta_ptr = wlan_get_station_entry(priv, mac);
-	if (sta_ptr) {
+	if (sta_ptr)
 		return (sta_ptr->is_11n_enabled) ? MTRUE : MFALSE;
-	}
 	return MFALSE;
 }
 
@@ -149,16 +153,15 @@ is_station_11n_enabled(mlan_private * priv, t_u8 * mac)
  *
  *  @param priv     A pointer to mlan_private
  *  @param mac      station mac address
- *  @return 	    max amsdu size statio supported
+ *  @return         max amsdu size statio supported
  */
 static INLINE t_u16
 get_station_max_amsdu_size(mlan_private * priv, t_u8 * mac)
 {
 	sta_node *sta_ptr = MNULL;
 	sta_ptr = wlan_get_station_entry(priv, mac);
-	if (sta_ptr) {
+	if (sta_ptr)
 		return sta_ptr->max_amsdu;
-	}
 	return 0;
 }
 
@@ -168,7 +171,7 @@ get_station_max_amsdu_size(mlan_private * priv, t_u8 * mac)
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 is_station_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
@@ -193,16 +196,15 @@ is_station_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
  *  @param priv     A pointer to mlan_private
  *  @param tid     tid index
  *  @param ra      station mac address
- *  @return 	   N/A
+ *  @return        N/A
  */
 static INLINE void
 disable_station_ampdu(mlan_private * priv, t_u8 tid, t_u8 * ra)
 {
 	sta_node *sta_ptr = MNULL;
 	sta_ptr = wlan_get_station_entry(priv, ra);
-	if (sta_ptr) {
+	if (sta_ptr)
 		sta_ptr->ampdu_sta[tid] = BA_STREAM_NOT_ALLOWED;
-	}
 	return;
 }
 
@@ -212,7 +214,7 @@ disable_station_ampdu(mlan_private * priv, t_u8 tid, t_u8 * ra)
  *  @param priv     A pointer to mlan_private
  *  @param tid	    TID
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 wlan_is_cur_bastream_high_prio(mlan_private * priv, int tid)
@@ -251,7 +253,7 @@ wlan_is_cur_bastream_high_prio(mlan_private * priv, int tid)
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 wlan_is_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
@@ -262,6 +264,8 @@ wlan_is_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 #endif /* UAP_SUPPORT */
 	if (priv->sec_info.wapi_enabled && !priv->sec_info.wapi_key_on)
 		return MFALSE;
+	if (ptr->is_tdls_link)
+		return is_station_ampdu_allowed(priv, ptr, tid);
 
 	return (priv->aggr_prio_tbl[tid].ampdu_ap != BA_STREAM_NOT_ALLOWED)
 		? MTRUE : MFALSE;
@@ -274,7 +278,7 @@ wlan_is_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
  *  @param ptr      A pointer to RA list table
  *  @param tid	    TID value for ptr
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static int INLINE
 wlan_is_amsdu_in_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
@@ -297,7 +301,7 @@ wlan_is_amsdu_in_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 wlan_is_amsdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
@@ -325,7 +329,7 @@ wlan_is_amsdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
  *
  *  @param priv     A pointer to mlan_private
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 wlan_is_bastream_avail(mlan_private * priv)
@@ -357,7 +361,7 @@ wlan_is_bastream_avail(mlan_private * priv)
  *  @param ptid     A pointer to TID of stream to delete, if return MTRUE
  *  @param ra       RA of stream to delete, if return MTRUE
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static INLINE t_u8
 wlan_find_stream_to_delete(mlan_private * priv,
@@ -405,7 +409,7 @@ wlan_find_stream_to_delete(mlan_private * priv,
  *  @param ptr      A pointer to RA list table
  *  @param tid	    TID value for ptr
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static int INLINE
 wlan_is_bastream_setup(mlan_private * priv, raListTbl * ptr, int tid)
@@ -430,7 +434,7 @@ wlan_is_bastream_setup(mlan_private * priv, raListTbl * ptr, int tid)
  *  @param priv     A pointer to mlan_private
  *  @param ra       Address of the receiver STA
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static int INLINE
 wlan_is_11n_enabled(mlan_private * priv, t_u8 * ra)

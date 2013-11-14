@@ -215,6 +215,56 @@ done:
 }
 
 /**
+ *  @brief Add packet to TDLS pending TX queue
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param pmbuf      Pointer to the mlan_buffer data struct
+ *
+ *  @return           N/A
+ */
+static t_void
+wlan_add_buf_tdls_txqueue(pmlan_private priv, pmlan_buffer pmbuf)
+{
+	mlan_adapter *pmadapter = priv->adapter;
+	ENTER();
+	util_enqueue_list_tail(pmadapter->pmoal_handle, &priv->tdls_pending_txq,
+			       (pmlan_linked_list) pmbuf,
+			       pmadapter->callbacks.moal_spin_lock,
+			       pmadapter->callbacks.moal_spin_unlock);
+	LEAVE();
+}
+
+/**
+ *  @brief Clean up the tdls pending TX queue
+ *
+ *  @param priv		A pointer to mlan_private
+ *
+ *  @return      N/A
+ */
+static t_void
+wlan_cleanup_tdls_txq(pmlan_private priv)
+{
+	pmlan_buffer pmbuf;
+	mlan_adapter *pmadapter = priv->adapter;
+	ENTER();
+
+	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
+					    priv->tdls_pending_txq.plock);
+	while ((pmbuf =
+		(pmlan_buffer) util_peek_list(pmadapter->pmoal_handle,
+					      &priv->tdls_pending_txq, MNULL,
+					      MNULL))) {
+		util_unlink_list(pmadapter->pmoal_handle,
+				 &priv->tdls_pending_txq,
+				 (pmlan_linked_list) pmbuf, MNULL, MNULL);
+		wlan_write_data_complete(pmadapter, pmbuf, MLAN_STATUS_FAILURE);
+	}
+	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+					      priv->tdls_pending_txq.plock);
+	LEAVE();
+}
+
+/**
  * @brief Map ACs to TID
  *
  * @param priv             Pointer to the mlan_private driver data struct
@@ -234,9 +284,8 @@ wlan_wmm_queue_priorities_tid(pmlan_private priv, t_u8 queue_priority[])
 		tos_to_tid[6 - (i * 2)] = ac_to_tid[queue_priority[i]][0];
 	}
 
-	for (i = 0; i < MAX_NUM_TID; i++) {
+	for (i = 0; i < MAX_NUM_TID; i++)
 		tos_to_tid_inv[tos_to_tid[i]] = (t_u8) i;
-	}
 
 	/* in case priorities have changed, force highest priority so next
 	   packet will check from top to re-establish the highest */
@@ -323,10 +372,10 @@ wlan_wmm_convert_tos_to_ac(pmlan_adapter pmadapter, t_u32 tos)
  *  @brief  Evaluate a given TID and downgrade it to a lower TID if the
  *          WMM Parameter IE received from the AP indicates that the AP
  *          is disabled (due to call admission control (ACM bit). Mapping
- * 			of TID to AC is taken care internally
+ * 	        of TID to AC is taken care internally
  *
  *  @param priv		Pointer to the mlan_private data struct
- *  @param tid  	tid to evaluate for downgrading
+ *  @param tid      tid to evaluate for downgrading
  *
  *  @return       Same tid as input if downgrading not required or
  *                the tid the traffic for the given tid should be downgraded to
@@ -358,10 +407,10 @@ wlan_wmm_downgrade_tid(pmlan_private priv, t_u32 tid)
 /**
  *  @brief Delete packets in RA node
  *
- *  @param priv			Pointer to the mlan_private driver data struct
- *  @param ra_list	    	Pointer to raListTbl
+ *  @param priv         Pointer to the mlan_private driver data struct
+ *  @param ra_list      Pointer to raListTbl
  *
- *  @return		N/A
+ *  @return             N/A
  */
 static INLINE void
 wlan_wmm_del_pkts_in_ralist_node(pmlan_private priv, raListTbl * ra_list)
@@ -431,6 +480,7 @@ wlan_wmm_cleanup_queues(pmlan_private priv)
 		wlan_wmm_del_pkts_in_ralist(priv,
 					    &priv->wmm.tid_tbl_ptr[i].ra_list);
 		priv->wmm.pkts_queued[i] = 0;
+		priv->wmm.pkts_paused[i] = 0;
 	}
 	util_scalar_write(priv->adapter->pmoal_handle,
 			  &priv->wmm.tx_pkts_queued, 0, MNULL, MNULL);
@@ -523,25 +573,25 @@ wlan_wmm_get_queue_raptr(pmlan_private priv, t_u8 tid, t_u8 * ra_addr)
 
 #ifdef STA_SUPPORT
 /**
- * 	@brief Sends wmmac host event
+ *  @brief Sends wmmac host event
  *
- *  @param priv		Pointer to the mlan_private driver data struct
- *  @param typeStr	Type of host event
- *  @param srcAddr	Pointer to the source Address
- *  @param tid    	TID
- *  @param up		User priority
- *  @param status	Status code or Reason code
+ *  @param priv      Pointer to the mlan_private driver data struct
+ *  @param type_str  Type of host event
+ *  @param src_addr  Pointer to the source Address
+ *  @param tid       TID
+ *  @param up        User priority
+ *  @param status    Status code or Reason code
  *
- *  @return		N/A
+ *  @return     N/A
  */
 static void
 wlan_send_wmmac_host_event(pmlan_private priv,
-			   char *typeStr,
-			   t_u8 * srcAddr, t_u8 tid, t_u8 up, t_u8 status)
+			   char *type_str,
+			   t_u8 * src_addr, t_u8 tid, t_u8 up, t_u8 status)
 {
 	t_u8 event_buf[100];
 	mlan_event *pevent;
-	t_u8 *pOutBuf;
+	t_u8 *pout_buf;
 
 	ENTER();
 
@@ -549,38 +599,39 @@ wlan_send_wmmac_host_event(pmlan_private priv,
 	   TSPEC:ADDTS_RSP:[<status code>]:TID=X:UP=Y ** -
 	   TSPEC:DELTS_RX:[<reason code>]:TID=X:UP=Y */
 	pevent = (mlan_event *) event_buf;
-	pOutBuf = pevent->event_buf;
+	pout_buf = pevent->event_buf;
 
-	memcpy(priv->adapter, pOutBuf, (t_u8 *) "TSPEC:", 6);
-	pOutBuf += 6;
+	memcpy(priv->adapter, pout_buf, (t_u8 *) "TSPEC:", 6);
+	pout_buf += 6;
 
-	memcpy(priv->adapter, pOutBuf, (t_u8 *) typeStr, wlan_strlen(typeStr));
-	pOutBuf += wlan_strlen(typeStr);
+	memcpy(priv->adapter, pout_buf, (t_u8 *) type_str,
+	       wlan_strlen(type_str));
+	pout_buf += wlan_strlen(type_str);
 
-	*pOutBuf++ = ':';
-	*pOutBuf++ = '[';
+	*pout_buf++ = ':';
+	*pout_buf++ = '[';
 
 	if (status >= 100) {
-		*pOutBuf++ = (status / 100) + '0';
+		*pout_buf++ = (status / 100) + '0';
 		status = (status % 100);
 	}
 
 	if (status >= 10) {
-		*pOutBuf++ = (status / 10) + '0';
+		*pout_buf++ = (status / 10) + '0';
 		status = (status % 10);
 	}
 
-	*pOutBuf++ = status + '0';
+	*pout_buf++ = status + '0';
 
-	memcpy(priv->adapter, pOutBuf, (t_u8 *) "]:TID", 5);
-	pOutBuf += 5;
-	*pOutBuf++ = tid + '0';
+	memcpy(priv->adapter, pout_buf, (t_u8 *) "]:TID", 5);
+	pout_buf += 5;
+	*pout_buf++ = tid + '0';
 
-	memcpy(priv->adapter, pOutBuf, (t_u8 *) ":UP", 3);
-	pOutBuf += 3;
-	*pOutBuf++ = up + '0';
+	memcpy(priv->adapter, pout_buf, (t_u8 *) ":UP", 3);
+	pout_buf += 3;
+	*pout_buf++ = up + '0';
 
-	*pOutBuf = '\0';
+	*pout_buf = '\0';
 
 	pevent->bss_index = priv->bss_index;
 	pevent->event_id = MLAN_EVENT_ID_DRV_REPORT_STRING;
@@ -690,7 +741,11 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 						next_tid =
 							tos_to_tid[next_prio];
 						if (priv_tmp->wmm.
-						    pkts_queued[next_tid])
+						    pkts_queued[next_tid] &&
+						    (priv_tmp->wmm.
+						     pkts_queued[next_tid] >
+						     priv_tmp->wmm.
+						     pkts_paused[next_tid]))
 							util_scalar_write
 								(pmadapter->
 								 pmoal_handle,
@@ -728,12 +783,24 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 				} while (ptr != head);
 			}
 
-			/* No packet at any TID for this priv.  Mark as such to
-			   skip checking TIDs for this priv (until pkt is
-			   added). */
-			util_scalar_write(pmadapter->pmoal_handle,
-					  &priv_tmp->wmm.highest_queued_prio,
-					  NO_PKT_PRIO_TID, MNULL, MNULL);
+			/* If priv still has packets queued, reset to
+			   HIGH_PRIO_TID */
+			if (util_scalar_read(pmadapter->pmoal_handle,
+					     &priv_tmp->wmm.tx_pkts_queued,
+					     MNULL, MNULL))
+				util_scalar_write(pmadapter->pmoal_handle,
+						  &priv_tmp->wmm.
+						  highest_queued_prio,
+						  HIGH_PRIO_TID, MNULL, MNULL);
+			else
+				/* No packet at any TID for this priv.  Mark as
+				   such to skip * checking TIDs for this priv
+				   (until pkt is added). */
+				util_scalar_write(pmadapter->pmoal_handle,
+						  &priv_tmp->wmm.
+						  highest_queued_prio,
+						  NO_PKT_PRIO_TID, MNULL,
+						  MNULL);
 
 			pmadapter->callbacks.moal_spin_unlock(pmadapter->
 							      pmoal_handle,
@@ -756,14 +823,14 @@ next_intf:
 /**
  *  @brief This function gets the number of packets in the Tx queue
  *
- *  @param priv         A pointer to mlan_private
- *  @param ptr          A pointer to RA list table
- *  @param maxBufSize   Maximum buffer size
+ *  @param priv           A pointer to mlan_private
+ *  @param ptr            A pointer to RA list table
+ *  @param max_buf_size   Maximum buffer size
  *
  *  @return             Packet count
  */
 static int
-wlan_num_pkts_in_txq(mlan_private * priv, raListTbl * ptr, int maxBufSize)
+wlan_num_pkts_in_txq(mlan_private * priv, raListTbl * ptr, int max_buf_size)
 {
 	int count = 0, total_size = 0;
 	pmlan_buffer pmbuf;
@@ -774,7 +841,7 @@ wlan_num_pkts_in_txq(mlan_private * priv, raListTbl * ptr, int maxBufSize)
 	     pmbuf != (pmlan_buffer) (&ptr->buf_head); pmbuf = pmbuf->pnext) {
 
 		total_size += pmbuf->data_len;
-		if (total_size < maxBufSize)
+		if (total_size < max_buf_size)
 			++count;
 		else
 			break;
@@ -894,7 +961,7 @@ wlan_send_single_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static int INLINE
 wlan_is_ptr_processed(mlan_private * priv, raListTbl * ptr)
@@ -1026,7 +1093,7 @@ wlan_send_processed_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
  *
  *  @param pmadapter  A pointer to mlan_adapter
  *
- *  @return 	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static int
 wlan_dequeue_tx_packet(pmlan_adapter pmadapter)
@@ -1149,6 +1216,11 @@ wlan_update_ralist_tx_pause(pmlan_private priv, t_u8 * mac, t_u8 tx_pause)
 		if (ra_list) {
 			pkt_cnt += ra_list->total_pkts;
 			ra_list->tx_pause = tx_pause;
+			if (tx_pause)
+				priv->wmm.pkts_paused[i] += ra_list->total_pkts;
+			else
+				priv->wmm.pkts_paused[i] -= ra_list->total_pkts;
+
 		}
 	}
 	if (pkt_cnt) {
@@ -1172,6 +1244,208 @@ wlan_update_ralist_tx_pause(pmlan_private priv, t_u8 * mac, t_u8 tx_pause)
 }
 
 #ifdef STA_SUPPORT
+/**
+ *  @brief update tx_pause flag in none tdls ra_list
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param mac        peer mac address
+ *  @param tx_pause   tx_pause flag (0/1)
+ *
+ *  @return           N/A
+ */
+t_void
+wlan_update_non_tdls_ralist(mlan_private * priv, t_u8 * mac, t_u8 tx_pause)
+{
+	raListTbl *ra_list;
+	int i;
+	pmlan_adapter pmadapter = priv->adapter;
+	t_u32 pkt_cnt = 0;
+	t_u32 tx_pkts_queued = 0;
+	ENTER();
+
+	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
+					    priv->wmm.ra_list_spinlock);
+	for (i = 0; i < MAX_NUM_TID; ++i) {
+		ra_list =
+			(raListTbl *) util_peek_list(priv->adapter->
+						     pmoal_handle,
+						     &priv->wmm.tid_tbl_ptr[i].
+						     ra_list, MNULL, MNULL);
+		while (ra_list &&
+		       (ra_list !=
+			(raListTbl *) & priv->wmm.tid_tbl_ptr[i].ra_list)) {
+			if (memcmp
+			    (priv->adapter, ra_list->ra, mac,
+			     MLAN_MAC_ADDR_LENGTH)) {
+				pkt_cnt += ra_list->total_pkts;
+				ra_list->tx_pause = tx_pause;
+				if (tx_pause)
+					priv->wmm.pkts_paused[i] +=
+						ra_list->total_pkts;
+				else
+					priv->wmm.pkts_paused[i] -=
+						ra_list->total_pkts;
+			}
+			ra_list = ra_list->pnext;
+		}
+	}
+	if (pkt_cnt) {
+		tx_pkts_queued = util_scalar_read(pmadapter->pmoal_handle,
+						  &priv->wmm.tx_pkts_queued,
+						  MNULL, MNULL);
+		if (tx_pause)
+			tx_pkts_queued -= pkt_cnt;
+		else
+			tx_pkts_queued += pkt_cnt;
+		util_scalar_write(priv->adapter->pmoal_handle,
+				  &priv->wmm.tx_pkts_queued, tx_pkts_queued,
+				  MNULL, MNULL);
+		util_scalar_write(priv->adapter->pmoal_handle,
+				  &priv->wmm.highest_queued_prio, HIGH_PRIO_TID,
+				  MNULL, MNULL);
+	}
+	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+					      priv->wmm.ra_list_spinlock);
+	LEAVE();
+	return;
+}
+
+/**
+ *  @brief find tdls buffer from ralist
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param ralist     A pointer to ralistTbl
+ *  @param mac        TDLS peer mac address
+ *
+ *  @return           pmlan_buffer or MNULL
+ */
+static pmlan_buffer
+wlan_find_tdls_packets(mlan_private * priv, raListTbl * ra_list, t_u8 * mac)
+{
+	pmlan_buffer pmbuf = MNULL;
+	mlan_adapter *pmadapter = priv->adapter;
+	t_u8 ra[MLAN_MAC_ADDR_LENGTH];
+	ENTER();
+	pmbuf = (pmlan_buffer) util_peek_list(priv->adapter->pmoal_handle,
+					      &ra_list->buf_head, MNULL, MNULL);
+	if (!pmbuf) {
+		LEAVE();
+		return MNULL;
+	}
+	while (pmbuf != (pmlan_buffer) & ra_list->buf_head) {
+		memcpy(pmadapter, ra, pmbuf->pbuf + pmbuf->data_offset,
+		       MLAN_MAC_ADDR_LENGTH);
+		if (!memcmp(priv->adapter, ra, mac, MLAN_MAC_ADDR_LENGTH)) {
+			LEAVE();
+			return pmbuf;
+		}
+		pmbuf = pmbuf->pnext;
+	}
+	LEAVE();
+	return MNULL;
+}
+
+/**
+ *  @brief find tdls buffer from tdls pending queue
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param mac        TDLS peer mac address
+ *
+ *  @return           pmlan_buffer or MNULL
+ */
+static pmlan_buffer
+wlan_find_packets_tdls_txq(mlan_private * priv, t_u8 * mac)
+{
+	pmlan_buffer pmbuf = MNULL;
+	mlan_adapter *pmadapter = priv->adapter;
+	t_u8 ra[MLAN_MAC_ADDR_LENGTH];
+	ENTER();
+	pmbuf = (pmlan_buffer) util_peek_list(priv->adapter->pmoal_handle,
+					      &priv->tdls_pending_txq,
+					      MNULL, MNULL);
+	if (!pmbuf) {
+		LEAVE();
+		return MNULL;
+	}
+	while (pmbuf != (pmlan_buffer) & priv->tdls_pending_txq) {
+		memcpy(pmadapter, ra, pmbuf->pbuf + pmbuf->data_offset,
+		       MLAN_MAC_ADDR_LENGTH);
+		if (!memcmp(priv->adapter, ra, mac, MLAN_MAC_ADDR_LENGTH)) {
+			LEAVE();
+			return pmbuf;
+		}
+		pmbuf = pmbuf->pnext;
+	}
+	LEAVE();
+	return MNULL;
+}
+
+/**
+ *  @brief Remove TDLS ralist and move packets to AP's ralist
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param mac        TDLS peer mac address
+ *
+ *  @return           N/A
+ */
+static t_void
+wlan_wmm_delete_tdls_ralist(pmlan_private priv, t_u8 * mac)
+{
+	raListTbl *ra_list;
+	raListTbl *ra_list_ap = MNULL;
+	int i;
+	pmlan_adapter pmadapter = priv->adapter;
+	pmlan_buffer pmbuf;
+	ENTER();
+
+	for (i = 0; i < MAX_NUM_TID; ++i) {
+		ra_list = wlan_wmm_get_ralist_node(priv, i, mac);
+		if (ra_list) {
+			PRINTM(MDATA, "delete TDLS ralist %p\n", ra_list);
+			ra_list_ap =
+				(raListTbl *) util_peek_list(pmadapter->
+							     pmoal_handle,
+							     &priv->wmm.
+							     tid_tbl_ptr[i].
+							     ra_list, MNULL,
+							     MNULL);
+			while ((pmbuf =
+				(pmlan_buffer) util_peek_list(pmadapter->
+							      pmoal_handle,
+							      &ra_list->
+							      buf_head, MNULL,
+							      MNULL))) {
+				util_unlink_list(pmadapter->pmoal_handle,
+						 &ra_list->buf_head,
+						 (pmlan_linked_list) pmbuf,
+						 MNULL, MNULL);
+				util_enqueue_list_tail(pmadapter->pmoal_handle,
+						       &ra_list_ap->buf_head,
+						       (pmlan_linked_list)
+						       pmbuf, MNULL, MNULL);
+				ra_list_ap->total_pkts++;
+				ra_list_ap->packet_count++;
+			}
+			util_free_list_head((t_void *) pmadapter->pmoal_handle,
+					    &ra_list->buf_head,
+					    pmadapter->callbacks.
+					    moal_free_lock);
+
+			util_unlink_list(pmadapter->pmoal_handle,
+					 &priv->wmm.tid_tbl_ptr[i].ra_list,
+					 (pmlan_linked_list) ra_list, MNULL,
+					 MNULL);
+			pmadapter->callbacks.moal_mfree(pmadapter->pmoal_handle,
+							(t_u8 *) ra_list);
+			if (priv->wmm.tid_tbl_ptr[i].ra_list_curr == ra_list)
+				priv->wmm.tid_tbl_ptr[i].ra_list_curr =
+					ra_list_ap;
+		}
+	}
+
+	LEAVE();
+
+}
 #endif /* STA_SUPPORT */
 /********************************************************
 			Global Functions
@@ -1230,6 +1504,9 @@ wlan_clean_txrx(pmlan_private priv)
 
 	wlan_cleanup_bypass_txq(priv);
 
+	if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
+		wlan_cleanup_tdls_txq(priv);
+	}
 	wlan_11n_cleanup_reorder_tbl(priv);
 
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
@@ -1240,11 +1517,12 @@ wlan_clean_txrx(pmlan_private priv)
 #ifdef SDIO_MULTI_PORT_TX_AGGR
     /**
     * Before reset the TX aggregation buffer, check for any pre-copied data.
-    * &  If any data was pre-copied, restore the current write port and write bitmap,
-    * to the values that they would have if those data buffers were not copied.
-    * This is required as FW expects the driver to use the write bitmap sequentially.
-    * If write bitmap is not re-stored, few bits get skipped for next write and
-    * fw doesn't issue tx-done interrupt in this condition.
+    * &  If any data was pre-copied, restore the current write port and write
+    * bitmap, to the values that they would have if those data buffers were
+    * not copied. This is required as FW expects the driver to use the write
+    * bitmap sequentially. If write bitmap is not re-stored, few bits get
+    * skipped for next write and fw doesn't issue tx-done interrupt in this
+    * condition.
     */
 
 	while (pmadapter->mpa_tx.pkt_cnt) {
@@ -1263,9 +1541,8 @@ wlan_clean_txrx(pmlan_private priv)
 #endif
 	wlan_wmm_delete_all_ralist(priv);
 	memcpy(pmadapter, tos_to_tid, ac_to_tid, sizeof(tos_to_tid));
-	for (i = 0; i < MAX_NUM_TID; i++) {
+	for (i = 0; i < MAX_NUM_TID; i++)
 		tos_to_tid_inv[tos_to_tid[i]] = (t_u8) i;
-	}
 #if defined(UAP_SUPPORT)
 	priv->num_drop_pkts = 0;
 #endif
@@ -1436,6 +1713,7 @@ wlan_ralist_add(mlan_private * priv, t_u8 * ra)
 	int i;
 	raListTbl *ra_list;
 	pmlan_adapter pmadapter = priv->adapter;
+	tdlsStatus_e status;
 
 	ENTER();
 
@@ -1452,9 +1730,22 @@ wlan_ralist_add(mlan_private * priv, t_u8 * ra)
 					get_station_max_amsdu_size(priv, ra);
 			ra_list->tx_pause = wlan_is_tx_pause(priv, ra);
 		} else {
-			ra_list->is_11n_enabled = IS_11N_ENABLED(priv);
-			if (ra_list->is_11n_enabled)
-				ra_list->max_amsdu = priv->max_amsdu;
+			ra_list->is_tdls_link = MFALSE;
+			ra_list->tx_pause = MFALSE;
+			status = wlan_get_tdls_link_status(priv, ra);
+			if (MTRUE == wlan_is_tdls_link_setup(status)) {
+				ra_list->is_11n_enabled =
+					is_station_11n_enabled(priv, ra);
+				if (ra_list->is_11n_enabled)
+					ra_list->max_amsdu =
+						get_station_max_amsdu_size(priv,
+									   ra);
+				ra_list->is_tdls_link = MTRUE;
+			} else {
+				ra_list->is_11n_enabled = IS_11N_ENABLED(priv);
+				if (ra_list->is_11n_enabled)
+					ra_list->max_amsdu = priv->max_amsdu;
+			}
 		}
 
 		PRINTM_NETINTF(MDATA, priv);
@@ -1504,6 +1795,7 @@ wlan_wmm_init(pmlan_adapter pmadapter)
 					priv->aggr_prio_tbl[i].ampdu_user =
 					tos_to_tid_inv[i];
 				priv->wmm.pkts_queued[i] = 0;
+				priv->wmm.pkts_paused[i] = 0;
 				priv->wmm.tid_tbl_ptr[i].ra_list_curr = MNULL;
 			}
 			priv->wmm.drv_pkt_delay_max = WMM_DRV_DELAY_MAX;
@@ -1760,6 +2052,7 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 	t_u32 tid;
 	raListTbl *ra_list;
 	t_u8 ra[MLAN_MAC_ADDR_LENGTH], tid_down;
+	tdlsStatus_e status;
 #if defined(UAP_SUPPORT)
 	sta_node *sta_ptr = MNULL;
 #endif
@@ -1783,10 +2076,28 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 	   association we just don't have to call get_queue_raptr, we will have
 	   only 1 raptr for a tid in case of infra */
 	if (!queuing_ra_based(priv)) {
-		ra_list = (raListTbl *) util_peek_list(pmadapter->pmoal_handle,
-						       &priv->wmm.
-						       tid_tbl_ptr[tid_down].
-						       ra_list, MNULL, MNULL);
+		memcpy(pmadapter, ra, pmbuf->pbuf + pmbuf->data_offset,
+		       MLAN_MAC_ADDR_LENGTH);
+		status = wlan_get_tdls_link_status(priv, ra);
+		if (MTRUE == wlan_is_tdls_link_setup(status)) {
+			ra_list = wlan_wmm_get_queue_raptr(priv, tid_down, ra);
+			pmbuf->flags |= MLAN_BUF_FLAG_TDLS;
+		} else if (status == TDLS_SETUP_INPROGRESS) {
+			wlan_add_buf_tdls_txqueue(priv, pmbuf);
+			pmadapter->callbacks.moal_spin_unlock(pmadapter->
+							      pmoal_handle,
+							      priv->wmm.
+							      ra_list_spinlock);
+			LEAVE();
+			return;
+		} else
+			ra_list =
+				(raListTbl *) util_peek_list(pmadapter->
+							     pmoal_handle,
+							     &priv->wmm.
+							     tid_tbl_ptr
+							     [tid_down].ra_list,
+							     MNULL, MNULL);
 	} else {
 		memcpy(pmadapter, ra, pmbuf->pbuf + pmbuf->data_offset,
 		       MLAN_MAC_ADDR_LENGTH);
@@ -1832,7 +2143,9 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 	ra_list->packet_count++;
 
 	priv->wmm.pkts_queued[tid_down]++;
-	if (!ra_list->tx_pause) {
+	if (ra_list->tx_pause) {
+		priv->wmm.pkts_paused[tid_down]++;
+	} else {
 		util_scalar_increment(pmadapter->pmoal_handle,
 				      &priv->wmm.tx_pkts_queued, MNULL, MNULL);
 		/* if highest_queued_prio < prio(tid_down), set it to
@@ -1881,47 +2194,48 @@ wlan_ret_wmm_get_status(pmlan_private priv, t_u8 * ptlv, int resp_len)
 {
 	t_u8 *pcurrent = ptlv;
 	t_u32 tlv_len;
-	t_u8 sendWmmEvent;
-	MrvlIEtypes_Data_t *pTlvHdr;
-	MrvlIEtypes_WmmQueueStatus_t *pTlvWmmQStatus;
-	IEEEtypes_WmmParameter_t *pWmmParamIe = MNULL;
+	t_u8 send_wmm_event;
+	MrvlIEtypes_Data_t *ptlv_hdr;
+	MrvlIEtypes_WmmQueueStatus_t *ptlv_wmm_q_status;
+	IEEEtypes_WmmParameter_t *pwmm_param_ie = MNULL;
 	WmmAcStatus_t *pac_status;
 
-	MrvlIETypes_ActionFrame_t *pTlvAction;
-	IEEEtypes_Action_WMM_AddTsRsp_t *pAddTsRsp;
-	IEEEtypes_Action_WMM_DelTs_t *pDelTs;
+	MrvlIETypes_ActionFrame_t *ptlv_action;
+	IEEEtypes_Action_WMM_AddTsRsp_t *padd_ts_rsp;
+	IEEEtypes_Action_WMM_DelTs_t *pdel_ts;
 
 	ENTER();
 
-	sendWmmEvent = MFALSE;
+	send_wmm_event = MFALSE;
 
 	PRINTM(MINFO, "WMM: WMM_GET_STATUS cmdresp received: %d\n", resp_len);
 	HEXDUMP("CMD_RESP: WMM_GET_STATUS", pcurrent, resp_len);
 
-	while (resp_len >= sizeof(pTlvHdr->header)) {
-		pTlvHdr = (MrvlIEtypes_Data_t *) pcurrent;
-		tlv_len = wlan_le16_to_cpu(pTlvHdr->header.len);
+	while (resp_len >= sizeof(ptlv_hdr->header)) {
+		ptlv_hdr = (MrvlIEtypes_Data_t *) pcurrent;
+		tlv_len = wlan_le16_to_cpu(ptlv_hdr->header.len);
 
-		switch (wlan_le16_to_cpu(pTlvHdr->header.type)) {
+		switch (wlan_le16_to_cpu(ptlv_hdr->header.type)) {
 		case TLV_TYPE_WMMQSTATUS:
-			pTlvWmmQStatus =
-				(MrvlIEtypes_WmmQueueStatus_t *) pTlvHdr;
+			ptlv_wmm_q_status =
+				(MrvlIEtypes_WmmQueueStatus_t *) ptlv_hdr;
 			PRINTM(MEVENT, "WMM_STATUS: QSTATUS TLV: %d\n",
-			       pTlvWmmQStatus->queue_index);
+			       ptlv_wmm_q_status->queue_index);
 
 			PRINTM(MINFO,
 			       "CMD_RESP: WMM_GET_STATUS: QSTATUS TLV: %d, %d, %d\n",
-			       pTlvWmmQStatus->queue_index,
-			       pTlvWmmQStatus->flow_required,
-			       pTlvWmmQStatus->disabled);
+			       ptlv_wmm_q_status->queue_index,
+			       ptlv_wmm_q_status->flow_required,
+			       ptlv_wmm_q_status->disabled);
 
 			pac_status =
-				&priv->wmm.ac_status[pTlvWmmQStatus->
+				&priv->wmm.ac_status[ptlv_wmm_q_status->
 						     queue_index];
-			pac_status->disabled = pTlvWmmQStatus->disabled;
+			pac_status->disabled = ptlv_wmm_q_status->disabled;
 			pac_status->flow_required =
-				pTlvWmmQStatus->flow_required;
-			pac_status->flow_created = pTlvWmmQStatus->flow_created;
+				ptlv_wmm_q_status->flow_required;
+			pac_status->flow_created =
+				ptlv_wmm_q_status->flow_created;
 			break;
 
 		case WMM_IE:
@@ -1932,72 +2246,74 @@ wlan_ret_wmm_get_status(pmlan_private priv, t_u8 * ptlv, int resp_len)
 
 			PRINTM(MEVENT, "WMM STATUS: WMM IE\n");
 
-			HEXDUMP("WMM: WMM TLV:", (t_u8 *) pTlvHdr, tlv_len + 4);
+			HEXDUMP("WMM: WMM TLV:", (t_u8 *) ptlv_hdr,
+				tlv_len + 4);
 
-			pWmmParamIe =
+			pwmm_param_ie =
 				(IEEEtypes_WmmParameter_t *) (pcurrent + 2);
-			pWmmParamIe->vend_hdr.len = (t_u8) tlv_len;
-			pWmmParamIe->vend_hdr.element_id = WMM_IE;
+			pwmm_param_ie->vend_hdr.len = (t_u8) tlv_len;
+			pwmm_param_ie->vend_hdr.element_id = WMM_IE;
 
 			PRINTM(MINFO,
 			       "CMD_RESP: WMM_GET_STATUS: WMM Parameter Set: %d\n",
-			       pWmmParamIe->qos_info.para_set_count);
+			       pwmm_param_ie->qos_info.para_set_count);
 
 			memcpy(priv->adapter,
 			       (t_u8 *) & priv->curr_bss_params.bss_descriptor.
-			       wmm_ie, pWmmParamIe,
+			       wmm_ie, pwmm_param_ie,
 			       MIN(sizeof(IEEEtypes_WmmParameter_t),
-				   (pWmmParamIe->vend_hdr.len + 2)));
-			sendWmmEvent = MTRUE;
+				   (pwmm_param_ie->vend_hdr.len + 2)));
+			send_wmm_event = MTRUE;
 			break;
 
 		case TLV_TYPE_IEEE_ACTION_FRAME:
 			PRINTM(MEVENT, "WMM_STATUS: IEEE Action Frame\n");
-			pTlvAction = (MrvlIETypes_ActionFrame_t *) pcurrent;
+			ptlv_action = (MrvlIETypes_ActionFrame_t *) pcurrent;
 
-			if (pTlvAction->actionFrame.wmmAc.tspecAct.category
+			if (ptlv_action->actionFrame.wmmAc.tspecAct.category
 			    == IEEE_MGMT_ACTION_CATEGORY_WMM_TSPEC) {
 
-				switch (pTlvAction->actionFrame.wmmAc.tspecAct.
+				switch (ptlv_action->actionFrame.wmmAc.tspecAct.
 					action) {
 				case TSPEC_ACTION_CODE_ADDTS_RSP:
-					pAddTsRsp =
-						&pTlvAction->actionFrame.wmmAc.
+					padd_ts_rsp =
+						&ptlv_action->actionFrame.wmmAc.
 						addTsRsp;
 					wlan_send_wmmac_host_event(priv,
 								   "ADDTS_RSP",
-								   pTlvAction->
+								   ptlv_action->
 								   srcAddr,
-								   pAddTsRsp->
+								   padd_ts_rsp->
 								   tspecIE.
 								   TspecBody.
 								   TSInfo.TID,
-								   pAddTsRsp->
+								   padd_ts_rsp->
 								   tspecIE.
 								   TspecBody.
 								   TSInfo.
 								   UserPri,
-								   pAddTsRsp->
+								   padd_ts_rsp->
 								   statusCode);
 					break;
 
 				case TSPEC_ACTION_CODE_DELTS:
-					pDelTs = &pTlvAction->actionFrame.wmmAc.
+					pdel_ts =
+						&ptlv_action->actionFrame.wmmAc.
 						delTs;
 					wlan_send_wmmac_host_event(priv,
 								   "DELTS_RX",
-								   pTlvAction->
+								   ptlv_action->
 								   srcAddr,
-								   pDelTs->
+								   pdel_ts->
 								   tspecIE.
 								   TspecBody.
 								   TSInfo.TID,
-								   pDelTs->
+								   pdel_ts->
 								   tspecIE.
 								   TspecBody.
 								   TSInfo.
 								   UserPri,
-								   pDelTs->
+								   pdel_ts->
 								   reasonCode);
 					break;
 
@@ -2012,14 +2328,14 @@ wlan_ret_wmm_get_status(pmlan_private priv, t_u8 * ptlv, int resp_len)
 			break;
 		}
 
-		pcurrent += (tlv_len + sizeof(pTlvHdr->header));
-		resp_len -= (tlv_len + sizeof(pTlvHdr->header));
+		pcurrent += (tlv_len + sizeof(ptlv_hdr->header));
+		resp_len -= (tlv_len + sizeof(ptlv_hdr->header));
 	}
 
-	wlan_wmm_setup_queue_priorities(priv, pWmmParamIe);
+	wlan_wmm_setup_queue_priorities(priv, pwmm_param_ie);
 	wlan_wmm_setup_ac_downgrade(priv);
 
-	if (sendWmmEvent) {
+	if (send_wmm_event) {
 		wlan_recv_event(priv, MLAN_EVENT_ID_FW_WMM_CONFIG_CHANGE,
 				MNULL);
 	}
@@ -2035,19 +2351,19 @@ wlan_ret_wmm_get_status(pmlan_private priv, t_u8 * ptlv, int resp_len)
  *    Information IE to the association request command buffer in the form
  *    of a Marvell extended IEEE IE.
  *
- *  @param priv        Pointer to the mlan_private driver data struct
- *  @param ppAssocBuf  Output parameter: Pointer to the TLV output buffer,
- *                     modified on return to point after the appended WMM TLV
- *  @param pWmmIE      Pointer to the WMM IE for the BSS we are joining
- *  @param pHTCap      Pointer to the HT IE for the BSS we are joining
+ *  @param priv         Pointer to the mlan_private driver data struct
+ *  @param ppassoc_buf  Output parameter: Pointer to the TLV output buffer,
+ *                      modified on return to point after the appended WMM TLV
+ *  @param pwmm_ie      Pointer to the WMM IE for the BSS we are joining
+ *  @param pht_cap      Pointer to the HT IE for the BSS we are joining
  *
  *  @return Length of data appended to the association tlv buffer
  */
 t_u32
 wlan_wmm_process_association_req(pmlan_private priv,
-				 t_u8 ** ppAssocBuf,
-				 IEEEtypes_WmmParameter_t * pWmmIE,
-				 IEEEtypes_HTCap_t * pHTCap)
+				 t_u8 ** ppassoc_buf,
+				 IEEEtypes_WmmParameter_t * pwmm_ie,
+				 IEEEtypes_HTCap_t * pht_cap)
 {
 	MrvlIEtypes_WmmParamSet_t *pwmm_tlv;
 	t_u32 ret_len = 0;
@@ -2055,36 +2371,36 @@ wlan_wmm_process_association_req(pmlan_private priv,
 	ENTER();
 
 	/* Null checks */
-	if (!ppAssocBuf) {
+	if (!ppassoc_buf) {
 		LEAVE();
 		return 0;
 	}
-	if (!(*ppAssocBuf)) {
+	if (!(*ppassoc_buf)) {
 		LEAVE();
 		return 0;
 	}
 
-	if (!pWmmIE) {
+	if (!pwmm_ie) {
 		LEAVE();
 		return 0;
 	}
 
 	PRINTM(MINFO, "WMM: process assoc req: bss->wmmIe=0x%x\n",
-	       pWmmIE->vend_hdr.element_id);
+	       pwmm_ie->vend_hdr.element_id);
 
 	if ((priv->wmm_required
-	     || (pHTCap && (pHTCap->ieee_hdr.element_id == HT_CAPABILITY)
+	     || (pht_cap && (pht_cap->ieee_hdr.element_id == HT_CAPABILITY)
 		 && (priv->config_bands & BAND_GN
 		     || priv->config_bands & BAND_AN))
 	    )
-	    && pWmmIE->vend_hdr.element_id == WMM_IE) {
-		pwmm_tlv = (MrvlIEtypes_WmmParamSet_t *) * ppAssocBuf;
+	    && pwmm_ie->vend_hdr.element_id == WMM_IE) {
+		pwmm_tlv = (MrvlIEtypes_WmmParamSet_t *) * ppassoc_buf;
 		pwmm_tlv->header.type = (t_u16) wmm_info_ie[0];
 		pwmm_tlv->header.type = wlan_cpu_to_le16(pwmm_tlv->header.type);
 		pwmm_tlv->header.len = (t_u16) wmm_info_ie[1];
 		memcpy(priv->adapter, pwmm_tlv->wmm_ie, &wmm_info_ie[2],
 		       pwmm_tlv->header.len);
-		if (pWmmIE->qos_info.qos_uapsd)
+		if (pwmm_ie->qos_info.qos_uapsd)
 			memcpy(priv->adapter,
 			       (t_u8 *) (pwmm_tlv->wmm_ie +
 					 pwmm_tlv->header.len -
@@ -2095,7 +2411,7 @@ wlan_wmm_process_association_req(pmlan_private priv,
 		pwmm_tlv->header.len = wlan_cpu_to_le16(pwmm_tlv->header.len);
 
 		HEXDUMP("ASSOC_CMD: WMM IE", (t_u8 *) pwmm_tlv, ret_len);
-		*ppAssocBuf += ret_len;
+		*ppassoc_buf += ret_len;
 	}
 
 	LEAVE();
@@ -2243,7 +2559,9 @@ wlan_del_tx_pkts_in_ralist(pmlan_private priv,
 				priv->wmm.pkts_queued[tid]--;
 				priv->num_drop_pkts++;
 				ra_list->total_pkts--;
-				if (!ra_list->tx_pause)
+				if (ra_list->tx_pause)
+					priv->wmm.pkts_paused[tid]--;
+				else
 					util_scalar_decrement(pmadapter->
 							      pmoal_handle,
 							      &priv->wmm.
@@ -2313,7 +2631,10 @@ wlan_wmm_delete_peer_ralist(pmlan_private priv, t_u8 * mac)
 		ra_list = wlan_wmm_get_ralist_node(priv, i, mac);
 		if (ra_list) {
 			PRINTM(MINFO, "delete sta ralist %p\n", ra_list);
-			if (!ra_list->tx_pause)
+			priv->wmm.pkts_queued[i] -= ra_list->total_pkts;
+			if (ra_list->tx_pause)
+				priv->wmm.pkts_paused[i] -= ra_list->total_pkts;
+			else
 				pkt_cnt += ra_list->total_pkts;
 			wlan_wmm_del_pkts_in_ralist_node(priv, ra_list);
 
@@ -2348,6 +2669,132 @@ wlan_wmm_delete_peer_ralist(pmlan_private priv, t_u8 * mac)
 #endif
 
 #ifdef STA_SUPPORT
+/**
+ *  @brief Hold TDLS packets to tdls pending queue
+ *
+ *  @param priv		A pointer to mlan_private
+ *  @param mac      station mac address
+ *
+ *  @return      N/A
+ */
+t_void
+wlan_hold_tdls_packets(pmlan_private priv, t_u8 * mac)
+{
+	pmlan_buffer pmbuf;
+	mlan_adapter *pmadapter = priv->adapter;
+	raListTbl *ra_list = MNULL;
+	t_u8 i;
+
+	ENTER();
+	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
+					    priv->wmm.ra_list_spinlock);
+	PRINTM(MDATA, "wlan_hold_tdls_packets: " MACSTR "\n", MAC2STR(mac));
+	for (i = 0; i < MAX_NUM_TID; ++i) {
+		ra_list = (raListTbl *) util_peek_list(pmadapter->pmoal_handle,
+						       &priv->wmm.
+						       tid_tbl_ptr[i].ra_list,
+						       MNULL, MNULL);
+		if (ra_list) {
+			while ((pmbuf =
+				wlan_find_tdls_packets(priv, ra_list, mac))) {
+				util_unlink_list(pmadapter->pmoal_handle,
+						 &ra_list->buf_head,
+						 (pmlan_linked_list) pmbuf,
+						 MNULL, MNULL);
+				ra_list->total_pkts--;
+				priv->wmm.pkts_queued[i]--;
+				util_scalar_decrement(pmadapter->pmoal_handle,
+						      &priv->wmm.tx_pkts_queued,
+						      MNULL, MNULL);
+				ra_list->packet_count--;
+				wlan_add_buf_tdls_txqueue(priv, pmbuf);
+				PRINTM(MDATA, "hold tdls packet=%p\n", pmbuf);
+			}
+		}
+	}
+	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+					      priv->wmm.ra_list_spinlock);
+	LEAVE();
+}
+
+/**
+ *  @brief move TDLS packets back to ralist
+ *
+ *  @param priv		  A pointer to mlan_private
+ *  @param mac        TDLS peer mac address
+ *  @param status     tdlsStatus
+ *
+ *  @return           pmlan_buffer or MNULL
+ */
+t_void
+wlan_restore_tdls_packets(pmlan_private priv, t_u8 * mac, tdlsStatus_e status)
+{
+	pmlan_buffer pmbuf;
+	mlan_adapter *pmadapter = priv->adapter;
+	raListTbl *ra_list = MNULL;
+	t_u32 tid;
+	t_u32 tid_down;
+
+	ENTER();
+	PRINTM(MDATA, "wlan_restore_tdls_packets: " MACSTR " status=%d\n",
+	       MAC2STR(mac), status);
+
+	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
+					    priv->wmm.ra_list_spinlock);
+
+	while ((pmbuf = wlan_find_packets_tdls_txq(priv, mac))) {
+		util_unlink_list(pmadapter->pmoal_handle,
+				 &priv->tdls_pending_txq,
+				 (pmlan_linked_list) pmbuf, MNULL, MNULL);
+		tid = pmbuf->priority;
+		tid_down = wlan_wmm_downgrade_tid(priv, tid);
+		if (status == TDLS_SETUP_COMPLETE) {
+			ra_list = wlan_wmm_get_queue_raptr(priv, tid_down, mac);
+			pmbuf->flags |= MLAN_BUF_FLAG_TDLS;
+		} else {
+			ra_list =
+				(raListTbl *) util_peek_list(pmadapter->
+							     pmoal_handle,
+							     &priv->wmm.
+							     tid_tbl_ptr
+							     [tid_down].ra_list,
+							     MNULL, MNULL);
+			pmbuf->flags &= ~MLAN_BUF_FLAG_TDLS;
+		}
+		if (!ra_list) {
+			PRINTM_NETINTF(MWARN, priv);
+			PRINTM(MWARN,
+			       "Drop packet %p, ra_list=%p media_connected=%d\n",
+			       pmbuf, ra_list, priv->media_connected);
+			wlan_write_data_complete(pmadapter, pmbuf,
+						 MLAN_STATUS_FAILURE);
+			continue;
+		}
+		PRINTM_NETINTF(MDATA, priv);
+		PRINTM(MDATA,
+		       "ADD TDLS pkt %p (priority=%d) back to ra_list %p\n",
+		       pmbuf, pmbuf->priority, ra_list);
+		util_enqueue_list_tail(pmadapter->pmoal_handle,
+				       &ra_list->buf_head,
+				       (pmlan_linked_list) pmbuf, MNULL, MNULL);
+		ra_list->total_pkts++;
+		ra_list->packet_count++;
+		priv->wmm.pkts_queued[tid_down]++;
+		util_scalar_increment(pmadapter->pmoal_handle,
+				      &priv->wmm.tx_pkts_queued, MNULL, MNULL);
+		util_scalar_conditional_write(pmadapter->pmoal_handle,
+					      &priv->wmm.highest_queued_prio,
+					      MLAN_SCALAR_COND_LESS_THAN,
+					      tos_to_tid_inv[tid_down],
+					      tos_to_tid_inv[tid_down], MNULL,
+					      MNULL);
+	}
+	if (status != TDLS_SETUP_COMPLETE)
+		wlan_wmm_delete_tdls_ralist(priv, mac);
+	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
+					      priv->wmm.ra_list_spinlock);
+	LEAVE();
+}
 
 /**
  *  @brief This function prepares the command of ADDTS
@@ -2494,7 +2941,7 @@ wlan_ret_wmm_delts_req(IN pmlan_private pmpriv,
 		       OUT mlan_ioctl_req * pioctl_buf)
 {
 	mlan_ds_wmm_cfg *pwmm;
-	IEEEtypes_WMM_TSPEC_t *pTspecIE;
+	IEEEtypes_WMM_TSPEC_t *ptspec_ie;
 	const HostCmd_DS_WMM_DELTS_REQ *presp_delts = &resp->params.del_ts;
 
 	ENTER();
@@ -2507,13 +2954,13 @@ wlan_ret_wmm_delts_req(IN pmlan_private pmpriv,
 		       presp_delts->command_result);
 
 		if (presp_delts->command_result == 0) {
-			pTspecIE =
+			ptspec_ie =
 				(IEEEtypes_WMM_TSPEC_t *) presp_delts->
 				tspec_data;
 			wlan_send_wmmac_host_event(pmpriv, "DELTS_TX", MNULL,
-						   pTspecIE->TspecBody.TSInfo.
+						   ptspec_ie->TspecBody.TSInfo.
 						   TID,
-						   pTspecIE->TspecBody.TSInfo.
+						   ptspec_ie->TspecBody.TSInfo.
 						   UserPri,
 						   presp_delts->
 						   ieee_reason_code);
@@ -2726,6 +3173,7 @@ wlan_wmm_ioctl_qos(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 		wmm->param.qos_cfg = pmpriv->wmm_qosinfo;
 	else {
 		pmpriv->wmm_qosinfo = wmm->param.qos_cfg;
+		pmpriv->saved_wmm_qosinfo = wmm->param.qos_cfg;
 	}
 
 	pioctl_req->data_read_written = sizeof(t_u8) + MLAN_SUB_COMMAND_SIZE;

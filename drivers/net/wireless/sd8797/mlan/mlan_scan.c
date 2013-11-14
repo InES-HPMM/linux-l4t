@@ -5,20 +5,25 @@
  *  IOCTL handlers as well as command preparation and response routines
  *  for sending scan commands to the firmware.
  *
- *  Copyright (C) 2008-2012, Marvell International Ltd.
+ *  (C) Copyright 2008-2012 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /******************************************************
@@ -153,7 +158,7 @@ search_oui_in_ie(mlan_adapter * pmadapter, IEBody * ie_body, t_u8 * oui)
 		}
 	}
 
-	PRINTM(MINFO, "The OUI %x:%x:%x:%x is not found in PTK \n", oui[0],
+	PRINTM(MINFO, "The OUI %x:%x:%x:%x is not found in PTK\n", oui[0],
 	       oui[1], oui[2], oui[3]);
 	LEAVE();
 	return MLAN_OUI_NOT_PRESENT;
@@ -438,6 +443,9 @@ wlan_scan_create_channel_list(IN mlan_private * pmpriv,
 						scan_type =
 							MLAN_SCAN_TYPE_PASSIVE;
 					}
+				pscan_chan_list[chan_idx].radio_type =
+					HostCmd_SCAN_RADIO_TYPE_BG;
+				break;
 			default:
 				pscan_chan_list[chan_idx].radio_type =
 					HostCmd_SCAN_RADIO_TYPE_BG;
@@ -860,13 +868,11 @@ wlan_scan_channel_list(IN mlan_private * pmpriv,
 
 	LEAVE();
 
-	if (ptlv_temp) {
+	if (ptlv_temp)
 		pcb->moal_mfree(pmadapter->pmoal_handle, ptlv_temp);
-	}
 
-	if (ret) {
+	if (ret)
 		return MLAN_STATUS_FAILURE;
-	}
 
 	return MLAN_STATUS_SUCCESS;
 }
@@ -926,6 +932,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 	MrvlIEtypes_NumProbes_t *pnum_probes_tlv;
 	MrvlIEtypes_WildCardSsIdParamSet_t *pwildcard_ssid_tlv;
 	MrvlIEtypes_RatesParamSet_t *prates_tlv;
+	MrvlIEtypes_Bssid_List_t *pbssid_tlv;
 
 	const t_u8 zero_mac[MLAN_MAC_ADDR_LENGTH] = { 0, 0, 0, 0, 0, 0 };
 	t_u8 *ptlv_pos;
@@ -987,6 +994,18 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 		       puser_scan_in->specific_bssid,
 		       sizeof(pscan_cfg_out->specific_bssid));
 
+		if (pmadapter->ext_scan
+		    && memcmp(pmadapter, pscan_cfg_out->specific_bssid,
+			      &zero_mac, sizeof(zero_mac))) {
+			pbssid_tlv = (MrvlIEtypes_Bssid_List_t *) ptlv_pos;
+			pbssid_tlv->header.type = TLV_TYPE_BSSID;
+			pbssid_tlv->header.len = MLAN_MAC_ADDR_LENGTH;
+			memcpy(pmadapter, pbssid_tlv->bssid,
+			       puser_scan_in->specific_bssid,
+			       MLAN_MAC_ADDR_LENGTH);
+			ptlv_pos += sizeof(MrvlIEtypes_Bssid_List_t);
+		}
+
 		for (ssid_idx = 0;
 		     ((ssid_idx < NELEMENTS(puser_scan_in->ssid_list))
 		      && (*puser_scan_in->ssid_list[ssid_idx].ssid ||
@@ -1026,9 +1045,8 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 			       pwildcard_ssid_tlv->ssid,
 			       pwildcard_ssid_tlv->max_ssid_length);
 
-			if (ssid_len) {
+			if (ssid_len)
 				ssid_filter = MTRUE;
-			}
 		}
 
 		/*
@@ -1463,11 +1481,10 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
 		pbss_entry->privacy = Wlan802_11PrivFilterAcceptAll;
 	}
 
-	if (pcap_info->ibss == 1) {
+	if (pcap_info->ibss == 1)
 		pbss_entry->bss_mode = MLAN_BSS_MODE_IBSS;
-	} else {
+	else
 		pbss_entry->bss_mode = MLAN_BSS_MODE_INFRA;
-	}
 
 	if (pcap_info->spectrum_mgmt == 1) {
 		PRINTM(MINFO, "InterpretIE: 11h- Spectrum Management "
@@ -1774,6 +1791,8 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
 				(t_u8 *) pbss_entry->poverlap_bss_scan_param,
 				(*(pbss_entry->poverlap_bss_scan_param)).
 				ieee_hdr.len + sizeof(IEEEtypes_Header_t));
+			break;
+		default:
 			break;
 		}
 
@@ -3087,9 +3106,8 @@ wlan_scan_networks(IN mlan_private * pmpriv,
 		return MLAN_STATUS_FAILURE;
 	}
 
-	if (puser_scan_in) {
+	if (puser_scan_in)
 		keep_previous_scan = puser_scan_in->keep_previous_scan;
-	}
 
 	if (keep_previous_scan == MFALSE) {
 		memset(pmadapter, pmadapter->pscan_table, 0x00,
@@ -3247,11 +3265,10 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 	pcb = (pmlan_callbacks) & pmadapter->callbacks;
 
 	is_bgscan_resp = (resp->command == HostCmd_CMD_802_11_BG_SCAN_QUERY);
-	if (is_bgscan_resp) {
+	if (is_bgscan_resp)
 		pscan_rsp = &resp->params.bg_scan_query_resp.scan_resp;
-	} else {
+	else
 		pscan_rsp = &resp->params.scan_resp;
-	}
 
 	if (pscan_rsp->number_of_sets > MRVDRV_MAX_BSSID_LIST) {
 		PRINTM(MERROR,
@@ -3283,6 +3300,10 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 					 + sizeof(pscan_rsp->bss_descript_size)
 					 + sizeof(pscan_rsp->number_of_sets)
 					 + S_DS_GEN);
+	if (is_bgscan_resp)
+		tlv_buf_size -=
+			sizeof(resp->params.bg_scan_query_resp.
+			       report_condition);
 
 	ptlv = (MrvlIEtypes_Data_t *) (pscan_rsp->bss_desc_and_tlv_buffer +
 				       bytes_left);
@@ -3423,11 +3444,10 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 			if (bss_idx == num_in_table) {
 				/* Range check the bss_idx, keep it limited to
 				   the last entry */
-				if (bss_idx == MRVDRV_MAX_BSSID_LIST) {
+				if (bss_idx == MRVDRV_MAX_BSSID_LIST)
 					bss_idx--;
-				} else {
+				else
 					num_in_table++;
-				}
 			}
 
 			/*
@@ -3871,11 +3891,10 @@ wlan_parse_ext_scan_result(IN mlan_private * pmpriv,
 			if (bss_idx == num_in_table) {
 				/* Range check the bss_idx, keep it limited to
 				   the last entry */
-				if (bss_idx == MRVDRV_MAX_BSSID_LIST) {
+				if (bss_idx == MRVDRV_MAX_BSSID_LIST)
 					bss_idx--;
-				} else {
+				else
 					num_in_table++;
-				}
 			}
 
 			/*
@@ -4163,6 +4182,9 @@ wlan_bgscan_create_channel_list(IN mlan_private * pmpriv,
 					    (pmpriv, (t_u8) cfp->channel))
 						scan_type =
 							MLAN_SCAN_TYPE_PASSIVE;
+				tlv_chan_list->chan_scan_param[chan_idx].
+					radio_type = HostCmd_SCAN_RADIO_TYPE_BG;
+				break;
 			default:
 				tlv_chan_list->chan_scan_param[chan_idx].
 					radio_type = HostCmd_SCAN_RADIO_TYPE_BG;
@@ -4444,13 +4466,14 @@ wlan_cmd_bgscan_config(IN mlan_private * pmpriv,
 			sizeof(MrvlIEtypesHeader_t) +
 			sizeof(ChanScanParamSet_t) * chan_num;
 	}
+
 	tlv_start_later = (MrvlIEtypes_StartLater_t *) tlv;
 	tlv_start_later->header.type =
 		wlan_cpu_to_le16(TLV_TYPE_STARTBGSCANLATER);
 	tlv_start_later->header.len =
 		wlan_cpu_to_le16(sizeof(MrvlIEtypes_StartLater_t) -
 				 sizeof(MrvlIEtypesHeader_t));
-	tlv_start_later->value = 0;
+	tlv_start_later->value = wlan_cpu_to_le16(bg_scan_in->start_later);
 	tlv += sizeof(MrvlIEtypes_StartLater_t);
 	cmd_size += sizeof(MrvlIEtypes_StartLater_t);
 done:
@@ -4592,9 +4615,8 @@ wlan_find_ssid_in_list(IN mlan_private * pmpriv,
 						net = i;
 					}
 				} else {
-					if (net == -1) {
+					if (net == -1)
 						net = j;
-					}
 				}
 				break;
 			case MLAN_BSS_MODE_AUTO:
