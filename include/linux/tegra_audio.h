@@ -101,6 +101,13 @@ struct tegra210_audio_admaif_test_param {
 	unsigned int out_bps;
 };
 
+
+struct tegra210_audio_ope_test_param {
+	int ope_id;
+	int test_id;
+	int peq_to_drc;
+};
+
 struct tegra210_audio_sfc_test_param {
 	int sfc_id;
 	int test_id;
@@ -184,6 +191,9 @@ struct tegra210_audio_sfc_test_param {
 				    struct tegra210_audio_admaif_test_param *)
 #define TEGRA210_AUDIO_SFC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 74, \
 				    struct tegra210_audio_sfc_test_param *)
+#define TEGRA210_AUDIO_OPE_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 75, \
+                                    struct tegra210_audio_ope_test_param *)
+
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
