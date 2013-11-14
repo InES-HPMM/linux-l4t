@@ -23,7 +23,7 @@ struct tegra_dfll_bypass_platform_data {
 	unsigned int n_voltages;
 	int voltage_time_sel;
 	int (*set_bypass_sel)(void *dfll_data, unsigned int sel);
-	unsigned int (*get_bypass_sel)(void *dfll_data);
+	int (*get_bypass_sel)(void *dfll_data);
 	void *dfll_data;
 	int msel_gpio;
 };

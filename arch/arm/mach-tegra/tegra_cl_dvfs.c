@@ -1639,7 +1639,7 @@ static int tegra_cl_dvfs_force_output(void *data, unsigned int out_sel)
 	return 0;
 }
 
-static unsigned int tegra_cl_dvfs_get_output(void *data)
+static int tegra_cl_dvfs_get_output(void *data)
 {
 	u32 val;
 	unsigned long flags;
