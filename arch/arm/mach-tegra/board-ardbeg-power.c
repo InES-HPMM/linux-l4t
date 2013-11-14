@@ -1429,11 +1429,10 @@ int __init ardbeg_soctherm_init(void)
 	if ((pmu_board_info.board_id == BOARD_E1733) ||
 		(pmu_board_info.board_id == BOARD_E1734))
 		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_as3722;
-	else if (pmu_board_info.board_id == BOARD_E1735)
+	else if (pmu_board_info.board_id == BOARD_E1735 ||
+		 pmu_board_info.board_id == BOARD_E1736 ||
+		 pmu_board_info.board_id == BOARD_E1769)
 		;/* tpdata_palmas is default */
-	else if (pmu_board_info.board_id == BOARD_E1736 ||
-		pmu_board_info.board_id == BOARD_E1769)
-		;/* FIXME: Not supporting tn8 yet - assumes palmas PMIC */
 	else
 		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");
 
