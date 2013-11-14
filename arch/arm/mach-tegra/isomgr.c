@@ -92,6 +92,9 @@ static char *cname[] = {
 	"disp_0",
 	"disp_1",
 	"vi_0",
+	"vi_1",
+	"isp_a",
+	"isp_b",
 	"bbc_0",
 	"unknown"
 };
@@ -189,7 +192,25 @@ static struct isoclient_info tegra12x_isoclients[] = {
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
-		.dev_name = "vi",
+		.dev_name = "tegra_vi.0",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_VI_1,
+		.name = "vi_1",
+		.dev_name = "tegra_vi.1",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_ISP_A,
+		.name = "isp_a",
+		.dev_name = "tegra_isp.0",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_ISP_B,
+		.name = "isp_b",
+		.dev_name = "tegra_isp.1",
 		.emc_clk_name = "emc",
 	},
 	/* This must be last entry*/
@@ -1003,6 +1024,7 @@ static const struct attribute *client_attr_list[][NCATTRS+1] = {
 	CLIENT_ATTR(3)
 	CLIENT_ATTR(4)
 	CLIENT_ATTR(5)
+	CLIENT_ATTR(6)
 };
 
 static void isomgr_create_client(int client, const char *name)
@@ -1012,7 +1034,7 @@ static void isomgr_create_client(int client, const char *name)
 	/* If this error hits, more CLIENT_ATTR(x) need to be added
 	 * in the above array client_attr_list.
 	 */
-	BUILD_BUG_ON(TEGRA_ISO_CLIENT_COUNT > 6);
+	BUILD_BUG_ON(TEGRA_ISO_CLIENT_COUNT > 7);
 	BUG_ON(!isomgr.kobj);
 	BUG_ON(cp->client_kobj);
 	cp->client_kobj = kobject_create_and_add(name, isomgr.kobj);
