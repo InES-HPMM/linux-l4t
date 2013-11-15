@@ -5444,7 +5444,7 @@ static struct tegra12_emc_table loki_b00_emc_table[] = {
 static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_12750_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_12750_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		12750,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -5670,7 +5670,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_20400_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_20400_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		20400,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -5896,7 +5896,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_40800_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_40800_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		40800,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6122,7 +6122,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_68000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_68000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		68000,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6348,7 +6348,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_102000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_102000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		102000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6574,7 +6574,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_204000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_204000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		204000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6800,7 +6800,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_300000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_300000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		300000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -7026,7 +7026,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_396000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_396000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		396000,     /* SDRAM frequency */
 		870,        /* min voltage */
 		900,        /* gpu min voltage */
@@ -7252,7 +7252,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_528000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_528000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		528000,     /* SDRAM frequency */
 		900,        /* min voltage */
 		900,        /* gpu min voltage */
@@ -7478,7 +7478,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_600000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_600000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		600000,     /* SDRAM frequency */
 		910,        /* min voltage */
 		900,        /* gpu min voltage */
@@ -7705,7 +7705,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_792000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_792000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		792000,     /* SDRAM frequency */
 		1000,       /* min voltage */
 		1100,       /* gpu min voltage */
@@ -7931,7 +7931,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_924000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_924000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		924000,     /* SDRAM frequency */
 		1100,       /* min voltage */
 		1100,       /* gpu min voltage */
@@ -8157,7 +8157,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 	},
 	{
 		0x16,       /* NoRegCalcVersion */
-		"01_1056000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
+		"03_1056000_01_NoRegCalcVersion_V0.4", /* DVFS table version */
 		1056000,    /* SDRAM frequency */
 		1100,       /* min voltage */
 		1100,       /* gpu min voltage */
@@ -8182,7 +8182,7 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 			0x00000000, /* EMC_WEXT */
 			0x00000007, /* EMC_WDV */
 			0x00000007, /* EMC_WDV_MASK */
-			0x0000000e, /* EMC_QUSE */
+			0x0000000d, /* EMC_QUSE */
 			0x00000002, /* EMC_QUSE_WIDTH */
 			0x00000000, /* EMC_IBDLY */
 			0x00000002, /* EMC_EINPUT */
@@ -8217,28 +8217,28 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 			0x0000000b, /* EMC_TCLKSTABLE */
 			0x0000000b, /* EMC_TCLKSTOP */
 			0x0000202d, /* EMC_TREFBW */
-			0x00000000, /* EMC_FBIO_CFG6 */
+			0x00000002, /* EMC_FBIO_CFG6 */
 			0x00000000, /* EMC_ODT_WRITE */
 			0x00000000, /* EMC_ODT_READ */
 			0x1040b8d8, /* EMC_FBIO_CFG5 */
 			0xd00100b1, /* EMC_CFG_DIG_DLL */
 			0x00008000, /* EMC_CFG_DIG_DLL_PERIOD */
-			0x007f400a, /* EMC_DLL_XFORM_DQS0 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS1 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS2 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS3 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS4 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS5 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS6 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS7 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS8 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS9 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS10 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS11 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS12 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS13 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS14 */
-			0x007f400a, /* EMC_DLL_XFORM_DQS15 */
+			0x00000004, /* EMC_DLL_XFORM_DQS0 */
+			0x00000004, /* EMC_DLL_XFORM_DQS1 */
+			0x00000004, /* EMC_DLL_XFORM_DQS2 */
+			0x00000004, /* EMC_DLL_XFORM_DQS3 */
+			0x00000004, /* EMC_DLL_XFORM_DQS4 */
+			0x00000004, /* EMC_DLL_XFORM_DQS5 */
+			0x00000004, /* EMC_DLL_XFORM_DQS6 */
+			0x00000004, /* EMC_DLL_XFORM_DQS7 */
+			0x00000004, /* EMC_DLL_XFORM_DQS8 */
+			0x00000004, /* EMC_DLL_XFORM_DQS9 */
+			0x00000004, /* EMC_DLL_XFORM_DQS10 */
+			0x00000004, /* EMC_DLL_XFORM_DQS11 */
+			0x00000004, /* EMC_DLL_XFORM_DQS12 */
+			0x00000004, /* EMC_DLL_XFORM_DQS13 */
+			0x00000004, /* EMC_DLL_XFORM_DQS14 */
+			0x00000004, /* EMC_DLL_XFORM_DQS15 */
 			0x00000000, /* EMC_DLL_XFORM_QUSE0 */
 			0x00000000, /* EMC_DLL_XFORM_QUSE1 */
 			0x00000000, /* EMC_DLL_XFORM_QUSE2 */
@@ -8277,14 +8277,14 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 			0x00000000, /* EMC_DLI_TRIM_TXDQS13 */
 			0x00000000, /* EMC_DLI_TRIM_TXDQS14 */
 			0x00000000, /* EMC_DLI_TRIM_TXDQS15 */
-			0x007fc00c, /* EMC_DLL_XFORM_DQ0 */
-			0x007fc00c, /* EMC_DLL_XFORM_DQ1 */
-			0x007fc00c, /* EMC_DLL_XFORM_DQ2 */
-			0x007fc00c, /* EMC_DLL_XFORM_DQ3 */
-			0x0007fc0c, /* EMC_DLL_XFORM_DQ4 */
-			0x0007fc0c, /* EMC_DLL_XFORM_DQ5 */
-			0x0007fc0c, /* EMC_DLL_XFORM_DQ6 */
-			0x0007fc0c, /* EMC_DLL_XFORM_DQ7 */
+			0x00000008, /* EMC_DLL_XFORM_DQ0 */
+			0x00000008, /* EMC_DLL_XFORM_DQ1 */
+			0x00000008, /* EMC_DLL_XFORM_DQ2 */
+			0x00000008, /* EMC_DLL_XFORM_DQ3 */
+			0x00000008, /* EMC_DLL_XFORM_DQ4 */
+			0x00000008, /* EMC_DLL_XFORM_DQ5 */
+			0x00000008, /* EMC_DLL_XFORM_DQ6 */
+			0x00000008, /* EMC_DLL_XFORM_DQ7 */
 			0x100002a0, /* EMC_XM2CMDPADCTRL */
 			0x00000000, /* EMC_XM2CMDPADCTRL4 */
 			0x00111111, /* EMC_XM2CMDPADCTRL5 */
@@ -8297,10 +8297,10 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 			0x07070004, /* EMC_XM2VTTGENPADCTRL */
 			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
 			0x016eeeee, /* EMC_XM2VTTGENPADCTRL3 */
-			0x5d75d720, /* EMC_XM2DQSPADCTRL3 */
-			0x00555555, /* EMC_XM2DQSPADCTRL4 */
-			0x00555555, /* EMC_XM2DQSPADCTRL5 */
-			0x5d75d700, /* EMC_XM2DQSPADCTRL6 */
+			0x4d34d320, /* EMC_XM2DQSPADCTRL3 */
+			0x00451451, /* EMC_XM2DQSPADCTRL4 */
+			0x00451451, /* EMC_XM2DQSPADCTRL5 */
+			0x4d34d320, /* EMC_XM2DQSPADCTRL6 */
 			0x0606003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x00000000, /* EMC_FBIO_SPARE */
