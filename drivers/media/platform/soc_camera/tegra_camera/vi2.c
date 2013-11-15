@@ -330,14 +330,19 @@ static int vi2_clks_init(struct tegra_camera_dev *cam)
 {
 	struct platform_device *pdev = cam->ndev;
 	char devname[MAX_DEVID_LENGTH];
+	const char *pdev_name;
 	struct tegra_camera_clk *clks;
-	int i;
+	int i, dev_id, ret;
 
-	snprintf(devname, MAX_DEVID_LENGTH,
-		 (pdev->id <= 0) ? "tegra_%s" : "tegra_%s.%d",
-		 pdev->name, pdev->id);
+	pdev_name = dev_name(&pdev->dev);
+	ret = sscanf(pdev_name, "vi.%1d", &dev_id);
+	if (ret != 1) {
+		dev_err(&pdev->dev, "Read dev_id failed!\n");
+		return -ENODEV;
+	}
+	snprintf(devname, MAX_DEVID_LENGTH, "tegra_%s", pdev_name);
 
-	switch (pdev->id) {
+	switch (dev_id) {
 	case 0:
 		cam->num_clks = ARRAY_SIZE(vi2_clks0);
 		cam->clks = vi2_clks0;
@@ -347,7 +352,7 @@ static int vi2_clks_init(struct tegra_camera_dev *cam)
 		cam->clks = vi2_clks1;
 		break;
 	default:
-		dev_err(&pdev->dev, "Wrong device ID %d\n", pdev->id);
+		dev_err(&pdev->dev, "Wrong device ID %d\n", dev_id);
 		return -ENODEV;
 	}
 

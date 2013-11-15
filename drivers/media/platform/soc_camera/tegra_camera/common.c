@@ -821,7 +821,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	cam->ici.priv = cam;
 	cam->ici.v4l2_dev.dev = &pdev->dev;
-	cam->ici.nr = pdev->id;
+	cam->ici.nr = pdev->dev.id;
 	cam->ici.drv_name = dev_name(&pdev->dev);
 	cam->ici.ops = &tegra_soc_camera_host_ops;
 
@@ -871,14 +871,20 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit_deinit_clk;
 	}
 
+	cam->reg_base = ndata->aperture[0];
+	if (!cam->reg_base) {
+		dev_err(&pdev->dev, "%s: failed to map register base\n",
+				__func__);
+		err = -ENXIO;
+		goto exit_deinit_clk;
+	}
+
 	err = nvhost_client_device_init(pdev);
 	if (err) {
 		dev_err(&pdev->dev, "%s: nvhost init failed %d\n",
 				__func__, err);
 		goto exit_deinit_clk;
 	}
-
-	cam->reg_base = ndata->aperture[0];
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_use_autosuspend(&pdev->dev);
