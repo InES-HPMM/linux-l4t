@@ -30,9 +30,9 @@
 #define TEGRA_MAX_DC		2
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define DC_N_WINDOWS		5
+#define DC_N_WINDOWS		6
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#define DC_N_WINDOWS		4
+#define DC_N_WINDOWS		5
 #else
 #define DC_N_WINDOWS		3
 #endif
@@ -695,6 +695,7 @@ struct tegra_dc_win {
 #define TEGRA_WIN_FLAG_SCAN_COLUMN	(1 << 9)
 #define TEGRA_WIN_FLAG_INTERLACE	(1 << 10)
 #define TEGRA_WIN_FLAG_FB		(1 << 11)
+#define TEGRA_WIN_FLAG_INVALID		(1 << 31) /* window does not exist. */
 
 #define TEGRA_WIN_BLEND_FLAGS_MASK \
 	(TEGRA_WIN_FLAG_BLEND_PREMULT | TEGRA_WIN_FLAG_BLEND_COVERAGE)
