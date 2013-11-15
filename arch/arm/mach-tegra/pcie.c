@@ -1026,10 +1026,8 @@ static int tegra_pcie_enable_controller(void)
 		/* Since CLKREQ# pinmux pins may float in some platfoms */
 		/* resulting in disappear of refclk specially at higher temp */
 		/* overrided CLKREQ to always drive refclk */
-		if ((tegra_pcie.plat_data->board_id == BOARD_PM358) ||
-			(tegra_pcie.plat_data->board_id == BOARD_PM359)) {
+		if (!tegra_pcie.plat_data->has_clkreq)
 			val |= AFI_PEX_CTRL_OVERRIDE_EN;
-		}
 		val &= ~AFI_PEX_CTRL_RST;
 		afi_writel(val, reg);
 	}
@@ -1062,7 +1060,7 @@ static int tegra_pcie_enable_controller(void)
 			int err = 0;
 
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
-			if ((tegra_pcie.plat_data->board_id == BOARD_PM359) &&
+			if ((tegra_pcie.plat_data->port_status[1]) &&
 					(lane_owner == PCIE_LANES_X4_X1)) {
 				/* X1 works only on ERS-S board
 				   with X4_X1 config */
