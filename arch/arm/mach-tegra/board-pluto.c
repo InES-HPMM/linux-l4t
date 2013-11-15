@@ -278,6 +278,7 @@ static struct tegra_i2c_platform_data pluto_i2c5_platform_data = {
 	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
 	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
 	.needs_cl_dvfs_clock = true,
+	.bit_banging_xfer_after_shutdown = true,
 };
 
 static struct aic3262_gpio_setup aic3262_gpio[] = {
