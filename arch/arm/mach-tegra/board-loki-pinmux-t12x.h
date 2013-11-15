@@ -106,7 +106,7 @@ static __initdata struct tegra_pingroup_config loki_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_COL3,       PWM2,        NORMAL,    NORMAL,   OUTPUT),
 
 	/* BLINK pinmux */
-	DEFAULT_PINMUX(CLK_32K_OUT,   BLINK,       NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(CLK_32K_OUT,   SOC,       PULL_UP,    NORMAL,   INPUT),
 
 	/* I2CPWR pinmux */
 	I2C_PINMUX(PWR_I2C_SCL, I2CPWR, NORMAL, NORMAL, INPUT, DEFAULT, ENABLE),
