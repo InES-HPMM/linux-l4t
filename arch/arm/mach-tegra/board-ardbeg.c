@@ -400,9 +400,10 @@ static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[0]	= 1,
 	.port_status[1]	= 1,
 	.use_dock_detect	= 1,
+	/* Laguna platforms does not support CLKREQ# feature */
+	.has_clkreq	= 0,
 	.gpio	= TEGRA_GPIO_PO1,
 	.gpio_x1_slot	= PMU_TCA6416_GPIO(8),
-	.board_id	= BOARD_PM358,
 };
 
 static void laguna_pcie_init(void)
@@ -415,7 +416,6 @@ static void laguna_pcie_init(void)
 		board_info.board_id == BOARD_PM363)
 			laguna_pcie_platform_data.port_status[1] = 0;
 
-	laguna_pcie_platform_data.board_id = board_info.board_id;
 	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
