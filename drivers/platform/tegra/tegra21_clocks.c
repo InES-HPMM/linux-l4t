@@ -7207,7 +7207,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc_pllp_plla_pllc4,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
+	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
@@ -8255,17 +8255,6 @@ void __init tegra21x_init_clocks(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra21_init_one_clock(tegra_ptr_clks[i]);
-
-	/* Fix bug in simulator clock routing */
-	if (tegra_platform_is_linsim()) {
-		for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++) {
-			if (!strcmp("msenc", tegra_list_clks[i].name)) {
-				tegra_list_clks[i].u.periph.clk_num = 60;
-				tegra_list_clks[i].reg = 0x170;
-				tegra_list_clks[i].flags &= ~MUX8;
-			}
-		}
-	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
 		tegra21_init_one_clock(&tegra_list_clks[i]);
