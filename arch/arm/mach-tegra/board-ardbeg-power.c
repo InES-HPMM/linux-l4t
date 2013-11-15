@@ -1210,7 +1210,8 @@ static int __init ardbeg_fixed_regulator_init(void)
 	struct board_info pmu_board_info;
 	struct board_info display_board_info;
 
-	if (!of_machine_is_compatible("nvidia,ardbeg"))
+	if ((!of_machine_is_compatible("nvidia,ardbeg")) &&
+	    (!of_machine_is_compatible("nvidia,ardbeg_sata")))
 		return 0;
 
 	tegra_get_display_board_info(&display_board_info);
