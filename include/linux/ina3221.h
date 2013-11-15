@@ -1,7 +1,7 @@
 /*
  * include/linux/ina3221.h
  *
- * Copyright (c) 2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,12 @@
 #define INA3221_BUS_VOL_CHAN2		0x04
 #define INA3221_SHUNT_VOL_CHAN3		0x05
 #define INA3221_BUS_VOL_CHAN3		0x06
+#define INA3221_CRIT_CHAN1		0x07
+#define INA3221_WARN_CHAN1		0x08
+#define INA3221_CRIT_CHAN2		0x09
+#define INA3221_WARN_CHAN2		0x0A
+#define INA3221_CRIT_CHAN3		0x0B
+#define INA3221_WARN_CHAN3		0x0C
 #define INA3221_MASK_ENABLE		0x0F
 
 #define INA3221_RESET			0x8000
@@ -56,6 +62,8 @@ struct ina3221_platform_data {
 	u32 shunt_resistor[INA3221_NUMBER_OF_RAILS]; /* specify in mOhms */
 	u16 cont_conf_data; /* config data for continuous mode */
 	u16 trig_conf_data; /* config data for triggered mode */
+	u32 warn_conf_limits[INA3221_NUMBER_OF_RAILS]; /* in mAmps */
+	u32 crit_conf_limits[INA3221_NUMBER_OF_RAILS]; /* in mAmps */
 };
 
 #endif /* _LINUX_INA3221_H */

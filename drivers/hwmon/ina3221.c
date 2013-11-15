@@ -1,7 +1,7 @@
 /*
  * ina3221.c - driver for TI INA3221
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software. you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,6 +55,7 @@
 
 #define busv_register_to_mv(x) ((x >> 3) * 8)
 #define shuntv_register_to_uv(x) ((x >> 3) * 40)
+#define uv_to_shuntv_register(x) (x/5) /*(x/40) << 3*/
 
 #define CPU_THRESHOLD 2
 #define CPU_FREQ_THRESHOLD 102000
@@ -74,6 +75,55 @@ struct ina3221_data {
 	int shutdown_complete;
 	int is_suspended;
 };
+
+
+static s32
+__locked_set_crit_warn_register(struct i2c_client *client,
+u32 index, u32 reg_addr)
+{
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	u32 shunt_volt_limit;
+	s32 ret;
+	shunt_volt_limit =
+		data->plat_data->crit_conf_limits[index] *
+			data->plat_data->shunt_resistor[index];
+	shunt_volt_limit = uv_to_shuntv_register(shunt_volt_limit);
+	DEBUG_INA3221(("Current = %d\n", shunt_volt_limit));
+	ret = i2c_smbus_write_word_data(client, reg_addr,
+				__constant_cpu_to_be16(shunt_volt_limit));
+	return ret;
+}
+
+static s32 __locked_set_crit_warn_limits(struct i2c_client *client)
+{
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	u32 i;
+	u32 crit_reg_addr;
+	u32 warn_reg_addr;
+	s32 ret = 0;
+	if (!(data->plat_data->crit_conf_limits) ||
+		!(data->plat_data->warn_conf_limits))
+		return -EINVAL;
+
+	for (i = 0; i < INA3221_NUMBER_OF_RAILS; i++) {
+		crit_reg_addr = (INA3221_CRIT_CHAN1 + (i * 2));
+		warn_reg_addr = (INA3221_WARN_CHAN1 + (i * 2));
+		if (data->plat_data->crit_conf_limits[i] != -1) {
+			ret = __locked_set_crit_warn_register(client,
+							i, crit_reg_addr);
+			if (ret < 0)
+				break;
+		}
+
+		if (data->plat_data->warn_conf_limits[i] != -1) {
+			ret = __locked_set_crit_warn_register(client,
+							i, warn_reg_addr);
+			if (ret < 0)
+				break;
+		}
+	}
+	return ret;
+}
 
 static s32 __locked_power_down_ina3221(struct i2c_client *client)
 {
@@ -159,7 +209,6 @@ static s32 show_voltage(struct device *dev,
 			bus_volt_reg_addr);
 	if (ret < 0)
 		goto error;
-	DEBUG_INA3221(("Ina3221 bus voltage reg Value: 0x%x\n", voltage_mv));
 	voltage_mv = be16_to_cpu(ret);
 	voltage_mv = (voltage_mv << 16) >> 16;
 	voltage_mv = busv_register_to_mv(voltage_mv);
@@ -546,6 +595,119 @@ error:
 	return 0;
 }
 
+static s32 set_crit(struct device *dev,
+			struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	s32 retval, crit_reg_addr;
+	u32 index = 0;
+	long int curr_limit;
+
+	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		retval = -ENODEV;
+		goto error;
+	}
+	index = attr->index;
+
+	if (kstrtol(buf, 10, &curr_limit) < 0) {
+		retval = -EINVAL;
+		goto error;
+	}
+
+	if (data->mode == TRIGGERED) {
+		retval = __locked_power_up_ina3221(client,
+				data->plat_data->trig_conf_data);
+		if (retval < 0) {
+			dev_err(dev,
+			"Power up failed, status: 0x%x\n", retval);
+			goto error;
+		}
+	}
+	data->plat_data->crit_conf_limits[index] = curr_limit;
+	crit_reg_addr = (INA3221_CRIT_CHAN1 + (index * 2));
+	retval = __locked_set_crit_warn_register(client, index, crit_reg_addr);
+
+	if (data->mode == TRIGGERED) {
+		/* set ina3221 to power down mode */
+		retval = __locked_power_down_ina3221(client);
+		if (retval < 0)
+			goto error;
+	}
+
+error:
+	mutex_unlock(&data->mutex);
+	if (retval >= 0)
+		return count;
+	return retval;
+}
+
+static s32 show_crit(struct device *dev,
+		struct device_attribute *devattr,
+		char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	u8 index, crit_reg_addr;
+	s32 ret, current_ma;
+	s32 voltage_uv;
+	s32 inverse_shunt_resistor;
+
+	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
+	index = attr->index;
+
+	if (data->mode == TRIGGERED) {
+		ret = __locked_power_up_ina3221(client,
+				data->plat_data->trig_conf_data);
+		if (ret < 0) {
+			dev_err(dev,
+			"Power up failed, status: 0x%x\n", ret);
+			goto error;
+		}
+	}
+
+	crit_reg_addr = (INA3221_CRIT_CHAN1 + (index * 2));
+
+	/* getting voltage readings in micro volts*/
+	ret = i2c_smbus_read_word_data(client,
+			crit_reg_addr);
+	if (ret < 0)
+		goto error;
+	voltage_uv = be16_to_cpu(ret);
+	DEBUG_INA3221(("Ina3221 crit voltage reg Value: 0x%x\n", voltage_uv));
+	voltage_uv = (voltage_uv << 16) >> 16;
+	voltage_uv = shuntv_register_to_uv(voltage_uv);
+	DEBUG_INA3221(("Ina3221 crit voltage in uv: %d\n", voltage_uv));
+
+	/* shunt_resistor is received in mOhms */
+	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
+	current_ma = (voltage_uv * inverse_shunt_resistor) / 1000;
+
+	DEBUG_INA3221(("Ina3221 crit current in mA: %d\n", current_ma));
+
+	if (data->mode == TRIGGERED) {
+		/* set ina3221 to power down mode */
+		ret = __locked_power_down_ina3221(client);
+		if (ret < 0)
+			goto error;
+	}
+
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "%d mA\n", current_ma);
+error:
+	mutex_unlock(&data->mutex);
+	dev_err(dev, "%s: failed\n", __func__);
+	return ret;
+}
+
 static struct sensor_device_attribute ina3221[] = {
 	SENSOR_ATTR(rail_name_0, S_IRUGO, show_rail_name, NULL, 0),
 	SENSOR_ATTR(in1_input_0, S_IRUGO, show_voltage, NULL, 0),
@@ -566,6 +728,9 @@ static struct sensor_device_attribute ina3221[] = {
 	SENSOR_ATTR(power1_input_2, S_IRUGO, show_power, NULL, 2),
 	SENSOR_ATTR(power2_input_2, S_IRUGO, show_power2, NULL, 2),
 	SENSOR_ATTR(running_mode, S_IRUGO, show_mode, NULL, 0),
+	SENSOR_ATTR(crit_cur_limit_0, S_IWUSR|S_IRUGO, show_crit, set_crit, 0),
+	SENSOR_ATTR(crit_cur_limit_1, S_IWUSR|S_IRUGO, show_crit, set_crit, 1),
+	SENSOR_ATTR(crit_cur_limit_2, S_IWUSR|S_IRUGO, show_crit, set_crit, 2),
 /* mode setting :
  * running_mode = 0 ---> Triggered mode
  * running_mode > 0 ---> Continuous mode
@@ -616,6 +781,12 @@ static int ina3221_probe(struct i2c_client *client,
 	if (IS_ERR(data->hwmon_dev)) {
 		ret = PTR_ERR(data->hwmon_dev);
 		goto exit_remove;
+	}
+
+	ret = __locked_set_crit_warn_limits(client);
+	if (ret < 0) {
+		dev_info(&client->dev, "Not able to set warn and crit limits!\n");
+		/*Not an error condition, could let the probe continue*/
 	}
 
 	/* set ina3221 to power down mode */
