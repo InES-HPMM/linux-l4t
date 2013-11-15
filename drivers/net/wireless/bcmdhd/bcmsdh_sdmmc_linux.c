@@ -172,8 +172,17 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 		if (gInstance->func[2]) {
 			sd_trace(("F2 found, calling bcmsdh_remove...\n"));
-			bcmsdh_remove(&func->dev);
-			gInstance->func[2] = NULL;
+			/* Restore power before accessing lower layer since
+			 * we are in power save mode after probe
+			 */
+			if (mmc_power_restore_host(
+				(gInstance->func[2])->card->host)) {
+				sd_err(("%s: card power restore fail",
+					__func__));
+			} else {
+				bcmsdh_remove(&func->dev);
+				gInstance->func[2] = NULL;
+			}
 		}
 		if (func->num == 1) {
 			sdio_claim_host(func);
