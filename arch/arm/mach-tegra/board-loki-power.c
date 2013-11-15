@@ -937,6 +937,21 @@ static struct soctherm_platform_data loki_soctherm_data = {
 				},
 			},
 		},
+		[THROTTLE_OC2] = {
+			.throt_mode = BRIEF,
+			.polarity = 1,
+			.intr = false,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 30,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+					.throttling_depth = "heavy_throttling",
+				},
+			},
+		},
 	},
 	.tshut_pmu_trip_data = &tpdata_palmas,
 };
