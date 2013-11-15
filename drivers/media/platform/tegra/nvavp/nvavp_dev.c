@@ -1963,6 +1963,20 @@ static int tegra_nvavp_runtime_resume(struct device *dev)
 	return 0;
 }
 
+static int tegra_nvavp_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
+
+	mutex_lock(&nvavp->open_lock);
+
+	tegra_nvavp_runtime_resume(dev);
+
+	mutex_unlock(&nvavp->open_lock);
+
+	return 0;
+}
+
 static int tegra_nvavp_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -1986,6 +2000,7 @@ static const struct dev_pm_ops nvavp_pm_ops = {
 	.runtime_suspend = tegra_nvavp_runtime_suspend,
 	.runtime_resume = tegra_nvavp_runtime_resume,
 	.suspend = tegra_nvavp_suspend,
+	.resume = tegra_nvavp_resume,
 };
 
 #define NVAVP_PM_OPS	(&nvavp_pm_ops)

@@ -229,6 +229,10 @@ static int tegra_core_power_off(struct generic_pm_domain *genpd)
 	return 0;
 }
 
+static struct tegra_pm_domain tegra_nvavp = {
+	.gpd.name = "tegra_nvavp",
+};
+
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
 	.gpd.power_off = tegra_mc_clk_power_off,
@@ -249,7 +253,8 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra-xhci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "host1x", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tsec", .domain = &tegra_mc_clk.gpd },
-	{ .name = "nvavp", .domain = &tegra_mc_clk.gpd },
+	{ .name = "tegra_nvavp", .domain = &tegra_mc_clk.gpd },
+	{ .name = "nvavp", .domain = &tegra_nvavp.gpd },
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra12-se", .domain = &tegra_mc_clk.gpd },
@@ -264,6 +269,9 @@ static struct domain_client client_list[] = {
 static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
+
+	pm_genpd_init(&tegra_nvavp.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_nvavp.gpd);
 
 	return 0;
 }
