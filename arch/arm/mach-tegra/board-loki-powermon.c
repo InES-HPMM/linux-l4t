@@ -39,6 +39,8 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.shunt_resistor = {5, 5, 20},
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+		.warn_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {-1, 6800, -1},
 	},
 	[VDD_DDR_SOC_GPU] = {
 		.rail_name = {"VDD_DDR", "VDD_SOC",
@@ -46,6 +48,8 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.shunt_resistor = {30, 30, 10},
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+		.warn_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {-1, -1, -1},
 	},
 	[VDD_3V3_EMMC_MDM] = {
 		.rail_name = {"VDD_3V3_SYS", "VDD_EMMC",
@@ -53,6 +57,8 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.shunt_resistor = {30, 30, 20},
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+		.warn_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {-1, -1, -1},
 	},
 	[VDD_BAT_VBUS_MODEM] = {
 		.rail_name = {"VDD_BATT", "VDD_VBUS",
@@ -60,6 +66,8 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.shunt_resistor = {10, 10, 10},
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+		.warn_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {6800, -1, -1},
 	},
 };
 
