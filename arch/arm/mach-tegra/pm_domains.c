@@ -292,6 +292,7 @@ void tegra_pd_add_device(struct device *dev)
 
 	device_set_wakeup_capable(dev, 1);
 	pm_genpd_add_device(master, dev);
+	pm_genpd_dev_need_save(dev, false);
 	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 EXPORT_SYMBOL(tegra_pd_add_device);
