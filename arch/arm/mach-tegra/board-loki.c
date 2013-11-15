@@ -742,6 +742,11 @@ struct spi_board_info rm31080a_loki_spi_board[1] = {
 
 static int __init loki_touch_init(void)
 {
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+	if (bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)
+		return 0;
+
 	if (tegra_get_touch_panel_id() == TOUCH_PANEL_THOR_WINTEK)
 		rm31080ts_loki_data.platform_id = RM_PLATFORM_R005;
 	tegra_clk_init_from_table(touch_clk_init_table);

@@ -777,6 +777,7 @@ int __init loki_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
+	struct board_info bi;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -792,12 +793,15 @@ int __init loki_regulator_init(void)
 	reg_idata_smps123.constraints.init_uV = 1000000;
 	reg_idata_smps9.constraints.enable_time = 250;
 
-	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
-	i2c_register_board_info(0, bq2419x_boardinfo, 1);
-	i2c_register_board_info(0, loki_i2c_board_info_bq27441,
-			ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	tegra_get_board_info(&bi);
+	if (!(bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)) {
+		bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+		i2c_register_board_info(0, bq2419x_boardinfo, 1);
+		i2c_register_board_info(0, loki_i2c_board_info_bq27441,
+				ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	}
 	platform_device_register(&power_supply_extcon_device);
 
 	loki_cl_dvfs_init();
