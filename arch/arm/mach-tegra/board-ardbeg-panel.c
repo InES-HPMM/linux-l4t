@@ -69,6 +69,7 @@ static struct regulator *ardbeg_hdmi_reg;
 static struct regulator *ardbeg_hdmi_pll;
 static struct regulator *ardbeg_hdmi_vddio;
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct resource ardbeg_disp1_resources[] = {
 	{
 		.name	= "irq",
@@ -158,18 +159,29 @@ static struct resource ardbeg_disp1_edp_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 };
+#endif
 
 static struct resource ardbeg_disp2_resources[] = {
 	{
 		.name	= "irq",
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 		.start	= INT_DISPLAY_B_GENERAL,
 		.end	= INT_DISPLAY_B_GENERAL,
+#else
+		.start	= INT_DISPLAY_GENERAL,
+		.end	= INT_DISPLAY_GENERAL,
+#endif
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
 		.name	= "regs",
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 		.start	= TEGRA_DISPLAY2_BASE,
 		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
+#else
+		.start	= TEGRA_DISPLAY_BASE,
+		.end	= TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
+#endif
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -187,12 +199,14 @@ static struct resource ardbeg_disp2_resources[] = {
 };
 
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct tegra_dc_sd_settings sd_settings;
 
 static struct tegra_dc_out ardbeg_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 	.sd_settings	= &sd_settings,
 };
+#endif
 
 static int ardbeg_hdmi_enable(struct device *dev)
 {
@@ -311,23 +325,23 @@ struct tegra_hdmi_out ardbeg_hdmi_out = {
 };
 
 
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
 static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
-		.pclk =			KHZ2PICOS(25200),
+		.pclk =			KHZ2PICOS(148500),
 		.h_ref_to_sync =	1,
 		.v_ref_to_sync =	1,
-		.h_sync_width =		96,	/* hsync_len */
-		.v_sync_width =		2,	/* vsync_len */
-		.h_back_porch =		48,	/* left_margin */
-		.v_back_porch =		33,	/* upper_margin */
-		.h_active =		640,	/* xres */
-		.v_active =		480,	/* yres */
-		.h_front_porch =	16,	/* right_margin */
-		.v_front_porch =	10,	/* lower_margin */
+		.h_sync_width =		44,	/* hsync_len */
+		.v_sync_width =		5,	/* vsync_len */
+		.h_back_porch =		148,	/* left_margin */
+		.v_back_porch =		36,	/* upper_margin */
+		.h_active =		1920,	/* xres */
+		.v_active =		1080,	/* yres */
+		.h_front_porch =	88,	/* right_margin */
+		.v_front_porch =	4,	/* lower_margin */
 	},
 };
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE || CONFIG_TEGRA_HDMI_PRIMARY*/
 
 static struct tegra_dc_out ardbeg_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
@@ -340,7 +354,7 @@ static struct tegra_dc_out ardbeg_disp2_out = {
 
 	/* TODO: update max pclk to POR */
 	.max_pixclock	= KHZ2PICOS(297000),
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
 	.modes = hdmi_panel_modes,
 	.n_modes = ARRAY_SIZE(hdmi_panel_modes),
 	.depth = 24,
@@ -355,6 +369,7 @@ static struct tegra_dc_out ardbeg_disp2_out = {
 	.hotplug_init	= ardbeg_hdmi_hotplug_init,
 };
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct tegra_fb_data ardbeg_disp1_fb_data = {
 	.win		= 0,
 	.bits_per_pixel = 32,
@@ -370,11 +385,12 @@ static struct tegra_dc_platform_data ardbeg_disp1_pdata = {
 	.cmu_enable	= 1,
 #endif
 };
+#endif
 
 static struct tegra_fb_data ardbeg_disp2_fb_data = {
 	.win		= 0,
-	.xres		= 1280,
-	.yres		= 720,
+	.xres		= 1920,
+	.yres		= 1080,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -388,7 +404,11 @@ static struct tegra_dc_platform_data ardbeg_disp2_pdata = {
 
 static struct platform_device ardbeg_disp2_device = {
 	.name		= "tegradc",
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	.id		= 1,
+#else
+	.id		= 0,
+#endif
 	.resource	= ardbeg_disp2_resources,
 	.num_resources	= ARRAY_SIZE(ardbeg_disp2_resources),
 	.dev = {
@@ -396,6 +416,7 @@ static struct platform_device ardbeg_disp2_device = {
 	},
 };
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct platform_device ardbeg_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
@@ -405,6 +426,7 @@ static struct platform_device ardbeg_disp1_device = {
 		.platform_data = &ardbeg_disp1_pdata,
 	},
 };
+#endif
 
 static struct nvmap_platform_carveout ardbeg_carveouts[] = {
 	[0] = {
@@ -439,6 +461,7 @@ static struct platform_device ardbeg_nvmap_device  = {
 	},
 };
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
 static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	u8 *dsi_instance_out)
@@ -542,13 +565,17 @@ static void ardbeg_panel_select(void)
 	}
 
 }
+#endif
+
 int __init ardbeg_panel_init(void)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	ardbeg_panel_select();
+#endif
 
 #ifdef CONFIG_TEGRA_NVMAP
 	ardbeg_carveouts[1].base = tegra_carveout_start;
@@ -578,8 +605,13 @@ int __init ardbeg_panel_init(void)
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	res = platform_get_resource_byname(&ardbeg_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
+#else
+	res = platform_get_resource_byname(&ardbeg_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+#endif
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
@@ -592,12 +624,14 @@ int __init ardbeg_panel_init(void)
 		__tegra_clear_framebuffer(&ardbeg_nvmap_device,
 					  tegra_fb_start, tegra_fb_size);
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	ardbeg_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&ardbeg_disp1_device);
 	if (err) {
 		pr_err("disp1 device registration failed\n");
 		return err;
 	}
+#endif
 
 	err = tegra_init_hdmi(&ardbeg_disp2_device, phost1x);
 	if (err)

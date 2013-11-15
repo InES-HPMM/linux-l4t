@@ -171,8 +171,12 @@ static struct regulator_consumer_supply as3722_sd2_supply[] = {
 };
 
 static struct regulator_consumer_supply as3722_sd4_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi","tegradc.1"),
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+#ifdef CONFIG_TEGRA_HDMI_PRIMARY
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.0"),
+#endif
 	REGULATOR_SUPPLY("avdd_pex_pll", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
@@ -370,6 +374,9 @@ int __init ardbeg_ams_regulator_init(void)
 
 static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645.0"),
+#ifdef CONFIG_TEGRA_HDMI_PRIMARY
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.0"),
+#endif
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
@@ -758,6 +765,9 @@ static struct regulator_consumer_supply fixed_reg_en_lcd_bl_en_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
+#ifdef CONFIG_TEGRA_HDMI_PRIMARY
+	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.0"),
+#endif
 	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
