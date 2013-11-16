@@ -125,6 +125,7 @@ struct jsa1127_platform_data jsa1127_platform_data = {
 	.rint = 100,
 	.integration_time = 200,
 	.use_internal_integration_timing = 1,
+	.tint_coeff = 22,
 };
 
 static struct i2c_board_info loki_i2c_jsa1127_board_info[] = {
