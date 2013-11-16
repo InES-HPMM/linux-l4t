@@ -190,6 +190,7 @@ int tegra_mc_flush(int id)
 	u32 rst_ctrl, rst_stat;
 	u32 rst_ctrl_reg, rst_stat_reg;
 	unsigned long flags;
+	unsigned int timeout;
 	bool ret;
 
 	if (id < 32) {
@@ -209,10 +210,15 @@ int tegra_mc_flush(int id)
 
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
 
+	timeout = 0;
 	do {
 		udelay(10);
 		rst_stat = 0;
 		ret = tegra_stable_hotreset_check(rst_stat_reg, &rst_stat);
+		if ((timeout++ > 100) && tegra_platform_is_qt()) {
+			WARN(1, "%s flush %d timeout\n", __func__, id);
+			break;
+		}
 		if (!ret)
 			continue;
 	} while (!(rst_stat & (1 << id)));
