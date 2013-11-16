@@ -559,7 +559,7 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 
 static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
 {
-	return d->alt_freqs ? : &d->freqs[0];
+	return d->alt_freqs && d->use_alt_freqs ? d->alt_freqs : &d->freqs[0];
 }
 
 static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
@@ -647,6 +647,61 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 	return ret;
 }
 
+/*
+ * Some clocks may have alternative frequency ladder that provides lower minimum
+ * voltage at the same rate (or complimentary: higher maximum rate at the same
+ * voltage). Interfaces below allows dvfs clients to install such ladder, and
+ * switch between primary and alternative frequencies in flight.
+ */
+static int alt_freqs_validate(struct dvfs *d, unsigned long *alt_freqs)
+{
+	int i;
+
+	if (alt_freqs) {
+		for (i = 0; i < d->num_freqs; i++) {
+			if (d->freqs[i] > alt_freqs[i]) {
+				pr_err("%s: Invalid alt freqs for %s\n",
+				       __func__, d->clk_name);
+				return -EINVAL;
+			}
+		}
+	}
+	return 0;
+}
+
+int tegra_dvfs_alt_freqs_install(struct dvfs *d, unsigned long *alt_freqs)
+{
+	int ret = 0;
+
+	mutex_lock(&dvfs_lock);
+
+	ret = alt_freqs_validate(d, alt_freqs);
+	if (!ret)
+		d->alt_freqs = alt_freqs;
+
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+int tegra_dvfs_use_alt_freqs_on_clk(struct clk *c, bool use_alt_freq)
+{
+	int ret = -ENOENT;
+	struct dvfs *d = c->dvfs;
+
+	mutex_lock(&dvfs_lock);
+
+	if (d && d->alt_freqs) {
+		ret = 0;
+		if (d->use_alt_freqs != use_alt_freq) {
+			d->use_alt_freqs = use_alt_freq;
+			ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+		}
+	}
+
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 {
 	int ret = 0;
@@ -654,8 +709,12 @@ int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 	mutex_lock(&dvfs_lock);
 
 	if (d->alt_freqs != alt_freqs) {
-		d->alt_freqs = alt_freqs;
-		ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+		ret = alt_freqs_validate(d, alt_freqs);
+		if (!ret) {
+			d->use_alt_freqs = !!alt_freqs;
+			d->alt_freqs = alt_freqs;
+			ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+		}
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -2046,7 +2105,8 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 
 			seq_printf(s, "%-16s", d->clk_name);
 			for (i = 0; i < d->num_freqs; i++) {
-				unsigned int f = d->freqs[i]/100000;
+				unsigned long *freqs = dvfs_get_freqs(d);
+				unsigned int f = freqs[i]/100000;
 				seq_printf(s, " %4u.%u", f/10, f%10);
 			}
 			seq_printf(s, "\n");

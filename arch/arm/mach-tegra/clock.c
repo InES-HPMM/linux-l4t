@@ -1694,6 +1694,20 @@ static const struct file_operations possible_rates_fops = {
 	.release	= single_release,
 };
 
+static int use_alt_freq_get(void *data, u64 *val)
+{
+	struct clk *c = (struct clk *)data;
+	*val = c->dvfs->use_alt_freqs;
+	return 0;
+}
+static int use_alt_freq_set(void *data, u64 val)
+{
+	struct clk *c = (struct clk *)data;
+	return tegra_dvfs_use_alt_freqs_on_clk(c, val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(use_alt_freq_fops,
+			use_alt_freq_get, use_alt_freq_set, "%llu\n");
+
 static int clk_debugfs_register_one(struct clk *c)
 {
 	struct dentry *d;
@@ -1758,6 +1772,13 @@ static int clk_debugfs_register_one(struct clk *c)
 	       c->parent->ops->shared_bus_update)) {
 		d = debugfs_create_file("possible_rates", S_IRUGO, c->dent,
 			c, &possible_rates_fops);
+		if (!d)
+			goto err_out;
+	}
+
+	if (c->dvfs) {
+		d = debugfs_create_file("use_alt_freq", S_IRUGO | S_IWUSR,
+			c->dent, c, &use_alt_freq_fops);
 		if (!d)
 			goto err_out;
 	}
