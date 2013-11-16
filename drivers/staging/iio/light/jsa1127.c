@@ -67,6 +67,7 @@ struct jsa1127_chip {
 	bool				use_internal_integration_timing;
 	u8				als_state;
 	u16				als_raw_value;
+	u16				tint_coeff;
 };
 
 #define N_DATA_BYTES				2
@@ -321,7 +322,7 @@ static ssize_t jsa1127_resolution(struct device *dev,
 		resolution = 210;
 	else
 		DEV_ERR("invalid RINT");
-	return sprintf(buf, "%d\n", resolution);
+	return sprintf(buf, "%d\n", resolution * chip->tint_coeff);
 }
 
 #define JSA1127_POWER_CONSUMED		"1.65" /* mWatt */
@@ -441,6 +442,7 @@ static int jsa1127_probe(struct i2c_client *client,
 	struct jsa1127_platform_data *jsa1127_platform_data;
 	u32 rint = UINT_MAX, use_internal_integration_timing = UINT_MAX;
 	u32 integration_time = UINT_MAX;
+	u32 tint = UINT_MAX;
 
 	if (client->dev.of_node) {
 		of_property_read_u32_array(client->dev.of_node,
@@ -448,17 +450,22 @@ static int jsa1127_probe(struct i2c_client *client,
 		of_property_read_u32_array(client->dev.of_node,
 					"use_internal_integration_timing",
 					&use_internal_integration_timing, 1);
+		of_property_read_u32_array(client->dev.of_node,
+					"tint_coeff",
+					&tint, 1);
 	} else {
 		jsa1127_platform_data = client->dev.platform_data;
 		rint = jsa1127_platform_data->rint;
 		integration_time = jsa1127_platform_data->integration_time;
 		use_internal_integration_timing =
 			jsa1127_platform_data->use_internal_integration_timing;
+		tint =
+			jsa1127_platform_data->tint_coeff;
 	}
 
 	if ((rint == UINT_MAX) ||
 		(use_internal_integration_timing == UINT_MAX) ||
-		(rint%50 != 0)) {
+		(rint%50 != 0) || (tint == UINT_MAX)) {
 		pr_err("func:%s failed due to invalid platform data", __func__);
 		return -EINVAL;
 	}
@@ -475,6 +482,7 @@ static int jsa1127_probe(struct i2c_client *client,
 	chip->rint = rint;
 	chip->integration_time = integration_time;
 	chip->use_internal_integration_timing = use_internal_integration_timing;
+	chip->tint_coeff = tint;
 
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
