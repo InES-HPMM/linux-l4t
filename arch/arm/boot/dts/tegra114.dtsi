@@ -628,7 +628,7 @@
 
 	mipical {
 		compatible = "nvidia,tegra114-mipical";
-		reg = <0x700e3000 0x00040000>;
+		reg = <0x700e3000 0x00000100>;
 	};
 
 	xusb@70090000 {
