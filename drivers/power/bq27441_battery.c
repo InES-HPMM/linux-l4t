@@ -178,6 +178,8 @@ static void bq27441_work(struct work_struct *work)
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
 	else
 		chip->soc = val;
+	if (chip->soc >= BQ27441_BATTERY_FULL && chip->charge_complete != 1)
+		chip->soc = BQ27441_BATTERY_FULL-1;
 
 	if (chip->status == POWER_SUPPLY_STATUS_FULL && chip->charge_complete) {
 		chip->soc = BQ27441_BATTERY_FULL;
@@ -380,8 +382,10 @@ static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 {
 	struct bq27441_chip *chip = battery_gauge_get_drvdata(bg_dev);
 
-	if (status == BATTERY_CHARGING)
+	if (status == BATTERY_CHARGING) {
+		chip->charge_complete = 0;
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
+	}
 	else if (status == BATTERY_CHARGING_DONE) {
 		chip->charge_complete = 1;
 		chip->soc = BQ27441_BATTERY_FULL;
