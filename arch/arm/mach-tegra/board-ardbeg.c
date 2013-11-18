@@ -604,6 +604,9 @@ static void ardbeg_usb_init(void)
 	int modem_id = tegra_get_modem_id();
 	struct board_info bi;
 
+	if (board_info.sku == 1100)
+		tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
+
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
