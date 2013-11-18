@@ -1147,8 +1147,7 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_dtv_init();
 	ardbeg_suspend_init();
 /* TODO: add support for laguna board when dvfs table is ready */
-	if ((board_info.board_id == BOARD_E1780 &&
-		(tegra_get_memory_type() == 0)) ||
+	if ((board_info.board_id == BOARD_E1780) ||
 		(board_info.board_id == BOARD_E1792))
 		ardbeg_emc_init();
 
