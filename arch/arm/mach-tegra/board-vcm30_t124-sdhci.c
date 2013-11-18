@@ -219,8 +219,8 @@ int __init vcm30_t124_sdhci_init(void)
 
 /*	platform_device_register(&tegra_sdhci_device1); */
 /*	platform_device_register(&tegra_sdhci_device2); */
+	platform_device_register(&tegra_sdhci_device4);
 	platform_device_register(&tegra_sdhci_device3);
-/*	platform_device_register(&tegra_sdhci_device4); */
 
 	return 0;
 }
