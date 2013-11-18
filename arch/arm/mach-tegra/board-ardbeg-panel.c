@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-panel.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/pwm_backlight.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/dma-contiguous.h>
 #include <linux/clk.h>
 
@@ -44,7 +45,6 @@
 #include "iomap.h"
 #include "tegra12_host1x_devices.h"
 #include "dvfs.h"
-
 
 struct platform_device * __init ardbeg_host1x_init(void)
 {
@@ -272,7 +272,7 @@ static int ardbeg_hdmi_postsuspend(void)
 static int ardbeg_hdmi_hotplug_init(struct device *dev)
 {
 	if (!ardbeg_hdmi_vddio) {
-#if CONFIG_TEGRA_HDMI_PRIMARY
+#ifdef CONFIG_TEGRA_HDMI_PRIMARY
 		if (of_machine_is_compatible("nvidia,tn8"))
 			ardbeg_hdmi_vddio = regulator_get(dev, "vdd-out1-5v0");
 		else
@@ -622,6 +622,11 @@ int __init ardbeg_panel_init(void)
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
 
+	struct device_node *dc1_node = NULL;
+	struct device_node *dc2_node = NULL;
+
+	find_dc_node(&dc1_node, &dc2_node);
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	ardbeg_panel_select();
 #endif
@@ -654,15 +659,18 @@ int __init ardbeg_panel_init(void)
 		return -EINVAL;
 	}
 
+	if (!of_have_populated_dt() || !dc1_node ||
+		!of_device_is_available(dc1_node)) {
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
-	res = platform_get_resource_byname(&ardbeg_disp1_device,
+		res = platform_get_resource_byname(&ardbeg_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 #else
-	res = platform_get_resource_byname(&ardbeg_disp2_device,
+		res = platform_get_resource_byname(&ardbeg_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 #endif
-	res->start = tegra_fb_start;
-	res->end = tegra_fb_start + tegra_fb_size - 1;
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+	}
 
 	/* Copy the bootloader fb to the fb. */
 	if (tegra_bootloader_fb_size)
@@ -674,17 +682,32 @@ int __init ardbeg_panel_init(void)
 					  tegra_fb_start, tegra_fb_size);
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
-	ardbeg_disp1_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&ardbeg_disp1_device);
-	if (err) {
-		pr_err("disp1 device registration failed\n");
-		return err;
+	if (!of_have_populated_dt() || !dc1_node ||
+		!of_device_is_available(dc1_node)) {
+		ardbeg_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&ardbeg_disp1_device);
+		if (err) {
+			pr_err("disp1 device registration failed\n");
+			return err;
+		}
 	}
 #endif
 
-	err = tegra_init_hdmi(&ardbeg_disp2_device, phost1x);
-	if (err)
-		return err;
+	if (!of_have_populated_dt() || !dc2_node ||
+		!of_device_is_available(dc2_node)) {
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		res = platform_get_resource_byname(&ardbeg_disp2_device,
+					IORESOURCE_MEM, "fbmem");
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
+#endif
+		ardbeg_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&ardbeg_disp2_device);
+		if (err) {
+			pr_err("disp2 device registration failed\n");
+			return err;
+		}
+	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
@@ -703,8 +726,14 @@ int __init ardbeg_display_init(void)
 	struct clk *disp2_clk = clk_get_sys("tegradc.1", NULL);
 	struct tegra_panel *panel;
 	struct board_info board;
-	long disp1_rate;
-	long disp2_rate;
+	long disp1_rate = 0;
+	long disp2_rate = 0;
+
+	/*
+	 * TODO
+	 * Need to skip ardbeg_display_init
+	 * when disp is registered by device_tree
+	 */
 
 	if (WARN_ON(IS_ERR(disp1_clk))) {
 		if (disp2_clk && !IS_ERR(disp2_clk))

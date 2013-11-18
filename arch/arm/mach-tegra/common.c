@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2010-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -30,6 +30,7 @@
 #include <linux/bitops.h>
 #include <linux/sched.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/of_fdt.h>
 #include <linux/pstore_ram.h>
 #include <linux/dma-mapping.h>
@@ -56,6 +57,7 @@
 
 #include <mach/tegra_smmu.h>
 #include <mach/nct.h>
+#include <mach/dc.h>
 
 #include "apbio.h"
 #include "board.h"
@@ -1511,6 +1513,21 @@ void tegra_get_board_info(struct board_info *bi)
 #endif
 }
 
+#ifdef CONFIG_OF
+void find_dc_node(struct device_node **dc1_node,
+		struct device_node **dc2_node) {
+	*dc1_node =
+		of_find_node_by_path("/host1x/dc@54200000");
+	*dc2_node =
+		of_find_node_by_path("/host1x/dc@54240000");
+}
+#else
+void find_dc_node(struct device_node *dc1_node,
+		struct device_node *dc2_node) {
+	return;
+}
+#endif
+
 static int __init tegra_main_board_info(char *info)
 {
 	char *p = info;
@@ -2149,6 +2166,20 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #endif
 
 	tegra_fb_linear_set(map);
+}
+
+void tegra_get_fb_resource(struct resource *fb_res)
+{
+	fb_res->start = (resource_size_t) tegra_fb_start;
+	fb_res->end = fb_res->start +
+			(resource_size_t) tegra_fb_size - 1;
+}
+
+void tegra_get_fb2_resource(struct resource *fb2_res)
+{
+	fb2_res->start = (resource_size_t) tegra_fb2_start;
+	fb2_res->end = fb2_res->start +
+			(resource_size_t) tegra_fb2_size - 1;
 }
 
 #ifdef CONFIG_PSTORE_RAM

@@ -204,6 +204,7 @@ obj-y                                   += board-touch-maxim_sti-spi.o
 
 obj-y                                   += board-panel.o
 obj-y                                   += panel-p-wuxga-10-1.o
+obj-y                                   += panel-lgd-wxga-7-0.o
 
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
@@ -216,7 +217,6 @@ obj-${CONFIG_MACH_DALMORE}              += board-roth-panel.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-kbc.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sensors.o
 obj-${CONFIG_MACH_DALMORE}              += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_DALMORE}              += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_DALMORE}              += panel-s-wqxga-10-1.o
 
 obj-${CONFIG_MACH_PISMO}                += board-pismo.o
@@ -237,7 +237,6 @@ obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sdhci.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-panel.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-kbc.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sensors.o
-obj-${CONFIG_MACH_MACALLAN}             += panel-p-wuxga-10-1.o
 
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
@@ -264,9 +263,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-norrin-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-powermon.o
 obj-${CONFIG_MACH_ARDBEG}               += board-tn8-p1761-powermon.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_ARDBEG}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-wqxga-10-1.o
-obj-${CONFIG_MACH_ARDBEG}               += panel-lgd-wxga-7-0.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-edp-1080p-14-0.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-edp-uhdtv-15-6.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-c-lvds-1366-14.o
@@ -290,7 +287,6 @@ obj-${CONFIG_MACH_LOKI}               	+= board-tn8-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-powermon.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_LOKI}               	+= panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-edp-1080p-14-0.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
@@ -305,7 +301,6 @@ obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-powermon.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_LAGUNA}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-edp-1080p-14-0.o

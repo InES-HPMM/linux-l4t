@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -874,6 +874,12 @@ int tegra_dc_get_out(const struct tegra_dc *dc);
 
 struct device_node *tegra_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
+
+void find_dc_node(struct device_node **dc1_node,
+				struct device_node **dc2_node);
+
+void tegra_get_fb_resource(struct resource *fb_res);
+void tegra_get_fb2_resource(struct resource *fb2_res);
 
 /* table of electrical settings, must be in acending order. */
 struct tmds_config {
