@@ -1200,6 +1200,7 @@ static int pm_genpd_suspend_late(struct device *dev)
 static int pm_genpd_suspend_noirq(struct device *dev)
 {
 	struct generic_pm_domain *genpd;
+	struct pm_subsys_data *psd;
 
 	dev_dbg(dev, "%s()\n", __func__);
 
@@ -1209,6 +1210,11 @@ static int pm_genpd_suspend_noirq(struct device *dev)
 
 	if (genpd->suspend_power_off
 	    || (dev->power.wakeup_path && genpd_dev_active_wakeup(genpd, dev)))
+		return 0;
+
+	psd = dev_to_psd(dev);
+	if (psd && psd->domain_data &&
+	    !to_gpd_data(psd->domain_data)->need_save)
 		return 0;
 
 	genpd_stop_dev(genpd, dev);
@@ -1233,6 +1239,7 @@ static int pm_genpd_suspend_noirq(struct device *dev)
 static int pm_genpd_resume_noirq(struct device *dev)
 {
 	struct generic_pm_domain *genpd;
+	struct pm_subsys_data *psd;
 
 	dev_dbg(dev, "%s()\n", __func__);
 
@@ -1242,6 +1249,11 @@ static int pm_genpd_resume_noirq(struct device *dev)
 
 	if (genpd->suspend_power_off
 	    || (dev->power.wakeup_path && genpd_dev_active_wakeup(genpd, dev)))
+		return 0;
+
+	psd = dev_to_psd(dev);
+	if (psd && psd->domain_data &&
+	    !to_gpd_data(psd->domain_data)->need_save)
 		return 0;
 
 	/*
