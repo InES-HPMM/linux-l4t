@@ -2741,6 +2741,37 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
+{
+	/*
+	 * Tegra sdmmc controllers require clock to be enabled for any register
+	 * access. Set the minimum controller clock if no clock is requested.
+	 */
+	if (!sdhci->clock && !ios->clock) {
+		tegra_sdhci_set_clock(sdhci, sdhci->mmc->f_min);
+		sdhci->clock = sdhci->mmc->f_min;
+	} else if (ios->clock && (ios->clock != sdhci->clock)) {
+		tegra_sdhci_set_clock(sdhci, ios->clock);
+	}
+}
+
+void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci, struct mmc_ios *ios)
+{
+	/*
+	 * Do any required handling for retuning requests before powering off
+	 * the host.
+	 */
+	if (ios->power_mode == MMC_POWER_OFF)
+		tegra_sdhci_power_off(sdhci, ios->power_mode);
+
+	/*
+	 * In case of power off, turn off controller clock now as all the
+	 * required register accesses are already done.
+	 */
+	if (!ios->clock && !sdhci->mmc->skip_host_clkgate)
+		tegra_sdhci_set_clock(sdhci, 0);
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.get_cd     = tegra_sdhci_get_cd,
@@ -2755,7 +2786,8 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.platform_resume	= tegra_sdhci_post_resume,
 	.platform_reset_exit	= tegra_sdhci_reset_exit,
 	.platform_get_bus	= tegra_sdhci_get_bus,
-	.platform_power_off	= tegra_sdhci_power_off,
+	.platform_ios_config_enter	= tegra_sdhci_ios_config_enter,
+	.platform_ios_config_exit	= tegra_sdhci_ios_config_exit,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
