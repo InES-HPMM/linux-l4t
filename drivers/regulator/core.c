@@ -1383,6 +1383,12 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 				   &regulator->max_uV);
 	}
 
+	if (rdev->constraints->max_uV &&
+		(rdev->constraints->max_uV == rdev->constraints->min_uV)) {
+		regulator->min_uV = rdev->constraints->min_uV;
+		regulator->max_uV = rdev->constraints->max_uV;
+	}
+
 	/*
 	 * Check now if the regulator is an always on regulator - if
 	 * it is then we don't need to do nearly so much work for
