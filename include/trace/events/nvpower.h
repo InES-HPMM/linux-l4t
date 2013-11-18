@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra specific power events.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,20 +51,26 @@ enum {
 
 TRACE_EVENT(nvcpu_cluster,
 
-	TP_PROTO(int state),
+	TP_PROTO(int state, int start, int target),
 
-	TP_ARGS(state),
+	TP_ARGS(state, start, target),
 
 	TP_STRUCT__entry(
 		__field(u64, state)
+		__field(u32, start)
+		__field(u32, target)
 	),
 
 	TP_fast_assign(
 		__entry->state = state;
+		__entry->start = start;
+		__entry->target = target;
 	),
 
-	TP_printk("state=%lu",
-		  (unsigned long)__entry->state)
+	TP_printk("state=%lu, start=0x%08lx, target=0x%08lx",
+		  (unsigned long)__entry->state,
+		  (unsigned long)__entry->start,
+		  (unsigned long)__entry->target)
 );
 
 extern u32 notrace tegra_read_usec_raw(void);
