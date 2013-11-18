@@ -146,4 +146,10 @@
 			nvidia,memory-clients = <30 31>;
 		};
 	};
+
+	mipical {
+		compatible = "nvidia,tegra124-mipical";
+		reg = <0x700e3000 0x00000100>;
+	};
+
 };
