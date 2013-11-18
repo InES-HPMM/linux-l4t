@@ -752,7 +752,7 @@ static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
 }
 
 /* clk_m functions */
-static unsigned long tegra21_clk_m_autodetect_rate(struct clk *c)
+static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 {
 	u32 osc_ctrl = clk_readl(OSC_CTRL);
 	u32 auto_clock_control = osc_ctrl & ~OSC_CTRL_OSC_FREQ_MASK;
@@ -813,10 +813,41 @@ static unsigned long tegra21_clk_m_autodetect_rate(struct clk *c)
 	return c->rate;
 }
 
-static void tegra21_clk_m_init(struct clk *c)
+static void tegra21_osc_init(struct clk *c)
 {
 	pr_debug("%s on clock %s\n", __func__, c->name);
-	tegra21_clk_m_autodetect_rate(c);
+	tegra21_osc_autodetect_rate(c);
+}
+
+static int tegra21_osc_enable(struct clk *c)
+{
+	pr_debug("%s on clock %s\n", __func__, c->name);
+	return 0;
+}
+
+static void tegra21_osc_disable(struct clk *c)
+{
+	pr_debug("%s on clock %s\n", __func__, c->name);
+	WARN(1, "Attempting to disable main SoC clock\n");
+}
+
+static struct clk_ops tegra_osc_ops = {
+	.init		= tegra21_osc_init,
+	.enable		= tegra21_osc_enable,
+	.disable	= tegra21_osc_disable,
+};
+
+static void tegra21_clk_m_init(struct clk *c)
+{
+	u32 spare = clk_readl(SPARE_REG);
+	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
+		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	c->div = divisor + 1;
+	c->mul = 1;
+	c->state = ON;
 }
 
 static int tegra21_clk_m_enable(struct clk *c)
@@ -5630,9 +5661,17 @@ static struct clk tegra_clk_32k = {
 	.max_rate = 32768,
 };
 
+static struct clk tegra_clk_osc = {
+	.name      = "osc",
+	.flags     = ENABLE_ON_INIT,
+	.ops       = &tegra_osc_ops,
+	.max_rate  = 48000000,
+};
+
 static struct clk tegra_clk_m = {
 	.name      = "clk_m",
 	.flags     = ENABLE_ON_INIT,
+	.parent    = &tegra_clk_osc,
 	.ops       = &tegra_clk_m_ops,
 	.max_rate  = 48000000,
 };
@@ -5661,7 +5700,7 @@ static struct clk tegra_pll_ref = {
 	.name      = "pll_ref",
 	.flags     = ENABLE_ON_INIT,
 	.ops       = &tegra_pll_ref_ops,
-	.parent    = &tegra_clk_m,
+	.parent    = &tegra_clk_osc,
 	.max_rate  = 26000000,
 };
 
@@ -7531,6 +7570,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 
 struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_32k,
+	&tegra_clk_osc,
 	&tegra_clk_m,
 	&tegra_clk_m_div2,
 	&tegra_clk_m_div4,
