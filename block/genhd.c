@@ -852,7 +852,8 @@ static int show_partition(struct seq_file *seqf, void *v)
 	if (!get_capacity(sgp) || (!disk_max_parts(sgp) &&
 				   (sgp->flags & GENHD_FL_REMOVABLE)))
 		return 0;
-	if (sgp->flags & GENHD_FL_SUPPRESS_PARTITION_INFO)
+	if (sgp->flags & GENHD_FL_SUPPRESS_PARTITION_INFO ||
+		sgp->flags & GENHD_FL_NO_PART_SCAN)
 		return 0;
 
 	/* show the full disk and all non-0 size partitions of it */
