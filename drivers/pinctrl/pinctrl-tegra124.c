@@ -2909,7 +2909,7 @@ static const struct tegra_pingroup tegra124_groups[] = {
 	PINGROUP(clk2_out_pw5,		EXTPERIPH2,	RSVD2,		RSVD3,		RSVD4,		EXTPERIPH2,	0x3068,  N,  N,  N),
 	PINGROUP(clk2_req_pcc5,		DAP,		RSVD2,		RSVD3,		RSVD4,		DAP,		0x306c,  N,  N,  N),
 	PINGROUP(hdmi_int_pn7,		RSVD1,		RSVD2,		RSVD3,		RSVD4,		RSVD1,		0x3110,  N,  N,  Y),
-	PINGROUP(ddc_scl_pv4,		I2C4,		RSVD2,		RSVD3,		RSVD4,		I2C4,		0x3124,  N,  N,  Y),
+	PINGROUP(ddc_scl_pv4,		I2C4,		RSVD2,		RSVD3,		RSVD4,		I2C4,		0x3114,  N,  N,  Y),
 	PINGROUP(ddc_sda_pv5,		I2C4,		RSVD2,		RSVD3,		RSVD4,		I2C4,		0x3118,  N,  N,  Y),
 	PINGROUP(uart2_rxd_pc3,		IRDA,		SPDIF,		UARTA,		SPI4,		IRDA,		0x3164,  N,  N,  N),
 	PINGROUP(uart2_txd_pc2,		IRDA,		SPDIF,		UARTA,		SPI4,		IRDA,		0x3168,  N,  N,  N),
