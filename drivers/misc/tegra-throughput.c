@@ -1,7 +1,7 @@
 /*
  * drivers/misc/throughput.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,9 @@
 #include <linux/tegra-throughput.h>
 #include <mach/dc.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/tegra_throughput.h>
+
 #define DEFAULT_SYNC_RATE 60000 /* 60 Hz */
 
 static unsigned int target_frame_time;
@@ -53,6 +56,8 @@ EXPORT_SYMBOL(throughput_notifier_list);
 
 static void set_throughput_hint(struct work_struct *work)
 {
+	trace_tegra_throughput_hint(throughput_hint);
+
 	/* notify throughput hint clients here */
 	blocking_notifier_call_chain(&throughput_notifier_list,
 				     throughput_hint, NULL);
@@ -73,6 +78,7 @@ static void throughput_flip_callback(void)
 
 	if (last_flip.tv64 != 0) {
 		timediff = (long) ktime_us_delta(now, last_flip);
+		trace_tegra_throughput_flip(timediff);
 
 		if (timediff <= 0) {
 			pr_warn("%s: flips %lld nsec apart\n",
@@ -83,6 +89,8 @@ static void throughput_flip_callback(void)
 
 		throughput_hint =
 			((int) target_frame_time * 1000) / timediff;
+
+		trace_tegra_throughput_gen_hint(throughput_hint, timediff);
 
 		/* only deliver throughput hints when a single app is active */
 		if (throughput_active_app_count == 1 && !work_pending(&work))
@@ -123,6 +131,8 @@ static int throughput_open(struct inode *inode, struct file *file)
 	throughput_active_app_count++;
 	frame_time_sum_init = 1;
 
+	trace_tegra_throughput_open(throughput_active_app_count);
+
 	spin_unlock(&lock);
 
 
@@ -138,6 +148,8 @@ static int throughput_release(struct inode *inode, struct file *file)
 	throughput_active_app_count--;
 	frame_time_sum_init = 1;
 
+	trace_tegra_throughput_release(throughput_active_app_count);
+
 	if (throughput_active_app_count == 1)
 		reset_target_frame_time();
 
@@ -151,6 +163,7 @@ static int throughput_release(struct inode *inode, struct file *file)
 static int throughput_set_target_fps(unsigned long arg)
 {
 	pr_debug("%s: target fps %lu requested\n", __func__, arg);
+	trace_tegra_throughput_set_target_fps(arg);
 
 	if (throughput_active_app_count != 1) {
 		pr_debug("%s: %d active apps, disabling fps usage\n",
