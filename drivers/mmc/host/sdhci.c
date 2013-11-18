@@ -1500,20 +1500,9 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	int vdd_bit = -1;
 	u8 ctrl;
 
-	/*
-	 * Some controllers requires clock to be enabled for any register
-	 * access. If SDHCI_QUIRK2_REG_ACCESS_REQ_CLOCK is set, set the
-	 * minimum controller clock if there is no clock.
-	 */
-	if (host->ops->set_clock) {
-		if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
-			(!host->clock && !ios->clock)) {
-			host->ops->set_clock(host, host->mmc->f_min);
-			host->clock = host->mmc->f_min;
-		} else if (ios->clock && (ios->clock != host->clock)) {
-			host->ops->set_clock(host, ios->clock);
-		}
-	}
+	/* Do any required preparations prior to setting ios */
+	if (host->ops->platform_ios_config_enter)
+		host->ops->platform_ios_config_enter(host, ios);
 
 	spin_lock_irqsave(&host->lock, flags);
 
@@ -1692,16 +1681,10 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	mmiowb();
 	spin_unlock_irqrestore(&host->lock, flags);
 
-	/*
-	 * If SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK is set, controller clock can
-	 * be shutdown after all the register accesses are done.
-	 */
-	if ((host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK) &&
-		(!ios->clock && host->ops->set_clock) &&
-		!host->mmc->skip_host_clkgate)
-		host->ops->set_clock(host, ios->clock);
-	if ((ios->power_mode == MMC_POWER_OFF) && host->ops->platform_power_off)
-		host->ops->platform_power_off(host, ios->power_mode);
+	/* Platform specific handling post ios setting */
+	if (host->ops->platform_ios_config_exit)
+		host->ops->platform_ios_config_exit(host, ios);
+
 }
 
 static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
