@@ -126,6 +126,7 @@
 #define AFI_INTR_CODE_MASK						0xf
 #define AFI_INTR_MASTER_ABORT						4
 #define AFI_INTR_LEGACY						6
+#define AFI_INTR_PRSNT_SENSE						10
 
 #define AFI_INTR_SIGNATURE						0xbc
 #define AFI_SM_INTR_ENABLE						0xc4
@@ -822,6 +823,7 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 		"Response decoding error",
 		"AXI response decoding error",
 		"Transcation timeout",
+		"",
 	};
 
 	u32 code, signature;
@@ -849,7 +851,7 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 	if (code == AFI_INTR_MASTER_ABORT)
 		pr_debug("PCIE: %s, signature: %08x\n",
 				err_msg[code], signature);
-	else if (code != AFI_INTR_LEGACY)
+	else if ((code != AFI_INTR_LEGACY) && (code != AFI_INTR_PRSNT_SENSE))
 		pr_err("PCIE: %s, signature: %08x\n", err_msg[code], signature);
 
 	return IRQ_HANDLED;
