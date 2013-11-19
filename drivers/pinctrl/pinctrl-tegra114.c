@@ -2814,7 +2814,7 @@ static int tegra114_pinctrl_suspend(u32 *pg_data)
 		if (tegra114_groups[i].drv_reg < 0) {
 			*ctx++ = tegra_pinctrl_readl(tegra114_groups[i].mux_bank,
 						tegra114_groups[i].mux_reg);
-			if (tegra114_groups[i].name == "gmi_wr_n_pi0") {
+			if (!strcmp(tegra114_groups[i].name, "gmi_wr_n_pi0")) {
 				reg_value = *(pg_data - 1) | BIT(4);
 				tegra_pinctrl_writel(reg_value,
 						tegra114_groups[i].mux_bank,
