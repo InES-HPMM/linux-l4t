@@ -91,20 +91,20 @@ static struct sysedp_batmon_ibat_lut tn8_ibat_lut[] = {
 };
 
 static struct sysedp_batmon_rbat_lut tn8_rbat_lut[] = {
-	{ 100,	76000  },
-	{  88,	85000  },
-	{  75,  102000 },
-	{  63,  93000  },
-	{  50,  85000  },
-	{  38,  93000  },
-	{  25,  102000 },
-	{  13,  119000 },
-	{   0,  119000 }
+	{ 100,  70000 },
+	{  88,  70000 },
+	{  75,  70000 },
+	{  63,  70000 },
+	{  50,  70000 },
+	{  38,  70000 },
+	{  25,  70000 },
+	{  13,  70000 },
+	{   0,  90000 }
 };
 
 static struct sysedp_batmon_calc_platform_data tn8_batmon_pdata = {
 	.power_supply = "battery",
-	.r_const = 38000,
+	.r_const = 60000,
 	.vsys_min = 2900000,
 	.ibat_lut = tn8_ibat_lut,
 	.rbat_lut = tn8_rbat_lut,
