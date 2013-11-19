@@ -2570,6 +2570,7 @@ static const struct tegra_function  tegra114_functions[] = {
 		.drvtype_reg = DRV_PINGROUP_DVRTYPE_##drvtype(r),	\
 		.drvtype_bank = 0,					\
 		.drvtype_bit = 6,					\
+		.drvtype_width = 2,					\
 		.dev_id = dev_name,					\
 	}
 
