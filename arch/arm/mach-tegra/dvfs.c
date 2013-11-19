@@ -721,20 +721,17 @@ int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 	return ret;
 }
 
-static int predict_millivolts(struct clk *c, const int *millivolts,
-			      unsigned long rate)
+/*
+ *  Using non alt frequencies always results in peak voltage
+ * (enforced by alt_freqs_validate())
+ */
+static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
+				      unsigned long rate)
 {
 	int i;
 
 	if (!millivolts)
 		return -ENODEV;
-	/*
-	 * Predicted voltage can not be used across the switch to alternative
-	 * frequency limits. For now, just fail the call for clock that has
-	 * alternative limits initialized.
-	 */
-	if (c->dvfs->alt_freqs)
-		return -ENOSYS;
 
 	for (i = 0; i < c->dvfs->num_freqs; i++) {
 		if (rate <= c->dvfs->freqs[i])
@@ -745,6 +742,20 @@ static int predict_millivolts(struct clk *c, const int *millivolts,
 		return -EINVAL;
 
 	return millivolts[i];
+}
+
+static int predict_millivolts(struct clk *c, const int *millivolts,
+			      unsigned long rate)
+{
+	/*
+	 * Predicted voltage can not be used across the switch to alternative
+	 * frequency limits. For now, just fail the call for clock that has
+	 * alternative limits initialized.
+	 */
+	if (c->dvfs->alt_freqs)
+		return -ENOSYS;
+
+	return predict_non_alt_millivolts(c, millivolts, rate);
 }
 
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
@@ -770,7 +781,7 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
 			c->dvfs->dfll_millivolts : c->dvfs->peak_millivolts ? :
 			tegra_dvfs_get_millivolts_pll(c->dvfs);
-	return predict_millivolts(c, millivolts, rate);
+	return predict_non_alt_millivolts(c, millivolts, rate);
 }
 
 int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate)
