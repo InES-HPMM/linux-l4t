@@ -4343,7 +4343,7 @@ static int tegra14_clk_emc_suspend(struct clk *c, u32 *ctx)
 
 	rate = tegra14_emc_clk_round_rate(c, rate);
 
-	mv = tegra_dvfs_predict_millivolts(c, rate);
+	mv = tegra_dvfs_predict_peak_millivolts(c, rate);
 	mv = max(mv, floor_mv);
 	tegra_lp1bb_suspend_mv_set(mv);
 	pr_debug("EMC voltage requested before suspend: %d\n", mv);
