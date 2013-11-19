@@ -2264,13 +2264,6 @@ void delayed_clk_gate_cb(struct work_struct *work)
 	if (host->mmc->ios.power_mode == MMC_POWER_OFF)
 		goto end;
 
-	if (!host->is_clk_on) {
-		/* bypass condition */
-		dev_err(&pdev->dev, "clk already off. skipped clk gate\n");
-		dump_stack();
-		goto end;
-	}
-
 	mmc_host_clk_gate(host);
 end:
 	return;
@@ -2285,8 +2278,9 @@ int sdhci_disable(struct mmc_host *mmc)
 		return 0;
 
 	if (IS_DELAYED_CLK_GATE(host)) {
-		schedule_delayed_work(&host->delayed_clk_gate_wrk,
-			SDIO_CLK_GATING_TICK_TMOUT);
+		if (host->is_clk_on)
+			schedule_delayed_work(&host->delayed_clk_gate_wrk,
+				SDIO_CLK_GATING_TICK_TMOUT);
 		return 0;
 	}
 
@@ -2857,6 +2851,9 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
 		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
 			SDHCI_INT_CARD_INT;
+
+	/* cancel sdio clk gate work */
+	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {
 		sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);

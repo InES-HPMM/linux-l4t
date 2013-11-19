@@ -1227,10 +1227,11 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
 			clk_prepare_enable(pltfm_host->clk);
+			tegra_host->clk_enabled = true;
+			sdhci->is_clk_on = tegra_host->clk_enabled;
 			ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
 			ctrl |= SDHCI_VNDR_CLK_CTRL_SDMMC_CLK;
 			sdhci_writeb(sdhci, ctrl, SDHCI_VNDR_CLK_CTRL);
-			tegra_host->clk_enabled = true;
 		}
 		tegra_sdhci_set_clk_rate(sdhci, clock);
 
@@ -1255,10 +1256,10 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		ctrl &= ~SDHCI_VNDR_CLK_CTRL_SDMMC_CLK;
 		sdhci_writeb(sdhci, ctrl, SDHCI_VNDR_CLK_CTRL);
 		clk_disable_unprepare(pltfm_host->clk);
-		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
+		sdhci->is_clk_on = tegra_host->clk_enabled;
+		pm_runtime_put_sync(&pdev->dev);
 	}
-	sdhci->is_clk_on = tegra_host->clk_enabled;
 	mutex_unlock(&tegra_host->set_clock_mutex);
 }
 
