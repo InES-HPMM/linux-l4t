@@ -65,6 +65,9 @@ TLK_GENERIC_SMC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 
 	switch_cpumask_to_cpu0();
 	retval = tlk_generic_smc(arg0, arg1, arg2);
+	while (retval == 0xFFFFFFFD) {
+		retval = tlk_generic_smc((60 << 24), 0, 0);
+	}
 	restore_cpumask();
 
 	return retval;
@@ -77,6 +80,9 @@ TLK_EXTENDED_SMC(uint32_t *args)
 
 	switch_cpumask_to_cpu0();
 	retval = tlk_extended_smc(args);
+	while (retval == 0xFFFFFFFD) {
+		retval = tlk_generic_smc((60 << 24), 0, 0);
+	}
 	restore_cpumask();
 
 	return retval;
@@ -116,16 +122,19 @@ struct tlk_context {
 };
 
 enum {
-	TE_SMC_OPEN_SESSION		= 0xFFFF1004,
-	TE_SMC_CLOSE_SESSION		= 0xFFFF1005,
-	TE_SMC_LAUNCH_OPERATION		= 0xFFFF1000,
-	TE_SMC_REGISTER_IRQ_HANDLER	= 0xFFFF1FF0,
-	TE_SMC_NS_IRQ_DONE		= 0xFFFF1FF1,
-	TE_SMC_REGISTER_FS_HANDLERS	= 0xFFFF1FF2,
-	TE_SMC_REGISTER_REQ_BUF		= 0xFFFF1FF3,
-	TE_SMC_PROGRAM_VPR		= 0xFFFF1FF5,
-	TE_SMC_FS_OP_DONE		= 0xFFFF1FFF,
-	TE_SMC_INIT_LOGGER		= 0xFFFF1FF4,
+	/* Trusted Application Calls */
+	TE_SMC_OPEN_SESSION		= 0x30000001,
+	TE_SMC_CLOSE_SESSION		= 0x30000002,
+	TE_SMC_LAUNCH_OPERATION		= 0x30000003,
+
+	/* Trusted OS calls */
+	TE_SMC_REGISTER_FS_HANDLERS	= 0x32000001,
+	TE_SMC_REGISTER_REQ_BUF		= 0x32000002,
+	TE_SMC_PROGRAM_VPR		= 0x32000003,
+	TE_SMC_REGISTER_IRQ_HANDLER	= 0x32000004,
+	TE_SMC_NS_IRQ_DONE		= 0x32000005,
+	TE_SMC_FS_OP_DONE		= 0x32000006,
+	TE_SMC_INIT_LOGGER		= 0x32000007,
 
 };
 

@@ -15,7 +15,9 @@
 #include <linux/init.h>
 
 ENTRY(tlk_irq_handler)
-	movw	r0, #0x1FF1
-	movt	r0, #0xFFFF	@ TE_SMC_NS_IRQ_DONE
+	movw	r0, #0x5
+	movt	r0, #0x3200	@ TE_SMC_NS_IRQ_DONE
+	mov	r1, #0
+	mov	r2, #0
 	smc	#0
 ENDPROC(tlk_irq_handler)

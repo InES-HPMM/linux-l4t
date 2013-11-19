@@ -32,8 +32,6 @@
 bool verbose_smc;
 core_param(verbose_smc, verbose_smc, bool, 0644);
 
-static unsigned long saved_regs[16];
-
 #define SET_RESULT(req, r, ro)	{ req->result = r; req->result_origin = ro; }
 
 static int te_pin_user_pages(void *buffer, size_t size,
@@ -220,27 +218,18 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 	register uint32_t r0 asm("r0") = arg0;
 	register uint32_t r1 asm("r1") = arg1;
 	register uint32_t r2 asm("r2") = arg2;
-	register uint32_t r3 asm("r3") =
-		(arg0 == TE_SMC_FS_OP_DONE) ? 0 : (uint32_t)saved_regs;
 
 	asm volatile(
 		__asmeq("%0", "r0")
 		__asmeq("%1", "r0")
 		__asmeq("%2", "r1")
 		__asmeq("%3", "r2")
-		__asmeq("%4", "r3")
-		"cmp	r3, #0					\n"
-		"beq	avoid_save_regs				\n"
-		"stmia	r3, {r4-r12}	@ save reg state	\n"
-		"avoid_save_regs:				\n"
 #ifdef REQUIRES_SEC
 		".arch_extension sec				\n"
 #endif
 		"smc	#0		@ switch to secure world\n"
-		__asmeq("%4", "r3")
-		"ldmia	r3, {r4-r12}	@ restore saved regs	\n"
 		: "=r" (r0)
-		: "r" (r0), "r" (r1), "r" (r2), "r" (r3)
+		: "r" (r0), "r" (r1), "r" (r2)
 	);
 
 	return r0;
@@ -306,7 +295,7 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	retval = TLK_GENERIC_SMC(TE_SMC_PROGRAM_VPR, vpr_base, vpr_size);
+	retval = TLK_GENERIC_SMC(TE_SMC_PROGRAM_VPR, (uint32_t)vpr_base, vpr_size);
 
 	mutex_unlock(&smc_lock);
 
