@@ -4368,6 +4368,10 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	ret = tegra_xusb_regulator_init(tegra, pdev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to initialize xusb regulator\n");
+		if (ret == -ENODEV) {
+			ret = -EPROBE_DEFER;
+			dev_err(&pdev->dev, "Retry at a later stage\n");
+		}
 		goto err_deinit_xusb_partition_clk;
 	}
 
