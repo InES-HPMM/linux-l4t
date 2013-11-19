@@ -459,13 +459,12 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 			writel(val, base + UTMIP_PMC_WAKEUP0);
 
 			val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
-			if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) {
-				pr_info("%s: utmip remote wake detected\n",
-								__func__);
+			if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN)
 				phy->pmc_remote_wakeup = true;
-			} else {
+			else
 				phy->pmc_hotplug_wakeup = true;
-			}
+
+			DBG("%s: utmip PMC interrupt detected\n", __func__);
 			return true;
 		}
 	}
@@ -1136,9 +1135,9 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
 		phy->pmc_remote_wakeup = false;
 		phy->pmc_hotplug_wakeup = false;
-		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, phy->inst);
-
 		local_irq_restore(flags);
+
+		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, phy->inst);
 
 		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
 							 USB_USBCMD_RS, 2000)) {
@@ -1582,7 +1581,7 @@ static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	val &= ~EVENT_INT_ENB;
 	writel(val, base + UHSIC_PMC_WAKEUP0);
 	phy->pmc_remote_wakeup = true;
-	DBG("%s:PMC remote wakeup detected for HSIC\n", __func__);
+	DBG("%s:PMC interrupt detected for HSIC\n", __func__);
 	return true;
 }
 

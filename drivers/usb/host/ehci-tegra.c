@@ -197,7 +197,7 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 		return irq_status;
 	}
 	if (tegra_usb_phy_pmc_wakeup(tegra->phy)) {
-		ehci_dbg(ehci, "pmc wakeup detected\n");
+		ehci_dbg(ehci, "pmc interrupt detected\n");
 		usb_hcd_resume_root_hub(hcd);
 		spin_unlock(&ehci->lock);
 		return irq_status;
