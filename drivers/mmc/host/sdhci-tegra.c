@@ -337,6 +337,12 @@ struct sdhci_tegra {
 	unsigned int vddio_min_uv;
 	/* vddio_max */
 	unsigned int vddio_max_uv;
+	/* DDR and low speed modes clock */
+	struct clk *ddr_clk;
+	/* HS200, SDR104 modes clock */
+	struct clk *sdr_clk;
+	/* Check if ddr_clk is being used */
+	bool is_ddr_clk_set;
 	/* max clk supported by the platform */
 	unsigned int max_clk_limit;
 	/* max ddr clk supported by the platform */
@@ -1113,6 +1119,23 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 	pll_c_freq = get_nearest_clock_freq(pll_c_rate, desired_rate);
 	pll_p_freq = get_nearest_clock_freq(pll_p_rate, desired_rate);
 
+	/*
+	 * For low freq requests, both the desired rates might be higher than
+	 * the requested clock frequency. In such cases, select the parent
+	 * with the lower frequency rate.
+	 */
+	if ((pll_c_freq > desired_rate) && (pll_p_freq > desired_rate)) {
+		if (pll_p_freq <= pll_c_freq) {
+			desired_rate = pll_p_freq;
+			parent_clk = pll_p;
+		} else {
+			desired_rate = pll_c_freq;
+			parent_clk = pll_c;
+		}
+		rc = clk_set_rate(pltfm_host->clk, desired_rate);
+		goto set_clk_parent;
+	}
+
 	if (pll_c_freq > pll_p_freq) {
 		if (!tegra_host->is_parent_pllc) {
 			parent_clk = pll_c;
@@ -1126,6 +1149,7 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 	} else
 		return;
 
+set_clk_parent:
 	rc = clk_set_parent(pltfm_host->clk, parent_clk);
 	if (rc)
 		pr_err("%s: failed to set pll parent clock %d\n",
@@ -2743,6 +2767,11 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 
 void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
 {
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct clk *new_mode_clk;
+	bool change_clk = false;
+
 	/*
 	 * Tegra sdmmc controllers require clock to be enabled for any register
 	 * access. Set the minimum controller clock if no clock is requested.
@@ -2752,6 +2781,34 @@ void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
 		sdhci->clock = sdhci->mmc->f_min;
 	} else if (ios->clock && (ios->clock != sdhci->clock)) {
 		tegra_sdhci_set_clock(sdhci, ios->clock);
+	}
+
+	/*
+	 * Check for DDR50 mode setting and set ddr_clk if not already
+	 * done. Return if only one clock option is available.
+	 */
+	if (!tegra_host->ddr_clk || !tegra_host->sdr_clk) {
+		return;
+	} else {
+		if ((ios->timing == MMC_TIMING_UHS_DDR50) &&
+			!tegra_host->is_ddr_clk_set) {
+			change_clk = true;
+			new_mode_clk = tegra_host->ddr_clk;
+		} else {
+			if (tegra_host->is_ddr_clk_set) {
+				change_clk = true;
+				new_mode_clk = tegra_host->sdr_clk;
+			}
+		}
+
+		if (change_clk) {
+			tegra_sdhci_set_clock(sdhci, 0);
+			pltfm_host->clk = new_mode_clk;
+			/* Restore the previous frequency */
+			tegra_sdhci_set_clock(sdhci, sdhci->max_clk);
+			tegra_host->is_ddr_clk_set =
+				!tegra_host->is_ddr_clk_set;
+		}
 	}
 }
 
@@ -3120,11 +3177,34 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-	pltfm_host->clk = clk_get(mmc_dev(host->mmc), NULL);
-	if (IS_ERR(pltfm_host->clk)) {
-		dev_err(mmc_dev(host->mmc), "clk err\n");
-		rc = PTR_ERR(pltfm_host->clk);
-		goto err_clk_get;
+
+	/* Get the ddr clock */
+	tegra_host->ddr_clk = clk_get(mmc_dev(host->mmc), "ddr");
+	if (IS_ERR(tegra_host->ddr_clk)) {
+		dev_err(mmc_dev(host->mmc), "ddr clk err\n");
+		tegra_host->ddr_clk = NULL;
+	}
+
+	/* Get high speed clock */
+	tegra_host->sdr_clk = clk_get(mmc_dev(host->mmc), NULL);
+	if (IS_ERR(tegra_host->sdr_clk)) {
+		dev_err(mmc_dev(host->mmc), "sdr clk err\n");
+		tegra_host->sdr_clk = NULL;
+		/* If both ddr and sdr clks are missing, then fail probe */
+		if (!tegra_host->ddr_clk && !tegra_host->sdr_clk) {
+			dev_err(mmc_dev(host->mmc),
+				"Failed to get ddr and sdr clks\n");
+			rc = -EINVAL;
+			goto err_clk_get;
+		}
+	}
+
+	if (tegra_host->sdr_clk) {
+		pltfm_host->clk = tegra_host->sdr_clk;
+		tegra_host->is_ddr_clk_set = false;
+	} else {
+		pltfm_host->clk = tegra_host->ddr_clk;
+		tegra_host->is_ddr_clk_set = true;
 	}
 
 	if (clk_get_parent(pltfm_host->clk) == pll_c)
@@ -3267,10 +3347,16 @@ err_cd_irq_req:
 	if (gpio_is_valid(plat->cd_gpio))
 		gpio_free(plat->cd_gpio);
 err_add_host:
-	clk_disable_unprepare(pltfm_host->clk);
+	if (tegra_host->is_ddr_clk_set)
+		clk_disable_unprepare(tegra_host->ddr_clk);
+	else
+		clk_disable_unprepare(tegra_host->sdr_clk);
 	pm_runtime_put_sync(&pdev->dev);
 err_clk_put:
-	clk_put(pltfm_host->clk);
+	if (tegra_host->ddr_clk)
+		clk_put(tegra_host->ddr_clk);
+	if (tegra_host->sdr_clk)
+		clk_put(tegra_host->sdr_clk);
 err_clk_get:
 	if (gpio_is_valid(plat->wp_gpio))
 		gpio_free(plat->wp_gpio);
@@ -3321,10 +3407,17 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 		gpio_free(plat->power_gpio);
 
 	if (tegra_host->clk_enabled) {
-		clk_disable_unprepare(pltfm_host->clk);
+		if (tegra_host->is_ddr_clk_set)
+			clk_disable_unprepare(tegra_host->ddr_clk);
+		else
+			clk_disable_unprepare(tegra_host->sdr_clk);
 		pm_runtime_put_sync(&pdev->dev);
 	}
-	clk_put(pltfm_host->clk);
+
+	if (tegra_host->ddr_clk)
+		clk_put(tegra_host->ddr_clk);
+	if (tegra_host->sdr_clk)
+		clk_put(tegra_host->sdr_clk);
 
 	if (tegra_host->emc_clk && tegra_host->is_sdmmc_emc_clk_on)
 		clk_disable_unprepare(tegra_host->emc_clk);
