@@ -1741,12 +1741,16 @@ int tegra_pinctrl_pg_drive_get_pingroup(struct device *dev)
 		return -EINVAL;
 
 	dev_id = dev_name(dev);
-	for (pg = 0; pg < pmx->soc->ngroups; pg++)
+	for (pg = 0; pg < pmx->soc->ngroups; pg++) {
 		if (pmx->soc->groups[pg].dev_id &&
-			!(strcmp(pmx->soc->groups[pg].dev_id, dev_id)))
+			!(strcmp(pmx->soc->groups[pg].dev_id, dev_id))) {
+			if (pg >= pmx->drive_group_start_index)
+				pg -= pmx->drive_group_start_index;
 			break;
+		}
+	}
 
-	return pg;
+	return (pg == pmx->soc->ngroups) ? -EINVAL : pg;
 }
 EXPORT_SYMBOL(tegra_pinctrl_pg_drive_get_pingroup);
 
