@@ -50,7 +50,7 @@
 #define XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0			0x140
 #define XUSB_PADCTL_IOPHY_PLL_S0_CTL3_0_RCAL_BYPASS		(1 << 7)
 
-/* xusb padctl regs for pad programming of t124 pcie */
+/* xusb padctl regs for pad programming of pcie */
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0	0x40
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_REFCLK_SEL_MASK	(0xF << 12)
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_REFCLK_SEL	(0x0 << 12)

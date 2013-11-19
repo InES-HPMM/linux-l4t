@@ -211,6 +211,16 @@
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
 #define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
 
+#define NV_PCIE2_RP_L1_PM_SUBSTATES_CYA				0x00000C00
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_CM_RTIME_MASK		(0xFF << 8)
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_CM_RTIME_SHIFT		(8)
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_SCL_MASK		(0x3 << 16)
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_SCL_SHIFT		(16)
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_MASK		(0xF8 << 19)
+#define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_SHIFT		(19)
+
+#define BOARD_PM359						0x0167
+#define BOARD_PM358						0x0166
 
 /*
  * AXI address map for the PCIe aperture , defines 1GB in the AXI
@@ -1477,6 +1487,20 @@ static void tegra_pcie_enable_rp_features(int index)
 	/* unhide AER capability */
 	tegra_pcie_enable_aer(index, true);
 
+	/* program timers for L1 substate support */
+	/* set cm_rtime = 100us and t_pwr_on = 70us as per HW team */
+	data = rp_readl(NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
+	data &= ~PCIE2_RP_L1_PM_SUBSTATES_CYA_CM_RTIME_MASK;
+	data |= (0x64 << PCIE2_RP_L1_PM_SUBSTATES_CYA_CM_RTIME_SHIFT);
+	rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
+
+	data = rp_readl(NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
+	data &= ~(PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_SCL_MASK |
+		PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_MASK);
+	data |= (1 << PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_SCL_SHIFT) |
+		(7 << PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_SHIFT);
+	rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
+
 	tegra_pcie_apply_sw_war(index, false);
 }
 
@@ -1777,11 +1801,140 @@ static void tegra_pcie_pll_pdn(void)
 	}
 }
 
+static void tegra_pcie_config_l1ss_tpwr_on(int pos)
+{
+	struct pci_dev *pdev = NULL;
+	u32 data = 0, data1 = 0, data2 = 0;
+	unsigned long max1 = 0, max2 = 0;
+
+	PR_FUNC_LINE;
+	/* find max T_POWER_ON reported by RP & EP capability regs */
+	/* and program same in ctrl2 reg of both RP & EP */
+	for_each_pci_dev(pdev) {
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT) {
+
+			pci_read_config_dword(pdev->bus->self,
+				pos + PCI_L1SS_CAP, &data1);
+			max1 = (((data1 & PCI_L1SS_CAP_PWRN_SCL_MASK) >>
+				PCI_L1SS_CAP_PWRN_SCL_SHIFT) *
+				((data1 & PCI_L1SS_CAP_PWRN_VAL_MASK) >>
+				PCI_L1SS_CAP_PWRN_VAL_SHIFT));
+			pci_read_config_dword(pdev, pos + PCI_L1SS_CAP, &data2);
+			max2 = (((data2 & PCI_L1SS_CAP_PWRN_SCL_MASK) >>
+				PCI_L1SS_CAP_PWRN_SCL_SHIFT) *
+				((data2 & PCI_L1SS_CAP_PWRN_VAL_MASK) >>
+				PCI_L1SS_CAP_PWRN_VAL_SHIFT));
+			if (max1 > max2)
+				data = (data1 & PCI_L1SS_CAP_PWRN_VS_MASK) >>
+					PCI_L1SS_CAP_PWRN_SCL_SHIFT;
+			else
+				data = (data2 & PCI_L1SS_CAP_PWRN_VS_MASK) >>
+					PCI_L1SS_CAP_PWRN_SCL_SHIFT;
+
+			pci_write_config_dword(pdev,
+				pos + PCI_L1SS_CTRL2, data);
+			pci_write_config_dword(pdev->bus->self,
+				pos + PCI_L1SS_CTRL2, data);
+		}
+	}
+}
+
+static void tegra_pcie_config_l1ss_cm_rtime(int pos)
+{
+	struct pci_dev *pdev = NULL;
+	u32 data = 0, data1 = 0, max[MAX_PCIE_SUPPORTED_PORTS] = {0};
+	int i = -1;
+
+	PR_FUNC_LINE;
+	/* find max of common mode restore time reported by all */
+	/* devices including RP in capability register, and set same */
+	/* in control 1 register after substracting t_pwr_on for both RP & EP */
+	for_each_pci_dev(pdev) {
+		if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
+			i++;
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CAP, &data);
+		data &= PCI_L1SS_CAP_CM_RTM_MASK;
+		if (max[i] < data)
+			max[i] = data;
+	}
+	i = 0;
+	for_each_pci_dev(pdev) {
+		if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT) {
+			pci_read_config_dword(pdev,
+				pos + PCI_L1SS_CTRL1, &data);
+			data &= ~PCI_L1SS_CAP_CM_RTM_MASK;
+
+			pci_read_config_dword(pdev,
+				pos + PCI_L1SS_CTRL2, &data1);
+			data1 = (data1 & PCI_L1SS_CTRL2_PWRN_SCL_MASK) *
+				((data1 & PCI_L1SS_CTRL2_PWRN_VAL_MASK) >>
+				PCI_L1SS_CTRL2_PWRN_VAL_SHIFT);
+			data |= max[i++] - (data1 << PCI_L1SS_CAP_CM_RTM_SHIFT);
+			pci_write_config_dword(pdev,
+				pos + PCI_L1SS_CTRL1, data);
+		}
+	}
+}
+
+static void tegra_pcie_config_l1ss_l12_thtime(int pos)
+{
+	struct pci_dev *pdev = NULL;
+	u32 data = 0;
+
+	PR_FUNC_LINE;
+	/* program same LTR L1.2 threshold = 106us for all devices */
+	for_each_pci_dev(pdev) {
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &data);
+		data |= 0x6A << PCI_L1SS_CTRL1_L12TH_VAL_SHIFT;
+		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, data);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &data);
+		data |= 0x02 << PCI_L1SS_CTRL1_L12TH_SCALE_SHIFT;
+		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, data);
+	}
+}
+
+static void tegra_pcie_enable_l1ss_support(int pos)
+{
+	struct pci_dev *pdev = NULL;
+	u32 aspm = 0, data = 0;
+
+	PR_FUNC_LINE;
+	for_each_pci_dev(pdev) {
+		/* enable L1 substate as per device capability */
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CAP, &aspm);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &data);
+		data &= ~PCI_L1SS_CAP_L1PM_MASK;
+		data |= (aspm & PCI_L1SS_CAP_L1PM_MASK);
+		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, data);
+	}
+}
+
+static void tegra_pcie_enable_ltr_support(int pos)
+{
+	struct pci_dev *pdev = NULL;
+	u16 val = 0;
+	u32 data = 0;
+
+	PR_FUNC_LINE;
+	/* enable LTR mechanism for L1.2 support */
+	for_each_pci_dev(pdev) {
+		pcie_capability_read_dword(pdev, PCI_EXP_DEVCAP2, &data);
+		if (data & PCI_EXP_DEVCAP2_LTR) {
+			pcie_capability_read_word(pdev, PCI_EXP_DEVCTL2, &val);
+			val |= PCI_EXP_LTR_EN;
+			pcie_capability_write_word(pdev, PCI_EXP_DEVCTL2, val);
+		}
+	}
+}
+
 /* Enable ASPM support of all devices based on it's capability */
 static void tegra_pcie_enable_aspm(void)
 {
 	struct pci_dev *pdev = NULL;
-	u16 val = 0, aspm = 0;
+	u16 val = 0;
+	u32 aspm = 0;
+	int pos = 0;
+	bool config_l1ss = true;
 
 	PR_FUNC_LINE;
 	if (!pcie_aspm_support_enabled()) {
@@ -1790,13 +1943,36 @@ static void tegra_pcie_enable_aspm(void)
 	}
 	for_each_pci_dev(pdev) {
 		/* Find ASPM capability */
-		pcie_capability_read_word(pdev, PCI_EXP_LNKCAP, &aspm);
+		pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &aspm);
 		aspm &= PCI_EXP_LNKCAP_ASPMS;
 
 		/* Enable ASPM support as per capability */
 		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
-		val |= aspm >> 10;
+		val |= (u16)aspm >> 10;
 		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
+	}
+	/* L1SS configuration */
+	for_each_pci_dev(pdev) {
+		/* check if L1SS capability is supported in current device */
+		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+		if (!pos) {
+			config_l1ss = false;
+			break;
+		}
+		/* avoid L1SS config if no support of L1PM substate feature */
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CAP, &aspm);
+		if (((aspm & PCI_L1SS_CAP_L1PMS) == 0) ||
+			((aspm & PCI_L1SS_CAP_L1PM_MASK) == 0)) {
+			config_l1ss = false;
+			break;
+		}
+	}
+	if (config_l1ss) {
+		tegra_pcie_config_l1ss_tpwr_on(pos);
+		tegra_pcie_config_l1ss_cm_rtime(pos);
+		tegra_pcie_config_l1ss_l12_thtime(pos);
+		tegra_pcie_enable_l1ss_support(pos);
+		tegra_pcie_enable_ltr_support(pos);
 	}
 }
 

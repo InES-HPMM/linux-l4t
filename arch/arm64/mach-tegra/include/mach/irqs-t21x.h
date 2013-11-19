@@ -1,7 +1,7 @@
 /*
  * arch/arm64/mach-tegra/include/mach/irqs-t21x.h
  *
- * Copyright (C) 2013 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -129,9 +129,9 @@
 #define INT_QUAD_BASE			(INT_TRI_BASE + 32)
 /* unused				(INT_QUAD_BASE + 0) */
 #define INT_USB3			(INT_QUAD_BASE + 1)
-/* unused				(INT_QUAD_BASE + 2) */
-/* unused				(INT_QUAD_BASE + 3) */
-/* unused				(INT_QUAD_BASE + 4) */
+#define INT_PCIE_INTR			(INT_QUAD_BASE + 2)
+#define INT_PCIE_MSI			(INT_QUAD_BASE + 3)
+#define INT_PCIE			(INT_QUAD_BASE + 4)
 #define INT_AVP_CACHE			(INT_QUAD_BASE + 5)
 /* unused				(INT_QUAD_BASE + 6) */
 #define INT_AUDIO_CLUSTER		(INT_QUAD_BASE + 7)
