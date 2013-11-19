@@ -40,6 +40,7 @@ enum {
 
 	/* Sony IMX074 */
 	V4L2_IDENT_IMX074 = 74,
+	V4L2_IDENT_IMX135 = 75,
 
 	/* module saa7110: just ident 100 */
 	V4L2_IDENT_SAA7110 = 100,
