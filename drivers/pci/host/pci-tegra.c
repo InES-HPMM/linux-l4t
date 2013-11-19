@@ -784,7 +784,7 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 
 static void notify_device_isr(u32 mesg)
 {
-	pr_info(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
+	pr_debug(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
 	/* TODO: Need to call pcie device isr instead of ignoring interrupt */
 	/* same comment applies to below handler also */
 }
@@ -1479,6 +1479,19 @@ static void tegra_pcie_enable_rp_features(int index)
 	tegra_pcie_apply_sw_war(index);
 }
 
+static void tegra_pcie_disable_ctlr(int index)
+{
+	u32 data;
+
+	PR_FUNC_LINE;
+	data = afi_readl(AFI_PCIE_CONFIG);
+	if (index)
+		data |= AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
+	else
+		data |= AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE;
+	afi_writel(data, AFI_PCIE_CONFIG);
+}
+
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
@@ -1495,6 +1508,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	if (!pp->link_up) {
 		pp->base = NULL;
 		pr_info("PCIE: port %d: link down, ignoring\n", index);
+		tegra_pcie_disable_ctlr(index);
 		return;
 	}
 	/*
