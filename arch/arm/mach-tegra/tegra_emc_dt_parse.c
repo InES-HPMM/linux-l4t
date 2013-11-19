@@ -53,7 +53,7 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 {
 	int i = 0, ret = 0;
 	struct device_node *iter;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra12_emc_table *tables;
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	struct tegra11_emc_table *tables;
@@ -108,7 +108,7 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 						iter->full_name);
 				continue;
 			}
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 			strncpy(tables[i].src_name, source_name, 16);
 #else
 			tables[i].src_name = source_name;
@@ -394,7 +394,7 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 	struct device_node *tnp, *iter;
 	int num_tables, table_count;
 	u32 tegra_bct_strapping;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra12_emc_pdata *pdata = NULL;
 	const char *comp = "nvidia,tegra12-emc-table";
 	const char *comp_derated = "nvidia,tegra12-emc-table-derated";
@@ -438,7 +438,7 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	pdata->tables = (struct tegra12_emc_table *)
 			tegra_emc_dt_parse_pdata_comp(emc_mode, comp,
 			pdata, tnp, pdev, num_tables, &table_count);
@@ -449,7 +449,7 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 #endif
 	pdata->num_tables = table_count;
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* populate the derated tables */
 	num_tables = 0;
 	for_each_child_of_node(tnp, iter) {
