@@ -1243,7 +1243,7 @@ int __init ardbeg_edp_init(void)
 
 	regulator_mA = get_maximum_cpu_current_supported();
 	if (!regulator_mA)
-		regulator_mA = 16000;
+		regulator_mA = 14000;
 
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
