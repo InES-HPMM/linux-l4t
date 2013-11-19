@@ -21,10 +21,10 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/tegra-fuse.h>
 
 #include "clock.h"
 #include "dvfs.h"
-#include "fuse.h"
 #include "board.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra_core_sysfs_limits.h"
@@ -284,7 +284,6 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.speedo_id =  0,
 		.process_id = -1,
 		.max_mv = 1100,
-		.min_mv = 800,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
@@ -655,8 +654,6 @@ static int __init set_gpu_dvfs_data(
 	struct rail_alignment *align = &tegra21_dvfs_rail_vdd_gpu.alignment;
 
 	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000, align);
-	d->min_mv = round_cvb_voltage(d->min_mv * 1000, 1000, align);
-	BUG_ON(d->min_mv < tegra21_dvfs_rail_vdd_gpu.min_millivolts);
 
 	/*
 	 * Use CVB table to fill in gpu dvfs frequencies and voltages. Each
@@ -676,7 +673,6 @@ static int __init set_gpu_dvfs_data(
 			break;
 
 		/* fill in gpu dvfs tables */
-		mv = max(mv, d->min_mv);
 		if (!j || (mv > gpu_millivolts[j - 1])) {
 			gpu_millivolts[j] = mv;
 			gpu_dvfs->freqs[j] = table->freq;

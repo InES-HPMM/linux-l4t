@@ -17,11 +17,11 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/tegra-fuse.h>
 #include <mach/powergate.h>
 
 #include "reset.h"
 #include "apbio.h"
-#include "fuse.h"
 #include "clock.h"
 #include "dvfs.h"
 #include "common.h"

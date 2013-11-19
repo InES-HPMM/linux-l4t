@@ -23,7 +23,7 @@
 #include <linux/err.h>
 #include <linux/bug.h>			/* For BUG_ON.  */
 
-#include <mach/tegra_fuse.h>
+#include <linux/tegra-fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -120,6 +120,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 void tegra_init_speedo_data(void)
 {
 	int i;
+	u32 tegra_sku_id;
 
 	if (!tegra_platform_is_silicon()) {
 		cpu_process_id  =  0;
@@ -170,6 +171,7 @@ void tegra_init_speedo_data(void)
 		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
 
+	tegra_sku_id = tegra_get_sku_id();
 	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 
 	for (i = 0; i < GPU_PROCESS_CORNERS_NUM; i++) {

@@ -61,7 +61,7 @@ int tegra_gpu_speedo_id(void);
 int tegra_get_sku_override(void);
 int tegra_get_cpu_iddq_value(void);
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 int tegra_cpu_speedo_0_value(void);
 int tegra_cpu_speedo_1_value(void);
 int tegra_soc_speedo_0_value(void);
