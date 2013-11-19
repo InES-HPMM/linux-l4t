@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/xusb.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Ajay Gupta <ajayg@nvidia.com>
@@ -84,7 +84,6 @@ struct tegra_xusb_board_data {
 	bool uses_external_pmic;
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;
-	struct tegra_xusb_regulator_name supply;
 	struct tegra_xusb_hsic_config hsic[XUSB_HSIC_COUNT];
 };
 
@@ -122,6 +121,7 @@ struct tegra_xusb_soc_config {
 	u32 pmc_portmap;
 	/* chip specific */
 	unsigned long quirks;
+	struct tegra_xusb_regulator_name supply;
 };
 
 #define TEGRA_XUSB_USE_HS_SRC_CLOCK2 BIT(0)

@@ -1157,7 +1157,8 @@ static void fw_log_deinit(struct tegra_xhci_hcd *tegra)
 static int hsic_power_rail_enable(struct tegra_xhci_hcd *tegra)
 {
 	struct device *dev = &tegra->pdev->dev;
-	struct tegra_xusb_regulator_name *supply = &tegra->bdata->supply;
+	const struct tegra_xusb_regulator_name *supply =
+				&tegra->soc_config->supply;
 	int ret;
 
 	if (tegra->vddio_hsic_reg)
@@ -1485,7 +1486,8 @@ static void tegra_xhci_cfg(struct tegra_xhci_hcd *tegra)
 static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		struct platform_device *pdev)
 {
-	struct tegra_xusb_regulator_name *supply = &tegra->bdata->supply;
+	const struct tegra_xusb_regulator_name *supply =
+				&tegra->soc_config->supply;
 	int i;
 	int err = 0;
 
@@ -4094,20 +4096,6 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 					(u32 *) &bdata->lane_owner);
 	ret = of_property_read_u32(node, "nvidia,ulpicap",
 					(u32 *) &bdata->ulpicap);
-	ret = of_property_read_string_index(node, "nvidia,supply_utmi_vbuses",
-					0, &bdata->supply.utmi_vbuses[0]);
-	ret = of_property_read_string_index(node, "nvidia,supply_utmi_vbuses",
-					1, &bdata->supply.utmi_vbuses[1]);
-	ret = of_property_read_string_index(node, "nvidia,supply_utmi_vbuses",
-					2, &bdata->supply.utmi_vbuses[2]);
-	ret = of_property_read_string(node, "nvidia,supply_s3p3v",
-					&bdata->supply.s3p3v);
-	ret = of_property_read_string(node, "nvidia,supply_s1p8v",
-					&bdata->supply.s1p8v);
-	ret = of_property_read_string(node, "nvidia,supply_vddio_hsic",
-					&bdata->supply.vddio_hsic);
-	ret = of_property_read_string(node, "nvidia,supply_s1p05v",
-					&bdata->supply.s1p05v);
 	ret = of_property_read_u8_array(node, "nvidia,hsic0",
 					(u8 *) &bdata->hsic[0],
 					sizeof(bdata->hsic[0]));
@@ -4153,6 +4141,13 @@ static const struct tegra_xusb_soc_config tegra114_soc_config = {
 	.ls_rslew_pad1 = (0x0 << 14),
 	.hs_disc_lvl = (0x5 << 2),
 	.spare_in = 0x0,
+	.supply = {
+		.utmi_vbuses = {"usb_vbus0", "usb_vbus1", "usb_vbus2",},
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_usb_pll",
+		.vddio_hsic = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
 };
 
 static const struct tegra_xusb_soc_config tegra124_soc_config = {
@@ -4169,6 +4164,13 @@ static const struct tegra_xusb_soc_config tegra124_soc_config = {
 	.ls_rslew_pad2 = (0x0 << 14),
 	.hs_disc_lvl = (0x5 << 2),
 	.spare_in = 0x1,
+	.supply = {
+		.utmi_vbuses = {"usb_vbus0", "usb_vbus1", "usb_vbus2",},
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_pll_utmip",
+		.vddio_hsic = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
 };
 
 static struct of_device_id tegra_xhci_of_match[] = {
