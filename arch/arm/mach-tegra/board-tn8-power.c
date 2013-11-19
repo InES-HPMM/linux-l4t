@@ -139,10 +139,16 @@ int __init tn8_edp_init(void)
 
 	regulator_mA = get_maximum_cpu_current_supported();
 	if (!regulator_mA)
-		regulator_mA = 9000;
+		regulator_mA = 12000;
 
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
+
+	/* gpu maximum current */
+	regulator_mA = 8000;
+	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
+
+	tegra_init_gpu_edp_limits(regulator_mA);
 
 	return 0;
 }
