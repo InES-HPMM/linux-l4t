@@ -38,6 +38,10 @@ int ardbeg_pmon_init(void);
 int ardbeg_rail_alignment_init(void);
 int ardbeg_soctherm_init(void);
 int ardbeg_edp_init(void);
+void shield_new_sysedp_init(void);
+void shield_sysedp_dynamic_capping_init(void);
+void shield_sysedp_batmon_init(void);
+
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME			"mpu9250"

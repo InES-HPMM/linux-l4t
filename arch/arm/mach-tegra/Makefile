@@ -271,6 +271,7 @@ obj-${CONFIG_MACH_ARDBEG}               += panel-c-lvds-1366-14.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-edp-wqxgap-15-6.o
 ifeq ($(CONFIG_MACH_ARDBEG),y)
 obj-${CONFIG_SYSEDP_FRAMEWORK}          += board-tn8-sysedp.o
+obj-${CONFIG_SYSEDP_FRAMEWORK}          += board-ardbeg-sysedp.o
 endif
 
 obj-${CONFIG_MACH_LOKI}               	+= board-loki.o

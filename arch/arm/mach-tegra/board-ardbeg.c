@@ -990,6 +990,8 @@ static void __init ardbeg_sysedp_init(void)
 		if (bi.sku == 1100) {
 			tn8_new_sysedp_init();
 		}
+		else
+			shield_new_sysedp_init();
 		break;
 	case BOARD_PM358:
 	case BOARD_PM359:
@@ -1008,6 +1010,8 @@ static void __init ardbeg_sysedp_dynamic_capping_init(void)
 	case BOARD_E1780:
 		if (bi.sku == 1100)
 			tn8_sysedp_dynamic_capping_init();
+		else
+			shield_sysedp_dynamic_capping_init();
 		break;
 	case BOARD_PM358:
 	case BOARD_PM359:
@@ -1029,6 +1033,8 @@ static void __init ardbeg_sysedp_batmon_init(void)
 	case BOARD_E1780:
 		if (bi.sku == 1100)
 			tn8_sysedp_batmon_init();
+		else
+			shield_sysedp_batmon_init();
 		break;
 	case BOARD_PM358:
 	case BOARD_PM359:
