@@ -640,7 +640,7 @@ static void __init tegra_macallan_early_init(void)
 
 static void __init tegra_macallan_late_init(void)
 {
-	platform_device_register(&tegra_pinmux_device);
+	platform_device_register(&tegra114_pinctrl_device);
 	macallan_pinmux_init();
 	macallan_i2c_init();
 	macallan_spi_init();
