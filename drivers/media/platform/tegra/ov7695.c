@@ -728,7 +728,6 @@ static long ov7695_ioctl(struct file *file,
 			sizeof(whitebalance))) {
 			return -EFAULT;
 		}
-
 		switch (whitebalance) {
 		case OV7695_YUV_Whitebalance_Auto:
 			err = ov7695_write_table(info,
@@ -751,6 +750,7 @@ static long ov7695_ioctl(struct file *file,
 					ov7695_Whitebalance_Fluorescent);
 			break;
 		default:
+			/* unsupported white balance mode*/
 			break;
 		}
 
@@ -768,22 +768,30 @@ static long ov7695_ioctl(struct file *file,
 				(const void __user *)arg,
 				sizeof(short)))
 			return -EFAULT;
-
-		if (ev == -2)
-			err = ov7695_write_table(info, ov7695_EV_minus_2);
-		else if (ev == -1)
-			err = ov7695_write_table(info, ov7695_EV_minus_1);
-		else if (ev == 0)
+		switch (ev) {
+		case 0:
 			err = ov7695_write_table(info, ov7695_EV_zero);
-		else if (ev == 1)
+			break;
+		case 1:
 			err = ov7695_write_table(info, ov7695_EV_plus_1);
-		else if (ev == 2)
+			break;
+		case 2:
 			err = ov7695_write_table(info, ov7695_EV_plus_2);
-		else
-			err = -1;
+			break;
+		case -1:
+			err = ov7695_write_table(info, ov7695_EV_minus_1);
+			break;
+		case -2:
+			err = ov7695_write_table(info, ov7695_EV_minus_2);
+			break;
+		default:
+			/* unsupported EV setting */
+			break;
+		}
 
 		if (err)
 			return err;
+
 		return 0;
 	}
 
@@ -810,6 +818,7 @@ static long ov7695_ioctl(struct file *file,
 			ev = 1;
 		else if (val == 0x58)
 			ev = 2;
+
 		if (copy_to_user((void __user *)arg, &ev, sizeof(short)))
 			return -EFAULT;
 		if (err)
