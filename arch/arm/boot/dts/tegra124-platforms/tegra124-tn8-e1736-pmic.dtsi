@@ -283,10 +283,6 @@
 								regulator-consumer-supply = "avdd_pll_utmip";
 								regulator-consumer-device = "tegra-ehci.2";
 							};
-							c19 {
-								regulator-consumer-supply = "avdd_pll_utmip";
-								regulator-consumer-device = "tegra-xhci";
-							};
 							c20 {
 								regulator-consumer-supply = "vddio_audio";
 							};
@@ -413,11 +409,6 @@
 								regulator-consumer-supply = "dvddio_pex";
 								regulator-consumer-device = "tegra-pcie";
 							};
-							c8 {
-								regulator-consumer-supply = "avddio_usb";
-								regulator-consumer-device = "tegra-xhci";
-							};
-
 						};
 					};
 
@@ -552,7 +543,7 @@
 						};
 					};
 
-					ldo5 {
+					ldo5_reg: ldo5 {
 						regulator-name = "avdd-dsi-csi";
 						regulator-min-microvolt = <1200000>;
 						regulator-max-microvolt = <1200000>;
@@ -565,10 +556,6 @@
 							c2 {
 								regulator-consumer-supply = "vddio_hsic";
 								regulator-consumer-device = "tegra-ehci.2";
-							};
-							c3 {
-								regulator-consumer-supply = "vddio_hsic";
-								regulator-consumer-device = "tegra-xhci";
 							};
 							c4 {
 								regulator-consumer-supply = "avdd_dsi_csi";
@@ -753,7 +740,7 @@
 						};
 					};
 
-					ldousb {
+					ldousb_reg: ldousb {
 						regulator-name = "avdd-usb";
 						regulator-min-microvolt = <3300000>;
 						regulator-max-microvolt = <3300000>;
@@ -780,11 +767,6 @@
 							c5 {
 								regulator-consumer-supply = "avdd_usb";
 								regulator-consumer-device = "tegra-ehci.2";
-							};
-							c6 {
-								regulator-consumer-supply = "hvdd_usb";
-								regulator-consumer-device = "tegra-xhci";
-
 							};
 							c7 {
 								regulator-consumer-supply = "hvdd_pex";
