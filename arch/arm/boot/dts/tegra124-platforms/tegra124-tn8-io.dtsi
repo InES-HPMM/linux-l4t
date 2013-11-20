@@ -1,5 +1,3 @@
-#include "tegra124.dtsi"
-
 / {
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
@@ -77,6 +75,4 @@
 		nvidia,supply_s1p05v = "avddio_usb";
 		status = "okay";
 	};
-
-/include/ "tegra124-tn8-emc.dtsi"
 };
