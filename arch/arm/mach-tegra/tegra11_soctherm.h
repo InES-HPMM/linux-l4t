@@ -48,7 +48,7 @@ enum soctherm_throttle_id {
 	THROTTLE_OC2,
 	THROTTLE_OC3,
 	THROTTLE_OC4,
-	THROTTLE_OC5,
+	THROTTLE_OC5, /* OC5 is reserved for WAR to Bug 1415030 */
 	THROTTLE_SIZE,
 };
 
