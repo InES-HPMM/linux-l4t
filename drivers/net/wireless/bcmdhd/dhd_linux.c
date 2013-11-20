@@ -583,6 +583,7 @@ static int dhd_toe_set(dhd_info_t *dhd, int idx, uint32 toe_ol);
 
 static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
                              wl_event_msg_t *event_ptr, void **data_ptr);
+void dhd_enable_packet_filter(int value, dhd_pub_t *dhd);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
 	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
@@ -722,8 +723,10 @@ void
 dhd_set_packet_filter_mode(struct net_device *dev, char *command)
 {
 	dhd_info_t *dhdi = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *dhdp = &dhdi->pub;
 
 	dhdi->pub.pkt_filter_mode = bcm_strtoul(command, &command, 0);
+	dhd_enable_packet_filter(1, dhdp);
 }
 
 int
@@ -818,7 +821,7 @@ dhd_enable_packet_filter_ports(dhd_pub_t *dhd, bool enable)
 	char pkt_filter_ports_buf[pkt_filter_ports_buf_len];
 	char iovbuf[pkt_filter_ports_buf_len];
 
-	DHD_TRACE(("%s: enable %d, in_suspend %d, mode %d, port count %d\n",
+	DHD_ERROR(("%s: enable %d, in_suspend %d, mode %d, port count %d\n",
 		__FUNCTION__, enable, dhd->in_suspend,
 		dhd->pkt_filter_mode, dhd->pkt_filter_ports_count));
 
@@ -828,21 +831,29 @@ dhd_enable_packet_filter_ports(dhd_pub_t *dhd, bool enable)
 	portlist->reserved = 0;
 
 	if (enable) {
-		if (!(dhd->pkt_filter_mode & PKT_FILTER_MODE_PORTS_ONLY))
-			return;
-
-		/* enable port filter */
-		dhd_master_mode |= PKT_FILTER_MODE_PORTS_ONLY;
-		if (dhd->pkt_filter_mode & PKT_FILTER_MODE_FORWARD_ON_MATCH)
-			/* whitelist mode: FORWARD_ON_MATCH */
+		if (!(dhd->pkt_filter_mode & PKT_FILTER_MODE_PORTS_ONLY)) {
+			/* disable port filter */
+			portlist->count = 0;
+			dhd_master_mode &= ~PKT_FILTER_MODE_PORTS_ONLY;
 			dhd_master_mode |= PKT_FILTER_MODE_FORWARD_ON_MATCH;
-		else
-			/* blacklist mode: DISCARD_ON_MATCH */
-			dhd_master_mode &= ~PKT_FILTER_MODE_FORWARD_ON_MATCH;
+		} else {
 
-		portlist->count = dhd->pkt_filter_ports_count;
-		bcopy(dhd->pkt_filter_ports,
-			portlist->ports, dhd->pkt_filter_ports_count * sizeof(uint16));
+			/* enable port filter */
+			dhd_master_mode |= PKT_FILTER_MODE_PORTS_ONLY;
+			if (dhd->pkt_filter_mode
+				& PKT_FILTER_MODE_FORWARD_ON_MATCH)
+				/* whitelist mode: FORWARD_ON_MATCH */
+				dhd_master_mode |=
+					PKT_FILTER_MODE_FORWARD_ON_MATCH;
+			else
+				/* blacklist mode: DISCARD_ON_MATCH */
+				dhd_master_mode &=
+					~PKT_FILTER_MODE_FORWARD_ON_MATCH;
+
+			portlist->count = dhd->pkt_filter_ports_count;
+			bcopy(dhd->pkt_filter_ports, portlist->ports,
+				dhd->pkt_filter_ports_count * sizeof(uint16));
+		}
 	} else {
 		/* disable port filter */
 		portlist->count = 0;
