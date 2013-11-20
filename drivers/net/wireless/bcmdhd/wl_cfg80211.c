@@ -200,7 +200,11 @@ softap_iface_combinations[] = {
 static const struct ieee80211_iface_combination
 sta_p2p_iface_combinations[] = {
 	{
+#ifdef DHD_ENABLE_MCC
 	.num_different_channels = 2,
+#else
+	.num_different_channels = 1,
+#endif
 	.max_interfaces = 3,
 	.limits = sta_p2p_limits,
 	.n_limits = ARRAY_SIZE(sta_p2p_limits),
