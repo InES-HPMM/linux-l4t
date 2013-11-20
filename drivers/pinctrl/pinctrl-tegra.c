@@ -34,7 +34,7 @@
 #include <linux/pinctrl/pinctrl-tegra.h>
 
 #include <mach/pinconf-tegra.h>
-#include <mach/pinmux.h>
+#include <mach/pinmux-defines.h>
 
 #include "core.h"
 #include "pinctrl-tegra.h"

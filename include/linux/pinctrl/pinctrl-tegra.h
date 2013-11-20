@@ -21,7 +21,7 @@
 #ifndef _LINUX_PINCTRL_TEGRA_H__
 #define _LINUX_PINCTRL_TEGRA_H__
 
-#include <mach/pinmux.h>
+#include <mach/pinmux-defines.h>
 
 extern int tegra_pinctrl_gpio_to_pingroup(int gpio_nr);
 extern int tegra_pinctrl_pg_set_func(const struct tegra_pingroup_config *config);

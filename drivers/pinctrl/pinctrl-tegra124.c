@@ -20,7 +20,7 @@
 #include <linux/pinctrl/pinmux.h>
 #include <linux/tegra-pmc.h>
 
-#include "mach/pinmux.h"
+#include "mach/pinmux-defines.h"
 #include "pinctrl-tegra.h"
 
 /*
