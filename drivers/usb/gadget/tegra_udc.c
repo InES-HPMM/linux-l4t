@@ -994,10 +994,10 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 
 	dir = ep_is_in(ep) ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 
-	spin_unlock_irqrestore(&udc->lock, flags);
-
-	if (!udc->driver || udc->gadget.speed == USB_SPEED_UNKNOWN)
+	if (!udc->driver || udc->gadget.speed == USB_SPEED_UNKNOWN) {
+		spin_unlock_irqrestore(&udc->lock, flags);
 		return -ESHUTDOWN;
+	}
 
 	req->ep = ep;
 
@@ -1011,8 +1011,10 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		req->req.dma = dma_map_single_attrs(dev, req->req.buf, ext, dir,
 						    &attrs);
-		if (dma_mapping_error(dev, req->req.dma))
+		if (dma_mapping_error(dev, req->req.dma)) {
+			spin_unlock_irqrestore(&udc->lock, flags);
 			return -EAGAIN;
+		}
 
 		dma_sync_single_for_device(dev, req->req.dma, orig, dir);
 
@@ -1029,11 +1031,11 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 
 
 	/* build dtds and push them to device queue */
-	status = tegra_req_to_dtd(req, gfp_flags);
-	if (status)
+	status = tegra_req_to_dtd(req, GFP_ATOMIC);
+	if (status) {
+		spin_unlock_irqrestore(&udc->lock, flags);
 		goto err_unmap;
-
-	spin_lock_irqsave(&udc->lock, flags);
+	}
 
 	/* re-check if the ep has not been disabled */
 	if (unlikely(!ep->desc)) {
