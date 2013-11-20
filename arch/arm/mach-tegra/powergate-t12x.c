@@ -736,5 +736,8 @@ static struct powergate_ops tegra12x_powergate_ops = {
 
 struct powergate_ops *tegra12x_powergate_init_chip_support(void)
 {
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC))
+		atomic_set(&ref_count_venc, 1);
+
 	return &tegra12x_powergate_ops;
 }
