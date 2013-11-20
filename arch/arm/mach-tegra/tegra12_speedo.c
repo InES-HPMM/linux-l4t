@@ -85,7 +85,7 @@ static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{2071,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{2061,	UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
