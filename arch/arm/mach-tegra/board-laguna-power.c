@@ -330,6 +330,8 @@ int __init laguna_as3722_regulator_init(void)
 		i2c_register_board_info(0, tca6408_expander,
 				ARRAY_SIZE(tca6408_expander));
 	else if	(board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM370 ||
+			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM358)
 		i2c_register_board_info(0, tca6416_expander,
 				ARRAY_SIZE(tca6416_expander));
@@ -769,6 +771,17 @@ static struct platform_device *fixed_reg_devs_pm363[] = {
 	LAGUNA_COMMON_FIXED_REG,
 	LAGUNA_PM363_FIXED_REG
 };
+/* Gpio switch regulator platform data for laguna pm370 FFD*/
+static struct platform_device *fixed_reg_devs_pm370[] = {
+	LAGUNA_COMMON_FIXED_REG,
+	LAGUNA_PM358_FIXED_REG
+};
+
+/* Gpio switch regulator platform data for laguna pm374 FFD*/
+static struct platform_device *fixed_reg_devs_pm374[] = {
+	LAGUNA_COMMON_FIXED_REG,
+	LAGUNA_PM358_FIXED_REG
+};
 
 static int __init laguna_fixed_regulator_init(void)
 {
@@ -778,12 +791,18 @@ static int __init laguna_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_PM358)
-		return platform_add_devices(fixed_reg_devs_pm358,
-				ARRAY_SIZE(fixed_reg_devs_pm358));
+	if (board_info.board_id == BOARD_PM374)
+		return platform_add_devices(fixed_reg_devs_pm374,
+				ARRAY_SIZE(fixed_reg_devs_pm374));
 	else if (board_info.board_id == BOARD_PM359)
 		return platform_add_devices(fixed_reg_devs_pm359,
 				ARRAY_SIZE(fixed_reg_devs_pm359));
+	else if (board_info.board_id == BOARD_PM358)
+		return platform_add_devices(fixed_reg_devs_pm358,
+				ARRAY_SIZE(fixed_reg_devs_pm358));
+	else if (board_info.board_id == BOARD_PM370)
+		return platform_add_devices(fixed_reg_devs_pm370,
+				ARRAY_SIZE(fixed_reg_devs_pm370));
 	else if (board_info.board_id == BOARD_PM363)
 		return platform_add_devices(fixed_reg_devs_pm363,
 				ARRAY_SIZE(fixed_reg_devs_pm363));

@@ -1462,6 +1462,8 @@ static int ardbeg_nct72_init(void)
 	/* ardbeg has thermal sensor on GEN2-I2C i.e. instance 1 */
 	if (board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM370 ||
+			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363)
 		i2c_register_board_info(1, laguna_i2c_nct72_board_info,
 		ARRAY_SIZE(laguna_i2c_nct72_board_info));

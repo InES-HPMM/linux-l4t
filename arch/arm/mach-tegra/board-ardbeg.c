@@ -214,6 +214,8 @@ static void ardbeg_i2c_init(void)
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363) {
 		i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
 		i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
@@ -303,6 +305,8 @@ static void ardbeg_audio_init(void)
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM370 ||
+			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363) {
 		/*Laguna*/
 		ardbeg_audio_pdata_rt5645.gpio_hp_det =
@@ -609,6 +613,8 @@ static void ardbeg_usb_init(void)
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM370 ||
+			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
 		/* Host cable is detected through AMS PMU Interrupt */
@@ -678,6 +684,8 @@ static void ardbeg_xusb_init(void)
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
 		pr_info("Laguna ERS. 0x%x\n", board_info.board_id);
@@ -1120,6 +1128,8 @@ static void __init tegra_ardbeg_late_init(void)
 	platform_device_register(&tegra124_pinctrl_device);
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM370 ||
+			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_pinmux_init();
 	else
@@ -1140,6 +1150,8 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_sata_init();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_regulator_init();
 	else
@@ -1161,6 +1173,8 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_pmon_init();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_pcie_init();
 	else {
