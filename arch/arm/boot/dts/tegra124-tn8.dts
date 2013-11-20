@@ -1,6 +1,8 @@
 /dts-v1/;
 
 #include "tegra124-tn8-generic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-fixed.dtsi"
 #include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 

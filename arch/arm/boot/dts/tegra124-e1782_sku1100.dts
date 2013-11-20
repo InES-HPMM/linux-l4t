@@ -1,6 +1,8 @@
 /dts-v1/;
 
 #include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-fixed.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 
 / {
@@ -59,7 +61,6 @@
 		status = "okay";
 		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
-/include/ "tegra124-tn8-power.dtsi"
 	};
 
 	i2c@7000d100 {
@@ -110,5 +111,4 @@
 		nvidia,supply_s1p05v = "avddio_usb";
 		status = "okay";
 	};
-/include/ "tegra124-tn8-regulator.dtsi"
 };
