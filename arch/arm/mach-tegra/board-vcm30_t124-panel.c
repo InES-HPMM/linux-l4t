@@ -252,7 +252,6 @@ static struct tegra_fb_data vcm30_t124_disp2_fb_data = {
 };
 
 static struct tegra_dc_platform_data vcm30_t124_disp2_pdata = {
-	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &vcm30_t124_disp2_out,
 	.fb		= &vcm30_t124_disp2_fb_data,
 	.emc_clk_rate	= 300000000,
