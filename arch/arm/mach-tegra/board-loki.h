@@ -157,10 +157,4 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 int tn8_regulator_init(void);
 int loki_fan_init(void);
 
-enum {
-	P2530 = 0,
-	E2549 = 1,
-	E2548 = 2,
-};
-
 #endif
