@@ -70,6 +70,7 @@
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/system_info.h>
 #include <mach/gpio-tegra.h>
 #include <mach/xusb.h>
 
@@ -754,6 +755,17 @@ static int __init loki_touch_init(void)
 	return 0;
 }
 
+static void __init loki_revision_init(struct board_info *binf)
+{
+	system_rev = P2530;
+	if (!binf)
+		return;
+	if (binf->board_id == BOARD_E2548)
+		system_rev = E2548;
+	else if (binf->board_id == BOARD_E2549)
+		system_rev = E2549;
+}
+
 static void __init tegra_loki_early_init(void)
 {
 	tegra_clk_init_from_table(loki_clk_init_table);
@@ -789,6 +801,7 @@ static void __init tegra_loki_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 	platform_device_register(&tegra124_pinctrl_device);
+	loki_revision_init(&board_info);
 	loki_pinmux_init();
 	loki_usb_init();
 	loki_modem_init();
