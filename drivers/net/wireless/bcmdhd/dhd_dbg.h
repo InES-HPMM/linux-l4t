@@ -1,14 +1,14 @@
 /*
  * Debug/trace/assert driver definitions for Dongle Host Driver.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
- * 
+ * Copyright (C) 1999-2012, Broadcom Corporation
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_dbg.h 419132 2013-08-19 21:33:05Z $
+ * $Id: dhd_dbg.h 353490 2012-08-27 21:10:02Z $
  */
 
 #ifndef _dhd_dbg_
@@ -47,7 +47,6 @@
 #define DHD_ISCAN(args)		do {if (dhd_msg_level & DHD_ISCAN_VAL) printf args;} while (0)
 #define DHD_ARPOE(args)		do {if (dhd_msg_level & DHD_ARPOE_VAL) printf args;} while (0)
 #define DHD_REORDER(args)	do {if (dhd_msg_level & DHD_REORDER_VAL) printf args;} while (0)
-#define DHD_PNO(args)		do {if (dhd_msg_level & DHD_PNO_VAL) printf args;} while (0)
 
 #define DHD_TRACE_HW4	DHD_TRACE
 
@@ -66,8 +65,6 @@
 #define DHD_ISCAN_ON()		(dhd_msg_level & DHD_ISCAN_VAL)
 #define DHD_ARPOE_ON()		(dhd_msg_level & DHD_ARPOE_VAL)
 #define DHD_REORDER_ON()	(dhd_msg_level & DHD_REORDER_VAL)
-#define DHD_NOCHECKDIED_ON()	(dhd_msg_level & DHD_NOCHECKDIED_VAL)
-#define DHD_PNO_ON()		(dhd_msg_level & DHD_PNO_VAL)
 
 #else /* defined(BCMDBG) || defined(DHD_DEBUG) */
 
@@ -86,7 +83,6 @@
 #define DHD_ISCAN(args)
 #define DHD_ARPOE(args)
 #define DHD_REORDER(args)
-#define DHD_PNO(args)
 
 #define DHD_TRACE_HW4	DHD_TRACE
 
@@ -105,10 +101,7 @@
 #define DHD_ISCAN_ON()		0
 #define DHD_ARPOE_ON()		0
 #define DHD_REORDER_ON()	0
-#define DHD_NOCHECKDIED_ON()	0
-#define DHD_PNO_ON()		0
-
-#endif 
+#endif
 
 #define DHD_LOG(args)
 

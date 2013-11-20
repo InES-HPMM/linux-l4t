@@ -2,7 +2,7 @@
  * Linux-specific abstractions to gain some independence from linux kernel versions.
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2012, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,13 +22,12 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linuxver.h 417757 2013-08-12 12:24:45Z $
+ * $Id: linuxver.h 366812 2012-11-05 13:49:32Z $
  */
 
 #ifndef _linuxver_h_
 #define _linuxver_h_
 
-#include <typedefs.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #include <linux/config.h>
@@ -69,7 +68,6 @@
 #include <linux/string.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
-#include <linux/kthread.h>
 #include <linux/netdevice.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 #include <linux/semaphore.h>
@@ -97,23 +95,22 @@
 #ifndef flush_scheduled_work
 #define flush_scheduled_work() flush_scheduled_tasks()
 #endif
-#endif	/* LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41) */
+#endif	
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define DAEMONIZE(a)
-#elif ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)) && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)))
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
-#else /* Linux 2.4 (w/o preemption patch) */
+#else 
 #define RAISE_RX_SOFTIRQ() \
 	cpu_raise_softirq(smp_processor_id(), NET_RX_SOFTIRQ)
 #define DAEMONIZE(a) daemonize(); \
 	do { if (a) \
 		strncpy(current->comm, a, MIN(sizeof(current->comm), (strlen(a)))); \
 	} while (0);
-#endif /* LINUX_VERSION_CODE  */
+#endif 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
 #define	MY_INIT_WORK(_work, _func)	INIT_WORK(_work, _func)
@@ -155,11 +152,7 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 #include <linux/sched.h>
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
-#include <linux/sched/rt.h>
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0) */
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
 #include <net/lib80211.h>
@@ -173,20 +166,9 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30) */
 
 
+
 #ifndef __exit
 #define __exit
-#endif
-#ifndef __devexit
-#define __devexit
-#endif
-#ifndef __devinit
-#define __devinit	__init
-#endif
-#ifndef __devinitdata
-#define __devinitdata
-#endif
-#ifndef __devexit_p
-#define __devexit_p(x)	x
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0))
@@ -496,11 +478,9 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #define SET_NETDEV_DEV(net, pdev)	do {} while (0)
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0))
 #ifndef HAVE_FREE_NETDEV
 #define free_netdev(dev)		kfree(dev)
 #endif
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0) */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 /* struct packet_type redefined in 2.6.x */
@@ -519,16 +499,13 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #endif
 
 typedef struct {
-	void	*parent;  /* some external entity that the thread supposed to work for */
-	char	*proc_name;
+	void 	*parent;  /* some external entity that the thread supposed to work for */
 	struct	task_struct *p_task;
-	long	thr_pid;
-	int		prio; /* priority */
+	pid_t 	thr_pid;
+	int 	prio; 
 	struct	semaphore sema;
 	int	terminated;
 	struct	completion completed;
-	spinlock_t	spinlock;
-	int		up_cnt;
 } tsk_ctl_t;
 
 
@@ -540,63 +517,43 @@ typedef struct {
 #define DBG_THR(x)
 #endif
 
-static inline bool binary_sema_down(tsk_ctl_t *tsk)
-{
-	if (down_interruptible(&tsk->sema) == 0) {
-		unsigned long flags = 0;
-		spin_lock_irqsave(&tsk->spinlock, flags);
-		if (tsk->up_cnt == 1)
-			tsk->up_cnt--;
-		else {
-			DBG_THR(("dhd_dpc_thread: Unexpected up_cnt %d\n", tsk->up_cnt));
-		}
-		spin_unlock_irqrestore(&tsk->spinlock, flags);
-		return FALSE;
-	} else
-		return TRUE;
-}
-
-static inline bool binary_sema_up(tsk_ctl_t *tsk)
-{
-	bool sem_up = FALSE;
-	unsigned long flags = 0;
-
-	spin_lock_irqsave(&tsk->spinlock, flags);
-	if (tsk->up_cnt == 0) {
-		tsk->up_cnt++;
-		sem_up = TRUE;
-	} else if (tsk->up_cnt == 1) {
-		/* dhd_sched_dpc: dpc is alread up! */
-	} else
-		DBG_THR(("dhd_sched_dpc: unexpected up cnt %d!\n", tsk->up_cnt));
-
-	spin_unlock_irqrestore(&tsk->spinlock, flags);
-
-	if (sem_up)
-		up(&tsk->sema);
-
-	return sem_up;
-}
-
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 #define SMP_RD_BARRIER_DEPENDS(x) smp_read_barrier_depends(x)
 #else
 #define SMP_RD_BARRIER_DEPENDS(x) smp_rmb(x)
 #endif
 
-#define PROC_START(thread_func, owner, tsk_ctl, flags, name) \
+
+#define PROC_START(thread_func, owner, tsk_ctl, flags) \
 { \
 	sema_init(&((tsk_ctl)->sema), 0); \
 	init_completion(&((tsk_ctl)->completed)); \
 	(tsk_ctl)->parent = owner; \
-	(tsk_ctl)->proc_name = name;  \
+	(tsk_ctl)->terminated = FALSE; \
+	(tsk_ctl)->thr_pid = kernel_thread(thread_func, tsk_ctl, flags); \
+	DBG_THR(("%s thr:%lx created\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
+	if ((tsk_ctl)->thr_pid > 0) \
+		wait_for_completion(&((tsk_ctl)->completed)); \
+	DBG_THR(("%s thr:%lx started\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#define USE_KTHREAD_API 1
+#include <linux/kthread.h>
+#endif
+
+#ifdef USE_KTHREAD_API
+#define PROC_START2(thread_func, owner, tsk_ctl, flags, name) \
+{ \
+	sema_init(&((tsk_ctl)->sema), 0); \
+	init_completion(&((tsk_ctl)->completed)); \
+	(tsk_ctl)->parent = owner; \
 	(tsk_ctl)->terminated = FALSE; \
 	(tsk_ctl)->p_task  = kthread_run(thread_func, tsk_ctl, (char*)name); \
 	(tsk_ctl)->thr_pid = (tsk_ctl)->p_task->pid; \
-	spin_lock_init(&((tsk_ctl)->spinlock)); \
-	DBG_THR(("%s(): thread:%s:%lx started\n", __FUNCTION__, \
-		(tsk_ctl)->proc_name, (tsk_ctl)->thr_pid)); \
+	DBG_THR(("%s thr:%d created\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
 }
+#endif
 
 #define PROC_STOP(tsk_ctl) \
 { \
@@ -604,8 +561,7 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 	smp_wmb(); \
 	up(&((tsk_ctl)->sema));	\
 	wait_for_completion(&((tsk_ctl)->completed)); \
-	DBG_THR(("%s(): thread:%s:%lx terminated OK\n", __FUNCTION__, \
-			 (tsk_ctl)->proc_name, (tsk_ctl)->thr_pid)); \
+	DBG_THR(("%s thr:%lx terminated OK\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
 	(tsk_ctl)->thr_pid = -1; \
 }
 
@@ -697,17 +653,5 @@ not match our unaligned address for < 2.6.24
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #define netdev_priv(dev) dev->priv
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)) */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-#define RANDOM32	prandom_u32
-#else
-#define RANDOM32	random32
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-#define SRANDOM32(entropy)	prandom_seed(entropy)
-#else
-#define SRANDOM32(entropy)	srandom32(entropy)
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
 
 #endif /* _linuxver_h_ */
