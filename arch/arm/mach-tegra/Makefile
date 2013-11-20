@@ -69,7 +69,6 @@ endif
 endif
 endif
 
-obj-y                                   += pinmux.o
 obj-y                                   += delay.o
 obj-y                                   += pm.o
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
@@ -128,11 +127,6 @@ obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_emc.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra_emc_dt_parse.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_dt_parse.o
 obj-y					+= tegra_emc.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
-obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += pinmux-t11-tables.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += pinmux-t12-tables.o
-obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += pinmux-t14-tables.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o

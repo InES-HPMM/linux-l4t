@@ -19,102 +19,172 @@
 #define __MACH_TEGRA_PINMUX_H
 
 #include <mach/pinmux-defines.h>
+#include <linux/pinctrl/pinctrl-tegra.h>
 
-struct tegra_drive_pingroup_desc {
-	const char *name;
-	s16 reg_bank;
-	s16 reg;
-	u8 drvup_offset;
-	u16 drvup_mask;
-	u8 drvdown_offset;
-	u16 drvdown_mask;
-	u8 slewrise_offset;
-	u16 slewrise_mask;
-	u8 slewfall_offset;
-	u16 slewfall_mask;
-	u8 drvtype_valid;
-	u8 drvtype_offset;
-	u8 drvtype_mask;
-	const char *dev_id;
-};
+static inline int tegra_pinmux_get_pingroup(int gpio_nr)
+{
+	return tegra_pinctrl_gpio_to_pingroup(gpio_nr);
+}
 
-struct tegra_pingroup_desc {
-	const char *name;
-	int funcs[4];
-	int func_safe;
-	int vddio;
-	enum tegra_pin_io io_default;
-	s16 tri_bank;	/* Register bank the tri_reg exists within */
-	s16 mux_bank;	/* Register bank the mux_reg exists within */
-	s16 pupd_bank;	/* Register bank the pupd_reg exists within */
-	s16 tri_reg;	/* offset into the TRISTATE_REG_* register bank */
-	s16 mux_reg;	/* offset into the PIN_MUX_CTL_* register bank */
-	s16 pupd_reg;	/* offset into the PULL_UPDOWN_REG_* register bank */
-	s8 tri_bit;	/* offset into the TRISTATE_REG_* register bit */
-	s8 mux_bit;	/* offset into the PIN_MUX_CTL_* register bit */
-	s8 pupd_bit;	/* offset into the PULL_UPDOWN_REG_* register bit */
-	s8 lock_bit;	/* offset of the LOCK bit into mux register bit */
-	s8 od_bit;	/* offset of the OD bit into mux register bit */
-	s8 ioreset_bit;	/* offset of the IO_RESET bit into mux register bit */
-	s8 rcv_sel_bit;	/* offset of the RCV_SEL bit into mux register bit */
-	int gpionr;
-};
+static inline int tegra_pinmux_set_func(
+		const struct tegra_pingroup_config *config)
+{
+	return tegra_pinctrl_pg_set_func(config);
+}
 
-u32 pg_readl(u32 bank, u32 reg);
-void pg_writel(u32 val, u32 bank, u32 reg);
+static inline int tegra_pinmux_get_func(int pg)
+{
+	return tegra_pinctrl_pg_get_func(pg);
+}
 
-typedef void (*pinmux_init) (const struct tegra_pingroup_desc **pg,
-	int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
-	int *pgdrive_max, const int **gpiomap, int *gpiomap_max);
+static inline int tegra_pinmux_set_tristate(
+		int pg, enum tegra_tristate tristate)
+{
+	return tegra_pinctrl_pg_set_tristate(pg, tristate);
+}
 
-void tegra20_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
-	const int **gpiomap, int *gpiomap_max);
+static inline int tegra_pinmux_set_io(int pg, enum tegra_pin_io input)
+{
+	return tegra_pinctrl_pg_set_io(pg, input);
+}
 
-void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
-	const int **gpiomap, int *gpiomap_max);
+static inline int tegra_pinmux_set_lock(int pg, enum tegra_pin_lock lock)
+{
+	return tegra_pinctrl_pg_set_lock(pg, lock);
+}
 
-void tegra11x_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
-	const int **gpiomap, int *gpiomap_max);
+static inline int tegra_pinmux_set_od(int pg, enum tegra_pin_od od)
+{
+	return tegra_pinctrl_pg_set_od(pg, od);
+}
 
-void tegra12x_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
-	const int **gpiomap, int *gpiomap_max);
+static inline int tegra_pinmux_set_ioreset(
+		int pg, enum tegra_pin_ioreset ioreset)
+{
+	return tegra_pinctrl_pg_set_ioreset(pg, ioreset);
+}
 
-void tegra14x_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
-	const int **gpiomap, int *gpiomap_max);
-void tegra11x_default_pinmux(void);
-void tegra12x_default_pinmux(void);
+static inline int tegra_pinmux_set_rcv_sel(
+		int pg, enum tegra_pin_rcv_sel rcv_sel)
+{
+	return tegra_pinctrl_pg_set_rcv_sel(pg, rcv_sel);
+}
 
-int tegra_pinmux_get_func(int pg);
-int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate);
-int tegra_pinmux_set_io(int pg, enum tegra_pin_io input);
-int tegra_pinmux_get_pingroup(int gpio_nr);
-int tegra_pinmux_set_pullupdown(int pg, enum tegra_pullupdown pupd);
+static inline int tegra_pinmux_set_pullupdown(
+		int pg, enum tegra_pullupdown pupd)
+{
+	return tegra_pinctrl_pg_set_pullupdown(pg, pupd);
+}
 
-void tegra_pinmux_config_table(const struct tegra_pingroup_config *config,
-	int len);
+static inline void tegra_pinmux_config_pingroup(
+		const struct tegra_pingroup_config *config)
+{
+	tegra_pinctrl_pg_config_pingroup(config);
 
-void tegra_drive_pinmux_config_table(struct tegra_drive_pingroup_config *config,
-	int len);
+}
 
-int tegra_drive_pinmux_set_pull_down(int pg,
-	enum tegra_pull_strength pull_down);
+static inline void tegra_pinmux_config_table(
+		const struct tegra_pingroup_config *config, int len)
+{
+	tegra_pinctrl_pg_config_table(config, len);
+}
 
-int tegra_drive_pinmux_set_pull_up(int pg, enum tegra_pull_strength pull_up);
+static inline int tegra_drive_pinmux_set_hsm(
+		int pg, enum tegra_hsm hsm)
+{
+	return tegra_pinctrl_pg_drive_set_hsm(pg, hsm);
+}
 
-struct device;
-int tegra_drive_get_pingroup(struct device *dev);
+static inline int tegra_drive_pinmux_set_schmitt(
+		int pg, enum tegra_schmitt schmitt)
+{
+	return tegra_pinctrl_pg_drive_set_schmitt(pg, schmitt);
+}
 
-void tegra_pinmux_set_safe_pinmux_table(const struct tegra_pingroup_config *config,
-	int len);
-void tegra_pinmux_config_pinmux_table(const struct tegra_pingroup_config *config,
-	int len);
-void tegra_pinmux_config_tristate_table(const struct tegra_pingroup_config *config,
-	int len, enum tegra_tristate tristate);
-void tegra_pinmux_config_pullupdown_table(const struct tegra_pingroup_config *config,
-	int len, enum tegra_pullupdown pupd);
+static inline int tegra_drive_pinmux_set_drive(
+		int pg, enum tegra_drive drive)
+{
+	return tegra_pinctrl_pg_drive_set_drive(pg, drive);
+}
+
+static inline int tegra_drive_pinmux_set_pull_down(
+		int pg, enum tegra_pull_strength pull_down)
+{
+	return tegra_pinctrl_pg_drive_set_pull_down(pg, pull_down);
+}
+
+static inline int tegra_drive_pinmux_set_pull_up(
+		int pg, enum tegra_pull_strength pull_up)
+{
+	return tegra_pinctrl_pg_drive_set_pull_up(pg, pull_up);
+}
+
+static inline int tegra_drive_pinmux_set_slew_rising(
+		int pg, enum tegra_slew slew_rising)
+{
+	return tegra_pinctrl_pg_drive_set_slew_rising(pg, slew_rising);
+}
+
+static inline int tegra_drive_pinmux_set_slew_falling(
+		int pg, enum tegra_slew slew_falling)
+{
+	return tegra_pinctrl_pg_drive_set_slew_falling(pg, slew_falling);
+}
+
+static inline int tegra_drive_pinmux_set_drive_type(
+		int pg, enum tegra_drive_type drive_type)
+{
+	return tegra_pinctrl_pg_drive_set_drive_type(pg, drive_type);
+}
+
+static inline void tegra_drive_pinmux_config_pingroup(
+		int pingroup, enum tegra_hsm hsm,
+		enum tegra_schmitt schmitt, enum tegra_drive drive,
+		enum tegra_pull_strength pull_down,
+		enum tegra_pull_strength pull_up,
+		enum tegra_slew slew_rising,
+		enum tegra_slew slew_falling,
+		enum tegra_drive_type drive_type)
+{
+	tegra_pinctrl_pg_drive_config_pingroup(pingroup, hsm, schmitt,
+			drive, pull_down, pull_up, slew_rising,
+			slew_falling, drive_type);
+}
+
+static inline void tegra_drive_pinmux_config_table(
+		struct tegra_drive_pingroup_config *config, int len)
+{
+	tegra_pinctrl_pg_drive_config_table(config, len);
+}
+
+static inline int tegra_drive_get_pingroup(struct device *dev)
+{
+	return tegra_pinctrl_pg_drive_get_pingroup(dev);
+}
+
+static inline void tegra_pinmux_set_safe_pinmux_table(
+		const struct tegra_pingroup_config *config, int len)
+{
+	tegra_pinctrl_pg_set_safe_pinmux_table(config, len);
+}
+
+static inline void tegra_pinmux_config_pinmux_table(
+		const struct tegra_pingroup_config *config, int len)
+{
+	tegra_pinctrl_pg_config_pinmux_table(config, len);
+}
+
+static inline void tegra_pinmux_config_tristate_table(
+		const struct tegra_pingroup_config *config, int len,
+		enum tegra_tristate tristate)
+{
+	tegra_pinctrl_pg_config_tristate_table(config, len, tristate);
+}
+
+static inline void tegra_pinmux_config_pullupdown_table(
+		const struct tegra_pingroup_config *config,
+		int len, enum tegra_pullupdown pupd)
+{
+	tegra_pinctrl_pg_config_pullupdown_table(config, len, pupd);
+}
 #endif
