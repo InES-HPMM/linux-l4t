@@ -57,15 +57,17 @@
 #define SWGID_GPU	30	/* 0xaa8 */
 #define SWGID_GPUB	31	/* 0xaac */
 #define SWGID_PPCS2	32	/* 0xab0 */
-#define SWGID_NVDEC	33	/* 0xab1 */
-#define SWGID_APE	34	/* 0xab2 */
-#define SWGID_SE	35	/* 0xab3 */
-#define SWGID_NVJPG	36	/* 0xab4 */
-#define SWGID_HC1	37	/* 0xab5 */
-#define SWGID_SE1	38	/* 0xab6 */
-#define SWGID_AXIAP	39	/* 0xab7 */
-#define SWGID_ETR	40	/* 0xab8 */
-#define SWGID_TSECB	41	/* 0xab9 */
+#define SWGID_NVDEC	33	/* 0xab4 */
+#define SWGID_APE	34	/* 0xab8 */
+#define SWGID_SE	35	/* 0xabc */
+#define SWGID_NVJPG	36	/* 0xac0 */
+#define SWGID_HC1	37	/* 0xac4 */
+#define SWGID_SE1	38	/* 0xac8 */
+#define SWGID_AXIAP	39	/* 0xacc */
+#define SWGID_ETR	40	/* 0xad0 */
+#define SWGID_TSECB	41	/* 0xad4 */
+#define SWGID_TSEC1	42	/* 0xad8 */
+#define SWGID_TSECB1	43	/* 0xadc */
 
 #define SWGID(x)	(1ULL << SWGID_##x)
 
