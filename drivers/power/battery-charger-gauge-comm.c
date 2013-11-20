@@ -146,6 +146,30 @@ exit:
 	return;
 }
 
+int battery_charger_set_current_broadcast(struct battery_charger_dev *bc_dev)
+{
+        struct battery_gauge_dev *bg_dev;
+        int ret = 0;
+
+        if (!bc_dev) {
+                dev_err(bc_dev->parent_dev, "Invalid parameters\n");
+                return -EINVAL;
+        }
+
+        mutex_lock(&charger_gauge_list_mutex);
+
+        list_for_each_entry(bg_dev, &gauge_list, list) {
+                if (bg_dev->cell_id != bc_dev->cell_id)
+                        continue;
+                if (bg_dev->ops && bg_dev->ops->set_current_broadcast)
+                        ret = bg_dev->ops->set_current_broadcast(bg_dev);
+        }
+
+        mutex_unlock(&charger_gauge_list_mutex);
+        return ret;
+}
+EXPORT_SYMBOL_GPL(battery_charger_set_current_broadcast);
+
 int battery_charger_thermal_start_monitoring(
 	struct battery_charger_dev *bc_dev)
 {
