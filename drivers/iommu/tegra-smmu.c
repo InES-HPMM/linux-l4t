@@ -1,7 +1,7 @@
 /*
  * IOMMU driver for SMMU on Tegra 3 series SoCs and later.
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -141,6 +141,9 @@ enum {
 #define AHB_XBAR_CTRL				0xe0
 #define AHB_XBAR_CTRL_SMMU_INIT_DONE_DONE	1
 #define AHB_XBAR_CTRL_SMMU_INIT_DONE_SHIFT	17
+#define AHB_MASTER_SWID_0			0x18
+#define AHB_MASTER_SELECT_SDMMC		(BIT(9) | BIT(12) \
+						| BIT(19) | BIT(20))
 
 #define SMMU_NUM_ASIDS				4
 #define SMMU_NUM_ASIDS_TEGRA12			128
@@ -535,6 +538,9 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 			AHB_XBAR_CTRL_SMMU_INIT_DONE_SHIFT;
 		ahb_write(smmu, val, AHB_XBAR_CTRL);
 	}
+	/* On T114, Set PPCS1 ASID for SDMMC */
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11)
+		ahb_write(smmu, AHB_MASTER_SELECT_SDMMC, AHB_MASTER_SWID_0);
 }
 
 
