@@ -615,8 +615,27 @@ static int sbs_update_battery_status(struct battery_gauge_dev *bg_dev,
 	return 0;
 }
 
+static int sbs_set_broadcast_mode(struct battery_gauge_dev *bg_dev)
+{
+	struct sbs_info *binfo = battery_gauge_get_drvdata(bg_dev);
+	int val;
+	int new_val;
+	int ret;
+
+	val = sbs_read_word_data(binfo->client, 0x03);
+	if (val < 0)
+		return val;
+
+	new_val = val & 0xBFFF;
+
+	ret = sbs_write_word_data(binfo->client, 0x03, new_val);
+
+	return ret;
+}
+
 static struct battery_gauge_ops sbs_bg_ops = {
 	.update_battery_status = sbs_update_battery_status,
+	.set_current_broadcast = sbs_set_broadcast_mode,
 };
 
 static struct battery_gauge_info sbs_bgi = {
