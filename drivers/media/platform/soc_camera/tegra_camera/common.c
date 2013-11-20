@@ -111,6 +111,13 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
+		.fourcc			= V4L2_PIX_FMT_SRGGB10,
+		.name			= "Bayer 10 RGRG.. GBGB..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
+	},
+	{
 		.fourcc			= V4L2_PIX_FMT_RGB32,
 		.name			= "RGBA 8-8-8-8",
 		.bits_per_sample	= 32,
@@ -149,8 +156,7 @@ static int tegra_camera_activate(struct tegra_camera_dev *cam)
 	if (cam_ops->capture_clean)
 		cam_ops->capture_clean(cam);
 
-	if (cam_ops->save_syncpts)
-		cam_ops->save_syncpts(cam);
+	cam->sof = 1;
 
 	return 0;
 }
@@ -173,6 +179,8 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *cam)
 		regulator_disable(cam->reg);
 
 	nvhost_module_idle_ext(cam->ndev);
+
+	cam->sof = 0;
 }
 
 static int tegra_camera_capture_frame(struct tegra_camera_dev *cam)
@@ -189,6 +197,8 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *cam)
 	/* Setup capture registers */
 	cam->ops->capture_setup(cam);
 
+	cam->ops->incr_syncpts(cam);
+
 	while (retry) {
 		err = cam->ops->capture_start(cam, buf);
 		/* Capturing succeed, stop capturing */
@@ -197,7 +207,8 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *cam)
 			retry--;
 
 			cam->ops->incr_syncpts(cam);
-			cam->ops->save_syncpts(cam);
+			if (cam->ops->save_syncpts)
+				cam->ops->save_syncpts(cam);
 
 			continue;
 		}
@@ -277,6 +288,7 @@ static int tegra_camera_init_buffer(struct tegra_camera_buffer *buf)
 	case V4L2_PIX_FMT_SBGGR8:
 	case V4L2_PIX_FMT_SGBRG8:
 	case V4L2_PIX_FMT_SBGGR10:
+	case V4L2_PIX_FMT_SRGGB10:
 	case V4L2_PIX_FMT_RGB32:
 		buf->buffer_addr = vb2_dma_contig_plane_dma_addr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
@@ -611,6 +623,7 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 	case V4L2_MBUS_FMT_SBGGR8_1X8:
 	case V4L2_MBUS_FMT_SGBRG8_1X8:
 	case V4L2_MBUS_FMT_SBGGR10_1X10:
+	case V4L2_MBUS_FMT_SRGGB10_1X10:
 	case V4L2_MBUS_FMT_RGBA8888_4X8_LE:
 		formats += ARRAY_SIZE(tegra_camera_formats);
 		for (k = 0;
@@ -819,7 +832,16 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
-	cam = kzalloc(sizeof(struct tegra_camera_dev), GFP_KERNEL);
+	/* vi.1 has to wait vi.0 initialized, so defer probing */
+	if (pdev->id && ndata->master) {
+		struct nvhost_device_data *master_ndata =
+			ndata->master->dev.platform_data;
+		if (master_ndata == platform_get_drvdata(ndata->master))
+			return -EPROBE_DEFER;
+	}
+
+	cam = devm_kzalloc(&pdev->dev, sizeof(struct tegra_camera_dev),
+			   GFP_KERNEL);
 	if (!cam) {
 		dev_err(&pdev->dev, "couldn't allocate cam\n");
 		err = -ENOMEM;
@@ -885,14 +907,22 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	/* Init syncpts */
 	cam->ops->init_syncpts(cam);
 
-	cam->reg_base = ndata->aperture[0];
-	if (!cam->reg_base) {
-		dev_err(&pdev->dev, "%s: failed to map register base\n",
+	if (!ndata->aperture[0]) {
+		if (ndata->master) {
+			struct nvhost_device_data *master_ndata =
+				ndata->master->dev.platform_data;
+			ndata->aperture[0] = master_ndata->aperture[0];
+		} else {
+			dev_err(&pdev->dev, "%s: failed to map register base\n",
 				__func__);
-		err = -ENXIO;
-		goto exit_free_syncpts;
+			err = -ENXIO;
+			goto exit_free_syncpts;
+		}
 	}
+	cam->reg_base = ndata->aperture[0];
 
+	/* Match the nvhost_module_init VENC powergating */
+	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
 	nvhost_module_init(pdev);
 
 	err = nvhost_client_device_init(pdev);
@@ -924,7 +954,6 @@ exit_free_syncpts:
 	cam->ops->free_syncpts(cam);
 exit_deinit_clk:
 	cam->ops->clks_deinit(cam);
-	kfree(cam);
 exit:
 	return err;
 }
@@ -948,8 +977,6 @@ static int tegra_camera_remove(struct platform_device *pdev)
 
 	if (cam->ops)
 		cam->ops->clks_deinit(cam);
-
-	kfree(cam);
 
 	dev_notice(&pdev->dev, "Tegra camera host driver unloaded\n");
 

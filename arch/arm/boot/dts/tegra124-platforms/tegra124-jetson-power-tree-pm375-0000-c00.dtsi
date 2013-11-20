@@ -2,6 +2,12 @@
 #include "tegra124-platforms/tegra124-jetson_tk1-fixed-pm375-0000-c00-00.dtsi"
 
 / {
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
+
 	efuse@7000f800 {
 		vpp_fuse-supply = <&as3722_ldo11>;
 	};
