@@ -79,11 +79,6 @@ Delay (in jiffies) for switching to shadow cluster.
 
 Delay for switching to main cluster.
 
-/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/mp_overhead
------------------------------------------------------------
-
-Multi-core overhead percentage for EDP limit calculation.
-
 /sys/devices/system/cpu/cpuquiet/balanced/balance_level
 -------------------------------------------------------
 
