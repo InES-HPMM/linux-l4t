@@ -2194,7 +2194,7 @@ static struct platform_device *pinmux_devices[] = {
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	&tegra124_pinctrl_device,
 #else
-	&tegra_pinmux_device,
+	&tegra124_pinctrl_device,
 #endif
 };
 
