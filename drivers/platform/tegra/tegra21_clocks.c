@@ -758,48 +758,33 @@ static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 	u32 auto_clock_control = osc_ctrl & ~OSC_CTRL_OSC_FREQ_MASK;
 	u32 pll_ref_div = osc_ctrl & OSC_CTRL_PLL_REF_DIV_MASK;
 
-	u32 spare = clk_readl(SPARE_REG);
-	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
-		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
-	u32 spare_update = spare & ~SPARE_REG_CLK_M_DIVISOR_MASK;
-
 	c->rate = tegra_clk_measure_input_freq();
 	switch (c->rate) {
 	case 12000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
-		BUG_ON(divisor != 0);
 		break;
 	case 13000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
-		BUG_ON(divisor != 0);
 		break;
 	case 19200000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
-		BUG_ON(divisor != 0);
 		break;
 	case 26000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
-		BUG_ON(divisor != 0);
 		break;
 	case 16800000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
-		BUG_ON(divisor != 0);
 		break;
 	case 38400000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
-		BUG_ON(divisor != 1);
-		spare_update |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 48000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
-		BUG_ON(divisor != 3);
-		spare_update |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 115200:	/* fake 13M for QT */
 	case 230400:	/* fake 13M for QT */
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		c->rate = 13000000;
-		BUG_ON(divisor != 0);
 		break;
 	default:
 		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
@@ -808,7 +793,6 @@ static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 
 	BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
 	clk_writel(auto_clock_control, OSC_CTRL);
-	clk_writel(spare_update, SPARE_REG);
 
 	return c->rate;
 }
@@ -839,13 +823,25 @@ static struct clk_ops tegra_osc_ops = {
 
 static void tegra21_clk_m_init(struct clk *c)
 {
+	u32 rate;
 	u32 spare = clk_readl(SPARE_REG);
-	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
-		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
 
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	c->div = divisor + 1;
+	BUG_ON((spare & SPARE_REG_CLK_M_DIVISOR_MASK) != 0);
+
+	spare &= ~SPARE_REG_CLK_M_DIVISOR_MASK;
+
+	rate = clk_get_rate(c->parent); /* the rate of osc clock */
+	if (rate == 38400000)
+		spare |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
+	else if (rate == 48000000)
+		spare |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
+
+	clk_writel(spare, SPARE_REG);
+
+	c->div = ((spare & SPARE_REG_CLK_M_DIVISOR_MASK)
+		>> SPARE_REG_CLK_M_DIVISOR_SHIFT) + 1;
 	c->mul = 1;
 	c->state = ON;
 }
