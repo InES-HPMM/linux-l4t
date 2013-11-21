@@ -177,18 +177,11 @@ int tegra210_ahubram_write(struct device *dev,
 	val |= TEGRA210_AHUBRAMCTL_CTRL_SEQ_ACCESS_EN;
 	val |= TEGRA210_AHUBRAMCTL_CTRL_RW_WRITE;
 
+	regmap_write(regmap, reg_ctrl, val);
+
 	for (i = 0; i < size; i++) {
 		regmap_write(regmap, reg_data, data[i]);
-		regmap_write(regmap, reg_ctrl, val);
-
-		val &= ~TEGRA210_AHUBRAMCTL_CTRL_ADDR_INIT_EN;
-		while (1) {
-			regmap_read(regmap, reg_ctrl, &val);
-			if (!(val & TEGRA210_AHUBRAMCTL_CTRL_READ_BUSY_BUSY))
-				break;
-		}
 	}
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra210_ahubram_write);
@@ -215,18 +208,15 @@ int tegra210_ahubram_read(struct device *dev,
 	val |= TEGRA210_AHUBRAMCTL_CTRL_SEQ_ACCESS_EN;
 	val |= TEGRA210_AHUBRAMCTL_CTRL_RW_READ;
 
-	for (i = 0; i < size; i++) {
-		regmap_write(regmap, reg_ctrl, val);
+	regmap_write(regmap, reg_ctrl, val);
 
-		val &= ~TEGRA210_AHUBRAMCTL_CTRL_ADDR_INIT_EN;
-		while (1) {
+	for (i = 0; i < size; i++) {
+		do {
 			regmap_read(regmap, reg_ctrl, &val);
-			if (!(val & TEGRA210_AHUBRAMCTL_CTRL_READ_BUSY_BUSY))
-				break;
-		}
+		} while (val & TEGRA210_AHUBRAMCTL_CTRL_READ_BUSY_BUSY);
+
 		regmap_read(regmap, reg_data, &data[i]);
 	}
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra210_ahubram_read);
