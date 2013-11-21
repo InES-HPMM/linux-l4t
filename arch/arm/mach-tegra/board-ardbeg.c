@@ -82,6 +82,7 @@
 #include "board-common.h"
 #include "board-touch-raydium.h"
 #include "board-touch-maxim_sti.h"
+#include "board-tn8-p1761.h"
 #include "clock.h"
 #include "common.h"
 #include "devices.h"
@@ -656,6 +657,7 @@ static void ardbeg_usb_init(void)
 		case BOARD_E1736:
 		case BOARD_E1769:
 		case BOARD_E1735:
+		case BOARD_P1761:
 			/* Device cable is detected through PMU Interrupt */
 			tegra_udc_pdata.support_pmu_vbus = true;
 			tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
@@ -1195,6 +1197,9 @@ static void __init tegra_ardbeg_late_init(void)
 			board_info.board_id == BOARD_PM363) {
 		platform_device_register(&tegra124_pinctrl_device);
 		laguna_pinmux_init();
+	} else if (board_info.board_id == BOARD_P1761) {
+		platform_device_register(&tegra124_pinctrl_device);
+		tn8_p1761_pinmux_init();
 	}
 
 	ardbeg_display_init();
