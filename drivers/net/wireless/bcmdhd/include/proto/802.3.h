@@ -1,7 +1,4 @@
 /*
- * Minimal debug/trace/assert driver definitions for
- * Broadcom 802.11 Networking Adapter.
- *
  * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
@@ -22,42 +19,34 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_dbg.h 376019 2012-12-21 01:00:06Z $
+ * Fundamental constants relating to 802.3
+ *
+ * $Id: 802.3.h 417942 2013-08-13 07:53:57Z $
  */
 
+#ifndef _802_3_h_
+#define _802_3_h_
 
-#ifndef _wl_dbg_h_
-#define _wl_dbg_h_
+/* This marks the start of a packed structure section. */
+#include <packed_section_start.h>
 
-/* wl_msg_level is a bit vector with defs in wlioctl.h */
-extern uint32 wl_msg_level;
-extern uint32 wl_msg_level2;
+#define SNAP_HDR_LEN	6	/* 802.3 SNAP header length */
+#define DOT3_OUI_LEN	3	/* 802.3 oui length */
 
-#define WL_TIMESTAMP()
+BWL_PRE_PACKED_STRUCT struct dot3_mac_llc_snap_header {
+	uint8	ether_dhost[ETHER_ADDR_LEN];	/* dest mac */
+	uint8	ether_shost[ETHER_ADDR_LEN];	/* src mac */
+	uint16	length;				/* frame length incl header */
+	uint8	dsap;				/* always 0xAA */
+	uint8	ssap;				/* always 0xAA */
+	uint8	ctl;				/* always 0x03 */
+	uint8	oui[DOT3_OUI_LEN];		/* RFC1042: 0x00 0x00 0x00
+						 * Bridge-Tunnel: 0x00 0x00 0xF8
+						 */
+	uint16	type;				/* ethertype */
+} BWL_POST_PACKED_STRUCT;
 
-#if 0 && (VERSION_MAJOR > 9)
-#include <IOKit/apple80211/IO8Log.h>
-#define WL_PRINT(args)		do { printf args; IO8Log args; } while (0)
-#else
-#define WL_PRINT(args)		do { WL_TIMESTAMP(); printf args; } while (0)
-#endif
+/* This marks the end of a packed structure section. */
+#include <packed_section_end.h>
 
-
-/* To disable a message completely ... until you need it again */
-#define WL_NONE(args)
-
-#define	WL_ERROR(args)
-#define	WL_TRACE(args)
-#define WL_APSTA_UPDN(args)
-#define WL_APSTA_RX(args)
-#ifdef WLMSG_WSEC
-#define WL_WSEC(args)		WL_PRINT(args)
-#define WL_WSEC_DUMP(args)	WL_PRINT(args)
-#else
-#define WL_WSEC(args)
-#define WL_WSEC_DUMP(args)
-#endif
-
-extern uint32 wl_msg_level;
-extern uint32 wl_msg_level2;
-#endif /* _wl_dbg_h_ */
+#endif	/* #ifndef _802_3_h_ */
