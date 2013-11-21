@@ -108,6 +108,7 @@ int macallan_soctherm_init(void);
 void macallan_sysedp_init(void);
 void macallan_sysedp_core_init(void);
 void macallan_sysedp_psydepl_init(void);
+void macallan_pinmux_suspend(void);
 
 
 extern struct tegra_sdhci_platform_data macallan_tegra_sdhci_platform_data0;

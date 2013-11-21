@@ -593,6 +593,12 @@ static struct platform_device macallan_pda_power_device = {
 	},
 };
 
+static void macallan_board_suspend(int state, enum suspend_stage stage)
+{
+	if (stage == TEGRA_SUSPEND_BEFORE_PERIPHERAL)
+		macallan_pinmux_suspend();
+}
+
 static struct tegra_suspend_platform_data macallan_suspend_data = {
 	.cpu_timer	= 300,
 	.cpu_off_timer	= 300,
@@ -612,6 +618,7 @@ static struct tegra_suspend_platform_data macallan_suspend_data = {
 	.lp1_core_volt_low = 0,
 	.lp1_core_volt_high = 0,
 #endif
+	.board_suspend = macallan_board_suspend,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */

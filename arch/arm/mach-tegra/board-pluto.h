@@ -151,6 +151,7 @@ int pluto_soctherm_init(void);
 void pluto_sysedp_init(void);
 void pluto_sysedp_core_init(void);
 void pluto_sysedp_psydepl_init(void);
+void pluto_pinmux_suspend(void);
 
 extern struct tegra_sdhci_platform_data pluto_tegra_sdhci_platform_data0;
 

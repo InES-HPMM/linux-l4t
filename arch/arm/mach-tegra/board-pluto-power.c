@@ -741,6 +741,9 @@ static struct tegra_io_dpd hv_io = {
 
 static void pluto_board_suspend(int state, enum suspend_stage stage)
 {
+	if (stage == TEGRA_SUSPEND_BEFORE_PERIPHERAL)
+		pluto_pinmux_suspend();
+
 	/* put HV IOs into DPD mode to save additional power */
 	if (state == TEGRA_SUSPEND_LP1 && stage == TEGRA_SUSPEND_BEFORE_CPU) {
 		gpio_direction_input(TEGRA_GPIO_PK6);

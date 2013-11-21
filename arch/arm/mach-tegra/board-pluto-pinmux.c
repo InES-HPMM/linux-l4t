@@ -181,7 +181,13 @@ int __init pluto_pinmux_init(void)
 		ARRAY_SIZE(unused_pins_lowpower));
 	tegra_pinmux_config_table(manual_config_pinmux,
 		ARRAY_SIZE(manual_config_pinmux));
-	tegra11x_set_sleep_pinmux(pluto_sleep_pinmux,
-		ARRAY_SIZE(pluto_sleep_pinmux));
 	return 0;
+}
+
+void pluto_pinmux_suspend(void)
+{
+#ifdef CONFIG_PM_SLEEP
+	tegra_pinmux_config_table(pluto_sleep_pinmux,
+			ARRAY_SIZE(pluto_sleep_pinmux));
+#endif
 }

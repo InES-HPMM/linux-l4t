@@ -95,10 +95,14 @@ int __init macallan_pinmux_init(void)
 		ARRAY_SIZE(unused_pins_lowpower));
 	tegra_pinmux_config_table(manual_config_pinmux,
 		ARRAY_SIZE(manual_config_pinmux));
-#ifdef CONFIG_PM_SLEEP
-	tegra11x_set_sleep_pinmux(macallan_sleep_pinmux,
-		ARRAY_SIZE(macallan_sleep_pinmux));
-#endif
 
 	return 0;
+}
+
+void macallan_pinmux_suspend(void)
+{
+#ifdef CONFIG_PM_SLEEP
+	tegra_pinmux_config_table(macallan_sleep_pinmux,
+		ARRAY_SIZE(macallan_sleep_pinmux));
+#endif
 }
