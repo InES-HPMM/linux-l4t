@@ -127,7 +127,7 @@
 		isp@54680000 {
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x54680000 0x00040000>;
-			nvidia,memory-clients = <55>;
+			nvidia,memory-clients = <29>;
 		};
 
 		vic {
@@ -151,13 +151,13 @@
 		nvdec {
 			compatible = "nvidia,tegra210-nvdec";
 			reg = <0x54480000 0x00040000>;
-			nvidia,memory-clients = <59>;
+			nvidia,memory-clients = <33>;
 		};
 
 		nvjpg {
 			compatible = "nvidia,tegra210-nvjpg";
 			reg = <0x54380000 0x00040000>;
-			nvidia,memory-clients = <62>;
+			nvidia,memory-clients = <36>;
 		};
 	};
 
