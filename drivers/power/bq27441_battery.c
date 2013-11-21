@@ -74,7 +74,14 @@
 
 #define BQ27441_DESIGN_CAPACITY_1	0x4A
 #define BQ27441_DESIGN_CAPACITY_2	0x4B
-
+#define BQ27441_DESIGN_ENERGY_1		0x4C
+#define BQ27441_DESIGN_ENERGY_2		0x4D
+#define BQ27441_TAPER_RATE_1		0x5B
+#define BQ27441_TAPER_RATE_2		0x5C
+#define BQ27441_TERMINATE_VOLTAGE_1	0x50
+#define BQ27441_TERMINATE_VOLTAGE_2	0x51
+#define BQ27441_V_CHG_TERM_1		0x41
+#define BQ27441_V_CHG_TERM_2		0x42
 #define BQ27441_BATTERY_LOW		15
 #define BQ27441_BATTERY_FULL		100
 
@@ -100,7 +107,10 @@ struct bq27441_chip {
 	int capacity_level;
 
 	int full_capacity;
-
+	int design_energy;
+	int taper_rate;
+	int terminate_voltage;
+	int v_chg_term;
 	int lasttime_soc;
 	int lasttime_status;
 	int shutdown_complete;
@@ -139,6 +149,31 @@ static u16 bq27441_read_word(struct i2c_client *client, u8 reg)
 	mutex_unlock(&chip->mutex);
 	return val;
 }
+
+static u8 bq27441_read_byte(struct i2c_client *client, u8 reg)
+{
+	int ret;
+	u8 val;
+
+	struct bq27441_chip *chip = i2c_get_clientdata(client);
+
+	mutex_lock(&chip->mutex);
+	if (chip && chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -ENODEV;
+	}
+
+	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
+	if (ret < 0) {
+		dev_err(&client->dev, "error reading reg: 0x%x\n", reg);
+		mutex_unlock(&chip->mutex);
+		return ret;
+	}
+
+	mutex_unlock(&chip->mutex);
+	return val;
+}
+
 
 static int bq27441_write_byte(struct i2c_client *client, u8 reg, u8 value)
 {
@@ -211,8 +246,21 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	int temp;
 	int new_csum;
 	int old_des_cap;
+	int old_des_energy;
+	int old_taper_rate;
+	int old_terminate_voltage;
+	int old_v_chg_term;
 	int old_des_cap_lsb;
 	int old_des_cap_msb;
+	int old_taper_rate_lsb;
+	int old_taper_rate_msb;
+	int old_des_energy_lsb;
+	int old_des_energy_msb;
+	int old_terminate_voltage_lsb;
+	int old_terminate_voltage_msb;
+	int old_v_chg_term_msb;
+	int old_v_chg_term_lsb;
+
 	unsigned long timeout = jiffies + HZ;
 	int ret;
 
@@ -239,7 +287,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	while (!(bq27441_read_word(client, BQ27441_FLAGS) & 0x10)) {
+	while (!(bq27441_read_byte(client, BQ27441_FLAGS) & 0x10)) {
 		if (time_after(jiffies, timeout)) {
 			dev_warn(&chip->client->dev,
 					"timeout waiting for cfg update\n");
@@ -260,13 +308,24 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	mdelay(1);
-
-	old_csum = bq27441_read_word(client, BQ27441_BLOCK_DATA_CHECKSUM);
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
 
 	old_des_cap = bq27441_read_word(client, BQ27441_DESIGN_CAPACITY_1);
-	old_des_cap_lsb = old_des_cap & 0xFF;
-	old_des_cap_msb = (old_des_cap & 0xFF00) >> 8;
+	old_des_cap_msb = old_des_cap & 0xFF;
+	old_des_cap_lsb = (old_des_cap & 0xFF00) >> 8;
+
+	old_des_energy = bq27441_read_word(client, BQ27441_DESIGN_ENERGY_1);
+	old_des_energy_msb = old_des_energy & 0xFF;
+	old_des_energy_lsb = (old_des_energy & 0xFF00) >> 8;
+
+	old_taper_rate = bq27441_read_word(client, BQ27441_TAPER_RATE_1);
+	old_taper_rate_msb = old_taper_rate & 0xFF;
+	old_taper_rate_lsb = (old_taper_rate & 0xFF00) >> 8;
+
+	old_terminate_voltage = bq27441_read_word(client,
+						BQ27441_TERMINATE_VOLTAGE_1);
+	old_terminate_voltage_msb = old_terminate_voltage & 0xFF;
+	old_terminate_voltage_lsb = (old_terminate_voltage & 0xFF00) >> 8;
 
 	ret = bq27441_write_byte(client, BQ27441_DESIGN_CAPACITY_1,
 					(chip->full_capacity & 0xFF00) >> 8);
@@ -278,10 +337,88 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	temp = (255 - old_csum - old_des_cap_lsb - old_des_cap_msb) % 256;
+	ret = bq27441_write_byte(client, BQ27441_DESIGN_ENERGY_1,
+					(chip->design_energy & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
 
-	new_csum = 255 - ((temp + (chip->full_capacity & 0xFF) +
-				((chip->full_capacity & 0xFF00) >> 8)) % 256);
+	ret = bq27441_write_byte(client, BQ27441_DESIGN_ENERGY_2,
+					chip->design_energy & 0xFF);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_TAPER_RATE_1,
+					(chip->taper_rate & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_TAPER_RATE_2,
+					chip->taper_rate & 0xFF);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_TERMINATE_VOLTAGE_1,
+				(chip->terminate_voltage & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_TERMINATE_VOLTAGE_2,
+					chip->terminate_voltage & 0xFF);
+	if (ret < 0)
+		goto fail;
+
+	temp = (255 - old_csum - old_des_cap_lsb - old_des_cap_msb
+		- old_des_energy_lsb - old_des_energy_msb
+		- old_taper_rate_lsb - old_taper_rate_msb
+		- old_terminate_voltage_lsb - old_terminate_voltage_msb);
+
+	new_csum = 255 - ((temp + (chip->full_capacity & 0xFF)
+				+ ((chip->full_capacity & 0xFF00) >> 8)
+				+ (chip->design_energy & 0xFF)
+				+ ((chip->design_energy & 0xFF00) >> 8)
+				+ (chip->taper_rate & 0xFF)
+				+ ((chip->taper_rate & 0xFF00) >> 8)
+				+ (chip->terminate_voltage & 0xFF)
+				+ ((chip->terminate_voltage & 0xFF00) >> 8)
+				));
+
+	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CHECKSUM, new_csum);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x52);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK, 0x01);
+	if (ret < 0)
+		goto fail;
+
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	old_v_chg_term = bq27441_read_word(client, BQ27441_V_CHG_TERM_1);
+	old_v_chg_term_msb = old_v_chg_term & 0xFF;
+	old_v_chg_term_lsb = (old_v_chg_term & 0xFF00) >> 8;
+
+	ret = bq27441_write_byte(client, BQ27441_V_CHG_TERM_1,
+					(chip->v_chg_term & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_V_CHG_TERM_2,
+					chip->v_chg_term & 0xFF);
+	if (ret < 0)
+		goto fail;
+
+	temp = (255 - old_csum - old_v_chg_term_lsb - old_v_chg_term_msb) % 256;
+	new_csum = 255 - ((temp
+				+ (chip->v_chg_term & 0xFF)
+				+ ((chip->v_chg_term & 0xFF00) >> 8)
+				) % 256);
 
 	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CHECKSUM, new_csum);
 	if (ret < 0)
@@ -295,7 +432,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	while (!(bq27441_read_word(client, BQ27441_FLAGS) & 0x10)) {
+	while (!(bq27441_read_byte(client, BQ27441_FLAGS) & 0x10)) {
 		if (time_after(jiffies, timeout)) {
 			dev_warn(&chip->client->dev,
 					"timeout waiting for cfg update\n");
@@ -362,13 +499,13 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = chip->soc;
 		if (chip->soc == 15)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 15%\n");
+			"\nSystem Running low on battery - 15 percent\n");
 		if (chip->soc == 10)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 10%\n");
+			"\nSystem Running low on battery - 10 percent\n");
 		if (chip->soc == 5)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 5%\n");
+			"\nSystem Running low on battery - 5 percent\n");
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
@@ -394,8 +531,7 @@ static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 	if (status == BATTERY_CHARGING) {
 		chip->charge_complete = 0;
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
-	}
-	else if (status == BATTERY_CHARGING_DONE) {
+	} else if (status == BATTERY_CHARGING_DONE) {
 		chip->charge_complete = 1;
 		chip->soc = BQ27441_BATTERY_FULL;
 		chip->status = POWER_SUPPLY_STATUS_FULL;
@@ -437,8 +573,16 @@ static int bq27441_probe(struct i2c_client *client,
 
 	chip->full_capacity = 1200;
 
-	if (chip->pdata->full_capacity_in_mAh)
-		chip->full_capacity = chip->pdata->full_capacity_in_mAh;
+	if (chip->pdata->full_capacity)
+		chip->full_capacity = chip->pdata->full_capacity;
+	if (chip->pdata->full_energy)
+		chip->design_energy = chip->pdata->full_energy;
+	if (chip->pdata->taper_rate)
+		chip->taper_rate = chip->pdata->taper_rate;
+	if (chip->pdata->terminate_voltage)
+		chip->terminate_voltage = chip->pdata->terminate_voltage;
+	if (chip->pdata->v_at_chg_term)
+		chip->v_chg_term = chip->pdata->v_at_chg_term;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
 

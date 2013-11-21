@@ -18,7 +18,11 @@
 #define __BQ27441_BATTERY_H_
 
 struct bq27441_platform_data {
-	unsigned long full_capacity_in_mAh;
+	unsigned long full_capacity; /* in mAh */
+	unsigned long full_energy; /* in mWh */
+	unsigned long taper_rate;
+	unsigned long terminate_voltage; /* in mV */
+	unsigned long v_at_chg_term; /* in mV */
 	const char *tz_name;
 };
 
