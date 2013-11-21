@@ -2797,11 +2797,10 @@ void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
 			!tegra_host->is_ddr_clk_set) {
 			change_clk = true;
 			new_mode_clk = tegra_host->ddr_clk;
-		} else {
-			if (tegra_host->is_ddr_clk_set) {
-				change_clk = true;
-				new_mode_clk = tegra_host->sdr_clk;
-			}
+		} else if ((ios->timing != MMC_TIMING_UHS_DDR50) &&
+			tegra_host->is_ddr_clk_set) {
+			change_clk = true;
+			new_mode_clk = tegra_host->sdr_clk;
 		}
 
 		if (change_clk) {
