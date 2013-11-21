@@ -755,44 +755,32 @@ static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
 static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 {
 	u32 osc_ctrl = clk_readl(OSC_CTRL);
-	u32 auto_clock_control = osc_ctrl & ~OSC_CTRL_OSC_FREQ_MASK;
-	u32 pll_ref_div = osc_ctrl & OSC_CTRL_PLL_REF_DIV_MASK;
+	u32 pll_ref_div = clk_readl(OSC_CTRL) & OSC_CTRL_PLL_REF_DIV_MASK;
 
 	c->rate = tegra_clk_measure_input_freq();
-	switch (c->rate) {
-	case 12000000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
-		break;
-	case 13000000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
-		break;
-	case 19200000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
-		break;
-	case 26000000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
-		break;
-	case 16800000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
-		break;
-	case 38400000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
-		break;
-	case 48000000:
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
-		break;
-	case 115200:	/* fake 13M for QT */
-	case 230400:	/* fake 13M for QT */
-		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
+	if ((c->rate == 115200) || (c->rate == 230400))
 		c->rate = 13000000;
-		break;
-	default:
-		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
-		BUG();
+	else {
+		switch (osc_ctrl & OSC_CTRL_OSC_FREQ_MASK) {
+		case OSC_CTRL_OSC_FREQ_12MHZ:
+			c->rate = 12000000;
+			break;
+		case OSC_CTRL_OSC_FREQ_19_2MHZ:
+			c->rate = 19200000;
+			break;
+		case OSC_CTRL_OSC_FREQ_38_4MHZ:
+			c->rate = 38400000;
+			break;
+		case OSC_CTRL_OSC_FREQ_48MHZ:
+			c->rate = 48000000;
+			break;
+		default:
+			pr_err("supported OSC freq: %08x\n", osc_ctrl);
+			BUG();
+		}
 	}
 
 	BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-	clk_writel(auto_clock_control, OSC_CTRL);
 
 	return c->rate;
 }
@@ -2494,6 +2482,9 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 	case 19200000:
 		n_threshold = 48;
 		break;
+	case 38400000:
+		n_threshold = 48; /* HACK!!! FIXME for T210 !!! */
+		break;
 	default:
 		pr_err("%s: Unexpected reference rate %lu\n",
 			__func__, input_rate);
@@ -2763,6 +2754,8 @@ static void pllxc_get_dyn_steps(struct clk *c, unsigned long input_rate,
 	case 19200000:
 		*step_a = 0x12;
 		*step_b = 0x08;
+		return;
+	case 38400000: /* HACK!!! FIXME for T210 !!! */
 		return;
 	default:
 		pr_err("%s: Unexpected reference rate %lu\n",
@@ -5704,7 +5697,7 @@ static struct clk tegra_pll_ref = {
 	.flags     = ENABLE_ON_INIT,
 	.ops       = &tegra_pll_ref_ops,
 	.parent    = &tegra_clk_osc,
-	.max_rate  = 26000000,
+	.max_rate  = 38400000,
 };
 
 static struct clk_pll_freq_table tegra_pll_c_freq_table[] = {
@@ -5843,6 +5836,7 @@ static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
 	{ 16800000, 408000000, 680, 14, 2, 8},
 	{ 19200000, 408000000, 680, 16, 2, 8},
 	{ 26000000, 408000000, 816, 26, 2, 8},
+	{ 38400000, 408000000, 85, 8, 1},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6010,6 +6004,7 @@ static struct clk_pll_freq_table tegra_pll_u_freq_table[] = {
 	{ 16800000, 480000000, 400, 7,  2, 5},
 	{ 19200000, 480000000, 200, 4,  2, 3},
 	{ 26000000, 480000000, 960, 26, 2, 12},
+	{ 38400000, 480000000, 100, 4,  2, 3}, /* HACK!!! FIXME for T210 !!! */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6088,6 +6083,7 @@ static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	{ 16800000, 1000000000, 59, 1, 1},	/* actual: 991.2 MHz */
 	{ 19200000, 1000000000, 52, 1, 1},	/* actual: 998.4 MHz */
 	{ 26000000, 1000000000, 76, 2, 1},	/* actual: 988.0 MHz */
+	{ 38400000, 1000000000, 26, 1, 1},	/* actual: 998.4 MHz */
 
 	{ 0, 0, 0, 0, 0, 0 },
 };
