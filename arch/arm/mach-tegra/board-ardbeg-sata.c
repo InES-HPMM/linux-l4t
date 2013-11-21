@@ -25,10 +25,6 @@
 #include "iomap.h"
 #include "tegra-board-id.h"
 
-#define CLK_RST_CNTRL_RST_DEV_W_SET 0x7000E438
-#define CLK_RST_CNTRL_RST_DEV_V_SET 0x7000E430
-#define SET_CEC_RST 0x100
-
 #ifdef CONFIG_SATA_AHCI_TEGRA
 static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
 	.gen2_rx_eq = -1,
@@ -36,19 +32,21 @@ static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
 };
 #endif
 
-int __init ardbeg_sata_init(void)
+void arbdeg_sata_clk_gate(void)
 {
 	u32 val;
-#ifdef CONFIG_SATA_AHCI_TEGRA
-	struct board_info board_info;
-#endif
 	val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 	if (val & SET_CEC_RST)
 		writel(0x108, IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_V_SET));
 	val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 	while (val & SET_CEC_RST)
 		val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
+}
+
+int __init ardbeg_sata_init(void)
+{
 #ifdef CONFIG_SATA_AHCI_TEGRA
+	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 	if ((board_info.board_id != BOARD_PM358) &&
 	    (board_info.board_id != BOARD_PM359))

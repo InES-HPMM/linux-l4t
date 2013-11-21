@@ -30,6 +30,7 @@ int ardbeg_display_init(void);
 int ardbeg_panel_init(void);
 int ardbeg_sdhci_init(void);
 int ardbeg_sata_init(void);
+void arbdeg_sata_clk_gate(void);
 int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
@@ -176,5 +177,11 @@ int tn8_edp_init(void);
 void tn8_new_sysedp_init(void);
 void tn8_sysedp_dynamic_capping_init(void);
 void tn8_sysedp_batmon_init(void);
+
+/* SATA Specific */
+
+#define CLK_RST_CNTRL_RST_DEV_W_SET 0x7000E438
+#define CLK_RST_CNTRL_RST_DEV_V_SET 0x7000E430
+#define SET_CEC_RST 0x100
 
 #endif

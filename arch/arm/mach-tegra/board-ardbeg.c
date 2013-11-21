@@ -1209,7 +1209,13 @@ static void __init tegra_ardbeg_late_init(void)
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	ardbeg_sdhci_init();
-	ardbeg_sata_init();
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363 ||
+			board_info.board_id == BOARD_E1782)
+		ardbeg_sata_init();
+	else
+		arbdeg_sata_clk_gate();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM370 ||

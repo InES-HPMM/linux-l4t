@@ -72,6 +72,8 @@
 static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #endif
 
+#define PORT_BASE	(TEGRA_SATA_BAR5_BASE + 0x100)
+
 /* Bit 0 (EN_FPCI) to allow FPCI accesses to SATA */
 #define SATA_CONFIGURATION_0_OFFSET		0x180
 #define EN_FPCI					(1 << 0)
@@ -158,6 +160,8 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define CLK_RST_CONTROLLER_RST_DEV_V_CLR_0	0x434
 #define CLK_RST_CONTROLLER_CLK_ENB_V_CLR_0	0x444
 #define CLK_RST_CONTROLLER_CLK_ENB_V_SET_0	0x440
+#define CLK_RST_CONTROLLER_CLK_ENB_V_0		0x360
+
 
 #define CLR_CLK_ENB_SATA_OOB			(1 << 27)
 #define CLR_CLK_ENB_SATA			(1 << 28)
@@ -185,8 +189,6 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define PG_INFO_ON				(1 << 6)
 #define PG_INFO_OFF				(0 << 6)
 #define PLLE_IDDQ_SWCTL_MASK			(1 << 4)
-#define PLLE_IDDQ_SWCTL_ON			(1 << 4)
-#define PLLE_IDDQ_SWCTL_OFF			(0 << 4)
 #define PADPHY_IDDQ_OVERRIDE_VALUE_MASK		(1 << 3)
 #define PADPHY_IDDQ_OVERRIDE_VALUE_ON		(1 << 3)
 #define PADPHY_IDDQ_OVERRIDE_VALUE_OFF		(0 << 3)
@@ -212,6 +214,13 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define PADPLL_RESET_SWCTL_MASK			(1 << 0)
 #define PADPLL_RESET_SWCTL_ON			(1 << 0)
 #define PADPLL_RESET_SWCTL_OFF			(0 << 0)
+#define PLLE_IDDQ_SWCTL_ON			(1 << 4)
+#define PLLE_IDDQ_SWCTL_OFF			(0 << 4)
+#define PLLE_SATA_SEQ_ENABLE			(1 << 24)
+#define PLLE_SATA_SEQ_START_STATE		(1 << 25)
+#define SATA_SEQ_PADPLL_PD_INPUT_VALUE		(1 << 5)
+#define SATA_SEQ_LANE_PD_INPUT_VALUE		(1 << 6)
+#define SATA_SEQ_RESET_INPUT_VALUE		(1 << 7)
 
 /* for CLK_RST_SATA_PLL_CFG1_REG */
 #define IDDQ2LANE_SLUMBER_DLY_MASK		(0xffL << 16)
@@ -297,6 +306,8 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_SHIFT	26
 #define T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_MASK	(3 << 26)
 
+#define PXSSTS_DEVICE_DETECTED			(1 << 0)
+
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 
 /* create a work for handling the async transfers */
@@ -322,6 +333,11 @@ enum sata_state {
 	SATA_GOING_ON,
 	SATA_GOING_OFF,
 	SATA_ABORT_OFF,
+};
+
+enum clk_gate_state {
+	CLK_OFF,
+	CLK_ON,
 };
 
 char *sata_power_rails[] = {
@@ -353,6 +369,11 @@ struct tegra_ahci_host_priv {
 	void			*pg_save;
 	enum sata_state		pg_state;
 	struct list_head	qc_list;
+	struct clk		*clk_sata;
+	struct clk		*clk_sata_oob;
+	struct clk		*clk_pllp;
+	struct clk	*clk_cml1;
+	enum clk_gate_state	clk_state;
 };
 
 static int tegra_ahci_init_one(struct platform_device *pdev);
@@ -435,6 +456,21 @@ static struct platform_driver tegra_platform_ahci_driver = {
 };
 
 struct tegra_ahci_host_priv *g_tegra_hpriv;
+
+static inline u32 port_readl(u32 offset)
+{
+	u32 val;
+
+	val = readl(IO_ADDRESS(PORT_BASE + offset));
+	AHCI_DBG_PRINT("[0x%x] => 0x%08x\n", PORT_BASE + offset, val);
+	return val;
+}
+
+static inline void port_writel(u32 val, u32 offset)
+{
+	AHCI_DBG_PRINT("[0x%x] => 0x%08x\n", PORT_BASE + offset, val);
+	writel(val, IO_ADDRESS(PORT_BASE + offset));
+}
 
 static inline u32 bar5_readl(u32 offset)
 {
@@ -747,6 +783,50 @@ int tegra_ahci_power_off_rails(struct regulator *regulators[])
 exit:
 	return ret;
 }
+
+static void tegra_first_level_clk_gate(void)
+{
+	if (g_tegra_hpriv->clk_state == CLK_OFF)
+		return;
+
+	clk_disable_unprepare(g_tegra_hpriv->clk_sata);
+	clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
+	clk_disable_unprepare(g_tegra_hpriv->clk_cml1);
+	g_tegra_hpriv->clk_state = CLK_OFF;
+}
+
+static int tegra_first_level_clk_ungate(void)
+{
+	int ret = 0;
+
+	if (g_tegra_hpriv->clk_state == CLK_ON) {
+		ret = -1;
+		return ret;
+	}
+
+	if (clk_prepare_enable(g_tegra_hpriv->clk_sata)) {
+		pr_err("%s: unable to enable SATA clock\n", __func__);
+		ret = -ENODEV;
+		return ret;
+	}
+	if (clk_prepare_enable(g_tegra_hpriv->clk_sata_oob)) {
+		pr_err("%s: unable to enable SATA_OOB clock\n", __func__);
+		clk_disable_unprepare(g_tegra_hpriv->clk_sata);
+		ret = -ENODEV;
+		return ret;
+	}
+	if (clk_prepare_enable(g_tegra_hpriv->clk_cml1)) {
+		pr_err("%s: unable to enable cml1 clock\n", __func__);
+		clk_disable_unprepare(g_tegra_hpriv->clk_sata);
+		clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
+		ret = -ENODEV;
+		return ret;
+	}
+	g_tegra_hpriv->clk_state = CLK_ON;
+
+	return ret;
+}
+
 static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 		int lp0)
 {
@@ -804,6 +884,10 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 		err = PTR_ERR(clk_sata_cold);
 		goto exit;
 	}
+
+	tegra_hpriv->clk_sata = clk_sata;
+	tegra_hpriv->clk_sata_oob = clk_sata_oob;
+	tegra_hpriv->clk_pllp = clk_pllp;
 
 	tegra_periph_reset_assert(clk_sata);
 	tegra_periph_reset_assert(clk_sata_oob);
@@ -866,20 +950,18 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	/**** Init the SATA PAD PLL ****/
 	/* SATA_PADPLL_IDDQ_SWCTL=1 and SATA_PADPLL_IDDQ_OVERRIDE_VALUE=1 */
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPLL_IDDQ_SWCTL_MASK | PADPLL_IDDQ_OVERRIDE_VALUE_MASK);
 	val |= (PADPLL_IDDQ_SWCTL_ON | PADPLL_IDDQ_OVERRIDE_VALUE_ON);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 	/* SATA_PADPLL_RESET_OVERRIDE_VALUE=1 and SATA_PADPLL_RESET_SWCTL=1 */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val &= ~(PADPLL_RESET_OVERRIDE_VALUE_MASK | PADPLL_RESET_SWCTL_MASK);
 	val |= (PADPLL_RESET_OVERRIDE_VALUE_ON | PADPLL_RESET_SWCTL_ON);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
 	/* SATA_PADPHY_IDDQ_OVERRIDE_VALUE and SATA_PADPHY_IDDQ_SWCTL = 1 */
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPHY_IDDQ_OVERRIDE_VALUE_MASK | PADPHY_IDDQ_SWCTL_MASK);
-	val |= (PADPHY_IDDQ_OVERRIDE_VALUE_ON | PADPHY_IDDQ_SWCTL_ON);
+	val |= (PADPHY_IDDQ_OVERRIDE_VALUE_ON | PADPHY_IDDQ_SWCTL_ON |
+				PLLE_IDDQ_SWCTL_ON | PLLE_SATA_SEQ_ENABLE);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 	/* Get SATA pad PLL out of IDDQ mode */
@@ -947,11 +1029,14 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 		err = PTR_ERR(clk_cml1);
 		goto exit;
 	}
+	tegra_hpriv->clk_cml1 = clk_cml1;
 	if (clk_prepare_enable(clk_cml1)) {
 		pr_err("%s: unable to enable cml1 clock\n", __func__);
 		err = -ENODEV;
 		goto exit;
 	}
+
+	g_tegra_hpriv->clk_state = CLK_ON;
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~PADPLL_RESET_SWCTL_MASK;
@@ -1157,6 +1242,8 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		gpio_free(ahci_pdata->pexp_gpio);
 	spin_unlock_irqrestore(&host->lock, flags);
 
+	tegra_first_level_clk_gate();
+
 	return tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
 }
 
@@ -1175,6 +1262,12 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		return err;
 	}
 
+	err = tegra_first_level_clk_ungate();
+	if (err < 0) {
+		pr_err("%s: flcg ungate failed\n", __func__);
+		return err;
+	}
+
 	spin_lock_irqsave(&host->lock, flags);
 	if (tegra_hpriv->pg_state == SATA_ON) {
 		dev_dbg(host->dev, "resume: SATA already powered on\n");
@@ -1184,6 +1277,7 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		tegra_hpriv->pg_state = SATA_ON;
 	}
 	spin_unlock_irqrestore(&host->lock, flags);
+	tegra_first_level_clk_gate();
 
 	return 0;
 }
@@ -1223,7 +1317,7 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 
 	dev_dbg(host->dev, "** entering %s: **\n", __func__);
 	rc = tegra_ahci_controller_resume(pdev);
-	if (rc)
+	if (rc != 0)
 		return rc;
 
 	rc = tegra_ahci_controller_init(g_tegra_hpriv, 1);
@@ -2029,7 +2123,6 @@ static bool tegra_ahci_are_all_ports_idle(struct ata_host *host)
 	return true;
 }
 
-
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static void tegra_ahci_abort_pad_suspend(struct ata_host *host)
 {
@@ -2060,6 +2153,13 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 	}
 	tegra_ahci_put_sata_in_iddq();
 
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val &= ~(SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+		SATA_SEQ_LANE_PD_INPUT_VALUE | SATA_SEQ_RESET_INPUT_VALUE);
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+	tegra_first_level_clk_gate();
+
 	return true;
 }
 
@@ -2070,6 +2170,16 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 	struct tegra_ahci_host_priv *tegra_hpriv;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
+
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+		SATA_SEQ_LANE_PD_INPUT_VALUE | SATA_SEQ_RESET_INPUT_VALUE);
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+	if (tegra_first_level_clk_ungate() < 0) {
+		pr_err("%s: flcg ungate failed\n", __func__);
+		return false;
+	}
 
 	tegra_ahci_iddqlane_config();
 
@@ -2284,7 +2394,7 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 	tegra_ahci_controller_remove(pdev);
 
 	devm_iounmap(&pdev->dev, host->iomap[AHCI_PCI_BAR]);
-	devres_free(host);
+	ata_host_detach(host);
 
 #ifdef TEGRA_AHCI_CONTEXT_RESTORE
 	/* Free PG save/restore area */
@@ -2313,6 +2423,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	int n_ports, i, rc = 0;
 	struct resource *res, *irq_res;
 	void __iomem *mmio;
+
 #if defined(TEGRA_AHCI_CONTEXT_RESTORE)
 	u32 save_size;
 #endif
@@ -2480,11 +2591,12 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	rc = ata_host_activate(host, irq_res->start, irq_handler, 0, &ahci_sht);
 	if (rc == 0)
 		return 0;
+
 fail:
 	if (host) {
 		if (host->iomap[AHCI_PCI_BAR])
 			devm_iounmap(dev, host->iomap[AHCI_PCI_BAR]);
-		devres_free(host);
+		ata_host_detach(host);
 	}
 	if (hpriv)
 		devm_kfree(dev, hpriv);
@@ -2536,6 +2648,10 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 	u32 *ptr;
 	u32 i;
 
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+	tegra_ahci_runtime_resume(g_tegra_hpriv->dev);
+#endif
+
 	base = TEGRA_SATA_CONFIG_BASE;
 	ptr = (u32 *)IO_TO_VIRT(base);
 	seq_puts(s, "SATA CONFIG Registers:\n");
@@ -2568,6 +2684,10 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 		seq_puts(s, "\n=== SATA controller is powered on ===\n\n");
 	else
 		seq_puts(s, "\n=== SATA controller is powered off ===\n\n");
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+	tegra_ahci_runtime_suspend(g_tegra_hpriv->dev);
+#endif
+
 
 	return 0;
 }
