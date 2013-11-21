@@ -35,5 +35,21 @@
 				status = "okay";
 			};
 		};
+
+		sfc@702d2000 {
+			status = "okay";
+		};
+
+		sfc@702d2200 {
+			status = "okay";
+		};
+
+		sfc@702d2400 {
+			status = "okay";
+		};
+
+		sfc@702d2600 {
+			status = "okay";
+		};
 	};
 };

@@ -205,5 +205,33 @@
 				status = "disabled";
 			};
 		};
+
+		sfc@702d2000 {
+			compatible = "nvidia,tegra210-sfc";
+			reg = <0x702d2000 0x200>;
+			nvidia,ahub-sfc-id = <0>;
+			status = "disabled";
+		};
+
+		sfc@702d2200 {
+			compatible = "nvidia,tegra210-sfc";
+			reg = <0x702d2200 0x200>;
+			nvidia,ahub-sfc-id = <1>;
+			status = "disabled";
+		};
+
+		sfc@702d2400 {
+			compatible = "nvidia,tegra210-sfc";
+			reg = <0x702d2400 0x200>;
+			nvidia,ahub-sfc-id = <2>;
+			status = "disabled";
+		};
+
+		sfc@702d2600 {
+			compatible = "nvidia,tegra210-sfc";
+			reg = <0x702d2600 0x200>;
+			nvidia,ahub-sfc-id = <3>;
+			status = "disabled";
+		};
 	};
 };
