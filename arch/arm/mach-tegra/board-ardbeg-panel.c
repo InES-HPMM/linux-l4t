@@ -496,6 +496,19 @@ static struct tegra_io_dpd dsid_io = {
 	.io_dpd_bit		= 9,
 };
 
+static struct tegra_dc_dp_lt_settings ardbeg_edp_lt_data[] = {
+	/* DriveCurrent	Preemphasis	PostCursor	tx_pu	load_adj */
+	{0x13131313,	0x00000000,	0x00000000,	0x20,	0x3},
+	{0x13131313,	0x00000000,	0x00000000,	0x20,	0x4},
+	{0x19191919,	0x09090909,	0x00000000,	0x30,	0x6}
+};
+
+static struct tegra_dp_out dp_settings = {
+	/* Panel can override this with its own LT data */
+	.lt_settings = ardbeg_edp_lt_data,
+	.n_lt_settings = ARRAY_SIZE(ardbeg_edp_lt_data),
+};
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
 static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
@@ -529,6 +542,7 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_E1824:
 		panel = &edp_a_1080p_14_0;
 		ardbeg_disp1_out.type = TEGRA_DC_OUT_DP;
+		ardbeg_disp1_out.dp_out = &dp_settings;
 		ardbeg_disp1_device.resource = ardbeg_disp1_edp_resources;
 		ardbeg_disp1_device.num_resources =
 			ARRAY_SIZE(ardbeg_disp1_edp_resources);
