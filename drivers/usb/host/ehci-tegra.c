@@ -735,13 +735,13 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	device_remove_file(hcd->self.controller, &dev_attr_boost_enable);
+#endif
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);
 	usb_phy_shutdown(get_usb_phy(tegra->phy));
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-	device_remove_file(hcd->self.controller, &dev_attr_boost_enable);
-#endif
 
 	mutex_destroy(&tegra->sync_lock);
 	tegra_pd_remove_device(&pdev->dev);
