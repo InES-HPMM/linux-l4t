@@ -1094,6 +1094,7 @@ static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
 	},
 	.vdd_map = e1736_cpu_vdd_map,
 	.vdd_map_size = E1736_CPU_VDD_MAP_SIZE,
+	.pmu_undershoot_gb = 100,
 
 	.cfg_param = &e1736_ardbeg_cl_dvfs_param,
 };
