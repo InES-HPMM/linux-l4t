@@ -102,6 +102,7 @@ struct tegra_usb_phy_platform_ops {
 struct tegra_usb_dev_mode_data {
 	int vbus_pmu_irq;
 	int vbus_gpio;
+	int dcp_current_limit_ma;
 	bool charging_supported;
 	bool remote_wakeup_supported;
 	bool is_xhci;
