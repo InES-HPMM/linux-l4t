@@ -493,6 +493,15 @@ config CHARGER_EXTCON_MAX77660
 	 Say Y here to enable battery charging driver support for
 	 maxim MAX77660 chipset.
 
+config BATTERY_CW201X
+	tristate "Cellwise CW2015 Fuel Gauge driver"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	select REGMAP_I2C
+	help
+	  CW201X is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
