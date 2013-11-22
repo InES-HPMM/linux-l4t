@@ -7409,7 +7409,11 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	.min_rate  = 3187500,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 		.backup    = &tegra_pll_p_out4,
+#else
+		.backup    = &tegra_pll_p,
+#endif
 		.dynamic   = &tegra_dfll_cpu,
 		.mode      = MODE_G,
 	},
@@ -8947,14 +8951,16 @@ static void tegra12_pllp_init_dependencies(unsigned long pllp_rate)
 	}
 	pr_info("tegra: PLLP fixed rate: %lu\n", pllp_rate);
 
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	div = pllp_rate / CPU_G_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
 	tegra_clk_virtual_cpu_g.u.cpu.backup_rate = backup_rate;
 
-#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
 	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
+#else
+	tegra_clk_virtual_cpu_g.u.cpu.backup_rate = pllp_rate;
 #endif
 }
 
