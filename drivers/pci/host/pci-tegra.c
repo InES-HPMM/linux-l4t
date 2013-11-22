@@ -1055,7 +1055,7 @@ static int tegra_pcie_enable_regulators(void)
 		pr_info("PCIE.C: %s : regulator hvdd_pex\n", __func__);
 		tegra_pcie.regulator_hvdd =
 			regulator_get(tegra_pcie.dev, "hvdd_pex");
-		if (IS_ERR_OR_NULL(tegra_pcie.regulator_hvdd)) {
+		if (IS_ERR(tegra_pcie.regulator_hvdd)) {
 			pr_err("%s: unable to get hvdd_pex regulator\n",
 					__func__);
 			tegra_pcie.regulator_hvdd = 0;
@@ -1066,7 +1066,7 @@ static int tegra_pcie_enable_regulators(void)
 		pr_info("PCIE.C: %s : regulator pexio\n", __func__);
 		tegra_pcie.regulator_pexio =
 			regulator_get(tegra_pcie.dev, "avdd_pex_pll");
-		if (IS_ERR_OR_NULL(tegra_pcie.regulator_pexio)) {
+		if (IS_ERR(tegra_pcie.regulator_pexio)) {
 			pr_err("%s: unable to get pexio regulator\n", __func__);
 			tegra_pcie.regulator_pexio = 0;
 		}
@@ -1080,7 +1080,7 @@ static int tegra_pcie_enable_regulators(void)
 		pr_info("PCIE.C: %s : regulator avdd_plle\n", __func__);
 		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
 						"avdd_pll_erefe");
-		if (IS_ERR_OR_NULL(tegra_pcie.regulator_avdd_plle)) {
+		if (IS_ERR(tegra_pcie.regulator_avdd_plle)) {
 			pr_err("%s: unable to get avdd_plle regulator\n",
 				__func__);
 			tegra_pcie.regulator_avdd_plle = 0;
