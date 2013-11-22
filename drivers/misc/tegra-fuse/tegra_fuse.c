@@ -1201,12 +1201,12 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 {
 	/* get fuse_regulator regulator */
 	fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
-	if (IS_ERR_OR_NULL(fuse_regulator))
+	if (IS_ERR(fuse_regulator))
 		pr_err("%s: no fuse_regulator. fuse write disabled\n",
 				__func__);
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
-	if (IS_ERR_OR_NULL(clk_fuse)) {
+	if (IS_ERR(clk_fuse)) {
 		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
 		if (!IS_ERR_OR_NULL(fuse_regulator)) {
 			regulator_put(fuse_regulator);
