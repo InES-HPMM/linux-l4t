@@ -324,7 +324,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	camera->reg = regulator_get(&ndev->dev, "avdd_dsi_csi");
 #endif
 
-	if (IS_ERR_OR_NULL(camera->reg)) {
+	if (IS_ERR(camera->reg)) {
 		ret = -ENODEV;
 		if (camera->reg == ERR_PTR(-ENODEV)) {
 			camera->reg = NULL;
