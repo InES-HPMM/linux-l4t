@@ -238,7 +238,7 @@ static int pismo_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(pismo_vdd_com_3v3)) {
 		pismo_vdd_com_3v3 = regulator_get(&pismo_wifi_device.dev,
 							PISMO_VDD_WIFI_3V3);
-		if (IS_ERR_OR_NULL(pismo_vdd_com_3v3)) {
+		if (IS_ERR(pismo_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				PISMO_VDD_WIFI_3V3 "\n");
 			return PTR_ERR(pismo_vdd_com_3v3);
@@ -258,7 +258,7 @@ static int pismo_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(pismo_vddio_com_1v8)) {
 		pismo_vddio_com_1v8 = regulator_get(&pismo_wifi_device.dev,
 			PISMO_VDD_WIFI_1V8);
-		if (IS_ERR_OR_NULL(pismo_vddio_com_1v8)) {
+		if (IS_ERR(pismo_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
 				PISMO_VDD_WIFI_1V8 "\n");
 			regulator_disable(pismo_vdd_com_3v3);

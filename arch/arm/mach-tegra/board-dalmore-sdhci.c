@@ -248,7 +248,7 @@ static int dalmore_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
 		dalmore_vdd_com_3v3 = regulator_get(&dalmore_wifi_device.dev,
 							DALMORE_VDD_WIFI_3V3);
-		if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
+		if (IS_ERR(dalmore_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				DALMORE_VDD_WIFI_3V3 "\n");
 			return PTR_ERR(dalmore_vdd_com_3v3);
@@ -268,7 +268,7 @@ static int dalmore_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
 		dalmore_vddio_com_1v8 = regulator_get(&dalmore_wifi_device.dev,
 			DALMORE_VDD_WIFI_1V8);
-		if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
+		if (IS_ERR(dalmore_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
 				DALMORE_VDD_WIFI_1V8 "\n");
 			regulator_disable(dalmore_vdd_com_3v3);

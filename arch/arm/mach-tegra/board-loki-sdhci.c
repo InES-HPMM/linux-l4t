@@ -250,7 +250,7 @@ static int loki_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(loki_vdd_com_3v3)) {
 		loki_vdd_com_3v3 = regulator_get(&loki_wifi_device.dev,
 					LOKI_VDD_WIFI_3V3);
-		if (IS_ERR_OR_NULL(loki_vdd_com_3v3)) {
+		if (IS_ERR(loki_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				LOKI_VDD_WIFI_3V3 "\n");
 			return PTR_ERR(loki_vdd_com_3v3);
@@ -270,7 +270,7 @@ static int loki_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(loki_vddio_com_1v8)) {
 		loki_vddio_com_1v8 = regulator_get(&loki_wifi_device.dev,
 			LOKI_VDD_WIFI_1V8);
-		if (IS_ERR_OR_NULL(loki_vddio_com_1v8)) {
+		if (IS_ERR(loki_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
 				LOKI_VDD_WIFI_1V8 "\n");
 			regulator_disable(loki_vdd_com_3v3);

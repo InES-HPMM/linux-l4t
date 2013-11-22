@@ -140,7 +140,7 @@ static int pluto_hdmi_enable(struct device *dev)
 	int ret;
 	if (!pluto_hdmi_reg) {
 		pluto_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(pluto_hdmi_reg)) {
+		if (IS_ERR(pluto_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			pluto_hdmi_reg = NULL;
 			return PTR_ERR(pluto_hdmi_reg);
@@ -153,7 +153,7 @@ static int pluto_hdmi_enable(struct device *dev)
 	}
 	if (!pluto_hdmi_pll) {
 		pluto_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(pluto_hdmi_pll)) {
+		if (IS_ERR(pluto_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			pluto_hdmi_pll = NULL;
 			regulator_put(pluto_hdmi_reg);
@@ -201,7 +201,7 @@ static int pluto_hdmi_hotplug_init(struct device *dev)
 	int ret = 0;
 	if (!pluto_hdmi_vddio) {
 		pluto_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
-		if (IS_ERR_OR_NULL(pluto_hdmi_vddio)) {
+		if (IS_ERR(pluto_hdmi_vddio)) {
 			ret = PTR_ERR(pluto_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_5v0\n");
 			pluto_hdmi_vddio = NULL;

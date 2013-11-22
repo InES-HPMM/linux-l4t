@@ -199,7 +199,7 @@ static int ardbeg_hdmi_enable(struct device *dev)
 	int ret;
 	if (!ardbeg_hdmi_reg) {
 		ardbeg_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(ardbeg_hdmi_reg)) {
+		if (IS_ERR(ardbeg_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			ardbeg_hdmi_reg = NULL;
 			return PTR_ERR(ardbeg_hdmi_reg);
@@ -212,7 +212,7 @@ static int ardbeg_hdmi_enable(struct device *dev)
 	}
 	if (!ardbeg_hdmi_pll) {
 		ardbeg_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(ardbeg_hdmi_pll)) {
+		if (IS_ERR(ardbeg_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			ardbeg_hdmi_pll = NULL;
 			regulator_put(ardbeg_hdmi_reg);

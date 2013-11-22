@@ -149,7 +149,7 @@ static int pismo_hdmi_enable(struct device *dev)
 	int ret;
 	if (!pismo_hdmi_reg) {
 		pismo_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(pismo_hdmi_reg)) {
+		if (IS_ERR(pismo_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			pismo_hdmi_reg = NULL;
 			return PTR_ERR(pismo_hdmi_reg);
@@ -162,7 +162,7 @@ static int pismo_hdmi_enable(struct device *dev)
 	}
 	if (!pismo_hdmi_pll) {
 		pismo_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(pismo_hdmi_pll)) {
+		if (IS_ERR(pismo_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			pismo_hdmi_pll = NULL;
 			regulator_put(pismo_hdmi_reg);

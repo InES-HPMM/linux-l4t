@@ -466,14 +466,14 @@ static int roth_dsi_regulator_get(struct device *dev)
 		return 0;
 
 	avdd_lcd_3v0_2v8 = regulator_get(dev, "avdd_lcd");
-	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
+	if (IS_ERR(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v0_2v8);
 		avdd_lcd_3v0_2v8 = NULL;
 		goto fail;
 	}
 	vdd_lcd_s_1v8 = regulator_get(dev, "dvdd_lcd");
-	if (IS_ERR_OR_NULL(vdd_lcd_s_1v8)) {
+	if (IS_ERR(vdd_lcd_s_1v8)) {
 		pr_err("vdd_lcd_1v8_s regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_s_1v8);
 		vdd_lcd_s_1v8 = NULL;
@@ -482,7 +482,7 @@ static int roth_dsi_regulator_get(struct device *dev)
 
 	if (machine_is_dalmore()) {
 		vdd_lcd_bl = regulator_get(dev, "vdd_lcd_bl");
-		if (IS_ERR_OR_NULL(vdd_lcd_bl)) {
+		if (IS_ERR(vdd_lcd_bl)) {
 			pr_err("vdd_lcd_bl regulator get failed\n");
 			err = PTR_ERR(vdd_lcd_bl);
 			vdd_lcd_bl = NULL;
@@ -491,7 +491,7 @@ static int roth_dsi_regulator_get(struct device *dev)
 	}
 
 	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en");
-	if (IS_ERR_OR_NULL(vdd_lcd_bl_en)) {
+	if (IS_ERR(vdd_lcd_bl_en)) {
 		pr_err("vdd_lcd_bl_en regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_bl_en);
 		vdd_lcd_bl_en = NULL;
@@ -653,7 +653,7 @@ static int roth_hdmi_enable(struct device *dev)
 	int ret;
 	if (!roth_hdmi_reg) {
 		roth_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(roth_hdmi_reg)) {
+		if (IS_ERR(roth_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			roth_hdmi_reg = NULL;
 			return PTR_ERR(roth_hdmi_reg);
@@ -666,7 +666,7 @@ static int roth_hdmi_enable(struct device *dev)
 	}
 	if (!roth_hdmi_pll) {
 		roth_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(roth_hdmi_pll)) {
+		if (IS_ERR(roth_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			roth_hdmi_pll = NULL;
 			regulator_put(roth_hdmi_reg);

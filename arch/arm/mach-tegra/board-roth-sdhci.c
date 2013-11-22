@@ -246,7 +246,7 @@ static int roth_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(roth_vdd_com_3v3)) {
 		roth_vdd_com_3v3 = regulator_get(&roth_wifi_device.dev,
 					ROTH_VDD_WIFI_3V3);
-		if (IS_ERR_OR_NULL(roth_vdd_com_3v3)) {
+		if (IS_ERR(roth_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				ROTH_VDD_WIFI_3V3 "\n");
 			return PTR_ERR(roth_vdd_com_3v3);
@@ -266,7 +266,7 @@ static int roth_wifi_regulator_enable(void)
 	if (IS_ERR_OR_NULL(roth_vddio_com_1v8)) {
 		roth_vddio_com_1v8 = regulator_get(&roth_wifi_device.dev,
 			ROTH_VDD_WIFI_1V8);
-		if (IS_ERR_OR_NULL(roth_vddio_com_1v8)) {
+		if (IS_ERR(roth_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
 				ROTH_VDD_WIFI_1V8 "\n");
 			regulator_disable(roth_vdd_com_3v3);

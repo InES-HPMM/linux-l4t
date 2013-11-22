@@ -1038,25 +1038,25 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->sd = sysfs_get_dirent(pdev->dev.kobj.sd, NULL, "status");
 
 	bb->vdd_bb_core = regulator_get(NULL, "vdd_bb");
-	if (IS_ERR_OR_NULL(bb->vdd_bb_core)) {
+	if (IS_ERR(bb->vdd_bb_core)) {
 		pr_err("vdd_bb regulator get failed\n");
 		bb->vdd_bb_core = NULL;
 	}
 
 	bb->vdd_bb_pll = regulator_get(NULL, "avdd_bb_pll");
-	if (IS_ERR_OR_NULL(bb->vdd_bb_pll)) {
+	if (IS_ERR(bb->vdd_bb_pll)) {
 		pr_err("avdd_bb_pll regulator get failed\n");
 		bb->vdd_bb_pll = NULL;
 	}
 
 	/* clk enable for mc_bbc / pll_p_bbc */
 	c = tegra_get_clock_by_name("mc_bbc");
-	if (IS_ERR_OR_NULL(c))
+	if (IS_ERR(c))
 		pr_err("mc_bbc get failed\n");
 	else
 		clk_enable(c);
 	c = tegra_get_clock_by_name("pll_p_bbc");
-	if (IS_ERR_OR_NULL(c))
+	if (IS_ERR(c))
 		pr_err("pll_p_bbc get failed\n");
 	else
 		clk_enable(c);

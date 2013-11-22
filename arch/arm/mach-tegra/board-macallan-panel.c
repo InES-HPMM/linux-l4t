@@ -150,7 +150,7 @@ static int macallan_hdmi_enable(struct device *dev)
 	int ret;
 	if (!macallan_hdmi_reg) {
 		macallan_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(macallan_hdmi_reg)) {
+		if (IS_ERR(macallan_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			macallan_hdmi_reg = NULL;
 			return PTR_ERR(macallan_hdmi_reg);
@@ -163,7 +163,7 @@ static int macallan_hdmi_enable(struct device *dev)
 	}
 	if (!macallan_hdmi_pll) {
 		macallan_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(macallan_hdmi_pll)) {
+		if (IS_ERR(macallan_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			macallan_hdmi_pll = NULL;
 			regulator_put(macallan_hdmi_reg);

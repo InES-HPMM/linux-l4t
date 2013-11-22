@@ -149,7 +149,7 @@ static int dalmore_hdmi_enable(struct device *dev)
 	int ret;
 	if (!dalmore_hdmi_reg) {
 		dalmore_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(dalmore_hdmi_reg)) {
+		if (IS_ERR(dalmore_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			dalmore_hdmi_reg = NULL;
 			return PTR_ERR(dalmore_hdmi_reg);
@@ -162,7 +162,7 @@ static int dalmore_hdmi_enable(struct device *dev)
 	}
 	if (!dalmore_hdmi_pll) {
 		dalmore_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(dalmore_hdmi_pll)) {
+		if (IS_ERR(dalmore_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			dalmore_hdmi_pll = NULL;
 			regulator_put(dalmore_hdmi_reg);

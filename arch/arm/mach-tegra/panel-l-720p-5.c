@@ -464,7 +464,7 @@ static int dsi_l_720p_5_reg_get(void)
 
 	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd");
 
-	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
+	if (IS_ERR(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v0_2v8);
 		avdd_lcd_3v0_2v8 = NULL;
@@ -472,7 +472,7 @@ static int dsi_l_720p_5_reg_get(void)
 	}
 
 	vdd_lcd_s_1v8 = regulator_get(NULL, "vdd_lcd_1v8_s");
-	if (IS_ERR_OR_NULL(vdd_lcd_s_1v8)) {
+	if (IS_ERR(vdd_lcd_s_1v8)) {
 		pr_err("vdd_lcd_1v8_s regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_s_1v8);
 		vdd_lcd_s_1v8 = NULL;
@@ -480,7 +480,7 @@ static int dsi_l_720p_5_reg_get(void)
 	}
 
 	vdd_sys_bl_3v7 = regulator_get(NULL, "vdd_sys_bl");
-	if (IS_ERR_OR_NULL(vdd_sys_bl_3v7)) {
+	if (IS_ERR(vdd_sys_bl_3v7)) {
 		pr_err("vdd_sys_bl regulator get failed\n");
 		err = PTR_ERR(vdd_sys_bl_3v7);
 		vdd_sys_bl_3v7 = NULL;

@@ -418,7 +418,7 @@ static int bonaire_dsi_panel_enable(void)
 
 	if (bonaire_dsi_reg == NULL) {
 		bonaire_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
-		if (IS_ERR_OR_NULL(bonaire_dsi_reg)) {
+		if (IS_ERR(bonaire_dsi_reg)) {
 		pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
 			bonaire_dsi_reg = NULL;
 			return PTR_ERR(bonaire_dsi_reg);
