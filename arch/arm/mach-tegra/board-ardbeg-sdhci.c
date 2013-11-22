@@ -49,6 +49,7 @@ static unsigned int wifi_states[] = {ON, OFF};
 #endif
 
 #define ARDBEG_SD_CD	TEGRA_GPIO_PV2
+#define ARDBEG_SD_WP	TEGRA_GPIO_PQ4
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -188,7 +189,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = ARDBEG_SD_CD,
-	.wp_gpio = -1,
+	.wp_gpio = ARDBEG_SD_WP,
 	.power_gpio = -1,
 	.tap_delay = 0,
 	.trim_delay = 0x3,
