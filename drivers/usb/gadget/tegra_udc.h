@@ -37,8 +37,8 @@
 
 #define USB_MAX_CTRL_PAYLOAD		64
 
- /* Charger current limit=1800mA, as per the USB charger spec */
-#define USB_CHARGING_DCP_CURRENT_LIMIT_UA 1800000u
+/* Charger current limit=1500mA, as per BC1.2 spec */
+#define USB_CHARGING_DCP_CURRENT_LIMIT_UA 1500000u
 #define USB_CHARGING_CDP_CURRENT_LIMIT_UA 1500000u
 #define USB_CHARGING_SDP_CURRENT_LIMIT_UA 500000u
 #define USB_CHARGING_NV_CHARGER_CURRENT_LIMIT_UA 2000000u
@@ -47,7 +47,7 @@
 #define USB_CHARGING_APPLE_CHARGER_1000mA_CURRENT_LIMIT_UA 1000000u
 #define USB_CHARGING_APPLE_CHARGER_2000mA_CURRENT_LIMIT_UA 2000000u
 
- /* 1 sec wait time for non-std charger detection after vbus is detected */
+/* 1 sec wait time for non-std charger detection after vbus is detected */
 #define NON_STD_CHARGER_DET_TIME_MS 1000
 #define BOOST_TRIGGER_SIZE 4096
 
@@ -459,6 +459,7 @@ struct tegra_udc {
 	u32 ep0_dir;	/* Endpoint zero direction: USB_DIR_IN/USB_DIR_OUT */
 	u8 device_address;	/* Device USB address */
 	u32 current_limit;
+	u32 dcp_current_limit;
 	spinlock_t lock;
 	struct mutex sync_lock;
 	unsigned softconnect:1;
