@@ -52,9 +52,6 @@
 #include <linux/wifi_tiwlan.h>
 #endif
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
-#if defined(WIFIEDP)
-#include <linux/mutex.h>
-#endif
 
 /*
  * Android private command strings, PLEASE define new private commands here
@@ -217,11 +214,6 @@ extern char iface_name[IFNAMSIZ];
  * wl_android_wifi_on
  */
 static int g_wifi_on = TRUE;
-
-#if defined(WIFIEDP)
-static int g_edp_reg = FALSE;
-static struct mutex edp_reg_mutex;
-#endif
 
 /**
  * Local (static) function definitions
@@ -1439,51 +1431,13 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr)
 #endif
 }
 
-#if defined(WIFIEDP)
-static int wifi_request_edp_state(struct edp_client *pinfo, int new_state)
-{
-	int approved = 0;
-	DHD_TRACE(("%s edp_state = %d\n", __func__, new_state));
-
-	if ((!pinfo) || (new_state < EDP_STATE_ON) || (new_state > EDP_STATE_OFF)) {
-		DHD_ERROR(("Error while moving to a different power state\n"));
-		return -EINVAL;
-	}
-
-	approved = edp_update_client_request(pinfo, new_state, NULL);
-
-	if (approved < 0)
-		DHD_ERROR(("Error in moving to requested power state\n"));
-
-	return approved;
-}
-#endif
-
 int wifi_set_power(int on, unsigned long msec)
 {
 	int ret = 0;
-	struct edp_client *pinfo = NULL;
 	DHD_ERROR(("%s = %d\n", __FUNCTION__, on));
 	if (wifi_regulator && on)
 		ret = regulator_enable(wifi_regulator);
 	if (wifi_control_data) {
-#if defined(WIFIEDP)
-		mutex_lock(&edp_reg_mutex);
-		if (g_edp_reg == TRUE) {
-			/* Move to EDP_ON/OFF state depending
-			 * on wifi power state
-			 */
-			pinfo = &(wifi_control_data->client_info);
-			if (wifi_request_edp_state(pinfo,
-				on ? EDP_STATE_ON : EDP_STATE_OFF)) {
-				DHD_ERROR(("edp state transit failed\n"));
-				mutex_unlock(&edp_reg_mutex);
-				return -EACCES;
-			}
-		}
-		mutex_unlock(&edp_reg_mutex);
-#endif
-
 #ifdef ENABLE_4335BT_WAR
 		if (on) {
 			printk("WiFi: trying to acquire BT lock\n");
@@ -1496,12 +1450,17 @@ int wifi_set_power(int on, unsigned long msec)
 			bcm_bt_unlock(lock_cookie_wifi);
 		}
 #endif /* ENABLE_4335BT_WAR */
+		if (on)
+			sysedp_set_state(wifi_control_data->sysedpc, 1);
 
 		if (wifi_control_data->set_power)
 			ret = wifi_control_data->set_power(on);
 
 		if (wifi_regulator && !on)
 			ret = regulator_disable(wifi_regulator);
+
+		if (!on)
+			sysedp_set_state(wifi_control_data->sysedpc, 0);
 
 		if (msec)
 			OSL_SLEEP(msec);
@@ -1546,46 +1505,6 @@ static int wifi_set_carddetect(int on)
 	return 0;
 }
 
-#if defined(WIFIEDP)
-static int wifi_register_edp_client(struct edp_client *pinfo)
-{
-	int ret = 0;
-	struct edp_manager *pbatman = edp_get_manager("battery");
-	DHD_TRACE(("%s\n", __func__));
-
-	if (!pbatman || !pinfo) {
-		DHD_ERROR(("%s:edp registration failed\n", __func__));
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (!pinfo->states) {
-		DHD_ERROR(("No edp states for wifi\n"));
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (g_edp_reg == TRUE) {
-		DHD_ERROR(("already registered edp client"));
-		goto error;
-	}
-
-	if (edp_register_client(pbatman, pinfo)) {
-		DHD_ERROR(("Error registering the client\n"));
-		ret = -EPERM;
-	}
-
-error:
-	mutex_lock(&edp_reg_mutex);
-	if (ret == 0)
-		g_edp_reg = TRUE;
-	else
-		g_edp_reg = FALSE;
-	mutex_unlock(&edp_reg_mutex);
-	return ret;
-}
-#endif
-
 static struct resource *get_wifi_irqres_from_of(struct platform_device *pdev)
 {
 	static struct resource gpio_wifi_irqres;
@@ -1627,10 +1546,7 @@ static int wifi_probe(struct platform_device *pdev)
 	if (wifi_irqres == NULL)
 		wifi_irqres = get_wifi_irqres_from_of(pdev);
 	wifi_control_data = wifi_ctrl;
-#if defined(WIFIEDP)
-	mutex_init(&edp_reg_mutex);
-	wifi_register_edp_client(&(wifi_ctrl->client_info));
-#endif
+	wifi_control_data->sysedpc = sysedp_create_consumer("wifi", "wifi");
 	err = wifi_set_power(1, 200);	/* Power On */
 	if (unlikely(err)) {
 		DHD_ERROR(("%s: set_power failed. err=%d\n", __FUNCTION__, err));
@@ -1645,34 +1561,6 @@ static int wifi_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined(WIFIEDP)
-static int wifi_unregister_edp_client(struct edp_client *pinfo)
-{
-	DHD_ERROR(("%s\n", __func__));
-	mutex_lock(&edp_reg_mutex);
-	if (g_edp_reg == FALSE) {
-		DHD_ERROR(("Wifi edp client not registered!"));
-		mutex_unlock(&edp_reg_mutex);
-		return -EINVAL;
-	}
-	mutex_unlock(&edp_reg_mutex);
-
-	if (!pinfo) {
-		DHD_ERROR(("## %s Invalid arguments\n", __func__));
-		return -EINVAL;
-	}
-
-	if (!edp_unregister_client(pinfo))
-		DHD_ERROR(("Deregistration to edp failed!\n"));
-
-	mutex_lock(&edp_reg_mutex);
-	g_edp_reg = FALSE;
-	mutex_unlock(&edp_reg_mutex);
-
-	return 0;
-}
-#endif
-
 static int wifi_remove(struct platform_device *pdev)
 {
 	struct wifi_platform_data *wifi_ctrl =
@@ -1685,9 +1573,6 @@ static int wifi_remove(struct platform_device *pdev)
 	if (g_wifi_poweron) {
 	wifi_set_power(0, WIFI_TURNOFF_DELAY);	/* Power Off */
 	wifi_set_carddetect(0);	/* CardDetect (1->0) */
-#if defined(WIFIEDP)
-	wifi_unregister_edp_client(&(wifi_ctrl->client_info));
-#endif
 		g_wifi_poweron = FALSE;
 		list_for_each_entry_safe(cur, q, &miracast_resume_list, list) {
 			list_del(&cur->list);
@@ -1698,6 +1583,9 @@ static int wifi_remove(struct platform_device *pdev)
 		regulator_put(wifi_regulator);
 		wifi_regulator = NULL;
 	}
+
+	sysedp_free_consumer(wifi_ctrl->sysedpc);
+	wifi_ctrl->sysedpc = 0;
 
 	up(&wifi_control_sem);
 	return 0;
