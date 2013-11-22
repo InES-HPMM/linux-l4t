@@ -150,6 +150,9 @@ int laguna_regulator_init(void);
 int laguna_pm358_pmon_init(void);
 int laguna_edp_init(void);
 
+/* Norrin specific */
+int norrin_regulator_init(void);
+
 /* AUO Display related GPIO */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
 #define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */

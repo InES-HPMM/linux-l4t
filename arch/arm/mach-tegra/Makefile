@@ -260,6 +260,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-memory.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-pinmux.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-tn8-power.o
+obj-${CONFIG_MACH_ARDBEG}               += board-norrin-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-powermon.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-p-wuxga-10-1.o
