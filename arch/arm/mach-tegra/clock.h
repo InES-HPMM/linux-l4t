@@ -338,6 +338,8 @@ struct clk {
 	} u;
 
 	struct raw_notifier_head			*rate_change_nh;
+	wait_queue_head_t				*debug_poll_qh;
+	int						rate_changed;
 
 	struct mutex *cross_clk_mutex;
 	struct mutex mutex;
@@ -579,6 +581,26 @@ static inline unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 #else
 static inline unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 { return 0; }
+#endif
+
+#ifdef CONFIG_DEBUG_FS
+
+/* Extended version of the standard macro with poll function setting */
+#define DEFINE_SIMPLE_POLL_ATTRIBUTE(__fops, __get, __set, __poll, __fmt) \
+static int __fops ## _open(struct inode *inode, struct file *file)	\
+{									\
+	__simple_attr_check_format(__fmt, 0ull);			\
+	return simple_attr_open(inode, file, __get, __set, __fmt);	\
+}									\
+static const struct file_operations __fops = {				\
+	.owner	 = THIS_MODULE,						\
+	.open	 = __fops ## _open,					\
+	.release = simple_attr_release,					\
+	.read	 = simple_attr_read,					\
+	.write	 = simple_attr_write,					\
+	.llseek	 = generic_file_llseek,					\
+	.poll    = __poll,						\
+};
 #endif
 
 #endif

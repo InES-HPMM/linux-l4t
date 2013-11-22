@@ -37,6 +37,8 @@
 #include <linux/tegra-soc.h>
 #include <trace/events/power.h>
 #include <linux/tegra-timer.h>
+#include <linux/poll.h>
+#include <linux/sched.h>
 
 #include <mach/edp.h>
 #include <mach/tegra_emc.h>
@@ -237,6 +239,8 @@ int clk_reparent(struct clk *c, struct clk *parent)
 void clk_init(struct clk *c)
 {
 	clk_lock_init(c);
+	if (c->debug_poll_qh)
+		init_waitqueue_head(c->debug_poll_qh);
 
 	if (c->ops && c->ops->init)
 		c->ops->init(c);
@@ -414,11 +418,25 @@ void clk_disable(struct clk *c)
 EXPORT_SYMBOL(clk_disable);
 #endif
 
-int clk_rate_change_notify(struct clk *c, unsigned long rate)
+static void wake_on_rate_change(struct clk *c)
+{
+	set_mb(c->rate_changed, 1);
+	if (c->debug_poll_qh)
+		wake_up(c->debug_poll_qh);
+}
+
+static int rate_change_notify(struct clk *c, unsigned long rate)
 {
 	if (!c->rate_change_nh)
 		return -ENOSYS;
 	return raw_notifier_call_chain(c->rate_change_nh, rate, NULL);
+}
+
+int clk_rate_change_notify(struct clk *c, unsigned long rate)
+{
+	int ret = rate_change_notify(c, rate);
+	wake_on_rate_change(c);
+	return ret;
 }
 
 int clk_set_parent_locked(struct clk *c, struct clk *parent)
@@ -1600,8 +1618,28 @@ static int parent_open(struct inode *inode, struct file *file)
 static int rate_get(void *data, u64 *val)
 {
 	struct clk *c = (struct clk *)data;
-	*val = (u64)clk_get_rate(c);
+	unsigned long flags;
+
+	clk_lock_save(c, &flags);
+	*val = (u64)clk_get_rate_locked(c);
+	c->rate_changed = 0;
+	clk_unlock_restore(c, &flags);
 	return 0;
+}
+
+static unsigned int rate_poll(struct file *filp, poll_table *wait)
+{
+	struct inode *inode = filp->f_inode;
+	struct clk *c = inode->i_private;
+	unsigned int mask = DEFAULT_POLLMASK; /* same behaviour as "no poll" */
+
+	if (c->debug_poll_qh) {
+		poll_wait(filp, c->debug_poll_qh, wait);
+		mask = 0;
+		if (c->rate_changed)
+			mask |= POLLPRI;
+	}
+	return mask;
 }
 
 static int state_get(void *data, u64 *val)
@@ -1664,7 +1702,8 @@ static int rate_set(void *data, u64 val)
 	struct clk *c = (struct clk *)data;
 	return clk_set_rate(c, (unsigned long)val);
 }
-DEFINE_SIMPLE_ATTRIBUTE(rate_fops, rate_get, rate_set, "%llu\n");
+DEFINE_SIMPLE_POLL_ATTRIBUTE(rate_fops, rate_get, rate_set, rate_poll,
+			     "%llu\n");
 
 static int state_set(void *data, u64 val)
 {
@@ -1745,7 +1784,7 @@ static const struct file_operations parent_fops = {
 	.release	= single_release,
 };
 
-DEFINE_SIMPLE_ATTRIBUTE(rate_fops, rate_get, NULL, "%llu\n");
+DEFINE_SIMPLE_POLL_ATTRIBUTE(rate_fops, rate_get, NULL, rate_poll, "%llu\n");
 DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, NULL, "%llu\n");
 DEFINE_SIMPLE_ATTRIBUTE(max_fops, max_get, NULL, "%llu\n");
 #endif
