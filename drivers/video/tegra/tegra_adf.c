@@ -848,6 +848,22 @@ static const char *tegra_adf_intf_type_str(struct adf_interface *intf)
 	}
 }
 
+static int tegra_adf_dpms_to_fb_blank(u8 dpms_state)
+{
+	switch (dpms_state) {
+	case DRM_MODE_DPMS_ON:
+		return FB_BLANK_UNBLANK;
+	case DRM_MODE_DPMS_STANDBY:
+		return FB_BLANK_HSYNC_SUSPEND;
+	case DRM_MODE_DPMS_SUSPEND:
+		return FB_BLANK_VSYNC_SUSPEND;
+	case DRM_MODE_DPMS_OFF:
+		return FB_BLANK_POWERDOWN;
+	default:
+		BUG();
+	}
+}
+
 static int tegra_adf_intf_blank(struct adf_interface *intf, u8 state)
 {
 	struct tegra_adf_info *adf_info = adf_intf_to_tegra(intf);
@@ -855,20 +871,31 @@ static int tegra_adf_intf_blank(struct adf_interface *intf, u8 state)
 	switch (state) {
 	case DRM_MODE_DPMS_ON:
 		tegra_dc_enable(adf_info->dc);
-		return 0;
+		break;
 
 	case DRM_MODE_DPMS_STANDBY:
 		tegra_dc_blank(adf_info->dc);
-		return 0;
+		break;
 
 	case DRM_MODE_DPMS_SUSPEND:
 	case DRM_MODE_DPMS_OFF:
 		tegra_dc_disable(adf_info->dc);
-		return 0;
+		break;
 
 	default:
 		return -ENOTTY;
 	}
+
+	if (intf->flags & ADF_INTF_FLAG_PRIMARY) {
+		struct fb_event event;
+		int fb_state = tegra_adf_dpms_to_fb_blank(state);
+
+		event.info = NULL;
+		event.data = &fb_state;
+		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+	}
+
+	return 0;
 }
 
 static int tegra_adf_intf_alloc_simple_buffer(struct adf_interface *intf,
