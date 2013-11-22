@@ -367,7 +367,7 @@ int camera_regulator_get(struct device *dev,
 		return -ENODEV;
 	}
 	reg = regulator_get(dev, vreg_name);
-	if (unlikely(IS_ERR_OR_NULL(reg))) {
+	if (unlikely(IS_ERR(reg))) {
 		dev_notice(dev, "%s %s not there: %d\n",
 			__func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);

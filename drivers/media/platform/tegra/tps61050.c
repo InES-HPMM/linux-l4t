@@ -220,7 +220,7 @@ static int tps61050_pm_regulator_get(struct tps61050_info *info,
 
 	sreg->vreg_flag = 0;
 	sreg->vreg = regulator_get(&info->i2c_client->dev, vreg_name);
-	if (IS_ERR_OR_NULL(sreg->vreg)) {
+	if (IS_ERR(sreg->vreg)) {
 		dev_err(&info->i2c_client->dev,
 				"%s err for regulator: %s err: %d\n",
 				__func__, vreg_name, (int)sreg->vreg);

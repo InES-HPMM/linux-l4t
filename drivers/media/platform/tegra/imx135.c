@@ -3632,7 +3632,7 @@ static int imx135_regulator_get(struct imx135_info *info,
 	int err = 0;
 
 	reg = regulator_get(&info->i2c_client->dev, vreg_name);
-	if (unlikely(IS_ERR_OR_NULL(reg))) {
+	if (unlikely(IS_ERR(reg))) {
 		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
 			__func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);

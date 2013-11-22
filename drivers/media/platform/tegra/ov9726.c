@@ -295,7 +295,7 @@ ov9726_power_init(struct ov9726_devinfo *dev)
 	int err = 0;
 
 	dev->power_rail.sen_1v8_reg = regulator_get(&i2c_client->dev, "dovdd");
-	if (IS_ERR_OR_NULL(dev->power_rail.sen_1v8_reg)) {
+	if (IS_ERR(dev->power_rail.sen_1v8_reg)) {
 		dev_err(&i2c_client->dev, "%s: failed to get vdd\n",
 			__func__);
 		err = PTR_ERR(dev->power_rail.sen_1v8_reg);
@@ -303,7 +303,7 @@ ov9726_power_init(struct ov9726_devinfo *dev)
 	}
 
 	dev->power_rail.sen_2v8_reg = regulator_get(&i2c_client->dev, "avdd");
-	if (IS_ERR_OR_NULL(dev->power_rail.sen_2v8_reg)) {
+	if (IS_ERR(dev->power_rail.sen_2v8_reg)) {
 		dev_err(&i2c_client->dev, "%s: failed to get vaa\n",
 			__func__);
 		err = PTR_ERR(dev->power_rail.sen_2v8_reg);

@@ -2663,7 +2663,7 @@ static int ar0832_probe(struct i2c_client *client,
 	}
 
 	dev->power_rail.sen_1v8_reg = regulator_get(&client->dev, "vdd");
-	if (IS_ERR_OR_NULL(dev->power_rail.sen_1v8_reg)) {
+	if (IS_ERR(dev->power_rail.sen_1v8_reg)) {
 		dev_err(&client->dev, "%s: failed to get vdd\n",
 			__func__);
 		ret = PTR_ERR(dev->power_rail.sen_1v8_reg);
@@ -2671,7 +2671,7 @@ static int ar0832_probe(struct i2c_client *client,
 	}
 
 	dev->power_rail.sen_2v8_reg = regulator_get(&client->dev, "vaa");
-	if (IS_ERR_OR_NULL(dev->power_rail.sen_2v8_reg)) {
+	if (IS_ERR(dev->power_rail.sen_2v8_reg)) {
 		dev_err(&client->dev, "%s: failed to get vaa\n",
 			__func__);
 		ret = PTR_ERR(dev->power_rail.sen_2v8_reg);

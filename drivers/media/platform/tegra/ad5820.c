@@ -173,7 +173,7 @@ static int ad5820_probe(struct i2c_client *client,
 	}
 
 	info->regulator = regulator_get(&client->dev, "vdd_vcore_af");
-	if (IS_ERR_OR_NULL(info->regulator)) {
+	if (IS_ERR(info->regulator)) {
 		dev_err(&client->dev, "unable to get regulator %s\n",
 			dev_name(&client->dev));
 		info->regulator = NULL;

@@ -534,7 +534,7 @@ static int sh532u_vreg_init(struct sh532u_info *info)
 		info->vreg[j].vreg_flag = false;
 		info->vreg[j].vreg = regulator_get(&info->i2c_client->dev,
 						   info->vreg[j].vreg_name);
-		if (IS_ERR_OR_NULL(info->vreg[j].vreg)) {
+		if (IS_ERR(info->vreg[j].vreg)) {
 			if (PTR_ERR(info->vreg[j].vreg) != -ENODEV)
 				dev_dbg(&info->i2c_client->dev,
 					"%s %s ERR: %d\n",
