@@ -265,7 +265,9 @@ static int tegra_adf_dev_validate_custom_format(struct adf_device *dev,
 	u8 dc_fmt = tegra_adf_fourcc_to_dc_fmt(buf->format);
 
 	if (tegra_dc_is_yuv(dc_fmt)) {
-		return -EINVAL; /* TODO */
+		u8 cpp[3] = { 1, 1, 1 };
+		return adf_format_validate_yuv(dev, buf, ARRAY_SIZE(cpp), 1, 2,
+				cpp);
 	} else {
 		u8 cpp = tegra_dc_fmt_bpp(dc_fmt) / 8;
 		return adf_format_validate_rgb(dev, buf, cpp);
