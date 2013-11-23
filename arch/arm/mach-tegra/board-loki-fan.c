@@ -30,12 +30,18 @@
 #include "board-loki.h"
 #include "tegra-board-id.h"
 
+static int active_pwm_loki[MAX_ACTIVE_STATES] = {
+		0, 80*1024, 110*1024 , 150*1024, 200*1024, 240*1024,
+		245*1024, 250*1024, 252*1024, 255*1024};
+
+static int active_pwm_foster[MAX_ACTIVE_STATES] = {
+		0, 70*1024, 115*1024 , 135*1024, 135*1024, 240*1024,
+		245*1024, 250*1024, 252*1024, 255*1024};
+
 static struct pwm_fan_platform_data fan_data_delta_6k = {
 	.active_steps = MAX_ACTIVE_STATES,
 	.active_rpm = {
 		0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 10000, 11000},
-	.active_pwm = {0, 80*1024, 110*1024 , 150*1024, 235*1024, 240*1024,
-				245*1024, 250*1024, 252*1024, 255*1024},
 	.active_rru = {1024*40, 1024*2, 1024, 256,
 						256, 256, 256, 256, 256, 256},
 	.active_rrd = {1024*40, 1024*2, 1024, 256, 256,
@@ -44,7 +50,7 @@ static struct pwm_fan_platform_data fan_data_delta_6k = {
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
-	.state_cap = 2,
+	.state_cap = 7,
 	.precision_multiplier = 1024,
 	.tach_gpio = TEGRA_GPIO_PU2,
 	.pwm_gpio = TEGRA_GPIO_PU3,
@@ -65,6 +71,13 @@ int __init loki_fan_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
+	if ((board_info.sku == 900) && (board_info.board_id == BOARD_P2530)) {
+		memcpy((&fan_data_delta_6k)->active_pwm, &active_pwm_foster,
+		sizeof(active_pwm_foster));
+	} else {
+		memcpy((&fan_data_delta_6k)->active_pwm, &active_pwm_loki,
+		sizeof(active_pwm_loki));
+	}
 
 	err = gpio_request(TEGRA_GPIO_PU3, "pwm-fan");
 	if (err < 0) {

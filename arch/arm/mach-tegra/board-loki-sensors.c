@@ -495,8 +495,17 @@ static int loki_fan_est_get_temp(void *data, long *temp)
 	return 0;
 }
 
+static int active_trip_temps_loki[] = {0, 60000, 68000, 79000, 90000,
+				140000, 150000, 160000, 170000, 180000};
+static int active_hysteresis_loki[] = {0, 20000, 7000, 10000, 10000,
+							0, 0, 0, 0, 0};
+
+static int active_trip_temps_foster[] = {0, 63000, 74000, 85000, 120000,
+				140000, 150000, 160000, 170000, 180000};
+static int active_hysteresis_foster[] = {0, 15000, 11000, 6000, 4000,
+							0, 0, 0, 0, 0};
 /*Fan thermal estimator data for P2548*/
-static struct therm_fan_est_data fan_est_data_p2548 = {
+static struct therm_fan_est_data fan_est_data = {
 	.toffset = 0,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -525,23 +534,36 @@ static struct therm_fan_est_data fan_est_data_p2548 = {
 			},
 	},
 	.cdev_type = "pwm-fan",
-	.active_trip_temps = {0, 47000, 55000, 67000, 103000,
-				140000, 150000, 160000, 170000, 180000},
-	.active_hysteresis = {0, 12000, 7000, 10000, 0, 0, 0, 0, 0, 0},
 };
 
-static struct platform_device loki_fan_therm_est_device_p2548 = {
+static struct platform_device loki_fan_therm_est_device = {
 	.name   = "therm-fan-est",
 	.id     = -1,
 	.num_resources  = 0,
 	.dev = {
-		.platform_data = &fan_est_data_p2548,
+		.platform_data = &fan_est_data,
 	},
 };
 
 static int __init loki_fan_est_init(void)
 {
-	platform_device_register(&loki_fan_therm_est_device_p2548);
+	if ((board_info.sku == 900) && (board_info.board_id == BOARD_P2530)) {
+		memcpy((&fan_est_data)->active_trip_temps,
+				&active_trip_temps_foster,
+				sizeof(active_trip_temps_foster));
+		memcpy((&fan_est_data)->active_hysteresis,
+				&active_hysteresis_foster,
+				sizeof(active_hysteresis_foster));
+	} else {
+		memcpy((&fan_est_data)->active_trip_temps,
+				&active_trip_temps_loki,
+				sizeof(active_trip_temps_loki));
+		memcpy((&fan_est_data)->active_hysteresis,
+				&active_hysteresis_loki,
+				sizeof(active_hysteresis_loki));
+	}
+
+	platform_device_register(&loki_fan_therm_est_device);
 
 	return 0;
 }
