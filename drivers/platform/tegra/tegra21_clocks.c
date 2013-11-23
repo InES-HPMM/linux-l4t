@@ -111,13 +111,9 @@
 
 #define OSC_CTRL			0x50
 #define OSC_CTRL_OSC_FREQ_MASK		(0xF<<28)
-#define OSC_CTRL_OSC_FREQ_13MHZ		(0x0<<28)
-#define OSC_CTRL_OSC_FREQ_19_2MHZ	(0x4<<28)
 #define OSC_CTRL_OSC_FREQ_12MHZ		(0x8<<28)
-#define OSC_CTRL_OSC_FREQ_26MHZ		(0xC<<28)
-#define OSC_CTRL_OSC_FREQ_16_8MHZ	(0x1<<28)
+#define OSC_CTRL_OSC_FREQ_19_2MHZ	(0x4<<28)
 #define OSC_CTRL_OSC_FREQ_38_4MHZ	(0x5<<28)
-#define OSC_CTRL_OSC_FREQ_48MHZ		(0x9<<28)
 #define OSC_CTRL_MASK			(0x3f2 | OSC_CTRL_OSC_FREQ_MASK)
 
 #define OSC_CTRL_PLL_REF_DIV_MASK	(3<<26)
@@ -610,11 +606,11 @@ struct utmi_clk_param
 static const struct utmi_clk_param utmi_parameters[] =
 {
 /*	OSC_FREQUENCY,	ENABLE_DLY,	STABLE_CNT,	ACTIVE_DLY,	XTAL_FREQ_CNT */
-	{13000000,	0x02,		0x33,		0x05,		0x7F},
-	{19200000,	0x03,		0x4B,		0x06,		0xBB},
 	{12000000,	0x02,		0x2F,		0x04,		0x76},
-	{26000000,	0x04,		0x66,		0x09,		0xFE},
-	{16800000,	0x03,		0x41,		0x0A,		0xA4},
+
+	{19200000,	0x03,		0x4B,		0x06,		0xBB},
+	/* HACK!!! FIXME!!! following entry for 38.4MHz is a stub */
+	{38400000,	0x03,		0x4B,		0x06,		0xBB},
 };
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
@@ -761,14 +757,8 @@ static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 	case OSC_CTRL_OSC_FREQ_12MHZ:
 		c->rate = 12000000;
 		break;
-	case OSC_CTRL_OSC_FREQ_19_2MHZ:
-		c->rate = 19200000;
-		break;
 	case OSC_CTRL_OSC_FREQ_38_4MHZ:
 		c->rate = 38400000;
-		break;
-	case OSC_CTRL_OSC_FREQ_48MHZ:
-		c->rate = 48000000;
 		break;
 	default:
 		pr_err("supported OSC freq: %08x\n", osc_ctrl);
@@ -2193,14 +2183,12 @@ static int tegra21_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 		switch (input_rate) {
 		case 12000000:
-		case 26000000:
 			cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2000000;
 			break;
-		case 13000000:
-			cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2600000;
-			break;
-		case 16800000:
 		case 19200000:
+			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
+			break;
+		case 38400000: /* HACK!!! FIXME!!! */
 			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
 			break;
 		default:
@@ -2469,13 +2457,6 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 	case 12000000:
 		n_threshold = 70;
 		break;
-	case 13000000:
-	case 26000000:
-		n_threshold = 71;
-		break;
-	case 16800000:
-		n_threshold = 55;
-		break;
 	case 19200000:
 		n_threshold = 48;
 		break;
@@ -2739,20 +2720,16 @@ static void pllxc_get_dyn_steps(struct clk *c, unsigned long input_rate,
 {
 	switch (input_rate) {
 	case 12000000:
-	case 13000000:
-	case 26000000:
 		*step_a = 0x2B;
 		*step_b = 0x0B;
-		return;
-	case 16800000:
-		*step_a = 0x1A;
-		*step_b = 0x09;
 		return;
 	case 19200000:
 		*step_a = 0x12;
 		*step_b = 0x08;
 		return;
 	case 38400000: /* HACK!!! FIXME for T210 !!! */
+		*step_a = 0x12;
+		*step_b = 0x08;
 		return;
 	default:
 		pr_err("%s: Unexpected reference rate %lu\n",
@@ -5699,10 +5676,8 @@ static struct clk tegra_pll_ref = {
 
 static struct clk_pll_freq_table tegra_pll_c_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
-	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
+	{ 19200000, 600000000,  62, 1, 2},
+	{ 38400000, 600000000,  31, 1, 2},	/* FIXME !!!actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -5738,10 +5713,8 @@ static struct clk tegra_pll_c_out1 = {
 
 static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
 	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
+	{ 38400000, 600000000,  31, 1, 2},	/* FIXME!!! actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -5789,10 +5762,8 @@ static struct clk tegra_pll_c3 = {
 
 static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 12000000, 800000000, 66, 1, 1},	/* actual: 792.0 MHz */
-	{ 13000000, 800000000, 61, 1, 1},	/* actual: 793.0 MHz */
-	{ 16800000, 800000000, 47, 1, 1},	/* actual: 789.6 MHz */
 	{ 19200000, 800000000, 41, 1, 1},	/* actual: 787.2 MHz */
-	{ 26000000, 800000000, 61, 2, 1},	/* actual: 793.0 MHz */
+	{ 38400000, 800000000, 41, 2, 1},	/* FIXME!!! actual: 787.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -5829,11 +5800,8 @@ static struct clk tegra_pll_m_out1 = {
 
 static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
 	{ 12000000, 408000000, 816, 12, 2, 8},
-	{ 13000000, 408000000, 816, 13, 2, 8},
-	{ 16800000, 408000000, 680, 14, 2, 8},
-	{ 19200000, 408000000, 680, 16, 2, 8},
-	{ 26000000, 408000000, 816, 26, 2, 8},
-	{ 38400000, 408000000, 85, 8, 1},
+	{ 19200000, 408000000,  85, 16, 1},
+	{ 38400000, 408000000,  85,  8, 1}, /* FIXME !!! */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -5948,21 +5916,16 @@ static struct clk tegra_pll_a_out0 = {
 
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
 	{ 12000000, 216000000, 864, 12, 4, 12},
-	{ 13000000, 216000000, 864, 13, 4, 12},
-	{ 16800000, 216000000, 720, 14, 4, 12},
 	{ 19200000, 216000000, 720, 16, 4, 12},
-	{ 26000000, 216000000, 864, 26, 4, 12},
+	{ 38400000, 216000000, 864, 13, 4, 12},
 
 	{ 12000000, 594000000, 594, 12, 1, 12},
-	{ 13000000, 594000000, 594, 13, 1, 12},
-	{ 16800000, 594000000, 495, 14, 1, 12},
 	{ 19200000, 594000000, 495, 16, 1, 12},
-	{ 26000000, 594000000, 594, 26, 1, 12},
+	{ 38400000, 594000000, 495, 8,  1, 12},
 
 	{ 12000000, 1000000000, 1000, 12, 1, 12},
-	{ 13000000, 1000000000, 1000, 13, 1, 12},
 	{ 19200000, 1000000000, 625,  12, 1, 12},
-	{ 26000000, 1000000000, 1000, 26, 1, 12},
+	{ 38400000, 1000000000, 625,  6, 1, 12},
 
 	{ 0, 0, 0, 0, 0, 0 },
 };
@@ -5997,10 +5960,7 @@ static struct clk tegra_pll_d_out0 = {
 
 static struct clk_pll_freq_table tegra_pll_u_freq_table[] = {
 	{ 12000000, 480000000, 960, 12, 2, 12},
-	{ 13000000, 480000000, 960, 13, 2, 12},
-	{ 16800000, 480000000, 400, 7,  2, 5},
 	{ 19200000, 480000000, 200, 4,  2, 3},
-	{ 26000000, 480000000, 960, 26, 2, 12},
 	{ 38400000, 480000000, 100, 4,  2, 3}, /* HACK!!! FIXME for T210 !!! */
 	{ 0, 0, 0, 0, 0, 0 },
 };
@@ -6076,11 +6036,8 @@ static struct clk tegra_pll_u_12M = {
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	/* 1 GHz */
 	{ 12000000, 1000000000, 83, 1, 1},	/* actual: 996.0 MHz */
-	{ 13000000, 1000000000, 76, 1, 1},	/* actual: 988.0 MHz */
-	{ 16800000, 1000000000, 59, 1, 1},	/* actual: 991.2 MHz */
 	{ 19200000, 1000000000, 52, 1, 1},	/* actual: 998.4 MHz */
-	{ 26000000, 1000000000, 76, 2, 1},	/* actual: 988.0 MHz */
-	{ 38400000, 1000000000, 26, 1, 1},	/* actual: 998.4 MHz */
+	{ 38400000, 1000000000, 26, 1, 1},	/* FIXME!!! actual: 998.4 MHz */
 
 	{ 0, 0, 0, 0, 0, 0 },
 };
@@ -6127,10 +6084,8 @@ static struct clk tegra_dfll_cpu = {
 
 static struct clk_pll_freq_table tegra_pllc4_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
 	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
+	{ 38400000, 600000000,  31, 1, 2},	/* actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6157,10 +6112,7 @@ static struct clk tegra_pll_c4 = {
 
 static struct clk_pll_freq_table tegra_plldp_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
-	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
+	{ 38400000, 600000000,  31, 1, 2},	/* actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6187,10 +6139,8 @@ static struct clk tegra_pll_dp = {
 
 static struct clk_pll_freq_table tegra_plld2_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
-	{ 13000000, 594000000,  91, 1, 2},	/* actual: 591.5 MHz */
-	{ 16800000, 594000000,  71, 1, 2},	/* actual: 596.4 MHz */
 	{ 19200000, 594000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 26000000, 594000000,  91, 2, 2},	/* actual: 591.5 MHz */
+	{ 38400000, 594000000,  31, 1, 2},	/* HACK!!! actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
