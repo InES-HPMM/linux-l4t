@@ -37,6 +37,7 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
+#include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq2471x-charger.h>
 #include <linux/power/bq2477x-charger.h>
 #include <linux/tegra-fuse.h>
@@ -1146,7 +1147,8 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 	}
 
 	if (pmu_board_id == BOARD_E1736 ||
-		pmu_board_id == BOARD_E1769) {
+		pmu_board_id == BOARD_E1769 ||
+		pmu_board_id == BOARD_P1761) {
 		e1736_fill_reg_map();
 		data = &e1736_cl_dvfs_data;
 	}
@@ -1197,6 +1199,10 @@ int __init ardbeg_regulator_init(void)
 		tn8_regulator_init();
 		ardbeg_cl_dvfs_init(&pmu_board_info);
 		return tn8_fixed_regulator_init();
+	} else if (pmu_board_info.board_id == BOARD_P1761) {
+		tn8_regulator_init();
+		ardbeg_cl_dvfs_init(&pmu_board_info);
+		return tn8_fixed_regulator_init();
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);
@@ -1238,7 +1244,8 @@ static int __init ardbeg_fixed_regulator_init(void)
 	else if (pmu_board_info.board_id == BOARD_E1735)
 		return platform_add_devices(fixed_reg_devs_e1735,
 			ARRAY_SIZE(fixed_reg_devs_e1735));
-	else if (pmu_board_info.board_id == BOARD_E1736)
+	else if (pmu_board_info.board_id == BOARD_E1736 ||
+		 pmu_board_info.board_id == BOARD_P1761)
 		return 0;
 	else
 		pr_warn("The PMU board id 0x%04x is not supported\n",
