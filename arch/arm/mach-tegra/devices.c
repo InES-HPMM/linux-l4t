@@ -1652,6 +1652,21 @@ struct platform_device tegra_sfc_device3 = {
 	.resource      = tegra_sfc_resource3,
 	.num_resources = ARRAY_SIZE(tegra_sfc_resource3),
 };
+
+static struct resource tegra_spkprot_resource0[] = {
+	[0] = {
+		.start = TEGRA_SPKPROT1_BASE,
+		.end   = TEGRA_SPKPROT1_BASE + TEGRA_SPKPROT1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+struct platform_device tegra_spkprot_device0 = {
+	.name = "tegra210-spkprot",
+	.id = 0,
+	.resource      = tegra_spkprot_resource0,
+	.num_resources = ARRAY_SIZE(tegra_spkprot_resource0),
+};
+
 #endif
 
 struct platform_device spdif_dit_device = {
