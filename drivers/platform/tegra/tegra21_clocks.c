@@ -757,27 +757,22 @@ static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 	u32 osc_ctrl = clk_readl(OSC_CTRL);
 	u32 pll_ref_div = clk_readl(OSC_CTRL) & OSC_CTRL_PLL_REF_DIV_MASK;
 
-	c->rate = tegra_clk_measure_input_freq();
-	if ((c->rate == 115200) || (c->rate == 230400))
-		c->rate = 13000000;
-	else {
-		switch (osc_ctrl & OSC_CTRL_OSC_FREQ_MASK) {
-		case OSC_CTRL_OSC_FREQ_12MHZ:
-			c->rate = 12000000;
-			break;
-		case OSC_CTRL_OSC_FREQ_19_2MHZ:
-			c->rate = 19200000;
-			break;
-		case OSC_CTRL_OSC_FREQ_38_4MHZ:
-			c->rate = 38400000;
-			break;
-		case OSC_CTRL_OSC_FREQ_48MHZ:
-			c->rate = 48000000;
-			break;
-		default:
-			pr_err("supported OSC freq: %08x\n", osc_ctrl);
-			BUG();
-		}
+	switch (osc_ctrl & OSC_CTRL_OSC_FREQ_MASK) {
+	case OSC_CTRL_OSC_FREQ_12MHZ:
+		c->rate = 12000000;
+		break;
+	case OSC_CTRL_OSC_FREQ_19_2MHZ:
+		c->rate = 19200000;
+		break;
+	case OSC_CTRL_OSC_FREQ_38_4MHZ:
+		c->rate = 38400000;
+		break;
+	case OSC_CTRL_OSC_FREQ_48MHZ:
+		c->rate = 48000000;
+		break;
+	default:
+		pr_err("supported OSC freq: %08x\n", osc_ctrl);
+		BUG();
 	}
 
 	BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
@@ -821,7 +816,9 @@ static void tegra21_clk_m_init(struct clk *c)
 	spare &= ~SPARE_REG_CLK_M_DIVISOR_MASK;
 
 	rate = clk_get_rate(c->parent); /* the rate of osc clock */
-	if (rate == 38400000)
+
+	/* on QT platform, do not divide clk-m since it affects uart */
+	if ((rate == 38400000) && !tegra_platform_is_qt())
 		spare |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 	else if (rate == 48000000)
 		spare |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
