@@ -7993,6 +7993,7 @@ static struct clk_ops tegra_clk_gbus_ops = {
 };
 
 static struct raw_notifier_head gbus_rate_change_nh;
+static wait_queue_head_t gbus_poll_rate;
 
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
@@ -8001,6 +8002,7 @@ static struct clk tegra_clk_gbus = {
 	.max_rate  = 1032000000,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
 	.rate_change_nh = &gbus_rate_change_nh,
+	.debug_poll_qh  = &gbus_poll_rate,
 };
 
 static void tegra12_camera_mclk_init(struct clk *c)
