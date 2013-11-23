@@ -2347,6 +2347,18 @@ static int core_override_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");
 
+static int rail_mv_get(void *data, u64 *val)
+{
+	struct dvfs_rail *rail = data;
+	if (rail) {
+		*val = rail->stats.off ? 0 : rail->millivolts;
+		return 0;
+	}
+	*val = 0;
+	return -ENOENT;
+}
+DEFINE_SIMPLE_ATTRIBUTE(rail_mv_fops, rail_mv_get, NULL, "%llu\n");
+
 static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 {
 	int i, j;
@@ -2526,6 +2538,21 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_core_override", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &core_override_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_cpu_mv", S_IRUGO, clk_debugfs_root,
+				tegra_cpu_rail, &rail_mv_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_gpu_mv", S_IRUGO, clk_debugfs_root,
+				tegra_gpu_rail, &rail_mv_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_core_mv", S_IRUGO, clk_debugfs_root,
+				tegra_core_rail, &rail_mv_fops);
 	if (!d)
 		return -ENOMEM;
 
