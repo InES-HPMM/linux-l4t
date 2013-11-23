@@ -233,5 +233,12 @@
 			nvidia,ahub-sfc-id = <3>;
 			status = "disabled";
 		};
+
+		spkprot@702d8c00 {
+			compatible = "nvidia,tegra210-spkprot";
+			reg = <0x702d8c00 0x400>;
+			nvidia,ahub-spkprot-id = <0>;
+			status = "disabled";
+                };
 	};
 };
