@@ -175,6 +175,8 @@ extern struct platform_device tegra_fuse_device;
 extern struct platform_device tegratab_tegra_wakeup_monitor_device;
 #endif
 
+extern struct platform_device tegra_ptm_device;
+
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 extern struct platform_device tegra14_i2c_device1;
 extern struct platform_device tegra14_i2c_device2;

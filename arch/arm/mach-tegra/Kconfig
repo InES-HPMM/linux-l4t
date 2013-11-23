@@ -417,6 +417,16 @@ config TEGRA_FIQ_DEBUGGER
 	help
 	  Enables the FIQ serial debugger on Tegra
 
+config TEGRA_PTM
+	bool "Enable PTM debugger on Tegra"
+	default n
+	help
+	  This option enables PTM debugger on Tegra. This driver is used
+	  for tracking each branch instructions executed by processor. It
+	  can save such tracking information to the ETB buffer, which can
+	  be further parsed by a user space program to re-construct the
+	  complete program flows.
+
 config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"
 	default n
