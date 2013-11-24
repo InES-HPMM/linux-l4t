@@ -808,12 +808,11 @@ static void tegra21_clk_m_init(struct clk *c)
 	rate = clk_get_rate(c->parent); /* the rate of osc clock */
 
 	/* on QT platform, do not divide clk-m since it affects uart */
-	if ((rate == 38400000) && !tegra_platform_is_qt())
+	if (rate == 38400000) {
 		spare |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
-	else if (rate == 48000000)
-		spare |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
-
-	clk_writel(spare, SPARE_REG);
+		if (!tegra_platform_is_qt())
+			clk_writel(spare, SPARE_REG);
+	}
 
 	c->div = ((spare & SPARE_REG_CLK_M_DIVISOR_MASK)
 		>> SPARE_REG_CLK_M_DIVISOR_SHIFT) + 1;
