@@ -32,7 +32,6 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/platform_data/tegra_c2port_platform_data.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/memblock.h>
@@ -828,25 +827,6 @@ static void __init tegra_loki_early_init(void)
 	tegra_soc_device_init("loki");
 }
 
-#ifdef CONFIG_C2PORT_LOKI
-/* Init mcu debugger for Loki */
-static struct tegra_c2port_platform_data mcu_init_data = {
-	.gpio_c2ck = TEGRA_GPIO_PK0,
-	.gpio_c2d = TEGRA_GPIO_PS0
-};
-static struct platform_device tegra_loki_mcu_debugger = {
-		.name = "tegra_c2port",
-		.id = 0,
-		.dev = {
-			.platform_data = &mcu_init_data,
-		}
-};
-static void __init tegra_loki_mcu_debugger_init(void)
-{
-	platform_device_register(&tegra_loki_mcu_debugger);
-}
-#endif
-
 static void __init tegra_loki_late_init(void)
 {
 	struct board_info board_info;
@@ -889,9 +869,6 @@ static void __init tegra_loki_late_init(void)
 	loki_setup_bluedroid_pm();
 	tegra_register_fuse();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-#ifdef CONFIG_C2PORT_LOKI
-	tegra_loki_mcu_debugger_init();
-#endif
 }
 
 static void __init loki_ramconsole_reserve(unsigned long size)
