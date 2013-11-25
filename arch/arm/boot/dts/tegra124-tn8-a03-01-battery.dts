@@ -1,0 +1,96 @@
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1769-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1769-fixed.dtsi"
+#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	file-name = __FILE__;
+	nvidia-boardids = "1780:1100:3:A:7","1769:1000:0:A:4";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	i2c@7000c000 {
+		status = "okay";
+		clock-frequency = <100000>;
+
+		cw201x@62 {
+			compatible = "cw,cw201x";
+			reg = <0x62>;
+			interrupt-parent = <&gpio>;
+			interrupts = <133 0x0>;		/* gpio PQ5 */
+			tz-name = "battery-temp";
+			alert-threshold = <0>;
+			profile-tbl = <0x15 0x7E 0x64 0x63 0x60 0x5A 0x53 0x50
+				0x4E 0x4B 0x49 0x46 0x48 0x43 0x2F 0x22
+				0x18 0x0F 0x0D 0x12 0x21 0x36 0x48 0x58
+				0x4F 0xA2 0x08 0xF6 0x1D 0x3B 0x46 0x4C
+				0x59 0x5C 0x5C 0x60 0x3F 0x1B 0x6C 0x45
+				0x26 0x41 0x20 0x56 0x86 0x95 0x96 0x0E
+				0x45 0x6A 0x96 0xC1 0x80 0xB8 0xF0 0xCB
+				0x2F 0x7D 0x72 0xA5 0xB5 0xC1 0x5B 0x1D>;
+		};
+
+		bq2419x: bq2419x@6b {
+			interrupt-parent = <&gpio>;
+			interrupts = <72 0x0>;
+
+			charger {
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000>;
+				watchdog-timeout = <40>;
+				rtc-alarm-time = <3600>;
+				auto-recharge-time = <1800>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
+					};
+				};
+			};
+		};
+
+		mpu6050@69 {
+			compatible = "invensense,mpu6050";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <144 0x01>;
+			invensense,int_config = <0x10>;
+			invensense,level_shifter = <0>;
+			invensense,orientation = [01 00 00 00 01 00 00 00 01];
+			invensense,sec_slave_type = <0>;
+			invensense,key = [4e cc 7e eb f6 1e 35 22
+					  00 34 0d 65 32 e9 94 89];
+			vlogic-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		ak8963c@0d {
+			compatible = "ak,ak8963";
+			reg = <0x0d>;
+			orientation = [00 01 00 01 00 00 00 00 ff];
+			config = "mpu";
+			vid-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+	};
+
+	gps {
+		compatible = "mtk,mt3332";
+		force-on-gpios = <&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;
+	};
+};
+
