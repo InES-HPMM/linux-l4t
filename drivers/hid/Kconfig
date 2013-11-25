@@ -454,6 +454,16 @@ config HID_NTRIG
 	---help---
 	Support for N-Trig touch screen.
 
+config HID_NVIDIA
+	tristate "NVIDIA game controller"
+	depends on USB_HID
+	---help---
+	Support for NVIDIA game controllers. To improve gaming experience, NVIDIA controller
+	has customized axis flat and fuzz values.
+	Supported devices:
+
+	   - NVIDIA Shield Handheld game console.
+
 config HID_ORTEK
 	tristate "Ortek PKB-1700/WKB-2000/Skycable wireless keyboard and mouse trackpad"
 	depends on HID
