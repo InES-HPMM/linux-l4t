@@ -9108,6 +9108,7 @@ static void tegra12_clk_resume(void)
 	tegra12_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
 	tegra12_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 	tegra12_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
+	tegra12_mc_holdoff_enable();
 }
 
 static struct syscore_ops tegra_clk_syscore_ops = {
