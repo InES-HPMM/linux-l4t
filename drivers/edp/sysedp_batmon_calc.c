@@ -30,6 +30,7 @@
 static struct sysedp_batmon_calc_platform_data *pdata;
 static struct delayed_work work;
 static struct power_supply *psy;
+static int esr;
 int (*get_ocv)(unsigned int capacity);
 
 static int psy_get_property(enum power_supply_property psp, int *val)
@@ -76,6 +77,61 @@ static int interpolate(int x, int x1, int y1, int x2, int y2)
 	return (y2 * (x - x1) - y1 * (x - x2)) / (x2 - x1);
 }
 
+/* bi-linearly interpolate from table */
+static int bilinear_interpolate(int *array, int *xaxis, int *yaxis,
+				int x_size, int y_size, int x, int y)
+{
+	s64 r;
+	int d;
+	int yi1, yi2;
+	int xi1, xi2;
+	int q11, q12, q21, q22;
+	int x1, x2, y1, y2;
+
+	if (x_size <= 0 || y_size <= 0)
+		return 0;
+
+	if (x_size == 1 && y_size == 1)
+		return array[0];
+
+	/* Given that x is within xaxis range, find x1 and x2 that
+	 * satisfy x1 >= x >= x2 */
+	for (xi2 = 1; xi2 < x_size - 1; xi2++)
+		if (x > xaxis[xi2])
+			break;
+	xi1 = xi2 - 1;
+	xi2 = x_size > 1 ? xi2 : 0;
+	x1 = xaxis[xi1];
+	x2 = xaxis[xi2];
+
+	for (yi2 = 1; yi2 < y_size - 1; yi2++)
+		if (y > yaxis[yi2])
+			break;
+	yi1 = yi2 - 1;
+	yi2 = y_size > 1 ? yi2 : 0;
+	y1 = yaxis[yi1];
+	y2 = yaxis[yi2];
+
+	if (x_size == 1)
+		return interpolate(y, y1, array[yi1], y2, array[yi2]);
+	if (y_size == 1)
+		return interpolate(x, x1, array[xi1], x2, array[xi2]);
+
+	q11 = array[xi1 + yi1 * x_size];
+	q12 = array[xi1 + yi2 * x_size];
+	q21 = array[xi2 + yi1 * x_size];
+	q22 = array[xi2 + yi2 * x_size];
+
+	r = (s64)q11 * (x2 - x) * (y2 - y);
+	r += (s64)q21 * (x - x1) * (y2 - y);
+	r += (s64)q12 * (x2 - x) * (y - y1);
+	r += (s64)q22 * (x - x1) * (y - y1);
+	d = ((x2-x1)*(y2-y1));
+	r = d ? div64_s64(r, d) : 0;
+
+	return r;
+}
+
 static int psy_ocv_from_lut(unsigned int capacity)
 {
 	struct sysedp_batmon_ocv_lut *p;
@@ -95,29 +151,14 @@ static int psy_ocv_from_lut(unsigned int capacity)
 			   q->ocv);
 }
 
-/* Calc ESR for current capacity (SOC) */
-static s64 calc_esr(unsigned int capacity)
+static int calc_esr(int capacity, int temp)
 {
-	struct sysedp_batmon_rbat_lut *p;
-	struct sysedp_batmon_rbat_lut *q;
-	int esr;
-
-	esr = pdata->r_const;
-	p = pdata->rbat_lut;
-	if (!p)
-		return esr;
-
-	while (p->capacity > capacity)
-		p++;
-
-	if (p == pdata->rbat_lut)
-		return esr + p->rbat;
-
-	q = p - 1;
-
-	esr += interpolate(capacity, p->capacity, p->rbat,
-			   q->capacity, q->rbat);
-	return esr;
+	struct sysedp_batmon_rbat_lut *lut = pdata->rbat_lut;
+	int ret = pdata->r_const;
+	ret += bilinear_interpolate(lut->data, lut->temp_axis,
+				    lut->capacity_axis, lut->temp_size,
+				    lut->capacity_size, temp, capacity);
+	return ret;
 }
 
 /* calculate maximum allowed current (in mA) limited by equivalent
@@ -125,6 +166,8 @@ static s64 calc_esr(unsigned int capacity)
 static s64 calc_ibat_esr(s64 ocv, s64 esr)
 {
 	if (ocv <= pdata->vsys_min)
+		return 0;
+	else if (esr <= 0)
 		return 0;
 	else
 		return div64_s64(1000 * (ocv - pdata->vsys_min), esr);
@@ -160,26 +203,27 @@ static s64 calc_pbat(s64 ocv, s64 ibat, s64 esr)
 static unsigned int calc_avail_budget(void)
 {
 	unsigned int capacity;
+	int temp;
 	s64 ocv;
-	s64 esr;
 	s64 ibat_esr;
 	s64 ibat;
 	s64 ibat_max;
 	s64 pbat;
 
 	capacity = psy_capacity();
+	temp = psy_temp();
 	ocv = get_ocv(capacity);
-	esr = calc_esr(capacity);
+	esr = calc_esr(capacity, temp);
 
 	ibat_esr = calc_ibat_esr(ocv, esr);
-	ibat = calc_ibat(psy_temp());
+	ibat = calc_ibat(temp);
 	ibat_max = min(ibat_esr, ibat);
 
 	pbat = calc_pbat(ocv, ibat_max, esr);
 
 	pr_debug("capacity : %u\n", capacity);
 	pr_debug("ocv      : %lld\n", ocv);
-	pr_debug("esr     : %lld\n", esr);
+	pr_debug("esr      : %d\n", esr);
 	pr_debug("ibat_esr : %lld\n", ibat_esr);
 	pr_debug("ibat     : %lld\n", ibat);
 	pr_debug("ibat_max : %lld\n", ibat_max);
@@ -232,9 +276,26 @@ static int init_ocv_reader(void)
 
 static int batmon_probe(struct platform_device *pdev)
 {
+	int i;
+	struct sysedp_batmon_rbat_lut *rbat;
+
 	pdata = pdev->dev.platform_data;
 
 	if (!pdata)
+		return -EINVAL;
+
+
+	/* validate pdata->rbat_lut table */
+	rbat = pdata->rbat_lut;
+	if (!rbat)
+		return -EINVAL;
+	for (i = 1; i < rbat->temp_size; i++)
+		if (rbat->temp_axis[i] >= rbat->temp_axis[i-1])
+			return -EINVAL;
+	for (i = 1; i < rbat->capacity_size; i++)
+		if (rbat->capacity_axis[i] >= rbat->capacity_axis[i-1])
+			return -EINVAL;
+	if (rbat->capacity_size * rbat->temp_size != rbat->data_size)
 		return -EINVAL;
 
 	psy = power_supply_get_by_name(pdata->power_supply);

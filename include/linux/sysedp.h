@@ -77,14 +77,20 @@ struct sysedp_batmon_ibat_lut {
 	unsigned int ibat;
 };
 
-/*
- * Capacity -> RBAT LUT
- * Should be descending wrt capacity
- * { .capacity = 0, ... } must be the last entry
+/* Battery ESR look-up table (2 dimensional)
+ * temp_axis -> temperature indexes, must be in descending order
+ * temp_size -> size of temp_axis
+ * capacity_axis -> battery capacity indexes, must be in descending order
+ * capacity_size -> size of capacity_axis
+ * data -> battery impedance as function of capacity and temp (flat array)
  */
 struct sysedp_batmon_rbat_lut {
-	unsigned int capacity;
-	unsigned int rbat;
+	int *data;
+	int *temp_axis;
+	int *capacity_axis;
+	int data_size;
+	int temp_size;
+	int capacity_size;
 };
 
 /*
