@@ -1864,12 +1864,18 @@ static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 
 	switch (test_mode << PORTSCX_PTC_BIT_POS) {
 	case PORTSCX_PTC_JSTATE:
+		udc->current_limit = USB_CHARGING_TEST_MODE_CURRENT_LIMIT_MA;
+		schedule_work(&udc->current_work);
 		VDBG("TEST_J\n");
 		break;
 	case PORTSCX_PTC_KSTATE:
+		udc->current_limit = USB_CHARGING_TEST_MODE_CURRENT_LIMIT_MA;
+		schedule_work(&udc->current_work);
 		VDBG("TEST_K\n");
 		break;
 	case PORTSCX_PTC_SEQNAK:
+		udc->current_limit = USB_CHARGING_TEST_MODE_CURRENT_LIMIT_MA;
+		schedule_work(&udc->current_work);
 		VDBG("TEST_SE0_NAK\n");
 		break;
 	case PORTSCX_PTC_PACKET:
