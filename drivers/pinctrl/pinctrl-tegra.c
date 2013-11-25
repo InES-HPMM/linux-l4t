@@ -369,11 +369,12 @@ static int tegra_pinctrl_get_func_groups(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned function,
+static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned req_function,
 			       unsigned group)
 {
 	struct tegra_pmx *pmx = pinctrl_dev_get_drvdata(pctldev);
 	const struct tegra_pingroup *g;
+	unsigned function = req_function;
 	int i;
 	u32 val;
 	unsigned long flags;
@@ -382,6 +383,10 @@ static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned function,
 
 	if (WARN_ON(g->mux_reg < 0))
 		return -EINVAL;
+
+	/* Last function option is safe option */
+	if (!req_function)
+		function = g->func_safe;
 
 	for (i = 0; i < ARRAY_SIZE(g->funcs); i++) {
 		if (g->funcs[i] == function)
