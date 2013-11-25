@@ -115,6 +115,18 @@ struct tegra210_audio_sfc_test_param {
 	unsigned int out_rate;
 };
 
+struct tegra210_audio_spkprot_test_param {
+	int spkprot_id;
+	int test_id;
+	unsigned int mode;
+	unsigned int bias;
+	unsigned int channels;
+	unsigned int bandfilter_type;
+	unsigned int bandfilter_biquad_stages;
+	unsigned int arfilter_biquad_stages;
+	unsigned int spfilter_biquad_stages;
+};
+
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
 			const struct tegra_audio_in_config *)
 #define TEGRA_AUDIO_IN_GET_CONFIG	_IOR(TEGRA_AUDIO_MAGIC, 3, \
@@ -194,6 +206,8 @@ struct tegra210_audio_sfc_test_param {
 #define TEGRA210_AUDIO_OPE_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 75, \
                                     struct tegra210_audio_ope_test_param *)
 
+#define TEGRA210_AUDIO_SPKPROT_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 76, \
+				struct tegra210_audio_spkprot_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
