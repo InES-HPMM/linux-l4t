@@ -90,16 +90,28 @@ static struct sysedp_batmon_ibat_lut tn8_ibat_lut[] = {
 	{ -30,    0 }
 };
 
-static struct sysedp_batmon_rbat_lut tn8_rbat_lut[] = {
-	{ 100,  70000 },
-	{  88,  70000 },
-	{  75,  70000 },
-	{  63,  70000 },
-	{  50,  70000 },
-	{  38,  70000 },
-	{  25,  70000 },
-	{  13,  70000 },
-	{   0,  90000 }
+#if 0
+/* TODO: use this table when battery temp sensing is fixed */
+/*                           60C    40C    25C    0C      -20C      */
+static int rbat_data[] = {  90000, 60000, 70000,  90000, 110000,   /* 100% */
+			    90000, 60000, 70000,  90000, 110000,   /*  13% */
+			   110000, 80000, 90000, 110000, 130000 }; /*   0% */
+static int rbat_temp_axis[] = { 60, 40, 25, 0, -20 };
+static int rbat_capacity_axis[] = { 100, 13, 0 };
+#else
+static int rbat_data[] = {  70000,   /* 100% */
+			    70000,   /*  13% */
+			    90000 }; /*   0% */
+static int rbat_temp_axis[] = { 25 };
+static int rbat_capacity_axis[] = { 100, 13, 0 };
+#endif
+struct sysedp_batmon_rbat_lut tn8_rbat_lut = {
+	.temp_axis = rbat_temp_axis,
+	.temp_size = ARRAY_SIZE(rbat_temp_axis),
+	.capacity_axis = rbat_capacity_axis,
+	.capacity_size = ARRAY_SIZE(rbat_capacity_axis),
+	.data = rbat_data,
+	.data_size = ARRAY_SIZE(rbat_data),
 };
 
 static struct sysedp_batmon_calc_platform_data tn8_batmon_pdata = {
@@ -107,7 +119,7 @@ static struct sysedp_batmon_calc_platform_data tn8_batmon_pdata = {
 	.r_const = 60000,
 	.vsys_min = 2900000,
 	.ibat_lut = tn8_ibat_lut,
-	.rbat_lut = tn8_rbat_lut,
+	.rbat_lut = &tn8_rbat_lut,
 };
 
 static struct platform_device tn8_batmon_device = {
