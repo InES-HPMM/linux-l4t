@@ -1076,14 +1076,14 @@ static struct kobject *gpu_kobj;
 
 static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ .cap_name = "cap.c2bus" },
-	{ .cap_name = "cap.c3bus" },
+	{ .cap_name = "cap.vcore.c2bus" },
+	{ .cap_name = "cap.vcore.c3bus" },
 #else
-	{ .cap_name = "cap.cbus" },
+	{ .cap_name = "cap.vcore.cbus" },
 #endif
-	{ .cap_name = "cap.sclk" },
-	{ .cap_name = "cap.emc" },
-	{ .cap_name = "cap.host1x" },
+	{ .cap_name = "cap.vcore.sclk" },
+	{ .cap_name = "cap.vcore.emc" },
+	{ .cap_name = "cap.vcore.host1x" },
 };
 
 static struct core_bus_limit_table tegra12_gpu_cap_syfs = {
