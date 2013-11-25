@@ -1498,6 +1498,23 @@ static struct kernel_param_ops tegra12_pasr_enable_ops = {
 module_param_cb(pasr_enable, &tegra12_pasr_enable_ops, &pasr_enable, 0644);
 #endif
 
+void tegra12_mc_holdoff_enable(void)
+{
+	mc_writel(HYST_MSENCSRD | HYST_DISPLAYHCB | HYST_DISPLAYHC |
+		HYST_DISPLAY0CB | HYST_DISPLAY0C | YST_DISPLAY0BB |
+		YST_DISPLAY0B | YST_DISPLAY0AB | YST_DISPLAY0A,
+		MC_EMEM_ARB_HYSTERESIS_0_0);
+	mc_writel(HYST_VDEDBGW | HYST_VDEBSEVW | HYST_MSENCSWR |
+		YST_VDETPER | YST_VDEMCER | YST_VDEMBER | YST_VDEBSEVR,
+		MC_EMEM_ARB_HYSTERESIS_1_0);
+	mc_writel(HYST_DISPLAYT | HYST_GPUSWR | HYST_ISPWBB |
+		HYST_ISPWAB | HYST_ISPRAB | YST_ISPWB | YST_ISPWA |
+		YST_ISPRA | YST_VDETPMW | YST_VDEMBEW,
+		MC_EMEM_ARB_HYSTERESIS_2_0);
+	mc_writel(HYST_DISPLAYD | HYST_VIW | HYST_VICSWR | HYST_VICSRD,
+		MC_EMEM_ARB_HYSTERESIS_3_0);
+}
+
 static int tegra12_emc_probe(struct platform_device *pdev)
 {
 	struct tegra12_emc_pdata *pdata;
@@ -1554,6 +1571,7 @@ int __init tegra12_emc_init(void)
 				tegra_clk_preset_emc_monitor(rate);
 		}
 	}
+	tegra12_mc_holdoff_enable();
 	return ret;
 }
 
