@@ -1,10 +1,11 @@
-/dts-v1/;
+
+ /dts-v1/;
 
 #include "tegra124.dtsi"
 
 / {
-	model = "NVIDIA Tegra124 vcm30_t124";
-	compatible = "nvidia,vcm30_t124", "nvidia,tegra124";
+	model = "NVIDIA Tegra124 vcm30t124";
+	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
 	#address-cells = <1>;
 	#size-cells = <1>;
 

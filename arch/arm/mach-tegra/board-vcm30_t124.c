@@ -490,7 +490,7 @@ static void __init tegra_vcm30_t124_early_init(void)
 {
 	tegra_clk_init_from_table(vcm30_t124_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_soc_device_init("vcm30_t124");
+	tegra_soc_device_init("vcm30t124");
 }
 
 static void __init tegra_vcm30_t124_late_init(void)
@@ -571,11 +571,11 @@ static void __init tegra_vcm30_t124_reserve(void)
 }
 
 static const char * const vcm30_t124_dt_board_compat[] = {
-	"nvidia,vcm30_t124",
+	"nvidia,vcm30t124",
 	NULL
 };
 
-DT_MACHINE_START(VCM30_T124, "vcm30_t124")
+DT_MACHINE_START(VCM30_T124, "vcm30t124")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
