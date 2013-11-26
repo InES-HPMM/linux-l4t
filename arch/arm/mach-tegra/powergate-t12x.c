@@ -196,7 +196,7 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 	[TEGRA_POWERGATE_VENC] = {
 		.name = "ve",
 		.clk_info = {
-			[0] = { .clk_name = "isp", .clk_type = CLK_AND_RST },
+			[0] = { .clk_name = "ispa", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "ispb", .clk_type = CLK_AND_RST },
 			[2] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
 			[3] = { .clk_name = "csi", .clk_type = CLK_AND_RST },
