@@ -1886,8 +1886,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 {
 	struct iommu_linear_map map[4];
 
-	tegra_reserve_bpmp();
-
 #ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	if (carveout_size) {
 		/*
