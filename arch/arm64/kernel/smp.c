@@ -109,6 +109,9 @@ static int boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
 
+	if (smp_ops.smp_boot_secondary)
+		smp_ops.smp_boot_secondary(cpu, idle);
+
 	/*
 	 * Set synchronisation state between this boot processor
 	 * and the secondary one
