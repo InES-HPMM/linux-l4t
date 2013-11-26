@@ -41,6 +41,8 @@
 
 #define TEGRA_DC_EXT_FLIP_MAX_WINDOW 6
 
+extern atomic_t sd_brightness;
+
 /* DSI pixel data format */
 enum {
 	TEGRA_DSI_PIXEL_FORMAT_16BIT_P,

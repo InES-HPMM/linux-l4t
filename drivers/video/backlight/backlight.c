@@ -32,6 +32,7 @@
 #include <asm/backlight.h>
 #endif
 #include <linux/sysedp.h>
+#include <mach/dc.h>
 
 static const char *const backlight_types[] = {
 	[BACKLIGHT_RAW] = "raw",
@@ -114,7 +115,6 @@ static inline void backlight_unregister_fb(struct backlight_device *bd)
 #endif /* CONFIG_FB */
 
 #ifdef CONFIG_SYSEDP_FRAMEWORK
-extern atomic_t sd_brightness;
 
 /* Return value 0..11 : 0=zero brightness, 11=max brightness */
 static unsigned int backlight_calc_sysedp_state(struct backlight_device *bd)

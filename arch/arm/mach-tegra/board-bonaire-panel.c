@@ -77,8 +77,6 @@ struct platform_device * __init bonaire_host1x_init(void)
 
 static struct regulator *bonaire_dsi_reg;
 
-static atomic_t sd_brightness = ATOMIC_INIT(255);
-
 static int bonaire_backlight_init(struct device *dev)
 {
 	int ret;
