@@ -29,6 +29,7 @@ extern unsigned int avail_budget;
 extern unsigned int consumer_sum;
 extern struct list_head registered_consumers;
 extern struct mutex sysedp_lock;
+extern struct kobject sysedp_kobj;
 
 static inline unsigned int _cur_level(struct sysedp_consumer *c)
 {

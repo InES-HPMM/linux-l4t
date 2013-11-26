@@ -31,8 +31,13 @@
 static struct sysedp_batmon_calc_platform_data *pdata;
 static struct delayed_work work;
 static struct power_supply *psy;
-static int esr;
+
 int (*get_ocv)(unsigned int capacity);
+
+static struct kobject batmon_kobj;
+
+/* ratio between user-space ESR setting and look-up-table based ESR value */
+static int user_esr_ratio = 100;
 
 static int psy_get_property(enum power_supply_property psp, int *val)
 {
@@ -152,7 +157,7 @@ static int psy_ocv_from_lut(unsigned int capacity)
 			   q->ocv);
 }
 
-static int calc_esr(int capacity, int temp)
+static int lookup_esr(int capacity, int temp)
 {
 	struct sysedp_batmon_rbat_lut *lut = pdata->rbat_lut;
 	int ret = pdata->r_const;
@@ -160,6 +165,14 @@ static int calc_esr(int capacity, int temp)
 				    lut->capacity_axis, lut->temp_size,
 				    lut->capacity_size, temp, capacity);
 	return ret;
+}
+
+static int calc_esr(int capacity, int temp)
+{
+	int esr;
+	esr = lookup_esr(capacity, temp);
+	esr = esr * user_esr_ratio / 100;
+	return esr;
 }
 
 /* calculate maximum allowed current (in mA) limited by equivalent
@@ -203,8 +216,7 @@ static s64 calc_pbat(s64 ocv, s64 ibat, s64 esr)
 
 static unsigned int calc_avail_budget(void)
 {
-	unsigned int capacity;
-	int temp;
+	int esr, capacity, temp;
 	s64 ocv;
 	s64 ibat_esr;
 	s64 ibat;
@@ -552,6 +564,102 @@ static void of_batmon_calc_get_pdata(struct platform_device *pdev,
 	return;
 }
 
+struct batmon_attribute {
+	struct attribute attr;
+	ssize_t (*show)(char *buf);
+	ssize_t (*store)(const char *buf, size_t count);
+};
+
+static ssize_t esr_show(char *s)
+{
+	int capacity, temp, esr;
+
+	capacity = psy_capacity();
+	temp = psy_temp();
+	esr = calc_esr(capacity, temp);
+	esr /= 1000; /* to mOhm */
+
+	return sprintf(s, "%d\n", esr);
+}
+
+static ssize_t esr_store(const char *s, size_t count)
+{
+	int mohm, capacity, temp;
+	int lut_esr;
+	int n;
+
+	n = sscanf(s, "%d %d %d", &mohm, &capacity, &temp);
+	if (n != 1 && n != 3)
+		return -EINVAL;
+	if (mohm <= 0)
+		return -EINVAL;
+
+	if (n != 3) {
+		capacity = psy_capacity();
+		temp = psy_temp();
+	} else {
+		if (capacity < 0 || capacity > 100)
+			return -EINVAL;
+	}
+
+	lut_esr = lookup_esr(capacity, temp);
+	if (!lut_esr)
+		return -EINVAL;
+
+	user_esr_ratio = DIV_ROUND_CLOSEST(100 * 1000 * mohm, lut_esr);
+
+	cancel_delayed_work_sync(&work);
+	schedule_delayed_work(&work, 0);
+
+	return count;
+}
+
+static struct batmon_attribute attr_esr =
+	__ATTR(esr, 0660, esr_show, esr_store);
+
+static struct attribute *batmon_attrs[] = {
+	&attr_esr.attr,
+	NULL
+};
+
+static ssize_t batmon_attr_show(struct kobject *kobj,
+				struct attribute *_attr, char *buf)
+{
+	ssize_t r = -EINVAL;
+	struct batmon_attribute *attr;
+	attr = container_of(_attr, struct batmon_attribute, attr);
+	if (attr && attr->show)
+		r = attr->show(buf);
+	return r;
+}
+
+static ssize_t batmon_attr_store(struct kobject *kobj, struct attribute *_attr,
+				 const char *buf, size_t count)
+{
+	ssize_t r = -EINVAL;
+	struct batmon_attribute *attr;
+	attr = container_of(_attr, struct batmon_attribute, attr);
+	if (attr && attr->store)
+		r = attr->store(buf, count);
+	return r;
+}
+
+static const struct sysfs_ops batmon_sysfs_ops = {
+	.show = batmon_attr_show,
+	.store = batmon_attr_store,
+};
+
+static struct kobj_type ktype_batmon = {
+	.sysfs_ops = &batmon_sysfs_ops,
+	.default_attrs = batmon_attrs,
+};
+
+static int init_sysfs(void)
+{
+	return kobject_init_and_add(&batmon_kobj, &ktype_batmon,
+				    &sysedp_kobj, "batmon");
+}
+
 static int batmon_probe(struct platform_device *pdev)
 {
 	int i;
@@ -585,6 +693,8 @@ static int batmon_probe(struct platform_device *pdev)
 
 	if (init_ocv_reader())
 		return -EFAULT;
+
+	init_sysfs();
 
 	INIT_DEFERRABLE_WORK(&work, batmon_update);
 	schedule_delayed_work(&work, 0);
