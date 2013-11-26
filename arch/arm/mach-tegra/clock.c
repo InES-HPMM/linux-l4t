@@ -1603,14 +1603,22 @@ DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, state_set, "%llu\n");
 static int _max_set(struct clk *c, unsigned long val)
 {
 	int i;
-
+	bool found = false;
 	c->max_rate = val;
 
 	if (c->dvfs && c->dvfs->max_millivolts) {
+		/* Walk through dvfs freqs table and set freq of ith item to
+		 * max_rate if found its dvfs voltage equals to max dvfs voltage
+		 * otherwise set freq of last item to max_rate
+		 */
 		for (i = 0; i < c->dvfs->num_freqs; i++) {
-			if (c->dvfs->millivolts[i] == c->dvfs->max_millivolts)
+			if (c->dvfs->millivolts[i] == c->dvfs->max_millivolts) {
 				c->dvfs->freqs[i] = c->max_rate;
+				found = true;
+			}
 		}
+		if (!found)
+			c->dvfs->freqs[i-1] = c->max_rate;
 	}
 	return 0;
 }
