@@ -46,8 +46,16 @@
 		clock-frequency = <38400000>;
 	};
 
+	adma {
+		status = "okay";
+	};
+
 	ahub {
 		status = "okay";
+
+		admaif@0x702d0000 {
+			status = "okay";
+		};
 
 		ope@702d8000 {
 			status = "okay";
