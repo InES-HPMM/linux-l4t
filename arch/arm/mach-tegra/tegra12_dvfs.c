@@ -1127,6 +1127,7 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		kobject_del(cap_kobj);
 		return 0;
 	}
+	tegra_core_cap_debug_init();
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
 	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);

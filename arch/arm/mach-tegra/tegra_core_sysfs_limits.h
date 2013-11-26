@@ -55,4 +55,11 @@ int tegra_init_shared_bus_floor(struct core_bus_limit_table *table,
 int tegra_init_sysfs_shared_bus_rate(struct core_bus_rates_table *table,
 	int table_size, struct kobject *floor_kobj);
 
+#ifdef CONFIG_DEBUG_FS
+int tegra_core_cap_debug_init(void);
+#else
+static inline int tegra_core_cap_debug_init(void)
+{ return 0; }
+#endif
+
 #endif /* _MACH_TEGRA_CORE_SYSFS_LIMITS_H_ */

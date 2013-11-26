@@ -21,6 +21,8 @@
 #include <linux/kobject.h>
 #include <linux/err.h>
 #include <linux/pm_qos.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -640,3 +642,65 @@ int __init tegra_init_sysfs_shared_bus_rate(
 		return -ENOMEM;
 	return 0;
 }
+
+#ifdef CONFIG_DEBUG_FS
+
+static int vcore_cap_table_show(struct seq_file *s, void *data)
+{
+	int i, j, n, therm_cap, therm_trip;
+
+	seq_printf(s, "%-20s", "bus/vcore");
+	for (j = 0; j < cap_millivolts_num; j++) {
+		int v = cap_millivolts[j];
+		if (!v)
+			break;
+		seq_printf(s, "%7d", v);
+	}
+	n = j;
+	seq_puts(s, " mV\n");
+
+	for (i = 0; i < core_cap_table_size; i++) {
+		struct core_dvfs_cap_table *table = &core_cap_table[i];
+		seq_printf(s, "%-20s", table->cap_name);
+		for (j = 0; j < n; j++)
+			seq_printf(s, "%7lu", table->freqs[j] / 1000);
+		seq_puts(s, " kHz\n");
+	}
+
+	return 0;
+}
+
+static int vcore_cap_table_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, vcore_cap_table_show, inode->i_private);
+}
+
+static const struct file_operations vcore_cap_table_fops = {
+	.open		= vcore_cap_table_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+int __init tegra_core_cap_debug_init(void)
+{
+	struct dentry *core_cap_debugfs_dir;
+
+	if (!core_cap_table)
+		return 0;
+
+	core_cap_debugfs_dir = debugfs_create_dir("tegra_core_cap", NULL);
+	if (!core_cap_debugfs_dir)
+		return -ENOMEM;
+
+	if (!debugfs_create_file("vcore_cap_table", S_IRUGO,
+		core_cap_debugfs_dir, NULL, &vcore_cap_table_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(core_cap_debugfs_dir);
+	return -ENOMEM;
+}
+#endif
