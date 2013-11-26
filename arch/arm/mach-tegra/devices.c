@@ -1667,6 +1667,40 @@ struct platform_device tegra_spkprot_device0 = {
 	.num_resources = ARRAY_SIZE(tegra_spkprot_resource0),
 };
 
+static struct resource tegra_adma_resource[] = {
+	[0] = {
+		.start = TEGRA_ADMA_BASE,
+		.end   = TEGRA_ADMA_BASE + TEGRA_ADMA_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+static u64 tegra_adma_dmamask = DMA_BIT_MASK(64);
+struct platform_device tegra_adma_device = {
+	.name     = "tegra210-adma",
+	.id       = -1,
+	.resource = tegra_adma_resource,
+	.num_resources = ARRAY_SIZE(tegra_adma_resource),
+	.dev = {
+		.dma_mask = &tegra_adma_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64)
+	}
+};
+
+static struct resource tegra_admaif_resource[] = {
+	[0] = {
+		.start = TEGRA_ADMAIF_BASE,
+		.end   = TEGRA_ADMAIF_BASE + TEGRA_ADMAIF_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_admaif_device = {
+	.name = "tegra210-admaif",
+	.id   = -1,
+	.resource      = tegra_admaif_resource,
+	.num_resources = ARRAY_SIZE(tegra_admaif_resource),
+};
 #endif
 
 struct platform_device spdif_dit_device = {
