@@ -746,6 +746,7 @@ static void __init tegra_vcm30_t124_early_init(void)
 
 static void __init tegra_vcm30_t124_late_init(void)
 {
+	tegra_init_board_info();
 	vcm30_t124_usb_init();
 /*	vcm30_t124_xusb_init(); */
 	vcm30_t124_nor_init();

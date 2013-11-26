@@ -104,6 +104,10 @@ __setup("board_id=", board_id_setup);
 static int __init sku_info_setup(char *line)
 {
 	memcpy(skuinfo_buffer, line, SKUINFO_BUF_SIZE);
+	/* Call board_id_setup function here, so that SKU-info is also
+	 * populated in board_info_array, and we can use tegra_is_board API for
+	 * differentiating between vcm module as well */
+	board_id_setup(skuinfo_buffer);
 	return 1;
 }
 
