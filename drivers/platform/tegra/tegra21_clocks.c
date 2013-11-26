@@ -6085,7 +6085,7 @@ static struct clk tegra_dfll_cpu = {
 static struct clk_pll_freq_table tegra_pllc4_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
 	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 38400000, 600000000,  31, 1, 2},	/* actual: 595.2 MHz */
+	{ 38400000, 600000000,  62, 2, 2},	/* actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
