@@ -111,6 +111,12 @@ config SND_SOC_TEGRA30_AVP
 	  module. You will also need to select the individual machine drivers to
 	  support below.
 
+config SND_SOC_TEGRA210_ADMA
+	tristate
+	depends on SND_SOC_TEGRA
+	help
+	  Say Y or M here if you want support for the Tegra210 ADMA module.
+
 config SND_SOC_TEGRA210_AXBAR
 	tristate
 	depends on SND_SOC_TEGRA
@@ -121,7 +127,7 @@ config SND_SOC_TEGRA210_AXBAR
 
 config SND_SOC_TEGRA210_OPE
 	tristate
-	depends on SND_SOC
+	depends on SND_SOC_TEGRA
 	select SND_SOC_TEGRA210_AXBAR
 	help
 	  Say Y or M if you want to add support for the Tegra210 OPE module.
@@ -130,7 +136,7 @@ config SND_SOC_TEGRA210_OPE
 
 config SND_SOC_TEGRA210_PEQ
 	tristate
-	depends on SND_SOC
+	depends on SND_SOC_TEGRA
 	select SND_SOC_TEGRA210_AXBAR
 	select SND_SOC_TEGRA210_OPE
 	help
@@ -140,7 +146,7 @@ config SND_SOC_TEGRA210_PEQ
 
 config SND_SOC_TEGRA210_SFC
 	tristate
-	depends on SND_SOC
+	depends on SND_SOC_TEGRA
 	select SND_SOC_TEGRA210_AXBAR
 	help
 	  Say Y or M if you want to add support for the Tegra210 SFC module.
@@ -149,12 +155,21 @@ config SND_SOC_TEGRA210_SFC
 
 config SND_SOC_TEGRA210_SPKPROT
 	tristate
-	depends on SND_SOC
+	depends on SND_SOC_TEGRA
 	select SND_SOC_TEGRA210_AXBAR
 	help
 	  Say Y or M if you want to add support for the Tegra210 SPKPROT module.
 	  You will also need to select the individual machine drivers to
 	  support below.
+
+config SND_SOC_TEGRA210_ADMAIF
+        tristate
+        depends on SND_SOC_TEGRA
+        select SND_SOC_TEGRA210_AXBAR
+        help
+          Say Y or M if you want to add support for the Tegra210 ADMAIF module.
+          You will also need to select the individual machine drivers to
+          support below.
 
 config SND_SOC_TEGRA_WM8753
 	tristate "SoC Audio support for Tegra boards using a WM8753 codec"
