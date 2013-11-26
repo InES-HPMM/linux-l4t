@@ -7612,7 +7612,19 @@ static struct clk tegra_clk_gpu = {
 };
 
 #define RATE_GRANULARITY	100000 /* 0.1 MHz */
+#if defined(CONFIG_TEGRA_CLOCK_DEBUG_FUNC)
+static int gbus_round_pass_thru;
+void tegra_gbus_round_pass_thru_enable(bool enable)
+{
+	if (enable)
+		gbus_round_pass_thru = 1;
+	else
+		gbus_round_pass_thru = 0;
+}
+EXPORT_SYMBOL(tegra_gbus_round_pass_thru_enable);
+#else
 #define gbus_round_pass_thru	0
+#endif
 
 static void tegra12_clk_gbus_init(struct clk *c)
 {

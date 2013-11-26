@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -191,10 +191,18 @@ int tegra_clk_register_export_ops(struct clk *c,
 
 #ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
 int tegra_clk_set_max(struct clk *c, unsigned long rate);
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+void tegra_gbus_round_pass_thru_enable(bool enable);
+#else
+static inline void tegra_gbus_round_pass_thru_enable(bool enable)
+{}
+#endif
 #else
 static inline int tegra_clk_set_max(struct clk *c, unsigned long rate) {
 	return -ENOSYS;
 }
+static inline void tegra_gbus_round_pass_thru_enable(bool enable)
+{}
 #endif
 
 #endif
