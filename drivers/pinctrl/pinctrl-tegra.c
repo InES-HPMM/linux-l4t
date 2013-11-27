@@ -2122,6 +2122,40 @@ static const struct file_operations debug_drive_fops = {
 	.release	= single_release,
 };
 
+static int dbg_reg_pinmux_show(struct seq_file *s, void *unused)
+{
+	int i;
+	u32 offset;
+	u32 reg;
+	int bank;
+
+	for (i = 0; i < pmx->soc->ngroups; i++) {
+		if (pmx->soc->groups[i].drv_reg < 0) {
+			bank = pmx->soc->groups[i].mux_bank;
+			offset = pmx->soc->groups[i].mux_reg;
+		} else {
+			bank = pmx->soc->groups[i].drv_bank;
+			offset = pmx->soc->groups[i].drv_reg;
+		}
+		reg = pmx_readl(pmx, bank, offset);
+		seq_printf(s, "Bank: %d Reg: 0x%08x Val: 0x%08x\n",
+			bank, offset, reg);
+	}
+	return 0;
+}
+
+static int dbg_reg_pinmux_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dbg_reg_pinmux_show, &inode->i_private);
+}
+
+static const struct file_operations debug_reg_fops = {
+	.open		= dbg_reg_pinmux_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init tegra_pinctrl_debuginit(void)
 {
 	if (!pmx)
@@ -2131,6 +2165,8 @@ static int __init tegra_pinctrl_debuginit(void)
 					NULL, NULL, &debug_fops);
 	(void) debugfs_create_file("tegra_pinctrl_drive", S_IRUGO,
 					NULL, NULL, &debug_drive_fops);
+	(void) debugfs_create_file("tegra_pinctrl_reg", S_IRUGO,
+					NULL, NULL, &debug_reg_fops);
 	return 0;
 }
 late_initcall(tegra_pinctrl_debuginit);
