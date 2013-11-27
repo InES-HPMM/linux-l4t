@@ -164,6 +164,14 @@ config NVMAP_PAGE_POOLS
 	  when system is low on memory and acquired back during release of
 	  memory.
 
+config NVMAP_PAGE_POOL_DEBUG
+	bool "Debugging for page pools"
+	depends on NVMAP_PAGE_POOLS
+	help
+	  Say Y here to include some debugging info in the page pools. This
+	  adds a bit of unnecessary overhead so only enable this is you
+	  suspect there is an issue with the nvmap page pools.
+
 config NVMAP_PAGE_POOLS_INIT_FILLUP
 	bool "Fill up page pools during page pools init"
 	depends on NVMAP_PAGE_POOLS
