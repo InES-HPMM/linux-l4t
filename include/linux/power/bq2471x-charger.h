@@ -60,5 +60,7 @@ struct bq2471x_platform_data {
 	int     dac_iin;
 	int     wdt_refresh_timeout;
 	int     gpio;
+	int	charge_broadcast_mode;
+	int	gpio_active_low;
 };
 #endif /* __LINUX_POWER_BQ2471X_CHARGER_H */

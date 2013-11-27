@@ -40,6 +40,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 struct bq2471x_chip {
 	struct device	*dev;
@@ -55,9 +56,11 @@ struct bq2471x_chip {
 	int	dac_iin;
 	int	suspended;
 	int	wdt_refresh_timeout;
+	int	gpio_active_low;
 	struct kthread_worker	bq_kworker;
 	struct task_struct	*bq_kworker_task;
 	struct kthread_work	bq_wdt_work;
+	struct battery_charger_dev	*bc_dev;
 };
 
 /* Kthread scheduling parameters */
@@ -247,6 +250,24 @@ static void bq2471x_work_thread(struct kthread_work *work)
 	}
 }
 
+static struct battery_charger_info bq2471x_charger_bci = {
+	.cell_id = 0,
+};
+
+static irqreturn_t bq2471x_charger_irq(int irq, void *data)
+{
+	struct bq2471x_chip *bq2471x = data;
+
+	bq2471x->ac_online =
+		gpio_get_value_cansleep(bq2471x->gpio);
+	bq2471x->ac_online ^=
+		bq2471x->gpio_active_low;
+
+	power_supply_changed(&bq2471x->ac);
+
+	return IRQ_HANDLED;
+}
+
 static int bq2471x_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -267,6 +288,54 @@ static int bq2471x_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	bq2471x = devm_kzalloc(&client->dev, sizeof(*bq2471x), GFP_KERNEL);
+	if (!bq2471x) {
+		dev_err(&client->dev, "Memory allocation failed\n");
+		ret = -ENOMEM;
+		goto gpio_err;
+	}
+
+	bq2471x->ac.name	= "bq2471x-ac";
+	bq2471x->ac.type	= POWER_SUPPLY_TYPE_MAINS;
+	bq2471x->ac.get_property	= bq2471x_ac_get_property;
+	bq2471x->ac.properties		= bq2471x_psy_props;
+	bq2471x->ac.num_properties	= ARRAY_SIZE(bq2471x_psy_props);
+
+	bq2471x->gpio = pdata->gpio;
+	bq2471x->dev = &client->dev;
+
+	ret = power_supply_register(bq2471x->dev, &bq2471x->ac);
+	if (ret < 0) {
+		dev_err(bq2471x->dev,
+			"AC power supply register failed %d\n", ret);
+		goto gpio_err;
+	}
+
+	if (pdata->charge_broadcast_mode) {
+		bq2471x->bc_dev = battery_charger_register(&bq2471x->dev,
+					&bq2471x_charger_bci, bq2471x);
+
+		ret = battery_charger_set_current_broadcast(bq2471x->bc_dev);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Failed to enable charging through"
+				"fuel gauge broadcasts %d\n", ret);
+			return ret;
+		}
+
+		ret = gpio_direction_input(bq2471x->gpio);
+		bq2471x->irq = gpio_to_irq(bq2471x->gpio);;
+		bq2471x->gpio_active_low = pdata->gpio_active_low;
+
+		ret = request_any_context_irq(bq2471x->irq, bq2471x_charger_irq,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+					dev_name(&bq2471x->dev), bq2471x);
+		if (ret < 0)
+			dev_err(&client->dev, "Failed to request irq..\n");
+
+		return ret;
+	}
+
 	ret = gpio_direction_output(pdata->gpio, 1);
 	if (ret) {
 		dev_err(&client->dev,
@@ -284,14 +353,12 @@ static int bq2471x_probe(struct i2c_client *client,
 		ret = -ENOMEM;
 		goto gpio_err;
 	}
-	bq2471x->dev = &client->dev;
 
 	bq2471x->dac_ichg = pdata->dac_ichg;
 	bq2471x->dac_v = pdata->dac_v;
 	bq2471x->dac_minsv = pdata->dac_minsv;
 	bq2471x->dac_iin = pdata->dac_iin;
 	bq2471x->wdt_refresh_timeout = pdata->wdt_refresh_timeout;
-	bq2471x->gpio = pdata->gpio;
 
 	i2c_set_clientdata(client, bq2471x);
 	bq2471x->irq = client->irq;
@@ -318,18 +385,7 @@ static int bq2471x_probe(struct i2c_client *client,
 		goto gpio_err;
 	}
 
-	bq2471x->ac.name	= "bq2471x-ac";
-	bq2471x->ac.type	= POWER_SUPPLY_TYPE_MAINS;
-	bq2471x->ac.get_property	= bq2471x_ac_get_property;
-	bq2471x->ac.properties		= bq2471x_psy_props;
-	bq2471x->ac.num_properties	= ARRAY_SIZE(bq2471x_psy_props);
 
-	ret = power_supply_register(bq2471x->dev, &bq2471x->ac);
-	if (ret < 0) {
-		dev_err(bq2471x->dev,
-			"AC power supply register failed %d\n", ret);
-		goto gpio_err;
-	}
 
 	ret = bq2471x_hw_init(bq2471x);
 	if (ret < 0) {
@@ -351,6 +407,7 @@ static int bq2471x_probe(struct i2c_client *client,
 	sched_setscheduler(bq2471x->bq_kworker_task,
 		SCHED_FIFO, &bq2471x_param);
 	queue_kthread_work(&bq2471x->bq_kworker, &bq2471x->bq_wdt_work);
+
 
 	dev_info(bq2471x->dev, "bq2471x charger registerd\n");
 
