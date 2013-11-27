@@ -954,6 +954,9 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 
 	tegra_pinctrl_default_soc_init(pmx);
 
+	pinctrl_configure_user_state(pmx->pctl, "drive");
+	pinctrl_configure_user_state(pmx->pctl, "unused");
+
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&pinctrl_syscore_ops);
 #endif
