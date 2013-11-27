@@ -3882,7 +3882,7 @@ static void init_filesystem_firmware_done(const struct firmware *fw,
 err_firmware_done:
 	release_firmware(fw);
 	mutex_unlock(&tegra->sync_lock);
-	tegra_xhci_remove(pdev);
+	device_release_driver(&pdev->dev);
 }
 
 static void deinit_filesystem_firmware(struct tegra_xhci_hcd *tegra)
