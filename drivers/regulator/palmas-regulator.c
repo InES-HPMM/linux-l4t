@@ -1444,7 +1444,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				goto err_unregister_regulator;
 			pmic->current_reg_mode[id] = reg &
 					PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
-			pmic->desc[id].enable_time = 275;
+			pmic->desc[id].enable_time = 600;
 			break;
 		}
 
