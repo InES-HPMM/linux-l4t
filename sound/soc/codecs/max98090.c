@@ -21,6 +21,13 @@
 
 #include <linux/version.h>
 
+#ifndef __devexit
+#define __devexit
+#endif
+#ifndef __devexit_p
+#define __devexit_p(x)	(x)
+#endif
+
 #define DEBUG
 #define EXTMIC_METHOD
 #define EXTMIC_METHOD_TEST
@@ -3713,7 +3720,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 
 	/* Register for interrupts */
 	if ((request_threaded_irq(pdata->irq, NULL,
-		max98090_interrupt, IRQF_TRIGGER_FALLING,
+		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 		"max98090_interrupt", codec)) < 0) {
 		dev_info(codec->dev, "request_irq failed\n");
 	}
