@@ -82,15 +82,16 @@ static struct sysedp_batmon_ibat_lut shield_ibat_lut[] = {
 	{ -30,    0 }
 };
 
-/*                           23C              */
-static int rbat_data[] = {  118000,   /* 100% */
-			    119000,   /* 80%  */
-			    121000,   /* 60%  */
-			    123000,   /* 40%  */
-			    124000,   /* 10%  */
-			    124000};  /* 0%   */
-static int rbat_temp_axis[] = { 23 };
-static int rbat_capacity_axis[] = { 100, 80, 60, 40, 10, 0 };
+/* Values for Leyden HY-LDN-N-TD battery */
+/*                           45C      23C     10C      5C      0C    -20 */
+static int rbat_data[] = {  100000, 120000, 140000, 170000, 190000,  210000, /* 100% */
+			    100000, 120000, 150000, 170000, 190000,  210000, /*  55% */
+			    100000, 130000, 150000, 170000, 200000,  210000, /*  50% */
+			    110000, 130000, 160000, 170000, 200000,  210000, /*  10% */
+			    120000, 140000, 170000, 180000, 210000,  220000, /*   0% */
+};
+static int rbat_temp_axis[] = { 45, 23, 10, 5, 0, -20 };
+static int rbat_capacity_axis[] = { 100, 55, 50, 10, 0 };
 
 struct sysedp_batmon_rbat_lut shield_rbat_lut = {
 	.temp_axis = rbat_temp_axis,
