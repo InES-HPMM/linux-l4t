@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_core_volt_cap.c
  *
- * Copyright (c), 2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -680,7 +680,7 @@ int __init tegra_init_sysfs_shared_bus_rate(
 
 static int vcore_cap_table_show(struct seq_file *s, void *data)
 {
-	int i, j, n, therm_cap, therm_trip;
+	int i, j, n;
 
 	seq_printf(s, "%-20s", "bus/vcore");
 	for (j = 0; j < cap_millivolts_num; j++) {
