@@ -1020,6 +1020,65 @@ unapply_new_state:
 }
 EXPORT_SYMBOL_GPL(pinctrl_select_state);
 
+int pinctrl_configure_user_state(struct pinctrl_dev *pctldev,
+		const char *user_state_name)
+{
+	struct pinctrl_setting *setting, *setting2;
+	struct pinctrl_state *user_state;
+	int ret;
+
+	if (!pctldev || IS_ERR(pctldev->p)) {
+		pr_err("The pincontrol driver is not valid\n");
+		return -EINVAL;
+	}
+
+	user_state = pinctrl_lookup_state(pctldev->p, user_state_name);
+	if (IS_ERR(user_state)) {
+		ret = PTR_ERR(user_state);
+		dev_info(pctldev->dev, "lookup the user state %s not found\n",
+			user_state_name);
+		return ret;
+	}
+
+	list_for_each_entry(setting, &user_state->settings, node) {
+		switch (setting->type) {
+		case PIN_MAP_TYPE_MUX_GROUP:
+			ret = pinmux_enable_setting(setting);
+			break;
+		case PIN_MAP_TYPE_CONFIGS_PIN:
+		case PIN_MAP_TYPE_CONFIGS_GROUP:
+			ret = pinconf_apply_setting(setting);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+
+		if (ret < 0)
+			goto unapply_new_state;
+	}
+	return 0;
+
+unapply_new_state:
+	dev_err(pctldev->dev, "Error applying setting, reverse things back\n");
+
+	list_for_each_entry(setting2, &user_state->settings, node) {
+		if (&setting2->node == &setting->node)
+			break;
+		/*
+		 * All we can do here is pinmux_disable_setting.
+		 * That means that some pins are muxed differently now
+		 * than they were before applying the setting (We can't
+		 * "unmux a pin"!), but it's not a big deal since the pins
+		 * are free to be muxed by another apply_setting.
+		 */
+		if (setting2->type == PIN_MAP_TYPE_MUX_GROUP)
+			pinmux_disable_setting(setting2);
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(pinctrl_configure_user_state);
+
 static void devm_pinctrl_release(struct device *dev, void *res)
 {
 	pinctrl_put(*(struct pinctrl **)res);
