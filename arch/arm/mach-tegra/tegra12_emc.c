@@ -43,7 +43,6 @@
 #include "tegra12_emc.h"
 #include "tegra_emc_dt_parse.h"
 
-
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
 #else
@@ -92,7 +91,7 @@ static struct emc_iso_usage tegra12_emc_iso_usage[] = {
 #define MHZ 1000000
 #define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM 13
 #define PLL_C_DIRECT_FLOOR		333500000
-#define EMC_STATUS_UPDATE_TIMEOUT	1000
+#define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
 
 #define TEGRA_EMC_MODE_REG_17	0x00110000
@@ -140,6 +139,7 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT_DURATION),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_EXTRA),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_WIDTH),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_BGBIAS_CTL0),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_PUTERM_ADJ),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_1),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_2),		\
@@ -258,6 +258,9 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_ZCAL_WAIT_CNT),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_MRS_WAIT_CNT),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_MRS_WAIT_CNT2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_AUTO_CAL_CONFIG2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_AUTO_CAL_CONFIG3),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_AUTO_CAL_CONFIG),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CTT),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CTT_DURATION),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_PIPE),		\
@@ -332,13 +335,6 @@ enum {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
-
-#define BGBIAS_VAL(val, reg, bit) \
-	(((val)>>EMC_##reg##_##bit##_SHIFT) & 0x1)
-
-#define BGBIAS_SET_NUM(val, n, reg, bit) \
-	(((val) & ~(0x1<<EMC_##reg##_##bit##_SHIFT)) | \
-		(((n)&0x1) << (EMC_##reg##_##bit##_SHIFT)))
 
 struct emc_sel {
 	struct clk	*input;
@@ -495,69 +491,47 @@ static inline void auto_cal_disable(void)
 	}
 }
 
-static inline void wait_auto_cal_disable(void)
-{
-	int err;
-
-	err = wait_for_update(EMC_AUTO_CAL_STATUS,
-			      EMC_AUTO_CAL_STATUS_ACTIVE, false);
-	if (err) {
-		pr_err("%s: wait disable auto-cal error: %d", __func__, err);
-		BUG();
-	}
-}
-static inline unsigned int bgbias_preset(const struct tegra12_emc_table *next_timing,
-			      const struct tegra12_emc_table *last_timing)
-{
-	static unsigned int ret;
-	static unsigned int data, reg_val;
-	ret = 0;
-	data = last_timing->emc_bgbias_ctl0;
-	reg_val = emc_readl(EMC_BGBIAS_CTL0);
-
-	if ((BGBIAS_VAL(next_timing->emc_bgbias_ctl0, BGBIAS_CTL0,
-			BIAS0_DSC_E_PWRD_IBIAS_RX) == 0) &&
-			(BGBIAS_VAL(reg_val, BGBIAS_CTL0,
-			BIAS0_DSC_E_PWRD_IBIAS_RX) == 1)) {
-		data = BGBIAS_SET_NUM(data, 0, BGBIAS_CTL0,
-				BIAS0_DSC_E_PWRD_IBIAS_RX);
-		ret = 1;
-	}
-
-	if ((BGBIAS_VAL(reg_val, BGBIAS_CTL0,
-			BIAS0_DSC_E_PWRD) == 1) ||
-			(BGBIAS_VAL(reg_val, BGBIAS_CTL0,
-			BIAS0_DSC_E_PWRD_IBIAS_VTTGEN) == 1))
-			ret = 1;
-
-	if (ret == 1)
-		emc_writel(data, EMC_BGBIAS_CTL0);
-	return ret;
-
-}
-
 static inline bool dqs_preset(const struct tegra12_emc_table *next_timing,
 			      const struct tegra12_emc_table *last_timing)
 {
 	bool ret = false;
-	static unsigned int data;
-	data = emc_readl(EMC_XM2DQSPADCTRL2);
+	int data;
+	data = last_timing->burst_regs[EMC_BGBIAS_CTL0_INDEX];
+#define BGBIAS_SET(reg, bit, program_condition) \
+	do {						\
+		if (((next_timing->burst_regs[EMC_##reg##_INDEX] & \
+		(0x1<<EMC_##reg##_##bit##_SHIFT)) == \
+		(program_condition << EMC_##reg##_##bit##_SHIFT)) && \
+		(((data & (0x1<<EMC_##reg##_##bit##_SHIFT))) !=	 \
+			(program_condition << EMC_##reg##_##bit##_SHIFT))) { \
+				data = (data & \
+					~(0x1<<EMC_##reg##_##bit##_SHIFT)) | \
+					(program_condition << \
+						EMC_##reg##_##bit##_SHIFT); \
+						ret = 1;	\
+			}					\
+	} while (0)
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_RX, 0);
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_VTTGEN, 0);
+	BGBIAS_SET(BGBIAS_CTL0, BIAS0_DSC_E_PWRD, 0);
+	if (ret == 1)
+		emc_writel(data, EMC_BGBIAS_CTL0);
 
 #define DQS_SET(reg, bit)						\
 	do {						\
+		data = emc_readl(EMC_XM2DQSPADCTRL2); \
 		if ((next_timing->burst_regs[EMC_##reg##_INDEX] &	\
 		     EMC_##reg##_##bit##_ENABLE) &&			\
 			(!(data &	\
 		       EMC_##reg##_##bit##_ENABLE)))   {		\
-				data = (data \
-				   | EMC_##reg##_##bit##_ENABLE); \
+				emc_writel(data \
+				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg); \
+			pr_debug("dqs preset: presetting rx_ft_rec\n");	\
 			ret = true;					\
 		}							\
 	} while (0)
 	DQS_SET(XM2DQSPADCTRL2, VREF);
 	DQS_SET(XM2DQSPADCTRL2, RX_FT_REC);
-	if (ret == 1)
-			emc_writel(data, EMC_XM2DQSPADCTRL2);
 	return ret;
 }
 
@@ -663,11 +637,10 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 #ifndef EMULATE_CLOCK_SWITCH
 	int i, dll_change, pre_wait, ctt_term_changed;
 	bool cfg_pow_features_enabled, zcal_long;
-	u32 bgbias_ctl, auto_cal_status, auto_cal_config;
+	u32 assert_var;
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
 	u32 sel_dpd_ctrl = emc_readl(EMC_SEL_DPD_CTRL);
 	u32 emc_cfg_2_reg = emc_readl(EMC_CFG_2);
-	auto_cal_status = emc_readl(EMC_AUTO_CAL_STATUS);
 	cfg_pow_features_enabled = (emc_cfg_reg & EMC_CFG_PWR_MASK);
 	dll_change = get_dll_change(next_timing, last_timing);
 	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0) &&
@@ -692,48 +665,28 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	}
 
 	/* 2.5 check dq/dqs vref delay */
-	if (bgbias_preset(next_timing, last_timing)) {
-		if (pre_wait < 5)
-			pre_wait = 5;
-	}
 	if (dqs_preset(next_timing, last_timing)) {
 		if (pre_wait < 30)
 			pre_wait = 30;	/* 3us+ for dqs vref settled */
 	}
 
-	if (pre_wait) {
+	/* 2.6 Program CTT_TERM Control if it changed since last time*/
+	/* PLACE HOLDER FOR NOW , CODE TO BE ADDED
+	Bug-1258083, software hack for updating EMC_CCT_TERM_CTRL
+	/term-slope,offset values instantly*/
+	ctt_term_changed = (last_timing->emc_ctt_term_ctrl
+				!= next_timing->emc_ctt_term_ctrl);
+	if (last_timing->emc_ctt_term_ctrl !=
+			next_timing->emc_ctt_term_ctrl) {
+			auto_cal_disable();
+			emc_writel(next_timing->emc_ctt_term_ctrl,
+				EMC_CTT_TERM_CTRL);
+	}
+
+	if (pre_wait || ctt_term_changed) {
 		emc_timing_update();
 		udelay(pre_wait);
 	}
-	/* 2.5.1 Disable auto_cal for clock change*/
-	emc_writel(0, EMC_AUTO_CAL_INTERVAL);
-	auto_cal_config = emc_readl(EMC_AUTO_CAL_CONFIG);
-	auto_cal_status = emc_readl(EMC_AUTO_CAL_STATUS);
-
-	if (((next_timing->emc_auto_cal_config & 1) <<
-		EMC_AUTO_CAL_CONFIG_AUTO_CAL_START_SHIFT) &&
-		!((auto_cal_status >> EMC_AUTO_CAL_STATUS_SHIFT) & 1) &&
-		!ctt_term_changed) {
-		auto_cal_config = ((auto_cal_config &
-			~(1 << EMC_AUTO_CAL_CONFIG_AUTO_CAL_START_SHIFT))
-			| (1 << EMC_AUTO_CAL_CONFIG_AUTO_CAL_START_SHIFT));
-		emc_writel(auto_cal_config, EMC_AUTO_CAL_CONFIG);
-	}
-
-	/* 2.6 Program CTT_TERM Control if it changed since last time*/
-	/* Bug-1258083, software hack for updating */
-	/* EMC_CCT_TERM_CTRL/term-slope */
-	/* offset values instantly */
-	ctt_term_changed = (last_timing->emc_ctt_term_ctrl !=
-				next_timing->emc_ctt_term_ctrl);
-	if (last_timing->emc_ctt_term_ctrl !=
-				next_timing->emc_ctt_term_ctrl) {
-		auto_cal_disable();
-		emc_writel(next_timing->emc_ctt_term_ctrl, EMC_CTT_TERM_CTRL);
-	}
-	if (ctt_term_changed)
-		emc_timing_update();
-
 	/* 3. disable auto-cal if vref mode is switching - removed */
 
 	/* 4. program burst shadow registers */
@@ -745,26 +698,6 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	emc_cfg_reg = next_timing->emc_cfg;
 	emc_cfg_reg = disable_power_features(emc_cfg_reg);
 	ccfifo_writel(emc_cfg_reg, EMC_CFG);
-
-	/*step 4.1 , program auto_cal_config
-	registers for proper offset propagation
-	bug 1372978 */
-	if (last_timing->emc_auto_cal_config2
-		!= next_timing->emc_auto_cal_config2)
-		ccfifo_writel(next_timing->emc_auto_cal_config2,
-				EMC_AUTO_CAL_CONFIG2);
-	if (last_timing->emc_auto_cal_config3 !=
-				next_timing->emc_auto_cal_config3)
-		ccfifo_writel(next_timing->emc_auto_cal_config3,
-				EMC_AUTO_CAL_CONFIG3);
-	if (last_timing->emc_auto_cal_config !=
-				next_timing->emc_auto_cal_config) {
-		auto_cal_config =
-				next_timing->emc_auto_cal_config;
-		auto_cal_config = auto_cal_config &
-			~(1 << EMC_AUTO_CAL_CONFIG_AUTO_CAL_START_SHIFT);
-		ccfifo_writel(auto_cal_config, EMC_AUTO_CAL_CONFIG);
-	}
 	wmb();
 	barrier();
 
@@ -819,9 +752,6 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 		ccfifo_writel(emc_cfg_2_reg, EMC_CFG_2);
 	}
 
-	/* 11.2 disable auto_cal for clock change */
-	wait_auto_cal_disable();
-
 	/* 11.5 program burst_up_down registers if emc rate is going down */
 	if (next_timing->rate < last_timing->rate) {
 		for (i = 0; i < next_timing->burst_up_down_regs_num; i++)
@@ -856,31 +786,8 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	/* 17. set zcal wait count */
 	emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
-	/* 17.1 turning of bgbias if lpddr3 dram and freq is low */
-	auto_cal_config = emc_readl(EMC_AUTO_CAL_STATUS);
-	if ((dram_type == DRAM_TYPE_LPDDR2) &&
-		(BGBIAS_VAL(next_timing->emc_bgbias_ctl0,
-			BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_RX) == 1)) {
-
-		/* 17.1.3 Full power down bgbias */
-		bgbias_ctl = next_timing->emc_bgbias_ctl0;
-		bgbias_ctl = BGBIAS_SET_NUM(bgbias_ctl, 1,
-				BGBIAS_CTL0, BIAS0_DSC_E_PWRD_IBIAS_VTTGEN);
-		bgbias_ctl = BGBIAS_SET_NUM(bgbias_ctl, 1,
-				BGBIAS_CTL0, BIAS0_DSC_E_PWRD);
-		emc_writel(bgbias_ctl, EMC_BGBIAS_CTL0);
-	} else {
-		if (dram_type == DRAM_TYPE_DDR3)
-			if (emc_readl(EMC_BGBIAS_CTL0) !=
-				next_timing->emc_bgbias_ctl0)
-				emc_writel(next_timing->emc_bgbias_ctl0,
-						EMC_BGBIAS_CTL0);
-		emc_writel(next_timing->emc_acal_interval,
-			EMC_AUTO_CAL_INTERVAL);
-	}
-
 	/* 18. update restored timing */
-	udelay(2);
+	udelay(4);
 	/* 18.1. program sel_dpd at end so if any enabling needs to happen.*/
 	/* It happens at last,as dpd should off during clock change. */
 	/* bug 1342517 */
@@ -1306,7 +1213,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
-	case 0x18:
+	case 0x16:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:
