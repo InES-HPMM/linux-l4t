@@ -1184,6 +1184,9 @@ static int tegra_late_probe(struct snd_soc_card *card)
 				card->rtd[DAI_LINK_HIFI_MAX97236].codec;
 	int ret;
 
+	if (of_machine_is_compatible("nvidia,norrin"))
+		return 0;
+
 	ret = snd_soc_jack_new(codec236,
 			"Headphone Jack",
 			SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00,
@@ -1234,6 +1237,9 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	struct tegra_max98090 *machine;
 	struct tegra_asoc_platform_data *pdata;
 	int ret, i;
+
+	if (of_machine_is_compatible("nvidia,norrin"))
+		card->num_links = DAI_LINK_BTSCO + 1;
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
