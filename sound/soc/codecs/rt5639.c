@@ -533,7 +533,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK | RT5639_MIC1_OVTH_MASK |
 			RT5639_PWR_CLK25M_MASK | RT5639_PWR_MB_MASK,
-			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_600UA |
+			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_1500UA |
 			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5639_GEN_CTRL1,
 			0x1, 0x1);
