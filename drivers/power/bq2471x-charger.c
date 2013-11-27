@@ -446,17 +446,7 @@ static struct i2c_driver bq2471x_i2c_driver = {
 	.id_table	= bq2471x_id,
 };
 
-static int __init bq2471x_module_init(void)
-{
-	return i2c_add_driver(&bq2471x_i2c_driver);
-}
-subsys_initcall(bq2471x_module_init);
-
-static void __exit bq2471x_cleanup(void)
-{
-	i2c_del_driver(&bq2471x_i2c_driver);
-}
-module_exit(bq2471x_cleanup);
+module_i2c_driver(bq2471x_i2c_driver);
 
 MODULE_DESCRIPTION("BQ24715/BQ24717 battery charger driver");
 MODULE_AUTHOR("Andy Park <andyp@nvidia.com>");
