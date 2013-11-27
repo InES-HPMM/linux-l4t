@@ -75,11 +75,9 @@ void __init shield_new_sysedp_init(void)
 
 /* --- Battery monitor data --- */
 static struct sysedp_batmon_ibat_lut shield_ibat_lut[] = {
-/*-- temp in C, current in milli ampere --*/
-	{  60, 7800 }, /* TODO */
-	{  40, 7800 },
-	{   0, 7800 },
-	{ -30,    0 }
+/*-- temp in deci-C, current in milli ampere --*/
+	{  600, 9750 },
+	{ -300, 9750 }
 };
 
 /* Values for Leyden HY-LDN-N-TD battery */
