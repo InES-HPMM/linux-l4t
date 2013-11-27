@@ -296,7 +296,7 @@ static struct dvfs core_dvfs_table[] = {
 	/* FIXME: Finalize these values for NOR after qual */
 	CORE_DVFS("nor",    -1, -1, 1, KHZ,   102000, 102000, 102000, 102000,  102000, 102000, 102000, 102000),
 
-	CORE_DVFS("pciex",  -1,  -1, 1, KHZ,  250000, 250000, 250000, 500000,  500000, 500000, 500000, 500000),
+	CORE_DVFS("pciex",  -1,  -1, 1, KHZ,       1, 250000, 250000, 500000,  500000, 500000, 500000, 500000),
         CORE_DVFS("mselect", -1, -1, 1, KHZ,  102000, 102000, 204000, 204000,  408000, 408000, 408000, 408000),
 
 	/* Core voltages (mV):		         	800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
@@ -1250,8 +1250,6 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs gpu & emc interface is initialized\n");
-
-
 
 	return 0;
 }
