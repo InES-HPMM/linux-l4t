@@ -45,6 +45,7 @@
 #include <mach/pm_domains.h>
 
 #include <linux/nvmap.h>
+#include <linux/pm_qos.h>
 
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"
@@ -143,6 +144,12 @@ struct nvavp_info {
 
 	/* ucode information */
 	struct nvavp_ucode_info		ucode_info;
+
+	/* client to change min cpu freq rate*/
+	struct	pm_qos_request		min_cpu_freq_req;
+
+	/* client to change number of min online cpus*/
+	struct	pm_qos_request		min_online_cpus_req;
 
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
 	bool				pending;
@@ -1008,6 +1015,7 @@ err_exit:
 static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
+	int video_initialized = 0, audio_initialized = 0;
 
 	nvavp->init_task = current;
 
@@ -1017,8 +1025,21 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 			"unable to load os firmware and allocate buffers\n");
 	}
 
-	if (IS_VIDEO_CHANNEL_ID(channel_id) &&
-		(!nvavp_get_video_init_status(nvavp)) ) {
+	video_initialized = nvavp_get_video_init_status(nvavp);
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	audio_initialized = nvavp_get_audio_init_status(nvavp);
+#endif
+	if (!(video_initialized || audio_initialized)) {
+		/* Add PM QoS request but leave it as default value */
+		pm_qos_add_request(&nvavp->min_cpu_freq_req,
+					PM_QOS_CPU_FREQ_MIN,
+					PM_QOS_DEFAULT_VALUE);
+		pm_qos_add_request(&nvavp->min_online_cpus_req,
+					PM_QOS_MIN_ONLINE_CPUS,
+					PM_QOS_DEFAULT_VALUE);
+	}
+
+	if (IS_VIDEO_CHANNEL_ID(channel_id) && (!video_initialized)) {
 		pr_debug("nvavp_init : channel_ID (%d)\n", channel_id);
 		ret = nvavp_load_ucode(nvavp);
 		if (ret) {
@@ -1033,8 +1054,7 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 		nvavp_set_video_init_status(nvavp, 1);
 	}
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-	if (IS_AUDIO_CHANNEL_ID(channel_id) &&
-		(!nvavp_get_audio_init_status(nvavp))) {
+	if (IS_AUDIO_CHANNEL_ID(channel_id) && (!audio_initialized)) {
 		pr_debug("nvavp_init : channel_ID (%d)\n", channel_id);
 		nvavp_reset_avp(nvavp, nvavp->os_info.reset_addr);
 		nvavp_set_audio_init_status(nvavp, 1);
@@ -1097,6 +1117,16 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 		disable_irq(nvavp->mbox_from_avp_pend_irq);
 		nvavp_pushbuffer_deinit(nvavp);
 		nvavp_halt_avp(nvavp);
+		if (!IS_ERR_OR_NULL(&nvavp->min_cpu_freq_req)) {
+			pm_qos_update_request(&nvavp->min_cpu_freq_req,
+					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+			pm_qos_remove_request(&nvavp->min_cpu_freq_req);
+		}
+		if (!IS_ERR_OR_NULL(&nvavp->min_online_cpus_req)) {
+			pm_qos_update_request(&nvavp->min_online_cpus_req,
+					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+			pm_qos_remove_request(&nvavp->min_online_cpus_req);
+		}
 	}
 
 	/*
@@ -1112,6 +1142,22 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	writel(reg, IO_ADDRESS(TEGRA_TMR2_BASE + TIMER_PCR));
 
 	nvavp->init_task = NULL;
+}
+
+static int nvcpu_set_clock(struct nvavp_info *nvavp,
+				struct nvavp_clock_args config,
+				unsigned long arg)
+{
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: update cpu freq to clk_rate=%u\n",
+			__func__, config.rate);
+
+	if (config.rate > 0)
+		pm_qos_update_request(&nvavp->min_cpu_freq_req, config.rate);
+	else
+		pm_qos_update_request(&nvavp->min_cpu_freq_req,
+					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+
+	return 0;
 }
 
 static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
@@ -1132,6 +1178,8 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 		nvavp->sclk_rate = config.rate;
 	else if	(config.id == NVAVP_MODULE_ID_EMC)
 		nvavp->emc_clk_rate = config.rate;
+	else if (config.id == NVAVP_MODULE_ID_CPU)
+		return nvcpu_set_clock(nvavp, config, arg);
 
 	c = nvavp_clk_get(nvavp, config.id);
 	if (IS_ERR_OR_NULL(c))
@@ -1468,6 +1516,30 @@ static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
 }
 #endif
 
+static int nvavp_set_min_online_cpus_ioctl(struct file *filp, unsigned int cmd,
+					unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_num_cpus_args config;
+
+	if (copy_from_user(&config, (void __user *)arg,
+					sizeof(struct nvavp_num_cpus_args)))
+		return -EFAULT;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: min_online_cpus=%d\n",
+			__func__, config.min_online_cpus);
+
+	if (config.min_online_cpus > 0)
+		pm_qos_update_request(&nvavp->min_online_cpus_req,
+					config.min_online_cpus);
+	else
+		pm_qos_update_request(&nvavp->min_online_cpus_req,
+					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+
+	return 0;
+}
+
 static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_id)
 {
 	struct miscdevice *miscdev = filp->private_data;
@@ -1611,6 +1683,9 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS:
 		ret = nvavp_disable_audio_clocks(filp, cmd, arg);
+		break;
+	case NVAVP_IOCTL_SET_MIN_ONLINE_CPUS:
+		ret = nvavp_set_min_online_cpus_ioctl(filp, cmd, arg);
 		break;
 	default:
 		ret = -EINVAL;

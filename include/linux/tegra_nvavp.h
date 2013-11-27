@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_nvavp.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -21,6 +21,7 @@
 #define NVAVP_UCODE_EXT		0x00000001 /*use external ucode provided */
 
 enum {
+	NVAVP_MODULE_ID_CPU	= 1,
 	NVAVP_MODULE_ID_AVP	= 2,
 	NVAVP_MODULE_ID_VCP	= 3,
 	NVAVP_MODULE_ID_BSEA	= 27,
@@ -73,6 +74,10 @@ struct nvavp_clock_stay_on_state_args {
 	enum nvavp_clock_stay_on_state	state;
 };
 
+struct nvavp_num_cpus_args {
+	__u32 min_online_cpus;
+};
+
 #define NVAVP_IOCTL_MAGIC		'n'
 
 #define NVAVP_IOCTL_SET_NVMAP_FD	_IOW(NVAVP_IOCTL_MAGIC, 0x60, \
@@ -93,8 +98,10 @@ struct nvavp_clock_stay_on_state_args {
 					struct nvavp_clock_args)
 #define NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS _IOWR(NVAVP_IOCTL_MAGIC, 0x69, \
 					struct nvavp_clock_args)
+#define NVAVP_IOCTL_SET_MIN_ONLINE_CPUS _IOWR(NVAVP_IOCTL_MAGIC, 0x70, \
+					struct nvavp_num_cpus_args)
 
 #define NVAVP_IOCTL_MIN_NR		_IOC_NR(NVAVP_IOCTL_SET_NVMAP_FD)
-#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS)
+#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_SET_MIN_ONLINE_CPUS)
 
 #endif /* __LINUX_TEGRA_NVAVP_H */
