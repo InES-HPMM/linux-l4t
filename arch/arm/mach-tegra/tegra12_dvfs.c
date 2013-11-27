@@ -1082,6 +1082,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 static struct kobject *gpu_kobj;
+static struct kobject *emc_kobj;
 
 static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -1114,6 +1115,13 @@ static struct core_bus_rates_table tegra12_gpu_rates_sysfs = {
 	.rate_attr = {.attr = {.name = "gpu_rate", .mode = 0444} },
 	.available_rates_attr = {
 		.attr = {.name = "gpu_available_rates", .mode = 0444} },
+};
+
+static struct core_bus_rates_table tegra12_emc_rates_sysfs = {
+	.bus_clk_name = "emc",
+	.rate_attr = {.attr = {.name = "emc_rate", .mode = 0444} },
+	.available_rates_attr = {
+		.attr = {.name = "emc_available_rates", .mode = 0444} },
 };
 
 static int __init tegra12_dvfs_init_core_cap(void)
@@ -1175,7 +1183,22 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		kobject_del(gpu_kobj);
 		return 0;
 	}
-	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
+
+	emc_kobj = kobject_create_and_add("tegra_emc", kernel_kobj);
+	if (!emc_kobj) {
+		pr_err("tegra12_dvfs: failed to create sysfs emc object\n");
+		return 0;
+	}
+
+	ret = tegra_init_sysfs_shared_bus_rate(&tegra12_emc_rates_sysfs,
+					       1, emc_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init emc rates interface (%d)\n",
+		       ret);
+		kobject_del(emc_kobj);
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs gpu & emc interface is initialized\n");
 
 
 
