@@ -466,7 +466,11 @@ static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
 };
 
 static struct bq27441_platform_data bq27441_pdata = {
-	.full_capacity_in_mAh = 7350,
+	.full_capacity = 7800,
+	.full_energy = 28314,
+	.taper_rate = 167,
+	.terminate_voltage = 3150,
+	.v_at_chg_term = 4200,
 	.tz_name = "battery-temp",
 };
 
