@@ -245,4 +245,14 @@ static inline struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params
 (int index, unsigned int *sz) { return NULL; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#define td580d_sysedp_corecap_sz	29
+#define td570d_sysedp_corecap_sz	29
+#define td575d_sysedp_corecap_sz	29
+#define cd570m_sysedp_corecap_sz	29
+extern struct tegra_sysedp_corecap td580d_sysedp_corecap[td580d_sysedp_corecap_sz];
+extern struct tegra_sysedp_corecap td570d_sysedp_corecap[td570d_sysedp_corecap_sz];
+extern struct tegra_sysedp_corecap td575d_sysedp_corecap[td575d_sysedp_corecap_sz];
+extern struct tegra_sysedp_corecap cd570m_sysedp_corecap[cd570m_sysedp_corecap_sz];
+#endif
 #endif	/* __MACH_EDP_H */
