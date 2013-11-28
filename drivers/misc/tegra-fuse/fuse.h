@@ -32,22 +32,6 @@
 #define FUSE_SKU_GPU_1_PIXEL_PIPE           0x200
 #define FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE   0x400
 
-#define TEGRA_AGE_0_6 0x2cc /*Spare bit 34*/
-#define TEGRA_AGE_1_6 0x308 /*Spare bit 49*/
-#define TEGRA_AGE_0_5 0x2c8 /*Spare bit 33*/
-#define TEGRA_AGE_1_5 0x304 /*Spare bit 48*/
-#define TEGRA_AGE_0_4 0x2c4 /*Spare bit 32*/
-#define TEGRA_AGE_1_4 0x300 /*Spare bit 47*/
-#define TEGRA_AGE_0_3 0x2c0 /*Spare bit 31*/
-#define TEGRA_AGE_1_3 0x2fc /*Spare bit 46*/
-#define TEGRA_AGE_0_2 0x2bc /*Spare bit 30*/
-#define TEGRA_AGE_1_2 0x2f8 /*Spare bit 45*/
-#define TEGRA_AGE_0_1 0x2b8 /*Spare bit 29*/
-#define TEGRA_AGE_1_1 0x2f4 /*Spare bit 44*/
-#define TEGRA_AGE_0_0 0x2b4 /*Spare bit 28*/
-#define TEGRA_AGE_1_0 0x2f0 /*Spare bit 43*/
-
-
 #define NFUSES	92
 #define STATE_IDLE	(0x4 << 16)
 #define SENSE_DONE	(0x1 << 30)

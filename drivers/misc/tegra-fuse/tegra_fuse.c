@@ -96,16 +96,6 @@ struct param_info {
 
 DEFINE_MUTEX(fuse_lock);
 
-/* The BCT to use at boot is specified by board straps that can be read
- * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
- */
-
-#define STRAP_OPT 0x008
-#define GMI_AD0 BIT(4)
-#define GMI_AD1 BIT(5)
-#define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
-#define RAM_CODE_SHIFT 4
-
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static enum tegra_platform tegra_platform;
 static bool cpu_is_asim;
@@ -244,35 +234,6 @@ static struct param_info fuse_info_tbl[] = {
 bool tegra_spare_fuse(int bit)
 {
 	return tegra_fuse_readl(FUSE_SPARE_BIT + bit * 4);
-}
-
-#define TEGRA_READ_AGE_BIT(n, bit, age) {\
-	bit = tegra_fuse_readl(TEGRA_AGE_0_##n);\
-	bit |= tegra_fuse_readl(TEGRA_AGE_1_##n);\
-	bit = bit << n;\
-	age |= bit;\
-}
-
-int tegra_get_age(void)
-{
-	int linear_age, age_bit;
-	linear_age = age_bit = 0;
-
-	TEGRA_READ_AGE_BIT(6, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(5, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(4, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(3, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(2, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(1, age_bit, linear_age);
-	TEGRA_READ_AGE_BIT(0, age_bit, linear_age);
-
-	/*Default Aug, 2012*/
-	if (linear_age <= 0)
-		linear_age = 8;
-
-	pr_info("TEGRA: Linear age: %d\n", linear_age);
-
-	return linear_age;
 }
 
 int tegra_gpu_register_sets(void)
@@ -893,20 +854,6 @@ static int fuse_get_pgm_cycles(int index)
 	int osc_khz;
 
 	switch (index) {
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	case 0:
-		osc_khz = 13000;
-		break;
-	case 1:
-		osc_khz = 19200;
-		break;
-	case 2:
-		osc_khz = 12000;
-		break;
-	case 3:
-		osc_khz = 26000;
-		break;
-#else
 	case 0:
 		osc_khz = 13000;
 		break;
@@ -928,7 +875,6 @@ static int fuse_get_pgm_cycles(int index)
 	case 9:
 		osc_khz = 48000;
 		break;
-#endif
 	default:
 		osc_khz = 0;
 		break;
