@@ -379,7 +379,6 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	mlan_ds_get_info *info;
 	mlan_debug_info *debug_info = MNULL;
-	t_u32 i;
 	t_u8 *ptid;
 
 	ENTER();
@@ -606,14 +605,6 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 #endif
 		debug_info->mlan_processing = pmadapter->mlan_processing;
 		debug_info->mlan_rx_processing = pmadapter->mlan_rx_processing;
-
-		debug_info->mlan_adapter = pmadapter;
-		debug_info->mlan_adapter_size = sizeof(mlan_adapter);
-		debug_info->mlan_priv_num = pmadapter->priv_num;
-		for (i = 0; i < pmadapter->priv_num; i++) {
-			debug_info->mlan_priv[i] = pmadapter->priv[i];
-			debug_info->mlan_priv_size[i] = sizeof(mlan_private);
-		}
 	}
 
 	pioctl_req->data_read_written =

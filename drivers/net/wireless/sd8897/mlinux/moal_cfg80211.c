@@ -922,15 +922,6 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		PRINTM(MINFO, "Already set to required type\n");
 		goto done;
 	}
-#ifdef UAP_SUPPORT
-	if ((priv->bss_type == MLAN_BSS_TYPE_UAP) && (priv->bss_index > 0)) {
-		priv->wdev->iftype = type;
-		PRINTM(MMSG, "%s: Skip change virtual intf on uap: type=%d\n",
-		       dev->name, type);
-		goto done;
-	}
-#endif
-
 	PRINTM(MIOCTL, "%s: change virturl intf=%d\n", dev->name, type);
 #if defined(WIFI_DIRECT_SUPPORT)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION

@@ -153,6 +153,7 @@ wlan_dump_info(mlan_adapter * pmadapter, t_u8 reason)
 	case REASON_CODE_NO_CMD_NODE:
 		pmadapter->dbg.num_no_cmd_node++;
 		PRINTM(MERROR, "No Free command node\n");
+		wlan_dump_pending_commands(pmadapter);
 		break;
 	case REASON_CODE_CMD_TIMEOUT:
 		PRINTM(MERROR, "Commmand Timeout\n");
@@ -160,7 +161,6 @@ wlan_dump_info(mlan_adapter * pmadapter, t_u8 reason)
 	default:
 		break;
 	}
-	wlan_dump_pending_commands(pmadapter);
 	if (reason != REASON_CODE_CMD_TIMEOUT) {
 		if (!pmadapter->curr_cmd) {
 			PRINTM(MERROR, "CurCmd Empty\n");

@@ -1007,23 +1007,22 @@ mlan_send_packet(IN t_void * pmlan_adapter, IN pmlan_buffer pmbuf)
 {
 	mlan_status ret = MLAN_STATUS_PENDING;
 	mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
-	mlan_private *pmpriv;
-	t_u16 eth_type = 0;
 
 	ENTER();
 	MASSERT(pmlan_adapter && pmbuf);
 
 	MASSERT(pmbuf->bss_index < pmadapter->priv_num);
 	pmbuf->flags |= MLAN_BUF_FLAG_MOAL_TX_BUF;
-	pmpriv = pmadapter->priv[pmbuf->bss_index];
 
-	eth_type =
-		mlan_ntohs(*(t_u16 *) & pmbuf->
-			   pbuf[pmbuf->data_offset +
-				MLAN_ETHER_PKT_TYPE_OFFSET]);
 	if (((pmadapter->priv[pmbuf->bss_index]->port_ctrl_mode == MTRUE) &&
-	     ((eth_type == MLAN_ETHER_PKT_TYPE_EAPOL)
-	      || (eth_type == MLAN_ETHER_PKT_TYPE_WAPI)
+	     ((mlan_ntohs(*(t_u16 *) & pmbuf->pbuf[pmbuf->data_offset +
+						   MLAN_ETHER_PKT_TYPE_OFFSET])
+	       == MLAN_ETHER_PKT_TYPE_EAPOL)
+	      ||
+	      (mlan_ntohs
+	       (*(t_u16 *) & pmbuf->
+		pbuf[pmbuf->data_offset + MLAN_ETHER_PKT_TYPE_OFFSET]) ==
+	       MLAN_ETHER_PKT_TYPE_WAPI)
 	     ))
 	    || (pmbuf->buf_type == MLAN_BUF_TYPE_RAW_DATA)
 

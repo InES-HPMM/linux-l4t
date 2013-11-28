@@ -488,8 +488,7 @@ wlan_ops_sta_process_event(IN t_void * priv)
 		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_MEAS_REPORT, MNULL);
 		break;
 	case EVENT_EXT_SCAN_REPORT:
-		PRINTM(MEVENT, "EVENT: EXT_SCAN Report (%d)\n",
-		       pmbuf->data_len);
+		PRINTM(MEVENT, "EVENT: EXT_SCAN Report (%#x)\n", eventcause);
 		if (pmadapter->pscan_ioctl_req && pmadapter->ext_scan)
 			ret = wlan_handle_event_ext_scan_report(priv, pmbuf);
 		break;
@@ -677,7 +676,7 @@ wlan_ops_sta_process_event(IN t_void * priv)
 	case EVENT_REMAIN_ON_CHANNEL_EXPIRED:
 		PRINTM(MEVENT, "EVENT: REMAIN_ON_CHANNEL_EXPIRED reason=%d\n",
 		       *(t_u16 *) pmadapter->event_body);
-		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_FLUSH_RX_WORK, MNULL);
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
 		wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_REMAIN_ON_CHAN_EXPIRED,
 				MNULL);
 		break;

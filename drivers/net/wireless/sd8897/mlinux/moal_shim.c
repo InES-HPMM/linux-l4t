@@ -895,8 +895,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
 	ENTER();
 
-	if (pmevent->event_id != MLAN_EVENT_ID_DRV_DEFER_RX_WORK)
-		PRINTM(MEVENT, "event id:0x%x\n", pmevent->event_id);
+	PRINTM(MEVENT, "event id:0x%x\n", pmevent->event_id);
 	priv = woal_bss_index_to_priv(pmoal_handle, pmevent->bss_index);
 	if (priv == NULL) {
 		PRINTM(MERROR, "%s: priv is null\n", __FUNCTION__);

@@ -1642,8 +1642,6 @@ int woal_enable_hs(moal_private * priv);
 #define HS_ACTIVE_TIMEOUT  (2 * HZ)
 #endif
 
-void woal_dump_drv_info(moal_handle * phandle);
-
 void woal_dump_firmware_info(moal_handle * phandle);
 /* Store the FW dumps received from events in a file */
 void woal_store_firmware_dump(moal_private * priv, mlan_event * pmevent);

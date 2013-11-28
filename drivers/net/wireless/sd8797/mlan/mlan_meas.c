@@ -348,7 +348,7 @@ wlan_meas_util_send_req(mlan_private * pmpriv,
 			t_u32 wait_for_resp_timeout, pmlan_ioctl_req pioctl_req,
 			HostCmd_DS_MEASUREMENT_REPORT * pmeas_rpt)
 {
-	static t_u8 auto_dialog_tok;
+	static t_u8 auto_dialog_tok = 0;
 	wlan_meas_state_t *pmeas_state = &pmpriv->adapter->state_meas;
 	int ret;
 

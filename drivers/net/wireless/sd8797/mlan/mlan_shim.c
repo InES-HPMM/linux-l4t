@@ -228,7 +228,6 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 	MASSERT(pcb->moal_free_lock);
 	MASSERT(pcb->moal_spin_lock);
 	MASSERT(pcb->moal_spin_unlock);
-	MASSERT(pcb->moal_tcp_ack_tx_ind);
 
 	/* Save pmoal_handle */
 	pmadapter->pmoal_handle = pmdevice->pmoal_handle;
@@ -255,7 +254,6 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 #ifdef MFG_CMD_SUPPORT
 	pmadapter->init_para.mfg_mode = pmdevice->mfg_mode;
 #endif
-
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 	pmadapter->init_para.mpa_tx_cfg = pmdevice->mpa_tx_cfg;
 #endif
@@ -277,7 +275,6 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 		pmadapter->init_para.dfs_master_radar_det_en =
 			DFS_MASTER_RADAR_DETECT_EN;
 	pmadapter->init_para.dfs_slave_radar_det_en = DFS_SLAVE_RADAR_DETECT_EN;
-	pmadapter->rx_work_flag = pmdevice->rx_work;
 
 	pmadapter->priv_num = 0;
 	for (i = 0; i < MLAN_MAX_BSS_NUM; i++) {
@@ -788,12 +785,8 @@ process_start:
 			if (pmadapter->hs_activated == MTRUE)
 				wlan_process_hs_config(pmadapter);
 			wlan_process_int_status(pmadapter);
-			if (pmadapter->data_received && pmadapter->rx_work_flag)
-				wlan_recv_event(wlan_get_priv
-						(pmadapter, MLAN_BSS_ROLE_ANY),
-						MLAN_EVENT_ID_DRV_DEFER_RX_WORK,
-						MNULL);
 		}
+
 		/* Need to wake up the card ? */
 		if ((pmadapter->ps_state == PS_STATE_SLEEP) &&
 		    (pmadapter->pm_wakeup_card_req &&
@@ -804,8 +797,8 @@ process_start:
 		     || !wlan_bypass_tx_list_empty(pmadapter)
 		     || !wlan_wmm_lists_empty(pmadapter)
 		    )) {
-			wlan_pm_wakeup_card(pmadapter);
 			pmadapter->pm_wakeup_fw_try = MTRUE;
+			wlan_pm_wakeup_card(pmadapter);
 			continue;
 		}
 		if (IS_CARD_RX_RCVD(pmadapter)) {
@@ -969,23 +962,22 @@ mlan_send_packet(IN t_void * pmlan_adapter, IN pmlan_buffer pmbuf)
 {
 	mlan_status ret = MLAN_STATUS_PENDING;
 	mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
-	mlan_private *pmpriv;
-	t_u16 eth_type = 0;
 
 	ENTER();
 	MASSERT(pmlan_adapter && pmbuf);
 
 	MASSERT(pmbuf->bss_index < pmadapter->priv_num);
-	pmbuf->flags |= MLAN_BUF_FLAG_MOAL_TX_BUF;
-	pmpriv = pmadapter->priv[pmbuf->bss_index];
+	pmbuf->flags = MLAN_BUF_FLAG_MOAL_TX_BUF;
 
-	eth_type =
-		mlan_ntohs(*(t_u16 *) & pmbuf->
-			   pbuf[pmbuf->data_offset +
-				MLAN_ETHER_PKT_TYPE_OFFSET]);
 	if (((pmadapter->priv[pmbuf->bss_index]->port_ctrl_mode == MTRUE) &&
-	     ((eth_type == MLAN_ETHER_PKT_TYPE_EAPOL)
-	      || (eth_type == MLAN_ETHER_PKT_TYPE_WAPI)
+	     ((mlan_ntohs(*(t_u16 *) & pmbuf->pbuf[pmbuf->data_offset +
+						   MLAN_ETHER_PKT_TYPE_OFFSET])
+	       == MLAN_ETHER_PKT_TYPE_EAPOL)
+	      ||
+	      (mlan_ntohs
+	       (*(t_u16 *) & pmbuf->
+		pbuf[pmbuf->data_offset + MLAN_ETHER_PKT_TYPE_OFFSET]) ==
+	       MLAN_ETHER_PKT_TYPE_WAPI)
 	     ))
 	    || (pmbuf->buf_type == MLAN_BUF_TYPE_RAW_DATA)
 

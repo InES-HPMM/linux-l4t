@@ -2872,52 +2872,39 @@ woal_cfg80211_remain_on_channel(struct wiphy *wiphy,
 		goto done;
 	}
 
-	if (status) {
-		PRINTM(MMSG,
-		       "%s: Set remain on Channel: channel=%d with status=%d\n",
-		       dev->name,
-		       ieee80211_frequency_to_channel(chan->center_freq),
-		       status);
-		if (!priv->phandle->remain_on_channel) {
-			priv->phandle->is_remain_timer_set = MTRUE;
-			woal_mod_timer(&priv->phandle->remain_timer, duration);
-		}
-	}
-
-	/* remain on channel operation success */
-	/* we need update the value cookie */
+	if (status == 0) {
+		/* remain on channel operation success */
+		/* we need update the value cookie */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
-	*cookie = (u64) random32() | 1;
+		*cookie = (u64) random32() | 1;
 #else
-	*cookie = (u64) prandom_u32() | 1;
+		*cookie = (u64) prandom_u32() | 1;
 #endif
-	priv->phandle->remain_on_channel = MTRUE;
-	priv->phandle->remain_bss_index = priv->bss_index;
-	priv->phandle->cookie = *cookie;
+		priv->phandle->remain_on_channel = MTRUE;
+		priv->phandle->remain_bss_index = priv->bss_index;
+		priv->phandle->cookie = *cookie;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
-	priv->phandle->channel_type = channel_type;
+		priv->phandle->channel_type = channel_type;
 #endif
-	memcpy(&priv->phandle->chan, chan, sizeof(struct ieee80211_channel));
-
-	if (status == 0)
+		memcpy(&priv->phandle->chan, chan,
+		       sizeof(struct ieee80211_channel));
+		cfg80211_ready_on_channel(
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+						 dev,
+#else
+						 priv->wdev,
+#endif
+						 *cookie, chan,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
+						 channel_type,
+#endif
+						 duration, GFP_KERNEL);
 		PRINTM(MIOCTL,
 		       "%s: Set remain on Channel: channel=%d cookie = %#llx\n",
 		       dev->name,
 		       ieee80211_frequency_to_channel(chan->center_freq),
 		       priv->phandle->cookie);
-
-	cfg80211_ready_on_channel(
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
-					 dev,
-#else
-					 priv->wdev,
-#endif
-					 *cookie, chan,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
-					 channel_type,
-#endif
-					 duration, GFP_KERNEL);
-
+	}
 done:
 	LEAVE();
 	return ret;

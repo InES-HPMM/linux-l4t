@@ -228,9 +228,6 @@ enum _mlan_ioctl_req_id {
 #if defined(STA_SUPPORT)
 	MLAN_OID_MISC_PMFCFG = 0x00200022,
 #endif
-#ifdef WIFI_DIRECT_SUPPORT
-	MLAN_OID_MISC_WIFI_DIRECT_CONFIG = 0x00200025,
-#endif
 };
 
 /** Sub command size */
@@ -1314,11 +1311,6 @@ typedef struct {
 /** Debug command number */
 #define DBG_CMD_NUM	10
 
-#ifdef SDIO_MULTI_PORT_TX_AGGR
-/** sdio mp debug number */
-#define SDIO_MP_DBG_NUM                  6
-#endif
-
 /** mlan_debug_info data structure for MLAN_OID_GET_DEBUG_INFO */
 typedef struct _mlan_debug_info {
 	/* WMM AC_BK count */
@@ -1389,32 +1381,6 @@ typedef struct _mlan_debug_info {
 	t_u32 num_int_read_failure;
     /** Last interrupt status */
 	t_u32 last_int_status;
-#ifdef SDIO_MULTI_PORT_TX_AGGR
-    /** Number of packets tx aggr */
-	t_u32 mpa_tx_count[SDIO_MP_AGGR_DEF_PKT_LIMIT];
-    /** no more packets count*/
-	t_u32 mpa_sent_last_pkt;
-    /** no write_ports count */
-	t_u32 mpa_sent_no_ports;
-	/** last recv wr_bitmap */
-	t_u32 last_recv_wr_bitmap;
-    /** last mp_wr_bitmap */
-	t_u32 last_mp_wr_bitmap[SDIO_MP_DBG_NUM];
-    /** last ports for cmd53 write data */
-	t_u32 last_mp_wr_ports[SDIO_MP_DBG_NUM];
-	/** last len for cmd53 write data */
-	t_u32 last_mp_wr_len[SDIO_MP_DBG_NUM];
-    /** last curr_wr_port */
-	t_u8 last_curr_wr_port[SDIO_MP_DBG_NUM];
-    /** length info for cmd53 write data */
-	t_u16 last_mp_wr_info[SDIO_MP_DBG_NUM * SDIO_MP_AGGR_DEF_PKT_LIMIT];
-    /** last mp_index */
-	t_u8 last_mp_index;
-#endif
-#ifdef SDIO_MULTI_PORT_RX_AGGR
-    /** Number of packets rx aggr */
-	t_u32 mpa_rx_count[SDIO_MP_AGGR_DEF_PKT_LIMIT];
-#endif
     /** Number of deauthentication events */
 	t_u32 num_event_deauth;
     /** Number of disassosiation events */
@@ -1451,10 +1417,6 @@ typedef struct _mlan_debug_info {
 	t_u16 last_event_index;
     /** Number of no free command node */
 	t_u16 num_no_cmd_node;
-    /** pending command id */
-	t_u16 pending_cmd;
-    /** time stamp for dnld last cmd */
-	t_u32 dnld_cmd_in_secs;
     /** Corresponds to data_sent member of mlan_adapter */
 	t_u8 data_sent;
     /** Corresponds to cmd_sent member of mlan_adapter */
@@ -1483,16 +1445,6 @@ typedef struct _mlan_debug_info {
 	t_u32 mlan_processing;
     /** mlan_rx_processing */
 	t_u32 mlan_rx_processing;
-    /** mlan_adapter pointer */
-	t_void *mlan_adapter;
-    /** mlan_adapter_size */
-	t_u32 mlan_adapter_size;
-    /** mlan_priv vector */
-	t_void *mlan_priv[MLAN_MAX_BSS_NUM];
-    /** mlan_priv_size */
-	t_u32 mlan_priv_size[MLAN_MAX_BSS_NUM];
-    /** mlan_priv_num */
-	t_u8 mlan_priv_num;
 } mlan_debug_info, *pmlan_debug_info;
 
 #ifdef UAP_SUPPORT
@@ -1536,7 +1488,7 @@ typedef struct _mlan_ds_get_info {
 	/** BSS information for MLAN_OID_GET_BSS_INFO */
 		mlan_bss_info bss_info;
 	/** Debug information for MLAN_OID_GET_DEBUG_INFO */
-		t_u8 debug_info[1];
+		mlan_debug_info debug_info;
 #ifdef UAP_SUPPORT
 	/** UAP Statistics information for MLAN_OID_GET_STATS */
 		mlan_ds_uap_stats ustats;
@@ -2239,7 +2191,7 @@ typedef struct _mlan_ds_wmm_addts {
     /** Dialog token */
 	t_u8 dialog_tok;
     /** TSPEC data length */
-	t_u32 ie_data_len;
+	t_u8 ie_data_len;
     /** TSPEC to send in the ADDTS + buffering for any extra IEs */
 	t_u8 ie_data[MLAN_WMM_TSPEC_SIZE + MLAN_WMM_ADDTS_EXTRA_IE_BYTES];
 } mlan_ds_wmm_addts, *pmlan_ds_wmm_addts;
@@ -2535,9 +2487,6 @@ typedef struct _mlan_ds_11n_cfg {
 
 /** Country code length */
 #define COUNTRY_CODE_LEN                        3
-
-/** Maximum size of IEEE Information Elements */
-#define IEEE_MAX_IE_SIZE      256
 
 /*-----------------------------------------------------------------*/
 /** 802.11d Configuration Group */
@@ -2948,32 +2897,6 @@ typedef struct _mlan_ds_misc_otp_user_data {
 	t_u8 user_data[MAX_OTP_USER_DATA_LEN];
 } mlan_ds_misc_otp_user_data;
 
-#ifdef WIFI_DIRECT_SUPPORT
-/** flag for NOA */
-#define WIFI_DIRECT_NOA         1
-/** flag for OPP_PS */
-#define WIFI_DIRECT_OPP_PS      2
-/** Type definition of mlan_ds_wifi_direct_config for MLAN_OID_MISC_WIFI_DIRECT_CONFIG */
-typedef struct _mlan_ds_wifi_direct_config {
-    /** flags for NOA/OPP_PS */
-	t_u8 flags;
-     /** NoA enable/disable */
-	t_u8 noa_enable;
-    /** index */
-	t_u16 index;
-    /** NoA count */
-	t_u8 noa_count;
-    /** NoA duration */
-	t_u32 noa_duration;
-    /** NoA interval */
-	t_u32 noa_interval;
-    /** opp ps enable/disable */
-	t_u8 opp_ps_enable;
-    /** CT window value */
-	t_u8 ct_window;
-} mlan_ds_wifi_direct_config;
-#endif
-
 #if defined(STA_SUPPORT)
 typedef struct _mlan_ds_misc_pmfcfg {
     /** Management Frame Protection Capable */
@@ -3039,9 +2962,6 @@ typedef struct _mlan_ds_misc_cfg {
 		t_u32 tx_control;
 #if defined(STA_SUPPORT)
 		mlan_ds_misc_pmfcfg pmfcfg;
-#endif
-#ifdef WIFI_DIRECT_SUPPORT
-		mlan_ds_wifi_direct_config p2p_config;
 #endif
 	} param;
 } mlan_ds_misc_cfg, *pmlan_ds_misc_cfg;

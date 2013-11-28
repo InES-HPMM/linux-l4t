@@ -26,39 +26,11 @@
 #include "bt_drv.h"
 #include "mbt_char.h"
 
-static LIST_HEAD(char_dev_list);
+LIST_HEAD(char_dev_list);
 
 static DEFINE_SPINLOCK(char_dev_list_lock);
 
 static int mbtchar_major = MBTCHAR_MAJOR_NUM;
-
-struct kobject *
-chardev_get(struct char_dev *dev)
-{
-	struct kobject *kobj;
-
-	kobj = bt_priv_get(dev->m_dev->driver_data);
-	if (!kobj)
-		return NULL;
-	PRINTM(INFO, "dev get kobj\n");
-	kobj = kobject_get(&dev->kobj);
-	if (!kobj)
-		bt_priv_put(dev->m_dev->driver_data);
-	return kobj;
-}
-
-void
-chardev_put(struct char_dev *dev)
-{
-	if (dev) {
-		struct m_dev *m_dev = dev->m_dev;
-		PRINTM(INFO, "dev put kobj\n");
-		kobject_put(&dev->kobj);
-		if (m_dev) {
-			bt_priv_put(m_dev->driver_data);
-		}
-	}
-}
 
 /**
  *	@brief Changes permissions of the dev
@@ -372,9 +344,6 @@ chardev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case MBTCHAR_IOCTL_QUERY_TYPE:
 		m_dev->query(m_dev, arg);
 		break;
-	case MBTCHAR_IOCTL_POWER_OFF:
-		m_dev->poweroff(m_dev);
-		break;
 	default:
 		break;
 	}
@@ -398,9 +367,9 @@ chardev_open(struct inode *inode, struct file *filp)
 	ENTER();
 
 	dev = container_of(inode->i_cdev, struct char_dev, cdev);
-	if (!chardev_get(dev)) {
-		LEAVE();
-		return -ENXIO;
+	if (!dev->m_dev) {
+		ret = -ENXIO;
+		goto done;
 	}
 	filp->private_data = dev;	/* for other methods */
 	m_dev = dev->m_dev;
@@ -417,8 +386,6 @@ chardev_open(struct inode *inode, struct file *filp)
 
 done:
 	mdev_req_unlock(m_dev);
-	if (ret)
-		chardev_put(dev);
 	LEAVE();
 	return ret;
 }
@@ -435,17 +402,13 @@ chardev_release(struct inode *inode, struct file *filp)
 {
 	int ret = 0;
 	struct char_dev *dev = (struct char_dev *)filp->private_data;
-	struct m_dev *m_dev = NULL;
 	ENTER();
-	if (!dev) {
+	if (!dev || !dev->m_dev) {
 		LEAVE();
 		return -ENXIO;
 	}
-	m_dev = dev->m_dev;
-	if (m_dev)
-		ret = dev->m_dev->close(dev->m_dev);
+	ret = dev->m_dev->close(dev->m_dev);
 	filp->private_data = NULL;
-	chardev_put(dev);
 	LEAVE();
 	return ret;
 }
@@ -483,7 +446,6 @@ chardev_poll(struct file *filp, poll_table * wait)
 
 /* File ops for the Char driver */
 const struct file_operations chardev_fops = {
-	.owner = THIS_MODULE,
 	.read = chardev_read,
 	.write = chardev_write,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
@@ -531,7 +493,8 @@ register_char_dev(struct char_dev *dev, struct class *char_class,
 		mbtchar_major = MAJOR(dev_num);
 	}
 	cdev_init(&dev->cdev, &chardev_fops);
-	dev->cdev.owner = chardev_fops.owner;
+	dev->cdev.owner = THIS_MODULE;
+	dev->cdev.ops = &chardev_fops;
 	dev_num = MKDEV(mbtchar_major, dev->minor);
 
 	if (cdev_add(&dev->cdev, dev_num, 1)) {
@@ -633,7 +596,7 @@ chardev_cleanup(struct class *char_class)
 			list_del(p);
 			spin_unlock_irqrestore(&char_dev_list_lock, flags);
 			unregister_char_dev(dev, char_class, dev->m_dev->name);
-			kobject_put(&dev->kobj);
+			kfree(dev);
 			spin_lock_irqsave(&char_dev_list_lock, flags);
 			break;
 		}
@@ -665,7 +628,7 @@ chardev_cleanup_one(struct m_dev *m_dev, struct class *char_class)
 			spin_unlock_irqrestore(&char_dev_list_lock, flags);
 			dev->m_dev = NULL;
 			unregister_char_dev(dev, char_class, m_dev->name);
-			kobject_put(&dev->kobj);
+			kfree(dev);
 			spin_lock_irqsave(&char_dev_list_lock, flags);
 			break;
 		}

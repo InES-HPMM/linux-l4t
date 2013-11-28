@@ -131,14 +131,7 @@ static void
 mlan_11n_rxreorder_timer_restart(pmlan_adapter pmadapter,
 				 RxReorderTbl * rx_reor_tbl_ptr)
 {
-	t_u16 min_flush_time = 0;
 	ENTER();
-
-	if (rx_reor_tbl_ptr->win_size >= 32)
-		min_flush_time = MIN_FLUSH_TIMER_15_MS;
-	else
-		min_flush_time = MIN_FLUSH_TIMER_MS;
-
 	if (rx_reor_tbl_ptr->timer_context.timer_is_set)
 		pmadapter->callbacks.moal_stop_timer(pmadapter->pmoal_handle,
 						     rx_reor_tbl_ptr->
@@ -148,7 +141,7 @@ mlan_11n_rxreorder_timer_restart(pmlan_adapter pmadapter,
 					      rx_reor_tbl_ptr->timer_context.
 					      timer, MFALSE,
 					      (rx_reor_tbl_ptr->win_size *
-					       min_flush_time));
+					       MIN_FLUSH_TIMER_MS));
 
 	rx_reor_tbl_ptr->timer_context.timer_is_set = MTRUE;
 	LEAVE();
@@ -334,7 +327,7 @@ wlan_11n_delete_rxreorder_tbl_entry(mlan_private * priv,
 						      pmadapter->prx_proc_lock);
 		PRINTM(MEVENT, "wlan: wait rx work done...\n");
 		wlan_recv_event(wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY),
-				MLAN_EVENT_ID_DRV_FLUSH_RX_WORK, MNULL);
+				MLAN_EVENT_ID_FLUSH_RX_WORK, MNULL);
 	} else {
 		pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
 						      pmadapter->prx_proc_lock);
@@ -669,6 +662,7 @@ wlan_cmd_11n_addba_rspgen(mlan_private * priv,
 	tid = (padd_ba_rsp->block_ack_param_set & BLOCKACKPARAM_TID_MASK)
 		>> BLOCKACKPARAM_TID_POS;
 	if (priv->addba_reject[tid]
+	    || (priv->port_ctrl_mode == MTRUE && priv->port_open == MFALSE)
 #ifdef STA_SUPPORT
 	    || ((GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA)
 		&& priv->wps.session_enable)
@@ -986,8 +980,8 @@ mlan_11n_delete_bastream_tbl(mlan_private * priv, int tid,
 	else
 		cleanup_rx_reorder_tbl = (initiator) ? MFALSE : MTRUE;
 
-	PRINTM(MEVENT, "delete_bastream_tbl: " MACSTR " tid=%d, type=%d"
-	       "initiator=%d\n", MAC2STR(peer_mac), tid, initiator, type);
+	PRINTM(MEVENT, "DELBA: " MACSTR " tid=%d,"
+	       "initiator=%d\n", MAC2STR(peer_mac), tid, initiator);
 
 	if (cleanup_rx_reorder_tbl) {
 		rx_reor_tbl_ptr =

@@ -438,9 +438,6 @@ wlan_scan_create_channel_list(IN mlan_private * pmpriv,
 						scan_type =
 							MLAN_SCAN_TYPE_PASSIVE;
 					}
-				pscan_chan_list[chan_idx].radio_type =
-					HostCmd_SCAN_RADIO_TYPE_BG;
-				break;
 			default:
 				pscan_chan_list[chan_idx].radio_type =
 					HostCmd_SCAN_RADIO_TYPE_BG;
@@ -929,7 +926,6 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 	MrvlIEtypes_NumProbes_t *pnum_probes_tlv;
 	MrvlIEtypes_WildCardSsIdParamSet_t *pwildcard_ssid_tlv;
 	MrvlIEtypes_RatesParamSet_t *prates_tlv;
-	MrvlIEtypes_Bssid_List_t *pbssid_tlv;
 
 	const t_u8 zero_mac[MLAN_MAC_ADDR_LENGTH] = { 0, 0, 0, 0, 0, 0 };
 	t_u8 *ptlv_pos;
@@ -990,18 +986,6 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 		memcpy(pmadapter, pscan_cfg_out->specific_bssid,
 		       puser_scan_in->specific_bssid,
 		       sizeof(pscan_cfg_out->specific_bssid));
-
-		if (pmadapter->ext_scan
-		    && memcmp(pmadapter, pscan_cfg_out->specific_bssid,
-			      &zero_mac, sizeof(zero_mac))) {
-			pbssid_tlv = (MrvlIEtypes_Bssid_List_t *) ptlv_pos;
-			pbssid_tlv->header.type = TLV_TYPE_BSSID;
-			pbssid_tlv->header.len = MLAN_MAC_ADDR_LENGTH;
-			memcpy(pmadapter, pbssid_tlv->bssid,
-			       puser_scan_in->specific_bssid,
-			       MLAN_MAC_ADDR_LENGTH);
-			ptlv_pos += sizeof(MrvlIEtypes_Bssid_List_t);
-		}
 
 		for (ssid_idx = 0;
 		     ((ssid_idx < NELEMENTS(puser_scan_in->ssid_list))
@@ -1790,8 +1774,6 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
 				(t_u8 *) pbss_entry->poverlap_bss_scan_param,
 				(*(pbss_entry->poverlap_bss_scan_param)).
 				ieee_hdr.len + sizeof(IEEEtypes_Header_t));
-			break;
-		default:
 			break;
 		}
 
@@ -3301,10 +3283,6 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 					 + sizeof(pscan_rsp->bss_descript_size)
 					 + sizeof(pscan_rsp->number_of_sets)
 					 + S_DS_GEN);
-	if (is_bgscan_resp)
-		tlv_buf_size -=
-			sizeof(resp->params.bg_scan_query_resp.
-			       report_condition);
 
 	ptlv = (MrvlIEtypes_Data_t *) (pscan_rsp->bss_desc_and_tlv_buffer +
 				       bytes_left);
@@ -4185,9 +4163,6 @@ wlan_bgscan_create_channel_list(IN mlan_private * pmpriv,
 					    (pmpriv, (t_u8) cfp->channel))
 						scan_type =
 							MLAN_SCAN_TYPE_PASSIVE;
-				tlv_chan_list->chan_scan_param[chan_idx].
-					radio_type = HostCmd_SCAN_RADIO_TYPE_BG;
-				break;
 			default:
 				tlv_chan_list->chan_scan_param[chan_idx].
 					radio_type = HostCmd_SCAN_RADIO_TYPE_BG;

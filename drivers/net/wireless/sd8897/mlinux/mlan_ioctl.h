@@ -1493,16 +1493,6 @@ typedef struct _mlan_debug_info {
 	t_u32 mlan_processing;
     /** mlan_rx_processing */
 	t_u32 mlan_rx_processing;
-    /** mlan_adapter pointer */
-	t_void *mlan_adapter;
-    /** mlan_adapter_size */
-	t_u32 mlan_adapter_size;
-    /** mlan_priv vector */
-	t_void *mlan_priv[MLAN_MAX_BSS_NUM];
-    /** mlan_priv_size */
-	t_u32 mlan_priv_size[MLAN_MAX_BSS_NUM];
-    /** mlan_priv_num */
-	t_u8 mlan_priv_num;
 } mlan_debug_info, *pmlan_debug_info;
 
 #ifdef UAP_SUPPORT
@@ -2653,9 +2643,6 @@ typedef struct _mlan_ds_11ac_cfg {
 
 /** Country code length */
 #define COUNTRY_CODE_LEN                        3
-
-/** Maximum size of IEEE Information Elements */
-#define IEEE_MAX_IE_SIZE      256
 
 /*-----------------------------------------------------------------*/
 /** 802.11d Configuration Group */

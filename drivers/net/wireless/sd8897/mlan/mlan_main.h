@@ -1586,7 +1586,7 @@ typedef struct _mlan_adapter {
 	/* see blk_queue_max_segment_size */
 	t_u32 max_seg_size;
 	/* see blk_queue_max_segments */
-	t_u16 max_segs;
+	t_u8 max_segs;
 #endif
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR

@@ -414,9 +414,6 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
-				wlan_recv_event(priv,
-						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
-						MNULL);
 			}
 		}
 	} else {
@@ -450,9 +447,6 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
-				wlan_recv_event(priv,
-						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
-						MNULL);
 			}
 			goto done;
 		} else if (MLAN_STATUS_FAILURE ==
@@ -547,9 +541,6 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
-				wlan_recv_event(priv,
-						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
-						MNULL);
 			}
 		}
 	} else {
@@ -564,8 +555,6 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 			wlan_wmm_add_buf_txqueue(pmadapter, pmbuf);
 			if (pmadapter->pending_bridge_pkts > RX_HIGH_THRESHOLD)
 				wlan_drop_tx_pkts(priv);
-			wlan_recv_event(priv, MLAN_EVENT_ID_DRV_DEFER_HANDLING,
-					MNULL);
 			goto done;
 		} else if (MLAN_STATUS_FAILURE ==
 			   wlan_check_unicast_packet(priv,

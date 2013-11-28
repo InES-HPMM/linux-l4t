@@ -40,7 +40,7 @@ Change log:
 /** Proc top level directory entry */
 struct proc_dir_entry *proc_mwlan;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-#define PROC_DIR	(&proc_root)
+#define PROC_DIR	&proc_root
 #else
 #define PROC_DIR	proc_net
 #endif
@@ -349,12 +349,11 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 		  loff_t * off)
 {
 	char databuf[101];
-	char *line = NULL;
+	char *line;
 	t_u32 config_data = 0;
 	struct seq_file *sfp = f->private_data;
 	moal_handle *handle = (moal_handle *) sfp->private;
-
-	int func = 0, reg = 0, val = 0;
+	int func, reg, val;
 	int copy_len;
 	moal_private *priv = NULL;
 
@@ -397,10 +396,8 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 				PRINTM(MERROR, "Could not switch drv mode\n");
 			}
 	}
-	if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw=")) &&
-	    count > strlen("sdcmd52rw=")) {
-		parse_cmd52_string((const char __user *)databuf, (size_t) count,
-				   &func, &reg, &val);
+	if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw="))) {
+		parse_cmd52_string(databuf, (size_t) count, &func, &reg, &val);
 		woal_sdio_read_write_cmd52(handle, func, reg, val);
 	}
 	if (!strncmp(databuf, "debug_dump", strlen("debug_dump"))) {
@@ -409,7 +406,6 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 			PRINTM(MERROR, "Recevie debug_dump command\n");
 			woal_mlan_debug_info(priv);
 			woal_moal_debug_info(priv, NULL, MFALSE);
-			woal_dump_firmware_info(handle);
 		}
 	}
 
