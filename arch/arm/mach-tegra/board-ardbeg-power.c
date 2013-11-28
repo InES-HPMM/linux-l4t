@@ -599,7 +599,8 @@ int __init ardbeg_tps65913_regulator_init(void)
 }
 
 static struct pca953x_platform_data tca6408_pdata = {
-	        .gpio_base = PMU_TCA6416_GPIO_BASE,
+	.gpio_base = PMU_TCA6416_GPIO_BASE,
+	.irq_base = -1,
 };
 
 static const struct i2c_board_info tca6408_expander[] = {

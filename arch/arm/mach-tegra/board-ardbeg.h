@@ -21,6 +21,7 @@
 #define _MACH_TEGRA_BOARD_ARDBEG_H
 
 #include <linux/mfd/as3722-plat.h>
+#include <linux/mfd/as3722.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
@@ -81,6 +82,11 @@ void shield_sysedp_batmon_init(void);
 /* External peripheral act as interrupt controller */
 /* AS3720 IRQs */
 #define AS3722_IRQ_BASE         (TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_NUM_IRQ)
+#define AS3722_IRQ_END		(AS3722_IRQ_BASE + AS3722_IRQ_MAX)
+
+/* TCA6416 IRQ */
+#define PMU_TCA6416_IRQ_BASE	AS3722_IRQ_END
+#define PMU_TCA6416_IRQ_END	(PMU_TCA6416_IRQ_BASE + 16)
 
 #define CAM_RSTN TEGRA_GPIO_PBB3
 #define CAM_FLASH_STROBE TEGRA_GPIO_PBB4
