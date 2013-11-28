@@ -420,7 +420,7 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 			unsigned int reg_mask, reg_val;
 
 			reg_mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
-			reg_val = (adc->ch3_current
+			reg_val = ((adc->ch3_current + 1)
 				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
 			ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
 						PALMAS_GPADC_CTRL1,
