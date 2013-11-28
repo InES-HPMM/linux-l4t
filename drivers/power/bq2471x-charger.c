@@ -312,7 +312,7 @@ static int bq2471x_probe(struct i2c_client *client,
 	}
 
 	if (pdata->charge_broadcast_mode) {
-		bq2471x->bc_dev = battery_charger_register(&bq2471x->dev,
+		bq2471x->bc_dev = battery_charger_register(bq2471x->dev,
 					&bq2471x_charger_bci, bq2471x);
 
 		ret = battery_charger_set_current_broadcast(bq2471x->bc_dev);
