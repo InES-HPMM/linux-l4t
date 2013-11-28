@@ -1491,12 +1491,17 @@ static void dapm_pre_sequence_async(void *data, async_cookie_t cookie)
 	struct snd_soc_dapm_context *d = data;
 	int ret;
 
+	if ((d->bias_level == SND_SOC_BIAS_OFF &&
+	     d->target_bias_level != SND_SOC_BIAS_OFF) ||
+	    (d->bias_level == SND_SOC_BIAS_STANDBY &&
+	     d->target_bias_level == SND_SOC_BIAS_OFF)) {
+		if (d->dev)
+			pm_runtime_get_sync(d->dev);
+	}
+
 	/* If we're off and we're not supposed to be go into STANDBY */
 	if (d->bias_level == SND_SOC_BIAS_OFF &&
 	    d->target_bias_level != SND_SOC_BIAS_OFF) {
-		if (d->dev)
-			pm_runtime_get_sync(d->dev);
-
 		ret = snd_soc_dapm_set_bias_level(d, SND_SOC_BIAS_STANDBY);
 		if (ret != 0)
 			dev_err(d->dev,
