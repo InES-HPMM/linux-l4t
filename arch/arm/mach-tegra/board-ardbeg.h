@@ -164,6 +164,7 @@ int laguna_edp_init(void);
 
 /* Norrin specific */
 int norrin_regulator_init(void);
+int norrin_kbc_init(void);
 
 /* AUO Display related GPIO */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */

@@ -1201,6 +1201,9 @@ static void __init tegra_ardbeg_late_init(void)
 		tegra_io_dpd_enable(&pexclk2_io);
 	}
 
+	if (board_info.board_id == BOARD_PM374)
+		norrin_kbc_init();
+
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
