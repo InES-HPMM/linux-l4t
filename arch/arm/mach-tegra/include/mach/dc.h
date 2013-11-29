@@ -866,6 +866,9 @@ int tegra_dc_get_panel_sync_rate(void);
 
 int tegra_dc_get_out(const struct tegra_dc *dc);
 
+struct device_node *tegra_panel_get_dt_node(
+				struct tegra_dc_platform_data *pdata);
+
 /* table of electrical settings, must be in acending order. */
 struct tmds_config {
 	int pclk;
@@ -888,20 +891,5 @@ void tegra_log_suspend_time(void);
 #define tegra_log_resume_time()
 #define tegra_log_suspend_time()
 #endif
-
-struct of_tegra_lcd_devdata {
-	int	(*enable)(struct device *);
-	int	(*postpoweron)(struct device *);
-	int	(*prepoweroff)(void);
-	int	(*disable)(void);
-
-	int	(*hotplug_init)(struct device *);
-	int	(*postsuspend)(void);
-	void    (*hotplug_report)(bool);
-};
-
-void lcd_devdata_to_dc_set_callback(struct device*(*func)
-	(struct device_node *));
-struct device *lcd_devdata_to_dc_callback_run(struct device_node *dn);
 
 #endif
