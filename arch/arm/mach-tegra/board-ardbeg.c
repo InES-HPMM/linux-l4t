@@ -1125,10 +1125,7 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-
-	if (!of_machine_is_compatible("nvidia,tn8"))
-		platform_device_register(&tegra124_pinctrl_device);
-
+	platform_device_register(&tegra124_pinctrl_device);
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM370 ||
