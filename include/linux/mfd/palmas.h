@@ -270,11 +270,13 @@ struct palmas {
  * @adc_channel_number: ADC channel number for monitoring.
  * @adc_high_threshold: ADC High raw data for upper threshold to generate int.
  * @adc_low_threshold: ADC low raw data for lower threshold to generate int.
+ * @adc_shutdown: Shutdown when interrupt generated.
  */
 struct palmas_adc_auto_conv_property {
 	int adc_channel_number;
 	int adc_high_threshold;
 	int adc_low_threshold;
+	bool adc_shutdown;
 };
 
 struct palmas_gpadc_platform_data {
