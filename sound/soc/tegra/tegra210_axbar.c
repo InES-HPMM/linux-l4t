@@ -79,27 +79,38 @@ int tegra210_axbar_set_rx_cif_source(enum tegra210_ahub_cifs rxcif,
 		 __func__, rxcif, txcif);
 
 	if (IS_ADMAIF_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_ADMAIF_RX1 + ADMAIF_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_ADMAIF_RX1 +
+		      (ADMAIF_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_I2S_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_I2S1_RX0 + I2S_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_I2S1_RX0 +
+		      (I2S_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SFC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SFC1_RX0 + SFC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SFC1_RX0 +
+		      (SFC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_MIXER_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_MIXER1_RX1 + MIXER_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_MIXER1_RX1 +
+		      (MIXER_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SPDIF_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SPDIF1_RX0 + SPDIF_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SPDIF1_RX0 +
+		      (SPDIF_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_AFC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_AFC1_RX0 + AFC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_AFC1_RX0 +
+		      (AFC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_OPE_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_OPE1_RX0 + OPE_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_OPE1_RX0 +
+		      (OPE_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SPKPROT_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SPKPROT1_RX0 + SPKPROT_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SPKPROT1_RX0 +
+		      (SPKPROT_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_MVC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_MVC1_RX0 + MVC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_MVC1_RX0 +
+		      (MVC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_AMX_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_AMX1_RX0 + AMX_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_AMX1_RX0 +
+		      (AMX_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_ADX_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_ADX1_RX0 + ADX_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_ADX1_RX0 +
+		      (ADX_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else {
 		dev_err(tegra210_axbar->dev, "Invalid RX CIF %x", rxcif);
 		return -EINVAL;
@@ -167,27 +178,38 @@ int tegra210_axbar_unset_rx_cif_source(enum tegra210_ahub_cifs rxcif)
 		 __func__, rxcif);
 
 	if (IS_ADMAIF_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_ADMAIF_RX1 + ADMAIF_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_ADMAIF_RX1 +
+		      (ADMAIF_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_I2S_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_I2S1_RX0 + I2S_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_I2S1_RX0 +
+		      (I2S_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SFC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SFC1_RX0 + SFC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SFC1_RX0 +
+		      (SFC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_MIXER_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_MIXER1_RX1 + MIXER_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_MIXER1_RX1 +
+		      (MIXER_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SPDIF_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SPDIF1_RX0 + SPDIF_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SPDIF1_RX0 +
+		      (SPDIF_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_AFC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_AFC1_RX0 + AFC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_AFC1_RX0 +
+		      (AFC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_OPE_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_OPE1_RX0 + OPE_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_OPE1_RX0 +
+		      (OPE_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_SPKPROT_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_SPKPROT1_RX0 + SPKPROT_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_SPKPROT1_RX0 +
+		      (SPKPROT_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_MVC_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_MVC1_RX0 + MVC_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_MVC1_RX0 +
+		      (MVC_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_AMX_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_AMX1_RX0 + AMX_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_AMX1_RX0 +
+		      (AMX_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else if (IS_ADX_RX(rxcif)) {
-		reg = TEGRA210_AXBAR_ADX1_RX0 + ADX_RX_SHIFT(rxcif);
+		reg = TEGRA210_AXBAR_ADX1_RX0 +
+		      (ADX_RX_SHIFT(rxcif) * TEGRA210_AXBAR_REG_STRIDE);
 	} else {
 		dev_err(tegra210_axbar->dev, "Invalid RX CIF %x", rxcif);
 		return -EINVAL;
