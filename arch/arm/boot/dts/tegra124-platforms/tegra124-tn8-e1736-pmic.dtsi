@@ -781,27 +781,4 @@
 			};
 		};
 	};
-
-	i2c@7000c000 {
-		bq2419x: bq2419x@6b {
-			compatible = "ti,bq2419x";
-			reg = <0x6b>;
-
-			vbus {
-				regulator-name = "vbus_regulator";
-				otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
-				consumers {
-					c1 {
-						regulator-consumer-supply = "usb_vbus";
-						regulator-consumer-device = "tegra-ehci.0";
-					};
-
-					c2 {
-						regulator-consumer-supply = "usb_vbus";
-						regulator-consumer-device = "tegra-otg";
-					};
-				};
-			};
-		};
-	};
 };
