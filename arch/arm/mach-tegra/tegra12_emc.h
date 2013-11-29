@@ -36,6 +36,9 @@ enum {
 	DRAM_DEV_SEL_0	 = (2 << 30),
 	DRAM_DEV_SEL_1   = (1 << 30),
 };
+
+void tegra12_mc_holdoff_enable(void);
+
 #define DRAM_BROADCAST(num)			\
 	(((num) > 1) ? DRAM_DEV_SEL_ALL : DRAM_DEV_SEL_0)
 
@@ -438,6 +441,82 @@ enum {
 #define MC_EMEM_ARB_ISOCHRONOUS_0		0x208
 #define MC_EMEM_ARB_ISOCHRONOUS_1		0x20c
 #define MC_EMEM_ARB_ISOCHRONOUS_2		0x210
+#define MC_EMEM_ARB_HYSTERESIS_0_0		0x218
+#define MC_EMEM_ARB_HYSTERESIS_1_0		0x21c
+#define MC_EMEM_ARB_HYSTERESIS_2_0		0x220
+#define MC_EMEM_ARB_HYSTERESIS_3_0		0x224
+
+#define HYST_SATAR				(0x1 << 31)
+#define HYST_PPCSAHBSLVR			(0x1 << 30)
+#define HYST_PPCSAHBDMAR			(0x1 << 29)
+#define HYST_MSENCSRD				(0x1 << 28)
+#define HYST_HOST1XR				(0x1 << 23)
+#define HYST_HOST1XDMAR				(0x1 << 22)
+#define HYST_HDAR				(0x1 << 21)
+#define HYST_DISPLAYHCB				(0x1 << 17)
+#define HYST_DISPLAYHC				(0x1 << 16)
+#define HYST_AVPCARM7R				(0x1 << 15)
+#define HYST_AFIR				(0x1 << 14)
+#define HYST_DISPLAY0CB				(0x1 << 6)
+#define HYST_DISPLAY0C				(0x1 << 5)
+#define YST_DISPLAY0BB				(0x1 << 4)
+#define YST_DISPLAY0B				(0x1 << 3)
+#define YST_DISPLAY0AB				(0x1 << 2)
+#define YST_DISPLAY0A				(0x1 << 1)
+#define HYST_PTCR				(0x1 << 0)
+
+#define HYST_VDEDBGW				(0x1 << 31)
+#define HYST_VDEBSEVW				(0x1 << 30)
+#define HYST_SATAW				(0x1 << 29)
+#define HYST_PPCSAHBSLVW			(0x1 << 28)
+#define HYST_PPCSAHBDMAW			(0x1 << 27)
+#define HYST_MPCOREW				(0x1 << 25)
+#define HYST_MPCORELPW				(0x1 << 24)
+#define HYST_HOST1XW				(0x1 << 22)
+#define HYST_HDAW				(0x1 << 21)
+#define HYST_AVPCARM7W				(0x1 << 18)
+#define HYST_AFIW				(0x1 << 17)
+#define HYST_MSENCSWR				(0x1 << 11)
+#define YST_MPCORER				(0x1 << 7)
+#define YST_MPCORELPR				(0x1 << 6)
+#define YST_VDETPER				(0x1 << 5)
+#define YST_VDEMCER				(0x1 << 4)
+#define YST_VDEMBER				(0x1 << 3)
+#define YST_VDEBSEVR				(0x1 << 2)
+
+#define HYST_DISPLAYT				(0x1 << 26)
+#define HYST_GPUSWR				(0x1 << 25)
+#define HYST_GPUSRD				(0x1 << 24)
+#define HYST_A9AVPSCW				(0x1 << 23)
+#define HYST_A9AVPSCR				(0x1 << 22)
+#define HYST_TSECSWR				(0x1 << 21)
+#define HYST_TSECSRD				(0x1 << 20)
+#define HYST_ISPWBB				(0x1 << 17)
+#define HYST_ISPWAB				(0x1 << 16)
+#define HYST_ISPRAB				(0x1 << 14)
+#define HYST_XUSB_DEVW				(0x1 << 13)
+#define HYST_XUSB_DEVR				(0x1 << 12)
+#define HYST_XUSB_HOSTW				(0x1 << 11)
+#define HYST_XUSB_HOSTR				(0x1 << 10)
+#define YST_ISPWB				(0x1 << 7)
+#define YST_ISPWA				(0x1 << 6)
+#define YST_ISPRA				(0x1 << 4)
+#define YST_VDETPMW				(0x1 << 1)
+#define YST_VDEMBEW				(0x1 << 0)
+
+#define HYST_DISPLAYD				(0x1 << 19)
+#define HYST_VIW				(0x1 << 18)
+#define HYST_VICSWR				(0x1 << 13)
+#define HYST_VICSRD				(0x1 << 12)
+#define YST_SDMMCWAB				(0x1 << 7)
+#define YST_SDMMCW				(0x1 << 6)
+#define YST_SDMMCWAA				(0x1 << 5)
+#define YST_SDMMCWA				(0x1 << 4)
+#define YST_SDMMCRAB				(0x1 << 3)
+#define YST_SDMMCR				(0x1 << 2)
+#define YST_SDMMCRAA				(0x1 << 1)
+#define YST_SDMMCRA				(0x1 << 0)
+
 #define MC_DIS_EXTRA_SNAP_LEVELS		0x2ac
 
 #define MC_LATENCY_ALLOWANCE_AFI_0		0x2e0
