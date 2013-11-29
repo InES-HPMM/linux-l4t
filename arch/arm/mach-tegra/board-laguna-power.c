@@ -834,8 +834,9 @@ int __init laguna_regulator_init(void)
 #endif
 	laguna_as3722_regulator_init();
 
-	i2c_register_board_info(1, bq2471x_boardinfo,
-		ARRAY_SIZE(bq2471x_boardinfo));
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		i2c_register_board_info(1, bq2471x_boardinfo,
+			ARRAY_SIZE(bq2471x_boardinfo));
 
 	return 0;
 }
