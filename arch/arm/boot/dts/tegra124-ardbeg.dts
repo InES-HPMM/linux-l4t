@@ -18,8 +18,8 @@
 	};
 	host1x {
 		dsi {
-			nvidia,controller-vs = <1>;
-			status = "disabled";
+			nvidia,dsi-controller-vs = <1>;
+			status = "okay";
 			panel-p-wuxga-10-1 {
 				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
 				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
