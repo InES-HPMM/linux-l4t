@@ -196,6 +196,11 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
 
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_THERM_REG,
+			BQ2419x_TREG, BQ2419x_TREG_100_C);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "THERM_REG write failed: %d\n", ret);
+
 	return ret;
 }
 
