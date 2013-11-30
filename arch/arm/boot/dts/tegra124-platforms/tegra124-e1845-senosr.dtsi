@@ -27,6 +27,7 @@
 		cm3217@10 {
 			compatible = "capella,cm3217";
 			reg = <0x10>;
+			vdd-supply = <&palmas_smps9>;
 		};
 	};
 };

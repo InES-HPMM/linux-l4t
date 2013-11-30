@@ -349,11 +349,6 @@
 								regulator-consumer-supply = "vdd";
 								regulator-consumer-device = "1-004d";
 							};
-							c11 {
-								regulator-consumer-supply = "vdd";
-								regulator-consumer-device = "0-0010";
-							};
-
 						};
 					};
 
