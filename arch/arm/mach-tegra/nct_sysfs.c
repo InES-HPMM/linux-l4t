@@ -51,6 +51,8 @@ static const struct kobj_attribute cm_id_attr =
 	__ATTR(cm_id, 0444, nct_item_show, 0);
 static const struct kobj_attribute lbh_id_attr =
 	__ATTR(lbh_id, 0444, nct_item_show, 0);
+static const struct kobj_attribute boardinfo_id_attr =
+	__ATTR(boardinfo_id, 0444, nct_item_show, 0);
 static const struct kobj_attribute gps_id_attr =
 	__ATTR(gps_id, 0444, nct_item_show, 0);
 static const struct kobj_attribute lcd_id_attr =
@@ -74,6 +76,7 @@ static const struct attribute *nct_item_attrs[] = {
 	&bt_addr_attr.attr,
 	&cm_id_attr.attr,
 	&lbh_id_attr.attr,
+	&boardinfo_id_attr.attr,
 	&gps_id_attr.attr,
 	&lcd_id_attr.attr,
 	&accelerometer_id_attr.attr,
@@ -129,6 +132,23 @@ static ssize_t nct_item_show(struct kobject *kobj,
 		if (err < 0)
 			return 0;
 		rval = sprintf(buf, "%04d\n", item.lbh_id.id);
+	} else if (attr == &boardinfo_id_attr) {
+		err = tegra_nct_read_item(NCT_ID_BOARD_INFO, &item);
+		if (err < 0)
+			return 0;
+		rval = sprintf(buf,
+			"Proc: %4u (sku: %u, fab: %u)\n"
+			"PMU : %4u (sku: %u, fab: %u)\n"
+			"Disp: %4u (sku: %u, fab: %u)\n",
+			item.board_info.proc_board_id,
+			item.board_info.proc_sku,
+			item.board_info.proc_fab,
+			item.board_info.pmu_board_id,
+			item.board_info.pmu_sku,
+			item.board_info.pmu_fab,
+			item.board_info.display_board_id,
+			item.board_info.display_sku,
+			item.board_info.display_fab);
 	} else if (attr == &gps_id_attr) {
 		err = tegra_nct_read_item(NCT_ID_GPS_ID, &item);
 		if (err < 0)

@@ -89,11 +89,15 @@ struct nct_ramdump_type {
 };
 
 struct nct_board_info_type {
-	u16 board_id;
-	u16 sku;
-	u16 fab;
-	u16 major_revision;
-	u16 minor_revision;
+	u32 proc_board_id;
+	u32 proc_sku;
+	u32 proc_fab;
+	u32 pmu_board_id;
+	u32 pmu_sku;
+	u32 pmu_fab;
+	u32 display_board_id;
+	u32 display_sku;
+	u32 display_fab;
 };
 
 union nct_tegra_emc_table_type {
