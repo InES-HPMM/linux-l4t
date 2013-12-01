@@ -327,9 +327,17 @@ static int bq2471x_probe(struct i2c_client *client,
 		bq2471x->irq = gpio_to_irq(bq2471x->gpio);;
 		bq2471x->gpio_active_low = pdata->gpio_active_low;
 
+		bq2471x->ac_online =
+			gpio_get_value_cansleep(bq2471x->gpio);
+		bq2471x->ac_online ^=
+			bq2471x->gpio_active_low;
+
+		power_supply_changed(&bq2471x->ac);
+
 		ret = request_any_context_irq(bq2471x->irq, bq2471x_charger_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 					dev_name(&bq2471x->dev), bq2471x);
+
 		if (ret < 0)
 			dev_err(&client->dev, "Failed to request irq..\n");
 
