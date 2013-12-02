@@ -447,6 +447,7 @@ struct tegra_udc {
 	struct work_struct irq_work;
 	enum tegra_connect_type connect_type;
 	enum tegra_connect_type prev_connect_type;
+	enum tegra_connect_type connect_type_lp0;
 	void __iomem *regs;
 	size_t ep_qh_size;		/* size after alignment adjustment*/
 	dma_addr_t ep_qh_dma;		/* dma address of QH */
@@ -470,6 +471,7 @@ struct tegra_udc {
 	bool has_hostpc;
 	bool support_pmu_vbus;
 	bool fence_read;
+	bool vbus_in_lp0;
 #ifdef CONFIG_EXTCON
 	struct extcon_dev *edev;
 #endif

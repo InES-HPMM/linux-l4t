@@ -1454,8 +1454,14 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 	 * we set charging regulator's maximum charging current 1st, then
 	 * notify the charging type.
 	 */
-	if (NULL != udc->vbus_reg)
-		ret = regulator_set_current_limit(udc->vbus_reg, 0, max_ua);
+	if (NULL != udc->vbus_reg && !udc->vbus_in_lp0) {
+		if (udc->connect_type != udc->connect_type_lp0 ||
+					udc->connect_type == CONNECT_TYPE_NONE)
+			ret = regulator_set_current_limit(udc->vbus_reg,
+								 0, max_ua);
+	}
+	if (!udc->vbus_in_lp0)
+		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 #ifdef CONFIG_EXTCON
 	tegra_udc_set_extcon_state(udc);
 #endif
@@ -2877,6 +2883,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	udc->pdev = pdev;
 	udc->has_hostpc = pdata->has_hostpc;
 	udc->support_pmu_vbus = pdata->support_pmu_vbus;
+	udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 	platform_set_drvdata(pdev, udc);
 
 	/* Initialize the udc structure including QH members */
@@ -3067,7 +3074,14 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 	unsigned long flags;
+	u32 temp;
+
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
+
+	temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
+	if (temp & USB_SYS_VBUS_STATUS)
+		udc->vbus_in_lp0 = true;
+	udc->connect_type_lp0 = udc->connect_type;
 
 	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
@@ -3095,7 +3109,19 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 static int tegra_udc_resume(struct platform_device *pdev)
 {
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
+	u32 temp;
+
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
+
+	udc->vbus_in_lp0 = false;
+
+	/* Set Current limit to 0 if charger is disconnected in LP0 */
+	temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
+	if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE)
+			&& !(temp & USB_SYS_VBUS_STATUS)) {
+		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+		regulator_set_current_limit(udc->vbus_reg, 0, 0);
+	}
 
 	if (udc->transceiver)
 		return 0;
