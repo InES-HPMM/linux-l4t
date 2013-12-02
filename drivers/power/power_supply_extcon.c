@@ -66,6 +66,12 @@ static struct power_supply_cables psy_cables[] = {
 	{
 		.name	= "Charge-downstream",
 	},
+	{
+		.name	= "Apple 1A-charger",
+	},
+	{
+		.name	= "Apple 2A-charger",
+	},
 };
 
 static enum power_supply_property power_supply_extcon_props[] = {
@@ -135,6 +141,14 @@ static int power_supply_extcon_attach_cable(
 	} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
 		psy_extcon->ac_online = 1;
 		dev_info(psy_extcon->dev, "USB Slow-charger cable detected\n");
+	} else if (true == extcon_get_cable_state(edev, "Apple 1A-charger")) {
+		psy_extcon->ac_online = 1;
+		dev_info(psy_extcon->dev,
+			"USB Apple 1A-charger cable detected\n");
+	} else if (true == extcon_get_cable_state(edev, "Apple 2A-charger")) {
+		psy_extcon->ac_online = 1;
+		dev_info(psy_extcon->dev,
+			"USB Apple 2A-charger cable detected\n");
 	} else {
 		dev_info(psy_extcon->dev, "Unknown cable detected\n");
 	}
