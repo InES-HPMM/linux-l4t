@@ -74,6 +74,7 @@ static DEFINE_MUTEX(tegra210_adma_lock);
 static DECLARE_BITMAP(channel_usage, TEGRA210_ADMA_MAX_CHANNELS);
 static struct tegra210_adma_channel adma_channels[TEGRA210_ADMA_MAX_CHANNELS];
 
+static void tegra210_adma_init(void);
 static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 	struct tegra210_adma_req *req);
 static void tegra210_adma_oneshot_handle(struct tegra210_adma_channel *ch);
@@ -82,6 +83,11 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 	struct tegra210_adma_req *req)
 {
 	u32 val, valfifo;
+
+	dev_dbg(tegra210_adma->dev,
+		"ch.id = %d req.size = %d, ahub.ch.req = %d, dir = %d ",
+		ch->id, req->size, req->ahub_ch_request,
+		req->transfer_direction);
 
 	regmap_write(tegra210_adma->regmap, (ch->addr + TEGRA210_ADMA_CH_TC),
 		    req->size);
@@ -99,7 +105,8 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 
 	if (req->transfer_direction == MEMORY_TO_AHUB) {
 		val &= ~TEGRA210_ADMA_CH_CTRL_TX_REQUEST_SELECT_MASK;
-		val |=  0x1 << TEGRA210_ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT;
+		val |=  req->ahub_ch_request <<
+		    TEGRA210_ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT;
 		valfifo &= ~TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_MASK;
 		valfifo |= 3 <<
 			TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_SHIFT;
@@ -108,7 +115,8 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 		    req->source_addr);
 	} else if (req->transfer_direction == AHUB_TO_MEMORY) {
 		val &= ~TEGRA210_ADMA_CH_CTRL_RX_REQUEST_SELECT_MASK;
-		val |=  0x1 << TEGRA210_ADMA_CH_CTRL_RX_REQUEST_SELECT_SHIFT;
+		val |=  req->ahub_ch_request <<
+		    TEGRA210_ADMA_CH_CTRL_RX_REQUEST_SELECT_SHIFT;
 		valfifo &= ~TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_MASK;
 		valfifo |=  3 <<
 			TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT;
@@ -205,6 +213,7 @@ EXPORT_SYMBOL(tegra210_adma_allocate_channel);
 
 void tegra210_adma_free_channel(struct tegra210_adma_channel *ch)
 {
+	dev_vdbg(tegra210_adma->dev, "freed ADMA CH %d", ch->id);
 	regmap_write(tegra210_adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_INT_CLEAR), 0x1);
 	mutex_lock(&tegra210_adma_lock);
@@ -261,6 +270,8 @@ static bool tegra210_adma_rw_reg(struct device *dev, unsigned int reg)
 
 static bool tegra210_adma_rd_reg(struct device *dev, unsigned int reg)
 {
+	reg = reg % TEGRA210_ADMA_CHANNEL_OFFSET;
+
 	switch (reg) {
 	case TEGRA210_ADMA_CH_STATUS:
 	case TEGRA210_ADMA_CH_INT_STATUS:
@@ -327,12 +338,13 @@ static int tegra210_adma_runtime_resume(struct device *dev)
 	return 0;
 }
 
-void tegra210_adma_init(void)
+static void tegra210_adma_init(void)
 {
 	int ret = 0;
 	int i = 0;
 	unsigned int irq;
 
+	dev_dbg(tegra210_adma->dev, "%s", __func__);
 	bitmap_fill(channel_usage, TEGRA210_ADMA_MAX_CHANNELS);
 	for (i = 0; i < TEGRA210_ADMA_MAX_CHANNELS; i++) {
 		struct tegra210_adma_channel *ch = &adma_channels[i];
@@ -366,7 +378,6 @@ fail:
 	}
 	return;
 }
-EXPORT_SYMBOL(tegra210_adma_init);
 
 void tegra210_adma_channel_enable(struct tegra210_adma_channel *ch, bool en)
 {
@@ -476,7 +487,7 @@ static int __init tegra210_adma_probe(struct platform_device *pdev)
 		if (ret)
 			goto err_pm_disable;
 	}
-
+	tegra210_adma_init();
 	return 0;
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);

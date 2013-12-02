@@ -181,6 +181,7 @@ struct tegra210_adma_req {
 	tegra210_adma_callback threshold;
 
 	int transfer_direction;
+	int ahub_ch_request;
 
 	void *virt_addr;
 	unsigned long source_addr;
@@ -214,7 +215,6 @@ struct tegra210_adma_ctx {
 	bool adma_initialized;
 };
 
-void tegra210_adma_init(void);
 int tegra210_adma_enqueue_req(struct tegra210_adma_channel *ch,
 		struct tegra210_adma_req *req);
 struct tegra210_adma_channel *tegra210_adma_allocate_channel(int mode,
