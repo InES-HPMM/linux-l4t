@@ -6,6 +6,7 @@
 / {
 	model = "NVIDIA Tegra124 vcm30t124";
 	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
+	file-name = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;
 

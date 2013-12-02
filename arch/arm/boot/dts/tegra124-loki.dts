@@ -6,6 +6,7 @@
 / {
 	model = "NVIDIA Tegra124 Loki";
 	compatible = "nvidia,loki", "nvidia,tegra124";
+	file-name = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;
 
