@@ -148,6 +148,7 @@ config ARCH_TEGRA_11x_SOC
 	select USB_EHCI_TEGRA if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	select PROC_DEVICETREE
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -197,6 +198,7 @@ config ARCH_TEGRA_12x_SOC
 	select POWER_SUPPLY
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
+	select PROC_DEVICETREE
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
