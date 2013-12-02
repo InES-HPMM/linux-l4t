@@ -856,7 +856,13 @@ static void sdhci_status_notify_cb(int card_present, void *dev_id)
 
 	plat = pdev->dev.platform_data;
 	if (!plat->mmc_data.status) {
-		mmc_detect_change(sdhci->mmc, 0);
+		if (card_present == 1) {
+			sdhci->mmc->rescan_disable = 0;
+			mmc_detect_change(sdhci->mmc, 0);
+		} else if (card_present == 0) {
+			sdhci->mmc->detect_change = 0;
+			sdhci->mmc->rescan_disable = 1;
+		}
 		return;
 	}
 
