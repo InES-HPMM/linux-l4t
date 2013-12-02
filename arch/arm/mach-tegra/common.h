@@ -46,5 +46,6 @@ extern struct device tegra_vpr_cma_dev;
 u32 tegra_get_sku_id(void);
 u32 tegra_get_chip_id(void);
 u32 tegra_get_bct_strapping(void);
+void __init display_tegra_dt_info(void);
 
 #endif

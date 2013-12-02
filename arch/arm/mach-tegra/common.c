@@ -30,6 +30,7 @@
 #include <linux/bitops.h>
 #include <linux/sched.h>
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 #include <linux/pstore_ram.h>
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
@@ -883,6 +884,7 @@ void __init tegra30_init_early(void)
 	u32 speedo;
 	u32 tag_latency, data_latency;
 
+	display_tegra_dt_info();
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
@@ -928,6 +930,7 @@ void __init tegra30_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 void __init tegra11x_init_early(void)
 {
+	display_tegra_dt_info();
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
@@ -957,6 +960,7 @@ void __init tegra11x_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 void __init tegra12x_init_early(void)
 {
+	display_tegra_dt_info();
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
@@ -983,6 +987,7 @@ void __init tegra12x_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 void __init tegra14x_init_early(void)
 {
+	display_tegra_dt_info();
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
@@ -2523,4 +2528,19 @@ void tegra_init_fuse(void)
 			tegra_platform_name[tegra_platform]);
 	}
 #endif
+}
+
+void __init display_tegra_dt_info(void)
+{
+	unsigned long dt_root;
+	const char *dts_fname;
+
+
+	dt_root = of_get_flat_dt_root();
+
+	dts_fname = of_get_flat_dt_prop(dt_root, "file-name", NULL);
+	if (dts_fname)
+		pr_info("DTS File Name: %s\n", dts_fname);
+	else
+		pr_info("DTS File Name: <unknown>\n");
 }
