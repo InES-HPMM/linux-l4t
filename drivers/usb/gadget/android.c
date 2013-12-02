@@ -4,6 +4,7 @@
  * Copyright (C) 2008 Google, Inc.
  * Author: Mike Lockwood <lockwood@android.com>
  *         Benoit Goby <benoit@android.com>
+ * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -698,12 +699,15 @@ static ssize_t rndis_ethaddr_store(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct rndis_function_config *rndis = f->config;
+	int i, ethaddr[6];
 
 	if (sscanf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-		    (int *)&rndis->ethaddr[0], (int *)&rndis->ethaddr[1],
-		    (int *)&rndis->ethaddr[2], (int *)&rndis->ethaddr[3],
-		    (int *)&rndis->ethaddr[4], (int *)&rndis->ethaddr[5]) == 6)
-		return size;
+			&ethaddr[0], &ethaddr[1], &ethaddr[2],
+			&ethaddr[3], &ethaddr[4], &ethaddr[5]) == 6) {
+			for (i = 0; i < 6; i++)
+				rndis->ethaddr[i] = ethaddr[i] & 0xFF;
+			return size;
+	}
 	return -EINVAL;
 }
 
