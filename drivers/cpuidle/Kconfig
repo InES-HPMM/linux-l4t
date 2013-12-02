@@ -42,6 +42,16 @@ config CPU_IDLE_DENVER
 	help
 	  Select this to enable cpuidle on NVIDIA Denver processors.
 
+config CPU_IDLE_TEGRA210
+	bool "CPU Idle Driver for NVIDIA Tegra210 SoC"
+	depends on ARCH_TEGRA_21x_SOC
+	default y
+	help
+          Support for entering different power states on NVIDIA Tegra210
+          SoC when CPUs become idle.
+
+          Select this to enable cpuidle on NVIDIA Tegra210 SoC.
+
 endif
 
 config ARCH_NEEDS_CPU_IDLE_COUPLED
