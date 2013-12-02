@@ -2,7 +2,7 @@
  *  Based on arch/arm/kernel/smp.c
  *
  *  Original Copyright (C) 2002 ARM Limited, All Rights Reserved.
- *  Copyright (C) 2013 NVIDIA Corporation.
+ *  Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,8 +20,11 @@
 #include <linux/sched.h>
 #include <linux/irq.h>
 #include <linux/completion.h>
+#include <linux/irqchip/tegra.h>
 
-extern volatile ulong secondary_holding_pen_release;
+#include "flowctrl.h"
+
+extern void tegra210_hotplug_shutdown(void);
 
 /*
  * platform-specific code to shutdown a CPU
@@ -30,7 +33,20 @@ extern volatile ulong secondary_holding_pen_release;
  */
 void tegra_cpu_die(unsigned int cpu)
 {
-	do {
-		asm volatile("	wfi\n");
-	} while (secondary_holding_pen_release != cpu);
+	unsigned long reg;
+
+	tegra_gic_cpu_disable(false);
+
+	reg = FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG |
+			FLOW_CTRL_CSR_ENABLE;
+	reg |= (FLOW_CTRL_WAIT_WFI_BITMAP << cpu);
+	flowctrl_write_cpu_csr(cpu, reg);
+
+	flowctrl_write_cpu_halt(cpu, FLOW_CTRL_WAITEVENT);
+
+	flowctrl_write_cc4_ctrl(cpu, 0);
+
+	tegra210_hotplug_shutdown();
+
+	BUG();
 }

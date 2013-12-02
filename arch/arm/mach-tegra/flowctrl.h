@@ -3,7 +3,7 @@
  *
  * functions and macros to control the flowcontroller
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,6 +37,7 @@
 #define FLOW_CTRL_CC4_HVC_ENABLE	(1 << 0)
 #define FLOW_CTRL_CC4_RETENTION_CONTROL	0x64
 #define FLOW_CTRL_CC4_CORE0_CTRL	0x6c
+#define FLOW_CTRL_WAIT_WFI_BITMAP	0x100
 #define FLOW_CTRL_CC4_HVC_RETRY		0x8c
 
 #ifndef __ASSEMBLY__
