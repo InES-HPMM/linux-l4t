@@ -65,7 +65,7 @@
 static int loki_wakeup_key(void);
 
 static struct gpio_keys_button loki_int_keys[] = {
-	[0] = GPIO_IKEY(KEY_POWER, 0, 1, 10),
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = {
 		.code = SW_LID,
 		.gpio = TEGRA_GPIO_HALL,
@@ -100,7 +100,7 @@ static int loki_wakeup_key(void)
 		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
 		+ PMC_WAKE2_STATUS) << 32;
 
-	if (status & TEGRA_WAKE_PWR_INT)
+	if (status & TEGRA_WAKE_GPIO_PQ0)
 		wakeup_key = KEY_POWER;
 	else if (status & (1UL << TEGRA_WAKE_GPIO_PS0))
 		wakeup_key = SW_LID;
@@ -118,9 +118,6 @@ int __init loki_kbc_init(void)
 	tegra_get_board_info(&board_info);
 	pr_info("Boardid:SKU = 0x%04x:0x%04x\n",
 			board_info.board_id, board_info.sku);
-
-	loki_int_keys[0].gpio = TEGRA_GPIO_PQ0;
-	loki_int_keys[0].active_low = 1;
 
 	ret = platform_device_register(&loki_int_keys_device);
 	return ret;
