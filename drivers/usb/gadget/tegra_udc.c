@@ -2847,8 +2847,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		else
 			udc->dcp_current_limit =
 				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
-	} else
+	} else {
 		dev_err(&pdev->dev, "failed to get platform_data\n");
+		err = -ENODATA;
+		goto err_irq;
+	}
 
 	udc->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(udc->phy)) {
