@@ -715,7 +715,16 @@ static int __init loki_touch_init(void)
 	if (tegra_get_touch_panel_id() == TOUCH_PANEL_THOR_WINTEK)
 		rm31080a_loki_spi_board[0].platform_data =
 					&rm31080ts_loki_data_t_1_95;
-	tegra_clk_init_from_table(touch_clk_init_table);
+
+	/*
+	** remove touch clock initialization for ffd fab a3, higher
+	** Move clock from tegra clock to external xtal
+	*/
+	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xa3) {
+		rm31080ts_loki_data.name_of_clock = NULL;
+		rm31080ts_loki_data.name_of_clock_con = NULL;
+	} else
+		tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080a_loki_spi_board[0].irq =
 		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
