@@ -383,7 +383,8 @@ static int __init ardbeg_wifi_prepower(void)
 	if (!of_machine_is_compatible("nvidia,ardbeg") &&
 		!of_machine_is_compatible("nvidia,laguna") &&
 		!of_machine_is_compatible("nvidia,ardbeg_sata") &&
-		!of_machine_is_compatible("nvidia,tn8"))
+		!of_machine_is_compatible("nvidia,tn8") &&
+		!of_machine_is_compatible("nvidia,norrin"))
 		return 0;
 	ardbeg_wifi_power(1);
 
@@ -435,6 +436,12 @@ int __init ardbeg_sdhci_init(void)
 	} else {
 		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
 	}
+
+	if (board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_PM358 ||
+		board_info.board_id == BOARD_PM363 ||
+		board_info.board_id == BOARD_PM359)
+			tegra_sdhci_platform_data0.disable_clock_gate = 1;
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
