@@ -103,6 +103,9 @@ PBCMSDH_SDMMC_INSTANCE gInstance;
 
 extern int bcmsdh_probe(struct device *dev);
 extern int bcmsdh_remove(struct device *dev);
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+extern int wifi_set_carddetect(int on);
+#endif
 extern volatile bool dhd_mmc_suspend;
 
 static int bcmsdh_sdmmc_probe(struct sdio_func *func,
@@ -110,6 +113,11 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 {
 	int ret = 0;
 	static struct sdio_func sdio_func_0;
+
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+	/* sdio card detection is completed so stop card detection here */
+	wifi_set_carddetect(0);
+#endif
 
 	if (!gInstance)
 		return -EINVAL;
