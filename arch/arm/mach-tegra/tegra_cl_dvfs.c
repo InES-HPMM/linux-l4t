@@ -320,7 +320,8 @@ static inline void disable_forced_output(struct tegra_cl_dvfs *cld)
  * (neither "old" nor "new") values. Synchronization with the "rising edge"
  * of DATA_NEW makes it very unlikely, but still possible. Use simple filter:
  * compare 2 consecutive readings for data consistency within 2 LSb range.
- * Return error otherwise.
+ * Return error otherwise. On the platform that does not allow to use DATA_NEW
+ * at all check for consistency of consecutive reads is the only protection.
  */
 static int filter_monitor_data(struct tegra_cl_dvfs *cld, u32 *data)
 {
@@ -341,10 +342,12 @@ static int filter_monitor_data(struct tegra_cl_dvfs *cld, u32 *data)
 static inline void wait_data_new(struct tegra_cl_dvfs *cld, u32 *data)
 {
 	cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA); /* clear data new */
-	do {
-		*data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
-	} while (!(*data & CL_DVFS_MONITOR_DATA_NEW) &&
-		 (cld->mode > TEGRA_CL_DVFS_DISABLED));
+	if (!(cld->p_data->flags & TEGRA_CL_DVFS_DATA_NEW_NO_USE)) {
+		do {
+			*data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
+		} while (!(*data & CL_DVFS_MONITOR_DATA_NEW) &&
+			 (cld->mode > TEGRA_CL_DVFS_DISABLED));
+	}
 }
 
 static inline u32 get_last_output(struct tegra_cl_dvfs *cld)
@@ -791,6 +794,13 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 
 	/* Synchronize with sample period, and get rate measurements */
 	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
+
+	if (cld->p_data->flags & TEGRA_CL_DVFS_DATA_NEW_NO_USE) {
+		/* Cannot use DATA_NEW synch - get data after one full sample
+		   period (with 10us margin) */
+		int delay = 1000000 / cld->p_data->cfg_param->sample_rate + 10;
+		udelay(delay);
+	}
 	wait_data_new(cld, &data);
 	wait_data_new(cld, &data);
 

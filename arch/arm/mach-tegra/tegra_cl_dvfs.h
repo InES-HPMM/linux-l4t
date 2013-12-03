@@ -45,6 +45,8 @@ enum tegra_cl_dvfs_pwm_bus {
 #define TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET	(0x1UL << 0)
 /* dynamic output registers update is supported */
 #define TEGRA_CL_DVFS_DYN_OUTPUT_CFG		(0x1UL << 1)
+/* monitor data new synchronization can not be used */
+#define TEGRA_CL_DVFS_DATA_NEW_NO_USE		(0x1UL << 2)
 
 struct tegra_cl_dvfs_cfg_param {
 	unsigned long	sample_rate;
