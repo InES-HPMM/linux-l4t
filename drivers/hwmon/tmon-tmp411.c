@@ -19,7 +19,7 @@
  *
  */
 
-/* Note: Copied temperature conversion code from TMP411 driver */
+/* Note: Copied temperature conversion code from tmp401 driver */
 
 #include <linux/module.h>
 #include <linux/i2c.h>
@@ -44,26 +44,31 @@
 #define TMON_NOCHANGE			(INT_MAX - 1)
 
 /*
- * The TMP411 registers, note some registers have different addresses for
+ * The TMP411/NVT210 registers, note some registers have different addresses for
  * reading and writing
  */
 #define REG_STATUS			0x02
 #define REG_CFG_READ			0x03
+#define REG_CFG_WRITE			0x09
 #define REG_CON_RATE_READ		0x04
 #define REG_CONV_RATE_WRITE		0x0A
+#define REG_MAN_ID			0xFE
 
 /* Flags */
-#define EXTND_CNFG_RNG		0x04
-#define CONFIG_SHUTDOWN		0x40
-#define STATUS_LOCAL_CRIT		0x01
-#define STATUS_REMOTE_CRIT		0x02
-#define STATUS_REMOTE_OPEN		0x04
-#define STATUS_REMOTE_LOW		0x08
-#define STATUS_REMOTE_HIGH		0x10
-#define STATUS_LOCAL_LOW		0x20
-#define STATUS_LOCAL_HIGH		0x40
-#define STATUS_RTHRM			0x02
-#define STATUS_LTHRM			0x01
+#define CFG_EXTEND		(0x1<<2)
+#define CFG_ALERT_MASK		(0x1<<7)
+#define CFG_STANDBY		(0x1<<6)
+#define CFG_ALERT_DISABLE	(0x1<<5)
+#define STATUS_LOCAL_CRIT	0x01
+#define STATUS_REMOTE_CRIT	0x02
+#define STATUS_REMOTE_OPEN	0x04
+#define STATUS_REMOTE_LOW	0x08
+#define STATUS_REMOTE_HIGH	0x10
+#define STATUS_LOCAL_LOW	0x20
+#define STATUS_LOCAL_HIGH	0x40
+#define STATUS_RTHRM		0x02
+#define STATUS_LTHRM		0x01
+
 
 
 /* Based on POR values of CONVERSION RATE REGISTER (125ms) +
@@ -90,6 +95,21 @@ enum alert_type {
 	REMOTE_LOW_ALERT,
 };
 
+enum tmp_sensor {
+	TMP411 = 0,
+	NVT210,
+};
+
+enum temp_type {
+	LOCAL = 0,
+	REMOTE,
+};
+
+static enum tmp_sensor tmon_device;
+
+/* TMP411/NVT210 registers
+Note: Local temperature low bytes not applicable in case of NVT210
+index 0 for local temperatures and 1 for remote temperatures */
 static const u8 REG_TEMP_MSB[2]			= { 0x00, 0x01 };
 static const u8 REG_TEMP_LSB[2]			= { 0x15, 0x10 };
 static const u8 REG_TEMP_LOW_LIMIT_MSB_RD[2]	= { 0x06, 0x08 };
@@ -101,10 +121,12 @@ static const u8 REG_TEMP_HIGH_LIMIT_LSB[2]	= { 0x16, 0x13 };
 static const u8 REG_TEMP_CRIT_LIMIT[2]		= { 0x20, 0x19 };
 
 #ifdef CONFIG_PM
+/* index 0 for local temperatures and 1 for remote temperatures */
 static u16 temp_low_limit[2];
 static u16 temp_high_limit[2];
 static u8 temp_crit_limit[2];
 static u8 conv_rate;
+static u8 config;
 #endif
 
 struct tmon_info {
@@ -128,18 +150,19 @@ struct tmon_info {
 };
 
 
+/* Return Both High byte and Low byte */
 static u16 temp_to_reg(long temp, u8 config)
 {
-	if (config & EXTND_CNFG_RNG) {
-		temp = SENSORS_LIMIT(temp, -64000, 191000);
+	if (config & CFG_EXTEND) {
+		temp = clamp_val(temp, -64000, 191000);
 		temp += 64000;
 	} else
-		temp = SENSORS_LIMIT(temp, 0, 127000);
+		temp = clamp_val(temp, 0, 127000);
 
 	return (temp * 160 + 312) / 625; /* Copied from TMP411 driver */
 }
 
-static int tmon_read(struct i2c_client *client, u8 reg, u8 *value)
+static s32 tmon_read(struct i2c_client *client, u8 reg, u8 *value)
 {
 	s32 tmp;
 
@@ -152,18 +175,20 @@ static int tmon_read(struct i2c_client *client, u8 reg, u8 *value)
 	return 0;
 }
 
-static int reg_to_temp(u16 reg, u8 config)
+/* Expects both High byte and Low byte, If not Low bytes then
+   make Low byte as 0 */
+static s32 reg_to_temp(u16 reg, u8 config)
 {
-	int temp = reg;
+	s32 temp = reg;
 
-	if (config & EXTND_CNFG_RNG)
+	if (config & CFG_EXTEND)
 		temp -= 64 * 256;
 
 	return (temp * 625 + 80) / 160; /* Copied from TMP411 driver */
 }
 
-static int tmon_read_remote_temp(struct i2c_client *client,
-					     int *ptemp)
+static s32 tmon_read_remote_temp(struct i2c_client *client,
+					     s32 *ptemp)
 {
 	u8 config;
 	u8 tmp;
@@ -183,7 +208,7 @@ static int tmon_read_remote_temp(struct i2c_client *client,
 	return 0;
 }
 
-static int tmon_read_local_temp(struct i2c_client *client,
+static s32 tmon_read_local_temp(struct i2c_client *client,
 					    int *ptemp)
 {
 	u8 config;
@@ -193,13 +218,152 @@ static int tmon_read_local_temp(struct i2c_client *client,
 	TMON_RD(client, REG_CFG_READ, &config);
 	TMON_RD(client, REG_TEMP_MSB[0], &tmp);
 	temperature = ((u16)tmp) << 8;
-	TMON_RD(client, REG_TEMP_LSB[0], &tmp);
-	temperature |= tmp;
+	if (tmon_device == TMP411) {
+		TMON_RD(client, REG_TEMP_LSB[0], &tmp);
+		temperature |= tmp;
+	}
 
 	*ptemp = reg_to_temp(temperature, config);
 
 	return 0;
 }
+
+
+static s32 tmon_read_low_limit(struct i2c_client *client,
+				s32 *ptemp, enum temp_type typ)
+{
+	u8 config;
+	u8 tmp;
+	int err;
+	u16 temperature = 0;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+	TMON_RD(client, REG_TEMP_LOW_LIMIT_MSB_RD[typ], &tmp);
+	temperature = ((u16)tmp) << 8;
+	if ((typ == REMOTE) || (typ == LOCAL && tmon_device == TMP411)) {
+		TMON_RD(client, REG_TEMP_LOW_LIMIT_LSB[typ], &tmp);
+		temperature |= tmp;
+	}
+	*ptemp = reg_to_temp(temperature, config);
+	if (typ == REMOTE)
+		*ptemp = *ptemp + data->pdata->remote_offset;
+	return 0;
+}
+
+static s32 tmon_read_high_limit(struct i2c_client *client,
+						s32 *ptemp, enum temp_type typ)
+{
+	u8 config;
+	u8 tmp;
+	int err;
+	u16 temperature = 0;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+	TMON_RD(client, REG_TEMP_HIGH_LIMIT_MSB_RD[typ], &tmp);
+	temperature = ((u16)tmp) << 8;
+	if ((typ == REMOTE) || (typ == LOCAL && tmon_device == TMP411)) {
+		TMON_RD(client, REG_TEMP_HIGH_LIMIT_LSB[typ], &tmp);
+		temperature |= tmp;
+	}
+	*ptemp = reg_to_temp(temperature, config);
+	if (typ == REMOTE)
+		*ptemp = *ptemp + data->pdata->remote_offset;
+	return 0;
+}
+
+static s32 tmon_read_critical_limit(struct i2c_client *client,
+					s32 *ptemp, enum temp_type typ)
+{
+	u8 config;
+	u8 tmp;
+	int err;
+	u16 temperature = 0;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+	TMON_RD(client, REG_TEMP_CRIT_LIMIT[typ], &tmp);
+	temperature =  ((u16)tmp) << 8;
+	*ptemp = reg_to_temp(temperature, config);
+	if (typ == REMOTE)
+		*ptemp = *ptemp + data->pdata->remote_offset;
+	return 0;
+}
+
+static int tmon_write_high_limit(struct i2c_client *client,
+				s32 temp, enum temp_type typ)
+{
+	u8 config;
+	u8 reg8_val;
+	int err;
+	u16 reg16_val;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+	if (typ == REMOTE)
+		temp = temp - data->pdata->remote_offset;
+
+	reg16_val = temp_to_reg(temp, config);
+	reg8_val = reg16_val >> 8;
+
+	mutex_lock(&data->update_lock);
+	TMON_WRT(client, REG_TEMP_HIGH_LIMIT_MSB_WRT[typ], reg8_val);
+	if (tmon_device == TMP411)
+		TMON_WRT(client, REG_TEMP_HIGH_LIMIT_LSB[typ],
+			(reg16_val & 0xFF));
+	mutex_unlock(&data->update_lock);
+	return 0;
+}
+
+static int tmon_write_low_limit(struct i2c_client *client,
+				s32 temp, enum temp_type typ)
+{
+	u8 config;
+	u8 reg8_val;
+	int err;
+	u16 reg16_val;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+
+	if (typ == REMOTE)
+		temp = temp - data->pdata->remote_offset;
+
+	reg16_val = temp_to_reg(temp, config);
+	reg8_val = reg16_val >> 8;
+
+	mutex_lock(&data->update_lock);
+	TMON_WRT(client, REG_TEMP_LOW_LIMIT_MSB_WRT[typ], reg8_val);
+	if (tmon_device == TMP411)
+		TMON_WRT(client, REG_TEMP_LOW_LIMIT_LSB[typ],
+			(reg16_val & 0xFF));
+	mutex_unlock(&data->update_lock);
+	return 0;
+}
+
+#if FUTURE_USE
+static int tmon_write_critical_limit(struct i2c_client *client,
+					s32 temp, enum temp_type typ)
+{
+	u8 config;
+	u16 reg16_val;
+	u8 reg8_val;
+	int err;
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &config);
+	if (typ == REMOTE)
+		temp = temp - data->pdata->remote_offset;
+
+	reg16_val = temp_to_reg(temp, config);
+	reg8_val =  reg16_val >> 8;
+	mutex_lock(&data->update_lock);
+	TMON_WRT(client, REG_TEMP_CRIT_LIMIT[typ], reg8_val);
+	mutex_unlock(&data->update_lock);
+	return 0;
+}
+#endif
 
 static ssize_t show_temp_value(struct device *dev,
 	struct device_attribute *devattr, char *buf)
@@ -218,39 +382,19 @@ static ssize_t show_temp_value(struct device *dev,
 static ssize_t show_remote_low_limit(struct device *dev,
 	struct device_attribute *devattr, char *buf)
 {
-	u16 low_limit = 0;
-	u8 config = 0;
-	u8 temp;
-	int err;
-	struct tmon_info *data = i2c_get_clientdata(to_i2c_client(dev));
+	s32 low_limit = 0;
 
-	TMON_RD(to_i2c_client(dev), REG_TEMP_LOW_LIMIT_MSB_RD[1], &temp);
-	low_limit = ((u16)temp) << 8;
-	TMON_RD(to_i2c_client(dev), REG_TEMP_LOW_LIMIT_LSB[1], &temp);
-	low_limit |= temp;
-	TMON_RD(to_i2c_client(dev), REG_CFG_READ, &config);
-
-	return sprintf(buf, "%d\n", (reg_to_temp(low_limit, config) +
-					data->pdata->remote_offset));
+	tmon_read_low_limit(to_i2c_client(dev), &low_limit, REMOTE);
+	return sprintf(buf, "%d\n", low_limit);
 }
 
 static ssize_t show_remote_high_limit(struct device *dev,
 	struct device_attribute *devattr, char *buf)
 {
-	u16 high_limit = 0;
-	u8 config;
-	u8 temp;
-	int err;
-	struct tmon_info *data = i2c_get_clientdata(to_i2c_client(dev));
+	s32 high_limit = 0;
 
-	TMON_RD(to_i2c_client(dev), REG_TEMP_HIGH_LIMIT_MSB_RD[1], &temp);
-	high_limit = ((u16)temp) << 8;
-	TMON_RD(to_i2c_client(dev), REG_TEMP_HIGH_LIMIT_LSB[1], &temp);
-	high_limit |= temp;
-	TMON_RD(to_i2c_client(dev), REG_CFG_READ, &config);
-
-	return sprintf(buf, "%d\n", (reg_to_temp(high_limit, config) +
-					data->pdata->remote_offset));
+	tmon_read_high_limit(to_i2c_client(dev), &high_limit, REMOTE);
+	return sprintf(buf, "%d\n", high_limit);
 }
 
 static int clear_alert(struct tmon_info *data)
@@ -389,44 +533,27 @@ static ssize_t show_alert_blocking(struct device *dev,
 static ssize_t show_remote_shutdown_limit(struct device *dev,
 				struct device_attribute *devattr, char *buf)
 {
-	u8 config = 0;
-	u8 temp;
-	int err;
-	struct tmon_info *data = i2c_get_clientdata(to_i2c_client(dev));
-	TMON_RD(to_i2c_client(dev), REG_TEMP_CRIT_LIMIT[1], &temp);
-	TMON_RD(to_i2c_client(dev), REG_CFG_READ, &config);
-	if (config & EXTND_CNFG_RNG)
-		temp = temp - 64;
-	return sprintf(buf, "%d\n", (temp * 1000 +
-					data->pdata->remote_offset));
+	s32 temp;
+	s32 err;
+	err = tmon_read_critical_limit(to_i2c_client(dev), &temp, REMOTE);
+	if (err)
+		return err;
+	return sprintf(buf, "%d\n", temp);
 }
 
 static ssize_t store_remote_low_limit(struct device *dev,
 				struct device_attribute *devattr,
 				const char *buf, size_t count)
 {
-	int index = to_sensor_dev_attr(devattr)->index;
-	struct tmon_info *data = i2c_get_clientdata(to_i2c_client(dev));
 	long val;
-	u16 reg;
-	u8 config;
-	int err;
+	s32 err;
 
 	if (kstrtol(buf, 10, &val))
 		return -EINVAL;
 
-	TMON_RD(to_i2c_client(dev), REG_CFG_READ, &config);
-
-	reg = temp_to_reg((val - data->pdata->remote_offset), config);
-
-	mutex_lock(&data->update_lock);
-
-	TMON_WRT(to_i2c_client(dev),
-		REG_TEMP_LOW_LIMIT_MSB_WRT[index], reg >> 8);
-	TMON_WRT(to_i2c_client(dev),
-		REG_TEMP_LOW_LIMIT_LSB[index], reg & 0xFF);
-
-	mutex_unlock(&data->update_lock);
+	err = tmon_write_low_limit(to_i2c_client(dev), val, REMOTE);
+	if (err)
+		return err;
 	return count;
 }
 
@@ -434,26 +561,15 @@ static ssize_t store_remote_high_limit(struct device *dev,
 			struct device_attribute *devattr,
 			const char *buf, size_t count)
 {
-	int index = to_sensor_dev_attr(devattr)->index;
-	struct tmon_info *data = i2c_get_clientdata(to_i2c_client(dev));
 	long val;
-	u16 reg;
-	u8 config;
 	int err;
 
 	if (kstrtol(buf, 10, &val))
 		return -EINVAL;
-	TMON_RD(to_i2c_client(dev), REG_CFG_READ, &config);
-	reg = temp_to_reg((val - data->pdata->remote_offset), config);
 
-	mutex_lock(&data->update_lock);
-
-	TMON_WRT(to_i2c_client(dev),
-		REG_TEMP_HIGH_LIMIT_MSB_WRT[index], reg >> 8);
-	TMON_WRT(to_i2c_client(dev),
-		REG_TEMP_HIGH_LIMIT_LSB[index], reg & 0xFF);
-
-	mutex_unlock(&data->update_lock);
+	err = tmon_write_high_limit(to_i2c_client(dev), val, REMOTE);
+	if (err)
+		return err;
 	return count;
 }
 
@@ -579,6 +695,8 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 	struct tmon_info *data;
 	int err;
 	int i;
+	u8 man_id;
+	u8 config;
 
 	if (tmon_pdata == NULL) {
 		dev_err(&client->dev, "no platform data\n");
@@ -591,9 +709,40 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	data = kzalloc(sizeof(struct tmon_info), GFP_KERNEL);
+	data = devm_kzalloc(&client->dev, sizeof(struct tmon_info), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	TMON_RD(client, REG_MAN_ID, &man_id);
+	if (man_id == 0x41) {
+		tmon_device = NVT210;
+		dev_info(&client->dev, "detected NVT210\n");
+	} else if (man_id == 0x55) {
+		tmon_device = TMP411;
+		dev_info(&client->dev, "detected TMP411\n");
+	} else {
+		dev_warn(&client->dev,
+		"unsuported t-sensor with manufacturer-id:0x%x\n",
+		man_id);
+		return -EINVAL;
+	}
+
+	TMON_RD(client, REG_CFG_READ, &config);
+
+	/* Enable Alert, Extended mode and disable stand by */
+	config |= CFG_EXTEND;
+	config &= ~CFG_ALERT_MASK;
+	config &= ~CFG_STANDBY;
+	config &= ~CFG_ALERT_DISABLE;
+	err = i2c_smbus_write_byte_data(client, REG_CFG_WRITE, config);
+
+	/*FIXME: Is it required to wait for one temperature conversion? */
+
+	if (err < 0) {
+		dev_warn(&client->dev,
+		"\n Failed to write config for temperature sensor\n");
+		return err;
+	}
 
 	data->client = client;
 	i2c_set_clientdata(client, data);
@@ -603,6 +752,14 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 	spin_lock_init(&data->alert_spinlock);
 	data->sysfs_therm_alert_timeout = 0;
 	data->therm_alert = 0;
+
+	/*
+	 * Suppose, if we get alert interrupts immediately after irq
+	 * registeration and before disable_irq_nosync, then once entered
+	 * in to Isr, if the below variable is set then irq will be disabled,
+	 * otherwise it's likely that continious interrupts comes.
+	 */
+	data->disable_intr_reqr = 1;
 	init_waitqueue_head(&data->alert_wait_queue);
 
 	if (data->pdata->alert_gpio != -1) {
@@ -613,12 +770,16 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 				IRQF_TRIGGER_LOW,
 				"tmon alert",
 				data);
+		dev_info(&client->dev, "\n Tmon IRQ registered for gpio:%d\n",
+					data->pdata->alert_gpio);
+
 		if (!err) {
 			/*Disable now and enable only when sysfs
 							alert is opened  */
 			disable_irq_nosync(data->irq_num);
 			data->alert_info =
-				kzalloc(sizeof(struct i2c_smbus_alert_setup),
+				devm_kzalloc(&client->dev,
+					sizeof(struct i2c_smbus_alert_setup),
 					GFP_KERNEL);
 			if (!data->alert_info) {
 				err = -ENOMEM;
@@ -631,7 +792,7 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 			dev_warn(&client->dev,
 				"failed to get irq for alert gpio:%d\n",
 				data->pdata->alert_gpio);
-			goto err_free_data;
+			return err;
 		}
 	}
 
@@ -656,11 +817,8 @@ err_exit:
 	for (i = 0; i < ARRAY_SIZE(tmp411_attr); i++)
 		device_remove_file(&client->dev, &tmp411_attr[i].dev_attr);
 	i2c_unregister_device(data->ara);
-	kfree(data->alert_info);
 err_irq:
 	free_irq(data->irq_num, data);
-err_free_data:
-	kfree(data);
 	return err;
 }
 
@@ -699,22 +857,23 @@ static int tmon_tmp411_suspend(struct device *dev)
 		 * by the low byte
 		 */
 		TMON_RD(client, REG_TEMP_LOW_LIMIT_MSB_RD[i], &tmp);
-		temp_low_limit[i] = tmp;
-		temp_low_limit[i] = temp_low_limit[i] << 8;
-
-		TMON_RD(client, REG_TEMP_LOW_LIMIT_LSB[i], &tmp);
-		temp_low_limit[i] |= tmp;
+		temp_low_limit[i] = ((u16)tmp) << 8;
+		if ((i == REMOTE) || (i == LOCAL && tmon_device == TMP411)) {
+			TMON_RD(client, REG_TEMP_LOW_LIMIT_LSB[i], &tmp);
+			temp_low_limit[i] |= tmp;
+		}
 
 		TMON_RD(client, REG_TEMP_HIGH_LIMIT_MSB_RD[i], &tmp);
-		temp_high_limit[i] = tmp;
-		temp_high_limit[i] = temp_high_limit[i]  << 8;
-
-		TMON_RD(client,  REG_TEMP_HIGH_LIMIT_LSB[i],  &tmp);
-		temp_high_limit[i] |= tmp;
+		temp_high_limit[i] = ((u16)tmp) << 8;
+		if ((i == REMOTE) || (i == LOCAL && tmon_device == TMP411)) {
+			TMON_RD(client,  REG_TEMP_HIGH_LIMIT_LSB[i],  &tmp);
+			temp_high_limit[i] |= tmp;
+		}
 
 		TMON_RD(client,  REG_TEMP_CRIT_LIMIT[i], &temp_crit_limit[i]);
 	}
 	TMON_RD(client, REG_CON_RATE_READ, &conv_rate);
+	TMON_RD(client, REG_CFG_READ, &config);
 
 	cancel_delayed_work_sync(&data->tmon_work);
 	return 0;
@@ -724,36 +883,55 @@ static int tmon_tmp411_resume(struct device *dev)
 {
 	int i;
 	int err;
+	u8 curr_cnfg;
+	u8 limit_correction = 0;
+	struct i2c_client *client = to_i2c_client(dev);
 	struct tmon_info *data = i2c_get_clientdata(client);
+
+	TMON_RD(client, REG_CFG_READ, &curr_cnfg);
+
+	/* Stop the temperature conversions */
+	curr_cnfg = (curr_cnfg & (~CFG_STANDBY));
+	TMON_WRT(client, REG_CFG_WRITE, curr_cnfg);
 
 	/*  Restore temperature limits */
 	for (i = 0; i < 2; i++) {
 		TMON_WRT(client,
 			REG_TEMP_HIGH_LIMIT_MSB_WRT[i],
-			(temp_high_limit[i] >> 8));
+			(temp_high_limit[i] >> 8) + limit_correction);
 
-		TMON_WRT(client,
-			REG_TEMP_HIGH_LIMIT_LSB[i],
-			(temp_high_limit[i] & 0xFF));
+		if ((i == REMOTE) || (i == LOCAL && tmon_device == TMP411)) {
+			TMON_WRT(client,
+				REG_TEMP_HIGH_LIMIT_LSB[i],
+				(temp_high_limit[i] & 0xFF));
+		}
 
 		TMON_WRT(client,
 			 REG_TEMP_LOW_LIMIT_MSB_WRT[i],
-			 (temp_low_limit[i] >> 8));
+			 (temp_low_limit[i] >> 8) + limit_correction);
 
-		TMON_WRT(client,
-			REG_TEMP_LOW_LIMIT_LSB[i],
-			(temp_low_limit[i] & 0xFF));
+		if ((i == REMOTE) || (i == LOCAL && tmon_device == TMP411)) {
+			TMON_WRT(client,
+				REG_TEMP_LOW_LIMIT_LSB[i],
+				(temp_low_limit[i] & 0xFF));
+		}
 
 		TMON_WRT(client,
 			REG_TEMP_CRIT_LIMIT[i],
-			temp_crit_limit[i]);
+			temp_crit_limit[i] + limit_correction);
 	}
 	TMON_WRT(client, REG_CONV_RATE_WRITE, conv_rate);
+
+	/* Start the temperature conversion and restore config */
+	TMON_WRT(client, REG_CFG_WRITE, config);
+
+	/* FIXME: Is it required to wait for one temperature conversion? */
 
 	schedule_delayed_work(&data->tmon_work,
 				msecs_to_jiffies(data->pdata->delta_time));
 	return 0;
 }
+
 #endif
 
 static const struct dev_pm_ops tegra_tmp411_dev_pm_ops = {
@@ -779,7 +957,7 @@ static struct i2c_driver tmon_tmp411_driver = {
 #endif
 		   },
 	.probe = tmon_tmp411_probe,
-	.remove = __devexit_p(tmon_tmp411_remove),
+	.remove = tmon_tmp411_remove,
 	.id_table = tmon_tmp411_id,
 };
 

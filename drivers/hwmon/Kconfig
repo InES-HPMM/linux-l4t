@@ -1323,15 +1323,15 @@ config SENSORS_VEXPRESS
 	  range of information like temperature, power, energy.
 
 config SENSORS_TMON_TMP411
-	tristate "Temperature Monitor driver"
-	depends on !SENSORS_TMP401
+	tristate "Temperature Monitor driver for TMP411 and NVT210"
+	depends on !SENSORS_TMP401 && !SENSORS_LM90
 	default n
 	help
-	  This driver supports TMP411 sensor by TI. It is used to update
+	  This driver supports TMP411 and NVT210 sensors. It is used to update
 	  registers dynamically based on the curret temperature.
 
-	  If you say yes here temperature monitor driver will monitor
-	  temperature.
+	  If you say yes here temperature monitoring support for TMP411 and NVT210
+	  will be available.
 
 config SENSORS_VIA_CPUTEMP
 	tristate "VIA CPU temperature sensor"
