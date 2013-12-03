@@ -1,9 +1,10 @@
 /*
- * arch/arm/mach-tegra/fiq_debugger.c
+ * platform/tegra/fiq_debugger.c
  *
  * Serial Debugger Interface for Tegra
  *
  * Copyright (C) 2008 Google, Inc.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,9 +26,10 @@
 #include <linux/serial_reg.h>
 #include <linux/slab.h>
 #include <linux/stacktrace.h>
+#include <linux/irqchip/tegra.h>
+#include <linux/tegra_fiq_debugger.h>
+
 #include <asm/fiq_debugger.h>
-#include <mach/tegra_fiq_debugger.h>
-#include <mach/fiq.h>
 
 #include <linux/uaccess.h>
 

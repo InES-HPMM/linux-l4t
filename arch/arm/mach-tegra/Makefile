@@ -93,7 +93,6 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
 obj-y                                   += mc.o
-obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-$(CONFIG_PM_GENERIC_DOMAINS)        += pm_domains.o
 obj-y                                   += dvfs.o
