@@ -720,6 +720,7 @@ static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
 	.iio_channel_name = "tdiode",
 	.tz_name = "Tdiode",
 	.temp_offset = 0,
+	.dual_mode = true,
 	.adc_to_temp = gadc_thermal_tdiode_adc_to_temp,
 };
 
