@@ -52,6 +52,7 @@ enum als_state {
 #define JSA1127_CMD_START_INTERGATION		0x08
 #define JSA1127_CMD_STOP_INTERGATION		0x30
 #define JSA1127_CMD_STANDBY			0x8C
+#define JSA1127_POWER_ON_DELAY			60 /* msec */
 
 struct jsa1127_chip {
 	struct i2c_client		*client;
@@ -205,8 +206,9 @@ static ssize_t jsa1127_chan_enable(struct iio_dev *indio_dev,
 	if (enable) {
 		chip->als_raw_value = 0;
 		chip->als_state = CHIP_POWER_ON_ALS_ON;
-		queue_delayed_work(chip->wq, &chip->dw, 0);
+		queue_delayed_work(chip->wq, &chip->dw, JSA1127_POWER_ON_DELAY);
 	} else {
+		cancel_delayed_work_sync(&chip->dw);
 		chip->als_state = CHIP_POWER_ON_ALS_OFF;
 	}
 
