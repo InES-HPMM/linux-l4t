@@ -33,6 +33,7 @@
 
 #include <mach/irqs.h>
 #include <mach/dc.h>
+#include <mach/io_dpd.h>
 
 #include "board.h"
 #include "devices.h"
@@ -460,6 +461,16 @@ static struct platform_device ardbeg_nvmap_device  = {
 		.platform_data = &ardbeg_nvmap_data,
 	},
 };
+static struct tegra_io_dpd dsic_io = {
+	.name			= "DSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 8,
+};
+static struct tegra_io_dpd dsid_io = {
+	.name			= "DSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 9,
+};
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
@@ -487,6 +498,8 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_E1627:
 		panel = &dsi_p_wuxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
+		tegra_io_dpd_enable(&dsic_io);
+		tegra_io_dpd_enable(&dsid_io);
 		break;
 	case BOARD_E1549:
 		panel = &dsi_lgd_wxga_7_0;
@@ -510,6 +523,8 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	default:
 		panel = &dsi_p_wuxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
+		tegra_io_dpd_enable(&dsic_io);
+		tegra_io_dpd_enable(&dsid_io);
 		break;
 	}
 	if (dsi_instance_out)
