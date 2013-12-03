@@ -1,6 +1,4 @@
 /*
- * arch/arm/mach-tegra/include/mach/gic.h
- *
  * Copyright (C) 2010-2013 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -14,8 +12,8 @@
  *
  */
 
-#ifndef _MACH_TEGRA_GIC_H_
-#define _MACH_TEGRA_GIC_H_
+#ifndef __LINUX_IRQCHIP_TEGRA_H
+#define __LINUX_IRQCHIP_TEGRA_H
 
 #define PMC_MAX_WAKE_COUNT 64
 #define	GIC_V1	1
@@ -119,4 +117,4 @@ void tegra_init_legacy_irq_cop(void);
 /* lp1 wake interrupts enabled or disabled using this API */
 int tegra_update_lp1_irq_wake(unsigned int irq, bool enable);
 
-#endif /* _MACH_TEGRA_GIC_H_ */
+#endif /* __LINUX_IRQCHIP_TEGRA_H */
