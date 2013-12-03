@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/nct1008.h>
 #include <linux/tegra-fuse.h>
+#include <media/camera.h>
 #include <media/mt9m114.h>
 #include <media/ov7695.h>
 #include <mach/gpio-tegra.h>
@@ -261,23 +262,37 @@ struct ov7695_platform_data loki_ov7695_pdata = {
 	.power_off = loki_ov7695_power_off,
 };
 
-static struct i2c_board_info loki_i2c_board_info_e2548[] = {
+static struct i2c_board_info loki_i2c_board_info_ov7695 = {
+	I2C_BOARD_INFO("ov7695", 0x21),
+	.platform_data = &loki_ov7695_pdata,
+};
+
+static struct camera_module loki_camera_module_info[] = {
 	{
-		I2C_BOARD_INFO("mt9m114", 0x48),
-		.platform_data = &loki_mt9m114_pdata,
+		/* front camera */
+		.sensor = &loki_i2c_board_info_ov7695,
 	},
-	{
-		I2C_BOARD_INFO("ov7695", 0x21),
-		.platform_data = &loki_ov7695_pdata,
-	},
+
+	{}
+};
+
+static struct camera_platform_data loki_pcl_pdata = {
+	.cfg = 0xAA55AA55,
+	.modules = loki_camera_module_info,
+};
+
+static struct platform_device loki_camera_generic = {
+	.name = "pcl-generic",
+	.id = -1,
 };
 
 static int loki_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
 
-	i2c_register_board_info(2, loki_i2c_board_info_e2548,
-			ARRAY_SIZE(loki_i2c_board_info_e2548));
+	platform_device_add_data(&loki_camera_generic,
+		&loki_pcl_pdata, sizeof(loki_pcl_pdata));
+	platform_device_register(&loki_camera_generic);
 	return 0;
 }
 
