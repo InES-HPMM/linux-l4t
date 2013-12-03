@@ -252,8 +252,12 @@ static int jsa1127_read_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_RAW:
 		if (chip->als_state != CHIP_POWER_ON_ALS_ON)
 			return -EINVAL;
-		*val = chip->als_raw_value;
-		ret = IIO_VAL_INT;
+
+		if (chip->als_raw_value != -EINVAL) {
+			*val = chip->als_raw_value;
+			ret = IIO_VAL_INT;
+		}
+
 		queue_delayed_work(chip->wq, &chip->dw, 0);
 		break;
 	default:
@@ -368,19 +372,32 @@ static void jsa1127_work_func(struct work_struct *ws)
 		return;
 
 	if (chip->use_internal_integration_timing) {
-		jsa1127_send_cmd_locked(chip, JSA1127_OPMODE_CONTINUOUS);
+		ret = jsa1127_send_cmd_locked(chip, JSA1127_OPMODE_CONTINUOUS);
+		if (ret)
+			goto fail;
 		msleep(chip->integration_time);
 	} else {
-		jsa1127_send_cmd_locked(chip,
+		ret = jsa1127_send_cmd_locked(chip,
 					JSA1127_ONE_TIME_INTEGRATION_OPMODE);
-		jsa1127_send_cmd_locked(chip, JSA1127_CMD_START_INTERGATION);
+		if (ret)
+			goto fail;
+		ret = jsa1127_send_cmd_locked(chip,
+						JSA1127_CMD_START_INTERGATION);
+		if (ret)
+			goto fail;
 		msleep(chip->integration_time);
-		jsa1127_send_cmd_locked(chip, JSA1127_CMD_STOP_INTERGATION);
+		ret = jsa1127_send_cmd_locked(chip,
+						JSA1127_CMD_STOP_INTERGATION);
+		if (ret)
+			goto fail;
 	}
 	ret = jsa1127_try_update_als_reading_locked(chip);
 	if (ret)
-		DEV_ERR("als reading update failed");
+		goto fail;
 	jsa1127_send_cmd_locked(chip, JSA1127_CMD_STANDBY);
+	return;
+fail:
+	chip->als_raw_value = -EINVAL;
 }
 
 #if 0
