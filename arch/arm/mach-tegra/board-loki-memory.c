@@ -11355,7 +11355,7 @@ int __init loki_emc_init(void)
 	tegra_get_board_info(&bi);
 
 	if (bi.board_id == BOARD_E2548) {
-		switch (bi.sku) {
+		switch (bi.fab) {
 		case 0x0:
 			pr_info("Loading Loki A02 EMC table.\n");
 			tegra_emc_device.dev.platform_data =
