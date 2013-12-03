@@ -60,6 +60,9 @@ static void __init laguna_gpio_init_configure(void)
 
 int __init laguna_pinmux_init(void)
 {
+	if (of_machine_is_compatible("nvidia,norrin"))
+		return 0;
+
 	laguna_gpio_init_configure();
 
 	tegra_pinmux_config_table(laguna_pinmux_common, ARRAY_SIZE(laguna_pinmux_common));

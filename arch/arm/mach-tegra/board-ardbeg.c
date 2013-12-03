@@ -212,8 +212,6 @@ static void ardbeg_i2c_init(void)
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM374 ||
-			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363) {
 		i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
 		i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
@@ -1170,8 +1168,6 @@ static void __init tegra_ardbeg_late_init(void)
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM370 ||
-			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363) {
 		platform_device_register(&tegra124_pinctrl_device);
 		laguna_pinmux_init();
