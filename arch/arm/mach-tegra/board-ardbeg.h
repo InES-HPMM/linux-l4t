@@ -106,6 +106,8 @@ enum tegra_bb_type {
 #define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
 #define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
 #define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
+#define NORRIN_TOUCH_SPI_ID			2	/*SPI 2 on Norrin*/
+#define NORRIN_TOUCH_SPI_CS			1	/*CS  1 on Norrin*/
 
 #define TOUCH_GPIO_IRQ_MAXIM_STI_SPI	TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_MAXIM_STI_SPI	TEGRA_GPIO_PK4

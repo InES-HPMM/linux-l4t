@@ -114,6 +114,7 @@ static struct regulator_consumer_supply as3722_ldo7_supply[] = {
 
 static struct regulator_consumer_supply as3722_ldo9_supply[] = {
 	REGULATOR_SUPPLY("avdd", "spi0.0"),
+	REGULATOR_SUPPLY("avdd", "spi2.1"),
 };
 
 static struct regulator_consumer_supply as3722_ldo10_supply[] = {
@@ -481,6 +482,7 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_modem_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_1v8b", "0-0048"),
 	REGULATOR_SUPPLY("dvdd", "spi0.0"),
+	REGULATOR_SUPPLY("dvdd", "spi2.1"),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
 	REGULATOR_SUPPLY("vid", "0-000c"),
 	REGULATOR_SUPPLY("vddio", "0-0077"),

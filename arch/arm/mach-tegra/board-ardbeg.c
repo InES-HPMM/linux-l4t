@@ -821,10 +821,17 @@ static void ardbeg_modem_init(void)
 #ifndef CONFIG_USE_OF
 static struct platform_device *ardbeg_spi_devices[] __initdata = {
 	&tegra11_spi_device1,
+	&tegra11_spi_device3,
 	&tegra11_spi_device4,
 };
 
 static struct tegra_spi_platform_data ardbeg_spi1_pdata = {
+	.dma_req_sel		= 15,
+	.spi_max_frequency	= 25000000,
+	.clock_always_on	= false,
+};
+
+static struct tegra_spi_platform_data ardbeg_spi3_pdata = {
 	.dma_req_sel		= 15,
 	.spi_max_frequency	= 25000000,
 	.clock_always_on	= false,
@@ -839,6 +846,7 @@ static struct tegra_spi_platform_data ardbeg_spi4_pdata = {
 static void __init ardbeg_spi_init(void)
 {
 	tegra11_spi_device1.dev.platform_data = &ardbeg_spi1_pdata;
+	tegra11_spi_device3.dev.platform_data = &ardbeg_spi3_pdata;
 	tegra11_spi_device4.dev.platform_data = &ardbeg_spi4_pdata;
 	platform_add_devices(ardbeg_spi_devices,
 			ARRAY_SIZE(ardbeg_spi_devices));
@@ -947,6 +955,14 @@ static struct rm_spi_ts_platform_data rm31080ts_ardbeg_data = {
 	.name_of_clock_con = "extern2",
 };
 
+static struct rm_spi_ts_platform_data rm31080ts_norrin_data = {
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_P140,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+};
+
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.tx_clk_tap_delay = 16,
@@ -964,8 +980,23 @@ static struct spi_board_info rm31080a_ardbeg_spi_board[1] = {
 	},
 };
 
+static struct spi_board_info rm31080a_norrin_spi_board[1] = {
+	{
+		.modalias = "rm_ts_spidev",
+		.bus_num = NORRIN_TOUCH_SPI_ID,
+		.chip_select = NORRIN_TOUCH_SPI_CS,
+		.max_speed_hz = 12 * 1000 * 1000,
+		.mode = SPI_MODE_0,
+		.controller_data = &dev_cdata,
+		.platform_data = &rm31080ts_norrin_data,
+	},
+};
+
 static int __init ardbeg_touch_init(void)
 {
+	struct board_info pmu_board_info;
+	tegra_get_board_info(&board_info);
+
 	if (tegra_get_touch_vendor_id() == MAXIM_TOUCH) {
 		pr_info("%s init maxim touch\n", __func__);
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
@@ -975,13 +1006,23 @@ static int __init ardbeg_touch_init(void)
 	} else if (tegra_get_touch_vendor_id() == RAYDIUM_TOUCH) {
 		pr_info("%s init raydium touch\n", __func__);
 		tegra_clk_init_from_table(touch_clk_init_table);
-		rm31080a_ardbeg_spi_board[0].irq =
-			gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
-		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
-				TOUCH_GPIO_RST_RAYDIUM_SPI,
-				&rm31080ts_ardbeg_data,
-				&rm31080a_ardbeg_spi_board[0],
-				ARRAY_SIZE(rm31080a_ardbeg_spi_board));
+		if (board_info.board_id == BOARD_PM374) {
+			rm31080a_norrin_spi_board[0].irq =
+				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+					TOUCH_GPIO_RST_RAYDIUM_SPI,
+					&rm31080ts_norrin_data,
+					&rm31080a_norrin_spi_board[0],
+					ARRAY_SIZE(rm31080a_norrin_spi_board));
+		} else {
+			rm31080a_ardbeg_spi_board[0].irq =
+				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+					TOUCH_GPIO_RST_RAYDIUM_SPI,
+					&rm31080ts_ardbeg_data,
+					&rm31080a_ardbeg_spi_board[0],
+					ARRAY_SIZE(rm31080a_ardbeg_spi_board));
+		}
 	}
 	return 0;
 }
@@ -1175,8 +1216,6 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_pmon_init();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM374 ||
-			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363)
 		laguna_pcie_init();
 	else {
