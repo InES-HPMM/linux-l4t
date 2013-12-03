@@ -32,10 +32,6 @@
  *	Corrupted registers: x0-x7, x9-x11
  */
 .macro v8_op_dcache_all op			// op=csw clean, op=cisw flush
-	dsb	sy				// ensure ordering with previous memory accesses
-	mrs	x0, clidr_el1			// read clidr
-	and	x3, x0, #0x7000000		// extract loc from clidr
-	lsr	x3, x3, #23			// left align loc bit field
 	cbz	x3, 5f			// if loc is 0, then no need to clean
 	mov	x10, #0				// start clean at cache level 0
 1:
@@ -88,6 +84,11 @@
  *	Corrupted registers: x0-x7, x9-x11
  */
 ENTRY(__flush_dcache_all)
+	dsb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0x7000000		// extract loc from clidr
+	lsr	x3, x3, #23			// left align loc bit field
+
 	v8_op_dcache_all cisw
 ENDPROC(__flush_dcache_all)
 
@@ -99,8 +100,28 @@ ENDPROC(__flush_dcache_all)
  *	Corrupted registers: x0-x7, x9-x11
  */
 ENTRY(__clean_dcache_all)
+	dsb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0x7000000		// extract loc from clidr
+	lsr	x3, x3, #23			// left align loc bit field
+
 	v8_op_dcache_all csw
 ENDPROC(__clean_dcache_all)
+
+/*
+ *	__flush_dcache_louis()
+ *
+ *	Flush D-cache to the level of unification inner shareable
+ *
+ *	Corrupted registers: x0-x7, x9-x11
+ */
+ENTRY(__flush_dcache_louis)
+	dsb	sy				// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1			// read clidr
+	and	x3, x0, #0xe00000		// extract louis from clidr
+	lsr	x3, x3, #20			// left align louis bit field
+	v8_op_dcache_all cisw
+ENDPROC(__flush_dcache_louis)
 
 /*
  *	flush_cache_all()
@@ -118,6 +139,18 @@ ENTRY(flush_cache_all)
 	ic	ialluis				// I+BTB cache invalidate
 	ret	x12
 ENDPROC(flush_cache_all)
+
+/*
+ *	flush_cache_louis()
+ *
+ *	Actually a clean should be sufficient for PG entry
+ */
+ENTRY(flush_dcache_louis)
+	mov	x12, lr
+	bl	__flush_dcache_louis
+	mov	x0, #0
+	ret	x12
+ENDPROC(flush_dcache_louis)
 
 /*
  *	flush_icache_range(start,end)
