@@ -1252,6 +1252,14 @@ static int hsic_pad_enable(struct tegra_xhci_hcd *tegra, unsigned pad)
 	reg &= ~(PD_RX | HSIC_PD_ZI | PD_TRX | PD_TX);
 	writel(reg, base + HSIC_PAD_CTL_1(pad));
 
+	/* Wait for 25 us */
+	usleep_range(25, 50);
+
+	/* Power down tracking circuit */
+	reg = readl(base + HSIC_PAD_CTL_1(pad));
+	reg |= PD_TRX;
+	writel(reg, base + HSIC_PAD_CTL_1(pad));
+
 	reg = readl(base + HSIC_STRB_TRIM_CONTROL);
 	reg &= ~(STRB_TRIM_VAL(~0));
 	reg |= STRB_TRIM_VAL(hsic->strb_trim_val);
