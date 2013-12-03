@@ -196,6 +196,9 @@ int tegra210_admaif_global_enable(int en)
 {
 	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
 
+	dev_vdbg(admaif->dev, "admaif global enable = %d, ref.count = %d",
+		en, admaif->enable_count);
+
 	if (en) {
 		admaif->enable_count++;
 		if (admaif->enable_count > 1)
@@ -210,21 +213,24 @@ int tegra210_admaif_global_enable(int en)
 }
 EXPORT_SYMBOL_GPL(tegra210_admaif_global_enable);
 
-int tegra210_admaif_set_dma_fifo(enum tegra210_ahub_cifs cif,
+int tegra210_admaif_set_rx_dma_fifo(enum tegra210_ahub_cifs cif,
 				 int start_addr, int size)
 {
 	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
 	u32 val, reg;
 	int mask;
 
+	dev_dbg(admaif->dev,
+		"admaif rx cif %d, dma start.addr = %d, size = %d ",
+		cif, start_addr, size);
+
 	reg = ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE;
-	reg += IS_ADMAIF_TX(cif) ? TEGRA210_ADMAIF_XBAR_TX_FIFO_CTRL :
-				     TEGRA210_ADMAIF_XBAR_RX_FIFO_CTRL;
+	reg += TEGRA210_ADMAIF_XBAR_RX_FIFO_CTRL;
 
 	regmap_read(admaif->regmap, reg, &val);
 
 	val = (start_addr << TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT) |
-			(size << TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_SHIFT);
+		(size << TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_SHIFT);
 
 	mask = (TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT |
 			TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_MASK);
@@ -233,7 +239,55 @@ int tegra210_admaif_set_dma_fifo(enum tegra210_ahub_cifs cif,
 				reg, mask, val);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(tegra210_admaif_set_dma_fifo);
+EXPORT_SYMBOL_GPL(tegra210_admaif_set_rx_dma_fifo);
+
+int tegra210_admaif_set_tx_dma_fifo(enum tegra210_ahub_cifs cif,
+				 int start_addr, int size, int threshold)
+{
+	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
+	u32 val, reg;
+	int mask;
+
+	dev_dbg(admaif->dev,
+		"admaif tx cif %d, dma start addr = %d, size = %d, thres.= %d",
+		cif, start_addr, size, threshold);
+
+	reg = ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE;
+	reg += TEGRA210_ADMAIF_XBAR_TX_FIFO_CTRL;
+
+	regmap_read(admaif->regmap, reg, &val);
+
+	val = (start_addr << TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT) |
+		(size << TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_SHIFT) |
+		(threshold << TEGRA210_ADMAIF_XBAR_DMA_FIFO_THRESHOLD_SHIFT);
+
+	mask = (TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT |
+			TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_MASK |
+			TEGRA210_ADMAIF_XBAR_DMA_FIFO_THRESHOLD_MASK);
+
+	regmap_update_bits(admaif->regmap,
+				reg, mask, val);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_admaif_set_tx_dma_fifo);
+
+int tegra210_admaif_xbar_transfer_status(enum tegra210_ahub_cifs cif)
+{
+	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
+	u32 reg, val;
+
+	reg = ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE;
+	reg += (IS_ADMAIF_TX(cif) ? TEGRA210_ADMAIF_XBAR_TX_STATUS :
+				TEGRA210_ADMAIF_XBAR_RX_STATUS);
+
+	regmap_read(admaif->regmap, reg, &val);
+	val = (val & TEGRA210_ADMAIF_XBAR_STATUS_TRANS_EN_MASK) >>
+				TEGRA210_ADMAIF_XBAR_STATUS_TRANS_EN_SHIFT;
+	dev_dbg(admaif->dev, "admaif cif = %d, trans.enable status = %d",
+		cif, val);
+	return val;
+}
+EXPORT_SYMBOL(tegra210_admaif_xbar_transfer_status);
 
 int tegra210_admaif_soft_reset(enum tegra210_ahub_cifs cif)
 {

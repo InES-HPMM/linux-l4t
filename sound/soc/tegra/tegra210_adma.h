@@ -87,6 +87,11 @@
 #define TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT			0
 #define TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_MASK			(15 << TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT)
 
+/* Maximum adma transfer 1GB size */
+#define TEGRA210_ADMA_MAX_TRANSFER_SIZE						0x40000000
+#define TEGRA210_ADMA_NAME_SIZE								16
+#define TRANSFER_ENABLE										1
+
 enum tegra210_adma_fetching_policy {
 	BURST_BASED = 0,
 	THRESHOLD_BASED = 1,
@@ -153,6 +158,26 @@ enum tegra210_adma_req_buff_status {
 };
 
 typedef void (*tegra210_adma_callback)(struct tegra210_adma_req *req);
+typedef void (*tegra210_adma_isr_handler)(struct tegra210_adma_channel *ch);
+
+static const unsigned int adma_addr_wrap_table[12] = {
+	0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
+};
+
+struct tegra210_adma_channel {
+	struct list_head	list;
+	struct tegra210_adma_req	*cb_req;
+	tegra210_adma_callback		callback;
+	tegra210_adma_isr_handler		isr_handler;
+	resource_size_t		addr;
+	spinlock_t		lock;
+	int			id;
+	int			mode;
+	int			irq;
+	char			name[TEGRA210_ADMA_NAME_SIZE];
+	char			client_name[TEGRA210_ADMA_NAME_SIZE];
+	bool	adma_is_paused;
+};
 
 struct tegra210_adma_req {
 	struct list_head node;
@@ -206,22 +231,17 @@ struct tegra210_adma_req {
 	/* Client specific data */
 	void *dev;
 };
-/* TEGRA210 ADMA driver context */
-struct tegra210_adma_ctx {
-	struct device		*dev;
-	struct clk		*clk;
-	struct regmap		*regmap;
-	void __iomem		*regs;
-	bool adma_initialized;
-};
 
+void tegra210_adma_channel_enable(struct tegra210_adma_channel *ch, bool en);
 int tegra210_adma_enqueue_req(struct tegra210_adma_channel *ch,
 		struct tegra210_adma_req *req);
+
 struct tegra210_adma_channel *tegra210_adma_allocate_channel(int mode,
 		const char namefmt[], ...);
 void tegra210_adma_free_channel(struct tegra210_adma_channel *ch);
-void tegra210_adma_channel_enable(struct tegra210_adma_channel *ch, bool en);
+
 void tegra210_adma_global_enable(bool en);
+
 int tegra210_adma_get_channel_id(struct tegra210_adma_channel *ch);
 int tegra210_adma_channel_status_read(struct tegra210_adma_channel *ch);
 int tegra210_adma_channel_tc_status(struct tegra210_adma_channel *ch);

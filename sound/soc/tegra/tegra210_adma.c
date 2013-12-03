@@ -40,37 +40,19 @@
 
 #define DRV_NAME "tegra210-adma"
 
+/* TEGRA210 ADMA driver context */
+struct tegra210_adma_ctx {
+	struct device		*dev;
+	struct clk		*clk;
+	struct regmap		*regmap;
+	void __iomem		*regs;
+	u32			enable_count;
+	bool adma_initialized;
+};
+
 static struct tegra210_adma_ctx *tegra210_adma;
 
-static const unsigned int adma_addr_wrap_table[12] = {
-	0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
-};
-
-typedef void (*tegra210_adma_isr_handler)(struct tegra210_adma_channel *ch);
-
-/* Maximum adma transfer 1GB size */
-#define TEGRA210_ADMA_MAX_TRANSFER_SIZE		0x40000000
-
-#define TEGRA210_ADMA_NAME_SIZE 16
-#define TRANSFER_ENABLE				1
-
-struct tegra210_adma_channel {
-	struct list_head	list;
-	int			id;
-	spinlock_t		lock;
-	char			name[TEGRA210_ADMA_NAME_SIZE];
-	char			client_name[TEGRA210_ADMA_NAME_SIZE];
-	resource_size_t		addr;
-	int			mode;
-	int			irq;
-	tegra210_adma_callback		callback;
-	struct tegra210_adma_req	*cb_req;
-	tegra210_adma_isr_handler		isr_handler;
-	bool	adma_is_paused;
-};
-
 static DEFINE_MUTEX(tegra210_adma_lock);
-
 static DECLARE_BITMAP(channel_usage, TEGRA210_ADMA_MAX_CHANNELS);
 static struct tegra210_adma_channel adma_channels[TEGRA210_ADMA_MAX_CHANNELS];
 
@@ -82,19 +64,20 @@ static void tegra210_adma_oneshot_handle(struct tegra210_adma_channel *ch);
 static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 	struct tegra210_adma_req *req)
 {
+	struct tegra210_adma_ctx *adma = tegra210_adma;
 	u32 val, valfifo;
 
-	dev_dbg(tegra210_adma->dev,
-		"ch.id = %d req.size = %d, ahub.ch.req = %d, dir = %d ",
+	dev_dbg(adma->dev,
+		"ch.id = %d, req.size = %d, ahub.ch.req = %d, dir = %d ",
 		ch->id, req->size, req->ahub_ch_request,
 		req->transfer_direction);
 
-	regmap_write(tegra210_adma->regmap, (ch->addr + TEGRA210_ADMA_CH_TC),
+	regmap_write(adma->regmap, (ch->addr + TEGRA210_ADMA_CH_TC),
 		    req->size);
 
-	regmap_read(tegra210_adma->regmap, (ch->addr + TEGRA210_ADMA_CH_CTRL),
+	regmap_read(adma->regmap, (ch->addr + TEGRA210_ADMA_CH_CTRL),
 		    &val);
-	regmap_read(tegra210_adma->regmap,
+	regmap_read(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_AHUB_FIFO_CTRL),
 		    &valfifo);
 	val  &= ~TEGRA210_ADMA_CH_CTRL_TRANSFER_DIRECTION_MASK;
@@ -110,7 +93,7 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 		valfifo &= ~TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_MASK;
 		valfifo |= 3 <<
 			TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_SHIFT;
-		regmap_write(tegra210_adma->regmap,
+		regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_LOWER_SOURCE_ADDR),
 		    req->source_addr);
 	} else if (req->transfer_direction == AHUB_TO_MEMORY) {
@@ -120,34 +103,34 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 		valfifo &= ~TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_MASK;
 		valfifo |=  3 <<
 			TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT;
-		regmap_write(tegra210_adma->regmap,
+		regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_LOWER_TARGET_ADDR),
 		    req->dest_addr);
 
 	} else if (req->transfer_direction == MEMORY_TO_MEMORY) {
-		regmap_write(tegra210_adma->regmap,
+		regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_LOWER_TARGET_ADDR),
 		    req->dest_addr);
-		regmap_write(tegra210_adma->regmap,
+		regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_LOWER_SOURCE_ADDR),
 		    req->source_addr);
 	}
 	val |=  (1 << TEGRA210_ADMA_CH_CTRL_FLOWCTRL_ENABLE_SHIFT);
-	regmap_write(tegra210_adma->regmap, ch->addr + TEGRA210_ADMA_CH_CTRL,
+	regmap_write(adma->regmap, ch->addr + TEGRA210_ADMA_CH_CTRL,
 		    val);
 
 	valfifo |=  (BURST_BASED <<
 		    TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_FETCHING_POLICY_SHIFT);
-	regmap_write(tegra210_adma->regmap,
+	regmap_write(adma->regmap,
 	    (ch->addr + TEGRA210_ADMA_CH_AHUB_FIFO_CTRL),
 	    valfifo);
 
-	regmap_read(tegra210_adma->regmap, ch->addr + TEGRA210_ADMA_CH_CONFIG,
+	regmap_read(adma->regmap, ch->addr + TEGRA210_ADMA_CH_CONFIG,
 		    &val);
 	val &= ~TEGRA210_ADMA_CH_CONFIG_BURST_SIZE_MASK;
 	val |=  (req->fixed_burst_size <<
 		    TEGRA210_ADMA_CH_CONFIG_BURST_SIZE_SHIFT);
-	regmap_write(tegra210_adma->regmap, ch->addr + TEGRA210_ADMA_CH_CONFIG,
+	regmap_write(adma->regmap, ch->addr + TEGRA210_ADMA_CH_CONFIG,
 		    val);
 }
 
@@ -168,10 +151,10 @@ EXPORT_SYMBOL(tegra210_adma_enqueue_req);
 struct tegra210_adma_channel *tegra210_adma_allocate_channel(int mode,
 		const char namefmt[], ...)
 {
-	int channel;
 	struct tegra210_adma_channel *ch = NULL;
-	va_list args;
 	tegra210_adma_isr_handler isr_handler = NULL;
+	va_list args;
+	int channel;
 
 	if (!tegra210_adma->adma_initialized)
 		return NULL;
@@ -183,7 +166,7 @@ struct tegra210_adma_channel *tegra210_adma_allocate_channel(int mode,
 
 	dev_dbg(tegra210_adma->dev, "allocated channel = %d", channel);
 	if (channel >= ARRAY_SIZE(adma_channels)) {
-		pr_info("all ADMA channel are used :\n");
+		pr_info("all adma channel are used :\n");
 		goto out;
 	}
 
@@ -213,8 +196,10 @@ EXPORT_SYMBOL(tegra210_adma_allocate_channel);
 
 void tegra210_adma_free_channel(struct tegra210_adma_channel *ch)
 {
-	dev_vdbg(tegra210_adma->dev, "freed ADMA CH %d", ch->id);
-	regmap_write(tegra210_adma->regmap,
+	struct tegra210_adma_ctx *adma = tegra210_adma;
+
+	dev_vdbg(adma->dev, "freed adma ch. = %d", ch->id);
+	regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_INT_CLEAR), 0x1);
 	mutex_lock(&tegra210_adma_lock);
 	__clear_bit(ch->id, channel_usage);
@@ -381,10 +366,11 @@ fail:
 
 void tegra210_adma_channel_enable(struct tegra210_adma_channel *ch, bool en)
 {
+	struct tegra210_adma_ctx *adma = tegra210_adma;
 
-	dev_vdbg(tegra210_adma->dev, "ADMA channel ID = %d, enable = %d ",
+	dev_vdbg(adma->dev, "adma channel id = %d, enable = %d ",
 		    ch->id, en);
-	regmap_write(tegra210_adma->regmap, ch->addr + TEGRA210_ADMA_CH_CMD,
+	regmap_write(adma->regmap, ch->addr + TEGRA210_ADMA_CH_CMD,
 		    en);
 	return;
 }
@@ -411,8 +397,22 @@ EXPORT_SYMBOL(tegra210_adma_channel_tc_status);
 
 void tegra210_adma_global_enable(bool en)
 {
-	dev_vdbg(tegra210_adma->dev, "ADMA global enable %d", en);
-	regmap_write(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_CMD, en);
+	struct tegra210_adma_ctx *adma = tegra210_adma;
+
+	dev_vdbg(adma->dev, "adma global enable = %d, ref.count = %d",
+		en, adma->enable_count);
+
+	if (en) {
+		adma->enable_count++;
+		if (adma->enable_count > 1)
+			return;
+	} else {
+		adma->enable_count--;
+		if (adma->enable_count > 0)
+			return;
+	}
+
+	regmap_write(adma->regmap, TEGRA210_ADMA_GLOBAL_CMD, en);
 	return;
 }
 EXPORT_SYMBOL(tegra210_adma_global_enable);
@@ -422,7 +422,7 @@ static int __init tegra210_adma_probe(struct platform_device *pdev)
 	struct resource *res, *region;
 	int ret = 0;
 
-	dev_dbg(&pdev->dev, "ADMA: starting probe");
+	dev_dbg(&pdev->dev, "adma: starting probe");
 
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No device tree node for ADMA driver");
@@ -511,7 +511,7 @@ static int tegra210_adma_remove(struct platform_device *pdev)
 	/* clk_put(adma->clk); */
 	tegra210_adma = NULL;
 
-	dev_dbg(&pdev->dev, "%s ADMA removed", __func__);
+	dev_dbg(&pdev->dev, "%s adma removed", __func__);
 
 	return 0;
 }

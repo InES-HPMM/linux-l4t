@@ -61,24 +61,35 @@
 #define TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_SHIFT			8
 #define TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_MASK			(0x1f << TEGRA210_ADMAIF_XBAR_DMA_FIFO_SIZE_SHIFT)
 
+#define TEGRA210_ADMAIF_XBAR_DMA_FIFO_THRESHOLD_SHIFT		20
+#define TEGRA210_ADMAIF_XBAR_DMA_FIFO_THRESHOLD_MASK	(0x2ff << TEGRA210_ADMAIF_XBAR_DMA_FIFO_THRESHOLD_SHIFT)
+
+#define TEGRA210_ADMAIF_XBAR_STATUS_TRANS_EN_SHIFT		0
+#define TEGRA210_ADMAIF_XBAR_STATUS_TRANS_EN_MASK		(0x1 << TEGRA210_ADMAIF_XBAR_STATUS_TRANS_EN_SHIFT)
+
 #define TEGRA210_ADMAIF_CHAN_CTRL_TX_ENABLE				BIT(31)
 #define TEGRA210_ADMAIF_CHAN_CTRL_RX_ENABLE				BIT(30)
 
 #define TEGRA210_ADMAIF_LAST_REG						0x75f
 
 /* TODO: PACK and UNPACK ENABLE */
+int tegra210_admaif_enable(enum tegra210_ahub_cifs cif, int en);
 int tegra210_admaif_get(enum tegra210_ahub_cifs *cif);
 int tegra210_admaif_put(enum tegra210_ahub_cifs cif);
 int tegra210_admaif_set_acif_param(enum tegra210_ahub_cifs cif,
 				   struct tegra210_axbar_cif_param *acif);
 int tegra210_admaif_get_acif_param(enum tegra210_ahub_cifs cif,
 				   struct tegra210_axbar_cif_param *acif);
-int tegra210_admaif_enable(enum tegra210_ahub_cifs cif, int en);
-int tegra210_admaif_global_enable(int en);
-int tegra210_admaif_set_dma_fifo(enum tegra210_ahub_cifs cif,
+int tegra210_admaif_set_rx_dma_fifo(enum tegra210_ahub_cifs cif,
 				 int start_addr, int size);
+int tegra210_admaif_set_tx_dma_fifo(enum tegra210_ahub_cifs cif,
+				 int start_addr, int size, int threshold);
+
 int tegra210_admaif_soft_reset(enum tegra210_ahub_cifs cif);
-int tegra210_admaif_enable(enum tegra210_ahub_cifs cif, int en);
+int tegra210_admaif_xbar_transfer_status(enum tegra210_ahub_cifs cif);
+
+int tegra210_admaif_global_enable(int en);
+
 void tegra210_admaif_enable_clk(void);
 void tegra210_admaif_disable_clk(void);
 #endif

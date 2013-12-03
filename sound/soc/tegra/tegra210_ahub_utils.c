@@ -46,12 +46,14 @@ int tegra210_set_axbar_cif_param(struct device *dev, u32 reg,
 	u32 val = 0, mask = 0;
 
 	dev_vdbg(dev, "%s reg 0x%08x ACIF Params : Channels axbar %d client %d"
-		      "bits axbar %d client %d expand %d truncate %d pack %d"
-		      "mono_conv %d stereo_conv %d replicate %d threshold %d",
+		      " bits axbar %d client %d expand %d truncate %d %s %d"
+		      " mono_conv %d stereo_conv %d replicate %d threshold %d",
 		 __func__, reg, acif->axbar_chan, acif->client_chan,
 		 acif->axbar_bits, acif->client_bits, acif->expand,
-		 acif->truncate, acif->pack_mode, acif->mono_conv,
-		 acif->stereo_conv, acif->replicate, acif->threshold);
+		 acif->truncate, acif->is_rx == true ? "rx pack mode " :
+		 "tx unpack mode ", acif->is_rx == true ? acif->pack_mode :
+		 acif->unpack_mode, acif->mono_conv, acif->stereo_conv,
+		 acif->replicate, acif->threshold);
 
 	if (!regmap) {
 		dev_err(dev, "Failed to get regmap");
@@ -86,12 +88,22 @@ int tegra210_set_axbar_cif_param(struct device *dev, u32 reg,
 		TEGRA210_AXBAR_CIF_CTRL_REPLICATE |
 		TEGRA210_AXBAR_CIF_CTRL_FIFO_THRESHOLD_MASK);
 
-	if (acif->pack_mode == CIF_PACK_MODE_8) {
-		val |= TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE;
-		mask |= TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE;
-	} else if (acif->pack_mode == CIF_PACK_MODE_8) {
-		val |= TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE;
-		mask |= TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE;
+	if (acif->is_rx) {
+		if (acif->pack_mode == CIF_PACK_MODE_8) {
+			val |= TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE;
+			mask |= TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE;
+		} else if (acif->pack_mode == CIF_PACK_MODE_16) {
+			val |= TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE;
+			mask |= TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE;
+		}
+	} else {
+		if (acif->unpack_mode == CIF_UNPACK_MODE_8) {
+			val |= TEGRA210_AXBAR_CIF_CTRL_UNPACK8_ENABLE;
+			mask |= TEGRA210_AXBAR_CIF_CTRL_UNPACK8_ENABLE;
+		} else if (acif->unpack_mode == CIF_UNPACK_MODE_16) {
+			val |= TEGRA210_AXBAR_CIF_CTRL_UNPACK16_ENABLE;
+			mask |= TEGRA210_AXBAR_CIF_CTRL_UNPACK16_ENABLE;
+		}
 	}
 
 	regmap_update_bits(regmap, reg, mask, val);
@@ -137,19 +149,30 @@ int tegra210_get_axbar_cif_param(struct device *dev, u32 reg,
 		((val & TEGRA210_AXBAR_CIF_CTRL_FIFO_THRESHOLD_MASK) >>
 		 TEGRA210_AXBAR_CIF_CTRL_FIFO_THRESHOLD_SHIFT) + 1;
 
-	acif->pack_mode = CIF_PACK_MODE_NONE;
-	if (val & TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE)
-		acif->pack_mode = CIF_PACK_MODE_8;
-	else if (val & TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE)
-		acif->pack_mode = CIF_PACK_MODE_16;
+
+	if (acif->is_rx) {
+		acif->pack_mode = CIF_PACK_MODE_NONE;
+		if (val & TEGRA210_AXBAR_CIF_CTRL_PACK8_ENABLE)
+			acif->pack_mode = CIF_PACK_MODE_8;
+		else if (val & TEGRA210_AXBAR_CIF_CTRL_PACK16_ENABLE)
+			acif->pack_mode = CIF_PACK_MODE_16;
+	} else {
+		acif->unpack_mode = CIF_UNPACK_MODE_NONE;
+		if (val & TEGRA210_AXBAR_CIF_CTRL_UNPACK8_ENABLE)
+			acif->unpack_mode = CIF_UNPACK_MODE_8;
+		else if (val & TEGRA210_AXBAR_CIF_CTRL_UNPACK16_ENABLE)
+			acif->unpack_mode = CIF_UNPACK_MODE_16;
+	}
 
 	dev_vdbg(dev, "%s reg 0x%08x ACIF Params : Channels axbar %d client %d"
-		      "bits axbar %d client %d expand %d truncate %d pack %d"
-		      "mono_conv %d stereo_conv %d replicate %d threshold %d",
+		      " bits axbar %d client %d expand %d truncate %d %s %d"
+		      " mono_conv %d stereo_conv %d replicate %d threshold %d",
 		 __func__, reg, acif->axbar_chan, acif->client_chan,
 		 acif->axbar_bits, acif->client_bits, acif->expand,
-		 acif->truncate, acif->pack_mode, acif->mono_conv,
-		 acif->stereo_conv, acif->replicate, acif->threshold);
+		 acif->truncate, acif->is_rx == true ? "rx pack mode " :
+		 "tx unpack mode ", acif->is_rx == true ? acif->pack_mode :
+		 acif->unpack_mode, acif->mono_conv, acif->stereo_conv,
+		 acif->replicate, acif->threshold);
 
 	return 0;
 }
