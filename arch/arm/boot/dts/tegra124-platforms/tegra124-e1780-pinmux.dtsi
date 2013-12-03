@@ -28,7 +28,7 @@
 			dap1_dout_pn2 {
 				nvidia,pins = "dap1_dout_pn2";
 				nvidia,function = "i2s0";
-				nvidia,enable-input = <TEGRA_PIN_INPUT>;
+				nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
 				nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
 				nvidia,tristate = <TEGRA_PIN_TRISTATE>;
 			};
@@ -60,7 +60,7 @@
 			dap2_dout_pa5 {
 				nvidia,pins = "dap2_dout_pa5";
 				nvidia,function = "i2s1";
-				nvidia,enable-input = <TEGRA_PIN_INPUT>;
+				nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
 				nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
 				nvidia,tristate = <TEGRA_PIN_TRISTATE>;
 			};
@@ -654,7 +654,7 @@
 			dap4_dout_pp6 {
 				nvidia,pins = "dap4_dout_pp6";
 				nvidia,function = "i2s3";
-				nvidia,enable-input = <TEGRA_PIN_INPUT>;
+				nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
 				nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
 				nvidia,tristate = <TEGRA_PIN_TRISTATE>;
 			};
