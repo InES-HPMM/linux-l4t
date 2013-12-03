@@ -51,6 +51,9 @@ static int te_pin_user_pages(void *buffer, size_t size,
 	down_read(&current->mm->mmap_sem);
 	ret = get_user_pages(current, current->mm, (unsigned long)buffer,
 				nr_pages, WRITE, 0, pages, NULL);
+	if (ret < 0)
+		ret = get_user_pages(current, current->mm, (unsigned long)buffer,
+				nr_pages, WRITE, 1/*force*/, pages, NULL);
 	up_read(&current->mm->mmap_sem);
 
 	*pages_ptr = (unsigned long) pages;
@@ -86,7 +89,8 @@ static int te_pin_mem_buffers(void *buffer, size_t size,
 
 	nr_pages = te_pin_user_pages(buffer, size, &pages);
 	if (nr_pages <= 0) {
-		pr_err("%s: te_pin_user_pages Failed\n", __func__);
+		pr_err("%s: te_pin_user_pages Failed (%d)\n", __func__,
+			nr_pages);
 		ret = OTE_ERROR_OUT_OF_MEMORY;
 		goto error;
 	}
