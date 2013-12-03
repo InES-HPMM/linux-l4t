@@ -186,6 +186,7 @@
 #define PLL_BASE_DIVN_SHIFT		8
 #define PLL_BASE_DIVM_MASK		(0x1F)
 #define PLL_BASE_DIVM_SHIFT		0
+
 #define PLLD_BASE_DIVN_MASK		(0xFF<<11)
 #define PLLD_BASE_DIVN_SHIFT		11
 
@@ -193,6 +194,10 @@
 #define PLLC_BASE_DIVN_SHIFT		10
 #define PLLC_BASE_DIVP_MASK		(0x1F<<20)
 #define PLLC_BASE_DIVM_MASK		0xFF
+
+#define PLLU_BASE_DIVN_MASK		(0xFF<<8)
+#define PLLU_BASE_DIVP_MASK		(0x1F << 16)
+#define PLLU_BASE_DIVP_SHIFT		16
 
 #define PLL_BASE_PARSE(pll, cfg, b)					       \
 	do {								       \
@@ -2057,6 +2062,7 @@ static void tegra21_pll_clk_init(struct clk *c)
 	u32 val = clk_readl(c->reg + PLL_BASE);
 	u32 divn_shift = PLL_BASE_DIVN_SHIFT;
 	u32 divn_mask = PLL_BASE_DIVN_MASK;
+	u32 divm_mask = PLL_BASE_DIVM_MASK;
 
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
@@ -2082,12 +2088,13 @@ static void tegra21_pll_clk_init(struct clk *c)
 		if (c->flags & PLLD) {
 			divn_shift = PLLD_BASE_DIVN_SHIFT;
 			divn_mask = PLLD_BASE_DIVN_MASK;
+		} else if (c->flags & PLLU) {
+			divn_mask = PLLU_BASE_DIVN_MASK;
+			divm_mask = PLLC_BASE_DIVM_MASK;
 		}
 		c->mul = (val & divn_mask) >> divn_shift;
-		c->div = (val & PLL_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-		if (c->flags & PLLU)
-			c->div *= (val & PLLU_BASE_POST_DIV) ? 1 : 2;
-		else
+		c->div = (val & divm_mask) >> PLL_BASE_DIVM_SHIFT;
+		if (!(c->flags & PLLU))
 			c->div *= (0x1 << ((val & PLL_BASE_DIVP_MASK) >>
 					PLL_BASE_DIVP_SHIFT));
 	}
