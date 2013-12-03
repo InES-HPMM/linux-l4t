@@ -11123,6 +11123,9 @@ int __init ardbeg_emc_init(void)
 		case BOARD_PM358:
 			pr_info("Loading PM358 EMC tables.\n");
 			tegra_emc_device.dev.platform_data = &ardbeg_ddr3_emc_pdata_pm358;
+		case BOARD_P1761:
+			pr_info("Loading TN8-FFD EMC tables from DeviceTree.\n");
+			use_dt_emc_table = true;
 			break;
 		case BOARD_E1780:
 		case BOARD_E1782:
