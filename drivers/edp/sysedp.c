@@ -81,6 +81,9 @@ int sysedp_register_consumer(struct sysedp_consumer *consumer)
 	if (!consumer)
 		return -EINVAL;
 
+	if (sysedp_get_consumer(consumer->name))
+		return -EEXIST;
+
 	r = sysedp_consumer_add_kobject(consumer);
 	if (r)
 		return r;
