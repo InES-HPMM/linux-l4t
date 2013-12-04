@@ -635,7 +635,7 @@ static int get_available_rates(struct clk *c, struct core_bus_rates_table *t)
 	}
 
 	/* shared bus clock must round up, unless top of range reached */
-	while ((rate <= max_rate) && (i <= MAX_DVFS_FREQS)) {
+	while ((rate <= max_rate) && (i < MAX_DVFS_FREQS)) {
 		unsigned long rounded_rate = clk_round_rate(c, rate);
 		if (IS_ERR_VALUE(rounded_rate) || (rounded_rate <= rate))
 			break;
