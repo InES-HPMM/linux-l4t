@@ -381,114 +381,6 @@ static int __init loki_throttle_init(void)
 }
 module_init(loki_throttle_init);
 
-static struct nct1008_platform_data loki_nct72_pdata = {
-	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x06, /* 4Hz conversion rate */
-	.offset = 0,
-	.shutdown_ext_limit = 95, /* C */
-	.shutdown_local_limit = 120, /* C */
-
-	.passive_delay = 2000,
-
-	.num_trips = 3,
-	.trips = {
-		/* Thermal Throttling */
-		[0] = {
-			.cdev_type = "tegra-balanced",
-			.trip_temp = 83000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
-			.hysteresis = 1000,
-		},
-		[1] = {
-			.cdev_type = "tegra-hard",
-			.trip_temp = 86000, /* shutdown_ext_limit - 2C */
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 6000,
-		},
-		[2] = {
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
-		},
-	},
-};
-
-static struct i2c_board_info loki_i2c_nct72_board_info[] = {
-	{
-		I2C_BOARD_INFO("nct72", 0x4c),
-		.platform_data = &loki_nct72_pdata,
-		.irq = -1,
-	}
-};
-
-static int loki_nct72_init(void)
-{
-	s32 base_cp, shft_cp;
-	u32 base_ft, shft_ft;
-	int nct72_port = TEGRA_GPIO_PI6;
-	int ret = 0;
-	int i;
-	struct thermal_trip_info *trip_state;
-
-	/* Raise NCT's thresholds if soctherm CP,FT fuses are ok */
-	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
-	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
-		/* Raise NCT's shutdown point by 20C */
-		loki_nct72_pdata.shutdown_ext_limit += 20;
-		/* Remove tegra-balanced cooling device from NCT pdata */
-		for (i = 0; i < loki_nct72_pdata.num_trips; i++) {
-			trip_state = &loki_nct72_pdata.trips[i];
-			if (!strncmp(trip_state->cdev_type, "tegra-balanced",
-					THERMAL_NAME_LENGTH)) {
-				trip_state->cdev_type = "_none_";
-				break;
-			}
-		}
-	} else {
-		tegra_platform_edp_init(loki_nct72_pdata.trips,
-					&loki_nct72_pdata.num_trips,
-					12000); /* edp temperature margin */
-		tegra_add_tj_trips(loki_nct72_pdata.trips,
-					&loki_nct72_pdata.num_trips);
-		tegra_add_tgpu_trips(loki_nct72_pdata.trips,
-				     &loki_nct72_pdata.num_trips);
-		tegra_add_vc_trips(loki_nct72_pdata.trips,
-				     &loki_nct72_pdata.num_trips);
-		tegra_add_tpll_trips(loki_nct72_pdata.trips,
-				     &loki_nct72_pdata.num_trips);
-	}
-
-
-	tegra_add_cdev_trips(loki_nct72_pdata.trips,
-				&loki_nct72_pdata.num_trips);
-
-	loki_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
-
-	ret = gpio_request(nct72_port, "temp_alert");
-	if (ret < 0)
-		return ret;
-
-	ret = gpio_direction_input(nct72_port);
-	if (ret < 0) {
-		pr_info("%s: calling gpio_free(nct72_port)", __func__);
-		gpio_free(nct72_port);
-	}
-
-	/* loki has thermal sensor on GEN2-I2C i.e. instance 1 */
-	i2c_register_board_info(0, loki_i2c_nct72_board_info,
-		ARRAY_SIZE(loki_i2c_nct72_board_info));
-
-	return ret;
-}
-
 static int loki_fan_est_match(struct thermal_zone_device *thz, void *data)
 {
 	return (strcmp((char *)data, thz->type) == 0);
@@ -774,23 +666,17 @@ int __init loki_sensors_init(void)
 
 	if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_E2549) {
-		thermistor_table = &loki_nff_thermistor_table;
+		thermistor_table = &loki_nff_thermistor_table[0];
 		thermistor_table_size = ARRAY_SIZE(loki_nff_thermistor_table);
 	} else if (board_info.board_id == BOARD_P2530) {
-		thermistor_table = &loki_ffd_thermistor_table;
+		thermistor_table = &loki_ffd_thermistor_table[0];
 		thermistor_table_size = ARRAY_SIZE(loki_ffd_thermistor_table);
 	}
 
+	loki_fan_est_init();
 	mpuirq_init();
 	loki_camera_init();
-
-	if (board_info.board_id == BOARD_E2549)
-		pr_info("Skipping nct72 init for 0x%x\n", board_info.board_id);
-	else
-		loki_nct72_init();
-
 	loki_jsa1127_init();
-	loki_fan_est_init();
 
 	return 0;
 }
