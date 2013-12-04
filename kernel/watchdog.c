@@ -53,6 +53,9 @@ static cpumask_t __read_mostly watchdog_cpus;
 static DEFINE_PER_CPU(struct perf_event *, watchdog_ev);
 #endif
 
+static __read_mostly int soft_lockup_detected;
+static __read_mostly int hard_lockup_detected;
+
 /* boot commands */
 /*
  * Should we panic when a soft-lockup or hard-lockup occurs:
@@ -100,6 +103,11 @@ static int __init nosoftlockup_setup(char *str)
 }
 __setup("nosoftlockup", nosoftlockup_setup);
 /*  */
+
+int watchdog_get_lockup_state(void)
+{
+	return ((soft_lockup_detected << 8) || hard_lockup_detected);
+}
 
 /*
  * Hard-lockup warnings should be triggered after just a few seconds. Soft-
@@ -253,6 +261,8 @@ static void watchdog_check_hardlockup_other_cpu(void)
 		if (per_cpu(hard_watchdog_warn, next_cpu) == true)
 			return;
 
+		hard_lockup_detected = 1;
+
 		if (hardlockup_panic)
 			panic("Watchdog detected hard LOCKUP on cpu %u", next_cpu);
 		else
@@ -309,6 +319,8 @@ static void watchdog_overflow_callback(struct perf_event *event,
 	 */
 	if (is_hardlockup()) {
 		int this_cpu = smp_processor_id();
+
+		hard_lockup_detected = 1;
 
 		/* only print hardlockups once */
 		if (__this_cpu_read(hard_watchdog_warn) == true)
@@ -390,6 +402,8 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 		/* only warn once */
 		if (__this_cpu_read(soft_watchdog_warn) == true)
 			return HRTIMER_RESTART;
+
+		soft_lockup_detected = 1;
 
 		printk(KERN_EMERG "BUG: soft lockup - CPU#%d stuck for %us! [%s:%d]\n",
 			smp_processor_id(), duration,
