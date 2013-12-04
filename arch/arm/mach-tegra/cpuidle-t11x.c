@@ -60,6 +60,7 @@
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
+#include "tegra_ptm.h"
 
 #define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
@@ -565,6 +566,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	} else
 		power_down = tegra_cpu_core_power_down(dev, state, request);
 
+	ptm_power_idle_resume(dev->cpu);
 	tegra_clear_cpu_in_pd(dev->cpu);
 
 	return power_down;
