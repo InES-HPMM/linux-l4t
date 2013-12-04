@@ -2,6 +2,8 @@
  * Copyright (C) ST-Ericsson SA 2011
  * Author: Maxime Coquelin <maxime.coquelin@stericsson.com> for ST-Ericsson.
  * License terms:  GNU General Public License (GPL), version 2
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  */
 #ifndef _LINUX_PASR_H
 #define _LINUX_PASR_H
@@ -40,6 +42,7 @@ struct pasr_section {
  * struct pasr_die - Represent a DDR die
  *
  * @start: Start address of the die.
+ * @end: End address of the die.
  * @idx: Index of the die.
  * @nr_sections: Number of Bank or Segment in the die.
  * @section: Table of the die's segments.
@@ -51,6 +54,7 @@ struct pasr_section {
  */
 struct pasr_die {
 	phys_addr_t start;
+	phys_addr_t end;
 	int idx;
 	int nr_sections;
 	struct pasr_section section[PASR_MAX_SECTION_NR_PER_DIE];

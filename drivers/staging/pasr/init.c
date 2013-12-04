@@ -2,6 +2,8 @@
  * Copyright (C) ST-Ericsson SA 2011
  * Author: Maxime Coquelin <maxime.coquelin@stericsson.com> for ST-Ericsson.
  * License terms:  GNU General Public License (GPL), version 2
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -343,6 +345,8 @@ static int __init pasr_build_map(struct pasr_info *info, struct pasr_map *map)
 			addr += section_size;
 			section[j].die = &die[i];
 		}
+
+		die[i].end = addr;
 	}
 
 	for (i = 0; i < info->nr_int; i++) {
