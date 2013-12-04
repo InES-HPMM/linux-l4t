@@ -2544,3 +2544,23 @@ void __init display_tegra_dt_info(void)
 	else
 		pr_info("DTS File Name: <unknown>\n");
 }
+
+void __init tegra_get_last_reset_reason(void)
+{
+#define PMC_RST_STATUS 0x1b4
+#define RESET_STR(REASON) "last reset is due to "#REASON"\n"
+	char *reset_reason[] = {
+		RESET_STR(power on reset),
+		RESET_STR(watchdog timeout),
+		RESET_STR(sensor),
+		RESET_STR(software reset),
+		RESET_STR(deep sleep reset),
+	};
+
+	u32 val = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_RST_STATUS) & 0x7;
+	if (val >= ARRAY_SIZE(reset_reason))
+		pr_info("last reset value is invalid 0x%x\n", val);
+	else
+		pr_info("%s\n", reset_reason[val]);
+}
+late_initcall(tegra_get_last_reset_reason);
