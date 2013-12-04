@@ -58,10 +58,10 @@
 #include <linux/clocksource.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/irqchip.h>
+#include <linux/tegra_fiq_debugger.h>
+#include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/tegra_fiq_debugger.h>
-
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
 #include <mach/io_dpd.h>
@@ -71,10 +71,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/gpio-tegra.h>
-#include <mach/tegra_fiq_debugger.h>
 #include <mach/xusb.h>
-#include <linux/platform_data/tegra_usb_modem_power.h>
-#include <linux/irqchip/tegra.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"

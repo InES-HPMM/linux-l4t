@@ -55,6 +55,8 @@
 #include <linux/clk/tegra.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/tegra_fiq_debugger.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -66,10 +68,8 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/gpio-tegra.h>
-#include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/tegra_wakeup_monitor.h>
-#include <linux/platform_data/tegra_usb_modem_power.h>
 #include <mach/xusb.h>
 #include <media/tegra_dtv.h>
 

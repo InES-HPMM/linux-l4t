@@ -60,10 +60,12 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/pci-tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra_fiq_debugger.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_ahci.h>
+#include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/tegra_fiq_debugger.h>
-
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
 #include <mach/io_dpd.h>
@@ -73,11 +75,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/gpio-tegra.h>
-#include <mach/tegra_fiq_debugger.h>
 #include <mach/xusb.h>
-#include <linux/platform_data/tegra_usb_modem_power.h>
-#include <linux/platform_data/tegra_ahci.h>
-#include <linux/irqchip/tegra.h>
 
 #include "board.h"
 #include "board-ardbeg.h"

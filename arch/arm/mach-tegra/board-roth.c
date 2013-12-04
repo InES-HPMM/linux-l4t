@@ -49,6 +49,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/tegra_fiq_debugger.h>
 
 #include <asm/system_info.h>
 
@@ -62,7 +63,6 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/gpio-tegra.h>
-#include <mach/tegra_fiq_debugger.h>
 #include <mach/edp.h>
 
 #include "board.h"
