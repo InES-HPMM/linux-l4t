@@ -29,6 +29,7 @@
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
+#include <asm/fiq_glue.h>
 
 #include "flowctrl.h"
 #include "reset.h"
@@ -157,6 +158,9 @@ static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
 	cpumask_set_cpu(cpu, to_cpumask(tegra_cpu_init_bits));
 	cpumask_set_cpu(cpu, tegra_cpu_power_mask);
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+	fiq_glue_resume();
+#endif
 	if (!tegra_all_cpus_booted)
 		if (cpumask_equal(tegra_cpu_init_mask, cpu_present_mask))
 			tegra_all_cpus_booted = true;
