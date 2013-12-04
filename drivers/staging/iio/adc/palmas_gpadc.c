@@ -111,22 +111,22 @@ struct palmas_gpadc {
  *	   mode feature.
  * Details:
  *	When the AUTO mode is the only conversion mode enabled, if the AUTO
- *	mode feature is disabled with bit GPADC_AUTO_CTRL.  AUTO_CONV1_EN = 0
- *	or bit GPADC_AUTO_CTRL.  AUTO_CONV0_EN = 0 during a conversion, the
+ *	mode feature is disabled with bit GPADC_AUTO_CTRL.AUTO_CONV1_EN = 0
+ *	or bit GPADC_AUTO_CTRL.AUTO_CONV0_EN = 0 during a conversion, the
  *	conversion mechanism can be seen as locked meaning that all following
- *	conversion will give 0 as a result.  Bit GPADC_STATUS.GPADC_AVAILABLE
- *	will stay at 0 meaning that GPADC is busy.  An RT conversion can unlock
+ *	conversion will give 0 as a result. Bit GPADC_STATUS.GPADC_AVAILABLE
+ *	will stay at 0 meaning that GPADC is busy. An RT conversion can unlock
  *	the GPADC.
  *
  * Workaround(s):
  *	To avoid the lock mechanism, the workaround to follow before any stop
  *	conversion request is:
- *	Force the GPADC state machine to be ON by using the GPADC_CTRL1.
- *		GPADC_FORCE bit = 1
+ *	Force the GPADC state machine to be ON by using the
+ *		GPADC_CTRL1.GPADC_FORCE bit = 1
  *	Shutdown the GPADC AUTO conversion using
  *		GPADC_AUTO_CTRL.SHUTDOWN_CONV[01] = 0.
  *	After 100us, force the GPADC state machine to be OFF by using the
- *		GPADC_CTRL1.  GPADC_FORCE bit = 0
+ *		GPADC_CTRL1.GPADC_FORCE bit = 0
  */
 static int palmas_disable_auto_conversion(struct palmas_gpadc *adc)
 {
@@ -141,13 +141,10 @@ static int palmas_disable_auto_conversion(struct palmas_gpadc *adc)
 		return ret;
 	}
 
-	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_AUTO_CTRL,
-			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV1 |
-			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV0,
-			0);
+	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_AUTO_CTRL, 0);
 	if (ret < 0) {
-		dev_err(adc->dev, "AUTO_CTRL update failed: %d\n", ret);
+		dev_err(adc->dev, "AUTO_CTRL write failed: %d\n", ret);
 		return ret;
 	}
 
@@ -174,9 +171,20 @@ static irqreturn_t palmas_gpadc_irq(int irq, void *data)
 static irqreturn_t palmas_gpadc_irq_auto(int irq, void *data)
 {
 	struct palmas_gpadc *adc = data;
+	unsigned int val = 0;
+	int ret;
 
-	dev_info(adc->dev, "Threshold interrupt %d occurs\n", irq);
-	palmas_disable_auto_conversion(adc);
+	ret = palmas_read(adc->palmas, PALMAS_INTERRUPT_BASE,
+			PALMAS_INT3_LINE_STATE, &val);
+	if (ret < 0)
+		dev_err(adc->dev, "%s: Failed to read INT3_LINE_STATE, %d\n",
+			__func__, ret);
+
+	if (val & PALMAS_INT3_LINE_STATE_GPADC_AUTO_0)
+		dev_info(adc->dev, "Auto0 threshold interrupt occurred\n");
+	if (val & PALMAS_INT3_LINE_STATE_GPADC_AUTO_1)
+		dev_info(adc->dev, "Auto1 threshold interrupt occurred\n");
+
 	return IRQ_HANDLED;
 }
 
@@ -303,6 +311,12 @@ static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
 	if (!adc->auto_conv0_enable && !adc->auto_conv1_enable)
 		return 0;
 
+	ret = palmas_disable_auto_conversion(adc);
+	if (ret < 0) {
+		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
+		return ret;
+	}
+
 	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
 			PALMAS_GPADC_AUTO_SELECT, 0);
 	if (ret < 0) {
@@ -310,10 +324,58 @@ static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
 		return ret;
 	}
 
-	ret = palmas_disable_auto_conversion(adc);
-	if (ret < 0) {
-		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
-		return ret;
+	return 0;
+}
+
+static int palmas_gpadc_check_status(struct palmas_gpadc *adc)
+{
+	int retry_cnt = 3;
+	int check_cnt = 3;
+	int loop_cnt = 3;
+	unsigned int val = 0;
+	int ret;
+
+retry:
+	do {
+		ret = palmas_read(adc->palmas, PALMAS_GPADC_BASE,
+				  PALMAS_GPADC_STATUS, &val);
+		if (ret < 0) {
+			dev_err(adc->dev, "%s: Failed to read STATUS, %d\n",
+				__func__, ret);
+			return ret;
+		} else if (val & PALMAS_GPADC_STATUS_GPADC_AVAILABLE) {
+			if (--check_cnt == 0)
+				break;
+		} else {
+			dev_warn(adc->dev, "%s: GPADC is busy, STATUS 0x%02x\n",
+				 __func__, val);
+		}
+		udelay(100);
+	} while (loop_cnt-- > 0);
+
+	if (check_cnt == 0) {
+		if (retry_cnt < 3)
+			dev_warn(adc->dev, "%s: GPADC is unlocked.\n",
+				 __func__);
+		return 0;
+	}
+
+	dev_warn(adc->dev, "%s: GPADC is locked.\n", __func__);
+	dev_warn(adc->dev, "%s: Perform RT conversion to unlock GPADC.\n",
+		__func__);
+	palmas_disable_auto_conversion(adc);
+	palmas_write(adc->palmas, PALMAS_GPADC_BASE, PALMAS_GPADC_RT_SELECT,
+		     PALMAS_GPADC_RT_SELECT_RT_CONV_EN);
+	palmas_write(adc->palmas, PALMAS_GPADC_BASE, PALMAS_GPADC_RT_CTRL,
+		     PALMAS_GPADC_RT_CTRL_START_POLARITY);
+	udelay(100);
+	palmas_write(adc->palmas, PALMAS_GPADC_BASE, PALMAS_GPADC_RT_CTRL, 0);
+	palmas_write(adc->palmas, PALMAS_GPADC_BASE, PALMAS_GPADC_RT_SELECT, 0);
+	if (retry_cnt-- > 0) {
+		goto retry;
+	} else {
+		dev_err(adc->dev, "%s: Failed to unlock GPADC.\n", __func__);
+		return -EDEADLK;
 	}
 
 	return 0;
@@ -381,11 +443,6 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 			return ret;
 		}
 	} else {
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_SW_SELECT, 0);
-		if (ret < 0)
-			dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
-
 		mask = val = 0;
 		mask |= PALMAS_GPADC_CTRL1_GPADC_FORCE;
 
@@ -491,6 +548,12 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	}
 
 	ret = (val & 0xFFF);
+	if (ret == 0) {
+		ret = palmas_gpadc_check_status(adc);
+		if (ret == 0)
+			ret = -EAGAIN;
+	}
+
 	return ret;
 }
 
@@ -1036,6 +1099,11 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
 		device_wakeup_enable(&pdev->dev);
 
+	ret = palmas_gpadc_check_status(adc);
+	if (ret < 0)
+		goto out_irq_auto1_free;
+
+	palmas_gpadc_auto_conv_reset(adc);
 	ret = palmas_gpadc_auto_conv_configure(adc);
 	if (ret < 0) {
 		dev_err(adc->dev, "auto_conv_configure() failed: %d\n", ret);
@@ -1078,6 +1146,15 @@ static int palmas_gpadc_remove(struct platform_device *pdev)
 		free_irq(adc->irq_auto_1, adc);
 	iio_device_free(iodev);
 	return 0;
+}
+
+static void palmas_gpadc_shutdown(struct platform_device *pdev)
+{
+	struct iio_dev *iodev = dev_get_drvdata(&pdev->dev);
+	struct palmas_gpadc *adc = iio_priv(iodev);
+
+	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
+		palmas_gpadc_auto_conv_reset(adc);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -1132,6 +1209,7 @@ MODULE_DEVICE_TABLE(of, of_palmas_gpadc_match_tbl);
 static struct platform_driver palmas_gpadc_driver = {
 	.probe = palmas_gpadc_probe,
 	.remove = palmas_gpadc_remove,
+	.shutdown = palmas_gpadc_shutdown,
 	.driver = {
 		.name = MOD_NAME,
 		.owner = THIS_MODULE,
