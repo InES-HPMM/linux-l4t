@@ -75,6 +75,7 @@ struct fiq_debugger_state {
 	bool ignore_next_wakeup_irq;
 	struct timer_list sleep_timer;
 	spinlock_t sleep_timer_lock;
+	spinlock_t debug_fiq_lock;
 	bool uart_enabled;
 	struct wake_lock debugger_wake_lock;
 	bool console_enable;
@@ -905,11 +906,28 @@ static void debug_fiq(struct fiq_glue_handler *h, void *regs, void *svc_sp)
 	bool need_irq;
 
 	/* Spew regs and callstack immediately after entering FIQ handler */
+	spin_lock(&state->debug_fiq_lock);
+	debug_printf(state, "\nCallstack for CPU: %d\n", this_cpu);
 	debug_fiq_exec(state, "allregs", regs, svc_sp);
 	debug_fiq_exec(state, "bt", regs, svc_sp);
-	need_irq = debug_handle_uart_interrupt(state, this_cpu, regs, svc_sp);
-	if (need_irq)
+	spin_unlock(&state->debug_fiq_lock);
+
+	/* handle the uart interrupts only on CPU0 */
+	if (this_cpu == 0) {
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		do {
+			need_irq = debug_handle_uart_interrupt(state, this_cpu, regs, svc_sp);
+		} while (!need_irq);
 		debug_force_irq(state);
+#else
+		need_irq = debug_handle_uart_interrupt(state, this_cpu, regs, svc_sp);
+		if (need_irq)
+			debug_force_irq(state);
+#endif
+	} else {
+		/* for all other CPUs do-nothing */
+		for (;;); /* wait */
+	}
 }
 
 /*
@@ -1246,6 +1264,7 @@ static int fiq_debugger_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, state);
 
 	spin_lock_init(&state->sleep_timer_lock);
+	spin_lock_init(&state->debug_fiq_lock);
 
 	if (state->wakeup_irq < 0 && debug_have_fiq(state))
 		state->no_sleep = true;
