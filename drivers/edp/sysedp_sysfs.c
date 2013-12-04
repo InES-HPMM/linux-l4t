@@ -46,6 +46,23 @@ static ssize_t states_show(struct sysedp_consumer *c, char *s)
 	return cnt;
 }
 
+static ssize_t ocpeaks_show(struct sysedp_consumer *c, char *s)
+{
+	unsigned int i;
+	int cnt = 0;
+	unsigned int *p;
+	const int sz = sizeof(*p) * 3 + 2;
+
+	p = c->ocpeaks ? c->ocpeaks : c->states;
+
+	for (i = 0; i < c->num_states && (cnt + sz) < PAGE_SIZE; i++)
+		cnt += sprintf(s + cnt, "%s%u", i ? " " : "", p[i]);
+
+	cnt += sprintf(s + cnt, "\n");
+	return cnt;
+}
+
+
 static ssize_t current_show(struct sysedp_consumer *c, char *s)
 {
 	return sprintf(s, "%u\n", c->states[c->state]);
@@ -77,11 +94,13 @@ static struct sysedp_consumer_attribute attr_state = __ATTR(state, 0660,
 							    state_show,
 							    state_store);
 static struct sysedp_consumer_attribute attr_states = __ATTR_RO(states);
+static struct sysedp_consumer_attribute attr_ocpeaks = __ATTR_RO(ocpeaks);
 
 static struct attribute *consumer_attrs[] = {
 	&attr_current.attr,
 	&attr_state.attr,
 	&attr_states.attr,
+	&attr_ocpeaks.attr,
 	NULL
 };
 
@@ -169,9 +188,15 @@ static unsigned int *get_tokenized_data(const char *buf,
 	unsigned int *tokenized_data;
 	int err = -EINVAL;
 
+	if (!buf || *buf == 0)
+		goto err;
+
 	cp = buf;
-	while ((cp = strpbrk(cp + 1, ",")))
-		ntokens++;
+	while ((cp = strpbrk(cp + 1, ",;")))
+		if (*cp == ';')
+			break;
+		else
+			ntokens++;
 
 	tokenized_data = kmalloc(ntokens * sizeof(unsigned int),
 				 GFP_KERNEL);
@@ -185,9 +210,8 @@ static unsigned int *get_tokenized_data(const char *buf,
 	while (i < ntokens) {
 		if (sscanf(cp, "%u", &tokenized_data[i++]) != 1)
 			goto err_kfree;
-
-		cp = strpbrk(cp, ",");
-		if (!cp)
+		cp = strpbrk(cp, ",;");
+		if (!cp || *cp == ';')
 			break;
 		cp++;
 	}
@@ -208,9 +232,13 @@ err:
 static ssize_t consumer_register_store(const char *s, size_t count)
 {
 	size_t name_len;
-	unsigned int *states;
+	unsigned int *states = 0;
+	unsigned int *ocpeaks = 0;
 	unsigned int num_states;
-	struct sysedp_consumer *consumer;
+	unsigned int num_ocpeaks;
+	struct sysedp_consumer *consumer = 0;
+	const char *s2;
+	int err;
 
 	name_len = strcspn(s, " \n");
 	if (name_len > SYSEDP_NAME_LEN-1)
@@ -218,27 +246,48 @@ static ssize_t consumer_register_store(const char *s, size_t count)
 
 	states = get_tokenized_data(s + name_len, &num_states);
 	if (IS_ERR_OR_NULL(states))
-		return -EINVAL;
+		return PTR_ERR(states);
+
+	/* Parse for optional 2nd table (peak values) */
+	s2 = strpbrk(s + name_len, ";");
+	if (s2) {
+		ocpeaks = get_tokenized_data(s2 + 1, &num_ocpeaks);
+		if (IS_ERR_OR_NULL(ocpeaks)) {
+			err = PTR_ERR(ocpeaks);
+			ocpeaks = 0;
+			goto err_kfree;
+		}
+		if (num_states != num_ocpeaks) {
+			err = -EINVAL;
+			goto err_kfree;
+		}
+
+	}
 
 	consumer = kzalloc(sizeof(*consumer), GFP_KERNEL);
-	if (!consumer) {
-		kfree(states);
-		return -ENOMEM;
+	if (IS_ERR_OR_NULL(consumer)) {
+		err = PTR_ERR(consumer);
+		consumer = 0;
+		goto err_kfree;
 	}
 
 	memcpy(consumer->name, s, name_len);
 	consumer->name[name_len] = 0;
 	consumer->states = states;
+	consumer->ocpeaks = ocpeaks;
 	consumer->num_states = num_states;
 	consumer->removable = 1;
 
-	if (sysedp_register_consumer(consumer)) {
-		kfree(states);
-		kfree(consumer);
-		return -EINVAL;
-	}
+	err = sysedp_register_consumer(consumer);
+	if (err)
+		goto err_kfree;
 
 	return count;
+err_kfree:
+	kfree(states);
+	kfree(ocpeaks);
+	kfree(consumer);
+	return err;
 }
 
 static ssize_t consumer_unregister_store(const char *s, size_t count)
@@ -258,8 +307,11 @@ static ssize_t consumer_unregister_store(const char *s, size_t count)
 	if (!consumer->removable)
 		return -EINVAL;
 
+
+	sysedp_unregister_consumer(consumer);
 	kfree(consumer->states);
-	sysedp_free_consumer(consumer);
+	kfree(consumer->ocpeaks);
+	kfree(consumer);
 
 	return count;
 }

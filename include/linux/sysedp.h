@@ -27,12 +27,15 @@
 /*
  * @name: name of consumer
  * @states: EDP state array holding the max peak power for each state.
- * @num_states: length of the above array
+ * @ocpeaks: array holding peak power values for each state when hardware
+ *           OC signal is asserted for the consumer
+ * @num_states: length of the above arrays
  * @state: current power state of sysedp consumer
  */
 struct sysedp_consumer {
 	char name[SYSEDP_NAME_LEN];
 	unsigned int *states;
+	unsigned int *ocpeaks;
 	unsigned int num_states;
 
 	unsigned int state;
