@@ -79,6 +79,9 @@ struct dvfs_rail {
 	int therm_mv_floors_num;
 	const int *therm_mv_caps;
 	int therm_mv_caps_num;
+	const int *simon_vmin_offsets;
+	int simon_vmin_offs_num;
+	int simon_domain;
 
 	int step;
 	int step_up;
@@ -265,6 +268,8 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void);
+void tegra_dvfs_rail_init_simon_vmin_offsets(
+	int *offsets, int offs_num, struct dvfs_rail *rail);
 void tegra_dvfs_rail_init_vmin_thermal_profile(
 	int *therm_trips_table, int *therm_floors_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d);

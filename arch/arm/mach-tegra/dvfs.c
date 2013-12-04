@@ -108,6 +108,12 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 		rail->vts_cdev = NULL;
 		WARN(1, "%s: thermal dvfs is not supported\n", rail->reg_id);
 	}
+
+	if (!rail->simon_vmin_offsets != !rail->simon_vmin_offs_num) {
+		rail->simon_vmin_offs_num = 0;
+		rail->simon_vmin_offsets = NULL;
+		WARN(1, "%s: not matching simon offsets/num\n", rail->reg_id);
+	}
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -1624,6 +1630,31 @@ static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 	make_safe_thermal_dvfs(rail);
 }
 #endif
+
+/*
+ * Validate rail SiMon Vmin offsets. Valid offsets should be negative,
+ * descending, starting from zero.
+ */
+void __init tegra_dvfs_rail_init_simon_vmin_offsets(
+	int *offsets, int offs_num, struct dvfs_rail *rail)
+{
+	int i;
+
+	if (!offsets || !offs_num || offsets[0]) {
+		WARN(1, "%s: invalid initial SiMon offset\n", rail->reg_id);
+		return;
+	}
+
+	for (i = 0; i < offs_num - 1; i++) {
+		if (offsets[i] < offsets[i+1]) {
+			WARN(1, "%s: SiMon offsets are not ordered\n",
+			     rail->reg_id);
+			return;
+		}
+	}
+	rail->simon_vmin_offsets = offsets;
+	rail->simon_vmin_offs_num = offs_num;
+}
 
 /*
  * Validate rail thermal profile, and get its size. Valid profile:
