@@ -30,6 +30,7 @@ struct tegra_pci_platform_data {
 	/* used to identify if current platofrm supports CLKREQ# */
 	bool has_clkreq;
 	int gpio;
+	int gpio_wake;
 	int gpio_x1_slot;
 };
 #endif

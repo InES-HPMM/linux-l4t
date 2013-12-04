@@ -406,6 +406,7 @@ static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	/* Laguna platforms does not support CLKREQ# feature */
 	.has_clkreq	= 0,
 	.gpio	= TEGRA_GPIO_PO1,
+	.gpio_wake	= TEGRA_GPIO_PDD3,
 	.gpio_x1_slot	= PMU_TCA6416_GPIO(8),
 };
 

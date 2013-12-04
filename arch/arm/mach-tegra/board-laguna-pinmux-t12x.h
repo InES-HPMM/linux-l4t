@@ -350,6 +350,7 @@ static struct gpio_init_pin_info init_gpio_mode_laguna_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PC7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI0, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PDD3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PDD6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PFF1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PFF2, true, 0),
