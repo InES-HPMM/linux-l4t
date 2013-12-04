@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 432432 2013-10-28 15:52:47Z $
+ * $Id: wlioctl.h 435951 2013-11-12 19:46:53Z $
  */
 
 #ifndef _wlioctl_h_
@@ -4183,7 +4183,6 @@ typedef struct wl_keep_alive_pkt {
 
 #define WL_KEEP_ALIVE_FIXED_LEN		OFFSETOF(wl_keep_alive_pkt_t, data)
 
-#ifdef PKT_FILTER_SUPPORT
 /*
  * Dongle pattern matching filter.
  */
@@ -4267,7 +4266,6 @@ typedef struct wl_pkt_filter_ports {
 
 #define WL_PKT_FILTER_PORTS_VERSION	0
 #define WL_PKT_FILTER_PORTS_MAX		128
-#endif /* PKT_FILTER_SUPPORT */
 
 #define RSN_KCK_LENGTH 16
 #define RSN_KEK_LENGTH 16

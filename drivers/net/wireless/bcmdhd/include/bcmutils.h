@@ -666,7 +666,7 @@ extern int bcm_format_ssid(char* buf, const uchar ssid[], uint ssid_len);
 #define ARRAYSIZE(a)		(sizeof(a) / sizeof(a[0]))
 #endif
 
-#ifndef ARRAYLAST     /* returns pointer to last array element */
+#ifndef ARRAYLAST /* returns pointer to last array element */
 #define ARRAYLAST(a)		(&a[ARRAYSIZE(a)-1])
 #endif
 
@@ -676,7 +676,7 @@ extern void *_bcmutils_dummy_fn;
 
 /* bit map related macros */
 #ifndef setbit
-#ifndef NBBY		    /* the BSD family defines NBBY */
+#ifndef NBBY		/* the BSD family defines NBBY */
 #define	NBBY	8	/* 8 bits per byte */
 #endif /* #ifndef NBBY */
 #ifdef BCMUTILS_BIT_MACROS_USE_FUNCS

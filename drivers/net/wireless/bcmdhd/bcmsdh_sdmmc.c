@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc.c 427054 2013-10-02 03:38:35Z $
+ * $Id: bcmsdh_sdmmc.c 439169 2013-11-25 23:36:15Z $
  */
 #include <typedefs.h>
 
@@ -1267,6 +1267,7 @@ txglomfail:
 							return SDIOH_API_RC_FAIL;
 						}
 					}
+					pkt_len += pad;
 				}
 			}
 

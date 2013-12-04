@@ -24,7 +24,7 @@
  * $Id: ethernet.h 384540 2013-02-12 04:28:58Z $
  */
 
-#ifndef _NET_ETHERNET_H_	    /* use native BSD ethernet.h when available */
+#ifndef _NET_ETHERNET_H_	/* use native BSD ethernet.h when available */
 #define _NET_ETHERNET_H_
 
 #ifndef _TYPEDEFS_H_
@@ -117,7 +117,7 @@
 		((uint8 *)ea)[5] = ((mgrp_ip) >>  0) & 0xff;	\
 }
 
-#ifndef __INCif_etherh     /* Quick and ugly hack for VxWorks */
+#ifndef __INCif_etherh /* Quick and ugly hack for VxWorks */
 /*
  * Structure of a 10Mb/s Ethernet header.
  */
