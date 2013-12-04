@@ -58,11 +58,13 @@ static int ardbeg_wifi_status_register(void (*callback)(int , void *), void *);
 static int ardbeg_wifi_reset(int on);
 static int ardbeg_wifi_power(int on);
 static int ardbeg_wifi_set_carddetect(int val);
+static int ardbeg_wifi_get_mac_addr(unsigned char *buf);
 
 static struct wifi_platform_data ardbeg_wifi_control = {
 	.set_power	= ardbeg_wifi_power,
 	.set_reset	= ardbeg_wifi_reset,
 	.set_carddetect	= ardbeg_wifi_set_carddetect,
+	.get_mac_addr	= ardbeg_wifi_get_mac_addr,
 #if defined (CONFIG_BCMDHD_EDP_SUPPORT)
 	/* wifi edp client information */
 	.client_info	= {
@@ -282,6 +284,60 @@ static int ardbeg_wifi_reset(int on)
 {
 	pr_debug("%s: do nothing\n", __func__);
 	return 0;
+}
+
+#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
+
+static int ardbeg_wifi_get_mac_addr(unsigned char *buf)
+{
+	struct file *fp;
+	int rdlen;
+	char str[32];
+	int mac[6];
+	int ret = 0;
+
+	pr_debug("%s\n", __func__);
+
+	/* open wifi mac address file */
+	fp = filp_open(ARDBEG_WIFI_MAC_ADDR_FILE, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		pr_err("%s: cannot open %s\n",
+			__func__, ARDBEG_WIFI_MAC_ADDR_FILE);
+		return -ENOENT;
+	}
+
+	/* read wifi mac address file */
+	memset(str, 0, sizeof(str));
+	rdlen = kernel_read(fp, fp->f_pos, str, 17);
+	if (rdlen > 0)
+		fp->f_pos += rdlen;
+	if (rdlen != 17) {
+		pr_err("%s: bad mac address file"
+			" - len %d < 17",
+			__func__, rdlen);
+		ret = -ENOENT;
+	} else if (sscanf(str, "%x:%x:%x:%x:%x:%x",
+		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) != 6) {
+		pr_err("%s: bad mac address file"
+			" - must contain xx:xx:xx:xx:xx:xx\n",
+			__func__);
+		ret = -ENOENT;
+	} else {
+		pr_info("%s: using wifi mac %02x:%02x:%02x:%02x:%02x:%02x\n",
+			__func__,
+			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		buf[0] = (unsigned char) mac[0];
+		buf[1] = (unsigned char) mac[1];
+		buf[2] = (unsigned char) mac[2];
+		buf[3] = (unsigned char) mac[3];
+		buf[4] = (unsigned char) mac[4];
+		buf[5] = (unsigned char) mac[5];
+	}
+
+	/* close wifi mac address file */
+	filp_close(fp, NULL);
+
+	return ret;
 }
 
 static int __init ardbeg_wifi_init(void)
