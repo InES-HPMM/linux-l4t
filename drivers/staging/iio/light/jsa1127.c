@@ -33,6 +33,7 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include <linux/iio/light/jsa1127.h>
+#include <linux/random.h>
 
 #define DEV_ERR(err_string) \
 	dev_err(&chip->client->dev, \
@@ -61,6 +62,7 @@ struct jsa1127_chip {
 
 	int				rint;
 	int				integration_time;
+	int				noisy;
 
 	struct workqueue_struct		*wq;
 	struct delayed_work		dw;
@@ -86,6 +88,7 @@ static int jsa1127_try_update_als_reading_locked(struct jsa1127_chip *chip)
 	char buf[N_DATA_BYTES] = {0, 0};
 	int retry_count = RETRY_COUNT;
 	struct iio_dev *indio_dev = iio_priv_to_dev(chip);
+	unsigned char rndnum;
 
 	mutex_lock(&indio_dev->mlock);
 	do {
@@ -97,6 +100,11 @@ static int jsa1127_try_update_als_reading_locked(struct jsa1127_chip *chip)
 			val = (val << 8) | buf[0];
 			if (JSA1127_IS_DATA_VALID(val)) {
 				chip->als_raw_value = JSA1127_CONV_TO_DATA(val);
+				if (chip->noisy) {
+					get_random_bytes(&rndnum, 1);
+					if (rndnum < 128)
+						chip->als_raw_value++;
+				}
 				break;
 			} else {
 				msleep(JSA1127_RETRY_TIME);
@@ -462,6 +470,7 @@ static int jsa1127_probe(struct i2c_client *client,
 	u32 rint = UINT_MAX, use_internal_integration_timing = UINT_MAX;
 	u32 integration_time = UINT_MAX;
 	u32 tint = UINT_MAX;
+	u32 noisy = UINT_MAX;
 
 	if (client->dev.of_node) {
 		of_property_read_u32_array(client->dev.of_node,
@@ -472,6 +481,9 @@ static int jsa1127_probe(struct i2c_client *client,
 		of_property_read_u32_array(client->dev.of_node,
 					"tint_coeff",
 					&tint, 1);
+		of_property_read_u32_array(client->dev.of_node,
+					"noisy",
+					&noisy, 1);
 	} else {
 		jsa1127_platform_data = client->dev.platform_data;
 		rint = jsa1127_platform_data->rint;
@@ -480,6 +492,8 @@ static int jsa1127_probe(struct i2c_client *client,
 			jsa1127_platform_data->use_internal_integration_timing;
 		tint =
 			jsa1127_platform_data->tint_coeff;
+		noisy =
+			jsa1127_platform_data->noisy;
 	}
 
 	if ((rint == UINT_MAX) ||
@@ -502,6 +516,7 @@ static int jsa1127_probe(struct i2c_client *client,
 	chip->integration_time = integration_time;
 	chip->use_internal_integration_timing = use_internal_integration_timing;
 	chip->tint_coeff = tint;
+	chip->noisy = noisy;
 
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;

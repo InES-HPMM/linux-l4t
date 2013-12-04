@@ -27,4 +27,5 @@ struct jsa1127_platform_data {
 	u32 use_internal_integration_timing;
 	u32 integration_time;
 	u16 tint_coeff;
+	u32 noisy;
 };
