@@ -533,7 +533,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK | RT5639_MIC1_OVTH_MASK |
 			RT5639_PWR_CLK25M_MASK | RT5639_PWR_MB_MASK,
-			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_1500UA |
+			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_600UA |
 			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5639_GEN_CTRL1,
 			0x1, 0x1);
@@ -2997,6 +2997,11 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 {
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
 	int ret;
+#ifdef RTK_IOCTL
+#if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
+	struct rt56xx_ops *ioctl_ops;
+#endif
+#endif
 
 	codec->dapm.idle_bias_off = 1;
 
@@ -3053,6 +3058,18 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 			ARRAY_SIZE(rt5639_dapm_routes));
 
 	rt5639->codec = codec;
+
+#ifdef RTK_IOCTL
+#if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
+	ioctl_ops = rt56xx_get_ioctl_ops();
+	ioctl_ops->index_write = rt5639_index_write;
+	ioctl_ops->index_read = rt5639_index_read;
+	ioctl_ops->index_update_bits = rt5639_index_update_bits;
+	ioctl_ops->ioctl_common = rt5639_ioctl_common;
+	realtek_ce_init_hwdep(codec);
+#endif
+#endif
+
 	ret = device_create_file(codec->dev, &dev_attr_index_reg);
 	if (ret != 0) {
 		dev_err(codec->dev,
