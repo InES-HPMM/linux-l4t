@@ -83,6 +83,8 @@ obj-y += board-touch-raydium_spi.o
 
 obj-y += board-panel.o
 
+obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
+
 else # --- CONFIG_ARM64 --- #
 
 obj-y += dummy.o # generate a built-in.o

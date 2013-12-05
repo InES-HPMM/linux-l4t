@@ -1134,7 +1134,9 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
+#ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
+#endif
 	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
