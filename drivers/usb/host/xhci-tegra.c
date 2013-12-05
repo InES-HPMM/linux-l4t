@@ -430,15 +430,11 @@ static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
 
-#ifdef CONFIG_TEGRA_XUSB_USB_BOOTLOADER_FIRMWARE
-static bool use_bootloader_firmware = true;
-#else
 static bool use_bootloader_firmware;
-#endif
 module_param(use_bootloader_firmware, bool, S_IRUGO);
 MODULE_PARM_DESC(use_bootloader_firmware, "take bootloader initialized firmware");
 
-#define FIRMWARE_FILE CONFIG_TEGRA_XUSB_FIRMWARE_FILE
+#define FIRMWARE_FILE "tegra_xusb_firmware"
 static char *firmware_file = FIRMWARE_FILE;
 #define FIRMWARE_FILE_HELP	\
 	"used to specify firmware file of Tegra XHCI host controller. "\

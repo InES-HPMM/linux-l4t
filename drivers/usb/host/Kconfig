@@ -48,25 +48,6 @@ config TEGRA_XUSB_PLATFORM
 	  This will enable USB3.0 functionality on the USB3.0 ports.
 	  If unsure, say N.
 
-config TEGRA_XUSB_USB_BOOTLOADER_FIRMWARE
-	bool "Use bootloader firmware"
-	default y
-	depends on TEGRA_XUSB_PLATFORM
-	---help---
-          Determine if use firmware passed from bootloader.
-          Say 'Y' to use bootloader firmware. Otherwise, load firmware from
-          file specified by TEGRA_XUSB_FIRMWARE_FILE.
-
-          If unsure, say Y.
-
-config TEGRA_XUSB_FIRMWARE_FILE
-	string "Default firmware file"
-	default "xusb_sil_rel_fw"
-	depends on TEGRA_XUSB_PLATFORM
-	---help---
-          This is used to specify firmware file of Tegra XHCI host controller.
-          This takes effect only if "use_bootloader_firmware" is "N".
-
 endif # USB_XHCI_HCD
 
 config USB_EHCI_HCD
