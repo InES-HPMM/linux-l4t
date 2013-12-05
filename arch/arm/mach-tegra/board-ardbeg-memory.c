@@ -7973,7 +7973,7 @@ int __init ardbeg_emc_init(void)
 			tegra_emc_device.dev.platform_data = &ardbeg_lpddr3_emc_pdata;
 			break;
 		default:
-			WARN(1, "Invalid board ID: %u\n", bi.board_id);
+			pr_info("emc dvfs table not present\n");
 			return -EINVAL;
 		}
 	#ifdef CONFIG_TEGRA_USE_NCT
