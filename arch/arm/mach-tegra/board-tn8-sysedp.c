@@ -100,10 +100,11 @@ static int rbat_temp_axis[] = { 60, 40, 25, 0, -20 };
 static int rbat_capacity_axis[] = { 100, 13, 0 };
 #else
 static int rbat_data[] = {  70000,   /* 100% */
-			    70000,   /*  13% */
-			    90000 }; /*   0% */
+			    70000,   /*  25% */
+			   110000,   /*  10% */
+			   130000 }; /*   0% */
 static int rbat_temp_axis[] = { 25 };
-static int rbat_capacity_axis[] = { 100, 13, 0 };
+static int rbat_capacity_axis[] = { 100, 25, 10, 0 };
 #endif
 struct sysedp_batmon_rbat_lut tn8_rbat_lut = {
 	.temp_axis = rbat_temp_axis,
@@ -117,7 +118,7 @@ struct sysedp_batmon_rbat_lut tn8_rbat_lut = {
 static struct sysedp_batmon_calc_platform_data tn8_batmon_pdata = {
 	.power_supply = "battery",
 	.r_const = 60000,
-	.vsys_min = 2900000,
+	.vsys_min = 3000000,
 	.ibat_lut = tn8_ibat_lut,
 	.rbat_lut = &tn8_rbat_lut,
 };
