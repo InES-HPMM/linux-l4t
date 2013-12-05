@@ -5,6 +5,7 @@
 / {
 	model = "NVIDIA Tegra124 Norrin";
 	compatible = "nvidia,norrin", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;
 

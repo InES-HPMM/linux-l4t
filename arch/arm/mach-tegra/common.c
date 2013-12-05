@@ -2538,7 +2538,7 @@ void __init display_tegra_dt_info(void)
 
 	dt_root = of_get_flat_dt_root();
 
-	dts_fname = of_get_flat_dt_prop(dt_root, "file-name", NULL);
+	dts_fname = of_get_flat_dt_prop(dt_root, "nvidia,dtsfilename", NULL);
 	if (dts_fname)
 		pr_info("DTS File Name: %s\n", dts_fname);
 	else

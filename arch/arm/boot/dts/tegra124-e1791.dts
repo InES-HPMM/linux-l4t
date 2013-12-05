@@ -11,7 +11,7 @@
 / {
 	model = "NVIDIA Tegra124 Ardbeg";
 	compatible = "nvidia,ardbeg", "nvidia,tegra124";
-	file-name = __FILE__;
+	nvidia,dtsfilename = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;
 

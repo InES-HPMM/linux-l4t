@@ -12,7 +12,7 @@
 / {
 	model = "NVIDIA Tegra124 TN8";
 	compatible = "nvidia,tn8", "nvidia,tegra124";
-	file-name = __FILE__;
+	nvidia,dtsfilename = __FILE__;
 	nvidia-boardids = "1780:1100:3:A:7","1845:1000:0:A:7";
 	#address-cells = <1>;
 	#size-cells = <1>;

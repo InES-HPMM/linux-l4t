@@ -6,7 +6,7 @@
 / {
 	model = "NVIDIA Tegra124 Laguna";
 	compatible = "nvidia,laguna", "nvidia,tegra124";
-	file-name = __FILE__;
+	nvidia,dtsfilename = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;
 
