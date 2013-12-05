@@ -9,7 +9,7 @@
 #include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 #include "tegra124-platforms/tegra124-e1794-sensor.dtsi"
-
+#include "tegra124-platforms/tegra124-tn8-sysedp.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8";

@@ -1025,9 +1025,7 @@ static void __init ardbeg_sysedp_batmon_init(void)
 
 	switch (bi.board_id) {
 	case BOARD_E1780:
-		if (bi.sku == 1100)
-			tn8_sysedp_batmon_init();
-		else
+		if (bi.sku != 1100)
 			shield_sysedp_batmon_init();
 		break;
 	case BOARD_PM358:

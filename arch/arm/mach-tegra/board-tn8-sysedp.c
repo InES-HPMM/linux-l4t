@@ -82,67 +82,6 @@ void __init tn8_new_sysedp_init(void)
 	WARN_ON(r);
 }
 
-/* --- Battery monitor data --- */
-static struct sysedp_batmon_ibat_lut tn8_ibat_lut[] = {
-	{  60, 6150 }, /* TODO until battery temp is fixed*/
-	{  40, 6150 },
-	{   0, 6150 },
-	{ -30,    0 }
-};
-
-#if 0
-/* TODO: use this table when battery temp sensing is fixed */
-/*                           60C    40C    25C    0C      -20C      */
-static int rbat_data[] = {  90000, 60000, 70000,  90000, 110000,   /* 100% */
-			    90000, 60000, 70000,  90000, 110000,   /*  13% */
-			   110000, 80000, 90000, 110000, 130000 }; /*   0% */
-static int rbat_temp_axis[] = { 60, 40, 25, 0, -20 };
-static int rbat_capacity_axis[] = { 100, 13, 0 };
-#else
-static int rbat_data[] = { 110000,   /* 100% */
-			   110000,   /*  25% */
-			   150000,   /*  10% */
-			   170000 }; /*   0% */
-static int rbat_temp_axis[] = { 25 };
-static int rbat_capacity_axis[] = { 100, 25, 10, 0 };
-#endif
-struct sysedp_batmon_rbat_lut tn8_rbat_lut = {
-	.temp_axis = rbat_temp_axis,
-	.temp_size = ARRAY_SIZE(rbat_temp_axis),
-	.capacity_axis = rbat_capacity_axis,
-	.capacity_size = ARRAY_SIZE(rbat_capacity_axis),
-	.data = rbat_data,
-	.data_size = ARRAY_SIZE(rbat_data),
-};
-
-static struct sysedp_batmon_calc_platform_data tn8_batmon_pdata = {
-	.power_supply = "battery",
-	.r_const = 60000,
-	.vsys_min = 3000000,
-	.ibat_lut = tn8_ibat_lut,
-	.rbat_lut = &tn8_rbat_lut,
-};
-
-static struct platform_device tn8_batmon_device = {
-	.name = "sysedp_batmon_calc",
-	.id = -1,
-	.dev = { .platform_data = &tn8_batmon_pdata }
-};
-
-void __init tn8_sysedp_batmon_init(void)
-{
-	int r;
-
-	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY) {
-		/* modify platform data on-the-fly to enable virtual battery */
-		tn8_batmon_pdata.power_supply = "test_battery";
-		tn8_batmon_pdata.update_interval = 2000;
-	}
-
-	r = platform_device_register(&tn8_batmon_device);
-	WARN_ON(r);
-}
-
 static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
 	.corecap = td570d_sysedp_corecap,
 	.corecap_size = td570d_sysedp_corecap_sz,
