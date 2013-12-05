@@ -100,8 +100,6 @@ static struct regulator_consumer_supply as3722_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_hsic_com", NULL),
 	REGULATOR_SUPPLY("avdd_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
-	REGULATOR_SUPPLY("vdd", "1-004c"),
-	REGULATOR_SUPPLY("vdd", "1-004d"),
 };
 
 static struct regulator_consumer_supply as3722_ldo3_supply[] = {
@@ -395,6 +393,8 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-000c"),
 	REGULATOR_SUPPLY("vdd", "0-0077"),
 	REGULATOR_SUPPLY("hvdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("vdd", "1-004c"),
+	REGULATOR_SUPPLY("vdd", "1-004d"),
 };
 
 PALMAS_REGS_PDATA(ti913_smps123, 650, 1400, NULL, 0, 1, 1, NORMAL,
