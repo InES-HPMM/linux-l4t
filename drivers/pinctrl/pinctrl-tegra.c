@@ -750,8 +750,14 @@ static int pinctrl_suspend(void)
 	u32 *pg_data = pmx->pg_data;
 	u32 *regs;
 
-	if (pmx->soc->suspend)
-		return pmx->soc->suspend(pg_data);
+	if (pmx->soc->suspend) {
+		int ret;
+
+		ret = pmx->soc->suspend(pg_data);
+		if (!ret)
+			pinctrl_configure_user_state(pmx->pctl, "suspend");
+		return ret;
+	}
 
 	for (i = 0; i < pmx->nbanks; i++) {
 		regs = pmx->regs[i];
