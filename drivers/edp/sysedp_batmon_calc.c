@@ -23,6 +23,7 @@
 #include <linux/workqueue.h>
 #include <linux/suspend.h>
 #include <linux/debugfs.h>
+#include <linux/of.h>
 #include "sysedp_internal.h"
 
 #define UPDATE_INTERVAL	60000
@@ -274,16 +275,209 @@ static int init_ocv_reader(void)
 	return 0;
 }
 
+static void of_batmon_calc_get_pdata(struct platform_device *pdev,
+	struct sysedp_batmon_calc_platform_data **pdata)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct sysedp_batmon_calc_platform_data *obj_ptr;
+	u32 *u32_ptr;
+	const char *c_ptr;
+	const void *ptr;
+	u32 lenp, val;
+	int n;
+	int ret;
+	int i;
+
+	obj_ptr = devm_kzalloc(&pdev->dev,
+		sizeof(struct sysedp_batmon_calc_platform_data), GFP_KERNEL);
+	if (!obj_ptr)
+		return;
+
+	ptr = of_get_property(np, "power_supply", &lenp);
+	if (!ptr) {
+		dev_err(&pdev->dev, "Fail to get power_supply\n");
+		return;
+	} else {
+		obj_ptr->power_supply = devm_kzalloc(&pdev->dev,
+			sizeof(char) * lenp, GFP_KERNEL);
+		if (!obj_ptr->power_supply)
+			return;
+		ret = of_property_read_string(np, "power_supply", &c_ptr);
+		if (ret) {
+			dev_err(&pdev->dev, "Fail to read power_supply\n");
+			return;
+		}
+		strncpy(obj_ptr->power_supply, c_ptr, lenp);
+	}
+
+	ret = of_property_read_u32(np, "r_const", &val);
+	if (ret)
+		dev_info(&pdev->dev, "Fail to read r_const\n");
+	else
+		obj_ptr->r_const = val;
+
+	ret = of_property_read_u32(np, "vsys_min", &val);
+	if (ret)
+		dev_info(&pdev->dev, "Fail to read vsys_min\n");
+	else
+		obj_ptr->vsys_min = val;
+
+	ret = of_property_read_u32(np, "update_interval", &val);
+	if (!ret)
+		obj_ptr->update_interval = val;
+
+	ptr = of_get_property(np, "ocv_lut", &lenp);
+	if (ptr) {
+		n = lenp / sizeof(u32);
+		if (!n || (n % 2) != 0)
+			return;
+		obj_ptr->ocv_lut = devm_kzalloc(&pdev->dev,
+			sizeof(struct sysedp_batmon_ocv_lut) * n / 2,
+			GFP_KERNEL);
+		if (!obj_ptr->ocv_lut)
+			return;
+		u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+		if (!u32_ptr)
+			return;
+		ret = of_property_read_u32_array(np, "ocv_lut", u32_ptr, n);
+		if (ret) {
+			dev_err(&pdev->dev, "Fail to read ocv_lut\n");
+			kfree(u32_ptr);
+			return;
+		}
+		for (i = 0; i < n / 2; ++i) {
+			obj_ptr->ocv_lut[i].capacity = u32_ptr[2 * i];
+			obj_ptr->ocv_lut[i].ocv = u32_ptr[2 * i + 1];
+		}
+		kfree(u32_ptr);
+	}
+
+	ptr = of_get_property(np, "ibat_lut", &lenp);
+	if (!ptr) {
+		dev_err(&pdev->dev, "Fail to get ibat_lut\n");
+		return;
+	}
+	n = lenp / sizeof(u32);
+	if (!n || (n % 2) != 0)
+		return;
+	obj_ptr->ibat_lut = devm_kzalloc(&pdev->dev,
+		sizeof(struct sysedp_batmon_ibat_lut) * n / 2, GFP_KERNEL);
+	if (!obj_ptr->ibat_lut)
+		return;
+	u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+	if (!u32_ptr)
+		return;
+	ret = of_property_read_u32_array(np, "ibat_lut", u32_ptr, n);
+	if (ret) {
+		dev_err(&pdev->dev, "Fail to read ibat_lut\n");
+		kfree(u32_ptr);
+		return;
+	}
+	for (i = 0; i < n / 2; ++i) {
+		obj_ptr->ibat_lut[i].temp = (s32)u32_ptr[2 * i];
+		obj_ptr->ibat_lut[i].ibat = u32_ptr[2 * i + 1];
+	}
+	kfree(u32_ptr);
+
+	obj_ptr->rbat_lut = devm_kzalloc(&pdev->dev,
+		sizeof(struct sysedp_batmon_rbat_lut), GFP_KERNEL);
+	if (!obj_ptr->rbat_lut)
+		return;
+
+	ptr = of_get_property(np, "rbat_data", &lenp);
+	if (!ptr) {
+		dev_err(&pdev->dev, "Fail to get rbat_data\n");
+		return;
+	}
+	n = lenp / sizeof(u32);
+	if (!n)
+		return;
+	obj_ptr->rbat_lut->data = devm_kzalloc(&pdev->dev,
+		sizeof(int) * n, GFP_KERNEL);
+	if (!obj_ptr->rbat_lut->data)
+		return;
+	u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+	if (!u32_ptr)
+		return;
+	ret = of_property_read_u32_array(np, "rbat_data", u32_ptr, n);
+	if (ret) {
+		dev_err(&pdev->dev, "Fail to read rbat_data\n");
+		kfree(u32_ptr);
+		return;
+	}
+	for (i = 0; i < n; ++i)
+		obj_ptr->rbat_lut->data[i] = u32_ptr[i];
+	kfree(u32_ptr);
+	obj_ptr->rbat_lut->data_size = n;
+
+	ptr = of_get_property(np, "temp_axis", &lenp);
+	if (!ptr) {
+		dev_err(&pdev->dev, "Fail to get temp_axis\n");
+		return;
+	}
+	n = lenp / sizeof(u32);
+	if (!n)
+		return;
+	obj_ptr->rbat_lut->temp_axis = devm_kzalloc(&pdev->dev,
+		sizeof(int) * n, GFP_KERNEL);
+	if (!obj_ptr->rbat_lut->temp_axis)
+		return;
+	u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+	if (!u32_ptr)
+		return;
+	ret = of_property_read_u32_array(np, "temp_axis", u32_ptr, n);
+	if (ret) {
+		dev_err(&pdev->dev, "Fail to read temp_axis\n");
+		kfree(u32_ptr);
+		return;
+	}
+	for (i = 0; i < n; ++i)
+		obj_ptr->rbat_lut->temp_axis[i] = (s32)u32_ptr[i];
+	kfree(u32_ptr);
+	obj_ptr->rbat_lut->temp_size = n;
+
+	ptr = of_get_property(np, "capacity_axis", &lenp);
+	if (!ptr) {
+		dev_err(&pdev->dev, "Fail to get capacity_axis\n");
+		return;
+	}
+	n = lenp / sizeof(u32);
+	if (!n)
+		return;
+	obj_ptr->rbat_lut->capacity_axis = devm_kzalloc(&pdev->dev,
+		sizeof(int) * n, GFP_KERNEL);
+	if (!obj_ptr->rbat_lut->capacity_axis)
+		return;
+	u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+	if (!u32_ptr)
+		return;
+	ret = of_property_read_u32_array(np, "capacity_axis", u32_ptr, n);
+	if (ret) {
+		dev_err(&pdev->dev, "Fail to read capacity_axis\n");
+		kfree(u32_ptr);
+		return;
+	}
+	for (i = 0; i < n; ++i)
+		obj_ptr->rbat_lut->capacity_axis[i] = u32_ptr[i];
+	kfree(u32_ptr);
+	obj_ptr->rbat_lut->capacity_size = n;
+
+	*pdata = obj_ptr;
+	return;
+}
+
 static int batmon_probe(struct platform_device *pdev)
 {
 	int i;
 	struct sysedp_batmon_rbat_lut *rbat;
 
-	pdata = pdev->dev.platform_data;
+	if (pdev->dev.of_node)
+		of_batmon_calc_get_pdata(pdev, &pdata);
+	else
+		pdata = pdev->dev.platform_data;
 
 	if (!pdata)
 		return -EINVAL;
-
 
 	/* validate pdata->rbat_lut table */
 	rbat = pdata->rbat_lut;
@@ -312,6 +506,11 @@ static int batmon_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id batmon_calc_of_match[] = {
+	{ .compatible = "sysedp_batmon_calc", },
+};
+MODULE_DEVICE_TABLE(of, batmon_calc_of_match);
+
 static struct platform_driver batmon_driver = {
 	.probe = batmon_probe,
 	.shutdown = batmon_shutdown,
@@ -319,7 +518,8 @@ static struct platform_driver batmon_driver = {
 	.resume = batmon_resume,
 	.driver = {
 		.name = "sysedp_batmon_calc",
-		.owner = THIS_MODULE
+		.owner = THIS_MODULE,
+		.of_match_table = batmon_calc_of_match,
 	}
 };
 
