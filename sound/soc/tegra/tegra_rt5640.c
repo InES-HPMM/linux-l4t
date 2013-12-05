@@ -1068,6 +1068,12 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		goto err_unregister_card;
 	}
 
+	if (pdata->use_codec_jd_irq) {
+		codec = card->rtd[DAI_LINK_HIFI].codec;
+		if (!strncmp(pdata->codec_name, "rt5639", 6))
+			rt5639_irq_jd_reg_init(codec);
+	}
+
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	ret = tegra_asoc_utils_set_parent(&machine->util_data,
 				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
