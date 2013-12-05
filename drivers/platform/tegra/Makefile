@@ -10,7 +10,6 @@ ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra
 
-obj-y += board-pinmux.o
 obj-y += ahb.o
 obj-y += common.o
 obj-y += devices.o
@@ -30,10 +29,8 @@ ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
 endif
 
-obj-y += pinmux.o
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 
-obj-y += tegra_fuse.o
 obj-y += kfuse.o
 obj-y += apbio.o
 obj-y += mc.o
@@ -64,7 +61,6 @@ obj-y += tegra_emc.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_emc.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra_emc_dt_parse.o
 
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += pinmux-t12-tables.o
 obj-y += pmc.o
 obj-y += flowctrl.o
 obj-y += reset.o
