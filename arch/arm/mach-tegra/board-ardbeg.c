@@ -142,9 +142,6 @@ static noinline void __init ardbeg_setup_bluedroid_pm(void)
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
-static struct i2c_board_info __initdata rt5645_board_info = {
-	I2C_BOARD_INFO("rt5645", 0x1a),
-};
 
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -209,7 +206,6 @@ static void ardbeg_i2c_init(void)
 	tegra_get_board_info(&board_info);
 
 	i2c_register_board_info(0, &rt5639_board_info, 1);
-	i2c_register_board_info(0, &rt5645_board_info, 1);
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
@@ -285,39 +281,6 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	},
 };
 
-static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5645 = {
-	.gpio_hp_det = TEGRA_GPIO_HP_DET,
-	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
-	.gpio_spkr_en = -1,
-	.gpio_int_mic_en = -1,
-	.gpio_ext_mic_en = -1,
-	.gpio_hp_mute = -1,
-	.gpio_codec1 = -1,
-	.gpio_codec2 = -1,
-	.gpio_codec3 = -1,
-	.i2s_param[HIFI_CODEC]       = {
-		.audio_port_id = 1,
-		.is_i2s_master = 0,
-		.i2s_mode = TEGRA_DAIFMT_I2S,
-		.sample_size	= 16,
-		.channels       = 2,
-	},
-	.i2s_param[BT_SCO] = {
-		.audio_port_id = 3,
-		.is_i2s_master = 1,
-		.i2s_mode = TEGRA_DAIFMT_DSP_A,
-	},
-	.i2s_param[BASEBAND]	= {
-		.audio_port_id	= 0,
-		.is_i2s_master	= 1,
-		.i2s_mode	= TEGRA_DAIFMT_I2S,
-		.sample_size	= 16,
-		.rate		= 16000,
-		.channels	= 2,
-		.bit_clk	= 1024000,
-	},
-};
-
 static void ardbeg_audio_init(void)
 {
 	struct board_info board_info;
@@ -328,42 +291,30 @@ static void ardbeg_audio_init(void)
 			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363) {
 		/*Laguna*/
-		ardbeg_audio_pdata_rt5645.gpio_hp_det =
-			TEGRA_GPIO_HP_DET;
-		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high = 1;
+		ardbeg_audio_pdata_rt5639.gpio_hp_det = TEGRA_GPIO_HP_DET;
+		ardbeg_audio_pdata_rt5639.gpio_hp_det_active_high = 1;
 		if (board_info.board_id != BOARD_PM363)
-			ardbeg_audio_pdata_rt5645.gpio_ldo1_en = -1;
+			ardbeg_audio_pdata_rt5639.gpio_ldo1_en = -1;
 	} else {
 		/*Ardbeg*/
-		ardbeg_audio_pdata_rt5645.gpio_hp_det =
-			TEGRA_GPIO_HP_DET;
-		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high = 0;
-		ardbeg_audio_pdata_rt5645.gpio_ldo1_en =
-			TEGRA_GPIO_LDO_EN;
+
+		if (board_info.board_id == BOARD_E1762 ||
+			board_info.board_id == BOARD_P1761) {
+			ardbeg_audio_pdata_rt5639.gpio_hp_det =
+				TEGRA_GPIO_CDC_IRQ;
+			ardbeg_audio_pdata_rt5639.use_codec_jd_irq = true;
+		} else {
+			ardbeg_audio_pdata_rt5639.gpio_hp_det =
+				TEGRA_GPIO_HP_DET;
+			ardbeg_audio_pdata_rt5639.use_codec_jd_irq = false;
+		}
+		ardbeg_audio_pdata_rt5639.gpio_hp_det_active_high = 0;
+		ardbeg_audio_pdata_rt5639.gpio_ldo1_en = TEGRA_GPIO_LDO_EN;
 	}
-
-	ardbeg_audio_pdata_rt5639.gpio_hp_det =
-		ardbeg_audio_pdata_rt5645.gpio_hp_det;
-
-	ardbeg_audio_pdata_rt5639.gpio_hp_det_active_high =
-		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high;
-
-	ardbeg_audio_pdata_rt5639.gpio_ldo1_en =
-		ardbeg_audio_pdata_rt5645.gpio_ldo1_en;
 
 	ardbeg_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
 	ardbeg_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
-	ardbeg_audio_pdata_rt5645.codec_name = "rt5645.0-001a";
-	ardbeg_audio_pdata_rt5645.codec_dai_name = "rt5645-aif1";
 }
-
-static struct platform_device ardbeg_audio_device_rt5645 = {
-	.name = "tegra-snd-rt5645",
-	.id = 0,
-	.dev = {
-		.platform_data = &ardbeg_audio_pdata_rt5645,
-	},
-};
 
 static struct platform_device ardbeg_audio_device_rt5639 = {
 	.name = "tegra-snd-rt5639",

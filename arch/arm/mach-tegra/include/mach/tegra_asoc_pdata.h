@@ -65,6 +65,7 @@ struct tegra_asoc_platform_data {
 	int gpio_codec2;
 	int gpio_codec3;
 	bool micbias_gpio_absent;
+	bool use_codec_jd_irq;
 	unsigned int debounce_time_hp;
 	bool edp_support;
 	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
