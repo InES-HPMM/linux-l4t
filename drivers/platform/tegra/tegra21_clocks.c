@@ -5810,16 +5810,6 @@ static struct clk tegra_pll_m = {
 	},
 };
 
-static struct clk tegra_pll_m_out1 = {
-	.name      = "pll_m_out1",
-	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71,
-	.parent    = &tegra_pll_m,
-	.reg       = 0x94,
-	.reg_shift = 0,
-	.max_rate  = 1066000000,
-};
-
 static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
 	{ 12000000, 408000000, 816, 12, 2, 8},
 	{ 19200000, 408000000,  85, 16, 1},
@@ -6551,7 +6541,7 @@ static struct clk tegra_clk_sbus_cmplx = {
 		.pclk = &tegra_clk_pclk,
 		.hclk = &tegra_clk_hclk,
 		.sclk_low = &tegra_pll_p_out2,
-		.sclk_high = &tegra_pll_m_out1,
+		.sclk_high = &tegra_pll_p_out2,
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
 };
@@ -7515,7 +7505,6 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_m_div4,
 	&tegra_pll_ref,
 	&tegra_pll_m,
-	&tegra_pll_m_out1,
 	&tegra_pll_c,
 	&tegra_pll_c_out1,
 	&tegra_pll_c2,
@@ -7724,7 +7713,7 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	 * Otherwise fixed rate pll_m can be used as clock source for EMC and
 	 * other peripherals. No direct use for pll_m by super clocks.
 	 */
-	if ((p == &tegra_pll_m) && (c != &tegra_pll_m_out1)) {
+	if (p == &tegra_pll_m) {
 		if (c->ops == &tegra_super_ops)
 			return false;
 
@@ -7931,7 +7920,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 25];
+			   PERIPH_CLK_SOURCE_NUM + 24];
 
 static int tegra21_clk_suspend(void)
 {
@@ -7953,7 +7942,6 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_MISC(&tegra_pll_d2));
 
-	*ctx++ = clk_readl(tegra_pll_m_out1.reg);
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
 
@@ -8011,7 +7999,7 @@ static void tegra21_clk_resume(void)
 	u32 plld_base;
 	u32 plld2_base;
 	u32 pll_p_out12, pll_p_out34;
-	u32 pll_a_out0, pll_m_out1, pll_c_out1;
+	u32 pll_a_out0, pll_c_out1;
 	struct clk *p;
 
 	/* FIXME: OSC_CTRL already restored by warm boot code? */
@@ -8059,8 +8047,6 @@ static void tegra21_clk_resume(void)
 	udelay(1000);
 
 	val = PLL_OUT_CLKEN | PLL_OUT_RESET_DISABLE;
-	pll_m_out1 = *ctx++;
-	clk_writel(pll_m_out1 | val, tegra_pll_m_out1.reg);
 	pll_a_out0 = *ctx++;
 	clk_writel(pll_a_out0 | val, tegra_pll_a_out0.reg);
 	pll_c_out1 = *ctx++;
@@ -8164,7 +8150,6 @@ static void tegra21_clk_resume(void)
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
 	clk_writel(plld2_base, tegra_pll_d2.reg + PLL_BASE);
 
-	clk_writel(pll_m_out1, tegra_pll_m_out1.reg);
 	clk_writel(pll_a_out0, tegra_pll_a_out0.reg);
 	clk_writel(pll_c_out1, tegra_pll_c_out1.reg);
 

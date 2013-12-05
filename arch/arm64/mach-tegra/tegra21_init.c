@@ -45,8 +45,6 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out3", "pll_p",        0,              true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "pll_m_out1", "pll_m",        275000000,      false,
-		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out2", "pll_p",        102000000,      false,
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "sclk",       "pll_p_out2",   102000000,      true,
@@ -70,8 +68,6 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "pll_p_out5", "pll_p",        102000000,      true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	{ "pll_m_out1", "pll_m",        275000000,      true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
 	{ "pll_p_out2", "pll_p",        108000000,      false,
 		TEGRA_CLK_INIT_PLATFORM_NON_SI },
 	{ "sclk",       "pll_p_out2",   108000000,      true,
