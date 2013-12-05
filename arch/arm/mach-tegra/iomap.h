@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -198,6 +198,13 @@
 
 #define TEGRA_QUINARY_ICTLR_BASE	0x60004400
 #define TEGRA_QUINARY_ICTLR_SIZE	SZ_64
+
+#endif
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+
+#define TEGRA_HIER2_ICTLR1_BASE		0x60004800
+#define TEGRA_HIER2_ICTLR1_SIZE		SZ_256
 
 #endif
 

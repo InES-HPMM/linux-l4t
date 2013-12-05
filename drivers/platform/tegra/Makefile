@@ -105,3 +105,5 @@ else # --- CONFIG_ARM64 --- #
 obj-y += dummy.o # generate a built-in.o
 
 endif
+
+obj-y					+= hier_ictlr/
