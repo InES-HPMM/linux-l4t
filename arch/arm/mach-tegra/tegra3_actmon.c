@@ -920,6 +920,8 @@ static int actmon_debugfs_create_dev(struct actmon_dev *dev)
 
 	d = debugfs_create_file(
 		"state", RW_MODE, dir, dev, &state_fops);
+	if (!d)
+		return -ENOMEM;
 
 	d = debugfs_create_u32(
 		"avg_act_threshold", RW_MODE, dir,
