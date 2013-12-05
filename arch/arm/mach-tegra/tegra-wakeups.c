@@ -44,7 +44,7 @@ static int last_gpio = -1;
 
 int tegra_set_wake_gpio(unsigned int wake, int gpio)
 {
-	if (wake < 0 || wake >= tegra_wake_table_len)
+	if (wake >= tegra_wake_table_len)
 		return -EINVAL;
 
 	tegra_irq_wake_table[wake] = -EAGAIN;
@@ -55,7 +55,7 @@ int tegra_set_wake_gpio(unsigned int wake, int gpio)
 
 int tegra_set_wake_irq(unsigned int wake, int irq)
 {
-	if (wake < 0 || wake >= tegra_wake_table_len)
+	if (wake >= tegra_wake_table_len)
 		return -EINVAL;
 
 	tegra_irq_wake_table[wake] = irq;
