@@ -42,6 +42,8 @@
 	((MC_EMEM_ARB_MISC1 - MC_EMEM_ARB_DA_TURNS) / 4 + 1)
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define MC_TIMING_REG_NUM3	T12X_MC_LATENCY_ALLOWANCE_NUM_REGS
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define MC_TIMING_REG_NUM3	T21X_MC_LATENCY_ALLOWANCE_NUM_REGS
 #else
 #define MC_TIMING_REG_NUM3						\
 	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_BASE) / 4 + 1)
@@ -74,6 +76,9 @@ static void tegra_mc_timing_save(void)
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra12_mc_latency_allowance_save(&ctx);
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
+		tegra21_mc_latency_allowance_save(&ctx);
 #else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
@@ -100,6 +105,8 @@ void tegra_mc_timing_restore(void)
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra12_mc_latency_allowance_restore(&ctx);
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra21_mc_latency_allowance_restore(&ctx);
 #else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)

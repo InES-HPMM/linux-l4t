@@ -129,6 +129,10 @@ unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_kbps);
 void         tegra12_mc_latency_allowance_save(u32 **pctx);
 void         tegra12_mc_latency_allowance_restore(u32 **pctx);
 #endif
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+void         tegra21_mc_latency_allowance_save(u32 **pctx);
+void         tegra21_mc_latency_allowance_restore(u32 **pctx);
+#endif
 
 /* API to get freqency switch latency at given MC freq.
  * freq_khz: Frequncy in KHz.

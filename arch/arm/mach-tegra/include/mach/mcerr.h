@@ -42,8 +42,8 @@
 #include "../../../../arch/arm/mach-tegra/tegra12_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include "tegra11_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
+#include "tegra21_emc.h"
+#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
 #endif
 
 #define MAX_PRINTS			6
