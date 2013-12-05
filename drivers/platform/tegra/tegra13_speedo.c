@@ -28,8 +28,8 @@
 
 #include <mach/hardware.h>
 
-#include "fuse.h"
 #include "iomap.h"
+#include "common.h"
 
 #define TEGRA132_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 #define TEGRA132_GPU_SPEEDO 2140 /* FIXME: Get Correct Value */

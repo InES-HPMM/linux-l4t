@@ -42,7 +42,6 @@
 #include "iomap.h"
 #include "reset.h"
 #include "flowctrl.h"
-#include "fuse.h"
 #include "sleep.h"
 #include "board.h"
 
