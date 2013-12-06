@@ -598,14 +598,14 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 		while (i < d->num_freqs && rate > freqs[i])
 			i++;
 
-		if ((d->max_millivolts) &&
-		    (millivolts[i] > d->max_millivolts)) {
-			pr_warn("tegra_dvfs: voltage %d too high for dvfs on"
-				" %s\n", millivolts[i], d->clk_name);
+		mv = millivolts[i];
+
+		if ((d->max_millivolts) && (mv > d->max_millivolts)) {
+			pr_warn("tegra_dvfs: voltage %d too high for dvfs on %s\n",
+				mv, d->clk_name);
 			return -EINVAL;
 		}
 
-		mv = millivolts[i];
 		detach_mv = tegra_dvfs_rail_get_boot_level(d->dvfs_rail);
 		if (!d->dvfs_rail->reg && (mv > detach_mv)) {
 			pr_warn("%s: %s: voltage %d above boot limit %d\n",
@@ -633,7 +633,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 				__func__, d->clk_name, mv, detach_mv);
 			return -EINVAL;
 		}
-		d->cur_millivolts = millivolts[i];
+		d->cur_millivolts = mv;
 	}
 
 	d->cur_rate = rate;
