@@ -213,7 +213,6 @@
 #define TEGRA_PIN_USB_VBUS_EN2_PFF1		_GPIO(249)
 #define TEGRA_PIN_PFF2				_GPIO(250)
 
-
 /* All non-GPIO pins follow */
 #define NUM_GPIOS	(TEGRA_PIN_PFF2 + 1)
 #define _PIN(offset)	(NUM_GPIOS + (offset))
@@ -1185,8 +1184,6 @@ static const unsigned jtag_rtck_pins[] = {
 	TEGRA_PIN_JTAG_RTCK,
 };
 
-
-/*FIXME */
 static const unsigned drive_ao1_pins[] = {
 	TEGRA_PIN_KB_ROW0_PR0,
 	TEGRA_PIN_KB_ROW1_PR1,
@@ -1244,7 +1241,7 @@ static const unsigned drive_at2_pins[] = {
 	TEGRA_PIN_PG6,
 	TEGRA_PIN_PG7,
 	TEGRA_PIN_PI0,
-	TEGRA_PIN_PI0,
+	TEGRA_PIN_PI1,
 	TEGRA_PIN_PI3,
 	TEGRA_PIN_PI4,
 	TEGRA_PIN_PI7,
@@ -1938,7 +1935,7 @@ static const char * const pwm0_groups[] = {
 	"sdmmc1_dat2_py5",
 	"uart3_rts_n_pc0",
 	"pu3",
-	"gmi_ad8_ph0",
+	"ph0",
 	"sdmmc3_dat3_pb4",
 };
 
@@ -2002,8 +1999,6 @@ static const char * const rsvd1_groups[] = {
 
 	"reset_out_n",
 };
-
-
 
 static const char * const rsvd2_groups[] = {
 	"pv0",
@@ -2315,7 +2310,6 @@ static const char * const rsvd4_groups[] = {
 };
 
 static const char * const sdmmc1_groups[] = {
-
 	"sdmmc1_clk_pz0",
 	"sdmmc1_cmd_pz1",
 	"sdmmc1_dat3_py4",
@@ -2651,6 +2645,7 @@ static const char * const vimclk2_alt_groups[] = {
 };
 
 static const char * const sata_groups[] = {
+	"dap_mclk1_req_pee2",
 	"dap1_dout_pn2",
 	"pff2",
 };
