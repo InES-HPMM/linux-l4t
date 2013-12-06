@@ -792,28 +792,6 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 	return mv;
 }
 
-int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate)
-{
-	const int *millivolts;
-
-	if (!rate || !c->dvfs)
-		return 0;
-
-	millivolts = tegra_dvfs_get_millivolts_pll(c->dvfs);
-	return predict_millivolts(c, millivolts, rate);
-}
-
-int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate)
-{
-	const int *millivolts;
-
-	if (!rate || !c->dvfs)
-		return 0;
-
-	millivolts = c->dvfs->dfll_millivolts;
-	return predict_millivolts(c, millivolts, rate);
-}
-
 const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d)
 {
 	if (d->therm_dvfs) {

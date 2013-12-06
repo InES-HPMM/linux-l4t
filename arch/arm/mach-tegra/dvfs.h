@@ -247,8 +247,6 @@ struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
 
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate);
-int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate);
-int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate);
 const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d);
 
 int tegra_dvfs_override_core_cap_apply(int level);
