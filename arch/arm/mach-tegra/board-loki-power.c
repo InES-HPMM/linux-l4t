@@ -1023,6 +1023,16 @@ int __init loki_soctherm_init(void)
 		tegra_add_tpll_trips(
 			loki_soctherm_data.therm[THERM_PLL].trips,
 			&loki_soctherm_data.therm[THERM_PLL].num_trips);
+		tegra_add_cpu_vmin_trips(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_gpu_vmin_trips(
+			loki_soctherm_data.therm[THERM_GPU].trips,
+			&loki_soctherm_data.therm[THERM_GPU].num_trips);
+		/*PLL soctherm is being used for SOC vmin*/
+		tegra_add_core_vmin_trips(
+			loki_soctherm_data.therm[THERM_PLL].trips,
+			&loki_soctherm_data.therm[THERM_PLL].num_trips);
 	}
 
 	return tegra11_soctherm_init(&loki_soctherm_data);
