@@ -1430,17 +1430,17 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
 	case CONNECT_TYPE_APPLE_500MA:
-		dev_info(dev, "connected to Apple 0.5A charger\n");
+		dev_info(dev, "connected to Apple/Other 0.5A custom charger\n");
 		max_ua = USB_CHARGING_APPLE_CHARGER_500mA_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
 	case CONNECT_TYPE_APPLE_1000MA:
-		dev_info(dev, "connected to Apple 1A charger\n");
+		dev_info(dev, "connected to Apple/Other 1A custom charger\n");
 		max_ua = USB_CHARGING_APPLE_CHARGER_1000mA_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
 	case CONNECT_TYPE_APPLE_2000MA:
-		dev_info(dev, "connected to Apple 2A charger\n");
+		dev_info(dev, "connected to Apple/Other/NV 2A custom charger\n");
 		max_ua = USB_CHARGING_APPLE_CHARGER_2000mA_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
