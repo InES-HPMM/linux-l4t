@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/platform_data/tegra_ahci.h>
+#include <linux/tegra-soc.h>
 
 #include "board.h"
 #include "board-ardbeg.h"
@@ -35,6 +36,8 @@ static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
 void arbdeg_sata_clk_gate(void)
 {
 	u32 val;
+	if (!tegra_platform_is_silicon())
+		return 0;
 	val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 	if (val & SET_CEC_RST)
 		writel(0x108, IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_V_SET));
