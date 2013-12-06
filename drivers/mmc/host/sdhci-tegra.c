@@ -55,26 +55,27 @@
 #define SDHCI_TEGRA_DBG(stuff...)	do {} while (0)
 #endif
 
-#define SDHCI_VNDR_CLK_CTRL	0x100
-#define SDHCI_VNDR_CLK_CTRL_SDMMC_CLK	0x1
+#define SDHCI_VNDR_CLK_CTRL				0x100
+#define SDHCI_VNDR_CLK_CTRL_SDMMC_CLK			0x1
 #define SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE	0x8
 #define SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE	0x4
 #define SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK		0x2
-#define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT	16
-#define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT	24
+#define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT		16
+#define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT		24
 #define SDHCI_VNDR_CLK_CTRL_SDR50_TUNING		0x20
-#define SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK	0x2
+#define SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK		0x2
 
-#define SDHCI_VNDR_MISC_CTRL		0x120
+#define SDHCI_VNDR_MISC_CTRL				0x120
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR104_SUPPORT	0x8
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR50_SUPPORT	0x10
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_DDR50_SUPPORT	0x200
-#define SDHCI_VNDR_MISC_CTRL_ENABLE_SD_3_0	0x20
+#define SDHCI_VNDR_MISC_CTRL_ENABLE_SD_3_0		0x20
 #define SDHCI_VNDR_MISC_CTRL_INFINITE_ERASE_TIMEOUT	0x1
-#define SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK	0x180
+#define SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK		0x180
+#define SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT	17
 
 #define SDHCI_VNDR_PRESET_VAL0_0	0x1d4
-#define SDCLK_FREQ_SEL_HS_SHIFT	20
+#define SDCLK_FREQ_SEL_HS_SHIFT		20
 #define SDCLK_FREQ_SEL_DEFAULT_SHIFT	10
 
 #define SDHCI_VNDR_PRESET_VAL1_0	0x1d8
@@ -143,6 +144,8 @@
 /* Shadow write xfer mode reg and write it alongwith CMD register */
 #define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(21)
 #define NVQUIRK_HIGH_FREQ_TAP_PROCEDURE		BIT(22)
+/* Disable SDMMC3 external loopback */
+#define NVQUIRK_DISABLE_EXTERNAL_LOOPBACK	BIT(23)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -920,7 +923,7 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 
 static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 {
-	u16 misc_ctrl;
+	u32 misc_ctrl;
 	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -985,7 +988,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_SDR50_TUNING;
 	sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 
-	misc_ctrl = sdhci_readw(host, SDHCI_VNDR_MISC_CTRL);
+	misc_ctrl = sdhci_readl(host, SDHCI_VNDR_MISC_CTRL);
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_SD_3_0)
 		misc_ctrl |= SDHCI_VNDR_MISC_CTRL_ENABLE_SD_3_0;
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR104) {
@@ -1009,7 +1012,12 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	}
 	if (soc_data->nvquirks & NVQUIRK_SET_PIPE_STAGES_MASK_0)
 		misc_ctrl &= ~SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK;
-	sdhci_writew(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
+
+	/* External loopback is valid for sdmmc3 only */
+	if ((soc_data->nvquirks & NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
+		(tegra_host->instance == 2))
+		misc_ctrl &= ~(1 << SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
+	sdhci_writel(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
 		host->flags &= ~SDHCI_AUTO_CMD23;
@@ -2900,7 +2908,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
-		    NVQUIRK_SET_CALIBRATION_OFFSETS,
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
+		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 0, 200000000},
 };
