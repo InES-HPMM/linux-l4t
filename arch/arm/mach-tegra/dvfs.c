@@ -739,7 +739,7 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 	}
 
 	if (i == c->dvfs->num_freqs)
-		return -EINVAL;
+		i--;
 
 	return millivolts[i];
 }
@@ -784,6 +784,8 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 			tegra_dvfs_get_millivolts_pll(c->dvfs);
 
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
+	if (mv < 0)
+		return mv;
 
 	if (c->dvfs->dvfs_rail->therm_mv_floors)
 		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_floors[0]);
