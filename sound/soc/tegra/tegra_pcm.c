@@ -115,6 +115,8 @@ int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	if (!dmap)
+		return 0;
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params,
 						&slave_config);

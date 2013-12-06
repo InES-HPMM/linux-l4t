@@ -946,12 +946,16 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 		return -EINVAL;
 #endif
 
-	value |= TEGRA30_CIF_MONOCONV_COPY;
-	value |= TEGRA30_CIF_STEREOCONV_CH0;
-	value |= (audio_channels-1)  << TEGRA30_AUDIO_CHANNELS_SHIFT;
-	value |= (((audio_bits>>2)-1)<<TEGRA30_AUDIO_BITS_SHIFT);
-	value |= (client_channels-1)  << TEGRA30_CLIENT_CHANNELS_SHIFT;
-	value |= (((client_bits>>2)-1)<<TEGRA30_CLIENT_BITS_SHIFT);
+	value |= TEGRA30_AUDIOCIF_CTRL_MONO_CONV_COPY;
+	value |= TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_AVG;
+	value |= (audio_channels-1)  <<
+				TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT;
+	value |= (((audio_bits>>2)-1) <<
+				TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT);
+	value |= (client_channels-1) <<
+				TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT;
+	value |= (((client_bits>>2)-1) <<
+				TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
 
 	switch (chid) {
 	case dam_ch_out:
