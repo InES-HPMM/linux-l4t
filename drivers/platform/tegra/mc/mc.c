@@ -223,7 +223,7 @@ int tegra_mc_flush(int id)
 		rst_stat = 0;
 		ret = tegra_stable_hotreset_check(rst_stat_reg, &rst_stat);
 		if ((timeout++ > 100) && tegra_platform_is_qt()) {
-			WARN(1, "%s flush %d timeout\n", __func__, id);
+			pr_warn("%s flush %d timeout\n", __func__, id);
 			break;
 		}
 		if (!ret)
