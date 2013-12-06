@@ -416,6 +416,9 @@ static int init_cpu_edp_limits_calculated(void)
 			pr_err("%s: failed alloc mem for freq/voltage LUT\n",
 				__func__);
 			kfree(freq_voltage_lut);
+			kfree(edp_calculated_limits);
+			kfree(reg_idle_calc_limits);
+			kfree(power_edp_calc_limits);
 			return -ENOMEM;
 		}
 		freq_voltage_lut_size_saved = freq_voltage_lut_size;
@@ -870,8 +873,12 @@ static int init_gpu_edp_limits_calculated(void)
 			limit = edp_gpu_calculate_maxf(params,
 						   gpu_temperatures[temp_idx],
 						   gpu_iddq_mA);
-			if (limit == -EINVAL)
+			if (limit == -EINVAL) {
+				kfree(edp_gpu_calculated_limits);
+				kfree(freq_voltage_gpu_lut);
 				return -EINVAL;
+			}
+
 			edp_gpu_calculated_limits[temp_idx].freq_limits = limit;
 	}
 
@@ -890,6 +897,7 @@ static int init_gpu_edp_limits_calculated(void)
 		edp_gpu_limits_size = ARRAY_SIZE(gpu_temperatures);
 	}
 
+	kfree(edp_gpu_calculated_limits);
 	kfree(freq_voltage_gpu_lut);
 
 	return 0;
