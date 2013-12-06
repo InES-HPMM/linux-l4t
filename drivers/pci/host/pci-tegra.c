@@ -209,6 +209,9 @@
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
 #define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT	(1 << 21)
 
+#define NV_PCIE2_RP_VEND_CTL1					0x00000F48
+#define PCIE2_RP_VEND_CTL1_ERPT				(1 << 13)
+
 #define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
 
@@ -1476,6 +1479,11 @@ static void tegra_pcie_enable_rp_features(int index)
 	data |= PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE;
 	rp_writel(data, NV_PCIE2_RP_VEND_XP_BIST, index);
 
+	/* unhide AER capability */
+	data = rp_readl(NV_PCIE2_RP_VEND_CTL1, index);
+	data |= PCIE2_RP_VEND_CTL1_ERPT;
+	rp_writel(data, NV_PCIE2_RP_VEND_CTL1, index);
+
 	tegra_pcie_apply_sw_war(index);
 }
 
@@ -1698,7 +1706,7 @@ static void tegra_pcie_pll_pdn(void)
 }
 
 /* Enable ASPM support of all devices based on it's capability */
-static void tegra_pcie_enable_aspm_support(void)
+static void tegra_pcie_enable_aspm(void)
 {
 	struct pci_dev *pdev = NULL;
 	u16 val = 0, aspm = 0;
@@ -1725,7 +1733,7 @@ static void tegra_pcie_enable_features(void)
 		pr_info("PCIE: Link speed change failed\n");
 
 	tegra_pcie_pll_pdn();
-	tegra_pcie_enable_aspm_support();
+	tegra_pcie_enable_aspm();
 }
 
 static int __init tegra_pcie_init(void)
