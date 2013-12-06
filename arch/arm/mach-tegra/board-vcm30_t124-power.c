@@ -34,6 +34,7 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include "tegra3_tsensor.h"
+#include <mach/board_id.h>
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -397,26 +398,34 @@ int __init vcm30_t124_soctherm_init(void)
 	return tegra11_soctherm_init(&vcm30_t124_soctherm_data);
 }
 
-
 /*
  * GPIO init table for PCA9539 MISC IO GPIOs
  * that have to be brought up to a known good state
  * except for WiFi as it is handled via the
  * WiFi stack.
  */
-static struct gpio vcm30_t124_system_gpios[] = {
+static struct gpio vcm30_t124_system_0_gpios[] = {
 	{MISCIO_BT_WAKEUP_GPIO,	GPIOF_OUT_INIT_HIGH,	"bt_wk"},
 	{MISCIO_ABB_RST_GPIO,	GPIOF_OUT_INIT_HIGH,	"ebb_rst"},
 	{MISCIO_USER_LED2_GPIO,	GPIOF_OUT_INIT_LOW,	"usr_led2"},
 	{MISCIO_USER_LED1_GPIO, GPIOF_OUT_INIT_LOW,	"usr_led1"},
 };
 
-static int __init vcm30_t124_system_gpio_init(void)
+/*
+ * GPIO init table for PCA9539 MISC IO GPIOs
+ * related to DAP_D_SEL and DAP_D_EN.
+ */
+static struct gpio vcm30_t124_system_1_gpios[] = {
+	{MISCIO_MUX_DAP_D_SEL,	GPIOF_OUT_INIT_LOW,	"dap_d_sel"},
+	{MISCIO_MUX_DAP_D_EN,	GPIOF_OUT_INIT_LOW,	"dap_d_en"},
+};
+
+static int __init vcm30_t124_system_0_gpio_init(void)
 {
 	int ret, pin_count = 0;
 	struct gpio *gpios_info = NULL;
-	gpios_info = vcm30_t124_system_gpios;
-	pin_count = ARRAY_SIZE(vcm30_t124_system_gpios);
+	gpios_info = vcm30_t124_system_0_gpios;
+	pin_count = ARRAY_SIZE(vcm30_t124_system_0_gpios);
 
 	/* Set required system GPIOs to initial bootup values */
 	ret = gpio_request_array(gpios_info, pin_count);
@@ -432,6 +441,25 @@ static int __init vcm30_t124_system_gpio_init(void)
 	return ret;
 }
 
+static int __init vcm30_t124_system_1_gpio_init(void)
+{
+	int ret, pin_count = 0;
+	struct gpio *gpios_info = NULL;
+	gpios_info = vcm30_t124_system_1_gpios;
+	pin_count = ARRAY_SIZE(vcm30_t124_system_1_gpios);
+
+	/* Set required system GPIOs to initial bootup values */
+	ret = gpio_request_array(gpios_info, pin_count);
+
+	if (ret)
+		pr_err("%s gpio_request_array failed(%d)\r\n",
+				 __func__, ret);
+
+	gpio_free_array(gpios_info, pin_count);
+
+	return ret;
+}
+
 /*
  * TODO: Check for the correct pca953x before invoking client
  *  init functions
@@ -441,8 +469,19 @@ static int pca953x_client_setup(struct i2c_client *client,
 				void *context)
 {
 	int ret = 0;
+	int system = (int)context;
 
-	ret = vcm30_t124_system_gpio_init();
+	switch (system) {
+	case 0:
+		ret = vcm30_t124_system_0_gpio_init();
+		break;
+	case 1:
+		ret = vcm30_t124_system_1_gpio_init();
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
 	if (ret < 0)
 		goto fail;
 
@@ -452,21 +491,41 @@ fail:
 	return ret;
 }
 
-static struct pca953x_platform_data vcm30_t124_miscio_pca9539_data = {
-	.gpio_base  = PCA953X_MISCIO_GPIO_BASE,
+
+static struct pca953x_platform_data vcm30_t124_miscio_0_pca9539_data = {
+	.gpio_base  = PCA953X_MISCIO_0_GPIO_BASE,
 	.setup = pca953x_client_setup,
+	.context = (void *)0,
 };
 
-static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539[] = {
-	{
-		I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_ADDR),
-		.platform_data = &vcm30_t124_miscio_pca9539_data,
-	},
+static struct pca953x_platform_data vcm30_t124_miscio_1_pca9539_data = {
+	.gpio_base  = PCA953X_MISCIO_1_GPIO_BASE,
+	.setup = pca953x_client_setup,
+	.context = (void *)1,
+};
+
+static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_0 = {
+	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_0_ADDR),
+	.platform_data = &vcm30_t124_miscio_0_pca9539_data,
+};
+
+static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_1 = {
+	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_1_ADDR),
+	.platform_data = &vcm30_t124_miscio_1_pca9539_data,
 };
 
 int __init vcm30_t124_pca953x_init(void)
 {
-	i2c_register_board_info(1, vcm30_t124_i2c2_board_info_pca9539,
-		ARRAY_SIZE(vcm30_t124_i2c2_board_info_pca9539));
+	int is_e1860_b00 = 0;
+
+	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
+
+	i2c_register_board_info(1, &vcm30_t124_i2c2_board_info_pca9539_0, 1);
+
+	if (is_e1860_b00) {
+		i2c_register_board_info(1,
+			&vcm30_t124_i2c2_board_info_pca9539_1, 1);
+	}
+
 	return 0;
 }
