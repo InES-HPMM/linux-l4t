@@ -23,6 +23,7 @@
 #include <linux/workqueue.h>
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
+#include <linux/dma-mapping.h>
 
 #include "ote_protocol.h"
 
@@ -200,12 +201,16 @@ static int __init tlk_fs_register_handlers(void)
 {
 	struct te_file_req_shmem *shmem_ptr;
 	uint32_t smc_args[MAX_EXT_SMC_ARGS];
+	dma_addr_t shmem_dma;
 
-	shmem_ptr = kzalloc(sizeof(struct te_file_req_shmem), GFP_KERNEL);
+	shmem_ptr = dma_alloc_coherent(NULL, sizeof(struct te_file_req_shmem),
+			&shmem_dma, GFP_KERNEL);
 	if (!shmem_ptr) {
 		pr_err("%s: no memory available for fs operations\n", __func__);
 		return -ENOMEM;
 	}
+
+	memset(shmem_ptr, 0, sizeof(struct te_file_req_shmem));
 
 	INIT_LIST_HEAD(&req_list);
 	init_completion(&req_ready);
