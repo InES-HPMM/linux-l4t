@@ -2098,7 +2098,7 @@ static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 
 	seq_printf(s, "%-11s", "T(C)\\F(kHz)");
 	for (i = 0; i < d->num_freqs; i++) {
-		unsigned int f = d->freqs[i]/100;
+		unsigned int f = d->freqs[i]/1000;
 		seq_printf(s, " %7u", f);
 	}
 	seq_printf(s, "\n");
