@@ -772,6 +772,7 @@ struct tegra_dc_platform_data {
 	unsigned long		emc_clk_rate;
 	struct tegra_dc_out	*default_out;
 	struct tegra_fb_data	*fb;
+	unsigned long		low_v_win;
 
 #ifdef CONFIG_TEGRA_DC_CMU
 	bool			cmu_enable;

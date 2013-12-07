@@ -401,6 +401,7 @@ static struct tegra_dc_platform_data ardbeg_disp1_pdata = {
 #ifdef CONFIG_TEGRA_DC_CMU
 	.cmu_enable	= 1,
 #endif
+	.low_v_win	= 0x02,
 };
 #endif
 
