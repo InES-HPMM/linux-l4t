@@ -8871,11 +8871,11 @@ int __init loki_emc_init(void)
 	tegra_get_board_info(&bi);
 
 	if (bi.board_id == BOARD_E2548) {
-		if (bi.sku == 0x0) {
+		if (bi.fab == 0x0) {
 			pr_info("Loki a02 EMC is not supported\n");
 			return -EINVAL;
 		}
-		switch (bi.fab) {
+		switch (bi.sku) {
 		case 0x0:
 			pr_info("Loading Loki B00 sku0 EMC table.\n");
 			tegra_emc_device.dev.platform_data =
@@ -8892,7 +8892,7 @@ int __init loki_emc_init(void)
 		tegra_emc_device.dev.platform_data =
 			&thor_195_b00_emc_pdata;
 	} else if (bi.board_id == BOARD_P2530) {
-		switch (bi.fab) {
+		switch (bi.sku) {
 		case 0x0:
 			pr_info("Loading Loki FFD sku0 EMC table: 0x%08x\n", bi.sku);
 			tegra_emc_device.dev.platform_data = &loki_ffd_sku0_emc_pdata;
