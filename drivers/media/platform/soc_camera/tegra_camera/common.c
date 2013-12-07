@@ -18,7 +18,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/nvhost.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -34,6 +33,7 @@
 
 #include "dev.h"
 #include "bus_client.h"
+#include "nvhost_acm.h"
 #include "t114/t114.h"
 #include "t124/t124.h"
 
@@ -123,12 +123,16 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 static void tegra_camera_activate(struct tegra_camera_dev *cam)
 {
 	struct tegra_camera_ops *cam_ops = cam->ops;
+	int ret;
 
 	nvhost_module_busy_ext(cam->ndev);
 
 	/* Enable external power */
-	if (cam->reg)
-		regulator_enable(cam->reg);
+	if (cam->reg) {
+		ret = regulator_enable(cam->reg);
+		if (ret)
+			dev_err(&cam->ndev->dev, "enabling regulator failed\n");
+	}
 
 	if (cam_ops->activate)
 		cam_ops->activate(cam);
@@ -549,7 +553,6 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 	struct tegra_camera_dev *cam = ici->priv;
 
 	if (!cam->enable_refcnt) {
-		pm_runtime_get_sync(ici->v4l2_dev.dev);
 		tegra_camera_activate(cam);
 		cam->num_frames = 0;
 	}
@@ -568,7 +571,6 @@ static void tegra_camera_remove_device(struct soc_camera_device *icd)
 	if (!cam->enable_refcnt) {
 		cancel_work_sync(&cam->work);
 		tegra_camera_deactivate(cam);
-		pm_runtime_put_sync(ici->v4l2_dev.dev);
 	}
 }
 
@@ -863,6 +865,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit_deinit_clk;
 	}
 
+	mutex_init(&ndata->lock);
 	platform_set_drvdata(pdev, ndata);
 	err = nvhost_client_device_get_resources(pdev);
 	if (err) {
@@ -879,6 +882,8 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit_deinit_clk;
 	}
 
+	nvhost_module_init(pdev);
+
 	err = nvhost_client_device_init(pdev);
 	if (err) {
 		dev_err(&pdev->dev, "%s: nvhost init failed %d\n",
@@ -886,15 +891,10 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit_deinit_clk;
 	}
 
-	tegra_pd_add_device(&pdev->dev);
-	pm_runtime_use_autosuspend(&pdev->dev);
-	pm_runtime_set_autosuspend_delay(&pdev->dev, ndata->clockgate_delay);
-	pm_runtime_enable(&pdev->dev);
-
 	cam->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
 	if (IS_ERR(cam->alloc_ctx)) {
 		err = PTR_ERR(cam->alloc_ctx);
-		goto exit_pm_disable;
+		goto exit_deinit_clk;
 	}
 
 	platform_set_drvdata(pdev, cam);
@@ -909,8 +909,6 @@ static int tegra_camera_probe(struct platform_device *pdev)
 exit_cleanup_alloc_ctx:
 	platform_set_drvdata(pdev, cam->ndata);
 	vb2_dma_contig_cleanup_ctx(cam->alloc_ctx);
-exit_pm_disable:
-	pm_runtime_disable(&pdev->dev);
 exit_deinit_clk:
 	cam->ops->clks_deinit(cam);
 	kfree(cam);
@@ -928,10 +926,9 @@ static int tegra_camera_remove(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, cam->ndata);
 	nvhost_client_device_release(pdev);
+	cam->ndata->aperture[0] = NULL;
 
 	vb2_dma_contig_cleanup_ctx(cam->alloc_ctx);
-
-	pm_runtime_disable(&pdev->dev);
 
 	if (cam->ops)
 		cam->ops->clks_deinit(cam);
