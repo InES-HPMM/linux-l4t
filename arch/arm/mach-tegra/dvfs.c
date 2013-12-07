@@ -728,6 +728,60 @@ int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 }
 
 /*
+ * Some clocks may need run-time voltage ladder replacement. Allow it only if
+ * peak voltages across all possible ladders are specified, and new voltages
+ * do not violate peaks.
+ */
+static int new_voltages_validate(struct dvfs *d, const int *new_millivolts,
+				 int freqs_num, int ranges_num)
+{
+	const int *millivolts;
+	int freq_idx, therm_idx;
+
+	for (therm_idx = 0; therm_idx < ranges_num; therm_idx++) {
+		millivolts = new_millivolts + therm_idx * MAX_DVFS_FREQS;
+		for (freq_idx = 0; freq_idx < freqs_num; freq_idx++) {
+			if (millivolts[freq_idx] >
+			    d->peak_millivolts[freq_idx]) {
+				pr_err("%s: Invalid new voltages for %s\n",
+				       __func__, d->clk_name);
+				return -EINVAL;
+			}
+		}
+	}
+	return 0;
+}
+
+int tegra_dvfs_replace_voltage_table(struct dvfs *d, const int *new_millivolts)
+{
+	int ret = 0;
+	int ranges_num = 1;
+
+	mutex_lock(&dvfs_lock);
+
+	if (!d->peak_millivolts) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (d->therm_dvfs && d->dvfs_rail->vts_cdev)
+		ranges_num += d->dvfs_rail->vts_cdev->trip_temperatures_num;
+
+	if (new_voltages_validate(d, new_millivolts,
+				  d->num_freqs, ranges_num)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	d->millivolts = new_millivolts;
+	if (__tegra_dvfs_set_rate(d, d->cur_rate))
+		ret = -EAGAIN;
+out:
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+/*
  *  Using non alt frequencies always results in peak voltage
  * (enforced by alt_freqs_validate())
  */
