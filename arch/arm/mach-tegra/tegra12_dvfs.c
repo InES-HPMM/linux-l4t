@@ -41,6 +41,8 @@ static bool tegra_dvfs_gpu_disabled;
 
 #define VDD_SAFE_STEP			100
 
+static int gpu_vmin_offsets[] = { 0, -30, };
+
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
 
@@ -108,7 +110,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
 	.max_millivolts = 1350,
-	.min_millivolts = 680,
+	.min_millivolts = 650,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1350,
 	.in_band_pm = true,
@@ -470,6 +472,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 static int gpu_vmin[MAX_THERMAL_RANGES];
 static int gpu_peak_millivolts[MAX_DVFS_FREQS];
 static int gpu_millivolts[MAX_THERMAL_RANGES][MAX_DVFS_FREQS];
+static int gpu_millivolts_offs[MAX_THERMAL_RANGES][MAX_DVFS_FREQS];
 static struct dvfs gpu_dvfs = {
 	.clk_name	= "gbus",
 	.auto_dvfs	= true,
@@ -816,13 +819,18 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
-	int i, j, thermal_ranges, mv;
+	int i, j, thermal_ranges, simon_offs, mv;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_gpu_speedo_value();
 	struct dvfs_rail *rail = &tegra12_dvfs_rail_vdd_gpu;
 	struct rail_alignment *align = &rail->alignment;
 
 	d->max_mv = round_voltage(d->max_mv, align, false);
+
+	/* Init gpu Vmin SiMon offsets (Tegra12 has exactly 2 offsests) */
+	BUILD_BUG_ON(ARRAY_SIZE(gpu_vmin_offsets) != 2);
+	tegra_dvfs_rail_init_simon_vmin_offsets(gpu_vmin_offsets, 2, rail);
+	simon_offs = rail->simon_vmin_offsets ? rail->simon_vmin_offsets[1] : 0;
 
 	/*
 	 * Init thermal trips, find number of thermal ranges; note that the
@@ -853,10 +861,20 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 			t, d->thermal_scale, &d->cvb_vmin.cvb_pll_param);
 		mvj = round_cvb_voltage(mvj, d->voltage_scale, align);
 		if (mvj < rail->min_millivolts) {
-			WARN(1, "tegra12_dvfs: gpu Vmin %d below rail min %d\n",
+			WARN(1, "tegra12_dvfs: gpu min %dmV below rail min %dmV\n",
 			     mvj, rail->min_millivolts);
 			mvj = rail->min_millivolts;
 		}
+
+		/* check Vmin SiMon offset: ignore SiMon if it pushes too low */
+		if (mvj + simon_offs < rail->min_millivolts) {
+			WARN(1, "tegra12_dvfs: gpu simon min %dmV below rail min %dmV\n",
+			     mvj + simon_offs, rail->min_millivolts);
+			rail->simon_vmin_offsets = NULL;
+			rail->simon_vmin_offs_num = 0;
+			simon_offs = 0;
+		}
+
 		gpu_vmin[j] = mvj;
 	}
 
@@ -874,7 +892,7 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 			speedo, d->speedo_scale, &table->cvb_pll_param);
 
 		for (j = 0; j < thermal_ranges; j++) {
-			int mvj = mv;
+			int mvj_offs, mvj = mv;
 			int t = rail->vts_cdev->trip_temperatures[j];
 
 			/* get thermal offset for this trip-point */
@@ -883,6 +901,7 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 			mvj = round_cvb_voltage(mvj, d->voltage_scale, align);
 
 			/* clip to minimum, abort if above maximum */
+			mvj_offs = max(mvj, gpu_vmin[j] + simon_offs);
 			mvj = max(mvj, gpu_vmin[j]);
 			if (mvj > d->max_mv)
 				break;
@@ -892,6 +911,10 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 			gpu_millivolts[j][i] = mvj;
 			if (j && (gpu_millivolts[j-1][i] < mvj))
 				gpu_millivolts[j-1][i] = mvj;
+
+			gpu_millivolts_offs[j][i] = mvj_offs;
+			if (j && (gpu_millivolts_offs[j-1][i] < mvj_offs))
+				gpu_millivolts_offs[j-1][i] = mvj_offs;
 		}
 		/* Make sure all voltages for this frequency are below max */
 		if (j < thermal_ranges)
