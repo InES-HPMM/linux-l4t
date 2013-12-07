@@ -115,7 +115,7 @@ woal_associate_ssid_bssid(moal_private * priv, struct iwreq *wrq)
 		} else {
 			if (mac_idx < ETH_ALEN)
 				ssid_bssid.bssid[mac_idx] =
-					(t_u8) woal_atox((char *)buf + (int)i);
+					(t_u8) woal_atox(buf + i);
 
 			while ((isxdigit(buf[i + 1]) && (i < buflen))) {
 				/* Skip entire hex value */
@@ -264,9 +264,9 @@ done:
  *  @brief Get signal
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
- *  @return 	  	0 --success, otherwise fail
+ *  @return             0 --success, otherwise fail
  */
 static int
 woal_get_signal(moal_private * priv, struct iwreq *wrq)
@@ -541,9 +541,9 @@ woal_deep_sleep_ioctl(moal_private * priv, struct iwreq *wrq)
  *  @brief Set/Get Usr 11n configuration request
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_11n_htcap_cfg(moal_private * priv, struct iwreq *wrq)
@@ -638,8 +638,7 @@ woal_11n_htcap_cfg(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = data_length;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -648,9 +647,9 @@ done:
  *  @brief Enable/Disable amsdu_aggr_ctrl
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_11n_amsdu_aggr_ctrl(moal_private * priv, struct iwreq *wrq)
@@ -707,8 +706,7 @@ woal_11n_amsdu_aggr_ctrl(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 2;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -717,9 +715,9 @@ done:
  *  @brief Set/Get 11n configuration request
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
@@ -810,8 +808,7 @@ woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = data_length;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -820,9 +817,9 @@ done:
  *  @brief Enable/Disable TX Aggregation
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
@@ -902,9 +899,7 @@ woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
 	}
 
 error:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -913,9 +908,9 @@ error:
  *  @brief Set/Get add BA Reject parameters
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_addba_reject(moal_private * priv, struct iwreq *wrq)
@@ -948,9 +943,8 @@ woal_addba_reject(moal_private * priv, struct iwreq *wrq)
 		}
 
 		wrq->u.data.length = MAX_NUM_TID;
-		for (i = 0; i < (wrq->u.data.length); ++i) {
+		for (i = 0; i < (wrq->u.data.length); ++i)
 			data[i] = cfg_11n->param.addba_reject[i];
-		}
 
 		if (copy_to_user(wrq->u.data.pointer, data,
 				 sizeof(int) * wrq->u.data.length)) {
@@ -988,9 +982,7 @@ woal_addba_reject(moal_private * priv, struct iwreq *wrq)
 		goto error;
 	}
 error:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -999,9 +991,9 @@ error:
  *  @brief Set/Get add BA parameters
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_addba_para_updt(moal_private * priv, struct iwreq *wrq)
@@ -1090,9 +1082,7 @@ woal_addba_para_updt(moal_private * priv, struct iwreq *wrq)
 	}
 
 error:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1101,9 +1091,9 @@ error:
  *  @brief Set/Get Transmit buffer size
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_txbuf_cfg(moal_private * priv, struct iwreq *wrq)
@@ -1145,8 +1135,7 @@ woal_txbuf_cfg(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 1;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1155,10 +1144,10 @@ done:
  *  @brief Set/Get Host Sleep configuration
  *
  *  @param priv             A pointer to moal_private structure
- *  @param wrq	            A pointer to iwreq structure
- *  @param invoke_hostcmd	MTRUE --invoke HostCmd, otherwise MFALSE
+ *  @param wrq              A pointer to iwreq structure
+ *  @param invoke_hostcmd   MTRUE --invoke HostCmd, otherwise MFALSE
  *
- *  @return             0 --success, otherwise fail
+ *  @return                 0 --success, otherwise fail
  */
 static int
 woal_hs_cfg(moal_private * priv, struct iwreq *wrq, BOOLEAN invoke_hostcmd)
@@ -1257,7 +1246,7 @@ done:
  *  @brief Set Host Sleep parameters
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1286,7 +1275,7 @@ done:
  *  @brief Get/Set inactivity timeout extend
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1360,8 +1349,7 @@ woal_inactivity_timeout_ext(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1370,7 +1358,7 @@ done:
  *  @brief Set/Get system clock
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1468,9 +1456,8 @@ woal_ecl_sys_clock(moal_private * priv, struct iwreq *wrq)
 		cfg->param.sys_clock.sys_clk_type = MLAN_CLK_CONFIGURABLE;
 		cfg->param.sys_clock.sys_clk_num =
 			MIN(MLAN_MAX_CLK_NUM, data_length);
-		for (i = 0; i < cfg->param.sys_clock.sys_clk_num; i++) {
+		for (i = 0; i < cfg->param.sys_clock.sys_clk_num; i++)
 			cfg->param.sys_clock.sys_clk[i] = (t_u16) data[i];
-		}
 
 		if (MLAN_STATUS_SUCCESS !=
 		    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
@@ -1479,8 +1466,7 @@ woal_ecl_sys_clock(moal_private * priv, struct iwreq *wrq)
 		}
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1489,7 +1475,7 @@ done:
  *  @brief Set/Get Band and Adhoc-band setting
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1635,9 +1621,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
 	}
 
 error:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1646,7 +1630,7 @@ error:
  *  @brief Read/Write adapter registers value
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1710,8 +1694,7 @@ woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1720,7 +1703,7 @@ done:
  *  @brief Read the EEPROM contents of the card
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1781,8 +1764,7 @@ woal_read_eeprom(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1791,7 +1773,7 @@ done:
  *  @brief Read/Write device memory value
  *
  *  @param priv         A pointer to moal_private structure
- *  @param wrq	        A pointer to iwreq structure
+ *  @param wrq          A pointer to iwreq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -1861,8 +1843,7 @@ woal_mem_read_write(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1870,10 +1851,10 @@ done:
 /**
  *  @brief Get LOG
  *
- *  @param priv                 A pointer to moal_private structure
- *  @param wrq			A pointer to iwreq structure
+ *  @param priv         A pointer to moal_private structure
+ *  @param wrq          A pointer to iwreq structure
  *
- *  @return 	   	 	0 --success, otherwise fail
+ *  @return             0 --success, otherwise fail
  */
 static int
 woal_get_log(moal_private * priv, struct iwreq *wrq)
@@ -1943,8 +1924,7 @@ woal_get_log(moal_private * priv, struct iwreq *wrq)
 		}
 	}
 done:
-	if (buf)
-		kfree(buf);
+	kfree(buf);
 	LEAVE();
 	return ret;
 }
@@ -1952,10 +1932,10 @@ done:
 /**
  *  @brief Deauthenticate
  *
- *  @param priv                 A pointer to moal_private structure
- *  @param wrq			A pointer to iwreq structure
+ *  @param priv         A pointer to moal_private structure
+ *  @param wrq          A pointer to iwreq structure
  *
- *  @return 	   	 	0 --success, otherwise fail
+ *  @return             0 --success, otherwise fail
  */
 static int
 woal_deauth(moal_private * priv, struct iwreq *wrq)
@@ -2113,8 +2093,7 @@ woal_tx_power_cfg(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = pcfg->param.power_ext.len;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2160,8 +2139,7 @@ woal_get_txrx_rate(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 2;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2282,8 +2260,7 @@ woal_beacon_interval(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 1;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2347,8 +2324,7 @@ woal_atim_window(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 1;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2356,10 +2332,10 @@ done:
 /**
  * @brief Set/Get TX data rate
  *
- * @param priv     A pointer to moal_private structure
- * @param wrq      A pointer to iwreq structure
+ * @param priv      A pointer to moal_private structure
+ * @param wrq       A pointer to iwreq structure
  *
- * @return           0 --success, otherwise fail
+ * @return          0 --success, otherwise fail
  */
 static int
 woal_set_get_txrate(moal_private * priv, struct iwreq *wrq)
@@ -2419,13 +2395,11 @@ woal_set_get_txrate(moal_private * priv, struct iwreq *wrq)
 		else
 			rateindex = rate->param.rate_cfg.rate;
 		wrq->u.data.length = 1;
-		if (copy_to_user(wrq->u.data.pointer, &rateindex, sizeof(int))) {
+		if (copy_to_user(wrq->u.data.pointer, &rateindex, sizeof(int)))
 			ret = -EFAULT;
-		}
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2433,10 +2407,10 @@ done:
 /**
  * @brief Set/Get region code
  *
- * @param priv     A pointer to moal_private structure
- * @param wrq      A pointer to iwreq structure
+ * @param priv      A pointer to moal_private structure
+ * @param wrq       A pointer to iwreq structure
  *
- * @return           0 --success, otherwise fail
+ * @return          0 --success, otherwise fail
  */
 static int
 woal_set_get_regioncode(moal_private * priv, struct iwreq *wrq)
@@ -2485,8 +2459,7 @@ woal_set_get_regioncode(moal_private * priv, struct iwreq *wrq)
 			ret = -EFAULT;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2494,10 +2467,10 @@ done:
 /**
  * @brief Set/Get radio
  *
- * @param priv     A pointer to moal_private structure
- * @param wrq      A pointer to iwreq structure
+ * @param priv      A pointer to moal_private structure
+ * @param wrq       A pointer to iwreq structure
  *
- * @return           0 --success, otherwise fail
+ * @return          0 --success, otherwise fail
  */
 static int
 woal_set_get_radio(moal_private * priv, struct iwreq *wrq)
@@ -2539,8 +2512,8 @@ done:
 /**
  *  @brief Get/Set the bit mask of driver debug message control
  *
- *  @param priv			A pointer to moal_private structure
- *  @param wrq			A pointer to wrq structure
+ *  @param priv         A pointer to moal_private structure
+ *  @param wrq          A pointer to wrq structure
  *
  *  @return             0 --success, otherwise fail
  */
@@ -2668,8 +2641,7 @@ woal_set_get_qos_cfg(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = 1;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2677,10 +2649,10 @@ done:
 /**
  * @brief Set/Get WWS mode
  *
- * @param priv     A pointer to moal_private structure
- * @param wrq      A pointer to iwreq structure
+ * @param priv      A pointer to moal_private structure
+ * @param wrq       A pointer to iwreq structure
  *
- * @return         0 --success, otherwise fail
+ * @return          0 --success, otherwise fail
  */
 static int
 woal_wws_cfg(moal_private * priv, struct iwreq *wrq)
@@ -2727,8 +2699,7 @@ woal_wws_cfg(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = 1;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2793,8 +2764,7 @@ woal_sleep_pd(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2907,9 +2877,7 @@ woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2968,8 +2936,7 @@ woal_set_get_11h_local_pwr_constraint(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3031,8 +2998,7 @@ woal_ht_stream_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = 1;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3090,8 +3056,7 @@ woal_mac_control_ioctl(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = 1;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3144,8 +3109,7 @@ woal_thermal_ioctl(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = 1;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3208,7 +3172,7 @@ done:
  *  @param priv     Pointer to the moal_private driver data struct
  *  @param wrq      Pointer to user data
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_wmm_enable_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -3267,8 +3231,7 @@ woal_wmm_enable_ioctl(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = 1;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3337,9 +3300,7 @@ woal_11d_enable_ioctl(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = 1;
 	}
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3379,9 +3340,7 @@ woal_11d_clr_chan_table(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3392,7 +3351,7 @@ done:
  *  @param priv     Pointer to the moal_private driver data struct
  *  @param wrq      Pointer to user data
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_wps_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -3437,8 +3396,7 @@ woal_wps_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3446,10 +3404,10 @@ done:
 /**
  *  @brief Set WPA passphrase and SSID
  *
- *  @param priv	    A pointer to moal_private structure
- *  @param wrq	    A pointer to user data
+ *  @param priv     A pointer to moal_private structure
+ *  @param wrq      A pointer to user data
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_passphrase(moal_private * priv, struct iwreq *wrq)
@@ -3528,7 +3486,7 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 			       sec->param.passphrase.ssid.ssid,
 			       (int)sec->param.passphrase.ssid.ssid_len);
 		} else if (!strnicmp(opt, "bssid", strlen(opt))) {
-			woal_mac2u8((t_u8 *) sec->param.passphrase.bssid, end);
+			woal_mac2u8(sec->param.passphrase.bssid, end);
 		} else if (!strnicmp(opt, "psk", strlen(opt)) &&
 			   req->action == MLAN_ACT_SET) {
 			if (strlen(end) != MLAN_PMK_HEXSTR_LENGTH) {
@@ -3603,7 +3561,7 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 			len += sprintf(buf + len, "\n");
 		}
 		if (sec->param.passphrase.psk_type == MLAN_PSK_PASSPHRASE) {
-			len += sprintf(buf + len, "passphrase:%s \n",
+			len += sprintf(buf + len, "passphrase:%s\n",
 				       sec->param.passphrase.psk.passphrase.
 				       passphrase);
 		}
@@ -3620,8 +3578,7 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3667,8 +3624,7 @@ woal_get_esupp_mode(moal_private * priv, struct iwreq *wrq)
 	}
 	wrq->u.data.length = 3;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3678,10 +3634,10 @@ done:
 /**
  *  @brief Adhoc AES control
  *
- *  @param priv	    A pointer to moal_private structure
- *  @param wrq	    A pointer to user data
+ *  @param priv     A pointer to moal_private structure
+ *  @param wrq      A pointer to user data
  *
- *  @return 	    0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -3759,7 +3715,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
 				tmp += sprintf((char *)tmp, "%02x", key_hex[i]);
 		} else if (data_length >= 2) {
 			/* Parse the buf to get the cmd_action */
-			action = woal_atox((char *)buf);
+			action = woal_atox(buf);
 			if (action < 1 || action > 2) {
 				PRINTM(MERROR, "Invalid action argument %d\n",
 				       action);
@@ -3832,9 +3788,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3842,9 +3796,9 @@ done:
 /**
  *  @brief arpfilter ioctl function
  *
- *  @param priv		A pointer to moal_private structure
- *  @param wrq 		A pointer to iwreq structure
- *  @return    		0 --success, otherwise fail
+ *  @param priv     A pointer to moal_private structure
+ *  @param wrq      A pointer to iwreq structure
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_arp_filter(moal_private * priv, struct iwreq *wrq)
@@ -3885,8 +3839,7 @@ woal_arp_filter(moal_private * priv, struct iwreq *wrq)
 		goto done;
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3973,8 +3926,7 @@ woal_set_get_ip_addr(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -4039,8 +3991,7 @@ woal_tx_bf_cap_ioctl(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = 1;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4441,9 +4392,8 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
 							 &pcurrent,
 							 &space_left);
 
-		if (ret_code == MLAN_STATUS_SUCCESS) {
+		if (ret_code == MLAN_STATUS_SUCCESS)
 			num_scans_done = 1;
-		}
 	} else {
 		scan_start--;
 
@@ -4463,9 +4413,8 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
 								 &pcurrent,
 								 &space_left);
 
-			if (ret_code == MLAN_STATUS_SUCCESS) {
+			if (ret_code == MLAN_STATUS_SUCCESS)
 				num_scans_done++;
-			}
 		}
 	}
 
@@ -4484,7 +4433,7 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
  *  @brief Get scan table ioctl
  *
  *  @param priv     A pointer to moal_private structure
- *  @param wrq 		A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
  *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
@@ -4518,11 +4467,10 @@ woal_get_scan_table_ioctl(moal_private * priv, struct iwreq *wrq)
 		ret = -EFAULT;
 		goto done;
 	}
-	if (scan_start) {
+	if (scan_start)
 		scan->sub_command = MLAN_OID_SCAN_NORMAL;
-	} else {
+	else
 		scan->sub_command = MLAN_OID_SCAN_GET_CURRENT_BSS;
-	}
 	/* Send IOCTL request to MLAN */
 	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
 	if (status == MLAN_STATUS_SUCCESS) {
@@ -4531,7 +4479,7 @@ woal_get_scan_table_ioctl(moal_private * priv, struct iwreq *wrq)
 						       scan_start);
 	}
 done:
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
 	LEAVE();
 	return status;
@@ -4541,7 +4489,7 @@ done:
  *  @brief Set user scan ext -- Async mode, without wait
  *
  *  @param priv     A pointer to moal_private structure
- *  @param wrq 		A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
  *  @return         0 -- success, otherwise fail
  */
@@ -4569,7 +4517,7 @@ woal_set_user_scan_ext_ioctl(moal_private * priv, struct iwreq *wrq)
  *  @brief Set user scan
  *
  *  @param priv     A pointer to moal_private structure
- *  @param wrq 		A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
  *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
@@ -4628,7 +4576,7 @@ woal_set_user_scan_ioctl(moal_private * priv, struct iwreq *wrq)
 	MOAL_REL_SEMAPHORE(&handle->async_sem);
 
 done:
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
 	LEAVE();
 	return status;
@@ -4791,8 +4739,8 @@ woal_cmd53rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
 		ret = -EINVAL;
 		goto done;
 	}
-	PRINTM(MINFO, "CMD53 read/write, func = %d, addr = %#x, mode = %d, "
-	       "block size = %d, block(byte) number = %d\n",
+	PRINTM(MINFO,
+	       "CMD53 read/write, func = %d, addr = %#x, mode = %d, block size = %d, block(byte) number = %d\n",
 	       func, reg, mode, blklen, blknum);
 
 	if (!rw) {
@@ -4836,10 +4784,8 @@ woal_cmd53rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (buf)
-		kfree(buf);
-	if (data)
-		kfree(data);
+	kfree(buf);
+	kfree(data);
 	LEAVE();
 	return ret;
 }
@@ -4951,8 +4897,7 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5046,8 +4991,7 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 		wrq->u.data.length = ARRAY_SIZE(data);
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5183,8 +5127,7 @@ woal_set_get_ps_cfg(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5295,8 +5238,7 @@ woal_wmm_addts_req_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5388,8 +5330,7 @@ woal_wmm_delts_req_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5464,8 +5405,7 @@ woal_wmm_queue_config_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5544,8 +5484,7 @@ woal_wmm_queue_stats_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5610,8 +5549,7 @@ woal_wmm_queue_status_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5682,8 +5620,7 @@ woal_wmm_ts_status_ioctl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5743,9 +5680,9 @@ done:
  *  @brief Set/Get auth type
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_auth_type(moal_private * priv, struct iwreq *wrq)
@@ -5799,9 +5736,9 @@ done:
  *  @brief Set/Get Port Control mode
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_port_ctrl(moal_private * priv, struct iwreq *wrq)
@@ -5854,9 +5791,7 @@ woal_port_ctrl(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5866,9 +5801,9 @@ done:
  *  @brief Set/Get DFS Testing settings
  *
  *  @param priv     Pointer to the moal_private driver data struct
- *  @param wrq	    A pointer to iwreq structure
+ *  @param wrq      A pointer to iwreq structure
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 static int
 woal_dfs_testing(moal_private * priv, struct iwreq *wrq)
@@ -5954,9 +5889,7 @@ woal_dfs_testing(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6024,8 +5957,7 @@ woal_mgmt_frame_passthru_ctrl(moal_private * priv, struct iwreq *wrq)
 	wrq->u.data.length = 1;
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6105,9 +6037,7 @@ woal_cfp_code(moal_private * priv, struct iwreq *wrq)
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6173,8 +6103,7 @@ woal_set_get_tx_rx_ant(moal_private * priv, struct iwreq *wrq)
 		}
 	}
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6185,11 +6114,11 @@ done:
 /**
  *  @brief ioctl function - entry point
  *
- *  @param dev		A pointer to net_device structure
- *  @param req	   	A pointer to ifreq structure
- *  @param cmd 		Command
+ *  @param dev      A pointer to net_device structure
+ *  @param req      A pointer to ifreq structure
+ *  @param cmd      Command
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 int
 woal_wext_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
@@ -6592,7 +6521,7 @@ woal_get_data_rates(moal_private * priv, t_u8 wait_option,
 						MLAN_SUPPORTED_RATES);
 	}
 done:
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
 	LEAVE();
 	return status;
@@ -6639,7 +6568,7 @@ woal_get_channel_list(moal_private * priv, t_u8 wait_option,
 		}
 	}
 done:
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
 	LEAVE();
 	return status;
@@ -6648,10 +6577,10 @@ done:
 /**
  *  @brief Handle get info resp
  *
- *  @param priv 	Pointer to moal_private structure
- *  @param info 	Pointer to mlan_ds_get_info structure
+ *  @param priv     Pointer to moal_private structure
+ *  @param info     Pointer to mlan_ds_get_info structure
  *
- *  @return    		N/A
+ *  @return         N/A
  */
 void
 woal_ioctl_get_info_resp(moal_private * priv, mlan_ds_get_info * info)
@@ -6680,10 +6609,10 @@ woal_ioctl_get_info_resp(moal_private * priv, mlan_ds_get_info * info)
 /**
  *  @brief Handle get BSS resp
  *
- *  @param priv 	Pointer to moal_private structure
- *  @param bss 		Pointer to mlan_ds_bss structure
+ *  @param priv     Pointer to moal_private structure
+ *  @param bss      Pointer to mlan_ds_bss structure
  *
- *  @return    		N/A
+ *  @return         N/A
  */
 void
 woal_ioctl_get_bss_resp(moal_private * priv, mlan_ds_bss * bss)

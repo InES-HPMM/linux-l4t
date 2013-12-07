@@ -58,7 +58,7 @@ Change log:
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *
- *  @return 	   headptr or MNULL
+ *  @return        headptr or MNULL
  */
 t_void *
 wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
@@ -133,6 +133,8 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 				MRVDRV_TxPD_POWER_MGMT_LAST_PACKET;
 		}
 	}
+	if (pmbuf->flags & MLAN_BUF_FLAG_TDLS)
+		plocal_tx_pd->flags |= MRVDRV_TxPD_FLAGS_TDLS_PACKET;
 	/* Offset of actual data */
 	plocal_tx_pd->tx_pkt_offset =
 		(t_u16) ((t_ptr) pmbuf->pbuf + pmbuf->data_offset -
@@ -166,7 +168,7 @@ done:
  *  @param priv     A pointer to mlan_private structure
  *  @param flags    Transmit Pkt Flags
  *
- *  @return 	    MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
+ *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
  */
 mlan_status
 wlan_send_null_packet(pmlan_private priv, t_u8 flags)
@@ -262,7 +264,7 @@ done:
  *
  *  @param priv    A pointer to mlan_private structure
  *
- *  @return 	   MTRUE or MFALSE
+ *  @return        MTRUE or MFALSE
  */
 t_u8
 wlan_check_last_packet_indication(pmlan_private priv)

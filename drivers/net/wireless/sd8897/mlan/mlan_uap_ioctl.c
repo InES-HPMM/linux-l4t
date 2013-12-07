@@ -245,9 +245,8 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
 	/*
 	 * Reset any uap private parameters here
 	 */
-	for (i = 0; i < pmadapter->max_mgmt_ie_index; i++) {
+	for (i = 0; i < pmadapter->max_mgmt_ie_index; i++)
 		memset(pmadapter, &pmpriv->mgmt_ie[i], 0, sizeof(custom_ie));
-	}
 	pmpriv->add_ba_param.timeout = MLAN_DEFAULT_BLOCK_ACK_TIMEOUT;
 	pmpriv->add_ba_param.tx_win_size = MLAN_UAP_AMPDU_DEF_TXWINSIZE;
 	pmpriv->add_ba_param.rx_win_size = MLAN_UAP_AMPDU_DEF_RXWINSIZE;
@@ -571,7 +570,7 @@ wlan_uap_set_wapi_ie(mlan_private * priv, pmlan_ioctl_req pioctl_req)
 	misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
 	if (misc->param.gen_ie.len) {
 		if (misc->param.gen_ie.len > sizeof(priv->wapi_ie)) {
-			PRINTM(MWARN, "failed to copy WAPI IE, too big \n");
+			PRINTM(MWARN, "failed to copy WAPI IE, too big\n");
 			pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
 			LEAVE();
 			return MLAN_STATUS_FAILURE;
@@ -705,7 +704,8 @@ wlan_uap_sec_ioctl_set_encrypt_key(IN pmlan_adapter pmadapter,
 		LEAVE();
 		return MLAN_STATUS_FAILURE;
 	}
-	if (!sec->param.encrypt_key.key_len) {
+	if (!sec->param.encrypt_key.key_remove &&
+	    !sec->param.encrypt_key.key_len) {
 		PRINTM(MCMND, "Skip set key with key_len = 0\n");
 		LEAVE();
 		return ret;
@@ -1357,6 +1357,12 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 			pget_info->param.fw_info.fw_bands = pmadapter->fw_bands;
 			pget_info->param.fw_info.hw_dev_mcs_support =
 				pmadapter->hw_dev_mcs_support;
+			pget_info->param.fw_info.hw_dot_11n_dev_cap =
+				pmadapter->hw_dot_11n_dev_cap;
+			pget_info->param.fw_info.hw_dot_11ac_mcs_support =
+				pmadapter->hw_dot_11ac_mcs_support;
+			pget_info->param.fw_info.hw_dot_11ac_dev_cap =
+				pmadapter->hw_dot_11ac_dev_cap;
 			pget_info->param.fw_info.region_code =
 				pmadapter->region_code;
 		}
@@ -1412,16 +1418,13 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 		if (pm->sub_command == MLAN_OID_PM_CFG_DEEP_SLEEP)
 			status = wlan_uap_pm_ioctl_deepsleep(pmadapter,
 							     pioctl_req);
-		if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG) {
+		if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG)
 			status = wlan_pm_ioctl_hscfg(pmadapter, pioctl_req);
-		}
-		if (pm->sub_command == MLAN_OID_PM_HS_WAKEUP_REASON) {
+		if (pm->sub_command == MLAN_OID_PM_HS_WAKEUP_REASON)
 			status = wlan_get_hs_wakeup_reason(pmadapter,
 							   pioctl_req);
-		}
-		if (pm->sub_command == MLAN_OID_PM_INFO) {
+		if (pm->sub_command == MLAN_OID_PM_INFO)
 			status = wlan_get_pm_info(pmadapter, pioctl_req);
-		}
 		break;
 	case MLAN_IOCTL_SNMP_MIB:
 		snmp = (mlan_ds_snmp_mib *) pioctl_req->pbuf;

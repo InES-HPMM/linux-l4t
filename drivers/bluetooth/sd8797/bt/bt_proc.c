@@ -71,12 +71,12 @@ struct proc_data {
 /** Device size */
 #define item_dev_size(n) (sizeof((bt_dev_t *)0)->n)
 /** Device address */
-#define item_dev_addr(n) ((t_ptr) & ((bt_dev_t *)0)->n)
+#define item_dev_addr(n) ((t_ptr) &((bt_dev_t *)0)->n)
 
 /** Adapter size */
 #define item_adapter_size(n) (sizeof((bt_adapter *)0)->n)
 /** Adapter address */
-#define item_adapter_addr(n) ((t_ptr) & ((bt_adapter *)0)->n)
+#define item_adapter_addr(n) ((t_ptr) &((bt_adapter *)0)->n)
 
 static struct item_data config_items[] = {
 #ifdef	DEBUG_LEVEL1
@@ -233,23 +233,19 @@ parse_cmd52_string(const char __user * buffer, size_t len,
 
 	/* Get func */
 	pos = strsep(&string, " \t");
-	if (pos) {
+	if (pos)
 		*func = string_to_number(pos);
-	}
 
 	/* Get reg */
 	pos = strsep(&string, " \t");
-	if (pos) {
+	if (pos)
 		*reg = string_to_number(pos);
-	}
 
 	/* Get val (optional) */
 	pos = strsep(&string, " \t");
-	if (pos) {
+	if (pos)
 		*val = string_to_number(pos);
-	}
-	if (string)
-		kfree(string);
+	kfree(string);
 	LEAVE();
 	return ret;
 }

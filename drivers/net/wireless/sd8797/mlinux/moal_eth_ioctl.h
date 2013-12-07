@@ -186,15 +186,13 @@ Change log:
 #define PRIV_CMD_PB_BYPASS      "pb_bypass"
 #define PRIV_CMD_SD_CMD53_RW        "sdcmd53rw"
 #if defined(WIFI_DIRECT_SUPPORT)
-#if defined(UAP_CFG80211)
-#if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
-#define PRIV_CMD_NOA_CFG            "noacfg"
-#endif
-#endif
 #endif
 
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)
+
+/** Private command ID to send TLD configuration */
+#define	WOAL_TDLS_CONFIG            (SIOCDEVPRIVATE + 5)
 
 /** Private command ID to pass mgmt frame */
 #define WOAL_MGMT_FRAME_TX          WOAL_MGMT_FRAME_TX_IOCTL

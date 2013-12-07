@@ -297,6 +297,10 @@ int woal_get_active_intf_freq(moal_private * priv);
 
 void woal_cfg80211_setup_ht_cap(struct ieee80211_sta_ht_cap *ht_info,
 				t_u32 dev_cap, t_u8 * mcs_set);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+void woal_cfg80211_setup_vht_cap(moal_private * priv,
+				 struct ieee80211_sta_vht_cap *vht_cap);
+#endif
 int woal_cfg80211_assoc(moal_private * priv, void *sme);
 
 #endif /* _MOAL_CFG80211_H_ */

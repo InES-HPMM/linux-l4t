@@ -1,24 +1,27 @@
 /** @file mlan_sdio.h
-  *
-  * @brief This file contains definitions for SDIO interface.
-  * driver.
-  *
-  * Copyright (C) 2008-2011, Marvell International Ltd.
-  *
-  * This software file (the "File") is distributed by Marvell International
-  * Ltd. under the terms of the GNU General Public License Version 2, June 1991
-  * (the "License").  You may use, redistribute and/or modify this File in
-  * accordance with the terms and conditions of the License, a copy of which
-  * is available by writing to the Free Software Foundation, Inc.,
-  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
-  * worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-  *
-  * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
-  * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
-  * this warranty disclaimer.
-  *
-  */
+ *
+ *  @brief This file contains definitions for SDIO interface.
+ *
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
+ *
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
+ */
 /****************************************************
 Change log:
 ****************************************************/
@@ -213,11 +216,14 @@ Change log:
 #define MP_TX_AGGR_IN_PROGRESS(a) (a->mpa_tx.pkt_cnt > 0)
 
 /** SDIO Tx aggregation buffer room for next packet ? */
-#define MP_TX_AGGR_BUF_HAS_ROOM(a, mbuf, len) (((a->mpa_tx.buf_len) + len) <= (a->mpa_tx.buf_size))
+#define MP_TX_AGGR_BUF_HAS_ROOM(a, mbuf, len) \
+			(((a->mpa_tx.buf_len) + len) <= (a->mpa_tx.buf_size))
 
 /** Copy current packet (SDIO Tx aggregation buffer) to SDIO buffer */
 #define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do {                  \
-	pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len], mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
+	pmadapter->callbacks.moal_memmove(a->pmoal_handle, \
+		&a->mpa_tx.buf[a->mpa_tx.buf_len], \
+		mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
 	a->mpa_tx.buf_len += mbuf->data_len;                        \
 	a->mpa_tx.mp_wr_info[a->mpa_tx.pkt_cnt] = *(t_u16 *)(mbuf->pbuf+mbuf->data_offset); \
 	if (!a->mpa_tx.pkt_cnt) {                                   \
@@ -226,13 +232,15 @@ Change log:
 	if (a->mpa_tx.start_port <= port) {                         \
 	    a->mpa_tx.ports |= (1 << (a->mpa_tx.pkt_cnt));			\
 	} else {                                                    \
-	      a->mpa_tx.ports |= (1 << (a->mpa_tx.pkt_cnt + 1 + (MAX_PORT - a->mp_end_port)));  \
+	      a->mpa_tx.ports |= (1 << (a->mpa_tx.pkt_cnt \
+			+ 1 + (MAX_PORT - a->mp_end_port)));  \
 	}                                                           \
 	a->mpa_tx.pkt_cnt++;                                       \
-} while (0);
+} while (0)
 
 /** SDIO Tx aggregation limit ? */
-#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) ((a->mpa_tx.pkt_cnt) == (a->mpa_tx.pkt_aggr_limit))
+#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) ((a->mpa_tx.pkt_cnt) \
+								== (a->mpa_tx.pkt_aggr_limit))
 
 /** SDIO Tx aggregation port limit ? */
 #define MP_TX_AGGR_PORT_LIMIT_REACHED(a) ((a->curr_wr_port < \
@@ -254,7 +262,8 @@ Change log:
 #ifdef SDIO_MULTI_PORT_RX_AGGR
 
 /** SDIO Rx aggregation limit ? */
-#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt == a->mpa_rx.pkt_aggr_limit)
+#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt \
+								== a->mpa_rx.pkt_aggr_limit)
 
 /** SDIO Rx aggregation port limit ? */
 #define MP_RX_AGGR_PORT_LIMIT_REACHED(a) ((a->curr_rd_port < \

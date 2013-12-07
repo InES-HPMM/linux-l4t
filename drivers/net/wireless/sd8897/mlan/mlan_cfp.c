@@ -778,7 +778,7 @@ wlan_memchr(pmlan_adapter pmadapter, void *s, int c, int n)
 
 /**
  *  @brief This function finds the CFP in
- *  		cfp_table_BG/A based on region/code and band parameter.
+ *          cfp_table_BG/A based on region/code and band parameter.
  *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param region     The region code

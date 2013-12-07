@@ -47,12 +47,12 @@ Change log:
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer
+ *          to kernel/upper layer
  *
  *  @param pmadapter A pointer to mlan_adapter
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
- *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return          MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
 wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
@@ -89,9 +89,8 @@ wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		pmbuf->status_code = MLAN_ERROR_PKT_INVALID;
 	}
 
-	if (ret != MLAN_STATUS_PENDING) {
+	if (ret != MLAN_STATUS_PENDING)
 		wlan_free_mlan_buffer(pmadapter, pmbuf);
-	}
 	LEAVE();
 
 	return ret;
@@ -153,7 +152,7 @@ wlan_check_unicast_packet(mlan_private * priv, t_u8 * mac)
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *
- *  @return 	   headptr or MNULL
+ *  @return        headptr or MNULL
  */
 t_void *
 wlan_ops_uap_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
@@ -250,12 +249,12 @@ done:
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer
+ *          to kernel/upper layer
  *
  *  @param adapter   A pointer to mlan_adapter
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
- *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return          MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_ops_uap_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
@@ -355,12 +354,12 @@ done:
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer or send back to firmware
+ *          to kernel/upper layer or send back to firmware
  *
  *  @param priv      A pointer to mlan_private
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
- *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return          MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
@@ -476,12 +475,12 @@ done:
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer or send back to firmware
+ *          to kernel/upper layer or send back to firmware
  *
  *  @param priv      A pointer to mlan_private
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
- *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return          MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
@@ -600,9 +599,8 @@ upload:
 		pmbuf->status_code = MLAN_ERROR_PKT_INVALID;
 	}
 
-	if (ret != MLAN_STATUS_PENDING) {
+	if (ret != MLAN_STATUS_PENDING)
 		wlan_free_mlan_buffer(pmadapter, pmbuf);
-	}
 done:
 	LEAVE();
 	return ret;

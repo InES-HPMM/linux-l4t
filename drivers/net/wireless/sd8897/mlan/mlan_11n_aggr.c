@@ -150,9 +150,9 @@ wlan_11n_form_amsdu_txpd(mlan_private * priv, mlan_buffer * mbuf)
  *  packet is formed
  *
  *  @param priv     A pointer to mlan_private structure
- *  @param mbuf     	TxPD buffer
+ *  @param mbuf     TxPD buffer
  *
- *  @return		N/A
+ *  @return         N/A
  */
 static INLINE void
 wlan_11n_update_pktlen_amsdu_txpd(mlan_private * priv, pmlan_buffer mbuf)
@@ -335,9 +335,9 @@ done:
  *
  *  @param priv 	A pointer to mlan_private structure
  *  @param pra_list	Pointer to the RA List table containing the pointers
- *  			    to packets.
+ *                  to packets.
  *  @param headroom	Any interface specific headroom that may be need. TxPD
- *  				will be formed leaving this headroom.
+ *                  will be formed leaving this headroom.
  *  @param ptrindex	Pointer index
  *
  *  @return		Final packet size or MLAN_STATUS_FAILURE

@@ -2,20 +2,24 @@
  *
  *  @brief This file contains functions for 11n handling.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
  *
  */
 
@@ -381,7 +385,7 @@ wlan_11n_update_addba_request(mlan_private * priv)
  *  @param pmadapter	A pointer to mlan_adapter structure
  *  @param pioctl_req	A pointer to ioctl request buffer
  *
- *  @return		MLAN_STATUS_SUCCESS --success
+ *  @return				MLAN_STATUS_SUCCESS --success
  */
 static mlan_status
 wlan_11n_ioctl_addba_param(IN pmlan_adapter pmadapter,
@@ -412,9 +416,8 @@ wlan_11n_ioctl_addba_param(IN pmlan_adapter pmadapter,
 			cfg->param.addba_param.rxwinsize;
 		pmpriv->add_ba_param.tx_amsdu = cfg->param.addba_param.txamsdu;
 		pmpriv->add_ba_param.rx_amsdu = cfg->param.addba_param.rxamsdu;
-		if (timeout != pmpriv->add_ba_param.timeout) {
+		if (timeout != pmpriv->add_ba_param.timeout)
 			wlan_11n_update_addba_request(pmpriv);
-		}
 	}
 
 	LEAVE();
@@ -1035,12 +1038,12 @@ wlan_is_txbastreamptr_valid(mlan_private * priv, TxBAStreamTbl * ptxtblptr)
 
 /**
  *  @brief This function will return the pointer to a entry in BA Stream
- *  		table which matches the ba_status requested
+ * 	        table which matches the ba_status requested
  *
  *  @param priv    	    A pointer to mlan_private
- *  @param ba_status	Current status of the BA stream
+ *  @param ba_status    Current status of the BA stream
  *
- *  @return 	        A pointer to first entry matching status in BA stream
+ *  @return             A pointer to first entry matching status in BA stream
  *                      NULL if not found
  */
 static TxBAStreamTbl *
@@ -1311,30 +1314,22 @@ wlan_show_dot11ndevcap(pmlan_adapter pmadapter, t_u32 cap)
 	PRINTM(MINFO, "GET_HW_SPEC: 10 Mhz channel width %s\n",
 	       (ISSUPP_CHANWIDTH10(cap) ? "supported" : "not supported"));
 
-	if (ISSUPP_RXANTENNAA(cap)) {
+	if (ISSUPP_RXANTENNAA(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Rx antenna A\n");
-	}
-	if (ISSUPP_RXANTENNAB(cap)) {
+	if (ISSUPP_RXANTENNAB(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Rx antenna B\n");
-	}
-	if (ISSUPP_RXANTENNAC(cap)) {
+	if (ISSUPP_RXANTENNAC(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Rx antenna C\n");
-	}
-	if (ISSUPP_RXANTENNAD(cap)) {
+	if (ISSUPP_RXANTENNAD(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Rx antenna D\n");
-	}
-	if (ISSUPP_TXANTENNAA(cap)) {
+	if (ISSUPP_TXANTENNAA(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Tx antenna A\n");
-	}
-	if (ISSUPP_TXANTENNAB(cap)) {
+	if (ISSUPP_TXANTENNAB(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Tx antenna B\n");
-	}
-	if (ISSUPP_TXANTENNAC(cap)) {
+	if (ISSUPP_TXANTENNAC(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Tx antenna C\n");
-	}
-	if (ISSUPP_TXANTENNAD(cap)) {
+	if (ISSUPP_TXANTENNAD(cap))
 		PRINTM(MINFO, "GET_HW_SPEC: Presence of Tx antenna D\n");
-	}
 
 	LEAVE();
 	return;
@@ -1391,9 +1386,8 @@ wlan_ret_11n_delba(mlan_private * priv, HostCmd_DS_COMMAND * resp)
 
 		ptx_ba_tbl = wlan_11n_get_txbastream_status(priv,
 							    BA_STREAM_SETUP_INPROGRESS);
-		if (ptx_ba_tbl) {
+		if (ptx_ba_tbl)
 			wlan_send_addba(priv, ptx_ba_tbl->tid, ptx_ba_tbl->ra);
-		}
 	} else {		/*
 				 * In case of failure, recreate the deleted stream in
 				 * case we initiated the ADDBA
@@ -1622,11 +1616,11 @@ wlan_ret_amsdu_aggr_ctrl(IN pmlan_private pmpriv,
 /**
  *  @brief This function prepares 11n cfg command
  *
- *  @param pmpriv    	A pointer to mlan_private structure
- *  @param cmd	   	A pointer to HostCmd_DS_COMMAND structure
- *  @param cmd_action 	the action: GET or SET
- *  @param pdata_buf 	A pointer to data buffer
- *  @return 	   	MLAN_STATUS_SUCCESS
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
+ *  @param cmd_action   the action: GET or SET
+ *  @param pdata_buf    A pointer to data buffer
+ *  @return             MLAN_STATUS_SUCCESS
  */
 mlan_status
 wlan_cmd_11n_cfg(IN pmlan_private pmpriv,
@@ -1680,18 +1674,18 @@ wlan_ret_11n_cfg(IN pmlan_private pmpriv,
 /**
  *  @brief This function prepares reject addba req command
  *
- *  @param pmpriv    	A pointer to mlan_private structure
- *  @param cmd	   	A pointer to HostCmd_DS_COMMAND structure
- *  @param cmd_action 	the action: GET or SET
- *  @param pdata_buf 	A pointer to data buffer
- *  @return 	   	MLAN_STATUS_SUCCESS
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
+ *  @param cmd_action   the action: GET or SET
+ *  @param pdata_buf    A pointer to data buffer
+ *  @return             MLAN_STATUS_SUCCESS
  */
 mlan_status
 wlan_cmd_reject_addba_req(IN pmlan_private pmpriv,
 			  IN HostCmd_DS_COMMAND * cmd,
 			  IN t_u16 cmd_action, IN t_void * pdata_buf)
 {
-	HostCmd_DS_REJECT_ADDBA_REQ *pRejectAddbaReq =
+	HostCmd_DS_REJECT_ADDBA_REQ *preject_addba_req =
 		&cmd->params.rejectaddbareq;
 	mlan_ds_reject_addba_req *prejaddbareq =
 		(mlan_ds_reject_addba_req *) pdata_buf;
@@ -1701,8 +1695,8 @@ wlan_cmd_reject_addba_req(IN pmlan_private pmpriv,
 	cmd->size =
 		wlan_cpu_to_le16(sizeof(HostCmd_DS_REJECT_ADDBA_REQ) +
 				 S_DS_GEN);
-	pRejectAddbaReq->action = wlan_cpu_to_le16(cmd_action);
-	pRejectAddbaReq->conditions =
+	preject_addba_req->action = wlan_cpu_to_le16(cmd_action);
+	preject_addba_req->conditions =
 		wlan_cpu_to_le32(prejaddbareq->conditions);
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
@@ -1723,16 +1717,16 @@ wlan_ret_reject_addba_req(IN pmlan_private pmpriv,
 			  IN mlan_ioctl_req * pioctl_buf)
 {
 	mlan_ds_11n_cfg *cfg = MNULL;
-	HostCmd_DS_REJECT_ADDBA_REQ *pRejectAddbaReq =
+	HostCmd_DS_REJECT_ADDBA_REQ *preject_addba_req =
 		&resp->params.rejectaddbareq;
 
 	ENTER();
 	if (pioctl_buf &&
-	    (wlan_le16_to_cpu(pRejectAddbaReq->action) ==
+	    (wlan_le16_to_cpu(preject_addba_req->action) ==
 	     HostCmd_ACT_GEN_GET)) {
 		cfg = (mlan_ds_11n_cfg *) pioctl_buf->pbuf;
 		cfg->param.reject_addba_req.conditions =
-			wlan_le32_to_cpu(pRejectAddbaReq->conditions);
+			wlan_le32_to_cpu(preject_addba_req->conditions);
 	}
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
@@ -1920,6 +1914,52 @@ wlan_ret_tx_bf_cfg(IN pmlan_private pmpriv,
 
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Get second channel offset
+ *
+ * @param chan 			  channel num
+ * @return                second channel offset
+ */
+t_u8
+wlan_get_second_channel_offset(int chan)
+{
+	t_u8 chan2Offset = SEC_CHAN_NONE;
+
+	switch (chan) {
+	case 36:
+	case 44:
+	case 52:
+	case 60:
+	case 100:
+	case 108:
+	case 116:
+	case 124:
+	case 132:
+	case 149:
+	case 157:
+		chan2Offset = SEC_CHAN_ABOVE;
+		break;
+	case 40:
+	case 48:
+	case 56:
+	case 64:
+	case 104:
+	case 112:
+	case 120:
+	case 128:
+	case 136:
+	case 153:
+	case 161:
+		chan2Offset = SEC_CHAN_BELOW;
+		break;
+	case 165:
+		/* Special Case: 20Mhz-only Channel */
+		chan2Offset = SEC_CHAN_NONE;
+		break;
+	}
+	return chan2Offset;
 }
 
 #ifdef STA_SUPPORT
@@ -2166,10 +2206,10 @@ wlan_11n_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 /**
  *  @brief This function will delete the given entry in Tx BA Stream table
  *
- *  @param priv    	Pointer to mlan_private
- *  @param ptx_tbl	Pointer to tx ba stream entry to delete
+ *  @param priv     Pointer to mlan_private
+ *  @param ptx_tbl  Pointer to tx ba stream entry to delete
  *
- *  @return 	        N/A
+ *  @return         N/A
  */
 void
 wlan_11n_delete_txbastream_tbl_entry(mlan_private * priv,
@@ -2182,9 +2222,8 @@ wlan_11n_delete_txbastream_tbl_entry(mlan_private * priv,
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
 					    priv->tx_ba_stream_tbl_ptr.plock);
 
-	if (!ptx_tbl || !wlan_is_txbastreamptr_valid(priv, ptx_tbl)) {
+	if (!ptx_tbl || !wlan_is_txbastreamptr_valid(priv, ptx_tbl))
 		goto exit;
-	}
 
 	PRINTM(MINFO, "Delete BA stream table entry: %p\n", ptx_tbl);
 
@@ -2235,13 +2274,13 @@ wlan_11n_deleteall_txbastream_tbl(mlan_private * priv)
 
 /**
  *  @brief This function will return the pointer to an entry in BA Stream
- *  		table which matches the give RA/TID pair
+ *          table which matches the give RA/TID pair
  *
  *  @param priv    A pointer to mlan_private
  *  @param tid	   TID to find in reordering table
  *  @param ra      RA to find in reordering table
  *
- *  @return 	   A pointer to first entry matching RA/TID in BA stream
+ *  @return        A pointer to first entry matching RA/TID in BA stream
  *                 NULL if not found
  */
 TxBAStreamTbl *
@@ -2283,20 +2322,20 @@ wlan_11n_get_txbastream_tbl(mlan_private * priv, int tid, t_u8 * ra)
 
 /**
  *  @brief This function will create a entry in tx ba stream table for the
- *  		given RA/TID.
+ *          given RA/TID.
  *
  *  @param priv      A pointer to mlan_private
  *  @param ra        RA to find in reordering table
  *  @param tid	     TID to find in reordering table
  *  @param ba_status BA stream status to create the stream with
  *
- *  @return 	    N/A
+ *  @return          N/A
  */
 void
 wlan_11n_create_txbastream_tbl(mlan_private * priv,
 			       t_u8 * ra, int tid, baStatus_e ba_status)
 {
-	TxBAStreamTbl *newNode = MNULL;
+	TxBAStreamTbl *new_node = MNULL;
 	pmlan_adapter pmadapter = priv->adapter;
 
 	ENTER();
@@ -2305,19 +2344,23 @@ wlan_11n_create_txbastream_tbl(mlan_private * priv,
 		PRINTM(MDAT_D, "get_txbastream_tbl TID %d\n", tid);
 		DBG_HEXDUMP(MDAT_D, "RA", ra, MLAN_MAC_ADDR_LENGTH);
 
-		pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle,
-						 sizeof(TxBAStreamTbl),
-						 MLAN_MEM_DEF,
-						 (t_u8 **) & newNode);
-		util_init_list((pmlan_linked_list) newNode);
+		if (pmadapter->callbacks.
+		    moal_malloc(pmadapter->pmoal_handle, sizeof(TxBAStreamTbl),
+				MLAN_MEM_DEF, (t_u8 **) & new_node)) {
+			PRINTM(MERROR,
+			       "wlan_11n_create_txbastream_tbl Failed to allocate new_node\n");
+			LEAVE();
+			return;
+		}
+		util_init_list((pmlan_linked_list) new_node);
 
-		newNode->tid = tid;
-		newNode->ba_status = ba_status;
-		memcpy(pmadapter, newNode->ra, ra, MLAN_MAC_ADDR_LENGTH);
+		new_node->tid = tid;
+		new_node->ba_status = ba_status;
+		memcpy(pmadapter, new_node->ra, ra, MLAN_MAC_ADDR_LENGTH);
 
 		util_enqueue_list_tail(pmadapter->pmoal_handle,
 				       &priv->tx_ba_stream_tbl_ptr,
-				       (pmlan_linked_list) newNode,
+				       (pmlan_linked_list) new_node,
 				       pmadapter->callbacks.moal_spin_lock,
 				       pmadapter->callbacks.moal_spin_unlock);
 	}
@@ -2332,7 +2375,7 @@ wlan_11n_create_txbastream_tbl(mlan_private * priv,
  *  @param tid	    TID to send the ADDBA
  *  @param peer_mac MAC address to send the ADDBA
  *
- *  @return 	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 int
 wlan_send_addba(mlan_private * priv, int tid, t_u8 * peer_mac)
@@ -2377,13 +2420,13 @@ wlan_send_addba(mlan_private * priv, int tid, t_u8 * peer_mac)
 /**
  *  @brief This function will delete a block ack to given tid/ra
  *
- *  @param priv    		A pointer to mlan_private
- *  @param pioctl_req	A pointer to ioctl request buffer
- *  @param tid	   		TID to send the ADDBA
- *  @param peer_mac 	MAC address to send the ADDBA
- *  @param initiator 	MTRUE if we have initiated ADDBA, MFALSE otherwise
+ *  @param priv         A pointer to mlan_private
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *  @param tid          TID to send the ADDBA
+ *  @param peer_mac     MAC address to send the ADDBA
+ *  @param initiator    MTRUE if we have initiated ADDBA, MFALSE otherwise
  *
- *  @return 	        MLAN_STATUS_PENDING --success, otherwise fail
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
  */
 int
 wlan_send_delba(mlan_private * priv, pmlan_ioctl_req pioctl_req, int tid,
@@ -2458,34 +2501,35 @@ wlan_get_rxreorder_tbl(mlan_private * priv, rx_reorder_tbl * buf)
 {
 	int i;
 	rx_reorder_tbl *ptbl = buf;
-	RxReorderTbl *rxReorderTblPtr;
+	RxReorderTbl *rx_reorder_tbl_ptr;
 	int count = 0;
 	ENTER();
-	rxReorderTblPtr =
+	rx_reorder_tbl_ptr =
 		(RxReorderTbl *) util_peek_list(priv->adapter->pmoal_handle,
 						&priv->rx_reorder_tbl_ptr,
 						priv->adapter->callbacks.
 						moal_spin_lock,
 						priv->adapter->callbacks.
 						moal_spin_unlock);
-	if (!rxReorderTblPtr) {
+	if (!rx_reorder_tbl_ptr) {
 		LEAVE();
 		return count;
 	}
-	while (rxReorderTblPtr != (RxReorderTbl *) & priv->rx_reorder_tbl_ptr) {
-		ptbl->tid = (t_u16) rxReorderTblPtr->tid;
-		memcpy(priv->adapter, ptbl->ta, rxReorderTblPtr->ta,
+	while (rx_reorder_tbl_ptr !=
+	       (RxReorderTbl *) & priv->rx_reorder_tbl_ptr) {
+		ptbl->tid = (t_u16) rx_reorder_tbl_ptr->tid;
+		memcpy(priv->adapter, ptbl->ta, rx_reorder_tbl_ptr->ta,
 		       MLAN_MAC_ADDR_LENGTH);
-		ptbl->start_win = rxReorderTblPtr->start_win;
-		ptbl->win_size = rxReorderTblPtr->win_size;
-		ptbl->amsdu = rxReorderTblPtr->amsdu;
-		for (i = 0; i < rxReorderTblPtr->win_size; ++i) {
-			if (rxReorderTblPtr->rx_reorder_ptr[i])
+		ptbl->start_win = rx_reorder_tbl_ptr->start_win;
+		ptbl->win_size = rx_reorder_tbl_ptr->win_size;
+		ptbl->amsdu = rx_reorder_tbl_ptr->amsdu;
+		for (i = 0; i < rx_reorder_tbl_ptr->win_size; ++i) {
+			if (rx_reorder_tbl_ptr->rx_reorder_ptr[i])
 				ptbl->buffer[i] = MTRUE;
 			else
 				ptbl->buffer[i] = MFALSE;
 		}
-		rxReorderTblPtr = rxReorderTblPtr->pnext;
+		rx_reorder_tbl_ptr = rx_reorder_tbl_ptr->pnext;
 		ptbl++;
 		count++;
 		if (count >= MLAN_MAX_RX_BASTREAM_SUPPORTED)
@@ -2542,9 +2586,9 @@ wlan_get_txbastream_tbl(mlan_private * priv, tx_ba_stream_tbl * buf)
 /**
  *  @brief This function cleans up txbastream_tbl for specific station
  *
- *  @param priv    	A pointer to mlan_private
+ *  @param priv     A pointer to mlan_private
  *  @param ra       RA to find in txbastream_tbl
- *  @return 	   	N/A
+ *  @return         N/A
  */
 void
 wlan_11n_cleanup_txbastream_tbl(mlan_private * priv, t_u8 * ra)
@@ -2554,9 +2598,8 @@ wlan_11n_cleanup_txbastream_tbl(mlan_private * priv, t_u8 * ra)
 	ENTER();
 	for (i = 0; i < MAX_NUM_TID; ++i) {
 		ptx_tbl = wlan_11n_get_txbastream_tbl(priv, i, ra);
-		if (ptx_tbl) {
+		if (ptx_tbl)
 			wlan_11n_delete_txbastream_tbl_entry(priv, ptx_tbl);
-		}
 	}
 	LEAVE();
 	return;

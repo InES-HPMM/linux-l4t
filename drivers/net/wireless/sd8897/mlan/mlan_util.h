@@ -126,9 +126,8 @@ util_peek_list(t_void * pmoal_handle,
 
 	if (moal_spin_lock)
 		moal_spin_lock(pmoal_handle, phead->plock);
-	if (phead->pnext != (pmlan_linked_list) phead) {
+	if (phead->pnext != (pmlan_linked_list) phead)
 		pnode = phead->pnext;
-	}
 	if (moal_spin_unlock)
 		moal_spin_unlock(pmoal_handle, phead->plock);
 	return pnode;
@@ -253,11 +252,10 @@ util_dequeue_list(t_void * pmoal_handle,
 	if (moal_spin_lock)
 		moal_spin_lock(pmoal_handle, phead->plock);
 	pnode = phead->pnext;
-	if (pnode && (pnode != (pmlan_linked_list) phead)) {
+	if (pnode && (pnode != (pmlan_linked_list) phead))
 		util_unlink_list(pmoal_handle, phead, pnode, 0, 0);
-	} else {
+	else
 		pnode = 0;
-	}
 	if (moal_spin_unlock)
 		moal_spin_unlock(pmoal_handle, phead->plock);
 	return pnode;
@@ -468,15 +466,15 @@ util_scalar_offset(t_void * pmoal_handle,
  *  @brief This function writes the value to the scalar
  *         if existing value compared with other value is true.
  *
- *  @param pscalar			Pointer to scalar
- *  @param condition		Condition to check
- *  @param val_compare		Value to compare against current value
- *  						((A X B), where B = val_compare)
- *  @param val_to_set		Value to set if comparison is true
- *  @param moal_spin_lock	A pointer to spin lock handler
- *  @param moal_spin_unlock	A pointer to spin unlock handler
+ *  @param pscalar          Pointer to scalar
+ *  @param condition        Condition to check
+ *  @param val_compare      Value to compare against current value
+ *                          ((A X B), where B = val_compare)
+ *  @param val_to_set       Value to set if comparison is true
+ *  @param moal_spin_lock   A pointer to spin lock handler
+ *  @param moal_spin_unlock A pointer to spin unlock handler
  *
- *  @return					Comparison result (MTRUE or MFALSE)
+ *  @return                 Comparison result (MTRUE or MFALSE)
  */
 static INLINE t_u8
 util_scalar_conditional_write(t_void * pmoal_handle,

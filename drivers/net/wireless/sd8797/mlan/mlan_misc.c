@@ -1,22 +1,27 @@
 /**
  * @file mlan_misc.c
  *
- *  @brief This file include miscellaneous functions for MLAN module
+ *  @brief This file include Miscellaneous functions for MLAN module
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /*************************************************************
@@ -58,7 +63,7 @@ extern t_u8 ac_to_tid[4][2];
 /** Custom IE mask for delete operation */
 #define	MLAN_CUSTOM_IE_DELETE_MASK      0
 /** Custom IE mask for create new index */
-#define MLAN_CUSTOM_IE_NEW_MASK      	0x8000
+#define MLAN_CUSTOM_IE_NEW_MASK         0x8000
 /** Custom IE header size */
 #define	MLAN_CUSTOM_IE_HDR_SIZE         (sizeof(custom_ie)-MAX_IE_SIZE)
 
@@ -488,6 +493,8 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 			wlan_get_rxreorder_tbl(pmpriv, debug_info->rx_tbl);
 		debug_info->tx_tbl_num =
 			wlan_get_txbastream_tbl(pmpriv, debug_info->tx_tbl);
+		debug_info->tdls_peer_num =
+			wlan_get_tdls_list(pmpriv, debug_info->tdls_peer_list);
 		debug_info->ps_mode = pmadapter->ps_mode;
 		debug_info->ps_state = pmadapter->ps_state;
 #ifdef STA_SUPPORT
@@ -600,7 +607,10 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
 #endif
 		debug_info->mlan_processing = pmadapter->mlan_processing;
 		debug_info->mlan_rx_processing = pmadapter->mlan_rx_processing;
-
+		debug_info->rx_pkts_queued =
+			util_scalar_read(pmadapter->pmoal_handle,
+					 &pmadapter->rx_pkts_queued, MNULL,
+					 MNULL);
 		debug_info->mlan_adapter = pmadapter;
 		debug_info->mlan_adapter_size = sizeof(mlan_adapter);
 		debug_info->mlan_priv_num = pmadapter->priv_num;
@@ -914,11 +924,10 @@ wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u)
 	ENTER();
 
 	if (pcb->moal_udelay) {
-		if (u == SEC) {
+		if (u == SEC)
 			delay *= 1000000;
-		} else if (u == MSEC) {
+		else if (u == MSEC)
 			delay *= 1000;
-		}
 		pcb->moal_udelay(pmadapter->pmoal_handle, delay);
 	} else {
 
@@ -1150,9 +1159,8 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
 						 index);
 					/* if IE to delete is not found, return
 					   error */
-					if (ret == MLAN_STATUS_FAILURE) {
+					if (ret == MLAN_STATUS_FAILURE)
 						goto done;
-					}
 					index = ie_data->ie_index;
 					memset(pmadapter, ie_data, 0,
 					       sizeof(custom_ie) *
@@ -1267,9 +1275,8 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
 						 index);
 					/* if IE to delete is not found, return
 					   error */
-					if (ret == MLAN_STATUS_FAILURE) {
+					if (ret == MLAN_STATUS_FAILURE)
 						goto done;
-					}
 					memset(pmadapter, ie_data, 0,
 					       sizeof(custom_ie) *
 					       MAX_MGMT_IE_INDEX_TO_FW);
@@ -1535,7 +1542,7 @@ wlan_is_station_list_empty(mlan_private * priv)
 
 /**
  *  @brief This function will return the pointer to station entry in station list
- *  		table which matches the give mac address
+ *          table which matches the give mac address
  *
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
@@ -1578,7 +1585,7 @@ wlan_get_station_entry(mlan_private * priv, t_u8 * mac)
 
 /**
  *  @brief This function will add a pointer to station entry in station list
- *  		table with the give mac address, if it does not exist already
+ *          table with the give mac address, if it does not exist already
  *
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
@@ -1675,6 +1682,385 @@ wlan_delete_station_list(pmlan_private priv)
 	}
 	LEAVE();
 	return;
+}
+
+/**
+ *  @brief Get tdls peer list
+ *
+ *  @param priv         A pointer to mlan_private structure
+ *  @param buf          A pointer to tdls_peer_info buf
+ *  @return             number of tdls peer
+ */
+int
+wlan_get_tdls_list(mlan_private * priv, tdls_peer_info * buf)
+{
+	tdls_peer_info *peer_info = buf;
+	sta_node *sta_ptr = MNULL;
+	int count = 0;
+	ENTER();
+	if (priv->bss_type != MLAN_BSS_TYPE_STA) {
+		LEAVE();
+		return count;
+	}
+	sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
+					      &priv->sta_list,
+					      priv->adapter->callbacks.
+					      moal_spin_lock,
+					      priv->adapter->callbacks.
+					      moal_spin_unlock);
+	if (!sta_ptr) {
+		LEAVE();
+		return count;
+	}
+	while (sta_ptr != (sta_node *) & priv->sta_list) {
+		peer_info->snr = sta_ptr->snr;
+		peer_info->nf = sta_ptr->nf;
+		memcpy(priv->adapter, peer_info->mac_addr, sta_ptr->mac_addr,
+		       MLAN_MAC_ADDR_LENGTH);
+		memcpy(priv->adapter, peer_info->ht_cap, &sta_ptr->HTcap,
+		       sizeof(IEEEtypes_HTCap_t));
+		memcpy(priv->adapter, peer_info->ext_cap, &sta_ptr->ExtCap,
+		       sizeof(IEEEtypes_ExtCap_t));
+		sta_ptr = sta_ptr->pnext;
+		peer_info++;
+		count++;
+		if (count >= MLAN_MAX_TDLS_PEER_SUPPORTED)
+			break;
+	}
+	LEAVE();
+	return count;
+}
+
+/**
+ *  @brief Set the TDLS configuration to FW.
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_misc_ioctl_tdls_config(IN pmlan_adapter pmadapter,
+			    IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_ds_misc_cfg *misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+	tdls_all_config *tdls_all_cfg =
+		(tdls_all_config *) misc->param.tdls_config.tdls_data;
+	t_u8 event_buf[100];
+	mlan_event *pevent = (mlan_event *) event_buf;
+	tdls_tear_down_event *tdls_evt =
+		(tdls_tear_down_event *) pevent->event_buf;
+	sta_node *sta_ptr = MNULL;
+
+	ENTER();
+
+	if (misc->param.tdls_config.tdls_action == WLAN_TDLS_TEAR_DOWN_REQ) {
+		sta_ptr =
+			wlan_get_station_entry(pmpriv,
+					       tdls_all_cfg->u.tdls_tear_down.
+					       peer_mac_addr);
+		if (sta_ptr && sta_ptr->external_tdls) {
+			pevent->bss_index = pmpriv->bss_index;
+			pevent->event_id = MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ;
+			pevent->event_len = sizeof(tdls_tear_down_event);
+			memcpy(pmpriv->adapter,
+			       (t_u8 *) tdls_evt->peer_mac_addr,
+			       tdls_all_cfg->u.tdls_tear_down.peer_mac_addr,
+			       MLAN_MAC_ADDR_LENGTH);
+			tdls_evt->reason_code =
+				tdls_all_cfg->u.tdls_tear_down.reason_code;
+			wlan_recv_event(pmpriv,
+					MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ,
+					pevent);
+			LEAVE();
+			return ret;
+		}
+	}
+	pioctl_req->action = MLAN_ACT_SET;
+
+	/* Send command to firmware */
+	ret = wlan_prepare_cmd(pmpriv,
+			       HostCmd_CMD_TDLS_CONFIG,
+			       HostCmd_ACT_GEN_SET,
+			       0,
+			       (t_void *) pioctl_req, &misc->param.tdls_config);
+
+	if (ret == MLAN_STATUS_SUCCESS)
+		ret = MLAN_STATUS_PENDING;
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief Set the TDLS operation to FW.
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_misc_ioctl_tdls_oper(IN pmlan_adapter pmadapter,
+			  IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	mlan_ds_misc_cfg *misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+	mlan_ds_misc_tdls_oper *ptdls_oper = &misc->param.tdls_oper;
+	t_u8 event_buf[100];
+	mlan_event *ptdls_event = (mlan_event *) event_buf;
+	tdls_tear_down_event *tdls_evt =
+		(tdls_tear_down_event *) ptdls_event->event_buf;
+	sta_node *sta_ptr = MNULL;
+	t_u8 i = 0;
+
+	ENTER();
+	sta_ptr = wlan_get_station_entry(pmpriv, ptdls_oper->peer_mac);
+	switch (ptdls_oper->tdls_action) {
+	case WLAN_TDLS_ENABLE_LINK:
+		if (sta_ptr && (sta_ptr->status != TDLS_SETUP_FAILURE)) {
+			PRINTM(MMSG, "TDLS: Enable link " MACSTR " success\n",
+			       MAC2STR(ptdls_oper->peer_mac));
+			sta_ptr->status = TDLS_SETUP_COMPLETE;
+			pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+			if (sta_ptr->HTcap.ieee_hdr.element_id == HT_CAPABILITY) {
+				sta_ptr->is_11n_enabled = MTRUE;
+				if (GETHT_MAXAMSDU
+				    (sta_ptr->HTcap.ht_cap.ht_cap_info))
+					sta_ptr->max_amsdu =
+						MLAN_TX_DATA_BUF_SIZE_8K;
+				else
+					sta_ptr->max_amsdu =
+						MLAN_TX_DATA_BUF_SIZE_4K;
+				for (i = 0; i < MAX_NUM_TID; i++) {
+					if (sta_ptr->is_11n_enabled)
+						sta_ptr->ampdu_sta[i] =
+							pmpriv->
+							aggr_prio_tbl[i].
+							ampdu_user;
+					else
+						sta_ptr->ampdu_sta[i] =
+							BA_STREAM_NOT_ALLOWED;
+				}
+				memset(pmpriv->adapter, sta_ptr->rx_seq, 0xff,
+				       sizeof(sta_ptr->rx_seq));
+			}
+			wlan_restore_tdls_packets(pmpriv, ptdls_oper->peer_mac,
+						  TDLS_SETUP_COMPLETE);
+		} else {
+			PRINTM(MMSG, "TDLS: Enable link " MACSTR " fail\n",
+			       MAC2STR(ptdls_oper->peer_mac));
+			/* for supplicant 2.0, we need send event to request
+			   teardown, **for latest supplicant, we only need
+			   return fail, and supplicant will send teardown
+			   packet and disable tdls link */
+			if (sta_ptr) {
+				ptdls_event->bss_index = pmpriv->bss_index;
+				ptdls_event->event_id =
+					MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ;
+				ptdls_event->event_len =
+					sizeof(tdls_tear_down_event);
+				memcpy(pmpriv->adapter,
+				       (t_u8 *) tdls_evt->peer_mac_addr,
+				       ptdls_oper->peer_mac,
+				       MLAN_MAC_ADDR_LENGTH);
+				tdls_evt->reason_code =
+					WLAN_REASON_TDLS_TEARDOWN_UNSPECIFIED;
+				wlan_recv_event(pmpriv,
+						MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ,
+						ptdls_event);
+				wlan_restore_tdls_packets(pmpriv,
+							  ptdls_oper->peer_mac,
+							  TDLS_TEAR_DOWN);
+				if (sta_ptr->is_11n_enabled) {
+					wlan_cleanup_reorder_tbl(pmpriv,
+								 ptdls_oper->
+								 peer_mac);
+					pmadapter->callbacks.
+						moal_spin_lock(pmadapter->
+							       pmoal_handle,
+							       pmpriv->wmm.
+							       ra_list_spinlock);
+					wlan_11n_cleanup_txbastream_tbl(pmpriv,
+									ptdls_oper->
+									peer_mac);
+					pmadapter->callbacks.
+						moal_spin_unlock(pmadapter->
+								 pmoal_handle,
+								 pmpriv->wmm.
+								 ra_list_spinlock);
+				}
+				wlan_delete_station_entry(pmpriv,
+							  ptdls_oper->peer_mac);
+				if (MTRUE == wlan_is_station_list_empty(pmpriv))
+					pmadapter->tdls_status = TDLS_NOT_SETUP;
+				else
+					pmadapter->tdls_status =
+						TDLS_IN_BASE_CHANNEL;
+			}
+			ret = MLAN_STATUS_FAILURE;
+		}
+		wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+				MNULL);
+		break;
+	case WLAN_TDLS_DISABLE_LINK:
+		if (sta_ptr) {
+			wlan_restore_tdls_packets(pmpriv, ptdls_oper->peer_mac,
+						  TDLS_TEAR_DOWN);
+			if (sta_ptr->is_11n_enabled) {
+				wlan_cleanup_reorder_tbl(pmpriv,
+							 ptdls_oper->peer_mac);
+				pmadapter->callbacks.moal_spin_lock(pmadapter->
+								    pmoal_handle,
+								    pmpriv->wmm.
+								    ra_list_spinlock);
+				wlan_11n_cleanup_txbastream_tbl(pmpriv,
+								ptdls_oper->
+								peer_mac);
+				pmadapter->callbacks.
+					moal_spin_unlock(pmadapter->
+							 pmoal_handle,
+							 pmpriv->wmm.
+							 ra_list_spinlock);
+			}
+			if (sta_ptr->status >= TDLS_SETUP_INPROGRESS)
+				wlan_delete_station_entry(pmpriv,
+							  ptdls_oper->peer_mac);
+		}
+		if (MTRUE == wlan_is_station_list_empty(pmpriv))
+			pmadapter->tdls_status = TDLS_NOT_SETUP;
+		else
+			pmadapter->tdls_status = TDLS_IN_BASE_CHANNEL;
+		/* Send command to firmware to delete tdls link */
+		ret = wlan_prepare_cmd(pmpriv,
+				       HostCmd_CMD_TDLS_OPERATION,
+				       HostCmd_ACT_GEN_SET,
+				       0, (t_void *) pioctl_req, ptdls_oper);
+		if (ret == MLAN_STATUS_SUCCESS)
+			ret = MLAN_STATUS_PENDING;
+		break;
+	case WLAN_TDLS_CREATE_LINK:
+		PRINTM(MIOCTL, "CREATE TDLS LINK\n");
+		if (sta_ptr && sta_ptr->status == TDLS_SETUP_INPROGRESS) {
+			PRINTM(MIOCTL, "We already create the link\n");
+			break;
+		}
+		if (!sta_ptr)
+			sta_ptr =
+				wlan_add_station_entry(pmpriv,
+						       misc->param.tdls_oper.
+						       peer_mac);
+		if (sta_ptr) {
+			sta_ptr->status = TDLS_SETUP_INPROGRESS;
+			sta_ptr->external_tdls = MTRUE;
+			wlan_hold_tdls_packets(pmpriv,
+					       misc->param.tdls_oper.peer_mac);
+		}
+		ret = wlan_prepare_cmd(pmpriv,
+				       HostCmd_CMD_TDLS_OPERATION,
+				       HostCmd_ACT_GEN_SET,
+				       0, (t_void *) pioctl_req, ptdls_oper);
+		if (ret == MLAN_STATUS_SUCCESS)
+			ret = MLAN_STATUS_PENDING;
+		break;
+	case WLAN_TDLS_CONFIG_LINK:
+		if (!sta_ptr || sta_ptr->status == TDLS_SETUP_FAILURE) {
+			PRINTM(MERROR, "Can not CONFIG TDLS Link\n");
+			ret = MLAN_STATUS_FAILURE;
+			break;
+		}
+		ret = wlan_prepare_cmd(pmpriv,
+				       HostCmd_CMD_TDLS_OPERATION,
+				       HostCmd_ACT_GEN_SET,
+				       0, (t_void *) pioctl_req, ptdls_oper);
+		if (ret == MLAN_STATUS_SUCCESS)
+			ret = MLAN_STATUS_PENDING;
+		break;
+	default:
+		break;
+	}
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief Set the TDLS operation to FW.
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_misc_ioctl_tdls_get_ies(IN pmlan_adapter pmadapter,
+			     IN pmlan_ioctl_req pioctl_req)
+{
+	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+	mlan_ds_misc_cfg *misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+	mlan_ds_misc_tdls_ies *tdls_ies = &misc->param.tdls_ies;
+	mlan_status ret = MLAN_STATUS_SUCCESS;
+	BSSDescriptor_t *pbss_desc;
+	t_u32 usr_dot_11n_dev_cap;
+	IEEEtypes_ExtCap_t *ext_cap = MNULL;
+	IEEEtypes_HTCap_t *ht_cap = MNULL;
+	IEEEtypes_HTInfo_t *ht_info = MNULL;
+	sta_node *sta_ptr = MNULL;
+	ENTER();
+
+	sta_ptr = wlan_get_station_entry(pmpriv, tdls_ies->peer_mac);
+	pbss_desc = &pmpriv->curr_bss_params.bss_descriptor;
+	if (pbss_desc->bss_band & BAND_A)
+		usr_dot_11n_dev_cap = pmadapter->usr_dot_11n_dev_cap_a;
+	else
+		usr_dot_11n_dev_cap = pmadapter->usr_dot_11n_dev_cap_bg;
+
+    /** fill the extcap */
+	if (tdls_ies->flags & TDLS_IE_FLAGS_EXTCAP) {
+		ext_cap = (IEEEtypes_ExtCap_t *) tdls_ies->ext_cap;
+		ext_cap->ieee_hdr.element_id = EXT_CAPABILITY;
+		ext_cap->ieee_hdr.len = sizeof(ExtCap_t);
+		SET_EXTCAP_TDLS(ext_cap->ext_cap);
+		// TODO UAPSD need be enabled
+		RESET_EXTCAP_TDLS_UAPSD(ext_cap->ext_cap);
+		RESET_EXTCAP_TDLS_CHAN_SWITCH(ext_cap->ext_cap);
+		DBG_HEXDUMP(MCMD_D, "TDLS extcap", tdls_ies->ext_cap,
+			    sizeof(IEEEtypes_ExtCap_t));
+	}
+
+    /** fill the htcap based on hwspec */
+	if (tdls_ies->flags & TDLS_IE_FLAGS_HTCAP) {
+		ht_cap = (IEEEtypes_HTCap_t *) tdls_ies->ht_cap;
+		memset(pmadapter, ht_cap, 0, sizeof(IEEEtypes_HTCap_t));
+		wlan_fill_ht_cap_ie(pmpriv, ht_cap, pbss_desc->bss_band);
+		DBG_HEXDUMP(MCMD_D, "TDLS htcap", tdls_ies->ht_cap,
+			    sizeof(IEEEtypes_HTCap_t));
+	}
+    /** fill the htinfo */
+	if (tdls_ies->flags & TDLS_IE_FLAGS_HTINFO) {
+		ht_info = (IEEEtypes_HTInfo_t *) tdls_ies->ht_info;
+		pbss_desc = &pmpriv->curr_bss_params.bss_descriptor;
+		ht_info->ieee_hdr.element_id = HT_OPERATION;
+		ht_info->ieee_hdr.len = sizeof(HTInfo_t);
+		ht_info->ht_info.pri_chan = pbss_desc->channel;
+		/* follow AP's channel bandwidth */
+		if (ISSUPP_CHANWIDTH40(usr_dot_11n_dev_cap) &&
+		    pbss_desc->pht_info &&
+		    ISALLOWED_CHANWIDTH40(pbss_desc->pht_info->ht_info.
+					  field2)) {
+			ht_info->ht_info.field2 =
+				pbss_desc->pht_info->ht_info.field2;
+		}
+		if (sta_ptr)
+			memcpy(pmadapter, &sta_ptr->HTInfo, tdls_ies->ht_info,
+			       sizeof(IEEEtypes_HTInfo_t));
+		DBG_HEXDUMP(MCMD_D, "TDLS htinfo", tdls_ies->ht_info,
+			    sizeof(IEEEtypes_HTInfo_t));
+	}
+
+	LEAVE();
+	return ret;
 }
 
 /**
@@ -2232,69 +2618,43 @@ wlan_radio_ioctl_ant_cfg(IN pmlan_adapter pmadapter,
 	mlan_ds_radio_cfg *radio_cfg = MNULL;
 	t_u16 cmd_action = 0;
 	mlan_ds_ant_cfg *ant_cfg = MNULL;
-	t_u16 *ant_cfg_1x1 = MNULL;
 
 	ENTER();
 
 	radio_cfg = (mlan_ds_radio_cfg *) pioctl_req->pbuf;
-	if (IS_STREAM_2X2(pmadapter->feature_control))
-		ant_cfg = &radio_cfg->param.ant_cfg;
+	ant_cfg = &radio_cfg->param.ant_cfg;
 
 	if (pioctl_req->action == MLAN_ACT_SET) {
 		/* User input validation */
-		if (IS_STREAM_2X2(pmadapter->feature_control)) {
-			if (!ant_cfg->tx_antenna ||
-			    ant_cfg->tx_antenna & ~RF_ANTENNA_MASK(pmadapter->
-								   number_of_antenna))
-			{
+		if (!ant_cfg->tx_antenna ||
+		    ant_cfg->tx_antenna & ~RF_ANTENNA_MASK(pmadapter->
+							   number_of_antenna)) {
+			PRINTM(MERROR, "Invalid antenna setting\n");
+			pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+			ret = MLAN_STATUS_FAILURE;
+			goto exit;
+		}
+		if (ant_cfg->rx_antenna) {
+			if (ant_cfg->
+			    rx_antenna & ~RF_ANTENNA_MASK(pmadapter->
+							  number_of_antenna)) {
 				PRINTM(MERROR, "Invalid antenna setting\n");
 				pioctl_req->status_code =
 					MLAN_ERROR_INVALID_PARAMETER;
 				ret = MLAN_STATUS_FAILURE;
 				goto exit;
 			}
-			if (ant_cfg->rx_antenna) {
-				if (ant_cfg->
-				    rx_antenna & ~RF_ANTENNA_MASK(pmadapter->
-								  number_of_antenna))
-				{
-					PRINTM(MERROR,
-					       "Invalid antenna setting\n");
-					pioctl_req->status_code =
-						MLAN_ERROR_INVALID_PARAMETER;
-					ret = MLAN_STATUS_FAILURE;
-					goto exit;
-				}
-			} else
-				ant_cfg->rx_antenna = ant_cfg->tx_antenna;
-		} else if ((!radio_cfg->param.antenna ||
-			    radio_cfg->param.
-			    antenna & ~RF_ANTENNA_MASK(pmadapter->
-						       number_of_antenna)) &&
-			   (radio_cfg->param.antenna != RF_ANTENNA_AUTO ||
-			    pmadapter->number_of_antenna <= 1)) {
-			PRINTM(MERROR, "Invalid antenna setting\n");
-			pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
-			ret = MLAN_STATUS_FAILURE;
-			goto exit;
-		}
+		} else
+			ant_cfg->rx_antenna = ant_cfg->tx_antenna;
 		cmd_action = HostCmd_ACT_GEN_SET;
 	} else
 		cmd_action = HostCmd_ACT_GEN_GET;
-
-	/* Cast it to t_u16, antenna mode for command
-	   HostCmd_CMD_802_11_RF_ANTENNA requires 2 bytes */
-	if (!IS_STREAM_2X2(pmadapter->feature_control))
-		ant_cfg_1x1 = (t_u16 *) & radio_cfg->param.antenna;
 
 	/* Send request to firmware */
 	ret = wlan_prepare_cmd(pmpriv,
 			       HostCmd_CMD_802_11_RF_ANTENNA,
 			       cmd_action,
-			       0,
-			       (t_void *) pioctl_req,
-			       (IS_STREAM_2X2(pmadapter->feature_control)) ?
-			       (t_void *) ant_cfg : (t_void *) ant_cfg_1x1);
+			       0, (t_void *) pioctl_req, (t_void *) ant_cfg);
 
 	if (ret == MLAN_STATUS_SUCCESS)
 		ret = MLAN_STATUS_PENDING;

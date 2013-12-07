@@ -38,7 +38,7 @@ Change log:
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param ptr          A pointer to RA list table
  *
- *  @return 	    TID
+ *  @return             TID
  */
 static INLINE int
 wlan_get_tid(pmlan_adapter pmadapter, raListTbl * ptr)
@@ -59,7 +59,7 @@ wlan_get_tid(pmlan_adapter pmadapter, raListTbl * ptr)
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param head         A pointer to mlan_list_head
  *
- *  @return 	    Length of list
+ *  @return             Length of list
  */
 static INLINE int
 wlan_wmm_list_len(pmlan_adapter pmadapter, pmlan_list_head head)

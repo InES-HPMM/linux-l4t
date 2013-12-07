@@ -3,20 +3,25 @@
  *  @brief This file contains the handling of RX in MLAN
  *  module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -60,13 +65,151 @@ typedef struct {
 ********************************************************/
 
 /**
+ *  @brief This function process tdls action frame
+ *
+ *  @param priv        A pointer to mlan_private structure
+ *  @param pbuf        A pointer to tdls action frame buffer
+ *  @param len         len of tdls action frame buffer
+ *  @return            N/A
+ */
+void
+wlan_process_tdls_action_frame(pmlan_private priv, t_u8 * pbuf, t_u32 len)
+{
+	sta_node *sta_ptr = MNULL;
+	t_u8 *peer;
+	t_u8 *pos, *end;
+	t_u8 action;
+	int ie_len = 0;
+	t_u8 i;
+
+#define TDLS_PAYLOAD_TYPE     2
+#define TDLS_CATEGORY         0x0c
+#define TDLS_REQ_FIX_LEN      6
+#define TDLS_RESP_FIX_LEN     8
+#define TDLS_CONFIRM_FIX_LEN  6
+	if (len < (sizeof(EthII_Hdr_t) + 3))
+		return;
+	if (*(t_u8 *) (pbuf + sizeof(EthII_Hdr_t)) != TDLS_PAYLOAD_TYPE)
+		/* TDLS payload type = 2 */
+		return;
+	if (*(t_u8 *) (pbuf + sizeof(EthII_Hdr_t) + 1) != TDLS_CATEGORY)
+		/* TDLS category = 0xc */
+		return;
+	peer = pbuf + MLAN_MAC_ADDR_LENGTH;
+
+	action = *(t_u8 *) (pbuf + sizeof(EthII_Hdr_t) + 2);
+	/* 2= payload type + category */
+
+	if (action > TDLS_SETUP_CONFIRM) {
+		/* just handle TDLS setup request/response/confirm */
+		PRINTM(MMSG, "Recv TDLS Action: peer=" MACSTR ", action=%d\n",
+		       MAC2STR(peer), action);
+		return;
+	}
+
+	sta_ptr = wlan_add_station_entry(priv, peer);
+	if (!sta_ptr)
+		return;
+	if (action == TDLS_SETUP_REQUEST) {	/* setup request */
+		sta_ptr->status = TDLS_NOT_SETUP;
+		PRINTM(MMSG, "Recv TDLS SETUP Request: peer=" MACSTR "\n",
+		       MAC2STR(peer));
+		wlan_hold_tdls_packets(priv, peer);
+		if (len < (sizeof(EthII_Hdr_t) + TDLS_REQ_FIX_LEN))
+			return;
+		pos = pbuf + sizeof(EthII_Hdr_t) + 4;
+		/* payload 1+ category 1 + action 1 +dialog 1 */
+		sta_ptr->capability = mlan_ntohs(*(t_u16 *) pos);
+		ie_len = len - sizeof(EthII_Hdr_t) - TDLS_REQ_FIX_LEN;
+		pos += 2;
+	} else if (action == 1) {	/* setup respons */
+		PRINTM(MMSG, "Recv TDLS SETUP Response: peer=" MACSTR "\n",
+		       MAC2STR(peer));
+		if (len < (sizeof(EthII_Hdr_t) + TDLS_RESP_FIX_LEN))
+			return;
+		pos = pbuf + sizeof(EthII_Hdr_t) + 6;
+		/* payload 1+ category 1 + action 1 +dialog 1 +status 2 */
+		sta_ptr->capability = mlan_ntohs(*(t_u16 *) pos);
+		ie_len = len - sizeof(EthII_Hdr_t) - TDLS_RESP_FIX_LEN;
+		pos += 2;
+	} else {		/* setup confirm */
+		PRINTM(MMSG, "Recv TDLS SETUP Confirm: peer=" MACSTR "\n",
+		       MAC2STR(peer));
+		if (len < (sizeof(EthII_Hdr_t) + TDLS_CONFIRM_FIX_LEN))
+			return;
+		pos = pbuf + sizeof(EthII_Hdr_t) + TDLS_CONFIRM_FIX_LEN;
+		/* payload 1+ category 1 + action 1 +dialog 1 + status 2 */
+		ie_len = len - sizeof(EthII_Hdr_t) - TDLS_CONFIRM_FIX_LEN;
+	}
+	for (end = pos + ie_len; pos + 1 < end; pos += 2 + pos[1]) {
+		if (pos + 2 + pos[1] > end)
+			break;
+		switch (*pos) {
+		case SUPPORTED_RATES:
+			sta_ptr->rate_len = pos[1];
+			for (i = 0; i < pos[1]; i++)
+				sta_ptr->support_rate[i] = pos[2 + i];
+			break;
+		case EXTENDED_SUPPORTED_RATES:
+			for (i = 0; i < pos[1]; i++)
+				sta_ptr->support_rate[sta_ptr->rate_len + i] =
+					pos[2 + i];
+			sta_ptr->rate_len += pos[1];
+			break;
+		case HT_CAPABILITY:
+			memcpy(priv->adapter, (t_u8 *) & sta_ptr->HTcap, pos,
+			       sizeof(IEEEtypes_HTCap_t));
+			sta_ptr->is_11n_enabled = 1;
+			DBG_HEXDUMP(MDAT_D, "TDLS HT capability",
+				    (t_u8 *) (&sta_ptr->HTcap),
+				    MIN(sizeof(IEEEtypes_HTCap_t),
+					MAX_DATA_DUMP_LEN));
+			break;
+		case HT_OPERATION:
+			memcpy(priv->adapter, &sta_ptr->HTInfo, pos,
+			       sizeof(IEEEtypes_HTInfo_t));
+			DBG_HEXDUMP(MDAT_D, "TDLS HT info",
+				    (t_u8 *) (&sta_ptr->HTInfo),
+				    MIN(sizeof(IEEEtypes_HTInfo_t),
+					MAX_DATA_DUMP_LEN));
+			break;
+		case BSSCO_2040:
+			memcpy(priv->adapter, (t_u8 *) & sta_ptr->BSSCO_20_40,
+			       pos, sizeof(IEEEtypes_2040BSSCo_t));
+			break;
+		case EXT_CAPABILITY:
+			memcpy(priv->adapter, (t_u8 *) & sta_ptr->ExtCap, pos,
+			       pos[1] + sizeof(IEEEtypes_Header_t));
+			DBG_HEXDUMP(MDAT_D, "TDLS Extended capability",
+				    (t_u8 *) (&sta_ptr->ExtCap),
+				    sta_ptr->ExtCap.ieee_hdr.len + 2);
+			break;
+		case RSN_IE:
+			memcpy(priv->adapter, (t_u8 *) & sta_ptr->rsn_ie, pos,
+			       pos[1] + sizeof(IEEEtypes_Header_t));
+			DBG_HEXDUMP(MDAT_D, "TDLS Rsn ie ",
+				    (t_u8 *) (&sta_ptr->rsn_ie),
+				    pos[1] + sizeof(IEEEtypes_Header_t));
+			break;
+		case QOS_INFO:
+			sta_ptr->qos_info = pos[2];
+			PRINTM(MDAT_D, "TDLS qos info %x\n", sta_ptr->qos_info);
+			break;
+		default:
+			break;
+		}
+	}
+	return;
+}
+
+/**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer
+ *          to kernel/upper layer
  *
  *  @param pmadapter A pointer to mlan_adapter
- *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
+ *  @param pmbuf   A pointer to mlan_buffer which includes the received packet
  *
- *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
@@ -83,6 +226,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		{ 0xaa, 0xaa, 0x03, 0x00, 0x00, 0xf8 };
 	t_u8 appletalk_aarp_type[2] = { 0x80, 0xf3 };
 	t_u8 ipx_snap_type[2] = { 0x81, 0x37 };
+	t_u8 tdls_action_type[2] = { 0x89, 0x0d };
 
 	ENTER();
 
@@ -94,9 +238,9 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 /** Size of debugging structure */
 #define SIZE_OF_DBG_STRUCT 4
 	if (prx_pd->rx_pkt_type == PKT_TYPE_DEBUG) {
-		t_u8 dbgType;
-		dbgType = *(t_u8 *) & prx_pkt->eth803_hdr;
-		if (dbgType == DBG_TYPE_SMALL) {
+		t_u8 dbg_type;
+		dbg_type = *(t_u8 *) & prx_pkt->eth803_hdr;
+		if (dbg_type == DBG_TYPE_SMALL) {
 			PRINTM(MFW_D, "\n");
 			DBG_HEXDUMP(MFW_D, "FWDBG",
 				    (char *)((t_u8 *) & prx_pkt->eth803_hdr +
@@ -155,6 +299,14 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		HEXDUMP("RX Data: LLC/SNAP",
 			(t_u8 *) & prx_pkt->rfc1042_hdr,
 			sizeof(prx_pkt->rfc1042_hdr));
+		if (!memcmp
+		    (pmadapter, &prx_pkt->eth803_hdr.h803_len, tdls_action_type,
+		     sizeof(tdls_action_type))) {
+			wlan_process_tdls_action_frame(priv,
+						       ((t_u8 *) prx_pd +
+							prx_pd->rx_pkt_offset),
+						       prx_pd->rx_pkt_length);
+		}
 		/* Chop off the RxPD */
 		hdr_chop =
 			(t_u32) ((t_ptr) & prx_pkt->eth803_hdr -
@@ -191,9 +343,8 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 		       "STA Rx Error: moal_recv_packet returned error\n");
 	}
 done:
-	if (ret != MLAN_STATUS_PENDING) {
+	if (ret != MLAN_STATUS_PENDING)
 		wlan_free_mlan_buffer(pmadapter, pmbuf);
-	}
 	LEAVE();
 
 	return ret;
@@ -218,6 +369,7 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 	t_u8 ta[MLAN_MAC_ADDR_LENGTH];
 	t_u16 rx_pkt_type = 0;
 	wlan_mgmt_pkt *pmgmt_pkt_hdr = MNULL;
+	sta_node *sta_ptr = MNULL;
 	ENTER();
 
 	prx_pd = (RxPD *) (pmbuf->pbuf + pmbuf->data_offset);
@@ -269,16 +421,30 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
 	 * If the packet is not an unicast packet then send the packet
 	 * directly to os. Don't pass thru rx reordering
 	 */
-	if (!IS_11N_ENABLED(priv) ||
+	if ((!IS_11N_ENABLED(priv) &&
+	     !(prx_pd->flags & RXPD_FLAG_PKT_DIRECT_LINK)) ||
 	    memcmp(priv->adapter, priv->curr_addr,
 		   prx_pkt->eth803_hdr.dest_addr, MLAN_MAC_ADDR_LENGTH)) {
 		wlan_process_rx_packet(pmadapter, pmbuf);
 		goto done;
 	}
 
-	if (queuing_ra_based(priv)) {
+	if (queuing_ra_based(priv) ||
+	    (prx_pd->flags & RXPD_FLAG_PKT_DIRECT_LINK)) {
 		memcpy(pmadapter, ta, prx_pkt->eth803_hdr.src_addr,
 		       MLAN_MAC_ADDR_LENGTH);
+		if ((prx_pd->flags & RXPD_FLAG_PKT_DIRECT_LINK) &&
+		    (prx_pd->priority < MAX_NUM_TID)) {
+			PRINTM(MDATA, "tdls packet %p " MACSTR "\n", pmbuf,
+			       MAC2STR(ta));
+			sta_ptr = wlan_get_station_entry(priv, ta);
+			if (sta_ptr) {
+				sta_ptr->rx_seq[prx_pd->priority] =
+					prx_pd->seq_num;
+				sta_ptr->snr = prx_pd->snr;
+				sta_ptr->nf = prx_pd->nf;
+			}
+		}
 	} else {
 		if ((rx_pkt_type != PKT_TYPE_BAR) &&
 		    (prx_pd->priority < MAX_NUM_TID))

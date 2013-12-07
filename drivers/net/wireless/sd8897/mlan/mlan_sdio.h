@@ -275,11 +275,14 @@ Change log:
 #define MP_TX_AGGR_IN_PROGRESS(a) (a->mpa_tx.pkt_cnt > 0)
 
 /** SDIO Tx aggregation buffer room for next packet ? */
-#define MP_TX_AGGR_BUF_HAS_ROOM(a, mbuf, len) (((a->mpa_tx.buf_len) + len) <= (a->mpa_tx.buf_size))
+#define MP_TX_AGGR_BUF_HAS_ROOM(a, mbuf, len) \
+			(((a->mpa_tx.buf_len) + len) <= (a->mpa_tx.buf_size))
 
 /** Copy current packet (SDIO Tx aggregation buffer) to SDIO buffer */
 #define MP_TX_AGGR_BUF_PUT(a, mbuf, port) do {                  \
-	pmadapter->callbacks.moal_memmove(a->pmoal_handle, &a->mpa_tx.buf[a->mpa_tx.buf_len], mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
+	pmadapter->callbacks.moal_memmove(a->pmoal_handle, \
+		&a->mpa_tx.buf[a->mpa_tx.buf_len], \
+		mbuf->pbuf+mbuf->data_offset, mbuf->data_len);\
 	a->mpa_tx.buf_len += mbuf->data_len;                        \
     a->mpa_tx.mp_wr_info[a->mpa_tx.pkt_cnt] = *(t_u16 *)(mbuf->pbuf+mbuf->data_offset); \
 	if (!a->mpa_tx.pkt_cnt) {                                   \
@@ -287,7 +290,7 @@ Change log:
 	}                                                           \
 	a->mpa_tx.ports |= (1 << port);                             \
 	a->mpa_tx.pkt_cnt++;                                        \
-} while (0);
+} while (0)
 
 #define MP_TX_AGGR_BUF_PUT_SG(a, mbuf, port) do {               \
 	a->mpa_tx.buf_len += mbuf->data_len;                        \
@@ -298,10 +301,11 @@ Change log:
 	}                                                           \
 	a->mpa_tx.ports |= (1 << port);                             \
 	a->mpa_tx.pkt_cnt++;                                        \
-} while (0);
+} while (0)
 
 /** SDIO Tx aggregation limit ? */
-#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) ((a->mpa_tx.pkt_cnt) == (a->mpa_tx.pkt_aggr_limit))
+#define MP_TX_AGGR_PKT_LIMIT_REACHED(a) ((a->mpa_tx.pkt_cnt) \
+								== (a->mpa_tx.pkt_aggr_limit))
 
 /** SDIO Tx aggregation port limit ? */
 /** this is for test only, because port 0 is reserved for control port */
@@ -330,7 +334,8 @@ Change log:
 #ifdef SDIO_MULTI_PORT_RX_AGGR
 
 /** SDIO Rx aggregation limit ? */
-#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt == a->mpa_rx.pkt_aggr_limit)
+#define MP_RX_AGGR_PKT_LIMIT_REACHED(a) (a->mpa_rx.pkt_cnt \
+								== a->mpa_rx.pkt_aggr_limit)
 
 /** SDIO Rx aggregation port limit ? */
 /** this is for test only, because port 0 is reserved for control port */

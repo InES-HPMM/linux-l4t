@@ -3,20 +3,25 @@
  *  @brief This file contains the handling of data packet
  *  transmission in MLAN module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -53,7 +58,7 @@ Change log:
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *
- *  @return 	   headptr or MNULL
+ *  @return        headptr or MNULL
  */
 t_void *
 wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
@@ -128,6 +133,8 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 				MRVDRV_TxPD_POWER_MGMT_LAST_PACKET;
 		}
 	}
+	if (pmbuf->flags & MLAN_BUF_FLAG_TDLS)
+		plocal_tx_pd->flags |= MRVDRV_TxPD_FLAGS_TDLS_PACKET;
 	/* Offset of actual data */
 	plocal_tx_pd->tx_pkt_offset =
 		(t_u16) ((t_ptr) pmbuf->pbuf + pmbuf->data_offset -
@@ -161,7 +168,7 @@ done:
  *  @param priv     A pointer to mlan_private structure
  *  @param flags    Transmit Pkt Flags
  *
- *  @return 	    MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
+ *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING --success, otherwise failure
  */
 mlan_status
 wlan_send_null_packet(pmlan_private priv, t_u8 flags)
@@ -258,7 +265,7 @@ done:
  *
  *  @param priv    A pointer to mlan_private structure
  *
- *  @return 	   MTRUE or MFALSE
+ *  @return        MTRUE or MFALSE
  */
 t_u8
 wlan_check_last_packet_indication(pmlan_private priv)

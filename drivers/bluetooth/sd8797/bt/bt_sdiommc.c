@@ -71,7 +71,7 @@ extern int mbt_pm_keep_power;
  *  @brief This function gets rx_unit value
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 sd_get_rx_unit(bt_private * priv)
@@ -95,7 +95,7 @@ sd_get_rx_unit(bt_private * priv)
  *
  *  @param priv    A pointer to bt_private structure
  *  @param dat	   A pointer to keep returned data
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
 sd_read_firmware_status(bt_private * priv, u16 * dat)
@@ -130,7 +130,7 @@ sd_read_firmware_status(bt_private * priv, u16 * dat)
  *
  *  @param priv    A pointer to bt_private structure
  *  @param dat	   A pointer to keep returned data
- *  @return 	   BT_STATUS_SUCCESS or other error no.
+ *  @return        BT_STATUS_SUCCESS or other error no.
  */
 static int
 sd_read_rx_len(bt_private * priv, u16 * dat)
@@ -154,7 +154,7 @@ sd_read_rx_len(bt_private * priv, u16 * dat)
  *
  *  @param priv    A pointer to bt_private structure
  *  @param mask	   the interrupt mask
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
 sd_enable_host_int_mask(bt_private * priv, u8 mask)
@@ -178,7 +178,7 @@ sd_enable_host_int_mask(bt_private * priv, u8 mask)
  *
  *  @param priv    A pointer to bt_private structure
  *  @param mask	   the interrupt mask
- *  @return 	   BT_STATUS_SUCCESS or other error no.
+ *  @return        BT_STATUS_SUCCESS or other error no.
  */
 static int
 sd_disable_host_int_mask(bt_private * priv, u8 mask)
@@ -210,9 +210,9 @@ done:
 /**
  *  @brief This function polls the card status register
  *
- *  @param priv    	A pointer to bt_private structure
- *  @param bits    	the bit mask
- *  @return 	   	BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @param priv     A pointer to bt_private structure
+ *  @param bits     the bit mask
+ *  @return         BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
 sd_poll_card_status(bt_private * priv, u8 bits)
@@ -245,8 +245,8 @@ sd_poll_card_status(bt_private * priv, u8 bits)
 /**
  *  @brief This function reads updates the Cmd52 value in dev structure
  *
- *  @param priv    	A pointer to bt_private structure
- *  @return 	   	BT_STATUS_SUCCESS or other error no.
+ *  @param priv     A pointer to bt_private structure
+ *  @return         BT_STATUS_SUCCESS or other error no.
  */
 int
 sd_read_cmd52_val(bt_private * priv)
@@ -279,11 +279,11 @@ sd_read_cmd52_val(bt_private * priv)
 /**
  *  @brief This function updates card reg based on the Cmd52 value in dev structure
  *
- *  @param priv    	A pointer to bt_private structure
- *  @param func    	Stores func variable
- *  @param reg    	Stores reg variable
- *  @param val    	Stores val variable
- *  @return 	   	BT_STATUS_SUCCESS or other error no.
+ *  @param priv     A pointer to bt_private structure
+ *  @param func     Stores func variable
+ *  @param reg      Stores reg variable
+ *  @param val      Stores val variable
+ *  @return         BT_STATUS_SUCCESS or other error no.
  */
 int
 sd_write_cmd52_val(bt_private * priv, int func, int reg, int val)
@@ -323,8 +323,8 @@ done:
  *  @brief This function probes the card
  *
  *  @param func    A pointer to sdio_func structure.
- *  @param id	   A pointer to structure sdio_device_id
- *  @return 	   BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
+ *  @param id      A pointer to structure sdio_device_id
+ *  @return        BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 static int
 sd_probe_card(struct sdio_func *func, const struct sdio_device_id *id)
@@ -412,7 +412,7 @@ sd_verify_fw_download(bt_private * priv, int pollnum)
  *  @brief Transfers firmware to card
  *
  *  @param priv      A Pointer to bt_private structure
- *  @return 	     BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
+ *  @return          BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 static int
 sd_init_fw_dpc(bt_private * priv)
@@ -432,19 +432,12 @@ sd_init_fw_dpc(bt_private * priv)
 	int tx_blocks = 0;
 	int i = 0;
 	int tries = 0;
-#ifdef FW_DOWNLOAD_SPEED
-	u32 tv1, tv2;
-#endif
 
 	ENTER();
 	firmware = (u8 *) priv->firmware->data;
 	firmwarelen = priv->firmware->size;
 
 	PRINTM(INFO, "BT: Downloading FW image (%d bytes)\n", firmwarelen);
-
-#ifdef FW_DOWNLOAD_SPEED
-	tv1 = get_utimeofday();
-#endif
 
 	tmpfwbufsz = BT_UPLD_SIZE + DMA_ALIGNMENT;
 	tmpfwbuf = kmalloc(tmpfwbufsz, GFP_KERNEL);
@@ -566,18 +559,7 @@ sd_init_fw_dpc(bt_private * priv)
 
 	ret = BT_STATUS_SUCCESS;
 done:
-#ifdef FW_DOWNLOAD_SPEED
-	tv2 = get_utimeofday();
-	PRINTM(INFO, "FW: %d.%03d.%03d ", tv1 / 1000000,
-	       (tv1 % 1000000) / 1000, tv1 % 1000);
-	PRINTM(INFO, " -> %d.%03d.%03d ", tv2 / 1000000,
-	       (tv2 % 1000000) / 1000, tv2 % 1000);
-	tv2 -= tv1;
-	PRINTM(INFO, " == %d.%03d.%03d\n", tv2 / 1000000,
-	       (tv2 % 1000000) / 1000, tv2 % 1000);
-#endif
-	if (tmpfwbuf)
-		kfree(tmpfwbuf);
+	kfree(tmpfwbuf);
 	LEAVE();
 	return ret;
 }
@@ -682,9 +664,8 @@ done:
 	/* Stop the thread servicing the interrupts */
 	priv->adapter->SurpriseRemoved = TRUE;
 	wake_up_interruptible(&priv->MainThread.waitQ);
-	while (priv->MainThread.pid) {
+	while (priv->MainThread.pid)
 		os_sched_timeout(1);
-	}
 	if (m_dev_bt->dev_pointer) {
 		if (m_dev_bt->spec_type == IANYWHERE_SPEC)
 			free_m_dev(m_dev_bt);
@@ -720,8 +701,8 @@ sd_request_fw_callback(const struct firmware *firmware, void *context)
 /**
  *  @brief This function downloads firmware image to the card.
  *
- *  @param priv    	A pointer to bt_private structure
- *  @return 	   	BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
+ *  @param priv     A pointer to bt_private structure
+ *  @return         BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 int
 sd_download_firmware_w_helper(bt_private * priv)
@@ -769,7 +750,7 @@ sd_download_firmware_w_helper(bt_private * priv)
  *  @brief This function reads data from the card.
  *
  *  @param priv    	A pointer to bt_private structure
- *  @return 	   	BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        	BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
 sd_card_to_host(bt_private * priv)
@@ -1073,7 +1054,7 @@ sd_interrupt(struct sdio_func *func)
 	if (!card || !card->priv) {
 		PRINTM(INFO,
 		       "BT: %s: sbi_interrupt(%p) card or priv is NULL, card=%p\n",
-		       __FUNCTION__, func, card);
+		       __func__, func, card);
 		LEAVE();
 		return;
 	}
@@ -1152,7 +1133,7 @@ bt_is_suspended(bt_private * priv)
 /** @brief This function handles client driver suspend
  *
  *  @param dev	   A pointer to device structure
- *  @return 	   BT_STATUS_SUCCESS or other error no.
+ *  @return        BT_STATUS_SUCCESS or other error no.
  */
 int
 bt_sdio_suspend(struct device *dev)
@@ -1206,6 +1187,9 @@ bt_sdio_suspend(struct device *dev)
 	skb_queue_purge(&priv->adapter->tx_queue);
 
 	priv->adapter->is_suspended = TRUE;
+
+	bt_enable_hostwake_irq(TRUE);
+
 	LEAVE();
 	/* We will keep the power when hs enabled successfully */
 	if ((mbt_pm_keep_power) && (priv->adapter->hs_state == HS_ACTIVATED)) {
@@ -1228,7 +1212,7 @@ bt_sdio_suspend(struct device *dev)
 /** @brief This function handles client driver resume
  *
  *  @param dev	   A pointer to device structure
- *  @return 	   BT_STATUS_SUCCESS
+ *  @return        BT_STATUS_SUCCESS
  */
 int
 bt_sdio_resume(struct device *dev)
@@ -1241,6 +1225,7 @@ bt_sdio_resume(struct device *dev)
 
 	ENTER();
 	if (func) {
+		bt_enable_hostwake_irq(FALSE);
 		pm_flags = sdio_get_host_pm_caps(func);
 		PRINTM(CMD, "BT: %s: resume: PM flags = 0x%x\n",
 		       sdio_func_id(func), pm_flags);
@@ -1312,7 +1297,7 @@ sbi_register(void)
 	ENTER();
 
 	if (sdio_register_driver(&sdio_bt) != 0) {
-		PRINTM(FATAL, "BT: SD Driver Registration Failed \n");
+		PRINTM(FATAL, "BT: SD Driver Registration Failed\n");
 		LEAVE();
 		return NULL;
 	} else
@@ -1325,7 +1310,7 @@ sbi_register(void)
 /**
  *  @brief This function de-registers the bt module in bus driver.
  *
- *  @return 	   N/A
+ *  @return        N/A
  */
 void
 sbi_unregister(void)
@@ -1340,7 +1325,7 @@ sbi_unregister(void)
  *  @brief This function registers the device.
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 sbi_register_dev(bt_private * priv)
@@ -1375,8 +1360,7 @@ sbi_register_dev(bt_private * priv)
 	}
 	ret = sdio_set_block_size(card->func, SD_BLOCK_SIZE);
 	if (ret) {
-		PRINTM(FATAL, ": %s: cannot set SDIO block size\n",
-		       __FUNCTION__);
+		PRINTM(FATAL, ": %s: cannot set SDIO block size\n", __func__);
 		goto release_irq;
 	}
 
@@ -1454,7 +1438,7 @@ failed:
  *  @brief This function de-registers the device.
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS
+ *  @return        BT_STATUS_SUCCESS
  */
 int
 sbi_unregister_dev(bt_private * priv)
@@ -1479,7 +1463,7 @@ sbi_unregister_dev(bt_private * priv)
  *  @brief This function enables the host interrupts.
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 sd_enable_host_int(bt_private * priv)
@@ -1506,7 +1490,7 @@ sd_enable_host_int(bt_private * priv)
  *  @brief This function disables the host interrupts.
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
+ *  @return        BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 int
 sd_disable_host_int(bt_private * priv)
@@ -1533,8 +1517,8 @@ sd_disable_host_int(bt_private * priv)
  *
  *  @param priv    A pointer to bt_private structure
  *  @param payload A pointer to the data/cmd buffer
- *  @param nb	   Length of data/cmd
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @param nb      Length of data/cmd
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 sbi_host_to_card(bt_private * priv, u8 * payload, u16 nb)
@@ -1609,7 +1593,7 @@ exit:
  *  @brief This function downloads firmware
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 sbi_download_fw(bt_private * priv)
@@ -1699,7 +1683,7 @@ err_register:
  *  @brief This function checks the interrupt status and handle it accordingly.
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS
+ *  @return        BT_STATUS_SUCCESS
  */
 int
 sbi_get_int_status(bt_private * priv)
@@ -1738,7 +1722,7 @@ sbi_get_int_status(bt_private * priv)
  *  @brief This function wakeup firmware
  *
  *  @param priv    A pointer to bt_private structure
- *  @return 	   BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
+ *  @return        BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 int
 sbi_wakeup_firmware(bt_private * priv)

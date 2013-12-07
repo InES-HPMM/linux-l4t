@@ -33,7 +33,7 @@ Change log:
 #define _MLAN_IEEE_H_
 
 /** FIX IES size in beacon buffer */
-#define WLAN_802_11_FIXED_IE_SIZE 			12
+#define WLAN_802_11_FIXED_IE_SIZE           12
 /** WLAN supported rates */
 #define WLAN_SUPPORTED_RATES                14
 
@@ -1263,19 +1263,31 @@ typedef MLAN_PACK_START struct {
 **/
 typedef MLAN_PACK_START struct {
 #ifdef BIG_ENDIAN_SUPPORT
-	t_u8 rsvd5_7:3;		   /**< Reserved */
-	t_u8 unmeasured:1;	   /**< Channel is unmeasured */
-	t_u8 radar:1;		   /**< Radar detected on channel */
-	t_u8 unidentified_sig:1;   /**< Unidentified signal found on channel */
-	t_u8 ofdm_preamble:1;	   /**< OFDM preamble detected on channel */
-	t_u8 bss:1;		   /**< At least one valid MPDU received on channel */
+    /**< Reserved */
+	t_u8 rsvd5_7:3;
+    /**< Channel is unmeasured */
+	t_u8 unmeasured:1;
+    /**< Radar detected on channel */
+	t_u8 radar:1;
+    /**< Unidentified signal found on channel */
+	t_u8 unidentified_sig:1;
+    /**< OFDM preamble detected on channel */
+	t_u8 ofdm_preamble:1;
+    /**< At least one valid MPDU received on channel */
+	t_u8 bss:1;
 #else
-	t_u8 bss:1;		   /**< At least one valid MPDU received on channel */
-	t_u8 ofdm_preamble:1;	   /**< OFDM preamble detected on channel */
-	t_u8 unidentified_sig:1;   /**< Unidentified signal found on channel */
-	t_u8 radar:1;		   /**< Radar detected on channel */
-	t_u8 unmeasured:1;	   /**< Channel is unmeasured */
-	t_u8 rsvd5_7:3;		   /**< Reserved */
+    /**< At least one valid MPDU received on channel */
+	t_u8 bss:1;
+    /**< OFDM preamble detected on channel */
+	t_u8 ofdm_preamble:1;
+    /**< Unidentified signal found on channel */
+	t_u8 unidentified_sig:1;
+    /**< Radar detected on channel */
+	t_u8 radar:1;
+    /**< Channel is unmeasured */
+	t_u8 unmeasured:1;
+    /**< Reserved */
+	t_u8 rsvd5_7:3;
 #endif				/* BIG_ENDIAN_SUPPORT */
 
 } MLAN_PACK_END MeasRptBasicMap_t;
@@ -1330,6 +1342,48 @@ typedef struct {
 	IEEEtypes_IBSS_DFS_t ibss_dfs;		  /**< IBSS DFS Element IE */
 
 } wlan_11h_bss_info_t;
+
+/** Ethernet packet type for TDLS */
+#define MLAN_ETHER_PKT_TYPE_TDLS_ACTION	(0x890D)
+
+/*802.11z  TDLS action frame type and strcuct */
+typedef MLAN_PACK_START struct {
+	/* link indentifier ie =101 */
+	t_u8 element_id;
+	/* len = 18 */
+	t_u8 len;
+   /** bssid */
+	t_u8 bssid[MLAN_MAC_ADDR_LENGTH];
+   /** init sta mac address */
+	t_u8 init_sta[MLAN_MAC_ADDR_LENGTH];
+   /** resp sta mac address */
+	t_u8 resp_sta[MLAN_MAC_ADDR_LENGTH];
+} MLAN_PACK_END IEEEtypes_tdls_linkie;
+
+/** action code for tdls setup request */
+#define TDLS_SETUP_REQUEST 0
+/** action code for tdls setup response */
+#define TDLS_SETUP_RESPONSE 1
+/** action code for tdls setup confirm */
+#define TDLS_SETUP_CONFIRM 2
+/** action code for tdls tear down */
+#define TDLS_TEARDOWN 3
+/** action code for tdls traffic indication */
+#define TDLS_PEER_TRAFFIC_INDICATION 4
+/** action code for tdls channel switch request */
+#define TDLS_CHANNEL_SWITCH_REQUEST 5
+/** action code for tdls channel switch response */
+#define TDLS_CHANNEL_SWITCH_RESPONSE 6
+/** action code for tdls psm request */
+#define TDLS_PEER_PSM_REQUEST 7
+/** action code for tdls psm response */
+#define TDLS_PEER_PSM_RESPONSE 8
+/** action code for tdls traffic response */
+#define TDLS_PEER_TRAFFIC_RESPONSE 9
+/** action code for tdls discovery request */
+#define TDLS_DISCOVERY_REQUEST 10
+/** action code for TDLS discovery response */
+#define TDLS_DISCOVERY_RESPONSE 14
 
 #ifdef STA_SUPPORT
 /** Macro for maximum size of scan response buffer */
@@ -1475,6 +1529,8 @@ typedef MLAN_PACK_START struct {
 	t_u8 snr_threshold;
     /** repeat count */
 	t_u16 repeat_count;
+    /** start later flag */
+	t_u16 start_later;
     /** SSID filter list used in the to limit the scan results */
 	wlan_user_scan_ssid ssid_list[MRVDRV_MAX_SSID_LIST_LENGTH];
     /** Variable number (fixed maximum) of channels to scan up */

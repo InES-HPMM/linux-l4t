@@ -219,11 +219,10 @@ woal_get_wap(struct net_device *dev, struct iw_request_info *info,
 
 	ENTER();
 
-	if (priv->bss_started) {
+	if (priv->bss_started)
 		memcpy(awrq->sa_data, priv->current_addr, MLAN_MAC_ADDR_LENGTH);
-	} else {
+	else
 		memset(awrq->sa_data, 0, MLAN_MAC_ADDR_LENGTH);
-	}
 	awrq->sa_family = ARPHRD_ETHER;
 
 	LEAVE();
@@ -358,10 +357,8 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
 	}
 
 done:
-	if (sys_cfg)
-		kfree(sys_cfg);
-	if (ap_cfg)
-		kfree(ap_cfg);
+	kfree(sys_cfg);
+	kfree(ap_cfg);
 	LEAVE();
 	return ret;
 }
@@ -395,10 +392,11 @@ woal_get_freq(struct net_device *dev, struct iw_request_info *info,
 		LEAVE();
 		return -EFAULT;
 	}
+
 	band = ap_cfg.band_cfg & BAND_CONFIG_5GHZ;
+	fwrq->m = (long)channel_to_frequency(ap_cfg.channel, band);
 	fwrq->i = (long)ap_cfg.channel;
-	fwrq->m = (long)(channel_to_frequency(ap_cfg.channel, band)) * 100000;
-	fwrq->e = 1;
+	fwrq->e = 6;
 
 	LEAVE();
 	return ret;
@@ -628,10 +626,8 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 	}
 
 done:
-	if (sys_cfg)
-		kfree(sys_cfg);
-	if (ap_cfg)
-		kfree(ap_cfg);
+	kfree(sys_cfg);
+	kfree(ap_cfg);
 	LEAVE();
 	return ret;
 }
@@ -1005,8 +1001,7 @@ woal_set_encode_ext(struct net_device *dev,
 	}
 
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1060,8 +1055,9 @@ woal_set_mlme(struct net_device *dev,
 	memset(sta_addr, 0, ETH_ALEN);
 	if ((mlme->cmd == IW_MLME_DEAUTH) || (mlme->cmd == IW_MLME_DISASSOC)) {
 		memcpy(sta_addr, (t_u8 *) mlme->addr.sa_data, ETH_ALEN);
-		PRINTM(MIOCTL, "Deauth station: " MACSTR ", "
-		       "reason=%d\n", MAC2STR(sta_addr), mlme->reason_code);
+		PRINTM(MIOCTL,
+		       "Deauth station: " MACSTR ", reason=%d\n",
+		       MAC2STR(sta_addr), mlme->reason_code);
 
 		/* FIXME: For flushing all stations we need to use zero MAC,
 		   but right now the FW does not support this. So, manually
@@ -1094,10 +1090,8 @@ woal_set_mlme(struct net_device *dev,
 			}
 			memcpy(sta_list, &pinfo->param.sta_list,
 			       sizeof(mlan_ds_sta_list));
-			if (req) {
-				kfree(req);
-				req = NULL;
-			}
+			kfree(req);
+			req = NULL;
 		}
 		req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
 		if (req == NULL) {
@@ -1137,11 +1131,8 @@ woal_set_mlme(struct net_device *dev,
 	}
 
 done:
-	if (req)
-		kfree(req);
-	if (sta_list)
-		kfree(sta_list);
-
+	kfree(req);
+	kfree(sta_list);
 	LEAVE();
 	return ret;
 }

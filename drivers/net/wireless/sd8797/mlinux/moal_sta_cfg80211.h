@@ -23,7 +23,7 @@
 #define _MOAL_STA_CFG80211_H_
 
 /** Convert RSSI signal strength from dBm to mBm (100*dBm) */
-#define RSSI_DBM_TO_MDM(x)     		((x) * 100)
+#define RSSI_DBM_TO_MDM(x)          ((x) * 100)
 
 mlan_status woal_register_sta_cfg80211(struct net_device *dev, t_u8 bss_type);
 

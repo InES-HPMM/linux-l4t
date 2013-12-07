@@ -27,7 +27,7 @@
 /** IRQ return type */
 typedef irqreturn_t IRQ_RET_TYPE;
 /** IRQ return */
-#define IRQ_RET		return IRQ_HANDLED
+#define IRQ_RET		(return IRQ_HANDLED)
 /** ISR notifier function */
 typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 					  struct pt_regs * reg);
@@ -60,7 +60,7 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Host Control Registers : Configuration */
 #define CONFIGURATION_REG		0x00
 /** Host Control Registers : Host without Command 53 finish host*/
-#define HOST_TO_CARD_EVENT       (0x1U << 3)
+#define HOST_TO_CARD_EVENT		(0x1U << 3)
 /** Host Control Registers : Host without Command 53 finish host */
 #define HOST_WO_CMD53_FINISH_HOST	(0x1U << 2)
 /** Host Control Registers : Host power up */
@@ -113,50 +113,50 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 #define DN_LD_CARD_RDY			(0x1U << 0)
 
 /** Card Control Registers : Host interrupt mask register */
-#define HOST_INTERRUPT_MASK_REG 	0x54
+#define HOST_INTERRUPT_MASK_REG		0x54
 /** Card Control Registers : Host power interrupt mask */
 #define HOST_POWER_INT_MASK		(0x1U << 3)
 /** Card Control Registers : Abort card interrupt mask */
 #define ABORT_CARD_INT_MASK		(0x1U << 2)
 /** Card Control Registers : Upload card interrupt mask */
-#define UP_LD_CARD_INT_MASK          	(0x1U << 1)
+#define UP_LD_CARD_INT_MASK		(0x1U << 1)
 /** Card Control Registers : Download card interrupt mask */
-#define DN_LD_CARD_INT_MASK          	(0x1U << 0)
+#define DN_LD_CARD_INT_MASK		(0x1U << 0)
 
 /** Card Control Registers : Card interrupt status register */
-#define CARD_INTERRUPT_STATUS_REG    	0x58
+#define CARD_INTERRUPT_STATUS_REG		0x58
 /** Card Control Registers : Power up interrupt */
-#define POWER_UP_INT			(0x1U << 4)
+#define POWER_UP_INT					(0x1U << 4)
 /** Card Control Registers : Power down interrupt */
-#define POWER_DOWN_INT               	(0x1U << 3)
+#define POWER_DOWN_INT					(0x1U << 3)
 
 /** Card Control Registers : Card interrupt RSR register */
-#define CARD_INTERRUPT_RSR_REG       	0x5c
+#define CARD_INTERRUPT_RSR_REG			0x5c
 /** Card Control Registers : Power up RSR */
-#define POWER_UP_RSR                 	(0x1U << 4)
+#define POWER_UP_RSR					(0x1U << 4)
 /** Card Control Registers : Power down RSR */
-#define POWER_DOWN_RSR               	(0x1U << 3)
+#define POWER_DOWN_RSR					(0x1U << 3)
 
 /* Card Control Registers */
 /** Card Control Registers : Read SQ base address A0 register */
-#define SQ_READ_BASE_ADDRESS_A0_REG  	0x60
+#define SQ_READ_BASE_ADDRESS_A0_REG		0x60
 /** Card Control Registers : Read SQ base address A1 register */
-#define SQ_READ_BASE_ADDRESS_A1_REG  	0x61
+#define SQ_READ_BASE_ADDRESS_A1_REG		0x61
 /** Card Control Registers : Read SQ base address A2 register */
-#define SQ_READ_BASE_ADDRESS_A2_REG  	0x62
+#define SQ_READ_BASE_ADDRESS_A2_REG		0x62
 /** Card Control Registers : Read SQ base address A3 register */
-#define SQ_READ_BASE_ADDRESS_A3_REG  	0x63
+#define SQ_READ_BASE_ADDRESS_A3_REG		0x63
 /** Card Control Registers : Write SQ base address A0 register */
-#define SQ_WRITE_BASE_ADDRESS_A0_REG  	0x64
+#define SQ_WRITE_BASE_ADDRESS_A0_REG	0x64
 /** Card Control Registers : Write SQ base address A1 register */
-#define SQ_WRITE_BASE_ADDRESS_A1_REG  	0x65
+#define SQ_WRITE_BASE_ADDRESS_A1_REG	0x65
 /** Card Control Registers : Write SQ base address A2 register */
-#define SQ_WRITE_BASE_ADDRESS_A2_REG  	0x66
+#define SQ_WRITE_BASE_ADDRESS_A2_REG	0x66
 /** Card Control Registers : Write SQ base address A3 register */
-#define SQ_WRITE_BASE_ADDRESS_A3_REG  	0x67
+#define SQ_WRITE_BASE_ADDRESS_A3_REG	0x67
 
 /** Card Control Registers : Card revision register */
-#define CARD_REVISION_REG            	0xBC
+#define CARD_REVISION_REG				0xBC
 
 /** Firmware status 0 register (SCRATCH0_0) */
 #define CARD_FW_STATUS0_REG		0xC0
@@ -224,6 +224,7 @@ struct sdio_mmc_card {
 int sd_read_cmd52_val(bt_private * priv);
 /** This function updates card reg based on the Cmd52 value in dev structure */
 int sd_write_cmd52_val(bt_private * priv, int func, int reg, int val);
+void bt_enable_hostwake_irq(int flag);
 
 #ifdef SDIO_SUSPEND_RESUME
 #ifdef MMC_PM_KEEP_POWER

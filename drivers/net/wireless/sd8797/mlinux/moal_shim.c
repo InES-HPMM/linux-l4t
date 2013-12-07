@@ -61,11 +61,11 @@ extern int hw_test;
  *  @brief Alloc a buffer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param size 	The size of the buffer to be allocated
- *  @param flag 	The type of the buffer to be allocated
- *  @param ppbuf	Pointer to a buffer location to store buffer pointer allocated
+ *  @param size     The size of the buffer to be allocated
+ *  @param flag     The type of the buffer to be allocated
+ *  @param ppbuf    Pointer to a buffer location to store buffer pointer allocated
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return    	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_malloc(IN t_void * pmoal_handle,
@@ -82,7 +82,7 @@ moal_malloc(IN t_void * pmoal_handle,
 	*ppbuf = kmalloc(size, mem_flag);
 	if (*ppbuf == NULL) {
 		PRINTM(MERROR, "%s: allocate memory (%d bytes) failed!\n",
-		       __FUNCTION__, (int)size);
+		       __func__, (int)size);
 		return MLAN_STATUS_FAILURE;
 	}
 	atomic_inc(&handle->malloc_count);
@@ -94,9 +94,9 @@ moal_malloc(IN t_void * pmoal_handle,
  *  @brief Free a buffer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pbuf		Pointer to the buffer to be freed
+ *  @param pbuf     Pointer to the buffer to be freed
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_mfree(IN t_void * pmoal_handle, IN t_u8 * pbuf)
@@ -114,10 +114,10 @@ moal_mfree(IN t_void * pmoal_handle, IN t_u8 * pbuf)
  *  @brief Alloc a vitual-address-continuous buffer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param size 	The size of the buffer to be allocated
- *  @param ppbuf	Pointer to a buffer location to store buffer pointer allocated
+ *  @param size     The size of the buffer to be allocated
+ *  @param ppbuf    Pointer to a buffer location to store buffer pointer allocated
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return    	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_vmalloc(IN t_void * pmoal_handle, IN t_u32 size, OUT t_u8 ** ppbuf)
@@ -126,7 +126,7 @@ moal_vmalloc(IN t_void * pmoal_handle, IN t_u32 size, OUT t_u8 ** ppbuf)
 
 	*ppbuf = vmalloc(size);
 	if (*ppbuf == NULL) {
-		PRINTM(MERROR, "%s: vmalloc (%d bytes) failed!", __FUNCTION__,
+		PRINTM(MERROR, "%s: vmalloc (%d bytes) failed!", __func__,
 		       (int)size);
 		return MLAN_STATUS_FAILURE;
 	}
@@ -139,9 +139,9 @@ moal_vmalloc(IN t_void * pmoal_handle, IN t_u32 size, OUT t_u8 ** ppbuf)
  *  @brief Free a buffer allocated by vmalloc
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pbuf		Pointer to the buffer to be freed
+ *  @param pbuf     Pointer to the buffer to be freed
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return    	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_vfree(IN t_void * pmoal_handle, IN t_u8 * pbuf)
@@ -159,11 +159,11 @@ moal_vfree(IN t_void * pmoal_handle, IN t_u8 * pbuf)
  *  @brief Fill memory with constant byte
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmem		Pointer to the memory area
- *  @param byte		A constant byte
- *  @param num		Number of bytes to fill
+ *  @param pmem     Pointer to the memory area
+ *  @param byte     A constant byte
+ *  @param num      Number of bytes to fill
  *
- *  @return    		Pointer to the memory area
+ *  @return    	    Pointer to the memory area
  */
 t_void *
 moal_memset(IN t_void * pmoal_handle,
@@ -181,11 +181,11 @@ moal_memset(IN t_void * pmoal_handle,
  *  @brief Copy memory from one area to another
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pdest	Pointer to the dest memory
- *  @param psrc		Pointer to the src memory
- *  @param num		Number of bytes to move
+ *  @param pdest    Pointer to the dest memory
+ *  @param psrc     Pointer to the src memory
+ *  @param num      Number of bytes to move
  *
- *  @return    		Pointer to the dest memory
+ *  @return         Pointer to the dest memory
  */
 t_void *
 moal_memcpy(IN t_void * pmoal_handle,
@@ -203,11 +203,11 @@ moal_memcpy(IN t_void * pmoal_handle,
  *  @brief Move memory from one area to another
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pdest	Pointer to the dest memory
- *  @param psrc		Pointer to the src memory
- *  @param num		Number of bytes to move
+ *  @param pdest    Pointer to the dest memory
+ *  @param psrc     Pointer to the src memory
+ *  @param num      Number of bytes to move
  *
- *  @return    		Pointer to the dest memory
+ *  @return    	    Pointer to the dest memory
  */
 t_void *
 moal_memmove(IN t_void * pmoal_handle,
@@ -225,11 +225,11 @@ moal_memmove(IN t_void * pmoal_handle,
  *  @brief Compare two memory areas
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmem1	Pointer to the first memory
- *  @param pmem2	Pointer to the second memory
- *  @param num		Number of bytes to compare
+ *  @param pmem1    Pointer to the first memory
+ *  @param pmem2    Pointer to the second memory
+ *  @param num      Number of bytes to compare
  *
- *  @return    		Compare result returns by memcmp
+ *  @return         Compare result returns by memcmp
  */
 t_s32
 moal_memcmp(IN t_void * pmoal_handle,
@@ -263,10 +263,10 @@ moal_udelay(IN t_void * pmoal_handle, IN t_u32 delay)
  *  @brief Retrieves the current system time
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param psec		Pointer to buf for the seconds of system time
- *  @param pusec 	Pointer to buf the micro seconds of system time
+ *  @param psec     Pointer to buf for the seconds of system time
+ *  @param pusec    Pointer to buf the micro seconds of system time
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_get_system_time(IN t_void * pmoal_handle,
@@ -285,11 +285,11 @@ moal_get_system_time(IN t_void * pmoal_handle,
  *  @brief Initializes the timer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pptimer	Pointer to the timer
- *  @param callback 	Pointer to callback function
- *  @param pcontext 	Pointer to context
+ *  @param pptimer      Pointer to the timer
+ *  @param callback     Pointer to callback function
+ *  @param pcontext     Pointer to context
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_init_timer(IN t_void * pmoal_handle,
@@ -311,9 +311,9 @@ moal_init_timer(IN t_void * pmoal_handle,
  *  @brief Free the timer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param ptimer	Pointer to the timer
+ *  @param ptimer   Pointer to the timer
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_free_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
@@ -336,11 +336,11 @@ moal_free_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
  *  @brief Start the timer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param ptimer	Pointer to the timer
+ *  @param ptimer       Pointer to the timer
  *  @param periodic     Periodic timer
- *  @param msec		Timer value in milliseconds
+ *  @param msec         Timer value in milliseconds
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_start_timer(IN t_void * pmoal_handle,
@@ -359,9 +359,9 @@ moal_start_timer(IN t_void * pmoal_handle,
  *  @brief Stop the timer
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param ptimer	Pointer to the timer
+ *  @param ptimer   Pointer to the timer
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_stop_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
@@ -377,9 +377,9 @@ moal_stop_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
  *  @brief Initializes the lock
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pplock	Pointer to the lock
+ *  @param pplock   Pointer to the lock
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_init_lock(IN t_void * pmoal_handle, OUT t_void ** pplock)
@@ -402,9 +402,9 @@ moal_init_lock(IN t_void * pmoal_handle, OUT t_void ** pplock)
  *  @brief Free the lock
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param plock	Lock
+ *  @param plock    Lock
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_free_lock(IN t_void * pmoal_handle, IN t_void * plock)
@@ -412,10 +412,9 @@ moal_free_lock(IN t_void * pmoal_handle, IN t_void * plock)
 	moal_handle *handle = (moal_handle *) pmoal_handle;
 	moal_lock *mlock = plock;
 
-	if (mlock) {
-		kfree(mlock);
+	kfree(mlock);
+	if (mlock)
 		atomic_dec(&handle->lock_count);
-	}
 
 	return MLAN_STATUS_SUCCESS;
 }
@@ -424,9 +423,9 @@ moal_free_lock(IN t_void * pmoal_handle, IN t_void * plock)
  *  @brief Request a spin lock
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param plock	Pointer to the lock
+ *  @param plock    Pointer to the lock
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_spin_lock(IN t_void * pmoal_handle, IN t_void * plock)
@@ -447,9 +446,9 @@ moal_spin_lock(IN t_void * pmoal_handle, IN t_void * plock)
  *  @brief Request a spin_unlock
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param plock	Pointer to the lock
+ *  @param plock    Pointer to the lock
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_spin_unlock(IN t_void * pmoal_handle, IN t_void * plock)
@@ -496,9 +495,9 @@ moal_get_fw_data(IN t_void * pmoal_handle,
  *  @brief This function is called when MLAN completes the initialization firmware.
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param status	The status code for mlan_init_fw request
+ *  @param status   The status code for mlan_init_fw request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_init_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
@@ -517,9 +516,9 @@ moal_init_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
  *  @brief This function is called when MLAN shutdown firmware is completed.
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param status	The status code for mlan_shutdown request
+ *  @param status   The status code for mlan_shutdown request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_shutdown_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
@@ -538,9 +537,9 @@ moal_shutdown_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
  *
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pioctl_req	pointer to structure mlan_ioctl_req
- *  @param status	The status code for mlan_ioctl request
+ *  @param status   The status code for mlan_ioctl request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_ioctl_complete(IN t_void * pmoal_handle,
@@ -599,10 +598,10 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
  *  @brief This function allocates mlan_buffer.
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param size		allocation size requested
- *  @param pmbuf	pointer to pointer to the allocated buffer
+ *  @param size     allocation size requested
+ *  @param pmbuf    pointer to pointer to the allocated buffer
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_alloc_mlan_buffer(IN t_void * pmoal_handle,
@@ -618,9 +617,9 @@ moal_alloc_mlan_buffer(IN t_void * pmoal_handle,
  *  @brief This function frees mlan_buffer.
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmbuf	pointer to buffer to be freed
+ *  @param pmbuf    pointer to buffer to be freed
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_free_mlan_buffer(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
@@ -635,10 +634,10 @@ moal_free_mlan_buffer(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
  *  @brief This function is called when MLAN complete send data packet.
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmbuf	Pointer to the mlan buffer structure
- *  @param status	The status code for mlan_send_packet request
+ *  @param pmbuf    Pointer to the mlan buffer structure
+ *  @param status   The status code for mlan_send_packet request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_send_packet_complete(IN t_void * pmoal_handle,
@@ -648,7 +647,6 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
 	moal_handle *handle = (moal_handle *) pmoal_handle;
 	struct sk_buff *skb = NULL;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
-	t_u32 tid = 0;
 	t_u32 index = 0;
 #endif
 
@@ -672,11 +670,7 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
 					priv->stats.tx_errors++;
 				}
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 29)
-				tid = pmbuf->priority;
-				index = mlan_select_wmm_queue(priv->phandle->
-							      pmlan_adapter,
-							      priv->bss_index,
-							      tid);
+				index = skb_get_queue_mapping(skb);
 				atomic_dec(&handle->tx_pending);
 				if (atomic_dec_return
 				    (&priv->wmm_tx_pending[index]) <
@@ -740,11 +734,11 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
  *         This function blocks the call until it finishes
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmbuf	Pointer to the mlan buffer structure
- *  @param port 	Port number for sent
- *  @param timeout 	Timeout value in milliseconds (if 0 the wait is forever)
+ *  @param pmbuf    Pointer to the mlan buffer structure
+ *  @param port     Port number for sent
+ *  @param timeout  Timeout value in milliseconds (if 0 the wait is forever)
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_write_data_sync(IN t_void * pmoal_handle,
@@ -759,11 +753,11 @@ moal_write_data_sync(IN t_void * pmoal_handle,
  *         This function blocks the call until it finish
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmbuf	Pointer to the mlan buffer structure
- *  @param port 	Port number for read
- *  @param timeout 	Timeout value in milliseconds (if 0 the wait is forever)
+ *  @param pmbuf    Pointer to the mlan buffer structure
+ *  @param port     Port number for read
+ *  @param timeout  Timeout value in milliseconds (if 0 the wait is forever)
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_read_data_sync(IN t_void * pmoal_handle,
@@ -780,7 +774,7 @@ moal_read_data_sync(IN t_void * pmoal_handle,
  *  @param reg          register offset
  *  @param data         value
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_write_reg(IN t_void * pmoal_handle, IN t_u32 reg, IN t_u32 data)
@@ -795,7 +789,7 @@ moal_write_reg(IN t_void * pmoal_handle, IN t_u32 reg, IN t_u32 data)
  *  @param reg          register offset
  *  @param data         value
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_read_reg(IN t_void * pmoal_handle, IN t_u32 reg, OUT t_u32 * data)
@@ -807,9 +801,9 @@ moal_read_reg(IN t_void * pmoal_handle, IN t_u32 reg, OUT t_u32 * data)
  *  @brief This function uploads the packet to the network stack
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmbuf	Pointer to the mlan buffer structure
+ *  @param pmbuf    Pointer to the mlan buffer structure
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 moal_recv_packet(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
@@ -830,12 +824,12 @@ moal_recv_packet(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
 				pmbuf->data_offset = pmbuf->data_len = 0;
 			} else {
 				PRINTM(MERROR, "%s without skb attach!!!\n",
-				       __FUNCTION__);
+				       __func__);
 				skb = dev_alloc_skb(pmbuf->data_len +
 						    MLAN_NET_IP_ALIGN);
 				if (!skb) {
 					PRINTM(MERROR, "%s fail to alloc skb\n",
-					       __FUNCTION__);
+					       __func__);
 					status = MLAN_STATUS_FAILURE;
 					priv->stats.rx_dropped++;
 					goto done;
@@ -868,9 +862,9 @@ done:
  *  @brief This function handles event receive
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pmevent	Pointer to the mlan event structure
+ *  @param pmevent  Pointer to the mlan event structure
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return         MLAN_STATUS_SUCCESS
  */
 mlan_status
 moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
@@ -895,15 +889,16 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
 	ENTER();
 
-	if (pmevent->event_id != MLAN_EVENT_ID_DRV_DEFER_RX_WORK)
+	if ((pmevent->event_id != MLAN_EVENT_ID_DRV_DEFER_RX_WORK) &&
+	    (pmevent->event_id != MLAN_EVENT_ID_DRV_DEFER_HANDLING))
 		PRINTM(MEVENT, "event id:0x%x\n", pmevent->event_id);
 	priv = woal_bss_index_to_priv(pmoal_handle, pmevent->bss_index);
 	if (priv == NULL) {
-		PRINTM(MERROR, "%s: priv is null\n", __FUNCTION__);
+		PRINTM(MERROR, "%s: priv is null\n", __func__);
 		goto done;
 	}
 	if (priv->netdev == NULL) {
-		PRINTM(MERROR, "%s: netdev is null\n", __FUNCTION__);
+		PRINTM(MERROR, "%s: netdev is null\n", __func__);
 		goto done;
 	}
 	switch (pmevent->event_id) {
@@ -1737,6 +1732,9 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 							sizeof(pmevent->
 							       event_id) -
 							MLAN_MAC_ADDR_LENGTH,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)
+							0,
+#endif
 							GFP_ATOMIC);
 #else
 				cfg80211_rx_mgmt(priv->netdev, freq,
@@ -1793,8 +1791,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 				/* Clear flag */
 				priv->phandle->delay_bss_start = MFALSE;
 
-				PRINTM(MMSG, "Now CAC measure period end. "
-				       "Execute delayed BSS Start command.\n");
+				PRINTM(MMSG,
+				       "Now CAC measure period end. Execute delayed BSS Start command.\n");
 
 				req = woal_alloc_mlan_ioctl_req(sizeof
 								(mlan_ds_bss));
@@ -1822,6 +1820,21 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 			}
 		}
 		break;
+	case MLAN_EVENT_ID_DRV_TDLS_TEARDOWN_REQ:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
+#ifdef STA_CFG80211
+		if (IS_STA_CFG80211(cfg80211_wext)) {
+			tdls_tear_down_event *tdls_event =
+				(tdls_tear_down_event *) pmevent->event_buf;
+			cfg80211_tdls_oper_request(priv->netdev,
+						   tdls_event->peer_mac_addr,
+						   NL80211_TDLS_TEARDOWN,
+						   tdls_event->reason_code,
+						   GFP_KERNEL);
+		}
+#endif
+#endif
+		break;
 	default:
 		break;
 	}
@@ -1834,10 +1847,10 @@ done:
  *  @brief This function prints the debug message in mlan
  *
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param level	debug level
- *  @param pformat	point to string format buf
+ *  @param level    debug level
+ *  @param pformat  point to string format buf
  *
- *  @return    		N/A
+ *  @return         N/A
  */
 t_void
 moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN char *pformat, IN ...)
@@ -1915,7 +1928,7 @@ moal_print_netintf(IN t_void * pmoal_handle, IN t_u32 bss_index, IN t_u32 level)
  *  @param pmoal_handle     A pointer to moal_private structure
  *  @param cond             Condition to check
  *
- *  @return    		        N/A
+ *  @return                 N/A
  */
 t_void
 moal_assert(IN t_void * pmoal_handle, IN t_u32 cond)
@@ -1929,9 +1942,9 @@ moal_assert(IN t_void * pmoal_handle, IN t_u32 cond)
  *  @brief This function indicate tcp ack tx
  *
  *  @param pmoal_handle     A pointer to moal_private structure
- *  @param pmbuf		    Pointer to the mlan buffer structure
+ *  @param pmbuf            Pointer to the mlan buffer structure
  *
- *  @return		    		N/A
+ *  @return                 N/A
  */
 t_void
 moal_tcp_ack_tx_ind(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)

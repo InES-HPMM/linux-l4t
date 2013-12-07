@@ -151,13 +151,13 @@ do {                \
 /** Log entry point for debugging */
 #define ENTER()     \
 do {                \
-	PRINTM(MENTRY, "Enter: %s\n", __FUNCTION__);   \
+	PRINTM(MENTRY, "Enter: %s\n", __func__);   \
 } while (0)
 
 /** Log exit point for debugging */
 #define LEAVE()     \
 do {                \
-	PRINTM(MENTRY, "Leave: %s\n", __FUNCTION__);   \
+	PRINTM(MENTRY, "Leave: %s\n", __func__);   \
 } while (0)
 
 /** Find minimum */
@@ -233,7 +233,7 @@ do {                \
 	     (t_u64)(((t_u64)(x) & 0x000000ff00000000ULL) >>  8) | \
 	     (t_u64)(((t_u64)(x) & 0x0000ff0000000000ULL) >> 24) | \
 	     (t_u64)(((t_u64)(x) & 0x00ff000000000000ULL) >> 40) | \
-	     (t_u64)(((t_u64)(x) & 0xff00000000000000ULL) >> 56) ))
+	     (t_u64)(((t_u64)(x) & 0xff00000000000000ULL) >> 56)))
 
 #ifdef BIG_ENDIAN_SUPPORT
 /** Convert ulong n/w to host */
@@ -309,7 +309,7 @@ extern t_void(*assert_callback) (IN t_void * pmoal_handle, IN t_u32 cond);
 #define MASSERT(cond)                   \
 do {                                    \
 	if (!(cond)) {                      \
-	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
+	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __func__, __LINE__); \
 	    if (assert_callback) {          \
 			assert_callback(MNULL, (t_ptr)(cond)); \
 	    } else {                        \
@@ -326,7 +326,7 @@ do {                                    \
 
 #ifdef STA_SUPPORT
 /** Maximum buffer size for ARP filter */
-#define ARP_FILTER_MAX_BUF_SIZE     	68
+#define ARP_FILTER_MAX_BUF_SIZE         68
 #endif /* STA_SUPPORT */
 
 /** 60 seconds */
@@ -398,7 +398,8 @@ do {                                    \
 /** Default beacon missing timeout */
 #define DEFAULT_BCN_MISS_TIMEOUT            10
 
-#define MAX_SCAN_BEACON_BUFFER          16384
+/** Maximum buffer space for beacons retrieved from scan responses */
+#define MAX_SCAN_BEACON_BUFFER          49152
 /** Default buffer space for beacons retrieved from scan responses */
 #define DEFAULT_SCAN_BEACON_BUFFER      4096
 
@@ -412,13 +413,19 @@ do {                                    \
  */
 #define SCAN_BEACON_ENTRY_PAD          6
 
-/** Scan time specified in the channel TLV for each channel for passive scans */
+/** Scan time specified in the channel TLV
+ *  for each channel for passive scans
+ */
 #define MRVDRV_PASSIVE_SCAN_CHAN_TIME       200
 
-/** Scan time specified in the channel TLV for each channel for active scans */
+/** Scan time specified in the channel TLV
+ *  for each channel for active scans
+ */
 #define MRVDRV_ACTIVE_SCAN_CHAN_TIME        200
 
-/** Scan time specified in the channel TLV for each channel for specific scans */
+/** Scan time specified in the channel TLV
+ *  for each channel for specific scans
+ */
 #define MRVDRV_SPECIFIC_SCAN_CHAN_TIME      110
 
 /**
@@ -610,6 +617,8 @@ struct _raListTbl {
 	t_u8 is_11n_enabled;
 	/** max amsdu size */
 	t_u16 max_amsdu;
+	/** tdls flag */
+	t_u8 is_tdls_link;
 	/** tx_pause flag */
 	t_u8 tx_pause;
 };
@@ -642,6 +651,8 @@ typedef struct _wmm_desc {
 	t_u32 packets_out[MAX_NUM_TID];
     /** Packets queued */
 	t_u32 pkts_queued[MAX_NUM_TID];
+    /** Packets paused */
+	t_u32 pkts_paused[MAX_NUM_TID];
     /** Spin lock to protect ra_list */
 	t_void *ra_list_spinlock;
 
@@ -1025,8 +1036,7 @@ typedef struct _mlan_private {
 	t_u8 wpa_ie_len;
     /** GTK set flag */
 	t_u8 wpa_is_gtk_set;
-    /** AES key material */
-	HostCmd_DS_802_11_KEY_MATERIAL aes_key;
+	mlan_ds_encrypt_key aes_key;
 #if defined(STA_SUPPORT)
 	/* Mgmt Frame Protection config */
 	mlan_ds_misc_pmfcfg pmfcfg;
@@ -1037,6 +1047,8 @@ typedef struct _mlan_private {
 	t_u8 wapi_ie_len;
     /** Pointer to the station table */
 	mlan_list_head sta_list;
+    /** tdls pending queue */
+	mlan_list_head tdls_pending_txq;
 
     /** MGMT IE */
 	custom_ie mgmt_ie[MAX_MGMT_IE_INDEX];
@@ -1050,6 +1062,8 @@ typedef struct _mlan_private {
 	t_u8 wmm_enabled;
     /** WMM qos info */
 	t_u8 wmm_qosinfo;
+    /** saved WMM qos info */
+	t_u8 saved_wmm_qosinfo;
     /** WMM related variable*/
 	wmm_desc_t wmm;
 
@@ -1227,6 +1241,22 @@ struct _cmd_ctrl_node {
 	mlan_buffer *pmbuf;
 };
 
+/** default tdls wmm qosinfo */
+#define DEFAULT_TDLS_WMM_QOS_INFO        15
+/** default tdls sleep period */
+#define DEFAULT_TDLS_SLEEP_PERIOD   30
+
+/** TDLS status */
+typedef enum _tdlsStatus_e {
+	TDLS_NOT_SETUP = 0,
+	TDLS_SETUP_INPROGRESS,
+	TDLS_SETUP_COMPLETE,
+	TDLS_SETUP_FAILURE,
+	TDLS_TEAR_DOWN,
+	TDLS_SWITCHING_CHANNEL,
+	TDLS_IN_BASE_CHANNEL,
+	TDLS_IN_OFF_CHANNEL,
+} tdlsStatus_e;
 /** station node */
 typedef struct _sta_node sta_node;
 
@@ -1250,6 +1280,38 @@ struct _sta_node {
 	t_u16 max_amsdu;
     /** 11ac flag */
 	t_u8 is_11ac_enabled;
+    /** tdls status */
+	tdlsStatus_e status;
+    /** SNR */
+	t_s8 snr;
+    /** Noise Floor */
+	t_s8 nf;
+    /** flag for host based tdls */
+	t_u8 external_tdls;
+    /** peer capability */
+	t_u16 capability;
+    /** peer support rates */
+	t_u8 support_rate[32];
+    /** rate size */
+	t_u8 rate_len;
+	/* Qos capability info */
+	t_u8 qos_info;
+    /** HT cap */
+	IEEEtypes_HTCap_t HTcap;
+    /** HT info in TDLS setup confirm*/
+	IEEEtypes_HTInfo_t HTInfo;
+    /** peer BSSCO_20_40*/
+	IEEEtypes_2040BSSCo_t BSSCO_20_40;
+	/* Extended capability */
+	IEEEtypes_ExtCap_t ExtCap;
+	/* RSN IE */
+	IEEEtypes_Generic_t rsn_ie;
+    /** AID info */
+	IEEEtypes_AID_t aid_info;
+    /** VHT Capabilities IE */
+	IEEEtypes_VHTCap_t vht_cap;
+    /** VHT Operations IE */
+	IEEEtypes_VHTOprat_t vht_oprat;
     /** wapi key on off flag */
 	t_u8 wapi_key_on;
     /** tx pause status */
@@ -1317,7 +1379,9 @@ typedef struct {
 	t_bool dfs_radar_found;
     /** Channel radar is being checked on.  BAND_A is assumed. */
 	t_u8 dfs_check_channel;
-    /** Timestamp when we got last report, to determine if data is old or not. */
+    /** Timestamp when we got last report,
+     * to determine if data is old or not.
+     */
 	t_u32 dfs_report_time_sec;
     /** List for holding dfs_timestamps for NOP/CAC events */
 	mlan_list_head dfs_ts_head;
@@ -1744,6 +1808,8 @@ typedef struct _mlan_adapter {
 	t_u16 passive_scan_time;
     /** Scan block flag */
 	t_u8 scan_block;
+    /** Extended scan or legacy scan */
+	t_u8 ext_scan;
 	t_u16 bcn_buf_size;
     /** Beacon buffer */
 	t_u8 *bcn_buf;
@@ -1770,6 +1836,8 @@ typedef struct _mlan_adapter {
 	sleep_params_t sleep_params;
     /** sleep_period_t (Enhanced Power Save) */
 	sleep_period_t sleep_period;
+    /** saved sleep_period_t (Enhanced Power Save) */
+	sleep_period_t saved_sleep_period;
 
     /** Power Save mode */
     /**
@@ -1893,15 +1961,18 @@ typedef struct _mlan_adapter {
 	t_u8 *pcal_data;
     /** Cal data length  */
 	t_u32 cal_data_len;
+    /** tdls status */
+	/* TDLS_NOT_SETUP|TDLS_SWITCHING_CHANNEL|TDLS_IN_BASE_CHANNEL|TDLS_IN_SWITCH_CHANNEL */
+	tdlsStatus_e tdls_status;
 
 } mlan_adapter, *pmlan_adapter;
 
 /** Ethernet packet type for EAPOL */
 #define MLAN_ETHER_PKT_TYPE_EAPOL	(0x888E)
 /** Ethernet packet type for WAPI */
-#define MLAN_ETHER_PKT_TYPE_WAPI 	(0x88B4)
+#define MLAN_ETHER_PKT_TYPE_WAPI	(0x88B4)
 /** Ethernet packet type offset */
-#define MLAN_ETHER_PKT_TYPE_OFFSET  (12)
+#define MLAN_ETHER_PKT_TYPE_OFFSET	(12)
 
 mlan_status wlan_init_lock_list(IN pmlan_adapter pmadapter);
 t_void wlan_free_lock_list(IN pmlan_adapter pmadapter);
@@ -1942,7 +2013,7 @@ mlan_status wlan_prepare_cmd(IN pmlan_private priv,
 			     IN t_void * pioctl_buf, IN t_void * pdata_buf);
 
 /** cmd timeout handler */
-t_void wlan_cmd_timeout_func(t_void * FunctionContext);
+t_void wlan_cmd_timeout_func(t_void * function_context);
 /** process host cmd */
 mlan_status wlan_misc_ioctl_host_cmd(IN pmlan_adapter pmadapter,
 				     IN pmlan_ioctl_req pioctl_req);
@@ -2240,6 +2311,18 @@ mlan_status wlan_ret_802_11_scan(IN pmlan_private pmpriv,
 				 IN HostCmd_DS_COMMAND * resp,
 				 IN t_void * pioctl_buf);
 
+/** Extended scan command handler */
+mlan_status wlan_cmd_802_11_scan_ext(IN pmlan_private pmpriv,
+				     IN HostCmd_DS_COMMAND * pcmd,
+				     IN t_void * pdata_buf);
+/** Handler for extended scan command response */
+mlan_status wlan_ret_802_11_scan_ext(IN pmlan_private pmpriv,
+				     IN HostCmd_DS_COMMAND * resp,
+				     IN t_void * pioctl_buf);
+/** Handler event for extended scan report */
+mlan_status wlan_handle_event_ext_scan_report(IN mlan_private * pmpriv,
+					      IN mlan_buffer * pmbuf);
+
 /** check network compatibility */
 t_s32 wlan_is_network_compatible(IN mlan_private * pmpriv,
 				 IN t_u32 index, IN t_u32 mode);
@@ -2469,12 +2552,86 @@ t_u8 wlan_is_wmm_ie_present(pmlan_adapter pmadapter, t_u8 * pbuf,
 			    t_u16 buf_len);
 
 /**
+ *  @brief This function checks whether a station TDLS link is enabled or not
+ *
+ *  @param priv     A pointer to mlan_private
+ *  @param mac      station mac address
+ *  @return 	    TDLS_NOT_SETUP/TDLS_SETUP_INPROGRESS/TDLS_SETUP_COMPLETE/TDLS_SETUP_FAILURE/TDLS_TEAR_DOWN
+ */
+static INLINE tdlsStatus_e
+wlan_get_tdls_link_status(mlan_private * priv, t_u8 * mac)
+{
+	sta_node *sta_ptr = MNULL;
+	sta_ptr = wlan_get_station_entry(priv, mac);
+	if (sta_ptr) {
+		return sta_ptr->status;
+	}
+	return TDLS_NOT_SETUP;
+}
+
+/**
+ *  @brief This function checks if TDLS link is in channel switching
+ *
+ *  @param status     tdls link status
+ *  @return 	    MTRUE/MFALSE
+ */
+static INLINE int
+wlan_is_tdls_link_chan_switching(tdlsStatus_e status)
+{
+	return (status == TDLS_SWITCHING_CHANNEL) ? MTRUE : MFALSE;
+}
+
+/**
+ *  @brief This function checks if send command to firmware is allowed
+ *
+ *  @param status     tdls link status
+ *  @return 	    MTRUE/MFALSE
+ */
+static INLINE int
+wlan_is_send_cmd_allowed(tdlsStatus_e status)
+{
+	int ret = MTRUE;
+	switch (status) {
+	case TDLS_SWITCHING_CHANNEL:
+	case TDLS_IN_OFF_CHANNEL:
+		ret = MFALSE;
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+/**
+ *  @brief This function checks if TDLS link is setup
+ *
+ *  @param status     tdls link status
+ *  @return 	    MTRUE/MFALSE
+ */
+static INLINE int
+wlan_is_tdls_link_setup(tdlsStatus_e status)
+{
+	int ret = MFALSE;
+	switch (status) {
+	case TDLS_SWITCHING_CHANNEL:
+	case TDLS_IN_OFF_CHANNEL:
+	case TDLS_IN_BASE_CHANNEL:
+	case TDLS_SETUP_COMPLETE:
+		ret = MTRUE;
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+/**
  *  @brief This function checks tx_pause flag for peer
  *
  *  @param priv     A pointer to mlan_private
  *  @param ra       Address of the receiver STA
  *
- *  @return 	    MTRUE or MFALSE
+ *  @return         MTRUE or MFALSE
  */
 static int INLINE
 wlan_is_tx_pause(mlan_private * priv, t_u8 * ra)
@@ -2554,6 +2711,20 @@ mlan_status wlan_cmd_reg_access(IN HostCmd_DS_COMMAND * cmd,
 mlan_status wlan_cmd_mem_access(IN HostCmd_DS_COMMAND * cmd,
 				IN t_u16 cmd_action, IN t_void * pdata_buf);
 
+int wlan_get_tdls_list(mlan_private * priv, tdls_peer_info * buf);
+t_void wlan_hold_tdls_packets(pmlan_private priv, t_u8 * mac);
+t_void wlan_restore_tdls_packets(pmlan_private priv, t_u8 * mac,
+				 tdlsStatus_e status);
+t_void wlan_update_non_tdls_ralist(mlan_private * priv, t_u8 * mac,
+				   t_u8 tx_pause);
+mlan_status wlan_misc_ioctl_tdls_config(IN pmlan_adapter pmadapter,
+					IN pmlan_ioctl_req pioctl_req);
+mlan_status wlan_misc_ioctl_tdls_oper(IN pmlan_adapter pmadapter,
+				      IN pmlan_ioctl_req pioctl_req);
+
+mlan_status
+wlan_misc_ioctl_tdls_get_ies(IN pmlan_adapter pmadapter,
+			     IN pmlan_ioctl_req pioctl_req);
 mlan_status wlan_get_info_ver_ext(IN pmlan_adapter pmadapter,
 				  IN pmlan_ioctl_req pioctl_req);
 
@@ -2608,9 +2779,9 @@ mlan_status wlan_ret_multi_chan_policy(IN pmlan_private pmpriv,
 /**
  *  @brief RA based queueing
  *
- *  @param priv                 A pointer to mlan_private structure
+ *  @param priv             A pointer to mlan_private structure
  *
- *  @return 	   	        MTRUE or MFALSE
+ *  @return                 MTRUE or MFALSE
  */
 static INLINE t_u8
 queuing_ra_based(pmlan_private priv)
@@ -2629,12 +2800,12 @@ queuing_ra_based(pmlan_private priv)
 /**
  *  @brief Copy Rates
  *
- *  @param dest                 A pointer to Dest Buf
+ *  @param dest             A pointer to Dest Buf
  *  @param pos		        The position for copy
  *  @param src		        A pointer to Src Buf
- *  @param len                  The len of Src Buf
+ *  @param len              The len of Src Buf
  *
- *  @return 	   	        Number of Rates copied
+ *  @return                 Number of Rates copied
  */
 static INLINE t_u32
 wlan_copy_rates(t_u8 * dest, t_u32 pos, t_u8 * src, int len)
@@ -2655,7 +2826,7 @@ wlan_copy_rates(t_u8 * dest, t_u32 pos, t_u8 * src, int len)
  *
  *  @param str		        A pointer to string
  *
- *  @return 	   	        Length of string
+ *  @return                 Length of string
  */
 static INLINE t_u32
 wlan_strlen(const char *str)
@@ -2712,10 +2883,11 @@ t_void wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u);
 #define wlan_udelay(p, n)  wlan_delay_func(p, n, USEC)
 
 /** Function to check if any command is pending in the queue */
-#define IS_COMMAND_PENDING(pmadapter) ((cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle, \
-										&pmadapter->cmd_pending_q,\
-										pmadapter->callbacks.moal_spin_lock,\
-										pmadapter->callbacks.moal_spin_unlock))
+#define IS_COMMAND_PENDING(pmadapter) \
+			((cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle, \
+			&pmadapter->cmd_pending_q,\
+			pmadapter->callbacks.moal_spin_lock,\
+			pmadapter->callbacks.moal_spin_unlock))
 
 /** Get BSS number from priv */
 #define GET_BSS_NUM(priv)   ((priv)->bss_num)
@@ -2874,9 +3046,8 @@ wlan_get_privs_by_cond(mlan_adapter * pmadapter,
 	for (i = 0; i < pmadapter->priv_num; i++) {
 		pmpriv = pmadapter->priv[i];
 		if (pmpriv) {
-			if (check_cond(pmpriv)) {
+			if (check_cond(pmpriv))
 				ppriv_list[count++] = pmpriv;
-			}
 		}
 	}
 
@@ -2921,13 +3092,11 @@ wlan_get_privs_by_two_cond(mlan_adapter * pmadapter,
 		pmpriv = pmadapter->priv[i];
 		if (pmpriv) {
 			if (and_conditions) {
-				if (check_cond(pmpriv) && check_cond_2(pmpriv)) {
+				if (check_cond(pmpriv) && check_cond_2(pmpriv))
 					ppriv_list[count++] = pmpriv;
-				}
 			} else {
-				if (check_cond(pmpriv) || check_cond_2(pmpriv)) {
+				if (check_cond(pmpriv) || check_cond_2(pmpriv))
 					ppriv_list[count++] = pmpriv;
-				}
 			}
 		}
 	}

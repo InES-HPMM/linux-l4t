@@ -386,6 +386,7 @@ mlan_status woal_set_get_sys_config(moal_private * priv,
 				    t_u16 action, t_u8 wait_option,
 				    mlan_uap_bss_param * sys_cfg);
 int woal_uap_set_ap_cfg(moal_private * priv, t_u8 * data, int len);
+int woal_uap_set_11ac_status(moal_private * priv, t_u8 action);
 mlan_status woal_uap_set_11n_status(mlan_uap_bss_param * sys_cfg, t_u8 action);
 #ifdef UAP_WEXT
 void woal_ioctl_get_uap_info_resp(moal_private * priv, mlan_ds_get_info * info);

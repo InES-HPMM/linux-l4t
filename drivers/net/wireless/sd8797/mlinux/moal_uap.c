@@ -87,10 +87,10 @@ woal_uap_addba_param(struct net_device *dev, struct ifreq *req)
 	cfg_11n->sub_command = MLAN_OID_11N_CFG_ADDBA_PARAM;
 	ioctl_req->req_id = MLAN_IOCTL_11N_CFG;
 
-	if (!param.action) {
+	if (!param.action)
 		/* Get addba param from MLAN */
 		ioctl_req->action = MLAN_ACT_GET;
-	} else {
+	else {
 		/* Set addba param in MLAN */
 		ioctl_req->action = MLAN_ACT_SET;
 		cfg_11n->param.addba_param.timeout = param.timeout;
@@ -117,8 +117,7 @@ woal_uap_addba_param(struct net_device *dev, struct ifreq *req)
 		goto done;
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -192,8 +191,7 @@ woal_uap_aggr_priotbl(struct net_device *dev, struct ifreq *req)
 		goto done;
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -247,18 +245,16 @@ woal_uap_addba_reject(struct net_device *dev, struct ifreq *req)
 	} else {
 		/* Set addba_reject tbl in MLAN */
 		ioctl_req->action = MLAN_ACT_SET;
-		for (i = 0; i < MAX_NUM_TID; i++) {
+		for (i = 0; i < MAX_NUM_TID; i++)
 			cfg_11n->param.addba_reject[i] = param.addba_reject[i];
-		}
 	}
 	if (MLAN_STATUS_SUCCESS !=
 	    woal_request_ioctl(priv, ioctl_req, MOAL_IOCTL_WAIT)) {
 		ret = -EFAULT;
 		goto done;
 	}
-	for (i = 0; i < MAX_NUM_TID; i++) {
+	for (i = 0; i < MAX_NUM_TID; i++)
 		param.addba_reject[i] = cfg_11n->param.addba_reject[i];
-	}
 	/* Copy to user */
 	if (copy_to_user(req->ifr_data, &param, sizeof(param))) {
 		PRINTM(MERROR, "Copy to user failed!\n");
@@ -266,8 +262,7 @@ woal_uap_addba_reject(struct net_device *dev, struct ifreq *req)
 		goto done;
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -392,8 +387,7 @@ woal_uap_deep_sleep(struct net_device *dev, struct ifreq *req)
 		goto done;
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -465,8 +459,7 @@ woal_uap_txdatapause(struct net_device *dev, struct ifreq *req)
 		goto done;
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -616,8 +609,8 @@ woal_uap_snmp_mib(struct net_device *dev, struct ifreq *req)
 		snmp->sub_command = MLAN_OID_SNMP_MIB_DOT11H;
 		break;
 	default:
-		PRINTM(MERROR, "%s: Unsupported SNMP_MIB OID (%d).\n",
-		       __FUNCTION__, param.oid);
+		PRINTM(MERROR, "%s: Unsupported SNMP_MIB OID (%d).\n", __func__,
+		       param.oid);
 		goto done;
 	}
 
@@ -652,8 +645,7 @@ woal_uap_snmp_mib(struct net_device *dev, struct ifreq *req)
 	}
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -762,8 +754,7 @@ woal_uap_domain_info(struct net_device *dev, struct ifreq *req)
 	}
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -854,8 +845,7 @@ woal_uap_dfs_testing(struct net_device *dev, struct ifreq *req)
 	}
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -893,13 +883,12 @@ woal_uap_tx_bf_cfg(struct net_device *dev, struct ifreq *req)
 		ret = -EFAULT;
 		goto done;
 	}
-	if (!param.action) {
+	if (!param.action)
 		/* Get BF configurations */
 		action = MLAN_ACT_GET;
-	} else {
+	else
 		/* Set BF configurations */
 		action = MLAN_ACT_SET;
-	}
 	if (copy_from_user(&bf_cfg, req->ifr_data + sizeof(tx_bf_cfg_para_hdr),
 			   sizeof(bf_cfg))) {
 		PRINTM(MERROR, "Copy from user failed\n");
@@ -1092,11 +1081,10 @@ woal_uap_mgmt_frame_control(struct net_device *dev, struct ifreq *req)
 		ret = -EFAULT;
 		goto done;
 	}
-	if (param.action) {
+	if (param.action)
 		action = MLAN_ACT_SET;
-	} else {
+	else
 		action = MLAN_ACT_GET;
-	}
 	if (action == MLAN_ACT_SET) {
 		/* Initialize the invalid values so that the correct values
 		   below are downloaded to firmware */
@@ -1208,8 +1196,7 @@ woal_uap_tx_rate_cfg(struct net_device *dev, struct ifreq *req)
 		}
 	}
 done:
-	if (mreq)
-		kfree(mreq);
+	kfree(mreq);
 	LEAVE();
 	return ret;
 }
@@ -1278,8 +1265,7 @@ woal_uap_antenna_cfg(struct net_device *dev, struct ifreq *req)
 		}
 	}
 done:
-	if (mreq)
-		kfree(mreq);
+	kfree(mreq);
 	LEAVE();
 	return ret;
 }
@@ -1427,8 +1413,7 @@ woal_uap_sta_deauth_ioctl(struct net_device *dev, struct ifreq *req)
 	}
 
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1482,8 +1467,7 @@ woal_uap_radio_ctl(struct net_device *dev, struct ifreq *req)
 		    woal_request_ioctl(priv, mreq, MOAL_IOCTL_WAIT)) {
 			ret = -EFAULT;
 		}
-		if (mreq)
-			kfree(mreq);
+		kfree(mreq);
 	} else {
 		/* Get radio status */
 		memset(&bss_info, 0, sizeof(bss_info));
@@ -1627,8 +1611,7 @@ woal_uap_power_mode_ioctl(struct net_device *dev, struct ifreq *req)
 		}
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1679,11 +1662,10 @@ woal_uap_bss_cfg_ioctl(struct net_device *dev, struct ifreq *req)
 	bss = (mlan_ds_bss *) ioctl_req->pbuf;
 	bss->sub_command = MLAN_OID_UAP_BSS_CONFIG;
 	ioctl_req->req_id = MLAN_IOCTL_BSS;
-	if (action == 1) {
+	if (action == 1)
 		ioctl_req->action = MLAN_ACT_SET;
-	} else {
+	else
 		ioctl_req->action = MLAN_ACT_GET;
-	}
 
 	if (ioctl_req->action == MLAN_ACT_SET) {
 		/* Get the BSS config from user */
@@ -1715,8 +1697,7 @@ woal_uap_bss_cfg_ioctl(struct net_device *dev, struct ifreq *req)
 		}
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1776,8 +1757,7 @@ woal_uap_get_sta_list_ioctl(struct net_device *dev, struct ifreq *req)
 		}
 	}
 done:
-	if (ioctl_req)
-		kfree(ioctl_req);
+	kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1831,8 +1811,7 @@ woal_uap_set_wapi_key_ioctl(moal_private * priv, wapi_msg * msg)
 	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT))
 		ret = -EFAULT;
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1895,8 +1874,7 @@ woal_enable_wapi(moal_private * priv, t_u8 enable)
 	if (enable)
 		woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_START);
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return status;
 }
@@ -1966,8 +1944,7 @@ woal_uap_set_wapi_flag_ioctl(moal_private * priv, wapi_msg * msg)
 	}
 	woal_enable_wapi(priv, MTRUE);
 done:
-	if (req)
-		kfree(req);
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2067,9 +2044,8 @@ woal_uap_get_bss_param(moal_private * priv, mlan_uap_bss_param * sys_cfg,
 	memcpy(sys_cfg, &info->param.bss_config, sizeof(mlan_uap_bss_param));
 
 done:
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
-
 	LEAVE();
 	return status;
 }
@@ -2189,8 +2165,9 @@ woal_uap_ap_cfg_parse_data(mlan_uap_bss_param * ap_cfg, char *buf)
 				       (int)ap_cfg->ssid.ssid_len);
 				set_ssid = 1;
 			} else {
-				PRINTM(MERROR, "AP_CFG: Invalid option %s, "
-				       "expect SSID\n", opt);
+				PRINTM(MERROR,
+				       "AP_CFG: Invalid option %s, expect SSID\n",
+				       opt);
 				ret = -EINVAL;
 				goto done;
 			}
@@ -2389,8 +2366,8 @@ woal_uap_set_ap_cfg(moal_private * priv, t_u8 * data, int len)
 	/* If the security mode is configured as WEP or WPA-PSK, it will
 	   disable 11n automatically, and if configured as open(off) or
 	   wpa2-psk, it will automatically enable 11n */
-	if ((sys_config.protocol == PROTOCOL_STATIC_WEP) ||
-	    (sys_config.protocol == PROTOCOL_WPA)) {
+	if ((sys_config.protocol == PROTOCOL_STATIC_WEP)
+	    || (sys_config.protocol == PROTOCOL_WPA)) {
 		if (MLAN_STATUS_SUCCESS !=
 		    woal_uap_set_11n_status(&sys_config, MLAN_ACT_DISABLE)) {
 			ret = -EFAULT;
@@ -2491,9 +2468,7 @@ woal_uap_bss_ctrl(moal_private * priv, t_u8 wait_option, int data)
 		woal_flush_tcp_sess_queue(priv);
 	}
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2515,11 +2490,11 @@ woal_uap_set_multicast_list(struct net_device *dev)
 /**
  *  @brief ioctl function - entry point
  *
- *  @param dev		A pointer to net_device structure
- *  @param req	   	A pointer to ifreq structure
- *  @param cmd 		Command
+ *  @param dev      A pointer to net_device structure
+ *  @param req      A pointer to ifreq structure
+ *  @param cmd      Command
  *
- *  @return          0 --success, otherwise fail
+ *  @return         0 --success, otherwise fail
  */
 int
 woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
@@ -2582,11 +2557,11 @@ woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 /**
  *  @brief Get version
  *
- *  @param priv 		A pointer to moal_private structure
- *  @param version		A pointer to version buffer
- *  @param max_len		max length of version buffer
+ *  @param priv         A pointer to moal_private structure
+ *  @param version      A pointer to version buffer
+ *  @param max_len      max length of version buffer
  *
- *  @return 	   		N/A
+ *  @return             N/A
  */
 void
 woal_uap_get_version(moal_private * priv, char *version, int max_len)
@@ -2616,9 +2591,8 @@ woal_uap_get_version(moal_private * priv, char *version, int max_len)
 			 info->param.ver_ext.version_str);
 	}
 
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
-
 	LEAVE();
 	return;
 }
@@ -2627,7 +2601,7 @@ woal_uap_get_version(moal_private * priv, char *version, int max_len)
 /**
  *  @brief Get uap statistics
  *
- *  @param priv 		        A pointer to moal_private structure
+ *  @param priv                 A pointer to moal_private structure
  *  @param wait_option          Wait option
  *  @param ustats               A pointer to mlan_ds_uap_stats structure
  *
@@ -2668,9 +2642,8 @@ woal_uap_get_stats(moal_private * priv, t_u8 wait_option,
 #endif
 	}
 
-	if (req && (status != MLAN_STATUS_PENDING))
+	if (status != MLAN_STATUS_PENDING)
 		kfree(req);
-
 	LEAVE();
 	return status;
 }
@@ -2678,7 +2651,7 @@ woal_uap_get_stats(moal_private * priv, t_u8 wait_option,
 /**
  *  @brief Set/Get system configuration parameters
  *
- *  @param priv 		    A pointer to moal_private structure
+ *  @param priv             A pointer to moal_private structure
  *  @param action           MLAN_ACT_SET or MLAN_ACT_GET
  *  @param wait_option      Wait option
  *  @param sys_cfg          A pointer to mlan_uap_bss_param structure
@@ -2722,9 +2695,7 @@ woal_set_get_sys_config(moal_private * priv, t_u16 action, t_u8 wait_option,
 	}
 
 done:
-	if (req)
-		kfree(req);
-
+	kfree(req);
 	LEAVE();
 	return ret;
 }

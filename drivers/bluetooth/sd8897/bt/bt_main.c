@@ -37,6 +37,8 @@
 #include <linux/platform_device.h>
 #include <linux/wlan_plat.h>
 
+#include <linux/interrupt.h>
+
 #include "bt_drv.h"
 #include "mbt_char.h"
 #include "bt_sdio.h"
@@ -90,6 +92,8 @@ static int psmode = 1;
 static char *init_cfg;
 /** Calibration config file (MAC address, init powe etc.) */
 static char *cal_cfg;
+/** Calibration config file EXT */
+static char *cal_cfg_ext;
 /** Init MAC address */
 static char *bt_mac;
 
@@ -115,7 +119,13 @@ static int minicard_pwrup = 1;
 /** Pointer to struct with control hooks */
 static struct wifi_platform_data *bt_control_data;
 
+#define IORESOURCE_NAME "mrvl_bt_irq"
+#define DRIVER_NAME     "bt hostwake"
+
 void mdev_poweroff(struct m_dev *m_dev);
+static struct resource *bt_irqres;
+static int irq_registered;
+static void bt_register_hostwake_irq(void *handle);
 
 /**
  *  @brief Alloc bt device
@@ -258,6 +268,7 @@ check_evtpkt(bt_private * priv, struct sk_buff *skb)
 		case BT_CMD_CONFIG_MAC_ADDR:
 		case BT_CMD_CSU_WRITE_REG:
 		case BT_CMD_LOAD_CONFIG_DATA:
+		case BT_CMD_LOAD_CONFIG_DATA_EXT:
 		case BT_CMD_AUTO_SLEEP_MODE:
 		case BT_CMD_HOST_SLEEP_CONFIG:
 		case BT_CMD_SDIO_PULL_CFG_REQ:
@@ -330,19 +341,19 @@ bt_process_event(bt_private * priv, struct sk_buff *skb)
 {
 	u8 ret = BT_STATUS_SUCCESS;
 	struct m_dev *m_dev = &(priv->bt_dev.m_dev[BT_SEQ]);
-	BT_EVENT *pEvent;
+	BT_EVENT *pevent;
 
 	ENTER();
-	pEvent = (BT_EVENT *) skb->data;
-	if (pEvent->EC != 0xff) {
-		PRINTM(CMD, "BT: Not Marvell Event=0x%x\n", pEvent->EC);
+	pevent = (BT_EVENT *) skb->data;
+	if (pevent->EC != 0xff) {
+		PRINTM(CMD, "BT: Not Marvell Event=0x%x\n", pevent->EC);
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	switch (pEvent->data[0]) {
+	switch (pevent->data[0]) {
 	case BT_CMD_AUTO_SLEEP_MODE:
-		if (pEvent->data[2] == BT_STATUS_SUCCESS) {
-			if (pEvent->data[1] == BT_PS_ENABLE)
+		if (pevent->data[2] == BT_STATUS_SUCCESS) {
+			if (pevent->data[1] == BT_PS_ENABLE)
 				priv->adapter->psmode = 1;
 			else
 				priv->adapter->psmode = 0;
@@ -355,16 +366,16 @@ bt_process_event(bt_private * priv, struct sk_buff *skb)
 		}
 		break;
 	case BT_CMD_HOST_SLEEP_CONFIG:
-		if (pEvent->data[3] == BT_STATUS_SUCCESS) {
+		if (pevent->data[3] == BT_STATUS_SUCCESS) {
 			PRINTM(CMD, "BT: %s: gpio=0x%x, gap=0x%x\n",
-			       m_dev->name, pEvent->data[1], pEvent->data[2]);
+			       m_dev->name, pevent->data[1], pevent->data[2]);
 		} else {
 			PRINTM(CMD, "BT: %s: HSCFG Command Fail\n",
 			       m_dev->name);
 		}
 		break;
 	case BT_CMD_HOST_SLEEP_ENABLE:
-		if (pEvent->data[1] == BT_STATUS_SUCCESS) {
+		if (pevent->data[1] == BT_STATUS_SUCCESS) {
 			priv->adapter->hs_state = HS_ACTIVATED;
 			if (priv->adapter->suspend_fail == FALSE) {
 #ifdef SDIO_SUSPEND_RESUME
@@ -388,45 +399,44 @@ bt_process_event(bt_private * priv, struct sk_buff *skb)
 		break;
 	case BT_CMD_MODULE_CFG_REQ:
 		if ((priv->bt_dev.sendcmdflag == TRUE) &&
-		    ((pEvent->data[1] == MODULE_BRINGUP_REQ)
-		     || (pEvent->data[1] == MODULE_SHUTDOWN_REQ))) {
-			if (pEvent->data[1] == MODULE_BRINGUP_REQ) {
+		    ((pevent->data[1] == MODULE_BRINGUP_REQ)
+		     || (pevent->data[1] == MODULE_SHUTDOWN_REQ))) {
+			if (pevent->data[1] == MODULE_BRINGUP_REQ) {
 				PRINTM(CMD, "BT: EVENT %s:%s\n", m_dev->name,
-				       (pEvent->data[2] && (pEvent->data[2] !=
+				       (pevent->data[2] && (pevent->data[2] !=
 							    MODULE_CFG_RESP_ALREADY_UP))
 				       ? "Bring up Fail" : "Bring up success");
-				priv->bt_dev.devType = pEvent->data[3];
+				priv->bt_dev.devType = pevent->data[3];
 				PRINTM(CMD, "devType:%s\n",
-				       (pEvent->data[3] ==
+				       (pevent->data[3] ==
 					DEV_TYPE_AMP) ? "AMP controller" :
 				       "BR/EDR controller");
-				priv->bt_dev.devFeature = pEvent->data[4];
+				priv->bt_dev.devFeature = pevent->data[4];
 				PRINTM(CMD,
 				       "devFeature:  %s,    %s,    %s,    %s,    %s\n",
-				       ((pEvent->
+				       ((pevent->
 					 data[4] & DEV_FEATURE_BT) ?
 					"BT Feature" : "No BT Feature"),
-				       ((pEvent->
+				       ((pevent->
 					 data[4] & DEV_FEATURE_BTAMP) ?
 					"BTAMP Feature" : "No BTAMP Feature"),
-				       ((pEvent->
+				       ((pevent->
 					 data[4] & DEV_FEATURE_BLE) ?
 					"BLE Feature" : "No BLE Feature"),
-				       ((pEvent->
+				       ((pevent->
 					 data[4] & DEV_FEATURE_FM) ?
 					"FM Feature" : "No FM Feature"),
-				       ((pEvent->
+				       ((pevent->
 					 data[4] & DEV_FEATURE_NFC) ?
 					"NFC Feature" : "No NFC Feature"));
 			}
-			if (pEvent->data[1] == MODULE_SHUTDOWN_REQ) {
+			if (pevent->data[1] == MODULE_SHUTDOWN_REQ) {
 				PRINTM(CMD, "BT: EVENT %s:%s\n", m_dev->name,
-				       (pEvent->
-					data[2]) ? "Shut down Fail" :
-				       "Shut down success");
+				       (pevent->data[2]) ? "Shut down Fail"
+				       : "Shut down success");
 
 			}
-			if (pEvent->data[2]) {
+			if (pevent->data[2]) {
 				priv->bt_dev.sendcmdflag = FALSE;
 				priv->adapter->cmd_complete = TRUE;
 				wake_up_interruptible(&priv->adapter->
@@ -438,14 +448,14 @@ bt_process_event(bt_private * priv, struct sk_buff *skb)
 		}
 		break;
 	case BT_EVENT_POWER_STATE:
-		if (pEvent->data[1] == BT_PS_SLEEP)
+		if (pevent->data[1] == BT_PS_SLEEP)
 			priv->adapter->ps_state = PS_SLEEP;
 		PRINTM(CMD, "BT: EVENT %s:%s\n", m_dev->name,
 		       (priv->adapter->ps_state) ? "PS_SLEEP" : "PS_AWAKE");
 
 		break;
 	case BT_CMD_SDIO_PULL_CFG_REQ:
-		if (pEvent->data[pEvent->length - 1] == BT_STATUS_SUCCESS)
+		if (pevent->data[pevent->length - 1] == BT_STATUS_SUCCESS)
 			PRINTM(CMD, "BT: %s: SDIO pull configuration success\n",
 			       m_dev->name);
 
@@ -456,7 +466,7 @@ bt_process_event(bt_private * priv, struct sk_buff *skb)
 		}
 		break;
 	default:
-		PRINTM(CMD, "BT: Unknown Event=%d %s\n", pEvent->data[0],
+		PRINTM(CMD, "BT: Unknown Event=%d %s\n", pevent->data[0],
 		       m_dev->name);
 		ret = BT_STATUS_FAILURE;
 		break;
@@ -509,14 +519,14 @@ bt_cmd_timeout_func(bt_adapter * adapter, u16 cmd)
  *
  *  @param priv    A pointer to bt_private structure
  *
- *  @return 	   BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ *  @return	       BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 int
 bt_send_reset_command(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_HCI_CMD *pCmd;
+	BT_HCI_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_HCI_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -524,10 +534,10 @@ bt_send_reset_command(bt_private * priv)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_HCI_CMD *) skb->data;
-	pCmd->ocf_ogf = (RESET_OGF << 10) | BT_CMD_RESET;
-	pCmd->length = 0x00;
-	pCmd->cmd_type = 0x00;
+	pcmd = (BT_HCI_CMD *) skb->data;
+	pcmd->ocf_ogf = (RESET_OGF << 10) | BT_CMD_RESET;
+	pcmd->length = 0x00;
+	pcmd->cmd_type = 0x00;
 	bt_cb(skb)->pkt_type = HCI_COMMAND_PKT;
 	skb_put(skb, 3);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
@@ -535,7 +545,7 @@ bt_send_reset_command(bt_private * priv)
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_RESET;
 	priv->adapter->cmd_complete = FALSE;
-	PRINTM(CMD, "Queue Reset Command(0x%x)\n", pCmd->ocf_ogf);
+	PRINTM(CMD, "Queue Reset Command(0x%x)\n", pcmd->ocf_ogf);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	if (!os_wait_interruptible_timeout
 	    (priv->adapter->cmd_wait_q, priv->adapter->cmd_complete,
@@ -570,7 +580,7 @@ bt_send_module_cfg_cmd(bt_private * priv, int subcmd)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -578,18 +588,18 @@ bt_send_module_cfg_cmd(bt_private * priv, int subcmd)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_MODULE_CFG_REQ;
-	pCmd->length = 1;
-	pCmd->data[0] = subcmd;
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_MODULE_CFG_REQ;
+	pcmd->length = 1;
+	pcmd->data[0] = subcmd;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_MODULE_CFG_REQ;
 	priv->adapter->cmd_complete = FALSE;
-	PRINTM(CMD, "Queue module cfg Command(0x%x)\n", pCmd->ocf_ogf);
+	PRINTM(CMD, "Queue module cfg Command(0x%x)\n", pcmd->ocf_ogf);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	/*
 	   On some Android platforms certain delay is needed for HCI daemon to
@@ -624,7 +634,7 @@ bt_enable_ps(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -632,25 +642,25 @@ bt_enable_ps(bt_private * priv)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_AUTO_SLEEP_MODE;
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_AUTO_SLEEP_MODE;
 	if (priv->bt_dev.psmode)
-		pCmd->data[0] = BT_PS_ENABLE;
+		pcmd->data[0] = BT_PS_ENABLE;
 	else
-		pCmd->data[0] = BT_PS_DISABLE;
+		pcmd->data[0] = BT_PS_DISABLE;
 	if (priv->bt_dev.idle_timeout) {
-		pCmd->length = 3;
-		pCmd->data[1] = (u8) (priv->bt_dev.idle_timeout & 0x00ff);
-		pCmd->data[2] = (priv->bt_dev.idle_timeout & 0xff00) >> 8;
+		pcmd->length = 3;
+		pcmd->data[1] = (u8) (priv->bt_dev.idle_timeout & 0x00ff);
+		pcmd->data[2] = (priv->bt_dev.idle_timeout & 0xff00) >> 8;
 	} else {
-		pCmd->length = 1;
+		pcmd->length = 1;
 	}
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
-	PRINTM(CMD, "Queue PSMODE Command(0x%x):%d\n", pCmd->ocf_ogf,
-	       pCmd->data[0]);
+	PRINTM(CMD, "Queue PSMODE Command(0x%x):%d\n", pcmd->ocf_ogf,
+	       pcmd->data[0]);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_AUTO_SLEEP_MODE;
 	priv->adapter->cmd_complete = FALSE;
@@ -678,7 +688,7 @@ bt_send_hscfg_cmd(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -686,17 +696,17 @@ bt_send_hscfg_cmd(bt_private * priv)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_HOST_SLEEP_CONFIG;
-	pCmd->length = 2;
-	pCmd->data[0] = (priv->bt_dev.gpio_gap & 0xff00) >> 8;
-	pCmd->data[1] = (u8) (priv->bt_dev.gpio_gap & 0x00ff);
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_HOST_SLEEP_CONFIG;
+	pcmd->length = 2;
+	pcmd->data[0] = (priv->bt_dev.gpio_gap & 0xff00) >> 8;
+	pcmd->data[1] = (u8) (priv->bt_dev.gpio_gap & 0x00ff);
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	PRINTM(CMD, "Queue HSCFG Command(0x%x),gpio=0x%x,gap=0x%x\n",
-	       pCmd->ocf_ogf, pCmd->data[0], pCmd->data[1]);
+	       pcmd->ocf_ogf, pcmd->data[0], pcmd->data[1]);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_HOST_SLEEP_CONFIG;
 	priv->adapter->cmd_complete = FALSE;
@@ -724,7 +734,7 @@ bt_send_sdio_pull_ctrl_cmd(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -732,21 +742,21 @@ bt_send_sdio_pull_ctrl_cmd(bt_private * priv)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_SDIO_PULL_CFG_REQ;
-	pCmd->length = 4;
-	pCmd->data[0] = (priv->bt_dev.sdio_pull_cfg & 0x000000ff);
-	pCmd->data[1] = (priv->bt_dev.sdio_pull_cfg & 0x0000ff00) >> 8;
-	pCmd->data[2] = (priv->bt_dev.sdio_pull_cfg & 0x00ff0000) >> 16;
-	pCmd->data[3] = (priv->bt_dev.sdio_pull_cfg & 0xff000000) >> 24;
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_SDIO_PULL_CFG_REQ;
+	pcmd->length = 4;
+	pcmd->data[0] = (priv->bt_dev.sdio_pull_cfg & 0x000000ff);
+	pcmd->data[1] = (priv->bt_dev.sdio_pull_cfg & 0x0000ff00) >> 8;
+	pcmd->data[2] = (priv->bt_dev.sdio_pull_cfg & 0x00ff0000) >> 16;
+	pcmd->data[3] = (priv->bt_dev.sdio_pull_cfg & 0xff000000) >> 24;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	PRINTM(CMD,
 	       "Queue SDIO PULL CFG Command(0x%x), PullUp=0x%x%x,PullDown=0x%x%x\n",
-	       pCmd->ocf_ogf, pCmd->data[1], pCmd->data[0],
-	       pCmd->data[3], pCmd->data[2]);
+	       pcmd->ocf_ogf, pcmd->data[1], pcmd->data[0],
+	       pcmd->data[3], pcmd->data[2]);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_SDIO_PULL_CFG_REQ;
 	priv->adapter->cmd_complete = FALSE;
@@ -778,7 +788,7 @@ fm_set_intr_mask(bt_private * priv, u32 mask)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -787,14 +797,14 @@ fm_set_intr_mask(bt_private * priv, u32 mask)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | FM_CMD;
-	pCmd->length = 0x05;
-	pCmd->data[0] = FM_SET_INTR_MASK;
-	memcpy(&pCmd->data[1], &mask, sizeof(mask));
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | FM_CMD;
+	pcmd->length = 0x05;
+	pcmd->data[0] = FM_SET_INTR_MASK;
+	memcpy(&pcmd->data[1], &mask, sizeof(mask));
 	PRINTM(CMD, "FM set intr mask=0x%x\n", mask);
 	bt_cb(skb)->pkt_type = HCI_COMMAND_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[FM_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	priv->bt_dev.sendcmdflag = TRUE;
@@ -825,7 +835,7 @@ bt_enable_hs(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -834,16 +844,16 @@ bt_enable_hs(bt_private * priv)
 		goto exit;
 	}
 	priv->adapter->suspend_fail = FALSE;
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_HOST_SLEEP_ENABLE;
-	pCmd->length = 0;
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_HOST_SLEEP_ENABLE;
+	pcmd->length = 0;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_HOST_SLEEP_ENABLE;
-	PRINTM(CMD, "Queue hs enable Command(0x%x)\n", pCmd->ocf_ogf);
+	PRINTM(CMD, "Queue hs enable Command(0x%x)\n", pcmd->ocf_ogf);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	if (!os_wait_interruptible_timeout
 	    (priv->adapter->cmd_wait_q, priv->adapter->hs_state,
@@ -886,7 +896,7 @@ bt_set_ble_deepsleep(bt_private * priv, int mode)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_BLE_CMD *pCmd;
+	BT_BLE_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_BLE_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -894,10 +904,10 @@ bt_set_ble_deepsleep(bt_private * priv, int mode)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_BLE_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_BLE_DEEP_SLEEP;
-	pCmd->length = 1;
-	pCmd->deepsleep = mode;
+	pcmd = (BT_BLE_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_BLE_DEEP_SLEEP;
+	pcmd->length = 1;
+	pcmd->deepsleep = mode;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
 	skb_put(skb, sizeof(BT_BLE_CMD));
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
@@ -905,7 +915,7 @@ bt_set_ble_deepsleep(bt_private * priv, int mode)
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_BLE_DEEP_SLEEP;
 	priv->adapter->cmd_complete = FALSE;
-	PRINTM(CMD, "BT: Set BLE deepsleep = %d (0x%x)\n", mode, pCmd->ocf_ogf);
+	PRINTM(CMD, "BT: Set BLE deepsleep = %d (0x%x)\n", mode, pcmd->ocf_ogf);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	if (!os_wait_interruptible_timeout
 	    (priv->adapter->cmd_wait_q, priv->adapter->cmd_complete,
@@ -931,7 +941,7 @@ bt_get_fw_version(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_HCI_CMD *pCmd;
+	BT_HCI_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_HCI_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -939,10 +949,10 @@ bt_get_fw_version(bt_private * priv)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_HCI_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_GET_FW_VERSION;
-	pCmd->length = 0x01;
-	pCmd->cmd_type = 0x00;
+	pcmd = (BT_HCI_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_GET_FW_VERSION;
+	pcmd->length = 0x01;
+	pcmd->cmd_type = 0x00;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
 	skb_put(skb, 4);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
@@ -976,7 +986,7 @@ bt_set_mac_address(bt_private * priv, u8 * mac)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_HCI_CMD *pCmd;
+	BT_HCI_CMD *pcmd;
 	int i = 0;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_HCI_CMD), GFP_ATOMIC);
@@ -985,13 +995,13 @@ bt_set_mac_address(bt_private * priv, u8 * mac)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_HCI_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_CONFIG_MAC_ADDR;
-	pCmd->length = 8;
-	pCmd->cmd_type = MRVL_VENDOR_PKT;
-	pCmd->cmd_len = 6;
+	pcmd = (BT_HCI_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_CONFIG_MAC_ADDR;
+	pcmd->length = 8;
+	pcmd->cmd_type = MRVL_VENDOR_PKT;
+	pcmd->cmd_len = 6;
 	for (i = 0; i < 6; i++)
-		pCmd->data[i] = mac[5 - i];
+		pcmd->data[i] = mac[5 - i];
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
 	skb_put(skb, sizeof(BT_HCI_CMD));
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
@@ -1000,7 +1010,7 @@ bt_set_mac_address(bt_private * priv, u8 * mac)
 	priv->bt_dev.send_cmd_ocf = BT_CMD_CONFIG_MAC_ADDR;
 	priv->adapter->cmd_complete = FALSE;
 	PRINTM(CMD, "BT: Set mac addr " MACSTR " (0x%x)\n", MAC2STR(mac),
-	       pCmd->ocf_ogf);
+	       pcmd->ocf_ogf);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	if (!os_wait_interruptible_timeout
 	    (priv->adapter->cmd_wait_q, priv->adapter->cmd_complete,
@@ -1028,7 +1038,7 @@ bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CMD *pCmd;
+	BT_CMD *pcmd;
 	int i = 0;
 	/* u8 config_data[28] = {0x37 0x01 0x1c 0x00 0xFF 0xFF 0xFF 0xFF 0x01
 	   0x7f 0x04 0x02 0x00 0x00 0xBA 0xCE 0xC0 0xC6 0x2D 0x00 0x00 0x00
@@ -1041,31 +1051,30 @@ bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_LOAD_CONFIG_DATA;
-	pCmd->length = 0x20;
-	pCmd->data[0] = 0x00;
-	pCmd->data[1] = 0x00;
-	pCmd->data[2] = 0x00;
-	pCmd->data[3] = 0x1C;
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_LOAD_CONFIG_DATA;
+	pcmd->length = 0x20;
+	pcmd->data[0] = 0x00;
+	pcmd->data[1] = 0x00;
+	pcmd->data[2] = 0x00;
+	pcmd->data[3] = 0x1C;
 	/* swip cal-data byte */
-	for (i = 4; i < 32; i++) {
-		pCmd->data[i] = config_data[(i / 4) * 8 - 1 - i];
-	}
+	for (i = 4; i < 32; i++)
+		pcmd->data[i] = config_data[(i / 4) * 8 - 1 - i];
 	if (mac != NULL) {
-		pCmd->data[2] = 0x01;	/* skip checksum */
+		pcmd->data[2] = 0x01;	/* skip checksum */
 		for (i = 24; i < 30; i++)
-			pCmd->data[i] = mac[29 - i];
+			pcmd->data[i] = mac[29 - i];
 	}
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
-	skb_put(skb, BT_CMD_HEADER_SIZE + pCmd->length);
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
 	skb_queue_head(&priv->adapter->tx_queue, skb);
 	priv->bt_dev.sendcmdflag = TRUE;
 	priv->bt_dev.send_cmd_ocf = BT_CMD_LOAD_CONFIG_DATA;
 	priv->adapter->cmd_complete = FALSE;
 
-	DBG_HEXDUMP(DAT_D, "calirate data: ", pCmd->data, 32);
+	DBG_HEXDUMP(DAT_D, "calirate data: ", pcmd->data, 32);
 	wake_up_interruptible(&priv->MainThread.waitQ);
 	if (!os_wait_interruptible_timeout
 	    (priv->adapter->cmd_wait_q, priv->adapter->cmd_complete,
@@ -1073,6 +1082,56 @@ bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac)
 		ret = BT_STATUS_FAILURE;
 		PRINTM(ERROR, "BT: Load calibrate data: timeout:\n");
 		bt_cmd_timeout_func(priv->adapter, BT_CMD_LOAD_CONFIG_DATA);
+	}
+exit:
+	LEAVE();
+	return ret;
+}
+
+/**
+ *  @brief This function load the calibrate EXT data
+ *
+ *  @param priv    A pointer to bt_private structure
+ *  @param config_data     A pointer to calibrate data
+ *  @param mac     A pointer to mac address
+ *
+ *  @return    BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ */
+int
+bt_load_cal_data_ext(bt_private * priv, u8 * config_data, u32 cfg_data_len)
+{
+	struct sk_buff *skb = NULL;
+	u8 ret = BT_STATUS_SUCCESS;
+	BT_CMD *pcmd;
+
+	ENTER();
+	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
+	if (skb == NULL) {
+		PRINTM(WARN, "No free skb\n");
+		ret = BT_STATUS_FAILURE;
+		goto exit;
+	}
+	pcmd = (BT_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_LOAD_CONFIG_DATA_EXT;
+	pcmd->length = cfg_data_len;
+
+	memcpy(pcmd->data, config_data, cfg_data_len);
+	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
+	skb_put(skb, BT_CMD_HEADER_SIZE + pcmd->length);
+	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
+	skb_queue_head(&priv->adapter->tx_queue, skb);
+	priv->bt_dev.sendcmdflag = TRUE;
+	priv->bt_dev.send_cmd_ocf = BT_CMD_LOAD_CONFIG_DATA_EXT;
+	priv->adapter->cmd_complete = FALSE;
+
+	DBG_HEXDUMP(DAT_D, "calirate ext data", pcmd->data, pcmd->length);
+	wake_up_interruptible(&priv->MainThread.waitQ);
+	if (!os_wait_interruptible_timeout
+	    (priv->adapter->cmd_wait_q, priv->adapter->cmd_complete,
+	     WAIT_UNTIL_CMD_RESP)) {
+		ret = BT_STATUS_FAILURE;
+		PRINTM(ERROR, "BT: Load calibrate ext data: timeout:\n");
+		bt_cmd_timeout_func(priv->adapter, BT_CMD_LOAD_CONFIG_DATA_EXT);
 	}
 exit:
 	LEAVE();
@@ -1093,7 +1152,7 @@ bt_write_reg(bt_private * priv, u8 type, u32 offset, u16 value)
 {
 	struct sk_buff *skb = NULL;
 	u8 ret = BT_STATUS_SUCCESS;
-	BT_CSU_CMD *pCmd;
+	BT_CSU_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CSU_CMD), GFP_ATOMIC);
 	if (skb == NULL) {
@@ -1101,16 +1160,16 @@ bt_write_reg(bt_private * priv, u8 type, u32 offset, u16 value)
 		ret = BT_STATUS_FAILURE;
 		goto exit;
 	}
-	pCmd = (BT_CSU_CMD *) skb->data;
-	pCmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_CSU_WRITE_REG;
-	pCmd->length = 7;
-	pCmd->type = type;
-	pCmd->offset[0] = (offset & 0x000000ff);
-	pCmd->offset[1] = (offset & 0x0000ff00) >> 8;
-	pCmd->offset[2] = (offset & 0x00ff0000) >> 16;
-	pCmd->offset[3] = (offset & 0xff000000) >> 24;
-	pCmd->value[0] = (value & 0x00ff);
-	pCmd->value[1] = (value & 0xff00) >> 8;
+	pcmd = (BT_CSU_CMD *) skb->data;
+	pcmd->ocf_ogf = (VENDOR_OGF << 10) | BT_CMD_CSU_WRITE_REG;
+	pcmd->length = 7;
+	pcmd->type = type;
+	pcmd->offset[0] = (offset & 0x000000ff);
+	pcmd->offset[1] = (offset & 0x0000ff00) >> 8;
+	pcmd->offset[2] = (offset & 0x00ff0000) >> 16;
+	pcmd->offset[3] = (offset & 0xff000000) >> 24;
+	pcmd->value[0] = (value & 0x00ff);
+	pcmd->value[1] = (value & 0xff00) >> 8;
 	bt_cb(skb)->pkt_type = MRVL_VENDOR_PKT;
 	skb_put(skb, sizeof(BT_CSU_CMD));
 	skb->dev = (void *)(&(priv->bt_dev.m_dev[BT_SEQ]));
@@ -1201,7 +1260,7 @@ bt_prepare_command(bt_private * priv)
  *  @return    BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
-SendSinglePacket(bt_private * priv, struct sk_buff *skb)
+send_single_packet(bt_private * priv, struct sk_buff *skb)
 {
 	int ret;
 	ENTER();
@@ -1301,11 +1360,11 @@ done:
 void
 bt_free_adapter(bt_private * priv)
 {
-	bt_adapter *Adapter = priv->adapter;
+	bt_adapter *adapter = priv->adapter;
 	ENTER();
 	skb_queue_purge(&priv->adapter->tx_queue);
 	/* Free the adapter object itself */
-	kfree(Adapter);
+	kfree(adapter);
 	priv->adapter = NULL;
 
 	LEAVE();
@@ -1385,7 +1444,7 @@ mdev_send_frame(struct m_dev *m_dev, struct sk_buff *skb)
 		priv->debug_device_pending = 1;
 		priv->debug_ocf_ogf[0] = skb->data[0];
 		priv->debug_ocf_ogf[1] = skb->data[1];
-		PRINTM(CMD, "debug_ocf_ogf[0]=0x%x debug_ocf_ogf[1]=0x%x \n",
+		PRINTM(CMD, "debug_ocf_ogf[0]=0x%x debug_ocf_ogf[1]=0x%x\n",
 		       priv->debug_ocf_ogf[0], priv->debug_ocf_ogf[1]);
 	}
 
@@ -1542,7 +1601,7 @@ bt_service_main_thread(void *data)
 {
 	bt_thread *thread = data;
 	bt_private *priv = thread->priv;
-	bt_adapter *Adapter = priv->adapter;
+	bt_adapter *adapter = priv->adapter;
 	wait_queue_t wait;
 	struct sk_buff *skb;
 	ENTER();
@@ -1562,17 +1621,17 @@ bt_service_main_thread(void *data)
 		}
 		OS_SET_THREAD_STATE(TASK_RUNNING);
 		remove_wait_queue(&thread->waitQ, &wait);
-		if (kthread_should_stop() || Adapter->SurpriseRemoved) {
+		if (kthread_should_stop() || adapter->SurpriseRemoved) {
 			PRINTM(INFO, "main-thread: break from main thread: "
 			       "SurpriseRemoved=0x%x\n",
-			       Adapter->SurpriseRemoved);
+			       adapter->SurpriseRemoved);
 			break;
 		}
 
 		PRINTM(INFO, "Main: Thread waking up...\n");
 		if (priv->adapter->IntCounter) {
 			OS_INT_DISABLE;
-			Adapter->IntCounter = 0;
+			adapter->IntCounter = 0;
 			OS_INT_RESTORE;
 			sbi_get_int_status(priv);
 		} else if ((priv->adapter->ps_state == PS_SLEEP) &&
@@ -1587,7 +1646,7 @@ bt_service_main_thread(void *data)
 			if (!skb_queue_empty(&priv->adapter->tx_queue)) {
 				skb = skb_dequeue(&priv->adapter->tx_queue);
 				if (skb) {
-					if (SendSinglePacket(priv, skb))
+					if (send_single_packet(priv, skb))
 						((struct m_dev *)skb->dev)->
 							stat.err_tx++;
 					else
@@ -1766,7 +1825,8 @@ sbi_register_conf_dpc(bt_private * priv)
 		}
 	}
 #ifdef SDIO_SUSPEND_RESUME
-	priv->bt_dev.gpio_gap = 0xffff;
+
+	priv->bt_dev.gpio_gap = 0x0464;
 	ret = bt_send_hscfg_cmd(priv);
 	if (ret < 0) {
 		PRINTM(FATAL, "Send HSCFG failed!\n");
@@ -1781,7 +1841,7 @@ sbi_register_conf_dpc(bt_private * priv)
 		priv->bt_dev.m_dev[BT_SEQ].dev_type = BT_AMP_TYPE;
 	}
 	/* block all the packet from bluez */
-	if (init_cfg || cal_cfg || bt_mac)
+	if (init_cfg || cal_cfg || bt_mac || cal_cfg_ext)
 		priv->adapter->tx_lock = TRUE;
 
 	if (mbt_dev) {
@@ -2052,10 +2112,29 @@ sbi_register_conf_dpc(bt_private * priv)
 			goto done;
 		}
 	}
-	if (init_cfg || cal_cfg || bt_mac) {
+	if (cal_cfg_ext) {
+		if (BT_STATUS_SUCCESS != bt_cal_config_ext(priv, cal_cfg_ext)) {
+			PRINTM(FATAL, "BT: Set cal ext data failed\n");
+			if (mbt_dev) {
+				m_dev = &(priv->bt_dev.m_dev[BT_SEQ]);
+				/** unregister m_dev to char_dev */
+				m_dev->close(m_dev);
+				for (i = 0; i < 3; i++)
+					kfree_skb(mbt_dev->reassembly[i]);
+				/**  unregister m_dev to char_dev */
+				chardev_cleanup_one(m_dev, chardev_class);
+				free_m_dev(m_dev);
+			}
+			ret = BT_STATUS_FAILURE;
+			goto done;
+		}
+	}
+	if (init_cfg || cal_cfg || bt_mac || cal_cfg_ext) {
 		priv->adapter->tx_lock = FALSE;
 		bt_restore_tx_queue(priv);
 	}
+
+	bt_register_hostwake_irq(NULL);
 
 	/* Get FW version */
 	bt_get_fw_version(priv);
@@ -2255,7 +2334,7 @@ bt_remove_card(void *card)
 static int
 bt_set_carddetect(int on)
 {
-	PRINTM(MSG, "%s = %d\n", __FUNCTION__, on);
+	PRINTM(MSG, "%s = %d\n", __func__, on);
 	if (bt_control_data && bt_control_data->set_carddetect)
 		bt_control_data->set_carddetect(on);
 
@@ -2271,13 +2350,52 @@ bt_set_carddetect(int on)
 static int
 bt_set_power(int on, unsigned long msec)
 {
-	PRINTM(MSG, "%s = %d\n", __FUNCTION__, on);
+	PRINTM(MSG, "%s = %d\n", __func__, on);
 	if (bt_control_data && bt_control_data->set_power)
 		bt_control_data->set_power(on);
 
 	if (msec)
 		mdelay(msec);
 	return 0;
+}
+
+static irqreturn_t
+bt_hostwake_isr(int irq, void *dev_id)
+{
+	PRINTM(INTR, "Recv hostwake isr\n");
+	return IRQ_HANDLED;
+}
+
+void
+bt_enable_hostwake_irq(int flag)
+{
+	if (bt_irqres && irq_registered) {
+		PRINTM(INTR, "enable_hostwake_irq=%d\n", flag);
+		if (flag) {
+			enable_irq(bt_irqres->start);
+			enable_irq_wake(bt_irqres->start);
+		} else {
+			disable_irq_wake(bt_irqres->start);
+			disable_irq(bt_irqres->start);
+		}
+	}
+}
+
+static void
+bt_register_hostwake_irq(void *handle)
+{
+	if (bt_irqres && !irq_registered) {
+		irq_registered =
+			request_irq(bt_irqres->start, bt_hostwake_isr,
+				    bt_irqres->flags, DRIVER_NAME, handle);
+		if (irq_registered < 0)
+			PRINTM(ERROR, "Couldn't acquire BT_HOST_WAKE IRQ\n");
+		else {
+			irq_registered = 1;
+			enable_irq_wake(bt_irqres->start);
+			bt_enable_hostwake_irq(FALSE);
+		}
+	}
 }
 
 void
@@ -2307,9 +2425,14 @@ bt_probe(struct platform_device *pdev)
 
 	ENTER();
 
-	bt_control_data = bt_ctrl;
-	bt_set_power(1, 0);	/* Power On */
-	bt_set_carddetect(1);	/* CardDetect (0->1) */
+	bt_irqres = platform_get_resource_byname(pdev,
+						 IORESOURCE_IRQ,
+						 IORESOURCE_NAME);
+	if (minicard_pwrup) {
+		bt_control_data = bt_ctrl;
+		bt_set_power(1, 0);	/* Power On */
+		bt_set_carddetect(1);	/* CardDetect (0->1) */
+	}
 
 	LEAVE();
 	return 0;
@@ -2329,9 +2452,16 @@ bt_remove(struct platform_device *pdev)
 
 	ENTER();
 
-	bt_control_data = bt_ctrl;
-	bt_set_power(0, 0);	/* Power Off */
-	bt_set_carddetect(0);	/* CardDetect (1->0) */
+	if (bt_irqres && irq_registered) {
+		PRINTM(MSG, "Free hostwake IRQ wakeup\n");
+		free_irq(bt_irqres->start, NULL);
+		irq_registered = 0;
+	}
+	if (minicard_pwrup) {
+		bt_control_data = bt_ctrl;
+		bt_set_power(0, 0);	/* Power Off */
+		bt_set_carddetect(0);	/* CardDetect (1->0) */
+	}
 
 	LEAVE();
 	return 0;
@@ -2357,8 +2487,7 @@ bt_add_dev(void)
 
 	ENTER();
 
-	if (minicard_pwrup)
-		ret = platform_driver_register(&bt_device);
+	ret = platform_driver_register(&bt_device);
 
 	LEAVE();
 	return ret;
@@ -2374,8 +2503,7 @@ bt_del_dev(void)
 {
 	ENTER();
 
-	if (minicard_pwrup)
-		platform_driver_unregister(&bt_device);
+	platform_driver_unregister(&bt_device);
 
 	LEAVE();
 }
@@ -2461,6 +2589,8 @@ module_param(init_cfg, charp, 0);
 MODULE_PARM_DESC(init_cfg, "BT init config file name");
 module_param(cal_cfg, charp, 0);
 MODULE_PARM_DESC(cal_cfg, "BT calibrate file name");
+module_param(cal_cfg_ext, charp, 0);
+MODULE_PARM_DESC(cal_cfg_ext, "BT calibrate ext file name");
 module_param(bt_mac, charp, 0);
 MODULE_PARM_DESC(bt_mac, "BT init mac address");
 module_param(minicard_pwrup, int, 0);

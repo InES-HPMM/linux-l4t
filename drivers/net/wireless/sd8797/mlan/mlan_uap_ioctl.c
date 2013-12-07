@@ -2,20 +2,25 @@
  *
  *  @brief This file contains the handling of AP mode ioctls
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd.
+ *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
  *
- *  This software file (the "File") is distributed by Marvell International
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
- *  (the "License").  You may use, redistribute and/or modify this File in
- *  accordance with the terms and conditions of the License, a copy of which
- *  is available by writing to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *  MARVELL CONFIDENTIAL
+ *  The source code contained or described herein and all documents related to
+ *  the source code ("Material") are owned by Marvell International Ltd or its
+ *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
+ *  or its suppliers and licensors. The Material contains trade secrets and
+ *  proprietary and confidential information of Marvell or its suppliers and
+ *  licensors. The Material is protected by worldwide copyright and trade secret
+ *  laws and treaty provisions. No part of the Material may be used, copied,
+ *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
+ *  or disclosed in any way without Marvell's prior express written permission.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- *  this warranty disclaimer.
+ *  No license under any patent, copyright, trade secret or other intellectual
+ *  property right is granted to or conferred upon you by disclosure or delivery
+ *  of the Materials, either expressly, by implication, inducement, estoppel or
+ *  otherwise. Any license under such intellectual property rights must be
+ *  express and approved by Marvell in writing.
+ *
  */
 
 /********************************************************
@@ -239,9 +244,8 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
 	/*
 	 * Reset any uap private parameters here
 	 */
-	for (i = 0; i < pmadapter->max_mgmt_ie_index; i++) {
+	for (i = 0; i < pmadapter->max_mgmt_ie_index; i++)
 		memset(pmadapter, &pmpriv->mgmt_ie[i], 0, sizeof(custom_ie));
-	}
 	pmpriv->add_ba_param.timeout = MLAN_DEFAULT_BLOCK_ACK_TIMEOUT;
 	pmpriv->add_ba_param.tx_win_size = MLAN_UAP_AMPDU_DEF_TXWINSIZE;
 	pmpriv->add_ba_param.rx_win_size = MLAN_UAP_AMPDU_DEF_RXWINSIZE;
@@ -565,7 +569,7 @@ wlan_uap_set_wapi_ie(mlan_private * priv, pmlan_ioctl_req pioctl_req)
 	misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
 	if (misc->param.gen_ie.len) {
 		if (misc->param.gen_ie.len > sizeof(priv->wapi_ie)) {
-			PRINTM(MWARN, "failed to copy WAPI IE, too big \n");
+			PRINTM(MWARN, "failed to copy WAPI IE, too big\n");
 			pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
 			LEAVE();
 			return MLAN_STATUS_FAILURE;
@@ -1352,6 +1356,8 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 			pget_info->param.fw_info.fw_bands = pmadapter->fw_bands;
 			pget_info->param.fw_info.hw_dev_mcs_support =
 				pmadapter->hw_dev_mcs_support;
+			pget_info->param.fw_info.hw_dot_11n_dev_cap =
+				pmadapter->hw_dot_11n_dev_cap;
 			pget_info->param.fw_info.region_code =
 				pmadapter->region_code;
 		}
@@ -1401,16 +1407,13 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 		if (pm->sub_command == MLAN_OID_PM_CFG_DEEP_SLEEP)
 			status = wlan_uap_pm_ioctl_deepsleep(pmadapter,
 							     pioctl_req);
-		if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG) {
+		if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG)
 			status = wlan_pm_ioctl_hscfg(pmadapter, pioctl_req);
-		}
-		if (pm->sub_command == MLAN_OID_PM_HS_WAKEUP_REASON) {
+		if (pm->sub_command == MLAN_OID_PM_HS_WAKEUP_REASON)
 			status = wlan_get_hs_wakeup_reason(pmadapter,
 							   pioctl_req);
-		}
-		if (pm->sub_command == MLAN_OID_PM_INFO) {
+		if (pm->sub_command == MLAN_OID_PM_INFO)
 			status = wlan_get_pm_info(pmadapter, pioctl_req);
-		}
 		break;
 	case MLAN_IOCTL_SNMP_MIB:
 		snmp = (mlan_ds_snmp_mib *) pioctl_req->pbuf;

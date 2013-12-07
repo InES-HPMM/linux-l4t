@@ -200,10 +200,11 @@ bt_atoi(int *data, char *a)
  *  @return        BT_STATUS_SUCCESS or BT_STATUS_FAILURE
  */
 static int
-bt_parse_cal_cfg(const u8 * src, u32 len, u8 * dst, u32 dst_size)
+bt_parse_cal_cfg(const u8 * src, u32 len, u8 * dst, u32 * dst_size)
 {
 	const u8 *ptr;
 	u8 *dptr;
+	u32 count = 0;
 	int ret = BT_STATUS_FAILURE;
 
 	ENTER();
@@ -217,12 +218,13 @@ bt_parse_cal_cfg(const u8 * src, u32 len, u8 * dst, u32 dst_size)
 		}
 
 		if (isxdigit(*ptr)) {
-			if ((dptr - dst) >= dst_size) {
+			if ((dptr - dst) >= *dst_size) {
 				PRINTM(ERROR, "cal_file size too big!!!\n");
 				goto done;
 			}
 			*dptr++ = bt_atox(ptr);
 			ptr += 2;
+			count++;
 		} else {
 			ptr++;
 		}
@@ -232,6 +234,7 @@ bt_parse_cal_cfg(const u8 * src, u32 len, u8 * dst, u32 dst_size)
 		goto done;
 	}
 
+	*dst_size = count;
 	ret = BT_STATUS_SUCCESS;
 done:
 	LEAVE();
@@ -497,11 +500,13 @@ bt_process_cal_cfg(bt_private * priv, u8 * data, u32 size, char *mac)
 	u8 bt_mac[ETH_ALEN];
 	u8 cal_data[32];
 	u8 *mac_data = NULL;
+	u32 cal_data_len;
 	int ret = BT_STATUS_FAILURE;
 
 	memset(bt_mac, 0, sizeof(bt_mac));
+	cal_data_len = sizeof(cal_data);
 	if (BT_STATUS_SUCCESS !=
-	    bt_parse_cal_cfg(data, size, cal_data, sizeof(cal_data))) {
+	    bt_parse_cal_cfg(data, size, cal_data, &cal_data_len)) {
 		goto done;
 	}
 	if (mac != NULL) {
@@ -512,6 +517,39 @@ bt_process_cal_cfg(bt_private * priv, u8 * data, u32 size, char *mac)
 		mac_data = bt_mac;
 	}
 	if (BT_STATUS_SUCCESS != bt_load_cal_data(priv, cal_data, mac_data)) {
+		PRINTM(FATAL, "BT: Fail to load calibrate data\n");
+		goto done;
+	}
+	ret = BT_STATUS_SUCCESS;
+
+done:
+	LEAVE();
+	return ret;
+}
+
+/**
+ *    @brief BT process calibration EXT data
+ *
+ *    @param priv    a pointer to bt_private structure
+ *    @param data    a pointer to cal data
+ *    @param size    cal data size
+ *    @param mac     mac address buf
+ *    @return         BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ */
+int
+bt_process_cal_cfg_ext(bt_private * priv, u8 * data, u32 size)
+{
+	u8 cal_data[128];
+	u32 cal_data_len;
+	int ret = BT_STATUS_FAILURE;
+
+	cal_data_len = sizeof(cal_data);
+	if (BT_STATUS_SUCCESS !=
+	    bt_parse_cal_cfg(data, size, cal_data, &cal_data_len)) {
+		goto done;
+	}
+	if (BT_STATUS_SUCCESS !=
+	    bt_load_cal_data_ext(priv, cal_data, cal_data_len)) {
 		PRINTM(FATAL, "BT: Fail to load calibrate data\n");
 		goto done;
 	}
@@ -545,6 +583,37 @@ bt_cal_config(bt_private * priv, char *cal_file, char *mac)
 	if (cfg)
 		ret = bt_process_cal_cfg(priv, (u8 *) cfg->data, cfg->size,
 					 mac);
+	else
+		ret = BT_STATUS_FAILURE;
+done:
+	if (cfg)
+		release_firmware(cfg);
+	LEAVE();
+	return ret;
+}
+
+/**
+ *    @brief BT process calibration EXT file
+ *
+ *    @param priv    a pointer to bt_private structure
+ *    @param cal_file calibration file name
+ *    @param mac     mac address buf
+ *    @return         BT_STATUS_SUCCESS or BT_STATUS_FAILURE
+ */
+int
+bt_cal_config_ext(bt_private * priv, char *cal_file)
+{
+	const struct firmware *cfg = NULL;
+	int ret = BT_STATUS_SUCCESS;
+
+	ENTER();
+	if ((request_firmware(&cfg, cal_file, priv->hotplug_device)) < 0) {
+		PRINTM(FATAL, "BT: request_firmware() %s failed\n", cal_file);
+		ret = BT_STATUS_FAILURE;
+		goto done;
+	}
+	if (cfg)
+		ret = bt_process_cal_cfg_ext(priv, (u8 *) cfg->data, cfg->size);
 	else
 		ret = BT_STATUS_FAILURE;
 done:

@@ -49,11 +49,15 @@ Change Log:
 /* Is master radar detection enabled in firmware? */
 extern t_bool wlan_11h_is_master_radar_det_active(mlan_private * priv);
 
-/** Configure master radar detection.  Need call wlan_11h_check_update_radar_det_state() after. */
+/** Configure master radar detection.
+ *  Need call wlan_11h_check_update_radar_det_state() after.
+ */
 extern mlan_status wlan_11h_config_master_radar_det(mlan_private * priv,
 						    t_bool enable);
 
-/** Configure slave radar detection.  Need call wlan_11h_check_update_radar_det_state() after. */
+/** Configure slave radar detection.
+ *  Need call wlan_11h_check_update_radar_det_state() after.
+ */
 extern mlan_status wlan_11h_config_slave_radar_det(mlan_private * priv,
 						   t_bool enable);
 

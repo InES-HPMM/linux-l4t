@@ -27,7 +27,7 @@
 /** IRQ return type */
 typedef irqreturn_t IRQ_RET_TYPE;
 /** IRQ return */
-#define IRQ_RET		return IRQ_HANDLED
+#define IRQ_RET		(return IRQ_HANDLED)
 /** ISR notifier function */
 typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 					  struct pt_regs * reg);
@@ -60,7 +60,7 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Host Control Registers : Configuration */
 #define CONFIGURATION_REG		0x00
 /** Host Control Registers : Host without Command 53 finish host*/
-#define HOST_TO_CARD_EVENT       (0x1U << 3)
+#define HOST_TO_CARD_EVENT		(0x1U << 3)
 /** Host Control Registers : Host without Command 53 finish host */
 #define HOST_WO_CMD53_FINISH_HOST	(0x1U << 2)
 /** Host Control Registers : Host power up */
@@ -97,80 +97,80 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Host Control Registers : Upload CRC error */
 #define UP_LD_CRC_ERR			(0x1U << 2)
 /** Host Control Registers : Upload restart */
-#define UP_LD_RESTART              	(0x1U << 1)
+#define UP_LD_RESTART			(0x1U << 1)
 /** Host Control Registers : Download restart */
-#define DN_LD_RESTART              	(0x1U << 0)
+#define DN_LD_RESTART			(0x1U << 0)
 
 /* Card Control Registers */
 /** Card Control Registers : Read SQ base address A0 register */
-#define SQ_READ_BASE_ADDRESS_A0_REG  	0x40
+#define SQ_READ_BASE_ADDRESS_A0_REG		0x40
 /** Card Control Registers : Read SQ base address A1 register */
-#define SQ_READ_BASE_ADDRESS_A1_REG  	0x41
+#define SQ_READ_BASE_ADDRESS_A1_REG		0x41
 /** Card Control Registers : Read SQ base address A2 register */
-#define SQ_READ_BASE_ADDRESS_A2_REG  	0x42
+#define SQ_READ_BASE_ADDRESS_A2_REG		0x42
 /** Card Control Registers : Read SQ base address A3 register */
-#define SQ_READ_BASE_ADDRESS_A3_REG  	0x43
+#define SQ_READ_BASE_ADDRESS_A3_REG		0x43
 /** Card Control Registers : Read SQ base address B0 register */
-#define SQ_READ_BASE_ADDRESS_B0_REG  	0x44
+#define SQ_READ_BASE_ADDRESS_B0_REG		0x44
 /** Card Control Registers : Read SQ base address B1 register */
-#define SQ_READ_BASE_ADDRESS_B1_REG  	0x45
+#define SQ_READ_BASE_ADDRESS_B1_REG		0x45
 /** Card Control Registers : Read SQ base address B2 register */
-#define SQ_READ_BASE_ADDRESS_B2_REG  	0x46
+#define SQ_READ_BASE_ADDRESS_B2_REG		0x46
 /** Card Control Registers : Read SQ base address B3 register */
-#define SQ_READ_BASE_ADDRESS_B3_REG  	0x47
+#define SQ_READ_BASE_ADDRESS_B3_REG		0x47
 
 /** Card Control Registers : Card status register */
-#define CARD_STATUS_REG              	0x30
+#define CARD_STATUS_REG					0x30
 /** Card Control Registers : Card I/O ready */
-#define CARD_IO_READY              	(0x1U << 3)
+#define CARD_IO_READY					(0x1U << 3)
 /** Card Control Registers : CIS card ready */
-#define CIS_CARD_RDY                 	(0x1U << 2)
+#define CIS_CARD_RDY					(0x1U << 2)
 /** Card Control Registers : Upload card ready */
-#define UP_LD_CARD_RDY               	(0x1U << 1)
+#define UP_LD_CARD_RDY					(0x1U << 1)
 /** Card Control Registers : Download card ready */
-#define DN_LD_CARD_RDY               	(0x1U << 0)
+#define DN_LD_CARD_RDY					(0x1U << 0)
 
 /** Card Control Registers : Host interrupt mask register */
-#define HOST_INTERRUPT_MASK_REG      	0x34
+#define HOST_INTERRUPT_MASK_REG			0x34
 /** Card Control Registers : Host power interrupt mask */
-#define HOST_POWER_INT_MASK          	(0x1U << 3)
+#define HOST_POWER_INT_MASK				(0x1U << 3)
 /** Card Control Registers : Abort card interrupt mask */
-#define ABORT_CARD_INT_MASK          	(0x1U << 2)
+#define ABORT_CARD_INT_MASK				(0x1U << 2)
 /** Card Control Registers : Upload card interrupt mask */
-#define UP_LD_CARD_INT_MASK          	(0x1U << 1)
+#define UP_LD_CARD_INT_MASK				(0x1U << 1)
 /** Card Control Registers : Download card interrupt mask */
-#define DN_LD_CARD_INT_MASK          	(0x1U << 0)
+#define DN_LD_CARD_INT_MASK				(0x1U << 0)
 
 /** Card Control Registers : Card interrupt status register */
-#define CARD_INTERRUPT_STATUS_REG    	0x38
+#define CARD_INTERRUPT_STATUS_REG		0x38
 /** Card Control Registers : Power up interrupt */
-#define POWER_UP_INT                 	(0x1U << 4)
+#define POWER_UP_INT					(0x1U << 4)
 /** Card Control Registers : Power down interrupt */
-#define POWER_DOWN_INT               	(0x1U << 3)
+#define POWER_DOWN_INT					(0x1U << 3)
 
 /** Card Control Registers : Card interrupt RSR register */
-#define CARD_INTERRUPT_RSR_REG       	0x3c
+#define CARD_INTERRUPT_RSR_REG			0x3c
 /** Card Control Registers : Power up RSR */
-#define POWER_UP_RSR                 	(0x1U << 4)
+#define POWER_UP_RSR					(0x1U << 4)
 /** Card Control Registers : Power down RSR */
-#define POWER_DOWN_RSR               	(0x1U << 3)
+#define POWER_DOWN_RSR					(0x1U << 3)
 
 /** Card Control Registers : Debug 0 register */
-#define DEBUG_0_REG                  	0x70
+#define DEBUG_0_REG						0x70
 /** Card Control Registers : SD test BUS 0 */
-#define SD_TESTBUS0                  	(0x1U)
+#define SD_TESTBUS0						(0x1U)
 /** Card Control Registers : Debug 1 register */
-#define DEBUG_1_REG                  	0x71
+#define DEBUG_1_REG						0x71
 /** Card Control Registers : SD test BUS 1 */
-#define SD_TESTBUS1                  	(0x1U)
+#define SD_TESTBUS1						(0x1U)
 /** Card Control Registers : Debug 2 register */
-#define DEBUG_2_REG                  	0x72
+#define DEBUG_2_REG						0x72
 /** Card Control Registers : SD test BUS 2 */
-#define SD_TESTBUS2                  	(0x1U)
+#define SD_TESTBUS2						(0x1U)
 /** Card Control Registers : Debug 3 register */
-#define DEBUG_3_REG                  	0x73
+#define DEBUG_3_REG						0x73
 /** Card Control Registers : SD test BUS 3 */
-#define SD_TESTBUS3                  	(0x1U)
+#define SD_TESTBUS3						(0x1U)
 
 /** Host Control Registers : I/O port 0 */
 #define IO_PORT_0_REG			0x78
@@ -188,24 +188,24 @@ typedef IRQ_RET_TYPE(*isr_notifier_fn_t) (s32 irq, void *dev_id,
 /** Rx unit register */
 #define CARD_RX_UNIT_REG		0x63
 /** Card Control Registers : Miscellaneous Configuration Register */
-#define CARD_MISC_CFG_REG              	0x6C
+#define CARD_MISC_CFG_REG		0x6C
 /** Misc. Config Register : Auto Re-enable interrupts */
 #define AUTO_RE_ENABLE_INT		(0x1U << 4)
 
 /** Card Control Registers : Card OCR 0 register */
-#define CARD_OCR_0_REG               	0x68
+#define CARD_OCR_0_REG			0x68
 /** Card Control Registers : Card OCR 1 register */
-#define CARD_OCR_1_REG               	0x69
+#define CARD_OCR_1_REG			0x69
 /** Card Control Registers : Card OCR 3 register */
-#define CARD_OCR_3_REG               	0x6A
+#define CARD_OCR_3_REG			0x6A
 /** Card Control Registers : Card config register */
-#define CARD_CONFIG_REG              	0x6B
+#define CARD_CONFIG_REG			0x6B
 /** Card Control Registers : Card revision register */
-#define CARD_REVISION_REG            	0x5c
+#define CARD_REVISION_REG		0x5c
 /** Card Control Registers : Command 53 finish G BUS */
-#define CMD53_FINISH_GBUS            	(0x1U << 1)
+#define CMD53_FINISH_GBUS		(0x1U << 1)
 /** Card Control Registers : SD negative edge */
-#define SD_NEG_EDGE 			(0x1U << 0)
+#define SD_NEG_EDGE				(0x1U << 0)
 
 /* Special registers in function 0 of the SDxx card */
 /** Special register in function 0 of the SDxxx card : Scratch 0 */
@@ -244,6 +244,7 @@ struct sdio_mmc_card {
 int sd_read_cmd52_val(bt_private * priv);
 /** This function updates card reg based on the Cmd52 value in dev structure */
 int sd_write_cmd52_val(bt_private * priv, int func, int reg, int val);
+void bt_enable_hostwake_irq(int flag);
 
 #ifdef SDIO_SUSPEND_RESUME
 #ifdef MMC_PM_KEEP_POWER
