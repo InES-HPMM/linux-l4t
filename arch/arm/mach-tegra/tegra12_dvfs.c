@@ -42,6 +42,7 @@ static bool tegra_dvfs_gpu_disabled;
 
 #define VDD_SAFE_STEP			100
 
+static int cpu_vmin_offsets[] = { 0, -30, };
 static int gpu_vmin_offsets[] = { 0, -30, };
 
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
@@ -83,6 +84,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1300,
 	.min_millivolts = 700,
+	.simon_domain = TEGRA_SIMON_DOMAIN_CPU,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
@@ -153,7 +155,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune1		= 0x00000060,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 750,
+			.min_millivolts = 720,
 		},
 		.max_mv = 1260,
 		.freqs_mult = KHZ,
@@ -187,8 +189,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2524500,	{2437299, -58535, 402}, {1400000, 0, 0}},
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
-		.vmin_trips_table = { 20, 35, 55, 75, },
-		.therm_floors_table = { 900, 800, 790, 770, },
+		.vmin_trips_table = { 20, 35, 55, 75, 120 },
+		.therm_floors_table = { 900, 800, 790, 770, 750, },
 	},
 };
 
@@ -712,12 +714,13 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	unsigned long fmin_use_dfll = 0;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
-	struct rail_alignment *align = &tegra12_dvfs_rail_vdd_cpu.alignment;
+	struct dvfs_rail *rail = &tegra12_dvfs_rail_vdd_cpu;
+	struct rail_alignment *align = &rail->alignment;
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
 	min_dfll_mv =  round_voltage(min_dfll_mv, align, true);
 	d->max_mv = round_voltage(d->max_mv, align, false);
-	BUG_ON(min_dfll_mv < tegra12_dvfs_rail_vdd_cpu.min_millivolts);
+	BUG_ON(min_dfll_mv < rail->min_millivolts);
 
 	/*
 	 * Use CVB table to fill in CPU dvfs frequencies and voltages. Each
@@ -807,14 +810,31 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	/* Init cpu thermal floors */
 	tegra_dvfs_rail_init_vmin_thermal_profile(
 		d->vmin_trips_table, d->therm_floors_table,
-		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+		rail, &cpu_dvfs->dfll_data);
 
 	/* Init cpu thermal caps */
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
 	tegra_dvfs_rail_init_vmax_thermal_profile(
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
-		&tegra12_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+		rail, &cpu_dvfs->dfll_data);
 #endif
+
+	/* Init cpu Vmin SiMon offsets */
+	tegra_dvfs_rail_init_simon_vmin_offsets(cpu_vmin_offsets,
+		ARRAY_SIZE(cpu_vmin_offsets), rail);
+
+	/* check Vmin SiMon offset: ignore SiMon if it pushes too low */
+	if (rail->therm_mv_floors && rail->simon_vmin_offsets) {
+		mv = rail->therm_mv_floors[rail->therm_mv_floors_num - 1];
+		mv += rail->simon_vmin_offsets[rail->simon_vmin_offs_num - 1];
+		mv = round_voltage(mv, align, true);
+		if (mv < min_dfll_mv) {
+			WARN(1, "tegra12_dvfs: cpu simon min %dmV below dfll min %dmV\n",
+			     mv, min_dfll_mv);
+			rail->simon_vmin_offsets = NULL;
+			rail->simon_vmin_offs_num = 0;
+		}
+	}
 
 	return 0;
 }
