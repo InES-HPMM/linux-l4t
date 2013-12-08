@@ -31,6 +31,7 @@
 #include "tegra_cl_dvfs.h"
 #include "tegra_core_sysfs_limits.h"
 #include "pm.h"
+#include "tegra_simon.h"
 
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
@@ -106,11 +107,11 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.vmax_cdev = &core_vmax_cdev,
 };
 
-/* TBD: fill in actual hw number */
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
 	.max_millivolts = 1350,
 	.min_millivolts = 650,
+	.simon_domain = TEGRA_SIMON_DOMAIN_GPU,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1350,
 	.in_band_pm = true,
@@ -478,6 +479,8 @@ static struct dvfs gpu_dvfs = {
 	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra12_dvfs_rail_vdd_gpu,
 };
+
+static struct notifier_block gpu_simon_grade_nb;
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
@@ -954,6 +957,50 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 
 	return 0;
 }
+
+static int gpu_simon_grade_notify_cb(struct notifier_block *nb,
+				     unsigned long grade, void *v)
+{
+	struct dvfs_rail *rail = &tegra12_dvfs_rail_vdd_gpu;
+	int curr_domain = (int)v;
+	int ret;
+
+	if (curr_domain != rail->simon_domain)
+		return NOTIFY_DONE;
+
+	/* Only 2 grades are supported; both voltage tables must be valid */
+	ret = tegra_dvfs_replace_voltage_table(&gpu_dvfs,
+		grade ? &gpu_millivolts_offs[0][0] : &gpu_millivolts[0][0]);
+
+	if (!WARN_ON(ret == -EINVAL))
+		pr_info("tegra_dvfs: set %s simon grade %lu\n",
+			rail->reg_id, grade);
+
+	return NOTIFY_OK;
+};
+
+static int __init tegra12_register_gpu_simon_notifier(void)
+{
+	int ret;
+	struct dvfs_rail *rail = &tegra12_dvfs_rail_vdd_gpu;
+
+	/* Stay at default if no simon offsets or thermal dvfs is broken */
+	if (!gpu_dvfs.therm_dvfs || !rail->simon_vmin_offsets)
+		return 0;
+
+	gpu_simon_grade_nb.notifier_call = gpu_simon_grade_notify_cb;
+
+	ret = tegra_register_simon_notifier(&gpu_simon_grade_nb);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to register %s simon notifier\n",
+		       rail->reg_id);
+		return ret;
+	}
+
+	pr_info("tegra dvfs: registered %s simon notifier\n", rail->reg_id);
+	return 0;
+}
+late_initcall(tegra12_register_gpu_simon_notifier);
 
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
