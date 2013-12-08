@@ -2147,6 +2147,7 @@ static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 	int *trips = NULL;
 	struct dvfs *d;
 	struct dvfs_rail *rail = tegra_gpu_rail;
+	int max_mv[MAX_DVFS_FREQS] = {};
 
 	if (!tegra_gpu_rail) {
 		seq_printf(s, "Only supported for T124 or higher\n");
@@ -2183,6 +2184,7 @@ static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 		for (i = 0; i < d->num_freqs; i++) {
 			int mv = *(d->millivolts + j * MAX_DVFS_FREQS + i);
 			seq_printf(s, " %7d", mv);
+			max_mv[i] = max(max_mv[i], mv);
 		}
 		seq_printf(s, " mV\n");
 	}
@@ -2190,7 +2192,7 @@ static int gpu_dvfs_t_show(struct seq_file *s, void *data)
 	seq_printf(s, "%3s%-8s\n", "", "------");
 	seq_printf(s, "%3s%-8s", "", "max(T)");
 	for (i = 0; i < d->num_freqs; i++)
-		seq_printf(s, " %7d", d->peak_millivolts[i]);
+		seq_printf(s, " %7d", max_mv[i]);
 	seq_printf(s, " mV\n");
 
 	mutex_unlock(&dvfs_lock);
