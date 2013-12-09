@@ -1770,7 +1770,6 @@ static const char * const gmi_groups[] = {
 	"sdmmc4_clk_pcc4",
 	"sdmmc4_cmd_pt7",
 	"gmi_clk_lb",
-	"gpio_x6_aud_px6",
 
 	"dap1_fs_pn0",
 	"dap1_din_pn1",
@@ -1887,7 +1886,7 @@ static const char * const irda_groups[] = {
 	"uart2_rxd_pc3",
 	"uart2_txd_pc2",
 	"kb_row11_ps3",
-	"kb_row12_ps4"
+	"kb_row12_ps4",
 };
 
 static const char * const kbc_groups[] = {
@@ -2191,7 +2190,7 @@ static const char * const rsvd4_groups[] = {
 	"dap3_dout_pp2",
 	"pv0",
 	"pv1",
-	"sdmmc1_clk_pz0"
+	"sdmmc1_clk_pz0",
 
 	"clk2_out_pw5",
 	"clk2_req_pcc5",
@@ -2302,7 +2301,7 @@ static const char * const rsvd4_groups[] = {
 	"usb_vbus_en1_pn5",
 	"sdmmc3_clk_lb_out_pee4",
 	"sdmmc3_clk_lb_in_pee5",
-	"gmi_clk_lb"
+	"gmi_clk_lb",
 
 	"dp_hpd_pff0",
 	"usb_vbus_en2_pff1",
@@ -2891,7 +2890,7 @@ static const char * const safe_groups[] = {
 		.ngroups = ARRAY_SIZE(fname##_groups),	\
 	}
 
-static const struct tegra_function  tegra124_functions[] = {
+static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(safe),
 	FUNCTION(blink),
 	FUNCTION(cec),
@@ -3397,6 +3396,7 @@ static struct of_device_id tegra124_pinctrl_of_match[] = {
 	{ .compatible = "nvidia,tegra124-pinmux", },
 	{ },
 };
+MODULE_DEVICE_TABLE(of, tegra124_pinctrl_of_match);
 
 static struct platform_driver tegra124_pinctrl_driver = {
 	.driver = {
@@ -3423,5 +3423,3 @@ module_exit(tegra124_pinctrl_exit);
 MODULE_AUTHOR("Ashwini Ghuge <aghuge@nvidia.com>");
 MODULE_DESCRIPTION("NVIDIA Tegra124 pinctrl driver");
 MODULE_LICENSE("GPL v2");
-MODULE_DEVICE_TABLE(of, tegra124_pinctrl_of_match);
-
