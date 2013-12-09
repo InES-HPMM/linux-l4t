@@ -50,7 +50,8 @@ int __init ardbeg_sata_init(void)
 		val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 #ifdef CONFIG_SATA_AHCI_TEGRA
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id != BOARD_PM358)
+	if ((board_info.board_id != BOARD_PM358) &&
+	    (board_info.board_id != BOARD_PM359))
 		tegra_ahci_platform_data0.pexp_gpio = -1;
 
 	tegra_sata_device.dev.platform_data = &tegra_ahci_platform_data0;
