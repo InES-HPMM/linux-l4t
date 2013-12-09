@@ -487,8 +487,9 @@ static void loki_usb_init(void)
 
 	/* Device cable is detected through PMU Interrupt */
 	tegra_udc_pdata.support_pmu_vbus = true;
+	tegra_udc_pdata.vbus_extcon_dev_name = "palmas-extcon";
 	tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
-	tegra_otg_pdata.vbus_extcon_dev_name = "palmas-extcon";
+	tegra_ehci1_utmi_pdata.vbus_extcon_dev_name = "palmas-extcon";
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;

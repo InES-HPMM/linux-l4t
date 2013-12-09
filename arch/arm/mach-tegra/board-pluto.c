@@ -677,6 +677,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
 	.id_det_type = TEGRA_USB_PMU_ID,
+	.id_extcon_dev_name = "MAX77665_MUIC_ID",
 	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
@@ -703,7 +704,6 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
-	.id_extcon_dev_name = "MAX77665_MUIC_ID",
 };
 
 static struct regulator *baseband_reg;
