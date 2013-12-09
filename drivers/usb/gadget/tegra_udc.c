@@ -2962,6 +2962,10 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	}
 #endif
 
+	if (udc->support_pmu_vbus && pdata->vbus_extcon_dev_name)
+		udc->vbus_extcon_dev =
+			extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
+
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
 	INIT_DELAYED_WORK(&udc->non_std_charger_work,
@@ -3083,14 +3087,19 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
-	if (temp & USB_SYS_VBUS_STATUS)
-		udc->vbus_in_lp0 = true;
+	if (udc->support_pmu_vbus) {
+		if (extcon_get_cable_state(udc->vbus_extcon_dev, "USB"))
+			udc->vbus_in_lp0 = true;
+	} else {
+		temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
+		if (temp & USB_SYS_VBUS_STATUS)
+			udc->vbus_in_lp0 = true;
+	}
 	udc->connect_type_lp0 = udc->connect_type;
 
 	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
-			return 0;
+		return 0;
 
 	if (udc->vbus_active) {
 		spin_lock_irqsave(&udc->lock, flags);
@@ -3102,8 +3111,6 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	}
 	/* Stop the controller and turn off the clocks */
 	dr_controller_stop(udc);
-	if (udc->transceiver)
-		udc->transceiver->state = OTG_STATE_UNDEFINED;
 
 	tegra_usb_phy_power_off(udc->phy);
 
@@ -3121,12 +3128,23 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	udc->vbus_in_lp0 = false;
 
 	/* Set Current limit to 0 if charger is disconnected in LP0 */
-	temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
-	if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE)
-			&& !(temp & USB_SYS_VBUS_STATUS)) {
-		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
-		if (udc->vbus_reg != NULL)
-			regulator_set_current_limit(udc->vbus_reg, 0, 0);
+	if (udc->vbus_reg != NULL) {
+		if (udc->support_pmu_vbus) {
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
+			!extcon_get_cable_state(udc->vbus_extcon_dev, "USB")) {
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+									 0, 0);
+			}
+		} else {
+			temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
+					!(temp & USB_SYS_VBUS_STATUS)) {
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+									 0, 0);
+			}
+		}
 	}
 
 	if (udc->transceiver)
