@@ -1035,19 +1035,21 @@ static void seq_print_dma_areas(struct seq_file *s, void *bitmap,
 	size_t pos = find_first_bit(bitmap, bits), end;
 
 	for (; pos < bits; pos = find_next_bit(bitmap, bits, end + 1)) {
+		dma_addr_t start_addr, end_addr;
+
 		end = find_next_zero_bit(bitmap, bits, pos);
-		seq_printf(s, "    0x%08x-0x%08x pages=%d\n",
-			   bit_to_addr(pos, base, order),
-			   bit_to_addr(end, base, order) - 1,
-			   (end - pos) << order);
+		start_addr = bit_to_addr(pos, base, order);
+		end_addr = bit_to_addr(end, base, order);
+		seq_printf(s, "    %pa-%pa pages=%d\n",
+			   &start_addr, &end_addr, (end - pos) << order);
 	}
 }
 
 static void seq_print_mapping(struct seq_file *s,
 			      struct dma_iommu_mapping *mapping)
 {
-	seq_printf(s, "  memory map: base=0x%x size=%d order=%d domain=%p\n",
-		   mapping->base, mapping->end - mapping->base,
+	seq_printf(s, "  memory map: base=%pa size=%lld order=%d domain=%p\n",
+		   &mapping->base, (u64)(mapping->end - mapping->base),
 		   mapping->order, mapping->domain);
 
 	seq_print_dma_areas(s, mapping->bitmap, mapping->base, mapping->bits,
@@ -1657,7 +1659,7 @@ static void *__iommu_alloc_atomic(struct device *dev, size_t size,
 	if (*handle == DMA_ERROR_CODE)
 		goto err_mapping;
 
-	dev_dbg(dev, "%s() %08x(%x)\n", __func__, *handle, size);
+	dev_dbg(dev, "%s() %pa(%x)\n", __func__, handle, size);
 	return addr;
 
 err_mapping:
@@ -1671,7 +1673,7 @@ static void __iommu_free_atomic(struct device *dev, void *cpu_addr,
 {
 	__iommu_remove_mapping(dev, handle, size, attrs);
 	__free_from_pool(cpu_addr, size);
-	dev_dbg(dev, "%s() %08x(%x)\n", __func__, handle, size);
+	dev_dbg(dev, "%s() %pa(%x)\n", __func__, &handle, size);
 }
 
 static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
