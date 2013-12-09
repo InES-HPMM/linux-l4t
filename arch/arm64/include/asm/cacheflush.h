@@ -156,10 +156,4 @@ static inline void flush_cache_vunmap(unsigned long start, unsigned long end)
 {
 }
 
-/* FIXME: Change Page Attributes (CPA) copied from arch/arm */
-//int set_pages_array_uc(struct page **pages, int addrinarray);
-//int set_pages_array_wc(struct page **pages, int addrinarray);
-//int set_pages_array_wb(struct page **pages, int addrinarray);
-//int set_pages_array_iwb(struct page **pages, int addrinarray);
-
 #endif
