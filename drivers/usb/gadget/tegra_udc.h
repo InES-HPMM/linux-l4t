@@ -476,6 +476,7 @@ struct tegra_udc {
 	bool vbus_in_lp0;
 #ifdef CONFIG_EXTCON
 	struct extcon_dev *edev;
+	struct extcon_dev *vbus_extcon_dev;
 #endif
 };
 
