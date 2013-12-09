@@ -33,6 +33,7 @@
 #include <mach/io_dpd.h>
 #include <asm/mach/arch.h>
 #include <mach/isomgr.h>
+#include <mach/board_id.h>
 
 #include "iomap.h"
 #include "board.h"
@@ -171,6 +172,10 @@ static void vcm30_t124_nor_init(void)
 	platform_device_register(&tegra_nor_device);
 }
 
+static struct i2c_board_info __initdata ak4618_board_info = {
+	I2C_BOARD_INFO("ak4618", 0x10),
+};
+
 static struct i2c_board_info __initdata wm8731_board_info = {
 	I2C_BOARD_INFO("wm8731", 0x1a),
 };
@@ -184,6 +189,7 @@ static void vcm30_t124_i2c_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
+	i2c_register_board_info(0, &ak4618_board_info, 1);
 	i2c_register_board_info(0, &wm8731_board_info, 1);
 	i2c_register_board_info(0, &ad1937_board_info, 1);
 }
@@ -295,6 +301,17 @@ static struct platform_device tegra_snd_vcm30t124 = {
 	.id = 0,
 };
 
+static struct platform_device tegra_snd_vcm30t124_b00 = {
+	.name = "tegra-snd-vcm30t124-b00",
+	.id = 0,
+};
+
+static void __init vcm30_t124_audio_init(void)
+{
+	platform_device_register(&tegra_snd_vcm30t124);
+	platform_device_register(&tegra_snd_vcm30t124_b00);
+}
+
 /* FIXME: Check which devices are needed from the below list */
 static struct platform_device *vcm30_t124_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -305,7 +322,6 @@ static struct platform_device *vcm30_t124_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra12_se_device,
 #endif
-	&tegra_snd_vcm30t124,
 };
 
 #if defined(CONFIG_USB_G_ANDROID)
@@ -494,6 +510,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_i2c_init();
 	vcm30_t124_uart_init();
 	vcm30_t124_pca953x_init();
+	vcm30_t124_audio_init();
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
 	tegra_io_dpd_init();

@@ -72,5 +72,11 @@
 		adx@70303800 {
 			status = "okay";
 		};
+		amx@70303100 {
+			status = "okay";
+		};
+		adx@70303900 {
+			status = "okay";
+		};
 	};
 };
