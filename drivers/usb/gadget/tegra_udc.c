@@ -3125,7 +3125,8 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE)
 			&& !(temp & USB_SYS_VBUS_STATUS)) {
 		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
-		regulator_set_current_limit(udc->vbus_reg, 0, 0);
+		if (udc->vbus_reg != NULL)
+			regulator_set_current_limit(udc->vbus_reg, 0, 0);
 	}
 
 	if (udc->transceiver)
