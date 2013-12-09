@@ -494,7 +494,7 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	u8 *dsi_instance_out)
 {
 	struct tegra_panel *panel = NULL;
-	u8 dsi_instance;
+	u8 dsi_instance = DSI_INSTANCE_0;
 	struct board_info boardtmp;
 
 	if (!board_out)
@@ -505,21 +505,17 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_E1639:
 	case BOARD_E1813:
 		panel = &dsi_s_wqxga_10_1;
-		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_PM354:
 		panel = &dsi_a_1080p_14_0;
-		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_E1627:
 		panel = &dsi_p_wuxga_10_1;
-		dsi_instance = DSI_INSTANCE_0;
 		tegra_io_dpd_enable(&dsic_io);
 		tegra_io_dpd_enable(&dsid_io);
 		break;
 	case BOARD_E1549:
 		panel = &dsi_lgd_wxga_7_0;
-		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_PM363:
 	case BOARD_E1824:
@@ -538,7 +534,6 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		break;
 	default:
 		panel = &dsi_p_wuxga_10_1;
-		dsi_instance = DSI_INSTANCE_0;
 		tegra_io_dpd_enable(&dsic_io);
 		tegra_io_dpd_enable(&dsid_io);
 		break;
