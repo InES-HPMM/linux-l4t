@@ -309,6 +309,42 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 			continue;
 		}
 		pdata->tables[i].emc_cfg_dig_dll = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-bgbias-ctl0", &u);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-bgbias-ctl0 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_bgbias_ctl0 = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-auto-cal-config2", &u);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-auto-cal-config2 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_auto_cal_config2 = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-auto-cal-config3", &u);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-auto-cal-config3 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_auto_cal_config3 = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-auto-cal-config", &u);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-auto-cal-config property in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_auto_cal_config = u;
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
