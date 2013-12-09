@@ -56,8 +56,7 @@
 #include "tegra_udc.h"
 
 
-#define	DRIVER_DESC	"Nvidia Tegra High-Speed USB SOC \
-					Device Controller driver"
+#define	DRIVER_DESC	"Nvidia Tegra High-Speed USB Device Controller driver"
 
 #define	DRIVER_AUTHOR	"Venkat Moganty/Rakesh Bodla"
 #define	DRIVER_VERSION	"Apr 30, 2012"
