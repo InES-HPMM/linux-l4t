@@ -345,7 +345,7 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 #elif defined(CONFIG_TEGRA_HDMI_PRIMARY)
 static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
-		.pclk =			KHZ2PICOS(148500),
+		.pclk =			148500000,
 		.h_ref_to_sync =	1,
 		.v_ref_to_sync =	1,
 		.h_sync_width =		44,	/* hsync_len */
