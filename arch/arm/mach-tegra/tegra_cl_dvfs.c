@@ -40,6 +40,7 @@
 #include "clock.h"
 #include "dvfs.h"
 #include "iomap.h"
+#include "tegra_simon.h"
 
 #define OUT_MASK			0x3f
 
@@ -226,6 +227,8 @@ struct tegra_cl_dvfs {
 	ktime_t				last_calibration;
 	unsigned long			calibration_range_min;
 	unsigned long			calibration_range_max;
+
+	struct notifier_block		simon_grade_nb;
 };
 
 /* Conversion macros (different scales for frequency request, and monitored
@@ -1130,16 +1133,11 @@ static void cl_dvfs_init_hot_output_cap(struct tegra_cl_dvfs *cld)
 	       cld->minimax_output);
 }
 
-static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
+static void cl_dvfs_convert_cold_output_floor(struct tegra_cl_dvfs *cld,
+					      int offset)
 {
 	int i;
-	if (!cld->safe_dvfs->dvfs_rail->therm_mv_floors ||
-	    !cld->safe_dvfs->dvfs_rail->therm_mv_floors_num)
-		return;
 
-	if (!cld->safe_dvfs->dvfs_rail->vmin_cdev)
-		WARN(1, "%s: missing dfll floor cooling device\n",
-		     cld->safe_dvfs->dvfs_rail->reg_id);
 	/*
 	 * Convert monotonically decreasing thermal floors at low temperature
 	 * into output LUT indexes; make sure there is a room for regulation
@@ -1147,10 +1145,25 @@ static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
 	 */
 	cld->therm_floors_num = cld->safe_dvfs->dvfs_rail->therm_mv_floors_num;
 	for (i = 0; i < cld->therm_floors_num; i++) {
-		cld->thermal_out_floors[i] = find_mv_out_cap(
-			cld, cld->safe_dvfs->dvfs_rail->therm_mv_floors[i]);
+		int mv = cld->safe_dvfs->dvfs_rail->therm_mv_floors[i] + offset;
+		cld->thermal_out_floors[i] = find_mv_out_cap(cld, mv);
 	}
 	BUG_ON(cld->thermal_out_floors[0] + 1 >= get_output_top(cld));
+}
+
+static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
+{
+	if (!cld->safe_dvfs->dvfs_rail->therm_mv_floors ||
+	    !cld->safe_dvfs->dvfs_rail->therm_mv_floors_num)
+		return;
+
+	if (!cld->safe_dvfs->dvfs_rail->vmin_cdev)
+		WARN(1, "%s: missing dfll floor cooling device\n",
+		     cld->safe_dvfs->dvfs_rail->reg_id);
+
+	/* Most conservative offset 0 always safe */
+	cl_dvfs_convert_cold_output_floor(cld, 0);
+
 	if (cld->minimax_output <= cld->thermal_out_floors[0])
 		cld->minimax_output = cld->thermal_out_floors[0] + 1;
 }
@@ -1718,6 +1731,71 @@ static void tegra_cl_dvfs_bypass_dev_register(struct tegra_cl_dvfs *cld,
 	platform_device_register(byp_dev);
 }
 
+/*
+ * The Silicon Monitor (SiMon) notification provides grade information on
+ * the DFLL controlled rail. The resepctive minimum voltage offset is applied
+ * to thermal floors profile. SiMon offsets are negative, the higher the grade
+ * the lower the floor.
+ */
+static int cl_dvfs_simon_grade_notify_cb(struct notifier_block *nb,
+					 unsigned long grade, void *v)
+{
+	unsigned long flags;
+	int i, simon_offset;
+	int curr_domain = (int)v;
+	struct tegra_cl_dvfs *cld = container_of(
+		nb, struct tegra_cl_dvfs, simon_grade_nb);
+	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
+
+	if (!cld->therm_floors_num || (curr_domain != rail->simon_domain))
+		return NOTIFY_DONE;
+
+	if (grade >= rail->simon_vmin_offs_num)
+		grade = rail->simon_vmin_offs_num - 1;
+	simon_offset = rail->simon_vmin_offsets[grade];
+	BUG_ON(simon_offset > 0);
+
+	clk_lock_save(cld->dfll_clk, &flags);
+
+	/* Convert new floors and invalidate minimum rates */
+	cl_dvfs_convert_cold_output_floor(cld, simon_offset);
+	for (i = 0; i < cld->therm_floors_num; i++)
+		cld->dvco_rate_floors[i] = 0;
+
+	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_force_out_min(cld);
+	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
+		tegra_cl_dvfs_request_rate(cld,
+			tegra_cl_dvfs_request_get(cld));
+	}
+
+	clk_unlock_restore(cld->dfll_clk, &flags);
+
+	pr_info("tegra_dvfs: set %s simon grade %lu\n", rail->reg_id, grade);
+
+	return NOTIFY_OK;
+};
+
+static void tegra_cl_dvfs_register_simon_notifier(struct tegra_cl_dvfs *cld)
+{
+	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
+
+	/* Stay at default if no simon offsets */
+	if (!rail->simon_vmin_offsets)
+		return;
+
+	cld->simon_grade_nb.notifier_call = cl_dvfs_simon_grade_notify_cb;
+
+	if (tegra_register_simon_notifier(&cld->simon_grade_nb)) {
+		pr_err("tegra_dvfs: failed to register %s simon notifier\n",
+		       rail->reg_id);
+		return;
+	}
+
+	pr_info("tegra_dvfs: registered %s simon notifier\n", rail->reg_id);
+	return;
+}
+
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1808,6 +1886,9 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		tegra_cl_dvfs_bypass_dev_register(
 			cld, p_data->u.pmu_pwm.dfll_bypass_dev);
 	}
+
+	/* Register SiMon notifier */
+	tegra_cl_dvfs_register_simon_notifier(cld);
 
 	/*
 	 * Schedule cooling device registration as a separate work to address
