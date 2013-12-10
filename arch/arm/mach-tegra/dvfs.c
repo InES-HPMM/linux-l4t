@@ -1380,15 +1380,18 @@ int tegra_dvfs_rail_set_mode(struct dvfs_rail *rail, unsigned int mode)
 {
 	int ret = -ENOENT;
 
-	pr_debug("%s: updating %s mode from %u to %u\n", __func__,
-		 rail->reg_id, regulator_get_mode(rail->reg), mode);
+	if (!rail)
+		return ret;
 
-	if (rail && rail->reg)
+	pr_debug("%s: updating %s mode from %u to %u\n", __func__,
+		rail->reg_id, regulator_get_mode(rail->reg), mode);
+
+	if (rail->reg)
 		ret = regulator_set_mode(rail->reg, mode);
 
 	if (ret)
 		pr_err("Failed to set dvfs regulator %s mode %u\n",
-		       rail->reg_id, mode);
+			rail->reg_id, mode);
 	return ret;
 }
 
