@@ -189,7 +189,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = ARDBEG_SD_CD,
-	.wp_gpio = ARDBEG_SD_WP,
+	.wp_gpio = -1,
 	.power_gpio = -1,
 	.tap_delay = 0,
 	.trim_delay = 0x3,
@@ -367,6 +367,9 @@ int __init ardbeg_sdhci_init(void)
 		tegra_sdhci_platform_data2.boot_vcore_mv = boot_vcore_mv;
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
+
+	if (of_machine_is_compatible("nvidia,laguna"))
+		tegra_sdhci_platform_data2.wp_gpio = ARDBEG_SD_WP;
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1780) {
