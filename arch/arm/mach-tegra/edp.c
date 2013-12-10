@@ -897,7 +897,6 @@ static int init_gpu_edp_limits_calculated(void)
 		edp_gpu_limits_size = ARRAY_SIZE(gpu_temperatures);
 	}
 
-	kfree(edp_gpu_calculated_limits);
 	kfree(freq_voltage_gpu_lut);
 
 	return 0;
