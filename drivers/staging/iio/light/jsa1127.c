@@ -473,17 +473,18 @@ static int jsa1127_probe(struct i2c_client *client,
 	u32 noisy = UINT_MAX;
 
 	if (client->dev.of_node) {
-		of_property_read_u32_array(client->dev.of_node,
-					"rint", &rint, 1);
-		of_property_read_u32_array(client->dev.of_node,
-					"use_internal_integration_timing",
-					&use_internal_integration_timing, 1);
-		of_property_read_u32_array(client->dev.of_node,
-					"tint_coeff",
-					&tint, 1);
-		of_property_read_u32_array(client->dev.of_node,
-					"noisy",
-					&noisy, 1);
+		of_property_read_u32(client->dev.of_node,
+				"solteam-opto,rint", &rint);
+		of_property_read_u32(client->dev.of_node,
+				"solteam-opto,integration-time",
+				&integration_time);
+		of_property_read_u32(client->dev.of_node,
+				"solteam-opto,use-internal-integration-timing",
+				&use_internal_integration_timing);
+		of_property_read_u32(client->dev.of_node,
+				"solteam-opto,tint-coeff", &tint);
+		of_property_read_u32(client->dev.of_node,
+				"solteam-opto,noisy", &noisy);
 	} else {
 		jsa1127_platform_data = client->dev.platform_data;
 		rint = jsa1127_platform_data->rint;
