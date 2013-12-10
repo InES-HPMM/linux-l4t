@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-power.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -846,7 +846,7 @@ static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 };
 
 /* EN_3V3_FUSE From TEGRA GPIO PX4 */

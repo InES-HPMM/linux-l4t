@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-power.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -129,7 +129,7 @@ static struct regulator_consumer_supply palmas_smps10_out1_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 	REGULATOR_SUPPLY("vdd_lcd", NULL),
 };
 
