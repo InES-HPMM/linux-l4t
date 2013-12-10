@@ -179,6 +179,10 @@ static __initdata struct tegra_clk_init_table loki_clk_init_table[] = {
 
 static void loki_i2c_init(void)
 {
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+	if (bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)
+		return;
 	i2c_register_board_info(0, &rt5639_board_info, 1);
 }
 
@@ -234,6 +238,10 @@ static struct tegra_asoc_platform_data loki_audio_pdata_rt5639 = {
 
 static void loki_audio_init(void)
 {
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+	if (bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)
+		return;
 	loki_audio_pdata_rt5639.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
 
