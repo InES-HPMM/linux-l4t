@@ -193,7 +193,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.power_gpio = -1,
 	.tap_delay = 0,
 	.trim_delay = 0x3,
-	.uhs_mask = MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
 };
