@@ -13,7 +13,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                 \
 	-DWL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST                            \
 	-DESCAN_RESULT_PATCH -DHT40_GO -DPASS_ARP_PACKET                      \
 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DSUPPORT_PM2_ONLY        \
-	-DMIRACAST_AMPDU_SIZE=8                                               \
+	-DMIRACAST_AMPDU_SIZE=8 -DCUSTOM_AMPDU_BA_WSIZE=32                    \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
 DHDCFLAGS += -DWL_CFG80211 -DWL_CFG80211_STA_EVENT

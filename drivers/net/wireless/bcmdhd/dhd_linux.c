@@ -4220,6 +4220,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Set ampdu ba wsize to 64 or 16 */
 #ifdef CUSTOM_AMPDU_BA_WSIZE
 	ampdu_ba_wsize = CUSTOM_AMPDU_BA_WSIZE;
+	struct ampdu_tid_control atc;
 #endif
 	if (ampdu_ba_wsize != 0) {
 		bcm_mkiovar("ampdu_ba_wsize", (char *)&ampdu_ba_wsize, 4, iovbuf, sizeof(iovbuf));
@@ -4229,6 +4230,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 				__FUNCTION__, CUSTOM_AMPDU_BA_WSIZE, ret));
 		}
 	}
+
+	atc.tid = 7;
+	atc.enable = 0;
+	bcm_mkiovar("ampdu_rx_tid", (char *)&atc, sizeof(atc), iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
 #endif /* CUSTOM_AMPDU_BA_WSIZE || CUSTOM_IBSS_AMPDU_BA_WSIZE */
 #ifdef SUPPORT_2G_VHT
 	bcm_mkiovar("vht_features", (char *)&vht_features, 4, iovbuf, sizeof(iovbuf));
