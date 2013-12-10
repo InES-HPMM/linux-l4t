@@ -1072,6 +1072,10 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 			break;
 	}
 	cld->num_voltages = j;
+
+	/* hit Vmax before last freq was mapped: map the rest to max output */
+	for (j = i++; i < n; i++)
+		cld->clk_dvfs_map[i] = cld->clk_dvfs_map[j];
 }
 
 static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
