@@ -343,6 +343,75 @@ static struct mt9m114_reg mode_1280x960_30fps[] = {
 	{MT9M114_SENSOR_TABLE_END, 0x0000}
 };
 
+static struct mt9m114_reg mt9m114_Whitebalance_Auto[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x0000},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC909, 0x02},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_Whitebalance_Cloudy[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x0000},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC909, 0x00},
+	{MT9M114_SENSOR_WORD_WRITE, 0xC8F0, 0x1964},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_Whitebalance_Daylight[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x0000},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC909, 0x00},
+	{MT9M114_SENSOR_WORD_WRITE, 0xC8F0, 0x1964},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_Whitebalance_Incandescent[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x0000},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC909, 0x00},
+	{MT9M114_SENSOR_WORD_WRITE, 0xC8F0, 0x0A8C},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_Whitebalance_Fluorescent[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x0000},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC909, 0x00},
+	{MT9M114_SENSOR_WORD_WRITE, 0xC8F0, 0x0E74},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_EV_zero[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0xC87A},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87A, 0x3C},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87B, 0x1E},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_EV_plus_1[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0xC87A},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87A, 0x42},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87B, 0x21},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_EV_plus_2[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0xC87A},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87A, 0x48},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87B, 0x24},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_EV_minus_1[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0xC87A},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87A, 0x36},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87B, 0x1B},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
+static struct mt9m114_reg mt9m114_EV_minus_2[] = {
+	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0xC87A},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87A, 0x32},
+	{MT9M114_SENSOR_BYTE_WRITE, 0xC87B, 0x19},
+	{MT9M114_SENSOR_TABLE_END, 0x0000}
+};
+
 struct mt9m114_info {
 	struct miscdevice		miscdev_info;
 	struct mt9m114_power_rail	power;
@@ -740,6 +809,72 @@ static long mt9m114_ioctl(struct file *file,
 		}
 		err = mt9m114_set_mode(info, &mode);
 		break;
+	}
+	case MT9M114_SENSOR_IOCTL_SET_WHITE_BALANCE:
+	{
+		u8 whitebalance;
+
+		if (copy_from_user(&whitebalance, (const void __user *)arg,
+			sizeof(whitebalance))) {
+			return -EFAULT;
+		}
+
+		switch (whitebalance) {
+		case MT9M114_YUV_Whitebalance_Auto:
+			err = mt9m114_write_table(info,
+					mt9m114_Whitebalance_Auto);
+			break;
+		case MT9M114_YUV_Whitebalance_Daylight:
+			err = mt9m114_write_table(info,
+					mt9m114_Whitebalance_Daylight);
+			break;
+		case MT9M114_YUV_Whitebalance_CloudyDaylight:
+			err = mt9m114_write_table(info,
+					mt9m114_Whitebalance_Cloudy);
+			break;
+		case MT9M114_YUV_Whitebalance_Incandescent:
+			err = mt9m114_write_table(info,
+					mt9m114_Whitebalance_Incandescent);
+			break;
+		case MT9M114_YUV_Whitebalance_Fluorescent:
+			err = mt9m114_write_table(info,
+					mt9m114_Whitebalance_Fluorescent);
+			break;
+		default:
+			break;
+		}
+
+		if (err)
+			return err;
+
+		return 0;
+	}
+
+	case MT9M114_SENSOR_IOCTL_SET_EV:
+	{
+		short ev;
+
+		if (copy_from_user(&ev,
+				(const void __user *)arg,
+				sizeof(short)))
+			return -EFAULT;
+
+		if (ev == -2)
+			err = mt9m114_write_table(info, mt9m114_EV_minus_2);
+		else if (ev == -1)
+			err = mt9m114_write_table(info, mt9m114_EV_minus_1);
+		else if (ev == 0)
+			err = mt9m114_write_table(info, mt9m114_EV_zero);
+		else if (ev == 1)
+			err = mt9m114_write_table(info, mt9m114_EV_plus_1);
+		else if (ev == 2)
+			err = mt9m114_write_table(info, mt9m114_EV_plus_2);
+		else
+			err = -1;
+
+		if (err)
+			return err;
+		return 0;
 	}
 
 	default:

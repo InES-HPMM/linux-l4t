@@ -47,6 +47,8 @@
 #define MT9M114_SENSOR_IOCTL_SET_AF_MODE        _IOW('o', 6, __u8)
 #define MT9M114_SENSOR_IOCTL_GET_AF_STATUS      _IOR('o', 7, __u8)
 #define MT9M114_SENSOR_IOCTL_SET_CAMERA         _IOW('o', 8, __u8)
+#define MT9M114_SENSOR_IOCTL_SET_EV             _IOW('o', 9, __s16)
+#define MT9M114_SENSOR_IOCTL_GET_EV             _IOR('o', 10, __s16)
 
 struct mt9m114_mode {
 	int xres;
@@ -58,39 +60,70 @@ struct mt9m114_modeinfo {
 	int yres;
 };
 
-#define  AF_CMD_START 0
-#define  AF_CMD_ABORT 1
-#define  AF_CMD_SET_POSITION  2
-#define  AF_CMD_SET_WINDOW_POSITION 3
-#define  AF_CMD_SET_WINDOW_SIZE 4
-#define  AF_CMD_SET_AFMODE  5
-#define  AF_CMD_SET_CAF 6
-#define  AF_CMD_GET_AF_STATUS 7
+#define AF_CMD_START 0
+#define AF_CMD_ABORT 1
+#define AF_CMD_SET_POSITION  2
+#define AF_CMD_SET_WINDOW_POSITION 3
+#define AF_CMD_SET_WINDOW_SIZE 4
+#define AF_CMD_SET_AFMODE  5
+#define AF_CMD_SET_CAF 6
+#define AF_CMD_GET_AF_STATUS 7
 
 enum {
-	YUV_COLOR_EFFECT = 0,
-	YUV_WHITE_BALANCE,
-	YUV_SCENE_MODE,
+	MT9M114_YUV_ColorEffect_Invalid = 0xA000,
+	MT9M114_YUV_ColorEffect_Aqua,
+	MT9M114_YUV_ColorEffect_Blackboard,
+	MT9M114_YUV_ColorEffect_Mono,
+	MT9M114_YUV_ColorEffect_Negative,
+	MT9M114_YUV_ColorEffect_None,
+	MT9M114_YUV_ColorEffect_Posterize,
+	MT9M114_YUV_ColorEffect_Sepia,
+	MT9M114_YUV_ColorEffect_Solarize,
+	MT9M114_YUV_ColorEffect_Whiteboard,
+	MT9M114_YUV_ColorEffect_Vivid,
+	MT9M114_YUV_ColorEffect_WaterColor,
+	MT9M114_YUV_ColorEffect_Vintage,
+	MT9M114_YUV_ColorEffect_Vintage2,
+	MT9M114_YUV_ColorEffect_Lomo,
+	MT9M114_YUV_ColorEffect_Red,
+	MT9M114_YUV_ColorEffect_Blue,
+	MT9M114_YUV_ColorEffect_Yellow,
+	MT9M114_YUV_ColorEffect_Aura,
+	MT9M114_YUV_ColorEffect_Max
 };
 
 enum {
-	YUV_COLOR_EFFECT_INVALID = 0,
-	YUV_COLOR_EFFECT_NONE,
-	YUV_COLOR_EFFECT_MONO,
-	YUV_COLOR_EFFECT_NEGATIVE,
-	YUV_COLOR_EFFECT_POSTERIZE,
-	YUV_COLOR_EFFECT_SEPIA,
-	YUV_COLOR_EFFECT_SOLARIZE,
-	YUV_COLOR_EFFECT_MAX
+	MT9M114_YUV_Whitebalance_Invalid = 0,
+	MT9M114_YUV_Whitebalance_Auto,
+	MT9M114_YUV_Whitebalance_Incandescent,
+	MT9M114_YUV_Whitebalance_Fluorescent,
+	MT9M114_YUV_Whitebalance_WarmFluorescent,
+	MT9M114_YUV_Whitebalance_Daylight,
+	MT9M114_YUV_Whitebalance_CloudyDaylight,
+	MT9M114_YUV_Whitebalance_Shade,
+	MT9M114_YUV_Whitebalance_Twilight,
+	MT9M114_YUV_Whitebalance_Custom
 };
 
 enum {
-	YUV_WHITE_BALANCE_INVALID = 0,
-	YUV_WHITE_BALANCE_AUTO,
-	YUV_WHITE_BALANCE_INCANDESCENT,
-	YUV_WHITE_BALANCE_FLUORESCENT,
-	YUV_WHITE_BALANCE_DAYLIGHT,
-	YUV_WHITE_BALANCE_CUSTOME
+	MT9M114_YUV_SceneMode_Invalid = 0,
+	MT9M114_YUV_SceneMode_Auto,
+	MT9M114_YUV_SceneMode_Action,
+	MT9M114_YUV_SceneMode_Portrait,
+	MT9M114_YUV_SceneMode_Landscape,
+	MT9M114_YUV_SceneMode_Beach,
+	MT9M114_YUV_SceneMode_Candlelight,
+	MT9M114_YUV_SceneMode_Fireworks,
+	MT9M114_YUV_SceneMode_Night,
+	MT9M114_YUV_SceneMode_NightPortrait,
+	MT9M114_YUV_SceneMode_Party,
+	MT9M114_YUV_SceneMode_Snow,
+	MT9M114_YUV_SceneMode_Sports,
+	MT9M114_YUV_SceneMode_SteadyPhoto,
+	MT9M114_YUV_SceneMode_Sunset,
+	MT9M114_YUV_SceneMode_Theatre,
+	MT9M114_YUV_SceneMode_Barcode,
+	MT9M114_YUV_SceneMode_BackLight
 };
 
 struct mt9m114_sensordata {
