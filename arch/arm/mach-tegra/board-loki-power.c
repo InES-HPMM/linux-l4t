@@ -897,7 +897,7 @@ static struct soctherm_platform_data loki_soctherm_data = {
 				},
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 89000,
+					.trip_temp = 90000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -909,12 +909,19 @@ static struct soctherm_platform_data loki_soctherm_data = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 2,
+			.num_trips = 3,
 			.trips = {
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 103000,
+					.trip_temp = 102000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 100000,
+					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
@@ -925,22 +932,6 @@ static struct soctherm_platform_data loki_soctherm_data = {
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
-/*
-				{
-					.cdev_type = "gk20a_cdev",
-					.trip_temp = 101000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 101000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-*/
 			},
 			.tzp = &soctherm_tzp,
 		},
@@ -971,7 +962,7 @@ static struct soctherm_platform_data loki_soctherm_data = {
 					.depth = 80,
 				},
 				[THROTTLE_DEV_GPU] = {
-					.enable = false,
+					.enable = true,
 					.throttling_depth = "heavy_throttling",
 				},
 			},
@@ -986,7 +977,7 @@ static struct soctherm_platform_data loki_soctherm_data = {
 					.depth = 30,
 				},
 				[THROTTLE_DEV_GPU] = {
-					.enable = false,
+					.enable = true,
 					.throttling_depth = "heavy_throttling",
 				},
 			},
