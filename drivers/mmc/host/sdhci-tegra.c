@@ -1211,6 +1211,10 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 			SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
 		}
 	}
+	/* Disable External loopback for all sdmmc instances */
+	if (soc_data->nvquirks & NVQUIRK_DISABLE_EXTERNAL_LOOPBACK)
+		misc_ctrl &= ~(1 << SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
+
 	sdhci_writel(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
@@ -1315,9 +1319,8 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 	unsigned long pll_p_freq;
 	int rc;
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	return;
-#endif
+	if (tegra_platform_is_fpga())
+		return;
 	/*
 	 * Currently pll_p and pll_c are used as clock sources for SDMMC. If clk
 	 * rate is missing for either of them, then no selection is needed and
@@ -3890,7 +3893,28 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 	.tap_hole_coeffs_count = 12,
 };
 
+static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
+	.quirks = TEGRA_SDHCI_QUIRKS,
+	.quirks2 = TEGRA_SDHCI_QUIRKS2 |
+		SDHCI_QUIRK2_SUPPORT_64BIT_DMA,
+	.ops  = &tegra_sdhci_ops,
+};
+
+static struct sdhci_tegra_soc_data soc_data_tegra21 = {
+	.pdata = &sdhci_tegra21_pdata,
+	.nvquirks = TEGRA_SDHCI_NVQUIRKS |
+		    NVQUIRK_SET_TRIM_DELAY |
+		    NVQUIRK_ENABLE_DDR50 |
+		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
+		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
+		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
+		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
+};
+
 static const struct of_device_id sdhci_tegra_dt_match[] = {
+	{ .compatible = "nvidia,tegra210-sdhci", .data = &soc_data_tegra21 },
 	{ .compatible = "nvidia,tegra124-sdhci", .data = &soc_data_tegra12 },
 	{ .compatible = "nvidia,tegra114-sdhci", .data = &soc_data_tegra11 },
 	{}
@@ -3926,8 +3950,11 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "trim-delay", &plat->trim_delay);
 	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
 	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
+	of_property_read_u32(np, "id", &plat->id);
 
 	of_property_read_u32(np, "uhs_mask", &plat->uhs_mask);
+	of_property_read_u32(np, "calib_3v3_offsets", &plat->calib_3v3_offsets);
+	of_property_read_u32(np, "calib_1v8_offsets", &plat->calib_1v8_offsets);
 
 	if (of_find_property(np, "built-in", NULL))
 		plat->mmc_data.built_in = 1;
@@ -3964,6 +3991,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		/* Use id tables and remove the following chip defines */
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		soc_data = &soc_data_tegra11;
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		soc_data = &soc_data_tegra21;
 #else
 		soc_data = &soc_data_tegra12;
 #endif
@@ -4216,6 +4245,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 	tegra_host->instance = pdev->id;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra_host->instance = plat->id;
+#endif
 	tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE;
 	tegra_host->speedo = plat->cpu_speedo;
 	dev_info(mmc_dev(host->mmc), "Speedo value %d\n", tegra_host->speedo);
@@ -4240,14 +4272,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_HS200)
 		host->mmc->caps2 |= MMC_CAP2_HS200;
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	/* Enable HS200 mode */
-	host->mmc->caps2 |= MMC_CAP2_HS200;
-#else
+
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
-#endif
 #endif
 
 	/*
@@ -4265,12 +4293,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (!plat->disable_clock_gate)
 		host->mmc->caps2 |= MMC_CAP2_CLOCK_GATING;
 
-	if (plat->nominal_vcore_mv)
-		tegra_host->nominal_vcore_mv = plat->nominal_vcore_mv;
-	if (plat->min_vcore_override_mv)
-		tegra_host->min_vcore_override_mv = plat->min_vcore_override_mv;
-	if (plat->boot_vcore_mv)
-		tegra_host->boot_vcore_mv = plat->boot_vcore_mv;
+	tegra_host->nominal_vcore_mv =
+		tegra_dvfs_get_core_nominal_millivolts();
+	tegra_host->min_vcore_override_mv =
+		tegra_dvfs_get_core_override_floor();
+	tegra_host->boot_vcore_mv = tegra_dvfs_get_core_boot_level();
 	dev_info(mmc_dev(host->mmc),
 		"Tuning constraints: nom_mv %d, boot_mv %d, min_or_mv %d\n",
 		tegra_host->nominal_vcore_mv, tegra_host->boot_vcore_mv,
@@ -4280,7 +4307,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	 * If nominal voltage is equal to boot voltage, there is no need for
 	 * nominal voltage tuning.
 	 */
-	if (plat->nominal_vcore_mv <= plat->boot_vcore_mv)
+	if (tegra_host->nominal_vcore_mv <= tegra_host->boot_vcore_mv)
 		plat->en_nominal_vcore_tuning = false;
 
 	INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk, delayed_clk_gate_cb);

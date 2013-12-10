@@ -55,6 +55,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int trim_delay;
 	unsigned int ddr_trim_delay;
 	unsigned int uhs_mask;
+	unsigned int id;
 	struct mmc_platform_data mmc_data;
 	bool power_off_rail;
 	bool en_freq_scaling;
