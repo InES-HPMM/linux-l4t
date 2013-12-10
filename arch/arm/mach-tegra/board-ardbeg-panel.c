@@ -272,7 +272,14 @@ static int ardbeg_hdmi_postsuspend(void)
 static int ardbeg_hdmi_hotplug_init(struct device *dev)
 {
 	if (!ardbeg_hdmi_vddio) {
+#if CONFIG_TEGRA_HDMI_PRIMARY
+		if (of_machine_is_compatible("nvidia,tn8"))
+			ardbeg_hdmi_vddio = regulator_get(dev, "vdd-out1-5v0");
+		else
+			ardbeg_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
+#else
 		ardbeg_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
+#endif
 		if (WARN_ON(IS_ERR(ardbeg_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
 				__func__, PTR_ERR(ardbeg_hdmi_vddio));

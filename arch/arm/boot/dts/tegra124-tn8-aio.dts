@@ -1,0 +1,53 @@
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1736-fixed.dtsi"
+#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+#include "tegra124-platforms/tegra124-e1794-sensor.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia-boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	i2c@7000c000 {
+		tps65913 {
+			pmic {
+				ldo1 {
+					consumers {
+						c11 {
+							regulator-consumer-device = "tegradc.0";
+						};
+					};
+				};
+
+				ldoln {
+					consumers {
+						c1 {
+							regulator-consumer-device = "tegradc.0";
+						};
+
+						c2 {
+							regulator-consumer-device = "tegradc.0";
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
