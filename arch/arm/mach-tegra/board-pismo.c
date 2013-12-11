@@ -35,7 +35,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/memblock.h>
-#include <linux/spi-tegra.h>
+#include <linux/spi/spi-tegra.h>
 #include <linux/nfc/pn544.h>
 #include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
@@ -606,46 +606,19 @@ static struct platform_device *pismo_spi_devices[] __initdata = {
 	&tegra11_spi_device4,
 };
 
-struct spi_clk_parent spi_parent_clk_pismo[] = {
-	[0] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
-	[1] = {.name = "pll_m"},
-	[2] = {.name = "clk_m"},
-#else
-	[1] = {.name = "clk_m"},
-#endif
-};
-
 static struct tegra_spi_platform_data pismo_spi_pdata = {
-	.is_dma_based           = false,
-	.max_dma_buffer         = 16 * 1024,
-	.is_clkon_always        = false,
-	.max_rate               = 25000000,
+	.spi_max_frequency	= 25000000,
+	.is_clkon_always	= false,
 };
 
 static void __init pismo_spi_init(void)
 {
-	int i;
-	struct clk *c;
 	struct board_info display_board_info;
 
 	tegra_get_display_board_info(&display_board_info);
 
-	for (i = 0; i < ARRAY_SIZE(spi_parent_clk_pismo); ++i) {
-		c = tegra_get_clock_by_name(spi_parent_clk_pismo[i].name);
-		if (IS_ERR_OR_NULL(c)) {
-			pr_err("Not able to get the clock for %s\n",
-					spi_parent_clk_pismo[i].name);
-			continue;
-		}
-		spi_parent_clk_pismo[i].parent_clk = c;
-		spi_parent_clk_pismo[i].fixed_clk_rate = clk_get_rate(c);
-	}
-	pismo_spi_pdata.parent_clk_list = spi_parent_clk_pismo;
-	pismo_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_pismo);
 	tegra11_spi_device4.dev.platform_data = &pismo_spi_pdata;
-	platform_add_devices(pismo_spi_devices,
-			ARRAY_SIZE(pismo_spi_devices));
+	platform_add_devices(pismo_spi_devices, ARRAY_SIZE(pismo_spi_devices));
 }
 
 struct rm_spi_ts_platform_data rm31080ts_pismo_data = {
