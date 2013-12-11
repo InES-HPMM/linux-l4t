@@ -56,7 +56,11 @@
 #define DAI_LINK_HIFI		0
 #define DAI_LINK_SPDIF		1
 #define DAI_LINK_BTSCO		2
-#define NUM_DAI_LINKS		3
+#define DAI_LINK_VOICE_CALL	3
+#define DAI_LINK_BT_VOICE_CALL	4
+#define NUM_DAI_LINKS		5
+
+extern int g_is_call_mode;
 
 const char *tegra_rt5639_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 	"tegra30-i2s.0",
@@ -77,6 +81,9 @@ struct tegra_rt5639 {
 	struct tegra_asoc_platform_data *pdata;
 	struct edp_client *spk_edp_client;
 	int gpio_requested;
+	int is_call_mode;
+	int is_device_bt;
+	struct codec_config codec_info[NUM_I2S_DEVICES];
 #ifdef CONFIG_SWITCH
 	int jack_status;
 #endif
@@ -93,6 +100,92 @@ struct tegra_rt5639 {
 
 void tegra_asoc_enable_clocks(void);
 void tegra_asoc_disable_clocks(void);
+
+static int tegra_rt5639_call_mode_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 1;
+	return 0;
+}
+
+static int tegra_rt5639_call_mode_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_rt5639 *machine = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = machine->is_call_mode;
+
+	return 0;
+}
+
+static int tegra_rt5639_call_mode_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_rt5639 *machine = snd_kcontrol_chip(kcontrol);
+	int is_call_mode_new = ucontrol->value.integer.value[0];
+	int codec_index;
+	unsigned int i;
+	int uses_voice_codec;
+
+	if (machine->is_call_mode == is_call_mode_new)
+		return 0;
+
+	if (machine->is_device_bt) {
+		codec_index = BT_SCO;
+		uses_voice_codec = 0;
+	} else {
+		codec_index = HIFI_CODEC;
+		uses_voice_codec = 0;
+	}
+
+	if (is_call_mode_new) {
+		if (machine->codec_info[codec_index].rate == 0 ||
+			machine->codec_info[codec_index].channels == 0)
+				return -EINVAL;
+
+		for (i = 0; i < machine->pcard->num_links; i++)
+			machine->pcard->dai_link[i].ignore_suspend = 1;
+
+		tegra_asoc_utils_tristate_dap(
+			machine->codec_info[codec_index].i2s_id, false);
+		tegra_asoc_utils_tristate_dap(
+			machine->codec_info[BASEBAND].i2s_id, false);
+
+		tegra30_make_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], uses_voice_codec);
+	} else {
+		tegra30_break_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], uses_voice_codec);
+
+		tegra_asoc_utils_tristate_dap(
+			machine->codec_info[codec_index].i2s_id, true);
+		tegra_asoc_utils_tristate_dap(
+			machine->codec_info[BASEBAND].i2s_id, true);
+
+		for (i = 0; i < machine->pcard->num_links; i++)
+			machine->pcard->dai_link[i].ignore_suspend = 0;
+	}
+
+	machine->is_call_mode = is_call_mode_new;
+	g_is_call_mode = machine->is_call_mode;
+
+	return 1;
+}
+
+struct snd_kcontrol_new tegra_rt5639_call_mode_control = {
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Call Mode Switch",
+	.private_value = 0xffff,
+	.info = tegra_rt5639_call_mode_info,
+	.get = tegra_rt5639_call_mode_get,
+	.put = tegra_rt5639_call_mode_put
+};
 
 static int tegra_rt5639_startup(struct snd_pcm_substream *substream)
 {
@@ -384,6 +477,195 @@ static int tegra_hw_free(struct snd_pcm_substream *substream)
 
 	return 0;
 }
+
+static int tegra_rt5639_voice_call_hw_params(
+			struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_card *card = codec->card;
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	int srate, mclk, i2s_daifmt, codec_daifmt;
+	int err, rate, sample_size;
+
+	srate = params_rate(params);
+	mclk = 256 * srate;
+
+	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
+	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
+			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S8:
+		sample_size = 8;
+		break;
+	case SNDRV_PCM_FORMAT_S16_LE:
+		sample_size = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		sample_size = 24;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		sample_size = 32;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
+	case TEGRA_DAIFMT_I2S:
+		i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+		break;
+	case TEGRA_DAIFMT_DSP_A:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+		break;
+	case TEGRA_DAIFMT_DSP_B:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+		break;
+	case TEGRA_DAIFMT_LEFT_J:
+		i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
+		break;
+	case TEGRA_DAIFMT_RIGHT_J:
+		i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
+		break;
+	default:
+		dev_err(card->dev, "Can't configure i2s format\n");
+		return -EINVAL;
+	}
+
+	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
+	if (err < 0) {
+		if (!(machine->util_data.set_mclk % mclk)) {
+			mclk = machine->util_data.set_mclk;
+		} else {
+			dev_err(card->dev, "Can't configure clocks\n");
+			return err;
+		}
+	}
+
+	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
+
+	rate = clk_get_rate(machine->util_data.clk_cdev1);
+
+	if (pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
+		err = snd_soc_dai_set_sysclk(codec_dai, RT5639_SCLK_S_MCLK,
+				rate, SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
+	} else {
+		err = snd_soc_dai_set_pll(codec_dai, 0, RT5639_PLL1_S_MCLK,
+				rate, 512*srate);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai pll not set\n");
+			return err;
+		}
+		err = snd_soc_dai_set_sysclk(codec_dai, RT5639_SCLK_S_PLL1,
+				512*srate, SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
+	}
+
+	codec_daifmt = i2s_daifmt;
+
+	/*invert the codec bclk polarity when codec is master
+	in DSP mode this is done to match with the negative
+	edge settings of tegra i2s*/
+	if (((i2s_daifmt & SND_SOC_DAIFMT_FORMAT_MASK)
+		== SND_SOC_DAIFMT_DSP_A) &&
+		((i2s_daifmt & SND_SOC_DAIFMT_MASTER_MASK)
+		== SND_SOC_DAIFMT_CBM_CFM)) {
+		codec_daifmt &= ~(SND_SOC_DAIFMT_INV_MASK);
+		codec_daifmt |= SND_SOC_DAIFMT_IB_NF;
+	}
+
+	err = snd_soc_dai_set_fmt(codec_dai, codec_daifmt);
+	if (err < 0) {
+		dev_err(card->dev, "codec_dai fmt not set\n");
+		return err;
+	}
+
+	machine->codec_info[HIFI_CODEC].rate = params_rate(params);
+	machine->codec_info[HIFI_CODEC].channels = params_channels(params);
+
+	machine->is_device_bt = 0;
+	return 0;
+}
+
+static void tegra_rt5639_voice_call_shutdown(
+					struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tegra_rt5639 *machine  =
+			snd_soc_card_get_drvdata(rtd->codec->card);
+
+	machine->codec_info[HIFI_CODEC].rate = 0;
+	machine->codec_info[HIFI_CODEC].channels = 0;
+}
+
+static int tegra_rt5639_bt_voice_call_hw_params(
+			struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	int err, srate, mclk, min_mclk;
+
+	srate = params_rate(params);
+
+	srate = params_rate(params);
+	mclk = 256 * srate;
+
+	min_mclk = 64 * srate;
+
+	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
+	if (err < 0) {
+		if (!(machine->util_data.set_mclk % min_mclk))
+			mclk = machine->util_data.set_mclk;
+		else {
+			dev_err(card->dev, "Can't configure clocks\n");
+			return err;
+		}
+	}
+
+	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
+
+	machine->codec_info[BT_SCO].rate = params_rate(params);
+	machine->codec_info[BT_SCO].channels = params_channels(params);
+
+	machine->is_device_bt = 1;
+	return 0;
+}
+
+static void tegra_rt5639_bt_voice_call_shutdown(
+				struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tegra_rt5639 *machine  =
+			snd_soc_card_get_drvdata(rtd->codec->card);
+
+	machine->codec_info[BT_SCO].rate = 0;
+	machine->codec_info[BT_SCO].channels = 0;
+}
+
+static struct snd_soc_ops tegra_rt5639_voice_call_ops = {
+	.hw_params = tegra_rt5639_voice_call_hw_params,
+	.shutdown = tegra_rt5639_voice_call_shutdown,
+	.hw_free = tegra_hw_free,
+};
+
+static struct snd_soc_ops tegra_rt5639_bt_voice_call_ops = {
+	.hw_params = tegra_rt5639_bt_voice_call_hw_params,
+	.shutdown = tegra_rt5639_bt_voice_call_shutdown,
+	.hw_free = tegra_hw_free,
+};
 
 static struct snd_soc_ops tegra_rt5639_ops = {
 	.hw_params = tegra_rt5639_hw_params,
@@ -731,6 +1013,13 @@ static int tegra_rt5639_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
+	/* Add call mode switch control */
+	ret = snd_ctl_add(codec->card->snd_card,
+			snd_ctl_new1(&tegra_rt5639_call_mode_control,
+				machine));
+	if (ret < 0)
+		return ret;
+
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
@@ -774,6 +1063,22 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.cpu_dai_name = "tegra30-i2s.3",
 		.codec_dai_name = "dit-hifi",
 		.ops = &tegra_rt5639_bt_sco_ops,
+	},
+	[DAI_LINK_VOICE_CALL] = {
+		.name = "VOICE CALL",
+		.stream_name = "VOICE CALL PCM",
+		.codec_name = "rt5639.0-001c",
+		.cpu_dai_name = "dit-hifi",
+		.codec_dai_name = "rt5639-aif1",
+		.ops = &tegra_rt5639_voice_call_ops,
+	},
+	[DAI_LINK_BT_VOICE_CALL] = {
+		.name = "BT VOICE CALL",
+		.stream_name = "BT VOICE CALL PCM",
+		.codec_name = "spdif-dit.2",
+		.cpu_dai_name = "dit-hifi",
+		.codec_dai_name = "dit-hifi",
+		.ops = &tegra_rt5639_bt_voice_call_ops,
 	},
 };
 
@@ -902,7 +1207,7 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	struct snd_soc_codec *codec;
 	struct edp_manager *battery_manager = NULL;
 	int ret;
-	int codec_id;
+	int codec_id, i;
 	u32 val32[7];
 
 	if (!pdev->dev.platform_data && !pdev->dev.of_node) {
@@ -1053,6 +1358,23 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	snd_soc_card_set_drvdata(card, machine);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	for (i = 0; i < NUM_I2S_DEVICES; i++) {
+		machine->codec_info[i].i2s_id =
+			pdata->i2s_param[i].audio_port_id;
+		machine->codec_info[i].bitsize =
+			pdata->i2s_param[i].sample_size;
+		machine->codec_info[i].is_i2smaster =
+			pdata->i2s_param[i].is_i2s_master;
+		machine->codec_info[i].rate =
+			pdata->i2s_param[i].rate;
+		machine->codec_info[i].channels =
+			pdata->i2s_param[i].channels;
+		machine->codec_info[i].i2s_mode =
+			pdata->i2s_param[i].i2s_mode;
+		machine->codec_info[i].bit_clk =
+			pdata->i2s_param[i].bit_clk;
+	}
+
 	codec_id = pdata->i2s_param[HIFI_CODEC].audio_port_id;
 	tegra_rt5639_dai[DAI_LINK_HIFI].cpu_dai_name =
 	tegra_rt5639_i2s_dai_name[codec_id];
@@ -1064,6 +1386,11 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	tegra_rt5639_i2s_dai_name[codec_id];
 	tegra_rt5639_dai[DAI_LINK_BTSCO].platform_name =
 	tegra_rt5639_i2s_dai_name[codec_id];
+
+	tegra_rt5639_dai[DAI_LINK_VOICE_CALL].platform_name =
+	tegra_rt5639_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_rt5639_dai[DAI_LINK_BT_VOICE_CALL].platform_name =
+	tegra_rt5639_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 #endif
 
 	card->dapm.idle_bias_off = 1;
