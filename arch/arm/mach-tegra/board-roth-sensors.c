@@ -251,9 +251,11 @@ static int roth_nct1008_init(void)
 	tegra_platform_edp_init(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips,
 				0); /* edp temperature margin */
-	tegra_add_cdev_trips(roth_nct1008_pdata.trips,
+	tegra_add_all_vmin_trips(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips);
-	tegra_add_tj_trips(roth_nct1008_pdata.trips,
+	tegra_add_cpu_vmax_trips(roth_nct1008_pdata.trips,
+				&roth_nct1008_pdata.num_trips);
+	tegra_add_core_edp_trips(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips);
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);

@@ -808,7 +808,7 @@ static int pluto_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	tegra_add_cdev_trips(pluto_nct1008_pdata.trips,
+	tegra_add_all_vmin_trips(pluto_nct1008_pdata.trips,
 				&pluto_nct1008_pdata.num_trips);
 
 	pluto_i2c4_nct1008_board_info[0].irq =

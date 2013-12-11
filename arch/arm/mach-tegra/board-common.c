@@ -167,7 +167,7 @@ static void tegra_add_trip_points(struct thermal_trip_info *trips,
 	}
 }
 
-void tegra_add_cdev_trips(struct thermal_trip_info *trips, int *num_trips)
+void tegra_add_all_vmin_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_cpu_vmin_cdev());
 	tegra_add_trip_points(trips, num_trips,
@@ -193,9 +193,13 @@ void tegra_add_core_vmin_trips(struct thermal_trip_info *trips, int *num_trips)
 					tegra_dvfs_get_core_vmin_cdev());
 }
 
-void tegra_add_tj_trips(struct thermal_trip_info *trips, int *num_trips)
+void tegra_add_cpu_vmax_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_cpu_vmax_cdev());
+}
+
+void tegra_add_core_edp_trips(struct thermal_trip_info *trips, int *num_trips)
+{
 	tegra_add_trip_points(trips, num_trips, tegra_core_edp_get_cdev());
 }
 
@@ -208,7 +212,7 @@ void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_vc_get_cdev());
 }
-void tegra_add_tpll_trips(struct thermal_trip_info *trips, int *num_trips)
+void tegra_add_core_vmax_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips,
 			      tegra_dvfs_get_core_vmax_cdev());

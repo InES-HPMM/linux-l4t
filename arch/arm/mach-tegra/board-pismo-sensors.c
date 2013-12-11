@@ -552,7 +552,7 @@ static int pismo_nct1008_init(void)
 
 	nct1008_port = TEGRA_GPIO_PX6;
 
-	tegra_add_cdev_trips(pismo_nct1008_pdata.trips,
+	tegra_add_all_vmin_trips(pismo_nct1008_pdata.trips,
 				&pismo_nct1008_pdata.num_trips);
 
 	pismo_i2c4_nct1008_board_info[0].irq =

@@ -1437,17 +1437,19 @@ static int ardbeg_nct72_init(void)
 		tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
 					&ardbeg_nct72_pdata.num_trips,
 					12000); /* edp temperature margin */
-		tegra_add_tj_trips(ardbeg_nct72_pdata.trips,
+		tegra_add_cpu_vmax_trips(ardbeg_nct72_pdata.trips,
+				&ardbeg_nct72_pdata.num_trips);
+		tegra_add_core_edp_trips(ardbeg_nct72_pdata.trips,
 				&ardbeg_nct72_pdata.num_trips);
 		tegra_add_tgpu_trips(ardbeg_nct72_pdata.trips,
 				     &ardbeg_nct72_pdata.num_trips);
 		tegra_add_vc_trips(ardbeg_nct72_pdata.trips,
 				     &ardbeg_nct72_pdata.num_trips);
-		tegra_add_tpll_trips(ardbeg_nct72_pdata.trips,
+		tegra_add_core_vmax_trips(ardbeg_nct72_pdata.trips,
 				     &ardbeg_nct72_pdata.num_trips);
 	}
 
-	tegra_add_cdev_trips(ardbeg_nct72_pdata.trips,
+	tegra_add_all_vmin_trips(ardbeg_nct72_pdata.trips,
 				&ardbeg_nct72_pdata.num_trips);
 
 	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);

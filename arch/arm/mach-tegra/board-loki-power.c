@@ -1007,7 +1007,10 @@ int __init loki_soctherm_init(void)
 			loki_soctherm_data.therm[THERM_GPU].trips,
 			&loki_soctherm_data.therm[THERM_GPU].num_trips,
 			8000);
-		tegra_add_tj_trips(
+		tegra_add_cpu_vmax_trips(
+			loki_soctherm_data.therm[THERM_CPU].trips,
+			&loki_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_core_edp_trips(
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips);
 		tegra_add_tgpu_trips(
@@ -1016,7 +1019,7 @@ int __init loki_soctherm_init(void)
 		tegra_add_vc_trips(
 			loki_soctherm_data.therm[THERM_CPU].trips,
 			&loki_soctherm_data.therm[THERM_CPU].num_trips);
-		tegra_add_tpll_trips(
+		tegra_add_core_vmax_trips(
 			loki_soctherm_data.therm[THERM_PLL].trips,
 			&loki_soctherm_data.therm[THERM_PLL].num_trips);
 		tegra_add_cpu_vmin_trips(

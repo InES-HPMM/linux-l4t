@@ -880,13 +880,15 @@ int __init macallan_soctherm_init(void)
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1545)
-		tegra_add_cdev_trips(
+		tegra_add_all_vmin_trips(
 			macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_platform_edp_init(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips,
 			6000); /* edp temperature margin */
-	tegra_add_tj_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
+	tegra_add_cpu_vmax_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
+			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_core_edp_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 
 	return tegra11_soctherm_init(&macallan_soctherm_data);

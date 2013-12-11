@@ -371,7 +371,9 @@ int __init vcm30_t124_soctherm_init(void)
 	tegra_platform_edp_init(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips,
 			8000); /* edp temperature margin */
-	tegra_add_tj_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
+	tegra_add_cpu_vmax_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
+			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_core_edp_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
 	/*tegra_add_vc_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);

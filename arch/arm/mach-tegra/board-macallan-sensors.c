@@ -639,7 +639,7 @@ static int macallan_nct1008_init(void)
 
 	nct1008_port = TEGRA_GPIO_PO4;
 
-	tegra_add_cdev_trips(macallan_nct1008_pdata.trips,
+	tegra_add_all_vmin_trips(macallan_nct1008_pdata.trips,
 				&macallan_nct1008_pdata.num_trips);
 
 	macallan_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
