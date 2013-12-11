@@ -48,7 +48,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #include "tegra11x_fuse_offsets.h"
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 #include "tegra12x_fuse_offsets.h"
 #endif
 
@@ -86,7 +86,9 @@ static u32 fuse_pgm_mask[NFUSES / 2];
 static u32 tmp_fuse_pgm_data[NFUSES / 2];
 
 static struct fuse_data fuse_info;
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static struct regulator *fuse_regulator;
+#endif
 static struct clk *clk_fuse;
 
 struct param_info {
@@ -415,8 +417,8 @@ static void tegra_get_tegraid_from_hw(void)
 	cid = tegra_read_chipid();
 	nlist = tegra_read_apb_misc_reg(0x860);
 #else
-	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
-	void __iomem *netlist = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860;
+	void __iomem *chip_id;
+	void __iomem *netlist;
 
 	/*
 	 * tegra_get_tegraid_from_hw can be called really early on when
@@ -442,10 +444,13 @@ static void tegra_get_tegraid_from_hw(void)
 					       ~(SECTION_SIZE - 1));
 		chip_id = early_base + 0x804;
 		netlist = early_base + 0x860;
+		cid = readl(chip_id);
+		nlist = readl(netlist);
+	} else {
+		cid = tegra_read_apb_misc_reg(0x804);
+		nlist = tegra_read_apb_misc_reg(0x860);
 	}
 
-	cid = readl(chip_id);
-	nlist = readl(netlist);
 #endif
 
 	tegra_set_tegraid((cid >> 8) & 0xff,
@@ -932,7 +937,9 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	u32 reg;
 	int i = 0;
 	int index;
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	int ret;
+#endif
 	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
@@ -940,11 +947,17 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		return -EINVAL;
 	}
 
-	if (IS_ERR_OR_NULL(clk_fuse) ||
-	   (IS_ERR_OR_NULL(fuse_regulator))) {
-		pr_err("fuse write disabled");
+	if (IS_ERR_OR_NULL(clk_fuse)) {
+		pr_err("fuse clk is NULL");
 		return -ENODEV;
 	}
+
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (IS_ERR_OR_NULL(fuse_regulator)) {
+		pr_err("fuse regulator is NULL");
+		return -ENODEV;
+	}
+#endif
 
 	if (fuse_odm_prod_mode() && !(flags &
 				(FLAGS_ODMRSVD | FLAGS_ODM_LOCK))) {
@@ -996,10 +1009,11 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 			fuse_info_tbl[i].sz);
 	}
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	ret = regulator_enable(fuse_regulator);
-
 	if (ret)
 		BUG_ON("regulator enable fail\n");
+#endif
 
 	populate_fuse_arrs(&fuse_info, flags);
 
@@ -1010,7 +1024,9 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	regulator_disable(fuse_regulator);
+#endif
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
@@ -1186,19 +1202,23 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* get fuse_regulator regulator */
 	fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
 	if (IS_ERR(fuse_regulator))
 		pr_err("%s: no fuse_regulator. fuse write disabled\n",
 				__func__);
+#endif
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR(clk_fuse)) {
 		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 		if (!IS_ERR_OR_NULL(fuse_regulator)) {
 			regulator_put(fuse_regulator);
 			fuse_regulator = NULL;
 		}
+#endif
 		return -ENODEV;
 	}
 
@@ -1242,9 +1262,10 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 {
 	fuse_power_disable();
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (!IS_ERR_OR_NULL(fuse_regulator))
 		regulator_put(fuse_regulator);
-
+#endif
 	if (!IS_ERR_OR_NULL(clk_fuse))
 		clk_put(clk_fuse);
 
