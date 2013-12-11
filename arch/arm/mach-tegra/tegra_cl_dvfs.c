@@ -1141,11 +1141,13 @@ static void cl_dvfs_convert_cold_output_floor(struct tegra_cl_dvfs *cld,
 	/*
 	 * Convert monotonically decreasing thermal floors at low temperature
 	 * into output LUT indexes; make sure there is a room for regulation
-	 * above maximum thermal floor.
+	 * above maximum thermal floor. The latter is also exempt from offset
+	 * application.
 	 */
 	cld->therm_floors_num = cld->safe_dvfs->dvfs_rail->therm_mv_floors_num;
 	for (i = 0; i < cld->therm_floors_num; i++) {
-		int mv = cld->safe_dvfs->dvfs_rail->therm_mv_floors[i] + offset;
+		int mv = cld->safe_dvfs->dvfs_rail->therm_mv_floors[i] +
+			(i ? offset : 0);
 		cld->thermal_out_floors[i] = find_mv_out_cap(cld, mv);
 	}
 	BUG_ON(cld->thermal_out_floors[0] + 1 >= get_output_top(cld));
