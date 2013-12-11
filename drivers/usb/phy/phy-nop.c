@@ -235,8 +235,6 @@ static int nop_usb_xceiv_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, nop);
 
-	ATOMIC_INIT_NOTIFIER_HEAD(&nop->phy.notifier);
-
 	return 0;
 
 err_add:
