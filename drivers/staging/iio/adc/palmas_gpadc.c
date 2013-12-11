@@ -94,10 +94,10 @@ struct palmas_gpadc {
 	int				irq_auto_1;
 	struct palmas_gpadc_info	*adc_info;
 	struct completion		conv_completion;
-	struct palmas_adc_wakeup_property wakeup1_data;
-	struct palmas_adc_wakeup_property wakeup2_data;
-	bool				wakeup1_enable;
-	bool				wakeup2_enable;
+	struct palmas_adc_auto_conv_property auto_conv0_data;
+	struct palmas_adc_auto_conv_property auto_conv1_data;
+	bool				auto_conv0_enable;
+	bool				auto_conv1_enable;
 	int				auto_conversion_period;
 };
 
@@ -633,10 +633,10 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		goto out_unregister_map;
 	}
 
-	if (gpadc_pdata->adc_wakeup1_data) {
-		memcpy(&adc->wakeup1_data, gpadc_pdata->adc_wakeup1_data,
-			sizeof(adc->wakeup1_data));
-		adc->wakeup1_enable = true;
+	if (gpadc_pdata->adc_auto_conv0_data) {
+		memcpy(&adc->auto_conv0_data, gpadc_pdata->adc_auto_conv0_data,
+			sizeof(adc->auto_conv0_data));
+		adc->auto_conv0_enable = true;
 		adc->irq_auto_0 = palmas_irq_get_virq(adc->palmas,
 				PALMAS_GPADC_AUTO_0_IRQ);
 		ret = request_threaded_irq(adc->irq_auto_0, NULL,
@@ -650,10 +650,10 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (gpadc_pdata->adc_wakeup2_data) {
-		memcpy(&adc->wakeup2_data, gpadc_pdata->adc_wakeup2_data,
-				sizeof(adc->wakeup2_data));
-		adc->wakeup2_enable = true;
+	if (gpadc_pdata->adc_auto_conv1_data) {
+		memcpy(&adc->auto_conv1_data, gpadc_pdata->adc_auto_conv1_data,
+				sizeof(adc->auto_conv1_data));
+		adc->auto_conv1_enable = true;
 		adc->irq_auto_1 = palmas_irq_get_virq(adc->palmas,
 				PALMAS_GPADC_AUTO_1_IRQ);
 		ret = request_threaded_irq(adc->irq_auto_1, NULL,
@@ -716,15 +716,16 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 			palmas_gpadc_calibrate(adc, i);
 	}
 
-	if (adc->wakeup1_enable || adc->wakeup2_enable)
+	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
 		device_wakeup_enable(&pdev->dev);
+
 	return 0;
 
 out_irq_auto1_free:
-	if (gpadc_pdata->adc_wakeup2_data)
+	if (gpadc_pdata->adc_auto_conv1_data)
 		free_irq(adc->irq_auto_1, adc);
 out_irq_auto0_free:
-	if (gpadc_pdata->adc_wakeup1_data)
+	if (gpadc_pdata->adc_auto_conv0_data)
 		free_irq(adc->irq_auto_0, adc);
 out_irq_free:
 	free_irq(adc->irq, adc);
@@ -745,16 +746,16 @@ static int palmas_gpadc_remove(struct platform_device *pdev)
 		iio_map_array_unregister(iodev);
 	iio_device_unregister(iodev);
 	free_irq(adc->irq, adc);
-	if (adc->wakeup1_enable)
+	if (adc->auto_conv0_enable)
 		free_irq(adc->irq_auto_0, adc);
-	if (adc->wakeup2_enable)
+	if (adc->auto_conv1_enable)
 		free_irq(adc->irq_auto_1, adc);
 	iio_device_free(iodev);
 	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
+static int palmas_adc_auto_conv_configure(struct palmas_gpadc *adc)
 {
 	int adc_period, conv;
 	int i;
@@ -780,16 +781,16 @@ static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
 	}
 
 	conv = 0;
-	if (adc->wakeup1_enable) {
+	if (adc->auto_conv0_enable) {
 		int is_high;
 
-		ch0 = adc->wakeup1_data.adc_channel_number;
+		ch0 = adc->auto_conv0_data.adc_channel_number;
 		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV0_EN;
-		if (adc->wakeup1_data.adc_high_threshold > 0) {
-			thres = adc->wakeup1_data.adc_high_threshold;
+		if (adc->auto_conv0_data.adc_high_threshold > 0) {
+			thres = adc->auto_conv0_data.adc_high_threshold;
 			is_high = 0;
 		} else {
-			thres = adc->wakeup1_data.adc_low_threshold;
+			thres = adc->auto_conv0_data.adc_low_threshold;
 			is_high = BIT(7);
 		}
 
@@ -811,16 +812,16 @@ static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
 		}
 	}
 
-	if (adc->wakeup2_enable) {
+	if (adc->auto_conv1_enable) {
 		int is_high;
 
-		ch1 = adc->wakeup2_data.adc_channel_number;
+		ch1 = adc->auto_conv1_data.adc_channel_number;
 		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV1_EN;
-		if (adc->wakeup2_data.adc_high_threshold > 0) {
-			thres = adc->wakeup2_data.adc_high_threshold;
+		if (adc->auto_conv1_data.adc_high_threshold > 0) {
+			thres = adc->auto_conv1_data.adc_high_threshold;
 			is_high = 0;
 		} else {
-			thres = adc->wakeup2_data.adc_low_threshold;
+			thres = adc->auto_conv1_data.adc_low_threshold;
 			is_high = BIT(7);
 		}
 
@@ -860,7 +861,7 @@ static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
 	return 0;
 }
 
-static int palmas_adc_wakeup_reset(struct palmas_gpadc *adc)
+static int palmas_adc_auto_conv_reset(struct palmas_gpadc *adc)
 {
 	int ret;
 
@@ -883,20 +884,20 @@ static int palmas_gpadc_suspend(struct device *dev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
-	int wakeup = adc->wakeup1_enable || adc->wakeup2_enable;
+	int wakeup = adc->auto_conv0_enable || adc->auto_conv1_enable;
 	int ret;
 
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palmas_adc_wakeup_configure(adc);
+	ret = palmas_adc_auto_conv_configure(adc);
 	if (ret < 0)
 		return ret;
 
-	if (adc->wakeup1_enable)
+	if (adc->auto_conv0_enable)
 		enable_irq_wake(adc->irq_auto_0);
 
-	if (adc->wakeup2_enable)
+	if (adc->auto_conv1_enable)
 		enable_irq_wake(adc->irq_auto_1);
 	return 0;
 }
@@ -905,20 +906,20 @@ static int palmas_gpadc_resume(struct device *dev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
-	int wakeup = adc->wakeup1_enable || adc->wakeup2_enable;
+	int wakeup = adc->auto_conv0_enable || adc->auto_conv1_enable;
 	int ret;
 
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palmas_adc_wakeup_reset(adc);
+	ret = palmas_adc_auto_conv_reset(adc);
 	if (ret < 0)
 		return ret;
 
-	if (adc->wakeup1_enable)
+	if (adc->auto_conv0_enable)
 		disable_irq_wake(adc->irq_auto_0);
 
-	if (adc->wakeup2_enable)
+	if (adc->auto_conv1_enable)
 		disable_irq_wake(adc->irq_auto_1);
 
 	return 0;
