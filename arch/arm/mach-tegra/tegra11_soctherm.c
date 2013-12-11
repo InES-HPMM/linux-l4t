@@ -886,16 +886,18 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 		if (REG_GET(r, XPU_PSKIP_STATUS_ENABLED) && devs->enable) {
 			m = REG_GET(r, XPU_PSKIP_STATUS_M);
 			n = REG_GET(r, XPU_PSKIP_STATUS_N);
-			if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
 				/*
-				 * OC5 is a reserved alarm on Tegra12x. Hence
-				 * the *GPU 'PSKIP' state will always be ON.
-				 * The real status is in 'NV_THERM_CLK_STATUS'
-				 * register, and cannot be read safely.
+				 * On Tegra12x OC5 is a reserved alarm. Hence
+				 * GPU 'PSKIP' state always shows ON. The real
+				 * status register 'NV_THERM_CLK_STATUS' can't
+				 * be read safely. So we mirror the CPU status.
 				 */
-				;
-			else if (m == devs->dividend && n == devs->divisor)
-				*cur_state |= (1 << THROTTLE_DEV_GPU);
+			*cur_state |=
+				(tegra_chip_id == TEGRA_CHIPID_TEGRA12) ?
+				((*cur_state & (1 << THROTTLE_DEV_CPU)) ?
+				 (1 << THROTTLE_DEV_GPU) : 0) :
+				((m == devs->dividend && n == devs->divisor) ?
+				 (1 << THROTTLE_DEV_GPU) : 0);
 		}
 	}
 	return 0;
@@ -908,7 +910,8 @@ static int soctherm_hw_action_set_cur_state(struct thermal_cooling_device *cdev,
 }
 
 static struct thermal_cooling_device *soctherm_hw_critical_cdev;
-static struct thermal_cooling_device *soctherm_hw_hot_cdev;
+static struct thermal_cooling_device *soctherm_hw_heavy_cdev;
+static struct thermal_cooling_device *soctherm_hw_light_cdev;
 static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.get_max_state = soctherm_hw_action_get_max_state,
 	.get_cur_state = soctherm_hw_action_get_cur_state,
@@ -1218,12 +1221,71 @@ static struct thermal_zone_device_ops soctherm_ops = {
 	.get_trend = soctherm_get_trend,
 };
 
+static void __init soctherm_hot_cdev_register(int i, int trip)
+{
+	struct soctherm_therm *therm;
+	int k;
+
+	therm = &plat_data.therm[i];
+
+	for (k = 0; k < THROTTLE_SIZE; k++) {
+		if ((therm2dev[i] == THROTTLE_DEV_NONE)
+		    || (!plat_data.throttle[k].
+			devs[therm2dev[i]].enable))
+			continue;
+
+		if ((strnstr(therm->trips[trip].cdev_type,
+			     "oc1",
+			     THERMAL_NAME_LENGTH)
+		     && k == THROTTLE_OC1) ||
+		    (strnstr(therm->trips[trip].cdev_type,
+			     "oc2",
+			     THERMAL_NAME_LENGTH)
+		     && k == THROTTLE_OC2) ||
+		    (strnstr(therm->trips[trip].cdev_type,
+			     "oc3",
+			     THERMAL_NAME_LENGTH)
+		     && k == THROTTLE_OC3) ||
+		    (strnstr(therm->trips[trip].cdev_type,
+			     "oc4",
+			     THERMAL_NAME_LENGTH)
+		     && k == THROTTLE_OC4))
+			continue;
+
+		if (strnstr(therm->trips[trip].cdev_type,
+			    "heavy",
+			    THERMAL_NAME_LENGTH) &&
+		    k == THROTTLE_HEAVY &&
+		    !soctherm_hw_heavy_cdev) {
+			soctherm_hw_heavy_cdev =
+				thermal_cooling_device_register(
+					therm->trips[trip].cdev_type,
+					&therm->trips[trip],
+					&soctherm_hw_action_ops);
+			continue;
+		}
+
+		if (strnstr(therm->trips[trip].cdev_type,
+			    "light",
+			    THERMAL_NAME_LENGTH) &&
+		    k == THROTTLE_LIGHT &&
+		    !soctherm_hw_light_cdev) {
+			soctherm_hw_light_cdev =
+				thermal_cooling_device_register(
+					therm->trips[trip].cdev_type,
+					&therm->trips[trip],
+					&soctherm_hw_action_ops);
+			continue;
+		}
+	}
+}
+
 static int __init soctherm_thermal_sys_init(void)
 {
 	char name[THERMAL_NAME_LENGTH];
 	struct soctherm_therm *therm;
 	bool oc_en = false;
-	int i, j, k;
+	int i, j;
 
 	if (!soctherm_init_platform_done)
 		return 0;
@@ -1263,46 +1325,7 @@ static int __init soctherm_thermal_sys_init(void)
 				break;
 
 			case THERMAL_TRIP_HOT:
-				for (k = 0; k < THROTTLE_SIZE; k++) {
-					if ((therm2dev[i] == THROTTLE_DEV_NONE)
-					    || (!plat_data.throttle[k].
-						devs[therm2dev[i]].enable))
-						continue;
-
-					if ((strnstr(therm->trips[j].cdev_type,
-						     "heavy",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_LIGHT) ||
-					    (strnstr(therm->trips[j].cdev_type,
-						     "light",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_HEAVY) ||
-					    (strnstr(therm->trips[j].cdev_type,
-						     "oc1",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_OC1) ||
-					    (strnstr(therm->trips[j].cdev_type,
-						     "oc2",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_OC2) ||
-					    (strnstr(therm->trips[j].cdev_type,
-						     "oc3",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_OC3) ||
-					    (strnstr(therm->trips[j].cdev_type,
-						     "oc4",
-						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_OC4))
-						continue;
-
-					if (soctherm_hw_hot_cdev)
-						continue;
-					soctherm_hw_hot_cdev =
-						thermal_cooling_device_register(
-						      therm->trips[j].cdev_type,
-						      &therm->trips[j],
-						      &soctherm_hw_action_ops);
-				}
+				soctherm_hot_cdev_register(i, j);
 				break;
 
 			case THERMAL_TRIP_PASSIVE:
@@ -1323,9 +1346,9 @@ static int __init soctherm_thermal_sys_init(void)
 					therm->passive_delay,
 					0);
 
-		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++)
+		for (j = THROTTLE_OC1; !oc_en && j < THROTTLE_SIZE; j++)
 			if ((therm2dev[i] != THROTTLE_DEV_NONE) &&
-			    (plat_data.throttle[k].devs[therm2dev[i]].enable))
+			    (plat_data.throttle[j].devs[therm2dev[i]].enable))
 				oc_en = true;
 	}
 
