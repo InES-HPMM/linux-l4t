@@ -84,3 +84,4 @@ obj-y		+= tegra-fuse/
 obj-$(CONFIG_DENVER_CPU)	+= force_idle_t132.o
 obj-$(CONFIG_ARCH_TEGRA)        +=tegra_timerinfo.o
 obj-$(CONFIG_MODS) 		+= mods/
+obj-$(CONFIG_DENVER_CPU)	+= idle_test_t132.o
