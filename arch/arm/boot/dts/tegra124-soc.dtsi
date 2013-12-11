@@ -393,5 +393,11 @@
 			reg = <0x70303900 0x100>;
 			status = "disabled";
 		};
+
+		tegra_spdif: spdif@70306000 {
+			compatible = "nvidia,tegra124-spdif";
+			reg = <0x70306000 0x100>;
+			status = "disabled";
+		};
 	};
 };
