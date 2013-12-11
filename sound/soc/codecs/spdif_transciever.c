@@ -8,7 +8,7 @@
  * Author:      Steve Chen,  <schen@mvista.com>
  * Copyright:   (C) 2009 MontaVista Software, Inc., <source@mvista.com>
  * Copyright:   (C) 2009  Texas Instruments, India
- * Copyright (c) 2009-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -36,6 +36,14 @@ static int spdif_probe(struct snd_soc_codec *codec) {
 
 static const struct snd_soc_dapm_widget spdif_dapm_widgets[] = {
 	SND_SOC_DAPM_VMID("spdif dummy Vmid"),
+	SND_SOC_DAPM_OUTPUT("OUT"),
+	SND_SOC_DAPM_INPUT("IN"),
+};
+
+static const struct snd_soc_dapm_route spdif_intercon[] = {
+	{ "OUT", NULL, "Playback" },
+	{ "Capture", NULL, "IN" },
+
 };
 
 static int spdif_write(struct snd_soc_codec * codec, unsigned int reg,
@@ -51,6 +59,8 @@ static struct snd_soc_codec_driver soc_codec_spdif_dit = {
 	.probe = spdif_probe,
 	.dapm_widgets = spdif_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(spdif_dapm_widgets),
+	.dapm_routes = spdif_intercon,
+	.num_dapm_routes = ARRAY_SIZE(spdif_intercon),
 	.read = spdif_read,
 	.write = spdif_write,
 };
