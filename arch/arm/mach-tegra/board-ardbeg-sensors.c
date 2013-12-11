@@ -1315,9 +1315,12 @@ static struct balanced_throttle skin_throttle = {
 
 static int __init ardbeg_skin_init(void)
 {
-	balanced_throttle_register(&skin_throttle, "skin-balanced");
-	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
-	platform_device_register(&tegra_skin_therm_est_device);
+	if (of_machine_is_compatible("nvidia,ardbeg") ||
+		of_machine_is_compatible("nvidia,tn8")) {
+		balanced_throttle_register(&skin_throttle, "skin-balanced");
+		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+		platform_device_register(&tegra_skin_therm_est_device);
+	}
 	return 0;
 }
 late_initcall(ardbeg_skin_init);
