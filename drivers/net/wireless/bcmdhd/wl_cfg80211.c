@@ -3713,7 +3713,8 @@ wl_add_keyext(struct wiphy *wiphy, struct net_device *dev,
 		}
 		swap_key_from_BE(&key);
 		/* need to guarantee EAPOL 4/4 send out before set key */
-		dhd_wait_pend8021x(dev);
+		if (mode != WL_MODE_AP)
+			dhd_wait_pend8021x(dev);
 		err = wldev_iovar_setbuf_bsscfg(dev, "wsec_key", &key, sizeof(key),
 			wl->ioctl_buf, WLC_IOCTL_MAXLEN, bssidx, &wl->ioctl_buf_sync);
 		if (unlikely(err)) {
