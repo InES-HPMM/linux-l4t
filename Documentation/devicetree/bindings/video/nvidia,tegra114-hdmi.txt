@@ -23,6 +23,29 @@ NVIDIA TEGRA114 High Definition Multimedia Interface
  - regulator names for supply voltage, PLL and hdmi 5V source should be avdd_hdmi, avdd_hdmi_pll,
    vdd_hdmi_5v0, respectively.
 
+ 1.B) NVIDIA HDMI TMDS configurations
+ This must be contained in hdmi parent node. This includes tmds configurations.
+
+ Required properties:
+ - name: Should be "nvidia,out-tmds-cfg"
+
+ - Child nodes represent tmds configurations. Several configurations can be prepared.
+
+ 1.B.i) NVIDIA HDMI TMDS configuration
+ This must be contained in nvidia,out-tmds-cfg parent node. This includes tmds configuration.
+
+ Required properties:
+ - name: Can be arbitrary, but each sibling node should have unique name.
+ - pclk: pixel clk required in tmds table for each mode.
+ - pll0: See HDMI_NV_PDISP_SOR_PLL0_0 in Tegra TRM.
+ - pll1: See HDMI_NV_PDISP_SOR_PLL1_0 in Tegra TRM.
+ - pe-current: Individual lane pre-emphasis current control (4bits per lane)
+   See HDMI_NV_PDISP_PE_CURRENT_0 in Tegra TRM.
+ - drive-current: TMDS per-lane I/O current control.
+   See HDMI_NV_PDISP_SOR_LANE_DRIVE_CURRENT_0 in Tegra TRM.
+ - peak-current: New pad controls for 28nm macro TMDS_X4_HP 8 bits per lane.
+   See HDMI_NV_PDISP_SOR_IO_PEAK_CURRENT_0 in Tegra TRM.
+
 Example
 	host1x {
 		hdmi {

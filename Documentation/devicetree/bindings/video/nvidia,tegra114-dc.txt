@@ -66,29 +66,6 @@ NVIDIA Tegra114 Display Controller
    For hdmi out-type case, depth selection is only valid for hdmi fb console mode,
    otherwise, BASE_COLOR_SIZE888 is chosen as a default.
 
- 1.B.i) NVIDIA Display Controller TMDS configurations
- This must be contained in dc-default-out parent node. This includes tmds configurations.
-
- Required properties:
- - name: Should be "nvidia,out-tmds-cfg"
-
- - Child nodes represent tmds configurations. Several configurations can be prepared.
-
- 1.B.i.x) NVIDIA Display Controller TMDS configuration
- This must be contained in nvidia,out-tmds-cfg parent node. This includes tmds configuration.
-
- Required properties:
- - name: Can be arbitrary, but each sibling node should have unique name.
- - pclk: pixel clk required in tmds table for each mode.
- - pll0: See HDMI_NV_PDISP_SOR_PLL0_0 in Tegra TRM.
- - pll1: See HDMI_NV_PDISP_SOR_PLL1_0 in Tegra TRM.
- - pe-current: Individual lane pre-emphasis current control (4bits per lane)
-   See HDMI_NV_PDISP_PE_CURRENT_0 in Tegra TRM.
- - drive-current: TMDS per-lane I/O current control.
-   See HDMI_NV_PDISP_SOR_LANE_DRIVE_CURRENT_0 in Tegra TRM.
- - peak-current: New pad controls for 28nm macro TMDS_X4_HP 8 bits per lane.
-   See HDMI_NV_PDISP_SOR_IO_PEAK_CURRENT_0 in Tegra TRM.
-
 1.C) NVIDIA Display Controller framebuffer data
  This must be contained in dc parent node. This is required framebuffer data.
 
