@@ -108,13 +108,26 @@ static struct thermal_zone_device_ops palmas_tz_ops = {
 static irqreturn_t palmas_thermal_irq(int irq, void *data)
 {
 	struct palmas_therm_zone *ptherm_zone = data;
+	unsigned int val;
+	int ret;
 
-	ptherm_zone->is_crit_temp = 1;
 	/*
 	 * Necessary action can be taken here
 	 * e.g: thermal_zone_device_update(pz->tz_device);
 	 * will trigger orderly power down sequence.
 	 */
+	ret = palmas_read(ptherm_zone->palmas, PALMAS_INTERRUPT_BASE,
+			PALMAS_INT1_LINE_STATE, &val);
+	if (ret < 0) {
+		dev_err(ptherm_zone->dev,
+			"%s: Failed to read INT1_LINE_STATE, %d\n",
+			__func__, ret);
+	} else {
+		ptherm_zone->is_crit_temp =
+				val & PALMAS_INT1_STATUS_HOTDIE ? 1 : 0;
+		dev_info(ptherm_zone->dev, "%s: HOTDIE line is equal to %d\n",
+			__func__, ptherm_zone->is_crit_temp);
+	}
 
 	return IRQ_HANDLED;
 }
