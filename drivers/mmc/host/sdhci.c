@@ -196,6 +196,7 @@ static void sdhci_disable_card_detection(struct sdhci_host *host)
 
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
+	u32 ctrl;
 	unsigned long timeout;
 	u32 uninitialized_var(ier);
 
@@ -240,6 +241,18 @@ static void sdhci_reset(struct sdhci_host *host, u8 mask)
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if ((host->ops->enable_dma) && (mask & SDHCI_RESET_ALL))
 			host->ops->enable_dma(host);
+	}
+
+	/*
+	 * VERSION_4_EN bit and 64BIT_EN bit are cleared after a full reset
+	 * need to re-configure them after each full reset
+	 */
+	if ((mask & SDHCI_RESET_ALL) && host->version >= SDHCI_SPEC_400) {
+		ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
+		ctrl |= SDHCI_HOST_VERSION_4_EN;
+		if (host->quirks2 & SDHCI_QUIRK2_SUPPORT_64BIT_DMA)
+			ctrl |= SDHCI_ADDRESSING_64BIT_EN;
+		sdhci_writel(host, ctrl, SDHCI_ACMD12_ERR);
 	}
 }
 
@@ -472,8 +485,8 @@ static void sdhci_kunmap_atomic(void *buffer, unsigned long *flags)
 	local_irq_restore(*flags);
 }
 
-static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc, u32 addr,
-					int len, unsigned cmd)
+static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc,
+				dma_addr_t addr, int len, unsigned cmd)
 {
 	__le32 *dataddr = (__le32 __force *)(desc + 4);
 	__le64 *dataddr64 = (__le64 __force *)(desc + 4);
@@ -527,7 +540,7 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	 */
 
 	host->align_addr = dma_map_single(mmc_dev(host->mmc),
-		host->align_buffer, 128 * 4, direction);
+		host->align_buffer, 128 * 8, direction);
 	if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr))
 		goto fail;
 	BUG_ON(host->align_addr & 0x3);
@@ -598,7 +611,7 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		 * If this triggers then we have a calculation bug
 		 * somewhere. :/
 		 */
-		WARN_ON((desc - host->adma_desc) > (128 * 2 + 1) * 4);
+		WARN_ON((desc - host->adma_desc) > (128 * 2 + 1) * 8);
 	}
 
 	if (host->quirks & SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC) {
@@ -623,11 +636,11 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	 */
 	if (data->flags & MMC_DATA_WRITE) {
 		dma_sync_single_for_device(mmc_dev(host->mmc),
-			host->align_addr, 128 * 4, direction);
+			host->align_addr, 128 * 8, direction);
 	}
 
 	host->adma_addr = dma_map_single(mmc_dev(host->mmc),
-		host->adma_desc, (128 * 2 + 1) * 4, DMA_TO_DEVICE);
+		host->adma_desc, (128 * 2 + 1) * 8, DMA_TO_DEVICE);
 	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
 		goto unmap_entries;
 	BUG_ON(host->adma_addr & 0x3);
@@ -639,7 +652,7 @@ unmap_entries:
 		data->sg_len, direction);
 unmap_align:
 	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 4, direction);
+		128 * 8, direction);
 fail:
 	return -EINVAL;
 }
@@ -661,10 +674,10 @@ static void sdhci_adma_table_post(struct sdhci_host *host,
 		direction = DMA_TO_DEVICE;
 
 	dma_unmap_single(mmc_dev(host->mmc), host->adma_addr,
-		(128 * 2 + 1) * 4, DMA_TO_DEVICE);
+		(128 * 2 + 1) * 8, DMA_TO_DEVICE);
 
 	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 4, direction);
+		128 * 8, direction);
 
 	if (data->flags & MMC_DATA_READ) {
 		dma_sync_sg_for_cpu(mmc_dev(host->mmc), data->sg,
@@ -3125,10 +3138,11 @@ int sdhci_add_host(struct sdhci_host *host)
 		/*
 		 * We need to allocate descriptors for all sg entries
 		 * (128) and potentially one alignment transfer for
-		 * each of those entries.
+		 * each of those entries. Simply allocating 128 bits
+		 * for each entry
 		 */
-		host->adma_desc = kmalloc((128 * 2 + 1) * 4, GFP_KERNEL);
-		host->align_buffer = kmalloc(128 * 4, GFP_KERNEL);
+		host->adma_desc = kmalloc((128 * 2 + 1) * 8, GFP_KERNEL);
+		host->align_buffer = kmalloc(128 * 8, GFP_KERNEL);
 		if (!host->adma_desc || !host->align_buffer) {
 			kfree(host->adma_desc);
 			kfree(host->align_buffer);
@@ -3231,14 +3245,6 @@ int sdhci_add_host(struct sdhci_host *host)
 		DBG("%s: Auto-CMD23 available\n", mmc_hostname(mmc));
 	} else {
 		DBG("%s: Auto-CMD23 unavailable\n", mmc_hostname(mmc));
-	}
-
-	if (host->version >= SDHCI_SPEC_400) {
-		ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
-		ctrl |= SDHCI_HOST_VERSION_4_EN;
-		if (host->quirks2 & SDHCI_QUIRK2_SUPPORT_64BIT_DMA)
-			ctrl |= SDHCI_ADDRESSING_64BIT_EN;
-		sdhci_writel(host, ctrl, SDHCI_ACMD12_ERR);
 	}
 
 	/*
