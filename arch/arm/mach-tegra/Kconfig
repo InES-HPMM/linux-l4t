@@ -987,6 +987,7 @@ config TEGRA_LP0_IN_IDLE
 config TEGRA_HDMI_PRIMARY
 	bool "Use HDMI as primary display"
 	depends on TEGRA_DC
+	depends on !FRAMEBUFFER_CONSOLE
 	help
 	  Configure system to support HDMI as the primary display.
 	  When enabled, dispA/fb0 will be configured to use HDMI.

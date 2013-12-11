@@ -694,6 +694,7 @@ int __init ardbeg_display_init(void)
 		return PTR_ERR(disp1_clk);
 	}
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	panel = ardbeg_panel_configure(&board, NULL);
 
 	if (panel && panel->init_dc_out) {
@@ -709,7 +710,7 @@ int __init ardbeg_display_init(void)
 	printk(KERN_DEBUG "disp1 pclk=%ld\n", disp1_rate);
 	if (disp1_rate)
 		tegra_dvfs_resolve_override(disp1_clk, disp1_rate);
-
+#endif
 
 	/* set up disp2 */
 	if (ardbeg_disp2_out.max_pixclock)
@@ -718,7 +719,11 @@ int __init ardbeg_display_init(void)
 		disp2_rate = 297000000; /* HDMI 4K */
 	printk(KERN_DEBUG "disp2 pclk=%ld\n", disp2_rate);
 	if (disp2_rate)
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 		tegra_dvfs_resolve_override(disp2_clk, disp2_rate);
+#else
+		tegra_dvfs_resolve_override(disp1_clk, disp2_rate);
+#endif
 
 	clk_put(disp1_clk);
 	clk_put(disp2_clk);
