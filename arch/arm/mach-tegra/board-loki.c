@@ -734,6 +734,16 @@ struct rm_spi_ts_platform_data rm31080ts_loki_data = {
 	.name_of_clock_con = "extern2",
 };
 
+struct rm_spi_ts_platform_data rm31080ts_loki_data_t_1_95 = {
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_L005,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+	.gpio_sensor_select0 = true,
+	.gpio_sensor_select1 = false,
+};
+
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.tx_clk_tap_delay = 16,
@@ -759,7 +769,8 @@ static int __init loki_touch_init(void)
 		return 0;
 
 	if (tegra_get_touch_panel_id() == TOUCH_PANEL_THOR_WINTEK)
-		rm31080ts_loki_data.platform_id = RM_PLATFORM_R005;
+		rm31080a_loki_spi_board[0].platform_data =
+					&rm31080ts_loki_data_t_1_95;
 	tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080a_loki_spi_board[0].irq =
 		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
