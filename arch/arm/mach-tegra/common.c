@@ -271,6 +271,7 @@ static int modem_id;
 static int commchip_id;
 static int sku_override;
 static int debug_uart_port_id;
+static bool uart_over_sd;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
 static int max_cpu_current;
@@ -1332,6 +1333,8 @@ static int __init tegra_debug_uartport(char *info)
 		} else {
 			port_id = memparse(p + 7, &p);
 			debug_uart_port_id = (int) port_id;
+			if (debug_uart_port_id == 5)
+				uart_over_sd = true;
 		}
 	} else {
 		debug_uart_port_id = -1;
@@ -1343,6 +1346,16 @@ static int __init tegra_debug_uartport(char *info)
 bool is_tegra_debug_uartport_hs(void)
 {
 	return is_tegra_debug_uart_hsport;
+}
+
+bool is_uart_over_sd_enabled(void)
+{
+	return uart_over_sd;
+}
+
+void set_sd_uart_port_id(int port_id)
+{
+	debug_uart_port_id = port_id;
 }
 
 int get_tegra_uart_debug_port_id(void)
