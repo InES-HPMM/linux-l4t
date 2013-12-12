@@ -638,16 +638,16 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
 
 	if (tegra->support_pmu_vbus) {
-		if (!pdata->ehci_pdata->vbus_extcon_dev_name) {
+		if (!pdata->vbus_extcon_dev_name) {
 			dev_err(&pdev->dev, "Missing vbus_extcon_dev_name!\n");
 			err = -EINVAL;
 			goto err_vbus_extcon;
 		}
-		tegra->vbus_extcon_dev = extcon_get_extcon_dev(pdata->
-					ehci_pdata->vbus_extcon_dev_name);
+		tegra->vbus_extcon_dev =
+			extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
 		if (!tegra->vbus_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
-				pdata->ehci_pdata->vbus_extcon_dev_name);
+						pdata->vbus_extcon_dev_name);
 			err = -ENODEV;
 			goto err_vbus_extcon;
 		}
@@ -656,16 +656,16 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	}
 
 	if (tegra->support_pmu_id) {
-		if (!pdata->ehci_pdata->id_extcon_dev_name) {
+		if (!pdata->id_extcon_dev_name) {
 			dev_err(&pdev->dev, "Missing id_extcon_dev_name!\n");
 			err = -EINVAL;
 			goto err_id_extcon;
 		}
-		tegra->id_extcon_dev = extcon_get_extcon_dev(pdata->
-					ehci_pdata->id_extcon_dev_name);
+		tegra->id_extcon_dev =
+			extcon_get_extcon_dev(pdata->id_extcon_dev_name);
 		if (!tegra->id_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
-					pdata->ehci_pdata->id_extcon_dev_name);
+						pdata->id_extcon_dev_name);
 			err = -ENODEV;
 			goto err_id_extcon;
 		}
