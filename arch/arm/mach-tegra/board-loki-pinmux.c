@@ -41,6 +41,12 @@ static __initdata struct tegra_drive_pingroup_config loki_drive_pinmux[] = {
 								FASTEST, 1),
 };
 
+/* Pinmux changes to support UART over uSD adapter E2542 */
+static __initdata struct tegra_pingroup_config loki_sdmmc3_uart_pinmux[] = {
+
+	DEFAULT_PINMUX(SDMMC3_CMD,    UARTA,      NORMAL,   NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,      NORMAL,   NORMAL,   INPUT),
+};
 
 #include "board-loki-pinmux-t12x.h"
 
@@ -93,5 +99,13 @@ int __init loki_pinmux_init(void)
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
 
+	if (is_uart_over_sd_enabled()) {
+		tegra_pinmux_config_table(loki_sdmmc3_uart_pinmux,
+				 ARRAY_SIZE(loki_sdmmc3_uart_pinmux));
+		/* On loki, UART-A is the physical device for
+		 * UART over uSD card
+		 */
+		set_sd_uart_port_id(0);
+	}
 	return 0;
 }

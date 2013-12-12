@@ -489,7 +489,10 @@ int __init loki_sdhci_init(void)
 	tegra_sdhci_platform_data0.max_clk_limit = 204000000;
 
 	platform_device_register(&tegra_sdhci_device3);
-	platform_device_register(&tegra_sdhci_device2);
+
+	if (!is_uart_over_sd_enabled())
+		platform_device_register(&tegra_sdhci_device2);
+
 	platform_device_register(&tegra_sdhci_device0);
 	loki_wifi_init();
 
