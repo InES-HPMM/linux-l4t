@@ -967,6 +967,7 @@ int tegra_emc_set_rate(unsigned long rate)
 	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
 	clkchange_time = ktime_get();
 	emc_timing = &tegra_emc_table[i];
+	tegra_mc_divider_update(emc);
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
 	emc_last_stats_update(i);
@@ -1559,6 +1560,7 @@ int __init tegra12_emc_init(void)
 void tegra_emc_timing_invalidate(void)
 {
 	emc_timing = NULL;
+	tegra_mc_divider_update(emc);
 }
 
 void tegra_emc_dram_type_init(struct clk *c)

@@ -124,6 +124,8 @@
 
 #define PERIPH_CLK_SOURCE_I2S1		0x100
 #define PERIPH_CLK_SOURCE_EMC		0x19c
+#define PERIPH_CLK_SOURCE_EMC_MC_SAME	(1<<16)
+
 #define PERIPH_CLK_SOURCE_LA		0x1f8
 #define PERIPH_CLK_SOURCE_NUM1 \
 	((PERIPH_CLK_SOURCE_LA - PERIPH_CLK_SOURCE_I2S1) / 4)
@@ -5201,6 +5203,29 @@ static struct clk_ops tegra_emc_clk_ops = {
 	.shared_bus_update	= &tegra12_clk_emc_bus_update,
 };
 
+void tegra_mc_divider_update(struct clk *emc)
+{
+	emc->child_bus->div = (clk_readl(emc->reg) &
+			       PERIPH_CLK_SOURCE_EMC_MC_SAME) ? 1 : 2;
+}
+
+static void tegra12_mc_clk_init(struct clk *c)
+{
+	c->state = ON;
+	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
+		c->state = OFF;
+
+	c->parent->child_bus = c;
+	tegra_mc_divider_update(c->parent);
+	c->mul = 1;
+}
+
+static struct clk_ops tegra_mc_clk_ops = {
+	.init			= &tegra12_mc_clk_init,
+	.enable			= &tegra12_periph_clk_enable,
+	.disable		= &tegra12_periph_clk_disable,
+};
+
 /* Clock doubler ops (non-atomic shared register access) */
 static DEFINE_SPINLOCK(doubler_lock);
 
@@ -7421,6 +7446,17 @@ static struct clk tegra_clk_emc = {
 	.rate_change_nh = &emc_rate_change_nh,
 };
 
+static struct clk tegra_clk_mc = {
+	.name = "mc",
+	.ops = &tegra_mc_clk_ops,
+	.max_rate =  533000000,
+	.parent = &tegra_clk_emc,
+	.flags = PERIPH_NO_RESET,
+	.u.periph = {
+		.clk_num = 32,
+	},
+};
+
 static struct raw_notifier_head host1x_rate_change_nh;
 
 static struct clk tegra_clk_host1x = {
@@ -8359,6 +8395,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_ahb,
 	&tegra_clk_apb,
 	&tegra_clk_emc,
+	&tegra_clk_mc,
 	&tegra_clk_host1x,
 	&tegra_clk_mselect,
 #ifdef CONFIG_TEGRA_DUAL_CBUS

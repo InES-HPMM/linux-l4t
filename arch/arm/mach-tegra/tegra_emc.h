@@ -74,6 +74,7 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
 bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 		unsigned long *parent_rate, unsigned long *backup_rate);
 void tegra_emc_timing_invalidate(void);
+void tegra_mc_divider_update(struct clk *emc);
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 int tegra_emc_backup(unsigned long rate);

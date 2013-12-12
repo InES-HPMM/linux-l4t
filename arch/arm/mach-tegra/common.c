@@ -373,7 +373,7 @@ static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
 static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "clk_m",	NULL,		0,		true },
-	{ "emc",	NULL,		0,		true },
+	{ "mc",		NULL,		0,		true },
 	{ "cpu",	NULL,		0,		true },
 	{ "kfuse",	NULL,		0,		true },
 	{ "fuse",	NULL,		0,		true },
