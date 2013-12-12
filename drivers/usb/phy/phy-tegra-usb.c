@@ -107,13 +107,19 @@ struct tegra_usb_phy *get_tegra_phy(struct usb_phy *x)
 
 static void usb_host_vbus_enable(struct tegra_usb_phy *phy, bool enable)
 {
+	int ret;
+
 	/* OTG driver will take care for OTG port */
 	if (phy->pdata->port_otg)
 		return;
 
 	if (phy->vbus_reg) {
-		if (enable)
-			regulator_enable(phy->vbus_reg);
+		if (enable) {
+			ret = regulator_enable(phy->vbus_reg);
+			if (ret)
+				ERR("can't enable regulator vbus_reg, err %d\n",
+						ret);
+		}
 		else
 			regulator_disable(phy->vbus_reg);
 	} else {
@@ -165,9 +171,12 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 {
 	struct tegra_usb_phy *phy = pdata;
+	int ret;
 
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
-		regulator_enable(phy->vdd_reg);
+		ret = regulator_enable(phy->vdd_reg);
+		if (ret)
+			ERR("can't enable regulator vdd_reg, error %d\n", ret);
 		phy->vdd_reg_on = true;
 		/*
 		 * Optimal time to get the regulator turned on
@@ -202,7 +211,7 @@ static void tegra_usb_phy_release_clocks(struct tegra_usb_phy *phy)
 
 static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 {
-	int err = 0;
+	int err = 0, ret;
 
 	if (tegra_platform_is_silicon()) {
 		phy->pllu_reg = regulator_get(&phy->pdev->dev, USB_PLL_REG);
@@ -213,7 +222,9 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 			phy->pllu_reg = NULL;
 			return err;
 		}
-		regulator_enable(phy->pllu_reg);
+		ret = regulator_enable(phy->pllu_reg);
+		if (ret)
+			ERR("can't enable regulator pllu_reg, error %d\n", ret);
 
 		phy->pllu_clk = clk_get_sys(NULL, "pll_u");
 		if (IS_ERR(phy->pllu_clk)) {
@@ -404,7 +415,7 @@ EXPORT_SYMBOL_GPL(tegra_usb_phy_power_off);
 
 int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 {
-	int status = 0;
+	int status = 0, ret;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -413,7 +424,9 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
-		regulator_enable(phy->vdd_reg);
+		ret = regulator_enable(phy->vdd_reg);
+		if (ret)
+			ERR("can't enable regulator vdd_reg, error %d\n", ret);
 		phy->vdd_reg_on = true;
 	}
 #endif
