@@ -166,6 +166,7 @@ int auto_odmdata(void)
 {
 	volatile u32 *pmc = (volatile u32 *)TEGRA_PMC_BASE;
 	u32 odmdata = pmc[0xa0 / 4];
+	u32 uart_port;
 
 	/*
 	 * Bits 19:18 are the console type: 0=default, 1=none, 2==DCC, 3==UART
@@ -174,6 +175,7 @@ int auto_odmdata(void)
 	 * doesn't make sense for your board, just don't enable this feature.
 	 *
 	 * Bits 17:15 indicate the UART to use, 0/1/2/3/4 are UART A/B/C/D/E.
+	 * 5 indicates that UART over uSD is enabled over UARTA
 	 */
 
 	switch  ((odmdata >> 18) & 3) {
@@ -184,7 +186,10 @@ int auto_odmdata(void)
 		return -1;
 	}
 
-	return (odmdata >> 15) & 7;
+	uart_port = (odmdata >> 15) & 7;
+	if (uart_port == 5)
+		uart_port = 0;
+	return uart_port;
 }
 #endif
 
