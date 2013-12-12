@@ -27,4 +27,5 @@ obj-$(CONFIG_INTEL_POWERCLAMP)	+= intel_powerclamp.o
 obj-$(CONFIG_PWM_FAN)		+= pwm_fan.o
 obj-$(CONFIG_GENERIC_ADC_THERMAL)	+= generic_adc_thermal.o
 obj-$(CONFIG_PALMAS_THERMAL)	+= palmas_thermal.o
+obj-$(CONFIG_SENSORS_TMP006)	+= tmp006.o
 

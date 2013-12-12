@@ -206,4 +206,13 @@ config PALMAS_THERMAL
 	 different critical temperature thresholds from which we can notify
 	 thermal core to orderly power off the system.
 
+config SENSORS_TMP006
+	tristate "Skin Temperature Sensor"
+	depends on I2C
+	help
+	 Say yes here if you wish to include the skin Temperature sensor.
+
+	 To compile this driver as a module, choose M here: the
+	 module will be called tmp006. If unsure, say N here.
+
 endif
