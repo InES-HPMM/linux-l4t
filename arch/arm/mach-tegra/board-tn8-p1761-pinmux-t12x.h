@@ -30,13 +30,13 @@ static __initdata struct tegra_pingroup_config tn8_p1761_pinmux_common[] = {
 
 	/* I2S0 pinmux */
 	DEFAULT_PINMUX(DAP1_DIN,      I2S0,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP1_DOUT,     I2S0,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(DAP1_DOUT,     I2S0,        NORMAL,    NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(DAP1_FS,       I2S0,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(DAP1_SCLK,     I2S0,        NORMAL,    NORMAL,   INPUT),
 
 	/* I2S1 pinmux */
 	DEFAULT_PINMUX(DAP2_DIN,      I2S1,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP2_DOUT,     I2S1,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(DAP2_DOUT,     I2S1,        NORMAL,    NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(DAP2_FS,       I2S1,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(DAP2_SCLK,     I2S1,        NORMAL,    NORMAL,   INPUT),
 
