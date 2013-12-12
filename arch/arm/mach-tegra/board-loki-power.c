@@ -663,7 +663,7 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 };
 /************************ LOKI CL-DVFS DATA *********************/
 #define LOKI_CPU_VDD_MAP_SIZE		33
-#define LOKI_CPU_VDD_MIN_UV		704000
+#define LOKI_CPU_VDD_MIN_UV		703000
 #define LOKI_CPU_VDD_STEP_UV		19200
 #define LOKI_CPU_VDD_STEP_US		80
 
