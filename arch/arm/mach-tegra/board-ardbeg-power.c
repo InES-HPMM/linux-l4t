@@ -1147,6 +1147,7 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 	}
 
 	if (pmu_board_id == BOARD_E1736 ||
+		pmu_board_id == BOARD_E1936 ||
 		pmu_board_id == BOARD_E1769 ||
 		pmu_board_id == BOARD_P1761) {
 		e1736_fill_reg_map();
@@ -1195,11 +1196,9 @@ int __init ardbeg_regulator_init(void)
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 	} else if (pmu_board_info.board_id == BOARD_E1736 ||
-		pmu_board_info.board_id == BOARD_E1769) {
-		tn8_regulator_init();
-		ardbeg_cl_dvfs_init(&pmu_board_info);
-		return tn8_fixed_regulator_init();
-	} else if (pmu_board_info.board_id == BOARD_P1761) {
+		pmu_board_info.board_id == BOARD_E1936 ||
+		pmu_board_info.board_id == BOARD_E1769 ||
+		pmu_board_info.board_id == BOARD_P1761) {
 		tn8_regulator_init();
 		ardbeg_cl_dvfs_init(&pmu_board_info);
 		return tn8_fixed_regulator_init();
@@ -1245,7 +1244,8 @@ static int __init ardbeg_fixed_regulator_init(void)
 		return platform_add_devices(fixed_reg_devs_e1735,
 			ARRAY_SIZE(fixed_reg_devs_e1735));
 	else if (pmu_board_info.board_id == BOARD_E1736 ||
-		 pmu_board_info.board_id == BOARD_P1761)
+		 pmu_board_info.board_id == BOARD_P1761 ||
+		 pmu_board_info.board_id == BOARD_E1936)
 		return 0;
 	else
 		pr_warn("The PMU board id 0x%04x is not supported\n",
@@ -1452,7 +1452,8 @@ int __init ardbeg_soctherm_init(void)
 		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_as3722;
 	else if (pmu_board_info.board_id == BOARD_E1735 ||
 		 pmu_board_info.board_id == BOARD_E1736 ||
-		 pmu_board_info.board_id == BOARD_E1769)
+		 pmu_board_info.board_id == BOARD_E1769 ||
+		 pmu_board_info.board_id == BOARD_E1936)
 		;/* tpdata_palmas is default */
 	else
 		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");

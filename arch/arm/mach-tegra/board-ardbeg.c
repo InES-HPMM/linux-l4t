@@ -657,6 +657,7 @@ static void ardbeg_usb_init(void)
 		case BOARD_E1736:
 		case BOARD_E1769:
 		case BOARD_E1735:
+		case BOARD_E1936:
 		case BOARD_P1761:
 			/* Device cable is detected through PMU Interrupt */
 			tegra_udc_pdata.support_pmu_vbus = true;
