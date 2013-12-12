@@ -321,7 +321,7 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	spin_unlock_irqrestore(&pmc_lock, flags);
 
 	/* Add small delay before usb detectors provide stable line values */
-	mdelay(1);
+	mdelay(5);
 
 	spin_lock_irqsave(&pmc_lock, flags);
 
