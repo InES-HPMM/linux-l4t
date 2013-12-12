@@ -144,6 +144,7 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ptherm_zone);
 	ptherm_zone->dev = &pdev->dev;
+	ptherm_zone->palmas = palmas;
 	if (!(pdata->tz_name))
 		pdata->tz_name = default_tz_name;
 
