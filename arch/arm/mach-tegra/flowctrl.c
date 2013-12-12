@@ -48,7 +48,7 @@ u8 flowctrl_offset_cc4_ctrl[] = {
 	FLOW_CTRL_CC4_CORE0_CTRL + 12,
 };
 
-static void flowctrl_update(u8 offset, u32 value)
+void flowctrl_update(u8 offset, u32 value)
 {
 	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
 
