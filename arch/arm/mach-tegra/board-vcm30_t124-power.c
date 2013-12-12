@@ -95,7 +95,7 @@ static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
 		.flags = _flags, \
 	}
 
-MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 3950000, NULL, 0, 1, 0,
+MAX77663_PDATA_INIT(LDO5, ldo5, 800000, 3950000, NULL, 1, 1, 0,
 		FPS_SRC_1, FPS_POWER_PERIOD_7, FPS_POWER_PERIOD_0, 0);
 
 #define MAX77663_REG(_id, _data) (&max77663_regulator_pdata_##_data)
