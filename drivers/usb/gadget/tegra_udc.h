@@ -474,7 +474,6 @@ struct tegra_udc {
 	bool support_pmu_vbus;
 	bool fence_read;
 	bool vbus_in_lp0;
-	struct extcon_dev *vbus_extcon_dev;
 #ifdef CONFIG_EXTCON
 	struct extcon_dev *edev;
 #endif
