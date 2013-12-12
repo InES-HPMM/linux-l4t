@@ -33,10 +33,12 @@
 #define FLOW_CTRL_CSR_ENABLE		(1 << 0)
 #define FLOW_CTRL_HALT_CPU1_EVENTS	0x14
 #define FLOW_CTRL_CPU1_CSR		0x18
+#define FLOW_CTRL_CC4_CORE0_CTRL	0x6c
 
 #ifndef __ASSEMBLY__
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value);
 void flowctrl_write_cpu_halt(unsigned int cpuid, u32 value);
+void flowctrl_write_cc4_ctrl(unsigned int cpuid, u32 value);
 #endif
 
 #endif

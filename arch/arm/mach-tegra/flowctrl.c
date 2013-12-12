@@ -41,6 +41,13 @@ u8 flowctrl_offset_cpu_csr[] = {
 	FLOW_CTRL_CPU1_CSR + 16,
 };
 
+u8 flowctrl_offset_cc4_ctrl[] = {
+	FLOW_CTRL_CC4_CORE0_CTRL,
+	FLOW_CTRL_CC4_CORE0_CTRL + 4,
+	FLOW_CTRL_CC4_CORE0_CTRL + 8,
+	FLOW_CTRL_CC4_CORE0_CTRL + 12,
+};
+
 static void flowctrl_update(u8 offset, u32 value)
 {
 	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
@@ -60,4 +67,9 @@ void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value)
 void flowctrl_write_cpu_halt(unsigned int cpuid, u32 value)
 {
 	return flowctrl_update(flowctrl_offset_halt_cpu[cpuid], value);
+}
+
+void flowctrl_write_cc4_ctrl(unsigned int cpuid, u32 value)
+{
+	return flowctrl_update(flowctrl_offset_cc4_ctrl[cpuid], value);
 }
