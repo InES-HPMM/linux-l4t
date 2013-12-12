@@ -244,8 +244,11 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 
 	/* complete() is from gadget layer,
 	 * eg fsg->bulk_in_complete() */
-	if (req->req.complete)
+	if (req->req.complete) {
+		spin_unlock(&ep->udc->lock);
 		req->req.complete(&ep->ep, &req->req);
+		spin_lock(&ep->udc->lock);
+	}
 
 	ep->stopped = stopped;
 }
