@@ -2669,38 +2669,54 @@ DEFINE_SIMPLE_ATTRIBUTE(sdhci_active_load_high_threshold_fops,
 
 static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
 {
-	struct dentry *root;
+	struct dentry *root = host->debugfs_root;
 	struct dentry *dfs_root;
+	unsigned saved_line;
 
-	root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
-	if (IS_ERR_OR_NULL(root))
-		goto err_root;
-	host->debugfs_root = root;
+	if (!root) {
+		root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
+		if (IS_ERR_OR_NULL(root)) {
+			saved_line = __LINE__;
+			goto err_root;
+		}
+		host->debugfs_root = root;
+	}
 
 	dfs_root = debugfs_create_dir("dfs_stats_dir", root);
-	if (IS_ERR_OR_NULL(dfs_root))
+	if (IS_ERR_OR_NULL(dfs_root)) {
+		saved_line = __LINE__;
 		goto err_node;
+	}
 
 	if (!debugfs_create_file("error_stats", S_IRUSR, root, host,
-				&sdhci_host_fops))
+				&sdhci_host_fops)) {
+		saved_line = __LINE__;
 		goto err_node;
+	}
 	if (!debugfs_create_file("dfs_stats", S_IRUSR, dfs_root, host,
-				&sdhci_host_dfs_fops))
+				&sdhci_host_dfs_fops)) {
+		saved_line = __LINE__;
 		goto err_node;
+	}
 	if (!debugfs_create_file("polling_period", 0644, dfs_root, (void *)host,
-				&sdhci_polling_period_fops))
+				&sdhci_polling_period_fops)) {
+		saved_line = __LINE__;
 		goto err_node;
+	}
 	if (!debugfs_create_file("active_load_high_threshold", 0644,
 				dfs_root, (void *)host,
-				&sdhci_active_load_high_threshold_fops))
+				&sdhci_active_load_high_threshold_fops)) {
+		saved_line = __LINE__;
 		goto err_node;
+	}
 	return;
 
 err_node:
 	debugfs_remove_recursive(root);
 	host->debugfs_root = NULL;
 err_root:
-	pr_err("%s: Failed to initialize debugfs functionality\n", __func__);
+	pr_err("%s %s: Failed to initialize debugfs functionality at line=%d\n", __func__,
+		mmc_hostname(host->mmc), saved_line);
 	return;
 }
 
