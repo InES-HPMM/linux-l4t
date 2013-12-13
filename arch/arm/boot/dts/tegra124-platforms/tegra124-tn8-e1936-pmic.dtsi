@@ -393,7 +393,7 @@
 								regulator-consumer-device = "tegra-xhci";
 							};
 							c9 {
-								regulator-consumer-supply = "vdd_wwa_mdm";
+								regulator-consumer-supply = "vdd_wwan_mdm";
 							};
 						};
 					};
