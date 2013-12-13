@@ -1150,7 +1150,9 @@ static void __init tegra_ardbeg_late_init(void)
 			board_info.board_id == BOARD_PM363) {
 		platform_device_register(&tegra124_pinctrl_device);
 		laguna_pinmux_init();
-	} else if (board_info.board_id == BOARD_P1761) {
+	} else if (board_info.board_id == BOARD_P1761 ||
+		board_info.board_id == BOARD_E1784 ||
+		board_info.board_id == BOARD_E1922) {
 		platform_device_register(&tegra124_pinctrl_device);
 		tn8_p1761_pinmux_init();
 	}
