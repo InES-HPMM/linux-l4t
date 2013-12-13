@@ -34,6 +34,12 @@
 #define IMX135_IOCTL_SET_FLASH_MODE	_IOW('o', 31, \
 						struct imx135_flash_control)
 
+#define IMX135_EEPROM_ADDRESS	0x50
+#define IMX135_EEPROM_SIZE	1024
+#define IMX135_EEPROM_BLOCK_SIZE	(1 << 8)
+#define IMX135_EEPROM_NUM_BLOCKS \
+	(IMX135_EEPROM_SIZE / IMX135_EEPROM_BLOCK_SIZE)
+
 struct imx135_mode {
 	__u32 xres;
 	__u32 yres;
@@ -72,6 +78,12 @@ struct imx135_flash_control {
 	u16 delay_frm;
 };
 
+struct imx135_eeprom_data {
+	struct i2c_client *i2c_client;
+	struct i2c_adapter *adap;
+	struct i2c_board_info brd;
+	struct regmap *regmap;
+};
 
 #ifdef __KERNEL__
 struct imx135_power_rail {

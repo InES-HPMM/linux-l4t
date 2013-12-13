@@ -55,6 +55,8 @@ struct imx135_info {
 	struct mutex			imx135_camera_lock;
 	struct dentry			*debugdir;
 	atomic_t			in_use;
+	struct imx135_eeprom_data eeprom[IMX135_EEPROM_NUM_BLOCKS];
+	u8 eeprom_buf[IMX135_EEPROM_SIZE];
 };
 
 static const struct regmap_config sensor_regmap_config = {
@@ -3441,6 +3443,66 @@ static int imx135_mclk_enable(struct imx135_info *info)
 	return err;
 }
 
+static int
+imx135_eeprom_device_release(struct imx135_info *info)
+{
+	int i;
+
+	for (i = 0; i < IMX135_EEPROM_NUM_BLOCKS; i++) {
+		if (info->eeprom[i].i2c_client != NULL) {
+			i2c_unregister_device(info->eeprom[i].i2c_client);
+			info->eeprom[i].i2c_client = NULL;
+		}
+	}
+
+	return 0;
+}
+
+static int
+imx135_eeprom_device_init(struct imx135_info *info)
+{
+	char *dev_name = "eeprom_imx135";
+	static struct regmap_config eeprom_regmap_config = {
+		.reg_bits = 8,
+		.val_bits = 8,
+	};
+	int i;
+	int err;
+
+	for (i = 0; i < IMX135_EEPROM_NUM_BLOCKS; i++) {
+		info->eeprom[i].adap = i2c_get_adapter(
+				info->i2c_client->adapter->nr);
+		memset(&info->eeprom[i].brd, 0, sizeof(info->eeprom[i].brd));
+		strncpy(info->eeprom[i].brd.type, dev_name,
+				sizeof(info->eeprom[i].brd.type));
+		info->eeprom[i].brd.addr = IMX135_EEPROM_ADDRESS + i;
+		info->eeprom[i].i2c_client = i2c_new_device(
+				info->eeprom[i].adap, &info->eeprom[i].brd);
+
+		info->eeprom[i].regmap = devm_regmap_init_i2c(
+			info->eeprom[i].i2c_client, &eeprom_regmap_config);
+		if (IS_ERR(info->eeprom[i].regmap)) {
+			err = PTR_ERR(info->eeprom[i].regmap);
+			imx135_eeprom_device_release(info);
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static int
+imx135_read_eeprom(struct imx135_info *info, u8 reg, u16 length, u8 *buf)
+{
+	return regmap_raw_read(info->eeprom[0].regmap, reg, &buf[reg], length);
+}
+
+static int
+imx135_write_eeprom(struct imx135_info *info, u16 addr, u8 val)
+{
+	return regmap_write(info->eeprom[addr >> 8].regmap, addr & 0xFF, val);
+}
+
 static long
 imx135_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
@@ -3552,6 +3614,43 @@ imx135_ioctl(struct file *file,
 	case _IOC_NR(IMX135_IOCTL_GET_FLASH_CAP):
 		err = imx135_get_flash_cap(info);
 		break;
+
+	case NVC_IOCTL_GET_EEPROM_DATA:
+	{
+		imx135_read_eeprom(info,
+			0,
+			IMX135_EEPROM_SIZE,
+			info->eeprom_buf);
+
+		if (copy_to_user((void __user *)arg,
+			info->eeprom_buf, IMX135_EEPROM_SIZE)) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to copy status to user\n",
+				__func__);
+			return -EFAULT;
+		}
+		return 0;
+	}
+
+	case NVC_IOCTL_SET_EEPROM_DATA:
+	{
+		int i;
+		if (copy_from_user(info->eeprom_buf,
+			(const void __user *)arg, IMX135_EEPROM_SIZE)) {
+			dev_err(&info->i2c_client->dev,
+					"%s:Failed to read from user buffer\n",
+					__func__);
+			return -EFAULT;
+		}
+		for (i = 0; i < IMX135_EEPROM_SIZE; i++) {
+			imx135_write_eeprom(info,
+				i,
+				info->eeprom_buf[i]);
+			msleep(20);
+		}
+		return 0;
+	}
+
 	default:
 		pr_err("%s:unknown cmd.\n", __func__);
 		err = -EINVAL;
@@ -3998,6 +4097,15 @@ imx135_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, info);
+
+	/* eeprom interface */
+	err = imx135_eeprom_device_init(info);
+	if (err) {
+		dev_err(&client->dev,
+			"Failed to allocate eeprom register map: %d\n", err);
+		return err;
+	}
+
 	/* create debugfs interface */
 	imx135_create_debugfs(info);
 	return 0;
@@ -4018,6 +4126,7 @@ imx135_remove(struct i2c_client *client)
 	imx135_power_put(&info->power);
 
 	imx135_remove_debugfs(info);
+	imx135_eeprom_device_release(info);
 	return 0;
 }
 
