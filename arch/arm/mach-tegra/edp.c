@@ -85,9 +85,9 @@ static struct tegra_edp_freq_voltage_table *freq_voltage_lut;
 static unsigned int freq_voltage_lut_size;
 
 #ifdef CONFIG_TEGRA_GPU_EDP
-static struct tegra_edp_gpu_limits *edp_gpu_limits;
-static int edp_gpu_limits_size;
-static int edp_gpu_thermal_idx;
+static struct tegra_edp_gpu_limits *gpu_edp_limits;
+static int gpu_edp_limits_size;
+static int gpu_edp_thermal_idx;
 static struct clk *gpu_cap_clk;
 static DEFINE_MUTEX(gpu_edp_lock);
 
@@ -95,8 +95,10 @@ static struct tegra_edp_freq_voltage_table *freq_voltage_gpu_lut;
 static unsigned int freq_voltage_gpu_lut_size;
 
 static unsigned int gpu_regulator_cur;
+/* Value to subtract from regulator current limit */
+static unsigned int gpu_edp_reg_override_mA = OVERRIDE_DEFAULT;
 
-static struct tegra_edp_gpu_limits edp_gpu_default_limits[] = {
+static struct tegra_edp_gpu_limits gpu_edp_default_limits[] = {
 	{85, 350000},
 };
 
@@ -669,8 +671,8 @@ struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size)
 void tegra_get_gpu_edp_limits(const struct tegra_edp_gpu_limits **limits,
 							int *size)
 {
-	*limits = edp_gpu_limits;
-	*size = edp_gpu_limits_size;
+	*limits = gpu_edp_limits;
+	*size = gpu_edp_limits_size;
 }
 
 void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
@@ -709,7 +711,8 @@ static unsigned int edp_gpu_calculate_maxf(
 				int temp_C, int iddq_mA)
 {
 	unsigned int voltage_mV, freq_KHz = 0;
-	unsigned int cur_effective = gpu_regulator_cur;
+	unsigned int cur_effective = gpu_regulator_cur -
+				     gpu_edp_reg_override_mA;
 	int f, i, j, k;
 	s64 leakage_mA, dyn_mA, leakage_calc_step;
 
@@ -788,7 +791,7 @@ static int __init start_gpu_edp(void)
 				cap_name);
 		return -EINVAL;
 	}
-	edp_gpu_thermal_idx = 0;
+	gpu_edp_thermal_idx = 0;
 
 	return 0;
 }
@@ -822,13 +825,12 @@ static int edp_gpu_relate_freq_voltage(struct clk *clk_gpu,
 
 static int init_gpu_edp_limits_calculated(void)
 {
-	unsigned int temp_idx;
 	unsigned int gpu_minf, gpu_maxf;
 	unsigned int limit;
-	struct tegra_edp_gpu_limits *edp_gpu_calculated_limits;
+	struct tegra_edp_gpu_limits *gpu_edp_calculated_limits;
 	struct tegra_edp_gpu_limits *temp;
 	struct tegra_edp_gpu_leakage_params *params;
-	int ret;
+	int i, ret;
 	unsigned int gpu_iddq_mA;
 	u32 tegra_chip_id;
 	struct clk *gpu_clk = clk_get_parent(gpu_cap_clk);
@@ -840,9 +842,9 @@ static int init_gpu_edp_limits_calculated(void)
 	} else
 		return -EINVAL;
 
-	edp_gpu_calculated_limits = kmalloc(sizeof(struct tegra_edp_gpu_limits)
+	gpu_edp_calculated_limits = kmalloc(sizeof(struct tegra_edp_gpu_limits)
 				* ARRAY_SIZE(gpu_temperatures), GFP_KERNEL);
-	BUG_ON(!edp_gpu_calculated_limits);
+	BUG_ON(!gpu_edp_calculated_limits);
 
 	gpu_minf = 0;
 	gpu_maxf = clk_get_max_rate(gpu_clk);
@@ -853,7 +855,7 @@ static int init_gpu_edp_limits_calculated(void)
 	if (!freq_voltage_gpu_lut) {
 		pr_err("%s: failed alloc mem for gpu freq/voltage LUT\n",
 			 __func__);
-		kfree(edp_gpu_calculated_limits);
+		kfree(gpu_edp_calculated_limits);
 		return -ENOMEM;
 	}
 
@@ -861,40 +863,39 @@ static int init_gpu_edp_limits_calculated(void)
 			freq_voltage_gpu_lut_size, freq_voltage_gpu_lut);
 
 	if (ret) {
-		kfree(edp_gpu_calculated_limits);
+		kfree(gpu_edp_calculated_limits);
 		kfree(freq_voltage_gpu_lut);
 		return ret;
 	}
 
-	for (temp_idx = 0;
-		     temp_idx < ARRAY_SIZE(gpu_temperatures); temp_idx++) {
-			edp_gpu_calculated_limits[temp_idx].temperature =
-				gpu_temperatures[temp_idx];
-			limit = edp_gpu_calculate_maxf(params,
-						   gpu_temperatures[temp_idx],
-						   gpu_iddq_mA);
-			if (limit == -EINVAL) {
-				kfree(edp_gpu_calculated_limits);
-				kfree(freq_voltage_gpu_lut);
-				return -EINVAL;
-			}
+	for (i = 0; i < ARRAY_SIZE(gpu_temperatures); i++) {
+		gpu_edp_calculated_limits[i].temperature =
+			gpu_temperatures[i];
+		limit = edp_gpu_calculate_maxf(params,
+					       gpu_temperatures[i],
+					       gpu_iddq_mA);
+		if (limit == -EINVAL) {
+			kfree(gpu_edp_calculated_limits);
+			kfree(freq_voltage_gpu_lut);
+			return -EINVAL;
+		}
 
-			edp_gpu_calculated_limits[temp_idx].freq_limits = limit;
+		gpu_edp_calculated_limits[i].freq_limits = limit;
 	}
 
 	/*
 	 * If this is an EDP table update, need to overwrite old table.
 	 * The old table's address must remain valid.
 	 */
-	if (edp_gpu_limits != edp_gpu_default_limits &&
-			edp_gpu_limits != edp_gpu_calculated_limits) {
-		temp = edp_gpu_limits;
-		edp_gpu_limits = edp_gpu_calculated_limits;
-		edp_gpu_limits_size = ARRAY_SIZE(gpu_temperatures);
+	if (gpu_edp_limits != gpu_edp_default_limits &&
+			gpu_edp_limits != gpu_edp_calculated_limits) {
+		temp = gpu_edp_limits;
+		gpu_edp_limits = gpu_edp_calculated_limits;
+		gpu_edp_limits_size = ARRAY_SIZE(gpu_temperatures);
 		kfree(temp);
 	} else {
-		edp_gpu_limits = edp_gpu_calculated_limits;
-		edp_gpu_limits_size = ARRAY_SIZE(gpu_temperatures);
+		gpu_edp_limits = gpu_edp_calculated_limits;
+		gpu_edp_limits_size = ARRAY_SIZE(gpu_temperatures);
 	}
 
 	kfree(freq_voltage_gpu_lut);
@@ -940,10 +941,10 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_mA)
 
 	if (!regulator_mA)
 		goto end;
-	gpu_regulator_cur = regulator_mA;
+	gpu_regulator_cur = regulator_mA + OVERRIDE_DEFAULT;
 
 	if (start_gpu_edp()) {
-		WARN(1, "GPU EDP failed to set initialial limits");
+		WARN(1, "GPU EDP failed to set initial limits");
 		return;
 	}
 
@@ -959,21 +960,21 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_mA)
 	}
 
  end:
-	edp_gpu_limits = edp_gpu_default_limits;
-	edp_gpu_limits_size = ARRAY_SIZE(edp_gpu_default_limits);
+	gpu_edp_limits = gpu_edp_default_limits;
+	gpu_edp_limits_size = ARRAY_SIZE(gpu_edp_default_limits);
 }
 
 static int gpu_edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
 				       unsigned long *max_state)
 {
-	*max_state = edp_gpu_limits_size - 1;
+	*max_state = gpu_edp_limits_size - 1;
 	return 0;
 }
 
 static int gpu_edp_get_cdev_cur_state(struct thermal_cooling_device *cdev,
 				       unsigned long *cur_state)
 {
-	*cur_state = edp_gpu_thermal_idx;
+	*cur_state = gpu_edp_thermal_idx;
 	return 0;
 }
 
@@ -981,10 +982,10 @@ static int gpu_edp_set_cdev_state(struct thermal_cooling_device *cdev,
 				   unsigned long cur_state)
 {
 	unsigned long clk_rate;
-	BUG_ON(cur_state >= edp_gpu_limits_size);
-	clk_rate = edp_gpu_limits[cur_state].freq_limits;
+	BUG_ON(cur_state >= gpu_edp_limits_size);
+	clk_rate = gpu_edp_limits[cur_state].freq_limits;
 	mutex_lock(&gpu_edp_lock);
-	edp_gpu_thermal_idx = cur_state;
+	gpu_edp_thermal_idx = cur_state;
 	clk_set_rate(gpu_cap_clk, clk_rate * 1000);
 	mutex_unlock(&gpu_edp_lock);
 	return 0;
@@ -1145,27 +1146,96 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 }
 
 #ifdef CONFIG_TEGRA_GPU_EDP
+static int gpu_edp_limit_debugfs_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "%u\n", gpu_edp_limits[gpu_edp_thermal_idx].freq_limits);
+	return 0;
+}
+
 static inline void gpu_edp_show_table(struct seq_file *s)
 {
 	int i;
 
 	seq_printf(s, "%6s %10s\n",
 		   " Temp.", "Freq_limit");
-	for (i = 0; i < edp_gpu_limits_size; i++) {
-		seq_printf(s, "%3dC: %10u \n",
-			   edp_gpu_limits[i].temperature,
-			   edp_gpu_limits[i].freq_limits);
+	for (i = 0; i < gpu_edp_limits_size; i++) {
+		seq_printf(s, "%3dC: %10u\n",
+			   gpu_edp_limits[i].temperature,
+			   gpu_edp_limits[i].freq_limits);
 	}
 }
 
-
 static int gpu_edp_debugfs_show(struct seq_file *s, void *data)
 {
-	seq_printf(s, "-- VDD_GPU EDP table --\n");
+	seq_printf(s, "-- VDD_GPU %sEDP table (%umA = %umA - %umA) --\n",
+		   gpu_edp_limits == gpu_edp_default_limits ?
+		   "**default** " : "",
+		   gpu_regulator_cur - gpu_edp_reg_override_mA,
+		   gpu_regulator_cur, gpu_edp_reg_override_mA);
 
 	gpu_edp_show_table(s);
 
 	return 0;
+}
+
+static int gpu_edp_reg_override_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "Limit override: %u mA. Effective limit: %u mA\n",
+		   gpu_edp_reg_override_mA,
+		   gpu_regulator_cur - gpu_edp_reg_override_mA);
+	return 0;
+}
+
+static int gpu_edp_reg_override_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	char buf[32], *end;
+	unsigned int gpu_edp_reg_override_mA_temp;
+	unsigned int gpu_edp_reg_override_mA_prev = gpu_edp_reg_override_mA;
+	u32 tegra_chip_id;
+
+	tegra_chip_id = tegra_get_chip_id();
+	if (tegra_chip_id != TEGRA_CHIPID_TEGRA12)
+		goto override_err;
+
+	if (sizeof(buf) <= count)
+		goto override_err;
+
+	if (copy_from_user(buf, userbuf, count))
+		goto override_err;
+
+	/* terminate buffer and trim - white spaces may be appended
+	 *  at the end when invoked from shell command line */
+	buf[count] ='\0';
+	strim(buf);
+
+	gpu_edp_reg_override_mA_temp = simple_strtoul(buf, &end, 10);
+	if (*end != '\0')
+		goto override_err;
+
+	if (gpu_edp_reg_override_mA_temp >= gpu_regulator_cur)
+		goto override_err;
+
+	if (gpu_edp_reg_override_mA == gpu_edp_reg_override_mA_temp)
+		return count;
+
+	gpu_edp_reg_override_mA = gpu_edp_reg_override_mA_temp;
+	if (init_gpu_edp_limits_calculated()) {
+		/* Revert to previous override value if new value fails */
+		gpu_edp_reg_override_mA = gpu_edp_reg_override_mA_prev;
+		goto override_err;
+	}
+
+	gpu_edp_set_cdev_state(NULL, gpu_edp_thermal_idx);
+	pr_info("Reinitialized VDD_GPU EDP table with regulator current limit"
+		" %u mA\n", gpu_regulator_cur - gpu_edp_reg_override_mA);
+
+	return count;
+
+ override_err:
+	pr_err("FAILED: Override VDD_GPU EDP table with \"%s\"",
+	       buf);
+	return -EINVAL;
 }
 #endif
 
@@ -1251,6 +1321,16 @@ static int gpu_edp_debugfs_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, gpu_edp_debugfs_show, inode->i_private);
 }
+
+static int gpu_edp_limit_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpu_edp_limit_debugfs_show, inode->i_private);
+}
+
+static int gpu_edp_reg_override_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpu_edp_reg_override_show, inode->i_private);
+}
 #endif
 
 static int edp_limit_debugfs_open(struct inode *inode, struct file *file)
@@ -1274,6 +1354,21 @@ static const struct file_operations edp_debugfs_fops = {
 static const struct file_operations gpu_edp_debugfs_fops = {
 	.open		= gpu_edp_debugfs_open,
 	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations gpu_edp_limit_debugfs_fops = {
+	.open		= gpu_edp_limit_debugfs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations gpu_edp_reg_override_debugfs_fops = {
+	.open		= gpu_edp_reg_override_open,
+	.read		= seq_read,
+	.write		= gpu_edp_reg_override_write,
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
@@ -1316,6 +1411,50 @@ static int reg_idle_cur_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(reg_idle_cur_debugfs_fops,
 			reg_idle_cur_get, reg_idle_cur_set, "%llu\n");
 
+#ifdef CONFIG_TEGRA_GPU_EDP
+static int __init tegra_gpu_edp_debugfs_init(struct dentry *edp_dir)
+{
+	struct dentry *d_edp;
+	struct dentry *d_edp_limit;
+	struct dentry *d_edp_reg_override;
+	struct dentry *vdd_gpu_dir;
+
+	if (!tegra_platform_is_silicon())
+		return -ENOSYS;
+
+	vdd_gpu_dir = debugfs_create_dir("vdd_gpu", edp_dir);
+	if (!vdd_gpu_dir)
+		goto err_0;
+
+	d_edp = debugfs_create_file("gpu_edp",  S_IRUGO, vdd_gpu_dir, NULL,
+				    &gpu_edp_debugfs_fops);
+	if (!d_edp)
+		goto err_1;
+
+	d_edp_limit = debugfs_create_file("gpu_edp_limit", S_IRUGO, vdd_gpu_dir,
+					  NULL, &gpu_edp_limit_debugfs_fops);
+	if (!d_edp_limit)
+		goto err_2;
+
+	d_edp_reg_override = debugfs_create_file("gpu_edp_reg_override",
+				S_IRUGO | S_IWUSR, vdd_gpu_dir, NULL,
+				&gpu_edp_reg_override_debugfs_fops);
+	if (!d_edp_reg_override)
+		goto err_3;
+
+	return 0;
+
+err_3:
+	debugfs_remove(d_edp_limit);
+err_2:
+	debugfs_remove(d_edp);
+err_1:
+	debugfs_remove(vdd_gpu_dir);
+err_0:
+	return -ENOMEM;
+}
+#endif
+
 #if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)
 static __init struct dentry *tegra_edp_debugfs_dir(void)
 {
@@ -1339,86 +1478,59 @@ static int __init tegra_edp_debugfs_init(void)
 	struct dentry *d_edp_reg_override;
 	struct dentry *edp_dir;
 	struct dentry *vdd_cpu_dir;
-#ifdef CONFIG_TEGRA_GPU_EDP
-	struct dentry *gpu_edp;
-	struct dentry *vdd_gpu_dir;
-#endif
 
 	if (!tegra_platform_is_silicon())
 		return -ENOSYS;
 
 	edp_dir = tegra_edp_debugfs_dir();
-
 	if (!edp_dir)
-		goto edp_dir_err;
+		goto err_0;
 
 	vdd_cpu_dir = debugfs_create_dir("vdd_cpu", edp_dir);
-
 	if (!vdd_cpu_dir)
-		goto vdd_cpu_dir_err;
-
-#ifdef CONFIG_TEGRA_GPU_EDP
-	vdd_gpu_dir = debugfs_create_dir("vdd_gpu", edp_dir);
-
-	if (!vdd_gpu_dir)
-		goto vdd_gpu_dir_err;
-#endif
+		goto err_0;
 
 	d_edp = debugfs_create_file("edp", S_IRUGO, vdd_cpu_dir, NULL,
-				&edp_debugfs_fops);
-
+				    &edp_debugfs_fops);
 	if (!d_edp)
-		goto edp_err;
-#ifdef CONFIG_TEGRA_GPU_EDP
-	gpu_edp = debugfs_create_file("gpu_edp",  S_IRUGO, vdd_gpu_dir, NULL,
-			 &gpu_edp_debugfs_fops);
-	if (!gpu_edp)
-		goto gpu_edp_err;
-#endif
+		goto err_1;
 
 	d_edp_limit = debugfs_create_file("edp_limit", S_IRUGO, vdd_cpu_dir,
-				NULL, &edp_limit_debugfs_fops);
-
+					  NULL, &edp_limit_debugfs_fops);
 	if (!d_edp_limit)
-		goto edp_limit_err;
+		goto err_2;
 
 	d_edp_reg_override = debugfs_create_file("edp_reg_override",
-				S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
-				&edp_reg_override_debugfs_fops);
-
+					S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
+					&edp_reg_override_debugfs_fops);
 	if (!d_edp_reg_override)
-		goto edp_reg_override_err;
+		goto err_3;
 
 	d_reg_idle_cur = debugfs_create_file("reg_idle_mA",
-				S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
-				&reg_idle_cur_debugfs_fops);
+					S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
+					&reg_idle_cur_debugfs_fops);
 	if (!d_reg_idle_cur)
-		goto reg_idle_cur_err;
+		goto err_4;
 
 	if (tegra_core_edp_debugfs_init(edp_dir))
 		return -ENOMEM;
 
+#ifdef CONFIG_TEGRA_GPU_EDP
+	if (tegra_gpu_edp_debugfs_init(edp_dir))
+		return -ENOMEM;
+#endif
+
 	return 0;
 
-reg_idle_cur_err:
+err_4:
 	debugfs_remove(d_edp_reg_override);
-edp_reg_override_err:
+err_3:
 	debugfs_remove(d_edp_limit);
-edp_limit_err:
-#ifdef CONFIG_TEGRA_GPU_EDP
-	debugfs_remove(gpu_edp);
-gpu_edp_err:
-#endif
+err_2:
 	debugfs_remove(d_edp);
-edp_err:
-#ifdef CONFIG_TEGRA_GPU_EDP
-	debugfs_remove(vdd_gpu_dir);
-vdd_gpu_dir_err:
-#endif
+err_1:
 	debugfs_remove(vdd_cpu_dir);
-vdd_cpu_dir_err:
-	debugfs_remove(edp_dir);
-edp_dir_err:
+err_0:
 	return -ENOMEM;
 }
 
