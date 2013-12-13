@@ -296,9 +296,9 @@ static ssize_t consumer_unregister_store(const char *s, size_t count)
 	size_t n;
 	struct sysedp_consumer *consumer;
 
-	n = count > SYSEDP_NAME_LEN ? SYSEDP_NAME_LEN : count;
+	n = count > SYSEDP_NAME_LEN - 1 ? SYSEDP_NAME_LEN - 1 : count;
 	strncpy(name, s, n);
-	name[n-1] = 0;
+	name[n] = 0;
 	consumer = sysedp_get_consumer(strim(name));
 
 	if (!consumer)
