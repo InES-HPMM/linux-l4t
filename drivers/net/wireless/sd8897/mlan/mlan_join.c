@@ -368,24 +368,24 @@ wlan_update_tsf_timestamps(IN mlan_private * pmpriv,
  *    the buffer as a wapi TLV type to the request.
  *
  *  @param priv     A pointer to mlan_private structure
- *  @param ppbuffer pointer to command buffer pointer
+ *  @param ppBuffer pointer to command buffer pointer
  *
  *  @return         bytes added to the buffer
  */
 static int
-wlan_cmd_append_wapi_ie(mlan_private * priv, t_u8 ** ppbuffer)
+wlan_cmd_append_wapi_ie(mlan_private * priv, t_u8 ** ppBuffer)
 {
-	int retlen = 0;
+	int retLen = 0;
 	MrvlIEtypesHeader_t ie_header;
 
 	ENTER();
 
 	/* Null Checks */
-	if (ppbuffer == MNULL) {
+	if (ppBuffer == MNULL) {
 		LEAVE();
 		return 0;
 	}
-	if (*ppbuffer == MNULL) {
+	if (*ppBuffer == MNULL) {
 		LEAVE();
 		return 0;
 	}
@@ -396,32 +396,32 @@ wlan_cmd_append_wapi_ie(mlan_private * priv, t_u8 ** ppbuffer)
 	 */
 	if (priv->wapi_ie_len) {
 		PRINTM(MCMND, "append wapi ie %d to %p\n", priv->wapi_ie_len,
-		       *ppbuffer);
+		       *ppBuffer);
 
 		/* Wrap the generic IE buffer with a pass through TLV type */
 		ie_header.type = wlan_cpu_to_le16(TLV_TYPE_WAPI_IE);
 		ie_header.len = wlan_cpu_to_le16(priv->wapi_ie_len);
-		memcpy(priv->adapter, *ppbuffer, &ie_header, sizeof(ie_header));
+		memcpy(priv->adapter, *ppBuffer, &ie_header, sizeof(ie_header));
 
 		/* Increment the return size and the return buffer pointer
 		   param */
-		*ppbuffer += sizeof(ie_header);
-		retlen += sizeof(ie_header);
+		*ppBuffer += sizeof(ie_header);
+		retLen += sizeof(ie_header);
 
 		/* Copy the wapi IE buffer to the output buffer, advance
 		   pointer */
-		memcpy(priv->adapter, *ppbuffer, priv->wapi_ie,
+		memcpy(priv->adapter, *ppBuffer, priv->wapi_ie,
 		       priv->wapi_ie_len);
 
 		/* Increment the return size and the return buffer pointer
 		   param */
-		*ppbuffer += priv->wapi_ie_len;
-		retlen += priv->wapi_ie_len;
+		*ppBuffer += priv->wapi_ie_len;
+		retLen += priv->wapi_ie_len;
 
 	}
 	/* return the length appended to the buffer */
 	LEAVE();
-	return retlen;
+	return retLen;
 }
 
 /********************************************************
@@ -469,9 +469,15 @@ wlan_update_rsn_ie(mlan_private * pmpriv,
 	/* Save pointer to akm_suite_count in RSN IE to update it later */
 	akm_suite_count_ptr = ptr;
 	temp = ptlv_rsn_ie->rsn_ie + sizeof(t_u16) + 4 * sizeof(t_u8)
-		+ sizeof(t_u16) + pairwise_cipher_count
-		* PAIRWISE_CIPHER_SUITE_LEN + sizeof(t_u16);
-	/* ptr now points to the 1st AKM suite */
+		+ sizeof(t_u16) + pairwise_cipher_count * PAIRWISE_CIPHER_SUITE_LEN + sizeof(t_u16);	/* ptr
+													   now
+													   points
+													   to
+													   the
+													   1st
+													   AKM
+													   suite
+													 */
 	if (temp_akm_suite_count > 1) {
 		while (temp_akm_suite_count) {
 			if (!memcmp
@@ -684,8 +690,10 @@ wlan_cmd_802_11_associate(IN mlan_private * pmpriv,
 		if ((pmpriv->sec_info.wpa_enabled
 		     || pmpriv->sec_info.wpa2_enabled)) {
 			prsn_ie_tlv = (MrvlIEtypes_RsnParamSet_t *) pos;
-			/* WPA_IE or RSN_IE */
-			prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];
+			prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];	/* WPA_IE
+										   or
+										   RSN_IE
+										 */
 			prsn_ie_tlv->header.type =
 				prsn_ie_tlv->header.type & 0x00FF;
 			prsn_ie_tlv->header.type =
@@ -804,8 +812,9 @@ wlan_cmd_802_11_associate(IN mlan_private * pmpriv,
 
 	wlan_wmm_process_association_req(pmpriv, &pos, &pbss_desc->wmm_ie,
 					 pbss_desc->pht_cap);
-	if (pmpriv->sec_info.wapi_enabled && pmpriv->wapi_ie_len)
+	if (pmpriv->sec_info.wapi_enabled && pmpriv->wapi_ie_len) {
 		wlan_cmd_append_wapi_ie(pmpriv, &pos);
+	}
 
 	wlan_cmd_append_generic_ie(pmpriv, &pos);
 
@@ -838,8 +847,9 @@ wlan_cmd_802_11_associate(IN mlan_private * pmpriv,
 	memcpy(pmadapter, &tmp_cap, &pbss_desc->cap_info,
 	       sizeof(passo->cap_info));
 
-	if (pmpriv->config_bands == BAND_B)
+	if (pmpriv->config_bands == BAND_B) {
 		SHORT_SLOT_TIME_DISABLED(tmp_cap);
+	}
 
 	tmp_cap &= CAPINFO_MASK;
 	PRINTM(MINFO, "ASSOC_CMD: tmp_cap=%4X CAPINFO_MASK=%4lX\n",
@@ -1049,8 +1059,9 @@ wlan_ret_802_11_associate(IN mlan_private * pmpriv,
 		 */
 		wlan_wmm_setup_queues(pmpriv);
 
-	if (enable_data)
+	if (enable_data) {
 		PRINTM(MINFO, "Post association, re-enabling data flow\n");
+	}
 
 	/* Reset SNR/NF/RSSI values */
 	pmpriv->data_rssi_last = 0;
@@ -1362,7 +1373,7 @@ wlan_cmd_802_11_ad_hoc_start(IN mlan_private * pmpriv,
 	memcpy(pmadapter, &pmpriv->curr_bss_params.data_rates,
 	       &padhoc_start->DataRate, pmpriv->curr_bss_params.num_of_rates);
 
-	PRINTM(MINFO, "ADHOC_S_CMD: Rates=%02x %02x %02x %02x\n",
+	PRINTM(MINFO, "ADHOC_S_CMD: Rates=%02x %02x %02x %02x \n",
 	       padhoc_start->DataRate[0], padhoc_start->DataRate[1],
 	       padhoc_start->DataRate[2], padhoc_start->DataRate[3]);
 
@@ -1441,8 +1452,10 @@ wlan_cmd_802_11_ad_hoc_start(IN mlan_private * pmpriv,
 
 	if (pmpriv->sec_info.wpa_enabled || pmpriv->sec_info.ewpa_enabled) {
 		prsn_ie_tlv = (MrvlIEtypes_RsnParamSet_t *) pos;
-		prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];
-		/* WPA_IE or RSN_IE */
+		prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];	/* WPA_IE
+									   or
+									   RSN_IE
+									 */
 		prsn_ie_tlv->header.type = prsn_ie_tlv->header.type & 0x00FF;
 		prsn_ie_tlv->header.type =
 			wlan_cpu_to_le16(prsn_ie_tlv->header.type);
@@ -1606,10 +1619,11 @@ wlan_cmd_802_11_ad_hoc_start(IN mlan_private * pmpriv,
 
 	memcpy(pmadapter, &tmp_cap, &padhoc_start->cap, sizeof(t_u16));
 
-	if (pmadapter->adhoc_start_band == BAND_B)
+	if (pmadapter->adhoc_start_band == BAND_B) {
 		SHORT_SLOT_TIME_DISABLED(tmp_cap);
-	else
+	} else {
 		SHORT_SLOT_TIME_ENABLED(tmp_cap);
+	}
 
 	tmp_cap = wlan_cpu_to_le16(tmp_cap);
 	memcpy(pmadapter, &padhoc_start->cap, &tmp_cap, sizeof(t_u16));
@@ -1785,8 +1799,10 @@ wlan_cmd_802_11_ad_hoc_join(IN mlan_private * pmpriv,
 
 	if (pmpriv->sec_info.wpa_enabled) {
 		prsn_ie_tlv = (MrvlIEtypes_RsnParamSet_t *) pos;
-		/* WPA_IE or RSN_IE */
-		prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];
+		prsn_ie_tlv->header.type = (t_u16) pmpriv->wpa_ie[0];	/* WPA_IE
+									   or
+									   RSN_IE
+									 */
 		prsn_ie_tlv->header.type = prsn_ie_tlv->header.type & 0x00FF;
 		prsn_ie_tlv->header.type =
 			wlan_cpu_to_le16(prsn_ie_tlv->header.type);
@@ -1904,7 +1920,7 @@ done:
 
 /**
  *  @brief This function handles the command response of ad_hoc_start and
- *          ad_hoc_join
+ *  		ad_hoc_join
  *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
@@ -2000,10 +2016,11 @@ wlan_ret_802_11_ad_hoc(IN mlan_private * pmpriv,
 done:
 	/* Need to indicate IOCTL complete */
 	if (pioctl_req != MNULL) {
-		if (ret != MLAN_STATUS_SUCCESS)
+		if (ret != MLAN_STATUS_SUCCESS) {
 			pioctl_req->status_code = MLAN_ERROR_CMD_ASSOC_FAIL;
-		else
+		} else {
 			pioctl_req->status_code = MLAN_ERROR_NO_ERROR;
+		}
 	}
 
 	LEAVE();
@@ -2211,22 +2228,13 @@ wlan_disconnect(IN mlan_private * pmpriv,
 				       bss_descriptor.mac_address,
 				       MLAN_MAC_ADDR_LENGTH);
 			}
-#ifdef WIFI_DIRECT_SUPPORT
-			if (pmpriv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT)
-				ret = wlan_prepare_cmd(pmpriv,
-						       HostCmd_CMD_802_11_DISASSOCIATE,
-						       HostCmd_ACT_GEN_SET,
-						       0,
-						       (t_void *) pioctl_req,
-						       &mac_address);
-			else
-#endif
-				ret = wlan_prepare_cmd(pmpriv,
-						       HostCmd_CMD_802_11_DEAUTHENTICATE,
-						       HostCmd_ACT_GEN_SET,
-						       0,
-						       (t_void *) pioctl_req,
-						       &mac_address);
+
+			ret = wlan_prepare_cmd(pmpriv,
+					       HostCmd_CMD_802_11_DEAUTHENTICATE,
+					       HostCmd_ACT_GEN_SET,
+					       0,
+					       (t_void *) pioctl_req,
+					       &mac_address);
 
 			if (ret == MLAN_STATUS_SUCCESS && pioctl_req)
 				ret = MLAN_STATUS_PENDING;
@@ -2249,9 +2257,9 @@ wlan_disconnect(IN mlan_private * pmpriv,
 /**
  *  @brief Convert band to radio type used in channel TLV
  *
- *  @param band     Band enumeration to convert to a channel TLV radio type
+ *  @param band		Band enumeration to convert to a channel TLV radio type
  *
- *  @return         Radio type designator for use in a channel TLV
+ *  @return		Radio type designator for use in a channel TLV
  */
 t_u8
 wlan_band_to_radio_type(IN t_u8 band)

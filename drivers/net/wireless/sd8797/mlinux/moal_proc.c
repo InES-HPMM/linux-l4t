@@ -40,7 +40,7 @@ Change log:
 /** Proc top level directory entry */
 struct proc_dir_entry *proc_mwlan;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-#define PROC_DIR	(&proc_root)
+#define PROC_DIR	&proc_root
 #else
 #define PROC_DIR	proc_net
 #endif
@@ -66,10 +66,10 @@ extern int drv_mode;
 /**
  *  @brief Proc read function for info
  *
- *  @param sfp      pointer to seq_file structure
+ *  @param sfp 	   pointer to seq_file structure
  *  @param data
  *
- *  @return         Number of output data
+ *  @return 	   Number of output data
  */
 static int
 woal_info_proc_read(struct seq_file *sfp, void *data)
@@ -284,12 +284,12 @@ static const struct file_operations info_proc_fops = {
 /*
  *  @brief Parse cmd52 string
  *
- *  @param buffer   A pointer user buffer
- *  @param len      Length user buffer
- *  @param func     Parsed func number
- *  @param reg      Parsed reg value
- *  @param val      Parsed value to set
- *  @return         BT_STATUS_SUCCESS
+ *  @param buffer  A pointer user buffer
+ *  @param len     Length user buffer
+ *  @param func    Parsed func number
+ *  @param reg     Parsed reg value
+ *  @param val     Parsed value to set
+ *  @return 	   BT_STATUS_SUCCESS
  */
 static int
 parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
@@ -313,19 +313,23 @@ parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
 
 	/* Get func */
 	pos = strsep(&string, " \t");
-	if (pos)
+	if (pos) {
 		*func = woal_string_to_number(pos);
+	}
 
 	/* Get reg */
 	pos = strsep(&string, " \t");
-	if (pos)
+	if (pos) {
 		*reg = woal_string_to_number(pos);
+	}
 
 	/* Get val (optional) */
 	pos = strsep(&string, " \t");
-	if (pos)
+	if (pos) {
 		*val = woal_string_to_number(pos);
-	kfree(string);
+	}
+	if (string)
+		kfree(string);
 	LEAVE();
 	return ret;
 }
@@ -333,24 +337,23 @@ parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
 /**
  *  @brief config proc write function
  *
- *  @param f        file pointer
- *  @param buf      pointer to data buffer
- *  @param count    data number to write
- *  @param off      Offset
+ *  @param f	   file pointer
+ *  @param buf     pointer to data buffer
+ *  @param count   data number to write
+ *  @param off     Offset
  *
- *  @return         number of data
+ *  @return 	   number of data
  */
 static ssize_t
 woal_config_write(struct file *f, const char __user * buf, size_t count,
 		  loff_t * off)
 {
 	char databuf[101];
-	char *line = NULL;
+	char *line;
 	t_u32 config_data = 0;
 	struct seq_file *sfp = f->private_data;
 	moal_handle *handle = (moal_handle *) sfp->private;
-
-	int func = 0, reg = 0, val = 0;
+	int func, reg, val;
 	int copy_len;
 	moal_private *priv = NULL;
 
@@ -377,10 +380,11 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 		line += strlen("soft_reset") + 1;
 		config_data = (t_u32) woal_string_to_number(line);
 		PRINTM(MINFO, "soft_reset: %d\n", (int)config_data);
-		if (woal_request_soft_reset(handle) == MLAN_STATUS_SUCCESS)
+		if (woal_request_soft_reset(handle) == MLAN_STATUS_SUCCESS) {
 			handle->hardware_status = HardwareStatusReset;
-		else
+		} else {
 			PRINTM(MERROR, "Could not perform soft reset\n");
+		}
 	}
 	if (!strncmp(databuf, "drv_mode", strlen("drv_mode"))) {
 		line += strlen("drv_mode") + 1;
@@ -392,10 +396,8 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 				PRINTM(MERROR, "Could not switch drv mode\n");
 			}
 	}
-	if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw=")) &&
-	    count > strlen("sdcmd52rw=")) {
-		parse_cmd52_string((const char __user *)databuf, (size_t) count,
-				   &func, &reg, &val);
+	if (!strncmp(databuf, "sdcmd52rw=", strlen("sdcmd52rw="))) {
+		parse_cmd52_string(databuf, (size_t) count, &func, &reg, &val);
 		woal_sdio_read_write_cmd52(handle, func, reg, val);
 	}
 	if (!strncmp(databuf, "debug_dump", strlen("debug_dump"))) {
@@ -404,7 +406,6 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 			PRINTM(MERROR, "Recevie debug_dump command\n");
 			woal_mlan_debug_info(priv);
 			woal_moal_debug_info(priv, NULL, MFALSE);
-			woal_dump_firmware_info(handle);
 		}
 	}
 
@@ -416,10 +417,10 @@ woal_config_write(struct file *f, const char __user * buf, size_t count,
 /**
  *  @brief config proc read function
  *
- *  @param sfp      pointer to seq_file structure
+ *  @param sfp 	   pointer to seq_file structure
  *  @param data
  *
- *  @return         number of output data
+ *  @return 	   number of output data
  */
 static int
 woal_config_read(struct seq_file *sfp, void *data)
@@ -469,9 +470,9 @@ static const struct file_operations config_proc_fops = {
 /**
  *  @brief Convert string to number
  *
- *  @param s        Pointer to numbered string
+ *  @param s   	   Pointer to numbered string
  *
- *  @return         Converted number from string s
+ *  @return 	   Converted number from string s
  */
 int
 woal_string_to_number(char *s)
@@ -509,7 +510,7 @@ woal_string_to_number(char *s)
  *
  *  @param handle   Pointer to woal_handle
  *
- *  @return         N/A
+ *  @return 	    N/A
  */
 void
 woal_proc_init(moal_handle * handle)
@@ -589,9 +590,9 @@ woal_proc_init(moal_handle * handle)
 /**
  *  @brief Remove the top level proc directory
  *
- *  @param handle   pointer moal_handle
+ *  @param handle  pointer moal_handle
  *
- *  @return         N/A
+ *  @return 	   N/A
  */
 void
 woal_proc_exit(moal_handle * handle)
@@ -633,9 +634,9 @@ woal_proc_exit(moal_handle * handle)
 /**
  *  @brief Create proc file for interface
  *
- *  @param priv     pointer moal_private
+ *  @param priv	   pointer moal_private
  *
- *  @return         N/A
+ *  @return 	   N/A
  */
 void
 woal_create_proc_entry(moal_private * priv)
@@ -713,9 +714,9 @@ woal_create_proc_entry(moal_private * priv)
 /**
  *  @brief Remove proc file
  *
- *  @param priv     Pointer moal_private
+ *  @param priv	   Pointer moal_private
  *
- *  @return         N/A
+ *  @return 	   N/A
  */
 void
 woal_proc_remove(moal_private * priv)

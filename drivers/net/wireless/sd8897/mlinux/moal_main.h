@@ -246,15 +246,15 @@ woal_initialize_timer(pmoal_drv_timer timer,
  *  @brief Modify timer
  *
  *  @param timer		Timer structure
- *  @param millisecondperiod	Time period in millisecond
+ *  @param MillisecondPeriod	Time period in millisecond
  *
  *  @return			N/A
  */
 static inline void
-woal_mod_timer(pmoal_drv_timer timer, t_u32 millisecondperiod)
+woal_mod_timer(pmoal_drv_timer timer, t_u32 MillisecondPeriod)
 {
-	timer->time_period = millisecondperiod;
-	mod_timer(&timer->tl, jiffies + (millisecondperiod * HZ) / 1000);
+	timer->time_period = MillisecondPeriod;
+	mod_timer(&timer->tl, jiffies + (MillisecondPeriod * HZ) / 1000);
 	timer->timer_is_canceled = MFALSE;
 }
 
@@ -448,8 +448,9 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 			goto cont;
 		}
 		w = (w * 10) + c;
-		if ((w & 0xffff) > 255)
+		if ((w & 0xffff) > 255) {
 			goto out;
+		}
 cont:
 		if (i >= 4)
 			goto out;
@@ -480,14 +481,14 @@ out:
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE(x)      init_MUTEX(x)
+#define MOAL_INIT_SEMAPHORE(x)    	init_MUTEX(x)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE_LOCKED(x)   init_MUTEX_LOCKED(x)
+#define MOAL_INIT_SEMAPHORE_LOCKED(x) 	init_MUTEX_LOCKED(x)
 #else
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE(x)      sema_init(x, 1)
+#define MOAL_INIT_SEMAPHORE(x)    	sema_init(x, 1)
 /** Initialize semaphore */
-#define MOAL_INIT_SEMAPHORE_LOCKED(x)   sema_init(x, 0)
+#define MOAL_INIT_SEMAPHORE_LOCKED(x) 	sema_init(x, 0)
 #endif
 
 /** Acquire semaphore and with blocking */
@@ -495,7 +496,7 @@ out:
 /** Acquire semaphore without blocking */
 #define MOAL_ACQ_SEMAPHORE_NOBLOCK(x)	down_trylock(x)
 /** Release semaphore */
-#define MOAL_REL_SEMAPHORE(x)       up(x)
+#define MOAL_REL_SEMAPHORE(x) 		up(x)
 
 /** Request FW timeout in second */
 #define REQUEST_FW_TIMEOUT		30
@@ -532,9 +533,9 @@ out:
 /** Custom event : AdHoc link lost */
 #define CUS_EVT_ADHOC_LINK_LOST		"EVENT=ADHOC_LINK_LOST"
 /** Custom event : MIC failure, unicast */
-#define CUS_EVT_MLME_MIC_ERR_UNI	"MLME-MICHAELMICFAILURE.indication unicast"
+#define CUS_EVT_MLME_MIC_ERR_UNI	"MLME-MICHAELMICFAILURE.indication unicast "
 /** Custom event : MIC failure, multicast */
-#define CUS_EVT_MLME_MIC_ERR_MUL	"MLME-MICHAELMICFAILURE.indication multicast"
+#define CUS_EVT_MLME_MIC_ERR_MUL	"MLME-MICHAELMICFAILURE.indication multicast "
 /** Custom event : Beacon RSSI low */
 #define CUS_EVT_BEACON_RSSI_LOW		"EVENT=BEACON_RSSI_LOW"
 /** Custom event : Beacon SNR low */
@@ -564,9 +565,9 @@ out:
 #define CUS_EVT_DEEP_SLEEP_AWAKE	"EVENT=DS_AWAKE"
 
 /** Custom event : Host Sleep activated */
-#define CUS_EVT_HS_ACTIVATED		"HS_ACTIVATED"
+#define CUS_EVT_HS_ACTIVATED		"HS_ACTIVATED "
 /** Custom event : Host Sleep deactivated */
-#define CUS_EVT_HS_DEACTIVATED		"HS_DEACTIVATED"
+#define CUS_EVT_HS_DEACTIVATED		"HS_DEACTIVATED "
 /** Custom event : Host Sleep wakeup */
 #define CUS_EVT_HS_WAKEUP		"HS_WAKEUP"
 
@@ -619,7 +620,7 @@ out:
 #define NL_MULTICAST_GROUP  1
 
 /** MAX Tx Pending count */
-#define MAX_TX_PENDING      100
+#define MAX_TX_PENDING    	100
 
 /** LOW Tx Pending count */
 #define LOW_TX_PENDING      80
@@ -1176,8 +1177,9 @@ woal_set_trans_start(struct net_device *dev)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
 	unsigned int i;
-	for (i = 0; i < dev->num_tx_queues; i++)
+	for (i = 0; i < dev->num_tx_queues; i++) {
 		netdev_get_tx_queue(dev, i)->trans_start = jiffies;
+	}
 #endif
 	dev->trans_start = jiffies;
 }
@@ -1309,20 +1311,20 @@ woal_print(t_u32 level, char *fmt, ...)
 #define MASSERT(cond)                   \
 do {                                    \
 	if (!(cond)) {                      \
-	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __func__, __LINE__); \
+	    PRINTM(MFATAL, "ASSERT: %s: %i\n", __FUNCTION__, __LINE__); \
 	    panic("Assert failed: Panic!"); \
 	}                                   \
 } while (0)
 
 /** Log entry point for debugging */
 #define	ENTER()			PRINTM(MENTRY, "Enter: %s\n", \
-									__func__)
+									__FUNCTION__)
 /** Log exit point for debugging */
 #define	LEAVE()			PRINTM(MENTRY, "Leave: %s\n", \
-									__func__)
+									__FUNCTION__)
 
 #ifdef DEBUG_LEVEL1
-#define DBG_DUMP_BUF_LEN	64
+#define DBG_DUMP_BUF_LEN 	64
 #define MAX_DUMP_PER_LINE	16
 
 static inline void
@@ -1640,8 +1642,6 @@ int woal_enable_hs(moal_private * priv);
 #define HS_ACTIVE_TIMEOUT  (2 * HZ)
 #endif
 
-void woal_dump_drv_info(moal_handle * phandle);
-
 void woal_dump_firmware_info(moal_handle * phandle);
 /* Store the FW dumps received from events in a file */
 void woal_store_firmware_dump(moal_private * priv, mlan_event * pmevent);
@@ -1756,8 +1756,6 @@ int woal_custom_ie_ioctl(struct net_device *dev, struct ifreq *req);
 int woal_send_host_packet(struct net_device *dev, struct ifreq *req);
 /** Private command ID to pass mgmt frame */
 #define WOAL_MGMT_FRAME_TX_IOCTL          (SIOCDEVPRIVATE + 12)
-/** common ioctl for TDLS */
-int woal_tdls_config_ioctl(struct net_device *dev, struct ifreq *req);
 
 int woal_get_bss_type(struct net_device *dev, struct ifreq *req);
 #if defined(STA_WEXT) || defined(UAP_WEXT)
@@ -1840,7 +1838,6 @@ void woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag);
 #ifdef STA_SUPPORT
 mlan_status woal_get_powermode(moal_private * priv, int *powermode);
 mlan_status woal_set_scan_type(moal_private * priv, t_u32 scan_type);
-mlan_status woal_enable_ext_scan(moal_private * priv, t_u8 enable);
 mlan_status woal_set_powermode(moal_private * priv, char *powermode);
 int woal_find_essid(moal_private * priv, mlan_ssid_bssid * ssid_bssid);
 mlan_status woal_request_userscan(moal_private * priv, t_u8 wait_option,
@@ -1859,9 +1856,9 @@ mlan_status woal_set_sleeppd(moal_private * priv, char *psleeppd);
 int woal_set_scan_cfg(moal_private * priv, char *buf, int length);
 
 /* EVENT: BCN_RSSI_LOW */
-#define EVENT_BCN_RSSI_LOW			0x0001
+#define EVENT_BCN_RSSI_LOW 		   0x0001
 /* EVENT: PRE_BCN_LOST */
-#define EVENT_PRE_BCN_LOST			0x0002
+#define EVENT_PRE_BCN_LOST		   0x0002
 mlan_status woal_set_rssi_low_threshold(moal_private * priv, char *rssi,
 					t_u8 wait_option);
 mlan_status woal_set_rssi_threshold(moal_private * priv, t_u32 event_id,
@@ -1892,5 +1889,4 @@ int woal_is_connected(moal_private * priv, mlan_ssid_bssid * ssid_bssid);
 void wifi_enable_hostwake_irq(int flag);
 int woal_priv_hostcmd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen);
 void woal_tcp_ack_tx_indication(moal_private * priv, mlan_buffer * pmbuf);
-mlan_status woal_request_country_power_table(moal_private * priv, char *region);
 #endif /* _MOAL_MAIN_H */

@@ -201,50 +201,6 @@ done:
 #endif
 
 /**
- *  @brief Set miracast mode
- *
- *  @param priv         Pointer to priv stucture
- *  @param pdata        Pointer to cmd buffer
- *  @param len          Length of data
- *
- *  @return             MLAN_STATUS_SUCCESS -- success, otherwise fail
- */
-mlan_status
-woal_set_miracast_mode(moal_private * priv, t_u8 * pdata, size_t len)
-{
-	mlan_status ret = MLAN_STATUS_SUCCESS;
-	t_u8 *pos = pdata;
-
-	ENTER();
-	if (!pos) {
-		PRINTM(MERROR, "%s: Null buf!\n", __func__);
-		ret = MLAN_STATUS_FAILURE;
-		goto done;
-	}
-	while (!isdigit(*pos) && --len > 0)
-		pos++;
-	switch (*pos) {
-	case '0':
-		/* TODO: disabled */
-		break;
-	case '1':
-		/* TODO: source */
-		break;
-	case '2':
-		/* TODO: sink */
-		break;
-	default:
-		PRINTM(MERROR, "%s: Unknown miracast mode (%c)\n",
-		       priv->netdev->name, *pos);
-		ret = MLAN_STATUS_FAILURE;
-		break;
-	}
-done:
-	LEAVE();
-	return ret;
-}
-
-/**
  *  @brief Get Driver Version
  *
  *  @param priv         A pointer to moal_private structure
@@ -345,7 +301,8 @@ woal_priv_hostcmd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	memcpy(data_ptr, (t_u8 *) & ret, sizeof(t_u32));
 
 error:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -403,7 +360,9 @@ woal_priv_customie(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		ret = EFAULT;
 	}
 done:
-	kfree(ioctl_req);
+	if (ioctl_req) {
+		kfree(ioctl_req);
+	}
 	LEAVE();
 	return ret;
 }
@@ -442,7 +401,7 @@ woal_setget_priv_bandcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_BANDCFG), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (sizeof(int) * user_data_len > sizeof(data)) {
@@ -546,7 +505,8 @@ woal_setget_priv_bandcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(mlan_ds_band_cfg);
 
 error:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -580,7 +540,7 @@ woal_setget_priv_httxcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_HTTXCFG), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 2) {
@@ -644,7 +604,8 @@ woal_setget_priv_httxcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -680,7 +641,7 @@ woal_setget_priv_htcapinfo(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_HTCAPINFO), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 2) {
@@ -746,7 +707,8 @@ woal_setget_priv_htcapinfo(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(woal_ht_cap_info);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -782,9 +744,9 @@ woal_setget_priv_addbapara(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_ADDBAPARA), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 
-		if (user_data_len != ARRAY_SIZE(data)) {
+		if (user_data_len != (sizeof(data) / sizeof(int))) {
 			PRINTM(MERROR, "Invalid number of arguments\n");
 			ret = -EINVAL;
 			goto done;
@@ -852,7 +814,8 @@ woal_setget_priv_addbapara(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(woal_addba);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -906,8 +869,8 @@ woal_priv_delba(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		*mac_pos = '\0';
 	}
 
-	parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-			&user_data_len);
+	parse_arguments(respbuf + header_len, data,
+			sizeof(data) / sizeof(t_u32), &user_data_len);
 
 	if (mac_pos)
 		user_data_len++;
@@ -949,7 +912,8 @@ woal_priv_delba(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sprintf(respbuf, "OK. BA deleted successfully.\n") + 1;
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -983,7 +947,7 @@ woal_priv_rejectaddbareq(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_REJECTADDBAREQ), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 1) {
@@ -1026,7 +990,8 @@ woal_priv_rejectaddbareq(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1062,9 +1027,9 @@ woal_setget_priv_aggrpriotbl(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_AGGRPRIOTBL), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 
-		if (user_data_len != ARRAY_SIZE(data)) {
+		if (user_data_len != (sizeof(data) / sizeof(int))) {
 			PRINTM(MERROR, "Invalid number of arguments\n");
 			ret = -EINVAL;
 			goto done;
@@ -1114,7 +1079,8 @@ woal_setget_priv_aggrpriotbl(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1150,9 +1116,9 @@ woal_setget_priv_addbareject(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_ADDBAREJECT), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 
-		if (user_data_len != ARRAY_SIZE(data)) {
+		if (user_data_len != (sizeof(data) / sizeof(int))) {
 			PRINTM(MERROR, "Invalid number of arguments\n");
 			ret = -EINVAL;
 			goto done;
@@ -1199,7 +1165,8 @@ woal_setget_priv_addbareject(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1248,7 +1215,8 @@ woal_get_priv_datarate(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(mlan_data_rate);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1285,7 +1253,7 @@ woal_setget_priv_txratecfg(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_TXRATECFG), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len >= 4) {
@@ -1381,7 +1349,8 @@ woal_setget_priv_txratecfg(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(woal_tx_rate_cfg);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1433,7 +1402,7 @@ woal_get_stats_info(moal_private * priv, t_u8 wait_option,
 #endif
 	}
 done:
-	if (status != MLAN_STATUS_PENDING)
+	if (req && (status != MLAN_STATUS_PENDING))
 		kfree(req);
 	LEAVE();
 	return status;
@@ -1508,7 +1477,7 @@ woal_setget_priv_esuppmode(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_ESUPPMODE), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len >= 4 || user_data_len == 1 || user_data_len == 2) {
@@ -1557,7 +1526,8 @@ woal_setget_priv_esuppmode(moal_private * priv, t_u8 * respbuf,
 
 	ret = sizeof(woal_esuppmode_cfg);
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1719,7 +1689,8 @@ woal_setget_priv_passphrase(moal_private * priv, t_u8 * respbuf,
 
 	ret = len;
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -1813,7 +1784,8 @@ woal_priv_ap_deauth(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	memcpy(data_ptr, &ioctl_req->status_code, sizeof(t_u32));
 	ret = sizeof(t_u32);
 done:
-	kfree(ioctl_req);
+	if (ioctl_req)
+		kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1861,7 +1833,8 @@ woal_priv_get_sta_list(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	memcpy(sta_list, &info->param.sta_list, sizeof(mlan_ds_sta_list));
 	ret = sizeof(mlan_ds_sta_list);
 done:
-	kfree(ioctl_req);
+	if (ioctl_req)
+		kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1921,7 +1894,8 @@ woal_priv_bss_config(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 	ret = sizeof(mlan_uap_bss_param);
 done:
-	kfree(ioctl_req);
+	if (ioctl_req)
+		kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -1956,7 +1930,7 @@ woal_priv_bssrole(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		/* SET operation */
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_BSSROLE), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len >= 2) {
@@ -2184,7 +2158,7 @@ woal_priv_getscantable(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 						    scan_start);
 	}
 done:
-	if (status != MLAN_STATUS_PENDING)
+	if (req && (status != MLAN_STATUS_PENDING))
 		kfree(req);
 	LEAVE();
 	return ret;
@@ -2256,7 +2230,8 @@ woal_priv_extcapcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(ie) + ie->len;
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2289,7 +2264,7 @@ woal_priv_setgetdeepsleep(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_DEEPSLEEP), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len >= 3) {
@@ -2425,7 +2400,8 @@ woal_priv_setgetipaddr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2459,7 +2435,7 @@ woal_priv_setwpssession(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		/* SET operation */
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_WPSSESSION), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 1) {
@@ -2492,7 +2468,8 @@ woal_priv_setwpssession(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 
 	ret = sprintf(respbuf, "OK\n") + 1;
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2520,8 +2497,8 @@ woal_priv_otpuserdata(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 
 	memset((char *)data, 0, sizeof(data));
 	parse_arguments(respbuf + strlen(CMD_MARVELL) +
-			strlen(PRIV_CMD_OTPUSERDATA), data, ARRAY_SIZE(data),
-			&user_data_len);
+			strlen(PRIV_CMD_OTPUSERDATA), data,
+			sizeof(data) / sizeof(int), &user_data_len);
 
 	if (user_data_len > 1) {
 		PRINTM(MERROR, "Too many arguments\n");
@@ -2554,7 +2531,8 @@ woal_priv_otpuserdata(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -2626,7 +2604,8 @@ woal_priv_set_get_countrycode(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -2659,7 +2638,7 @@ woal_priv_setgettcpackenh(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_TCPACKENH), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len >= 2) {
@@ -2827,13 +2806,15 @@ woal_priv_getwakeupreason(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		if (MLAN_STATUS_SUCCESS !=
 		    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
 			ret = -EFAULT;
-			kfree(req);
+			if (req)
+				kfree(req);
 			goto done;
 		} else {
 			data = pm_cfg->param.wakeup_reason.hs_wakeup_reason;
 			sprintf(respbuf, " %d", data);
 			ret = strlen(respbuf) + 1;
-			kfree(req);
+			if (req)
+				kfree(req);
 		}
 	} else {
 		PRINTM(MERROR, "Not need argument, invalid operation!\n");
@@ -2878,7 +2859,7 @@ woal_priv_set_get_listeninterval(moal_private * priv, t_u8 * respbuf,
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_LISTENINTERVAL), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 1) {
@@ -2920,7 +2901,8 @@ woal_priv_set_get_listeninterval(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -2953,8 +2935,8 @@ woal_priv_set_get_drvdbg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		/* SET operation */
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
-				strlen(PRIV_CMD_DRVDBG), data, ARRAY_SIZE(data),
-				&user_data_len);
+				strlen(PRIV_CMD_DRVDBG), data,
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 1) {
@@ -3061,7 +3043,7 @@ woal_priv_hscfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen,
 			is_negative = MTRUE;
 			arguments += 1;
 		}
-		parse_arguments(arguments, data, ARRAY_SIZE(data),
+		parse_arguments(arguments, data, sizeof(data) / sizeof(int),
 				&user_data_len);
 
 		if (is_negative == MTRUE && data[0] == 1)
@@ -3166,7 +3148,7 @@ woal_priv_hssetpara(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_HSSETPARA), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (sizeof(int) * user_data_len > sizeof(data)) {
@@ -3218,7 +3200,7 @@ woal_priv_set_get_scancfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		memset((char *)data, 0, sizeof(data));
 		parse_arguments(respbuf + strlen(CMD_MARVELL) +
 				strlen(PRIV_CMD_SCANCFG), data,
-				ARRAY_SIZE(data), &user_data_len);
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (sizeof(int) * user_data_len > sizeof(data)) {
@@ -3282,7 +3264,8 @@ woal_priv_set_get_scancfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		ret = sizeof(mlan_scan_cfg);
 	}
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3448,7 +3431,8 @@ woal_priv_set_bss_mode(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		goto done;
 	}
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -3486,8 +3470,8 @@ woal_priv_set_power(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	if (MLAN_STATUS_SUCCESS != woal_set_get_power_mgmt(priv,
 							   MLAN_ACT_SET,
 							   &disabled,
-							   mwr->u.power.flags,
-							   MOAL_IOCTL_WAIT)) {
+							   mwr->u.power.
+							   flags)) {
 		return -EFAULT;
 	}
 	LEAVE();
@@ -3813,8 +3797,7 @@ woal_priv_get_power(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 
 	if (MLAN_STATUS_SUCCESS != woal_set_get_power_mgmt(priv,
 							   MLAN_ACT_GET,
-							   &ps_mode, 0,
-							   MOAL_IOCTL_WAIT)) {
+							   &ps_mode, 0)) {
 		return -EFAULT;
 	}
 
@@ -3872,7 +3855,7 @@ woal_priv_set_get_psmode(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	data = !data;
 
 	if (MLAN_STATUS_SUCCESS !=
-	    woal_set_get_power_mgmt(priv, action, &data, 0, MOAL_IOCTL_WAIT)) {
+	    woal_set_get_power_mgmt(priv, action, &data, 0)) {
 		ret = -EFAULT;
 		goto done;
 	}
@@ -4005,7 +3988,7 @@ woal_priv_txpowercfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		arguments =
 			respbuf + strlen(CMD_MARVELL) +
 			strlen(PRIV_CMD_TXPOWERCFG);
-		parse_arguments(arguments, data, ARRAY_SIZE(data),
+		parse_arguments(arguments, data, sizeof(data) / sizeof(int),
 				&user_data_len);
 	}
 
@@ -4099,7 +4082,8 @@ woal_priv_txpowercfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		ret = sizeof(pcfg->param.power_ext);
 	}
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4166,7 +4150,7 @@ woal_priv_pscfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 				strcat(arguments, space_ind + 2);
 			}
 		}
-		parse_arguments(arguments, data, ARRAY_SIZE(data),
+		parse_arguments(arguments, data, sizeof(data) / sizeof(int),
 				&user_data_len);
 		if (is_negative_1 == MTRUE)
 			data[0] = -1;
@@ -4265,8 +4249,10 @@ woal_priv_pscfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
-	kfree(arguments);
+	if (req)
+		kfree(req);
+	if (arguments)
+		kfree(arguments);
 	LEAVE();
 	return ret;
 }
@@ -4343,7 +4329,8 @@ woal_priv_sleeppd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4413,7 +4400,8 @@ woal_priv_txcontrol(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4471,7 +4459,8 @@ woal_priv_regrdwr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 			strcat(arguments, space_ind + 2);
 		}
 	}
-	parse_arguments(arguments, data, ARRAY_SIZE(data), &user_data_len);
+	parse_arguments(arguments, data, sizeof(data) / sizeof(int),
+			&user_data_len);
 	if (is_negative_val == MTRUE)
 		data[2] *= -1;
 
@@ -4502,8 +4491,10 @@ woal_priv_regrdwr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
-	kfree(arguments);
+	if (req)
+		kfree(req);
+	if (arguments)
+		kfree(arguments);
 	LEAVE();
 	return ret;
 }
@@ -4542,7 +4533,7 @@ woal_priv_rdeeprom(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 
 	/* SET operation */
 	memset((char *)data, 0, sizeof(data));
-	parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
+	parse_arguments(respbuf + header_len, data, sizeof(data) / sizeof(int),
 			&user_data_len);
 
 	if (user_data_len == 2) {
@@ -4568,7 +4559,8 @@ woal_priv_rdeeprom(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4628,7 +4620,8 @@ woal_priv_memrdwr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 			strcat(arguments, space_ind + 2);
 		}
 	}
-	parse_arguments(arguments, data, ARRAY_SIZE(data), &user_data_len);
+	parse_arguments(arguments, data, sizeof(data) / sizeof(int),
+			&user_data_len);
 	if (is_negative_1 == MTRUE)
 		data[0] *= -1;
 	if (is_negative_2 == MTRUE)
@@ -4662,8 +4655,10 @@ woal_priv_memrdwr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
-	kfree(arguments);
+	if (req)
+		kfree(req);
+	if (arguments)
+		kfree(arguments);
 	LEAVE();
 	return ret;
 }
@@ -4689,7 +4684,7 @@ woal_priv_sdcmd52rw(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	header_len = strlen(CMD_MARVELL) + strlen(PRIV_CMD_SDCMD52RW);
 	memset((t_u8 *) buf, 0, sizeof(buf));
 
-	parse_arguments(respbuf + header_len, buf, ARRAY_SIZE(buf),
+	parse_arguments(respbuf + header_len, buf, sizeof(buf) / sizeof(int),
 			&user_data_len);
 
 	if (user_data_len < 2 || user_data_len > 3) {
@@ -4807,7 +4802,8 @@ woal_priv_arpfilter(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		goto done;
 	}
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -4875,7 +4871,8 @@ woal_priv_mgmt_frame_passthru_ctrl(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 
@@ -4945,7 +4942,7 @@ woal_priv_wmm_addts_req_ioctl(moal_private * priv, t_u8 * respbuf,
 	memcpy((t_u8 *) & addts_ioctl, data_ptr, sizeof(addts_ioctl));
 
 	cfg->param.addts.timeout = addts_ioctl.timeout_ms;
-	cfg->param.addts.ie_data_len = addts_ioctl.ie_data_len;
+	cfg->param.addts.ie_data_len = (t_u8) addts_ioctl.ie_data_len;
 
 	memcpy(cfg->param.addts.ie_data,
 	       addts_ioctl.ie_data, cfg->param.addts.ie_data_len);
@@ -4970,7 +4967,8 @@ woal_priv_wmm_addts_req_ioctl(moal_private * priv, t_u8 * respbuf,
 	ret = copy_len;
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5049,7 +5047,8 @@ woal_priv_wmm_delts_req_ioctl(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5110,7 +5109,8 @@ woal_priv_qconfig(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = strlen(CMD_MARVELL) + strlen(PRIV_CMD_QCONFIG) +
 		sizeof(qcfg_ioctl);
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5170,7 +5170,8 @@ woal_priv_wmm_queue_status_ioctl(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5228,7 +5229,8 @@ woal_priv_wmm_ts_status_ioctl(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(ts_status_ioctl);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5294,7 +5296,8 @@ woal_priv_macctrl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5408,7 +5411,8 @@ woal_priv_region_code(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5469,7 +5473,8 @@ woal_priv_fwmacaddr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	HEXDUMP("FW MAC Addr:", respbuf, ETH_ALEN);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5512,8 +5517,8 @@ woal_priv_offchannel(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 				+ 1;
 		goto done;
 	} else
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 
 	if (sizeof(int) * user_data_len > sizeof(data)) {
 		PRINTM(MERROR, "Too many arguments\n");
@@ -5682,7 +5687,8 @@ woal_priv_get_driver_verext(moal_private * priv, t_u8 * respbuf,
 	       info->param.ver_ext.version_str);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5754,7 +5760,8 @@ woal_priv_wmm_cfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(wmm->param.wmm_enable);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5827,7 +5834,8 @@ woal_priv_11d_cfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(pcfg_11d->param.enable_11d);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5877,7 +5885,8 @@ woal_priv_11d_clr_chan_tbl(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -5947,7 +5956,8 @@ woal_priv_wws_cfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(wws->param.wws_cfg);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6063,7 +6073,8 @@ woal_priv_txbuf_cfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(buf_size);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6196,7 +6207,8 @@ woal_priv_11h_local_pwr_constraint(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6266,7 +6278,8 @@ woal_priv_ht_stream_cfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6319,7 +6332,8 @@ woal_priv_thermal(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6389,7 +6403,8 @@ woal_priv_beacon_interval(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6615,8 +6630,8 @@ woal_priv_set_get_pmfcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		user_data_len = 0;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > 2) {
@@ -6654,7 +6669,8 @@ woal_priv_set_get_pmfcfg(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(mlan_ds_misc_pmfcfg);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6688,8 +6704,8 @@ woal_priv_inactivity_timeout_ext(moal_private * priv, t_u8 * respbuf,
 		user_data_len = 0;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len != 0 && user_data_len != 3 && user_data_len != 4) {
@@ -6739,7 +6755,8 @@ woal_priv_inactivity_timeout_ext(moal_private * priv, t_u8 * respbuf,
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6796,11 +6813,12 @@ woal_priv_atim_window(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		goto done;
 	}
 
-	memcpy(respbuf, (t_u8 *) & bss->param.atim_window, sizeof(int));
+	memcpy(respbuf, (t_u8 *) bss->param.atim_window, sizeof(int));
 	ret = sizeof(int);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6866,7 +6884,8 @@ woal_priv_11n_amsdu_aggr_ctrl(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -6931,7 +6950,8 @@ woal_priv_tx_bf_cap_ioctl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = sizeof(bf_cap);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -7021,8 +7041,8 @@ woal_priv_sdio_mpa_ctrl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		user_data_len = 0;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 
 		if (user_data_len > 6) {
 			PRINTM(MERROR, "Invalid number of parameters\n");
@@ -7043,8 +7063,8 @@ woal_priv_sdio_mpa_ctrl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	/* Get the values first, then modify these values if user had modified
 	   them */
 
-	ret = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
-	if (ret != MLAN_STATUS_SUCCESS) {
+	if ((ret = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) !=
+	    MLAN_STATUS_SUCCESS) {
 		PRINTM(MERROR, "woal_request_ioctl returned %d\n", ret);
 		ret = -EFAULT;
 		goto done;
@@ -7099,7 +7119,8 @@ woal_priv_sdio_mpa_ctrl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -7150,8 +7171,8 @@ woal_priv_sleep_params_ioctl(moal_private * priv, t_u8 * respbuf,
 		req->action = MLAN_ACT_GET;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 		if (user_data_len != 6) {
 			PRINTM(MERROR, "Invalid number of parameters\n");
 			ret = -EINVAL;
@@ -7209,7 +7230,8 @@ woal_priv_sleep_params_ioctl(moal_private * priv, t_u8 * respbuf,
 	ret = sizeof(data);
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -7255,8 +7277,8 @@ woal_priv_dfs_testing(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		req->action = MLAN_ACT_GET;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 		if (user_data_len != 4) {
 			PRINTM(MERROR, "Invalid number of args!\n");
 			ret = -EINVAL;
@@ -7307,7 +7329,8 @@ woal_priv_dfs_testing(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -7356,8 +7379,8 @@ woal_priv_cfp_code(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		req->action = MLAN_ACT_GET;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 		if (user_data_len > 2) {
 			PRINTM(MERROR, "Invalid number of args!\n");
 			ret = -EINVAL;
@@ -7384,7 +7407,8 @@ woal_priv_cfp_code(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -7454,7 +7478,8 @@ woal_priv_set_get_tx_rx_ant(moal_private * priv, t_u8 * respbuf,
 		memcpy(respbuf, (t_u8 *) data, sizeof(data));
 	}
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -7486,8 +7511,8 @@ woal_priv_sysclock(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 		user_data_len = 0;
 	} else {
 		/* SET operation */
-		parse_arguments(respbuf + header_len, data, ARRAY_SIZE(data),
-				&user_data_len);
+		parse_arguments(respbuf + header_len, data,
+				sizeof(data) / sizeof(int), &user_data_len);
 	}
 
 	if (user_data_len > MLAN_MAX_CLK_NUM) {
@@ -7576,7 +7601,8 @@ woal_priv_sysclock(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -7721,7 +7747,8 @@ woal_priv_adhoc_aes(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	ret = copy_len;
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -8270,7 +8297,8 @@ woal_priv_cmd53rdwr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(data);
+	if (data)
+		kfree(data);
 	LEAVE();
 	return ret;
 }
@@ -8336,7 +8364,8 @@ woal_priv_port_ctrl(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	}
 
 done:
-	kfree(req);
+	if (req)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -8390,9 +8419,6 @@ woal_priv_bypassed_packet(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
 	return ret;
 }
 
-#if defined(WIFI_DIRECT_SUPPORT)
-#endif
-
 /**
  *  @brief Set priv command for Android
  *  @param dev          A pointer to net_device structure
@@ -8421,11 +8447,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
 	int buf_len = 0;
 
 	ENTER();
-	if (!priv || !priv->phandle) {
-		PRINTM(MERROR, "priv or handle is NULL\n");
-		ret = -EFAULT;
-		goto done;
-	}
 	if (copy_from_user(&priv_cmd, req->ifr_data,
 			   sizeof(android_wifi_priv_cmd))) {
 		ret = -EFAULT;
@@ -9182,8 +9203,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
 			len = woal_priv_bypassed_packet(priv, buf,
 							priv_cmd.total_len);
 			goto handled;
-#if defined(WIFI_DIRECT_SUPPORT)
-#endif
 		} else {
 			/* Fall through, after stripping off the custom header */
 			buf += strlen(CMD_MARVELL);
@@ -9306,11 +9325,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
 		memcpy(country_code, buf + strlen("COUNTRY") + 1,
 		       strlen(buf) - strlen("COUNTRY") - 1);
 		PRINTM(MIOCTL, "Set COUNTRY %s\n", country_code);
-		if (MLAN_STATUS_SUCCESS !=
-		    woal_request_country_power_table(priv, country_code)) {
-			ret = -EFAULT;
-			goto done;
-		}
 #ifdef STA_CFG80211
 		if (IS_STA_CFG80211(cfg80211_wext)) {
 			PRINTM(MIOCTL, "Notify country code=%s\n",
@@ -9511,18 +9525,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
 		memset(buf, 0x0, priv_cmd.total_len);
 		*buf = 0;
 		len = 1;
-	} else if (strnicmp(buf, "MIRACAST", strlen("MIRACAST")) == 0) {
-		pdata = buf + strlen("MIRACAST");
-		/* Android cmd format: "MIRACAST 0" -- disabled "MIRACAST 1" --
-		   operating as source "MIRACAST 2" -- operating as sink */
-		if (MLAN_STATUS_SUCCESS !=
-		    woal_set_miracast_mode(priv, (t_u8 *) pdata,
-					   priv_cmd.used_len -
-					   strlen("MIRACAST"))) {
-			ret = -EFAULT;
-			goto done;
-		}
-		len = sprintf(buf, "OK\n") + 1;
 	} else {
 		PRINTM(MIOCTL, "Unknown PRIVATE command: %s, ignored\n", buf);
 		ret = -EFAULT;
@@ -9564,7 +9566,8 @@ handled:
 	}
 
 done:
-	kfree(buf);
+	if (buf)
+		kfree(buf);
 	LEAVE();
 	return ret;
 }
@@ -9797,9 +9800,6 @@ woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 		break;
 	case WOAL_MGMT_FRAME_TX:
 		ret = woal_send_host_packet(dev, req);
-		break;
-	case WOAL_TDLS_CONFIG:
-		ret = woal_tdls_config_ioctl(dev, req);
 		break;
 	case WOAL_ANDROID_PRIV_CMD:
 		ret = woal_android_priv_cmd(dev, req);

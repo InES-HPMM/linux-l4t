@@ -51,12 +51,12 @@ Change log:
 ********************************************************/
 /**
  *  @brief This function will dispatch amsdu packet and
- *         forward it to kernel/upper layer
+ *  		forward it to kernel/upper layer
  *
- *  @param priv     A pointer to mlan_private
+ *  @param priv    	A pointer to mlan_private
  *  @param pmbuf    A pointer to the received buffer
  *
- *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return 	   	MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
 wlan_11n_dispatch_amsdu_pkt(mlan_private * priv, pmlan_buffer pmbuf)
@@ -78,12 +78,12 @@ wlan_11n_dispatch_amsdu_pkt(mlan_private * priv, pmlan_buffer pmbuf)
 
 /**
  *  @brief This function will process the rx packet and
- *         forward it to kernel/upper layer
+ *  		forward it to kernel/upper layer
  *
- *  @param priv     A pointer to mlan_private
+ *  @param priv    	A pointer to mlan_private
  *  @param payload  A pointer to rx packet payload
  *
- *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return 	   	MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
 wlan_11n_dispatch_pkt(t_void * priv, t_void * payload)
@@ -127,7 +127,7 @@ wlan_11n_dispatch_pkt(t_void * priv, t_void * payload)
 /**
  *  @brief This function restarts the reordering timeout timer
  *
- *  @param pmadapter        A pointer to mlan_adapter
+ *  @param pmadapter    	A pointer to mlan_adapter
  *  @param rx_reor_tbl_ptr  A pointer to structure RxReorderTbl
  *
  *  @return                 N/A
@@ -161,13 +161,13 @@ mlan_11n_rxreorder_timer_restart(pmlan_adapter pmadapter,
 
 /**
  *  @brief This function dispatches all the packets in the buffer.
- *         There could be holes in the buffer.
+ *  		There could be holes in the buffer.
  *
- *  @param priv             A pointer to mlan_private
+ *  @param priv    	        A pointer to mlan_private
  *  @param rx_reor_tbl_ptr  A pointer to structure RxReorderTbl
  *  @param start_win        Start window
  *
- *  @return                 MLAN_STATUS_SUCCESS
+ *  @return 	   	        MLAN_STATUS_SUCCESS
  */
 static mlan_status
 wlan_11n_dispatch_pkt_until_start_win(t_void * priv,
@@ -230,7 +230,7 @@ wlan_11n_dispatch_pkt_until_start_win(t_void * priv,
  *  @param pmadapter          A pointer to mlan_adapter structure
  *  @param rx_reor_tbl_ptr    A pointer to structure RxReorderTbl
  *
- *  @return                   N/A
+ *  @return 	   	N/A
  */
 static t_void
 wlan_11n_display_tbl_ptr(pmlan_adapter pmadapter,
@@ -246,13 +246,13 @@ wlan_11n_display_tbl_ptr(pmlan_adapter pmadapter,
 
 /**
  *  @brief This function will dispatch all packets sequentially
- *          from start_win until a hole is found and adjust the
- *          start_win appropriately
+ *  		from start_win until a hole is found and adjust the
+ *  		start_win appropriately
  *
- *  @param priv             A pointer to mlan_private
+ *  @param priv    	        A pointer to mlan_private
  *  @param rx_reor_tbl_ptr  A pointer to structure RxReorderTbl
  *
- *  @return                 MLAN_STATUS_SUCCESS
+ *  @return 	   	        MLAN_STATUS_SUCCESS
  */
 static mlan_status
 wlan_11n_scan_and_dispatch(t_void * priv, RxReorderTbl * rx_reor_tbl_ptr)
@@ -312,12 +312,12 @@ wlan_11n_scan_and_dispatch(t_void * priv, RxReorderTbl * rx_reor_tbl_ptr)
 
 /**
  *  @brief This function delete rxreorder table's entry
- *          and free the memory
+ *         	and free the memory
  *
- *  @param priv             A pointer to mlan_private
+ *  @param priv    	        A pointer to mlan_private
  *  @param rx_reor_tbl_ptr  A pointer to structure RxReorderTbl
  *
- *  @return                 N/A
+ *  @return 	   	        N/A
  */
 static t_void
 wlan_11n_delete_rxreorder_tbl_entry(mlan_private * priv,
@@ -390,7 +390,7 @@ wlan_11n_delete_rxreorder_tbl_entry(mlan_private * priv,
  *
  *  @param rx_reorder_tbl_ptr   A pointer to structure RxReorderTbl
  *
- *  @return                     Last used sequence number
+ *  @return 	   	            Last used sequence number
  */
 static int
 wlan_11n_find_last_seqnum(RxReorderTbl * rx_reorder_tbl_ptr)
@@ -413,7 +413,7 @@ wlan_11n_find_last_seqnum(RxReorderTbl * rx_reorder_tbl_ptr)
  *
  *  @param context      Reorder context pointer
  *
- *  @return             N/A
+ *  @return 	   	    N/A
  */
 static t_void
 wlan_flush_data(t_void * context)
@@ -444,15 +444,15 @@ wlan_flush_data(t_void * context)
 
 /**
  *  @brief This function will create a entry in rx reordering table for the
- *          given ta/tid and will initialize it with seq_num, win_size
+ *  		given ta/tid and will initialize it with seq_num, win_size
  *
  *  @param priv     A pointer to mlan_private
  *  @param ta       ta to find in reordering table
- *  @param tid      tid to find in reordering table
+ *  @param tid	    tid to find in reordering table
  *  @param win_size win_size for the give ta/tid pair.
  *  @param seq_num  Starting sequence number for current entry.
  *
- *  @return         N/A
+ *  @return 	    N/A
  */
 static t_void
 wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
@@ -476,7 +476,7 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
 						      rx_reor_tbl_ptr, seq_num);
 	} else {
 		PRINTM(MDAT_D, "%s: seq_num %d, tid %d, ta " MACSTR
-		       ", win_size %d\n", __func__,
+		       ", win_size %d\n", __FUNCTION__,
 		       seq_num, tid, MAC2STR(ta), win_size);
 		if (pmadapter->callbacks.
 		    moal_malloc(pmadapter->pmoal_handle, sizeof(RxReorderTbl),
@@ -500,11 +500,7 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
 			PRINTM(MINFO, "UAP/ADHOC:last_seq=%d start_win=%d\n",
 			       last_seq, new_node->start_win);
 		} else {
-			sta_ptr = wlan_get_station_entry(priv, ta);
-			if (sta_ptr)
-				last_seq = sta_ptr->rx_seq[tid];
-			else
-				last_seq = priv->rx_seq[tid];
+			last_seq = priv->rx_seq[tid];
 		}
 		new_node->last_seq = last_seq;
 		new_node->win_size = win_size;
@@ -556,13 +552,13 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
 
 /**
  *  @brief This function will return the pointer to a entry in rx reordering
- *          table which matches the give TA/TID pair
+ *  		table which matches the give TA/TID pair
  *
  *  @param priv    A pointer to mlan_private
  *  @param ta      ta to find in reordering table
  *  @param tid	   tid to find in reordering table
  *
- *  @return        A pointer to structure RxReorderTbl
+ *  @return	   A pointer to structure RxReorderTbl
  */
 RxReorderTbl *
 wlan_11n_get_rxreorder_tbl(mlan_private * priv, int tid, t_u8 * ta)
@@ -600,7 +596,7 @@ wlan_11n_get_rxreorder_tbl(mlan_private * priv, int tid, t_u8 * ta)
 
 /**
   *  @brief This function prepares command for adding a block ack
-  *          request.
+  *  		request.
   *
   *  @param priv        A pointer to mlan_private structure
   *  @param cmd         A pointer to HostCmd_DS_COMMAND structure
@@ -635,7 +631,7 @@ wlan_cmd_11n_addba_req(mlan_private * priv,
 
 /**
   *  @brief This function prepares command for adding a block ack
-  *          response.
+  *  		response.
   *
   *  @param priv        A pointer to mlan_private structure
   *  @param cmd         A pointer to HostCmd_DS_COMMAND structure
@@ -723,7 +719,7 @@ wlan_cmd_11n_addba_rspgen(mlan_private * priv,
 
 /**
   *  @brief This function prepares command for deleting a block ack
-  *          request.
+  *  		request.
   *
   *  @param priv       A pointer to mlan_private structure
   *  @param cmd        A pointer to HostCmd_DS_COMMAND structure
@@ -754,16 +750,16 @@ wlan_cmd_11n_delba(mlan_private * priv,
 
 /**
  *  @brief This function will identify if RxReodering is needed for the packet
- *          and will do the reordering if required before sending it to kernel
+ *  		and will do the reordering if required before sending it to kernel
  *
  *  @param priv     A pointer to mlan_private
  *  @param seq_num  Seqence number of the current packet
- *  @param tid      Tid of the current packet
- *  @param ta       Transmiter address of the current packet
+ *  @param tid	    Tid of the current packet
+ *  @param ta	    Transmiter address of the current packet
  *  @param pkt_type Packetype for the current packet (to identify if its a BAR)
  *  @param payload  Pointer to the payload
  *
- *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return 	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 mlan_status
 mlan_11n_rxreorder_pkt(void *priv, t_u16 seq_num, t_u16 tid,
@@ -970,15 +966,15 @@ done:
 
 /**
  *  @brief This function will delete an entry for a given tid/ta pair. tid/ta
- *          are taken from delba_event body
+ *  		are taken from delba_event body
  *
- *  @param priv         A pointer to mlan_private
- *  @param tid          tid to send delba
- *  @param peer_mac     MAC address to send delba
- *  @param type         TYPE_DELBA_SENT	or TYPE_DELBA_RECEIVE
+ *  @param priv    	    A pointer to mlan_private
+ *  @param tid		    tid to send delba
+ *  @param peer_mac	    MAC address to send delba
+ *  @param type 	    TYPE_DELBA_SENT	or TYPE_DELBA_RECEIVE
  *  @param initiator    MTRUE if we are initiator of ADDBA, MFALSE otherwise
  *
- *  @return             N/A
+ *  @return 	   	    N/A
  */
 void
 mlan_11n_delete_bastream_tbl(mlan_private * priv, int tid,
@@ -995,8 +991,8 @@ mlan_11n_delete_bastream_tbl(mlan_private * priv, int tid,
 	else
 		cleanup_rx_reorder_tbl = (initiator) ? MFALSE : MTRUE;
 
-	PRINTM(MEVENT, "delete_bastream_tbl: " MACSTR " tid=%d, type=%d"
-	       "initiator=%d\n", MAC2STR(peer_mac), tid, initiator, type);
+	PRINTM(MEVENT, "DELBA: " MACSTR " tid=%d,"
+	       "initiator=%d\n", MAC2STR(peer_mac), tid, initiator);
 
 	if (cleanup_rx_reorder_tbl) {
 		rx_reor_tbl_ptr =
@@ -1023,7 +1019,7 @@ mlan_11n_delete_bastream_tbl(mlan_private * priv, int tid,
 
 /**
  *  @brief This function handles the command response of
- *          a block ack response
+ *  		a block ack response
  *
  *  @param priv    A pointer to mlan_private structure
  *  @param resp    A pointer to HostCmd_DS_COMMAND
@@ -1096,10 +1092,10 @@ wlan_ret_11n_addba_resp(mlan_private * priv, HostCmd_DS_COMMAND * resp)
 /**
  *  @brief This function handles ba_stream_timeout event
  *
- *  @param priv     A pointer to mlan_private
+ *  @param priv    	A pointer to mlan_private
  *  @param event    A pointer to structure HostCmd_DS_11N_BATIMEOUT
  *
- *  @return         N/A
+ *  @return 	   	N/A
  */
 void
 wlan_11n_ba_stream_timeout(mlan_private * priv,
@@ -1128,9 +1124,9 @@ wlan_11n_ba_stream_timeout(mlan_private * priv,
 /**
  *  @brief This function cleans up reorder tbl
  *
- *  @param priv     A pointer to mlan_private
+ *  @param priv    	A pointer to mlan_private
  *
- *  @return         N/A
+ *  @return 	   	N/A
  */
 void
 wlan_11n_cleanup_reorder_tbl(mlan_private * priv)
@@ -1156,10 +1152,10 @@ wlan_11n_cleanup_reorder_tbl(mlan_private * priv)
 /**
  *  @brief This function handle the rxba_sync event
  *
- *  @param priv       A pointer to mlan_private
+ *  @param priv    	  A pointer to mlan_private
  *  @param event_buf  A pointer to event buf
  *  @param len        event_buf length
- *  @return           N/A
+ *  @return 	   	N/A
  */
 void
 wlan_11n_rxba_sync_event(mlan_private * priv, t_u8 * event_buf, t_u16 len)
@@ -1239,9 +1235,9 @@ done:
 /**
  *  @brief This function cleans up reorder tbl for specific station
  *
- *  @param priv     A pointer to mlan_private
- *  @param ta       ta to find in reordering table
- *  @return         N/A
+ *  @param priv    	A pointer to mlan_private
+ *  @param ta      ta to find in reordering table
+ *  @return 	   	N/A
  */
 void
 wlan_cleanup_reorder_tbl(mlan_private * priv, t_u8 * ta)
@@ -1265,7 +1261,7 @@ wlan_cleanup_reorder_tbl(mlan_private * priv, t_u8 * ta)
  *  @param priv    A pointer to mlan_private
  *  @param flag    MTRUE/MFALSE
  *
- *  @return        N/A
+ *  @return	 N/A
  */
 void
 wlan_set_rxreorder_tbl_no_drop_flag(mlan_private * priv, t_u8 flag)
@@ -1298,9 +1294,9 @@ wlan_set_rxreorder_tbl_no_drop_flag(mlan_private * priv, t_u8 flag)
 /**
  *  @brief This function update all the rx_reorder_tbl's force_no_drop flag
  *
- *  @param pmadapter    A pointer to mlan_adapter
- *  @param flag         MTRUE/MFALSE
- *  @return             N/A
+ *  @param pmadapter   	A pointer to mlan_adapter
+ *  @param flag		    MTRUE/MFALSE
+ *  @return 	        N/A
  */
 void
 wlan_update_rxreorder_tbl(pmlan_adapter pmadapter, t_u8 flag)

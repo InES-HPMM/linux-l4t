@@ -2,56 +2,20 @@
  *
  *  @brief This file contains APIs to MOAL module.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  Copyright (C) 2008-2011, Marvell International Ltd.
  *
- *  MARVELL CONFIDENTIAL
- *  The source code contained or described herein and all documents related to
- *  the source code ("Material") are owned by Marvell International Ltd or its
- *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
- *  or its suppliers and licensors. The Material contains trade secrets and
- *  proprietary and confidential information of Marvell or its suppliers and
- *  licensors. The Material is protected by worldwide copyright and trade secret
- *  laws and treaty provisions. No part of the Material may be used, copied,
- *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
- *  or disclosed in any way without Marvell's prior express written permission.
+ *  This software file (the "File") is distributed by Marvell International
+ *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
+ *  (the "License").  You may use, redistribute and/or modify this File in
+ *  accordance with the terms and conditions of the License, a copy of which
+ *  is available by writing to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
+ *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
  *
- *  No license under any patent, copyright, trade secret or other intellectual
- *  property right is granted to or conferred upon you by disclosure or delivery
- *  of the Materials, either expressly, by implication, inducement, estoppel or
- *  otherwise. Any license under such intellectual property rights must be
- *  express and approved by Marvell in writing.
- *
- */
-
-/**
- *  @mainpage MLAN Driver
- *
- *  @section overview_sec Overview
- *
- *  The MLAN is an OS independent WLAN driver for Marvell 802.11
- *  embedded chipset.
- *
- *  @section copyright_sec Copyright
- *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
- *
- *  MARVELL CONFIDENTIAL
- *  The source code contained or described herein and all documents related to
- *  the source code ("Material") are owned by Marvell International Ltd or its
- *  suppliers or licensors. Title to the Material remains with Marvell International Ltd
- *  or its suppliers and licensors. The Material contains trade secrets and
- *  proprietary and confidential information of Marvell or its suppliers and
- *  licensors. The Material is protected by worldwide copyright and trade secret
- *  laws and treaty provisions. No part of the Material may be used, copied,
- *  reproduced, modified, published, uploaded, posted, transmitted, distributed,
- *  or disclosed in any way without Marvell's prior express written permission.
- *
- *  No license under any patent, copyright, trade secret or other intellectual
- *  property right is granted to or conferred upon you by disclosure or delivery
- *  of the Materials, either expressly, by implication, inducement, estoppel or
- *  otherwise. Any license under such intellectual property rights must be
- *  express and approved by Marvell in writing.
- *
+ *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
+ *  this warranty disclaimer.
  */
 
 /********************************************************
@@ -264,10 +228,11 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 	MASSERT(pcb->moal_free_lock);
 	MASSERT(pcb->moal_spin_lock);
 	MASSERT(pcb->moal_spin_unlock);
-	MASSERT(pcb->moal_tcp_ack_tx_ind);
 
 	/* Save pmoal_handle */
 	pmadapter->pmoal_handle = pmdevice->pmoal_handle;
+
+	pmadapter->feature_control = pmdevice->feature_control;
 
 	if ((pmdevice->int_mode == INT_MODE_GPIO) && (pmdevice->gpio_pin == 0)) {
 		PRINTM(MERROR, "SDIO_GPIO_INT_CONFIG: Invalid GPIO Pin\n");
@@ -289,7 +254,6 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 #ifdef MFG_CMD_SUPPORT
 	pmadapter->init_para.mfg_mode = pmdevice->mfg_mode;
 #endif
-
 #ifdef SDIO_MULTI_PORT_TX_AGGR
 	pmadapter->init_para.mpa_tx_cfg = pmdevice->mpa_tx_cfg;
 #endif
@@ -307,10 +271,10 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 #else
 	pmadapter->init_para.cfg_11d = 0;
 #endif
-	pmadapter->init_para.dfs_master_radar_det_en =
-		DFS_MASTER_RADAR_DETECT_EN;
+	if (IS_DFS_SUPPORT(pmadapter->feature_control))
+		pmadapter->init_para.dfs_master_radar_det_en =
+			DFS_MASTER_RADAR_DETECT_EN;
 	pmadapter->init_para.dfs_slave_radar_det_en = DFS_SLAVE_RADAR_DETECT_EN;
-	pmadapter->rx_work_flag = pmdevice->rx_work;
 
 	pmadapter->priv_num = 0;
 	for (i = 0; i < MLAN_MAX_BSS_NUM; i++) {
@@ -630,14 +594,14 @@ mlan_init_fw(IN t_void * pmlan_adapter)
 /**
  *  @brief Shutdown firmware
  *
- *  @param pmlan_adapter    A pointer to mlan_adapter structure
+ *  @param pmlan_adapter	A pointer to mlan_adapter structure
  *
- *  @return     MLAN_STATUS_SUCCESS
- *                              The firmware shutdown call succeeded.
- *	            MLAN_STATUS_PENDING
- *                              The firmware shutdown call is pending.
- *	            MLAN_STATUS_FAILURE
- *                              The firmware shutdown call failed.
+ *  @return			MLAN_STATUS_SUCCESS
+ *                      		The firmware shutdown call succeeded.
+ *				MLAN_STATUS_PENDING
+ *      	                	The firmware shutdown call is pending.
+ *				MLAN_STATUS_FAILURE
+ *      	                	The firmware shutdown call failed.
  */
 mlan_status
 mlan_shutdown_fw(IN t_void * pmlan_adapter)
@@ -673,8 +637,9 @@ mlan_shutdown_fw(IN t_void * pmlan_adapter)
 
 	/* Clean up priv structures */
 	for (i = 0; i < pmadapter->priv_num; i++) {
-		if (pmadapter->priv[i])
+		if (pmadapter->priv[i]) {
 			wlan_free_priv(pmadapter->priv[i]);
+		}
 	}
 
 	pcb = &pmadapter->callbacks;
@@ -820,12 +785,8 @@ process_start:
 			if (pmadapter->hs_activated == MTRUE)
 				wlan_process_hs_config(pmadapter);
 			wlan_process_int_status(pmadapter);
-			if (pmadapter->data_received && pmadapter->rx_work_flag)
-				wlan_recv_event(wlan_get_priv
-						(pmadapter, MLAN_BSS_ROLE_ANY),
-						MLAN_EVENT_ID_DRV_DEFER_RX_WORK,
-						MNULL);
 		}
+
 		/* Need to wake up the card ? */
 		if ((pmadapter->ps_state == PS_STATE_SLEEP) &&
 		    (pmadapter->pm_wakeup_card_req &&
@@ -836,8 +797,8 @@ process_start:
 		     || !wlan_bypass_tx_list_empty(pmadapter)
 		     || !wlan_wmm_lists_empty(pmadapter)
 		    )) {
-			wlan_pm_wakeup_card(pmadapter);
 			pmadapter->pm_wakeup_fw_try = MTRUE;
+			wlan_pm_wakeup_card(pmadapter);
 			continue;
 		}
 		if (IS_CARD_RX_RCVD(pmadapter)) {
@@ -862,15 +823,12 @@ process_start:
 
 			if (pmadapter->scan_processing
 			    || pmadapter->data_sent
-			    || wlan_is_tdls_link_chan_switching(pmadapter->
-								tdls_status)
 			    || (wlan_bypass_tx_list_empty(pmadapter) &&
 				wlan_wmm_lists_empty(pmadapter))
 			    || wlan_11h_radar_detected_tx_blocked(pmadapter)
 				) {
 				if (pmadapter->cmd_sent || pmadapter->curr_cmd
-				    || !wlan_is_send_cmd_allowed(pmadapter->
-								 tdls_status) ||
+				    ||
 				    (!util_peek_list
 				     (pmadapter->pmoal_handle,
 				      &pmadapter->cmd_pending_q,
@@ -918,9 +876,7 @@ process_start:
 			)
 			continue;
 
-		if (!pmadapter->cmd_sent && !pmadapter->curr_cmd
-		    && wlan_is_send_cmd_allowed(pmadapter->tdls_status)
-			) {
+		if (!pmadapter->cmd_sent && !pmadapter->curr_cmd) {
 			if (wlan_exec_next_cmd(pmadapter) ==
 			    MLAN_STATUS_FAILURE) {
 				ret = MLAN_STATUS_FAILURE;
@@ -931,7 +887,6 @@ process_start:
 		if (!pmadapter->scan_processing
 		    && !pmadapter->data_sent &&
 		    !wlan_11h_radar_detected_tx_blocked(pmadapter) &&
-		    !wlan_is_tdls_link_chan_switching(pmadapter->tdls_status) &&
 		    !wlan_bypass_tx_list_empty(pmadapter)) {
 			PRINTM(MINFO, "mlan_send_pkt(): deq(bybass_txq)\n");
 			wlan_process_bypass_tx(pmadapter);
@@ -947,7 +902,6 @@ process_start:
 		if (!pmadapter->scan_processing
 		    && !pmadapter->data_sent && !wlan_wmm_lists_empty(pmadapter)
 		    && !wlan_11h_radar_detected_tx_blocked(pmadapter)
-		    && !wlan_is_tdls_link_chan_switching(pmadapter->tdls_status)
 			) {
 			wlan_wmm_process_tx(pmadapter);
 			if (pmadapter->hs_activated == MTRUE) {
@@ -1008,38 +962,26 @@ mlan_send_packet(IN t_void * pmlan_adapter, IN pmlan_buffer pmbuf)
 {
 	mlan_status ret = MLAN_STATUS_PENDING;
 	mlan_adapter *pmadapter = (mlan_adapter *) pmlan_adapter;
-	mlan_private *pmpriv;
-	t_u16 eth_type = 0;
-	t_u8 ra[MLAN_MAC_ADDR_LENGTH];
-	tdlsStatus_e tdls_status;
 
 	ENTER();
 	MASSERT(pmlan_adapter && pmbuf);
 
 	MASSERT(pmbuf->bss_index < pmadapter->priv_num);
-	pmbuf->flags |= MLAN_BUF_FLAG_MOAL_TX_BUF;
-	pmpriv = pmadapter->priv[pmbuf->bss_index];
+	pmbuf->flags = MLAN_BUF_FLAG_MOAL_TX_BUF;
 
-	eth_type =
-		mlan_ntohs(*(t_u16 *) & pmbuf->
-			   pbuf[pmbuf->data_offset +
-				MLAN_ETHER_PKT_TYPE_OFFSET]);
 	if (((pmadapter->priv[pmbuf->bss_index]->port_ctrl_mode == MTRUE) &&
-	     ((eth_type == MLAN_ETHER_PKT_TYPE_EAPOL)
-	      || (eth_type == MLAN_ETHER_PKT_TYPE_WAPI)
+	     ((mlan_ntohs(*(t_u16 *) & pmbuf->pbuf[pmbuf->data_offset +
+						   MLAN_ETHER_PKT_TYPE_OFFSET])
+	       == MLAN_ETHER_PKT_TYPE_EAPOL)
+	      ||
+	      (mlan_ntohs
+	       (*(t_u16 *) & pmbuf->
+		pbuf[pmbuf->data_offset + MLAN_ETHER_PKT_TYPE_OFFSET]) ==
+	       MLAN_ETHER_PKT_TYPE_WAPI)
 	     ))
-	    || (eth_type == MLAN_ETHER_PKT_TYPE_TDLS_ACTION)
 	    || (pmbuf->buf_type == MLAN_BUF_TYPE_RAW_DATA)
 
 		) {
-		if (eth_type == MLAN_ETHER_PKT_TYPE_TDLS_ACTION) {
-			memcpy(pmadapter, ra, pmbuf->pbuf + pmbuf->data_offset,
-			       MLAN_MAC_ADDR_LENGTH);
-			tdls_status = wlan_get_tdls_link_status(pmpriv, ra);
-			if (MTRUE == wlan_is_tdls_link_setup(tdls_status) ||
-			    !pmpriv->media_connected)
-				pmbuf->flags |= MLAN_BUF_FLAG_TDLS;
-		}
 		PRINTM(MINFO, "mlan_send_pkt(): enq(bybass_txq)\n");
 		wlan_add_buf_bypass_txqueue(pmadapter, pmbuf);
 	} else {

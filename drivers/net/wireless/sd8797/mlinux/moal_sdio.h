@@ -53,6 +53,7 @@ Change log:
 /** Default firmware name */
 
 #define DEFAULT_FW_NAME	"mrvl/sd8797_uapsta.bin"
+#define DEFAULT_FW_NAME_8782 "mrvl/sd8782_uapsta.bin"
 
 #ifndef DEFAULT_FW_NAME
 #define DEFAULT_FW_NAME ""
@@ -63,6 +64,7 @@ Change log:
 /** Default firmware name */
 
 #define DEFAULT_AP_FW_NAME "mrvl/sd8797_uapsta.bin"
+#define DEFAULT_AP_FW_NAME_8782 "mrvl/sd8782_uapsta.bin"
 
 #ifndef DEFAULT_AP_FW_NAME
 #define DEFAULT_AP_FW_NAME ""
@@ -72,6 +74,7 @@ Change log:
 /** Default firmaware name */
 
 #define DEFAULT_AP_STA_FW_NAME "mrvl/sd8797_uapsta.bin"
+#define DEFAULT_AP_STA_FW_NAME_8782 "mrvl/sd8782_uapsta.bin"
 
 #ifndef DEFAULT_AP_STA_FW_NAME
 #define DEFAULT_AP_STA_FW_NAME ""
@@ -80,6 +83,8 @@ Change log:
 /********************************************************
 		Global Functions
 ********************************************************/
+/** Function to update the SDIO card type */
+t_void woal_sdio_update_card_type(moal_handle * handle, t_void * card);
 
 /** Function to write register */
 mlan_status woal_write_reg(moal_handle * handle, t_u32 reg, t_u32 data);
