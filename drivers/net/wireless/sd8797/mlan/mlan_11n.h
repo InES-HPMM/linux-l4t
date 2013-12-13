@@ -76,6 +76,9 @@ int wlan_cmd_append_11n_tlv(IN mlan_private * pmpriv,
 /** wlan fill HT cap tlv */
 void wlan_fill_ht_cap_tlv(mlan_private * priv, MrvlIETypes_HTCap_t * pht_cap,
 			  t_u8 band);
+/** wlan fill HT cap IE */
+void wlan_fill_ht_cap_ie(mlan_private * priv, IEEEtypes_HTCap_t * pht_cap,
+			 t_u8 bands);
 #endif /* STA_SUPPORT */
 /** Miscellaneous configuration handler */
 mlan_status wlan_11n_cfg_ioctl(IN pmlan_adapter pmadapter,

@@ -1265,6 +1265,16 @@ wlan_clean_txrx(pmlan_private priv)
 #if defined(UAP_SUPPORT)
 	priv->num_drop_pkts = 0;
 #endif
+#ifdef SDIO_MULTI_PORT_TX_AGGR
+	memset(pmadapter, pmadapter->mpa_tx_count, 0,
+	       sizeof(pmadapter->mpa_tx_count));
+	pmadapter->mpa_sent_no_ports = 0;
+	pmadapter->mpa_sent_last_pkt = 0;
+#endif
+#ifdef SDIO_MULTI_PORT_RX_AGGR
+	memset(pmadapter, pmadapter->mpa_rx_count, 0,
+	       sizeof(pmadapter->mpa_rx_count));
+#endif
 	pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
 					      priv->wmm.ra_list_spinlock);
 
@@ -2257,7 +2267,7 @@ t_void
 wlan_drop_tx_pkts(pmlan_private priv)
 {
 	int j;
-	static int i = 0;
+	static int i;
 	pmlan_adapter pmadapter = priv->adapter;
 	pmadapter->callbacks.moal_spin_lock(pmadapter->pmoal_handle,
 					    priv->wmm.ra_list_spinlock);

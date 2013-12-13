@@ -28,6 +28,8 @@
 #define MBTCHAR_IOCTL_RELEASE       _IO('M', 1)
 #define MBTCHAR_IOCTL_QUERY_TYPE    _IO('M', 2)
 
+#define MBTCHAR_IOCTL_POWER_OFF     _IO('M', 3)
+
 #define MBTCHAR_MAJOR_NUM            (0)
 
 /** Interface specific macros */
@@ -43,6 +45,7 @@ struct char_dev {
 	int dev_type;
 	struct cdev cdev;
 	struct m_dev *m_dev;
+	struct kobject kobj;
 };
 
 /** Changes permissions of the dev */

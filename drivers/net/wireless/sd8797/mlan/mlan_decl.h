@@ -27,7 +27,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"413"
+#define MLAN_RELEASE_VERSION		"434"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */
@@ -234,6 +234,8 @@ typedef t_u8 mlan_802_11_mac_addr[MLAN_MAC_ADDR_LENGTH];
 
 /** define allocated buffer size */
 #define ALLOC_BUF_SIZE           (4 * 1024)
+/** SDIO MP aggr pkt limit */
+#define SDIO_MP_AGGR_DEF_PKT_LIMIT       (8)
 
 /** SDIO IO Port mask */
 #define MLAN_SDIO_IO_PORT_MASK		0xfffff
@@ -260,6 +262,8 @@ typedef t_u8 mlan_802_11_mac_addr[MLAN_MAC_ADDR_LENGTH];
 
 /** Buffer flag for bridge packet */
 #define MLAN_BUF_FLAG_BRIDGE_BUF        MBIT(3)
+
+#define MLAN_BUF_FLAG_TCP_ACK		MBIT(9)
 
 #ifdef DEBUG_LEVEL1
 /** Debug level bit definition */
@@ -422,7 +426,8 @@ typedef enum _mlan_event_id {
 	MLAN_EVENT_ID_DRV_REPORT_STRING = 0x8000000F,
 	MLAN_EVENT_ID_DRV_DBG_DUMP = 0x80000012,
 	MLAN_EVENT_ID_DRV_BGSCAN_RESULT = 0x80000013,
-	MLAN_EVENT_ID_FLUSH_RX_WORK = 0x80000015,
+	MLAN_EVENT_ID_DRV_FLUSH_RX_WORK = 0x80000015,
+	MLAN_EVENT_ID_DRV_DEFER_RX_WORK = 0x80000016,
 } mlan_event_id;
 
 /** Data Structures */
@@ -796,6 +801,10 @@ typedef struct _mlan_callbacks {
 				      IN t_u32 bss_index, IN t_u32 level);
     /** moal_assert */
 	 t_void(*moal_assert) (IN t_void * pmoal_handle, IN t_u32 cond);
+
+    /** moal_tcp_ack_tx_ind */
+	 t_void(*moal_tcp_ack_tx_ind) (IN t_void * pmoal_handle,
+				       IN pmlan_buffer pmbuf);
 } mlan_callbacks, *pmlan_callbacks;
 
 /** Interrupt Mode SDIO */
@@ -858,6 +867,9 @@ typedef struct _mlan_device {
 #endif
     /** Feature control bitmask */
 	t_u32 feature_control;
+    /** enable/disable rx work */
+	t_u8 rx_work;
+
 } mlan_device, *pmlan_device;
 
 /** MLAN API function prototype */

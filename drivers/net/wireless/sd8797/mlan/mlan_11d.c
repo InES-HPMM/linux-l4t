@@ -145,12 +145,11 @@ static t_u8 *
 wlan_11d_code_2_region(pmlan_adapter pmadapter, t_u8 code)
 {
 	t_u8 i;
-	t_u8 size = sizeof(region_code_mapping) / sizeof(region_code_mapping_t);
 
 	ENTER();
 
 	/* Look for code in mapping table */
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < NELEMENTS(region_code_mapping); i++) {
 		if (region_code_mapping[i].code == code) {
 			LEAVE();
 			return region_code_mapping[i].region;
@@ -441,12 +440,10 @@ wlan_11d_get_chan(pmlan_adapter pmadapter, t_u8 band, t_u8 first_chan,
 	ENTER();
 	if (band & (BAND_B | BAND_G | BAND_GN)) {
 		cfp = channel_freq_power_UN_BG;
-		cfp_no = sizeof(channel_freq_power_UN_BG) /
-			sizeof(chan_freq_power_t);
+		cfp_no = NELEMENTS(channel_freq_power_UN_BG);
 	} else if (band & (BAND_A | BAND_AN)) {
 		cfp = channel_freq_power_UN_AJ;
-		cfp_no = sizeof(channel_freq_power_UN_AJ) /
-			sizeof(chan_freq_power_t);
+		cfp_no = NELEMENTS(channel_freq_power_UN_AJ);
 	} else {
 		PRINTM(MERROR, "11D: Wrong Band[%d]\n", band);
 		LEAVE();
@@ -1065,12 +1062,10 @@ wlan_11d_chan_2_freq(pmlan_adapter pmadapter, t_u8 chan, t_u8 band)
 	/* Get channel-frequency-power trios */
 	if (band & (BAND_A | BAND_AN)) {
 		cf = channel_freq_power_UN_AJ;
-		cnt = sizeof(channel_freq_power_UN_AJ) /
-			sizeof(chan_freq_power_t);
+		cnt = NELEMENTS(channel_freq_power_UN_AJ);
 	} else {
 		cf = channel_freq_power_UN_BG;
-		cnt = sizeof(channel_freq_power_UN_BG) /
-			sizeof(chan_freq_power_t);
+		cnt = NELEMENTS(channel_freq_power_UN_BG);
 	}
 
 	/* Locate channel and return corresponding frequency */
@@ -1095,7 +1090,6 @@ mlan_status
 wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 {
 	mlan_adapter *pmadapter = pmpriv->adapter;
-	t_u16 size = sizeof(chan_freq_power_t);
 	t_u16 i = 0;
 
 	ENTER();
@@ -1108,7 +1102,7 @@ wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 	{
 		/* Set channel-frequency-power */
 		pmadapter->universal_channel[i].num_cfp =
-			(t_u8) (sizeof(channel_freq_power_UN_BG) / size);
+			NELEMENTS(channel_freq_power_UN_BG);
 		PRINTM(MINFO, "11D: BG-band num_cfp=%d\n",
 		       pmadapter->universal_channel[i].num_cfp);
 
@@ -1132,7 +1126,7 @@ wlan_11d_set_universaltable(mlan_private * pmpriv, t_u8 band)
 
 		/* Set channel-frequency-power */
 		pmadapter->universal_channel[i].num_cfp =
-			sizeof(channel_freq_power_UN_AJ) / size;
+			NELEMENTS(channel_freq_power_UN_AJ);
 		PRINTM(MINFO, "11D: AJ-band num_cfp=%d\n",
 		       pmadapter->universal_channel[i].num_cfp);
 

@@ -486,7 +486,7 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define DEFAULT_11N_CAP_MASK_BG (HWSPEC_SHORTGI20_SUPP | HWSPEC_RXSTBC_SUPP)
 /** Default 11n capability mask for 5GHz */
 #define DEFAULT_11N_CAP_MASK_A  (HWSPEC_CHANBW40_SUPP | HWSPEC_SHORTGI20_SUPP | \
-	                         HWSPEC_SHORTGI40_SUPP | HWSPEC_RXSTBC_SUPP)
+							HWSPEC_SHORTGI40_SUPP | HWSPEC_RXSTBC_SUPP)
 /** Bits to ignore in hw_dev_cap as these bits are set in get_hw_spec */
 #define IGN_HW_DEV_CAP		(CAPINFO_40MHZ_INTOLARENT)
 
@@ -653,6 +653,19 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define SET_EXTCAP_TDLS(ext_cap) (ext_cap.TDLSSupport = 1)
 /** ExtCap : Reset support TDLS */
 #define RESET_EXTCAP_TDLS(ext_cap) (ext_cap.TDLSSupport = 0)
+/** ExtCap : Support for TDLS UAPSD */
+#define ISSUPP_EXTCAP_TDLS_UAPSD(ext_cap) (ext_cap.TDLSPeerUAPSDSupport)
+/** ExtCap : Set support TDLS UAPSD */
+#define SET_EXTCAP_TDLS_UAPSD(ext_cap) (ext_cap.TDLSPeerUAPSDSupport = 1)
+/** ExtCap : Reset support TDLS UAPSD */
+#define RESET_EXTCAP_TDLS_UAPSD(ext_cap) (ext_cap.TDLSPeerUAPSDSupport = 0)
+/** ExtCap : Support for TDLS CHANNEL SWITCH */
+#define ISSUPP_EXTCAP_TDLS_CHAN_SWITCH(ext_cap) (ext_cap.TDLSChannelSwitching)
+/** ExtCap : Set support TDLS CHANNEL SWITCH */
+#define SET_EXTCAP_TDLS_CHAN_SWITCH(ext_cap) (ext_cap.TDLSChannelSwitching = 1)
+/** ExtCap : Reset support TDLS CHANNEL SWITCH */
+#define RESET_EXTCAP_TDLS_CHAN_SWITCH(ext_cap) (ext_cap.TDLSChannelSwitching = 0)
+
 /** ExtCap : Support for Interworking */
 #define ISSUPP_EXTCAP_INTERWORKING(ext_cap) (ext_cap.Interworking)
 /** ExtCap : Set support Interworking */
@@ -665,6 +678,12 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define SET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 1)
 /** ExtCap : Reset support Operation Mode Notification */
 #define RESET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 0)
+/** ExtCap : Support for QosMap */
+#define ISSUPP_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map)
+/** ExtCap : Set Support QosMap */
+#define SET_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map = 1)
+/** ExtCap : Reset support QosMap */
+#define RESET_EXTCAP_QOS_MAP(ext_cap) (ext_cap.Qos_Map = 0)
 
 /** LLC/SNAP header len   */
 #define LLC_SNAP_LEN    8
@@ -926,6 +945,8 @@ typedef enum _WLAN_802_11_WEP_STATUS {
 #define HostCmd_CMD_CFG_TX_DATA_PAUSE           0x0103
 
 #ifdef WIFI_DIRECT_SUPPORT
+/** Host Command ID: P2P PARAMS CONFIG */
+#define HOST_CMD_P2P_PARAMS_CONFIG              0x00ea
 /** Host Command ID: WIFI_DIRECT_MODE_CONFIG */
 #define HOST_CMD_WIFI_DIRECT_MODE_CONFIG	0x00eb
 /** Host Command ID: Remain On Channel */
@@ -1642,6 +1663,14 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_RatesParamSet_t {
     /** Rates */
 	t_u8 rates[1];
 } MLAN_PACK_END MrvlIEtypes_RatesParamSet_t;
+
+/** _MrvlIEtypes_Bssid_List_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_Bssid_List_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** BSSID */
+	t_u8 bssid[MLAN_MAC_ADDR_LENGTH];
+} MLAN_PACK_END MrvlIEtypes_Bssid_List_t;
 
 /** MrvlIEtypes_SsIdParamSet_t */
 typedef MLAN_PACK_START struct _MrvlIEtypes_SsIdParamSet_t {
@@ -2710,6 +2739,41 @@ typedef MLAN_PACK_START struct _HostCmd_DS_WIFI_DIRECT_MODE {
     /**0:disable 1:listen 2:GO 3:p2p client 4:find 5:stop find*/
 	t_u16 mode;
 } MLAN_PACK_END HostCmd_DS_WIFI_DIRECT_MODE;
+
+/** MrvlIEtypes_NoA_setting_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_NoA_setting_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** enable/disable */
+	t_u8 enable;
+    /** index */
+	t_u16 index;
+    /** NoA count */
+	t_u8 noa_count;
+    /** NoA duration */
+	t_u32 noa_duration;
+    /** NoA interval */
+	t_u32 noa_interval;
+} MLAN_PACK_END MrvlIEtypes_NoA_setting_t;
+
+/** MrvlIEtypes_NoA_setting_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_OPP_PS_setting_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** enable/disable */
+	t_u8 enable;
+    /** CT window value */
+	t_u8 ct_window;
+} MLAN_PACK_END MrvlIEtypes_OPP_PS_setting_t;
+
+/** HostCmd_DS_REMAIN_ON_CHANNEL */
+typedef MLAN_PACK_START struct _HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG {
+    /** Action 0-GET, 1-SET */
+	t_u16 action;
+    /** MrvlIEtypes_NoA_setting_t
+     *  MrvlIEtypes_OPP_PS_setting_t
+     */
+} MLAN_PACK_END HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG;
 #endif
 
 #ifdef STA_SUPPORT
@@ -3289,6 +3353,14 @@ typedef MLAN_PACK_START struct _MrvlIETypes_ExtCap_t {
 	ExtCap_t ext_cap;
 } MLAN_PACK_END MrvlIETypes_ExtCap_t;
 
+/** Qos Info */
+typedef MLAN_PACK_START struct _MrvlIETypes_qosinfo_t {
+    /** Header */
+	MrvlIEtypesHeader_t header;
+    /** qos_info*/
+	t_u8 qos_info;
+} MLAN_PACK_END MrvlIETypes_qosinfo_t;
+
 /** Overlapping BSS Scan Parameters element */
 typedef MLAN_PACK_START struct _MrvlIETypes_OverlapBSSScanParam_t {
     /** Header */
@@ -3811,6 +3883,10 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_MacAddr_t {
 #ifdef WIFI_DIRECT_SUPPORT
 /** TLV type : AP PSK */
 #define TLV_TYPE_UAP_PSK   (PROPRIETARY_TLV_BASE_ID + 0xa8)	/* 0x01a8 */
+/** TLV type : p2p NOA */
+#define TLV_TYPE_WIFI_DIRECT_NOA            (PROPRIETARY_TLV_BASE_ID + 0x83)
+/** TLV type : p2p opp ps */
+#define TLV_TYPE_WIFI_DIRECT_OPP_PS         (PROPRIETARY_TLV_BASE_ID + 0x84)
 #endif /* WIFI_DIRECT_SUPPORT */
 
 /** MrvlIEtypes_beacon_period_t */
@@ -4691,6 +4767,7 @@ typedef struct MLAN_PACK_START _HostCmd_DS_COMMAND {
 #ifdef WIFI_DIRECT_SUPPORT
 		HostCmd_DS_REMAIN_ON_CHANNEL remain_on_chan;
 		HostCmd_DS_WIFI_DIRECT_MODE wifi_direct_mode;
+		HostCmd_DS_WIFI_DIRECT_PARAM_CONFIG p2p_params_config;
 #endif
 		HostCmd_DS_HS_WAKEUP_REASON hs_wakeup_reason;
 	} params;

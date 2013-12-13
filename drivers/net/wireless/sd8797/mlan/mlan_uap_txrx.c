@@ -178,8 +178,9 @@ wlan_ops_uap_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 	if (pmbuf->data_offset < (sizeof(UapTxPD) + INTF_HEADER_LEN +
 				  DMA_ALIGNMENT)) {
 		PRINTM(MERROR,
-		       "not enough space for UapTxPD: len=%d, offset=%d\n",
-		       pmbuf->data_len, pmbuf->data_offset);
+		       "not enough space for UapTxPD: headroom=%d pkt_len=%d, required=%d\n",
+		       pmbuf->data_offset, pmbuf->data_len,
+		       sizeof(UapTxPD) + INTF_HEADER_LEN + DMA_ALIGNMENT);
 		DBG_HEXDUMP(MDAT_D, "drop pkt",
 			    pmbuf->pbuf + pmbuf->data_offset, pmbuf->data_len);
 		pmbuf->status_code = MLAN_ERROR_PKT_SIZE_INVALID;
@@ -406,6 +407,9 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
+				wlan_recv_event(priv,
+						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+						MNULL);
 			}
 		}
 	} else {
@@ -439,6 +443,9 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
+				wlan_recv_event(priv,
+						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+						MNULL);
 			}
 			goto done;
 		} else if (MLAN_STATUS_FAILURE ==
@@ -533,6 +540,9 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 				if (pmadapter->pending_bridge_pkts >
 				    RX_HIGH_THRESHOLD)
 					wlan_drop_tx_pkts(priv);
+				wlan_recv_event(priv,
+						MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+						MNULL);
 			}
 		}
 	} else {
@@ -547,6 +557,8 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 			wlan_wmm_add_buf_txqueue(pmadapter, pmbuf);
 			if (pmadapter->pending_bridge_pkts > RX_HIGH_THRESHOLD)
 				wlan_drop_tx_pkts(priv);
+			wlan_recv_event(priv, MLAN_EVENT_ID_DRV_DEFER_HANDLING,
+					MNULL);
 			goto done;
 		} else if (MLAN_STATUS_FAILURE ==
 			   wlan_check_unicast_packet(priv,

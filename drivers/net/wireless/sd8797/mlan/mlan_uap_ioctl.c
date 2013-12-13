@@ -1389,6 +1389,10 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 		if (misc->sub_command == MLAN_OID_MISC_MAC_CONTROL)
 			status = wlan_misc_ioctl_mac_control(pmadapter,
 							     pioctl_req);
+#ifdef WIFI_DIRECT_SUPPORT
+		if (misc->sub_command == MLAN_OID_MISC_WIFI_DIRECT_CONFIG)
+			status = wlan_misc_p2p_config(pmadapter, pioctl_req);
+#endif
 		break;
 	case MLAN_IOCTL_PM_CFG:
 		pm = (mlan_ds_pm_cfg *) pioctl_req->pbuf;

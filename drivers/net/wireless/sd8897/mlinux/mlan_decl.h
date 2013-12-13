@@ -27,7 +27,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"429"
+#define MLAN_RELEASE_VERSION		"434"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */
@@ -842,7 +842,7 @@ typedef struct _mlan_device {
 	/* see blk_queue_max_segment_size */
 	t_u32 max_seg_size;
 	/* see blk_queue_max_segments */
-	t_u8 max_segs;
+	t_u16 max_segs;
 #endif
     /** Auto deep sleep */
 	t_u32 auto_ds;

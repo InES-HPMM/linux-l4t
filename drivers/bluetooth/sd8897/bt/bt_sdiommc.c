@@ -35,7 +35,7 @@ static char *fw_name;
 /** request firmware nowait */
 static int req_fw_nowait;
 static int multi_fn = BIT(2);
-#define DEFAULT_FW_NAME "mrvl/sd8897_uapsta_a0.bin"
+#define DEFAULT_FW_NAME "mrvl/sd8897_uapsta.bin"
 
 /** Function number 2 */
 #define FN2			2
@@ -445,7 +445,7 @@ sd_init_fw_dpc(bt_private * priv)
 	tv1 = get_utimeofday();
 #endif
 
-	tmpfwbufsz = ALIGN_SZ(BT_UPLD_SIZE, DMA_ALIGNMENT);
+	tmpfwbufsz = BT_UPLD_SIZE + DMA_ALIGNMENT;
 	tmpfwbuf = kmalloc(tmpfwbufsz, GFP_KERNEL);
 	if (!tmpfwbuf) {
 		PRINTM(ERROR,
@@ -1427,6 +1427,21 @@ sbi_register_dev(bt_private * priv)
 
 	PRINTM(INFO, ": SDIO FUNC%d IO port: 0x%x\n", priv->bt_dev.fn,
 	       priv->bt_dev.ioport);
+#define SDIO_INT_MASK       0x3F
+	/* Set Host interrupt reset to read to clear */
+	reg = sdio_readb(func, HOST_INT_RSR_REG, &ret);
+	if (ret < 0)
+		goto release_irq;
+	sdio_writeb(func, reg | SDIO_INT_MASK, HOST_INT_RSR_REG, &ret);
+	if (ret < 0)
+		goto release_irq;
+	/* Set auto re-enable */
+	reg = sdio_readb(func, CARD_MISC_CFG_REG, &ret);
+	if (ret < 0)
+		goto release_irq;
+	sdio_writeb(func, reg | AUTO_RE_ENABLE_INT, CARD_MISC_CFG_REG, &ret);
+	if (ret < 0)
+		goto release_irq;
 
 	sdio_set_drvdata(func, card);
 	sdio_release_host(func);
@@ -1551,9 +1566,11 @@ sbi_host_to_card(bt_private * priv, u8 * payload, u16 nb)
 	}
 	buf = payload;
 
+	blksz = SD_BLOCK_SIZE;
+	buf_block_len = (nb + blksz - 1) / blksz;
 	/* Allocate buffer and copy payload */
 	if ((t_ptr) payload & (DMA_ALIGNMENT - 1)) {
-		tmpbufsz = ALIGN_SZ(nb, DMA_ALIGNMENT);
+		tmpbufsz = buf_block_len * blksz + DMA_ALIGNMENT;
 		tmpbuf = kmalloc(tmpbufsz, GFP_KERNEL);
 		if (!tmpbuf) {
 			LEAVE();
@@ -1564,8 +1581,6 @@ sbi_host_to_card(bt_private * priv, u8 * payload, u16 nb)
 		buf = (u8 *) ALIGN_ADDR(tmpbuf, DMA_ALIGNMENT);
 		memcpy(buf, payload, nb);
 	}
-	blksz = SD_BLOCK_SIZE;
-	buf_block_len = (nb + blksz - 1) / blksz;
 	sdio_claim_host(card->func);
 #define MAX_WRITE_IOMEM_RETRY	2
 	do {

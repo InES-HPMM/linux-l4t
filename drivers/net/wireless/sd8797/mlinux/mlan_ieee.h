@@ -44,9 +44,6 @@ typedef enum _WLAN_802_11_NETWORK_TYPE {
 	Wlan802_11NetworkTypeMax
 } WLAN_802_11_NETWORK_TYPE;
 
-/** Maximum size of IEEE Information Elements */
-#define IEEE_MAX_IE_SIZE      256
-
 #ifdef BIG_ENDIAN_SUPPORT
 /** Frame control: Type Mgmt frame */
 #define IEEE80211_FC_MGMT_FRAME_TYPE_MASK    0x3000
@@ -62,6 +59,9 @@ typedef enum _WLAN_802_11_NETWORK_TYPE {
 #ifdef PRAGMA_PACK
 #pragma pack(push, 1)
 #endif
+
+/* Reason codes */
+#define  IEEE_80211_REASONCODE_UNSPECIFIED       1
 
 /** IEEE Type definitions  */
 typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e {
@@ -87,6 +87,7 @@ typedef MLAN_PACK_START enum _IEEEtypes_ElementId_e {
 	QUIET = 40,
 	IBSS_DFS = 41,
 	HT_CAPABILITY = 45,
+	QOS_INFO = 46,
 	HT_OPERATION = 61,
 	BSSCO_2040 = 72,
 	OVERLAPBSSSCANPARAM = 74,
@@ -159,7 +160,7 @@ typedef MLAN_PACK_START struct _TLV_Generic_t {
 
 /** Capability information mask */
 #define CAPINFO_MASK    (~(MBIT(15) | MBIT(14) |            \
-                           MBIT(12) | MBIT(11) | MBIT(9)))
+							MBIT(12) | MBIT(11) | MBIT(9)))
 
 /** Capability Bit Map*/
 #ifdef BIG_ENDIAN_SUPPORT

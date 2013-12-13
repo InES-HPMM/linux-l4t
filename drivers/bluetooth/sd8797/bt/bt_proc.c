@@ -28,16 +28,16 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
 #define PROC_DIR NULL
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-#define PROC_DIR &proc_root
+#define PROC_DIR (&proc_root)
 #else
 #define PROC_DIR proc_net
 #endif
 
 /** Proc mbt directory entry */
-static struct proc_dir_entry *proc_mbt = NULL;
+static struct proc_dir_entry *proc_mbt;
 
 #define     CMD52_STR_LEN   50
-static bt_private *bpriv = NULL;
+static bt_private *bpriv;
 static char cmd52_string[CMD52_STR_LEN];
 
 struct proc_data {
@@ -71,12 +71,12 @@ struct proc_data {
 /** Device size */
 #define item_dev_size(n) (sizeof((bt_dev_t *)0)->n)
 /** Device address */
-#define item_dev_addr(n) ((t_ptr) &((bt_dev_t *)0)->n)
+#define item_dev_addr(n) ((t_ptr) & ((bt_dev_t *)0)->n)
 
 /** Adapter size */
 #define item_adapter_size(n) (sizeof((bt_adapter *)0)->n)
 /** Adapter address */
-#define item_adapter_addr(n) ((t_ptr) &((bt_adapter *)0)->n)
+#define item_adapter_addr(n) ((t_ptr) & ((bt_adapter *)0)->n)
 
 static struct item_data config_items[] = {
 #ifdef	DEBUG_LEVEL1
@@ -178,7 +178,7 @@ string_to_number(char *s)
 			break;
 	}
 
-	return (r * pn);
+	return r * pn;
 }
 
 /**
@@ -348,7 +348,11 @@ proc_write(struct file *file,
 static void
 proc_on_close(struct inode *inode, struct file *file)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	struct proc_private_data *priv = PDE_DATA(inode);
+#else
+	struct proc_private_data *priv = PDE(inode)->data;
+#endif
 	struct proc_data *pdata = file->private_data;
 	char *line;
 	int i;
@@ -397,7 +401,11 @@ proc_on_close(struct inode *inode, struct file *file)
 static int
 proc_open(struct inode *inode, struct file *file)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	struct proc_private_data *priv = PDE_DATA(inode);
+#else
+	struct proc_private_data *priv = PDE(inode)->data;
+#endif
 	struct proc_data *pdata;
 	int i;
 	char *p;
@@ -405,21 +413,23 @@ proc_open(struct inode *inode, struct file *file)
 	ENTER();
 	priv->pbt->adapter->skb_pending =
 		skb_queue_len(&priv->pbt->adapter->tx_queue);
-	if ((file->private_data =
-	     kzalloc(sizeof(struct proc_data), GFP_KERNEL)) == NULL) {
+	file->private_data = kzalloc(sizeof(struct proc_data), GFP_KERNEL);
+	if (file->private_data == NULL) {
 		PRINTM(ERROR, "BT: Can not alloc mem for proc_data\n");
 		LEAVE();
 		return -ENOMEM;
 	}
 	pdata = (struct proc_data *)file->private_data;
-	if ((pdata->rdbuf = kmalloc(priv->bufsize, GFP_KERNEL)) == NULL) {
+	pdata->rdbuf = kmalloc(priv->bufsize, GFP_KERNEL);
+	if (pdata->rdbuf == NULL) {
 		PRINTM(ERROR, "BT: Can not alloc mem for rdbuf\n");
 		kfree(file->private_data);
 		LEAVE();
 		return -ENOMEM;
 	}
 	if (priv->fileflag == DEFAULT_FILE_PERM) {
-		if ((pdata->wrbuf = kzalloc(priv->bufsize, GFP_KERNEL)) == NULL) {
+		pdata->wrbuf = kzalloc(priv->bufsize, GFP_KERNEL);
+		if (pdata->wrbuf == NULL) {
 			PRINTM(ERROR, "BT: Can not alloc mem for wrbuf\n");
 			kfree(pdata->rdbuf);
 			kfree(file->private_data);
@@ -522,8 +532,7 @@ bt_proc_init(bt_private * priv, struct m_dev *m_dev, int seq)
 		}
 		memcpy((u8 *) priv->dev_proc[seq].pfiles, (u8 *) proc_files,
 		       sizeof(proc_files));
-		priv->dev_proc[seq].num_proc_files =
-			sizeof(proc_files) / sizeof(proc_files[0]);
+		priv->dev_proc[seq].num_proc_files = ARRAY_SIZE(proc_files);
 		for (j = 0; j < priv->dev_proc[seq].num_proc_files; j++)
 			priv->dev_proc[seq].pfiles[j].pdata = NULL;
 		for (j = 0; j < priv->dev_proc[seq].num_proc_files; j++) {
@@ -562,6 +571,16 @@ bt_proc_init(bt_private * priv, struct m_dev *m_dev, int seq)
 						(t_ptr) priv->adapter;
 			}
 			priv->dev_proc[seq].pfiles[j].pbt = priv;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+			entry = proc_create_data(proc_files[j].name,
+						 S_IFREG | proc_files[j].
+						 fileflag,
+						 priv->dev_proc[seq].proc_entry,
+						 proc_files[j].fops,
+						 &priv->dev_proc[seq].
+						 pfiles[j]);
+			if (entry == NULL)
+#else
 			entry = create_proc_entry(proc_files[j].name,
 						  S_IFREG | proc_files[j].
 						  fileflag,
@@ -574,6 +593,7 @@ bt_proc_init(bt_private * priv, struct m_dev *m_dev, int seq)
 #endif
 				entry->proc_fops = proc_files[j].fops;
 			} else
+#endif
 				PRINTM(MSG, "BT: Fail to create proc %s\n",
 				       proc_files[j].name);
 		}
@@ -617,17 +637,14 @@ bt_proc_remove(bt_private * priv)
 		for (i = 0; i < MAX_RADIO_FUNC; i++) {
 			if (!priv->dev_proc[i].proc_entry)
 				continue;
-			for (j = 0;
-			     j < sizeof(proc_files) / sizeof(proc_files[0]);
-			     j++) {
+			for (j = 0; j < ARRAY_SIZE(proc_files); j++) {
 				remove_proc_entry(proc_files[j].name,
 						  priv->dev_proc[i].proc_entry);
 			}
-			if (priv->dev_proc[i].proc_entry) {
-				remove_proc_entry(priv->bt_dev.m_dev[i].name,
-						  proc_mbt);
-				priv->dev_proc[i].proc_entry = NULL;
-			}
+
+			remove_proc_entry(priv->bt_dev.m_dev[i].name, proc_mbt);
+			priv->dev_proc[i].proc_entry = NULL;
+
 			if (priv->dev_proc[i].pfiles) {
 				for (j = 0;
 				     j < priv->dev_proc[i].num_proc_files;
