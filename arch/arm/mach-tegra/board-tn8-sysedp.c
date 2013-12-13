@@ -99,10 +99,10 @@ static int rbat_data[] = {  90000, 60000, 70000,  90000, 110000,   /* 100% */
 static int rbat_temp_axis[] = { 60, 40, 25, 0, -20 };
 static int rbat_capacity_axis[] = { 100, 13, 0 };
 #else
-static int rbat_data[] = {  70000,   /* 100% */
-			    70000,   /*  25% */
-			   110000,   /*  10% */
-			   130000 }; /*   0% */
+static int rbat_data[] = { 110000,   /* 100% */
+			   110000,   /*  25% */
+			   150000,   /*  10% */
+			   170000 }; /*   0% */
 static int rbat_temp_axis[] = { 25 };
 static int rbat_capacity_axis[] = { 100, 25, 10, 0 };
 #endif
