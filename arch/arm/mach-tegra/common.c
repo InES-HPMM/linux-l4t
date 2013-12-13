@@ -2562,7 +2562,7 @@ void __init display_tegra_dt_info(void)
 		pr_info("DTS File Name: <unknown>\n");
 }
 
-void __init tegra_get_last_reset_reason(void)
+static int __init tegra_get_last_reset_reason(void)
 {
 #define PMC_RST_STATUS 0x1b4
 #define RESET_STR(REASON) "last reset is due to "#REASON"\n"
@@ -2579,5 +2579,6 @@ void __init tegra_get_last_reset_reason(void)
 		pr_info("last reset value is invalid 0x%x\n", val);
 	else
 		pr_info("%s\n", reset_reason[val]);
+	return 0;
 }
 late_initcall(tegra_get_last_reset_reason);
