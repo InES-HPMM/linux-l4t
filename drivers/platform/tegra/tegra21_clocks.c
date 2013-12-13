@@ -567,8 +567,6 @@
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
 
-#define	LVL2_CLK_GATE_OVRE			0x554
-
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 #define DIVIDER_1_5_ALLOWED	0
@@ -4423,30 +4421,6 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
-
-/* msenc clock propagation WAR for bug 1005168 */
-static int tegra21_msenc_clk_enable(struct clk *c)
-{
-	int ret = tegra21_periph_clk_enable(c);
-	if (ret)
-		return ret;
-
-	clk_writel(0, LVL2_CLK_GATE_OVRE);
-	clk_writel(0x00400000, LVL2_CLK_GATE_OVRE);
-	udelay(1);
-	clk_writel(0, LVL2_CLK_GATE_OVRE);
-	return 0;
-}
-
-static struct clk_ops tegra_msenc_clk_ops = {
-	.init			= &tegra21_periph_clk_init,
-	.enable			= &tegra21_msenc_clk_enable,
-	.disable		= &tegra21_periph_clk_disable,
-	.set_parent		= &tegra21_periph_clk_set_parent,
-	.set_rate		= &tegra21_periph_clk_set_rate,
-	.round_rate		= &tegra21_periph_clk_round_rate,
-	.reset			= &tegra21_periph_clk_reset,
-};
 /* Periph extended clock configuration ops */
 static int
 tegra21_vi_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
@@ -7170,7 +7144,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
+	PERIPH_CLK("msenc",	"msenc",		NULL,	91,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
