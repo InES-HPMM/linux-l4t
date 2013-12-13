@@ -1,0 +1,54 @@
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1936-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1936-fixed.dtsi"
+#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8 ERS POP";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia-boardids = "1922:1000:0:C:3";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	i2c@7000c000 {
+		status = "okay";
+		clock-frequency = <100000>;
+
+		mpu6515@69 {
+			compatible = "invensense,mpu6515";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <144 0x01>;
+			invensense,int_config = <0x10>;
+			invensense,level_shifter = <0>;
+			invensense,orientation = [01 00 00 00 ff 00 00 00 ff];
+			invensense,sec_slave_type = <0>;
+			invensense,key = [4e cc 7e eb f6 1e 35 22
+					  00 34 0d 65 32 e9 94 89];
+			vlogic-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+
+		ak8963c@0d {
+			compatible = "ak,ak8963";
+			reg = <0x0d>;
+			orientation = [01 00 00 00 ff 00 00 00 ff];
+			config = "mpu";
+			vid-supply = <&palmas_smps8>;
+			vdd-supply = <&palmas_smps9>;
+		};
+	};
+
+};
+
