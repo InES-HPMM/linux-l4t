@@ -678,8 +678,10 @@ int __init loki_sensors_init(void)
 	if (!(board_info.board_id == BOARD_P2530 &&
 		board_info.sku == BOARD_SKU_FOSTER)) {
 		mpuirq_init();
-		loki_camera_init();
-		loki_jsa1127_init();
+		if (board_info.board_id != BOARD_E2549) {
+			loki_camera_init();
+			loki_jsa1127_init();
+		}
 	}
 	return 0;
 }
