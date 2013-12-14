@@ -1485,6 +1485,23 @@ err_unregister_switch:
 	tegra_asoc_switch_unregister(&tegra_rt5639_headset_switch);
 err_fini_utils:
 #endif
+	if (machine->digital_reg) {
+		regulator_disable(machine->digital_reg);
+		regulator_put(machine->digital_reg);
+	}
+	if (machine->analog_reg) {
+		regulator_disable(machine->analog_reg);
+		regulator_put(machine->analog_reg);
+	}
+	if (machine->spk_reg)
+		regulator_put(machine->spk_reg);
+	if (machine->dmic_reg)
+		regulator_put(machine->dmic_reg);
+	if (machine->codec_reg) {
+		regulator_disable(machine->digital_reg);
+		regulator_put(machine->codec_reg);
+	}
+
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
 	if (np)
@@ -1507,16 +1524,23 @@ static int tegra_rt5639_driver_remove(struct platform_device *pdev)
 					1,
 					&tegra_rt5639_hp_jack_gpio);
 
-	if (machine->digital_reg)
+	if (machine->digital_reg) {
+		regulator_disable(machine->digital_reg);
 		regulator_put(machine->digital_reg);
-	if (machine->analog_reg)
+	}
+	if (machine->analog_reg) {
+		regulator_disable(machine->analog_reg);
 		regulator_put(machine->analog_reg);
+	}
 	if (machine->spk_reg)
 		regulator_put(machine->spk_reg);
+
 	if (machine->dmic_reg)
 		regulator_put(machine->dmic_reg);
-	if (machine->codec_reg)
+	if (machine->codec_reg) {
+		regulator_disable(machine->codec_reg);
 		regulator_put(machine->codec_reg);
+	}
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);
