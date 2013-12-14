@@ -2,10 +2,11 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-io.dtsi"
-#include "tegra124-platforms/tegra124-tn8-e1761-2gb-emc.dtsi"
+#include "tegra124-platforms/tegra124-tn8-p1761-emc-2gb.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1936-pmic.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1936-fixed.dtsi"
-#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-p1761-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-p1761-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 
 / {

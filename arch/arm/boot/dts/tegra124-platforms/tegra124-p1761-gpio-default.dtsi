@@ -8,6 +8,7 @@
 		gpio_default: default {
 			gpio-input = <  TEGRA_GPIO(C, 7)
 					TEGRA_GPIO(H, 4)
+					TEGRA_GPIO(I, 1)
 					TEGRA_GPIO(I, 6)
 					TEGRA_GPIO(J, 0)
 					TEGRA_GPIO(K, 2)

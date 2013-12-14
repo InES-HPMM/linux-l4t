@@ -82,7 +82,6 @@
 #include "board-common.h"
 #include "board-touch-raydium.h"
 #include "board-touch-maxim_sti.h"
-#include "board-tn8-p1761.h"
 #include "clock.h"
 #include "common.h"
 #include "devices.h"
@@ -1129,13 +1128,6 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-
-	if (board_info.board_id == BOARD_P1761 ||
-		board_info.board_id == BOARD_E1784 ||
-		board_info.board_id == BOARD_E1922) {
-		platform_device_register(&tegra124_pinctrl_device);
-		tn8_p1761_pinmux_init();
-	}
 
 	ardbeg_display_init();
 	ardbeg_uart_init();
