@@ -865,6 +865,8 @@ int __init norrin_soctherm_init(void)
 			&norrin_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_tgpu_trips(norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips);
+	tegra_add_core_vmax_trips(norrin_soctherm_data.therm[THERM_PLL].trips,
+			&norrin_soctherm_data.therm[THERM_PLL].num_trips);
 
 	return tegra11_soctherm_init(&norrin_soctherm_data);
 }
