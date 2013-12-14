@@ -27,8 +27,8 @@
 #include "genetlink.h"
 #endif
 
-#define DRIVER_VERSION  "1.4.1"
-#define DRIVER_RELEASE  "August 14, 2013"
+#define DRIVER_VERSION  "1.4.3"
+#define DRIVER_RELEASE  "September 27, 2013"
 
 /****************************************************************************\
 * Netlink: common kernel/user space macros                                   *

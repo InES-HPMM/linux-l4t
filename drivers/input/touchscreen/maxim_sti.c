@@ -29,10 +29,6 @@
 #include <linux/maxim_sti.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 
-#ifdef CONFIG_PM_WAKELOCKS
-#include <linux/pm_wakeup.h>
-#endif
-
 #define CREATE_TRACE_POINTS
 #include <trace/events/touchscreen_maxim.h>
 
@@ -71,6 +67,7 @@ struct dev_data {
 	u32                          nl_seq;
 	u8                           nl_mc_group_count;
 	bool                         nl_enabled;
+	bool                         start_fusion;
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
 	bool                         expect_resume_ack;
@@ -104,9 +101,6 @@ struct dev_data {
 	void                         (*service_irq)(struct dev_data *dd);
 #if NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
-#endif
-#ifdef CONFIG_PM_WAKELOCKS
-	struct wakeup_source         ws;
 #endif
 };
 
@@ -792,9 +786,6 @@ static int suspend(struct device *dev)
 		return ret;
 #endif
 
-#ifdef CONFIG_PM_WAKELOCKS
-	__pm_relax(&dd->ws);
-#endif
 	INFO("suspend...done");
 
 	return 0;
@@ -810,10 +801,6 @@ static int resume(struct device *dev)
 
 	if (!dd->suspend_in_progress)
 		return 0;
-
-#ifdef CONFIG_PM_WAKELOCKS
-	__pm_stay_awake(&dd->ws);
-#endif
 
 #if SUSPEND_POWER_OFF
 	/* power-up and reset-high */
@@ -1580,7 +1567,11 @@ static int processing_thread(void *arg)
 	struct dev_data         *dd = arg;
 	struct maxim_sti_pdata  *pdata = dd->spi->dev.platform_data;
 	struct sk_buff          *skb;
+	char                    *argv[] = { pdata->touch_fusion, "daemon",
+					    pdata->nl_family,
+					    pdata->config_file, NULL };
 	int                     ret, ret2;
+	bool                    fusion_dead;
 
 	sched_setscheduler(current, SCHED_FIFO, &dd->thread_sched);
 
@@ -1597,12 +1588,23 @@ static int processing_thread(void *arg)
 		/* priority 1: start up fusion process */
 		if (dd->fusion_process != (pid_t)0 && get_pid_task(
 					find_get_pid(dd->fusion_process),
-					PIDTYPE_PID) == NULL) {
+					PIDTYPE_PID) == NULL &&
+					!dd->suspend_in_progress) {
 			stop_scan_canned(dd);
+			dd->start_fusion = true;
 			dd->fusion_process = (pid_t)0;
 #if INPUT_ENABLE_DISABLE
 			dd->input_no_deconfig = true;
 #endif
+		}
+		if (dd->start_fusion) {
+			do {
+				ret = call_usermodehelper(argv[0], argv, NULL,
+							  UMH_WAIT_EXEC);
+				if (ret != 0)
+					msleep(100);
+			} while (ret != 0 && !kthread_should_stop());
+			dd->start_fusion = false;
 		}
 		if (kthread_should_stop())
 			break;
@@ -1625,16 +1627,11 @@ static int processing_thread(void *arg)
 			complete(&dd->suspend_resume);
 
 			INFO("%s: suspended.", __func__);
-
-			dd->expect_resume_ack = true;
-			while (!dd->resume_in_progress &&
-					!kthread_should_stop()) {
+			while (!dd->resume_in_progress) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule();
 			}
-			if (kthread_should_stop())
-				break;
 
 			INFO("%s: resuming.", __func__);
 
@@ -1645,7 +1642,15 @@ static int processing_thread(void *arg)
 			dd->suspend_in_progress = false;
 			complete(&dd->suspend_resume);
 
+			fusion_dead = false;
 			do {
+				if (dd->fusion_process != (pid_t)0 &&
+				    get_pid_task(find_get_pid(
+							dd->fusion_process),
+						 PIDTYPE_PID) == NULL) {
+					fusion_dead = true;
+					break;
+				}
 				ret = nl_add_attr(dd->outgoing_skb->data,
 						  FU_RESUME, NULL, 0);
 				if (ret < 0) {
@@ -1671,9 +1676,9 @@ static int processing_thread(void *arg)
 				if (ret2 < 0)
 					ERROR("could not allocate outgoing " \
 					      "skb (%d)", ret2);
-			} while (ret != 0 && !kthread_should_stop());
-			if (kthread_should_stop())
-				break;
+			} while (ret != 0);
+			if (fusion_dead)
+				continue;
 			if (ret == 0)
 				INFO("%s: resumed.", __func__);
 		}
@@ -1821,11 +1826,8 @@ static int probe(struct spi_device *spi)
 	dd->last_irq_jiffies = jiffies;
 #endif
 
-#ifdef CONFIG_PM_WAKELOCKS
-	wakeup_source_init(&dd->ws, "touch_fusion");
-	__pm_stay_awake(&dd->ws);
-#endif
 	/* start up Touch Fusion */
+	dd->start_fusion = true;
 	wake_up_process(dd->thread);
 	INFO("driver loaded; version %s; release date %s", DRIVER_VERSION,
 	     DRIVER_RELEASE);
@@ -1851,12 +1853,6 @@ static int remove(struct spi_device *spi)
 
 	INFO("removing...\n");
 
-	if (dd->irq_registered)
-		disable_irq(dd->spi->irq);
-
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
-
 	if (dd->fusion_process != (pid_t)0)
 		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
 
@@ -1869,6 +1865,8 @@ static int remove(struct spi_device *spi)
 	/* 4) above step (3) insures that all Netlink senders are           */
 	/*    definitely gone and it is safe to free up outgoing skb buffer */
 	/*    and incoming skb queue                                        */
+	dd->nl_enabled = false;
+	(void)kthread_stop(dd->thread);
 	genl_unregister_family(&dd->nl_family);
 	kfree_skb(dd->outgoing_skb);
 	skb_queue_purge(&dd->incoming_skb_queue);
@@ -1903,17 +1901,6 @@ static void shutdown(struct spi_device *spi)
 	struct dev_data         *dd = spi_get_drvdata(spi);
 
 	INFO("doing shutdown...\n");
-
-	if (dd->irq_registered)
-		disable_irq(dd->spi->irq);
-
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
-
-	if (dd->fusion_process != (pid_t)0)
-		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
-
-	stop_scan_canned(dd);
 
 	pdata->reset(pdata, 0);
 	usleep_range(100, 120);
