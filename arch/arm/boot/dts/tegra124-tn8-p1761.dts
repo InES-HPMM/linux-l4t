@@ -49,6 +49,12 @@
 			vid-supply = <&palmas_smps8>;
 			vdd-supply = <&palmas_smps9>;
 		};
+
+		max44006@44 {
+			compatible = "maxim,max44006";
+			reg = <0x44>;
+			vdd-supply = <&palmas_smps9>;
+		};
 	};
 
 };
