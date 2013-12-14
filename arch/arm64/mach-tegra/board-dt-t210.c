@@ -37,11 +37,7 @@ static struct nvmap_platform_carveout t210_carveouts[] = {
 		.name		= "iram",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
 		.base		= TEGRA_IRAM_BASE,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-		.size		= 0, /* DMA won't work in ASIM IRAM */
-#else
 		.size		= TEGRA_IRAM_SIZE,
-#endif
 		.buddy_size	= 0, /* no buddy allocation for IRAM */
 	},
 	[1] = {
