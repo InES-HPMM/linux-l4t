@@ -6191,13 +6191,19 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 	}
 
 	if (c->u.shared_bus_user.client_id) {
-		c->u.shared_bus_user.client =
+		struct clk *client =
 			tegra_get_clock_by_name(c->u.shared_bus_user.client_id);
-		if (!c->u.shared_bus_user.client) {
+		if (!client) {
 			pr_err("%s: could not find clk %s\n", __func__,
 			       c->u.shared_bus_user.client_id);
 			return;
 		}
+
+		if ((client->state == ON) && !(client->flags & PERIPH_NO_ENB))
+			pr_info("%s: %s client %s left ON\n", __func__,
+				c->parent->name, client->name);
+
+		c->u.shared_bus_user.client = client;
 		c->u.shared_bus_user.client->flags |=
 			c->parent->flags & PERIPH_ON_CBUS;
 		c->flags |= c->parent->flags & PERIPH_ON_CBUS;
