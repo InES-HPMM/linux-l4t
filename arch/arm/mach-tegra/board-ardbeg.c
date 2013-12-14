@@ -901,6 +901,20 @@ struct maxim_sti_pdata maxim_sti_pdata = {
 	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
 };
 
+struct maxim_sti_pdata maxim_sti_pdata_rd = {
+	.touch_fusion         = "/vendor/bin/touch_fusion_rd",
+	.config_file          = "/vendor/firmware/touch_fusion.cfg",
+	.fw_name              = "maxim_fp35.bin",
+	.nl_family            = TF_FAMILY_NAME,
+	.nl_mc_groups         = 5,
+	.chip_access_method   = 2,
+	.default_reset_state  = 0,
+	.tx_buf_size          = 4100,
+	.rx_buf_size          = 4100,
+	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
+	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
+};
+
 static struct tegra_spi_device_controller_data maxim_dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.is_hw_based_cs = true,
@@ -978,6 +992,8 @@ static int __init ardbeg_touch_init(void)
 		pr_info("%s init maxim touch\n", __func__);
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
+		if (tegra_get_touch_panel_id() == TOUCHPANEL_TN7)
+			maxim_sti_spi_board.platform_data = &maxim_sti_pdata_rd;
 		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
 #endif
 	} else if (tegra_get_touch_vendor_id() == RAYDIUM_TOUCH) {

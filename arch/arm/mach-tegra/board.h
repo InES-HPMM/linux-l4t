@@ -214,10 +214,21 @@ enum panel_type {
 	panel_type_dsi,
 };
 
-enum touch_type {
-	RAYDIUM_TOUCH  = 0,
-	SYNAPTIC_TOUCH = 1,
-	MAXIM_TOUCH = 2,
+enum touch_vendor {
+	RAYDIUM_TOUCH = 0,
+	SYNAPTIC_TOUCH,
+	MAXIM_TOUCH,
+};
+
+enum touch_panel {
+	TOUCHPANEL_RESERVED = 0,
+	TOUCHPANEL_WINTEK,
+	TOUCHPANEL_TPK,
+	TOUCHPANEL_TOUCHTURNS,
+	TOUCHPANEL_THOR_WINTEK,
+	TOUCHPANEL_LOKI_WINTEK_5_66_UNLAMIN,
+	TOUCHPANEL_TN7,
+	TOUCHPANEL_TN8,
 };
 
 enum audio_codec_type {
