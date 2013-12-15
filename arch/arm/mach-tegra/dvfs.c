@@ -1889,12 +1889,16 @@ int __init tegra_dvfs_late_init(void)
 		if (dvfs_rail_connect_to_regulator(rail))
 			connected = false;
 
-	list_for_each_entry(rail, &dvfs_rail_list, node)
-		if (connected)
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		if (connected) {
 			dvfs_rail_update(rail);
-		else
-			__tegra_dvfs_rail_disable(rail);
-
+			if (!rail->disabled)
+				continue;
+			/* Don't rely on boot level - force disabled voltage */
+			rail->disabled = false;
+		}
+		__tegra_dvfs_rail_disable(rail);
+	}
 	mutex_unlock(&dvfs_lock);
 
 	if (!connected && tegra_platform_is_silicon()) {
