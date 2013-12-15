@@ -1878,7 +1878,7 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
  * by the regulator api for each one.  Must be called in late init, after
  * all the regulator api's regulators are initialized.
  */
-int __init tegra_dvfs_late_init(void)
+int __init tegra_dvfs_rail_connect_regulators(void)
 {
 	bool connected = true;
 	struct dvfs_rail *rail;
@@ -1906,6 +1906,13 @@ int __init tegra_dvfs_late_init(void)
 			"            !!!! voltage scaling is disabled !!!!\n");
 		return -ENODEV;
 	}
+
+	return 0;
+}
+
+int __init tegra_dvfs_rail_register_notifiers(void)
+{
+	struct dvfs_rail *rail;
 
 	register_pm_notifier(&tegra_dvfs_suspend_nb);
 	register_pm_notifier(&tegra_dvfs_resume_nb);

@@ -233,9 +233,11 @@ void tegra14x_init_dvfs(void);
 void tegra12x_vdd_cpu_align(int step_uv, int offset_uv);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
 int dvfs_debugfs_init(struct dentry *clk_debugfs_root);
-int tegra_dvfs_late_init(void);
+int tegra_dvfs_rail_connect_regulators(void);
+int tegra_dvfs_rail_register_notifiers(void);
 int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
+
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
 int tegra_dvfs_rail_power_up(struct dvfs_rail *rail);

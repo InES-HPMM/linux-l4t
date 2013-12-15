@@ -989,26 +989,6 @@ static int __init tegra_keep_boot_clocks_setup(char *__unused)
 __setup("tegra_keep_boot_clocks", tegra_keep_boot_clocks_setup);
 
 /*
- * Bootloader may not match kernel restrictions on CPU clock sources.
- * Make sure CPU clock is sourced from either main or backup parent.
- */
-static int __init tegra_sync_cpu_clock(void)
-{
-	int ret;
-	unsigned long rate;
-	struct clk *c = tegra_get_clock_by_name("cpu");
-
-	BUG_ON(!c);
-	rate = clk_get_rate(c);
-	ret = clk_set_rate(c, rate);
-	if (ret)
-		pr_err("%s: Failed to sync CPU at rate %lu\n", __func__, rate);
-	else
-		pr_info("CPU rate: %lu MHz\n", clk_get_rate(c) / 1000000);
-	return ret;
-}
-
-/*
  * Iterate through all clocks, disabling any for which the refcount is 0
  * but the clock init detected the bootloader left the clock on.
  */
@@ -1044,40 +1024,53 @@ static int __init tegra_init_disable_boot_clocks(void)
 	return 0;
 }
 
-/* Get ready DFLL clock source (if available) for CPU */
-static int __init tegra_dfll_cpu_start(void)
+/* Get ready DVFS rails and DFLL clock source (if available) for CPU */
+static int __init tegra_dvfs_rail_start_scaling(void)
 {
-	unsigned long flags;
+	int ret;
+	unsigned long flags, rate;
 	struct clk *c = tegra_get_clock_by_name("cpu");
 	struct clk *dfll_cpu = tegra_get_clock_by_name("dfll_cpu");
+	bool init_dfll_first = tegra_dvfs_is_dfll_bypass();
 
 	BUG_ON(!c);
 	clk_lock_save(c, &flags);
-
-	if (dfll_cpu && dfll_cpu->ops && dfll_cpu->ops->init)
-		dfll_cpu->ops->init(dfll_cpu);
-
-	clk_unlock_restore(c, &flags);
-	return 0;
-}
-
-static int __init tegra_clk_late_init(void)
-{
-	bool init_dfll_first = tegra_dvfs_is_dfll_bypass();
-
-	tegra_init_disable_boot_clocks(); /* must before dvfs late init */
 
 	/*
 	 * Initialize dfll first if it provides bypass to regulator for legacy
 	 * dvfs; otherwise legacy dvfs controls cpu voltage independently, and
 	 * initialized before dfll.
 	 */
-	if (init_dfll_first)
-		tegra_dfll_cpu_start();
-	if (!tegra_dvfs_late_init() && !init_dfll_first)
-		tegra_dfll_cpu_start();
+	if (init_dfll_first) {
+		if (dfll_cpu && dfll_cpu->ops && dfll_cpu->ops->init)
+			dfll_cpu->ops->init(dfll_cpu);
+	}
 
-	tegra_sync_cpu_clock();		/* after attempt to get dfll ready */
+	ret = tegra_dvfs_rail_connect_regulators();
+	if (!ret && !init_dfll_first) {
+		if (dfll_cpu && dfll_cpu->ops && dfll_cpu->ops->init)
+			dfll_cpu->ops->init(dfll_cpu);
+	}
+
+	/*
+	 * Bootloader may not match kernel restrictions on CPU clock sources.
+	 * Make sure CPU clock is sourced from either main or backup parent.
+	 */
+	rate = clk_get_rate_locked(c);
+	if (clk_set_rate_locked(c, rate))
+		pr_err("%s: Failed to sync CPU at rate %lu\n", __func__, rate);
+	else
+		pr_info("CPU rate: %lu MHz\n", clk_get_rate_locked(c)/1000000);
+
+	clk_unlock_restore(c, &flags);
+	return ret;
+}
+
+static int __init tegra_clk_late_init(void)
+{
+	tegra_init_disable_boot_clocks();	/* must before dvfs start */
+	if (!tegra_dvfs_rail_start_scaling())		/* CPU lock protected */
+		tegra_dvfs_rail_register_notifiers();	/* not under CPU lock */
 	tegra_update_cpu_edp_limits();
 	return 0;
 }
