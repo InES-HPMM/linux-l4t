@@ -2641,8 +2641,9 @@ static int tegra_udc_stop(struct usb_gadget *g,
 	udc->gadget.dev.driver = NULL;
 	udc->driver = NULL;
 
-	printk(KERN_WARNING "unregistered gadget driver '%s'\n",
-	       driver->driver.name);
+	if (driver)
+		DBG("%s(%d) unregistered gadget driver '%s'\n",
+			 __func__, __LINE__, driver->driver.name);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 
