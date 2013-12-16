@@ -1,7 +1,7 @@
 /*
  * virtual.c - Virtual kernel driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -161,13 +161,13 @@ static int virtual_update(
 			}
 			if (upd[idx].arg >= cdev->pinmux_num) {
 				dev_err(cdev->dev,
-					"pinmux index %d out of range.\n",
+					"pinmux index %lu out of range.\n",
 					upd[idx].arg);
 				err = -ENODEV;
 				break;
 			}
 
-			dev_dbg(cdev->dev, "UPDATE_PINMUX: %d %d\n",
+			dev_dbg(cdev->dev, "UPDATE_PINMUX: %d %lu\n",
 				upd[idx].index, upd[idx].arg);
 			if (!upd[idx].index)
 				pinmux = &cdev->mclk_enable_idx;
@@ -196,7 +196,7 @@ static int virtual_update(
 				break;
 			}
 
-			dev_dbg(cdev->dev, "UPDATE_GPIO: %d %d\n",
+			dev_dbg(cdev->dev, "UPDATE_GPIO: %d %lu\n",
 				upd[idx].index, upd[idx].arg);
 			gpio->valid = true;
 			cdev->gpios[upd[idx].index] = *gpio;

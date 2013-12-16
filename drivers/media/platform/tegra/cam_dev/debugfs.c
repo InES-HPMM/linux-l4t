@@ -1,7 +1,7 @@
 /*
  * debugfs.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -52,8 +52,8 @@ static int camera_debugfs_layout(struct seq_file *s)
 		return -EEXIST;
 
 	if (unlikely(num * sizeof(*layout) != cam_desc->size_layout)) {
-		seq_printf(s, "WHAT? layout size mismatch: %d vs %d x %d\n",
-			cam_desc->size_layout, num, sizeof(*layout));
+		seq_printf(s, "WHAT? layout size mismatch: %zx vs %d\n",
+			cam_desc->size_layout, num);
 		return -EFAULT;
 	}
 

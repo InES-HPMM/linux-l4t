@@ -1,7 +1,7 @@
 /*
  * ov5640.c - ov5640 sensor driver
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *      Abhinav Sinha <absinha@nvidia.com>
@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
+#include <linux/tegra-pm.h>
 #include <media/ov5640.h>
 
 #include "ov5640_tables.h"
@@ -60,8 +61,8 @@
 #define POS_LOW (0)
 #define POS_HIGH (1023)
 #define FPOS_COUNT 1024
-#define FOCAL_LENGTH (10.0f)
-#define FNUMBER (2.8f)
+#define FOCAL_LENGTH (100)
+#define FNUMBER (28)
 
 #define SIZEOF_I2C_TRANSBUF 64
 
@@ -276,7 +277,7 @@ static int ov5640_get_af_status(struct ov5640_info *info, u8 *val)
 	if (err)
 		return -EINVAL;
 
-	dev_info(info->dev, "%s: value %02x\n", __func__, (u32)val);
+	dev_info(info->dev, "%s: value %p\n", __func__, val);
 	return 0;
 }
 

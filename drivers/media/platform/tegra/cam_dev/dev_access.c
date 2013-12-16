@@ -1,7 +1,7 @@
 /*
  * dev_access.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -368,8 +368,8 @@ int camera_regulator_get(struct device *dev,
 	}
 	reg = regulator_get(dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
-		dev_notice(dev, "%s %s not there: %d\n",
-			__func__, vreg_name, (int)reg);
+		dev_notice(dev, "%s %s not there: %ld\n",
+			__func__, vreg_name, (long int)reg);
 		err = PTR_ERR(reg);
 		nvc_reg->vreg = NULL;
 	} else {

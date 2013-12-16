@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -154,8 +154,8 @@ enum {
 struct cam_update {
 	u32 type;
 	u32 index;
-	u32 arg;
 	u32 size;
+	unsigned long arg;
 };
 
 enum {

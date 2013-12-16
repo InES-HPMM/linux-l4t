@@ -1,7 +1,7 @@
 /*
  * ov5640.h - header for YUV camera sensor OV5640 driver.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -37,16 +37,16 @@
 #define OV5640_POWER_LEVEL_SUS		2
 
 struct ov5640_mode {
-	int xres;
-	int yres;
+	__u32 xres;
+	__u32 yres;
 };
 
 struct ov5640_config {
 	__u32 settle_time;
 	__u32 pos_low;
 	__u32 pos_high;
-	float focal_length;
-	float fnumber;
+	__u32 focal_length;
+	__u32 fnumber;
 };
 
 enum {
