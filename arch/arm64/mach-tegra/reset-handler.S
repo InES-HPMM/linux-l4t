@@ -40,8 +40,10 @@
 	sub	\rd, \rcpu, #1
 	lsl	\rd, \rd, #3
 	add	\rd, \rd, #0x18
+	b	2f
 1:
 	mov	\rd, #8
+2:
 .endm
 
 #ifdef CONFIG_PM_SLEEP
