@@ -10,7 +10,7 @@
 	model = "NVIDIA Tegra124 Ardbeg ERS-S POP";
 	compatible = "nvidia,ardbeg", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
-	nvidia-boardids = "1923:1000:0:C:3";
+	nvidia,boardids = "1923:1000:0:C:3";
 	#address-cells = <1>;
 	#size-cells = <1>;
 

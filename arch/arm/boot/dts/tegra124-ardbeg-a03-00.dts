@@ -8,6 +8,6 @@
 / {
 	model = "NVIDIA Tegra124 Ardbeg";
 	compatible = "nvidia,ardbeg", "nvidia,tegra124";
-	nvidia-boardids = "1780:1000:3:B:3";
+	nvidia,boardids = "1780:1000:3:B:3";
 	nvidia,dtsfilename = __FILE__;
 };

@@ -11,7 +11,7 @@
 	model = "NVIDIA Tegra124 TN8 ERS POP";
 	compatible = "nvidia,tn8", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
-	nvidia-boardids = "1922:1000:0:C:3";
+	nvidia,boardids = "1922:1000:0:C:3";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
