@@ -1,16 +1,21 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307, USA
  */
+
 
 #include <linux/export.h>
 #include <linux/clk.h>
@@ -433,8 +438,7 @@ void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
 }
 EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-static int tegera_xusb_padctl_phy_enable(void)
+static int tegra_xusb_padctl_phy_enable(void)
 {
 	unsigned long val, timeout;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
@@ -473,37 +477,65 @@ static int tegera_xusb_padctl_phy_enable(void)
 	return 0;
 }
 
-int pcie_phy_pad_enable(int lane_owner)
+static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 {
-	unsigned long val, flags;
+	unsigned long val;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
-
-	spin_lock_irqsave(&xusb_padctl_lock, flags);
-
-	if (tegera_xusb_padctl_phy_enable())
-		return -ENXIO;
 
 	/* disable IDDQ for all lanes based on odmdata */
 	/* in same way as for lane ownership done below */
 	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	switch (lane_owner) {
 		case PCIE_LANES_X4_X1:
-		val |=
+		if (enable)
+			val |=
 			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+		else
+			val &=
+			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
 		case PCIE_LANES_X4_X0:
-		val |=
+		if (enable)
+			val |=
 			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+		else
+			val &=
+			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
 		case PCIE_LANES_X2_X1:
-		val |=
+		if (enable)
+			val |=
 			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
 			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
 			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4;
-			break;
+		else
+			val &=
+			~(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
+			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
+			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
+		break;
 		default:
 			pr_err("Tegra PCIe error: wrong lane config\n");
 			return -ENXIO;
 	}
 	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
+	return 0;
+}
+
+int pcie_phy_pad_enable(bool enable, int lane_owner)
+{
+	unsigned long val, flags;
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	int ret = 0;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	if (enable) {
+		ret = tegra_xusb_padctl_phy_enable();
+		if (ret)
+			goto exit;
+	}
+	ret = tegra_pcie_lane_iddq(enable, lane_owner);
+	if (ret || !enable)
+		goto exit;
 
 	/* clear AUX_MUX_LP0 related bits in ELPG_PROGRAM */
 	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
@@ -534,12 +566,13 @@ int pcie_phy_pad_enable(int lane_owner)
 			break;
 		default:
 			pr_err("Tegra PCIe error: wrong lane config\n");
-			return -ENXIO;
+			ret = -ENXIO;
+			goto exit;
 	}
 	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 
+exit:
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(pcie_phy_pad_enable);
-#endif

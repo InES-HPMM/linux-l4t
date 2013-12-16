@@ -133,9 +133,7 @@ void tegra_xhci_ss_vcore(u32 portmap, bool enable);
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
 int usb3_phy_pad_enable(u8 lane_owner);
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-int pcie_phy_pad_enable(int lane_owner);
-#endif
+int pcie_phy_pad_enable(bool enable, int lane_owner);
 
 int utmi_phy_iddq_override(bool set);
 void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val);

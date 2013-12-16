@@ -280,7 +280,6 @@ struct tegra_pcie_info {
 	struct regulator	*regulator_pexio;
 	struct regulator	*regulator_avdd_plle;
 	struct clk		*pcie_xclk;
-	struct clk		*pll_e;
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
 	struct list_head busses;
@@ -915,6 +914,23 @@ static void tegra_pcie_setup_translations(void)
 	afi_writel(0, AFI_MSI_BAR_SZ);
 }
 
+static int tegra_pcie_enable_pads(bool enable)
+{
+	int err = 0;
+
+	if (!tegra_platform_is_fpga()) {
+		/* WAR for Eye diagram failure on lanes for T124 platforms */
+		pads_writel(0x34ac34ac, PADS_REFCLK_CFG0);
+		pads_writel(0x00000028, PADS_REFCLK_BIAS);
+		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
+		err = pcie_phy_pad_enable(enable,
+				tegra_get_lane_owner_info() >> 1);
+		if (err)
+			pr_err("%s unable to initalize pads\n", __func__);
+	}
+	return err;
+}
+
 static int tegra_pcie_enable_controller(void)
 {
 	u32 val, reg;
@@ -991,31 +1007,8 @@ static int tegra_pcie_enable_controller(void)
 	val = afi_readl(AFI_FUSE) & ~AFI_FUSE_PCIE_T0_GEN2_DIS;
 	afi_writel(val, AFI_FUSE);
 
-	if (!tegra_platform_is_fpga()) {
-		/* WAR for Eye diagram failure on lanes for T124 platforms */
-		pads_writel(0x34ac34ac, PADS_REFCLK_CFG0);
-		pads_writel(0x00000028, PADS_REFCLK_BIAS);
-		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
-		ret = pcie_phy_pad_enable(lane_owner);
-		if (ret) {
-			pr_err("%s unable to initalize pads\n", __func__);
-			return ret;
-		}
-	}
-	/* Wait for clock to latch (min of 100us) */
-	udelay(100);
-
-	/* deassert PEX reset signal */
-	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
-		val = afi_readl(pex_controller_registers[i]);
-		val |= AFI_PEX_CTRL_RST;
-		afi_writel(val, pex_controller_registers[i]);
-	}
-	/* Take the PCIe interface module out of reset */
-	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
-
-	val = afi_readl(AFI_CONFIGURATION);
 	/* Finally enable PCIe */
+	val = afi_readl(AFI_CONFIGURATION);
 	val |=  AFI_CONFIGURATION_EN_FPCI;
 	afi_writel(val, AFI_CONFIGURATION);
 
@@ -1031,7 +1024,12 @@ static int tegra_pcie_enable_controller(void)
 
 	/* Disable all execptions */
 	afi_writel(0, AFI_FPCI_ERROR_MASKS);
-
+	/* deassert PEX reset signal */
+	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
+		val = afi_readl(pex_controller_registers[i]);
+		val |= AFI_PEX_CTRL_RST;
+		afi_writel(val, pex_controller_registers[i]);
+	}
 	return ret;
 }
 
@@ -1114,32 +1112,6 @@ err_exit:
 	return err;
 }
 #endif
-
-static int tegra_pcie_power_regate(void)
-{
-	int err;
-
-	PR_FUNC_LINE;
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
-	if (err) {
-		pr_err("PCIE: powerup sequence failed: %d\n", err);
-		return err;
-	}
-
-	tegra_periph_reset_assert(tegra_pcie.pcie_xclk);
-	err = clk_prepare_enable(tegra_pcie.pll_e);
-	if (err) {
-		pr_err("PCIE: plle clk enable failed: %d\n", err);
-		return err;
-	}
-	/* pciex is reset only but need to be enabled for dvfs support */
-	err = clk_enable(tegra_pcie.pcie_xclk);
-	if (err) {
-		pr_err("PCIE: pciex clk enable failed: %d\n", err);
-		return err;
-	}
-	return 0;
-}
 
 static int tegra_pcie_map_resources(void)
 {
@@ -1252,9 +1224,9 @@ static int tegra_pcie_power_on(void)
 		tegra_io_dpd_disable(&pexclk1_io);
 		tegra_io_dpd_disable(&pexclk2_io);
 	}
-	err = tegra_pcie_power_regate();
+	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
 	if (err) {
-		pr_err("PCIE: Failed to power regate\n");
+		pr_err("PCIE: powerup sequence failed: %d\n", err);
 		goto err_exit;
 	}
 	err = tegra_pcie_map_resources();
@@ -1287,12 +1259,8 @@ static int tegra_pcie_power_off(void)
 	}
 	tegra_pcie_prsnt_map_override(false);
 	tegra_pcie_pme_turnoff();
+	tegra_pcie_enable_pads(false);
 	tegra_pcie_unmap_resources();
-	if (tegra_pcie.pcie_xclk)
-		clk_disable(tegra_pcie.pcie_xclk);
-	if (tegra_pcie.pll_e)
-		clk_disable_unprepare(tegra_pcie.pll_e);
-
 	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 	if (err)
 		goto err_exit;
@@ -1313,31 +1281,22 @@ err_exit:
 static int tegra_pcie_clocks_get(void)
 {
 	PR_FUNC_LINE;
-	/* reset the PCIEXCLK */
+	/* get the PCIEXCLK */
 	tegra_pcie.pcie_xclk = clk_get_sys("tegra_pcie", "pciex");
 	if (IS_ERR_OR_NULL(tegra_pcie.pcie_xclk)) {
 		pr_err("%s: unable to get PCIE Xclock\n", __func__);
-		goto error_exit;
-	}
-	tegra_pcie.pll_e = clk_get_sys(NULL, "pll_e");
-	if (IS_ERR_OR_NULL(tegra_pcie.pll_e)) {
-		pr_err("%s: unable to get PLLE\n", __func__);
 		goto error_exit;
 	}
 	return 0;
 error_exit:
 	if (tegra_pcie.pcie_xclk)
 		clk_put(tegra_pcie.pcie_xclk);
-	if (tegra_pcie.pll_e)
-		clk_put(tegra_pcie.pll_e);
 	return -EINVAL;
 }
 
 static void tegra_pcie_clocks_put(void)
 {
 	PR_FUNC_LINE;
-	if (tegra_pcie.pll_e)
-		clk_put(tegra_pcie.pll_e);
 	if (tegra_pcie.pcie_xclk)
 		clk_put(tegra_pcie.pcie_xclk);
 }
@@ -1451,12 +1410,11 @@ static void tegra_pcie_enable_rp_features(int index)
 	PR_FUNC_LINE;
 	/* Power mangagement settings */
 	/* Enable clock clamping by default and enable card detect */
-	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_THRESHOLD |
+	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
+	data |= PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_THRESHOLD |
 		PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
 		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_THRESHOLD |
-		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE |
-		PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT;
-;
+		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
 
 	/* Enable ASPM - L1 state support by default */
@@ -1497,7 +1455,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	unsigned int data;
 
 	PR_FUNC_LINE;
-	tegra_pcie_enable_rp_features(index);
+	tegra_pcie_prsnt_map_override(true);
 
 	pp = tegra_pcie.port + tegra_pcie.num_ports;
 	pp->index = -1;
@@ -1510,6 +1468,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		tegra_pcie_disable_ctlr(index);
 		return;
 	}
+	tegra_pcie_enable_rp_features(index);
 	/*
 	 * Initialize TXBA1 register to fix the unfair arbitration
 	 * between downstream reads and completions to upstream reads
@@ -1736,12 +1695,20 @@ static int __init tegra_pcie_init(void)
 	INIT_LIST_HEAD(&tegra_pcie.busses);
 	INIT_WORK(&tegra_pcie.hotplug_detect, work_hotplug_handler);
 	err = tegra_pcie_get_resources();
-	if (err)
+	if (err) {
+		pr_err("PCIE: get resources failed\n");
 		return err;
-
+	}
+	err = tegra_pcie_enable_pads(true);
+	if (err) {
+		pr_err("PCIE: enable pads failed\n");
+		return err;
+	}
 	err = tegra_pcie_enable_controller();
-	if (err)
+	if (err) {
+		pr_err("PCIE: enable controller failed\n");
 		return err;
+	}
 
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations();
@@ -1863,6 +1830,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 		pr_err("PCIE: Failed to power on: %d\n", ret);
 		return ret;
 	}
+	tegra_pcie_enable_pads(true);
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 
