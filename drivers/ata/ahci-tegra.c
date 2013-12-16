@@ -372,7 +372,7 @@ struct tegra_ahci_host_priv {
 	struct clk		*clk_sata;
 	struct clk		*clk_sata_oob;
 	struct clk		*clk_pllp;
-	struct clk	*clk_cml1;
+	struct clk		*clk_cml1;
 	enum clk_gate_state	clk_state;
 };
 
@@ -2154,7 +2154,7 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 	tegra_ahci_put_sata_in_iddq();
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val &= ~(SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+	val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
 		SATA_SEQ_LANE_PD_INPUT_VALUE | SATA_SEQ_RESET_INPUT_VALUE);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
@@ -2172,7 +2172,7 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+	val &= ~(SATA_SEQ_PADPLL_PD_INPUT_VALUE |
 		SATA_SEQ_LANE_PD_INPUT_VALUE | SATA_SEQ_RESET_INPUT_VALUE);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
