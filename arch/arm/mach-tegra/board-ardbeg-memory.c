@@ -5209,8 +5209,8 @@ static struct tegra12_emc_table ardbeg_emc_table[] = {
 
 static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 	{
-		0x18,       /* V5.0.10 */
-		"01_12750_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_12750_01_V5.0.12_V0.9", /* DVFS table version */
 		12750,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -5434,8 +5434,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_20400_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_20400_01_V5.0.12_V0.9", /* DVFS table version */
 		20400,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -5659,8 +5659,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_40800_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_40800_01_V5.0.12_V0.9", /* DVFS table version */
 		40800,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -5884,8 +5884,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_68000_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_68000_01_V5.0.12_V0.9", /* DVFS table version */
 		68000,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6109,8 +6109,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_102000_02_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_102000_02_V5.0.12_V0.9", /* DVFS table version */
 		102000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6334,8 +6334,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_204000_02_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_204000_02_V5.0.12_V0.9", /* DVFS table version */
 		204000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -6559,10 +6559,10 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_300000_02_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_300000_02_V5.0.12_V0.9", /* DVFS table version */
 		300000,     /* SDRAM frequency */
-		810,        /* min voltage */
+		820,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllc_out0", /* clock source id */
 		0x20000002, /* CLK_SOURCE_EMC */
@@ -6784,10 +6784,10 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_396000_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_396000_02_V5.0.12_V0.9", /* DVFS table version */
 		396000,     /* SDRAM frequency */
-		890,        /* min voltage */
+		850,        /* min voltage */
 		900,        /* gpu min voltage */
 		"pllm_out0", /* clock source id */
 		0x00000002, /* CLK_SOURCE_EMC */
@@ -6823,8 +6823,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x00000000, /* EMC_CDB_CNTL_3 */
 			0x00000000, /* EMC_QRST */
 			0x0000000f, /* EMC_QSAFE */
-			0x0000000e, /* EMC_RDV */
-			0x00000010, /* EMC_RDV_MASK */
+			0x00000010, /* EMC_RDV */
+			0x00000012, /* EMC_RDV_MASK */
 			0x00000bd1, /* EMC_REFRESH */
 			0x00000000, /* EMC_BURST_REFRESH_NUM */
 			0x000002f4, /* EMC_PRE_REFRESH_REQ_CNT */
@@ -6937,7 +6937,7 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x00f5000e, /* EMC_MRS_WAIT_CNT2 */
 			0x00000000, /* EMC_CTT */
 			0x00000003, /* EMC_CTT_DURATION */
-			0x0000d3b3, /* EMC_CFG_PIPE */
+			0x000052a3, /* EMC_CFG_PIPE */
 			0x8000188b, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00000009, /* EMC_QPOP */
 			0x0f000005, /* MC_EMEM_ARB_CFG */
@@ -6996,7 +6996,7 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x001fffff, /* EMC_AUTO_CAL_INTERVAL */
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73340000, /* EMC_CFG */
-		0x0000088d, /* EMC_CFG_2 */
+		0x00000895, /* EMC_CFG_2 */
 		0x00040008, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
@@ -7009,10 +7009,10 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_528000_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_528000_02_V5.0.12_V0.9", /* DVFS table version */
 		528000,     /* SDRAM frequency */
-		910,        /* min voltage */
+		870,        /* min voltage */
 		900,        /* gpu min voltage */
 		"pllm_ud",  /* clock source id */
 		0x80000000, /* CLK_SOURCE_EMC */
@@ -7033,20 +7033,20 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x00000002, /* EMC_RRD */
 			0x00000002, /* EMC_REXT */
 			0x00000000, /* EMC_WEXT */
-			0x00000004, /* EMC_WDV */
-			0x00000004, /* EMC_WDV_MASK */
-			0x00000008, /* EMC_QUSE */
+			0x00000003, /* EMC_WDV */
+			0x00000003, /* EMC_WDV_MASK */
+			0x00000007, /* EMC_QUSE */
 			0x00000002, /* EMC_QUSE_WIDTH */
 			0x00000000, /* EMC_IBDLY */
-			0x00000003, /* EMC_EINPUT */
+			0x00000002, /* EMC_EINPUT */
 			0x00000009, /* EMC_EINPUT_DURATION */
-			0x00050000, /* EMC_PUTERM_EXTRA */
+			0x00040000, /* EMC_PUTERM_EXTRA */
 			0x00000003, /* EMC_PUTERM_WIDTH */
 			0x00000000, /* EMC_PUTERM_ADJ */
 			0x00000000, /* EMC_CDB_CNTL_1 */
 			0x00000000, /* EMC_CDB_CNTL_2 */
 			0x00000000, /* EMC_CDB_CNTL_3 */
-			0x00000002, /* EMC_QRST */
+			0x00000001, /* EMC_QRST */
 			0x00000010, /* EMC_QSAFE */
 			0x00000013, /* EMC_RDV */
 			0x00000015, /* EMC_RDV_MASK */
@@ -7162,9 +7162,9 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x00c8000e, /* EMC_MRS_WAIT_CNT2 */
 			0x00000000, /* EMC_CTT */
 			0x00000003, /* EMC_CTT_DURATION */
-			0x000052a0, /* EMC_CFG_PIPE */
+			0x000042a0, /* EMC_CFG_PIPE */
 			0x80002062, /* EMC_DYN_SELF_REF_CONTROL */
-			0x0000000c, /* EMC_QPOP */
+			0x0000000b, /* EMC_QPOP */
 			0x0f000007, /* MC_EMEM_ARB_CFG */
 			0x80000040, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RCD */
@@ -7221,7 +7221,7 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x001fffff, /* EMC_AUTO_CAL_INTERVAL */
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73300000, /* EMC_CFG */
-		0x00000895, /* EMC_CFG_2 */
+		0x0000089d, /* EMC_CFG_2 */
 		0x00040008, /* EMC_SEL_DPD_CTRL */
 		0xe0120069, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
@@ -7234,10 +7234,10 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_600000_01_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_600000_01_V5.0.12_V0.9", /* DVFS table version */
 		600000,     /* SDRAM frequency */
-		920,        /* min voltage */
+		910,        /* min voltage */
 		900,        /* gpu min voltage */
 		"pllc_ud",  /* clock source id */
 		0xe0000000, /* CLK_SOURCE_EMC */
@@ -7459,10 +7459,10 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 		0x00000000, /* Mode Register 4 */
 	},
 	{
-		0x18,       /* V5.0.10 */
-		"01_792000_03_V5.0.10_V0.8", /* DVFS table version */
+		0x18,       /* V5.0.12 */
+		"02_792000_04_V5.0.12_V0.9", /* DVFS table version */
 		792000,     /* SDRAM frequency */
-		1000,       /* min voltage */
+		980,        /* min voltage */
 		1100,       /* gpu min voltage */
 		"pllm_ud",  /* clock source id */
 		0x80000000, /* CLK_SOURCE_EMC */
@@ -7498,8 +7498,8 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x00000000, /* EMC_CDB_CNTL_3 */
 			0x00000001, /* EMC_QRST */
 			0x00000014, /* EMC_QSAFE */
-			0x00000017, /* EMC_RDV */
-			0x00000019, /* EMC_RDV_MASK */
+			0x00000018, /* EMC_RDV */
+			0x0000001a, /* EMC_RDV_MASK */
 			0x000017e2, /* EMC_REFRESH */
 			0x00000000, /* EMC_BURST_REFRESH_NUM */
 			0x000005f8, /* EMC_PRE_REFRESH_REQ_CNT */
@@ -7612,7 +7612,7 @@ static struct tegra12_emc_table ardbeg_4GB_emc_table[] = {
 			0x006f000e, /* EMC_MRS_WAIT_CNT2 */
 			0x00000000, /* EMC_CTT */
 			0x00000004, /* EMC_CTT_DURATION */
-			0x000040a0, /* EMC_CFG_PIPE */
+			0x00004080, /* EMC_CFG_PIPE */
 			0x80003012, /* EMC_DYN_SELF_REF_CONTROL */
 			0x0000000f, /* EMC_QPOP */
 			0x0e00000b, /* MC_EMEM_ARB_CFG */
