@@ -430,15 +430,10 @@ static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
 
-static bool use_bootloader_firmware;
-module_param(use_bootloader_firmware, bool, S_IRUGO);
-MODULE_PARM_DESC(use_bootloader_firmware, "take bootloader initialized firmware");
-
 #define FIRMWARE_FILE "tegra_xusb_firmware"
 static char *firmware_file = FIRMWARE_FILE;
 #define FIRMWARE_FILE_HELP	\
 	"used to specify firmware file of Tegra XHCI host controller. "\
-	"This takes effect only if \"use_bootloader_firmware\" is \"N\". " \
 	"Default value is \"" FIRMWARE_FILE "\"."
 
 module_param(firmware_file, charp, S_IRUGO);
@@ -3723,90 +3718,6 @@ tegra_xhci_resume(struct platform_device *pdev)
 }
 #endif
 
-
-static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
-{
-	struct platform_device *pdev = tegra->pdev;
-	void __iomem *fw_mmio_base;
-	phys_addr_t fw_mem_phy_addr;
-	size_t fw_size;
-	dma_addr_t fw_dma;
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-	int ret;
-	DEFINE_DMA_ATTRS(attrs);
-#endif
-
-	/* bootloader saved firmware memory address in PMC SCRATCH34 register */
-	fw_mem_phy_addr = tegra_usb_pmc_reg_read(PMC_SCRATCH34);
-
-	fw_mmio_base = devm_ioremap_nocache(&pdev->dev,
-			fw_mem_phy_addr, sizeof(struct cfgtbl));
-
-	if (!fw_mmio_base) {
-			dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
-					(u32)fw_mem_phy_addr);
-			return -ENOMEM;
-	}
-
-	fw_size = ioread32(fw_mmio_base + FW_SIZE_OFFSET);
-	devm_iounmap(&pdev->dev, fw_mmio_base);
-
-	fw_mmio_base = devm_ioremap_nocache(&pdev->dev,
-			fw_mem_phy_addr, fw_size);
-	if (!fw_mmio_base) {
-			dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
-					(u32)fw_mem_phy_addr);
-			return -ENOMEM;
-	}
-
-	dev_info(&pdev->dev, "Firmware Memory: phy 0x%x mapped 0x%p (%d Bytes)\n",
-			(u32) fw_mem_phy_addr, fw_mmio_base, fw_size);
-
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	fw_dma = dma_map_linear_attrs(&pdev->dev, fw_mem_phy_addr, fw_size,
-			DMA_TO_DEVICE, &attrs);
-
-	if (fw_dma == DMA_ERROR_CODE) {
-		dev_err(&pdev->dev, "%s: dma_map_linear failed\n",
-				__func__);
-		ret = -ENOMEM;
-		goto error_iounmap;
-	}
-#else
-	fw_dma = fw_mem_phy_addr;
-#endif
-	dev_info(&pdev->dev, "Firmware DMA Memory: dma 0x%p (%d Bytes)\n",
-			(void *) fw_dma, fw_size);
-
-	/* all set and ready to go */
-	tegra->firmware.data = fw_mmio_base;
-	tegra->firmware.dma = fw_dma;
-	tegra->firmware.size = fw_size;
-
-	return 0;
-
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-error_iounmap:
-	devm_iounmap(&pdev->dev, fw_mmio_base);
-	return ret;
-#endif
-}
-
-static void deinit_bootloader_firmware(struct tegra_xhci_hcd *tegra)
-{
-	struct platform_device *pdev = tegra->pdev;
-	void __iomem *fw_mmio_base = tegra->firmware.data;
-
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-	dma_unmap_single(&pdev->dev, tegra->firmware.dma,
-			tegra->firmware.size, DMA_TO_DEVICE);
-#endif
-	devm_iounmap(&pdev->dev, fw_mmio_base);
-
-	memset(&tegra->firmware, 0, sizeof(tegra->firmware));
-}
-
 static int init_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 {
 	struct platform_device *pdev = tegra->pdev;
@@ -3894,18 +3805,12 @@ static void deinit_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 }
 static int init_firmware(struct tegra_xhci_hcd *tegra)
 {
-	if (use_bootloader_firmware)
-		return init_bootloader_firmware(tegra);
-	else
-		return init_filesystem_firmware(tegra);
+	return init_filesystem_firmware(tegra);
 }
 
 static void deinit_firmware(struct tegra_xhci_hcd *tegra)
 {
-	if (use_bootloader_firmware)
-		return deinit_bootloader_firmware(tegra);
-	else
-		return deinit_filesystem_firmware(tegra);
+	return deinit_filesystem_firmware(tegra);
 }
 
 static int tegra_enable_xusb_clk(struct tegra_xhci_hcd *tegra,
@@ -4458,14 +4363,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to init firmware\n");
 		ret = -ENODEV;
 		goto err_deinit_firmware_log;
-	}
-
-	if (use_bootloader_firmware) {
-		ret = tegra_xhci_probe2(tegra);
-		if (ret < 0) {
-			ret = -ENODEV;
-			goto err_deinit_firmware;
-		}
 	}
 
 	return 0;
