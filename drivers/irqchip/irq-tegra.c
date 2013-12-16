@@ -33,6 +33,7 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/cpumask.h>	/* Required by asm/hardware/gic.h */
 #include <linux/cpu_pm.h>
+#include <linux/tegra-soc.h>
 
 /* HACK: will be removed once cpuidle is moved to drivers */
 #include "../../arch/arm/mach-tegra/pm.h"
@@ -459,10 +460,15 @@ static int __init tegra_gic_of_init(struct device_node *node,
 	int i;
 	struct device_node *arm_gic_np =
 		of_find_compatible_node(NULL, NULL, "arm,cortex-a15-gic");
+	struct device_node *tegra_gic_np =
+		of_find_compatible_node(NULL, NULL, "nvidia,tegra-gic");
 	gic_dist_base = of_iomap(arm_gic_np, 0);
 	gic_cpu_base = of_iomap(arm_gic_np, 1);
-	num_ictlrs = readl_relaxed(gic_dist_base + GIC_DIST_CTR) & 0x1f;
 	gic_version = (readl(gic_dist_base + 0xFE8) & 0xF0) >> 4;
+
+	/* Retrieve # of ictrls from DT and fallback to gic dist */
+	if (of_property_read_u32(tegra_gic_np, "num-ictrls", &num_ictlrs))
+		num_ictlrs = readl_relaxed(gic_dist_base + GIC_DIST_CTR) & 0x1f;
 
 	pr_info("the number of interrupt controllers found is %d", num_ictlrs);
 	ictlr_reg_base = kzalloc(sizeof(void *) * num_ictlrs, GFP_KERNEL);
