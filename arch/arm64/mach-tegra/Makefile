@@ -24,6 +24,7 @@ obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sensors.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sata.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin-power.o
+obj-${CONFIG_MACH_EXUMA}              += board-norrin-kbc.o
 obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
