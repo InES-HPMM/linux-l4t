@@ -1,0 +1,51 @@
+/*
+ * arch/arm/boot/dts/tegra124-tn8-1780-1100-a03-03.dts
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1769-pmic.dtsi"
+#include "tegra124-platforms/tegra124-tn8-e1769-fixed.dtsi"
+#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+#include "tegra124-platforms/tegra124-e1845-senosr.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1780:1100:3","1769:1000:0","1549:1000:0";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	gps {
+		compatible = "mtk,mt3332";
+		force-on-gpios = <&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;
+	};
+};
+
