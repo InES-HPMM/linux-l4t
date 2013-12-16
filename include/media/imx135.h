@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,8 +35,8 @@
 						struct imx135_flash_control)
 
 struct imx135_mode {
-	int xres;
-	int yres;
+	__u32 xres;
+	__u32 yres;
 	__u32 frame_length;
 	__u32 coarse_time;
 	__u32 coarse_time_short;
