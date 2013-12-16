@@ -199,6 +199,7 @@ static void __init setup_processor(void)
 {
 	struct cpu_info *cpu_info;
 	u64 reg_value;
+	u64 features, block;
 
 	cpu_info = lookup_processor_type(read_cpuid_id());
 	if (!cpu_info) {
@@ -216,7 +217,9 @@ static void __init setup_processor(void)
 	elf_hwcap = 0;
 
 	/* Read the number of ASID bits */
-	reg_value = read_cpuid(ID_AA64MMFR0_EL1) & 0xf0;
+	reg_value = read_cpuid(ID_AA64MMFR0_EL1);
+	features=reg_value;
+	reg_value=reg_value & 0xf0;
 	if (reg_value == 0x00)
 		max_asid_bits = 8;
 	else if (reg_value == 0x20)
@@ -224,6 +227,35 @@ static void __init setup_processor(void)
 	else
 		BUG_ON(1);
 	cpu_last_asid = 1 << max_asid_bits;
+	/*
+	 * ID_AA64ISAR0_EL1 contains 4-bit wide signed feature blocks.
+	 * The blocks we test below represent incremental functionality
+	 * for non-negative values. Negative values are reserved.
+	 */
+	block = (features >> 4) & 0xf;
+	if (!(block & 0x8)) {
+		switch (block) {
+		default:
+		case 2:
+			elf_hwcap |= HWCAP_PMULL;
+		case 1:
+			elf_hwcap |= HWCAP_AES;
+		case 0:
+			break;
+		}
+	}
+
+	block = (features >> 8) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_SHA1;
+
+	block = (features >> 12) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_SHA2;
+
+	block = (features >> 16) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_CRC32;
 }
 
 static struct machine_desc * __init setup_machine_fdt(phys_addr_t dt_phys)
@@ -439,6 +471,11 @@ static const char *hwcap_str[] = {
 	"fp",
 	"asimd",
 	"evtstrm",
+	"aes",
+	"pmull",
+	"sha1",
+	"sha2",
+	"crc32",
 	NULL
 };
 
