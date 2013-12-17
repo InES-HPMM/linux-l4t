@@ -1,7 +1,7 @@
 /*
  * include/linux/ina3221.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,11 @@
 #define INA3221_CRIT_CHAN3		0x0B
 #define INA3221_WARN_CHAN3		0x0C
 #define INA3221_MASK_ENABLE		0x0F
+
+#define INA3221_SHUNT_VOL(i)		(INA3221_SHUNT_VOL_CHAN1 + (i) * 2)
+#define INA3221_BUS_VOL(i)		(INA3221_BUS_VOL_CHAN1 + (i) * 2)
+#define INA3221_CRIT(i)                 (INA3221_CRIT_CHAN1 + (i) * 2)
+#define INA3221_WARN(i)                 (INA3221_WARN_CHAN1 + (i) * 2)
 
 #define INA3221_RESET			0x8000
 #define INA3221_POWER_DOWN		0
