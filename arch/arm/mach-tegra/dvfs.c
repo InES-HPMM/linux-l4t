@@ -2007,6 +2007,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				rel->from->reg_id, rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
+		seq_printf(s, "   nominal    %-7d mV\n",
+			   rail->nominal_millivolts);
 		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
 		if (rail->therm_mv_floors) {
