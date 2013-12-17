@@ -55,13 +55,16 @@
 #define RST_DEVICES_V			0x358
 #define RST_DEVICES_W			0x35C
 #define RST_DEVICES_X			0x28C
+#define RST_DEVICES_Y			0x2A4
 #define RST_DEVICES_SET_L		0x300
 #define RST_DEVICES_CLR_L		0x304
 #define RST_DEVICES_SET_V		0x430
 #define RST_DEVICES_CLR_V		0x434
 #define RST_DEVICES_SET_X		0x290
 #define RST_DEVICES_CLR_X		0x294
-#define RST_DEVICES_NUM			6
+#define RST_DEVICES_SET_Y		0x2A8
+#define RST_DEVICES_CLR_Y		0x2AC
+#define RST_DEVICES_NUM			7
 
 #define CLK_OUT_ENB_L			0x010
 #define CLK_OUT_ENB_H			0x014
@@ -69,42 +72,48 @@
 #define CLK_OUT_ENB_V			0x360
 #define CLK_OUT_ENB_W			0x364
 #define CLK_OUT_ENB_X			0x280
+#define CLK_OUT_ENB_Y			0x298
 #define CLK_OUT_ENB_SET_L		0x320
 #define CLK_OUT_ENB_CLR_L		0x324
 #define CLK_OUT_ENB_SET_V		0x440
 #define CLK_OUT_ENB_CLR_V		0x444
 #define CLK_OUT_ENB_SET_X		0x284
 #define CLK_OUT_ENB_CLR_X		0x288
-#define CLK_OUT_ENB_NUM			6
+#define CLK_OUT_ENB_SET_Y		0x29C
+#define CLK_OUT_ENB_CLR_Y		0x2A0
+#define CLK_OUT_ENB_NUM			7
 
-#define CLK_OUT_ENB_L_RESET_MASK	0xfcd7dff1
-#define CLK_OUT_ENB_H_RESET_MASK	0xefddfff7
-#define CLK_OUT_ENB_U_RESET_MASK	0xfbfefbfa
-#define CLK_OUT_ENB_V_RESET_MASK	0xffc1fffb
-#define CLK_OUT_ENB_W_RESET_MASK	0x3f7fbfff
-#define CLK_OUT_ENB_X_RESET_MASK	0x00170979
+#define CLK_OUT_ENB_L_RESET_MASK	0xdcd7dff9
+#define CLK_OUT_ENB_H_RESET_MASK	0x87d1f3e7
+#define CLK_OUT_ENB_U_RESET_MASK	0xf3fed3fa
+#define CLK_OUT_ENB_V_RESET_MASK	0xffc18cfb
+#define CLK_OUT_ENB_W_RESET_MASK	0x793fb7ff
+#define CLK_OUT_ENB_X_RESET_MASK	0x3e66fff
+#define CLK_OUT_ENB_Y_RESET_MASK	0xfc1fc7ff
 
 #define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1) /* Reserved on Tegra11 */
 #define CLK_OUT_ENB_V_CLK_ENB_CPULP_EN	(0x1 << 1)
 
 #define PERIPH_CLK_TO_BIT(c)		(1 << (c->u.periph.clk_num % 32))
 #define PERIPH_CLK_TO_RST_REG(c)	\
-	periph_clk_to_reg((c), RST_DEVICES_L, RST_DEVICES_V, RST_DEVICES_X, 4)
+	periph_clk_to_reg((c), RST_DEVICES_L, RST_DEVICES_V, \
+		RST_DEVICES_X, RST_DEVICES_Y, 4)
 #define PERIPH_CLK_TO_RST_SET_REG(c)	\
 	periph_clk_to_reg((c), RST_DEVICES_SET_L, RST_DEVICES_SET_V, \
-		RST_DEVICES_SET_X, 8)
+		RST_DEVICES_SET_X, RST_DEVICES_SET_Y, 8)
 #define PERIPH_CLK_TO_RST_CLR_REG(c)	\
 	periph_clk_to_reg((c), RST_DEVICES_CLR_L, RST_DEVICES_CLR_V, \
-		RST_DEVICES_CLR_X, 8)
+		RST_DEVICES_CLR_X, RST_DEVICES_CLR_Y, 8)
 
 #define PERIPH_CLK_TO_ENB_REG(c)	\
-	periph_clk_to_reg((c), CLK_OUT_ENB_L, CLK_OUT_ENB_V, CLK_OUT_ENB_X, 4)
+	periph_clk_to_reg((c), CLK_OUT_ENB_L, CLK_OUT_ENB_V, \
+		CLK_OUT_ENB_X, CLK_OUT_ENB_Y, 4)
 #define PERIPH_CLK_TO_ENB_SET_REG(c)	\
 	periph_clk_to_reg((c), CLK_OUT_ENB_SET_L, CLK_OUT_ENB_SET_V, \
-		CLK_OUT_ENB_SET_X, 8)
+		CLK_OUT_ENB_SET_X, CLK_OUT_ENB_SET_Y, 8)
 #define PERIPH_CLK_TO_ENB_CLR_REG(c)	\
 	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
-		CLK_OUT_ENB_CLR_X, 8)
+		CLK_OUT_ENB_CLR_X, CLK_OUT_ENB_CLR_Y, 8)
 
 #define CLK_MASK_ARM			0x44
 #define MISC_CLK_ENB			0x48
@@ -670,7 +679,7 @@ static inline int clk_set_div(struct clk *c, u32 n)
 }
 
 static inline u32 periph_clk_to_reg(
-	struct clk *c, u32 reg_L, u32 reg_V, u32 reg_X, int offs)
+	struct clk *c, u32 reg_L, u32 reg_V, u32 reg_X, u32 reg_Y, int offs)
 {
 	u32 reg = c->u.periph.clk_num / 32;
 	BUG_ON(reg >= RST_DEVICES_NUM);
@@ -678,8 +687,10 @@ static inline u32 periph_clk_to_reg(
 		reg = reg_L + (reg * offs);
 	else if (reg < 5)
 		reg = reg_V + ((reg - 3) * offs);
-	else
+	else if (reg == 5)
 		reg = reg_X;
+	else
+		reg = reg_Y;
 	return reg;
 }
 
@@ -6519,6 +6530,16 @@ static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla_clkm[] = {
+	{ .input = &tegra_pll_c2, .value = 1},
+	{ .input = &tegra_pll_c,  .value = 2},
+	{ .input = &tegra_pll_c3, .value = 3},
+	{ .input = &tegra_pll_p,  .value = 4},
+	{ .input = &tegra_pll_a_out0, .value = 6},
+	{ .input = &tegra_clk_m, .value = 7},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllc_pllp_plla[] = {
 	{ .input = &tegra_pll_c, .value = 2},
 	{ .input = &tegra_pll_p, .value = 4},
@@ -6636,6 +6657,21 @@ static struct clk_mux_sel mux_pllp_clkm1[] = {
 static struct clk_mux_sel mux_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllp_clkm_v2[] = {
+	{ .input = &tegra_pll_p, .value = 2},
+	{ .input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllp_pllp_out3_clkm_clk32k_plla[] = {
+	{ .input = &tegra_pll_p, .value = 0},
+	{ .input = &tegra_pll_p_out3, .value = 1},
+	{ .input = &tegra_clk_m, .value = 2},
+	{ .input = &tegra_clk_32k, .value = 3},
+	{ .input = &tegra_pll_a_out0, .value = 4},
 	{ 0, 0},
 };
 
@@ -7144,7 +7180,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("msenc",	"msenc",		NULL,	91,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK("msenc",	"msenc",		NULL,	219,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
@@ -7926,6 +7962,7 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(RST_DEVICES_V);
 	*ctx++ = clk_readl(RST_DEVICES_W);
 	*ctx++ = clk_readl(RST_DEVICES_X);
+	*ctx++ = clk_readl(RST_DEVICES_Y);
 
 	*ctx++ = clk_readl(CLK_OUT_ENB_L);
 	*ctx++ = clk_readl(CLK_OUT_ENB_H);
@@ -7933,6 +7970,7 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(CLK_OUT_ENB_V);
 	*ctx++ = clk_readl(CLK_OUT_ENB_W);
 	*ctx++ = clk_readl(CLK_OUT_ENB_X);
+	*ctx++ = clk_readl(CLK_OUT_ENB_Y);
 
 	*ctx++ = clk_readl(tegra_clk_cclk_g.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
@@ -8019,6 +8057,7 @@ static void tegra21_clk_resume(void)
 	clk_writel(CLK_OUT_ENB_V_RESET_MASK, CLK_OUT_ENB_V);
 	clk_writel(CLK_OUT_ENB_W_RESET_MASK, CLK_OUT_ENB_W);
 	clk_writel(CLK_OUT_ENB_X_RESET_MASK, CLK_OUT_ENB_X);
+	clk_writel(CLK_OUT_ENB_Y_RESET_MASK, CLK_OUT_ENB_Y);
 	wmb();
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
@@ -8044,6 +8083,7 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, RST_DEVICES_V);
 	clk_writel(*ctx++, RST_DEVICES_W);
 	clk_writel(*ctx++, RST_DEVICES_X);
+	clk_writel(*ctx++, RST_DEVICES_Y);
 	wmb();
 
 	clk_writel(*ctx++, CLK_OUT_ENB_L);
@@ -8058,6 +8098,7 @@ static void tegra21_clk_resume(void)
 
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
 	clk_writel(*ctx++, CLK_OUT_ENB_X);
+	clk_writel(*ctx++, CLK_OUT_ENB_Y);
 	wmb();
 
 	/* DFLL resume after cl_dvfs and i2c5 clocks are resumed */
