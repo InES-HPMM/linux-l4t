@@ -2,6 +2,7 @@
  * AD193X Audio Codec driver supporting AD1936/7/8/9
  *
  * Copyright 2010 Analog Devices Inc.
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  * Licensed under the GPL-2 or later.
  */
@@ -378,6 +379,13 @@ static bool adau193x_reg_volatile(struct device *dev, unsigned int reg)
 	return false;
 }
 
+static const struct of_device_id ad193x_of_match[] = {
+	{ .compatible = "ad,ad1936", },
+	{ .compatible = "ad,ad1937", },
+	{ }
+};
+
+MODULE_DEVICE_TABLE(of, ad193x_of_match);
 #if defined(CONFIG_SPI_MASTER)
 
 static const struct regmap_config ad193x_spi_regmap_config = {
@@ -419,6 +427,7 @@ static struct spi_driver ad193x_spi_driver = {
 	.driver = {
 		.name	= "ad193x",
 		.owner	= THIS_MODULE,
+		.of_match_table = ad193x_of_match,
 	},
 	.probe		= ad193x_spi_probe,
 	.remove		= ad193x_spi_remove,
@@ -471,6 +480,8 @@ static int ad193x_i2c_remove(struct i2c_client *client)
 static struct i2c_driver ad193x_i2c_driver = {
 	.driver = {
 		.name = "ad193x",
+		.owner = THIS_MODULE,
+		.of_match_table = ad193x_of_match,
 	},
 	.probe    = ad193x_i2c_probe,
 	.remove   = ad193x_i2c_remove,
