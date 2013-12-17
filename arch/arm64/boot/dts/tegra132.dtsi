@@ -41,6 +41,7 @@
 	lic: interrupt-controller@60004000 {
 		compatible = "nvidia,tegra-gic";
 		interrupt-controller;
+		num-ictrls = <0x5>;
 		reg = <0x60004000 0x40>,
 		      <0x60004100 0x40>,
 		      <0x60004200 0x40>,
