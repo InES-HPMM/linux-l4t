@@ -98,7 +98,28 @@ static u64 resume_entry_time;
 static u64 suspend_time;
 static u64 suspend_entry_time;
 
+static RAW_NOTIFIER_HEAD(tegra_pm_chain_head);
+
 static struct pmc_pm_data *pmc_pm_data;
+
+int tegra_register_pm_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
+}
+EXPORT_SYMBOL(tegra_register_pm_notifier);
+
+int tegra_unregister_pm_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_unregister(&tegra_pm_chain_head, nb);
+}
+EXPORT_SYMBOL(tegra_unregister_pm_notifier);
+
+static int tegra_pm_notifier_call_chain(unsigned int val)
+{
+	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
+
+	return notifier_to_errno(ret);
+}
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 void tegra_tsc_suspend(void)
