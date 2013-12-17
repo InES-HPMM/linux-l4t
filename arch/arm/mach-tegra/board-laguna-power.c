@@ -246,6 +246,8 @@ static struct as3722_platform_data as3722_pdata = {
 	.enable_clk32k_out = true,
 	.use_power_off = true,
 	.extcon_pdata = &as3722_adc_extcon_pdata,
+	.major_rev = 1,
+	.minor_rev = 1,
 };
 
 static struct pca953x_platform_data tca6416_pdata = {
@@ -319,6 +321,10 @@ int __init laguna_as3722_regulator_init(void)
 	as3722_ldo3_reg_pdata.enable_tracking = true;
 	as3722_ldo3_reg_pdata.disable_tracking_suspend = true;
 
+	if ((board_info.board_id == BOARD_PM359) &&
+				(board_info.major_revision == 'C'))
+		as3722_pdata.minor_rev = 2;
+
 	printk(KERN_INFO "%s: i2c_register_board_info\n",
 			__func__);
 	if (board_info.board_id == BOARD_PM358) {
@@ -385,8 +391,16 @@ static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
 static inline void fill_reg_map(void)
 {
 	int i;
+	u32 reg_init_value = 0x0a;
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if ((board_info.board_id == BOARD_PM359) &&
+				(board_info.major_revision == 'C'))
+		reg_init_value = 0x1e;
+
 	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
-		pmu_cpu_vdd_map[i].reg_value = i + 0xa;
+		pmu_cpu_vdd_map[i].reg_value = i + reg_init_value;
 		pmu_cpu_vdd_map[i].reg_uV = 700000 + 10000 * i;
 	}
 }
