@@ -190,6 +190,7 @@ struct tegra_i2c_dev {
 	struct clk *dvfs_ref_clk;
 	struct clk *dvfs_soc_clk;
 	spinlock_t fifo_lock;
+	spinlock_t mem_lock;
 	void __iomem *base;
 	int cont_id;
 	int irq;
@@ -286,13 +287,27 @@ static u32 i2c_readl(struct tegra_i2c_dev *i2c_dev, unsigned long reg)
 static void i2c_writesl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
-	writesl(i2c_dev->base + tegra_i2c_reg_addr(i2c_dev, reg), data, len);
+	u32 *buf = data;
+	unsigned long flags;
+
+	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	while (len--)
+		writel(*buf++, i2c_dev->base +
+					tegra_i2c_reg_addr(i2c_dev, reg));
+	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static void i2c_readsl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
-	readsl(i2c_dev->base + tegra_i2c_reg_addr(i2c_dev, reg), data, len);
+	u32 *buf = data;
+	unsigned long flags;
+
+	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	while (len--)
+		*buf++ = readl(i2c_dev->base +
+					tegra_i2c_reg_addr(i2c_dev, reg));
+	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static inline void tegra_i2c_gpio_setscl(void *data, int state)
@@ -1512,6 +1527,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
 		spin_lock_init(&i2c_dev->fifo_lock);
+
+	spin_lock_init(&i2c_dev->mem_lock);
 
 	platform_set_drvdata(pdev, i2c_dev);
 
