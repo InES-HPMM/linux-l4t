@@ -461,6 +461,14 @@ static const char *hwcap_str[] = {
 	NULL
 };
 
+static void denver_show(struct seq_file *m)
+{
+	u32 aidr;
+
+	asm volatile("mrs %0, AIDR_EL1" : "=r" (aidr) : );
+	seq_printf(m, "MTS version\t: %u\n", aidr);
+}
+
 static int c_show(struct seq_file *m, void *v)
 {
 	int i;
@@ -502,6 +510,8 @@ static int c_show(struct seq_file *m, void *v)
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
 		   system_serial_high, system_serial_low);
 
+	if ((read_cpuid_id() >> 24) == 'N')
+		denver_show(m);
 	return 0;
 }
 
