@@ -1,7 +1,7 @@
 /*
  * ina3221.c - driver for TI INA3221
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software. you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,20 @@ struct ina3221_data {
 	int is_suspended;
 };
 
+/* convert shunt voltage register value to current (in mA) */
+static s32 shuntv_register_to_ma(u16 reg, s32 resistance)
+{
+	s32 uv, ma;
+	uv = (s16)reg;
+	uv = ((uv >> 3) * 40); /* LSB (4th bit) is 40uV */
+	/* calculate uv/resistance with rounding knowing that C99 truncates
+	 * towards zero */
+	if (uv > 0)
+		ma = ((uv * 2 / resistance) + 1) / 2;
+	else
+		ma = ((uv * 2 / resistance) - 1) / 2;
+	return ma;
+}
 
 static s32
 __locked_set_crit_warn_register(struct i2c_client *client,
@@ -239,9 +253,8 @@ static s32 show_current(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, shunt_volt_reg_addr;
 	s32 ret;
-	s32 voltage_uv;
 	s32 current_ma;
-	s32 inverse_shunt_resistor;
+	s32 resistance;
 
 	mutex_lock(&data->mutex);
 	if (data->shutdown_complete) {
@@ -266,15 +279,9 @@ static s32 show_current(struct device *dev,
 			shunt_volt_reg_addr);
 	if (ret < 0)
 		goto error;
-	voltage_uv = be16_to_cpu(ret);
-	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
-	voltage_uv = (voltage_uv << 16) >> 16;
-	voltage_uv = shuntv_register_to_uv(voltage_uv);
-	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
 
-	/* shunt_resistor is received in mOhms */
-	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_ma = (voltage_uv * inverse_shunt_resistor) / 1000;
+	resistance = data->plat_data->shunt_resistor[index];
+	current_ma = shuntv_register_to_ma(be16_to_cpu(ret), resistance);
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
@@ -301,9 +308,8 @@ static s32 show_current2(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, shunt_volt_reg_addr;
 	s32 ret;
-	s32 voltage_uv;
 	s32 current_ma;
-	s32 inverse_shunt_resistor;
+	s32 resistance;
 
 	mutex_lock(&data->mutex);
 	if (data->shutdown_complete) {
@@ -324,15 +330,9 @@ static s32 show_current2(struct device *dev,
 			shunt_volt_reg_addr);
 	if (ret < 0)
 		goto error;
-	voltage_uv = be16_to_cpu(ret);
-	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
-	voltage_uv = (voltage_uv << 16) >> 16;
-	voltage_uv = shuntv_register_to_uv(voltage_uv);
-	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
 
-	/* shunt_resistor is received in mOhms */
-	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_ma = (voltage_uv * inverse_shunt_resistor) / 1000;
+	resistance = data->plat_data->shunt_resistor[index];
+	current_ma = shuntv_register_to_ma(be16_to_cpu(ret), resistance);
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
@@ -358,8 +358,7 @@ static s32 __locked_calculate_power(struct i2c_client *client,
 
 	struct ina3221_data *data = i2c_get_clientdata(client);
 	s32 voltage_mv;
-	s32 voltage_uv;
-	s32 inverse_shunt_resistor;
+	s32 resistance;
 	s32 current_ma;
 	s32 power_mw;
 	s32 ret;
@@ -368,11 +367,8 @@ static s32 __locked_calculate_power(struct i2c_client *client,
 			shunt_volt_reg_addr);
 	if (ret < 0)
 		goto error;
-	voltage_uv = be16_to_cpu(ret);
-	DEBUG_INA3221(("Ina3221 shunt voltage reg Value: 0x%x\n", voltage_uv));
-	voltage_uv = (voltage_uv << 16) >> 16;
-	voltage_uv = shuntv_register_to_uv(voltage_uv);
-	DEBUG_INA3221(("Ina3221 shunt voltage in uv: %d\n", voltage_uv));
+	resistance = data->plat_data->shunt_resistor[index];
+	current_ma = shuntv_register_to_ma(be16_to_cpu(ret), resistance);
 
 	/* getting voltage readings in milli volts*/
 	ret = i2c_smbus_read_word_data(client,
@@ -385,9 +381,6 @@ static s32 __locked_calculate_power(struct i2c_client *client,
 	voltage_mv = busv_register_to_mv(voltage_mv);
 	DEBUG_INA3221(("Ina3221 bus voltage in mv: %d\n", voltage_mv));
 
-	/* shunt_resistor is received in mOhms */
-	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_ma = voltage_uv * inverse_shunt_resistor / 1000;
 	power_mw = voltage_mv * current_ma / 1000;
 	return power_mw & MAX_POWER_MW;
 error:
