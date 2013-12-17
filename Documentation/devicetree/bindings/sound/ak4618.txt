@@ -1,0 +1,34 @@
+AK4618 audio CODEC
+
+This device supports only I2C.
+
+Required properties:
+
+  - compatible : "akm,ak4618"
+
+  - reg : the I2C address of the device for I2C.
+
+Pins on the device (for linking into audio routes):
+
+  * DACOUT1
+  * DACOUT2
+  * DACOUT3
+  * DACOUT4
+  * DACOUT5
+  * DACOUT6
+  * IN1
+  * IN2
+  * IN3
+  * IN4
+  * IN5
+  * IN6
+  * MICBIAS
+
+  - note : DACOUTs are stereo output, INs are mono input.
+
+Example:
+
+codec: ak4618@10 {
+	compatible = "akm,ak4618";
+	reg = <0x10>;
+};
