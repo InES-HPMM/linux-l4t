@@ -13,8 +13,6 @@
 
 #include <linux/types.h>
 
-#include "linux/nvmap.h"
-
 #define NVE2_AVP				(0x0000E276)
 
 struct nv_e276_control {

@@ -44,7 +44,6 @@
 
 #include <mach/pm_domains.h>
 
-#include <linux/nvmap.h>
 #include <linux/pm_qos.h>
 
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
@@ -167,10 +166,8 @@ struct nvavp_info {
 };
 
 struct nvavp_clientctx {
-	struct nvmap_client *nvmap;
 	struct nvavp_pushbuffer_submit_hdr submit_hdr;
 	struct nvavp_reloc relocs[NVAVP_MAX_RELOCATION_COUNT];
-	struct nvmap_handle_ref *gather_mem;
 	int num_relocs;
 	struct nvavp_info *nvavp;
 	int channel_id;
@@ -1151,7 +1148,7 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 	pr_debug("video_initialized == audio_initialized (%d)\n",
 		nvavp->video_initialized);
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */
-	/* paddr is any address returned from nvmap_pin */
+	/* paddr is phys address */
 	/* vaddr is AVP_KERNEL_VIRT_BASE */
 	dev_info(&nvavp->nvhost_dev->dev,
 		"using AVP MMU to relocate AVP os\n");
@@ -1385,11 +1382,7 @@ static int nvavp_map_iova(struct file *filp, unsigned int cmd,
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 	dmabuf = dma_buf_get(map_arg.fd);
-#else
-	dmabuf = nvmap_dmabuf_export(clientctx->nvmap, map_arg.fd);
-#endif
 	if (IS_ERR(dmabuf)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid buffer handle %08x\n", map_arg.fd);
@@ -1427,11 +1420,7 @@ static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
 		return -EFAULT;
 	}
 
-#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 	dmabuf = dma_buf_get(map_arg.fd);
-#else
-	dmabuf = nvmap_dmabuf_export(clientctx->nvmap, map_arg.fd);
-#endif
 	if (IS_ERR(dmabuf)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid buffer handle %08x\n", map_arg.fd);
@@ -1519,28 +1508,6 @@ static int nvavp_get_syncpointid_ioctl(struct file *filp, unsigned int cmd,
 	return -EFAULT;
 }
 
-static int nvavp_set_nvmapfd_ioctl(struct file *filp, unsigned int cmd,
-							unsigned long arg)
-{
-	struct nvavp_clientctx *clientctx = filp->private_data;
-	struct nvavp_set_nvmap_fd_args buf;
-	struct nvmap_client *new_client;
-	int fd;
-
-	if (_IOC_DIR(cmd) & _IOC_WRITE) {
-		if (copy_from_user(&buf, (void __user *)arg, _IOC_SIZE(cmd)))
-			return -EFAULT;
-	}
-
-	fd = buf.fd;
-	new_client = nvmap_client_get_file(fd);
-	if (IS_ERR(new_client))
-		return PTR_ERR(new_client);
-
-	clientctx->nvmap = new_client;
-	return 0;
-}
-
 static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 							unsigned long arg)
 {
@@ -1575,11 +1542,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 	}
 
-#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 	cmdbuf_dmabuf = dma_buf_get(hdr.cmdbuf.mem);
-#else
-	cmdbuf_dmabuf = nvmap_dmabuf_export(clientctx->nvmap, hdr.cmdbuf.mem);
-#endif
 	if (IS_ERR(cmdbuf_dmabuf)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
@@ -1626,12 +1589,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		reloc_addr = cmdbuf_data +
 			     (clientctx->relocs[i].cmdbuf_offset >> 2);
 
-#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 		target_dmabuf = dma_buf_get(clientctx->relocs[i].target);
-#else
-		target_dmabuf = nvmap_dmabuf_export(clientctx->nvmap,
-				clientctx->relocs[i].target);
-#endif
 		if (IS_ERR(target_dmabuf)) {
 			ret = PTR_ERR(target_dmabuf);
 			goto target_dmabuf_fail;
@@ -1911,7 +1869,6 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp, int chann
 		nvavp->audio_refcnt--;
 
 out:
-	nvmap_client_put(clientctx->nvmap);
 	mutex_unlock(&nvavp->open_lock);
 	nvavp_remove_iova_mapping(clientctx);
 	kfree(clientctx);
@@ -1942,7 +1899,6 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 
 	switch (cmd) {
 	case NVAVP_IOCTL_SET_NVMAP_FD:
-		ret = nvavp_set_nvmapfd_ioctl(filp, cmd, arg);
 		break;
 	case NVAVP_IOCTL_GET_SYNCPOINT_ID:
 		ret = nvavp_get_syncpointid_ioctl(filp, cmd, arg);
@@ -2028,11 +1984,16 @@ static ssize_t boost_sclk_store(struct device *dev,
 
 DEVICE_ATTR(boost_sclk, S_IRUGO | S_IWUSR, boost_sclk_show, boost_sclk_store);
 
+enum nvavp_heap {
+	NVAVP_USE_SMMU = (1 << 0),
+	NVAVP_USE_CARVEOUT = (1 << 1)
+};
+
 static int tegra_nvavp_probe(struct platform_device *ndev)
 {
 	struct nvavp_info *nvavp;
 	int irq;
-	unsigned int heap_mask;
+	enum nvavp_heap heap_mask;
 	int ret = 0, channel_id;
 
 	irq = platform_get_irq_byname(ndev, "mbox_from_nvavp_pending");
@@ -2053,14 +2014,14 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	memset(nvavp, 0, sizeof(*nvavp));
 
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */
-	heap_mask = NVMAP_HEAP_CARVEOUT_GENERIC;
+	heap_mask = NVAVP_USE_CARVEOUT;
 #elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 with SMMU */
-	heap_mask = NVMAP_HEAP_IOVMM;
+	heap_mask = NVAVP_USE_SMMU;
 #else /* nvmem= carveout */
-	heap_mask = NVMAP_HEAP_CARVEOUT_GENERIC;
+	heap_mask = NVAVP_USE_CARVEOUT;
 #endif
 	switch (heap_mask) {
-	case NVMAP_HEAP_IOVMM:
+	case NVAVP_USE_SMMU:
 
 		nvavp->os_info.phys = 0x8ff00000;
 		nvavp->os_info.data = dma_alloc_at_coherent(
@@ -2088,7 +2049,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 			"allocated IOVA at %lx for AVP os\n",
 			(unsigned long)nvavp->os_info.phys);
 		break;
-	case NVMAP_HEAP_CARVEOUT_GENERIC:
+	case NVAVP_USE_CARVEOUT:
 		nvavp->os_info.data = dma_alloc_coherent(
 						&ndev->dev,
 						SZ_1M,
