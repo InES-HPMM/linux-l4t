@@ -99,7 +99,11 @@ obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-$(CONFIG_PM_GENERIC_DOMAINS)        += pm_domains.o
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_dvfs.o
+ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
+obj-y                                   += tegra13_dvfs.o
+else
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_dvfs.o
+endif
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra_emc_therm.o
 
@@ -115,7 +119,11 @@ obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_edp.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_edp.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_speedo.o
+ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
+obj-y                                   += tegra13_speedo.o
+else
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
+endif
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra3_actmon.o
