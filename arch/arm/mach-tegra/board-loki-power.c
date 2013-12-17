@@ -892,14 +892,14 @@ static struct soctherm_platform_data loki_soctherm_data = {
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 99000,
+					.trip_temp = 98000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
+					.trip_temp = 88000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -915,21 +915,21 @@ static struct soctherm_platform_data loki_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 101000,
+					.trip_temp = 98000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 99000,
+					.trip_temp = 95000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
+					.trip_temp = 85000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
