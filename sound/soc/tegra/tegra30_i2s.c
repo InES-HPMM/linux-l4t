@@ -50,6 +50,7 @@
 
 #define RETRY_CNT	10
 
+extern int tegra_i2sloopback_func;
 static struct tegra30_i2s *i2scont[TEGRA30_NR_I2S_IFC];
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static struct tegra30_i2s bbc1cont;
@@ -490,6 +491,13 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
 
 	regmap_read(i2s->regmap, TEGRA30_I2S_CTRL, &reg_ctrl);
+	/* I2S loopback*/
+	if (tegra_i2sloopback_func)
+		reg_ctrl |= TEGRA30_I2S_CTRL_LPBK_ENABLE;
+	else
+		reg_ctrl &= ~TEGRA30_I2S_CTRL_LPBK_ENABLE;
+	mask = TEGRA30_I2S_CTRL_LPBK_ENABLE;
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, reg_ctrl);
 	/* TDM mode */
 	if ((reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) &&
 		(i2s->dsp_config.slot_width > 2))
@@ -898,6 +906,7 @@ static int tegra30_i2s_probe(struct snd_soc_dai *dai)
 	i2s->dsp_config.rx_mask = 1;
 	i2s->dsp_config.rx_data_offset = 1;
 	i2s->dsp_config.tx_data_offset = 1;
+	tegra_i2sloopback_func = 0;
 
 
 	return 0;
