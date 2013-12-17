@@ -24,6 +24,7 @@
 #include "sysedp_internal.h"
 
 static struct kobject sysedp_kobj;
+static struct kset *consumers_kset;
 
 struct sysedp_consumer_attribute {
 	struct attribute attr;
@@ -155,16 +156,25 @@ static struct kobj_type ktype_consumer = {
 
 int sysedp_consumer_add_kobject(struct sysedp_consumer *consumer)
 {
-	struct kobject *parent = &sysedp_kobj;
+	int ret;
 
-	if (kobject_init_and_add(&consumer->kobj, &ktype_consumer, parent,
-				 consumer->name)) {
-		pr_err("%s: failed to init & add sysfs consumer entry\n",
+	consumer->kobj.kset = consumers_kset;
+	kobject_init(&consumer->kobj, &ktype_consumer);
+
+	ret = kobject_add(&consumer->kobj, NULL, consumer->name);
+	if (ret) {
+		pr_err("%s: failed to add sysfs consumer entry\n",
 		       consumer->name);
-		return -EINVAL;
+		return ret;
 	}
 
-	kobject_uevent(&consumer->kobj, KOBJ_ADD);
+	ret = kobject_uevent(&consumer->kobj, KOBJ_ADD);
+	if (ret) {
+		pr_err("%s: failed to send uevent\n",
+		       consumer->name);
+		kobject_put(&consumer->kobj);
+		return ret;
+	}
 	return 0;
 }
 
@@ -388,14 +398,32 @@ static struct kobj_type ktype_sysedp = {
 	.default_attrs = sysedp_attrs
 };
 
+static const struct kset_uevent_ops sysedp_uevent_ops = {
+};
+
+
 int sysedp_init_sysfs(void)
 {
+	int ret;
 	struct kobject *parent = NULL;
 
 #ifdef CONFIG_PM
 	parent = power_kobj;
 #endif
 
-	return kobject_init_and_add(&sysedp_kobj, &ktype_sysedp,
-				    parent, "sysedp");
+	ret = kobject_init_and_add(&sysedp_kobj, &ktype_sysedp,
+				   parent, "sysedp");
+	if (ret) {
+		pr_err("sysedp_init_sysfs: initialization failed\n");
+		return ret;
+	}
+
+	consumers_kset = kset_create_and_add("consumers", &sysedp_uevent_ops,
+					     &sysedp_kobj);
+	if (!consumers_kset) {
+		pr_err("sysedp_init_sysfs: consumers kset init failed\n");
+		return -EFAULT;
+	}
+	return 0;
+
 }
