@@ -13,8 +13,16 @@ Recommended properties:
 Optional properties:
 - nvidia,clock-always-on: Enable clock of spi always.
 
-Example:
+spi-client device controller properties:
+- nvidia,enable-hw-based-cs: (Boolean) Use the HW based CS if enabled.
+- nvidia,tx-clk-tap-delay: Delays the clock going out to the external device
+  with this tap value.
+- nvidia,rx-clk-tap-delay: Delays the clock coming in from the external device
+  with this tap value.
+- nvidia,cs-setup-clk-count: CS setup timing parameter.
+- nvidia,cs-hold-clk-count: CS hold timing parameter.
 
+Example:
 spi@7000d600 {
 	compatible = "nvidia,tegra114-spi";
 	reg = <0x7000d600 0x200>;
@@ -25,5 +33,15 @@ spi@7000d600 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "disabled";
-};
 
+	<spi-client>@<bus_num> {
+		...
+		...
+		nvidia,enable-hw-based-cs;
+		nvidia,cs-setup-clk-count = <10>;
+		nvidia,cs-hold-clk-count = <10>;
+		nvidia,rx-clk-tap-delay = <0>;
+		nvidia,tx-clk-tap-delay = <16>;
+		...
+	};
+};
