@@ -916,7 +916,9 @@ int __init ardbeg_pmon_init(void)
 
 	if (bi.fab >= BOARD_FAB_A01)
 		register_devices_ardbeg_A01();
-	else
+	else if ((bi.board_id != BOARD_E1784) &&
+		(bi.board_id != BOARD_E1922) &&
+		(bi.board_id != BOARD_E1923))
 		register_devices_ardbeg();
 
 	return 0;
