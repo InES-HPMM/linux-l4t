@@ -44,8 +44,8 @@ static __initdata struct tegra_drive_pingroup_config loki_drive_pinmux[] = {
 /* Pinmux changes to support UART over uSD adapter E2542 */
 static __initdata struct tegra_pingroup_config loki_sdmmc3_uart_pinmux[] = {
 
-	DEFAULT_PINMUX(SDMMC3_CMD,    UARTA,      NORMAL,   NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,      NORMAL,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(SDMMC3_CMD,    UARTA,      NORMAL,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,      NORMAL,   NORMAL,   OUTPUT),
 };
 
 #include "board-loki-pinmux-t12x.h"
