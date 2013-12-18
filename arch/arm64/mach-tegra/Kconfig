@@ -24,6 +24,8 @@ config ARCH_TEGRA_13x_SOC
 	select SOC_BUS
 	select THERMAL
 	select PM_GENERIC_DOMAINS if PM
+	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
+	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
 	help
 	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
 	  NVIDIA Denver CPU
