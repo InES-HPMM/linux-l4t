@@ -31,8 +31,22 @@ struct iommu_linear_map {
 };
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+/*
+ * ASID[0] for the system default
+ * ASID[1] for PPCS, which has SDMMC
+ * ASID[3][4] open for drivers, first come, first served.
+ */
+enum {
+	SYSTEM_DEFAULT,
+	SYSTEM_PROTECTED,
+	SYSTEM_DC,
+	SYSTEM_DCB,
+	SYSTEM_GK20A,
+	NUM_ASIDS,
+};
+
 /* Maximum number of iommu address spaces in the system */
-#define TEGRA_IOMMU_NUM_ASIDS 4
+#define TEGRA_IOMMU_NUM_ASIDS NUM_ASIDS
 extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 						    u64 swgids);
 void tegra_smmu_unmap_misc_device(struct device *dev);

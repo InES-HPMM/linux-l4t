@@ -2274,20 +2274,6 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 
-/*
- * ASID[0] for the system default
- * ASID[1] for PPCS, which has SDMMC
- * ASID[3][4] open for drivers, first come, first served.
- */
-enum {
-	SYSTEM_DEFAULT,
-	SYSTEM_PROTECTED,
-	SYSTEM_GK20A,
-	SYSTEM_DC,
-	SYSTEM_DCB,
-	NUM_ASIDS,
-};
-
 struct tegra_iommu_mapping {
 	dma_addr_t base;
 	size_t size;
@@ -2297,10 +2283,10 @@ struct tegra_iommu_mapping {
 static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	/* Non-zero base to account for gk20a driver's assumptions */
-	[SYSTEM_GK20A] = {0x100000, (u32)~0},
 	[SYSTEM_DC] = {0x10000, (u32)~0},
 	[SYSTEM_DCB] = {0x10000, (u32)~0},
+	/* Non-zero base to account for gk20a driver's assumptions */
+	[SYSTEM_GK20A] = {0x100000, (u32)~0},
 };
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
