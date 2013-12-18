@@ -37,6 +37,13 @@ config MACH_EXUMA
 	help
 	  Support for NVIDIA Exuma FPGA development platform
 
+config MACH_T132REF
+	bool "T132REF board"
+	depends on ARCH_TEGRA_13x_SOC
+	select SYSEDP_FRAMEWORK
+	help
+	  Support for NVIDIA Exuma FPGA development platform
+
 config DENVER_CPU
 	bool "Denver CPU"
 	help

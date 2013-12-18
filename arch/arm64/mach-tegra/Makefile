@@ -27,6 +27,36 @@ obj-${CONFIG_MACH_EXUMA}              += board-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin-kbc.o
 obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
+obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-pinmux.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-powermon.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-sensors.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-kbc.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-power.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-panel.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-pinmux.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-power.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-powermon.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-sata.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-power.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-sysedp.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
+obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
+obj-${CONFIG_MACH_T132REF}              += panel-a-edp-1080p-14-0.o
+obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-14-0.o
+obj-${CONFIG_MACH_T132REF}              += panel-c-lvds-1366-14.o
+obj-${CONFIG_MACH_T132REF}              += panel-lgd-wxga-7-0.o
+obj-${CONFIG_MACH_T132REF}              += panel-p-wuxga-10-1.o
+obj-${CONFIG_MACH_T132REF}              += panel-s-edp-uhdtv-15-6.o
+obj-${CONFIG_MACH_T132REF}              += panel-s-edp-wqxgap-15-6.o
+obj-${CONFIG_MACH_T132REF}              += panel-s-wqxga-10-1.o
+
+obj-y                                   += board-touch-maxim_sti-spi.o
+
+
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
 endif
