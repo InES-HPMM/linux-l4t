@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_smmu.h
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -34,11 +34,13 @@ struct iommu_linear_map {
 /*
  * ASID[0] for the system default
  * ASID[1] for PPCS, which has SDMMC
+ * ASID[2] for PPCS1
  * ASID[3][4] open for drivers, first come, first served.
  */
 enum {
 	SYSTEM_DEFAULT,
 	SYSTEM_PROTECTED,
+	PPCS1_ASID,
 	SYSTEM_DC,
 	SYSTEM_DCB,
 	SYSTEM_GK20A,

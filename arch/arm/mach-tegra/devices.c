@@ -5,7 +5,7 @@
  *	Colin Cross <ccross@android.com>
  *	Erik Gilling <ccross@android.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -2290,6 +2290,7 @@ struct tegra_iommu_mapping {
 static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[PPCS1_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SYSTEM_DC] = {0x10000, (u32)~0},
 	[SYSTEM_DCB] = {0x10000, (u32)~0},
 	/* Non-zero base to account for gk20a driver's assumptions */
@@ -2350,6 +2351,14 @@ static int _tegra_smmu_get_asid(u64 swgids)
 {
 	if (swgids & SWGID(PPCS))
 		return SYSTEM_PROTECTED;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if (swgids & SWGID(PPCS1))
+		return PPCS1_ASID;
+#else
+	if (swgids & SWGID(PPCS1))
+		return SYSTEM_PROTECTED;
+#endif
 
 	if (swgids & SWGID(GPUB))
 		return SYSTEM_GK20A;
