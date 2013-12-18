@@ -113,8 +113,6 @@
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
-phys_addr_t tegra_avp_kernel_start;
-phys_addr_t tegra_avp_kernel_size;
 phys_addr_t tegra_bootloader_fb_start;
 phys_addr_t tegra_bootloader_fb_size;
 phys_addr_t tegra_bootloader_fb2_start;
@@ -1839,29 +1837,7 @@ void __tegra_clear_framebuffer(struct platform_device *pdev,
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
-	const size_t avp_kernel_reserve = SZ_32M;
 	struct iommu_linear_map map[4];
-
-#if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
-	!defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 & up with SMMU */
-	/* Reserve hardcoded AVP kernel load area starting at 0xXe000000*/
-	tegra_avp_kernel_size = SECTION_SIZE;
-
-	/*
-	 * Place the AVP kernel below the 4 GB physical address limit because
-	 * AVP is a 32 bit processor.
-	 */
-	BUG_ON(memblock_end_of_4G() == 0);
-	tegra_avp_kernel_start = memblock_end_of_4G() - avp_kernel_reserve;
-
-	if (memblock_remove(tegra_avp_kernel_start, avp_kernel_reserve)) {
-		pr_err("Failed to remove AVP kernel load area %08lx@%08llx "
-				"from memory map\n",
-			(unsigned long)avp_kernel_reserve,
-			(u64)tegra_avp_kernel_start);
-		tegra_avp_kernel_size = 0;
-	}
-#endif
 
 #ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	if (carveout_size) {
@@ -2108,23 +2084,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		(u64)(tegra_tsec_size ?
 			tegra_tsec_start + tegra_tsec_size - 1 : 0));
 
-	if (tegra_avp_kernel_size) {
-		/* Return excessive memory reserved for AVP kernel */
-		if (tegra_avp_kernel_size < avp_kernel_reserve)
-			memblock_add(
-				tegra_avp_kernel_start + tegra_avp_kernel_size,
-				avp_kernel_reserve - tegra_avp_kernel_size);
-		/* The AVP kernel should be loaded below the 4 GB physical
-		   address limit. */
-		BUG_ON((u64)(tegra_avp_kernel_start) +
-			(u64)(tegra_avp_kernel_size) - (u64)(1) >=
-			(u64)(SZ_2G)*(u64)(2));
-		pr_info(
-		"AVP kernel: %08llx - %08llx\n",
-			(u64)tegra_avp_kernel_start,
-			(u64)(tegra_avp_kernel_start +
-				tegra_avp_kernel_size - 1));
-	}
 
 #ifdef CONFIG_TEGRA_NVDUMPER
 	if (nvdumper_reserved) {
