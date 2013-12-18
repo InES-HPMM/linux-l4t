@@ -1,3 +1,19 @@
+/*
+ * sound/soc/codecs/tlv320aic3262_default_fw.h
+ *
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
 unsigned char default_firmware[] = {
 	237, 241, 209, 192, 179, 0, 1, 0, 58, 36, 0, 0, 37, 131, 58, 238,
 	0, 0, 0, 0, 8, 207, 52, 80, 70, 105, 114, 109, 119, 97, 114, 101,
