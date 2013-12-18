@@ -1229,15 +1229,6 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	audio_initialized = nvavp_get_audio_init_status(nvavp);
 #endif
-	if (!(video_initialized || audio_initialized)) {
-		/* Add PM QoS request but leave it as default value */
-		pm_qos_add_request(&nvavp->min_cpu_freq_req,
-					PM_QOS_CPU_FREQ_MIN,
-					PM_QOS_DEFAULT_VALUE);
-		pm_qos_add_request(&nvavp->min_online_cpus_req,
-					PM_QOS_MIN_ONLINE_CPUS,
-					PM_QOS_DEFAULT_VALUE);
-	}
 
 	if (IS_VIDEO_CHANNEL_ID(channel_id) && (!video_initialized)) {
 		pr_debug("nvavp_init : channel_ID (%d)\n", channel_id);
@@ -1309,24 +1300,14 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 #endif
 
 	/* Video and Audio both becomes uninitialized */
-	if (video_initialized == audio_initialized) {
-		pr_debug("nvavp_uninit both channels unitialized\n");
+	if (!video_initialized && !audio_initialized) {
+		pr_debug("nvavp_uninit both channels uninitialized\n");
 
 		clk_disable_unprepare(nvavp->sclk);
 		clk_disable_unprepare(nvavp->emc_clk);
 		disable_irq(nvavp->mbox_from_avp_pend_irq);
 		nvavp_pushbuffer_deinit(nvavp);
 		nvavp_halt_avp(nvavp);
-		if (!IS_ERR_OR_NULL(&nvavp->min_cpu_freq_req)) {
-			pm_qos_update_request(&nvavp->min_cpu_freq_req,
-					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-			pm_qos_remove_request(&nvavp->min_cpu_freq_req);
-		}
-		if (!IS_ERR_OR_NULL(&nvavp->min_online_cpus_req)) {
-			pm_qos_update_request(&nvavp->min_online_cpus_req,
-					PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-			pm_qos_remove_request(&nvavp->min_online_cpus_req);
-		}
 	}
 
 	/*
@@ -2184,6 +2165,14 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 		goto err_req_irq_pend;
 	}
 
+	/* Add PM QoS request but leave it as default value */
+	pm_qos_add_request(&nvavp->min_cpu_freq_req,
+				PM_QOS_CPU_FREQ_MIN,
+				PM_QOS_DEFAULT_VALUE);
+	pm_qos_add_request(&nvavp->min_online_cpus_req,
+				PM_QOS_MIN_ONLINE_CPUS,
+				PM_QOS_DEFAULT_VALUE);
+
 	return 0;
 
 err_req_irq_pend:
@@ -2246,6 +2235,17 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 
 	clk_put(nvavp->emc_clk);
 	clk_put(nvavp->sclk);
+
+	if (!IS_ERR_OR_NULL(&nvavp->min_cpu_freq_req)) {
+		pm_qos_update_request(&nvavp->min_cpu_freq_req,
+				PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		pm_qos_remove_request(&nvavp->min_cpu_freq_req);
+	}
+	if (!IS_ERR_OR_NULL(&nvavp->min_online_cpus_req)) {
+		pm_qos_update_request(&nvavp->min_online_cpus_req,
+				PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		pm_qos_remove_request(&nvavp->min_online_cpus_req);
+	}
 
 	kfree(nvavp);
 	return 0;
