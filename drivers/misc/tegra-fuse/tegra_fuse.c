@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -891,7 +891,6 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	int i = 0;
 	int index;
 	int ret;
-	int delay = FUSE_PGM_TIMEOUT_MS;
 	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
@@ -977,7 +976,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 
 	clk_disable(clk_fuse);
 
-	return ((delay > 0) ? 0 : -ETIMEDOUT);
+	return 0;
 }
 
 static int fuse_name_to_param(const char *str)
