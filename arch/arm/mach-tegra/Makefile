@@ -303,7 +303,6 @@ obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sata.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sensors.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-panel.o
-obj-${CONFIG_MACH_LAGUNA}               += board-laguna-pinmux.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-powermon.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
