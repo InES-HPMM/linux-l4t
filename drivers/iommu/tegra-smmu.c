@@ -103,6 +103,7 @@ enum {
 
 #define SMMU_TLB_FLUSH_ASID_SHIFT(as)		\
 	(SMMU_TLB_FLUSH_ASID_SHIFT_BASE - __ffs((as)->smmu->num_as))
+#define SMMU_ASID_MASK		((1 << __ffs((as)->smmu->num_as)) - 1)
 
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
@@ -488,7 +489,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 
 		offs = tegra_smmu_get_offset(i);
 		val = smmu_read(smmu, offs);
-		val &= ~3; /* always overwrite ASID */
+		val &= ~SMMU_ASID_MASK; /* always overwrite ASID */
 
 		if (on)
 			val |= mask;
@@ -500,8 +501,8 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		smmu_write(smmu, val, offs);
 
 		dev_dbg(c->dev, "swgid:%d asid:%d %s @%s\n",
-			i, val & 3, (val & BIT(31)) ? "Enabled" : "Disabled",
-			__func__);
+			i, val & SMMU_ASID_MASK,
+			 (val & BIT(31)) ? "Enabled" : "Disabled", __func__);
 	}
 	FLUSH_SMMU_REGS(smmu);
 	c->swgids = map;
