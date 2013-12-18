@@ -528,7 +528,7 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 	if (tx_fifo_avail > 0 && buf_remaining > 0) {
 		if (buf_remaining > 3) {
 			dev_err(i2c_dev->dev,
-				"Remaining buffer more than 3 %d\n",
+				"Remaining buffer more than 3 %zd\n",
 				buf_remaining);
 			BUG();
 		}
@@ -1069,7 +1069,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 				!(next_msg->flags & I2C_M_RD));
 		}
 
-		dev_err(i2c_dev->dev, "buf_remaining - %d\n",
+		dev_err(i2c_dev->dev, "buf_remaining - %zd\n",
 			i2c_dev->msg_buf_remaining);
 	}
 
