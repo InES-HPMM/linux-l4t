@@ -4,17 +4,25 @@
 
 		c1 {
 			state-name = "Clock gated";
-			latency = <100>;
-			residency = <100>;
-			power = <200>;
+			latency = <1>;
+			residency = <1>;
+			power = <70>;
 			pmstate = <0x0>;
 		};
-		c6 {
-			state-name = "Virtual retention";
-			latency = <50000>;
-			residency = <50000>;
-			power = <50>;
-			pmstate = <0x2>;
+		cc4 {
+			state-name = "Retention";
+			latency = <100>;
+			residency = <10>;
+			power = <19>;
+			pmstate = <0x0>;
 		};
+		cc6 {
+			state-name = "Virtual Retention";
+			latency = <100>;
+			residency = <16000>;
+			power = <1>;
+			pmstate = <0x0>;
+		};
+
 	};
 };
