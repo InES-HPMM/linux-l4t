@@ -58,6 +58,7 @@
 #include <asm/arch_timer.h>
 
 #include <asm/mach/arch.h>
+#include <asm/system_misc.h>
 
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
@@ -395,6 +396,9 @@ void __init setup_arch(char **cmdline_p)
 	unflatten_device_tree();
 
 	psci_init();
+
+	if (mdesc->restart)
+		arm_pm_restart = mdesc->restart;
 
 	cpu_logical_map(0) = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
 #ifdef CONFIG_SMP
