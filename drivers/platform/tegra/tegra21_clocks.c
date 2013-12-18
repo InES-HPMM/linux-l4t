@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_clocks.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,6 +120,7 @@
 #define OSC_CTRL			0x50
 #define OSC_CTRL_OSC_FREQ_MASK		(0xF<<28)
 #define OSC_CTRL_OSC_FREQ_12MHZ		(0x8<<28)
+#define OSC_CTRL_OSC_FREQ_13MHZ		(0x0<<28)
 #define OSC_CTRL_OSC_FREQ_19_2MHZ	(0x4<<28)
 #define OSC_CTRL_OSC_FREQ_38_4MHZ	(0x5<<28)
 #define OSC_CTRL_MASK			(0x3f2 | OSC_CTRL_OSC_FREQ_MASK)
@@ -777,6 +778,9 @@ static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 	case OSC_CTRL_OSC_FREQ_12MHZ:
 		c->rate = 12000000;
 		break;
+	case OSC_CTRL_OSC_FREQ_13MHZ:
+		/* fake 38.4MHz for FPGA, BUG_ON otherwise */
+		BUG_ON(!tegra_platform_is_fpga());
 	case OSC_CTRL_OSC_FREQ_38_4MHZ:
 		c->rate = 38400000;
 		break;
