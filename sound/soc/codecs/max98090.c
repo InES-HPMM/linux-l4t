@@ -2779,8 +2779,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "SPKR");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC2");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICR");
 			max98090_dmic_switch(codec, 1);
 
 			break;
@@ -2814,8 +2814,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPR");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC2");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICR");
 			max98090_dmic_switch(codec, 1);
 
 			break;
@@ -2833,8 +2833,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_disable_pin(&codec->dapm, "SPKR");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPL");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPR");
-			snd_soc_dapm_disable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_disable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_disable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_disable_pin(&codec->dapm, "DMICR");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "MIC2");
 			max98090_dmic_switch(codec, 0);
