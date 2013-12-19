@@ -1,5 +1,5 @@
 #include "tegra124-tn8-a03-00.dts"
-#include "tegra124-platforms/tegra124-tn8-sysedp.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-e1780-1100-a02.dtsi"
 
 / {
 	i2c@7000c000 {

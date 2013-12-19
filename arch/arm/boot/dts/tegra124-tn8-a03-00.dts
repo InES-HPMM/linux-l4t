@@ -19,17 +19,17 @@
  */
 /dts-v1/;
 
-#include "tegra124.dtsi"
-#include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-io-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
-#include "tegra124-platforms/tegra124-tn8-emc.dtsi"
-#include "tegra124-platforms/tegra124-e1780-powermon.dtsi"
-#include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
-#include "tegra124-platforms/tegra124-tn8-e1736-fixed.dtsi"
-#include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
-#include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
-#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
-#include "tegra124-platforms/tegra124-e1845-sensor.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pmic-e1736-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-fixed-e1736-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-e1845-1000-a00.dtsi"
 #include "panel-l-wxga-7.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi.dtsi"
 
