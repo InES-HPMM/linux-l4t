@@ -17,6 +17,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/cpuidle.h>
 #include <linux/of_platform.h>
 #include <linux/tegra-soc.h>
@@ -24,9 +25,17 @@
 #include "../../arch/arm/mach-tegra/flowctrl.h"
 #include "cpuidle-tegra210.h"
 
+static bool retention_in_idle __read_mostly;
+module_param(retention_in_idle, bool, 0644);
+
 static int cpu_do_c4(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 		int index)
 {
+	if (!retention_in_idle) {
+		cpu_do_idle();
+		return 0;
+	}
+
 	/* TODO: fix the counter */
 	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
 	cpu_retention_enable(1);
