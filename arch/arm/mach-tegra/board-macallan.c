@@ -498,24 +498,6 @@ static void macallan_audio_init(void)
 }
 
 
-static struct platform_device *macallan_spi_devices[] __initdata = {
-	&tegra11_spi_device1,
-};
-
-static struct tegra_spi_platform_data macallan_spi_pdata = {
-	.spi_max_frequency	= 25000000,
-	.is_clkon_always	= false,
-};
-
-static void __init macallan_spi_init(void)
-{
-	macallan_spi_pdata.dma_req_sel = (tegra_revision == TEGRA_REVISION_A01)
-							? 0 : 15 ;
-	tegra11_spi_device1.dev.platform_data = &macallan_spi_pdata;
-	platform_add_devices(macallan_spi_devices,
-				ARRAY_SIZE(macallan_spi_devices));
-}
-
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       false},
@@ -600,6 +582,19 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
+				NULL),
+
 	{}
 };
 #endif
@@ -618,7 +613,6 @@ static void __init tegra_macallan_late_init(void)
 	platform_device_register(&tegra114_pinctrl_device);
 	macallan_pinmux_init();
 	macallan_i2c_init();
-	macallan_spi_init();
 	macallan_usb_init();
 	macallan_uart_init();
 	macallan_audio_init();

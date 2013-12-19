@@ -533,22 +533,6 @@ static void roth_audio_init(void)
 	roth_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
-
-static struct platform_device *roth_spi_devices[] __initdata = {
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data roth_spi_pdata = {
-	.spi_max_frequency	= 25000000,
-	.is_clkon_always	= false,
-};
-
-static void __init roth_spi_init(void)
-{
-	tegra11_spi_device4.dev.platform_data = &roth_spi_pdata;
-	platform_add_devices(roth_spi_devices, ARRAY_SIZE(roth_spi_devices));
-}
-
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       false},
@@ -627,7 +611,6 @@ static void __init tegra_roth_init(void)
 	tegra_enable_pinmux();
 	roth_pinmux_init();
 	roth_i2c_init();
-	roth_spi_init();
 	roth_usb_init();
 	roth_uart_init();
 	roth_led_init();
@@ -679,6 +662,19 @@ struct of_dev_auxdata roth_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
+				NULL),
+
 	{}
 };
 #endif
