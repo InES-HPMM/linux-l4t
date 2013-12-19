@@ -1137,34 +1137,6 @@ static void pluto_audio_init(void)
 					ARRAY_SIZE(aic326x_spi_board_info));
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *pluto_spi_devices[] __initdata = {
-        &tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data pluto_spi_pdata = {
-	.dma_req_sel            = 0,
-	.spi_max_frequency      = 25000000,
-	.clock_always_on        = false,
-};
-
-static void __init pluto_spi_init(void)
-{
-        struct board_info board_info, display_board_info;
-
-        tegra_get_board_info(&board_info);
-        tegra_get_display_board_info(&display_board_info);
-
-	tegra11_spi_device4.dev.platform_data = &pluto_spi_pdata;
-        platform_add_devices(pluto_spi_devices,
-                                ARRAY_SIZE(pluto_spi_devices));
-}
-#else
-static void __init pluto_spi_init(void)
-{
-}
-#endif
-
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       false},
@@ -1329,7 +1301,6 @@ static void __init tegra_pluto_late_init(void)
 	platform_device_register(&tegra114_pinctrl_device);
 	pluto_pinmux_init();
 	pluto_i2c_init();
-	pluto_spi_init();
 	pluto_usb_init();
 	pluto_xusb_init();
 	pluto_uart_init();

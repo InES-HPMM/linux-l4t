@@ -26,8 +26,6 @@
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c.h>
-#include <linux/spi/spi.h>
-#include <linux/spi/spi-tegra.h>
 #include <linux/i2c/panjit_ts.h>
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
@@ -223,53 +221,6 @@ static void bonaire_apbdma_init(void)
 {
 	platform_device_register(&tegra_apbdma);
 }
-
-static struct platform_device *bonaire_spi_devices[] __initdata = {
-	&tegra11_spi_device4,
-};
-
-/* struct spi_clk_parent spi_parent_clk_bonaire[] = { */
-/* 	[0] = {.name = "pll_p"}, */
-/* #ifndef CONFIG_TEGRA_PLLM_RESTRICTED */
-/* 	[1] = {.name = "pll_m"}, */
-/* 	[2] = {.name = "clk_m"}, */
-/* #else */
-/* 	[1] = {.name = "clk_m"}, */
-/* #endif */
-/* }; */
-
-/* static struct tegra_spi_platform_data bonaire_spi_pdata = { */
-/* 	.is_dma_based           = true, */
-/* 	.max_dma_buffer         = 16 * 1024, */
-/* 	.is_clkon_always        = false, */
-/* 	.max_rate               = 25000000, */
-/* }; */
-
-/* static void __init bonaire_spi_init(void) */
-/* { */
-/* 	int i; */
-/* 	struct clk *c; */
-/* 	struct board_info board_info, display_board_info; */
-
-/* 	tegra_get_board_info(&board_info); */
-/* 	tegra_get_display_board_info(&display_board_info); */
-
-/* 	for (i = 0; i < ARRAY_SIZE(spi_parent_clk_bonaire); ++i) { */
-/* 		c = tegra_get_clock_by_name(spi_parent_clk_bonaire[i].name); */
-/* 		if (IS_ERR_OR_NULL(c)) { */
-/* 			pr_err("Not able to get the clock for %s\n", */
-/* 					spi_parent_clk_bonaire[i].name); */
-/* 		continue; */
-/* 		} */
-/* 		spi_parent_clk_bonaire[i].parent_clk = c; */
-/* 		spi_parent_clk_bonaire[i].fixed_clk_rate = clk_get_rate(c); */
-/* 	} */
-/* 	bonaire_spi_pdata.parent_clk_list = spi_parent_clk_bonaire; */
-/* 	bonaire_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_bonaire); */
-/* 	tegra11_spi_device4.dev.platform_data = &bonaire_spi_pdata; */
-/* 	platform_add_devices(bonaire_spi_devices, */
-/* 			ARRAY_SIZE(bonaire_spi_devices)); */
-/* } */
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
 	{					\
@@ -592,7 +543,6 @@ static void __init tegra_bonaire_init(void)
 	bonaire_hs_uart_init();
 	bonaire_sdhci_init();
 	bonaire_i2c_init();
-	/* bonaire_spi_init(); */
 	bonaire_regulator_init();
 	bonaire_suspend_init();
 	bonaire_touch_init();

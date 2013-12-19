@@ -601,26 +601,6 @@ static void pismo_audio_init(void)
 	pismo_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
-
-static struct platform_device *pismo_spi_devices[] __initdata = {
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data pismo_spi_pdata = {
-	.spi_max_frequency	= 25000000,
-	.is_clkon_always	= false,
-};
-
-static void __init pismo_spi_init(void)
-{
-	struct board_info display_board_info;
-
-	tegra_get_display_board_info(&display_board_info);
-
-	tegra11_spi_device4.dev.platform_data = &pismo_spi_pdata;
-	platform_add_devices(pismo_spi_devices, ARRAY_SIZE(pismo_spi_devices));
-}
-
 struct rm_spi_ts_platform_data rm31080ts_pismo_data = {
 	.gpio_reset = 0,
 	.config = 0,
@@ -656,7 +636,6 @@ static void __init tegra_pismo_init(void)
 	tegra_enable_pinmux();
 	pismo_pinmux_init();
 	pismo_i2c_init();
-	pismo_spi_init();
 	pismo_usb_init();
 	pismo_uart_init();
 	pismo_audio_init();
@@ -701,6 +680,19 @@ struct of_dev_auxdata pismo_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
+				NULL),
+
 	{}
 };
 #endif

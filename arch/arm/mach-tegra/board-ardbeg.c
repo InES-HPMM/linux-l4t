@@ -798,45 +798,6 @@ static void ardbeg_modem_init(void)
 	}
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *ardbeg_spi_devices[] __initdata = {
-	&tegra11_spi_device1,
-	&tegra11_spi_device3,
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data ardbeg_spi1_pdata = {
-	.dma_req_sel		= 15,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static struct tegra_spi_platform_data ardbeg_spi3_pdata = {
-	.dma_req_sel		= 15,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static struct tegra_spi_platform_data ardbeg_spi4_pdata = {
-	.dma_req_sel		= 18,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static void __init ardbeg_spi_init(void)
-{
-	tegra11_spi_device1.dev.platform_data = &ardbeg_spi1_pdata;
-	tegra11_spi_device3.dev.platform_data = &ardbeg_spi3_pdata;
-	tegra11_spi_device4.dev.platform_data = &ardbeg_spi4_pdata;
-	platform_add_devices(ardbeg_spi_devices,
-			ARRAY_SIZE(ardbeg_spi_devices));
-}
-#else
-static void __init ardbeg_spi_init(void)
-{
-}
-#endif
-
 #ifdef CONFIG_USE_OF
 static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
@@ -1178,7 +1139,6 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_modem_init();
 	ardbeg_xusb_init();
 	ardbeg_i2c_init();
-	ardbeg_spi_init();
 	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	//tegra_ram_console_debug_init();

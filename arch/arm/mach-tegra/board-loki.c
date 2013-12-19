@@ -637,37 +637,6 @@ static void loki_modem_init(void)
 	}
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *loki_spi_devices[] __initdata = {
-	&tegra11_spi_device1,
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data loki_spi1_pdata = {
-	.dma_req_sel		= 15,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static struct tegra_spi_platform_data loki_spi4_pdata = {
-	.dma_req_sel		= 18,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static void __init loki_spi_init(void)
-{
-	tegra11_spi_device1.dev.platform_data = &loki_spi1_pdata;
-	tegra11_spi_device4.dev.platform_data = &loki_spi4_pdata;
-	platform_add_devices(loki_spi_devices,
-			ARRAY_SIZE(loki_spi_devices));
-}
-#else
-static void __init loki_spi_init(void)
-{
-}
-#endif
-
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
@@ -837,7 +806,6 @@ static void __init tegra_loki_late_init(void)
 	loki_modem_init();
 	loki_xusb_init();
 	loki_i2c_init();
-	loki_spi_init();
 	loki_uart_init();
 	loki_audio_init();
 	platform_add_devices(loki_devices, ARRAY_SIZE(loki_devices));

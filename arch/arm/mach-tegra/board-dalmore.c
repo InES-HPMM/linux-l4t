@@ -612,29 +612,6 @@ static void dalmore_audio_init(void)
 	dalmore_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *dalmore_spi_devices[] __initdata = {
-        &tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data dalmore_spi_pdata = {
-	.dma_req_sel		= 0,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static void __init dalmore_spi_init(void)
-{
-	tegra11_spi_device4.dev.platform_data = &dalmore_spi_pdata;
-        platform_add_devices(dalmore_spi_devices,
-                                ARRAY_SIZE(dalmore_spi_devices));
-}
-#else
-static void __init dalmore_spi_init(void)
-{
-}
-#endif
-
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       false},
@@ -757,7 +734,6 @@ static void __init tegra_dalmore_late_init(void)
 	platform_device_register(&tegra114_pinctrl_device);
 	dalmore_pinmux_init();
 	dalmore_i2c_init();
-	dalmore_spi_init();
 	dalmore_usb_init();
 	dalmore_xusb_init();
 	dalmore_uart_init();

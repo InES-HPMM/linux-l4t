@@ -23,7 +23,6 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_data/tegra_nor.h>
 #include <linux/platform_data/tegra_ahci.h>
-#include <linux/spi/spi-tegra.h>
 #include <linux/of_platform.h>
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
@@ -429,37 +428,6 @@ static void vcm30_t124_usb_init(void)
 	}
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *vcm30_t124_spi_devices[] __initdata = {
-	&tegra11_spi_device1,
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data vcm30_t124_spi1_pdata = {
-	.dma_req_sel		= 15,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static struct tegra_spi_platform_data vcm30_t124_spi4_pdata = {
-	.dma_req_sel		= 18,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static void __init vcm30_t124_spi_init(void)
-{
-	tegra11_spi_device1.dev.platform_data = &vcm30_t124_spi1_pdata;
-	tegra11_spi_device4.dev.platform_data = &vcm30_t124_spi4_pdata;
-	platform_add_devices(vcm30_t124_spi_devices,
-			ARRAY_SIZE(vcm30_t124_spi_devices));
-}
-#else
-static void __init vcm30_t124_spi_init(void)
-{
-}
-#endif
-
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTA_BASE,
@@ -482,6 +450,19 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000,
 				"tegra30-ahub-apbif", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
+				NULL),
+
 	{}
 };
 #endif
@@ -507,7 +488,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 /*	vcm30_t124_xusb_init(); */
 	vcm30_t124_nor_init();
 	vcm30_t124_i2c_init();
-	vcm30_t124_spi_init();
 	vcm30_t124_uart_init();
 	vcm30_t124_pca953x_init();
 	platform_add_devices(vcm30_t124_devices,
