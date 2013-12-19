@@ -73,6 +73,18 @@
 				system-pmic-power-reset;
 			};
 
+                        clock {
+                                compatible = "ti,palmas-clk";
+
+                                clk32k_kg {
+                                        ti,clock-boot-enable;
+                                };
+
+                                clk32k_kg_audio {
+                                        ti,clock-boot-enable;
+                                };
+                        };
+
 			pmic {
 				compatible = "ti,tps65913-pmic", "ti,palmas-pmic";
 				ldo1-in-supply = <&palmas_smps6>;
@@ -254,7 +266,7 @@
 						consumers {
 							c1 {
 								regulator-consumer-supply = "vddio_sd_slot";
-								regulator-consumer-device = "sdhci-tegra.3";
+								regulator-consumer-device = "sdhci-tegra.2";
 							};
 							c2 {
 								regulator-consumer-supply = "vdd";
