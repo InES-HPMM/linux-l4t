@@ -2709,7 +2709,8 @@ static int __init tegra_ahci_dump_debuginit(void)
 	(void) debugfs_create_file("tegra_ahci", S_IRUGO,
 				   NULL, NULL, &debug_fops);
 #ifdef	CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	(void) debugfs_create_u32("tegra_ahci_idle_ms", S_IRWXUGO,
+	(void) debugfs_create_u32("tegra_ahci_idle_ms", S_IRUGO | S_IXUGO
+					| S_IWUSR | S_IWGRP,
 				   NULL, &tegra_ahci_idle_time);
 #endif
 	return 0;
