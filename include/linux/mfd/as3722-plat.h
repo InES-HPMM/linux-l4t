@@ -156,6 +156,8 @@ struct as3722_platform_data {
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
 	int watchdog_timer_initial_period;
 	int watchdog_timer_mode;
+	u32 major_rev;
+	u32 minor_rev;
 	bool enable_clk32k_out;
 };
 

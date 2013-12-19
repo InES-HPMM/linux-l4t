@@ -370,6 +370,8 @@ static int as3722_i2c_of_probe(struct i2c_client *i2c,
 					"ams,enable-internal-i2c-pullup");
 	as3722->irq_flags = irqd_get_trigger_type(irq_data);
 	as3722->irq_base = -1;
+	of_property_read_u32(np, "ams,major-rev", &as3722->major_rev);
+	of_property_read_u32(np, "ams,minor-rev", &as3722->minor_rev);
 	dev_dbg(&i2c->dev, "IRQ flags are 0x%08lx\n", as3722->irq_flags);
 	return 0;
 }
@@ -386,6 +388,8 @@ static int as3722_i2c_non_of_probe(struct i2c_client *i2c,
 	as3722->irq_base = pdata->irq_base;
 	as3722->en_intern_i2c_pullup = pdata->use_internal_i2c_pullup;
 	as3722->en_intern_int_pullup = pdata->use_internal_int_pullup;
+	as3722->major_rev = pdata->major_rev;
+	as3722->minor_rev = pdata->minor_rev;
 	return 0;
 }
 

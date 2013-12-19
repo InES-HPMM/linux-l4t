@@ -785,7 +785,6 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	struct regulator_ops *ops;
 	int id;
 	int ret;
-	u32 val;
 
 	as3722_regs = devm_kzalloc(&pdev->dev, sizeof(*as3722_regs),
 				GFP_KERNEL);
@@ -863,11 +862,14 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			else
 				ops = &as3722_sd016_ops;
 			if (id == AS3722_REGULATOR_ID_SD0) {
-				as3722_read(as3722, AS3722_FUSE15, &val);
-				if ((val & AS3722_NCELL_MASK) == 1)
-					as3722_regs->desc[id].min_uV = 610000;
-				else if ((val & AS3722_NCELL_MASK) == 2)
+				/* AMS version revision id is wrong in silicon
+				 * and therefore this woraround to decide based
+				 * on boardID
+				 */
+				if (as3722_device_rev(as3722, 1, 2))
 					as3722_regs->desc[id].min_uV = 410000;
+				else
+					as3722_regs->desc[id].min_uV = 610000;
 			} else
 				as3722_regs->desc[id].min_uV = 610000;
 			as3722_regs->desc[id].uV_step = 10000;
