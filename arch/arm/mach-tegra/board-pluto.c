@@ -86,6 +86,7 @@
 #include "pm.h"
 #include "common.h"
 #include "iomap.h"
+#include "tegra-of-dev-auxdata.h"
 
 
 #ifdef CONFIG_BT_BLUESLEEP
@@ -1252,18 +1253,7 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
+	T114_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra114-kbc", 0x7000e200, "tegra-kbc",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",

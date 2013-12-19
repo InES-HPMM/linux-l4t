@@ -43,6 +43,7 @@
 #include "common.h"
 
 #include <asm/mach-types.h>
+#include "tegra-of-dev-auxdata.h"
 
 static struct board_info board_info, display_board_info;
 
@@ -450,18 +451,7 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000,
 				"tegra30-ahub-apbif", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
+	T124_SPI_OF_DEV_AUXDATA,
 
 	{}
 };

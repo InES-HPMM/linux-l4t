@@ -76,6 +76,7 @@
 #include "common.h"
 #include "tegra-board-id.h"
 #include "board-touch-raydium.h"
+#include "tegra-of-dev-auxdata.h"
 
 #ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data roth_bt_rfkill_pdata = {
@@ -662,18 +663,7 @@ struct of_dev_auxdata roth_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
+	T114_SPI_OF_DEV_AUXDATA,
 
 	{}
 };

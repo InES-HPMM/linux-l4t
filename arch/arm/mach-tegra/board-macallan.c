@@ -76,6 +76,7 @@
 #include "pm.h"
 #include "common.h"
 #include "tegra-board-id.h"
+#include "tegra-of-dev-auxdata.h"
 
 static struct board_info board_info, display_board_info;
 
@@ -582,18 +583,7 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
+	T114_SPI_OF_DEV_AUXDATA,
 
 	{}
 };

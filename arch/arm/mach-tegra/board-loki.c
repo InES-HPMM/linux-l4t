@@ -85,6 +85,7 @@
 #include "common.h"
 #include "tegra-board-id.h"
 #include "iomap.h"
+#include "tegra-of-dev-auxdata.h"
 
 static struct board_info board_info, display_board_info;
 
@@ -639,18 +640,7 @@ static void loki_modem_init(void)
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
+	T124_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
