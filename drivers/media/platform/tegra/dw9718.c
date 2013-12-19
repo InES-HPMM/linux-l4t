@@ -668,14 +668,10 @@ static long dw9718_ioctl(struct file *file,
 	int err = 0;
 	switch (cmd) {
 	case NVC_IOCTL_PARAM_WR:
-		dw9718_pm_dev_wr(info, NVC_PWR_ON);
 		err = dw9718_param_wr(info, arg);
-		dw9718_pm_dev_wr(info, NVC_PWR_OFF);
 		return err;
 	case NVC_IOCTL_PARAM_RD:
-		dw9718_pm_dev_wr(info, NVC_PWR_ON);
 		err = dw9718_param_rd(info, arg);
-		dw9718_pm_dev_wr(info, NVC_PWR_OFF);
 		return err;
 	case NVC_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
@@ -818,7 +814,6 @@ static int dw9718_open(struct inode *inode, struct file *file)
 	file->private_data = info;
 	dw9718_pm_dev_wr(info, NVC_PWR_ON);
 	dw9718_position_wr(info, info->cap.focus_infinity);
-	dw9718_pm_dev_wr(info, NVC_PWR_OFF);
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 
 	return 0;
