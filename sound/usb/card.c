@@ -119,7 +119,7 @@ static struct usb_driver usb_audio_driver;
 enum switch_state {
 	STATE_CONNECTED_UNKNOWN = -1,
 	STATE_DISCONNECTED = 0,
-	STATE_CONNECTED = 1
+	STATE_CONNECTED = 2
 };
 
 static struct switch_dev usb_switch_dev = {
