@@ -8,6 +8,8 @@ targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
 
+DTCCPP_FLAGS := -I$(srctree)/arch/arm/boot/dts
+
 dtbs: $(addprefix $(obj)/, $(dtb-y))
 
 clean-files := *.dtb
