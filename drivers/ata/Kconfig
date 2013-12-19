@@ -99,7 +99,6 @@ config SATA_AHCI_PLATFORM
 
 config SATA_AHCI_TEGRA
 	tristate "TEGRA AHCI SATA support"
-	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_12x_SOC
 	help
 	  This option enables support for TEGRA AHCI Serial ATA.
 
