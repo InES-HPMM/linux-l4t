@@ -26,6 +26,8 @@ enum tegra_simon_domain {
 	TEGRA_SIMON_DOMAIN_NUM,
 };
 
+#define TEGRA_SIMON_GRADING_INTERVAL_SEC	5000000
+
 struct tegra_simon_grader {
 	enum tegra_simon_domain		domain;
 	const char			*domain_name;

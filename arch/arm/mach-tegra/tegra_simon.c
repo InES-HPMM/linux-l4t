@@ -20,12 +20,17 @@
 #include <linux/err.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/hrtimer.h>
+#include <linux/thermal.h>
+#include <linux/regulator/consumer.h>
 
 #include "tegra_simon.h"
 
 static DEFINE_MUTEX(simon_lock);
 static RAW_NOTIFIER_HEAD(simon_nh);
 static void tegra_simon_grade_update(struct work_struct *work);
+
+static u32 grading_sec = TEGRA_SIMON_GRADING_INTERVAL_SEC;
 
 static struct tegra_simon_grader simon_graders[TEGRA_SIMON_DOMAIN_NUM] = {
 	[TEGRA_SIMON_DOMAIN_CPU] = {
@@ -38,12 +43,88 @@ static struct tegra_simon_grader simon_graders[TEGRA_SIMON_DOMAIN_NUM] = {
 	},
 };
 
+/*
+ * GPU grading is implemented within vdd_gpu post-change notification chain that
+ * guarantees constant voltage during grading. First grading after boot can be
+ * executed anytime set voltage is below specified threshold, next grading is
+ * always separated by the grading interval from the last successful grading.
+ */
+static int tegra_simon_gpu_grading_cb(
+	struct notifier_block *nb, unsigned long event, void *v)
+{
+	int mv = (int)((long)v);
+	struct tegra_simon_grader *grader = container_of(
+		nb, struct tegra_simon_grader, grading_condition_nb);
+	ktime_t now = ktime_get();
+	unsigned long t;
+	int grade = 0;
+
+	if (!(event & REGULATOR_EVENT_OUT_POSTCHANGE))
+		return NOTIFY_DONE;
+
+	mv = (mv > 0) ? mv / 1000 : mv;
+	if ((mv <= 0) || (mv > grader->grading_mv_limit))
+		return NOTIFY_OK;
+
+	if (grader->last_grading.tv64 &&
+	    (ktime_to_ms(ktime_sub(now, grader->last_grading)) <
+	     (s64)grading_sec * 1000))
+		return NOTIFY_OK;
+
+	if (thermal_zone_get_temp(grader->tzd, &t)) {
+		pr_err("%s: Failed to get %s temperature\n",
+		       __func__, grader->domain_name);
+		return NOTIFY_OK;
+	}
+
+	if (grader->grade_simon_domain) {
+		grade = grader->grade_simon_domain(grader->domain, mv, t);
+		if (grade < 0) {
+			pr_err("%s: Failed to grade %s\n",
+			       __func__, grader->domain_name);
+			return NOTIFY_OK;
+		}
+	}
+
+	grader->last_grading = now;
+	if (grader->grade != grade) {
+		set_mb(grader->grade, grade);
+		schedule_work(&grader->grade_update_work);
+	}
+	pr_info("%s: graded %s: v = %d, t = %lu, grade = %d\n",
+		__func__, grader->domain_name, mv, t, grade);
+	return NOTIFY_OK;
+}
+
 static int __init tegra_simon_init_gpu(void)
 {
 	struct tegra_simon_grader *grader =
 		&simon_graders[TEGRA_SIMON_DOMAIN_GPU];
+	struct regulator *reg;
 
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
+
+	grader->tzd = thermal_zone_device_find_by_name("GPU-therm");
+	if (!grader->tzd) {
+		pr_err("%s: Failed to find %s thermal zone\n",
+		       __func__, grader->domain_name);
+		return -ENOENT;
+	}
+
+	reg = regulator_get(NULL, "vdd_gpu_simon");
+	if (IS_ERR(reg)) {
+		pr_err("%s: Failed to get vdd_%s regulator\n",
+		       __func__, grader->domain_name);
+		return PTR_ERR(reg);
+	}
+
+	grader->grading_condition_nb.notifier_call = tegra_simon_gpu_grading_cb;
+	regulator_register_notifier(reg, &grader->grading_condition_nb);
+	regulator_put(reg);
+
+	/* FIXME: settings below are tegar12_ specific */
+	grader->grading_mv_limit = 850;
+	grader->grade_simon_domain = NULL;
 
 	return 0;
 }
@@ -140,6 +221,10 @@ static int __init simon_debugfs_init(void)
 	dir = debugfs_create_dir("tegra_simon", NULL);
 	if (!dir)
 		return -ENOMEM;
+
+	if (!debugfs_create_u32("grading_sec", S_IWUSR | S_IRUGO, dir,
+				&grading_sec))
+		goto err_out;
 
 	for (i = 0; i < TEGRA_SIMON_DOMAIN_NUM; i++) {
 		grader = &simon_graders[i];
