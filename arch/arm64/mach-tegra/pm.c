@@ -194,7 +194,16 @@ static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
 void (*tegra_tear_down_cpu)(void);
 int (*tegra_sleep_core_finish)(unsigned long v2p);
 
+
 bool tegra_is_dpd_mode = false;
+
+static bool suspend_in_progress;
+
+bool tegra_suspend_in_progress()
+{
+	return suspend_in_progress;
+}
+
 int tegra_register_pm_notifier(struct notifier_block *nb)
 {
 	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
@@ -469,6 +478,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		writel(0x1, pmc + PMC_DPD_SAMPLE);
 		writel(0x800fdfff, pmc + PMC_IO_DPD_REQ);
 		writel(0x80001fff, pmc + PMC_IO_DPD2_REQ);
+		tegra_is_dpd_mode = true;
 
 		/* Set warmboot flag */
 		boot_flag = readl(pmc + PMC_SCRATCH0);
@@ -674,6 +684,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_enable();
 
+	suspend_in_progress = false;
+
 	tegra_common_resume();
 
 	/* turn on VDE partition in LP1 */
@@ -687,6 +699,12 @@ fail:
 	return err;
 }
 
+static int tegra_suspend_prepare_late(void)
+{
+	suspend_in_progress = true;
+	return 0;
+}
+
 static void tegra_suspend_finish(void)
 {
 	if (pdata && pdata->cpu_resume_boost) {
@@ -697,6 +715,7 @@ static void tegra_suspend_finish(void)
 }
 
 static const struct platform_suspend_ops tegra_suspend_ops = {
+	.prepare_late = tegra_suspend_prepare_late,
 	.valid		= suspend_valid_only_mem,
 	.finish		= tegra_suspend_finish,
 	.enter		= tegra_suspend_enter,
