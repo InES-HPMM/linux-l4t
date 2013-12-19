@@ -540,6 +540,14 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		ardbeg_disp1_device.num_resources =
 			ARRAY_SIZE(ardbeg_disp1_edp_resources);
 		break;
+	case BOARD_E1807:
+		panel = &dsi_a_1200_800_8_0;
+		dsi_instance = DSI_INSTANCE_0;
+		break;
+	case BOARD_E1937:
+		panel = &dsi_a_1200_1920_7_0;
+		dsi_instance = DSI_INSTANCE_0;
+		break;
 	case BOARD_P1761:
 		if (tegra_get_board_panel_id())
 			panel = &dsi_a_1200_1920_7_0;
