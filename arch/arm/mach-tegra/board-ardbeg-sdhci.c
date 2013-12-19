@@ -443,10 +443,6 @@ int __init ardbeg_sdhci_init(void)
 		board_info.board_id == BOARD_PM359)
 			tegra_sdhci_platform_data0.disable_clock_gate = 1;
 
-	if (board_info.board_id == BOARD_P1761) {
-		tegra_sdhci_platform_data2.power_gpio = TEGRA_GPIO_PR0;
-	}
-
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
