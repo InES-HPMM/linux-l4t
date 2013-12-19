@@ -208,6 +208,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-laguna.dtb \
 	tegra124-norrin.dtb \
 	tegra124-loki.dtb \
+	tegra124-foster.dtb \
 	tegra124-tn8.dtb \
 	tegra124-tn8-p1761.dtb \
 	tegra124-tn8-p1761-2gb.dtb \
