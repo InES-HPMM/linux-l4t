@@ -226,7 +226,7 @@ static __initdata struct tegra_pingroup_config loki_pinmux_common[] = {
 	GPIO_PINMUX_NON_OD(GPIO_PU6, NORMAL, NORMAL, OUTPUT),
 	GPIO_PINMUX_NON_OD(HDMI_INT, PULL_DOWN, NORMAL, INPUT),
 	GPIO_PINMUX_NON_OD(SPDIF_OUT, PULL_DOWN, NORMAL, OUTPUT),
-	GPIO_PINMUX_NON_OD(SPDIF_IN, PULL_DOWN, NORMAL, OUTPUT),
+	GPIO_PINMUX_NON_OD(SPDIF_IN, PULL_UP, NORMAL, INPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -340,5 +340,5 @@ static struct gpio_init_pin_info init_gpio_mode_loki_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK6, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK6, true, 0),
 };
