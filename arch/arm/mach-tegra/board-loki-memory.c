@@ -8893,6 +8893,7 @@ int __init loki_emc_init(void)
 			&thor_195_b00_emc_pdata;
 	} else if (bi.board_id == BOARD_P2530) {
 		switch (bi.sku) {
+		case BOARD_SKU_FOSTER:
 		case 0x0:
 			pr_info("Loading Loki FFD sku0 EMC table: 0x%08x\n", bi.sku);
 			tegra_emc_device.dev.platform_data = &loki_ffd_sku0_emc_pdata;
