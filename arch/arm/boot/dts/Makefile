@@ -221,8 +221,6 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-tn8-a03-00-battery.dtb \
 	tegra124-tn8-a03-01.dtb \
 	tegra124-tn8-a03-01-battery.dtb \
-	tegra124-tn8-1780-1100-a03-02.dtb \
-	tegra124-tn8-1780-1100-a03-03.dtb \
 	tegra124-e1782_sku1100.dtb \
 	tegra124-e1791.dtb \
 	tegra124-e1922.dtb \
