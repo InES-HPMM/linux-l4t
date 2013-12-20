@@ -122,11 +122,27 @@
 					regulator-consumer-supply = "vif";
 					regulator-consumer-device = "2-000c";
 				};
-                                c9 {
-                                        regulator-consumer-supply = "vdd_i2c";
-                                        regulator-consumer-device = "2-000c";
-                                };
+				c9 {
+					regulator-consumer-supply = "vdd_i2c";
+					regulator-consumer-device = "2-000c";
+				};
+			};
+		};
+		vdd_hdmi_n5: regulator@5 {
+			compatible = "regulator-fixed-sync";
+			reg = <5>;
+			regulator-name = "vdd-hdmi-n5";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			enable-active-high;
+			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
+			vin-supply = <&palmas_smps6>;
 
+			consumers {
+				c1 {
+					regulator-consumer-supply = "avdd_hdmi_pll";
+					regulator-consumer-device = "tegradc.1";
+				};
 			};
 		};
 	};
