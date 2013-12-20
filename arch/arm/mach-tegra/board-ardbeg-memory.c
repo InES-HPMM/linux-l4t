@@ -11123,6 +11123,7 @@ int __init ardbeg_emc_init(void)
 		case BOARD_PM358:
 			pr_info("Loading PM358 EMC tables.\n");
 			tegra_emc_device.dev.platform_data = &ardbeg_ddr3_emc_pdata_pm358;
+			break;
 		case BOARD_P1761:
 			pr_info("Loading TN8-FFD EMC tables from DeviceTree.\n");
 			use_dt_emc_table = true;
@@ -11153,6 +11154,7 @@ int __init ardbeg_emc_init(void)
 		case BOARD_E1781:
 			pr_info("Loading Ardbeg (1781) EMC tables\n");
 			tegra_emc_device.dev.platform_data = &ardbeg_lpddr3_emc_pdata_E1781;
+			break;
 		default:
 			pr_info("emc dvfs table not present\n");
 			return -EINVAL;
