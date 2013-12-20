@@ -824,6 +824,20 @@ static const struct file_operations tegra_dtv_fops = {
 static int dtv_reg_show(struct seq_file *s, void *unused)
 {
 	struct tegra_dtv_context *dtv_ctx = s->private;
+	int ret;
+	bool clk_enabled = false;
+
+	if (!dtv_ctx->clk_enabled) {
+		ret = clk_prepare_enable(dtv_ctx->clk);
+		if (ret < 0) {
+			dev_err(&dtv_ctx->pdev->dev,
+				"cannot enable clk for tegra_dtv.\n");
+			return -ENOSYS;
+		}
+		dtv_ctx->clk_enabled = 1;
+	} else {
+		clk_enabled = true;
+	}
 
 	seq_printf(s, "tegra_dtv register list\n");
 	seq_printf(s, "-------------------------------\n");
@@ -835,6 +849,11 @@ static int dtv_reg_show(struct seq_file *s, void *unused)
 		   tegra_dtv_readl(dtv_ctx, DTV_CTRL));
 	seq_printf(s, "DTV_STATUS:        0x%08x\n",
 		   tegra_dtv_readl(dtv_ctx, DTV_STATUS));
+
+	if (!clk_enabled) {
+		clk_disable_unprepare(dtv_ctx->clk);
+		dtv_ctx->clk_enabled = 0;
+	}
 
 	return 0;
 
@@ -909,7 +928,6 @@ static void tear_down_dma(struct tegra_dtv_context *dtv_ctx)
 	int i;
 	struct dtv_buffer *buf;
 	struct dtv_stream *stream = &dtv_ctx->stream;
-	struct device *dev = &dtv_ctx->pdev->dev;
 
 	pr_debug("%s called\n", __func__);
 
