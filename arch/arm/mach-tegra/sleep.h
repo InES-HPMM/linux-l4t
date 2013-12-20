@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -195,26 +195,30 @@
 1002:	ldr	\tmp, [\base]
 	sub	\tmp, \tmp, \rn
 	ands	\tmp, \tmp, #0x80000000
-	dmb
+	dmb	sy
 	bne	1002b
 .endm
 
 /* returns the offset of the flow controller halt register for a cpu */
 .macro cpu_to_halt_reg rd, rcpu
-	cmp	\rcpu, #0
-	subne	\rd, \rcpu, #1
-	movne	\rd, \rd, lsl #3
-	addne	\rd, \rd, #0x14
-	moveq	\rd, #0
+	cmp	rcpu, #0
+	mov	\rd, #0
+	beq	1001f
+	sub	\rd, \rcpu, #1
+	lsl	\rd, \rd, #3
+	add	\rd, \rd, #0x14
+1001:
 .endm
 
 /* returns the offset of the flow controller csr register for a cpu */
 .macro cpu_to_csr_reg rd, rcpu
 	cmp	\rcpu, #0
-	subne	\rd, \rcpu, #1
-	movne	\rd, \rd, lsl #3
-	addne	\rd, \rd, #0x18
-	moveq	\rd, #8
+	mov	\rd, #0x8
+	beq	1001f
+	sub	\rd, \rcpu, #1
+	lsl	\rd, \rd, #3
+	add	\rd, \rd, #0x18
+1001:
 .endm
 
 /* Issue a Dummy DVM op to make subsequent DSB issue a DVM_SYNC
@@ -231,14 +235,23 @@
 
 /* returns the ID of the current processor */
 .macro cpu_id, rd
+#ifndef CONFIG_ARM64
 	mrc	p15, 0, \rd, c0, c0, 5
 	and	\rd, \rd, #0xF
+#else
+	mrs	\rd, mpidr_el1
+	and	\rd, \rd, #0xF
+#endif
 .endm
 
 /* loads a 32-bit value into a register without a data access */
 .macro mov32, reg, val
+#ifndef CONFIG_ARM64
 	movw	\reg, #:lower16:\val
 	movt	\reg, #:upper16:\val
+#else
+	ldr	\reg, =\val
+#endif
 .endm
 
 /* Macro to exit SMP coherency. */
