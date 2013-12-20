@@ -265,22 +265,13 @@ struct tegra_pcie_port {
 	int			index;
 	u8			root_bus_nr;
 	void __iomem		*base;
-
 	bool			link_up;
-
-	char			mem_space_name[16];
-	char			prefetch_space_name[20];
-	struct resource		res[2];
-	struct pci_bus		*bus;
 };
 
 struct tegra_pcie_info {
 	struct tegra_pcie_port	port[MAX_PCIE_SUPPORTED_PORTS];
 	int			num_ports;
-
-	void __iomem		*reg_clk_base;
 	void __iomem		*regs;
-	struct resource		*res_mmio;
 	int			power_rails_enabled;
 	int			pcie_power_enabled;
 	struct work_struct	hotplug_detect;
@@ -1535,8 +1526,6 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	/* initialize root bus in boot path only */
 	if (!resume_path)
 		pp->root_bus_nr = -1;
-
-	memset(pp->res, 0, sizeof(pp->res));
 }
 
 void tegra_pcie_check_ports(void)
