@@ -2,7 +2,7 @@
   *
   * @brief This file contains wireless extension standard ioctl functions
   *
-  * Copyright (C) 2008-2011, Marvell International Ltd.
+  * Copyright (C) 2008-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -253,6 +253,7 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
 	moal_private *priv = (moal_private *) netdev_priv(dev);
 	mlan_ds_bss *bss = NULL;
 	mlan_ioctl_req *req = NULL;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 	req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
@@ -273,8 +274,8 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
 	bss->sub_command = MLAN_OID_BSS_CHANNEL;
 	req->req_id = MLAN_IOCTL_BSS;
 	req->action = MLAN_ACT_SET;
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
@@ -283,7 +284,8 @@ woal_set_freq(struct net_device *dev, struct iw_request_info *info,
 		ret = -EFAULT;
 
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -306,6 +308,7 @@ woal_get_freq(struct net_device *dev, struct iw_request_info *info,
 	moal_private *priv = (moal_private *) netdev_priv(dev);
 	mlan_ds_bss *bss = NULL;
 	mlan_ioctl_req *req = NULL;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -318,8 +321,8 @@ woal_get_freq(struct net_device *dev, struct iw_request_info *info,
 	bss->sub_command = MLAN_OID_BSS_CHANNEL;
 	req->req_id = MLAN_IOCTL_BSS;
 	req->action = MLAN_ACT_GET;
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
@@ -328,7 +331,8 @@ woal_get_freq(struct net_device *dev, struct iw_request_info *info,
 	fwrq->e = 6;
 	fwrq->flags = IW_FREQ_FIXED;
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -351,6 +355,7 @@ woal_set_bss_mode(struct net_device *dev, struct iw_request_info *info,
 	moal_private *priv = (moal_private *) netdev_priv(dev);
 	mlan_ds_bss *bss = NULL;
 	mlan_ioctl_req *req = NULL;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -380,13 +385,14 @@ woal_set_bss_mode(struct net_device *dev, struct iw_request_info *info,
 	}
 	if (ret)
 		goto done;
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -853,6 +859,7 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 	mlan_ioctl_req *req = NULL;
 	int index = 0;
 	t_u32 auth_mode = 0;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -920,8 +927,8 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 			sec->param.encrypt_key.is_current_wep_key = MTRUE;
 		}
 	}
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
@@ -949,7 +956,8 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 			ret = -EFAULT;
 	}
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -974,6 +982,7 @@ woal_get_encode(struct net_device *dev, struct iw_request_info *info,
 	mlan_ioctl_req *req = NULL;
 	t_u32 auth_mode;
 	int index = (dwrq->flags & IW_ENCODE_INDEX);
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 	if (index < 0 || index > 4) {
@@ -1024,8 +1033,8 @@ woal_get_encode(struct net_device *dev, struct iw_request_info *info,
 	else
 		sec->param.encrypt_key.key_index = index - 1;
 
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
@@ -1043,7 +1052,8 @@ woal_get_encode(struct net_device *dev, struct iw_request_info *info,
 
 	dwrq->flags |= IW_ENCODE_NOKEY;
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1333,6 +1343,7 @@ woal_set_gen_ie(struct net_device *dev, struct iw_request_info *info,
 	const t_u8 wps_oui[] = { 0x00, 0x50, 0xf2, 0x04 };
 	mlan_ds_wps_cfg *pwps = NULL;
 	mlan_ioctl_req *req = NULL;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -1350,8 +1361,8 @@ woal_set_gen_ie(struct net_device *dev, struct iw_request_info *info,
 		pwps->sub_command = MLAN_OID_WPS_CFG_SESSION;
 		pwps->param.wps_session = MLAN_WPS_CFG_SESSION_START;
 
-		if (MLAN_STATUS_SUCCESS !=
-		    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+		status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+		if (status != MLAN_STATUS_SUCCESS) {
 			ret = -EFAULT;
 			goto done;
 		}
@@ -1364,7 +1375,8 @@ woal_set_gen_ie(struct net_device *dev, struct iw_request_info *info,
 	}
 
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 
 	LEAVE();
 	return ret;
@@ -1392,6 +1404,7 @@ woal_set_encode_ext(struct net_device *dev,
 	mlan_ioctl_req *req = NULL;
 	mlan_ds_sec_cfg *sec = NULL;
 	int ret = 0;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 	key_index = (dwrq->flags & IW_ENCODE_INDEX) - 1;
@@ -1473,11 +1486,12 @@ woal_set_encode_ext(struct net_device *dev,
 				    sec->param.encrypt_key.pn, PN_SIZE);
 		}
 	}
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT))
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS)
 		ret = -EFAULT;
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1922,6 +1936,7 @@ woal_set_rxfilter(moal_private * priv, BOOLEAN enable)
 	mlan_ioctl_req *req = NULL;
 	mlan_ds_misc_cfg *misc = NULL;
 	mlan_ds_misc_mef_cfg *mef_cfg = NULL;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -1937,14 +1952,15 @@ woal_set_rxfilter(moal_private * priv, BOOLEAN enable)
 	req->action = MLAN_ACT_SET;
 
 	mef_cfg->sub_id = (enable ? MEF_CFG_RX_FILTER_ENABLE : MEF_CFG_DISABLE);
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+	status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+	if (status != MLAN_STATUS_SUCCESS) {
 		ret = -EFAULT;
 		goto done;
 	}
 
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }

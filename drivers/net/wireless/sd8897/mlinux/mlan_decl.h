@@ -2,7 +2,7 @@
  *
  *  @brief This file declares the generic data structures and APIs.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  Copyright (C) 2008-2013, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -27,7 +27,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"457"
+#define MLAN_RELEASE_VERSION		"463"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */

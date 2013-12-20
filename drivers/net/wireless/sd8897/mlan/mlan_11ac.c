@@ -4,7 +4,7 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  (C) Copyright 2011-2012 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2011-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to

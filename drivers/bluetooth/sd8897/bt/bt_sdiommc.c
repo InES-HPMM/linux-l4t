@@ -2,7 +2,7 @@
  *  @brief This file contains SDIO IF (interface) module
  *  related functions.
  *
- * Copyright (C) 2007-2012, Marvell International Ltd.
+ * Copyright (C) 2007-2013, Marvell International Ltd.
  *
  * This software file (the "File") is distributed by Marvell International
  * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -35,6 +35,7 @@ static char *fw_name;
 /** request firmware nowait */
 static int req_fw_nowait;
 static int multi_fn = BIT(2);
+
 #define DEFAULT_FW_NAME "mrvl/sd8897_uapsta.bin"
 
 /** Function number 2 */
@@ -411,14 +412,16 @@ sd_verify_fw_download(bt_private * priv, int pollnum)
  *  @brief Transfers firmware to card
  *
  *  @param priv      A Pointer to bt_private structure
+ *  @param fw        A Pointer to fw image
+ *  @param fw_len    fw image len
  *  @return          BT_STATUS_SUCCESS/BT_STATUS_FAILURE or other error no.
  */
 static int
-sd_init_fw_dpc(bt_private * priv)
+sd_init_fw_dpc(bt_private * priv, u8 * fw, int fw_len)
 {
 	struct sdio_mmc_card *card = (struct sdio_mmc_card *)priv->bt_dev.card;
-	u8 *firmware = NULL;
-	int firmwarelen;
+	u8 *firmware = fw;
+	int firmwarelen = fw_len;
 	u8 base0;
 	u8 base1;
 	int ret = BT_STATUS_SUCCESS;
@@ -433,8 +436,6 @@ sd_init_fw_dpc(bt_private * priv)
 	int tries = 0;
 
 	ENTER();
-	firmware = (u8 *) priv->firmware->data;
-	firmwarelen = priv->firmware->size;
 
 	PRINTM(INFO, "BT: Downloading FW image (%d bytes)\n", firmwarelen);
 
@@ -554,7 +555,7 @@ sd_init_fw_dpc(bt_private * priv)
 		offset += txlen;
 	} while (TRUE);
 
-	PRINTM(INFO, "\nBT: FW download over, size %d bytes\n", offset);
+	PRINTM(MSG, "BT: FW download over, size %d bytes\n", offset);
 
 	ret = BT_STATUS_SUCCESS;
 done:
@@ -614,7 +615,10 @@ sd_request_fw_dpc(const struct firmware *fw_firmware, void *context)
 	}
 
 	priv->firmware = fw_firmware;
-	if (BT_STATUS_FAILURE == sd_init_fw_dpc(priv)) {
+
+	if (BT_STATUS_FAILURE ==
+	    sd_init_fw_dpc(priv, (u8 *) priv->firmware->data,
+			   priv->firmware->size)) {
 		PRINTM(ERROR,
 		       "BT: sd_init_fw_dpc failed (download fw with nowait: %d). Terminating download\n",
 		       req_fw_nowait);
@@ -1611,7 +1615,6 @@ sbi_download_fw(bt_private * priv)
 	struct m_dev *m_dev_bt = &(priv->bt_dev.m_dev[BT_SEQ]);
 	struct m_dev *m_dev_fm = &(priv->bt_dev.m_dev[FM_SEQ]);
 	struct m_dev *m_dev_nfc = &(priv->bt_dev.m_dev[NFC_SEQ]);
-	int poll_num = MAX_FIRMWARE_POLL_TRIES;
 	u8 winner = 0;
 
 	ENTER();
@@ -1644,9 +1647,8 @@ sbi_download_fw(bt_private * priv)
 	if (winner) {
 		PRINTM(MSG, "BT is not the winner (0x%x). Skip FW download\n",
 		       winner);
-		poll_num = MAX_MULTI_INTERFACE_POLL_TRIES;
 		/* check if the fimware is downloaded successfully or not */
-		if (sd_verify_fw_download(priv, poll_num)) {
+		if (sd_verify_fw_download(priv, MAX_MULTI_INTERFACE_POLL_TRIES)) {
 			PRINTM(FATAL, "BT: FW failed to be active in time!\n");
 			ret = BT_STATUS_FAILURE;
 			goto done;

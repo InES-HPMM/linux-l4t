@@ -3,7 +3,7 @@
  *  @brief This file contains the initialization for FW
  *  and HW.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -180,6 +180,14 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 #ifdef STA_SUPPORT
 	t_u32 buf_size;
 	BSSDescriptor_t *ptemp_scan_table = MNULL;
+	t_u8 i = 0;
+	t_u8 chan_2g[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+	t_u8 chan_5g[] =
+		{ 12, 16, 34, 38, 42, 46, 36, 40, 44, 48, 52, 56, 60, 64, 100,
+	       104, 108,
+		112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161,
+			165
+	};
 #endif
 
 	ENTER();
@@ -222,6 +230,33 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 		return MLAN_STATUS_FAILURE;
 	}
 	pmadapter->bcn_buf_size = DEFAULT_SCAN_BEACON_BUFFER;
+
+	pmadapter->num_in_chan_stats = sizeof(chan_2g);
+	pmadapter->num_in_chan_stats += sizeof(chan_5g);
+	buf_size = sizeof(ChanStatistics_t) * pmadapter->num_in_chan_stats;
+	if (pmadapter->callbacks.moal_vmalloc &&
+	    pmadapter->callbacks.moal_vfree)
+		ret = pmadapter->callbacks.moal_vmalloc(pmadapter->pmoal_handle,
+							buf_size,
+							(t_u8 **) & pmadapter->
+							pchan_stats);
+	else
+		ret = pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle,
+						       buf_size, MLAN_MEM_DEF,
+						       (t_u8 **) & pmadapter->
+						       pchan_stats);
+	if (ret != MLAN_STATUS_SUCCESS || !pmadapter->pchan_stats) {
+		PRINTM(MERROR, "Failed to allocate channel statistics\n");
+		LEAVE();
+		return MLAN_STATUS_FAILURE;
+	}
+	for (i = 0; i < pmadapter->num_in_chan_stats; i++) {
+		if (i < sizeof(chan_2g))
+			pmadapter->pchan_stats[i].chan_num = chan_2g[i];
+		else
+			pmadapter->pchan_stats[i].chan_num =
+				chan_5g[i - sizeof(chan_2g)];
+	}
 #endif
 
 	/* Allocate command buffer */
@@ -1063,6 +1098,15 @@ wlan_free_adapter(pmlan_adapter pmadapter)
 			pcb->moal_mfree(pmadapter->pmoal_handle,
 					(t_u8 *) pmadapter->pscan_table);
 		pmadapter->pscan_table = MNULL;
+	}
+	if (pmadapter->pchan_stats) {
+		if (pcb->moal_vmalloc && pcb->moal_vfree) {
+			pcb->moal_vfree(pmadapter->pmoal_handle,
+					(t_u8 *) pmadapter->pchan_stats);
+		} else
+			pcb->moal_mfree(pmadapter->pmoal_handle,
+					(t_u8 *) pmadapter->pchan_stats);
+		pmadapter->pchan_stats = MNULL;
 	}
 	if (pmadapter->bcn_buf) {
 		if (pcb->moal_vmalloc && pcb->moal_vfree)

@@ -2,7 +2,7 @@
  *
  *  @brief This file contains the functions for station ioctl.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -5184,6 +5184,10 @@ start_config:
 				pioctl_req->data_read_written =
 					sizeof(mlan_scan_resp) +
 					MLAN_SUB_COMMAND_SIZE;
+				pscan->param.scan_resp.pchan_stats =
+					(t_u8 *) pmadapter->pchan_stats;
+				pscan->param.scan_resp.num_in_chan_stats =
+					pmadapter->num_in_chan_stats;
 			}
 		}
 	}

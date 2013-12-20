@@ -3,7 +3,7 @@
  *  @brief This file defines the FW initialization data
  *  structures.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to

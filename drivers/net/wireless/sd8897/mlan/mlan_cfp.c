@@ -4,7 +4,7 @@
  *  @brief This file contains WLAN client mode channel, frequency and power
  *  related code
  *
- *  (C) Copyright 2009-2012 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2009-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to

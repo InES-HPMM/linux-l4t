@@ -4,7 +4,7 @@
   * driver. It includes init, exit, open, close and main
   * thread etc..
   *
-  * Copyright (C) 2007-2012, Marvell International Ltd.
+  * Copyright (C) 2007-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -29,7 +29,7 @@
   *
   * @section copyright_sec Copyright
   *
-  * Copyright (C) 2007-2012, Marvell International Ltd.
+  * Copyright (C) 2007-2013, Marvell International Ltd.
   *
   */
 
@@ -245,7 +245,7 @@ check_evtpkt(bt_private * priv, struct sk_buff *skb)
 	struct hci_event_hdr *hdr = (struct hci_event_hdr *)skb->data;
 	struct hci_ev_cmd_complete *ec;
 	u16 opcode, ocf;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	ENTER();
 	if (!priv->bt_dev.sendcmdflag) {
 		ret = BT_STATUS_FAILURE;
@@ -339,7 +339,7 @@ exit:
 int
 bt_process_event(bt_private * priv, struct sk_buff *skb)
 {
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	struct m_dev *m_dev = &(priv->bt_dev.m_dev[BT_SEQ]);
 	BT_EVENT *pevent;
 
@@ -525,7 +525,7 @@ int
 bt_send_reset_command(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_HCI_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_HCI_CMD), GFP_ATOMIC);
@@ -579,7 +579,7 @@ int
 bt_send_module_cfg_cmd(bt_private * priv, int subcmd)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -633,7 +633,7 @@ int
 bt_enable_ps(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -687,7 +687,7 @@ int
 bt_send_hscfg_cmd(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -733,7 +733,7 @@ int
 bt_send_sdio_pull_ctrl_cmd(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -787,7 +787,7 @@ int
 fm_set_intr_mask(bt_private * priv, u32 mask)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 
 	ENTER();
@@ -834,7 +834,7 @@ int
 bt_enable_hs(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CMD), GFP_ATOMIC);
@@ -895,7 +895,7 @@ int
 bt_set_ble_deepsleep(bt_private * priv, int mode)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_BLE_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_BLE_CMD), GFP_ATOMIC);
@@ -940,7 +940,7 @@ int
 bt_get_fw_version(bt_private * priv)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_HCI_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_HCI_CMD), GFP_ATOMIC);
@@ -985,7 +985,7 @@ int
 bt_set_mac_address(bt_private * priv, u8 * mac)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_HCI_CMD *pcmd;
 	int i = 0;
 	ENTER();
@@ -1037,7 +1037,7 @@ int
 bt_load_cal_data(bt_private * priv, u8 * config_data, u8 * mac)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 	int i = 0;
 	/* u8 config_data[28] = {0x37 0x01 0x1c 0x00 0xFF 0xFF 0xFF 0xFF 0x01
@@ -1101,7 +1101,7 @@ int
 bt_load_cal_data_ext(bt_private * priv, u8 * config_data, u32 cfg_data_len)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CMD *pcmd;
 
 	ENTER();
@@ -1151,7 +1151,7 @@ int
 bt_write_reg(bt_private * priv, u8 type, u32 offset, u16 value)
 {
 	struct sk_buff *skb = NULL;
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	BT_CSU_CMD *pcmd;
 	ENTER();
 	skb = bt_skb_alloc(sizeof(BT_CSU_CMD), GFP_ATOMIC);
@@ -1226,7 +1226,7 @@ bt_restore_tx_queue(bt_private * priv)
 int
 bt_prepare_command(bt_private * priv)
 {
-	u8 ret = BT_STATUS_SUCCESS;
+	int ret = BT_STATUS_SUCCESS;
 	ENTER();
 	if (priv->bt_dev.hscfgcmd) {
 		priv->bt_dev.hscfgcmd = 0;
@@ -1825,8 +1825,7 @@ sbi_register_conf_dpc(bt_private * priv)
 		}
 	}
 #ifdef SDIO_SUSPEND_RESUME
-
-	priv->bt_dev.gpio_gap = 0x0464;
+	priv->bt_dev.gpio_gap = 0x0864;
 	ret = bt_send_hscfg_cmd(priv);
 	if (ret < 0) {
 		PRINTM(FATAL, "Send HSCFG failed!\n");
@@ -1891,7 +1890,7 @@ sbi_register_conf_dpc(bt_private * priv)
 
 		/** chmod & chown for BT char device */
 		mbtchar_chown(dev_file, AID_SYSTEM, AID_BLUETOOTH);
-		mbtchar_chmod(dev_file, 0666);
+		mbtchar_chmod(dev_file, 0660);
 
 		/** create proc device */
 		snprintf(priv->bt_dev.m_dev[BT_SEQ].name,
@@ -1949,7 +1948,7 @@ sbi_register_conf_dpc(bt_private * priv)
 				  MODULE_NAME, fm_dev->name);
 
 		/** chmod for FM char device */
-		mbtchar_chmod(dev_file, 0666);
+		mbtchar_chmod(dev_file, 0660);
 
 		/** create proc device */
 		snprintf(priv->bt_dev.m_dev[FM_SEQ].name,

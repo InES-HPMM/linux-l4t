@@ -2,7 +2,7 @@
   *
   * @brief This file contains wireless extension standard ioctl functions
   *
-  * Copyright (C) 2010-2011, Marvell International Ltd.
+  * Copyright (C) 2010-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -897,6 +897,7 @@ woal_set_encode_ext(struct net_device *dev,
 	mlan_uap_bss_param sys_cfg;
 	wep_key *pwep_key = NULL;
 	int ret = 0;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -982,10 +983,9 @@ woal_set_encode_ext(struct net_device *dev,
 		if (ext->alg == IW_ENCODE_ALG_AES_CMAC)
 			sec->param.encrypt_key.key_flags |=
 				KEY_FLAG_AES_MCAST_IGTK;
-		if (MLAN_STATUS_SUCCESS !=
-		    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+		status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+		if (status != MLAN_STATUS_SUCCESS)
 			ret = -EFAULT;
-		}
 		/* Cipher set will be done in set generic IE */
 		priv->pairwise_cipher = ext->alg;
 		priv->group_cipher = ext->alg;
@@ -1001,7 +1001,8 @@ woal_set_encode_ext(struct net_device *dev,
 	}
 
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return ret;
 }
@@ -1049,6 +1050,7 @@ woal_set_mlme(struct net_device *dev,
 	const t_u8 bc_addr[] = { 0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF };
 	t_u8 sta_addr[ETH_ALEN];
 	int ret = 0, i;
+	mlan_status status = MLAN_STATUS_SUCCESS;
 
 	ENTER();
 
@@ -1075,8 +1077,8 @@ woal_set_mlme(struct net_device *dev,
 			pinfo->sub_command = MLAN_OID_UAP_STA_LIST;
 			req->req_id = MLAN_IOCTL_GET_INFO;
 			req->action = MLAN_ACT_GET;
-			if (MLAN_STATUS_SUCCESS !=
-			    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+			status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+			if (status != MLAN_STATUS_SUCCESS) {
 				ret = -EFAULT;
 				goto done;
 			}
@@ -1110,9 +1112,9 @@ woal_set_mlme(struct net_device *dev,
 				bss->param.deauth_param.reason_code =
 					mlme->reason_code;
 
-				if (MLAN_STATUS_SUCCESS !=
-				    woal_request_ioctl(priv, req,
-						       MOAL_IOCTL_WAIT)) {
+				status = woal_request_ioctl(priv, req,
+							    MOAL_IOCTL_WAIT);
+				if (status != MLAN_STATUS_SUCCESS) {
 					ret = -EFAULT;
 					goto done;
 				}
@@ -1122,8 +1124,8 @@ woal_set_mlme(struct net_device *dev,
 			       ETH_ALEN);
 			bss->param.deauth_param.reason_code = mlme->reason_code;
 
-			if (MLAN_STATUS_SUCCESS !=
-			    woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+			status = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+			if (status != MLAN_STATUS_SUCCESS) {
 				ret = -EFAULT;
 				goto done;
 			}
@@ -1131,7 +1133,8 @@ woal_set_mlme(struct net_device *dev,
 	}
 
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	kfree(sta_list);
 	LEAVE();
 	return ret;

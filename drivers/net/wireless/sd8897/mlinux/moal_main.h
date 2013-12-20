@@ -2,7 +2,7 @@
   *
   * @brief This file contains wlan driver specific defines etc.
   *
-  * Copyright (C) 2008-2012, Marvell International Ltd.
+  * Copyright (C) 2008-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -519,6 +519,11 @@ out:
 /** Threshold value of number of times the Tx timeout happened */
 #define NUM_TX_TIMEOUT_THRESHOLD      5
 
+/** TDLS connected event */
+#define CUS_EVT_TDLS_CONNECTED           "EVENT=TDLS_CONNECTED"
+/** TDLS tear down event */
+#define CUS_EVT_TDLS_TEARDOWN            "EVENT=TDLS_TEARDOWN"
+
 /** AP connected event */
 #define CUS_EVT_AP_CONNECTED           "EVENT=AP_CONNECTED"
 
@@ -627,6 +632,11 @@ out:
 /** Offset for subcommand */
 #define SUBCMD_OFFSET       4
 
+/** default scan channel gap  */
+#define DEF_SCAN_CHAN_GAP   50
+/** default scan time per channel in miracast mode */
+#define DEF_MIRACAST_SCAN_TIME   40
+
 /** Macro to extract the TOS field from a skb */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22)
 #define SKB_TOS(skb) (ip_hdr(skb)->tos)
@@ -712,7 +722,7 @@ typedef struct _wait_queue {
 /** Driver mode WIFIDIRECT bit */
 #define DRV_MODE_WIFIDIRECT       MBIT(2)
 /** Maximum WIFIDIRECT BSS */
-#define MAX_WIFIDIRECT_BSS        1
+#define MAX_WIFIDIRECT_BSS        2
 /** Default WIFIDIRECT BSS */
 #define DEF_WIFIDIRECT_BSS        1
 #if defined(STA_CFG80211) && defined(UAP_CFG80211)
@@ -1082,7 +1092,13 @@ struct _moal_handle {
 	enum ieee80211_band band;
     /** first scan done flag */
 	t_u8 first_scan_done;
+    /** scan channel gap */
+	t_u16 scan_chan_gap;
 #ifdef WIFI_DIRECT_SUPPORT
+    /** miracast mode */
+	t_u8 miracast_mode;
+	/** scan time in miracast mode */
+	t_u16 miracast_scan_time;
 	/** remain on channel flag */
 	t_u8 remain_on_channel;
 	/** bss index for remain on channel */
@@ -1161,6 +1177,8 @@ struct _moal_handle {
 #endif
 	/** Driver spin lock */
 	spinlock_t driver_lock;
+	/** Driver ioctl spin lock */
+	spinlock_t ioctl_lock;
 	/** Card specific driver version */
 	t_s8 driver_version[MLAN_MAX_VER_STR_LEN];
 	char *fwdump_fname;

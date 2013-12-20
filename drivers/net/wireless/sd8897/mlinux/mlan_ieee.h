@@ -3,7 +3,7 @@
  *  @brief This file contains IEEE information element related
  *  definitions used in MLAN and MOAL module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  Copyright (C) 2008-2013, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -1425,6 +1425,24 @@ typedef MLAN_PACK_START struct _wlan_user_scan_chan {
 	t_u32 scan_time;
 } MLAN_PACK_END wlan_user_scan_chan;
 
+/** channel statictics */
+typedef MLAN_PACK_START struct _ChanStatistics_t {
+    /** channle number */
+	t_u8 chan_num;
+	/** band info */
+	t_u8 bandconfig;
+	/** flags */
+	t_u8 flags;
+	/** noise */
+	t_s8 noise;
+	/** total network */
+	t_u16 total_networks;
+	/** scan duration */
+	t_u16 cca_scan_duration;
+	/** busy duration */
+	t_u16 cca_busy_duration;
+} MLAN_PACK_END ChanStatistics_t;
+
 /**
  *  Input structure to configure an immediate scan cmd to firmware
  *
@@ -1471,6 +1489,8 @@ typedef MLAN_PACK_START struct {
      *  Variable number (fixed maximum) of channels to scan up
      */
 	wlan_user_scan_chan chan_list[WLAN_USER_SCAN_CHAN_MAX];
+    /** scan channel gap */
+	t_u16 scan_chan_gap;
 } MLAN_PACK_END wlan_user_scan_cfg;
 
 /** Default scan interval in millisecond*/
@@ -1530,6 +1550,8 @@ typedef MLAN_PACK_START struct {
 	wlan_user_scan_ssid ssid_list[MRVDRV_MAX_SSID_LIST_LENGTH];
     /** Variable number (fixed maximum) of channels to scan up */
 	wlan_user_scan_chan chan_list[WLAN_BG_SCAN_CHAN_MAX];
+    /** scan channel gap */
+	t_u16 scan_chan_gap;
 } MLAN_PACK_END wlan_bgscan_cfg;
 #endif /* STA_SUPPORT */
 

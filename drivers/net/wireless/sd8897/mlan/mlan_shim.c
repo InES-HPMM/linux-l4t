@@ -2,7 +2,7 @@
  *
  *  @brief This file contains APIs to MOAL module.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -33,7 +33,7 @@
  *
  *  @section copyright_sec Copyright
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -798,13 +798,9 @@ mlan_main_process(IN t_void * pmlan_adapter)
 		goto exit_main_proc;
 	} else {
 		pmadapter->mlan_processing = MTRUE;
-		pcb->moal_spin_unlock(pmadapter->pmoal_handle,
-				      pmadapter->pmain_proc_lock);
 	}
 process_start:
 	do {
-		pcb->moal_spin_lock(pmadapter->pmoal_handle,
-				    pmadapter->pmain_proc_lock);
 		pmadapter->more_task_flag = MFALSE;
 		pcb->moal_spin_unlock(pmadapter->pmoal_handle,
 				      pmadapter->pmain_proc_lock);
@@ -848,6 +844,8 @@ process_start:
 		    )) {
 			wlan_pm_wakeup_card(pmadapter);
 			pmadapter->pm_wakeup_fw_try = MTRUE;
+			pcb->moal_spin_lock(pmadapter->pmoal_handle,
+					    pmadapter->pmain_proc_lock);
 			continue;
 		}
 		if (IS_CARD_RX_RCVD(pmadapter)) {
@@ -870,8 +868,7 @@ process_start:
 			    (pmadapter->tx_lock_flag == MTRUE))
 				break;
 
-			if (pmadapter->scan_processing
-			    || pmadapter->data_sent
+			if (pmadapter->data_sent
 			    || wlan_is_tdls_link_chan_switching(pmadapter->
 								tdls_status)
 			    || (wlan_bypass_tx_list_empty(pmadapter) &&
@@ -925,8 +922,11 @@ process_start:
 		    || (pmadapter->ps_state == PS_STATE_PRE_SLEEP)
 		    || (pmadapter->ps_state == PS_STATE_SLEEP_CFM)
 		    || (pmadapter->tx_lock_flag == MTRUE)
-			)
+			) {
+			pcb->moal_spin_lock(pmadapter->pmoal_handle,
+					    pmadapter->pmain_proc_lock);
 			continue;
+		}
 
 		if (!pmadapter->cmd_sent && !pmadapter->curr_cmd
 		    && wlan_is_send_cmd_allowed(pmadapter->tdls_status)
@@ -938,8 +938,7 @@ process_start:
 			}
 		}
 
-		if (!pmadapter->scan_processing
-		    && !pmadapter->data_sent &&
+		if (!pmadapter->data_sent &&
 		    !wlan_11h_radar_detected_tx_blocked(pmadapter) &&
 		    !wlan_is_tdls_link_chan_switching(pmadapter->tdls_status) &&
 		    !wlan_bypass_tx_list_empty(pmadapter)) {
@@ -954,8 +953,7 @@ process_start:
 			}
 		}
 
-		if (!pmadapter->scan_processing
-		    && !pmadapter->data_sent && !wlan_wmm_lists_empty(pmadapter)
+		if (!pmadapter->data_sent && !wlan_wmm_lists_empty(pmadapter)
 		    && !wlan_11h_radar_detected_tx_blocked(pmadapter)
 		    && !wlan_is_tdls_link_chan_switching(pmadapter->tdls_status)
 			) {
@@ -985,15 +983,15 @@ process_start:
 		}
 #endif
 
+		pcb->moal_spin_lock(pmadapter->pmoal_handle,
+				    pmadapter->pmain_proc_lock);
 	} while (MTRUE);
 
 	pcb->moal_spin_lock(pmadapter->pmoal_handle,
 			    pmadapter->pmain_proc_lock);
-	if (pmadapter->more_task_flag == MTRUE) {
-		pcb->moal_spin_unlock(pmadapter->pmoal_handle,
-				      pmadapter->pmain_proc_lock);
+	if (pmadapter->more_task_flag == MTRUE)
 		goto process_start;
-	}
+
 	pmadapter->mlan_processing = MFALSE;
 	pcb->moal_spin_unlock(pmadapter->pmoal_handle,
 			      pmadapter->pmain_proc_lock);

@@ -6,7 +6,7 @@
  *  for sending adhoc start, adhoc join, and association commands
  *  to the firmware.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to

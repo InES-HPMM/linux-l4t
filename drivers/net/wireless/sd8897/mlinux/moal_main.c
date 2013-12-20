@@ -3,7 +3,7 @@
   * @brief This file contains the major functions in WLAN
   * driver.
   *
-  * Copyright (C) 2008-2012, Marvell International Ltd.
+  * Copyright (C) 2008-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -169,8 +169,10 @@ int rx_work;
 int hw_test;
 
 #if defined(WIFI_DIRECT_SUPPORT)
+#if defined(STA_CFG80211) && defined(UAP_CFG80211)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
 int p2p_enh;
+#endif
 #endif
 #endif
 
@@ -820,6 +822,7 @@ woal_init_sw(moal_handle * handle)
 	spin_lock_init(&handle->queue_lock);
 #endif
 	spin_lock_init(&handle->driver_lock);
+	spin_lock_init(&handle->ioctl_lock);
 
 #if defined(SDIO_SUSPEND_RESUME)
 	handle->is_suspended = MFALSE;
@@ -833,6 +836,12 @@ woal_init_sw(moal_handle * handle)
 	handle->cmd52_func = 0;
 	handle->cmd52_reg = 0;
 	handle->cmd52_val = 0;
+#if defined(STA_CFG80211) || defined(UAP_CFG80211)
+	handle->scan_chan_gap = DEF_SCAN_CHAN_GAP;
+#ifdef WIFI_DIRECT_SUPPORT
+	handle->miracast_scan_time = DEF_MIRACAST_SCAN_TIME;
+#endif
+#endif
 	init_waitqueue_head(&handle->hs_activate_wait_q);
 #endif
 
@@ -1102,15 +1111,16 @@ woal_process_regrdwr(moal_handle * handle, t_u8 * type_string,
 	reg->param.reg_rw.value = value;
 
 	/* request ioctl for STA */
-	if (MLAN_STATUS_SUCCESS !=
-	    woal_request_ioctl(handle->priv[0], ioctl_req, MOAL_IOCTL_WAIT))
+	ret = woal_request_ioctl(handle->priv[0], ioctl_req, MOAL_IOCTL_WAIT);
+	if (ret != MLAN_STATUS_SUCCESS)
 		goto done;
 	PRINTM(MINFO, "Register type: %d, offset: 0x%x, value: 0x%x\n", type,
 	       offset, value);
 	ret = MLAN_STATUS_SUCCESS;
 
 done:
-	kfree(ioctl_req);
+	if (ret != MLAN_STATUS_PENDING)
+		kfree(ioctl_req);
 	LEAVE();
 	return ret;
 }
@@ -2366,7 +2376,8 @@ woal_shutdown_fw(moal_private * priv, t_u8 wait_option)
 	/* add 100 ms delay to avoid back to back init/shutdown */
 	mdelay(100);
 done:
-	kfree(req);
+	if (status != MLAN_STATUS_PENDING)
+		kfree(req);
 	LEAVE();
 	return status;
 }
@@ -2677,6 +2688,9 @@ int
 woal_close(struct net_device *dev)
 {
 	moal_private *priv = (moal_private *) netdev_priv(dev);
+#if defined(STA_SUPPORT) && defined(STA_CFG80211)
+	unsigned long flags;
+#endif
 
 	ENTER();
 #ifdef STA_SUPPORT
@@ -2684,12 +2698,12 @@ woal_close(struct net_device *dev)
 	if (IS_STA_CFG80211(cfg80211_wext) &&
 	    (priv->bss_type == MLAN_BSS_TYPE_STA))
 		woal_clear_conn_params(priv);
-	spin_lock(&priv->scan_req_lock);
+	spin_lock_irqsave(&priv->scan_req_lock, flags);
 	if (IS_STA_CFG80211(cfg80211_wext) && priv->scan_request) {
 		cfg80211_scan_done(priv->scan_request, MTRUE);
 		priv->scan_request = NULL;
 	}
-	spin_unlock(&priv->scan_req_lock);
+	spin_unlock_irqrestore(&priv->scan_req_lock, flags);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 	if (IS_STA_CFG80211(cfg80211_wext) && priv->sched_scanning) {
 		woal_stop_bg_scan(priv, MOAL_IOCTL_WAIT);
@@ -3179,6 +3193,8 @@ woal_process_tcp_ack(moal_private * priv, mlan_buffer * pmbuf)
 				kmalloc(sizeof(struct tcp_sess), GFP_ATOMIC);
 			if (!tcp_session) {
 				PRINTM(MERROR, "Fail to allocate tcp_sess.\n");
+				spin_unlock_irqrestore(&priv->tcp_sess_lock,
+						       flags);
 				goto done;
 			}
 			tcp_session->ack_skb = pmbuf->pdesc;
@@ -4201,11 +4217,12 @@ woal_reassociation_thread(void *data)
 					rate->param.rate_cfg.rate =
 						priv->rate_index;
 
-					if (MLAN_STATUS_SUCCESS
-					    != woal_request_ioctl(priv, req,
-								  MOAL_CMD_WAIT))
-					{
-						kfree(req);
+					status = woal_request_ioctl(priv, req,
+								    MOAL_CMD_WAIT);
+					if (status != MLAN_STATUS_SUCCESS) {
+						if (status !=
+						    MLAN_STATUS_PENDING)
+							kfree(req);
 						LEAVE();
 						return MLAN_STATUS_FAILURE;
 					}
@@ -5141,7 +5158,7 @@ woal_sdio_reg_dbg(moal_handle * phandle)
 	unsigned int reg, reg_start, reg_end;
 	unsigned int reg_table[] =
 		{ 0x4C, 0x50, 0x54, 0x55, 0x58, 0x59, 0x5c, 0x5d };
-	char buf[128], *ptr;
+	char buf[256], *ptr;
 
 	sdio_claim_host(((struct sdio_mmc_card *)phandle->card)->func);
 	for (loop = 0; loop < 5; loop++) {
@@ -5963,6 +5980,9 @@ woal_cleanup_module(void)
 	moal_handle *handle = NULL;
 	int index = 0;
 	int i;
+#if defined(STA_SUPPORT) && defined(STA_CFG80211)
+	unsigned long flags;
+#endif
 
 	ENTER();
 
@@ -5998,14 +6018,16 @@ woal_cleanup_module(void)
 				    (handle->priv[i]->bss_type ==
 				     MLAN_BSS_TYPE_STA))
 					woal_clear_conn_params(handle->priv[i]);
-				spin_lock(&handle->priv[i]->scan_req_lock);
+				spin_lock_irqsave(&handle->priv[i]->
+						  scan_req_lock, flags);
 				if (IS_STA_CFG80211(cfg80211_wext) &&
 				    handle->priv[i]->scan_request) {
 					cfg80211_scan_done(handle->priv[i]->
 							   scan_request, MTRUE);
 					handle->priv[i]->scan_request = NULL;
 				}
-				spin_unlock(&handle->priv[i]->scan_req_lock);
+				spin_unlock_irqrestore(&handle->priv[i]->
+						       scan_req_lock, flags);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0) || defined(COMPAT_WIRELESS)
 				if (IS_STA_CFG80211(cfg80211_wext) &&
 				    handle->priv[i]->sched_scanning) {
@@ -6193,9 +6215,11 @@ module_param(rx_work, int, 0);
 MODULE_PARM_DESC(rx_work,
 		 "0: default; 1: Enable rx_work_queue; 2: Disable rx_work_queue");
 #if defined(WIFI_DIRECT_SUPPORT)
+#if defined(STA_CFG80211) && defined(UAP_CFG80211)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
 module_param(p2p_enh, int, 0);
 MODULE_PARM_DESC(p2p_enh, "1: Enable enhanced P2P; 0: Disable enhanced P2P");
+#endif
 #endif
 #endif
 

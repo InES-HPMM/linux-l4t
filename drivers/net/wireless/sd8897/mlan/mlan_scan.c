@@ -5,7 +5,7 @@
  *  IOCTL handlers as well as command preparation and response routines
  *  for sending scan commands to the firmware.
  *
- *  (C) Copyright 2008-2012 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -123,6 +123,60 @@ static t_u8 rsn_oui[CIPHER_SUITE_MAX][4] = {
 	{0x00, 0x0f, 0xac, 0x04},	/* AES */
 	{0x00, 0x0f, 0xac, 0x05},	/* WEP104 */
 };
+
+/**
+ *  @brief This function will update the channel statistics from scan result
+ *
+ *  @param pmpriv           A pointer to mlan_private structure
+ *  @param pchanstats_tlv   A pointer to MrvlIEtypes_ChannelStats_t tlv
+ *
+ *  @return                NA
+ */
+void
+wlan_update_chan_statistics(mlan_private * pmpriv,
+			    MrvlIEtypes_ChannelStats_t * pchanstats_tlv)
+{
+	mlan_adapter *pmadapter = pmpriv->adapter;
+	t_u8 i, j;
+	ChanStatistics_t *pchan_stats =
+		(ChanStatistics_t *) ((t_u8 *) pchanstats_tlv +
+				      sizeof(MrvlIEtypesHeader_t));
+	t_u8 num_chan =
+		wlan_le16_to_cpu(pchanstats_tlv->header.len) /
+		sizeof(ChanStatistics_t);
+
+	ENTER();
+
+	for (j = 0; j < num_chan; j++) {
+		for (i = 0; i < pmadapter->num_in_chan_stats; i++) {
+			if (pmadapter->pchan_stats[i].chan_num ==
+			    pchan_stats->chan_num) {
+				pchan_stats->total_networks =
+					wlan_le16_to_cpu(pchan_stats->
+							 total_networks);
+				pchan_stats->cca_scan_duration =
+					wlan_le16_to_cpu(pchan_stats->
+							 cca_scan_duration);
+				pchan_stats->cca_busy_duration =
+					wlan_le16_to_cpu(pchan_stats->
+							 cca_busy_duration);
+				PRINTM(MCMND,
+				       "chan=%d, noise=%d, total_network=%d scan_duration=%d, busy_duration=%d\n",
+				       pchan_stats->chan_num,
+				       pchan_stats->noise,
+				       pchan_stats->total_networks,
+				       pchan_stats->cca_scan_duration,
+				       pchan_stats->cca_busy_duration);
+				memcpy(pmadapter, &pmadapter->pchan_stats[i],
+				       pchan_stats, sizeof(ChanStatistics_t));
+				break;
+			}
+		}
+		pchan_stats++;
+	}
+	LEAVE();
+	return;
+}
 
 /**
  *  @brief This function will parse a given IE for a given OUI
@@ -951,6 +1005,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 	MrvlIETypes_HTCap_t *pht_cap;
 
 	MrvlIETypes_VHTCap_t *pvht_cap;
+	MrvlIEtypes_ScanChanGap_t *pscan_gap_tlv;
 	ENTER();
 
 	/* The tlv_buf_len is calculated for each scan command.  The TLVs added
@@ -1077,6 +1132,22 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
 	else
 		*pmax_chan_per_scan = MRVDRV_CHANNELS_PER_SCAN_CMD;
 
+	if (puser_scan_in && puser_scan_in->scan_chan_gap) {
+		*pmax_chan_per_scan = MRVDRV_MAX_CHANNELS_PER_SPECIFIC_SCAN;
+		PRINTM(MINFO, "Scan: channel gap = %d\n",
+		       puser_scan_in->scan_chan_gap);
+		pscan_gap_tlv = (MrvlIEtypes_ScanChanGap_t *) ptlv_pos;
+		pscan_gap_tlv->header.type =
+			wlan_cpu_to_le16(TLV_TYPE_SCAN_CHANNEL_GAP);
+		pscan_gap_tlv->header.len = sizeof(pscan_gap_tlv->gap);
+		pscan_gap_tlv->gap =
+			wlan_cpu_to_le16((t_u16) puser_scan_in->scan_chan_gap);
+		ptlv_pos +=
+			sizeof(pscan_gap_tlv->header) +
+			pscan_gap_tlv->header.len;
+		pscan_gap_tlv->header.len =
+			wlan_cpu_to_le16(pscan_gap_tlv->header.len);
+	}
 	/* If the input config or adapter has the number of Probes set, add tlv
 	 */
 	if (num_probes) {
@@ -1314,6 +1385,12 @@ wlan_ret_802_11_scan_get_tlv_ptrs(IN pmlan_adapter pmadapter,
 			case TLV_TYPE_CHANNELBANDLIST:
 				PRINTM(MINFO,
 				       "SCAN_RESP: CHANNEL BAND LIST TLV, len = %d\n",
+				       tlv_len);
+				*pptlv = (MrvlIEtypes_Data_t *) pcurrent_tlv;
+				break;
+			case TLV_TYPE_CHANNEL_STATS:
+				PRINTM(MINFO,
+				       "SCAN_RESP: CHANNEL STATS TLV, len = %d\n",
 				       tlv_len);
 				*pptlv = (MrvlIEtypes_Data_t *) pcurrent_tlv;
 				break;
@@ -3317,6 +3394,7 @@ wlan_is_network_compatible(IN mlan_private * pmpriv,
 mlan_status
 wlan_flush_scan_table(IN pmlan_adapter pmadapter)
 {
+	t_u8 i = 0;
 	ENTER();
 
 	PRINTM(MINFO, "Flushing scan table\n");
@@ -3327,6 +3405,9 @@ wlan_flush_scan_table(IN pmlan_adapter pmadapter)
 
 	memset(pmadapter, pmadapter->bcn_buf, 0, pmadapter->bcn_buf_size);
 	pmadapter->pbcn_buf_end = pmadapter->bcn_buf;
+
+	for (i = 0; i < pmadapter->num_in_chan_stats; i++)
+		pmadapter->pchan_stats[i].cca_scan_duration = 0;
 
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
@@ -3366,6 +3447,7 @@ wlan_scan_networks(IN mlan_private * pmpriv,
 	t_u8 filtered_scan;
 	t_u8 scan_current_chan_only;
 	t_u8 max_chan_per_scan;
+	t_u8 i;
 
 	ENTER();
 
@@ -3431,6 +3513,8 @@ wlan_scan_networks(IN mlan_private * pmpriv,
 		       sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST);
 		pmadapter->num_in_scan_table = 0;
 		pmadapter->pbcn_buf_end = pmadapter->bcn_buf;
+		for (i = 0; i < pmadapter->num_in_chan_stats; i++)
+			pmadapter->pchan_stats[i].cca_scan_duration = 0;
 	}
 
 	ret = wlan_scan_channel_list(pmpriv,
@@ -3560,6 +3644,7 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 	BSSDescriptor_t *bss_new_entry = MNULL;
 	MrvlIEtypes_Data_t *ptlv;
 	MrvlIEtypes_TsfTimestamp_t *ptsf_tlv = MNULL;
+	MrvlIEtypes_ChannelStats_t *pchanstats_tlv = MNULL;
 	t_u8 *pbss_info;
 	t_u32 scan_resp_size;
 	t_u32 bytes_left;
@@ -3639,6 +3724,13 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
 					  TLV_TYPE_CHANNELBANDLIST,
 					  (MrvlIEtypes_Data_t **) &
 					  pchan_band_tlv);
+	wlan_ret_802_11_scan_get_tlv_ptrs(pmadapter, ptlv, tlv_buf_size,
+					  TLV_TYPE_CHANNEL_STATS,
+					  (MrvlIEtypes_Data_t **) &
+					  pchanstats_tlv);
+
+	if (pchanstats_tlv)
+		wlan_update_chan_statistics(pmpriv, pchanstats_tlv);
 
 	/*
 	 *  Process each scan response returned (pscan_rsp->number_of_sets).  Save
@@ -3951,10 +4043,39 @@ mlan_status
 wlan_ret_802_11_scan_ext(IN mlan_private * pmpriv,
 			 IN HostCmd_DS_COMMAND * resp, IN t_void * pioctl_buf)
 {
+	HostCmd_DS_802_11_SCAN_EXT *pext_scan_cmd = &(resp->params.ext_scan);
+	MrvlIEtypesHeader_t *tlv = MNULL;
+	MrvlIEtypes_ChannelStats_t *tlv_chanstats = MNULL;
+	t_u16 tlv_buf_left = 0;
+	t_u16 tlv_type = 0;
+	t_u16 tlv_len = 0;
 	ENTER();
 
 	PRINTM(MINFO, "EXT scan returns successfully\n");
-
+	tlv = (MrvlIEtypesHeader_t *) pext_scan_cmd->tlv_buffer;
+	tlv_buf_left =
+		resp->size - (sizeof(HostCmd_DS_802_11_SCAN_EXT) - 1 +
+			      S_DS_GEN);
+	while (tlv_buf_left >= sizeof(MrvlIEtypesHeader_t)) {
+		tlv_type = wlan_le16_to_cpu(tlv->type);
+		tlv_len = wlan_le16_to_cpu(tlv->len);
+		if (tlv_buf_left < (tlv_len + sizeof(MrvlIEtypesHeader_t))) {
+			PRINTM(MERROR,
+			       "Error processing uAP sys config TLVs, bytes left < TLV length\n");
+			break;
+		}
+		switch (tlv_type) {
+		case TLV_TYPE_CHANNEL_STATS:
+			tlv_chanstats = (MrvlIEtypes_ChannelStats_t *) tlv;
+			wlan_update_chan_statistics(pmpriv, tlv_chanstats);
+			break;
+		default:
+			break;
+		}
+		tlv_buf_left -= tlv_len + sizeof(MrvlIEtypesHeader_t);
+		tlv = (MrvlIEtypesHeader_t *) ((t_u8 *) tlv + tlv_len +
+					       sizeof(MrvlIEtypesHeader_t));
+	}
 	LEAVE();
 	return MLAN_STATUS_SUCCESS;
 }
@@ -4865,6 +4986,11 @@ wlan_ret_802_11_bgscan_query(IN mlan_private * pmpriv,
 		pscan->param.scan_resp.num_in_scan_table =
 			pmadapter->num_in_scan_table;
 		pscan->param.scan_resp.age_in_secs = pmadapter->age_in_secs;
+		pscan->param.scan_resp.pchan_stats =
+			(t_u8 *) pmadapter->pchan_stats;
+		pscan->param.scan_resp.num_in_chan_stats =
+			pmadapter->num_in_chan_stats;
+
 		pioctl_buf->data_read_written = sizeof(mlan_scan_resp) +
 			MLAN_SUB_COMMAND_SIZE;
 

@@ -2,7 +2,7 @@
   *
   * @brief This file contains the functions for CFG80211.
   *
-  * Copyright (C) 2011-2012, Marvell International Ltd.
+  * Copyright (C) 2011-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -1842,11 +1842,15 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 						    remain_bss_index];
 		/** cancel previous remain on channel */
 		if (priv->phandle->remain_on_channel && remain_priv) {
-			if (woal_cfg80211_remain_on_channel_cfg
-			    (remain_priv, MOAL_IOCTL_WAIT, MTRUE,
-			     &channel_status, NULL, 0, 0))
-				PRINTM(MERROR,
-				       "mgmt_tx:Fail to cancel remain on channel\n");
+			if ((priv->phandle->chan.center_freq !=
+			     chan->center_freq)
+				) {
+				if (woal_cfg80211_remain_on_channel_cfg
+				    (remain_priv, MOAL_IOCTL_WAIT, MTRUE,
+				     &channel_status, NULL, 0, 0))
+					PRINTM(MERROR,
+					       "mgmt_tx:Fail to cancel remain on channel\n");
+			}
 			if (priv->phandle->cookie) {
 				cfg80211_remain_on_channel_expired(
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
@@ -2781,6 +2785,7 @@ woal_cfg80211_setup_vht_cap(moal_private * priv,
 
 	req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11ac_cfg));
 	if (req == NULL) {
+		status = MLAN_STATUS_FAILURE;
 		PRINTM(MERROR, "Fail to allocate buf for setup vht_cap\n");
 		goto done;
 	}

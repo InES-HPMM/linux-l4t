@@ -2,7 +2,7 @@
   *
   * @brief This file contains the callback functions registered to MLAN
   *
-  * Copyright (C) 2008-2011, Marvell International Ltd.
+  * Copyright (C) 2008-2013, Marvell International Ltd.
   *
   * This software file (the "File") is distributed by Marvell International
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -548,6 +548,7 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
 	moal_handle *handle = (moal_handle *) pmoal_handle;
 	moal_private *priv = NULL;
 	wait_queue *wait;
+	unsigned long flags;
 	ENTER();
 
 	if (!atomic_read(&handle->ioctl_pending))
@@ -556,8 +557,6 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
 	else
 		atomic_dec(&handle->ioctl_pending);
 	priv = woal_bss_index_to_priv(handle, pioctl_req->bss_index);
-
-	wait = (wait_queue *) pioctl_req->reserved_1;
 	if (status != MLAN_STATUS_SUCCESS)
 		PRINTM(MERROR,
 		       "IOCTL failed: %p id=0x%x, sub_id=0x%x action=%d, status_code=0x%x\n",
@@ -570,6 +569,9 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
 		       pioctl_req, pioctl_req->req_id,
 		       (*(t_u32 *) pioctl_req->pbuf), (int)pioctl_req->action,
 		       status, pioctl_req->status_code);
+
+	spin_lock_irqsave(&priv->phandle->driver_lock, flags);
+	wait = (wait_queue *) pioctl_req->reserved_1;
 	if (wait) {
 		wait->condition = MTRUE;
 		wait->status = status;
@@ -584,7 +586,9 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
 				wake_up_interruptible(wait->wait);
 			}
 		}
+		spin_unlock_irqrestore(&priv->phandle->driver_lock, flags);
 	} else {
+		spin_unlock_irqrestore(&priv->phandle->driver_lock, flags);
 		if (priv && (status == MLAN_STATUS_SUCCESS) &&
 		    (pioctl_req->action == MLAN_ACT_GET))
 			woal_process_ioctl_resp(priv, pioctl_req);
@@ -871,6 +875,9 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 {
 #ifdef STA_SUPPORT
 	int custom_len = 0;
+#ifdef STA_CFG80211
+	unsigned long flags;
+#endif
 #endif
 	moal_private *priv = NULL;
 #if defined(STA_SUPPORT) || defined(UAP_SUPPORT)
@@ -990,13 +997,14 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 									 NULL,
 									 MOAL_NO_WAIT);
 				}
-				spin_lock(&priv->scan_req_lock);
+				spin_lock_irqsave(&priv->scan_req_lock, flags);
 				if (priv->scan_request) {
 					cfg80211_scan_done(priv->scan_request,
 							   MFALSE);
 					priv->scan_request = NULL;
 				}
-				spin_unlock(&priv->scan_req_lock);
+				spin_unlock_irqrestore(&priv->scan_req_lock,
+						       flags);
 				if (!priv->phandle->first_scan_done) {
 					priv->phandle->first_scan_done = MTRUE;
 					woal_set_scan_time(priv,

@@ -2,7 +2,7 @@
  *
  *  @brief This file contains definitions for SDIO interface.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -385,6 +385,7 @@ mlan_status wlan_enable_host_int(pmlan_adapter pmadapter);
 mlan_status wlan_sdio_probe(pmlan_adapter pmadapter);
 /** multi interface download check */
 mlan_status wlan_check_winner_status(mlan_adapter * pmadapter, t_u32 * val);
+
 /** Firmware status check */
 mlan_status wlan_check_fw_status(mlan_adapter * pmadapter, t_u32 pollnum);
 /** Read interrupt status */

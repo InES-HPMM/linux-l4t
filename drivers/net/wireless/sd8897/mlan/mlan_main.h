@@ -4,7 +4,7 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  (C) Copyright 2008-2012 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -1789,6 +1789,10 @@ typedef struct _mlan_adapter {
 	BSSDescriptor_t *pscan_table;
     /** scan age in secs */
 	t_u32 age_in_secs;
+    /** channel statstics */
+	ChanStatistics_t *pchan_stats;
+    /** Number of records in the chan_stats */
+	t_u32 num_in_chan_stats;
 	t_u8 bgscan_reported;
 
     /** Number of records in the scan table */

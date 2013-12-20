@@ -2,7 +2,7 @@
  *
  * @brief This file contains definition for private IOCTL call.
  *
- * Copyright (C) 2012, Marvell International Ltd.
+ * Copyright (C) 2013, Marvell International Ltd.
  *
  * This software file (the "File") is distributed by Marvell International
  * Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -190,6 +190,11 @@ Change log:
 #define PRIV_CMD_MULTI_CHAN_CFG "mc_cfg"
 #define PRIV_CMD_MULTI_CHAN_POLICY "mc_policy"
 #if defined(WIFI_DIRECT_SUPPORT)
+#endif
+#ifdef WIFI_DIRECT_SUPPORT
+#if defined(STA_CFG80211) || defined(UAP_CFG80211)
+#define PRIV_CMD_MIRACAST_CFG       "miracastcfg"
+#endif
 #endif
 
 /** Private command ID for Android default commands */

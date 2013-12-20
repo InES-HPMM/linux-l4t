@@ -2,7 +2,7 @@
  *
  *  @brief This file declares the generic data structures and APIs.
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -32,7 +32,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"457"
+#define MLAN_RELEASE_VERSION		"463"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */

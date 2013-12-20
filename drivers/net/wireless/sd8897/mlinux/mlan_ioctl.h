@@ -2,7 +2,7 @@
  *
  *  @brief This file declares the IOCTL data structures and APIs.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  Copyright (C) 2008-2013, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -411,6 +411,10 @@ typedef struct _mlan_scan_resp {
 	t_u8 *pscan_table;
 	/* Age in seconds */
 	t_u32 age_in_secs;
+    /** channel statstics */
+	t_u8 *pchan_stats;
+    /** Number of records in the chan_stats */
+	t_u32 num_in_chan_stats;
 } mlan_scan_resp, *pmlan_scan_resp;
 
 /** Type definition of mlan_scan_cfg */
@@ -1967,7 +1971,7 @@ typedef struct _mlan_ds_power_cfg {
 /** Host sleep config conditions: Default */
 #define HOST_SLEEP_DEF_COND     (HOST_SLEEP_COND_BROADCAST_DATA | HOST_SLEEP_COND_UNICAST_DATA | HOST_SLEEP_COND_MAC_EVENT)
 /** Host sleep config GPIO : Default */
-#define HOST_SLEEP_DEF_GPIO     0x10
+#define HOST_SLEEP_DEF_GPIO     0x08
 /** Host sleep config gap : Default */
 #define HOST_SLEEP_DEF_GAP      100
 /** Host sleep config min wake holdoff */

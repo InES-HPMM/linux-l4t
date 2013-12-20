@@ -1,7 +1,7 @@
 /** @file hci_wrapper.h
  *  @brief This file contains HCI related definitions
  *
- *  Copyright (C) 2011-2012, Marvell International Ltd.
+ *  Copyright (C) 2011-2013, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991

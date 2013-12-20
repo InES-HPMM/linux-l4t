@@ -2,7 +2,7 @@
  *
  *  @brief This file contains the handling of AP mode ioctls
  *
- *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2009-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -1298,6 +1298,9 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 	mlan_ds_rate *rate = MNULL;
 	mlan_ds_reg_mem *reg_mem = MNULL;
 	mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+#if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
+	mlan_ds_scan *pscan;
+#endif
 
 	ENTER();
 
@@ -1334,6 +1337,27 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 			status = wlan_bss_ioctl_bss_remove(pmadapter,
 							   pioctl_req);
 		break;
+#if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
+	case MLAN_IOCTL_SCAN:
+		pscan = (mlan_ds_scan *) pioctl_req->pbuf;
+		if ((pscan->sub_command == MLAN_OID_SCAN_NORMAL) &&
+		    (pioctl_req->action == MLAN_ACT_GET)) {
+			PRINTM(MIOCTL, "Get scan table in uap\n");
+			pscan->param.scan_resp.pscan_table =
+				(t_u8 *) pmadapter->pscan_table;
+			pscan->param.scan_resp.num_in_scan_table =
+				pmadapter->num_in_scan_table;
+			pscan->param.scan_resp.age_in_secs =
+				pmadapter->age_in_secs;
+			pioctl_req->data_read_written =
+				sizeof(mlan_scan_resp) + MLAN_SUB_COMMAND_SIZE;
+			pscan->param.scan_resp.pchan_stats =
+				(t_u8 *) pmadapter->pchan_stats;
+			pscan->param.scan_resp.num_in_chan_stats =
+				pmadapter->num_in_chan_stats;
+		}
+		break;
+#endif
 	case MLAN_IOCTL_GET_INFO:
 		pget_info = (mlan_ds_get_info *) pioctl_req->pbuf;
 		if (pget_info->sub_command == MLAN_OID_GET_VER_EXT)

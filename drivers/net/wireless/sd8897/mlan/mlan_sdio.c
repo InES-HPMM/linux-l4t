@@ -2,7 +2,7 @@
  *
  *  @brief This file contains SDIO specific code
  *
- *  (C) Copyright 2008-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2008-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
@@ -464,17 +464,18 @@ exit:
  *  @brief  This function downloads FW blocks to device
  *
  *  @param pmadapter	A pointer to mlan_adapter
- *  @param pmfw			A pointer to firmware image
+ *  @param firmware     A pointer to firmware image
+ *  @param firmwarelen  firmware len
  *
  *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
-wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
+wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, t_u8 * fw, t_u32 fw_len)
 {
 	mlan_status ret = MLAN_STATUS_SUCCESS;
 	pmlan_callbacks pcb = &pmadapter->callbacks;
-	t_u8 *firmware = pmfw->pfw_buf;
-	t_u32 firmwarelen = pmfw->fw_len;
+	t_u8 *firmware = fw;
+	t_u32 firmwarelen = fw_len;
 	t_u32 offset = 0;
 	t_u32 base0, base1;
 	t_void *tmpfwbuf = MNULL;
@@ -1382,7 +1383,7 @@ wlan_dnld_fw(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
 	ENTER();
 
 	/* Download the firmware image via helper */
-	ret = wlan_prog_fw_w_helper(pmadapter, pmfw);
+	ret = wlan_prog_fw_w_helper(pmadapter, pmfw->pfw_buf, pmfw->fw_len);
 	if (ret != MLAN_STATUS_SUCCESS) {
 		LEAVE();
 		return MLAN_STATUS_FAILURE;

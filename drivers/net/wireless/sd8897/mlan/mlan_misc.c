@@ -3,7 +3,7 @@
  *
  *  @brief This file include Miscellaneous functions for MLAN module
  *
- *  (C) Copyright 2009-2011 Marvell International Ltd. All Rights Reserved
+ *  (C) Copyright 2009-2013 Marvell International Ltd. All Rights Reserved
  *
  *  MARVELL CONFIDENTIAL
  *  The source code contained or described herein and all documents related to
