@@ -7184,6 +7184,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("msenc",	"msenc",		NULL,	219,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK("nvdec",	"nvdec",		NULL,	194,	0x698,	768000000, mux_pllc2_c_c3_pllp_plla_clkm, MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK("nvjpg",	"nvjpg",		NULL,	195,	0x69c,	768000000, mux_pllc2_c_c3_pllp_plla_clkm, MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllc2_c_c3_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
@@ -7253,6 +7255,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("cap.throttle.emc", "cap_throttle", NULL, &tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("3d.emc",	"tegra_gk20a",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
 	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_MSENC)),
+	SHARED_EMC_CLK("nvjpg.emc",	"tegra_nvjpg",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_NVJPG)),
+	SHARED_EMC_CLK("nvdec.emc",	"tegra_nvdec",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_NVDEC)),
 	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("camera.emc", "vi",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI)),
 	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, 0),
@@ -7265,6 +7269,8 @@ struct clk tegra_list_clks[] = {
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
+	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c2bus, "nvjpg", 0, 0),
+	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c2bus, "nvdec", 0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra21-se",		NULL,	 &tegra_clk_c2bus, "se",    0, 0),
 	SHARED_CLK("cap.c2bus",		"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.c2bus", "cap_throttle",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
@@ -7284,6 +7290,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
 #endif
 	SHARED_CLK("msenc.cbus","tegra_msenc",		"msenc",&tegra_clk_cbus, "msenc", 0, 0),
+	SHARED_CLK("nvjpg.cbus","tegra_nvjpg",		"nvjpg",&tegra_clk_cbus, "nvjpg", 0, 0),
+	SHARED_CLK("nvdec.cbus","tegra_nvdec",		"nvdec",&tegra_clk_cbus, "nvdec", 0, 0),
 	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
 	SHARED_CLK("se.cbus",	"tegra21-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),

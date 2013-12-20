@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra21_dvfs.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -224,6 +224,8 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("tsec",   -1, -1, 1, KHZ,   120000, 144000, 168000, 216000,  372000),
 
 	CORE_DVFS("msenc",  -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
+	CORE_DVFS("nvdec",  -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
+	CORE_DVFS("nvjpg",  -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
 	CORE_DVFS("se",     -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
 	CORE_DVFS("vde",    -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
 
