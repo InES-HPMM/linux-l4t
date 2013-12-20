@@ -737,7 +737,7 @@ static struct sync_fence *tegra_adf_dev_complete_fence(struct adf_device *dev,
 	if (work_index < 0)
 		return ERR_PTR(-EINVAL);
 
-	return tegra_dc_create_fence(adf_info->dc, work_index, syncpt_val);
+	return tegra_dc_create_fence(adf_info->dc, work_index, syncpt_val + 1);
 }
 
 static void tegra_adf_dev_advance_timeline(struct adf_device *dev,
