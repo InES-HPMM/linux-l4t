@@ -220,6 +220,20 @@ ENTRY(__cpu_setup)
 	ret					// return to head.S
 ENDPROC(__cpu_setup)
 
+ENTRY(__cortexa57_cpu_setup)
+
+	mrs	x0, s3_1_c11_c0_2
+	and	x1, x0, #7
+	cmp	x1, #2
+	b.eq	__cpu_setup
+	mov	x1, #7
+	bic	x0, x0, x1
+	orr	x0, x0, #2			// set data RAM latency to 3
+	msr	s3_1_c11_c0_2, x0
+
+	b	__cpu_setup
+ENDPROC(__cortexa57_cpu_setup)
+
 #ifdef CONFIG_ARMV7_COMPAT_CP15_BARRIER
 	/*
 	 *                 n n            T
