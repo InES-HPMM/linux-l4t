@@ -424,7 +424,8 @@ static int ov7695_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	err = ov7695_mclk_enable(info);
+	if (info->mclk)
+		err = ov7695_mclk_enable(info);
 	if (!err && info->pdata && info->pdata->power_on) {
 		err = info->pdata->power_on(&info->power);
 	} else {
@@ -432,7 +433,7 @@ static int ov7695_open(struct inode *inode, struct file *file)
 			"%s:no valid power_on function.\n", __func__);
 		err = -EFAULT;
 	}
-	if (err < 0)
+	if (err < 0 && info->mclk)
 		ov7695_mclk_disable(info);
 	return err;
 }
@@ -443,7 +444,8 @@ int ov7695_release(struct inode *inode, struct file *file)
 
 	if (info->pdata && info->pdata->power_off)
 		info->pdata->power_off(&info->power);
-	ov7695_mclk_disable(info);
+	if (info->mclk)
+		ov7695_mclk_disable(info);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -895,13 +897,19 @@ static int ov7695_probe(struct i2c_client *client,
 	}
 
 	mclk_name = info->pdata && info->pdata->mclk_name ?
-		    info->pdata->mclk_name : "default_mclk";
-	info->mclk = devm_clk_get(&client->dev, mclk_name);
-	if (IS_ERR(info->mclk)) {
-		dev_err(&client->dev, "%s: unable to get clock %s\n",
-			__func__, mclk_name);
-		return PTR_ERR(info->mclk);
+		info->pdata->mclk_name : "default_mclk";
+	if (!strncmp(mclk_name, "ext_mclk", 8))
+		/* use external mclk */
+		info->mclk = NULL;
+	else {
+		info->mclk = devm_clk_get(&client->dev, mclk_name);
+		if (IS_ERR(info->mclk)) {
+			dev_err(&client->dev, "%s: unable to get clock %s\n",
+				__func__, mclk_name);
+			return PTR_ERR(info->mclk);
+		}
 	}
+
 
 #ifdef CONFIG_DEBUG_FS
 	ov7695_debug_init(info);

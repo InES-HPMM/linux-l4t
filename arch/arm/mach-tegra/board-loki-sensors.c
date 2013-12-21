@@ -361,6 +361,10 @@ static int loki_camera_init(void)
 	tegra_io_dpd_enable(&csib_io);
 	tegra_io_dpd_enable(&csie_io);
 
+	/* Don't turn on CAM_MCLK for FFD fab a3 or higher */
+	if (board_info.board_id == BOARD_P2530 && board_info.fab >= 0xa3)
+		loki_ov7695_pdata.mclk_name = "ext_mclk";
+
 	platform_device_add_data(&loki_camera_generic,
 		&loki_pcl_pdata, sizeof(loki_pcl_pdata));
 	platform_device_register(&loki_camera_generic);
