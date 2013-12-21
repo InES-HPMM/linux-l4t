@@ -159,6 +159,7 @@ struct notifier_block;
 int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs);
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 int tegra_dvfs_override_core_voltage(struct clk *c, int override_mv);
+int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min);
 unsigned long clk_get_rate_all_locked(struct clk *c);
 int tegra_dvfs_rail_disable_by_name(const char *reg_id);
 int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb);

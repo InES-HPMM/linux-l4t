@@ -1004,8 +1004,70 @@ int tegra_dvfs_rail_get_override_floor(struct dvfs_rail *rail)
 	}
 	return -ENOENT;
 }
+
+static int dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min)
+{
+	int i, ret = 0;
+	struct dvfs *d = c->dvfs;
+	unsigned long f_min = 1000;	/* 1kHz min rate in DVFS tables */
+
+	mutex_lock(&rail_override_lock);
+	mutex_lock(&dvfs_lock);
+
+	if (v_min > d->dvfs_rail->override_millivolts) {
+		pr_err("%s: new %s vmin %dmV is above override voltage %dmV\n",
+		       __func__, c->name, v_min,
+		       d->dvfs_rail->override_millivolts);
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (v_min >= d->max_millivolts) {
+		pr_err("%s: new %s vmin %dmV is at/above max voltage %dmV\n",
+		       __func__, c->name, v_min, d->max_millivolts);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/*
+	 * dvfs table update:
+	 * - for voltages below new v_min the respective frequencies are shifted
+	 * below new f_max to the levels already present in the table; if the
+	 * 1st table entry has frequency above new fmax, all entries below v_min
+	 * are filled in with 1kHz (min rate used in DVFS tables).
+	 * - for voltages above new v_min, the respective frequencies are
+	 * increased to at least new f_max
+	 * - if new v_min is already in the table set the respective frequency
+	 * to new f_max
+	 */
+	for (i = 0; i < d->num_freqs; i++) {
+		int mv = d->millivolts[i];
+		unsigned long f = d->freqs[i];
+
+		if (mv < v_min) {
+			if (d->freqs[i] >= f_max)
+				d->freqs[i] = i ? d->freqs[i-1] : f_min;
+		} else if (mv > v_min) {
+			d->freqs[i] = max(f, f_max);
+		} else {
+			d->freqs[i] = f_max;
+		}
+		ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+	}
+out:
+	mutex_unlock(&dvfs_lock);
+	mutex_unlock(&rail_override_lock);
+
+	return ret;
+}
 #else
 static int dvfs_override_core_voltage(int override_mv)
+{
+	pr_err("%s: vdd core override is not supported\n", __func__);
+	return -ENOSYS;
+}
+
+static int dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min)
 {
 	pr_err("%s: vdd core override is not supported\n", __func__);
 	return -ENOSYS;
@@ -1021,6 +1083,16 @@ int tegra_dvfs_override_core_voltage(struct clk *c, int override_mv)
 	return dvfs_override_core_voltage(override_mv);
 }
 EXPORT_SYMBOL(tegra_dvfs_override_core_voltage);
+
+int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min)
+{
+	if (!c->dvfs || !c->dvfs->can_override) {
+		pr_err("%s: %s cannot set fmax_at_vmin)\n", __func__, c->name);
+		return -EPERM;
+	}
+	return dvfs_set_fmax_at_vmin(c, f_max, v_min);
+}
+EXPORT_SYMBOL(tegra_dvfs_set_fmax_at_vmin);
 
 /* May only be called during clock init, does not take any locks on clock c. */
 int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)

@@ -1714,6 +1714,37 @@ static int use_alt_freq_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(use_alt_freq_fops,
 			use_alt_freq_get, use_alt_freq_set, "%llu\n");
 
+static ssize_t fmax_at_vmin_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	struct clk *c = file->f_path.dentry->d_inode->i_private;
+	unsigned long f_max;
+	int v_min;
+	char buf[32];
+
+	if (sizeof(buf) <= count)
+		return -EINVAL;
+
+	if (copy_from_user(buf, userbuf, count))
+		return -EFAULT;
+
+	/* terminate buffer and trim - white spaces may be appended
+	 *  at the end when invoked from shell command line */
+	buf[count] = '\0';
+	strim(buf);
+
+	if (sscanf(buf, "%lu_at_%d", &f_max, &v_min) != 2)
+		return -EINVAL;
+
+	tegra_dvfs_set_fmax_at_vmin(c, f_max, v_min);
+
+	return count;
+}
+
+static const struct file_operations fmax_at_vmin_fops = {
+	.write		= fmax_at_vmin_write,
+};
+
 static int clk_debugfs_register_one(struct clk *c)
 {
 	struct dentry *d;
@@ -1785,6 +1816,13 @@ static int clk_debugfs_register_one(struct clk *c)
 	if (c->dvfs) {
 		d = debugfs_create_file("use_alt_freq", S_IRUGO | S_IWUSR,
 			c->dent, c, &use_alt_freq_fops);
+		if (!d)
+			goto err_out;
+	}
+
+	if (c->dvfs && c->dvfs->can_override) {
+		d = debugfs_create_file("fmax_at_vmin", S_IWUSR, c->dent,
+			c, &fmax_at_vmin_fops);
 		if (!d)
 			goto err_out;
 	}
