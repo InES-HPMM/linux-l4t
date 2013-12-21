@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -707,6 +707,25 @@ bool tegra12x_powergate_is_powered(int id)
 		return !!status;
 	}
 	return status;
+}
+
+int tegra12x_powergate_init_refcount(void)
+{
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC))
+		atomic_set(&ref_count_venc, 1);
+	else
+		atomic_set(&ref_count_venc, 0);
+
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISA))
+		atomic_set(&ref_count_dispa, 1);
+	else
+		atomic_set(&ref_count_dispa, 0);
+
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISB))
+		atomic_set(&ref_count_dispb, 1);
+	else
+		atomic_set(&ref_count_dispb, 0);
+	return 0;
 }
 
 static struct powergate_ops tegra12x_powergate_ops = {

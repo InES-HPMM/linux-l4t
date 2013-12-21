@@ -137,4 +137,5 @@ int tegra_powergate_partition(int id);
 int tegra_unpowergate_partition(int id);
 
 bool tegra_powergate_check_clamping(int id);
+int tegra12x_powergate_init_refcount(void);
 #endif /* _MACH_TEGRA_POWERGATE_H_ */
