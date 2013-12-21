@@ -5,7 +5,7 @@
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION. All rights reserved.
  * Scott Peterson <speterson@nvidia.com>
  * Manoj Gangwal <mgangwal@nvidia.com>
  *
@@ -1680,6 +1680,7 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		bb_info->i2s_mode, bb_info->channels,
 		bb_info->rate, bb_info->bitsize, bb_info->bit_clk);
 
+
 	if (uses_voice_codec) {
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_APBIF_RX0 +
 			codec_info->i2s_id);
@@ -1707,6 +1708,13 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 			codec_info->rate, codec_info->bitsize,
 			bb_info->channels, bb_info->rate,
 			bb_info->bitsize);
+
+		tegra30_dam_allocate_channel(codec_i2s->dam_ifc,
+			TEGRA30_DAM_CHIN1);
+		tegra30_dam_set_gain(codec_i2s->dam_ifc, TEGRA30_DAM_CHIN1,
+			0x1000);
+		tegra30_dam_set_acif(codec_i2s->dam_ifc, TEGRA30_DAM_CHIN1,
+			codec_info->channels, codec_info->bitsize, 2, 32);
 
 		/*configure bb dam*/
 		configure_dam(bb_i2s, bb_info->channels,
@@ -1744,6 +1752,8 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		/*enable dam and i2s*/
 		tegra30_dam_enable(codec_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
 			TEGRA30_DAM_CHIN0_SRC);
+		tegra30_dam_enable(codec_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
+			TEGRA30_DAM_CHIN1);
 		tegra30_dam_enable(bb_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
 			TEGRA30_DAM_CHIN0_SRC);
 	}
@@ -1832,6 +1842,11 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 			TEGRA30_DAM_DISABLE, TEGRA30_DAM_CHIN0_SRC);
 		tegra30_dam_free_channel(codec_i2s->dam_ifc,
 			TEGRA30_DAM_CHIN0_SRC);
+		tegra30_dam_enable(codec_i2s->dam_ifc,
+			TEGRA30_DAM_DISABLE, TEGRA30_DAM_CHIN1);
+		tegra30_dam_free_channel(codec_i2s->dam_ifc,
+			TEGRA30_DAM_CHIN1);
+
 		codec_i2s->dam_ch_refcount--;
 		if (!codec_i2s->dam_ch_refcount)
 			tegra30_dam_free_controller(codec_i2s->dam_ifc);
