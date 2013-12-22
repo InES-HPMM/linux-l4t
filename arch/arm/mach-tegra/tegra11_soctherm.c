@@ -2402,7 +2402,7 @@ static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
 	mutex_init(&soc_irq_cdata.irq_lock);
 	soc_irq_cdata.irq_enable = 0;
 
-	soc_irq_cdata.irq_chip.name = "sco_therm_oc";
+	soc_irq_cdata.irq_chip.name = "soc_therm_oc";
 	soc_irq_cdata.irq_chip.irq_bus_lock = soctherm_oc_irq_lock,
 	soc_irq_cdata.irq_chip.irq_bus_sync_unlock = soctherm_oc_irq_sync_unlock,
 	soc_irq_cdata.irq_chip.irq_disable = soctherm_oc_irq_disable,
