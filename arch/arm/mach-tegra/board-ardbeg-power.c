@@ -1313,6 +1313,8 @@ static struct tegra_tsensor_pmu_data tpdata_as3722 = {
 };
 
 static struct soctherm_platform_data ardbeg_soctherm_data = {
+	.oc_irq_base = TEGRA_SOC_OC_IRQ_BASE,
+	.num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ,
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,

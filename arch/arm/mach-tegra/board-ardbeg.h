@@ -57,6 +57,10 @@ void shield_sysedp_batmon_init(void);
 #define MPU_BMP_NAME			"bmp280"
 #define MPU_BMP_ADDR			0x77
 
+/* generated soc_therm OC interrupts */
+#define TEGRA_SOC_OC_IRQ_BASE	TEGRA_NR_IRQS
+#define TEGRA_SOC_OC_NUM_IRQ	TEGRA_SOC_OC_IRQ_MAX
+
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE    6
 #define PCA954x_I2C_BUS0        (PCA954x_I2C_BUS_BASE + 0)
@@ -66,7 +70,7 @@ void shield_sysedp_batmon_init(void);
 
 
 #define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
-#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
+#define PALMAS_TEGRA_IRQ_BASE	(TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_NUM_IRQ)
 #define AS3722_GPIO_BASE	TEGRA_NR_GPIOS
 #define AS3722_GPIO_END	(AS3722_GPIO_BASE + AS3722_NUM_GPIO)
 
@@ -76,7 +80,7 @@ void shield_sysedp_batmon_init(void);
 #define PMU_TCA6416_NR_GPIOS    18
 /* External peripheral act as interrupt controller */
 /* AS3720 IRQs */
-#define AS3722_IRQ_BASE         TEGRA_NR_IRQS
+#define AS3722_IRQ_BASE         (TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_NUM_IRQ)
 
 #define CAM_RSTN TEGRA_GPIO_PBB3
 #define CAM_FLASH_STROBE TEGRA_GPIO_PBB4
