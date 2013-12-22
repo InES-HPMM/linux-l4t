@@ -119,6 +119,27 @@ struct sysedp_batmon_calc_platform_data {
 	unsigned int update_interval;
 };
 
+/* Sysedp reactive capping
+ * @max_capping_mw: maximum capping in mW
+ * @step_alarm_mw: amount of mW to cap on each interrupt
+ * @step_relax_mw: amount ow mW to relax after relax_ms
+ * @relax_ms: back-off period to relax capping (in ms)
+ */
+struct sysedp_reactive_capping_platform_data {
+	int max_capping_mw;
+	int step_alarm_mw;
+	int step_relax_mw;
+	int relax_ms;
+	int irq;
+	int irq_flags;
+	struct sysedp_consumer sysedpc;
+
+	/* internal */
+	int cur_capping_mw;
+	struct mutex mutex;
+	struct delayed_work work;
+};
+
 #ifdef CONFIG_SYSEDP_FRAMEWORK
 extern struct dentry *edp_debugfs_dir;
 
