@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-pinmux-t12x.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -184,6 +184,7 @@ static __initdata struct tegra_pingroup_config loki_pinmux_common[] = {
 	GPIO_PINMUX_NON_OD(GPIO_PG3, NORMAL, NORMAL, INPUT),
 	GPIO_PINMUX_NON_OD(GPIO_PH0, PULL_DOWN, NORMAL, OUTPUT),
 	GPIO_PINMUX_NON_OD(GPIO_PK0, PULL_UP, NORMAL, OUTPUT),
+	GPIO_PINMUX_NON_OD(KB_COL7, PULL_UP, NORMAL, OUTPUT),
 	GPIO_PINMUX_NON_OD(GPIO_PK1, PULL_DOWN, NORMAL, OUTPUT),
 	GPIO_PINMUX_NON_OD(GPIO_PJ0, PULL_UP, NORMAL, INPUT),
 	GPIO_PINMUX_NON_OD(GPIO_PJ2, PULL_UP, NORMAL, INPUT),
@@ -270,7 +271,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(GPIO_PFF2),
 	UNUSED_PINMUX(KB_COL1),
 	UNUSED_PINMUX(KB_COL4),
-	UNUSED_PINMUX(KB_COL7),
 	UNUSED_PINMUX(KB_ROW16),
 	UNUSED_PINMUX(KB_ROW17),
 	UNUSED_PINMUX(KB_ROW9),
@@ -302,6 +302,7 @@ static struct gpio_init_pin_info init_gpio_mode_loki_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK0, false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ7, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ2, true, 0),
