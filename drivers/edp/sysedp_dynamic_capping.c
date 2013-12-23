@@ -42,6 +42,8 @@ static unsigned int gpu_high_count = 2;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int avail_power;
+static unsigned int avail_oc_relax;
+
 static struct tegra_sysedp_corecap *cur_corecap;
 static struct clk *emc_cap_clk;
 static struct clk *gpu_cap_clk;
@@ -199,9 +201,10 @@ static void update_cur_corecap(void)
 	cap = capping_device_platdata->corecap + i;
 
 	for (; i >= 0; i--, cap--) {
-		if (cap->power <= power) {
+		if (cap->power <= power + min(avail_oc_relax, cap->pthrot)) {
 			cur_corecap = cap;
-			cpu_power_balance = power - cap->power;
+			cpu_power_balance = power + min(avail_oc_relax, cap->pthrot)
+				- cap->power;
 			return;
 		}
 	}
@@ -211,13 +214,14 @@ static void update_cur_corecap(void)
 }
 
 /* set the available power budget for cpu/gpu/emc (in mW) */
-void sysedp_set_dynamic_cap(unsigned int power)
+void sysedp_set_dynamic_cap(unsigned int power, unsigned int oc_relax)
 {
 	if (!init_done)
 		return;
 
 	mutex_lock(&core_lock);
 	avail_power = power;
+	avail_oc_relax = oc_relax;
 	update_cur_corecap();
 	__do_cap_control();
 	mutex_unlock(&core_lock);
@@ -387,18 +391,20 @@ static int corecaps_show(struct seq_file *file, void *data)
 
 	p = capping_device_platdata->corecap;
 
-	seq_printf(file, "%s %s { %s %9s %9s } %s { %s %9s %9s }\n",
-			"E-state",
-			"CPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
-			"GPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz");
+	seq_printf(file, "%s %s { %s %9s %9s } %s { %s %9s %9s } %7s\n",
+		   "E-state",
+		   "CPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
+		   "GPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
+		   "Pthrot");
 
 	for (i = 0; i < capping_device_platdata->corecap_size; i++, p++) {
 		c = &p->cpupri;
 		g = &p->gpupri;
-		seq_printf(file, "%7u %16u %9u %9u %18u %9u %9u\n",
-				p->power,
-				c->cpu_power, c->gpufreq, c->emcfreq,
-				g->cpu_power, g->gpufreq, g->emcfreq);
+		seq_printf(file, "%7u %16u %9u %9u %18u %9u %9u %7u\n",
+			   p->power,
+			   c->cpu_power, c->gpufreq, c->emcfreq,
+			   g->cpu_power, g->gpufreq, g->emcfreq,
+			   p->pthrot);
 	}
 
 	return 0;
@@ -412,6 +418,7 @@ static int status_show(struct seq_file *file, void *data)
 	seq_printf(file, "gpu priority: %u\n", gpu_priority());
 	seq_printf(file, "gain        : %u\n", capping_device_platdata->core_gain);
 	seq_printf(file, "core cap    : %u\n", cur_corecap->power);
+	seq_printf(file, "max throttle: %u\n", cur_corecap->pthrot);
 	seq_printf(file, "cpu balance : %u\n", cpu_power_balance);
 	seq_printf(file, "cpu power   : %u\n", get_devcap()->cpu_power +
 			cpu_power_balance);
@@ -494,6 +501,8 @@ static int init_clks(void)
 static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 {
 	int r;
+	struct tegra_sysedp_corecap *cap;
+	int i;
 
 	if (!pdev->dev.platform_data)
 		return -EINVAL;
@@ -511,9 +520,18 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 	if (r)
 		return r;
 
+
 	mutex_lock(&core_lock);
 	capping_device_platdata = pdev->dev.platform_data;
 	avail_power = capping_device_platdata->init_req_watts;
+
+	/* scale pthrot value in capping table */
+	i = capping_device_platdata->corecap_size - 1;
+	cap = capping_device_platdata->corecap + i;
+	for (; i >= 0; i--, cap--) {
+		cap->pthrot *= capping_device_platdata->pthrot_ratio;
+		cap->pthrot /= 100;
+	}
 	update_cur_corecap();
 	__do_cap_control();
 	mutex_unlock(&core_lock);

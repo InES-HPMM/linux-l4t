@@ -34,9 +34,13 @@ static inline unsigned int _cur_level(struct sysedp_consumer *c)
 	return c->states[c->state];
 }
 
+static inline unsigned int _cur_oclevel(struct sysedp_consumer *c)
+{
+	return c->ocpeaks ? c->ocpeaks[c->state] : c->states[c->state];
+}
 
 void sysedp_set_avail_budget(unsigned int);
-void sysedp_set_dynamic_cap(unsigned int);
+void sysedp_set_dynamic_cap(unsigned int, unsigned int);
 struct sysedp_consumer *sysedp_get_consumer(const char *);
 
 int sysedp_init_sysfs(void);

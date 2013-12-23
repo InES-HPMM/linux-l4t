@@ -25,26 +25,38 @@ struct dentry *sysedp_debugfs_dir;
 
 static int sysedp_status_show(struct seq_file *file, void *data)
 {
-	int consumer_sum = 0;
 	struct sysedp_consumer *c;
+	int limit; /* Amount of power available when OC=1*/
+	int oc_relax; /* Additional power available when OC=0 */
+	int pmax_sum = 0; /* sum of peak values (OC=1) */
+	int pthres_sum = 0; /* sum of peak values (OC=0) */
 
 	mutex_lock(&sysedp_lock);
 	list_for_each_entry(c, &registered_consumers, link) {
-		consumer_sum += _cur_level(c);
+		pmax_sum += _cur_oclevel(c);
+		pthres_sum += _cur_level(c);
 	}
 
-	seq_printf(file, "  avail_budget : %u\n", avail_budget);
-	seq_printf(file, "- consumer_sum : %u\n", consumer_sum);
-	seq_printf(file, "- margin       : %d\n", margin);
-	seq_printf(file, "= remaining    : %d\n", ((int)avail_budget -
-						   consumer_sum - margin));
+	limit = (int)avail_budget - pmax_sum - margin;
+	limit = limit >= 0 ? limit : 0;
+	oc_relax = pmax_sum - pthres_sum;
+	oc_relax = oc_relax >= 0 ? oc_relax : 0;
+
+
+	seq_printf(file, "  avail_budget     : %u\n", avail_budget);
+	seq_printf(file, "- pmax_sum         : %u\n", pmax_sum);
+	seq_printf(file, "- margin           : %d\n", margin);
+	seq_printf(file, "= remaining (OC=1) : %d\n", limit);
+	seq_printf(file, "+ oc_relax         : %d\n", oc_relax);
+	seq_printf(file, "= remaining (OC=0) : %d\n", limit + oc_relax);
 
 	seq_puts(file, "------------------------------------------\n");
-	seq_printf(file, "%-16s %7s\n",	"consumer", "current");
+	seq_printf(file, "%-16s %7s %7s\n", "consumer", "pmax", "pthresh" );
 	seq_puts(file, "------------------------------------------\n");
 
 	list_for_each_entry(c, &registered_consumers, link)
-		seq_printf(file, "%-16s %7u\n", c->name, _cur_level(c));
+		seq_printf(file, "%-16s %7u %7u\n", c->name, _cur_oclevel(c),
+			   _cur_level(c));
 
 	mutex_unlock(&sysedp_lock);
 	return 0;

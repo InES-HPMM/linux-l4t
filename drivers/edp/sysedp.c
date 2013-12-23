@@ -46,15 +46,22 @@ void sysedp_set_avail_budget(unsigned int power)
 void _sysedp_refresh(void)
 {
 	struct sysedp_consumer *p;
-	int limit;
-	int consumer_sum = 0;
+	int limit; /* Amount of power available when OC=1*/
+	int oc_relax; /* Additional power available when OC=0 */
+	int pmax_sum = 0; /* sum of peak values (OC=1) */
+	int pthres_sum = 0; /* sum of peak values (OC=0) */
 
 	list_for_each_entry(p, &registered_consumers, link) {
-		consumer_sum += _cur_level(p);
+		pmax_sum += _cur_oclevel(p);
+		pthres_sum += _cur_level(p);
 	}
-	limit = (int)avail_budget - (int)consumer_sum - margin;
+
+	limit = (int)avail_budget - pmax_sum - margin;
 	limit = limit >= 0 ? limit : 0;
-	sysedp_set_dynamic_cap((unsigned int)limit);
+	oc_relax = pmax_sum - pthres_sum;
+	oc_relax = oc_relax >= 0 ? oc_relax : 0;
+
+	sysedp_set_dynamic_cap((unsigned int)limit, (unsigned int)oc_relax);
 }
 
 struct sysedp_consumer *sysedp_get_consumer(const char *name)
