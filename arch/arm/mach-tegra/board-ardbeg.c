@@ -1162,10 +1162,17 @@ static void __init tegra_ardbeg_late_init(void)
 	isomgr_init();
 	ardbeg_touch_init();
 	ardbeg_panel_init();
-	if (board_info.board_id == BOARD_PM358)
+	switch (board_info.board_id) {
+	case BOARD_PM358:
 		laguna_pm358_pmon_init();
-	else
+		break;
+	case BOARD_P1761:
+		tn8_p1761_pmon_init();
+		break;
+	default:
 		ardbeg_pmon_init();
+		break;
+	}
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363)

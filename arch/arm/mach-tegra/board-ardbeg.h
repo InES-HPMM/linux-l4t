@@ -182,6 +182,8 @@ void tn8_new_sysedp_init(void);
 void tn8_sysedp_dynamic_capping_init(void);
 void tn8_sysedp_batmon_init(void);
 
+int tn8_p1761_pmon_init(void);
+
 /* SATA Specific */
 
 #define CLK_RST_CNTRL_RST_DEV_W_SET 0x7000E438
