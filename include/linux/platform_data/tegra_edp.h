@@ -36,6 +36,7 @@ struct tegra_sysedp_corecap {
 	unsigned int power;
 	struct tegra_sysedp_devcap cpupri;
 	struct tegra_sysedp_devcap gpupri;
+	unsigned int pthrot;
 };
 
 struct tegra_sysedp_platform_data {
@@ -45,6 +46,7 @@ struct tegra_sysedp_platform_data {
 	unsigned int corecap_size;
 	unsigned int core_gain;
 	unsigned int init_req_watts;
+	unsigned int pthrot_ratio;
 	const char *bbc;
 };
 
