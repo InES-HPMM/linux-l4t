@@ -47,45 +47,75 @@
 
 static struct board_info board_info, display_board_info;
 
+/*
+ * Set clock values as per automotive POR
+ */
 static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
-	/* name		parent		rate		enabled (always on)*/
-	{ "pll_m",	NULL,		0,		false},
-	{ "hda",	"pll_p",	108000000,	false},
-	{ "hda2codec_2x", "pll_p",	48000000,	false},
-	{ "pwm",	"pll_p",	3187500,	false},
-	{ "i2s0",	"pll_a_out0",	0,		false},
-	{ "i2s1",	"pll_a_out0",	0,		false},
-	{ "i2s3",	"pll_a_out0",	0,		false},
-	{ "i2s4",	"pll_a_out0",	0,		false},
-	{ "spdif_out",	"pll_a_out0",	0,		false},
-	{ "d_audio",	"clk_m",	12000000,	false},
-	{ "dam0",	"clk_m",	12000000,	false},
-	{ "dam1",	"clk_m",	12000000,	false},
-	{ "dam2",	"clk_m",	12000000,	false},
-	{ "audio1",	"i2s1_sync",	0,		false},
-	{ "audio3",	"i2s3_sync",	0,		false},
-	{ "vi_sensor",	"pll_p",	150000000,	false},
-	{ "vi_sensor2",	"pll_p",	150000000,	false},
-	{ "cilab",	"pll_p",	150000000,	false},
-	{ "cilcd",	"pll_p",	150000000,	false},
-	{ "cile",	"pll_p",	150000000,	false},
-	{ "i2c1",	"pll_p",	3200000,	false},
-	{ "i2c2",	"pll_p",	3200000,	false},
-	{ "i2c3",	"pll_p",	3200000,	false},
-	{ "i2c4",	"pll_p",	3200000,	false},
-	{ "i2c5",	"pll_p",	3200000,	false},
-	{ "sbc1",	"pll_p",	25000000,	false},
-	{ "sbc2",	"pll_p",	25000000,	false},
-	{ "sbc3",	"pll_p",	25000000,	false},
-	{ "sbc4",	"pll_p",	25000000,	false},
-	{ "sbc5",	"pll_p",	25000000,	false},
-	{ "sbc6",	"pll_p",	25000000,	false},
-	{ "uarta",	"pll_p",	408000000,	false},
-	{ "uartb",	"pll_p",	408000000,	false},
-	{ "uartc",	"pll_p",	408000000,	false},
-	{ "uartd",	"pll_p",	408000000,	false},
-	{ "nor",	"pll_p",	102000000,	true},
-	{ NULL,		NULL,		0,		0},
+	/* name			parent		rate	enabled (always on)*/
+
+	{ "pll_c",		NULL,		792000000,	true},
+
+	{ "automotive.sclk",	NULL,		316800000,	true},
+	{ "automotive.hclk",	NULL,		316800000,	true},
+	{ "automotive.pclk",	NULL,		158400000,	true},
+
+	{ "mselect",		"pll_p",	408000000,	true},
+	/* FIXME: Remove this once the issue with cap.vcore.mselect is fixed */
+	{ "override.mselect",	NULL,		408000000,	true},
+
+	{ "se.cbus",		NULL,		432000000,	false},
+	{ "msenc.cbus",		NULL,		432000000,	false},
+	{ "vde.cbus",		NULL,		432000000,	false},
+
+	{ "vic03.cbus",		NULL,		660000000,      false},
+	{ "tsec.cbus",		NULL,		660000000,      false},
+
+	{ "vi.c4bus",		NULL,		600000000,      false},
+	{ "isp.c4bus",		NULL,		600000000,      false},
+
+	{ "pll_d_out0",		"pll_d",	474000000,	true},
+	{ "disp2",		"pll_d_out0",	474000000,	false},
+	{ "disp1",		"pll_d_out0",	474000000,	false},
+
+	{ "pll_d2",		NULL,		297000000,	true},
+	{ "hdmi",		"pll_d2",	297000000,	false},
+
+	{ "pll_a_out0",		NULL,		24600000,	true},
+	{ "i2s0",		"pll_a_out0",	24600000,	false},
+	{ "i2s1",		"pll_a_out0",	24600000,	false},
+	{ "i2s2",		"pll_a_out0",	24600000,	false},
+	{ "i2s3",		"pll_a_out0",	24600000,	false},
+	{ "i2s4",		"pll_a_out0",	24600000,	false},
+
+	{ "dam0",		"pll_p",	19900000,	false},
+	{ "dam1",		"pll_p",	19900000,	false},
+	{ "dam2",		"pll_p",	19900000,	false},
+	{ "adx",		"pll_p",	19900000,	false},
+	{ "adx1",		"pll_p",	19900000,	false},
+	{ "amx",		"pll_p",	19900000,	false},
+	{ "amx1",		"pll_p",	19900000,	false},
+
+	{ "spdif_out",		"pll_a_out0",	24600000,	false},
+	{ "hda",		"pll_p",	48000000,	false},
+	{ "cilab",		"pll_p",	10200000,	false},
+	{ "cilcd",		"pll_p",	10200000,	false},
+	{ "cile",		"pll_p",	10200000,	false},
+
+	{ "nor",		"pll_p",	102000000,	false},
+
+	{ "sbc1",		"pll_p",	25000000,	false},
+	{ "sbc2",		"pll_p",	25000000,	false},
+	{ "sbc3",		"pll_p",	25000000,	false},
+	{ "sbc4",		"pll_p",	25000000,	false},
+	{ "sbc5",		"pll_p",	25000000,	false},
+	{ "sbc6",		"pll_p",	25000000,	false},
+
+	{ "uarta",		"pll_p",	408000000,	false},
+	{ "uartb",		"pll_p",	408000000,	false},
+	{ "uartc",		"pll_p",	408000000,	false},
+	{ "uartd",		"pll_p",	408000000,	false},
+
+	{ NULL,			NULL,		0,		0},
 };
 
 static struct tegra_i2c_platform_data vcm30_t124_i2c1_platform_data = {
