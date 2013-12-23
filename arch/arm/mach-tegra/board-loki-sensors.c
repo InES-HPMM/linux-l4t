@@ -44,6 +44,8 @@
 
 static struct board_info board_info;
 
+#ifndef CONFIG_USE_OF
+
 /* MPU board file definition    */
 static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config     = 0x10,
@@ -131,6 +133,45 @@ static void mpuirq_init(void)
 	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c0_board_info));
 }
+
+#else
+
+static void mpu_dt_update(void)
+{
+	struct device_node *np;
+	struct board_info displayboard_info;
+	static signed char mpu_gyro_orientation_1_95[] = {
+		0,  1,  0,  0,  0,  1,  1,  0,  0
+	};
+	static signed char mpu_gyro_orientation_fab0[] = {
+		0, -1,  0, -1,  0,  0,  0,  0, -1
+	};
+	static struct property orientation = {
+		.name = "invensense,orientation",
+		.value = mpu_gyro_orientation_1_95,
+		.length = sizeof(mpu_gyro_orientation_1_95),
+	};
+
+	np = of_find_compatible_node(NULL, NULL, "invensense,mpu6050");
+	if (np == NULL) {
+		pr_err("%s: Cannot find mpu6050 node\n", __func__);
+		return;
+	}
+
+	if (board_info.board_id == BOARD_E2549) {
+		of_update_property(np, &orientation);
+	} else {
+		tegra_get_display_board_info(&displayboard_info);
+		if (displayboard_info.fab == 0x0) {
+			orientation.value = mpu_gyro_orientation_fab0;
+			of_update_property(np, &orientation);
+		}
+	}
+
+	of_node_put(np);
+}
+
+#endif
 
 struct jsa1127_platform_data jsa1127_platform_data = {
 	.rint = 100,
@@ -692,7 +733,12 @@ int __init loki_sensors_init(void)
 	loki_fan_est_init();
 	if (!(board_info.board_id == BOARD_P2530 &&
 		board_info.sku == BOARD_SKU_FOSTER)) {
+#ifndef CONFIG_USE_OF
 		mpuirq_init();
+#else
+		mpu_dt_update();
+#endif
+
 		if (board_info.board_id != BOARD_E2549) {
 			loki_camera_init();
 			loki_jsa1127_init();
