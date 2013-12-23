@@ -15,6 +15,8 @@ NVIDIA Tegra114 Display Controller
    "dc_flag_en" or remove this property (do not set this property).
  - nvidia,emc-clk-rate: Initially required embedded memory controller clk rate.
  - nvidia,cmu-enable: Toggle switch for color management unit.
+ - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
+   is the only one active.
 
  - Child nodes represent node of modes, output settings, framebuffer data,
    smart dimmer settings, color management unit settings, dsi output device settings.
