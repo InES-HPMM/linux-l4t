@@ -120,6 +120,9 @@
 							c1 {
 								regulator-consumer-supply = "vdd_gpu";
 							};
+							c2 {
+								regulator-consumer-supply = "vdd_gpu_simon";
+							};
 						};
 					};
 

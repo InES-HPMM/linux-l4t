@@ -186,6 +186,7 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 
 static struct regulator_consumer_supply as3722_sd6_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
+	REGULATOR_SUPPLY("vdd_gpu_simon", NULL),
 };
 
 AMS_PDATA_INIT(sd0, NULL, 700000, 1400000, 1, 1, 1,

@@ -58,6 +58,7 @@
 
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
+	REGULATOR_SUPPLY("vdd_gpu_simon", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
