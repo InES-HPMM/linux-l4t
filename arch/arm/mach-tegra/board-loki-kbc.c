@@ -76,6 +76,16 @@ static struct gpio_keys_button loki_int_keys[] = {
 		.wakeup = 1,
 		.debounce_interval = 0,
 	},
+	[2] = {
+		.code = KEY_WAKEUP,
+		.gpio = TEGRA_GPIO_PS6,
+		.irq = -1,
+		.type = EV_KEY,
+		.desc = "Gamepad",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 0,
+	},
 };
 
 static struct gpio_keys_platform_data loki_int_keys_pdata = {
@@ -104,6 +114,8 @@ static int loki_wakeup_key(void)
 		wakeup_key = KEY_POWER;
 	else if (status & (1UL << TEGRA_WAKE_GPIO_PS0))
 		wakeup_key = SW_LID;
+	else if (status & (1UL << TEGRA_WAKE_GPIO_PS6))
+		wakeup_key = KEY_WAKEUP;
 	else
 		wakeup_key = -1;
 
