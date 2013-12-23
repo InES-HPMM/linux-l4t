@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-power.c
  *
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -69,6 +69,11 @@ static struct regulator_consumer_supply palmas_smps6_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_smps7_supply[] = {
+	REGULATOR_SUPPLY("vddio_ddr", NULL),
+	REGULATOR_SUPPLY("vddio_ddr_mclk", NULL),
+};
+
+static struct regulator_consumer_supply palmas_smps7_a01_supply[] = {
 	REGULATOR_SUPPLY("vddio_ddr", NULL),
 	REGULATOR_SUPPLY("vddio_ddr_mclk", NULL),
 };
@@ -141,6 +146,25 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 	REGULATOR_SUPPLY("avdd_sata_pll", "tegra-sata.0"),
 };
 
+static struct regulator_consumer_supply palmas_ldo1_a01_supply[] = {
+	REGULATOR_SUPPLY("avdd_pll_m", NULL),
+	REGULATOR_SUPPLY("avdd_pll_ap_c2_c3", NULL),
+	REGULATOR_SUPPLY("avdd_pll_cud2dpd", NULL),
+	REGULATOR_SUPPLY("avdd_pll_c4", NULL),
+	REGULATOR_SUPPLY("avdd_lvds0_io", NULL),
+	REGULATOR_SUPPLY("avdd_pll_erefe", NULL),
+	REGULATOR_SUPPLY("avdd_pll_x", NULL),
+	REGULATOR_SUPPLY("avdd_pll_cg", NULL),
+	REGULATOR_SUPPLY("avdd_pex_pll", "tegra-pcie"),
+	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
+	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("vdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_sata_pll", "tegra-sata.0"),
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
+
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 	REGULATOR_SUPPLY("vana", "2-0048"),
@@ -165,6 +189,10 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
+
+static struct regulator_consumer_supply palmas_ldo5_a01_supply[] = {
+	REGULATOR_SUPPLY("vddio_ddr_hs", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
@@ -229,22 +257,28 @@ PALMAS_REGS_PDATA(smps6, 3300,  3300, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps7, 1350,  1350, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(smps7_a01, 1500,  1500, NULL, 1, 1, 1, NORMAL,
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps8, 1800,  1800, NULL, 1, 1, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps9, 2800,  2800, NULL, 0, 0, 1, NORMAL,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps10_out1, 5000,  5000, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo1, 1050,  1050, NULL, 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo1, 1050,  1050, palmas_rails(smps8), 0, 0, 1, 0,
+		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo1_a01, 1050,  1050, palmas_rails(smps8), 1, 1, 1, 0,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2, 2800,  3000, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo4, 1800,  1800, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo5, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldo5_a01, 1200,  1200, palmas_rails(smps8), 1, 1, 1, 0,
+		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo6, 2800,  2800, palmas_rails(smps6), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo8, 900,  900, NULL, 1, 1, 1, 0,
@@ -763,6 +797,20 @@ int __init loki_regulator_init(void)
 	if (!(bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)) {
 		i2c_register_board_info(0, loki_i2c_board_info_bq27441,
 				ARRAY_SIZE(loki_i2c_board_info_bq27441));
+	}
+	if (bi.board_id == BOARD_P2530 && bi.fab == 0xa1) {
+		pmic_platform.reg_data[PALMAS_REG_SMPS7] =
+			PALMAS_REG_PDATA(smps7_a01);
+		pmic_platform.reg_init[PALMAS_REG_SMPS7] =
+			PALMAS_REG_INIT_DATA(smps7_a01);
+		pmic_platform.reg_data[PALMAS_REG_LDO1] =
+			PALMAS_REG_PDATA(ldo1_a01);
+		pmic_platform.reg_init[PALMAS_REG_LDO1] =
+			PALMAS_REG_INIT_DATA(ldo1_a01);
+		pmic_platform.reg_data[PALMAS_REG_LDO5] =
+			PALMAS_REG_PDATA(ldo5_a01);
+		pmic_platform.reg_init[PALMAS_REG_LDO5] =
+			PALMAS_REG_INIT_DATA(ldo5_a01);
 	}
 	platform_device_register(&power_supply_extcon_device);
 
