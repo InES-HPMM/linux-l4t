@@ -1065,6 +1065,9 @@ static void __init edp_init(void)
 		else
 			ardbeg_edp_init();
 		break;
+	case BOARD_P1761:
+			tn8_edp_init();
+			break;
 	case BOARD_PM358:
 	case BOARD_PM359:
 			laguna_edp_init();
