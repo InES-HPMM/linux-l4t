@@ -4,8 +4,8 @@
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 
 / {
-	model = "NVIDIA Tegra132 Laguna";
-	compatible = "nvidia,laguna", "nvidia,tegra134";
+	model = "laguna";
+	compatible = "nvidia,laguna", "nvidia,tegra132";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <1>;
 	#size-cells = <1>;

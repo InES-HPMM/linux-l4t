@@ -5,7 +5,7 @@
 #include "tegra124-platforms/tegra124-pm374-pinmux.dtsi"
 
 / {
-	model = "NVIDIA Tegra132 Norrin";
+	model = "norrin";
 	compatible = "nvidia,norrin", "nvidia,tegra132";
 	#address-cells = <1>;
 	#size-cells = <1>;
