@@ -274,6 +274,7 @@ struct tegra_pcie_info {
 	struct regulator	*regulator_pexio;
 	struct regulator	*regulator_avdd_plle;
 	struct clk		*pcie_xclk;
+	struct clk		*pcie_mselect;
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
 	struct list_head busses;
@@ -1104,6 +1105,31 @@ err_exit:
 }
 #endif
 
+static int tegra_pcie_power_ungate(void)
+{
+	int err;
+
+	PR_FUNC_LINE;
+	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
+	if (err) {
+		pr_err("PCIE: powerup sequence failed: %d\n", err);
+		return err;
+	}
+	err = clk_prepare_enable(tegra_pcie.pcie_mselect);
+	if (err) {
+		pr_err("PCIE: mselect clk enable failed: %d\n", err);
+		return err;
+	}
+	clk_set_rate(tegra_pcie.pcie_mselect, 408000000);
+	/* pciex is reset only but need to be enabled for dvfs support */
+	err = clk_enable(tegra_pcie.pcie_xclk);
+	if (err) {
+		pr_err("PCIE: pciex clk enable failed: %d\n", err);
+		return err;
+	}
+	return 0;
+}
+
 static int tegra_pcie_map_resources(void)
 {
 	PR_FUNC_LINE;
@@ -1215,9 +1241,9 @@ static int tegra_pcie_power_on(void)
 		tegra_io_dpd_disable(&pexclk1_io);
 		tegra_io_dpd_disable(&pexclk2_io);
 	}
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
+	err = tegra_pcie_power_ungate();
 	if (err) {
-		pr_err("PCIE: powerup sequence failed: %d\n", err);
+		pr_err("PCIE: Failed to power ungate\n");
 		goto err_exit;
 	}
 	err = tegra_pcie_map_resources();
@@ -1227,10 +1253,8 @@ static int tegra_pcie_power_on(void)
 	}
 	if (tegra_platform_is_fpga()) {
 		err = tegra_pcie_fpga_phy_init();
-		if (err) {
+		if (err)
 			pr_err("PCIE: Failed to initialize FPGA Phy\n");
-			goto err_exit;
-		}
 	}
 
 err_exit:
@@ -1252,6 +1276,10 @@ static int tegra_pcie_power_off(void)
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_enable_pads(false);
 	tegra_pcie_unmap_resources();
+	if (tegra_pcie.pcie_mselect)
+		clk_disable(tegra_pcie.pcie_mselect);
+	if (tegra_pcie.pcie_xclk)
+		clk_disable(tegra_pcie.pcie_xclk);
 	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 	if (err)
 		goto err_exit;
@@ -1276,13 +1304,14 @@ static int tegra_pcie_clocks_get(void)
 	tegra_pcie.pcie_xclk = clk_get_sys("tegra_pcie", "pciex");
 	if (IS_ERR_OR_NULL(tegra_pcie.pcie_xclk)) {
 		pr_err("%s: unable to get PCIE Xclock\n", __func__);
-		goto error_exit;
+		return -EINVAL;
+	}
+	tegra_pcie.pcie_mselect = clk_get_sys("tegra_pcie", "mselect");
+	if (IS_ERR_OR_NULL(tegra_pcie.pcie_mselect)) {
+		pr_err("%s: unable to get PCIE mselect clock\n", __func__);
+		return -EINVAL;
 	}
 	return 0;
-error_exit:
-	if (tegra_pcie.pcie_xclk)
-		clk_put(tegra_pcie.pcie_xclk);
-	return -EINVAL;
 }
 
 static void tegra_pcie_clocks_put(void)
@@ -1290,6 +1319,8 @@ static void tegra_pcie_clocks_put(void)
 	PR_FUNC_LINE;
 	if (tegra_pcie.pcie_xclk)
 		clk_put(tegra_pcie.pcie_xclk);
+	if (tegra_pcie.pcie_mselect)
+		clk_put(tegra_pcie.pcie_mselect);
 }
 
 static int tegra_pcie_get_resources(void)
@@ -1697,7 +1728,7 @@ static void tegra_pcie_enable_features(void)
 
 	/* configure all links to gen2 speed by default */
 	if (!tegra_pcie_link_speed(true))
-		pr_info("PCIE: Link speed change failed\n");
+		pr_info("PCIE: No Link speed change happened\n");
 
 	tegra_pcie_pll_pdn();
 	tegra_pcie_enable_aspm();
