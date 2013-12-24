@@ -5,7 +5,15 @@
 #ifndef _DT_BINDINGS_PINCTRL_TEGRA_H
 #define _DT_BINDINGS_PINCTRL_TEGRA_H
 
-/* Input/outpue */
+/*
+ * Enable/disable for diffeent dt properties. This is applicable for
+ * properties nvidia,enable-input, nvidia,tristate, nvidia,open-drain,
+ * nvidia,lock, nvidia,rcv-sel, nvidia,high-speed-mode, nvidia,schmitt.
+ */
+#define TEGRA_PIN_DISABLE		0
+#define TEGRA_PIN_ENABLE		1
+
+/* Input/output */
 #define TEGRA_PIN_OUTPUT		0
 #define TEGRA_PIN_INPUT			1
 
@@ -13,6 +21,9 @@
 #define TEGRA_PIN_PUPD_NORMAL		0
 #define TEGRA_PIN_PUPD_PULL_DOWN	1
 #define TEGRA_PIN_PUPD_PULL_UP		2
+#define TEGRA_PIN_PULL_NONE		0
+#define TEGRA_PIN_PULL_DOWN		1
+#define TEGRA_PIN_PULL_UP		2
 
 /* Tristate/normal */
 #define TEGRA_PIN_NORMAL		0
