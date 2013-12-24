@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -557,6 +557,34 @@ static struct battery_gauge_info bq27441_bgi = {
 	.bg_ops = &bq27441_bg_ops,
 };
 
+static void of_bq27441_parse_platform_data(struct i2c_client *client,
+				struct bq27441_platform_data *pdata)
+{
+	u32 tmp;
+	char const *pstr;
+	struct device_node *np = client->dev.of_node;
+
+	if (!of_property_read_u32(np, "ti,design-capacity", &tmp))
+		pdata->full_capacity = (unsigned long)tmp;
+
+	if (!of_property_read_u32(np, "ti,design-energy", &tmp))
+		pdata->full_energy = (unsigned long)tmp;
+
+	if (!of_property_read_u32(np, "ti,taper-rate", &tmp))
+		pdata->taper_rate = (unsigned long)tmp;
+
+	if (!of_property_read_u32(np, "ti,terminate-voltage", &tmp))
+		pdata->terminate_voltage = (unsigned long)tmp;
+
+	if (!of_property_read_u32(np, "ti,v-at-chg-term", &tmp))
+		pdata->v_at_chg_term = (unsigned long)tmp;
+
+	if (!of_property_read_string(np, "ti,tz-name", &pstr))
+		pdata->tz_name = pstr;
+	else
+		dev_err(&client->dev, "Failed to read tz-name\n");
+}
+
 static int bq27441_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -569,7 +597,16 @@ static int bq27441_probe(struct i2c_client *client,
 
 	chip->client = client;
 
-	chip->pdata = client->dev.platform_data;
+	if (client->dev.of_node) {
+		chip->pdata = devm_kzalloc(&client->dev,
+					sizeof(*chip->pdata), GFP_KERNEL);
+		if (!chip->pdata)
+			return -ENOMEM;
+		of_bq27441_parse_platform_data(client, chip->pdata);
+	} else {
+		chip->pdata = client->dev.platform_data;
+	}
+
 	if (!chip->pdata)
 		return -ENODATA;
 
