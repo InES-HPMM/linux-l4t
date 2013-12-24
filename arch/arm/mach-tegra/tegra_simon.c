@@ -18,6 +18,8 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/clk.h>
+#include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/hrtimer.h>
@@ -25,6 +27,10 @@
 #include <linux/regulator/consumer.h>
 
 #include "tegra_simon.h"
+#include "clock.h"
+#include "dvfs.h"
+#include "pm.h"
+#include "tegra_cl_dvfs.h"
 
 static DEFINE_MUTEX(simon_lock);
 static RAW_NOTIFIER_HEAD(simon_nh);
@@ -129,12 +135,116 @@ static int __init tegra_simon_init_gpu(void)
 	return 0;
 }
 
+/*
+ * CPU grading is implemented within CPU rate post-change notification chain
+ * that guarantees constant frequency during grading. Grading is executed only
+ * when running on G-CPU, with DFLL as clock source, at rate low enough for DFLL
+ * to saturate at minimum voltage at any temperature. Still it is possible that
+ * Vmin changes during grading because of temperature fluctuation. In the latter
+ * case grading results are discarded.
+ *
+ * First grading after boot can be executed anytime the conditions above are
+ * met, next grading is always separated by the grading interval from the last
+ * successful grading.
+ */
+static int tegra_simon_cpu_grading_cb(
+	struct notifier_block *nb, unsigned long rate, void *v)
+{
+	struct tegra_simon_grader *grader = container_of(
+		nb, struct tegra_simon_grader, grading_condition_nb);
+	struct tegra_cl_dvfs *cld;
+	ktime_t now = ktime_get();
+
+	unsigned int start;
+	unsigned long t;
+	int mv;
+	int grade = 0;
+
+	if (is_lp_cluster() || (rate > grader->garding_rate_limit) ||
+	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		return NOTIFY_OK;
+
+	if (grader->last_grading.tv64 &&
+	    (ktime_to_ms(ktime_sub(now, grader->last_grading)) <
+	     (s64)grading_sec * 1000))
+		return NOTIFY_OK;
+
+	if (thermal_zone_get_temp(grader->tzd, &t)) {
+		pr_err("%s: Failed to get %s temperature\n",
+		       __func__, grader->domain_name);
+		return NOTIFY_OK;
+	}
+
+	cld = tegra_dfll_get_cl_dvfs_data(
+		clk_get_parent(clk_get_parent(grader->clk)));
+	if (IS_ERR(cld)) {
+		pr_err("%s: Failed to get cl_dvfs data for %s\n",
+		       __func__, grader->domain_name);
+		return NOTIFY_OK;
+	}
+
+	mv = tegra_cl_dvfs_vmin_read_begin(cld, &start);
+
+	if (grader->grade_simon_domain) {
+		grade = grader->grade_simon_domain(grader->domain, mv, t);
+		if (grade < 0) {
+			pr_err("%s: Failed to grade %s\n",
+			       __func__, grader->domain_name);
+			return NOTIFY_OK;
+		}
+
+		if (tegra_cl_dvfs_vmin_read_retry(cld, start)) {
+			pr_info("%s: deferred %s grading: unstable vmin %d\n",
+			       __func__, grader->domain_name, mv);
+			return NOTIFY_OK;
+		}
+	}
+
+	grader->last_grading = now;
+	if (grader->grade != grade) {
+		set_mb(grader->grade, grade);
+		schedule_work(&grader->grade_update_work);
+	}
+	pr_info("%s: graded %s: v = %d, t = %lu, grade = %d\n",
+		__func__, grader->domain_name, mv, t, grade);
+	return NOTIFY_OK;
+}
+
 static int __init tegra_simon_init_cpu(void)
 {
 	struct tegra_simon_grader *grader =
 		&simon_graders[TEGRA_SIMON_DOMAIN_CPU];
+	struct clk *c;
+	int r;
 
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
+
+	grader->tzd = thermal_zone_device_find_by_name("CPU-therm");
+	if (!grader->tzd) {
+		pr_err("%s: Failed to find %s thermal zone\n",
+		       __func__, grader->domain_name);
+		return -ENOENT;
+	}
+
+	c = clk_get_sys("tegra_simon", "cpu");
+	if (IS_ERR(c)) {
+		pr_err("%s: Failed to get %s clock\n",
+		       __func__, grader->domain_name);
+		return -ENOENT;
+	}
+
+	grader->grading_condition_nb.notifier_call = tegra_simon_cpu_grading_cb;
+	r = tegra_register_clk_rate_notifier(c, &grader->grading_condition_nb);
+	if (r) {
+		pr_err("%s: Failed to register for %s rate change notify\n",
+		       __func__, c->name);
+		return r;
+	}
+	grader->clk = c;
+
+	/* FIXME: settings below are tegar12_ specific */
+	grader->garding_rate_limit = 714000000;
+	grader->grade_simon_domain = NULL;
 
 	return 0;
 }

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_simon.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -38,6 +38,7 @@ struct tegra_simon_grader {
 	struct work_struct		grade_update_work;
 	struct notifier_block		grading_condition_nb;
 	struct thermal_zone_device	*tzd;
+	struct clk			*clk;
 
 	int (*grade_simon_domain) (int domain, int mv, int temperature);
 };
