@@ -510,8 +510,9 @@ static void DC_Calibrate(struct snd_soc_codec *codec)
 int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
-	int sclk_src = 0;
+	int sclk_src = RT5639_SCLK_S_MCLK;
 	int reg63, reg64;
+	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
 
 	if (jack_insert) {
 		reg63 = snd_soc_read(codec, RT5639_PWR_ANLG1);
@@ -520,8 +521,6 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			snd_soc_write(codec, RT5639_PWR_ANLG1, 0xa814);
 			snd_soc_write(codec, RT5639_MICBIAS, 0x3830);
 			snd_soc_write(codec, RT5639_GEN_CTRL1 , 0x3F01);
-		    sclk_src = snd_soc_read(codec, RT5639_GLB_CLK) &
-			    RT5639_SCLK_SRC_MASK;
 		    snd_soc_update_bits(codec, RT5639_GLB_CLK,
 				RT5639_SCLK_SRC_MASK,
 				0x3 << RT5639_SCLK_SRC_SFT);
@@ -552,7 +551,22 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			jack_type = RT5639_HEADSET_DET;
 		snd_soc_update_bits(codec, RT5639_IRQ_CTRL2,
 			RT5639_MB1_OC_CLR, 0);
-		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level)
+
+		switch (rt5639->sysclk_src) {
+		case RT5639_SCLK_S_MCLK:
+			sclk_src = RT5639_SCLK_SRC_MCLK;
+			break;
+		case RT5639_SCLK_S_PLL1:
+			sclk_src = RT5639_SCLK_SRC_PLL1;
+			break;
+		case RT5639_SCLK_S_RCCLK:
+			sclk_src = RT5639_SCLK_SRC_RCCLK;
+			break;
+		default:
+			dev_err(codec->dev, "Invalid clock id (%d)\n",
+				rt5639->sysclk_src);
+			break;
+		}
 		snd_soc_update_bits(codec, RT5639_GLB_CLK,
 			RT5639_SCLK_SRC_MASK, sclk_src);
 		snd_soc_write(codec, RT5639_PWR_ANLG1, reg63);
