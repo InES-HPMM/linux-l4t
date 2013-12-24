@@ -96,6 +96,17 @@
 			orientation = [01 00 00 00 ff 00 00 00 ff];
 			config = "mpu";
 		};
+
+		bq27441@55 {
+			compatible = "ti,bq27441";
+			reg = <0x55>;
+			ti,design-capacity = <7800>;
+			ti,design-energy = <28314>;
+			ti,taper-rate = <167>;
+			ti,terminate-voltage = <3150>;
+			ti,v-at-chg-term = <4200>;
+			ti,tz-name = "battery-temp";
+		};
 	};
 
 	i2c@7000c400 {

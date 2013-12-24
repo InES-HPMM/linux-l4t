@@ -27,7 +27,6 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
-#include <linux/power/bq27441_battery.h>
 #include <linux/power/power_supply_extcon.h>
 #include <linux/tegra-fuse.h>
 
@@ -466,22 +465,6 @@ int __init loki_suspend_init(void)
 	return 0;
 }
 
-static struct bq27441_platform_data bq27441_pdata = {
-	.full_capacity = 7800,
-	.full_energy = 28314,
-	.taper_rate = 167,
-	.terminate_voltage = 3150,
-	.v_at_chg_term = 4200,
-	.tz_name = "battery-temp",
-};
-
-static struct i2c_board_info loki_i2c_board_info_bq27441[] = {
-	{
-		I2C_BOARD_INFO("bq27441", 0x55),
-		.platform_data = &bq27441_pdata,
-	},
-};
-
 static struct power_supply_extcon_plat_data extcon_pdata = {
 	.extcon_name = "tegra-udc",
 };
@@ -795,10 +778,6 @@ int __init loki_regulator_init(void)
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	tegra_get_board_info(&bi);
-	if (!(bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)) {
-		i2c_register_board_info(0, loki_i2c_board_info_bq27441,
-				ARRAY_SIZE(loki_i2c_board_info_bq27441));
-	}
 	if (bi.board_id == BOARD_P2530 && bi.fab == 0xa1) {
 		pmic_platform.reg_data[PALMAS_REG_SMPS7] =
 			PALMAS_REG_PDATA(smps7_a01);
