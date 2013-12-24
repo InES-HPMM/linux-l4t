@@ -147,6 +147,7 @@ struct as3722_platform_data {
 	int irq_type;
 	int use_internal_int_pullup;
 	int use_internal_i2c_pullup;
+	bool enable_ac_ok_power_on;
 	int num_gpio_cfgs;
 	bool use_power_off;
 	bool use_power_reset;
