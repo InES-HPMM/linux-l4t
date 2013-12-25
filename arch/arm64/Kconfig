@@ -206,6 +206,15 @@ config HOTPLUG_CPU
 
 source kernel/Kconfig.preempt
 
+config ARCH_NR_GPIO
+	int
+	default 1024 if ARCH_TEGRA
+	default 0
+	help
+
+	  Maximum number of GPIOs in the system.
+	  If unsure, leave the default value.
+
 config HZ
 	int
 	default 100
