@@ -27,7 +27,6 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
-#include <linux/power/bq2419x-charger.h>
 #include <linux/power/bq27441_battery.h>
 #include <linux/power/power_supply_extcon.h>
 #include <linux/tegra-fuse.h>
@@ -432,44 +431,6 @@ int __init loki_suspend_init(void)
 	return 0;
 }
 
-static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
-	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
-};
-
-static struct regulator_consumer_supply bq2419x_batt_supply[] = {
-	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
-};
-
-static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
-	.gpio_otg_iusb = TEGRA_GPIO_PI4,
-	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
-	.consumer_supplies = bq2419x_vbus_supply,
-};
-
-struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
-	.max_charge_current_mA = 3000,
-	.charging_term_current_mA = 100,
-	.consumer_supplies = bq2419x_batt_supply,
-	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
-	.wdt_timeout    = 40,
-	.rtc_alarm_time = 3600,
-	.chg_restart_time = 1800,
-};
-
-struct bq2419x_platform_data bq2419x_pdata = {
-	.vbus_pdata = &bq2419x_vbus_pdata,
-	.bcharger_pdata = &bq2419x_charger_pdata,
-};
-
-static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("bq2419x", 0x6b),
-		.irq = TEGRA_GPIO_PJ0,
-		.platform_data	= &bq2419x_pdata,
-	},
-};
-
 static struct bq27441_platform_data bq27441_pdata = {
 	.full_capacity = 7800,
 	.full_energy = 28314,
@@ -800,8 +761,6 @@ int __init loki_regulator_init(void)
 			ARRAY_SIZE(palma_device));
 	tegra_get_board_info(&bi);
 	if (!(bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)) {
-		bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
-		i2c_register_board_info(0, bq2419x_boardinfo, 1);
 		i2c_register_board_info(0, loki_i2c_board_info_bq27441,
 				ARRAY_SIZE(loki_i2c_board_info_bq27441));
 	}

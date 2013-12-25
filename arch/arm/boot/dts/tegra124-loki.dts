@@ -39,6 +39,43 @@
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
+		bq2419x: bq2419x@6b {
+			compatible = "ti,bq2419x";
+			reg = <0x6b>;
+			interrupt-parent = <&gpio>;
+			interrupts = <72 0x0>;
+			charging-term-current-mA = <100>;
+
+			vbus {
+				regulator-name = "vbus_regulator";
+				otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_vbus";
+						regulator-consumer-device = "tegra-ehci.0";
+					};
+
+					c2 {
+						regulator-consumer-supply = "usb_vbus";
+						regulator-consumer-device = "tegra-otg";
+					};
+				};
+			};
+
+			charger {
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000>;
+				watchdog-timeout = <40>;
+				rtc-alarm-time = <3600>;
+				auto-recharge-time = <1800>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
+					};
+				};
+			};
+		};
 	};
 
 	i2c@7000c400 {
