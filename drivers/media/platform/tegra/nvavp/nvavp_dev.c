@@ -1907,7 +1907,7 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_SET_MIN_ONLINE_CPUS:
 		ret = nvavp_set_min_online_cpus_ioctl(filp, cmd, arg);
-
+		break;
 	case NVAVP_IOCTL_MAP_IOVA:
 		ret = nvavp_map_iova(filp, cmd, arg);
 		break;
