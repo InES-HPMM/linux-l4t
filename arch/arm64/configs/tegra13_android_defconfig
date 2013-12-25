@@ -542,7 +542,7 @@ CONFIG_SECURITY_NETWORK=y
 CONFIG_SECURITY_SELINUX=y
 CONFIG_CRYPTO_TWOFISH=y
 # CONFIG_CRYPTO_ANSI_CPRNG is not set
-CONFIG_CMDLINE="mem=896M@2048M vmalloc=192M console=ttyS0,115200 androidboot.console=ttyS0 earlyprintk=uart8250-32bit,0x70006300 tegra_keep_boot_clocks tegraboot=sdmmc gpt gpt_sector=30777343 init=/init"
+CONFIG_CMDLINE="mem=896M@2048M vmalloc=192M console=ttyS0,115200 androidboot.console=ttyS0 debug_uartport=lsport,3 earlyprintk=uart8250-32bit,0x70006300 tegra_keep_boot_clocks tegraboot=sdmmc gpt gpt_sector=30777343 init=/init"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_SERIO_I8042=n
 CONFIG_CLK_SRC_TEGRA_TIMER=n
