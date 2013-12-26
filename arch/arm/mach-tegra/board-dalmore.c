@@ -665,8 +665,6 @@ static void __init tegra_dalmore_early_init(void)
 
 static void __init tegra_dalmore_late_init(void)
 {
-	platform_device_register(&tegra114_pinctrl_device);
-	dalmore_pinmux_init();
 	dalmore_i2c_init();
 	dalmore_usb_init();
 	dalmore_xusb_init();

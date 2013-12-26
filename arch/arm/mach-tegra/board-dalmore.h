@@ -109,7 +109,6 @@
 int dalmore_regulator_init(void);
 int dalmore_suspend_init(void);
 int dalmore_sdhci_init(void);
-int dalmore_pinmux_init(void);
 int dalmore_sensors_init(void);
 int dalmore_emc_init(void);
 int dalmore_edp_init(void);

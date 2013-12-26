@@ -208,7 +208,6 @@ obj-y                                   += panel-lgd-wxga-7-0.o
 
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
-obj-${CONFIG_MACH_DALMORE}              += board-dalmore-pinmux.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-power.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-powermon.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sdhci.o
