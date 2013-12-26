@@ -2,7 +2,7 @@
  * as3722 definitions
  *
  * Copyright (C) 2013 ams
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Florian Lobmaier <florian.lobmaier@ams.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
@@ -319,6 +319,7 @@
 #define AS3722_GPIO_IOSF_ISINK_PWM_IN			AS3722_GPIO_IOSF_VAL(4)
 #define AS3722_GPIO_IOSF_VOLTAGE_STBY			AS3722_GPIO_IOSF_VAL(5)
 #define AS3722_GPIO_IOSF_PWR_GOOD_OUT			AS3722_GPIO_IOSF_VAL(7)
+#define AS3722_GPIO_IOSF_SD0_OUT			AS3722_GPIO_IOSF_VAL(6)
 #define AS3722_GPIO_IOSF_Q32K_OUT			AS3722_GPIO_IOSF_VAL(8)
 #define AS3722_GPIO_IOSF_WATCHDOG_IN			AS3722_GPIO_IOSF_VAL(9)
 #define AS3722_GPIO_IOSF_SOFT_RESET_IN			AS3722_GPIO_IOSF_VAL(11)
