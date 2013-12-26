@@ -141,6 +141,8 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
  */
 static inline void init_consistent_dma_size(unsigned long size) { }
 
+int arm_dma_supported(struct device *dev, u64 mask);
+
 /* FIXME: copied from arch/arm */
 
 extern int arm_dma_mapping_error(struct device *dev, dma_addr_t dev_addr);

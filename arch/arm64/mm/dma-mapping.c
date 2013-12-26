@@ -195,6 +195,7 @@ struct dma_map_ops arm_dma_ops = {
 	.sync_sg_for_device	= arm_dma_sync_sg_for_device,
 	.set_dma_mask		= arm_dma_set_mask,
 	.mapping_error		= arm_dma_mapping_error,
+	.dma_supported		= arm_dma_supported,
 };
 EXPORT_SYMBOL(arm_dma_ops);
 
@@ -1004,7 +1005,12 @@ void arm_dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
 					    dir);
 }
 
-EXPORT_SYMBOL(dma_supported);
+int arm_dma_supported(struct device *dev, u64 mask)
+{
+	if (mask < (u64)arm_dma_limit)
+		return 0;
+	return 1;
+}
 
 int arm_dma_set_mask(struct device *dev, u64 dma_mask)
 {
