@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -263,7 +263,7 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	}
 
 	if(phy->pdata->has_hostpc)
-		clk_set_rate(phy->emc_clk, 100000000);
+		clk_set_rate(phy->emc_clk, 12750000);
 	else
 		clk_set_rate(phy->emc_clk, 300000000);
 
@@ -350,7 +350,6 @@ int tegra_usb_phy_init(struct usb_phy *x)
 {
 	int status = 0;
 	struct tegra_usb_phy *phy = get_tegra_phy(x);
-
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->ops && phy->pdata->ops->init)
@@ -704,6 +703,50 @@ int tegra_usb_phy_set_suspend(struct usb_phy *x, int suspend)
 		return tegra_usb_phy_resume(phy);
 }
 
+static int tegra_usb_phy_set_clk_freq(struct tegra_usb_phy *phy,
+		enum usb_device_speed speed)
+{
+	switch (speed) {
+	case USB_SPEED_HIGH:
+		if (phy->pdata->has_hostpc) {
+			DBG("%s(%d) USB_SPEED_HIGH\n",
+				__func__, __LINE__);
+			clk_set_rate(phy->emc_clk, 100000000);
+		}
+		break;
+	case USB_SPEED_LOW:
+	case USB_SPEED_FULL:
+	default:
+		if (phy->pdata->has_hostpc) {
+			DBG("%s(%d) USB_SPEED_LOW/USB_SPEED_FULL/default\n",
+				__func__, __LINE__);
+			clk_set_rate(phy->emc_clk, 12750000);
+		}
+	}
+
+	return 0;
+}
+
+static int tegra_usb_phy_notify_connect(struct usb_phy *x,
+		enum usb_device_speed speed)
+{
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
+
+	tegra_usb_phy_set_clk_freq(phy, speed);
+
+	return 0;
+}
+
+static int tegra_usb_phy_notify_disconnect(struct usb_phy *x,
+		enum usb_device_speed speed)
+{
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
+
+	tegra_usb_phy_set_clk_freq(phy, USB_SPEED_LOW);
+
+	return 0;
+}
+
 struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 {
 	struct tegra_usb_phy *phy;
@@ -834,6 +877,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	phy->phy.init = tegra_usb_phy_init;
 	phy->phy.shutdown = tegra_usb_phy_close;
 	phy->phy.set_suspend = tegra_usb_phy_set_suspend;
+	phy->phy.notify_connect = tegra_usb_phy_notify_connect;
+	phy->phy.notify_disconnect = tegra_usb_phy_notify_disconnect;
 
 	return phy;
 
