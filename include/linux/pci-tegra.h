@@ -26,10 +26,9 @@
 
 struct tegra_pci_platform_data {
 	int port_status[MAX_PCIE_SUPPORTED_PORTS];
-	bool use_dock_detect;
 	/* used to identify if current platofrm supports CLKREQ# */
 	bool has_clkreq;
-	int gpio;
+	int gpio_hot_plug;
 	int gpio_wake;
 	int gpio_x1_slot;
 };

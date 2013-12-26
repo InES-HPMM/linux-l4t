@@ -276,8 +276,7 @@ static struct platform_device tegra_rtc_device = {
 static struct tegra_pci_platform_data vcm30_t124_pcie_platform_data = {
 	.port_status[0]	= 1,
 	.port_status[1]	= 1,
-	.use_dock_detect	= 1,
-	.gpio	= TEGRA_GPIO_PO1,
+	.gpio_hot_plug	= TEGRA_GPIO_PO1,
 	.gpio_x1_slot	= PMU_TCA6416_GPIO(12),
 };
 

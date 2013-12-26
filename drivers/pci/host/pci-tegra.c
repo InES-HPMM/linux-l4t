@@ -294,9 +294,6 @@ static struct resource pcie_prefetch_mem_space;
 /* this flag enables features required either after boot or resume */
 /* also required to enable msi from host both after boot and resume */
 static bool resume_path;
-/* this flag is used for enumeration by hotplug */
-/* when dock is not connected while system boot */
-static bool is_dock_conn_at_boot = true;
 /* used to avoid successive hotplug disconnect or connect */
 static bool hotplug_event;
 
@@ -750,14 +747,14 @@ static void work_hotplug_handler(struct work_struct *work)
 	int val;
 
 	PR_FUNC_LINE;
-	if (pcie_driver->plat_data->gpio == -1)
+	if (pcie_driver->plat_data->gpio_hot_plug == -1)
 		return;
-	val = gpio_get_value(pcie_driver->plat_data->gpio);
+	val = gpio_get_value(pcie_driver->plat_data->gpio_hot_plug);
 	if (val == 0) {
-		pr_info("Pcie Dock Connected\n");
+		pr_info("PCIE Hotplug: Connected\n");
 		tegra_pcie_attach();
 	} else {
-		pr_info("Pcie Dock DisConnected\n");
+		pr_info("PCIE Hotplug: DisConnected\n");
 		tegra_pcie_detach();
 	}
 }
@@ -1487,6 +1484,45 @@ void tegra_pcie_check_ports(void)
 }
 EXPORT_SYMBOL(tegra_pcie_check_ports);
 
+static int tegra_pcie_conf_hotplug_gpio(void)
+{
+	int irq, err = 0;
+
+	pr_info("acquiring hotplug_detect = %d\n",
+			tegra_pcie.plat_data->gpio_hot_plug);
+	err = gpio_request(tegra_pcie.plat_data->gpio_hot_plug,
+			    "pcie_hotplug_detect");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, err);
+		return err;
+	}
+	err = gpio_direction_input(tegra_pcie.plat_data->gpio_hot_plug);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n",
+			__func__, err);
+		goto err_irq;
+	}
+	irq = gpio_to_irq(tegra_pcie.plat_data->gpio_hot_plug);
+	if (irq < 0) {
+		pr_err("Unable to get irq number for hotplug_detect\n");
+		goto err_irq;
+	}
+	err = request_irq((unsigned int)irq,
+			gpio_pcie_detect_isr,
+			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+			"pcie_hotplug_detect",
+			(void *)tegra_pcie.plat_data);
+	if (err < 0) {
+		pr_err("Unable to claim irq number for hotplug_detect\n");
+		goto err_irq;
+	}
+	return 0;
+
+err_irq:
+	gpio_free(tegra_pcie.plat_data->gpio_hot_plug);
+	return err;
+}
+
 static int tegra_pcie_scale_voltage(bool isGen2)
 {
 	unsigned long rate;
@@ -1692,50 +1728,19 @@ static int __init tegra_pcie_init(void)
 		pr_err("PCIE: enable controller failed\n");
 		return err;
 	}
-
+	err = tegra_pcie_conf_hotplug_gpio();
+	if (err) {
+		pr_err("PCIE: configuring hotplug gpio failed\n");
+		return err;
+	}
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations();
 	tegra_pcie_check_ports();
 
-	if (tegra_pcie.plat_data->use_dock_detect) {
-		int irq;
-
-		pr_info("acquiring dock_detect = %d\n",
-				tegra_pcie.plat_data->gpio);
-		err = gpio_request(tegra_pcie.plat_data->gpio,
-				    "pcie_dock_detect");
-		if (err < 0) {
-			pr_err("%s: gpio_request failed %d\n", __func__, err);
-			return err;
-		}
-		err = gpio_direction_input(tegra_pcie.plat_data->gpio);
-		if (err < 0) {
-			pr_err("%s: gpio_direction_input failed %d\n",
-				__func__, err);
-			goto err_irq;
-		}
-		irq = gpio_to_irq(tegra_pcie.plat_data->gpio);
-		if (irq < 0) {
-			pr_err("Unable to get irq number for dock_detect\n");
-			goto err_irq;
-		}
-		err = request_irq((unsigned int)irq,
-				gpio_pcie_detect_isr,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-				"pcie_dock_detect",
-				(void *)tegra_pcie.plat_data);
-		if (err < 0) {
-			pr_err("Unable to claim irq number for dock_detect\n");
-			goto err_irq;
-		}
-	}
-
 	if (tegra_pcie.num_ports)
 		pci_common_init(&tegra_pcie_hw);
 	else {
-		/* no dock is connected, hotplug will occur after boot */
 		err = tegra_pcie_power_off();
-		is_dock_conn_at_boot = false;
 		if (err < 0) {
 			pr_err("Unable to power off pcie\n");
 			return err;
@@ -1746,9 +1751,6 @@ static int __init tegra_pcie_init(void)
 	device_init_wakeup(tegra_pcie.dev, true);
 
 	return 0;
-err_irq:
-	gpio_free(tegra_pcie.plat_data->gpio);
-	return err;
 }
 
 static int __init tegra_pcie_probe(struct platform_device *pdev)
