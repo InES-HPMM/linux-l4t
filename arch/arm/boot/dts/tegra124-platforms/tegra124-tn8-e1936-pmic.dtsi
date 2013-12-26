@@ -114,7 +114,6 @@
 						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-init-microvolt = <1000000>;
-						regulator-always-on;
 						regulator-boot-on;
 
 						consumers {
