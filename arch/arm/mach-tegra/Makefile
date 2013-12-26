@@ -242,7 +242,6 @@ obj-${CONFIG_MACH_MACALLAN}             += panel-p-wuxga-10-1.o
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
-obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-pinmux.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-power.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-sdhci.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-panel.o

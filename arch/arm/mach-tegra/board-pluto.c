@@ -1288,8 +1288,6 @@ static void __init tegra_pluto_early_init(void)
 
 static void __init tegra_pluto_late_init(void)
 {
-	platform_device_register(&tegra114_pinctrl_device);
-	pluto_pinmux_init();
 	pluto_i2c_init();
 	pluto_usb_init();
 	pluto_xusb_init();
