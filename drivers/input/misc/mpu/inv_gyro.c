@@ -3257,8 +3257,9 @@ static ssize_t inv_get_accl_bias_show(struct device *dev,
 	int result;
 	int bias[3];
 	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
-
+	mutex_lock(&st->mutex);
 	result = inv_get_accl_bias(st, bias);
+	mutex_unlock(&st->mutex);
 	if (result)
 		return -EINVAL;
 
