@@ -109,9 +109,6 @@ void __init time_init(void)
 
 	clocksource_of_init();
 
-	if (machine_desc->init_time)
-			machine_desc->init_time();
-
 	arch_timer_rate = arch_timer_get_rate();
 	if (!arch_timer_rate)
 		panic("Unable to initialise architected timer.\n");
