@@ -176,12 +176,6 @@
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
 
-#define  RP_TXBA1						0x00000E1C
-#define  RP_TXBA1_CM_OVER_PW_BURST_MASK			(0xF << 4)
-#define  RP_TXBA1_CM_OVER_PW_BURST_INIT_VAL			(0x4 << 4)
-#define  RP_TXBA1_PW_OVER_CM_BURST_MASK			(0xF)
-#define  RP_TXBA1_PW_OVER_CM_BURST_INIT_VAL			(0x4)
-
 #define RP_LINK_CONTROL_STATUS					0x00000090
 #define RP_LINK_CONTROL_STATUS_LINKSTAT_MASK			0x3fff0000
 #define RP_LINK_CONTROL_STATUS_RETRAIN_LINK			(0x1 << 5)
@@ -1452,7 +1446,6 @@ static void tegra_pcie_disable_ctlr(int index)
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
-	unsigned int data;
 
 	PR_FUNC_LINE;
 	tegra_pcie_prsnt_map_override(true);
@@ -1469,16 +1462,6 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		return;
 	}
 	tegra_pcie_enable_rp_features(index);
-	/*
-	 * Initialize TXBA1 register to fix the unfair arbitration
-	 * between downstream reads and completions to upstream reads
-	 */
-	data = rp_readl(RP_TXBA1, index);
-	data &= ~(RP_TXBA1_PW_OVER_CM_BURST_MASK);
-	data |= RP_TXBA1_PW_OVER_CM_BURST_INIT_VAL;
-	data &= ~(RP_TXBA1_CM_OVER_PW_BURST_MASK);
-	data |= RP_TXBA1_CM_OVER_PW_BURST_INIT_VAL;
-	rp_writel(data, RP_TXBA1, index);
 
 	tegra_pcie.num_ports++;
 	pp->index = index;
