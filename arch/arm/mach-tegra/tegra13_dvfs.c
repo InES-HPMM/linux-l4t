@@ -145,12 +145,12 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = -1,
 		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x005020FF,
-			.tune0_high_mv	= 0x005040FF,
-			.tune1		= 0x00000060,
+			.tune0		= 0x00000000,
+			.tune0_high_mv	= 0x00000000,
+			.tune1		= 0x00000000,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 750,
+			.min_millivolts = 850,
 		},
 		.max_mv = 1260,
 		.freqs_mult = KHZ,
@@ -767,15 +767,16 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	cpu_dvfs->dfll_data.is_bypass_down = is_lp_cluster;
 
 	/* Init cpu thermal floors */
-	tegra_dvfs_rail_init_vmin_thermal_profile(
+/*	tegra_dvfs_rail_init_vmin_thermal_profile(
 		d->vmin_trips_table, d->therm_floors_table,
 		&tegra13_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
-
+*/
 	/* Init cpu thermal caps */
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
-	tegra_dvfs_rail_init_vmax_thermal_profile(
+/*	tegra_dvfs_rail_init_vmax_thermal_profile(
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		&tegra13_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+*/
 #endif
 
 	return 0;
