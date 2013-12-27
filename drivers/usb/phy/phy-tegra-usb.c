@@ -667,7 +667,7 @@ EXPORT_SYMBOL_GPL(tegra_usb_phy_pmc_wakeup);
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {
 	void __iomem *ahb_gizmo = IO_ADDRESS(TEGRA_AHB_GIZMO_BASE);
-	unsigned long val;
+	u32 val;
 
 	if (phy->inst == 0 && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
@@ -682,7 +682,7 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 {
 	void __iomem *ahb_gizmo = IO_ADDRESS(TEGRA_AHB_GIZMO_BASE);
-	unsigned long val;
+	u32 val;
 
 	if (phy->inst == 0 && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
