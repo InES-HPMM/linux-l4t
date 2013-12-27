@@ -221,6 +221,19 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
 	}
 
+#define OVRRD_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
+	{							\
+		.clk_name	= _clk_name,			\
+		.speedo_id	= _speedo_id,			\
+		.process_id	= _process_id,			\
+		.freqs		= {_freqs},			\
+		.freqs_mult	= _mult,			\
+		.millivolts	= core_millivolts,		\
+		.auto_dvfs	= _auto,			\
+		.can_override	= true,				\
+		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
+	}
+
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
 	/* Clock limits for internal blocks, PLLs */
@@ -315,41 +328,19 @@ static struct dvfs core_dvfs_table[] = {
 
 	CORE_DVFS("hda",    	     -1, -1, 1, KHZ,  	  1, 108000, 108000, 108000, 108000, 108000 ,  108000,  108000),
 	CORE_DVFS("hda2codec_2x",    -1, -1, 1, KHZ,  	  1,  48000,  48000,  48000,  48000,  48000 ,   48000,   48000),
+
+	OVRRD_DVFS("sdmmc1",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc3",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
+	OVRRD_DVFS("sdmmc4",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000, 200000),
 };
 
 /*
- * Separate sdmmc and display dvfs table to handle dependency of sdmmc tuning
- * on display maximum rate.
- *
  * Display peak voltage aggregation into override range floor is deferred until
  * actual pixel clock for the particular platform is known. This would allow to
- * extend sdmmc tuning range on the platforms that do not excercise maximum
- * display clock capabilities specified in DVFS table.
+ * extend override range on the platforms that do not excercise maximum display
+ * clock capabilities specified in DVFS table.
  *
- * Two SDMMC tables:
- *  - "1-point tuning" table is applicable when override floor is equal to
- *  nominal voltage (override range is zero). It is installed by default, while
- *  display peak voltage is unknown. It is overwritten when display peak voltage
- *  is aggregated, provided final override floor is below nominal.
- *
- *  - "2-point tuning" table is applicable when override floor is below nominal
- *  voltage (i.e., at least 2 tuning points in override range). It is installed
- *  when display peak voltage is aggregated, provided final override floor is
- *  below nominal.
  */
-#define OVRRD_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
-	{							\
-		.clk_name	= _clk_name,			\
-		.speedo_id	= _speedo_id,			\
-		.process_id	= _process_id,			\
-		.freqs		= {_freqs},			\
-		.freqs_mult	= _mult,			\
-		.millivolts	= core_millivolts,		\
-		.auto_dvfs	= _auto,			\
-		.can_override	= true,				\
-		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
-	}
-
 #define DEFER_DVFS(_clk_name, _speedo_id, _process_id, _auto, _mult, _freqs...) \
 	{							\
 		.clk_name	= _clk_name,			\
@@ -362,19 +353,6 @@ static struct dvfs core_dvfs_table[] = {
 		.defer_override = true,				\
 		.dvfs_rail	= &tegra12_dvfs_rail_vdd_core,	\
 	}
-
-	/* Core voltages (mV):		         800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
-static struct dvfs sdmmc_dvfs_table[] = {
-	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 204000),
-	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 204000),
-	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       1,      1,  50000,  50000,   50000,  50000,  50000, 200000),
-};
-
-static struct dvfs sdmmc_tune2_dvfs_table[] = {
-	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
-	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
-	OVRRD_DVFS("sdmmc4", -1, -1, 1, KHZ,       1,      1,  82000,  82000,  136000, 136000, 136000, 200000),
-};
 
 static struct dvfs disp_dvfs_table[] = {
 	/*
@@ -407,22 +385,7 @@ static struct dvfs disp_alt_dvfs_table[] = {
 
 static int resolve_core_override(int min_override_mv)
 {
-	int i, j;
-	struct dvfs *d = sdmmc_dvfs_table;
-	struct dvfs *d_tune = sdmmc_tune2_dvfs_table;
-
-	BUILD_BUG_ON(ARRAY_SIZE(sdmmc_dvfs_table) !=
-		     ARRAY_SIZE(sdmmc_tune2_dvfs_table));
-
-	if (min_override_mv >=
-	    tegra12_dvfs_rail_vdd_core.nominal_millivolts)
-		return 0;
-
-	/* Override range is not 0: 2+ points for SDMMC tuning are available */
-	for (i = 0; i < ARRAY_SIZE(sdmmc_dvfs_table); i++, d++, d_tune++) {
-		for (j = 0; j < d->num_freqs; j++)
-			d->freqs[j] = d_tune->freqs[j] * d_tune->freqs_mult;
-	}
+	/* nothing to do -- always resolved */
 	return 0;
 }
 
@@ -1173,8 +1136,6 @@ void __init tegra12x_init_dvfs(void)
 	if (!tegra_platform_is_linsim()) {
 		INIT_CORE_DVFS_TABLE(core_dvfs_table,
 				     ARRAY_SIZE(core_dvfs_table));
-		INIT_CORE_DVFS_TABLE(sdmmc_dvfs_table,
-				     ARRAY_SIZE(sdmmc_dvfs_table));
 		INIT_CORE_DVFS_TABLE(disp_dvfs_table,
 				     ARRAY_SIZE(disp_dvfs_table));
 
