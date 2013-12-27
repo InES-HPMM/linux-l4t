@@ -549,6 +549,7 @@ static inline void mt9m114_msleep(u32 t)
 
 static int mt9m114_write_reg8(struct mt9m114_info *info, u16 addr, u8 val)
 {
+	mt9m114_msleep(1);
 	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
 	return regmap_write(info->regmap, addr, val);
 }
@@ -560,6 +561,7 @@ static int mt9m114_write_reg16(struct mt9m114_info *info, u16 addr, u16 val)
 	data[0] = (u8) (val >> 8);
 	data[1] = (u8) (val & 0xff);
 
+	mt9m114_msleep(1);
 	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
 	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
 }
@@ -645,6 +647,7 @@ int mt9m114_release(struct inode *inode, struct file *file)
 	if (info->pdata && info->pdata->power_off) {
 		info->pdata->power_off(&info->power);
 		mt9m114_edp_lowest(info);
+		mt9m114_mclk_disable(info);
 		sysedp_set_state(info->sysedpc, 0);
 	}
 	file->private_data = NULL;
