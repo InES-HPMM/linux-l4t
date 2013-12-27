@@ -410,9 +410,13 @@
 							};
 							c6 {
 								regulator-consumer-supply = "avdd_dsi_csi";
-								regulator-consumer-device = "vi";
+								regulator-consumer-device = "vi.0";
 							};
 							c7 {
+								regulator-consumer-supply = "avdd_dsi_csi";
+								regulator-consumer-device = "vi.1";
+							};
+							c8 {
 								regulator-consumer-supply = "vdd_lcd_bl";
 								regulator-consumer-device = "tegradc.0";
 							};
