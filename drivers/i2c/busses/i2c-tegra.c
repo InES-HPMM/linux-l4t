@@ -1278,16 +1278,19 @@ static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 	if (!of_property_read_u32(np, "clock-frequency", &prop))
 		pdata->bus_clk_rate = prop;
 
-	if (of_find_property(np, "nvidia,clock-always-on", NULL))
-		pdata->is_clkon_always = true;
+	pdata->is_clkon_always = of_property_read_bool(np,
+					"nvidia,clock-always-on");
 
 	if (!of_property_read_u32(np, "nvidia,hs-master-code", &prop)) {
 		pdata->hs_master_code = prop;
 		pdata->is_high_speed_enable = true;
 	}
 
-	if (of_find_property(np, "nvidia,bit-banging-xfer-after-shutdown", NULL))
-		pdata->bit_banging_xfer_after_shutdown = true;
+	pdata->needs_cl_dvfs_clock = of_property_read_bool(np,
+					"nvidia,require-cldvfs-clock");
+
+	pdata->bit_banging_xfer_after_shutdown = of_property_read_bool(np,
+					"nvidia,bit-banging-xfer-after-shutdown");
 
 	pdata->scl_gpio = of_get_named_gpio(np, "scl-gpio", 0);
 	pdata->sda_gpio = of_get_named_gpio(np, "sda-gpio", 0);
