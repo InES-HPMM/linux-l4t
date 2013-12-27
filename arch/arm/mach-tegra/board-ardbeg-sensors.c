@@ -1410,6 +1410,14 @@ static struct i2c_board_info laguna_i2c_nct72_board_info[] = {
 	},
 };
 
+static struct i2c_board_info tn8ffd_i2c_nct72_board_info[] = {
+	{
+		I2C_BOARD_INFO("nct72", 0x4c),
+		.platform_data = &ardbeg_nct72_pdata,
+		.irq = -1,
+	},
+};
+
 static int ardbeg_nct72_init(void)
 {
 	s32 base_cp, shft_cp;
@@ -1470,6 +1478,10 @@ static int ardbeg_nct72_init(void)
 			board_info.board_id == BOARD_PM363)
 		i2c_register_board_info(1, laguna_i2c_nct72_board_info,
 		ARRAY_SIZE(laguna_i2c_nct72_board_info));
+	/* tn8-ffd has thermal sensor on GEN1-I2C i.e. instance 0 */
+	else if (board_info.board_id == BOARD_P1761)
+		i2c_register_board_info(0, tn8ffd_i2c_nct72_board_info,
+		ARRAY_SIZE(tn8ffd_i2c_nct72_board_info));
 	else
 		i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
 		ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
