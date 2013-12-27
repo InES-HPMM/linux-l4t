@@ -44,7 +44,7 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 obj-$(CONFIG_PM_GENERIC_DOMAINS) += pm_domains.o
 
 obj-y += dvfs.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_dvfs.o
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
 
 obj-y += latency_allowance.o
 obj-y += tegra3_la.o

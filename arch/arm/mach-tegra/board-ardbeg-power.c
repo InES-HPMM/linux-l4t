@@ -1157,11 +1157,14 @@ int __init ardbeg_rail_alignment_init(void)
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+#else
 	if (pmu_board_info.board_id == BOARD_E1735)
 		tegra12x_vdd_cpu_align(E1735_CPU_VDD_STEP_UV,
 				       E1735_CPU_VDD_MIN_UV);
 	else
 		tegra12x_vdd_cpu_align(ARDBEG_DEFAULT_CVB_ALIGNMENT, 0);
+#endif
 	return 0;
 }
 

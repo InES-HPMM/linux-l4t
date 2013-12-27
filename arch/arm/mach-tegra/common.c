@@ -983,7 +983,11 @@ void __init tegra12x_init_early(void)
 	tegra_init_fuse();
 	tegra_ramrepair_init();
 	tegra12x_init_clocks();
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	tegra13x_init_dvfs();
+#else
 	tegra12x_init_dvfs();
+#endif
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);

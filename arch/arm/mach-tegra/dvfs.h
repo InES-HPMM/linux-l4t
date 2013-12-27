@@ -229,6 +229,7 @@ static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
 
 void tegra11x_init_dvfs(void);
 void tegra12x_init_dvfs(void);
+void tegra13x_init_dvfs(void);
 void tegra14x_init_dvfs(void);
 void tegra12x_vdd_cpu_align(int step_uv, int offset_uv);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
