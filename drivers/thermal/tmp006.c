@@ -444,6 +444,15 @@ static int tmp006_probe(struct i2c_client *client,
 		return err;
 	}
 	i2c_set_clientdata(client, data);
+
+	if (tmp006_get_manufacture_id(client) != 0x5449 ||
+			tmp006_get_device_id(client) != 0x0067) {
+		dev_err(&client->dev,
+			"%s(): tmp006 device not present\n",
+			__func__, err);
+		return -1;
+	}
+
 	data->thz_dev = thermal_zone_device_register("tmp006", 1, 0, data,
 			&tmp006_dev_ops, NULL, 0, TMP006_POLL_INT);
 	if (IS_ERR(data->thz_dev)) {
@@ -452,6 +461,7 @@ static int tmp006_probe(struct i2c_client *client,
 		"\n thermal_zone_device_register error err=%d ", err);
 		return err;
 	}
+
 	return 0;
 }
 
