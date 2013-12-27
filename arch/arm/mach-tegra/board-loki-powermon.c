@@ -30,6 +30,7 @@ enum {
 	VDD_DDR_SOC_GPU,
 	VDD_3V3_EMMC_MDM,
 	VDD_BAT_VBUS_MODEM,
+	VDD_BAT_VBUS_MODEM_P2530_A03,
 };
 
 static struct ina3221_platform_data power_mon_info[] = {
@@ -69,6 +70,15 @@ static struct ina3221_platform_data power_mon_info[] = {
 		.warn_conf_limits = {-1, -1, -1},
 		.crit_conf_limits = {6800, -1, -1},
 	},
+	[VDD_BAT_VBUS_MODEM_P2530_A03] = {
+		.rail_name = {"VDD_BATT", "VDD_VBUS",
+							"VDD_MODEM"},
+		.shunt_resistor = {5, 5, 5},
+		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
+		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+		.warn_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {6800, -1, -1},
+	},
 };
 
 enum {
@@ -103,6 +113,14 @@ static struct i2c_board_info loki_i2c1_ina3221_board_e2549_info[] = {
 	},
 };
 
+static struct i2c_board_info loki_i2c1_ina3221_board_p2530_A03_info[] = {
+	[INA_I2C_ADDR_40] = {
+		I2C_BOARD_INFO("ina3221", 0x40),
+		.platform_data = &power_mon_info[VDD_BAT_VBUS_MODEM_P2530_A03],
+		.irq = -1,
+	},
+};
+
 int __init loki_pmon_init(void)
 {
 	struct board_info info;
@@ -111,10 +129,17 @@ int __init loki_pmon_init(void)
 		pr_info("INA3221: registering for E2548\n");
 		i2c_register_board_info(1, loki_i2c1_ina3221_board_e2548_info,
 			ARRAY_SIZE(loki_i2c1_ina3221_board_e2548_info));
-	} else {
-		pr_info("INA3221: registering for E2549/P2530\n");
+	} else if (info.board_id == BOARD_E2549 ||
+		(info.board_id == BOARD_P2530 && info.fab < 0xa3)) {
+		pr_info("INA3221: registering for E2549/P2530-A00 and A01\n");
 		i2c_register_board_info(1, loki_i2c1_ina3221_board_e2549_info,
 			ARRAY_SIZE(loki_i2c1_ina3221_board_e2549_info));
-	}
+	} else if (info.board_id == BOARD_P2530 && info.fab >= 0xa3) {
+		pr_info("INA3221: registering for P2530-A03\n");
+		i2c_register_board_info(1,
+		loki_i2c1_ina3221_board_p2530_A03_info,
+		ARRAY_SIZE(loki_i2c1_ina3221_board_p2530_A03_info));
+	} else
+		pr_err("INA3221: Didn't find the right board config\n");
 	return 0;
 }
