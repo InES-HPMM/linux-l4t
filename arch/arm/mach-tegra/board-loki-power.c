@@ -461,6 +461,13 @@ static struct tegra_suspend_platform_data loki_suspend_data = {
 
 int __init loki_suspend_init(void)
 {
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+
+	/* reduce cpu_power_good_time for loki ffd fab a3 or higher */
+	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xa3)
+		loki_suspend_data.cpu_timer = 500;
+
 	tegra_init_suspend(&loki_suspend_data);
 	return 0;
 }
