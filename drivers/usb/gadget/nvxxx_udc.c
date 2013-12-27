@@ -38,9 +38,10 @@ static struct NV_UDC_S *the_controller;
 static int nvudc_remove_platform(struct platform_device *pdev);
 static void nvudc_remove_pci(struct pci_dev *pdev);
 
-static int nvudc_gadget_start(struct usb_gadget_driver *driver, int
-		(*bind)(struct usb_gadget *, struct usb_gadget_driver *));
-static int nvudc_gadget_stop(struct usb_gadget_driver *driver);
+static int nvudc_gadget_start(struct usb_gadget *,
+		struct usb_gadget_driver *);
+static int nvudc_gadget_stop(struct usb_gadget *,
+		struct usb_gadget_driver *);
 
 static const u8 plat_driver_name[] = NV_UDC_PLATFORM;
 static const u8 pci_driver_name[] = NV_UDC_PCI;
@@ -1855,8 +1856,9 @@ static struct usb_gadget_ops nvudc_gadget_ops = {
 	.get_frame = nvudc_gadget_get_frame,
 	.wakeup = nvudc_gadget_wakeup,
 	.pullup = nvudc_gadget_pullup,
-	.start = nvudc_gadget_start,
-	.stop = nvudc_gadget_stop,
+	/* TODO: remove when we don't support 3.8.2 anymore */
+	.udc_start = nvudc_gadget_start,
+	.udc_stop = nvudc_gadget_stop,
 	.vbus_draw = nvudc_vbus_draw,
 };
 
@@ -3463,8 +3465,8 @@ void usbep_struct_setup(struct NV_UDC_S *nvudc, u32 index, u8 *name)
 		list_add_tail(&ep->usb_ep.ep_list, &nvudc->gadget.ep_list);
 }
 
-static int nvudc_gadget_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *))
+static int nvudc_gadget_start(struct usb_gadget *gadget,
+		struct usb_gadget_driver *driver)
 {
 	struct NV_UDC_S *nvudc = the_controller;
 	unsigned long flags;
@@ -3477,7 +3479,7 @@ static int nvudc_gadget_start(struct usb_gadget_driver *driver,
 
 	msg_entry(nvudc->dev);
 	if (!driver || (driver->max_speed < USB_SPEED_FULL)
-			|| !bind || !driver->setup || !driver->disconnect)
+			|| !driver->setup || !driver->disconnect)
 		return -EINVAL;
 
 	msg_dbg(nvudc->dev, "Sanity check. speed = 0x%x\n",
@@ -3503,14 +3505,6 @@ static int nvudc_gadget_start(struct usb_gadget_driver *driver,
 		sprintf(name, "ep%din", i);
 		usbep_struct_setup(nvudc, i*2+1, name);
 	}
-
-	retval = bind(&nvudc->gadget, driver);
-	if (retval)
-		goto err_unbind;
-
-	nvudc->binded = true;
-
-	msg_dbg(nvudc->dev, "bind\n");
 
 	retval = device_create_file(&nvudc->pdev_pci->dev, &dev_attr_debug);
 	if (retval)
@@ -3555,7 +3549,8 @@ err_unbind:
 	return retval;
 }
 
-static int nvudc_gadget_stop(struct usb_gadget_driver *driver)
+static int nvudc_gadget_stop(struct usb_gadget *gadget,
+		struct usb_gadget_driver *driver)
 {
 	u32 u_temp;
 	struct NV_UDC_S *nvudc = the_controller;
