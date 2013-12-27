@@ -463,6 +463,13 @@ int __init ardbeg_sdhci_init(void)
 			tegra_sdhci_platform_data2.uhs_mask =
 				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
 	}
+	if (board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_PM359) {
+			tegra_sdhci_platform_data2.uhs_mask =
+				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
+			tegra_sdhci_platform_data0.uhs_mask =
+				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
+	}
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
