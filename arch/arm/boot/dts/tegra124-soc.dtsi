@@ -194,6 +194,7 @@
 		compatible = "nvidia,tegra124-i2c";
 		reg = <0x7000d000 0x100>;
 		interrupts = <0 53 0x04>;
+		nvidia,require-cldvfs-clock;
 		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
 		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		nvidia,memory-clients = <14>;

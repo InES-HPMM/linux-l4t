@@ -363,6 +363,7 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 47>;
 		clock-names = "div-clk";
+		nvidia,require-cldvfs-clock;
 		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
 		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		status = "disabled";
