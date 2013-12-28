@@ -49,6 +49,20 @@
 		      <0x60004400 0x40>;
 	};
 
+    xusb@70090000 {
+        compatible = "nvidia,tegra124-xhci";
+        reg = <0x70090000 0x8000
+               0x70098000 0x1000
+               0x70099000 0x1000
+               0x7009F000 0x1000>;
+        interrupts = <0 39 0x04
+                  0 40 0x04
+                  0 49 0x04
+                  0 97 0x04
+                  0 21 0x04>;
+        status = "okay";
+    };
+
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <1 13 0xff01>,
