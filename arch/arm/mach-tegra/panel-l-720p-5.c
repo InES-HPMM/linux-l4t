@@ -429,25 +429,6 @@ static struct i2c_board_info lm3528_dsi_l_720p_5_i2c_led_info = {
 	.platform_data	= &lm3528_pdata,
 };
 
-static unsigned int dsi_l_pluto_edp_states[] = {
-	1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0
-};
-static unsigned int dsi_l_pluto_edp_brightness[] = {
-	255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0
-};
-static unsigned int dsi_l_ceres_edp_states[] = {
-	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
-};
-static unsigned int dsi_l_ceres_edp_brightness[] = {
-	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
-};
-static unsigned int dsi_l_atlantis_edp_states[] = {
-	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
-};
-static unsigned int dsi_l_atlantis_edp_brightness[] = {
-	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
-};
-
 static int __init dsi_l_720p_5_register_bl_dev(void)
 {
 	struct i2c_board_info *bl_info;
@@ -457,18 +438,12 @@ static int __init dsi_l_720p_5_register_bl_dev(void)
 	switch (board_info.board_id) {
 	case BOARD_E1670: /* Atlantis ERS */
 	case BOARD_E1671: /* Atlantis POP Socket */
-		lm3528_pdata.edp_states = dsi_l_atlantis_edp_states;
-		lm3528_pdata.edp_brightness = dsi_l_atlantis_edp_brightness;
 		bl_info = &lm3528_dsi_l_720p_5_i2c_led_info;
 		dsi_l_720p_5_bl_response_curve =
 			dsi_l_720p_5_lm3528_bl_response_curve;
 		break;
 	case BOARD_E1680: /* Ceres ERS */
 	case BOARD_E1681: /* Ceres DSC Socket */
-		dsi_l_720p_5_max8831_bl_data.edp_states =
-			dsi_l_ceres_edp_states;
-		dsi_l_720p_5_max8831_bl_data.edp_brightness =
-				dsi_l_ceres_edp_brightness;
 		bl_info = &dsi_l_720p_5_i2c_led_info;
 		dsi_l_720p_5_bl_response_curve =
 				dsi_l_720p_5_max8831_bl_response_curve;
@@ -476,10 +451,6 @@ static int __init dsi_l_720p_5_register_bl_dev(void)
 	case BOARD_E1580: /* Pluto */
 	/* fall through */
 	default:
-		dsi_l_720p_5_max8831_bl_data.edp_states =
-			dsi_l_pluto_edp_states;
-		dsi_l_720p_5_max8831_bl_data.edp_brightness =
-				dsi_l_pluto_edp_brightness;
 		bl_info = &dsi_l_720p_5_i2c_led_info;
 		dsi_l_720p_5_bl_response_curve =
 				dsi_l_720p_5_max8831_bl_response_curve;
