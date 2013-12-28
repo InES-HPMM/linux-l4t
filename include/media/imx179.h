@@ -50,7 +50,6 @@ struct imx179_platform_data {
 	unsigned lens_fnumber; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
-	struct edp_client edpc_config;
 	const char *mclk_name; /* NULL for default default_mclk */
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct nvc_regulator *);

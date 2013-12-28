@@ -66,7 +66,6 @@ struct imx132_platform_data {
 	unsigned int cam2_gpio;
 	bool ext_reg;
 	const char *mclk_name; /* NULL for default */
-	struct edp_client edpc_config;
 	int (*power_on)(struct imx132_power_rail *pw);
 	int (*power_off)(struct imx132_power_rail *pw);
 };

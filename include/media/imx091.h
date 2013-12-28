@@ -13,7 +13,6 @@
 
 #include <media/nvc.h>
 #include <media/nvc_image.h>
-#include <linux/edp.h>
 
 /* See notes in the nvc.h file on the GPIO usage */
 enum imx091_gpio {
@@ -51,7 +50,6 @@ struct imx091_platform_data {
 	unsigned lens_fnumber; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
-	struct edp_client edpc_config;
 	bool vcm_vdd;
 	bool i2c_vdd;
 	const char *mclk_name; /* NULL for default default_mclk */

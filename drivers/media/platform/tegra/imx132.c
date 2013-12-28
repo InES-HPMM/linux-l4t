@@ -24,7 +24,6 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
-#include <linux/edp.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
@@ -53,8 +52,6 @@ struct imx132_info {
 	struct nvc_fuseid		fuse_id;
 	struct i2c_client		*i2c_client;
 	struct imx132_platform_data	*pdata;
-	struct edp_client		*edpc;
-	unsigned			edp_state;
 	atomic_t			in_use;
 	struct clk			*mclk;
 #ifdef CONFIG_DEBUG_FS
@@ -458,89 +455,6 @@ imx132_write_table(struct i2c_client *client,
 	return 0;
 }
 
-static void imx132_edp_lowest(struct imx132_info *info)
-{
-	if (!info->edpc)
-		return;
-
-	info->edp_state = info->edpc->num_states - 1;
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
-	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
-		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
-		dev_err(&info->i2c_client->dev,
-			"UNABLE TO SET LOWEST EDP STATE!\n");
-	}
-}
-
-static void imx132_edp_throttle(unsigned int new_state, void *priv_data);
-
-static void imx132_edp_register(struct imx132_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_notice(&info->i2c_client->dev,
-			"%s: NO edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "imx132", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->private_data = info;
-	edpc->throttle = imx132_edp_throttle;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	imx132_edp_lowest(info);
-}
-
-static int imx132_edp_req(struct imx132_info *info, unsigned new_state)
-{
-	unsigned approved;
-	int ret = 0;
-
-	if (!info->edpc)
-		return 0;
-
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
-	ret = edp_update_client_request(info->edpc, new_state, &approved);
-	if (ret) {
-		dev_err(&info->i2c_client->dev, "E state transition failed\n");
-		return ret;
-	}
-
-	if (approved > new_state) {
-		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
-		return -ENODEV;
-	}
-
-	info->edp_state = approved;
-	return 0;
-}
-
 static int
 imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 {
@@ -561,14 +475,6 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
 		return -EINVAL;
-	}
-
-	/* request highest edp state */
-	err = imx132_edp_req(info, 0);
-	if (err) {
-		dev_err(&info->i2c_client->dev,
-			"%s: ERROR cannot set edp state! %d\n",	__func__, err);
-		return err;
 	}
 
 	/*
@@ -975,15 +881,7 @@ static int imx132_power_off(struct imx132_info *info)
 	}
 
 imx132_pwroff_end:
-	imx132_edp_lowest(info);
 	return 0;
-}
-
-static void imx132_edp_throttle(unsigned int new_state, void *priv_data)
-{
-	struct imx132_info *info = priv_data;
-
-	imx132_power_off(info);
 }
 
 static int
@@ -1189,8 +1087,6 @@ imx132_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, info);
 
 	imx132_power_get(info);
-
-	imx132_edp_register(info);
 
 	memcpy(&info->miscdev_info,
 		&imx132_device,
