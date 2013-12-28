@@ -16,15 +16,7 @@
 #ifndef _LINUX_WLAN_PLAT_H_
 #define _LINUX_WLAN_PLAT_H_
 
-#include <linux/edp.h>
 #include <linux/sysedp.h>
-
-#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
-typedef enum e_edp_state {
-	EDP_STATE_ON = 0,
-	EDP_STATE_OFF
-}wifi_edp_state;
-#endif
 
 struct wifi_platform_data {
 	int (*set_power)(int val);
@@ -33,9 +25,6 @@ struct wifi_platform_data {
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
 	void *(*get_country_code)(char *ccode);
-#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
-	struct edp_client client_info;
-#endif
 	struct sysedp_consumer *sysedpc;
 };
 
