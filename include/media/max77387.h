@@ -114,7 +114,6 @@ struct max77387_platform_data {
 	const char *dev_name; /* see implementation notes in driver */
 	struct nvc_torch_pin_state pinstate; /* see notes in driver */
 	unsigned gpio_strobe; /* GPIO connected to the ACT signal */
-	struct edp_client edpc_config;
 
 	int (*poweron_callback)(struct max77387_power_rail *pw);
 	int (*poweroff_callback)(struct max77387_power_rail *pw);

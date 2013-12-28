@@ -29,7 +29,6 @@
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
-#include <linux/edp.h>
 #include <linux/sysedp.h>
 #include <linux/regmap.h>
 #include <media/nvc.h>
@@ -148,9 +147,7 @@ struct as364x_info {
 	struct nvc_torch_timer_capabilities_v1 *torch_timeouts[2];
 	struct as364x_config config;
 	struct as364x_reg_cache regs;
-	struct edp_client *edpc;
 	struct sysedp_consumer *sysedpc;
-	unsigned edp_state;
 	atomic_t in_use;
 	int flash_cap_size;
 	int torch_cap_size;
@@ -314,113 +311,6 @@ static int as364x_reg_wr(struct as364x_info *info, u8 reg, u8 val)
 	return err;
 }
 
-static void as364x_edp_lowest(struct as364x_info *info)
-{
-	if (!info->edpc)
-		return;
-
-	info->edp_state = info->edpc->num_states - 1;
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
-	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
-		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
-		dev_err(&info->i2c_client->dev,
-			"UNABLE TO SET LOWEST EDP STATE!\n");
-	}
-}
-
-static void as364x_throttle(unsigned int new_state, void *priv_data);
-static void as364x_edp_register(struct as364x_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_notice(&info->i2c_client->dev,
-			"%s: NO edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "as364x", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->throttle = as364x_throttle;
-	edpc->private_data = info;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA\n",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	as364x_edp_lowest(info);
-}
-
-static int as364x_edp_req(struct as364x_info *info,
-		u8 mask, u8 *curr1, u8 *curr2)
-{
-	unsigned *estates;
-	unsigned total_curr = 0;
-	unsigned curr_mA;
-	unsigned approved;
-	unsigned new_state;
-	int ret = 0;
-
-	if (!info->edpc)
-		return 0;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %d curr1 = %02x curr2 = %02x\n",
-		__func__, mask, *curr1, *curr2);
-	estates = info->edpc->states;
-	if (mask & 1)
-		total_curr += *curr1;
-	if (mask & 2)
-		total_curr += *curr2;
-	curr_mA = GET_CURRENT_BY_INDEX(info, total_curr);
-
-	for (new_state = info->edpc->num_states - 1; new_state > 0; new_state--)
-		if (estates[new_state] >= curr_mA)
-			break;
-
-	dev_dbg(&info->i2c_client->dev,
-		"edp req: %d curr = %d mA\n", new_state, curr_mA);
-	ret = edp_update_client_request(info->edpc, new_state, &approved);
-	if (ret) {
-		dev_err(&info->i2c_client->dev, "E state transition failed\n");
-		return ret;
-	}
-
-	if (approved > new_state) { /* edp manager returned less current */
-		curr_mA = GET_INDEX_BY_CURRENT(info, estates[approved]);
-		if (mask & 1)
-			*curr1 = curr_mA * (*curr1) / total_curr;
-		*curr2 = curr_mA - (*curr1);
-		dev_dbg(&info->i2c_client->dev,
-			"new state: %d curr = %d mA (%d %d)\n",
-			approved, curr_mA, *curr1, *curr2);
-	}
-
-	info->edp_state = approved;
-
-	return 0;
-}
-
 static unsigned int as364x_sysedp_count_state(struct as364x_info *info,
 					      u8 mask, u8 curr1, u8 curr2)
 {
@@ -469,10 +359,6 @@ static int as364x_set_leds(struct as364x_info *info,
 	} else
 		curr2 = 0;
 
-	err = as364x_edp_req(info, mask, &curr1, &curr2);
-	if (err)
-		return err;
-
 	regs[0] = curr1;
 	regs[1] = curr2;
 	regs[2] = info->regs.txmask;
@@ -495,8 +381,6 @@ static int as364x_set_leds(struct as364x_info *info,
 	if (!err) {
 		info->regs.led1_curr = curr1;
 		info->regs.led2_curr = curr2;
-		if ((curr1 | curr2) == 0)
-			as364x_edp_lowest(info);
 	}
 
 	dev_dbg(info->dev, "%s %x %x %x %x control = %x\n",
@@ -960,7 +844,6 @@ static int as364x_power_on(struct as364x_info *info)
 
 	if (!err)
 		info->power_on = 1;
-	as364x_edp_lowest(info);
 	sysedp_set_state(info->sysedpc, 0);
 power_on_end:
 	mutex_unlock(&info->mutex);
@@ -1002,7 +885,6 @@ static int as364x_power_off(struct as364x_info *info)
 
 	if (!err)
 		info->power_on = 0;
-	as364x_edp_lowest(info);
 	sysedp_set_state(info->sysedpc, 0);
 power_off_end:
 	mutex_unlock(&info->mutex);
@@ -1056,16 +938,6 @@ static int as364x_power(struct as364x_info *info, int pwr)
 		return 0;
 
 	return err;
-}
-
-static void as364x_throttle(unsigned int new_state, void *priv_data)
-{
-	struct as364x_info *info = priv_data;
-
-	if (!info)
-		return;
-
-	as364x_power(info, NVC_PWR_OFF);
 }
 
 static int as364x_get_dev_id(struct as364x_info *info)
@@ -1556,7 +1428,6 @@ static int as364x_probe(
 	spin_unlock(&as364x_spinlock);
 
 	as364x_power_get(info);
-	as364x_edp_register(info);
 	info->sysedpc = sysedp_create_consumer("as364x", "as364x");
 
 	err = as364x_get_dev_id(info);

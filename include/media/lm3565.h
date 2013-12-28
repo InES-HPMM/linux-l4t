@@ -65,7 +65,6 @@ struct lm3565_platform_data {
 	struct nvc_gpio_pdata strobe_gpio;
 	/* GPIO configuration connected to the enable pin */
 	struct nvc_gpio_pdata enable_gpio;
-	struct edp_client edpc_config;
 
 	int (*power_on_callback)(struct lm3565_power_rail *pw);
 	int (*power_off_callback)(struct lm3565_power_rail *pw);
