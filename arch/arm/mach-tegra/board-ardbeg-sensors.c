@@ -338,15 +338,7 @@ static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
 	return 0;
 }
 
-static unsigned ar0261_estates[] = { 302, 0 };
-
 struct ar0261_platform_data ardbeg_ar0261_data = {
-	.edpc_config = {
-		.states = ar0261_estates,
-		.num_states = ARRAY_SIZE(ar0261_estates),
-		.e0_index = ARRAY_SIZE(ar0261_estates) - 1,
-		.priority = EDP_MAX_PRIO + 1,
-	},
 	.power_on = ardbeg_ar0261_power_on,
 	.power_off = ardbeg_ar0261_power_off,
 	.mclk_name = "mclk2",
@@ -460,15 +452,7 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 	return 0;
 }
 
-static unsigned imx135_estates[] = { 486, 0 };
-
 struct imx135_platform_data ardbeg_imx135_data = {
-	.edpc_config = {
-		.states = imx135_estates,
-		.num_states = ARRAY_SIZE(imx135_estates),
-		.e0_index = ARRAY_SIZE(imx135_estates) - 1,
-		.priority = EDP_MAX_PRIO + 1,
-	},
 	.flash_cap = {
 		.enable = 1,
 		.edge_trig_en = 1,
