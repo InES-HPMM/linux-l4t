@@ -159,7 +159,6 @@ static struct max77665_haptic_platform_data max77665_haptic_pdata = {
 	.cont_mode = MAX77665_CONT_MODE,
 	.motor_startup_val = 0,
 	.scf_val = 2,
-	.edp_states = { 360, 0 },
 };
 
 static struct max77665_charger_cable maxim_cable[] = {
