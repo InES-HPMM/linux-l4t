@@ -59,8 +59,6 @@ struct tegra_sdhci_platform_data {
 	struct mmc_platform_data mmc_data;
 	bool power_off_rail;
 	bool en_freq_scaling;
-	bool edp_support;
-	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool cd_wakeup_incapable;
 	bool en_nominal_vcore_tuning;
 	unsigned int calib_3v3_offsets;	/* Format to be filled: 0xXXXXPDPU */

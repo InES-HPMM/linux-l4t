@@ -197,9 +197,6 @@ struct sdhci_host {
 #define SDHCI_TUNING_MODE_1	0
 	struct timer_list	tuning_timer;	/* Timer for tuning */
 
-	struct edp_client *sd_edp_client;
-	unsigned int edp_states[SD_EDP_NUM_STATES];
-	bool edp_support;
 	struct sysedp_consumer *sysedpc;
 
 	struct delayed_work	delayed_clk_gate_wrk;

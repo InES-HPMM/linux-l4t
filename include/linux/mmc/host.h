@@ -23,12 +23,6 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
 
-enum sd_edp_states {
-	SD_EDP_HIGH,
-	SD_EDP_LOW,
-	SD_EDP_NUM_STATES,
-};
-
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
 	unsigned short	vdd;
