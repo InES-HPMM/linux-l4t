@@ -262,13 +262,6 @@ static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
 	if (power_on == on) {
 		GPS_DBG("ignore power control: %d\n", on);
 	} else if (on) {
-		/*power on*/
-		if (hw->ext_power_on) {
-			err = hw->ext_power_on(0);
-			if (err)
-				GPS_ERR("ext_power_on fail\n");
-		}
-
 		if (hw->ext_power_on) {
 			err = hw->ext_power_on(1);
 			if (err)
@@ -283,6 +276,7 @@ static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
 			if (err)
 				GPS_ERR("ext_power_off fail\n");
 		}
+		mdelay(10);
 
 	}
 	power_on = on;
