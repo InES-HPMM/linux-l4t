@@ -70,7 +70,6 @@ struct ar0261_power_rail {
 
 struct ar0261_platform_data {
 	const char *mclk_name; /* NULL for default default_mclk */
-	struct edp_client edpc_config;
 	int (*power_on)(struct ar0261_power_rail *pw);
 	int (*power_off)(struct ar0261_power_rail *pw);
 };

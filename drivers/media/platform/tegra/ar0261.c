@@ -23,7 +23,6 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
-#include <linux/edp.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regmap.h>
 #include <media/ar0261.h>
@@ -44,8 +43,6 @@ struct ar0261_info {
 	struct ar0261_platform_data *pdata;
 	struct clk *mclk;
 	struct regmap *regmap;
-	struct edp_client *edpc;
-	unsigned int edp_state;
 	atomic_t in_use;
 	int mode;
 };
@@ -666,95 +663,6 @@ ar0261_get_gain_reg(struct ar0261_reg *regs, u16 gain)
 	regs->val = gain;
 }
 
-static void ar0261_edp_lowest(struct ar0261_info *info)
-{
-	if (!info->edpc)
-		return;
-
-	info->edp_state = info->edpc->num_states - 1;
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
-	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
-		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
-		dev_err(&info->i2c_client->dev,
-			"UNABLE TO SET LOWEST EDP STATE!\n");
-	}
-}
-
-static void ar0261_edp_throttle(unsigned int new_state, void *priv_data)
-{
-	struct ar0261_info *info = priv_data;
-
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
-}
-
-static void ar0261_edp_register(struct ar0261_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_warn(&info->i2c_client->dev,
-			"%s: No edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "ar0261", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->private_data = info;
-	edpc->throttle = ar0261_edp_throttle;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	ar0261_edp_lowest(info);
-}
-
-static int ar0261_edp_req(struct ar0261_info *info, unsigned new_state)
-{
-	unsigned approved;
-	int ret = 0;
-
-	if (!info->edpc)
-		return 0;
-
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
-	ret = edp_update_client_request(info->edpc, new_state, &approved);
-	if (ret) {
-		dev_err(&info->i2c_client->dev, "E state transition failed\n");
-		return ret;
-	}
-
-	if (approved > new_state) {
-		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
-		return -ENODEV;
-	}
-
-	info->edp_state = approved;
-	return 0;
-}
-
 static int
 ar0261_read_reg(struct ar0261_info *info, u16 addr, u16 *val)
 {
@@ -857,14 +765,6 @@ ar0261_set_mode(struct ar0261_info *info, struct ar0261_mode *mode)
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
 		return -EINVAL;
-	}
-
-	/* request highest edp state */
-	err = ar0261_edp_req(info, 0);
-	if (err) {
-		dev_err(&info->i2c_client->dev,
-			"%s: ERROR cannot set edp state! %d\n", __func__, err);
-		return err;
 	}
 
 	/*
@@ -1236,10 +1136,9 @@ ar0261_open(struct inode *inode, struct file *file)
 	if (err < 0)
 		return err;
 
-	if (info->pdata && info->pdata->power_on) {
+	if (info->pdata && info->pdata->power_on)
 		err = info->pdata->power_on(&info->power);
-		ar0261_edp_lowest(info);
-	} else {
+	else {
 		dev_err(&info->i2c_client->dev,
 			"%s:no valid power_on function.\n", __func__);
 		err = -EEXIST;
@@ -1261,7 +1160,6 @@ ar0261_release(struct inode *inode, struct file *file)
 
 	if (info->pdata && info->pdata->power_off)
 		info->pdata->power_off(&info->power);
-	ar0261_edp_lowest(info);
 
 	ar0261_mclk_disable(info);
 
@@ -1375,8 +1273,6 @@ ar0261_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, info);
 
 	ar0261_power_get(info);
-
-	ar0261_edp_register(info);
 
 	memcpy(&info->miscdev_info,
 		&ar0261_device,
