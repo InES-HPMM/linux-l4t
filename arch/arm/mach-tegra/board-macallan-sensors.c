@@ -476,8 +476,6 @@ static int macallan_as3648_power_off(struct as364x_power_rail *pw)
 	return regulator_disable(macallan_vcmvdd);
 }
 
-/* estate values under 1000/200/0/0mA, 3.5V input */
-static unsigned as364x_estates[] = {3500, 2375, 560, 456, 0};
 static struct as364x_platform_data macallan_as3648_pdata = {
 	.config		= {
 		.led_mask	= 3,
@@ -493,13 +491,6 @@ static struct as364x_platform_data macallan_as3648_pdata = {
 	.dev_name	= "torch",
 	.type		= AS3648,
 	.gpio_strobe	= CAM_FLASH_STROBE,
-	.edpc_config	= {
-		.states		= as364x_estates,
-		.num_states	= ARRAY_SIZE(as364x_estates),
-		.e0_index	= ARRAY_SIZE(as364x_estates) - 1,
-		.priority	= EDP_MAX_PRIO + 2,
-		},
-
 	.power_on_callback = macallan_as3648_power_on,
 	.power_off_callback = macallan_as3648_power_off,
 };

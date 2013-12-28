@@ -549,9 +549,6 @@ static struct dw9718_platform_data ardbeg_dw9718_data = {
 	.detect = ardbeg_dw9718_detect,
 };
 
-/* estate values under 1000/200/0/0mA, 3.5V input */
-static unsigned max77387_estates[] = {3500, 710, 0};
-
 static struct max77387_platform_data ardbeg_max77387_pdata = {
 	.config		= {
 		.led_mask		= 3,
@@ -579,12 +576,6 @@ static struct max77387_platform_data ardbeg_max77387_pdata = {
 	.cfg		= 0,
 	.dev_name	= "torch",
 	.gpio_strobe	= CAM_FLASH_STROBE,
-	.edpc_config	= {
-		.states		= max77387_estates,
-		.num_states	= ARRAY_SIZE(max77387_estates),
-		.e0_index	= ARRAY_SIZE(max77387_estates) - 1,
-		.priority	= EDP_MAX_PRIO + 2,
-		},
 };
 
 static struct as364x_platform_data ardbeg_as3648_data = {

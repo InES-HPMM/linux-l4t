@@ -98,8 +98,6 @@ static struct nvc_torch_lumi_level_v1 pluto_max77665_lumi_tbl[] = {
 	{15, 1375060},
 };
 
-static unsigned max77665_f_estates[] = { 3500, 2375, 560, 456, 0 };
-
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
 		.led_mask		= 3,
@@ -137,12 +135,6 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		},
 	.dev_name	= "torch",
 	.gpio_strobe	= CAM_FLASH_STROBE,
-	.edpc_config	= {
-		.states = max77665_f_estates,
-		.num_states = ARRAY_SIZE(max77665_f_estates),
-		.e0_index = ARRAY_SIZE(max77665_f_estates) - 1,
-		.priority = EDP_MAX_PRIO + 2,
-		},
 };
 
 static struct max77665_haptic_platform_data max77665_haptic_pdata = {
