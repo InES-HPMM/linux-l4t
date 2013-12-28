@@ -45,7 +45,6 @@
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
-#include <linux/edp.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
 #include <linux/clocksource.h>
@@ -581,7 +580,6 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 
 static void __init tegra_macallan_early_init(void)
 {
-	macallan_sysedp_init();
 	tegra_clk_init_from_table(macallan_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("macallan");
@@ -621,8 +619,6 @@ static void __init tegra_macallan_late_init(void)
 	macallan_sensors_init();
 	macallan_soctherm_init();
 	tegra_register_fuse();
-	macallan_sysedp_core_init();
-	macallan_sysedp_psydepl_init();
 }
 
 static void __init macallan_ramconsole_reserve(unsigned long size)

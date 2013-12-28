@@ -221,7 +221,6 @@ config ARCH_TEGRA_14x_SOC
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select CPA
 	select CPU_V7
-	select EDP_FRAMEWORK
 	select GIC_SET_MULTIPLE_CPUS if SMP
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS if TEGRA_NVMAP
 	select NVMAP_DEFERRED_CACHE_MAINT if TEGRA_NVMAP
@@ -342,7 +341,6 @@ config MACH_MACALLAN
        depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
-       select EDP_FRAMEWORK
        help
          Support for NVIDIA MACALLAN development platform
 
@@ -351,7 +349,6 @@ config MACH_TEGRA_PLUTO
        depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_CS42L73 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X if SND_SOC
-       select EDP_FRAMEWORK
        help
          Support for NVIDIA PLUTO development platform
 

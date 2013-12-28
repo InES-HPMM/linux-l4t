@@ -870,17 +870,6 @@ static const struct tegra_modem_operations baseband_operations = {
 	.init = baseband_init,
 };
 
-#define MODEM_BOOT_EDP_MAX 0
-/* FIXME: get accurate boot current value */
-static unsigned int modem_boot_edp_states[] = { 1900, 0 };
-static struct edp_client modem_boot_edp_client = {
-	.name = "modem_boot",
-	.states = modem_boot_edp_states,
-	.num_states = ARRAY_SIZE(modem_boot_edp_states),
-	.e0_index = MODEM_BOOT_EDP_MAX,
-	.priority = EDP_MAX_PRIO,
-};
-
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.ops = &baseband_operations,
 	.wake_gpio = -1,
@@ -892,8 +881,6 @@ static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.short_autosuspend_delay = 50,
 	.tegra_ehci_device = &tegra_ehci2_device,
 	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
-	.modem_boot_edp_client = &modem_boot_edp_client,
-	.edp_manager_name = "battery",
 	.i_breach_ppm = 500000,
 	/* FIXME: get useful adjperiods */
 	.i_thresh_3g_adjperiod = 10000,
@@ -1279,7 +1266,6 @@ static void __init pluto_dtv_init(void)
 
 static void __init tegra_pluto_early_init(void)
 {
-	pluto_sysedp_init();
 	tegra_clk_init_from_table(pluto_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegra_pluto");
@@ -1320,8 +1306,6 @@ static void __init tegra_pluto_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	pluto_soctherm_init();
 	tegra_register_fuse();
-	pluto_sysedp_core_init();
-	pluto_sysedp_psydepl_init();
 }
 
 static void __init pluto_ramconsole_reserve(unsigned long size)
