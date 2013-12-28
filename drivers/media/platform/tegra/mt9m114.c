@@ -423,8 +423,6 @@ struct mt9m114_info {
 	const struct mt9m114_reg	*mode;
 	u8				i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
 	struct clk *mclk;
-	struct edp_client *edpc;
-	unsigned int edp_state;
 	struct sysedp_consumer *sysedpc;
 };
 
@@ -452,95 +450,6 @@ static const struct regmap_config sensor_regmap_config = {
 
 static long mt9m114_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg);
-
-static void mt9m114_edp_lowest(struct mt9m114_info *info)
-{
-	if (!info->edpc)
-		return;
-
-	info->edp_state = info->edpc->num_states - 1;
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
-	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
-		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY TO HAPPEN!\n");
-		dev_err(&info->i2c_client->dev,
-			"UNABLE TO SET LOWEST EDP STATE!\n");
-	}
-}
-
-static void mt9m114_edp_throttle(unsigned int new_state, void *priv_data)
-{
-	struct mt9m114_info *info = priv_data;
-
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
-}
-
-static void mt9m114_edp_register(struct mt9m114_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_warn(&info->i2c_client->dev,
-			"%s: No edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "mt9m114", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->private_data = info;
-	edpc->throttle = mt9m114_edp_throttle;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	mt9m114_edp_lowest(info);
-}
-
-static int mt9m114_edp_req(struct mt9m114_info *info, unsigned new_state)
-{
-	unsigned approved;
-	int ret = 0;
-
-	if (!info->edpc)
-		return 0;
-
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
-	ret = edp_update_client_request(info->edpc, new_state, &approved);
-	if (ret) {
-		dev_err(&info->i2c_client->dev, "E state transition failed\n");
-		return ret;
-	}
-
-	if (approved > new_state) {
-		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
-		return -ENODEV;
-	}
-
-	info->edp_state = approved;
-	return 0;
-}
 
 static inline void mt9m114_msleep(u32 t)
 {
@@ -646,7 +555,6 @@ int mt9m114_release(struct inode *inode, struct file *file)
 
 	if (info->pdata && info->pdata->power_off) {
 		info->pdata->power_off(&info->power);
-		mt9m114_edp_lowest(info);
 		mt9m114_mclk_disable(info);
 		sysedp_set_state(info->sysedpc, 0);
 	}
@@ -774,13 +682,6 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 		return -EINVAL;
 	}
 
-	/* request highest edp state */
-	err = mt9m114_edp_req(info, 0);
-	if (err) {
-		dev_err(&info->i2c_client->dev,
-			"%s: ERROR cannot set edp state! %d\n", __func__, err);
-		return err;
-	}
 	sysedp_set_state(info->sysedpc, 1);
 
 	err = mt9m114_write_table(
@@ -929,7 +830,6 @@ static int mt9m114_probe(struct i2c_client *client,
 	}
 
 	mt9m114_power_get(info);
-	mt9m114_edp_register(info);
 	info->sysedpc = sysedp_create_consumer("mt9m114", "mt9m114");
 	mt9m114_mode_info_init(info);
 
