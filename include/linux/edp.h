@@ -125,54 +125,6 @@ struct edp_governor {
 	unsigned int refcnt;
 };
 
-#ifdef CONFIG_EDP_FRAMEWORK
-extern struct dentry *edp_debugfs_dir;
-
-extern int edp_register_manager(struct edp_manager *mgr);
-extern int edp_unregister_manager(struct edp_manager *mgr);
-extern struct edp_manager *edp_get_manager(const char *name);
-
-extern int edp_register_client(struct edp_manager *mgr,
-		struct edp_client *client);
-extern int edp_unregister_client(struct edp_client *client);
-extern int edp_update_client_request(struct edp_client *client,
-		unsigned int req, unsigned int *approved);
-extern struct edp_client *edp_get_client(const char *name);
-
-/*
- * EDP lender: An EDP client whose device (a) typically draws current less
- * than some (dynamically varying) threshold (b) occasionally draws more
- * than its threshold but not more than what is allowed by its current E-state
- * and (c) asserts a side-band signal prior to exceeding the threshold
- *
- * EDP borrower: An EDP client which (a) gets its base current consumption
- * budget by setting an E-state with the EDP manager (b) borrows from a
- * lender's additional current budget according to the difference between
- * its E-state and threshold when the side-band is deasserted and
- * (c) stops borrowing whenever the side-band is asserted
- *
- * EDP loan: a contract allowing an EDP borrower to borrow from a lender.
- *
- * The loan is registered via edp_register_loan. In order to register
- * a loan, both the lender and borrower needs to be registered with the same
- * manager. The contract is terminated with edp_unregister_loan.
- * The lender updates its threshold values using edp_update_loan_threshold.
- * Whenever there is a change in the loan size (due to a change in the
- * lender's E-state or threshold), the borrowr is notified through
- * notify_loan_update.
- */
-extern int edp_register_loan(struct edp_client *lender,
-		struct edp_client *borrower);
-extern int edp_unregister_loan(struct edp_client *lender,
-		struct edp_client *borrower);
-extern int edp_update_loan_threshold(struct edp_client *lender,
-		unsigned int threshold);
-
-extern int edp_register_governor(struct edp_governor *gov);
-extern int edp_unregister_governor(struct edp_governor *gov);
-extern struct edp_governor *edp_get_governor(const char *name);
-extern int edp_set_governor(struct edp_manager *mgr, struct edp_governor *gov);
-#else
 static inline int edp_register_manager(struct edp_manager *mgr)
 { return -ENODEV; }
 static inline int edp_unregister_manager(struct edp_manager *mgr)
@@ -207,6 +159,5 @@ static inline struct edp_governor *edp_get_governor(const char *name)
 static inline int edp_set_governor(struct edp_manager *mgr,
 		struct edp_governor *gov)
 { return -ENODEV; }
-#endif
 
 #endif
