@@ -1,0 +1,14 @@
+Tegra ADSP bindings
+-------------------
+
+The Audio DSP (ADSP) handles audio related modules.
+
+Required properties:
+ - compatible:	should be set to "nvidia,tegra210-adsp"
+ - reg:		should contain ADSP registers' location and length
+
+Example:
+	adsp {
+		compatible = "nvidia,tegra210-adsp";
+		reg = <0x70080000 0x1000>;
+	};

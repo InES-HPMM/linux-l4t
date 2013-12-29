@@ -6,4 +6,5 @@ source "drivers/platform/goldfish/Kconfig"
 endif
 if ARCH_TEGRA
 source "drivers/platform/tegra/Kconfig"
+source "drivers/platform/tegra/nvadsp/Kconfig"
 endif

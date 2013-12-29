@@ -11,6 +11,7 @@ ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-y                                   += mipi-cal.o
 endif
 endif
+obj-$(CONFIG_TEGRA_NVADSP)		+= nvadsp/
 
 obj-y += mc/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o

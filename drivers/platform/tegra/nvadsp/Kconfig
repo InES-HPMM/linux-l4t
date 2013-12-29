@@ -1,0 +1,8 @@
+config TEGRA_NVADSP
+	bool "Enable Host ADSP driver"
+	depends on ARCH_TEGRA_APE
+	default n
+	help
+	  Enables support for Host ADSP driver.
+
+	  If unsure, say N
