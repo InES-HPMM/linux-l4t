@@ -186,7 +186,6 @@ ENTRY(dmac_inv_range)
 	dcache_line_size x2, x3
 	sub	x3, x2, #1
 	bic	x0, x0, x3
-	bic	x1, x1, x3
 1:	dc	ivac, x0			// invalidate D / U line
 	add	x0, x0, x2
 	cmp	x0, x1
