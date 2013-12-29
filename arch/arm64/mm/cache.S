@@ -232,7 +232,7 @@ ENDPROC(dmac_map_area)
  */
 ENTRY(dmac_unmap_area)
 	add	x1, x1, x0
-	cmp	x2, #DMA_FROM_DEVICE
+	cmp	x2, #DMA_TO_DEVICE
 	b.ne	dmac_inv_range
 	ret
 ENDPROC(dmac_unmap_area)
