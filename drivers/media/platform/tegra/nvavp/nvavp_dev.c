@@ -10,6 +10,7 @@
 
 #include <linux/uaccess.h>
 #include <linux/clk.h>
+#include <linux/compat.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/dma-buf.h>
@@ -1616,6 +1617,57 @@ err_dmabuf_attach:
 	return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static int nvavp_pushbuffer_submit_compat_ioctl(struct file *filp,
+							unsigned int cmd,
+							unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_pushbuffer_submit_hdr_v32 hdr_v32;
+	struct nvavp_pushbuffer_submit_hdr __user *user_hdr;
+	int ret = 0;
+
+	if (_IOC_DIR(cmd) & _IOC_WRITE) {
+		if (copy_from_user(&hdr_v32, (void __user *)arg,
+			sizeof(struct nvavp_pushbuffer_submit_hdr_v32)))
+			return -EFAULT;
+	}
+
+	if (!hdr_v32.cmdbuf.mem)
+		return 0;
+
+	user_hdr = compat_alloc_user_space(sizeof(*user_hdr));
+	if (!access_ok(VERIFY_WRITE, user_hdr, sizeof(*user_hdr)))
+		return -EFAULT;
+
+	if (__put_user(hdr_v32.cmdbuf.mem, &user_hdr->cmdbuf.mem)
+	    || __put_user(hdr_v32.cmdbuf.offset, &user_hdr->cmdbuf.offset)
+	    || __put_user(hdr_v32.cmdbuf.words, &user_hdr->cmdbuf.words)
+	    || __put_user((void __user *)(unsigned long)hdr_v32.relocs,
+			  &user_hdr->relocs)
+	    || __put_user(hdr_v32.num_relocs, &user_hdr->num_relocs)
+	    || __put_user((void __user *)(unsigned long)hdr_v32.syncpt,
+			  &user_hdr->syncpt)
+	    || __put_user(hdr_v32.flags, &user_hdr->flags))
+		return -EFAULT;
+
+	ret = nvavp_pushbuffer_submit_ioctl(filp, cmd, (unsigned long)user_hdr);
+	if (ret)
+		return ret;
+
+	if (__get_user(hdr_v32.syncpt, &user_hdr->syncpt))
+		return -EFAULT;
+
+	if (copy_to_user((void __user *)arg, &hdr_v32,
+			  sizeof(struct nvavp_pushbuffer_submit_hdr_v32))) {
+		ret = -EFAULT;
+	}
+
+	return ret;
+}
+#endif
+
 static int nvavp_wake_avp_ioctl(struct file *filp, unsigned int cmd,
 							unsigned long arg)
 {
@@ -1904,11 +1956,37 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 	return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static long tegra_nvavp_compat_ioctl(struct file *filp, unsigned int cmd,
+			    unsigned long arg)
+{
+	int ret = 0;
+
+	if (_IOC_TYPE(cmd) != NVAVP_IOCTL_MAGIC ||
+	    _IOC_NR(cmd) < NVAVP_IOCTL_MIN_NR ||
+	    _IOC_NR(cmd) > NVAVP_IOCTL_MAX_NR)
+		return -EFAULT;
+
+	switch (cmd) {
+	case NVAVP_IOCTL_PUSH_BUFFER_SUBMIT32:
+		ret = nvavp_pushbuffer_submit_compat_ioctl(filp, cmd, arg);
+		break;
+	default:
+		ret = tegra_nvavp_ioctl(filp, cmd, arg);
+		break;
+	}
+	return ret;
+}
+#endif
+
 static const struct file_operations tegra_video_nvavp_fops = {
 	.owner		= THIS_MODULE,
 	.open		= tegra_nvavp_video_open,
 	.release	= tegra_nvavp_video_release,
 	.unlocked_ioctl	= tegra_nvavp_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl	= tegra_nvavp_compat_ioctl,
+#endif
 };
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -1917,6 +1995,9 @@ static const struct file_operations tegra_audio_nvavp_fops = {
 	.open           = tegra_nvavp_audio_open,
 	.release        = tegra_nvavp_audio_release,
 	.unlocked_ioctl = tegra_nvavp_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = tegra_nvavp_compat_ioctl,
+#endif
 };
 #endif
 
