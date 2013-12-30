@@ -226,40 +226,6 @@ static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-#ifndef CONFIG_USE_OF
-static struct tegra_i2c_platform_data dalmore_i2c1_platform_data = {
-	.bus_clk_rate	= 100000,
-	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C1_SDA,
-};
-
-static struct tegra_i2c_platform_data dalmore_i2c2_platform_data = {
-	.bus_clk_rate	= 100000,
-	.is_clkon_always = true,
-	.scl_gpio	= TEGRA_GPIO_I2C2_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C2_SDA,
-};
-
-static struct tegra_i2c_platform_data dalmore_i2c3_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
-};
-
-static struct tegra_i2c_platform_data dalmore_i2c4_platform_data = {
-	.bus_clk_rate	= 10000,
-	.scl_gpio	= TEGRA_GPIO_I2C4_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C4_SDA,
-};
-
-static struct tegra_i2c_platform_data dalmore_i2c5_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
-	.needs_cl_dvfs_clock = true,
-};
-#endif
-
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
@@ -277,19 +243,6 @@ static struct i2c_board_info __initdata nfc_board_info = {
 
 static void dalmore_i2c_init(void)
 {
-#ifndef CONFIG_USE_OF
-	tegra11_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
-	tegra11_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
-	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
-	tegra11_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
-	tegra11_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
-
-	platform_device_register(&tegra11_i2c_device5);
-	platform_device_register(&tegra11_i2c_device4);
-	platform_device_register(&tegra11_i2c_device3);
-	platform_device_register(&tegra11_i2c_device2);
-	platform_device_register(&tegra11_i2c_device1);
-#endif
 	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PW2);
 	i2c_register_board_info(0, &nfc_board_info, 1);
 	i2c_register_board_info(0, &rt5640_board_info, 1);
