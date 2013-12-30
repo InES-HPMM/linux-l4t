@@ -253,10 +253,6 @@
 								regulator-consumer-supply = "vid";
 								regulator-consumer-device = "0-000d";
 							};
-							c24 {
-								regulator-consumer-supply = "vdd";
-								regulator-consumer-device = "0-004c";
-							};
 						};
 					};
 
