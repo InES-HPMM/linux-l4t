@@ -158,63 +158,9 @@ static struct i2c_board_info __initdata bonaire_i2c_bus1_board_info[] = {
 	},
 };
 
-static struct tegra_i2c_platform_data bonaire_i2c1_platform_data = {
-	.bus_clk_rate	= 100000,
-};
-
-#if 0	/* !!!FIXME!!! THESE ARE VENTANA SETTINGS */
-static const struct tegra_pingroup_config i2c2_ddc = {
-	.pingroup	= TEGRA_PINGROUP_DDC,
-	.func		= TEGRA_MUX_I2C2,
-};
-
-static const struct tegra_pingroup_config i2c2_gen2 = {
-	.pingroup	= TEGRA_PINGROUP_PTA,
-	.func		= TEGRA_MUX_I2C2,
-};
-#endif
-
-static struct tegra_i2c_platform_data bonaire_i2c2_platform_data = {
-	.bus_clk_rate	= 100000,
-#if 0	/* !!!FIXME!!!! TESE ARE VENTANA SETTINGS */
-	.bus_mux	= { &i2c2_ddc, &i2c2_gen2 },
-	.bus_mux_len	= { 1, 1 },
-#endif
-};
-
-static struct tegra_i2c_platform_data bonaire_i2c3_platform_data = {
-	.bus_clk_rate	= 100000,
-};
-
-static struct tegra_i2c_platform_data bonaire_i2c4_platform_data = {
-	.bus_clk_rate	= 100000,
-};
-
-static struct tegra_i2c_platform_data bonaire_i2c5_platform_data = {
-	.bus_clk_rate	= 100000,
-};
-
-static struct tegra_i2c_platform_data bonaire_i2c6_platform_data = {
-	.bus_clk_rate	= 100000,
-};
-
 static void bonaire_i2c_init(void)
 {
-	tegra12_i2c_device1.dev.platform_data = &bonaire_i2c1_platform_data;
-	tegra12_i2c_device2.dev.platform_data = &bonaire_i2c2_platform_data;
-	tegra12_i2c_device3.dev.platform_data = &bonaire_i2c3_platform_data;
-	tegra12_i2c_device4.dev.platform_data = &bonaire_i2c4_platform_data;
-	tegra12_i2c_device5.dev.platform_data = &bonaire_i2c5_platform_data;
-	tegra12_i2c_device6.dev.platform_data = &bonaire_i2c6_platform_data;
-
 	i2c_register_board_info(0, bonaire_i2c_bus1_board_info, 1);
-
-	platform_device_register(&tegra12_i2c_device6);
-	platform_device_register(&tegra12_i2c_device5);
-	platform_device_register(&tegra12_i2c_device4);
-	platform_device_register(&tegra12_i2c_device3);
-	platform_device_register(&tegra12_i2c_device2);
-	platform_device_register(&tegra12_i2c_device1);
 }
 
 static void bonaire_apbdma_init(void)
@@ -566,6 +512,7 @@ struct of_dev_auxdata tegra_bonaire_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISPB_BASE, "isp.1", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	T124_I2C_OF_DEV_AUXDATA,
 	{}
 };
 #endif
