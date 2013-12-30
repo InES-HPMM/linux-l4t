@@ -789,6 +789,7 @@ static struct resource sdhci_resource2[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
+#endif
 
 static struct resource sdhci_resource3[] = {
 	[0] = {
@@ -843,6 +844,7 @@ struct platform_device tegra_sdhci_device2 = {
 	.resource	= sdhci_resource2,
 	.num_resources	= ARRAY_SIZE(sdhci_resource2),
 };
+#endif
 
 struct platform_device tegra_sdhci_device3 = {
 	.name		= "sdhci-tegra",
@@ -1060,6 +1062,7 @@ static struct resource tegra_uarte_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 };
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define UART_DMA_BIT_MASK DMA_BIT_MASK(64)
@@ -1117,6 +1120,7 @@ struct platform_device tegra_uarte_device = {
 		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
 };
+#endif
 
 static struct plat_serial8250_port debug_uarta_platform_data[] = {
 	{
@@ -1472,7 +1476,6 @@ struct platform_device tegra_dam_device2 = {
 	.num_resources = ARRAY_SIZE(dam_resource2),
 };
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static u64 tegra_hda_dma_mask = DMA_BIT_MASK(32);
 static struct resource hda_platform_resources[] = {
 	[0] = {
@@ -2729,6 +2732,7 @@ struct platform_device tegra_disp2_device = {
 		.platform_data = 0,
 	},
 };
+#endif
 
 struct platform_device tegra_nvmap_device = {
 	.name	= "tegra-nvmap",
