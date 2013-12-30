@@ -118,37 +118,6 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ NULL,			NULL,		0,		0},
 };
 
-static struct tegra_i2c_platform_data vcm30_t124_i2c1_platform_data = {
-	.bus_clk_rate	= 100000,
-	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C1_SDA,
-};
-
-static struct tegra_i2c_platform_data vcm30_t124_i2c2_platform_data = {
-	.bus_clk_rate	= 100000,
-	.is_clkon_always = true,
-	.scl_gpio	= TEGRA_GPIO_I2C2_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C2_SDA,
-};
-
-static struct tegra_i2c_platform_data vcm30_t124_i2c3_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
-};
-
-static struct tegra_i2c_platform_data vcm30_t124_i2c4_platform_data = {
-	.bus_clk_rate	= 10000,
-	.scl_gpio	= TEGRA_GPIO_I2C4_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C4_SDA,
-};
-
-static struct tegra_i2c_platform_data vcm30_t124_i2c5_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
-};
-
 static struct tegra_nor_platform_data vcm30_t124_nor_data = {
 	.flash = {
 		.map_name = "cfi_probe",
@@ -211,20 +180,8 @@ static struct i2c_board_info __initdata ad1937_board_info = {
 static void vcm30_t124_i2c_init(void)
 {
 	struct board_info board_info;
+
 	tegra_get_board_info(&board_info);
-	/* T124 does not use device tree as of now */
-	tegra12_i2c_device1.dev.platform_data = &vcm30_t124_i2c1_platform_data;
-	tegra12_i2c_device2.dev.platform_data = &vcm30_t124_i2c2_platform_data;
-	tegra12_i2c_device3.dev.platform_data = &vcm30_t124_i2c3_platform_data;
-	tegra12_i2c_device4.dev.platform_data = &vcm30_t124_i2c4_platform_data;
-	tegra12_i2c_device5.dev.platform_data = &vcm30_t124_i2c5_platform_data;
-
-	platform_device_register(&tegra12_i2c_device5);
-	platform_device_register(&tegra12_i2c_device4);
-	platform_device_register(&tegra12_i2c_device3);
-	platform_device_register(&tegra12_i2c_device2);
-	platform_device_register(&tegra12_i2c_device1);
-
 	i2c_register_board_info(0, &wm8731_board_info, 1);
 	i2c_register_board_info(0, &ad1937_board_info, 1);
 }
@@ -480,6 +437,7 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000,
 				"tegra30-ahub-apbif", NULL),
+	T124_I2C_OF_DEV_AUXDATA,
 	T124_SPI_OF_DEV_AUXDATA,
 
 	{}
