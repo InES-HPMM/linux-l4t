@@ -1,7 +1,7 @@
 /*
  * imx135.c - imx135 sensor driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -3288,8 +3288,8 @@ imx135_ioctl(struct file *file,
 	int err = 0;
 	struct imx135_info *info = file->private_data;
 
-	switch (cmd) {
-	case IMX135_IOCTL_SET_POWER:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(IMX135_IOCTL_SET_POWER):
 		if (!info->pdata)
 			break;
 		if (arg && info->pdata->power_on) {
@@ -3304,7 +3304,7 @@ imx135_ioctl(struct file *file,
 			imx135_mclk_disable(info);
 		}
 		break;
-	case IMX135_IOCTL_SET_MODE:
+	case _IOC_NR(IMX135_IOCTL_SET_MODE):
 	{
 		struct imx135_mode mode;
 		if (copy_from_user(&mode, (const void __user *)arg,
@@ -3314,13 +3314,13 @@ imx135_ioctl(struct file *file,
 		}
 		return imx135_set_mode(info, &mode);
 	}
-	case IMX135_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(IMX135_IOCTL_SET_FRAME_LENGTH):
 		return imx135_set_frame_length(info, (u32)arg, true);
-	case IMX135_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(IMX135_IOCTL_SET_COARSE_TIME):
 		return imx135_set_coarse_time(info, (u32)arg, true);
-	case IMX135_IOCTL_SET_GAIN:
+	case _IOC_NR(IMX135_IOCTL_SET_GAIN):
 		return imx135_set_gain(info, (u16)arg, true);
-	case IMX135_IOCTL_GET_STATUS:
+	case _IOC_NR(IMX135_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -3333,7 +3333,7 @@ imx135_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case IMX135_IOCTL_GET_SENSORDATA:
+	case _IOC_NR(IMX135_IOCTL_GET_SENSORDATA):
 	{
 		err = imx135_get_sensor_id(info);
 
@@ -3349,7 +3349,7 @@ imx135_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case IMX135_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(IMX135_IOCTL_SET_GROUP_HOLD):
 	{
 		struct imx135_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
@@ -3359,7 +3359,7 @@ imx135_ioctl(struct file *file,
 		}
 		return imx135_set_group_hold(info, &ae);
 	}
-	case IMX135_IOCTL_SET_HDR_COARSE_TIME:
+	case _IOC_NR(IMX135_IOCTL_SET_HDR_COARSE_TIME):
 	{
 		struct imx135_hdr values;
 
@@ -3374,7 +3374,7 @@ imx135_ioctl(struct file *file,
 		err = imx135_set_hdr_coarse_time(info, &values);
 		break;
 	}
-	case IMX135_IOCTL_SET_FLASH_MODE:
+	case _IOC_NR(IMX135_IOCTL_SET_FLASH_MODE):
 	{
 		struct imx135_flash_control values;
 
@@ -3389,7 +3389,7 @@ imx135_ioctl(struct file *file,
 		err = imx135_set_flash_control(info, &values);
 		break;
 	}
-	case IMX135_IOCTL_GET_FLASH_CAP:
+	case _IOC_NR(IMX135_IOCTL_GET_FLASH_CAP):
 		err = imx135_get_flash_cap(info);
 		break;
 	default:
@@ -3728,6 +3728,9 @@ static const struct file_operations imx135_fileops = {
 	.owner = THIS_MODULE,
 	.open = imx135_open,
 	.unlocked_ioctl = imx135_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = imx135_ioctl,
+#endif
 	.release = imx135_release,
 };
 
