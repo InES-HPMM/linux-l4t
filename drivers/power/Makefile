@@ -30,6 +30,7 @@ obj-$(CONFIG_BATTERY_TOSA)	+= tosa_battery.o
 obj-$(CONFIG_BATTERY_COLLIE)	+= collie_battery.o
 obj-$(CONFIG_BATTERY_WM97XX)	+= wm97xx_battery.o
 obj-$(CONFIG_BATTERY_SBS)	+= sbs-battery.o
+obj-$(CONFIG_BATTERY_LC709203F)	+= lc709203f_battery.o
 obj-$(CONFIG_CHARGER_BQ2419X)   += bq2419x-charger.o
 obj-$(CONFIG_CHARGER_BQ2471X)	+= bq2471x-charger.o
 obj-$(CONFIG_CHARGER_BQ2477X)	+= bq2477x-charger.o
