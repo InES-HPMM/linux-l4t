@@ -34,6 +34,11 @@
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
+
+		cm32181@48 {
+			compatible = "capella,cm32181";
+			reg = <0x48>;
+		};
 	};
 
 	i2c@7000c400 {
