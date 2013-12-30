@@ -1627,6 +1627,8 @@ static int processing_thread(void *arg)
 			complete(&dd->suspend_resume);
 
 			INFO("%s: suspended.", __func__);
+
+			dd->expect_resume_ack = true;
 			while (!dd->resume_in_progress) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
