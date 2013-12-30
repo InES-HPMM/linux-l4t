@@ -249,39 +249,6 @@ static struct i2c_board_info __initdata pluto_i2c_bus3_board_info[] = {
 	},
 };
 
-static struct tegra_i2c_platform_data pluto_i2c1_platform_data = {
-	.bus_clk_rate	= 100000,
-	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C1_SDA,
-};
-
-static struct tegra_i2c_platform_data pluto_i2c2_platform_data = {
-	.bus_clk_rate	= 100000,
-	.is_clkon_always = true,
-	.scl_gpio	= TEGRA_GPIO_I2C2_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C2_SDA,
-};
-
-static struct tegra_i2c_platform_data pluto_i2c3_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
-};
-
-static struct tegra_i2c_platform_data pluto_i2c4_platform_data = {
-	.bus_clk_rate	= 10000,
-	.scl_gpio	= TEGRA_GPIO_I2C4_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C4_SDA,
-};
-
-static struct tegra_i2c_platform_data pluto_i2c5_platform_data = {
-	.bus_clk_rate	= 400000,
-	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
-	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
-	.needs_cl_dvfs_clock = true,
-	.bit_banging_xfer_after_shutdown = true,
-};
-
 static struct aic3262_gpio_setup aic3262_gpio[] = {
 	/* GPIO 1*/
 	{
@@ -338,19 +305,6 @@ static struct i2c_board_info __initdata pluto_codec_aic326x_info = {
 
 static void pluto_i2c_init(void)
 {
-	tegra11_i2c_device1.dev.platform_data = &pluto_i2c1_platform_data;
-	tegra11_i2c_device2.dev.platform_data = &pluto_i2c2_platform_data;
-	tegra11_i2c_device3.dev.platform_data = &pluto_i2c3_platform_data;
-	tegra11_i2c_device4.dev.platform_data = &pluto_i2c4_platform_data;
-	tegra11_i2c_device5.dev.platform_data = &pluto_i2c5_platform_data;
-
-	platform_device_register(&tegra11_i2c_device5);
-	platform_device_register(&tegra11_i2c_device4);
-#ifndef CONFIG_OF
-	platform_device_register(&tegra11_i2c_device3);
-#endif
-	platform_device_register(&tegra11_i2c_device2);
-	platform_device_register(&tegra11_i2c_device1);
 	pluto_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PW2);
 	i2c_register_board_info(0, pluto_i2c_bus3_board_info, 1);
 	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);

@@ -65,6 +65,16 @@
 		status = "okay";
 	};
 
+	i2c@7000c000 {
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
 	i2c@7000c500 {
 		status = "okay";
 		clock-frequency = <100000>;
@@ -139,6 +149,17 @@
 			nvidia,dev_name = "focuser";
 			status = "okay";
 		};
+	};
+
+	i2c@7000c700 {
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000d000 {
+		status = "okay";
+		clock-frequency = <400000>;
+		nvidia,bit-banging-xfer-after-shutdown;
 	};
 
 	spi@7000da00 {
