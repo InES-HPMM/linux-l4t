@@ -1,7 +1,7 @@
 /*
  * dw9718.c - dw9718 focuser driver
  *
- * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -666,21 +666,22 @@ static long dw9718_ioctl(struct file *file,
 	struct dw9718_info *info = file->private_data;
 	int pwr;
 	int err = 0;
-	switch (cmd) {
-	case NVC_IOCTL_PARAM_WR:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
+		dw9718_pm_dev_wr(info, NVC_PWR_ON);
 		err = dw9718_param_wr(info, arg);
 		return err;
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		err = dw9718_param_rd(info, arg);
 		return err;
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
 				__func__, pwr);
 		err = dw9718_pm_dev_wr(info, pwr);
 		return err;
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		if (info->s_mode == NVC_SYNC_SLAVE)
 			pwr = info->s_info->pwr_dev;
 		else
@@ -836,6 +837,9 @@ static const struct file_operations dw9718_fileops = {
 	.owner = THIS_MODULE,
 	.open = dw9718_open,
 	.unlocked_ioctl = dw9718_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = dw9718_ioctl,
+#endif
 	.release = dw9718_release,
 };
 
