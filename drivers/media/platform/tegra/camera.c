@@ -1,7 +1,7 @@
 /*
  * camera.c - generic camera device driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *	Charlie Huang <chahuang@nvidia.com>
@@ -701,48 +701,48 @@ static long camera_ioctl(struct file *file,
 	}
 
 	/* command distributor */
-	switch (cmd) {
-	case PCLLK_IOCTL_CHIP_REG:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(PCLLK_IOCTL_CHIP_REG):
 		err = virtual_device_add(cam_desc.dev, arg);
 		break;
-	case PCLLK_IOCTL_DEV_REG:
+	case _IOC_NR(PCLLK_IOCTL_DEV_REG):
 		err = camera_new_device(cam, arg);
 		break;
-	case PCLLK_IOCTL_DEV_DEL:
+	case _IOC_NR(PCLLK_IOCTL_DEV_DEL):
 		mutex_lock(cam_desc.d_mutex);
 		list_del(&cam->cdev->list);
 		mutex_unlock(cam_desc.d_mutex);
 		camera_remove_device(cam->cdev, true);
 		break;
-	case PCLLK_IOCTL_DEV_FREE:
+	case _IOC_NR(PCLLK_IOCTL_DEV_FREE):
 		err = camera_free_device(cam, arg);
 		break;
-	case PCLLK_IOCTL_SEQ_WR:
+	case _IOC_NR(PCLLK_IOCTL_SEQ_WR):
 		err = camera_seq_wr(cam, arg);
 		break;
-	case PCLLK_IOCTL_SEQ_RD:
+	case _IOC_NR(PCLLK_IOCTL_SEQ_RD):
 		err = camera_seq_rd(cam, arg);
 		break;
-	case PCLLK_IOCTL_PARAM_RD:
+	case _IOC_NR(PCLLK_IOCTL_PARAM_RD):
 		/* err = camera_param_rd(cam, arg); */
 		break;
-	case PCLLK_IOCTL_PWR_WR:
+	case _IOC_NR(PCLLK_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		err = camera_dev_pwr_set(cam, arg);
 		break;
-	case PCLLK_IOCTL_PWR_RD:
+	case _IOC_NR(PCLLK_IOCTL_PWR_RD):
 		err = camera_dev_pwr_get(cam, arg);
 		break;
-	case PCLLK_IOCTL_UPDATE:
+	case _IOC_NR(PCLLK_IOCTL_UPDATE):
 		err = camera_update(cam, arg);
 		break;
-	case PCLLK_IOCTL_LAYOUT_WR:
+	case _IOC_NR(PCLLK_IOCTL_LAYOUT_WR):
 		err = camera_layout_update(cam, arg);
 		break;
-	case PCLLK_IOCTL_LAYOUT_RD:
+	case _IOC_NR(PCLLK_IOCTL_LAYOUT_RD):
 		err = camera_layout_get(cam, arg);
 		break;
-	case PCLLK_IOCTL_DRV_ADD:
+	case _IOC_NR(PCLLK_IOCTL_DRV_ADD):
 		err = camera_add_drivers(cam, arg);
 		break;
 	default:
@@ -803,6 +803,9 @@ static const struct file_operations camera_fileops = {
 	.owner = THIS_MODULE,
 	.open = camera_open,
 	.unlocked_ioctl = camera_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = camera_ioctl,
+#endif
 	.release = camera_release,
 };
 
