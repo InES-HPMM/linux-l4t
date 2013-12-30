@@ -67,6 +67,7 @@ obj-y                                   += board-touch-maxim_sti-spi.o
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)      += hotplug-t210.o
 endif
 
 obj-$(CONFIG_DENVER_CPU)              += denver-knobs.o
@@ -74,10 +75,6 @@ obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-dt-t210.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
-
-ifeq ($(CONFIG_HOTPLUG_CPU),y)
-obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
-endif
 
 ifeq ($(CONFIG_PM_SLEEP),y)
 obj-y                                 += pm.o
