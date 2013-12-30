@@ -723,7 +723,7 @@ static int tegra_pcie_detach(void)
 	return err;
 }
 
-static void tegra_pcie_prsnt_map_override(bool prsnt)
+static void tegra_pcie_prsnt_map_override(int index, bool prsnt)
 {
 	unsigned int data;
 
@@ -731,13 +731,13 @@ static void tegra_pcie_prsnt_map_override(bool prsnt)
 		return;
 	/* currently only hotplug on root port 0 supported */
 	PR_FUNC_LINE;
-	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, 0);
+	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
 	data &= ~PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
 	if (prsnt)
 		data |= PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT;
 	else
 		data |= PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
-	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, 0);
+	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
 }
 
 static void work_hotplug_handler(struct work_struct *work)
@@ -1248,7 +1248,7 @@ static int tegra_pcie_power_off(void)
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
 	}
-	tegra_pcie_prsnt_map_override(false);
+	tegra_pcie_prsnt_map_override(0, false);
 	tegra_pcie_pme_turnoff();
 	tegra_pcie_enable_pads(false);
 	tegra_pcie_unmap_resources();
@@ -1445,7 +1445,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	struct tegra_pcie_port *pp;
 
 	PR_FUNC_LINE;
-	tegra_pcie_prsnt_map_override(true);
+	tegra_pcie_prsnt_map_override(index, true);
 
 	pp = tegra_pcie.port + tegra_pcie.num_ports;
 	pp->index = -1;
