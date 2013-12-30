@@ -28,8 +28,8 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
-#include "fuse.h"
 #include "iomap.h"
+#include "common.h"
 
 #define TEGRA21_CPU_SPEEDO 1777 /* FIXME: Get Correct Value */
 #define TEGRA21_GPU_SPEEDO 2140 /* FIXME: Get Correct Value */

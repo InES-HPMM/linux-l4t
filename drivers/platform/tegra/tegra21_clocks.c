@@ -37,7 +37,6 @@
 #include <mach/mc.h>
 
 #include "clock.h"
-#include "fuse.h"
 #include "dvfs.h"
 #include "pm.h"
 #include "sleep.h"
