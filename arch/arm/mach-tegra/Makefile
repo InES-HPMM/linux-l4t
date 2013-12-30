@@ -14,11 +14,6 @@ obj-y                                   += timer.o
 endif
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
 obj-y                                   += timerinfo.o
-ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
-ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
-obj-y                                   += mipi-cal.o
-endif
-endif
 
 obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
 
