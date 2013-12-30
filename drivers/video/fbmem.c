@@ -1186,12 +1186,15 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	case FBIOBLANK:
 		if (!lock_fb_info(info))
 			return -ENODEV;
+		pr_info("FBIOBLANK acquiring console_lock\n");
 		console_lock();
+		pr_info("FBIOBLANK console_lock taken\n");
 		info->flags |= FBINFO_MISC_USEREVENT;
 		ret = fb_blank(info, arg);
 		info->flags &= ~FBINFO_MISC_USEREVENT;
 		console_unlock();
 		unlock_fb_info(info);
+		pr_info("FBIOBLANK console_unlock done\n");
 		break;
 	default:
 		if (!lock_fb_info(info))
