@@ -20,7 +20,6 @@
 /dts-v1/;
 
 #include "tegra124-tn8.dtsi"
-#include "tegra124-platforms/tegra124-tn8-io-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-powermon-e1780-1100-a02.dtsi"
