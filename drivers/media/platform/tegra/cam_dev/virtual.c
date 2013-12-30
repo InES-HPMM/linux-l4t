@@ -84,7 +84,8 @@ static int virtual_update(
 			}
 			memset(&ec, 0, sizeof(ec));
 			if (copy_from_user(&ec,
-				(const void __user *)upd[idx].arg,
+				((const void __user *)
+				(unsigned long)upd[idx].arg),
 				sizeof(ec))) {
 				dev_err(cdev->dev,
 					"%s copy_from_user err line %d\n",
@@ -127,7 +128,8 @@ static int virtual_update(
 
 			memset(buf, 0, sizeof(buf));
 			if (copy_from_user(buf,
-				(const void __user *)upd[idx].arg,
+				((const void __user *)
+				(unsigned long)upd[idx].arg),
 				sizeof(buf) - 1 < upd[idx].size ?
 				sizeof(buf) - 1 : upd[idx].size)) {
 				dev_err(cdev->dev,
@@ -161,13 +163,13 @@ static int virtual_update(
 			}
 			if (upd[idx].arg >= cdev->pinmux_num) {
 				dev_err(cdev->dev,
-					"pinmux index %lu out of range.\n",
+					"pinmux index %u out of range.\n",
 					upd[idx].arg);
 				err = -ENODEV;
 				break;
 			}
 
-			dev_dbg(cdev->dev, "UPDATE_PINMUX: %d %lu\n",
+			dev_dbg(cdev->dev, "UPDATE_PINMUX: %d %u\n",
 				upd[idx].index, upd[idx].arg);
 			if (!upd[idx].index)
 				pinmux = &cdev->mclk_enable_idx;
@@ -187,7 +189,7 @@ static int virtual_update(
 				err = -ENODEV;
 				break;
 			}
-			gpio = (void *)upd[idx].arg;
+			gpio = (void *)((unsigned long)upd[idx].arg);
 			if (gpio->gpio >= ARCH_NR_GPIOS) {
 				dev_err(cdev->dev,
 					"gpio index %d out of range.\n",
@@ -196,7 +198,7 @@ static int virtual_update(
 				break;
 			}
 
-			dev_dbg(cdev->dev, "UPDATE_GPIO: %d %lu\n",
+			dev_dbg(cdev->dev, "UPDATE_GPIO: %d %u\n",
 				upd[idx].index, upd[idx].arg);
 			gpio->valid = true;
 			cdev->gpios[upd[idx].index] = *gpio;
@@ -454,7 +456,8 @@ static int virtual_chip_config(
 
 	c_info->seq_power_on = (void *)rptr;
 	if (copy_from_user(
-		c_info->seq_power_on, (const void __user *)dev_info->power_on,
+		c_info->seq_power_on,
+		(const void __user *)(unsigned long)dev_info->power_on,
 		sizeof(struct camera_reg) * dev_info->pwr_on_size)) {
 		dev_err(dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
@@ -464,7 +467,8 @@ static int virtual_chip_config(
 	c_info->seq_power_off = (void *)c_info->seq_power_on +
 		sizeof(struct camera_reg) * dev_info->pwr_on_size;
 	if (copy_from_user(
-		c_info->seq_power_off, (const void __user *)dev_info->power_off,
+		c_info->seq_power_off,
+		(const void __user *)(unsigned long)dev_info->power_off,
 		sizeof(struct camera_reg) * dev_info->pwr_off_size)) {
 		dev_err(dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);

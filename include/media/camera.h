@@ -129,17 +129,17 @@ struct edp_cfg {
 						CAMERA_MAX_NAME_LENGTH)
 
 struct virtual_device {
-	u8 name[32];
-	u32 bus_type;
+	__u32 power_on;
+	__u32 power_off;
 	struct regmap_cfg regmap_cfg;
-	u32 gpio_num;
-	u32 reg_num;
-	u8 reg_names[VIRTUAL_REGNAME_SIZE];
-	u32 pwr_on_size;
-	struct camera_reg *power_on;
-	u32 pwr_off_size;
-	struct camera_reg *power_off;
-	u32 clk_num;
+	__u32 bus_type;
+	__u32 gpio_num;
+	__u32 reg_num;
+	__u32 pwr_on_size;
+	__u32 pwr_off_size;
+	__u32 clk_num;
+	__u8 name[32];
+	__u8 reg_names[VIRTUAL_REGNAME_SIZE];
 };
 
 enum {
@@ -155,7 +155,7 @@ struct cam_update {
 	u32 type;
 	u32 index;
 	u32 size;
-	unsigned long arg;
+	u32 arg;
 };
 
 enum {
