@@ -275,6 +275,92 @@ static int init_ocv_reader(void)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+static int rbat_show(struct seq_file *file, void *data)
+{
+	int t, c, i = 0;
+	struct sysedp_batmon_rbat_lut *lut = pdata->rbat_lut;
+
+	seq_printf(file, " %8s", "capacity");
+	for (t = 0; t < lut->temp_size; t++)
+		seq_printf(file, "%7dC", lut->temp_axis[t]);
+	seq_puts(file, "\n");
+
+	for (c = 0; c < lut->capacity_size; c++) {
+		seq_printf(file, "%8d%%", lut->capacity_axis[c]);
+		for (t = 0; t < lut->temp_size; t++)
+			seq_printf(file, "%8d", lut->data[i++]);
+		seq_puts(file, "\n");
+	}
+	return 0;
+}
+
+static int ibat_show(struct seq_file *file, void *data)
+{
+	struct sysedp_batmon_ibat_lut *lut = pdata->ibat_lut;
+
+	if (lut) {
+		do {
+			seq_printf(file, "%7dC %7dmA\n", lut->temp, lut->ibat);
+		} while ((lut++)->ibat);
+	}
+	return 0;
+}
+
+static int ocv_show(struct seq_file *file, void *data)
+{
+	struct sysedp_batmon_ocv_lut *lut = pdata->ocv_lut;
+
+	if (lut) {
+		do {
+			seq_printf(file, "%7d%% %7duV\n", lut->capacity,
+				   lut->ocv);
+		} while ((lut++)->capacity);
+	}
+	return 0;
+}
+
+static int debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, inode->i_private, NULL);
+}
+
+static const struct file_operations debug_fops = {
+	.open = debug_open,
+	.read = seq_read,
+};
+
+static void init_debug(void)
+{
+	struct dentry *dd, *df;
+
+	if (!sysedp_debugfs_dir)
+		return;
+
+	dd = debugfs_create_dir("batmon", sysedp_debugfs_dir);
+	WARN_ON(IS_ERR_OR_NULL(dd));
+
+	df = debugfs_create_file("rbat", S_IRUGO, dd, rbat_show, &debug_fops);
+	WARN_ON(IS_ERR_OR_NULL(df));
+
+	df = debugfs_create_file("ibat", S_IRUGO, dd, ibat_show, &debug_fops);
+	WARN_ON(IS_ERR_OR_NULL(df));
+
+	df = debugfs_create_file("ocv", S_IRUGO, dd, ocv_show, &debug_fops);
+	WARN_ON(IS_ERR_OR_NULL(df));
+
+	df = debugfs_create_u32("r_const", S_IRUGO, dd, &pdata->r_const);
+	WARN_ON(IS_ERR_OR_NULL(df));
+
+	df = debugfs_create_u32("vsys_min", S_IRUGO, dd, &pdata->vsys_min);
+	WARN_ON(IS_ERR_OR_NULL(df));
+}
+#else
+static inline void init_debug(void) {}
+#endif
+
+
 static void of_batmon_calc_get_pdata(struct platform_device *pdev,
 	struct sysedp_batmon_calc_platform_data **pdata)
 {
@@ -502,6 +588,8 @@ static int batmon_probe(struct platform_device *pdev)
 
 	INIT_DEFERRABLE_WORK(&work, batmon_update);
 	schedule_delayed_work(&work, 0);
+
+	init_debug();
 
 	return 0;
 }
