@@ -1266,7 +1266,14 @@ static void __init tegra_ardbeg_late_init(void)
 
 	ardbeg_sensors_init();
 
-	ardbeg_soctherm_init();
+	if (board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_PM359 ||
+		board_info.board_id == BOARD_PM358 ||
+		board_info.board_id == BOARD_PM370 ||
+		board_info.board_id == BOARD_PM363)
+		norrin_soctherm_init();
+	else
+		ardbeg_soctherm_init();
 
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();
