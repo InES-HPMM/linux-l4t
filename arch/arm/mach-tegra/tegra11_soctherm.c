@@ -445,6 +445,10 @@ static const int precision; /* default 0 -> low precision */
 #define REG_GET(r, _name)	(REG_GET_BIT(r, _name) >> _name##_SHIFT)
 #define MAKE_SIGNED32(val, nb)	((s32)(val) << (32 - (nb)) >> (32 - (nb)))
 
+#define IS_T12X_T13X() \
+	(tegra_chip_id == TEGRA_CHIPID_TEGRA12 || \
+	 tegra_chip_id == TEGRA_CHIPID_TEGRA13)
+
 static void __iomem *reg_soctherm_base = IO_ADDRESS(TEGRA_SOCTHERM_BASE);
 static void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
@@ -893,7 +897,7 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 				 * be read safely. So we mirror the CPU status.
 				 */
 			*cur_state |=
-				(tegra_chip_id == TEGRA_CHIPID_TEGRA12) ?
+				(IS_T12X_T13X()) ?
 				((*cur_state & (1 << THROTTLE_DEV_CPU)) ?
 				 (1 << THROTTLE_DEV_GPU) : 0) :
 				((m == devs->dividend && n == devs->divisor) ?
@@ -1603,8 +1607,7 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 			continue;
 		throt_enable = true;
 
-		if (i == THROTTLE_DEV_GPU && tegra_chip_id ==
-				TEGRA_CHIPID_TEGRA12) {
+		if (i == THROTTLE_DEV_GPU && IS_T12X_T13X()) {
 			/* gk20a interface N:3 Mapping */
 			if (!strcmp(dev->throttling_depth,
 				"heavy_throttling"))
@@ -1752,7 +1755,7 @@ static int __init soctherm_clk_init(void)
 			default_t14x_soctherm_clk_rate;
 		default_tsensor_clk_rate =
 			default_t14x_tsensor_clk_rate;
-	} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+	} else if (IS_T12X_T13X()) {
 		default_soctherm_clk_rate =
 			default_t12x_soctherm_clk_rate;
 		default_tsensor_clk_rate =
@@ -1809,7 +1812,7 @@ static int soctherm_fuse_read_calib_base(void)
 		nominal_calib_ft = 90;
 	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
 		nominal_calib_ft = 105;
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+	else if (IS_T12X_T13X())
 		nominal_calib_ft = 105;
 	else
 		BUG();
@@ -1968,7 +1971,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
 		}
 	} else {
-		if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+		if (IS_T12X_T13X()) {
 			if (fuse_rev == 0) { /* new CP1/CP2 */
 				t12x_fuse_corr_alpa2[sensor] =
 					t12x_fuse_corr_alpa2[sensor] ?: 1000000;
@@ -2109,7 +2112,7 @@ static int soctherm_init_platform_data(void)
 		sensor_defaults = default_t11x_sensor_params;
 	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
 		sensor_defaults = default_t14x_sensor_params;
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+	else if (IS_T12X_T13X())
 		sensor_defaults = default_t12x_sensor_params;
 	else
 		BUG();
@@ -2433,7 +2436,7 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	tegra_chip_id = tegra_get_chip_id();
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
 	      tegra_chip_id == TEGRA_CHIPID_TEGRA14 ||
-	      tegra_chip_id == TEGRA_CHIPID_TEGRA12)) {
+	      IS_T12X_T13X())) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
 		return -1;
 	}
@@ -2657,7 +2660,7 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, "enabled(%d)\n", state);
 
 	r = soctherm_readl(GPU_PSKIP_STATUS);
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+	if (IS_T12X_T13X()) {
 		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
 		seq_printf(s, "%s PSKIP STATUS: ",
 		throt_dev_names[THROTTLE_DEV_GPU]);
@@ -2692,7 +2695,7 @@ static int regs_show(struct seq_file *s, void *data)
 				   throt_dev_names[j], state);
 
 			if (j == THROTTLE_DEV_GPU) {
-				if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+				if (IS_T12X_T13X()) {
 					state = REG_GET(r,
 						THROT_PSKIP_CTRL_THROT_DEPTH);
 					seq_printf(s, "%6s  ",
