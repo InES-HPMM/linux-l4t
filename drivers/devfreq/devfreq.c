@@ -115,12 +115,14 @@ static int devfreq_update_status(struct devfreq *devfreq, unsigned long freq)
 	if (lev < 0)
 		return lev;
 
+	prev_lev = devfreq_get_freq_level(devfreq, devfreq->previous_freq);
+	if (prev_lev < 0)
+		return prev_lev;
+
 	cur_time = jiffies;
 	devfreq->time_in_state[lev] +=
 			 cur_time - devfreq->last_stat_updated;
-	if (freq != devfreq->previous_freq) {
-		prev_lev = devfreq_get_freq_level(devfreq,
-						devfreq->previous_freq);
+	if (lev != prev_lev) {
 		devfreq->trans_table[(prev_lev *
 				devfreq->profile->max_state) + lev]++;
 		devfreq->total_trans++;
