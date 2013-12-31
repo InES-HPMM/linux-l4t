@@ -1608,19 +1608,19 @@ static struct kobject *suspend_kobj;
 
 static int tegra_pm_enter_suspend(void)
 {
-	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
 	suspend_cpu_dfll_mode(0);
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(true);
+	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
 	return 0;
 }
 
 static void tegra_pm_enter_resume(void)
 {
+	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(false);
 	resume_cpu_dfll_mode(0);
-	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
 }
 
 static void tegra_pm_enter_shutdown(void)

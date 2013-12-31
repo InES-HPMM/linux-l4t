@@ -692,8 +692,9 @@ void tegra_lp0_cpu_mode(bool enter)
 		if (!tegra_cluster_control(0, flags)) {
 			if (!enter)
 				tegra_clk_disable_unprepare(cclk_lp);
-			pr_info("Tegra: switched to %s cluster\n",
-				enter ? "LP" : "G");
+			pr_info("Tegra: switched to %s cluster %s LP0\n",
+				enter ? "LP" : "G",
+				enter ? "before entering" : "after exiting");
 		}
 	}
 }
