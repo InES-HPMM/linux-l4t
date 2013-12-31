@@ -89,12 +89,6 @@ enum max77665_haptic_continous_mode {
 	MAX77665_CONT_MODE,
 };
 
-enum max77665_haptic_edp_states {
-	MAX77665_HAPTIC_EDP_HIGH,
-	MAX77665_HAPTIC_EDP_LOW,
-	MAX77665_HAPTIC_EDP_NUM_STATES,
-};
-
 struct max77665_haptic_platform_data {
 	int pwm_channel_id;
 	int pwm_period;
@@ -111,8 +105,6 @@ struct max77665_haptic_platform_data {
 	int feedback_duty_cycle;
 	int motor_startup_val;
 	int scf_val;
-
-	unsigned int edp_states[MAX77665_HAPTIC_EDP_NUM_STATES];
 };
 
 #endif
