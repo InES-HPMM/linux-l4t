@@ -161,9 +161,11 @@ int tn8_regulator_init(void);
 int loki_fan_init(void);
 
 enum {
-	P2530 = 0,
+	P2530_LOKI = 0,
 	E2549 = 1,
 	E2548 = 2,
+	P2530_FOSTER = 3,
+	P2530_LOKI_PREM = 4,
 };
 
 #endif

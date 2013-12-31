@@ -737,13 +737,23 @@ static int __init loki_touch_init(void)
 
 static void __init loki_revision_init(struct board_info *binf)
 {
-	system_rev = P2530;
+
+	struct board_info disp_board_info;
+
+	system_rev = P2530_LOKI;
+	tegra_get_display_board_info(&disp_board_info);
 	if (!binf)
 		return;
-	if (binf->board_id == BOARD_E2548)
+	if (binf->board_id == BOARD_E2548) {
 		system_rev = E2548;
-	else if (binf->board_id == BOARD_E2549)
+	} else if (binf->board_id == BOARD_E2549) {
 		system_rev = E2549;
+	} else if (binf->board_id == BOARD_P2530) {
+		if (binf->sku == BOARD_SKU_FOSTER)
+			system_rev = P2530_FOSTER;
+		else if (disp_board_info.fab == 0x1)
+			system_rev = P2530_LOKI_PREM;
+	}
 }
 
 static void __init tegra_loki_early_init(void)
