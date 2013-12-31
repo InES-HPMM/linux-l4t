@@ -1493,9 +1493,10 @@ int __init ardbeg_sensors_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
-	/* PM363 don't have mpu 9250 mounted */
+	/* PM363 and PM359 don't have mpu 9250 mounted */
 	/* TN8 sensors use Device Tree */
 	if (board_info.board_id != BOARD_PM363 &&
+		board_info.board_id != BOARD_PM359 &&
 		!of_machine_is_compatible("nvidia,tn8"))
 		mpuirq_init();
 	ardbeg_camera_init();
