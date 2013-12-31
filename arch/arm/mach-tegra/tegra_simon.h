@@ -26,7 +26,14 @@ enum tegra_simon_domain {
 	TEGRA_SIMON_DOMAIN_NUM,
 };
 
+#ifdef CONFIG_TEGRA_USE_SIMON
 int tegra_register_simon_notifier(struct notifier_block *nb);
 void tegra_unregister_simon_notifier(struct notifier_block *nb);
+#else
+static inline int tegra_register_simon_notifier(struct notifier_block *nb)
+{ return -ENOSYS; }
+static inline void tegra_unregister_simon_notifier(struct notifier_block *nb)
+{ }
+#endif
 
 #endif /* _MACH_TEGRA_SIMON_H_ */

@@ -42,7 +42,7 @@ ifneq ($(CONFIG_CLK_SRC_TEGRA_TIMER),y)
 obj-y                                   += timer-t3.o
 endif
 obj-y                                   += tegra_core_volt_cap.o
-obj-y                                   += tegra_simon.o
+obj-$(CONFIG_TEGRA_USE_SIMON)           += tegra_simon.o
 ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)                  += wakeups-t3.o
 endif
