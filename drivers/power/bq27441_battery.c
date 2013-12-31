@@ -126,7 +126,7 @@ static const struct regmap_config bq27441_regmap_config = {
 	.max_register		= BQ27441_MAX_REGS,
 };
 
-static u16 bq27441_read_word(struct i2c_client *client, u8 reg)
+static int bq27441_read_word(struct i2c_client *client, u8 reg)
 {
 	int ret;
 	u16 val;
@@ -150,7 +150,7 @@ static u16 bq27441_read_word(struct i2c_client *client, u8 reg)
 	return val;
 }
 
-static u8 bq27441_read_byte(struct i2c_client *client, u8 reg)
+static int bq27441_read_byte(struct i2c_client *client, u8 reg)
 {
 	int ret;
 	u8 val;
@@ -645,6 +645,13 @@ static int bq27441_probe(struct i2c_client *client,
 	if (IS_ERR(chip->regmap)) {
 		ret = PTR_ERR(chip->regmap);
 		dev_err(&client->dev, "regmap init failed with err %d\n", ret);
+		goto error;
+	}
+
+	/* Dummy read to check if the slave is present */
+	ret = bq27441_read_word(chip->client, BQ27441_VOLTAGE);
+	if (ret < 0) {
+		dev_err(&chip->client->dev, "Exiting driver as xfer failed\n");
 		goto error;
 	}
 
