@@ -2620,7 +2620,7 @@ static int s_show(struct seq_file *m, void *p)
 		return 0;
 
 	if (!(va->flags & VM_VM_AREA)) {
-		seq_printf(m, "0x%pK-0x%pK %7ld vm_map_ram\n",
+		seq_printf(m, "0x%p-0x%p %7ld vm_map_ram\n",
 			(void *)va->va_start, (void *)va->va_end,
 					va->va_end - va->va_start);
 		return 0;
@@ -2628,7 +2628,7 @@ static int s_show(struct seq_file *m, void *p)
 
 	v = va->vm;
 
-	seq_printf(m, "0x%pK-0x%pK %7ld",
+	seq_printf(m, "0x%p-0x%p %7ld",
 		v->addr, v->addr + v->size, v->size);
 
 	if (v->caller)
