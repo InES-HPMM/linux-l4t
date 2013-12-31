@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,8 +112,6 @@ struct te_shmem_desc {
 	void *buffer;
 	size_t size;
 	unsigned int mem_type;
-	struct page **pages;
-	unsigned int nr_pages;
 };
 
 struct tlk_context {
