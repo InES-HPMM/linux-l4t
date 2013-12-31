@@ -32,7 +32,6 @@
 #include <linux/pwm.h>
 #include <linux/pwm_backlight.h>
 #include <linux/slab.h>
-#include <linux/edp.h>
 
 struct pwm_bl_data {
 	struct pwm_device	*pwm;
@@ -47,8 +46,6 @@ struct pwm_bl_data {
 					int brightness);
 	int			(*check_fb)(struct device *, struct fb_info *);
 	void			(*exit)(struct device *);
-	struct edp_client *pwm_bl_edp_client;
-	int *edp_brightness_states;
 };
 
 static int pwm_backlight_set(struct backlight_device *bl, int brightness)
@@ -89,45 +86,10 @@ static int pwm_backlight_set(struct backlight_device *bl, int brightness)
 	return 0;
 }
 
-static int pwm_backlight_set_with_edp(struct backlight_device *bl,
-	int brightness)
-{
-	struct pwm_bl_data *data = bl_get_data(bl);
-	unsigned int approved;
-	int ret;
-	unsigned int edp_state;
-	unsigned int i;
-	if (data->pwm_bl_edp_client) {
-		for (i = 0; i < PWM_BL_EDP_NUM_STATES; i++) {
-			if (brightness >= data->edp_brightness_states[i])
-				break;
-		}
-		edp_state = i;
-		ret = edp_update_client_request(data->pwm_bl_edp_client,
-							edp_state, &approved);
-		if (ret) {
-			dev_err(data->dev, "E state transition failed\n");
-			return ret;
-		}
-		pwm_backlight_set(bl, data->edp_brightness_states[approved]);
-	} else {
-		pwm_backlight_set(bl, brightness);
-	}
-	return 0;
-}
-
 static int pwm_backlight_update_status(struct backlight_device *bl)
 {
 	int brightness = bl->props.brightness;
-	return pwm_backlight_set_with_edp(bl, brightness);
-}
-
-static void pwm_backlight_edpcb(unsigned int new_state, void *priv_data)
-{
-	struct backlight_device *bl_device =
-		(struct backlight_device *) priv_data;
-	struct pwm_bl_data *data = bl_get_data(bl_device);
-	pwm_backlight_set(bl_device, data->edp_brightness_states[new_state]);
+	return pwm_backlight_set(bl, brightness);
 }
 
 static int pwm_backlight_get_brightness(struct backlight_device *bl)
@@ -230,7 +192,6 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	struct backlight_properties props;
 	struct backlight_device *bl;
 	struct pwm_bl_data *pb;
-	struct edp_manager *battery_manager = NULL;
 	unsigned int max;
 	int ret;
 
@@ -269,7 +230,6 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	pb->exit = data->exit;
 	pb->dev = &pdev->dev;
 	pb->pwm_gpio = data->pwm_gpio;
-	pb->edp_brightness_states = data->edp_brightness;
 
 	pb->pwm = devm_pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(pb->pwm)) {
@@ -314,57 +274,6 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		goto err_alloc;
 	}
 
-	if (pb->edp_brightness_states) {
-		pb->pwm_bl_edp_client = devm_kzalloc(&pdev->dev,
-				sizeof(struct edp_client), GFP_KERNEL);
-		if (IS_ERR_OR_NULL(pb->pwm_bl_edp_client)) {
-			dev_err(&pdev->dev, "could not allocate edp client\n");
-			return PTR_ERR(pb->pwm_bl_edp_client);
-		}
-
-		strncpy(pb->pwm_bl_edp_client->name,
-						"backlight", EDP_NAME_LEN - 1);
-		pb->pwm_bl_edp_client->name[EDP_NAME_LEN - 1] = '\0';
-		pb->pwm_bl_edp_client->states = data->edp_states;
-		pb->pwm_bl_edp_client->num_states = PWM_BL_EDP_NUM_STATES;
-		pb->pwm_bl_edp_client->e0_index = PWM_BL_EDP_ZERO;
-		pb->pwm_bl_edp_client->private_data = bl;
-		pb->pwm_bl_edp_client->priority = EDP_MAX_PRIO + 2;
-		pb->pwm_bl_edp_client->throttle = pwm_backlight_edpcb;
-		pb->pwm_bl_edp_client->notify_promotion = pwm_backlight_edpcb;
-
-		battery_manager = edp_get_manager("battery");
-		if (!battery_manager) {
-			dev_err(&pdev->dev, "unable to get edp manager\n");
-			goto err_edp_init;
-		} else {
-			ret = edp_register_client(battery_manager,
-						pb->pwm_bl_edp_client);
-			if (ret) {
-				dev_err(&pdev->dev, "unable to register edp client\n");
-				goto err_edp_init;
-			} else {
-				ret = edp_update_client_request(
-						pb->pwm_bl_edp_client,
-							PWM_BL_EDP_ZERO, NULL);
-				if (ret) {
-					dev_err(&pdev->dev,
-						"unable to set E0 EDP state\n");
-					edp_unregister_client(
-						pb->pwm_bl_edp_client);
-					goto err_edp_init;
-				}
-				goto success_edp_init;
-			}
-		}
-err_edp_init:
-		devm_kfree(&pdev->dev, pb->pwm_bl_edp_client);
-		pb->pwm_bl_edp_client = NULL;
-success_edp_init:;
-	} else {
-		dev_info(&pdev->dev, "edp manager not supported\n");
-	}
-
 	if (data->dft_brightness > data->max_brightness) {
 		dev_warn(&pdev->dev,
 			 "invalid default brightness level: %u, using %u\n",
@@ -405,7 +314,7 @@ static int pwm_backlight_suspend(struct device *dev)
 {
 	struct backlight_device *bl = dev_get_drvdata(dev);
 
-	return pwm_backlight_set_with_edp(bl, 0);
+	return pwm_backlight_set(bl, 0);
 }
 
 static int pwm_backlight_resume(struct device *dev)
