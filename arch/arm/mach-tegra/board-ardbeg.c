@@ -737,8 +737,11 @@ static void ardbeg_xusb_init(void)
 			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363) {
-		/* Laguna */
-		pr_info("Laguna ERS. 0x%x\n", board_info.board_id);
+		if (board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370)
+			pr_info("Norrin. 0x%x\n", board_info.board_id);
+		else
+			pr_info("Laguna. 0x%x\n", board_info.board_id);
 
 		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
