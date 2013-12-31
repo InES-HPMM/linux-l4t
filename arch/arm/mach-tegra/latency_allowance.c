@@ -96,6 +96,7 @@ static void init_chip_specific(void)
 #endif
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	case TEGRA_CHIPID_TEGRA12:
+	case TEGRA_CHIPID_TEGRA13:
 		tegra_la_get_t12x_specific(&cs);
 		break;
 #endif
