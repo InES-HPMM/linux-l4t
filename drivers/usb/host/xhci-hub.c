@@ -1168,7 +1168,8 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 		else
 			temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		if (test_bit(port_index, &bus_state->bus_suspended) &&
-		    (temp & PORT_PLS_MASK)) {
+		    (temp & PORT_PLS_MASK) &&
+		    !test_bit(port_index, &bus_state->resuming_ports)) {
 			if (DEV_SUPERSPEED(temp)) {
 				xhci_set_link_state(xhci, port_array,
 							port_index, XDEV_U0);
