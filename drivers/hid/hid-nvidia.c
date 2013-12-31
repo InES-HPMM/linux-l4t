@@ -1,7 +1,7 @@
 /*
  * HID driver for NVIDIA Shield Joystick
  *
- * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,6 +28,9 @@
 #define TRIGGER_FUZZ 64
 #define JOYSTICK_FLAT 64
 #define TRIGGER_FLAT 0
+
+#define JOYSTICK_HOME_CODE 15
+#define JOYSTICK_BACK_CODE 12
 
 static int nvidia_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 			      struct hid_field *field, struct hid_usage *usage,
@@ -62,9 +65,28 @@ static int nvidia_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 			hidinput_calc_abs_res(field, usage->code));
 		return -1;
 	}
-
 	return 0;
 }
+
+static int nvidia_input_mapping(struct hid_device *hdev, struct hid_input *hi,
+		struct hid_field *field, struct hid_usage *usage,
+		unsigned long **bit, int *max) {
+	int code;
+	if ((usage->hid & HID_USAGE_PAGE) == HID_UP_BUTTON) {
+		code = ((usage->hid - 1) & HID_USAGE);
+		if (code == JOYSTICK_HOME_CODE) {
+			code = KEY_HOME;
+			hid_map_usage(hi, usage, bit, max, EV_KEY, code);
+			return 1;
+		} else if (code == JOYSTICK_BACK_CODE) {
+			code = KEY_BACK;
+			hid_map_usage(hi, usage, bit, max, EV_KEY, code);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 
 static const struct hid_device_id nvidia_devices[] = {
 	{ HID_USB_DEVICE(USB_VENDOR_ID_NVIDIA, USB_DEVICE_ID_NVIDIA_LOKI) },
@@ -76,6 +98,7 @@ static struct hid_driver nvidia_driver = {
 	.name = "hid-nvidia",
 	.id_table = nvidia_devices,
 	.input_mapped = nvidia_input_mapped,
+	.input_mapping = nvidia_input_mapping,
 };
 module_hid_driver(nvidia_driver);
 
