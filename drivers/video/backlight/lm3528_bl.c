@@ -25,7 +25,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/lm3528.h>
 #include <linux/regmap.h>
-#include <linux/edp.h>
 
 #define LM3528_BL_MAX_CURR	0x7F
 
@@ -56,8 +55,6 @@ struct lm3528_backlight_data {
 	bool (*is_powered)(void);
 	int (*notify)(struct device *dev, int brightness);
 	int			current_brightness;
-	struct edp_client *lm3528_edp_client;
-	int *edp_brightness_states;
 };
 
 enum chips { lm3528 };
@@ -100,45 +97,10 @@ static int lm3528_backlight_set(struct backlight_device *bl, int brightness)
 	return regmap_write(data->regmap, LM3528_BMAIN, brightness);
 }
 
-static int lm3528_backlight_set_with_edp(struct backlight_device *bl,
-	int brightness)
-{
-	struct lm3528_backlight_data *data = bl_get_data(bl);
-	struct device *dev = data->lm3528_dev;
-	unsigned int approved;
-	int ret;
-	unsigned int edp_state;
-	unsigned int i;
-	if (data->lm3528_edp_client) {
-		for (i = 0; i < LM3528_EDP_NUM_STATES; i++) {
-			if (brightness >= data->edp_brightness_states[i])
-				break;
-		}
-		edp_state = i;
-		ret = edp_update_client_request(data->lm3528_edp_client,
-							edp_state, &approved);
-		if (ret) {
-			dev_err(dev, "E state transition failed\n");
-			return ret;
-		}
-	}
-
-	lm3528_backlight_set(bl, data->edp_brightness_states[approved]);
-	return 0;
-}
-
 static int lm3528_backlight_update_status(struct backlight_device *bl)
 {
 	int brightness = bl->props.brightness;
-	return lm3528_backlight_set_with_edp(bl, brightness);
-}
-
-static void lm3528_backlight_edpcb(unsigned int new_state, void *priv_data)
-{
-	struct backlight_device *bl_device =
-		(struct backlight_device *) priv_data;
-	struct lm3528_backlight_data *data = bl_get_data(bl_device);
-	lm3528_backlight_set(bl_device, data->edp_brightness_states[new_state]);
+	return lm3528_backlight_set(bl, brightness);
 }
 
 static int lm3528_backlight_get_brightness(struct backlight_device *bl)
@@ -159,7 +121,6 @@ static int lm3528_bl_probe(struct i2c_client *i2c,
 	struct backlight_device *bl;
 	struct backlight_properties props;
 	struct lm3528_platform_data *pData = i2c->dev.platform_data;
-	struct edp_manager *battery_manager = NULL;
 	int ret;
 
 	data = devm_kzalloc(&i2c->dev, sizeof(*data), GFP_KERNEL);
@@ -171,7 +132,6 @@ static int lm3528_bl_probe(struct i2c_client *i2c,
 	data->current_brightness = 0;
 	data->notify = pData->notify;
 	data->is_powered = pData->is_powered;
-	data->edp_brightness_states = pData->edp_brightness;
 	data->regulator = regulator_get(data->lm3528_dev, "vin");
 	if (IS_ERR(data->regulator)) {
 		dev_err(&i2c->dev, "%s: failed to get regulator\n", __func__);
@@ -196,49 +156,6 @@ static int lm3528_bl_probe(struct i2c_client *i2c,
 		return PTR_ERR(bl);
 	}
 
-	data->lm3528_edp_client = devm_kzalloc(&i2c->dev,
-					sizeof(struct edp_client), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(data->lm3528_edp_client)) {
-		dev_err(&i2c->dev, "could not allocate edp client\n");
-		return PTR_ERR(data->lm3528_edp_client);
-	}
-
-	strncpy(data->lm3528_edp_client->name, "backlight", EDP_NAME_LEN - 1);
-	data->lm3528_edp_client->name[EDP_NAME_LEN - 1] = '\0';
-	data->lm3528_edp_client->states = pData->edp_states;
-	data->lm3528_edp_client->num_states = LM3528_EDP_NUM_STATES;
-	data->lm3528_edp_client->e0_index = LM3528_EDP_ZERO;
-	data->lm3528_edp_client->private_data = bl;
-	data->lm3528_edp_client->priority = EDP_MAX_PRIO + 2;
-	data->lm3528_edp_client->throttle = lm3528_backlight_edpcb;
-	data->lm3528_edp_client->notify_promotion = lm3528_backlight_edpcb;
-
-	battery_manager = edp_get_manager("battery");
-	if (!battery_manager) {
-		dev_err(&i2c->dev, "unable to get edp manager\n");
-	} else {
-		ret = edp_register_client(battery_manager,
-					data->lm3528_edp_client);
-		if (ret) {
-			dev_err(&i2c->dev, "unable to register edp client\n");
-		} else {
-			ret = edp_update_client_request(
-					data->lm3528_edp_client,
-						LM3528_EDP_ZERO, NULL);
-			if (ret) {
-				dev_err(&i2c->dev,
-					"unable to set E0 EDP state\n");
-				edp_unregister_client(data->lm3528_edp_client);
-			} else {
-				goto edp_success;
-			}
-		}
-	}
-
-	devm_kfree(&i2c->dev, data->lm3528_edp_client);
-	data->lm3528_edp_client = NULL;
-
-edp_success:
 	data->bl = bl;
 	bl->props.brightness = pData->dft_brightness;
 
@@ -263,7 +180,7 @@ static int lm3528_bl_suspend(struct device *dev)
 	struct lm3528_backlight_data *data = i2c_get_clientdata(i2c);
 	struct backlight_device *bl = data->bl;
 
-	return lm3528_backlight_set_with_edp(bl, 0);
+	return lm3528_backlight_set(bl, 0);
 }
 
 static int lm3528_bl_resume(struct device *dev)
