@@ -26,7 +26,6 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/drv2603-vibrator.h>
-#include <linux/edp.h>
 
 #define DEFAULT_DUTY_CYCLE 80
 
@@ -46,7 +45,6 @@ struct drv2603_chip {
 	int duty_cycle;
 	enum drv2603_mode vibrator_mode;
 	enum drv2603_state state;
-	struct edp_client *haptic_edp_client;
 };
 
 static int drv2603_set_duty_cycle(struct drv2603_chip *chip, int val)
@@ -77,34 +75,15 @@ static int drv2603_vibrator_initialize(struct drv2603_chip *chip)
 static int drv2603_vibrate(struct drv2603_chip *chip)
 {
 	int ret;
-	unsigned int approved;
 
 	switch (chip->state) {
 	case VIBRATOR_OFF:
-		if (chip->haptic_edp_client) {
-			ret = edp_update_client_request(chip->haptic_edp_client,
-				DRV2603_HAPTIC_EDP_LOW, &approved);
-			if (ret) {
-				dev_err(chip->dev,
-					"E state transition failed\n");
-				return ret;
-			}
-		}
 		gpio_set_value_cansleep(chip->gpio, 0);
 		drv2603_set_duty_cycle(chip, 0);
 		pwm_disable(chip->pwm_device);
 		regulator_disable(chip->regulator);
 	break;
 	case VIBRATOR_ON:
-		if (chip->haptic_edp_client) {
-			ret = edp_update_client_request(chip->haptic_edp_client,
-				DRV2603_HAPTIC_EDP_HIGH, &approved);
-			if (ret || approved != DRV2603_HAPTIC_EDP_HIGH) {
-				dev_err(chip->dev,
-					"E state transition failed\n");
-				return ret;
-			}
-		}
 		regulator_enable(chip->regulator);
 		drv2603_set_duty_cycle(chip, chip->duty_cycle);
 		gpio_set_value_cansleep(chip->gpio, 1);
@@ -192,19 +171,6 @@ static ssize_t drv2603_vibrator_duty_cycle_store(struct device *dev,
 	return count;
 }
 
-static void drv2603_vibrator_throttle(unsigned int new_state, void *priv_data)
-{
-	struct drv2603_chip *chip = priv_data;
-
-	if (!chip)
-		return;
-
-	if (chip->state == VIBRATOR_ON) {
-		chip->state = VIBRATOR_OFF;
-		drv2603_vibrate(chip);
-	}
-}
-
 static DEVICE_ATTR(vibrator_enable, 0640, drv2603_vibrator_enable_show,
 					drv2603_vibrator_enable_store);
 static DEVICE_ATTR(duty_cycle, 0640, drv2603_vibrator_duty_cycle_show,
@@ -226,7 +192,6 @@ static int drv2603_probe(struct platform_device *pdev)
 
 	struct drv2603_chip *chip;
 	struct input_dev *input_dev;
-	struct edp_manager *battery_manager = NULL;
 	struct drv2603_platform_data *drv2603_pdata =
 				dev_get_platdata(&pdev->dev);
 
@@ -266,53 +231,6 @@ static int drv2603_probe(struct platform_device *pdev)
 		ret = PTR_ERR(chip->pwm_device);
 		goto err_pwm;
 	}
-
-	if (drv2603_pdata->edp_states[0] == 0) {
-		dev_err(&pdev->dev, "EDP states invalid or not present");
-		goto register_input;
-	}
-
-	chip->haptic_edp_client = devm_kzalloc(&pdev->dev,
-				sizeof(struct edp_client), GFP_KERNEL);
-
-	if (IS_ERR_OR_NULL(chip->haptic_edp_client)) {
-		dev_err(&pdev->dev, "Could not allocate edp client\n");
-		goto register_input;
-	}
-
-	strncpy(chip->haptic_edp_client->name, "drv2603-haptic",
-						EDP_NAME_LEN - 1);
-	chip->haptic_edp_client->name[EDP_NAME_LEN - 1] = '\0';
-	chip->haptic_edp_client->states = drv2603_pdata->edp_states;
-	chip->haptic_edp_client->num_states = DRV2603_HAPTIC_EDP_NUM_STATES;
-	chip->haptic_edp_client->e0_index = DRV2603_HAPTIC_EDP_LOW;
-	chip->haptic_edp_client->priority = EDP_MAX_PRIO + 2;
-	chip->haptic_edp_client->throttle = drv2603_vibrator_throttle;
-	chip->haptic_edp_client->private_data = chip;
-
-	battery_manager = edp_get_manager("battery");
-	if (IS_ERR_OR_NULL(battery_manager)) {
-		dev_err(&pdev->dev, "Unable to get edp manager\n");
-	} else {
-		ret = edp_register_client(battery_manager,
-				chip->haptic_edp_client);
-		if (ret) {
-			dev_err(&pdev->dev, "Unable to register edp client\n");
-		} else {
-			ret = edp_update_client_request(chip->haptic_edp_client,
-					DRV2603_HAPTIC_EDP_LOW, NULL);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"Unable to set E0 EDP state\n");
-				edp_unregister_client(chip->haptic_edp_client);
-			} else {
-				goto register_input;
-			}
-		}
-	}
-
-	devm_kfree(&pdev->dev, chip->haptic_edp_client);
-	chip->haptic_edp_client = NULL;
 
 register_input:
 	input_dev->name = "drv2603-haptic";
@@ -360,7 +278,6 @@ err_vibrator_init:
 err_input_register:
 	destroy_work_on_stack(&chip->work);
 err_input_create:
-	edp_unregister_client(chip->haptic_edp_client);
 	pwm_free(chip->pwm_device);
 err_pwm:
 	regulator_put(chip->regulator);
@@ -377,7 +294,6 @@ static int drv2603_remove(struct platform_device *pdev)
 	pwm_free(chip->pwm_device);
 	gpio_free(chip->gpio);
 	destroy_work_on_stack(&chip->work);
-	edp_unregister_client(chip->haptic_edp_client);
 	input_unregister_device(chip->input_dev);
 	input_free_device(chip->input_dev);
 	regulator_put(chip->regulator);

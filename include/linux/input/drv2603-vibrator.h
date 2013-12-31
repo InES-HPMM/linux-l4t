@@ -24,18 +24,11 @@ enum drv2603_mode {
 	ERM_MODE,
 };
 
-enum drv2603_edp_states {
-	DRV2603_HAPTIC_EDP_HIGH,
-	DRV2603_HAPTIC_EDP_LOW,
-	DRV2603_HAPTIC_EDP_NUM_STATES,
-};
-
 struct drv2603_platform_data {
 	int pwm_id;
 	enum drv2603_mode vibrator_mode;
 	int gpio;
 	int duty_cycle;
-	unsigned int edp_states[DRV2603_HAPTIC_EDP_NUM_STATES];
 };
 
 #endif
