@@ -44,6 +44,7 @@
 #include <media/soc_camera.h>
 #include <media/soc_camera_platform.h>
 #include <media/tegra_v4l2_camera.h>
+#include <linux/generic_adc_thermal.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -1188,6 +1189,29 @@ static struct therm_est_subdevice skin_devs[] = {
 	},
 };
 
+static struct therm_est_subdevice tn8ffd_skin_devs[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
+
 static struct pid_thermal_gov_params skin_pid_params = {
 	.max_err_temp = 4000,
 	.max_err_gain = 1000,
@@ -1212,8 +1236,6 @@ static struct therm_est_data skin_data = {
 	.passive_delay = 15000,
 	.tc1 = 10,
 	.tc2 = 1,
-	.ndevs = ARRAY_SIZE(skin_devs),
-	.devs = skin_devs,
 	.tzp = &skin_tzp,
 };
 
@@ -1312,8 +1334,22 @@ static struct balanced_throttle skin_throttle = {
 
 static int __init ardbeg_skin_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
 	if (of_machine_is_compatible("nvidia,ardbeg") ||
 		of_machine_is_compatible("nvidia,tn8")) {
+		if (board_info.board_id == BOARD_P1761 ||
+			board_info.board_id == BOARD_E1784 ||
+			board_info.board_id == BOARD_E1922) {
+			skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
+			skin_data.devs = tn8ffd_skin_devs;
+		} else {
+			skin_data.ndevs = ARRAY_SIZE(skin_devs);
+			skin_data.devs = skin_devs;
+		}
+
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
@@ -1486,6 +1522,148 @@ static struct i2c_board_info __initdata bq20z45_pdata[] = {
 	},
 };
 
+struct ntc_thermistor_adc_table {
+	int temp; /* degree C */
+	int adc;
+};
+
+static struct ntc_thermistor_adc_table tn8_thermistor_table[] = {
+	{ -40, 2578 }, { -39, 2577 }, { -38, 2576 }, { -37, 2575 },
+	{ -36, 2574 }, { -35, 2573 }, { -34, 2572 }, { -33, 2571 },
+	{ -32, 2569 }, { -31, 2568 }, { -30, 2567 }, { -29, 2565 },
+	{ -28, 2563 }, { -27, 2561 }, { -26, 2559 }, { -25, 2557 },
+	{ -24, 2555 }, { -23, 2553 }, { -22, 2550 }, { -21, 2548 },
+	{ -20, 2545 }, { -19, 2542 }, { -18, 2539 }, { -17, 2536 },
+	{ -16, 2532 }, { -15, 2529 }, { -14, 2525 }, { -13, 2521 },
+	{ -12, 2517 }, { -11, 2512 }, { -10, 2507 }, {  -9, 2502 },
+	{  -8, 2497 }, {  -7, 2492 }, {  -6, 2486 }, {  -5, 2480 },
+	{  -4, 2473 }, {  -3, 2467 }, {  -2, 2460 }, {  -1, 2452 },
+	{   0, 2445 }, {   1, 2437 }, {   2, 2428 }, {   3, 2419 },
+	{   4, 2410 }, {   5, 2401 }, {   6, 2391 }, {   7, 2380 },
+	{   8, 2369 }, {   9, 2358 }, {  10, 2346 }, {  11, 2334 },
+	{  12, 2322 }, {  13, 2308 }, {  14, 2295 }, {  15, 2281 },
+	{  16, 2266 }, {  17, 2251 }, {  18, 2236 }, {  19, 2219 },
+	{  20, 2203 }, {  21, 2186 }, {  22, 2168 }, {  23, 2150 },
+	{  24, 2131 }, {  25, 2112 }, {  26, 2092 }, {  27, 2072 },
+	{  28, 2052 }, {  29, 2030 }, {  30, 2009 }, {  31, 1987 },
+	{  32, 1964 }, {  33, 1941 }, {  34, 1918 }, {  35, 1894 },
+	{  36, 1870 }, {  37, 1845 }, {  38, 1820 }, {  39, 1795 },
+	{  40, 1769 }, {  41, 1743 }, {  42, 1717 }, {  43, 1691 },
+	{  44, 1664 }, {  45, 1637 }, {  46, 1610 }, {  47, 1583 },
+	{  48, 1555 }, {  49, 1528 }, {  50, 1500 }, {  51, 1472 },
+	{  52, 1445 }, {  53, 1417 }, {  54, 1390 }, {  55, 1362 },
+	{  56, 1334 }, {  57, 1307 }, {  58, 1280 }, {  59, 1253 },
+	{  60, 1226 }, {  61, 1199 }, {  62, 1172 }, {  63, 1146 },
+	{  64, 1120 }, {  65, 1094 }, {  66, 1069 }, {  67, 1044 },
+	{  68, 1019 }, {  69,  994 }, {  70,  970 }, {  71,  946 },
+	{  72,  922 }, {  73,  899 }, {  74,  877 }, {  75,  854 },
+	{  76,  832 }, {  77,  811 }, {  78,  789 }, {  79,  769 },
+	{  80,  748 }, {  81,  729 }, {  82,  709 }, {  83,  690 },
+	{  84,  671 }, {  85,  653 }, {  86,  635 }, {  87,  618 },
+	{  88,  601 }, {  89,  584 }, {  90,  568 }, {  91,  552 },
+	{  92,  537 }, {  93,  522 }, {  94,  507 }, {  95,  493 },
+	{  96,  479 }, {  97,  465 }, {  98,  452 }, {  99,  439 },
+	{ 100,  427 }, { 101,  415 }, { 102,  403 }, { 103,  391 },
+	{ 104,  380 }, { 105,  369 }, { 106,  359 }, { 107,  349 },
+	{ 108,  339 }, { 109,  329 }, { 110,  320 }, { 111,  310 },
+	{ 112,  302 }, { 113,  293 }, { 114,  285 }, { 115,  277 },
+	{ 116,  269 }, { 117,  261 }, { 118,  254 }, { 119,  247 },
+	{ 120,  240 }, { 121,  233 }, { 122,  226 }, { 123,  220 },
+	{ 124,  214 }, { 125,  208 },
+};
+
+static struct ntc_thermistor_adc_table *thermistor_table;
+static int thermistor_table_size;
+
+static int gadc_thermal_thermistor_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val, int val2)
+{
+	int temp = 0, adc_hi, adc_lo;
+	int i;
+
+	for (i = 0; i < thermistor_table_size; i++)
+		if (val >= thermistor_table[i].adc)
+			break;
+
+	if (i == 0) {
+		temp = thermistor_table[i].temp * 1000;
+	} else if (i >= (thermistor_table_size - 1)) {
+		temp = thermistor_table[thermistor_table_size - 1].temp * 1000;
+	} else {
+		adc_hi = thermistor_table[i - 1].adc;
+		adc_lo = thermistor_table[i].adc;
+		temp = thermistor_table[i].temp * 1000;
+		temp -= ((val - adc_lo) * 1000 / (adc_hi - adc_lo));
+	}
+
+	return temp;
+};
+
+#define TDIODE_PRECISION_MULTIPLIER	1000000000LL
+#define TDIODE_MIN_TEMP			-25000LL
+#define TDIODE_MAX_TEMP			125000LL
+
+static int gadc_thermal_tdiode_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val, int val2)
+{
+	/*
+	 * Series resistance cancellation using multi-current ADC measurement.
+	 * diode temp = ((adc2 - k * adc1) - (b2 - k * b1)) / (m2 - k * m1)
+	 * - adc1 : ADC raw with current source 400uA
+	 * - m1, b1 : calculated with current source 400uA
+	 * - adc2 : ADC raw with current source 800uA
+	 * - m2, b2 : calculated with current source 800uA
+	 * - k : 2 (= 800uA / 400uA)
+	 */
+	const s64 m1 = -0.00571005 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b1 = 2524.29891 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 m2 = -0.005519811 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b2 = 2579.354349 * TDIODE_PRECISION_MULTIPLIER;
+	s64 temp = TDIODE_PRECISION_MULTIPLIER;
+
+	temp *= (s64)((val2) - 2 * (val));
+	temp -= (b2 - 2 * b1);
+	temp = div64_s64(temp, (m2 - 2 * m1));
+	temp = min_t(s64, max_t(s64, temp, TDIODE_MIN_TEMP), TDIODE_MAX_TEMP);
+	return temp;
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
+	.iio_channel_name = "thermistor",
+	.tz_name = "Tboard",
+	.temp_offset = 0,
+	.adc_to_temp = gadc_thermal_thermistor_adc_to_temp,
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
+	.iio_channel_name = "tdiode",
+	.tz_name = "Tdiode",
+	.temp_offset = 0,
+	.dual_mode = true,
+	.adc_to_temp = gadc_thermal_tdiode_adc_to_temp,
+};
+
+static struct platform_device gadc_thermal_thermistor = {
+	.name   = "generic-adc-thermal",
+	.id     = 1,
+	.dev	= {
+		.platform_data = &gadc_thermal_thermistor_pdata,
+	},
+};
+
+static struct platform_device gadc_thermal_tdiode = {
+	.name   = "generic-adc-thermal",
+	.id     = 2,
+	.dev	= {
+		.platform_data = &gadc_thermal_tdiode_pdata,
+	},
+};
+
+static struct platform_device *gadc_thermal_devices[] = {
+	&gadc_thermal_thermistor,
+	&gadc_thermal_tdiode,
+};
+
 int __init ardbeg_sensors_init(void)
 {
 	struct board_info board_info;
@@ -1497,7 +1675,16 @@ int __init ardbeg_sensors_init(void)
 		!of_machine_is_compatible("nvidia,tn8"))
 		mpuirq_init();
 	ardbeg_camera_init();
-	ardbeg_nct72_init();
+
+	if (board_info.board_id == BOARD_P1761 ||
+		board_info.board_id == BOARD_E1784 ||
+		board_info.board_id == BOARD_E1922) {
+		platform_add_devices(gadc_thermal_devices,
+				ARRAY_SIZE(gadc_thermal_devices));
+		thermistor_table = &tn8_thermistor_table[0];
+		thermistor_table_size = ARRAY_SIZE(tn8_thermistor_table);
+	} else
+		ardbeg_nct72_init();
 
 	/* TN8 and PM359 don't have ALS CM32181 */
 	if (!of_machine_is_compatible("nvidia,tn8") &&

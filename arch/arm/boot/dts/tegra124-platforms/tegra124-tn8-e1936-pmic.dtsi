@@ -73,6 +73,37 @@
 				system-pmic-power-reset;
 			};
 
+			gpadc {
+				compatible = "ti,palmas-gpadc";
+				interrupt-parent = <&palmas>;
+				interrupts = <18 0
+					      16 0
+					      17 0>;
+				ti,channel3-current-microamp = <400>;
+				ti,enable-channel3-dual-current;
+				ti,enable-extended-delay;
+				iio_map {
+					ch1 {
+						ti,adc-channel-number = <1>;
+						ti,adc-consumer-device = "generic-adc-thermal.1";
+						ti,adc-consumer-channel ="thermistor";
+					};
+
+					ch3 {
+						ti,adc-channel-number = <3>;
+						ti,adc-consumer-device = "generic-adc-thermal.2";
+						ti,adc-consumer-channel ="tdiode";
+					};
+
+					ch5 {
+						ti,adc-channel-number = <5>;
+						ti,adc-consumer-device = "generic-adc-thermal.0";
+						ti,adc-consumer-channel ="battery-temp-channel";
+					};
+
+				};
+			};
+
                         clock {
                                 compatible = "ti,palmas-clk";
 
