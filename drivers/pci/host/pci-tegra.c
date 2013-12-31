@@ -205,8 +205,6 @@
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
 #define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
 
-#define BOARD_PM359						0x0167
-#define BOARD_PM358						0x0166
 
 /*
  * AXI address map for the PCIe aperture , defines 1GB in the AXI
@@ -460,7 +458,6 @@ int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 			*val = 0xffffffff;
 			return PCIBIOS_DEVICE_NOT_FOUND;
 		}
-
 		addr = pp->base + (where & ~0x3);
 	} else {
 		addr = tegra_pcie_bus_map(bus->number);
@@ -646,10 +643,6 @@ static struct hw_pci __initdata tegra_pcie_hw = {
 	.map_irq	= tegra_pcie_map_irq,
 };
 
-#ifdef CONFIG_PM
-static int tegra_pcie_suspend_noirq(struct device *dev);
-static int tegra_pcie_resume_noirq(struct device *dev);
-
 #ifdef HOTPLUG_ON_SYSTEM_BOOT
 /* It enumerates the devices when dock is connected after system boot */
 /* this is similar to pcibios_init_hw in bios32.c */
@@ -691,41 +684,63 @@ static void __init tegra_pcie_hotplug_init(void)
 	is_dock_conn_at_boot = true;
 }
 #endif
-#endif
+
+static void tegra_pcie_enable_aer(int index, bool enable)
+{
+	unsigned int data;
+
+	PR_FUNC_LINE;
+	data = rp_readl(NV_PCIE2_RP_VEND_CTL1, index);
+	if (enable)
+		data |= PCIE2_RP_VEND_CTL1_ERPT;
+	else
+		data &= ~PCIE2_RP_VEND_CTL1_ERPT;
+	rp_writel(data, NV_PCIE2_RP_VEND_CTL1, index);
+}
+
 static int tegra_pcie_attach(void)
 {
-	int err = 0;
+	struct pci_bus *bus = NULL;
 
+	PR_FUNC_LINE;
 	if (!hotplug_event)
-		return err;
-#ifdef CONFIG_PM
-	err =  tegra_pcie_resume_noirq(NULL);
-#endif
+		return 0;
+
+	/* rescan and recreate all pcie data structures */
+	while ((bus = pci_find_next_bus(bus)) != NULL)
+		pci_rescan_bus(bus);
+	/* unhide AER capability */
+	tegra_pcie_enable_aer(0, true);
+
 	hotplug_event = false;
-	return err;
+	return 0;
 }
 
 static int tegra_pcie_detach(void)
 {
-	int err = 0;
+	struct pci_dev *pdev = NULL;
 
+	PR_FUNC_LINE;
 	if (hotplug_event)
-		return err;
-#ifdef CONFIG_PM
-	err =  tegra_pcie_suspend_noirq(NULL);
-#endif
+		return 0;
 	hotplug_event = true;
-	return err;
+
+	/* hide AER capability to avoid log spew */
+	tegra_pcie_enable_aer(0, false);
+	/* remove all pcie data structures */
+	for_each_pci_dev(pdev) {
+		pci_stop_and_remove_bus_device(pdev);
+		break;
+	}
+	return 0;
 }
 
 static void tegra_pcie_prsnt_map_override(int index, bool prsnt)
 {
 	unsigned int data;
 
-	if (hotplug_event)
-		return;
-	/* currently only hotplug on root port 0 supported */
 	PR_FUNC_LINE;
+	/* currently only hotplug on root port 0 supported */
 	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
 	data &= ~PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
 	if (prsnt)
@@ -1433,9 +1448,7 @@ static void tegra_pcie_enable_rp_features(int index)
 	rp_writel(data, NV_PCIE2_RP_VEND_XP_BIST, index);
 
 	/* unhide AER capability */
-	data = rp_readl(NV_PCIE2_RP_VEND_CTL1, index);
-	data |= PCIE2_RP_VEND_CTL1_ERPT;
-	rp_writel(data, NV_PCIE2_RP_VEND_CTL1, index);
+	tegra_pcie_enable_aer(index, true);
 
 	tegra_pcie_apply_sw_war(index, false);
 }
@@ -1953,7 +1966,7 @@ static int __init tegra_pcie_init_driver(void)
 static void __exit_refok tegra_pcie_exit_driver(void)
 {
 	if (tegra_platform_is_linsim() || tegra_platform_is_qt())
-		return 0;
+		return;
 	platform_driver_unregister(&tegra_pcie_driver);
 }
 
