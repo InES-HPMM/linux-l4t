@@ -1743,7 +1743,8 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 	tuning_data = sdhci_tegra_get_tuning_data(sdhci, sdhci->max_clk);
 
 	if (tuning_data->tap_data[0] && tuning_data->tap_data[1] &&
-			NVQUIRK_HIGH_FREQ_TAP_PROCEDURE) {
+			(tegra_host->soc_data->nvquirks &
+			NVQUIRK_HIGH_FREQ_TAP_PROCEDURE)) {
 		voltage = tuning_data->tap_data[0]->voltage -
 			tuning_data->tap_data[1]->voltage;
 
@@ -1751,8 +1752,8 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 				freq_band == TUNING_HIGH_FREQ)) {
 			vdd_core =
 			tegra_host->soc_data->tuning_min_volt_list[freq_band];
-			delta_vdd = vdd_core -
-				tuning_data->tap_data[1]->voltage;
+			delta_vdd = tuning_data->tap_data[1]->voltage -
+				vdd_core;
 			tuning_data->tap_data[1]->partial_win =
 				((tuning_data->tap_data[0]->partial_win -
 				  tuning_data->tap_data[1]->partial_win) *
@@ -1764,9 +1765,9 @@ static void sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 				 delta_vdd) / voltage +
 				tuning_data->tap_data[1]->full_win_begin;
 			tuning_data->tap_data[1]->full_win_end =
-				((tuning_data->tap_data[0]->full_win_end -
+				-((tuning_data->tap_data[0]->full_win_end -
 				  tuning_data->tap_data[1]->full_win_end) *
-				 delta_vdd) / voltage +
+				 (delta_vdd / voltage)) +
 				tuning_data->tap_data[1]->full_win_end;
 		}
 	}
