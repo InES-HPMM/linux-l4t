@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,44 +49,6 @@ extern struct mutex smc_lock;
 uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
 uint32_t tlk_extended_smc(uint32_t *args);
 void tlk_irq_handler(void);
-
-#ifdef CONFIG_SMP
-void switch_cpumask_to_cpu0(void);
-void restore_cpumask(void);
-#else
-static inline void switch_cpumask_to_cpu0(void) {};
-static inline void restore_cpumask(void) {};
-#endif
-
-static inline uint32_t
-TLK_GENERIC_SMC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
-{
-	uint32_t retval;
-
-	switch_cpumask_to_cpu0();
-	retval = tlk_generic_smc(arg0, arg1, arg2);
-	while (retval == 0xFFFFFFFD) {
-		retval = tlk_generic_smc((60 << 24), 0, 0);
-	}
-	restore_cpumask();
-
-	return retval;
-}
-
-static inline uint32_t
-TLK_EXTENDED_SMC(uint32_t *args)
-{
-	uint32_t retval;
-
-	switch_cpumask_to_cpu0();
-	retval = tlk_extended_smc(args);
-	while (retval == 0xFFFFFFFD) {
-		retval = tlk_generic_smc((60 << 24), 0, 0);
-	}
-	restore_cpumask();
-
-	return retval;
-}
 
 struct tlk_device {
 	struct te_request *req_addr;

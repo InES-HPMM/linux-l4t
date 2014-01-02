@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -223,7 +223,7 @@ static int __init tlk_fs_register_handlers(void)
 	smc_args[4] = (uint32_t)shmem_ptr->file_name;
 	smc_args[5] = (uint32_t)shmem_ptr->file_data;
 
-	TLK_EXTENDED_SMC(smc_args);
+	tlk_extended_smc(smc_args);
 
 	return 0;
 }

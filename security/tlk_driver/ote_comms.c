@@ -155,7 +155,7 @@ static void te_unpin_temp_buffers(struct te_request *request,
 
 #ifdef CONFIG_SMP
 cpumask_t saved_cpu_mask;
-void switch_cpumask_to_cpu0(void)
+static void switch_cpumask_to_cpu0(void)
 {
 	long ret;
 	cpumask_t local_cpu_mask = CPU_MASK_NONE;
@@ -167,15 +167,18 @@ void switch_cpumask_to_cpu0(void)
 		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
 }
 
-void restore_cpumask(void)
+static void restore_cpumask(void)
 {
 	long ret = sched_setaffinity(0, &saved_cpu_mask);
 	if (ret)
 		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
 }
+#else
+static inline void switch_cpumask_to_cpu0(void) {};
+static inline void restore_cpumask(void) {};
 #endif
 
-uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+static uint32_t _tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
 	register uint32_t r0 asm("r0") = arg0;
 	register uint32_t r1 asm("r1") = arg1;
@@ -197,7 +200,22 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 	return r0;
 }
 
-uint32_t tlk_extended_smc(uint32_t *regs)
+uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+	uint32_t retval;
+
+	switch_cpumask_to_cpu0();
+
+	retval = _tlk_generic_smc(arg0, arg1, arg2);
+	while (retval == 0xFFFFFFFD)
+		retval = _tlk_generic_smc((60 << 24), 0, 0);
+
+	restore_cpumask();
+
+	return retval;
+}
+
+static uint32_t _tlk_extended_smc(uint32_t *regs)
 {
 	register uint32_t r0 asm("r0") = (uint32_t)regs;
 
@@ -219,6 +237,21 @@ uint32_t tlk_extended_smc(uint32_t *regs)
 	return r0;
 }
 
+uint32_t tlk_extended_smc(uint32_t *regs)
+{
+	uint32_t retval;
+
+	switch_cpumask_to_cpu0();
+
+	retval = _tlk_extended_smc(regs);
+	while (retval == 0xFFFFFFFD)
+		retval = _tlk_generic_smc((60 << 24), 0, 0);
+
+	restore_cpumask();
+
+	return retval;
+}
+
 /*
  * Do an SMC call
  */
@@ -238,7 +271,7 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 			smc_params = (uint32_t)virt_to_phys(request->params);
 	}
 
-	TLK_GENERIC_SMC(request->type, smc_args, smc_params);
+	tlk_generic_smc(request->type, smc_args, smc_params);
 
 	/*
 	 * Check to see if there are any logs in written by TLK.
@@ -257,7 +290,8 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	retval = TLK_GENERIC_SMC(TE_SMC_PROGRAM_VPR, (uint32_t)vpr_base, vpr_size);
+	retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR, (uint32_t)vpr_base,
+			vpr_size);
 
 	mutex_unlock(&smc_lock);
 
@@ -344,7 +378,7 @@ void te_launch_operation(struct te_launchop *cmd,
 
 static int __init tlk_register_irq_handler(void)
 {
-	TLK_GENERIC_SMC(TE_SMC_REGISTER_IRQ_HANDLER,
+	tlk_generic_smc(TE_SMC_REGISTER_IRQ_HANDLER,
 		(unsigned int)tlk_irq_handler, 0);
 	return 0;
 }

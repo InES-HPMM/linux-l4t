@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 	 * phys addresses are passed in do_smc).
 	 */
 	dev->req_param_buf = NULL;
-	use_reqbuf = !TLK_GENERIC_SMC(TE_SMC_REGISTER_REQ_BUF, 0, 0);
+	use_reqbuf = !tlk_generic_smc(TE_SMC_REGISTER_REQ_BUF, 0, 0);
 
 	if (use_reqbuf) {
 		dev->req_param_buf = kmalloc((2 * PAGE_SIZE), GFP_KERNEL);
@@ -66,7 +66,7 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 		dev->param_addr = (struct te_oper_param *)
 					(dev->req_param_buf + PAGE_SIZE);
 
-		TLK_GENERIC_SMC(TE_SMC_REGISTER_REQ_BUF,
+		tlk_generic_smc(TE_SMC_REGISTER_REQ_BUF,
 				(uint32_t)dev->req_addr, (2 * PAGE_SIZE));
 	} else {
 		dev->req_addr = dma_alloc_coherent(NULL, PAGE_SIZE,

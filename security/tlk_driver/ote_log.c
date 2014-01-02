@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -180,14 +180,14 @@ static int __init ote_logger_init(void)
 
 	smc_args[0] = TE_SMC_INIT_LOGGER;
 	smc_args[1] = (uint32_t)cb;
-	tlk_extended_smc(smc_args);
+	tlk_generic_smc(smc_args[0], smc_args[1], 0);
 
 	ote_logging_enabled = 1;
 	ote_print_logs();
 #else
 	smc_args[0] = TE_SMC_INIT_LOGGER;
 	smc_args[1] = 0;
-	tlk_extended_smc(smc_args);
+	tlk_generic_smc(smc_args[0], smc_args[1], 0);
 #endif
 
 	return 0;
