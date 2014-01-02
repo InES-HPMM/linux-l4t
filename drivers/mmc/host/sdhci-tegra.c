@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1597,7 +1597,7 @@ static unsigned int calculate_low_freq_tap_value(struct sdhci_host *sdhci,
 	int best_tap_value;
 	unsigned int tuning_ui;
 	unsigned int sampling_point = 0;
-	bool select_partial_win;
+	bool select_partial_win = false;
 
 	tuning_ui = tap_data->full_win_end - tap_data->partial_win;
 
@@ -2790,8 +2790,6 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 		/* set tap value for voltage range 1.25 to 1.39 */
 		sdhci_tegra_set_tap_delay(host,
 			tuning_data->nom_best_tap_value);
-		break;
-	default:
 		break;
 	}
 	spin_unlock(&host->lock);
