@@ -14,7 +14,11 @@ endif
 
 ifneq ($(CONFIG_ARM64),)
 
-ccflags-y += -I$(srctree)/arch/arm/mach-tegra
+ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
+             -I$(srctree)/arch/arm/mach-tegra
+asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
+             -I$(srctree)/arch/arm/mach-tegra
+
 
 obj-y += ahb.o
 obj-y += common.o
@@ -51,6 +55,15 @@ obj-$(CONFIG_PM_GENERIC_DOMAINS) += pm_domains.o
 
 obj-y += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
+obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
+ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)         += cpuquiet.o
+endif
+endif
+ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra3_throttle.o
+endif
 
 obj-y += latency_allowance.o
 obj-y += tegra3_la.o
