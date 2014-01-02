@@ -1,7 +1,7 @@
 /*
  * Pinctrl data for the NVIDIA Tegra124 pinmux
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -3329,20 +3329,23 @@ static void tegra124_pinctrl_resume(u32 *pg_data)
 {
 	int i;
 	u32 *ctx = pg_data;
-	u32 *tmp = pg_data;
-	u32 reg_value;
 
-	for (i = 0; i < ARRAY_SIZE(tegra124_groups); i++) {
-		if (tegra124_groups[i].drv_reg < 0) {
-			reg_value = *tmp++;
-			reg_value |= BIT(4);
-			tegra_pinctrl_writel(reg_value,
-					tegra124_groups[i].mux_bank,
-					tegra124_groups[i].mux_reg);
+	if (tegra_is_dpd_mode) {
+		u32 *tmp = pg_data;
+		u32 reg_value;
+		for (i = 0; i < ARRAY_SIZE(tegra124_groups); i++) {
+			if (tegra124_groups[i].drv_reg < 0) {
+				reg_value = *tmp++;
+				reg_value |= BIT(4);
+				tegra_pinctrl_writel(reg_value,
+						tegra124_groups[i].mux_bank,
+						tegra124_groups[i].mux_reg);
+			}
 		}
-	}
 
-	tegra_pmc_remove_dpd_req();
+		tegra_pmc_remove_dpd_req();
+		tegra_is_dpd_mode = false;
+	}
 	for (i = 0; i <  ARRAY_SIZE(tegra124_groups); i++) {
 		if (tegra124_groups[i].drv_reg < 0)
 			tegra_pinctrl_writel(*ctx++, tegra124_groups[i].mux_bank,

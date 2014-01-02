@@ -1,7 +1,7 @@
 /*
  * PMC interface for NVIDIA SoCs Tegra
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -24,5 +24,8 @@
 extern void tegra_pmc_set_dpd_sample(void);
 extern void tegra_pmc_clear_dpd_sample(void);
 extern void tegra_pmc_remove_dpd_req(void);
+
+extern bool tegra_is_dpd_mode;
+
 
 #endif	/* __LINUX_TEGRA_PMC_H__ */

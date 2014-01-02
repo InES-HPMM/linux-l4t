@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,6 +148,8 @@ extern struct device *get_smmu_device(void);
 extern int tegra_smmu_resume(struct device *dev);
 extern int tegra_smmu_suspend(struct device *dev);
 #endif
+
+bool tegra_is_dpd_mode;
 
 #define TEGRA_POWER_PWRREQ_POLARITY	(1 << 8)   /* core power request polarity */
 #define TEGRA_POWER_PWRREQ_OE		(1 << 9)   /* core power request enable */
@@ -1065,6 +1067,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 #if !defined(CONFIG_ARCH_TEGRA_3x_SOC) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 		writel(0x800fdfff, pmc + PMC_IO_DPD_REQ);
+		tegra_is_dpd_mode = true;
 #else
 		writel(0x800fffff, pmc + PMC_IO_DPD_REQ);
 #endif
