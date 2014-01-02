@@ -1339,7 +1339,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "pm runtime get failed, e = %d\n", ret);
 		goto exit_pm_disable;
 	}
-	tspi->def_command1_reg  = SPI_M_S;
+	tspi->def_command1_reg  = SPI_M_S | SPI_LSBYTE_FE;
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	tspi->def_command2_reg = tegra_spi_readl(tspi, SPI_COMMAND2);
 	pm_runtime_put(&pdev->dev);
