@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-vcm30_t124.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -263,21 +263,15 @@ static struct platform_device tegra_rtc_device = {
 static struct tegra_pci_platform_data vcm30_t124_pcie_platform_data = {
 	.port_status[0]	= 1,
 	.port_status[1]	= 1,
-	.gpio_hot_plug	= TEGRA_GPIO_PO1,
-	.gpio_x1_slot	= PMU_TCA6416_GPIO(12),
+	.gpio_hot_plug = -1,
+	.gpio_wake = -1,
+	.gpio_x1_slot = -1,
 };
 
 static void vcm30_t124_pcie_init(void)
 {
-/* FIXME: Check this for VCM30_T124 */
-#if 0
-	struct board_info board_info;
-	/* root port 1(x1 slot) is supported only on of ERS-S board */
-	laguna_pcie_platform_data.port_status[1] = 0;
-
-	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
+	tegra_pci_device.dev.platform_data = &vcm30_t124_pcie_platform_data;
 	platform_device_register(&tegra_pci_device);
-#endif
 }
 
 #ifdef CONFIG_SATA_AHCI_TEGRA
