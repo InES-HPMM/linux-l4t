@@ -52,6 +52,7 @@
 
 #define TRIGGERED 0
 #define CONTINUOUS 1
+#define FORCED_CONTINUOUS 2
 
 #define CPU_THRESHOLD 2
 #define CPU_FREQ_THRESHOLD 102000
@@ -67,6 +68,9 @@ struct ina3221_data {
 	int shutdown_complete;
 	int is_suspended;
 };
+
+static int __locked_ina3221_switch(struct i2c_client *client,
+				   int cpus, int cpufreq);
 
 static inline s32 shuntv_register_to_uv(u16 reg)
 {
@@ -238,10 +242,46 @@ static s32 show_mode(struct device *dev, struct device_attribute *attr,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct ina3221_data *data = i2c_get_clientdata(client);
 	int ret;
+	int v;
+
 	mutex_lock(&data->mutex);
-	ret = sprintf(buf, "%d\n", data->mode);
+	v = data->mode == TRIGGERED ? 0 : 1;
+	ret = sprintf(buf, "%d\n", v);
 	mutex_unlock(&data->mutex);
 	return ret;
+}
+
+static s32 set_mode(struct device *dev,
+			struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	int cpufreq;
+	int cpus;
+	s32 ret = 0;
+	int config;
+	long val;
+
+	if (kstrtol(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	mutex_lock(&data->mutex);
+	if (val != TRIGGERED) {
+		config = data->plat_data->cont_conf_data;
+		ret = __locked_power_up_ina3221(client, config);
+		if (!ret)
+			data->mode = FORCED_CONTINUOUS;
+	} else if (data->mode == FORCED_CONTINUOUS) {
+		data->mode = CONTINUOUS;
+		cpufreq = cpufreq_quick_get(0);
+		cpus = num_online_cpus();
+		ret = __locked_ina3221_switch(client, cpus, cpufreq);
+	}
+	mutex_unlock(&data->mutex);
+	if (ret)
+		return ret;
+	return count;
 }
 
 static s32 show_rail_name(struct device *dev,
@@ -442,11 +482,47 @@ error:
 	return ret;
 }
 
-static int __locked_ina3221_switch(struct ina3221_data *data,
-		struct i2c_client *client,
-		int cpus, int cpufreq)
+static s32 show_vbus_current(struct device *dev,
+			     struct device_attribute *devattr,
+			     char *buf)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	u8 index;
+	u16 vsh, vbus;
+	s32 ret;
+	s32 current_ma, voltage_mv;
+	s32 resistance;
+
+	mutex_lock(&data->mutex);
+	index = attr->index;
+
+	ret = __locked_do_conversion(client, &vsh, &vbus, index);
+	if (ret < 0)
+		goto error;
+
+	resistance = data->plat_data->shunt_resistor[index];
+	current_ma = shuntv_register_to_ma(vsh, resistance);
+	voltage_mv = busv_register_to_mv(vbus);
+
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "%d %d\n", voltage_mv, current_ma);
+error:
+	mutex_unlock(&data->mutex);
+	dev_err(dev, "%s: failed\n", __func__);
+	return ret;
+}
+
+static int __locked_ina3221_switch(struct i2c_client *client,
+				   int cpus, int cpufreq)
+{
+	struct ina3221_data *data = i2c_get_clientdata(client);
 	int ret = 0;
+
+	if (data->mode == FORCED_CONTINUOUS)
+		return 0;
+
 	if ((data->mode == TRIGGERED) &&
 		((cpus >= CPU_THRESHOLD) ||
 		(cpufreq >= CPU_FREQ_THRESHOLD))) {
@@ -506,7 +582,7 @@ static int ina3221_cpufreq_notify(struct notifier_block *nb,
 		cpus = num_online_cpus();
 		DEBUG_INA3221(("***INA3221 CPUfreq notified freq:%d cpus:%d\n",
 						cpufreq, cpus));
-		ret = __locked_ina3221_switch(data, client, cpus, cpufreq);
+		ret = __locked_ina3221_switch(client, cpus, cpufreq);
 		if (ret < 0)
 			goto error;
 		mutex_unlock(&data->mutex);
@@ -535,7 +611,7 @@ static int ina3221_hotplug_notify(struct notifier_block *nb,
 		cpus = num_online_cpus();
 		DEBUG_INA3221(("INA3221 hotplug notified cpufreq:%d cpus:%d\n",
 				cpufreq, cpus));
-		ret = __locked_ina3221_switch(data, client, cpus, cpufreq);
+		ret = __locked_ina3221_switch(client, cpus, cpufreq);
 		if (ret < 0)
 			goto error;
 		mutex_unlock(&data->mutex);
@@ -627,19 +703,22 @@ static struct sensor_device_attribute ina3221[] = {
 	SENSOR_ATTR(curr2_input_0, S_IRUGO, show_current2, NULL, 0),
 	SENSOR_ATTR(power1_input_0, S_IRUGO, show_power, NULL, 0),
 	SENSOR_ATTR(power2_input_0, S_IRUGO, show_power2, NULL, 0),
+	SENSOR_ATTR(ui_input_0, S_IRUGO, show_vbus_current, NULL, 0),
 	SENSOR_ATTR(rail_name_1, S_IRUGO, show_rail_name, NULL, 1),
 	SENSOR_ATTR(in1_input_1, S_IRUGO, show_voltage, NULL, 1),
 	SENSOR_ATTR(curr1_input_1, S_IRUGO, show_current, NULL, 1),
 	SENSOR_ATTR(curr2_input_1, S_IRUGO, show_current2, NULL, 1),
 	SENSOR_ATTR(power1_input_1, S_IRUGO, show_power, NULL, 1),
 	SENSOR_ATTR(power2_input_1, S_IRUGO, show_power2, NULL, 1),
+	SENSOR_ATTR(ui_input_1, S_IRUGO, show_vbus_current, NULL, 1),
 	SENSOR_ATTR(rail_name_2, S_IRUGO, show_rail_name, NULL, 2),
 	SENSOR_ATTR(in1_input_2, S_IRUGO, show_voltage, NULL, 2),
 	SENSOR_ATTR(curr1_input_2, S_IRUGO, show_current, NULL, 2),
 	SENSOR_ATTR(curr2_input_2, S_IRUGO, show_current2, NULL, 2),
 	SENSOR_ATTR(power1_input_2, S_IRUGO, show_power, NULL, 2),
 	SENSOR_ATTR(power2_input_2, S_IRUGO, show_power2, NULL, 2),
-	SENSOR_ATTR(running_mode, S_IRUGO, show_mode, NULL, 0),
+	SENSOR_ATTR(ui_input_2, S_IRUGO, show_vbus_current, NULL, 2),
+	SENSOR_ATTR(running_mode, S_IWUSR|S_IRUGO, show_mode, set_mode, 0),
 	SENSOR_ATTR(crit_cur_limit_0, S_IWUSR|S_IRUGO, show_crit, set_crit, 0),
 	SENSOR_ATTR(crit_cur_limit_1, S_IWUSR|S_IRUGO, show_crit, set_crit, 1),
 	SENSOR_ATTR(crit_cur_limit_2, S_IWUSR|S_IRUGO, show_crit, set_crit, 2),
@@ -769,7 +848,7 @@ static int ina3221_resume(struct device *dev)
 	mutex_lock(&data->mutex);
 	cpufreq = cpufreq_quick_get(0);
 	cpus = num_online_cpus();
-	ret = __locked_ina3221_switch(data, client, cpus, cpufreq);
+	ret = __locked_ina3221_switch(client, cpus, cpufreq);
 	if (ret < 0)
 		dev_err(&client->dev,
 			"INA can't be turned off/on: 0x%x\n", ret);
