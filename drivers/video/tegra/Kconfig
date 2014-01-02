@@ -50,13 +50,6 @@ config TEGRA_GRHOST_SYNC
 	  Add tegra host backend for the cross driver synchronization framework.
 	  Allows creating sync fence file descriptors from Tegra host syncpoints.
 
-config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
-	bool "Use physical addressing for gk20a page tables"
-	default y if TEGRA_SIMULATION_PLATFORM
-	help
-	  Use physical addressing for gk20a page tables. If this is off, we
-	  use SMMU translation.
-
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
@@ -373,47 +366,6 @@ config TEGRA_HDMI_74MHZ_LIMIT
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
 
-config TEGRA_GK20A_PMU
-	bool "Support GK20A PMU"
-	depends on TEGRA_GK20A
-	default n
-	help
-	  Say Y here to enable GK20A PMU features.
-
-choice
-	depends on TEGRA_GK20A
-	prompt "Enable GK20A frequency scaling"
-	default TEGRA_GK20A_PERFMON
-	optional
-	help
-		Select this entry to enable gk20a scaling
-
-config TEGRA_GK20A_PERFMON
-	bool "Use Perfmon"
-	help
-	  Select this to enable built-in perfmon scaling.
-	  The built-in scaling option uses simplistic
-	  scaling mechanism (if busy, increase frequency and
-	  decrease frequency if idle).
-
-config TEGRA_GK20A_DEVFREQ
-	bool "Use Devfreq"
-	help
-	  Select this to use devfreq based scaling.
-	  Devfreq is a common framework that allows using
-	  variety of different governors and changing
-	  between governors on the fly. By default, no
-	  governor is selected.
-
-endchoice
-
-config TEGRA_GPU_CYCLE_STATS
-	bool "Support GK20A GPU CYCLE STATS"
-	depends on TEGRA_GK20A
-	default y
-	help
-	  Say Y here to enable the cycle stats debugging features.
-
 endif
 
 config TEGRA_CAMERA
@@ -424,3 +376,5 @@ config TEGRA_CAMERA
 	  Enables support for the Tegra camera interface
 
 	  If unsure, say Y
+
+source "drivers/video/tegra/host/gk20a/Kconfig"

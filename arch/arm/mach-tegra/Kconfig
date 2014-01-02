@@ -445,11 +445,15 @@ config TEGRA_GPU_DVFS
 	default y
 
 config TEGRA_GK20A
-	bool "Enable the GK20A graphics engine"
+	bool "Enable the GK20A GPU on Tegra"
 	depends on ARCH_TEGRA_12x_SOC
+	depends on TEGRA_GRHOST
+	select GK20A
 	default y
 	help
-	  Enable support for the GK20A graphics engine
+	  Enable support for the GK20A graphics engine on Tegra
+	  by adding a Tegra platfrom interface to the GK20A driver.
+	  The Tegra platform interface requires TEGRA_GRHOST (host1x).
 
 config TEGRA_AVP_KERNEL_ON_MMU
 	bool "Use AVP MMU to relocate AVP kernel"
