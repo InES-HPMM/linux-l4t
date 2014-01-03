@@ -91,7 +91,7 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 
 static void rev_sku_to_speedo_ids(int rev, int sku)
 {
-	int can_boost = (tegra_spare_fuse(60) && tegra_get_sku_override());
+	int can_boost = tegra_get_sku_override();
 
 	switch (sku) {
 	case 0x00: /* Engg sku */
