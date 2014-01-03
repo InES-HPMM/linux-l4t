@@ -28,6 +28,18 @@
  *	x0 - bytes not copied
  */
 ENTRY(__copy_from_user)
+unaligned:
+	cbz	x2, 5f
+	and	x3, x0, #7
+	and	x4, x1, #7
+	orr	x4, x3, x4
+	cbz	x4, aligned
+USER(9f, ldrb	w3, [x1], #1	)
+	strb	w3, [x0]
+	add	x0, x0, #1
+	sub	x2, x2, #1
+	b	unaligned
+aligned:
 	add	x4, x1, x2			// upper user buffer boundary
 	subs	x2, x2, #8
 	b.mi	2f
