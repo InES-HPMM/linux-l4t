@@ -173,6 +173,7 @@ struct clk {
 	unsigned long		min_rate;
 	bool			auto_dvfs;
 	bool			cansleep;
+	bool			set_disabled_div;
 	u32			flags;
 	const char		*name;
 
@@ -363,6 +364,7 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void tegra_clk_preset_emc_monitor(unsigned long rate);
 void tegra_periph_clk_safe_rate_init(struct clk *c);
 void tegra_clk_verify_parents(void);
+void tegra_clk_set_disabled_div_all(void);
 void clk_init(struct clk *clk);
 unsigned long tegra_clk_measure_input_freq(void);
 unsigned long clk_get_rate_locked(struct clk *c);
@@ -429,6 +431,11 @@ static inline bool clk_is_dvfs(struct clk *c)
 static inline bool clk_cansleep(struct clk *c)
 {
 	return c->cansleep;
+}
+
+static inline bool clk_can_set_disabled_div(struct clk *c)
+{
+	return c->set_disabled_div;
 }
 
 static inline void clk_lock_save(struct clk *c, unsigned long *flags)

@@ -545,8 +545,8 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 	 * at given voltage. To guarantee h/w switch to the new setting
 	 * enable clock while setting rate.
 	 */
-	if ((c->refcnt == 0) && (c->flags & (DIV_U71 | DIV_U16)) &&
-		clk_is_auto_dvfs(c)) {
+	if ((c->refcnt == 0) && (c->flags & PERIPH_DIV) &&
+		clk_is_auto_dvfs(c) && !clk_can_set_disabled_div(c)) {
 		pr_debug("Setting rate of clock %s with refcnt 0\n", c->name);
 		ret = clk_enable_locked(c);
 		if (ret)
@@ -988,6 +988,19 @@ void __init tegra_clk_verify_parents(void)
 		if (!tegra_clk_is_parent_allowed(c, p))
 			WARN(1, "tegra: parent %s is not allowed for %s\n",
 			     p->name, c->name);
+	}
+	mutex_unlock(&clock_list_lock);
+}
+
+void __init tegra_clk_set_disabled_div_all(void)
+{
+	struct clk *c;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		if (c->flags & PERIPH_DIV)
+			c->set_disabled_div = true;
 	}
 	mutex_unlock(&clock_list_lock);
 }
