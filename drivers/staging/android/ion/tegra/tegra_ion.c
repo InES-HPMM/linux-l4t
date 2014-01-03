@@ -18,13 +18,13 @@
 #define pr_fmt(fmt)	"%s():%d: " fmt, __func__, __LINE__
 
 #include <linux/err.h>
-#include <linux/ion.h>
 #include <linux/tegra_ion.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/syscalls.h>
 #include <linux/io.h>
+#include "../ion.h"
 #include "../ion_priv.h"
 
 #define CLIENT_HEAP_MASK 0xFFFFFFFF
@@ -298,8 +298,7 @@ static long tegra_ion_ioctl(struct ion_client *client,
 	}
 	return ret;
 }
-
-int tegra_ion_probe(struct platform_device *pdev)
+static int tegra_ion_probe(struct platform_device *pdev)
 {
 	struct ion_platform_data *pdata = pdev->dev.platform_data;
 	int i;
@@ -334,7 +333,7 @@ int tegra_ion_probe(struct platform_device *pdev)
 	return 0;
 }
 
-int tegra_ion_remove(struct platform_device *pdev)
+static int tegra_ion_remove(struct platform_device *pdev)
 {
 	struct ion_device *idev = platform_get_drvdata(pdev);
 	int i;
