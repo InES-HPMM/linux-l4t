@@ -3,7 +3,7 @@
  *
  * MC error code common to T3x and T11x. T20 has been left alone.
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,6 +115,13 @@ static const struct mc_error mc_errors[] = {
 	MC_ERR(MC_INT_DECERR_BBC,
 	       "BBC accessed memory outside of its aperture",
 	       E_NO_STATUS, 0, 0),
+
+	/*
+	 * MTS access violation.
+	 */
+	MC_ERR(MC_INT_DECERR_MTS,
+	       "MTS carveout access violation",
+	       0, MC_ERR_STATUS, MC_ERR_ADR),
 
 	/* NULL terminate. */
 	MC_ERR(0, NULL, 0, 0, 0),
