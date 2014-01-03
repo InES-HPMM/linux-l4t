@@ -9745,6 +9745,9 @@ void __init tegra12x_init_clocks(void)
 
 	tegra12_cpu_car_ops_init();
 
+	/* Tegra12 allows to change dividers of disabled clocks */
+	tegra_clk_set_disabled_div_all();
+
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
 #endif
