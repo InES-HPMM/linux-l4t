@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210.dtsi
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -190,6 +190,12 @@
 				nvidia,ahub-peq-id = <0>;
 				status = "disabled";
 			};
+			mbdrc@702d8200 {
+				compatible = "nvidia,tegra210-mbdrc";
+				reg = <0x702d8200 0x200>;
+				nvidia,ahub-mbdrc-id = <0>;
+				status = "disabled";
+			};
 		};
 
 		ope@702d8400 {
@@ -206,6 +212,12 @@
 				compatible = "nvidia,tegra210-peq";
 				reg = <0x702d8500 0x100>;
 				nvidia,ahub-peq-id = <1>;
+				status = "disabled";
+			};
+			mbdrc@702d8600 {
+				compatible = "nvidia,tegra210-mbdrc";
+				reg = <0x702d8600 0x200>;
+				nvidia,ahub-mbdrc-id = <1>;
 				status = "disabled";
 			};
 		};

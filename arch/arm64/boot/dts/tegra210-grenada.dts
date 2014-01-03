@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-grenada.dtsi
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,12 +63,20 @@
 			peq@702d8100 {
 				status = "okay";
 			};
+
+			mbdrc@702d8200 {
+				status = "okay";
+			};
 		};
 
 		ope@702d8400 {
 			status = "okay";
 
 			peq@702d8500 {
+				status = "okay";
+			};
+
+			mbdrc@702d8600 {
 				status = "okay";
 			};
 		};
