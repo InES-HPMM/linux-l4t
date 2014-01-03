@@ -3,7 +3,7 @@
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -180,18 +180,34 @@ int tegra210_peq_write_coeff_params(enum tegra210_ahub_cifs cif,
 	int id = OPE_ID(cif);
 	struct tegra210_peq_ctx *peq = tegra210_peq[id];
 	u32 start_addr = 0;
+	int i = 0;
+	u32 biq_stages;
 
-	dev_vdbg(peq->dev, "%s PEQ", __func__);
+	regmap_read(peq->regmap,
+		TEGRA210_PEQ_CONFIG, &biq_stages);
+	biq_stages &= TEGRA210_PEQ_CONfIG_BIQUAD_STAGES_MASK;
+	biq_stages = (biq_stages >> TEGRA210_PEQ_CONFIG_BIQUAD_STAGES_SHIFT);
 
-	start_addr = channel_id * sizeof(struct peq_coeff_params);
+	for (i = biq_stages + 1; i < TEGRA210_PEQ_MAX_BIQ_STAGES; i++) {
+		params->biq[i].biq_b0 = 1;
+		params->biq[i].biq_b1 = 0;
+		params->biq[i].biq_b2 = 0;
+		params->biq[i].biq_a1 = 0;
+		params->biq[i].biq_a2 = 0;
+	}
+	start_addr = channel_id * TEGRA210_PEQ_COEFF_DATA_SIZE_PER_CH;
 
-	return tegra210_ahubram_write(peq->dev,
+	dev_vdbg(peq->dev, "%s PEQ ch %d", __func__, channel_id);
+
+	tegra210_ahubram_write(peq->dev,
 			TEGRA210_PEQ_AHUBRAMCTL_PEQ_CTRL,
 			TEGRA210_PEQ_AHUBRAMCTL_PEQ_DATA,
 			start_addr,
 			(u32 *)params,
-			sizeof(struct peq_coeff_params));
+			TEGRA210_PEQ_COEFF_DATA_SIZE_PER_CH);
+	return 0;
 }
+EXPORT_SYMBOL_GPL(tegra210_peq_write_coeff_params);
 
 int tegra210_peq_write_shift_params(enum tegra210_ahub_cifs cif,
 				    struct peq_shift_params *params,
@@ -200,29 +216,41 @@ int tegra210_peq_write_shift_params(enum tegra210_ahub_cifs cif,
 	int id = OPE_ID(cif);
 	struct tegra210_peq_ctx *peq = tegra210_peq[id];
 	u32 start_addr = 0;
+	int i;
+	u32 biq_stages;
 
-	dev_vdbg(peq->dev, "%s PEQ", __func__);
+	regmap_read(peq->regmap,
+		TEGRA210_PEQ_CONFIG, &biq_stages);
+	biq_stages &= TEGRA210_PEQ_CONfIG_BIQUAD_STAGES_MASK;
+	biq_stages = (biq_stages >> TEGRA210_PEQ_CONFIG_BIQUAD_STAGES_SHIFT);
+	for (i = biq_stages + 1; i < TEGRA210_PEQ_MAX_BIQ_STAGES; i++)
+		params->biq_shift[i] = 0;
 
-	start_addr = (channel_id *
-		((sizeof(struct peq_shift_params) / sizeof(s32))) *
-		TEGRA210_PEQ_SHIFT_WIDTH);
+	start_addr = channel_id * TEGRA210_PEQ_SHIFT_DATA_SIZE_PER_CH;
 
-	return tegra210_ahubram_write(peq->dev,
+	dev_vdbg(peq->dev, "%s PEQ ch %d", __func__, channel_id);
+
+	tegra210_ahubram_write(peq->dev,
 			TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL,
 			TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA,
 			start_addr,
 			(u32 *)params,
-			sizeof(struct peq_shift_params));
+			TEGRA210_PEQ_SHIFT_DATA_SIZE_PER_CH);
+	return 0;
 }
+EXPORT_SYMBOL_GPL(tegra210_peq_write_shift_params);
 
 /* Regmap callback functions */
 static bool tegra210_peq_wr_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
+	case TEGRA210_PEQ_SOFT_RST:
 	case TEGRA210_PEQ_CG:
 	case TEGRA210_PEQ_CONFIG:
 	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_CTRL:
 	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL:
+	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_DATA:
+	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA:
 		return true;
 	default:
 		return false;
@@ -232,7 +260,14 @@ static bool tegra210_peq_wr_reg(struct device *dev, unsigned int reg)
 static bool tegra210_peq_rd_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
+	case TEGRA210_PEQ_SOFT_RST:
+	case TEGRA210_PEQ_CG:
 	case TEGRA210_PEQ_STATUS:
+	case TEGRA210_PEQ_CONFIG:
+	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_CTRL:
+	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL:
+	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_DATA:
+	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA:
 		return true;
 	default:
 		return false;
@@ -243,6 +278,11 @@ static bool tegra210_peq_volatile_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case TEGRA210_PEQ_SOFT_RST:
+	case TEGRA210_PEQ_STATUS:
+	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_CTRL:
+	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL:
+	case TEGRA210_PEQ_AHUBRAMCTL_PEQ_DATA:
+	case TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA:
 		return true;
 	default:
 		return false;
@@ -264,7 +304,7 @@ static const struct regmap_config tegra210_peq_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.max_register = TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA,
+	.max_register = TEGRA210_PEQ_MAX_REGISTER,
 	.writeable_reg = tegra210_peq_wr_reg,
 	.readable_reg = tegra210_peq_rd_reg,
 	.volatile_reg = tegra210_peq_volatile_reg,

@@ -3,7 +3,7 @@
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,6 +47,8 @@
 #define TEGRA210_OPE_STATUS			0x8c
 #define TEGRA210_OPE_INT_STATUS			0x90
 #define TEGRA210_OPE_DIRECTION			0x94
+
+#define TEGEA210_OPE_MAX_REGISTER		TEGRA210_OPE_DIRECTION
 
 /* Fields for TEGRA210_OPE_XBAR_RX_STATUS */
 #define TEGRA210_OPE_XBAR_RX_STATUS_ACIF_FIFO_FULL	BIT(1)

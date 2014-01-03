@@ -4,7 +4,7 @@
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  * Based on code by Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -473,6 +473,9 @@ enum tegra210_ahub_cifs {
 
 /* Fields for TEGRA210_*_AHUBRAMCTL_*_CTRL */
 #define TEGRA210_AHUBRAMCTL_CTRL_READ_BUSY_BUSY		BIT(31)
+
+#define TEGRA210_AHUBRAMCTL_CTRL_SEQ_READ_COUNT_SHIFT	16
+#define TEGRA210_AHUBRAMCTL_CTRL_SEQ_READ_COUNT_MASK	(0xff << TEGRA210_AHUBRAMCTL_CTRL_SEQ_READ_COUNT_SHIFT)
 
 #define TEGRA210_AHUBRAMCTL_CTRL_RW_SHIFT		14
 #define TEGRA210_AHUBRAMCTL_CTRL_RW_MASK		0X1

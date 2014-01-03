@@ -21,6 +21,7 @@ snd-soc-tegra210-axbar-objs += tegra210_ahub_utils.o
 snd-soc-tegra210-admaif-objs := tegra210_admaif.o
 snd-soc-tegra210-ope-objs := tegra210_ope.o
 snd-soc-tegra210-peq-objs := tegra210_peq.o
+snd-soc-tegra210-mbdrc-objs := tegra210_mbdrc.o
 snd-soc-tegra210-sfc-objs := tegra210_sfc.o
 snd-soc-tegra210-spkprot-objs := tegra210_spkprot.o
 
@@ -42,6 +43,7 @@ obj-$(CONFIG_SND_SOC_TEGRA210_AXBAR) += snd-soc-tegra210-axbar.o
 obj-$(CONFIG_SND_SOC_TEGRA210_ADMAIF) += snd-soc-tegra210-admaif.o
 obj-$(CONFIG_SND_SOC_TEGRA210_OPE) += snd-soc-tegra210-ope.o
 obj-$(CONFIG_SND_SOC_TEGRA210_PEQ) += snd-soc-tegra210-peq.o
+obj-$(CONFIG_SND_SOC_TEGRA210_MBDRC) += snd-soc-tegra210-mbdrc.o
 obj-$(CONFIG_SND_SOC_TEGRA210_SFC) += snd-soc-tegra210-sfc.o
 obj-$(CONFIG_SND_SOC_TEGRA210_SPKPROT) += snd-soc-tegra210-spkprot.o
 

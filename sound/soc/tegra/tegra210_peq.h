@@ -3,7 +3,7 @@
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,6 +41,8 @@
 #define TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL	0X18
 #define TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA	0X1c
 
+#define TEGRA210_PEQ_MAX_REGISTER		TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA
+
 /* Fields for TEGRA210_PEQ_SOFT_RST */
 #define TEGRA210_PEQ_SOFT_RST_RESET			BIT(0)
 
@@ -57,16 +59,22 @@
 
 #define TEGRA210_PEQ_CONFIG_BIAS_UNBIAS			BIT(1)
 
+#define PEQ_MODE_BYPASS					0
+#define PEQ_MODE_ACTIVE					1
+
 #define TEGRA210_PEQ_CONFIG_MODE_SHIFT			0
 #define TEGRA210_PEQ_CONFIG_MODE_MASK			(0x1 << TEGRA210_PEQ_CONFIG_MODE_SHIFT)
-#define TEGRA210_PEQ_CONFIG_MODE_BYPASS			(0 << TEGRA210_PEQ_CONFIG_MODE_SHIFT)
-#define TEGRA210_PEQ_CONFIG_MODE_ACTIVE			(1 << TEGRA210_PEQ_CONFIG_MODE_SHIFT)
+#define TEGRA210_PEQ_CONFIG_MODE_BYPASS			(PEQ_MODE_BYPASS << TEGRA210_PEQ_CONFIG_MODE_SHIFT)
+#define TEGRA210_PEQ_CONFIG_MODE_ACTIVE			(PEQ_MODE_ACTIVE << TEGRA210_PEQ_CONFIG_MODE_SHIFT)
 
 
 /* Fields for TEGRA210_PEQ_AHUBRAMCTL_PEQ_CTRL defined in tegra210_ahub_utils.h */
 /* Fields for TEGRA210_PEQ_AHUBRAMCTL_PEQ_DATA defined in tegra210_ahub_utils.h */
 /* Fields for TEGRA210_PEQ_AHUBRAMCTL_SHIFT_CTRL defined in tegra210_ahub_utils.h */
 /* Fields for TEGRA210_PEQ_AHUBRAMCTL_SHIFT_DATA defined in tegra210_ahub_utils.h */
+
+#define TEGRA210_PEQ_COEFF_DATA_SIZE_PER_CH		((TEGRA210_PEQ_MAX_BIQ_STAGES * 5) + 2)
+#define TEGRA210_PEQ_SHIFT_DATA_SIZE_PER_CH		(TEGRA210_PEQ_MAX_BIQ_STAGES + 2)
 
 /* order and size of each structure element for following structures should not
    be altered size order of elements and their size are based on PEQ
@@ -88,7 +96,7 @@ struct peq_coeff_params {
 
 struct peq_shift_params {
 	s32 pre_shift;
-	s32 biq_shift[TEGRA210_PEQ_MAX_CHAN];
+	s32 biq_shift[TEGRA210_PEQ_MAX_BIQ_STAGES];
 	s32 post_shift;
 };
 

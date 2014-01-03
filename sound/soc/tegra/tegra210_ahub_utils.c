@@ -4,7 +4,7 @@
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  * Based on code by Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -232,14 +232,9 @@ int tegra210_ahubram_read(struct device *dev,
 	val |= TEGRA210_AHUBRAMCTL_CTRL_RW_READ;
 
 	regmap_write(regmap, reg_ctrl, val);
-
-	for (i = 0; i < size; i++) {
-		do {
-			regmap_read(regmap, reg_ctrl, &val);
-		} while (val & TEGRA210_AHUBRAMCTL_CTRL_READ_BUSY_BUSY);
-
+	for (i = 0; i < size; i++)
 		regmap_read(regmap, reg_data, &data[i]);
-	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra210_ahubram_read);

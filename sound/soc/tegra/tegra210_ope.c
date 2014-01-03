@@ -3,7 +3,7 @@
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,6 +40,7 @@
 
 #include "tegra210_ope.h"
 #include "tegra210_peq.h"
+#include "tegra210_mbdrc.h"
 #include "tegra210_axbar.h"
 
 #define DRV_NAME "tegra210-ope"
@@ -80,6 +81,7 @@ int tegra210_ope_get(enum tegra210_ahub_cifs *cif)
 			ope->in_use = 1;
 			pm_runtime_get_sync(ope->dev);
 			tegra210_peq_enable_clk(*cif);
+			tegra210_mbdrc_enable_clk(*cif);
 			dev_dbg(ope->dev, "%s Allocated OPE %d", __func__, id);
 			return 0;
 		}
@@ -94,6 +96,7 @@ int tegra210_ope_get(enum tegra210_ahub_cifs *cif)
 			*cif = (dir == DIR_RX) ? (OPE1_RX0 + i) :
 						 (OPE1_TX0 + i);
 			tegra210_peq_enable_clk(*cif);
+			tegra210_mbdrc_enable_clk(*cif);
 			return 0;
 		}
 	}
@@ -118,6 +121,7 @@ int tegra210_ope_put(enum tegra210_ahub_cifs cif)
 		ope->in_use = 0;
 		pm_runtime_put_sync(ope->dev);
 		tegra210_peq_disable_clk(cif);
+		tegra210_mbdrc_disable_clk(cif);
 	} else
 		dev_warn(ope->dev, "%s OPE %d not in use", __func__, id);
 
@@ -253,6 +257,8 @@ int tegra210_ope_enable(enum tegra210_ahub_cifs cif, bool en)
 		ope->enable_count++;
 		if (ope->enable_count > 1)
 			return 0;
+		/* reset OPE before enabling data flow */
+		tegra210_ope_reset(cif);
 	} else if (ope->enable_count > 0) {
 		ope->enable_count--;
 		if (ope->enable_count > 0)
@@ -271,6 +277,7 @@ int tegra210_ope_enable(enum tegra210_ahub_cifs cif, bool en)
 	if (!cnt) {
 		dev_warn(ope->dev, "%s Failed to %s OPE",
 			 __func__, en ? "enable" : "disable");
+		tegra210_ope_reset(cif);
 		return -ETIME;
 	}
 
@@ -287,8 +294,6 @@ int tegra210_ope_reset(enum tegra210_ahub_cifs cif)
 	u32 val = 0;
 
 	dev_vdbg(ope->dev, "%s", __func__);
-
-	tegra210_peq_reset(cif);
 
 	regmap_update_bits(ope->regmap,
 			   TEGRA210_OPE_SOFT_RST,
@@ -348,6 +353,7 @@ static bool tegra210_ope_wr_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case TEGRA210_OPE_XBAR_RX_INT_MASK:
+	case TEGRA210_OPE_XBAR_RX_INT_SET:
 	case TEGRA210_OPE_XBAR_RX_INT_CLEAR:
 	case TEGRA210_OPE_XBAR_RX_CIF_CTRL:
 	case TEGRA210_OPE_XBAR_TX_INT_MASK:
@@ -355,6 +361,7 @@ static bool tegra210_ope_wr_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_OPE_XBAR_TX_INT_CLEAR:
 	case TEGRA210_OPE_XBAR_TX_CIF_CTRL:
 	case TEGRA210_OPE_ENABLE:
+	case TEGRA210_OPE_SOFT_RST:
 	case TEGRA210_OPE_CG:
 	case TEGRA210_OPE_DIRECTION:
 		return true;
@@ -393,9 +400,15 @@ static bool tegra210_ope_rd_reg(struct device *dev, unsigned int reg)
 static bool tegra210_ope_volatile_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
+	case TEGRA210_OPE_XBAR_RX_STATUS:
 	case TEGRA210_OPE_XBAR_RX_INT_SET:
+	case TEGRA210_OPE_XBAR_RX_INT_STATUS:
+	case TEGRA210_OPE_XBAR_TX_STATUS:
 	case TEGRA210_OPE_XBAR_TX_INT_SET:
+	case TEGRA210_OPE_XBAR_TX_INT_STATUS:
 	case TEGRA210_OPE_SOFT_RST:
+	case TEGRA210_OPE_STATUS:
+	case TEGRA210_OPE_INT_STATUS:
 		return true;
 	default:
 		return false;
@@ -406,7 +419,7 @@ static const struct regmap_config tegra210_ope_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.max_register = TEGRA210_OPE_DIRECTION,
+	.max_register = TEGEA210_OPE_MAX_REGISTER,
 	.writeable_reg = tegra210_ope_wr_reg,
 	.readable_reg = tegra210_ope_rd_reg,
 	.volatile_reg = tegra210_ope_volatile_reg,
@@ -441,6 +454,10 @@ struct of_dev_auxdata ope_auxdata[] = {
 	OF_DEV_AUXDATA("nvidia,tegra210-peq", 0x702D8100, "tegra210-peq.0",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-peq", 0x702D8500, "tegra210-peq.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-mbdrc", 0x702D8200, "tegra210-mbdrc.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-mbdrc", 0x702D8600, "tegra210-mbdrc.1",
 				NULL),
 	{}
 };

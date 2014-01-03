@@ -144,6 +144,16 @@ config SND_SOC_TEGRA210_PEQ
 	  You will also need to select the individual machine drivers to
 	  support below.
 
+config SND_SOC_TEGRA210_MBDRC
+	tristate
+	depends on SND_SOC_TEGRA
+	select SND_SOC_TEGRA210_AXBAR
+	select SND_SOC_TEGRA210_OPE
+	help
+	  Say Y or M if you want to add support for the Tegra210 MBDRC module.
+	  You will also need to select the individual machine drivers to
+	  support below.
+
 config SND_SOC_TEGRA210_SFC
 	tristate
 	depends on SND_SOC_TEGRA
