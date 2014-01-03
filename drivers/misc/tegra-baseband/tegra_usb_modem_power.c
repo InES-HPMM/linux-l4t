@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -841,10 +841,13 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		modem->edp_initialized = 1;
 	}
 
-	modem->sysedpc = sysedp_create_consumer(modem->pdata->sysedpc_name,
-						modem->pdata->sysedpc_name);
-	if (modem->sysedpc)
-		INIT_WORK(&modem->sysedp_work, sysedp_work);
+	if (pdata->sysedpc_name) {
+		modem->sysedpc = sysedp_create_consumer(pdata->sysedpc_name,
+							pdata->sysedpc_name);
+
+		if (modem->sysedpc)
+			INIT_WORK(&modem->sysedp_work, sysedp_work);
+	}
 
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
