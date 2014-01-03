@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -29,7 +29,6 @@ static unsigned int mt9m114_states[] = { 0, 150 };
 static unsigned int sdhci_states[] = { 0, 966 };
 static unsigned int speaker_states[] = { 0, 1080 };
 static unsigned int wifi_states[] = { 0, 3070 };
-static unsigned int modem_states[] = { 0, 4100 };
 
 /* 10 inch panel */
 static unsigned int pwm_backlight_states[] = {
@@ -50,7 +49,6 @@ static struct sysedp_consumer_data shield_sysedp_consumer_data[] = {
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.2", sdhci_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.3", sdhci_states),
 	/* TODO SYSEDP_CONSUMER_DATA("as364x", as364x_states), */
-	SYSEDP_CONSUMER_DATA("modem", modem_states),
 };
 
 static struct sysedp_platform_data shield_sysedp_platform_data = {
