@@ -108,6 +108,73 @@ struct tegra210_audio_ope_test_param {
 	int peq_to_drc;
 };
 
+#define TEGRA210_PEQ_MAX_BIQ_STAGES 12
+#define PEQ_MAX_CHAN 8
+struct tegra210_audio_peq_test_param {
+	int peq_id;
+	int test_id;
+	int is_bypass;
+	int chan_mask;
+	unsigned int biquad_stages;
+	unsigned int pre_gain[PEQ_MAX_CHAN];
+	unsigned int post_gain[PEQ_MAX_CHAN];
+	unsigned int pre_shift[PEQ_MAX_CHAN];
+	unsigned int post_shift[PEQ_MAX_CHAN];
+	unsigned int biquad_shifts[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+	unsigned int biquad_b0[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+	unsigned int biquad_b1[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+	unsigned int biquad_b2[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+	unsigned int biquad_a1[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+	unsigned int biquad_a2[PEQ_MAX_CHAN][TEGRA210_PEQ_MAX_BIQ_STAGES];
+};
+
+enum mbdrc_mode {
+	MBDRC_FULL_BAND,
+	MBDRC_DUAL_BAND,
+	MBDRC_MULTI_BAND,
+};
+
+enum mbdrc_bands {
+	MBDRC_BAND_LOW,
+	MBDRC_BAND_MID,
+	MBDRC_BAND_HIGH,
+	MBDRC_BAND_NUM,
+};
+
+#define TEGRA210_MBDRC_MAX_BIQ_STAGES 8
+struct tegra210_audio_mbdrc_test_param {
+	int mbdrc_id;
+	int test_id;
+	int is_bypass;
+	unsigned int master_volume;
+	int mode;
+	unsigned int rms_mode_peak;
+	unsigned int rms_offset;
+	int is_all_pass_tree;
+	unsigned int shift_ctrl;
+	unsigned int frame_size;
+	unsigned int channel_mask;
+	unsigned int fast_attack_factor;
+	unsigned int fast_release_factor;
+	unsigned int num_iir_stages[MBDRC_BAND_NUM];
+	unsigned int in_attack_time_const[MBDRC_BAND_NUM];
+	unsigned int in_release_time_const[MBDRC_BAND_NUM];
+	unsigned int fast_attack_time_const[MBDRC_BAND_NUM];
+	unsigned int in_threshold[MBDRC_BAND_NUM][4];
+	unsigned int out_threshold[MBDRC_BAND_NUM][4];
+	unsigned int ratio[MBDRC_BAND_NUM][5];
+	unsigned int makeup_gain[MBDRC_BAND_NUM];
+	unsigned int gain_init[MBDRC_BAND_NUM];
+	unsigned int gain_attack_time_const[MBDRC_BAND_NUM];
+	unsigned int gain_release_time_const[MBDRC_BAND_NUM];
+	unsigned int fast_release_time_const[MBDRC_BAND_NUM];
+	unsigned int biquad_b0[MBDRC_BAND_NUM][TEGRA210_MBDRC_MAX_BIQ_STAGES];
+	unsigned int biquad_b1[MBDRC_BAND_NUM][TEGRA210_MBDRC_MAX_BIQ_STAGES];
+	unsigned int biquad_b2[MBDRC_BAND_NUM][TEGRA210_MBDRC_MAX_BIQ_STAGES];
+	unsigned int biquad_a1[MBDRC_BAND_NUM][TEGRA210_MBDRC_MAX_BIQ_STAGES];
+	unsigned int biquad_a2[MBDRC_BAND_NUM][TEGRA210_MBDRC_MAX_BIQ_STAGES];
+};
+
 struct tegra210_audio_sfc_test_param {
 	int sfc_id;
 	int test_id;
@@ -206,10 +273,13 @@ struct tegra210_audio_spkprot_test_param {
 #define TEGRA210_AUDIO_SFC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 74, \
 				    struct tegra210_audio_sfc_test_param *)
 #define TEGRA210_AUDIO_OPE_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 75, \
-                                    struct tegra210_audio_ope_test_param *)
-
+				    struct tegra210_audio_ope_test_param *)
 #define TEGRA210_AUDIO_SPKPROT_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 76, \
 				struct tegra210_audio_spkprot_test_param *)
+#define TEGRA210_AUDIO_PEQ_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 77, \
+				    struct tegra210_audio_peq_test_param *)
+#define TEGRA210_AUDIO_MBDRC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 78, \
+				    struct tegra210_audio_mbdrc_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
