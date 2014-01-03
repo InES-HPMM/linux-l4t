@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_speedo.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -210,6 +210,8 @@ void tegra_init_speedo_data(void)
         }
 	core_process_id = i;
 
+	pr_info("Tegra12: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
+		cpu_speedo_value, soc_speedo_0_value, gpu_speedo_value);
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d\n",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 	pr_info("Tegra12: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
