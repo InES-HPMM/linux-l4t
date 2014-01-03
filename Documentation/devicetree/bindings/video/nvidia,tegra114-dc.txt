@@ -17,6 +17,10 @@ NVIDIA Tegra114 Display Controller
  - nvidia,cmu-enable: Toggle switch for color management unit.
  - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
    is the only one active.
+ - avdd_hdmi-supply: phandle to the regulator device tree node for HDMI supply voltage,
+   HDMI_AVDD.
+ - avdd_hdmi_pll-supply: phandle to the regulator device tree node for HDMI pll supply.
+ - vdd_hdmi_5v0-supply: phandle to the regulator device tree node for HDMI 5V source.
 
  - Child nodes represent node of modes, output settings, framebuffer data,
    smart dimmer settings, color management unit settings, dsi output device settings.
@@ -144,6 +148,9 @@ Example
 			nvidia,dc-flags = "dc_flag_en";
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
+			avdd_hdmi-supply = <&palmas_ldoln>;
+			avdd_hdmi_pll-supply = <&palmas_ldo1>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
 			dc-default-out {
 				nvidia,out-type = "dsi";
 				nvidia,out-width = <217>;
@@ -341,8 +348,8 @@ Example
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
 			status = "okay";
-			nvidia,dc_flags = "dc_flag_en";
-			nvidia,emc_clk_rate = <300000000>;
+			nvidia,dc-flags = "dc_flag_en";
+			nvidia,emc-clk-rate = <300000000>;
 			nvidia,cmu-enable = <1>;
 			dc-default-out {
 				nvidia,out-type = "hdmi";
@@ -351,7 +358,6 @@ Example
 				nvidia,out-max-pixclk = <297000>;
 				nvidia,out-align = "msb";
 				nvidia,out-order = "rtob"; /*red to blue*/
-				nvidia,out-hotplug-gpio = <&gpio 111 1>;
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */

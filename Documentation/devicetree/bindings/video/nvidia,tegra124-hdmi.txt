@@ -19,10 +19,6 @@ NVIDIA TEGRA124 High Definition Multimedia Interface
    which does only set DDC_SDA and DDC_SCL pull downs to be active when hotplug
    is detected, otherwise keep them disabled.
 
- NOTE:
- - regulator names for supply voltage, PLL and hdmi 5V source should be avdd_hdmi, avdd_hdmi_pll,
-   vdd_hdmi_5v0, respectively.
-
  1.B) NVIDIA HDMI TMDS configurations
  This must be contained in hdmi parent node. This includes tmds configurations.
 
