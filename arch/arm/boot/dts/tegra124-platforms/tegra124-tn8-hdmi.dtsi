@@ -23,7 +23,7 @@
 		dc@54240000 {
 			status = "okay";
 			nvidia,dc-flags = "dc_flag_en";
-			nvidia,nvidia,emc-clk-rate = <300000000>;
+			nvidia,emc-clk-rate = <300000000>;
 			dc-default-out {
 				nvidia,out-type = "hdmi";
 				nvidia,out-flags = "hotplug_high";
