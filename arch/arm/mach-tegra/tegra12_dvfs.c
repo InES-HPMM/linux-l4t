@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_dvfs.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -46,7 +46,7 @@ static int cpu_vmin_offsets[] = { 0, -30, };
 static int gpu_vmin_offsets[] = { 0, -30, };
 
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
-static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
 static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72,   82, };
 static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS] = { 1130, 1100, 1060, };
