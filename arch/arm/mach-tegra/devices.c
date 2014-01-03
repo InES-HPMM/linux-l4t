@@ -1603,6 +1603,36 @@ struct platform_device tegra_peq_device1 = {
 	.num_resources = ARRAY_SIZE(tegra_peq_resource1),
 };
 
+static struct resource tegra_mbdrc_resource0[] = {
+	[0] = {
+		.start = TEGRA_MBDRC1_BASE,
+		.end   = TEGRA_MBDRC1_BASE + TEGRA_MBDRC1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_mbdrc_device0 = {
+	.name = "tegra210-mbdrc",
+	.id = 0,
+	.resource      = tegra_mbdrc_resource0,
+	.num_resources = ARRAY_SIZE(tegra_mbdrc_resource0),
+};
+
+static struct resource tegra_mbdrc_resource1[] = {
+	[0] = {
+		.start = TEGRA_MBDRC2_BASE,
+		.end   = TEGRA_MBDRC2_BASE + TEGRA_MBDRC2_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_mbdrc_device1 = {
+	.name = "tegra210-mbdrc",
+	.id = 1,
+	.resource      = tegra_mbdrc_resource1,
+	.num_resources = ARRAY_SIZE(tegra_mbdrc_resource1),
+};
+
 static struct resource tegra_sfc_resource0[] = {
 	[0] = {
 		.start = TEGRA_SFC1_BASE,

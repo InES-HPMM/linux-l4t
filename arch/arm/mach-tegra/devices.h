@@ -118,6 +118,8 @@ extern struct platform_device tegra_ope_device0;
 extern struct platform_device tegra_ope_device1;
 extern struct platform_device tegra_peq_device0;
 extern struct platform_device tegra_peq_device1;
+extern struct platform_device tegra_mbdrc_device0;
+extern struct platform_device tegra_mbdrc_device1;
 extern struct platform_device tegra_sfc_device0;
 extern struct platform_device tegra_sfc_device1;
 extern struct platform_device tegra_sfc_device2;
