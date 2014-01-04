@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra210 device tree board support
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -75,7 +75,11 @@ static struct platform_device *t210_gfx_devices[] __initdata = {
 
 static void __init tegra_grenada_reserve(void)
 {
-        tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
+	tegra_reserve(0, SZ_16M + SZ_2M, SZ_4M);
+#else
+	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+#endif
 }
 
 struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
