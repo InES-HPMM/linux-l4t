@@ -867,12 +867,15 @@ void tegra_get_fb2_resource(struct resource *fb2_res);
 
 /* table of electrical settings, must be in acending order. */
 struct tmds_config {
+	u32 version;	/* MAJOR, MINOR */
 	int pclk;
 	u32 pll0;
 	u32 pll1;
 	u32 pe_current; /* pre-emphasis */
 	u32 drive_current;
 	u32 peak_current; /* for TEGRA_11x_SOC */
+	u32 pad_ctls0_mask; /* register AND mask */
+	u32 pad_ctls0_setting; /* register OR mask */
 };
 
 struct tegra_hdmi_out {

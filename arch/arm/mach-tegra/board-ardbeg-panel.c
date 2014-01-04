@@ -37,6 +37,7 @@
 #include <mach/io_dpd.h>
 
 #include "board.h"
+#include "tegra-board-id.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "board-ardbeg.h"
@@ -324,6 +325,53 @@ struct tmds_config ardbeg_tmds_config[] = {
 	.pe_current = 0x08080808,
 	.drive_current = 0x3A353536, /* lane3 needs a slightly lower current */
 	.peak_current = 0x00000000,
+	},
+};
+
+struct tmds_config ardbeg_tn8_tmds_config[] = {
+	{ /* 480p/576p / 25.2MHz/27MHz modes */
+	.version = MKDEV(1, 0),
+	.pclk = 27000000,
+	.pll0 = 0x01003010,
+	.pll1 = 0x00301b00,
+	.pe_current    = 0x00000000,
+	.drive_current = 0x1A1A1B1A,
+	.peak_current  = 0x00000000,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
+	},
+	{ /* 720p / 74.25MHz modes */
+	.version = MKDEV(1, 0),
+	.pclk = 74250000,
+	.pll0 = 0x01003110,
+	.pll1 = 0x00301500,
+	.pe_current    = 0x00000000,
+	.drive_current = 0x22212121,
+	.peak_current  = 0x07070707,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
+	},
+	{ /* 1080p / 148.5MHz modes */
+	.version = MKDEV(1, 0),
+	.pclk = 148500000,
+	.pll0 = 0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current    = 0x00000000,
+	.drive_current = 0x24242424,
+	.peak_current  = 0x00000000,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
+	},
+	{
+	.version = MKDEV(1, 0),
+	.pclk = INT_MAX,
+	.pll0 = 0x01003F10,
+	.pll1 = 0x10300900,
+	.pe_current    = 0x00000000,
+	.drive_current = 0x2E2E2E2C,
+	.peak_current  = 0x17171717,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000600, /* BG_VREF_LEVEL */
 	},
 };
 
@@ -640,6 +688,7 @@ int __init ardbeg_panel_init(void)
 	int err = 0;
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
+	struct board_info board_info;
 
 	struct device_node *dc1_node = NULL;
 	struct device_node *dc2_node = NULL;
@@ -720,6 +769,10 @@ int __init ardbeg_panel_init(void)
 		}
 	}
 #endif
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1761) {
+		ardbeg_hdmi_out.tmds_config = ardbeg_tn8_tmds_config;
+	}
 
 	if (!of_have_populated_dt() || !dc2_node ||
 		!of_device_is_available(dc2_node)) {

@@ -7023,7 +7023,10 @@ static struct clk tegra_pll_dp = {
 };
 
 static struct clk_pll_freq_table tegra_plld2_freq_table[] = {
-	{ 12000000, 594000000,  99, 1, 2},
+	{ 12000000, 594000000,  99, 1, 2,  3}, /*4kx2k @ 30Hz*/
+	{ 12000000, 297000000,  99, 1, 4,  1}, /*1080p @ 60Hz*/
+	{ 12000000, 148500000,  99, 1, 8,  1}, /* 720p @ 60Hz*/
+	{ 12000000,  54000000,  54, 1, 6,  1}, /* 480p @ 60Hz*/
 	{ 13000000, 594000000,  91, 1, 2},	/* actual: 591.5 MHz */
 	{ 16800000, 594000000,  71, 1, 2},	/* actual: 596.4 MHz */
 	{ 19200000, 594000000,  62, 1, 2},	/* actual: 595.2 MHz */
@@ -7049,6 +7052,7 @@ static struct clk tegra_pll_d2 = {
 		.lock_delay = 300,
 		.misc1 = 0x570 - 0x4b8,
 		.round_p_to_pdiv = pllss_round_p_to_pdiv,
+		.cpcon_default = 0,
 	},
 };
 
