@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_cl_dvfs.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/regulator/consumer.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/tegra-soc.h>
 
@@ -1799,12 +1800,80 @@ static void tegra_cl_dvfs_register_simon_notifier(struct tegra_cl_dvfs *cld)
 	return;
 }
 
+/*
+ * Two mechanisms to build vdd_map dynamically:
+ *
+ * 1. Use regulator interface to match voltage selector to voltage level,
+ * and platform data coefficients to convert selector to register values.
+ * Applied when vdd supply with I2C inteface and internal voltage selection
+ * register is connected.
+ *
+ * 2. Directly map PWM duty cycle selector to voltage level using platform data
+ * coefficients. Applied when vdd supply driven by PWM data output is connected.
+ */
+static int build_regulator_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
+	struct regulator *reg, struct voltage_reg_map **p_vdd_map)
+{
+	int n;
+	u32 sel, i;
+	struct voltage_reg_map *vdd_map;
+
+	if (!reg)
+		return -ENOSYS;
+
+	n = regulator_count_voltages(reg);
+	if (n <= 0)
+		return -ENODATA;
+
+	vdd_map = kzalloc(sizeof(*vdd_map) * n, GFP_KERNEL);
+	if (!vdd_map)
+		return -ENOMEM;
+
+	for (i = 0, sel = 0; sel < n; sel++) {
+		int v = regulator_list_voltage(reg, sel);
+		if (v > 0) {
+			vdd_map[i].reg_uV = v;
+			vdd_map[i].reg_value = sel * p_data->u.pmu_i2c.sel_mul +
+				p_data->u.pmu_i2c.sel_offs;
+			i++;
+		}
+	}
+
+	p_data->vdd_map_size = i;
+	p_data->vdd_map = vdd_map;
+	*p_vdd_map = vdd_map;
+	return i ? 0 : -EINVAL;
+}
+
+static int build_direct_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
+				struct voltage_reg_map **p_vdd_map)
+{
+	int i;
+	struct voltage_reg_map *vdd_map =
+		kzalloc(sizeof(*vdd_map) * MAX_CL_DVFS_VOLTAGES, GFP_KERNEL);
+
+	if (!vdd_map)
+		return -ENOMEM;
+
+	for (i = 0; i < MAX_CL_DVFS_VOLTAGES; i++) {
+		vdd_map[i].reg_uV = i * p_data->u.pmu_pwm.step_uV +
+			p_data->u.pmu_pwm.min_uV;
+		vdd_map[i].reg_value = i;
+	}
+
+	p_data->vdd_map_size = i;
+	p_data->vdd_map = vdd_map;
+	*p_vdd_map = vdd_map;
+	return 0;
+}
+
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct tegra_cl_dvfs_platform_data *p_data;
 	struct resource *res, *res_i2c = NULL;
-	struct tegra_cl_dvfs *cld;
+	struct voltage_reg_map *p_vdd_map = NULL;
+	struct tegra_cl_dvfs *cld = NULL;
 	struct clk *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk, *dfll_clk;
 
 	/* Get resources */
@@ -1823,7 +1892,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	p_data = pdev->dev.platform_data;
-	if (!p_data || !p_data->cfg_param || !p_data->vdd_map) {
+	if (!p_data || !p_data->cfg_param) {
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
 	}
@@ -1850,11 +1919,26 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	/* Build vdd_map if not specified by platform data */
+	if (!p_data->vdd_map || !p_data->vdd_map_size) {
+		struct regulator *reg = safe_dvfs_clk->dvfs->dvfs_rail->reg;
+		if (p_data->pmu_if == TEGRA_CL_DVFS_PMU_PWM)
+			ret = build_direct_vdd_map(p_data, &p_vdd_map);
+		else
+			ret = build_regulator_vdd_map(p_data, reg, &p_vdd_map);
+
+		if (ret) {
+			dev_err(&pdev->dev, "missing vdd_map (%d)\n", ret);
+			goto err_out;
+		}
+	}
+
 	/* Allocate cl_dvfs object and populate resource accessors */
 	cld = kzalloc(sizeof(*cld), GFP_KERNEL);
 	if (!cld) {
 		dev_err(&pdev->dev, "failed to allocate cl_dvfs object\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_out;
 	}
 
 	cld->cl_base = IO_ADDRESS(res->start);
@@ -1870,11 +1954,10 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 #endif
 	/* Initialize cl_dvfs */
 	ret = cl_dvfs_init(cld);
-	if (ret) {
-		kfree(cld);
-		return ret;
-	}
+	if (ret)
+		goto err_out;
 
+	/* From now on probe would not fail */
 	platform_set_drvdata(pdev, cld);
 
 	/*
@@ -1904,6 +1987,13 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	    cld->safe_dvfs->dvfs_rail->vmax_cdev)
 		schedule_work(&cld->init_cdev_work);
 	return 0;
+
+err_out:
+	if (p_data && p_vdd_map)
+		p_data->vdd_map = NULL;
+	kfree(p_vdd_map);
+	kfree(cld);
+	return ret;
 }
 
 static struct platform_driver tegra_cl_dvfs_driver = {
