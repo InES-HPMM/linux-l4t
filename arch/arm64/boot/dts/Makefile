@@ -4,6 +4,7 @@ targets += dtbs
 dtb-$(CONFIG_MACH_EXUMA) := tegra132-exuma.dtb
 dtb-$(CONFIG_MACH_T132REF) := tegra132-norrin.dtb
 dtb-$(CONFIG_MACH_T132REF) := tegra132-laguna.dtb
+dtb-$(CONFIG_MACH_T132REF) := tegra132-bowmore-ers-s.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
