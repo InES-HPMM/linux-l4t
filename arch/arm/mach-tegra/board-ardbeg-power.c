@@ -38,7 +38,6 @@
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2419x-charger.h>
-#include <linux/power/bq2471x-charger.h>
 #include <linux/power/bq2477x-charger.h>
 #include <linux/tegra-fuse.h>
 
@@ -607,22 +606,6 @@ static const struct i2c_board_info tca6408_expander[] = {
 	{
 		I2C_BOARD_INFO("tca6408", 0x20),
 		.platform_data = &tca6408_pdata,
-	},
-};
-
-struct bq2471x_platform_data ardbeg_bq2471x_pdata = {
-	.dac_ichg		= 2240,
-	.dac_v			= 9008,
-	.dac_minsv		= 4608,
-	.dac_iin		= 4992,
-	.wdt_refresh_timeout	= 40,
-	.gpio			= TEGRA_GPIO_PK5,
-};
-
-static struct i2c_board_info __initdata bq2471x_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("bq2471x", 0x09),
-		.platform_data	= &ardbeg_bq2471x_pdata,
 	},
 };
 
@@ -1209,8 +1192,6 @@ int __init ardbeg_regulator_init(void)
 	}
 
 	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
-		i2c_register_board_info(1, bq2471x_boardinfo,
-			ARRAY_SIZE(bq2471x_boardinfo));
 		i2c_register_board_info(1, bq2477x_boardinfo,
 			ARRAY_SIZE(bq2477x_boardinfo));
 	}
