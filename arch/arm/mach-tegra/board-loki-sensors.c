@@ -31,7 +31,6 @@
 #include <mach/io_dpd.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
-#include <linux/iio/light/jsa1127.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/generic_adc_thermal.h>
@@ -173,27 +172,6 @@ static void mpu_dt_update(void)
 }
 
 #endif
-
-struct jsa1127_platform_data jsa1127_platform_data = {
-	.rint = 100,
-	.integration_time = 200,
-	.use_internal_integration_timing = 1,
-	.tint_coeff = 22,
-	.noisy = 1,
-};
-
-static struct i2c_board_info loki_i2c_jsa1127_board_info[] = {
-	{
-		I2C_BOARD_INFO(JSA1127_NAME, JSA1127_SLAVE_ADDRESS),
-		.platform_data = &jsa1127_platform_data,
-	}
-};
-
-static void loki_jsa1127_init(void)
-{
-	i2c_register_board_info(0, loki_i2c_jsa1127_board_info,
-		ARRAY_SIZE(loki_i2c_jsa1127_board_info));
-}
 
 static struct tegra_io_dpd csia_io = {
 	.name			= "CSIA",
@@ -790,10 +768,8 @@ int __init loki_sensors_init(void)
 		mpu_dt_update();
 #endif
 
-		if (board_info.board_id != BOARD_E2549) {
+		if (board_info.board_id != BOARD_E2549)
 			loki_camera_init();
-			loki_jsa1127_init();
-		}
 	}
 	return 0;
 }
