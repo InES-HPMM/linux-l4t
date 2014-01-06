@@ -1394,15 +1394,23 @@ retry:
 	return false;
 }
 
-static void tegra_pcie_apply_sw_war(int index)
+static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 {
 	unsigned int data;
+	struct pci_dev *pdev = NULL;
 
 	PR_FUNC_LINE;
-	/* WAR for Eye diagram failure on lanes for T124 platforms */
-	data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
-	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
-	rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
+	if (enum_done) {
+		/* disable msi for port driver to avoid panic */
+		for_each_pci_dev(pdev)
+			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
+				pdev->msi_enabled = 0;
+	} else {
+		/* WAR for Eye diagram failure on lanes for T124 platforms */
+		data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
+		data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
+		rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
+	}
 }
 
 /* Enable various features of root port */
@@ -1436,7 +1444,7 @@ static void tegra_pcie_enable_rp_features(int index)
 	data |= PCIE2_RP_VEND_CTL1_ERPT;
 	rp_writel(data, NV_PCIE2_RP_VEND_CTL1, index);
 
-	tegra_pcie_apply_sw_war(index);
+	tegra_pcie_apply_sw_war(index, false);
 }
 
 static void tegra_pcie_disable_ctlr(int index)
@@ -1739,6 +1747,7 @@ static void tegra_pcie_enable_features(void)
 
 	tegra_pcie_pll_pdn();
 	tegra_pcie_enable_aspm();
+	tegra_pcie_apply_sw_war(0, true);
 }
 
 static int __init tegra_pcie_init(void)
