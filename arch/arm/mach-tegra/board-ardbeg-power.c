@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-power.c
  *
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -255,7 +255,7 @@ static struct as3722_pinctrl_platform_data as3722_pctrl_pdata[] = {
 	AS3722_PIN_CONTROL("gpio2", "gpio", NULL, NULL, NULL, "output-high"),
 	AS3722_PIN_CONTROL("gpio3", "gpio", NULL, NULL, "enabled", NULL),
 	AS3722_PIN_CONTROL("gpio4", "gpio", NULL, NULL, NULL, "output-high"),
-	AS3722_PIN_CONTROL("gpio5", "clk32k-out", "pull-down", NULL, NULL, NULL),
+	AS3722_PIN_CONTROL("gpio5", "clk32k-out", NULL, NULL, NULL, NULL),
 	AS3722_PIN_CONTROL("gpio6", "gpio", NULL, NULL, "enabled", NULL),
 	AS3722_PIN_CONTROL("gpio7", "gpio", NULL, NULL, NULL, "output-low"),
 };
