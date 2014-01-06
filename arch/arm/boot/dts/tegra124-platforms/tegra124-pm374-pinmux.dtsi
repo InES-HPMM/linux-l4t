@@ -1461,9 +1461,9 @@
 		pi7 {
 			nvidia,pins = "pi7";
 			nvidia,function = "safe";
-			nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
-			nvidia,pull = <TEGRA_PIN_PUPD_PULL_DOWN>;
-			nvidia,tristate = <TEGRA_PIN_TRISTATE>;
+			nvidia,enable-input = <TEGRA_PIN_INPUT>;
+			nvidia,pull = <TEGRA_PIN_PUPD_PULL_UP>;
+			nvidia,tristate = <TEGRA_PIN_NORMAL>;
 		};
 
 		pex_l0_clkreq_n_pdd2 {
