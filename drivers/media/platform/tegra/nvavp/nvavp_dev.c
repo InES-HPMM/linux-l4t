@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -41,6 +41,7 @@
 #include <linux/tegra-powergate.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/sched.h>
+#include <linux/memblock.h>
 
 #include <mach/pm_domains.h>
 
@@ -1167,25 +1168,6 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 		(unsigned long)nvavp->os_info.phys);
 	nvavp->os_info.reset_addr = nvavp->os_info.phys;
 #else /* nvmem= carveout */
-	/* paddr is found in nvmem= carveout */
-	/* vaddr is same as paddr */
-	/* Find nvmem carveout */
-	if (!pfn_valid(__phys_to_pfn(0x8e000000))) {
-		nvavp->os_info.phys = 0x8e000000;
-	} else if (!pfn_valid(__phys_to_pfn(0xf7e00000))) {
-		nvavp->os_info.phys = 0xf7e00000;
-	} else if (!pfn_valid(__phys_to_pfn(0x9e000000))) {
-		nvavp->os_info.phys = 0x9e000000;
-	} else if (!pfn_valid(__phys_to_pfn(0xbe000000))) {
-		nvavp->os_info.phys = 0xbe000000;
-	} else {
-		dev_err(&nvavp->nvhost_dev->dev,
-			"cannot find nvmem= carveout to load AVP os\n");
-		dev_err(&nvavp->nvhost_dev->dev,
-			"check kernel command line "
-			"to see if nvmem= is defined\n");
-		BUG();
-	}
 	dev_info(&nvavp->nvhost_dev->dev,
 		"using nvmem= carveout at %llx to load AVP os\n",
 		(u64)nvavp->os_info.phys);
@@ -1970,6 +1952,19 @@ enum nvavp_heap {
 	NVAVP_USE_CARVEOUT = (1 << 1)
 };
 
+static int nvavp_reserve_os_mem(struct nvavp_info *nvavp, dma_addr_t phys)
+{
+	int ret = -ENOMEM;
+	if (!pfn_valid(__phys_to_pfn(phys))) {
+		if (memblock_reserve(phys, SZ_1M)) {
+			dev_err(&nvavp->nvhost_dev->dev,
+				"failed to reserve mem block %lx\n", phys);
+		} else
+			ret = 0;
+	}
+	return ret;
+}
+
 static int tegra_nvavp_probe(struct platform_device *ndev)
 {
 	struct nvavp_info *nvavp;
@@ -2031,15 +2026,22 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 			(unsigned long)nvavp->os_info.phys);
 		break;
 	case NVAVP_USE_CARVEOUT:
-		nvavp->os_info.data = dma_alloc_coherent(
-						&ndev->dev,
-						SZ_1M,
-						&nvavp->os_info.phys,
-						GFP_KERNEL);
+		if (!nvavp_reserve_os_mem(nvavp, 0x8e000000))
+			nvavp->os_info.phys = 0x8e000000;
+		else if (!nvavp_reserve_os_mem(nvavp, 0xf7e00000))
+			nvavp->os_info.phys = 0xf7e00000;
+		else if (!nvavp_reserve_os_mem(nvavp, 0x9e000000))
+			nvavp->os_info.phys = 0x9e000000;
+		else if (!nvavp_reserve_os_mem(nvavp, 0xbe000000))
+			nvavp->os_info.phys = 0xbe000000;
+		else {
+			dev_err(&nvavp->nvhost_dev->dev,
+				"cannot find nvmem= carveout to load AVP os\n");
+			dev_err(&nvavp->nvhost_dev->dev,
+				"check kernel command line "
+				"to see if nvmem= is defined\n");
+			BUG();
 
-		if (!nvavp->os_info.data) {
-			dev_err(&ndev->dev, "cannot allocate dma memory\n");
-			ret = -ENOMEM;
 		}
 
 		dev_info(&ndev->dev,
