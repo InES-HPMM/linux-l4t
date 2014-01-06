@@ -507,6 +507,9 @@ static const struct file_operations ov7695_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov7695_open,
 	.unlocked_ioctl = ov7695_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov7695_ioctl,
+#endif
 	.release = ov7695_release,
 };
 
@@ -713,8 +716,8 @@ static long ov7695_ioctl(struct file *file,
 	int err = 0;
 	struct ov7695_info *info = file->private_data;
 
-	switch (cmd) {
-	case OV7695_SENSOR_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV7695_SENSOR_IOCTL_SET_MODE):
 	{
 		struct ov7695_mode mode;
 
@@ -728,7 +731,7 @@ static long ov7695_ioctl(struct file *file,
 		break;
 	}
 
-	case OV7695_SENSOR_IOCTL_SET_WHITE_BALANCE:
+	case _IOC_NR(OV7695_SENSOR_IOCTL_SET_WHITE_BALANCE):
 	{
 		u8 whitebalance;
 
@@ -768,7 +771,7 @@ static long ov7695_ioctl(struct file *file,
 		return 0;
 	}
 
-	case OV7695_SENSOR_IOCTL_SET_EV:
+	case _IOC_NR(OV7695_SENSOR_IOCTL_SET_EV):
 	{
 		short ev;
 
@@ -803,7 +806,7 @@ static long ov7695_ioctl(struct file *file,
 		return 0;
 	}
 
-	case OV7695_SENSOR_IOCTL_GET_EV:
+	case _IOC_NR(OV7695_SENSOR_IOCTL_GET_EV):
 	{
 		short ev;
 		u8 val;

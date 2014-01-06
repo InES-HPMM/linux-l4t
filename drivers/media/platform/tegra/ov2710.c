@@ -1,7 +1,7 @@
 /*
  * ov2710.c - ov2710 sensor driver
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION, All Rights Reserved.
  *
  * Contributors:
  *      erik lilliebjerg <elilliebjerg@nvidia.com>
@@ -683,8 +683,8 @@ static long ov2710_ioctl(struct file *file,
 	int err;
 	struct ov2710_info *info = file->private_data;
 
-	switch (cmd) {
-	case OV2710_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV2710_IOCTL_SET_MODE):
 	{
 		struct ov2710_mode mode;
 		if (copy_from_user(&mode,
@@ -695,13 +695,13 @@ static long ov2710_ioctl(struct file *file,
 
 		return ov2710_set_mode(info, &mode);
 	}
-	case OV2710_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(OV2710_IOCTL_SET_FRAME_LENGTH):
 		return ov2710_set_frame_length(info, (u32)arg);
-	case OV2710_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(OV2710_IOCTL_SET_COARSE_TIME):
 		return ov2710_set_coarse_time(info, (u32)arg);
-	case OV2710_IOCTL_SET_GAIN:
+	case _IOC_NR(OV2710_IOCTL_SET_GAIN):
 		return ov2710_set_gain(info, (u16)arg);
-	case OV2710_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(OV2710_IOCTL_SET_GROUP_HOLD):
 	{
 		struct ov2710_ae ae;
 		if (copy_from_user(&ae,
@@ -712,7 +712,7 @@ static long ov2710_ioctl(struct file *file,
 		}
 		return ov2710_set_group_hold(info, &ae);
 	}
-	case OV2710_IOCTL_GET_STATUS:
+	case _IOC_NR(OV2710_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -725,7 +725,7 @@ static long ov2710_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case OV2710_IOCTL_GET_FUSEID:
+	case _IOC_NR(OV2710_IOCTL_GET_FUSEID):
 	{
 		err = ov2710_get_fuse_id(info);
 		if (err) {
@@ -801,6 +801,9 @@ static const struct file_operations ov2710_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov2710_open,
 	.unlocked_ioctl = ov2710_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov2710_ioctl,
+#endif
 	.release = ov2710_release,
 };
 

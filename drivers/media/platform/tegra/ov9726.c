@@ -1,7 +1,7 @@
 /*
  * ov9726.c - ov9726 sensor driver
  *
- * Copyright (c) 2011 - 2013, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * Contributors:
  *	  Charlie Huang <chahuang@nvidia.com>
@@ -769,8 +769,8 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct i2c_client	*i2c_client = dev->i2c_client;
 	int			 err = 0;
 
-	switch (cmd) {
-	case OV9726_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV9726_IOCTL_SET_MODE):
 	{
 		struct ov9726_mode	mode;
 
@@ -785,16 +785,16 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		break;
 	}
-	case OV9726_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(OV9726_IOCTL_SET_FRAME_LENGTH):
 		err = ov9726_set_frame_length(i2c_client, (u32)arg);
 		break;
-	case OV9726_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(OV9726_IOCTL_SET_COARSE_TIME):
 		err = ov9726_set_coarse_time(i2c_client, (u32)arg);
 		break;
-	case OV9726_IOCTL_SET_GAIN:
+	case _IOC_NR(OV9726_IOCTL_SET_GAIN):
 		err = ov9726_set_gain(i2c_client, (u16)arg);
 		break;
-	case OV9726_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(OV9726_IOCTL_SET_GROUP_HOLD):
 	{
 		struct ov9726_ae ae;
 		if (copy_from_user(&ae,
@@ -805,7 +805,7 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		err = ov9726_set_group_hold(dev, &ae);
 		break;
 	}
-	case OV9726_IOCTL_GET_STATUS:
+	case _IOC_NR(OV9726_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -817,7 +817,7 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-	case OV9726_IOCTL_GET_FUSEID:
+	case _IOC_NR(OV9726_IOCTL_GET_FUSEID):
 	{
 		err = ov9726_get_fuse_id(dev);
 		if (err) {
@@ -876,6 +876,9 @@ static const struct file_operations ov9726_fileops = {
 	.owner		= THIS_MODULE,
 	.open		= ov9726_open,
 	.unlocked_ioctl	= ov9726_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov9726_ioctl,
+#endif
 	.release	= ov9726_release,
 };
 

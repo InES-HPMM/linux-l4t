@@ -1,7 +1,7 @@
 /*
  * MAX77387.c - MAX77387 flash/torch kernel driver
  *
- * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1446,20 +1446,20 @@ static long max77387_ioctl(
 	int pwr;
 	int err = 0;
 
-	switch (cmd) {
-	case NVC_IOCTL_PARAM_WR:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
 		err = max77387_set_param(info, arg);
 		break;
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		err = max77387_get_param(info, arg);
 		break;
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
 		err = max77387_power_user_set(info, pwr);
 		break;
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		pwr = info->pwr_state / 2;
 		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user(
@@ -1557,6 +1557,9 @@ static const struct file_operations max77387_fileops = {
 	.owner = THIS_MODULE,
 	.open = max77387_open,
 	.unlocked_ioctl = max77387_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = max77387_ioctl,
+#endif
 	.release = max77387_release,
 };
 

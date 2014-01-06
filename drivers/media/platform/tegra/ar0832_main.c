@@ -1,7 +1,7 @@
 /*
 * ar0832_main.c - Aptina AR0832 8M Bayer type sensor driver
 *
-* Copyright (c) 2011 - 2013, NVIDIA, All Rights Reserved.
+* Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
 *
 * This file is licensed under the terms of the GNU General Public License
 * version 2. This program is licensed "as is" without any warranty of any
@@ -2214,8 +2214,8 @@ static long ar0832_ioctl(struct file *file,
 	struct ar0832_mode mode;
 	u16 pos;
 
-	switch (cmd) {
-	case AR0832_IOCTL_SET_POWER_ON:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(AR0832_IOCTL_SET_POWER_ON):
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_SET_POWER_ON\n");
 		if (copy_from_user(&mode,
 			(const void __user *)arg,
@@ -2227,7 +2227,7 @@ static long ar0832_ioctl(struct file *file,
 		}
 		dev->is_stereo = mode.stereo;
 		return ar0832_power_on(dev);
-	case AR0832_IOCTL_SET_MODE:
+	case _IOC_NR(AR0832_IOCTL_SET_MODE):
 	{
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_SET_MODE\n");
 		if (copy_from_user(&mode,
@@ -2267,22 +2267,22 @@ static long ar0832_ioctl(struct file *file,
 		mutex_unlock(&dev->ar0832_camera_lock);
 		return err;
 	}
-	case AR0832_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(AR0832_IOCTL_SET_FRAME_LENGTH):
 		mutex_lock(&dev->ar0832_camera_lock);
 		err = ar0832_set_frame_length(dev, (u32)arg);
 		mutex_unlock(&dev->ar0832_camera_lock);
 		return err;
-	case AR0832_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(AR0832_IOCTL_SET_COARSE_TIME):
 		mutex_lock(&dev->ar0832_camera_lock);
 		err = ar0832_set_coarse_time(dev, (u32)arg);
 		mutex_unlock(&dev->ar0832_camera_lock);
 		return err;
-	case AR0832_IOCTL_SET_GAIN:
+	case _IOC_NR(AR0832_IOCTL_SET_GAIN):
 		mutex_lock(&dev->ar0832_camera_lock);
 		err = ar0832_set_gain(dev, (u16)arg);
 		mutex_unlock(&dev->ar0832_camera_lock);
 		return err;
-	case AR0832_IOCTL_GET_STATUS:
+	case _IOC_NR(AR0832_IOCTL_GET_STATUS):
 	{
 		u8 status;
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_GET_STATUS\n");
@@ -2298,7 +2298,7 @@ static long ar0832_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case AR0832_IOCTL_SET_SENSOR_REGION:
+	case _IOC_NR(AR0832_IOCTL_SET_SENSOR_REGION):
 	{
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_SET_SENSOR_REGION\n");
 		/* Right now, it doesn't do anything */
@@ -2306,7 +2306,7 @@ static long ar0832_ioctl(struct file *file,
 		return 0;
 	}
 
-	case AR0832_FOCUSER_IOCTL_GET_CONFIG:
+	case _IOC_NR(AR0832_FOCUSER_IOCTL_GET_CONFIG):
 		dev_dbg(&i2c_client->dev,
 			"%s AR0832_FOCUSER_IOCTL_GET_CONFIG\n", __func__);
 		if (copy_to_user((void __user *) arg,
@@ -2320,7 +2320,7 @@ static long ar0832_ioctl(struct file *file,
 		}
 		return 0;
 
-	case AR0832_FOCUSER_IOCTL_SET_CONFIG:
+	case _IOC_NR(AR0832_FOCUSER_IOCTL_SET_CONFIG):
 		dev_info(&i2c_client->dev,
 				"%s AR0832_FOCUSER_IOCTL_SET_CONFIG\n", __func__);
 		if (ar0832_set_focuser_capabilities(dev, arg) != 0) {
@@ -2336,7 +2336,7 @@ static long ar0832_ioctl(struct file *file,
 			dev->focuser_info->config.pos_working_high);
 		return 0;
 
-	case AR0832_FOCUSER_IOCTL_SET_POSITION:
+	case _IOC_NR(AR0832_FOCUSER_IOCTL_SET_POSITION):
 		dev_dbg(&i2c_client->dev,
 			"%s AR0832_FOCUSER_IOCTL_SET_POSITION\n", __func__);
 		mutex_lock(&dev->ar0832_camera_lock);
@@ -2348,7 +2348,7 @@ static long ar0832_ioctl(struct file *file,
 		mutex_unlock(&dev->ar0832_camera_lock);
 		return err;
 
-	case AR0832_IOCTL_GET_SENSOR_ID:
+	case _IOC_NR(AR0832_IOCTL_GET_SENSOR_ID):
 		dev_dbg(&i2c_client->dev,
 			"%s AR0832_IOCTL_GET_SENSOR_ID\n", __func__);
 
@@ -2372,7 +2372,7 @@ static long ar0832_ioctl(struct file *file,
 		}
 		return 0;
 
-	case AR0832_IOCTL_GET_FUSEID:
+	case _IOC_NR(AR0832_IOCTL_GET_FUSEID):
 	{
 		err = ar0832_get_fuseid(dev);
 		if (err) {
@@ -2433,6 +2433,9 @@ static const struct file_operations ar0832_fileops = {
 	.owner = THIS_MODULE,
 	.open = ar0832_open,
 	.unlocked_ioctl = ar0832_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ar0832_ioctl,
+#endif
 	.release = ar0832_release,
 };
 

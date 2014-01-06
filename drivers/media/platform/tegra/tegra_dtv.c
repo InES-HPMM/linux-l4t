@@ -3,7 +3,7 @@
  *
  * Author: Adam Jiang <chaoj@nvidia.com>
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -447,12 +447,12 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 	/* process may sleep on this */
 	mutex_lock(&s->mtx);
 
-	switch (cmd) {
-	case TEGRA_DTV_IOCTL_START:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(TEGRA_DTV_IOCTL_START):
 		pr_debug("%s: run serial ts handling.\n", __func__);
 		s->stopped = false;
 		break;
-	case TEGRA_DTV_IOCTL_STOP:
+	case _IOC_NR(TEGRA_DTV_IOCTL_STOP):
 		pr_debug("%s: stop serial ts handling.\n", __func__);
 		if (s->xferring) {
 			stop_xfer_unsafe(s);
@@ -461,7 +461,7 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 			s->stopped = true;
 		}
 		break;
-	case TEGRA_DTV_IOCTL_SET_HW_CONFIG:
+	case _IOC_NR(TEGRA_DTV_IOCTL_SET_HW_CONFIG):
 	{
 		struct tegra_dtv_hw_config cfg;
 
@@ -481,7 +481,7 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 		_dtv_set_hw_params(dtv_ctx);
 		break;
 	}
-	case TEGRA_DTV_IOCTL_GET_HW_CONFIG:
+	case _IOC_NR(TEGRA_DTV_IOCTL_GET_HW_CONFIG):
 	{
 		struct tegra_dtv_hw_config cfg;
 
@@ -492,14 +492,14 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 			ret = -EFAULT;
 		break;
 	}
-	case TEGRA_DTV_IOCTL_GET_PROFILE:
+	case _IOC_NR(TEGRA_DTV_IOCTL_GET_PROFILE):
 	{
 		if (copy_to_user((void __user *) arg, &dtv_ctx->profile,
 				 sizeof(struct tegra_dtv_profile)))
 			ret = -EFAULT;
 		break;
 	}
-	case TEGRA_DTV_IOCTL_SET_PROFILE:
+	case _IOC_NR(TEGRA_DTV_IOCTL_SET_PROFILE):
 	{
 		struct tegra_dtv_profile profile;
 
@@ -817,6 +817,9 @@ static const struct file_operations tegra_dtv_fops = {
 	.open = tegra_dtv_open,
 	.read = tegra_dtv_read,
 	.unlocked_ioctl = tegra_dtv_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = tegra_dtv_ioctl,
+#endif
 	.release = tegra_dtv_release,
 };
 

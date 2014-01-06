@@ -86,8 +86,8 @@ static long ad5823_ioctl(struct file *file,
 	int err;
 	int need_poweroff = 0;
 
-	switch (cmd) {
-	case AD5823_IOCTL_GET_CONFIG:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(AD5823_IOCTL_GET_CONFIG):
 	{
 		if (copy_to_user((void __user *) arg,
 				 &info->config,
@@ -99,7 +99,7 @@ static long ad5823_ioctl(struct file *file,
 
 		break;
 	}
-	case AD5823_IOCTL_SET_POSITION:
+	case _IOC_NR(AD5823_IOCTL_SET_POSITION):
 		if (info->pdata->pwr_dev == AD5823_PWR_DEV_OFF
 				&& info->pdata->power_on) {
 			need_poweroff = 1;
@@ -110,7 +110,7 @@ static long ad5823_ioctl(struct file *file,
 			info->pdata->power_off(info->pdata);
 		return err;
 
-	case AD5823_IOCTL_SET_CAL_DATA:
+	case _IOC_NR(AD5823_IOCTL_SET_CAL_DATA):
 		if (copy_from_user(&cal, (const void __user *)arg,
 					sizeof(struct ad5823_cal_data))) {
 			dev_err(&info->i2c_client->dev,
@@ -122,7 +122,7 @@ static long ad5823_ioctl(struct file *file,
 		info->config.pos_working_high = cal.pos_high;
 		break;
 
-	case AD5823_IOCTL_SET_CONFIG:
+	case _IOC_NR(AD5823_IOCTL_SET_CONFIG):
 	{
 		if (info->config.pos_working_low != 0)
 			cal.pos_low = info->config.pos_working_low;
@@ -190,6 +190,9 @@ static const struct file_operations ad5823_fileops = {
 	.owner = THIS_MODULE,
 	.open = ad5823_open,
 	.unlocked_ioctl = ad5823_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ad5823_ioctl,
+#endif
 	.release = ad5823_release,
 };
 

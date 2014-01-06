@@ -1,7 +1,7 @@
 /*
  * ar0261.c - ar0261 sensor driver
  *
- * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1033,8 +1033,8 @@ ar0261_ioctl(struct file *file,
 	struct ar0261_info *info = file->private_data;
 	struct device *dev = &info->i2c_client->dev;
 
-	switch (cmd) {
-	case AR0261_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(AR0261_IOCTL_SET_MODE):
 	{
 		struct ar0261_mode mode;
 		if (copy_from_user(&mode,
@@ -1046,13 +1046,13 @@ ar0261_ioctl(struct file *file,
 		}
 		return ar0261_set_mode(info, &mode);
 	}
-	case AR0261_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(AR0261_IOCTL_SET_FRAME_LENGTH):
 		return ar0261_set_frame_length(info, (u32)arg, true);
-	case AR0261_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(AR0261_IOCTL_SET_COARSE_TIME):
 		return ar0261_set_coarse_time(info, (u32)arg, true);
-	case AR0261_IOCTL_SET_GAIN:
+	case _IOC_NR(AR0261_IOCTL_SET_GAIN):
 		return ar0261_set_gain(info, (u16)arg, true);
-	case AR0261_IOCTL_GET_STATUS:
+	case _IOC_NR(AR0261_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -1066,7 +1066,7 @@ ar0261_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case AR0261_IOCTL_GET_SENSORDATA:
+	case _IOC_NR(AR0261_IOCTL_GET_SENSORDATA):
 	{
 		err = ar0261_get_sensor_id(info);
 
@@ -1084,7 +1084,7 @@ ar0261_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case AR0261_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(AR0261_IOCTL_SET_GROUP_HOLD):
 	{
 		struct ar0261_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
@@ -1094,7 +1094,7 @@ ar0261_ioctl(struct file *file,
 		}
 		return ar0261_set_group_hold(info, &ae);
 	}
-	case AR0261_IOCTL_SET_HDR_COARSE_TIME:
+	case _IOC_NR(AR0261_IOCTL_SET_HDR_COARSE_TIME):
 	{
 		struct ar0261_hdr values;
 
@@ -1223,6 +1223,9 @@ static const struct file_operations ar0261_fileops = {
 	.owner = THIS_MODULE,
 	.open = ar0261_open,
 	.unlocked_ioctl = ar0261_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ar0261_ioctl,
+#endif
 	.release = ar0261_release,
 };
 

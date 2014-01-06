@@ -2,7 +2,7 @@
  * ov5650.c - ov5650 sensor driver
  *
  * Copyright (C) 2011 Google Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All Rights Reserved.
  *
  * Contributors:
  *      Rebecca Schultz Zavin <rebecca@android.com>
@@ -1358,8 +1358,8 @@ static long ov5650_ioctl(struct file *file,
 	int err;
 	struct ov5650_info *info = file->private_data;
 
-	switch (cmd) {
-	case OV5650_IOCTL_SET_CAMERA_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV5650_IOCTL_SET_CAMERA_MODE):
 	{
 		if (info->camera_mode != arg) {
 			err = ov5650_set_power(info, 0);
@@ -1374,11 +1374,11 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case OV5650_IOCTL_SYNC_SENSORS:
+	case _IOC_NR(OV5650_IOCTL_SYNC_SENSORS):
 		if (info->right.pdata->synchronize_sensors)
 			info->right.pdata->synchronize_sensors();
 		return 0;
-	case OV5650_IOCTL_SET_MODE:
+	case _IOC_NR(OV5650_IOCTL_SET_MODE):
 	{
 		struct ov5650_mode mode;
 		if (copy_from_user(&mode,
@@ -1390,15 +1390,15 @@ static long ov5650_ioctl(struct file *file,
 
 		return ov5650_set_mode(info, &mode);
 	}
-	case OV5650_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(OV5650_IOCTL_SET_FRAME_LENGTH):
 		return ov5650_set_frame_length(info, (u32)arg);
-	case OV5650_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(OV5650_IOCTL_SET_COARSE_TIME):
 		return ov5650_set_coarse_time(info, (u32)arg);
-	case OV5650_IOCTL_SET_GAIN:
+	case _IOC_NR(OV5650_IOCTL_SET_GAIN):
 		return ov5650_set_gain(info, (u16)arg);
-	case OV5650_IOCTL_SET_BINNING:
+	case _IOC_NR(OV5650_IOCTL_SET_BINNING):
 		return ov5650_set_binning(info, (u8)arg);
-	case OV5650_IOCTL_GET_STATUS:
+	case _IOC_NR(OV5650_IOCTL_GET_STATUS):
 	{
 		u16 status = 0;
 		if (copy_to_user((void __user *)arg, &status,
@@ -1408,14 +1408,14 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case OV5650_IOCTL_TEST_PATTERN:
+	case _IOC_NR(OV5650_IOCTL_TEST_PATTERN):
 	{
 		err = ov5650_test_pattern(info, (enum ov5650_test_pattern) arg);
 		if (err)
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
 		return err;
 	}
-	case OV5650_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(OV5650_IOCTL_SET_GROUP_HOLD):
 	{
 		struct ov5650_ae ae;
 		if (copy_from_user(&ae,
@@ -1426,7 +1426,7 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return ov5650_set_group_hold(info, &ae);
 	}
-	case OV5650_IOCTL_GET_FUSEID:
+	case _IOC_NR(OV5650_IOCTL_GET_FUSEID):
 	{
 		err = ov5650_get_fuseid(info);
 		if (err) {
@@ -1470,6 +1470,9 @@ static const struct file_operations ov5650_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov5650_open,
 	.unlocked_ioctl = ov5650_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov5650_ioctl,
+#endif
 	.release = ov5650_release,
 };
 

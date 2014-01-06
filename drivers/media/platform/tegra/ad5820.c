@@ -1,7 +1,7 @@
 /*
  * AD5820 focuser driver.
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * Contributors:
  *      Sachin Nikam <snikam@nvidia.com>
@@ -99,8 +99,8 @@ static long ad5820_ioctl(struct file *file,
 {
 	struct ad5820_info *info = file->private_data;
 
-	switch (cmd) {
-	case AD5820_IOCTL_GET_CONFIG:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(AD5820_IOCTL_GET_CONFIG):
 	{
 		if (copy_to_user((void __user *) arg,
 				 &info->config,
@@ -111,7 +111,7 @@ static long ad5820_ioctl(struct file *file,
 
 		break;
 	}
-	case AD5820_IOCTL_SET_POSITION:
+	case _IOC_NR(AD5820_IOCTL_SET_POSITION):
 		return ad5820_set_position(info, (u32) arg);
 	default:
 		return -EINVAL;
@@ -143,6 +143,9 @@ static const struct file_operations ad5820_fileops = {
 	.owner = THIS_MODULE,
 	.open = ad5820_open,
 	.unlocked_ioctl = ad5820_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ad5820_ioctl,
+#endif
 	.release = ad5820_release,
 };
 

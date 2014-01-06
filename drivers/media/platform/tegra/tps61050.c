@@ -1,7 +1,7 @@
 /*
  * tps61050.c - tps61050 flash/torch kernel driver
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -736,21 +736,21 @@ static long tps61050_ioctl(struct file *file,
 	struct tps61050_info *info = file->private_data;
 	int pwr;
 
-	switch (cmd) {
-	case NVC_IOCTL_PARAM_WR:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
 		return tps61050_param_wr(info, arg);
 
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		return tps61050_param_rd(info, arg);
 
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
 				__func__, pwr);
 		return tps61050_pm_api_wr(info, pwr);
 
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		if (info->s_mode == NVC_SYNC_SLAVE)
 			pwr = info->s_info->pwr_api / 2;
 		else
@@ -877,6 +877,9 @@ static const struct file_operations tps61050_fileops = {
 	.owner = THIS_MODULE,
 	.open = tps61050_open,
 	.unlocked_ioctl = tps61050_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = tps61050_ioctl,
+#endif
 	.release = tps61050_release,
 };
 

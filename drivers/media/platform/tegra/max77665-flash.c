@@ -1,7 +1,7 @@
 /*
  * MAX77665_F.c - MAX77665_F flash/torch kernel driver
  *
- * Copyright (c) 2012 - 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1263,17 +1263,17 @@ static long max77665_f_ioctl(
 	struct max77665_f_info *info = file->private_data;
 	int pwr;
 
-	switch (cmd) {
-	case NVC_IOCTL_PARAM_WR:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
 		return max77665_f_set_param(info, arg);
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		return max77665_f_get_param(info, arg);
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
 		return max77665_f_power_user_set(info, pwr);
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		pwr = info->pwr_state / 2;
 		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user(
@@ -1372,6 +1372,9 @@ static const struct file_operations max77665_f_fileops = {
 	.owner = THIS_MODULE,
 	.open = max77665_f_open,
 	.unlocked_ioctl = max77665_f_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = max77665_f_ioctl,
+#endif
 	.release = max77665_f_release,
 };
 

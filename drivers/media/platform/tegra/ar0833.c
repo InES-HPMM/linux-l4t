@@ -1,7 +1,7 @@
 /*
  * ar0833.c - ar0833 sensor driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -624,6 +624,9 @@ static const struct file_operations ar0833_fileops = {
 	.owner = THIS_MODULE,
 	.open = ar0833_open,
 	.unlocked_ioctl = ar0833_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ar0833_ioctl,
+#endif
 	.release = ar0833_release,
 };
 
@@ -1085,8 +1088,8 @@ static long ar0833_ioctl(struct file *file,
 	int err = 0;
 	struct ar0833_info *info = file->private_data;
 
-	switch (cmd) {
-	case AR0833_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(AR0833_IOCTL_SET_MODE):
 	{
 		struct ar0833_mode mode;
 
@@ -1099,18 +1102,18 @@ static long ar0833_ioctl(struct file *file,
 		err = ar0833_set_mode(info, &mode);
 		break;
 	}
-	case AR0833_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(AR0833_IOCTL_SET_FRAME_LENGTH):
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_FRAME_LENGTH %x\n", (u32)arg);
 		/* obsolete. we should not update frame length,
 		   it is done by sensor automatically */
 		break;
-	case AR0833_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(AR0833_IOCTL_SET_COARSE_TIME):
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_COARSE_TIME %x\n", (u32)arg);
 		err = ar0833_set_coarse_time(info, (u32)arg, true);
 		break;
-	case AR0833_IOCTL_SET_HDR_COARSE_TIME:
+	case _IOC_NR(AR0833_IOCTL_SET_HDR_COARSE_TIME):
 	{
 		struct ar0833_hdr values;
 
@@ -1125,12 +1128,12 @@ static long ar0833_ioctl(struct file *file,
 		err = ar0833_set_hdr_coarse_time(info, &values, true);
 		break;
 	}
-	case AR0833_IOCTL_SET_GAIN:
+	case _IOC_NR(AR0833_IOCTL_SET_GAIN):
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_GAIN %x\n", (u32)arg);
 		err = ar0833_set_gain(info, (u16)arg, true);
 		break;
-	case AR0833_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(AR0833_IOCTL_SET_GROUP_HOLD):
 	{
 		struct ar0833_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
@@ -1141,7 +1144,7 @@ static long ar0833_ioctl(struct file *file,
 		}
 		return ar0833_set_group_hold(info, &ae);
 	}
-	case AR0833_IOCTL_GET_STATUS:
+	case _IOC_NR(AR0833_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -1155,7 +1158,7 @@ static long ar0833_ioctl(struct file *file,
 		}
 		break;
 	}
-	case AR0833_IOCTL_GET_MODE:
+	case _IOC_NR(AR0833_IOCTL_GET_MODE):
 	{
 		struct ar0833_modeinfo mode_info, *mi;
 

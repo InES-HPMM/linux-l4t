@@ -1,7 +1,7 @@
 /*
  * ov14810.c - ov14810 sensor driver
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *	  Krupal Divvela <kdivvela@nvidia.com>
@@ -1129,8 +1129,8 @@ static long ov14810_ioctl(struct file *file,
 	struct ov14810_info *info = file->private_data;
 	int err = 0;
 
-	switch (cmd) {
-	case OV14810_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV14810_IOCTL_SET_MODE):
 	{
 		struct ov14810_mode mode;
 
@@ -1143,13 +1143,13 @@ static long ov14810_ioctl(struct file *file,
 
 		return ov14810_set_mode(info, &mode);
 	}
-	case OV14810_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(OV14810_IOCTL_SET_FRAME_LENGTH):
 		return ov14810_set_frame_length(info, (u32)arg);
-	case OV14810_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(OV14810_IOCTL_SET_COARSE_TIME):
 		return ov14810_set_coarse_time(info, (u32)arg);
-	case OV14810_IOCTL_SET_GAIN:
+	case _IOC_NR(OV14810_IOCTL_SET_GAIN):
 		return ov14810_set_gain(info, (u16)arg);
-	case OV14810_IOCTL_GET_STATUS:
+	case _IOC_NR(OV14810_IOCTL_GET_STATUS):
 	{
 		u16 status = 0;
 		err = copy_to_user((void __user *)arg, &status,2);
@@ -1256,6 +1256,9 @@ static const struct file_operations ov14810_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov14810_open,
 	.unlocked_ioctl = ov14810_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov14810_ioctl,
+#endif
 	.release = ov14810_release,
 };
 

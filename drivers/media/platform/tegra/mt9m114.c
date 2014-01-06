@@ -617,6 +617,9 @@ static const struct file_operations mt9m114_fileops = {
 	.owner = THIS_MODULE,
 	.open = mt9m114_open,
 	.unlocked_ioctl = mt9m114_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = mt9m114_ioctl,
+#endif
 	.release = mt9m114_release,
 };
 
@@ -725,8 +728,8 @@ static long mt9m114_ioctl(struct file *file,
 	int err = 0;
 	struct mt9m114_info *info = file->private_data;
 
-	switch (cmd) {
-	case MT9M114_SENSOR_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(MT9M114_SENSOR_IOCTL_SET_MODE):
 	{
 		struct mt9m114_mode mode;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -3025,8 +3025,8 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct ov5693_info *info = file->private_data;
 	int err;
 
-	switch (cmd) {
-	case OV5693_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV5693_IOCTL_SET_MODE):
 	{
 		struct ov5693_mode mode;
 		if (copy_from_user(&mode,
@@ -3039,7 +3039,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		return ov5693_set_mode(info, &mode);
 	}
-	case OV5693_IOCTL_GET_STATUS: {
+	case _IOC_NR(OV5693_IOCTL_GET_STATUS): {
 		u8 status = 0;
 		if (copy_to_user((void __user *)arg, &status, sizeof(status))) {
 			dev_err(&info->i2c_client->dev,
@@ -3050,7 +3050,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 		}
 
-	case OV5693_IOCTL_SET_GROUP_HOLD: {
+	case _IOC_NR(OV5693_IOCTL_SET_GROUP_HOLD): {
 		struct ov5693_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
 				sizeof(struct ov5693_ae))) {
@@ -3062,14 +3062,14 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ov5693_set_group_hold(info, &ae);
 		}
 
-	case OV5693_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(OV5693_IOCTL_SET_FRAME_LENGTH):
 		return ov5693_set_frame_length(info, (u32)arg, true);
 
-	case OV5693_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(OV5693_IOCTL_SET_COARSE_TIME):
 		return ov5693_set_coarse_time(info, (u32)arg,
 					OV5693_INVALID_COARSE_TIME, true);
 
-	case OV5693_IOCTL_SET_HDR_COARSE_TIME:
+	case _IOC_NR(OV5693_IOCTL_SET_HDR_COARSE_TIME):
 	{
 		struct ov5693_hdr *hdrcoarse = (struct ov5693_hdr *)arg;
 		int ret = ov5693_set_coarse_time(info,
@@ -3079,11 +3079,10 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ret;
 	}
 
-
-	case OV5693_IOCTL_SET_GAIN:
+	case _IOC_NR(OV5693_IOCTL_SET_GAIN):
 		return ov5693_set_gain(info, (u32)arg, true);
 
-	case OV5693_IOCTL_GET_FUSEID:
+	case _IOC_NR(OV5693_IOCTL_GET_FUSEID):
 	{
 		err = ov5693_get_fuse_id(info);
 
@@ -3102,7 +3101,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 	}
 
-	case OV5693_IOCTL_READ_OTP_BANK:
+	case _IOC_NR(OV5693_IOCTL_READ_OTP_BANK):
 	{
 		struct ov5693_otp_bank bank;
 		if (copy_from_user(&bank,
@@ -3129,7 +3128,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 	}
 
-	case OV5693_IOCTL_SET_CAL_DATA:
+	case _IOC_NR(OV5693_IOCTL_SET_CAL_DATA):
 	{
 		if (copy_from_user(&info->cal, (const void __user *)arg,
 					sizeof(info->cal))) {
@@ -3141,7 +3140,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 	}
 
-	case OV5693_IOCTL_GET_EEPROM_DATA:
+	case _IOC_NR(OV5693_IOCTL_GET_EEPROM_DATA):
 		{
 			ov5693_read_eeprom(info,
 				0,
@@ -3158,7 +3157,7 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		return 0;
 
-	case OV5693_IOCTL_SET_EEPROM_DATA:
+	case _IOC_NR(OV5693_IOCTL_SET_EEPROM_DATA):
 		{
 			int i;
 			if (copy_from_user(info->eeprom_buf,
@@ -3230,6 +3229,9 @@ static const struct file_operations ov5693_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov5693_open,
 	.unlocked_ioctl = ov5693_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov5693_ioctl,
+#endif
 	.release = ov5693_release,
 };
 

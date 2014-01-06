@@ -1,7 +1,7 @@
 /*
  * LM3565.c - LM3565 flash/torch kernel driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1013,14 +1013,14 @@ static long lm3565_ioctl(struct file *file,
 	int pwr;
 	int err = 0;
 
-	switch (cmd) {
-	case NVC_IOCTL_PARAM_WR:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
 		err = lm3565_user_set_param(info, arg);
 		break;
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		err = lm3565_user_get_param(info, arg);
 		break;
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
@@ -1035,7 +1035,7 @@ static long lm3565_ioctl(struct file *file,
 		if (info->pdata->cfg & NVC_CFG_NOERR)
 			err = 0;
 		break;
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		pwr = info->pwr_state / 2;
 		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user((void __user *)arg, (const void *)&pwr,
@@ -1205,6 +1205,9 @@ static const struct file_operations lm3565_fileops = {
 	.owner = THIS_MODULE,
 	.open = lm3565_open,
 	.unlocked_ioctl = lm3565_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = lm3565_ioctl,
+#endif
 	.release = lm3565_release,
 };
 

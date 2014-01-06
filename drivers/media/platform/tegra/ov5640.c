@@ -380,8 +380,8 @@ static long ov5640_ioctl(struct file *file,
 {
 	struct ov5640_info *info = file->private_data;
 
-	switch (cmd) {
-	case OV5640_IOCTL_SET_SENSOR_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV5640_IOCTL_SET_SENSOR_MODE):
 	{
 		struct ov5640_mode mode;
 		if (copy_from_user(&mode,
@@ -392,7 +392,7 @@ static long ov5640_ioctl(struct file *file,
 
 		return ov5640_set_mode(info, &mode);
 	}
-	case OV5640_IOCTL_GET_CONFIG:
+	case _IOC_NR(OV5640_IOCTL_GET_CONFIG):
 	{
 		if (copy_to_user((void __user *) arg,
 				 &info->focuser,
@@ -403,7 +403,7 @@ static long ov5640_ioctl(struct file *file,
 
 		break;
 	}
-	case OV5640_IOCTL_GET_AF_STATUS:
+	case _IOC_NR(OV5640_IOCTL_GET_AF_STATUS):
 	{
 		int err;
 		u8 val;
@@ -424,17 +424,17 @@ static long ov5640_ioctl(struct file *file,
 		}
 		break;
 	}
-	case OV5640_IOCTL_SET_AF_MODE:
+	case _IOC_NR(OV5640_IOCTL_SET_AF_MODE):
 		if (!info->af_fw_loaded) {
 			dev_err(info->dev, "OV5640 AF fw not loaded!\n");
 			break;
 		}
 		return ov5640_set_af_mode(info, (u8)arg);
-	case OV5640_IOCTL_POWER_LEVEL:
+	case _IOC_NR(OV5640_IOCTL_POWER_LEVEL):
 		return ov5640_set_power(info, (u32)arg);
-	case OV5640_IOCTL_SET_FPOSITION:
+	case _IOC_NR(OV5640_IOCTL_SET_FPOSITION):
 		return ov5640_set_position(info, (u32)arg);
-	case OV5640_IOCTL_GET_SENSOR_STATUS:
+	case _IOC_NR(OV5640_IOCTL_GET_SENSOR_STATUS):
 	{
 		u8 status = 0;
 		if (copy_to_user((void __user *)arg, &status,
@@ -444,7 +444,7 @@ static long ov5640_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case OV5640_IOCTL_SET_WB:
+	case _IOC_NR(OV5640_IOCTL_SET_WB):
 		return ov5640_set_wb(info, (u8)arg);
 	default:
 		return -EINVAL;
@@ -479,6 +479,9 @@ static const struct file_operations ov5640_fileops = {
 	.owner = THIS_MODULE,
 	.open = ov5640_open,
 	.unlocked_ioctl = ov5640_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = ov5640_ioctl,
+#endif
 	.release = ov5640_release,
 };
 

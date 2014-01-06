@@ -1,7 +1,7 @@
 /*
  * imx091.c - imx091 sensor driver
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -2671,8 +2671,8 @@ static long imx091_ioctl(struct file *file,
 
 	mode_table_size = sizeof(struct nvc_imager_mode) * imx091_num_modes;
 
-	switch (cmd) {
-	case NVC_IOCTL_FUSE_ID:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(NVC_IOCTL_FUSE_ID):
 		err = imx091_get_fuse_id(info);
 
 		if (err) {
@@ -2688,15 +2688,15 @@ static long imx091_ioctl(struct file *file,
 		}
 		return 0;
 
-	case NVC_IOCTL_PARAM_WR:
+	case _IOC_NR(NVC_IOCTL_PARAM_WR):
 		err = imx091_param_wr(info, arg);
 		return err;
 
-	case NVC_IOCTL_PARAM_RD:
+	case _IOC_NR(NVC_IOCTL_PARAM_RD):
 		err = imx091_param_rd(info, arg);
 		return err;
 
-	case NVC_IOCTL_DYNAMIC_RD:
+	case _IOC_NR(NVC_IOCTL_DYNAMIC_RD):
 		if (copy_from_user(&dnvc, (const void __user *)arg,
 				   sizeof(struct nvc_imager_dnvc))) {
 			dev_err(&info->i2c_client->dev,
@@ -2735,7 +2735,7 @@ static long imx091_ioctl(struct file *file,
 
 		return 0;
 
-	case NVC_IOCTL_MODE_WR:
+	case _IOC_NR(NVC_IOCTL_MODE_WR):
 		if (copy_from_user(&mode, (const void __user *)arg,
 				   sizeof(struct nvc_imager_bayer))) {
 			dev_err(&info->i2c_client->dev,
@@ -2751,7 +2751,7 @@ static long imx091_ioctl(struct file *file,
 		err = imx091_mode_wr(info, &mode);
 		return err;
 
-	case NVC_IOCTL_MODE_RD:
+	case _IOC_NR(NVC_IOCTL_MODE_RD):
 		/*
 		 * Return a list of modes that sensor bayer supports.
 		 * If called with a NULL ptr to pModes,
@@ -2795,7 +2795,7 @@ static long imx091_ioctl(struct file *file,
 
 		return 0;
 
-	case NVC_IOCTL_PWR_WR:
+	case _IOC_NR(NVC_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
@@ -2803,7 +2803,7 @@ static long imx091_ioctl(struct file *file,
 		err = imx091_pm_api_wr(info, pwr);
 		return err;
 
-	case NVC_IOCTL_PWR_RD:
+	case _IOC_NR(NVC_IOCTL_PWR_RD):
 		if (info->s_mode == NVC_SYNC_SLAVE)
 			pwr = info->s_info->pwr_api / 2;
 		else
@@ -2820,7 +2820,7 @@ static long imx091_ioctl(struct file *file,
 
 		return 0;
 
-	case NVC_IOCTL_CAPS_RD:
+	case _IOC_NR(NVC_IOCTL_CAPS_RD):
 		dev_dbg(&info->i2c_client->dev, "%s CAPS_RD n=%d\n",
 			__func__, sizeof(imx091_dflt_cap));
 		data_ptr = info->cap;
@@ -2835,7 +2835,7 @@ static long imx091_ioctl(struct file *file,
 
 		return 0;
 
-	case NVC_IOCTL_STATIC_RD:
+	case _IOC_NR(NVC_IOCTL_STATIC_RD):
 		dev_dbg(&info->i2c_client->dev, "%s STATIC_RD n=%d\n",
 			__func__, sizeof(struct nvc_imager_static_nvc));
 		data_ptr = &info->sdata;
@@ -2993,6 +2993,9 @@ static const struct file_operations imx091_fileops = {
 	.owner = THIS_MODULE,
 	.open = imx091_open,
 	.unlocked_ioctl = imx091_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = imx091_ioctl,
+#endif
 	.release = imx091_release,
 };
 

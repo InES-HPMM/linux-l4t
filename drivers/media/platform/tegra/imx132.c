@@ -1,7 +1,7 @@
 /*
  * imx132.c - imx132 sensor driver
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -677,8 +677,8 @@ imx132_ioctl(struct file *file,
 	struct imx132_info *info = file->private_data;
 	struct device *dev = &info->i2c_client->dev;
 
-	switch (cmd) {
-	case IMX132_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(IMX132_IOCTL_SET_MODE):
 	{
 		struct imx132_mode mode;
 		if (copy_from_user(&mode,
@@ -690,13 +690,13 @@ imx132_ioctl(struct file *file,
 		}
 		return imx132_set_mode(info, &mode);
 	}
-	case IMX132_IOCTL_SET_FRAME_LENGTH:
+	case _IOC_NR(IMX132_IOCTL_SET_FRAME_LENGTH):
 		return imx132_set_frame_length(info, (u32)arg, true);
-	case IMX132_IOCTL_SET_COARSE_TIME:
+	case _IOC_NR(IMX132_IOCTL_SET_COARSE_TIME):
 		return imx132_set_coarse_time(info, (u32)arg, true);
-	case IMX132_IOCTL_SET_GAIN:
+	case _IOC_NR(IMX132_IOCTL_SET_GAIN):
 		return imx132_set_gain(info, (u16)arg, true);
-	case IMX132_IOCTL_GET_STATUS:
+	case _IOC_NR(IMX132_IOCTL_GET_STATUS):
 	{
 		u8 status;
 
@@ -710,7 +710,7 @@ imx132_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case IMX132_IOCTL_GET_FUSEID:
+	case _IOC_NR(IMX132_IOCTL_GET_FUSEID):
 	{
 		err = imx132_get_fuse_id(info);
 
@@ -728,7 +728,7 @@ imx132_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case IMX132_IOCTL_SET_GROUP_HOLD:
+	case _IOC_NR(IMX132_IOCTL_SET_GROUP_HOLD):
 	{
 		struct imx132_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
@@ -1002,6 +1002,9 @@ static const struct file_operations imx132_fileops = {
 	.owner = THIS_MODULE,
 	.open = imx132_open,
 	.unlocked_ioctl = imx132_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = imx132_ioctl,
+#endif
 	.release = imx132_release,
 };
 

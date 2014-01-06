@@ -1,7 +1,7 @@
 /*
  * soc380.c - soc380 sensor driver
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *      Abhinav Sinha <absinha@nvidia.com>
@@ -335,8 +335,8 @@ static long soc380_ioctl(struct file *file,
 	int err;
 	struct soc380_info *info = file->private_data;
 
-	switch (cmd) {
-	case SOC380_IOCTL_SET_MODE:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(SOC380_IOCTL_SET_MODE):
 	{
 		struct soc380_mode mode;
 		if (copy_from_user(&mode,
@@ -347,7 +347,7 @@ static long soc380_ioctl(struct file *file,
 
 		return soc380_set_mode(info, &mode);
 	}
-	case SOC380_IOCTL_GET_STATUS:
+	case _IOC_NR(SOC380_IOCTL_GET_STATUS):
 	{
 		struct soc380_status dev_status;
 		if (copy_from_user(&dev_status,
@@ -440,6 +440,9 @@ static const struct file_operations soc380_fileops = {
 	.owner = THIS_MODULE,
 	.open = soc380_open,
 	.unlocked_ioctl = soc380_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = soc380_ioctl,
+#endif
 	.release = soc380_release,
 };
 
