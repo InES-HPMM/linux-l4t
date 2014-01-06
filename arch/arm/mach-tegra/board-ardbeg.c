@@ -228,7 +228,6 @@ static void ardbeg_i2c_init(void)
 	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_PM374) {
-		norrin_max98090_pdata.irq = gpio_to_irq(TEGRA_GPIO_PH4);
 		i2c_register_board_info(0, &max98090_board_info, 1);
 	} else if (board_info.board_id != BOARD_PM359)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
@@ -306,7 +305,7 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 };
 
 static struct tegra_asoc_platform_data norrin_audio_pdata_max98090 = {
-	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
+	.gpio_hp_det		= NORRIN_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.edp_support		= true,
 	.edp_states		= {1080, 842, 0},

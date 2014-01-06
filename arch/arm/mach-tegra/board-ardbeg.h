@@ -127,7 +127,8 @@ enum tegra_bb_type {
 /*Same GPIO's used for T114(Interposer) and T124*/
 /*Below GPIO's are same for Laguna and Ardbeg*/
 #define TEGRA_GPIO_CDC_IRQ	TEGRA_GPIO_PH4
-#define TEGRA_GPIO_HP_DET		TEGRA_GPIO_PR7
+#define TEGRA_GPIO_HP_DET	TEGRA_GPIO_PR7
+#define NORRIN_GPIO_HP_DET	TEGRA_GPIO_PI7
 /*LDO_EN signal is required only for RT5639 and not for RT5645,
 on Laguna the LDO_EN signal comes from a GPIO expander and
 this is exposed as a fixed regulator directly handeled from
