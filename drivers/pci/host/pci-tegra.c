@@ -5,7 +5,7 @@
  * Author: Mike Rapoport <mike@compulab.co.il>
  *
  * Based on NVIDIA PCIe driver
- * Copyright (c) 2008-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2008-2014, NVIDIA Corporation. All rights reserved.
  *
  * Bits taken from arch/arm/mach-dove/pcie.c
  *
@@ -910,6 +910,7 @@ static int tegra_pcie_enable_pads(bool enable)
 {
 	int err = 0;
 
+	PR_FUNC_LINE;
 	if (!tegra_platform_is_fpga()) {
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
 		pads_writel(0x34ac34ac, PADS_REFCLK_CFG0);
@@ -967,30 +968,10 @@ static int tegra_pcie_enable_controller(void)
 		if (lane_owner == PCIE_LANES_X2_X1)
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
 		else {
-			int err = 0;
-
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
 			if ((tegra_pcie.plat_data->port_status[1]) &&
-					(lane_owner == PCIE_LANES_X4_X1)) {
-				/* X1 works only on ERS-S board
-				   with X4_X1 config */
+				(lane_owner == PCIE_LANES_X4_X1))
 				val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
-				/* enable x1 slot for ERS-S if all lanes
-				   are config'd for PCIe */
-				err = gpio_request(
-				      tegra_pcie.plat_data->gpio_x1_slot,
-				      "pcie_x1_slot");
-				if (err < 0)
-					pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
-							__func__, err);
-				err = gpio_direction_output(
-					tegra_pcie.plat_data->gpio_x1_slot, 1);
-				if (err < 0)
-					pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
-							__func__, err);
-				gpio_set_value_cansleep(
-					tegra_pcie.plat_data->gpio_x1_slot, 1);
-			}
 		}
 	}
 	afi_writel(val, AFI_PCIE_CONFIG);
@@ -1503,6 +1484,7 @@ void tegra_pcie_check_ports(void)
 	int port, rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
 
+	PR_FUNC_LINE;
 	/* reset number of ports */
 	tegra_pcie.num_ports = 0;
 
@@ -1515,41 +1497,66 @@ void tegra_pcie_check_ports(void)
 }
 EXPORT_SYMBOL(tegra_pcie_check_ports);
 
-static int tegra_pcie_conf_hotplug_gpio(void)
+static int tegra_pcie_conf_gpios(void)
 {
 	int irq, err = 0;
 
-	pr_info("acquiring hotplug_detect = %d\n",
-			tegra_pcie.plat_data->gpio_hot_plug);
-	err = gpio_request(tegra_pcie.plat_data->gpio_hot_plug,
-			    "pcie_hotplug_detect");
-	if (err < 0) {
-		pr_err("%s: gpio_request failed %d\n", __func__, err);
-		return err;
+	PR_FUNC_LINE;
+	if (tegra_pcie.plat_data->gpio_hot_plug != -1) {
+		/* configure gpio for hotplug detection */
+		pr_info("acquiring hotplug_detect = %d\n",
+				tegra_pcie.plat_data->gpio_hot_plug);
+		err = gpio_request(tegra_pcie.plat_data->gpio_hot_plug,
+					"pcie_hotplug_detect");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
+		err = gpio_direction_input(
+				tegra_pcie.plat_data->gpio_hot_plug);
+		if (err < 0) {
+			pr_err("%s: gpio_direction_input failed %d\n",
+				__func__, err);
+			goto err_hot_plug;
+		}
+		irq = gpio_to_irq(tegra_pcie.plat_data->gpio_hot_plug);
+		if (irq < 0) {
+			pr_err("Unable to get irq for hotplug_detect\n");
+			goto err_hot_plug;
+		}
+		err = request_irq((unsigned int)irq,
+				gpio_pcie_detect_isr,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+				"pcie_hotplug_detect",
+				(void *)tegra_pcie.plat_data);
+		if (err < 0) {
+			pr_err("Unable to claim irq for hotplug_detect\n");
+			goto err_hot_plug;
+		}
 	}
-	err = gpio_direction_input(tegra_pcie.plat_data->gpio_hot_plug);
-	if (err < 0) {
-		pr_err("%s: gpio_direction_input failed %d\n",
-			__func__, err);
-		goto err_irq;
-	}
-	irq = gpio_to_irq(tegra_pcie.plat_data->gpio_hot_plug);
-	if (irq < 0) {
-		pr_err("Unable to get irq number for hotplug_detect\n");
-		goto err_irq;
-	}
-	err = request_irq((unsigned int)irq,
-			gpio_pcie_detect_isr,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-			"pcie_hotplug_detect",
-			(void *)tegra_pcie.plat_data);
-	if (err < 0) {
-		pr_err("Unable to claim irq number for hotplug_detect\n");
-		goto err_irq;
+	if (tegra_pcie.plat_data->gpio_x1_slot != -1) {
+		err = gpio_request(
+			tegra_pcie.plat_data->gpio_x1_slot, "pcie_x1_slot");
+		if (err < 0) {
+			pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
+					__func__, err);
+			goto err_hot_plug;
+		}
+		err = gpio_direction_output(
+			tegra_pcie.plat_data->gpio_x1_slot, 1);
+		if (err < 0) {
+			pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
+					__func__, err);
+			goto err_x1;
+		}
+		gpio_set_value_cansleep(
+			tegra_pcie.plat_data->gpio_x1_slot, 1);
 	}
 	return 0;
 
-err_irq:
+err_x1:
+	gpio_free(tegra_pcie.plat_data->gpio_x1_slot);
+err_hot_plug:
 	gpio_free(tegra_pcie.plat_data->gpio_hot_plug);
 	return err;
 }
@@ -1759,9 +1766,9 @@ static int __init tegra_pcie_init(void)
 		pr_err("PCIE: enable controller failed\n");
 		return err;
 	}
-	err = tegra_pcie_conf_hotplug_gpio();
+	err = tegra_pcie_conf_gpios();
 	if (err) {
-		pr_err("PCIE: configuring hotplug gpio failed\n");
+		pr_err("PCIE: configuring gpios failed\n");
 		return err;
 	}
 	/* setup the AFI address translations */
@@ -1813,7 +1820,8 @@ static int tegra_pcie_suspend_noirq(struct device *dev)
 
 	PR_FUNC_LINE;
 	/* configure PE_WAKE signal as wake sources */
-	if (device_may_wakeup(dev)) {
+	if ((tegra_pcie.plat_data->gpio_wake != -1) &&
+			device_may_wakeup(dev)) {
 		ret = enable_irq_wake(gpio_to_irq(
 			tegra_pcie.plat_data->gpio_wake));
 		if (ret < 0) {
@@ -1832,7 +1840,8 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 	PR_FUNC_LINE;
 	resume_path = true;
 
-	if (device_may_wakeup(dev)) {
+	if ((tegra_pcie.plat_data->gpio_wake != -1) &&
+			device_may_wakeup(dev)) {
 		ret = disable_irq_wake(gpio_to_irq(
 			tegra_pcie.plat_data->gpio_wake));
 		if (ret < 0) {
@@ -1873,6 +1882,7 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 {
 	struct tegra_pcie_bus *bus;
 
+	PR_FUNC_LINE;
 	list_for_each_entry(bus, &tegra_pcie.busses, list) {
 		vunmap(bus->area->addr);
 		kfree(bus);
