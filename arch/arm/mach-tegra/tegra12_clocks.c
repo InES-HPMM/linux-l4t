@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_clocks.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6654,7 +6654,7 @@ static struct clk tegra_pll_x_out0 = {
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_2 | PLLX,
 	.parent    = &tegra_pll_x,
-	.max_rate  = 700000000,
+	.max_rate  = 1500000000UL,
 };
 
 static struct clk tegra_dfll_cpu = {
