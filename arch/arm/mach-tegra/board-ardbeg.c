@@ -73,6 +73,7 @@
 #include <mach/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/dc.h>
+#include <mach/tegra_usb_pad_ctrl.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -375,24 +376,28 @@ static struct platform_device tegra_rtc_device = {
 
 static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[0]	= 1,
-	.port_status[1]	= 1,
+	.port_status[1]	= 0,
 	/* Laguna platforms does not support CLKREQ# feature */
 	.has_clkreq	= 0,
 	.gpio_hot_plug	= TEGRA_GPIO_PO1,
 	.gpio_wake	= TEGRA_GPIO_PDD3,
-	.gpio_x1_slot	= PMU_TCA6416_GPIO(8),
+	.gpio_x1_slot	= -1,
 };
 
 static void laguna_pcie_init(void)
 {
 	struct board_info board_info;
+	int lane_owner = tegra_get_lane_owner_info() >> 1;
 
 	tegra_get_board_info(&board_info);
 	/* root port 1(x1 slot) is supported only on of ERS-S board */
-	if (board_info.board_id == BOARD_PM358 ||
-		board_info.board_id == BOARD_PM363)
-			laguna_pcie_platform_data.port_status[1] = 0;
-
+	if (board_info.board_id == BOARD_PM359) {
+		laguna_pcie_platform_data.port_status[1] = 1;
+		/* enable x1 slot for PM359 if all lanes config'd for PCIe */
+		if (lane_owner == PCIE_LANES_X4_X1)
+			laguna_pcie_platform_data.gpio_x1_slot =
+					PMU_TCA6416_GPIO(8);
+	}
 	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
