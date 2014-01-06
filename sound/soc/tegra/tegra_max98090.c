@@ -1022,6 +1022,26 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_hp_mute, 0);
 	}
 
+	if (gpio_is_valid(pdata->gpio_hp_det) &&
+		of_machine_is_compatible("nvidia,norrin")) {
+		tegra_max98090_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+		tegra_max98090_hp_jack_gpio.invert =
+			!pdata->gpio_hp_det_active_high;
+		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
+					&tegra_max98090_hp_jack);
+#ifndef CONFIG_SWITCH
+		snd_soc_jack_add_pins(&tegra_max98090_hp_jack,
+					ARRAY_SIZE(tegra_max98090_hs_jack_pins),
+					tegra_max98090_hs_jack_pins);
+#else
+		snd_soc_jack_notifier_register(&tegra_max98090_hp_jack,
+						&tegra_max98090_jack_detect_nb);
+#endif
+		snd_soc_jack_add_gpios(&tegra_max98090_hp_jack,
+					1, &tegra_max98090_hp_jack_gpio);
+		machine->gpio_requested |= GPIO_HP_DET;
+	}
+
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 		snd_ctl_new1(&tegra_max98090_call_mode_control, machine));
