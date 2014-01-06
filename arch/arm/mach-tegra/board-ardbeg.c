@@ -581,6 +581,7 @@ static void ardbeg_usb_init(void)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 	int modem_id = tegra_get_modem_id();
 	struct board_info bi;
+	tegra_get_pmu_board_info(&bi);
 
 	if (board_info.sku == 1100)
 		tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
@@ -597,8 +598,6 @@ static void ardbeg_usb_init(void)
 		tegra_ehci1_utmi_pdata.id_extcon_dev_name = "as3722-extcon";
 	} else {
 		/* Ardbeg */
-		tegra_get_pmu_board_info(&bi);
-
 		switch (bi.board_id) {
 		case BOARD_E1733:
 			/* Host cable is detected through PMU Interrupt */
