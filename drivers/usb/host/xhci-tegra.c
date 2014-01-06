@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.c - Nvidia xHCI host controller driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -4375,8 +4375,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_deinit_firmware:
-	deinit_firmware(tegra);
 err_deinit_firmware_log:
 	fw_log_deinit(tegra);
 err_deinit_usb2_clocks:
