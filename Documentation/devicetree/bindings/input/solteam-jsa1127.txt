@@ -4,14 +4,14 @@ Required properties:
 - compatible: should be from the list below
   "solteam-opto,jsa1127"
 - reg: I2C Address
-- solteam-opt,rint: resistor for adjusting integration time
-- solteam-opt,integration-time: integration time
-- solteam-opt,use-internal-integration-time: switch to en/disable
+- solteam-opto,rint: resistor for adjusting integration time
+- solteam-opto,integration-time: integration time
+- solteam-opto,use-internal-integration-time: switch to en/disable
   using internal integration time
   0: disable
   1: enable
-- solteam-opt,tint-coeff: integration time coefficient
-- solteam-opt,noisy: noisy option will make driver report values in
+- solteam-opto,tint-coeff: integration time coefficient
+- solteam-opto,noisy: noisy option will make driver report values in
   random variations to make ALS's applications working normally
   0: disable
   1: enable
@@ -21,9 +21,9 @@ Example:
 jsa1127@39 {
 	compatible = "solteam-opto,jsa1127";
 	reg = <0x39>;
-	solteam-opt,rint = <100>;
-	solteam-opt,integration-time = <200>;
-	solteam-opt,use-internal-integration-timing = <1>;
-	solteam-opt,tint-coeff = <22>;
-	solteam-opt,noisy = <1>;
+	solteam-opto,rint = <100>;
+	solteam-opto,integration-time = <200>;
+	solteam-opto,use-internal-integration-timing = <1>;
+	solteam-opto,tint-coeff = <22>;
+	solteam-opto,noisy = <1>;
 };
