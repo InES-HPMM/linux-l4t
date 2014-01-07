@@ -820,6 +820,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 			calibration_timer_update(cld);
 			return;
 		}
+		val = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
 	} else {
 		/* Forced output must be disabled in closed loop mode */
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
