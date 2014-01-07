@@ -126,6 +126,9 @@
 					regulator-consumer-supply = "vdd_i2c";
 					regulator-consumer-device = "2-000c";
 				};
+				c10 {
+					regulator-consumer-supply = "pwrdet_cam";
+				};
 			};
 		};
 		vdd_hdmi_n5: regulator@5 {

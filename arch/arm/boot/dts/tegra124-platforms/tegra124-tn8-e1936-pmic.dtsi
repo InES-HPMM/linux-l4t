@@ -286,6 +286,24 @@
 								regulator-consumer-supply = "vid";
 								regulator-consumer-device = "0-000d";
 							};
+							c24 {
+								regulator-consumer-supply = "pwrdet_nand";
+							};
+							c25 {
+								regulator-consumer-supply = "pwrdet_sdmmc1";
+							};
+							c26 {
+								regulator-consumer-supply = "pwrdet_sdmmc4";
+							};
+							c27 {
+								regulator-consumer-supply = "pwrdet_audio";
+							};
+							c28 {
+								regulator-consumer-supply = "pwrdet_uart";
+							};
+							c29 {
+								regulator-consumer-supply = "pwrdet_bb";
+							};
 						};
 					};
 
@@ -453,6 +471,9 @@
 								regulator-consumer-supply = "vdd_lcd_bl";
 								regulator-consumer-device = "tegradc.0";
 							};
+							c9 {
+								regulator-consumer-supply = "pwrdet_mipi";
+							};
 						};
 					};
 
@@ -518,6 +539,9 @@
 							c1 {
 								regulator-consumer-supply = "vddio_sdmmc";
 								regulator-consumer-device = "sdhci-tegra.2";
+							};
+							c2 {
+								regulator-consumer-supply = "pwrdet_sdmmc3";
 							};
 						};
 					};
