@@ -27,6 +27,7 @@
 #include <linux/wl12xx.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <linux/mfd/max77660/max77660-core.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
@@ -50,6 +51,7 @@ static unsigned int wifi_states[] = {ON, OFF};
 
 #define ARDBEG_SD_CD	TEGRA_GPIO_PV2
 #define ARDBEG_SD_WP	TEGRA_GPIO_PQ4
+#define FUSE_SOC_SPEEDO_0	0x134
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -206,7 +208,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x4,
-	.trim_delay = 0x4,
+	.trim_delay = 0x3,
 	.ddr_trim_delay = 0x0,
 	.mmc_data = {
 		.built_in = 1,
@@ -399,6 +401,7 @@ int __init ardbeg_sdhci_init(void)
 	int nominal_core_mv;
 	int min_vcore_override_mv;
 	int boot_vcore_mv;
+	u32 speedo;
 	struct board_info board_info;
 
 	nominal_core_mv =
@@ -443,6 +446,11 @@ int __init ardbeg_sdhci_init(void)
 		board_info.board_id == BOARD_PM363 ||
 		board_info.board_id == BOARD_PM359)
 			tegra_sdhci_platform_data0.disable_clock_gate = 1;
+
+	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
+	tegra_sdhci_platform_data0.cpu_speedo = speedo;
+	tegra_sdhci_platform_data2.cpu_speedo = speedo;
+	tegra_sdhci_platform_data3.cpu_speedo = speedo;
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-sdhci.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,6 +28,7 @@
 #include <linux/wl12xx.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <linux/mfd/max77660/max77660-core.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
@@ -45,6 +46,8 @@
 #define LOKI_WLAN_WOW	TEGRA_GPIO_PU5
 
 #define LOKI_SD_CD	TEGRA_GPIO_PV2
+
+#define FUSE_SOC_SPEEDO_0      0x134
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -174,7 +177,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x4,
-	.trim_delay = 0x4,
+	.trim_delay = 0x3,
 	.ddr_trim_delay = 0x0,
 	.mmc_data = {
 		.built_in = 1,
@@ -453,6 +456,7 @@ int __init loki_sdhci_init(void)
 	int nominal_core_mv;
 	int min_vcore_override_mv;
 	int boot_vcore_mv;
+	u32 speedo;
 	struct board_info bi;
 
 	tegra_get_board_info(&bi);
@@ -487,6 +491,12 @@ int __init loki_sdhci_init(void)
 	}
 
 	tegra_sdhci_platform_data0.max_clk_limit = 204000000;
+
+	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
+	tegra_sdhci_platform_data0.cpu_speedo = speedo;
+	tegra_sdhci_platform_data2.cpu_speedo = speedo;
+	tegra_sdhci_platform_data3.cpu_speedo = speedo;
+
 
 	platform_device_register(&tegra_sdhci_device3);
 
