@@ -307,6 +307,8 @@ static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 { return 0; }
 #endif
 
+bool tegra_dvfs_is_dfll_bypass(void);
+
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {
 	return rail ? rail->dfll_mode : false;
@@ -377,15 +379,6 @@ static inline int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
 	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
 		return rail->therm_mv_floors[rail->therm_floor_idx];
 	return 0;
-}
-
-static inline bool tegra_dvfs_is_dfll_bypass(void)
-{
-#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
-	return true;
-#else
-	return false;
-#endif
 }
 
 #endif

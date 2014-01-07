@@ -1929,6 +1929,16 @@ fail:
 	current_suspend_mode = plat->suspend_mode;
 }
 
+bool tegra_dvfs_is_dfll_bypass(void)
+{
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+	return pdata && (pdata->suspend_dfll_bypass ||
+			 pdata->resume_dfll_bypass);
+#else
+	return false;
+#endif
+}
+
 void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max)
 {
 	pdata->lp1bb_emc_rate_min = emc_min;
