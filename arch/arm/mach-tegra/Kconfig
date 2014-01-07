@@ -608,6 +608,14 @@ config TEGRA_CPU_VOLT_CAP
 	  CPU <voltage, temperature> cap. Userspace must respect
 	  datasheet-imposed limits.
 
+config CONFIG_TEGRA_CORE_CAP
+	bool "Control core capping limits"
+	default y
+	help
+	  Provide userspace control of floor and caps via sysfs and QoS
+	  interface.
+
+
 config TEGRA_EMC_TO_DDR_CLOCK
 	int "EMC to DDR clocks ratio"
 	default "2" if ARCH_TEGRA_2x_SOC
@@ -973,6 +981,7 @@ config TEGRA_VDD_CORE_OVERRIDE
 	bool "Enable core rail override support"
 	depends on TEGRA_SILICON_PLATFORM
 	default n
+	select CONFIG_TEGRA_CORE_CAP
 	help
 	  When enabled, core rail can be fixed and locked at specified voltage
 	  within override range, and core modules clocks are capped at rates
