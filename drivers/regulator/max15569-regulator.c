@@ -1,7 +1,7 @@
 /*
  * max15569-regulator.c -- max15569 regulator driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -228,14 +228,16 @@ static int max15569_init(struct max15569_chip *max15569,
 		return ret;
 	}
 
-	/* Set base voltage */
-	vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
-		MAX15569_MIN_VOLTAGE, MAX15569_VOLTAGE_STEP) + 0x1;
-	dev_err(max15569->dev, "Setting rail to vsel %x\n", vsel);
-	ret = regmap_write(max15569->regmap, MAX15569_SETVOUT_REG, vsel);
-	if (ret < 0) {
-		dev_err(max15569->dev, "BASE reg write failed, err %d\n", ret);
-		return ret;
+	/* Set base voltage if passed from platform data*/
+	if (pdata->base_voltage_uV) {
+		vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
+				MAX15569_MIN_VOLTAGE, MAX15569_VOLTAGE_STEP) + 0x1;
+		dev_err(max15569->dev, "Setting rail to vsel %x\n", vsel);
+		ret = regmap_write(max15569->regmap, MAX15569_SETVOUT_REG, vsel);
+		if (ret < 0) {
+			dev_err(max15569->dev, "BASE reg write failed, err %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* setup max voltage */
