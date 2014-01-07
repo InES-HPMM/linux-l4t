@@ -107,6 +107,16 @@
 			ti,v-at-chg-term = <4200>;
 			ti,tz-name = "battery-temp";
 		};
+
+		jsa1127@39 {
+			compatible = "solteam-opto,jsa1127";
+			reg = <0x39>;
+			solteam-opto,rint = <100>;
+			solteam-opto,integration-time = <200>;
+			solteam-opto,use-internal-integration-timing = <1>;
+			solteam-opto,tint-coeff = <22>;
+			solteam-opto,noisy = <1>;
+		};
 	};
 
 	i2c@7000c400 {
