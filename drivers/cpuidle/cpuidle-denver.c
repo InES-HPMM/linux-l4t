@@ -39,7 +39,7 @@ static int denver_enter_c_state(
 
 	local_irq_enable();
 
-	return 0;
+	return index;
 }
 
 static struct cpuidle_driver denver_idle_driver = {
