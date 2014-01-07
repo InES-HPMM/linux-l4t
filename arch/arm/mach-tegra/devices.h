@@ -125,6 +125,11 @@ extern struct platform_device tegra_sfc_device1;
 extern struct platform_device tegra_sfc_device2;
 extern struct platform_device tegra_sfc_device3;
 extern struct platform_device tegra_spkprot_device0;
+extern struct platform_device tegra_i2s_device0;
+extern struct platform_device tegra_i2s_device1;
+extern struct platform_device tegra_i2s_device2;
+extern struct platform_device tegra_i2s_device3;
+extern struct platform_device tegra_i2s_device4;
 extern struct platform_device tegra_adma_device;
 extern struct platform_device tegra_admaif_device;
 #endif

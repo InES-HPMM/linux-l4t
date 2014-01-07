@@ -1686,6 +1686,81 @@ struct platform_device tegra_sfc_device3 = {
 	.num_resources = ARRAY_SIZE(tegra_sfc_resource3),
 };
 
+static struct resource tegra_i2s_resource0[] = {
+	[0] = {
+		.start = TEGRA_I2S1_BASE,
+		.end   = TEGRA_I2S1_BASE + TEGRA_I2S1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_i2s_device0 = {
+	.name = "tegra210-i2s",
+	.id = 0,
+	.resource      = tegra_i2s_resource0,
+	.num_resources = ARRAY_SIZE(tegra_i2s_resource0),
+};
+
+static struct resource tegra_i2s_resource1[] = {
+	[0] = {
+		.start = TEGRA_I2S2_BASE,
+		.end   = TEGRA_I2S2_BASE + TEGRA_I2S2_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_i2s_device1 = {
+	.name = "tegra210-i2s",
+	.id = 1,
+	.resource      = tegra_i2s_resource1,
+	.num_resources = ARRAY_SIZE(tegra_i2s_resource1),
+};
+
+static struct resource tegra_i2s_resource2[] = {
+	[0] = {
+		.start = TEGRA_I2S3_BASE,
+		.end   = TEGRA_I2S3_BASE + TEGRA_I2S3_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_i2s_device2 = {
+	.name = "tegra210-i2s",
+	.id = 2,
+	.resource      = tegra_i2s_resource2,
+	.num_resources = ARRAY_SIZE(tegra_i2s_resource2),
+};
+
+static struct resource tegra_i2s_resource3[] = {
+	[0] = {
+		.start = TEGRA_I2S4_BASE,
+		.end   = TEGRA_I2S4_BASE + TEGRA_I2S4_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_i2s_device3 = {
+	.name = "tegra210-i2s",
+	.id = 3,
+	.resource      = tegra_i2s_resource3,
+	.num_resources = ARRAY_SIZE(tegra_i2s_resource3),
+};
+
+static struct resource tegra_i2s_resource4[] = {
+	[0] = {
+		.start = TEGRA_I2S5_BASE,
+		.end   = TEGRA_I2S5_BASE + TEGRA_I2S5_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_i2s_device4 = {
+	.name = "tegra210-i2s",
+	.id = 4,
+	.resource      = tegra_i2s_resource4,
+	.num_resources = ARRAY_SIZE(tegra_i2s_resource4),
+};
+
 static struct resource tegra_spkprot_resource0[] = {
 	[0] = {
 		.start = TEGRA_SPKPROT1_BASE,
