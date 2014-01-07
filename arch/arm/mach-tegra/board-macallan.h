@@ -96,7 +96,6 @@
 int macallan_regulator_init(void);
 int macallan_suspend_init(void);
 int macallan_sdhci_init(void);
-int macallan_pinmux_init(void);
 int macallan_sensors_init(void);
 int macallan_emc_init(void);
 int macallan_edp_init(void);
@@ -105,7 +104,6 @@ int roth_panel_init(void);
 int macallan_kbc_init(void);
 int macallan_pmon_init(void);
 int macallan_soctherm_init(void);
-void macallan_pinmux_suspend(void);
 
 
 extern struct tegra_sdhci_platform_data macallan_tegra_sdhci_platform_data0;

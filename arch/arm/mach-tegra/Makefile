@@ -229,7 +229,6 @@ obj-${CONFIG_MACH_PISMO}                += board-pismo-sensors.o
 
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-memory.o
-obj-${CONFIG_MACH_MACALLAN}             += board-macallan-pinmux.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-power.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-powermon.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sdhci.o

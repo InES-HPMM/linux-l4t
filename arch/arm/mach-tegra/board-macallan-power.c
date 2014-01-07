@@ -592,8 +592,6 @@ static struct platform_device macallan_pda_power_device = {
 
 static void macallan_board_suspend(int state, enum suspend_stage stage)
 {
-	if (stage == TEGRA_SUSPEND_BEFORE_PERIPHERAL)
-		macallan_pinmux_suspend();
 }
 
 static struct tegra_suspend_platform_data macallan_suspend_data = {
