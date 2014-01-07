@@ -997,6 +997,9 @@ static void __init ardbeg_sysedp_init(void)
 		else
 			shield_new_sysedp_init();
 		break;
+	case BOARD_P1761:
+		tn8_new_sysedp_init();
+		break;
 	case BOARD_PM358:
 	case BOARD_PM359:
 	default:
@@ -1016,6 +1019,9 @@ static void __init ardbeg_sysedp_dynamic_capping_init(void)
 			tn8_sysedp_dynamic_capping_init();
 		else
 			shield_sysedp_dynamic_capping_init();
+		break;
+	case BOARD_P1761:
+		tn8_sysedp_dynamic_capping_init();
 		break;
 	case BOARD_PM358:
 	case BOARD_PM359:
