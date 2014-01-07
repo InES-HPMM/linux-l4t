@@ -190,6 +190,8 @@ void tegra_init_speedo_data(void)
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 	pr_info("Tegra13: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
 		 cpu_process_id, core_process_id, gpu_process_id);
+	pr_info("Tegra13: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
+		 cpu_speedo_value, gpu_speedo_value, soc_speedo_0_value);
 }
 
 int tegra_cpu_process_id(void)
