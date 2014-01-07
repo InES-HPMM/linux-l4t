@@ -60,8 +60,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "automotive.pclk",	NULL,		158400000,	true},
 
 	{ "mselect",		"pll_p",	408000000,	true},
-	/* FIXME: Remove this once the issue with cap.vcore.mselect is fixed */
-	{ "override.mselect",	NULL,		408000000,	true},
+	{ "automotive.mselect",	NULL,		408000000,	true},
 
 	{ "se.cbus",		NULL,		432000000,	false},
 	{ "msenc.cbus",		NULL,		432000000,	false},
