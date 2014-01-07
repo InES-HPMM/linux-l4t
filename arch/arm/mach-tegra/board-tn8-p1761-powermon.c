@@ -35,7 +35,7 @@ static struct ina3221_platform_data tn8_p1761_power_mon_info[] = {
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
 		.warn_conf_limits = {-1, -1, -1},
-		.crit_conf_limits = {-1, -1, -1},
+		.crit_conf_limits = {6450, -1, -1},
 	},
 };
 

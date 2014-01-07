@@ -1414,6 +1414,22 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
+struct soctherm_throttle battery_oc_throttle = {
+	.throt_mode = BRIEF,
+	.polarity = 1,
+	.priority = 100,
+	.devs = {
+		[THROTTLE_DEV_CPU] = {
+			.enable = true,
+			.depth = 50,
+		},
+		[THROTTLE_DEV_GPU] = {
+			.enable = true,
+			.throttling_depth = "medium_throttling",
+		},
+	},
+};
+
 int __init ardbeg_soctherm_init(void)
 {
 	s32 base_cp, shft_cp;
@@ -1457,6 +1473,17 @@ int __init ardbeg_soctherm_init(void)
 		;/* tpdata_palmas is default */
 	else
 		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");
+
+	/* Enable soc_therm OC throttling on selected platforms */
+	switch (pmu_board_info.board_id) {
+	case BOARD_P1761:
+		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
+		       &battery_oc_throttle,
+		       sizeof(battery_oc_throttle));
+		break;
+	default:
+		break;
+	}
 
 	return tegra11_soctherm_init(&ardbeg_soctherm_data);
 }
