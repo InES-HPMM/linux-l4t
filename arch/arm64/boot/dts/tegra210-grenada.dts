@@ -100,5 +100,25 @@
 		spkprot@702d8c00 {
 			status = "okay";
 		};
+
+		i2s@702d1000 {
+			status = "okay";
+		};
+
+		i2s@702d1100 {
+			status = "okay";
+		};
+
+		i2s@702d1200 {
+			status = "okay";
+		};
+
+		i2s@702d1300 {
+			status = "okay";
+		};
+
+		i2s@702d1400 {
+			status = "okay";
+		};
 	};
 };
