@@ -3373,11 +3373,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat->nominal_vcore_mv <= plat->boot_vcore_mv)
 		plat->en_nominal_vcore_tuning = false;
 
+	INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk, delayed_clk_gate_cb);
 	rc = sdhci_add_host(host);
 	if (rc)
 		goto err_add_host;
-
-	INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk, delayed_clk_gate_cb);
 
 	if (gpio_is_valid(plat->cd_gpio)) {
 		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
