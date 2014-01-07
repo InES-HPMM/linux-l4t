@@ -213,6 +213,7 @@ struct dma_map_ops arm_coherent_dma_ops = {
 	.map_sg			= arm_dma_map_sg,
 	.set_dma_mask		= arm_dma_set_mask,
 	.mapping_error		= arm_dma_mapping_error,
+	.dma_supported		= arm_dma_supported,
 };
 EXPORT_SYMBOL(arm_coherent_dma_ops);
 
@@ -2099,6 +2100,7 @@ struct dma_map_ops iommu_ops = {
 	.iova_free		= arm_iommu_iova_free,
 	.iova_get_free_total	= arm_iommu_iova_get_free_total,
 	.iova_get_free_max	= arm_iommu_iova_get_free_max,
+	.dma_supported	= arm_dma_supported,
 };
 
 struct dma_map_ops iommu_coherent_ops = {
@@ -2113,6 +2115,7 @@ struct dma_map_ops iommu_coherent_ops = {
 
 	.map_sg		= arm_coherent_iommu_map_sg,
 	.unmap_sg	= arm_coherent_iommu_unmap_sg,
+	.dma_supported	= arm_dma_supported,
 };
 
 /**
