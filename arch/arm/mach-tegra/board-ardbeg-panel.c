@@ -498,15 +498,16 @@ static struct tegra_io_dpd dsid_io = {
 
 static struct tegra_dc_dp_lt_settings ardbeg_edp_lt_data[] = {
 	/* DriveCurrent	Preemphasis	PostCursor	tx_pu	load_adj */
-	{0x13131313,	0x00000000,	0x00000000,	0x20,	0x3},
-	{0x13131313,	0x00000000,	0x00000000,	0x20,	0x4},
-	{0x19191919,	0x09090909,	0x00000000,	0x30,	0x6}
+	{0x13131313,	0x00000000,	0x00000000,	0x0,	0x3},
+	{0x13131313,	0x00000000,	0x00000000,	0x0,	0x4},
+	{0x19191919,	0x09090909,	0x00000000,	0x0,	0x6}
 };
 
 static struct tegra_dp_out dp_settings = {
 	/* Panel can override this with its own LT data */
 	.lt_settings = ardbeg_edp_lt_data,
 	.n_lt_settings = ARRAY_SIZE(ardbeg_edp_lt_data),
+	.tx_pu_disable = true,
 };
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
