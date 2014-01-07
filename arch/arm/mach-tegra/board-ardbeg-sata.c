@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -51,8 +51,10 @@ int __init ardbeg_sata_init(void)
 #ifdef CONFIG_SATA_AHCI_TEGRA
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
+
 	if ((board_info.board_id != BOARD_PM358) &&
-	    (board_info.board_id != BOARD_PM359))
+	    (board_info.board_id != BOARD_PM359) &&
+	    (board_info.board_id != BOARD_PM374))
 		tegra_ahci_platform_data0.pexp_gpio = -1;
 
 	tegra_sata_device.dev.platform_data = &tegra_ahci_platform_data0;
