@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-sensors.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,6 +28,7 @@
 #include <media/ov7695.h>
 #include <mach/gpio-tegra.h>
 #include <mach/edp.h>
+#include <mach/io_dpd.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/iio/light/jsa1127.h>
@@ -194,11 +195,32 @@ static void loki_jsa1127_init(void)
 		ARRAY_SIZE(loki_i2c_jsa1127_board_info));
 }
 
+static struct tegra_io_dpd csia_io = {
+	.name			= "CSIA",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 0,
+};
+
+static struct tegra_io_dpd csib_io = {
+	.name			= "CSIB",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 1,
+};
+
+static struct tegra_io_dpd csie_io = {
+	.name			= "CSIE",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 12,
+};
+
 static int loki_mt9m114_power_on(struct mt9m114_power_rail *pw)
 {
 	int err;
 	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
 		return -EFAULT;
+
+	/* disable CSIA IOs DPD mode to turn on front camera for ardbeg */
+	tegra_io_dpd_disable(&csia_io);
 
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM2_PWDN, 1);
@@ -225,13 +247,20 @@ mt9m114_avdd_fail:
 
 mt9m114_iovdd_fail:
 	gpio_set_value(CAM_RSTN, 0);
+	/* put CSIA IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
 	return -ENODEV;
 }
 
 static int loki_mt9m114_power_off(struct mt9m114_power_rail *pw)
 {
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd)) {
+		/* put CSIA IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csia_io);
 		return -EFAULT;
+	}
 
 	usleep_range(100, 120);
 	gpio_set_value(CAM_RSTN, 0);
@@ -240,6 +269,8 @@ static int loki_mt9m114_power_off(struct mt9m114_power_rail *pw)
 	usleep_range(100, 120);
 	regulator_disable(pw->iovdd);
 
+	/* put CSIA IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
 	return 1;
 }
 
@@ -254,6 +285,9 @@ static int loki_ov7695_power_on(struct ov7695_power_rail *pw)
 
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
 		return -EFAULT;
+
+	/* disable CSIA IOs DPD mode to turn on front camera for ardbeg */
+	tegra_io_dpd_disable(&csia_io);
 
 	gpio_set_value(CAM2_PWDN, 0);
 	usleep_range(1000, 1020);
@@ -277,15 +311,22 @@ ov7695_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 ov7695_avdd_fail:
-
 	gpio_set_value(CAM_RSTN, 0);
+	/* put CSIA IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
 	return -ENODEV;
 }
 
 static int loki_ov7695_power_off(struct ov7695_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd))) {
+		/* put CSIA IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csia_io);
 		return -EFAULT;
+	}
+
 	usleep_range(100, 120);
 
 	regulator_disable(pw->iovdd);
@@ -295,6 +336,9 @@ static int loki_ov7695_power_off(struct ov7695_power_rail *pw)
 	usleep_range(100, 120);
 
 	gpio_set_value(CAM2_PWDN, 0);
+
+	/* put CSIA IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
 	return 0;
 }
 
@@ -330,6 +374,13 @@ static struct platform_device loki_camera_generic = {
 static int loki_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
+
+	/* put CSIA/B/E IOs into DPD mode to
+	 * save additional power
+	 */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	tegra_io_dpd_enable(&csie_io);
 
 	platform_device_add_data(&loki_camera_generic,
 		&loki_pcl_pdata, sizeof(loki_pcl_pdata));

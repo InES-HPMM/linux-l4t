@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-sensors.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -587,6 +587,9 @@ static int ardbeg_ov7695_power_on(struct ov7695_power_rail *pw)
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
 		return -EFAULT;
 
+	/* disable CSIE IOs DPD mode to turn on front camera for ardbeg */
+	tegra_io_dpd_disable(&csie_io);
+
 	gpio_set_value(CAM2_PWDN, 0);
 	usleep_range(1000, 1020);
 
@@ -609,15 +612,21 @@ ov7695_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 ov7695_avdd_fail:
-
 	gpio_set_value(CAM_RSTN, 0);
+	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csie_io);
 	return -ENODEV;
 }
 
 static int ardbeg_ov7695_power_off(struct ov7695_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd))) {
+		/* put CSIE IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csie_io);
 		return -EFAULT;
+	}
 	usleep_range(100, 120);
 
 	gpio_set_value(CAM2_PWDN, 0);
@@ -627,6 +636,9 @@ static int ardbeg_ov7695_power_off(struct ov7695_power_rail *pw)
 	usleep_range(100, 120);
 
 	regulator_disable(pw->avdd);
+
+	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csie_io);
 	return 0;
 }
 
@@ -641,6 +653,9 @@ static int ardbeg_mt9m114_power_on(struct mt9m114_power_rail *pw)
 	int err;
 	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
 		return -EFAULT;
+
+	/* disable CSIE IOs DPD mode to turn on front camera for ardbeg */
+	tegra_io_dpd_disable(&csie_io);
 
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM2_PWDN, 1);
@@ -667,13 +682,20 @@ mt9m114_avdd_fail:
 
 mt9m114_iovdd_fail:
 	gpio_set_value(CAM_RSTN, 0);
+	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csie_io);
 	return -ENODEV;
 }
 
 static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
 {
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd)) {
+		/* put CSIE IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csie_io);
 		return -EFAULT;
+	}
 
 	usleep_range(100, 120);
 	gpio_set_value(CAM_RSTN, 0);
@@ -682,6 +704,8 @@ static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
 	usleep_range(100, 120);
 	regulator_disable(pw->iovdd);
 
+	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csie_io);
 	return 1;
 }
 
@@ -698,6 +722,10 @@ static int ardbeg_ov5693_power_on(struct ov5693_power_rail *pw)
 
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
 		return -EFAULT;
+
+	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
+	tegra_io_dpd_disable(&csia_io);
+	tegra_io_dpd_disable(&csib_io);
 
 	if (ardbeg_get_extra_regulators())
 		goto ov5693_poweron_fail;
@@ -734,14 +762,23 @@ ov5693_avdd_fail:
 	gpio_set_value(CAM1_PWDN, 0);
 
 ov5693_poweron_fail:
+	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
 
 static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd))) {
+		/* put CSIA/B IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csia_io);
+		tegra_io_dpd_enable(&csib_io);
 		return -EFAULT;
+	}
 
 	usleep_range(21, 25);
 	gpio_set_value(CAM1_PWDN, 0);
@@ -751,6 +788,9 @@ static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
+	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
@@ -881,14 +921,12 @@ static int ardbeg_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
 
-	if (!of_machine_is_compatible("nvidia,tn8")) {
-		/* put CSIA/B/E IOs into DPD mode to
-		 * save additional power for ardbeg
-		 */
-		tegra_io_dpd_enable(&csia_io);
-		tegra_io_dpd_enable(&csib_io);
-		tegra_io_dpd_enable(&csie_io);
-	}
+	/* put CSIA/B/E IOs into DPD mode to
+	 * save additional power for ardbeg
+	 */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	tegra_io_dpd_enable(&csie_io);
 
 	platform_device_add_data(&ardbeg_camera_generic,
 		&ardbeg_pcl_pdata, sizeof(ardbeg_pcl_pdata));
