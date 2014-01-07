@@ -256,7 +256,6 @@ int tegra_dvfs_rail_unregister_notifier(struct dvfs_rail *rail,
 					struct notifier_block *nb);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
 
-int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate);
 const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d);
 

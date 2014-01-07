@@ -834,6 +834,7 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 		tegra_dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
+EXPORT_SYMBOL(tegra_dvfs_predict_millivolts);
 
 int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 {
