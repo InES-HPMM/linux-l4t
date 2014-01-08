@@ -1053,47 +1053,6 @@ static struct tegra_cl_dvfs_platform_data e1733_cl_dvfs_data = {
 	.cfg_param = &e1733_ardbeg_cl_dvfs_param,
 };
 
-static struct tegra_cl_dvfs_cfg_param e1736_ardbeg_cl_dvfs_param = {
-	.sample_rate = 12500, /* i2c freq */
-
-	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
-	.cf = 10,
-	.ci = 0,
-	.cg = 2,
-
-	.droop_cut_value = 0xF,
-	.droop_restore_ramp = 0x0,
-	.scale_out_ramp = 0x0,
-};
-
-/* E1736 volatge map. Fixed 10mv steps from 700mv to 1400mv */
-#define E1736_CPU_VDD_MAP_SIZE ((1400000 - 700000) / 10000 + 1)
-static struct voltage_reg_map e1736_cpu_vdd_map[E1736_CPU_VDD_MAP_SIZE];
-static inline void e1736_fill_reg_map(void)
-{
-	int i;
-	for (i = 0; i < E1736_CPU_VDD_MAP_SIZE; i++) {
-		/* 0.7V corresponds to 0b0011010 = 26 */
-		/* 1.4V corresponds to 0b1100000 = 96 */
-		e1736_cpu_vdd_map[i].reg_value = i + 26;
-		e1736_cpu_vdd_map[i].reg_uV = 700000 + 10000 * i;
-	}
-}
-
-static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
-	.dfll_clk_name = "dfll_cpu",
-	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
-	.u.pmu_i2c = {
-		.fs_rate = 400000,
-		.slave_addr = 0xb0, /* pmu i2c address */
-		.reg = 0x23,        /* vdd_cpu rail reg address */
-	},
-	.vdd_map = e1736_cpu_vdd_map,
-	.vdd_map_size = E1736_CPU_VDD_MAP_SIZE,
-	.pmu_undershoot_gb = 100,
-
-	.cfg_param = &e1736_ardbeg_cl_dvfs_param,
-};
 static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 {
 	u16 pmu_board_id = pmu_board_info->board_id;
@@ -1129,14 +1088,6 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 	if (pmu_board_id == BOARD_E1733) {
 		e1733_fill_reg_map();
 		data = &e1733_cl_dvfs_data;
-	}
-
-	if (pmu_board_id == BOARD_E1736 ||
-		pmu_board_id == BOARD_E1936 ||
-		pmu_board_id == BOARD_E1769 ||
-		pmu_board_id == BOARD_P1761) {
-		e1736_fill_reg_map();
-		data = &e1736_cl_dvfs_data;
 	}
 
 	if (data) {
@@ -1188,7 +1139,6 @@ int __init ardbeg_regulator_init(void)
 		pmu_board_info.board_id == BOARD_E1769 ||
 		pmu_board_info.board_id == BOARD_P1761) {
 		tn8_regulator_init();
-		ardbeg_cl_dvfs_init(&pmu_board_info);
 		return tn8_fixed_regulator_init();
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
