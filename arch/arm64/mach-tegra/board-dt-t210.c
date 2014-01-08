@@ -111,6 +111,7 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 static void __init tegra210_dt_init(void)
 {
 	platform_add_devices(t210_gfx_devices, ARRAY_SIZE(t210_gfx_devices));
+	tegra_soc_device_init("granada");
 	of_platform_populate(NULL,
 			of_default_bus_match_table,
 			t210_auxdata_lookup,
