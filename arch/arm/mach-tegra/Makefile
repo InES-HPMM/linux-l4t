@@ -322,7 +322,6 @@ obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o
 
 obj-${CONFIG_MACH_ROTH}                 += board-roth.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-memory.o
-obj-${CONFIG_MACH_ROTH}                 += board-roth-pinmux.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-power.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-powermon.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sdhci.o

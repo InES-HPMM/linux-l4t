@@ -1,6 +1,8 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
+#include <tegra114-platforms/tegar114-roth-gpio-default.dtsi>
+#include <tegra114-platforms/tegar114-roth-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 roth evaluation board";
@@ -23,6 +25,10 @@
 		hdmi {
 			status = "okay";
 		};
+	};
+
+	pinmux {
+		status = "okay";
 	};
 
 	i2c@7000c000 {

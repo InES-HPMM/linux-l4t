@@ -105,7 +105,6 @@ enum {
 int roth_regulator_init(void);
 int roth_suspend_init(void);
 int roth_sdhci_init(void);
-int roth_pinmux_init(void);
 int roth_sensors_init(void);
 int roth_emc_init(void);
 int roth_edp_init(void);
