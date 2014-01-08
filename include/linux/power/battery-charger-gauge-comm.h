@@ -2,7 +2,7 @@
  * battery-charger-gauge-comm.h -- Communication APIS between battery charger
  *		and battery gauge driver.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -37,6 +37,7 @@ struct battery_gauge_ops {
 	int (*update_battery_status)(struct battery_gauge_dev *bg_device,
 				enum battery_charger_status status);
 	int (*set_current_broadcast) (struct battery_gauge_dev *bg_device);
+	int (*get_battery_temp)(void);
 };
 
 struct battery_charging_ops {
@@ -51,6 +52,7 @@ struct battery_charger_info {
 	const char *tz_name;
 	int cell_id;
 	int polling_time_sec;
+	bool enable_thermal_monitor;
 	struct battery_charging_ops *bc_ops;
 };
 

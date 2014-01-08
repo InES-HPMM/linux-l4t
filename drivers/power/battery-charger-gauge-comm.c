@@ -2,7 +2,7 @@
  * battery-charger-gauge-comm.c -- Communication between battery charger and
  *	battery gauge driver.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -65,6 +65,7 @@ struct battery_charger_dev {
 	struct wake_lock		charger_wake_lock;
 	bool				locked;
 	struct rtc_device		*rtc;
+	bool				enable_thermal_monitor;
 };
 
 struct battery_gauge_dev {
@@ -100,6 +101,7 @@ static void battery_charger_restart_charging_wq(struct work_struct *work)
 static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 {
 	struct battery_charger_dev *bc_dev;
+	struct battery_gauge_dev *node;
 	struct device *dev;
 	long temperature;
 	bool charger_enable_state;
@@ -111,25 +113,49 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 					poll_temp_monitor_wq.work);
 	dev = bc_dev->parent_dev;
 
-	if (!bc_dev->battery_tz)
-		bc_dev->battery_tz =
+	if (bc_dev->enable_thermal_monitor) {
+		mutex_lock(&charger_gauge_list_mutex);
+
+		list_for_each_entry(node, &gauge_list, list) {
+			if (node->cell_id != bc_dev->cell_id)
+				continue;
+			if (node->ops && node->ops->get_battery_temp) {
+				ret = node->ops->get_battery_temp();
+				if (ret < 0) {
+					dev_err(dev,
+					"Temperature read failed: %d\n ",
+					ret);
+					mutex_unlock(&charger_gauge_list_mutex);
+					goto exit;
+				}
+				temperature = ret;
+			}
+		}
+		mutex_unlock(&charger_gauge_list_mutex);
+	} else {
+		if (!bc_dev->battery_tz)
+			bc_dev->battery_tz =
 			thermal_zone_device_find_by_name(bc_dev->tz_name);
 
-	if (!bc_dev->battery_tz) {
-		dev_info(dev, "Battery thermal zone %s is not registered yet\n",
-					bc_dev->tz_name);
-		schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
+		if (!bc_dev->battery_tz) {
+			dev_info(dev,
+			"Battery thermal zone %s is not registered yet\n",
+			bc_dev->tz_name);
+			schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
 			msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
-		return;
+			return;
+		}
+
+		ret = thermal_zone_get_temp(bc_dev->battery_tz,
+				&temperature);
+		if (ret < 0) {
+			dev_err(dev, "Temperature read failed: %d\n ",
+				ret);
+			goto exit;
+		}
+		temperature = temperature / 1000;
 	}
 
-	ret = thermal_zone_get_temp(bc_dev->battery_tz, &temperature);
-	if (ret < 0) {
-		dev_err(dev, "Temperature read failed: %d\n ", ret);
-		goto exit;
-	}
-
-	temperature = temperature / 1000;
 	charger_enable_state = true;
 	charger_current_half = false;
 	battery_thersold_voltage = 4250;
@@ -420,7 +446,13 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->drv_data = drv_data;
 
 	/* Thermal monitoring */
-	if (!bc_dev->tz_name) {
+	if (bci->enable_thermal_monitor) {
+		bc_dev->polling_time_sec = bci->polling_time_sec;
+		bc_dev->enable_thermal_monitor =
+			bci->enable_thermal_monitor;
+		INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
+				battery_charger_thermal_monitor_wq);
+	} else if (!bc_dev->tz_name) {
 		bc_dev->polling_time_sec = bci->polling_time_sec;
 		strcpy(bc_dev->tz_name, bci->tz_name ? : "");
 		bc_dev->battery_tz = thermal_zone_device_find_by_name(
