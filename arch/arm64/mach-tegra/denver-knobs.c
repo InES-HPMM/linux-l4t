@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -224,6 +224,120 @@ static int __init create_denver_cregs(void)
 	return 0;
 }
 
+static u64 nvmstat0_pg_agg;
+static u64 nvmstat0_tot_agg;
+
+static u64 nvmstat1_bg_agg;
+static u64 nvmstat1_fg_agg;
+
+static int inst_stats_show(struct seq_file *s, void *data)
+{
+	u64 nvmstat0;
+	u32 nvmstat0_pg;
+	u32 nvmstat0_tot;
+
+	u64 nvmstat1;
+	u32 nvmstat1_bg;
+	u32 nvmstat1_fg;
+
+	/* read nvmstat0 */
+	asm volatile("mrs %0, s3_0_c15_c0_0" : "=r" (nvmstat0) : );
+	nvmstat0_pg = (u32)(nvmstat0);
+	nvmstat0_pg_agg += nvmstat0_pg;
+	nvmstat0_tot = (u32)(nvmstat0 >> 32);
+	nvmstat0_tot_agg += nvmstat0_tot;
+
+	/* read nvmstat1 */
+	asm volatile("mrs %0, s3_0_c15_c0_1" : "=r" (nvmstat1) : );
+	nvmstat1_bg = (u32)(nvmstat1);
+	nvmstat1_bg_agg += nvmstat1_bg;
+	nvmstat1_fg = (u32)(nvmstat1 >> 32);
+	nvmstat1_fg_agg += nvmstat1_fg;
+
+	seq_printf(s, "nvmstat0 = %llu\n", nvmstat0);
+	seq_printf(s, "nvmstat0_pg = %u\n", nvmstat0_pg);
+	seq_printf(s, "nvmstat0_tot = %u\n", nvmstat0_tot);
+
+	seq_printf(s, "nvmstat1 = %llu\n", nvmstat1);
+	seq_printf(s, "nvmstat1_bg = %u\n", nvmstat1_bg);
+	seq_printf(s, "nvmstat1_fg = %u\n", nvmstat1_fg);
+
+	/* reset nvmstat0 */
+	nvmstat0 = 0;
+	asm volatile("msr s3_0_c15_c0_0, %0" : : "r" (nvmstat0));
+
+	return 0;
+}
+
+static int inst_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, inst_stats_show, inode->i_private);
+}
+
+static const struct file_operations inst_stats_fops = {
+	.open		= inst_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int agg_stats_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "nvmstat0_pg_agg = %llu\n", nvmstat0_pg_agg);
+	seq_printf(s, "nvmstat0_tot_agg = %llu\n", nvmstat0_tot_agg);
+
+	seq_printf(s, "nvmstat1_bg_agg = %llu\n", nvmstat1_bg_agg);
+	seq_printf(s, "nvmstat1_fg_agg = %llu\n", nvmstat1_fg_agg);
+
+	return 0;
+}
+
+static int agg_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, agg_stats_show, inode->i_private);
+}
+
+static const struct file_operations agg_stats_fops = {
+	.open		= agg_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int __init create_denver_nvmstats(void)
+{
+	struct dentry *nvmstats_dir;
+
+	nvmstats_dir = debugfs_create_dir("nvmstats", denver_debugfs_root);
+	if (!nvmstats_dir) {
+		pr_err("%s: Couldn't create the \"nvmstats\" debugfs node.\n",
+			__func__);
+		return -1;
+	}
+
+	if (!debugfs_create_file("instantaneous_stats",
+				S_IRUGO,
+				nvmstats_dir,
+				NULL,
+				&inst_stats_fops)) {
+		pr_err("%s: Couldn't create the \"instantaneous_stats\" debugfs node.\n",
+			__func__);
+		return -1;
+	}
+
+	if (!debugfs_create_file("aggregated_stats",
+				S_IRUGO,
+				nvmstats_dir,
+				NULL,
+				&agg_stats_fops)) {
+		pr_err("%s: Couldn't create the \"aggregated_stats\" debugfs node.\n",
+			__func__);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int __init denver_knobs_init(void)
 {
 	int error;
@@ -238,6 +352,10 @@ static int __init denver_knobs_init(void)
 		return error;
 
 	error = create_denver_cregs();
+	if (error)
+		return error;
+
+	error = create_denver_nvmstats();
 	if (error)
 		return error;
 
