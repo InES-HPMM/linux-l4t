@@ -455,16 +455,17 @@ fail:
 	return -EIO;
 }
 
-static int bq27441_get_temperature(struct bq27441_chip *chip)
+static int bq27441_get_temperature(void)
 {
 	int val;
 
-	val = bq27441_read_word(chip->client, BQ27441_TEMPERATURE);
+	val = bq27441_read_word(bq27441_data->client, BQ27441_TEMPERATURE);
 	if (val < 0) {
-		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+		dev_err(&bq27441_data->client->dev, "%s: err %d\n", __func__,
+				val);
 		return -EINVAL;
 	}
-	return val;
+	return val / 100;
 }
 
 static enum power_supply_property bq27441_battery_props[] = {
@@ -516,8 +517,8 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = chip->capacity_level;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		temperature = bq27441_get_temperature(chip);
-		val->intval = temperature / 10;
+		temperature = bq27441_get_temperature();
+		val->intval = temperature;
 		break;
 	default:
 		return -EINVAL;
@@ -550,6 +551,7 @@ static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 
 static struct battery_gauge_ops bq27441_bg_ops = {
 	.update_battery_status = bq27441_update_battery_status,
+	.get_battery_temp = bq27441_get_temperature,
 };
 
 static struct battery_gauge_info bq27441_bgi = {
