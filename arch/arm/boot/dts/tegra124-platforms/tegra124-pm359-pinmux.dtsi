@@ -828,12 +828,10 @@
 
 		usb_vbus_en2_pff1 {
 			nvidia,pins = "usb_vbus_en2_pff1";
-			nvidia,function = "usb";
-			nvidia,enable-input = <TEGRA_PIN_INPUT>;
-			nvidia,pull = <TEGRA_PIN_PUPD_PULL_UP>;
+			nvidia,function = "safe";
+			nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
+			nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
 			nvidia,tristate = <TEGRA_PIN_NORMAL>;
-			nvidia,lock = <TEGRA_PIN_LOCK_DISABLE>;
-			nvidia,open-drain = <TEGRA_PIN_OPEN_DRAIN_DISABLE>;
 		};
 
 		gpio_x4_aud_px4 {
@@ -1214,14 +1212,6 @@
 
 		pex_l1_clkreq_n_pdd6 {
 			nvidia,pins = "pex_l1_clkreq_n_pdd6";
-			nvidia,function = "safe";
-			nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
-			nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
-			nvidia,tristate = <TEGRA_PIN_NORMAL>;
-		};
-
-		pff1 {
-			nvidia,pins = "pff1";
 			nvidia,function = "safe";
 			nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
 			nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
