@@ -1,7 +1,7 @@
 /*
  * bq2419x-charger.h -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -89,6 +89,8 @@
 #define BQ2419x_INPUT_VOLTAGE_MASK	0x78
 #define BQ2419x_NVCHARGER_INPUT_VOL_SEL	0x40
 #define BQ2419x_DEFAULT_INPUT_VOL_SEL	0x30
+#define BQ2419x_VOLTAGE_CTRL_MASK	0xFC
+#define BQ2419x_DEFAULT_CHARGE_VOLTAGE	0xB2
 
 #define BQ2419x_CHARGING_CURRENT_STEP_DELAY_US	1000
 
@@ -119,6 +121,8 @@ struct bq2419x_charger_platform_data {
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
 	const char *tz_name; /* Thermal zone name */
+	bool enable_thermal_monitor; /* TRUE if FuelGauge provides temp */
+	int temp_polling_time_sec;
 };
 
 /*

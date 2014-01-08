@@ -1,7 +1,7 @@
 /*
  * bq2419x-charger.c -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -49,6 +49,24 @@
 
 #define bq_chg_err(bq, fmt, ...)			\
 		dev_err(bq->dev, "Charging Fault: " fmt, ##__VA_ARGS__)
+
+enum charging_states {
+	ENABLED_HALF_IBAT = 1,
+	ENABLED_FULL_IBAT,
+	DISABLED,
+};
+
+static const unsigned int bq2419x_maxcharge_voltage_lookup[] = {
+	3504, 3520, 3536, 3552, 3568, 3584, 3600, 3616,
+	3632, 3648, 3664, 3680, 3696, 3712, 3728, 3744,
+	3760, 3776, 3792, 3808, 3824, 3840, 3856, 3872,
+	3888, 3904, 3920, 3936, 3952, 3968, 3984, 4000,
+	4016, 4032, 4048, 4064, 4080, 4096, 4112, 4128,
+	4144, 4160, 4176, 4192, 4208, 4224, 4240, 4256,
+	4272, 4288, 4304, 4320, 4336, 4352, 4368, 4384,
+	4400, 4416, 4432, 4448, 4464, 4480, 4496, 4512,
+};
+
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -88,7 +106,19 @@ struct bq2419x_chip {
 	int				battery_presense;
 	bool				cable_connected;
 	int				last_charging_current;
+	int				charging_state;
 };
+
+static inline int convert_to_reg(int x)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(bq2419x_maxcharge_voltage_lookup); i++) {
+		if (x < bq2419x_maxcharge_voltage_lookup[i])
+			break;
+	}
+	return i > 0 ? i - 1 : -EINVAL;
+}
 
 static int current_to_reg(const unsigned int *tbl,
 			size_t size, unsigned int val)
@@ -107,6 +137,14 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 
 	if (bq2419x->battery_presense) {
 		dev_info(bq2419x->dev, "Charging enabled\n");
+		/* set default Charge regulation voltage */
+		ret = regmap_write(bq2419x->regmap, BQ2419X_VOLT_CTRL_REG,
+				BQ2419x_DEFAULT_CHARGE_VOLTAGE);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"VOLT_CTRL_REG write failed %d\n", ret);
+			return ret;
+		}
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 				BQ2419X_ENABLE_CHARGE_MASK,
 				BQ2419X_ENABLE_CHARGE);
@@ -237,6 +275,41 @@ static int bq2419x_configure_charging_current(struct bq2419x_chip *bq2419x,
 	return ret;
 }
 
+int bq2419x_full_current_enable(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+	int in_current_limit;
+
+	in_current_limit = bq2419x->last_charging_current/1000;
+	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
+	if (ret < 0) {
+		dev_err(bq2419x->dev,
+			"Failed to initialise full current charging\n");
+		return ret;
+	}
+
+	bq2419x->charging_state = ENABLED_FULL_IBAT;
+
+	return 0;
+}
+
+int bq2419x_half_current_enable(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+	int in_current_limit;
+
+	in_current_limit = bq2419x->last_charging_current/2000;
+	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
+	if (ret < 0) {
+		dev_err(bq2419x->dev,
+			"Failed to initialise half current charging\n");
+		return ret;
+	}
+	bq2419x->charging_state = ENABLED_HALF_IBAT;
+
+	return 0;
+}
+
 static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 			int min_uA, int max_uA)
 {
@@ -268,10 +341,15 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		in_current_limit = 500;
 		bq2419x->cable_connected = 0;
 		bq2419x->chg_status = BATTERY_DISCHARGING;
+		battery_charger_thermal_stop_monitoring(
+				bq2419x->bc_dev);
 	} else {
 		in_current_limit = max_uA/1000;
 		bq2419x->cable_connected = 1;
 		bq2419x->chg_status = BATTERY_CHARGING;
+		bq2419x->charging_state = ENABLED_FULL_IBAT;
+		battery_charger_thermal_start_monitoring(
+				bq2419x->bc_dev);
 	}
 	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
 	if (ret < 0)
@@ -568,6 +646,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		battery_charging_restart(bq2419x->bc_dev,
 					bq2419x->chg_restart_time);
 		battery_charger_release_wake_lock(bq2419x->bc_dev);
+		battery_charger_thermal_stop_monitoring(
+				bq2419x->bc_dev);
 	}
 
 	if ((val & BQ2419x_VSYS_STAT_MASK) == BQ2419x_VSYS_STAT_BATT_LOW)
@@ -840,6 +920,57 @@ static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 	return bq2419x->chg_status;
 }
 
+static int bq2419x_charger_thermal_configure(
+		struct battery_charger_dev *bc_dev,
+		int temp, bool enable_charger, bool enable_charg_half_current,
+		int battery_voltage)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+	int temperature;
+	int battery_threshold_voltage;
+	int in_current_limit;
+	int ret;
+
+	if (!bq2419x->cable_connected)
+		return 0;
+
+	temperature = temp;
+	dev_info(bq2419x->dev, "Battery temp %d\n", temperature);
+	if (enable_charger) {
+		if (!enable_charg_half_current &&
+			bq2419x->charging_state != ENABLED_FULL_IBAT) {
+			bq2419x_full_current_enable(bq2419x);
+			battery_charging_status_update(bq2419x->bc_dev,
+				BATTERY_CHARGING);
+		} else if (enable_charg_half_current &&
+			bq2419x->charging_state != ENABLED_HALF_IBAT) {
+			bq2419x_half_current_enable(bq2419x);
+			/*Set charge voltage */
+			battery_threshold_voltage =
+					convert_to_reg(battery_voltage);
+			ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_VOLT_CTRL_REG, BQ2419x_VOLTAGE_CTRL_MASK,
+			battery_threshold_voltage << 2);
+			if (ret < 0)
+				return ret;
+			battery_charging_status_update(bq2419x->bc_dev,
+							BATTERY_CHARGING);
+		}
+	} else {
+		if (bq2419x->charging_state != DISABLED) {
+			in_current_limit = 500;
+			ret = bq2419x_configure_charging_current(bq2419x,
+				in_current_limit);
+			if (ret < 0)
+				return ret;
+			bq2419x->charging_state = DISABLED;
+			battery_charging_status_update(bq2419x->bc_dev,
+				BATTERY_DISCHARGING);
+		}
+	}
+	return 0;
+}
+
 static int bq2419x_charging_restart(struct battery_charger_dev *bc_dev)
 {
 	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
@@ -865,6 +996,7 @@ static int bq2419x_charging_restart(struct battery_charger_dev *bc_dev)
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
 	.restart_charging = bq2419x_charging_restart,
+	.thermal_configure = bq2419x_charger_thermal_configure,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {
@@ -888,6 +1020,8 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 	if (batt_reg_node) {
 		int wdt_timeout;
 		int chg_restart_time;
+		int temp_polling_time;
+		bool enable_thermal_monitor;
 		struct regulator_init_data *batt_init_data;
 
 		pdata->bcharger_pdata = devm_kzalloc(&client->dev,
@@ -910,6 +1044,17 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		if (!ret)
 			pdata->bcharger_pdata->chg_restart_time =
 							chg_restart_time;
+
+		enable_thermal_monitor = of_property_read_bool(batt_reg_node,
+				"ti,enable-thermal-monitor");
+		pdata->bcharger_pdata->enable_thermal_monitor =
+						enable_thermal_monitor;
+
+		ret = of_property_read_u32(batt_reg_node,
+			"ti,temp-polling-time-sec", &temp_polling_time);
+		if (!ret)
+			pdata->bcharger_pdata->temp_polling_time_sec =
+							temp_polling_time;
 
 		pdata->bcharger_pdata->consumer_supplies =
 					batt_init_data->consumer_supplies;
@@ -1034,6 +1179,10 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_vbus_reg;
 	}
 
+	bq2419x_charger_bci.enable_thermal_monitor =
+			pdata->bcharger_pdata->enable_thermal_monitor;
+	bq2419x_charger_bci.polling_time_sec =
+			pdata->bcharger_pdata->temp_polling_time_sec;
 	bq2419x_charger_bci.tz_name = pdata->bcharger_pdata->tz_name;
 	bq2419x->bc_dev = battery_charger_register(bq2419x->dev,
 			&bq2419x_charger_bci, bq2419x);
