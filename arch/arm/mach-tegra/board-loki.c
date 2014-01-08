@@ -780,7 +780,6 @@ static void __init tegra_loki_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-	platform_device_register(&tegra124_pinctrl_device);
 	loki_revision_init(&board_info);
 	loki_pinmux_init();
 	loki_usb_init();

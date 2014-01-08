@@ -28,19 +28,6 @@
 
 #include <mach/pinmux-t12.h>
 
-static __initdata struct tegra_drive_pingroup_config loki_drive_pinmux[] = {
-
-	/* SDMMC1 */
-	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 54, 70, FASTEST, FASTEST),
-
-	/* SDMMC3 */
-	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 20, 42, FASTEST, FASTEST),
-
-	/* SDMMC4 */
-	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 1, 2, FASTEST,
-								FASTEST, 1),
-};
-
 /* Pinmux changes to support UART over uSD adapter E2542 */
 static __initdata struct tegra_pingroup_config loki_sdmmc3_uart_pinmux[] = {
 
@@ -48,35 +35,27 @@ static __initdata struct tegra_pingroup_config loki_sdmmc3_uart_pinmux[] = {
 	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,      NORMAL,   NORMAL,   OUTPUT),
 };
 
-#include "board-loki-pinmux-t12x.h"
+static __initdata struct tegra_pingroup_config loki_ffd_pinmux_common[] = { 
+	GPIO_PINMUX_NON_OD(DP_HPD, PULL_DOWN, NORMAL, OUTPUT),
+};
+
+static struct gpio_init_pin_info init_gpio_mode_loki_ffd_common[] = {
+        GPIO_INIT_PIN_MODE(TEGRA_GPIO_PFF0, false, 0),
+};
 
 static void __init loki_gpio_init_configure(void)
 {
 	int len;
 	int i;
 	struct gpio_init_pin_info *pins_info;
-	struct board_info bi;
 
-	tegra_get_board_info(&bi);
-
-	len = ARRAY_SIZE(init_gpio_mode_loki_common);
-	pins_info = init_gpio_mode_loki_common;
+	len = ARRAY_SIZE(init_gpio_mode_loki_ffd_common);
+	pins_info = init_gpio_mode_loki_ffd_common;
 
 	for (i = 0; i < len; ++i) {
 		tegra_gpio_init_configure(pins_info->gpio_nr,
 			pins_info->is_input, pins_info->value);
 		pins_info++;
-	}
-
-	if (bi.board_id == BOARD_P2530) {
-		len = ARRAY_SIZE(init_gpio_mode_loki_ffd_common);
-		pins_info = init_gpio_mode_loki_ffd_common;
-
-		for (i = 0; i < len; ++i) {
-			tegra_gpio_init_configure(pins_info->gpio_nr,
-				pins_info->is_input, pins_info->value);
-			pins_info++;
-		}
 	}
 }
 
@@ -85,19 +64,11 @@ int __init loki_pinmux_init(void)
 	struct board_info bi;
 
 	tegra_get_board_info(&bi);
-
-	loki_gpio_init_configure();
-
-	tegra_pinmux_config_table(loki_pinmux_common, ARRAY_SIZE(loki_pinmux_common));
-
-	if (bi.board_id == BOARD_P2530)
+	if (bi.board_id == BOARD_P2530) {
+		loki_gpio_init_configure();
 		tegra_pinmux_config_table(loki_ffd_pinmux_common,
 			ARRAY_SIZE(loki_ffd_pinmux_common));
-
-	tegra_drive_pinmux_config_table(loki_drive_pinmux,
-					ARRAY_SIZE(loki_drive_pinmux));
-	tegra_pinmux_config_table(unused_pins_lowpower,
-		ARRAY_SIZE(unused_pins_lowpower));
+	};
 
 	if (is_uart_over_sd_enabled()) {
 		tegra_pinmux_config_table(loki_sdmmc3_uart_pinmux,
