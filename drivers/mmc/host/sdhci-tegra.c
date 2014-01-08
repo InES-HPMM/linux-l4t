@@ -1228,6 +1228,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	u8 ctrl;
+	int ret = 0;
 
 	mutex_lock(&tegra_host->set_clock_mutex);
 	pr_debug("%s %s %u enabled=%u\n", __func__,
@@ -1235,7 +1236,12 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	if (clock) {
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
-			clk_prepare_enable(pltfm_host->clk);
+			ret = clk_prepare_enable(pltfm_host->clk);
+			if (ret) {
+				dev_err(mmc_dev(sdhci->mmc),
+				"clock enable is failed, ret: %d\n", ret);
+				return;
+			}
 			tegra_host->clk_enabled = true;
 			sdhci->is_clk_on = tegra_host->clk_enabled;
 			ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
@@ -1245,11 +1251,21 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		tegra_sdhci_set_clk_rate(sdhci, clock);
 
 		if (tegra_host->emc_clk && (!tegra_host->is_sdmmc_emc_clk_on)) {
-			clk_prepare_enable(tegra_host->emc_clk);
+			ret = clk_prepare_enable(tegra_host->emc_clk);
+			if (ret) {
+				dev_err(mmc_dev(sdhci->mmc),
+				"clock enable is failed, ret: %d\n", ret);
+				return;
+			}
 			tegra_host->is_sdmmc_emc_clk_on = true;
 		}
 		if (tegra_host->sclk && (!tegra_host->is_sdmmc_sclk_on)) {
-			clk_prepare_enable(tegra_host->sclk);
+			ret = clk_prepare_enable(tegra_host->sclk);
+			if (ret) {
+				dev_err(mmc_dev(sdhci->mmc),
+				"clock enable is failed, ret: %d\n", ret);
+				return;
+			}
 			tegra_host->is_sdmmc_sclk_on = true;
 		}
 	} else if (!clock && tegra_host->clk_enabled) {
