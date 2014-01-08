@@ -42,6 +42,7 @@
 #include "iomap.h"
 #include "tegra12_emc.h"
 #include "tegra_emc_dt_parse.h"
+#include "devices.h"
 
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
@@ -1552,14 +1553,17 @@ static struct platform_driver tegra12_emc_driver = {
 	.driver         = {
 		.name   = "tegra-emc",
 		.owner  = THIS_MODULE,
-		.of_match_table = tegra12_emc_of_match,
 	},
 	.probe          = tegra12_emc_probe,
 };
 
 int __init tegra12_emc_init(void)
 {
-	int ret = platform_driver_register(&tegra12_emc_driver);
+	int ret;
+
+	if (!tegra_emc_device.dev.platform_data)
+		tegra12_emc_driver.driver.of_match_table = tegra12_emc_of_match;
+	ret = platform_driver_register(&tegra12_emc_driver);
 
 	if (!ret) {
 		tegra_emc_iso_usage_table_init(tegra12_emc_iso_usage,
