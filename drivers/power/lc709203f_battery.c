@@ -300,6 +300,19 @@ static struct battery_gauge_info lc709203f_bgi = {
 	.bg_ops = &lc709203f_bg_ops,
 };
 
+static void of_lc709203f_parse_platform_data(struct i2c_client *client,
+				struct lc709203f_platform_data *pdata)
+{
+	char const *pstr;
+	struct device_node *np = client->dev.of_node;
+
+	if (!of_property_read_string(np, "onsemi,tz-name", &pstr))
+		pdata->tz_name = pstr;
+	else
+		dev_err(&client->dev, "Failed to read tz-name\n");
+
+}
+
 static int lc709203f_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -312,7 +325,16 @@ static int lc709203f_probe(struct i2c_client *client,
 
 	chip->client = client;
 
-	chip->pdata = client->dev.platform_data;
+	if (client->dev.of_node) {
+		chip->pdata = devm_kzalloc(&client->dev,
+					sizeof(*chip->pdata), GFP_KERNEL);
+		if (!chip->pdata)
+			return -ENOMEM;
+		of_lc709203f_parse_platform_data(client, chip->pdata);
+	} else {
+		chip->pdata = client->dev.platform_data;
+	}
+
 	if (!chip->pdata)
 		return -ENODATA;
 

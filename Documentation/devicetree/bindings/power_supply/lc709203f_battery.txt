@@ -1,0 +1,13 @@
+lc709203f battery
+~~~~~~~~~~~~~~~~
+
+Required properties :
+ - compatible : Should contain "onsemi,lc709203f".
+ - onsemi,tz-name : Thermal zone name.
+
+Example:
+
+	lc709203f@0b {
+		compatible = "onsemi,lc709203f";
+		onsemi,tz-name = "battery-temp";
+	};
