@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -1366,7 +1366,7 @@ static void tegra_udc_set_extcon_state(struct tegra_udc *udc)
 	if (udc->prev_connect_type != CONNECT_TYPE_NONE)
 		extcon_set_cable_state(edev, cables[udc->prev_connect_type],
 					false);
-	if (udc->connect_type != CONNECT_TYPE_NONE)
+	if (udc->connect_type != udc->connect_type_lp0)
 		extcon_set_cable_state(edev, cables[udc->connect_type], true);
 }
 #endif
@@ -1462,11 +1462,12 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 			ret = regulator_set_current_limit(udc->vbus_reg,
 								 0, max_ua);
 	}
-	if (!udc->vbus_in_lp0)
-		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+	if (!udc->vbus_in_lp0) {
 #ifdef CONFIG_EXTCON
-	tegra_udc_set_extcon_state(udc);
+		tegra_udc_set_extcon_state(udc);
 #endif
+		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+	}
 	return ret;
 }
 
