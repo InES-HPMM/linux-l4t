@@ -471,8 +471,6 @@ static void bonaire_pcie_init(void)
 static void __init tegra_bonaire_init(void)
 {
 	tegra_clk_init_from_table(bonaire_clk_init_table);
-	tegra_enable_pinmux();
-	bonaire_pinmux_init();
 	tegra_soc_device_init("bonaire");
 	bonaire_apbdma_init();
 

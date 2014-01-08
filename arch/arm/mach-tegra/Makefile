@@ -193,7 +193,6 @@ obj-$(CONFIG_TEGRA_USE_SECURE_KERNEL)   += tegra_tzram.o
 
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-panel.o
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-pinmux.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-power.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sdhci.o
 obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sensors.o

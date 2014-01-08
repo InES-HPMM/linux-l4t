@@ -54,7 +54,6 @@
 
 int bonaire_regulator_init(void);
 int bonaire_sdhci_init(void);
-int bonaire_pinmux_init(void);
 int bonaire_panel_init(void);
 int bonaire_sensors_init(void);
 int bonaire_suspend_init(void);

@@ -1,6 +1,7 @@
 /dts-v1/;
 
 #include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-bonaire-pinmux.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Bonaire";
@@ -19,6 +20,10 @@
 		#size-cells = <1>;
 		device_type = "memory";
 		reg = <0x80000000 0x20000000>;
+	};
+
+	pinmux {
+		status = "okay";
 	};
 
 	i2c@7000c000 {
