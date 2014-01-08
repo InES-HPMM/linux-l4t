@@ -49,6 +49,8 @@
 
 #include "mm.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/dmadebug.h>
 
 struct dma_map_ops *dma_ops;
 EXPORT_SYMBOL(dma_ops);
@@ -1876,6 +1878,8 @@ static int __iommu_map_sg(struct device *dev, struct scatterlist *sg, int nents,
 	dma->dma_address += offset;
 	dma->dma_length = size - offset;
 
+	trace_dmadebug_map_sg(dev, dma->dma_address, dma->dma_length,
+			      sg_page(sg));
 	return count+1;
 
 bad_mapping:
@@ -1937,6 +1941,9 @@ static void __iommu_unmap_sg(struct device *dev, struct scatterlist *sg,
 			__dma_page_dev_to_cpu(sg_page(s), s->offset,
 					      s->length, dir);
 	}
+
+	trace_dmadebug_unmap_sg(dev, sg_dma_address(sg), sg_dma_len(sg),
+				sg_page(sg));
 }
 
 /**
@@ -2034,6 +2041,7 @@ static dma_addr_t arm_coherent_iommu_map_page(struct device *dev, struct page *p
 	if (ret < 0)
 		goto fail;
 
+	trace_dmadebug_map_page(dev, dma_addr, len, page);
 	return dma_addr + offset;
 fail:
 	__free_iova(mapping, dma_addr, len, attrs);
@@ -2075,6 +2083,7 @@ static dma_addr_t arm_iommu_map_page_at(struct device *dev, struct page *page,
 	if (ret < 0)
 		return DMA_ERROR_CODE;
 
+	trace_dmadebug_map_page(dev, dma_addr, size, page);
 	return dma_addr + offset;
 }
 
@@ -2098,6 +2107,7 @@ static dma_addr_t arm_iommu_map_pages(struct device *dev, struct page **pages,
 	if (ret < 0)
 		return DMA_ERROR_CODE;
 
+	trace_dmadebug_map_page(dev, dma_handle, count * PAGE_SIZE, *pages);
 	return dma_handle;
 }
 
@@ -2126,6 +2136,9 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	pg_iommu_unmap(mapping->domain, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
+
+	trace_dmadebug_unmap_page(dev, handle, size,
+		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 }
 
 /**
