@@ -35,6 +35,8 @@
 #include <media/mt9m114.h>
 
 #define SIZEOF_I2C_TRANSBUF 128
+#define STATUS_BIT_MASK 0x02
+#define STATUS_REG 0x0081
 
 struct mt9m114_reg {
 	u16 cmd; /* command */
@@ -43,10 +45,6 @@ struct mt9m114_reg {
 };
 
 static struct mt9m114_reg mode_1280x960_30fps[] = {
-	{MT9M114_SENSOR_WORD_WRITE, 0x001A, 0x0001},
-	{MT9M114_SENSOR_WAIT_MS, 0, 10},
-	{MT9M114_SENSOR_WORD_WRITE, 0x001A, 0x0000},
-	{MT9M114_SENSOR_WAIT_MS, 0, 50},
 	{MT9M114_SENSOR_WORD_WRITE, 0x301A, 0x0234},
 
 	{MT9M114_SENSOR_WORD_WRITE, 0x098E, 0x1000},
@@ -456,9 +454,14 @@ static inline void mt9m114_msleep(u32 t)
 	usleep_range(t*1000, t*1000 + 500);
 }
 
+static int mt9m114_read_reg(struct mt9m114_info *info, u16 addr, u8 *val)
+{
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_read(info->regmap, addr, (unsigned int *) val);
+}
+
 static int mt9m114_write_reg8(struct mt9m114_info *info, u16 addr, u8 val)
 {
-	mt9m114_msleep(1);
 	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
 	return regmap_write(info->regmap, addr, val);
 }
@@ -470,7 +473,6 @@ static int mt9m114_write_reg16(struct mt9m114_info *info, u16 addr, u16 val)
 	data[0] = (u8) (val >> 8);
 	data[1] = (u8) (val & 0xff);
 
-	mt9m114_msleep(1);
 	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
 	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
 }
@@ -669,7 +671,9 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 	struct mt9m114_mode *mode)
 {
 	struct mt9m114_mode_desc *sensor_mode;
-	int err;
+	int err = 0;
+	u16 val = 0;
+	int count = 10;
 
 	dev_info(&info->i2c_client->dev,
 		"%s: xres %u yres %u\n", __func__, mode->xres, mode->yres);
@@ -683,6 +687,26 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 	}
 
 	sysedp_set_state(info->sysedpc, 1);
+
+	/* polling the status to check if the sensor is ready. */
+	err = mt9m114_read_reg(info, STATUS_REG, &val);
+	if (err)
+		return err;
+
+	while ((val & STATUS_BIT_MASK) != 0 && count > 0) {
+		mt9m114_msleep(5);
+		err = mt9m114_read_reg(info, STATUS_REG, &val);
+		if (err)
+			return err;
+		count--;
+	}
+
+	if (count == 0) {
+		dev_err(&info->i2c_client->dev,
+			"%s: status register polling timed out\n",
+			__func__);
+		return -EFAULT;
+	}
 
 	err = mt9m114_write_table(
 		info, sensor_mode->mode_tbl);
