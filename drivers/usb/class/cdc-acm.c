@@ -766,10 +766,8 @@ static void acm_tty_unthrottle(struct tty_struct *tty)
 	acm->int_throttled = 0;
 	acm->throttled = 0;
 	acm->throttle_req = 0;
-	spin_unlock_irq(&acm->read_lock);
 
 	if (was_throttled) {
-		spin_lock_irq(&acm->read_lock);
 		while (!list_empty(&acm->rb_head)) {
 			struct acm_rb *rb = list_entry(acm->rb_head.next,
 				struct acm_rb, rb_node);
@@ -791,6 +789,8 @@ static void acm_tty_unthrottle(struct tty_struct *tty)
 
 		if (!acm->int_throttled)
 			acm_submit_read_urbs(acm, GFP_KERNEL);
+	} else {
+		spin_unlock_irq(&acm->read_lock);
 	}
 }
 
