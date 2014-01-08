@@ -68,6 +68,8 @@
 				watchdog-timeout = <40>;
 				rtc-alarm-time = <3600>;
 				auto-recharge-time = <1800>;
+				ti,enable-thermal-monitor = <1>;
+				ti,temp-polling-time-sec = <5>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_bat_chg";
