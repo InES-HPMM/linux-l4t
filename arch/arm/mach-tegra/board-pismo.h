@@ -104,7 +104,6 @@
 int pismo_regulator_init(void);
 int pismo_suspend_init(void);
 int pismo_sdhci_init(void);
-int pismo_pinmux_init(void);
 int pismo_sensors_init(void);
 int pismo_emc_init(void);
 int pismo_edp_init(void);

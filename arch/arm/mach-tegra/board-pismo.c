@@ -590,8 +590,6 @@ static void __init tegra_pismo_init(void)
 	tegra_clk_init_from_table(pismo_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("pismo");
-	tegra_enable_pinmux();
-	pismo_pinmux_init();
 	pismo_i2c_init();
 	pismo_usb_init();
 	pismo_uart_init();

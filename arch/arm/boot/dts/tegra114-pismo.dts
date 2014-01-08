@@ -1,10 +1,16 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
+#include <tegra114-platforms/tegar114-pismo-gpio-default.dtsi>
+#include <tegra114-platforms/tegar114-pismo-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 Pismo evaluation board";
 	compatible = "nvidia,pismo", "nvidia,tegra114";
+
+	pinmux {
+		status = "okay";
+	};
 
 	i2c@7000c000 {
 		status = "okay";

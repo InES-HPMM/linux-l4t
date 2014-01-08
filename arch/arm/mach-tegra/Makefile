@@ -220,7 +220,6 @@ obj-${CONFIG_MACH_DALMORE}              += panel-s-wqxga-10-1.o
 
 obj-${CONFIG_MACH_PISMO}                += board-pismo.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-memory.o
-obj-${CONFIG_MACH_PISMO}                += board-pismo-pinmux.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-power.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-powermon.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-sdhci.o
