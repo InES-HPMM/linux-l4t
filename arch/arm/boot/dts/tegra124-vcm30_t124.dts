@@ -2,6 +2,9 @@
  /dts-v1/;
 
 #include "tegra124.dtsi"
+#include <tegra124-platforms/tegra124-vcm30-t124-gpio-default.dtsi>
+#include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
+
 
 / {
 	model = "NVIDIA Tegra124 vcm30t124";
@@ -11,6 +14,10 @@
 	#size-cells = <1>;
 
 	chosen {
+	};
+
+	pinmux {
+		status = "okay";
 	};
 
 	i2c@7000c000 {

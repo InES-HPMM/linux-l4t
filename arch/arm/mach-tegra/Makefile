@@ -303,7 +303,6 @@ obj-${CONFIG_MACH_LAGUNA}               += panel-a-edp-1080p-14-0.o
 
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-pinmux.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-panel.o
 
