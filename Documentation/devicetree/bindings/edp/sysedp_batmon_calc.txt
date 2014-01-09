@@ -1,7 +1,7 @@
 System-EDP Battery Monitor
 
 Required properties:
-- compatible : "sysedp_batmon_calc"
+- compatible : "nvidia,tegra124-sysedp_batmon_calc"
 - ocv_lut: The property contains several sets of combinations of
   capacity battery remained and battery open-circuit-voltage (in uV).
   Take <60 7641110> for exmaple, it means the battery
@@ -30,7 +30,7 @@ Required properties:
 
 Example:
 	sysedp_batmon_calc {
-		compatible = "sysedp_batmon_calc";
+		compatible = "nvidia,tegra124-sysedp_batmon_calc";
 		update_interval = <30000>;
 		ocv_lut = <
 			100 8372010

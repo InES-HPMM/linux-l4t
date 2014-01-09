@@ -1,7 +1,7 @@
 
 / {
 	sysedp_batmon_calc {
-		compatible = "sysedp_batmon_calc";
+		compatible = "nvidia,tegra124-sysedp_batmon_calc";
 		ibat_lut = <
 			60    6150
 			40    6150
