@@ -464,7 +464,7 @@ static inline void __sync_cache_range_r(volatile void *p, size_t size)
  *   CPUs other than the one you have may have more relaxed rules.
  * The caller is required to take care of these.
  */
-
+#ifdef CONFIG_CPA
 int set_memory_uc(unsigned long addr, int numpages);
 int set_memory_wc(unsigned long addr, int numpages);
 int set_memory_wb(unsigned long addr, int numpages);
@@ -485,6 +485,7 @@ int set_pages_array_uc(struct page **pages, int addrinarray);
 int set_pages_array_wc(struct page **pages, int addrinarray);
 int set_pages_array_wb(struct page **pages, int addrinarray);
 int set_pages_array_iwb(struct page **pages, int addrinarray);
+#endif
 
 extern size_t cache_maint_inner_threshold;
 
