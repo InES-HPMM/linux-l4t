@@ -1,9 +1,8 @@
 /*
  * Copyright (C) 2009 Palm, Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Yvonne Yip <y@palm.com>
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -64,6 +63,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int calib_3v3_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	unsigned int calib_1v8_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	bool disable_clock_gate; /* no clock gate when true */
+	u32 cpu_speedo;
 };
 
 #endif
