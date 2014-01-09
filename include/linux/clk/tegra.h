@@ -188,6 +188,7 @@ struct tegra_clk_export_ops {
 int tegra_clk_register_export_ops(struct clk *c,
 				  struct tegra_clk_export_ops *ops);
 
+struct clk *tegra_get_clock_by_name(const char *name);
 
 #ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
 int tegra_clk_set_max(struct clk *c, unsigned long rate);
