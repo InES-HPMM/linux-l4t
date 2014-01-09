@@ -1,7 +1,7 @@
 /*
 * imx179.c - imx179 sensor driver
 *
-* Copyright (c) 2013 NVIDIA Corporation. All Rights Reserved.
+* Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
 *
 * This file is licensed under the terms of the GNU General Public License
 * version 2. This program is licensed "as is" without any warranty of any
@@ -1225,7 +1225,7 @@ static void imx179_gpio_exit(struct imx179_info *info)
 {
 	unsigned i;
 
-	for (i = 0; i <= ARRAY_SIZE(imx179_gpios); i++) {
+	for (i = 0; i < ARRAY_SIZE(imx179_gpios); i++) {
 		if (info->gpio[i].flag && info->gpio[i].own) {
 			gpio_free(info->gpio[i].gpio);
 			info->gpio[i].own = false;
@@ -1247,7 +1247,7 @@ static void imx179_gpio_init(struct imx179_info *info)
 	if (!info->pdata->gpio_count || !info->pdata->gpio)
 		return;
 
-	for (i = 0; i <= ARRAY_SIZE(imx179_gpios); i++) {
+	for (i = 0; i < ARRAY_SIZE(imx179_gpios); i++) {
 		type = imx179_gpios[i].gpio_type;
 		for (j = 0; j < info->pdata->gpio_count; j++) {
 			if (type == info->pdata->gpio[j].gpio_type)

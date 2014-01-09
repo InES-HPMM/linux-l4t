@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -479,7 +479,7 @@ static int mt9m114_write_table(
 	struct mt9m114_info *info,
 	const struct mt9m114_reg table[])
 {
-	int err;
+	int err = 0;
 	const struct mt9m114_reg *next;
 	u16 val;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -829,8 +829,6 @@ static long ov7695_ioctl(struct file *file,
 
 		if (copy_to_user((void __user *)arg, &ev, sizeof(short)))
 			return -EFAULT;
-		if (err)
-			return err;
 
 		return 0;
 	}
@@ -914,11 +912,12 @@ static int ov7695_remove(struct i2c_client *client)
 	struct ov7695_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&ov7695_device);
-	kfree(info);
 
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(info->debugfs_root);
 #endif
+
+	kfree(info);
 
 	return 0;
 }
