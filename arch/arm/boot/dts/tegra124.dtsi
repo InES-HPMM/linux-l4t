@@ -35,4 +35,11 @@
 		interrupts = <1 13 0xf04
 			      1 14 0xf04>;
 	};
+
+	dfll@70110000 {
+			compatible = "nvidia,tegra124-dfll";
+			reg = <0x70110000 0x400>;
+			out-clock-name="dfll_cpu";
+			status = "disabled";
+	};
 };

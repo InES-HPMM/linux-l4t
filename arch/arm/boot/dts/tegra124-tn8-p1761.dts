@@ -2,6 +2,7 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-p1761-emc.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1936-pmic.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1936-fixed.dtsi"

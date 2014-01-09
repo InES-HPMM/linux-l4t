@@ -21,6 +21,7 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-io.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc.dtsi"
 #include "tegra124-platforms/tegra124-e1780-powermon.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
