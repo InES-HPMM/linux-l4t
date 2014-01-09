@@ -103,6 +103,9 @@
 	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
 		CLK_OUT_ENB_CLR_X, 8)
 
+#define IS_PERIPH_IN_RESET(c)           \
+	(clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))
+
 #define CLK_MASK_ARM			0x44
 #define MISC_CLK_ENB			0x48
 
@@ -617,6 +620,8 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap);
 static unsigned long tegra12_clk_cap_shared_bus(struct clk *bus,
 	unsigned long rate, unsigned long ceiling);
+
+static bool tegra12_periph_is_special_reset(struct clk *c);
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -4385,10 +4390,15 @@ static void tegra12_periph_clk_init(struct clk *c)
 	}
 
 	/* if peripheral is left under reset - enforce safe rate */
-	if (!(c->flags & PERIPH_NO_RESET) &&
-	    (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))) {
+
+	if (c->flags & PERIPH_NO_RESET) {
+		if (tegra12_periph_is_special_reset(c)) {
+			tegra_periph_clk_safe_rate_init(c);
+			 val = clk_readl(c->reg);
+		}
+	} else if (IS_PERIPH_IN_RESET(c)) {
 		tegra_periph_clk_safe_rate_init(c);
-		 val = clk_readl(c->reg);
+		val = clk_readl(c->reg);
 	}
 
 	if (c->flags & DIV_U71) {
@@ -8445,6 +8455,85 @@ struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk,
 	&tegra_camera_mclk2,
 };
+
+/*
+ * Use this API only when all the clocks are not registered to the clock
+ * subsystem.
+ */
+static struct clk *query_clk_from_list(char *clk_name)
+{
+	int i;
+
+	if (!clk_name)
+		return NULL;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
+		if (!strcmp(tegra_list_clks[i].name, clk_name))
+			return &tegra_list_clks[i];
+
+	return NULL;
+}
+
+/*
+ * Handle special clocks to check if they can be set to safe rate
+ */
+static bool tegra12_periph_is_special_reset(struct clk *c)
+{
+	struct clk *temp;
+
+	if (!strcmp(c->name, "isp")) {
+		/* Make sure that ispa and ispb are in reset */
+
+		/*
+		 * Since clocks may not have been registered by this time,
+		 * so query clock structure directly from the list
+		 */
+		temp = query_clk_from_list("ispa");
+		if (!temp)
+			return false;
+
+		/* If ispa is not in reset, return false */
+		if (!IS_PERIPH_IN_RESET(temp))
+			return false;
+
+		temp = query_clk_from_list("ispb");
+		if (!temp)
+			return false;
+
+		/* If ispb is not in reset, return false */
+		if (!IS_PERIPH_IN_RESET(temp))
+			return false;
+
+		return true;
+	}
+
+	if (!strcmp(c->name, "vi_sensor") || !strcmp(c->name, "vi_sensor2")) {
+		temp = query_clk_from_list("vi");
+		if (!temp)
+			return false;
+
+		/* If vi is not in reset, return false */
+		if (!IS_PERIPH_IN_RESET(temp))
+			return false;
+
+		return true;
+	}
+
+
+	if (!strcmp(c->name, "hdmi_audio")) {
+		temp = query_clk_from_list("hdmi");
+		if (!temp)
+			return false;
+
+		/* If hdmi is not in reset, return false */
+		if (!IS_PERIPH_IN_RESET(temp))
+			return false;
+
+		return true;
+	}
+
+	return false;
+}
 
 /* Return true from this function if the target rate can be locked without
    switching pll clients to back-up source */
