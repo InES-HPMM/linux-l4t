@@ -119,6 +119,12 @@
 			solteam-opto,tint-coeff = <22>;
 			solteam-opto,noisy = <1>;
 		};
+
+		lc709203f@0b {
+			compatible = "onsemi,lc709203f";
+			reg = <0x0b>;
+			onsemi,tz-name = "battery-temp";
+		};
 	};
 
 	i2c@7000c400 {
