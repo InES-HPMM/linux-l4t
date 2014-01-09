@@ -1,7 +1,7 @@
 /* include/linux/tegra_audio.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *     Iliyan Malchev <malchev@google.com>
@@ -125,6 +125,8 @@ struct tegra210_audio_spkprot_test_param {
 	unsigned int bandfilter_biquad_stages;
 	unsigned int arfilter_biquad_stages;
 	unsigned int spfilter_biquad_stages;
+	unsigned int gain_l;
+	unsigned int gain_h;
 };
 
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
