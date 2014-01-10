@@ -612,7 +612,7 @@ config TEGRA_CPU_VOLT_CAP
 	  CPU <voltage, temperature> cap. Userspace must respect
 	  datasheet-imposed limits.
 
-config CONFIG_TEGRA_CORE_CAP
+config TEGRA_CORE_CAP
 	bool "Control core capping limits"
 	default y
 	help
