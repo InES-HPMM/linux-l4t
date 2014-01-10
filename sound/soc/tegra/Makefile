@@ -24,6 +24,7 @@ snd-soc-tegra210-peq-objs := tegra210_peq.o
 snd-soc-tegra210-mbdrc-objs := tegra210_mbdrc.o
 snd-soc-tegra210-sfc-objs := tegra210_sfc.o
 snd-soc-tegra210-spkprot-objs := tegra210_spkprot.o
+snd-soc-tegra210-i2s-objs := tegra210_i2s.o
 
 obj-$(CONFIG_SND_SOC_TEGRA) += snd-soc-tegra-pcm.o
 obj-$(CONFIG_SND_SOC_TEGRA) += snd-soc-tegra-utils.o
@@ -46,6 +47,7 @@ obj-$(CONFIG_SND_SOC_TEGRA210_PEQ) += snd-soc-tegra210-peq.o
 obj-$(CONFIG_SND_SOC_TEGRA210_MBDRC) += snd-soc-tegra210-mbdrc.o
 obj-$(CONFIG_SND_SOC_TEGRA210_SFC) += snd-soc-tegra210-sfc.o
 obj-$(CONFIG_SND_SOC_TEGRA210_SPKPROT) += snd-soc-tegra210-spkprot.o
+obj-$(CONFIG_SND_SOC_TEGRA210_I2S) +=  snd-soc-tegra210-i2s.o
 
 # Tegra machine Support
 snd-soc-tegra-wm8753-objs := tegra_wm8753.o
