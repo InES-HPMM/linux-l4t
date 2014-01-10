@@ -785,7 +785,7 @@ int __init loki_regulator_init(void)
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	tegra_get_board_info(&bi);
-	if (bi.board_id == BOARD_P2530 && bi.fab == 0xa1) {
+	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xa1) {
 		pmic_platform.reg_data[PALMAS_REG_SMPS7] =
 			PALMAS_REG_PDATA(smps7_a01);
 		pmic_platform.reg_init[PALMAS_REG_SMPS7] =
