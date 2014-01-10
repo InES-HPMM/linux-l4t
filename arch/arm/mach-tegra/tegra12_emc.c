@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_emc.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -662,7 +662,8 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 				   u32 clk_setting)
 {
 #ifndef EMULATE_CLOCK_SWITCH
-	int i, dll_change, pre_wait, ctt_term_changed;
+	int i, dll_change, pre_wait;
+	int ctt_term_changed = 0;
 	bool cfg_pow_features_enabled, zcal_long;
 	u32 bgbias_ctl, auto_cal_status, auto_cal_config;
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);

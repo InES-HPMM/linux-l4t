@@ -293,13 +293,6 @@ int tegra_unregister_pm_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(tegra_unregister_pm_notifier);
 
-static int tegra_pm_notifier_call_chain(unsigned int val)
-{
-	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
-
-	return notifier_to_errno(ret);
-}
-
 #ifdef CONFIG_PM_SLEEP
 static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_NONE]	= "none",
@@ -1800,7 +1793,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		WARN_ON(!orig);
 		if (!orig) {
 			pr_err("%s: Failed to map tegra_lp0_vec_start %08x\n",
-				__func__, tegra_lp0_vec_start);
+				__func__, (unsigned int) tegra_lp0_vec_start);
 			kfree(reloc_lp0);
 			goto out;
 		}

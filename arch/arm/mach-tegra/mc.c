@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -259,7 +259,11 @@ EXPORT_SYMBOL(tegra_mc_flush_done);
  */
 static int __init tegra_mc_init(void)
 {
+
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
+				defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	u32 reg;
+#endif
 	struct dentry *mc_debugfs_dir;
 
 	tegra_mc_timing_save();

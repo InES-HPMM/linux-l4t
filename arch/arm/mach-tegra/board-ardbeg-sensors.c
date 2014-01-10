@@ -534,35 +534,6 @@ static struct dw9718_platform_data ardbeg_dw9718_data = {
 	.detect = ardbeg_dw9718_detect,
 };
 
-static struct max77387_platform_data ardbeg_max77387_pdata = {
-	.config		= {
-		.led_mask		= 3,
-		.flash_trigger_mode	= 1,
-		/* use ONE-SHOOT flash mode - flash triggered at the
-		 * raising edge of strobe or strobe signal.
-		*/
-		.flash_mode		= 1,
-		.def_ftimer		= 0x24,
-		.max_total_current_mA	= 1000,
-		.max_peak_current_mA	= 600,
-		.led_config[0]	= {
-			.flash_torch_ratio	= 18100,
-			.granularity		= 1000,
-			.flash_levels		= 0,
-			.lumi_levels	= NULL,
-			},
-		.led_config[1]	= {
-			.flash_torch_ratio	= 18100,
-			.granularity		= 1000,
-			.flash_levels		= 0,
-			.lumi_levels		= NULL,
-			},
-		},
-	.cfg		= 0,
-	.dev_name	= "torch",
-	.gpio_strobe	= CAM_FLASH_STROBE,
-};
-
 static struct as364x_platform_data ardbeg_as3648_data = {
 	.config		= {
 		.led_mask	= 3,
@@ -868,11 +839,6 @@ static struct i2c_board_info	ardbeg_i2c_board_info_ad5823 = {
 static struct i2c_board_info	ardbeg_i2c_board_info_as3648 = {
 		I2C_BOARD_INFO("as3648", 0x30),
 		.platform_data = &ardbeg_as3648_data,
-};
-
-static struct i2c_board_info	ardbeg_i2c_board_info_max77387 = {
-	I2C_BOARD_INFO("max77387", 0x4A),
-	.platform_data = &ardbeg_max77387_pdata,
 };
 
 static struct camera_module ardbeg_camera_module_info[] = {

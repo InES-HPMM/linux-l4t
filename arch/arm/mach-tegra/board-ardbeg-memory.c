@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -5429,7 +5429,6 @@ static struct tegra12_emc_table ardbeg_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 

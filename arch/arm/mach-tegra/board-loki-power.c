@@ -364,13 +364,6 @@ static struct palmas_reg_init *loki_reg_init[PALMAS_NUM_REGS] = {
 	NULL,
 };
 
-#define PALMAS_GPADC_IIO_MAP(_ch, _dev_name, _name)		\
-	{							\
-		.adc_channel_label = PALMAS_DATASHEET_NAME(_ch),\
-		.consumer_dev_name = _dev_name,			\
-		.consumer_channel = _name,			\
-	}
-
 static struct iio_map palmas_adc_iio_maps[] = {
 	PALMAS_GPADC_IIO_MAP(IN1, "generic-adc-thermal.0", "thermistor"),
 	PALMAS_GPADC_IIO_MAP(IN3, "generic-adc-thermal.1", "tdiode"),

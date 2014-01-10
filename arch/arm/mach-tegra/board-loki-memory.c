@@ -248,7 +248,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -474,7 +473,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -700,7 +698,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -926,7 +923,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -1152,7 +1148,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -1378,7 +1373,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -1604,7 +1598,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -1830,7 +1823,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -2056,7 +2048,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -2282,7 +2273,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -2508,7 +2498,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -2734,7 +2723,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -2960,7 +2948,6 @@ static struct tegra12_emc_table loki_b00_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200028, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -3189,7 +3176,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -3415,7 +3401,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -3641,7 +3626,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -3867,7 +3851,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -4093,7 +4076,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -4319,7 +4301,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -4545,7 +4526,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -4771,7 +4751,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -4997,7 +4976,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -5223,7 +5201,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -5449,7 +5426,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -5675,7 +5651,6 @@ static struct tegra12_emc_table loki_b00_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -5904,7 +5879,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -6130,7 +6104,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -6356,7 +6329,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -6582,7 +6554,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -6808,7 +6779,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -7034,7 +7004,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -7260,7 +7229,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -7486,7 +7454,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -7712,7 +7679,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -7938,7 +7904,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -8164,7 +8129,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -8390,7 +8354,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.6 */
@@ -8616,7 +8579,6 @@ static struct tegra12_emc_table thor_195_b00_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200028, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -8845,7 +8807,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -9071,7 +9032,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -9297,7 +9257,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -9523,7 +9482,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -9749,7 +9707,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -9975,7 +9932,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -10201,7 +10157,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -10427,7 +10382,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -10653,7 +10607,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -10879,7 +10832,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -11105,7 +11057,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -11331,7 +11282,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -11557,7 +11507,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200028, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -11783,7 +11732,6 @@ static struct tegra12_emc_table loki_ffd_sku0_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200028, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -12012,7 +11960,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -12238,7 +12185,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -12464,7 +12410,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -12690,7 +12635,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -12916,7 +12860,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -13142,7 +13085,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -13368,7 +13310,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -13594,7 +13535,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -13820,7 +13760,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -14046,7 +13985,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -14272,7 +14210,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -14498,7 +14435,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.9 */
@@ -14724,7 +14660,6 @@ static struct tegra12_emc_table loki_ffd_sku100_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200028, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
-		1180,       /* expected dvfs latency (ns) */
 	},
 };
 

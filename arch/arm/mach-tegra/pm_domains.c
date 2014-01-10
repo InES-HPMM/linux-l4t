@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/pm_domains.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -171,60 +171,6 @@ static int tegra_mc_clk_power_on(struct generic_pm_domain *genpd)
 		return 0;
 
 	clk_prepare_enable(pd->clk);
-
-	return 0;
-}
-
-static void suspend_devices_in_domain(struct generic_pm_domain *genpd)
-{
-	struct pm_domain_data *pdd;
-	struct device *dev;
-
-	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
-		dev = pdd->dev;
-
-		if (dev->pm_domain && dev->pm_domain->ops.suspend)
-			dev->pm_domain->ops.suspend(dev);
-	}
-}
-
-static void resume_devices_in_domain(struct generic_pm_domain *genpd)
-{
-	struct pm_domain_data *pdd;
-	struct device *dev;
-
-	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
-		dev = pdd->dev;
-
-		if (dev->pm_domain && dev->pm_domain->ops.resume)
-			dev->pm_domain->ops.resume(dev);
-	}
-}
-
-static int tegra_core_power_on(struct generic_pm_domain *genpd)
-{
-	struct pm_domain_data *pdd;
-	struct gpd_link *link;
-
-	list_for_each_entry(link, &genpd->master_links, master_node)
-		resume_devices_in_domain(link->slave);
-
-	list_for_each_entry(pdd, &genpd->dev_list, list_node)
-		TEGRA_PD_DEV_CALLBACK(resume, pdd->dev);
-
-	return 0;
-}
-
-static int tegra_core_power_off(struct generic_pm_domain *genpd)
-{
-	struct pm_domain_data *pdd;
-	struct gpd_link *link;
-
-	list_for_each_entry(link, &genpd->master_links, master_node)
-		suspend_devices_in_domain(link->slave);
-
-	list_for_each_entry(pdd, &genpd->dev_list, list_node)
-		TEGRA_PD_DEV_CALLBACK(suspend, pdd->dev);
 
 	return 0;
 }

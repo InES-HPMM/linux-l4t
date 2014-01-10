@@ -946,7 +946,6 @@ static struct spi_board_info rm31080a_norrin_spi_board[1] = {
 
 static int __init ardbeg_touch_init(void)
 {
-	struct board_info pmu_board_info;
 	tegra_get_board_info(&board_info);
 
 	if (tegra_get_touch_vendor_id() == MAXIM_TOUCH) {

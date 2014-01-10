@@ -280,7 +280,7 @@ struct tegra_dsi_out {
 	u16		dsi_panel_rst_gpio;
 	u16		dsi_panel_bl_en_gpio;
 	u16		dsi_panel_bl_pwm_gpio;
-	u8		chip_id;
+	u16		chip_id;
 	u8		chip_rev;
 	u8		controller_vs;
 

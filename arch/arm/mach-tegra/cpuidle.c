@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra CPUs
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -276,8 +276,6 @@ static int __init tegra_cpuidle_init(void)
 {
 	unsigned int cpu;
 	int ret;
-	struct cpuidle_driver *drv;
-	struct cpuidle_state *state;
 
 #ifdef CONFIG_PM_SLEEP
 	tegra_pd_min_residency = tegra_cpu_lp2_min_residency();
