@@ -3,7 +3,7 @@
  *
  * Author: Dara Ramesh <dramesh@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,6 +35,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/interrupt.h>
+#include <linux/of_irq.h>
 
 #include  "tegra210_adma.h"
 
@@ -83,6 +84,7 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 	val  &= ~TEGRA210_ADMA_CH_CTRL_TRANSFER_DIRECTION_MASK;
 	val |=  req->transfer_direction <<
 		    TEGRA210_ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT;
+	val &= ~TEGRA210_ADMA_CH_CTRL_TRANSFER_MODE_MASK;
 	val |=  ch->mode << TEGRA210_ADMA_CH_CTRL_TRANSFER_MODE_SHIFT;
 	val |=  1 << TEGRA210_ADMA_CH_CTRL_FLOWCTRL_ENABLE_SHIFT;
 
@@ -91,7 +93,7 @@ static void tegra210_adma_update_hw(struct tegra210_adma_channel *ch,
 		val |=  req->ahub_ch_request <<
 		    TEGRA210_ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT;
 		valfifo &= ~TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_MASK;
-		valfifo |= 3 <<
+		valfifo |= 7 <<
 			TEGRA210_ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_SHIFT;
 		regmap_write(adma->regmap,
 		    (ch->addr + TEGRA210_ADMA_CH_LOWER_SOURCE_ADDR),
@@ -170,7 +172,7 @@ struct tegra210_adma_channel *tegra210_adma_allocate_channel(int mode,
 		goto out;
 	}
 
-	if (mode & ADMA_MODE_ONESHOT)
+	if (mode)
 		isr_handler = tegra210_adma_oneshot_handle;
 	else
 		pr_err("Bad channel mode for DMA\n");
@@ -212,6 +214,18 @@ void tegra210_adma_free_channel(struct tegra210_adma_channel *ch)
 }
 EXPORT_SYMBOL(tegra210_adma_free_channel);
 
+int tegra210_adma_channel_transfer_status(struct tegra210_adma_channel *ch)
+{
+	struct tegra210_adma_ctx *adma = tegra210_adma;
+	u32  val;
+	regmap_read(adma->regmap, (ch->addr + TEGRA210_ADMA_CH_TRANSFER_STATUS),
+			&val);
+	dev_dbg(adma->dev, "%s ch. = %d transfer status %d", __func__, ch->id,
+			val);
+	return val;
+}
+EXPORT_SYMBOL(tegra210_adma_channel_transfer_status);
+
 int tegra210_adma_get_channel_id(struct tegra210_adma_channel *ch)
 {
 	return ch->id;
@@ -240,13 +254,20 @@ static bool tegra210_adma_rw_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_ADMA_CH_CTRL:
 	case TEGRA210_ADMA_CH_TC:
 	case TEGRA210_ADMA_CH_CONFIG:
-	case TEGRA210_ADMA_GLOBAL_CMD:
 	case TEGRA210_ADMA_CH_INT_SET:
 	case TEGRA210_ADMA_CH_INT_CLEAR:
 	case TEGRA210_ADMA_CH_AHUB_FIFO_CTRL:
 	case TEGRA210_ADMA_CH_LOWER_SOURCE_ADDR:
 	case TEGRA210_ADMA_CH_LOWER_TARGET_ADDR:
 	case TEGRA210_ADMA_CH_LOWER_DESC_ADDR:
+	case TEGRA210_ADMA_GLOBAL_CMD:
+	case TEGRA210_ADMA_GLOBAL_SOFT_RESET:
+	case TEGRA210_ADMA_GLOBAL_CG:
+	case TEGRA210_ADMA_GLOBAL_STATUS:
+	case TEGRA210_ADMA_GLOBAL_INT_MASK:
+	case TEGRA210_ADMA_GLOBAL_INT_SET:
+	case TEGRA210_ADMA_GLOBAL_INT_CLEAR:
+	case TEGRA210_ADMA_GLOBAL_CTRL:
 		return true;
 	default:
 		return false;
@@ -262,6 +283,14 @@ static bool tegra210_adma_rd_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_ADMA_CH_INT_STATUS:
 	case TEGRA210_ADMA_CH_TC_STATUS:
 	case TEGRA210_ADMA_CH_TRANSFER_STATUS:
+	case TEGRA210_ADMA_GLOBAL_STATUS:
+	case TEGRA210_ADMA_GLOBAL_INT_STATUS:
+	case TEGRA210_ADMA_GLOBAL_CH_INT_STATUS:
+	case TEGRA210_ADMA_GLOBAL_CH_ENABLE_STATUS:
+	case TEGRA210_ADMA_GLOBAL_TX_REQUESTORS:
+	case TEGRA210_ADMA_GLOBAL_RX_REQUESTORS:
+	case TEGRA210_ADMA_GLOBAL_TRIGGERS:
+	case TEGRA210_ADMA_GLOBAL_TRANSFER_ERROR_LOG:
 		return true;
 	default:
 		return false;
@@ -345,7 +374,7 @@ static void tegra210_adma_init(void)
 			ret = request_irq(irq, tegra210_adma_isr, 0,
 			    adma_channels[i].name, ch);
 			if (ret) {
-				pr_err("Failed to register IRQ %d for DMA %d\n",
+				pr_err("Failed to register IRQ %d for ADMA %d\n",
 					irq, i);
 				goto fail;
 			}
@@ -395,6 +424,15 @@ int tegra210_adma_channel_tc_status(struct tegra210_adma_channel *ch)
 }
 EXPORT_SYMBOL(tegra210_adma_channel_tc_status);
 
+void tegra210_adma_set_channel_pause(bool en)
+{
+	regmap_update_bits(tegra210_adma->regmap, TEGRA210_ADMA_CH_CTRL,
+		   TEGRA210_ADMA_CH_CTRL_TRANSFER_PAUSE_MASK,
+		   en);
+	return;
+}
+EXPORT_SYMBOL(tegra210_adma_set_channel_pause);
+
 void tegra210_adma_global_enable(bool en)
 {
 	struct tegra210_adma_ctx *adma = tegra210_adma;
@@ -416,6 +454,41 @@ void tegra210_adma_global_enable(bool en)
 	return;
 }
 EXPORT_SYMBOL(tegra210_adma_global_enable);
+
+void tegra210_adma_set_global_int_mask(bool en)
+{
+	regmap_write(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_INT_MASK, en);
+	return;
+}
+
+void tegra210_adma_set_global_int()
+{
+	regmap_write(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_INT_SET, true);
+	return;
+}
+
+void tegra210_adma_clear_global_int()
+{
+	regmap_write(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_INT_CLEAR,
+		true);
+	return;
+}
+
+void tegra210_adma_set_gloabal_pause(bool en)
+{
+	regmap_update_bits(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_CTRL,
+		   TEGRA210_ADMA_GLOBAL_CTRL_TRANSFER_PAUSE_MASK,
+		   en);
+	return;
+}
+EXPORT_SYMBOL(tegra210_adma_set_gloabal_pause);
+
+void tegra210_adma_set_global_soft_reset(bool en)
+{
+	regmap_write(tegra210_adma->regmap, TEGRA210_ADMA_GLOBAL_SOFT_RESET,
+					en);
+	return;
+}
 
 static int __init tegra210_adma_probe(struct platform_device *pdev)
 {
