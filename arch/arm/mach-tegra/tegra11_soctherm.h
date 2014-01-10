@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.h
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -126,6 +126,28 @@ struct soctherm_tsensor_pmu_data {
 	u8 pmu_16bit_ops;
 	u8 pmu_i2c_addr;
 };
+
+/**
+ * struct soctherm_platform_data - Board specific SOC_THERM info.
+ * @oc_irq_base:		Base over-current IRQ number
+ * @num_oc_irqs:		Number of over-current IRQs
+ * @soctherm_clk_rate:		Clock rate for the SOC_THERM IP block.
+ * @tsensor_clk_rate:		Clock rate for the thermal sensors.
+ * @sensor_data:		An array containing the data of each sensor
+ *				See struct soctherm_sensor.
+ * @therm:			An array contanining the board specific
+ *				thermal zones and their respective settings,
+ *				such as trip points.
+ *				See struct soctherm_therm.
+ * @throttle:			static specification for hardware throttle
+ *				responses.
+ *				See struct soctherm_throttle.
+ * @tshut_pmu_trip_data:	PMU-specific thermal shutdown settings.
+ *				See struct tegra_tsensor_pmu_data.
+ *
+ * therm is used for trip point configuration and should be moved out of
+ * soctherm_platform_data.
+ */
 
 struct soctherm_platform_data {
 	int oc_irq_base;
