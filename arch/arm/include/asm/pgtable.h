@@ -133,9 +133,6 @@ extern pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_UNCACHED | L_PTE_XN)
 #endif
 
-#define pgprot_inner_writeback(prot) \
-	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_INNER_WB)
-
 #endif /* __ASSEMBLY__ */
 
 /*

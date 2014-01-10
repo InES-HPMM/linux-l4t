@@ -144,8 +144,8 @@ ENDPROC(cpu_v7_set_pte_ext)
 	 *   NS1 = PRRR[19] = 1		- normal shareable property
 	 *   NOS = PRRR[24+n] = 1	- not outer shareable
 	 */
-.equ	PRRR,	0xff0a89a8
-.equ	NMRR,	0xc0e044e0
+.equ	PRRR,	0xff0a81a8
+.equ	NMRR,	0xc0e040e0
 
 	/*
 	 * Macro for setting up the TTBRx and TTBCR registers.
