@@ -1410,7 +1410,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	int ret = 0;
 	const struct tegra_i2c_chipdata *chip_data = NULL;
 	const struct of_device_id *match;
-	int bus_num;
+	int bus_num = -1;
 
 	if (pdev->dev.of_node) {
 		match = of_match_device(of_match_ptr(tegra_i2c_of_match), &pdev->dev);
@@ -1421,9 +1421,6 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		chip_data = match->data;
 		if (!pdata)
 			pdata = parse_i2c_tegra_dt(pdev);
-		bus_num = of_alias_get_id(pdev->dev.of_node, "i2c");
-		if (bus_num < 0)
-			dev_warn(&pdev->dev, "No bus number specified from device-tree\n");
 	} else {
 		chip_data = (struct tegra_i2c_chipdata *)pdev->id_entry->driver_data;
 		bus_num = pdev->id;
