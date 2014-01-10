@@ -43,6 +43,7 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-p1761-powermon.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
+obj-${CONFIG_MACH_T132REF}              += panel-a-1200-800-8-0.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-edp-1080p-14-0.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-14-0.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1200-800-8-0.o

@@ -587,6 +587,18 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_E1549:
 		panel = &dsi_lgd_wxga_7_0;
 		break;
+	case BOARD_E1937:
+		switch (board_out->sku) {
+		case 1100:
+			panel = &dsi_a_1200_800_8_0;
+			dsi_instance = DSI_INSTANCE_0;
+			break;
+		default:
+			panel = &dsi_a_1200_1920_7_0;
+			dsi_instance = DSI_INSTANCE_0;
+			break;
+		}
+		break;
 	case BOARD_PM363:
 	case BOARD_E1824:
 		switch (board_out->sku) {
@@ -617,10 +629,6 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		dsi_instance = DSI_INSTANCE_0;
 		tegra_io_dpd_enable(&dsic_io);
 		tegra_io_dpd_enable(&dsid_io);
-		break;
-	case BOARD_E1937:
-		panel = &dsi_a_1200_1920_7_0;
-		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_P1761:
 		if (tegra_get_board_panel_id())
