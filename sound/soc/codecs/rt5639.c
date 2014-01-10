@@ -3017,7 +3017,7 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 #endif
 #endif
 
-	codec->dapm.idle_bias_off = 1;
+	codec->dapm.idle_bias_off = 0;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 16, SND_SOC_I2C);
 	if (ret != 0) {
