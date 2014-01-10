@@ -396,6 +396,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("hvdd_sata", "tegra-sata.0"),
 	REGULATOR_SUPPLY("vdd", "1-004c"),
 	REGULATOR_SUPPLY("vdd", "1-004d"),
+	REGULATOR_SUPPLY("vcc", "1-0071"),
 };
 
 PALMAS_REGS_PDATA(ti913_smps123, 650, 1400, NULL, 0, 1, 1, NORMAL,

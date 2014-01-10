@@ -22,6 +22,7 @@
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-io.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc.dtsi"
+#include "tegra124-platforms/tegra124-e1780-powermon.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi"
 #include "tegra124-platforms/tegra124-tn8-e1736-fixed.dtsi"
 #include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
@@ -58,6 +59,12 @@
 			panel-l-wxga-7 {
 				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
+		};
+	};
+
+	i2c@7000c400 {
+		pca9546@71 {
+			vcc-supply = <&palmas_smps9>;
 		};
 	};
 };

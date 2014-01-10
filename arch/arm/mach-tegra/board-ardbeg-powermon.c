@@ -19,7 +19,6 @@
 
 #include <linux/i2c.h>
 #include <linux/platform_data/ina230.h>
-#include <linux/i2c/pca954x.h>
 
 #include "board.h"
 #include "board-ardbeg.h"
@@ -791,25 +790,6 @@ static struct i2c_board_info ardbeg_A01_i2c2_2_ina230_board_info[] = {
 	},
 };
 
-static struct pca954x_platform_mode ardbeg_pca954x_modes[] = {
-	{ .adap_id = PCA954x_I2C_BUS0, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS1, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS2, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS3, .deselect_on_exit = true, },
-};
-
-static struct pca954x_platform_data ardbeg_pca954x_data = {
-	.modes    = ardbeg_pca954x_modes,
-	.num_modes      = ARRAY_SIZE(ardbeg_pca954x_modes),
-};
-
-static const struct i2c_board_info ardbeg_i2c2_board_info[] = {
-	{
-		I2C_BOARD_INFO("pca9546", 0x71),
-		.platform_data = &ardbeg_pca954x_data,
-	},
-};
-
 static void __init register_devices_ardbeg_A01(void)
 {
 	i2c_register_board_info(PCA954x_I2C_BUS1,
@@ -906,9 +886,6 @@ int __init ardbeg_pmon_init(void)
 
 	if (bi.sku == 1100)
 		modify_tn8_rail_data();
-
-	i2c_register_board_info(1, ardbeg_i2c2_board_info,
-		ARRAY_SIZE(ardbeg_i2c2_board_info));
 
 	i2c_register_board_info(PCA954x_I2C_BUS0,
 			ardbeg_i2c2_0_ina230_board_info,
