@@ -18,6 +18,7 @@
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
+#include <linux/mmc/mmc.h>
 
 #include "core.h"
 #include "mmc_ops.h"
@@ -199,7 +200,138 @@ static int mmc_clock_opt_set(void *data, u64 val)
 	return 0;
 }
 
+static int mmc_set_bus_speed_mode(struct mmc_card *card, u32 speed)
+{
+	int err = 0;
+	u32 clock = 0;
+	/* HS_TIMING is set to 2 in HS200 and all other modes needs to be 1 */
+	if (speed == UHS_DDR50_BUS_SPEED) {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					EXT_CSD_HS_TIMING, 1, 0);
+		if (err) {
+			pr_err("%s: switch to HS_TIMING failed with error %d\n",
+				mmc_hostname(card->host), err);
+			goto err_node;
+		} else {
+			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					EXT_CSD_BUS_WIDTH,
+					EXT_CSD_DDR_BUS_WIDTH_8,
+					card->ext_csd.generic_cmd6_time);
+			clock = MMC_HIGH_DDR_MAX_DTR;
+		}
+	} else {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					EXT_CSD_BUS_WIDTH,
+					EXT_CSD_BUS_WIDTH_8,
+					card->ext_csd.generic_cmd6_time);
+		if (err) {
+			pr_err("%s: switch to bus width failed with error %d\n",
+				mmc_hostname(card->host), err);
+			goto err_node;
+		}
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					EXT_CSD_HS_TIMING, 2, 0);
+		if (err) {
+			pr_err("%s: switch to HS_TIMING failed with error %d\n",
+				mmc_hostname(card->host), err);
+			goto err_node;
+		}
+		clock = MMC_HS200_MAX_DTR;
+	}
+	mmc_set_timing(card->host, card->host->ios.timing);
+	if (card->host->ios.timing == MMC_TIMING_UHS_DDR50) {
+		mmc_card_set_ddr_mode(card);
+		card->state &= ~MMC_STATE_HIGHSPEED_200;
+	} else if (card->host->ios.timing == MMC_TIMING_MMC_HS200) {
+		mmc_card_set_hs200(card);
+		card->state &= ~MMC_STATE_HIGHSPEED_DDR;
+	}
+	mmc_set_bus_width(card->host, MMC_BUS_WIDTH_8);
+	mmc_set_clock(card->host, clock);
+
+err_node:
+	return err;
+}
+
+static int mmc_speed_opt_set(void *data, u64 val)
+{
+	int err = 0;
+	struct mmc_host *host = data;
+	u32 prev_timing, prev_maxdtr;
+
+	if (host->card->type != MMC_TYPE_MMC) {
+		pr_warn("%s: usage error, only MMC device is supported\n",
+			mmc_hostname(host));
+		return 0;
+	}
+	prev_timing = host->ios.timing;
+	prev_maxdtr = host->card->sw_caps.uhs_max_dtr;
+
+	/* Currently supporting only DDR50 and HS200 speeds */
+	switch (val) {
+	case UHS_SDR104_BUS_SPEED:
+		host->ios.timing = MMC_TIMING_MMC_HS200;
+		host->card->sw_caps.uhs_max_dtr = MMC_HS200_MAX_DTR;
+		break;
+	case UHS_DDR50_BUS_SPEED:
+		host->ios.timing = MMC_TIMING_UHS_DDR50;
+		host->card->sw_caps.uhs_max_dtr = UHS_DDR50_MAX_DTR;
+		break;
+	default:
+		pr_warn("%s: usage error, set only 3 for HS200 or 4 for DDR50\n",
+			mmc_hostname(host));
+		return 0;
+	}
+	/* Set bus speed mode of the card */
+	mmc_claim_host(host);
+	err = mmc_set_bus_speed_mode(host->card, val);
+	if (err) {
+		/* Restore to previous values in case of err*/
+		host->ios.timing = prev_timing;
+		host->card->sw_caps.uhs_max_dtr = prev_maxdtr;
+		pr_err("%s: could not set bus speed error = %d\n",
+			mmc_hostname(host), err);
+	}
+	mmc_release_host(host);
+	return err;
+}
+
+static int mmc_speed_opt_get(void *data, u64 *val)
+{
+	struct mmc_host *host = data;
+	static const char *const uhs_speeds[] = {
+		[UHS_SDR12_BUS_SPEED] = "SDR12 ",
+		[UHS_SDR25_BUS_SPEED] = "SDR25 ",
+		[UHS_SDR50_BUS_SPEED] = "SDR50 ",
+		[UHS_SDR104_BUS_SPEED] = "SDR104 ",
+		[UHS_DDR50_BUS_SPEED] = "DDR50 ",
+	};
+	const char *str = "";
+	*val = 0;
+
+	if (mmc_sd_card_uhs(host->card) &&
+		(host->card->sd_bus_speed < ARRAY_SIZE(uhs_speeds))) {
+		str = uhs_speeds[host->card->sd_bus_speed];
+		*val = host->card->sd_bus_speed;
+	} else if (mmc_card_highspeed(host->card)) {
+		str = "high speed";
+	} else if (mmc_card_hs200(host->card)) {
+		str = "HS200";
+		*val = UHS_SDR104_BUS_SPEED;
+	} else if (mmc_card_ddr_mode(host->card)) {
+		str = "DDR50";
+		*val = UHS_DDR50_BUS_SPEED;
+	}
+
+	pr_info("%s: current speed %s\n",
+			mmc_hostname(host->card->host),
+			str);
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(mmc_clock_fops, mmc_clock_opt_get, mmc_clock_opt_set,
+	"%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(mmc_speed_fops, mmc_speed_opt_get, mmc_speed_opt_set,
 	"%llu\n");
 
 void mmc_add_host_debugfs(struct mmc_host *host)
@@ -222,6 +354,10 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 
 	if (!debugfs_create_file("clock", S_IRUSR | S_IWUSR, root, host,
 			&mmc_clock_fops))
+		goto err_node;
+
+	if (!debugfs_create_file("speed", S_IRUSR | S_IWUSR, root, host,
+			&mmc_speed_fops))
 		goto err_node;
 
 #ifdef CONFIG_MMC_CLKGATE

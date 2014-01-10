@@ -795,7 +795,8 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		unsigned int uhs)
 {
 	u16 clk, ctrl_2;
-	u32 vndr_ctrl;
+	u32 vndr_ctrl, best_tap_value;
+	struct tegra_tuning_data *tuning_data;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
@@ -844,7 +845,23 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 			sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
 		}
 	}
-
+	/* Set the best tap value based on timing */
+	if (uhs == MMC_TIMING_MMC_HS200) {
+		tuning_data = sdhci_tegra_get_tuning_data(host,
+			host->mmc->ios.clock);
+		best_tap_value = (tegra_host->tap_cmd ==
+			TAP_CMD_TRIM_HIGH_VOLTAGE) ?
+			tuning_data->nom_best_tap_value :
+			tuning_data->best_tap_value;
+	} else {
+		best_tap_value = tegra_host->plat->tap_delay;
+	}
+	vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
+	vndr_ctrl &= ~(0xFF <<
+		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	vndr_ctrl |= (best_tap_value <<
+		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
 	return 0;
 }
 
