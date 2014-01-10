@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013 - 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -189,14 +189,21 @@ static bool set_main_conf(struct max44005_chip *chip, int mode)
 /* current is in mA */
 static bool set_led_drive_strength(struct max44005_chip *chip, int cur)
 {
+	int ret = 0;
 	if (!chip->supply[LED])
 		goto finish;
 
 	if (cur && !chip->power_utilization[LED])
-		regulator_enable(chip->supply[LED]);
+		ret = regulator_enable(chip->supply[LED]);
 	else if (!cur && chip->power_utilization[LED])
-		regulator_disable(chip->supply[LED]);
+		ret = regulator_disable(chip->supply[LED]);
 
+	if (ret) {
+		dev_err(&chip->client->dev,
+			"%s: regulator %s failed\n", __func__,
+			cur ? "enable" : "disable");
+		return false;
+	}
 finish:
 	chip->power_utilization[LED] = cur ? 1 : 0;
 	return max44005_write(chip, 0xA1, PROX_CONF_REG_ADDR) == 0;

@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013 - 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -392,12 +392,12 @@ static const struct iio_chan_spec_ext_info tcs3772_ext_info[] = {
 static const struct iio_chan_spec tcs3772_channels[] = {
 	{
 		.type = IIO_LIGHT,
-		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
+		.info_mask_separate = IIO_CHAN_INFO_RAW,
 		.ext_info = tcs3772_ext_info,
 	},
 	{
 		.type = IIO_PROXIMITY,
-		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
+		.info_mask_separate = IIO_CHAN_INFO_RAW,
 		.ext_info = tcs3772_ext_info,
 	},
 };
