@@ -5,7 +5,7 @@
 #include "tegra124-platforms/tegra124-pm359-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-pm359-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-pm359-pmic.dtsi"
-#include "tegra124-platforms/tegra124-pm359-fixed.dtsi"
+#include "tegra124-platforms/tegra124-pm358-fixed.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Laguna";
