@@ -1,7 +1,6 @@
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 / {
   pinmux: pinmux {
-	  status = "okay";
 	  pinctrl-names = "default", "drive", "unused";
 	  pinctrl-0 = <&pinmux_default>;
 	  pinctrl-1 = <&drive_default>;

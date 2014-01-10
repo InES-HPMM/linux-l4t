@@ -22,10 +22,6 @@
 		reg = <0x80000000 0x20000000>;
 	};
 
-	pinmux {
-		status = "okay";
-	};
-
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;

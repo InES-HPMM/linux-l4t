@@ -19,10 +19,6 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
-	pinmux {
-		status = "okay";
-	};
-
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
