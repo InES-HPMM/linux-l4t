@@ -489,7 +489,6 @@ void raydium_report_pointer(void *p)
 	int iMaxX, iMaxY;
 	struct rm_touch_event *spTP;
 	ssize_t missing;
-
 	spTP = kmalloc(sizeof(struct rm_touch_event), GFP_KERNEL);
 	if (spTP == NULL)
 		return;
@@ -524,7 +523,7 @@ void raydium_report_pointer(void *p)
 				break;
 
 			if ((spTP->ucToolType[i] == POINT_TYPE_ERASER)
-					&& (spTP->ucSlot[i] & INPUT_POINT_RESET)) {
+					&& (spTP->ucSlot[i] && INPUT_POINT_RESET)) {
 				input_report_key(g_input_dev,
 					BTN_TOOL_RUBBER, 0);
 				input_mt_sync(g_input_dev);
@@ -602,7 +601,7 @@ void raydium_report_pointer(void *p)
 				break;
 
 			if ((spTP->ucToolType[i] == POINT_TYPE_ERASER)
-					&& (spTP->ucSlot[i] & INPUT_POINT_RESET)) {
+					&& (spTP->ucSlot[i] && INPUT_POINT_RESET)) {
 				input_report_key(
 					g_input_dev[INPUT_DEVICE_FOR_STYLUS],
 					BTN_TOOL_RUBBER, 0);
@@ -669,8 +668,7 @@ void raydium_report_pointer(void *p)
 			}
 			input_mt_sync(g_input_dev[target_device]);
 		}
-		for (i = 0; i < INPUT_DEVICE_AMOUNT; i++)
-			input_sync(g_input_dev[i]);
+		input_sync(g_input_dev[target_device]);
 		ucLastTouchCount = spTP->ucTouchCount;
 	}
 #endif
@@ -815,8 +813,7 @@ static u32 rm_tch_ctrl_configure(void)
 	switch (g_stTs.u8ScanModeState) {
 	case RM_SCAN_ACTIVE_MODE:
 		u32Flag =
-			RM_NEED_TO_SEND_SCAN |
-			RM_NEED_TO_READ_RAW_DATA |
+			RM_NEED_TO_SEND_SCAN | RM_NEED_TO_READ_RAW_DATA |
 			RM_NEED_TO_SEND_SIGNAL;
 		break;
 
@@ -1052,8 +1049,8 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 
 	if (u16TblLenth < 3) {
 		if (g_stCtrl.bKernelMsg & DEBUG_DRIVER)
-			dev_info(&g_spi->dev, "Raydium - Null CMD %s : [%p]\n",
-				__func__, pCmdTbl);
+			dev_info(&g_spi->dev, "Raydium - Null CMD %s : [0x%x]\n",
+				__func__, (u32)pCmdTbl);
 		mutex_unlock(&lock);
 		return ret;
 	}
@@ -1232,7 +1229,7 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 			break;
 		case KRL_CMD_READ_IMG:
 			/*rm_printk("Raydium - KRL_CMD_READ_IMG "
-			"- 0x%x:%p:%d\n",
+			"- 0x%x:0x%x:%d\n",
 			pCmdTbl[_ADDR],
 			g_pu8BurstReadBuf,
 			g_stCtrl.u16DataLength);*/
@@ -1252,11 +1249,8 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 			/*rm_printk("Raydium - KRL_CMD_WRITE_W_COUNT "
 			"- 0x%x: 0x%x..0x%x\n", pCmdTbl[_ADDR], u8reg,
 			ts->bRepeatCounter);*/
-			if (ts)
-				ret = rm_tch_spi_byte_write(pCmdTbl[_ADDR],
+			ret = rm_tch_spi_byte_write(pCmdTbl[_ADDR],
 						u8reg | (ts->bRepeatCounter));
-			else
-				ret = FAIL;
 			break;
 		case KRL_CMD_RETURN_RESULT:
 			g_stTs.u16ReadPara = u8reg;
@@ -1275,9 +1269,9 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 		//	break;
 
 		if (ret == FAIL) {
-			dev_err(&g_spi->dev, "Raydium - %s : [%p] cmd failed\n",
+			dev_err(&g_spi->dev, "Raydium - %s : [0x%x] cmd failed\n",
 				__func__,
-				pCmdTbl);
+				(u32)pCmdTbl);
 			dev_err(&g_spi->dev, "Raydium - cmd:0x%x, addr:0x%x, data:0x%x\n",
 				pCmdTbl[_CMD],
 				pCmdTbl[_ADDR],
@@ -1343,7 +1337,7 @@ int rm_set_kernel_tbl(int iFuncIdx, u8 *u8pSrc)
 		break;
 
 	default:
-		dev_err(&g_spi->dev, "Raydium - %s : no such kernel table - err:%d\n",
+		dev_err(&g_spi->dev, "Raydium - %s : no kernel table - err:%d\n",
 			__func__, iFuncIdx);
 		return FAIL;
 	}
@@ -1372,8 +1366,8 @@ int rm_set_kernel_tbl(int iFuncIdx, u8 *u8pSrc)
 		return FAIL;
 	}
 
-	/*dev_info(&g_spi->dev, "Raydium - %s : CMD_TAB_%d[%p]\n",
-	__func__, iFuncIdx, u8pDst);*/
+	/*dev_info(&g_spi->dev, "Raydium - %s : CMD_TAB_%d[0x%x]\n",
+	__func__, iFuncIdx, (u32)u8pDst);*/
 
 	kfree(u8pLen);
 	return OK;
@@ -1933,36 +1927,50 @@ static ssize_t rm_tch_slowscan_handler(const char *buf, size_t count)
 	unsigned long val;
 	ssize_t error;
 	ssize_t ret;
+	u8 *pMyBuf;
+	ssize_t missing;
 
 	if (count < 2)
-		return -EINVAL;
+		return count;
 
 	ret = (ssize_t) count;
+
+	pMyBuf = kmalloc(count, GFP_KERNEL);
+	if (pMyBuf == NULL)
+		return -ENOMEM;
+
+	missing = copy_from_user(pMyBuf, buf, count);
+	if (missing) {
+		dev_err(&g_spi->dev, "Raydium - %s : copy failed - len:%d, miss:%d\n",
+			__func__, count, missing);
+		return count;
+	}
 
 	mutex_lock(&g_stTs.mutex_scan_mode);
 
 	if (count == 2) {
-		if (buf[0] == '0') {
+		if (pMyBuf[0] == '0') {
 			g_stTs.bEnableSlowScan = false;
 			rm_tch_ctrl_slowscan(RM_SLOW_SCAN_LEVEL_MAX);
-		} else if (buf[0] == '1') {
+		} else if (pMyBuf[0] == '1') {
 			g_stTs.bEnableSlowScan = true;
 			rm_tch_ctrl_slowscan(RM_SLOW_SCAN_LEVEL_60);
 			g_stTs.u32SlowScanLevel = RM_SLOW_SCAN_LEVEL_60;
 		}
-	} else if ((buf[0] == '2') && (buf[1] == ' ')) {
-		error = kstrtoul(&buf[2], 10, &val);
+	} else if ((pMyBuf[0] == '2') && (pMyBuf[1] == ' ')) {
+		error = kstrtoul(&pMyBuf[2], 10, &val);
 
 		if (error) {
 			ret = error;
 		} else {
 			g_stTs.bEnableSlowScan = true;
-			g_stTs.u32SlowScanLevel = rm_tch_slowscan_round((u32)val);
+			g_stTs.u32SlowScanLevel = rm_tch_slowscan_round(val);
 			rm_tch_ctrl_slowscan(g_stTs.u32SlowScanLevel);
 		}
 	}
 
 	mutex_unlock(&g_stTs.mutex_scan_mode);
+	kfree(pMyBuf);
 	return ret;
 }
 #endif
@@ -2150,9 +2158,9 @@ static void rm_tch_report_mode_change(unsigned long val)
 	g_stTs.u8ReportMode = (u8)val;
 
 	iInfo = (RM_SIGNAL_PARA_REPORT_MODE_CHANGE << 24) |
-			(g_stTs.u8ReportMode << 16) |
+			(val << 16) |
 			RM_SIGNAL_REPORT_MODE_CHANGE;
-
+ 
 	rm_tch_ts_send_signal(g_stTs.ulHalPID, iInfo);
 }
 
@@ -2675,7 +2683,7 @@ struct rm_tch_ts *rm_tch_input_init(struct device *dev, unsigned int irq,
 		goto err_out;
 	}
 
-	ts = kzalloc(sizeof(struct rm_tch_ts), GFP_KERNEL);
+	ts = kzalloc(sizeof(*ts), GFP_KERNEL);
 
 	input_dev = input_allocate_device();
 
