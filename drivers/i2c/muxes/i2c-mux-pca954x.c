@@ -305,6 +305,8 @@ static int pca954x_probe(struct i2c_client *client,
 
 	/* Now create an adapter for each channel */
 	for (num = 0; num < chips[data->type].nchans; num++) {
+		bool deselect_on_exit = false;
+
 		force = 0;			  /* dynamic adap number */
 		class = 0;			  /* no class by default */
 		if (pdata) {
@@ -312,15 +314,19 @@ static int pca954x_probe(struct i2c_client *client,
 				/* force static number */
 				force = pdata->modes[num].adap_id;
 				class = pdata->modes[num].class;
+				deselect_on_exit =
+					pdata->modes[num].deselect_on_exit;
 			} else
 				/* discard unconfigured channels */
 				break;
 		}
+		if (client->dev.of_node)
+			deselect_on_exit = true;
 
 		data->virt_adaps[num] =
 			i2c_add_mux_adapter(adap, &client->dev, client,
 				force, num, class, pca954x_select_chan,
-				(pdata && pdata->modes[num].deselect_on_exit)
+				(deselect_on_exit)
 					? pca954x_deselect_mux : NULL);
 
 		if (data->virt_adaps[num] == NULL) {
