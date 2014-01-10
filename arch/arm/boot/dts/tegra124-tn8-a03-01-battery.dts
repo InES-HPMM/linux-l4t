@@ -26,7 +26,7 @@
 
 	i2c@7000c000 {
 		status = "okay";
-		clock-frequency = <100000>;
+		clock-frequency = <400000>;
 
 		cw201x@62 {
 			compatible = "cw,cw201x";

@@ -41,7 +41,7 @@
 
 	i2c@7000c000 {
 		status = "okay";
-		clock-frequency = <100000>;
+		clock-frequency = <400000>;
 		bq2419x: bq2419x@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
