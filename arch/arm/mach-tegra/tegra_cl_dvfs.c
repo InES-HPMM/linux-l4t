@@ -2555,11 +2555,19 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	rate = GET_REQUEST_RATE(val, cld->ref_rate);
 
 	/* Find safe voltage for requested rate */
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	if (find_safe_output(cld, rate/2, &req.output)) {
+		pr_err("%s: Failed to find safe output for rate %lu\n",
+		       __func__, rate);
+		return -EINVAL;
+	}
+#else
 	if (find_safe_output(cld, rate, &req.output)) {
 		pr_err("%s: Failed to find safe output for rate %lu\n",
 		       __func__, rate);
 		return -EINVAL;
 	}
+#endif
 	req.cap = req.output;
 
 	/*
