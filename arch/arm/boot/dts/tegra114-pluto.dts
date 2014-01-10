@@ -25,10 +25,6 @@
 		};
 	};
 
-	pinmux {
-		status = "okay";
-	};
-
 	keyboard: keyboard@7000e200 {
 		compatible = "nvidia,tegra114-kbc";
 		reg = <0x7000e200 0x100>;

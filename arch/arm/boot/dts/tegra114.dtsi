@@ -233,11 +233,10 @@
 		nvidia,memory-clients = <17>;
 	};
 
-	pinmux: pinmux {
+	pinmux {
 		compatible = "nvidia,tegra114-pinmux";
 		reg = <0x70000868 0x148		/* Pad control registers */
 		       0x70003000 0x40c>;	/* Mux registers */
-		status = "disable";
 	};
 
 	/*

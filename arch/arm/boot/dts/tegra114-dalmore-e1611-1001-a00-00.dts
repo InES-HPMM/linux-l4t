@@ -10,7 +10,6 @@
 	nvidia,dtsfilename = __FILE__;
 
 	pinmux {
-		status = "okay";
 		default {
 			kb_col1_pq1 {
 				nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
