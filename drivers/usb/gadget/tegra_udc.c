@@ -2842,13 +2842,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-	err = enable_irq_wake(udc->irq);
-	if (err < 0) {
-		dev_warn(&pdev->dev,
-			"Couldn't enable USB udc mode wakeup, irq=%d, error=%d\n",
-			udc->irq, err);
-		err = 0;
-	}
 	/*Disable fence read if H/W support is disabled*/
 	pdata = dev_get_platdata(&pdev->dev);
 	if (pdata) {
@@ -3090,6 +3083,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	unsigned long flags;
 	u32 temp;
 
+	int err = 0;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	if (udc->support_pmu_vbus) {
@@ -3107,6 +3101,14 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
 		return 0;
+
+	if (udc->irq) {
+		err = enable_irq_wake(udc->irq);
+		if (err < 0)
+			dev_err(&pdev->dev,
+			"Couldn't enable USB udc mode wakeup,"
+			" irq=%d, error=%d\n", udc->irq, err);
+	}
 
 	if (udc->vbus_active) {
 		spin_lock_irqsave(&udc->lock, flags);
@@ -3130,6 +3132,7 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 	u32 temp;
 
+	int err = 0;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	udc->vbus_in_lp0 = false;
@@ -3158,6 +3161,14 @@ static int tegra_udc_resume(struct platform_device *pdev)
 
 	if (udc->transceiver)
 		return 0;
+
+	if (udc->irq) {
+		err = disable_irq_wake(udc->irq);
+		if (err < 0)
+			dev_err(&pdev->dev,
+				"Couldn't disable USB udc mode wakeup, "
+				"irq=%d, error=%d\n", udc->irq, err);
+	}
 
 	tegra_usb_phy_power_on(udc->phy);
 	tegra_udc_restart(udc);

@@ -2,7 +2,7 @@
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
  * Copyright (c) 2010 Google, Inc.
- * Copyright (c) 2009-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -628,15 +628,6 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail_phy;
 	}
 
-	err = enable_irq_wake(tegra->irq);
-	if (err < 0) {
-		dev_warn(&pdev->dev,
-				"Couldn't enable USB host mode wakeup, irq=%d, "
-				"error=%d\n", irq, err);
-		err = 0;
-		tegra->irq = 0;
-	}
-
 	tegra->ehci = hcd_to_ehci(hcd);
 
 	if (pdata->port_otg) {
@@ -676,8 +667,16 @@ fail_sysfs:
 #ifdef CONFIG_PM
 static int tegra_ehci_resume(struct platform_device *pdev)
 {
+	int err = 0;
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	if (tegra->irq) {
+		err = disable_irq_wake(tegra->irq);
+		if (err < 0)
+			dev_err(&pdev->dev,
+				"Couldn't disable USB host mode wakeup, irq=%d, "
+				"error=%d\n", tegra->irq, err);
+	}
 	if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 		tegra_usb_enable_vbus(tegra->phy, true);
 		tegra_ehci_notify_event(tegra, USB_EVENT_ID);
@@ -696,9 +695,18 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 		return -EBUSY;
 	else {
 		err = tegra_usb_phy_power_off(tegra->phy);
+		if (err < 0)
+			return err;
 		if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 			tegra_usb_enable_vbus(tegra->phy, false);
 			tegra_usb_phy_pmc_disable(tegra->phy);
+		}
+		if (tegra->irq) {
+			err = enable_irq_wake(tegra->irq);
+			if (err < 0)
+				dev_err(&pdev->dev,
+					"Couldn't enable USB host mode wakeup, irq=%d, "
+					"error=%d\n", tegra->irq, err);
 		}
 		return err;
 	}
@@ -723,9 +731,6 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 
 	if (!IS_ERR_OR_NULL(tegra->transceiver))
 		otg_set_host(tegra->transceiver->otg, NULL);
-
-	if (tegra->irq)
-		disable_irq_wake(tegra->irq);
 
 	/* Make sure phy is powered ON to access USB register */
 	if(!tegra_usb_phy_hw_accessible(tegra->phy))
