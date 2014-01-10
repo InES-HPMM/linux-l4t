@@ -559,6 +559,7 @@ static void dsi_a_1200_1920_7_0_dc_out_init(struct tegra_dc_out *dc)
 	dc->postsuspend	= dsi_a_1200_1920_7_0_postsuspend,
 	dc->width = 100;
 	dc->height = 100;
+	dc->rotation = 180;
 	dc->flags = DC_CTRL_MODE;
 }
 
