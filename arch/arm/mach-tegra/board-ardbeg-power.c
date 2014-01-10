@@ -1411,6 +1411,22 @@ struct soctherm_throttle battery_oc_throttle = {
 	},
 };
 
+struct soctherm_throttle voltmon_throttle = {
+	.throt_mode = BRIEF,
+	.polarity = 1,
+	.priority = 50,
+	.devs = {
+		[THROTTLE_DEV_CPU] = {
+			.enable = true,
+			.depth = 75,
+		},
+		[THROTTLE_DEV_GPU] = {
+			.enable = true,
+			.throttling_depth = "medium_throttling",
+		},
+	},
+};
+
 int __init ardbeg_soctherm_init(void)
 {
 	s32 base_cp, shft_cp;
@@ -1461,6 +1477,10 @@ int __init ardbeg_soctherm_init(void)
 		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
 		       &battery_oc_throttle,
 		       sizeof(battery_oc_throttle));
+		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC1],
+		       &voltmon_throttle,
+		       sizeof(voltmon_throttle));
+
 		break;
 	default:
 		break;

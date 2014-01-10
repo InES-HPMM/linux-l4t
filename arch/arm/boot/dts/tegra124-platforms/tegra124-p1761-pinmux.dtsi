@@ -1429,10 +1429,10 @@
 
 			kb_row15_ps7 {
 				nvidia,pins = "kb_row15_ps7";
-				nvidia,function = "safe";
-				nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
-				nvidia,pull = <TEGRA_PIN_PUPD_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_TRISTATE>;
+				nvidia,function = "soc";
+				nvidia,enable-input = <TEGRA_PIN_INPUT>;
+				nvidia,pull = <TEGRA_PIN_PUPD_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_NORMAL>;
 			};
 
 			kb_row16_pt0 {
