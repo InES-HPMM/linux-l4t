@@ -196,6 +196,19 @@ struct tegra210_audio_spkprot_test_param {
 	unsigned int gain_h;
 };
 
+struct tegra210_audio_i2s_test_param {
+	int i2s_id;
+	int test_id;
+	unsigned int i2s_mode;
+	unsigned int is_i2s_loopback;
+	unsigned int is_i2s_master;
+	unsigned int in_channels;
+	unsigned int out_channels;
+	unsigned int sample_rate;
+	unsigned int in_bps;
+	unsigned int out_bps;
+};
+
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
 			const struct tegra_audio_in_config *)
 #define TEGRA_AUDIO_IN_GET_CONFIG	_IOR(TEGRA_AUDIO_MAGIC, 3, \
@@ -280,6 +293,8 @@ struct tegra210_audio_spkprot_test_param {
 				    struct tegra210_audio_peq_test_param *)
 #define TEGRA210_AUDIO_MBDRC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 78, \
 				    struct tegra210_audio_mbdrc_test_param *)
+#define TEGRA210_AUDIO_I2S_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 79, \
+				struct tegra210_audio_i2s_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
