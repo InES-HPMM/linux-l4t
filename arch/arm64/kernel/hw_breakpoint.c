@@ -956,6 +956,14 @@ static inline void hw_breakpoint_pm_init(void)
 }
 #endif
 
+#ifdef CONFIG_ARM64_CPU_SUSPEND
+extern void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *));
+#else
+static inline void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *))
+{
+}
+#endif
+
 /*
  * One-time initialisation.
  */
@@ -982,7 +990,8 @@ static int __init arch_hw_breakpoint_init(void)
 
 	/* Register hotplug notifier. */
 	register_cpu_notifier(&hw_breakpoint_reset_nb);
-	hw_breakpoint_pm_init();
+	/* Register cpu_suspend hw breakpoint restore hook */
+	cpu_suspend_set_dbg_restorer(hw_breakpoint_restore);
 
 	return 0;
 }
