@@ -2201,22 +2201,6 @@ int __init tegra_release_bootloader_fb(void)
 }
 late_initcall(tegra_release_bootloader_fb);
 
-static struct platform_device *pinmux_devices[] = {
-	&tegra_gpio_device,
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	&tegra114_pinctrl_device,
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-	&tegra124_pinctrl_device,
-#else
-	&tegra124_pinctrl_device,
-#endif
-};
-
-void tegra_enable_pinmux(void)
-{
-	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
-}
-
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_UNKNOWN] = "unknown",
 	[TEGRA_REVISION_A01]     = "A01",
