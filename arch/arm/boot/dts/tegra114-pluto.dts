@@ -2,8 +2,8 @@
 
 /include/ "tegra114.dtsi"
 /include/ "panel-l-720p-5.dts"
-#include <tegra114-platforms/tegar114-pluto-e1580-gpio-default.dtsi>
-#include <tegra114-platforms/tegar114-pluto-e1580-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-pluto-e1580-gpio-default.dtsi>
+#include <tegra114-platforms/tegra114-pluto-e1580-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 pluto evaluation board";

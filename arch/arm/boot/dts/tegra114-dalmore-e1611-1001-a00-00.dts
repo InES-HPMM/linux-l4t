@@ -1,8 +1,8 @@
 /dts-v1/;
 
 #include <tegra114-platforms/tegra114-dalmore-io-e1611.dtsi>
-#include <tegra114-platforms/tegar114-dalmore-e1611-gpio-default.dtsi>
-#include <tegra114-platforms/tegar114-dalmore-e1611-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-dalmore-e1611-gpio-default.dtsi>
+#include <tegra114-platforms/tegra114-dalmore-e1611-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 dalmore evaluation board";

@@ -1,8 +1,8 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
-#include "tegra114-platforms/tegar114-macallan-e1645-gpio-default.dtsi"
-#include "tegra114-platforms/tegar114-macallan-e1645-pinmux.dtsi"
+#include "tegra114-platforms/tegra114-macallan-e1645-gpio-default.dtsi"
+#include "tegra114-platforms/tegra114-macallan-e1645-pinmux.dtsi"
 
 / {
 	model = "NVIDIA Tegra114 macallan evaluation board";

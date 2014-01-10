@@ -1,8 +1,8 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
-#include <tegra114-platforms/tegar114-pismo-gpio-default.dtsi>
-#include <tegra114-platforms/tegar114-pismo-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-pismo-gpio-default.dtsi>
+#include <tegra114-platforms/tegra114-pismo-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 Pismo evaluation board";

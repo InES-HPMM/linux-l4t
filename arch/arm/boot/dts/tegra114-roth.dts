@@ -1,8 +1,8 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
-#include <tegra114-platforms/tegar114-roth-gpio-default.dtsi>
-#include <tegra114-platforms/tegar114-roth-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-roth-gpio-default.dtsi>
+#include <tegra114-platforms/tegra114-roth-pinmux.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 roth evaluation board";
