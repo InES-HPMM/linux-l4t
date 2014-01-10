@@ -55,6 +55,7 @@
 #define BQ27441_TEMPERATURE		0x02
 #define BQ27441_VOLTAGE			0x04
 #define BQ27441_FLAGS			0x06
+#define BQ27441_FLAGS_ITPOR		(1 << 5)
 #define BQ27441_NOMINAL_AVAIL_CAPACITY	0x08
 #define BQ27441_FULL_AVAIL_CAPACITY	0x0a
 #define BQ27441_REMAINING_CAPACITY	0x0c
@@ -260,9 +261,16 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	int old_terminate_voltage_msb;
 	int old_v_chg_term_msb;
 	int old_v_chg_term_lsb;
+	int flags_lsb;
 
 	unsigned long timeout = jiffies + HZ;
 	int ret;
+
+	flags_lsb = bq27441_read_byte(client, BQ27441_FLAGS);
+	if (!(flags_lsb & BQ27441_FLAGS_ITPOR)) {
+		dev_info(&chip->client->dev, "FG is already programmed\n");
+		return 0;
+	}
 
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x00);
 	if (ret < 0)
