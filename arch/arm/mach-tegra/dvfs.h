@@ -115,6 +115,7 @@ struct dvfs_rail {
 	struct tegra_cooling_device *vts_cdev;
 	struct rail_alignment alignment;
 	struct rail_stats stats;
+	const char *version;
 };
 
 enum dfll_range {
