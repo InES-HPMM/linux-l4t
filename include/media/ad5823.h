@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,6 +34,10 @@
 #define AD5823_VCM_THRESHOLD_MSB    (0x6)
 #define AD5823_VCM_THRESHOLD_LSB    (0x7)
 #define AD5823_RING_CTRL            (1 << 2)
+
+#define AD5823_PWR_DEV_OFF          (0)
+#define AD5823_PWR_DEV_ON           (1)
+
 struct ad5823_config {
 	__u32 settle_time;
 	__u32 actuator_range;
@@ -53,6 +57,7 @@ struct ad5823_platform_data {
 	int gpio;
 	int (*power_on)(struct ad5823_platform_data *);
 	int (*power_off)(struct ad5823_platform_data *);
+	int pwr_dev;
 };
 #endif  /* __AD5820_H__ */
 

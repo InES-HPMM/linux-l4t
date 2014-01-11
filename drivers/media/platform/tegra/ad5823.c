@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -83,6 +83,7 @@ static long ad5823_ioctl(struct file *file,
 {
 	struct ad5823_info *info = file->private_data;
 	struct ad5823_cal_data cal;
+	int err;
 
 	switch (cmd) {
 	case AD5823_IOCTL_GET_CONFIG:
@@ -98,7 +99,14 @@ static long ad5823_ioctl(struct file *file,
 		break;
 	}
 	case AD5823_IOCTL_SET_POSITION:
-		return ad5823_set_position(info, (u32) arg);
+		if (info->pdata->pwr_dev == AD5823_PWR_DEV_OFF
+				&& info->pdata->power_on)
+			info->pdata->power_on(info->pdata);
+		err = ad5823_set_position(info, (u32) arg);
+		if (info->pdata->pwr_dev == AD5823_PWR_DEV_OFF
+				&& info->pdata->power_off)
+			info->pdata->power_off(info->pdata);
+		return err;
 
 	case AD5823_IOCTL_SET_CAL_DATA:
 		if (copy_from_user(&cal, (const void __user *)arg,
@@ -199,10 +207,9 @@ MODULE_DEVICE_TABLE(of, ad5823_of_match);
 static int ad5823_power_on(struct ad5823_platform_data *pdata)
 {
 	int err = 0;
-
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 1);
-
+	pdata->pwr_dev = AD5823_PWR_DEV_ON;
 	return err;
 }
 
@@ -210,6 +217,7 @@ static int ad5823_power_off(struct ad5823_platform_data *pdata)
 {
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 0);
+	pdata->pwr_dev = AD5823_PWR_DEV_OFF;
 	return 0;
 }
 
