@@ -454,10 +454,11 @@ static inline void mt9m114_msleep(u32 t)
 	usleep_range(t*1000, t*1000 + 500);
 }
 
-static int mt9m114_read_reg(struct mt9m114_info *info, u16 addr, u8 *val)
+static int mt9m114_read_reg(struct mt9m114_info *info,
+				unsigned int addr, unsigned int *val)
 {
-	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
-	return regmap_read(info->regmap, addr, (unsigned int *) val);
+	dev_dbg(&info->i2c_client->dev, "0x%x = %p\n", addr, val);
+	return regmap_read(info->regmap, addr, val);
 }
 
 static int mt9m114_write_reg8(struct mt9m114_info *info, u16 addr, u8 val)
@@ -672,7 +673,7 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 {
 	struct mt9m114_mode_desc *sensor_mode;
 	int err = 0;
-	u16 val = 0;
+	unsigned int val = 0;
 	int count = 10;
 
 	dev_info(&info->i2c_client->dev,

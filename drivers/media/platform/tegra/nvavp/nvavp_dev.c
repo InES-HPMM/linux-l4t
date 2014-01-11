@@ -217,7 +217,7 @@ static void nvavp_remove_iova_info_locked(
 	struct nvavp_info *nvavp = clientctx->nvavp;
 
 	dev_dbg(&nvavp->nvhost_dev->dev,
-		"remove iova addr (0x%x))\n", b->addr);
+		"remove iova addr (0x%lx))\n", (unsigned long)b->addr);
 	dma_buf_unmap_attachment(b->attachment,
 		b->sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(b->dmabuf, b->attachment);
@@ -235,7 +235,6 @@ static struct nvavp_iova_info *nvavp_search_iova_info_locked(
 	struct rb_node **curr_parent)
 {
 	struct rb_node *parent = NULL;
-	struct nvavp_info *nvavp = clientctx->nvavp;
 	struct rb_node **p = &clientctx->iova_handles.rb_node;
 
 	while (*p) {
@@ -265,7 +264,7 @@ static void nvavp_add_iova_info_locked(struct nvavp_clientctx *clientctx,
 	struct rb_node **p = &clientctx->iova_handles.rb_node;
 
 	dev_info(&nvavp->nvhost_dev->dev,
-		"add iova addr (0x%x))\n", h->addr);
+		"add iova addr (0x%lx))\n", (unsigned long)h->addr);
 
 	if (parent) {
 		b = rb_entry(parent, struct nvavp_iova_info, node);
@@ -1960,7 +1959,8 @@ static int nvavp_reserve_os_mem(struct nvavp_info *nvavp, dma_addr_t phys)
 	if (!pfn_valid(__phys_to_pfn(phys))) {
 		if (memblock_reserve(phys, SZ_1M)) {
 			dev_err(&nvavp->nvhost_dev->dev,
-				"failed to reserve mem block %lx\n", phys);
+				"failed to reserve mem block %lx\n",
+						(unsigned long)phys);
 		} else
 			ret = 0;
 	}

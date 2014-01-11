@@ -549,8 +549,6 @@ imx179_set_group_hold(struct imx179_info *info, struct imx179_ae *ae)
 static int imx179_get_sensor_id(struct imx179_info *info)
 {
 	int ret = 0;
-	int i;
-	u8 bak = 0;
 
 	pr_info("%s\n", __func__);
 	if (info->sensor_data.fuse_id_size)

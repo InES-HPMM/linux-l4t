@@ -291,12 +291,11 @@ static int ad5823_probe(struct i2c_client *client,
 		goto ERROR_RET;
 
 	info->regulator = devm_regulator_get(&client->dev, "vdd");
-	if (IS_ERR_OR_NULL(info->regulator)) {
+	if (IS_ERR_OR_NULL(info->regulator) &&
+				regulator_enable(info->regulator)) {
 		dev_err(&client->dev, "unable to get regulator %s\n",
 			dev_name(&client->dev));
 		info->regulator = NULL;
-	} else {
-		regulator_enable(info->regulator);
 	}
 
 	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
