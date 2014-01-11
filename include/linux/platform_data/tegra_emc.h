@@ -186,6 +186,7 @@ struct tegra12_emc_table {
 	u32 emc_mode_1;
 	u32 emc_mode_2;
 	u32 emc_mode_4;
+	u32 clock_change_latency;
 };
 
 struct tegra12_emc_pdata {
