@@ -84,6 +84,7 @@ static long ad5823_ioctl(struct file *file,
 	struct ad5823_info *info = file->private_data;
 	struct ad5823_cal_data cal;
 	int err;
+	int need_poweroff = 0;
 
 	switch (cmd) {
 	case AD5823_IOCTL_GET_CONFIG:
@@ -100,11 +101,12 @@ static long ad5823_ioctl(struct file *file,
 	}
 	case AD5823_IOCTL_SET_POSITION:
 		if (info->pdata->pwr_dev == AD5823_PWR_DEV_OFF
-				&& info->pdata->power_on)
+				&& info->pdata->power_on) {
+			need_poweroff = 1;
 			info->pdata->power_on(info->pdata);
+		}
 		err = ad5823_set_position(info, (u32) arg);
-		if (info->pdata->pwr_dev == AD5823_PWR_DEV_OFF
-				&& info->pdata->power_off)
+		if (need_poweroff && info->pdata->power_off)
 			info->pdata->power_off(info->pdata);
 		return err;
 
