@@ -231,13 +231,10 @@ static void tegra_otg_vbus_enable(struct regulator *vbus_reg, int on)
 	if (vbus_reg == NULL)
 		return ;
 
-	if (on && vbus_enable) {
-		regulator_enable(vbus_reg);
+	if (on && vbus_enable && !regulator_enable(vbus_reg))
 		vbus_enable = 0;
-	} else if (!on && !vbus_enable) {
-		regulator_disable(vbus_reg);
+	else if (!on && !vbus_enable && !regulator_disable(vbus_reg))
 		vbus_enable = 1;
-	}
 }
 
 static void tegra_start_host(struct tegra_otg *tegra)
