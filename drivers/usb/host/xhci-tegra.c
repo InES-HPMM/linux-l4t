@@ -416,6 +416,7 @@ struct tegra_xhci_hcd {
 	struct tegra_xhci_firmware firmware;
 
 	struct tegra_xhci_firmware_log log;
+	struct device_attribute hsic_power_attr[XUSB_HSIC_COUNT];
 
 	bool init_done;
 };
@@ -2445,6 +2446,7 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	u32 usbsts, count = 0xff;
 	struct xhci_cap_regs __iomem *cap_regs;
 	struct xhci_op_regs __iomem *op_regs;
+	int pad;
 
 	/* enable mbox interrupt */
 	writel(readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD) | MBOX_INT_EN,
@@ -2533,6 +2535,10 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 		fw_tm.tm_min, fw_tm.tm_sec,
 		csb_read(tegra, XUSB_FALC_CPUCTL));
 
+	cfg_tbl->num_hsic_port = 0;
+	for_each_enabled_hsic_pad(pad, tegra)
+		cfg_tbl->num_hsic_port++;
+
 	dev_dbg(&pdev->dev, "num_hsic_port %d\n", cfg_tbl->num_hsic_port);
 
 	/* return fail if firmware status is not good */
@@ -2552,6 +2558,8 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 		dev_err(&pdev->dev, "Controller not ready\n");
 		return -EFAULT;
 	}
+	for_each_enabled_hsic_pad(pad, tegra)
+		hsic_pad_pupd_set(tegra, pad, PUPD_IDLE);
 
 	return 0;
 }
@@ -3126,6 +3134,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	struct xhci_hcd *xhci = tegra->xhci;
 	int pad, port;
 	unsigned long ports;
+	enum MBOX_CMD_TYPE response;
 
 	mutex_lock(&tegra->mbox_lock);
 
@@ -3200,7 +3209,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		if (!ret)
 			sw_resp |= CMD_TYPE(MBOX_CMD_ACK);
 		else
-			sw_resp |= CMD_TYPE(MBOX_CMD_ACK);
+			sw_resp |= CMD_TYPE(MBOX_CMD_NACK);
 
 		goto send_sw_response;
 
@@ -3245,9 +3254,16 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	return;
 
 send_sw_response:
-	if (((sw_resp >> CMD_TYPE_SHIFT) & CMD_TYPE_MASK) == MBOX_CMD_NACK)
-		xhci_err(xhci, "%s respond fw message 0x%x with NAK\n",
-				__func__, fw_msg);
+	response = (sw_resp >> CMD_TYPE_SHIFT) & CMD_TYPE_MASK;
+	if (response == MBOX_CMD_NACK)
+		xhci_warn(xhci, "%s respond fw message 0x%x with NACK\n",
+			__func__, fw_msg);
+	else if (response == MBOX_CMD_ACK)
+		xhci_dbg(xhci, "%s respond fw message 0x%x with ACK\n",
+			__func__, fw_msg);
+	else
+		xhci_err(xhci, "%s respond fw message 0x%x with %d\n",
+		__func__, fw_msg, response);
 
 	writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
 	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
@@ -4161,6 +4177,94 @@ static struct of_device_id tegra_xhci_of_match[] = {
 	{ },
 };
 
+static ssize_t hsic_power_show(struct device *dev,
+			struct kobj_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
+	int pad;
+
+	for_each_enabled_hsic_pad(pad, tegra) {
+		if (&tegra->hsic_power_attr[pad] == attr)
+			return sprintf(buf, "%d\n", pad);
+	}
+
+	return sprintf(buf, "-1\n");
+}
+
+static ssize_t hsic_power_store(struct device *dev,
+			struct kobj_attribute *attr, const char *buf, size_t n)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
+	enum MBOX_CMD_TYPE msg;
+	unsigned int on;
+	int pad, port;
+	int ret;
+
+	if (sscanf(buf, "%u", &on) != 1)
+		return -EINVAL;
+
+	if (on)
+		msg = MBOX_CMD_AIRPLANE_MODE_DISABLED;
+	else
+		msg = MBOX_CMD_AIRPLANE_MODE_ENABLED;
+
+	for_each_enabled_hsic_pad(pad, tegra) {
+		port = hsic_pad_to_port(pad);
+
+		if (&tegra->hsic_power_attr[pad] == attr) {
+			hsic_pad_pupd_set(tegra, pad, PUPD_IDLE);
+			ret = fw_message_send(tegra, msg, BIT(port + 1));
+		}
+	}
+
+	return n;
+}
+
+static void hsic_power_remove_file(struct tegra_xhci_hcd *tegra)
+{
+	struct device *dev = &tegra->pdev->dev;
+	int p;
+
+	for_each_enabled_hsic_pad(p, tegra) {
+		if (attr_name(tegra->hsic_power_attr[p])) {
+			device_remove_file(dev, &tegra->hsic_power_attr[p]);
+			kzfree(attr_name(tegra->hsic_power_attr[p]));
+		}
+	}
+
+}
+
+static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
+{
+	struct device *dev = &tegra->pdev->dev;
+	int p;
+	int err;
+
+	for_each_enabled_hsic_pad(p, tegra) {
+		attr_name(tegra->hsic_power_attr[p]) = kzalloc(16, GFP_KERNEL);
+		if (!attr_name(tegra->hsic_power_attr[p]))
+			return -ENOMEM;
+
+		snprintf(attr_name(tegra->hsic_power_attr[p]), 16,
+			"hsic%d_power", p);
+		tegra->hsic_power_attr[p].show = hsic_power_show;
+		tegra->hsic_power_attr[p].store = hsic_power_store;
+		tegra->hsic_power_attr[p].attr.mode = (S_IRUGO | S_IWUSR);
+		sysfs_attr_init(&tegra->hsic_power_attr[p]);
+
+		err = device_create_file(dev, &tegra->hsic_power_attr[p]);
+		if (err) {
+			kzfree(attr_name(tegra->hsic_power_attr[p]));
+			attr_name(tegra->hsic_power_attr[p]) = 0;
+			return err;
+		}
+	}
+
+	return 0;
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -4539,6 +4643,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	hsic_power_create_file(tegra);
 	tegra->init_done = true;
 
 	return 0;
@@ -4606,6 +4711,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	tegra_pd_remove_device(&pdev->dev);
 	platform_set_drvdata(pdev, NULL);
 
+	hsic_power_remove_file(tegra);
 	mutex_unlock(&tegra->sync_lock);
 
 	return 0;
