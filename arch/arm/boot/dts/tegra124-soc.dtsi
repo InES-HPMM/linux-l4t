@@ -511,4 +511,9 @@
 			      0 21 0x04>;
 		status = "disable";
 	};
+
+	mipical {
+		compatible = "nvidia,tegra124-mipical";
+		reg = <0x700e3000 0x00000100>;
+	};
 };

@@ -35,10 +35,4 @@
 		interrupts = <1 13 0xf04
 			      1 14 0xf04>;
 	};
-
-	mipical {
-		compatible = "nvidia,tegra124-mipical";
-		reg = <0x700e3000 0x00000100>;
-	};
-
 };
