@@ -90,6 +90,7 @@
 		_reg, readl(_base + _reg))
 
 #define PMC_PORTMAP_MASK(map, pad)	(((map) >> 4*(pad)) & 0xF)
+#define GET_SS_PORTMAP(map, p)		(((map) >> 4*(p)) & 0xF)
 
 #define PMC_USB_DEBOUNCE_DEL_0			0xec
 #define   UTMIP_LINE_DEB_CNT(x)		(((x) & 0xf) << 16)
@@ -179,7 +180,8 @@ struct cfgtbl {
 	u8 magic[8];
 	u32 SS_low_power_entry_timeout;
 	u8 num_hsic_port;
-	u8 padding[139]; /* padding bytes to makeup 256-bytes cfgtbl */
+	u8 ss_portmap;
+	u8 padding[138]; /* padding bytes to makeup 256-bytes cfgtbl */
 };
 
 struct xusb_save_regs {
@@ -2189,6 +2191,14 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 		(port ? TEGRA_XUSB_SS1_PORT_MAP : TEGRA_XUSB_SS0_PORT_MAP));
 	writel(reg, tegra->padctl_base + padregs->ss_port_map_0);
 
+	/* Make sure the SS port capability set correctly */
+	reg = readl(tegra->padctl_base + padregs->usb2_port_cap_0);
+	reg &= ~USB2_PORT_CAP_MASK(
+			GET_SS_PORTMAP(tegra->bdata->ss_portmap, port));
+	reg |= USB2_PORT_CAP_HOST(
+			GET_SS_PORTMAP(tegra->bdata->ss_portmap, port));
+	writel(reg, tegra->padctl_base + padregs->usb2_port_cap_0);
+
 	tegra_xhci_restore_dfe_context(tegra, port);
 	tegra_xhci_restore_ctle_context(tegra, port);
 }
@@ -2449,6 +2459,11 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	struct xhci_cap_regs __iomem *cap_regs;
 	struct xhci_op_regs __iomem *op_regs;
 	int pad;
+
+	/* Program SS port map config */
+	cfg_tbl->ss_portmap = 0x0;
+	cfg_tbl->ss_portmap |=
+		(tegra->bdata->portmap & ((1 << XUSB_SS_PORT_COUNT) - 1));
 
 	/* enable mbox interrupt */
 	writel(readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD) | MBOX_INT_EN,
@@ -4532,7 +4547,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	unsigned port;
 
 
-	ret = load_firmware(tegra, true /* do reset ARU */);
+	ret = load_firmware(tegra, false /* do reset ARU */);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to load firmware\n");
 		return -ENODEV;
