@@ -6,6 +6,9 @@ config SD8897
 	  This module adds support for wireless adapters based on
 	  Marvel 8897 chipset.
 
+          Say Y here to compile support for sd8897 support into the kernel
+          or say M to compile it as module.
+
 config SD8897_STA_SUPPORT
 	depends on SD8897
 	bool "WLAN station support"

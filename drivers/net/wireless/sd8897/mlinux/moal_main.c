@@ -171,7 +171,7 @@ int hw_test;
 #if defined(WIFI_DIRECT_SUPPORT)
 #if defined(STA_CFG80211) && defined(UAP_CFG80211)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
-int p2p_enh;
+int p2p_enh = 1;
 #endif
 #endif
 #endif
@@ -218,7 +218,7 @@ static mlan_callbacks woal_callbacks = {
 
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
 #if defined(WIFI_DIRECT_SUPPORT)
-int drv_mode = (DRV_MODE_STA | DRV_MODE_UAP | DRV_MODE_WIFIDIRECT);
+int drv_mode = (DRV_MODE_STA | DRV_MODE_WIFIDIRECT);
 #else
 int drv_mode = (DRV_MODE_STA | DRV_MODE_UAP);
 #endif
@@ -2087,7 +2087,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
 	if (sta_name)
 		snprintf(name, sizeof(name), "%s%%d", sta_name);
 	else
-		sprintf(name, "mlan%%d");
+		sprintf(name, "wlan%%d");
 	if ((bss_type == MLAN_BSS_TYPE_STA) && (dev_alloc_name(dev, name) < 0)) {
 		PRINTM(MERROR, "Could not allocate mlan device name\n");
 		goto error;
@@ -2109,7 +2109,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
 	if (wfd_name)
 		snprintf(name, sizeof(name), "%s%%d", wfd_name);
 	else
-		sprintf(name, "wfd%%d");
+		sprintf(name, "p2p%%d");
 	if ((bss_type == MLAN_BSS_TYPE_WIFIDIRECT) &&
 	    (dev_alloc_name(dev, name) < 0)) {
 		PRINTM(MERROR, "Could not allocate wifidirect device name\n");

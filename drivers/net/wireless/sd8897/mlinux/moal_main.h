@@ -726,7 +726,7 @@ typedef struct _wait_queue {
 /** Default WIFIDIRECT BSS */
 #define DEF_WIFIDIRECT_BSS        1
 #if defined(STA_CFG80211) && defined(UAP_CFG80211)
-#define DEF_VIRTUAL_BSS			  0
+#define DEF_VIRTUAL_BSS			  1
 #endif
 #endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
 

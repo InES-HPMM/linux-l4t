@@ -52,7 +52,7 @@ Change log:
 #ifdef STA_SUPPORT
 /** Default firmware name */
 
-#define DEFAULT_FW_NAME	"mrvl/sd8897_uapsta.bin"
+#define DEFAULT_FW_NAME	"sd8897_uapsta.bin"
 
 #ifndef DEFAULT_FW_NAME
 #define DEFAULT_FW_NAME ""
@@ -62,7 +62,7 @@ Change log:
 #ifdef UAP_SUPPORT
 /** Default firmware name */
 
-#define DEFAULT_AP_FW_NAME "mrvl/sd8897_uapsta.bin"
+#define DEFAULT_AP_FW_NAME "sd8897_uapsta.bin"
 
 #ifndef DEFAULT_AP_FW_NAME
 #define DEFAULT_AP_FW_NAME ""
@@ -71,7 +71,7 @@ Change log:
 
 /** Default firmaware name */
 
-#define DEFAULT_AP_STA_FW_NAME "mrvl/sd8897_uapsta.bin"
+#define DEFAULT_AP_STA_FW_NAME "sd8897_uapsta.bin"
 
 #ifndef DEFAULT_AP_STA_FW_NAME
 #define DEFAULT_AP_STA_FW_NAME ""
