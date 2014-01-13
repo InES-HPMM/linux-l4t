@@ -1391,6 +1391,8 @@ static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
 	}
 
 	nvavp_release_iova_addr(clientctx, dmabuf, (dma_addr_t)map_arg.addr);
+	dma_buf_put(dmabuf);
+
 	return 0;
 }
 
