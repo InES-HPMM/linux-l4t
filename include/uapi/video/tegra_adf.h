@@ -102,6 +102,19 @@ struct tegra_adf_flip {
 	struct tegra_adf_flip_windowattr win[0];
 };
 
+struct tegra_adf_proposed_bw {
+	__u8 win_num;
+	struct {
+		__u32 format;
+		__u32 w;
+		__u32 h;
+		struct tegra_adf_flip_windowattr attr;
+	} win[0];
+};
+
+#define TEGRA_ADF_SET_PROPOSED_BW \
+	_IOW(ADF_IOCTL_TYPE, ADF_IOCTL_NR_CUSTOM, struct tegra_adf_proposed_bw)
+
 enum {
 	TEGRA_DC_Y,
 	TEGRA_DC_U,

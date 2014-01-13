@@ -510,18 +510,10 @@ static inline dma_addr_t tegra_adf_phys_addr(struct adf_buffer *buf,
 	return addr;
 }
 
-static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
-		struct tegra_dc_win *win,
+static void tegra_adf_set_windowattr_basic(struct tegra_dc_win *win,
 		const struct tegra_adf_flip_windowattr *attr,
-		struct adf_buffer *buf, struct adf_buffer_mapping *mapping)
+		u32 format, u32 w, u32 h)
 {
-	s64 timestamp_ns;
-
-	if (!buf) {
-		win->flags = 0;
-		return;
-	}
-
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
 	if (attr->blend == TEGRA_DC_EXT_BLEND_PREMULT)
 		win->flags |= TEGRA_WIN_FLAG_BLEND_PREMULT;
@@ -552,25 +544,40 @@ static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
 		win->flags |= TEGRA_WIN_FLAG_INTERLACE;
 #endif
 
-	win->fmt = tegra_adf_fourcc_to_dc_fmt(buf->format);
+	win->fmt = tegra_adf_fourcc_to_dc_fmt(format);
 	win->x.full = attr->x;
 	win->y.full = attr->y;
-	win->w.full = dfixed_const(buf->w);
-	win->h.full = dfixed_const(buf->h);
+	win->w.full = dfixed_const(w);
+	win->h.full = dfixed_const(h);
 	/* XXX verify that this doesn't go outside display's active region */
 	win->out_x = attr->out_x;
 	win->out_y = attr->out_y;
 	win->out_w = attr->out_w;
 	win->out_h = attr->out_h;
 	win->z = attr->z;
+}
+
+static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
+		struct tegra_dc_win *win,
+		const struct tegra_adf_flip_windowattr *attr,
+		struct adf_buffer *buf, struct adf_buffer_mapping *mapping)
+{
+	s64 timestamp_ns;
+
+	if (!buf) {
+		win->flags = 0;
+		return;
+	}
+
+	tegra_adf_set_windowattr_basic(win, attr, buf->format, buf->w, buf->h);
+
+	win->stride = buf->pitch[0];
+	win->stride_uv = buf->pitch[1];
 
 	/* XXX verify that this won't read outside of the surface */
 	win->phys_addr = tegra_adf_phys_addr(buf, mapping, TEGRA_DC_Y);
 	win->phys_addr_u = tegra_adf_phys_addr(buf, mapping, TEGRA_DC_U);
 	win->phys_addr_v = tegra_adf_phys_addr(buf, mapping, TEGRA_DC_V);
-
-	win->stride = buf->pitch[0];
-	win->stride_uv = buf->pitch[1];
 
 #if defined(CONFIG_TEGRA_DC_INTERLACE)
 	if (adf_info->dc->mode.vmode == FB_VMODE_INTERLACED) {
@@ -763,6 +770,82 @@ static void tegra_adf_dev_state_free(struct adf_device *dev, void *driver_state)
 {
 	kfree(driver_state);
 }
+
+static int tegra_adf_negotiate_bw(struct tegra_adf_info *adf_info,
+			struct tegra_adf_proposed_bw *bw)
+{
+#ifdef CONFIG_TEGRA_ISOMGR
+	struct tegra_dc_win *dc_wins[DC_N_WINDOWS];
+	struct tegra_dc *dc = adf_info->dc;
+	u8 i;
+
+	/* If display has been disconnected return with error. */
+	if (!dc->connected)
+		return -1;
+
+	for (i = 0; i < bw->win_num; i++) {
+		struct tegra_adf_flip_windowattr *attr = &bw->win[i].attr;
+		s32 idx = attr->win_index;
+
+		if (attr->buf_index >= 0)
+			tegra_adf_set_windowattr_basic(&dc->tmp_wins[idx],
+					attr, bw->win[i].format, bw->win[i].w,
+					bw->win[i].h);
+		else
+			dc->tmp_wins[i].flags = 0;
+
+		dc_wins[i] = &dc->tmp_wins[idx];
+	}
+
+	return tegra_dc_bandwidth_negotiate_bw(dc, dc_wins, bw->win_num);
+#else
+	return -EINVAL;
+#endif
+}
+
+static int tegra_adf_set_proposed_bw(struct tegra_adf_info *adf_info,
+			struct tegra_adf_proposed_bw __user *arg)
+{
+	u8 win_num;
+	size_t bw_size;
+	struct tegra_adf_proposed_bw *bw;
+	int ret;
+
+	if (get_user(win_num, &arg->win_num))
+		return -EFAULT;
+
+	bw_size = sizeof(*bw) + sizeof(bw->win[0]) * win_num;
+	bw = kmalloc(bw_size, GFP_KERNEL);
+	if (!bw)
+		return -ENOMEM;
+
+	if (copy_from_user(bw, arg, bw_size)) {
+		ret = -EFAULT;
+		goto done;
+	}
+
+	ret = tegra_adf_negotiate_bw(adf_info, bw);
+done:
+	kfree(bw);
+	return ret;
+}
+
+static long tegra_adf_dev_ioctl(struct adf_obj *obj, unsigned int cmd,
+		unsigned long arg)
+{
+	struct adf_device *dev = adf_obj_to_device(obj);
+	struct tegra_adf_info *adf_info = adf_dev_to_tegra(dev);
+
+	switch (cmd) {
+	case TEGRA_ADF_SET_PROPOSED_BW:
+		return tegra_adf_set_proposed_bw(adf_info,
+				(struct tegra_adf_proposed_bw __user *)arg);
+
+	default:
+		return -ENOTTY;
+	}
+}
+
 
 void tegra_adf_process_vblank(struct tegra_adf_info *adf_info,
 		ktime_t timestamp)
@@ -979,6 +1062,7 @@ struct adf_device_ops tegra_adf_dev_ops = {
 	.owner = THIS_MODULE,
 	.base = {
 		.custom_data = tegra_adf_dev_custom_data,
+		.ioctl = tegra_adf_dev_ioctl,
 	},
 	.validate_custom_format = tegra_adf_dev_validate_custom_format,
 	.validate = tegra_adf_dev_validate,
