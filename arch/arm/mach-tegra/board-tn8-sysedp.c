@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,6 +22,7 @@
 #include <mach/edp.h>
 #include "board.h"
 #include "board-panel.h"
+#include "common.h"
 
 /* --- EDP consumers data --- */
 static unsigned int ov5693_states[] = { 0, 300 };
@@ -83,8 +84,8 @@ void __init tn8_new_sysedp_init(void)
 }
 
 static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
-	.corecap = td570d_sysedp_corecap,
-	.corecap_size = td570d_sysedp_corecap_sz,
+	.corecap = td575d_sysedp_corecap,
+	.corecap_size = td575d_sysedp_corecap_sz,
 	.core_gain = 100,
 	.init_req_watts = 20000,
 };
@@ -98,12 +99,26 @@ static struct platform_device tn8_sysedp_dynamic_capping = {
 void __init tn8_sysedp_dynamic_capping_init(void)
 {
 	int r;
+	int sku_id;
 
 	tn8_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
 		&tn8_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
 	if (!tn8_sysedp_dynamic_capping_platdata.cpufreq_lim) {
 		WARN_ON(1);
 		return;
+	}
+
+	sku_id = tegra_get_sku_id();
+	switch (sku_id) {
+	case 0x1F:
+		break;
+	default:
+		pr_warn("%s: Unknown tn8 sku id, %x!  Assuming td570d.\n",
+				__func__, sku_id);
+	case 0xF:
+		tn8_sysedp_dynamic_capping_platdata.corecap = td570d_sysedp_corecap;
+		tn8_sysedp_dynamic_capping_platdata.corecap_size = td570d_sysedp_corecap_sz;
+		break;
 	}
 
 	r = platform_device_register(&tn8_sysedp_dynamic_capping);
