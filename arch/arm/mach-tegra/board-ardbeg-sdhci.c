@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-sdhci.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -213,7 +213,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 	.ddr_clk_limit = 51000000,
-	.max_clk_limit = 102000000,
+	.max_clk_limit = 200000000,
 	.calib_3v3_offsets = 0x0202,
 	.calib_1v8_offsets = 0x0202,
 };
@@ -430,12 +430,13 @@ int __init ardbeg_sdhci_init(void)
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1780) {
-		tegra_sdhci_platform_data3.max_clk_limit = 200000000;
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 		tegra_sdhci_platform_data0.max_clk_limit = 204000000;
-	} else {
-		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
 	}
+	if ((board_info.board_id == BOARD_E1781) ||
+		(board_info.board_id == BOARD_PM374) ||
+		(board_info.board_id == BOARD_PM359))
+		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
 
 	if (board_info.board_id == BOARD_PM374 ||
 		board_info.board_id == BOARD_PM358 ||
