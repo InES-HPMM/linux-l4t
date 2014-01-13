@@ -29,6 +29,9 @@ struct tegra_adf_info {
 	struct adf_device		base;
 	struct adf_interface		intf;
 	struct adf_overlay_engine	eng;
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
+	struct adf_fbdev		fbdev;
+#endif
 	struct tegra_dc			*dc;
 	struct tegra_fb_data		*fb_data;
 	void				*vb2_dma_conf;
@@ -1121,6 +1124,17 @@ int tegra_adf_process_bandwidth_renegotiate(struct tegra_adf_info *adf_info,
 	return adf_event_notify(&adf_info->base.base, &event.base);
 }
 
+struct fb_ops tegra_adf_fb_ops = {
+	.owner = THIS_MODULE,
+	.fb_open = adf_fbdev_open,
+	.fb_release = adf_fbdev_release,
+	.fb_check_var = adf_fbdev_check_var,
+	.fb_set_par = adf_fbdev_set_par,
+	.fb_blank = adf_fbdev_blank,
+	.fb_pan_display = adf_fbdev_pan_display,
+	.fb_mmap = adf_fbdev_mmap,
+};
+
 struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 		struct tegra_dc *dc,
 		struct tegra_fb_data *fb_data)
@@ -1129,6 +1143,9 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 	int err;
 	enum adf_interface_type intf_type;
 	u32 intf_flags = 0;
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
+	u32 fb_format;
+#endif
 
 	adf_info = kzalloc(sizeof(*adf_info), GFP_KERNEL);
 	if (!adf_info)
@@ -1161,6 +1178,16 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 	if (err < 0)
 		goto err_eng_init;
 
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
+	fb_format = fb_data->bits_per_pixel == 16 ? DRM_FORMAT_RGB565 :
+			DRM_FORMAT_RGBA8888;
+	err = adf_fbdev_init(&adf_info->fbdev, &adf_info->intf,
+		&adf_info->eng, fb_data->xres, fb_data->yres * 2, fb_format,
+		&tegra_adf_fb_ops, "%s", dev_name(&ndev->dev));
+	if (err < 0)
+		goto err_fbdev;
+#endif
+
 	err = adf_attachment_allow(&adf_info->base, &adf_info->eng,
 			&adf_info->intf);
 	if (err < 0)
@@ -1184,6 +1211,11 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 	return adf_info;
 
 err_attach:
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
+	adf_fbdev_destroy(&adf_info->fbdev);
+
+err_fbdev:
+#endif
 	adf_overlay_engine_destroy(&adf_info->eng);
 
 err_eng_init:
@@ -1199,6 +1231,9 @@ err_dev_init:
 
 void tegra_adf_unregister(struct tegra_adf_info *adf_info)
 {
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
+	adf_fbdev_destroy(&adf_info->fbdev);
+#endif
 	adf_overlay_engine_destroy(&adf_info->eng);
 	adf_interface_destroy(&adf_info->intf);
 	adf_device_destroy(&adf_info->base);
