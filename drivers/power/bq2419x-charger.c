@@ -106,6 +106,7 @@ struct bq2419x_chip {
 	int				battery_presense;
 	bool				cable_connected;
 	int				last_charging_current;
+	bool				disable_suspend_during_charging;
 	int				charging_state;
 };
 
@@ -356,11 +357,14 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		goto error;
 
 	battery_charging_status_update(bq2419x->bc_dev, bq2419x->chg_status);
-	if (bq2419x->cable_connected) {
-		if (in_current_limit > 500)
-			battery_charger_acquire_wake_lock(bq2419x->bc_dev);
-	} else {
-		battery_charger_release_wake_lock(bq2419x->bc_dev);
+	if (bq2419x->disable_suspend_during_charging) {
+		if (bq2419x->cable_connected) {
+			if (in_current_limit > 500)
+				battery_charger_acquire_wake_lock
+							(bq2419x->bc_dev);
+		} else {
+			battery_charger_release_wake_lock(bq2419x->bc_dev);
+		}
 	}
 	return 0;
 error:
@@ -645,6 +649,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 					bq2419x->chg_status);
 		battery_charging_restart(bq2419x->bc_dev,
 					bq2419x->chg_restart_time);
+		if (bq2419x->disable_suspend_during_charging)
+			battery_charger_release_wake_lock(bq2419x->bc_dev);
 		battery_charger_release_wake_lock(bq2419x->bc_dev);
 		battery_charger_thermal_stop_monitoring(
 				bq2419x->bc_dev);
@@ -662,6 +668,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 				bq2419x->chg_status);
 		battery_charging_restart(bq2419x->bc_dev,
 					bq2419x->chg_restart_time);
+		if (bq2419x->disable_suspend_during_charging)
+			battery_charger_release_wake_lock(bq2419x->bc_dev);
 		battery_charger_release_wake_lock(bq2419x->bc_dev);
 	}
 
@@ -1020,6 +1028,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 	if (batt_reg_node) {
 		int wdt_timeout;
 		int chg_restart_time;
+		int disable_suspend_during_charging;
 		int temp_polling_time;
 		bool enable_thermal_monitor;
 		struct regulator_init_data *batt_init_data;
@@ -1033,6 +1042,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 								batt_reg_node);
 		if (!batt_init_data)
 			return ERR_PTR(-EINVAL);
+
+		disable_suspend_during_charging =
+				of_property_read_bool(batt_reg_node,
+				"ti,disbale-suspend-during-charging");
+
+		pdata->bcharger_pdata->disable_suspend_during_charging
+					= disable_suspend_during_charging;
 
 		ret = of_property_read_u32(batt_reg_node,
 				"watchdog-timeout", &wdt_timeout);
@@ -1165,6 +1181,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
 	bq2419x->battery_presense = true;
+	bq2419x->disable_suspend_during_charging =
+			pdata->bcharger_pdata->disable_suspend_during_charging;
 
 	ret = bq2419x_charger_init(bq2419x);
 	if (ret < 0) {
