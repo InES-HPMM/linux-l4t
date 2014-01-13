@@ -78,6 +78,7 @@ static struct tegra_cooling_device gpu_vts_cdev = {
 
 static struct dvfs_rail tegra13_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
+	.version = "Pre_silicon_safe_table",
 	.max_millivolts = 1300,
 	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
@@ -96,6 +97,7 @@ static struct dvfs_rail tegra13_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra13_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
+	.version = "T124_production_value",
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
@@ -107,6 +109,7 @@ static struct dvfs_rail tegra13_dvfs_rail_vdd_core = {
 /* TBD: fill in actual hw number */
 static struct dvfs_rail tegra13_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
+	.version = "T124_production_with_margin",
 	.max_millivolts = 1350,
 	.min_millivolts = 680,
 	.step = VDD_SAFE_STEP,
