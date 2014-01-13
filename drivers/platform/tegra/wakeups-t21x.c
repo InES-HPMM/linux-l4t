@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN, /* PEX_WAKE_N */		/* wake14 */
 	-EAGAIN, /* soc_therm_oc4_n:i, PG_OC */	/* wake15 */
 	INT_RTC,				/* wake16 */
-	INT_KBC,				/* wake17 */
+	-EINVAL,				/* wake17 */
 	INT_EXTERNAL_PMU,			/* wake18 */
 	-EINVAL, /* INT_USB */			/* wake19 */
 	-EINVAL,				/* wake20 */
@@ -130,9 +130,9 @@ static int tegra_wake_event_irq[] = {
 	-EINVAL,				/* wake38 */
 	INT_USB, /* TEGRA_USB1_UTMIP, */	/* wake39 */
 	INT_USB2, /* TEGRA_USB2_UTMIP */	/* wake40 */
-	INT_USB3, /* TEGRA_USB3_UTMIP, */	/* wake41 */
+	-EINVAL,				/* wake41 */
 	INT_USB2, /* TEGRA_USB2_UHSIC */	/* wake42 */
-	INT_USB3, /* TEGRA_USB3_UHSIC */	/* wake43 */
+	-EINVAL,				/* wake43 */
 	-EAGAIN, /* I2C1 DAT */			/* wake44 */
 	-EAGAIN,				/* wake45 */
 	-EAGAIN, /* PWR I2C DAT */		/* wake46 */

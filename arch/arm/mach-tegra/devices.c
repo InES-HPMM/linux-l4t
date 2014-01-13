@@ -886,6 +886,7 @@ static struct resource tegra_usb2_resources[] = {
 	},
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource tegra_usb3_resources[] = {
 	[0] = {
 		.start	= TEGRA_USB3_BASE,
@@ -898,6 +899,7 @@ static struct resource tegra_usb3_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 };
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 static struct resource tegra_xusb_resources[] = {
@@ -954,6 +956,7 @@ struct platform_device tegra_ehci2_device = {
 	.num_resources = ARRAY_SIZE(tegra_usb2_resources),
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct platform_device tegra_ehci3_device = {
 	.name	= "tegra-ehci",
 	.id	= 2,
@@ -964,6 +967,7 @@ struct platform_device tegra_ehci3_device = {
 	.resource = tegra_usb3_resources,
 	.num_resources = ARRAY_SIZE(tegra_usb3_resources),
 };
+#endif
 
 static struct resource tegra_pmu_resources[] = {
 	[0] = {
@@ -2710,6 +2714,7 @@ static struct resource tegra_aes_resources[] = {
 		.end	= TEGRA_BSEA_BASE + TEGRA_BSEA_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	{
 		.start	= INT_VDE_BSE_V,
 		.end	= INT_VDE_BSE_V,
@@ -2720,6 +2725,7 @@ static struct resource tegra_aes_resources[] = {
 		.end	= INT_VDE_BSE_A,
 		.flags	= IORESOURCE_IRQ,
 	},
+#endif
 };
 
 static u64 tegra_aes_dma_mask = DMA_BIT_MASK(32);
@@ -2735,6 +2741,7 @@ struct platform_device tegra_aes_device = {
 	},
 };
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource tegra_kbc_resources[] = {
 	[0] = {
 		.start = TEGRA_KBC_BASE,
@@ -2757,6 +2764,7 @@ struct platform_device tegra_kbc_device = {
 		.platform_data = 0,
 	},
 };
+#endif
 
 #if defined(CONFIG_TEGRA_SKIN_THROTTLE)
 struct platform_device tegra_skin_therm_est_device = {
