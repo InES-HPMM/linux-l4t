@@ -44,7 +44,7 @@ BTOBJS = bt/bt_main.o bt/bt_sdiommc.o bt/bt_proc.o bt/mbt_char.o
 
 BTOBJS += bt/bt_init.o
 
-obj-m := mbt8897.o
+obj-$(CONFIG_SD8897) := mbt8897.o
 mbt8897-objs := $(BTOBJS)
 
 # End of file;
