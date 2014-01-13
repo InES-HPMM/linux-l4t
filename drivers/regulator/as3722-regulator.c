@@ -744,6 +744,10 @@ static int as3722_get_regulator_dt_data(struct platform_device *pdev,
 		}
 		reg_config->enable_tracking =
 			of_property_read_bool(reg_node, "ams,enable-tracking");
+		reg_config->disable_tracking_suspend =
+			of_property_read_bool(reg_node,
+					"ams,disable-tracking-suspend");
+
 	}
 	return 0;
 }
