@@ -548,4 +548,12 @@
 		compatible = "nvidia,tegra124-pcie";
 		status = "disabled";
 	};
+
+	sata-controller {
+		compatible = "nvidia,tegra124-sata";
+		reg = <0x0 0x70027000 0x0 0x00002000
+			0x0 0x70021000 0x0 0x00001000>;
+		interrupts = <0 23 0x04>;
+		status = "disabled";
+	};
 };

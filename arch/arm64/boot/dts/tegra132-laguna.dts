@@ -105,4 +105,9 @@
 		nvidia,x1-slot-gpio = <&tca6416 8 0>;
 		status = "okay";
 	};
+
+	sata-controller {
+		nvidia,pexp-gpio = <&tca6416 9 0>;
+		status = "okay";
+	};
 };

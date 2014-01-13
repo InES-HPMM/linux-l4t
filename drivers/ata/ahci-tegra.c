@@ -37,6 +37,7 @@
 #include <linux/device.h>
 #include <linux/dmi.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <scsi/scsi_host.h>
 #include <scsi/scsi_cmnd.h>
 #include <linux/libata.h>
@@ -373,6 +374,8 @@ struct tegra_ahci_host_priv {
 	struct clk		*clk_pllp;
 	struct clk		*clk_cml1;
 	enum clk_gate_state	clk_state;
+	s16			gen2_rx_eq;
+	int			pexp_gpio;
 };
 
 static int tegra_ahci_init_one(struct platform_device *pdev);
@@ -442,6 +445,12 @@ static const struct dev_pm_ops tegra_ahci_dev_rt_ops = {
 };
 #endif
 
+static const struct of_device_id of_ahci_tegra_match[] = {
+	{ .compatible = "nvidia,tegra124-sata", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, of_ahci_tegra_match);
+
 static struct platform_driver tegra_platform_ahci_driver = {
 	.probe		= tegra_ahci_init_one,
 	.remove		= tegra_ahci_remove_one,
@@ -451,6 +460,8 @@ static struct platform_driver tegra_platform_ahci_driver = {
 #endif
 	.driver = {
 		.name = DRV_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(of_ahci_tegra_match),
 	}
 };
 
@@ -651,7 +662,7 @@ static void tegra_ahci_work_handler(struct work_struct *work)
 #endif
 
 static void tegra_ahci_set_pad_cntrl_regs(
-			struct tegra_ahci_platform_data *ahci_pdata)
+			struct tegra_ahci_host_priv *tegra_hpriv)
 {
 	int	calib_val;
 	int	val;
@@ -838,9 +849,6 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	u32 val;
 	u32 timeout;
 
-	struct tegra_ahci_platform_data *ahci_pdata =
-					tegra_hpriv->dev->platform_data;
-
 	if (!lp0) {
 		err = tegra_ahci_get_rails(tegra_hpriv->power_rails);
 		if (err) {
@@ -931,16 +939,15 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 
 	tegra_ahci_clr_clk_rst_cnt_rst_dev();
 
-	if (ahci_pdata->pexp_gpio) {
-		if (gpio_is_valid(ahci_pdata->pexp_gpio)) {
-			val = gpio_request(ahci_pdata->pexp_gpio, "ahci-tegra");
-			if (val) {
-				pr_err("failed to allocate Port expander gpio\n");
-				err = -ENODEV;
-				goto exit;
-			}
-			gpio_direction_output(ahci_pdata->pexp_gpio, 1);
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio)) {
+		val = gpio_request(tegra_hpriv->pexp_gpio,
+				"ahci-tegra");
+		if (val) {
+			pr_err("failed to allocate Port expander gpio\n");
+			err = -ENODEV;
+			goto exit;
 		}
+		gpio_direction_output(tegra_hpriv->pexp_gpio, 1);
 	}
 
 	val = 0x100;
@@ -1054,7 +1061,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	sata_writel(val, SATA_CONFIGURATION_0_OFFSET);
 
 	/* program sata pad control based on the fuse */
-	tegra_ahci_set_pad_cntrl_regs(ahci_pdata);
+	tegra_ahci_set_pad_cntrl_regs(tegra_hpriv);
 
 	/*
 	 * clear bit T_SATA0_CFG_PHY_0_USE_7BIT_ALIGN_DET_FOR_SPD of
@@ -1182,11 +1189,9 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct tegra_ahci_host_priv *tegra_hpriv;
-	struct tegra_ahci_platform_data *ahci_pdata;
 	unsigned long flags;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-	ahci_pdata = tegra_hpriv->dev->platform_data;
 
 	/* stop the idle timer */
 	if (timer_pending(&tegra_hpriv->idle_timer))
@@ -1210,8 +1215,8 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		}
 	}
 
-	if (ahci_pdata->pexp_gpio)
-		gpio_free(ahci_pdata->pexp_gpio);
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio))
+		gpio_free(tegra_hpriv->pexp_gpio);
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	tegra_first_level_clk_gate();
@@ -2354,11 +2359,13 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 
 static int tegra_ahci_init_one(struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
 	struct ata_port_info pi = ahci_port_info;
 	const struct ata_port_info *ppi[] = { &pi, NULL };
 	struct device *dev = &pdev->dev;
 	struct ahci_host_priv *hpriv = NULL;
 	struct tegra_ahci_host_priv *tegra_hpriv;
+	struct tegra_ahci_platform_data *ahci_pdata;
 	struct ata_host *host = NULL;
 	int n_ports, i, rc = 0;
 	struct resource *res, *irq_res;
@@ -2414,6 +2421,15 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	hpriv->flags |= (unsigned long)pi.private_data;
 	tegra_hpriv = (struct tegra_ahci_host_priv *)hpriv;
 	tegra_hpriv->dev = dev;
+	if (np) {
+		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
+		tegra_hpriv->pexp_gpio =
+			of_get_named_gpio(np, "nvidia,pexp-gpio", 0);
+	} else {
+		ahci_pdata = tegra_hpriv->dev->platform_data;
+		tegra_hpriv->pexp_gpio = ahci_pdata->pexp_gpio;
+	}
 	g_tegra_hpriv = tegra_hpriv;
 
 	/* Call tegra init routine */
