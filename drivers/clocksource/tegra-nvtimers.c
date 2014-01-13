@@ -1,12 +1,12 @@
 /*
- * arch/arch/mach-tegra/timer.c
+ * drivers/clocksource/tegra-nvtimers.c
  *
  * Copyright (C) 2010 Google, Inc.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2013 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2010-2014 NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -45,6 +45,7 @@
 #endif
 
 void __iomem *timer_reg_base;
+phys_addr_t timer_reg_base_pa;
 static void __iomem *rtc_base;
 
 /* set to 1 = busy every eight 32kHz clocks during copy of sec+msec to AHB */
@@ -519,12 +520,17 @@ void __init tegra_init_timer(struct device_node *np)
 	struct clk *clk;
 	int ret;
 	unsigned long rate;
+	struct resource res;
 
-	timer_reg_base = of_iomap(np, 0);
+	if (of_address_to_resource(np, 0, &res))
+		pr_err("%s:No memory resources found\n", __func__);
+
+	timer_reg_base = ioremap(res.start, resource_size(&res));
 	if (!timer_reg_base) {
 		pr_err("%s:Can't map timer registers\n", __func__);
 		BUG();
 	}
+	timer_reg_base_pa = res.start;
 
 	tegra_timer_irq.irq = irq_of_parse_and_map(np, 0);
 	if (tegra_timer_irq.irq <= 0) {

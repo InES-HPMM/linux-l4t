@@ -1,12 +1,10 @@
 /*
- * arch/arch/mach-tegra/timerinfo.c
+ * drivers/misc/tegra_timerinfo.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Jon Mayo <jmayo@nvidia.com>
- *
- * Copyright (C) 2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -28,8 +26,6 @@
 #include <linux/module.h>
 #include <linux/tegra-timer.h>
 
-#include "iomap.h"
-
 static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma);
 
 static const struct file_operations timerinfo_dev_fops = {
@@ -48,7 +44,10 @@ static struct miscdevice timerinfo_dev = {
 static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	/* start at first page containing TIMERUS_CNTR_1US */
-	phys_addr_t addr = TEGRA_TMR1_BASE;
+	if (IS_ERR_OR_NULL(timer_reg_base_pa)) {
+		pr_err("%s: Invalid timer_base_address\n", __func__);
+		return -EINVAL;
+	}
 
 	if (vma->vm_end  - vma->vm_start != PAGE_SIZE)
 		return -EINVAL;
@@ -58,9 +57,9 @@ static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma)
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-	if (remap_pfn_range(vma, vma->vm_start, addr >> PAGE_SHIFT, PAGE_SIZE,
-		vma->vm_page_prot)) {
-		pr_err("%s:remap_pfn_range failed\n", timerinfo_dev.name);
+	if (remap_pfn_range(vma, vma->vm_start, timer_reg_base_pa >> PAGE_SHIFT,
+						PAGE_SIZE, vma->vm_page_prot)) {
+		pr_err("%s: remap_pfn_range failed\n", timerinfo_dev.name);
 		return -EAGAIN;
 	}
 

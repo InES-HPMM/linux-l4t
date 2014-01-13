@@ -10,7 +10,6 @@ obj-y                                   += board-info.o
 obj-y                                   += io.o
 obj-y                                   += clock.o
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
-obj-y                                   += timerinfo.o
 
 obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
 

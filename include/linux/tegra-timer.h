@@ -1,7 +1,7 @@
 /*
- * arch/arm/mach-tegra/timer.h
+ * include/linux/tegra-timer.h
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -58,6 +58,7 @@ struct tegra_twd_context {
 };
 
 extern void __iomem *timer_reg_base;
+extern phys_addr_t timer_reg_base_pa;
 #define timer_writel(value, reg) \
 	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
