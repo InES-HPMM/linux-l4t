@@ -24,6 +24,8 @@
 #include <linux/err.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
@@ -87,18 +89,38 @@ static int as3722_adc_extcon_probe(struct platform_device *pdev)
 {
 	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
 	struct as3722_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
+	struct device_node *node = pdev->dev.parent->of_node;
 	struct as3722_adc_extcon_platform_data *extcon_pdata;
 	struct as3722_adc *adc;
 	int ret = 0;
 	unsigned int try_counter = 0;
 	u32 val;
 
-	if (!pdata || !pdata->extcon_pdata) {
+	if (node && !pdata) {
+		extcon_pdata = devm_kzalloc(&pdev->dev,
+				sizeof(struct as3722_adc_extcon_platform_data),
+					GFP_KERNEL);
+		of_property_read_string(node, "ams,extcon-name",
+				 &extcon_pdata->connection_name);
+		extcon_pdata->enable_adc1_continuous_mode =
+			of_property_read_bool(node,
+					"ams,enable-adc1-continuous-mode");
+		extcon_pdata->enable_low_voltage_range =
+			of_property_read_bool(node,
+					"ams,enable-low-voltage-range");
+		of_property_read_u32(node, "ams,adc-channel",
+				&extcon_pdata->adc_channel);
+		of_property_read_u32(node, "ams,hi-threshold",
+				&extcon_pdata->hi_threshold);
+		of_property_read_u32(node, "ams,low-threshold",
+				&extcon_pdata->low_threshold);
+	} else if (pdata && pdata->extcon_pdata)
+		extcon_pdata = pdata->extcon_pdata;
+	else {
 		dev_err(&pdev->dev, "no platform data available\n");
 		return -ENODEV;
 	}
 
-	extcon_pdata = pdata->extcon_pdata;
 	adc = devm_kzalloc(&pdev->dev, sizeof(*adc), GFP_KERNEL);
 	if (!adc) {
 		dev_err(&pdev->dev, "Malloc adc failed\n");
