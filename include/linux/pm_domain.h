@@ -87,9 +87,6 @@ struct generic_pm_domain {
 	unsigned long power_on_jiffies;
 	unsigned long power_off_jiffies;
 	unsigned long accounting_timestamp;
-#ifdef CONFIG_PM_SLEEP
-	struct notifier_block system_suspend_notifier;
-#endif
 };
 
 static inline struct generic_pm_domain *pd_to_genpd(struct dev_pm_domain *pd)
