@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -272,8 +272,14 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void);
+#ifdef CONFIG_TEGRA_USE_SIMON
 void tegra_dvfs_rail_init_simon_vmin_offsets(
 	int *offsets, int offs_num, struct dvfs_rail *rail);
+#else
+static inline void tegra_dvfs_rail_init_simon_vmin_offsets(
+	int *offsets, int offs_num, struct dvfs_rail *rail)
+{ }
+#endif
 void tegra_dvfs_rail_init_vmin_thermal_profile(
 	int *therm_trips_table, int *therm_floors_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d);

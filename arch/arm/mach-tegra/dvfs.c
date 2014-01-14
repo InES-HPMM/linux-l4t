@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1688,6 +1688,7 @@ static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 }
 #endif
 
+#ifdef CONFIG_TEGRA_USE_SIMON
 /*
  * Validate rail SiMon Vmin offsets. Valid offsets should be negative,
  * descending, starting from zero.
@@ -1712,6 +1713,7 @@ void __init tegra_dvfs_rail_init_simon_vmin_offsets(
 	rail->simon_vmin_offsets = offsets;
 	rail->simon_vmin_offs_num = offs_num;
 }
+#endif
 
 /*
  * Validate rail thermal profile, and get its size. Valid profile:
