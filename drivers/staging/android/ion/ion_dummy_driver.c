@@ -1,5 +1,5 @@
 /*
- * drivers/gpu/ion/ion_dummy_driver.c
+ * drivers/staging/android/ion/ion_dummy_driver.c
  *
  * Copyright (C) 2013 Linaro, Inc
  *

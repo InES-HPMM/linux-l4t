@@ -1,6 +1,6 @@
 /*
 
- * drivers/gpu/ion/ion.c
+ * drivers/staging/android/ion/ion.c
  *
  * Copyright (C) 2011 Google, Inc.
  *
