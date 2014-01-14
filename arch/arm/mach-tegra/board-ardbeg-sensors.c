@@ -783,6 +783,7 @@ static int ardbeg_ad5823_power_on(struct ad5823_platform_data *pdata)
 
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 1);
+	pdata->pwr_dev = AD5823_PWR_DEV_ON;
 
 	return err;
 }
@@ -791,6 +792,7 @@ static int ardbeg_ad5823_power_off(struct ad5823_platform_data *pdata)
 {
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 0);
+	pdata->pwr_dev = AD5823_PWR_DEV_OFF;
 
 	return 0;
 }
