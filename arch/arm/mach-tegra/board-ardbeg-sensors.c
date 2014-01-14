@@ -1161,21 +1161,21 @@ static struct therm_est_subdevice tn8ffd_skin_devs[] = {
 	{
 		.dev_data = "Tdiode",
 		.coeffs = {
-			2, 1, 1, 1,
-			1, 1, 1, 1,
-			1, 1, 1, 0,
-			1, 1, 0, 0,
-			0, 0, -1, -7
+			3, 0, 0, 0,
+			1, 0, -1, 0,
+			1, 0, 0, 1,
+			1, 0, 0, 0,
+			0, 1, 2, 2
 		},
 	},
 	{
 		.dev_data = "Tboard",
 		.coeffs = {
-			-11, -7, -5, -3,
-			-3, -2, -1, 0,
-			0, 0, 1, 1,
-			1, 2, 2, 3,
-			4, 6, 11, 18
+			1, 1, 2, 8,
+			6, -8, -13, -9,
+			-9, -8, -17, -18,
+			-18, -16, 2, 17,
+			15, 27, 42, 60
 		},
 	},
 };
@@ -1199,7 +1199,6 @@ static struct thermal_zone_params skin_tzp = {
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
-	.toffset = 9793,
 	.polling_period = 1100,
 	.passive_delay = 15000,
 	.tc1 = 10,
@@ -1313,9 +1312,11 @@ static int __init ardbeg_skin_init(void)
 			board_info.board_id == BOARD_E1922) {
 			skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
 			skin_data.devs = tn8ffd_skin_devs;
+			skin_data.toffset = 4034;
 		} else {
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
+			skin_data.toffset = 9793;
 		}
 
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
