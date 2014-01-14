@@ -187,6 +187,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
 
@@ -213,10 +214,12 @@ static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.0"),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
 	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
@@ -527,6 +530,7 @@ static struct regulator_consumer_supply fixed_reg_en_modem_3v3_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
+	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.0"),
 	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
@@ -787,45 +791,6 @@ int __init loki_regulator_init(void)
 			PALMAS_REG_PDATA(ldo5_a01);
 		pmic_platform.reg_init[PALMAS_REG_LDO5] =
 			PALMAS_REG_INIT_DATA(ldo5_a01);
-	}
-	if (!(bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER)) {
-		for (i = 0; i < ARRAY_SIZE(palmas_ldo5_supply); i++) {
-			struct regulator_consumer_supply *reg =
-						 &palmas_ldo5_supply[i];
-			if ((strncmp(reg->supply, "avdd_hdmi_pll", 13) == 0)
-			   && (strncmp(reg->dev_name, "tegradc.1", 9) == 0)) {
-				reg->dev_name = "tegradc.0";
-				break;
-			}
-		}
-		for (i = 0; i < ARRAY_SIZE(palmas_ldousb_supply); i++) {
-			struct regulator_consumer_supply *reg =
-						&palmas_ldousb_supply[i];
-			if ((strncmp(reg->supply, "avdd_hdmi", 9) == 0)
-			   && (strncmp(reg->dev_name, "tegradc.1", 9) == 0)) {
-				reg->dev_name = "tegradc.0";
-				break;
-			}
-		}
-		for (i = 0; i < ARRAY_SIZE(palmas_ldousb_supply); i++) {
-			struct regulator_consumer_supply *reg =
-						 &palmas_ldousb_supply[i];
-			if ((strncmp(reg->supply, "vddio_hv", 8) == 0)
-			   && (strncmp(reg->dev_name, "tegradc.1", 9) == 0)) {
-				reg->dev_name = "tegradc.0";
-				break;
-			}
-		}
-		for (i = 0; i < ARRAY_SIZE(fixed_reg_en_vdd_hdmi_5v0_supply);
-				 i++) {
-			struct regulator_consumer_supply *reg =
-					 &fixed_reg_en_vdd_hdmi_5v0_supply[i];
-			if ((strncmp(reg->supply, "vdd_hdmi_5v0", 12) == 0)
-			   && (strncmp(reg->dev_name, "tegradc.1", 9) == 0)) {
-				reg->dev_name = "tegradc.0";
-				break;
-			}
-		}
 	}
 	platform_device_register(&power_supply_extcon_device);
 
