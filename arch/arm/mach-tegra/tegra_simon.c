@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_simon.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,8 +25,10 @@
 #include <linux/hrtimer.h>
 #include <linux/thermal.h>
 #include <linux/regulator/consumer.h>
+#include <linux/tegra-soc.h>
 
 #include "tegra_simon.h"
+#include "common.h"
 #include "clock.h"
 #include "dvfs.h"
 #include "pm.h"
@@ -110,6 +112,18 @@ static int __init tegra_simon_init_gpu(void)
 
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
 
+	switch (tegra_get_chip_id()) {
+	case TEGRA_CHIPID_TEGRA12:
+		/* FIXME: move settings below to tegar12_ specific file */
+		grader->grading_mv_limit = 850;
+		grader->grade_simon_domain = NULL;
+		break;
+	default:
+		pr_info("%s: simon %s grading is not supported on chip ID %d\n",
+		       __func__, grader->domain_name, tegra_get_chip_id());
+		return -ENOSYS;
+	}
+
 	grader->tzd = thermal_zone_device_find_by_name("GPU-therm");
 	if (!grader->tzd) {
 		pr_err("%s: Failed to find %s thermal zone\n",
@@ -127,10 +141,6 @@ static int __init tegra_simon_init_gpu(void)
 	grader->grading_condition_nb.notifier_call = tegra_simon_gpu_grading_cb;
 	regulator_register_notifier(reg, &grader->grading_condition_nb);
 	regulator_put(reg);
-
-	/* FIXME: settings below are tegar12_ specific */
-	grader->grading_mv_limit = 850;
-	grader->grade_simon_domain = NULL;
 
 	return 0;
 }
@@ -219,6 +229,18 @@ static int __init tegra_simon_init_cpu(void)
 
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
 
+	switch (tegra_get_chip_id()) {
+	case TEGRA_CHIPID_TEGRA12:
+		/* FIXME: move settings below to tegar12_ specific file */
+		grader->garding_rate_limit = 714000000;
+		grader->grade_simon_domain = NULL;
+		break;
+	default:
+		pr_info("%s: simon %s grading is not supported on chip ID %d\n",
+		       __func__, grader->domain_name, tegra_get_chip_id());
+		return -ENOSYS;
+	}
+
 	grader->tzd = thermal_zone_device_find_by_name("CPU-therm");
 	if (!grader->tzd) {
 		pr_err("%s: Failed to find %s thermal zone\n",
@@ -241,10 +263,6 @@ static int __init tegra_simon_init_cpu(void)
 		return r;
 	}
 	grader->clk = c;
-
-	/* FIXME: settings below are tegar12_ specific */
-	grader->garding_rate_limit = 714000000;
-	grader->grade_simon_domain = NULL;
 
 	return 0;
 }
