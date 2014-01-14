@@ -392,6 +392,7 @@ int wldev_miracast_tuning(
 	int mode = 0;
 	int ampdu_mpdu;
 	int roam_off;
+	int ampdu_rx_tid = -1;
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	int mchan_algo;
 	int mchan_bw;
@@ -401,6 +402,8 @@ int wldev_miracast_tuning(
 		WLDEV_ERROR(("Failed to get mode\n"));
 		return -1;
 	}
+
+set_mode:
 
 	WLDEV_ERROR(("mode: %d\n", mode));
 
@@ -438,6 +441,14 @@ int wldev_miracast_tuning(
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
+	} else if (mode == 3) {
+		ampdu_rx_tid = 0;
+		mode = 2;
+		goto set_mode;
+	} else if (mode == 4) {
+		ampdu_rx_tid = 0x5f;
+		mode = 0;
+		goto set_mode;
 	}
 	else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
@@ -476,6 +487,9 @@ int wldev_miracast_tuning(
 		return -1;
 	}
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
+
+	if (ampdu_rx_tid != -1)
+		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
 
 	return error;
 }
@@ -550,6 +564,115 @@ int wldev_get_assoc_resp_ie(
 done:
 
 	return bytes_written;
+}
+
+int wldev_get_max_linkspeed(
+	struct net_device *dev, char *command, int total_len)
+{
+	wl_assoc_info_t *assoc_info;
+	char smbuf[WLC_IOCTL_SMLEN];
+	char bssid[6], null_bssid[6];
+	int resp_ies_len = 0;
+	int bytes_written = 0;
+	int error, i;
+
+	bzero(bssid, 6);
+	bzero(null_bssid, 6);
+
+	/* Check Association */
+	error = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, sizeof(bssid), 0);
+	if (error == BCME_NOTASSOCIATED) {
+		/* Not associated */
+		bytes_written += snprintf(&command[bytes_written],
+					total_len, "-1");
+		goto done;
+	} else if (error < 0) {
+		WLDEV_ERROR(("WLC_GET_BSSID failed = %d\n", error));
+		return -1;
+	} else if (memcmp(bssid, null_bssid, ETHER_ADDR_LEN) == 0) {
+		/*  Zero BSSID: Not associated */
+		bytes_written += snprintf(&command[bytes_written],
+					total_len, "-1");
+		goto done;
+	}
+	/* Get assoc_info */
+	bzero(smbuf, sizeof(smbuf));
+	error = wldev_iovar_getbuf(dev, "assoc_info", NULL, 0, smbuf,
+				sizeof(smbuf), NULL);
+	if (error < 0) {
+		WLDEV_ERROR(("get assoc_info failed = %d\n", error));
+		return -1;
+	}
+
+	assoc_info = (wl_assoc_info_t *)smbuf;
+	resp_ies_len = dtoh32(assoc_info->resp_len) -
+				sizeof(struct dot11_assoc_resp);
+
+	/* Retrieve assoc resp IEs */
+	if (resp_ies_len) {
+		error = wldev_iovar_getbuf(dev, "assoc_resp_ies", NULL, 0,
+					smbuf, sizeof(smbuf), NULL);
+		if (error < 0) {
+			WLDEV_ERROR(("get assoc_resp_ies failed = %d\n",
+				error));
+			return -1;
+		}
+
+		{
+			int maxRate = 0;
+			struct dot11IE {
+				unsigned char ie;
+				unsigned char len;
+				unsigned char data[0];
+			} *dot11IE = (struct dot11IE *)smbuf;
+			int remaining = resp_ies_len;
+
+			while (1) {
+				if (remaining < 2)
+					break;
+				if (remaining < dot11IE->len + 2)
+					break;
+				switch (dot11IE->ie) {
+				case 0x01: /* supported rates */
+				case 0x32: /* extended supported rates */
+					for (i = 0; i < dot11IE->len; i++) {
+						int rate = ((dot11IE->data[i] &
+								0x7f) / 2);
+						if (rate > maxRate)
+							maxRate = rate;
+					}
+					break;
+				case 0x2d: /* HT capabilities */
+				case 0x3d: /* HT operation */
+					/* 11n supported */
+					maxRate = 150; /* Just return an 11n
+					rate for now. Could implement detailed
+					parser later. */
+					break;
+				default:
+					break;
+				}
+
+				/* next IE */
+				dot11IE = (struct dot11IE *)
+				((unsigned char *)dot11IE + dot11IE->len + 2);
+				remaining -= (dot11IE->len + 2);
+			}
+			bytes_written += snprintf(&command[bytes_written],
+						total_len, "MaxLinkSpeed %d",
+						maxRate);
+			goto done;
+			}
+	} else {
+		WLDEV_ERROR(("Zero Length assoc resp ies = %d\n",
+			resp_ies_len));
+		return -1;
+	}
+
+done:
+
+	return bytes_written;
+
 }
 
 int wldev_get_rx_rate_stats(
