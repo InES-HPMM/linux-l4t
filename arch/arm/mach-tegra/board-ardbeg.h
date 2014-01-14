@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg.h
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -167,6 +167,7 @@ int laguna_edp_init(void);
 int norrin_regulator_init(void);
 int norrin_kbc_init(void);
 int norrin_soctherm_init(void);
+int norrin_emc_init(void);
 
 /* AUO Display related GPIO */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */

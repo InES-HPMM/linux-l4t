@@ -1265,7 +1265,12 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_regulator_init();
 	ardbeg_dtv_init();
 	ardbeg_suspend_init();
-	ardbeg_emc_init();
+
+	if (board_info.board_id == BOARD_PM374)
+		norrin_emc_init();
+	else
+		ardbeg_emc_init();
+
 	edp_init();
 	isomgr_init();
 	ardbeg_touch_init();
