@@ -6,18 +6,18 @@ memory-controller@7001b000 {
 		#size-cells = <0>;
 		emc-table@12750 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_12750_01_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_12750_03_V5.0.14_V1.1";
 			clock-frequency = <12750>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x4000003e>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000000
-				0x00000004
+				0x00000003
 				0x00000000
 				0x00000000
 				0x00000000
@@ -179,6 +179,7 @@ memory-controller@7001b000 {
 				0x06030203
 				0x000a0402
 				0x77e30303
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -225,25 +226,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@20400 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_20400_01_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_20400_03_V5.0.14_V1.1";
 			clock-frequency = <20400>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40000026>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000000
-				0x00000007
+				0x00000005
 				0x00000000
 				0x00000000
 				0x00000000
@@ -282,8 +283,8 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000007
 				0x0000000f
-				0x00000008
-				0x00000008
+				0x00000006
+				0x00000006
 				0x00000004
 				0x00000005
 				0x00000004
@@ -404,7 +405,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06030203
 				0x000a0402
-				0x77430303
+				0x76230303
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -451,25 +453,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@40800 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_40800_01_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_40800_03_V5.0.14_V1.1";
 			clock-frequency = <40800>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40000012>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000001
-				0x0000000e
+				0x0000000a
 				0x00000000
 				0x00000001
 				0x00000000
@@ -506,10 +508,10 @@ memory-controller@7001b000 {
 				0x00000002
 				0x00000001
 				0x00000000
+				0x00000008
+				0x0000000f
 				0x0000000c
-				0x0000000f
-				0x0000000f
-				0x0000000f
+				0x0000000c
 				0x00000004
 				0x00000005
 				0x00000004
@@ -630,7 +632,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06030203
 				0x000a0402
-				0x75e30303
+				0x74a30303
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -677,25 +680,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@68000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_68000_01_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_68000_03_V5.0.14_V1.1";
 			clock-frequency = <68000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x4000000a>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000003
-				0x00000017
+				0x00000011
 				0x00000000
 				0x00000002
 				0x00000000
@@ -732,10 +735,10 @@ memory-controller@7001b000 {
 				0x00000002
 				0x00000001
 				0x00000000
-				0x00000015
 				0x0000000f
-				0x00000019
-				0x00000019
+				0x0000000f
+				0x00000013
+				0x00000013
 				0x00000004
 				0x00000005
 				0x00000004
@@ -856,7 +859,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06030203
 				0x000a0402
-				0x75430403
+				0x74230403
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -903,25 +907,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@102000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_102000_02_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_102000_03_V5.0.14_V1.1";
 			clock-frequency = <102000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40000006>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000004
-				0x00000023
+				0x0000001a
 				0x00000000
 				0x00000003
 				0x00000001
@@ -958,10 +962,10 @@ memory-controller@7001b000 {
 				0x00000002
 				0x00000001
 				0x00000000
-				0x00000021
+				0x00000018
 				0x0000000f
-				0x00000025
-				0x00000025
+				0x0000001c
+				0x0000001c
 				0x00000004
 				0x00000005
 				0x00000004
@@ -1082,7 +1086,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06030203
 				0x000a0403
-				0x74e30504
+				0x73c30504
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -1129,25 +1134,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@204000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_204000_02_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_204000_04_V5.0.14_V1.1";
 			clock-frequency = <204000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40000002>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000009
-				0x00000047
+				0x00000035
 				0x00000000
 				0x00000006
 				0x00000002
@@ -1184,10 +1189,10 @@ memory-controller@7001b000 {
 				0x00000002
 				0x00000001
 				0x00000000
-				0x00000044
+				0x00000032
 				0x0000000f
-				0x0000004a
-				0x0000004a
+				0x00000038
+				0x00000038
 				0x00000004
 				0x00000005
 				0x00000004
@@ -1202,22 +1207,22 @@ memory-controller@7001b000 {
 				0x1069a298
 				0x002c00a0
 				0x00008000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
 				0x00000000
 				0x00000000
 				0x00000000
@@ -1256,14 +1261,14 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00070000
-				0x00007000
-				0x00007000
-				0x00007000
-				0x00007000
+				0x00060000
+				0x00060000
+				0x00060000
+				0x00060000
+				0x00006000
+				0x00006000
+				0x00006000
+				0x00006000
 				0x10000280
 				0x00000000
 				0x00111111
@@ -1308,7 +1313,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06040203
 				0x000a0404
-				0x74a40a05
+				0x73840a05
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -1355,25 +1361,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00001221>;
-			nvidia,emc-mode-1 = <0x00100003>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@300000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_300000_02_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_300000_04_V5.0.14_V1.1";
 			clock-frequency = <300000>;
 			nvidia,emc-min-mv = <820>;
-			nvidia,gk20a-min-mv = <800>;
+			nvidia,gk20a-min-mv = <820>;
 			nvidia,source = "pllc_out0";
 			nvidia,src-sel-reg = <0x20000002>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x0000000d
-				0x00000067
+				0x0000004d
 				0x00000000
 				0x00000009
 				0x00000003
@@ -1401,8 +1407,8 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000001
 				0x0000000e
-				0x0000000e
 				0x00000010
+				0x00000012
 				0x000008e4
 				0x00000000
 				0x00000239
@@ -1410,9 +1416,9 @@ memory-controller@7001b000 {
 				0x00000008
 				0x00000001
 				0x00000000
-				0x00000065
+				0x0000004b
 				0x0000000e
-				0x0000006c
+				0x00000052
 				0x00000200
 				0x00000004
 				0x00000005
@@ -1452,11 +1458,11 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00098000
-				0x00098000
+				0x00040000
+				0x00040000
 				0x00000000
-				0x00098000
-				0x00098000
+				0x00040000
+				0x00040000
 				0x00000000
 				0x00000000
 				0x00000000
@@ -1511,11 +1517,11 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00020000
 				0x00000100
-				0x0117000e
-				0x0117000e
+				0x0173000e
+				0x0173000e
 				0x00000000
 				0x00000003
-				0x0000d3b3
+				0x000052a3
 				0x800012d7
 				0x00000009
 				0x08000004
@@ -1535,6 +1541,7 @@ memory-controller@7001b000 {
 				0x06040202
 				0x000b0607
 				0x77450e08
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -1574,32 +1581,32 @@ memory-controller@7001b000 {
 			nvidia,emc-acal-interval = <0x001fffff>;
 			nvidia,emc-ctt-term_ctrl = <0x00000802>;
 			nvidia,emc-cfg = <0x73340000>;
-			nvidia,emc-cfg-2 = <0x000008cd>;
+			nvidia,emc-cfg-2 = <0x000008d5>;
 			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
 			nvidia,emc-cfg-dig-dll = <0x002c0068>;
 			nvidia,emc-bgbias-ctl0 = <0x00000000>;
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00000321>;
-			nvidia,emc-mode-1 = <0x00100002>;
-			nvidia,emc-mode-2 = <0x00200000>;
+			nvidia,emc-mode-0 = <0x80000321>;
+			nvidia,emc-mode-1 = <0x80100002>;
+			nvidia,emc-mode-2 = <0x80200000>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@396000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_396000_02_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_396000_06_V5.0.14_V1.1";
 			clock-frequency = <396000>;
 			nvidia,emc-min-mv = <850>;
-			nvidia,gk20a-min-mv = <900>;
+			nvidia,gk20a-min-mv = <850>;
 			nvidia,source = "pllm_out0";
 			nvidia,src-sel-reg = <0x00000002>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000011
-				0x00000089
+				0x00000066
 				0x00000000
 				0x0000000c
 				0x00000004
@@ -1636,9 +1643,9 @@ memory-controller@7001b000 {
 				0x00000008
 				0x00000001
 				0x00000000
-				0x00000087
+				0x00000063
 				0x0000000f
-				0x0000008f
+				0x0000006c
 				0x00000200
 				0x00000004
 				0x00000005
@@ -1678,11 +1685,11 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00070000
-				0x00070000
+				0x00040000
+				0x00040000
 				0x00000000
-				0x00070000
-				0x00070000
+				0x00040000
+				0x00040000
 				0x00000000
 				0x00000000
 				0x00000000
@@ -1737,8 +1744,8 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00020000
 				0x00000100
-				0x00f5000e
-				0x00f5000e
+				0x015b000e
+				0x015b000e
 				0x00000000
 				0x00000003
 				0x000052a3
@@ -1761,6 +1768,7 @@ memory-controller@7001b000 {
 				0x06040202
 				0x000d0709
 				0x7586120a
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -1807,25 +1815,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00000521>;
-			nvidia,emc-mode-1 = <0x00100002>;
-			nvidia,emc-mode-2 = <0x00200000>;
+			nvidia,emc-mode-0 = <0x80000521>;
+			nvidia,emc-mode-1 = <0x80100002>;
+			nvidia,emc-mode-2 = <0x80200000>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@528000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_528000_02_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_528000_05_V5.0.14_V1.1";
 			clock-frequency = <528000>;
-			nvidia,emc-min-mv = <870>;
-			nvidia,gk20a-min-mv = <900>;
+			nvidia,emc-min-mv = <880>;
+			nvidia,gk20a-min-mv = <870>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80000000>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000018
-				0x000000b7
+				0x00000088
 				0x00000000
 				0x00000010
 				0x00000006
@@ -1862,9 +1870,9 @@ memory-controller@7001b000 {
 				0x0000000b
 				0x00000001
 				0x00000000
-				0x000000b4
+				0x00000085
 				0x00000012
-				0x000000bf
+				0x00000090
 				0x00000200
 				0x00000004
 				0x00000005
@@ -1963,8 +1971,8 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00020000
 				0x00000100
-				0x00c8000e
-				0x00c8000e
+				0x0139000e
+				0x0139000e
 				0x00000000
 				0x00000003
 				0x000042a0
@@ -1986,7 +1994,8 @@ memory-controller@7001b000 {
 				0x00000006
 				0x06050202
 				0x0010090c
-				0x7488180d
+				0x7428180d
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -2033,25 +2042,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00000941>;
-			nvidia,emc-mode-1 = <0x00100002>;
-			nvidia,emc-mode-2 = <0x00200008>;
+			nvidia,emc-mode-0 = <0x80000941>;
+			nvidia,emc-mode-1 = <0x80100002>;
+			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@600000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_600000_01_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_600000_05_V5.0.14_V1.1";
 			clock-frequency = <600000>;
 			nvidia,emc-min-mv = <910>;
-			nvidia,gk20a-min-mv = <900>;
+			nvidia,gk20a-min-mv = <910>;
 			nvidia,source = "pllc_ud";
 			nvidia,src-sel-reg = <0xe0000000>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x0000001b
-				0x000000d0
+				0x0000009b
 				0x00000000
 				0x00000013
 				0x00000007
@@ -2088,9 +2097,9 @@ memory-controller@7001b000 {
 				0x0000000d
 				0x00000001
 				0x00000000
-				0x000000cc
+				0x00000097
 				0x00000015
-				0x000000d8
+				0x000000a3
 				0x00000200
 				0x00000004
 				0x00000005
@@ -2106,22 +2115,22 @@ memory-controller@7001b000 {
 				0x1049b098
 				0xe00e00b1
 				0x00008000
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
-				0x00000008
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
 				0x00000000
 				0x00000000
 				0x00000000
@@ -2130,20 +2139,11 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00048000
-				0x00048000
+				0x0004c000
+				0x0004c000
 				0x00000000
-				0x00048000
-				0x00048000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
+				0x0004c000
+				0x0004c000
 				0x00000000
 				0x00000000
 				0x00000000
@@ -2160,14 +2160,23 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
+				0x0000000a
 				0x100002a0
 				0x00000000
 				0x00111111
@@ -2175,7 +2184,7 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x77ffc085
-				0x00000505
+				0x00000404
 				0x81f1f108
 				0x07070004
 				0x00000000
@@ -2189,8 +2198,8 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00020000
 				0x00000100
-				0x00b0000e
-				0x00b0000e
+				0x0127000e
+				0x0127000e
 				0x00000000
 				0x00000003
 				0x000040a0
@@ -2212,7 +2221,8 @@ memory-controller@7001b000 {
 				0x00000007
 				0x07050202
 				0x00130b0e
-				0x74891b0f
+				0x73a91b0f
+				0x70000f03
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -2259,25 +2269,25 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00000b61>;
-			nvidia,emc-mode-1 = <0x00100002>;
-			nvidia,emc-mode-2 = <0x00200010>;
+			nvidia,emc-mode-0 = <0x80000b61>;
+			nvidia,emc-mode-1 = <0x80100002>;
+			nvidia,emc-mode-2 = <0x80200010>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@792000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "02_792000_04_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_792000_06_V5.0.14_V1.1";
 			clock-frequency = <792000>;
 			nvidia,emc-min-mv = <980>;
-			nvidia,gk20a-min-mv = <1100>;
+			nvidia,gk20a-min-mv = <980>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80000000>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x00000024
-				0x00000114
+				0x000000cd
 				0x00000000
 				0x00000019
 				0x0000000a
@@ -2314,9 +2324,9 @@ memory-controller@7001b000 {
 				0x00000011
 				0x00000001
 				0x00000000
-				0x0000010d
+				0x000000c7
 				0x00000018
-				0x0000011e
+				0x000000d7
 				0x00000200
 				0x00000005
 				0x00000006
@@ -2332,22 +2342,22 @@ memory-controller@7001b000 {
 				0x1049b098
 				0xe00700b1
 				0x00008000
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
-				0x00000004
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000006
 				0x00000000
 				0x00000000
 				0x00000000
@@ -2356,20 +2366,11 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00034000
-				0x00034000
+				0x00030000
+				0x00030000
 				0x00000000
-				0x00034000
-				0x00034000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
-				0x00000000
+				0x00030000
+				0x00030000
 				0x00000000
 				0x00000000
 				0x00000000
@@ -2386,14 +2387,23 @@ memory-controller@7001b000 {
 				0x00000000
 				0x00000000
 				0x00000000
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
-				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000009
+				0x00000009
+				0x00000009
+				0x00000009
+				0x00000009
+				0x00000009
+				0x00000009
+				0x00000009
 				0x100002a0
 				0x00000000
 				0x00111111
@@ -2406,17 +2416,17 @@ memory-controller@7001b000 {
 				0x07070004
 				0x00000000
 				0x016eeeee
-				0x69a69a20
+				0x61861820
 				0x00514514
 				0x00514514
-				0x69a69a00
+				0x61861800
 				0x0606003f
 				0x00000000
 				0x00000000
 				0x00020000
 				0x00000100
-				0x006f000e
-				0x006f000e
+				0x00f7000e
+				0x00f7000e
 				0x00000000
 				0x00000004
 				0x00004080
@@ -2438,7 +2448,8 @@ memory-controller@7001b000 {
 				0x00000008
 				0x08060202
 				0x00170e13
-				0x746c2414
+				0x736c2414
+				0x70000f02
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
@@ -2485,21 +2496,21 @@ memory-controller@7001b000 {
 			nvidia,emc-auto-cal-config2 = <0x00000000>;
 			nvidia,emc-auto-cal-config3 = <0x00000000>;
 			nvidia,emc-auto-cal-config = <0xa1430000>;
-			nvidia,emc-mode-0 = <0x00000d71>;
-			nvidia,emc-mode-1 = <0x00100002>;
-			nvidia,emc-mode-2 = <0x00200018>;
+			nvidia,emc-mode-0 = <0x80000d71>;
+			nvidia,emc-mode-1 = <0x80100002>;
+			nvidia,emc-mode-2 = <0x80200018>;
 			nvidia,emc-mode-4 = <0x00000000>;
 		};
 		emc-table@924000 {
 			compatible = "nvidia,tegra12-emc-table";
-			nvidia,revision = <0x18>;
-			nvidia,dvfs-version = "08_924000_06_V5.0.12_V0.9";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "09_924000_06_V5.0.14_V1.1";
 			clock-frequency = <924000>;
 			nvidia,emc-min-mv = <1010>;
-			nvidia,gk20a-min-mv = <1100>;
+			nvidia,gk20a-min-mv = <1010>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80000000>;
-			nvidia,burst-regs-num = <164>;
+			nvidia,burst-regs-num = <165>;
 			nvidia,burst-up-down-regs-num = <31>;
 			nvidia,emc-registers = <
 				0x0000002b
@@ -2665,6 +2676,7 @@ memory-controller@7001b000 {
 				0x09070202
 				0x001a1016
 				0x734e2a17
+				0x70000f02
 				0x001f0000
 			>;
 			nvidia,emc-burst-up-down-regs = <
