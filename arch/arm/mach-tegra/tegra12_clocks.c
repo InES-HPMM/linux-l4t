@@ -7418,6 +7418,8 @@ static struct clk tegra_clk_cclk_g = {
 
 #endif
 
+static struct raw_notifier_head cpu_g_rate_change_nh;
+
 static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
 	.parent    = &tegra_clk_cclk_g,
@@ -7434,6 +7436,7 @@ static struct clk tegra_clk_virtual_cpu_g = {
 		.dynamic   = &tegra_dfll_cpu,
 		.mode      = MODE_G,
 	},
+	.rate_change_nh = &cpu_g_rate_change_nh,
 };
 
 #ifndef CONFIG_ARCH_TEGRA_13x_SOC
@@ -8715,6 +8718,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("afc3", "tegra30-ahub-apbif", "afc3"),
 	CLK_DUPLICATE("afc4", "tegra30-ahub-apbif", "afc4"),
 	CLK_DUPLICATE("afc5", "tegra30-ahub-apbif", "afc5"),
+	CLK_DUPLICATE("cpu_g", "tegra_simon", "cpu"),
 };
 
 struct clk *tegra_ptr_clks[] = {
