@@ -15,8 +15,6 @@
  *
  */
 
-#define pr_fmt(fmt)	"%s():%d: " fmt, __func__, __LINE__
-
 #include <linux/device.h>
 #include <linux/file.h>
 #include <linux/freezer.h>
@@ -164,7 +162,7 @@ static void ion_buffer_add(struct ion_device *dev,
 		} else if (buffer > entry) {
 			p = &(*p)->rb_right;
 		} else {
-			pr_err("buffer already found.");
+			pr_err("%s: buffer already found.", __func__);
 			BUG();
 		}
 	}
@@ -298,7 +296,7 @@ static void _ion_buffer_destroy(struct kref *kref)
 		ion_buffer_destroy(buffer);
 }
 
-void ion_buffer_get(struct ion_buffer *buffer)
+static void ion_buffer_get(struct ion_buffer *buffer)
 {
 	kref_get(&buffer->ref);
 }
@@ -385,12 +383,12 @@ struct ion_buffer *ion_handle_buffer(struct ion_handle *handle)
 	return handle->buffer;
 }
 
-void ion_handle_get(struct ion_handle *handle)
+static void ion_handle_get(struct ion_handle *handle)
 {
 	kref_get(&handle->ref);
 }
 
-int ion_handle_put(struct ion_handle *handle)
+static int ion_handle_put(struct ion_handle *handle)
 {
 	struct ion_client *client = handle->client;
 	int ret;
@@ -568,7 +566,8 @@ int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	buffer = handle->buffer;
 
 	if (!buffer->heap->ops->phys) {
-		pr_err("ion_phys is not implemented by this heap.\n");
+		pr_err("%s: ion_phys is not implemented by this heap.\n",
+		       __func__);
 		mutex_unlock(&client->lock);
 		return -ENODEV;
 	}
@@ -647,7 +646,8 @@ void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
 	buffer = handle->buffer;
 
 	if (!handle->buffer->heap->ops->map_kernel) {
-		pr_err("map_kernel is not implemented by this heap.\n");
+		pr_err("%s: map_kernel is not implemented by this heap.\n",
+		       __func__);
 		mutex_unlock(&client->lock);
 		return ERR_PTR(-ENODEV);
 	}
@@ -672,32 +672,6 @@ void ion_unmap_kernel(struct ion_client *client, struct ion_handle *handle)
 	mutex_unlock(&client->lock);
 }
 EXPORT_SYMBOL(ion_unmap_kernel);
-
-struct scatterlist *iommu_heap_remap_dma(struct ion_heap *heap,
-					      struct ion_buffer *buf,
-					      unsigned long addr);
-int ion_remap_dma(struct ion_client *client,
-			struct ion_handle *handle,
-			unsigned long addr)
-{
-	struct ion_buffer *buffer;
-	int ret;
-
-	mutex_lock(&client->lock);
-	if (!ion_handle_validate(client, handle)) {
-		pr_err("invalid handle passed to map_dma.\n");
-		mutex_unlock(&client->lock);
-		return -EINVAL;
-	}
-	buffer = handle->buffer;
-	mutex_lock(&buffer->lock);
-
-	ret = iommu_heap_remap_dma(buffer->heap, buffer, addr);
-
-	mutex_unlock(&buffer->lock);
-	mutex_unlock(&client->lock);
-	return ret;
-}
 
 static int ion_debug_client_show(struct seq_file *s, void *unused)
 {
@@ -848,7 +822,7 @@ void ion_client_destroy(struct ion_client *client)
 	struct ion_device *dev = client->dev;
 	struct rb_node *n;
 
-	pr_debug("\n");
+	pr_debug("%s: %d\n", __func__, __LINE__);
 	while ((n = rb_first(&client->handles))) {
 		struct ion_handle *handle = rb_entry(n, struct ion_handle,
 						     node);
@@ -1622,22 +1596,6 @@ void ion_device_destroy(struct ion_device *dev)
 	debugfs_remove_recursive(dev->debug_root);
 	/* XXX need to free the heaps and clients ? */
 	kfree(dev);
-}
-
-struct ion_client *ion_client_get_file(int fd)
-{
-	struct ion_client *client = ERR_PTR(-EFAULT);
-	struct file *f = fget(fd);
-	if (!f)
-		return ERR_PTR(-EINVAL);
-
-	if (f->f_op == &ion_fops) {
-		client = f->private_data;
-		ion_client_get(client);
-	}
-
-	fput(f);
-	return client;
 }
 
 void __init ion_reserve(struct ion_platform_data *data)

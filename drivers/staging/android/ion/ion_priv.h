@@ -26,38 +26,11 @@
 #include <linux/sched.h>
 #include <linux/shrinker.h>
 #include <linux/types.h>
-#include <linux/miscdevice.h>
-
-struct ion_device;
-struct ion_client;
-struct ion_handle;
-
-bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle);
-
-void ion_buffer_get(struct ion_buffer *buffer);
 
 #include "ion.h"
 
 struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
 
-struct ion_client *ion_client_get_file(int fd);
-
-void ion_client_get(struct ion_client *client);
-
-int ion_client_put(struct ion_client *client);
-
-void ion_handle_get(struct ion_handle *handle);
-
-int ion_handle_put(struct ion_handle *handle);
-
-struct ion_handle *ion_handle_create(struct ion_client *client,
-				     struct ion_buffer *buffer);
-
-void ion_handle_add(struct ion_client *client, struct ion_handle *handle);
-
-int ion_remap_dma(struct ion_client *client,
-		    struct ion_handle *handle,
-		    unsigned long addr);
 /**
  * struct ion_buffer - metadata for a particular buffer
  * @ref:		refernce count
@@ -84,8 +57,7 @@ int ion_remap_dma(struct ion_client *client,
  *			handle, used for debugging
  * @pid:		pid of last client to reference this buffer in a
  *			handle, used for debugging
- * @pages:		list for allocated pages for the buffer
- */
+*/
 struct ion_buffer {
 	struct kref ref;
 	union {
@@ -112,7 +84,6 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
-	struct page **pages;
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
@@ -363,19 +334,6 @@ ion_phys_addr_t ion_carveout_allocate(struct ion_heap *heap, unsigned long size,
 				      unsigned long align);
 void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
 		       unsigned long size);
-
-#ifdef CONFIG_ION_IOMMU
-struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *);
-void ion_iommu_heap_destroy(struct ion_heap *);
-#else
-static inline struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *)
-{
-	return NULL;
-}
-static inline void ion_iommu_heap_destroy(struct ion_heap *)
-{
-}
-#endif
 /**
  * The carveout heap returns physical addresses, since 0 may be a valid
  * physical address, this is used to indicate allocation failed
