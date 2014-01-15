@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-vcm30_t124-panel.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -330,10 +330,22 @@ int __init vcm30_t124_panel_init(void)
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	/* Copy the bootloader fb to the fb. */
-	__tegra_move_framebuffer(&vcm30_t124_nvmap_device,
-		tegra_fb_start, tegra_bootloader_fb_start,
+	/* clear FB for both DC and copy the bootloader FB */
+	__tegra_clear_framebuffer(&vcm30_t124_nvmap_device,
+		tegra_fb_start, tegra_fb_size);
+	if (tegra_bootloader_fb_size)
+		__tegra_move_framebuffer(&vcm30_t124_nvmap_device,
+			tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
+	if (tegra_fb2_size) {
+		__tegra_clear_framebuffer(&vcm30_t124_nvmap_device,
+			tegra_fb2_start, tegra_fb2_size);
+		if (tegra_bootloader_fb2_size)
+			__tegra_move_framebuffer(&vcm30_t124_nvmap_device,
+				tegra_fb2_start, tegra_bootloader_fb2_start,
+				min(tegra_fb2_size,
+					 tegra_bootloader_fb2_size));
+	}
 
 	vcm30_t124_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&vcm30_t124_disp1_device);
