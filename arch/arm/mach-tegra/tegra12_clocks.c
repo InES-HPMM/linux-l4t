@@ -45,6 +45,7 @@
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
 #include "cpu-tegra.h"
+#include "tegra11_soctherm.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -4281,6 +4282,13 @@ static struct clk_ops tegra_plle_ops = {
  */
 
 /* DFLL operations */
+#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+static void tune_cpu_trimmers(bool trim_high)
+{
+	tegra_soctherm_adjust_cpu_zone(trim_high);
+}
+#endif
+
 static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
@@ -4291,6 +4299,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 		pr_err("%s: CPU dvfs is not present\n", __func__);
 		return;
 	}
+	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
 
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
