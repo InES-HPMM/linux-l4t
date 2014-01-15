@@ -6550,11 +6550,11 @@ static struct clk tegra_pex_uphy_clk = {
 	}
 static struct clk tegra_sync_source_list[] = {
 	SYNC_SOURCE(spdif_in, tegra30-spdif),
-	SYNC_SOURCE(i2s0, tegra30-i2s.0),
-	SYNC_SOURCE(i2s1, tegra30-i2s.1),
-	SYNC_SOURCE(i2s2, tegra30-i2s.2),
-	SYNC_SOURCE(i2s3, tegra30-i2s.3),
-	SYNC_SOURCE(i2s4, tegra30-i2s.4),
+	SYNC_SOURCE(i2s0, tegra210-i2s.0),
+	SYNC_SOURCE(i2s1, tegra210-i2s.1),
+	SYNC_SOURCE(i2s2, tegra210-i2s.2),
+	SYNC_SOURCE(i2s3, tegra210-i2s.3),
+	SYNC_SOURCE(i2s4, tegra210-i2s.4),
 	SYNC_SOURCE(vimclk, vimclk),
 };
 
@@ -6599,11 +6599,11 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 		.ops       = &tegra_audio_sync_clk_ops	\
 	}
 static struct clk tegra_clk_audio_list[] = {
-	AUDIO_SYNC_CLK(audio0, tegra30-i2s.0, 0),
-	AUDIO_SYNC_CLK(audio1, tegra30-i2s.1, 1),
-	AUDIO_SYNC_CLK(audio2, tegra30-i2s.2, 2),
-	AUDIO_SYNC_CLK(audio3, tegra30-i2s.3, 3),
-	AUDIO_SYNC_CLK(audio4, tegra30-i2s.4, 4),
+	AUDIO_SYNC_CLK(audio0, tegra210-i2s.0, 0),
+	AUDIO_SYNC_CLK(audio1, tegra210-i2s.1, 1),
+	AUDIO_SYNC_CLK(audio2, tegra210-i2s.2, 2),
+	AUDIO_SYNC_CLK(audio3, tegra210-i2s.3, 3),
+	AUDIO_SYNC_CLK(audio4, tegra210-i2s.4, 4),
 	AUDIO_SYNC_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
 };
 
@@ -6625,11 +6625,11 @@ static struct clk tegra_clk_audio_list[] = {
 		},						\
 	}
 static struct clk tegra_clk_audio_2x_list[] = {
-	AUDIO_SYNC_2X_CLK(audio0, tegra30-i2s.0, 0),
-	AUDIO_SYNC_2X_CLK(audio1, tegra30-i2s.1, 1),
-	AUDIO_SYNC_2X_CLK(audio2, tegra30-i2s.2, 2),
-	AUDIO_SYNC_2X_CLK(audio3, tegra30-i2s.3, 3),
-	AUDIO_SYNC_2X_CLK(audio4, tegra30-i2s.4, 4),
+	AUDIO_SYNC_2X_CLK(audio0, tegra210-i2s.0, 0),
+	AUDIO_SYNC_2X_CLK(audio1, tegra210-i2s.1, 1),
+	AUDIO_SYNC_2X_CLK(audio2, tegra210-i2s.2, 2),
+	AUDIO_SYNC_2X_CLK(audio3, tegra210-i2s.3, 3),
+	AUDIO_SYNC_2X_CLK(audio4, tegra210-i2s.4, 4),
 	AUDIO_SYNC_2X_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
 };
 
@@ -7526,21 +7526,21 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("kfuse",	"kfuse-tegra",		NULL,	40,	0,	26000000,  mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("fuse",	"fuse-tegra",		"fuse",	39,	0,	26000000,  mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("fuse_burn",	"fuse-tegra",		"fuse_burn",	39,	0,	26000000,  mux_clk_m,		PERIPH_ON_APB),
-	PERIPH_CLK("apbif",	"tegra30-ahub",		"apbif", 107,	0,	26000000,  mux_clk_m,			PERIPH_ON_APB),
-	PERIPH_CLK("i2s0",	"tegra30-i2s.0",	NULL,	30,	0x1d8,	204000000,  mux_pllaout0_audio0_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("i2s1",	"tegra30-i2s.1",	NULL,	11,	0x100,	204000000,  mux_pllaout0_audio1_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("i2s2",	"tegra30-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("i2s3",	"tegra30-i2s.3",	NULL,	101,	0x3bc,	204000000,  mux_pllaout0_audio3_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("i2s4",	"tegra30-i2s.4",	NULL,	102,	0x3c0,	204000000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("apbif",	"tegra210-admaif",		"apbif", 107,	0,	26000000,  mux_clk_m,			PERIPH_ON_APB),
+	PERIPH_CLK("i2s0",	"tegra210-i2s.0",	NULL,	30,	0x1d8,	204000000,  mux_pllaout0_audio0_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("i2s1",	"tegra210-i2s.1",	NULL,	11,	0x100,	204000000,  mux_pllaout0_audio1_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("i2s2",	"tegra210-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("i2s3",	"tegra210-i2s.3",	NULL,	101,	0x3bc,	204000000,  mux_pllaout0_audio3_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("i2s4",	"tegra210-i2s.4",	NULL,	102,	0x3c0,	204000000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_out",	"tegra30-spdif",	"spdif_out",	10,	0x108,	 24576000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_in",	"tegra30-spdif",	"spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("dmic1",	"tegra30-i2s.0",	NULL,	161,	0x64c,	12288000, mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic2",	"tegra30-i2s.1",	NULL,	162,	0x650,	12288000, mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic3",	"tegra30-i2s.2",	NULL,	197,	0x6bc,	12288000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("ape",	"ape",			NULL,	198,	0x6c0,	300000000, mux_plla_pllc_pllp_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("ape",	NULL,			"ape",	198,	0x6c0,	300000000, mux_plla_pllc_pllp_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("maud",	"maud",			NULL,	202,	0x6d4,	300000000, mux_pllp_pllp_out3_clkm_clk32k_plla,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"pwm",			NULL,	17,	0x110,	48000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	D_AUDIO_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
+	D_AUDIO_CLK("d_audio",	"tegra210-axbar",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",   125,	0x428,	108000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2codec_2x",	"tegra30-hda",	"hda2codec",   111,	0x3e4,	910000000,  mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",		"hda2hdmi",	128,	0,	408000000,  mux_clk_m, PERIPH_ON_APB),
@@ -7912,11 +7912,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi.1", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi.1", "cile"),
-	CLK_DUPLICATE("i2s0", NULL, "i2s0"),
-	CLK_DUPLICATE("i2s1", NULL, "i2s1"),
-	CLK_DUPLICATE("i2s2", NULL, "i2s2"),
-	CLK_DUPLICATE("i2s3", NULL, "i2s3"),
-	CLK_DUPLICATE("i2s4", NULL, "i2s4"),
 	CLK_DUPLICATE("spdif_in", NULL, "spdif_in"),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.0", NULL),
 	CLK_DUPLICATE("dmic2", "tegra-dmic.1", NULL),
