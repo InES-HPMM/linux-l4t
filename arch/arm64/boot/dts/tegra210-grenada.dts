@@ -626,6 +626,90 @@
 		dmic@702d4200 {
 			status = "okay";
 		};
+
+		amx@702d3000 {
+			status = "okay";
+		};
+
+		adx@702d3800 {
+			status = "okay";
+		};
+
+		afc@702d7000 {
+			status = "okay";
+		};
+
+		afc@702d7100 {
+			status = "okay";
+		};
+
+		afc@702d7200 {
+			status = "okay";
+		};
+
+		afc@702d7300 {
+			status = "okay";
+		};
+
+		afc@702d7400 {
+			status = "okay";
+		};
+
+		afc@702d7500 {
+			status = "okay";
+		};
+
+		mvc@702da000 {
+			status = "okay";
+		};
+
+		mvc@702da200 {
+			status = "okay";
+		};
+
+		spdif@702d6000 {
+			status = "okay";
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-grenada";
+		nvidia,model = "tegra-snd-grenada";
+		nvidia,memory-clients = <34>;
+		nvidia,audio-routing =
+			"x Headphone", 	"x OUT",
+			"y Headphone", 	"y OUT",
+			"z Headphone", 	"z OUT",
+			"s Headphone", 	"s OUT",
+			"x IN",		"x Mic",
+			"y IN",		"y Mic",
+			"z IN",		"z Mic",
+			"s IN",		"s Mic";
+			nvidia,admaif = <&tegra_admaif>;
+			nvidia,xbar = <&tegra_axbar>;
+			nvidia,i2s-controller-1 = <&tegra_i2s1>;
+			nvidia,i2s-controller-2 = <&tegra_i2s2>;
+			nvidia,i2s-controller-3 = <&tegra_i2s3>;
+			nvidia,amx-1 = <&tegra_amx1>;
+			nvidia,adx-1 = <&tegra_adx1>;
+			nvidia,sfc-1 = <&tegra_sfc1>;
+			nvidia,sfc-2 = <&tegra_sfc2>;
+			nvidia,sfc-3 = <&tegra_sfc3>;
+			nvidia,sfc-4 = <&tegra_sfc4>;
+			nvidia,afc-1 = <&tegra_afc1>;
+			nvidia,afc-2 = <&tegra_afc2>;
+			nvidia,afc-3 = <&tegra_afc3>;
+			nvidia,afc-4 = <&tegra_afc4>;
+			nvidia,afc-5 = <&tegra_afc5>;
+			nvidia,afc-6 = <&tegra_afc6>;
+			nvidia,mvc-1 = <&tegra_mvc1>;
+			nvidia,mvc-2 = <&tegra_mvc2>;
+			nvidia,spdif = <&tegra_spdif>;
+			nvidia,mixer-1 = <&tegra_amixer>;
+			nvidia,audio-codec-x = "spdif-dit.0";
+			nvidia,audio-codec-y = "spdif-dit.1";
+			nvidia,audio-codec-z = "spdif-dit.2";
+			nvidia,audio-codec-s = "spdif-dit.3";
 	};
 
 	pcie-controller {
