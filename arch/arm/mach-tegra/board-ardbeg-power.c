@@ -1433,6 +1433,7 @@ int __init ardbeg_soctherm_init(void)
 	s32 base_cp, shft_cp;
 	u32 base_ft, shft_ft;
 	struct board_info pmu_board_info;
+	struct board_info board_info;
 
 	/* do this only for supported CP,FT fuses */
 	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
@@ -1455,6 +1456,22 @@ int __init ardbeg_soctherm_init(void)
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,
 			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);
 		tegra_add_core_vmax_trips(
+			ardbeg_soctherm_data.therm[THERM_PLL].trips,
+			&ardbeg_soctherm_data.therm[THERM_PLL].num_trips);
+	}
+
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1761 ||
+		board_info.board_id == BOARD_E1784 ||
+		board_info.board_id == BOARD_E1922) {
+		tegra_add_cpu_vmin_trips(
+			ardbeg_soctherm_data.therm[THERM_CPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_gpu_vmin_trips(
+			ardbeg_soctherm_data.therm[THERM_GPU].trips,
+			&ardbeg_soctherm_data.therm[THERM_GPU].num_trips);
+		tegra_add_core_vmin_trips(
 			ardbeg_soctherm_data.therm[THERM_PLL].trips,
 			&ardbeg_soctherm_data.therm[THERM_PLL].num_trips);
 	}
