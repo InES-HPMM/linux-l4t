@@ -222,31 +222,29 @@ static int pca954x_probe(struct i2c_client *client,
 	struct pca954x_platform_data *pdata = client->dev.platform_data;
 	int num, force, class;
 	struct pca954x *data;
-	int ret = -ENODEV;
+	int ret;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
-		goto err;
+		return -ENODEV;
 
-	data = kzalloc(sizeof(struct pca954x), GFP_KERNEL);
-	if (!data) {
-		ret = -ENOMEM;
-		goto err;
-	}
+	data = devm_kzalloc(&client->dev, sizeof(struct pca954x), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
 
 	i2c_set_clientdata(client, data);
 
 	/* Get regulator pointer for pca954x vcc */
-	data->vcc_reg = regulator_get(&client->dev, "vcc");
+	data->vcc_reg = devm_regulator_get(&client->dev, "vcc");
 	if (PTR_ERR(data->vcc_reg) == -EPROBE_DEFER)
 		data->vcc_reg = NULL;
 	else if (IS_ERR(data->vcc_reg)) {
-		dev_err(&client->dev, "%s: failed to get vcc\n",
-			__func__);
 		ret = PTR_ERR(data->vcc_reg);
-		goto exit_free;
+		dev_err(&client->dev, "vcc regualtor get failed, %d\n", ret);
+		return ret;
 	}
+
 	/* Get regulator pointer for pca954x vcc-pullup */
-	data->pullup_reg = regulator_get(&client->dev, "vcc-pullup");
+	data->pullup_reg = devm_regulator_get(&client->dev, "vcc-pullup");
 	if (IS_ERR(data->pullup_reg)) {
 		dev_info(&client->dev, "vcc-pullup regulator not found\n");
 		data->pullup_reg = NULL;
@@ -254,22 +252,18 @@ static int pca954x_probe(struct i2c_client *client,
 
 	/* Increase ref count for pca954x vcc */
 	if (data->vcc_reg) {
-		pr_info("%s: enable vcc\n", __func__);
 		ret = regulator_enable(data->vcc_reg);
-		if (ret) {
-			dev_err(&client->dev, "%s: failed to enable vcc\n",
-				__func__);
-			goto exit_regulator_put;
+		if (ret < 0) {
+			dev_err(&client->dev, "failed to enable vcc\n");
+			return ret;
 		}
 	}
 	/* Increase ref count for pca954x vcc-pullup */
 	if (data->pullup_reg) {
-		pr_info("%s: enable vcc-pullup\n", __func__);
 		ret = regulator_enable(data->pullup_reg);
-		if (ret) {
-			dev_err(&client->dev, "%s: failed to enable vcc-pullup\n",
-				__func__);
-			goto exit_vcc_regulator_disable;
+		if (ret < 0) {
+			dev_err(&client->dev, "failed to enable vcc-pullup\n");
+			return ret;
 		}
 	}
 
@@ -346,16 +340,8 @@ virt_reg_failed:
 exit_regulator_disable:
 	if (data->pullup_reg)
 		regulator_disable(data->pullup_reg);
-exit_vcc_regulator_disable:
 	if (data->vcc_reg)
 		regulator_disable(data->vcc_reg);
-exit_regulator_put:
-	if (data->pullup_reg)
-		regulator_put(data->pullup_reg);
-	regulator_put(data->vcc_reg);
-exit_free:
-	kfree(data);
-err:
 	return ret;
 }
 
@@ -371,11 +357,6 @@ static int pca954x_remove(struct i2c_client *client)
 			data->virt_adaps[i] = NULL;
 		}
 
-	if (data->pullup_reg)
-		regulator_put(data->pullup_reg);
-	regulator_put(data->vcc_reg);
-
-	kfree(data);
 	return 0;
 }
 
