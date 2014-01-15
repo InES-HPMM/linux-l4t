@@ -33,18 +33,15 @@
 #include "nvxxx.h"
 #include <linux/delay.h>
 
+static const char const driver_name[] = "tegra-xudc";
 static struct NV_UDC_S *the_controller;
 
-static int nvudc_remove_platform(struct platform_device *pdev);
 static void nvudc_remove_pci(struct pci_dev *pdev);
 
 static int nvudc_gadget_start(struct usb_gadget *,
 		struct usb_gadget_driver *);
 static int nvudc_gadget_stop(struct usb_gadget *,
 		struct usb_gadget_driver *);
-
-static const u8 plat_driver_name[] = NV_UDC_PLATFORM;
-static const u8 pci_driver_name[] = NV_UDC_PCI;
 
 static void build_ep0_status(struct NV_UDC_EP *udc_ep_ptr, bool default_value,
 		u32 status, struct NV_UDC_REQUEST *udc_req_ptr);
@@ -89,6 +86,13 @@ module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
  * we retry the following count times before stopping and waiting for PRIME
  */
 static unsigned int  max_stream_rejected_retry_count = 20;
+
+#ifdef DEBUG
+#define reg_dump(_dev, _base, _reg) \
+	msg_dbg(_dev, "%s @%x = 0x%x\n", #_reg, _reg, ioread32(_base + _reg));
+#else
+#define reg_dump(_dev, _base, _reg)	do {} while (0)
+#endif
 
 /* When the stream is rejected by the Host, we wait for this much
  * time(in milliseconds) before we retry sending an ERDY. so in total
@@ -3506,7 +3510,7 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 		usbep_struct_setup(nvudc, i*2+1, name);
 	}
 
-	retval = device_create_file(&nvudc->pdev_pci->dev, &dev_attr_debug);
+	retval = device_create_file(nvudc->dev, &dev_attr_debug);
 	if (retval)
 		goto err_unbind;
 
@@ -3589,7 +3593,7 @@ static int nvudc_gadget_stop(struct usb_gadget *gadget,
 	if (nvudc->transceiver)
 		otg_set_peripheral(nvudc->transceiver, NULL);
 #endif
-	device_remove_file(&nvudc->pdev_pci->dev, &dev_attr_debug);
+	device_remove_file(nvudc->dev, &dev_attr_debug);
 	return 0;
 }
 
@@ -3775,172 +3779,41 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static int nvudc_request_mem_region(struct NV_UDC_S *nvudc)
+static int nvudc_pci_get_irq_resources(struct NV_UDC_S *nvudc)
 {
-	struct resource	*res;
-	void __iomem *mem;
+	struct pci_dev *pdev = nvudc->pdev.pci;
 
-	res = platform_get_resource_byname(nvudc->pdev_plat, IORESOURCE_MEM,
-						nvudc->gadget.name);
-	if (!res) {
-		msg_err(nvudc->dev, "memory resource %s doesn't exist\n",
-				nvudc->gadget.name);
-		return -ENODEV;
+	if (request_irq(pdev->irq, nvudc_irq, IRQF_SHARED,
+				driver_name, nvudc) != 0) {
+		msg_err(nvudc->dev, "Can't get irq resource\n");
+		return -EBUSY;
 	}
 
-	mem = devm_request_and_ioremap(&nvudc->pdev_plat->dev, res);
-	if (!mem) {
-		msg_err(nvudc->dev, "failed to ioremap for %s\n",
-				nvudc->gadget.name);
+	nvudc->irq = nvudc->pdev.pci->irq;
+	return 0;
+}
+
+static int nvudc_pci_get_memory_resources(struct NV_UDC_S *nvudc)
+{
+	struct pci_dev *pdev = nvudc->pdev.pci;
+	int len;
+
+	nvudc->mmio_phys_base = pci_resource_start(pdev, 0);
+	len = pci_resource_len(pdev, 0);
+
+	if (!request_mem_region(nvudc->mmio_phys_base, len, driver_name)) {
+		msg_err(nvudc->dev, "Can't get memory resources\n");
+		return -EBUSY;
+	}
+
+	nvudc->mmio_reg_base = ioremap_nocache(nvudc->mmio_phys_base, len);
+	if (nvudc->mmio_reg_base == NULL) {
+		msg_err(nvudc->dev, "memory mapping failed\n");
 		return -EFAULT;
 	}
 
-	nvudc->mmio_phys_base = res->start;
-	nvudc->mmio_phys_len = resource_size(res);
-
-	nvudc->mmio_reg_base = mem;
-
+	nvudc->mmio_phys_len = len;
 	return 0;
-}
-
-static int nvudc_get_irq_resources(struct NV_UDC_S *nvudc)
-{
-	if (strcmp(nvudc->gadget.name, NV_UDC_PLATFORM) == 0) {
-		struct resource *res;
-
-		/* TODO: what resource name should be used?*/
-		res = platform_get_resource_byname(nvudc->pdev_plat,
-					IORESOURCE_IRQ, "device");
-		if (!res) {
-			msg_err(nvudc->dev,
-				"irq resource device doesn't exist\n");
-			return -ENODEV;
-		}
-
-		nvudc->irq = res->start;
-	} else if (strcmp(nvudc->gadget.name, NV_UDC_PCI) == 0) {
-		if (request_irq(nvudc->pdev_pci->irq, nvudc_irq, IRQF_SHARED,
-					pci_driver_name, nvudc) != 0) {
-			msg_err(nvudc->dev, "Can't get irq resource\n");
-			return -EBUSY;
-		}
-
-		nvudc->irq = nvudc->pdev_pci->irq;
-	}
-
-	return 0;
-}
-
-static int nvudc_get_memory_resources(struct NV_UDC_S *nvudc)
-{
-
-	if (strcmp(nvudc->gadget.name, NV_UDC_PLATFORM) == 0) {
-		return	nvudc_request_mem_region(nvudc);
-	} else if (strcmp(nvudc->gadget.name, NV_UDC_PCI) == 0) {
-		int len;
-
-		nvudc->mmio_phys_base = pci_resource_start(nvudc->pdev_pci, 0);
-		len = pci_resource_len(nvudc->pdev_pci, 0);
-		if (!request_mem_region(nvudc->mmio_phys_base, len,
-						pci_driver_name)) {
-			msg_err(nvudc->dev, "Can't get memory resources\n");
-			return -EBUSY;
-		}
-
-		nvudc->mmio_reg_base =
-			ioremap_nocache(nvudc->mmio_phys_base, len);
-		if (nvudc->mmio_reg_base == NULL) {
-			msg_err(nvudc->dev, "memory mapping failed\n");
-			return -EFAULT;
-		}
-
-		nvudc->mmio_phys_len = len;
-		return 0;
-	} else {
-		return -ENODEV;
-	}
-}
-
-static int nvudc_probe_platform(struct platform_device *pdev)
-{
-	int retval;
-	u32 i;
-	struct NV_UDC_S *nvudc_dev;
-
-	nvudc_dev = kzalloc(sizeof(struct NV_UDC_S), GFP_KERNEL);
-	if  (nvudc_dev == NULL) {
-		retval = -ENOMEM;
-		goto error;
-	}
-
-	/* this needs to be done before using msg_ macros */
-	nvudc_dev->dev = &pdev->dev;
-	msg_entry(nvudc_dev->dev);
-
-	spin_lock_init(&nvudc_dev->lock);
-	platform_set_drvdata(pdev, nvudc_dev);
-	msg_dbg(nvudc_dev->dev, "platform drvdata set\n");
-
-	/* Initialize back pointer in udc_ep[i]. This is used for accessing
-	 * nvudc from gadget api calls */
-	for (i = 0; i < 32; i++)
-		nvudc_dev->udc_ep[i].nvudc = nvudc_dev;
-
-	nvudc_dev->pdev_plat = pdev;
-	dev_set_name(&nvudc_dev->gadget.dev, "gadget");
-	nvudc_dev->gadget.dev.parent = &pdev->dev;
-	nvudc_dev->gadget.dev.release = nvudc_gadget_release;
-	nvudc_dev->gadget.ops = &nvudc_gadget_ops;
-	nvudc_dev->gadget.ep0 = &nvudc_dev->udc_ep[0].usb_ep;
-	INIT_LIST_HEAD(&nvudc_dev->gadget.ep_list);
-	nvudc_dev->gadget.max_speed = USB_SPEED_SUPER;
-	nvudc_dev->gadget.name = plat_driver_name;
-
-	nvudc_dev->enabled = 1;
-
-	retval = nvudc_get_memory_resources(nvudc_dev);
-	if (retval < 0)
-		goto error;
-
-	msg_dbg(nvudc_dev->dev, "ioremap_nocache nvudc->mmio_reg_base = 0x%p\n",
-			nvudc_dev->mmio_reg_base);
-	retval = reset_data_struct(nvudc_dev);
-	if (retval)
-		goto error;
-
-	retval = EP0_Start(nvudc_dev);
-	if (retval)
-		goto error;
-
-	retval = nvudc_get_irq_resources(nvudc_dev);
-	if (retval < 0)
-		goto error;
-
-	msg_dbg(nvudc_dev->dev, "request_irq, irq = 0x%x\n", nvudc_dev->irq);
-
-	retval = platform_device_register(nvudc_dev->pdev_plat);
-
-	if (retval) {
-		msg_err(nvudc_dev->dev, "Can't register device\n");
-		goto error;
-	}
-
-	msg_dbg(nvudc_dev->dev, "device registered\n");
-	nvudc_dev->registered = true;
-
-	retval = usb_add_gadget_udc(&pdev->dev, &nvudc_dev->gadget);
-	if (retval)
-		goto error;
-
-	msg_dbg(nvudc_dev->dev, "usb_add_gadget_udc\n");
-
-	the_controller = nvudc_dev;
-
-	return 0;
-error:
-	nvudc_remove_platform(pdev);
-	msg_exit(nvudc_dev->dev);
-	return retval;
 }
 
 static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
@@ -3949,7 +3822,6 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 	int retval;
 	u32 i;
 	struct NV_UDC_S *nvudc_dev;
-
 
 	nvudc_dev = kzalloc(sizeof(struct NV_UDC_S), GFP_KERNEL);
 	if  (nvudc_dev == NULL) {
@@ -3970,7 +3842,7 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 	for (i = 0; i < 32; i++)
 		nvudc_dev->udc_ep[i].nvudc = nvudc_dev;
 
-	nvudc_dev->pdev_pci = pdev;
+	nvudc_dev->pdev.pci = pdev;
 	dev_set_name(&nvudc_dev->gadget.dev, "gadget");
 	nvudc_dev->gadget.dev.parent = &pdev->dev;
 	nvudc_dev->gadget.dev.release = nvudc_gadget_release;
@@ -3978,7 +3850,7 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 	nvudc_dev->gadget.ep0 = &nvudc_dev->udc_ep[0].usb_ep;
 	INIT_LIST_HEAD(&nvudc_dev->gadget.ep_list);
 	nvudc_dev->gadget.max_speed = USB_SPEED_SUPER;
-	nvudc_dev->gadget.name = pci_driver_name;
+	nvudc_dev->gadget.name = driver_name;
 
 	if (pci_enable_device(pdev) < 0) {
 		retval = -ENODEV;
@@ -3990,7 +3862,7 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 
 	msg_dbg(nvudc_dev->dev, "pci device enabled\n");
 
-	retval = nvudc_get_memory_resources(nvudc_dev);
+	retval = nvudc_pci_get_memory_resources(nvudc_dev);
 	if (retval < 0)
 		goto error;
 
@@ -4005,7 +3877,7 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 	if (retval)
 		goto error;
 
-	retval = nvudc_get_irq_resources(nvudc_dev);
+	retval = nvudc_pci_get_irq_resources(nvudc_dev);
 	if (retval < 0)
 		goto error;
 
@@ -4092,38 +3964,6 @@ void free_data_struct(struct NV_UDC_S *nvudc)
 		kfree(nvudc->status_req);
 	}
 	/*        otg_put_transceiver(nvudc->transceiver); */
-}
-
-static int nvudc_remove_platform(struct platform_device *pdev)
-{
-	struct NV_UDC_S *nvudc;
-
-	nvudc = platform_get_drvdata(pdev);
-	msg_entry(nvudc->dev);
-
-	usb_del_gadget_udc(&nvudc->gadget);
-	free_data_struct(nvudc);
-	if (nvudc) {
-		if (nvudc->mmio_phys_base) {
-			release_mem_region(nvudc->mmio_phys_base,
-					nvudc->mmio_phys_len);
-			if (nvudc->mmio_reg_base) {
-				iounmap(nvudc->mmio_reg_base);
-				nvudc->mmio_reg_base = NULL;
-			}
-		}
-		if (nvudc->irq)
-			free_irq(nvudc->irq, nvudc);
-
-/*		if (nvudc->enabled) */
-/*			pci_disable_device(pdev); */
-
-		if (nvudc->registered)
-			device_unregister(&nvudc->gadget.dev);
-		platform_set_drvdata(pdev, NULL);
-	}
-	msg_exit(nvudc->dev);
-	return 0;
 }
 
 static void nvudc_remove_pci(struct pci_dev *pdev)
@@ -4267,16 +4107,249 @@ static int nvudc_resume_platform(struct platform_device *pdev)
 }
 #endif
 
-static struct platform_driver nvudc_driver_platform = {
-	.probe	= nvudc_probe_platform,
-	.remove	= nvudc_remove_platform,
-/*	.shutdown = nvudc_shutdown, */
-/*	.suspend = nvudc_suspend_platform,   */
-/*	.resume  = nvudc_resume_platform,    */
-	.driver	= {
-		.name = (char *)plat_driver_name,
+static int nvudc_plat_mmio_regs_init(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		msg_err(dev, "failed to get udc mmio resources\n");
+		return -ENXIO;
+	}
+	msg_info(dev, "xudc mmio start %pa end %pa\n", &res->start, &res->end);
+	nvudc->mmio_phys_base = res->start;
+	msg_info(dev, "xudc mmio_phys_base %pa\n", &nvudc->mmio_phys_base);
+
+	nvudc->base = devm_request_and_ioremap(dev, res);
+	if (!nvudc->base) {
+		msg_err(dev, "failed to request and map udc mmio\n");
+		return -EFAULT;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		msg_err(dev, "failed to get fpci mmio resources\n");
+		return -ENXIO;
+	}
+	msg_info(dev, "fpci mmio start %pa end %pa\n", &res->start, &res->end);
+
+	nvudc->fpci = devm_request_and_ioremap(dev, res);
+	if (!nvudc->fpci) {
+		msg_err(dev, "failed to request and map fpci mmio\n");
+		return -EFAULT;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (!res) {
+		msg_err(dev, "failed to get ipfs mmio resources\n");
+		return -ENXIO;
+	}
+	msg_info(dev, "ipfs mmio start %pa end %pa\n", &res->start, &res->end);
+
+	nvudc->ipfs = devm_request_and_ioremap(dev, res);
+	if (!nvudc->ipfs) {
+		msg_err(dev, "failed to request and map ipfs mmio\n");
+		return -EFAULT;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	if (!res) {
+		msg_err(dev, "failed to get padctl mmio resources\n");
+		return -ENXIO;
+	}
+	msg_info(dev, "padctl mmio start %pa end %pa\n",
+					&res->start, &res->end);
+
+	nvudc->padctl = devm_request_and_ioremap(dev, res);
+	if (!nvudc->padctl) {
+		msg_err(dev, "failed to request and map padctl mmio\n");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	u32 reg, addr;
+
+	reg = ioread32(nvudc->ipfs + XUSB_DEV_CONFIGURATION);
+	reg |= EN_FPCI;
+	iowrite32(reg, nvudc->ipfs + XUSB_DEV_CONFIGURATION);
+	reg_dump(dev, nvudc->ipfs, XUSB_DEV_CONFIGURATION);
+	usleep_range(10, 30);
+
+	reg = ioread32(nvudc->fpci + XUSB_DEV_CFG_4);
+	reg &= ~(BASE_ADDRESS(~0));
+	addr = lower_32_bits(nvudc->mmio_phys_base);
+	reg |= BASE_ADDRESS((addr >> 16));
+	iowrite32(reg, nvudc->fpci + XUSB_DEV_CFG_4);
+	reg_dump(dev, nvudc->fpci, XUSB_DEV_CFG_4);
+
+	reg = upper_32_bits(nvudc->mmio_phys_base);
+	iowrite32(reg, nvudc->fpci + XUSB_DEV_CFG_5);
+	reg_dump(dev, nvudc->fpci, XUSB_DEV_CFG_5);
+
+	usleep_range(100, 200);
+
+	reg = ioread32(nvudc->fpci + XUSB_DEV_CFG_1);
+	reg |= (IO_SPACE_ENABLED | MEMORY_SPACE_ENABLED | BUS_MASTER_ENABLED);
+	iowrite32(reg, nvudc->fpci + XUSB_DEV_CFG_1);
+	reg_dump(dev, nvudc->fpci, XUSB_DEV_CFG_1);
+
+	/* enable interrupt assertion */
+	reg = ioread32(nvudc->ipfs + XUSB_DEV_INTR_MASK);
+	reg |= IP_INT_MASK;
+	writel(reg, nvudc->ipfs + XUSB_DEV_INTR_MASK);
+	reg_dump(dev, nvudc->ipfs, XUSB_DEV_INTR_MASK);
+
+}
+
+static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int err;
+
+	/* TODO try "interrupt-names" in dts */
+	err = platform_get_irq(pdev, 0);
+	if (err < 0) {
+		msg_err(dev, "failed to get irq resource 0\n");
+		return -ENXIO;
+	}
+	nvudc->irq = err;
+	msg_info(dev, "irq %u\n", nvudc->irq);
+
+	err = devm_request_irq(dev, nvudc->irq, nvudc_irq, 0,
+				dev_name(dev), nvudc);
+	if (err < 0) {
+		msg_err(dev, "failed to claim irq %d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
+static int tegra_xudc_plat_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct NV_UDC_S *nvudc;
+	int i;
+	int err;
+
+	if (!dev->dma_mask)
+		dev->dma_mask = &dev->coherent_dma_mask;
+
+	err = dma_set_mask(dev, DMA_BIT_MASK(64));
+	if (err) {
+		dev_warn(dev, "no suitable DMA available\n");
+		return err;
+	} else
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
+
+	nvudc = devm_kzalloc(dev, sizeof(*nvudc), GFP_KERNEL);
+	if (!nvudc) {
+		dev_err(dev, "failed to allocate memory for nvudc\n");
+		return -ENOMEM;
+	}
+
+	nvudc->pdev.plat = pdev;
+	nvudc->dev = dev;
+	platform_set_drvdata(pdev, nvudc);
+
+	err = nvudc_plat_mmio_regs_init(nvudc);
+	if (err) {
+		dev_err(dev, "failed to init mmio regions\n");
+		return err;
+	}
+
+	nvudc_plat_fpci_ipfs_init(nvudc);
+
+	err = nvudc_plat_irqs_init(nvudc);
+	if (err) {
+		dev_err(dev, "failed to init irqs\n");
+		return err;
+	}
+
+	spin_lock_init(&nvudc->lock);
+
+	for (i = 0; i < 32; i++)
+		nvudc->udc_ep[i].nvudc = nvudc;
+
+	dev_set_name(&nvudc->gadget.dev, "gadget");
+	nvudc->gadget.dev.parent = &pdev->dev;
+	nvudc->gadget.dev.release = nvudc_gadget_release;
+	nvudc->gadget.ops = &nvudc_gadget_ops;
+	nvudc->gadget.ep0 = &nvudc->udc_ep[0].usb_ep;
+	INIT_LIST_HEAD(&nvudc->gadget.ep_list);
+	nvudc->gadget.name = driver_name;
+	nvudc->gadget.max_speed = USB_SPEED_SUPER;
+
+	nvudc->mmio_reg_base = nvudc->base; /* TODO support device context */
+
+	err = reset_data_struct(nvudc);
+	if (err) {
+		dev_err(dev, "failed to reset_data_struct\n");
+		return err;
+	}
+
+	err = EP0_Start(nvudc);
+	if (err) {
+		dev_err(dev, "failed to EP0_Start\n");
+		return err;
+	}
+
+	err = usb_add_gadget_udc(&pdev->dev, &nvudc->gadget);
+	if (err) {
+		dev_err(dev, "failed to usb_add_gadget_udc\n");
+		return err;
+	}
+
+	the_controller = nvudc; /* TODO support device context */
+	return 0;
+
+}
+
+static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
+{
+	struct NV_UDC_S *nvudc = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
+
+	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
+
+	/* TODO implement */
+	return 0;
+}
+
+static void tegra_xudc_plat_shutdown(struct platform_device *pdev)
+{
+	struct NV_UDC_S *nvudc = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
+
+	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
+
+	/* TODO implement */
+}
+
+static struct of_device_id tegra_xudc_of_match[] = {
+	{.compatible = "nvidia,tegra210-xudc",},
+	{},
+};
+
+static struct platform_driver tegra_xudc_driver = {
+	.probe = tegra_xudc_plat_probe,
+	.remove = __exit_p(tegra_xudc_plat_remove),
+	.shutdown = tegra_xudc_plat_shutdown,
+	.driver = {
+		.name = driver_name,
+		.of_match_table = tegra_xudc_of_match,
 		.owner = THIS_MODULE,
 	},
+	/* TODO support PM */
 };
 
 static DEFINE_PCI_DEVICE_TABLE(nvpci_ids) = {
@@ -4295,7 +4368,7 @@ static DEFINE_PCI_DEVICE_TABLE(nvpci_ids) = {
 MODULE_DEVICE_TABLE(pci, nvpci_ids);
 
 static struct pci_driver nvudc_driver_pci = {
-	.name = (char *)pci_driver_name,
+	.name = driver_name,
 	.id_table = nvpci_ids,
 	.probe = nvudc_probe_pci,
 	.remove = nvudc_remove_pci,
@@ -4304,24 +4377,32 @@ static struct pci_driver nvudc_driver_pci = {
 	/*      .shutdown = nvudc_shutdown, */
 };
 
-int nvudc_register_plat(void)
-{
-	return platform_driver_register(&nvudc_driver_platform);
-}
-
-void nvudc_unregister_plat(void)
-{
-	platform_driver_unregister(&nvudc_driver_platform);
-}
-
 static int __init udc_init(void)
 {
-	return pci_register_driver(&nvudc_driver_pci);
+	int ret;
+
+	ret = platform_driver_register(&tegra_xudc_driver);
+	if (ret) {
+		pr_err("%s failed to register platform driver %d\n",
+				__func__, ret);
+		return ret;
+	}
+
+	ret = pci_register_driver(&nvudc_driver_pci);
+	if (ret) {
+		pr_err("%s failed to register pci driver %d\n",
+				__func__, ret);
+		platform_driver_unregister(&tegra_xudc_driver);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void __exit udc_exit(void)
 {
 	pci_unregister_driver(&nvudc_driver_pci);
+	platform_driver_unregister(&tegra_xudc_driver);
 }
 
 module_init(udc_init);

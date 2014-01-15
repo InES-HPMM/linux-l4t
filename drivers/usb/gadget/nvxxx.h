@@ -170,9 +170,6 @@
 
 #define CFG_DEV_SSPI_XFER           0x00000858
 
-#define NV_UDC_PLATFORM		"nvudc_platform"
-#define NV_UDC_PCI		"nvudc_pci"
-
 #define NV_BIT(bit_name) (1 << bit_name)
 
 #define XHCI_SETF_VAR(field, var, fieldval) \
@@ -617,16 +614,19 @@ struct mmio_reg_s {
 struct NV_UDC_S {
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
-	struct device *dev;
-	struct platform_device *pdev_plat;
-	struct pci_dev *pdev_pci;
+	union {
+		struct pci_dev *pci;
+		struct platform_device *plat;
+	} pdev;
+	struct device *dev; /* a shortcut to pdev.[pci/plat]->dev */
+
 	struct otg_transceiver *transceiver;
 	struct NV_UDC_EP udc_ep[32];
-	u32 irq;
+	unsigned int irq;
 	struct NV_BUFFER_INFO_S ep_cx;
 	struct EP_CX_S *p_epcx;
-	resource_size_t	mmio_phys_len;
-	resource_size_t	mmio_phys_base;
+	resource_size_t mmio_phys_len;
+	resource_size_t mmio_phys_base;
 
 	void __iomem *mmio_reg_base;
 
@@ -671,6 +671,12 @@ struct NV_UDC_S {
 	u32 iso_delay;
 	u32 stream_rejected;
 	struct mmio_reg_s mmio_reg;
+
+	/* mmio regions */
+	void __iomem *base;
+	void __iomem *ipfs;
+	void __iomem *fpci;
+	void __iomem *padctl;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
@@ -757,3 +763,20 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 		msg_dbg(dev, "enter, cpu=%d\n", _cpu);  \
 	} while (0)
 #define msg_exit(dev) msg_dbg(dev, "exit");
+
+/* fpci mmio registers */
+#define XUSB_DEV_CFG_1				(0x4)
+#define  IO_SPACE_ENABLED			(1 << 0)
+#define  MEMORY_SPACE_ENABLED			(1 << 1)
+#define  BUS_MASTER_ENABLED			(1 << 2)
+
+#define XUSB_DEV_CFG_4				(0x10)
+#define  BASE_ADDRESS(x)			(((x) & 0xFFFF) << 16)
+#define XUSB_DEV_CFG_5				(0x14)
+
+/* ipfs mmio registers */
+#define XUSB_DEV_CONFIGURATION		(0x180)
+#define  EN_FPCI				(1 << 0)
+
+#define XUSB_DEV_INTR_MASK			(0x188)
+#define  IP_INT_MASK				(1 << 16)
