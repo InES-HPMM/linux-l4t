@@ -369,6 +369,7 @@ static struct palmas_reg_init *loki_reg_init[PALMAS_NUM_REGS] = {
 static struct iio_map palmas_adc_iio_maps[] = {
 	PALMAS_GPADC_IIO_MAP(IN1, "generic-adc-thermal.0", "thermistor"),
 	PALMAS_GPADC_IIO_MAP(IN3, "generic-adc-thermal.1", "tdiode"),
+	PALMAS_GPADC_IIO_MAP(IN4, "generic-adc-thermal.2", "tbat"),
 	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
 };
 
