@@ -169,7 +169,7 @@
 		status = "disabled";
 	};
 
-	ahub {
+	tegra_axbar: ahub {
 		compatible = "nvidia,tegra210-axbar";
 		reg = <0x0 0x702d0800 0x0 0x800>;
 		status = "disabled";
@@ -178,7 +178,7 @@
 		#size-cells = <1>;
 		ranges = <0x702d0000 0x0 0x702d0000 0x00010000>;
 
-		admaif@0x702d0000 {
+		tegra_admaif: admaif@0x702d0000 {
 			compatible = "nvidia,tegra210-admaif";
 			reg = <0x702d0000 0x800>;
 			status = "disabled";
@@ -274,38 +274,66 @@
 			status = "disabled";
 		};
 
-		i2s@702d1000 {
+		tegra_i2s0: i2s@702d1000 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1000 0x100>;
 			nvidia,ahub-i2s-id = <0>;
 			status = "disabled";
 		};
 
-		i2s@702d1100 {
+		tegra_i2s1: i2s@702d1100 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1100 0x100>;
 			nvidia,ahub-i2s-id = <1>;
 			status = "disabled";
 		};
 
-		i2s@702d1200 {
+		tegra_i2s2: i2s@702d1200 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1200 0x100>;
 			nvidia,ahub-i2s-id = <2>;
 			status = "disabled";
 		};
 
-		i2s@702d1300 {
+		tegra_i2s3: i2s@702d1300 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1300 0x100>;
 			nvidia,ahub-i2s-id = <3>;
 			status = "disabled";
 		};
 
-		i2s@702d1400 {
+		tegra_i2s4: i2s@702d1400 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1400 0x100>;
 			nvidia,ahub-i2s-id = <4>;
+			status = "disabled";
+		};
+
+		tegra_amx0: amx@702d3000 {
+			compatible = "nvidia,tegra210-amx";
+			reg = <0x702d3000 0x100>;
+			nvidia,ahub-i2s-amx = <0>;
+			status = "disabled";
+		};
+
+		tegra_amx1: amx@702d3100 {
+			compatible = "nvidia,tegra210-amx";
+			reg = <0x702d3100 0x100>;
+			nvidia,ahub-i2s-amx = <1>;
+			status = "disabled";
+		};
+
+		tegra_adx0: adx@702d3800 {
+			compatible = "nvidia,tegra210-adx";
+			reg = <0x702d3800 0x100>;
+			nvidia,ahub-i2s-adx = <0>;
+			status = "disabled";
+		};
+
+		tegra_adx1: adx@702d3900 {
+			compatible = "nvidia,tegra210-adx";
+			reg = <0x702d3900 0x100>;
+			nvidia,ahub-i2s-adx = <1>;
 			status = "disabled";
 		};
 	};
