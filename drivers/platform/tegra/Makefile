@@ -112,6 +112,7 @@ obj-y += board-touch-raydium_spi.o
 obj-y += board-panel.o
 
 obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
+obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
 
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 
