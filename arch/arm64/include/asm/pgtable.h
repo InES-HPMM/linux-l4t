@@ -28,7 +28,7 @@
 #define PTE_FILE		(_AT(pteval_t, 1) << 2)	/* only when !pte_present() */
 #define PTE_DIRTY		(_AT(pteval_t, 1) << 55)
 #define PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
-				/* bit 57 for PMD_SECT_SPLITTING */
+#define PTE_WRITE		(_AT(pteval_t, 1) << 57)
 #define PTE_PROT_NONE		(_AT(pteval_t, 1) << 58) /* only when !PTE_VALID */
 
 /*
@@ -153,7 +153,7 @@ extern unsigned long zero_page_mask;
 #define pte_dirty(pte)		(pte_val(pte) & PTE_DIRTY)
 #define pte_young(pte)		(pte_val(pte) & PTE_AF)
 #define pte_special(pte)	(pte_val(pte) & PTE_SPECIAL)
-#define pte_write(pte)		(!(pte_val(pte) & PTE_RDONLY))
+#define pte_write(pte)		(pte_val(pte) & PTE_WRITE)
 #define pte_exec(pte)		(!(pte_val(pte) & PTE_UXN))
 
 #define pte_valid_user(pte) \
@@ -161,13 +161,13 @@ extern unsigned long zero_page_mask;
 
 static inline pte_t pte_wrprotect(pte_t pte)
 {
-	pte_val(pte) |= PTE_RDONLY;
+	pte_val(pte) &= ~PTE_WRITE;
 	return pte;
 }
 
 static inline pte_t pte_mkwrite(pte_t pte)
 {
-	pte_val(pte) &= ~PTE_RDONLY;
+	pte_val(pte) |= PTE_WRITE;
 	return pte;
 }
 
@@ -214,8 +214,10 @@ static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
 	if (pte_valid_user(pte)) {
 		if (pte_exec(pte))
 			__sync_icache_dcache(pte, addr);
-		if (!pte_dirty(pte))
-			pte = pte_wrprotect(pte);
+		if (pte_dirty(pte) && pte_write(pte))
+			pte_val(pte) &= ~PTE_RDONLY;
+		else
+			pte_val(pte) |= PTE_RDONLY;
 	}
 
 	set_pte(ptep, pte);
@@ -319,7 +321,7 @@ static inline pmd_t *pmd_offset(pud_t *pud, unsigned long addr)
 static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
 {
 	const pteval_t mask = PTE_USER | PTE_PXN | PTE_UXN | PTE_RDONLY |
-			      PTE_PROT_NONE | PTE_VALID;
+			      PTE_PROT_NONE | PTE_VALID | PTE_WRITE;
 	pte_val(pte) = (pte_val(pte) & ~mask) | (pgprot_val(newprot) & mask);
 	return pte;
 }
@@ -361,11 +363,7 @@ extern pgd_t idmap_pg_dir[PTRS_PER_PGD];
  * Encode and decode a file entry:
  *	bits 0-1:	present (must be zero)
  *	bit  2:		PTE_FILE
-<<<<<<< HEAD
- *	bits 3-63:	file offset / PAGE_SIZE
-=======
  *	bits 3-57:	file offset / PAGE_SIZE
->>>>>>> 3676f9e... arm64: Move PTE_PROT_NONE higher up
  */
 #define pte_file(pte)		(pte_val(pte) & PTE_FILE)
 #define pte_to_pgoff(x)		(pte_val(x) >> 3)
