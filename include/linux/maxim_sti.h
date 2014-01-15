@@ -27,8 +27,8 @@
 #include "genetlink.h"
 #endif
 
-#define DRIVER_VERSION  "1.4.3"
-#define DRIVER_RELEASE  "September 27, 2013"
+#define DRIVER_VERSION  "1.4.3.dt1"
+#define DRIVER_RELEASE  "December 4, 2013"
 
 /****************************************************************************\
 * Netlink: common kernel/user space macros                                   *
@@ -191,7 +191,7 @@ struct __attribute__ ((__packed__)) dr_chip_access_method {
 	__u8  method;
 };
 
-#define MAX_IRQ_PARAMS  20
+#define MAX_IRQ_PARAMS  26
 struct __attribute__ ((__packed__)) dr_config_irq {
 	__u16  irq_param[MAX_IRQ_PARAMS];
 	__u8   irq_params;
