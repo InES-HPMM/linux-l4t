@@ -656,7 +656,26 @@ static void ardbeg_usb_init(void)
 		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
 		tegra_ehci1_utmi_pdata.id_extcon_dev_name = "as3722-extcon";
 	} else {
-		/* Ardbeg */
+		/* Ardbeg and TN8 */
+
+		/*
+		 * TN8 supports vbus changing and it can handle
+		 * vbus voltages larger then 5V.  Enable this.
+		 */
+		if (board_info.board_id == BOARD_P1761 ||
+			board_info.board_id == BOARD_E1784) {
+			/*
+			 * Set the maximum voltage that can be supplied
+			 * over USB vbus that the board supports if we use
+			 * a quick charge 2 wall charger.
+			 */
+			tegra_udc_pdata.qc2_voltage = TEGRA_USB_QC2_9V;
+			/*
+			 * TN8 board design can handle 3A charging
+			 */
+			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 3000;
+		}
+
 		switch (bi.board_id) {
 		case BOARD_E1733:
 			/* Host cable is detected through PMU Interrupt */
