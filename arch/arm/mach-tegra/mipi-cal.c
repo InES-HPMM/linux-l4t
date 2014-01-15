@@ -1,7 +1,7 @@
 /*
  * arch/arch/mach-tegra/mipi-cal.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Charlie Huang <chahuang@nvidia.com>
@@ -103,7 +103,7 @@ static int __init mipi_cal_dev_init(void)
 		pr_warn("%s: cannot get mipi-cal clk.\n", __func__);
 		pm.clk = NULL;
 	}
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	pm.clk72mhz = clk_get_sys("clk72mhz", NULL);
 	if (IS_ERR_OR_NULL(pm.clk72mhz)) {
 		pr_warn("%s: cannot get mipi-cal clk.\n", __func__);
