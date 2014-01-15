@@ -36,13 +36,13 @@
 * Custom features                                                            *
 \****************************************************************************/
 
-#define INPUT_DEVICES               2
+#define INPUT_DEVICES               1
 #define INPUT_ENABLE_DISABLE        0
 #define FB_CALLBACK                 1
 #define SUSPEND_POWER_OFF           0
 #define DOUBLE_TAP                  0
 #define NV_ENABLE_CPU_BOOST         1
-#define NV_STYLUS_FINGER_EXCLUSION  1
+#define NV_STYLUS_FINGER_EXCLUSION  0
 
 #define ID_FINGER   0
 #define ID_STYLUS   (INPUT_DEVICES - 1)
