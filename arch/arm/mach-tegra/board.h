@@ -230,6 +230,7 @@ enum touch_panel {
 	TOUCHPANEL_LOKI_WINTEK_5_66_UNLAMIN,
 	TOUCHPANEL_TN7,
 	TOUCHPANEL_TN8,
+	TOUCHPANEL_LOKI_JDI5,
 };
 
 enum audio_codec_type {

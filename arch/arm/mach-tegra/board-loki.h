@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki.h
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -93,16 +93,6 @@ enum tegra_bb_type {
 #define UTMI2_PORT_OWNER_XUSB   0x2
 #define UTMI3_PORT_OWNER_XUSB   0x4
 #define HSIC1_PORT_OWNER_XUSB   0x8
-
-/* Touchscreen definitions */
-enum touch_panel_id {
-	TOUCH_PANEL_RESERVED = 0,
-	TOUCH_PANEL_WINTEK,
-	TOUCH_PANEL_TPK,
-	TOUCH_PANEL_TOUCHTURNS,
-	TOUCH_PANEL_THOR_WINTEK,
-	TOUCH_PANEL_LOKI_WINTEK_5_66_UNLAMIN,
-};
 
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
