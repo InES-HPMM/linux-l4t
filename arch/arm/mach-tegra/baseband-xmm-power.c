@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -185,7 +185,6 @@ static int xmm_power_on(struct platform_device *device)
 			device->dev.platform_data;
 	struct xmm_power_data *data = &xmm_power_drv_data;
 	unsigned long flags;
-	int ret;
 
 	pr_debug("%s {\n", __func__);
 
@@ -261,7 +260,6 @@ static int xmm_power_off(struct platform_device *device)
 {
 	struct baseband_power_platform_data *pdata;
 	struct xmm_power_data *data = &xmm_power_drv_data;
-	int ret;
 	unsigned long flags;
 
 	pr_debug("%s {\n", __func__);

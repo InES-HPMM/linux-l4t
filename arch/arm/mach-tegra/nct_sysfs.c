@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/nct_sysfs.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,39 +36,272 @@
 #include <mach/nct.h>
 #include "board.h"
 
+DEFINE_MUTEX(item_lock);
 static struct kobject *nct_kobj;
-static ssize_t nct_item_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf);
-
+static union nct_item_type item;
+static ssize_t nct_item_show_serial(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%s\n", item.serial_number.sn);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_wifi(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_WIFI_MAC_ADDR, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+		item.wifi_mac_addr.addr[0],
+		item.wifi_mac_addr.addr[1],
+		item.wifi_mac_addr.addr[2],
+		item.wifi_mac_addr.addr[3],
+		item.wifi_mac_addr.addr[4],
+		item.wifi_mac_addr.addr[5]);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_bt(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_BT_ADDR, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+		item.bt_addr.addr[0],
+		item.bt_addr.addr[1],
+		item.bt_addr.addr[2],
+		item.bt_addr.addr[3],
+		item.bt_addr.addr[4],
+		item.bt_addr.addr[5]);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_cm(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_CM_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.cm_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_lbh(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_LBH_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.lbh_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_boardinfo(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_BOARD_INFO, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf,
+		"Proc: %4u (sku: %u, fab: %u)\n"
+		"PMU : %4u (sku: %u, fab: %u)\n"
+		"Disp: %4u (sku: %u, fab: %u)\n",
+		item.board_info.proc_board_id,
+		item.board_info.proc_sku,
+		item.board_info.proc_fab,
+		item.board_info.pmu_board_id,
+		item.board_info.pmu_sku,
+		item.board_info.pmu_fab,
+		item.board_info.display_board_id,
+		item.board_info.display_sku,
+		item.board_info.display_fab);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_gps(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_GPS_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.gps_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_lcd(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_LCD_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.lcd_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_accelerometer(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_ACCELEROMETER_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.accelerometer_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_compass(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_COMPASS_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.compass_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_gyroscope(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_GYROSCOPE_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.gyroscope_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_light(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_LIGHT_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.light_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_charger(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_CHARGER_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.charger_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
+static ssize_t nct_item_show_touch(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	ssize_t rval = 0;
+	int err;
+	mutex_lock(&item_lock);
+	err = tegra_nct_read_item(NCT_ID_TOUCH_ID, &item);
+	if (err < 0) {
+		mutex_unlock(&item_lock);
+		return 0;
+	}
+	rval = sprintf(buf, "%04d\n", item.touch_id.id);
+	mutex_unlock(&item_lock);
+	return rval;
+}
 
 static const struct kobj_attribute serial_number_attr =
-	__ATTR(serial_number, 0444, nct_item_show, 0);
+	__ATTR(serial_number, 0444, nct_item_show_serial, 0);
 static const struct kobj_attribute wifi_mac_addr_attr =
-	__ATTR(wifi_mac_addr, 0444, nct_item_show, 0);
+	__ATTR(wifi_mac_addr, 0444, nct_item_show_wifi, 0);
 static const struct kobj_attribute bt_addr_attr =
-	__ATTR(bt_addr, 0444, nct_item_show, 0);
+	__ATTR(bt_addr, 0444, nct_item_show_bt, 0);
 static const struct kobj_attribute cm_id_attr =
-	__ATTR(cm_id, 0444, nct_item_show, 0);
+	__ATTR(cm_id, 0444, nct_item_show_cm, 0);
 static const struct kobj_attribute lbh_id_attr =
-	__ATTR(lbh_id, 0444, nct_item_show, 0);
+	__ATTR(lbh_id, 0444, nct_item_show_lbh, 0);
 static const struct kobj_attribute boardinfo_id_attr =
-	__ATTR(boardinfo_id, 0444, nct_item_show, 0);
+	__ATTR(boardinfo_id, 0444, nct_item_show_boardinfo, 0);
 static const struct kobj_attribute gps_id_attr =
-	__ATTR(gps_id, 0444, nct_item_show, 0);
+	__ATTR(gps_id, 0444, nct_item_show_gps, 0);
 static const struct kobj_attribute lcd_id_attr =
-	__ATTR(lcd_id, 0444, nct_item_show, 0);
+	__ATTR(lcd_id, 0444, nct_item_show_lcd, 0);
 static const struct kobj_attribute accelerometer_id_attr =
-	__ATTR(accelerometer_id, 0444, nct_item_show, 0);
+	__ATTR(accelerometer_id, 0444, nct_item_show_accelerometer, 0);
 static const struct kobj_attribute compass_id_attr =
-	__ATTR(compass_id, 0444, nct_item_show, 0);
+	__ATTR(compass_id, 0444, nct_item_show_compass, 0);
 static const struct kobj_attribute gyroscope_id_attr =
-	__ATTR(gyroscope_id, 0444, nct_item_show, 0);
+	__ATTR(gyroscope_id, 0444, nct_item_show_gyroscope, 0);
 static const struct kobj_attribute light_id_attr =
-	__ATTR(light_id, 0444, nct_item_show, 0);
+	__ATTR(light_id, 0444, nct_item_show_light, 0);
 static const struct kobj_attribute charger_id_attr =
-	__ATTR(charger_id, 0444, nct_item_show, 0);
+	__ATTR(charger_id, 0444, nct_item_show_charger, 0);
 static const struct kobj_attribute touch_id_attr =
-	__ATTR(touch_id, 0444, nct_item_show, 0);
+	__ATTR(touch_id, 0444, nct_item_show_touch, 0);
 
 static const struct attribute *nct_item_attrs[] = {
 	&serial_number_attr.attr,
@@ -87,112 +320,6 @@ static const struct attribute *nct_item_attrs[] = {
 	&touch_id_attr.attr,
 	NULL
 };
-
-static ssize_t nct_item_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
-{
-	ssize_t rval = 0;
-	union nct_item_type item;
-	int err;
-
-	if (attr == &serial_number_attr) {
-		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%s\n", item.serial_number.sn);
-	} else if (attr == &wifi_mac_addr_attr) {
-		err = tegra_nct_read_item(NCT_ID_WIFI_MAC_ADDR, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-			item.wifi_mac_addr.addr[0],
-			item.wifi_mac_addr.addr[1],
-			item.wifi_mac_addr.addr[2],
-			item.wifi_mac_addr.addr[3],
-			item.wifi_mac_addr.addr[4],
-			item.wifi_mac_addr.addr[5]);
-	} else if (attr == &bt_addr_attr) {
-		err = tegra_nct_read_item(NCT_ID_BT_ADDR, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-			item.bt_addr.addr[0],
-			item.bt_addr.addr[1],
-			item.bt_addr.addr[2],
-			item.bt_addr.addr[3],
-			item.bt_addr.addr[4],
-			item.bt_addr.addr[5]);
-	} else if (attr == &cm_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_CM_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.cm_id.id);
-	} else if (attr == &lbh_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_LBH_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.lbh_id.id);
-	} else if (attr == &boardinfo_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_BOARD_INFO, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf,
-			"Proc: %4u (sku: %u, fab: %u)\n"
-			"PMU : %4u (sku: %u, fab: %u)\n"
-			"Disp: %4u (sku: %u, fab: %u)\n",
-			item.board_info.proc_board_id,
-			item.board_info.proc_sku,
-			item.board_info.proc_fab,
-			item.board_info.pmu_board_id,
-			item.board_info.pmu_sku,
-			item.board_info.pmu_fab,
-			item.board_info.display_board_id,
-			item.board_info.display_sku,
-			item.board_info.display_fab);
-	} else if (attr == &gps_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_GPS_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.gps_id.id);
-	} else if (attr == &lcd_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_LCD_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.lcd_id.id);
-	} else if (attr == &accelerometer_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_ACCELEROMETER_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.accelerometer_id.id);
-	} else if (attr == &compass_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_COMPASS_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.compass_id.id);
-	} else if (attr == &gyroscope_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_GYROSCOPE_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.gyroscope_id.id);
-	} else if (attr == &light_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_LIGHT_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.light_id.id);
-	} else if (attr == &charger_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_CHARGER_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.charger_id.id);
-	} else if (attr == &touch_id_attr) {
-		err = tegra_nct_read_item(NCT_ID_TOUCH_ID, &item);
-		if (err < 0)
-			return 0;
-		rval = sprintf(buf, "%04d\n", item.touch_id.id);
-	}
-
-	return rval;
-}
 
 static int __init tegra_nct_sysfs_init(void)
 {

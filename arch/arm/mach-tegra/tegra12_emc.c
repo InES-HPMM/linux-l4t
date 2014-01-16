@@ -52,8 +52,9 @@ static bool emc_enable;
 #endif
 module_param(emc_enable, bool, 0644);
 
+#ifdef CONFIG_PASR
 static int pasr_enable;
-
+#endif
 u8 tegra_emc_bw_efficiency = 100;
 
 static u32 bw_calc_freqs[] = {

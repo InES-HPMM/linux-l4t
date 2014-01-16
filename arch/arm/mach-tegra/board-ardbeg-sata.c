@@ -37,7 +37,7 @@ void arbdeg_sata_clk_gate(void)
 {
 	u32 val;
 	if (!tegra_platform_is_silicon())
-		return 0;
+		return;
 	val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 	if (val & SET_CEC_RST)
 		writel(0x108, IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_V_SET));

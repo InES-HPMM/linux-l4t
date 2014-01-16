@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pismo-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -207,18 +207,21 @@ static int pismo_hdmi_postsuspend(void)
 
 static int pismo_hdmi_hotplug_init(struct device *dev)
 {
+	int ret = 0;
 	if (!pismo_hdmi_vddio) {
 		pismo_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(pismo_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
 				__func__, PTR_ERR(pismo_hdmi_vddio));
 				pismo_hdmi_vddio = NULL;
+			ret = -EINVAL;
 		} else {
-			regulator_enable(pismo_hdmi_vddio);
+			ret = regulator_enable(pismo_hdmi_vddio);
+			if (ret)
+				pr_err("Pismo_hdmi regulator enable failed\n");
 		}
 	}
-
-	return 0;
+	return ret;
 }
 
 static struct tegra_dc_out pismo_disp2_out = {

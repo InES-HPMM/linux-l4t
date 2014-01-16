@@ -675,7 +675,9 @@ static const struct utmi_clk_param utmi_parameters[] =
 };
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
 static void __iomem *reg_clk13_base = IO_ADDRESS(TEGRA_CLK13_RESET_BASE);
+#endif
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
@@ -1194,6 +1196,7 @@ static struct clk_ops tegra_super_ops = {
 	.set_rate		= tegra12_super_clk_set_rate,
 };
 
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
 static void tegra13_cpu_clk_init(struct clk *c)
 {
 	u32 val;
@@ -1296,7 +1299,7 @@ static int tegra13_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 
 #ifdef CONFIG_PM_SLEEP
 static void tegra13_cpu_clk_resume(struct clk *c, struct clk *backup,
-				     u32 setting)
+				u32 setting)
 {
 	/* For sclk and cclk_g super clock just restore saved value */
 	if (!(c->flags & DIV_2)) {
@@ -1314,6 +1317,7 @@ static struct clk_ops tegra13_cpu_ops = {
 	.set_parent		= tegra13_cpu_clk_set_parent,
 	.set_rate		= tegra13_cpu_clk_set_rate,
 };
+#endif
 
 /* virtual cpu clock functions */
 /* some clocks can not be stopped (cpu, memory bus) while the SoC is running.

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_emc_dt_parse.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -104,7 +104,9 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 	for_each_child_of_node(tnp, iter) {
 		u32 u;
 		const char *source_name;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 		const char *dvfs_ver;
+#endif
 
 		ret = of_property_read_u32(iter, "nvidia,revision", &u);
 		if (ret) {
