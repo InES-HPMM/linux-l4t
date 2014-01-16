@@ -30,11 +30,25 @@
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/usb/otg.h>
-#include "nvxxx.h"
 #include <linux/delay.h>
+#include <linux/version.h>
+#include <linux/tegra-powergate.h>
+#include <linux/regulator/consumer.h>
+#include <linux/clk.h>
+#include <linux/clk/tegra.h>
+#include <linux/tegra-fuse.h>
+#include <mach/tegra_usb_pad_ctrl.h>
+#include "nvxxx.h"
 
 static const char const driver_name[] = "tegra-xudc";
 static struct NV_UDC_S *the_controller;
+
+static const char * const udc_regulator_names[] = {
+	"hvdd_usb",		/* TODO 3.3V */
+	"avddio_usb",		/* TODO 1.05V */
+	"avdd_pll_utmip",	/* TODO 1.8V */
+};
+static const int udc_regulator_count = ARRAY_SIZE(udc_regulator_names);
 
 static void nvudc_remove_pci(struct pci_dev *pdev);
 
@@ -87,6 +101,16 @@ module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
  */
 static unsigned int  max_stream_rejected_retry_count = 20;
 
+/* When the stream is rejected by the Host, we wait for this much
+ * time(in milliseconds) before we retry sending an ERDY. so in total
+ * we retry for 400ms( 20 count x 20ms sleep each time) for the Host to
+ * respond and then stop retrying and wait for the PRIME from Host
+ */
+static unsigned int stream_rejected_sleep_msecs = 20;
+module_param(max_stream_rejected_retry_count, uint, S_IRUGO|S_IWUSR);
+module_param(stream_rejected_sleep_msecs, uint, S_IRUGO|S_IWUSR);
+#endif
+
 #ifdef DEBUG
 #define reg_dump(_dev, _base, _reg) \
 	msg_dbg(_dev, "%s @%x = 0x%x\n", #_reg, _reg, ioread32(_base + _reg));
@@ -94,16 +118,35 @@ static unsigned int  max_stream_rejected_retry_count = 20;
 #define reg_dump(_dev, _base, _reg)	do {} while (0)
 #endif
 
-/* When the stream is rejected by the Host, we wait for this much
- * time(in milliseconds) before we retry sending an ERDY. so in total
- * we retry for 400ms( 20 count x 20ms sleep each time) for the Host to
- * respond and then stop retrying and wait for the PRIME from Host
- */
-static unsigned int stream_rejected_sleep_msecs = 20;
+struct xusb_usb3_pad_config {
+	u32 rx_wander;
+	u32 rx_eq;
+	u32 cdr_cntl;
+	u32 dfe_cntl;
+	u32 spare_in;
+};
 
-module_param(max_stream_rejected_retry_count, uint, S_IRUGO|S_IWUSR);
-module_param(stream_rejected_sleep_msecs, uint, S_IRUGO|S_IWUSR);
-#endif
+struct xusb_usb2_otg_pad_config {
+	u32 hs_curr_level;
+	u32 hs_squelch_level;
+	u32 term_range_adj;
+	u32 hs_iref_cap;
+	u32 hs_slew;
+	u32 ls_rslew;
+};
+
+static struct xusb_usb2_otg_pad_config usb2_otg_pad_config = {
+	.hs_slew = 0b1110, /* from BCT */
+	.ls_rslew = 0b11, /* from BCT */
+};
+
+static struct xusb_usb3_pad_config usb3_pad_config = {
+	.rx_wander = 0xF,
+	.rx_eq = 0xF070,
+	.cdr_cntl = 0x26,
+	.dfe_cntl = 0x002008EE,
+	.spare_in = 0x1,
+};
 
 #define DEFAULT_MIN_IRQ_INTERVAL	(1000) /* 1 ms */
 static unsigned int min_irq_interval_us = DEFAULT_MIN_IRQ_INTERVAL;
@@ -3519,6 +3562,9 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	nvudc->device_state = USB_STATE_ATTACHED;
 	nvudc->setup_status = WAIT_FOR_SETUP;
 
+	u_temp = RT_IMOD_IMODI(0xfa0) | RT_IMOD_IMODC(0xfa0);
+	iowrite32(u_temp, nvudc->mmio_reg_base + RT_IMOD);
+
 	u_temp = ioread32(nvudc->mmio_reg_base + CTRL);
 	u_temp |= CTRL_IE;
 	u_temp |= CTRL_LSE;
@@ -4107,6 +4153,180 @@ static int nvudc_resume_platform(struct platform_device *pdev)
 }
 #endif
 
+static void nvudc_plat_clocks_deinit(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+
+	if (nvudc->pll_u_480M) {
+		devm_clk_put(dev, nvudc->pll_u_480M);
+		nvudc->pll_u_480M = NULL;
+	}
+
+	if (nvudc->dev_clk) {
+		devm_clk_put(dev, nvudc->dev_clk);
+		nvudc->dev_clk = NULL;
+	}
+
+	if (nvudc->ss_clk) {
+		devm_clk_put(dev, nvudc->ss_clk);
+		nvudc->ss_clk = NULL;
+	}
+
+	if (nvudc->pll_e) {
+		devm_clk_put(dev, nvudc->pll_e);
+		nvudc->pll_e = NULL;
+	}
+}
+
+static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int err;
+
+	nvudc->pll_u_480M = devm_clk_get(dev, "pll_u_480M");
+	if (IS_ERR(nvudc->pll_u_480M)) {
+		err = PTR_ERR(nvudc->pll_u_480M);
+		msg_err(dev, "failed to get pll_u_480M %d\n", err);
+		nvudc->pll_u_480M = NULL;
+		return err;
+	}
+
+	nvudc->dev_clk = devm_clk_get(dev, "dev");
+	if (IS_ERR(nvudc->dev_clk)) {
+		err = PTR_ERR(nvudc->dev_clk);
+		msg_err(dev, "failed to get dev_clk %d\n", err);
+		nvudc->dev_clk = NULL;
+		return err;
+	}
+
+	nvudc->ss_clk = devm_clk_get(dev, "ss");
+	if (IS_ERR(nvudc->ss_clk)) {
+		err = PTR_ERR(nvudc->ss_clk);
+		msg_err(dev, "failed to get ss_clk %d\n", err);
+		nvudc->ss_clk = NULL;
+		return err;
+	}
+
+	nvudc->pll_e = devm_clk_get(dev, "pll_e");
+	if (IS_ERR(nvudc->pll_e)) {
+		err = PTR_ERR(nvudc->pll_e);
+		msg_err(dev, "failed to get pll_e %d\n", err);
+		nvudc->pll_e = NULL;
+		return err;
+	}
+
+	return 0;
+}
+
+static int nvudc_plat_clocks_enable(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int err;
+
+	err = clk_prepare_enable(nvudc->pll_u_480M);
+	if (err) {
+		msg_err(dev, "failed to enable pll_u_480M %d\n", err);
+		return err;
+	}
+
+	err = clk_prepare_enable(nvudc->dev_clk);
+	if (err) {
+		msg_err(dev, "failed to enable dev_clk %d\n", err);
+		goto err_disable_pll_u_480M;
+	}
+
+	err = clk_prepare_enable(nvudc->ss_clk);
+	if (err) {
+		msg_err(dev, "failed to enable ss_clk %d\n", err);
+		goto err_disable_dev_clk;
+	}
+
+	err = clk_prepare_enable(nvudc->pll_e);
+	if (err) {
+		msg_err(dev, "failed to enable pll_e %d\n", err);
+		goto err_disable_ss_clk;
+	}
+
+	return 0;
+
+err_disable_ss_clk:
+	clk_disable_unprepare(nvudc->ss_clk);
+err_disable_dev_clk:
+	clk_disable_unprepare(nvudc->dev_clk);
+err_disable_pll_u_480M:
+	clk_disable_unprepare(nvudc->pll_u_480M);
+	return err;
+}
+
+static void nvudc_plat_clocks_disable(struct NV_UDC_S *nvudc)
+{
+
+	clk_disable_unprepare(nvudc->pll_e);
+	clk_disable_unprepare(nvudc->ss_clk);
+	clk_disable_unprepare(nvudc->dev_clk);
+	clk_disable_unprepare(nvudc->pll_u_480M);
+}
+
+static int nvudc_plat_regulators_init(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int err;
+	int i;
+	size_t size;
+
+	size = udc_regulator_count * sizeof(struct regulator_bulk_data);
+	nvudc->supplies = devm_kzalloc(dev, size, GFP_KERNEL);
+	if (!nvudc->supplies) {
+		msg_err(dev, "failed to alloc memory for regulators\n");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < udc_regulator_count; i++)
+		nvudc->supplies[i].supply = udc_regulator_names[i];
+
+	err = devm_regulator_bulk_get(dev, udc_regulator_count,
+				nvudc->supplies);
+	if (err) {
+		msg_err(dev, "failed to request regulators %d\n", err);
+		return err;
+	}
+
+	err = regulator_bulk_enable(udc_regulator_count, nvudc->supplies);
+	if (err) {
+		msg_err(dev, "failed to enable regulators %d\n", err);
+
+		for (i = 0; i < udc_regulator_count; i++) {
+			if (nvudc->supplies[i].consumer)
+				devm_regulator_put(nvudc->supplies[i].consumer);
+		}
+		return err;
+	}
+	return 0;
+}
+
+static void nvudc_plat_regulator_deinit(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int i;
+	int err;
+
+	err = regulator_bulk_disable(udc_regulator_count, nvudc->supplies);
+	if (err)
+		msg_err(dev, "failed to disable regulators %d\n", err);
+
+	for (i = 0; i < udc_regulator_count; i++) {
+		if (nvudc->supplies[i].consumer)
+			devm_regulator_put(nvudc->supplies[i].consumer);
+	}
+
+	devm_kfree(dev, nvudc->supplies);
+}
+
 static int nvudc_plat_mmio_regs_init(struct NV_UDC_S *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
@@ -4234,6 +4454,113 @@ static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
+static void nvudc_plat_read_usb_calib(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+
+	u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
+	msg_info(dev, "usb_calib0 = 0x%08x\n", usb_calib0);
+	/*
+	 * read from usb_calib0 and pass to driver
+	 * set HS_CURR_LEVEL (PAD0)	= usb_calib0[5:0]
+	 * set TERM_RANGE_ADJ		= usb_calib0[10:7]
+	 * set HS_SQUELCH_LEVEL		= usb_calib0[12:11]
+	 * set HS_IREF_CAP		= usb_calib0[14:13]
+	 * set HS_CURR_LEVEL (PAD1)	= usb_calib0[20:15]
+	 */
+
+	usb2_otg_pad_config.hs_curr_level = (usb_calib0 >> 0) & 0x3f;
+	usb2_otg_pad_config.term_range_adj = (usb_calib0 >> 7) & 0xf;
+	usb2_otg_pad_config.hs_squelch_level = (usb_calib0 >> 11) & 0x3;
+	usb2_otg_pad_config.hs_iref_cap = (usb_calib0 >> 13) & 0x3;
+}
+
+static int nvudc_plat_config_pads(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	/* TODO pad config should come from pdata or dt */
+	struct xusb_usb3_pad_config *usb3 = &usb3_pad_config;
+	struct xusb_usb2_otg_pad_config *usb2 = &usb2_otg_pad_config;
+	u32 reg;
+	u8 laneowner = BIT(2);
+
+	/* config usb2 otg pad */
+	nvudc_plat_read_usb_calib(nvudc);
+	utmi_phy_iddq_override(false);
+
+	reg = ioread32(nvudc->padctl + USB2_BIAS_PAD_CTL);
+	reg &= ~(HS_DISCON_LEVEL(~0) | HS_SQUELCH_LEVEL(~0));
+	reg |= HS_DISCON_LEVEL(5);
+	reg |= HS_SQUELCH_LEVEL(usb2->hs_squelch_level);
+	reg &= ~(BIAS_PD | BIAS_PD_TRK);
+	iowrite32(reg, nvudc->padctl + USB2_BIAS_PAD_CTL);
+	reg_dump(dev, nvudc->padctl, USB2_BIAS_PAD_CTL);
+
+	reg = ioread32(nvudc->padctl + USB2_OTG_PAD0_CTL_0);
+	reg &= ~(HS_CURR_LEVEL(~0) | HS_SLEW(~0) | LS_RSLEW(~0));
+	reg |= HS_CURR_LEVEL(usb2->hs_curr_level);
+	reg |= (HS_SLEW(usb2->hs_slew) | LS_RSLEW(usb2->ls_rslew));
+	reg &= ~(PAD_PD | PAD_PD2 | PAD_PD_ZI);
+	iowrite32(reg, nvudc->padctl + USB2_OTG_PAD0_CTL_0);
+	reg_dump(dev, nvudc->padctl, USB2_OTG_PAD0_CTL_0);
+
+	reg = ioread32(nvudc->padctl + USB2_OTG_PAD0_CTL_1);
+	reg &= ~(TERM_RANGE_ADJ(~0) | (HS_IREF_CAP(~0)));
+	reg |= TERM_RANGE_ADJ(usb2->term_range_adj);
+	reg |= HS_IREF_CAP(usb2->hs_iref_cap);
+	reg &= ~PAD_PD_DR;
+	iowrite32(reg, nvudc->padctl + USB2_OTG_PAD0_CTL_1);
+	reg_dump(dev, nvudc->padctl, USB2_OTG_PAD0_CTL_1);
+
+	reg = ioread32(nvudc->padctl + USB2_PORT_CAP);
+	reg &= ~PORT_CAP(0, ~0);
+	reg |= PORT_CAP(0, PORT_CAP_DEV);
+	iowrite32(reg, nvudc->padctl + USB2_PORT_CAP);
+	reg_dump(dev, nvudc->padctl, USB2_PORT_CAP);
+
+	reg = ioread32(nvudc->padctl + USB2_PAD_MUX);
+	reg &= ~(USB2_OTG_PAD(0, ~0));
+	reg |= USB2_OTG_PAD(0, XUSB);
+	iowrite32(reg, nvudc->padctl + USB2_PAD_MUX);
+	reg_dump(dev, nvudc->padctl, USB2_PAD_MUX);
+
+
+	/* config usb3 pad */
+	reg = ioread32(nvudc->padctl + IOPHY_USB3_PAD0_CTL_2);
+	reg &= ~(CDR_CNTL(~0) | RX_EQ(~0) | RX_WANDER(~0));
+	reg |= (CDR_CNTL(usb3->cdr_cntl) |
+			RX_EQ(usb3->rx_eq) | RX_WANDER(usb3->rx_wander));
+	iowrite32(reg, nvudc->padctl + IOPHY_USB3_PAD0_CTL_2);
+	reg_dump(dev, nvudc->padctl, IOPHY_USB3_PAD0_CTL_2);
+
+	reg = ioread32(nvudc->padctl + IOPHY_USB3_PAD0_CTL_4);
+	reg &= ~DFE_CNTL(~0);
+	reg |= DFE_CNTL(usb3->dfe_cntl);
+	iowrite32(reg, nvudc->padctl + IOPHY_USB3_PAD0_CTL_4);
+	reg_dump(dev, nvudc->padctl, IOPHY_USB3_PAD0_CTL_4);
+
+	reg = ioread32(nvudc->padctl + IOPHY_MISC_PAD_P0_CTL_2);
+	reg &= ~(SPARE_IN(~0));
+	reg |= SPARE_IN(usb3->spare_in);
+	iowrite32(reg, nvudc->padctl + IOPHY_MISC_PAD_P0_CTL_2);
+	reg_dump(dev, nvudc->padctl, IOPHY_MISC_PAD_P0_CTL_2);
+
+	reg = ioread32(nvudc->padctl + SS_PORT_MAP);
+	reg &= ~(PORT0_MAP(~0));
+	reg |= (PORT0_MAP(MAP_USB2_PORT(0)));
+	iowrite32(reg, nvudc->padctl + SS_PORT_MAP);
+	reg_dump(dev, nvudc->padctl, SS_PORT_MAP);
+
+	tegra_xhci_ss_wake_signal(TEGRA_XUSB_SS_P0, false);
+	tegra_xhci_ss_vcore(TEGRA_XUSB_SS_P0, false);
+	usb3_phy_pad_enable(laneowner);
+	reg_dump(dev, nvudc->padctl, ELPG_PROGRAM);
+
+	return 0;
+}
+
 static int tegra_xudc_plat_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -4261,10 +4588,47 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->dev = dev;
 	platform_set_drvdata(pdev, nvudc);
 
+	err = nvudc_plat_regulators_init(nvudc);
+	if (err) {
+		dev_err(dev, "failed to init regulators\n");
+		err = -EPROBE_DEFER;
+		goto err_kfree_nvudc;
+	}
+
+	err = nvudc_plat_clocks_init(nvudc);
+	if (err) {
+		dev_err(dev, "failed to init clocks\n");
+		goto err_regulators_deinit;
+	}
+
 	err = nvudc_plat_mmio_regs_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to init mmio regions\n");
-		return err;
+		goto err_clocks_deinit;
+	}
+
+	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_XUSBA);
+	if (err) {
+		dev_err(dev, "failed to unpowergate XUSBA partition\n");
+		goto err_clocks_deinit;
+	}
+
+	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_XUSBB);
+	if (err) {
+		dev_err(dev, "failed to unpowergate XUSBB partition\n");
+		goto err_powergate_xusba;
+	}
+
+	err = nvudc_plat_clocks_enable(nvudc);
+	if (err) {
+		dev_err(dev, "failed to enable clocks\n");
+		goto err_powergate_xusbb;
+	}
+
+	err = nvudc_plat_config_pads(nvudc);
+	if (err) {
+		dev_err(dev, "failed to config pads\n");
+		goto err_clocks_disable;
 	}
 
 	nvudc_plat_fpci_ipfs_init(nvudc);
@@ -4272,7 +4636,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	err = nvudc_plat_irqs_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to init irqs\n");
-		return err;
+		goto err_clocks_disable;
 	}
 
 	spin_lock_init(&nvudc->lock);
@@ -4294,24 +4658,37 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	err = reset_data_struct(nvudc);
 	if (err) {
 		dev_err(dev, "failed to reset_data_struct\n");
-		return err;
+		goto err_clocks_disable;
 	}
 
 	err = EP0_Start(nvudc);
 	if (err) {
 		dev_err(dev, "failed to EP0_Start\n");
-		return err;
+		goto err_clocks_disable;
 	}
 
 	err = usb_add_gadget_udc(&pdev->dev, &nvudc->gadget);
 	if (err) {
 		dev_err(dev, "failed to usb_add_gadget_udc\n");
-		return err;
+		goto err_clocks_disable;
 	}
 
 	the_controller = nvudc; /* TODO support device context */
 	return 0;
 
+err_clocks_disable:
+	nvudc_plat_clocks_disable(nvudc);
+err_powergate_xusbb:
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+err_powergate_xusba:
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+err_clocks_deinit:
+	nvudc_plat_clocks_deinit(nvudc);
+err_regulators_deinit:
+	nvudc_plat_regulator_deinit(nvudc);
+err_kfree_nvudc:
+	devm_kfree(dev, nvudc);
+	return err;
 }
 
 static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
@@ -4321,7 +4698,18 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
 
-	/* TODO implement */
+	/* TODO implement synchronization */
+	if (nvudc) {
+		usb_del_gadget_udc(&nvudc->gadget);
+		free_data_struct(nvudc);
+		nvudc_plat_clocks_disable(nvudc);
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+		nvudc_plat_clocks_deinit(nvudc);
+		nvudc_plat_regulator_deinit(nvudc);
+		devm_kfree(dev, nvudc);
+		platform_set_drvdata(pdev, NULL);
+	}
 	return 0;
 }
 
@@ -4332,7 +4720,18 @@ static void tegra_xudc_plat_shutdown(struct platform_device *pdev)
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
 
-	/* TODO implement */
+	/* TODO implement synchronization */
+	if (nvudc) {
+		usb_del_gadget_udc(&nvudc->gadget);
+		free_data_struct(nvudc);
+		nvudc_plat_clocks_disable(nvudc);
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+		nvudc_plat_clocks_deinit(nvudc);
+		nvudc_plat_regulator_deinit(nvudc);
+		devm_kfree(dev, nvudc);
+		platform_set_drvdata(pdev, NULL);
+	}
 }
 
 static struct of_device_id tegra_xudc_of_match[] = {

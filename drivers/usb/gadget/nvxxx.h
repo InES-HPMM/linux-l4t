@@ -677,6 +677,15 @@ struct NV_UDC_S {
 	void __iomem *ipfs;
 	void __iomem *fpci;
 	void __iomem *padctl;
+
+	/* clocks */
+	struct clk *pll_u_480M;
+	struct clk *pll_e;
+	struct clk *dev_clk;
+	struct clk *ss_clk;
+
+	/* regulators */
+	struct regulator_bulk_data *supplies;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
@@ -780,3 +789,71 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 
 #define XUSB_DEV_INTR_MASK			(0x188)
 #define  IP_INT_MASK				(1 << 16)
+
+/* padctl mmio registers */
+#define USB2_PAD_MUX				(0x4)
+#define USB2_OTG_PAD(x, v)			(((v) & 0x3) << ((x) * 2))
+#define  SNPS					(0)
+#define  XUSB					(1)
+#define  UART					(2)
+
+#define USB2_PORT_CAP				(0x8)
+#define PORT_CAP(x, v)				(((v) & 0x3) << ((x) * 4))
+#define  PORT_CAP_DISABLED			(0)
+#define  PORT_CAP_HOST				(1)
+#define  PORT_CAP_DEV				(2)
+#define  PORT_CAP_OTG				(3)
+#define PORT_INTERNAL(x)			(1 << ((x) * 4 + 2))
+#define PORT_REVERSE_ID(x)			(1 << ((x) * 4 + 3))
+
+#define SS_PORT_MAP				(0x14)
+#define PORT0_MAP(x)				(((x) & 0x7) << 0)
+#define  MAP_USB2_PORT(p)			((p) % 0x3)
+#define  MAP_DISABLED				(0x7)
+
+#define ELPG_PROGRAM				(0x1c)
+
+#define IOPHY_USB3_PAD0_CTL_2			(0x58)
+#define  CDR_CNTL(x)				(((x) & 0xFF) << 24)
+#define  RX_EQ(x)				(((x) & 0xFFFF) << 8)
+#define  RX_WANDER(x)				(((x) & 0xf) << 4)
+#define  RX_TERM_CNTL(x)			(((x) & 0x3) << 2)
+#define  TX_TERM_CNTL(x)			((x) & 0x3)
+
+#define IOPHY_USB3_PAD0_CTL_4			(0x68)
+#define  DFE_CNTL(x)				((x) & 0xFFFFFFFF)
+
+#define IOPHY_MISC_PAD_P0_CTL_2		(0x78)
+#define  SPARE_IN(x)				(((x) & 0x3) << 28)
+
+#define USB2_OTG_PAD0_CTL_0			(0xa0)
+#define  HS_CURR_LEVEL(x)			(((x) & 0x3f) << 0)
+#define  HS_SLEW(x)				(((x) & 0x3f) << 6)
+#define  FS_SLEW(x)				(((x) & 0x3) << 12)
+#define  LS_RSLEW(x)				(((x) & 0x3) << 14)
+#define  LS_FSLEW(x)				(((x) & 0x3) << 16)
+#define  PAD_PD				(1 << 19)
+#define  PAD_PD2				(1 << 20)
+#define  PAD_PD_ZI				(1 << 21)
+#define  LSBIAS_SEL				(1 << 23)
+
+#define USB2_OTG_PAD0_CTL_1			(0xac)
+#define  PAD_PD_DR				(1 << 2)
+#define  TERM_RANGE_ADJ(x)			(((x) & 0xf) << 3)
+#define  HS_IREF_CAP(x)			(((x) & 0x3) << 9)
+
+#define USB2_BIAS_PAD_CTL			(0xb8)
+#define  HS_SQUELCH_LEVEL(x)			(((x) & 0x3) << 0)
+#define  HS_DISCON_LEVEL(x)			(((x) & 0x7) << 2)
+#define  HS_CHIRP_LEVEL(x)			(((x) & 0x3) << 5)
+#define  VBUS_LEVEL(x)				(((x) & 0x3) << 7)
+#define  TERM_OFFSET(x)			(((x) & 0x3) << 9)
+#define  BIAS_PD				(1 << 12)
+#define  BIAS_PD_TRK				(1 << 13)
+#define  ADJRPU(x)				(((x) & 0x7) << 14)
+
+#define USB3_PAD_MUX				(0x134)
+#define  FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
+#define  FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1	(1 << 2)
+#define  PCIE_PAD_LANE0			(((x) & 0x3) << 16)
+#define  PCIE_PAD_LANE1			(((x) & 0x3) << 18)
