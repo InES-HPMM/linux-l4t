@@ -20,7 +20,6 @@
 #include <linux/i2c.h>
 #include <linux/ina219.h>
 #include <linux/platform_data/ina230.h>
-#include <linux/i2c/pca954x.h>
 
 #include "board.h"
 #include "board-pluto.h"
@@ -398,25 +397,6 @@ static struct i2c_board_info pluto_i2c2_2_ina230_board_info[] = {
 	},
 };
 
-static struct pca954x_platform_mode pluto_pca954x_modes[] = {
-	{ .adap_id = PCA954x_I2C_BUS0, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS1, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS2, .deselect_on_exit = true, },
-	{ .adap_id = PCA954x_I2C_BUS3, .deselect_on_exit = true, },
-};
-
-static struct pca954x_platform_data pluto_pca954x_data = {
-	.modes    = pluto_pca954x_modes,
-	.num_modes      = ARRAY_SIZE(pluto_pca954x_modes),
-};
-
-static const struct i2c_board_info pluto_i2c2_board_info[] = {
-	{
-		I2C_BOARD_INFO("pca9546", 0x71),
-		.platform_data = &pluto_pca954x_data,
-	},
-};
-
 static void modify_reworked_rail_data(void)
 {
 	power_mon_info_1[VDD_SYS_SUM].calibration_data = 0x426;
@@ -469,9 +449,6 @@ int __init pluto_pmon_init(void)
 	power_config = get_power_config();
 	if (power_config & PLUTO_POWER_REWORKED_CONFIG)
 		modify_reworked_rail_data();
-
-	i2c_register_board_info(1, pluto_i2c2_board_info,
-		ARRAY_SIZE(pluto_i2c2_board_info));
 
 	i2c_register_board_info(PCA954x_I2C_BUS0,
 			pluto_i2c2_0_ina219_board_info,
