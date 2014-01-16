@@ -34,20 +34,13 @@
 
 static struct nvmap_platform_carveout t210_carveouts[] = {
 	[0] = {
-		.name		= "iram",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
-		.base		= TEGRA_IRAM_BASE,
-		.size		= TEGRA_IRAM_SIZE,
-		.buddy_size	= 0, /* no buddy allocation for IRAM */
-	},
-	[1] = {
 		.name		= "generic-0",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
 		.base		= 0,	/* Filled in by t210_panel_init() */
 		.size		= 0,	/* Filled in by t210_panel_init() */
 		.buddy_size	= SZ_32K,
 	},
-	[2] = {
+	[1] = {
 		.name		= "vpr",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
 		.base		= 0,	/* Filled in by t210_panel_init() */
