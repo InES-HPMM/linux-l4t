@@ -208,7 +208,8 @@ static void ardbeg_i2c_init(void)
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 
-	i2c_register_board_info(0, &rt5639_board_info, 1);
+	if (board_info.board_id != BOARD_PM359)
+		i2c_register_board_info(0, &rt5639_board_info, 1);
 
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
@@ -424,7 +425,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_i2s_device1,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-	&ardbeg_audio_device_rt5639,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
@@ -1140,6 +1140,10 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_i2c_init();
 	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
+
+	if (board_info.board_id != BOARD_PM359)
+		platform_device_register(&ardbeg_audio_device_rt5639);
+
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	ardbeg_sdhci_init();
