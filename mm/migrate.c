@@ -1765,12 +1765,12 @@ int migrate_misplaced_transhuge_page(struct mm_struct *mm,
 	WARN_ON(PageLRU(new_page));
 
 	/* Recheck the target PMD */
-	mmu_notifier_invalidate_range_start(mm, mmun_start,
+	mmu_notifier_invalidate_range_start(vma, mmun_start,
 					    mmun_end, MMU_MIGRATE);
 	spin_lock(&mm->page_table_lock);
 	if (unlikely(!pmd_same(*pmd, entry))) {
 		spin_unlock(&mm->page_table_lock);
-		mmu_notifier_invalidate_range_end(mm, mmun_start,
+		mmu_notifier_invalidate_range_end(vma, mmun_start,
 						  mmun_end, MMU_MIGRATE);
 
 		/* Reverse changes made by migrate_page_copy() */
@@ -1818,7 +1818,7 @@ int migrate_misplaced_transhuge_page(struct mm_struct *mm,
 	 */
 	mem_cgroup_end_migration(memcg, page, new_page, true);
 	spin_unlock(&mm->page_table_lock);
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 
 	unlock_page(new_page);

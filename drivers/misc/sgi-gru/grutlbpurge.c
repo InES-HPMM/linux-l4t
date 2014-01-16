@@ -220,7 +220,7 @@ void gru_flush_all_tlb(struct gru_state *gru)
  * MMUOPS notifier callout functions
  */
 static void gru_invalidate_range_start(struct mmu_notifier *mn,
-				       struct mm_struct *mm,
+				       struct vm_area_struct *vma,
 				       unsigned long start, unsigned long end,
 				       enum mmu_event event)
 {
@@ -235,7 +235,8 @@ static void gru_invalidate_range_start(struct mmu_notifier *mn,
 }
 
 static void gru_invalidate_range_end(struct mmu_notifier *mn,
-				     struct mm_struct *mm, unsigned long start,
+				     struct vm_area_struct *vma,
+				     unsigned long start,
 				     unsigned long end,
 				     enum mmu_event event)
 {
@@ -249,7 +250,8 @@ static void gru_invalidate_range_end(struct mmu_notifier *mn,
 	gru_dbg(grudev, "gms %p, start 0x%lx, end 0x%lx\n", gms, start, end);
 }
 
-static void gru_invalidate_page(struct mmu_notifier *mn, struct mm_struct *mm,
+static void gru_invalidate_page(struct mmu_notifier *mn,
+				struct vm_area_struct *vma,
 				unsigned long address,
 				enum mmu_event event)
 {

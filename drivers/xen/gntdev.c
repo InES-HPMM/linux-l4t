@@ -432,7 +432,7 @@ static void unmap_if_in_range(struct grant_map *map,
 }
 
 static void mn_invl_range_start(struct mmu_notifier *mn,
-				struct mm_struct *mm,
+				struct vm_area_struct *vma,
 				unsigned long start,
 				unsigned long end,
 				enum mmu_event event)
@@ -451,11 +451,11 @@ static void mn_invl_range_start(struct mmu_notifier *mn,
 }
 
 static void mn_invl_page(struct mmu_notifier *mn,
-			 struct mm_struct *mm,
+			 struct vm_area_struct *vma,
 			 unsigned long address,
 			 enum mmu_event event)
 {
-	mn_invl_range_start(mn, mm, address, address + PAGE_SIZE, event);
+	mn_invl_range_start(mn, vma, address, address + PAGE_SIZE, event);
 }
 
 static void mn_release(struct mmu_notifier *mn,

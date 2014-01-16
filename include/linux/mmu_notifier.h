@@ -142,7 +142,7 @@ struct mmu_notifier_ops {
 	 * be called internally to this method.
 	 */
 	void (*invalidate_page)(struct mmu_notifier *mn,
-				struct mm_struct *mm,
+				struct vm_area_struct *vma,
 				unsigned long address,
 				enum mmu_event event);
 
@@ -190,12 +190,12 @@ struct mmu_notifier_ops {
 	 * the last refcount is dropped.
 	 */
 	void (*invalidate_range_start)(struct mmu_notifier *mn,
-				       struct mm_struct *mm,
+				       struct vm_area_struct *vma,
 				       unsigned long start,
 				       unsigned long end,
 				       enum mmu_event event);
 	void (*invalidate_range_end)(struct mmu_notifier *mn,
-				     struct mm_struct *mm,
+				     struct vm_area_struct *vma,
 				     unsigned long start,
 				     unsigned long end,
 				     enum mmu_event event);
@@ -264,14 +264,14 @@ extern void __mmu_notifier_change_pte(struct mm_struct *mm,
 				      unsigned long address,
 				      pte_t pte,
 				      enum mmu_event event);
-extern void __mmu_notifier_invalidate_page(struct mm_struct *mm,
-					  unsigned long address,
-					  enum mmu_event event);
-extern void __mmu_notifier_invalidate_range_start(struct mm_struct *mm,
+extern void __mmu_notifier_invalidate_page(struct vm_area_struct *vma,
+					   unsigned long address,
+					   enum mmu_event event);
+extern void __mmu_notifier_invalidate_range_start(struct vm_area_struct *vma,
 						  unsigned long start,
 						  unsigned long end,
 						  enum mmu_event event);
-extern void __mmu_notifier_invalidate_range_end(struct mm_struct *mm,
+extern void __mmu_notifier_invalidate_range_end(struct vm_area_struct *vma,
 						unsigned long start,
 						unsigned long end,
 						enum mmu_event event);
@@ -309,30 +309,31 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 		__mmu_notifier_change_pte(mm, address, pte, event);
 }
 
-static inline void mmu_notifier_invalidate_page(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_page(struct vm_area_struct *vma,
 						unsigned long address,
 						enum mmu_event event)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_page(mm, address, event);
+	if (mm_has_notifiers(vma->vm_mm))
+		__mmu_notifier_invalidate_page(vma, address, event);
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_range_start(struct vm_area_struct *vma,
 						       unsigned long start,
 						       unsigned long end,
 						       enum mmu_event event)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_start(mm, start, end, event);
+	if (mm_has_notifiers(vma->vm_mm))
+		__mmu_notifier_invalidate_range_start(vma, start,
+						      end, event);
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_range_end(struct vm_area_struct *vma,
 						     unsigned long start,
 						     unsigned long end,
 						     enum mmu_event event)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_end(mm, start, end, event);
+	if (mm_has_notifiers(vma->vm_mm))
+		__mmu_notifier_invalidate_range_end(vma, start, end, event);
 }
 
 static inline void mmu_notifier_invalidate_range(struct mm_struct *mm,
@@ -461,20 +462,20 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 {
 }
 
-static inline void mmu_notifier_invalidate_page(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_page(struct vm_area_struct *vma,
 						unsigned long address,
 						enum mmu_event event)
 {
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_range_start(struct vm_area_struct *vma,
 						       unsigned long start,
 						       unsigned long end,
 						       enum mmu_event event)
 {
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
+static inline void mmu_notifier_invalidate_range_end(struct vm_area_struct *vma,
 						     unsigned long start,
 						     unsigned long end,
 						     enum mmu_event event)

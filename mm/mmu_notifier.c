@@ -149,45 +149,48 @@ void __mmu_notifier_change_pte(struct mm_struct *mm,
 	srcu_read_unlock(&srcu, id);
 }
 
-void __mmu_notifier_invalidate_page(struct mm_struct *mm,
+void __mmu_notifier_invalidate_page(struct vm_area_struct *vma,
 				    unsigned long address,
 				    enum mmu_event event)
 {
+	struct mm_struct *mm = vma->vm_mm;
 	struct mmu_notifier *mn;
 	int id;
 
 	id = srcu_read_lock(&srcu);
 	hlist_for_each_entry_rcu(mn, &mm->mmu_notifier_mm->list, hlist) {
 		if (mn->ops->invalidate_page)
-			mn->ops->invalidate_page(mn, mm, address, event);
+			mn->ops->invalidate_page(mn, vma, address, event);
 	}
 	srcu_read_unlock(&srcu, id);
 }
 
-void __mmu_notifier_invalidate_range_start(struct mm_struct *mm,
+void __mmu_notifier_invalidate_range_start(struct vm_area_struct *vma,
 					   unsigned long start,
 					   unsigned long end,
 					   enum mmu_event event)
 
 {
+	struct mm_struct *mm = vma->vm_mm;
 	struct mmu_notifier *mn;
 	int id;
 
 	id = srcu_read_lock(&srcu);
 	hlist_for_each_entry_rcu(mn, &mm->mmu_notifier_mm->list, hlist) {
 		if (mn->ops->invalidate_range_start)
-			mn->ops->invalidate_range_start(mn, mm, start,
+			mn->ops->invalidate_range_start(mn, vma, start,
 							end, event);
 	}
 	srcu_read_unlock(&srcu, id);
 }
 EXPORT_SYMBOL_GPL(__mmu_notifier_invalidate_range_start);
 
-void __mmu_notifier_invalidate_range_end(struct mm_struct *mm,
+void __mmu_notifier_invalidate_range_end(struct vm_area_struct *vma,
 					 unsigned long start,
 					 unsigned long end,
 					 enum mmu_event event)
 {
+	struct mm_struct *mm = vma->vm_mm;
 	struct mmu_notifier *mn;
 	int id;
 
@@ -204,7 +207,7 @@ void __mmu_notifier_invalidate_range_end(struct mm_struct *mm,
 		if (mn->ops->invalidate_range)
 			mn->ops->invalidate_range(mn, mm, start, end);
 		if (mn->ops->invalidate_range_end)
-			mn->ops->invalidate_range_end(mn, mm, start,
+			mn->ops->invalidate_range_end(mn, vma, start,
 						      end, event);
 	}
 	srcu_read_unlock(&srcu, id);

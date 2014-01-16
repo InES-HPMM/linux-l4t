@@ -1075,7 +1075,7 @@ static int do_huge_pmd_wp_page_fallback(struct mm_struct *mm,
 
 	mmun_start = haddr;
 	mmun_end   = haddr + HPAGE_PMD_SIZE;
-	mmu_notifier_invalidate_range_start(mm, mmun_start, mmun_end,
+	mmu_notifier_invalidate_range_start(vma, mmun_start, mmun_end,
 					    MMU_MIGRATE);
 
 	spin_lock(&mm->page_table_lock);
@@ -1106,7 +1106,7 @@ static int do_huge_pmd_wp_page_fallback(struct mm_struct *mm,
 	page_remove_rmap(page);
 	spin_unlock(&mm->page_table_lock);
 
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 
 	ret |= VM_FAULT_WRITE;
@@ -1117,7 +1117,7 @@ out:
 
 out_free_pages:
 	spin_unlock(&mm->page_table_lock);
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 	mem_cgroup_uncharge_start();
 	for (i = 0; i < HPAGE_PMD_NR; i++) {
@@ -1201,7 +1201,7 @@ alloc:
 
 	mmun_start = haddr;
 	mmun_end   = haddr + HPAGE_PMD_SIZE;
-	mmu_notifier_invalidate_range_start(mm, mmun_start, mmun_end,
+	mmu_notifier_invalidate_range_start(vma, mmun_start, mmun_end,
 					    MMU_MIGRATE);
 
 	spin_lock(&mm->page_table_lock);
@@ -1231,7 +1231,7 @@ alloc:
 	}
 	spin_unlock(&mm->page_table_lock);
 out_mn:
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 out:
 	return ret;
@@ -1582,7 +1582,7 @@ static int __split_huge_page_splitting(struct page *page,
 	const unsigned long mmun_start = address;
 	const unsigned long mmun_end   = address + HPAGE_PMD_SIZE;
 
-	mmu_notifier_invalidate_range_start(mm, mmun_start,
+	mmu_notifier_invalidate_range_start(vma, mmun_start,
 					    mmun_end, MMU_STATUS);
 	spin_lock(&mm->page_table_lock);
 	pmd = page_check_address_pmd(page, mm, address,
@@ -1600,7 +1600,7 @@ static int __split_huge_page_splitting(struct page *page,
 		ret = 1;
 	}
 	spin_unlock(&mm->page_table_lock);
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_STATUS);
 
 	return ret;
@@ -2358,7 +2358,7 @@ static void collapse_huge_page(struct mm_struct *mm,
 
 	mmun_start = address;
 	mmun_end   = address + HPAGE_PMD_SIZE;
-	mmu_notifier_invalidate_range_start(mm, mmun_start,
+	mmu_notifier_invalidate_range_start(vma, mmun_start,
 					    mmun_end, MMU_MIGRATE);
 	spin_lock(&mm->page_table_lock); /* probably unnecessary */
 	/*
@@ -2369,7 +2369,7 @@ static void collapse_huge_page(struct mm_struct *mm,
 	 */
 	_pmd = pmdp_clear_flush(vma, address, pmd);
 	spin_unlock(&mm->page_table_lock);
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 
 	spin_lock(ptl);
@@ -2753,19 +2753,19 @@ void __split_huge_page_pmd(struct vm_area_struct *vma, unsigned long address,
 	mmun_start = haddr;
 	mmun_end   = haddr + HPAGE_PMD_SIZE;
 again:
-	mmu_notifier_invalidate_range_start(mm, mmun_start,
+	mmu_notifier_invalidate_range_start(vma, mmun_start,
 					    mmun_end, MMU_MIGRATE);
 	spin_lock(&mm->page_table_lock);
 	if (unlikely(!pmd_trans_huge(*pmd))) {
 		spin_unlock(&mm->page_table_lock);
-		mmu_notifier_invalidate_range_end(mm, mmun_start,
+		mmu_notifier_invalidate_range_end(vma, mmun_start,
 						  mmun_end, MMU_MIGRATE);
 		return;
 	}
 	if (is_huge_zero_pmd(*pmd)) {
 		__split_huge_zero_page_pmd(vma, haddr, pmd);
 		spin_unlock(&mm->page_table_lock);
-		mmu_notifier_invalidate_range_end(mm, mmun_start,
+		mmu_notifier_invalidate_range_end(vma, mmun_start,
 						  mmun_end, MMU_MIGRATE);
 		return;
 	}
@@ -2773,7 +2773,7 @@ again:
 	VM_BUG_ON(!page_count(page));
 	get_page(page);
 	spin_unlock(&mm->page_table_lock);
-	mmu_notifier_invalidate_range_end(mm, mmun_start,
+	mmu_notifier_invalidate_range_end(vma, mmun_start,
 					  mmun_end, MMU_MIGRATE);
 
 	split_huge_page(page);

@@ -428,7 +428,7 @@ static void mn_change_pte(struct mmu_notifier *mn,
 }
 
 static void mn_invalidate_page(struct mmu_notifier *mn,
-			       struct mm_struct *mm,
+			       struct vm_area_struct *vma,
 			       unsigned long address,
 			       enum mmu_event event)
 {
@@ -436,7 +436,7 @@ static void mn_invalidate_page(struct mmu_notifier *mn,
 }
 
 static void mn_invalidate_range_start(struct mmu_notifier *mn,
-				      struct mm_struct *mm,
+				      struct vm_area_struct *vma,
 				      unsigned long start,
 				      unsigned long end,
 				      enum mmu_event event)
@@ -452,7 +452,7 @@ static void mn_invalidate_range_start(struct mmu_notifier *mn,
 }
 
 static void mn_invalidate_range_end(struct mmu_notifier *mn,
-				    struct mm_struct *mm,
+				    struct vm_area_struct *vma,
 				    unsigned long start,
 				    unsigned long end,
 				    enum mmu_event event)
