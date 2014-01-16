@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -213,9 +213,9 @@ ENTRY(tegra_sleep_cpu_finish)
 	ldr	r1, =((1 << 16) | 4)
 	ldr	r2, =TEGRA_RESET_HANDLER_BASE
 	bl	tegra_generic_smc
-#else
-	bl	tegra_flush_cache
 #endif
+
+	bl	tegra_flush_cache
 
 	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
