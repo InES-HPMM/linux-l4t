@@ -251,24 +251,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.minor_rev = 1,
 };
 
-static struct pca953x_platform_data tca6416_pdata = {
-	.gpio_base = PMU_TCA6416_GPIO_BASE,
-};
-
-static const struct i2c_board_info tca6416_expander[] = {
-	{
-		I2C_BOARD_INFO("tca6416", 0x20),
-		.platform_data = &tca6416_pdata,
-	},
-};
-
-static const struct i2c_board_info tca6408_expander[] = {
-	{
-		I2C_BOARD_INFO("tca6408", 0x20),
-		.platform_data = &tca6416_pdata,
-	},
-};
-
 struct bq2471x_platform_data laguna_bq2471x_pdata = {
 	.charge_broadcast_mode = 1,
 	.gpio_active_low = 1,
@@ -346,16 +328,6 @@ int __init laguna_as3722_regulator_init(void)
 	}
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
-	if (board_info.board_id == BOARD_PM358 &&
-			board_info.fab == BOARD_FAB_A00)
-		i2c_register_board_info(0, tca6408_expander,
-				ARRAY_SIZE(tca6408_expander));
-	else if	(board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM370 ||
-			board_info.board_id == BOARD_PM374 ||
-			board_info.board_id == BOARD_PM358)
-		i2c_register_board_info(0, tca6416_expander,
-				ARRAY_SIZE(tca6416_expander));
 	return 0;
 }
 
