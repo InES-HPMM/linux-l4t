@@ -737,14 +737,6 @@ int __init ardbeg_panel_init(void)
 		}
 	}
 
-#ifdef CONFIG_TEGRA_NVAVP
-	nvavp_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&nvavp_device);
-	if (err) {
-		pr_err("nvavp device registration failed\n");
-		return err;
-	}
-#endif
 	return err;
 }
 

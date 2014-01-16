@@ -48,13 +48,16 @@
 
 #include <linux/pm_qos.h>
 
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
+#include <linux/of_address.h>
+#include <linux/tegra-timer.h>
+
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"
 #endif
 #include "nvavp_os.h"
-
-/* HACK: this has to come from DT */
-#include "../../../../../arch/arm/mach-tegra/iomap.h"
 
 #define TEGRA_NVAVP_NAME			"nvavp"
 
@@ -62,15 +65,16 @@
 
 #define NVAVP_PUSHBUFFER_MIN_UPDATE_SPACE	(sizeof(u32) * 3)
 
-#define TEGRA_NVAVP_RESET_VECTOR_ADDR	\
-		(IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x200)
+static void __iomem *nvavp_reg_base;
 
-#define FLOW_CTRL_HALT_COP_EVENTS	IO_ADDRESS(TEGRA_FLOW_CTRL_BASE + 0x4)
+#define TEGRA_NVAVP_RESET_VECTOR_ADDR	(nvavp_reg_base + 0xe200)
+
+#define FLOW_CTRL_HALT_COP_EVENTS	(nvavp_reg_base + 0x6000 + 0x4)
 #define FLOW_MODE_STOP			(0x2 << 29)
 #define FLOW_MODE_NONE			0x0
 
-#define NVAVP_OS_INBOX			IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x10)
-#define NVAVP_OS_OUTBOX			IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x20)
+#define NVAVP_OS_INBOX			(nvavp_reg_base + 0x10)
+#define NVAVP_OS_OUTBOX			(nvavp_reg_base + 0x20)
 
 #define NVAVP_INBOX_VALID		(1 << 29)
 
@@ -1239,7 +1243,6 @@ err_exit:
 	return ret;
 }
 
-#define TIMER_PTV	0
 #define TIMER_EN	(1 << 31)
 #define TIMER_PERIODIC	(1 << 30)
 #define TIMER_PCR	0x4
@@ -1296,14 +1299,13 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	 * WAR: turn off TMR2 for fix LP1 wake up by TMR2.
 	 * turn off the periodic interrupt and the timer temporarily
 	 */
-	reg = readl(IO_ADDRESS(TEGRA_TMR2_BASE + TIMER_PTV));
+	reg = timer_readl(TIMER2_OFFSET + TIMER_PTV);
 	reg &= ~(TIMER_EN | TIMER_PERIODIC);
-	writel(reg, IO_ADDRESS(TEGRA_TMR2_BASE + TIMER_PTV));
+	timer_writel(reg, TIMER2_OFFSET + TIMER_PTV);
 
 	/* write a 1 to the intr_clr field to clear the interrupt */
 	reg = TIMER_PCR_INTR;
-	writel(reg, IO_ADDRESS(TEGRA_TMR2_BASE + TIMER_PCR));
-
+	timer_writel(reg, TIMER2_OFFSET + TIMER_PCR);
 	nvavp->init_task = NULL;
 }
 
@@ -2048,16 +2050,38 @@ static int nvavp_reserve_os_mem(struct nvavp_info *nvavp, dma_addr_t phys)
 	return ret;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id tegra_nvavp_of_match[] = {
+	{ .compatible = "nvidia,tegra30-nvavp", NULL },
+	{ .compatible = "nvidia,tegra114-nvavp", NULL },
+	{ .compatible = "nvidia,tegra124-nvavp", NULL },
+	{ },
+};
+#endif
+
 static int tegra_nvavp_probe(struct platform_device *ndev)
 {
 	struct nvavp_info *nvavp;
 	int irq;
 	enum nvavp_heap heap_mask;
 	int ret = 0, channel_id;
+	struct device_node *np;
 
-	irq = platform_get_irq_byname(ndev, "mbox_from_nvavp_pending");
+	np = ndev->dev.of_node;
+	if (np) {
+		irq = platform_get_irq(ndev, 0);
+		nvavp_reg_base = of_iomap(np, 0);
+	} else {
+		irq = platform_get_irq_byname(ndev, "mbox_from_nvavp_pending");
+	}
+
 	if (irq < 0) {
 		dev_err(&ndev->dev, "invalid nvhost data\n");
+		return -EINVAL;
+	}
+
+	if (!nvavp_reg_base) {
+		dev_err(&ndev->dev, "unable to map, memory mapped IO\n");
 		return -EINVAL;
 	}
 
@@ -2430,6 +2454,7 @@ static struct platform_driver tegra_nvavp_driver = {
 		.name	= TEGRA_NVAVP_NAME,
 		.owner	= THIS_MODULE,
 		.pm	= NVAVP_PM_OPS,
+		.of_match_table = of_match_ptr(tegra_nvavp_of_match),
 	},
 	.probe		= tegra_nvavp_probe,
 	.remove		= tegra_nvavp_remove,

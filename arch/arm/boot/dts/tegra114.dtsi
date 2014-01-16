@@ -32,7 +32,8 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		ranges = <0x54000000 0x54000000 0x01000000>;
+		ranges = <0x54000000 0x54000000 0x01000000>,
+			 <0x60001000 0x60001000 0x0000e200>;
 
 		vi {
 			compatible = "nvidia,tegra114-vi";
@@ -120,6 +121,12 @@
 			compatible = "nvidia,tegra114-tsec";
 			reg = <0x54500000 0x00040000>;
 			nvidia,memory-clients = <23>;
+		};
+
+		nvavp {
+			compatible = "nvidia,tegra114-nvavp";
+			interrupts = <0 4 0x04>; /* mailbox AVP IRQ */
+			reg = <0x60001000 0x0000e200>;
 		};
 	};
 

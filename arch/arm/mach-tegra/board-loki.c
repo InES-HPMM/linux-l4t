@@ -659,6 +659,8 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	T124_I2C_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
 				&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
+				NULL),
 	{}
 };
 #endif

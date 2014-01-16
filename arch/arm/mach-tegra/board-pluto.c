@@ -1200,6 +1200,8 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-xhci", 0x70090000, "tegra-xhci",
 				&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
+				NULL),
 	{}
 };
 #endif

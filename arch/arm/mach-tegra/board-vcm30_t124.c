@@ -403,7 +403,8 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				"tegra30-ahub-apbif", NULL),
 	T124_I2C_OF_DEV_AUXDATA,
 	T124_SPI_OF_DEV_AUXDATA,
-
+	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
+				NULL),
 	{}
 };
 #endif

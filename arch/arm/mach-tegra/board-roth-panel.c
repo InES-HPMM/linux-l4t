@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -962,11 +962,13 @@ int __init roth_panel_init(int board_id)
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
-	nvavp_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&nvavp_device);
-	if (err) {
-		pr_err("nvavp device registration failed\n");
-		return err;
+	if (!of_have_populated_dt()) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+		if (err) {
+			pr_err("nvavp device registration failed\n");
+			return err;
+		}
 	}
 #endif
 	return err;

@@ -618,7 +618,8 @@ struct of_dev_auxdata roth_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
 	T114_SPI_OF_DEV_AUXDATA,
 	T114_I2C_OF_DEV_AUXDATA,
-
+	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
+				NULL),
 	{}
 };
 #endif

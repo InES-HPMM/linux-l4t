@@ -526,7 +526,8 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 				NULL),
 	T114_I2C_OF_DEV_AUXDATA,
 	T114_SPI_OF_DEV_AUXDATA,
-
+	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
+				NULL),
 	{}
 };
 #endif
