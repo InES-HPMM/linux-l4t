@@ -550,6 +550,19 @@ static inline long temp_convert(int cap, int a, int b)
 	return cap;
 }
 
+/**
+ * temp_translate_rev() - Translates the given temperature from two's
+ * complement to the signed magnitude form used in SOC_THERM registers
+ * @temp:	The temperature to be translated
+ *
+ * The register value returned will have the following bit assignment:
+ * 15:7 magnitude of temperature in (1/2 or 1 degree precision) centigrade
+ * 0 the sign bit of the temperature
+ *
+ * This function is the inverse of the temp_translate() function
+ *
+ * Return: The register value.
+ */
 static inline u32 temp_translate_rev(long temp)
 {
 	int sign;
@@ -745,6 +758,22 @@ static inline long temp_translate(int readback)
 }
 
 #ifdef CONFIG_THERMAL
+/**
+ * prog_hw_shutdown() - Configures the hardware to shut down the
+ * system if a given sensor group reaches a given temperature
+ * @trip_state:		The trip information. Includes the temperature
+ *			at which a trip occurs.
+ * @therm:		Int specifying the sensor group.
+ *			Should be one of the following:
+ *			THERM_CPU, THERM_GPU,
+ *			THERM_MEM, or THERM_PPL.
+ *
+ * Sets the thermal trip threshold of the given sensor group
+ * to be the trip temperature of @trip_state.
+ * If this threshold is crossed, the hardware will shut down.
+ *
+ * Return: No return value (void).
+ */
 static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
 				    int therm)
 {
@@ -860,6 +889,18 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 	soctherm_writel(r, TH_INTR_ENABLE);
 }
 
+/**
+ * soctherm_update_zone() - Updates the given zone.
+ * @zn:		The number of the zone to be updated.
+ *		This number correlates to one of the following:
+ *		CPU, GPU, MEM, or PLL.
+ *
+ * Based on current temperature and the trip points associated with
+ * this zone, update the temperature thresholds at which hardware will
+ * generate interrupts.
+ *
+ * Return: Nothing is returned (void).
+ */
 static void soctherm_update_zone(int zn)
 {
 	long low_temp = 0, high_temp = MAX_HIGH_TEMP;
@@ -1058,6 +1099,29 @@ static struct thermal_cooling_device_ops soctherm_suspend_ops = {
 	.set_cur_state = soctherm_suspend_set_cur_state,
 };
 
+/**
+ * soctherm_bind() - Binds the given thermal zone's trip
+ * points with the given cooling device.
+ * @thz:	The thermal zone device to be bound
+ * @cdev:	The cooling device to be bound
+ *
+ * If a trip point is already bound to a cooling device, it is
+ * not rebound.
+ *
+ * If thermal sensor calibration data is missing from fuses,
+ * the cooling devices are not bound.
+ *
+ * Based on platform-specific configuration associated with this
+ * thermal zone, soctherm_bind() binds this cooling device to this
+ * thermal zone at various trip points.
+ *
+ * soctherm_bind is called as a thermal_zone_device_ops bind function.
+ *
+ * Return: Returns 0 on successful binding. Returns 0 if passed an
+ * invalid thermal zone argument, or improperly fused soctherm.
+ * In the latter two cases, binding of the cooling device does not
+ * occur.
+ */
 static int soctherm_bind(struct thermal_zone_device *thz,
 				struct thermal_cooling_device *cdev)
 {
@@ -1206,6 +1270,22 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 	return 0;
 }
 
+/**
+ * soctherm_get_trip_type() - Gets the type of a given trip point
+ * for a given thermal zone device.
+ * @thz:	The thermal zone device
+ * @trip:	The trip point index.
+ * @type:	The trip type.
+ *
+ * The trip type will be one of the following values:
+ * THERMAL_TRIP_ACTIVE, THERMAL_TRIP_PASSIVE, THERMAL_TRIP_HOT,
+ * THERMAL_TRIP_CRITICAL
+ *
+ * This function is passed to the thermal framework as a callback
+ * for each of the SOC_THERM-related thermal zones
+ *
+ * Return: Returns 0 on success, -EINVAL when passed an invalid argument.
+ */
 static int soctherm_get_trip_type(struct thermal_zone_device *thz,
 				int trip, enum thermal_trip_type *type)
 {
@@ -1346,6 +1426,33 @@ static int soctherm_get_crit_temp(struct thermal_zone_device *thz,
 	return -EINVAL;
 }
 
+/**
+ * soctherm_get_trend() - Gets the thermal trend for a given
+ * thermal zone device
+ * @thz:	The thermal zone device whose trend is being obtained
+ * @trip:	The trip point number
+ * @trend:	The thermal trend
+ *
+ * This function is passed to the thermal framework as a callback
+ * for SOC_THERM's thermal zone devices
+ *
+ * The trend will be one of the following:
+ * THERMAL_TREND_STABLE: the temperature is stable
+ * THERMAL_TREND_RAISING: the temperature is increasing
+ * THERMAL_TREND_DROPPING: the temperature is decreasing
+ * THERMAL_TREND_RAISE_FULL: apply the highest cooling action
+ * THERMAL_TREND_DROP_FULL: apply the lowest cooling action
+ *
+ * If the trip type of the trip point of the thermal zone device is
+ * THERMAL_TRIP_ACTIVE, then the thermal trend is THERMAL_TREND_RAISING.
+ * Otherwise, if the device's temperature is higher than its trip
+ * temperature, the trend is THERMAL_TREND_RAISING. If the device's
+ * temperature is lower, the trend is THERMAL_TREND_DROPPING. Otherwise
+ * the trend is stable.
+ *
+ * Return: 0 on success. Returns -EINVAL if the function was
+ * passed an invalid argument.
+ */
 static int soctherm_get_trend(struct thermal_zone_device *thz,
 				int trip,
 				enum thermal_trend *trend)
@@ -1578,6 +1685,23 @@ static void soctherm_update(void)
 }
 #endif
 
+/**
+ * soctherm_thermal_thread_func() - Handles a thermal interrupt request
+ * @irq:	The interrupt number being requested; not used
+ * @arg:	Opaque pointer to an argument; not used
+ *
+ * Clears the interrupt status register if there are expected
+ * interrupt bits set.
+ * The interrupt(s) are then handled by updating the corresponding
+ * thermal zones.
+ *
+ * An error is logged if any unexpected interrupt bits are set.
+ *
+ * Disabled interrupts are re-enabled.
+ *
+ * Return: %IRQ_HANDLED. Interrupt was handled and no further processing
+ * is needed.
+ */
 static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 {
 	u32 st, ex = 0, cp = 0, gp = 0, pl = 0;
@@ -1823,6 +1947,21 @@ static irqreturn_t soctherm_thermal_isr(int irq, void *arg)
 	return IRQ_WAKE_THREAD;
 }
 
+/**
+ * soctherm_edp_isr() - Disables any active interrupts
+ * @irq:	The interrupt request number
+ * @arg:	Opaque pointer to an argument
+ *
+ * Writes to the OC_INTR_DISABLE register the over current interrupt status,
+ * masking any asserted interrupts. Doing this prevents the same interrupts
+ * from triggering this isr repeatedly. The thread woken by this isr will
+ * handle asserted interrupts and subsequently unmask/re-enable them.
+ *
+ * The OC_INTR_DISABLE register indicates which OC interrupts
+ * have been disabled.
+ *
+ * Return: %IRQ_WAKE_THREAD, handler requests to wake the handler thread
+ */
 static irqreturn_t soctherm_edp_isr(int irq, void *arg)
 {
 	u32 r;
@@ -1963,6 +2102,24 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 	soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
+/**
+ * soctherm_tsense_program() - Configure sensor timing parameters based on
+ * chip-specific data.
+ *
+ * @sensor:	The temperature sensor. This corresponds to one of the
+ *		four CPU sensors, one of the two memory
+ *		sensors, or the GPU or PLLX sensor.
+ * @data:	Information regarding a sensor. This comes from the platform
+ *		data
+ *
+ * This function is called during initialization. It sets two CPU thermal sensor
+ * configuration registers (TS_CPU0_CONFIG0 and TS_CPU0_CONFIG1)
+ * to contain the given chip-specific sensor's configuration data.
+ *
+ * The configuration data affects the sensor's temperature capturing.
+ *
+ * Return: Nothing is returned (void).
+ */
 static void soctherm_tsense_program(enum soctherm_sense sensor,
 						struct soctherm_sensor *data)
 {
@@ -2407,11 +2564,43 @@ static void soctherm_adjust_cpu_zone(void)
  * soctherm_init_platform_data() - Initializes the platform data.
  *
  * Cleans up some platform data in preparation for configuring the
- * hardware and configures the hardware as specified by the (cleaned up)
- * platform data. This function is called in tegra11_soctherm_oc_int_init(),
- * soctherm_resume_locked(), and tegra11_soctherm_init().
+ * hardware and configures the hardware as specified by the cleaned up
+ * platform data.
  *
- * Return: 0 (success); Otherwise, -EINVAL.
+ * Initializes unset parameters for CPU, GPU, MEM, and PLL
+ * based on the default values for the sensors on the Tegra chip in use.
+ *
+ * Sets the temperature sensor PDIV (post divider) register which
+ * contains the temperature sensor PDIV for the CPU, GPU, MEM, and PLLX
+ *
+ * Sets the configurations for each of the sensors.
+ *
+ * Sanitizes thermal trips for each thermal zone.
+ *
+ * Writes hotspot offsets to TS_HOTSPOT_OFF register.
+ *
+ * Checks the throttling priorities and makes sure that they are
+ * in the correct order for throttle types THROTTLE_OC1 though THROTTLE_OC4.
+ *
+ * Initializes PSKIP parameters. These parameters are used during a thermal
+ * trip to calculate the amount of throttling of the CPU or GPU for each
+ * thermal trip type (i.e. THROTTLE_LIGHT or THROTTLE_HEAVY)
+ *
+ * Initializes the throttling thresholds for the CPU, GPU, MEM, and PLL
+ *
+ * Checks if the priorities of heavy and light throttling are in
+ * the correct order.
+ *
+ * Initializes the STATS_CTL and OC_STATS_CTL registers for stat collection
+ *
+ * Enables PMC shutdown based on the platform data
+ *
+ * Programs the temperatures at which hardware shutdowns occur.
+ *
+ * soctherm_init_platform_data ensures that the system will function as
+ * expected when it resumes from suspended state or on initial start up.
+ *
+ * Return: 0 on success. -EINVAL is returned otherwise
  */
 static int soctherm_init_platform_data(void)
 {
@@ -2586,6 +2775,14 @@ static void soctherm_suspend_locked(void)
 	}
 }
 
+/**
+ * soctherm_suspend() - Suspends the SOC_THERM device
+ *
+ * Suspends SOC_THERM and prevents interrupts from occurring
+ * and SOC_THERM from interrupting the CPU.
+ *
+ * Return: 0 on success.
+ */
 static int soctherm_suspend(void)
 {
 	mutex_lock(&soctherm_suspend_resume_lock);
@@ -2724,6 +2921,15 @@ static void soctherm_oc_irq_enable(struct irq_data *data)
 	d->irq_enable |= BIT(data->hwirq);
 }
 
+/**
+ * soctherm_oc_irq_disable() - Disables overcurrent interrupt requests
+ * @irq_data:	The interrupt request information
+ *
+ * Clears the interrupt request enable bit of the overcurrent
+ * interrupt request chip data.
+ *
+ * Return: Nothing is returned (void)
+ */
 static void soctherm_oc_irq_disable(struct irq_data *data)
 {
 	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
@@ -2736,6 +2942,22 @@ static int soctherm_oc_irq_set_type(struct irq_data *data, unsigned int type)
 	return 0;
 }
 
+/**
+ * soctherm_oc_irq_set_wake() - Set the overcurrent interrupt request
+ * to "wake"
+ * @irq_data:	Interrupt request information
+ * @on:		Whether to enable or disable power management wakeup
+ *
+ * Configure the GPIO associated with a SOC_THERM over-current
+ * interrupt to wake the system from sleep
+ *
+ * It may be necessary to wake the system from sleep mode so that
+ * SOC_THERM can provide proper over-current throttling.
+ *
+ * Return: 0 on success, -EINVAL if there is no wakeup support
+ * for that given hardware irq, or the gpio number if there is
+ * no gpio_to_irq for that gpio.
+ */
 static int soctherm_oc_irq_set_wake(struct irq_data *data, unsigned int on)
 {
 	int gpio;
@@ -2791,6 +3013,18 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
 	.xlate	= irq_domain_xlate_twocell,
 };
 
+/**
+ * tegra11_soctherem_oc_int_init() - Initial enabling of the over
+ * current interrupts
+ * @irq_base:	The interrupt request base number from platform data
+ * @num_irqs:	The number of new interrupt requests
+ *
+ * Sets the over current interrupt request chip data
+ *
+ * Return: 0 on success or if overcurrent interrupts are not enabled,
+ * -ENOMEM (out of memory), or irq_base if the function failed to
+ * allocate the irqs
+ */
 static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
 {
 	if (irq_base <= 0 || !num_irqs) {
@@ -2838,7 +3072,6 @@ static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int ret;
-
 	tegra_chip_id = tegra_get_chip_id();
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
 	      tegra_chip_id == TEGRA_CHIPID_TEGRA14 ||
@@ -3290,6 +3523,18 @@ static int convert_get(void *data, u64 *val)
 	*val = !read_hw_temp;
 	return 0;
 }
+/**
+ * convert_set() - Sets a flag indicating which temperature is
+ * being read.
+ * @data:	Opaque pointer to data passed in from filesystem layer
+ * @val:	The flag value
+ *
+ * Sets the read_hw_temp file static flag. This flag indicates whether
+ * the hardware temperature or the software temperature is being
+ * read.
+ *
+ * Return: 0 on success.
+ */
 static int convert_set(void *data, u64 val)
 {
 	read_hw_temp = !val;
@@ -3397,6 +3642,22 @@ static int memtemp_get(void *data, u64 *val)
 	return 0;
 }
 
+/**
+ * memtemp_set() - Overrides the memory temperature
+ * in hardware
+ * @data:	Opaque pointer to data; not used
+ * @temp:	The temperature to be written to the register
+ *
+ * Clears the memory temperature register, converts @temp to
+ * a register value, and writes the converted value to the register
+ *
+ * Function only works when temperature overrides are enabled.
+ *
+ * This function is called to debug/test temperature
+ * trip points regarding MEM temperatures
+ *
+ * Return: 0 on success.
+ */
 static int memtemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
@@ -3407,6 +3668,18 @@ static int memtemp_set(void *data, u64 temp)
 	return 0;
 }
 
+/**
+ * plltemp_get() - Gets the phase-locked loop temperature.
+ * @data:	Opaque pointer to data
+ * @val:	The pll temperature
+ *
+ * The temperature value is read in from the register.
+ * The variable pointed to by @val is set to this temperature value.
+ *
+ * This function is used in debugfs
+ *
+ * Return: 0 on success.
+ */
 static int plltemp_get(void *data, u64 *val)
 {
 	u32 reg;
