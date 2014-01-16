@@ -519,48 +519,6 @@
 #define BTN_DPAD_LEFT		0x222
 #define BTN_DPAD_RIGHT		0x223
 
-/*
- * Event types
- */
-
-#define EV_SYN			0x00
-#define EV_KEY			0x01
-#define EV_REL			0x02
-#define EV_ABS			0x03
-#define EV_MSC			0x04
-#define EV_SW			0x05
-#define EV_LED			0x11
-#define EV_SND			0x12
-#define EV_REP			0x14
-#define EV_FF			0x15
-#define EV_PWR			0x16
-#define EV_FF_STATUS		0x17
-#define EV_MAX			0x1f
-#define EV_CNT			(EV_MAX+1)
-
-/*
- * Switch events
- */
-
-#define SW_LID			0x00  /* set = lid shut */
-#define SW_TABLET_MODE		0x01  /* set = tablet mode */
-#define SW_HEADPHONE_INSERT	0x02  /* set = inserted */
-#define SW_RFKILL_ALL		0x03  /* rfkill master switch, type "any"
-					 set = radio enabled */
-#define SW_RADIO		SW_RFKILL_ALL	/* deprecated */
-#define SW_MICROPHONE_INSERT	0x04  /* set = inserted */
-#define SW_DOCK			0x05  /* set = plugged into dock */
-#define SW_LINEOUT_INSERT	0x06  /* set = inserted */
-#define SW_JACK_PHYSICAL_INSERT 0x07  /* set = mechanical switch set */
-#define SW_VIDEOOUT_INSERT	0x08  /* set = inserted */
-#define SW_CAMERA_LENS_COVER	0x09  /* set = lens covered */
-#define SW_KEYPAD_SLIDE		0x0a  /* set = keypad slide out */
-#define SW_FRONT_PROXIMITY	0x0b  /* set = front proximity sensor active */
-#define SW_ROTATE_LOCK		0x0c  /* set = rotate locked/disabled */
-#define SW_LINEIN_INSERT	0x0d  /* set = inserted */
-#define SW_MAX			0x0f
-#define SW_CNT			(SW_MAX+1)
-
 #define MATRIX_KEY(row, col, code)	\
 	((((row) & 0xFF) << 24) | (((col) & 0xFF) << 16) | ((code) & 0xFFFF))
 

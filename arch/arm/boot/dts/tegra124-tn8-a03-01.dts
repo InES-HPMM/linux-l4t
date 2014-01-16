@@ -27,7 +27,7 @@
 #include "tegra124-platforms/tegra124-tn8-e1769-fixed.dtsi"
 #include "tegra124-platforms/tegra124-e1780-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
-#include "tegra124-platforms/tegra124-tn8-keys.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 #include "tegra124-platforms/tegra124-e1845-senosr.dtsi"
 #include "panel-l-wxga-7.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi.dtsi"

@@ -8,8 +8,7 @@
 #include "tegra124-platforms/tegra124-tn8-sensors.dtsi"
 #include "tegra124-platforms/tegra124-p1761-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-p1761-gpio-default.dtsi"
-#include "tegra124-platforms/tegra124-p1761-battery.dtsi"
-#include "tegra124-platforms/tegra124-tn8-keys.dtsi"
+#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
