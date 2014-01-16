@@ -727,7 +727,7 @@ void *arm_dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	pgprot_t prot = __get_dma_pgprot(attrs, PG_PROT_KERNEL);
 	void *memory;
 
-	if (dma_alloc_from_coherent(dev, size, handle, &memory))
+	if (dma_alloc_from_coherent_attr(dev, size, handle, &memory, attrs))
 		return memory;
 
 	return __dma_alloc(dev, size, handle, gfp, prot, false,
@@ -740,7 +740,7 @@ static void *arm_coherent_dma_alloc(struct device *dev, size_t size,
 	pgprot_t prot = __get_dma_pgprot(attrs, PG_PROT_KERNEL);
 	void *memory;
 
-	if (dma_alloc_from_coherent(dev, size, handle, &memory))
+	if (dma_alloc_from_coherent_attr(dev, size, handle, &memory, attrs))
 		return memory;
 
 	return __dma_alloc(dev, size, handle, gfp, prot, true,
@@ -786,7 +786,7 @@ static void __arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
 {
 	struct page *page = pfn_to_page(dma_to_pfn(dev, handle));
 
-	if (dma_release_from_coherent(dev, get_order(size), cpu_addr))
+	if (dma_release_from_coherent_attr(dev, size, cpu_addr, attrs))
 		return;
 
 	size = PAGE_ALIGN(size);
