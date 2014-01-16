@@ -1484,10 +1484,13 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	}
 
 	if (!list_empty(&as->client)) {
-		struct smmu_client *c;
-
-		list_for_each_entry(c, &as->client, list)
+		struct smmu_client *c, *tmp_c;
+		list_for_each_entry_safe(c, tmp_c, &as->client, list) {
+			dev_err(smmu->dev,
+					"detaching %s because iommu domain is destroyed!\n",
+					dev_name(c->dev));
 			smmu_iommu_detach_dev(domain, c->dev);
+		}
 	}
 
 	spin_unlock_irqrestore(&as->lock, flags);
