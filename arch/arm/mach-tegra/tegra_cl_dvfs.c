@@ -657,9 +657,30 @@ static inline void tune_high(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
+static void set_output_limits(struct tegra_cl_dvfs *cld,
+			      u8 out_min, u8 out_max)
+{
+	if ((cld->lut_min != out_min) || (cld->lut_max != out_max)) {
+		cld->lut_min = out_min;
+		cld->lut_max = out_max;
+		if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
+			u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+			val &= ~(CL_DVFS_OUTPUT_CFG_MAX_MASK |
+				 CL_DVFS_OUTPUT_CFG_MIN_MASK);
+			val |= out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+			val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		} else {
+			cl_dvfs_load_lut(cld);
+		}
+	}
+}
+
 static void set_ol_config(struct tegra_cl_dvfs *cld)
 {
-	u32 val, out_min;
+	u32 val;
+	u32 out_min = cld->lut_min;
+	u32 out_max = cld->lut_max;
 
 	/* always tune low (safe) in open loop */
 	if (cld->tune_state != TEGRA_CL_DVFS_TUNE_LOW) {
@@ -667,18 +688,8 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 		tune_low(cld);
 
 		out_min = get_output_min(cld);
-		if (cld->lut_min != out_min) {
-			cld->lut_min = out_min;
-			if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
-				val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-				val &= ~CL_DVFS_OUTPUT_CFG_MIN_MASK;
-				val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
-				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-			} else {
-				cl_dvfs_load_lut(cld);
-			}
-		}
 	}
+	set_output_limits(cld, out_min, out_max);
 
 	/* 1:1 scaling in open loop */
 	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
@@ -721,20 +732,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	out_max = max((u8)(req->output + 1), cld->minimax_output);
 	out_max = max((u8)(out_max), cld->force_out_min);
 
-	if ((cld->lut_min != out_min) || (cld->lut_max != out_max)) {
-		cld->lut_min = out_min;
-		cld->lut_max = out_max;
-		if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
-			u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-			val &= ~(CL_DVFS_OUTPUT_CFG_MAX_MASK |
-				 CL_DVFS_OUTPUT_CFG_MIN_MASK);
-			val |= out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
-			val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
-			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-		} else {
-			cl_dvfs_load_lut(cld);
-		}
-	}
+	set_output_limits(cld, out_min, out_max);
 }
 
 static void tune_timer_cb(unsigned long data)
