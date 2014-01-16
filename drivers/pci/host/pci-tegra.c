@@ -177,13 +177,6 @@
 #define RP_VEND_XP_DL_UP					(1 << 30)
 
 #define RP_LINK_CONTROL_STATUS					0x00000090
-#define RP_LINK_CONTROL_STATUS_LINKSTAT_MASK			0x3fff0000
-#define RP_LINK_CONTROL_STATUS_RETRAIN_LINK			(0x1 << 5)
-
-#define RP_LINK_CONTROL_STATUS_2				0x000000B0
-#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_MASK		0x0000000F
-#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1		(0x1 << 0)
-#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2		(0x2 << 0)
 
 #define  PADS_REFCLK_CFG0					0x000000C8
 #define  PADS_REFCLK_CFG1					0x000000CC
@@ -278,10 +271,7 @@ struct tegra_pcie_info {
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
 	struct list_head busses;
-};
-
-struct tegra_pcie_info tegra_pcie;
-EXPORT_SYMBOL(tegra_pcie);
+} tegra_pcie;
 
 struct tegra_pcie_bus {
 	struct vm_struct *area;
@@ -1119,7 +1109,6 @@ static int tegra_pcie_map_resources(void)
 		pr_err("PCIE: Failed to map PCI/AFI registers\n");
 		return -ENOMEM;
 	}
-
 	return 0;
 }
 
@@ -1504,6 +1493,13 @@ void tegra_pcie_check_ports(void)
 }
 EXPORT_SYMBOL(tegra_pcie_check_ports);
 
+int tegra_pcie_get_test_info(void __iomem **regs)
+{
+	*regs = tegra_pcie.regs;
+	return tegra_pcie.num_ports;
+}
+EXPORT_SYMBOL(tegra_pcie_get_test_info);
+
 static int tegra_pcie_conf_gpios(void)
 {
 	int irq, err = 0;
@@ -1611,13 +1607,13 @@ static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 
 	/* skip if both devices across the link are already trained to gen2 */
 	if (isGen2 &&
-		(link_up_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2) &&
-		(link_dn_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2))
+		(link_up_spd == PCI_EXP_LNKSTA_CLS_5_0GB) &&
+		(link_dn_spd == PCI_EXP_LNKSTA_CLS_5_0GB))
 		goto skip;
 	/* skip if both devices across the link are already trained to gen1 */
 	else if (!isGen2 &&
-		((link_up_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1) ||
-		(link_dn_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1)))
+		((link_up_spd == PCI_EXP_LNKSTA_CLS_2_5GB) ||
+		(link_dn_spd == PCI_EXP_LNKSTA_CLS_2_5GB)))
 		goto skip;
 
 	/* read link capability register to find max speed supported */
@@ -1628,27 +1624,27 @@ static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 
 	/* skip if any device across the link is not supporting gen2 speed */
 	if (isGen2 &&
-		((link_up_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2) ||
-		(link_dn_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2)))
+		((link_up_spd < PCI_EXP_LNKCAP_SLS_5_0GB) ||
+		(link_dn_spd < PCI_EXP_LNKCAP_SLS_5_0GB)))
 		goto skip;
 	/* skip if any device across the link is not supporting gen1 speed */
 	else if (!isGen2 &&
-		((link_up_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1) ||
-		(link_dn_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1)))
+		((link_up_spd < PCI_EXP_LNKCAP_SLS_2_5GB) ||
+		(link_dn_spd < PCI_EXP_LNKCAP_SLS_2_5GB)))
 		goto skip;
 
 	/* Set Link Speed */
 	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCTL2, &val);
-	val &= ~RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_MASK;
+	val &= ~PCI_EXP_LNKSTA_CLS;
 	if (isGen2)
-		val |= RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2;
+		val |= PCI_EXP_LNKSTA_CLS_5_0GB;
 	else
-		val |= RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1;
+		val |= PCI_EXP_LNKSTA_CLS_2_5GB;
 	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL2, val);
 
 	/* Retrain the link */
 	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCTL, &val);
-	val |= RP_LINK_CONTROL_STATUS_RETRAIN_LINK;
+	val |= PCI_EXP_LNKCTL_RL;
 	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL, val);
 
 	return true;

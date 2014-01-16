@@ -1,7 +1,7 @@
 /*
  *  Header file contains constants and structures for tegra PCIe driver.
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -17,8 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef __MACH_PCI_H
-#define __MACH_PCI_H
+#ifndef __PCI_TEGRA_H
+#define __PCI_TEGRA_H
 
 #include <linux/pci.h>
 
