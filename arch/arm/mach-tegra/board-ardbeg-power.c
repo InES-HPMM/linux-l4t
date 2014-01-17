@@ -18,7 +18,6 @@
  */
 
 #include <linux/i2c.h>
-#include <linux/i2c/pca954x.h>
 #include <linux/i2c/pca953x.h>
 #include <linux/platform_device.h>
 #include <linux/resource.h>
