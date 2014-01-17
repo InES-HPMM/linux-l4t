@@ -14,6 +14,7 @@ Optional properties:
 - nvidia,clock-always-on: Enable clock of spi always.
 
 spi-client device controller properties:
+  Below properties should be defined under 'controller-data' child node
 - nvidia,enable-hw-based-cs: (Boolean) Use the HW based CS if enabled.
 - nvidia,tx-clk-tap-delay: Delays the clock going out to the external device
   with this tap value.
@@ -37,11 +38,13 @@ spi@7000d600 {
 	<spi-client>@<bus_num> {
 		...
 		...
-		nvidia,enable-hw-based-cs;
-		nvidia,cs-setup-clk-count = <10>;
-		nvidia,cs-hold-clk-count = <10>;
-		nvidia,rx-clk-tap-delay = <0>;
-		nvidia,tx-clk-tap-delay = <16>;
+		controller-data {
+			nvidia,enable-hw-based-cs;
+			nvidia,cs-setup-clk-count = <10>;
+			nvidia,cs-hold-clk-count = <10>;
+			nvidia,rx-clk-tap-delay = <0>;
+			nvidia,tx-clk-tap-delay = <16>;
+		};
 		...
 	};
 };
