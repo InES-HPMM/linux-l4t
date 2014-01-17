@@ -1,7 +1,7 @@
 /*
  * SPI driver for NVIDIA's Tegra114 SPI Controller.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -841,46 +841,54 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	return ret;
 }
 
-static int tegra_spi_get_cdata_dt(struct device_node *np,
-		struct tegra_spi_device_controller_data *cdata_dt)
+static struct tegra_spi_device_controller_data
+	*tegra_spi_get_cdata_dt(struct spi_device *spi)
 {
+	struct tegra_spi_device_controller_data *cdata;
+	struct device_node *slave_np, *data_np;
 	int ret;
-	int has_cdata_entry;
 
-	ret = of_property_read_bool(np, "nvidia,enable-hw-based-cs");
-	if (ret) {
-		cdata_dt->is_hw_based_cs = 1;
-		has_cdata_entry = 1;
+	slave_np = spi->dev.of_node;
+	if (!slave_np) {
+		dev_dbg(&spi->dev, "device node not found\n");
+		return NULL;
 	}
 
-	ret = of_property_read_u32(np, "nvidia,cs-setup-clk-count",
-			&cdata_dt->cs_setup_clk_count);
-	if (!ret)
-		has_cdata_entry = 1;
-	ret = of_property_read_u32(np, "nvidia,cs-hold-clk-count",
-			&cdata_dt->cs_hold_clk_count);
-	if (!ret)
-		has_cdata_entry = 1;
-	ret = of_property_read_u32(np, "nvidia,rx-clk-tap-delay",
-			&cdata_dt->rx_clk_tap_delay);
-	if (!ret)
-		has_cdata_entry = 1;
-	ret = of_property_read_u32(np, "nvidia,tx-clk-tap-delay",
-			&cdata_dt->tx_clk_tap_delay);
-	if (!ret)
-		has_cdata_entry = 1;
+	data_np = of_get_child_by_name(slave_np, "controller-data");
+	if (!data_np) {
+		dev_dbg(&spi->dev, "child node 'controller-data' not found\n");
+		return NULL;
+	}
 
-	if (!has_cdata_entry)
-		return -ENOENT;
+	cdata = devm_kzalloc(&spi->dev, sizeof(*cdata),
+			GFP_KERNEL);
+	if (!cdata) {
+		dev_err(&spi->dev, "Memory alloc for cdata failed\n");
+		of_node_put(data_np);
+		return NULL;
+	}
 
-	return 0;
+	ret = of_property_read_bool(data_np, "nvidia,enable-hw-based-cs");
+	if (ret)
+		cdata->is_hw_based_cs = 1;
+
+	of_property_read_u32(data_np, "nvidia,cs-setup-clk-count",
+			&cdata->cs_setup_clk_count);
+	of_property_read_u32(data_np, "nvidia,cs-hold-clk-count",
+			&cdata->cs_hold_clk_count);
+	of_property_read_u32(data_np, "nvidia,rx-clk-tap-delay",
+			&cdata->rx_clk_tap_delay);
+	of_property_read_u32(data_np, "nvidia,tx-clk-tap-delay",
+			&cdata->tx_clk_tap_delay);
+
+	of_node_put(data_np);
+	return cdata;
 }
 
 static int tegra_spi_setup(struct spi_device *spi)
 {
 	struct tegra_spi_data *tspi = spi_master_get_devdata(spi->master);
 	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
-	struct device_node *np = spi->dev.of_node;
 	unsigned long val;
 	unsigned long flags;
 	int ret;
@@ -899,18 +907,9 @@ static int tegra_spi_setup(struct spi_device *spi)
 
 	BUG_ON(spi->chip_select >= MAX_CHIP_SELECT);
 
-	if (cdata == NULL) {
-		if (np) {
-			cdata = devm_kzalloc(&spi->dev, sizeof(*cdata),
-					GFP_KERNEL);
-			if (!cdata) {
-				dev_err(&spi->dev, "Memory alloc for cdata failed\n");
-				return -ENOMEM;
-			}
-			ret = tegra_spi_get_cdata_dt(np, cdata);
-			if (!ret)
-				spi->controller_data = cdata;
-		}
+	if (!cdata) {
+		cdata = tegra_spi_get_cdata_dt(spi);
+		spi->controller_data = cdata;
 	}
 
 	/* Set speed to the spi max fequency if spi device has not set */
