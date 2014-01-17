@@ -1032,6 +1032,14 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		int temp_polling_time;
 		bool enable_thermal_monitor;
 		struct regulator_init_data *batt_init_data;
+		const char *status_str;
+
+		status_str = of_get_property(batt_reg_node, "status", NULL);
+		if (status_str && !(!strcmp(status_str, "okay"))) {
+			dev_info(&client->dev,
+				"charger node status is disabled\n");
+			goto  vbus_node;
+		}
 
 		pdata->bcharger_pdata = devm_kzalloc(&client->dev,
 				sizeof(*(pdata->bcharger_pdata)), GFP_KERNEL);
@@ -1080,6 +1088,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 					batt_init_data->constraints.max_uA;
 	}
 
+vbus_node:
 	vbus_reg_node = of_find_node_by_name(np, "vbus");
 	if (vbus_reg_node) {
 		struct regulator_init_data *vbus_init_data;
