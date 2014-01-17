@@ -727,9 +727,8 @@ static int max17048_probe(struct i2c_client *client,
 {
 	struct max17048_chip *chip;
 	int ret;
-	uint16_t version;
+	int version;
 	u16 val;
-
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
@@ -827,7 +826,6 @@ irq_clear_error:
 	free_irq(client->irq, chip);
 irq_reg_error:
 	cancel_delayed_work_sync(&chip->work);
-	power_supply_unregister(&chip->battery);
 bg_err:
 	power_supply_unregister(&chip->battery);
 error:
