@@ -1316,8 +1316,9 @@ static int bq2419x_suspend(struct device *dev)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Reset WDT failed: %d\n", ret);
 
-	battery_charging_wakeup(bq2419x->bc_dev,
-				bq2419x->wdt_refresh_timeout);
+	if (bq2419x->cable_connected)
+		battery_charging_wakeup(bq2419x->bc_dev,
+					bq2419x->wdt_refresh_timeout);
 
 	ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
 	if (ret < 0)
