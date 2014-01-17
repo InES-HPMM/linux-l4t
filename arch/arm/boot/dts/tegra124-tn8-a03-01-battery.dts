@@ -4,9 +4,6 @@
 
 / {
 	i2c@7000c000 {
-		status = "okay";
-		clock-frequency = <400000>;
-
 		cw201x@62 {
 			status = "okay";
 		};

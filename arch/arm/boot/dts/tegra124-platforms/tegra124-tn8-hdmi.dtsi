@@ -95,7 +95,6 @@
 		};
 	};
 	hdmi_ddc: i2c@7000c700 {
-		status = "okay";
 		clock-frequency = <100000>;
 	};
 };

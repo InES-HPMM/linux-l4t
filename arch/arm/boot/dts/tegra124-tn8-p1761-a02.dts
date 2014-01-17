@@ -24,10 +24,5 @@
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
-
-	i2c@7000c400 {
-		status = "okay";
-		clock-frequency = <100000>;
-	};
 };
 

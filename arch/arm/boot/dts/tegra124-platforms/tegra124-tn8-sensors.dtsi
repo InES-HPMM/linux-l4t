@@ -1,8 +1,5 @@
 / {
 	i2c@7000c000 {
-		status = "okay";
-		clock-frequency = <100000>;
-
 		mpu6515@69 {
 			compatible = "invensense,mpu6515";
 			reg = <0x69>;
