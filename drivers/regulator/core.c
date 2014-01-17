@@ -4563,7 +4563,7 @@ static int __init regulator_init_complete(void)
 			 * so warn even if we aren't going to do
 			 * anything here.
 			 */
-			rdev_warn(rdev, "incomplete constraints, leaving on\n");
+			rdev_info(rdev, "incomplete constraints, leaving on\n");
 		}
 
 unlock:
