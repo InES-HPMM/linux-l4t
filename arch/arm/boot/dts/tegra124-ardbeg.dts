@@ -6,6 +6,7 @@
 #include "tegra124-platforms/tegra124-e1780-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
 #include "panel-p-wuxga-10-1.dts"
+#include "panel-s-wqxga-10-1.dts"
 
 / {
 	model = "NVIDIA Tegra124 Ardbeg";
@@ -26,6 +27,11 @@
 			panel-p-wuxga-10-1 {
 				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
 				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+			panel-s-wqxga-10-1 {
+				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(R, 6) 0>; /* PR6 */
 			};
 		};
 	};

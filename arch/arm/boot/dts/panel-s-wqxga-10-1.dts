@@ -1,0 +1,57 @@
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		dsi {
+			panel-s-wqxga-10-1 {
+				compatible = "s,wqxga-10-1";
+				nvidia,dsi-n-data-lanes = <8>;
+				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
+				nvidia,dsi-refresh-rate = <61>;
+				nvidia,dsi-rated-refresh-rate = <60>;
+				nvidia,dsi-te-polarity-low = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE>;
+				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_TX_ONLY>;
+				nvidia,dsi-ganged-type = <TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT>;
+				nvidia,dsi-controller-vs = <DSI_VS_1>;
+				nvidia,dsi-virtual-channel = <TEGRA_DSI_VIRTUAL_CHANNEL_0>;
+				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-power-saving-suspend = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-lp00-pre-panel-wakeup = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-ulpm-not-supported = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-bl-name = "pwm-backlight";
+				status = "okay";
+				nvidia,dsi-init-cmd =
+							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
+							/* Short Packet: <PACKETTYPE[u8] COMMANDID[u8] DATA0[u8] DATA1[u8] ECC[u8]> */
+							/* For DSI packets each DT cell is interpreted as u8 not u32 */
+
+							<TEGRA_DSI_PACKET_CMD DSI_GENERIC_LONG_WRITE 0x3 0x0 0x0 0x10 0x00 0x2A 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x0 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_PACKET_CMD DSI_GENERIC_LONG_WRITE 0x3 0x0 0x0 0x10 0x01 0x01 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x0 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x35 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x11 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 120>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x29 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>,
+							<TEGRA_DSI_SEND_FRAME 1>,
+							<TEGRA_DSI_DELAY_MS 120>;
+				nvidia,dsi-n-init-cmd = <16>;
+				nvidia,dsi-suspend-cmd =
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x28 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 50>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x10 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 120>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM 0x34 0x0 0x0>,
+							<TEGRA_DSI_DELAY_MS 20>;
+				nvidia,dsi-n-suspend-cmd = <6>;
+			};
+		};
+	};
+};

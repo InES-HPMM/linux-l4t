@@ -198,6 +198,7 @@ obj-y                                   += board-touch-maxim_sti-spi.o
 obj-y                                   += board-panel.o
 obj-y                                   += panel-p-wuxga-10-1.o
 obj-y                                   += panel-lgd-wxga-7-0.o
+obj-y                                   += panel-s-wqxga-10-1.o
 
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
