@@ -728,6 +728,7 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 }
 
+static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld);
 static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
 	u32 out_max, out_min;
@@ -738,6 +739,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		if (out_cap > cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
+			cl_dvfs_set_force_out_min(cld);
 		}
 		break;
 
@@ -746,6 +748,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		if (out_cap <= cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 			tune_low(cld);
+			cl_dvfs_set_force_out_min(cld);
 		}
 		break;
 	default:
@@ -1021,16 +1024,15 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
 {
-	u8 force_out_min = get_output_bottom(cld);
+	u8 force_out_min;
 	int force_mv_min = cld->p_data->pmu_undershoot_gb;
 
 	if (!force_mv_min) {
-		cld->force_out_min = force_out_min;
+		cld->force_out_min = get_output_bottom(cld);
 		return;
 	}
 
-	if (cld->therm_floor_idx < cld->therm_floors_num)
-		force_out_min = cld->thermal_out_floors[cld->therm_floor_idx];
+	force_out_min = get_output_min(cld);
 	force_mv_min += get_mv(cld, force_out_min);
 	force_out_min = find_mv_out_cap(cld, force_mv_min);
 	if (force_out_min == cld->safe_output)
