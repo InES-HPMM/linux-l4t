@@ -717,8 +717,8 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 	rconfig.of_node = NULL;
 	rconfig.init_data = &bq2419x->chg_reg_init_data;
 	rconfig.driver_data = bq2419x;
-	bq2419x->chg_rdev = regulator_register(&bq2419x->chg_reg_desc,
-					&rconfig);
+	bq2419x->chg_rdev = devm_regulator_register(bq2419x->dev,
+				&bq2419x->chg_reg_desc, &rconfig);
 	if (IS_ERR(bq2419x->chg_rdev)) {
 		ret = PTR_ERR(bq2419x->chg_rdev);
 		dev_err(bq2419x->dev,
@@ -778,8 +778,8 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	rconfig.of_node = NULL;
 	rconfig.init_data = &bq2419x->vbus_reg_init_data;
 	rconfig.driver_data = bq2419x;
-	bq2419x->vbus_rdev = regulator_register(&bq2419x->vbus_reg_desc,
-					&rconfig);
+	bq2419x->vbus_rdev = devm_regulator_register(bq2419x->dev,
+				&bq2419x->vbus_reg_desc, &rconfig);
 	if (IS_ERR(bq2419x->vbus_rdev)) {
 		ret = PTR_ERR(bq2419x->vbus_rdev);
 		dev_err(bq2419x->dev,
@@ -791,13 +791,10 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "Charging enable failed %d", ret);
-		goto scrub_reg;
+		goto scrub;
 	}
 	return ret;
 
-scrub_reg:
-	regulator_unregister(bq2419x->vbus_rdev);
-	bq2419x->vbus_rdev = NULL;
 scrub:
 	if (gpio_is_valid(bq2419x->gpio_otg_iusb))
 		gpio_free(bq2419x->gpio_otg_iusb);
@@ -1182,7 +1179,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		ret = bq2419x_watchdog_init(bq2419x, 0, "PROBE");
 		if (ret < 0) {
 			dev_err(bq2419x->dev, "WDT disable failed: %d\n", ret);
-			goto scrub_vbus_reg;
+			goto scrub_mutex;
 		}
 		goto skip_bcharger_init;
 	}
@@ -1196,14 +1193,14 @@ static int bq2419x_probe(struct i2c_client *client,
 	ret = bq2419x_charger_init(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "Charger init failed: %d\n", ret);
-		goto scrub_vbus_reg;
+		goto scrub_mutex;
 	}
 
 	ret = bq2419x_init_charger_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(&client->dev,
 			"Charger regualtor init failed %d\n", ret);
-		goto scrub_vbus_reg;
+		goto scrub_mutex;
 	}
 
 	bq2419x_charger_bci.enable_thermal_monitor =
@@ -1217,7 +1214,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		ret = PTR_ERR(bq2419x->bc_dev);
 		dev_err(bq2419x->dev, "battery charger register failed: %d\n",
 			ret);
-		goto scrub_chg_reg;
+		goto scrub_mutex;
 	}
 
 	INIT_DELAYED_WORK(&bq2419x->wdt_restart_wq, bq2419x_wdt_restart_wq);
@@ -1234,7 +1231,7 @@ skip_bcharger_init:
 		goto scrub_wq;
 	}
 
-	ret = request_threaded_irq(bq2419x->irq, NULL,
+	ret = devm_request_threaded_irq(bq2419x->dev, bq2419x->irq, NULL,
 		bq2419x_irq, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 			dev_name(bq2419x->dev), bq2419x);
 	if (ret < 0) {
@@ -1248,22 +1245,14 @@ skip_bcharger_init:
 	/* enable charging */
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
-		goto scrub_irq;
+		goto scrub_wq;
 
 	return 0;
-scrub_irq:
-	if (bq2419x->irq)
-		free_irq(bq2419x->irq, bq2419x);
 scrub_wq:
-	if (pdata->bcharger_pdata)
+	if (pdata->bcharger_pdata) {
 		cancel_delayed_work(&bq2419x->wdt_restart_wq);
-	if (pdata->bcharger_pdata)
 		battery_charger_unregister(bq2419x->bc_dev);
-scrub_chg_reg:
-	if (pdata->bcharger_pdata)
-		regulator_unregister(bq2419x->chg_rdev);
-scrub_vbus_reg:
-	regulator_unregister(bq2419x->vbus_rdev);
+	}
 scrub_mutex:
 	mutex_destroy(&bq2419x->mutex);
 	return ret;
@@ -1273,14 +1262,10 @@ static int bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 
-	if (bq2419x->irq)
-		free_irq(bq2419x->irq, bq2419x);
 	if (bq2419x->battery_presense) {
 		battery_charger_unregister(bq2419x->bc_dev);
-		regulator_unregister(bq2419x->chg_rdev);
 		cancel_delayed_work(&bq2419x->wdt_restart_wq);
 	}
-	regulator_unregister(bq2419x->vbus_rdev);
 	mutex_destroy(&bq2419x->mutex);
 	return 0;
 }
