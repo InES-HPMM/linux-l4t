@@ -30,6 +30,7 @@ struct tegra_adf_info {
 	struct adf_interface		intf;
 	struct adf_overlay_engine	eng;
 	struct tegra_dc			*dc;
+	struct tegra_fb_data		*fb_data;
 	void				*vb2_dma_conf;
 };
 
@@ -354,6 +355,7 @@ static int tegra_adf_sanitize_flip_args(struct tegra_adf_info *adf_info,
 		__u16 *dirty_rect[4])
 {
 	struct device *dev = &adf_info->base.base.dev;
+	struct tegra_dc *dc = adf_info->dc;
 	int i, used_windows = 0;
 
 	if (win_num > DC_N_WINDOWS) {
@@ -370,7 +372,8 @@ static int tegra_adf_sanitize_flip_args(struct tegra_adf_info *adf_info,
 		if (index < 0)
 			continue;
 
-		if (index >= DC_N_WINDOWS) {
+		if (index >= DC_N_WINDOWS ||
+				!test_bit(index, &dc->valid_windows)) {
 			dev_err(dev, "invalid window index %u\n", index);
 			return -EINVAL;
 		}
@@ -1024,14 +1027,20 @@ static int tegra_adf_intf_describe_simple_post(struct adf_interface *intf,
 	struct tegra_adf_flip *args = data;
 	int i;
 
-	args->win_num = adf_info->dc->n_windows;
-	for (i = 0; i < adf_info->dc->n_windows; i++) {
-		args->win[i].win_index = i;
-		args->win[i].buf_index = -1;
+	args->win_num = 0;
+	for_each_set_bit(i, &adf_info->dc->valid_windows, DC_N_WINDOWS) {
+		struct tegra_adf_flip_windowattr *win =
+				&args->win[args->win_num];
+		win->win_index = i;
+		if (i == adf_info->fb_data->win) {
+			win->buf_index = 0;
+			win->out_w = intf->current_mode.hdisplay;
+			win->out_h = intf->current_mode.vdisplay;
+		} else {
+			win->buf_index = -1;
+		}
+		args->win_num++;
 	}
-	args->win[1].buf_index = 0;
-	args->win[1].out_w = intf->current_mode.hdisplay;
-	args->win[1].out_h = intf->current_mode.vdisplay;
 
 	*size = sizeof(*args) + args->win_num * sizeof(args->win[0]);
 	return 0;
@@ -1116,6 +1125,7 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 		return ERR_PTR(-ENOMEM);
 
 	adf_info->dc = dc;
+	adf_info->fb_data = fb_data;
 
 	err = adf_device_init(&adf_info->base, &ndev->dev,
 			&tegra_adf_dev_ops, "%s", dev_name(&ndev->dev));
