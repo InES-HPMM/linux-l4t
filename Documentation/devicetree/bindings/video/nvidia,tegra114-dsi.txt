@@ -39,6 +39,7 @@ NVIDIA TEGRA114 Display Serial Interface
  - nvidia,dsi-instance: Should be 0 or 1: DSI controller or DSIB controller.
  - nvidia,dsi-panel-reset: Indicate if dsi output device requires hardware reset or not.
  - nvidia,dsi-power-saving-suspend: With enabled, set dsi controller ultra low power mode in suspend.
+ - nvidia,dsi-ulpm-not-support: With enabled, do not enter dsi ulpm mode.
  - nvidia,dsi-video-data-type: The DSI operates in two transmission modes: video and host/command.
    Write 0, 1 for TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE, TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE, respectively.
  - nvidia,dsi-video-clock-mode: Control for the hs clock lane. Continuous means hs clock on all the time.

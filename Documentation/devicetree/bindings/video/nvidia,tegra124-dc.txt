@@ -59,6 +59,7 @@ NVIDIA Tegra124 Display Controller
  - nvidia,out-type: Output type. Should be "dsi" or "hdmi".
  - nvidia,out-width: Width in struct fb_var_screeninfo. width of picture in mm.
  - nvidia,out-height: Height in struct fb_var_screeninfo. height of picture in mm.
+ - nvidia,out-rotation: It specifies panel rotation in degree.
  - nvidia,out-flags: Should be "continuous" or "oneshot" or "hotplug_high" or "hotplug_low"
    or "continuous_initialized" or "oneshot_initialized"
  - nvidia,out-parent-clk: Parent clk for display controller.
