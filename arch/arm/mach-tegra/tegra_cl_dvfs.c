@@ -1867,11 +1867,188 @@ static int build_direct_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
 	return 0;
 }
 
+/* cl_dvfs dt parsing */
+#ifdef CONFIG_OF
+
+#define OF_READ_U32_OPT(node, name, var)				       \
+do {									       \
+	u32 val;							       \
+	if (!of_property_read_u32((node), #name, &val)) {		       \
+		(var) = val;						       \
+		dev_dbg(&pdev->dev, "DT: " #name " = %u\n", val);	       \
+	}								       \
+} while (0)
+
+#define OF_READ_U32(node, name, var)					       \
+do {									       \
+	u32 val;							       \
+	if (of_property_read_u32((node), #name, &val)) {		       \
+		dev_err(&pdev->dev, "missing " #name " in DT data\n");	       \
+		goto err_out;						       \
+	}								       \
+	(var) = val;							       \
+	dev_dbg(&pdev->dev, "DT: " #name " = %u\n", val);		       \
+} while (0)
+
+#define OF_READ_BOOL(node, name, var)					       \
+do {									       \
+	(var) = of_property_read_bool((node), #name);			       \
+	dev_dbg(&pdev->dev, "DT: " #name " = %s\n", (var) ? "true" : "false"); \
+} while (0)
+
+
+static int dt_parse_pwm_pmic_params(struct platform_device *pdev,
+	struct device_node *pmic_dn, struct tegra_cl_dvfs_platform_data *p_data)
+{
+	dev_err(&pdev->dev, "pwm pmic DT data not supported yet\n");
+	return -ENOSYS;
+}
+
+static int dt_parse_i2c_pmic_params(struct platform_device *pdev,
+	struct device_node *pmic_dn, struct tegra_cl_dvfs_platform_data *p_data)
+{
+	OF_READ_U32(pmic_dn, pmic-i2c-address, p_data->u.pmu_i2c.slave_addr);
+	OF_READ_U32(pmic_dn, pmic-i2c-voltage-register, p_data->u.pmu_i2c.reg);
+
+	OF_READ_BOOL(pmic_dn, i2c-10-bit-addresses, p_data->u.pmu_i2c.addr_10);
+
+	OF_READ_U32(pmic_dn, sel-conversion-slope, p_data->u.pmu_i2c.sel_mul);
+	OF_READ_U32_OPT(pmic_dn, sel-conversion-offset,
+			p_data->u.pmu_i2c.sel_offs);
+	OF_READ_U32_OPT(pmic_dn, pmic-undershoot-gb, p_data->pmu_undershoot_gb);
+
+	OF_READ_U32(pmic_dn, i2c-fs-rate, p_data->u.pmu_i2c.fs_rate);
+	OF_READ_U32_OPT(pmic_dn, i2c-hs-rate, p_data->u.pmu_i2c.hs_rate);
+	if (p_data->u.pmu_i2c.hs_rate)
+		OF_READ_U32(pmic_dn, i2c-hs-master-code,
+			    p_data->u.pmu_i2c.hs_master_code);
+
+	of_node_put(pmic_dn);
+	return 0;
+
+err_out:
+	of_node_put(pmic_dn);
+	return -EINVAL;
+}
+
+static int dt_parse_board_params(struct platform_device *pdev,
+	struct device_node *b_dn, struct tegra_cl_dvfs_cfg_param *p_cfg)
+{
+	int i = 0;
+	bool fixed_forcing, auto_forcing, no_forcing;
+
+	OF_READ_U32(b_dn, sample-rate, p_cfg->sample_rate);
+	OF_READ_U32(b_dn, cf, p_cfg->cf);
+	OF_READ_U32(b_dn, ci, p_cfg->ci);
+	OF_READ_U32(b_dn, cg, p_cfg->cg);
+	OF_READ_U32(b_dn, droop-cut-value, p_cfg->droop_cut_value);
+	OF_READ_U32(b_dn, droop-restore-ramp, p_cfg->droop_restore_ramp);
+	OF_READ_U32(b_dn, scale-out-ramp, p_cfg->scale_out_ramp);
+
+	OF_READ_BOOL(b_dn, cg-scale, p_cfg->cg_scale);
+
+	OF_READ_BOOL(b_dn, fixed-output-forcing, fixed_forcing);
+	OF_READ_BOOL(b_dn, auto-output-forcing, auto_forcing);
+	OF_READ_BOOL(b_dn, no-output-forcing, no_forcing);
+	if (fixed_forcing) {
+		i++;
+		p_cfg->force_mode = TEGRA_CL_DVFS_FORCE_FIXED;
+	}
+	if (auto_forcing) {
+		i++;
+		p_cfg->force_mode = TEGRA_CL_DVFS_FORCE_AUTO;
+	}
+	if (no_forcing) {
+		i++;
+		p_cfg->force_mode = TEGRA_CL_DVFS_FORCE_NONE;
+	}
+	if (i != 1) {
+		dev_err(&pdev->dev, "%s force_mode in DT board data\n",
+			i ? "inconsistent" : "missing");
+		goto err_out;
+	}
+
+	of_node_put(b_dn);
+	return 0;
+
+err_out:
+	of_node_put(b_dn);
+	return -EINVAL;
+}
+
+static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
+				  struct tegra_cl_dvfs_platform_data *p_data)
+{
+	int ret;
+	u32 flags = 0;
+	struct device_node *dn = pdev->dev.of_node;
+	struct device_node *i2c_dn, *pwm_dn, *b_dn;
+
+	ret = of_property_read_string(dn, "out-clock-name",
+				      &p_data->dfll_clk_name);
+	if (ret) {
+		dev_err(&pdev->dev, "missing target clock name in DT data\n");
+		return ret;
+	}
+	dev_dbg(&pdev->dev, "DT: target clock: %s\n", p_data->dfll_clk_name);
+
+	if (of_find_property(dn, "i2c-quiet-output-workaround", NULL))
+		flags |= TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET;
+	if (of_find_property(dn, "monitor-data-new-workaround", NULL))
+		flags |= TEGRA_CL_DVFS_DATA_NEW_NO_USE;
+	if (!of_find_property(dn, "dynamic-output-lut-workaround", NULL))
+		flags |= TEGRA_CL_DVFS_DYN_OUTPUT_CFG;	/* inverse polarity */
+	p_data->flags = flags;
+	dev_dbg(&pdev->dev, "DT: flags: 0x%x\n", p_data->flags);
+
+	/* pmic integration */
+	i2c_dn = of_parse_phandle(dn, "i2c-pmic-integration", 0);
+	pwm_dn = of_parse_phandle(dn, "pwm-pmic-integration", 0);
+	if (!i2c_dn == !pwm_dn) {
+		of_node_put(i2c_dn);
+		of_node_put(pwm_dn);
+		dev_err(&pdev->dev, "%s DT pmic data\n",
+			i2c_dn ? "inconsistent" : "missing");
+		return -ENODATA;
+	}
+
+	ret = i2c_dn ? dt_parse_i2c_pmic_params(pdev, i2c_dn, p_data) :
+			dt_parse_pwm_pmic_params(pdev, pwm_dn, p_data);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to parse DT pmic data\n");
+		return ret;
+	}
+	p_data->pmu_if = i2c_dn ? TEGRA_CL_DVFS_PMU_I2C : TEGRA_CL_DVFS_PMU_PWM;
+
+	/* board configuration parameters */
+	b_dn = of_parse_phandle(dn, "board-params", 0);
+	if (!b_dn) {
+		dev_err(&pdev->dev, "missing DT board data\n");
+		return -ENODATA;
+	}
+
+	ret = dt_parse_board_params(pdev, b_dn, p_data->cfg_param);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to parse DT board data\n");
+		return ret;
+	}
+
+	dev_info(&pdev->dev, "DT data retrieved successfully\n");
+	return 0;
+}
+#else
+static void *tegra_cl_dvfs_dt_parse_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct tegra_cl_dvfs_platform_data *p_data;
 	struct resource *res, *res_i2c = NULL;
+	struct tegra_cl_dvfs_cfg_param *p_cfg = NULL;
 	struct voltage_reg_map *p_vdd_map = NULL;
 	struct tegra_cl_dvfs *cld = NULL;
 	struct clk *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk, *dfll_clk;
@@ -1892,9 +2069,30 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	p_data = pdev->dev.platform_data;
-	if (!p_data || !p_data->cfg_param) {
+	if (!p_data) {
+		p_data = kzalloc(sizeof(*p_data), GFP_KERNEL);
+		if (!p_data) {
+			dev_err(&pdev->dev, "failed to allocate p_data\n");
+			ret = -ENOMEM;
+			goto err_out;
+		}
+		p_cfg = kzalloc(sizeof(*p_cfg), GFP_KERNEL);
+		if (!p_cfg) {
+			dev_err(&pdev->dev, "failed to allocate p_cfg\n");
+			ret = -ENOMEM;
+			goto err_out;
+		}
+
+		p_data->cfg_param = p_cfg;
+		ret = cl_dvfs_dt_parse_pdata(pdev, p_data);
+		if (ret) {
+			dev_err(&pdev->dev, "failed to parse DT p_data\n");
+			goto err_out;
+		}
+	} else if (!p_data->cfg_param) {
 		dev_err(&pdev->dev, "missing platform data\n");
-		return -ENODATA;
+		ret = -ENODATA;
+		goto err_out;
 	}
 
 	ref_clk = clk_get(&pdev->dev, "ref");
@@ -1904,19 +2102,23 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	dfll_clk = clk_get(&pdev->dev, p_data->dfll_clk_name);
 	if (IS_ERR(ref_clk) || IS_ERR(soc_clk) || IS_ERR(i2c_clk)) {
 		dev_err(&pdev->dev, "missing control clock\n");
-		return -ENODEV;
+		ret = -ENOENT;
+		goto err_out;
 	}
 	if (IS_ERR(safe_dvfs_clk)) {
 		dev_err(&pdev->dev, "missing safe dvfs source clock\n");
-		return PTR_ERR(safe_dvfs_clk);
+		ret = PTR_ERR(safe_dvfs_clk);
+		goto err_out;
 	}
 	if (IS_ERR(dfll_clk)) {
 		dev_err(&pdev->dev, "missing target dfll clock\n");
-		return PTR_ERR(dfll_clk);
+		ret = PTR_ERR(dfll_clk);
+		goto err_out;
 	}
 	if (!safe_dvfs_clk->dvfs || !safe_dvfs_clk->dvfs->dvfs_rail) {
 		dev_err(&pdev->dev, "invalid safe dvfs source\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_out;
 	}
 
 	/* Build vdd_map if not specified by platform data */
@@ -1993,13 +2195,25 @@ err_out:
 		p_data->vdd_map = NULL;
 	kfree(p_vdd_map);
 	kfree(cld);
+	if (!pdev->dev.platform_data) {
+		kfree(p_cfg);
+		kfree(p_data);
+	}
 	return ret;
 }
+
+static struct of_device_id tegra_cl_dvfs_of_match[] = {
+	{ .compatible = "nvidia,tegra114-dfll", },
+	{ .compatible = "nvidia,tegra124-dfll", },
+	{ .compatible = "nvidia,tegra148-dfll", },
+	{ },
+};
 
 static struct platform_driver tegra_cl_dvfs_driver = {
 	.driver         = {
 		.name   = "tegra_cl_dvfs",
 		.owner  = THIS_MODULE,
+		.of_match_table = tegra_cl_dvfs_of_match,
 #ifdef CONFIG_PM_SLEEP
 		.pm = &tegra_cl_dvfs_pm_ops,
 #endif
