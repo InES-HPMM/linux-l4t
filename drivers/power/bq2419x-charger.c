@@ -1181,6 +1181,12 @@ static int bq2419x_probe(struct i2c_client *client,
 			dev_err(bq2419x->dev, "WDT disable failed: %d\n", ret);
 			goto scrub_mutex;
 		}
+
+		ret = bq2419x_fault_clear_sts(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
+			goto scrub_mutex;
+		}
 		goto skip_bcharger_init;
 	}
 
@@ -1224,7 +1230,6 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_wq;
 	}
 
-skip_bcharger_init:
 	ret = bq2419x_fault_clear_sts(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
@@ -1242,6 +1247,7 @@ skip_bcharger_init:
 		ret = 0;
 	}
 
+skip_bcharger_init:
 	/* enable charging */
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
