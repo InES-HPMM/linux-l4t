@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/isomgr.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -239,7 +239,7 @@ static struct isoclient_info *get_iso_client_info(void)
 		break;
 	case TEGRA_CHIPID_TEGRA12:
 		cinfo = tegra12x_isoclients;
-		iso_bw_percentage = 44;
+		iso_bw_percentage = 50;
 		break;
 	default:
 		cinfo = tegra_null_isoclients;

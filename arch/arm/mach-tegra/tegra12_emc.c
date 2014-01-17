@@ -55,18 +55,29 @@ module_param(emc_enable, bool, 0644);
 #ifdef CONFIG_PASR
 static int pasr_enable;
 #endif
-u8 tegra_emc_bw_efficiency = 100;
+
+u8 tegra_emc_bw_efficiency = 80;
 
 static u32 bw_calc_freqs[] = {
-	20, 40, 60, 80, 100, 120, 140, 160, 200, 300, 400, 600, 800
+	5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180
 };
 
-static u32 tegra12_emc_usage_shared_os_idle[] = {
-	11, 27, 29, 34, 39, 42, 46, 47, 51, 51, 51, 51, 51, 51
+/* LPDDR3 table */
+static u32 tegra12_lpddr3_emc_usage_shared_os_idle[] = {
+	18, 29, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 50
 };
-static u32 tegra12_emc_usage_shared_general[] = {
-	11, 18, 22, 25, 28, 31, 34, 38, 44, 44, 44, 44, 44, 51
+static u32 tegra12_lpddr3_emc_usage_shared_general[] = {
+	17, 25, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 45
 };
+
+/* the following is for DDR3: */
+static u32 tegra12_ddr3_emc_usage_shared_os_idle[] = {
+	21, 30, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 60
+};
+static u32 tegra12_ddr3_emc_usage_shared_general[] = {
+	20, 26, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 50
+};
+
 
 static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw);
 static u8 iso_share_calc_t124_general(unsigned long iso_bw);
@@ -79,20 +90,20 @@ static struct emc_iso_usage tegra12_emc_iso_usage[] = {
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
-		45, iso_share_calc_t124_general
+		50, iso_share_calc_t124_general
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),
-		45, iso_share_calc_t124_general
+		50, iso_share_calc_t124_general
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),
-		45, iso_share_calc_t124_general
+		50, iso_share_calc_t124_general
 	},
 };
 
 #define MHZ 1000000
-#define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM 13
+#define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM	12
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	1000
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
@@ -1788,13 +1799,17 @@ static inline int bw_calc_get_freq_idx(unsigned long bw)
 static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw)
 {
 	int freq_idx = bw_calc_get_freq_idx(iso_bw);
-	return tegra12_emc_usage_shared_os_idle[freq_idx];
+	return (dram_type != DRAM_TYPE_DDR3) ?
+		tegra12_lpddr3_emc_usage_shared_os_idle[freq_idx] :
+		tegra12_ddr3_emc_usage_shared_os_idle[freq_idx];
 }
 
 static u8 iso_share_calc_t124_general(unsigned long iso_bw)
 {
 	int freq_idx = bw_calc_get_freq_idx(iso_bw);
-	return tegra12_emc_usage_shared_general[freq_idx];
+	return (dram_type != DRAM_TYPE_DDR3) ?
+		tegra12_lpddr3_emc_usage_shared_general[freq_idx] :
+		tegra12_ddr3_emc_usage_shared_general[freq_idx];
 }
 
 
