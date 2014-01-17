@@ -68,14 +68,7 @@
 		status = "okay";
 	};
 
-	i2c@7000c000 {
-		status = "okay";
-		clock-frequency = <100000>;
-	};
-
 	i2c@7000c400 {
-		status = "okay";
-		clock-frequency = <100000>;
 
 		pca9546@71 {
 			compatible = "nxp,pca9546";
@@ -105,8 +98,6 @@
 	};
 
 	i2c@7000c500 {
-		status = "okay";
-		clock-frequency = <100000>;
 
 		imx091@10 {
 			compatible = "nvidia,imx091";
@@ -180,14 +171,7 @@
 		};
 	};
 
-	i2c@7000c700 {
-		status = "okay";
-		clock-frequency = <100000>;
-	};
-
 	i2c@7000d000 {
-		status = "okay";
-		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
 	};
 
