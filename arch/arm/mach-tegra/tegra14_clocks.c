@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_clocks.c
  *
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3186,7 +3186,6 @@ static void __init tegra14_dfll_cpu_late_init(struct clk *c)
 	ret = tegra_init_cl_dvfs();
 	if (!ret) {
 		c->state = OFF;
-		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
 
 		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);

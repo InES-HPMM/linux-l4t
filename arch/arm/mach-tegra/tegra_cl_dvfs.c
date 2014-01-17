@@ -1481,6 +1481,8 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_cntrl_logic(cld);
 	cl_dvfs_disable_clocks(cld);
 
+	/* Set target clock cl_dvfs data */
+	clk_set_cl_dvfs_data(cld->dfll_clk, cld);
 	return 0;
 }
 

@@ -2,12 +2,11 @@
  * arch/arm/mach-tegra/include/mach/clock.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012 NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -405,6 +404,11 @@ struct clk *tegra_get_clock_by_name(const char *name);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
 #ifndef CONFIG_COMMON_CLK
+static inline void clk_set_cl_dvfs_data(struct clk *c, void *cld)
+{
+	c->u.dfll.cl_dvfs = cld;
+}
+
 static inline bool clk_is_auto_dvfs(struct clk *c)
 {
 	return c->auto_dvfs;
