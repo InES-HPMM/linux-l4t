@@ -477,6 +477,7 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "soc_therm",	"pll_p",	51000000,	false },
 	{ "tsensor",	"clk_m",	500000,		false },
 #endif
+	{ "pll_d",	NULL,		0,		true },
 	{ NULL,		NULL,		0,		0},
 };
 static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {

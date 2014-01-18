@@ -9755,6 +9755,7 @@ void __init tegra12x_init_clocks(void)
 
 static int __init tegra12x_clk_late_init(void)
 {
+	clk_disable(&tegra_pll_d);
 	clk_disable(&tegra_pll_re_vco);
 	return 0;
 }
