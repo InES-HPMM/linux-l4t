@@ -1,0 +1,125 @@
+NVIDIA Tegra DFLL clock source data in the SoC DTS file:
+
+Required properties:
+- compatible : Must be one of the following
+	"nvidia,tegra124-dfll".
+	"nvidia,tegra148-dfll".
+	"nvidia,tegra114-dfll",
+- reg : Must contain the starting physical address and length for the DFLL's
+  MMIO register space including the DFLL-to-I2C controller interface and the
+  DFLL's I2C controller.
+- out-clock-name : Must contain a "dfll_cpu" string, name of the DFLL output
+  clock.
+
+Optional properties:
+- status : device availability -- managed by the DT integration code.
+  Should be set to "disabled" in the SoC DTS file.
+
+Example:
+
+dfll@70110000 {
+        compatible = "nvidia,tegra124-dfll";
+        reg = <0x70110000 0x400>;
+        out-clock-name = "dfll_cpu";
+        status = "disabled";
+};
+
+
+NVIDIA Tegra DFLL clock source data in the board DTS file
+
+Required properties:
+- board-params : phandle pointing to the board-specific configuration data
+  for this DFLL instance.
+- i2c-pmic-integration : phandle pointing to the integration data for
+  PMIC controlled by this DFLL instance via I2C interface.
+Note that after future addition of device tree support for PMIC controlled via
+PWM interface, this property become optional and mutually exclusive with
+pwm-pmic-integration.
+
+Optional properties:
+- i2c-quiet-output-workaround : If the DFLL IP block version implemented on
+  this SoC requires the I2C output to the PMIC to be quiesced before disabling
+  it, this property should be set.
+- monitor-data-new-workaround : If the DFLL IP block version implemented on
+  this SoC may erroneously clear DFLL monitor data new indicator, this property
+  should be set.
+- dynamic-output-lut-workaround : If the DFLL IP block version implemented on
+  this SoC does not support dynamic change of DFLL output limits register
+  fields, this property should be set.
+
+- status : device availability -- managed by the DT integration code.
+  Should be set to "okay" if the DFLL is to be used on this board type.
+
+Example:
+
+dfll@70110000 {
+        board-params = <&{/cpu_dfll_board_params}>;
+        i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+        status = "okay";
+};
+
+
+DFLL board params node in the board DTS file
+
+Required properties:
+- sample-rate : control loop sample rate (in Hz).
+- cf : I2C: duration to force the PMIC voltage after frequency change.
+- cg : loop gain (signed) - determined during board characterization.
+- ci : loop integral gain selector.
+- droop-cut-value : DFLL output clock throttle setting at voltage droop event.
+- droop-restore-ramp : DFLL clock recovery rate after a voltage droop event.
+- scale-out-ramp : DFLL clock output scaling ramp rate.
+
+Optional properties:
+- cg-scale : if present, divide loop gain by 8 (see 'cg' above).
+
+- fixed-output-forcing : force PMIC voltage during req change for a fixed time.
+- auto-output-forcing : force PMIC voltage during req change for a dynamic time.
+- no-output-forcing : don't force PMIC voltage output during request change.
+Note that one and only one of 'fixed-output-forcing', or 'auto-output-forcing',
+or 'no-output-forcing' must be specified.
+
+Example:
+
+cpu_dfll_board_params {
+        sample-rate = <12500>;
+        fixed-output-forcing;
+        cf = <10>;
+        ci = <0>;
+        cg = <2>;
+        droop-cut-value = <0xf>;
+        droop-restore-ramp = <0x0>;
+        scale-out-ramp = <0x0>;
+};
+
+
+DFLL I2C PMIC integration node in the board DTS file
+
+Required properties:
+- pmic-i2c-address : PMIC I2C bus address.
+- pmic-i2c-voltage-register : internal PMIC address of the select-output-voltage
+  register (vsel register) for the rail that supplies the DFLL.
+- sel-slope : slope coefficient for linear conversion of selector values exposed
+  by regulator framework into PMIC vsel register settings.
+- i2c-fs-rate : I2C bus rate in Hz, in FS mode.
+
+Optional properties:
+- i2c-10-bit-addresses : PMIC requires a 10-bit I2C address.
+- i2c-hs-rate : use HS I2C bus mode to communicate with the PMIC, at this rate
+  in Hz.
+- i2c-hs-master-code : I2C master code to use - only applies in HS mode; must
+  be set if i2c-hs-rate is set, ignored otherwise.
+- sel-offset : offset coefficient for linear conversion of selector values
+  exposed by regulator framework into PMIC vsel register settings (offset zero,
+  if not present).
+- pmic-undershoot-gb : PMIC undershoot guard-band in mV (zero, if not present).
+
+Example:
+
+cpu_dfll_pmic_integration {
+        pmic-i2c-address = <0xb0>;
+        pmic-i2c-voltage-register = <0x23>;
+        i2c-fs-rate = <400000>;
+        sel-conversion-slope = <1>;
+        pmic-undershoot-gb = <100>;
+};
