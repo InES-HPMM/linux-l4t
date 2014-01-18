@@ -14711,10 +14711,6 @@ int __init loki_emc_init(void)
 				&loki_b00_sku0_emc_pdata;
 			break;
 		case 0x64:
-			pr_info("Loading Loki B00 sku100 EMC table.\n");
-			tegra_emc_device.dev.platform_data =
-				&loki_b00_sku100_emc_pdata;
-			break;
 		default:
 			WARN(1, "EMC for this loki sku not supported: %u\n",
 					bi.sku);
