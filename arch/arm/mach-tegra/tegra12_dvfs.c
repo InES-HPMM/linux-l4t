@@ -141,11 +141,33 @@ void __init tegra12x_vdd_cpu_align(int step_uv, int offset_uv)
 
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
-/* speedo_id	0	 1	  2	   3      */
-		2014500, 2320500, 2116500, 2524500,
+/* speedo_id	0	 1	  2	   3		4  */
+		2014500, 2320500, 2116500, 2524500, 1500000,
 };
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
+	/* Entry for automotive chips */
+	{
+		.speedo_id = 4,
+		.process_id = -1,
+		.dfll_tune_data  = {
+			.tune0		= 0x005020FF,
+			.tune0_high_mv	= 0x005040FF,
+			.tune1		= 0x00000060,
+			.droop_rate_min = 1000000,
+			.tune_high_min_millivolts = 900,
+			.min_millivolts = 750,
+		},
+		.max_mv = 1260,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f       dfll: c0,          c1,    c2  pll:  c0,     c1,    c2 */
+			{1500000,       {6386188, -446467, 9001}, {6386188, -446467, 9001} },
+			{      0,	{   0,      0,      0},	  {    0,      0,      0} },
+		},
+	},
 	{
 		.speedo_id = -1,
 		.process_id = -1,
@@ -384,10 +406,28 @@ static int resolve_core_override(int min_override_mv)
 
 /* GPU DVFS tables */
 static unsigned long gpu_max_freq[] = {
-/* speedo_id	0	1	2	*/
-		648000, 852000, 1008000,
+/* speedo_id	0	1	2	 3	*/
+		648000, 852000, 1008000, 600000
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
+	{
+		/* Automotive SKU */
+		.speedo_id =  3,
+		.process_id = -1,
+		.max_mv = 1200,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.thermal_scale = 10,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f        dfll  pll:   c0,     c1,   c2,   c3,      c4,   c5 */
+			{  600000, {  }, { 2445508, -122039, 2232,    0,       0,    0}, },
+			{       0, {  }, { }, },
+		},
+		.cvb_vmin =  {  0, {  }, { 1160000, -18900,    0,     0,  -6110,    0}, },
+		.vts_trips_table = { -40, 35, },
+	},
+
 	{
 		.speedo_id =  -1,
 		.process_id = -1,
@@ -763,9 +803,11 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	cpu_dvfs->dfll_data.is_bypass_down = is_lp_cluster;
 
 	/* Init cpu thermal floors */
-	tegra_dvfs_rail_init_vmin_thermal_profile(
-		d->vmin_trips_table, d->therm_floors_table,
-		rail, &cpu_dvfs->dfll_data);
+
+	if (d->therm_floors_table[0]) /* if table contains at least one entry */
+		tegra_dvfs_rail_init_vmin_thermal_profile(
+				d->vmin_trips_table, d->therm_floors_table,
+				rail, &cpu_dvfs->dfll_data);
 
 	/* Init cpu thermal caps */
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
@@ -927,8 +969,10 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	*max_freq_index = i - 1;
 
 	/* Init thermal floors */
-	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
-		d->therm_floors_table, &tegra12_dvfs_rail_vdd_gpu, NULL);
+
+	if (d->therm_floors_table[0]) /* if table contains at least one entry */
+		tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
+			d->therm_floors_table, &tegra12_dvfs_rail_vdd_gpu, NULL);
 
 	return 0;
 }
