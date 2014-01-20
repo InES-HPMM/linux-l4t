@@ -166,7 +166,6 @@ int battery_charger_set_current_broadcast(struct battery_charger_dev *bc_dev)
         int ret = 0;
 
         if (!bc_dev) {
-                dev_err(bc_dev->parent_dev, "Invalid parameters\n");
                 return -EINVAL;
         }
 
