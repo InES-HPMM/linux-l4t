@@ -302,4 +302,9 @@
 			status = "disabled";
 		};
 	};
+
+	adsp {
+	     compatible = "nvidia,tegra210-adsp";
+	     status = "disabled";
+	};
 };
