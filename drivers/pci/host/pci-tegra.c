@@ -1560,7 +1560,8 @@ static int tegra_pcie_conf_gpios(void)
 err_x1:
 	gpio_free(tegra_pcie.plat_data->gpio_x1_slot);
 err_hot_plug:
-	gpio_free(tegra_pcie.plat_data->gpio_hot_plug);
+	if (tegra_pcie.plat_data->gpio_hot_plug != -1)
+		gpio_free(tegra_pcie.plat_data->gpio_hot_plug);
 	return err;
 }
 
