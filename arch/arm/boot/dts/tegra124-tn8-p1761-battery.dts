@@ -1,29 +1,16 @@
-/dts-v1/;
-
-#include "tegra124.dtsi"
-#include "tegra124-platforms/tegra124-tn8-io.dtsi"
-#include "tegra124-platforms/tegra124-tn8-p1761-emc.dtsi"
-#include "tegra124-platforms/tegra124-tn8-e1936-pmic.dtsi"
-#include "tegra124-platforms/tegra124-tn8-e1936-fixed.dtsi"
-#include "tegra124-platforms/tegra124-tn8-sensors.dtsi"
-#include "tegra124-platforms/tegra124-p1761-pinmux.dtsi"
-#include "tegra124-platforms/tegra124-p1761-gpio-default.dtsi"
-#include "tegra124-platforms/tegra124-p1761-battery.dtsi"
-#include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+#include "tegra124-tn8-p1761.dts"
 #include "tegra124-platforms/tegra124-tn8-sysedp.dtsi"
 
 / {
-	model = "NVIDIA Tegra124 TN8 FFD";
-	compatible = "nvidia,tn8", "nvidia,tegra124";
-	nvidia,dtsfilename = __FILE__;
-	nvidia,boardids = "1761:1470:0:B:6";
-	#address-cells = <1>;
-	#size-cells = <1>;
+	i2c@7000c400 {
+		max17048@36 {
+			status = "okay";
+		};
 
-	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
-		linux,initrd-start = <0x85000000>;
-		linux,initrd-end = <0x851bc400>;
+		hpa2163@6b {
+			charger {
+				status = "okay";
+			};
+		};
 	};
 };
-

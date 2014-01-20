@@ -1,3 +1,5 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
 / {
 	i2c@7000d000 {
 		palmas: tps65913 {
@@ -621,9 +623,66 @@
 	};
 
 	i2c@7000c400 {
-		hpa2163: hpa2163@6b {
+
+		max17048@36 {
+			compatible = "maxim,max17048";
+			reg = <0x36>;
+			status = "disabled";
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;
+			tz-name = "battery-temp";
+			alert-threshold = <0>;          /* 1% SOC */
+			one-percent-alerts = <1>;
+			valert-max = <5100>;            /* not use */
+			valert-min = <0>;            /* not use */
+			vreset-threshold = <2400>;
+			vreset-disable = <1>;           /* not use */
+			hib-threshold = <48>;           /* 9.984%/hr */
+			hib-active-threshold = <128>;   /* 160mV */
+			bits = <18>;
+			rcomp = <57>;
+			rcomp-seg = <0x0200>;
+			soccheck-a = <119>;
+			soccheck-b = <121>;
+			ocvtest = <55952>;
+			data-tbl = <0x98 0x80 0xB3 0x50 0xB7 0x90 0xB9 0x00
+				0xBA 0x70 0xBC 0x10 0xBC 0x50 0xBC 0xA0
+				0xBD 0x20 0xBE 0x30 0xBF 0x40 0xC2 0xF0
+				0xC4 0x20 0xC7 0xE0 0xCB 0xF0 0xD0 0x90
+				0x00 0x40 0x06 0x70 0x0E 0x50 0x12 0x00
+				0x18 0xD0 0x33 0x10 0x31 0x40 0x35 0xD0
+				0x18 0xD0 0x19 0x00 0x0B 0xF0 0x0C 0x10
+				0x0D 0x10 0x07 0x90 0x08 0x00 0x08 0x00>;
+		};
+
+		lc709203f@0b {
+			compatible = "onsemi,lc709203f";
+			reg = <0x0b>;
+			onsemi,tz-name = "battery-temp";
+			status = "disabled";
+		};
+
+		hpa2163@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
+
+			charger {
+				status = "disabled";
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000>;
+				watchdog-timeout = <40>;
+				rtc-alarm-time = <3600>;
+				auto-recharge-time = <1800>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb _bat_chg";
+						regulator-consumer-device = "teg ra-udc.0";
+					};
+				};
+			};
 
 			vbus {
 				regulator-name = "vbus_regulator";
