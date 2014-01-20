@@ -403,9 +403,6 @@ imx179_set_mode(struct imx179_info *info, struct imx179_mode *mode)
 				reg_list, 5);
 	if (err)
 		return err;
-	if (err)
-		return err;
-
 	info->mode = sensor_mode;
 	pr_info("[IMX179]: stream on.\n");
 	return 0;
