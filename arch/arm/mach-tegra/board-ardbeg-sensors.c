@@ -23,7 +23,6 @@
 #include <linux/err.h>
 #include <linux/nct1008.h>
 #include <linux/pid_thermal_gov.h>
-#include <linux/power/sbs-battery.h>
 #include <linux/tegra-fuse.h>
 #include <mach/edp.h>
 #include <mach/pinmux-t12.h>
@@ -1479,18 +1478,6 @@ static int ardbeg_nct72_init(void)
 	return ret;
 }
 
-static struct sbs_platform_data sbs_pdata = {
-	.poll_retry_count	= 100,
-	.i2c_retry_count	= 2,
-};
-
-static struct i2c_board_info __initdata bq20z45_pdata[] = {
-	{
-		I2C_BOARD_INFO("sbs-battery", 0x0B),
-		.platform_data = &sbs_pdata,
-	},
-};
-
 struct ntc_thermistor_adc_table {
 	int temp; /* degree C */
 	int adc;
@@ -1660,10 +1647,6 @@ int __init ardbeg_sensors_init(void)
 	    board_info.board_id != BOARD_PM359)
 		i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
-
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
-		i2c_register_board_info(1, bq20z45_pdata,
-			ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }
