@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Samsung Electronics
- * Copyright (C) 2012-2013 NVIDIA CORPORATION
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  * Minkyu Kang <mk7.kang@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -36,7 +36,6 @@ struct max17048_platform_data {
 };
 #ifdef CONFIG_BATTERY_MAX17048
 extern void max17048_battery_status(int status);
-extern int max17048_check_battery(void);
 #else
 static inline void max17048_battery_status(int status) {}
 static inline int max17048_check_battery(void) { return -ENODEV; }

@@ -2,7 +2,7 @@
  *  max17048_battery.c
  *  fuel-gauge systems for lithium-ion (Li+) batteries
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *  Chandler Zhang <chazhang@nvidia.com>
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
@@ -45,7 +45,7 @@
 #define MAX17048_DELAY		(30*HZ)
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
-#define MAX17048_VERSION_NO	0x11
+#define MAX17048_VERSION_NO	0x1100
 
 /* MAX17048 ALERT interrupts */
 #define MAX17048_STATUS_RI		0x0100 /* reset */
@@ -490,20 +490,19 @@ static int max17048_initialize(struct max17048_chip *chip)
 	return 0;
 }
 
-int max17048_check_battery()
+static int max17048_check_battery(struct max17048_chip *chip)
 {
 	uint16_t version;
+	struct i2c_client *client = chip->client;
 
-	if (!max17048_data)
-		return -ENODEV;
-
-	version = max17048_get_version(max17048_data->client);
+	version = max17048_get_version(client);
 	if (version != MAX17048_VERSION_NO)
 		return -ENODEV;
 
+	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
+
 	return 0;
 }
-EXPORT_SYMBOL_GPL(max17048_check_battery);
 
 static irqreturn_t max17048_irq(int id, void *dev)
 {
@@ -727,7 +726,6 @@ static int max17048_probe(struct i2c_client *client,
 {
 	struct max17048_chip *chip;
 	int ret;
-	int version;
 	u16 val;
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -750,12 +748,11 @@ static int max17048_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
-	version = max17048_check_battery();
-	if (version < 0) {
+	ret = max17048_check_battery(chip);
+	if (ret < 0) {
 		ret = -ENODEV;
 		goto error;
 	}
-	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
 
 	ret = max17048_initialize(chip);
 	if (ret < 0) {
