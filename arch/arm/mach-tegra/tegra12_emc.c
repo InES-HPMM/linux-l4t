@@ -658,8 +658,8 @@ static inline void do_clock_change(u32 clk_setting)
 	emc_readl(EMC_INTSTATUS);
 
 	writel(clk_setting,
-		(void __iomem *)((u32)clk_base + emc->reg));
-	readl((void __iomem *)((u32)clk_base + emc->reg));
+		(void __iomem *)(clk_base + emc->reg));
+	readl((void __iomem *)(clk_base + emc->reg));
 				/* completes prev write */
 
 	err = wait_for_update(EMC_INTSTATUS,
