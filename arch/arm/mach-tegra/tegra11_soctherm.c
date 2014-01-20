@@ -474,6 +474,14 @@ static u32 tegra_chip_id;
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
 
+/**
+ * soctherm_writel() - Writes a value to a SOC_THERM register
+ * @value:		The value to write
+ * @reg:		The register offset
+ *
+ * Writes the @value to @reg if the soctherm device is not suspended.
+ */
+
 static inline void soctherm_writel(u32 value, u32 reg)
 {
 	if (!soctherm_suspended)
@@ -681,6 +689,17 @@ static inline s64 div64_s64_precise(s64 a, s32 b)
 	return r >> 16;
 }
 
+/**
+ * temp_translate() - Converts temperature
+ * @readback:		The value from a SOC_THERM sensor temperature
+ *			register
+ *
+ * Converts temperature from the format used in registers to a (signed)
+ * long. This function is the inverse of temp_translate_rev().
+ *
+ * Return: the translated temperature in millicelsius
+ */
+
 static inline long temp_translate(int readback)
 {
 	int abs = readback >> 8;
@@ -746,6 +765,16 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 	soctherm_writel(r, reg_off);
 }
 
+/**
+ * soctherm_set_limits() - Configures a sensor group to raise interrupts outside
+ * the given temperature range
+ * @therm:		ID of the sensor group
+ * @lo_limit:		The lowest temperature limit
+ * @hi_limit:		The highest temperature limit
+ *
+ * Configures sensor group @therm to raise an interrupt when temperature goes
+ * above @hi_limit or below @lo_limit.
+ */
 static void soctherm_set_limits(enum soctherm_therm_id therm,
 				long lo_limit, long hi_limit)
 {
@@ -936,6 +965,19 @@ static int soctherm_suspend_get_cur_state(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+/**
+ * soctherm_suspend_set_cur_state() - Resumes or suspends soctherm
+ * @cdev:		Thermal cooling device. Currently not being used.
+ * @cur_state:		The current state
+ *
+ * Ensures that the SOC_THERM device is suspended or resumed to match
+ * @cur_state. This function is passed to the thermal framework as part of a
+ * cooling device. This is a workaround to suspend the SOC_THERM IP block, which
+ * is only needed because this is not yet a device driver. Once this code is
+ * converted to be a device driver, the soctherm_suspend implementation can
+ * be removed
+ * Return: 0 (success).
+ */
 static int soctherm_suspend_set_cur_state(struct thermal_cooling_device *cdev,
 					  unsigned long cur_state)
 {
@@ -1161,6 +1203,17 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	return 0;
 }
 
+/**
+ * soctherm_get_crit_temp() - Gets critical temperature of a thermal zone
+ * @tzd:		The pointer to thermal zone device
+ * @temp:		The pointer to the temperature
+ *
+ * Iterates through the list of thermal trips for a given @thz, and looks for
+ * its critical temperature point @temp to cause a shutdown.
+ *
+ * Return: 0 if it is able to find a critical temperature point and stores it
+ * into the variable pointed by the address in @temp; Otherwise, return -EINVAL.
+ */
 static int soctherm_get_crit_temp(struct thermal_zone_device *thz,
 				  unsigned long *temp)
 {
@@ -1450,6 +1503,15 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+/**
+ * soctherm_oc_intr_enable() - Enables the soctherm over-current interrupt
+ * @alarm:		The soctherm throttle id
+ * @enable:		Flag indicating enable the soctherm over-current
+ *			interrupt or disable it
+ *
+ * Enables a specific over-current pins @alarm to raise an interrupt if the flag
+ * is set and the alarm corresponds to OC1, OC2, OC3, or OC4.
+ */
 static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
 					   bool enable)
 {
@@ -1479,7 +1541,15 @@ static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
 	soctherm_writel(r, OC_INTR_ENABLE);
 }
 
-/* Return 0 (success) if you want to  reenable OC alarm intr. */
+/**
+ * soctherm_handle_alarm() - Handles soctherm alarms
+ * @alarm:		The soctherm throttle id
+ *
+ * "Handles" over-current alarms (OC1, OC2, OC3, and OC4) by printing
+ * a warning or informative message.
+ *
+ * Return: -EINVAL for @alarm = THROTTLE_OC3, otherwise 0 (success).
+ */
 static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
 {
 	int rv = -EINVAL;
@@ -1796,6 +1866,14 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
+/**
+ * soctherm_fuse_read_calib_base() - Calculates calibration base temperature
+ *
+ * Calculates the nominal temperature used for thermal sensor calibration
+ * based on chip type and the value in fuses.
+ *
+ * Return: 0 (success), otherwise -EINVAL.
+ */
 static int soctherm_fuse_read_calib_base(void)
 {
 	s32 calib_cp, calib_ft;
@@ -2044,6 +2122,15 @@ static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 	pmc_writel(val, PMC_SCRATCH55);
 }
 
+/**
+ * soctherm_adjust_cpu_zone() - Adjusts the soctherm CPU zone
+ *
+ * Changes SOC_THERM registers based on the CPU and PLLX temperatures.
+ * Programs hotspot offsets per CPU and PLLX difference of temperature, stops or
+ * starts CPUn TSOSCs, and programs hotspot offsets per configuration.
+ * This function is called in soctherm_init_platform_data() and
+ * tegra_soctherm_adjust_cpu_zone().
+ */
 static void soctherm_adjust_cpu_zone(void)
 {
 	u32 r;
@@ -2098,6 +2185,16 @@ static void soctherm_adjust_cpu_zone(void)
 	}
 }
 
+/**
+ * soctherm_init_platform_data() - Initializes the platform data.
+ *
+ * Cleans up some platform data in preparation for configuring the
+ * hardware and configures the hardware as specified by the (cleaned up)
+ * platform data. This function is called in tegra11_soctherm_oc_int_init(),
+ * soctherm_resume_locked(), and tegra11_soctherm_init().
+ *
+ * Return: 0 (success); Otherwise, -EINVAL.
+ */
 static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
@@ -2270,6 +2367,12 @@ static int soctherm_suspend(void)
 	return 0;
 }
 
+/**
+ * soctherm_resume_locked() - Resumes soctherm if it is suspended
+ *
+ * Enables device interrupt generation for thermal and EDP when soctherm
+ * platform initialization is done.
+ */
 static void soctherm_resume_locked(void)
 {
 	if (soctherm_suspended) {
@@ -2291,6 +2394,13 @@ static int soctherm_resume(void)
 	return 0;
 }
 
+/**
+ * soctherm_sync() - Syncs soctherm
+ *
+ * If soctherm is suspended, reinitializes the SOC_THERM IP block registers
+ * from the platform data and updates each zone. Otherwise only the
+ * latter occurs.
+ */
 static int soctherm_sync(void)
 {
 	mutex_lock(&soctherm_suspend_resume_lock);
@@ -2332,6 +2442,14 @@ static void soctherm_oc_irq_lock(struct irq_data *data)
 
 	mutex_lock(&d->irq_lock);
 }
+
+/**
+ * soctherm_oc_irq_sync_unlock() - Unlocks the OC interrupt request
+ * @data:		Interrupt request data
+ *
+ * Looks up the interrupt request data @data and unlocks the mutex associated
+ * with a particular over-current interrupt request.
+ */
 static void soctherm_oc_irq_sync_unlock(struct irq_data *data)
 {
 	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
@@ -2478,6 +2596,16 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	return 0;
 }
 
+/**
+ * tegra_soctherm_adjust_cpu_zone() - Adjusts the CPU zone of Tegra soctherm
+ * @high_voltage_range:		Flag indicating whether or not the system is
+ *				within the highest voltage range
+ *
+ * If a particular VDD_CPU voltage threshold has been crossed (either up or
+ * down), invokes soctherm_adjust_cpu_zone().
+ * This function should be called by code outside this file when VDD_CPU crosses
+ * a particular threshold.
+ */
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 {
 	if (soctherm_high_voltage_range != high_voltage_range) {
@@ -2848,6 +2976,18 @@ static int cputemp_get(void *data, u64 *val)
 	return 0;
 }
 
+/**
+ * cputemp_set() - Puts a particular value into the CPU temperature register
+ * @data:		The pointer to data. Currently not being used.
+ * @temp:		The temperature to be written to the register
+ *
+ * This function only works if temperature overrides have been enabled.
+ * Clears the original register CPU temperature, converts the given
+ * temperature to a register value, and writes it to the CPU temp register.
+ * Used for debugfs.
+ *
+ * Return: 0 (success).
+ */
 static int cputemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
@@ -2867,6 +3007,20 @@ static int gputemp_get(void *data, u64 *val)
 	return 0;
 }
 
+/**
+ * gputemp_set() - Puts a particular value into the GPU temperature register
+ * @data:		The pointer to data. Currently not being used.
+ * @temp:		The temperature to be written to the register
+ *
+ * This function only works if temperature overrides have been enabled.
+ * Clears the original GPU temperature register, converts the given
+ * temperature to a register value, and writes it to the GPU temp register.
+ * The @temp needs to be in the units of the SOC_THERM register temperature
+ * bitfield.
+ * Used for debugfs.
+ *
+ * Return: 0 (success).
+ */
 static int gputemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
@@ -2905,6 +3059,19 @@ static int plltemp_get(void *data, u64 *val)
 	return 0;
 }
 
+
+/**
+ * plltemp_set() - Stores a particular value into the PLLX temperature register
+ * @data:		The pointer to data. Currently not being used.
+ * @temp:		The temperature to be written to the register
+ *
+ * This function only works if temperature overrides have been enabled.
+ * Clears the original PLLX temperature register, converts the given
+ * temperature to a register value, and writes it to the PLLX temp register.
+ * Used for debugfs.
+ *
+ * Return: 0 (success).
+ */
 static int plltemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
