@@ -840,6 +840,90 @@ static int fchg_reg_to_curr(int reg_val)
 	return ret;
 }
 
+static ssize_t bq2419x_show_input_charging_current(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	unsigned int reg_val;
+	int ret;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, &reg_val);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "INPUT_SRC read failed: %d\n", ret);
+		return ret;
+	}
+	ret = iinlim[BQ2419x_CONFIG_MASK & reg_val];
+	return snprintf(buf, MAX_STR_PRINT, "%d mA\n", ret);
+}
+
+static ssize_t bq2419x_set_input_charging_current(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int ret;
+	int in_current_limit;
+	char *p = (char *)buf;
+
+	in_current_limit = memparse(p, &p);
+	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
+	if (ret  < 0) {
+		dev_err(dev, "Current %d mA configuration faild: %d\n",
+			in_current_limit, ret);
+		return ret;
+	}
+	return count;
+}
+
+static ssize_t bq2419x_show_charging_state(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	unsigned int reg_val;
+	int ret;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg_val);
+	if (ret < 0) {
+		dev_err(dev, "BQ2419X_PWR_ON register read failed: %d\n", ret);
+		return ret;
+	}
+
+	if ((reg_val & BQ2419X_ENABLE_CHARGE_MASK) == BQ2419X_ENABLE_CHARGE)
+		return snprintf(buf, MAX_STR_PRINT, "enabled\n");
+	else
+		return snprintf(buf, MAX_STR_PRINT, "disabled\n");
+}
+
+static ssize_t bq2419x_set_charging_state(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	bool enabled;
+	int ret;
+
+	if ((*buf == 'E') || (*buf == 'e'))
+		enabled = true;
+	else if ((*buf == 'D') || (*buf == 'd'))
+		enabled = false;
+	else
+		return -EINVAL;
+
+	if (enabled)
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+			BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
+	else
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+			 BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_DISABLE_CHARGE);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "register update failed, %d\n", ret);
+		return ret;
+	}
+	return count;
+}
+
 static ssize_t bq2419x_show_output_charging_current(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -908,9 +992,18 @@ static DEVICE_ATTR(output_charging_current, (S_IRUGO | (S_IWUSR | S_IWGRP)),
 static DEVICE_ATTR(output_current_allowed_values, S_IRUGO,
 		bq2419x_show_output_charging_current_values, NULL);
 
+static DEVICE_ATTR(input_charging_current_mA, (S_IRUGO | (S_IWUSR | S_IWGRP)),
+		bq2419x_show_input_charging_current,
+		bq2419x_set_input_charging_current);
+
+static DEVICE_ATTR(charging_state, (S_IRUGO | (S_IWUSR | S_IWGRP)),
+		bq2419x_show_charging_state, bq2419x_set_charging_state);
+
 static struct attribute *bq2419x_attributes[] = {
 	&dev_attr_output_charging_current.attr,
 	&dev_attr_output_current_allowed_values.attr,
+	&dev_attr_input_charging_current_mA.attr,
+	&dev_attr_charging_state.attr,
 	NULL
 };
 
