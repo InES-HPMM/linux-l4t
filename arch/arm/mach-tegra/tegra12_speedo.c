@@ -127,6 +127,15 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		gpu_speedo_id = 1;
 		threshold_index = 1;
 		break;
+	case 0x49:
+	case 0x4A:
+	case 0x48:
+		cpu_speedo_id = 4;
+		/* FIXME: Add separate id for automotive */
+		soc_speedo_id = 1;
+		gpu_speedo_id = 3;
+		threshold_index = 1;
+		break;
 	default:
 		pr_warn("Tegra12: Unknown SKU %d\n", sku);
 		cpu_speedo_id = 0;
