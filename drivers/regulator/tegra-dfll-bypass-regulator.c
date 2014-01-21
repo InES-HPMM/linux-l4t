@@ -24,6 +24,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 
 struct tegra_dfll_bypass_regulator {
 	struct device *dev;
@@ -31,23 +32,46 @@ struct tegra_dfll_bypass_regulator {
 	struct tegra_dfll_bypass_platform_data *pdata;
 };
 
-static int tegra_dfll_bypass_set_voltage_sel(struct regulator_dev *reg,
-					     unsigned int selector)
+static int tegra_dfll_bypass_set_voltage(struct regulator_dev *reg,
+		int min_uV, int max_uV, unsigned int *selector)
 {
-	int ret;
+	int ret, delay;
 	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
 
-	ret = tdb->pdata->set_bypass_sel(tdb->pdata->dfll_data, selector);
-	if (ret)
-		dev_err(tdb->dev, "set selector failed, err %d\n", ret);
+	ret = regulator_map_voltage_linear(reg, min_uV, max_uV);
+	if (ret < 0) {
+		dev_err(tdb->dev, "failed map [%duV, %duV]\n", min_uV, max_uV);
+		return ret;
+	}
 
-	return ret;
+	*selector = ret;
+	ret = tdb->pdata->set_bypass_sel(tdb->pdata->dfll_data, *selector);
+	if (ret) {
+		dev_err(tdb->dev, "failed to set selector %u\n", *selector);
+		return ret;
+	}
+
+	/* add voltage settling delay */
+	delay = tdb->pdata->voltage_time_sel;
+	if (delay > 1000)
+		mdelay(delay / 1000);
+	udelay(delay % 1000);
+
+	return 0;
 }
 
-static int tegra_dfll_bypass_get_voltage_sel(struct regulator_dev *reg)
+static int tegra_dfll_bypass_get_voltage(struct regulator_dev *reg)
 {
+	int sel;
 	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
-	return tdb->pdata->get_bypass_sel(tdb->pdata->dfll_data);
+
+	sel = tdb->pdata->get_bypass_sel(tdb->pdata->dfll_data);
+	if (sel < 0) {
+		dev_err(tdb->dev, "failed to get selector\n");
+		return sel;
+	}
+
+	return regulator_list_voltage_linear(reg, sel);
 }
 
 static int tegra_dfll_bypass_set_voltage_time_sel(struct regulator_dev *reg,
@@ -93,8 +117,8 @@ static unsigned int tegra_dfll_bypass_get_mode(struct regulator_dev *reg)
 }
 
 static struct regulator_ops tegra_dfll_bypass_rops = {
-	.set_voltage_sel = tegra_dfll_bypass_set_voltage_sel,
-	.get_voltage_sel = tegra_dfll_bypass_get_voltage_sel,
+	.set_voltage = tegra_dfll_bypass_set_voltage,
+	.get_voltage = tegra_dfll_bypass_get_voltage,
 	.list_voltage = regulator_list_voltage_linear,
 	.map_voltage = regulator_map_voltage_linear,
 	.set_voltage_time_sel = tegra_dfll_bypass_set_voltage_time_sel,
