@@ -284,7 +284,7 @@ static int tegra_wdt_release(struct inode *inode, struct file *file)
 {
 	struct tegra_wdt *wdt = file->private_data;
 
-	if (wdt->status == WDT_ENABLED) {
+	if (wdt->status & WDT_ENABLED) {
 #ifndef CONFIG_WATCHDOG_NOWAYOUT
 		tegra_wdt_disable(wdt);
 		wdt->status = WDT_DISABLED;
@@ -300,6 +300,7 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 	struct tegra_wdt *wdt = file->private_data;
 	static DEFINE_SPINLOCK(lock);
 	int new_timeout;
+	int option;
 	static const struct watchdog_info ident = {
 		.identity = "Tegra Watchdog",
 		.options = WDIOF_SETTIMEOUT,
