@@ -490,7 +490,7 @@ int __init loki_sdhci_init(void)
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
 
-	tegra_sdhci_platform_data0.max_clk_limit = 204000000;
+	tegra_sdhci_platform_data0.max_clk_limit = 136000000;
 
 	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
