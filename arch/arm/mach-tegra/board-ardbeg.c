@@ -306,6 +306,7 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 
 static struct tegra_asoc_platform_data norrin_audio_pdata_max98090 = {
 	.gpio_hp_det		= NORRIN_GPIO_HP_DET,
+	.gpio_ext_mic_en	= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.edp_support		= true,
 	.edp_states		= {1080, 842, 0},
