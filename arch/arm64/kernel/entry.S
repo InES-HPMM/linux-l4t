@@ -315,15 +315,12 @@ el1_irq:
 #ifdef CONFIG_PREEMPT
 	get_thread_info tsk
 	ldr	w24, [tsk, #TI_PREEMPT]		// get preempt count
-<<<<<<< HEAD
 	add	w0, w24, #1			// increment it
 	str	w0, [tsk, #TI_PREEMPT]
 #endif
 	irq_handler
 #ifdef CONFIG_PREEMPT
 	str	w24, [tsk, #TI_PREEMPT]		// restore preempt count
-=======
->>>>>>> 883c057... arm64: fix typo in entry.S
 	cbnz	w24, 1f				// preempt count != 0
 	ldr	x0, [tsk, #TI_FLAGS]		// get flags
 	tbz	x0, #TIF_NEED_RESCHED, 1f	// needs rescheduling?
