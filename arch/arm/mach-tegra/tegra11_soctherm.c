@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -2842,8 +2842,9 @@ static int convert_set(void *data, u64 val)
 static int cputemp_get(void *data, u64 *val)
 {
 	u32 reg;
+
 	reg = soctherm_readl(TS_TEMP1);
-	*val = (reg & 0xffff0000) >> 16;
+	*val = temp_translate(REG_GET(reg, TS_TEMP1_CPU_TEMP));
 	return 0;
 }
 
@@ -2851,6 +2852,7 @@ static int cputemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP1);
+
 	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
 	soctherm_writel(reg_val, TS_TEMP1);
 	return 0;
@@ -2859,8 +2861,9 @@ static int cputemp_set(void *data, u64 temp)
 static int gputemp_get(void *data, u64 *val)
 {
 	u32 reg;
+
 	reg = soctherm_readl(TS_TEMP1);
-	*val = (reg & 0x0000ffff);
+	*val = temp_translate(REG_GET(reg, TS_TEMP1_GPU_TEMP));
 	return 0;
 }
 
@@ -2868,6 +2871,7 @@ static int gputemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP1);
+
 	reg_val = reg_val | (reg_orig & 0xffff0000);
 	soctherm_writel(reg_val, TS_TEMP1);
 	return 0;
@@ -2876,8 +2880,9 @@ static int gputemp_set(void *data, u64 temp)
 static int memtemp_get(void *data, u64 *val)
 {
 	u32 reg;
+
 	reg = soctherm_readl(TS_TEMP2);
-	*val = (reg & 0xffff0000) >> 16;
+	*val = temp_translate(REG_GET(reg, TS_TEMP2_MEM_TEMP));
 	return 0;
 }
 
@@ -2885,6 +2890,7 @@ static int memtemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP2);
+
 	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
 	soctherm_writel(reg_val, TS_TEMP2);
 	return 0;
@@ -2893,8 +2899,9 @@ static int memtemp_set(void *data, u64 temp)
 static int plltemp_get(void *data, u64 *val)
 {
 	u32 reg;
+
 	reg = soctherm_readl(TS_TEMP2);
-	*val = (reg & 0x0000ffff);
+	*val = temp_translate(REG_GET(reg, TS_TEMP2_PLLX_TEMP));
 	return 0;
 }
 
@@ -2902,6 +2909,7 @@ static int plltemp_set(void *data, u64 temp)
 {
 	u32 reg_val = temp_translate_rev(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP2);
+
 	reg_val = reg_val | (reg_orig & 0xffff0000);
 	soctherm_writel(reg_val, TS_TEMP2);
 	return 0;
@@ -2910,33 +2918,27 @@ static int plltemp_set(void *data, u64 temp)
 static int tempoverride_get(void *data, u64 *val)
 {
 	*val = soctherm_readl(TS_TEMP_SW_OVERRIDE);
-
 	return 0;
 }
 
 static int tempoverride_set(void *data, u64 val)
 {
 	soctherm_writel(val, TS_TEMP_SW_OVERRIDE);
-
 	return 0;
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
-
 DEFINE_SIMPLE_ATTRIBUTE(cputemp_fops, cputemp_get, cputemp_set, "%llu\n");
-
 DEFINE_SIMPLE_ATTRIBUTE(gputemp_fops, gputemp_get, gputemp_set, "%llu\n");
-
 DEFINE_SIMPLE_ATTRIBUTE(memtemp_fops, memtemp_get, memtemp_set, "%llu\n");
-
 DEFINE_SIMPLE_ATTRIBUTE(plltemp_fops, plltemp_get, plltemp_set, "%llu\n");
-
 DEFINE_SIMPLE_ATTRIBUTE(tempoverride_fops, tempoverride_get, tempoverride_set, "%llu\n");
 
 static int temp_log_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, temp_log_show, inode->i_private);
 }
+
 static const struct file_operations temp_log_fops = {
 	.open		= temp_log_open,
 	.read		= seq_read,
@@ -2968,4 +2970,5 @@ static int __init soctherm_debug_init(void)
 	return 0;
 }
 late_initcall(soctherm_debug_init);
+
 #endif
