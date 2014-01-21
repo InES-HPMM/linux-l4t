@@ -111,50 +111,30 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 
 	bc_dev = container_of(work, struct battery_charger_dev,
 					poll_temp_monitor_wq.work);
+	if (!bc_dev->tz_name)
+		return;
+
 	dev = bc_dev->parent_dev;
-
-	if (bc_dev->enable_thermal_monitor) {
-		mutex_lock(&charger_gauge_list_mutex);
-
-		list_for_each_entry(node, &gauge_list, list) {
-			if (node->cell_id != bc_dev->cell_id)
-				continue;
-			if (node->ops && node->ops->get_battery_temp) {
-				ret = node->ops->get_battery_temp();
-				if (ret < 0) {
-					dev_err(dev,
-					"Temperature read failed: %d\n ",
-					ret);
-					mutex_unlock(&charger_gauge_list_mutex);
-					goto exit;
-				}
-				temperature = ret;
-			}
-		}
-		mutex_unlock(&charger_gauge_list_mutex);
-	} else {
-		if (!bc_dev->battery_tz)
-			bc_dev->battery_tz =
-			thermal_zone_device_find_by_name(bc_dev->tz_name);
+	if (!bc_dev->battery_tz) {
+		bc_dev->battery_tz = thermal_zone_device_find_by_name(
+					bc_dev->tz_name);
 
 		if (!bc_dev->battery_tz) {
 			dev_info(dev,
-			"Battery thermal zone %s is not registered yet\n",
-			bc_dev->tz_name);
+			    "Battery thermal zone %s is not registered yet\n",
+				bc_dev->tz_name);
 			schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
-			msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
+			    msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
 			return;
 		}
-
-		ret = thermal_zone_get_temp(bc_dev->battery_tz,
-				&temperature);
-		if (ret < 0) {
-			dev_err(dev, "Temperature read failed: %d\n ",
-				ret);
-			goto exit;
-		}
-		temperature = temperature / 1000;
 	}
+
+	ret = thermal_zone_get_temp(bc_dev->battery_tz, &temperature);
+	if (ret < 0) {
+		dev_err(dev, "Temperature read failed: %d\n ", ret);
+		goto exit;
+	}
+	temperature = temperature / 1000;
 
 	charger_enable_state = true;
 	charger_current_half = false;
@@ -207,7 +187,7 @@ EXPORT_SYMBOL_GPL(battery_charger_set_current_broadcast);
 int battery_charger_thermal_start_monitoring(
 	struct battery_charger_dev *bc_dev)
 {
-	if (!bc_dev || !bc_dev->polling_time_sec)
+	if (!bc_dev || !bc_dev->polling_time_sec || !bc_dev->tz_name)
 		return -EINVAL;
 
 	bc_dev->start_monitoring = true;
@@ -220,7 +200,7 @@ EXPORT_SYMBOL_GPL(battery_charger_thermal_start_monitoring);
 int battery_charger_thermal_stop_monitoring(
 	struct battery_charger_dev *bc_dev)
 {
-	if (!bc_dev || !bc_dev->polling_time_sec)
+	if (!bc_dev || !bc_dev->polling_time_sec || !bc_dev->tz_name)
 		return -EINVAL;
 
 	bc_dev->start_monitoring = false;
@@ -444,23 +424,12 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->ops = bci->bc_ops;
 	bc_dev->parent_dev = dev;
 	bc_dev->drv_data = drv_data;
-	bc_dev->tz_name = kstrdup(bci->tz_name, GFP_KERNEL);
 
 	/* Thermal monitoring */
-	if (bci->enable_thermal_monitor) {
+	if (bci->tz_name) {
+		bc_dev->tz_name = kstrdup(bci->tz_name, GFP_KERNEL);
 		bc_dev->polling_time_sec = bci->polling_time_sec;
-		bc_dev->enable_thermal_monitor =
-			bci->enable_thermal_monitor;
-		INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
-				battery_charger_thermal_monitor_wq);
-	} else if (!bc_dev->tz_name) {
-		bc_dev->polling_time_sec = bci->polling_time_sec;
-		bc_dev->battery_tz = thermal_zone_device_find_by_name(
-						bc_dev->tz_name);
-		if (!bc_dev->battery_tz)
-			dev_info(dev,
-			    "Battery thermal zone %s is not registered yet\n",
-				bc_dev->tz_name);
+		bc_dev->enable_thermal_monitor = true;
 		INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
 				battery_charger_thermal_monitor_wq);
 	}
