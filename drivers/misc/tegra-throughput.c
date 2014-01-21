@@ -44,6 +44,8 @@ static spinlock_t lock;
 
 static int frame_time_sum_init = 1;
 static long frame_time_sum; /* used for fps EMA */
+static u64 framecount;
+static u64 frame_timestamp;
 
 static struct work_struct work;
 static int throughput_hint;
@@ -75,6 +77,10 @@ static void throughput_flip_callback(void)
 	ktime_t now;
 
 	now = ktime_get();
+	spin_lock(&lock);
+	framecount++;
+	frame_timestamp = ktime_to_us(now);
+	spin_unlock(&lock);
 
 	if (last_flip.tv64 != 0) {
 		timediff = (long) ktime_us_delta(now, last_flip);
@@ -245,30 +251,59 @@ DONE:
 static struct global_attr fps_attr = __ATTR(fps, 0444,
 		show_fps, NULL);
 
+static ssize_t show_framecount(struct kobject *kobj,
+	struct attribute *attr, char *buf)
+{
+	u64 fcount;
+	u64 fstamp;
+
+	spin_lock(&lock);
+	fcount = framecount;
+	fstamp = frame_timestamp;
+	spin_unlock(&lock);
+
+	return sprintf(buf, "%llu %llu\n",
+		       fcount, fstamp);
+}
+
+static struct global_attr framecount_attr = __ATTR(framecount, 0444,
+		show_framecount, NULL);
+
 int __init throughput_init_miscdev(void)
 {
-	int ret;
+	int ret_md, ret_f1, ret_f2;
 
 	pr_debug("%s: initializing\n", __func__);
 
 	spin_lock_init(&lock);
 	INIT_WORK(&work, set_throughput_hint);
 
-	ret = misc_register(&throughput_miscdev);
-	if (ret) {
-		pr_err("can\'t reigster throughput miscdev"
-		       " (minor %d err %d)\n", TEGRA_THROUGHPUT_MINOR, ret);
-		return ret;
+	ret_md = misc_register(&throughput_miscdev);
+	ret_f1 = sysfs_create_file(&throughput_miscdev.this_device->kobj,
+				   &fps_attr.attr);
+	ret_f2 = sysfs_create_file(&throughput_miscdev.this_device->kobj,
+				   &framecount_attr.attr);
+
+	if (ret_md == 0 && ret_f1 == 0 && ret_f2 == 0) {
+		tegra_dc_set_flip_callback(throughput_flip_callback);
+
+		return 0;
 	}
 
-	ret = sysfs_create_file(&throughput_miscdev.this_device->kobj,
-		&fps_attr.attr);
-	if (ret)
-		pr_err("%s: error %d creating sysfs node\n", __func__, ret);
+	if (ret_f2 == 0)
+		sysfs_remove_file(&throughput_miscdev.this_device->kobj,
+				  &framecount_attr.attr);
+	if (ret_f1 == 0)
+		sysfs_remove_file(&throughput_miscdev.this_device->kobj,
+				  &fps_attr.attr);
+	if (ret_md == 0)
+		misc_deregister(&throughput_miscdev);
 
-	tegra_dc_set_flip_callback(throughput_flip_callback);
-
-	return 0;
+	if (ret_md)
+		return ret_md;
+	if (ret_f1)
+		return ret_f1;
+	return ret_f2;
 }
 
 module_init(throughput_init_miscdev);
@@ -281,7 +316,10 @@ void __exit throughput_exit_miscdev(void)
 
 	cancel_work_sync(&work);
 
-	sysfs_remove_file(&throughput_miscdev.this_device->kobj, &fps_attr.attr);
+	sysfs_remove_file(&throughput_miscdev.this_device->kobj,
+			  &framecount_attr.attr);
+	sysfs_remove_file(&throughput_miscdev.this_device->kobj,
+			  &fps_attr.attr);
 
 	misc_deregister(&throughput_miscdev);
 }
