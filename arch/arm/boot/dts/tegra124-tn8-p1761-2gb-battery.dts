@@ -1,4 +1,5 @@
 #include "tegra124-tn8-p1761-2gb.dts"
+#include "tegra124-platforms/tegra124-tn8-sysedp.dtsi"
 
 / {
 	i2c@7000c400 {
