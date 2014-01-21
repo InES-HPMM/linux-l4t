@@ -1027,7 +1027,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		int chg_restart_time;
 		int disable_suspend_during_charging;
 		int temp_polling_time;
-		bool enable_thermal_monitor;
 		struct regulator_init_data *batt_init_data;
 		const char *status_str;
 
@@ -1066,17 +1065,14 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 			pdata->bcharger_pdata->chg_restart_time =
 							chg_restart_time;
 
-		enable_thermal_monitor = of_property_read_bool(batt_reg_node,
-				"ti,enable-thermal-monitor");
-		pdata->bcharger_pdata->enable_thermal_monitor =
-						enable_thermal_monitor;
-
 		ret = of_property_read_u32(batt_reg_node,
 			"ti,temp-polling-time-sec", &temp_polling_time);
 		if (!ret)
 			pdata->bcharger_pdata->temp_polling_time_sec =
 							temp_polling_time;
 
+		pdata->bcharger_pdata->tz_name = of_get_property(batt_reg_node,
+						"ti,thermal-zone", NULL);
 		pdata->bcharger_pdata->consumer_supplies =
 					batt_init_data->consumer_supplies;
 		pdata->bcharger_pdata->num_consumer_supplies =
@@ -1209,8 +1205,6 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_mutex;
 	}
 
-	bq2419x_charger_bci.enable_thermal_monitor =
-			pdata->bcharger_pdata->enable_thermal_monitor;
 	bq2419x_charger_bci.polling_time_sec =
 			pdata->bcharger_pdata->temp_polling_time_sec;
 	bq2419x_charger_bci.tz_name = pdata->bcharger_pdata->tz_name;
