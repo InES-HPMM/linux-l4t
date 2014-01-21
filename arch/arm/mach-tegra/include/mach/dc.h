@@ -389,6 +389,7 @@ enum {
 	TEGRA_DC_OUT_DSI,
 	TEGRA_DC_OUT_DP,
 	TEGRA_DC_OUT_LVDS,
+	TEGRA_DC_OUT_NVSR_DP,
 };
 
 struct tegra_dc_out_pin {
