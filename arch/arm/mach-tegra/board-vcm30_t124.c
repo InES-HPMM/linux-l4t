@@ -435,6 +435,9 @@ static struct platform_device *vcm30_t124_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra12_se_device,
 #endif
+#if defined(CONFIG_TEGRA_WATCHDOG)
+	&tegra_wdt0_device,
+#endif
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
