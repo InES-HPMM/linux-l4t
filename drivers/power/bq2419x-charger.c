@@ -1257,12 +1257,6 @@ static int bq2419x_probe(struct i2c_client *client,
 
 	mutex_init(&bq2419x->mutex);
 
-	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
-	if (ret < 0) {
-		dev_err(&client->dev, "VBUS regulator init failed %d\n", ret);
-		goto scrub_mutex;
-	}
-
 	if (!pdata->bcharger_pdata) {
 		dev_info(&client->dev, "No battery charger supported\n");
 		ret = bq2419x_watchdog_init(bq2419x, 0, "PROBE");
@@ -1335,6 +1329,12 @@ static int bq2419x_probe(struct i2c_client *client,
 	}
 
 skip_bcharger_init:
+	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
+	if (ret < 0) {
+		dev_err(&client->dev, "VBUS regulator init failed %d\n", ret);
+		goto scrub_wq;
+	}
+
 	/* enable charging */
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
