@@ -11,8 +11,8 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 
-			major_rev = <1>;
-			minor_rev = <2>;
+			ams,major-rev = <1>;
+			ams,minor-rev = <2>;
 			ams,system-power-controller;
 			ams,extcon-name = "as3722-extcon";
 			ams,enable-adc1-continuous-mode;
@@ -401,7 +401,6 @@
 				     regulator-name = "vddio-sdmmc-2";
 				     regulator-min-microvolt = <1800000>;
 				     regulator-max-microvolt = <3300000>;
-				     enable-ldo8-tracking;
 
 				     consumers {
 					     c1 {
