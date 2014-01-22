@@ -43,5 +43,15 @@
 			};
 		};
 	};
+
+	pinmux {
+		unused_lowpower {
+			pi5 {
+				nvidia,enable-input = <TEGRA_PIN_INPUT>;
+				nvidia,pull = <TEGRA_PIN_PUPD_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_NORMAL>;
+			};
+		};
+	};
 };
 
