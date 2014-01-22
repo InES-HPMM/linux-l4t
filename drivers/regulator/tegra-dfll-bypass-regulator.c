@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -38,6 +38,19 @@ static int tegra_dfll_bypass_set_voltage(struct regulator_dev *reg,
 	int ret, delay;
 	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
 
+	/*
+	 * Before DFLL is ready, only initial voltage is supplied
+	 * (may not be on exact selector boundary)
+	 */
+	if (!tdb->pdata->set_bypass_sel || !tdb->pdata->dfll_data) {
+		if (min_uV == tdb->pdata->reg_init_data->constraints.init_uV) {
+			*selector = regulator_map_voltage_linear(
+				reg, min_uV, min_uV + tdb->desc.uV_step);
+			return 0;
+		}
+		return -EINVAL;
+	}
+
 	ret = regulator_map_voltage_linear(reg, min_uV, max_uV);
 	if (ret < 0) {
 		dev_err(tdb->dev, "failed map [%duV, %duV]\n", min_uV, max_uV);
@@ -64,6 +77,10 @@ static int tegra_dfll_bypass_get_voltage(struct regulator_dev *reg)
 {
 	int sel;
 	struct tegra_dfll_bypass_regulator *tdb = rdev_get_drvdata(reg);
+
+	/* Before DFLL is ready, only initial voltage is supplied */
+	if (!tdb->pdata->get_bypass_sel || !tdb->pdata->dfll_data)
+		return tdb->pdata->reg_init_data->constraints.init_uV;
 
 	sel = tdb->pdata->get_bypass_sel(tdb->pdata->dfll_data);
 	if (sel < 0) {
@@ -137,12 +154,6 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODATA;
-	}
-
-	if (!pdata->set_bypass_sel || !pdata->get_bypass_sel ||
-	    !pdata->dfll_data) {
-		dev_err(&pdev->dev, "Invalid platform data\n");
-		return -EINVAL;
 	}
 
 	tdb = devm_kzalloc(&pdev->dev, sizeof(*tdb), GFP_KERNEL);
