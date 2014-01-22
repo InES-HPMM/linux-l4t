@@ -254,6 +254,16 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 			continue;
 		}
 		pdata->tables[i].emc_mode_4 = u;
+
+		ret = of_property_read_u32(iter,
+				"nvidia,emc-clock-latency-change", &u);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-clock-latency-change in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].clock_change_latency = u;
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 
 		ret = of_property_read_string(iter,
@@ -377,16 +387,6 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 				iter->full_name);
 			continue;
 		}
-
-		ret = of_property_read_u32(iter,
-				"nvidia,emc-clock-latency-change", &u);
-		if (ret) {
-			dev_err(&pdev->dev,
-				"malformed emc-clock-latency-change in %s\n",
-				iter->full_name);
-			continue;
-		}
-		pdata->tables[i].clock_change_latency = u;
 #endif
 		i++;
 	}
