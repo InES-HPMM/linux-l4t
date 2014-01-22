@@ -1731,8 +1731,7 @@ static void tegra_cl_dvfs_bypass_dev_register(struct tegra_cl_dvfs *cld,
 	p_data->set_bypass_sel = tegra_cl_dvfs_force_output;
 	p_data->get_bypass_sel = tegra_cl_dvfs_get_output;
 	p_data->dfll_data = cld;
-
-	platform_device_register(byp_dev);
+	wmb();
 }
 
 /*

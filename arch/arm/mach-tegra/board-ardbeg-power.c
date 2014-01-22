@@ -936,6 +936,7 @@ static struct platform_device *fixed_reg_devs_e1824[] = {
 #define E1735_CPU_VDD_MIN_UV		675000
 #define E1735_CPU_VDD_STEP_UV		18750
 #define E1735_CPU_VDD_STEP_US		80
+#define E1735_CPU_VDD_BOOT_MV		1000
 #define E1735_CPU_VDD_IDLE_MA		5000
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
@@ -1057,11 +1058,10 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 {
 	u16 pmu_board_id = pmu_board_info->board_id;
 	struct tegra_cl_dvfs_platform_data *data = NULL;
-	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
 
 	if (pmu_board_id == BOARD_E1735) {
 		bool e1767 = pmu_board_info->sku == E1735_EMULATE_E1767_SKU;
-		v = e1735_fill_reg_map(v);
+		int v = e1735_fill_reg_map(E1735_CPU_VDD_BOOT_MV);
 		data = &e1735_cl_dvfs_data;
 
 		data->u.pmu_pwm.pwm_bus = e1767 ?
@@ -1079,6 +1079,8 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 				e1735_resume_dfll_bypass;
 			tegra_init_cpu_reg_mode_limits(E1735_CPU_VDD_IDLE_MA,
 						       REGULATOR_MODE_IDLE);
+			platform_device_register(
+				data->u.pmu_pwm.dfll_bypass_dev);
 		} else {
 			(void)e1735_dfll_bypass_dev;
 		}

@@ -652,6 +652,7 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 #define LOKI_CPU_VDD_MIN_UV		703000
 #define LOKI_CPU_VDD_STEP_UV		19200
 #define LOKI_CPU_VDD_STEP_US		80
+#define LOKI_CPU_VDD_BOOT_MV		1000
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* loki board parameters for cpu dfll */
@@ -721,10 +722,9 @@ static void loki_resume_dfll_bypass(void)
 static int __init loki_cl_dvfs_init(void)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
-	int v = tegra_dvfs_rail_get_nominal_millivolts(tegra_cpu_rail);
 
 	{
-		v = loki_fill_reg_map(v);
+		int v = loki_fill_reg_map(LOKI_CPU_VDD_BOOT_MV);
 		data = &loki_cl_dvfs_data;
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
 			/* this has to be exact to 1uV level from table */
@@ -733,6 +733,8 @@ static int __init loki_cl_dvfs_init(void)
 				loki_suspend_dfll_bypass;
 			loki_suspend_data.resume_dfll_bypass =
 				loki_resume_dfll_bypass;
+			platform_device_register(
+				data->u.pmu_pwm.dfll_bypass_dev);
 		} else {
 			(void)loki_dfll_bypass_dev;
 		}
