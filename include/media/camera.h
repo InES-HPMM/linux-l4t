@@ -22,7 +22,7 @@
 #include <linux/miscdevice.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
-#include <linux/edp.h>
+#include <linux/sysedp.h>
 #include <media/nvc.h>
 #endif
 
@@ -77,6 +77,7 @@
 #define	CAMERA_SEQ_INDEX_MASK	0x0000ffff
 #define	CAMERA_SEQ_FLAG_MASK	(~CAMERA_SEQ_INDEX_MASK)
 #define	CAMERA_SEQ_FLAG_EDP	0x80000000
+
 enum {
 	CAMERA_SEQ_EXEC,
 	CAMERA_SEQ_REGISTER_EXEC,
@@ -119,8 +120,6 @@ struct gpio_cfg {
 struct edp_cfg {
 	uint estates[CAMERA_MAX_EDP_ENTRIES];
 	uint num;
-	uint e0_index;
-	int priority;
 };
 
 #define VIRTUAL_DEV_MAX_REGULATORS	8
@@ -206,11 +205,10 @@ struct camera_platform_data {
 };
 
 struct camera_edp_cfg {
-	struct edp_client edp_client;
+	struct sysedp_consumer *edp_client;
 	unsigned edp_state;
-	u8 edpc_en;
-	struct camera_reg *s_throttle;
-	int (*shutdown)(struct camera_device *cdev);
+	uint estates[CAMERA_MAX_EDP_ENTRIES];
+	uint num;
 };
 
 struct camera_seq_status {
@@ -228,7 +226,6 @@ struct camera_device {
 	struct camera_info *cam;
 	atomic_t in_use;
 	struct mutex mutex;
-	uint estates[CAMERA_MAX_EDP_ENTRIES];
 	struct camera_edp_cfg edpc;
 	struct clk **clks;
 	u32 num_clk;

@@ -53,26 +53,10 @@ static int virtual_update(
 		case UPDATE_EDP:
 		{
 			struct edp_cfg ec;
-			struct edp_client *pec = &cdev->edpc.edp_client;
-
-			/* update edp throttle seq */
-			if (upd[idx].index == CAMERA_SEQ_FLAG_EDP) {
-				u32 sidx = upd[idx].arg;
-				dev_dbg(cdev->dev, "%s UPDATE_EDP throttle %d\n",
-					__func__, sidx);
-				if (sidx >= NUM_OF_SEQSTACK ||
-					!cdev->seq_stack[sidx]) {
-					dev_err(cdev->dev, "edp index err!\n");
-					err = -ENOENT;
-					break;
-				}
-
-				cdev->edpc.s_throttle = cdev->seq_stack[sidx];
-				break;
-			}
+			struct camera_edp_cfg *pec = &cdev->edpc;
 
 			dev_dbg(cdev->dev, "%s UPDATE_EDP config\n", __func__);
-			if (cdev->edpc.edpc_en) {
+			if (pec->edp_client) {
 				dev_err(cdev->dev, "edp client already set!\n");
 				err = -EEXIST;
 				break;
@@ -99,12 +83,9 @@ static int virtual_update(
 				break;
 			}
 
-			memcpy(cdev->estates, ec.estates,
-				ec.num * sizeof(cdev->estates[0]));
-			pec->states = cdev->estates;
-			pec->num_states = ec.num;
-			pec->e0_index = ec.e0_index;
-			pec->priority = ec.priority;
+			memcpy(pec->estates, ec.estates,
+				ec.num * sizeof(pec->estates[0]));
+			pec->num = ec.num;
 			camera_edp_register(cdev);
 			break;
 		}
@@ -258,19 +239,11 @@ static int virtual_power_off(struct camera_device *cdev)
 
 static int virtual_shutdown(struct camera_device *cdev)
 {
-	struct camera_reg *t_seq = cdev->edpc.s_throttle;
 	int err = 0;
 
-	dev_dbg(cdev->dev, "%s %x %p\n",
-		__func__, cdev->is_power_on, t_seq);
+	dev_dbg(cdev->dev, "%s %x\n", __func__, cdev->is_power_on);
 	if (!cdev->is_power_on)
 		return 0;
-
-	if (t_seq) {
-		mutex_lock(&cdev->mutex);
-		err = camera_dev_wr_table(cdev, t_seq, NULL);
-		mutex_unlock(&cdev->mutex);
-	}
 
 	if (!err)
 		err = virtual_power_off(cdev);

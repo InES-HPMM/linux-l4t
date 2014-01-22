@@ -174,8 +174,6 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 			err = -EINVAL;
 			goto seq_wr_end;
 		} else {
-			if (params.variant & CAMERA_SEQ_FLAG_EDP)
-				cdev->edpc.s_throttle = p_i2c_table;
 			params.variant = idx;
 			goto seq_wr_upd;
 		}

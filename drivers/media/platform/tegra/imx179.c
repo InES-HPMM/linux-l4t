@@ -28,7 +28,6 @@
 #include <media/imx179.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
-#include <linux/edp.h>
 
 #include <linux/kernel.h>
 #include <linux/debugfs.h>
@@ -56,8 +55,6 @@ struct imx179_info {
 	struct mutex			imx179_camera_lock;
 	struct dentry			*debugdir;
 	atomic_t			in_use;
-	struct edp_client		*edpc;
-	unsigned int			edp_state;
 };
 
 static const struct regmap_config sensor_regmap_config = {
@@ -156,95 +153,6 @@ enum {
 static struct imx179_reg *mode_table[] = {
 	[IMX179_MODE_3280X2464] = mode_3280x2464,
 };
-
-static void imx179_edp_lowest(struct imx179_info *info)
-{
-	if (!info->edpc)
-		return;
-
-	info->edp_state = info->edpc->num_states - 1;
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
-	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
-		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
-		dev_err(&info->i2c_client->dev,
-			"UNABLE TO SET LOWEST EDP STATE!\n");
-	}
-}
-
-static void imx179_edp_throttle(unsigned int new_state, void *priv_data)
-{
-	struct imx179_info *info = priv_data;
-
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
-}
-
-static void imx179_edp_register(struct imx179_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_warn(&info->i2c_client->dev,
-			"%s: No edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "imx179", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->private_data = info;
-	edpc->throttle = imx179_edp_throttle;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	imx179_edp_lowest(info);
-}
-
-static int imx179_edp_req(struct imx179_info *info, unsigned new_state)
-{
-	unsigned approved;
-	int ret = 0;
-
-	if (!info->edpc)
-		return 0;
-
-	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
-	ret = edp_update_client_request(info->edpc, new_state, &approved);
-	if (ret) {
-		dev_err(&info->i2c_client->dev, "E state transition failed\n");
-		return ret;
-	}
-
-	if (approved > new_state) {
-		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
-		return -ENODEV;
-	}
-
-	info->edp_state = approved;
-	return 0;
-}
 
 static inline void
 msleep_range(unsigned int delay_base)
@@ -382,14 +290,6 @@ imx179_set_mode(struct imx179_info *info, struct imx179_mode *mode)
 		pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 			 __func__, mode->xres, mode->yres);
 		return -EINVAL;
-	}
-
-	/* request highest edp state */
-	err = imx179_edp_req(info, 0);
-	if (err) {
-		dev_err(&info->i2c_client->dev,
-			"%s: ERROR cannot set edp state! %d\n", __func__, err);
-		return err;
 	}
 
 	/* get a list of override regs for the asking frame length, */
@@ -610,7 +510,6 @@ imx179_ioctl(struct file *file,
 		if (!arg && info->pdata->power_off) {
 			info->pdata->power_off(&info->power);
 			imx179_mclk_disable(info);
-			imx179_edp_lowest(info);
 		}
 		break;
 	case IMX179_IOCTL_SET_MODE:
@@ -1117,8 +1016,6 @@ imx179_probe(struct i2c_client *client,
 	}
 
 	imx179_power_get(info);
-
-	imx179_edp_register(info);
 
 	memcpy(&info->miscdev_info,
 		&imx179_device,

@@ -18,7 +18,6 @@
 #define __IMX179_H__
 
 #include <linux/ioctl.h>  /* For IOCTL macros */
-#include <linux/edp.h>
 #include <media/nvc.h>
 #include <media/nvc_image.h>
 
@@ -77,7 +76,6 @@ struct imx179_power_rail {
 struct imx179_platform_data {
 	struct imx179_flash_control flash_cap;
 	const char *mclk_name; /* NULL for default default_mclk */
-	struct edp_client edpc_config;
 	unsigned int cam1_gpio;
 	unsigned int reset_gpio;
 	unsigned int af_gpio;
