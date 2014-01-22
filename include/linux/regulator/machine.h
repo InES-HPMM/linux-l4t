@@ -148,6 +148,7 @@ struct regulation_constraints {
 	unsigned boot_on:1;	/* bootloader/firmware enabled regulator */
 	unsigned apply_uV:1;	/* apply uV constraint if min == max */
 	unsigned boot_off:1;	/* bootloader/firmware disabled regulator */
+	unsigned int ignore_current_constraint_init:1;
 };
 
 /**

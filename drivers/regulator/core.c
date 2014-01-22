@@ -1071,6 +1071,8 @@ static int machine_constraints_current(struct regulator_dev *rdev,
 	struct regulator_ops *ops = rdev->desc->ops;
 	int ret;
 
+	if (constraints->ignore_current_constraint_init)
+		return 0;
 	if (!constraints->min_uA && !constraints->max_uA)
 		return 0;
 
