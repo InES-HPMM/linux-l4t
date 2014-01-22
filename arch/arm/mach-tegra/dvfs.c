@@ -533,6 +533,8 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 				       rail->reg_id);
 				return PTR_ERR(reg);
 			}
+			pr_info("tegra_dvfs: %s rail is fixed in pll mode\n",
+			       rail->reg_id);
 		}
 		rail->reg = reg;
 	}
@@ -560,6 +562,8 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 		     rail->reg_id, rail->millivolts, rail->boot_millivolts);
 		rail->boot_millivolts = rail->millivolts;
 	}
+
+	pr_info("tegra_dvfs: %s connected to regulator\n", rail->reg_id);
 	return 0;
 }
 
