@@ -1,7 +1,7 @@
 /*
  * palmas-adc.c -- TI PALMAS GPADC.
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Pradeep Goudagunta <pgoudagunta@nvidia.com>
  *
@@ -637,7 +637,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		memcpy(&adc->wakeup1_data, gpadc_pdata->adc_wakeup1_data,
 			sizeof(adc->wakeup1_data));
 		adc->wakeup1_enable = true;
-		adc->irq_auto_0 =  platform_get_irq(pdev, 1);
+		adc->irq_auto_0 = palmas_irq_get_virq(adc->palmas,
+				PALMAS_GPADC_AUTO_0_IRQ);
 		ret = request_threaded_irq(adc->irq_auto_0, NULL,
 				palmas_gpadc_irq_auto,
 				IRQF_ONESHOT | IRQF_EARLY_RESUME,
@@ -653,7 +654,8 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		memcpy(&adc->wakeup2_data, gpadc_pdata->adc_wakeup2_data,
 				sizeof(adc->wakeup2_data));
 		adc->wakeup2_enable = true;
-		adc->irq_auto_1 =  platform_get_irq(pdev, 2);
+		adc->irq_auto_1 = palmas_irq_get_virq(adc->palmas,
+				PALMAS_GPADC_AUTO_1_IRQ);
 		ret = request_threaded_irq(adc->irq_auto_1, NULL,
 				palmas_gpadc_irq_auto,
 				IRQF_ONESHOT | IRQF_EARLY_RESUME,
