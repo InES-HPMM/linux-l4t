@@ -704,6 +704,8 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 	bq2419x->chg_reg_init_data.constraints.max_uA	=
 			pdata->bcharger_pdata->max_charge_current_mA * 1000;
 
+	bq2419x->chg_reg_init_data.constraints.ignore_current_constraint_init =
+							true;
 	bq2419x->chg_reg_init_data.constraints.valid_modes_mask =
 						REGULATOR_MODE_NORMAL |
 						REGULATOR_MODE_STANDBY;
