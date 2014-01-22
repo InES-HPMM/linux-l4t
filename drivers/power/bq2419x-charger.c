@@ -1173,7 +1173,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		pdata->bcharger_pdata->num_consumer_supplies =
 					batt_init_data->num_consumer_supplies;
 		pdata->bcharger_pdata->max_charge_current_mA =
-					batt_init_data->constraints.max_uA;
+				batt_init_data->constraints.max_uA / 1000;
 	}
 
 vbus_node:
