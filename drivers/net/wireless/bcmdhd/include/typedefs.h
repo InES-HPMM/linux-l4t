@@ -212,7 +212,11 @@ typedef unsigned long long uint64;
 #endif
 
 #ifndef TYPEDEF_UINTPTR
+#ifdef CONFIG_COMPAT
+typedef unsigned long long int uintptr;
+#else
 typedef unsigned int	uintptr;
+#endif
 #endif
 
 #ifndef TYPEDEF_INT8

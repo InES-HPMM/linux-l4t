@@ -163,7 +163,11 @@ struct io_cfg {
 };
 
 typedef struct android_wifi_priv_cmd {
+#ifdef CONFIG_COMPAT
+	u32 buf;
+#else
 	char *buf;
+#endif
 	int used_len;
 	int total_len;
 } android_wifi_priv_cmd;
