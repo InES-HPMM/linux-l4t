@@ -223,7 +223,7 @@ static int __init tegra_dfll_bypass_init(void)
 {
 	return platform_driver_register(&tegra_dfll_bypass_driver);
 }
-postcore_initcall(tegra_dfll_bypass_init);
+subsys_initcall_sync(tegra_dfll_bypass_init);
 
 static void __exit tegra_dfll_bypass_exit(void)
 {
