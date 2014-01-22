@@ -48,6 +48,7 @@
 #include <linux/moduleparam.h>
 #include <linux/uaccess.h>
 #include <linux/export.h>
+#include <trace/events/power.h>
 
 /*
  * locking rule: all changes to constraints or notifiers lists
@@ -549,6 +550,8 @@ static int pm_qos_update_bounded_target(struct pm_qos_constraints *c, s32 value,
 	case PM_QOS_REMOVE_REQ:
 		prio = pm_qos_get_prio_level(priority, &parent->prio_list);
 		pm_qos_remove_node(&req->node, prio, parent, c->type);
+		trace_pm_qos_request(req->pm_qos_class, -1,
+					-1 , (unsigned long)req);
 		break;
 	case PM_QOS_UPDATE_REQ:
 		/*
@@ -575,6 +578,8 @@ static int pm_qos_update_bounded_target(struct pm_qos_constraints *c, s32 value,
 		}
 		plist_node_init(&req->node, new_value);
 		pm_qos_add_node(&req->node, prio, c->type);
+		trace_pm_qos_request(req->pm_qos_class, new_value,
+					priority, (unsigned long)req);
 		break;
 	default:
 		break;
@@ -626,6 +631,8 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 			 enum pm_qos_req_action action, int value)
 {
 	int prev_value, curr_value, new_value, ret;
+	struct pm_qos_request *req = container_of(node, struct pm_qos_request,
+							node);
 
 	mutex_lock(&pm_qos_lock);
 	prev_value = pm_qos_get_value(c);
@@ -637,6 +644,8 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 	switch (action) {
 	case PM_QOS_REMOVE_REQ:
 		plist_del(node, &c->list);
+		trace_pm_qos_request(req->pm_qos_class, -1, -1,
+					(unsigned long)req);
 		break;
 	case PM_QOS_UPDATE_REQ:
 		/*
@@ -648,6 +657,8 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 	case PM_QOS_ADD_REQ:
 		plist_node_init(node, new_value);
 		plist_add(node, &c->list);
+		trace_pm_qos_request(req->pm_qos_class, new_value, 10,
+					(unsigned long)req);
 		break;
 	default:
 		/* no action */

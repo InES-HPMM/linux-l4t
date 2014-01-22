@@ -123,6 +123,33 @@ TRACE_EVENT(cpu_scale,
 		  (unsigned long)__entry->state)
 );
 
+TRACE_EVENT(pm_qos_request,
+
+	TP_PROTO(u32 class, s32 value, u32 priority, u64 request),
+
+	TP_ARGS(class, value, priority, request),
+
+	TP_STRUCT__entry(
+		__field(u32, class)
+		__field(s32, value)
+		__field(u32, priority)
+		__field(u64, request)
+	),
+
+	TP_fast_assign(
+		__entry->class = class;
+		__entry->value = value;
+		__entry->priority = priority;
+		__entry->request = request;
+	),
+
+	TP_printk("class=%lu, value=%d, prio=%lu, request=0x%lx",
+		  (unsigned long)__entry->class,
+		  (int)__entry->value,
+		  (unsigned long)__entry->priority,
+		  (unsigned long)__entry->request)
+);
+
 DEFINE_EVENT(cpu, cpu_frequency,
 
 	TP_PROTO(unsigned int frequency, unsigned int cpu_id),
