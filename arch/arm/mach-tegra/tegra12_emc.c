@@ -1314,6 +1314,9 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	case 0x18:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
+	case 0x19:
+		start_timing.burst_regs_num = table[0].burst_regs_num;
+		break;
 	default:
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
 			table[0].rev);
