@@ -85,7 +85,6 @@ struct as3722_register_mapping {
 struct as3722_regulator_config_data {
 	struct regulator_init_data *reg_init;
 	bool enable_tracking;
-	bool disable_tracking_suspend;
 	int ext_control;
 };
 
@@ -744,9 +743,6 @@ static int as3722_get_regulator_dt_data(struct platform_device *pdev,
 		}
 		reg_config->enable_tracking =
 			of_property_read_bool(reg_node, "ams,enable-tracking");
-		reg_config->disable_tracking_suspend =
-			of_property_read_bool(reg_node,
-					"ams,disable-tracking-suspend");
 
 	}
 	return 0;
@@ -773,8 +769,6 @@ static int as3722_get_regulator_platform_data(struct platform_device *pdev,
 		reg_config->reg_init = rpdata->reg_init;
 		reg_config->ext_control = rpdata->ext_control;
 		reg_config->enable_tracking = rpdata->enable_tracking;
-		reg_config->disable_tracking_suspend =
-					rpdata->disable_tracking_suspend;
 	}
 	return 0;
 }
@@ -940,49 +934,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int as3722_regulator_suspend(struct device *dev)
-{
-	struct as3722_regulators *as3722_regs = dev_get_drvdata(dev);
-	struct as3722_regulator_config_data *reg_config;
-	int ret;
-
-	reg_config = &as3722_regs->reg_config_data[AS3722_REGULATOR_ID_LDO3];
-	if (reg_config->enable_tracking &&
-		reg_config->disable_tracking_suspend) {
-		ret = as3722_ldo3_set_tracking_mode(as3722_regs,
-			AS3722_REGULATOR_ID_LDO3, AS3722_LDO3_MODE_NMOS);
-		if (ret < 0) {
-			dev_err(dev, "LDO3 tracking failed: %d\n", ret);
-			return ret;
-		}
-	}
-	return 0;
-}
-
-static int as3722_regulator_resume(struct device *dev)
-{
-	struct as3722_regulators *as3722_regs = dev_get_drvdata(dev);
-	struct as3722_regulator_config_data *reg_config;
-	int ret;
-
-	reg_config = &as3722_regs->reg_config_data[AS3722_REGULATOR_ID_LDO3];
-	if (reg_config->enable_tracking &&
-		reg_config->disable_tracking_suspend) {
-		ret = as3722_ldo3_set_tracking_mode(as3722_regs,
-			AS3722_REGULATOR_ID_LDO3, AS3722_LDO3_MODE_NMOS);
-		if (ret < 0) {
-			dev_err(dev, "LDO3 tracking failed: %d\n", ret);
-			return ret;
-		}
-	}
-	return 0;
-}
-#endif
-
 static const struct dev_pm_ops as3722_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(as3722_regulator_suspend,
-	as3722_regulator_resume)
 };
 
 static const struct of_device_id of_as3722_regulator_match[] = {
