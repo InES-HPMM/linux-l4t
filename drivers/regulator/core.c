@@ -463,18 +463,27 @@ static ssize_t regulator_state_set(struct device *dev,
 	mutex_lock(&rdev->mutex);
 	if (enabled) {
 		int delay = 0;
-		if (!rdev->desc->ops->enable) {
+		if (!rdev->desc->ops->enable && !rdev->ena_pin) {
+			rdev_warn(rdev, "Ops not supported\n");
 			ret = -EINVAL;
 			goto end;
 		}
 		ret = _regulator_get_enable_time(rdev);
 		if (ret >= 0)
 			delay = ret;
-		ret = rdev->desc->ops->enable(rdev);
-		if (ret < 0) {
-			rdev_warn(rdev, "enable() failed: %d\n", ret);
-			goto end;
+
+		if (rdev->ena_pin) {
+			gpio_set_value_cansleep(rdev->ena_pin->gpio,
+					!rdev->ena_pin->ena_gpio_invert);
+			rdev->ena_gpio_state = 1;
+		} else if (rdev->desc->ops->enable) {
+			ret = rdev->desc->ops->enable(rdev);
+			if (ret < 0) {
+				rdev_warn(rdev, "enable() failed: %d\n", ret);
+				goto end;
+			}
 		}
+
 		if (delay >= 1000) {
 			mdelay(delay / 1000);
 			udelay(delay % 1000);
@@ -483,18 +492,27 @@ static ssize_t regulator_state_set(struct device *dev,
 		}
 	} else {
 		int delay = 0;
-		if (!rdev->desc->ops->disable) {
+		if (!rdev->desc->ops->disable && !rdev->ena_pin) {
+			rdev_warn(rdev, "Ops not supported\n");
 			ret = -EINVAL;
 			goto end;
 		}
 		ret = _regulator_get_disable_time(rdev);
 		if (ret >= 0)
 			delay = ret;
-		ret = rdev->desc->ops->disable(rdev);
-		if (ret < 0) {
-			rdev_warn(rdev, "disable() failed: %d\n", ret);
-			goto end;
+
+		if (rdev->ena_pin) {
+			gpio_set_value_cansleep(rdev->ena_pin->gpio,
+					rdev->ena_pin->ena_gpio_invert);
+			rdev->ena_gpio_state = 0;
+		} else if (rdev->desc->ops->disable) {
+			ret = rdev->desc->ops->disable(rdev);
+			if (ret < 0) {
+				rdev_warn(rdev, "disable() failed: %d\n", ret);
+				goto end;
+			}
 		}
+
 		if (delay >= 1000) {
 			mdelay(delay / 1000);
 			udelay(delay % 1000);
