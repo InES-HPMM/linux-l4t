@@ -1,7 +1,7 @@
 /*
  * board-pmu-defines.h: Most of macro definition used in board-xxx-power files.
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -174,7 +174,7 @@ static struct platform_device fixed_reg_en_##_var##_dev = {		\
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* Macro definition of dfll bypass device */
-#define DFLL_BYPASS(_board, _min, _step, _size, _us_sel, _msel_gpio)	       \
+#define DFLL_BYPASS(_board, _min, _step, _init, _size, _us_sel, _msel_gpio)    \
 static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
 	.num_consumer_supplies = ARRAY_SIZE(_board##_dfll_bypass_consumers),   \
 	.consumer_supplies = _board##_dfll_bypass_consumers,		       \
@@ -186,6 +186,7 @@ static struct regulator_init_data _board##_dfll_bypass_init_data = {	       \
 				REGULATOR_CHANGE_VOLTAGE),		       \
 		.min_uV = (_min),					       \
 		.max_uV = ((_size) - 1) * (_step) + (_min),		       \
+		.init_uV = (_init),					       \
 		.always_on = 1,						       \
 		.boot_on = 1,						       \
 	},								       \

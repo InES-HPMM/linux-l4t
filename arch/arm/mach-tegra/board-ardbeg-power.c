@@ -936,7 +936,7 @@ static struct platform_device *fixed_reg_devs_e1824[] = {
 #define E1735_CPU_VDD_MIN_UV		675000
 #define E1735_CPU_VDD_STEP_UV		18750
 #define E1735_CPU_VDD_STEP_US		80
-#define E1735_CPU_VDD_BOOT_MV		1000
+#define E1735_CPU_VDD_BOOT_UV		1000000
 #define E1735_CPU_VDD_IDLE_MA		5000
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
@@ -955,26 +955,12 @@ static struct tegra_cl_dvfs_cfg_param e1735_cl_dvfs_param = {
 	.scale_out_ramp = 0x0,
 };
 
-/* E1735 RT8812C volatge map */
-static struct voltage_reg_map e1735_cpu_vdd_map[E1735_CPU_VDD_MAP_SIZE];
-static inline int e1735_fill_reg_map(int nominal_mv)
-{
-	int i, uv, nominal_uv = 0;
-	for (i = 0; i < E1735_CPU_VDD_MAP_SIZE; i++) {
-		e1735_cpu_vdd_map[i].reg_value = i;
-		e1735_cpu_vdd_map[i].reg_uV = uv =
-			E1735_CPU_VDD_MIN_UV + E1735_CPU_VDD_STEP_UV * i;
-		if (!nominal_uv && uv >= nominal_mv * 1000)
-			nominal_uv = uv;
-	}
-	return nominal_uv;
-}
-
 /* E1735 dfll bypass device for legacy dvfs control */
 static struct regulator_consumer_supply e1735_dfll_bypass_consumers[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
-DFLL_BYPASS(e1735, E1735_CPU_VDD_MIN_UV, E1735_CPU_VDD_STEP_UV,
+DFLL_BYPASS(e1735,
+	    E1735_CPU_VDD_MIN_UV, E1735_CPU_VDD_STEP_UV, E1735_CPU_VDD_BOOT_UV,
 	    E1735_CPU_VDD_MAP_SIZE, E1735_CPU_VDD_STEP_US, TEGRA_GPIO_PX2);
 
 static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
@@ -982,6 +968,8 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
 	.u.pmu_pwm = {
 		.pwm_rate = 12750000,
+		.min_uV = E1735_CPU_VDD_MIN_UV,
+		.step_uV = E1735_CPU_VDD_STEP_UV,
 		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PS5,
 		.out_enable_high = false,
@@ -989,8 +977,6 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 		.dfll_bypass_dev = &e1735_dfll_bypass_dev,
 #endif
 	},
-	.vdd_map = e1735_cpu_vdd_map,
-	.vdd_map_size = E1735_CPU_VDD_MAP_SIZE,
 
 	.cfg_param = &e1735_cl_dvfs_param,
 };
@@ -1061,7 +1047,6 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 
 	if (pmu_board_id == BOARD_E1735) {
 		bool e1767 = pmu_board_info->sku == E1735_EMULATE_E1767_SKU;
-		int v = e1735_fill_reg_map(E1735_CPU_VDD_BOOT_MV);
 		data = &e1735_cl_dvfs_data;
 
 		data->u.pmu_pwm.pwm_bus = e1767 ?
@@ -1069,8 +1054,6 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 			TEGRA_CL_DVFS_PWM_1WIRE_BUFFER;
 
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
-			/* this has to be exact to 1uV level from table */
-			e1735_dfll_bypass_init_data.constraints.init_uV = v;
 			ardbeg_suspend_data.suspend_dfll_bypass = e1767 ?
 				e1767_suspend_dfll_bypass :
 				e1735_suspend_dfll_bypass;

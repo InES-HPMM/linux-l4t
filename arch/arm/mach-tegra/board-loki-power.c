@@ -652,7 +652,7 @@ static struct platform_device *fixed_reg_devs_e2545[] = {
 #define LOKI_CPU_VDD_MIN_UV		703000
 #define LOKI_CPU_VDD_STEP_UV		19200
 #define LOKI_CPU_VDD_STEP_US		80
-#define LOKI_CPU_VDD_BOOT_MV		1000
+#define LOKI_CPU_VDD_BOOT_UV		1000000
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* loki board parameters for cpu dfll */
@@ -669,26 +669,12 @@ static struct tegra_cl_dvfs_cfg_param loki_cl_dvfs_param = {
 	.scale_out_ramp = 0x0,
 };
 
-/* loki RT8812C volatge map */
-static struct voltage_reg_map loki_cpu_vdd_map[LOKI_CPU_VDD_MAP_SIZE];
-static inline int loki_fill_reg_map(int nominal_mv)
-{
-	int i, uv, nominal_uv = 0;
-	for (i = 0; i < LOKI_CPU_VDD_MAP_SIZE; i++) {
-		loki_cpu_vdd_map[i].reg_value = i;
-		loki_cpu_vdd_map[i].reg_uV = uv =
-			LOKI_CPU_VDD_MIN_UV + LOKI_CPU_VDD_STEP_UV * i;
-		if (!nominal_uv && uv >= nominal_mv * 1000)
-			nominal_uv = uv;
-	}
-	return nominal_uv;
-}
-
 /* loki dfll bypass device for legacy dvfs control */
 static struct regulator_consumer_supply loki_dfll_bypass_consumers[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
-DFLL_BYPASS(loki, LOKI_CPU_VDD_MIN_UV, LOKI_CPU_VDD_STEP_UV,
+DFLL_BYPASS(loki,
+	    LOKI_CPU_VDD_MIN_UV, LOKI_CPU_VDD_STEP_UV, LOKI_CPU_VDD_BOOT_UV,
 	    LOKI_CPU_VDD_MAP_SIZE, LOKI_CPU_VDD_STEP_US, -1);
 
 static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
@@ -696,6 +682,8 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
 	.u.pmu_pwm = {
 		.pwm_rate = 12750000,
+		.min_uV = LOKI_CPU_VDD_MIN_UV,
+		.step_uV = LOKI_CPU_VDD_STEP_UV,
 		.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_BUFFER,
 		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PU6,
@@ -704,8 +692,6 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 		.dfll_bypass_dev = &loki_dfll_bypass_dev,
 #endif
 	},
-	.vdd_map = loki_cpu_vdd_map,
-	.vdd_map_size = LOKI_CPU_VDD_MAP_SIZE,
 
 	.cfg_param = &loki_cl_dvfs_param,
 };
@@ -724,11 +710,9 @@ static int __init loki_cl_dvfs_init(void)
 	struct tegra_cl_dvfs_platform_data *data = NULL;
 
 	{
-		int v = loki_fill_reg_map(LOKI_CPU_VDD_BOOT_MV);
 		data = &loki_cl_dvfs_data;
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
 			/* this has to be exact to 1uV level from table */
-			loki_dfll_bypass_init_data.constraints.init_uV = v;
 			loki_suspend_data.suspend_dfll_bypass =
 				loki_suspend_dfll_bypass;
 			loki_suspend_data.resume_dfll_bypass =
