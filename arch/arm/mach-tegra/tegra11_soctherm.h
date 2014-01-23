@@ -112,6 +112,8 @@ struct soctherm_throttle {
 	u8 polarity;
 	u8 priority;
 	u8 period;
+	u32 alarm_cnt_threshold;
+	u32 alarm_filter;
 	bool intr;
 	struct soctherm_throttle_dev devs[THROTTLE_DEV_SIZE];
 };

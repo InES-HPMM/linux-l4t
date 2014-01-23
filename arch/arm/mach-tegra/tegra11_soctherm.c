@@ -281,7 +281,7 @@ static const int precision; /* default 0 -> low precision */
 #define OC1_CFG_EN_THROTTLE_MASK	0x1
 
 #define OC1_CNT_THRESHOLD		0x314
-#define OC1_THRESHOLD_PERIOD		0x318
+#define OC1_THROTTLE_PERIOD		0x318
 #define OC1_ALARM_COUNT			0x31c
 #define OC1_FILTER			0x320
 
@@ -417,7 +417,7 @@ static const int precision; /* default 0 -> low precision */
 #define ALARM_CNT_THRESHOLD(throt)		(OC1_CNT_THRESHOLD + \
 						(ALARM_OFFSET * (throt - \
 								THROTTLE_OC1)))
-#define ALARM_THRESHOLD_PERIOD(throt)		(OC1_THRESHOLD_PERIOD + \
+#define ALARM_THROTTLE_PERIOD(throt)		(OC1_THROTTLE_PERIOD + \
 						(ALARM_OFFSET * (throt - \
 								THROTTLE_OC1)))
 #define ALARM_ALARM_COUNT(throt)		(OC1_ALARM_COUNT + \
@@ -2098,8 +2098,12 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 
 	soctherm_oc_intr_enable(throt, data->intr);
 
-	soctherm_writel(data->period, ALARM_THRESHOLD_PERIOD(throt)); /* usec */
-	soctherm_writel(0xffffffff, ALARM_FILTER(throt));
+	soctherm_writel(data->period, ALARM_THROTTLE_PERIOD(throt)); /* usec */
+	soctherm_writel(data->alarm_cnt_threshold, ALARM_CNT_THRESHOLD(throt));
+	if (data->alarm_filter)
+		soctherm_writel(data->alarm_filter, ALARM_FILTER(throt));
+	else
+		soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
 /**
@@ -3408,7 +3412,7 @@ static int regs_show(struct seq_file *s, void *data)
 
 				r = soctherm_readl(ALARM_CNT_THRESHOLD(i));
 				seq_printf(s, "%8d  ", r);
-				r = soctherm_readl(ALARM_THRESHOLD_PERIOD(i));
+				r = soctherm_readl(ALARM_THROTTLE_PERIOD(i));
 				seq_printf(s, "%8d  ", r);
 				r = soctherm_readl(ALARM_ALARM_COUNT(i));
 				seq_printf(s, "%8d  ", r);
