@@ -415,6 +415,9 @@ static void irq_work(struct work_struct *work)
 	unsigned long flags;
 	unsigned long status;
 
+	/* Adding delay for proper detection of y-cable */
+	msleep(150);
+
 	mutex_lock(&tegra->irq_work_mutex);
 
 	spin_lock_irqsave(&tegra->lock, flags);
