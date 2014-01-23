@@ -47,5 +47,4 @@ obj-$(CONFIG_MTD_GPIO_ADDR)	+= gpio-addr-flash.o
 obj-$(CONFIG_MTD_LATCH_ADDR)	+= latch-addr-flash.o
 obj-$(CONFIG_MTD_LANTIQ)	+= lantiq-flash.o
 CFLAGS_tegra_nor.o		= -Werror
-obj-$(CONFIG_MTD_NOR_TEGRA)	+= tegra_nor.o
 obj-$(CONFIG_MTD_NOR_TEGRA_GMI)	+= tegra_nor_gmi.o
