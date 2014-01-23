@@ -66,6 +66,11 @@
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
+
+		tmp006@40 {
+			compatible = "ti,tmp006";
+			reg = <0x40>;
+		};
 	};
 
 	i2c@7000c400 {
