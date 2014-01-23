@@ -72,6 +72,7 @@
 				rtc-alarm-time = <3600>;
 				auto-recharge-time = <1800>;
 				ti,temp-polling-time-sec = <5>;
+				ti,disbale-suspend-during-charging;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_bat_chg";
