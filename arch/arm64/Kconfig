@@ -1,6 +1,7 @@
 config ARM64
 	def_bool y
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
+	select ARCH_HAVE_CUSTOM_GPIO_H
 	select ARCH_WANT_OPTIONAL_GPIOLIB
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	select ARCH_WANT_FRAME_POINTERS
@@ -8,7 +9,8 @@ config ARM64
 	select ARM_ARCH_TIMER
 	select ARM_GIC
 	select CLONE_BACKWARDS
-	select COMMON_CLK
+#	select COMMON_CLK
+	select CPU_PM if (SUSPEND || CPU_IDLE)
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_IOMAP
 	select GENERIC_IRQ_PROBE
@@ -17,11 +19,13 @@ config ARM64
 	select GENERIC_SMP_IDLE_THREAD
 	select GENERIC_TIME_VSYSCALL
 	select HARDIRQS_SW_RESEND
+	select GENERIC_PCI_IOMAP
 	select HAVE_ARCH_TRACEHOOK
 	select HAVE_DEBUG_BUGVERBOSE
 	select HAVE_DEBUG_KMEMLEAK
 	select HAVE_DMA_API_DEBUG
 	select HAVE_DMA_ATTRS
+	select HAVE_DMA_CONTIGUOUS if MMU
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_HW_BREAKPOINT if PERF_EVENTS
@@ -51,7 +55,7 @@ config MMU
 	def_bool y
 
 config NO_IOPORT
-	def_bool y
+	bool
 
 config STACKTRACE_SUPPORT
 	def_bool y
@@ -87,14 +91,27 @@ config ARCH_DMA_ADDR_T_64BIT
 config NEED_DMA_MAP_STATE
 	def_bool y
 
+config ARM_HAS_SG_CHAIN
+	def_bool y
+
 config NEED_SG_DMA_LENGTH
 	def_bool y
 
 config SWIOTLB
-	def_bool y
+	def_bool y if !ARM_DMA_USE_IOMMU
 
 config IOMMU_HELPER
 	def_bool SWIOTLB
+
+config ARM_DMA_USE_IOMMU
+	select NEED_SG_DMA_LENGTH
+	select ARM_HAS_SG_CHAIN
+	bool
+
+config MULTI_IRQ_HANDLER
+        bool
+        help
+	  Allow each machine to specify it's own IRQ handler at run time.
 
 source "init/Kconfig"
 
@@ -112,12 +129,40 @@ config ARCH_VEXPRESS
 	  This enables support for the ARMv8 software model (Versatile
 	  Express).
 
+config ARCH_TEGRA
+	bool "NVIDIA Tegra"
+	select CLKDEV_LOOKUP
+	select CLKSRC_MMIO
+	select GENERIC_CLOCKEVENTS
+	select GENERIC_GPIO
+	select HAVE_CLK
+	select HAVE_SMP
+	select NEED_MACH_MEMORY_H
+	select PCI
+	help
+	  This enables support for NVIDIA Tegra based systems (Tegra APX,
+	  Tegra 6xx and Tegra 2 series).
+
+source "arch/arm64/mach-tegra/Kconfig"
+
 endmenu
 
 menu "Bus support"
 
 config ARM_AMBA
 	bool
+
+config PCI
+	bool "PCI support" if MIGHT_HAVE_PCI
+	help
+	  Find out whether you have a PCI motherboard. PCI is the name of a
+	  bus system, i.e. the way the CPU talks to the other stuff inside
+	  your box. Other bus systems are ISA, EISA, MicroChannel (MCA) or
+	  VESA. If you have PCI, say Y, otherwise N.
+
+source "drivers/pci/Kconfig"
+
+source "drivers/pci/pcie/Kconfig"
 
 endmenu
 
@@ -151,7 +196,25 @@ config NR_CPUS
 	depends on SMP
 	default "4"
 
+config HOTPLUG_CPU
+	bool "Support for hot-pluggable CPUs"
+	depends on SMP && HOTPLUG
+	help
+	  Say Y here to experiment with turning CPUs off and on.  CPUs
+	  can be controlled through /sys/devices/system/cpu.
+
+	  If you don't know what to do here, say N.
+
 source kernel/Kconfig.preempt
+
+config ARCH_NR_GPIO
+	int
+	default 1024 if ARCH_TEGRA
+	default 0
+	help
+
+	  Maximum number of GPIOs in the system.
+	  If unsure, leave the default value.
 
 config HZ
 	int
@@ -227,6 +290,24 @@ config COMPAT
 config SYSVIPC_COMPAT
 	def_bool y
 	depends on COMPAT && SYSVIPC
+
+endmenu
+
+menu "Power management options"
+
+source "kernel/power/Kconfig"
+
+config ARCH_SUSPEND_POSSIBLE
+	def_bool y
+
+config ARM_CPU_SUSPEND
+	def_bool y
+
+endmenu
+
+menu "CPU Power Management"
+
+source "drivers/cpuidle/Kconfig"
 
 endmenu
 

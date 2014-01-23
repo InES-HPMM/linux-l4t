@@ -24,6 +24,7 @@
 #include <linux/tegra-pmc.h>
 
 
+#include "iomap.h"
 #include "pmc.h"
 
 #define PMC_CTRL			0x0
@@ -80,12 +81,20 @@ EXPORT_SYMBOL(tegra_get_pm_data);
 
 static inline u32 tegra_pmc_readl(u32 reg)
 {
+#if defined(CONFIG_OF) && !defined(CONFIG_ARM64)
 	return readl(tegra_pmc_base + reg);
+#else
+	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
+#endif
 }
 
 static inline void tegra_pmc_writel(u32 val, u32 reg)
 {
+#if defined(CONFIG_OF) && !defined(CONFIG_ARM64)
 	writel(val, tegra_pmc_base + reg);
+#else
+	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
+#endif
 }
 
 void tegra_pmc_set_dpd_sample()
@@ -309,7 +318,9 @@ void __init tegra_pmc_init(void)
 {
 	u32 val;
 
+#ifndef CONFIG_ARM64
 	tegra_pmc_parse_dt();
+#endif
 
 	val = tegra_pmc_readl(PMC_CTRL);
 	if (tegra_pmc_invert_interrupt)

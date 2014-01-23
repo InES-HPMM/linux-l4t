@@ -30,10 +30,9 @@
 #define asid_bits(reg) \
 	(((read_cpuid(ID_AA64MMFR0_EL1) & 0xf0) >> 2) + 8)
 
-#define ASID_FIRST_VERSION	(1 << MAX_ASID_BITS)
-
 static DEFINE_RAW_SPINLOCK(cpu_asid_lock);
-unsigned int cpu_last_asid = ASID_FIRST_VERSION;
+unsigned int max_asid_bits;
+unsigned int cpu_last_asid;
 
 /*
  * We fork()ed a process, and we need a new context for the child to run in.
@@ -66,7 +65,7 @@ static void set_mm_context(struct mm_struct *mm, unsigned int asid)
 	 * mm->context.id_lock has to be IRQ-safe.
 	 */
 	raw_spin_lock_irqsave(&mm->context.id_lock, flags);
-	if (likely((mm->context.id ^ cpu_last_asid) >> MAX_ASID_BITS)) {
+	if (likely((mm->context.id ^ cpu_last_asid) >> max_asid_bits)) {
 		/*
 		 * Old version of ASID found. Set the new one and reset
 		 * mm_cpumask(mm).
@@ -123,7 +122,7 @@ void __new_context(struct mm_struct *mm)
 	 * Check the ASID again, in case the change was broadcast from another
 	 * CPU before we acquired the lock.
 	 */
-	if (!unlikely((mm->context.id ^ cpu_last_asid) >> MAX_ASID_BITS)) {
+	if (!unlikely((mm->context.id ^ cpu_last_asid) >> max_asid_bits)) {
 		cpumask_set_cpu(smp_processor_id(), mm_cpumask(mm));
 		raw_spin_unlock(&cpu_asid_lock);
 		return;
@@ -142,9 +141,9 @@ void __new_context(struct mm_struct *mm)
 	 */
 	if (unlikely((asid & ((1 << bits) - 1)) == 0)) {
 		/* increment the ASID version */
-		cpu_last_asid += (1 << MAX_ASID_BITS) - (1 << bits);
+		cpu_last_asid += (1 << max_asid_bits) - (1 << bits);
 		if (cpu_last_asid == 0)
-			cpu_last_asid = ASID_FIRST_VERSION;
+			cpu_last_asid = 1 << max_asid_bits;
 		asid = cpu_last_asid + smp_processor_id();
 		flush_context();
 #ifdef CONFIG_SMP

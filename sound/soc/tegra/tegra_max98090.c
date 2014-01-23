@@ -57,6 +57,16 @@
 #endif
 #define DRV_NAME "tegra-snd-max98090"
 
+#ifndef __devinit
+#define __devinit
+#endif
+#ifndef __devexit
+#define __devexit
+#endif
+#ifndef __devexit_p
+#define __devexit_p(x)	(x)
+#endif
+
 #define GPIO_SPKR_EN    BIT(0)
 #define GPIO_HP_MUTE    BIT(1)
 #define GPIO_INT_MIC_EN BIT(2)
@@ -487,7 +497,7 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 		tegra30_dam_enable_clock(i2s->dam_ifc);
 
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
-				(i2s->dam_ifc*2), i2s->txcif);
+				(i2s->dam_ifc*2), i2s->playback_fifo_cif);
 
 		/*
 		*make the dam tx to i2s rx connection if this is the only
@@ -529,7 +539,7 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 		tegra30_dam_enable_clock(i2s->call_record_dam_ifc);
 
 		/* setup the connections for voice call record */
-		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 		/* configure the dam */
 		tegra_max98090_set_dam_cif(i2s->call_record_dam_ifc,
@@ -556,7 +566,7 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + codec_info->i2s_id);
-		tegra30_ahub_set_rx_cif_source(i2s->rxcif,
+		tegra30_ahub_set_rx_cif_source(i2s->capture_fifo_cif,
 			TEGRA30_AHUB_TXCIF_DAM0_TX0 +
 			i2s->call_record_dam_ifc);
 
@@ -612,7 +622,7 @@ static void tegra_max98090_shutdown(struct snd_pcm_substream *substream)
 			TEGRA30_DAM_DISABLE, TEGRA30_DAM_CHIN0_SRC);
 
 		/* disconnect the ahub connections*/
-		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
 			(i2s->call_record_dam_ifc*2));
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
@@ -1012,6 +1022,26 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_hp_mute, 0);
 	}
 
+	if (gpio_is_valid(pdata->gpio_hp_det) &&
+		of_machine_is_compatible("nvidia,norrin")) {
+		tegra_max98090_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+		tegra_max98090_hp_jack_gpio.invert =
+			!pdata->gpio_hp_det_active_high;
+		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
+					&tegra_max98090_hp_jack);
+#ifndef CONFIG_SWITCH
+		snd_soc_jack_add_pins(&tegra_max98090_hp_jack,
+					ARRAY_SIZE(tegra_max98090_hs_jack_pins),
+					tegra_max98090_hs_jack_pins);
+#else
+		snd_soc_jack_notifier_register(&tegra_max98090_hp_jack,
+						&tegra_max98090_jack_detect_nb);
+#endif
+		snd_soc_jack_add_gpios(&tegra_max98090_hp_jack,
+					1, &tegra_max98090_hp_jack_gpio);
+		machine->gpio_requested |= GPIO_HP_DET;
+	}
+
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 		snd_ctl_new1(&tegra_max98090_call_mode_control, machine));
@@ -1106,6 +1136,7 @@ static int tegra_max98090_resume_pre(struct snd_soc_card *card)
 	struct snd_soc_jack_gpio *gpio = &tegra_max98090_hp_jack_gpio;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
 	int i, suspend_allowed = 1;
+	int ret;
 
 	for (i = 0; i < machine->pcard->num_links; i++) {
 		if (machine->pcard->dai_link[i].ignore_suspend) {
@@ -1128,9 +1159,9 @@ static int tegra_max98090_resume_pre(struct snd_soc_card *card)
 		}
 
 		if (machine->avdd_aud_reg)
-			regulator_enable(machine->avdd_aud_reg);
+			ret = regulator_enable(machine->avdd_aud_reg);
 		if (machine->vdd_sw_1v8_reg)
-			regulator_enable(machine->vdd_sw_1v8_reg);
+			ret = regulator_enable(machine->vdd_sw_1v8_reg);
 	}
 
 	return 0;
@@ -1172,6 +1203,9 @@ static int tegra_late_probe(struct snd_soc_card *card)
 	struct snd_soc_codec *codec236 =
 				card->rtd[DAI_LINK_HIFI_MAX97236].codec;
 	int ret;
+
+	if (of_machine_is_compatible("nvidia,norrin"))
+		return 0;
 
 	ret = snd_soc_jack_new(codec236,
 			"Headphone Jack",
@@ -1224,6 +1258,9 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	struct tegra_asoc_platform_data *pdata;
 	int ret, i;
 
+	if (of_machine_is_compatible("nvidia,norrin"))
+		card->num_links = DAI_LINK_BTSCO + 1;
+
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data supplied\n");
@@ -1264,9 +1301,9 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	}
 
 	if (machine->vdd_sw_1v8_reg)
-		regulator_enable(machine->vdd_sw_1v8_reg);
+		ret = regulator_enable(machine->vdd_sw_1v8_reg);
 	if (machine->avdd_aud_reg)
-		regulator_enable(machine->avdd_aud_reg);
+		ret = regulator_enable(machine->avdd_aud_reg);
 
 
 #ifdef CONFIG_SWITCH
@@ -1314,11 +1351,17 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 
 	tegra_max98090_dai[DAI_LINK_HIFI].cpu_dai_name =
 	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_max98090_dai[DAI_LINK_HIFI].platform_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
 
 	tegra_max98090_dai[DAI_LINK_HIFI_MAX97236].cpu_dai_name =
 	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_max98090_dai[DAI_LINK_HIFI_MAX97236].platform_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
 
 	tegra_max98090_dai[DAI_LINK_BTSCO].cpu_dai_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+	tegra_max98090_dai[DAI_LINK_BTSCO].platform_name =
 	tegra_max98090_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 
 	card->dapm.idle_bias_off = 1;

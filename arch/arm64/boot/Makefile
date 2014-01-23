@@ -14,12 +14,15 @@
 # Based on the ia64 boot/Makefile.
 #
 
-targets := Image Image.gz
+targets := Image Image.gz zImage
 
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
 
 $(obj)/Image.gz: $(obj)/Image FORCE
+	$(call if_changed,gzip)
+
+$(obj)/zImage: $(obj)/Image FORCE
 	$(call if_changed,gzip)
 
 install: $(obj)/Image

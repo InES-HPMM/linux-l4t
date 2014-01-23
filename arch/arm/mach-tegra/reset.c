@@ -102,7 +102,7 @@ void __init tegra_cpu_reset_handler_init(void)
 {
 #ifdef CONFIG_SMP
 	__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_PRESENT] =
-		*((u32 *)cpu_present_mask);
+		*((ulong *)cpu_present_mask);
 	__tegra_cpu_reset_handler_data[TEGRA_RESET_STARTUP_SECONDARY] =
 		virt_to_phys((void *)tegra_secondary_startup);
 #endif
@@ -114,13 +114,19 @@ void __init tegra_cpu_reset_handler_init(void)
 		virt_to_phys((void *)tegra_resume);
 #endif
 
+#ifdef CONFIG_ARM64
+	flush_icache_range(
+	(unsigned long)&__tegra_cpu_reset_handler_data[0],
+	(unsigned long)&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]);
+#else
 	/* Push all of reset handler data out to the L3 memory system. */
 	__cpuc_coherent_kern_range(
-		(unsigned long)&__tegra_cpu_reset_handler_data[0],
-		(unsigned long)&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]);
+	(unsigned long)&__tegra_cpu_reset_handler_data[0],
+	(unsigned long)&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]);
 
 	outer_clean_range(__pa(&__tegra_cpu_reset_handler_data[0]),
-			  __pa(&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]));
+		__pa(&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]));
+#endif
 
 	if (!tegra_cpu_is_dsim()) /* Can't write IRAM on DSIM/MTS (yet) */
 		tegra_cpu_reset_handler_enable();

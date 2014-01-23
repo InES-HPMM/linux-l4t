@@ -41,6 +41,8 @@
 #define smp_wmb()	asm volatile("dmb ishst" : : : "memory")
 #endif
 
+#define dmb()		asm volatile("dmb ishld" : : : "memory")
+
 #define read_barrier_depends()		do { } while(0)
 #define smp_read_barrier_depends()	do { } while(0)
 

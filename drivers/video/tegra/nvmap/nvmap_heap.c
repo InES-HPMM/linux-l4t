@@ -3,7 +3,7 @@
  *
  * GPU heap allocator.
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,14 +34,11 @@
 #include <linux/debugfs.h>
 
 #include <linux/nvmap.h>
-#include "nvmap_priv.h"
-#include "nvmap_heap.h"
-
-#include <asm/tlbflush.h>
-#include <asm/cacheflush.h>
-
 #include <linux/dma-mapping.h>
 #include <linux/dma-contiguous.h>
+
+#include "nvmap_priv.h"
+#include "nvmap_heap.h"
 
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 #include <linux/ote_protocol.h>

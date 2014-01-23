@@ -43,6 +43,11 @@
 
 #include "kind_gk20a.h"
 
+#ifdef CONFIG_ARM64
+#define outer_flush_range(a, b)
+#define __cpuc_flush_dcache_area __flush_dcache_area
+#endif
+
 /*
  * GPU mapping life cycle
  * ======================

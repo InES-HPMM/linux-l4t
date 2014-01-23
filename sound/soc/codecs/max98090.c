@@ -21,6 +21,13 @@
 
 #include <linux/version.h>
 
+#ifndef __devexit
+#define __devexit
+#endif
+#ifndef __devexit_p
+#define __devexit_p(x)	(x)
+#endif
+
 #define DEBUG
 #define EXTMIC_METHOD
 #define EXTMIC_METHOD_TEST
@@ -2772,8 +2779,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "SPKR");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC2");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICR");
 			max98090_dmic_switch(codec, 1);
 
 			break;
@@ -2807,8 +2814,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPR");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_disable_pin(&codec->dapm, "MIC2");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_force_enable_pin(&codec->dapm, "DMICR");
 			max98090_dmic_switch(codec, 1);
 
 			break;
@@ -2826,8 +2833,8 @@ static void max98090_jack_work(struct work_struct *work)
 			snd_soc_dapm_disable_pin(&codec->dapm, "SPKR");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPL");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "HPR");
-			snd_soc_dapm_disable_pin(&codec->dapm, "DMIC1");
-			snd_soc_dapm_disable_pin(&codec->dapm, "DMIC2");
+			snd_soc_dapm_disable_pin(&codec->dapm, "DMICL");
+			snd_soc_dapm_disable_pin(&codec->dapm, "DMICR");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "MIC1");
 			snd_soc_dapm_force_enable_pin(&codec->dapm, "MIC2");
 			max98090_dmic_switch(codec, 0);
@@ -3713,7 +3720,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 
 	/* Register for interrupts */
 	if ((request_threaded_irq(pdata->irq, NULL,
-		max98090_interrupt, IRQF_TRIGGER_FALLING,
+		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 		"max98090_interrupt", codec)) < 0) {
 		dev_info(codec->dev, "request_irq failed\n");
 	}

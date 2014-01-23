@@ -74,6 +74,24 @@ struct cpu_context {
 	unsigned long pc;
 };
 
+/*
+ * struct cpu_suspend_ctx must be 16-byte aligned since it is allocated on
+ * the stack, which must be 16-byte aligned on v8
+ */
+struct cpu_suspend_ctx {
+	unsigned long tpidr_el0;
+	unsigned long tpidrro_el0;
+	unsigned long contextidr_el1;
+	unsigned long mair_el1;
+	unsigned long cpacr_el1;
+	unsigned long ttbr0_el1;
+	unsigned long ttbr1_el1;
+	unsigned long tcr_el1;
+	unsigned long vbar_el1;
+	unsigned long sctlr_el1;
+	unsigned long sp;
+} __aligned(16);
+
 struct thread_struct {
 	struct cpu_context	cpu_context;	/* cpu context */
 	unsigned long		tp_value;

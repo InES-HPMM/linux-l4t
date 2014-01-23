@@ -31,6 +31,13 @@
 #define PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
 
 /*
+ * Some extra PTE bits definition.
+ */
+#define PTE_YOUNG		PTE_AF
+#define PTE_PRESENT		PTE_VALID | PTE_PROT_NONE
+#define PTE_XN			PTE_UXN
+
+/*
  * VMALLOC and SPARSEMEM_VMEMMAP ranges.
  */
 #define VMALLOC_START		UL(0xffffff8000000000)
@@ -39,6 +46,14 @@
 #define vmemmap			((struct page *)(VMALLOC_END + SZ_64K))
 
 #define FIRST_USER_ADDRESS	0
+
+/*
+ * Use TASK_SIZE as the ceiling argument for free_pgtables() and
+ * free_pgd_range() to make sure all memory pages are freed when
+ * processes are torn down. Otherwise, the initial stack page is
+ * leaked since it's above TASK_SIZE(_32) in the compat mode.
+ */
+#define USER_PGTABLES_CEILING  TASK_SIZE_64
 
 #ifndef __ASSEMBLY__
 extern void __pte_error(const char *file, int line, unsigned long val);

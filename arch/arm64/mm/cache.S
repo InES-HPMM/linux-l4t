@@ -166,3 +166,90 @@ ENTRY(__flush_dcache_area)
 	dsb	sy
 	ret
 ENDPROC(__flush_dcache_area)
+
+/* ==== FIXME ====
+ * Below routines came from https://lkml.org/lkml/2012/9/7/514
+ * Refer to the lkml page for more details.
+ */
+
+/*
+ *	dmac_inv_range(start,end)
+ *
+ *	Invalidate the data cache within the specified region; we will be
+ *	performing a DMA operation in this region and we want to purge old
+ *	data in the cache.
+ *
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(dmac_inv_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	ivac, x0			// invalidate D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(dmac_inv_range)
+
+/*
+ *	dmac_clean_range(start,end)
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(dmac_clean_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	cvac, x0			// clean D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(dmac_clean_range)
+
+/*
+ *	dmac_map_area(start, size, dir)
+ *	- start	- kernel virtual start address
+ *	- size	- size of region
+ *	- dir	- DMA direction
+ */
+ENTRY(dmac_map_area)
+	add	x1, x1, x0
+	cmp	x2, #DMA_FROM_DEVICE
+	b.eq	dmac_inv_range
+	b	dmac_clean_range
+ENDPROC(dmac_map_area)
+
+/*
+ *	dmac_unmap_area(start, size, dir)
+ *	- start	- kernel virtual start address
+ *	- size	- size of region
+ *	- dir	- DMA direction
+ */
+ENTRY(dmac_unmap_area)
+	add	x1, x1, x0
+	cmp	x2, #DMA_TO_DEVICE
+	b.ne	dmac_inv_range
+	ret
+ENDPROC(dmac_unmap_area)
+
+/*
+ *	dmac_flush_range(start,end)
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(dmac_flush_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	civac, x0			// clean & invalidate D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(dmac_flush_range)

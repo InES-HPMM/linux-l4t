@@ -61,20 +61,16 @@ static void __iomem *tsc;
 #define TSC_CNTFID0		0x20		/* TSC freq id 0 */
 
 #define tsc_writel(value, reg) \
-	__raw_writel(value, (u32)tsc + (reg))
+	__raw_writel(value, tsc + (reg))
 #define tsc_readl(reg) \
-	__raw_readl((u32)tsc + (reg))
+	__raw_readl(tsc + (reg))
 #endif /* CONFIG_TEGRA_PRE_SILICON_SUPPORT */
 
 /* Is the optional system timer available? */
 static int local_timer_is_architected(void)
 {
-#ifdef CONFIG_ARM64
-	return 1;
-#else
 	return (cpu_architecture() >= CPU_ARCH_ARMv7) &&
 	       ((read_cpuid_ext(CPUID_EXT_PFR1) >> 16) & 0xf) == 1;
-#endif
 }
 
 static unsigned long arch_timer_read_current_timer(void)

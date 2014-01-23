@@ -31,6 +31,13 @@
 
 #include <mach/tegra_smmu.h>
 
+/*
+ * OF is always used on ARM64
+ */
+#ifdef CONFIG_ARM64
+#define CONFIG_USE_OF "y"
+#endif
+
 #ifdef CONFIG_TEGRA_NVDUMPER
 #define NVDUMPER_RESERVED_SIZE 4096UL
 #endif

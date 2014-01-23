@@ -25,7 +25,7 @@
 #include <linux/module.h>
 #include <linux/clk.h>
 
-#include "iomap.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 struct mipi_cal_info {
 	struct clk *clk;

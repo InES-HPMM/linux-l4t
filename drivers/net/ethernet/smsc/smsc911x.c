@@ -381,6 +381,7 @@ static int smsc911x_enable_resources(struct platform_device *pdev)
 	struct smsc911x_data *pdata = netdev_priv(ndev);
 	int ret = 0;
 
+#if 0
 	ret = regulator_bulk_enable(ARRAY_SIZE(pdata->supplies),
 			pdata->supplies);
 	if (ret)
@@ -392,6 +393,7 @@ static int smsc911x_enable_resources(struct platform_device *pdev)
 		if (ret < 0)
 			netdev_err(ndev, "failed to enable clock %d\n", ret);
 	}
+#endif
 
 	return ret;
 }
@@ -405,11 +407,13 @@ static int smsc911x_disable_resources(struct platform_device *pdev)
 	struct smsc911x_data *pdata = netdev_priv(ndev);
 	int ret = 0;
 
+#if 0
 	ret = regulator_bulk_disable(ARRAY_SIZE(pdata->supplies),
 			pdata->supplies);
 
 	if (!IS_ERR(pdata->clk))
 		clk_disable_unprepare(pdata->clk);
+#endif
 
 	return ret;
 }
@@ -441,6 +445,8 @@ static int smsc911x_request_resources(struct platform_device *pdev)
 	pdata->clk = clk_get(&pdev->dev, NULL);
 	if (IS_ERR(pdata->clk))
 		netdev_warn(ndev, "couldn't get clock %li\n", PTR_ERR(pdata->clk));
+
+	ret = 0; /* HACK */
 
 	return ret;
 }

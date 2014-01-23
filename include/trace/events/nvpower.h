@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra specific power events.
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,12 @@ TRACE_EVENT(nvcpu_cluster,
 		  (unsigned long)__entry->target)
 );
 
+#ifdef CONFIG_CLK_SRC_TEGRA_TIMER
 extern u32 notrace tegra_read_usec_raw(void);
+#else
+#undef tegra_read_usec_raw
+#define tegra_read_usec_raw() 0
+#endif
 
 TRACE_EVENT(nvcpu_powergate,
 

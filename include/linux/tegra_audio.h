@@ -41,6 +41,13 @@ struct tegra_audio_in_config {
 	int stereo;
 };
 
+enum dam_mix_ch_wait_mode {
+	TEGRA_AUDIO_MIX_CH0_CH1_WAIT,
+	TEGRA_AUDIO_MIX_CH0_WAIT,
+	TEGRA_AUDIO_MIX_CH1_WAIT,
+	TEGRA_AUDIO_MIX_NO_WAIT
+};
+
 struct dam_srate {
 	unsigned int in_sample_rate;
 	unsigned int out_sample_rate;
@@ -103,6 +110,7 @@ struct dmic_params_t {
 #define DAM_MIXING_STOP	_IO(TEGRA_AUDIO_MAGIC, 16)
 #define DAM_SET_MIXING_FLAG	_IO(TEGRA_AUDIO_MAGIC, 17)
 #define DAM_SET_MIXING_OUTPUT_I2S _IO(TEGRA_AUDIO_MAGIC, 18)
+#define DAM_SET_MIXING_CH_WAIT_MODE _IO(TEGRA_AUDIO_MAGIC, 19)
 
 #define I2S_START	_IOW(TEGRA_AUDIO_MAGIC, 21, struct i2s_pcm_format *)
 #define I2S_STOP	_IOW(TEGRA_AUDIO_MAGIC, 22, struct i2s_pcm_format *)

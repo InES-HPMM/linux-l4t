@@ -24,6 +24,8 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/cputable.h>
+#include <asm/smp_plat.h>
+#include <asm/suspend.h>
 #include <asm/vdso_datapage.h>
 #include <linux/kbuild.h>
 
@@ -104,5 +106,25 @@ int main(void)
   BLANK();
   DEFINE(TZ_MINWEST,		offsetof(struct timezone, tz_minuteswest));
   DEFINE(TZ_DSTTIME,		offsetof(struct timezone, tz_dsttime));
+#ifdef CONFIG_ARM_CPU_SUSPEND
+  DEFINE(CPU_SUSPEND_SZ,	sizeof(struct cpu_suspend_ctx));
+  DEFINE(CPU_CTX_TPIDR_EL0,	offsetof(struct cpu_suspend_ctx, tpidr_el0));
+  DEFINE(CPU_CTX_TPIDRRO_EL0,	offsetof(struct cpu_suspend_ctx, tpidrro_el0));
+  DEFINE(CPU_CTX_CTXIDR_EL1,	offsetof(struct cpu_suspend_ctx, contextidr_el1));
+  DEFINE(CPU_CTX_MAIR_EL1,	offsetof(struct cpu_suspend_ctx, mair_el1));
+  DEFINE(CPU_CTX_CPACR_EL1,	offsetof(struct cpu_suspend_ctx, cpacr_el1));
+  DEFINE(CPU_CTX_TTBR0_EL1,	offsetof(struct cpu_suspend_ctx, ttbr0_el1));
+  DEFINE(CPU_CTX_TTBR1_EL1,	offsetof(struct cpu_suspend_ctx, ttbr1_el1));
+  DEFINE(CPU_CTX_TCR_EL1,	offsetof(struct cpu_suspend_ctx, tcr_el1));
+  DEFINE(CPU_CTX_VBAR_EL1,	offsetof(struct cpu_suspend_ctx, vbar_el1));
+  DEFINE(CPU_CTX_SCTLR_EL1,	offsetof(struct cpu_suspend_ctx, sctlr_el1));
+  DEFINE(CPU_CTX_SP,		offsetof(struct cpu_suspend_ctx, sp));
+  DEFINE(SLEEP_SAVE_SP_SZ,     sizeof(struct sleep_save_sp));
+  DEFINE(SLEEP_SAVE_SP_PHYS,   offsetof(struct sleep_save_sp, save_ptr_stash_phys));
+  DEFINE(SLEEP_SAVE_SP_VIRT,   offsetof(struct sleep_save_sp, save_ptr_stash));
+  DEFINE(MPIDR_HASH_MASK,	offsetof(struct mpidr_hash, mask));
+  DEFINE(MPIDR_HASH_SHIFTS,	offsetof(struct mpidr_hash, shift_aff));
+#endif
+
   return 0;
 }

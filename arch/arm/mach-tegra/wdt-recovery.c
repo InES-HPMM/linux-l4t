@@ -27,9 +27,7 @@
 #include <linux/io.h>
 #include <linux/clk/tegra.h>
 
-#include <asm/mach-types.h>
 #include <asm/mach/time.h>
-#include <asm/localtimer.h>
 
 #include <linux/nvmap.h>
 #include <mach/irqs.h>

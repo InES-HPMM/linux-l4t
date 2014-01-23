@@ -227,7 +227,11 @@ int woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);
 /** Private command structure from app */
 typedef struct _android_wifi_priv_cmd {
     /** Buffer pointer */
+#ifdef CONFIG_COMPAT
+	u32 buf;
+#else
 	char *buf;
+#endif
     /** buffer updated by driver */
 	int used_len;
     /** buffer sent by application */

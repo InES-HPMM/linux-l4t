@@ -308,11 +308,19 @@ static void cluster_switch_epilog_actlr(void)
 	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC0F)
 		return;
 
+#ifdef CONFIG_ARM64
+	__asm__("mrs %0, actlr_el1\n" : "=r" (actlr));
+#else
 	__asm__("mrc p15, 0, %0, c1, c0, 1\n" : "=r" (actlr));
+#endif
 
 	if (actlr & (0x1 << 6)) {
 		actlr |= 0x1;
+#ifdef CONFIG_ARM64
+		__asm__("msr actlr_el1, %0\n" : "=r" (actlr));
+#else
 		__asm__("mcr p15, 0, %0, c1, c0, 1\n" : : "r" (actlr));
+#endif
 	}
 }
 
@@ -663,14 +671,15 @@ void tegra_lp0_resume_mc(void)
 	tegra_mc_timing_restore();
 }
 
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 static int __init get_clock_cclk_lp(void)
 {
 	if (!cclk_lp)
 		cclk_lp = tegra_get_clock_by_name("cclk_lp");
 	return 0;
 }
-
 subsys_initcall(get_clock_cclk_lp);
+#endif
 
 void tegra_lp0_cpu_mode(bool enter)
 {
@@ -681,8 +690,10 @@ void tegra_lp0_cpu_mode(bool enter)
 		entered_on_g = !is_lp_cluster();
 
 	if (entered_on_g) {
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 		if (enter)
 			tegra_clk_prepare_enable(cclk_lp);
+#endif
 
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
@@ -690,8 +701,10 @@ void tegra_lp0_cpu_mode(bool enter)
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 #endif
 		if (!tegra_cluster_control(0, flags)) {
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 			if (!enter)
 				tegra_clk_disable_unprepare(cclk_lp);
+#endif
 			pr_info("Tegra: switched to %s cluster %s LP0\n",
 				enter ? "LP" : "G",
 				enter ? "before entering" : "after exiting");

@@ -1,0 +1,51 @@
+source drivers/devfreq/Kconfig
+
+source arch/arm/mach-tegra/Kconfig
+
+config ARCH_TEGRA_13x_SOC
+	bool "Tegra 13x family SOC"
+	depends on !ARCH_TEGRA_14x_SOC
+	select ARCH_TEGRA_HAS_PCIE
+	select CPU_V8
+	select DENVER_CPU
+	select ARM_GIC
+	select ARCH_REQUIRE_GPIOLIB
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_EHCI_TEGRA if USB_SUPPORT
+	select USB_ULPI if USB_SUPPORT
+	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select ARCH_SUPPORTS_MSI if TEGRA_PCI
+	select PCI_MSI if TEGRA_PCI
+	select ARCH_TEGRA_HAS_CL_DVFS
+	select TEGRA_DYNAMIC_CBUS
+	select TEGRA_DUAL_CBUS
+	select ARCH_TEGRA_VIC
+	select SOC_BUS
+	select THERMAL
+	select I2C
+	select PM_GENERIC_DOMAINS if PM
+	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
+	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+	help
+	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
+	  NVIDIA Denver CPU
+
+config MACH_EXUMA
+	bool "Exuma board"
+	depends on ARCH_TEGRA_13x_SOC
+	select TEGRA_FPGA_PLATFORM
+	help
+	  Support for NVIDIA Exuma FPGA development platform
+
+config MACH_T132REF
+	bool "T132REF board"
+	depends on ARCH_TEGRA_13x_SOC
+	select SYSEDP_FRAMEWORK
+	help
+	  Support for NVIDIA Exuma FPGA development platform
+
+config DENVER_CPU
+	bool "Denver CPU"
+	help
+	  Support for NVIDIA Denver CPU

@@ -1,7 +1,7 @@
 /*
  * ahci-tegra.c - AHCI SATA support for TEGRA AHCI device
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -2275,7 +2275,6 @@ static int tegra_ahci_queue_one_qc(struct tegra_ahci_host_priv *tegra_hpriv,
 	}
 	qc_list->qc = qc;
 	list_add_tail(&(qc_list->list), &(tegra_hpriv->qc_list));
-	dev_dbg(tegra_hpriv->dev, "queuing qc=%x\n", (unsigned int)qc);
 	return 0;
 }
 
@@ -2289,7 +2288,6 @@ static void tegra_ahci_dequeue_qcs(struct tegra_ahci_host_priv *tegra_hpriv)
 	list_for_each_safe(list, next, &tegra_hpriv->qc_list) {
 		qc_list = list_entry(list, struct tegra_qc_list, list);
 		qc = qc_list->qc;
-		dev_dbg(tegra_hpriv->dev, "dequeue qc=%x\n", (unsigned int)qc);
 		ahci_ops.qc_issue(qc);
 		list_del(list);
 		kfree(qc_list);

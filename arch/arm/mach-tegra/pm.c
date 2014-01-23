@@ -60,7 +60,6 @@
 
 #include <asm/cacheflush.h>
 #include <asm/idmap.h>
-#include <asm/localtimer.h>
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
@@ -444,10 +443,17 @@ static __init int create_suspend_pgtable(void)
 		return -ENOMEM;
 
 	/* Only identity-map size of lowmem (high_memory - PAGE_OFFSET) */
+#ifdef CONFIG_ARM64
+	identity_mapping_add(tegra_pgd,
+			phys_to_virt(PHYS_OFFSET), high_memory);
+	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
+			IO_IRAM_VIRT + SECTION_SIZE);
+#else
 	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
 		high_memory, 0);
 	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
 		IO_IRAM_VIRT + SECTION_SIZE, 0);
+#endif
 
 #if defined(CONFIG_ARM_LPAE)
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK);
@@ -1399,7 +1405,9 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 #endif
 
 	flush_cache_all();
+#ifndef CONFIG_ARM64
 	outer_disable();
+#endif
 
 	if (mode == TEGRA_SUSPEND_LP2)
 		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);

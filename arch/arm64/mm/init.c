@@ -37,12 +37,19 @@
 #include <asm/sizes.h>
 #include <asm/tlb.h>
 
+#include <asm/mach/arch.h>
+
 #include "mm.h"
 
 static unsigned long phys_initrd_start __initdata = 0;
 static unsigned long phys_initrd_size __initdata = 0;
 
+/* FIXME */
+#ifndef CONFIG_MACH_EXUMA
 phys_addr_t memstart_addr __read_mostly = 0;
+#else
+phys_addr_t memstart_addr __read_mostly = 0x80000000;
+#endif
 
 void __init early_init_dt_setup_initrd_arch(unsigned long start,
 					    unsigned long end)
@@ -173,6 +180,10 @@ void __init arm64_memblock_init(void)
 		memblock_reserve(base, size);
 	}
 
+	/* reserve any platform specific memblock areas */
+	if (machine_desc->reserve)
+		machine_desc->reserve();
+
 	memblock_allow_resize();
 	memblock_dump_all();
 }
@@ -283,7 +294,9 @@ void __init mem_init(void)
 	unsigned long reserved_pages, free_pages;
 	struct memblock_region *reg;
 
+#ifdef CONFIG_SWIOTLB
 	arm64_swiotlb_init();
+#endif
 
 	max_mapnr   = pfn_to_page(max_pfn + PHYS_PFN_OFFSET) - mem_map;
 

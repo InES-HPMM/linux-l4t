@@ -37,13 +37,18 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
 
+#ifdef CONFIG_ARM64
+#include <asm/mmu.h>
+#include <../../arch/arm/mach-tegra/iomap.h>
+#endif
+
 #include <mach/gpufuse.h>
 
 #include "fuse.h"
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #include "tegra11x_fuse_offsets.h"
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 #include "tegra12x_fuse_offsets.h"
 #endif
 
@@ -81,7 +86,9 @@ static u32 fuse_pgm_mask[NFUSES / 2];
 static u32 tmp_fuse_pgm_data[NFUSES / 2];
 
 static struct fuse_data fuse_info;
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static struct regulator *fuse_regulator;
+#endif
 static struct clk *clk_fuse;
 
 struct param_info {
@@ -402,9 +409,49 @@ static void tegra_set_tegraid(u32 chipid,
 
 static void tegra_get_tegraid_from_hw(void)
 {
-	u32 cid = tegra_read_chipid();
-	u32 nlist = tegra_read_apb_misc_reg(0x860);
+	u32 cid;
+	u32 nlist;
 	char *priv = NULL;
+
+#ifndef CONFIG_ARM64
+	cid = tegra_read_chipid();
+	nlist = tegra_read_apb_misc_reg(0x860);
+#else
+	void __iomem *chip_id;
+	void __iomem *netlist;
+
+	/*
+	 * tegra_get_tegraid_from_hw can be called really early on when
+	 * final kernel page tables haven't been set up. Thus, APB_MISC
+	 * aperature must be mapped into kernel VA before tegra_id can
+	 * be accessed here. Coincidentally, Tegra UART and ChipId reside
+	 * in the same memory section (1MB), and UART has been mapped
+	 * prior to this.
+	 *
+	 * On ARM, this is okay b/c Tegra code tells ARM what VA to map.
+	 * However, ARM64 internally uses EARLYCON_IOBASE as base VA.
+	 * To workaround this, we have to derive the base VA manually
+	 * ad-hoc and modify the chip_id and netlist address accordingly
+	 * for ARM64. Such handling is only needed until Tegra static
+	 * mapping is done in mach-tegra/io.c.
+	 */
+	void __iomem *early_base;
+	extern bool iotable_init_done;
+	if (!iotable_init_done) {
+		/* Map in APB_BASE in case earlyprintk is not enabled */
+		early_io_map(TEGRA_APB_MISC_BASE, EARLYCON_IOBASE);
+		early_base = (void __iomem *) (EARLYCON_IOBASE &
+					       ~(SECTION_SIZE - 1));
+		chip_id = early_base + 0x804;
+		netlist = early_base + 0x860;
+		cid = readl(chip_id);
+		nlist = readl(netlist);
+	} else {
+		cid = tegra_read_apb_misc_reg(0x804);
+		nlist = tegra_read_apb_misc_reg(0x860);
+	}
+
+#endif
 
 	tegra_set_tegraid((cid >> 8) & 0xff,
 			  (cid >> 4) & 0xf,
@@ -890,7 +937,9 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	u32 reg;
 	int i = 0;
 	int index;
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	int ret;
+#endif
 	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
@@ -898,11 +947,17 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		return -EINVAL;
 	}
 
-	if (IS_ERR_OR_NULL(clk_fuse) ||
-	   (IS_ERR_OR_NULL(fuse_regulator))) {
-		pr_err("fuse write disabled");
+	if (IS_ERR_OR_NULL(clk_fuse)) {
+		pr_err("fuse clk is NULL");
 		return -ENODEV;
 	}
+
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (IS_ERR_OR_NULL(fuse_regulator)) {
+		pr_err("fuse regulator is NULL");
+		return -ENODEV;
+	}
+#endif
 
 	if (fuse_odm_prod_mode() && !(flags &
 				(FLAGS_ODMRSVD | FLAGS_ODM_LOCK))) {
@@ -954,10 +1009,11 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 			fuse_info_tbl[i].sz);
 	}
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	ret = regulator_enable(fuse_regulator);
-
 	if (ret)
 		BUG_ON("regulator enable fail\n");
+#endif
 
 	populate_fuse_arrs(&fuse_info, flags);
 
@@ -968,7 +1024,9 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	regulator_disable(fuse_regulator);
+#endif
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
@@ -1144,19 +1202,23 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* get fuse_regulator regulator */
 	fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
 	if (IS_ERR(fuse_regulator))
 		pr_err("%s: no fuse_regulator. fuse write disabled\n",
 				__func__);
+#endif
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR(clk_fuse)) {
 		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 		if (!IS_ERR_OR_NULL(fuse_regulator)) {
 			regulator_put(fuse_regulator);
 			fuse_regulator = NULL;
 		}
+#endif
 		return -ENODEV;
 	}
 
@@ -1200,9 +1262,10 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 {
 	fuse_power_disable();
 
+#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (!IS_ERR_OR_NULL(fuse_regulator))
 		regulator_put(fuse_regulator);
-
+#endif
 	if (!IS_ERR_OR_NULL(clk_fuse))
 		clk_put(clk_fuse);
 

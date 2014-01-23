@@ -48,7 +48,8 @@
 #include <linux/tegra-fuse.h>
 
 #ifdef CONFIG_ARM64
-#include <linux/irqchip/gic.h>
+#include <linux/irqchip/arm-gic.h>
+#include <asm/system_info.h>
 #else
 #include <asm/system.h>
 #include <asm/hardware/cache-l2x0.h>
@@ -181,7 +182,11 @@ u32 notrace tegra_read_cycle(void)
 {
 	u32 cycle_count;
 
+#ifdef CONFIG_ARM64
+	asm volatile("mrs %0, pmccntr_el0" : "=r"(cycle_count));
+#else
 	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(cycle_count));
+#endif
 
 	return cycle_count;
 }
@@ -978,13 +983,19 @@ void __init tegra12x_init_early(void)
 	tegra_init_fuse();
 	tegra_ramrepair_init();
 	tegra12x_init_clocks();
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	tegra13x_init_dvfs();
+#else
 	tegra12x_init_dvfs();
+#endif
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
 	tegra_pmc_init();
 	tegra_powergate_init();
+#ifndef CONFIG_ARM64
 	tegra30_hotplug_init();
+#endif
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
@@ -1479,24 +1490,11 @@ void tegra_get_board_info(struct board_info *bi)
 			pr_err("failed to read /chosen/board_info/minor_revision\n");
 		else
 			bi->minor_revision = prop_val;
-#ifndef CONFIG_ARM64
 		system_serial_high = (bi->board_id << 16) | bi->sku;
 		system_serial_low = (bi->fab << 24) |
 			(bi->major_revision << 16) | (bi->minor_revision << 8);
-#endif
 	} else {
 #endif
-#ifdef CONFIG_ARM64
-		/* FIXME:
-		 * use dummy values for now as system_serial_high/low
-		 * are gone in arm64.
-		 */
-		bi->board_id = 0xDEAD;
-		bi->sku = 0xDEAD;
-		bi->fab = 0xDD;
-		bi->major_revision = 0xDD;
-		bi->minor_revision = 0xDD;
-#else
 		if (system_serial_high || system_serial_low) {
 			bi->board_id = (system_serial_high >> 16) & 0xFFFF;
 			bi->sku = (system_serial_high) & 0xFFFF;
@@ -1506,7 +1504,6 @@ void tegra_get_board_info(struct board_info *bi)
 		} else {
 			memcpy(bi, &main_board_info, sizeof(struct board_info));
 		}
-#endif
 #ifdef CONFIG_OF
 	}
 #endif
@@ -2375,7 +2372,7 @@ static struct platform_device tegra_smsc911x_device = {
 
 static int __init enet_smsc911x_init(void)
 {
-	if (!tegra_cpu_is_dsim())
+	if (!tegra_cpu_is_dsim() && !tegra_platform_is_qt())
 		platform_device_register(&tegra_smsc911x_device);
 	return 0;
 }

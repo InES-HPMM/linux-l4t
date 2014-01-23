@@ -46,7 +46,6 @@
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
-#include <asm/system.h>
 #include <asm/unaligned.h>
 #include <asm/dma.h>
 
@@ -1127,7 +1126,8 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 					queue);
 
 			/* Point the QH to the first TD of next request */
-			writel((u32) next_req->head, &qh->curr_dtd_ptr);
+			writel((u32) (uintptr_t) next_req->head,
+					&qh->curr_dtd_ptr);
 		}
 
 		/* The request hasn't been processed, patch up the TD chain */

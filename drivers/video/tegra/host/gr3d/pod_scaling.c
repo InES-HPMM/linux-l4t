@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host 3D clock scaling
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -115,7 +115,7 @@ struct podgov_info_rec {
 	struct devfreq		*power_manager;
 	struct dentry		*debugdir;
 
-	int			*freqlist;
+	unsigned long		*freqlist;
 	int			freq_count;
 
 	unsigned int		idle_avg;
@@ -486,7 +486,7 @@ static unsigned long scaling_state_check(struct devfreq *df, ktime_t time)
  * higher compared to the target frequency.
  ******************************************************************************/
 
-int freqlist_up(struct podgov_info_rec *podgov, long target, int steps)
+int freqlist_up(struct podgov_info_rec *podgov, unsigned long target, int steps)
 {
 	int i, pos;
 
@@ -505,7 +505,7 @@ int freqlist_up(struct podgov_info_rec *podgov, long target, int steps)
  * lower compared to the target frequency.
  ******************************************************************************/
 
-int freqlist_down(struct podgov_info_rec *podgov, long target, int steps)
+int freqlist_down(struct podgov_info_rec *podgov, unsigned long target, int steps)
 {
 	int i, pos;
 
@@ -557,6 +557,7 @@ static void podgov_idle_handler(struct work_struct *work)
 		pdata->idle(dev);
 }
 
+#ifdef CONFIG_TEGRA_THROUGHPUT
 /*******************************************************************************
  * nvhost_scale3d_set_throughput_hint(hint)
  *
@@ -574,7 +575,7 @@ static int nvhost_scale3d_set_throughput_hint(struct notifier_block *nb,
 	struct platform_device *pdev;
 	int hint = tegra_throughput_get_hint();
 	long idle;
-	long curr, target;
+	unsigned long curr, target;
 	int avg_idle, avg_hint, scale_score;
 	unsigned int smooth;
 
@@ -645,6 +646,7 @@ exit_unlock:
 	nvhost_module_idle(pdev);
 	return NOTIFY_OK;
 }
+#endif
 
 /*******************************************************************************
  * debugfs interface for controlling 3d clock scaling on the fly
@@ -960,6 +962,7 @@ static int nvhost_pod_init(struct devfreq *df)
 		case TEGRA_CHIPID_TEGRA14:
 		case TEGRA_CHIPID_TEGRA11:
 		case TEGRA_CHIPID_TEGRA12:
+		case TEGRA_CHIPID_TEGRA13:
 			podgov->p_load_max = 900;
 			podgov->p_load_target = 700;
 			podgov->p_bias = 80;
@@ -1030,10 +1033,12 @@ static int nvhost_pod_init(struct devfreq *df)
 	nvhost_scale3d_debug_init(df);
 
 	/* register the governor to throughput hint notifier chain */
+#ifdef CONFIG_TEGRA_THROUGHPUT
 	podgov->throughput_hint_notifier.notifier_call =
 		&nvhost_scale3d_set_throughput_hint;
 	blocking_notifier_chain_register(&throughput_notifier_list,
 					 &podgov->throughput_hint_notifier);
+#endif
 
 	return 0;
 
@@ -1061,8 +1066,10 @@ static void nvhost_pod_exit(struct devfreq *df)
 	struct podgov_info_rec *podgov = df->data;
 	struct platform_device *d = to_platform_device(df->dev.parent);
 
+#ifdef CONFIG_TEGRA_THROUGHPUT
 	blocking_notifier_chain_unregister(&throughput_notifier_list,
 					   &podgov->throughput_hint_notifier);
+#endif
 	cancel_delayed_work(&podgov->idle_timer);
 
 	device_remove_file(&d->dev, &dev_attr_enable_3d_scaling);

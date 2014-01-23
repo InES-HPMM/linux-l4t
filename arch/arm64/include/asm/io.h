@@ -117,7 +117,9 @@ static inline u64 __raw_readq(const volatile void __iomem *addr)
 /*
  *  I/O port access primitives.
  */
-#define IO_SPACE_LIMIT		0xffff
+#ifndef IO_SPACE_LIMIT
+#define IO_SPACE_LIMIT		0xfffff
+#endif
 #define PCI_IOBASE		((void __iomem *)(MODULES_VADDR - SZ_2M))
 
 static inline u8 inb(unsigned long addr)
@@ -239,6 +241,10 @@ extern void __iounmap(volatile void __iomem *addr);
 
 #define ARCH_HAS_IOREMAP_WC
 #include <asm-generic/iomap.h>
+
+#define IOMEM(x)	((void __force __iomem *)(x))
+
+extern int pci_ioremap_io(unsigned int offset, phys_addr_t phys_addr);
 
 /*
  * More restrictive address range checking than the default implementation

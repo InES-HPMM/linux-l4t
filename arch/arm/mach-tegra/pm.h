@@ -170,14 +170,6 @@ static inline void tegra_lp0_resume_mc(void) {}
 static inline void tegra_lp0_cpu_mode(bool enter) {}
 #endif
 
-#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
-#define INSTRUMENT_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
-#define DEBUG_CLUSTER_SWITCH 0		/* Should be zero for shipping code */
-#define PARAMETERIZE_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
-
-#define CLUSTER_SWITCH_TIME_AVG_SHIFT	4
-#define CLUSTER_SWITCH_AVG_SAMPLES	(0x1U << CLUSTER_SWITCH_TIME_AVG_SHIFT)
-
 enum tegra_cluster_switch_time_id {
 	tegra_cluster_switch_time_id_start = 0,
 	tegra_cluster_switch_time_id_prolog,
@@ -186,6 +178,14 @@ enum tegra_cluster_switch_time_id {
 	tegra_cluster_switch_time_id_end,
 	tegra_cluster_switch_time_id_max
 };
+
+#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
+#define INSTRUMENT_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
+#define DEBUG_CLUSTER_SWITCH 0		/* Should be zero for shipping code */
+#define PARAMETERIZE_CLUSTER_SWITCH 1	/* Should be zero for shipping code */
+
+#define CLUSTER_SWITCH_TIME_AVG_SHIFT	4
+#define CLUSTER_SWITCH_AVG_SAMPLES	(0x1U << CLUSTER_SWITCH_TIME_AVG_SHIFT)
 
 static inline bool is_g_cluster_present(void)
 {
@@ -201,11 +201,19 @@ static inline unsigned int is_lp_cluster(void)
 	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
 	return reg & 1; /* 0 == G, 1 == LP*/
 #else
+#ifdef CONFIG_ARM64
+	asm("mrs	%0, mpidr_el1\n"
+	    "ubfx	%0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc","memory");
+#else
 	asm("mrc	p15, 0, %0, c0, c0, 5\n"
 	    "ubfx	%0, %0, #8, #4"
 	    : "=r" (reg)
 	    :
 	    : "cc","memory");
+#endif
 	return reg ; /* 0 == G, 1 == LP*/
 #endif
 }

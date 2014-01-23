@@ -34,6 +34,14 @@ config CPU_IDLE_CALXEDA
 	depends on ARCH_HIGHBANK
 	help
 	  Select this to enable cpuidle on Calxeda processors.
+
+config CPU_IDLE_DENVER
+	bool "CPU Idle Driver for NVIDIA Denver processors"
+	depends on DENVER_CPU
+	default y
+	help
+	  Select this to enable cpuidle on NVIDIA Denver processors.
+
 endif
 
 config ARCH_NEEDS_CPU_IDLE_COUPLED

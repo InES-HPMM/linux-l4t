@@ -1270,6 +1270,7 @@ static struct core_bus_rates_table tegra12_emc_rates_sysfs = {
 static int __init tegra12_dvfs_init_core_cap(void)
 {
 	int ret;
+	const int hack_core_millivolts = 0;
 
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
@@ -1277,9 +1278,15 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	ret = tegra_init_core_cap(
-		tegra12_core_cap_table, ARRAY_SIZE(tegra12_core_cap_table),
-		core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
+	/* FIXME: skip core cap init b/c it's too slow on QT */
+	if (tegra_platform_is_qt())
+		ret = tegra_init_core_cap(
+			tegra12_core_cap_table, ARRAY_SIZE(tegra12_core_cap_table),
+			&hack_core_millivolts, 1, cap_kobj);
+	else
+		ret = tegra_init_core_cap(
+			tegra12_core_cap_table, ARRAY_SIZE(tegra12_core_cap_table),
+			core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
 
 	if (ret) {
 		pr_err("tegra12_dvfs: failed to init core cap interface (%d)\n",

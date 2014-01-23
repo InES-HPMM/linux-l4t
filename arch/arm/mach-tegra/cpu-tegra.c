@@ -180,14 +180,14 @@ static struct attribute_group stats_attr_grp = {
 
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
+static const struct tegra_edp_limits *cpu_reg_idle_limits;
+static unsigned int reg_mode;
+static bool reg_mode_force_normal;
+
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 
 static const struct tegra_edp_limits *cpu_edp_limits;
 static int cpu_edp_limits_size;
-
-static const struct tegra_edp_limits *cpu_reg_idle_limits;
-static unsigned int reg_mode;
-static bool reg_mode_force_normal;
 
 static const unsigned int *system_edp_limits;
 static bool system_edp_alarm;
@@ -562,7 +562,6 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 #define tegra_cpu_edp_exit()
 #define tegra_edp_debug_init(cpu_tegra_debugfs_root) (0)
 #define cpu_reg_mode_predict_idle_limit() (0)
-static unsigned int reg_mode;
 #endif	/* CONFIG_TEGRA_EDP_LIMITS */
 
 #ifdef CONFIG_DEBUG_FS

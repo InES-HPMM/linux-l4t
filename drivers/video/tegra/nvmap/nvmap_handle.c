@@ -33,9 +33,6 @@
 #include <linux/nvmap.h>
 #include <linux/tegra-soc.h>
 
-#include <asm/cacheflush.h>
-#include <asm/outercache.h>
-#include <asm/tlbflush.h>
 #include <asm/pgtable.h>
 
 #include <trace/events/nvmap.h>
@@ -176,7 +173,7 @@ static int handle_page_alloc(struct nvmap_client *client,
 
 	if (h->userflags & NVMAP_HANDLE_ZEROED_PAGES) {
 		gfp |= __GFP_ZERO;
-		prot = nvmap_pgprot(h, pgprot_kernel);
+		prot = nvmap_pgprot(h, PG_PROT_KERNEL);
 		pte = nvmap_alloc_pte(nvmap_dev, (void **)&kaddr);
 		if (IS_ERR(pte))
 			return -ENOMEM;
@@ -186,7 +183,7 @@ static int handle_page_alloc(struct nvmap_client *client,
 	if (!pages)
 		return -ENOMEM;
 
-	prot = nvmap_pgprot(h, pgprot_kernel);
+	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
 
 	if (contiguous) {
 		struct page *page;

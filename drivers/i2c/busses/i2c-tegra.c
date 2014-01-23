@@ -190,6 +190,7 @@ struct tegra_i2c_dev {
 	struct clk *dvfs_ref_clk;
 	struct clk *dvfs_soc_clk;
 	spinlock_t fifo_lock;
+	spinlock_t mem_lock;
 	void __iomem *base;
 	int cont_id;
 	int irq;
@@ -286,13 +287,27 @@ static u32 i2c_readl(struct tegra_i2c_dev *i2c_dev, unsigned long reg)
 static void i2c_writesl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
-	writesl(i2c_dev->base + tegra_i2c_reg_addr(i2c_dev, reg), data, len);
+	u32 *buf = data;
+	unsigned long flags;
+
+	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	while (len--)
+		writel(*buf++, i2c_dev->base +
+					tegra_i2c_reg_addr(i2c_dev, reg));
+	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static void i2c_readsl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
-	readsl(i2c_dev->base + tegra_i2c_reg_addr(i2c_dev, reg), data, len);
+	u32 *buf = data;
+	unsigned long flags;
+
+	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	while (len--)
+		*buf++ = readl(i2c_dev->base +
+					tegra_i2c_reg_addr(i2c_dev, reg));
+	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static inline void tegra_i2c_gpio_setscl(void *data, int state)
@@ -513,7 +528,7 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 	if (tx_fifo_avail > 0 && buf_remaining > 0) {
 		if (buf_remaining > 3) {
 			dev_err(i2c_dev->dev,
-				"Remaining buffer more than 3 %d\n",
+				"Remaining buffer more than 3 %zd\n",
 				buf_remaining);
 			BUG();
 		}
@@ -1054,7 +1069,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 				!(next_msg->flags & I2C_M_RD));
 		}
 
-		dev_err(i2c_dev->dev, "buf_remaining - %d\n",
+		dev_err(i2c_dev->dev, "buf_remaining - %zd\n",
 			i2c_dev->msg_buf_remaining);
 	}
 
@@ -1512,6 +1527,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
 		spin_lock_init(&i2c_dev->fifo_lock);
+
+	spin_lock_init(&i2c_dev->mem_lock);
 
 	platform_set_drvdata(pdev, i2c_dev);
 

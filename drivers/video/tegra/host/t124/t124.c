@@ -7,7 +7,7 @@
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * version 2, as published by the Free Software Foundation.>
  *
  * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -629,35 +629,6 @@ static struct nvhost_channel *t124_alloc_nvhost_channel(
 int nvhost_init_t124_channel_support(struct nvhost_master *host,
        struct nvhost_chip_support *op)
 {
-	int i, num_channels;
-
-	/* Set indices dynamically as we can have
-	 * missing/non-static devices above (e.g.: vic, gk20a).
-	 */
-
-	for (num_channels = i = 0; i < ARRAY_SIZE(t124_devices); i++) {
-		struct platform_device *dev = t124_devices[i];
-		struct nvhost_device_data *pdata =
-			(struct nvhost_device_data *)dev->dev.platform_data;
-		pdata->index = num_channels++;
-		nvhost_dbg_fn("assigned channel %d to %s",
-			      pdata->index, dev_name(&dev->dev));
-		if (pdata->slave) {
-			struct nvhost_device_data *slave_pdata =
-				(struct nvhost_device_data *)pdata->slave->dev.platform_data;
-			slave_pdata->index = num_channels++;
-			nvhost_dbg_fn("assigned channel %d to %s",
-				      slave_pdata->index,
-				      dev_name(&pdata->slave->dev));
-		}
-	}
-	nvhost_dbg_fn("max channels=%d num channels=%zd",
-		      NV_HOST1X_CHANNELS, num_channels);
-	if (num_channels > T124_NVHOST_NUMCHANNELS) {
-		WARN(-ENODEV, "too many channel devices");
-		return -ENODEV;
-	}
-
 	op->nvhost_dev.alloc_nvhost_channel = t124_alloc_nvhost_channel;
 	op->nvhost_dev.free_nvhost_channel = t124_free_nvhost_channel;
 
@@ -715,6 +686,29 @@ int nvhost_init_t124_support(struct nvhost_master *host,
 	t124->host = host;
 	op->priv = t124;
 	op->remove_support = t124_remove_support;
+
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13) {
+		dev_warn(&host->dev->dev, "t132 detected. disabling power features of host1x clients");
+		for (i = 0; i < ARRAY_SIZE(t124_devices); i++) {
+			struct platform_device *pdev = t124_devices[i];
+			struct nvhost_device_data *pdata =
+				pdev->dev.platform_data;
+			if (!pdata) {
+				dev_warn(&host->dev->dev, "platform data for device %s is not available",
+					 pdev->name);
+				continue;
+			}
+			pdata->can_powergate = false;
+			pdata->scaling_init = false;
+			pdata->scaling_deinit = false;
+			pdata->devfreq_governor = NULL;
+			pdata->gpu_edp_device = false;
+			pdata->scaling_post_cb = NULL;
+			pdata->busy = NULL;
+			pdata->idle = NULL;
+			pdata->suspend_ndev = NULL;
+		}
+	}
 
 	return 0;
 

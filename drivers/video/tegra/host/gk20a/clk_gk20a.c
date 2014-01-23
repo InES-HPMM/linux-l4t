@@ -3,7 +3,7 @@
  *
  * GK20A Clocks
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -274,6 +274,9 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 	u32 nlo;
 
 	nvhost_dbg_fn("");
+
+	if (tegra_platform_is_linsim())
+		return 0;
 
 	/* get old coefficients */
 	coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
@@ -709,13 +712,13 @@ int gk20a_init_clk_support(struct gk20a *g)
 	return err;
 }
 
-u32 gk20a_clk_get_rate(struct gk20a *g)
+unsigned long gk20a_clk_get_rate(struct gk20a *g)
 {
 	struct clk_gk20a *clk = &g->clk;
 	return rate_gpc2clk_to_gpu(clk->gpc_pll.freq);
 }
 
-int gk20a_clk_round_rate(struct gk20a *g, u32 rate)
+long gk20a_clk_round_rate(struct gk20a *g, unsigned long rate)
 {
 	/* make sure the clock is available */
 	if (!gk20a_clk_get(g))
@@ -724,7 +727,7 @@ int gk20a_clk_round_rate(struct gk20a *g, u32 rate)
 	return clk_round_rate(clk_get_parent(g->clk.tegra_clk), rate);
 }
 
-int gk20a_clk_set_rate(struct gk20a *g, u32 rate)
+int gk20a_clk_set_rate(struct gk20a *g, unsigned long rate)
 {
 	return clk_set_rate(g->clk.tegra_clk, rate);
 }

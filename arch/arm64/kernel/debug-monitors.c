@@ -19,6 +19,7 @@
  */
 
 #include <linux/cpu.h>
+#include <linux/cpu_pm.h>
 #include <linux/debugfs.h>
 #include <linux/hardirq.h>
 #include <linux/init.h>
@@ -140,7 +141,7 @@ static void clear_os_lock(void *unused)
 	isb();
 }
 
-static int __cpuinit os_lock_notify(struct notifier_block *self,
+static int os_lock_notify(struct notifier_block *self,
 				    unsigned long action, void *data)
 {
 	int cpu = (unsigned long)data;
@@ -149,11 +150,47 @@ static int __cpuinit os_lock_notify(struct notifier_block *self,
 	return NOTIFY_OK;
 }
 
-static struct notifier_block __cpuinitdata os_lock_nb = {
+static struct notifier_block os_lock_nb = {
 	.notifier_call = os_lock_notify,
 };
 
-static int __cpuinit debug_monitors_init(void)
+#ifdef CONFIG_CPU_PM
+static DEFINE_PER_CPU(u32, mdscr);
+
+static int dm_cpu_pm_notify(struct notifier_block *self, unsigned long action,
+			     void *v)
+{
+	switch (action) {
+	case CPU_PM_ENTER:
+		__get_cpu_var(mdscr) = mdscr_read();
+		break;
+	case CPU_PM_EXIT:
+		clear_os_lock(NULL);
+		mdscr_write(__get_cpu_var(mdscr));
+		break;
+	case CPU_PM_ENTER_FAILED:
+	default:
+		return NOTIFY_DONE;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block dm_cpu_pm_nb = {
+	.notifier_call = dm_cpu_pm_notify,
+};
+
+static void __init debug_monitors_pm_init(void)
+{
+	cpu_pm_register_notifier(&dm_cpu_pm_nb);
+}
+#else
+static inline void debug_monitors_pm_init(void)
+{
+}
+#endif
+
+static int debug_monitors_init(void)
 {
 	/* Clear the OS lock. */
 	smp_call_function(clear_os_lock, NULL, 1);
@@ -161,6 +198,7 @@ static int __cpuinit debug_monitors_init(void)
 
 	/* Register hotplug handler. */
 	register_cpu_notifier(&os_lock_nb);
+	debug_monitors_pm_init();
 	return 0;
 }
 postcore_initcall(debug_monitors_init);

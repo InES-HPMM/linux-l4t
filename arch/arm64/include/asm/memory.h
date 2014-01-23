@@ -129,6 +129,19 @@ static inline void *phys_to_virt(phys_addr_t x)
 #define pfn_to_kaddr(pfn)	__va((pfn) << PAGE_SHIFT)
 
 /*
+* Virtual <-> DMA view memory address translations
+* Again, these are *only* valid on the kernel direct mapped RAM
+* memory.  Use of these is *deprecated* (and that doesn't mean
+* use the __ prefixed forms instead.)  See dma-mapping.h.
+*/
+#ifndef __virt_to_bus
+#define __virt_to_bus	__virt_to_phys
+#define __bus_to_virt	__phys_to_virt
+#define __pfn_to_bus(x)	__pfn_to_phys(x)
+#define __bus_to_pfn(x)	__phys_to_pfn(x)
+#endif
+
+/*
  *  virt_to_page(k)	convert a _valid_ virtual address to struct page *
  *  virt_addr_valid(k)	indicates whether a virtual address is valid
  */

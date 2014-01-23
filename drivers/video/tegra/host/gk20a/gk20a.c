@@ -57,7 +57,9 @@
 #include "gr3d/pod_scaling.h"
 #include "dbg_gpu_gk20a.h"
 
-#include "../../../../../arch/arm/mach-tegra/iomap.h"
+#ifdef CONFIG_ARM64
+#define __cpuc_flush_dcache_area __flush_dcache_area
+#endif
 
 #define CLASS_NAME "nvidia-gpu"
 /* TODO: Change to e.g. "nvidia-gpu%s" once we have symlinks in place. */
@@ -82,6 +84,9 @@ static const struct file_operations gk20a_ctrl_ops = {
 	.release = gk20a_ctrl_dev_release,
 	.open = gk20a_ctrl_dev_open,
 	.unlocked_ioctl = gk20a_ctrl_dev_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = gk20a_ctrl_dev_ioctl,
+#endif
 };
 
 static const struct file_operations gk20a_dbg_ops = {
@@ -113,7 +118,6 @@ static const struct file_operations gk20a_prof_ops = {
 	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
 #endif
 };
-
 
 static inline void sim_writel(struct gk20a *g, u32 r, u32 v)
 {
@@ -850,10 +854,13 @@ int nvhost_gk20a_finalize_poweron(struct platform_device *dev)
 	gk20a_writel(g, mc_intr_en_0_r(),
 		mc_intr_en_0_inta_hardware_f());
 
-	gk20a_writel(g, bus_intr_en_0_r(),
-			bus_intr_en_0_pri_squash_m() |
-			bus_intr_en_0_pri_fecserr_m() |
-			bus_intr_en_0_pri_timeout_m());
+	if (tegra_platform_is_linsim())
+		gk20a_writel(g, bus_intr_en_0_r(), 0x0);
+	else
+		gk20a_writel(g, bus_intr_en_0_r(),
+			        bus_intr_en_0_pri_squash_m() |
+			        bus_intr_en_0_pri_fecserr_m() |
+			        bus_intr_en_0_pri_timeout_m());
 	gk20a_reset_priv_ring(g);
 
 	/* TBD: move this after graphics init in which blcg/slcg is enabled.

@@ -14,12 +14,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/fs.h>
+#include <linux/file.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/nvhost.h>
 #include <linux/nvhost_vi_ioctl.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 
+#include <asm/uaccess.h>
+
+#include <mach/clk.h>
 #include <mach/latency_allowance.h>
 
 #include "bus_client.h"
@@ -218,6 +224,9 @@ long vi_ioctl(struct file *file,
 		}
 
 		clk = clk_get(&tegra_vi->ndev->dev, "pll_d");
+		if (IS_ERR(clk))
+			return -EINVAL;
+
 		if (enable)
 			ret = tegra_clk_cfg_ex(clk,
 				TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
@@ -303,6 +312,9 @@ const struct file_operations tegra_vi_ctrl_ops = {
 	.owner = THIS_MODULE,
 	.open = vi_open,
 	.unlocked_ioctl = vi_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = vi_ioctl,
+#endif
 	.release = vi_release,
 };
 #endif

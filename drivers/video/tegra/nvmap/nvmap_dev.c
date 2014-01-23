@@ -40,8 +40,6 @@
 #include <linux/stat.h>
 
 #include <asm/cputype.h>
-#include <asm/cacheflush.h>
-#include <asm/tlbflush.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvmap.h>
@@ -98,6 +96,9 @@ static const struct file_operations nvmap_user_fops = {
 	.open		= nvmap_open,
 	.release	= nvmap_release,
 	.unlocked_ioctl	= nvmap_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = nvmap_ioctl,
+#endif
 	.mmap		= nvmap_map,
 };
 
@@ -106,6 +107,9 @@ static const struct file_operations nvmap_super_fops = {
 	.open		= nvmap_open,
 	.release	= nvmap_release,
 	.unlocked_ioctl	= nvmap_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = nvmap_ioctl,
+#endif
 	.mmap		= nvmap_map,
 };
 
@@ -321,9 +325,9 @@ int nvmap_flush_heap_block(struct nvmap_client *client,
 		void *base = (void *)kaddr + (phys & ~PAGE_MASK);
 
 		next = min(next, end);
-		set_pte_at(&init_mm, kaddr, *pte, pfn_pte(pfn, pgprot_kernel));
+		set_pte_at(&init_mm, kaddr, *pte, pfn_pte(pfn, PG_PROT_KERNEL));
 		nvmap_flush_tlb_kernel_page(kaddr);
-		__cpuc_flush_dcache_area(base, next - phys);
+		FLUSH_DCACHE_AREA(base, next - phys);
 		phys = next;
 	}
 

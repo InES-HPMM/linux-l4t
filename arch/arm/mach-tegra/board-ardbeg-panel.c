@@ -700,6 +700,15 @@ int __init ardbeg_panel_init(void)
 		__tegra_clear_framebuffer(&ardbeg_nvmap_device,
 					  tegra_fb_start, tegra_fb_size);
 
+	/* Copy the bootloader fb2 to the fb2. */
+	if (tegra_bootloader_fb2_size)
+		__tegra_move_framebuffer(&ardbeg_nvmap_device,
+				tegra_fb2_start, tegra_bootloader_fb2_start,
+				min(tegra_fb2_size, tegra_bootloader_fb2_size));
+	else
+		__tegra_clear_framebuffer(&ardbeg_nvmap_device,
+					tegra_fb2_start, tegra_fb2_size);
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	if (!of_have_populated_dt() || !dc1_node ||
 		!of_device_is_available(dc1_node)) {

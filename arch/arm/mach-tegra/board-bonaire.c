@@ -497,7 +497,7 @@ static void __init tegra_bonaire_init(void)
 	tegra_register_fuse();
 }
 
-#ifdef CONFIG_USE_OF
+#if defined(CONFIG_USE_OF) || defined(CONFIG_ARM64)
 struct of_dev_auxdata tegra_bonaire_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
@@ -517,9 +517,10 @@ struct of_dev_auxdata tegra_bonaire_auxdata_lookup[] __initdata = {
 
 static void __init tegra_bonaire_dt_init(void)
 {
+#if defined(CONFIG_USE_OF) || defined(CONFIG_ARM64)
 	of_platform_populate(NULL, of_default_bus_match_table,
 		tegra_bonaire_auxdata_lookup, &platform_bus);
-
+#endif
 	tegra_bonaire_init();
 }
 

@@ -33,6 +33,12 @@
 #include "board.h"
 #include "iomap.h"
 
+#ifdef CONFIG_ARM64
+#define MT_DEVICE MT_DEVICE_nGnRE
+#endif
+
+bool iotable_init_done = false;
+
 static struct map_desc tegra_io_desc[] __initdata = {
 	{
 		.virtual = (unsigned long)IO_PPSB_VIRT,
@@ -141,4 +147,6 @@ void __init tegra_map_common_io(void)
 		iotable_init(tegra_io_desc_linsim,
 			ARRAY_SIZE(tegra_io_desc_linsim));
 #endif
+
+	iotable_init_done = true;
 }

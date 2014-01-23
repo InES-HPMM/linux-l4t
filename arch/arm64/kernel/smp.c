@@ -61,9 +61,30 @@ enum ipi_msg_type {
 	IPI_CALL_FUNC,
 	IPI_CALL_FUNC_SINGLE,
 	IPI_CPU_STOP,
+	IPI_WAKEUP,
 };
 
 static DEFINE_RAW_SPINLOCK(boot_lock);
+
+static struct smp_operations smp_ops;
+
+void __init smp_set_ops(struct smp_operations *ops)
+{
+	if (ops)
+		smp_ops = *ops;
+};
+
+static void __init platform_smp_prepare_cpus(unsigned int max_cpus)
+{
+	if (smp_ops.smp_prepare_cpus)
+		smp_ops.smp_prepare_cpus(max_cpus);
+}
+
+static void  platform_secondary_init(unsigned int cpu)
+{
+	if (smp_ops.smp_secondary_init)
+		smp_ops.smp_secondary_init(cpu);
+}
 
 /*
  * Write secondary_holding_pen_release in a way that is guaranteed to be
@@ -71,7 +92,7 @@ static DEFINE_RAW_SPINLOCK(boot_lock);
  * in coherency or not.  This is necessary for the hotplug code to work
  * reliably.
  */
-static void __cpuinit write_pen_release(u64 val)
+static void write_pen_release(u64 val)
 {
 	void *start = (void *)&secondary_holding_pen_release;
 	unsigned long size = sizeof(secondary_holding_pen_release);
@@ -84,9 +105,12 @@ static void __cpuinit write_pen_release(u64 val)
  * Boot a secondary CPU, and assign it the specified idle task.
  * This also gives us the initial stack to use for this CPU.
  */
-static int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
+static int boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
+
+	if (smp_ops.smp_boot_secondary)
+		smp_ops.smp_boot_secondary(cpu, idle);
 
 	/*
 	 * Set synchronisation state between this boot processor
@@ -103,6 +127,11 @@ static int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 * Send an event, causing the secondaries to read pen_release.
 	 */
 	sev();
+
+	/*
+	 * Wake up secondaries stuck at WFI
+	 */
+	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
@@ -122,7 +151,7 @@ static int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 static DECLARE_COMPLETION(cpu_running);
 
-int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
+int __cpu_up(unsigned int cpu, struct task_struct *idle)
 {
 	int ret;
 
@@ -158,11 +187,121 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 	return ret;
 }
 
+#ifdef CONFIG_HOTPLUG_CPU
+
+static int platform_cpu_kill(unsigned int cpu)
+{
+	if (smp_ops.cpu_kill)
+		return smp_ops.cpu_kill(cpu);
+	return 1;
+}
+
+static void platform_cpu_die(unsigned int cpu)
+{
+	if (smp_ops.cpu_die)
+		smp_ops.cpu_die(cpu);
+}
+
+static int platform_cpu_disable(unsigned int cpu)
+{
+	if (smp_ops.cpu_disable)
+		return smp_ops.cpu_disable(cpu);
+	return 0;
+}
+/*
+ * __cpu_disable runs on the processor to be shutdown.
+ */
+int  __cpu_disable(void)
+{
+	unsigned int cpu = smp_processor_id();
+	int ret;
+
+	ret = platform_cpu_disable(cpu);
+	if (ret)
+		return ret;
+
+	/*
+	 * Take this CPU offline.  Once we clear this, we can't return,
+	 * and we must not schedule until we're ready to give up the cpu.
+	 */
+	set_cpu_online(cpu, false);
+
+	/*
+	 * OK - migrate IRQs away from this CPU
+	 */
+	migrate_irqs();
+
+	/*
+	 * Local timer is stopped via the arch timer cpu notifier
+	 */
+
+	clear_tasks_mm_cpumask(cpu);
+
+	return 0;
+}
+
+static DECLARE_COMPLETION(cpu_died);
+
+/*
+ * called on the thread which is asking for a CPU to be shutdown -
+ * waits until shutdown has completed, or it is timed out.
+ */
+void  __cpu_die(unsigned int cpu)
+{
+	if (!wait_for_completion_timeout(&cpu_died, msecs_to_jiffies(5000))) {
+		pr_err("CPU%u: cpu didn't die\n", cpu);
+		return;
+	}
+
+	if (!platform_cpu_kill(cpu))
+		printk("CPU%u: unable to kill\n", cpu);
+}
+
+/*
+ * Called from the idle thread for the CPU which has been shutdown.
+ *
+ * Note that we disable IRQs here, but do not re-enable them
+ * before returning to the caller. This is also the behaviour
+ * of the other hotplug-cpu capable cores, so presumably coming
+ * out of idle fixes this.
+ */
+void __ref cpu_die(void)
+{
+	unsigned int cpu = smp_processor_id();
+
+	idle_task_exit();
+
+	local_irq_disable();
+	mb();
+
+	/* Tell __cpu_die() that this CPU is now safe to dispose of */
+	RCU_NONIDLE(complete(&cpu_died));
+
+	/*
+	 * actual CPU shutdown procedure is at least platform (if not
+	 * CPU) specific.
+	 */
+	platform_cpu_die(cpu);
+
+	/*
+	 * Do not return to the idle loop - jump back to the secondary
+	 * cpu initialisation.  There's some initialisation which needs
+	 * to be repeated to undo the effects of taking the CPU offline.
+	 * ps. x29 is the frame pointer.
+	 */
+	__asm__("mov	sp, %0\n"
+	"	mov	x29, #0\n"
+	"	b	secondary_start_kernel"
+	:
+	: "r" (secondary_data.stack));
+}
+#endif /* CONFIG_HOTPLUG_CPU */
+
 /*
  * This is the secondary CPU boot entry.  We're using this CPUs
  * idle thread stack, but a set of temporary page tables.
  */
-asmlinkage void __cpuinit secondary_start_kernel(void)
+asmlinkage void secondary_start_kernel(void)
 {
 	struct mm_struct *mm = &init_mm;
 	unsigned int cpu = smp_processor_id();
@@ -186,6 +325,11 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 
 	preempt_disable();
 	trace_hardirqs_off();
+
+	/*
+	 * Give the platform a chance to do its own initialisation.
+	 */
+	platform_secondary_init(cpu);
 
 	/*
 	 * Let the primary processor know we're out of the
@@ -379,6 +523,9 @@ next:
 	for (i = 0; i < NR_CPUS; i++)
 		if (cpu_logical_map(i) != INVALID_HWID)
 			set_cpu_possible(i, true);
+
+	if (smp_ops.smp_init_cpus)
+		smp_ops.smp_init_cpus();
 }
 
 void __init smp_prepare_cpus(unsigned int max_cpus)
@@ -421,6 +568,8 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 		set_cpu_present(cpu, true);
 		max_cpus--;
 	}
+
+	platform_smp_prepare_cpus(max_cpus);
 }
 
 
@@ -439,12 +588,18 @@ void arch_send_call_function_single_ipi(int cpu)
 	smp_cross_call(cpumask_of(cpu), IPI_CALL_FUNC_SINGLE);
 }
 
+void arch_send_wakeup_ipi_mask(const struct cpumask *mask)
+{
+	smp_cross_call(mask, IPI_WAKEUP);
+}
+
 static const char *ipi_types[NR_IPI] = {
 #define S(x,s)	[x - IPI_RESCHEDULE] = s
 	S(IPI_RESCHEDULE, "Rescheduling interrupts"),
 	S(IPI_CALL_FUNC, "Function call interrupts"),
 	S(IPI_CALL_FUNC_SINGLE, "Single function call interrupts"),
 	S(IPI_CPU_STOP, "CPU stop interrupts"),
+	S(IPI_WAKEUP, "CPU wakeup interrupts"),
 };
 
 void show_ipi_list(struct seq_file *p, int prec)
@@ -528,6 +683,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		irq_enter();
 		ipi_cpu_stop(cpu);
 		irq_exit();
+		break;
+
+	case IPI_WAKEUP:
 		break;
 
 	default:

@@ -64,6 +64,7 @@
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/irqchip/tegra.h>
+#include <sound/max98090.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -146,6 +147,24 @@ static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
 
+static struct max98090_eq_cfg max98090_eq_cfg[] = {
+};
+
+static struct max98090_pdata norrin_max98090_pdata = {
+	/* Equalizer Configuration */
+	.eq_cfg = max98090_eq_cfg,
+	.eq_cfgcnt = ARRAY_SIZE(max98090_eq_cfg),
+
+	/* Microphone Configuration */
+	.digmic_left_mode = 1,
+	.digmic_right_mode = 1,
+};
+
+static struct i2c_board_info __initdata max98090_board_info = {
+	I2C_BOARD_INFO("max98090", 0x10),
+	.platform_data	= &norrin_max98090_pdata,
+};
+
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -208,7 +227,9 @@ static void ardbeg_i2c_init(void)
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id != BOARD_PM359)
+	if (board_info.board_id == BOARD_PM374) {
+		i2c_register_board_info(0, &max98090_board_info, 1);
+	} else if (board_info.board_id != BOARD_PM359)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
 
 	if (board_info.board_id == BOARD_PM359 ||
@@ -283,6 +304,29 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	},
 };
 
+static struct tegra_asoc_platform_data norrin_audio_pdata_max98090 = {
+	.gpio_hp_det		= NORRIN_GPIO_HP_DET,
+	.gpio_hp_mute		= -1,
+	.edp_support		= true,
+	.edp_states		= {1080, 842, 0},
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 1,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.channels	= 2,
+		.bit_clk	= 1536000,
+	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.channels	= 1,
+		.bit_clk	= 512000,
+	},
+};
+
 static void ardbeg_audio_init(void)
 {
 	struct board_info board_info;
@@ -316,6 +360,9 @@ static void ardbeg_audio_init(void)
 
 	ardbeg_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
 	ardbeg_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
+
+	norrin_audio_pdata_max98090.codec_name = "max98090.0-0010";
+	norrin_audio_pdata_max98090.codec_dai_name = "HiFi";
 }
 
 static struct platform_device ardbeg_audio_device_rt5639 = {
@@ -323,6 +370,14 @@ static struct platform_device ardbeg_audio_device_rt5639 = {
 	.id = 0,
 	.dev = {
 		.platform_data = &ardbeg_audio_pdata_rt5639,
+	},
+};
+
+static struct platform_device norrin_audio_device_max98090 = {
+	.name	= "tegra-snd-max98090",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &norrin_audio_pdata_max98090,
 	},
 };
 
@@ -669,6 +724,7 @@ static struct tegra_xusb_platform_data xusb_pdata = {
 			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
 };
 
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static void ardbeg_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -680,8 +736,11 @@ static void ardbeg_xusb_init(void)
 			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363) {
-		/* Laguna */
-		pr_info("Laguna ERS. 0x%x\n", board_info.board_id);
+		if (board_info.board_id == BOARD_PM374 ||
+			board_info.board_id == BOARD_PM370)
+			pr_info("Norrin. 0x%x\n", board_info.board_id);
+		else
+			pr_info("Laguna. 0x%x\n", board_info.board_id);
 
 		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
@@ -724,6 +783,7 @@ static void ardbeg_xusb_init(void)
 	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
 		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
 }
+#endif
 
 static int baseband_init(void)
 {
@@ -1132,18 +1192,22 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
+#ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
+#endif
 	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	ardbeg_xusb_init();
+#endif
 	ardbeg_i2c_init();
 	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
-
-	if (board_info.board_id != BOARD_PM359)
+	if (board_info.board_id == BOARD_PM374)	/* Norrin ERS */
+		platform_device_register(&norrin_audio_device_max98090);
+	else if (board_info.board_id != BOARD_PM359)
 		platform_device_register(&ardbeg_audio_device_rt5639);
-
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	ardbeg_sdhci_init();
@@ -1195,13 +1259,23 @@ static void __init tegra_ardbeg_late_init(void)
 		tegra_io_dpd_enable(&pexclk2_io);
 	}
 
+	if (board_info.board_id == BOARD_PM374)
+		norrin_kbc_init();
+
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
 
 	ardbeg_sensors_init();
 
-	ardbeg_soctherm_init();
+	if (board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_PM359 ||
+		board_info.board_id == BOARD_PM358 ||
+		board_info.board_id == BOARD_PM370 ||
+		board_info.board_id == BOARD_PM363)
+		norrin_soctherm_init();
+	else
+		ardbeg_soctherm_init();
 
 	ardbeg_setup_bluedroid_pm();
 	tegra_register_fuse();

@@ -216,7 +216,7 @@ static struct as3722_pinctrl_platform_data as3722_pctrl_pdata[] = {
 	AS3722_PIN_CONTROL("gpio2", "gpio", NULL, NULL, NULL, "output-high"),
 	AS3722_PIN_CONTROL("gpio3", "gpio", NULL, NULL, "enabled", NULL),
 	AS3722_PIN_CONTROL("gpio4", "gpio", NULL, NULL, NULL, "output-high"),
-	AS3722_PIN_CONTROL("gpio5", "gpio", "pull-down", NULL, "enabled", NULL),
+	AS3722_PIN_CONTROL("gpio5", "clk32k-out", NULL, NULL, NULL, NULL),
 	AS3722_PIN_CONTROL("gpio6", "gpio", NULL, NULL, "enabled", NULL),
 	AS3722_PIN_CONTROL("gpio7", "gpio", NULL, NULL, NULL, "output-high"),
 };
@@ -265,9 +265,10 @@ static struct as3722_platform_data as3722_pdata = {
 
 static struct pca953x_platform_data tca6416_pdata = {
 	.gpio_base = PMU_TCA6416_GPIO_BASE,
+	.irq_base = PMU_TCA6416_IRQ_BASE,
 };
 
-static const struct i2c_board_info tca6416_expander[] = {
+static struct i2c_board_info tca6416_expander[] = {
 	{
 		I2C_BOARD_INFO("tca6416", 0x20),
 		.platform_data = &tca6416_pdata,
@@ -320,6 +321,7 @@ int __init norrin_as3722_regulator_init(void)
 	pr_info("%s: i2c_register_board_info\n", __func__);
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
+	tca6416_expander[0].irq = gpio_to_irq(TEGRA_GPIO_PQ5);
 	i2c_register_board_info(0, tca6416_expander,
 			ARRAY_SIZE(tca6416_expander));
 	return 0;

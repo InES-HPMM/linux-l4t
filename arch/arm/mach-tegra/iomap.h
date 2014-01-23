@@ -256,6 +256,9 @@
 #define TEGRA_CLK_RESET_BASE		0x60006000
 #define TEGRA_CLK_RESET_SIZE		SZ_4K
 
+#define TEGRA_CLK13_RESET_BASE		0x70040000
+#define TEGRA_CLK13_RESET_SIZE		SZ_4K
+
 #define TEGRA_FLOW_CTRL_BASE		0x60007000
 #define TEGRA_FLOW_CTRL_SIZE		20
 
@@ -967,8 +970,11 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 /* Virtual aperture limits are packed into the I/O space from the higest
    address to lowest with each aperture base address adjusted as necessary
    for proper section mapping boundary (2 MB) rounding. */
-
+#ifdef CONFIG_ARM64
+#define IO_LAST_ADDR		VMALLOC_END
+#else
 #define IO_LAST_ADDR		IOMEM(0xFEC00000)
+#endif
 #define IO_HOST1X_VIRT		IOMEM((IO_LAST_ADDR - IO_VIRT_ROUND_UP(IO_HOST1X_SIZE)))
 #define IO_SDMMC_VIRT		IOMEM((IO_HOST1X_VIRT - IO_VIRT_ROUND_UP(IO_SDMMC_SIZE)))
 #define IO_USB_VIRT		IOMEM((IO_SDMMC_VIRT - IO_VIRT_ROUND_UP(IO_USB_SIZE)))

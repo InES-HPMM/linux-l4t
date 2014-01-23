@@ -46,9 +46,7 @@
 
 				gpio5 {
 					pins = "gpio5";
-					function = "gpio";
-					bias-pull-up;
-					bias-high-impedance;
+					function = "clk32k-out";
 				};
 			};
 

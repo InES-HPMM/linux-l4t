@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/platform_data/tegra_ahci.h>
+#include <linux/tegra-soc.h>
 
 #include "board.h"
 #include "board-ardbeg.h"
@@ -35,6 +36,8 @@ static struct tegra_ahci_platform_data tegra_ahci_platform_data0 = {
 void arbdeg_sata_clk_gate(void)
 {
 	u32 val;
+	if (!tegra_platform_is_silicon())
+		return 0;
 	val = readl(IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_W_SET));
 	if (val & SET_CEC_RST)
 		writel(0x108, IO_ADDRESS(CLK_RST_CNTRL_RST_DEV_V_SET));
@@ -48,8 +51,10 @@ int __init ardbeg_sata_init(void)
 #ifdef CONFIG_SATA_AHCI_TEGRA
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
+
 	if ((board_info.board_id != BOARD_PM358) &&
-	    (board_info.board_id != BOARD_PM359))
+	    (board_info.board_id != BOARD_PM359) &&
+	    (board_info.board_id != BOARD_PM374))
 		tegra_ahci_platform_data0.pexp_gpio = -1;
 
 	tegra_sata_device.dev.platform_data = &tegra_ahci_platform_data0;

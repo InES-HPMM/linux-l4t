@@ -599,7 +599,8 @@ int __init ardbeg_tps65913_regulator_init(void)
 }
 
 static struct pca953x_platform_data tca6408_pdata = {
-	        .gpio_base = PMU_TCA6416_GPIO_BASE,
+	.gpio_base = PMU_TCA6416_GPIO_BASE,
+	.irq_base = -1,
 };
 
 static const struct i2c_board_info tca6408_expander[] = {
@@ -1156,11 +1157,14 @@ int __init ardbeg_rail_alignment_init(void)
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+#else
 	if (pmu_board_info.board_id == BOARD_E1735)
 		tegra12x_vdd_cpu_align(E1735_CPU_VDD_STEP_UV,
 				       E1735_CPU_VDD_MIN_UV);
 	else
 		tegra12x_vdd_cpu_align(ARDBEG_DEFAULT_CVB_ALIGNMENT, 0);
+#endif
 	return 0;
 }
 
