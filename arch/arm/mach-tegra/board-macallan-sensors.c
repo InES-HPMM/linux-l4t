@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-sensors.c
  *
- * Copyright (c) 2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -142,22 +142,32 @@ module_init(macallan_throttle_init);
 
 static struct nct1008_platform_data macallan_nct1008_pdata = {
 	.supported_hwrev = true,
-	.ext_range = true,
+	.extended_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
-	.shutdown_ext_limit = 105, /* C */
-	.shutdown_local_limit = 120, /* C */
 
-	.num_trips = 1,
-	.trips = {
-		{
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
+	.sensors = {
+		[LOC] = {
+			.shutdown_limit = 120, /* C */
+			.num_trips = 0,
+			.tzp = NULL,
 		},
-	},
+		[EXT] = {
+			.shutdown_limit = 105, /* C */
+			.num_trips = 1,
+			.tzp = NULL,
+			.trips = {
+				{
+					.cdev_type = "suspend_soctherm",
+					.trip_temp = 50000,
+					.trip_type = THERMAL_TRIP_ACTIVE,
+					.upper = 1,
+					.lower = 1,
+					.hysteresis = 5000,
+					.mask = 1,
+				},
+			},
+		}
+	}
 };
 
 static struct i2c_board_info macallan_i2c4_nct1008_board_info[] = {
@@ -630,8 +640,8 @@ static int macallan_nct1008_init(void)
 
 	nct1008_port = TEGRA_GPIO_PO4;
 
-	tegra_add_all_vmin_trips(macallan_nct1008_pdata.trips,
-				&macallan_nct1008_pdata.num_trips);
+	tegra_add_all_vmin_trips(macallan_nct1008_pdata.sensors[EXT].trips,
+				&macallan_nct1008_pdata.sensors[EXT].num_trips);
 
 	macallan_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 	pr_info("%s: macallan nct1008 irq %d",

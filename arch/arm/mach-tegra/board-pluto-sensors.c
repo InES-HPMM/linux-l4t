@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-sensors.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -325,27 +325,37 @@ module_init(pluto_throttle_init);
 
 static struct nct1008_platform_data pluto_nct1008_pdata = {
 	.supported_hwrev = true,
-	.ext_range = true,
+	.extended_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
-	.offset = 0,
-	.shutdown_ext_limit = 105, /* C */
-	.shutdown_local_limit = 120, /* C */
 
-	.num_trips = 1,
-	.trips = {
-		{
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
+	.sensors = {
+		[LOC] = {
+			.shutdown_limit = 120, /* C */
+			.num_trips = 0,
+			.tzp = NULL,
 		},
-	},
-
+		[EXT] = {
+			.shutdown_limit = 105, /* C */
+			.num_trips = 1,
+			.tzp = NULL,
+			.trips = {
+				{
+					.cdev_type = "suspend_soctherm",
+					.trip_temp = 50000,
+					.trip_type = THERMAL_TRIP_ACTIVE,
+					.upper = 1,
+					.lower = 1,
+					.hysteresis = 5000,
+					.mask = 1,
+				},
+			},
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
-	.suspend_ext_limit_hi = 25000,
-	.suspend_ext_limit_lo = 20000,
+			.suspend_limit_hi = 25000,
+			.suspend_limit_lo = 20000,
+#endif
+		}
+	},
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	.suspend_with_wakeup = tegra_is_lp1_suspend_mode,
 #endif
 };
@@ -791,8 +801,8 @@ static int pluto_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	tegra_add_all_vmin_trips(pluto_nct1008_pdata.trips,
-				&pluto_nct1008_pdata.num_trips);
+	tegra_add_all_vmin_trips(pluto_nct1008_pdata.sensors[EXT].trips,
+				&pluto_nct1008_pdata.sensors[EXT].num_trips);
 
 	pluto_i2c4_nct1008_board_info[0].irq =
 		gpio_to_irq(nct1008_port);

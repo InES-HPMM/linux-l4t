@@ -1329,35 +1329,44 @@ late_initcall(ardbeg_skin_init);
 
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.loc_name = "tegra",
-
 	.supported_hwrev = true,
-	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 95, /* C */
-	.shutdown_local_limit = 120, /* C */
+	.extended_range = true,
 
-	.passive_delay = 1000,
-	.tzp = &cpu_tzp,
-
-	.num_trips = 2,
-	.trips = {
-		{
-			.cdev_type = "shutdown_warning",
-			.trip_temp = 93000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
+	.sensors = {
+		[LOC] = {
+			.tzp = NULL,
+			.shutdown_limit = 120, /* C */
+			.passive_delay = 1000,
+			.num_trips = 0,
 		},
-		{
-			.cdev_type = "cpu-balanced",
-			.trip_temp = 83000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
-			.hysteresis = 1000,
-		},
-	},
+		[EXT] = {
+			.tzp = &cpu_tzp,
+			.shutdown_limit = 95, /* C */
+			.passive_delay = 1000,
+			.num_trips = 2,
+			.trips = {
+				{
+					.cdev_type = "shutdown_warning",
+					.trip_temp = 93000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.mask = 0,
+				},
+				{
+					.cdev_type = "cpu-balanced",
+					.trip_temp = 83000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.hysteresis = 1000,
+					.mask = 1,
+				},
+			}
+		}
+	}
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
@@ -1365,26 +1374,34 @@ static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 	.loc_name = "skin",
 
 	.supported_hwrev = true,
-	.ext_range = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
-	.shutdown_local_limit = 120, /* C */
+	.extended_range = true,
 
-	.passive_delay = 10000,
-	.polling_delay = 1000,
-	.tzp = &skin_tzp,
-
-	.num_trips = 1,
-	.trips = {
-		{
-			.cdev_type = "skin-balanced",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
+	.sensors = {
+		[LOC] = {
+			.shutdown_limit = 95, /* C */
+			.num_trips = 0,
+			.tzp = NULL,
 		},
-	},
+		[EXT] = {
+			.shutdown_limit = 85, /* C */
+			.passive_delay = 10000,
+			.polling_delay = 1000,
+			.tzp = &skin_tzp,
+			.num_trips = 1,
+			.trips = {
+				{
+					.cdev_type = "skin-balanced",
+					.trip_temp = 50000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.mask = 1,
+				},
+			},
+		}
+	}
 };
 #endif
 
@@ -1425,9 +1442,10 @@ static int ardbeg_nct72_init(void)
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
 	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
 	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
-		ardbeg_nct72_pdata.shutdown_ext_limit += 20;
-		for (i = 0; i < ardbeg_nct72_pdata.num_trips; i++) {
-			trip_state = &ardbeg_nct72_pdata.trips[i];
+		ardbeg_nct72_pdata.sensors[EXT].shutdown_limit += 20;
+		for (i = 0; i < ardbeg_nct72_pdata.sensors[EXT].num_trips;
+			 i++) {
+			trip_state = &ardbeg_nct72_pdata.sensors[EXT].trips[i];
 			if (!strncmp(trip_state->cdev_type, "cpu-balanced",
 					THERMAL_NAME_LENGTH)) {
 				trip_state->cdev_type = "_none_";
@@ -1435,21 +1453,26 @@ static int ardbeg_nct72_init(void)
 			}
 		}
 	} else {
-		tegra_platform_edp_init(ardbeg_nct72_pdata.trips,
-					&ardbeg_nct72_pdata.num_trips,
+		tegra_platform_edp_init(
+			ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips,
 					12000); /* edp temperature margin */
-		tegra_add_cpu_vmax_trips(ardbeg_nct72_pdata.trips,
-				&ardbeg_nct72_pdata.num_trips);
-		tegra_add_tgpu_trips(ardbeg_nct72_pdata.trips,
-				     &ardbeg_nct72_pdata.num_trips);
-		tegra_add_vc_trips(ardbeg_nct72_pdata.trips,
-				     &ardbeg_nct72_pdata.num_trips);
-		tegra_add_core_vmax_trips(ardbeg_nct72_pdata.trips,
-				     &ardbeg_nct72_pdata.num_trips);
+		tegra_add_cpu_vmax_trips(
+			ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+		tegra_add_tgpu_trips(
+			ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+		tegra_add_vc_trips(
+			ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+		tegra_add_core_vmax_trips(
+			ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
 	}
 
-	tegra_add_all_vmin_trips(ardbeg_nct72_pdata.trips,
-				&ardbeg_nct72_pdata.num_trips);
+	tegra_add_all_vmin_trips(ardbeg_nct72_pdata.sensors[EXT].trips,
+		&ardbeg_nct72_pdata.sensors[EXT].num_trips);
 
 	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 

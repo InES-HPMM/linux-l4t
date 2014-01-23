@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-sensors.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -137,43 +137,56 @@ module_init(roth_throttle_init);
 
 static struct nct1008_platform_data roth_nct1008_pdata = {
 	.supported_hwrev = true,
-	.ext_range = true,
+	.extended_range = true,
 	.conv_rate = 0x08,
-	.offset = 0,
-	.shutdown_ext_limit = 91, /* C */
-	.shutdown_local_limit = 120, /* C */
 	.loc_name = "soc",
 
-	.passive_delay = 2000,
+	.sensors = {
+		[LOC] = {
+			.shutdown_limit = 120, /* C */
+			.num_trips = 0,
+			.tzp = NULL,
+		},
+		[EXT] = {
+			.shutdown_limit = 91, /* C */
+			.num_trips = 2,
+			.tzp = NULL,
 
-	.num_trips = 2,
-	.trips = {
-		/* Thermal Throttling */
-		[0] = {
-			.cdev_type = "tegra-balanced",
-			.trip_temp = 80000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
-			.hysteresis = 0,
-		},
-		[1] = {
-			.cdev_type = "tegra-hard",
-			.trip_temp = 86000, /* shutdown_ext_limit - 2C */
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 6000,
-		},
-		[2] = {
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
-		},
-	},
+			.passive_delay = 2000,
+
+			/* Thermal Throttling */
+			.trips = {
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 80000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.hysteresis = 0,
+					.mask = 1,
+				},
+				{
+					.cdev_type = "tegra-hard",
+					/*shutdown_limit - 2C*/
+					.trip_temp = 86000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = 1,
+					.lower = 1,
+					.hysteresis = 6000,
+					.mask = 1,
+				},
+				{
+					.cdev_type = "suspend_soctherm",
+					.trip_temp = 50000,
+					.trip_type = THERMAL_TRIP_ACTIVE,
+					.upper = 1,
+					.lower = 1,
+					.hysteresis = 5000,
+					.mask = 1,
+				}
+			},
+		}
+	}
 };
 
 static struct i2c_board_info roth_i2c4_nct1008_board_info[] = {
@@ -248,15 +261,15 @@ static int roth_nct1008_init(void)
 	int nct1008_port = TEGRA_GPIO_PX6;
 	int ret = 0;
 
-	tegra_platform_edp_init(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips,
+	tegra_platform_edp_init(roth_nct1008_pdata.sensors[EXT].trips,
+				&roth_nct1008_pdata.sensors[EXT].num_trips,
 				0); /* edp temperature margin */
-	tegra_add_all_vmin_trips(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips);
-	tegra_add_cpu_vmax_trips(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips);
-	tegra_add_core_edp_trips(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips);
+	tegra_add_all_vmin_trips(roth_nct1008_pdata.sensors[EXT].trips,
+				&roth_nct1008_pdata.sensors[EXT].num_trips);
+	tegra_add_cpu_vmax_trips(roth_nct1008_pdata.sensors[EXT].trips,
+				&roth_nct1008_pdata.sensors[EXT].num_trips);
+	tegra_add_core_edp_trips(roth_nct1008_pdata.sensors[EXT].trips,
+				&roth_nct1008_pdata.sensors[EXT].num_trips);
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 	pr_info("%s: roth nct1008 irq %d", __func__, \

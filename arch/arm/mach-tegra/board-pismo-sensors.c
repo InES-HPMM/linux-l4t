@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pismo-sensors.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -99,23 +99,32 @@ module_init(pismo_throttle_init);
 
 static struct nct1008_platform_data pismo_nct1008_pdata = {
 	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.shutdown_ext_limit = 105, /* C */
-	.shutdown_local_limit = 120, /* C */
+	.extended_range = true,
+	.conv_rate = 0x06, /* 4Hz conversion rate */
 
-	.num_trips = 1,
-	.trips = {
-		{
-			.cdev_type = "suspend_soctherm",
-			.trip_temp = 50000,
-			.trip_type = THERMAL_TRIP_ACTIVE,
-			.upper = 1,
-			.lower = 1,
-			.hysteresis = 5000,
+	.sensors = {
+		[LOC] = {
+			.shutdown_limit = 120, /* C */
+			.num_trips = 0,
+			.tzp = NULL,
 		},
-	},
+		[EXT] = {
+			.shutdown_limit = 105, /* C */
+			.num_trips = 1,
+			.tzp = NULL,
+			.trips = {
+				{
+					.cdev_type = "suspend_soctherm",
+					.trip_temp = 50000,
+					.trip_type = THERMAL_TRIP_ACTIVE,
+					.upper = 1,
+					.lower = 1,
+					.hysteresis = 5000,
+					.mask = 1,
+				},
+			},
+		}
+	}
 };
 
 static struct i2c_board_info pismo_i2c4_nct1008_board_info[] = {
@@ -552,8 +561,8 @@ static int pismo_nct1008_init(void)
 
 	nct1008_port = TEGRA_GPIO_PX6;
 
-	tegra_add_all_vmin_trips(pismo_nct1008_pdata.trips,
-				&pismo_nct1008_pdata.num_trips);
+	tegra_add_all_vmin_trips(pismo_nct1008_pdata.sensors[EXT].trips,
+				&pismo_nct1008_pdata.sensors[EXT].num_trips);
 
 	pismo_i2c4_nct1008_board_info[0].irq =
 			gpio_to_irq(nct1008_port);
