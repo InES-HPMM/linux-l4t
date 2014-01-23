@@ -827,7 +827,6 @@ static int nvavp_pushbuffer_init(struct nvavp_info *nvavp)
 		}
 		nvavp_set_channel_control_area(nvavp, channel_id);
 		if (IS_VIDEO_CHANNEL_ID(channel_id)) {
-			nvavp->syncpt_id = NVSYNCPT_AVP_0;
 			nvavp->syncpt_value = nvhost_syncpt_read_ext(
 				nvavp->nvhost_dev, nvavp->syncpt_id);
 		}
@@ -2166,6 +2165,9 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 
 	for (channel_id = 0; channel_id < NVAVP_NUM_CHANNELS; channel_id++)
 		mutex_init(&nvavp->channel_info[channel_id].pushbuffer_lock);
+
+	/* get and store a syncpt id */
+	nvavp->syncpt_id = nvhost_get_syncpt_client_managed("avp_0");
 
 	/* TODO DO NOT USE NVAVP DEVICE */
 	nvavp->cop_clk = clk_get(&ndev->dev, "cop");
