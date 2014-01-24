@@ -229,11 +229,13 @@ void sync_timeline_destroy(struct sync_timeline *obj);
 /**
  * sync_timeline_signal() - signal a status change on a sync_timeline
  * @obj:	sync_timeline to signal
+ * @timestamp:	timestamp in ns format. use 0 to let sync framework
+ *		get the timestamp for you
  *
  * A sync implemntation should call this any time one of it's sync_pts
  * has signaled or has an error condition.
  */
-void sync_timeline_signal(struct sync_timeline *obj);
+void sync_timeline_signal(struct sync_timeline *obj, u64 timestamp);
 
 /**
  * sync_pt_create() - creates a sync pt

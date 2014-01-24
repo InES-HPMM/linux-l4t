@@ -32,7 +32,7 @@
 #include "trace/sync.h"
 
 static void sync_fence_signal_pt(struct sync_pt *pt);
-static int _sync_pt_has_signaled(struct sync_pt *pt);
+static int _sync_pt_has_signaled(struct sync_pt *pt, u64 timestamp);
 static void sync_fence_free(struct kref *kref);
 static void sync_fence_dump(struct sync_fence *fence);
 static void sync_dump(void);
@@ -98,7 +98,7 @@ void sync_timeline_destroy(struct sync_timeline *obj)
 	/*
 	 * signal any children that their parent is going away.
 	 */
-	sync_timeline_signal(obj);
+	sync_timeline_signal(obj, 0);
 
 	kref_put(&obj->kref, sync_timeline_free);
 }
@@ -132,7 +132,7 @@ static void sync_timeline_remove_pt(struct sync_pt *pt)
 	spin_unlock_irqrestore(&obj->child_list_lock, flags);
 }
 
-void sync_timeline_signal(struct sync_timeline *obj)
+void sync_timeline_signal(struct sync_timeline *obj, u64 timestamp)
 {
 	unsigned long flags;
 	LIST_HEAD(signaled_pts);
@@ -146,7 +146,7 @@ void sync_timeline_signal(struct sync_timeline *obj)
 		struct sync_pt *pt =
 			container_of(pos, struct sync_pt, active_list);
 
-		if (_sync_pt_has_signaled(pt)) {
+		if (_sync_pt_has_signaled(pt, timestamp)) {
 			list_del_init(pos);
 			list_add(&pt->signaled_list, &signaled_pts);
 			kref_get(&pt->fence->kref);
@@ -199,7 +199,7 @@ void sync_pt_free(struct sync_pt *pt)
 EXPORT_SYMBOL(sync_pt_free);
 
 /* call with pt->parent->active_list_lock held */
-static int _sync_pt_has_signaled(struct sync_pt *pt)
+static int _sync_pt_has_signaled(struct sync_pt *pt, u64 timestamp)
 {
 	int old_status = pt->status;
 
@@ -209,8 +209,12 @@ static int _sync_pt_has_signaled(struct sync_pt *pt)
 	if (!pt->status && pt->parent->destroyed)
 		pt->status = -ENOENT;
 
-	if (pt->status != old_status)
-		pt->timestamp = ktime_get();
+	if (pt->status != old_status) {
+		if (timestamp == 0)
+			pt->timestamp = ktime_get();
+		else
+			pt->timestamp = ns_to_ktime(timestamp);
+	}
 
 	return pt->status;
 }
@@ -229,7 +233,7 @@ static void sync_pt_activate(struct sync_pt *pt)
 
 	spin_lock_irqsave(&obj->active_list_lock, flags);
 
-	err = _sync_pt_has_signaled(pt);
+	err = _sync_pt_has_signaled(pt, 0);
 	if (err != 0)
 		goto out;
 
