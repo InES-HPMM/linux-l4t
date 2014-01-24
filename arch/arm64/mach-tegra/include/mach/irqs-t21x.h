@@ -71,9 +71,7 @@
 #define INT_UARTC			(INT_SEC_BASE + 14)
 #define INT_MIPI			(INT_SEC_BASE + 15)
 #define INT_THERMAL			(INT_SEC_BASE + 16)
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #define IRQ_ETH				(INT_SEC_BASE + 16)
-#endif
 #define INT_XUSB_PADCTL			(INT_SEC_BASE + 17)
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)
