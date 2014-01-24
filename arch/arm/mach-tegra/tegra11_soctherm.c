@@ -1827,8 +1827,9 @@ static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
 
 	switch (alarm) {
 	case THROTTLE_OC1:
-		pr_warn("soctherm: Unexpected OC1 alarm\n");
+		pr_debug("soctherm: Successfully handled OC1 alarm\n");
 		/* add OC1 alarm handling code here */
+		rv = 0;
 		break;
 
 	case THROTTLE_OC2:
