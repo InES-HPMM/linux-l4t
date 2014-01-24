@@ -132,6 +132,7 @@
 
 #define PERIPH_CLK_SOURCE_I2S1		0x100
 #define PERIPH_CLK_SOURCE_EMC		0x19c
+#define PERIPH_CLK_SOURCE_EMC_MC_SAME	(1<<16)
 #define PERIPH_CLK_SOURCE_LA		0x1f8
 #define PERIPH_CLK_SOURCE_NUM1 \
 	((PERIPH_CLK_SOURCE_LA - PERIPH_CLK_SOURCE_I2S1) / 4)
@@ -4643,6 +4644,12 @@ static long tegra21_emc_clk_round_rate(struct clk *c, unsigned long rate)
 	return tegra21_emc_clk_round_updown(c, rate, true);
 }
 
+void tegra_mc_divider_update(struct clk *emc)
+{
+	emc->child_bus->div = (clk_readl(emc->reg) &
+			       PERIPH_CLK_SOURCE_EMC_MC_SAME) ? 1 : 2;
+}
+
 static int tegra21_emc_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
@@ -4732,6 +4739,24 @@ static struct clk_ops tegra_emc_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 	.shared_bus_update	= &tegra21_clk_emc_bus_update,
 };
+
+static void tegra21_mc_clk_init(struct clk *c)
+{
+	c->state = ON;
+	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
+		c->state = OFF;
+
+	c->parent->child_bus = c;
+	tegra_mc_divider_update(c->parent);
+	c->mul = 1;
+}
+
+static struct clk_ops tegra_mc_clk_ops = {
+	.init			= &tegra21_mc_clk_init,
+	.enable			= &tegra21_periph_clk_enable,
+	.disable		= &tegra21_periph_clk_disable,
+};
+
 
 /* Clock doubler ops (non-atomic shared register access) */
 static DEFINE_SPINLOCK(doubler_lock);
@@ -6752,6 +6777,12 @@ static struct clk_mux_sel mux_clk_32k[] = {
 	{ 0, 0},
 };
 
+static struct clk tegra_clk_mc;
+static struct clk_mux_sel mux_clk_mc[] = {
+	{ .input = &tegra_clk_mc, .value = 0},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_plld[] = {
 	{ .input = &tegra_pll_d_out0, .value = 1},
 	{ 0, 0},
@@ -6772,6 +6803,17 @@ static struct clk tegra_clk_emc = {
 		.clk_num = 57,
 	},
 	.rate_change_nh = &emc_rate_change_nh,
+};
+
+static struct clk tegra_clk_mc = {
+	.name = "mc",
+	.ops = &tegra_mc_clk_ops,
+	.max_rate = 1066000000,
+	.parent = &tegra_clk_emc,
+	.flags = PERIPH_NO_RESET,
+	.u.periph = {
+		.clk_num = 32,
+	},
 };
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -7234,6 +7276,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	408000000, mux_pllc_pllp_plla_v2,	MUX | DIV_U71 | PERIPH_ON_APB),
 
 	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
+	PERIPH_CLK("mc_bbc",	"mc_bbc",		NULL,	170,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+	PERIPH_CLK("mc_capa",	"mc_capa",		NULL,	167,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+	PERIPH_CLK("mc_cbpa",	"mc_cbpa",		NULL,	168,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+	PERIPH_CLK("mc_ccpa",	"mc_ccpa",		NULL,	201,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+	PERIPH_CLK("mc_cdpa",	"mc_cdpa",		NULL,	200,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -7557,6 +7604,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
 	&tegra_clk_emc,
+	&tegra_clk_mc,
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,

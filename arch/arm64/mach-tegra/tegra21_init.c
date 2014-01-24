@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra210 initialization support
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -107,6 +107,10 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "sbc3.sclk",  NULL,           40000000,       false},
 	{ "sbc4.sclk",  NULL,           40000000,       false},
 	{ "gpu",        NULL,           0,              true},
+	{ "mc_capa",        "mc",           0,              true},
+	{ "mc_cbpa",        "mc",           0,              true},
+	{ "mc_ccpa",        "mc",           0,              true},
+	{ "mc_cdpa",        "mc",           0,              true},
 #ifdef CONFIG_TEGRA_PLLM_SCALED
 	{ "vi",         "pll_p",        0,              false},
 	{ "isp",        "pll_p",        0,              false},
