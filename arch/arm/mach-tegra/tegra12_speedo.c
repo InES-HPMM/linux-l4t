@@ -131,8 +131,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	case 0x4A:
 	case 0x48:
 		cpu_speedo_id = 4;
-		/* FIXME: Add separate id for automotive */
-		soc_speedo_id = 1;
+		soc_speedo_id = 2;
 		gpu_speedo_id = 3;
 		threshold_index = 1;
 		break;
@@ -315,6 +314,8 @@ int tegra_core_speedo_mv(void)
 		return 1150;
 	case 1:
 		return 1150;
+	case 2:
+		return 1110;
 	default:
 		BUG();
 	}
