@@ -101,7 +101,6 @@ static void battery_charger_restart_charging_wq(struct work_struct *work)
 static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 {
 	struct battery_charger_dev *bc_dev;
-	struct battery_gauge_dev *node;
 	struct device *dev;
 	long temperature;
 	bool charger_enable_state;
