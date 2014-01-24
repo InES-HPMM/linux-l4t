@@ -543,6 +543,18 @@ static void loki_xusb_init(void)
 				xusb_pdata.portmap &= ~(
 					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0 |
 					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
+		} else if (board_info.board_id == BOARD_P2530 &&
+					board_info.sku == BOARD_SKU_FOSTER) {
+			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
+
+			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+					TEGRA_XUSB_SS_P0);
+
+			if (!(usb_port_owner_info & UTMI3_PORT_OWNER_XUSB))
+				xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P2 |
+					TEGRA_XUSB_SS_P1);
 		} else {
 			pr_info("Shield ERS 0x%x\n", board_info.board_id);
 			/* Shield ERS */
