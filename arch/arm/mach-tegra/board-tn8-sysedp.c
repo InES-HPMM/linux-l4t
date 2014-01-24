@@ -20,9 +20,12 @@
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/power_supply.h>
 #include <mach/edp.h>
+#include <linux/interrupt.h>
+#include "board-ardbeg.h"
 #include "board.h"
 #include "board-panel.h"
 #include "common.h"
+#include "tegra11_soctherm.h"
 
 /* --- EDP consumers data --- */
 static unsigned int ov5693_states[] = { 0, 300 };
@@ -96,6 +99,25 @@ static struct platform_device tn8_sysedp_dynamic_capping = {
 	.dev = { .platform_data = &tn8_sysedp_dynamic_capping_platdata }
 };
 
+struct sysedp_reactive_capping_platform_data tn8_voltmon_oc1_platdata = {
+	.max_capping_mw = 15000,
+	.step_alarm_mw = 1000,
+	.step_relax_mw = 500,
+	.relax_ms = 250,
+	.sysedpc = {
+		.name = "voltmon_oc1"
+	},
+	.irq = TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_IRQ_1,
+	.irq_flags = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+};
+
+static struct platform_device tn8_sysedp_reactive_capping_oc1 = {
+	.name = "sysedp_reactive_capping",
+	.id = -1,
+	.dev = { .platform_data = &tn8_voltmon_oc1_platdata }
+};
+
+
 void __init tn8_sysedp_dynamic_capping_init(void)
 {
 	int r;
@@ -122,5 +144,8 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 	}
 
 	r = platform_device_register(&tn8_sysedp_dynamic_capping);
+	WARN_ON(r);
+
+	r = platform_device_register(&tn8_sysedp_reactive_capping_oc1);
 	WARN_ON(r);
 }
