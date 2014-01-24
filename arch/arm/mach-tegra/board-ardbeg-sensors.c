@@ -766,7 +766,7 @@ static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
 }
 
 static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
-	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
+	{ OV5693_GPIO_TYPE_PWRDN, CAM1_PWDN, true, 0, },
 };
 
 static struct ov5693_platform_data ardbeg_ov5693_pdata = {
