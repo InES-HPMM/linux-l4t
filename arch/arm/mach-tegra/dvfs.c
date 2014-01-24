@@ -1955,6 +1955,11 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
  * by the regulator api for each one.  Must be called in late init, after
  * all the regulator api's regulators are initialized.
  */
+
+#ifdef CONFIG_TEGRA_DVFS_RAIL_CONNECT_ALL
+/*
+ * Enable voltage scaling only if all the rails connect successfully
+ */
 int __init tegra_dvfs_rail_connect_regulators(void)
 {
 	bool connected = true;
@@ -1986,6 +1991,29 @@ int __init tegra_dvfs_rail_connect_regulators(void)
 
 	return 0;
 }
+#else
+int __init tegra_dvfs_rail_connect_regulators(void)
+{
+	struct dvfs_rail *rail;
+
+	mutex_lock(&dvfs_lock);
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		if (!dvfs_rail_connect_to_regulator(rail)) {
+			dvfs_rail_update(rail);
+			if (!rail->disabled)
+				continue;
+			/* Don't rely on boot level - force disabled voltage */
+			rail->disabled = false;
+		}
+		__tegra_dvfs_rail_disable(rail);
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
+#endif
 
 int __init tegra_dvfs_rail_register_notifiers(void)
 {
