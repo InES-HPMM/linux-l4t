@@ -74,7 +74,6 @@ static inline bool is_tegra_hypervisor_mode(void)
 }
 #endif
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 void tegra_get_netlist_revision(u32 *netlist, u32* patchid);
 bool tegra_cpu_is_asim(void);
 bool tegra_cpu_is_dsim(void);
@@ -95,17 +94,5 @@ static inline bool tegra_platform_is_fpga(void)
 {
 	return tegra_get_platform() == TEGRA_PLATFORM_FPGA;
 }
-#else
-static inline void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
-{
-	BUG();
-}
-static inline bool tegra_cpu_is_asim(void) { return false; }
-static inline bool tegra_cpu_is_dsim(void) { return false; }
-static inline bool tegra_platform_is_silicon(void) { return true; }
-static inline bool tegra_platform_is_fpga(void) { return false; }
-static inline bool tegra_platform_is_qt(void) { return false; }
-static inline bool tegra_platform_is_linsim(void) { return false; }
-#endif
 
 #endif /* __LINUX_TEGRA_SOC_H_ */

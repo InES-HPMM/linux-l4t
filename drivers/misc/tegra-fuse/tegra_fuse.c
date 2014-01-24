@@ -111,7 +111,6 @@ struct param_info {
 
 DEFINE_MUTEX(fuse_lock);
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static enum tegra_platform tegra_platform;
 static bool cpu_is_asim;
 static bool cpu_is_dsim;
@@ -121,7 +120,6 @@ static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
 	[TEGRA_PLATFORM_LINSIM]  = "linsim",
 	[TEGRA_PLATFORM_FPGA]    = "fpga",
 };
-#endif
 
 static struct param_info fuse_info_tbl[] = {
 	[DEVKEY] = {
@@ -368,7 +366,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 	int i;
 	char prime;
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* For pre-silicon the major is 0, for silicon it is >= 1 */
 	if (id->major == 0) {
 		if (id->minor == 1)
@@ -379,7 +376,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 			revision = TEGRA_REVISION_SIM;
 		return revision;
 	}
-#endif
 
 	if (id->priv == NULL)
 		prime = 0;
@@ -412,7 +408,6 @@ static void tegra_set_tegraid(u32 chipid,
 	tegra_id.priv    = (char *)priv;
 	tegra_id.revision = tegra_decode_revision(&tegra_id);
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (tegra_id.major == 0) {
 		if (tegra_id.minor == MINOR_QT) {
 			cpu_is_asim = false;
@@ -435,7 +430,6 @@ static void tegra_set_tegraid(u32 chipid,
 		cpu_is_asim = false;
 		tegra_platform = TEGRA_PLATFORM_SILICON;
 	}
-#endif
 }
 
 static void tegra_get_tegraid_from_hw(void)
@@ -517,7 +511,6 @@ unsigned int tegra_get_minor_rev(void)
 	return tegra_id.minor;
 }
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 void tegra_get_netlist_revision(u32 *netlist, u32 *patchid)
 {
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
@@ -574,7 +567,6 @@ static struct kernel_param_ops tegra_cpu_ops = {
 	.get = get_cpu_type,
 };
 module_param_cb(tegra_cpu, &tegra_cpu_ops, &tegra_cpu_ptr, 0444);
-#endif
 
 static int get_chip_id(char *val, const struct kernel_param *kp)
 {
