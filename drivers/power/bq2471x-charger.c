@@ -138,7 +138,7 @@ static int bq2471x_ac_get_property(struct power_supply *psy,
 static int bq2471x_check_manufacturer(struct bq2471x_chip *bq2471x)
 {
 	int ret;
-	uint16_t val;
+	unsigned int val;
 
 	ret = bq2471x_read(bq2471x, BQ2471X_MANUFACTURER_ID_REG, &val);
 	if (ret < 0) {
@@ -161,7 +161,7 @@ static int bq2471x_check_manufacturer(struct bq2471x_chip *bq2471x)
 static int bq2471x_show_chip_version(struct bq2471x_chip *bq2471x)
 {
 	int ret;
-	uint16_t val;
+	unsigned int val;
 
 	ret = bq2471x_read(bq2471x, BQ2471X_DEVICE_ID_REG, &val);
 	if (ret < 0) {
@@ -183,7 +183,6 @@ static int bq2471x_show_chip_version(struct bq2471x_chip *bq2471x)
 static int bq2471x_hw_init(struct bq2471x_chip *bq2471x)
 {
 	int ret = 0;
-	uint16_t val;
 
 	/* Configure control */
 	ret = bq2471x_write(bq2471x, BQ2471X_CHARGE_OPTION,
@@ -274,7 +273,6 @@ static int bq2471x_probe(struct i2c_client *client,
 	struct bq2471x_chip *bq2471x;
 	struct bq2471x_platform_data *pdata;
 	int ret = 0;
-	uint16_t val;
 
 	pdata = client->dev.platform_data;
 	if (!pdata) {
@@ -336,7 +334,7 @@ static int bq2471x_probe(struct i2c_client *client,
 
 		ret = request_any_context_irq(bq2471x->irq, bq2471x_charger_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-					dev_name(&bq2471x->dev), bq2471x);
+					dev_name(bq2471x->dev), bq2471x);
 
 		if (ret < 0)
 			dev_err(&client->dev, "Failed to request irq..\n");
