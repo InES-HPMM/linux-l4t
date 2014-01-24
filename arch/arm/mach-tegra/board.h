@@ -273,6 +273,7 @@ int tegra_get_cvb_alignment_uV(void);
 int tegra_soc_device_init(const char *machine);
 int get_pwr_i2c_clk_rate(void);
 bool is_pmic_wdt_disabled_at_boot(void);
+bool is_tegra_diagnostic_mode(void);
 
 extern void tegra_set_usb_vbus_internal_wake(bool enable);
 extern void tegra_set_usb_id_internal_wake(bool enable);

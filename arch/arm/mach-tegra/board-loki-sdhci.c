@@ -499,10 +499,8 @@ int __init loki_sdhci_init(void)
 
 
 	platform_device_register(&tegra_sdhci_device3);
-
-	if (!is_uart_over_sd_enabled())
+	if (!is_uart_over_sd_enabled() && !is_tegra_diagnostic_mode())
 		platform_device_register(&tegra_sdhci_device2);
-
 	platform_device_register(&tegra_sdhci_device0);
 	loki_wifi_init();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,7 +22,7 @@
 #include <linux/export.h>
 #include "board.h"
 #include <mach/board_id.h>
-
+#include <linux/of.h>
 /* skuinfo is 18 character long xxx-xxxxx-xxxx-xxx
  *so buffer size is set to 18+1 */
 #define SKUINFO_BUF_SIZE 19
@@ -285,3 +285,17 @@ bool tegra_is_board(const char *bom, const char *project,
 	return false;
 }
 EXPORT_SYMBOL(tegra_is_board);
+
+bool is_tegra_diagnostic_mode(void)
+{
+	static bool is_mode_valid;
+	static bool is_diagnostic_mode;
+
+	if (!is_mode_valid) {
+		is_diagnostic_mode = of_property_read_bool(of_chosen,
+						"nvidia,tegra-diagnostic-mode");
+		is_mode_valid = true;
+	}
+	return is_diagnostic_mode;
+}
+EXPORT_SYMBOL(is_tegra_diagnostic_mode);
