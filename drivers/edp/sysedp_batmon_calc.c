@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -175,7 +175,7 @@ static s64 calc_ibat_esr(s64 ocv, s64 esr)
 }
 
 /* Calc IBAT for a given temperature */
-static int calc_ibat(unsigned int temp)
+static int calc_ibat(int temp)
 {
 	struct sysedp_batmon_ibat_lut *p;
 	struct sysedp_batmon_ibat_lut *q;
@@ -185,13 +185,13 @@ static int calc_ibat(unsigned int temp)
 	while (p->ibat && p->temp > temp)
 		p++;
 
-	if (p == pdata->ibat_lut || !p->ibat)
+	if (p == pdata->ibat_lut)
 		return p->ibat;
 
 	q = p - 1;
 	ibat = interpolate(temp, p->temp, p->ibat, q->temp, q->ibat);
 
-	return ibat;
+	return ibat > 0 ? ibat : 0;
 }
 
 static s64 calc_pbat(s64 ocv, s64 ibat, s64 esr)
