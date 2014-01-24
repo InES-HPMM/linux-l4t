@@ -1,7 +1,7 @@
 /*
  * tegra-board-id.h: Defines all boardid of Tegra.
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,6 +78,7 @@
 #define    BOARD_E1937    0x0791
 #define    BOARD_PM366    0x016e
 #define    BOARD_E1549    0x060D
+#define    BOARD_E1797    0x0705
 
 #define    BOARD_E1563    0x061b
 

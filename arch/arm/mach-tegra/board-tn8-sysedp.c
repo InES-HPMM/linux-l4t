@@ -34,7 +34,14 @@ static unsigned int sdhci_states[] = { 0, 966 };
 static unsigned int speaker_states[] = { 0, 1080 };
 static unsigned int wifi_states[] = { 0, 1020 };
 static unsigned int modem_states[] = { 0, 4100 };
-static unsigned int pwm_backlight_states[] = {
+
+/* default - 19x12 8" panel*/
+static unsigned int pwm_backlight_default_states[] = {
+	20, 241, 461, 681, 902, 1122, 1342, 1563, 1783, 2003, 2223
+};
+
+/* (optional) 12x8 8" panel */
+static unsigned int pwm_backlight_8_12x8_states[] = {
 	0, 125, 250, 375, 500, 625, 750, 875, 1000, 1125, 1250
 };
 
@@ -42,6 +49,8 @@ static unsigned int pwm_backlight_states[] = {
 static unsigned int pwm_backlight_10_states[] = {
 	0, 425, 851, 1276, 1702, 2127, 2553, 2978, 3404, 3829, 4255
 };
+
+
 static unsigned int as364x_states[] = {
 	0, 350, 700, 1050, 1400, 1750, 2100, 2450, 2800, 3150, 3500
 };
@@ -51,7 +60,7 @@ static struct sysedp_consumer_data tn8_sysedp_consumer_data[] = {
 	SYSEDP_CONSUMER_DATA("mt9m114", mt9m114_states),
 	SYSEDP_CONSUMER_DATA("speaker", speaker_states),
 	SYSEDP_CONSUMER_DATA("wifi", wifi_states),
-	SYSEDP_CONSUMER_DATA("pwm-backlight", pwm_backlight_states),
+	SYSEDP_CONSUMER_DATA("pwm-backlight", pwm_backlight_default_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.2", sdhci_states),
 	SYSEDP_CONSUMER_DATA("sdhci-tegra.3", sdhci_states),
 	SYSEDP_CONSUMER_DATA("as364x", as364x_states),
@@ -78,9 +87,24 @@ void __init tn8_new_sysedp_init(void)
 	tegra_get_display_board_info(&board);
 
 	/* Some TN8 boards use non-default display */
-	if (board.board_id != BOARD_E1549)
-		memcpy(pwm_backlight_states, pwm_backlight_10_states,
-		       sizeof(pwm_backlight_states));
+	switch (board.board_id) {
+	case BOARD_E1797:
+		memcpy(pwm_backlight_default_states,
+			   pwm_backlight_10_states,
+			   sizeof(pwm_backlight_default_states));
+		break;
+	case BOARD_E1549:
+	case BOARD_E1807:
+		memcpy(pwm_backlight_default_states,
+			   pwm_backlight_8_12x8_states,
+			   sizeof(pwm_backlight_default_states));
+		break;
+	default:
+		pr_warn("%s: Unknown tn8 display board id, 0x%x!  Assuming E1937.\n",
+				__func__, board.board_id);
+	case BOARD_E1937:
+		break;
+	}
 
 	r = platform_device_register(&tn8_sysedp_device);
 	WARN_ON(r);
