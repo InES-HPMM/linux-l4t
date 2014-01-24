@@ -661,6 +661,7 @@
 				ti,watchdog-timeout = <40>;
 				ti,rtc-alarm-time = <3600>;
 				ti,auto-recharge-time = <1800>;
+				ti,disbale-suspend-during-charging;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb _bat_chg";
