@@ -34,6 +34,7 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/generic_adc_thermal.h>
+#include <linux/pid_thermal_gov.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -484,6 +485,10 @@ static int loki_fan_est_get_temp(void *data, long *temp)
 	return 0;
 }
 
+static struct thermal_zone_params fan_tzp = {
+	.governor_name = "pid_thermal_gov",
+};
+
 static int active_trip_temps_loki[] = {0, 60000, 68000, 79000, 90000,
 				140000, 150000, 160000, 170000, 180000};
 static int active_hysteresis_loki[] = {0, 20000, 7000, 10000, 10000,
@@ -523,6 +528,7 @@ static struct therm_fan_est_data fan_est_data = {
 			},
 	},
 	.cdev_type = "pwm-fan",
+	.tzp = &fan_tzp,
 };
 
 static struct platform_device loki_fan_therm_est_device = {
