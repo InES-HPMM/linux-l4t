@@ -277,8 +277,9 @@ static int pca954x_probe(struct i2c_client *client,
 	 * that the mux is in fact present. This also
 	 * initializes the mux to disconnected state.
 	 */
-	if (i2c_smbus_write_byte(client, 0) < 0) {
-		dev_warn(&client->dev, "probe failed\n");
+	ret = i2c_smbus_write_byte(client, 0);
+	if (ret < 0) {
+		dev_err(&client->dev, "Write to  device failed: %d\n", ret);
 		goto exit_regulator_disable;
 	}
 
