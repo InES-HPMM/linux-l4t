@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-fan.c
  *
- * Copyright (c) 2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -46,7 +46,7 @@ static struct pwm_fan_platform_data fan_data_delta_6k = {
 						256, 256, 256, 256, 256, 256},
 	.active_rrd = {1024*40, 1024*2, 1024, 256, 256,
 						256, 256, 128, 128, 128},
-	.state_cap_lookup = {2, 2, 2, 2, 2, 2, 2, 3, 3, 3},
+	.state_cap_lookup = {2, 2, 2, 2, 3, 3, 3, 4, 4, 4},
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
