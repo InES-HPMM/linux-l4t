@@ -38,13 +38,14 @@
 #include <linux/platform_data/thermal_sensors.h>
 #include <linux/bug.h>
 #include <linux/tegra-fuse.h>
-
+#include <linux/regulator/consumer.h>
 
 #include "iomap.h"
 #include "tegra3_tsensor.h"
 #include "tegra11_soctherm.h"
 #include "gpio-names.h"
 #include "common.h"
+#include "dvfs.h"
 
 static const int MAX_HIGH_TEMP = 128000;
 
@@ -467,7 +468,8 @@ static struct soctherm_platform_data plat_data;
 static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
 static bool soctherm_suspended;
-static bool soctherm_high_voltage_range = true;
+static bool vdd_cpu_low_voltage;
+static bool vdd_core_low_voltage;
 static u32 tegra_chip_id;
 
 static struct clk *soctherm_clk;
@@ -2499,63 +2501,97 @@ static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 
 /**
  * soctherm_adjust_cpu_zone() - Adjusts the soctherm CPU zone
+ * @therm:	soctherm_therm_id specifying the sensor group to adjust
  *
  * Changes SOC_THERM registers based on the CPU and PLLX temperatures.
- * Programs hotspot offsets per CPU and PLLX difference of temperature, stops or
- * starts CPUn TSOSCs, and programs hotspot offsets per configuration.
- * This function is called in soctherm_init_platform_data() and
- * tegra_soctherm_adjust_cpu_zone().
+ * Programs hotspot offsets per CPU or GPU and PLLX difference of temperature,
+ * stops or starts CPUn TSOSCs, and programs hotspot offsets per configuration.
+ * This function is called in soctherm_init_platform_data(),
+ * tegra_soctherm_adjust_cpu_zone() and tegra_soctherm_adjust_core_zone().
  */
-static void soctherm_adjust_cpu_zone(void)
+static void soctherm_adjust_zone(int tz)
 {
-	u32 r;
-	int cpu;
-	unsigned long cpu_temp, pll_temp, diff;
+	u32 r, s;
+	int i;
+	unsigned long ztemp, pll_temp, diff;
+	bool low_voltage;
 
 	if (soctherm_suspended)
 		return;
 
-	if (!soctherm_high_voltage_range) {
+	if (tz == THERM_CPU)
+		low_voltage = vdd_cpu_low_voltage;
+	else if (tz == THERM_GPU)
+		low_voltage = vdd_core_low_voltage;
+	else if (tz == THERM_MEM)
+		low_voltage = vdd_core_low_voltage;
+	else
+		return;
+
+	if (low_voltage) {
 		r = soctherm_readl(TS_TEMP1);
-		cpu_temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
+		s = soctherm_readl(TS_TEMP2);
 
+		/* get pllx temp */
+		pll_temp = temp_translate(REG_GET(s, TS_TEMP2_PLLX_TEMP));
+		ztemp = pll_temp; /* initialized */
 
-		r = soctherm_readl(TS_TEMP2);
-		pll_temp = temp_translate(REG_GET(r, TS_TEMP2_PLLX_TEMP));
+		/* get therm-zone temp */
+		if (tz == THERM_CPU)
+			ztemp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
+		else if (tz == THERM_GPU)
+			ztemp = temp_translate(REG_GET(r, TS_TEMP1_GPU_TEMP));
+		else if (tz == THERM_MEM)
+			ztemp = temp_translate(REG_GET(s, TS_TEMP2_MEM_TEMP));
 
-		if (cpu_temp > pll_temp)
-			diff = cpu_temp - pll_temp;
+		if (ztemp > pll_temp)
+			diff = ztemp - pll_temp;
 		else
 			diff = 0;
 
-		/* Program hotspot offsets per CPU ~ PLL diff */
+		/* Program hotspot offsets per <tz> ~ PLL diff */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
-		r = REG_SET(r, TS_HOTSPOT_OFF_CPU, diff / 1000);
+		if (tz == THERM_CPU)
+			r = REG_SET(r, TS_HOTSPOT_OFF_CPU, diff / 1000);
+		else if (tz == THERM_GPU)
+			r = REG_SET(r, TS_HOTSPOT_OFF_GPU, diff / 1000);
+		else if (tz == THERM_MEM)
+			r = REG_SET(r, TS_HOTSPOT_OFF_MEM, diff / 1000);
 		soctherm_writel(r, TS_HOTSPOT_OFF);
 
-		/* Stop CPUn TSOSCs */
-		for (cpu = 0; cpu <= TSENSE_CPU3; cpu++) {
+		/* Stop all TSENSE's mapped to <tz> */
+		for (i = 0; i <= TSENSE_SIZE; i++) {
+			if (tsensor2therm_map[i] != tz)
+				continue;
 			r = soctherm_readl(TS_TSENSE_REG_OFFSET
-						(TS_CPU0_CONFIG0, cpu));
+						(TS_CPU0_CONFIG0, i));
 			r = REG_SET(r, TS_CPU0_CONFIG0_STOP, 1);
 			soctherm_writel(r, TS_TSENSE_REG_OFFSET
-						(TS_CPU0_CONFIG0, cpu));
+						(TS_CPU0_CONFIG0, i));
 		}
 	} else {
-		/* UN-Stop CPUn TSOSCs */
-		for (cpu = 0; cpu <= TSENSE_CPU3; cpu++) {
+		/* UN-Stop all TSENSE's mapped to <tz> */
+		for (i = 0; i <= TSENSE_SIZE; i++) {
+			if (tsensor2therm_map[i] != tz)
+				continue;
 			r = soctherm_readl(TS_TSENSE_REG_OFFSET
-						(TS_CPU0_CONFIG0, cpu));
+						(TS_CPU0_CONFIG0, i));
 			r = REG_SET(r, TS_CPU0_CONFIG0_STOP, 0);
 			soctherm_writel(r, TS_TSENSE_REG_OFFSET
-						(TS_CPU0_CONFIG0, cpu));
+						(TS_CPU0_CONFIG0, i));
 		}
+
+		/* default to configured offset for <tz> */
+		diff = plat_data.therm[tz].hotspot_offset;
 
 		/* Program hotspot offsets per config */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
-		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
-			plat_data.therm[THERM_CPU].hotspot_offset / 1000);
-
+		if (tz == THERM_CPU)
+			r = REG_SET(r, TS_HOTSPOT_OFF_CPU, diff / 1000);
+		else if (tz == THERM_GPU)
+			r = REG_SET(r, TS_HOTSPOT_OFF_GPU, diff / 1000);
+		else if (tz == THERM_MEM)
+			r = REG_SET(r, TS_HOTSPOT_OFF_MEM, diff / 1000);
 		soctherm_writel(r, TS_HOTSPOT_OFF);
 	}
 }
@@ -2655,7 +2691,9 @@ static int soctherm_init_platform_data(void)
 		}
 	}
 
-	soctherm_adjust_cpu_zone();
+	soctherm_adjust_zone(THERM_CPU);
+	soctherm_adjust_zone(THERM_GPU);
+	soctherm_adjust_zone(THERM_MEM);
 
 	/* Sanitize therm trips */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -3059,6 +3097,48 @@ static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
 	return 0;
 }
 
+static int core_rail_regulator_notifier_cb(
+	struct notifier_block *nb, unsigned long event, void *v)
+{
+	int uv = (int)((long)v);
+	int rv = NOTIFY_DONE;
+	int core_vmin_limit_uv;
+
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+		core_vmin_limit_uv = 900000;
+		if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
+			if (uv >= core_vmin_limit_uv) {
+				tegra_soctherm_adjust_core_zone(true);
+				rv = NOTIFY_OK;
+			}
+		} else if (event & REGULATOR_EVENT_OUT_PRECHANGE) {
+			if (uv < core_vmin_limit_uv) {
+				tegra_soctherm_adjust_core_zone(false);
+				rv = NOTIFY_OK;
+			}
+		}
+	}
+	return rv;
+}
+
+static int __init soctherm_core_rail_notify_init(void)
+{
+	int ret;
+	static struct notifier_block vmin_condition_nb;
+
+	vmin_condition_nb.notifier_call = core_rail_regulator_notifier_cb;
+	ret = tegra_dvfs_rail_register_notifier(tegra_core_rail,
+						&vmin_condition_nb);
+	if (ret) {
+		pr_err("%s: Failed to register core rail notifier\n",
+		       __func__);
+		return ret;
+	}
+
+	return 0;
+}
+late_initcall_sync(soctherm_core_rail_notify_init);
+
 /**
  * tegra11_soctherm_init() - initializes SOC_THERM IP Block
  * @data:       pointer to board-specific information
@@ -3129,9 +3209,20 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
  */
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 {
-	if (soctherm_high_voltage_range != high_voltage_range) {
-		soctherm_high_voltage_range = high_voltage_range;
-		soctherm_adjust_cpu_zone();
+	if (!vdd_cpu_low_voltage != high_voltage_range) {
+		vdd_cpu_low_voltage = !high_voltage_range;
+		soctherm_adjust_zone(THERM_CPU);
+	}
+}
+
+void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
+{
+	if (IS_T12X_T13X()) {
+		if (!vdd_core_low_voltage != high_voltage_range) {
+			vdd_core_low_voltage = !high_voltage_range;
+			soctherm_adjust_zone(THERM_GPU);
+			soctherm_adjust_zone(THERM_MEM);
+		}
 	}
 }
 
