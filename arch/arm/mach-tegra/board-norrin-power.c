@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-norrin-power.c
  *
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,6 +30,7 @@
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/mach-types.h>
 
@@ -49,6 +50,7 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include "iomap.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -436,6 +438,7 @@ static struct regulator_consumer_supply fixed_reg_aon_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_emmc", NULL),
 	REGULATOR_SUPPLY("vdd_1v8b_com_f", NULL),
 	REGULATOR_SUPPLY("vdd_1v8b_gps_f", NULL),
+	REGULATOR_SUPPLY("vdd", "0-004c"),
 };
 
 /* Always ON 3.3v */
@@ -498,7 +501,6 @@ static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
 	REGULATOR_SUPPLY("vdd_tp_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_dtv_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_modem_3v3", NULL),
-	REGULATOR_SUPPLY("vdd", "1-004c"),
 	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd", "0-0069"),
 	REGULATOR_SUPPLY("vdd", "0-000c"),
@@ -787,6 +789,26 @@ static struct thermal_zone_params soctherm_tzp = {
 	.governor_params = &soctherm_pid_params,
 };
 
+static struct tegra_tsensor_pmu_data tpdata_palmas = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x58,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0xa0,
+	.poweroff_reg_data = 0x0,
+};
+
+static struct tegra_tsensor_pmu_data tpdata_as3722 = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x40,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0x36,
+	.poweroff_reg_data = 0x2,
+};
+
 static struct soctherm_platform_data norrin_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
@@ -797,21 +819,21 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 103000,
+					.trip_temp = 101000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 101000,
+					.trip_temp = 99000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 91000,
+					.cdev_type = "cpu-balanced",
+					.trip_temp = 90000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -827,34 +849,25 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 104000,
+					.trip_temp = 101000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 92000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-/*
-				{
-					.cdev_type = "gk20a_cdev",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 102000,
+					.trip_temp = 99000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
-*/
+				{
+					.cdev_type = "gpu-balanced",
+					.trip_temp = 90000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
 			},
 			.tzp = &soctherm_tzp,
 		},
@@ -864,15 +877,17 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 104000, /* = GPU shut */
+					.trip_temp = 101000, /* = GPU shut */
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 			},
+			.tzp = &soctherm_tzp,
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+			.tzp = &soctherm_tzp,
 		},
 	},
 	.throttle = {
@@ -894,19 +909,42 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 
 int __init norrin_soctherm_init(void)
 {
-	tegra_platform_edp_init(norrin_soctherm_data.therm[THERM_CPU].trips,
+	s32 base_cp, shft_cp;
+	u32 base_ft, shft_ft;
+	struct board_info pmu_board_info;
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	/* do this only for supported CP,FT fuses */
+	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
+	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
+		tegra_platform_edp_init(
+			norrin_soctherm_data.therm[THERM_CPU].trips,
 			&norrin_soctherm_data.therm[THERM_CPU].num_trips,
 			7000); /* edp temperature margin */
-	tegra_platform_gpu_edp_init(
+		tegra_platform_gpu_edp_init(
 			norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips,
 			7000);
-	tegra_add_cpu_vmax_trips(norrin_soctherm_data.therm[THERM_CPU].trips,
+		tegra_add_cpu_vmax_trips(
+			norrin_soctherm_data.therm[THERM_CPU].trips,
 			&norrin_soctherm_data.therm[THERM_CPU].num_trips);
-	tegra_add_tgpu_trips(norrin_soctherm_data.therm[THERM_GPU].trips,
+		tegra_add_tgpu_trips(
+			norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips);
-	tegra_add_core_vmax_trips(norrin_soctherm_data.therm[THERM_PLL].trips,
+		tegra_add_core_vmax_trips(
+			norrin_soctherm_data.therm[THERM_PLL].trips,
 			&norrin_soctherm_data.therm[THERM_PLL].num_trips);
+	}
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if (pmu_board_info.board_id == BOARD_PM374)
+		norrin_soctherm_data.tshut_pmu_trip_data = &tpdata_as3722;
+	else
+		pr_warn("soctherm THERMTRIP not supported on PMU (BOARD_P%d)\n",
+			pmu_board_info.board_id);
 
 	return tegra11_soctherm_init(&norrin_soctherm_data);
 }

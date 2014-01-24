@@ -1124,15 +1124,22 @@ static struct balanced_throttle gpu_throttle = {
 
 static int __init ardbeg_tj_throttle_init(void)
 {
+	void *r1, *r2;
+
 	if (of_machine_is_compatible("nvidia,ardbeg") ||
+	    of_machine_is_compatible("nvidia,norrin") ||
+	    of_machine_is_compatible("nvidia,bowmore") ||
 	    of_machine_is_compatible("nvidia,tn8")) {
-		balanced_throttle_register(&cpu_throttle, "cpu-balanced");
-		balanced_throttle_register(&gpu_throttle, "gpu-balanced");
+		r1 = balanced_throttle_register(&cpu_throttle, "cpu-balanced");
+		r2 = balanced_throttle_register(&gpu_throttle, "gpu-balanced");
+		if (!r1 || !r2)
+			pr_err("%s: balanced_throttle_register FAILED.\n",
+				__func__);
 	}
 
 	return 0;
 }
-module_init(ardbeg_tj_throttle_init);
+late_initcall(ardbeg_tj_throttle_init);
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_trip_info skin_trips[] = {
@@ -1511,17 +1518,26 @@ static int ardbeg_nct72_init(void)
 		gpio_free(nct72_port);
 	}
 
+	/* norrin has thermal sensor on GEN1-I2C i.e. instance 0 */
+	if (board_info.board_id == BOARD_PM374)
+		i2c_register_board_info(0, ardbeg_i2c_nct72_board_info,
+					1); /* only register device[0] */
 	/* ardbeg has thermal sensor on GEN2-I2C i.e. instance 1 */
-	if (board_info.board_id == BOARD_PM358 ||
+	else if (board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM374 ||
 			board_info.board_id == BOARD_PM363)
 		i2c_register_board_info(1, laguna_i2c_nct72_board_info,
-		ARRAY_SIZE(laguna_i2c_nct72_board_info));
+			ARRAY_SIZE(laguna_i2c_nct72_board_info));
+	else if (board_info.board_id == BOARD_E1971 ||
+		 board_info.board_id == BOARD_E1991)
+		/* bowmore has thermal sensor on GEN1-I2C i.e. instance 0 */
+		i2c_register_board_info(0, ardbeg_i2c_nct72_board_info,
+					1); /* only register device[0] */
 	else
 		i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
-		ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
+			ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
 
 	return ret;
 }

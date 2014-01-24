@@ -1,20 +1,19 @@
 /*
  * arch/arm/mach-tegra/tegra3_throttle.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -326,21 +325,22 @@ struct thermal_cooling_device *balanced_throttle_register(
 	list_add(&bthrot->node, &bthrot_list);
 	mutex_unlock(&bthrot_list_lock);
 
+#ifdef CONFIG_DEBUG_FS
+	sprintf(name, "throttle_table%d", num_throt);
+	if (!throttle_debugfs_root || IS_ERR_OR_NULL(
+		debugfs_create_file(name, 0644, throttle_debugfs_root,
+					bthrot, &table_fops)))
+			return -EINVAL;
+#endif
+
 	bthrot->cdev = thermal_cooling_device_register(
 						type,
 						bthrot,
 						&tegra_throttle_cooling_ops);
-
 	if (IS_ERR(bthrot->cdev)) {
 		bthrot->cdev = NULL;
 		return ERR_PTR(-ENODEV);
 	}
-
-#ifdef CONFIG_DEBUG_FS
-	sprintf(name, "throttle_table%d", num_throt);
-	debugfs_create_file(name,0644, throttle_debugfs_root,
-				bthrot, &table_fops);
-#endif
 
 	return bthrot->cdev;
 }
@@ -360,8 +360,12 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 		cpu_freq_table[table_data->throttle_lowest_index].frequency;
 
 	cpu_throttle_lock = cpu_lock;
+
 #ifdef CONFIG_DEBUG_FS
-	throttle_debugfs_root = debugfs_create_dir("tegra_throttle", 0);
+	throttle_debugfs_root = debugfs_create_dir("tegra_throttle", NULL);
+	if (IS_ERR_OR_NULL(throttle_debugfs_root))
+		pr_err("%s: debugfs_create_dir 'tegra_throttle' FAILED.\n",
+			__func__);
 #endif
 
 	for (i = 0; i < ARRAY_SIZE(cap_freqs_table); i++) {
