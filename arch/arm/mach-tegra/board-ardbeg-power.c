@@ -1333,7 +1333,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
-struct soctherm_throttle battery_oc_throttle = {
+static struct soctherm_throttle battery_oc_throttle = {
 	.throt_mode = BRIEF,
 	.polarity = 1,
 	.priority = 100,
@@ -1349,7 +1349,7 @@ struct soctherm_throttle battery_oc_throttle = {
 	},
 };
 
-struct soctherm_throttle voltmon_throttle = {
+static struct soctherm_throttle voltmon_throttle = {
 	.throt_mode = BRIEF,
 	.polarity = 1,
 	.priority = 50,
@@ -1359,7 +1359,11 @@ struct soctherm_throttle voltmon_throttle = {
 	.devs = {
 		[THROTTLE_DEV_CPU] = {
 			.enable = true,
-			.depth = 75,
+			/* throttle depth 75% with 3.76us ramp rate */
+			.dividend = 63,
+			.divisor = 255,
+			.duration = 0,
+			.step = 0,
 		},
 		[THROTTLE_DEV_GPU] = {
 			.enable = true,
