@@ -1560,8 +1560,23 @@ static int tegra_pcie_conf_gpios(void)
 		gpio_set_value_cansleep(
 			tegra_pcie.plat_data->gpio_x1_slot, 1);
 	}
+	if (gpio_is_valid(tegra_pcie.plat_data->gpio_wake)) {
+		err = devm_gpio_request(tegra_pcie.dev,
+				tegra_pcie.plat_data->gpio_wake, "pcie_wake");
+		if (err < 0) {
+			pr_err("%s: pcie_wake gpio_request failed %d\n",
+					__func__, err);
+			goto err_x1;
+		}
+		err = gpio_direction_input(
+				tegra_pcie.plat_data->gpio_wake);
+		if (err < 0) {
+			pr_err("%s: pcie_wake gpio_direction_input failed %d\n",
+					__func__, err);
+			goto err_x1;
+		}
+	}
 	return 0;
-
 err_x1:
 	gpio_free(tegra_pcie.plat_data->gpio_x1_slot);
 err_hot_plug:
