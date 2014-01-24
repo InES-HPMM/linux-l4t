@@ -445,6 +445,14 @@ config TEGRA_GPU_DVFS
 	depends on ARCH_TEGRA_12x_SOC
 	default y
 
+config TEGRA_DVFS_RAIL_CONNECT_ALL
+	bool "Enable voltage scaling only if all rails matched by dvfs (cpu, gpu, core) are connected"
+	default y
+	help
+	 This option adds an extra check to enable voltage scaling. Set to y
+	 if you want to enable voltage scaling only when all the rails matched
+	 by dvfs connect successfully to the system
+
 config TEGRA_GK20A
 	bool "Enable the GK20A GPU on Tegra"
 	depends on ARCH_TEGRA_12x_SOC
