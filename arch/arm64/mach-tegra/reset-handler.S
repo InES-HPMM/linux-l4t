@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,12 +20,18 @@
 #include <asm/cache.h>
 #include <asm/asm-offsets.h>
 #include <asm/assembler.h>
+#include <asm/memory.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
 #include "reset.h"
 
 #define PMC_SCRATCH41	0x140
+#define INVALID_HWID	~0
+
+#define CNTFRQ	12000000
+#define GIC_DIST_BASE	0x50041000
+#define GIC_CPU_BASE	0x50042000
 
 /* returns the offset of the flow controller csr register for a cpu */
 .macro cpu_to_csr_reg rd, rcpu
@@ -40,25 +46,75 @@
 
 #ifdef CONFIG_PM_SLEEP
 /*
- *	tegra_resume
- *
- *	  CPU boot vector when restarting the a CPU following
- *	  an LP2 transition. Also branched to by LP0 and LP1 resume after
- *	  re-enabling sdram.
- *
- *	x6: SoC ID << 8
- *	x8: CPU part number
+ *	CPU boot vector after LP0 exit.
  */
 ENTRY(tegra_resume)
-#ifdef CONFIG_SMP
+	/*
+	 * EL3 initialisation
+	 */
+	mrs	x0, CurrentEL
+	cmp	x0, #0xc			// EL3?
+	b.ne	start_ns			// skip EL3 initialisation
+
+	mov	x0, #0x30				// RES1
+	orr	x0, x0, #(1 << 10)		// 64-bit EL1 (skip EL2)
+	msr	scr_el3, x0
+
+	msr	cptr_el3, xzr			// Disable copro. traps to EL3
+	msr	sctlr_el2, xzr
+
+	ldr	x0, =CNTFRQ
+	msr	cntfrq_el0, x0
+
+	/*
+	 * Check for the primary CPU to avoid a race on the distributor
+	 * registers.
+	 */
+	mrs	x0, mpidr_el1
+	tst	x0, #15
+	b.ne	1f				// secondary CPU
+
+	ldr	x1, =GIC_DIST_BASE		// GICD_CTLR
+	mov	w0, #3				// EnableGrp0 | EnableGrp1
+	str	w0, [x1]
+
+1:	ldr	x1, =GIC_DIST_BASE + 0x80	// GICD_IGROUPR
+	mov	w0, #0				// Grp0 (secure) interrupts
+	str	w0, [x1], #4			// SGI and PPI (#0~31)
+	b.ne	2f				// Only local interrupts for secondary CPUs
+	str	w0, [x1], #4			// SPI (#32~191)
+	str	w0, [x1], #4
+	str	w0, [x1], #4
+	str	w0, [x1], #4
+	str	w0, [x1], #4
+
+2:	ldr	x1, =GIC_CPU_BASE		// GICC_CTLR
+	ldr	w0, [x1]
+	mov	w0, #3				// EnableGrp0 | EnableGrp1
+	str	w0, [x1]
+
+	mov	w0, #1 << 7			// allow NS access to GICC_PMR
+	str	w0, [x1, #4]			// GICC_PMR
+
+	msr	sctlr_el2, xzr
+
+	/*
+	 * Prepare the switch to the secure EL1_SP1 mode from EL3
+	 */
+	adr	x0, start_ns			// Return after mode switch
+	mov	x1, #0x3c5              // EL1_SP1 | D | A | I | F
+	msr	elr_el3, x0
+	msr	spsr_el3, x1
+	eret
+
+start_ns:
 	mrs	x0, mpidr_el1
 	and x0, x0, #15
-#else
-	mov	x0, #0
-#endif
 
-	cmp	x0, #0				/* CPU0? */
-	bne	done				/* no */
+	/* Secondary cores */
+	cbnz	x0, secondary_holding_pen
+
+	/* Below is only carried out on core0 */
 
 	/* Clear the flow controller flags for this CPU. */
 	cpu_to_csr_reg	x1, x0
