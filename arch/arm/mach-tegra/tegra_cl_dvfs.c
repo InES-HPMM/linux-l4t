@@ -176,6 +176,13 @@ struct dfll_rate_req {
 	unsigned long rate;
 };
 
+struct voltage_limits {
+	int		vmin;
+	int		vmax;
+	seqcount_t	vmin_seqcnt;
+	seqcount_t	vmax_seqcnt;
+};
+
 struct tegra_cl_dvfs {
 	void					*cl_base;
 	void					*cl_i2c_base;
@@ -211,6 +218,7 @@ struct tegra_cl_dvfs {
 	unsigned long			dvco_rate_floors[MAX_THERMAL_LIMITS+1];
 	unsigned long			dvco_rate_min;
 
+	struct voltage_limits		v_limits;
 	u8				lut_min;
 	u8				lut_max;
 	u8				force_out_min;
@@ -657,10 +665,24 @@ static inline void tune_high(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-static void set_output_limits(struct tegra_cl_dvfs *cld,
-			      u8 out_min, u8 out_max)
+static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 {
+	seqcount_t *vmin_seqcnt = NULL;
+	seqcount_t *vmax_seqcnt = NULL;
+
 	if ((cld->lut_min != out_min) || (cld->lut_max != out_max)) {
+		/* limits update tracking start */
+		if (cld->lut_min != out_min) {
+			vmin_seqcnt = &cld->v_limits.vmin_seqcnt;
+			write_seqcount_begin(vmin_seqcnt);
+			cld->v_limits.vmin = get_mv(cld, out_min);
+		}
+		if (cld->lut_max != out_max) {
+			vmax_seqcnt = &cld->v_limits.vmax_seqcnt;
+			write_seqcount_begin(vmax_seqcnt);
+			cld->v_limits.vmax = get_mv(cld, out_max);
+		}
+
 		cld->lut_min = out_min;
 		cld->lut_max = out_max;
 		if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
@@ -673,6 +695,12 @@ static void set_output_limits(struct tegra_cl_dvfs *cld,
 		} else {
 			cl_dvfs_load_lut(cld);
 		}
+
+		/* limits update tracking end */
+		if (vmin_seqcnt)
+			write_seqcount_end(vmin_seqcnt);
+		if (vmax_seqcnt)
+			write_seqcount_end(vmax_seqcnt);
 	}
 }
 
@@ -1330,6 +1358,8 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		cld->lut_min = out_min;
 		cld->lut_max = out_max;
 	}
+	cld->v_limits.vmin = get_mv(cld, cld->lut_min);
+	cld->v_limits.vmax = get_mv(cld, cld->lut_max);
 
 	/* configure transport */
 	if (is_i2c(cld))
@@ -2422,6 +2452,33 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 	return GET_REQUEST_RATE(req->freq, cld->ref_rate);
 }
 
+/*
+ * CL_DVFS voltage limit track interfaces used to read and track asynchromous
+ * updates to minimum and maximum voltage settings.
+ */
+
+int tegra_cl_dvfs_vmin_read_begin(struct tegra_cl_dvfs *cld, uint *start)
+{
+	*start = read_seqcount_begin(&cld->v_limits.vmin_seqcnt);
+	return cld->v_limits.vmin;
+}
+
+int tegra_cl_dvfs_vmin_read_retry(struct tegra_cl_dvfs *cld, uint start)
+{
+	return read_seqcount_retry(&cld->v_limits.vmin_seqcnt, start);
+}
+
+int tegra_cl_dvfs_vmax_read_begin(struct tegra_cl_dvfs *cld, uint *start)
+{
+	*start = read_seqcount_begin(&cld->v_limits.vmax_seqcnt);
+	return cld->v_limits.vmax;
+}
+
+int tegra_cl_dvfs_vmax_read_retry(struct tegra_cl_dvfs *cld, uint start)
+{
+	return read_seqcount_retry(&cld->v_limits.vmax_seqcnt, start);
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static int lock_get(void *data, u64 *val)
@@ -2485,20 +2542,16 @@ DEFINE_SIMPLE_ATTRIBUTE(output_fops, output_get, NULL, "%llu\n");
 
 static int vmax_get(void *data, u64 *val)
 {
-	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
-	v = cld->lut_max;
-	*val = get_mv(cld, v);
+	*val = cld->v_limits.vmax;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmax_fops, vmax_get, NULL, "%llu\n");
 
 static int vmin_get(void *data, u64 *val)
 {
-	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
-	v = cld->lut_min;
-	*val = get_mv(cld, v);
+	*val = cld->v_limits.vmin;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmin_fops, vmin_get, NULL, "%llu\n");
