@@ -1,6 +1,6 @@
 GCOV_PROFILE := y
 
-subdir-ccflags-y := -Werror
+subdir-ccflags-$(CONFIG_ARM) := -Werror
 #
 # Makefile for the video capture/playback device drivers.
 #
