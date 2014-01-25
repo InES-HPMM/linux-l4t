@@ -2310,6 +2310,10 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SYSTEM_DCB] = {0x10000, (u32)~0},
 	/* Non-zero base to account for gk20a driver's assumptions */
 	[SYSTEM_GK20A] = {0x100000, (u32)~0},
+	[SDMMC1A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[SDMMC2A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[SDMMC3A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[SDMMC4A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 };
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
@@ -2388,6 +2392,14 @@ static int _tegra_smmu_get_asid(u64 swgids)
 		return SYSTEM_DC;
 	if (swgids & SWGID(DCB))
 		return SYSTEM_DCB;
+	if (swgids & SWGID(SDMMC1A))
+		return SDMMC1A_ASID;
+	if (swgids & SWGID(SDMMC2A))
+		return SDMMC2A_ASID;
+	if (swgids & SWGID(SDMMC3A))
+		return SDMMC3A_ASID;
+	if (swgids & SWGID(SDMMC4A))
+		return SDMMC4A_ASID;
 #endif
 
 	return SYSTEM_DEFAULT;
