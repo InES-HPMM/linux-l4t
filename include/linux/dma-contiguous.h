@@ -85,6 +85,8 @@ int dma_get_contiguous_stats(struct device *dev,
 
 #else
 
+struct dma_contiguous_stats;
+
 #define MAX_CMA_AREAS	(0)
 
 static inline void dma_contiguous_reserve(phys_addr_t limit) { }
