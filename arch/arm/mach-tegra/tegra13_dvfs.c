@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra13_dvfs.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -109,9 +109,9 @@ static struct dvfs_rail tegra13_dvfs_rail_vdd_core = {
 /* TBD: fill in actual hw number */
 static struct dvfs_rail tegra13_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
-	.version = "T124_production_with_margin",
+	.version = "T124_production_with_margin_max_804mhz",
 	.max_millivolts = 1350,
-	.min_millivolts = 680,
+	.min_millivolts = 850,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1350,
 	.in_band_pm = true,
@@ -395,7 +395,7 @@ static int resolve_core_override(int min_override_mv)
 /* GPU DVFS tables */
 static unsigned long gpu_max_freq[] = {
 /* speedo_id	0	1	2	*/
-		1032000,
+		804000,
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
