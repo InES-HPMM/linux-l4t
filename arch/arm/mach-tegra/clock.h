@@ -404,9 +404,15 @@ struct clk *tegra_get_clock_by_name(const char *name);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
 #ifndef CONFIG_COMMON_CLK
-static inline void clk_set_cl_dvfs_data(struct clk *c, void *cld)
+static inline void tegra_dfll_set_cl_dvfs_data(struct clk *c, void *cld)
 {
-	c->u.dfll.cl_dvfs = cld;
+	if (c->flags & DFLL)
+		c->u.dfll.cl_dvfs = cld;
+}
+
+static inline void *tegra_dfll_get_cl_dvfs_data(struct clk *c)
+{
+	return c->flags & DFLL ? c->u.dfll.cl_dvfs : ERR_PTR(-ENODATA);
 }
 
 static inline bool clk_is_auto_dvfs(struct clk *c)
