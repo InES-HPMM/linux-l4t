@@ -260,7 +260,12 @@ static int lc709203f_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		temperature = lc709203f_get_temperature(chip);
-		val->intval = (temperature / 10) - 273;
+		/*
+		   Temp ready by device is deci-kelvin
+		   C = K -273.2
+		   Report temp in dec-celcius.
+		*/
+		val->intval = temperature - 2732;
 		break;
 	default:
 		return -EINVAL;
