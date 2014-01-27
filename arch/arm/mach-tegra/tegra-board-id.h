@@ -63,6 +63,7 @@
 #define BOARD_E1923   0x0783
 #define BOARD_E1971   0x07B3
 #define BOARD_E1973   0x07B5
+#define BOARD_E1991   0x07c7
 
 /* Board SKU */
 #define BOARD_SKU_FOSTER  0x0384
@@ -81,6 +82,7 @@
 #define    BOARD_PM366    0x016e
 #define    BOARD_E1549    0x060D
 #define    BOARD_E1797    0x0705
+#define    BOARD_E1937    0x0791
 
 #define    BOARD_E1563    0x061b
 

@@ -387,7 +387,8 @@ static int __init ardbeg_wifi_prepower(void)
 		!of_machine_is_compatible("nvidia,laguna") &&
 		!of_machine_is_compatible("nvidia,ardbeg_sata") &&
 		!of_machine_is_compatible("nvidia,tn8") &&
-		!of_machine_is_compatible("nvidia,norrin"))
+		!of_machine_is_compatible("nvidia,norrin") &&
+		!of_machine_is_compatible("nvidia,bowmore"))
 		return 0;
 	ardbeg_wifi_power(1);
 
@@ -454,6 +455,15 @@ int __init ardbeg_sdhci_init(void)
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
 	tegra_sdhci_platform_data2.cpu_speedo = speedo;
 	tegra_sdhci_platform_data3.cpu_speedo = speedo;
+
+	if (board_info.board_id == BOARD_E1991 ||
+		board_info.board_id == BOARD_E1971) {
+			tegra_sdhci_platform_data0.uhs_mask =
+				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50
+				| MMC_UHS_MASK_DDR50;
+			tegra_sdhci_platform_data2.uhs_mask =
+				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
+	}
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
