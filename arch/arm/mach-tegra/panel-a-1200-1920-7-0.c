@@ -277,8 +277,8 @@ fail:
 
 static int dsi_a_1200_1920_7_0_disable(void)
 {
-	if (gpio_is_valid(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio))
-		gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 0);
+	if (gpio_is_valid(en_panel_rst))
+		gpio_set_value(en_panel_rst, 0);
 
 	if (vdd_lcd_bl_en)
 		regulator_disable(vdd_lcd_bl_en);
