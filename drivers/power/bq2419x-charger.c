@@ -67,6 +67,11 @@ static const unsigned int bq2419x_maxcharge_voltage_lookup[] = {
 	4400, 4416, 4432, 4448, 4464, 4480, 4496, 4512,
 };
 
+#define BQ2419X_INPUT_VINDPM_OFFSET	3880
+#define BQ2419X_CHARGE_ICHG_OFFSET	512
+#define BQ2419X_PRE_CHG_IPRECHG_OFFSET	128
+#define BQ2419X_PRE_CHG_TERM_OFFSET	128
+
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -76,6 +81,11 @@ static const struct regmap_config bq2419x_regmap_config = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
 	.max_register		= BQ2419X_MAX_REGS,
+};
+
+struct bq2419x_reg_info {
+	u8 mask;
+	u8 val;
 };
 
 struct bq2419x_chip {
@@ -108,6 +118,10 @@ struct bq2419x_chip {
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
 	int				charging_state;
+	struct bq2419x_reg_info		input_src;
+	struct bq2419x_reg_info		chg_current_control;
+	struct bq2419x_reg_info		prechg_term_control;
+	struct bq2419x_reg_info		ir_comp_therm;
 };
 
 static inline int convert_to_reg(int x)
@@ -206,37 +220,105 @@ static struct regulator_ops bq2419x_vbus_ops = {
 	.is_enabled	= bq2419x_vbus_is_enabled,
 };
 
+static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
+		struct bq2419x_charger_platform_data *chg_pdata)
+{
+	int voltage_input;
+	int fast_charge_current;
+	int pre_charge_current;
+	int termination_current;
+	int ir_compensation_resistor;
+	int ir_compensation_voltage;
+	int thermal_regulation_threshold;
+	int vindpm, ichg, iprechg, iterm, bat_comp, vclamp, treg;
+
+	if (chg_pdata) {
+		voltage_input = chg_pdata->input_voltage_limit_mV ?: 4200;
+		fast_charge_current =
+			chg_pdata->fast_charge_current_limit_mA ?: 4544;
+		pre_charge_current =
+			chg_pdata->pre_charge_current_limit_mA ?: 256;
+		termination_current =
+			chg_pdata->termination_current_limit_mA ?: 128;
+		ir_compensation_resistor =
+			chg_pdata->ir_compensation_resister_ohm ?: 70;
+		ir_compensation_voltage =
+			chg_pdata->ir_compensation_voltage_mV ?: 112;
+		thermal_regulation_threshold =
+			chg_pdata->thermal_regulation_threshold_degC ?: 100;
+	} else {
+		voltage_input = 4200;
+		fast_charge_current = 4544;
+		pre_charge_current = 256;
+		termination_current = 128;
+		ir_compensation_resistor = 70;
+		ir_compensation_voltage = 112;
+		thermal_regulation_threshold = 100;
+	}
+
+	vindpm = (voltage_input - BQ2419X_INPUT_VINDPM_OFFSET) / 80;
+	bq2419x->input_src.mask = BQ2419X_INPUT_VINDPM_MASK;
+	bq2419x->input_src.val = vindpm << 3;
+	bq2419x->input_src.mask |= BQ2419X_INPUT_IINLIM_MASK;
+	bq2419x->input_src.val |= 0x2;
+
+	ichg = (fast_charge_current - BQ2419X_CHARGE_ICHG_OFFSET)/64;
+	bq2419x->chg_current_control.mask = BQ2419X_CHRG_CTRL_ICHG_MASK;
+	bq2419x->chg_current_control.val = ichg << 2;
+
+	iprechg = (pre_charge_current - BQ2419X_PRE_CHG_IPRECHG_OFFSET) / 128;
+	bq2419x->prechg_term_control.mask = BQ2419X_CHRG_TERM_PRECHG_MASK;
+	bq2419x->prechg_term_control.val = iprechg << 4;
+	iterm = (termination_current - BQ2419X_PRE_CHG_TERM_OFFSET) / 128;
+	bq2419x->prechg_term_control.mask |= BQ2419X_CHRG_TERM_TERM_MASK;
+	bq2419x->prechg_term_control.val |= iterm;
+
+	bat_comp = ir_compensation_resistor / 10;
+	bq2419x->ir_comp_therm.mask = BQ2419X_THERM_BAT_COMP_MASK;
+	bq2419x->ir_comp_therm.val = bat_comp << 5;
+	vclamp = ir_compensation_voltage / 16;
+	bq2419x->ir_comp_therm.mask |= BQ2419X_THERM_VCLAMP_MASK;
+	bq2419x->ir_comp_therm.val |= vclamp << 2;
+	bq2419x->ir_comp_therm.mask |= BQ2419X_THERM_TREG_MASK;
+	if (thermal_regulation_threshold <= 60)
+		treg = 0;
+	else if (thermal_regulation_threshold <= 80)
+		treg = 1;
+	else if (thermal_regulation_threshold <= 100)
+		treg = 2;
+	else
+		treg = 3;
+	bq2419x->ir_comp_therm.val |= treg;
+	return 0;
+}
+
 static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	/* Configure Output Current Control to 2.25A*/
-	ret = regmap_write(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, 0xFC);
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG,
+			bq2419x->chg_current_control.mask,
+			bq2419x->chg_current_control.val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "CHRG_CTRL_REG write failed %d\n", ret);
 		return ret;
 	}
 
-	/*
-	 * Configure Pre-charge current limit to 768mA,
-	 * and Termination current limit to 384mA.
-	*/
-	ret = regmap_write(bq2419x->regmap, BQ2419X_CHRG_TERM_REG, 0x52);
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_CHRG_TERM_REG,
+			bq2419x->prechg_term_control.mask,
+			bq2419x->prechg_term_control.val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "CHRG_TERM_REG write failed %d\n", ret);
 		return ret;
 	}
 
-	/*
-	 * Configure Input voltage limit reset to OTP value,
-	 * and charging current to 500mA.
-	 */
-	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x22);
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+			bq2419x->input_src.mask, bq2419x->input_src.val);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
 
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_THERM_REG,
-			BQ2419x_TREG, BQ2419x_TREG_100_C);
+		    bq2419x->ir_comp_therm.mask, bq2419x->ir_comp_therm.val);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "THERM_REG write failed: %d\n", ret);
 
@@ -1115,6 +1197,8 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		int temp_polling_time;
 		struct regulator_init_data *batt_init_data;
 		const char *status_str;
+		struct bq2419x_charger_platform_data *bcharger_pdata;
+		u32 pval;
 
 		status_str = of_get_property(batt_reg_node, "status", NULL);
 		if (status_str && !(!strcmp(status_str, "okay"))) {
@@ -1127,11 +1211,49 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 				sizeof(*(pdata->bcharger_pdata)), GFP_KERNEL);
 		if (!pdata->bcharger_pdata)
 			return ERR_PTR(-ENOMEM);
+		bcharger_pdata = pdata->bcharger_pdata;
 
 		batt_init_data = of_get_regulator_init_data(&client->dev,
 								batt_reg_node);
 		if (!batt_init_data)
 			return ERR_PTR(-EINVAL);
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,input-voltage-limit-millivolt", &pval);
+		if (!ret)
+			bcharger_pdata->input_voltage_limit_mV = pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,fast-charge-current-limit-milliamp", &pval);
+		if (!ret)
+			bcharger_pdata->fast_charge_current_limit_mA =
+							pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,pre-charge-current-limit-milliamp", &pval);
+		if (!ret)
+			bcharger_pdata->pre_charge_current_limit_mA = pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,charge-term-current-limit-milliamp", &pval);
+		if (!ret)
+			bcharger_pdata->termination_current_limit_mA = pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,ir-comp-resister-ohm", &pval);
+		if (!ret)
+			bcharger_pdata->ir_compensation_resister_ohm = pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,ir-comp-voltage-millivolt", &pval);
+		if (!ret)
+			bcharger_pdata->ir_compensation_voltage_mV = pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,thermal-regulation-threshold-degc", &pval);
+		if (!ret)
+			bcharger_pdata->thermal_regulation_threshold_degC =
+						pval;
 
 		pdata->bcharger_pdata->disable_suspend_during_charging =
 				of_property_read_bool(batt_reg_node,
@@ -1151,8 +1273,8 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		ret = of_property_read_u32(batt_reg_node,
 			"ti,temp-polling-time-sec", &temp_polling_time);
 		if (!ret)
-			pdata->bcharger_pdata->temp_polling_time_sec =
-							temp_polling_time;
+			bcharger_pdata->temp_polling_time_sec =
+						temp_polling_time;
 
 		pdata->bcharger_pdata->tz_name = of_get_property(batt_reg_node,
 						"ti,thermal-zone", NULL);
@@ -1268,6 +1390,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->battery_presense = true;
 	bq2419x->disable_suspend_during_charging =
 			pdata->bcharger_pdata->disable_suspend_during_charging;
+
+	bq2419x_process_charger_plat_data(bq2419x, pdata->bcharger_pdata);
 
 	ret = bq2419x_charger_init(bq2419x);
 	if (ret < 0) {

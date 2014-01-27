@@ -39,6 +39,18 @@
 #define BQ2419X_FAULT_REG		0x09
 #define BQ2419X_REVISION_REG		0x0a
 
+#define BQ2419X_INPUT_VINDPM_MASK	0x78
+#define BQ2419X_INPUT_IINLIM_MASK	0x07
+
+#define BQ2419X_CHRG_CTRL_ICHG_MASK	0xFC
+
+#define BQ2419X_CHRG_TERM_PRECHG_MASK	0xF0
+#define BQ2419X_CHRG_TERM_TERM_MASK	0x0F
+
+#define BQ2419X_THERM_BAT_COMP_MASK	0xE0
+#define BQ2419X_THERM_VCLAMP_MASK	0x1C
+#define BQ2419X_THERM_TREG_MASK		0x03
+
 #define BQ24190_IC_VER			0x40
 #define BQ24192_IC_VER			0x28
 #define BQ24192i_IC_VER			0x18
@@ -113,6 +125,13 @@ struct bq2419x_vbus_platform_data {
  * struct bq2419x_charger_platform_data - bq2419x charger platform data.
  */
 struct bq2419x_charger_platform_data {
+	int input_voltage_limit_mV;
+	int fast_charge_current_limit_mA;
+	int pre_charge_current_limit_mA;
+	int termination_current_limit_mA;
+	int ir_compensation_resister_ohm;
+	int ir_compensation_voltage_mV;
+	int thermal_regulation_threshold_degC;
 	int max_charge_current_mA;
 	int charging_term_current_mA;
 	int wdt_timeout;
