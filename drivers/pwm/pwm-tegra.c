@@ -256,7 +256,18 @@ static struct platform_driver tegra_pwm_driver = {
 	.remove = tegra_pwm_remove,
 };
 
-module_platform_driver(tegra_pwm_driver);
+static int __init tegra_pwm_init_driver(void)
+{
+	return platform_driver_register(&tegra_pwm_driver);
+}
+
+static void __exit tegra_pwm_exit_driver(void)
+{
+	platform_driver_unregister(&tegra_pwm_driver);
+}
+
+subsys_initcall(tegra_pwm_init_driver);
+module_exit(tegra_pwm_exit_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("NVIDIA Corporation");
