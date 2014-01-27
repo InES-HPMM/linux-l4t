@@ -896,7 +896,6 @@ static struct platform_device __maybe_unused
 
 static struct platform_device __maybe_unused
 			*roth_bl_device[] __initdata = {
-	&tegra_pwfm_device,
 	&roth_disp1_bl_device,
 };
 

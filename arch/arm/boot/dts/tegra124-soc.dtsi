@@ -139,6 +139,13 @@
 		status = "disabled";
 	};
 
+	tegra_pwm: pwm@7000a000 {
+		compatible = "nvidia,tegra124-pwm";
+		reg = <0x7000a000 0x100>;
+		#pwm-cells = <2>;
+		status = "okay";
+	};
+
 	i2c1: i2c@7000c000 {
 		#address-cells = <1>;
 		#size-cells = <0>;

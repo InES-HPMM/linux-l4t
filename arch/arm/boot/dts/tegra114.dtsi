@@ -294,12 +294,12 @@
 		clocks = <&tegra_car 65>;
 	};
 
-	pwm: pwm {
-		compatible = "nvidia,tegra114-pwm", "nvidia,tegra20-pwm";
+	pwm: pwm@7000a000 {
+		compatible = "nvidia,tegra114-pwm";
 		reg = <0x7000a000 0x100>;
 		#pwm-cells = <2>;
 		clocks = <&tegra_car 17>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	i2c1: i2c@7000c000 {

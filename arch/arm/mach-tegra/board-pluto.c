@@ -1202,6 +1202,7 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				&xusb_pdata),
 	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwm", 0x7000a000, "tegra-pwm", NULL),
 	{}
 };
 #endif

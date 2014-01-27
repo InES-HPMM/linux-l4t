@@ -756,7 +756,6 @@ static struct platform_device bonaire_nvmap_device = {
 
 static struct platform_device *bonaire_gfx_devices[] __initdata = {
 	&bonaire_nvmap_device,
-	&tegra_pwfm_device,
 	&bonaire_backlight_device,
 };
 
