@@ -742,7 +742,6 @@ static int tegra_dtv_open(struct inode *inode, struct file *file)
 		dev_err(&pdev->dev, "cannot enable clk for tegra_dtv.\n");
 		return -ENOSYS;
 	}
-	dtv_ctx->clk_enabled = 1;
 
 	if (clk_enable(dtv_ctx->sclk) < 0) {
 		dev_err(&pdev->dev, "cannot enable SBus clock.\n");
@@ -754,6 +753,7 @@ static int tegra_dtv_open(struct inode *inode, struct file *file)
 		clk_disable(dtv_ctx->sclk);
 		return -ENOSYS;
 	}
+	dtv_ctx->clk_enabled = 1;
 
 	dtv_ctx = (struct tegra_dtv_context *) file->private_data;
 
@@ -802,6 +802,8 @@ static int tegra_dtv_release(struct inode *inode, struct file *file)
 
 	clk_disable(dtv_ctx->sclk);
 	clk_disable(dtv_ctx->emc_clk);
+	clk_disable_unprepare(dtv_ctx->clk);
+	dtv_ctx->clk_enabled = 0;
 
 	/* wakeup any pending process */
 	wakeup_suspend(&dtv_ctx->stream);
@@ -1251,8 +1253,6 @@ static int tegra_dtv_remove(struct platform_device *pdev)
 	pm_qos_remove_request(&dtv_ctx->min_cpufreq);
 	pm_qos_remove_request(&dtv_ctx->cpudma_lat);
 
-	clk_put(dtv_ctx->clk);
-
 	misc_deregister(&dtv_ctx->miscdev);
 
 	return 0;
@@ -1279,8 +1279,11 @@ static int tegra_dtv_suspend(struct platform_device *pdev, pm_message_t state)
 	wakeup_suspend(&dtv_ctx->stream);
 	mutex_unlock(&dtv_ctx->stream.mtx);
 
-	if (dtv_ctx->clk_enabled)
+	if (dtv_ctx->clk_enabled) {
 		clk_disable_unprepare(dtv_ctx->clk);
+		clk_disable(dtv_ctx->sclk);
+		clk_disable(dtv_ctx->emc_clk);
+	}
 
 	return 0;
 }
@@ -1292,8 +1295,11 @@ static int tegra_dtv_resume(struct platform_device *pdev)
 	pr_info("%s: resume dtv.\n", __func__);
 
 	dtv_ctx = platform_get_drvdata(pdev);
-	if (dtv_ctx->clk_enabled)
+	if (dtv_ctx->clk_enabled) {
 		clk_prepare_enable(dtv_ctx->clk);
+		clk_enable(dtv_ctx->sclk);
+		clk_enable(dtv_ctx->emc_clk);
+	}
 
 	return 0;
 }
