@@ -385,6 +385,14 @@ config REGULATOR_PCF50633
 	 Say Y here to support the voltage regulators and convertors
 	 on PCF50633
 
+config REGULATOR_PWM
+	tristate "PWM based voltage regulator support"
+	depends on PWM
+	help
+	  This driver provides support for pwm based voltage regulators,
+	  useful for systems which use a pwm to control the voltage
+	  output from the regulator device.
+
 config REGULATOR_RC5T583
 	tristate "RICOH RC5T583 Power regulators"
 	depends on MFD_RC5T583
