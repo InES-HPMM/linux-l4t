@@ -240,6 +240,8 @@ static int tegra_pwm_remove(struct platform_device *pdev)
 static const struct of_device_id tegra_pwm_of_match[] = {
 	{ .compatible = "nvidia,tegra20-pwm" },
 	{ .compatible = "nvidia,tegra30-pwm" },
+	{ .compatible = "nvidia,tegra114-pwm" },
+	{ .compatible = "nvidia,tegra124-pwm" },
 	{ }
 };
 
