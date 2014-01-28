@@ -27,7 +27,6 @@
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/pm.h>
 #include <linux/jiffies.h>
-#include <linux/regmap.h>
 #include <linux/power/lc709203f_battery.h>
 
 #define LC709203F_THERMISTOR_B		0x06
@@ -60,7 +59,6 @@ struct lc709203f_chip {
 	struct power_supply		battery;
 	struct lc709203f_platform_data	*pdata;
 	struct battery_gauge_dev	*bg_dev;
-	struct regmap			*regmap;
 
 	/* battery voltage */
 	int vcell;
@@ -82,16 +80,9 @@ struct lc709203f_chip {
 
 struct lc709203f_chip *lc709203f_data;
 
-static const struct regmap_config lc709203f_regmap_config = {
-	.reg_bits		= 8,
-	.val_bits		= 8,
-	.max_register		= LC709203F_MAX_REGS,
-};
-
 static int lc709203f_read_word(struct i2c_client *client, u8 reg)
 {
 	int ret;
-	u16 val;
 
 	struct lc709203f_chip *chip = i2c_get_clientdata(client);
 
@@ -101,56 +92,9 @@ static int lc709203f_read_word(struct i2c_client *client, u8 reg)
 		return -ENODEV;
 	}
 
-	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
-	if (ret < 0) {
-		dev_err(&client->dev, "err reading reg: 0x%x, %d\n", reg, ret);
-		mutex_unlock(&chip->mutex);
-		return ret;
-	}
-
-	mutex_unlock(&chip->mutex);
-	return val;
-}
-
-static int lc709203f_read_byte(struct i2c_client *client, u8 reg)
-{
-	int ret;
-	u8 val;
-
-	struct lc709203f_chip *chip = i2c_get_clientdata(client);
-
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
-	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
-	if (ret < 0) {
-		dev_err(&client->dev, "err reading reg: 0x%x\n, %d", reg, ret);
-		mutex_unlock(&chip->mutex);
-		return ret;
-	}
-
-	mutex_unlock(&chip->mutex);
-	return val;
-}
-
-
-static int lc709203f_write_byte(struct i2c_client *client, u8 reg, u8 value)
-{
-	struct lc709203f_chip *chip = i2c_get_clientdata(client);
-	int ret;
-
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
-	ret = regmap_write(chip->regmap, reg, value);
+	ret = i2c_smbus_read_word_data(client, reg);
 	if (ret < 0)
-		dev_err(&client->dev, "err writing 0x%0x, %d\n" , reg, ret);
+		dev_err(&client->dev, "err reading reg: 0x%x, %d\n", reg, ret);
 
 	mutex_unlock(&chip->mutex);
 	return ret;
@@ -329,7 +273,7 @@ static int lc709203f_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	chip->client = client;
-
+	client->flags = client->flags | I2C_CLIENT_PEC;
 	if (client->dev.of_node) {
 		chip->pdata = devm_kzalloc(&client->dev,
 					sizeof(*chip->pdata), GFP_KERNEL);
@@ -356,13 +300,6 @@ static int lc709203f_probe(struct i2c_client *client,
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->charge_complete		= 0;
-
-	chip->regmap = devm_regmap_init_i2c(client, &lc709203f_regmap_config);
-	if (IS_ERR(chip->regmap)) {
-		ret = PTR_ERR(chip->regmap);
-		dev_err(&client->dev, "regmap init failed with err %d\n", ret);
-		goto error;
-	}
 
 	/* Dummy read to check if the slave is present*/
 	ret = lc709203f_read_word(chip->client, LC709203F_VOLTAGE);
