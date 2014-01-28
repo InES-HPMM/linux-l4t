@@ -430,7 +430,6 @@ static const int precision; /* default 0 -> low precision */
 						(4 * (throt - THROTTLE_OC1)))
 
 #define THROT_DEPTH_DIVIDEND(depth)	((256 * (100 - (depth)) / 100) - 1)
-#define THROT_DEPTH_DEFAULT		(80)
 #define THROT_DEPTH(th, dp)		{			\
 		(th)->depth    = (dp);				\
 		(th)->dividend = THROT_DEPTH_DIVIDEND(dp);	\
@@ -2016,12 +2015,8 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 			soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
 			continue;
 		}
-		if (dev->depth) {
+		if (dev->depth)
 			THROT_DEPTH(dev, dev->depth);
-		} else if (!dev->dividend || !dev->divisor
-			|| !dev->duration || !dev->step) {
-			THROT_DEPTH(dev, THROT_DEPTH_DEFAULT);
-		}
 
 		r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
 		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
