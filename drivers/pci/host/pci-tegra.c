@@ -997,7 +997,7 @@ static int tegra_pcie_enable_controller(void)
 	val = (AFI_INTR_EN_INI_SLVERR | AFI_INTR_EN_INI_DECERR |
 	       AFI_INTR_EN_TGT_SLVERR | AFI_INTR_EN_TGT_DECERR |
 	       AFI_INTR_EN_TGT_WRERR | AFI_INTR_EN_DFPCI_DECERR |
-	       AFI_INTR_EN_PRSNT_SENSE);
+	       AFI_INTR_EN_AXI_DECERR | AFI_INTR_EN_PRSNT_SENSE);
 	afi_writel(val, AFI_AFI_INTR_ENABLE);
 	afi_writel(0xffffffff, AFI_SM_INTR_ENABLE);
 
