@@ -106,9 +106,9 @@ static int tegra_simon_gpu_grading_cb(
 
 static int __init tegra_simon_init_gpu(void)
 {
+	int ret;
 	struct tegra_simon_grader *grader =
 		&simon_graders[TEGRA_SIMON_DOMAIN_GPU];
-	struct regulator *reg;
 
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
 
@@ -131,16 +131,14 @@ static int __init tegra_simon_init_gpu(void)
 		return -ENOENT;
 	}
 
-	reg = regulator_get(NULL, "vdd_gpu_simon");
-	if (IS_ERR(reg)) {
-		pr_err("%s: Failed to get vdd_%s regulator\n",
-		       __func__, grader->domain_name);
-		return PTR_ERR(reg);
-	}
-
 	grader->grading_condition_nb.notifier_call = tegra_simon_gpu_grading_cb;
-	regulator_register_notifier(reg, &grader->grading_condition_nb);
-	regulator_put(reg);
+	ret = tegra_dvfs_rail_register_notifier(
+		tegra_gpu_rail, &grader->grading_condition_nb);
+	if (ret) {
+		pr_err("%s: Failed to register %s dvfs rail notifier\n",
+		       __func__, grader->domain_name);
+		return ret;
+	}
 
 	return 0;
 }
