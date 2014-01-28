@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -21,7 +21,7 @@
 #define __TEGRA_EMC_H_
 
 #define TEGRA14_MAX_TABLE_ID_LEN	16
-#define TEGRA12_MAX_TABLE_ID_LEN	60
+#define TEGRA12_MAX_TABLE_ID_LEN	50
 
 #define TEGRA_EMC_MAX_FREQS 20
 
