@@ -646,6 +646,7 @@ static void ardbeg_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
+	struct board_info mainboard;
 	u8 dsi_instance;
 
 	panel = ardbeg_panel_configure(&board, &dsi_instance);
@@ -665,6 +666,10 @@ static void ardbeg_panel_select(void)
 					DSI_PANEL_BL_PWM_GPIO;
 				ardbeg_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
 			}
+
+			tegra_get_board_info(&mainboard);
+			if (mainboard.board_id == BOARD_P1761)
+				ardbeg_disp1_out.rotation = 180;
 		}
 
 		if (panel->init_fb_data)
