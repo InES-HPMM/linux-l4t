@@ -102,4 +102,25 @@ config SENSORS_CM3217
 	help
 	  Say Y here to enable the CM3217 Ambient Light Sensor.
 
+config LS_OF
+	tristate "Device Tree parsing for Light sensor specification details"
+	depends on OF
+	default n
+	help
+	  Say Y for helpers to retrieve the sensor specification details like
+	  vendor, power consumed, max range, resolution and integration.
+	  This information is common to most Ambient light sensors as well as
+	  proximity sensors. Hence, have common callbacks to retrive this
+	  information from the respective device tree nodes.
+
+config LS_SYSFS
+	tristate "IIO registration for sensor meta data"
+	depends on LS_OF
+	default n
+	help
+	  Say Y for to share sensor specification details to user space.
+	  The information is retrieved from device platform data. If you are
+	  using helpers from this file, make sure device's platform data
+	  contains all the required information.
+
 endmenu
