@@ -209,6 +209,14 @@ struct tegra210_audio_i2s_test_param {
 	unsigned int out_bps;
 };
 
+struct tegra210_audio_amixer_test_param {
+	int test_id;
+	int rxpath_id;
+	unsigned int act_th;
+	unsigned int deact_th;
+	unsigned int gain;
+};
+
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
 			const struct tegra_audio_in_config *)
 #define TEGRA_AUDIO_IN_GET_CONFIG	_IOR(TEGRA_AUDIO_MAGIC, 3, \
@@ -295,6 +303,8 @@ struct tegra210_audio_i2s_test_param {
 				    struct tegra210_audio_mbdrc_test_param *)
 #define TEGRA210_AUDIO_I2S_TEST_PARAM    _IOW(TEGRA_AUDIO_MAGIC, 79, \
 				struct tegra210_audio_i2s_test_param *)
+#define TEGRA210_AUDIO_AMIXER_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 80, \
+				    struct tegra210_audio_amixer_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
