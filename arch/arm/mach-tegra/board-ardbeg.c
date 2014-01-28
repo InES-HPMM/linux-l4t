@@ -871,7 +871,8 @@ static void ardbeg_modem_init(void)
 			if (board_info.board_id == BOARD_E1780)
 				tegra_set_wake_source(42, INT_USB2);
 			if (pmu_board_info.board_id == BOARD_E1736 ||
-				pmu_board_info.board_id == BOARD_E1769)
+				pmu_board_info.board_id == BOARD_E1769 ||
+				pmu_board_info.board_id == BOARD_E1936)
 				baseband_pdata.regulator_name = NULL;
 			platform_device_register(&icera_bruce_device);
 		}
