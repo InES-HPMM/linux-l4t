@@ -100,10 +100,30 @@ static int lc709203f_read_word(struct i2c_client *client, u8 reg)
 	return ret;
 }
 
+static int lc709203f_write_word(struct i2c_client *client, u8 reg, u16 value)
+{
+	struct lc709203f_chip *chip = i2c_get_clientdata(client);
+	int ret;
+
+	mutex_lock(&chip->mutex);
+	if (chip && chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -ENODEV;
+	}
+
+	ret = i2c_smbus_write_word_data(client, reg, value);
+	if (ret < 0)
+		dev_err(&client->dev, "err writing 0x%0x, %d\n" , reg, ret);
+
+	mutex_unlock(&chip->mutex);
+	return ret;
+}
+
 static void lc709203f_work(struct work_struct *work)
 {
 	struct lc709203f_chip *chip;
 	int val;
+	int temperature;
 
 	chip = container_of(work, struct lc709203f_chip, work.work);
 
@@ -141,6 +161,16 @@ static void lc709203f_work(struct work_struct *work)
 		power_supply_changed(&chip->battery);
 	}
 
+	if (chip->pdata->tz_name) {
+		val = battery_gauge_get_battery_temperature(chip->bg_dev,
+							&temperature);
+		if (val < 0)
+			dev_err(&chip->client->dev, "temp invalid\n");
+		else
+			lc709203f_write_word(chip->client, LC709203F_TEMPERATURE
+						, temperature * 10 + 2732);
+	}
+
 	schedule_delayed_work(&chip->work, LC709203F_DELAY);
 }
 
@@ -173,6 +203,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 	struct lc709203f_chip *chip = container_of(psy,
 				struct lc709203f_chip, battery);
 	int temperature;
+	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -254,6 +285,7 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 {
 	char const *pstr;
 	struct device_node *np = client->dev.of_node;
+	pdata->tz_name = NULL;
 
 	if (!of_property_read_string(np, "onsemi,tz-name", &pstr))
 		pdata->tz_name = pstr;
