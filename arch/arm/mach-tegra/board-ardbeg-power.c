@@ -333,7 +333,9 @@ int __init ardbeg_as3722_regulator_init(void)
 	as3722_ldo3_reg_pdata.disable_tracking_suspend = true;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1792) {
+	if ((board_info.board_id == BOARD_E1792) ||
+	    (board_info.board_id == BOARD_E1971) ||
+	    (board_info.board_id == BOARD_E1973)) {
 		/*Default DDR voltage is 1.35V but lpddr3 supports 1.2V*/
 		as3722_sd2_reg_idata.constraints.min_uV = 1200000;
 		as3722_sd2_reg_idata.constraints.max_uV = 1200000;
@@ -586,7 +588,9 @@ int __init ardbeg_tps65913_regulator_init(void)
 	reg_idata_ti913_smps123.constraints.init_uV = 900000;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1792) {
+	if ((board_info.board_id == BOARD_E1792) ||
+	    (board_info.board_id == BOARD_E1971) ||
+	    (board_info.board_id == BOARD_E1973)) {
 		/*Default DDR voltage is 1.35V but lpddr3 supports 1.2V*/
 		reg_idata_ti913_smps7.constraints.min_uV = 1200000;
 		reg_idata_ti913_smps7.constraints.max_uV = 1200000;
