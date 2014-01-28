@@ -492,7 +492,8 @@ static void __init register_devices_e1784_a00(void)
 int __init tn8_p1761_pmon_init(void)
 {
 	struct board_info bi;
-	int ret;
+	int ret = 0;
+
 	tegra_get_board_info(&bi);
 
 	if (bi.board_id == BOARD_E1784)
