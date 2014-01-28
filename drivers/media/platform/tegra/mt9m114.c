@@ -736,7 +736,7 @@ static long mt9m114_ioctl(struct file *file,
 		err = mt9m114_set_mode(info, &mode);
 		break;
 	}
-	case MT9M114_SENSOR_IOCTL_SET_WHITE_BALANCE:
+	case _IOC_NR(MT9M114_SENSOR_IOCTL_SET_WHITE_BALANCE):
 	{
 		u8 whitebalance;
 
@@ -776,7 +776,7 @@ static long mt9m114_ioctl(struct file *file,
 		return 0;
 	}
 
-	case MT9M114_SENSOR_IOCTL_SET_EV:
+	case _IOC_NR(MT9M114_SENSOR_IOCTL_SET_EV):
 	{
 		short ev;
 
