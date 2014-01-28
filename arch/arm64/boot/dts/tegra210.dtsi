@@ -267,6 +267,13 @@
 			status = "disabled";
 		};
 
+		amixer@702dbb00 {
+			compatible = "nvidia,tegra210-amixer";
+			reg = <0x702dbb00 0x800>;
+			nvidia,ahub-amixer-id = <0>;
+			status = "disabled";
+		};
+
 		i2s@702d1000 {
 			compatible = "nvidia,tegra210-i2s";
 			reg = <0x702d1000 0x100>;

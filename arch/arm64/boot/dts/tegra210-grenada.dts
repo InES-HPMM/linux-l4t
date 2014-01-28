@@ -101,6 +101,10 @@
 			status = "okay";
 		};
 
+		amixer@702dbb00 {
+			status = "okay";
+		};
+
 		i2s@702d1000 {
 			status = "okay";
 		};
