@@ -1633,6 +1633,21 @@ struct platform_device tegra_mbdrc_device1 = {
 	.num_resources = ARRAY_SIZE(tegra_mbdrc_resource1),
 };
 
+static struct resource tegra_amixer_resource[] = {
+	[0] = {
+		.start = TEGRA_MIXER_BASE,
+		.end = TEGRA_MIXER_BASE + TEGRA_MIXER_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_amixer_device = {
+	.name = "tegra210-amixer",
+	.id = 0,
+	.resource = tegra_amixer_resource,
+	.num_resources = ARRAY_SIZE(tegra_amixer_resource),
+};
+
 static struct resource tegra_sfc_resource0[] = {
 	[0] = {
 		.start = TEGRA_SFC1_BASE,

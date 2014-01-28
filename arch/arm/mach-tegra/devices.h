@@ -132,6 +132,7 @@ extern struct platform_device tegra_i2s_device3;
 extern struct platform_device tegra_i2s_device4;
 extern struct platform_device tegra_adma_device;
 extern struct platform_device tegra_admaif_device;
+extern struct platform_device tegra_amixer_device;
 #endif
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_gart_device;
