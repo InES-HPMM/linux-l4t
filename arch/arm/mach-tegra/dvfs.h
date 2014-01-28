@@ -249,6 +249,10 @@ void tegra_dvfs_rail_off(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_on(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_pause(struct dvfs_rail *rail, ktime_t delta, bool on);
 int tegra_dvfs_rail_set_mode(struct dvfs_rail *rail, unsigned int mode);
+int tegra_dvfs_rail_register_notifier(struct dvfs_rail *rail,
+				      struct notifier_block *nb);
+int tegra_dvfs_rail_unregister_notifier(struct dvfs_rail *rail,
+					struct notifier_block *nb);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
 
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);

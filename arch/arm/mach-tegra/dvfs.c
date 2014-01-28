@@ -1471,6 +1471,24 @@ int tegra_dvfs_rail_set_mode(struct dvfs_rail *rail, unsigned int mode)
 	return ret;
 }
 
+int tegra_dvfs_rail_register_notifier(struct dvfs_rail *rail,
+				      struct notifier_block *nb)
+{
+	if (!rail || !rail->reg)
+		return -ENOENT;
+
+	return regulator_register_notifier(rail->reg, nb);
+}
+
+int tegra_dvfs_rail_unregister_notifier(struct dvfs_rail *rail,
+					struct notifier_block *nb)
+{
+	if (!rail || !rail->reg)
+		return -ENOENT;
+
+	return regulator_unregister_notifier(rail->reg, nb);
+}
+
 bool tegra_dvfs_rail_updating(struct clk *clk)
 {
 	return (!clk ? false :
