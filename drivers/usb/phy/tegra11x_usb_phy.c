@@ -1,7 +1,7 @@
 /*
  * drivers/usb/phy/tegra11x_usb_phy.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1268,6 +1268,19 @@ unsigned long utmi_phy_get_dp_dm_status(struct tegra_usb_phy *phy,
 	return ret;
 }
 
+static void disable_charger_detection(void __iomem *base)
+{
+	unsigned long val;
+
+	/* Disable charger detection logic */
+	val = readl(base + UTMIP_BAT_CHRG_CFG0);
+	val &= ~(UTMIP_OP_SRC_EN | UTMIP_ON_SINK_EN);
+	writel(val, base + UTMIP_BAT_CHRG_CFG0);
+
+	/* Delay of 40 ms before we pull the D+ as per battery charger spec */
+	msleep(TDPSRC_CON_MS);
+}
+
 /*
  * Per Battery Charging Specification 1.2  section 3.2.3:
  * We check Data Contact Detect (DCD) before we check the USB cable type.
@@ -1317,6 +1330,18 @@ static bool utmi_phy_charger_detect(struct tegra_usb_phy *phy)
 		return false;
 	}
 
+	/* ensure we start from an initial state */
+	writel(0, base + UTMIP_BAT_CHRG_CFG0);
+	utmi_phy_set_dp_dm_pull_up_down(phy, 0);
+
+	/* log initial values */
+	DBG("%s(%d) inst:[%d], UTMIP_BAT_CHRG_CFG0 = %08X\n",
+		__func__, __LINE__,
+		phy->inst, readl(base + UTMIP_BAT_CHRG_CFG0));
+	DBG("%s(%d) inst:[%d], UTMIP_MISC_CFG0 = %08X\n",
+		__func__, __LINE__,
+		phy->inst, readl(base + UTMIP_MISC_CFG0));
+
 	/* DCD timeout max value is 900mS */
 	dcd_timeout_ms = 0;
 	while (dcd_timeout_ms < 900) {
@@ -1350,17 +1375,145 @@ static bool utmi_phy_charger_detect(struct tegra_usb_phy *phy)
 	val = readl(base + USB_PHY_VBUS_WAKEUP_ID);
 	if (val & VDAT_DET_STS)
 		status = true;
-	else
+	else {
 		status = false;
+		disable_charger_detection(base);
+	}
+	DBG("%s(%d) inst:[%d] DONE Status = %d\n",
+		__func__, __LINE__, phy->inst, status);
+	return status;
+}
 
-	/* Disable charger detection logic */
-	val = readl(base + UTMIP_BAT_CHRG_CFG0);
-	val &= ~(UTMIP_OP_SRC_EN | UTMIP_ON_SINK_EN);
-	writel(val, base + UTMIP_BAT_CHRG_CFG0);
+static bool utmi_phy_qc2_charger_detect(struct tegra_usb_phy *phy,
+		int max_voltage)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+	int status;
+	int qc2_timeout_ms;
+	int vbus_stat = 0;
+#ifdef QC_MEASURE_VOLTAGES
+	int timeout;
+#endif
 
-	/* Delay of 40 ms before we pull the D+ as per battery charger spec */
-	msleep(TDPSRC_CON_MS);
+	DBG("%s(%d) inst:[%d] max_voltage = %d\n",
+		__func__, __LINE__, phy->inst, max_voltage);
 
+	status = false;
+
+	/* no need to detect qc2 if operating at 5V */
+	switch (max_voltage) {
+	case TEGRA_USB_QC2_9V:
+	case TEGRA_USB_QC2_12V:
+	case TEGRA_USB_QC2_20V:
+		break;
+
+	case TEGRA_USB_QC2_5V:
+	default:
+		disable_charger_detection(base);
+		return status;
+	}
+
+	/* if vbus drops we are connected to quick charge 2 */
+	qc2_timeout_ms = 0;
+	while (qc2_timeout_ms < 2000) {
+		usleep_range(1000, 1200);
+		qc2_timeout_ms += 1;
+		val = readl(base + USB_PHY_VBUS_WAKEUP_ID);
+		if (!(val & VDAT_DET_STS)) {
+			vbus_stat = 1;
+			break;
+		}
+	}
+
+	if (vbus_stat) {
+		unsigned long org_flags;
+
+		status = true;
+
+		DBG("%s(%d) inst:[%d], QC2 DETECTED !!!",
+			__func__, __LINE__, phy->inst);
+
+		switch (max_voltage) {
+		case TEGRA_USB_QC2_9V:
+			/* Set the input voltage to 9V */
+			/* D+ 3.3v -- D- 0.6v */
+			DBG("%s(%d) inst:[%d], QC 9V D+ 3.3v D- 0.6v",
+				__func__, __LINE__, phy->inst);
+			org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+				FORCE_PULLUP_DP   | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
+			val = readl(base + UTMIP_BAT_CHRG_CFG0);
+			val &= ~(UTMIP_OP_SINK_EN | UTMIP_ON_SINK_EN);
+			val |= UTMIP_ON_SRC_EN;
+			val &= ~UTMIP_OP_SRC_EN;
+			writel(val, base + UTMIP_BAT_CHRG_CFG0);
+			break;
+
+		case TEGRA_USB_QC2_12V:
+			/* 0.6v v on D+ and D- */
+			DBG("%s(%d) inst:[%d], QC 12V D+ 0.6v D- 0.6v",
+				__func__, __LINE__, phy->inst);
+			org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
+			val = readl(base + UTMIP_BAT_CHRG_CFG0);
+			val &= ~(UTMIP_OP_SINK_EN | UTMIP_ON_SINK_EN);
+			val |= (UTMIP_OP_SRC_EN | UTMIP_ON_SRC_EN);
+			writel(val, base + UTMIP_BAT_CHRG_CFG0);
+			break;
+
+		case TEGRA_USB_QC2_20V:
+			/* 3.3 v on D+ and D- */
+			DBG("%s(%d) inst:[%d], QC 20V D+ 3.3v D- 3.3v",
+				__func__, __LINE__, phy->inst);
+			org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+				FORCE_PULLUP_DP   | FORCE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
+			val = readl(base + UTMIP_BAT_CHRG_CFG0);
+			val &= ~(UTMIP_OP_SINK_EN | UTMIP_ON_SINK_EN);
+			val &= ~(UTMIP_OP_SRC_EN | UTMIP_ON_SRC_EN);
+			writel(val, base + UTMIP_BAT_CHRG_CFG0);
+			break;
+
+		case TEGRA_USB_QC2_5V:
+		default:
+			DBG("%s(%d) inst:[%d], QC 5V D+ 0.6v D- GND",
+				__func__, __LINE__, phy->inst);
+			org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | FORCE_PULLDN_DM);
+			val = readl(base + UTMIP_BAT_CHRG_CFG0);
+			val &= ~(UTMIP_OP_SINK_EN | UTMIP_ON_SINK_EN);
+			val |= UTMIP_OP_SRC_EN;
+			val &= ~UTMIP_ON_SRC_EN;
+			writel(val, base + UTMIP_BAT_CHRG_CFG0);
+			break;
+		}
+
+#ifdef QC_MEASURE_VOLTAGES
+		timeout = 60;
+		DBG("%s(%d) MEASURE VOLTAGES -- you have %d seconds",
+			__func__, __LINE__, timeout);
+		while (timeout-- > 0) {
+			DBG("%s(%d) COUNT = %d",
+				__func__, __LINE__, timeout);
+			ssleep(1);
+		}
+#endif
+	}
+
+
+	DBG("%s(%d) inst:[%d], UTMIP_BAT_CHRG_CFG0 = %08X\n",
+		__func__, __LINE__,
+		phy->inst, readl(base + UTMIP_BAT_CHRG_CFG0));
+	DBG("%s(%d) inst:[%d], UTMIP_MISC_CFG0 = %08X\n",
+		__func__, __LINE__,
+		phy->inst, readl(base + UTMIP_MISC_CFG0));
+
+	disable_charger_detection(base);
+	DBG("%s(%d) inst:[%d] DONE Status = %d\n",
+		__func__, __LINE__, phy->inst, status);
 	return status;
 }
 
@@ -2116,6 +2269,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.pre_resume = utmi_phy_pre_resume,
 	.resume	= utmi_phy_resume,
 	.charger_detect = utmi_phy_charger_detect,
+	.qc2_charger_detect = utmi_phy_qc2_charger_detect,
 	.nv_charger_detect = utmi_phy_nv_charger_detect,
 	.apple_charger_1000ma_detect = utmi_phy_apple_charger_1000ma_detect,
 	.apple_charger_2000ma_detect = utmi_phy_apple_charger_2000ma_detect,
