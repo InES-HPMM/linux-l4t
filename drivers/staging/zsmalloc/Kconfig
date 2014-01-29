@@ -1,6 +1,6 @@
 config ZSMALLOC
 	bool "Memory allocator for compressed pages"
-	default n
+	default y
 	help
 	  zsmalloc is a slab-based memory allocator designed to store
 	  compressed RAM pages.  zsmalloc uses virtual memory mapping
