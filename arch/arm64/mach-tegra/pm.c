@@ -102,6 +102,7 @@ static RAW_NOTIFIER_HEAD(tegra_pm_chain_head);
 
 static struct pmc_pm_data *pmc_pm_data;
 
+bool tegra_is_dpd_mode = false;
 int tegra_register_pm_notifier(struct notifier_block *nb)
 {
 	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
@@ -119,6 +120,15 @@ static int tegra_pm_notifier_call_chain(unsigned int val)
 	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
 
 	return notifier_to_errno(ret);
+}
+
+bool tegra_dvfs_is_dfll_bypass(void)
+{
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+	return true;
+#else
+	return false;
+#endif
 }
 
 #ifdef CONFIG_ARM_ARCH_TIMER
