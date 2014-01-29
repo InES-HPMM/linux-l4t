@@ -51,7 +51,7 @@ static struct rt5639_init_reg init_list[] = {
     {RT5639_PRIV_INDEX  ,0x001B},   //MX6A
     {RT5639_PRIV_DATA   ,0x0200},   //MX6C
 
-	{RT5639_GEN_CTRL1	, 0x3f01},/* fa[12:13] = 1'b;
+	{RT5639_GEN_CTRL1	, 0x3b01},/* fa[12:13] = 1'b;
 					     fa[8~11]=1; fa[0]=1 */
 	{RT5639_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b */
 	{RT5639_MICBIAS		, 0x3030},/* 93[5:4] = 11'b */
@@ -520,7 +520,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5639_PWR_ANLG1, 0xa814);
 			snd_soc_write(codec, RT5639_MICBIAS, 0x3830);
-			snd_soc_write(codec, RT5639_GEN_CTRL1 , 0x3F01);
+			snd_soc_write(codec, RT5639_GEN_CTRL1 , 0x3b01);
 		    snd_soc_update_bits(codec, RT5639_GLB_CLK,
 				RT5639_SCLK_SRC_MASK,
 				0x3 << RT5639_SCLK_SRC_SFT);
@@ -2978,7 +2978,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 			snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2);
-			snd_soc_write(codec, RT5639_GEN_CTRL1, 0x3F01);
+			snd_soc_write(codec, RT5639_GEN_CTRL1, 0x3b01);
 			codec->cache_only = false;
 			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
@@ -2989,7 +2989,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_OFF:
 		snd_soc_write(codec, RT5639_DEPOP_M1, 0x0004);
 		snd_soc_write(codec, RT5639_DEPOP_M2, 0x1100);
-		snd_soc_write(codec, RT5639_GEN_CTRL1, 0x3F00);
+		snd_soc_write(codec, RT5639_GEN_CTRL1, 0x3b01);
 		snd_soc_write(codec, RT5639_PWR_DIG1, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_DIG2, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_VOL, 0x0000);
