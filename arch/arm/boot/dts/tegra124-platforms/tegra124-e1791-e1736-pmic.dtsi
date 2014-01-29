@@ -119,7 +119,7 @@
 				regulators {
 					smps123 {
 						regulator-name = "vdd-cpu";
-						regulator-min-microvolt = <900000>;
+						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-always-on;
 						regulator-boot-on;
