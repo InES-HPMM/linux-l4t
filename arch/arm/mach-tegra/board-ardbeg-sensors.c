@@ -1207,7 +1207,6 @@ static struct therm_est_data skin_data = {
 	.tc1 = 10,
 	.tc2 = 1,
 	.tzp = &skin_tzp,
-	.use_activator = 1,
 };
 
 static struct throttle_table skin_throttle_table[] = {
@@ -1317,10 +1316,12 @@ static int __init ardbeg_skin_init(void)
 			skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
 			skin_data.devs = tn8ffd_skin_devs;
 			skin_data.toffset = 4034;
+			skin_data.use_activator = 0;
 		} else {
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
 			skin_data.toffset = 9793;
+			skin_data.use_activator = 1;
 		}
 
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
