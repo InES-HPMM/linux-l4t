@@ -6703,6 +6703,16 @@ static struct clk_mux_sel mux_pllp_pllp_out3_clkm_clk32k_plla[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_out3_pllc_c2_clkm_pllp_pllc4[] = {
+	{ .input = &tegra_pll_p_out3, .value = 0},
+	{ .input = &tegra_pll_c, .value = 1},
+	{ .input = &tegra_pll_c2, .value = 2},
+	{ .input = &tegra_clk_m, .value = 3},
+	{ .input = &tegra_pll_p, .value = 4},
+	{ .input = &tegra_pll_c4, .value = 5},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllp_pllc_clk32_clkm[] = {
 	{.input = &tegra_pll_p,     .value = 0},
 	{.input = &tegra_pll_c,     .value = 2},
@@ -7206,6 +7216,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sdmmc2",	"sdhci-tegra.1",	NULL,	9,	0x154,	200000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	200000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc_legacy",	"sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_pllc_c2_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("vcp",	"tegra-avp",		"vcp",	29,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("bsea",	"tegra-avp",		"bsea",	62,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0),
@@ -7224,6 +7235,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartb",	"serial-tegra.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartape",	"uartape",		NULL,	212,	0x710,	50000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_NO_RESET | PERIPH_ON_APB),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	500000000, mux_pllc_pllp_plla_pllc2_c3_clkm,	MUX | DIV_U71),
 #endif
