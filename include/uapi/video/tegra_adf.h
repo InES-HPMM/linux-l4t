@@ -81,7 +81,7 @@ struct tegra_adf_flip_windowattr {
 	__u32	out_h;
 	__u32	z;
 	__u32	swap_interval;
-	struct timespec timestamp;
+	__s64	timestamp_ns;
 	__u32	flags;
 	__u8	global_alpha; /* requires TEGRA_ADF_FLIP_FLAG_GLOBAL_ALPHA */
 	/* log2(blockheight) for blocklinear format */

@@ -570,8 +570,6 @@ static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
 		const struct tegra_adf_flip_windowattr *attr,
 		struct adf_buffer *buf, struct adf_buffer_mapping *mapping)
 {
-	s64 timestamp_ns;
-
 	if (!buf) {
 		win->flags = 0;
 		return;
@@ -602,9 +600,7 @@ static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
 #endif
 
 	if (tegra_platform_is_silicon()) {
-		timestamp_ns = timespec_to_ns(&attr->timestamp);
-
-		dev_WARN_ONCE(&adf_info->base.base.dev, timestamp_ns,
+		dev_WARN_ONCE(&adf_info->base.base.dev, attr->timestamp_ns,
 				"timestamping not implemented\n");
 		/* TODO: implement timestamping */
 #if 0
