@@ -39,6 +39,7 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-powermon.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sata.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-power.o
+obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-p1761-powermon.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
