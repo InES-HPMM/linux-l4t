@@ -112,7 +112,7 @@ static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
 
 struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.max_charge_current_mA = 3000,
-	.charging_term_current_mA = 100,
+	.termination_current_limit_mA = 100,
 	.consumer_supplies = bq2419x_batt_supply,
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
 	.wdt_timeout    = 40,
