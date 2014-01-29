@@ -1322,6 +1322,13 @@ static struct core_bus_rates_table tegra12_gpu_rates_sysfs = {
 		.attr = {.name = "gpu_available_rates", .mode = 0444} },
 };
 
+static struct core_bus_limit_table tegra12_emc_floor_sysfs = {
+	.limit_clk_name = "floor.profile.emc",
+	.refcnt_attr = {.attr = {.name = "emc_floor_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "emc_floor_rate", .mode = 0644} },
+	.pm_qos_class = PM_QOS_EMC_FREQ_MIN,
+};
+
 static struct core_bus_rates_table tegra12_emc_rates_sysfs = {
 	.bus_clk_name = "emc",
 	.rate_attr = {.attr = {.name = "emc_rate", .mode = 0444} },
@@ -1410,6 +1417,16 @@ static int __init tegra12_dvfs_init_core_cap(void)
 		kobject_del(emc_kobj);
 		return 0;
 	}
+
+	ret = tegra_init_shared_bus_floor(&tegra12_emc_floor_sysfs,
+					  1, emc_kobj);
+	if (ret) {
+		pr_err("tegra12_dvfs: failed to init emc floor interface (%d)\n",
+		       ret);
+		kobject_del(emc_kobj);
+		return 0;
+	}
+
 	pr_info("tegra dvfs: tegra sysfs gpu & emc interface is initialized\n");
 
 	return 0;
