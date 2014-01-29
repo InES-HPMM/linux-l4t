@@ -20,3 +20,4 @@ obj-$(CONFIG_TSL2583)		+= tsl2583.o
 obj-$(CONFIG_SENSORS_CM3217)	+= cm3217.o
 obj-$(CONFIG_LS_SYSFS)	+= ls_sysfs.o
 obj-$(CONFIG_LS_OF)	+= ls_dt.o
+obj-$(CONFIG_SENSORS_IQS253)	+= iqs253.o
