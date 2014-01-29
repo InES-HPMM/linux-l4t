@@ -133,7 +133,6 @@ struct bq2419x_charger_platform_data {
 	int ir_compensation_voltage_mV;
 	int thermal_regulation_threshold_degC;
 	int max_charge_current_mA;
-	int charging_term_current_mA;
 	int wdt_timeout;
 	int rtc_alarm_time;
 	int num_consumer_supplies;
