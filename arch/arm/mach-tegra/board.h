@@ -129,14 +129,6 @@ int get_sd_uart_port_id(void);
 void set_sd_uart_port_id(int);
 int __init tegra_register_fuse(void);
 
-#ifdef CONFIG_PSTORE_RAM
-void __init tegra_reserve_ramoops_memory(unsigned long ram_console_size);
-#else
-static inline void __init
-	tegra_reserve_ramoops_memory(unsigned long ram_console_size)
-{}
-#endif
-
 extern phys_addr_t tegra_bootloader_fb_start;
 extern phys_addr_t tegra_bootloader_fb_size;
 extern phys_addr_t tegra_bootloader_fb2_start;

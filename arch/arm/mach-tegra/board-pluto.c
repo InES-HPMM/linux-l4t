@@ -1260,10 +1260,6 @@ static void __init tegra_pluto_late_init(void)
 	tegra_register_fuse();
 }
 
-static void __init pluto_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
 
 static void __init tegra_pluto_dt_init(void)
 {
@@ -1284,7 +1280,6 @@ static void __init tegra_pluto_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_16M, SZ_4M);
 #endif
-	pluto_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const pluto_dt_board_compat[] = {

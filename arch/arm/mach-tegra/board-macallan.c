@@ -573,11 +573,6 @@ static void __init tegra_macallan_late_init(void)
 	tegra_register_fuse();
 }
 
-static void __init macallan_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
-
 static void __init tegra_macallan_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
@@ -604,7 +599,6 @@ static void __init tegra_macallan_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_16M + SZ_2M);
 #endif
-	macallan_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const macallan_dt_board_compat[] = {

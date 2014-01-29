@@ -704,11 +704,6 @@ static void __init tegra_dalmore_late_init(void)
 	tegra_register_fuse();
 }
 
-static void __init dalmore_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
-
 static void __init tegra_dalmore_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
@@ -731,7 +726,6 @@ static void __init tegra_dalmore_reserve(void)
 #else
 	tegra_reserve(SZ_512M, SZ_16M + SZ_2M, SZ_4M);
 #endif
-	dalmore_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const dalmore_dt_board_compat[] = {

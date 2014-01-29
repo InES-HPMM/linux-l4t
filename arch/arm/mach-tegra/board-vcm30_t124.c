@@ -546,11 +546,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_panel_init();
 }
 
-static void __init vcm30_t124_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
-
 static void __init tegra_vcm30_t124_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
@@ -574,7 +569,6 @@ static void __init tegra_vcm30_t124_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_16M + SZ_2M);
 #endif
-	vcm30_t124_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const vcm30_t124_dt_board_compat[] = {

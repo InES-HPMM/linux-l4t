@@ -618,11 +618,6 @@ static void __init tegra_pismo_init(void)
 	pismo_soctherm_init();
 }
 
-static void __init pismo_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
-
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata pismo_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
@@ -662,7 +657,6 @@ static void __init tegra_pismo_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
 #endif
-	pismo_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const pismo_dt_board_compat[] = {

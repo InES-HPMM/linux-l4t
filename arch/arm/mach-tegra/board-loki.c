@@ -841,11 +841,6 @@ static void __init tegra_loki_late_init(void)
 #endif
 }
 
-static void __init loki_ramconsole_reserve(unsigned long size)
-{
-	tegra_reserve_ramoops_memory(SZ_1M);
-}
-
 static void __init tegra_loki_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
@@ -870,7 +865,6 @@ static void __init tegra_loki_reserve(void)
 #else
 	tegra_reserve(SZ_1G, SZ_16M + SZ_2M, SZ_4M);
 #endif
-	loki_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const loki_dt_board_compat[] = {
