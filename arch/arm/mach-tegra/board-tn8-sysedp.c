@@ -91,6 +91,7 @@ static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
 	.corecap_size = td575d_sysedp_corecap_sz,
 	.core_gain = 100,
 	.init_req_watts = 20000,
+	.pthrot_ratio = 75,
 };
 
 static struct platform_device tn8_sysedp_dynamic_capping = {
