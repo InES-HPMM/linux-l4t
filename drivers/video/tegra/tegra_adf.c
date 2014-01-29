@@ -301,10 +301,15 @@ const u32 tegra_adf_formats[] = {
 	DRM_FORMAT_NV21,
 };
 
+static inline int test_bit_u32(int nr, const u32 *addr)
+{
+	return 1UL & (addr[nr / 32] >> (nr & 31));
+}
+
 static int tegra_adf_check_windowattr(struct tegra_adf_info *adf_info,
 		const struct tegra_adf_flip_windowattr *attr, u32 fourcc)
 {
-	long *addr;
+	u32 *addr;
 	struct tegra_dc *dc = adf_info->dc;
 	struct device *dev = &adf_info->base.base.dev;
 	u8 fmt = tegra_adf_fourcc_to_dc_fmt(fourcc);
@@ -317,7 +322,7 @@ static int tegra_adf_check_windowattr(struct tegra_adf_info *adf_info,
 		goto fail;
 	}
 	/* Check the window format */
-	if (!test_bit(fmt, addr)) {
+	if (!test_bit_u32(fmt, addr)) {
 		dev_err(dev,
 			"Color format of window %d is invalid.\n",
 			attr->win_index);
@@ -385,7 +390,7 @@ static int tegra_adf_sanitize_flip_args(struct tegra_adf_info *adf_info,
 
 		if (buf_index >= 0) {
 			if (buf_index >= cfg->n_bufs) {
-				dev_err(dev, "invalid buffer index %d (n_bufs = %u)\n",
+				dev_err(dev, "invalid buffer index %d (n_bufs = %zu)\n",
 						buf_index, cfg->n_bufs);
 				return -EINVAL;
 			}
@@ -459,7 +464,7 @@ int tegra_adf_dev_validate(struct adf_device *dev, struct adf_post *cfg,
 	int ret = 0;
 
 	if (cfg->custom_data_size < custom_data_size) {
-		dev_err(dev->dev, "custom data size too small (%u < %u)\n",
+		dev_err(dev->dev, "custom data size too small (%zu < %zu)\n",
 				cfg->custom_data_size, custom_data_size);
 		return -EINVAL;
 	}
@@ -469,7 +474,7 @@ int tegra_adf_dev_validate(struct adf_device *dev, struct adf_post *cfg,
 
 	custom_data_size += win_num * sizeof(win[0]);
 	if (cfg->custom_data_size != custom_data_size) {
-		dev_err(dev->dev, "expected %u bytes of custom data for %u windows, received %u\n",
+		dev_err(dev->dev, "expected %zu bytes of custom data for %u windows, received %zu\n",
 				custom_data_size, args->win_num,
 				cfg->custom_data_size);
 		return -EINVAL;
