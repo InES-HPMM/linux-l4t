@@ -714,6 +714,8 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	tspi->cur_rx_pos = 0;
 	tspi->cur_tx_pos = 0;
 	tspi->curr_xfer = t;
+	tspi->tx_status = 0;
+	tspi->rx_status = 0;
 	total_fifo_words = tegra_spi_calculate_curr_xfer_param(spi, tspi, t);
 
 	if (is_first_of_msg) {
@@ -1178,6 +1180,12 @@ static irqreturn_t tegra_spi_isr(int irq, void *context_data)
 	if (tspi->cur_direction & DATA_DIR_RX)
 		tspi->rx_status = tspi->status_reg &
 					(SPI_RX_FIFO_OVF | SPI_RX_FIFO_UNF);
+
+	if (!(tspi->cur_direction & DATA_DIR_TX) &&
+			!(tspi->cur_direction & DATA_DIR_RX))
+		dev_err(tspi->dev, "spurious interrupt, status_reg = 0x%x\n",
+				tspi->status_reg);
+
 	tegra_spi_clear_status(tspi);
 
 	return IRQ_WAKE_THREAD;
