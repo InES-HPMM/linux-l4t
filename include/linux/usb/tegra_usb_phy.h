@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2010 Google, Inc.
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -93,6 +93,14 @@ bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy);
  * if compliance charger is detected then returns true else false
  */
 bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy);
+
+/**
+ * Indicates whether qc2 charger is connected or not
+ * if QuickCharge 2 DCP returns true
+ * if standard CDP/DCP returns false
+ */
+bool tegra_usb_phy_qc2_charger_detected(struct tegra_usb_phy *phy,
+		int max_voltage);
 
 /**
  * Indicates whether nvidia proprietary charger is connected or not
