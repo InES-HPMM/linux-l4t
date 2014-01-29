@@ -831,6 +831,10 @@ static struct platform_device tegra_loki_mcu_debugger = {
 };
 static void __init tegra_loki_mcu_debugger_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	if (board_info.fab >= 0xa1)
+		mcu_init_data.gpio_c2ck = TEGRA_GPIO_PQ7;
 	platform_device_register(&tegra_loki_mcu_debugger);
 }
 #endif
