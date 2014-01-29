@@ -1,3 +1,5 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
 / {
 	i2c@7000c000 {
 		mpu6515@69 {
@@ -28,6 +30,22 @@
 			compatible = "maxim,max44006";
 			reg = <0x44>;
 			vcc-supply = <&palmas_smps8>;
+		};
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+
+		iqs253@44 {
+			compatible = "azoteq,iqs253";
+			reg = <0x44>;
+			vddhi-supply = <&palmas_smps8>;
+			vendor = "Azoteq";
+			proximity,max-range = "2"; /* 2 cm */
+			proximity,integration-time = "16000000"; /* 16 msec */
+			proximity,power-consumed = "1.67"; /* approx mA */
+			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
+			wake-gpio = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
 		};
 	};
 };
