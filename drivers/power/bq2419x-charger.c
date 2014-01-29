@@ -71,6 +71,7 @@ static const unsigned int bq2419x_maxcharge_voltage_lookup[] = {
 #define BQ2419X_CHARGE_ICHG_OFFSET	512
 #define BQ2419X_PRE_CHG_IPRECHG_OFFSET	128
 #define BQ2419X_PRE_CHG_TERM_OFFSET	128
+#define BQ2419X_CHARGE_VOLTAGE_OFFSET	3504
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -122,6 +123,7 @@ struct bq2419x_chip {
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
 	struct bq2419x_reg_info		ir_comp_therm;
+	struct bq2419x_reg_info		chg_voltage_control;
 };
 
 static inline int convert_to_reg(int x)
@@ -153,11 +155,12 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 	if (bq2419x->battery_presense) {
 		dev_info(bq2419x->dev, "Charging enabled\n");
 		/* set default Charge regulation voltage */
-		ret = regmap_write(bq2419x->regmap, BQ2419X_VOLT_CTRL_REG,
-				BQ2419x_DEFAULT_CHARGE_VOLTAGE);
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_VOLT_CTRL_REG,
+			bq2419x->chg_voltage_control.mask,
+			bq2419x->chg_voltage_control.val);
 		if (ret < 0) {
 			dev_err(bq2419x->dev,
-				"VOLT_CTRL_REG write failed %d\n", ret);
+				"VOLT_CTRL_REG update failed %d\n", ret);
 			return ret;
 		}
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
@@ -230,7 +233,8 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 	int ir_compensation_resistor;
 	int ir_compensation_voltage;
 	int thermal_regulation_threshold;
-	int vindpm, ichg, iprechg, iterm, bat_comp, vclamp, treg;
+	int charge_voltage_limit;
+	int vindpm, ichg, iprechg, iterm, bat_comp, vclamp, treg, vreg;
 
 	if (chg_pdata) {
 		voltage_input = chg_pdata->input_voltage_limit_mV ?: 4200;
@@ -246,6 +250,8 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 			chg_pdata->ir_compensation_voltage_mV ?: 112;
 		thermal_regulation_threshold =
 			chg_pdata->thermal_regulation_threshold_degC ?: 100;
+		charge_voltage_limit =
+			chg_pdata->charge_voltage_limit_mV ?: 4208;
 	} else {
 		voltage_input = 4200;
 		fast_charge_current = 4544;
@@ -254,6 +260,7 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 		ir_compensation_resistor = 70;
 		ir_compensation_voltage = 112;
 		thermal_regulation_threshold = 100;
+		charge_voltage_limit = 4208;
 	}
 
 	vindpm = (voltage_input - BQ2419X_INPUT_VINDPM_OFFSET) / 80;
@@ -289,6 +296,10 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 	else
 		treg = 3;
 	bq2419x->ir_comp_therm.val |= treg;
+
+	vreg = (charge_voltage_limit - BQ2419X_CHARGE_VOLTAGE_OFFSET) / 16;
+	bq2419x->chg_voltage_control.mask = BQ2419X_CHG_VOLT_LIMIT_MASK;
+	bq2419x->chg_voltage_control.val = vreg << 2;
 	return 0;
 }
 
@@ -321,6 +332,12 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 		    bq2419x->ir_comp_therm.mask, bq2419x->ir_comp_therm.val);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "THERM_REG write failed: %d\n", ret);
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_VOLT_CTRL_REG,
+			bq2419x->chg_voltage_control.mask,
+			bq2419x->chg_voltage_control.val);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "VOLT_CTRL update failed: %d\n", ret);
 
 	return ret;
 }
@@ -1113,6 +1130,15 @@ static int bq2419x_charger_thermal_configure(
 	if (enable_charger) {
 		if (!enable_charg_half_current &&
 			bq2419x->charging_state != ENABLED_FULL_IBAT) {
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_VOLT_CTRL_REG,
+				bq2419x->chg_voltage_control.mask,
+				bq2419x->chg_voltage_control.val);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+					"VOLT_CTRL update failed %d\n", ret);
+				return ret;
+			}
 			bq2419x_full_current_enable(bq2419x);
 			battery_charging_status_update(bq2419x->bc_dev,
 				BATTERY_CHARGING);
@@ -1254,6 +1280,11 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		if (!ret)
 			bcharger_pdata->thermal_regulation_threshold_degC =
 						pval;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,charge-voltage-limit-millivolt", &pval);
+		if (!ret)
+			pdata->bcharger_pdata->charge_voltage_limit_mV = pval;
 
 		pdata->bcharger_pdata->disable_suspend_during_charging =
 				of_property_read_bool(batt_reg_node,

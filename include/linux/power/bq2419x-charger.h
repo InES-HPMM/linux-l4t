@@ -51,6 +51,8 @@
 #define BQ2419X_THERM_VCLAMP_MASK	0x1C
 #define BQ2419X_THERM_TREG_MASK		0x03
 
+#define BQ2419X_CHG_VOLT_LIMIT_MASK	0xFC
+
 #define BQ24190_IC_VER			0x40
 #define BQ24192_IC_VER			0x28
 #define BQ24192i_IC_VER			0x18
@@ -102,7 +104,6 @@
 #define BQ2419x_NVCHARGER_INPUT_VOL_SEL	0x40
 #define BQ2419x_DEFAULT_INPUT_VOL_SEL	0x30
 #define BQ2419x_VOLTAGE_CTRL_MASK	0xFC
-#define BQ2419x_DEFAULT_CHARGE_VOLTAGE	0xB2
 
 #define BQ2419x_CHARGING_CURRENT_STEP_DELAY_US	1000
 
@@ -132,6 +133,7 @@ struct bq2419x_charger_platform_data {
 	int ir_compensation_resister_ohm;
 	int ir_compensation_voltage_mV;
 	int thermal_regulation_threshold_degC;
+	int charge_voltage_limit_mV;
 	int max_charge_current_mA;
 	int wdt_timeout;
 	int rtc_alarm_time;
