@@ -343,18 +343,24 @@ struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 		106934,	558,	74315),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	136000,	1703,	186307,	1703,
 		186307,	890,	130617),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	100000,	2452,	275601,	2452,
+		275601,	1264,	193957),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	81600,	3090,	351666,	3090,
 		351666,	1583,	247913),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	204000,	468,	36031,	468,
 		36031,	253,	21264),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	136000,	1146,	117841,	1146,
 		117841,	589,	78993),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	100000,	1879,	206195,	1879,
+		206195,	953,	141341),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	81600,	2504,	281460,	2504,
 		281460,	1262,	194452),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	204000,	874,	85243,	874,
 		85243,	449,	57321),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	136000,	1554,	167210,	1554,
 		167210,	793,	115672),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	100000,	2290,	255734,	2290,
+		255734,	1164,	178691),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	81600,	2916,	331143,	2916,
 		331143,	1480,	232373),
 };
@@ -3512,7 +3518,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 	.t2t_coeffs = t12x_tuning_coeffs,
 	.t2t_coeffs_count = 3,
 	.tap_hole_coeffs = t12x_tap_hole_coeffs,
-	.tap_hole_coeffs_count = 9,
+	.tap_hole_coeffs_count = 12,
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
