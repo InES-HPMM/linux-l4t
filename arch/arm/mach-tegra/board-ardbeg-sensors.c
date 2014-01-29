@@ -923,10 +923,6 @@ static struct thermal_zone_params cpu_tzp = {
 	.governor_params = &cpu_pid_params,
 };
 
-static struct thermal_zone_params therm_est_activ_tzp = {
-	.governor_name = "step_wise"
-};
-
 static struct throttle_table cpu_throttle_table[] = {
 	/* CPU_THROT_LOW cannot be used by other than CPU */
 	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
@@ -1207,7 +1203,6 @@ static struct therm_est_data skin_data = {
 	.tc1 = 10,
 	.tc2 = 1,
 	.tzp = &skin_tzp,
-	.use_activator = 1,
 };
 
 static struct throttle_table skin_throttle_table[] = {
@@ -1341,21 +1336,10 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 
 	.sensors = {
 		[LOC] = {
-			.tzp = &therm_est_activ_tzp,
+			.tzp = NULL,
 			.shutdown_limit = 120, /* C */
 			.passive_delay = 1000,
-			.num_trips = 1,
-			.trips = {
-				{
-					.cdev_type = "therm_est_activ",
-					.trip_temp = 26000,
-					.trip_type = THERMAL_TRIP_ACTIVE,
-					.hysteresis = 1000,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-					.mask = 1,
-				},
-			},
+			.num_trips = 0,
 		},
 		[EXT] = {
 			.tzp = &cpu_tzp,
