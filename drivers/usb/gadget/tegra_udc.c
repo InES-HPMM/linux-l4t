@@ -132,6 +132,7 @@ static char *const tegra_udc_extcon_cable[] = {
 	[CONNECT_TYPE_NONE] = "",
 	[CONNECT_TYPE_SDP] = "USB",
 	[CONNECT_TYPE_DCP] = "TA",
+	[CONNECT_TYPE_DCP_QC2] = "QC2",
 	[CONNECT_TYPE_CDP] = "Charge-downstream",
 	[CONNECT_TYPE_NV_CHARGER] = "Fast-charger",
 	[CONNECT_TYPE_NON_STANDARD_CHARGER] = "Slow-charger",
@@ -1408,6 +1409,11 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = udc->dcp_current_limit;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
+	case CONNECT_TYPE_DCP_QC2:
+		dev_info(dev, "connected to QuickCharge 2(wall charger)\n");
+		max_ua = udc->qc2_current_limit;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
 	case CONNECT_TYPE_CDP:
 		dev_info(dev, "connected to CDP(1.5A)\n");
 		/*
@@ -1496,29 +1502,35 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 	udelay(10);
 
 	/* use D+ and D- status to check it is CDP or DCP */
-	portsc = udc_readl(udc, PORTSCX_REG_OFFSET) & PORTSCX_LINE_STATUS_BITS;
-	if (portsc == (PORTSCX_LINE_STATUS_DP_BIT | PORTSCX_LINE_STATUS_DM_BIT))
+	portsc = udc_readl(udc, PORTSCX_REG_OFFSET);
+	portsc &= PORTSCX_LINE_STATUS_BITS;
+	if (portsc == PORTSCX_LINE_STATUS_BITS)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP);
 	else if (portsc == PORTSCX_LINE_STATUS_DP_BIT)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
 	else
 		/*
-		 * If it take more 100mS between D+ pull high and read Line
-		 * Status, host might initiate the RESET, then we see both
-		 * line status as 0 (SE0). This really should not happen as we
-		 * disabled the kernel preemption before reaching here.
+		 * If it take more 100mS between D+ pull high and read
+		 * Line Status, host might initiate the RESET, then we
+		 * see both  line status as 0 (SE0). This really should
+		 * not happen as we disabled the kernel preemption
+		 * before reaching here.
 		 * Bug can be raised here but it is also safe to assume
 		 * as CDP.
 		 */
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
-
 	spin_unlock_irqrestore(&udc->lock, flags);
 }
 
 static int tegra_detect_cable_type(struct tegra_udc *udc)
 {
-	if (tegra_usb_phy_charger_detected(udc->phy))
-		tegra_detect_charging_type_is_cdp_or_dcp(udc);
+	if (tegra_usb_phy_charger_detected(udc->phy)) {
+		if (tegra_usb_phy_qc2_charger_detected(udc->phy,
+				udc->qc2_voltage))
+			tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP_QC2);
+		else
+			tegra_detect_charging_type_is_cdp_or_dcp(udc);
+	}
 #if !defined(CONFIG_ARCH_TEGRA_11x_SOC) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	else if (tegra_usb_phy_apple_500ma_charger_detected(udc->phy))
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_APPLE_500MA);
@@ -2856,6 +2868,13 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		else
 			udc->dcp_current_limit =
 				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
+
+		if (pdata->u_data.dev.qc2_current_limit_ma)
+			udc->qc2_current_limit =
+				pdata->u_data.dev.qc2_current_limit_ma * 1000;
+		else
+			udc->qc2_current_limit =
+				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
 	} else {
 		dev_err(&pdev->dev, "failed to get platform_data\n");
 		err = -ENODATA;
@@ -2976,6 +2995,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			"usb_bat_chg regulator not registered:"
 				" USB charging will not be enabled\n");
 		udc->vbus_reg = NULL;
+	} else {
+		udc->qc2_voltage = pdata->qc2_voltage;
+		DBG("%s: qc2_v(i) = %d, qc2_v(o) = %d\n",
+			__func__,
+			pdata->qc2_voltage, udc->qc2_voltage);
 	}
 
 	if (pdata->port_otg)
