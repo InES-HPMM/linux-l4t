@@ -224,6 +224,10 @@ ENDPROC(__cpu_setup)
 
 ENTRY(__cortexa57_cpu_setup)
 
+	mrs	x0, s3_1_c15_c2_0
+	/* enable non-cacheable streaming enhancement */
+	orr	x0, x0, #(1<<24)
+	msr	s3_1_c15_c2_0, x0
 	mrs	x0, s3_1_c11_c0_2
 	and	x1, x0, #7
 	cmp	x1, #2
