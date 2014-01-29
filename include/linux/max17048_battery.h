@@ -33,6 +33,7 @@ struct max17048_battery_model {
 struct max17048_platform_data {
 	struct max17048_battery_model *model_data;
 	const char *tz_name;
+	int threshold_soc;
 };
 #ifdef CONFIG_BATTERY_MAX17048
 extern void max17048_battery_status(int status);

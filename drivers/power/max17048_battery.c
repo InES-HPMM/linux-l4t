@@ -251,6 +251,9 @@ static void max17048_get_soc(struct i2c_client *client)
 			chip->soc = (uint16_t)soc >> 9;
 	}
 
+	chip->soc = battery_gauge_get_scaled_soc(chip->bg_dev,
+			chip->soc * 100, chip->pdata->threshold_soc);
+
 	if (chip->soc >= MAX17048_BATTERY_FULL && chip->charge_complete != 1)
 		chip->soc = MAX17048_BATTERY_FULL-1;
 
@@ -593,6 +596,10 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 
 	pdata->model_data = model_data;
 	of_property_read_string(np, "tz-name", &pdata->tz_name);
+
+	ret = of_property_read_u32(np, "maxim,kernel-threshold-soc", &val);
+	if (!ret)
+		pdata->threshold_soc = val;
 
 	ret = of_property_read_u32(np, "bits", &val);
 	if (ret < 0)
