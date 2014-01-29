@@ -225,8 +225,47 @@ static struct thermal_zone_device_ops gadc_thermal_ops = {
 	.set_trip_temp = gadc_thermal_set_trip_temp,
 };
 
-
 #ifdef CONFIG_DEBUG_FS
+static int iio_channel_name_show(struct seq_file *s, void *p)
+{
+	struct gadc_thermal_driver_data *drvdata = s->private;
+
+	seq_printf(s, "%s\n", drvdata->pdata->iio_channel_name);
+	return 0;
+}
+
+static int iio_channel_name_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, iio_channel_name_show, inode->i_private);
+}
+
+static const struct file_operations iio_channel_name_fops = {
+	.open		= iio_channel_name_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int tz_name_show(struct seq_file *s, void *p)
+{
+	struct gadc_thermal_driver_data *drvdata = s->private;
+
+	seq_printf(s, "%s\n", drvdata->pdata->tz_name);
+	return 0;
+}
+
+static int tz_name_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, tz_name_show, inode->i_private);
+}
+
+static const struct file_operations tz_name_fops = {
+	.open		= tz_name_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int adc_temp_show(struct seq_file *s, void *p)
 {
 	struct gadc_thermal_driver_data *drvdata = s->private;
@@ -259,6 +298,38 @@ static int adc_temp_open(struct inode *inode, struct file *file)
 
 static const struct file_operations adc_temp_fops = {
 	.open		= adc_temp_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int raw_adc_show(struct seq_file *s, void *p)
+{
+	struct gadc_thermal_driver_data *drvdata = s->private;
+	int val = 0, val2 = 0;
+	int ret;
+
+	if (drvdata->dual_mode)
+		ret = iio_read_channel_raw_dual(drvdata->channel, &val, &val2);
+	else
+		ret = iio_read_channel_raw(drvdata->channel, &val);
+	if (ret < 0) {
+		dev_err(drvdata->dev, "%s: Failed to read channel raw, %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	seq_printf(s, "%d %d\n", val, val2);
+	return 0;
+}
+
+static int raw_adc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, raw_adc_show, inode->i_private);
+}
+
+static const struct file_operations raw_adc_fops = {
+	.open		= raw_adc_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
@@ -321,8 +392,23 @@ static int gadc_thermal_debugfs_init(struct gadc_thermal_driver_data *drvdata)
 	if (!drvdata->dentry)
 		return -ENOMEM;
 
+	d_file = debugfs_create_file("iio_channel_name", 0444, drvdata->dentry,
+				     drvdata, &iio_channel_name_fops);
+	if (!d_file)
+		goto error;
+
+	d_file = debugfs_create_file("tz_name", 0444, drvdata->dentry,
+				     drvdata, &tz_name_fops);
+	if (!d_file)
+		goto error;
+
 	d_file = debugfs_create_file("adc_temp", 0444, drvdata->dentry,
 				     drvdata, &adc_temp_fops);
+	if (!d_file)
+		goto error;
+
+	d_file = debugfs_create_file("raw_adc", 0444, drvdata->dentry,
+				     drvdata, &raw_adc_fops);
 	if (!d_file)
 		goto error;
 
