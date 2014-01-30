@@ -19,6 +19,7 @@
 
 #include <linux/kernel.h>
 
+/* Tegra PM states as known to BPMP */
 #define TEGRA_PM_C0	0
 #define TEGRA_PM_C1	1
 #define TEGRA_PM_C2	2
@@ -49,6 +50,13 @@ struct tegra_bpmp_platform_data {
 	phys_addr_t size;
 };
 
-int tegra_bpmp_pm_target(int cpu, int tolerance);
+#ifdef CONFIG_TEGRA_BPMP
+int tegra_bpmp_do_idle(int cpu, int tolerance);
+int tegra_bpmp_tolerate_idle(int cpu, int tolerance);
+#else
+static inline int tegra_bpmp_do_idle(int cpu, int tolerance) { return -ENODEV; }
+static inline int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
+{ return -ENODEV; }
+#endif
 
 #endif

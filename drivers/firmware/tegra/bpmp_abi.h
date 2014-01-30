@@ -52,6 +52,7 @@
 
 #define MRQ_PING		0
 #define MRQ_LEGACY_LP0		1
-#define MRQ_PM_TARGET		2
+#define MRQ_DO_IDLE		2
+#define MRQ_TOLERATE_IDLE	3
 
 #endif

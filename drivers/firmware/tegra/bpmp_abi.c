@@ -37,7 +37,50 @@ int bpmp_ping(void)
 	return r ?: ktime_to_us(tm);
 }
 
-int tegra_bpmp_pm_target(int cpu, int tolerance)
+/*
+ * Coordinates the cluster idle entries (CC6 & deeper)
+ *
+ * When any CPU is ready to enter CC6 or deeper, it shall call this API
+ * to request a GO from bpmp. A zero return value indicates that the
+ * transition is granted and a non-zero return value means either an
+ * error or that the transition is denied.
+ *
+ * Should be called from the cpuidle driver after disabling interrupts
+ *
+ * @cpu: CPU id
+ * @tolerance: tolerance of the given CPU
+ */
+int tegra_bpmp_do_idle(int cpu, int tolerance)
 {
-	return min(TEGRA_PM_C7, tolerance);
+	int data[] = { cpu, tolerance };
+	int tl;
+
+	if (bpmp_rpc(MRQ_DO_IDLE, data, sizeof(data), &tl, sizeof(tl))) {
+		WARN_ON(1);
+		return -EFAULT;
+	}
+
+	return tl;
+}
+
+/*
+ * When any CPU is being hot plugged/unplugged, it shall call this API
+ * to inform bpmp about its new tolerance level.
+ *
+ * Can be called from interrupt or thread context
+ *
+ * @cpu: CPU id
+ * @tolerance: tolerance of the given CPU
+ */
+int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
+{
+	unsigned long flags;
+	int data[] = { cpu, tolerance };
+	int r;
+
+	local_irq_save(flags);
+	r = bpmp_post(MRQ_TOLERATE_IDLE, data, sizeof(data));
+	local_irq_restore(flags);
+
+	return r;
 }
