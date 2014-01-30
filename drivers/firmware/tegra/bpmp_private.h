@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -17,10 +17,11 @@
 #ifndef _BPMP_PRIVATE_H
 #define _BPMP_PRIVATE_H
 
-#include <linux/interrupt.h>
 #include <linux/kernel.h>
+#include <linux/platform_device.h>
 
-irqreturn_t bpmp_inbox_irq(int irq, void *data);
+int bpmp_ipc_init(struct platform_device *pdev);
+
 int bpmp_ping(void);
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,28 +14,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/completion.h>
-#include <linux/delay.h>
-#include <linux/interrupt.h>
-#include <linux/io.h>
-#include <linux/kernel.h>
 #include <linux/platform_data/tegra_bpmp.h>
-#include <linux/spinlock.h>
-#include "../../../arch/arm/mach-tegra/iomap.h"
-#include "bpmp_abi.h"
 #include "bpmp_private.h"
 
-#define TEGRA_ATOMICS_BASE	0x70016000
-#define ATOMICS_AP0_TRIGGER	IO_ADDRESS(TEGRA_ATOMICS_BASE + 0x000)
-#define TRIGGER_ID_SHIFT	16
-#define TRIGGER_CMD_GET		4
-
-irqreturn_t bpmp_inbox_irq(int irq, void *data)
+int bpmp_ping(void)
 {
-	return IRQ_HANDLED;
+	return -ENODEV;
 }
 
-int bpmp_ipc_init(struct platform_device *pdev)
+int tegra_bpmp_pm_target(int cpu, int tolerance)
 {
-	return -EFAULT;
+	return min(TEGRA_PM_C7, tolerance);
+}
+
+int tegra_bpmp_pm_target_entered(void)
+{
+	return 0;
 }
