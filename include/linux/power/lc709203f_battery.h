@@ -19,6 +19,8 @@
 
 struct lc709203f_platform_data {
 	const char *tz_name;
+	unsigned long thermistor_beta;
+	unsigned long initial_rsoc;
 };
 
 #endif

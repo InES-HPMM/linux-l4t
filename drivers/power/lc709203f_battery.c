@@ -203,7 +203,6 @@ static int lc709203f_get_property(struct power_supply *psy,
 	struct lc709203f_chip *chip = container_of(psy,
 				struct lc709203f_chip, battery);
 	int temperature;
-	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -285,6 +284,8 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 {
 	char const *pstr;
 	struct device_node *np = client->dev.of_node;
+	u32 pval;
+
 	pdata->tz_name = NULL;
 
 	if (!of_property_read_string(np, "onsemi,tz-name", &pstr))
@@ -292,6 +293,15 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 	else
 		dev_err(&client->dev, "Failed to read tz-name\n");
 
+	if (!of_property_read_u32(np, "onsemi,thermistor-beta", &pval))
+		pdata->thermistor_beta = (unsigned long)pval;
+	else
+		dev_info(&client->dev, "thermistor-beta not provided\n");
+
+	if (!of_property_read_u32(np, "onsemi,initial-rsoc", &pval))
+		pdata->initial_rsoc = (unsigned long)pval;
+	else
+		dev_info(&client->dev, "initial-rsoc not provided\n");
 }
 
 static int lc709203f_probe(struct i2c_client *client,
@@ -348,6 +358,31 @@ static int lc709203f_probe(struct i2c_client *client,
 	}
 
 	lc709203f_bgi.tz_name = chip->pdata->tz_name;
+	if (!chip->pdata->tz_name) {
+		ret = lc709203f_write_word(chip->client,
+				LC709203F_STATUS_BIT, 0x1);
+		if (ret < 0) {
+			dev_err(&client->dev, "STATUS_BIT write failed: %d\n",
+				ret);
+			goto error;
+		}
+	}
+
+	if (chip->pdata->thermistor_beta) {
+		ret = lc709203f_write_word(chip->client,
+			LC709203F_THERMISTOR_B, chip->pdata->thermistor_beta);
+		if (ret < 0)
+			dev_err(&client->dev, "THERMISTOR_B write failed: %d\n",
+				ret);
+	}
+
+	if (chip->pdata->initial_rsoc) {
+		ret = lc709203f_write_word(chip->client,
+			LC709203F_INITIAL_RSOC, chip->pdata->initial_rsoc);
+		if (ret < 0)
+			dev_err(&client->dev, "INITIAL_RSOC write failed: %d\n",
+				ret);
+	}
 
 	chip->bg_dev = battery_gauge_register(&client->dev, &lc709203f_bgi,
 				chip);
