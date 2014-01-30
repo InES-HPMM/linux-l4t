@@ -938,6 +938,10 @@ static void print_constraints(struct regulator_dev *rdev)
 		ret = _regulator_get_voltage(rdev);
 		if (ret > 0)
 			count += sprintf(buf + count, "at %d mV ", ret / 1000);
+		if (!constraints->min_uV && !constraints->max_uV) {
+			constraints->min_uV = ret;
+			constraints->max_uV = ret;
+		}
 	}
 
 	if (constraints->uV_offset)
