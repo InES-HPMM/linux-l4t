@@ -1232,6 +1232,87 @@ static struct tegra_tsensor_pmu_data tpdata_as3722 = {
 	.poweroff_reg_data = 0x2,
 };
 
+static struct soctherm_therm ardbeg_therm_pop[THERM_SIZE] = {
+	[THERM_CPU] = {
+		.zone_enable = true,
+		.passive_delay = 1000,
+		.hotspot_offset = 6000,
+		.num_trips = 3,
+		.trips = {
+			{
+				.cdev_type = "tegra-shutdown",
+				.trip_temp = 97000,
+				.trip_type = THERMAL_TRIP_CRITICAL,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+			{
+				.cdev_type = "tegra-heavy",
+				.trip_temp = 94000,
+				.trip_type = THERMAL_TRIP_HOT,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+			{
+				.cdev_type = "cpu-balanced",
+				.trip_temp = 84000,
+				.trip_type = THERMAL_TRIP_PASSIVE,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+		},
+		.tzp = &soctherm_tzp,
+	},
+	[THERM_GPU] = {
+		.zone_enable = true,
+		.passive_delay = 1000,
+		.hotspot_offset = 6000,
+		.num_trips = 3,
+		.trips = {
+			{
+				.cdev_type = "tegra-shutdown",
+				.trip_temp = 93000,
+				.trip_type = THERMAL_TRIP_CRITICAL,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+			{
+				.cdev_type = "tegra-heavy",
+				.trip_temp = 91000,
+				.trip_type = THERMAL_TRIP_HOT,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+			{
+				.cdev_type = "gpu-balanced",
+				.trip_temp = 81000,
+				.trip_type = THERMAL_TRIP_PASSIVE,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+		},
+		.tzp = &soctherm_tzp,
+	},
+	[THERM_MEM] = {
+		.zone_enable = true,
+		.num_trips = 1,
+		.trips = {
+			{
+				.cdev_type = "tegra-shutdown",
+				.trip_temp = 93000, /* = GPU shut */
+				.trip_type = THERMAL_TRIP_CRITICAL,
+				.upper = THERMAL_NO_LIMIT,
+				.lower = THERMAL_NO_LIMIT,
+			},
+		},
+		.tzp = &soctherm_tzp,
+	},
+	[THERM_PLL] = {
+		.zone_enable = true,
+		.tzp = &soctherm_tzp,
+	},
+};
+
 static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.oc_irq_base = TEGRA_SOC_OC_IRQ_BASE,
 	.num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ,
@@ -1379,6 +1460,14 @@ int __init ardbeg_soctherm_init(void)
 	struct board_info pmu_board_info;
 	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_E1923 ||
+			board_info.board_id == BOARD_E1922) {
+		memcpy(ardbeg_soctherm_data.therm,
+				ardbeg_therm_pop, sizeof(ardbeg_therm_pop));
+	}
+
 	/* do this only for supported CP,FT fuses */
 	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
 	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
@@ -1403,8 +1492,6 @@ int __init ardbeg_soctherm_init(void)
 			ardbeg_soctherm_data.therm[THERM_PLL].trips,
 			&ardbeg_soctherm_data.therm[THERM_PLL].num_trips);
 	}
-
-	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_P1761 ||
 		board_info.board_id == BOARD_E1784 ||
