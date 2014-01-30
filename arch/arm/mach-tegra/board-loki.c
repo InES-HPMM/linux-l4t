@@ -674,6 +674,8 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
+				NULL),
 	{}
 };
 #endif
@@ -834,7 +836,6 @@ static void __init tegra_loki_late_init(void)
 	loki_fan_init();
 	loki_soctherm_init();
 	loki_setup_bluedroid_pm();
-	tegra_register_fuse();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 #ifdef CONFIG_C2PORT_LOKI
 	tegra_loki_mcu_debugger_init();

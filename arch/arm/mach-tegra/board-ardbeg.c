@@ -910,6 +910,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
 		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
+		NULL),
 	{}
 };
 #endif
@@ -1286,8 +1288,6 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_soctherm_init();
 
 	ardbeg_setup_bluedroid_pm();
-	tegra_register_fuse();
-
 	ardbeg_sysedp_dynamic_capping_init();
 	ardbeg_sysedp_batmon_init();
 }
