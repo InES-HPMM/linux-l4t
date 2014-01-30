@@ -304,6 +304,61 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 		dev_info(&client->dev, "initial-rsoc not provided\n");
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
+static struct dentry *debugfs_root;
+static u8 valid_command[] = {0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xD, 0xF,
+			0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x1A};
+static int dbg_lc709203f_show(struct seq_file *s, void *data)
+{
+	struct i2c_client *client = s->private;
+	int ret;
+	int i;
+
+	seq_puts(s, "Register-->Value(16bit)\n");
+	for (i = 0; i < ARRAY_SIZE(valid_command); ++i) {
+		ret = lc709203f_read_word(client, valid_command[i]);
+		if (ret < 0)
+			seq_printf(s, "0x%02x: ERROR\n", valid_command[i]);
+		else
+			seq_printf(s, "0x%02x: 0x%04x\n",
+						valid_command[i], ret);
+	}
+	return 0;
+}
+
+static int dbg_lc709203f_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dbg_lc709203f_show, inode->i_private);
+}
+
+static const struct file_operations lc709203f_debug_fops = {
+	.open		= dbg_lc709203f_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int lc709203f_debugfs_init(struct i2c_client *client)
+{
+	debugfs_root = debugfs_create_dir("lc709203f", NULL);
+	if (!debugfs_root)
+		pr_warn("lc709203f: Failed to create debugfs directory\n");
+
+	(void) debugfs_create_file("registers", S_IRUGO,
+			debugfs_root, (void *)client, &lc709203f_debug_fops);
+	return 0;
+}
+#else
+static int lc709203f_debugfs_init(struct i2c_client *client)
+{
+	return 0;
+}
+#endif
+
 static int lc709203f_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -398,6 +453,8 @@ static int lc709203f_probe(struct i2c_client *client,
 
 	INIT_DEFERRABLE_WORK(&chip->work, lc709203f_work);
 	schedule_delayed_work(&chip->work, 0);
+
+	lc709203f_debugfs_init(client);
 
 	return 0;
 bg_err:
