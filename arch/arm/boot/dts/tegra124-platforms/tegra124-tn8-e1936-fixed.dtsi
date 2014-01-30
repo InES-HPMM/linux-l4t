@@ -197,5 +197,24 @@
 				};
 			};
 		};
+		vddio_hdmi_5v0: regulator@9 {
+			compatible = "regulator-fixed-sync";
+			reg = <6>;
+			regulator-name = "vddio_hdmi_5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
+			enable-active-high;
+			vin-supply = <&palmas_smps10_out1>;
+
+			consumers {
+							c1 {
+								regulator-consumer-supply = "vdd_hdmi_5v0";
+								regulator-consumer-device = "tegradc.1";
+							};
+			};
+		};
+
+
 	};
 };
