@@ -21,6 +21,7 @@ arm64-obj-$(CONFIG_EARLY_PRINTK)	+= early_printk.o
 arm64-obj-$(CONFIG_ARM_CPU_SUSPEND)	+= sleep.o suspend.o
 
 obj-$(CONFIG_PCI)               += bios32.o
+obj-$(CONFIG_SWP_EMULATE)	+= swp_emulate.o
 
 obj-y					+= $(arm64-obj-y) vdso/
 obj-m					+= $(arm64-obj-m)
