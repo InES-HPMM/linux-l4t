@@ -887,7 +887,16 @@ static struct platform_device ardbeg_camera_generic = {
 
 static int ardbeg_camera_init(void)
 {
+	struct board_info board_info;
+
 	pr_debug("%s: ++\n", __func__);
+	tegra_get_board_info(&board_info);
+
+	/* bug 1443481: TN8 FFD/FFF does not support flash device */
+	if (of_machine_is_compatible("nvidia,tn8") &&
+		(board_info.board_id == BOARD_P1761)) {
+		ardbeg_camera_module_info[2].flash = NULL;
+	}
 
 	/* put CSIA/B/E IOs into DPD mode to
 	 * save additional power for ardbeg
