@@ -14,12 +14,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/hrtimer.h>
+#include <linux/kernel.h>
+#include <linux/ktime.h>
 #include <linux/platform_data/tegra_bpmp.h>
+#include "bpmp_abi.h"
 #include "bpmp_private.h"
 
 int bpmp_ping(void)
 {
-	return -ENODEV;
+	unsigned long flags;
+	ktime_t tm;
+	int r;
+
+	/* disable local irqs so we can call the atomic IPC api */
+	local_irq_save(flags);
+	tm = ktime_get();
+	r = bpmp_rpc(MRQ_PING, NULL, 0, NULL, 0);
+	tm = ktime_sub(ktime_get(), tm);
+	local_irq_restore(flags);
+
+	return r ?: ktime_to_us(tm);
 }
 
 int tegra_bpmp_pm_target(int cpu, int tolerance)

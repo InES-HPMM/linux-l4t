@@ -22,8 +22,13 @@
 
 int bpmp_ipc_init(struct platform_device *pdev);
 
+/* should be called from non-preemptible context */
 int bpmp_post(int mrq, void *data, int sz);
+
+/* should be called from non-preemptible context */
 int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
+
+/* should be called from sleepable context */
 int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
 
