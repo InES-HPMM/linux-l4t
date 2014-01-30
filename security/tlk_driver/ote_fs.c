@@ -45,9 +45,17 @@ static DECLARE_COMPLETION(req_ready);
 static DECLARE_COMPLETION(req_complete);
 static unsigned long secure_error;
 
+static struct te_ss_op *ss_op_shmem;
+static uint32_t ss_op_size;
+
 static void indicate_complete(unsigned long ret)
 {
 	tlk_generic_smc(TE_SMC_FS_OP_DONE, ret, 0);
+}
+
+static void indicate_ss_op_complete(void)
+{
+	tlk_generic_smc(TE_SMC_SS_REQ_COMPLETE, 0, 0);
 }
 
 int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
@@ -132,6 +140,10 @@ int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		/* signal the producer */
 		complete(&req_complete);
 		break;
+
+	default:
+		pr_err("copy_from_user failed for request\n");
+		return -EINVAL;
 	}
 
 	return 0;
@@ -197,7 +209,54 @@ void tlk_fdelete(const char *name)
 	_te_fs_file_operation(name, NULL, 0, OTE_FILE_REQ_DELETE);
 }
 
-static int __init tlk_fs_register_handlers(void)
+int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
+	unsigned long ioctl_param)
+{
+	switch (ioctl_num) {
+	case TE_IOCTL_SS_NEW_REQ:
+		/* wait for a new request */
+		if (wait_for_completion_interruptible(&req_ready))
+			return -ENODATA;
+
+		/* transfer pending request to daemon's buffer */
+		if (copy_to_user((void __user *)ioctl_param, ss_op_shmem,
+					ss_op_size)) {
+			pr_err("copy_to_user failed for new request\n");
+			return -EFAULT;
+		}
+		break;
+
+	case TE_IOCTL_SS_REQ_COMPLETE: /* request complete */
+		if (copy_from_user(ss_op_shmem, (void __user *)ioctl_param,
+					ss_op_size)) {
+			pr_err("copy_from_user failed for request\n");
+			return -EFAULT;
+		}
+
+		/* signal the producer */
+		complete(&req_complete);
+		break;
+	}
+
+	return 0;
+}
+
+void tlk_ss_op(uint32_t size)
+{
+	/* store size of request */
+	ss_op_size = size;
+
+	/* signal consumer */
+	complete(&req_ready);
+
+	/* wait for the consumer's signal */
+	wait_for_completion(&req_complete);
+
+	/* signal completion to the secure world */
+	indicate_ss_op_complete();
+}
+
+static int tlk_fs_register_handlers(void)
 {
 	struct te_file_req_shmem *shmem_ptr;
 	uint32_t smc_args[MAX_EXT_SMC_ARGS];
@@ -228,4 +287,25 @@ static int __init tlk_fs_register_handlers(void)
 	return 0;
 }
 
-arch_initcall(tlk_fs_register_handlers);
+static int __init tlk_ss_init(void)
+{
+	dma_addr_t ss_op_shmem_dma;
+
+	/* register legacy support */
+	tlk_fs_register_handlers();
+
+	/* allocate shared memory buffer */
+	ss_op_shmem = dma_alloc_coherent(NULL, sizeof(struct te_ss_op),
+			&ss_op_shmem_dma, GFP_KERNEL);
+	if (!ss_op_shmem) {
+		pr_err("%s: no memory available for fs operations\n", __func__);
+		return -ENOMEM;
+	}
+
+	tlk_generic_smc(TE_SMC_SS_REGISTER_HANDLER,
+			(uint32_t)tlk_ss_op, (uint32_t)ss_op_shmem);
+
+	return 0;
+}
+
+arch_initcall(tlk_ss_init);

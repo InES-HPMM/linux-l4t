@@ -52,10 +52,8 @@ static struct te_shmem_desc *te_add_shmem_desc(void *buffer, size_t size,
 static int te_pin_mem_buffers(void *buffer, size_t size,
 		struct tlk_context *context)
 {
-
-	unsigned long pages = 0;
 	struct te_shmem_desc *shmem_desc = NULL;
-	int ret = 0, nr_pages = 0;
+	int ret = 0;
 
 	shmem_desc = te_add_shmem_desc(buffer, size, context);
 	if (!shmem_desc) {
@@ -107,7 +105,6 @@ static int te_setup_temp_buffers(struct te_request *request,
 static void te_del_shmem_desc(void *buffer, struct tlk_context *context)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
-	int i;
 
 	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
 		&(context->shmem_alloc_list), list) {

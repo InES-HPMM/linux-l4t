@@ -34,9 +34,13 @@
 	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x17, struct te_file_req)
 #define TE_IOCTL_FILE_REQ_COMPLETE \
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x18, struct te_file_req)
+#define TE_IOCTL_SS_NEW_REQ \
+	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x20, struct te_ss_op)
+#define TE_IOCTL_SS_REQ_COMPLETE \
+	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x21, struct te_ss_op)
 
 #define TE_IOCTL_MIN_NR	_IOC_NR(TE_IOCTL_OPEN_CLIENT_SESSION)
-#define TE_IOCTL_MAX_NR	_IOC_NR(TE_IOCTL_FILE_REQ_COMPLETE)
+#define TE_IOCTL_MAX_NR	_IOC_NR(TE_IOCTL_SS_REQ_COMPLETE)
 
 /* shared buffer is 2 pages: 1st are requests, 2nd are params */
 #define TE_CMD_DESC_MAX	(PAGE_SIZE / sizeof(struct te_request))
@@ -95,7 +99,8 @@ enum {
 	TE_SMC_NS_IRQ_DONE		= 0x32000005,
 	TE_SMC_FS_OP_DONE		= 0x32000006,
 	TE_SMC_INIT_LOGGER		= 0x32000007,
-
+	TE_SMC_SS_REGISTER_HANDLER	= 0x32000008,
+	TE_SMC_SS_REQ_COMPLETE		= 0x32000009,
 };
 
 enum {
@@ -218,6 +223,13 @@ struct te_file_req {
 	int error;
 };
 
+#define SS_OP_MAX_DATA_SIZE	0x1000
+struct te_ss_op {
+	uint8_t		data[SS_OP_MAX_DATA_SIZE];
+};
+
+int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
+		unsigned long ioctl_param);
 int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
 void ote_print_logs(void);

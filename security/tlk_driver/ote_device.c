@@ -423,10 +423,16 @@ static long tlk_device_ioctl(struct file *file, unsigned int ioctl_num,
 		err = te_handle_fs_ioctl(file, ioctl_num, ioctl_param);
 		break;
 
+	case TE_IOCTL_SS_NEW_REQ:
+	case TE_IOCTL_SS_REQ_COMPLETE:
+		err = te_handle_ss_ioctl(file, ioctl_num, ioctl_param);
+		break;
+
 	default:
 		pr_err("%s: Invalid IOCTL (0x%x) id 0x%x max 0x%x\n", __func__,
 			ioctl_num, _IOC_NR(ioctl_num), TE_IOCTL_MAX_NR);
 		err = -EINVAL;
+		break;
 	}
 
 	return err;
