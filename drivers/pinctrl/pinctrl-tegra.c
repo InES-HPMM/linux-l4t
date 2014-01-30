@@ -540,7 +540,7 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 		return -ENOTSUPP;
 	}
 
-	if (*reg < 0) {
+	if (*reg < 0 || *bit < 0) {
 		if (report_err)
 			dev_err(pmx->dev,
 				"Config param %04x not supported on group %s\n",
@@ -827,31 +827,38 @@ static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
 			continue;
 		}
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].hsm_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
 				cdata->high_speed_mode);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].schmitt_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SCHMITT,
 				cdata->schmitt);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].lpmd_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_LOW_POWER_MODE,
 				cdata->low_power_mode);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].drvdn_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_DRIVE_DOWN_STRENGTH,
 				cdata->pull_down_strength);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].drvup_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
 				cdata->pull_up_strength);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].slwf_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
 				cdata->slew_rate_falling);
 
-		tegra_pinctrl_set_config(pmx->pctl, group,
+		if (pmx->soc->groups[i].slwr_bit >= 0)
+			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
 				cdata->slew_rate_rising);
 
@@ -1001,10 +1008,10 @@ static const char *tegra_pinctrl_slew_names[TEGRA_MAX_SLEW] = {
 #define HSM_EN(reg)     (((reg) >> 2) & 0x1)
 #define SCHMT_EN(reg)   (((reg) >> 3) & 0x1)
 #define LPMD(reg)       (((reg) >> 4) & 0x3)
-#define DRVDN(reg, offset)      (((reg) >> offset) & 0x1f)
-#define DRVUP(reg, offset)      (((reg) >> offset) & 0x1f)
-#define SLWR(reg, offset)       (((reg) >> offset) & 0x3)
-#define SLWF(reg, offset)       (((reg) >> offset) & 0x3)
+#define DRVDN(reg, offset, w)      (((reg) >> offset) & (BIT(w) -1))
+#define DRVUP(reg, offset, w)      (((reg) >> offset) & (BIT(w) -1))
+#define SLWR(reg, offset, w)       (((reg) >> offset) & (BIT(w) -1))
+#define SLWF(reg, offset, w)       (((reg) >> offset) & (BIT(w) -1))
 
 static const char *tegra_pinctrl_function_name(enum tegra_mux_func func)
 {
@@ -2060,6 +2067,7 @@ static int dbg_drive_pinmux_show(struct seq_file *s, void *unused)
 	int i;
 	int len;
 	u8 offset;
+	unsigned int width;
 
 	for (i = 0; i < pmx->soc->ngroups; i++) {
 		u32 reg;
@@ -2074,45 +2082,88 @@ static int dbg_drive_pinmux_show(struct seq_file *s, void *unused)
 
 		reg = pmx_readl(pmx, pmx->soc->groups[i].drv_bank,
 					pmx->soc->groups[i].drv_reg);
-		if (HSM_EN(reg)) {
-			seq_puts(s, "TEGRA_HSM_ENABLE");
-			len = 16;
+		if (pmx->soc->groups[i].hsm_bit >= 0) {
+			if (HSM_EN(reg)) {
+				seq_puts(s, "TEGRA_HSM_ENABLE");
+				len = 16;
+			} else {
+				seq_puts(s, "TEGRA_HSM_DISABLE");
+				len = 17;
+			}
 		} else {
-			seq_puts(s, "TEGRA_HSM_DISABLE");
-			len = 17;
+			seq_puts(s, "TEGRA_HSM_XXXXXX");
+			len = 16;
 		}
+
 		dbg_pad_field(s, 17 - len);
 
-		if (SCHMT_EN(reg)) {
-			seq_puts(s, "TEGRA_SCHMITT_ENABLE");
-			len = 21;
+		if (pmx->soc->groups[i].schmitt_bit >= 0) {
+			if (SCHMT_EN(reg)) {
+				seq_puts(s, "TEGRA_SCHMITT_ENABLE");
+				len = 21;
+			} else {
+				seq_puts(s, "TEGRA_SCHMITT_DISABLE");
+				len = 22;
+			}
 		} else {
-			seq_puts(s, "TEGRA_SCHMITT_DISABLE");
+			seq_puts(s, "TEGRA_SCHMITT_XXXXXXX");
 			len = 22;
 		}
 		dbg_pad_field(s, 22 - len);
 
-		seq_printf(s, "TEGRA_DRIVE_%s", drive_name(LPMD(reg)));
-		len = strlen(drive_name(LPMD(reg)));
+		if (pmx->soc->groups[i].lpmd_bit < 0) {
+			seq_printf(s, "TEGRA_DRIVE_XXXXX");
+			len = 5;
+		} else {
+			seq_printf(s, "TEGRA_DRIVE_%s", drive_name(LPMD(reg)));
+			len = strlen(drive_name(LPMD(reg)));
+		}
 		dbg_pad_field(s, 5 - len);
 
-		offset = pmx->soc->groups[i].drvdn_bit;
-		seq_printf(s, "TEGRA_PULL_%d", DRVDN(reg, offset));
-		len = DRVDN(reg, offset) < 10 ? 1 : 2;
+		if (pmx->soc->groups[i].drvdn_bit >= 0) {
+			offset = pmx->soc->groups[i].drvdn_bit;
+			width = pmx->soc->groups[i].drvdn_width;
+			seq_printf(s, "TEGRA_PULL_%lu",
+					DRVDN(reg, offset, width));
+			len = DRVDN(reg, offset, width) < 10 ? 1 : 2;
+		} else {
+			seq_printf(s, "TEGRA_PULL_XXX");
+			len = 1;
+		}
 		dbg_pad_field(s, 2 - len);
 
-		offset = pmx->soc->groups[i].drvup_bit;
-		seq_printf(s, "TEGRA_PULL_%d", DRVUP(reg, offset));
-		len = DRVUP(reg, offset) < 10 ? 1 : 2;
+		if (pmx->soc->groups[i].drvup_bit >= 0) {
+			offset = pmx->soc->groups[i].drvup_bit;
+			width = pmx->soc->groups[i].drvup_width;
+			seq_printf(s, "TEGRA_PULL_%lu",
+					DRVUP(reg, offset, width));
+			len = DRVUP(reg, offset, width) < 10 ? 1 : 2;
+		} else {
+			seq_printf(s, "TEGRA_PULL_XXX");
+			len = 1;
+		}
 		dbg_pad_field(s, 2 - len);
 
-		offset = pmx->soc->groups[i].slwr_bit;
-		seq_printf(s, "TEGRA_SLEW_%s", slew_name(SLWR(reg, offset)));
-		len = strlen(slew_name(SLWR(reg, offset)));
+		if (pmx->soc->groups[i].slwr_bit >= 0) {
+			offset = pmx->soc->groups[i].slwr_bit;
+			width = pmx->soc->groups[i].slwr_width;
+			seq_printf(s, "TEGRA_SLEW_%s",
+				slew_name(SLWR(reg, offset, width)));
+			len = strlen(slew_name(SLWR(reg, offset, width)));
+		} else {
+			seq_printf(s, "TEGRA_SLEW_XXXXXXX");
+			len = 7;
+		}
 		dbg_pad_field(s, 7 - len);
 
-		offset = pmx->soc->groups[i].slwf_bit;
-		seq_printf(s, "TEGRA_SLEW_%s", slew_name(SLWF(reg, offset)));
+		if (pmx->soc->groups[i].slwf_bit >= 0) {
+			offset = pmx->soc->groups[i].slwf_bit;
+			width = pmx->soc->groups[i].slwf_width;
+			seq_printf(s, "TEGRA_SLEW_%s",
+				slew_name(SLWF(reg, offset, width)));
+		} else {
+			seq_printf(s, "TEGRA_SLEW_XXXXXXX");
+		}
 
 		seq_puts(s, "},\n");
 	}
