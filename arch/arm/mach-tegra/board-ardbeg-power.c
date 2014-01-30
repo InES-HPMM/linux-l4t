@@ -653,22 +653,6 @@ static struct platform_device power_supply_extcon_device = {
 	},
 };
 
-int __init ardbeg_suspend_init(void)
-{
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if ((pmu_board_info.board_id == BOARD_E1735) &&
-	    (pmu_board_info.sku != E1735_EMULATE_E1767_SKU)) {
-		ardbeg_suspend_data.cpu_timer = 2000;
-		ardbeg_suspend_data.crail_up_early = true;
-	}
-
-	tegra_init_suspend(&ardbeg_suspend_data);
-	return 0;
-}
-
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply,			\
@@ -1039,6 +1023,27 @@ static struct tegra_cl_dvfs_platform_data e1733_cl_dvfs_data = {
 	.cfg_param = &e1733_ardbeg_cl_dvfs_param,
 };
 
+static void __init ardbeg_tweak_E1767_dt(void)
+{
+	struct device_node *dn = NULL;
+	struct property *pp = NULL;
+
+	/*
+	 *  Update E1735 DT for E1767 prototype. To be removed when
+	 *  E1767 is productized with its own DT.
+	 */
+	dn = of_find_node_with_property(dn, "pwm-1wire-buffer");
+	if (dn) {
+		pp = of_find_property(dn, "pwm-1wire-buffer", NULL);
+		if (pp)
+			pp->name = "pwm-1wire-direct";
+		of_node_put(dn);
+	}
+	if (!dn || !pp)
+		WARN(1, "Failed update DT for PMU E1767 prototype\n");
+}
+
+
 static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 {
 	u16 pmu_board_id = pmu_board_info->board_id;
@@ -1046,6 +1051,25 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 
 	if (pmu_board_id == BOARD_E1735) {
 		bool e1767 = pmu_board_info->sku == E1735_EMULATE_E1767_SKU;
+		struct device_node *dn = of_find_compatible_node(
+			NULL, NULL, "nvidia,tegra124-dfll");
+		/*
+		 * Ardbeg platforms with E1735 PMIC module maybe used with
+		 * different DT variants. Some of them include CL-DVFS data
+		 * in DT, some - not. Check DT here, and continue with platform
+		 * device registration only if DT DFLL node is not present.
+		 */
+		if (dn) {
+			bool available = of_device_is_available(dn);
+			of_node_put(dn);
+
+			if (available) {
+				if (e1767)
+					ardbeg_tweak_E1767_dt();
+				return 0;
+			}
+		}
+
 		data = &e1735_cl_dvfs_data;
 
 		data->u.pmu_pwm.pwm_bus = e1767 ?
@@ -1053,14 +1077,6 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 			TEGRA_CL_DVFS_PWM_1WIRE_BUFFER;
 
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
-			ardbeg_suspend_data.suspend_dfll_bypass = e1767 ?
-				e1767_suspend_dfll_bypass :
-				e1735_suspend_dfll_bypass;
-			ardbeg_suspend_data.resume_dfll_bypass = e1767 ?
-				e1767_resume_dfll_bypass :
-				e1735_resume_dfll_bypass;
-			tegra_init_cpu_reg_mode_limits(E1735_CPU_VDD_IDLE_MA,
-						       REGULATOR_MODE_IDLE);
 			platform_device_register(
 				data->u.pmu_pwm.dfll_bypass_dev);
 		} else {
@@ -1118,6 +1134,10 @@ int __init ardbeg_regulator_init(void)
 	} else if (pmu_board_info.board_id == BOARD_E1735) {
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+		tegra_init_cpu_reg_mode_limits(
+			E1735_CPU_VDD_IDLE_MA, REGULATOR_MODE_IDLE);
+#endif
 	} else if (pmu_board_info.board_id == BOARD_E1736 ||
 		pmu_board_info.board_id == BOARD_E1936 ||
 		pmu_board_info.board_id == BOARD_E1769 ||
@@ -1175,6 +1195,31 @@ static int __init ardbeg_fixed_regulator_init(void)
 }
 
 subsys_initcall_sync(ardbeg_fixed_regulator_init);
+
+int __init ardbeg_suspend_init(void)
+{
+	struct board_info pmu_board_info;
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if (pmu_board_info.board_id == BOARD_E1735) {
+		struct tegra_suspend_platform_data *data = &ardbeg_suspend_data;
+		if (pmu_board_info.sku != E1735_EMULATE_E1767_SKU) {
+			data->cpu_timer = 2000;
+			data->crail_up_early = true;
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
+			data->suspend_dfll_bypass = e1735_suspend_dfll_bypass;
+			data->resume_dfll_bypass = e1735_resume_dfll_bypass;
+		} else {
+			data->suspend_dfll_bypass = e1767_suspend_dfll_bypass;
+			data->resume_dfll_bypass = e1767_resume_dfll_bypass;
+#endif
+		}
+	}
+
+	tegra_init_suspend(&ardbeg_suspend_data);
+	return 0;
+}
 
 int __init ardbeg_edp_init(void)
 {
