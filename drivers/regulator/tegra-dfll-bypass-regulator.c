@@ -24,6 +24,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/delay.h>
 
 struct tegra_dfll_bypass_regulator {
@@ -143,23 +144,113 @@ static struct regulator_ops tegra_dfll_bypass_rops = {
 	.get_mode = tegra_dfll_bypass_get_mode,
 };
 
+static struct of_device_id of_tegra_dfll_bypass_pwm_match_tbl[] = {
+	{ .compatible = "nvidia,tegra124-dfll-pwm", },
+};
+
+static struct of_device_id of_tegra_dfll_bypass_regulator_match_tbl[] = {
+	{ .compatible = "regulator-pwm", },
+};
+
+static int tegra_dfll_bypass_parse_dt(struct device *dev,
+	struct device_node *dn, struct tegra_dfll_bypass_platform_data *pdata)
+{
+	u32 val;
+	int ret;
+	struct regulation_constraints *c = &pdata->reg_init_data->constraints;
+
+	c->valid_modes_mask |= REGULATOR_MODE_NORMAL;
+
+	ret = of_property_read_u32(dn, "regulator-n-voltages", &val);
+	if (ret || (val <= 1)) {
+		dev_err(dev, "%s n-voltages\n", ret ? "missing" : "invalid");
+		return -EINVAL;
+	}
+	pdata->n_voltages = val;
+
+	ret = (c->max_uV - c->min_uV) / (val - 1);
+	if (ret <= 0) {
+		dev_err(dev, "invalid uV_step %d\n", ret);
+		return -EINVAL;
+	}
+	pdata->uV_step = ret;
+
+	ret = of_property_read_u32(dn, "voltage-time-sel", &val);
+	if (!ret)
+		pdata->voltage_time_sel = val;
+
+	/* if error = negative/invalid gpio will be /ignored */
+	pdata->msel_gpio = of_get_named_gpio(dn, "idle-gpio", 0);
+	if (pdata->msel_gpio >= 0) {
+		c->valid_modes_mask |= REGULATOR_MODE_IDLE;
+		c->valid_ops_mask |= REGULATOR_CHANGE_MODE;
+	}
+
+	return 0;
+}
+
+static int tegra_dfll_bypass_match_pwm(
+	struct device *dev, struct device_node *dn)
+{
+	int ret;
+	struct of_phandle_args args;
+
+	ret = of_parse_phandle_with_args(dn, "pwms", "#pwm-cells", 0, &args);
+	if (ret) {
+		dev_err(dev, "failed to parse pwms property\n");
+		return ret;
+	}
+
+	ret = of_match_node(of_tegra_dfll_bypass_pwm_match_tbl, args.np) ?
+		0 : -ENODEV;
+
+	of_node_put(args.np);
+	return ret;
+}
+
 static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 {
-	struct tegra_dfll_bypass_platform_data *pdata;
-	struct tegra_dfll_bypass_regulator *tdb;
+	int ret;
+	struct tegra_dfll_bypass_platform_data *pdata = pdev->dev.platform_data;
+	struct device_node *dn = pdev->dev.of_node;
+	struct tegra_dfll_bypass_regulator *tdb = NULL;
+	struct regulator_init_data *init_data = NULL;
 	struct regulator_config config = { };
 	struct regulator_dev *rdev;
 
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
+	if (!pdata && dn) {
+		ret = tegra_dfll_bypass_match_pwm(&pdev->dev, dn);
+		if (ret)
+			return ret;
+
+		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&pdev->dev, "failed to allocate pdata\n");
+			ret = -ENOMEM;
+			goto err_out;
+		}
+		init_data = of_get_regulator_init_data(&pdev->dev, dn);
+		if (!init_data) {
+			dev_err(&pdev->dev, "failed to allocate init data\n");
+			ret = -ENOMEM;
+			goto err_out;
+		}
+		pdata->reg_init_data = init_data;
+		ret = tegra_dfll_bypass_parse_dt(&pdev->dev, dn, pdata);
+		if (ret) {
+			dev_err(&pdev->dev, "failed to parse dt\n");
+			goto err_out;
+		}
+	} else if (!pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODATA;
 	}
 
 	tdb = devm_kzalloc(&pdev->dev, sizeof(*tdb), GFP_KERNEL);
 	if (!tdb) {
-		dev_err(&pdev->dev, "Memory allocation failed\n");
-		return -ENOMEM;
+		dev_err(&pdev->dev, "failed to allocate regulator\n");
+		ret = -ENOMEM;
+		goto err_out;
 	}
 
 	tdb->dev = &pdev->dev;
@@ -184,7 +275,8 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 	if (IS_ERR(rdev)) {
 		dev_err(tdb->dev, "failed to register regulator %s\n",
 			tdb->desc.name);
-		return PTR_ERR(rdev);
+		ret = PTR_ERR(rdev);
+		goto err_out;
 	}
 
 	if (gpio_is_valid(tdb->pdata->msel_gpio)) {
@@ -195,8 +287,20 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 		}
 	}
 
+	pdev->dev.platform_data = pdata;
 	platform_set_drvdata(pdev, rdev);
 	return 0;
+
+err_out:
+	if (tdb)
+		devm_kfree(&pdev->dev, tdb);
+	if (!pdev->dev.platform_data) {
+		if (init_data)
+			devm_kfree(&pdev->dev, init_data);
+		if (pdata)
+			devm_kfree(&pdev->dev, pdata);
+	}
+	return ret;
 }
 
 static int tegra_dfll_bypass_remove(struct platform_device *pdev)
@@ -213,6 +317,7 @@ static int tegra_dfll_bypass_remove(struct platform_device *pdev)
 static struct platform_driver tegra_dfll_bypass_driver = {
 	.driver = {
 		.name	= "tegra_dfll_bypass",
+		.of_match_table = of_tegra_dfll_bypass_regulator_match_tbl,
 		.owner  = THIS_MODULE,
 	},
 	.probe	= tegra_dfll_bypass_probe,
