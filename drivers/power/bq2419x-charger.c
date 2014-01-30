@@ -223,6 +223,16 @@ static struct regulator_ops bq2419x_vbus_ops = {
 	.is_enabled	= bq2419x_vbus_is_enabled,
 };
 
+static int bq2419x_val_to_reg(int val, int offset, int div, bool roundup)
+{
+	if (val <= offset)
+		return 0;
+	if (roundup)
+		return DIV_ROUND_UP(val - offset, div);
+	else
+		return (val - offset) / div;
+}
+
 static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 		struct bq2419x_charger_platform_data *chg_pdata)
 {
@@ -263,20 +273,24 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 		charge_voltage_limit = 4208;
 	}
 
-	vindpm = (voltage_input - BQ2419X_INPUT_VINDPM_OFFSET) / 80;
+	vindpm = bq2419x_val_to_reg(voltage_input,
+			BQ2419X_INPUT_VINDPM_OFFSET, 80, 0);
 	bq2419x->input_src.mask = BQ2419X_INPUT_VINDPM_MASK;
 	bq2419x->input_src.val = vindpm << 3;
 	bq2419x->input_src.mask |= BQ2419X_INPUT_IINLIM_MASK;
 	bq2419x->input_src.val |= 0x2;
 
-	ichg = (fast_charge_current - BQ2419X_CHARGE_ICHG_OFFSET)/64;
+	ichg = bq2419x_val_to_reg(fast_charge_current,
+			BQ2419X_CHARGE_ICHG_OFFSET, 64, 0);
 	bq2419x->chg_current_control.mask = BQ2419X_CHRG_CTRL_ICHG_MASK;
 	bq2419x->chg_current_control.val = ichg << 2;
 
-	iprechg = (pre_charge_current - BQ2419X_PRE_CHG_IPRECHG_OFFSET) / 128;
+	iprechg = bq2419x_val_to_reg(pre_charge_current,
+			BQ2419X_PRE_CHG_IPRECHG_OFFSET, 128, 0);
 	bq2419x->prechg_term_control.mask = BQ2419X_CHRG_TERM_PRECHG_MASK;
 	bq2419x->prechg_term_control.val = iprechg << 4;
-	iterm = (termination_current - BQ2419X_PRE_CHG_TERM_OFFSET) / 128;
+	iterm =  bq2419x_val_to_reg(termination_current,
+			BQ2419X_PRE_CHG_TERM_OFFSET, 128, 0);
 	bq2419x->prechg_term_control.mask |= BQ2419X_CHRG_TERM_TERM_MASK;
 	bq2419x->prechg_term_control.val |= iterm;
 
@@ -297,7 +311,8 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 		treg = 3;
 	bq2419x->ir_comp_therm.val |= treg;
 
-	vreg = (charge_voltage_limit - BQ2419X_CHARGE_VOLTAGE_OFFSET) / 16;
+	vreg = bq2419x_val_to_reg(charge_voltage_limit,
+			BQ2419X_CHARGE_VOLTAGE_OFFSET, 16, 1);
 	bq2419x->chg_voltage_control.mask = BQ2419X_CHG_VOLT_LIMIT_MASK;
 	bq2419x->chg_voltage_control.val = vreg << 2;
 	return 0;
