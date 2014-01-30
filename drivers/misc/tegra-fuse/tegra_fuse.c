@@ -26,6 +26,7 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/moduleparam.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -1200,6 +1201,13 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
+static struct of_device_id tegra_fuse_of_match[] = {
+	{ .compatible = "nvidia, tegra114-efuse", },
+	{ .compatible = "nvidia, tegra124-efuse", },
+	{}
+};
+MODULE_DEVICE_TABLE(of, tegra_fuse_of_match);
+
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
 #ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
@@ -1255,6 +1263,9 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
 					&dev_attr_odm_reserved.attr));
 	tegra_fuse_add_sysfs_variables(pdev, fuse_odm_prod_mode());
+
+	dev_info(&pdev->dev,
+			"Fuse driver initialized succesfully\n");
 	return 0;
 }
 
@@ -1301,6 +1312,7 @@ static struct platform_driver fuse_driver = {
 	.driver = {
 			.name = "tegra-fuse",
 			.owner = THIS_MODULE,
+			.of_match_table = tegra_fuse_of_match,
 		},
 };
 
