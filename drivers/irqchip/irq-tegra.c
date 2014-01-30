@@ -4,7 +4,7 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -308,7 +308,21 @@ static void tegra_eoi(struct irq_data *d)
 	if (d->irq < FIRST_LEGACY_IRQ)
 		return;
 
-	tegra_irq_write_mask(d->irq, ICTLR_CPU_IEP_FIR_CLR);
+	/*
+	 * WAR: these are used by bpmp as SW irqs
+	 * (and cleared by the firmware driver).
+	 * Clearing them again here would cause irqs getting lost
+	 */
+	switch (d->irq) {
+	case INT_SHR_SEM_INBOX_IBF:
+	case INT_SHR_SEM_INBOX_IBE:
+	case INT_SHR_SEM_OUTBOX_IBE:
+	case INT_AVP_UCQ:
+		break;
+	default:
+		tegra_irq_write_mask(d->irq, ICTLR_CPU_IEP_FIR_CLR);
+		break;
+	}
 }
 
 static int tegra_retrigger(struct irq_data *d)
