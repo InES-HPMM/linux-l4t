@@ -589,8 +589,17 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		break;
 	case BOARD_PM363:
 	case BOARD_E1824:
-		panel = &edp_a_1080p_14_0;
-		ardbeg_disp1_out.type = TEGRA_DC_OUT_DP;
+		switch (board_out->sku) {
+		case 1200:
+			panel = &edp_i_1080p_11_6;
+			ardbeg_disp1_out.type = TEGRA_DC_OUT_NVSR_DP;
+			break;
+		default:
+			panel = &edp_a_1080p_14_0;
+			ardbeg_disp1_out.type = TEGRA_DC_OUT_DP;
+			break;
+		}
+
 		ardbeg_disp1_out.dp_out = &dp_settings;
 		ardbeg_disp1_device.resource = ardbeg_disp1_edp_resources;
 		ardbeg_disp1_device.num_resources =
