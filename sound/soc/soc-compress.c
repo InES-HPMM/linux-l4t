@@ -473,6 +473,7 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 	struct snd_pcm_substream *fe_substream = fe->pcm->streams[0].substream;
 	struct snd_soc_platform *platform = fe->platform;
 	struct snd_pcm_hw_params *hw_params;
+	struct snd_interval *interval;
 	int ret = 0, stream;
 
 	if (cstream->direction == SND_COMPRESS_PLAYBACK)
@@ -504,7 +505,14 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 			goto out;
 	}
 
-	memcpy(&fe->dpcm[fe_substream->stream].hw_params, params,
+	interval = hw_param_interval(hw_params, SNDRV_PCM_HW_PARAM_RATE);
+	interval->min = interval->max =
+		snd_pcm_rate_bit_to_rate(params->codec.sample_rate);
+
+	interval = hw_param_interval(hw_params, SNDRV_PCM_HW_PARAM_CHANNELS);
+	interval->min = interval->max = params->codec.ch_out;
+
+	memcpy(&fe->dpcm[fe_substream->stream].hw_params, hw_params,
 			sizeof(struct snd_pcm_hw_params));
 
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
@@ -529,6 +537,7 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 out:
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_NO;
 	mutex_unlock(&fe->card->mutex);
+	kfree(hw_params);
 	return ret;
 }
 
