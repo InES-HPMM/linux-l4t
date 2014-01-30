@@ -1551,7 +1551,6 @@
 			nvidia,pins = "drive_sdio1";
 			nvidia,high-speed-mode = <TEGRA_PIN_DRIVE_HIGH_SPEED_MODE_ENABLE>;
 			nvidia,schmitt = <TEGRA_PIN_DRIVE_SCHMITT_DISABLE>;
-			nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
 			nvidia,pull-down-strength = <32>;
 			nvidia,pull-up-strength = <42>;
 			nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
@@ -1562,7 +1561,6 @@
 			nvidia,pins = "drive_sdio3";
 			nvidia,high-speed-mode = <TEGRA_PIN_DRIVE_HIGH_SPEED_MODE_ENABLE>;
 			nvidia,schmitt = <TEGRA_PIN_DRIVE_SCHMITT_DISABLE>;
-			nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
 			nvidia,pull-down-strength = <22>;
 			nvidia,pull-up-strength = <36>;
 			nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
