@@ -231,7 +231,10 @@ static int pwm_regulator_probe(struct platform_device *pdev)
 	preg->pwm = devm_pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(preg->pwm)) {
 		ret = PTR_ERR(preg->pwm);
-		dev_err(&pdev->dev, "PWM request failed: %d\n", ret);
+		if (ret == -EPROBE_DEFER)
+			dev_info(&pdev->dev, "PWM request deferred\n");
+		else
+			dev_err(&pdev->dev, "PWM request failed: %d\n", ret);
 		return ret;
 	}
 
