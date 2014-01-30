@@ -22,6 +22,11 @@
 
 int bpmp_ipc_init(struct platform_device *pdev);
 
+int bpmp_post(int mrq, void *data, int sz);
+int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
+int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
+		void *ib_data, int ib_sz);
+
 int bpmp_ping(void);
 
 #endif

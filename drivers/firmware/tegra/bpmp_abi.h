@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,6 +16,39 @@
 
 #ifndef _BPMP_ABI_H
 #define _BPMP_ABI_H
+
+#include <mach/irqs.h>
+
+/* CPU to BPMP atomic channels */
+#define CPU0_OB_CH0		0
+#define CPU1_OB_CH0		1
+#define CPU2_OB_CH0		2
+#define CPU3_OB_CH0		3
+
+/* CPU to BPMP non-atomic channels */
+#define CPU0_OB_CH1		4
+#define CPU1_OB_CH1		5
+#define CPU2_OB_CH1		6
+#define CPU3_OB_CH1		7
+
+/* BPMP to CPU channels */
+#define CPU0_IB_CH		8
+#define CPU1_IB_CH		9
+#define CPU2_IB_CH		10
+#define CPU3_IB_CH		11
+
+#define NR_CHANNELS		12
+#define MSG_SZ			32
+#define MSG_DATA_SZ		24
+
+#define CPU_OB_IRQ		INT_SHR_SEM_OUTBOX_IBF
+#define CPU0_IB_IRQ		INT_SHR_SEM_INBOX_IBF
+#define CPU1_IB_IRQ		INT_SHR_SEM_INBOX_IBE
+#define CPU2_IB_IRQ		INT_SHR_SEM_OUTBOX_IBE
+#define CPU3_IB_IRQ		INT_AVP_UCQ
+
+#define DO_ACK			(1 << 0)
+#define RING_DOORBELL		(1 << 1)
 
 #define MRQ_PING		0
 #define MRQ_LEGACY_LP0		1

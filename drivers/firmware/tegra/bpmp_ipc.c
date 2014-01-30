@@ -15,10 +15,12 @@
  */
 
 #include <linux/completion.h>
+#include <linux/cpu.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/notifier.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <linux/spinlock.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
@@ -27,15 +29,499 @@
 
 #define TEGRA_ATOMICS_BASE	0x70016000
 #define ATOMICS_AP0_TRIGGER	IO_ADDRESS(TEGRA_ATOMICS_BASE + 0x000)
+#define ATOMICS_AP0_RESULT(id)	IO_ADDRESS(TEGRA_ATOMICS_BASE + 0xc00 + id * 4)
 #define TRIGGER_ID_SHIFT	16
 #define TRIGGER_CMD_GET		4
 
+#define ICTLR_REG_BASE(irq)	IO_ADDRESS(TEGRA_PRIMARY_ICTLR_BASE + (((irq) - 32) >> 5) * 0x100)
+#define ICTLR_FIR_SET(irq)	(ICTLR_REG_BASE(irq) + 0x18)
+#define ICTLR_FIR_CLR(irq)	(ICTLR_REG_BASE(irq) + 0x1c)
+#define FIR_BIT(irq)		(1 << ((irq) & 0x1f))
+
+#define TIMERUS_CNTR_1US	IO_ADDRESS(TEGRA_TMR1_BASE + 0x10)
+
+#define RES_SEMA_SHRD_SMP_STA	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x00)
+#define RES_SEMA_SHRD_SMP_SET	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x04)
+#define RES_SEMA_SHRD_SMP_CLR	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x08)
+
+#define THREAD_CH(i)		(CPU0_OB_CH1 + i)
+#define PER_CPU_IB_CH(i)	(CPU0_IB_CH + i)
+
+#define NR_THREAD_CH		4
+#define ALL_FREE		0xaaaaaaaa
+#define CHANNEL_TIMEOUT		USEC_PER_SEC
+#define THREAD_CH_TIMEOUT	(USEC_PER_SEC * 60)
+
+/*
+ * IPC message format
+ * @code: either an MRQ number (outgoing) or an error code (incoming)
+ * @flags: message flags
+ * @data: MRQ specifc args (outgoing) or result (incoming)
+ */
+struct mb_data {
+	int code;
+	int flags;
+	u8 data[MSG_DATA_SZ];
+};
+
+static struct mb_data *channel_area[NR_CHANNELS];
+struct completion completion[NR_THREAD_CH];
+static int connected;
+static DEFINE_SPINLOCK(lock);
+
+/*
+ * How the RES_SEMA_SHRD_SMP bits are interpretted
+ * as token states.
+ *
+ * SL_SIGL (b00): slave ch in signalled state
+ * SL_QUED (b01): slave ch is in queue
+ * MA_FREE (b10): master ch is free
+ * MA_ACKD (b11): master ch is acked
+ *
+ * Ideally, the slave should only set bits while the
+ * master do only clear them. But there is an exception -
+ * see bpmp_ack_master()
+ */
+#define CH_MASK(ch)	(0x3 << ((ch) * 2))
+#define SL_SIGL(ch)	(0x0 << ((ch) * 2))
+#define SL_QUED(ch)	(0x1 << ((ch) * 2))
+#define MA_FREE(ch)	(0x2 << ((ch) * 2))
+#define MA_ACKD(ch)	(0x3 << ((ch) * 2))
+
+static u32 bpmp_ch_sta(int ch)
+{
+	return readl(RES_SEMA_SHRD_SMP_STA) & CH_MASK(ch);
+}
+
+static bool bpmp_master_free(int ch)
+{
+	return bpmp_ch_sta(ch) == MA_FREE(ch);
+}
+
+static bool bpmp_slave_signalled(int ch)
+{
+	return bpmp_ch_sta(ch) == SL_SIGL(ch);
+}
+
+static bool bpmp_master_acked(int ch)
+{
+	return bpmp_ch_sta(ch) == MA_ACKD(ch);
+}
+
+static void bpmp_signal_slave(int ch)
+{
+	writel(CH_MASK(ch), RES_SEMA_SHRD_SMP_CLR);
+}
+
+static void bpmp_ack_master(int ch, int flags)
+{
+	writel(MA_ACKD(ch), RES_SEMA_SHRD_SMP_SET);
+
+	/*
+	 * We have to violate the bit modification rule while
+	 * moving from SL_QUED to MA_FREE (DO_ACK not set) so that
+	 * the channel won't be in ACKD state forever.
+	 */
+	if (!(flags & DO_ACK))
+		writel(MA_ACKD(ch) ^ MA_FREE(ch), RES_SEMA_SHRD_SMP_CLR);
+}
+
+/* MA_ACKD to MA_FREE */
+static void bpmp_free_master(int ch)
+{
+	writel(MA_ACKD(ch) ^ MA_FREE(ch), RES_SEMA_SHRD_SMP_CLR);
+}
+
+static void bpmp_ring_doorbell(void)
+{
+	writel(FIR_BIT(CPU_OB_IRQ), ICTLR_FIR_SET(CPU_OB_IRQ));
+}
+
+static void bpmp_dispatch_mrq(int ch)
+{
+	struct mb_data *p = channel_area[ch];
+
+	if (!connected) {
+		WARN_ON(1);
+		return;
+	}
+
+	switch (p->code) {
+	case MRQ_PING:
+		p->code = 0;
+		break;
+	default:
+		p->code = -EINVAL;
+	}
+
+	bpmp_ack_master(ch, p->flags);
+	if (p->flags & RING_DOORBELL)
+		bpmp_ring_doorbell();
+}
+
+static struct completion *bpmp_completion_obj(int ch)
+{
+	int i = ch - CPU0_OB_CH1;
+	if (i < 0 || i >= NR_THREAD_CH)
+		return NULL;
+	return completion + i;
+}
+
+static void bpmp_signal_thread(int ch)
+{
+	struct mb_data *p = channel_area[ch];
+	struct completion *w;
+
+	if (!connected) {
+		WARN_ON(1);
+		return;
+	}
+
+	if (!(p->flags & RING_DOORBELL))
+		return;
+
+	w = bpmp_completion_obj(ch);
+	if (!w) {
+		WARN_ON(1);
+		return;
+	}
+
+	complete(w);
+}
+
+/* bit mask of thread channels waiting for completion */
+static unsigned int to_complete;
+
+static void bpmp_ack_doorbell(int irq)
+{
+	writel(FIR_BIT(irq), ICTLR_FIR_CLR(irq));
+}
+
 irqreturn_t bpmp_inbox_irq(int irq, void *data)
 {
+	unsigned long flags;
+	int ch;
+	int i;
+
+	ch = (long)data;
+	bpmp_ack_doorbell(irq);
+
+	if (bpmp_slave_signalled(ch))
+		bpmp_dispatch_mrq(ch);
+
+	spin_lock_irqsave(&lock, flags);
+
+	for (i = 0; i < NR_THREAD_CH && to_complete; i++) {
+		ch = THREAD_CH(i);
+		if (bpmp_master_acked(ch) && (to_complete & 1 << ch)) {
+			to_complete &= ~(1 << ch);
+			bpmp_signal_thread(ch);
+		}
+	}
+
+	spin_unlock_irqrestore(&lock, flags);
+
 	return IRQ_HANDLED;
+}
+
+static unsigned int usec_counter(void)
+{
+	return readl(TIMERUS_CNTR_1US);
+}
+
+static int bpmp_wait_master_free(int ch)
+{
+	unsigned int start = usec_counter();
+
+	while (usec_counter() - start < CHANNEL_TIMEOUT) {
+		if (bpmp_master_free(ch))
+			return 0;
+	}
+
+	return -ETIMEDOUT;
+}
+
+static void __bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
+{
+	struct mb_data *p = channel_area[ch];
+
+	p->code = mrq;
+	p->flags = flags;
+	memcpy(p->data, data, sz);
+	bpmp_signal_slave(ch);
+}
+
+static int bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
+{
+	int r;
+
+	if (!connected) {
+		WARN_ON(1);
+		return -ENODEV;
+	}
+
+	r = bpmp_wait_master_free(ch);
+	if (r)
+		return r;
+
+	__bpmp_write_ch(ch, mrq, flags, data, sz);
+	return 0;
+}
+
+static int bpmp_ob_channel(bool threaded)
+{
+	return smp_processor_id() + (threaded ? CPU0_OB_CH1 : CPU0_OB_CH0);
+}
+
+static int bpmp_try_locked_write(int ch, int mrq, void *data, int sz)
+{
+	unsigned long flags;
+	int r = 0;
+
+	spin_lock_irqsave(&lock, flags);
+
+	if (bpmp_master_free(ch)) {
+		__bpmp_write_ch(ch, mrq, DO_ACK | RING_DOORBELL, data, sz);
+		to_complete |= (1 << ch);
+		r = 1;
+	}
+
+	spin_unlock_irqrestore(&lock, flags);
+	return r;
+}
+
+static int bpmp_write_threaded_ch(int ch, int mrq, void *data, int sz)
+{
+	unsigned int start = usec_counter();
+
+	while (usec_counter() - start < THREAD_CH_TIMEOUT) {
+		if (bpmp_try_locked_write(ch, mrq, data, sz))
+			return 0;
+	}
+
+	return -ETIMEDOUT;
+}
+
+static int __bpmp_read_ch(int ch, void *data, int sz)
+{
+	struct mb_data *p = channel_area[ch];
+	memcpy(data, p->data, sz);
+	bpmp_free_master(ch);
+	return p->code;
+}
+
+static int bpmp_read_ch(int ch, void *data, int sz)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&lock, flags);
+	r = __bpmp_read_ch(ch, data, sz);
+	spin_unlock_irqrestore(&lock, flags);
+
+	return r;
+}
+
+static int bpmp_wait_ack(int ch)
+{
+	unsigned int start = usec_counter();
+
+	while (usec_counter() - start < CHANNEL_TIMEOUT) {
+		if (bpmp_master_acked(ch))
+			return 0;
+	}
+
+	return -ETIMEDOUT;
+}
+
+/* One-way: do not wait for ACK */
+int bpmp_post(int mrq, void *data, int sz)
+{
+	int ch;
+	int r;
+
+	ch = bpmp_ob_channel(false);
+	r = bpmp_write_ch(ch, mrq, 0, data, sz);
+	if (r)
+		return r;
+
+	bpmp_ring_doorbell();
+	return 0;
+}
+
+/* Atomic */
+int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
+{
+	int ch;
+	int r;
+
+	ch = bpmp_ob_channel(false);
+	r = bpmp_write_ch(ch, mrq, DO_ACK, ob_data, ob_sz);
+	if (r)
+		return r;
+
+	bpmp_ring_doorbell();
+	r = bpmp_wait_ack(ch);
+	if (r)
+		return r;
+
+	return __bpmp_read_ch(ch, ib_data, ib_sz);
+}
+
+/* Non atomic */
+int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
+		void *ib_data, int ib_sz)
+{
+	struct completion *w;
+	unsigned long timeout;
+	int ch;
+	int r;
+
+	ch = bpmp_ob_channel(true);
+	r = bpmp_write_threaded_ch(ch, mrq, ob_data, ob_sz);
+	if (r)
+		return r;
+
+	bpmp_ring_doorbell();
+	w = bpmp_completion_obj(ch);
+	timeout = msecs_to_jiffies(THREAD_CH_TIMEOUT);
+	if (!wait_for_completion_timeout(w, timeout))
+		return -ETIMEDOUT;
+
+	return bpmp_read_ch(ch, ib_data, ib_sz);
+}
+
+static void bpmp_init_completion(void)
+{
+	int i;
+	for (i = 0; i < NR_THREAD_CH; i++)
+		init_completion(completion + i);
+}
+
+static int cpu_irqs[] = { CPU0_IB_IRQ, CPU1_IB_IRQ, CPU2_IB_IRQ, CPU3_IB_IRQ };
+
+static void bpmp_irq_set_affinity(int cpu)
+{
+	int r;
+
+	if (cpu > ARRAY_SIZE(cpu_irqs)) {
+		WARN_ON(1);
+		return;
+	}
+
+	r = irq_set_affinity(cpu_irqs[cpu], cpumask_of(cpu));
+	WARN_ON(r);
+}
+
+static void bpmp_irq_clr_affinity(int cpu)
+{
+	int r;
+	int new_cpu;
+
+	if (cpu > ARRAY_SIZE(cpu_irqs)) {
+		WARN_ON(1);
+		return;
+	}
+
+	new_cpu = cpumask_any_but(cpu_online_mask, cpu);
+
+	r = irq_set_affinity(cpu_irqs[cpu], cpumask_of(new_cpu));
+	WARN_ON(r);
+}
+
+/*
+ * When a CPU is being hot unplugged, the incoming
+ * doorbell irqs must be moved to another CPU
+ */
+static int bpmp_cpu_notify(struct notifier_block *nb, unsigned long action,
+		void *data)
+{
+	int cpu = (long)data;
+
+	switch (action) {
+	case CPU_DOWN_PREPARE:
+		bpmp_irq_clr_affinity(cpu);
+		break;
+	case CPU_ONLINE:
+		bpmp_irq_set_affinity(cpu);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block bpmp_cpu_nb = {
+	.notifier_call = bpmp_cpu_notify
+};
+
+static int bpmp_init_irq(struct platform_device *pdev)
+{
+	const char *n = dev_name(&pdev->dev);
+	long ch;
+	int r;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(cpu_irqs); i++) {
+		ch = PER_CPU_IB_CH(i);
+		r = request_irq(cpu_irqs[i], bpmp_inbox_irq, 0, n, (void *)ch);
+		if (r)
+			return r;
+	}
+
+	r = register_cpu_notifier(&bpmp_cpu_nb);
+	if (r)
+		return r;
+
+	for (i = 0; i < ARRAY_SIZE(cpu_irqs); i++)
+		bpmp_irq_set_affinity(i);
+
+	return 0;
+}
+
+/* Channel area is setup by BPMP before signalling handshake */
+static void *bpmp_channel_area(int ch)
+{
+	u32 a;
+	writel(ch << TRIGGER_ID_SHIFT | TRIGGER_CMD_GET, ATOMICS_AP0_TRIGGER);
+	a = readl(ATOMICS_AP0_RESULT(ch));
+	return a ? IO_ADDRESS(a) : NULL;
+}
+
+static int bpmp_connect(void)
+{
+	int i;
+
+	/* handshake */
+	if (!readl(RES_SEMA_SHRD_SMP_STA))
+		return -ENODEV;
+
+	for (i = 0; i < NR_CHANNELS; i++) {
+		channel_area[i] = bpmp_channel_area(i);
+		if (!channel_area[i])
+			return -EFAULT;
+	}
+
+	return 0;
 }
 
 int bpmp_ipc_init(struct platform_device *pdev)
 {
-	return -EFAULT;
+	int r;
+
+	bpmp_init_completion();
+	r = bpmp_init_irq(pdev);
+	if (r) {
+		dev_err(&pdev->dev, "irq init failed (%d)\n", r);
+		return r;
+	}
+
+	r = bpmp_connect();
+	if (r) {
+		dev_err(&pdev->dev, "connect failed (%d)\n", r);
+		return r;
+	}
+
+	dev_info(&pdev->dev, "IPC init OK\n");
+	connected = 1;
+	return 0;
 }
