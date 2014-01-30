@@ -2115,10 +2115,8 @@ static int calculate_actual_tuning_values(int speedo,
 	struct tuning_t2t_coeffs *t2t_coeffs = tuning_data->t2t_coeffs;
 	struct tap_hole_coeffs *thole_coeffs = tuning_data->thole_coeffs;
 	struct tuning_values *calc_values = &tuning_data->calc_values;
-	struct tap_window_data *tap_data;
 	int slope, inpt;
 	int vmax_thole, vmin_thole;
-	u8 i;
 
 	/* T2T_Vmax = (1000000/freq_MHz)/Calc_UI */
 	calc_values->t2t_vmax = (1000000 / (tuning_data->freq_hz / 1000000)) /
@@ -2143,19 +2141,6 @@ static int calculate_actual_tuning_values(int speedo,
 			(t2t_coeffs->vmax - t2t_coeffs->vmin);
 		inpt = ((vmax_thole * 1000) - (slope * 1250)) / 1000;
 		calc_values->vmax_thole = slope * voltage_mv + inpt;
-	}
-
-	/* Calculate negative margin if partial win is valid */
-	if (tuning_data->is_partial_win_valid) {
-		/* Find second boundary start and adjust partial win start */
-		for (i = 1; i < tuning_data->num_of_valid_tap_wins; i++) {
-			tap_data = &tuning_data->tap_data[i];
-			if (tap_data->win_start_attr == WIN_EDGE_BOUN_START) {
-				tuning_data->tap_data[0].win_start =
-					(tap_data->win_start - calc_values->ui);
-				break;
-			}
-		}
 	}
 
 	return 0;
@@ -2325,12 +2310,13 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tap_window_data *tap_data;
 	struct tuning_ui tuning_ui[10];
-	int err = 0;
+	int err = 0, partial_win_start = 0;
 	unsigned int tap_value, calc_ui = 0;
 	u8 prev_boundary_end = 0, num_of_wins = 0;
 	u8 num_of_uis = 0, valid_num_uis = 0;
 	u8 ref_ui;
 	u8 j = 0;
+	bool valid_ui_found = false;
 
 	/*
 	 * Assume there are a max of 10 windows and allocate tap window
@@ -2440,14 +2426,48 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 				calc_ui += tuning_ui[j].ui;
 	}
 
-	if (calc_ui)
+	if (calc_ui) {
 		tuning_data->calc_values.ui = (calc_ui / valid_num_uis);
-	else
+		valid_ui_found = true;
+	} else {
 		tuning_data->calc_values.ui = tuning_data->est_values.ui;
+		valid_ui_found = false;
+	}
 
 	/* Get the calculated tuning values */
 	err = calculate_actual_tuning_values(tegra_host->speedo, tuning_data,
 		tegra_host->boot_vcore_mv);
+
+	/*
+	 * Calculate negative margin if partial win is valid. There are two
+	 * cases here.
+	 * Case 1: If Avg_UI is found, then keep subtracting avg_ui from start
+	 * of first valid full window until a value <=0 is obtained.
+	 * Case 2: If Avg_UI is not found, subtract avg_ui from all boundary
+	 * starts until a value <=0 is found.
+	 */
+	if (tuning_data->is_partial_win_valid && (num_of_wins > 1)) {
+		if (valid_ui_found) {
+			partial_win_start = tuning_data->tap_data[1].win_start;
+			do {
+				partial_win_start -=
+					tuning_data->calc_values.ui;
+			} while (partial_win_start > 0);
+		} else {
+			for (j = 1; j < num_of_wins; j++) {
+				tap_data = &tuning_data->tap_data[j];
+				if ((tap_data->win_start -
+					tuning_data->calc_values.ui) <= 0) {
+					partial_win_start =
+						(tap_data->win_start -
+						tuning_data->calc_values.ui);
+				} else
+					break;
+			}
+		}
+		if (partial_win_start <= 0)
+			tuning_data->tap_data[0].win_start = partial_win_start;
+	}
 
 	/* Print info of all tap windows */
 	SDHCI_TEGRA_DBG("**********Auto tuning windows*************\n");
