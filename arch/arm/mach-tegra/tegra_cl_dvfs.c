@@ -29,7 +29,9 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/of_platform.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/tegra-soc.h>
@@ -1919,18 +1921,154 @@ do {									       \
 	dev_dbg(&pdev->dev, "DT: " #name " = %u\n", val);		       \
 } while (0)
 
+#define OF_GET_GPIO(node, name, pin, flags)				       \
+do {									       \
+	(pin) = of_get_named_gpio_flags((node), #name, 0, &(flags));	       \
+	if ((pin) < 0) {						       \
+		dev_err(&pdev->dev, "missing " #name " in DT data\n");	       \
+		goto err_out;						       \
+	}								       \
+	dev_dbg(&pdev->dev, "DT: " #name " = %u\n", (pin));		       \
+} while (0)
+
 #define OF_READ_BOOL(node, name, var)					       \
 do {									       \
 	(var) = of_property_read_bool((node), #name);			       \
 	dev_dbg(&pdev->dev, "DT: " #name " = %s\n", (var) ? "true" : "false"); \
 } while (0)
 
+#define TEGRA_DFLL_OF_PWM_PERIOD_CELL 1
+
+static int dt_parse_pwm_regulator(struct platform_device *pdev,
+	struct device_node *r_dn, struct tegra_cl_dvfs_platform_data *p_data)
+{
+	unsigned long val;
+	int min_uV, max_uV, step_uV;
+	struct of_phandle_args args;
+	struct platform_device *rdev = of_find_device_by_node(r_dn);
+
+	if (of_parse_phandle_with_args(r_dn, "pwms", "#pwm-cells", 0, &args)) {
+		dev_err(&pdev->dev, "DT: failed to parse pwms property\n");
+		goto err_out;
+	}
+	of_node_put(args.np);
+
+	if (args.args_count <= TEGRA_DFLL_OF_PWM_PERIOD_CELL) {
+		dev_err(&pdev->dev, "DT: low #pwm-cells %d\n", args.args_count);
+		goto err_out;
+	}
+
+	/* convert pwm period in ns to cl_dvfs pwm clock rate in Hz */
+	val = args.args[TEGRA_DFLL_OF_PWM_PERIOD_CELL];
+	val = (NSEC_PER_SEC / val) * (MAX_CL_DVFS_VOLTAGES - 1);
+	p_data->u.pmu_pwm.pwm_rate = val;
+	dev_dbg(&pdev->dev, "DT: pwm-rate: %lu\n", val);
+
+	/* voltage boundaries and step */
+	OF_READ_U32(r_dn, regulator-min-microvolt, min_uV);
+	OF_READ_U32(r_dn, regulator-max-microvolt, max_uV);
+
+	step_uV = (max_uV - min_uV) / (MAX_CL_DVFS_VOLTAGES - 1);
+	if (step_uV <= 0) {
+		dev_err(&pdev->dev, "DT: invalid pwm step %d\n", step_uV);
+		goto err_out;
+	}
+	if ((max_uV - min_uV) % (MAX_CL_DVFS_VOLTAGES - 1))
+		dev_warn(&pdev->dev,
+			 "DT: pwm range [%d...%d] is not aligned on %d steps\n",
+			 min_uV, max_uV, MAX_CL_DVFS_VOLTAGES - 1);
+
+	p_data->u.pmu_pwm.min_uV = min_uV;
+	p_data->u.pmu_pwm.step_uV = step_uV;
+
+	/*
+	 * For pwm regulator access from the regulator driver, without
+	 * interference with closed loop operations, cl_dvfs provides
+	 * dfll bypass callbacks in device platform data
+	 */
+	if (rdev && rdev->dev.platform_data)
+		p_data->u.pmu_pwm.dfll_bypass_dev = rdev;
+
+	of_node_put(r_dn);
+	return 0;
+
+err_out:
+	of_node_put(r_dn);
+	return -EINVAL;
+}
 
 static int dt_parse_pwm_pmic_params(struct platform_device *pdev,
 	struct device_node *pmic_dn, struct tegra_cl_dvfs_platform_data *p_data)
 {
-	dev_err(&pdev->dev, "pwm pmic DT data not supported yet\n");
-	return -ENOSYS;
+	int pin, i = 0;
+	enum of_gpio_flags f;
+	bool pwm_1wire_buffer, pwm_1wire_direct, pwm_2wire;
+	struct device_node *r_dn =
+		 of_parse_phandle(pmic_dn, "pwm-regulator", 0);
+
+	/* pwm regulator device */
+	if (!r_dn) {
+		dev_err(&pdev->dev, "missing DT pwm regulator data\n");
+		goto err_out;
+	}
+
+	if (dt_parse_pwm_regulator(pdev, r_dn, p_data)) {
+		dev_err(&pdev->dev, "failed to parse DT pwm regulator\n");
+		goto err_out;
+	}
+
+	/* pwm config data */
+	OF_READ_BOOL(pmic_dn, pwm-1wire-buffer, pwm_1wire_buffer);
+	OF_READ_BOOL(pmic_dn, pwm-1wire-direct, pwm_1wire_direct);
+	OF_READ_BOOL(pmic_dn, pwm-2wire, pwm_2wire);
+	if (pwm_1wire_buffer) {
+		i++;
+		p_data->u.pmu_pwm.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_BUFFER;
+	}
+	if (pwm_1wire_direct) {
+		i++;
+		p_data->u.pmu_pwm.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_DIRECT;
+	}
+	if (pwm_2wire) {
+		i++;
+		p_data->u.pmu_pwm.pwm_bus = TEGRA_CL_DVFS_PWM_2WIRE;
+	}
+	if (i != 1) {
+		dev_err(&pdev->dev, "%s pwm_bus in DT board data\n",
+			i ? "inconsistent" : "missing");
+		goto err_out;
+	}
+
+	/* pwm pins data */
+	OF_GET_GPIO(pmic_dn, pwm-data-gpio, pin, f);
+	p_data->u.pmu_pwm.pwm_pingroup = tegra_pinmux_get_pingroup(pin);
+	if (p_data->u.pmu_pwm.pwm_pingroup < 0) {
+		dev_err(&pdev->dev, "invalid gpio %d\n", pin);
+		goto err_out;
+	}
+
+	if (pwm_1wire_buffer) {
+		OF_GET_GPIO(pmic_dn, pwm-buffer-ctrl-gpio, pin, f);
+		p_data->u.pmu_pwm.out_enable_high = !(f & OF_GPIO_ACTIVE_LOW);
+		p_data->u.pmu_pwm.out_gpio = pin;
+	} else if (pwm_2wire) {
+		OF_GET_GPIO(pmic_dn, pwm-clk-gpio, pin, f);
+		p_data->u.pmu_pwm.pwm_clk_pingroup =
+			tegra_pinmux_get_pingroup(pin);
+		if (p_data->u.pmu_pwm.pwm_pingroup < 0) {
+			dev_err(&pdev->dev, "invalid gpio %d\n", pin);
+			goto err_out;
+		}
+		OF_READ_BOOL(pmic_dn, pwm-delta-mode,
+			     p_data->u.pmu_pwm.delta_mode);
+	}
+
+	of_node_put(pmic_dn);
+	return 0;
+
+err_out:
+	of_node_put(pmic_dn);
+	return -EINVAL;
 }
 
 static int dt_parse_i2c_pmic_params(struct platform_device *pdev,
