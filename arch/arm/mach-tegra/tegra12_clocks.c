@@ -429,6 +429,12 @@
 #define PLLSS_SDM_SSC_STEP		0
 #define PLLSS_SDM_DIN			0
 
+/* PLLDP SS parameters */
+#define PLLDP_SS_CTRL1_0_DEFAULT_VALUE 	0xF000E5EC
+#define PLLDP_SS_CTRL2_0_DEFAULT_VALUE 	0x101BF000
+#define PLLDP_SS_CFG_0_DEFAULT_VALUE 	0xC0000000
+
+
 /* PLLRE */
 #define PLLRE_BASE_DIVP_SHIFT		16
 #define PLLRE_BASE_DIVP_MASK		(0xF << PLLRE_BASE_DIVP_SHIFT)
@@ -3665,9 +3671,16 @@ static void pllss_set_defaults(struct clk *c, unsigned long input_rate)
 	u32 val;
 
 	clk_writel(PLLSS_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
-	clk_writel(PLLSS_CFG_DEFAULT_VALUE, c->reg + PLLSS_CFG(c));
-	clk_writel(PLLSS_CTRL1_DEFAULT_VALUE, c->reg + PLLSS_CTRL1(c));
-	clk_writel(PLLSS_CTRL2_DEFAULT_VALUE, c->reg + PLLSS_CTRL2(c));
+
+	if (!strcmp(c->name, "pll_dp")) {
+		clk_writel(PLLDP_SS_CFG_0_DEFAULT_VALUE, c->reg + PLLSS_CFG(c));
+		clk_writel(PLLDP_SS_CTRL1_0_DEFAULT_VALUE, c->reg + PLLSS_CTRL1(c));
+		clk_writel(PLLDP_SS_CTRL2_0_DEFAULT_VALUE, c->reg + PLLSS_CTRL2(c));
+	} else {
+		clk_writel(PLLSS_CFG_DEFAULT_VALUE, c->reg + PLLSS_CFG(c));
+		clk_writel(PLLSS_CTRL1_DEFAULT_VALUE, c->reg + PLLSS_CTRL1(c));
+		clk_writel(PLLSS_CTRL2_DEFAULT_VALUE, c->reg + PLLSS_CTRL2(c));
+	}
 
 	val = clk_readl(c->reg + PLL_MISC(c));
 #if USE_PLL_LOCK_BITS
