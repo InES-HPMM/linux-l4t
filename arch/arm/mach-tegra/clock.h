@@ -275,6 +275,7 @@ struct clk {
 	struct mutex *cross_clk_mutex;
 	struct mutex mutex;
 	spinlock_t spinlock;
+	unsigned long fixed_target_rate;
 };
 
 #else
