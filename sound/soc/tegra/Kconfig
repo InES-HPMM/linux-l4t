@@ -6,6 +6,15 @@ config SND_SOC_TEGRA
 	help
 	  Say Y or M here if you want support for SoC audio on Tegra.
 
+config SND_SOC_TEGRA_OFFLOAD
+	tristate "Audio offload support for Tegra SoC"
+	depends on SND_SOC_TEGRA
+	help
+	  Say Y or M here if you want support for offload audio on Tegra.
+	  When offload support is enabled offload platform is used and it
+	  sends both PCM and compressed data to AVP/DSP for decode and
+	  rendering.
+
 config SND_SOC_TEGRA20_DAS
 	tristate
 	depends on SND_SOC_TEGRA && ARCH_TEGRA_2x_SOC
@@ -92,6 +101,15 @@ config SND_SOC_TEGRA30_I2S
 	  Say Y or M if you want to add support for codecs attached to the
 	  Tegra30 I2S interface. You will also need to select the individual
 	  machine drivers to support below.
+
+config SND_SOC_TEGRA30_AVP
+	tristate
+	depends on SND_SOC_TEGRA
+	select SND_SOC_TEGRA_OFFLOAD
+	help
+	  Say Y or M if you want to add support for the Tegra30 AVP rendering
+	  module. You will also need to select the individual machine drivers to
+	  support below.
 
 config SND_SOC_TEGRA_WM8753
 	tristate "SoC Audio support for Tegra boards using a WM8753 codec"
