@@ -4247,7 +4247,11 @@ static int tegra21_periph_clk_enable(struct clk *c)
 		return 0;
 	}
 
-	clk_writel_delay(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_SET_REG(c));
+	/* FIXME: WAR for HW bug 1438604 */
+	if (!(tegra_platform_is_linsim() &&
+		(!strcmp(c->name, "nvjpg") || !strcmp(c->name, "nvdec"))))
+		clk_writel_delay(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_SET_REG(c));
+
 	if (!(c->flags & PERIPH_NO_RESET) && !(c->flags & PERIPH_MANUAL_RESET)) {
 		if (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c)) {
 			udelay(5);	/* reset propagation delay */
@@ -4278,8 +4282,11 @@ static void tegra21_periph_clk_disable(struct clk *c)
 		if (c->flags & PERIPH_ON_APB)
 			val = chipid_readl();
 
-		clk_writel_delay(
-			PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_CLR_REG(c));
+		/* FIXME: WAR for HW bug 1438604 */
+		if (!(tegra_platform_is_linsim() &&
+			(!strcmp(c->name, "nvjpg") || !strcmp(c->name, "nvdec"))))
+			clk_writel_delay(
+				PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_CLR_REG(c));
 	}
 	spin_unlock_irqrestore(&periph_refcount_lock, flags);
 }
