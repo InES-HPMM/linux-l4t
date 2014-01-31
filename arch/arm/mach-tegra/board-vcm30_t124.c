@@ -121,6 +121,121 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ NULL,			NULL,		0,		0},
 };
 
+#define SET_FIXED_TARGET_RATE(clk_name, fixed_target_rate) \
+	{clk_name,	NULL,	fixed_target_rate,	false}
+
+/*
+ * FIXME: Need to revisit for following clocks:
+ * csi, dsi, dsilp, audio
+ */
+
+/*
+ * Table of fixed target rates for automotive. parent and enable field are
+ * don't care for this table.
+ */
+
+static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
+
+	/*			name,		fixed target rate*/
+	SET_FIXED_TARGET_RATE("pll_m",		792000000),
+	SET_FIXED_TARGET_RATE("sbus",		316800000),
+
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	SET_FIXED_TARGET_RATE("pll_c2",		432000000),
+	SET_FIXED_TARGET_RATE("c2bus",		432000000),
+	SET_FIXED_TARGET_RATE("pll_c3",		660000000),
+	SET_FIXED_TARGET_RATE("c3bus",		660000000),
+#endif
+	SET_FIXED_TARGET_RATE("pll_c",		792000000),
+	SET_FIXED_TARGET_RATE("pll_c4",		600000000),
+	SET_FIXED_TARGET_RATE("c4bus",		600000000),
+	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
+	SET_FIXED_TARGET_RATE("pll_p",		408000000),
+	SET_FIXED_TARGET_RATE("pll_x",		150000000),
+	SET_FIXED_TARGET_RATE("pll_d_out0",	474000000),
+	SET_FIXED_TARGET_RATE("gbus",		600000000),
+
+	SET_FIXED_TARGET_RATE("gk20a.gbus",	600000000),
+	SET_FIXED_TARGET_RATE("sclk",		316800000),
+	SET_FIXED_TARGET_RATE("hclk",		316800000),
+	SET_FIXED_TARGET_RATE("ahb.sclk",	316800000),
+	SET_FIXED_TARGET_RATE("pclk",		158400000),
+	SET_FIXED_TARGET_RATE("apb.sclk",	158400000),
+
+	SET_FIXED_TARGET_RATE("cpu_g",		150000000),
+	SET_FIXED_TARGET_RATE("cpu_lp",		109200000),
+
+	SET_FIXED_TARGET_RATE("vde",		432000000),
+	SET_FIXED_TARGET_RATE("se",		432000000),
+	SET_FIXED_TARGET_RATE("msenc",		432000000),
+
+	SET_FIXED_TARGET_RATE("tsec",		660000000),
+	SET_FIXED_TARGET_RATE("vic03",		660000000),
+
+	SET_FIXED_TARGET_RATE("vi",		600000000),
+	SET_FIXED_TARGET_RATE("isp",		600000000),
+
+	SET_FIXED_TARGET_RATE("host1x",		264000000),
+	SET_FIXED_TARGET_RATE("mselect",	408000000),
+
+	SET_FIXED_TARGET_RATE("disp1",		474000000),
+	SET_FIXED_TARGET_RATE("disp2",		474000000),
+	SET_FIXED_TARGET_RATE("hdmi",		297000000),
+
+	SET_FIXED_TARGET_RATE("i2s0",		24576000),
+	SET_FIXED_TARGET_RATE("i2s1",		24576000),
+	SET_FIXED_TARGET_RATE("i2s2",		24576000),
+	SET_FIXED_TARGET_RATE("i2s3",		24576000),
+	SET_FIXED_TARGET_RATE("i2s4",		24576000),
+
+	SET_FIXED_TARGET_RATE("dam0",		40000000),
+	SET_FIXED_TARGET_RATE("dam1",		40000000),
+	SET_FIXED_TARGET_RATE("dam2",		40000000),
+
+	SET_FIXED_TARGET_RATE("adx",		24600000),
+	SET_FIXED_TARGET_RATE("adx1",		24600000),
+	SET_FIXED_TARGET_RATE("amx",		24600000),
+	SET_FIXED_TARGET_RATE("amx1",		24600000),
+
+	SET_FIXED_TARGET_RATE("spdif_out",	24576000),
+	SET_FIXED_TARGET_RATE("hda",		108000000),
+
+	SET_FIXED_TARGET_RATE("cilab",		102000000),
+	SET_FIXED_TARGET_RATE("cilcd",		102000000),
+	SET_FIXED_TARGET_RATE("cile",		102000000),
+
+	SET_FIXED_TARGET_RATE("uarta",		408000000),
+	SET_FIXED_TARGET_RATE("uartb",		408000000),
+	SET_FIXED_TARGET_RATE("uartc",		408000000),
+	SET_FIXED_TARGET_RATE("uartd",		408000000),
+};
+
+static int __init tegra_fixed_target_rate_init(void)
+{
+	struct clk *c;
+	unsigned long flags;
+	int i;
+
+	/* Set POR value for all clocks given in the table */
+	for (i = 0; i < ARRAY_SIZE(vcm30t124_fixed_target_clk_table); i++) {
+
+		c = tegra_get_clock_by_name(
+				vcm30t124_fixed_target_clk_table[i].name);
+		if (c) {
+			clk_lock_save(c, &flags);
+			c->fixed_target_rate =
+				vcm30t124_fixed_target_clk_table[i].rate;
+			clk_unlock_restore(c, &flags);
+		} else
+			pr_warn("%s: Clock %s not found\n", __func__,
+					vcm30t124_fixed_target_clk_table[i].name);
+	}
+
+	return 0;
+}
+late_initcall_sync(tegra_fixed_target_rate_init);
+
+
 static struct tegra_nor_platform_data vcm30_t124_nor_data = {
 	.flash = {
 		.map_name = "cfi_probe",
