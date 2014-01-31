@@ -1455,20 +1455,35 @@ bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail)
 int tegra_dvfs_rail_set_mode(struct dvfs_rail *rail, unsigned int mode)
 {
 	int ret = -ENOENT;
+	unsigned int cur_mode;
 
-	if (!rail)
+	if (!rail || !rail->reg)
 		return ret;
 
-	pr_debug("%s: updating %s mode from %u to %u\n", __func__,
-		rail->reg_id, regulator_get_mode(rail->reg), mode);
-
-	if (rail->reg)
+	if (regulator_can_set_mode(rail->reg)) {
+		pr_debug("%s: updating %s mode to %u\n", __func__,
+			 rail->reg_id, mode);
 		ret = regulator_set_mode(rail->reg, mode);
+		if (ret)
+			pr_err("%s: failed to set dvfs regulator %s mode %u\n",
+				__func__, rail->reg_id, mode);
+		return ret;
+	}
 
-	if (ret)
-		pr_err("Failed to set dvfs regulator %s mode %u\n",
-			rail->reg_id, mode);
-	return ret;
+	/*
+	 * Set mode is not supported - check request against current mode
+	 * (if the latter is unknown, assume NORMAL).
+	 */
+	cur_mode = regulator_get_mode(rail->reg);
+	if (IS_ERR_VALUE(cur_mode))
+		cur_mode = REGULATOR_MODE_NORMAL;
+
+	if (WARN_ONCE(cur_mode != mode,
+		  "%s: dvfs regulator %s cannot change mode from %u\n",
+		  __func__, rail->reg_id, cur_mode))
+		return -EINVAL;
+
+	return 0;
 }
 
 int tegra_dvfs_rail_register_notifier(struct dvfs_rail *rail,
