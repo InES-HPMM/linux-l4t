@@ -43,6 +43,10 @@ extern struct device tegra_generic_cma_dev;
 extern struct device tegra_vpr_cma_dev;
 extern int tegra_with_secure_firmware;
 
+extern struct device tegra_generic_dev;
+extern struct device tegra_vpr_dev;
+extern struct dma_resize_notifier_ops vpr_dev_ops;
+
 u32 tegra_get_sku_id(void);
 u32 tegra_get_chip_id(void);
 u32 tegra_get_bct_strapping(void);

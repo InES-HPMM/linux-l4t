@@ -46,6 +46,10 @@
 #include <linux/tegra-soc.h>
 #include <linux/dma-contiguous.h>
 #include <linux/tegra-fuse.h>
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+#include <linux/ote_protocol.h>
+#endif
+#include <linux/nvhost.h>
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/arm-gic.h>
@@ -182,8 +186,25 @@ static int tegra_split_mem_set;
 struct device tegra_generic_cma_dev;
 struct device tegra_vpr_cma_dev;
 
+struct device tegra_generic_dev;
+struct device tegra_vpr_dev;
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvsecurity.h>
+
+static void tegra_update_resize_cfg(phys_addr_t base , size_t size)
+{
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	/* Config VPR_BOM/_SIZE in MC */
+	te_set_vpr_params((void *)(uintptr_t)base, size);
+	/* trigger GPU to refetch VPR base and size. */
+	nvhost_vpr_info_fetch();
+#endif
+}
+
+struct dma_resize_notifier_ops vpr_dev_ops = {
+	.resize = tegra_update_resize_cfg
+};
 
 u32 notrace tegra_read_cycle(void)
 {
