@@ -310,12 +310,23 @@ static int lc709203f_probe(struct i2c_client *client,
 	struct lc709203f_chip *chip;
 	int ret;
 
+	/* Required PEC functionality */
+	client->flags = client->flags | I2C_CLIENT_PEC;
+
+	/* Check if device exist or not */
+	ret = i2c_smbus_read_word_data(client, LC709203F_NUM_OF_THE_PARAM);
+	if (ret < 0) {
+		dev_err(&client->dev, "device is not responding, %d\n", ret);
+		return ret;
+	}
+
+	dev_info(&client->dev, "Device Params 0x%04x\n", ret);
+
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
 	chip->client = client;
-	client->flags = client->flags | I2C_CLIENT_PEC;
 	if (client->dev.of_node) {
 		chip->pdata = devm_kzalloc(&client->dev,
 					sizeof(*chip->pdata), GFP_KERNEL);
@@ -342,14 +353,6 @@ static int lc709203f_probe(struct i2c_client *client,
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->charge_complete		= 0;
-
-	/* Dummy read to check if the slave is present*/
-	ret = lc709203f_read_word(chip->client, LC709203F_VOLTAGE);
-	if (ret < 0) {
-		dev_err(&client->dev, "Exiting driver as xfer failed\n");
-		/* Exit driver if not present */
-		goto error;
-	}
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
