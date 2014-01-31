@@ -1,5 +1,5 @@
 /*
- * NVIDIA GPU HAL interface.
+ * GM20B GPC MMU
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -13,25 +13,20 @@
  * more details.
  */
 
-#include "gk20a.h"
-#include "hal_gk20a.h"
-#include "gm20b/hal_gm20b.h"
+#ifndef _NVHOST_GM20B_GR_MMU_H
+#define _NVHOST_GM20B_GR_MMU_H
+struct gk20a;
 
-int gpu_init_hal(struct gk20a *g)
-{
-	u32 ver = g->gpu_characteristics.arch + g->gpu_characteristics.impl;
-	switch (ver) {
-	case GK20A_GPUID_GK20A:
-		gk20a_dbg_info("gk20a detected");
-		gk20a_init_hal(&g->ops);
-		break;
-	case GK20A_GPUID_GM20B:
-		gm20b_init_hal(&g->ops);
-		break;
-	default:
-		gk20a_err(&g->dev->dev, "no support for %x", ver);
-		return -ENODEV;
-	}
+enum {
+	MAXWELL_B                 = 0xB197,
+	MAXWELL_COMPUTE_B         = 0xB1C0,
+};
 
-	return 0;
-}
+#define NVB197_SET_ALPHA_CIRCULAR_BUFFER_SIZE	0x02dc
+#define NVB197_SET_CIRCULAR_BUFFER_SIZE		0x1280
+#define NVB197_SET_SHADER_EXCEPTIONS		0x1528
+#define NVB1C0_SET_SHADER_EXCEPTIONS		0x1528
+
+#define NVA297_SET_SHADER_EXCEPTIONS_ENABLE_FALSE 0
+void gm20b_init_gr(struct gpu_ops *gops);
+#endif

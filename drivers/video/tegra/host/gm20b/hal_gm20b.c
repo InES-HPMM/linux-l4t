@@ -1,5 +1,5 @@
 /*
- * NVIDIA GPU HAL interface.
+ * GM20B Graphics
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -13,25 +13,20 @@
  * more details.
  */
 
-#include "gk20a.h"
-#include "hal_gk20a.h"
-#include "gm20b/hal_gm20b.h"
+#include <linux/types.h>
+#include "dev.h"
+#include "gk20a/gk20a.h"
+#include "ltc_gm20b.h"
+#include "gr_gm20b.h"
+#include "ltc_gm20b.h"
+#include "fb_gm20b.h"
 
-int gpu_init_hal(struct gk20a *g)
+int gm20b_init_hal(struct gpu_ops *gops)
 {
-	u32 ver = g->gpu_characteristics.arch + g->gpu_characteristics.impl;
-	switch (ver) {
-	case GK20A_GPUID_GK20A:
-		gk20a_dbg_info("gk20a detected");
-		gk20a_init_hal(&g->ops);
-		break;
-	case GK20A_GPUID_GM20B:
-		gm20b_init_hal(&g->ops);
-		break;
-	default:
-		gk20a_err(&g->dev->dev, "no support for %x", ver);
-		return -ENODEV;
-	}
+	gm20b_init_ltc(gops);
+	gm20b_init_gr(gops);
+	gm20b_init_ltc(gops);
+	gm20b_init_fb(gops);
 
 	return 0;
 }

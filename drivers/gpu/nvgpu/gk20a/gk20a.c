@@ -869,6 +869,9 @@ static int gk20a_pm_finalize_poweron(struct device *_dev)
 		goto done;
 	}
 
+	if (g->ops.ltc.init_fs_state)
+		g->ops.ltc.init_fs_state(g);
+
 	err = gk20a_init_mm_support(g);
 	if (err) {
 		gk20a_err(&dev->dev, "failed to init gk20a mm");
