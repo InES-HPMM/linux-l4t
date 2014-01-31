@@ -176,6 +176,23 @@ static inline int dma_get_cache_alignment(void)
 #define DMA_MEMORY_EXCLUSIVE		0x08
 #define DMA_MEMORY_NOMAP		0x10
 
+struct dma_resize_notifier_ops {
+	void (*resize)(phys_addr_t, size_t);
+};
+
+struct dma_resize_notifier {
+	struct dma_resize_notifier_ops *ops;
+};
+
+struct dma_declare_info {
+	const char *name;
+	bool resize;
+	phys_addr_t base;
+	size_t size;
+	struct device *cma_dev;
+	struct dma_resize_notifier notifier;
+};
+
 #ifndef ARCH_HAS_DMA_DECLARE_COHERENT_MEMORY
 static inline int
 dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,

@@ -22,6 +22,12 @@ int dma_mmap_from_coherent(struct device *dev, struct vm_area_struct *vma,
  * Standard interface
  */
 #define ARCH_HAS_DMA_DECLARE_COHERENT_MEMORY
+struct dma_declare_info;
+
+extern int
+dma_declare_coherent_resizable_cma_memory(struct device *dev,
+				struct dma_declare_info *dma_info);
+
 extern int
 dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,
 			    dma_addr_t device_addr, size_t size, int flags);
@@ -38,6 +44,7 @@ dma_mark_declared_memory_occupied(struct device *dev,
 #define dma_alloc_from_coherent(dev, size, handle, ret) (0)
 #define dma_release_from_coherent(dev, order, vaddr) (0)
 #define dma_mmap_from_coherent(dev, vma, vaddr, order, ret) (0)
+#define dma_declare_coherent_resizable_cma_memory(dev, dma_info) (0)
 #endif
 
 #endif
