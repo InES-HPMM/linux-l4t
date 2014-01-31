@@ -114,6 +114,11 @@
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
+#ifdef CONFIG_PSTORE_RAM
+#define RAMOOPS_MEM_SIZE SZ_2M
+#define FTRACE_MEM_SIZE SZ_1M
+#endif
+
 phys_addr_t tegra_bootloader_fb_start;
 phys_addr_t tegra_bootloader_fb_size;
 phys_addr_t tegra_bootloader_fb2_start;
@@ -1840,7 +1845,8 @@ static void __init tegra_reserve_ramoops_memory(unsigned long reserve_size)
 {
 	ramoops_data.mem_size = reserve_size;
 	ramoops_data.mem_address = memblock_end_of_4G() - reserve_size;
-	ramoops_data.console_size = reserve_size;
+	ramoops_data.console_size = reserve_size - FTRACE_MEM_SIZE;
+	ramoops_data.ftrace_size = FTRACE_MEM_SIZE;
 	ramoops_data.dump_oops = 1;
 	memblock_reserve(ramoops_data.mem_address, ramoops_data.mem_size);
 }
@@ -2149,7 +2155,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 
 	tegra_fb_linear_set(map);
 #ifdef CONFIG_PSTORE_RAM
-	tegra_reserve_ramoops_memory(SZ_1M);
+	tegra_reserve_ramoops_memory(RAMOOPS_MEM_SIZE);
 #endif
 }
 
