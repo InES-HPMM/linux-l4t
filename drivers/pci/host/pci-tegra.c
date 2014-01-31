@@ -49,6 +49,7 @@
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
+#include <asm/io.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/pm_domains.h>
@@ -1127,7 +1128,13 @@ static int tegra_pcie_map_resources(void)
 {
 	PR_FUNC_LINE;
 	/* Allocate config space virtual memory */
+#ifdef CONFIG_ARM64
+#define PROT_DEVICE_GRE (PROT_DEFAULT | PTE_PXN | PTE_UXN | PTE_ATTRINDX(MT_DEVICE_GRE))
+	tegra_pcie.regs = __ioremap(TEGRA_PCIE_BASE, PCIE_REGS_SZ,
+					__pgprot(PROT_DEVICE_GRE));
+#else
 	tegra_pcie.regs = ioremap_nocache(TEGRA_PCIE_BASE, PCIE_REGS_SZ);
+#endif
 	if (tegra_pcie.regs == NULL) {
 		pr_err("PCIE: Failed to map PCI/AFI registers\n");
 		return -ENOMEM;
