@@ -80,6 +80,15 @@ config GENERIC_LOCKBREAK
 config RWSEM_GENERIC_SPINLOCK
 	def_bool y
 
+config ARM64_SIMPLE_SPINLOCK
+	def_bool n
+	help
+	  The simple locks are designed to be simpler, faster, and more power
+	  efficent than the normal locks when there are not many cores
+	  contending for the lock. It does this by minimizing the time before
+	  executing wfe in the contention case while minimizing the work in the
+	  uncontended case.
+
 config GENERIC_HWEIGHT
 	def_bool y
 
