@@ -3,12 +3,27 @@ lc709203f battery
 
 Required properties :
  - compatible : Should contain "onsemi,lc709203f".
+ - onsemi,initial-rsoc : INITIAL_RSOC register value to be written
 
 Optional properties:
-
  - onsemi,tz-name : Thermal zone name.
  - onsemi,thermistor-beta : THERMISTOR_B register value to be written
- - onsemi,initial-rsoc : INITIAL_RSOC register value to be written
+ - onsemi,appli-adjustment: adjustment appli of parameter.
+ - onsemi,thermistor-adjustment: adjustment thermistor pack.
+
+Note: The device has capabilty to read battery temp through thermistor.
+This also calulate SoC based on temperature of battery. If thermistor
+is not connected to this device on a given platform then the temp can be
+written on the the device register to consider the battery temperature
+on SoC calculation.
+
+If battery thermistor is connected to the device's Tsense pin then following
+properties are required:
+	onsemi,thermistor-beta
+
+if battery thermistor isnot connected to device and temperature is read from
+other source then following properties are required:
+	onsemi,tz-name
 
 Example:
 

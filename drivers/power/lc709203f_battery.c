@@ -54,8 +54,10 @@
 
 struct lc709203f_platform_data {
 	const char *tz_name;
-	unsigned long thermistor_beta;
-	unsigned long initial_rsoc;
+	u32 initial_rsoc;
+	u32 appli_adjustment;
+	u32 thermistor_beta;
+	u32 therm_adjustment;
 };
 
 struct lc709203f_chip {
@@ -288,23 +290,37 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 	char const *pstr;
 	struct device_node *np = client->dev.of_node;
 	u32 pval;
+	int ret;
+
+	ret = of_property_read_u32(np, "onsemi,initial-rsoc", &pval);
+	if (!ret) {
+		pdata->initial_rsoc = pval;
+	} else {
+		dev_warn(&client->dev, "initial-rsoc not provided\n");
+		pdata->initial_rsoc = 0xAA55;
+	}
+
+	ret = of_property_read_u32(np, "onsemi,appli-adjustment", &pval);
+	if (!ret)
+		pdata->appli_adjustment = pval;
 
 	pdata->tz_name = NULL;
-
-	if (!of_property_read_string(np, "onsemi,tz-name", &pstr))
+	ret = of_property_read_string(np, "onsemi,tz-name", &pstr);
+	if (!ret)
 		pdata->tz_name = pstr;
-	else
-		dev_err(&client->dev, "Failed to read tz-name\n");
 
-	if (!of_property_read_u32(np, "onsemi,thermistor-beta", &pval))
-		pdata->thermistor_beta = (unsigned long)pval;
-	else
-		dev_info(&client->dev, "thermistor-beta not provided\n");
+	ret = of_property_read_u32(np, "onsemi,thermistor-beta", &pval);
+	if (!ret) {
+		pdata->thermistor_beta = pval;
+	} else {
+		if (!pdata->tz_name)
+			dev_warn(&client->dev,
+				"Thermistor beta not provided\n");
+	}
 
-	if (!of_property_read_u32(np, "onsemi,initial-rsoc", &pval))
-		pdata->initial_rsoc = (unsigned long)pval;
-	else
-		dev_info(&client->dev, "initial-rsoc not provided\n");
+	ret = of_property_read_u32(np, "onsemi,thermistor-adjustment", &pval);
+	if (!ret)
+		pdata->therm_adjustment = pval;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -402,6 +418,54 @@ static int lc709203f_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
+	ret = lc709203f_write_word(chip->client,
+		LC709203F_INITIAL_RSOC, chip->pdata->initial_rsoc);
+	if (ret < 0) {
+		dev_err(&client->dev, "INITIAL_RSOC write failed: %d\n", ret);
+		return ret;
+	}
+	dev_info(&client->dev, "initial-rsoc: 0x%04x\n",
+			chip->pdata->initial_rsoc);
+
+	if (chip->pdata->appli_adjustment) {
+		ret = lc709203f_write_word(chip->client,
+			LC709203F_ADJUSTMENT_PACK_APPLI,
+			chip->pdata->appli_adjustment);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"ADJUSTMENT_APPLI write failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	if (chip->pdata->tz_name || !chip->pdata->thermistor_beta)
+		goto skip_thermistor_config;
+
+	if (chip->pdata->therm_adjustment) {
+		ret = lc709203f_write_word(chip->client,
+			LC709203F_ADJUSTMENT_PACK_THERM,
+			chip->pdata->therm_adjustment);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"ADJUSTMENT_THERM write failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	ret = lc709203f_write_word(chip->client,
+		LC709203F_THERMISTOR_B, chip->pdata->thermistor_beta);
+	if (ret < 0) {
+		dev_err(&client->dev, "THERMISTOR_B write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = lc709203f_write_word(chip->client, LC709203F_STATUS_BIT, 0x1);
+	if (ret < 0) {
+		dev_err(&client->dev, "STATUS_BIT write failed: %d\n", ret);
+		return ret;
+	}
+
+skip_thermistor_config:
 	chip->battery.name		= "battery";
 	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY;
 	chip->battery.get_property	= lc709203f_get_property;
@@ -418,32 +482,6 @@ static int lc709203f_probe(struct i2c_client *client,
 	}
 
 	lc709203f_bgi.tz_name = chip->pdata->tz_name;
-	if (!chip->pdata->tz_name) {
-		ret = lc709203f_write_word(chip->client,
-				LC709203F_STATUS_BIT, 0x1);
-		if (ret < 0) {
-			dev_err(&client->dev, "STATUS_BIT write failed: %d\n",
-				ret);
-			goto error;
-		}
-	}
-
-	if (chip->pdata->thermistor_beta) {
-		ret = lc709203f_write_word(chip->client,
-			LC709203F_THERMISTOR_B, chip->pdata->thermistor_beta);
-		if (ret < 0)
-			dev_err(&client->dev, "THERMISTOR_B write failed: %d\n",
-				ret);
-	}
-
-	if (chip->pdata->initial_rsoc) {
-		ret = lc709203f_write_word(chip->client,
-			LC709203F_INITIAL_RSOC, chip->pdata->initial_rsoc);
-		if (ret < 0)
-			dev_err(&client->dev, "INITIAL_RSOC write failed: %d\n",
-				ret);
-	}
-
 	chip->bg_dev = battery_gauge_register(&client->dev, &lc709203f_bgi,
 				chip);
 	if (IS_ERR(chip->bg_dev)) {
