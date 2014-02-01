@@ -27,7 +27,6 @@
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/pm.h>
 #include <linux/jiffies.h>
-#include <linux/power/lc709203f_battery.h>
 
 #define LC709203F_THERMISTOR_B		0x06
 #define LC709203F_INITIAL_RSOC		0x07
@@ -53,6 +52,12 @@
 #define LC709203F_BATTERY_LOW		15
 #define LC709203F_BATTERY_FULL		100
 
+struct lc709203f_platform_data {
+	const char *tz_name;
+	unsigned long thermistor_beta;
+	unsigned long initial_rsoc;
+};
+
 struct lc709203f_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -77,8 +82,6 @@ struct lc709203f_chip {
 	int charge_complete;
 	struct mutex mutex;
 };
-
-struct lc709203f_chip *lc709203f_data;
 
 static int lc709203f_read_word(struct i2c_client *client, u8 reg)
 {
@@ -395,7 +398,6 @@ static int lc709203f_probe(struct i2c_client *client,
 	if (!chip->pdata)
 		return -ENODATA;
 
-	lc709203f_data = chip;
 	mutex_init(&chip->mutex);
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
