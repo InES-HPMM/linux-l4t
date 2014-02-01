@@ -502,17 +502,9 @@ static int lc709203f_resume(struct device *dev)
 	schedule_delayed_work(&chip->work, LC709203F_DELAY);
 	return 0;
 }
-#endif /* CONFIG_PM */
+#endif /* CONFIG_PM_SLEEP */
 
 static SIMPLE_DEV_PM_OPS(lc709203f_pm_ops, lc709203f_suspend, lc709203f_resume);
-
-#ifdef CONFIG_OF
-static const struct of_device_id lc709203f_dt_match[] = {
-	{ .compatible = "onsemi,lc709203f" },
-	{ },
-};
-MODULE_DEVICE_TABLE(of, lc709203f_dt_match);
-#endif
 
 static const struct i2c_device_id lc709203f_id[] = {
 	{ "lc709203f", 0 },
@@ -523,7 +515,6 @@ MODULE_DEVICE_TABLE(i2c, lc709203f_id);
 static struct i2c_driver lc709203f_i2c_driver = {
 	.driver	= {
 		.name	= "lc709203f",
-		.of_match_table = of_match_ptr(lc709203f_dt_match),
 		.pm = &lc709203f_pm_ops,
 	},
 	.probe		= lc709203f_probe,
@@ -545,5 +536,5 @@ static void __exit lc709203f_exit(void)
 module_exit(lc709203f_exit);
 
 MODULE_AUTHOR("Chaitanya Bandi <bandik@nvidia.com>");
-MODULE_DESCRIPTION("LC709203F Fuel Gauge");
-MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("OnSemi LC709203F Fuel Gauge");
+MODULE_LICENSE("GPL v2");
