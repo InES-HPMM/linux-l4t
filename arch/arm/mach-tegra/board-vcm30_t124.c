@@ -308,8 +308,14 @@ static struct platform_device tegra_snd_vcm30t124_b00 = {
 
 static void __init vcm30_t124_audio_init(void)
 {
-	platform_device_register(&tegra_snd_vcm30t124);
-	platform_device_register(&tegra_snd_vcm30t124_b00);
+	int is_e1860_b00 = 0;
+
+	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
+
+	if (is_e1860_b00)
+		platform_device_register(&tegra_snd_vcm30t124_b00);
+	else
+		platform_device_register(&tegra_snd_vcm30t124);
 }
 
 /* FIXME: Check which devices are needed from the below list */
