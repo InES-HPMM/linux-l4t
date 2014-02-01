@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -69,6 +69,8 @@ struct cm3218_chip {
 	struct i2c_client		*client;
 	const struct i2c_device_id	*id;
 	struct regulator_bulk_data	*consumers;
+	struct workqueue_struct		*wq;
+	struct delayed_work		dw;
 	struct notifier_block		regulator_nb;
 	int				i2c_xfer_state;
 	struct regmap			*regmap;
@@ -468,6 +470,29 @@ static int cm3218_activate_standby_mode(struct cm3218_chip *chip)
 					CONFIGURE_SHDN_EN);
 }
 
+static void cm3218_work(struct work_struct *ws)
+{
+	struct cm3218_chip *chip;
+	struct iio_dev *indio_dev;
+
+	chip = container_of(ws, struct cm3218_chip, dw.work);
+	if (!chip->consumers)
+		return;
+
+	indio_dev = iio_priv_to_dev(chip);
+	mutex_lock(&indio_dev->mlock);
+	if (regulator_is_enabled(chip->consumers[0].consumer) &&
+		(chip->als_state == CHIP_POWER_OFF) &&
+		(chip->i2c_xfer_state != I2C_XFER_OK_REG_SYNC)) {
+		if (chip->i2c_xfer_state == I2C_XFER_NOT_ENABLED)
+			chip->i2c_xfer_state = I2C_XFER_OK_REG_NOT_SYNC;
+		cm3218_activate_standby_mode(chip);
+	} else if (!regulator_is_enabled(chip->consumers[0].consumer)) {
+		chip->i2c_xfer_state = I2C_XFER_NOT_ENABLED;
+	}
+	mutex_unlock(&indio_dev->mlock);
+}
+
 /* this detects the regulator enable/disable event and puts
  * the device to low power state if this device does not use the regulator */
 static int cm3218_power_manager(struct notifier_block *regulator_nb,
@@ -476,15 +501,7 @@ static int cm3218_power_manager(struct notifier_block *regulator_nb,
 	struct cm3218_chip *chip;
 
 	chip = container_of(regulator_nb, struct cm3218_chip, regulator_nb);
-
-	if (event & (REGULATOR_EVENT_POST_ENABLE |
-			REGULATOR_EVENT_OUT_POSTCHANGE)) {
-		chip->i2c_xfer_state = I2C_XFER_OK_REG_NOT_SYNC;
-		cm3218_activate_standby_mode(chip);
-	} else if (event & (REGULATOR_EVENT_DISABLE |
-			REGULATOR_EVENT_FORCE_DISABLE)) {
-		chip->i2c_xfer_state = I2C_XFER_NOT_ENABLED;
-	}
+	queue_delayed_work(chip->wq, &chip->dw, 1);
 	return NOTIFY_OK;
 }
 
@@ -615,6 +632,14 @@ static int cm3218_probe(struct i2c_client *client,
 		chip->consumers = cm3218_consumers;
 	}
 
+	chip->wq = create_singlethread_workqueue(id->name);
+	if (!chip->wq) {
+		dev_err(&client->dev, "%s workqueue err\n", __func__);
+		goto err_wq;
+	}
+
+	INIT_DELAYED_WORK(&chip->dw, cm3218_work);
+
 	chip->regulator_nb.notifier_call = cm3218_power_manager;
 	ret = regulator_register_notifier(chip->consumers[0].consumer,
 					&chip->regulator_nb);
@@ -647,6 +672,8 @@ finish:
 unregister_regulator_notifier:
 	regulator_unregister_notifier(chip->consumers[0].consumer,
 					&chip->regulator_nb);
+err_wq:
+	destroy_workqueue(chip->wq);
 unregister_iio_dev:
 	iio_device_unregister(indio_dev);
 free_iio_dev:
@@ -666,7 +693,9 @@ static void cm3218_shutdown(struct i2c_client *client)
 static int cm3218_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3218_chip *chip = iio_priv(indio_dev);
 
+	destroy_workqueue(chip->wq);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 	return 0;
