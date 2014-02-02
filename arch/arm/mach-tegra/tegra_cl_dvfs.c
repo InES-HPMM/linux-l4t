@@ -2170,7 +2170,7 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 
 	/* pmic integration */
 	i2c_dn = of_parse_phandle(dn, "i2c-pmic-integration", 0);
-	pwm_dn = of_parse_phandle(dn, "pwm-pmic-integration", 0);
+	pwm_dn = of_get_child_by_name(dn, "pwm-pmic-integration");
 	if (!i2c_dn == !pwm_dn) {
 		of_node_put(i2c_dn);
 		of_node_put(pwm_dn);
