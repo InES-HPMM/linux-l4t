@@ -2201,6 +2201,31 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 		i2s->capture_i2s_cif = TEGRA30_AHUB_TXCIF_I2S0_TX0 + pdev->id;
 	}
 
+	switch (i2s->id) {
+	case 0:
+		i2s->dai.playback.stream_name = DRV_NAME ".0 Playback";
+		i2s->dai.capture.stream_name = DRV_NAME ".0 Capture";
+		break;
+	case 1:
+		i2s->dai.playback.stream_name = DRV_NAME ".1 Playback";
+		i2s->dai.capture.stream_name = DRV_NAME ".1 Capture";
+		break;
+	case 2:
+		i2s->dai.playback.stream_name = DRV_NAME ".2 Playback";
+		i2s->dai.capture.stream_name = DRV_NAME ".3 Capture";
+		break;
+	case 3:
+		i2s->dai.playback.stream_name = DRV_NAME ".3 Playback";
+		i2s->dai.capture.stream_name = DRV_NAME ".3 Capture";
+		break;
+	case 4:
+		i2s->dai.playback.stream_name = DRV_NAME ".4 Playback";
+		i2s->dai.capture.stream_name = DRV_NAME ".4 Capture";
+		break;
+	default:
+		break;
+	}
+
 	i2scont[i2s->id] = i2s;
 
 	i2s->clk_i2s = clk_get(&pdev->dev, "i2s");
@@ -2270,7 +2295,7 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	}
 
 	ret = snd_soc_register_component(&pdev->dev, &tegra30_i2s_component,
-					 &tegra30_i2s_dai_template, 1);
+					 &i2s->dai, 1);
 
 	if (ret) {
 		dev_err(&pdev->dev, "Could not register DAI: %d\n", ret);

@@ -2,7 +2,7 @@
  * tegra_pcm.c - Tegra PCM driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  *
@@ -70,6 +70,9 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 	struct tegra_runtime_data *prtd;
 	int ret;
 
+	if (rtd->dai_link->no_pcm)
+		return 0;
+
 	prtd = kzalloc(sizeof(struct tegra_runtime_data), GFP_KERNEL);
 	if (prtd == NULL)
 		return -ENOMEM;
@@ -100,6 +103,11 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 
 static int tegra_pcm_close(struct snd_pcm_substream *substream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+
+	if (rtd->dai_link->no_pcm)
+		return 0;
+
 	snd_dmaengine_pcm_close_release_chan(substream);
 	return 0;
 }
@@ -109,11 +117,15 @@ int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct device *dev = rtd->platform->dev;
-	struct dma_chan *chan = snd_dmaengine_pcm_get_chan(substream);
+	struct dma_chan *chan;
 	struct tegra_pcm_dma_params *dmap;
 	struct dma_slave_config slave_config;
 	int ret;
 
+	if (rtd->dai_link->no_pcm)
+		return 0;
+
+	chan = snd_dmaengine_pcm_get_chan(substream);
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	if (!dmap)
 		return 0;
@@ -148,6 +160,11 @@ int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
 
 int tegra_pcm_hw_free(struct snd_pcm_substream *substream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+
+	if (rtd->dai_link->no_pcm)
+		return 0;
+
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
 }
@@ -157,6 +174,9 @@ int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tegra_pcm_dma_params * dmap;
 	struct tegra_runtime_data *prtd;
+
+	if (rtd->dai_link->no_pcm)
+		return 0;
 
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 
@@ -198,7 +218,11 @@ int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static int tegra_pcm_mmap(struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	if (rtd->dai_link->no_pcm)
+		return 0;
 
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma,
 					runtime->dma_area,
