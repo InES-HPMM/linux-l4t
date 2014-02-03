@@ -2,6 +2,7 @@
  *  linux/arch/arm/mm/proc-v7.S
  *
  *  Copyright (C) 2001 Deep Blue Solutions Ltd.
+ *  Copyright (c) 2001-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -264,9 +265,9 @@ ENTRY(cpu_v7_do_resume)
 	ldmia	r0!, {r4 - r6}
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
-#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
-	mcr	p15, 0, r6, c15, c0, 1	@ diag
-#endif
+	mrc	p14, 0, r7, c0, c1, 0	@ dbgdscr
+	tst	r7, #(1 << 18)		@ dbgdscr.ns
+	mcreq	p15, 0, r6, c15, c0, 1	@ diag only in secure-mode
 
 	ldmia	r0!, {r7 - r11}
 	mcr	p15, 0, r7, c9, c14, 2	@ PMINTENCLR
@@ -609,7 +610,11 @@ __v7_setup:
 2:	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
 	teq	r0, r10
 	bne	3f
-#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
+	str	r0, [r12]			@ local stack
+	mrc	p14, 0, r0, c0, c1, 0		@ dbgdscr
+	tst	r0, #(1 << 18)			@ dbgdscr.ns
+	ldr	r0, [r12]			@ restore r0
+	bne	3f				@ skip in non-secure mode
 	cmp	r6, #0x10			@ power ctrl reg added r1p0
 	mrcge	p15, 0, r10, c15, c0, 0		@ read power control register
 	orrge	r10, r10, #1			@ enable dynamic clock gating
@@ -667,7 +672,6 @@ __v7_setup:
 	mrcle	p15, 0, r10, c15, c0, 1		@ read diagnostic register
 	orrle	r10, r10, #1 << 21		@ set bit #21
 	mcrle	p15, 0, r10, c15, c0, 1		@ write diagnostic register
-#endif
 #endif
 
 3:	mov	r10, #0
