@@ -58,6 +58,7 @@ struct lc709203f_platform_data {
 	u32 appli_adjustment;
 	u32 thermistor_beta;
 	u32 therm_adjustment;
+	u32 threshold_soc;
 };
 
 struct lc709203f_chip {
@@ -208,6 +209,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 	struct lc709203f_chip *chip = container_of(psy,
 				struct lc709203f_chip, battery);
 	int temperature;
+	int soc;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -220,14 +222,16 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = chip->vcell;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = chip->soc;
-		if (chip->soc == 15)
+		soc = battery_gauge_get_scaled_soc(chip->bg_dev,
+				chip->soc * 100, chip->pdata->threshold_soc);
+		val->intval = soc;
+		if (soc == 15)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 15 percent\n");
-		if (chip->soc == 10)
+		if (soc == 10)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 10 percent\n");
-		if (chip->soc == 5)
+		if (soc == 5)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 5 percent\n");
 		break;
@@ -321,6 +325,10 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 	ret = of_property_read_u32(np, "onsemi,thermistor-adjustment", &pval);
 	if (!ret)
 		pdata->therm_adjustment = pval;
+
+	ret = of_property_read_u32(np, "onsemi,kernel-threshold-soc", &pval);
+	if (!ret)
+		pdata->threshold_soc = pval;
 }
 
 #ifdef CONFIG_DEBUG_FS
