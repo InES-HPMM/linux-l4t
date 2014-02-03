@@ -12,7 +12,7 @@
 	pinmux {
 		default {
 			gmi_iordy_pi5 {
-				nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 			};
 		};
 	};

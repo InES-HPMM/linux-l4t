@@ -33,9 +33,9 @@
 			dap_mclk1_req_pee2 {
 			nvidia,pins = "dap_mclk1_req_pee2";
 			nvidia,function = "sata";
-			nvidia,enable-input = <TEGRA_PIN_OUTPUT>;
-			nvidia,pull = <TEGRA_PIN_PUPD_NORMAL>;
-			nvidia,tristate = <TEGRA_PIN_NORMAL>;
+			nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+			nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 		};
 
@@ -43,7 +43,7 @@
 		pinmux_suspend: pins_on_suspend {
 		dap_mclk1_req_pee2 {
 			nvidia,pins = "dap_mclk1_req_pee2";
-			nvidia,pull = <TEGRA_PIN_PUPD_PULL_UP>;
+			nvidia,pull = <TEGRA_PIN_PULL_UP>;
 			};
 		};
 	};
