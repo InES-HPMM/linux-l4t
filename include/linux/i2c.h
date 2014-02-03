@@ -423,6 +423,8 @@ struct i2c_adapter {
 	int retries;
 	struct device dev;		/* the adapter device */
 
+	bool cancel_xfer_on_shutdown;
+
 	int nr;
 	char name[48];
 	struct completion dev_released;
@@ -460,6 +462,8 @@ int i2c_for_each_dev(void *data, int (*fn)(struct device *, void *));
 /* Adapter locking functions, exported for shared pin cases */
 void i2c_lock_adapter(struct i2c_adapter *);
 void i2c_unlock_adapter(struct i2c_adapter *);
+void i2c_shutdown_adapter(struct i2c_adapter *adapter);
+void i2c_shutdown_clear_adapter(struct i2c_adapter *adapter);
 
 /*flags for the client struct: */
 #define I2C_CLIENT_PEC	0x04		/* Use Packet Error Checking */
