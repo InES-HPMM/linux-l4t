@@ -17,6 +17,7 @@
 #ifndef __LINUX_MFD_PALMAS_H
 #define __LINUX_MFD_PALMAS_H
 
+#include <linux/i2c.h>
 #include <linux/usb/otg.h>
 #include <linux/leds.h>
 #include <linux/regmap.h>
@@ -4207,6 +4208,11 @@ static inline int palmas_update_bits(struct palmas *palmas, unsigned int base,
 	int slave_id = PALMAS_BASE_TO_SLAVE(base);
 
 	return regmap_update_bits(palmas->regmap[slave_id], addr, mask, val);
+}
+
+static inline void palmas_allow_atomic_xfer(struct palmas *palmas)
+{
+	i2c_shutdown_clear_adapter(palmas->i2c_clients[0]->adapter);
 }
 
 extern int palmas_irq_get_virq(struct palmas *palmas, int irq);

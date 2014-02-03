@@ -96,6 +96,9 @@ static void palmas_power_off(void *drv_data)
 	unsigned int val;
 	int i;
 	int ret;
+
+	palmas_allow_atomic_xfer(palmas);
+
 	if (palmas_pm->need_rtc_power_on)
 		palmas_auto_power_on(palmas_pm);
 
@@ -143,6 +146,8 @@ static void palmas_power_reset(void *drv_data)
 	unsigned int val;
 	int i;
 	int ret;
+
+	palmas_allow_atomic_xfer(palmas);
 
 	for (i = 0; i < palmas_pm->num_int_mask_regs; ++i) {
 		ret = palmas_write(palmas, PALMAS_INTERRUPT_BASE,
