@@ -1546,6 +1546,16 @@ struct platform_device tegra_tdm_pcm_device = {
 	.id = -1,
 };
 
+struct platform_device tegra_offload_device = {
+	.name = "tegra-offload",
+	.id = -1,
+};
+
+struct platform_device tegra30_avp_audio_device = {
+	.name = "tegra30-avp-audio",
+	.id = -1,
+};
+
 static struct resource w1_resources[] = {
 	[0] = {
 		.start = INT_OWR,
@@ -1818,6 +1828,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
 	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS), },
+	{ .name = "tegra30-avp-audio",	.swgids = SWGID(AVPC), },
 	{ .name = "tegradc.0", .swgids = SWGID(DC),
 	  .linear_map = tegra_fb_linear_map},
 	{ .name = "tegradc.1", .swgids = SWGID(DCB), },
@@ -1879,6 +1890,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
 	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS), },
+	{ .name = "tegra30-avp-audio",	.swgids = SWGID(AVPC) | SWGID(A9AVP), },
 	{ .name = "tegradc.0", .swgids = SWGID(DC) | SWGID(DC12),
 	  .linear_map = tegra_fb_linear_map, },
 	{ .name = "tegradc.1", .swgids = SWGID(DCB),

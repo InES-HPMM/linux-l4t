@@ -343,6 +343,8 @@ static struct platform_device *dalmore_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_pcm_device,
+	&tegra_offload_device,
+	&tegra30_avp_audio_device,
 	&dalmore_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_TEGRA_CEC_SUPPORT)
