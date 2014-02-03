@@ -1301,7 +1301,9 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_dtv_init();
 	ardbeg_suspend_init();
 
-	if (board_info.board_id == BOARD_PM374)
+	if ((board_info.board_id == BOARD_PM374) ||
+		(board_info.board_id == BOARD_E1971) ||
+		(board_info.board_id == BOARD_E1973))
 		norrin_emc_init();
 	else if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
