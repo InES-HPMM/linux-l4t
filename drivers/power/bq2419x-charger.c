@@ -1260,12 +1260,12 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 				"ti,disbale-suspend-during-charging");
 
 		ret = of_property_read_u32(batt_reg_node,
-				"watchdog-timeout", &wdt_timeout);
+				"ti,watchdog-timeout", &wdt_timeout);
 		if (!ret)
 			pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
 
 		ret = of_property_read_u32(batt_reg_node,
-				"auto-recharge-time", &chg_restart_time);
+				"ti,auto-recharge-time", &chg_restart_time);
 		if (!ret)
 			pdata->bcharger_pdata->chg_restart_time =
 							chg_restart_time;
@@ -1307,7 +1307,7 @@ vbus_node:
 				vbus_init_data->num_consumer_supplies;
 		pdata->vbus_pdata->gpio_otg_iusb =
 				of_get_named_gpio(vbus_reg_node,
-					"otg-iusb-gpio", 0);
+					"ti,otg-iusb-gpio", 0);
 	}
 
 	return pdata;

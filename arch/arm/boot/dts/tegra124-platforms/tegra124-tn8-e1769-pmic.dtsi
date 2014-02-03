@@ -799,9 +799,9 @@
 				status = "disabled";
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
-				watchdog-timeout = <40>;
-				rtc-alarm-time = <3600>;
-				auto-recharge-time = <1800>;
+				ti,watchdog-timeout = <40>;
+				ti,rtc-alarm-time = <3600>;
+				ti,auto-recharge-time = <1800>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_bat_chg";
@@ -812,7 +812,7 @@
 
 			vbus {
 				regulator-name = "vbus_regulator";
-				otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
+				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_vbus";

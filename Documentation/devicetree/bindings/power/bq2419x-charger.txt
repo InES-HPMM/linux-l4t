@@ -34,20 +34,20 @@ There is two optional subnodes, vbus and charger.
 
 vbus properties:
 ================
-otg-iusb-gpio-isub-gpio: The GPIO which is connected to OTG/IUSB pin.
+otg-iusb-gpio: The GPIO which is connected to OTG/IUSB pin.
 
 
 Example
 bq2419x: bq2419x@6b {
 	compatible = "ti,bq2419x";
 	reg = <0x6b>;
-	charging-term-current-mA = <100>;
+	ti,charging-term-current-mA = <100>;
 	charger {
 			regulator-name = "batt_regulator";
 			regulator-max-microamp = <3000>;
-			watchdog-timeout = <40>;
-			rtc-alarm-time = <3600>;
-			auto-recharge-time = <1800>;
+			ti,watchdog-timeout = <40>;
+			ti,rtc-alarm-time = <3600>;
+			ti,auto-recharge-time = <1800>;
 			consumers {
 				c1 {
 					regulator-consumer-supply = "usb_bat_chg";
