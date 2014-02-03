@@ -1607,7 +1607,11 @@ static void tegra_i2c_shutdown(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 
-	i2c_dev->is_shutdown = true;
+	if (i2c_dev->bit_banging_xfer_after_shutdown) {
+		dev_info(i2c_dev->dev, "Bus is shutdown down..\n");
+		i2c_shutdown_adapter(&i2c_dev->adapter);
+		i2c_dev->is_shutdown = true;
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP
