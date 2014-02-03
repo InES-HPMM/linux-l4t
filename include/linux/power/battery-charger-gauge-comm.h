@@ -99,8 +99,7 @@ int battery_gauge_record_capacity_value(struct battery_gauge_dev *bg_dev,
 								int capacity);
 int battery_gauge_record_snapshot_values(struct battery_gauge_dev *bg_dev,
 								int interval);
-
-
-
+int battery_gauge_get_scaled_soc(struct battery_gauge_dev *bg_dev,
+		int actual_soc_semi, int thresod_soc);
 
 #endif /* _LINUX_POWER_BATTERY_CHARGER_GAUGE_COMM_H */

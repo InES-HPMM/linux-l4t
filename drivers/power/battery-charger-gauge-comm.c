@@ -314,6 +314,21 @@ int battery_gauge_record_snapshot_values(struct battery_gauge_dev *bg_dev,
 }
 EXPORT_SYMBOL_GPL(battery_gauge_record_snapshot_values);
 
+int battery_gauge_get_scaled_soc(struct battery_gauge_dev *bg_dev,
+	int actual_soc_semi, int thresod_soc)
+{
+	int thresod_soc_semi = thresod_soc * 100;
+
+	if (actual_soc_semi >= 10000)
+		return 100;
+
+	if (actual_soc_semi <= thresod_soc_semi)
+		return 0;
+
+	return (actual_soc_semi - thresod_soc_semi) / (100 - thresod_soc);
+}
+EXPORT_SYMBOL_GPL(battery_gauge_get_scaled_soc);
+
 void battery_charging_restart_cancel(struct battery_charger_dev *bc_dev)
 {
 	if (!bc_dev->ops->restart_charging) {
