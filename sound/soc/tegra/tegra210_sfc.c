@@ -3,7 +3,7 @@
  *
  * Author: Rahul Mittal <rmittal@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -43,42 +43,352 @@
 
 #define DRV_NAME "tegra210-sfc"
 
-#define GET_ACIF_REG(cif) \
-	(IS_SFC_RX(cif)) ? TEGRA210_SFC_RX_CIF_CTRL : \
-			      TEGRA210_SFC_TX_CIF_CTRL
-
-#define VALIDATE_SFC_ID(id) \
-	if ((id < 0) || (id >= TEGRA210_SFC_COUNT)) { \
-		pr_err("%s Invalid SFC id %d", __func__, id); \
-		return -EINVAL; }
-
 /* TEGRA210 SFC driver context */
 struct tegra210_sfc_ctx {
-	struct device	*dev;
-	void __iomem	*regs;
-	struct regmap	*regmap;
-	int				id;
+	struct device		*dev;
+	void __iomem		*regs;
+	struct regmap		*regmap;
+	int			id;
 	bool			in_use;
 };
 static struct tegra210_sfc_ctx *tegra210_sfc[TEGRA210_SFC_COUNT];
 
+/* SFC APIs definition */
+/**
+ *  tegra210_sfc_get - gets a sfc instance before use
+ *  @cif : sfc cif (pass CIF_NONE to get first available sfc)
+ */
+int tegra210_sfc_get(enum tegra210_ahub_cifs *cif)
+{
+	enum tegra210_cif_dir dir = IS_SFC_RX(*cif) ? DIR_RX : DIR_TX;
+	int i, id = SFC_ID(*cif);
+	struct tegra210_sfc_ctx *sfc;
+
+	if ((id >= 0) && (id < TEGRA210_SFC_COUNT)) {
+		sfc = tegra210_sfc[id];
+		if (!sfc->in_use) {
+			dev_vdbg(sfc->dev, "%s allocated sfc %d", __func__, id);
+			sfc->in_use = true;
+			pm_runtime_get_sync(sfc->dev);
+			return 0;
+		} else {
+			dev_err(sfc->dev, "%s sfc %d not free", __func__, id);
+			return -EBUSY;
+		}
+	}
+
+	for (i = 0; i < TEGRA210_SFC_COUNT; i++) {
+		sfc = tegra210_sfc[i];
+		if (!sfc->in_use) {
+			dev_vdbg(sfc->dev, "%s allocated sfc %d", __func__, i);
+			sfc->in_use = true;
+			*cif = (dir == DIR_RX) ? (SFC1_RX0 + i) :
+						 (SFC1_TX0 + i);
+			pm_runtime_get_sync(sfc->dev);
+			return 0;
+		}
+	}
+
+	pr_err("%s allocation failed, no sfc is free", __func__);
+	return -EBUSY;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_get);
+
+/**
+ *  tegra210_sfc_put - frees a sfc instance after use
+ *  @cif : sfc cif
+ */
+int tegra210_sfc_put(enum tegra210_ahub_cifs cif)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+
+	if (sfc->in_use) {
+		dev_vdbg(sfc->dev, "%s freed sfc %d", __func__, id);
+		sfc->in_use = false;
+		pm_runtime_put_sync(sfc->dev);
+	} else
+		dev_info(sfc->dev, "%s sfc %d already free", __func__, id);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_put);
+
+/**
+ *  tegra210_sfc_set_acif_param - sets acif params for a sfc
+ *  @cif : sfc cif
+ *  @acif : acif param values
+ */
+int tegra210_sfc_set_acif_param(enum tegra210_ahub_cifs cif,
+				struct tegra210_axbar_cif_param *acif)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+	u32 reg;
+
+	dev_vdbg(sfc->dev, "%s sfc cif %d", __func__, cif);
+
+	reg = IS_SFC_RX(cif) ? TEGRA210_SFC_RX_CIF_CTRL :
+				TEGRA210_SFC_TX_CIF_CTRL;
+
+	return tegra210_set_axbar_cif_param(sfc->dev, reg, acif);
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_set_acif_param);
+
+/**
+ *  tegra210_sfc_get_acif_param - gets acif params for a sfc
+ *  @cif : sfc cif
+ *  @acif : acif ptr to be populated
+ */
+int tegra210_sfc_get_acif_param(enum tegra210_ahub_cifs cif,
+				struct tegra210_axbar_cif_param *acif)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+	u32 reg;
+
+	dev_vdbg(sfc->dev, "%s sfc cif %d", __func__, cif);
+
+	reg = IS_SFC_RX(cif) ? TEGRA210_SFC_RX_CIF_CTRL :
+				TEGRA210_SFC_TX_CIF_CTRL;
+
+	return tegra210_get_axbar_cif_param(sfc->dev, reg, acif);
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_get_acif_param);
+
+/**
+ *  tegra210_sfc_set_rx_rate - sets input sample rate for a sfc
+ *  @cif : sfc rxcif
+ *  @fs_in : input sampling frequency
+ */
+int tegra210_sfc_set_rx_rate(enum tegra210_ahub_cifs cif, int fs_in)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+	u32 val = 0;
+
+	dev_vdbg(sfc->dev, "%s sfc %d fs_in %d", __func__, id, fs_in);
+
+	switch (fs_in) {
+	case 8000: val = TEGRA210_SFC_FS_8000HZ; break;
+	case 11025: val = TEGRA210_SFC_FS_11025HZ; break;
+	case 16000: val = TEGRA210_SFC_FS_16000HZ; break;
+	case 22050: val = TEGRA210_SFC_FS_22050HZ; break;
+	case 24000: val = TEGRA210_SFC_FS_24000HZ; break;
+	case 32000: val = TEGRA210_SFC_FS_32000HZ; break;
+	case 44100: val = TEGRA210_SFC_FS_44100HZ; break;
+	case 48000: val = TEGRA210_SFC_FS_48000HZ; break;
+	case 64000: val = TEGRA210_SFC_FS_64000HZ; break;
+	case 88200: val = TEGRA210_SFC_FS_88200HZ; break;
+	case 96000: val = TEGRA210_SFC_FS_96000HZ; break;
+	case 176400: val = TEGRA210_SFC_FS_176400HZ; break;
+	case 192000: val = TEGRA210_SFC_FS_192000HZ; break;
+	default:
+		dev_err(sfc->dev, "Invalid rx sample rate %d", fs_in);
+		return -EINVAL;
+	}
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_RX_FREQ,
+				TEGRA210_SFC_RX_FREQ_FS_IN_MASK,
+				val << TEGRA210_SFC_RX_FREQ_FS_IN_SHIFT);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_set_rx_rate);
+
+/**
+ *  tegra210_sfc_set_tx_rate - set output sample rate for a sfc
+ *  @cif : sfc txcif
+ *  @fs_out : output sampling frequency
+ */
+int tegra210_sfc_set_tx_rate(enum tegra210_ahub_cifs cif, int fs_out)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+	u32 val = 0;
+
+	dev_vdbg(sfc->dev, "%s sfc %d fs_out %d", __func__, id, fs_out);
+
+	switch (fs_out) {
+	case 8000: val = TEGRA210_SFC_FS_8000HZ; break;
+	case 11025: val = TEGRA210_SFC_FS_11025HZ; break;
+	case 16000: val = TEGRA210_SFC_FS_16000HZ; break;
+	case 22050: val = TEGRA210_SFC_FS_22050HZ; break;
+	case 24000: val = TEGRA210_SFC_FS_24000HZ; break;
+	case 32000: val = TEGRA210_SFC_FS_32000HZ; break;
+	case 44100: val = TEGRA210_SFC_FS_44100HZ; break;
+	case 48000: val = TEGRA210_SFC_FS_48000HZ; break;
+	case 64000: val = TEGRA210_SFC_FS_64000HZ; break;
+	case 88200: val = TEGRA210_SFC_FS_88200HZ; break;
+	case 96000: val = TEGRA210_SFC_FS_96000HZ; break;
+	case 176400: val = TEGRA210_SFC_FS_176400HZ; break;
+	case 192000: val = TEGRA210_SFC_FS_192000HZ; break;
+	default:
+		dev_err(sfc->dev, "Invalid tx sample rate %d", fs_out);
+		return -EINVAL;
+	}
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_TX_FREQ,
+				TEGRA210_SFC_TX_FREQ_FS_OUT_MASK,
+				val << TEGRA210_SFC_TX_FREQ_FS_OUT_SHIFT);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_set_tx_rate);
+
+/**
+ *  tegra210_sfc_enable - enables/disables a sfc
+ *  @cif : sfc cif
+ *  @en : enable/disable flag
+ */
+int tegra210_sfc_enable(enum tegra210_ahub_cifs cif, bool en)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+
+	dev_vdbg(sfc->dev, "%s sfc %d enable %d", __func__, id, en);
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_ENABLE,
+				TEGRA210_SFC_ENABLE_EN,
+				en ? TEGRA210_SFC_ENABLE_EN : 0);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_enable);
+
+/**
+ *  tegra210_sfc_reset - resets a sfc
+ *  @cif : sfc cif
+ */
+int tegra210_sfc_reset(enum tegra210_ahub_cifs cif)
+{
+	int cnt = AHUB_OP_MAX_RETRY, id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+	u32 val = 0;
+
+	dev_vdbg(sfc->dev, "%s reset sfc %d", __func__, id);
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_SOFT_RESET,
+				TEGRA210_SFC_SOFT_RESET_EN,
+				TEGRA210_SFC_SOFT_RESET_EN);
+
+	do {
+		udelay(AHUB_OP_SLEEP_US);
+		regmap_read(sfc->regmap, TEGRA210_SFC_SOFT_RESET, &val);
+	} while ((val & TEGRA210_SFC_SOFT_RESET_EN) && cnt--);
+
+	if (!cnt) {
+		dev_err(sfc->dev, "%s Failed to reset sfc %d", __func__, id);
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_reset);
+
+/**
+ *  tegra210_sfc_set_slcg - enables/disables second level clock gating for a sfc
+ *  @cif : sfc cif
+ *  @en : enable/disable flag
+ */
+int tegra210_sfc_set_slcg(enum tegra210_ahub_cifs cif, bool en)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+
+	dev_vdbg(sfc->dev, "%s sfc %d enable %d", __func__, id, en);
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_CG,
+				TEGRA210_SFC_CG_SLCG_EN,
+				en ? TEGRA210_SFC_CG_SLCG_EN : 0);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_set_slcg);
+
+/**
+ *  tegra210_sfc_enable_coef_ram - enables coefficient ram params for a sfc
+ *  @cif : sfc cif
+ *  @coef : ptr to coefficients (pass NULL while disabling, i.e. when en = 0)
+ *  @en : enable/disable flag
+ */
+int tegra210_sfc_enable_coef_ram(enum tegra210_ahub_cifs cif,
+					u32 *coef, bool en)
+{
+	int id = SFC_ID(cif);
+	struct tegra210_sfc_ctx *sfc = tegra210_sfc[id];
+
+	dev_vdbg(sfc->dev, "%s sfc %d enable %d", __func__, id, en);
+
+	if (en)
+		tegra210_ahubram_write(sfc->dev,
+					TEGRA210_SFC_ARAMCTL_COEF_CTRL,
+					TEGRA210_SFC_ARAMCTL_COEF_DATA,
+					0, coef, TEGRA210_SFC_COEF_RAM_DEPTH);
+
+	regmap_update_bits(sfc->regmap,
+				TEGRA210_SFC_COEF_RAM,
+				TEGRA210_SFC_COEF_RAM_COEF_RAM_EN,
+				en ? TEGRA210_SFC_COEF_RAM_COEF_RAM_EN : 0);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_sfc_enable_coef_ram);
+
 /* Regmap callback functions */
-static bool tegra210_sfc_rw_reg(struct device *dev, unsigned int reg)
+static bool tegra210_sfc_wr_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case TEGRA210_SFC_RX_INT_MASK:
+	case TEGRA210_SFC_RX_INT_SET:
+	case TEGRA210_SFC_RX_INT_CLEAR:
+	case TEGRA210_SFC_RX_CIF_CTRL:
+	case TEGRA210_SFC_RX_FREQ:
+
+	case TEGRA210_SFC_TX_INT_MASK:
+	case TEGRA210_SFC_TX_INT_SET:
+	case TEGRA210_SFC_TX_INT_CLEAR:
+	case TEGRA210_SFC_TX_CIF_CTRL:
+	case TEGRA210_SFC_TX_FREQ:
+
+	case TEGRA210_SFC_ENABLE:
+	case TEGRA210_SFC_SOFT_RESET:
+	case TEGRA210_SFC_CG:
+	case TEGRA210_SFC_COEF_RAM:
+	case TEGRA210_SFC_ARAMCTL_COEF_CTRL:
+	case TEGRA210_SFC_ARAMCTL_COEF_DATA:
+		return true;
+	default:
+		return false;
+	};
+}
+
+static bool tegra210_sfc_rd_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case TEGRA210_SFC_RX_STATUS:
 	case TEGRA210_SFC_RX_INT_STATUS:
 	case TEGRA210_SFC_RX_INT_MASK:
+	case TEGRA210_SFC_RX_INT_SET:
 	case TEGRA210_SFC_RX_INT_CLEAR:
 	case TEGRA210_SFC_RX_CIF_CTRL:
 	case TEGRA210_SFC_RX_FREQ:
+
 	case TEGRA210_SFC_TX_STATUS:
 	case TEGRA210_SFC_TX_INT_STATUS:
 	case TEGRA210_SFC_TX_INT_MASK:
+	case TEGRA210_SFC_TX_INT_SET:
 	case TEGRA210_SFC_TX_INT_CLEAR:
 	case TEGRA210_SFC_TX_CIF_CTRL:
 	case TEGRA210_SFC_TX_FREQ:
+
 	case TEGRA210_SFC_ENABLE:
+	case TEGRA210_SFC_SOFT_RESET:
 	case TEGRA210_SFC_CG:
 	case TEGRA210_SFC_STATUS:
 	case TEGRA210_SFC_INT_STATUS:
@@ -94,9 +404,17 @@ static bool tegra210_sfc_rw_reg(struct device *dev, unsigned int reg)
 static bool tegra210_sfc_volatile_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
-	case TEGRA210_SFC_SOFT_RESET:
+	case TEGRA210_SFC_RX_STATUS:
+	case TEGRA210_SFC_RX_INT_STATUS:
 	case TEGRA210_SFC_RX_INT_SET:
+
+	case TEGRA210_SFC_TX_STATUS:
+	case TEGRA210_SFC_TX_INT_STATUS:
 	case TEGRA210_SFC_TX_INT_SET:
+
+	case TEGRA210_SFC_SOFT_RESET:
+	case TEGRA210_SFC_STATUS:
+	case TEGRA210_SFC_INT_STATUS:
 	case TEGRA210_SFC_ARAMCTL_COEF_CTRL:
 	case TEGRA210_SFC_ARAMCTL_COEF_DATA:
 		return true;
@@ -120,343 +438,19 @@ static const struct regmap_config tegra210_sfc_regmap_config = {
 	.reg_stride = 4,
 	.val_bits = 32,
 	.max_register = TEGRA210_SFC_ARAMCTL_COEF_DATA,
-	.writeable_reg = tegra210_sfc_rw_reg,
-	.readable_reg = tegra210_sfc_rw_reg,
+	.writeable_reg = tegra210_sfc_wr_reg,
+	.readable_reg = tegra210_sfc_rd_reg,
 	.volatile_reg = tegra210_sfc_volatile_reg,
 	.precious_reg = tegra210_sfc_precious_reg,
 	.cache_type = REGCACHE_RBTREE,
 };
-
-/* SFC APIs definition*/
-
-/**
- *  tegra210_sfc_allocate - allocate a sfc
- *  @id : sfc id (pass id = -1 to allocate first available sfc)
- */
-int tegra210_sfc_allocate(int *id)
-{
-	struct tegra210_sfc_ctx *sfc;
-	int i;
-
-	if ((*id >= 0) && (*id < TEGRA210_SFC_COUNT)) {
-		sfc = tegra210_sfc[*id];
-		pm_runtime_get_sync(sfc->dev);
-		if (!sfc->in_use) {
-			dev_vdbg(sfc->dev, "%s allocated SFC %d", __func__, *id);
-			sfc->in_use = true;
-			return 0;
-		} else {
-			dev_err(sfc->dev, "%s SFC %d is in use, can't allocate",
-				__func__, *id);
-			return -ENOMEM;
-		}
-	}
-
-	for (i = 0; i < TEGRA210_SFC_COUNT; i++) {
-		sfc = tegra210_sfc[i];
-		pm_runtime_get_sync(sfc->dev);
-		if (!sfc->in_use) {
-			dev_vdbg(sfc->dev, "%s allocated SFC %d",
-				 __func__, *id);
-			sfc->in_use = true;
-			*id = i;
-			return 0;
-		}
-	}
-
-	pr_err("%s allocation failed, no SFC is free", __func__);
-	return -ENOMEM;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_allocate);
-
-/**
- *  tegra210_sfc_free - free a sfc
- *  @id : sfc id
- */
-int tegra210_sfc_free(int id)
-{
-	struct tegra210_sfc_ctx *sfc;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	pm_runtime_put_sync(sfc->dev);
-	if (sfc->in_use) {
-		dev_vdbg(sfc->dev, "%s freed SFC %d", __func__, id);
-		sfc->in_use = false;
-	} else
-		dev_info(sfc->dev, "%s SFC %d is already free", __func__, id);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_free);
-
-/**
- *  tegra210_sfc_set_acif_param - set acif param for a sfc
- *  @cif : cif to be set
- *  @acif : acif param values
- */
-int tegra210_sfc_set_acif_param(enum tegra210_ahub_cifs cif,
-				struct tegra210_axbar_cif_param *acif)
-{
-	struct tegra210_sfc_ctx *sfc;
-	int id = SFC_ID(cif);
-
-	VALIDATE_SFC_ID(id)
-	sfc = tegra210_sfc[id];
-
-	dev_vdbg(sfc->dev, "%s SFC %d cif %d", __func__, id, cif);
-	return tegra210_set_axbar_cif_param(sfc->dev, GET_ACIF_REG(cif), acif);
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_set_acif_param);
-
-/**
- *  tegra210_sfc_get_acif_param - get acif param for a sfc
- *  @cif : cif to get
- *  @acif : acif struct to be populated
- */
-int tegra210_sfc_get_acif_param(enum tegra210_ahub_cifs cif,
-				struct tegra210_axbar_cif_param *acif)
-{
-	struct tegra210_sfc_ctx *sfc;
-	int id = SFC_ID(cif);
-
-	VALIDATE_SFC_ID(id)
-	sfc = tegra210_sfc[id];
-
-	dev_vdbg(sfc->dev, "%s SFC %d cif %d", __func__, id, cif);
-	return tegra210_get_axbar_cif_param(sfc->dev, GET_ACIF_REG(cif), acif);
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_get_acif_param);
-
-/**
- *  tegra210_sfc_set_rx_rate - set input sample rate for a sfc
- *  @id : sfc id
- *  @fs_in : input sampling frequency
- */
-int tegra210_sfc_set_rx_rate(int id, int fs_in)
-{
-	struct tegra210_sfc_ctx *sfc;
-	u32 val = 0;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	dev_vdbg(sfc->dev, "%s SFC %d fs_in %d", __func__, id, fs_in);
-
-	switch (fs_in) {
-	case 8000: val = TEGRA210_SFC_FS_8000HZ; break;
-	case 11025: val = TEGRA210_SFC_FS_11025HZ; break;
-	case 16000: val = TEGRA210_SFC_FS_16000HZ; break;
-	case 22050: val = TEGRA210_SFC_FS_22050HZ; break;
-	case 24000: val = TEGRA210_SFC_FS_24000HZ; break;
-	case 32000: val = TEGRA210_SFC_FS_32000HZ; break;
-	case 44100: val = TEGRA210_SFC_FS_44100HZ; break;
-	case 48000: val = TEGRA210_SFC_FS_48000HZ; break;
-	case 64000: val = TEGRA210_SFC_FS_64000HZ; break;
-	case 88200: val = TEGRA210_SFC_FS_88200HZ; break;
-	case 96000: val = TEGRA210_SFC_FS_96000HZ; break;
-	case 176400: val = TEGRA210_SFC_FS_176400HZ; break;
-	case 192000: val = TEGRA210_SFC_FS_192000HZ; break;
-	default:
-		dev_err(sfc->dev, "Invalid RX sample rate %d", fs_in);
-		return -EINVAL;
-	}
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_RX_FREQ,
-			   TEGRA210_SFC_RX_FREQ_FS_IN_MASK,
-			   val << TEGRA210_SFC_RX_FREQ_FS_IN_SHIFT);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_set_rx_rate);
-
-/**
- *  tegra210_sfc_set_tx_rate - set output sample rate for a sfc
- *  @id : sfc id
- *  @fs_out : output sampling frequency
- */
-int tegra210_sfc_set_tx_rate(int id, int fs_out)
-{
-	struct tegra210_sfc_ctx *sfc;
-	u32 val = 0;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	dev_vdbg(sfc->dev, "%s SFC %d fs_out %d", __func__, id, fs_out);
-
-	switch (fs_out) {
-	case 8000: val = TEGRA210_SFC_FS_8000HZ; break;
-	case 11025: val = TEGRA210_SFC_FS_11025HZ; break;
-	case 16000: val = TEGRA210_SFC_FS_16000HZ; break;
-	case 22050: val = TEGRA210_SFC_FS_22050HZ; break;
-	case 24000: val = TEGRA210_SFC_FS_24000HZ; break;
-	case 32000: val = TEGRA210_SFC_FS_32000HZ; break;
-	case 44100: val = TEGRA210_SFC_FS_44100HZ; break;
-	case 48000: val = TEGRA210_SFC_FS_48000HZ; break;
-	case 64000: val = TEGRA210_SFC_FS_64000HZ; break;
-	case 88200: val = TEGRA210_SFC_FS_88200HZ; break;
-	case 96000: val = TEGRA210_SFC_FS_96000HZ; break;
-	case 176400: val = TEGRA210_SFC_FS_176400HZ; break;
-	case 192000: val = TEGRA210_SFC_FS_192000HZ; break;
-	default:
-		dev_err(sfc->dev, "Invalid TX sample rate %d", fs_out);
-		return -EINVAL;
-	}
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_TX_FREQ,
-			   TEGRA210_SFC_TX_FREQ_FS_OUT_MASK,
-			   val << TEGRA210_SFC_TX_FREQ_FS_OUT_SHIFT);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_set_tx_rate);
-
-/**
- *  tegra210_sfc_enable - enable or disable a sfc
- *  @id : sfc id
- *  @en : enable/disable flag
- */
-int tegra210_sfc_enable(int id, bool en)
-{
-	struct tegra210_sfc_ctx *sfc;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	dev_vdbg(sfc->dev, "%s SFC %d enable %d", __func__, id, en);
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_ENABLE,
-			   TEGRA210_SFC_ENABLE_EN,
-			   en ? TEGRA210_SFC_ENABLE_EN : 0);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_enable);
-
-/**
- *  tegra210_sfc_reset - reset a sfc
- *  @id : sfc id
- */
-int tegra210_sfc_reset(int id)
-{
-	struct tegra210_sfc_ctx *sfc;
-	u32 val = 0;
-	int cnt = AHUB_OP_MAX_RETRY;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	dev_vdbg(sfc->dev, "%s reset SFC %d", __func__, id);
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_SOFT_RESET,
-			   TEGRA210_SFC_SOFT_RESET_EN,
-			   TEGRA210_SFC_SOFT_RESET_EN);
-
-	do {
-		udelay(AHUB_OP_SLEEP_US);
-		regmap_read(sfc->regmap, TEGRA210_SFC_SOFT_RESET, &val);
-	} while ((val & TEGRA210_SFC_SOFT_RESET_EN) && cnt--);
-
-	if (!cnt) {
-		dev_err(sfc->dev, "%s Failed to reset SFC %d", __func__, id);
-		return -ETIMEDOUT;
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_reset);
-
-/**
- *  tegra210_sfc_set_slcg - enable/disable second level clock gating for a sfc
- *  @id : sfc id
- *  @en : enable/disable flag
- */
-int tegra210_sfc_set_slcg(int id, bool en)
-{
-	struct tegra210_sfc_ctx *sfc;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	dev_vdbg(sfc->dev, "%s SFC %d slcg enable %d", __func__, id, en);
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_CG,
-			   TEGRA210_SFC_CG_SLCG_EN,
-			   en ? TEGRA210_SFC_CG_SLCG_EN : 0);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_set_slcg);
-
-/**
- *  tegra210_sfc_enable_coef_ram - enable coefficient ram params for a sfc
- *  @id : sfc id
- *  @en : enable/disable flag
- *  @fs_in : input sampling frequency
- *  @fs_out : output sampling frequency
- */
-int tegra210_sfc_enable_coef_ram(int id, bool en, int fs_in, int fs_out)
-{
-	struct tegra210_sfc_ctx *sfc;
-	u32 *coef;
-	VALIDATE_SFC_ID(id)
-
-	sfc = tegra210_sfc[id];
-	if (en) {
-		switch (fs_in) {
-		case 8000:
-			if (fs_out == 16000) coef = coef_8to16;
-			else if (fs_out == 44100) coef = coef_8to44;
-			else if (fs_out == 48000) coef = coef_8to48;
-			else goto err_rate;
-			break;
-		case 16000:
-			if (fs_out == 8000) coef = coef_16to8;
-			else if (fs_out == 44100) coef = coef_16to44;
-			else if (fs_out == 48000) coef = coef_16to48;
-			else goto err_rate;
-			break;
-		case 44100:
-			if (fs_out == 8000) coef = coef_44to8;
-			else if (fs_out == 16000) coef = coef_44to16;
-			else goto err_rate;
-			break;
-		case 48000:
-			if (fs_out == 8000) coef = coef_48to8;
-			else if (fs_out == 16000) coef = coef_48to16;
-			else goto err_rate;
-			break;
-		default:
-			goto err_rate;
-		}
-
-		tegra210_ahubram_write(sfc->dev, TEGRA210_SFC_ARAMCTL_COEF_CTRL,
-					TEGRA210_SFC_ARAMCTL_COEF_DATA,
-					0, coef, TEGRA210_SFC_COEF_RAM_DEPTH);
-	}
-
-	dev_vdbg(sfc->dev, "%s SFC %d enable_coef_ram %d", __func__, id, en);
-
-	regmap_update_bits(sfc->regmap,
-			   TEGRA210_SFC_COEF_RAM,
-			   TEGRA210_SFC_COEF_RAM_COEF_RAM_EN,
-			   en ? TEGRA210_SFC_COEF_RAM_COEF_RAM_EN : 0);
-
-	return 0;
-err_rate:
-	dev_err(sfc->dev, "%s conversion from %d to %d not supported",
-	                   __func__, fs_in, fs_out);
-	return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(tegra210_sfc_enable_coef_ram);
 
 /* PM runtime callback functions */
 static int tegra210_sfc_runtime_suspend(struct device *dev)
 {
 	struct tegra210_sfc_ctx *sfc = dev_get_drvdata(dev);
 
-	dev_dbg(sfc->dev, "%s SFC %d", __func__, sfc->id);
+	dev_dbg(sfc->dev, "%s sfc %d", __func__, sfc->id);
 	tegra210_axbar_disable_clk();
 	regcache_cache_only(sfc->regmap, true);
 
@@ -467,7 +461,7 @@ static int tegra210_sfc_runtime_resume(struct device *dev)
 {
 	struct tegra210_sfc_ctx *sfc = dev_get_drvdata(dev);
 
-	dev_dbg(sfc->dev, "%s SFC %d", __func__, sfc->id);
+	dev_dbg(sfc->dev, "%s sfc %d", __func__, sfc->id);
 	tegra210_axbar_enable_clk();
 	regcache_cache_only(sfc->regmap, false);
 
@@ -483,19 +477,19 @@ static int tegra210_sfc_probe(struct platform_device *pdev)
 	int id = 0;
 
 	if (!pdev->dev.of_node) {
-		dev_err(&pdev->dev, " %s failed, no DT node for SFC", __func__);
+		dev_err(&pdev->dev, " %s failed, no DT node for sfc", __func__);
 		return -EINVAL;
 	}
 
 	of_property_read_u32(pdev->dev.of_node, "nvidia,ahub-sfc-id",
 						 &pdev->id);
 
-	dev_dbg(&pdev->dev, "%s SFC %d : starting probe",
+	dev_dbg(&pdev->dev, "%s sfc %d : starting probe",
 		__func__, pdev->id);
 
 	if ((pdev->id < 0) ||
 		(pdev->id >= TEGRA210_SFC_COUNT)) {
-		dev_err(&pdev->dev, "SFC id %d out of range\n", pdev->id);
+		dev_err(&pdev->dev, "sfc id %d out of range\n", pdev->id);
 		return -EINVAL;
 	}
 	id = pdev->id;
@@ -551,7 +545,7 @@ static int tegra210_sfc_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
-	dev_dbg(sfc->dev, "%s SFC %d probe successful",
+	dev_dbg(sfc->dev, "%s sfc %d probe successful",
 		__func__, pdev->id);
 
 	return 0;
@@ -561,7 +555,7 @@ err_pm_disable:
 err_free:
 	tegra210_sfc[pdev->id] = NULL;
 exit:
-	dev_dbg(&pdev->dev, "%s SFC %d probe failed with %d",
+	dev_dbg(&pdev->dev, "%s sfc %d probe failed with %d",
 		__func__, pdev->id, ret);
 	return ret;
 }
@@ -577,7 +571,7 @@ static int tegra210_sfc_remove(struct platform_device *pdev)
 	sfc = platform_get_drvdata(pdev);
 	tegra210_sfc[pdev->id] = NULL;
 
-	dev_dbg(&pdev->dev, "%s SFC %d removed",
+	dev_dbg(&pdev->dev, "%s sfc %d removed",
 		__func__, pdev->id);
 
 	return 0;
