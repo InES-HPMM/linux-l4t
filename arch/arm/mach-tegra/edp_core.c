@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/edp_core.c
  *
- * Copyright (C) 2012-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -426,6 +426,8 @@ static int core_edp_pm_notify(struct notifier_block *nb, unsigned long event,
 			pr_info("Core EDP suspend: set %s\n",
 				profile_names[CORE_EDP_PROFILE_FAVOR_EMC]);
 	} else if (event == PM_POST_SUSPEND) {
+		if (core_edp_suspended_profile == CORE_EDP_PROFILES_NUM)
+			core_edp_suspended_profile = core_edp_profile;
 		ret = _profile_update(core_edp_suspended_profile);
 		if (ret)
 			pr_err("Core EDP resume: failed to restore %s\n",
