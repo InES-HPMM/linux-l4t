@@ -258,6 +258,8 @@ struct palmas {
 	int sw_otp_version;
 	int es_minor_version;
 	int es_major_version;
+	struct mutex mutex_config0;
+	bool shutdown;
 };
 
 /*

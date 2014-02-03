@@ -190,13 +190,37 @@ static bool is_volatile_palma_func_reg(struct device *dev, unsigned int reg)
 	return true;
 }
 
-static const struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
+static void palmas_regmap_config0_lock(void *lock)
+{
+	struct palmas *palmas = lock;
+
+	if (palmas->shutdown && (in_atomic() || irqs_disabled())) {
+		dev_info(palmas->dev, "Xfer without lock\n");
+		return;
+	}
+
+	mutex_lock(&palmas->mutex_config0);
+}
+
+static void palmas_regmap_config0_unlock(void *lock)
+{
+	struct palmas *palmas = lock;
+
+	if (palmas->shutdown && (in_atomic() || irqs_disabled()))
+		return;
+
+	mutex_unlock(&palmas->mutex_config0);
+}
+
+static struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 	{
 		.reg_bits = 8,
 		.val_bits = 8,
 		.max_register = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
 					PALMAS_PRIMARY_SECONDARY_PAD4),
 		.volatile_reg = is_volatile_palma_func_reg,
+		.lock = palmas_regmap_config0_lock,
+		.unlock = palmas_regmap_config0_unlock,
 		.cache_type  = REGCACHE_RBTREE,
 	},
 	{
@@ -1012,6 +1036,8 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	}
 
 	palmas->submodule_lists = submodule_lists[palmas->id];
+	mutex_init(&palmas->mutex_config0);
+	palmas_regmap_config[0].lock_arg = palmas;
 
 	for (i = 0; i < PALMAS_NUM_CLIENTS; i++) {
 		if (i == 0)
@@ -1030,7 +1056,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 				palmas->i2c_clients[i]->dev.of_node = of_node_get(node);
 		}
 		palmas->regmap[i] = devm_regmap_init_i2c(palmas->i2c_clients[i],
-				&palmas_regmap_config[i]);
+				(const struct regmap_config *)&palmas_regmap_config[i]);
 		if (IS_ERR(palmas->regmap[i])) {
 			ret = PTR_ERR(palmas->regmap[i]);
 			dev_err(palmas->dev,
@@ -1204,6 +1230,13 @@ static int palmas_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void palmas_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct palmas *palmas = i2c_get_clientdata(i2c);
+
+	palmas->shutdown = true;
+}
+
 static const struct i2c_device_id palmas_i2c_id[] = {
 	{ "palmas", PALMAS},
 	{ "twl6035", TWL6035},
@@ -1222,6 +1255,7 @@ static struct i2c_driver palmas_i2c_driver = {
 	},
 	.probe = palmas_i2c_probe,
 	.remove = palmas_i2c_remove,
+	.shutdown = palmas_i2c_shutdown,
 	.id_table = palmas_i2c_id,
 };
 
