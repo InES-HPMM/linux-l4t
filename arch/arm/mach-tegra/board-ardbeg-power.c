@@ -1464,7 +1464,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 
 static struct soctherm_throttle battery_oc_throttle = {
 	.throt_mode = BRIEF,
-	.polarity = 1,
+	.polarity = SOCTHERM_ACTIVE_LOW,
 	.priority = 100,
 	.devs = {
 		[THROTTLE_DEV_CPU] = {
@@ -1480,7 +1480,7 @@ static struct soctherm_throttle battery_oc_throttle = {
 
 static struct soctherm_throttle voltmon_throttle = {
 	.throt_mode = BRIEF,
-	.polarity = 1,
+	.polarity = SOCTHERM_ACTIVE_LOW,
 	.priority = 50,
 	.intr = true,
 	.alarm_cnt_threshold = 100,
@@ -1493,6 +1493,22 @@ static struct soctherm_throttle voltmon_throttle = {
 			.divisor = 255,
 			.duration = 0,
 			.step = 0,
+		},
+		[THROTTLE_DEV_GPU] = {
+			.enable = true,
+			.throttling_depth = "medium_throttling",
+		},
+	},
+};
+
+struct soctherm_throttle baseband_throttle = {
+	.throt_mode = BRIEF,
+	.polarity = SOCTHERM_ACTIVE_HIGH,
+	.priority = 50,
+	.devs = {
+		[THROTTLE_DEV_CPU] = {
+			.enable = true,
+			.depth = 50,
 		},
 		[THROTTLE_DEV_GPU] = {
 			.enable = true,
@@ -1582,6 +1598,20 @@ int __init ardbeg_soctherm_init(void)
 		break;
 	default:
 		break;
+	}
+
+	/* enable baseband OC if Bruce modem is enabled */
+	if (tegra_get_modem_id() == TEGRA_BB_BRUCE) {
+		/* enable baseband OC unless board has voltage comparator */
+		int board_has_vc;
+
+		board_has_vc = (pmu_board_info.board_id == BOARD_P1761)
+			&& (pmu_board_info.fab >= BOARD_FAB_A02);
+
+		if (!board_has_vc)
+			memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC3],
+			       &baseband_throttle,
+			       sizeof(baseband_throttle));
 	}
 
 	return tegra11_soctherm_init(&ardbeg_soctherm_data);

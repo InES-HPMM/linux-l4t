@@ -68,6 +68,11 @@ enum soctherem_oc_irq_id {
 	TEGRA_SOC_OC_IRQ_MAX,
 };
 
+enum soctherm_polarity_id {
+	SOCTHERM_ACTIVE_HIGH = 0,
+	SOCTHERM_ACTIVE_LOW = 1,
+};
+
 struct soctherm_sensor {
 	bool sensor_enable;
 	bool zone_enable;
