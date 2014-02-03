@@ -197,7 +197,7 @@
 #define TUNING_VOLTAGES_COUNT	3
 #define TUNING_RETRIES	1
 #define DFS_FREQ_COUNT	2
-
+#define NEG_MAR_CHK_WIN_COUNT	2
 /* Tuning core voltage requirements */
 #define NOMINAL_VCORE_TUN	BIT(0)
 #define BOOT_VCORE_TUN	BIT(1)
@@ -2295,16 +2295,33 @@ static int adjust_holes_in_tap_windows(struct sdhci_host *sdhci,
 
 		tap_data = &tuning_data->tap_data[i];
 		final_tap_data = &tuning_data->final_tap_data[j];
-		if (tap_hole < tap_data->win_start) {
+		if (tap_hole <= tap_data->win_start) {
+			if (tap_hole == tap_data->win_start) {
+				memcpy(final_tap_data, tap_data,
+					sizeof(struct tap_window_data));
+				final_tap_data->win_start++;
+				final_tap_data->win_start_attr =
+					WIN_EDGE_HOLE;
+				j++;
+				i++;
+				num_of_wins--;
+			}
 			get_next_hole = true;
 			continue;
-		} else if (tap_hole > tap_data->win_end) {
+		} else if (tap_hole >= tap_data->win_end) {
 			memcpy(final_tap_data, tap_data,
 				sizeof(struct tap_window_data));
+			if (tap_hole == tap_data->win_end) {
+				final_tap_data->win_end--;
+				final_tap_data->win_end_attr =
+					WIN_EDGE_HOLE;
+				get_next_hole = true;
+			} else
+				get_next_hole = false;
+
 			i++;
 			j++;
 			num_of_wins--;
-			get_next_hole = false;
 			continue;
 		} else if ((tap_hole >= tap_data->win_start) &&
 			(tap_hole <= tap_data->win_end)) {
@@ -2346,6 +2363,108 @@ static int adjust_holes_in_tap_windows(struct sdhci_host *sdhci,
 }
 
 /*
+ * Insert the boundaries from negative margin calculations into the windows
+ * from auto tuning.
+ */
+static int insert_boundaries_in_tap_windows(struct sdhci_host *sdhci,
+	struct tegra_tuning_data *tuning_data, u8 boun_end)
+{
+	struct tap_window_data *tap_data;
+	struct tap_window_data *new_tap_data;
+	struct tap_window_data *temp_tap_data;
+	struct tuning_values *calc_values = &tuning_data->calc_values;
+	int curr_boun;
+	u8 i = 0, j = 0, num_of_wins;
+	bool get_next_boun = false;
+
+	temp_tap_data = devm_kzalloc(mmc_dev(sdhci->mmc),
+			sizeof(struct tap_window_data) * 42, GFP_KERNEL);
+	if (IS_ERR_OR_NULL(temp_tap_data)) {
+		dev_err(mmc_dev(sdhci->mmc), "No mem for final tap wins\n");
+		return -ENOMEM;
+	}
+
+	num_of_wins = tuning_data->num_of_valid_tap_wins;
+	curr_boun = boun_end;
+	do {
+		curr_boun -= calc_values->ui;
+	} while (curr_boun > 0);
+	curr_boun += calc_values->ui;
+
+	do {
+		if (get_next_boun) {
+			curr_boun += calc_values->ui;
+			/*
+			 * If the boun_end exceeds the intial boundary end,
+			 * just copy remaining windows and return.
+			 */
+			if (curr_boun >= boun_end)
+				curr_boun += MAX_TAP_VALUES;
+		}
+
+		tap_data = &tuning_data->tap_data[i];
+		new_tap_data = &temp_tap_data[j];
+		if (curr_boun <= tap_data->win_start) {
+			get_next_boun = true;
+			continue;
+		} else if (curr_boun >= tap_data->win_end) {
+			memcpy(new_tap_data, tap_data,
+				sizeof(struct tap_window_data));
+			i++;
+			j++;
+			num_of_wins--;
+			get_next_boun = false;
+			continue;
+		} else if ((curr_boun >= tap_data->win_start) &&
+			(curr_boun <= tap_data->win_end)) {
+				new_tap_data->win_start = tap_data->win_start;
+				new_tap_data->win_start_attr =
+					tap_data->win_start_attr;
+				new_tap_data->win_end = curr_boun - 1;
+				new_tap_data->win_end_attr =
+					tap_data->win_end_attr;
+				j++;
+				new_tap_data = &temp_tap_data[j];
+				new_tap_data->win_start = curr_boun;
+				new_tap_data->win_end = curr_boun;
+				new_tap_data->win_start_attr =
+					WIN_EDGE_BOUN_START;
+				new_tap_data->win_end_attr =
+					WIN_EDGE_BOUN_END;
+				j++;
+				new_tap_data = &temp_tap_data[j];
+				new_tap_data->win_start = curr_boun + 1;
+				new_tap_data->win_start_attr = WIN_EDGE_BOUN_START;
+				new_tap_data->win_end = tap_data->win_end;
+				new_tap_data->win_end_attr =
+					tap_data->win_end_attr;
+				i++;
+				j++;
+				num_of_wins--;
+				get_next_boun = true;
+		}
+	} while (num_of_wins > 0);
+
+	/* Update the num of valid wins count after tap holes insertion */
+	tuning_data->num_of_valid_tap_wins = j;
+
+	memcpy(tuning_data->tap_data, temp_tap_data,
+		j * sizeof(struct tap_window_data));
+	SDHCI_TEGRA_DBG("***tuning windows after inserting boundaries***\n");
+	SDHCI_TEGRA_DBG("WIN_ATTR legend: 0-BOUN_ST, 1-BOUN_END, 2-HOLE\n");
+	for (i = 0; i < tuning_data->num_of_valid_tap_wins; i++) {
+		new_tap_data = &tuning_data->tap_data[i];
+		SDHCI_TEGRA_DBG("win[%d]:%d(%d) - %d(%d)\n", i,
+			new_tap_data->win_start,
+			new_tap_data->win_start_attr,
+			new_tap_data->win_end, new_tap_data->win_end_attr);
+	}
+	SDHCI_TEGRA_DBG("***********************************************\n");
+
+	return 0;
+}
+
+/*
  * Scan for all tap values and get all passing tap windows.
  */
 static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
@@ -2355,11 +2474,12 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tap_window_data *tap_data;
 	struct tuning_ui tuning_ui[10];
-	int err = 0, partial_win_start = 0;
+	int err = 0, partial_win_start = 0, temp_margin = 0;
 	unsigned int tap_value, calc_ui = 0;
 	u8 prev_boundary_end = 0, num_of_wins = 0;
 	u8 num_of_uis = 0, valid_num_uis = 0;
-	u8 ref_ui;
+	u8 ref_ui, first_valid_full_win = 0;
+	u8 boun_end = 0, next_boun_end = 0;
 	u8 j = 0;
 	bool valid_ui_found = false;
 
@@ -2456,10 +2576,14 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 				if (tuning_ui[j - 1].ui > tuning_ui[j + 1].ui) {
 					tuning_ui[j + 1].is_valid_ui = false;
 					j++;
+					valid_num_uis--;
 				} else {
-					tuning_ui[j - 1].is_valid_ui = false;
+					if (tuning_ui[j - 1].is_valid_ui) {
+						valid_num_uis--;
+						tuning_ui[j - 1].is_valid_ui =
+							false;
+					}
 				}
-				valid_num_uis--;
 			}
 		}
 	}
@@ -2467,8 +2591,11 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	/* Calculate the cumulative UI if there are valid UIs left */
 	if (valid_num_uis) {
 		for (j = 0; j < num_of_uis; j++)
-			if (tuning_ui[j].is_valid_ui)
+			if (tuning_ui[j].is_valid_ui) {
 				calc_ui += tuning_ui[j].ui;
+				if (!first_valid_full_win)
+					first_valid_full_win = j + 1;
+			}
 	}
 
 	if (calc_ui) {
@@ -2493,26 +2620,39 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	 */
 	if (tuning_data->is_partial_win_valid && (num_of_wins > 1)) {
 		if (valid_ui_found) {
-			partial_win_start = tuning_data->tap_data[1].win_start;
+			partial_win_start =
+			tuning_data->tap_data[first_valid_full_win].win_start;
+			boun_end = partial_win_start;
 			do {
 				partial_win_start -=
 					tuning_data->calc_values.ui;
 			} while (partial_win_start > 0);
 		} else {
-			for (j = 1; j < num_of_wins; j++) {
-				tap_data = &tuning_data->tap_data[j];
-				if ((tap_data->win_start -
-					tuning_data->calc_values.ui) <= 0) {
-					partial_win_start =
-						(tap_data->win_start -
-						tuning_data->calc_values.ui);
-				} else
-					break;
+			for (j = 0; j < NEG_MAR_CHK_WIN_COUNT; j++) {
+				temp_margin =
+					tuning_data->tap_data[j + 1].win_start;
+				if (!boun_end)
+					boun_end = temp_margin;
+				else if (!next_boun_end)
+					next_boun_end = temp_margin;
+				do {
+					temp_margin -=
+						tuning_data->calc_values.ui;
+				} while (temp_margin > 0);
+
+				if (!partial_win_start ||
+					(temp_margin > partial_win_start))
+					partial_win_start = temp_margin;
 			}
 		}
 		if (partial_win_start <= 0)
 			tuning_data->tap_data[0].win_start = partial_win_start;
 	}
+
+	if (boun_end)
+		insert_boundaries_in_tap_windows(sdhci, tuning_data, boun_end);
+	if (next_boun_end)
+		insert_boundaries_in_tap_windows(sdhci, tuning_data, next_boun_end);
 
 	/* Print info of all tap windows */
 	SDHCI_TEGRA_DBG("**********Auto tuning windows*************\n");
