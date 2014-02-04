@@ -397,6 +397,8 @@ int __init vcm30_t124_soctherm_init(void)
  * WiFi stack.
  */
 static struct gpio vcm30_t124_system_0_gpios[] = {
+	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_LOW,     "wifi_en"},
+	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_LOW,     "wifi_rst"},
 	{MISCIO_BT_WAKEUP_GPIO,	GPIOF_OUT_INIT_HIGH,	"bt_wk"},
 	{MISCIO_ABB_RST_GPIO,	GPIOF_OUT_INIT_HIGH,	"ebb_rst"},
 	{MISCIO_USER_LED2_GPIO,	GPIOF_OUT_INIT_LOW,	"usr_led2"},
@@ -426,9 +428,7 @@ static int __init vcm30_t124_system_0_gpio_init(void)
 		pr_err("%s gpio_request_array failed(%d)\r\n",
 				 __func__, ret);
 
-	/* Export the LED GPIOs to userland for any check */
-	gpio_export(MISCIO_USER_LED2_GPIO, false);
-	gpio_export(MISCIO_USER_LED1_GPIO, false);
+	gpio_free_array(gpios_info, pin_count);
 
 	return ret;
 }
