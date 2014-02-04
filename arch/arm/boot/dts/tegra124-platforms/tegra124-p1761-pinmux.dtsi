@@ -980,7 +980,7 @@
 				nvidia,pins = "usb_vbus_en1_pn5";
 				nvidia,function = "safe";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
 			};
