@@ -116,6 +116,7 @@ static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
 	.core_gain = 100,
 	.init_req_watts = 20000,
 	.pthrot_ratio = 75,
+	.cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL,
 };
 
 static struct platform_device tn8_sysedp_dynamic_capping = {
@@ -147,6 +148,7 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 {
 	int r;
 	int sku_id;
+	struct board_info board;
 
 	tn8_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
 		&tn8_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
@@ -166,6 +168,14 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 		tn8_sysedp_dynamic_capping_platdata.corecap = td570d_sysedp_corecap;
 		tn8_sysedp_dynamic_capping_platdata.corecap_size = td570d_sysedp_corecap_sz;
 		break;
+	}
+
+	tegra_get_board_info(&board);
+
+	if ((board.board_id == BOARD_P1761) &&
+		(board.fab >= BOARD_FAB_A02)) {
+		tn8_sysedp_dynamic_capping_platdata.cap_method =
+			TEGRA_SYSEDP_CAP_METHOD_RELAX;
 	}
 
 	r = platform_device_register(&tn8_sysedp_dynamic_capping);
