@@ -50,6 +50,7 @@ struct tegra_pmx {
 	int nbanks;
 	void __iomem **regs;
 	int *regs_size;
+	unsigned int *reg_base;
 
 	u32 *pg_data;
 	unsigned drive_group_start_index;
@@ -912,6 +913,14 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
+	pmx->reg_base = devm_kzalloc(&pdev->dev, pmx->nbanks *
+					sizeof(*pmx->reg_base), GFP_KERNEL);
+	if (!pmx->reg_base) {
+		dev_err(&pdev->dev, "Can't alloc reg_base pointer\n");
+		return -ENOMEM;
+	}
+
+
 #ifdef CONFIG_PM_SLEEP
 	pmx->regs_size = devm_kzalloc(&pdev->dev,
 				pmx->nbanks * sizeof(*(pmx->regs_size)),
@@ -943,6 +952,7 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 			return -ENODEV;
 		}
 
+		pmx->reg_base[i] = res->start;
 		pmx->regs[i] = devm_ioremap(&pdev->dev, res->start,
 					    resource_size(res));
 		if (!pmx->regs[i]) {
@@ -2198,8 +2208,9 @@ static int dbg_reg_pinmux_show(struct seq_file *s, void *unused)
 			offset = pmx->soc->groups[i].drv_reg;
 		}
 		reg = pmx_readl(pmx, bank, offset);
-		seq_printf(s, "Bank: %d Reg: 0x%08x Val: 0x%08x\n",
-			bank, offset, reg);
+		seq_printf(s, "Bank: %d Reg: 0x%08x Val: 0x%08x -> %s\n",
+				bank, pmx->reg_base[bank] + offset, reg,
+				pmx->soc->groups[i].name);
 	}
 	return 0;
 }
