@@ -123,7 +123,6 @@ static const char * const tegra210_dt_board_compat[] = {
 };
 
 DT_MACHINE_START(TEGRA210_DT, "grenada")
-	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_grenada_reserve,
 	.init_early	= tegra21x_init_early,
