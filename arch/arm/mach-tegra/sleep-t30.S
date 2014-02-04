@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -68,12 +68,15 @@
 #define PMC_IO_DPD2_REQ_DISC_BIAS	(1 << 27)
 #define PMC_SCRATCH1_ECO		0x264
 #define PMC_POR_DPD_CTRL		0x264
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define PMC_IO_DPD3_REQ			0x45c
 #define PMC_IO_DPD3_STATUS		0x460
 
 #define EMC_SEL_DPD_CTRL		0x3d8
 
 #define PMC_POR_DPD_CTRL		0x264
+#endif
 
 #define FLOW_IPC_STS			0x500
 #define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
@@ -1411,13 +1414,14 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
 #endif
 enter_self_refresh:
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	/* Enable SEL_DPD */
 	ldr	r1, [r0, #EMC_SEL_DPD_CTRL]
 	orr	r1, r1, #0xF
 	orr	r1, r1, #0xF0
 	orr	r1, r1, #0x100
 	str	r1, [r0, #EMC_SEL_DPD_CTRL]
-
+#endif
 	mov	r1, #0
 	str	r1, [r0, #EMC_ZCAL_INTERVAL]
 	str	r1, [r0, #EMC_AUTO_CAL_INTERVAL]
@@ -1486,9 +1490,11 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tst	r1, #PMC_CTRL_SIDE_EFFECT_LP0
 	bne	pmc_io_dpd_skip
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	ldr	r1, [r4, #PMC_POR_DPD_CTRL]
 	orr	r1, r1, #0x80000003
 	str	r1, [r4, #PMC_POR_DPD_CTRL]
+#endif
 
 #if !defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r1, 0x8EC00000
