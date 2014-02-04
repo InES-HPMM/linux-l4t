@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,6 +43,7 @@ static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int avail_power;
 static unsigned int avail_oc_relax;
+static unsigned int cap_method;
 
 static struct tegra_sysedp_corecap *cur_corecap;
 static struct clk *emc_cap_clk;
@@ -190,6 +191,7 @@ static void update_cur_corecap(void)
 {
 	struct tegra_sysedp_corecap *cap;
 	unsigned int power;
+	unsigned int relaxed_power;
 	int i;
 
 	if (!capping_device_platdata)
@@ -200,10 +202,29 @@ static void update_cur_corecap(void)
 	i = capping_device_platdata->corecap_size - 1;
 	cap = capping_device_platdata->corecap + i;
 
+	switch (cap_method) {
+	default:
+		pr_warn("%s: Unknown cap_method, %x!  Assuming direct.\n",
+				__func__, cap_method);
+		cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT;
+		/* intentional fall-through */
+	case TEGRA_SYSEDP_CAP_METHOD_DIRECT:
+		relaxed_power = 0;
+		break;
+
+	case TEGRA_SYSEDP_CAP_METHOD_SIGNAL:
+		relaxed_power = min(avail_oc_relax, cap->pthrot);
+		break;
+
+	case TEGRA_SYSEDP_CAP_METHOD_RELAX:
+		relaxed_power = cap->pthrot;
+		break;
+	}
+
 	for (; i >= 0; i--, cap--) {
-		if (cap->power <= power + min(avail_oc_relax, cap->pthrot)) {
+		if (cap->power <= power + relaxed_power) {
 			cur_corecap = cap;
-			cpu_power_balance = power + min(avail_oc_relax, cap->pthrot)
+			cpu_power_balance = power + relaxed_power
 				- cap->power;
 			return;
 		}
@@ -303,8 +324,9 @@ static int core_set(void *data, u64 val)
 	*pdata = val;
 
 	if (old != *pdata) {
-		/* Changes to core_gain require corecap update */
-		if (pdata == &capping_device_platdata->core_gain)
+		/* Changes to core_gain and cap_method require corecap update */
+		if ((pdata == &capping_device_platdata->core_gain) ||
+			(pdata == &cap_method))
 			update_cur_corecap();
 		do_cap_control();
 	}
@@ -425,6 +447,7 @@ static int status_show(struct seq_file *file, void *data)
 	seq_printf(file, "cpu cap     : %u kHz\n", cur_caps.cpu);
 	seq_printf(file, "gpu cap     : %u kHz\n", cur_caps.gpu);
 	seq_printf(file, "emc cap     : %u kHz\n", cur_caps.emc);
+	seq_printf(file, "cc method   : %u kHz\n", cap_method);
 
 	mutex_unlock(&core_lock);
 	return 0;
@@ -474,6 +497,7 @@ static void init_debug(void)
 	create_attr("gpu_window", &gpu_window);
 	create_attr("gain", &capping_device_platdata->core_gain);
 	create_attr("gpu_high_count", &gpu_high_count);
+	create_attr("cap_method", &cap_method);
 
 	create_longattr("corecaps", corecaps_show);
 	create_longattr("cpucaps", cpucaps_show);
@@ -524,6 +548,21 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 	mutex_lock(&core_lock);
 	capping_device_platdata = pdev->dev.platform_data;
 	avail_power = capping_device_platdata->init_req_watts;
+	cap_method = capping_device_platdata->cap_method;
+	switch (cap_method) {
+	case TEGRA_SYSEDP_CAP_METHOD_DEFAULT:
+		cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL;
+		break;
+	case TEGRA_SYSEDP_CAP_METHOD_DIRECT:
+	case TEGRA_SYSEDP_CAP_METHOD_SIGNAL:
+	case TEGRA_SYSEDP_CAP_METHOD_RELAX:
+		break;
+	default:
+		pr_warn("%s: Unknown cap_method, %x!  Assuming direct.\n",
+				__func__, cap_method);
+		cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT;
+		break;
+	}
 
 	/* scale pthrot value in capping table */
 	i = capping_device_platdata->corecap_size - 1;
