@@ -292,7 +292,7 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 	"	cbnz	%w0, 2b\n"
 	: "=&r" (tmp), "+Q" (rw->lock)
 	: "r" (0x80000000)
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline int arch_write_trylock(arch_rwlock_t *rw)
@@ -306,7 +306,7 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 	"1:\n"
 	: "=&r" (tmp), "+Q" (rw->lock)
 	: "r" (0x80000000)
-	: "cc", "memory");
+	: "memory");
 
 	return !tmp;
 }
@@ -347,7 +347,7 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 	"	cbnz	%w1, 2b\n"
 	: "=&r" (tmp), "=&r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline void arch_read_unlock(arch_rwlock_t *rw)
@@ -361,7 +361,7 @@ static inline void arch_read_unlock(arch_rwlock_t *rw)
 	"	cbnz	%w1, 1b\n"
 	: "=&r" (tmp), "=&r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline int arch_read_trylock(arch_rwlock_t *rw)
@@ -376,7 +376,7 @@ static inline int arch_read_trylock(arch_rwlock_t *rw)
 	"1:\n"
 	: "=&r" (tmp), "+r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 
 	return !tmp2;
 }
