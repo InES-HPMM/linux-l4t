@@ -134,6 +134,7 @@
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <1>;
+						ti,config-flags = <8>;
 
 						consumers {
 							c1 {
