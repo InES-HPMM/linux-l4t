@@ -143,7 +143,9 @@ static void lc709203f_work(struct work_struct *work)
 	if (val < 0)
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
 	else
-		chip->soc = val;
+		chip->soc = battery_gauge_get_scaled_soc(chip->bg_dev,
+			val * 100, chip->pdata->threshold_soc);
+
 	if (chip->soc >= LC709203F_BATTERY_FULL && chip->charge_complete != 1)
 		chip->soc = LC709203F_BATTERY_FULL-1;
 
@@ -209,7 +211,6 @@ static int lc709203f_get_property(struct power_supply *psy,
 	struct lc709203f_chip *chip = container_of(psy,
 				struct lc709203f_chip, battery);
 	int temperature;
-	int soc;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -222,16 +223,14 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = chip->vcell;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		soc = battery_gauge_get_scaled_soc(chip->bg_dev,
-				chip->soc * 100, chip->pdata->threshold_soc);
-		val->intval = soc;
-		if (soc == 15)
+		val->intval = chip->soc;
+		if (chip->soc == 15)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 15 percent\n");
-		if (soc == 10)
+		if (chip->soc == 10)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 10 percent\n");
-		if (soc == 5)
+		if (chip->soc == 5)
 			dev_warn(&chip->client->dev,
 			"\nSystem Running low on battery - 5 percent\n");
 		break;
