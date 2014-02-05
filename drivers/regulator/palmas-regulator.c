@@ -1467,6 +1467,12 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			config.ena_gpio_flags = 0;
 		}
 
+		if (reg_init && (reg_init->config_flags &
+				 PALMAS_REGULATOR_CONFIG_VSEL_VOLATILE)) {
+			unsigned int bit = palmas_regs_info[id].vsel_addr;
+			__set_bit(bit, palmas->volatile_smps_registers);
+		}
+
 		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
 			dev_err(&pdev->dev,

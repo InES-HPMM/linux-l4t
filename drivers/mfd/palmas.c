@@ -182,11 +182,20 @@ static const struct mfd_cell palmas_children[] = {
 	},
 };
 
-static bool is_volatile_palma_func_reg(struct device *dev, unsigned int reg)
+static bool is_volatile_palmas_func_reg(struct device *dev, unsigned int reg)
 {
-	if ((reg >= (PALMAS_SMPS12_CTRL + 0x20)) &&
-			(reg <= (PALMAS_SMPS9_VOLTAGE + 0x20)))
-		return false;
+	if ((reg >= PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE,
+				       PALMAS_SMPS12_CTRL)) &&
+	    (reg <= PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE,
+				       PALMAS_SMPS9_VOLTAGE))) {
+		struct palmas *palmas = dev_get_drvdata(dev);
+		int volatile_reg = test_bit(
+			PALMAS_REG_TO_FN_ADDR(PALMAS_SMPS_BASE, reg),
+			palmas->volatile_smps_registers);
+
+		if (!volatile_reg)
+			return false;
+	}
 	return true;
 }
 
@@ -218,7 +227,7 @@ static struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 		.val_bits = 8,
 		.max_register = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
 					PALMAS_PRIMARY_SECONDARY_PAD4),
-		.volatile_reg = is_volatile_palma_func_reg,
+		.volatile_reg = is_volatile_palmas_func_reg,
 		.lock = palmas_regmap_config0_lock,
 		.unlock = palmas_regmap_config0_unlock,
 		.cache_type  = REGCACHE_RBTREE,

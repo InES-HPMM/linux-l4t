@@ -224,12 +224,14 @@ struct palmas_rtc;
 struct palmas_battery_info;
 
 #define palmas_rails(_name) "palmas_"#_name
+#define PALMAS_MAX_FN_REGISTERS		64
 
 struct palmas {
 	struct device *dev;
 
 	struct i2c_client *i2c_clients[PALMAS_NUM_CLIENTS];
 	struct regmap *regmap[PALMAS_NUM_CLIENTS];
+	DECLARE_BITMAP(volatile_smps_registers, PALMAS_MAX_FN_REGISTERS);
 
 	/* Stored chip id */
 	int id;
@@ -815,6 +817,7 @@ enum usb_irq_events {
 /* helper macro to get correct slave number */
 #define PALMAS_BASE_TO_SLAVE(x)		((x >> 8) - 1)
 #define PALMAS_BASE_TO_REG(x, y)	((x & 0xff) + y)
+#define PALMAS_REG_TO_FN_ADDR(x, y)	((y) - ((x) & 0xff))
 #define RTC_SLAVE			0
 
 /* Base addresses of IP blocks in Palmas */
@@ -4055,6 +4058,7 @@ enum {
 	PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF		= 0x1,
 	PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE			= 0x2,
 	PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE	= 0x4,
+	PALMAS_REGULATOR_CONFIG_VSEL_VOLATILE			= 0x8,
 };
 
 /*
