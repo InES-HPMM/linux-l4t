@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/powergate.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (c) 2011 - 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011 - 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -259,6 +259,11 @@ void get_clk_info(struct powergate_partition_info *pg_info)
 
 		pg_info->clk_info[idx].clk_ptr = tegra_get_clock_by_name(
 			pg_info->clk_info[idx].clk_name);
+
+		if (IS_ERR_OR_NULL(pg_info->clk_info[idx].clk_ptr))
+			WARN(1, "Could not find clock %s for %s partition\n",
+				pg_info->clk_info[idx].clk_name,
+				pg_info->name);
 	}
 }
 
