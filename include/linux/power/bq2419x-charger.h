@@ -51,13 +51,14 @@
 #define BQ2419X_THERM_VCLAMP_MASK	0x1C
 #define BQ2419X_THERM_TREG_MASK		0x03
 
+#define BQ2419X_TIME_JEITA_ISET		0x01
+
 #define BQ2419X_CHG_VOLT_LIMIT_MASK	0xFC
 
 #define BQ24190_IC_VER			0x40
 #define BQ24192_IC_VER			0x28
 #define BQ24192i_IC_VER			0x18
 
-#define BQ2419X_CHARGE_CURRENT_MASK	~(0x03)
 #define BQ2419X_ENABLE_CHARGE_MASK	0x30
 #define BQ2419X_ENABLE_VBUS		0x20
 #define BQ2419X_ENABLE_CHARGE		0x10
@@ -144,6 +145,9 @@ struct bq2419x_charger_platform_data {
 	bool disable_suspend_during_charging;
 	bool enable_thermal_monitor; /* TRUE if FuelGauge provides temp */
 	int temp_polling_time_sec;
+	int n_temp_profile;
+	u32 *temp_range;
+	u32 *chg_current_limit;
 };
 
 /*

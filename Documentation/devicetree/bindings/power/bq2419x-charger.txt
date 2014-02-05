@@ -27,6 +27,22 @@ Optional properties:
                             will be disabled.
 - rtc-alarm-time          : Time setting in seconds for the rtc alarm timer
                             which wakes the board up for charging after shutdown.
+- ti,temp-range: List of temperatures in degC for thermal profiling.
+- ti,charge-current-limit: List of fast charging current limit in mA for
+		thermal profiling.
+	The value is provided as
+	ti,temp-range = <15 60>;
+	ti,charge-current-limit = <2048 5200>;
+
+	This will set chargign current limit to
+		2048 for <= 15 degC and
+		5200 for 16 to 60 degC
+	This will result:
+		< 0 -> Charger disable. (As by HW)
+		0 to 10 -> 1048mA charging current limit (as by 50% HW)
+		11 to 15 -> 2048mA
+		16 to 60 -> 5200 mA
+		> 60 : Charging will be disabled by HW.
 
 Subnode properties:
 ==================
