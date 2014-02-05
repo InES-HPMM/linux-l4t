@@ -85,6 +85,7 @@ struct as3722_register_mapping {
 struct as3722_regulator_config_data {
 	struct regulator_init_data *reg_init;
 	bool enable_tracking;
+	bool volatile_vsel;
 	int ext_control;
 };
 
@@ -743,6 +744,8 @@ static int as3722_get_regulator_dt_data(struct platform_device *pdev,
 		}
 		reg_config->enable_tracking =
 			of_property_read_bool(reg_node, "ams,enable-tracking");
+		reg_config->volatile_vsel =
+			of_property_read_bool(reg_node, "ams,volatile-vsel");
 
 	}
 	return 0;
@@ -769,6 +772,7 @@ static int as3722_get_regulator_platform_data(struct platform_device *pdev,
 		reg_config->reg_init = rpdata->reg_init;
 		reg_config->ext_control = rpdata->ext_control;
 		reg_config->enable_tracking = rpdata->enable_tracking;
+		reg_config->volatile_vsel = rpdata->volatile_vsel;
 	}
 	return 0;
 }
@@ -873,6 +877,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].uV_step = 10000;
 			as3722_regs->desc[id].linear_min_sel = 1;
 			as3722_regs->desc[id].enable_time = 275;
+			as3722_regs->desc[id].vsel_persist = true;
 			break;
 		case AS3722_REGULATOR_ID_SD2:
 		case AS3722_REGULATOR_ID_SD3:
@@ -886,6 +891,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 						as3722_sd2345_ranges;
 			as3722_regs->desc[id].n_linear_ranges =
 					ARRAY_SIZE(as3722_sd2345_ranges);
+			as3722_regs->desc[id].vsel_persist = true;
 			break;
 		default:
 			if (reg_config->ext_control)
@@ -904,6 +910,11 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 		as3722_regs->desc[id].ops = ops;
 		config.init_data = reg_config->reg_init;
 		config.of_node = as3722_regulator_matches[id].of_node;
+
+		if (reg_config->volatile_vsel) {
+			unsigned int bit = as3722_reg_lookup[id].vsel_reg;
+			__set_bit(bit, as3722->volatile_vsel_registers);
+		}
 		rdev = devm_regulator_register(&pdev->dev,
 					&as3722_regs->desc[id], &config);
 		if (IS_ERR(rdev)) {

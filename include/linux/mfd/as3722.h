@@ -405,6 +405,7 @@ struct as3722 {
 	struct device *dev;
 	struct regmap *regmap;
 	struct i2c_client *client;
+	DECLARE_BITMAP(volatile_vsel_registers, AS3722_LDO11_VOLTAGE_REG);
 	int chip_irq;
 	unsigned long irq_flags;
 	int irq_base;

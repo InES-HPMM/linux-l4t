@@ -125,6 +125,7 @@ struct as3722_regulator_platform_data {
 	int ext_control;
 	bool enable_tracking;
 	bool disable_tracking_suspend;
+	bool volatile_vsel;
 };
 
 /*

@@ -360,6 +360,44 @@ static const struct regmap_access_table as3722_volatile_table = {
 	.n_no_ranges = ARRAY_SIZE(as3722_cacheable_ranges),
 };
 
+static const struct regmap_range vsel_sd_range =
+	regmap_reg_range(AS3722_SD0_VOLTAGE_REG, AS3722_SD6_VOLTAGE_REG);
+
+static const struct regmap_range vsel_ldo_range =
+	regmap_reg_range(AS3722_LDO0_VOLTAGE_REG, AS3722_LDO11_VOLTAGE_REG);
+
+
+bool is_volatile_as3722_register(struct device *dev, unsigned int reg)
+{
+	if (regmap_reg_in_range(reg, &vsel_sd_range) ||
+	    regmap_reg_in_range(reg, &vsel_ldo_range)) {
+		struct as3722 *as3722 = dev_get_drvdata(dev);
+		return test_bit(reg, as3722->volatile_vsel_registers);
+	}
+
+	if (regmap_reg_in_ranges(reg, as3722_volatile_table.no_ranges,
+				 as3722_volatile_table.n_no_ranges))
+		return false;
+
+	return true;
+}
+
+int as3722_vsel_volatile_set(struct device *dev, unsigned int reg,
+			      bool is_volatile)
+{
+	if (regmap_reg_in_range(reg, &vsel_sd_range) ||
+	    regmap_reg_in_range(reg, &vsel_ldo_range)) {
+		struct as3722 *as3722 = dev_get_drvdata(dev);
+		if (is_volatile)
+			set_bit(reg, as3722->volatile_vsel_registers);
+		else
+			clear_bit(reg, as3722->volatile_vsel_registers);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static struct regmap_config as3722_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
@@ -367,9 +405,10 @@ static struct regmap_config as3722_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 	.rd_table = &as3722_readable_table,
 	.wr_table = &as3722_writable_table,
-	.volatile_table = &as3722_volatile_table,
+	.volatile_reg = is_volatile_as3722_register,
 	.lock = as3722_regmap_config_lock,
 	.unlock = as3722_regmap_config_unlock,
+	.reg_volatile_set = as3722_vsel_volatile_set,
 };
 
 static int as3722_i2c_of_probe(struct i2c_client *i2c,
