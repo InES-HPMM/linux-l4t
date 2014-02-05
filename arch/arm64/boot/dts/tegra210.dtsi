@@ -82,6 +82,22 @@
 		      <0x0 0x60004500 0x0 0x40>;
 	};
 
+	timer@60005000 {
+		compatible = "nvidia,tegra-nvtimer";
+		reg = <0x0 0x60005000 0x0 0x400>;
+		interrupts = <0 0 0x04
+			      0 1 0x04
+			      0 41 0x04
+			      0 42 0x04
+			      0 121 0x04
+			      0 151 0x04
+			      0 152 0x04
+			      0 153 0x04
+			      0 154 0x04
+			      0 155 0x04
+			      0 122 0x04>;
+	};
+
 	serial0: serial@70006000 {
 		compatible = "nvidia,tegra210-uart", "nvidia,tegra30-uart", "nvidia,tegra20-uart";
 		reg = <0x0 0x70006000 0x0 0x40>;
