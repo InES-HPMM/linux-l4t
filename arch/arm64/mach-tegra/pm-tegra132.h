@@ -1,7 +1,7 @@
 /*
  * arch/arm64/mach-tegra/pm-tegra132.h
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,35 +21,16 @@
 #ifndef __ASM_ARM_T132_H
 #define __ASM_ARM_T132_H
 
-#ifndef __ASSEMBLY__
-
 enum tegra132_power_states {
 	T132_CORE_C1 = 0,
 	T132_CORE_C4 = 1,
 	T132_CORE_C6 = 2,
 	T132_CORE_C7 = 3,
-	T132_CLUSTER_C4_SLEEP_EN = 8,
 	T132_CLUSTER_C4 = 9,
-	T132_CLUSTER_C6 = 0xA,
-	T132_CLUSTER_C7 = 0xB,
-	T132_SYSTEM_LP1 = 0xC,
-	T132_SYSTEM_LP0 = 0xD,
+	T132_CLUSTER_C6 = 0xa,
+	T132_CLUSTER_C7 = 0xb,
+	T132_SYSTEM_LP1 = 0xc,
+	T132_SYSTEM_LP0 = 0xd,
 };
-
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-void tegra132_lp1_iram_hook(void);
-void tegra132_sleep_core_init(void);
-#else
-static inline void tegra132_lp1_iram_hook(void) {}
-static inline void tegra132_sleep_core_init(void) {}
-#endif
-
-/* Define in sleep-tegra132.S */
-extern u32 tegra132_iram_start;
-extern u32 tegra132_iram_end;
-
-void tegra132_do_idle(ulong pmstate);
-
-#endif /* __ASSEMBLY__ */
 
 #endif
