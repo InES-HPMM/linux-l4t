@@ -559,6 +559,19 @@ static inline int of_property_read_u32(const struct device_node *np,
 	return of_property_read_u32_array(np, propname, out_value, 1);
 }
 
+static inline int of_property_count_u32(const struct device_node *np,
+				       const char *propname)
+{
+	const void *prop_ptr;
+	int prop_len;
+
+	prop_ptr = of_get_property(np, propname, &prop_len);
+	if (!prop_ptr)
+		return -EINVAL;
+
+	return prop_len / sizeof(u32);
+}
+
 static inline int of_property_read_s32(const struct device_node *np,
 					const char *propname,
 					s32 *out_value)
