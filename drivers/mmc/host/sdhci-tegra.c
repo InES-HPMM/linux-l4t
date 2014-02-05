@@ -268,6 +268,15 @@ struct tuning_t2t_coeffs {
 		.t2t_vmin_int = _t2t_vmin_int,		\
 	}
 
+struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
+	SET_TUNING_COEFFS("sdhci-tegra.3",	1250,	950,	55,	135434,
+		73,	170493,	243,	455948),
+	SET_TUNING_COEFFS("sdhci-tegra.2",	1250,	950,	50,	129738,
+		73,	168898,	241,	453050),
+	SET_TUNING_COEFFS("sdhci-tegra.0",	1250,	950,	62,	143469,
+		82,	180096,	238,	444285),
+};
+
 struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	27,	118295,
 		27,	118295,	48,	188148),
@@ -301,6 +310,33 @@ struct tap_hole_coeffs {
 		.thole_vmin_slope = _thole_vmin_slope,	\
 		.thole_vmin_int = _thole_vmin_int,	\
 	}
+
+struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	200000,	765,	102357,	507,
+		81144,	131,	36346),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	156000,	1042,	142044,	776,
+		121659,	152,	48728),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	136000,	1215,	167702,	905,
+		143825,	207,	63477),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	81600,	1925,	284516,	1528,
+		253188,	366,	120001),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	204000,	472,	53312,	318,
+		41756,	84,	15496),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	156000,	765,	95512,	526,
+		77404,	134,	33032),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	136000,	949,	121887,	656,
+		99684,	165,	43992),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	81600,	1901,	259035,	1334,
+		215539,	326,	100986),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	204000,	411,	54495,	305,
+		46415,	91,	20366),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	156000,	715,	97623,	516,
+		82375,	145,	38278),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	136000,	905,	124579,	648,
+		104850,	179,	50204),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	81600,	1893,	264746,	1333,
+		221722,	354,	109880),
+};
 
 struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	200000,	1037,	106934,	1037,
@@ -3429,6 +3465,30 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 #endif
 };
 
+static struct sdhci_pltfm_data sdhci_tegra11_pdata = {
+	.quirks = TEGRA_SDHCI_QUIRKS,
+	.quirks2 = TEGRA_SDHCI_QUIRKS2,
+	.ops  = &tegra_sdhci_ops,
+};
+
+static struct sdhci_tegra_soc_data soc_data_tegra11 = {
+	.pdata = &sdhci_tegra11_pdata,
+	.nvquirks = TEGRA_SDHCI_NVQUIRKS |
+		    NVQUIRK_SET_DRIVE_STRENGTH |
+		    NVQUIRK_SET_TRIM_DELAY |
+		    NVQUIRK_ENABLE_DDR50 |
+		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
+		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
+		    NVQUIRK_DISABLE_SDMMC4_CALIB,
+	.parent_clk_list = {"pll_p", "pll_c"},
+	.tuning_freq_list = {81600000, 156000000, 200000000},
+	.t2t_coeffs = t11x_tuning_coeffs,
+	.t2t_coeffs_count = 3,
+	.tap_hole_coeffs = t11x_tap_hole_coeffs,
+	.tap_hole_coeffs_count = 12,
+};
+
 static struct sdhci_pltfm_data sdhci_tegra12_pdata = {
 	.quirks = TEGRA_SDHCI_QUIRKS,
 	.quirks2 = TEGRA_SDHCI_QUIRKS2 |
@@ -3457,6 +3517,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
 	{ .compatible = "nvidia,tegra124-sdhci", .data = &soc_data_tegra12 },
+	{ .compatible = "nvidia,tegra114-sdhci", .data = &soc_data_tegra11 },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdhci_dt_ids);
@@ -3526,7 +3587,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		soc_data = match->data;
 	} else {
 		/* Use id tables and remove the following chip defines */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		soc_data = &soc_data_tegra11;
+#else
 		soc_data = &soc_data_tegra12;
+#endif
 	}
 
 	host = sdhci_pltfm_init(pdev, soc_data->pdata);
