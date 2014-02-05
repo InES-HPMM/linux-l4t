@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -574,6 +574,16 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 out:
 	if (disable)
 		clk_disable_locked(c);
+
+	if (c->fixed_target_rate &&
+			(clk_get_rate_locked(c) != c->fixed_target_rate)) {
+
+		pr_err("Violating expected target rate for clock:%s "
+				"expected rate:%lu, new rate set:%lu\n",
+				c->name, c->fixed_target_rate, clk_get_rate_locked(c));
+		WARN_ON(1);
+	}
+
 	return ret;
 }
 
