@@ -38,6 +38,9 @@ static void as3722_pm_power_off(void *drv_data)
 	int ret;
 
 	dev_info(as3722_poweroff->dev, " Powering off system\n");
+
+	as3722_allow_atomic_xfer(as3722_poweroff->as3722);
+
 	ret = as3722_update_bits(as3722_poweroff->as3722,
 		AS3722_RESET_CONTROL_REG, AS3722_POWER_OFF, AS3722_POWER_OFF);
 	if (ret < 0)
@@ -51,6 +54,9 @@ static void as3722_pm_power_reset(void *drv_data)
 	int ret;
 
 	dev_info(as3722_poweroff->dev, " Power resetting of system\n");
+
+	as3722_allow_atomic_xfer(as3722_poweroff->as3722);
+
 	ret = as3722_update_bits(as3722_poweroff->as3722,
 		AS3722_RESET_CONTROL_REG, AS3722_FORCE_RESET,
 		AS3722_FORCE_RESET);
