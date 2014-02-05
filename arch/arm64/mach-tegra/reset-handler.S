@@ -27,10 +27,6 @@
 
 #define PMC_SCRATCH41	0x140
 
-/* TEGRA_FLOW_CTRL_BASE = 0x60007000 */
-#define TEGRA_FLOW_CTRL_BASE_LO16	0x7000
-#define TEGRA_FLOW_CTRL_BASE_HI16	0x6000
-
 /* returns the offset of the flow controller csr register for a cpu */
 .macro cpu_to_csr_reg rd, rcpu
 	cmp	\rcpu, #0
@@ -66,15 +62,14 @@ ENTRY(tegra_resume)
 
 	/* Clear the flow controller flags for this CPU. */
 	cpu_to_csr_reg	x1, x0
-	mov	x2, #TEGRA_FLOW_CTRL_BASE_LO16
-	movk x2, #TEGRA_FLOW_CTRL_BASE_HI16, lsl #16
+	ldr	x2, =TEGRA_FLOW_CTRL_BASE
 	ldr	x1, [x2, x1]
 
 	/* Clear event & intr flag */
 	orr	x1, x1, #FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG
 
 	/* enable, cluster_switch, immed, & bitmaps */
-	movk	x0, #0x3ffd, lsl #16
+	mov	x0, #0x3ffd
 
 	bic	x1, x1, x0
 	str	x1, [x2]

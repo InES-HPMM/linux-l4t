@@ -1,7 +1,7 @@
 /*
  * arch/arm64/mach-tegra/sleep.S
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,8 +44,26 @@ ENTRY(tegra_sleep_cpu_finish)
 	add		x1, x1, x0
 	mov		x0, x1
 
-	b		tegra_shut_off_mmu
+	b		tegra_turn_off_mmu
 ENDPROC(tegra_sleep_cpu_finish)
+
+/*
+ * tegra_turn_off_mmu
+ *
+ * x0 = v2p
+ * x1 = physical address to jump to with mmu off
+ */
+ENTRY(tegra_turn_off_mmu)
+	tlbi	vmalle1is	// invalidate TLB
+	ic	iallu			// I+BTB cache invalidate
+	dsb sy
+	isb
+
+	mov32	x3, tegra_shut_off_mmu
+	add		x3, x3, x0
+	mov		x0, x1
+	br		x3
+ENDPROC(tegra_turn_off_mmu)
 
 /*
  * tegra_shut_off_mmu
@@ -59,10 +77,11 @@ ENDPROC(tegra_sleep_cpu_finish)
 ENTRY(tegra_shut_off_mmu)
 	mrs	x1, sctlr_el1
 	bic	x1, x1, #1
+	dsb sy
 	msr	sctlr_el1, x1
 	isb
 	br 	x0
-ENDPROC(tegra_shut_off_mmu)
+ENDPROC(tegra_turn_off_mmu)
 
 #endif /* CONFIG_PM_SLEEP */
 
