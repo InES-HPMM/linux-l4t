@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -43,7 +43,7 @@
 #define NVI_FIFO_SIZE_6500		(4096)
 #define NVI_FIFO_SAMPLE_SIZE_MAX	(38)
 #define NVI_DELAY_US_MAX		(256000)
-#define NVI_DELAY_US_MIN		(15000)
+#define NVI_DELAY_US_MIN		(10000)
 #define NVI_DELAY_DEFAULT		(100000)
 #define NVI_INPUT_GYRO_DELAY_US_MIN	(5000)
 #define NVI_INPUT_ACCL_DELAY_US_MIN	(5000)
