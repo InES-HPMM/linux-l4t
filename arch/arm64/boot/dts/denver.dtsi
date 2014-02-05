@@ -11,18 +11,17 @@
 		};
 		cc4 {
 			state-name = "Retention";
-			latency = <100>;
-			residency = <10>;
+			latency = <500>;
+			residency = <2000>;
 			power = <19>;
-			pmstate = <0x0>;
+			pmstate = <0x9>;
 		};
 		cc6 {
 			state-name = "Virtual Retention";
-			latency = <100>;
+			latency = <180>;
 			residency = <16000>;
-			power = <1>;
-			pmstate = <0x0>;
+			power = <10>;
+			pmstate = <0x10>;
 		};
-
 	};
 };
