@@ -208,15 +208,15 @@ ENDPROC(tegra_flush_l1_cache)
  */
 ENTRY(tegra_sleep_cpu_finish)
 	mov	r4, r0
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
+	bl	is_secure_mode
+	cmp	r0, #1
+	beq	1f		@if in secure-mode skip
 	ldr	r0, =0x84000001
 	ldr	r1, =((1 << 16) | 4)
 	ldr	r2, =TEGRA_RESET_HANDLER_BASE
 	bl	tegra_generic_smc
-#endif
-
+1:
 	bl	tegra_flush_cache
-
 	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
 
@@ -298,8 +298,12 @@ tegra_shut_off_mmu:
 	dsb
 	mcr	p15, 0, r3, c1, c0, 0
 	isb
-#if defined(CONFIG_CACHE_L2X0) && \
-		!defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
+#if defined(CONFIG_CACHE_L2X0)
+	mov	r5, r0			@save r0
+	bl	is_secure_mode
+	cmp	r0, #1
+	mov	r0, r5			@restore r0
+	bne	2f			@if non-secure mode skip
 	tst	r11, #1
 	beq	2f
 	mov32	r1, TEGRA_ARM_PL310_BASE
@@ -318,7 +322,7 @@ tegra_shut_off_mmu:
 	mov	r2, #0
 	str	r2, [r1, #L2X0_CACHE_SYNC]
 	str	r2, [r1, #L2X0_CTRL]
-#endif /* CONFIG_CACHE_L2X0 && !CONFIG_TEGRA_USE_SECURE_KERNEL */
+#endif /* CONFIG_CACHE_L2X0 */
 2:	mov	pc, r0
 
 /*
@@ -338,7 +342,6 @@ ENTRY(tegra_cpu_pllp)
 ENDPROC(tegra_cpu_pllp)
 #endif
 
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 /*
  * tegra_generic_smc
  *
@@ -364,4 +367,3 @@ restart:
 done:
 	mov	pc, lr
 ENDPROC(tegra_generic_smc)
-#endif

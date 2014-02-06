@@ -3,7 +3,7 @@
  *
  * CPU initialization routines for Tegra SoCs
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -39,6 +39,15 @@
 #define RESET_DATA_PHYS (TEGRA_RESET_HANDLER_BASE \
 	+ __tegra_cpu_reset_handler_data - __tegra_cpu_reset_handler_start)
 
+
+ENTRY(is_secure_mode)
+	mrc	p14, 0, r0, c0, c1, 0	@ dbgdscr
+	tst	r0, #(1 << 18)		@ dbgdscr.ns
+	moveq	r0, #1
+	movne	r0, #0
+	mov	pc, lr			@ return
+
+
 #ifdef CONFIG_SMP
 /*
  *	tegra_secondary_startup
@@ -50,8 +59,10 @@
 	__CPUINIT
 ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
+	bl	is_secure_mode
+	cmp	r0, #1
+	bne	secondary_startup	@ non-secure skip
 
-#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 	/* enable user space perf counter access */
 	/* only accessible in secure state       */
 	mrc	p15, 0, r0, c9, c12, 0
@@ -64,7 +75,6 @@ ENTRY(tegra_secondary_startup)
 	mcr	p15, 0, r1, c9, c14, 2
 	mov	r0, #1
 	mcr	p15, 0, r0, c9, c14, 0
-#endif
 
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
@@ -80,13 +90,14 @@ ENDPROC(tegra_secondary_startup)
  *	  re-enabling sdram.
  */
 ENTRY(tegra_resume)
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+	bl	is_secure_mode
+	cmp	r0, #1
+	beq	1f			@ secure-mode skip
 	mov32	r1, TEGRA_TMRUS_BASE
 	ldr	r0, [r1]
 	adr	r1, tegra_resume_entry_time
 	str	r0, [r1]
-#endif
-
+1:
 	bl	__invalidate_cpu_state
 
 	cpu_id	r0
@@ -136,8 +147,10 @@ ENTRY(tegra_resume)
 #endif /* CONFIG_TRUSTED_FOUNDATIONS */
 
 #ifdef CONFIG_CACHE_L2X0
-#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
-		!defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	bl	is_secure_mode
+	cmp	r0, #1
+	bne	no_l2_init		@ secure-mode skip
 	adr	r0, tegra_resume_l2_init
 	ldr	r1, [r0]
 	tst	r1, #1
@@ -189,13 +202,12 @@ ENTRY(tegra_resume)
 	str	r2, [r3, #L2X0_AUX_CTRL]
 	mov	r2, #1
 	str	r2, [r3, #L2X0_CTRL]
-#endif /* ?CONFIG_TEGRA_USE_SECURE_KERNEL */
+#endif
 #endif /* CONFIG_CACHE_L2X0 */
 no_l2_init:
 	b	cpu_resume
 ENDPROC(tegra_resume)
 
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	.globl tegra_resume_timestamps_start
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	.globl tegra_resume_smc_entry_time
@@ -213,7 +225,6 @@ tegra_resume_smc_exit_time:
 tegra_resume_entry_time:
 	.long	0
 tegra_resume_timestamps_end:
-#endif /* CONFIG_TEGRA_USE_SECURE_KERNEL */
 #ifdef CONFIG_CACHE_L2X0
 	.globl tegra_resume_l2_init
 tegra_resume_l2_init:
@@ -244,8 +255,11 @@ __invalidate_cpu_state:
 	ldr	r0, =0x410fc09
 	teq	r1, r0
 	beq	cortex_a9
-
-#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
+	mov	r1, lr				@ save LR
+	bl	is_secure_mode
+	cmp	r0, #1
+	mov	lr, r1				@ restore LR
+	bne	__enable_i_cache_branch_pred	@ if not in secure mode skip
 	mrc	p15, 0x1, r0, c15, c0, 3	@ L2 prefetch control reg
 	tst	r0, #0x1000
 	orreq	r0, r0, #0x1000			@ disable throttling
@@ -273,7 +287,6 @@ __invalidate_cpu_state:
 	mrc	p15, 0x1, r0, c15, c0, 0	@ L2 ACTLR
 	orr	r0, r0, #0x80			@ hazard detection timeout
 	mcr	p15, 0x1, r0, c15, c0, 0
-#endif
 __enable_i_cache_branch_pred:
 	mrc	p15, 0, r0, c1, c0, 0
 	orr	r0, r0, #0x1800

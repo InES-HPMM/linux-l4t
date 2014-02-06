@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
  * version 2, as published by the Free Software Foundation.
@@ -20,7 +22,7 @@ extern struct smp_operations tegra_smp_ops;
 extern phys_addr_t tegra_tsec_start;
 extern phys_addr_t tegra_tsec_size;
 
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 extern unsigned long tegra_tzram_start;
 extern unsigned long tegra_tzram_size;
 #endif

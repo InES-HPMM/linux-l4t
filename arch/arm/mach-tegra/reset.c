@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/reset.c
  *
- * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -38,40 +38,47 @@ static bool is_enabled;
 static void tegra_cpu_reset_handler_enable(void)
 {
 	void __iomem *iram_base = IO_ADDRESS(TEGRA_IRAM_BASE);
-#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	void __iomem *evp_cpu_reset =
-		IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x100);
-	void __iomem *sb_ctrl = IO_ADDRESS(TEGRA_SB_BASE);
+	void __iomem *evp_cpu_reset;
+	void __iomem *sb_ctrl;
 	unsigned long reg;
-#endif
+
+	if (is_secure_mode()) {
+		evp_cpu_reset =
+			IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x100);
+		sb_ctrl = IO_ADDRESS(TEGRA_SB_BASE);
+	}
+
 	BUG_ON(is_enabled);
 	BUG_ON(tegra_cpu_reset_handler_size > TEGRA_RESET_HANDLER_SIZE);
 
 	memcpy(iram_base, (void *)__tegra_cpu_reset_handler_start,
 		tegra_cpu_reset_handler_size);
 
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	tegra_generic_smc(0x82000001,
-		TEGRA_RESET_HANDLER_BASE + tegra_cpu_reset_handler_offset, 0);
-#else
-	/* NOTE: This must be the one and only write to the EVP CPU reset
-		 vector in the entire system. */
-	writel(TEGRA_RESET_HANDLER_BASE + tegra_cpu_reset_handler_offset,
-		evp_cpu_reset);
-	wmb();
-	reg = readl(evp_cpu_reset);
+	if (!is_secure_mode()) {
+		tegra_generic_smc(0x82000001,
+			TEGRA_RESET_HANDLER_BASE +
+				tegra_cpu_reset_handler_offset, 0);
+	} else {
 
-	/*
-	 * Prevent further modifications to the physical reset vector.
-	 *  NOTE: Has no effect on chips prior to Tegra30.
-	 */
-	if (tegra_get_chip_id() != TEGRA_CHIPID_TEGRA2) {
-		reg = readl(sb_ctrl);
-		reg |= 2;
-		writel(reg, sb_ctrl);
+		/* NOTE: This must be the one and only write to the EVP
+		 * CPU reset vector in the entire system.
+		 */
+		writel(TEGRA_RESET_HANDLER_BASE +
+			tegra_cpu_reset_handler_offset, evp_cpu_reset);
 		wmb();
+		reg = readl(evp_cpu_reset);
+
+		/*
+		 * Prevent further modifications to the physical reset vector.
+		 *  NOTE: Has no effect on chips prior to Tegra30.
+		 */
+		if (tegra_get_chip_id() != TEGRA_CHIPID_TEGRA2) {
+			reg = readl(sb_ctrl);
+			reg |= 2;
+			writel(reg, sb_ctrl);
+			wmb();
+		}
 	}
-#endif
 	is_enabled = true;
 }
 
