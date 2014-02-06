@@ -38,9 +38,10 @@
 		status = "okay";
 		clock-frequency = <100000>;
 
-		cm32181@48 {
-			compatible = "capella,cm32181";
-			reg = <0x48>;
+		max44006@44 {
+			compatible = "maxim,max44006";
+			reg = <0x44>;
+			vcc-supply = <&palmas_smps8>;
 		};
 	};
 
