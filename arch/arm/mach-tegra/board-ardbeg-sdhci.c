@@ -188,7 +188,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
-	.max_clk_limit = 136000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -435,9 +434,7 @@ int __init ardbeg_sdhci_init(void)
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1780)
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
-
-	if (board_info.board_id == BOARD_P1761)
-		tegra_sdhci_platform_data0.max_clk_limit = 204000000;
+	tegra_sdhci_platform_data0.max_clk_limit = 136000000;
 
 	if ((board_info.board_id == BOARD_E1781) ||
 		(board_info.board_id == BOARD_PM374) ||
