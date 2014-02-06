@@ -102,6 +102,42 @@ static int te_setup_temp_buffers(struct te_request *request,
 	return ret;
 }
 
+static int te_setup_temp_buffers_compat(struct te_request_compat *request,
+		struct tlk_context *context)
+{
+	uint32_t i;
+	int ret = OTE_SUCCESS;
+	struct te_oper_param_compat *params;
+
+	params = (struct te_oper_param_compat *)(uintptr_t)request->params;
+	for (i = 0; i < request->params_size; i++) {
+		switch (params[i].type) {
+		case TE_PARAM_TYPE_NONE:
+		case TE_PARAM_TYPE_INT_RO:
+		case TE_PARAM_TYPE_INT_RW:
+			break;
+		case TE_PARAM_TYPE_MEM_RO:
+		case TE_PARAM_TYPE_MEM_RW:
+			ret = te_pin_mem_buffers(
+				(void *)(uintptr_t)params[i].u.Mem.base,
+				params[i].u.Mem.len,
+				context);
+			if (ret < 0) {
+				pr_err("%s failed with err (%d)\n",
+					__func__, ret);
+				ret = OTE_ERROR_BAD_PARAMETERS;
+				break;
+			}
+			break;
+		default:
+			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
+			ret = OTE_ERROR_BAD_PARAMETERS;
+			break;
+		}
+	}
+	return ret;
+}
+
 static void te_del_shmem_desc(void *buffer, struct tlk_context *context)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
@@ -142,6 +178,32 @@ static void te_unpin_temp_buffers(struct te_request *request,
 		case TE_PARAM_TYPE_MEM_RO:
 		case TE_PARAM_TYPE_MEM_RW:
 			te_unregister_memory(params[i].u.Mem.base, context);
+			break;
+		default:
+			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
+			break;
+		}
+	}
+}
+
+static void te_unpin_temp_buffers_compat(struct te_request_compat *request,
+	struct tlk_context *context)
+{
+	uint32_t i;
+	struct te_oper_param_compat *params;
+
+	params = (struct te_oper_param_compat *)(uintptr_t)request->params;
+	for (i = 0; i < request->params_size; i++) {
+		switch (params[i].type) {
+		case TE_PARAM_TYPE_NONE:
+		case TE_PARAM_TYPE_INT_RO:
+		case TE_PARAM_TYPE_INT_RW:
+			break;
+		case TE_PARAM_TYPE_MEM_RO:
+		case TE_PARAM_TYPE_MEM_RW:
+			te_unregister_memory(
+				(void *)(uintptr_t)params[i].u.Mem.base,
+				context);
 			break;
 		default:
 			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
@@ -278,6 +340,30 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 }
 
 /*
+ * Do an SMC call
+ */
+static void do_smc_compat(struct te_request_compat *request,
+			  struct tlk_device *dev)
+{
+	uint32_t smc_args;
+	uint32_t smc_params = 0;
+
+	smc_args = (char *)request - dev->req_param_buf;
+	if (request->params) {
+		smc_params =
+			(char *)(uintptr_t)request->params - dev->req_param_buf;
+	}
+
+	tlk_generic_smc(request->type, smc_args, smc_params);
+
+	/*
+	 * Check to see if there are any logs in written by TLK.
+	 * If there are, print them out.
+	 */
+	ote_print_logs();
+}
+
+/*
  * VPR programming SMC
  */
 int te_set_vpr_params(void *vpr_base, size_t vpr_size)
@@ -371,6 +457,79 @@ void te_launch_operation(struct te_launchop *cmd,
 	do_smc(request, context->dev);
 
 	te_unpin_temp_buffers(request, context);
+}
+
+/*
+ * Open session SMC (supporting client-based te_open_session() calls)
+ */
+void te_open_session_compat(struct te_opensession_compat *cmd,
+			    struct te_request_compat *request,
+			    struct tlk_context *context)
+{
+	int ret;
+
+	ret = te_setup_temp_buffers_compat(request, context);
+	if (ret != OTE_SUCCESS) {
+		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
+		return;
+	}
+
+	memcpy(&request->dest_uuid,
+	       &cmd->dest_uuid,
+	       sizeof(struct te_service_id));
+
+	pr_info("OPEN_CLIENT_SESSION_COMPAT: 0x%x 0x%x 0x%x 0x%x\n",
+		request->dest_uuid[0],
+		request->dest_uuid[1],
+		request->dest_uuid[2],
+		request->dest_uuid[3]);
+
+	request->type = TE_SMC_OPEN_SESSION;
+
+	do_smc_compat(request, context->dev);
+
+	te_unpin_temp_buffers_compat(request, context);
+}
+
+/*
+ * Close session SMC (supporting client-based te_close_session() calls)
+ */
+void te_close_session_compat(struct te_closesession_compat *cmd,
+			     struct te_request_compat *request,
+			     struct tlk_context *context)
+{
+	request->session_id = cmd->session_id;
+	request->type = TE_SMC_CLOSE_SESSION;
+
+	do_smc_compat(request, context->dev);
+	if (request->result)
+		pr_info("Error closing session: %08x\n", request->result);
+}
+
+/*
+ * Launch operation SMC (supporting client-based te_launch_operation() calls)
+ */
+void te_launch_operation_compat(struct te_launchop_compat *cmd,
+				struct te_request_compat *request,
+				struct tlk_context *context)
+{
+	int ret;
+
+	ret = te_setup_temp_buffers_compat(request, context);
+	if (ret != OTE_SUCCESS) {
+		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
+		return;
+	}
+
+	request->session_id = cmd->session_id;
+	request->command_id = cmd->operation.command;
+	request->type = TE_SMC_LAUNCH_OPERATION;
+
+	do_smc_compat(request, context->dev);
+
+	te_unpin_temp_buffers_compat(request, context);
 }
 
 static int __init tlk_register_irq_handler(void)

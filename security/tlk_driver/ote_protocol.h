@@ -28,6 +28,15 @@
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x11, union te_cmd)
 #define TE_IOCTL_LAUNCH_OPERATION \
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x14, union te_cmd)
+
+/* ioctls using new structs (eventually to replace current ioctls) */
+#define TE_IOCTL_OPEN_CLIENT_SESSION_COMPAT \
+	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x10, union te_cmd_compat)
+#define TE_IOCTL_CLOSE_CLIENT_SESSION_COMPAT \
+	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x11, union te_cmd_compat)
+#define TE_IOCTL_LAUNCH_OPERATION_COMPAT \
+	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x14, union te_cmd_compat)
+
 #define TE_IOCTL_FILE_NEW_REQ \
 	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x16, struct te_file_req)
 #define TE_IOCTL_FILE_FILL_BUF \
@@ -46,6 +55,11 @@
 #define TE_CMD_DESC_MAX	(PAGE_SIZE / sizeof(struct te_request))
 #define TE_PARAM_MAX	(PAGE_SIZE / sizeof(struct te_oper_param))
 
+#define TE_CMD_DESC_MAX_COMPAT \
+	(PAGE_SIZE / sizeof(struct te_request_compat))
+#define TE_PARAM_MAX_COMPAT \
+	(PAGE_SIZE / sizeof(struct te_oper_param_compat))
+
 #define MAX_EXT_SMC_ARGS	12
 
 extern struct mutex smc_lock;
@@ -60,6 +74,9 @@ struct tlk_device {
 	struct te_oper_param *param_addr;
 	dma_addr_t param_addr_phys;
 
+	struct te_request_compat *req_addr_compat;
+	struct te_oper_param_compat *param_addr_compat;
+
 	char *req_param_buf;
 
 	unsigned long *param_bitmap;
@@ -70,6 +87,11 @@ struct tlk_device {
 
 struct te_cmd_req_desc {
 	struct te_request *req_addr;
+	struct list_head list;
+};
+
+struct te_cmd_req_desc_compat {
+	struct te_request_compat *req_addr;
 	struct list_head list;
 };
 
@@ -126,6 +148,21 @@ struct te_oper_param {
 	void *next_ptr_user;
 };
 
+struct te_oper_param_compat {
+	uint32_t index;
+	uint32_t type;
+	union {
+		struct {
+			uint32_t val;
+		} Int;
+		struct {
+			uint64_t base;
+			uint32_t len;
+		} Mem;
+	} u;
+	uint64_t next_ptr_user;
+};
+
 struct te_operation {
 	uint32_t command;
 	struct te_oper_param *list_head;
@@ -175,11 +212,67 @@ union te_cmd {
 	struct te_launchop	launchop;
 };
 
+/*
+ * Compat versions of the original structs (eventually to replace
+ * the old structs, once the lib/TLK kernel changes are in).
+ */
+struct te_operation_compat {
+	uint32_t	command;
+	uint32_t	status;
+	uint64_t	list_head;
+	uint64_t	list_tail;
+	uint32_t	list_count;
+	uint32_t	interface_side;
+};
+
+/*
+ * OpenSession
+ */
+struct te_opensession_compat {
+	struct te_service_id		dest_uuid;
+	struct te_operation_compat	operation;
+	uint64_t			answer;
+};
+
+/*
+ * CloseSession
+ */
+struct te_closesession_compat {
+	uint32_t	session_id;
+	uint64_t	answer;
+};
+
+/*
+ * LaunchOperation
+ */
+struct te_launchop_compat {
+	uint32_t			session_id;
+	struct te_operation_compat	operation;
+	uint64_t			answer;
+};
+
+union te_cmd_compat {
+	struct te_opensession_compat	opensession;
+	struct te_closesession_compat	closesession;
+	struct te_launchop_compat	launchop;
+};
+
 struct te_request {
 	uint32_t		type;
 	uint32_t		session_id;
 	uint32_t		command_id;
 	struct te_oper_param	*params;
+	uint32_t		params_size;
+	uint32_t		dest_uuid[4];
+	uint32_t		result;
+	uint32_t		result_origin;
+};
+
+struct te_request_compat {
+	uint32_t		type;
+	uint32_t		session_id;
+	uint32_t		command_id;
+	uint64_t		params;
 	uint32_t		params_size;
 	uint32_t		dest_uuid[4];
 	uint32_t		result;
@@ -202,6 +295,18 @@ void te_close_session(struct te_closesession *cmd,
 
 void te_launch_operation(struct te_launchop *cmd,
 	struct te_request *request,
+	struct tlk_context *context);
+
+void te_open_session_compat(struct te_opensession_compat *cmd,
+	struct te_request_compat *request,
+	struct tlk_context *context);
+
+void te_close_session_compat(struct te_closesession_compat *cmd,
+	struct te_request_compat *request,
+	struct tlk_context *context);
+
+void te_launch_operation_compat(struct te_launchop_compat *cmd,
+	struct te_request_compat *request,
 	struct tlk_context *context);
 
 #define TE_MAX_FILE_NAME_LEN	64
