@@ -91,8 +91,6 @@
 
 				as3722_sd2:  sd2 {
 				     regulator-name = "vddio-ddr";
-				     regulator-min-microvolt = <1350000>;
-				     regulator-max-microvolt = <1350000>;
 				     regulator-always-on;
 				     regulator-boot-on;
 
@@ -156,8 +154,6 @@
 
 				as3722_sd5: sd5 {
 				    regulator-name = "vdd-1v8";
-				    regulator-min-microvolt = <1800000>;
-				    regulator-max-microvolt = <1800000>;
 				    regulator-always-on;
 				    regulator-boot-on;
 
@@ -233,8 +229,6 @@
 
 				as3722_ldo0: ldo0 {
 				     regulator-name = "avdd-pll";
-				     regulator-min-microvolt = <1050000>;
-				     regulator-max-microvolt = <1250000>;
 				     regulator-always-on;
 				     regulator-boot-on;
 				     ams,ext-control = <1>;
@@ -301,8 +295,6 @@
 
 				as3722_ldo2: ldo2 {
 				     regulator-name = "avdd-dsi-csi";
-				     regulator-min-microvolt = <1200000>;
-				     regulator-max-microvolt = <1200000>;
 				     regulator-boot-on;
 
 				     consumers {
