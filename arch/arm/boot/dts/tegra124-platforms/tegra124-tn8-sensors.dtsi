@@ -46,6 +46,7 @@
 			proximity,power-consumed = "1.67"; /* approx mA */
 			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
 			wake-gpio = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
+			sar-gpio = <&gpio TEGRA_GPIO(I, 2) GPIO_ACTIVE_LOW>;
 		};
 	};
 };
