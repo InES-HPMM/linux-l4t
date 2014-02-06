@@ -1757,6 +1757,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		 * set DFLL rate ready (DFLL is still disabled)
 		 * (set target p_source as dfll, G source is already selected)
 		 */
+		int mv;
 		p_source = dfll;
 		ret = clk_set_rate(dfll,
 			tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail) ? rate :
@@ -1764,9 +1765,14 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		if (ret)
 			goto abort;
 
-		ret = tegra_dvfs_rail_dfll_mode_set_cold(tegra_cpu_rail);
-		if (ret)
-			goto abort;
+		mv = tegra_cl_dvfs_vmin_read_begin(
+			tegra_dfll_get_cl_dvfs_data(dfll), NULL);
+		if (mv < tegra_dvfs_rail_get_thermal_floor(tegra_cpu_rail)) {
+			ret = tegra_dvfs_rail_dfll_mode_set_cold(
+				tegra_cpu_rail);
+			if (ret)
+				goto abort;
+		}
 	} else
 		/* DFLL is not selected on either side of the switch:
 		 * set target p_source equal to current clock source
