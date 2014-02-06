@@ -1,7 +1,7 @@
 /*
  * tegra_rt5639.c - Tegra machine ASoC driver for boards using ALC5639 codec.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -151,12 +151,21 @@ static int tegra_rt5639_call_mode_put(struct snd_kcontrol *kcontrol,
 			machine->codec_info[codec_index].i2s_id, false);
 		tegra_asoc_utils_tristate_dap(
 			machine->codec_info[BASEBAND].i2s_id, false);
-
-		tegra30_make_voice_call_connections(
+		if (machine->is_device_bt)
+			tegra30_make_bt_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], uses_voice_codec);
+		else
+			tegra30_make_voice_call_connections(
 			&machine->codec_info[codec_index],
 			&machine->codec_info[BASEBAND], uses_voice_codec);
 	} else {
-		tegra30_break_voice_call_connections(
+		if (machine->is_device_bt)
+			tegra30_break_bt_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], uses_voice_codec);
+		else
+			tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],
 			&machine->codec_info[BASEBAND], uses_voice_codec);
 
