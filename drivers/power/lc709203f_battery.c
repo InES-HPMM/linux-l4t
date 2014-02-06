@@ -59,6 +59,7 @@ struct lc709203f_platform_data {
 	u32 thermistor_beta;
 	u32 therm_adjustment;
 	u32 threshold_soc;
+	u32 maximum_soc;
 };
 
 struct lc709203f_chip {
@@ -143,8 +144,9 @@ static void lc709203f_work(struct work_struct *work)
 	if (val < 0)
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
 	else
-		chip->soc = battery_gauge_get_scaled_soc(chip->bg_dev,
-			val * 100, chip->pdata->threshold_soc);
+		chip->soc = battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, val * 100);
 
 	if (chip->soc >= LC709203F_BATTERY_FULL && chip->charge_complete != 1)
 		chip->soc = LC709203F_BATTERY_FULL-1;
@@ -328,6 +330,12 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 	ret = of_property_read_u32(np, "onsemi,kernel-threshold-soc", &pval);
 	if (!ret)
 		pdata->threshold_soc = pval;
+
+	ret = of_property_read_u32(np, "onsemi,kernel-maximum-soc", &pval);
+	if (!ret)
+		pdata->maximum_soc = pval;
+	else
+		pdata->maximum_soc = 100;
 }
 
 #ifdef CONFIG_DEBUG_FS
