@@ -1471,6 +1471,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				 PALMAS_REGULATOR_CONFIG_VSEL_VOLATILE)) {
 			unsigned int bit = palmas_regs_info[id].vsel_addr;
 			__set_bit(bit, palmas->volatile_smps_registers);
+
+			pmic->desc[id].vsel_persist = true;
+			pmic->desc[id].vsel_persist_val = pmic->range[id] ?
+				PALMAS_SMPS12_VOLTAGE_RANGE : 0;
 		}
 
 		rdev = regulator_register(&pmic->desc[id], &config);
