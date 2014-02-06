@@ -390,6 +390,11 @@ config ARCH_SUSPEND_POSSIBLE
 config ARM_CPU_SUSPEND
 	def_bool y
 
+config ARM64_CPU_SUSPEND
+	bool "ARM64 CPU suspend"
+	help
+	  This option enables cpu suspend using cpu_ops.
+
 endmenu
 
 menu "CPU Power Management"

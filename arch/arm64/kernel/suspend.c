@@ -1,5 +1,23 @@
+/*
+ * Copyright (C) 2013 ARM Ltd.
+ * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <linux/slab.h>
 #include <asm/cacheflush.h>
+#include <asm/cpu_ops.h>
 #include <asm/pgtable.h>
 #include <asm/memory.h>
 #include <asm/smp_plat.h>
@@ -42,7 +60,16 @@ void __cpu_suspend_save(struct cpu_suspend_ctx *ptr, u64 *save_ptr)
 int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 {
 	struct mm_struct *mm = current->active_mm;
-	int ret;
+	int ret, cpu = smp_processor_id();
+
+#ifdef CONFIG_ARM64_CPU_SUSPEND
+	if (!fn && (!cpu_ops[cpu] || !cpu_ops[cpu]->cpu_suspend))
+		return -EOPNOTSUPP;
+
+	if (!fn && cpu_ops[cpu] && cpu_ops[cpu]->cpu_suspend)
+		fn = cpu_ops[cpu]->cpu_suspend;
+#endif
+
 	/*
 	 * Save the mm context on the stack, it will be restored when
 	 * the cpu comes out of reset through the identity mapped
