@@ -5,6 +5,7 @@
  *
  * Author: Sebastian Andrzej Siewior <bigeasy at linutronix dot de>
  * License: GPLv2 as published by FSF.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  */
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -629,6 +630,69 @@ cleanup:
 	usbg_cleanup_cmd(cmd);
 }
 
+static int uasp_send_response_iu(struct usbg_cmd *cmd)
+{
+	struct f_uas *fu = cmd->fu;
+	struct uas_stream *stream = cmd->stream;
+	struct response_ui *iu = &cmd->response_iu;
+	struct se_tmr_req  *se_tmr_req;
+
+	/* Filling the usb request with the response information */
+	stream->req_status->complete = uasp_status_data_cmpl;
+	stream->req_status->context = cmd;
+	stream->req_status->length = 8;
+	stream->req_status->buf = iu;
+
+	cmd->state = UASP_QUEUE_COMMAND;
+	iu->iu_id = IU_ID_RESPONSE;
+	iu->tag = cpu_to_be16(cmd->tag);
+
+	/* If we find any error in the command or the Task Management
+	 * IU received, we set the response code and call this function
+	 * to send response directly, instead of submitting the
+	 * corresponding request to the upper target scsi device layer.
+	 * Other wise this function is called from the SCSI layer after
+	 * finishing a Task management command whose response code is
+	 * set in the se_cmd structure
+	 */
+	if (cmd->response_iu.response_code) {
+		iu->response_code = cmd->response_iu.response_code;
+	} else {
+		se_tmr_req = cmd->se_cmd.se_tmr_req;
+
+		/* converting the SCSI layer common response codes to the
+		 * protocol specific response codes.
+		 */
+		switch (se_tmr_req->response) {
+		case TMR_LUN_DOES_NOT_EXIST:
+			iu->response_code = RC_INCORRECT_LUN;
+			break;
+		case TMR_TASK_MGMT_FUNCTION_NOT_SUPPORTED:
+			/*
+			* This is to pass the compliance tests that
+			* expects the UASP device to implement all the
+			* Task management Functions.
+			*/
+			iu->response_code = RC_TMF_FAILED;
+			break;
+		case TMR_FUNCTION_COMPLETE:
+			iu->response_code = RC_TMF_COMPLETE;
+			break;
+		case TMR_TASK_DOES_NOT_EXIST:
+		case TMR_FUNCTION_REJECTED:
+		case TMR_TASK_FAILOVER_NOT_SUPPORTED:
+		case TMR_TASK_STILL_ALLEGIANT:
+		case TMR_FUNCTION_AUTHORIZATION_FAILED:
+			iu->response_code = RC_TMF_FAILED;
+			break;
+		default:
+			pr_err("Invalid response %x\n", se_tmr_req->response);
+			iu->response_code = RC_TMF_FAILED;
+		};
+	}
+	return usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
+}
+
 static int uasp_send_status_response(struct usbg_cmd *cmd)
 {
 	struct f_uas *fu = cmd->fu;
@@ -732,17 +796,195 @@ cleanup:
 	return ret;
 }
 
+static void uasp_response_work(struct work_struct *work)
+{
+	struct usbg_cmd *cmd = container_of(work, struct usbg_cmd, work);
+	uasp_send_response_iu(cmd);
+}
+
+static int handle_invalid_cmd(struct f_uas *fu, void *tmpbuf,
+				unsigned int len)
+{
+	struct usbg_cmd *cmd;
+	struct iu *iu = tmpbuf;
+	int ret;
+	struct usbg_tpg *tpg;
+	cmd = kzalloc(sizeof(*cmd), GFP_ATOMIC);
+	if (!cmd)
+		return -ENOMEM;
+	cmd->fu = fu;
+	tpg = fu->tpg;
+	kref_init(&cmd->ref);
+	cmd->tag = be16_to_cpup(&iu->tag);
+
+	/* Currently the driver is selecting the stream id based on the
+	 * tagreceived in the command. This logic has to be changed
+	 * because the streams supported are 16 and the tag can be anywhere
+	 * from 1 to 0xffff.
+	 */
+	if (fu->flags & USBG_USE_STREAMS) {
+		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS)
+			goto err;
+		if (!cmd->tag)
+			cmd->stream = &fu->stream[0];
+		else
+			cmd->stream = &fu->stream[cmd->tag - 1];
+	} else {
+		cmd->stream = &fu->stream[0];
+	}
+
+	cmd->response_iu.response_code = RC_INVALID_INFO_UNIT;
+	cmd->no_scsi_contact = true;
+
+	INIT_WORK(&cmd->work, uasp_response_work);
+	ret = queue_work(tpg->workqueue, &cmd->work);
+	if (ret < 0)
+		goto err;
+
+	return 0;
+err:
+	kfree(cmd);
+	return -EINVAL;
+}
+
+
+static int invalid_tm_function(u8 tm_function)
+{
+	int ret;
+	switch (tm_function) {
+	case TMF_ABORT_TASK:
+	case TMF_ABORT_TASK_SET:
+	case TMF_CLEAR_TASK_SET:
+	case TMF_LOGICAL_UNIT_RESET:
+	case TMF_I_T_NEXUS_RESET:
+	case TMF_CLEAR_ACA:
+	case TMF_QUERY_TASK:
+	case TMF_QUERY_TASK_SET:
+	case TMF_QUERY_ASYNC_EVENT:
+		ret = 0;
+		break;
+	default:
+		ret = -EINVAL;
+		pr_debug_once("Unsupported tm func: 0x%x\n",
+						tm_function);
+	}
+	return ret;
+}
+
+static void usbg_tm_work(struct work_struct *work)
+{
+	struct usbg_cmd *cmd = container_of(work, struct usbg_cmd, work);
+	struct se_cmd *se_cmd;
+	struct tcm_usbg_nexus *tv_nexus;
+	struct usbg_tpg *tpg;
+	se_cmd = &cmd->se_cmd;
+	tpg = cmd->fu->tpg;
+	tv_nexus = tpg->tpg_nexus;
+	/* Submitting the Task management Request to the SCSI layer */
+	if (target_submit_tmr(se_cmd, tv_nexus->tvn_se_sess,
+			cmd->sense_iu.sense, cmd->unpacked_lun,
+			NULL, cmd->tm_function,
+			GFP_ATOMIC, cmd->tm_tag, TARGET_SCF_UNKNOWN_SIZE) < 0)
+		goto out;
+	return;
+
+out:
+	usbg_cleanup_cmd(cmd);
+}
+
+static int usbg_submit_task_mgmt(struct f_uas *fu,
+		void *tmbuf, unsigned int len)
+{
+	struct task_mgmt_iu *tm_iu = tmbuf;
+	struct usbg_cmd *cmd;
+	struct usbg_tpg *tpg;
+	struct tcm_usbg_nexus *tv_nexus;
+	u32 cmd_len;
+	int ret;
+
+	cmd = kzalloc(sizeof(*cmd), GFP_ATOMIC);
+	if (!cmd)
+		return -ENOMEM;
+
+	cmd->fu = fu;
+
+	kref_init(&cmd->ref);
+	tpg = fu->tpg;
+
+	cmd->tag = be16_to_cpup(&tm_iu->tag);
+	cmd->tm_function = tm_iu->function;
+	cmd->tm_tag = be16_to_cpup(&tm_iu->task_tag);
+	/* Currently the driver is selecting the stream id based on the
+	 * tagreceived in the command. This logic has to be changed
+	 * because the streams supported are 16 and the tag can be anywhere
+	 * from 1 to 0xffff
+	 */
+	if (fu->flags & USBG_USE_STREAMS) {
+		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS) {
+			pr_err("Tag value exceeded MAX streams\n");
+			goto err;
+		}
+		if (!cmd->tag)
+			cmd->stream = &fu->stream[0];
+		else
+			cmd->stream = &fu->stream[cmd->tag - 1];
+	} else {
+		cmd->stream = &fu->stream[0];
+	}
+	cmd->unpacked_lun = scsilun_to_int(&tm_iu->lun);
+
+	if (invalid_tm_function(tm_iu->function)) {
+		cmd->response_iu.response_code = RC_TMF_NOT_SUPPORTED;
+		cmd->no_scsi_contact = true;
+		INIT_WORK(&cmd->work, uasp_response_work);
+		ret = queue_work(tpg->workqueue, &cmd->work);
+		if (ret < 0)
+			goto err;
+		/* returning success as we have successfully handled the
+		 * error and sending the response iu. Once the response iu
+		 * is sent, then we queue a buffer to receive the next command
+		 */
+		return 0;
+	}
+
+	tv_nexus = tpg->tpg_nexus;
+	if (!tv_nexus) {
+		pr_err("Missing nexus, ignoring command\n");
+		goto err;
+	}
+
+	kref_get(&cmd->ref);
+
+	INIT_WORK(&cmd->work, usbg_tm_work);
+	ret = queue_work(tpg->workqueue, &cmd->work);
+	if (ret < 0)
+		goto err;
+
+	return 0;
+err:
+	kfree(cmd);
+	return -EINVAL;
+
+}
+
 static int usbg_submit_command(struct f_uas *, void *, unsigned int);
 
 static void uasp_cmd_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct f_uas *fu = req->context;
 	int ret;
+	struct iu *uas_iu = req->buf;
 
 	if (req->status < 0)
 		return;
 
-	ret = usbg_submit_command(fu, req->buf, req->actual);
+	if (uas_iu->iu_id == IU_ID_COMMAND)
+		ret = usbg_submit_command(fu, req->buf, req->actual);
+	else if (uas_iu->iu_id == IU_ID_TASK_MGMT)
+		ret = usbg_submit_task_mgmt(fu, req->buf, req->actual);
+	else
+		ret = handle_invalid_cmd(fu, req->buf, req->actual);
+
 	/*
 	 * Once we tune for performance enqueue the command req here again so
 	 * we can receive a second command while we processing this one. Pay
@@ -1109,11 +1351,6 @@ static int usbg_submit_command(struct f_uas *fu,
 	u32 cmd_len;
 	int ret;
 
-	if (cmd_iu->iu_id != IU_ID_COMMAND) {
-		pr_err("Unsupported type %d\n", cmd_iu->iu_id);
-		return -EINVAL;
-	}
-
 	cmd = kzalloc(sizeof *cmd, GFP_ATOMIC);
 	if (!cmd)
 		return -ENOMEM;
@@ -1132,6 +1369,11 @@ static int usbg_submit_command(struct f_uas *fu,
 	memcpy(cmd->cmd_buf, cmd_iu->cdb, cmd_len);
 
 	cmd->tag = be16_to_cpup(&cmd_iu->tag);
+	/* Currently the driver is selecting the stream id based on the
+	 * tagreceived in the command. This logic has to be changed
+	 * because the streams supported are 16 and the tag can be anywhere
+	 * from 1 to 0xffff
+	 */
 	if (fu->flags & USBG_USE_STREAMS) {
 		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS)
 			goto err;
@@ -1425,13 +1667,6 @@ static u32 usbg_tpg_get_inst_index(struct se_portal_group *se_tpg)
 	return 1;
 }
 
-static void usbg_cmd_release(struct kref *ref)
-{
-	struct usbg_cmd *cmd = container_of(ref, struct usbg_cmd,
-			ref);
-
-	transport_generic_free_cmd(&cmd->se_cmd, 0);
-}
 
 static void usbg_release_cmd(struct se_cmd *se_cmd)
 {
@@ -1440,6 +1675,22 @@ static void usbg_release_cmd(struct se_cmd *se_cmd)
 	kfree(cmd->data_buf);
 	kfree(cmd);
 	return;
+}
+
+static void usbg_cmd_release(struct kref *ref)
+{
+	struct usbg_cmd *cmd = container_of(ref, struct usbg_cmd,
+			ref);
+	if (cmd->no_scsi_contact)
+		/* If this Response was sent without contacting the
+		 * scsi layer, then free the memory directly, or else
+		 * call the scsi layer function which will free any memory
+		 * it has allocated and then call our release function to
+		 * free the command memory
+		 */
+		usbg_release_cmd(&(cmd->se_cmd));
+	else
+		transport_generic_free_cmd(&cmd->se_cmd, 0);
 }
 
 static int usbg_shutdown_session(struct se_session *se_sess)
@@ -1489,7 +1740,11 @@ static int usbg_get_cmd_state(struct se_cmd *se_cmd)
 
 static int usbg_queue_tm_rsp(struct se_cmd *se_cmd)
 {
-	return 0;
+	struct usbg_cmd *cmd = container_of(se_cmd, struct usbg_cmd,
+							se_cmd);
+	struct f_uas *fu = cmd->fu;
+	return uasp_send_response_iu(cmd);
+
 }
 
 static const char *usbg_check_wwn(const char *name)

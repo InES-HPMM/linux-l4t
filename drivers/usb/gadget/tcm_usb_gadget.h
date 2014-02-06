@@ -90,9 +90,13 @@ struct usbg_cmd {
 	/* UAS only */
 	u16 tag;
 	u16 prio_attr;
+	u8 tm_function;
+	u16 tm_tag;
 	struct sense_iu sense_iu;
+	struct response_ui response_iu;
 	enum uas_state state;
 	struct uas_stream *stream;
+	bool no_scsi_contact;
 
 	/* BOT only */
 	__le32 bot_tag;
