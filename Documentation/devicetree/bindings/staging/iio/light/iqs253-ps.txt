@@ -9,6 +9,7 @@ Required properties:
 - proximity,power-consumed: rough estimate of this sensor's power consumption in mA.
 - rdy-gpio: gpio to be used for i2c handshake with the sensor.
 - wake-gpio: gpio to be used for wakeup on stylus insert/removal event.
+- sar-gpio: gpio to be used for sending proximity event to SAR sensor.
 
 Example:
 
@@ -21,4 +22,5 @@ Example:
 		proximity,power-consumed = "1.67"; /* mA */
 		rdy-gpio = <&gpio TEGRA_GPIO(PK, 5) 1>;
 		wake-gpio = <&gpio TEGRA_GPIO(PW, 3) 1>;
+		sar-gpio = <&gpio TEGRA_GPIO(I, 2) 1>;
 	};

@@ -59,14 +59,18 @@
 
 #define IQS253_PROD_ID		41
 
-#define STYLUS_ONLY		0x04 /* Channel 2 for stylus */
-#define PROXIMITY_ONLY		0x03 /* channel 0 and channel 1 for proximity */
+#define PROX_CH0		0x01
+#define PROX_CH1		0x02
+#define PROX_CH2		0x04
+
+#define STYLUS_ONLY		PROX_CH0
+#define PROXIMITY_ONLY		(PROX_CH1 | PROX_CH2)
 
 #define CH0_COMPENSATION	0x55
 
-#define PROX_TH_CH0		0x01
-#define PROX_TH_CH1		0x02
-#define PROX_TH_CH2		0x04
+#define PROX_TH_CH0		0x04 /* proximity threshold = 0.5 cm */
+#define PROX_TH_CH1		0x01 /* proximity threshold = 2 cm */
+#define PROX_TH_CH2		0x01 /* proximity threshold = 2 cm */
 
 #define DISABLE_DYCAL		0x00
 
@@ -88,6 +92,7 @@ struct iqs253_chip {
 	const struct i2c_device_id	*id;
 	u32			rdy_gpio;
 	u32			wake_gpio;
+	u32			sar_gpio;
 	u32			mode;
 	u32			value;
 	struct regulator	*vddhi;
@@ -144,6 +149,12 @@ static void iqs253_i2c_hand_shake(struct iqs253_chip *iqs253_chip)
 	} while (gpio_get_value(iqs253_chip->rdy_gpio) && retry_count--);
 }
 
+static int iqs253_i2c_read_byte(struct iqs253_chip *chip, int reg)
+{
+	iqs253_i2c_hand_shake(chip);
+	return i2c_smbus_read_byte_data(chip->client, reg);
+}
+
 /* must call holding lock */
 static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 {
@@ -174,8 +185,7 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 
 	/* wait for ATI to finish */
 	do {
-		iqs253_i2c_hand_shake(iqs253_chip);
-		ret = i2c_smbus_read_byte_data(iqs253_chip->client, SYSFLAGS);
+		ret = iqs253_i2c_read_byte(iqs253_chip, SYSFLAGS);
 		mdelay(10);
 	} while (ret & ATI_IN_PROGRESS);
 
@@ -298,24 +308,30 @@ static int iqs253_read_raw(struct iio_dev *indio_dev,
 	if (chan->type != IIO_PROXIMITY)
 		return -EINVAL;
 
-	iqs253_i2c_hand_shake(chip);
-	ret = i2c_smbus_read_byte_data(chip->client, PROX_STATUS);
+	ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
 	chip->value = -1;
 	if (ret >= 0) {
 		if ((ret >= 0) && (chip->mode == NORMAL_MODE)) {
 			ret = ret & PROXIMITY_ONLY;
 			/*
 			 * if both channel detect proximity => distance = 0;
-			 * if only channel2 detects proximity => distance = 1;
+			 * if one channel detects proximity => distance = 1;
 			 * if no channel detects proximity => distance = 2;
 			 */
-			chip->value = (ret == 0x03) ? 0 : ret ? 1 : 2;
+			chip->value = (ret == (PROX_CH1 | PROX_CH2)) ? 0 :
+								ret ? 1 : 2;
 		}
 	}
 	if (chip->value == -1)
 		return -EINVAL;
 
 	*val = chip->value; /* cm */
+
+	/* provide input to SAR */
+	if (chip->value)
+		gpio_direction_output(chip->sar_gpio, 0);
+	else
+		gpio_direction_output(chip->sar_gpio, 1);
 
 	return IIO_VAL_INT;
 }
@@ -409,7 +425,7 @@ static int iqs253_probe(struct i2c_client *client,
 	int ret;
 	struct iqs253_chip *iqs253_chip;
 	struct iio_dev *indio_dev;
-	int rdy_gpio = -1, wake_gpio;
+	int rdy_gpio = -1, wake_gpio = -1, sar_gpio = -1;
 
 	rdy_gpio = of_get_named_gpio(client->dev.of_node, "rdy-gpio", 0);
 	if (rdy_gpio == -EPROBE_DEFER)
@@ -423,6 +439,14 @@ static int iqs253_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 
 	if (!gpio_is_valid(wake_gpio))
+		return -EINVAL;
+
+	sar_gpio = of_get_named_gpio(client->dev.of_node, "sar-gpio", 0);
+	if (sar_gpio == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
+	ret = gpio_request_one(sar_gpio, GPIOF_OUT_INIT_LOW, NULL);
+	if (ret < 0)
 		return -EINVAL;
 
 	indio_dev = iio_device_alloc(sizeof(*iqs253_chip));
@@ -475,6 +499,7 @@ static int iqs253_probe(struct i2c_client *client,
 	}
 	iqs253_chip->rdy_gpio = rdy_gpio;
 	iqs253_chip->wake_gpio = wake_gpio;
+	iqs253_chip->sar_gpio = sar_gpio;
 
 	ret = regulator_enable(iqs253_chip->vddhi);
 	if (ret) {
@@ -484,8 +509,7 @@ static int iqs253_probe(struct i2c_client *client,
 		goto err_gpio_request;
 	}
 
-	iqs253_i2c_hand_shake(iqs253_chip);
-	ret = i2c_smbus_read_byte_data(iqs253_chip->client, 0);
+	ret = iqs253_i2c_read_byte(iqs253_chip, 0);
 	if (ret != IQS253_PROD_ID) {
 			dev_err(&client->dev,
 			"devname:%s func:%s device not present\n",
