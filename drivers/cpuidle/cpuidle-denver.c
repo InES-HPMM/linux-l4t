@@ -88,9 +88,16 @@ static int __init denver_power_states_init(void)
 
 		state->enter = denver_enter_c_state;
 
-		/* Map index to the actual LP state */
-		if (of_property_read_u32(child, "pmstate", &prop) != 0)
+		/* Bringup all states except clock gating in disabled mode */
+		if (of_property_read_u32(child, "pmstate", &prop) == 0) {
+			if (prop == 0)
+				state->disabled = false;
+			else
+				state->disabled = true;
+		} else
 			continue;
+
+		/* Map index to the actual LP state */
 		pmstate_map[state_count] = prop;
 
 		/* Create a debugfs node for the idle state */
