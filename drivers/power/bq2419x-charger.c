@@ -223,10 +223,17 @@ static struct regulator_ops bq2419x_vbus_ops = {
 	.is_enabled	= bq2419x_vbus_is_enabled,
 };
 
-static int bq2419x_val_to_reg(int val, int offset, int div, bool roundup)
+static int bq2419x_val_to_reg(int val, int offset, int div, int nbits,
+	bool roundup)
 {
+	int max_val = offset + (BIT(nbits) - 1) * div;
+
 	if (val <= offset)
 		return 0;
+
+	if (val >= max_val)
+		return BIT(nbits) - 1;
+
 	if (roundup)
 		return DIV_ROUND_UP(val - offset, div);
 	else
@@ -274,23 +281,23 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 	}
 
 	vindpm = bq2419x_val_to_reg(voltage_input,
-			BQ2419X_INPUT_VINDPM_OFFSET, 80, 0);
+			BQ2419X_INPUT_VINDPM_OFFSET, 80, 4, 0);
 	bq2419x->input_src.mask = BQ2419X_INPUT_VINDPM_MASK;
 	bq2419x->input_src.val = vindpm << 3;
 	bq2419x->input_src.mask |= BQ2419X_INPUT_IINLIM_MASK;
 	bq2419x->input_src.val |= 0x2;
 
 	ichg = bq2419x_val_to_reg(fast_charge_current,
-			BQ2419X_CHARGE_ICHG_OFFSET, 64, 0);
+			BQ2419X_CHARGE_ICHG_OFFSET, 64, 6, 0);
 	bq2419x->chg_current_control.mask = BQ2419X_CHRG_CTRL_ICHG_MASK;
 	bq2419x->chg_current_control.val = ichg << 2;
 
 	iprechg = bq2419x_val_to_reg(pre_charge_current,
-			BQ2419X_PRE_CHG_IPRECHG_OFFSET, 128, 0);
+			BQ2419X_PRE_CHG_IPRECHG_OFFSET, 128, 4, 0);
 	bq2419x->prechg_term_control.mask = BQ2419X_CHRG_TERM_PRECHG_MASK;
 	bq2419x->prechg_term_control.val = iprechg << 4;
 	iterm =  bq2419x_val_to_reg(termination_current,
-			BQ2419X_PRE_CHG_TERM_OFFSET, 128, 0);
+			BQ2419X_PRE_CHG_TERM_OFFSET, 128, 4, 0);
 	bq2419x->prechg_term_control.mask |= BQ2419X_CHRG_TERM_TERM_MASK;
 	bq2419x->prechg_term_control.val |= iterm;
 
@@ -312,7 +319,7 @@ static int bq2419x_process_charger_plat_data(struct bq2419x_chip *bq2419x,
 	bq2419x->ir_comp_therm.val |= treg;
 
 	vreg = bq2419x_val_to_reg(charge_voltage_limit,
-			BQ2419X_CHARGE_VOLTAGE_OFFSET, 16, 1);
+			BQ2419X_CHARGE_VOLTAGE_OFFSET, 16, 6, 1);
 	bq2419x->chg_voltage_control.mask = BQ2419X_CHG_VOLT_LIMIT_MASK;
 	bq2419x->chg_voltage_control.val = vreg << 2;
 	return 0;
@@ -1048,7 +1055,8 @@ static ssize_t bq2419x_set_output_charging_current(struct device *dev,
 		return -EINVAL;
 	}
 
-	ichg = bq2419x_val_to_reg(curr_val, BQ2419X_CHARGE_ICHG_OFFSET, 64, 0);
+	ichg = bq2419x_val_to_reg(curr_val, BQ2419X_CHARGE_ICHG_OFFSET,
+						64, 6, 0);
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG,
 				BQ2419X_CHRG_CTRL_ICHG_MASK, ichg << 2);
 
