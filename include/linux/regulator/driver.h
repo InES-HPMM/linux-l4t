@@ -262,6 +262,8 @@ struct regulator_desc {
 
 	unsigned int vsel_reg;
 	unsigned int vsel_mask;
+	unsigned int vsel_persist_val;
+	bool vsel_persist;
 	unsigned int apply_reg;
 	unsigned int apply_bit;
 	unsigned int enable_reg;
