@@ -39,7 +39,7 @@
 		iqs253@44 {
 			compatible = "azoteq,iqs253";
 			reg = <0x44>;
-			vddhi-supply = <&palmas_smps8>;
+			vddhi-supply = <&palmas_smps9>;
 			vendor = "Azoteq";
 			proximity,max-range = "2"; /* 2 cm */
 			proximity,integration-time = "16000000"; /* 16 msec */
