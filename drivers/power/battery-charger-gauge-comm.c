@@ -329,6 +329,22 @@ int battery_gauge_get_scaled_soc(struct battery_gauge_dev *bg_dev,
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_scaled_soc);
 
+int battery_gauge_get_adjusted_soc(struct battery_gauge_dev *bg_dev,
+	int min_soc, int max_soc, int actual_soc_semi)
+{
+	int min_soc_semi = min_soc * 100;
+	int max_soc_semi = max_soc * 100;
+
+	if (actual_soc_semi >= max_soc_semi)
+		return 100;
+
+	if (actual_soc_semi <= min_soc_semi)
+		return 0;
+
+	return (actual_soc_semi - min_soc_semi + 50) / (max_soc - min_soc);
+}
+EXPORT_SYMBOL_GPL(battery_gauge_get_adjusted_soc);
+
 void battery_charging_restart_cancel(struct battery_charger_dev *bc_dev)
 {
 	if (!bc_dev->ops->restart_charging) {
