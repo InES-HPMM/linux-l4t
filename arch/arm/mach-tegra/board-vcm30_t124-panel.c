@@ -113,6 +113,9 @@ static struct tegra_fb_data vcm30_t124_disp1_fb_data = {
 
 static struct tegra_dc_out vcm30_t124_disp1_out = {
 	.type		= TEGRA_DC_OUT_DP,
+
+	/* eDP max pixel rate to T124 POR */
+	.max_pixclock	= KHZ2PICOS(540000),  /* 540MPix/S 3840x2160@60 */
 };
 
 static struct tegra_dc_platform_data vcm30_t124_disp1_pdata = {
