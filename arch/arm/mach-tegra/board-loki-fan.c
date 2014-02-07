@@ -71,7 +71,8 @@ int __init loki_fan_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-	if ((board_info.sku == 900) && (board_info.board_id == BOARD_P2530)) {
+	if ((board_info.sku == BOARD_SKU_FOSTER) &&
+		(board_info.board_id == BOARD_P2530)) {
 		memcpy((&fan_data_delta_6k)->active_pwm, &active_pwm_foster,
 		sizeof(active_pwm_foster));
 	} else {
