@@ -3,7 +3,7 @@
  *
  * Author: Vinod Subbarayalu <vsubbarayalu@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -160,6 +160,11 @@ static bool tegra210_spkprot_volatile_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_SPKPROT_AHUBRAMCTL_INITCURR_GAIN_CTRL:
 	case TEGRA210_SPKPROT_AHUBRAMCTL_NEW_GAIN_CTRL:
 	case TEGRA210_SPKPROT_AHUBRAMCTL_SPCOEFF_CTRL:
+	case TEGRA210_SPKPROT_AHUBRAMCTL_ARCOEFF_DATA:
+	case TEGRA210_SPKPROT_AHUBRAMCTL_BANDCOEFF_DATA:
+	case TEGRA210_SPKPROT_AHUBRAMCTL_SPCOEFF_DATA:
+	case TEGRA210_SPKPROT_AHUBRAMCTL_INITCURR_GAIN_DATA:
+	case TEGRA210_SPKPROT_AHUBRAMCTL_NEW_GAIN_DATA:
 		return true;
 	default:
 		return false;
