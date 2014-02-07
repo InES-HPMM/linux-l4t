@@ -2599,7 +2599,8 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 
 int tegra_cl_dvfs_vmin_read_begin(struct tegra_cl_dvfs *cld, uint *start)
 {
-	*start = read_seqcount_begin(&cld->v_limits.vmin_seqcnt);
+	if (start)
+		*start = read_seqcount_begin(&cld->v_limits.vmin_seqcnt);
 	return cld->v_limits.vmin;
 }
 
@@ -2610,7 +2611,8 @@ int tegra_cl_dvfs_vmin_read_retry(struct tegra_cl_dvfs *cld, uint start)
 
 int tegra_cl_dvfs_vmax_read_begin(struct tegra_cl_dvfs *cld, uint *start)
 {
-	*start = read_seqcount_begin(&cld->v_limits.vmax_seqcnt);
+	if (start)
+		*start = read_seqcount_begin(&cld->v_limits.vmax_seqcnt);
 	return cld->v_limits.vmax;
 }
 
