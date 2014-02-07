@@ -33,11 +33,6 @@
 #define TEGRA_VIP_H_ACTIVE_START			0x98
 #define TEGRA_VIP_V_ACTIVE_START			0x10
 
-/* SYNCPTs 12-17 are reserved for VI. */
-#define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
-#define TEGRA_VI_SYNCPT_CSI_A                           NVSYNCPT_VI_ISP_3
-#define TEGRA_VI_SYNCPT_CSI_B                           NVSYNCPT_VI_ISP_4
-
 /* Tegra CSI-MIPI registers. */
 #define TEGRA_VI_OUT_1_INCR_SYNCPT			0x000
 #define TEGRA_VI_OUT_1_INCR_SYNCPT_CNTRL		0x004
@@ -408,33 +403,39 @@ static void vi_clks_disable(struct tegra_camera_dev *cam)
 	}
 }
 
+static void vi_init_syncpts(struct tegra_camera_dev *cam)
+{
+	cam->syncpt_id_csi_a = nvhost_get_syncpt_client_managed("vi_csi_A");
+
+	cam->syncpt_id_csi_b = nvhost_get_syncpt_client_managed("vi_csi_B");
+
+	cam->syncpt_id_vip = nvhost_get_syncpt_client_managed("vi_vip");
+}
+
 static void vi_save_syncpts(struct tegra_camera_dev *cam)
 {
 	u32 val;
 
 	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			TEGRA_VI_SYNCPT_CSI_A, &val))
+			cam->syncpt_id_csi_a, &val))
 		cam->syncpt_csi_a = val;
 
 	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			TEGRA_VI_SYNCPT_CSI_B, &val))
+			cam->syncpt_id_csi_b, &val))
 		cam->syncpt_csi_b = val;
 
 	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			TEGRA_VI_SYNCPT_VI, &val))
+			cam->syncpt_id_vip, &val))
 		cam->syncpt_vip = val;
 }
 
 static void vi_incr_syncpts(struct tegra_camera_dev *cam)
 {
-	nvhost_syncpt_cpu_incr_ext(cam->ndev,
-				   TEGRA_VI_SYNCPT_CSI_A);
+	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_csi_a);
 
-	nvhost_syncpt_cpu_incr_ext(cam->ndev,
-				   TEGRA_VI_SYNCPT_CSI_B);
+	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_csi_b);
 
-	nvhost_syncpt_cpu_incr_ext(cam->ndev,
-				   TEGRA_VI_SYNCPT_VI);
+	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_vip);
 }
 
 static void vi_capture_clean(struct tegra_camera_dev *cam)
@@ -519,7 +520,7 @@ static void vi_capture_setup_csi_a(struct tegra_camera_dev *cam,
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_END,
 		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_CSI_A);
+		cam->syncpt_id_csi_a);
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CIL_COMMAND, 0x00020001);
 
@@ -602,7 +603,7 @@ static void vi_capture_setup_csi_b(struct tegra_camera_dev *cam,
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_END,
 		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_CSI_B);
+		cam->syncpt_id_csi_b);
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CIL_COMMAND, 0x00010002);
 
@@ -642,7 +643,7 @@ static void vi_capture_setup_vip(struct tegra_camera_dev *cam,
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CONT_SYNCPT_VIP_VSYNC,
 		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_VI);
+		cam->syncpt_id_vip);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CAMERA_CONTROL, 0x00000004);
 }
@@ -726,7 +727,7 @@ static int vi_capture_output_channel_setup(
 
 		TC_VI_REG_WT(cam, TEGRA_VI_CONT_SYNCPT_OUT_1,
 				(0x1 << 8) | /* Enable continuous syncpt */
-				TEGRA_VI_SYNCPT_VI);
+				cam->syncpt_id_vip);
 
 		TC_VI_REG_WT(cam, TEGRA_VI_VI_ENABLE, 0x00000000);
 	} else if (buf->output_channel == 1) {
@@ -750,7 +751,7 @@ static int vi_capture_output_channel_setup(
 
 		TC_VI_REG_WT(cam, TEGRA_VI_CONT_SYNCPT_OUT_2,
 				(0x1 << 8) | /* Enable continuous syncpt */
-				TEGRA_VI_SYNCPT_VI);
+				cam->syncpt_id_vip);
 
 		TC_VI_REG_WT(cam, TEGRA_VI_VI_ENABLE_2, 0x00000000);
 	} else {
@@ -904,7 +905,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
 				0x0000f005);
 		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				TEGRA_VI_SYNCPT_CSI_A,
+				cam->syncpt_id_csi_a,
 				cam->syncpt_csi_a,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
 				NULL,
@@ -914,7 +915,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 				0x0000f005);
 		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				TEGRA_VI_SYNCPT_CSI_B,
+				cam->syncpt_id_csi_b,
 				cam->syncpt_csi_b,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
 				NULL,
@@ -924,7 +925,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		TC_VI_REG_WT(cam, TEGRA_VI_CAMERA_CONTROL,
 				0x00000001);
 		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				TEGRA_VI_SYNCPT_VI,
+				cam->syncpt_id_vip,
 				cam->syncpt_csi_a,
 				TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 				NULL,
@@ -980,7 +981,7 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 
 	if (vi_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-			TEGRA_VI_SYNCPT_VI,
+			cam->syncpt_id_vip,
 			cam->syncpt_vip,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 			NULL,
@@ -1055,6 +1056,7 @@ struct tegra_camera_ops vi_ops = {
 	.activate = vi_unpowergate,
 	.deactivate = vi_powergate,
 
+	.init_syncpts = vi_init_syncpts,
 	.save_syncpts = vi_save_syncpts,
 	.incr_syncpts = vi_incr_syncpts,
 

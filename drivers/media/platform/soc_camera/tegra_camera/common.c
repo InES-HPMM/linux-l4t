@@ -882,6 +882,9 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit_deinit_clk;
 	}
 
+	/* Init syncpts */
+	cam->ops->init_syncpts(cam);
+
 	cam->reg_base = ndata->aperture[0];
 	if (!cam->reg_base) {
 		dev_err(&pdev->dev, "%s: failed to map register base\n",
