@@ -1,7 +1,7 @@
 /*
  * bq2477x-charger.c -- BQ24775 Charger driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Andy Park <andyp@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -235,7 +235,7 @@ static void bq2477x_work_thread(struct kthread_work *work)
 		}
 
 		ret = bq2477x_update_bits(bq2477x, BQ2477X_CHARGE_OPTION_0_MSB,
-					BQ2477X_WATCHDOG_TIMER, 0x3);
+					BQ2477X_WATCHDOG_TIMER, 0x60);
 		if (ret < 0) {
 			dev_err(bq2477x->dev,
 				"CHARGE_OPTION write failed %d\n", ret);
