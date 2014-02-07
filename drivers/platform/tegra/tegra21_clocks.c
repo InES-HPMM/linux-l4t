@@ -7247,6 +7247,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",   125,	0x428,	108000000, mux_pllp_pllc_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2codec_2x",	"tegra30-hda",	"hda2codec",   111,	0x3e4,	910000000,  mux_pllp_pllc_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",		"hda2hdmi",	128,	0,	408000000,  mux_clk_m,			0),
+	PERIPH_CLK("qspi",	"qspi", 		NULL,	211,	0x6c4, 166000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("vi_i2c",	"vi_i2c", 		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc1",	"spi-tegra114.0", 	NULL,	41,	0x134, 204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"spi-tegra114.1", 	NULL,	44,	0x118, 204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2", 	NULL,	46,	0x11c, 204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
