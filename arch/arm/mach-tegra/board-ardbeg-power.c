@@ -1460,7 +1460,6 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 			},
 		},
 	},
-	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
 static struct soctherm_throttle battery_oc_throttle = {
@@ -1565,9 +1564,10 @@ int __init ardbeg_soctherm_init(void)
 		 pmu_board_info.board_id == BOARD_E1736 ||
 		 pmu_board_info.board_id == BOARD_E1769 ||
 		 pmu_board_info.board_id == BOARD_E1936)
-		;/* tpdata_palmas is default */
+		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_palmas;
 	else
-		pr_warn("soctherm THERMTRIP is not supported on this PMIC\n");
+		pr_warn("soctherm THERMTRIP not supported on PMU (BOARD_E%d)\n",
+			pmu_board_info.board_id);
 
 	/* Enable soc_therm OC throttling on selected platforms */
 	switch (pmu_board_info.board_id) {

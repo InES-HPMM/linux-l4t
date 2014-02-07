@@ -1,19 +1,17 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
- * this program is free software; you can redistribute it and/or modify
- * it under the terms of the gnu general public license as published by
- * the free software foundation; either version 2 of the license, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * this program is distributed in the hope that it will be useful, but without
- * any warranty; without even the implied warranty of merchantability or
- * fitness for a particular purpose.  see the gnu general public license for
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * you should have received a copy of the gnu general public license along
- * with this program; if not, write to the free software foundation, inc.,
- * 51 franklin street, fifth floor, boston, ma  02110-1301, usa.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/tegra-soc.h>
@@ -136,11 +134,20 @@ DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
  */
 static inline int fuse_cp_rev_check(void)
 {
+	static enum tegra_chipid chip_id;
 	u32 rev, rev_major, rev_minor;
 
 	rev = tegra_fuse_readl(FUSE_CP_REV);
 	rev_minor = rev & 0x1f;
 	rev_major = (rev >> 5) & 0x3f;
+	pr_debug("%s: CP rev %d.%d\n", __func__, rev_major, rev_minor);
+
+	if (!chip_id)
+		chip_id = tegra_get_chipid();
+
+	/* T13x: No min CP rev (yet) */
+	if (chip_id == TEGRA_CHIPID_TEGRA13)
+		return 1; /* Use (old) CP/FT fuse style */
 
 	/* CP rev < 00.4 is unsupported */
 	if ((rev_major == 0) && (rev_minor < 4))
@@ -161,17 +168,26 @@ static inline int fuse_cp_rev_check(void)
  */
 static inline int fuse_ft_rev_check(void)
 {
+	static enum tegra_chipid chip_id;
 	u32 rev, rev_major, rev_minor;
 	int check_cp = fuse_cp_rev_check();
+
+	rev = tegra_fuse_readl(FUSE_FT_REV);
+	rev_minor = rev & 0x1f;
+	rev_major = (rev >> 5) & 0x3f;
+	pr_debug("%s: FT rev %d.%d\n", __func__, rev_major, rev_minor);
+
+	if (!chip_id)
+		chip_id = tegra_get_chipid();
+
+	/* T13x: No min FT rev (yet) */
+	if (chip_id == TEGRA_CHIPID_TEGRA13)
+		return 0;
 
 	if (check_cp < 0)
 		return check_cp;
 	if (check_cp == 0)
 		return -ENODEV; /* No FT rev in CP1/CP2 mode */
-
-	rev = tegra_fuse_readl(FUSE_FT_REV);
-	rev_minor = rev & 0x1f;
-	rev_major = (rev >> 5) & 0x3f;
 
 	/* FT rev < 00.5 is unsupported */
 	if ((rev_major == 0) && (rev_minor < 5))
