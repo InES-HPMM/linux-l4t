@@ -2,9 +2,11 @@
 
 #include "tegra124.dtsi"
 #include <dt-bindings/gpio/tegra-gpio.h>
+#include <tegra124-platforms/tegra124-loki-gpio-default.dtsi>
+#include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
 
 / {
-	model = "NVIDIA Tegra124 Loki";
+	model = "NVIDIA Tegra124 Foster";
 	compatible = "nvidia,loki", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <1>;
