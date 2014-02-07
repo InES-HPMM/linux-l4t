@@ -1490,9 +1490,9 @@ config PERF_EVENTS
 	  Say Y if unsure.
 
 config PERF_ANDROID_BACKTRACE
-	default n
+	default y
 	bool "Backtracing support for the Perf tool on Android"
-	depends on PERF_EVENTS
+	depends on PERF_EVENTS && ANDROID
 	help
 	  This config changes default function stack format that Perf
 	  profiler uses for backtracing. With this config enabled Perf
