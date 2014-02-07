@@ -37,10 +37,6 @@ obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
 obj-y += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
 
-ifeq ($(CONFIG_PM_SLEEP),y)
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
-endif
-
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 
 obj-y += kfuse.o
