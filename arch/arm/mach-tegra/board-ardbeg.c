@@ -286,6 +286,7 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 		.i2s_mode = TEGRA_DAIFMT_I2S,
 		.sample_size	= 16,
 		.channels       = 2,
+		.bit_clk	= 1536000,
 	},
 	.i2s_param[BT_SCO] = {
 		.audio_port_id = 3,
