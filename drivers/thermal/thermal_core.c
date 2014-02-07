@@ -33,6 +33,7 @@
 #include <linux/idr.h>
 #include <linux/thermal.h>
 #include <linux/reboot.h>
+#include <linux/string.h>
 #include <net/netlink.h>
 #include <net/genetlink.h>
 #define CREATE_TRACE_POINTS
@@ -778,12 +779,14 @@ policy_store(struct device *dev, struct device_attribute *attr,
 	struct thermal_governor *gov;
 	char name[THERMAL_NAME_LENGTH];
 
+	snprintf(name, sizeof(name), "%s", buf);
+
 	mutex_lock(&thermal_governor_lock);
 
 	if ((strlen(buf) >= THERMAL_NAME_LENGTH) || !sscanf(buf, "%s\n", name))
 		goto exit;
 
-	gov = __find_governor((const char *)name);
+	gov = __find_governor((const char *)strim(name));
 	if (!gov)
 		goto exit;
 
