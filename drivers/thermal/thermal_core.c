@@ -263,6 +263,7 @@ static void bind_cdev(struct thermal_cooling_device *cdev)
 			ret = pos->ops->bind(pos, cdev);
 			if (ret)
 				print_bind_err_msg(pos, cdev, ret);
+			continue;
 		}
 
 		tzp = pos->tzp;
