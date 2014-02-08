@@ -46,7 +46,8 @@
 
 					pin_gpio1 {
 						pins = "gpio1";
-						function = "vbus_det";
+						function = "gpio";
+						bias-pull-down;
 					};
 
 					pin_gpio6 {
