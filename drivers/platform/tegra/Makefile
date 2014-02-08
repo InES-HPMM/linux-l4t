@@ -41,7 +41,6 @@ obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 
 obj-y += kfuse.o
 obj-y += apbio.o
-obj-y += mc.o
 obj-$(CONFIG_FIQ) += fiq.o
 
 obj-y += powergate.o
