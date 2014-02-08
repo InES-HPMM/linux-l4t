@@ -1880,8 +1880,6 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		WARN_ON(to_dma_iommu_mapping(dev) == map);
-
 		if (arm_iommu_attach_device(dev, map)) {
 			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
 			arm_iommu_release_mapping(map);
@@ -1894,8 +1892,6 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		/* FALLTHROUGH */
 	case BUS_NOTIFY_UNBOUND_DRIVER:
-		WARN_ON(!to_dma_iommu_mapping(dev));
-
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
 			to_dma_iommu_mapping(dev));
 		arm_iommu_detach_device(dev);
