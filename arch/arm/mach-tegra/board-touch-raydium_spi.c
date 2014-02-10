@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-touch-raydium_spi.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (C) 2012-2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,14 +25,12 @@
 #include <linux/gpio.h>
 #include <linux/spi/rm31080a_ts.h>
 
-/*#include <mach/gpio-tegra.h>*/
-
 int __init touch_init_raydium(int irq_gpio, int reset_gpio,
 				struct rm_spi_ts_platform_data *rm31080ts_data,
 				struct spi_board_info *rm31080a_spi_board,
 				int asize)
 {
-	int err = 0;
+	int err = RETURN_OK;
 	gpio_request(irq_gpio, "raydium-irq");
 	gpio_direction_input(irq_gpio);
 
@@ -44,7 +42,7 @@ int __init touch_init_raydium(int irq_gpio, int reset_gpio,
 	rm31080a_spi_board->irq = gpio_to_irq(irq_gpio);
 
 	spi_register_board_info(rm31080a_spi_board, asize);
-	pr_info("Raydium touch platform_id:  %d\n",
+	pr_info("Raydium - touch platform_id :  %d\n",
 			rm31080ts_data->platform_id);
 
 	return err;
