@@ -101,6 +101,7 @@ struct bq2419x_chip {
 	bool				cable_connected;
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
+	int				last_temp;
 	struct bq2419x_reg_info		input_src;
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
@@ -1067,6 +1068,11 @@ static int bq2419x_charger_thermal_configure(
 	if (!bq2419x->cable_connected || !chg_pdata->n_temp_profile)
 		return 0;
 
+	if (bq2419x->last_temp == temp)
+		return 0;
+
+	bq2419x->last_temp = temp;
+
 	dev_info(bq2419x->dev, "Battery temp %d\n", temp);
 
 	for (i = 0; i < chg_pdata->n_temp_profile; ++i) {
@@ -1392,6 +1398,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
 	bq2419x->battery_presense = true;
+	bq2419x->last_temp = -1000;
 	bq2419x->disable_suspend_during_charging =
 			pdata->bcharger_pdata->disable_suspend_during_charging;
 
