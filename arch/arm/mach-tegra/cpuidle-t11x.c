@@ -456,13 +456,13 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = ktime_to_us(entry_time) + request;
 	smp_wmb();
 
-	if (!is_secure_mode())
-		if ((cpu == 0) || (cpu == 4)) {
-			tegra_generic_smc(0x84000001, ((1 << 16) | 5),
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+	if ((cpu == 0) || (cpu == 4)) {
+		tegra_generic_smc(0x84000001, ((1 << 16) | 5),
 				(TEGRA_RESET_HANDLER_BASE +
 				tegra_cpu_reset_handler_offset));
-		}
-
+	}
+#endif
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 
 	tegra11x_restore_vmin();

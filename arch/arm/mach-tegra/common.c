@@ -144,7 +144,7 @@ phys_addr_t tegra_wb0_params_block_size;
 #ifdef CONFIG_TEGRA_NVDUMPER
 unsigned long nvdumper_reserved;
 #endif
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 unsigned long tegra_tzram_start;
 unsigned long tegra_tzram_size;
 #endif
@@ -576,6 +576,7 @@ static __initdata struct tegra_clk_init_table tegra14x_cbus_init_table[] = {
 #endif
 
 #ifdef CONFIG_CACHE_L2X0
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 static void tegra_cache_smc(bool enable, u32 arg)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PL310_BASE);
@@ -644,73 +645,76 @@ static void tegra_l2x0_disable(void)
 	tegra_cache_smc(false, l2x0_way_mask);
 	local_irq_restore(flags);
 }
+#endif	/* CONFIG_TEGRA_USE_SECURE_KERNEL */
 
 void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PL310_BASE);
 	u32 aux_ctrl;
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 	u32 cache_type;
 	u32 tag_latency, data_latency;
-
-	if (!is_secure_mode()) {
-		/* issue the SMC to enable the L2 */
-		aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
-		trace_smc_init_cache(NVSEC_SMC_START);
-		tegra_cache_smc(true, aux_ctrl);
-		trace_smc_init_cache(NVSEC_SMC_DONE);
-
-		/* after init, reread aux_ctrl and register handlers */
-		aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
-		l2x0_init(p, aux_ctrl, 0xFFFFFFFF);
-
-		/* override outer_disable() with our disable */
-		outer_cache.disable = tegra_l2x0_disable;
-	} else {
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-		tag_latency = 0x331;
-		data_latency = 0x441;
-#else
-		if (!tegra_platform_is_silicon()) {
-			tag_latency = 0x770;
-			data_latency = 0x770;
-		} else if (is_lp_cluster()) {
-			tag_latency = tegra_cpu_c1_l2_tag_latency;
-			data_latency = tegra_cpu_c1_l2_data_latency;
-		} else {
-			tag_latency = tegra_cpu_c0_l2_tag_latency;
-			data_latency = tegra_cpu_c0_l2_data_latency;
-		}
 #endif
-		writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
-		writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
+
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+	/* issue the SMC to enable the L2 */
+	aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
+	trace_smc_init_cache(NVSEC_SMC_START);
+	tegra_cache_smc(true, aux_ctrl);
+	trace_smc_init_cache(NVSEC_SMC_DONE);
+
+	/* after init, reread aux_ctrl and register handlers */
+	aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
+	l2x0_init(p, aux_ctrl, 0xFFFFFFFF);
+
+	/* override outer_disable() with our disable */
+	outer_cache.disable = tegra_l2x0_disable;
+#else
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	tag_latency = 0x331;
+	data_latency = 0x441;
+#else
+	if (!tegra_platform_is_silicon()) {
+		tag_latency = 0x770;
+		data_latency = 0x770;
+	} else if (is_lp_cluster()) {
+		tag_latency = tegra_cpu_c1_l2_tag_latency;
+		data_latency = tegra_cpu_c1_l2_data_latency;
+	} else {
+		tag_latency = tegra_cpu_c0_l2_tag_latency;
+		data_latency = tegra_cpu_c0_l2_data_latency;
+	}
+#endif
+	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
+	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-		if (!tegra_platform_is_fpga()) {
+	if (!tegra_platform_is_fpga()) {
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
-			/* Enable double line fill */
-			writel(0x40000007, p + L2X0_PREFETCH_CTRL);
+		/* Enable double line fill */
+		writel(0x40000007, p + L2X0_PREFETCH_CTRL);
 #else
-			writel(0x7, p + L2X0_PREFETCH_CTRL);
+		writel(0x7, p + L2X0_PREFETCH_CTRL);
 #endif
-			writel(0x3, p + L2X0_POWER_CTRL);
-		}
-#endif
-		cache_type = readl(p + L2X0_CACHE_TYPE);
-		aux_ctrl = (cache_type & 0x700) << (17-8);
-		aux_ctrl |= 0x7C400001;
-		if (init) {
-			l2x0_init(p, aux_ctrl, 0x8200c3fe);
-		} else {
-			u32 tmp;
-
-			tmp = aux_ctrl;
-			aux_ctrl = readl(p + L2X0_AUX_CTRL);
-			aux_ctrl &= 0x8200c3fe;
-			aux_ctrl |= tmp;
-			writel(aux_ctrl, p + L2X0_AUX_CTRL);
-		}
-		l2x0_enable();
+		writel(0x3, p + L2X0_POWER_CTRL);
 	}
+#endif
+	cache_type = readl(p + L2X0_CACHE_TYPE);
+	aux_ctrl = (cache_type & 0x700) << (17-8);
+	aux_ctrl |= 0x7C400001;
+	if (init) {
+		l2x0_init(p, aux_ctrl, 0x8200c3fe);
+	} else {
+		u32 tmp;
+
+		tmp = aux_ctrl;
+		aux_ctrl = readl(p + L2X0_AUX_CTRL);
+		aux_ctrl &= 0x8200c3fe;
+		aux_ctrl |= tmp;
+		writel(aux_ctrl, p + L2X0_AUX_CTRL);
+	}
+	l2x0_enable();
+#endif
 }
 #endif
 
@@ -1151,7 +1155,7 @@ static int __init tegra_tsec_arg(char *options)
 }
 early_param("tsec", tegra_tsec_arg);
 
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 static int __init tegra_tzram_arg(char *options)
 {
 	char *p = options;
@@ -2122,11 +2126,11 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 #endif
 
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-		pr_info("Tzram:               %08lx - %08lx\n",
-			tegra_tzram_start,
-			tegra_tzram_size ?
-				tegra_tzram_start + tegra_tzram_size - 1 : 0);
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+	pr_info("Tzram:               %08lx - %08lx\n",
+		tegra_tzram_start,
+		tegra_tzram_size ?
+			tegra_tzram_start + tegra_tzram_size - 1 : 0);
 #endif
 
 #ifdef CONFIG_TEGRA_USE_NCT

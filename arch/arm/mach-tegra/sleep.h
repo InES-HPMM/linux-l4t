@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,6 +18,14 @@
 #define __MACH_TEGRA_SLEEP_H
 
 #include "iomap.h"
+
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
+/* FIXME: The code associated with this should be removed if our change to
+   save the diagnostic regsiter in the CPU context is accepted. */
+#define USE_TEGRA_DIAG_REG_SAVE	1
+#else
+#define USE_TEGRA_DIAG_REG_SAVE	0
+#endif
 
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */
 
@@ -338,6 +346,7 @@ int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 int tegra3_stop_mc_clk_finish(unsigned long int);
 #endif
 
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 extern unsigned long tegra_resume_timestamps_start;
 extern unsigned long tegra_resume_timestamps_end;
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
@@ -345,6 +354,7 @@ extern unsigned long tegra_resume_smc_entry_time;
 extern unsigned long tegra_resume_smc_exit_time;
 #endif
 extern unsigned long tegra_resume_entry_time;
+#endif
 #if defined(CONFIG_CACHE_L2X0) && defined(CONFIG_PM_SLEEP)
 extern unsigned long tegra_resume_l2_init;
 #endif

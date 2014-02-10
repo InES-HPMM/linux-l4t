@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -277,10 +277,7 @@ ENTRY(tegra2_lp1_reset)
 	 * enable PLLP.
 	 */
 	mov32	r0, TEGRA_CLK_RESET_BASE
-	bl	is_secure_mode
-	cmp	r0, #1
-	mov32	r0, TEGRA_CLK_RESET_BASE
-	bne	1f		@Skip if non-secure mode
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
 	mov	r1, #(1 << 28)
 	str	r1, [r0, #CLK_RESET_SCLK_BURST]
@@ -288,7 +285,7 @@ ENTRY(tegra2_lp1_reset)
 	mov	r1, #0
 	str	r1, [r0, #CLK_RESET_SCLK_DIVIDER]
 	str	r1, [r0, #CLK_RESET_CCLK_DIVIDER]
-1:
+#endif
 	ldr	r1, [r0, #CLK_RESET_PLLM_BASE]
 	tst	r1, #(1 << 30)
 	orreq	r1, r1, #(1 << 30)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -456,10 +456,7 @@ enable_mc:
 
 resume_lp1:
 	mov32	r0, TEGRA_CLK_RESET_BASE
-	bl	is_secure_mode
-	cmp	r0, #1
-	mov32	r0, TEGRA_CLK_RESET_BASE
-	bne	1f	@Skip if non-secure mode
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
 	mov	r1, #(1<<28)
 	str	r1, [r0, #CLK_RESET_SCLK_BURST]
@@ -467,7 +464,8 @@ resume_lp1:
 	mov	r1, #0
 	str	r1, [r0, #CLK_RESET_SCLK_DIVIDER]
 	str	r1, [r0, #CLK_RESET_CCLK_DIVIDER]
-1:
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* enable PLLM via PMC */
 	mov32	r2, TEGRA_PMC_BASE

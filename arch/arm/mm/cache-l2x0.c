@@ -1,6 +1,5 @@
 /*
  * arch/arm/mm/cache-l2x0.c - L210/L220 cache controller support
- * Copyright (c) 2007-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Copyright (C) 2007 ARM Limited
  *
@@ -98,12 +97,12 @@ static inline void l2x0_inv_line(unsigned long addr)
 	writel_relaxed(addr, base + L2X0_INV_LINE_PA);
 }
 
-#if (defined(CONFIG_PL310_ERRATA_588369) || defined(CONFIG_PL310_ERRATA_727915))
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	(defined(CONFIG_PL310_ERRATA_588369) || defined(CONFIG_PL310_ERRATA_727915))
 static inline void debug_writel(unsigned long val)
 {
-	if (is_secure_mode())
-		if (outer_cache.set_debug)
-			outer_cache.set_debug(val);
+	if (outer_cache.set_debug)
+		outer_cache.set_debug(val);
 }
 
 static void pl310_set_debug(unsigned long val)

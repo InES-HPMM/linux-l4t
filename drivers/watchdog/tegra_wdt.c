@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -69,7 +69,8 @@ struct tegra_wdt {
 	int			tmrsrc;
 	int			timeout;
 	int			status;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
 	struct resource		*res_avp_src;
 	void __iomem		*wdt_avp_source;
 #endif
@@ -154,12 +155,11 @@ struct tegra_wdt *tegra_wdt[MAX_NR_CPU_WDT];
 static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 {
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		/* Comment out to test FIQ debugger */
-		if (!watchdog_get_lockup_state())
-			writel(WDT_CMD_START_COUNTER, wdt->wdt_avp_source
-								+ WDT_CMD);
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	/* Comment out to test FIQ debugger */
+	if (!watchdog_get_lockup_state())
+		writel(WDT_CMD_START_COUNTER, wdt->wdt_avp_source + WDT_CMD);
 #endif
 }
 
@@ -204,13 +204,13 @@ static void tegra_wdt_enable(struct tegra_wdt *wdt)
 	writel(val, wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		val = wdt->tmrsrc | (WDT_CFG_PERIOD << 1) | /*WDT_CFG_INT_EN |*/
-			/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
-		writel(val, wdt->wdt_avp_source + WDT_CFG);
-		writel(WDT_CMD_START_COUNTER, wdt->wdt_avp_source + WDT_CMD);
-	}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	val = wdt->tmrsrc | (WDT_CFG_PERIOD << 1) | /*WDT_CFG_INT_EN |*/
+		/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
+	writel(val, wdt->wdt_avp_source + WDT_CFG);
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_avp_source + WDT_CMD);
+
 #endif
 }
 
@@ -219,11 +219,10 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 	writel(WDT_UNLOCK_PATTERN, wdt->wdt_source + WDT_UNLOCK);
 	writel(WDT_CMD_DISABLE_COUNTER, wdt->wdt_source + WDT_CMD);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		writel(WDT_UNLOCK_PATTERN, wdt->wdt_avp_source + WDT_UNLOCK);
-		writel(WDT_CMD_DISABLE_COUNTER, wdt->wdt_avp_source + WDT_CMD);
-	}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	writel(WDT_UNLOCK_PATTERN, wdt->wdt_avp_source + WDT_UNLOCK);
+	writel(WDT_CMD_DISABLE_COUNTER, wdt->wdt_avp_source + WDT_CMD);
 #endif
 
 	writel(0, wdt->wdt_timer + TIMER_PTV);
@@ -245,7 +244,8 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
 static irqreturn_t tegra_wdt_avp_interrupt(int irq, void *dev_id)
 {
 	return IRQ_HANDLED;
@@ -429,7 +429,8 @@ static const struct file_operations tegra_wdt_fops = {
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
 	struct resource *res_src, *res_wdt, *res_irq, *res_pmc;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
 	struct resource *res_avp_src, *res_avp_irq;
 #endif
 	struct resource	*res_int_base = NULL;
@@ -446,31 +447,22 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	res_pmc = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		res_avp_src = platform_get_resource(pdev, IORESOURCE_MEM, 4);
-		res_avp_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
-	}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	res_avp_src = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	res_avp_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		if (!res_src || !res_wdt || !res_avp_src ||
-				(!pdev->id && !res_irq) || !res_pmc) {
-			dev_err(&pdev->dev, "incorrect resources\n");
-			return -ENOENT;
-		}
-	} else if (!res_src || !res_wdt || (!pdev->id && !res_irq)
-						|| !res_pmc) {
-		dev_err(&pdev->dev, "incorrect resources\n");
-		return -ENOENT;
-	}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	if (!res_src || !res_wdt || !res_avp_src || (!pdev->id && !res_irq) ||
+	    !res_pmc) {
 #else
 	if (!res_src || !res_wdt || (!pdev->id && !res_irq) || !res_pmc) {
+#endif
 		dev_err(&pdev->dev, "incorrect resources\n");
 		return -ENOENT;
 	}
-#endif
 
 #if !defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_FIQ_DEBUGGER)
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
@@ -520,67 +512,47 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	res_pmc = request_mem_region(res_pmc->start, resource_size(res_pmc),
 				     pdev->name);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		res_avp_src = request_mem_region(res_avp_src->start,
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	res_avp_src = request_mem_region(res_avp_src->start,
 					 resource_size(res_avp_src),
 					 pdev->name);
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		if (!res_src || !res_wdt || !res_avp_src || !res_pmc) {
-			dev_err(&pdev->dev, "unable to request
-						memory resources\n");
-			ret = -EBUSY;
-			goto fail;
-		}
-	} else if (!res_src || !res_wdt || !res_pmc) {
-		dev_err(&pdev->dev, "unable to request memory resources\n");
-		ret = -EBUSY;
-		goto fail;
-	}
-
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	if (!res_src || !res_wdt || !res_avp_src || !res_pmc) {
 #else
 	if (!res_src || !res_wdt || !res_pmc) {
+#endif
 		dev_err(&pdev->dev, "unable to request memory resources\n");
 		ret = -EBUSY;
 		goto fail;
 	}
-#endif
 
 	wdt->wdt_source = ioremap(res_src->start, resource_size(res_src));
 	wdt->wdt_timer = ioremap(res_wdt->start, resource_size(res_wdt));
 	wdt->pmc_base = ioremap(res_pmc->start, resource_size(res_pmc));
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		wdt->wdt_avp_source = ioremap(res_avp_src->start,
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	wdt->wdt_avp_source = ioremap(res_avp_src->start,
 				      resource_size(res_avp_src));
 #endif
 	/* tmrsrc will be used to set WDT_CFG */
 	wdt->tmrsrc = (TMR_SRC_START + pdev->id) % 10;
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		if (!wdt->wdt_source || !wdt->wdt_timer ||
-			!wdt->wdt_avp_source || !wdt->pmc_base) {
-			dev_err(&pdev->dev, "unable to map registers\n");
-			ret = -ENOMEM;
-			goto fail;
-		}
-	} else if (!wdt->wdt_source || !wdt->wdt_timer || !wdt->pmc_base) {
-			dev_err(&pdev->dev, "unable to map registers\n");
-			ret = -ENOMEM;
-			goto fail;
-	}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	if (!wdt->wdt_source || !wdt->wdt_timer || !wdt->wdt_avp_source ||
+	    !wdt->pmc_base) {
 #else
 	if (!wdt->wdt_source || !wdt->wdt_timer || !wdt->pmc_base) {
+#endif
 		dev_err(&pdev->dev, "unable to map registers\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
-#endif
 
 	tegra_wdt_log_reset_reason(pdev, wdt);
 
@@ -615,16 +587,13 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 			goto fail;
 		}
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-		if (!is_secure_mode()) {
-			ret = request_irq(res_avp_irq->start,
-				tegra_wdt_avp_interrupt,
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+		ret = request_irq(res_avp_irq->start, tegra_wdt_avp_interrupt,
 				IRQF_DISABLED, "avp_wdt", wdt);
-			if (ret) {
-				dev_err(&pdev->dev, "unable to configure
-							WDT AVP IRQ\n");
-				goto fail;
-			}
+		if (ret) {
+			dev_err(&pdev->dev, "unable to configure WDT AVP IRQ\n");
+			goto fail;
 		}
 #endif
 
@@ -633,9 +602,9 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 
 	wdt->res_src = res_src;
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		wdt->res_avp_src = res_avp_src;
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	wdt->res_avp_src = res_avp_src;
 #endif
 	wdt->res_wdt = res_wdt;
 	wdt->res_int_base = res_int_base;
@@ -669,12 +638,12 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		val |= WDT_CFG_INT_EN;
 		writel(val, wdt->wdt_source + WDT_CFG);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-		if (!is_secure_mode()) {
-			val = readl(wdt->wdt_avp_source + WDT_CFG);
-			val |= WDT_CFG_INT_EN;
-			writel(val, wdt->wdt_avp_source + WDT_CFG);
-		}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+		val = readl(wdt->wdt_avp_source + WDT_CFG);
+		val |= WDT_CFG_INT_EN;
+		writel(val, wdt->wdt_avp_source + WDT_CFG);
+
 #endif
 		pr_info("WDT heartbeat enabled on probe\n");
 	}
@@ -704,14 +673,13 @@ fail:
 	if (res_pmc)
 		release_mem_region(res_pmc->start, resource_size(res_pmc));
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode()) {
-		if (wdt->wdt_avp_source)
-			iounmap(wdt->wdt_avp_source);
-		if (res_avp_src)
-			release_mem_region(res_avp_src->start,
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	if (wdt->wdt_avp_source)
+		iounmap(wdt->wdt_avp_source);
+	if (res_avp_src)
+		release_mem_region(res_avp_src->start,
 				   resource_size(res_avp_src));
-	}
 #endif
 	kfree(wdt);
 	return ret;
@@ -729,9 +697,9 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 		free_irq(wdt->irq, wdt);
 	iounmap(wdt->wdt_source);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		iounmap(wdt->wdt_avp_source);
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	iounmap(wdt->wdt_avp_source);
 #endif
 	iounmap(wdt->wdt_timer);
 	if (wdt->int_base)
@@ -740,9 +708,9 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 		iounmap(wdt->pmc_base);
 	release_mem_region(wdt->res_src->start, resource_size(wdt->res_src));
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-	if (!is_secure_mode())
-		release_mem_region(wdt->res_avp_src->start,
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+	release_mem_region(wdt->res_avp_src->start,
 			   resource_size(wdt->res_avp_src));
 #endif
 	release_mem_region(wdt->res_wdt->start, resource_size(wdt->res_wdt));
@@ -781,12 +749,11 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 		val |= WDT_CFG_INT_EN;
 		writel(val, wdt->wdt_source + WDT_CFG);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
-		if (!is_secure_mode()) {
-			val = readl(wdt->wdt_avp_source + WDT_CFG);
-			val |= WDT_CFG_INT_EN;
-			writel(val, wdt->wdt_avp_source + WDT_CFG);
-		}
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+		val = readl(wdt->wdt_avp_source + WDT_CFG);
+		val |= WDT_CFG_INT_EN;
+		writel(val, wdt->wdt_avp_source + WDT_CFG);
 #endif
 		pr_info("WDT heartbeat enabled on probe\n");
 	}

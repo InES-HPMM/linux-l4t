@@ -2497,7 +2497,8 @@ static struct resource tegra_wdt0_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 #endif
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
 	[5] = {
 		.start  = TEGRA_WDT4_BASE,
 		.end    = TEGRA_WDT4_BASE + TEGRA_WDT4_SIZE - 1,
