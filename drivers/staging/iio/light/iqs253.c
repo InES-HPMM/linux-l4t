@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/irqchip/tegra.h>
+#include <linux/input.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
 #include <linux/iio/light/ls_sysfs.h>
@@ -98,6 +99,10 @@ struct iqs253_chip {
 	struct regulator	*vddhi;
 	u32			using_regulator;
 	struct lightsensor_spec	*ls_spec;
+	struct workqueue_struct	*wq;
+	struct delayed_work	dw;
+	struct input_dev	*idev;
+	u32			stylus_inserted;
 };
 
 enum mode {
@@ -121,7 +126,7 @@ struct reg_val_pair reg_val_map[NUM_MODE][NUM_REG] = {
 		{ CH0_PTH, PROX_TH_CH0},
 		{ CH1_PTH, PROX_TH_CH1},
 		{ PROX_SETTINGS0, PROX_SETTING_NORMAL},
-		{ ACTIVE_CHAN, PROXIMITY_ONLY},
+		{ ACTIVE_CHAN, PROXIMITY_ONLY | STYLUS_ONLY},
 		{ DYCAL_CHANS, DISABLE_DYCAL},
 		{ EVENT_MODE_MASK, EVENT_PROX_ONLY}
 	},
@@ -419,12 +424,89 @@ static SIMPLE_DEV_PM_OPS(iqs253_pm_ops, iqs253_suspend, iqs253_resume);
 #define IQS253_PM_OPS NULL
 #endif
 
+static void iqs253_stylus_detect_work(struct work_struct *ws)
+{
+	int ret;
+	struct iqs253_chip *chip;
+
+	chip = container_of(ws, struct iqs253_chip, dw.work);
+
+	if (!chip->using_regulator) {
+		ret = regulator_enable(chip->vddhi);
+		if (ret)
+			goto finish;
+		chip->using_regulator = true;
+	}
+
+	if (chip->mode != NORMAL_MODE) {
+		ret = iqs253_set(chip, NORMAL_MODE);
+		if (ret)
+			goto finish;
+
+		ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
+		chip->stylus_inserted = (ret & STYLUS_ONLY);
+		input_report_switch(chip->idev, SW_TABLET_MODE,
+					!chip->stylus_inserted);
+		input_sync(chip->idev);
+	}
+
+	ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
+	chip->value = -1;
+	if (ret >= 0) {
+		ret &= STYLUS_ONLY;
+		if (ret && !chip->stylus_inserted) {
+			chip->stylus_inserted = true;
+			input_report_switch(chip->idev, SW_TABLET_MODE, false);
+			input_sync(chip->idev);
+		} else if (!ret && chip->stylus_inserted) {
+			chip->stylus_inserted = false;
+			input_report_switch(chip->idev, SW_TABLET_MODE, true);
+			input_sync(chip->idev);
+		}
+	}
+
+finish:
+	queue_delayed_work(chip->wq, &chip->dw, msecs_to_jiffies(2000));
+}
+
+static struct input_dev *iqs253_stylus_input_init(struct iqs253_chip *chip)
+{
+	int ret;
+	struct input_dev *idev = input_allocate_device();
+	if (!idev)
+		return NULL;
+
+	idev->name = "stylus_detect";
+	set_bit(EV_SW, idev->evbit);
+	input_set_capability(idev, EV_SW, SW_TABLET_MODE);
+	ret = input_register_device(idev);
+	if (ret) {
+		input_free_device(idev);
+		return ERR_PTR(ret);
+	}
+
+	chip->wq = create_singlethread_workqueue("iqs253");
+	if (!chip->wq) {
+		dev_err(&chip->client->dev, "unable to create work queue\n");
+		input_unregister_device(idev);
+		input_free_device(idev);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	INIT_DELAYED_WORK(&chip->dw, iqs253_stylus_detect_work);
+
+	queue_delayed_work(chip->wq, &chip->dw, 0);
+
+	return idev;
+}
+
 static int iqs253_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int ret;
 	struct iqs253_chip *iqs253_chip;
 	struct iio_dev *indio_dev;
+	struct input_dev *idev;
 	int rdy_gpio = -1, wake_gpio = -1, sar_gpio = -1;
 
 	rdy_gpio = of_get_named_gpio(client->dev.of_node, "rdy-gpio", 0);
@@ -526,6 +608,10 @@ static int iqs253_probe(struct i2c_client *client,
 		goto err_gpio_request;
 	}
 
+	idev = iqs253_stylus_input_init(iqs253_chip);
+	if (IS_ERR_OR_NULL(idev))
+		goto err_gpio_request;
+	iqs253_chip->idev = idev;
 
 	dev_info(&client->dev, "devname:%s func:%s line:%d probe success\n",
 			id->name, __func__, __LINE__);
@@ -548,6 +634,9 @@ static int iqs253_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct iqs253_chip *chip = iio_priv(indio_dev);
 	gpio_free(chip->rdy_gpio);
+	destroy_workqueue(chip->wq);
+	input_unregister_device(chip->idev);
+	input_free_device(chip->idev);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 	return 0;
