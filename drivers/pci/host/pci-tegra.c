@@ -185,6 +185,9 @@
 #define NV_PCIE2_RP_RSR					0x000000A0
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
+#define NV_PCIE2_RP_INTR_BCR					0x0000003C
+#define NV_PCIE2_RP_INTR_BCR_INTR_LINE				(0xFF << 0)
+
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
 #define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT			(0xE << 0)
 #define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT			(0xF << 0)
@@ -1418,6 +1421,10 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
 		data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
 		rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
+		/* Avoid warning during enumeration for invalid IRQ of RP */
+		data = rp_readl(NV_PCIE2_RP_INTR_BCR, index);
+		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
+		rp_writel(data, NV_PCIE2_RP_INTR_BCR, index);
 	}
 }
 
