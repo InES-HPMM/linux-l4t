@@ -1413,6 +1413,29 @@ static struct therm_est_subdevice tn8ffd_skin_devs[] = {
 	},
 };
 
+static struct therm_est_subdevice t132ref_skin_devs[] = {
+	{
+		.dev_data = "CPU-therm",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "Tboard_tegra",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
+
 static struct pid_thermal_gov_params skin_pid_params = {
 	.max_err_temp = 4000,
 	.max_err_gain = 1000,
@@ -1540,13 +1563,21 @@ static int __init ardbeg_skin_init(void)
 	tegra_get_board_info(&board_info);
 
 	if (of_machine_is_compatible("nvidia,ardbeg") ||
+	    of_machine_is_compatible("nvidia,norrin") ||
+	    of_machine_is_compatible("nvidia,bowmore") ||
 		of_machine_is_compatible("nvidia,tn8")) {
 		if (board_info.board_id == BOARD_P1761 ||
-			board_info.board_id == BOARD_E1784 ||
-			board_info.board_id == BOARD_E1922) {
+				board_info.board_id == BOARD_E1784 ||
+				board_info.board_id == BOARD_E1922) {
 			skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
 			skin_data.devs = tn8ffd_skin_devs;
 			skin_data.toffset = 4034;
+		} else if (board_info.board_id == BOARD_E1991 ||
+				board_info.board_id == BOARD_E1971 ||
+				board_info.board_id == BOARD_PM374) {
+			skin_data.ndevs = ARRAY_SIZE(t132ref_skin_devs);
+			skin_data.devs = t132ref_skin_devs;
+			skin_data.toffset = 9793;
 		} else {
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
