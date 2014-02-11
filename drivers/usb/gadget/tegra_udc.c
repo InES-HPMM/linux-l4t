@@ -135,6 +135,7 @@ static char *const tegra_udc_extcon_cable[] = {
 	[CONNECT_TYPE_SDP] = "USB",
 	[CONNECT_TYPE_DCP] = "TA",
 	[CONNECT_TYPE_DCP_QC2] = "QC2",
+	[CONNECT_TYPE_DCP_MAXIM] = "MAXIM",
 	[CONNECT_TYPE_CDP] = "Charge-downstream",
 	[CONNECT_TYPE_NV_CHARGER] = "Fast-charger",
 	[CONNECT_TYPE_NON_STANDARD_CHARGER] = "Slow-charger",
@@ -1419,6 +1420,11 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = udc->qc2_current_limit;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
+	case CONNECT_TYPE_DCP_MAXIM:
+		dev_info(dev, "connected to Maxim(wall charger)\n");
+		max_ua = udc->dcp_current_limit;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
 	case CONNECT_TYPE_CDP:
 		dev_info(dev, "connected to CDP(1.5A)\n");
 		/*
@@ -1492,6 +1498,9 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
 		if (tegra_usb_phy_cdp_charger_detected(udc->phy))
 			tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
+		else if (tegra_usb_phy_maxim_charger_detected(udc->phy))
+			tegra_udc_set_charger_type(udc,
+						CONNECT_TYPE_DCP_MAXIM);
 		else if (udc->qc2_voltage) {
 			/* Must be DCP -- figure out if Quick Charge 2 or DCP.
 			 * Initially set low current since QC2 will reset to
@@ -1581,7 +1590,8 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		tegra_detect_cable_type(udc);
 		/* start the controller if USB host detected */
 		if ((udc->connect_type == CONNECT_TYPE_SDP) ||
-		    (udc->connect_type == CONNECT_TYPE_CDP))
+		    (udc->connect_type == CONNECT_TYPE_CDP) ||
+		    (udc->connect_type == CONNECT_TYPE_DCP_MAXIM))
 			dr_controller_run(udc);
 	}
 	mutex_unlock(&udc->sync_lock);
