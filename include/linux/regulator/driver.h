@@ -169,6 +169,9 @@ struct regulator_ops {
 	unsigned int (*get_optimum_mode) (struct regulator_dev *, int input_uV,
 					  int output_uV, int load_uA);
 
+	/* set regulator voltage selector access as volatile or cached */
+	int (*set_vsel_volatile) (struct regulator_dev *, bool is_volatile);
+
 	/* control and report on bypass mode */
 	int (*set_bypass)(struct regulator_dev *dev, bool enable);
 	int (*get_bypass)(struct regulator_dev *dev, bool *enable);
