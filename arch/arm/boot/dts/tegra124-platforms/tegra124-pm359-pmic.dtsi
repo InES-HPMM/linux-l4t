@@ -32,10 +32,17 @@
 					bias-pull-down;
 				};
 
-				gpio1_2_4_7 {
-					pins = "gpio1", "gpio2", "gpio4", "gpio7";
+				gpio1_2_4 {
+					pins = "gpio1", "gpio2", "gpio4";
 					function = "gpio";
 					bias-pull-up;
+				};
+
+				gpio7 {
+					pins = "gpio7";
+					function = "gpio";
+					bias-pull-up;
+					output-high;
 				};
 
 				gpio3 {
