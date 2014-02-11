@@ -35,7 +35,6 @@ obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-sensors.o
-obj-${CONFIG_MACH_LOKI}               += board-loki-kbc.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-fan.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-panel.o
 obj-${CONFIG_MACH_LOKI}               += panel-l-720p-5-loki.o
