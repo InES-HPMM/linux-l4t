@@ -2005,7 +2005,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	/* ping group index by name */
 	token = strsep(&pbuf, FIELD_DELIMITER);
 	for (i = 0; i < pmx->soc->ngroups; i++)
-		if (!strcmp(token, pmx->soc->groups[i].name))
+		if (!strcasecmp(token, pmx->soc->groups[i].name))
 			break;
 	if (i == pmx->soc->ngroups) { /* no pingroup matched with name */
 		pr_err("no pingroup matched with name\n");
@@ -2016,7 +2016,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	/* func index by name */
 	token = strsep(&pbuf, FIELD_DELIMITER);
 	for (i = 0; i < TEGRA_MAX_MUX; i++)
-		if (!strcmp(token, tegra_pinctrl_function_name(i)))
+		if (!strcasecmp(token, tegra_pinctrl_function_name(i)))
 			break;
 	if (i == TEGRA_MAX_MUX) { /* no func matched with name */
 		pr_err("no func matched with name\n");
@@ -2026,8 +2026,8 @@ static ssize_t dbg_pinmux_write(struct file *file,
 
 	/* i/o by name */
 	token = strsep(&pbuf, FIELD_DELIMITER);
-	i = !strcmp(token, "OUTPUT") ? 0 :
-		!strcmp(token, "INPUT") ? 1 : -1;
+	i = !strcasecmp(token, "OUTPUT") ? 0 :
+		!strcasecmp(token, "INPUT") ? 1 : -1;
 	if (i == -1) { /* no IO matched with name */
 		pr_err("no IO matched with name\n");
 		return -EINVAL;
@@ -2036,9 +2036,9 @@ static ssize_t dbg_pinmux_write(struct file *file,
 
 	/* pull up/down by name */
 	token = strsep(&pbuf, FIELD_DELIMITER);
-	i = !strcmp(token, "NORMAL") ? 0 :
-		!strcmp(token, "PULL_DOWN") ? 1 :
-		!strcmp(token, "PULL_UP") ? 2 : -1;
+	i = !strcasecmp(token, "NORMAL") ? 0 :
+		!strcasecmp(token, "PULL_DOWN") ? 1 :
+		!strcasecmp(token, "PULL_UP") ? 2 : -1;
 	if (i == -1) { /* no PUPD matched with  name */
 		pr_err("no PUPD matched with  name\n");
 		return -EINVAL;
@@ -2047,8 +2047,8 @@ static ssize_t dbg_pinmux_write(struct file *file,
 
 	/* tristate by name */
 	token = strsep(&pbuf, LINE_DELIMITER);
-	i = !strcmp(token, "NORMAL") ? 0 :
-		!strcmp(token, "TRISTATE") ? 1 : -1;
+	i = !strcasecmp(token, "NORMAL") ? 0 :
+		!strcasecmp(token, "TRISTATE") ? 1 : -1;
 	if (i == -1) { /* no tristate matched with name */
 		pr_err("no tristate matched with name\n");
 		return -EINVAL;
