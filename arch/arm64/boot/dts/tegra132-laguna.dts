@@ -2,6 +2,10 @@
 
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-e1780-keys.dtsi"
+#include "tegra124-platforms/tegra124-pm359-gpio-default.dtsi"
+#include "tegra124-platforms/tegra124-pm359-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-pm359-pmic.dtsi"
+#include "tegra124-platforms/tegra124-pm359-fixed.dtsi"
 
 / {
 	model = "laguna";
