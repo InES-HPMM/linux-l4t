@@ -75,9 +75,9 @@ struct soctherm_sensor {
 	int tiddq;
 	int ten_count;
 	int tsample;
-	int tsamp_ATE;
+	int tsamp_ate;
 	u8 pdiv;
-	u8 pdiv_ATE;
+	u8 pdiv_ate;
 };
 
 struct soctherm_therm {
