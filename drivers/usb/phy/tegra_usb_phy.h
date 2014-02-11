@@ -69,6 +69,7 @@ struct tegra_usb_phy_ops {
 	bool (*charger_detect)(struct tegra_usb_phy *phy);
 	bool (*cdp_charger_detect)(struct tegra_usb_phy *phy);
 	bool (*qc2_charger_detect)(struct tegra_usb_phy *phy, int max_voltage);
+	bool (*maxim_charger_14675)(struct tegra_usb_phy *phy);
 	bool (*nv_charger_detect)(struct tegra_usb_phy *phy);
 	bool (*apple_charger_1000ma_detect)(struct tegra_usb_phy *phy);
 	bool (*apple_charger_2000ma_detect)(struct tegra_usb_phy *phy);

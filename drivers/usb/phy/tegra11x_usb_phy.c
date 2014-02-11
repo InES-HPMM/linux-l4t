@@ -281,6 +281,9 @@
 #define TDP_SRC_ON_MS	 100
 #define TDPSRC_CON_MS	 40
 
+/* Maxim Debounce Timer */
+#define MAXIM_DEBOUNCE_TIME 120
+
 /* Force port resume wait time in micro second on remote resume */
 #define FPR_WAIT_TIME_US 25000
 
@@ -1576,6 +1579,44 @@ static bool cdp_charger_detection(struct tegra_usb_phy *phy)
 	return status;
 }
 
+static bool maxim_charger_detection(struct tegra_usb_phy *phy)
+{
+	void __iomem *base = phy->regs;
+	unsigned long val;
+	unsigned long org_flags;
+	int status;
+
+	/*
+	 * Enable charger detection logic
+	 * 3.3V on D+, Sink D- (high speed usb)
+	 * Maxim charger will remove short !! -- DCP will not
+	 */
+	org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+		FORCE_PULLUP_DP   | DISABLE_PULLUP_DM |
+		DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
+	val = readl(base + UTMIP_BAT_CHRG_CFG0);
+	val &= ~(UTMIP_OP_SRC_EN | UTMIP_ON_SINK_EN);
+	val &= ~(UTMIP_ON_SRC_EN | UTMIP_OP_SINK_EN);
+	val |= UTMIP_ON_SINK_EN;
+	writel(val, base + UTMIP_BAT_CHRG_CFG0);
+
+	/* Source should be on at least 120 ms per Maxim spec */
+	msleep(MAXIM_DEBOUNCE_TIME);
+
+	val = readl(base + USB_PHY_VBUS_WAKEUP_ID);
+	if (val & VDAT_DET_STS) {
+		status = false;
+		DBG("%s: Maxim charger not found\n", __func__);
+		utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+	} else {
+		status = true;
+		DBG("%s: Maxim Charger detected\n", __func__);
+	}
+
+	disable_charger_detection(base);
+	return status;
+}
+
 static bool utmi_phy_qc2_charger_detect(struct tegra_usb_phy *phy,
 		int max_voltage)
 {
@@ -2492,6 +2533,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.qc2_charger_detect = utmi_phy_qc2_charger_detect,
 	.cdp_charger_detect = cdp_charger_detection,
 	.nv_charger_detect = utmi_phy_nv_charger_detect,
+	.maxim_charger_14675 = maxim_charger_detection,
 	.apple_charger_1000ma_detect = utmi_phy_apple_charger_1000ma_detect,
 	.apple_charger_2000ma_detect = utmi_phy_apple_charger_2000ma_detect,
 	.apple_charger_500ma_detect = utmi_phy_apple_charger_500ma_detect,
