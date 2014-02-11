@@ -1,7 +1,7 @@
 /*
  * Driver for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Derived from code:
  * Copyright (C) 2010 Google, Inc.
@@ -1984,7 +1984,8 @@ static int dbg_pinmux_open(struct inode *inode, struct file *file)
  *	to tegra_pinmux
  * ex) # echo "HDMI_CEC CEC OUTPUT NORMAL TRISTATE" > /d/tegra_pinmux
  */
-#define DELIMITER "\n"
+#define FIELD_DELIMITER	" "
+#define LINE_DELIMITER	"\n"
 static ssize_t dbg_pinmux_write(struct file *file,
 	const char __user *userbuf, size_t count, loff_t *ppos)
 {
@@ -2002,7 +2003,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	pr_debug("%s buf: %s\n", __func__, buf);
 
 	/* ping group index by name */
-	token = strsep(&pbuf, DELIMITER);
+	token = strsep(&pbuf, FIELD_DELIMITER);
 	for (i = 0; i < pmx->soc->ngroups; i++)
 		if (!strcmp(token, pmx->soc->groups[i].name))
 			break;
@@ -2013,7 +2014,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	pg_config.pingroup = i;
 
 	/* func index by name */
-	token = strsep(&pbuf, DELIMITER);
+	token = strsep(&pbuf, FIELD_DELIMITER);
 	for (i = 0; i < TEGRA_MAX_MUX; i++)
 		if (!strcmp(token, tegra_pinctrl_function_name(i)))
 			break;
@@ -2024,7 +2025,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	pg_config.func = i;
 
 	/* i/o by name */
-	token = strsep(&pbuf, DELIMITER);
+	token = strsep(&pbuf, FIELD_DELIMITER);
 	i = !strcmp(token, "OUTPUT") ? 0 :
 		!strcmp(token, "INPUT") ? 1 : -1;
 	if (i == -1) { /* no IO matched with name */
@@ -2034,7 +2035,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	pg_config.io = i;
 
 	/* pull up/down by name */
-	token = strsep(&pbuf, DELIMITER);
+	token = strsep(&pbuf, FIELD_DELIMITER);
 	i = !strcmp(token, "NORMAL") ? 0 :
 		!strcmp(token, "PULL_DOWN") ? 1 :
 		!strcmp(token, "PULL_UP") ? 2 : -1;
@@ -2045,7 +2046,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	pg_config.pupd = i;
 
 	/* tristate by name */
-	token = strsep(&pbuf, DELIMITER);
+	token = strsep(&pbuf, LINE_DELIMITER);
 	i = !strcmp(token, "NORMAL") ? 0 :
 		!strcmp(token, "TRISTATE") ? 1 : -1;
 	if (i == -1) { /* no tristate matched with name */
