@@ -190,6 +190,9 @@
 
 #define NV_PCIE2_RP_INTR_BCR					0x0000003C
 #define NV_PCIE2_RP_INTR_BCR_INTR_LINE				(0xFF << 0)
+#define NV_PCIE2_RP_TX_HDR_LIMIT				0x00000E08
+#define PCIE2_RP_TX_HDR_LIMIT_NPT_0				32
+#define PCIE2_RP_TX_HDR_LIMIT_NPT_1				4
 
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
 #define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT			(0xE << 0)
@@ -210,6 +213,9 @@
 
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
 #define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
+
+#define NV_PCIE2_RP_XP_CTL_1					0x00000FEC
+#define PCIE2_RP_XP_CTL_1_SPARE_BIT29				(1 << 29)
 
 #define NV_PCIE2_RP_L1_PM_SUBSTATES_CYA				0x00000C00
 #define PCIE2_RP_L1_PM_SUBSTATES_CYA_CM_RTIME_MASK		(0xFF << 8)
@@ -1438,6 +1444,9 @@ retry:
 static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 {
 	unsigned int data;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	int lane_owner;
+#endif
 	struct pci_dev *pdev = NULL;
 
 	PR_FUNC_LINE;
@@ -1455,6 +1464,27 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		data = rp_readl(NV_PCIE2_RP_INTR_BCR, index);
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
 		rp_writel(data, NV_PCIE2_RP_INTR_BCR, index);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		/* WAR for perf bug#1447522 required for LPDDR4 memory */
+		/* and both ctlr used in X4_X1 config only in T210 */
+		lane_owner = tegra_get_lane_owner_info() >> 1;
+		if (tegra_pcie.port[0].link_up && tegra_pcie.port[1].link_up &&
+			(lane_owner == PCIE_LANES_X4_X1)) {
+			data = rp_readl(NV_PCIE2_RP_XP_CTL_1, 0);
+			data |= PCIE2_RP_XP_CTL_1_SPARE_BIT29;
+			rp_writel(data, NV_PCIE2_RP_XP_CTL_1, 0);
+			data = rp_readl(NV_PCIE2_RP_XP_CTL_1, 1);
+			data |= PCIE2_RP_XP_CTL_1_SPARE_BIT29;
+			rp_writel(data, NV_PCIE2_RP_XP_CTL_1, 1);
+
+			data = rp_readl(NV_PCIE2_RP_TX_HDR_LIMIT, 0);
+			data |= PCIE2_RP_TX_HDR_LIMIT_NPT_0;
+			rp_writel(data, NV_PCIE2_RP_TX_HDR_LIMIT, 0);
+			data = rp_readl(NV_PCIE2_RP_TX_HDR_LIMIT, 1);
+			data |= PCIE2_RP_TX_HDR_LIMIT_NPT_1;
+			rp_writel(data, NV_PCIE2_RP_TX_HDR_LIMIT, 1);
+		}
+#endif
 	}
 }
 
@@ -1487,6 +1517,7 @@ static void tegra_pcie_enable_rp_features(int index)
 	/* unhide AER capability */
 	tegra_pcie_enable_aer(index, true);
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* program timers for L1 substate support */
 	/* set cm_rtime = 100us and t_pwr_on = 70us as per HW team */
 	data = rp_readl(NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
@@ -1500,7 +1531,7 @@ static void tegra_pcie_enable_rp_features(int index)
 	data |= (1 << PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_SCL_SHIFT) |
 		(7 << PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_SHIFT);
 	rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_CYA, index);
-
+#endif
 	tegra_pcie_apply_sw_war(index, false);
 }
 
@@ -1801,6 +1832,7 @@ static void tegra_pcie_pll_pdn(void)
 	}
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static void tegra_pcie_config_l1ss_tpwr_on(int pos)
 {
 	struct pci_dev *pdev = NULL;
@@ -1926,6 +1958,7 @@ static void tegra_pcie_enable_ltr_support(int pos)
 		}
 	}
 }
+#endif
 
 /* Enable ASPM support of all devices based on it's capability */
 static void tegra_pcie_enable_aspm(void)
@@ -1933,8 +1966,10 @@ static void tegra_pcie_enable_aspm(void)
 	struct pci_dev *pdev = NULL;
 	u16 val = 0;
 	u32 aspm = 0;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	int pos = 0;
 	bool config_l1ss = true;
+#endif
 
 	PR_FUNC_LINE;
 	if (!pcie_aspm_support_enabled()) {
@@ -1951,7 +1986,8 @@ static void tegra_pcie_enable_aspm(void)
 		val |= (u16)aspm >> 10;
 		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
 	}
-	/* L1SS configuration */
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* L1SS configuration as per IAS */
 	for_each_pci_dev(pdev) {
 		/* check if L1SS capability is supported in current device */
 		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
@@ -1974,6 +2010,7 @@ static void tegra_pcie_enable_aspm(void)
 		tegra_pcie_enable_l1ss_support(pos);
 		tegra_pcie_enable_ltr_support(pos);
 	}
+#endif
 }
 
 static void tegra_pcie_enable_features(void)
