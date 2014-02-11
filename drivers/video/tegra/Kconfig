@@ -121,6 +121,7 @@ config ADF_TEGRA
 	tristate "Tegra ADF driver"
 	depends on TEGRA_DC && ADF
 	default ADF
+	select ADF_FBDEV
 	help
 	  ADF device support for the Tegra display controller.
 

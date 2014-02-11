@@ -17,6 +17,7 @@
 
 #include <linux/nvmap.h>
 #include <video/adf.h>
+#include <video/adf_fbdev.h>
 #include <video/adf_format.h>
 
 #include "dc/dc_config.h"
@@ -145,45 +146,98 @@ static int tegra_dc_to_drm_modeinfo(struct drm_mode_modeinfo *dmode,
 	return 0;
 }
 
-static int tegra_adf_hotplug(struct tegra_adf_info *adf_info)
+static int tegra_adf_convert_monspecs(struct tegra_adf_info *adf_info,
+		struct fb_monspecs *specs, struct drm_mode_modeinfo **modelist,
+		size_t *n_modes)
 {
-	struct tegra_dc_out *out = adf_info->dc->out;
-	struct tegra_dc_mode *dc_modes;
-	struct tegra_dc_mode calc_mode;
+	struct tegra_dc *dc = adf_info->dc;
+	struct drm_mode_modeinfo *modes;
+	size_t n = 0;
+	u32 i;
 
-	struct drm_mode_modeinfo *modelist;
-	size_t n_modes, i;
-	int err;
-
-	if (out->n_modes) {
-		dc_modes = out->modes;
-		n_modes = out->n_modes;
-	} else {
-		memset(&calc_mode, 0, sizeof(calc_mode));
-
-		dc_modes = &calc_mode;
-		n_modes = 1;
-	}
-
-	modelist = kmalloc(n_modes * sizeof(modelist[0]), GFP_KERNEL);
-	if (!modelist)
+	modes = kmalloc(specs->modedb_len * sizeof(modes[0]), GFP_KERNEL);
+	if (!modes)
 		return -ENOMEM;
 
-	for (i = 0; i < n_modes; i++) {
-		err = tegra_dc_to_drm_modeinfo(&modelist[i], &dc_modes[i]);
-		if (err < 0)
-			goto done;
+	for (i = 0; i < specs->modedb_len; i++) {
+		struct fb_videomode *fb_mode = &specs->modedb[i];
+		if (dc->out_ops->mode_filter &&
+				!dc->out_ops->mode_filter(dc, fb_mode))
+			continue;
+		adf_modeinfo_from_fb_videomode(fb_mode, &modes[n]);
+		n++;
 	}
 
-	err = tegra_dc_set_mode(adf_info->dc, dc_modes);
+	*modelist = modes;
+	*n_modes = n;
+	return 0;
+}
+
+static int tegra_adf_convert_builtin_modes(struct tegra_adf_info *adf_info,
+		struct drm_mode_modeinfo **modelist, size_t *n_modes)
+{
+	struct tegra_dc *dc = adf_info->dc;
+	struct drm_mode_modeinfo *modes;
+	u32 i;
+
+	modes = kmalloc(dc->out->n_modes * sizeof(modes[0]), GFP_KERNEL);
+	if (!modes)
+		return -ENOMEM;
+
+	for (i = 0; i < dc->out->n_modes; i++) {
+		int err = tegra_dc_to_drm_modeinfo(&modes[i],
+				&dc->out->modes[i]);
+		if (err < 0)
+			return err;
+	}
+
+	*modelist = modes;
+	*n_modes = dc->out->n_modes;
+	return 0;
+}
+
+static int tegra_adf_do_hotplug(struct tegra_adf_info *adf_info,
+		struct drm_mode_modeinfo *modelist, size_t n_modes)
+{
+	int err = tegra_dc_set_drm_mode(adf_info->dc, modelist, false);
 	if (err < 0)
-		goto done;
+		return err;
 	memcpy(&adf_info->intf.current_mode, &modelist[0], sizeof(modelist[0]));
 
-	err = adf_hotplug_notify_connected(&adf_info->intf, modelist, n_modes);
-done:
-	kfree(modelist);
+	return adf_hotplug_notify_connected(&adf_info->intf, modelist, n_modes);
+}
+
+int tegra_adf_process_hotplug_connected(struct tegra_adf_info *adf_info,
+		struct fb_monspecs *specs)
+{
+	struct tegra_dc_out *out = adf_info->dc->out;
+	struct drm_mode_modeinfo *modes;
+	size_t n_modes;
+	int err;
+
+	if (!specs && !out->modes) {
+		struct drm_mode_modeinfo reset_mode = {0};
+		return tegra_adf_do_hotplug(adf_info, &reset_mode, 1);
+	}
+
+	if (specs)
+		err = tegra_adf_convert_monspecs(adf_info, specs, &modes,
+				&n_modes);
+	else
+		err = tegra_adf_convert_builtin_modes(adf_info, &modes,
+				&n_modes);
+
+	if (err < 0)
+		return err;
+
+	err = tegra_adf_do_hotplug(adf_info, modes, n_modes);
+	kfree(modes);
 	return err;
+}
+
+void tegra_adf_process_hotplug_disconnected(struct tegra_adf_info *adf_info)
+{
+	adf_hotplug_notify_disconnected(&adf_info->intf);
 }
 
 static int tegra_adf_dev_custom_data(struct adf_obj *obj, void *data,
@@ -689,7 +743,6 @@ static void tegra_adf_intf_set_event(struct adf_obj *obj,
 		return;
 
 	case ADF_EVENT_HOTPLUG:
-		/* TODO */
 		return;
 
 	default:
@@ -858,6 +911,7 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 {
 	struct tegra_adf_info *adf_info;
 	int err;
+	enum adf_interface_type intf_type;
 	u32 intf_flags = 0;
 
 	adf_info = kzalloc(sizeof(*adf_info), GFP_KERNEL);
@@ -871,11 +925,16 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 	if (err < 0)
 		goto err_dev_init;
 
+	intf_type = tegra_adf_interface_type(dc);
+
 	if (ndev->id == 0)
 		intf_flags |= ADF_INTF_FLAG_PRIMARY;
 
+	if (intf_type == ADF_INTF_HDMI)
+		intf_flags |= ADF_INTF_FLAG_EXTERNAL;
+
 	err = adf_interface_init(&adf_info->intf, &adf_info->base,
-			tegra_adf_interface_type(dc), 0, intf_flags,
+			intf_type, 0, intf_flags,
 			&tegra_adf_intf_ops, "%s", dev_name(&ndev->dev));
 	if (err < 0)
 		goto err_intf_init;
@@ -891,7 +950,7 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 		goto err_attach;
 
 	if (dc->out->n_modes) {
-		err = tegra_adf_hotplug(adf_info);
+		err = tegra_adf_process_hotplug_connected(adf_info, NULL);
 		if (err < 0)
 			goto err_attach;
 	}
