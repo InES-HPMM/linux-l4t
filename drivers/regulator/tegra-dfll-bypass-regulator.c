@@ -134,6 +134,12 @@ static unsigned int tegra_dfll_bypass_get_mode(struct regulator_dev *reg)
 		return REGULATOR_MODE_IDLE;
 }
 
+static int tegra_dfll_bypass_set_vsel_volatile(struct regulator_dev *reg,
+					       bool is_volatile)
+{
+	return is_volatile ? 0 : -EINVAL;	/* no VSEL cache */
+}
+
 static struct regulator_ops tegra_dfll_bypass_rops = {
 	.set_voltage = tegra_dfll_bypass_set_voltage,
 	.get_voltage = tegra_dfll_bypass_get_voltage,
@@ -142,6 +148,7 @@ static struct regulator_ops tegra_dfll_bypass_rops = {
 	.set_voltage_time_sel = tegra_dfll_bypass_set_voltage_time_sel,
 	.set_mode = tegra_dfll_bypass_set_mode,
 	.get_mode = tegra_dfll_bypass_get_mode,
+	.set_vsel_volatile = tegra_dfll_bypass_set_vsel_volatile,
 };
 
 static struct of_device_id of_tegra_dfll_bypass_pwm_match_tbl[] = {
