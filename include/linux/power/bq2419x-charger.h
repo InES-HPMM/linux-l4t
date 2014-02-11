@@ -55,7 +55,7 @@
 
 #define BQ2419X_CHG_VOLT_LIMIT_MASK	0xFC
 
-#define BQ24190_IC_VER			0x40
+#define BQ24190_IC_VER			0x20
 #define BQ24192_IC_VER			0x28
 #define BQ24192i_IC_VER			0x18
 
