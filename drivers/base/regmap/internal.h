@@ -85,6 +85,8 @@ struct regmap {
 	bool (*readable_reg)(struct device *dev, unsigned int reg);
 	bool (*volatile_reg)(struct device *dev, unsigned int reg);
 	bool (*precious_reg)(struct device *dev, unsigned int reg);
+	int (*reg_volatile_set)(struct device *dev, unsigned int reg,
+				bool is_volatile);
 	const struct regmap_access_table *wr_table;
 	const struct regmap_access_table *rd_table;
 	const struct regmap_access_table *volatile_table;
@@ -209,6 +211,13 @@ bool regcache_set_val(struct regmap *map, void *base, unsigned int idx,
 		      unsigned int val);
 int regcache_lookup_reg(struct regmap *map, unsigned int reg);
 int regcache_set_reg_present(struct regmap *map, unsigned int reg);
+
+static inline void regcache_clear_reg_present(struct regmap *map,
+					      unsigned int reg)
+{
+	if ((map->cache_present) && (reg < map->cache_present_nbits))
+		clear_bit(reg, map->cache_present);
+}
 
 static inline bool regcache_reg_present(struct regmap *map, unsigned int reg)
 {
