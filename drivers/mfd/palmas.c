@@ -199,6 +199,24 @@ static bool is_volatile_palmas_func_reg(struct device *dev, unsigned int reg)
 	return true;
 }
 
+static int palmas_reg_volatile_set(struct device *dev, unsigned int reg,
+				   bool is_volatile)
+{
+	if ((reg >= PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE,
+				       PALMAS_SMPS12_CTRL)) &&
+	    (reg <= PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE,
+				       PALMAS_SMPS9_VOLTAGE))) {
+		struct palmas *palmas = dev_get_drvdata(dev);
+		unsigned int bit = PALMAS_REG_TO_FN_ADDR(PALMAS_SMPS_BASE, reg);
+		if (is_volatile)
+			set_bit(bit, palmas->volatile_smps_registers);
+		else
+			clear_bit(bit, palmas->volatile_smps_registers);
+		return 0;
+	}
+	return -EINVAL;
+}
+
 static void palmas_regmap_config0_lock(void *lock)
 {
 	struct palmas *palmas = lock;
@@ -228,6 +246,7 @@ static struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 		.max_register = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
 					PALMAS_PRIMARY_SECONDARY_PAD4),
 		.volatile_reg = is_volatile_palmas_func_reg,
+		.reg_volatile_set = palmas_reg_volatile_set,
 		.lock = palmas_regmap_config0_lock,
 		.unlock = palmas_regmap_config0_unlock,
 		.cache_type  = REGCACHE_RBTREE,
