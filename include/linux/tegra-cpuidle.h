@@ -3,7 +3,7 @@
  *
  * Declarations for power state transition code
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,11 +26,22 @@
 #define TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN 0x1
 #define TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN 0x2
 
+/*
+ * Available tegra cpuidle states.
+ * Should not exceed CPUIDLE_STATE_MAX
+ */
+enum tegra_cpuidle_states {
+	CPUIDLE_STATE_CLKGATING,
+	CPUIDLE_STATE_POWERGATING,
+	CPUIDLE_STATE_MC_CLK_STOP,
+	CPUIDLE_MAX_STATE_NUM = CPUIDLE_STATE_MAX,
+};
+
 extern int tegra_pg_exit_latency;
 extern u32 tegra_force_clkgt_at_vmin;
 
 struct tegra_cpuidle_ops {
-	bool (*tegra_idle_pd)(struct cpuidle_device *dev,
+	int (*tegra_idle_pd)(struct cpuidle_device *dev,
 				struct cpuidle_state *state);
 	void (*cpu_idle_stats_pd_ready)(unsigned int cpu);
 	void (*cpu_idle_stats_pd_time)(unsigned int cpu, s64 us);

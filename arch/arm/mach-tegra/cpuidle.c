@@ -130,7 +130,7 @@ static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 	ktime_t enter, exit;
 	s64 us;
 	struct cpuidle_state *state = &drv->states[index];
-	bool powered_down;
+	int powered_down;
 
 	if (!power_down_in_idle || pd_disabled_by_suspend ||
 	    !tegra_idle_ops.pd_is_allowed(dev, state)) {
@@ -162,13 +162,13 @@ static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 
 	/* Update LP2 latency provided no fall back to clock gating */
 	if (powered_down) {
-		tegra_pd_set_global_latency(state);
-		tegra_pd_update_target_residency(state);
+		tegra_pd_set_global_latency(&drv->states[powered_down]);
+		tegra_pd_update_target_residency(&drv->states[powered_down]);
 	}
 	tegra_idle_ops.cpu_idle_stats_pd_time(dev->cpu, us);
 
 	dev->last_residency = (int)us;
-	return (powered_down) ? index : 0;
+	return powered_down;
 }
 #endif
 
@@ -190,7 +190,7 @@ static int tegra_cpuidle_register(unsigned int cpu)
 	cpumask_set_cpu(cpu, drv->cpumask);
 	drv->state_count = 0;
 
-	state = &drv->states[0];
+	state = &drv->states[CPUIDLE_STATE_CLKGATING];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "clock-gated");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU clock gated");
 	state->exit_latency = 10;
@@ -204,7 +204,7 @@ static int tegra_cpuidle_register(unsigned int cpu)
 	drv->state_count++;
 
 #ifdef CONFIG_PM_SLEEP
-	state = &drv->states[1];
+	state = &drv->states[CPUIDLE_STATE_POWERGATING];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "powered-down");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU power gated");
 	state->exit_latency = tegra_cpu_power_good_time();
@@ -218,7 +218,7 @@ static int tegra_cpuidle_register(unsigned int cpu)
 	drv->state_count++;
 
 	if (cpu == 0) {
-		state = &drv->states[2];
+		state = &drv->states[CPUIDLE_STATE_MC_CLK_STOP];
 		snprintf(state->name, CPUIDLE_NAME_LEN, "mc-clock");
 		snprintf(state->desc, CPUIDLE_DESC_LEN, "MC clock stop");
 		state->exit_latency = tegra_cpu_power_good_time() +

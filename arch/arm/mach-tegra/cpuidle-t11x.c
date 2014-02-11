@@ -205,7 +205,7 @@ static inline void tegra11_irq_restore_affinity(void)
 #endif
 }
 
-static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
+static int tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 	ktime_t entry_time;
@@ -215,6 +215,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	int bin;
 	unsigned int flag = 0;
 	s64 sleep_time;
+	int ret = CPUIDLE_STATE_POWERGATING;
 
 	/* LP2 entry time */
 	entry_time = ktime_get();
@@ -340,10 +341,11 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	if (!is_lp_cluster())
 		tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
 
-	if (flag & TEGRA_POWER_STOP_MC_CLK)
+	if (flag & TEGRA_POWER_STOP_MC_CLK) {
 		idle_stats.mc_clk_stop_time +=
 			ktime_to_us(ktime_sub(exit_time, entry_time));
-	else if (flag & TEGRA_POWER_CLUSTER_PART_CRAIL)
+		ret = CPUIDLE_STATE_MC_CLK_STOP;
+	} else if (flag & TEGRA_POWER_CLUSTER_PART_CRAIL)
 		idle_stats.rail_pd_time +=
 			ktime_to_us(ktime_sub(exit_time, entry_time));
 	else if (flag & TEGRA_POWER_CLUSTER_PART_NONCPU) {
@@ -397,7 +399,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 
 	cpu_pm_exit();
 
-	return true;
+	return ret;
 }
 
 static void tegra11x_restore_vmin(void)
@@ -413,7 +415,7 @@ static void tegra11x_restore_vmin(void)
 	spin_unlock(&vmin_lock);
 }
 
-static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
+static int tegra_cpu_core_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 #ifdef CONFIG_SMP
@@ -433,7 +435,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
 		cpu_do_idle();
-		return false;
+		return CPUIDLE_STATE_CLKGATING;
 	}
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
@@ -496,7 +498,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #endif
 	cpu_pm_exit();
 
-	return true;
+	return CPUIDLE_STATE_POWERGATING;
 }
 
 static bool tegra11x_idle_enter_vmin(struct cpuidle_device *dev,
@@ -530,10 +532,10 @@ static bool tegra11x_idle_enter_vmin(struct cpuidle_device *dev,
 	return true;
 }
 
-bool tegra11x_idle_power_down(struct cpuidle_device *dev,
+int tegra11x_idle_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state)
 {
-	bool power_down;
+	int power_down = 0;
 	bool cpu_gating_only = false;
 	bool clkgt_at_vmin = false;
 	bool power_gating_cpu_only = true;
