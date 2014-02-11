@@ -70,6 +70,17 @@
 		status = "okay";
 		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
+
+		palmas: tps65913 {
+			pmic {
+				regulators {
+					palmas_smps9: smps9 {
+						regulator-always-on;
+						regulator-boot-on;
+					};
+				};
+			};
+		};
 	};
 
 	i2c@7000d100 {
