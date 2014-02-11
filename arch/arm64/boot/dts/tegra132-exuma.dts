@@ -1,6 +1,6 @@
 /dts-v1/;
 
-/include/ "tegra132.dtsi"
+#include "tegra132.dtsi"
 
 / {
 	model = "exuma_sim";
