@@ -260,6 +260,9 @@ static int dvfs_rail_set_voltage_reg(struct dvfs_rail *rail, int millivolts)
 		rail->reg_max_millivolts * 1000);
 	rail->updating = false;
 
+	pr_debug("%s: request_mV [%d, %d] from %s regulator (%d)\n", __func__,
+		 millivolts, rail->reg_max_millivolts, rail->reg_id, ret);
+
 	return ret;
 }
 
@@ -1539,6 +1542,14 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 	if (!d->dvfs_rail->dfll_mode) {
 		d->dvfs_rail->dfll_mode = true;
 		__tegra_dvfs_set_rate(d, rate);
+
+		/*
+		 * Report error, but continue: DFLL is functional, anyway, and
+		 * no error with proper regulator driver update
+		 */
+		if (regulator_set_vsel_volatile(d->dvfs_rail->reg, true))
+			WARN_ONCE(1, "%s: failed to set vsel volatile\n",
+				  __func__);
 	}
 	mutex_unlock(&dvfs_lock);
 	return 0;
@@ -1551,6 +1562,8 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	mutex_lock(&dvfs_lock);
 	if (d->dvfs_rail->dfll_mode) {
 		d->dvfs_rail->dfll_mode = false;
+		regulator_set_vsel_volatile(d->dvfs_rail->reg, false);
+
 		/* avoid false detection of matching target (voltage in dfll
 		   mode is fluctuating, and recorded level is just estimate) */
 		d->dvfs_rail->millivolts--;
