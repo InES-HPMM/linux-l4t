@@ -625,4 +625,29 @@
 		nvidia,port1_status = <1>;
 		status = "okay";
 	};
+
+	sdhci@700b0600 {
+		tap-delay = <4>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <200000000>;
+		uhs_mask = <0x20>; /* Mask HS200 */
+		bus-width = <8>;
+		id = <3>;
+		built-in;
+		calib_3v3_offsets = <0x0202>;
+		calib_1v8_offsets = <0x0202>;
+		status = "okay";
+	};
+	sdhci@700b0400 {
+		tap-delay = <0>;
+		trim-delay = <3>;
+		max-clk-limit = <204000000>;
+		bus-width = <4>;
+		id = <2>;
+		uhs_mask = <0x1C>; /* Mask SDR104|SDR50|DDR50 */
+		calib_3v3_offsets = <0x7676>;
+		calib_1v8_offsets = <0x7676>;
+		status = "okay";
+	};
 };

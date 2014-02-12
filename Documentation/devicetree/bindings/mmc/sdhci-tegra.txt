@@ -1,0 +1,39 @@
+* Nvidia sdhci-tegra controller
+
+This file documents differences between the core properties in mmc.txt
+and the properties used by the sdhci-tegra driver.
+
+Required properties:
+- compatible: Should be "nvidia,tegra210-sdhci"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+- id: Specify device id
+
+Optional properties:
+- built-in: Add the check if the device is built-in device
+- bus-width: Specify device bus width details
+- tap-delay: Specify number of cycles to delay for reading data from device
+- trim-delay: Specify number of cycles to delay for writing data to device
+- max-clk-limit: Specify the maximum clock limit for the device
+- mmc-ocr-mask: Specify OCR register masking details
+- uhs_mask: Specify modes that are masked for the device
+- calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
+
+Example:
+
+	sdhci@700b0600 {
+		compatible = "nvidia,tegra210-sdhci";
+		reg = <0x0 0x700b0600 0x0 0x200>;
+		interrupts = < 0 31 0x04 >;
+		tap-delay = <4>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <200000000>;
+		uhs_mask = <0x20>; /* Mask HS200 */
+		bus-width = <8>;
+		id = <3>;
+		built-in;
+		calib_3v3_offsets = <0x0202>;
+		calib_1v8_offsets = <0x0202>;
+		status = "okay";
+	};
