@@ -1119,20 +1119,20 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 		return -EPERM;
 	}
 
+	/* see if the string has 0x/x at the start */
+	if (*buf == 'x') {
+		count -= 1;
+		buf++;
+	} else if (*buf == '0' && *(buf + 1) == 'x') {
+		count -= 2;
+		buf += 2;
+	}
+
 	count--;
 	if (DIV_ROUND_UP(count, 2) > fuse_info_tbl[param].sz) {
 		pr_err("%s: fuse parameter too long, should be %d character(s)\n",
 			__func__, fuse_info_tbl[param].sz * 2);
 		return -EINVAL;
-	}
-
-	/* see if the string has 0x/x at the start */
-	if (*buf == 'x') {
-		count -= 1;
-		buf++;
-	} else if (*(buf + 1) == 'x') {
-		count -= 2;
-		buf += 2;
 	}
 
 	/* wakelock to avoid device powering down while programming */
