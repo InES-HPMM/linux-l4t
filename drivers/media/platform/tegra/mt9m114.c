@@ -729,6 +729,17 @@ static int mt9m114_set_mode(struct mt9m114_info *info,
 	return 0;
 }
 
+static int mt9m114_min_frame_rate_reg(
+	struct mt9m114_info *info,
+	u16 min_frame_rate)
+{
+	int err = 0;
+
+	err += mt9m114_write_reg16(info, 0xC88E, min_frame_rate);
+	err += mt9m114_write_reg16(info, 0x0080, 0x8002);
+	return err;
+}
+
 static long mt9m114_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
@@ -811,6 +822,21 @@ static long mt9m114_ioctl(struct file *file,
 		else
 			err = -1;
 
+		if (err)
+			return err;
+		return 0;
+	}
+
+	case _IOC_NR(MT9M114_SENSOR_IOCTL_SET_MIN_FPS):
+	{
+		u16 min_frame_rate;
+
+		if (copy_from_user(&min_frame_rate,
+				(const void __user *)arg,
+				sizeof(u16)))
+			return -EFAULT;
+
+		err = mt9m114_min_frame_rate_reg(info, min_frame_rate);
 		if (err)
 			return err;
 		return 0;

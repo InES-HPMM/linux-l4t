@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -48,6 +48,7 @@
 #define MT9M114_SENSOR_IOCTL_SET_CAMERA         _IOW('o', 8, __u8)
 #define MT9M114_SENSOR_IOCTL_SET_EV             _IOW('o', 9, __s16)
 #define MT9M114_SENSOR_IOCTL_GET_EV             _IOR('o', 10, __s16)
+#define MT9M114_SENSOR_IOCTL_SET_MIN_FPS        _IOW('o', 11, __u16)
 
 struct mt9m114_mode {
 	int xres;
