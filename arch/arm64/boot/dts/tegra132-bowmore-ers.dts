@@ -9,7 +9,7 @@
 
 / {
 	model = "bowmore";
-	compatible = "nvidia,tn8", "nvidia,tegra132";
+	compatible = "nvidia,bowmore", "nvidia,tegra132";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
