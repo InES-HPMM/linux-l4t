@@ -2,7 +2,7 @@
  * Gadget Function Driver for MTP
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Mike Lockwood <lockwood@android.com>
  *
@@ -880,7 +880,7 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 	return ret;
 }
 
-static long mtp_ioctl(struct file *fp, unsigned code, unsigned long value)
+static long mtp_ioctl(struct file *fp, unsigned code, u32 value)
 {
 	struct mtp_dev *dev = fp->private_data;
 	struct file *filp = NULL;
@@ -1011,6 +1011,9 @@ static const struct file_operations mtp_fops = {
 	.read = mtp_read,
 	.write = mtp_write,
 	.unlocked_ioctl = mtp_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = mtp_ioctl,
+#endif
 	.open = mtp_open,
 	.release = mtp_release,
 };
