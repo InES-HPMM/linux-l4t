@@ -444,6 +444,10 @@ int __init ardbeg_sdhci_init(void)
 		(board_info.board_id == BOARD_PM359))
 		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
 
+	if (board_info.board_id == BOARD_E1991 ||
+		board_info.board_id == BOARD_E1971)
+		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
+
 	if (board_info.board_id == BOARD_PM374 ||
 		board_info.board_id == BOARD_PM358 ||
 		board_info.board_id == BOARD_PM363 ||
