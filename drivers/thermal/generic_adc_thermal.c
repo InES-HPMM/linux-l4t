@@ -3,7 +3,7 @@
  *
  * Generic ADC thermal driver
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Jinyoung Park <jinyoungp@nvidia.com>
  *
@@ -108,6 +108,47 @@ static int gadc_thermal_read_channel(struct gadc_thermal_driver_data *drvdata,
 	return ret;
 }
 
+static int gadc_thermal_bind(struct thermal_zone_device *tz,
+			     struct thermal_cooling_device *cdev)
+{
+	struct gadc_thermal_driver_data *drvdata = tz->devdata;
+	struct thermal_trip_info *trip_state;
+	int i, ret;
+
+	for (i = 0; i < drvdata->pdata->num_trips; i++) {
+		trip_state = &drvdata->pdata->trips[i];
+		if (trip_state->cdev_type &&
+		    !strncmp(trip_state->cdev_type, cdev->type,
+			     THERMAL_NAME_LENGTH)) {
+			ret = thermal_zone_bind_cooling_device(tz, i, cdev,
+					trip_state->upper, trip_state->lower);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	return 0;
+}
+
+static int gadc_thermal_unbind(struct thermal_zone_device *tz,
+			       struct thermal_cooling_device *cdev)
+{
+	struct gadc_thermal_driver_data *drvdata = tz->devdata;
+	struct thermal_trip_info *trip_state;
+	int i, ret;
+
+	for (i = 0; i < drvdata->pdata->num_trips; i++) {
+		trip_state = &drvdata->pdata->trips[i];
+		if (trip_state->cdev_type &&
+		    !strncmp(trip_state->cdev_type, cdev->type,
+			     THERMAL_NAME_LENGTH)) {
+			ret = thermal_zone_unbind_cooling_device(tz, i, cdev);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	return 0;
+}
+
 static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 				 unsigned long *temp)
 {
@@ -133,9 +174,57 @@ static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 	return 0;
 }
 
+static int gadc_thermal_get_trip_type(struct thermal_zone_device *tz, int trip,
+				      enum thermal_trip_type *type)
+{
+	struct gadc_thermal_driver_data *drvdata = tz->devdata;
+	struct thermal_trip_info *trip_state = &drvdata->pdata->trips[trip];
+
+	*type = trip_state->trip_type;
+	return 0;
+}
+
+static int gadc_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip,
+				      unsigned long *temp)
+{
+	struct gadc_thermal_driver_data *drvdata = tz->devdata;
+	struct thermal_trip_info *trip_state = &drvdata->pdata->trips[trip];
+	long zone_temp = tz->temperature;
+	long trip_temp = trip_state->trip_temp;
+	long hysteresis = trip_state->hysteresis;
+
+	if (zone_temp >= trip_temp) {
+		trip_temp -= hysteresis;
+		trip_state->tripped = true;
+	} else if (trip_state->tripped) {
+		trip_temp -= hysteresis;
+		if (zone_temp < trip_temp)
+			trip_state->tripped = false;
+	}
+
+	*temp = trip_temp;
+	return 0;
+}
+
+static int gadc_thermal_set_trip_temp(struct thermal_zone_device *tz, int trip,
+				      unsigned long temp)
+{
+	struct gadc_thermal_driver_data *drvdata = tz->devdata;
+	struct thermal_trip_info *trip_state = &drvdata->pdata->trips[trip];
+
+	trip_state->trip_temp = temp;
+	return 0;
+}
+
 static struct thermal_zone_device_ops gadc_thermal_ops = {
+	.bind = gadc_thermal_bind,
+	.unbind = gadc_thermal_unbind,
 	.get_temp = gadc_thermal_get_temp,
+	.get_trip_type = gadc_thermal_get_trip_type,
+	.get_trip_temp = gadc_thermal_get_trip_temp,
+	.set_trip_temp = gadc_thermal_set_trip_temp,
 };
+
 
 #ifdef CONFIG_DEBUG_FS
 static int adc_temp_show(struct seq_file *s, void *p)
@@ -297,8 +386,11 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 		return PTR_ERR(drvdata->channel);
 	}
 
-	drvdata->tz = thermal_zone_device_register(pdata->tz_name, 0, 0,
-					drvdata, &gadc_thermal_ops, NULL, 0, 0);
+	drvdata->tz = thermal_zone_device_register(pdata->tz_name,
+					pdata->num_trips,
+					(1ULL << pdata->num_trips) - 1,
+					drvdata, &gadc_thermal_ops,
+					pdata->tzp, 0, pdata->polling_delay);
 	if (IS_ERR(drvdata->tz)) {
 		dev_err(&pdev->dev,
 			"%s: Failed to register thermal zone %s, %ld\n",

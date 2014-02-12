@@ -3,7 +3,7 @@
  *
  * Generic ADC thermal driver
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Jinyoung Park <jinyoungp@nvidia.com>
  *
@@ -25,6 +25,8 @@
 #ifndef _LINUX_GENERIC_ADC_THERMAL_H
 #define _LINUX_GENERIC_ADC_THERMAL_H
 
+#include <linux/platform_data/thermal_sensors.h>
+
 struct gadc_thermal_platform_data {
 	const char *iio_channel_name;
 	const char *tz_name;
@@ -36,5 +38,13 @@ struct gadc_thermal_platform_data {
 	unsigned int lookup_table_size;
 	int first_index_temp;
 	int last_index_temp;
+
+	/* zone parameters */
+	int polling_delay;
+	struct thermal_zone_params *tzp;
+
+	/* trip info */
+	int num_trips;
+	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 };
 #endif /* _LINUX_GENERIC_ADC_THERMAL_H */
