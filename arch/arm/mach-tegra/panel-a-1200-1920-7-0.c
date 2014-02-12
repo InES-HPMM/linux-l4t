@@ -40,8 +40,6 @@
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
-#define en_panel_rst TEGRA_GPIO_PN4
-
 static bool reg_requested;
 static bool gpio_requested;
 static struct platform_device *disp_device;
@@ -200,7 +198,8 @@ static int dsi_a_1200_1920_7_0_gpio_get(void)
 	if (gpio_requested)
 		return 0;
 
-	err = gpio_request(en_panel_rst, "panel rst");
+	err = gpio_request(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio,
+		"panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
 		goto fail;
@@ -263,11 +262,11 @@ static int dsi_a_1200_1920_7_0_enable(struct device *dev)
 
 	msleep(100);
 #if DSI_PANEL_RESET
-	gpio_direction_output(en_panel_rst, 1);
+	gpio_direction_output(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 1);
 	usleep_range(1000, 5000);
-	gpio_set_value(en_panel_rst, 0);
+	gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 0);
 	msleep(150);
-	gpio_set_value(en_panel_rst, 1);
+	gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 1);
 	msleep(20);
 #endif
 
@@ -278,8 +277,8 @@ fail:
 
 static int dsi_a_1200_1920_7_0_disable(void)
 {
-	if (gpio_is_valid(en_panel_rst))
-		gpio_set_value(en_panel_rst, 0);
+	if (gpio_is_valid(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio))
+		gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 0);
 	msleep(120);
 
 	if (vdd_lcd_bl_en)
