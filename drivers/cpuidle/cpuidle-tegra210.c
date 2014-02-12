@@ -21,7 +21,14 @@
 #include <linux/cpuidle.h>
 #include <linux/of_platform.h>
 #include <linux/tegra-soc.h>
+#include <linux/cpu_pm.h>
+#include <linux/io.h>
+
+#include <asm/suspend.h>
+#include <asm/smp.h>
 #include <asm/proc-fns.h>
+#include <asm/psci.h>
+
 #include "../../arch/arm/mach-tegra/flowctrl.h"
 #include "cpuidle-tegra210.h"
 
@@ -70,14 +77,29 @@ static void do_cc4_init(void)
  * @idx: state index
  *
  */
+static int tegra210_enter_pg(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	unsigned long arg;
+	struct psci_power_state ps = {
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 0,
+	};
+
+	cpu_pm_enter();
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+	cpu_pm_exit();
+
+	return idx;
+}
+
 static int tegra210_enter_state(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
-	if (!idx) {
-		cpu_do_idle();
-		return idx;
-	}
+	cpu_do_idle();
 
 	return idx;
 }
@@ -113,7 +135,17 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
-	drv->state_count = 2;
+	state = &drv->states[2];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "C7");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU Core Powergate");
+	state->enter = tegra210_enter_pg;
+	state->exit_latency = 10;
+	state->target_residency = 20;
+	state->power_usage = 500;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	drv->state_count = 3;
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
