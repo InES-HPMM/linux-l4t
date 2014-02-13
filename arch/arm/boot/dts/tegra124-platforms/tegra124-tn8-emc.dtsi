@@ -230,6 +230,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <57820>;
 		};
 		emc-table@20400 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -457,6 +458,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <35610>;
 		};
 		emc-table@40800 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -684,6 +686,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <20850>;
 		};
 		emc-table@68000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -911,6 +914,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <10720>;
 		};
 		emc-table@102000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -1138,6 +1142,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <6890>;
 		};
 		emc-table@204000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -1365,6 +1370,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100003>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <3420>;
 		};
 		emc-table@300000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -1592,6 +1598,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200000>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <2680>;
 		};
 		emc-table@396000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -1819,6 +1826,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200000>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <2180>;
 		};
 		emc-table@528000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -2046,6 +2054,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200008>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <1440>;
 		};
 		emc-table@600000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -2273,6 +2282,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200010>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <1440>;
 		};
 		emc-table@792000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -2500,6 +2510,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200018>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <1200>;
 		};
 		emc-table@924000 {
 			compatible = "nvidia,tegra12-emc-table";
@@ -2727,6 +2738,7 @@ memory-controller@7001b000 {
 			nvidia,emc-mode-1 = <0x80100002>;
 			nvidia,emc-mode-2 = <0x80200020>;
 			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <1180>;
 		};
 	};
 };
