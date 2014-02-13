@@ -1776,6 +1776,51 @@ struct platform_device tegra_i2s_device4 = {
 	.num_resources = ARRAY_SIZE(tegra_i2s_resource4),
 };
 
+static struct resource tegra_dmic_resource0[] = {
+	[0] = {
+		.start = TEGRA_DMIC1_BASE,
+		.end   = TEGRA_DMIC1_BASE + TEGRA_DMIC1_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_dmic_device0 = {
+	.name = "tegra210-dmic",
+	.id = 0,
+	.resource      = tegra_dmic_resource0,
+	.num_resources = ARRAY_SIZE(tegra_dmic_resource0),
+};
+
+static struct resource tegra_dmic_resource1[] = {
+	[0] = {
+		.start = TEGRA_DMIC2_BASE,
+		.end   = TEGRA_DMIC2_BASE + TEGRA_DMIC2_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_dmic_device1 = {
+	.name = "tegra210-dmic",
+	.id = 1,
+	.resource      = tegra_dmic_resource1,
+	.num_resources = ARRAY_SIZE(tegra_dmic_resource1),
+};
+
+static struct resource tegra_dmic_resource2[] = {
+	[0] = {
+		.start = TEGRA_DMIC3_BASE,
+		.end   = TEGRA_DMIC3_BASE + TEGRA_DMIC3_SIZE - 1,
+		.flags = IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_dmic_device2 = {
+	.name = "tegra210-dmic",
+	.id = 2,
+	.resource      = tegra_dmic_resource2,
+	.num_resources = ARRAY_SIZE(tegra_dmic_resource2),
+};
+
 static struct resource tegra_spkprot_resource0[] = {
 	[0] = {
 		.start = TEGRA_SPKPROT1_BASE,
