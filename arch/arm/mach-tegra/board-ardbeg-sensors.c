@@ -932,8 +932,8 @@ static struct thermal_zone_params cpu_tzp = {
 	.governor_params = &cpu_pid_params,
 };
 
-static struct thermal_zone_params therm_est_activ_tzp = {
-	.governor_name = "step_wise"
+static struct thermal_zone_params board_tzp = {
+	.governor_name = "pid_thermal_gov"
 };
 
 static struct throttle_table cpu_throttle_table[] = {
@@ -1216,6 +1216,7 @@ static struct therm_est_data skin_data = {
 	.tc1 = 10,
 	.tc2 = 1,
 	.tzp = &skin_tzp,
+	.use_activator = 1,
 };
 
 static struct throttle_table skin_throttle_table[] = {
@@ -1325,12 +1326,10 @@ static int __init ardbeg_skin_init(void)
 			skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
 			skin_data.devs = tn8ffd_skin_devs;
 			skin_data.toffset = 4034;
-			skin_data.use_activator = 0;
 		} else {
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
 			skin_data.toffset = 9793;
-			skin_data.use_activator = 1;
 		}
 
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
@@ -1351,14 +1350,14 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 
 	.sensors = {
 		[LOC] = {
-			.tzp = &therm_est_activ_tzp,
+			.tzp = &board_tzp,
 			.shutdown_limit = 120, /* C */
 			.passive_delay = 1000,
 			.num_trips = 1,
 			.trips = {
 				{
 					.cdev_type = "therm_est_activ",
-					.trip_temp = 26000,
+					.trip_temp = 40000,
 					.trip_type = THERMAL_TRIP_ACTIVE,
 					.hysteresis = 1000,
 					.upper = THERMAL_NO_LIMIT,
@@ -1638,6 +1637,21 @@ static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
 	.tz_name = "Tboard",
 	.temp_offset = 0,
 	.adc_to_temp = gadc_thermal_thermistor_adc_to_temp,
+
+	.polling_delay = 15000,
+	.num_trips = 1,
+	.trips = {
+		{
+			.cdev_type = "therm_est_activ",
+			.trip_temp = 40000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.hysteresis = 1000,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+			.mask = 1,
+		},
+	},
+	.tzp = &board_tzp,
 };
 
 static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
