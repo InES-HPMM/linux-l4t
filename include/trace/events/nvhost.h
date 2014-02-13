@@ -1,7 +1,7 @@
 /*
  * Nvhost event logging to ftrace.
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,9 +74,9 @@ TRACE_EVENT(nvhost_channel_write_submit,
 		__entry->syncpt_incrs = syncpt_incrs;
 	),
 
-	TP_printk("name=%s, count=%d, cmdbufs=%u, relocs=%u, syncpt_id=%u, syncpt_incrs=%u",
-	  __entry->name, __entry->count, __entry->cmdbufs, __entry->relocs,
-	  __entry->syncpt_id, __entry->syncpt_incrs)
+	TP_printk("name=%s, count=%zd, cmdbufs=%u, relocs=%u, syncpt_id=%u, syncpt_incrs=%u",
+		  __entry->name, __entry->count, __entry->cmdbufs,
+		  __entry->relocs, __entry->syncpt_id, __entry->syncpt_incrs)
 );
 
 TRACE_EVENT(nvhost_channel_submit,
