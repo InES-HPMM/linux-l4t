@@ -2560,7 +2560,7 @@ static void soctherm_adjust_zone(int tz)
 		soctherm_writel(r, TS_HOTSPOT_OFF);
 
 		/* Stop all TSENSE's mapped to <tz> */
-		for (i = 0; i <= TSENSE_SIZE; i++) {
+		for (i = 0; i < TSENSE_SIZE; i++) {
 			if (tsensor2therm_map[i] != tz)
 				continue;
 			r = soctherm_readl(TS_TSENSE_REG_OFFSET
@@ -2571,7 +2571,7 @@ static void soctherm_adjust_zone(int tz)
 		}
 	} else {
 		/* UN-Stop all TSENSE's mapped to <tz> */
-		for (i = 0; i <= TSENSE_SIZE; i++) {
+		for (i = 0; i < TSENSE_SIZE; i++) {
 			if (tsensor2therm_map[i] != tz)
 				continue;
 			r = soctherm_readl(TS_TSENSE_REG_OFFSET
