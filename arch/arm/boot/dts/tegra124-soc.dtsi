@@ -543,4 +543,9 @@
 		compatible = "nvidia,tegra124-mipical";
 		reg = <0x700e3000 0x00000100>;
 	};
+
+	pcie-controller {
+		compatible = "nvidia,tegra124-pcie";
+		status = "disabled";
+	};
 };
