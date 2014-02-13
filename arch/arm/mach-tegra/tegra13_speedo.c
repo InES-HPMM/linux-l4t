@@ -101,7 +101,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		case 0x00: /* Engg sku */
 			cpu_speedo_id = 1;
 			soc_speedo_id = 0;
-			gpu_speedo_id = 0;
+			gpu_speedo_id = 1;
 			threshold_index = 0;
 			break;
 		default:
