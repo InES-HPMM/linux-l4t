@@ -387,7 +387,6 @@ static const struct ov5693_reg ov5693_2592x1944_i2c[] = {
 
 static const struct ov5693_reg ov5693_1296x972_i2c[] = {
 	{OV5693_TABLE_RESET, 0},/* Including sw reset */
-	{0x0103, 0x01},
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
 	{0x3006, 0x00},
