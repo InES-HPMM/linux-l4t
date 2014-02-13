@@ -126,5 +126,17 @@
 		i2s@702d1400 {
 			status = "okay";
 		};
+
+		dmic@702d4000 {
+			status = "okay";
+		};
+
+		dmic@702d4100 {
+			status = "okay";
+		};
+
+		dmic@702d4200 {
+			status = "okay";
+		};
 	};
 };
