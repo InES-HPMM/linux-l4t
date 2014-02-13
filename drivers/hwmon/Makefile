@@ -146,8 +146,6 @@ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
 obj-$(CONFIG_SENSORS_INA219)	+= ina219.o
 obj-$(CONFIG_SENSORS_INA230)	+= ina230.o
 obj-$(CONFIG_SENSORS_INA3221)	+= ina3221.o
-CFLAGS_tegra-tsensor.o		 = -Werror
-obj-$(CONFIG_SENSORS_TEGRA_TSENSOR) += tegra-tsensor.o
 obj-$(CONFIG_SENSORS_TMON_TMP411)	+= tmon-tmp411.o
 
 obj-$(CONFIG_PMBUS)		+= pmbus/
