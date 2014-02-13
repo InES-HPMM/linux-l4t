@@ -239,7 +239,7 @@ static void bq2471x_work_thread(struct kthread_work *work)
 			return;
 		}
 		ret = bq2471x_update_bits(bq2471x, BQ2471X_CHARGE_OPTION,
-					BQ2471X_WATCHDOG_TIMER, 0x3);
+					BQ2471X_WATCHDOG_TIMER, 0x6000);
 		if (ret < 0) {
 			dev_err(bq2471x->dev,
 				"CHARGE_OPTION write failed %d\n", ret);
