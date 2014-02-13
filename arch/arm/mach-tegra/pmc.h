@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,7 +34,6 @@ bool tegra_pmc_cpu_is_powered(int cpuid);
 int tegra_pmc_cpu_power_on(int cpuid);
 int tegra_pmc_cpu_remove_clamping(int cpuid);
 
-void tegra_pmc_init(void);
 
 struct pmc_pm_data {
 	u32 cpu_good_time;	/* CPU power good time in uS */

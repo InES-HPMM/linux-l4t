@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012,2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -81,7 +81,7 @@ EXPORT_SYMBOL(tegra_get_pm_data);
 
 static inline u32 tegra_pmc_readl(u32 reg)
 {
-#if defined(CONFIG_OF) && !defined(CONFIG_ARM64)
+#if defined(CONFIG_OF)
 	return readl(tegra_pmc_base + reg);
 #else
 	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
@@ -90,9 +90,10 @@ static inline u32 tegra_pmc_readl(u32 reg)
 
 static inline void tegra_pmc_writel(u32 val, u32 reg)
 {
-#if defined(CONFIG_OF) && !defined(CONFIG_ARM64)
+#if defined(CONFIG_OF)
 	writel(val, tegra_pmc_base + reg);
 #else
+	writel(val, IO_ADDRESS(TEGRA_PMC_BASE + reg));
 	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
 #endif
 }
@@ -314,13 +315,11 @@ static void tegra_pmc_parse_dt(void)
 	pmc_pm_data.suspend_mode = suspend_mode;
 }
 
-void __init tegra_pmc_init(void)
+static int __init tegra_pmc_init(void)
 {
 	u32 val;
 
-#ifndef CONFIG_ARM64
 	tegra_pmc_parse_dt();
-#endif
 
 	val = tegra_pmc_readl(PMC_CTRL);
 	if (tegra_pmc_invert_interrupt)
@@ -328,4 +327,7 @@ void __init tegra_pmc_init(void)
 	else
 		val &= ~PMC_CTRL_INTR_LOW;
 	tegra_pmc_writel(val, PMC_CTRL);
+
+	return 0;
 }
+postcore_initcall(tegra_pmc_init);

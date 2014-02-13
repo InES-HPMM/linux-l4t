@@ -885,7 +885,6 @@ void __init tegra20_init_early(void)
 	tegra_perf_init();
 	tegra_init_fuse();
 	tegra_init_cache(true);
-	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 	tegra_init_power();
@@ -931,7 +930,6 @@ void __init tegra30_init_early(void)
 	writel_relaxed(tag_latency, tegra_cpu_c0_l2_tag_latency_iram);
 	writel_relaxed(data_latency, tegra_cpu_c0_l2_data_latency_iram);
 	tegra_init_cache(true);
-	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
 	tegra_init_power();
@@ -961,7 +959,6 @@ void __init tegra11x_init_early(void)
 	tegra_clk_init_from_table(tegra11x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra11x_cbus_init_table);
 	tegra11x_clk_init_la();
-	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
 	tegra_init_power();
@@ -994,7 +991,6 @@ void __init tegra12x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
-	tegra_pmc_init();
 	tegra_powergate_init();
 #ifndef CONFIG_ARM64
 	tegra30_hotplug_init();
@@ -1032,7 +1028,6 @@ void __init tegra14x_init_early(void)
 	writel_relaxed(0x111, tegra_cpu_c0_l2_tag_latency_iram);
 	writel_relaxed(0x441, tegra_cpu_c0_l2_data_latency_iram);
 	tegra_init_cache(true);
-	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
 	tegra_init_power();
