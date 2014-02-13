@@ -295,36 +295,48 @@ static int ardbeg_hdmi_hotplug_init(struct device *dev)
 
 struct tmds_config ardbeg_tmds_config[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
+	.version = MKDEV(1, 0),
 	.pclk = 27000000,
-	.pll0 = 0x01003110,
-	.pll1 = 0x00300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x2e2e2e2e,
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003010,
+	.pll1 = 0x00301B00,
+	.pe_current = 0x00000000,
+	.drive_current = 0x1F1F1F1F,
+	.peak_current = 0x03030303,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
 	},
 	{ /* 720p / 74.25MHz modes */
+	.version = MKDEV(1, 0),
 	.pclk = 74250000,
-	.pll0 =  0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x20202020,
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003110,
+	.pll1 = 0x00301500,
+	.pe_current = 0x00000000,
+	.drive_current = 0x2C2C2C2C,
+	.peak_current = 0x07070707,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
 	},
 	{ /* 1080p / 148.5MHz modes */
+	.version = MKDEV(1, 0),
 	.pclk = 148500000,
 	.pll0 = 0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x20202020,
-	.peak_current = 0x00000000,
+	.pll1 = 0x00301500,
+	.pe_current = 0x00000000,
+	.drive_current = 0x33333333,
+	.peak_current = 0x0C0C0C0C,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000400, /* BG_VREF_LEVEL */
 	},
 	{
+	.version = MKDEV(1, 0),
 	.pclk = INT_MAX,
-	.pll0 = 0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x3A353536, /* lane3 needs a slightly lower current */
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003F10,
+	.pll1 = 0x00300F00,
+	.pe_current = 0x00000000,
+	.drive_current = 0x37373737, /* lane3 needs a slightly lower current */
+	.peak_current = 0x17171717,
+	.pad_ctls0_mask    = 0xfffff0ff,
+	.pad_ctls0_setting = 0x00000600, /* BG_VREF_LEVEL */
 	},
 };
 
