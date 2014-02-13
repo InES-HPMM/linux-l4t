@@ -664,7 +664,6 @@ static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
 		dev_dbg(as->smmu->dev, "pdn: %x\n", pdn);
 
-		ClearPageReserved(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		pdir[pdn] = _PDE_VACANT(pdn);
 		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
@@ -754,7 +753,6 @@ static void free_pdir(struct smmu_as *as)
 		free_ptbl(as, addr, 1);
 		addr += SMMU_PAGE_SIZE * SMMU_PTBL_COUNT;
 	}
-	ClearPageReserved(as->pdir_page);
 	__free_page(as->pdir_page);
 	as->pdir_page = NULL;
 	devm_kfree(dev, as->pte_count);
@@ -784,7 +782,6 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	if (!page)
 		return NULL;
 
-	SetPageReserved(page);
 	ptbl = (u32 *)page_address(page);
 	if (IS_ENABLED(CONFIG_TEGRA_IOMMU_SMMU_LINEAR)) {
 		for (i = 0; i < SMMU_PTBL_COUNT; i++) {
@@ -893,7 +890,6 @@ static int alloc_pdir(struct smmu_as *as)
 	as->pdir_page = page;
 	as->pte_count = cnt;
 
-	SetPageReserved(as->pdir_page);
 	pdir = page_address(as->pdir_page);
 
 	for (pdn = 0; pdn < SMMU_PDIR_COUNT; pdn++)
