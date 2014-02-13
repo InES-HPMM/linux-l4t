@@ -2663,8 +2663,10 @@ static int ov5693_power_on(struct ov5693_info *info, bool standby)
 
 	if (info->pdata && info->pdata->power_on) {
 		err = info->pdata->power_on(pw);
-		if (err >= 0)
+		if (err >= 0) {
 			info->power_on = true;
+			info->pwr_dev = NVC_PWR_ON;
+		}
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_on function\n", __func__);
