@@ -100,12 +100,6 @@
 			enable-active-high;
 			gpio = <&palmas_gpio 7 0>;
 			vin-supply = <&palmas_smps8>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vpp_fuse";
-				};
-			};
 		};
 
 		en_lcd_bl: regulator@6 {
@@ -193,5 +187,10 @@
 				};
 			};
 		};
+	};
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&vpp_fuse>;
 	};
 };

@@ -464,13 +464,7 @@
 				      regulator-name = "vpp-fuse";
 				      regulator-min-microvolt = <1800000>;
 				      regulator-max-microvolt = <1800000>;
-
-				      consumers {
-					      c1 {
-						      regulator-consumer-supply = "vpp_fuse";
-					      };
-				      };
-			      };
+				};
 			};
 		};
 	};
@@ -481,5 +475,10 @@
 			 gpio-controller;
 			#gpio-cells = <2>;
 		 };
+	};
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&as3722_ldo11>;
 	};
 };
