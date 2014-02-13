@@ -1294,21 +1294,9 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int tegra_fuse_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	return 0;
-}
-
-static int tegra_fuse_resume(struct platform_device *pdev)
-{
-	return 0;
-}
-
 static struct platform_driver fuse_driver = {
 	.probe = tegra_fuse_probe,
 	.remove = tegra_fuse_remove,
-	.suspend = tegra_fuse_suspend,
-	.resume = tegra_fuse_resume,
 	.driver = {
 			.name = "tegra-fuse",
 			.owner = THIS_MODULE,
