@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_nvavp.h
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -93,6 +93,10 @@ struct nvavp_map_args {
 	__u32 addr;
 };
 
+struct nvavp_channel_open_args {
+	__u32 channel_fd;
+};
+
 #define NVAVP_IOCTL_MAGIC		'n'
 
 #define NVAVP_IOCTL_SET_NVMAP_FD	_IOW(NVAVP_IOCTL_MAGIC, 0x60, \
@@ -123,8 +127,12 @@ struct nvavp_map_args {
 					struct nvavp_map_args)
 #define NVAVP_IOCTL_UNMAP_IOVA		_IOW(NVAVP_IOCTL_MAGIC, 0x72, \
 					struct nvavp_map_args)
+#define NVAVP_IOCTL_CHANNEL_OPEN	_IOR(NVAVP_IOCTL_MAGIC, 0x73, \
+					struct nvavp_channel_open_args)
 
 #define NVAVP_IOCTL_MIN_NR		_IOC_NR(NVAVP_IOCTL_SET_NVMAP_FD)
-#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_UNMAP_IOVA)
+#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_CHANNEL_OPEN)
 
+#define NVAVP_IOCTL_CHANNEL_MAX_ARG_SIZE	\
+				sizeof(struct nvavp_pushbuffer_submit_hdr)
 #endif /* __LINUX_TEGRA_NVAVP_H */

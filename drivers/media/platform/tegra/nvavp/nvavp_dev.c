@@ -43,6 +43,7 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/sched.h>
 #include <linux/memblock.h>
+#include <linux/anon_inodes.h>
 
 #include <mach/pm_domains.h>
 
@@ -1905,10 +1906,56 @@ static int tegra_nvavp_audio_release(struct inode *inode, struct file *filp)
 }
 #endif
 
+
+static int
+nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
+{
+	int fd, err = 0;
+	struct file *file;
+	char *name;
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+
+	err = get_unused_fd_flags(O_RDWR);
+	if (err < 0)
+		return err;
+
+	fd = err;
+
+	name = kasprintf(GFP_KERNEL, "nvavp-channel-fd%d", fd);
+	if (!name) {
+		err = -ENOMEM;
+		put_unused_fd(fd);
+		return err;
+	}
+
+	file = anon_inode_getfile(name, filp->f_op, &(nvavp->video_misc_dev),
+			O_RDWR);
+	kfree(name);
+	if (IS_ERR(file)) {
+		err = PTR_ERR(file);
+		put_unused_fd(fd);
+		return err;
+	}
+
+	fd_install(fd, file);
+
+	err = tegra_nvavp_open(file->f_inode, file, clientctx->channel_id);
+	if (err) {
+		put_unused_fd(fd);
+		fput(file);
+		return err;
+	}
+
+	arg->channel_fd = fd;
+	return err;
+}
+
 static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 			    unsigned long arg)
 {
 	int ret = 0;
+	u8 buf[NVAVP_IOCTL_CHANNEL_MAX_ARG_SIZE];
 
 	if (_IOC_TYPE(cmd) != NVAVP_IOCTL_MAGIC ||
 	    _IOC_NR(cmd) < NVAVP_IOCTL_MIN_NR ||
@@ -1950,6 +1997,12 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_UNMAP_IOVA:
 		ret = nvavp_unmap_iova(filp, arg);
+		break;
+	case NVAVP_IOCTL_CHANNEL_OPEN:
+		ret = nvavp_channel_open(filp, (void *)buf);
+		if (ret == 0)
+			ret = copy_to_user((void __user *)arg, buf,
+			_IOC_SIZE(cmd));
 		break;
 	default:
 		ret = -EINVAL;
