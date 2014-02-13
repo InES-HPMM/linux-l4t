@@ -153,6 +153,7 @@ static struct tegra_dsi_out dsi_a_1200_1920_7_0_pdata = {
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
 	.dsi_init_cmd = dsi_a_1200_1920_7_0_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_a_1200_1920_7_0_init_cmd),
+	.boardinfo = {BOARD_P1761, 0, 0, 1},
 };
 
 static int dsi_a_1200_1920_7_0_regulator_get(struct device *dev)

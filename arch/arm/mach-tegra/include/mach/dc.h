@@ -269,6 +269,12 @@ enum {
 #define DSI_HOST_SUSPEND_LV1		2
 #define DSI_HOST_SUSPEND_LV2		3
 
+struct tegra_dsi_board_info {
+	u32 platform_boardid;
+	u32 platform_boardversion;
+	u32 display_boardid;
+	u32 display_boardversion;
+};
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
@@ -337,6 +343,7 @@ struct tegra_dsi_out {
 
 	bool		lp00_pre_panel_wakeup;
 	bool		ulpm_not_supported;
+	struct tegra_dsi_board_info	boardinfo;
 };
 
 enum {
