@@ -4,7 +4,7 @@
  * Copyright (C) 2008 Google, Inc.
  * Author: Mike Lockwood <lockwood@android.com>
  *         Benoit Goby <benoit@android.com>
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -28,6 +28,7 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#include <linux/of_platform.h>
 
 #include "gadget_chips.h"
 
@@ -114,6 +115,7 @@ static void android_unbind_config(struct usb_configuration *c);
 static char manufacturer_string[256];
 static char product_string[256];
 static char serial_string[256];
+static char maxim_string[256];
 
 /* String Table */
 static struct usb_string strings_dev[] = {
@@ -1289,6 +1291,26 @@ field ## _store(struct device *dev, struct device_attribute *attr,	\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
 
+#define DESCRIPTOR_STRING_ATTR_MANUFACTURER(field, buffer)		\
+static ssize_t								\
+field ## _show(struct device *dev, struct device_attribute *attr,	\
+		char *buf)						\
+{									\
+	return sprintf(buf, "%s", buffer);				\
+}									\
+static ssize_t								\
+field ## _store(struct device *dev, struct device_attribute *attr,	\
+		const char *buf, size_t size)				\
+{									\
+	int ret;							\
+	if (size >= (sizeof(buffer) - strlen(maxim_string)))		\
+		return -EINVAL;						\
+	ret = strlcpy(buffer, buf, sizeof(buffer));			\
+	strncat(buffer, maxim_string, strlen(maxim_string));		\
+	return ret;							\
+}									\
+static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
+
 
 DESCRIPTOR_ATTR(idVendor, "%04x\n")
 DESCRIPTOR_ATTR(idProduct, "%04x\n")
@@ -1296,7 +1318,7 @@ DESCRIPTOR_ATTR(bcdDevice, "%04x\n")
 DESCRIPTOR_ATTR(bDeviceClass, "%d\n")
 DESCRIPTOR_ATTR(bDeviceSubClass, "%d\n")
 DESCRIPTOR_ATTR(bDeviceProtocol, "%d\n")
-DESCRIPTOR_STRING_ATTR(iManufacturer, manufacturer_string)
+DESCRIPTOR_STRING_ATTR_MANUFACTURER(iManufacturer, manufacturer_string)
 DESCRIPTOR_STRING_ATTR(iProduct, product_string)
 DESCRIPTOR_STRING_ATTR(iSerial, serial_string)
 
@@ -1343,6 +1365,45 @@ static void android_unbind_config(struct usb_configuration *c)
 	android_unbind_enabled_functions(dev, c);
 }
 
+/* set maximum and minimum voltage for maxim */
+static void android_maxim14675_set_voltage(void)
+{
+	unsigned int min_voltage = 5000;
+	unsigned int max_voltage;
+	unsigned int voltage = 0;
+	char buf[20];
+	struct device_node *np;
+
+	np = of_find_node_by_path("/usb-devices/maxim-charger");
+	if (np  && !of_property_read_u32(np,
+			"maxim,max-board-vbus-voltage-uv",
+			&voltage))
+		pr_info("%s: max_voltage (vbus) = %d\n",
+			__func__, voltage);
+
+	/* convert DT microvolts to millivolts */
+	voltage = voltage/1000;
+	if (voltage < min_voltage)
+		max_voltage = min_voltage;
+	else if (voltage > 20000)
+		max_voltage = 20000;
+	else
+		max_voltage = voltage;
+
+	pr_info("%s: max_voltage (vbus) = %d\n",
+			__func__, max_voltage);
+	min_voltage = ((min_voltage - 2000) / 1000) * 20;
+	max_voltage = ((max_voltage - 2000) / 1000) * 20;
+
+	memset(buf, 0, sizeof(buf));
+	strcpy(maxim_string, "    gr8rFiV8US");
+	snprintf(buf, 4, "%03X", max_voltage);
+	strncat(maxim_string, buf, 3);
+	snprintf(buf, 4, "%03X", min_voltage);
+	strncat(maxim_string, buf, 3);
+	strncat(maxim_string, "00", 2);
+}
+
 static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
@@ -1358,6 +1419,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 	ret = android_init_functions(dev->functions, cdev);
 	if (ret)
 		return ret;
+
+	/* maxim 14675 voltage */
+	android_maxim14675_set_voltage();
 
 	/* Allocate string descriptor numbers ... note that string
 	 * contents can be overridden by the composite_dev glue.
@@ -1376,6 +1440,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 
 	/* Default strings - should be updated by userspace */
 	strncpy(manufacturer_string, "Android", sizeof(manufacturer_string)-1);
+	strncat(manufacturer_string, maxim_string, strlen(maxim_string));
 	strncpy(product_string, "Android", sizeof(product_string) - 1);
 	strncpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
 
