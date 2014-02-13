@@ -172,6 +172,15 @@ config SND_SOC_TEGRA210_SPKPROT
 	  You will also need to select the individual machine drivers to
 	  support below.
 
+config SND_SOC_TEGRA210_DMIC
+	tristate
+	depends on SND_SOC_TEGRA
+	select SND_SOC_TEGRA210_AXBAR
+	help
+	  Say Y or M if you want to add support for the Tegra210 DMIC module.
+	  You will also need to select the individual machine drivers to
+	  support below.
+
 config SND_SOC_TEGRA210_ADMAIF
         tristate
         depends on SND_SOC_TEGRA

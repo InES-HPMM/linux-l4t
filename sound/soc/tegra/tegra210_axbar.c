@@ -297,6 +297,12 @@ struct of_dev_auxdata axbar_auxdata[] = {
 			"tegra210-spkprot.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-amixer", 0x702DBB00,
 			"tegra210-amixer.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dmic", 0x702D4000, "tegra210-dmic.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dmic", 0x702D4100, "tegra210-dmic.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dmic", 0x702D4200, "tegra210-dmic.2",
+				NULL),
 	{}
 };
 
