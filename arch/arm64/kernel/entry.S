@@ -283,7 +283,8 @@ el1_undef:
 	 * Undefined instruction
 	 */
 	mov	x0, sp
-	b	do_undefinstr
+	bl	do_undefinstr
+	kernel_exit 1
 el1_dbg:
 	/*
 	 * Debug exception handling
