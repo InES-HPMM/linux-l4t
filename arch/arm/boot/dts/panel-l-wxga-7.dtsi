@@ -17,6 +17,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+#include <dt-bindings/display/tegra-dc.h>
 #include <dt-bindings/display/tegra-panel.h>
 
 / {
@@ -24,15 +25,15 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			status = "okay";
-			nvidia,dc-flags = "dc_flag_en";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
 			nvidia,low-v-win = <0x2>;
 			dc-default-out {
-				nvidia,out-type = "dsi";
+				nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 				nvidia,out-width = <94>;
 				nvidia,out-height = <150>;
-				nvidia,out-flags = "continuous";
+				nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
 				nvidia,out-parent-clk = "pll_d_out0";
 			};
 			display-timings {
@@ -52,7 +53,7 @@
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
-				nvidia,fb-flags = "flip_on_probe";
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 				nvidia,fb-xres = <800>;
 				nvidia,fb-yres = <1280>;
 			};

@@ -17,20 +17,23 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+#include <dt-bindings/display/tegra-dc.h>
+
 / {
 	host1x {
 		/* tegradc.1 */
 		dc@54240000 {
 			status = "okay";
-			nvidia,dc-flags = "dc_flag_en";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <300000000>;
 			dc-default-out {
-				nvidia,out-type = "hdmi";
-				nvidia,out-flags = "hotplug_high";
+				nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+				nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
 				nvidia,out-parent-clk = "pll_d2";
 				nvidia,out-max-pixclk = <297000>;
-				nvidia,out-align = "msb";
-				nvidia,out-order = "rtob"; /*red to blue*/
+				nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+				nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
 			};
 			display-timings {
 				680x480-32 {
@@ -49,7 +52,7 @@
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
-				nvidia,fb-flags = "flip_on_probe";
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 				nvidia,fb-xres = <1920>;
 				nvidia,fb-yres = <1080>;
 			};
