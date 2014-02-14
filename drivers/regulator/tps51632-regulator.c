@@ -4,7 +4,7 @@
  * Regulator driver for TPS51632 3-2-1 Phase D-Cap Step Down Driverless
  * Controller with serial VID control and DVFS.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA Corporation.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -89,6 +89,7 @@ struct tps51632_chip {
 	struct regulator_desc desc;
 	struct regulator_dev *rdev;
 	struct regmap *regmap;
+	bool vsel_volatile;
 };
 
 static int tps51632_dcdc_set_ramp_delay(struct regulator_dev *rdev,
@@ -210,13 +211,33 @@ skip_pwm_config:
 
 static bool is_volatile_reg(struct device *dev, unsigned int reg)
 {
+	struct tps51632_chip *tps = dev_get_drvdata(dev);
+
 	switch (reg) {
+	case TPS51632_VOLTAGE_SELECT_REG:
+	case TPS51632_VOLTAGE_BASE_REG:
+		return tps->vsel_volatile;
 	case TPS51632_OFFSET_REG:
 	case TPS51632_FAULT_REG:
 	case TPS51632_IMON_REG:
 		return true;
 	default:
 		return false;
+	}
+}
+
+static int tps51632_reg_volatile_set(struct device *dev, unsigned int reg,
+				     bool is_volatile)
+{
+	struct tps51632_chip *tps = dev_get_drvdata(dev);
+
+	switch (reg) {
+	case TPS51632_VOLTAGE_SELECT_REG:
+	case TPS51632_VOLTAGE_BASE_REG:
+		tps->vsel_volatile = is_volatile;
+		return 0;
+	default:
+		return -EINVAL;
 	}
 }
 
@@ -251,6 +272,7 @@ static const struct regmap_config tps51632_regmap_config = {
 	.writeable_reg		= is_write_reg,
 	.readable_reg		= is_read_reg,
 	.volatile_reg		= is_volatile_reg,
+	.reg_volatile_set	= tps51632_reg_volatile_set,
 	.max_register		= TPS51632_MAX_REG - 1,
 	.cache_type		= REGCACHE_RBTREE,
 };
