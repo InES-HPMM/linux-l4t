@@ -37,12 +37,6 @@
 #define TE_IOCTL_LAUNCH_OPERATION_COMPAT \
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x14, union te_cmd_compat)
 
-#define TE_IOCTL_FILE_NEW_REQ \
-	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x16, struct te_file_req)
-#define TE_IOCTL_FILE_FILL_BUF \
-	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x17, struct te_file_req)
-#define TE_IOCTL_FILE_REQ_COMPLETE \
-	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x18, struct te_file_req)
 #define TE_IOCTL_SS_NEW_REQ \
 	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x20, struct te_ss_op)
 #define TE_IOCTL_SS_REQ_COMPLETE \
@@ -117,12 +111,10 @@ enum {
 	TE_SMC_LAUNCH_OPERATION		= 0x30000003,
 
 	/* Trusted OS calls */
-	TE_SMC_REGISTER_FS_HANDLERS	= 0x32000001,
 	TE_SMC_REGISTER_REQ_BUF		= 0x32000002,
 	TE_SMC_PROGRAM_VPR		= 0x32000003,
 	TE_SMC_REGISTER_IRQ_HANDLER	= 0x32000004,
 	TE_SMC_NS_IRQ_DONE		= 0x32000005,
-	TE_SMC_FS_OP_DONE		= 0x32000006,
 	TE_SMC_INIT_LOGGER		= 0x32000007,
 	TE_SMC_SS_REGISTER_HANDLER	= 0x32000008,
 	TE_SMC_SS_REQ_COMPLETE		= 0x32000009,
@@ -311,25 +303,6 @@ void te_close_session_compat(struct te_closesession_compat *cmd,
 void te_launch_operation_compat(struct te_launchop_compat *cmd,
 	struct te_request_compat *request,
 	struct tlk_context *context);
-
-#define TE_MAX_FILE_NAME_LEN	64
-
-enum te_file_req_type {
-	OTE_FILE_REQ_READ	= 0,
-	OTE_FILE_REQ_WRITE	= 1,
-	OTE_FILE_REQ_DELETE	= 2,
-	OTE_FILE_REQ_SIZE	= 3,
-};
-
-struct te_file_req {
-	char name[TE_MAX_FILE_NAME_LEN];
-	enum te_file_req_type type;
-	void *user_data_buf;
-	void *kern_data_buf;
-	unsigned long data_len;
-	unsigned long result;
-	int error;
-};
 
 #define SS_OP_MAX_DATA_SIZE	0x1000
 struct te_ss_op {
