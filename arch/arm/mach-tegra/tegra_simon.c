@@ -79,7 +79,7 @@ static int tegra_simon_gpu_grading_cb(
 	     (s64)grading_sec * 1000))
 		return NOTIFY_OK;
 
-	if (thermal_zone_get_temp(grader->tzd, &t)) {
+	if (grader->tzd->ops->get_temp(grader->tzd, &t)) {
 		pr_err("%s: Failed to get %s temperature\n",
 		       __func__, grader->domain_name);
 		return NOTIFY_OK;
@@ -177,7 +177,7 @@ static int tegra_simon_cpu_grading_cb(
 	     (s64)grading_sec * 1000))
 		return NOTIFY_OK;
 
-	if (thermal_zone_get_temp(grader->tzd, &t)) {
+	if (grader->tzd->ops->get_temp(grader->tzd, &t)) {
 		pr_err("%s: Failed to get %s temperature\n",
 		       __func__, grader->domain_name);
 		return NOTIFY_OK;
