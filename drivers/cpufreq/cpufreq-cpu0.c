@@ -12,7 +12,9 @@
 #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
 
 #include <linux/clk.h>
+#include <linux/cpu_cooling.h>
 #include <linux/cpufreq.h>
+#include <linux/cpumask.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -20,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/thermal.h>
 
 static unsigned int transition_latency;
 static unsigned int voltage_tolerance; /* in percentage */
@@ -28,6 +31,7 @@ static struct device *cpu_dev;
 static struct clk *cpu_clk;
 static struct regulator *cpu_reg;
 static struct cpufreq_frequency_table *freq_table;
+static struct thermal_cooling_device *cdev;
 
 static int cpu0_verify_speed(struct cpufreq_policy *policy)
 {
@@ -274,6 +278,17 @@ static int cpu0_cpufreq_probe(struct platform_device *pdev)
 		goto out_free_table;
 	}
 
+	/*
+	 * For now, just loading the cooling device;
+	 * thermal DT code takes care of matching them.
+	 */
+	if (of_find_property(np, "#cooling-cells", NULL)) {
+		cdev = of_cpufreq_cooling_register(np, cpu_present_mask);
+		if (IS_ERR(cdev))
+			pr_err("running cpufreq without cooling device: %ld\n",
+			       PTR_ERR(cdev));
+	}
+
 	of_node_put(np);
 	of_node_put(parent);
 	return 0;
@@ -289,6 +304,7 @@ out_put_parent:
 
 static int cpu0_cpufreq_remove(struct platform_device *pdev)
 {
+	cpufreq_cooling_unregister(cdev);
 	cpufreq_unregister_driver(&cpu0_cpufreq_driver);
 	opp_free_cpufreq_table(cpu_dev, &freq_table);
 
