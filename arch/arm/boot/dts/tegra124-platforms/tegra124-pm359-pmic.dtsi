@@ -294,8 +294,12 @@
 						     regulator-consumer-device = "2-0010";
 					     };
 					     c5 {
+						     regulator-consumer-supply = "vif";
+						     regulator-consumer-device = "2-0036";
+					     };
+					     c6 {
 						     regulator-consumer-supply = "vdd_i2c";
-						     regulator-consumer-device = "2-000e";
+						     regulator-consumer-device = "2-000c";
 					     };
 				     };
 			     };
@@ -377,6 +381,10 @@
 						     regulator-consumer-supply = "vana";
 						     regulator-consumer-device = "2-0010";
 					     };
+					     c4 {
+						     regulator-consumer-supply = "vana";
+						     regulator-consumer-device = "2-000c";
+					     };
 				     };
 			     };
 
@@ -421,6 +429,9 @@
 					     c1 {
 						     regulator-consumer-supply = "vdd_cam_1v1_cam";
 					     };
+					     c2 {
+						     regulator-consumer-supply = "imx135_reg2";
+					     };
 				     };
 			     };
 
@@ -455,7 +466,7 @@
 					      };
 					      c4 {
 						      regulator-consumer-supply = "vdd";
-						      regulator-consumer-device = "2-000e";
+						      regulator-consumer-device = "2-000c";
 					      };
 				      };
 			      };
