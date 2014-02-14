@@ -1368,6 +1368,9 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		clk_rate = clock;
 	}
 
+	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50)
+		clk_rate = tegra_host->soc_data->tuning_freq_list[0];
+
 	if (tegra_host->max_clk_limit &&
 		(clk_rate > tegra_host->max_clk_limit))
 		clk_rate = tegra_host->max_clk_limit;
