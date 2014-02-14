@@ -26,6 +26,10 @@
 #include <linux/types.h>
 #include <asm/sizes.h>
 
+#ifdef CONFIG_NEED_MACH_MEMORY_H
+#include <mach/memory.h>
+#endif
+
 /*
  * Allow for constants defined here to be used from assembly code
  * by prepending the UL suffix only with actual C code compilation.

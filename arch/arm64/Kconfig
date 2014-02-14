@@ -45,6 +45,13 @@ config ARM64
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
+config NEED_MACH_MEMORY_H
+    bool
+    help
+      Select this when mach/memory.h is required to provide special
+      definitions for this platform.  The need for mach/memory.h should
+      be avoided when possible.
+
 config 64BIT
 	def_bool y
 
