@@ -2586,7 +2586,8 @@ static u8 sdhci_tegra_get_freq_point(struct sdhci_host *sdhci)
  * UI and estimate holes using equations and predetermined coefficients from
  * the characterization data. The algorithm will not work without this data.
  */
-static int find_tuning_coeffs_data(struct sdhci_host *sdhci)
+static int find_tuning_coeffs_data(struct sdhci_host *sdhci,
+					bool force_retuning)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -2605,7 +2606,7 @@ static int find_tuning_coeffs_data(struct sdhci_host *sdhci)
 		tuning_data = &tegra_host->tuning_data[i];
 
 		/* Skip if T2T coeffs are already found */
-		if (tuning_data->t2t_coeffs == NULL) {
+		if (tuning_data->t2t_coeffs == NULL || force_retuning) {
 			t2t_coeffs = soc_data->t2t_coeffs;
 			for (j = 0; j < soc_data->t2t_coeffs_count; j++) {
 				if (!strcmp(dev_id, t2t_coeffs->dev_id)) {
@@ -2627,7 +2628,7 @@ static int find_tuning_coeffs_data(struct sdhci_host *sdhci)
 
 		coeffs_set = false;
 		/* Skip if tap hole coeffs are already found */
-		if (tuning_data->thole_coeffs == NULL) {
+		if (tuning_data->thole_coeffs == NULL || force_retuning) {
 			thole_coeffs = soc_data->tap_hole_coeffs;
 			freq_khz = tuning_data->freq_hz / 1000;
 			for (j = 0; j < soc_data->tap_hole_coeffs_count; j++) {
@@ -2726,7 +2727,8 @@ static int setup_freq_constraints(struct sdhci_host *sdhci,
  * frequencies in the soc data and also consider the platform clock limits as
  * well as any DFS related restrictions.
  */
-static int sdhci_tegra_get_tuning_constraints(struct sdhci_host *sdhci)
+static int sdhci_tegra_get_tuning_constraints(struct sdhci_host *sdhci,
+							bool force_retuning)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -2734,7 +2736,7 @@ static int sdhci_tegra_get_tuning_constraints(struct sdhci_host *sdhci)
 	int err = 0;
 
 	/* A valid freq count means freq constraints are already set up */
-	if (!tegra_host->tuning_freq_count) {
+	if (!tegra_host->tuning_freq_count || force_retuning) {
 		freq_list = tegra_host->soc_data->tuning_freq_list;
 		tegra_host->tuning_freq_count =
 			setup_freq_constraints(sdhci, freq_list);
@@ -2745,7 +2747,7 @@ static int sdhci_tegra_get_tuning_constraints(struct sdhci_host *sdhci)
 		}
 	}
 
-	err = find_tuning_coeffs_data(sdhci);
+	err = find_tuning_coeffs_data(sdhci, force_retuning);
 	if (err)
 		return err;
 
@@ -2949,7 +2951,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	}
 
 	tegra_host->tuning_status = 0;
-	err = sdhci_tegra_get_tuning_constraints(sdhci);
+	err = sdhci_tegra_get_tuning_constraints(sdhci, force_retuning);
 	if (err) {
 		dev_err(mmc_dev(sdhci->mmc),
 			"Failed to get tuning constraints\n");
