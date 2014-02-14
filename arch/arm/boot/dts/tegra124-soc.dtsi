@@ -441,12 +441,14 @@
 		isp@54600000 {
 			compatible = "nvidia,tegra124-isp";
 			reg = <0x54600000 0x00040000>;
+			interrupts = <0 71 0x04>;
 			nvidia,memory-clients = <8 29>;
 		};
 
 		isp@54680000 {
 			compatible = "nvidia,tegra124-isp";
 			reg = <0x54680000 0x00040000>;
+			interrupts = <0 72 0x04>;
 			nvidia,memory-clients = <8 29>;
 		};
 
