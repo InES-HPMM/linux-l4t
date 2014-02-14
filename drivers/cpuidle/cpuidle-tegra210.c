@@ -1,7 +1,7 @@
 /*
  * drivers/cpuidle/cpuidle-t210.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,6 +27,11 @@
 
 static bool retention_in_idle __read_mostly;
 module_param(retention_in_idle, bool, 0644);
+static const char *driver_name = "tegra210_idle";
+static struct module *owner = THIS_MODULE;
+
+static DEFINE_PER_CPU(struct cpumask, idle_mask);
+static DEFINE_PER_CPU(struct cpuidle_driver, cpuidle_drv);
 
 static int cpu_do_c4(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 		int index)
@@ -77,29 +82,48 @@ static int tegra210_enter_state(struct cpuidle_device *dev,
 	return idx;
 }
 
-struct cpuidle_driver tegra210_idle_driver = {
-	.name = "tegra210_idle",
-	.owner = THIS_MODULE,
-	.states[0] = {
-		.enter = tegra210_enter_state,
-		.exit_latency = 1,
-		.target_residency = 1,
-		.power_usage = UINT_MAX,
-		.flags = CPUIDLE_FLAG_TIME_VALID,
-		.name = "C1",
-		.desc = "CPU clock gated",
-	},
-	.states[1] = {
-		.enter = cpu_do_c4,
-		.exit_latency = 10,
-		.target_residency = 10,
-		.power_usage = 5000,
-		.flags = CPUIDLE_FLAG_TIME_VALID,
-		.name = "C4",
-		.desc = "CPU retention",
-	},
-	.state_count = 2
-};
+static int __init tegra210_cpuidle_register(int cpu)
+{
+	int ret;
+	struct cpuidle_driver *drv;
+	struct cpuidle_state *state;
+
+	drv = &per_cpu(cpuidle_drv, cpu);
+	drv->name = driver_name;
+	drv->owner = owner;
+	drv->cpumask = &per_cpu(idle_mask, cpu);
+	cpumask_set_cpu(cpu, drv->cpumask);
+
+	state = &drv->states[0];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "C1");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU clock gated");
+	state->enter = tegra210_enter_state;
+	state->exit_latency = 1;
+	state->target_residency = 1;
+	state->power_usage = UINT_MAX;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
+
+	state = &drv->states[1];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "C4");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU retention");
+	state->enter = cpu_do_c4;
+	state->exit_latency = 10;
+	state->target_residency = 10;
+	state->power_usage = 5000;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
+	state->disabled = true;
+
+	drv->state_count = 2;
+
+	ret = cpuidle_register(drv, NULL);
+	if (ret) {
+		pr_err("%s: Tegra210 cpuidle driver registration failed: %d",
+		       __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 /*
  * t210_idle_init
@@ -108,6 +132,8 @@ struct cpuidle_driver tegra210_idle_driver = {
 int __init tegra210_idle_init(void)
 {
 	int ret;
+	unsigned int cpu;
+
 	pr_info("Tegra210 cpuidle driver\n");
 	if (!of_machine_is_compatible("nvidia,tegra210")) {
 		pr_err("%s: not on T210\n", __func__);
@@ -116,15 +142,10 @@ int __init tegra210_idle_init(void)
 
 	do_cc4_init();
 
-	/* For ASIM, allow only C1 */
-	if (tegra_cpu_is_asim())
-		tegra210_idle_driver.state_count = 1;
-
-	ret = cpuidle_register(&tegra210_idle_driver, 0);
-	if (ret) {
-		pr_err("%s: Tegra210 cpuidle driver registration failed: %d",
-		       __func__, ret);
-		return ret;
+	for_each_possible_cpu(cpu) {
+		ret = tegra210_cpuidle_register(cpu);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
