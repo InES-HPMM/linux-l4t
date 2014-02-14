@@ -5,11 +5,13 @@
 / {
 	model = "exuma_sim";
 	compatible = "nvidia,exuma", "nvidia,tegra132";
+	#address-cells = <2>;
+	#size-cells = <2>;
 
 	/* chosen */
 
 	memory@80000000 {
 		device_type = "memory";
-		reg = < 0x80000000 0x40000000 >;
+		reg = < 0x0 0x80000000 0x0 0x40000000 >;
 	};
 };

@@ -8,8 +8,8 @@
 / {
 	compatible = "nvidia,tegra132";
 	interrupt-parent = <&intc>;
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 
 	cpus {
 		#address-cells = <2>;
@@ -36,8 +36,8 @@
 
 	intc: interrupt-controller {
 		compatible = "arm,cortex-a15-gic";
-		reg = <0x50041000 0x1000
-		       0x50042000 0x0100>;
+		reg = <0x0 0x50041000 0x0 0x1000
+		       0x0 0x50042000 0x0 0x0100>;
 		interrupt-controller;
 		#interrupt-cells = <3>;
 	};
@@ -46,11 +46,11 @@
 		compatible = "nvidia,tegra-gic";
 		interrupt-controller;
 		num-ictrls = <0x5>;
-		reg = <0x60004000 0x40>,
-		      <0x60004100 0x40>,
-		      <0x60004200 0x40>,
-		      <0x60004300 0x40>,
-		      <0x60004400 0x40>;
+		reg = <0x0 0x60004000 0x0 0x40>,
+		      <0x0 0x60004100 0x0 0x40>,
+		      <0x0 0x60004200 0x0 0x40>,
+		      <0x0 0x60004300 0x0 0x40>,
+		      <0x0 0x60004400 0x0 0x40>;
 	};
 
 	timer {
@@ -64,8 +64,8 @@
 
 	dfll@70040084 {
 		compatible = "nvidia,tegra132-dfll";
-		reg = <0x70040084 0x40>,
-		      <0x70110000 0x400>;
+		reg = <0x0 0x70040084 0x0 0x40>,
+		      <0x0 0x70110000 0x0 0x400>;
 		out-clock-name="dfll_cpu";
 		status = "disabled";
 	};
