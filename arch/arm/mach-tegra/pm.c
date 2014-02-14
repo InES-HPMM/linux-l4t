@@ -292,6 +292,15 @@ int tegra_unregister_pm_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(tegra_unregister_pm_notifier);
 
+#ifdef CONFIG_TEGRA_LP0_IN_IDLE
+static int tegra_pm_notifier_call_chain(unsigned int val)
+{
+	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
+
+	return notifier_to_errno(ret);
+}
+#endif
+
 #ifdef CONFIG_PM_SLEEP
 static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_NONE]	= "none",
@@ -1274,6 +1283,8 @@ int tegra_enter_lp0(unsigned long sleep_time)
 	/* This state is managed by power domains, hence no voice call expected if
 	 * we are entering this state */
 
+	tegra_pm_notifier_call_chain(TEGRA_PM_SUSPEND);
+
 	tegra_rtc_set_trigger(sleep_time);
 
 	tegra_actmon_save();
@@ -1301,6 +1312,8 @@ int tegra_enter_lp0(unsigned long sleep_time)
 	tegra_actmon_restore();
 
 	tegra_rtc_set_trigger(0);
+
+	tegra_pm_notifier_call_chain(TEGRA_PM_RESUME);
 
 	return 0;
 }
