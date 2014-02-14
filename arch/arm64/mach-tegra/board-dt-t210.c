@@ -76,6 +76,14 @@ static void __init tegra_grenada_reserve(void)
 }
 
 struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
+			"sdhci-tegra.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC2_BASE,
+			"sdhci-tegra.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC3_BASE,
+			"sdhci-tegra.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC4_BASE,
+			"sdhci-tegra.3", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-nvenc", TEGRA_NVENC_BASE, "msenc",
