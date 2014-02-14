@@ -12,7 +12,7 @@ NVIDIA Tegra114 Display Controller
  - interrupts: The interrupt outputs from the controller.
  - nvidia,memory-clients: This is the "swgroup" ID in the Tegra TRM term.
  - nvidia,dc-flags: This is to enable display controller in probe time.
-   "dc_flag_en" or remove this property (do not set this property).
+   Should be TEGRA_DC_FLAG_ENABLED or 0.
  - nvidia,emc-clk-rate: Initially required embedded memory controller clk rate.
  - nvidia,cmu-enable: Toggle switch for color management unit.
  - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
@@ -56,16 +56,22 @@ NVIDIA Tegra114 Display Controller
 
  Required properties:
  - name: Should be "dc-default-out".
- - nvidia,out-type: Output type. Should be "dsi" or "hdmi".
+ - nvidia,out-type: Output type. Should be TEGRA_DC_OUT_DSI or TEGRA_DC_OUT_HDMI.
  - nvidia,out-width: Width in struct fb_var_screeninfo. width of picture in mm.
  - nvidia,out-height: Height in struct fb_var_screeninfo. height of picture in mm.
  - nvidia,out-rotation: It specifies panel rotation in degree.
- - nvidia,out-flags: Should be "continuous" or "oneshot" or "hotplug_high" or "hotplug_low"
-   or "continuous_initialized" or "oneshot_initialized"
+ - nvidia,out-flags: One item or an array of several tuples items can be chosen.
+   List of items is TEGRA_DC_OUT_HOTPLUG_HIGH, TEGRA_DC_OUT_HOTPLUG_LOW,
+   TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND, TEGRA_DC_OUT_NVHDCP_POLICY_ALWAYS_ON,
+   TEGRA_DC_OUT_CONTINUOUS_MODE, TEGRA_DC_OUT_ONE_SHOT_MODE,
+   TEGRA_DC_OUT_N_SHOT_MODE, TEGRA_DC_OUT_ONE_SHOT_LP_MODE,
+   TEGRA_DC_OUT_INITIALIZED_MODE and TEGRA_DC_OUT_HOTPLUG_WAKE_LP0.
+   If several items are written, bitwise OR is operated for them, internally.
  - nvidia,out-parent-clk: Parent clk for display controller.
  - nvidia,out-max-pixclk: Maximum pixel clock in pico-seconds.
- - nvidia,out-align: Display data alignment. Should be "msb" or "lsb".
- - nvidia,out-order: Display data order. Should be "rtob" or "btor".
+ - nvidia,out-align: Display data alignment. Should be TEGRA_DC_ALIGN_MSB or TEGRA_DC_ALIGN_LSB.
+ - nvidia,out-order: Display data order. Should be TEGRA_DC_ORDER_RED_BLUE or
+   TEGRA_DC_ORDER_BLUE_RED.
  - nvidia,out-depth: Display base color size. 3, 6, 8, 9, 12, 15, 16, 18 and 24 for
    BASE_COLOR_SIZE111, BASE_COLOR_SIZE222, BASE_COLOR_SIZE332, BASE_COLOR_SIZE333,
    BASE_COLOR_SIZE444, BASE_COLOR_SIZE555, BASE_COLOR_SIZE565, BASE_COLOR_SIZE666,
@@ -79,8 +85,8 @@ NVIDIA Tegra114 Display Controller
 Required properties:
  - name: Should be "framebuffer-data".
  - nvidia,fb-bpp: Bits per pixel of fb.
- - nvidia,fb-flags: Window is updated in display controller device probe. Should be "flip_on_probe",
-   or remove this property (do not set this property).
+ - nvidia,fb-flags: Window is updated in display controller device probe. Should be TEGRA_FB_FLIP_ON_PROBE,
+   or 0
  - nvidia,fb-xres: Visible resolution for width.
  - nvidia,fb-yres: Visible resolution for height.
 
@@ -146,17 +152,17 @@ Example
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
 			status = "okay";
-			nvidia,dc-flags = "dc_flag_en";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
 			avdd_hdmi-supply = <&palmas_ldoln>;
 			avdd_hdmi_pll-supply = <&palmas_ldo1>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
 			dc-default-out {
-				nvidia,out-type = "dsi";
+				nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 				nvidia,out-width = <217>;
 				nvidia,out-height = <135>;
-				nvidia,out-flags = "continuous";
+				nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
 				nvidia,out-parent-clk = "pll_d_out0";
 			};
 			display-timings {
@@ -176,7 +182,7 @@ Example
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
-				nvidia,fb-flags = "flip_on_probe";
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 				nvidia,fb-xres = <1920>;
 				nvidia,fb-yres = <1200>;
 			};
@@ -349,23 +355,22 @@ Example
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
 			status = "okay";
-			nvidia,dc-flags = "dc_flag_en";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <300000000>;
 			nvidia,cmu-enable = <1>;
 			dc-default-out {
-				nvidia,out-type = "hdmi";
-				nvidia,out-flags = "hotplug_high";
-				nvidia,out-parent-clk = "pll_d2_out0";
+				nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+				nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH TEGRA_DC_OUT_HOTPLUG_WAKE_LP0>;
+				nvidia,out-parent-clk = "pll_d2";
 				nvidia,out-max-pixclk = <297000>;
-				nvidia,out-align = "msb";
-				nvidia,out-order = "rtob"; /*red to blue*/
+				nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+				nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
-				nvidia,fb-flags = "flip_on_probe";
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 				nvidia,fb-xres = <1280>;
 				nvidia,fb-yres = <720>;
 			};
 		};
 	};
-
