@@ -17,13 +17,6 @@ config ARM_DT_BL_CPUFREQ
 
 config ARM_EXYNOS_CPUFREQ
 	bool "SAMSUNG EXYNOS SoCs"
-	depends on ARCH_EXYNOS
-	default y
-	help
-	  This adds the CPUFreq driver common part for Samsung
-	  EXYNOS SoCs.
-
-	  If in doubt, say N.
 
 config ARM_EXYNOS4210_CPUFREQ
 	def_bool CPU_EXYNOS4210
@@ -94,7 +87,6 @@ config ARM_OMAP2PLUS_CPUFREQ
 	bool "TI OMAP2+"
 	depends on ARCH_OMAP2PLUS
 	default ARCH_OMAP2PLUS
-	select CPU_FREQ_TABLE
 
 config ARM_S3C2416_CPUFREQ
 	bool "S3C2416 CPU Frequency scaling support"
@@ -130,7 +122,6 @@ config ARM_S3C64XX_CPUFREQ
 config ARM_S5PV210_CPUFREQ
 	bool "Samsung S5PV210 and S5PC110"
 	depends on CPU_S5PV210
-	select CPU_FREQ_TABLE
 	default y
 	help
 	  This adds the CPUFreq driver for Samsung S5PV210 and

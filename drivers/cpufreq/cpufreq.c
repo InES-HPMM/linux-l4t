@@ -1047,9 +1047,7 @@ static void update_policy_cpu(struct cpufreq_policy *policy, unsigned int cpu)
 	for_each_cpu(j, policy->cpus)
 		per_cpu(cpufreq_policy_cpu, j) = cpu;
 
-#ifdef CONFIG_CPU_FREQ_TABLE
 	cpufreq_frequency_table_update_policy_cpu(policy);
-#endif
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_UPDATE_POLICY_CPU, policy);
 }
