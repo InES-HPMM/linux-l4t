@@ -72,6 +72,8 @@ DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 #define MINOR_ASIM_LINSIM	3
 #define MINOR_DSIM_ASIM_LINSIM	4
 
+static void __iomem *fuse_base;
+
 struct tegra_id {
 	enum tegra_chipid chipid;
 	unsigned int major, minor, netlist, patch;
@@ -252,6 +254,16 @@ static struct param_info fuse_info_tbl[] = {
 		.sz = SBK_DEVKEY_STATUS_SZ,
 	},
 };
+
+u32 fuse_readl(unsigned long offset)
+{
+	return readl(fuse_base + offset);
+}
+
+void fuse_writel(u32 val, unsigned long offset)
+{
+	writel(val, fuse_base + offset);
+}
 
 bool tegra_spare_fuse(int bit)
 {
@@ -573,7 +585,7 @@ static int get_revision(char *val, const struct kernel_param *kp)
 
 static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
 {
-	tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+	tegra_fuse_vp8_enable =  fuse_readl(FUSE_VP8_ENABLE_0);
 
 	return param_get_uint(val, kp);
 }
@@ -599,7 +611,7 @@ static void wait_for_idle(void)
 
 	do {
 		udelay(1);
-		reg = tegra_fuse_readl(FUSE_CTRL);
+		reg = fuse_readl(FUSE_CTRL);
 	} while ((reg & (0xF << 16)) != STATE_IDLE);
 }
 
@@ -608,14 +620,14 @@ static u32 fuse_cmd_read(u32 addr)
 	u32 reg;
 
 	wait_for_idle();
-	tegra_fuse_writel(addr, FUSE_REG_ADDR);
-	reg = tegra_fuse_readl(FUSE_CTRL);
+	fuse_writel(addr, FUSE_REG_ADDR);
+	reg = fuse_readl(FUSE_CTRL);
 	reg &= ~FUSE_CMD_MASK;
 	reg |= FUSE_READ;
-	tegra_fuse_writel(reg, FUSE_CTRL);
+	fuse_writel(reg, FUSE_CTRL);
 	wait_for_idle();
 
-	reg = tegra_fuse_readl(FUSE_REG_READ);
+	reg = fuse_readl(FUSE_REG_READ);
 	return reg;
 }
 
@@ -624,13 +636,13 @@ static void fuse_cmd_write(u32 value, u32 addr)
 	u32 reg;
 
 	wait_for_idle();
-	tegra_fuse_writel(addr, FUSE_REG_ADDR);
-	tegra_fuse_writel(value, FUSE_REG_WRITE);
+	fuse_writel(addr, FUSE_REG_ADDR);
+	fuse_writel(value, FUSE_REG_WRITE);
 
-	reg = tegra_fuse_readl(FUSE_CTRL);
+	reg = fuse_readl(FUSE_CTRL);
 	reg &= ~FUSE_CMD_MASK;
 	reg |= FUSE_WRITE;
-	tegra_fuse_writel(reg, FUSE_CTRL);
+	fuse_writel(reg, FUSE_CTRL);
 	wait_for_idle();
 }
 
@@ -639,10 +651,10 @@ static void fuse_cmd_sense(void)
 	u32 reg;
 
 	wait_for_idle();
-	reg = tegra_fuse_readl(FUSE_CTRL);
+	reg = fuse_readl(FUSE_CTRL);
 	reg &= ~FUSE_CMD_MASK;
 	reg |= FUSE_SENSE;
-	tegra_fuse_writel(reg, FUSE_CTRL);
+	fuse_writel(reg, FUSE_CTRL);
 	wait_for_idle();
 }
 
@@ -790,13 +802,13 @@ out:
 
 static void fuse_power_enable(void)
 {
-	tegra_fuse_writel(0x1, FUSE_PWR_GOOD_SW);
+	fuse_writel(0x1, FUSE_PWR_GOOD_SW);
 	udelay(1);
 }
 
 static void fuse_power_disable(void)
 {
-	tegra_fuse_writel(0, FUSE_PWR_GOOD_SW);
+	fuse_writel(0, FUSE_PWR_GOOD_SW);
 	udelay(1);
 }
 
@@ -826,7 +838,7 @@ static void fuse_program_array(int pgm_cycles)
 	 */
 	if (pgm_cycles > 0) {
 		reg = pgm_cycles;
-		tegra_fuse_writel(reg, FUSE_TIME_PGM2);
+		fuse_writel(reg, FUSE_TIME_PGM2);
 	}
 	fuse_val[0] = (0x1 & ~fuse_val[0]);
 	fuse_val[1] = (0x1 & ~fuse_val[1]);
@@ -883,7 +895,7 @@ static void fuse_program_array(int pgm_cycles)
 	 */
 	do {
 		udelay(1);
-		reg = tegra_fuse_readl(FUSE_CTRL);
+		reg = fuse_readl(FUSE_CTRL);
 	} while ((reg & BIT(30)) != SENSE_DONE);
 
 }
@@ -1008,7 +1020,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 
 	/* check that fuse options write access hasn't been disabled */
 	mutex_lock(&fuse_lock);
-	reg = tegra_fuse_readl(FUSE_DIS_PGM);
+	reg = fuse_readl(FUSE_DIS_PGM);
 	mutex_unlock(&fuse_lock);
 	if (reg) {
 		pr_err("fuse programming disabled");
@@ -1017,7 +1029,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	/* enable software writes to the fuse registers */
-	tegra_fuse_writel(0, FUSE_WRITE_ACCESS);
+	fuse_writel(0, FUSE_WRITE_ACCESS);
 
 	mutex_lock(&fuse_lock);
 	memcpy(&fuse_info, pgm_data, sizeof(fuse_info));
@@ -1047,7 +1059,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
-	tegra_fuse_writel(1, FUSE_WRITE_ACCESS);
+	fuse_writel(1, FUSE_WRITE_ACCESS);
 
 	clk_disable(clk_fuse);
 
@@ -1226,6 +1238,8 @@ MODULE_DEVICE_TABLE(of, tegra_fuse_of_match);
 
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
+	struct resource *fuse_res;
+
 #ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* get fuse_regulator regulator */
 	fuse_regulator = devm_regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
@@ -1241,6 +1255,14 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&fuse_lock);
+	fuse_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!fuse_res) {
+		dev_err(&pdev->dev, "no mem resource\n");
+		return -EINVAL;
+	}
+	fuse_base = devm_ioremap_resource(&pdev->dev, fuse_res);
+	if (IS_ERR(fuse_base))
+		return PTR_ERR(fuse_base);
 
 	/* change fuse file permissions, if ODM production fuse is not blown */
 	if (!fuse_odm_prod_mode()) {
@@ -1267,7 +1289,7 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_secure_boot_key.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
-					&dev_attr_sw_reserved.attr));
+				&dev_attr_sw_reserved.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_ignore_dev_sel_straps.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
