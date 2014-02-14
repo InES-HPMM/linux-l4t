@@ -800,8 +800,10 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		const struct of_device_id *match;
 
 		match = of_match_device(tegra_vi_of_match, &pdev->dev);
-		if (match)
+		if (match) {
 			ndata = (struct nvhost_device_data *) match->data;
+			pdev->dev.platform_data = ndata;
+		}
 
 		/*
 		 * Device Tree will initialize this ID as -1
