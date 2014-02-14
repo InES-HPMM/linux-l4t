@@ -88,6 +88,29 @@ static int tegra210_enter_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
+static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	unsigned long arg;
+	struct psci_power_state ps = {
+		.id = 6,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 1,
+	};
+
+	cpu_pm_enter();
+	cpu_cluster_pm_enter();
+
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+
+	cpu_cluster_pm_exit();
+	cpu_pm_exit();
+
+	return idx;
+}
+
 static int tegra210_enter_state(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
@@ -138,7 +161,17 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
 	state->disabled = true;
 
-	drv->state_count = 3;
+	state = &drv->states[3];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "Cluster power gate");
+	state->enter = tegra210_enter_cluster_pg;
+	state->exit_latency = 20;
+	state->target_residency = 30;
+	state->power_usage = 1500;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	drv->state_count = 4;
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
