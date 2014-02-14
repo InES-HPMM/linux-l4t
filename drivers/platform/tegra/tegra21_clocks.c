@@ -6708,6 +6708,14 @@ static struct clk_mux_sel mux_pllp_plld_plla_pllc_plld2_clkm[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_plld_plld2_clkm[] = {
+	{.input = &tegra_pll_p, .value = 0},
+	{.input = &tegra_pll_d_out0, .value = 2},
+	{.input = &tegra_pll_d2, .value = 5},
+	{.input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_plld_out0[] = {
 	{ .input = &tegra_pll_d_out0,  .value = 0},
 	{ 0, 0},
@@ -7317,6 +7325,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	408000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX | DIV_U71, &tegra_sor_clk_ops),
+	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_plld_plld2_clkm,	MUX | DIV_U71, &tegra_sor_clk_ops),
 	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	24000000, mux_clk_m,			0),
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
