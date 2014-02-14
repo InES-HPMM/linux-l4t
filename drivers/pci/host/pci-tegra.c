@@ -1537,52 +1537,59 @@ static int tegra_pcie_conf_gpios(void)
 	int irq, err = 0;
 
 	PR_FUNC_LINE;
-	if (tegra_pcie.plat_data->gpio_hot_plug != -1) {
+	if (gpio_is_valid(tegra_pcie.plat_data->gpio_hot_plug)) {
 		/* configure gpio for hotplug detection */
-		pr_info("acquiring hotplug_detect = %d\n",
+		dev_info(tegra_pcie.dev, "acquiring hotplug_detect = %d\n",
 				tegra_pcie.plat_data->gpio_hot_plug);
-		err = gpio_request(tegra_pcie.plat_data->gpio_hot_plug,
-					"pcie_hotplug_detect");
+		err = devm_gpio_request(tegra_pcie.dev,
+				tegra_pcie.plat_data->gpio_hot_plug,
+				"pcie_hotplug_detect");
 		if (err < 0) {
-			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			dev_err(tegra_pcie.dev, "%s: gpio_request failed %d\n",
+					__func__, err);
 			return err;
 		}
 		err = gpio_direction_input(
 				tegra_pcie.plat_data->gpio_hot_plug);
 		if (err < 0) {
-			pr_err("%s: gpio_direction_input failed %d\n",
+			dev_err(tegra_pcie.dev,
+				"%s: gpio_direction_input failed %d\n",
 				__func__, err);
-			goto err_hot_plug;
+			return err;
 		}
 		irq = gpio_to_irq(tegra_pcie.plat_data->gpio_hot_plug);
 		if (irq < 0) {
-			pr_err("Unable to get irq for hotplug_detect\n");
-			goto err_hot_plug;
+			dev_err(tegra_pcie.dev,
+				"Unable to get irq for hotplug_detect\n");
+			return err;
 		}
-		err = request_irq((unsigned int)irq,
+		err = devm_request_irq(tegra_pcie.dev, (unsigned int)irq,
 				gpio_pcie_detect_isr,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				"pcie_hotplug_detect",
 				(void *)tegra_pcie.plat_data);
 		if (err < 0) {
-			pr_err("Unable to claim irq for hotplug_detect\n");
-			goto err_hot_plug;
+			dev_err(tegra_pcie.dev,
+				"Unable to claim irq for hotplug_detect\n");
+			return err;
 		}
 	}
-	if (tegra_pcie.plat_data->gpio_x1_slot != -1) {
-		err = gpio_request(
+	if (gpio_is_valid(tegra_pcie.plat_data->gpio_x1_slot)) {
+		err = devm_gpio_request(tegra_pcie.dev,
 			tegra_pcie.plat_data->gpio_x1_slot, "pcie_x1_slot");
 		if (err < 0) {
-			pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
-					__func__, err);
-			goto err_hot_plug;
+			dev_err(tegra_pcie.dev,
+				"%s: pcie_x1_slot gpio_request failed %d\n",
+				__func__, err);
+			return err;
 		}
 		err = gpio_direction_output(
 			tegra_pcie.plat_data->gpio_x1_slot, 1);
 		if (err < 0) {
-			pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
+			dev_err(tegra_pcie.dev,
+				"%s: pcie_x1_slot gpio_direction_output failed %d\n",
 					__func__, err);
-			goto err_x1;
+			return err;
 		}
 		gpio_set_value_cansleep(
 			tegra_pcie.plat_data->gpio_x1_slot, 1);
@@ -1591,25 +1598,21 @@ static int tegra_pcie_conf_gpios(void)
 		err = devm_gpio_request(tegra_pcie.dev,
 				tegra_pcie.plat_data->gpio_wake, "pcie_wake");
 		if (err < 0) {
-			pr_err("%s: pcie_wake gpio_request failed %d\n",
-					__func__, err);
-			goto err_x1;
+			dev_err(tegra_pcie.dev,
+				"%s: pcie_wake gpio_request failed %d\n",
+				__func__, err);
+			return err;
 		}
 		err = gpio_direction_input(
 				tegra_pcie.plat_data->gpio_wake);
 		if (err < 0) {
-			pr_err("%s: pcie_wake gpio_direction_input failed %d\n",
+			dev_err(tegra_pcie.dev,
+				"%s: pcie_wake gpio_direction_input failed %d\n",
 					__func__, err);
-			goto err_x1;
+			return err;
 		}
 	}
 	return 0;
-err_x1:
-	gpio_free(tegra_pcie.plat_data->gpio_x1_slot);
-err_hot_plug:
-	if (tegra_pcie.plat_data->gpio_hot_plug != -1)
-		gpio_free(tegra_pcie.plat_data->gpio_hot_plug);
-	return err;
 }
 
 static int tegra_pcie_scale_voltage(bool isGen2)
@@ -1872,7 +1875,7 @@ static int tegra_pcie_suspend_noirq(struct device *dev)
 
 	PR_FUNC_LINE;
 	/* configure PE_WAKE signal as wake sources */
-	if ((tegra_pcie.plat_data->gpio_wake != -1) &&
+	if (gpio_is_valid(tegra_pcie.plat_data->gpio_wake) &&
 			device_may_wakeup(dev)) {
 		ret = enable_irq_wake(gpio_to_irq(
 			tegra_pcie.plat_data->gpio_wake));
@@ -1894,7 +1897,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 	PR_FUNC_LINE;
 	resume_path = true;
 
-	if ((tegra_pcie.plat_data->gpio_wake != -1) &&
+	if (gpio_is_valid(tegra_pcie.plat_data->gpio_wake) &&
 			device_may_wakeup(dev)) {
 		ret = disable_irq_wake(gpio_to_irq(
 			tegra_pcie.plat_data->gpio_wake));
@@ -2051,12 +2054,16 @@ void msi_map_release(struct msi_map_entry *entry)
 
 static irqreturn_t tegra_pcie_msi_isr(int irq, void *arg)
 {
-	int i;
-	int offset;
-	int index;
+	int i, offset, index;
+	static int count;
 	u32 reg;
 
-	PR_FUNC_LINE;
+	/* suppress print spews in debug mode */
+	if (!count) {
+		PR_FUNC_LINE;
+		count = 10;
+	}
+	count--;
 	for (i = 0; i < 8; i++) {
 		reg = afi_readl(AFI_MSI_VEC0_0 + i * 4);
 		while (reg != 0x00000000) {
