@@ -156,8 +156,22 @@ static void iqs253_i2c_hand_shake(struct iqs253_chip *iqs253_chip)
 
 static int iqs253_i2c_read_byte(struct iqs253_chip *chip, int reg)
 {
-	iqs253_i2c_hand_shake(chip);
-	return i2c_smbus_read_byte_data(chip->client, reg);
+	int ret = 0, retry_count = 10;
+	do {
+		iqs253_i2c_hand_shake(chip);
+		ret = i2c_smbus_read_byte_data(chip->client, reg);
+	} while (ret && retry_count--);
+	return ret;
+}
+
+static int iqs253_i2c_write_byte(struct iqs253_chip *chip, int reg, int val)
+{
+	int ret = 0, retry_count = 10;
+	do {
+		iqs253_i2c_hand_shake(chip);
+		ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+	} while (ret && retry_count--);
+	return ret;
 }
 
 /* must call holding lock */
@@ -175,10 +189,9 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 		if (!reg_val_pair_map[i].reg && !reg_val_pair_map[i].val)
 			continue;
 
-		iqs253_i2c_hand_shake(iqs253_chip);
-		ret = i2c_smbus_write_byte_data(iqs253_chip->client,
-						reg_val_pair_map[i].reg,
-						reg_val_pair_map[i].val);
+		ret = iqs253_i2c_write_byte(iqs253_chip,
+					reg_val_pair_map[i].reg,
+					reg_val_pair_map[i].val);
 		if (ret) {
 			dev_err(&iqs253_chip->client->dev,
 				"iqs253 write val:%x to reg:%x failed\n",
