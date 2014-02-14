@@ -9,8 +9,8 @@
 	model = "NVIDIA Tegra124 Foster";
 	compatible = "nvidia,loki", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 
 	chosen {
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
@@ -35,7 +35,7 @@
 
 	memory@0x80000000 {
 		device_type = "memory";
-		reg = <0x80000000 0x80000000>;
+		reg = <0x0 0x80000000 0x0 0x80000000>;
 	};
 
 	i2c@7000d000 {

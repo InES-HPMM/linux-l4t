@@ -20,7 +20,7 @@
 
 	gpio: gpio@6000d000 {
 		compatible = "nvidia,tegra124-gpio", "nvidia,tegra30-gpio";
-		reg = <0x6000d000 0x1000>;
+		reg = <0x0 0x6000d000 0x0 0x1000>;
 		interrupts = <0 32 0x04
 				0 33 0x04
 				0 34 0x04
@@ -37,20 +37,20 @@
 
 	se: se@70012000 {
 		compatible = "nvidia,tegra124-se";
-		reg = <0x70012000 0x2000 /* SE base */
-			0x7000e400 0x400>; /* PMC base */
+		reg = <0x0 0x70012000 0x0 0x2000 /* SE base */
+			0x0 0x7000e400 0x0 0x400>; /* PMC base */
 		interrupts = <0 58 0x04>;
 	};
 
 	tegra_car: clock {
 		compatible = "nvidia,tegra124-car";
-		reg = <0x60006000 0x1000>;
+		reg = <0x0 0x60006000 0x0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	apbdma: dma@60020000 {
 		compatible = "nvidia,tegra124-apbdma";
-		reg = <0x60020000 0x1400>;
+		reg = <0x0 0x60020000 0x0 0x1400>;
 		interrupts = <0 104 0x04
 			      0 105 0x04
 			      0 106 0x04
@@ -87,8 +87,8 @@
 
 	pinmux: pinmux {
 		compatible = "nvidia,tegra124-pinmux";
-		reg = <0x70000868 0x164		/* Pad control registers */
-		       0x70003000 0x434>;	/* Mux registers */
+		reg = <0x0 0x70000868 0x0 0x164		/* Pad control registers */
+		       0x0 0x70003000 0x0 0x434>;	/* Mux registers */
 	};
 
 	/*
@@ -101,7 +101,7 @@
 	 */
 	uarta: serial@70006000 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006000 0x40>;
+		reg = <0x0 0x70006000 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 36 0x04>;
 		nvidia,dma-request-selector = <&apbdma 8>;
@@ -111,7 +111,7 @@
 
 	uartb: serial@70006040 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006040 0x40>;
+		reg = <0x0 0x70006040 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 37 0x04>;
 		nvidia,dma-request-selector = <&apbdma 9>;
@@ -121,7 +121,7 @@
 
 	uartc: serial@70006200 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006200 0x40>;
+		reg = <0x0 0x70006200 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
@@ -131,7 +131,7 @@
 
 	uartd: serial@70006300 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006300 0x40>;
+		reg = <0x0 0x70006300 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
@@ -141,7 +141,7 @@
 
 	tegra_pwm: pwm@7000a000 {
 		compatible = "nvidia,tegra124-pwm";
-		reg = <0x7000a000 0x100>;
+		reg = <0x0 0x7000a000 0x0 0x100>;
 		#pwm-cells = <2>;
 		status = "okay";
 	};
@@ -150,7 +150,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000c000 0x100>;
+		reg = <0x0 0x7000c000 0x0 0x100>;
 		interrupts = <0 38 0x04>;
 		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
 		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
@@ -163,7 +163,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000c400 0x100>;
+		reg = <0x0 0x7000c400 0x0 0x100>;
 		interrupts = <0 84 0x04>;
 		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
 		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
@@ -176,7 +176,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000c500 0x100>;
+		reg = <0x0 0x7000c500 0x0 0x100>;
 		interrupts = <0 92 0x04>;
 		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
 		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
@@ -189,7 +189,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000c700 0x100>;
+		reg = <0x0 0x7000c700 0x0 0x100>;
 		interrupts = <0 120 0x04>;
 		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
 		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
@@ -202,7 +202,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000d000 0x100>;
+		reg = <0x0 0x7000d000 0x0 0x100>;
 		interrupts = <0 53 0x04>;
 		nvidia,require-cldvfs-clock;
 		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
@@ -216,7 +216,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra124-i2c";
-		reg = <0x7000d100 0x100>;
+		reg = <0x0 0x7000d100 0x0 0x100>;
 		interrupts = <0 63 0x04>;
 		nvidia,memory-clients = <14>;
 		status = "okay";
@@ -225,7 +225,7 @@
 
 	spi0: spi@7000d400 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000d400 0x200>;
+		reg = <0x0 0x7000d400 0x0 0x200>;
 		interrupts = <0 59 0x04>;
 		nvidia,dma-request-selector = <&apbdma 15>;
 		nvidia,memory-clients = <14>;
@@ -236,7 +236,7 @@
 
 	spi1: spi@7000d600 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000d600 0x200>;
+		reg = <0x0 0x7000d600 0x0 0x200>;
 		interrupts = <0 82 0x04>;
 		nvidia,dma-request-selector = <&apbdma 16>;
 		nvidia,memory-clients = <14>;
@@ -247,7 +247,7 @@
 
 	spi2: spi@7000d800 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000d800 0x200>;
+		reg = <0x0 0x7000d800 0x0 0x200>;
 		interrupts = <0 83 0x04>;
 		nvidia,dma-request-selector = <&apbdma 17>;
 		nvidia,memory-clients = <14>;
@@ -258,7 +258,7 @@
 
 	spi3: spi@7000da00 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000da00 0x200>;
+		reg = <0x0 0x7000da00 0x0 0x200>;
 		interrupts = <0 93 0x04>;
 		nvidia,dma-request-selector = <&apbdma 18>;
 		nvidia,memory-clients = <14>;
@@ -269,7 +269,7 @@
 
 	spi4: spi@7000dc00 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000dc00 0x200>;
+		reg = <0x0 0x7000dc00 0x0 0x200>;
 		interrupts = <0 94 0x04>;
 		nvidia,dma-request-selector = <&apbdma 27>;
 		nvidia,memory-clients = <14>;
@@ -280,7 +280,7 @@
 
 	spi5: spi@7000de00 {
 		compatible = "nvidia,tegra114-spi";
-		reg = <0x7000de00 0x200>;
+		reg = <0x0 0x7000de00 0x0 0x200>;
 		interrupts = <0 79 0x04>;
 		nvidia,dma-request-selector = <&apbdma 28>;
 		nvidia,memory-clients = <14>;
@@ -291,14 +291,14 @@
 
 	pmc {
 		compatible = "nvidia,tegra124-pmc";
-		reg = <0x7000e400 0x400>;
+		reg = <0x0 0x7000e400 0x0 0x400>;
 		clocks = <&tegra_car 261>, <&clk32k_in>;
 		clock-names = "pclk", "clk32k_in";
 	};
 
 	efuse@7000f800 {
 		compatible = "nvidia,tegra124-efuse";
-		reg = <0x7000f800 0x400>;
+		reg = <0x0 0x7000f800 0x0 0x400>;
 	};
 
 	clocks {
@@ -316,7 +316,7 @@
 
 	timer@60005000 {
 		compatible = "nvidia,tegra-nvtimer";
-		reg = <0x60005000 0x400>;
+		reg = <0x0 0x60005000 0x0 0x400>;
 		interrupts = <0 0 0x04
 			      0 1 0x04
 			      0 41 0x04
@@ -333,23 +333,22 @@
 
 	rtc {
 		compatible = "nvidia,tegra-rtc";
-		reg = <0x7000e000 0x100>;
+		reg = <0x0 0x7000e000 0x0 0x100>;
 		interrupts = <0 2 0x04>;
 		clocks = <&tegra_car 4>;
 	};
 
 	tegra_ahub_apbif: ahub {
 		compatible = "nvidia,tegra124-ahub";
-		reg = <0x70300000 0x200>,
-			<0x70300800 0x800>,
-			<0x70300200 0x200>;
+		reg = <0x0 0x70300000 0x0 0x200>,
+			<0x0 0x70300800 0x0 0x800>,
+			<0x0 0x70300200 0x0 0x200>;
 		interrupts = <0 103 0x04>;
 		nvidia,dma-request-selector = <&apbdma 1>, <&apbdma 2>,
 			<&apbdma 3>, <&apbdma 4>, <&apbdma 6>, <&apbdma 7>,
 			<&apbdma 12>, <&apbdma 13>, <&apbdma 14>, <&apbdma 29>;
 		status = "disabled";
 
-		ranges;
 		#address-cells = <1>;
 		#size-cells = <1>;
 
@@ -421,7 +420,7 @@
 
 	host1x {
 		compatible = "nvidia,tegra124-host1x", "simple-bus";
-		reg = <0x50000000 0x00028000>;
+		reg = <0x0 0x50000000 0x0 0x00028000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
 		nvidia,memory-clients = <4 6 7 17>;
@@ -429,8 +428,8 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		ranges = <0x53000000 0x53000000 0x06000000>,
-			 <0x60001000 0x60001000 0x0000e200>;
+		ranges = <0x53000000 0x0 0x53000000 0x06000000>,
+			 <0x60001000 0x0 0x60001000 0x0000e200>;
 
 		vi {
 			compatible = "nvidia,tegra124-vi";
@@ -527,10 +526,10 @@
 
 	xusb@70090000 {
 		compatible = "nvidia,tegra124-xhci";
-		reg = <0x70090000 0x8000
-		       0x70098000 0x1000
-		       0x70099000 0x1000
-		       0x7009F000 0x1000>;
+		reg = <0x0 0x70090000 0x0 0x8000
+		       0x0 0x70098000 0x0 0x1000
+		       0x0 0x70099000 0x0 0x1000
+		       0x0 0x7009F000 0x0 0x1000>;
 		interrupts = <0 39 0x04
 			      0 40 0x04
 			      0 49 0x04
@@ -541,7 +540,7 @@
 
 	mipical {
 		compatible = "nvidia,tegra124-mipical";
-		reg = <0x700e3000 0x00000100>;
+		reg = <0x0 0x700e3000 0x0 0x00000100>;
 	};
 
 	pcie-controller {

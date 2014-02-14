@@ -11,8 +11,8 @@
 	model = "NVIDIA Tegra124 Laguna";
 	compatible = "nvidia,laguna", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 
 	aliases {
 		gpio264 = &tca6416;
@@ -76,7 +76,7 @@
 
 	memory@0x80000000 {
 		device_type = "memory";
-		reg = <0x80000000 0x80000000>;
+		reg = <0x0 0x80000000 0x0 0x80000000>;
 	};
 
 	spi@7000d400 {
