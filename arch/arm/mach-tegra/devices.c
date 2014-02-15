@@ -2080,6 +2080,10 @@ struct platform_device tegra_gart_device = {
 };
 #endif
 
+#ifdef CONFIG_TEGRA_BPMP
+static struct iommu_linear_map tegra_bpmp_linear_map[2];
+#endif
+
 #if defined(CONFIG_TEGRA_IOMMU_SMMU)
 static struct resource tegra_smmu_resources[] = {
 	{
@@ -2162,7 +2166,6 @@ void carveout_linear_set(struct device *cma_dev)
 	map->size = stats.size;
 }
 #endif
-static struct iommu_linear_map tegra_bpmp_linear_map[2];
 
 struct swgid_fixup {
 	const char * const name;
@@ -2321,11 +2324,13 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "ape",	.swgids = SWGID(APE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(NVDEC), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
+#ifdef CONFIG_TEGRA_BPMP
 	{
 		.name = "bpmp",
 		.swgids = SWGID(AVPC),
 		.linear_map = tegra_bpmp_linear_map
 	},
+#endif
 	{ .name = "serial8250",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "serial-tegra",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
