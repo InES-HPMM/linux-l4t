@@ -508,6 +508,7 @@ static int iqs253_probe(struct i2c_client *client,
 	struct iio_dev *indio_dev;
 	struct input_dev *idev;
 	int rdy_gpio = -1, wake_gpio = -1, sar_gpio = -1;
+	struct property *stylus_detect = NULL;
 
 	rdy_gpio = of_get_named_gpio(client->dev.of_node, "rdy-gpio", 0);
 	if (rdy_gpio == -EPROBE_DEFER)
@@ -608,11 +609,17 @@ static int iqs253_probe(struct i2c_client *client,
 		goto err_gpio_request;
 	}
 
+	stylus_detect = of_find_property(client->dev.of_node,
+						"stylus-detect", NULL);
+	if (!stylus_detect)
+		goto finish;
+
 	idev = iqs253_stylus_input_init(iqs253_chip);
 	if (IS_ERR_OR_NULL(idev))
 		goto err_gpio_request;
 	iqs253_chip->idev = idev;
 
+finish:
 	dev_info(&client->dev, "devname:%s func:%s line:%d probe success\n",
 			id->name, __func__, __LINE__);
 
@@ -634,9 +641,12 @@ static int iqs253_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct iqs253_chip *chip = iio_priv(indio_dev);
 	gpio_free(chip->rdy_gpio);
-	destroy_workqueue(chip->wq);
-	input_unregister_device(chip->idev);
-	input_free_device(chip->idev);
+	if (chip->wq)
+		destroy_workqueue(chip->wq);
+	if (chip->idev) {
+		input_unregister_device(chip->idev);
+		input_free_device(chip->idev);
+	}
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 	return 0;

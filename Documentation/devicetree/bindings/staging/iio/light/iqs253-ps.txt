@@ -11,6 +11,9 @@ Required properties:
 - wake-gpio: gpio to be used for wakeup on stylus insert/removal event.
 - sar-gpio: gpio to be used for sending proximity event to SAR sensor.
 
+Optional properties:
+- stylus-detect: specify this option to enable stylus detection
+
 Example:
 
 	iqs253@44 {
@@ -23,4 +26,5 @@ Example:
 		rdy-gpio = <&gpio TEGRA_GPIO(PK, 5) 1>;
 		wake-gpio = <&gpio TEGRA_GPIO(PW, 3) 1>;
 		sar-gpio = <&gpio TEGRA_GPIO(I, 2) 1>;
+		stylus-detect;
 	};
