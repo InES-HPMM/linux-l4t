@@ -188,7 +188,7 @@ static struct tegra_camera_platform_data ardbeg_camera_platform_data = {
 };
 
 static struct soc_camera_link ardbeg_soc_camera_link = {
-	.bus_id         = 0, /* This must match the .id of tegra_vi01_device */
+	.bus_id         = 1, /* This must match the .id of tegra_vi01_device */
 	.add_device     = ardbeg_soc_camera_add,
 	.del_device     = ardbeg_soc_camera_del,
 	.module_name    = "soc_camera_platform",
@@ -217,9 +217,48 @@ static void ardbeg_soc_camera_del(struct soc_camera_device *icd)
 
 static struct platform_device ardbeg_soc_camera_device = {
 	.name   = "soc-camera-pdrv",
-	.id     = 0,
+	.id     = 1,
 	.dev    = {
 		.platform_data = &ardbeg_soc_camera_link,
+	},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX135)
+static int ardbeg_imx135_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+struct imx135_platform_data ardbeg_imx135_data;
+
+static struct i2c_board_info ardbeg_imx135_camera_i2c_device = {
+	I2C_BOARD_INFO("imx135_v4l2", 0x10),
+	.platform_data = &ardbeg_imx135_data,
+};
+
+static struct tegra_camera_platform_data ardbeg_imx135_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.lanes			= 4,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link imx135_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &ardbeg_imx135_camera_i2c_device,
+	.module_name	= "imx135_v4l2",
+	.i2c_adapter_id	= 2,
+	.power		= ardbeg_imx135_power,
+	.priv		= &ardbeg_imx135_camera_platform_data,
+};
+
+static struct platform_device ardbeg_imx135_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &imx135_iclink,
 	},
 };
 #endif
@@ -1238,6 +1277,10 @@ static int ardbeg_camera_init(void)
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
 	platform_device_register(&ardbeg_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX135)
+	platform_device_register(&ardbeg_imx135_soc_camera_device);
 #endif
 
 	return 0;
