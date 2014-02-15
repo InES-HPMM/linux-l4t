@@ -22,6 +22,7 @@ obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin64-memory.o
 obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
+obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-p1761-powermon.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-pinmux.o
