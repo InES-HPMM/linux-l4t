@@ -860,17 +860,16 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	cpu_dvfs->dfll_data.is_bypass_down = is_lp_cluster;
 
 	/* Init cpu thermal floors */
-
 	if (d->therm_floors_table[0]) /* if table contains at least one entry */
 		tegra_dvfs_rail_init_vmin_thermal_profile(
 				d->vmin_trips_table, d->therm_floors_table,
-				rail, &cpu_dvfs->dfll_data);
+				rail, &d->dfll_tune_data);
 
 	/* Init cpu thermal caps */
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
 	tegra_dvfs_rail_init_vmax_thermal_profile(
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
-		rail, &cpu_dvfs->dfll_data);
+		rail, &d->dfll_tune_data);
 #endif
 
 	/* Init cpu Vmin SiMon offsets */
