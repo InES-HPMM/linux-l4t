@@ -732,30 +732,6 @@ struct spi_board_info rm31080a_loki_spi_board[1] = {
 	},
 };
 
-static struct platform_device *foster_pwfm_devices[] __initdata = {
-	&tegra_pwfm_device,
-};
-
-static int __init loki_pwfm_init(void)
-{
-	struct board_info bi;
-	int err;
-	tegra_get_board_info(&bi);
-	/**
-	** Need to register pwm device for foster and not for loki
-	** because panels already register it for loki.
-	*/
-	if (bi.board_id == BOARD_P2530 && bi.sku == BOARD_SKU_FOSTER) {
-		pr_info("registering PWM device for foster\n");
-		err = platform_add_devices(foster_pwfm_devices,
-				ARRAY_SIZE(foster_pwfm_devices));
-		if (err)
-			pr_err("Not able to register pwm device\n");
-	}
-
-	return 0;
-}
-
 static int __init loki_touch_init(void)
 {
 	struct board_info bi;
@@ -869,7 +845,6 @@ static void __init tegra_loki_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	loki_sensors_init();
 
-	loki_pwfm_init();
 	loki_fan_init();
 	loki_soctherm_init();
 	loki_setup_bluedroid_pm();
