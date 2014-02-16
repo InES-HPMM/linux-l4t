@@ -76,6 +76,7 @@ struct dvfs_rail {
 	int (*resolve_override)(int mv);
 
 	const int *therm_mv_floors;
+	const int *therm_mv_dfll_floors;
 	int therm_mv_floors_num;
 	const int *therm_mv_caps;
 	int therm_mv_caps_num;
@@ -296,6 +297,7 @@ int tegra_dvfs_rail_init_thermal_dvfs_trips(
 int tegra_dvfs_init_thermal_dvfs_voltages(int *millivolts,
 	int *peak_millivolts, int freqs_num, int ranges_num, struct dvfs *d);
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);
+int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail);
 void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail);
 
 #ifdef CONFIG_TEGRA_VDD_CORE_OVERRIDE
@@ -382,14 +384,6 @@ static inline int tegra_dvfs_rail_get_boot_level(struct dvfs_rail *rail)
 	if (rail)
 		return rail->boot_millivolts ? : rail->nominal_millivolts;
 	return -ENOENT;
-}
-
-static inline int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
-{
-	if (rail && rail->therm_mv_floors &&
-	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
-		return rail->therm_mv_floors[rail->therm_floor_idx];
-	return 0;
 }
 
 #endif

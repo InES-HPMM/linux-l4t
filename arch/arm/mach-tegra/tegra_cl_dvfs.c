@@ -215,6 +215,7 @@ struct tegra_cl_dvfs {
 	u8				minimax_output;
 	u8				thermal_out_caps[MAX_THERMAL_LIMITS];
 	u8				thermal_out_floors[MAX_THERMAL_LIMITS];
+	int				thermal_mv_floors[MAX_THERMAL_LIMITS];
 	int				therm_caps_num;
 	int				therm_floors_num;
 	unsigned long			dvco_rate_floors[MAX_THERMAL_LIMITS+1];
@@ -1169,6 +1170,7 @@ static void cl_dvfs_convert_cold_output_floor(struct tegra_cl_dvfs *cld,
 					      int offset)
 {
 	int i;
+	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
 
 	/*
 	 * Convert monotonically decreasing thermal floors at low temperature
@@ -1176,13 +1178,17 @@ static void cl_dvfs_convert_cold_output_floor(struct tegra_cl_dvfs *cld,
 	 * above maximum thermal floor. The latter is also exempt from offset
 	 * application.
 	 */
-	cld->therm_floors_num = cld->safe_dvfs->dvfs_rail->therm_mv_floors_num;
+	cld->therm_floors_num = rail->therm_mv_floors_num;
 	for (i = 0; i < cld->therm_floors_num; i++) {
-		int mv = cld->safe_dvfs->dvfs_rail->therm_mv_floors[i] +
-			(i ? offset : 0);
-		cld->thermal_out_floors[i] = find_mv_out_cap(cld, mv);
+		int mv = rail->therm_mv_floors[i] + (i ? offset : 0);
+		u8 out = cld->thermal_out_floors[i] = find_mv_out_cap(cld, mv);
+		cld->thermal_mv_floors[i] = get_mv(cld, out);
 	}
 	BUG_ON(cld->thermal_out_floors[0] + 1 >= get_output_top(cld));
+	if (!rail->therm_mv_dfll_floors) {
+		wmb();
+		rail->therm_mv_dfll_floors = cld->thermal_mv_floors;
+	}
 }
 
 static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)

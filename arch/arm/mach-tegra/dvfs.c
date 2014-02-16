@@ -368,12 +368,7 @@ out:
 static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 {
 	int min_mv = rail->min_millivolts;
-
-	if (rail->therm_mv_floors) {
-		int i = rail->therm_floor_idx;
-		if (i < rail->therm_mv_floors_num)
-			min_mv = rail->therm_mv_floors[i];
-	}
+	min_mv = max(min_mv, tegra_dvfs_rail_get_thermal_floor(rail));
 
 	if (rail->override_millivolts) {
 		millivolts = rail->override_millivolts;
@@ -857,6 +852,8 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 
 	if (c->dvfs->dvfs_rail->therm_mv_floors)
 		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_floors[0]);
+	if (c->dvfs->dvfs_rail->therm_mv_dfll_floors)
+		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_dfll_floors[0]);
 	return mv;
 }
 
@@ -1991,14 +1988,29 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 	 * dfll mode.
 	 */
 	mutex_lock(&dvfs_lock);
-	if (rail->dfll_mode &&
-	    (rail->therm_floor_idx < rail->therm_mv_floors_num)) {
-			int mv = rail->therm_mv_floors[rail->therm_floor_idx];
+	if (rail->dfll_mode) {
+		int mv = tegra_dvfs_rail_get_thermal_floor(rail);
+		if (mv)
 			ret = dvfs_rail_set_voltage_reg(rail, mv);
 	}
 	mutex_unlock(&dvfs_lock);
 
 	return ret;
+}
+
+/* Get current thermal floor */
+int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
+{
+	if (rail && rail->therm_mv_floors &&
+	    (rail->therm_floor_idx < rail->therm_mv_floors_num)) {
+		int i = rail->therm_floor_idx;
+		if (rail->dfll_mode) {
+			BUG_ON(!rail->therm_mv_dfll_floors);
+			return rail->therm_mv_dfll_floors[i];
+		}
+		return rail->therm_mv_floors[i];
+	}
+	return 0;
 }
 
 /*
@@ -2167,11 +2179,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 			   rail->nominal_millivolts);
 		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
-		if (rail->therm_mv_floors) {
-			int i = rail->therm_floor_idx;
-			if (i < rail->therm_mv_floors_num)
-				thermal_mv_floor = rail->therm_mv_floors[i];
-		}
+		thermal_mv_floor = tegra_dvfs_rail_get_thermal_floor(rail);
 		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
 
 		if (rail == tegra_core_rail) {
