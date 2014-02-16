@@ -2520,19 +2520,6 @@ struct platform_device tegra_wdt0_device = {
 
 #endif
 
-static struct resource tegra_pwfm_resource = {
-	.start	= TEGRA_PWFM_BASE,
-	.end	= TEGRA_PWFM_BASE + TEGRA_PWFM_SIZE - 1,
-	.flags	= IORESOURCE_MEM,
-};
-
-struct platform_device tegra_pwfm_device = {
-	.name		= "tegra-pwm",
-	.id		= -1,
-	.num_resources	= 1,
-	.resource	= &tegra_pwfm_resource,
-};
-
 static struct tegra_avp_platform_data tegra_avp_pdata = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	.emc_clk_rate = ULONG_MAX,
