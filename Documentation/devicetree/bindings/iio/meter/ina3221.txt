@@ -1,0 +1,55 @@
+DT binding document for INA3221 iio/meter driver.
+
+Required properties:
+- compatible: Must be "ti,ina3221x".
+- reg: I2C slave address of device.
+
+- ti,trigger-config: Trigger configuration for the device in trigger mode.
+- ti,continuous-config:  Device configuration in continuous mode. In this mode
+	device will keep scanning the inputs.
+- address-cells: Number of address in child node. Must be 1.
+- size-cells: Size of address cell. Must be 0.
+
+Optional sub-nodes:
+	Device has 3 input channels and channel specific information
+is provided through the child node. Each channel will have different child
+node. The channel number is identified by the reg properties on each of node.
+Required subnode properties:
+- reg: channel number. 0 for channel 0, 1 for channel 1 and 2 for channel 2.
+- ti,rail-mae: Name of the channel in string.
+
+Optional subnode properties:
+- ti,current-warning-limit-ma: Cureent warning limit for the given channel.
+- ti,current-critical-limit-ma: Current critical limit for the given channel.
+- ti,shunt-resistor-mohm: Shunt register in milli ohm.
+
+Example:
+	ina3221x@40 {
+		compatible = "ti,ina3221x";
+		reg = <0x40>;
+		ti,trigger-config = <0x7003>;
+		ti,continuous-config = <0x7c07>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		channel@0 {
+			reg = <0x0>;
+			ti,rail-name = "VDD_BAT";
+			ti,current-warning-limit-ma = <8000>;
+			ti,current-critical-limit-ma = <9000>;
+			ti,shunt-resistor-mohm = <1>;
+		};
+
+		channel@1 {
+			reg = <0x1>;
+			ti,rail-name = "VDD_CPU";
+			ti,shunt-resistor-mohm = <1>;
+		};
+
+		channel@2 {
+			reg = <0x2>;
+			ti,rail-name = "VDD_GPU";
+			ti,shunt-resistor-mohm = <1>;
+		};
+	};
+
