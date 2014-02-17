@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -50,6 +50,5 @@ struct tegra_bpmp_platform_data {
 };
 
 int tegra_bpmp_pm_target(int cpu, int tolerance);
-int tegra_bpmp_pm_target_entered(void);
 
 #endif

@@ -41,8 +41,3 @@ int tegra_bpmp_pm_target(int cpu, int tolerance)
 {
 	return min(TEGRA_PM_C7, tolerance);
 }
-
-int tegra_bpmp_pm_target_entered(void)
-{
-	return 0;
-}
