@@ -3,7 +3,7 @@
  *
  * functions and macros to control the flowcontroller
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -57,6 +57,12 @@ void flowctrl_update(u8 offset, u32 value)
 	/* ensure the update has reached the flow controller */
 	wmb();
 	readl_relaxed(addr);
+}
+
+u32 flowctrl_readl(u8 offset)
+{
+	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
+	return readl_relaxed(addr);
 }
 
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value)
