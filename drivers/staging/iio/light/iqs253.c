@@ -689,7 +689,6 @@ static struct i2c_driver iqs253_driver = {
 		.name = "iqs253",
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(iqs253_of_match),
-		.pm = IQS253_PM_OPS,
 	},
 	.probe = iqs253_probe,
 	.remove = iqs253_remove,
