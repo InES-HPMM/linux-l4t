@@ -462,6 +462,9 @@ static int __init tegra_gic_of_init(struct device_node *node,
 		of_find_compatible_node(NULL, NULL, "arm,cortex-a15-gic");
 	struct device_node *tegra_gic_np =
 		of_find_compatible_node(NULL, NULL, "nvidia,tegra-gic");
+
+	tegra_wakeup_table_init();
+
 	gic_dist_base = of_iomap(arm_gic_np, 0);
 	gic_cpu_base = of_iomap(arm_gic_np, 1);
 	gic_version = (readl(gic_dist_base + 0xFE8) & 0xF0) >> 4;

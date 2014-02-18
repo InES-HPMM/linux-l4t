@@ -49,6 +49,7 @@ extern int *tegra_irq_wake_table;
 extern int tegra_wake_table_len;
 
 #if defined(CONFIG_PM_SLEEP)
+int tegra_wakeup_table_init(void);
 u64 tegra_read_pmc_wake_status(void);
 int tegra_pm_irq_set_wake(int wake, int enable);
 int tegra_pm_irq_set_wake_type(int wake, int flow_type);
@@ -61,6 +62,13 @@ int tegra_wake_to_irq(int wake);
 int tegra_set_wake_source(int wake, int wake_int);
 int tegra_disable_wake_source(int wake);
 #else
+static inline int tegra_wakeup_table_init(void)
+{
+	tegra_gpio_wake_table = NULL;
+	tegra_irq_wake_table = NULL;
+	tegra_wake_table_len = 0;
+	return 0;
+}
 static inline int tegra_set_wake_gpio(unsigned int wake, int gpio)
 {
 	return 0;

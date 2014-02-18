@@ -159,4 +159,8 @@ static int __init tegra12x_wakeup_table_init(void)
 	tegra_wake_table_len = ARRAY_SIZE(tegra_gpio_wakes);
 	return 0;
 }
-postcore_initcall(tegra12x_wakeup_table_init);
+
+int __init tegra_wakeup_table_init(void)
+{
+	return tegra12x_wakeup_table_init();
+}
