@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/cpuidle.h>
 #include <linux/of_platform.h>
+#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/tegra-soc.h>
 #include <linux/cpu_pm.h>
 #include <linux/io.h>
@@ -88,24 +89,48 @@ static int tegra210_enter_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
+static DEFINE_SPINLOCK(lock);
+static int cluster_down;
+
 static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
 	unsigned long arg;
+
+	/* Assume C7 config by default */
 	struct psci_power_state ps = {
-		.id = 6,
+		.id = 0,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 1,
+		.affinity_level = 0,
 	};
 
 	cpu_pm_enter();
-	cpu_cluster_pm_enter();
+
+	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC6)) {
+		/*
+		 * We are the last core standing and bpmp says GO.
+		 * Change to CC6 config.
+		 * Only one CPU within this if block -
+		 * so no need to apply any lock
+		 */
+		ps.id = 6;
+		ps.affinity_level = 1;
+		cpu_cluster_pm_enter();
+		cluster_down = 1;
+	}
 
 	arg = psci_power_state_pack(ps);
 	cpu_suspend(arg, NULL);
 
-	cpu_cluster_pm_exit();
+	/* Lock down, so only the first CPU does cpu_cluster_pm_exit() */
+	spin_lock(&lock);
+	if (cluster_down) {
+		cpu_cluster_pm_exit();
+		cluster_down = 0;
+	}
+	spin_unlock(&lock);
+
 	cpu_pm_exit();
 
 	return idx;
