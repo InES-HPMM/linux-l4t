@@ -292,28 +292,21 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 		offset = -step;
 	}
 
-	/*
-	 * DFLL adjusts rail voltage automatically, but not exactly to the
-	 * expected level - update stats, anyway.
-	 */
-	if (rail->dfll_mode) {
-		rail->millivolts = rail->new_millivolts = millivolts;
-		dvfs_rail_stats_update(rail, millivolts, ktime_get());
-		return 0;
-	}
-
-	if (rail->disabled)
+	/* Voltage change is always happening in DFLL mode */
+	if (rail->disabled && !rail->dfll_mode)
 		return 0;
 
 	rail->resolving_to = true;
 	jmp_to_zero = rail->jmp_to_zero &&
 			((millivolts == 0) || (rail->millivolts == 0));
-	steps = jmp_to_zero ? 1 :
-		DIV_ROUND_UP(abs(millivolts - rail->millivolts), step);
+
+	if (jmp_to_zero || rail->dfll_mode)
+		steps = 1;
+	else
+		steps = DIV_ROUND_UP(abs(millivolts - rail->millivolts), step);
 
 	for (i = 0; i < steps; i++) {
-		if (!jmp_to_zero &&
-		    (abs(millivolts - rail->millivolts) > step))
+		if (steps > (i + 1))
 			rail->new_millivolts = rail->millivolts + offset;
 		else
 			rail->new_millivolts = millivolts;
@@ -330,10 +323,18 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 				goto out;
 		}
 
-		ret = dvfs_rail_set_voltage_reg(rail, rail->new_millivolts);
-		if (ret) {
-			pr_err("Failed to set dvfs regulator %s\n", rail->reg_id);
-			goto out;
+		/*
+		 * DFLL adjusts voltage automatically - don't touch regulator,
+		 * but update stats, anyway.
+		 */
+		if (!rail->dfll_mode) {
+			ret = dvfs_rail_set_voltage_reg(rail,
+							rail->new_millivolts);
+			if (ret) {
+				pr_err("Failed to set dvfs regulator %s\n",
+				       rail->reg_id);
+				goto out;
+			}
 		}
 
 		rail->millivolts = rail->new_millivolts;
@@ -1187,8 +1188,11 @@ static int tegra_dvfs_suspend_one(void)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		if (!rail->suspended && !rail->disabled &&
 		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
-			/* Safe, as pll mode rate is capped to fixed level */
-			if (!rail->dfll_mode && rail->fixed_millivolts) {
+			if (rail->dfll_mode) {
+				/* s/w doesn't change voltage in dfll mode */
+				mv = rail->millivolts;
+			} else if (rail->fixed_millivolts) {
+				/* Safe: pll mode rate capped to fixed level */
 				mv = rail->fixed_millivolts;
 			} else {
 				mv = tegra_dvfs_rail_get_suspend_level(rail);
