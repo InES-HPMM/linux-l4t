@@ -159,6 +159,20 @@ int norrin_kbc_init(void);
 int norrin_soctherm_init(void);
 int norrin_emc_init(void);
 
+/* loki specific */
+int loki_pinmux_init(void);
+int loki_regulator_init(void);
+int loki_emc_init(void);
+int loki_sdhci_init(void);
+int loki_pmon_init(void);
+int loki_panel_init(void);
+int loki_kbc_init(void);
+int loki_sensors_init(void);
+int loki_soctherm_init(void);
+int loki_edp_init(void);
+int loki_fan_init(void);
+int loki_rail_alignment_init(void);
+
 /* AUO Display related GPIO */
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
 #define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */

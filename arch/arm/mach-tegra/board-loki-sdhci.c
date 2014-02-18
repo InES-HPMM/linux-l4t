@@ -461,7 +461,11 @@ int __init loki_sdhci_init(void)
 
 	tegra_get_board_info(&bi);
 
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	if (bi.board_id == BOARD_E2548) {
+#else
 	if (bi.board_id == BOARD_E2548 && bi.sku == 0x0 && bi.fab == 0x0) {
+#endif
 		tegra_sdhci_platform_data3.uhs_mask |= MMC_MASK_HS200;
 		tegra_sdhci_platform_data3.max_clk_limit = 102000000;
 	}
@@ -499,7 +503,11 @@ int __init loki_sdhci_init(void)
 
 
 	platform_device_register(&tegra_sdhci_device3);
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	if (!is_uart_over_sd_enabled())
+#else
 	if (!is_uart_over_sd_enabled() && !is_tegra_diagnostic_mode())
+#endif
 		platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
 	loki_wifi_init();

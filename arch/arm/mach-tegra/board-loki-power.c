@@ -54,6 +54,7 @@
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
+void tegra13x_vdd_cpu_align(int step_uv, int offset_uv);
 
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
@@ -735,9 +736,13 @@ static inline int loki_cl_dvfs_init()
 
 int __init loki_rail_alignment_init(void)
 {
-
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	tegra13x_vdd_cpu_align(LOKI_CPU_VDD_STEP_UV,
+			LOKI_CPU_VDD_MIN_UV);
+#else
 	tegra12x_vdd_cpu_align(LOKI_CPU_VDD_STEP_UV,
 			LOKI_CPU_VDD_MIN_UV);
+#endif
 	return 0;
 }
 

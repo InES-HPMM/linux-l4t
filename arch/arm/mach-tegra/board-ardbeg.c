@@ -1146,6 +1146,10 @@ static void __init edp_init(void)
 	case BOARD_PM359:
 			laguna_edp_init();
 			break;
+	case BOARD_P2530:
+	case BOARD_E2548:
+			loki_edp_init();
+			break;
 	default:
 			ardbeg_edp_init();
 			break;
@@ -1167,6 +1171,8 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("norrin");
 	else if (of_machine_is_compatible("nvidia,bowmore"))
 		tegra_soc_device_init("bowmore");
+	else if (of_machine_is_compatible("nvidia,loki"))
+		tegra_soc_device_init("loki");
 	else
 		tegra_soc_device_init("ardbeg");
 }
@@ -1206,6 +1212,9 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_pinmux_init();
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif
@@ -1223,7 +1232,11 @@ static void __init tegra_ardbeg_late_init(void)
 	else if (board_info.board_id != BOARD_PM359)
 		platform_device_register(&ardbeg_audio_device_rt5639);
 	tegra_io_dpd_init();
-	ardbeg_sdhci_init();
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_sdhci_init();
+	else
+		ardbeg_sdhci_init();
 	if (board_info.board_id == BOARD_E1782 ||
 			board_info.board_id == BOARD_PM374)
 		ardbeg_sata_init();
@@ -1237,6 +1250,9 @@ static void __init tegra_ardbeg_late_init(void)
 		laguna_regulator_init();
 	else if (board_info.board_id == BOARD_PM374)
 		norrin_regulator_init();
+	else if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_regulator_init();
 	else
 		ardbeg_regulator_init();
 	ardbeg_dtv_init();
@@ -1244,36 +1260,53 @@ static void __init tegra_ardbeg_late_init(void)
 
 	if (board_info.board_id == BOARD_PM374)
 		norrin_emc_init();
+	else if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_emc_init();
 	else
 		ardbeg_emc_init();
 
 	edp_init();
 	isomgr_init();
 	ardbeg_touch_init();
-	ardbeg_panel_init();
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_panel_init();
+	else
+		ardbeg_panel_init();
 
-	/* put PEX pads into DPD mode to save additional power */
-	tegra_io_dpd_enable(&pexbias_io);
-	tegra_io_dpd_enable(&pexclk1_io);
-	tegra_io_dpd_enable(&pexclk2_io);
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
 
 	if (board_info.board_id == BOARD_PM374)
 		norrin_kbc_init();
+	else if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_kbc_init();
 
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
 
-	ardbeg_sensors_init();
 
 	if (board_info.board_id == BOARD_PM374 ||
 		board_info.board_id == BOARD_PM359 ||
 		board_info.board_id == BOARD_PM358 ||
 		board_info.board_id == BOARD_PM370 ||
-		board_info.board_id == BOARD_PM363)
+		board_info.board_id == BOARD_PM363) {
+		ardbeg_sensors_init();
 		norrin_soctherm_init();
-	else
+	}	else if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530) {
+		loki_sensors_init();
+		loki_fan_init();
+		loki_soctherm_init();
+	}	else {
+		ardbeg_sensors_init();
 		ardbeg_soctherm_init();
+	}
 
 	ardbeg_setup_bluedroid_pm();
 	ardbeg_sysedp_dynamic_capping_init();
@@ -1282,7 +1315,12 @@ static void __init tegra_ardbeg_late_init(void)
 
 static void __init tegra_ardbeg_init_early(void)
 {
-	ardbeg_rail_alignment_init();
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_rail_alignment_init();
+	else
+		ardbeg_rail_alignment_init();
 	tegra12x_init_early();
 }
 
@@ -1341,6 +1379,27 @@ static const char * const bowmore_dt_board_compat[] = {
 	"nvidia,bowmore",
 	NULL
 };
+
+static const char * const loki_dt_board_compat[] = {
+	"nvidia,loki",
+	NULL
+};
+
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+DT_MACHINE_START(LOKI, "loki")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_ardbeg_reserve,
+	.init_early	= tegra_ardbeg_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_ardbeg_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= loki_dt_board_compat,
+	.init_late      = tegra_init_late
+MACHINE_END
+#endif
 
 DT_MACHINE_START(LAGUNA, "laguna")
 	.atag_offset	= 0x100,

@@ -26,6 +26,19 @@ obj-${CONFIG_MACH_EXUMA}              += board-norrin64-memory.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin-kbc.o
 obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
+obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-pinmux.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-sdhci.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-sensors.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-kbc.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-fan.o
+obj-${CONFIG_MACH_LOKI}               += board-loki-panel.o
+obj-${CONFIG_MACH_LOKI}               += panel-l-720p-5-loki.o
+obj-${CONFIG_MACH_LOKI}               += panel-j-1440-810-5-8.o
+obj-${CONFIG_MACH_LOKI}               += panel-j-720p-5.o
+
+
 obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
