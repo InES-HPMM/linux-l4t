@@ -459,8 +459,7 @@ int __init ardbeg_sdhci_init(void)
 	if (board_info.board_id == BOARD_E1991 ||
 		board_info.board_id == BOARD_E1971) {
 			tegra_sdhci_platform_data0.uhs_mask =
-				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50
-				| MMC_UHS_MASK_DDR50;
+				MMC_UHS_MASK_SDR50 | MMC_UHS_MASK_DDR50;
 			tegra_sdhci_platform_data2.uhs_mask =
 				MMC_UHS_MASK_SDR50;
 	}
