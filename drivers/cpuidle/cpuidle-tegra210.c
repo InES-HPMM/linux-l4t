@@ -38,8 +38,8 @@ static struct module *owner = THIS_MODULE;
 static DEFINE_PER_CPU(struct cpumask, idle_mask);
 static DEFINE_PER_CPU(struct cpuidle_driver, cpuidle_drv);
 
-static int cpu_do_c4(struct cpuidle_device *dev, struct cpuidle_driver *drv,
-		int index)
+static int tegra210_enter_retention(struct cpuidle_device *dev,
+		struct cpuidle_driver *drv, int index)
 {
 	/* TODO: fix the counter */
 	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
@@ -111,7 +111,7 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
-static int tegra210_enter_state(struct cpuidle_device *dev,
+static int tegra210_enter_cg(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
@@ -135,7 +135,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[0];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C1");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU clock gated");
-	state->enter = tegra210_enter_state;
+	state->enter = tegra210_enter_cg;
 	state->exit_latency = 1;
 	state->target_residency = 1;
 	state->power_usage = UINT_MAX;
@@ -144,7 +144,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[1];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C4");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU retention");
-	state->enter = cpu_do_c4;
+	state->enter = tegra210_enter_retention;
 	state->exit_latency = 10;
 	state->target_residency = 10;
 	state->power_usage = 5000;
