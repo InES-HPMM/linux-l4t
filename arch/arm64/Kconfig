@@ -40,7 +40,7 @@ config ARM64
 	select POWER_RESET
 	select POWER_SUPPLY
 	select RTC_LIB
-	select SPARSE_IRQ
+	select SPARSE_IRQ if !ARCH_TEGRA
 	select SYSCTL_EXCEPTION_TRACE
 	help
 	  ARM 64-bit (AArch64) Linux support.
