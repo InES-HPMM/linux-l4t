@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/cpu.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/cpuidle.h>
@@ -208,6 +209,28 @@ static int __init tegra210_cpuidle_register(int cpu)
 	return 0;
 }
 
+/* Change CPU tolerance level according to hotplug state */
+static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
+		void *data)
+{
+	int cpu = (long)data;
+
+	switch (action) {
+	case CPU_DOWN_PREPARE:
+		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_SC7);
+		break;
+	case CPU_ONLINE:
+		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_C0);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra210_cpu_nb = {
+	.notifier_call = tegra210_cpu_notify
+};
+
 /*
  * t210_idle_init
  *
@@ -231,6 +254,6 @@ int __init tegra210_idle_init(void)
 			return ret;
 	}
 
-	return 0;
+	return register_cpu_notifier(&tegra210_cpu_nb);
 }
 device_initcall(tegra210_idle_init);
