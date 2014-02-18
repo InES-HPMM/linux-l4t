@@ -140,12 +140,47 @@ void __init tegra13x_vdd_cpu_align(int step_uv, int offset_uv)
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
 /* speedo_id	0	 1	  2	   3      */
-		2754000,
+		2754000, 2754000,
 };
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
+	/* A01 DVFS table */
 	{
-		.speedo_id = -1,
+		.speedo_id = 0,
+		.process_id = -1,
+		.dfll_tune_data  = {
+			.tune0		= 0x00FF2FFF,
+			.tune0_high_mv	= 0x00FF40E5,
+			.tune1		= 0x000000FF,
+			.droop_rate_min = 1000000,
+			.tune_high_min_millivolts = 960,
+			.min_millivolts = 800,
+			.tune_high_margin_mv = 30,
+		},
+		.max_mv = 1260,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
+			{510000,        {1413914, -39055, 488}, {980000, 0, 0}},
+			{612000,        {1491617, -40975, 488}, {1020000, 0, 0}},
+			{714000,        {1571360, -42895, 488}, {1060000, 0, 0}},
+			{816000,        {1653143, -44815, 488}, {1100000, 0, 0}},
+			{918000,        {1736966, -46725, 488}, {1150000, 0, 0}},
+			{1020000,       {1822828, -48645, 488}, {1190000, 0, 0}},
+			{1122000,       {1910731, -50565, 488}, {1230000, 0, 0}},
+			{1224000,       {2000673, -52485, 488}, {1260000, 0, 0}},
+			{1326000,       {2092656, -54405, 488}, {1260000, 0, 0}},
+			{1428000,       {2186678, -56325, 488}, {1260000, 0, 0}},
+			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
+		},
+		.vmin_trips_table = { 20, 35, 55, 75, },
+		.therm_floors_table = { 900, 800, 790, 770, },
+	},
+	/* A02 DVFS table */
+	{
+		.speedo_id = 1,
 		.process_id = -1,
 		.dfll_tune_data  = {
 			.tune0		= 0x00FF2FFF,

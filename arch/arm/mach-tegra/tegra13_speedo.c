@@ -91,20 +91,27 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 {
 	int can_boost = tegra_spare_fuse(60); /* FIXME: boost board check */
 
-	switch (sku) {
-	case 0x00: /* Engg sku */
+	if (rev == TEGRA_REVISION_A01) {
 		cpu_speedo_id = 0;
 		soc_speedo_id = 0;
 		gpu_speedo_id = 0;
 		threshold_index = 0;
-		break;
-	default:
-		pr_warn("Tegra13: Unknown SKU %d\n", sku);
-		cpu_speedo_id = 0;
-		soc_speedo_id = 0;
-		gpu_speedo_id = 0;
-		threshold_index = 0;
-		break;
+	} else if (rev == TEGRA_REVISION_A02) {
+		switch (sku) {
+		case 0x00: /* Engg sku */
+			cpu_speedo_id = 1;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 0;
+			threshold_index = 0;
+			break;
+		default:
+			pr_warn("Tegra13: Unknown SKU %d\n", sku);
+			cpu_speedo_id = 1;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 0;
+			threshold_index = 0;
+			break;
+		}
 	}
 }
 
