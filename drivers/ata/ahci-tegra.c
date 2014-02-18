@@ -946,28 +946,11 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	val = 0x100;
 	pmc_writel(val, APBDEV_PMC_REMOVE_CLAMPING_CMD_0);
 
-	/**** Init the SATA PAD PLL ****/
-	/* SATA_PADPLL_IDDQ_SWCTL=1 and SATA_PADPLL_IDDQ_OVERRIDE_VALUE=1 */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val |= (PADPLL_IDDQ_SWCTL_ON | PADPLL_IDDQ_OVERRIDE_VALUE_ON);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 	/* SATA_PADPLL_RESET_OVERRIDE_VALUE=1 and SATA_PADPLL_RESET_SWCTL=1 */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val |= (PADPLL_RESET_OVERRIDE_VALUE_ON | PADPLL_RESET_SWCTL_ON);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
-
-	/* SATA_PADPHY_IDDQ_OVERRIDE_VALUE and SATA_PADPHY_IDDQ_SWCTL = 1 */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val |= (PADPHY_IDDQ_OVERRIDE_VALUE_ON | PADPHY_IDDQ_SWCTL_ON |
-				PLLE_IDDQ_SWCTL_ON | PLLE_SATA_SEQ_ENABLE);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
-
-	/* Get SATA pad PLL out of IDDQ mode */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~PADPLL_IDDQ_OVERRIDE_VALUE_MASK;
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
-	udelay(3);
 
 	/* select internal CML ref clk
 	 * select PLLE as input to IO phy */
@@ -983,10 +966,6 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	clk_writel(val, CLK_RST_SATA_PLL_CFG1_REG);
 	udelay(3);
 
-	/* de-assert IDDQ mode signal going to PHY */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~PADPHY_IDDQ_OVERRIDE_VALUE_MASK;
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
 	if (err) {
@@ -1139,11 +1118,6 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	val |= (CLAMP_TXCLK_ON_SLUMBER | CLAMP_TXCLK_ON_DEVSLP);
 	val &= ~NO_CLAMP_SHUT_DOWN;
 	bar5_writel(val, AHCI_HBA_PLL_CTRL_0);
-
-	/* enable Interrupt channel */
-	val = pictlr_readl(PRI_ICTLR_CPU_IER_SET_0_OFFSET);
-	val |= CPU_IER_SATA_CTL;
-	pictlr_writel(val, PRI_ICTLR_CPU_IER_SET_0_OFFSET);
 
 	/* set IP_INT_MASK */
 	val = sata_readl(SATA_INTR_MASK_0_OFFSET);
@@ -1805,18 +1779,10 @@ void tegra_ahci_iddqlane_config(void)
 	val |= IDDQ2LANE_SLUMBER_DLY_3MS;
 	clk_writel(val, CLK_RST_SATA_PLL_CFG1_REG);
 
-	/* get sata phy and pll out of iddq: */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPLL_IDDQ_OVERRIDE_VALUE_MASK | PADPLL_IDDQ_SWCTL_MASK);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
-
 	/* wait for delay of IDDQ2LAND_SLUMBER_DLY */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
 	dat = (val & IDDQ2LANE_SLUMBER_DLY_MASK) >> IDDQ2LANE_SLUMBER_DLY_SHIFT;
 	udelay(dat);
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPHY_IDDQ_OVERRIDE_VALUE_MASK | PADPHY_IDDQ_SWCTL_MASK);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 }
 void tegra_ahci_put_sata_in_iddq()
@@ -1838,21 +1804,10 @@ void tegra_ahci_put_sata_in_iddq()
 	val |= (PADPLL_RESET_SWCTL_ON | PADPLL_RESET_OVERRIDE_VALUE_ON);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPHY_IDDQ_OVERRIDE_VALUE_MASK | PADPHY_IDDQ_SWCTL_MASK);
-	val |= (PADPHY_IDDQ_SWCTL_ON | PADPHY_IDDQ_OVERRIDE_VALUE_ON);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
-
 	/* Wait for time specified in SATA_LANE_IDDQ2_PADPLL_IDDQ */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
 	dat = (val & IDDQ2LANE_IDDQ_DLY_MASK) >> IDDQ2LANE_IDDQ_DLY_SHIFT;
 	udelay(dat);
-
-	/* SATA_PADPLL_IDDQ_SWCTL=1 & SATA_PADPLL_IDDQ_OVERRIDE_VALUE=1 */
-	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~(PADPLL_IDDQ_OVERRIDE_VALUE_MASK | PADPLL_IDDQ_SWCTL_MASK);
-	val |= (PADPLL_IDDQ_SWCTL_ON | PADPLL_IDDQ_OVERRIDE_VALUE_ON);
-	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
 	val |= (PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
@@ -2075,14 +2030,6 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	val |= L0_RX_IDLE_T_MUX_FROM_SATA;
 	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
 
-	/*
-	 * Driver can start to use main SATA interrupt instead of the
-	 * rx_stat_t interrupt.
-	 */
-	val = pictlr_readl(PRI_ICTLR_CPU_IER_SET_0_OFFSET);
-	val |= CPU_IER_SATA_CTL;
-	pictlr_writel(val, PRI_ICTLR_CPU_IER_SET_0_OFFSET);
-
 	/* Set the bits in the CAR to allow HW based low power sequencing. */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~PADPLL_RESET_SWCTL_MASK;
@@ -2202,14 +2149,6 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 	}
 	if (timeout == 0)
 		pr_err("%s: SATA_PAD_PLL is not locked in 15us.\n", __func__);
-
-	/*
-	 * Driver can start to use main SATA interrupt instead of the
-	 * rx_stat_t interrupt.
-	 */
-	val = pictlr_readl(PRI_ICTLR_CPU_IER_SET_0_OFFSET);
-	val |= CPU_IER_SATA_CTL;
-	pictlr_writel(val, PRI_ICTLR_CPU_IER_SET_0_OFFSET);
 
 	/* Set the bits in the CAR to allow HW based low power sequencing. */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
