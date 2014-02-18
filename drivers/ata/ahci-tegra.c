@@ -2082,6 +2082,11 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
+	/* Set the bits in the CAR to allow HW based low power sequencing. */
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val |= PADPLL_RESET_SWCTL_MASK;
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
 	val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
 	val |= XUSB_PADCTL_IOPHY_MISC_IDDQ |
 		XUSB_PADCTL_IOPHY_MISC_IDDQ_OVRD;
