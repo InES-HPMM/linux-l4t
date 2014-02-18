@@ -498,7 +498,7 @@ static struct input_dev *iqs253_stylus_input_init(struct iqs253_chip *chip)
 		return ERR_PTR(ret);
 	}
 
-	chip->wq = create_singlethread_workqueue("iqs253");
+	chip->wq = create_freezable_workqueue("iqs253");
 	if (!chip->wq) {
 		dev_err(&chip->client->dev, "unable to create work queue\n");
 		input_unregister_device(idev);
