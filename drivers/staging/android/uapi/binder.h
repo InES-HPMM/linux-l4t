@@ -26,8 +26,6 @@
 	((((c1)<<24)) | (((c2)<<16)) | (((c3)<<8)) | (c4))
 #define B_TYPE_LARGE 0x85
 
-typedef __u32 userptr32_t;
-
 enum {
 	BINDER_TYPE_BINDER	= B_PACK_CHARS('s', 'b', '*', B_TYPE_LARGE),
 	BINDER_TYPE_WEAK_BINDER	= B_PACK_CHARS('w', 'b', '*', B_TYPE_LARGE),
@@ -41,6 +39,14 @@ enum {
 	FLAT_BINDER_FLAG_ACCEPTS_FDS = 0x100,
 };
 
+#ifdef BINDER_IPC_32BIT
+typedef __u32 binder_size_t;
+typedef __u32 binder_uintptr_t;
+#else
+typedef __u64 binder_size_t;
+typedef __u64 binder_uintptr_t;
+#endif
+
 /*
  * This is the flattened representation of a Binder object for transfer
  * between processes.  The 'offsets' supplied as part of a binder transaction
@@ -50,17 +56,17 @@ enum {
  */
 struct flat_binder_object {
 	/* 8 bytes for large_flat_header. */
-	uint32_t		type;
-	uint32_t		flags;
+	__u32	type;
+	__u32	flags;
 
 	/* 8 bytes of data. */
 	union {
-		userptr32_t	binder;		/* local object */
-		int32_t		handle;		/* remote object */
+		binder_uintptr_t	binder;	/* local object */
+		__u32			handle;	/* remote object */
 	};
 
 	/* extra data associated with local object */
-	userptr32_t		cookie;
+	binder_uintptr_t	cookie;
 };
 
 /*
@@ -69,22 +75,26 @@ struct flat_binder_object {
  */
 
 struct binder_write_read {
-	int32_t		write_size;	/* bytes to write */
-	int32_t		write_consumed;	/* bytes consumed by driver */
-	uint32_t	write_buffer;
-	int32_t		read_size;	/* bytes to read */
-	int32_t		read_consumed;	/* bytes consumed by driver */
-	uint32_t	read_buffer;
+	binder_size_t		write_size;	/* bytes to write */
+	binder_size_t		write_consumed;	/* bytes consumed by driver */
+	binder_uintptr_t	write_buffer;
+	binder_size_t		read_size;	/* bytes to read */
+	binder_size_t		read_consumed;	/* bytes consumed by driver */
+	binder_uintptr_t	read_buffer;
 };
 
 /* Use with BINDER_VERSION, driver fills in fields. */
 struct binder_version {
 	/* driver protocol version -- increment with incompatible change */
-	int32_t		protocol_version;
+	__s32	protocol_version;
 };
 
 /* This is the current protocol version. */
+#ifdef BINDER_IPC_32BIT
 #define BINDER_CURRENT_PROTOCOL_VERSION 7
+#else
+#define BINDER_CURRENT_PROTOCOL_VERSION 8
+#endif
 
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
 #define	BINDER_SET_IDLE_TIMEOUT		_IOW('b', 3, __s64)
@@ -121,18 +131,18 @@ struct binder_transaction_data {
 	 * identifying the target and contents of the transaction.
 	 */
 	union {
-		uint32_t	handle;	/* target descriptor of command transaction */
-		userptr32_t	ptr;	/* target descriptor of return transaction */
+		__u32	handle;	/* target descriptor of command transaction */
+		binder_uintptr_t ptr;	/* target descriptor of return transaction */
 	} target;
-	userptr32_t     cookie;	/* target object cookie */
-	unsigned int	code;		/* transaction command */
+	binder_uintptr_t	cookie;	/* target object cookie */
+	__u32		code;		/* transaction command */
 
 	/* General information about the transaction. */
-	unsigned int	flags;
+	__u32		flags;
 	pid_t		sender_pid;
 	uid_t		sender_euid;
-	uint32_t	data_size;	/* number of bytes of data */
-	uint32_t	offsets_size;	/* number of bytes of offsets */
+	binder_size_t	data_size;	/* number of bytes of data */
+	binder_size_t	offsets_size;	/* number of bytes of offsets */
 
 	/* If this transaction is inline, the data immediately
 	 * follows here; otherwise, it ends with a pointer to
@@ -141,32 +151,37 @@ struct binder_transaction_data {
 	union {
 		struct {
 			/* transaction data */
-			userptr32_t	buffer;
+			binder_uintptr_t	buffer;
 			/* offsets from buffer to flat_binder_object structs */
-			userptr32_t 	offsets;
+			binder_uintptr_t	offsets;
 		} ptr;
-		uint8_t	buf[8];
+		__u8	buf[8];
 	} data;
 };
 
 struct binder_ptr_cookie {
-	userptr32_t tr;
-	userptr32_t cookie;
+	binder_uintptr_t ptr;
+	binder_uintptr_t cookie;
 };
 
+struct binder_handle_cookie {
+	__u32 handle;
+	binder_uintptr_t cookie;
+} __attribute__((packed));
+
 struct binder_pri_desc {
-	int priority;
-	int desc;
+	__s32 priority;
+	__u32 desc;
 };
 
 struct binder_pri_ptr_cookie {
-	int priority;
-	userptr32_t ptr;
-	userptr32_t cookie;
+	__s32 priority;
+	binder_uintptr_t ptr;
+	binder_uintptr_t cookie;
 };
 
 enum binder_driver_return_protocol {
-	BR_ERROR = _IOR('r', 0, int),
+	BR_ERROR = _IOR('r', 0, __s32),
 	/*
 	 * int: error code
 	 */
@@ -180,7 +195,7 @@ enum binder_driver_return_protocol {
 	 * binder_transaction_data: the received command.
 	 */
 
-	BR_ACQUIRE_RESULT = _IOR('r', 4, int),
+	BR_ACQUIRE_RESULT = _IOR('r', 4, __s32),
 	/*
 	 * not currently supported
 	 * int: 0 if the last bcATTEMPT_ACQUIRE was not successful.
@@ -237,11 +252,11 @@ enum binder_driver_return_protocol {
 	 * stop threadpool thread
 	 */
 
-	BR_DEAD_BINDER = _IOR('r', 15, userptr32_t),
+	BR_DEAD_BINDER = _IOR('r', 15, binder_uintptr_t),
 	/*
 	 * void *: cookie
 	 */
-	BR_CLEAR_DEATH_NOTIFICATION_DONE = _IOR('r', 16, userptr32_t),
+	BR_CLEAR_DEATH_NOTIFICATION_DONE = _IOR('r', 16, binder_uintptr_t),
 	/*
 	 * void *: cookie
 	 */
@@ -260,22 +275,22 @@ enum binder_driver_command_protocol {
 	 * binder_transaction_data: the sent command.
 	 */
 
-	BC_ACQUIRE_RESULT = _IOW('c', 2, int),
+	BC_ACQUIRE_RESULT = _IOW('c', 2, __s32),
 	/*
 	 * not currently supported
 	 * int:  0 if the last BR_ATTEMPT_ACQUIRE was not successful.
 	 * Else you have acquired a primary reference on the object.
 	 */
 
-	BC_FREE_BUFFER = _IOW('c', 3, int),
+	BC_FREE_BUFFER = _IOW('c', 3, binder_uintptr_t),
 	/*
 	 * void *: ptr to transaction data received on a read
 	 */
 
-	BC_INCREFS = _IOW('c', 4, int),
-	BC_ACQUIRE = _IOW('c', 5, int),
-	BC_RELEASE = _IOW('c', 6, int),
-	BC_DECREFS = _IOW('c', 7, int),
+	BC_INCREFS = _IOW('c', 4, __u32),
+	BC_ACQUIRE = _IOW('c', 5, __u32),
+	BC_RELEASE = _IOW('c', 6, __u32),
+	BC_DECREFS = _IOW('c', 7, __u32),
 	/*
 	 * int:	descriptor
 	 */
@@ -310,19 +325,19 @@ enum binder_driver_command_protocol {
 	 * of looping threads it has available.
 	 */
 
-	BC_REQUEST_DEATH_NOTIFICATION = _IOW('c', 14, struct binder_ptr_cookie),
+	BC_REQUEST_DEATH_NOTIFICATION = _IOW('c', 14, struct binder_handle_cookie),
 	/*
-	 * void *: ptr to binder
+	 * int: handle
 	 * void *: cookie
 	 */
 
-	BC_CLEAR_DEATH_NOTIFICATION = _IOW('c', 15, struct binder_ptr_cookie),
+	BC_CLEAR_DEATH_NOTIFICATION = _IOW('c', 15, struct binder_handle_cookie),
 	/*
-	 * void *: ptr to binder
+	 * int: handle
 	 * void *: cookie
 	 */
 
-	BC_DEAD_BINDER_DONE = _IOW('c', 16, userptr32_t),
+	BC_DEAD_BINDER_DONE = _IOW('c', 16, binder_uintptr_t),
 	/*
 	 * void *: cookie
 	 */

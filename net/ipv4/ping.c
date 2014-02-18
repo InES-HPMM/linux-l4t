@@ -468,8 +468,6 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 	int err;
 
 	if (skb->protocol == htons(ETH_P_IP)) {
-		struct iphdr *iph = (struct iphdr *)skb->data;
-		offset = iph->ihl << 2;
 		family = AF_INET;
 		type = icmp_hdr(skb)->type;
 		code = icmp_hdr(skb)->code;
@@ -511,7 +509,8 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 			break;
 		case ICMP_SOURCE_QUENCH:
 			/* This is not a real error but ping wants to see it.
-			 * Report it with some fake errno. */
+			 * Report it with some fake errno.
+			 */
 			err = EREMOTEIO;
 			break;
 		case ICMP_PARAMETERPROB:
@@ -557,11 +556,11 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 	} else {
 		if (family == AF_INET) {
 			ip_icmp_error(sk, skb, err, 0 /* no remote port */,
-					info, (u8 *)icmph);
+				      info, (u8 *)icmph);
 #if IS_ENABLED(CONFIG_IPV6)
 		} else if (family == AF_INET6) {
 			pingv6_ops.ipv6_icmp_error(sk, skb, err, 0,
-				    info, (u8 *)icmph);
+						   info, (u8 *)icmph);
 #endif
 		}
 	}
@@ -572,18 +571,13 @@ out:
 }
 EXPORT_SYMBOL_GPL(ping_err);
 
-void ping_v4_err(struct sk_buff *skb, u32 info)
-{
-	ping_err(skb, 0, info);
-}
-
 /*
  *	Copy and checksum an ICMP Echo packet from user space into a buffer
  *	starting from the payload.
  */
 
 int ping_getfrag(void *from, char *to,
-			int offset, int fraglen, int odd, struct sk_buff *skb)
+		 int offset, int fraglen, int odd, struct sk_buff *skb)
 {
 	struct pingfakehdr *pfh = (struct pingfakehdr *)from;
 
@@ -853,7 +847,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 
 	if (flags & MSG_ERRQUEUE) {
 		if (family == AF_INET) {
-			return ip_recv_error(sk, msg, len, addr_len);
+			return ip_recv_error(sk, msg, len);
 #if IS_ENABLED(CONFIG_IPV6)
 		} else if (family == AF_INET6) {
 			return pingv6_ops.ipv6_recv_error(sk, msg, len);
@@ -881,16 +875,11 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	/* Copy the address and add cmsg data. */
 	if (family == AF_INET) {
 		sin = (struct sockaddr_in *) msg->msg_name;
-
-	/* Copy the address. */
-		if (msg->msg_name) {
-			struct sockaddr_in *sin = (struct sockaddr_in *)msg->msg_name;
-
+		if (sin) {
 			sin->sin_family = AF_INET;
 			sin->sin_port = 0 /* skb->h.uh->source */;
 			sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
 			memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
-			*addr_len = sizeof(*sin);
 		}
 
 		if (isk->cmsg_flags)
@@ -901,17 +890,18 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		struct ipv6_pinfo *np = inet6_sk(sk);
 		struct ipv6hdr *ip6 = ipv6_hdr(skb);
 		sin6 = (struct sockaddr_in6 *) msg->msg_name;
-		sin6->sin6_family = AF_INET6;
-		sin6->sin6_port = 0;
-		sin6->sin6_addr = ip6->saddr;
 
-		sin6->sin6_flowinfo = 0;
-		if (np->sndflow)
-			sin6->sin6_flowinfo =
-				*(__be32 *)ip6 & IPV6_FLOWINFO_MASK;
-
-		sin6->sin6_scope_id = ipv6_iface_scope_id(&sin6->sin6_addr,
-							  IP6CB(skb)->iif);
+		if (sin6) {
+			sin6->sin6_family = AF_INET6;
+			sin6->sin6_port = 0;
+			sin6->sin6_addr = ip6->saddr;
+			sin6->sin6_flowinfo = 0;
+			if (np->sndflow)
+				sin6->sin6_flowinfo = ip6_flowinfo(ip6);
+			sin6->sin6_scope_id =
+				ipv6_iface_scope_id(&sin6->sin6_addr,
+						    IP6CB(skb)->iif);
+		}
 
 		if (inet6_sk(sk)->rxopt.all)
 			pingv6_ops.ip6_datagram_recv_ctl(sk, msg, skb);

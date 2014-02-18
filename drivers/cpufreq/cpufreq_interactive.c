@@ -741,7 +741,7 @@ static ssize_t show_target_loads(
 		ret += sprintf(buf + ret, "%u%s", tunables->target_loads[i],
 			       i & 0x1 ? ":" : " ");
 
-	ret += sprintf(buf + --ret, "\n");
+	sprintf(buf + ret - 1, "\n");
 	spin_unlock_irqrestore(&tunables->target_loads_lock, flags);
 	return ret;
 }
@@ -781,7 +781,7 @@ static ssize_t show_above_hispeed_delay(
 			       tunables->above_hispeed_delay[i],
 			       i & 0x1 ? ":" : " ");
 
-	ret += sprintf(buf + --ret, "\n");
+	sprintf(buf + ret - 1, "\n");
 	spin_unlock_irqrestore(&tunables->above_hispeed_delay_lock, flags);
 	return ret;
 }
@@ -1171,24 +1171,46 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			return 0;
 		}
 
-		tunables = &global_tunables;
+		tunables = kzalloc(sizeof(*tunables), GFP_KERNEL);
+		if (!tunables) {
+			pr_err("%s: POLICY_INIT: kzalloc failed\n", __func__);
+			return -ENOMEM;
+		}
+
+		tunables->usage_count = 1;
+		tunables->above_hispeed_delay = default_above_hispeed_delay;
+		tunables->nabove_hispeed_delay =
+			ARRAY_SIZE(default_above_hispeed_delay);
+		tunables->go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
+		tunables->target_loads = default_target_loads;
+		tunables->ntarget_loads = ARRAY_SIZE(default_target_loads);
+		tunables->min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
+		tunables->timer_rate = DEFAULT_TIMER_RATE;
+		tunables->boostpulse_duration_val = DEFAULT_MIN_SAMPLE_TIME;
+		tunables->timer_slack_val = DEFAULT_TIMER_SLACK;
+
+		spin_lock_init(&tunables->target_loads_lock);
+		spin_lock_init(&tunables->above_hispeed_delay_lock);
+
+		policy->governor_data = tunables;
+		if (!have_governor_per_policy())
+			common_tunables = tunables;
 
 		rc = sysfs_create_group(get_governor_parent_kobj(policy),
 				get_sysfs_attr());
-		if (rc)
+		if (rc) {
+			kfree(tunables);
+			policy->governor_data = NULL;
+			if (!have_governor_per_policy())
+				common_tunables = NULL;
 			return rc;
-
-		tunables->usage_count = 1;
+		}
 
 		if (!policy->governor->initialized) {
 			idle_notifier_register(&cpufreq_interactive_idle_nb);
 			cpufreq_register_notifier(&cpufreq_notifier_block,
 					CPUFREQ_TRANSITION_NOTIFIER);
 		}
-
-		policy->governor_data = tunables;
-		if (!have_governor_per_policy())
-			common_tunables = tunables;
 
 		break;
 
