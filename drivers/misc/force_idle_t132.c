@@ -35,6 +35,7 @@
 #include <linux/interrupt.h>
 #include <linux/tick.h>
 #include <linux/gpio.h>
+#include <linux/tegra-soc.h>
 #include <mach/pinmux-defines.h>
 #include <mach/pinmux-t12.h>
 
@@ -81,6 +82,9 @@ static int __init init_debug(void)
 {
 	struct dentry *dfs_file;
 	int filevalue;
+
+	if (tegra_revision > TEGRA_REVISION_A01)
+		return 0;
 
 	dfs_dir = debugfs_create_dir("force_idle", NULL);
 	dfs_file = debugfs_create_u64("time_interval_sec", 0644, dfs_dir,
