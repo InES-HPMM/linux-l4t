@@ -27,6 +27,8 @@
 
 #include "dev.h"
 
+status_t nvadsp_mbox_init(struct platform_device *pdev);
+
 static int nvadsp_open(struct inode *inode, struct file *filp)
 {
 	return 0;
@@ -126,7 +128,10 @@ static int nvadsp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, drv_data);
 
 	ret = nvadsp_hwmbox_init(pdev);
+	if (ret)
+		goto err;
 
+	ret = nvadsp_mbox_init(pdev);
  err:
 	return ret;
 }

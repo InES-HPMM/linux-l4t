@@ -1,20 +1,18 @@
 /*
- * include/linux/tegra_adsp.h
- *
  * A Header file for managing ADSP/APE
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
+
 #ifndef __LINUX_TEGRA_NVADSP_H
 #define __LINUX_TEGRA_NVADSP_H
 
@@ -22,6 +20,7 @@
 #include <linux/timer.h>
 #include <linux/device.h>
 #include <linux/wait.h>
+#include <linux/spinlock.h>
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
 
@@ -59,54 +58,48 @@ status_t nvadsp_arb_sema_acquire(nvadsp_arb_sema_t *);
 status_t nvadsp_arb_sema_release(nvadsp_arb_sema_t *);
 
 /*
- * Mailbox messages
+ * Mailbox Queue
  */
-typedef struct {
-	int magic; /* 'mbmg' */
-	struct list_head node;
-	uint16_t src_serviceid;
-	uint16_t src_mbid;
-	uint16_t dst_serviceid;
-	uint16_t dst_mbid;
-	void *data;
-	uint32_t dlen;
-} nvadsp_mbmsg_t;
-
-nvadsp_mbmsg_t *nvadsp_mbox_get_msg(void);
-void nvadsp_mbox_put_msg(nvadsp_mbmsg_t *);
-
-/*
- * Mailbox Message Queue
- */
-typedef struct {
-	int magic; /* 'mbmq' */
-	struct list_head list;
+#define NVADSP_MBOX_QUEUE_SIZE		32
+#define NVADSP_MBOX_QUEUE_SIZE_MASK	(NVADSP_MBOX_QUEUE_SIZE - 1)
+struct nvadsp_mbox_queue {
+	uint32_t array[NVADSP_MBOX_QUEUE_SIZE];
+	uint16_t head;
+	uint16_t tail;
 	uint16_t count;
-	uint16_t depth;
-} nvadsp_mbqueue_t;
+	struct completion comp;
+	spinlock_t lock;
+};
+
+status_t nvadsp_mboxq_enqueue(struct nvadsp_mbox_queue *, uint32_t);
 
 /*
  * Mailbox
  */
-typedef struct {
-	int magic; /* 'mbox' */
-	struct list_head node;
-	uint16_t src_serviceid;
-	uint16_t src_mbid;
-	uint16_t dst_serviceid;
-	uint16_t dst_mbid;
-	nvadsp_mbqueue_t mbqueues[2];
-} nvadsp_mbox_t;
+#define NVADSP_MBOX_NAME_MAX (16 + 1)
 
-#define NVADSP_MBQ_INBOUND	0
-#define NVADSP_MBQ_OUTBOUND	1
+typedef status_t (*nvadsp_mbox_handler_t)(uint32_t, void *);
 
-nvadsp_mbox_t *nvadsp_mbox_init(uint16_t serviceid, uint16_t mbid);
-status_t nvadsp_mbox_connect(nvadsp_mbox_t *, uint16_t dst_serviceid,
-			     uint16_t dst_mbid);
-status_t nvadsp_mbox_send(nvadsp_mbox_t *, nvadsp_mbmsg_t *);
-nvadsp_mbmsg_t *nvadsp_mbox_recv(nvadsp_mbox_t *);
-status_t nvadsp_mbox_destroy(nvadsp_mbox_t *);
+struct nvadsp_mbox {
+	uint16_t id;
+	char name[NVADSP_MBOX_NAME_MAX];
+	struct nvadsp_mbox_queue recv_queue;
+	nvadsp_mbox_handler_t handler;
+	void *hdata;
+};
+
+#define NVADSP_MBOX_SMSG       0x1
+#define NVADSP_MBOX_LMSG       0x2
+
+status_t nvadsp_mbox_open(struct nvadsp_mbox *mbox, uint16_t *mid, char *name,
+			  nvadsp_mbox_handler_t handler, void *hdata);
+status_t nvadsp_mbox_send(struct nvadsp_mbox *mbox, uint32_t data,
+			  uint32_t flags, bool block, unsigned int timeout);
+status_t nvadsp_mbox_recv(struct nvadsp_mbox *mbox, uint32_t *data, bool block,
+			  unsigned int timeout);
+status_t nvadsp_mbox_close(struct nvadsp_mbox *mbox);
+
+status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
 
 /*
  * Circular Message Queue

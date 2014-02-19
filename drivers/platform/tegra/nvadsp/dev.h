@@ -29,5 +29,9 @@ struct nvadsp_drv_data {
 	struct hwmbox_queue hwmbox_send_queue;
 	int hwmbox_send_virq;
 	int hwmbox_recv_virq;
+
+	struct nvadsp_mbox **mboxes;
+	unsigned long *mbox_ids;
+	spinlock_t mbox_lock;
 };
 #endif /* __TEGRA_NVADSP_DEV_H */
