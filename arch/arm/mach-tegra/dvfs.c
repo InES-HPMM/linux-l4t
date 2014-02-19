@@ -73,6 +73,9 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 		rel = &rels[i];
 		list_add_tail(&rel->from_node, &rel->to->relationships_from);
 		list_add_tail(&rel->to_node, &rel->from->relationships_to);
+
+		/* Overriding dependent rail below nominal may not be safe */
+		rel->to->min_override_millivolts = rel->to->nominal_millivolts;
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -1167,6 +1170,20 @@ static bool tegra_dvfs_all_rails_suspended(void)
 	return all_suspended;
 }
 
+static bool is_solved_at_suspend(struct dvfs_rail *to,
+				 struct dvfs_relationship *rel)
+{
+	if (rel->solved_at_suspend)
+		return true;
+
+	if (rel->solved_at_nominal) {
+		int mv = tegra_dvfs_rail_get_suspend_level(to);
+		if (mv == to->nominal_millivolts)
+			return true;
+	}
+	return false;
+}
+
 static bool tegra_dvfs_from_rails_suspended_or_solved(struct dvfs_rail *to)
 {
 	struct dvfs_relationship *rel;
@@ -1174,7 +1191,7 @@ static bool tegra_dvfs_from_rails_suspended_or_solved(struct dvfs_rail *to)
 
 	list_for_each_entry(rel, &to->relationships_from, from_node)
 		if (!rel->from->suspended && !rel->from->disabled &&
-			!rel->solved_at_nominal)
+			!is_solved_at_suspend(to, rel))
 			all_suspended = false;
 
 	return all_suspended;

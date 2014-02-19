@@ -48,6 +48,7 @@ struct dvfs_relationship {
 	struct list_head to_node; /* node in relationship_to list */
 	struct list_head from_node; /* node in relationship_from list */
 	bool solved_at_nominal;
+	bool solved_at_suspend;
 };
 
 struct rail_stats {
