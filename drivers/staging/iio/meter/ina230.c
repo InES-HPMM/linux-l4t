@@ -3,7 +3,12 @@
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
- * Author: Laxman Dewangan <ldewangan@nvidia.com>
+ * Based on hwmon driver:
+ * 		drivers/hwmon/ina230.c
+ * and contributed by:
+ *		Peter Boonstoppel <pboonstoppel@nvidia.com>
+ *		Deepak Nibade <dnibade@nvidia.com>
+ *		Timo Alho <talho@nvidia.com>
  *
  * This program is free software. you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -898,5 +903,8 @@ static struct i2c_driver ina230_driver = {
 module_i2c_driver(ina230_driver);
 
 MODULE_DESCRIPTION("TI INA230 bidirectional current/power Monitor");
+MODULE_AUTHOR("Peter Boonstoppel <pboonstoppel@nvidia.com>");
+MODULE_AUTHOR("Deepak Nibade <dnibade@nvidia.com>");
+MODULE_AUTHOR("Timo Alho <talho@nvidia.com>");
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_LICENSE("GPL v2");

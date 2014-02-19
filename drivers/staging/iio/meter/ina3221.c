@@ -3,7 +3,12 @@
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
- * Author: Laxman Dewangan <ldewangan@nvidia.com>
+ * Based on hwmon driver:
+ * 		drivers/hwmon/ina3221.c
+ * and contributed by:
+ *		Deepak Nibade <dnibade@nvidia.com>
+ *		Timo Alho <talho@nvidia.com>
+ *		Anshul Jain <anshulj@nvidia.com>
  *
  * This program is free software. you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -994,5 +999,8 @@ static struct i2c_driver ina3221_driver = {
 module_i2c_driver(ina3221_driver);
 
 MODULE_DESCRIPTION("TI INA3221 3-Channel Shunt and Bus Voltage Monitor");
+MODULE_AUTHOR("Deepak Nibade <dnibade@nvidia.com>");
+MODULE_AUTHOR("Timo Alho <talho@nvidia.com>");
+MODULE_AUTHOR("Anshul Jain <anshulj@nvidia.com>");
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_LICENSE("GPL v2");
