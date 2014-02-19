@@ -104,5 +104,7 @@ typedef void *nvavp_clientctx_t;
 
 int tegra_nvavp_audio_client_open(nvavp_clientctx_t *clientctx);
 int tegra_nvavp_audio_client_release(nvavp_clientctx_t clientctx);
+int nvavp_enable_audio_clocks(nvavp_clientctx_t client, u32 clk_id);
+int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32 clk_id);
 
 #endif /* __MEDIA_VIDEO_TEGRA_NVAVP_OS_H */

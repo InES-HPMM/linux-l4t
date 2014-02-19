@@ -1721,59 +1721,53 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 }
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-static int nvavp_enable_audio_clocks(struct file *filp, unsigned int cmd,
-					unsigned long arg)
+int nvavp_enable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 {
-	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_clientctx *clientctx = client;
 	struct nvavp_info *nvavp = clientctx->nvavp;
-	struct nvavp_clock_args config;
 
-	if (copy_from_user(&config, (void __user *)arg, sizeof(struct nvavp_clock_args)))
-		return -EFAULT;
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id = %d\n",
+			__func__, clk_id);
 
-	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id=%d\n",
-			__func__, config.id);
-
-	if (config.id == NVAVP_MODULE_ID_VCP)
+	mutex_lock(&nvavp->open_lock);
+	if (clk_id == NVAVP_MODULE_ID_VCP)
 		clk_prepare_enable(nvavp->vcp_clk);
-	else if	(config.id == NVAVP_MODULE_ID_BSEA)
+	else if	(clk_id == NVAVP_MODULE_ID_BSEA)
 		clk_prepare_enable(nvavp->bsea_clk);
-
+	mutex_unlock(&nvavp->open_lock);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvavp_enable_audio_clocks);
 
-static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
-					unsigned long arg)
+int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 {
-	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_clientctx *clientctx = client;
 	struct nvavp_info *nvavp = clientctx->nvavp;
-	struct nvavp_clock_args config;
 
-	if (copy_from_user(&config, (void __user *)arg, sizeof(struct nvavp_clock_args)))
-		return -EFAULT;
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id = %d\n",
+			__func__, clk_id);
 
-	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id=%d\n",
-			__func__, config.id);
-
-	if (config.id == NVAVP_MODULE_ID_VCP)
+	mutex_lock(&nvavp->open_lock);
+	if (clk_id == NVAVP_MODULE_ID_VCP)
 		clk_disable_unprepare(nvavp->vcp_clk);
-	else if	(config.id == NVAVP_MODULE_ID_BSEA)
+	else if	(clk_id == NVAVP_MODULE_ID_BSEA)
 		clk_disable_unprepare(nvavp->bsea_clk);
-
+	mutex_unlock(&nvavp->open_lock);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvavp_disable_audio_clocks);
 #else
-static int nvavp_enable_audio_clocks(struct file *filp, unsigned int cmd,
-					unsigned long arg)
+int nvavp_enable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvavp_enable_audio_clocks);
 
-static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
-					unsigned long arg)
+int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32_clk_id)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(nvavp_disable_audio_clocks);
 #endif
 
 static int nvavp_set_min_online_cpus_ioctl(struct file *filp, unsigned int cmd,
@@ -2015,6 +2009,8 @@ nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
 static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 			    unsigned long arg)
 {
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_clock_args config;
 	int ret = 0;
 	u8 buf[NVAVP_IOCTL_CHANNEL_MAX_ARG_SIZE];
 
@@ -2045,10 +2041,20 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		ret = nvavp_force_clock_stay_on_ioctl(filp, cmd, arg);
 		break;
 	case NVAVP_IOCTL_ENABLE_AUDIO_CLOCKS:
-		ret = nvavp_enable_audio_clocks(filp, cmd, arg);
+		if (copy_from_user(&config, (void __user *)arg,
+			sizeof(struct nvavp_clock_args))) {
+			ret = -EFAULT;
+			break;
+		}
+		ret = nvavp_enable_audio_clocks(clientctx, config.id);
 		break;
 	case NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS:
-		ret = nvavp_disable_audio_clocks(filp, cmd, arg);
+		if (copy_from_user(&config, (void __user *)arg,
+			sizeof(struct nvavp_clock_args))) {
+			ret = -EFAULT;
+			break;
+		}
+		ret = nvavp_disable_audio_clocks(clientctx, config.id);
 		break;
 	case NVAVP_IOCTL_SET_MIN_ONLINE_CPUS:
 		ret = nvavp_set_min_online_cpus_ioctl(filp, cmd, arg);
