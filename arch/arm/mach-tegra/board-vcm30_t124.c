@@ -118,6 +118,8 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "vi_sensor",		"pll_p",	68000000,	false},
 	{ "vi_sensor2",		"pll_p",	68000000,	false},
 
+	{ "automotive.host1x",	NULL,		264000000,	true},
+
 	{ NULL,			NULL,		0,		0},
 };
 
