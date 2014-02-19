@@ -259,7 +259,7 @@ void tlk_ss_op(uint32_t size)
 static int tlk_fs_register_handlers(void)
 {
 	struct te_file_req_shmem *shmem_ptr;
-	uint32_t smc_args[MAX_EXT_SMC_ARGS];
+	uintptr_t smc_args[MAX_EXT_SMC_ARGS];
 	dma_addr_t shmem_dma;
 
 	shmem_ptr = dma_alloc_coherent(NULL, sizeof(struct te_file_req_shmem),
@@ -276,11 +276,11 @@ static int tlk_fs_register_handlers(void)
 	init_completion(&req_complete);
 
 	smc_args[0] = TE_SMC_REGISTER_FS_HANDLERS;
-	smc_args[1] = (uint32_t)tlk_fread;
-	smc_args[2] = (uint32_t)tlk_fwrite;
-	smc_args[3] = (uint32_t)tlk_fdelete;
-	smc_args[4] = (uint32_t)shmem_ptr->file_name;
-	smc_args[5] = (uint32_t)shmem_ptr->file_data;
+	smc_args[1] = (uintptr_t)tlk_fread;
+	smc_args[2] = (uintptr_t)tlk_fwrite;
+	smc_args[3] = (uintptr_t)tlk_fdelete;
+	smc_args[4] = (uintptr_t)shmem_ptr->file_name;
+	smc_args[5] = (uintptr_t)shmem_ptr->file_data;
 
 	tlk_extended_smc(smc_args);
 
@@ -303,7 +303,7 @@ static int __init tlk_ss_init(void)
 	}
 
 	tlk_generic_smc(TE_SMC_SS_REGISTER_HANDLER,
-			(uint32_t)tlk_ss_op, (uint32_t)ss_op_shmem);
+			(uintptr_t)tlk_ss_op, (uintptr_t)ss_op_shmem);
 
 	return 0;
 }

@@ -63,9 +63,12 @@
 #define MAX_EXT_SMC_ARGS	12
 
 extern struct mutex smc_lock;
+extern struct tlk_device tlk_dev;
 
-uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2);
-uint32_t tlk_extended_smc(uint32_t *args);
+uint32_t _tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
+uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
+uint32_t _tlk_extended_smc(uintptr_t *args);
+uint32_t tlk_extended_smc(uintptr_t *args);
 void tlk_irq_handler(void);
 
 struct tlk_device {

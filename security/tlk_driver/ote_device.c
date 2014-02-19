@@ -68,7 +68,7 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 					(dev->req_param_buf + PAGE_SIZE);
 
 		tlk_generic_smc(TE_SMC_REGISTER_REQ_BUF,
-				(uint32_t)dev->req_addr, (2 * PAGE_SIZE));
+				(uintptr_t)dev->req_addr, (2 * PAGE_SIZE));
 	} else {
 		dev->req_addr = dma_alloc_coherent(NULL, PAGE_SIZE,
 					&dev->req_addr_phys, GFP_KERNEL);
@@ -724,8 +724,9 @@ static long tlk_device_ioctl(struct file *file, unsigned int ioctl_num,
 		break;
 
 	default:
-		pr_err("%s: Invalid IOCTL (0x%x) id 0x%x max 0x%x\n", __func__,
-			ioctl_num, _IOC_NR(ioctl_num), TE_IOCTL_MAX_NR);
+		pr_err("%s: Invalid IOCTL (0x%x) id 0x%x max 0x%lx\n",
+			__func__, ioctl_num, _IOC_NR(ioctl_num),
+			(unsigned long)TE_IOCTL_MAX_NR);
 		err = -EINVAL;
 		break;
 	}

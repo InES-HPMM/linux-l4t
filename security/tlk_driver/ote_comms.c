@@ -237,29 +237,7 @@ static inline void switch_cpumask_to_cpu0(void) {};
 static inline void restore_cpumask(void) {};
 #endif
 
-static uint32_t _tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
-{
-	register uint32_t r0 asm("r0") = arg0;
-	register uint32_t r1 asm("r1") = arg1;
-	register uint32_t r2 asm("r2") = arg2;
-
-	asm volatile(
-		__asmeq("%0", "r0")
-		__asmeq("%1", "r0")
-		__asmeq("%2", "r1")
-		__asmeq("%3", "r2")
-#ifdef REQUIRES_SEC
-		".arch_extension sec				\n"
-#endif
-		"smc	#0		@ switch to secure world\n"
-		: "=r" (r0)
-		: "r" (r0), "r" (r1), "r" (r2)
-	);
-
-	return r0;
-}
-
-uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 {
 	uint32_t retval;
 
@@ -274,29 +252,7 @@ uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 	return retval;
 }
 
-static uint32_t _tlk_extended_smc(uint32_t *regs)
-{
-	register uint32_t r0 asm("r0") = (uint32_t)regs;
-
-	/* allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers */
-	asm volatile(
-		__asmeq("%0", "r0")
-		"stmfd	sp!, {r4-r12}	@ save reg state\n"
-		"mov	r12, r0		@ reg ptr to r12\n"
-		"ldmia	r12, {r0-r11}	@ load arg regs\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec\n"
-#endif
-		"smc	#0		@ switch to secure world\n"
-		"ldmfd	sp!, {r4-r12}	@ restore saved regs\n"
-		: "=r" (r0)
-		: "r" (r0)
-	);
-
-	return r0;
-}
-
-uint32_t tlk_extended_smc(uint32_t *regs)
+uint32_t tlk_extended_smc(uintptr_t *regs)
 {
 	uint32_t retval;
 
@@ -373,7 +329,7 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR, (uint32_t)vpr_base,
+	retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR, (uintptr_t)vpr_base,
 			vpr_size);
 
 	mutex_unlock(&smc_lock);
@@ -535,7 +491,7 @@ void te_launch_operation_compat(struct te_launchop_compat *cmd,
 static int __init tlk_register_irq_handler(void)
 {
 	tlk_generic_smc(TE_SMC_REGISTER_IRQ_HANDLER,
-		(unsigned int)tlk_irq_handler, 0);
+		(uintptr_t)tlk_irq_handler, 0);
 	return 0;
 }
 

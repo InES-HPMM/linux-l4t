@@ -172,14 +172,14 @@ void ote_print_logs(void) {}
  */
 static int __init ote_logger_init(void)
 {
-	uint32_t smc_args[MAX_EXT_SMC_ARGS];
+	uintptr_t smc_args[MAX_EXT_SMC_ARGS];
 
 #if defined(CONFIG_OTE_ENABLE_LOGGER)
 	if (circ_buf_init(&cb) != 0)
 		return -1;
 
 	smc_args[0] = TE_SMC_INIT_LOGGER;
-	smc_args[1] = (uint32_t)cb;
+	smc_args[1] = (uintptr_t)cb;
 	tlk_generic_smc(smc_args[0], smc_args[1], 0);
 
 	ote_logging_enabled = 1;

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+# Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,15 +16,15 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-plus_sec := $(call as-instr,.arch_extension sec,+sec)
-AFLAGS_ote_irq.o :=-Wa,-march=armv7-a$(plus_sec)
-CFLAGS_ote_comms.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
-CFLAGS_ote_fs.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
-
 tlk_driver-objs += ote_device.o
 tlk_driver-objs += ote_comms.o
 tlk_driver-objs += ote_fs.o
-tlk_driver-objs += ote_irq.o
+tlk_driver-objs += ote_asm.o
 tlk_driver-objs += ote_log.o
+
+ifeq ($(CONFIG_ARM),y)
+plus_sec := $(call as-instr,.arch_extension sec,+sec)
+AFLAGS_ote_asm.o :=-Wa,-march=armv7-a$(plus_sec)
+endif
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL) += tlk_driver.o

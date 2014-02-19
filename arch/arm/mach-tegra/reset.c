@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/reset.c
  *
- * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -51,8 +51,10 @@ static void tegra_cpu_reset_handler_enable(void)
 		tegra_cpu_reset_handler_size);
 
 #if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
+#ifndef CONFIG_ARM64
 	tegra_generic_smc(0x82000001,
 		TEGRA_RESET_HANDLER_BASE + tegra_cpu_reset_handler_offset, 0);
+#endif
 #else
 	/* NOTE: This must be the one and only write to the EVP CPU reset
 		 vector in the entire system. */
