@@ -182,6 +182,7 @@ struct nvavp_clientctx {
 	spinlock_t iova_lock;
 	struct rb_root iova_handles;
 };
+static struct nvavp_info *nvavp_info_ctx;
 
 static int nvavp_runtime_get(struct nvavp_info *nvavp)
 {
@@ -1799,22 +1800,17 @@ static int nvavp_set_min_online_cpus_ioctl(struct file *filp, unsigned int cmd,
 	return 0;
 }
 
-static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_id)
+static int tegra_nvavp_open(struct nvavp_info *nvavp,
+			struct nvavp_clientctx **client, int channel_id)
 {
-	struct miscdevice *miscdev = filp->private_data;
-	struct nvavp_info *nvavp = dev_get_drvdata(miscdev->parent);
-	int ret = 0;
 	struct nvavp_clientctx *clientctx;
+	int ret = 0;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
-
-	nonseekable_open(inode, filp);
 
 	clientctx = kzalloc(sizeof(*clientctx), GFP_KERNEL);
 	if (!clientctx)
 		return -ENOMEM;
-
-	mutex_lock(&nvavp->open_lock);
 
 	pr_debug("tegra_nvavp_open channel_id (%d)\n", channel_id);
 
@@ -1832,39 +1828,72 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_
 
 	clientctx->nvavp = nvavp;
 	clientctx->iova_handles = RB_ROOT;
-
-	filp->private_data = clientctx;
-
-	mutex_unlock(&nvavp->open_lock);
+	*client = clientctx;
 
 	return ret;
 }
 
 static int tegra_nvavp_video_open(struct inode *inode, struct file *filp)
 {
+	struct miscdevice *miscdev = filp->private_data;
+	struct nvavp_info *nvavp = dev_get_drvdata(miscdev->parent);
+	struct nvavp_clientctx *clientctx;
+	int ret = 0;
+
 	pr_debug("tegra_nvavp_video_open NVAVP_VIDEO_CHANNEL\n");
-	return tegra_nvavp_open(inode, filp, NVAVP_VIDEO_CHANNEL);
+
+	nonseekable_open(inode, filp);
+
+	mutex_lock(&nvavp->open_lock);
+	ret = tegra_nvavp_open(nvavp, &clientctx, NVAVP_VIDEO_CHANNEL);
+	filp->private_data = clientctx;
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
 }
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 static int tegra_nvavp_audio_open(struct inode *inode, struct file *filp)
 {
+	struct miscdevice *miscdev = filp->private_data;
+	struct nvavp_info *nvavp = dev_get_drvdata(miscdev->parent);
+	struct nvavp_clientctx *clientctx;
+	int ret = 0;
+
 	pr_debug("tegra_nvavp_audio_open NVAVP_AUDIO_CHANNEL\n");
-	return tegra_nvavp_open(inode, filp, NVAVP_AUDIO_CHANNEL);
+
+	nonseekable_open(inode, filp);
+
+	mutex_lock(&nvavp->open_lock);
+	ret = tegra_nvavp_open(nvavp, &clientctx, NVAVP_AUDIO_CHANNEL);
+	filp->private_data = clientctx;
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
 }
+
+int tegra_nvavp_audio_client_open(nvavp_clientctx_t *clientctx)
+{
+	struct nvavp_info *nvavp = nvavp_info_ctx;
+	int ret = 0;
+
+	mutex_lock(&nvavp->open_lock);
+	ret = tegra_nvavp_open(nvavp, (struct nvavp_clientctx **)clientctx,
+				NVAVP_AUDIO_CHANNEL);
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tegra_nvavp_audio_client_open);
 #endif
 
-static int tegra_nvavp_release(struct inode *inode, struct file *filp, int channel_id)
+static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
+			       int channel_id)
 {
-	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int ret = 0;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
-
-	filp->private_data = NULL;
-
-	mutex_lock(&nvavp->open_lock);
 
 	if (!nvavp->refcount) {
 		dev_err(&nvavp->nvhost_dev->dev,
@@ -1888,7 +1917,6 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp, int chann
 		nvavp->audio_refcnt--;
 
 out:
-	mutex_unlock(&nvavp->open_lock);
 	nvavp_remove_iova_mapping(clientctx);
 	kfree(clientctx);
 	return ret;
@@ -1896,14 +1924,47 @@ out:
 
 static int tegra_nvavp_video_release(struct inode *inode, struct file *filp)
 {
-	return tegra_nvavp_release(inode, filp, NVAVP_VIDEO_CHANNEL);
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	int ret = 0;
+
+	mutex_lock(&nvavp->open_lock);
+	filp->private_data = NULL;
+	ret = tegra_nvavp_release(clientctx, NVAVP_VIDEO_CHANNEL);
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
 }
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-static int tegra_nvavp_audio_release(struct inode *inode, struct file *filp)
+static int tegra_nvavp_audio_release(struct inode *inode,
+					  struct file *filp)
 {
-	return tegra_nvavp_release(inode, filp, NVAVP_AUDIO_CHANNEL);
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	int ret = 0;
+
+	mutex_lock(&nvavp->open_lock);
+	filp->private_data = NULL;
+	ret = tegra_nvavp_release(clientctx, NVAVP_AUDIO_CHANNEL);
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
 }
+
+int tegra_nvavp_audio_client_release(nvavp_clientctx_t client)
+{
+	struct nvavp_clientctx *clientctx = client;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	int ret = 0;
+
+	mutex_lock(&nvavp->open_lock);
+	ret = tegra_nvavp_release(clientctx, NVAVP_AUDIO_CHANNEL);
+	mutex_unlock(&nvavp->open_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tegra_nvavp_audio_client_release);
 #endif
 
 
@@ -2326,6 +2387,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 			"%s: device_create_file failed\n", __func__);
 		goto err_req_irq_pend;
 	}
+	nvavp_info_ctx = nvavp;
 
 	/* Add PM QoS request but leave it as default value */
 	pm_qos_add_request(&nvavp->min_cpu_freq_req,

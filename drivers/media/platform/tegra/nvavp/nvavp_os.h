@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_os.h
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -100,5 +100,9 @@ struct nvavp_ucode_info {
 	dma_addr_t		phys;
 	void			*ucode_bin;
 };
+typedef void *nvavp_clientctx_t;
+
+int tegra_nvavp_audio_client_open(nvavp_clientctx_t *clientctx);
+int tegra_nvavp_audio_client_release(nvavp_clientctx_t clientctx);
 
 #endif /* __MEDIA_VIDEO_TEGRA_NVAVP_OS_H */
