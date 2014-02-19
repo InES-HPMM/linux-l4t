@@ -436,9 +436,7 @@ int __init ardbeg_sdhci_init(void)
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 	tegra_sdhci_platform_data0.max_clk_limit = 136000000;
 
-	if ((board_info.board_id == BOARD_E1781) ||
-		(board_info.board_id == BOARD_PM374) ||
-		(board_info.board_id == BOARD_PM359))
+	if (board_info.board_id == BOARD_E1781)
 		tegra_sdhci_platform_data3.uhs_mask = MMC_MASK_HS200;
 
 	if (board_info.board_id == BOARD_PM374 ||
@@ -462,9 +460,11 @@ int __init ardbeg_sdhci_init(void)
 	if (board_info.board_id == BOARD_PM374 ||
 		board_info.board_id == BOARD_PM359) {
 			tegra_sdhci_platform_data2.uhs_mask =
-				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
+				MMC_UHS_MASK_SDR50;
 			tegra_sdhci_platform_data0.uhs_mask =
-				MMC_UHS_MASK_SDR104 | MMC_UHS_MASK_SDR50;
+				MMC_UHS_MASK_SDR50;
+			tegra_sdhci_platform_data3.max_clk_limit = 200000000;
+			tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 	}
 
 	platform_device_register(&tegra_sdhci_device3);
