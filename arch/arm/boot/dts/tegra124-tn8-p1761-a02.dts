@@ -25,5 +25,12 @@
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
+
+	i2c@7000c000 {
+		max44006@44 {
+			maxim,gain = <1>;
+			maxim,als-resolution = "0.75";
+		};
+	};
 };
 
