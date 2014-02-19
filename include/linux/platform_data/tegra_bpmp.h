@@ -53,10 +53,12 @@ struct tegra_bpmp_platform_data {
 #ifdef CONFIG_TEGRA_BPMP
 int tegra_bpmp_do_idle(int cpu, int tolerance);
 int tegra_bpmp_tolerate_idle(int cpu, int tolerance);
+int tegra_bpmp_switch_cluster(int cpu);
 #else
 static inline int tegra_bpmp_do_idle(int cpu, int tolerance) { return -ENODEV; }
 static inline int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
 { return -ENODEV; }
+static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 #endif
 
 #endif

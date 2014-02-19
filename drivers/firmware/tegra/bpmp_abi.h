@@ -54,5 +54,6 @@
 #define MRQ_LEGACY_LP0		1
 #define MRQ_DO_IDLE		2
 #define MRQ_TOLERATE_IDLE	3
+#define MRQ_SWITCH_CLUSTER	6
 
 #endif

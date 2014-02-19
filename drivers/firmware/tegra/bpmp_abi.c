@@ -84,3 +84,23 @@ int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
 
 	return r;
 }
+
+/*
+ * Cluster switch coordinator.
+ * Returns the online cpu mask in current cluster.
+ * Should be called with interrupts disabled.
+ *
+ * @cpu: id of the cluster switch initiator
+ */
+int tegra_bpmp_switch_cluster(int cpu)
+{
+	int on_cpus;
+
+	if (bpmp_rpc(MRQ_SWITCH_CLUSTER, &cpu, sizeof(cpu),
+			&on_cpus, sizeof(on_cpus))) {
+		WARN_ON(1);
+		return -EFAULT;
+	}
+
+	return on_cpus;
+}
