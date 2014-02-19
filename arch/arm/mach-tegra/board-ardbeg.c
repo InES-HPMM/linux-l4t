@@ -58,7 +58,6 @@
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
-#include <linux/pci-tegra.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra_fiq_debugger.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
@@ -435,34 +434,6 @@ static struct platform_device tegra_rtc_device = {
 	.resource = tegra_rtc_resources,
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
-
-static struct tegra_pci_platform_data laguna_pcie_platform_data = {
-	.port_status[0]	= 1,
-	.port_status[1]	= 0,
-	/* Laguna platforms does not support CLKREQ# feature */
-	.has_clkreq	= 0,
-	.gpio_hot_plug	= TEGRA_GPIO_PO1,
-	.gpio_wake	= TEGRA_GPIO_PDD3,
-	.gpio_x1_slot	= -1,
-};
-
-static void laguna_pcie_init(void)
-{
-	struct board_info board_info;
-	int lane_owner = tegra_get_lane_owner_info() >> 1;
-
-	tegra_get_board_info(&board_info);
-	/* root port 1(x1 slot) is supported only on of ERS-S board */
-	if (board_info.board_id == BOARD_PM359) {
-		laguna_pcie_platform_data.port_status[1] = 1;
-		/* enable x1 slot for PM359 if all lanes config'd for PCIe */
-		if (lane_owner == PCIE_LANES_X4_X1)
-			laguna_pcie_platform_data.gpio_x1_slot =
-					PMU_TCA6416_GPIO(8);
-	}
-	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
-	platform_device_register(&tegra_pci_device);
-}
 
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -1290,16 +1261,10 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_pmon_init();
 		break;
 	}
-	if (board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363)
-		laguna_pcie_init();
-	else {
-		/* put PEX pads into DPD mode to save additional power */
-		tegra_io_dpd_enable(&pexbias_io);
-		tegra_io_dpd_enable(&pexclk1_io);
-		tegra_io_dpd_enable(&pexclk2_io);
-	}
+	/* put PEX pads into DPD mode to save additional power */
+	tegra_io_dpd_enable(&pexbias_io);
+	tegra_io_dpd_enable(&pexclk1_io);
+	tegra_io_dpd_enable(&pexclk2_io);
 
 	if (board_info.board_id == BOARD_PM374)
 		norrin_kbc_init();
