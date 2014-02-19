@@ -381,6 +381,7 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 {
 	struct bq2419x_chip *bq2419x = rdev_get_drvdata(rdev);
 	int in_current_limit;
+	int old_current_limit;
 	int ret = 0;
 	int val;
 
@@ -401,6 +402,7 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	if (max_uA == 0 && val != 0)
 		return ret;
 
+	old_current_limit = bq2419x->in_current_limit;
 	bq2419x->last_charging_current = max_uA;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		battery_charging_restart_cancel(bq2419x->bc_dev);
@@ -421,9 +423,13 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		goto error;
 
 	battery_charging_status_update(bq2419x->bc_dev, bq2419x->chg_status);
-	if (bq2419x->disable_suspend_during_charging &&
-		bq2419x->cable_connected && in_current_limit > 500)
+	if (bq2419x->disable_suspend_during_charging) {
+		if (bq2419x->cable_connected && in_current_limit > 500)
 			battery_charger_acquire_wake_lock(bq2419x->bc_dev);
+		else if (!bq2419x->cable_connected && old_current_limit > 500)
+			battery_charger_release_wake_lock(bq2419x->bc_dev);
+	}
+
 	return 0;
 error:
 	dev_err(bq2419x->dev, "Charger enable failed, err = %d\n", ret);
