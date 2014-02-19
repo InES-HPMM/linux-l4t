@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2013 - 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -107,6 +107,9 @@ struct max44005_chip {
 
 	bool			is_standby;
 	int			shutdown_complete;
+
+	u32			gain;
+	const char		*als_resolution;
 };
 
 static int max44005_read(struct max44005_chip *chip, int *rval, u8 reg_addr,
@@ -340,7 +343,7 @@ static ssize_t amb_clear_enable(struct device *dev,
 		if (!max44005_power(chip, true))
 			goto fail;
 
-		if (max44005_write(chip, AMB_PGA_256x, AMB_CONF_REG_ADDR))
+		if (max44005_write(chip, chip->gain, AMB_CONF_REG_ADDR))
 			goto fail;
 
 		if (!PROXIMITY_ENABLED &&
@@ -434,6 +437,18 @@ fail:
 }
 /* amb LED end */
 
+
+/* amb LED begin */
+static ssize_t show_resolution(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct max44005_chip *chip = iio_priv(indio_dev);
+	if (chip->als_resolution)
+		return sprintf(buf, chip->als_resolution);
+	return sprintf(buf, "1.75");
+}
+
 static IIO_DEVICE_ATTR(name, S_IRUGO, show_name, NULL, 0);
 static IIO_DEVICE_ATTR(amb_clear, S_IRUGO | S_IWUSR, show_amb_clear_value,
 			amb_clear_enable, 0);
@@ -447,6 +462,8 @@ static IIO_DEVICE_ATTR(ir, S_IRUGO, show_ir_value,
 			NULL, 0);
 static IIO_DEVICE_ATTR(proximity, S_IRUGO | S_IWUSR, show_prox_value,
 			prox_enable, 0);
+static IIO_DEVICE_ATTR(als_resolution, S_IRUGO | S_IWUSR, show_resolution,
+			NULL , 0);
 
 /* sysfs attr */
 static struct attribute *max44005_iio_attr[] = {
@@ -457,6 +474,7 @@ static struct attribute *max44005_iio_attr[] = {
 	&iio_dev_attr_green.dev_attr.attr,
 	&iio_dev_attr_blue.dev_attr.attr,
 	&iio_dev_attr_ir.dev_attr.attr,
+	&iio_dev_attr_als_resolution.dev_attr.attr,
 	NULL
 };
 
@@ -497,6 +515,15 @@ static int max44005_probe(struct i2c_client *client,
 	struct iio_dev *indio_dev;
 	struct max44005_chip *chip;
 	int err;
+	const char *prop_value = NULL;
+	u32 gain = 0;
+
+	if (client->dev.of_node) {
+		of_property_read_u32(client->dev.of_node,
+					"maxim,gain", &gain);
+		err = of_property_read_string(client->dev.of_node,
+					"maxim,als-resolution", &prop_value);
+	}
 
 	indio_dev = iio_device_alloc(sizeof(struct max44005_chip));
 	if (indio_dev == NULL) {
@@ -546,6 +573,18 @@ static int max44005_probe(struct i2c_client *client,
 	}
 
 finish:
+	switch (gain) {
+	case AMB_PGA_1x:
+	case AMB_PGA_4x:
+	case AMB_PGA_16x:
+	case AMB_PGA_256x:
+		break;
+	default:
+		gain = AMB_PGA_256x;
+	};
+	chip->gain = gain;
+	chip->als_resolution = prop_value;
+
 	mutex_lock(&chip->lock);
 	max44005_power(chip, false);
 	mutex_unlock(&chip->lock);
