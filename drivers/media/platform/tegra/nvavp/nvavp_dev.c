@@ -142,6 +142,7 @@ struct nvavp_info {
 	int				audio_initialized;
 	int				audio_refcnt;
 	struct work_struct		app_notify_work;
+	void				(*audio_notify)(void);
 #endif
 	struct work_struct		clock_disable_work;
 
@@ -594,8 +595,10 @@ static void app_notify_handler(struct work_struct *work)
 
 	nvavp = container_of(work, struct nvavp_info,
 			    app_notify_work);
-
-	kobject_uevent(&nvavp->nvhost_dev->dev.kobj, KOBJ_CHANGE);
+	if (nvavp->audio_notify)
+		nvavp->audio_notify();
+	else
+		kobject_uevent(&nvavp->nvhost_dev->dev.kobj, KOBJ_CHANGE);
 }
 #endif
 
@@ -1670,6 +1673,31 @@ static int nvavp_pushbuffer_submit_compat_ioctl(struct file *filp,
 
 	return ret;
 }
+#endif
+
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+int nvavp_pushbuffer_submit_audio(nvavp_clientctx_t client, int cmd_buf_phys,
+				  int cmd_buf_words)
+{
+	struct nvavp_clientctx *clientctx = client;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+
+	return nvavp_pushbuffer_update(nvavp,
+				      cmd_buf_phys,
+				      cmd_buf_words, NULL,
+				      NVAVP_UCODE_EXT,
+				      NVAVP_AUDIO_CHANNEL);
+}
+EXPORT_SYMBOL_GPL(nvavp_pushbuffer_submit_audio);
+
+void nvavp_register_audio_cb(nvavp_clientctx_t client, void (*cb)(void))
+{
+	struct nvavp_clientctx *clientctx = client;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+
+	nvavp->audio_notify = cb;
+}
+EXPORT_SYMBOL_GPL(nvavp_register_audio_cb);
 #endif
 
 static int nvavp_wake_avp_ioctl(struct file *filp, unsigned int cmd,
