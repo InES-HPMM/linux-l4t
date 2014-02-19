@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_emc.h
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,13 +15,12 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
  */
 
 #ifndef _MACH_TEGRA_TEGRA14_EMC_H
 #define _MACH_TEGRA_TEGRA14_EMC_H
 
-#include "tegra_emc.h"
+#include <mach/tegra_emc.h>
 
 int tegra14_emc_init(void);
 extern u32 notrace tegra_read_usec_raw(void);

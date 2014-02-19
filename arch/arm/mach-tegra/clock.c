@@ -39,12 +39,12 @@
 #include <linux/tegra-timer.h>
 
 #include <mach/edp.h>
+#include <mach/tegra_emc.h>
 
 #include "board.h"
 #include "clock.h"
 #include "dvfs.h"
 #include "iomap.h"
-#include "tegra_emc.h"
 #include "cpu-tegra.h"
 
 /* Global data of Tegra CPU CAR ops */

@@ -1,7 +1,5 @@
 /*
- * arch/arm/mach-tegra/therm-dram.c
- *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,7 +24,7 @@
 #include <linux/timer.h>
 #include <linux/atomic.h>
 
-#include "tegra_emc.h"
+#include <mach/tegra_emc.h>
 
 #define TEGRA_DRAM_THERM_MAX_STATE     1
 

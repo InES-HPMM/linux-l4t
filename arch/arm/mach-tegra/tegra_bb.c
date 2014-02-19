@@ -1,8 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_bb.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
- *
+ * Copyright (C) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,16 +32,16 @@
 #include <linux/clk/tegra.h>
 #include <linux/suspend.h>
 #include <linux/pm_runtime.h>
+#include <linux/platform_data/nvshm.h>
 
 #include <mach/tegra_bb.h>
 #include <mach/tegra_bbc_proxy.h>
 #include <mach/pm_domains.h>
-#include <linux/platform_data/nvshm.h>
+#include <mach/tegra_emc.h>
 
 #include "clock.h"
 #include "iomap.h"
 #include "sleep.h"
-#include "tegra_emc.h"
 #include "pm.h"
 
 /* BB mailbox offset */

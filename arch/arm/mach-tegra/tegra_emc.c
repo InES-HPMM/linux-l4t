@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_emc.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
  */
 
 #include <linux/kernel.h>
@@ -26,7 +25,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
-#include "tegra_emc.h"
+#include <mach/tegra_emc.h>
 
 u8 tegra_emc_iso_share = 100;
 static unsigned long emc_iso_allocation;

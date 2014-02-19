@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_emc.h
  *
- * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,12 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
  */
 
 #ifndef _MACH_TEGRA_TEGRA3_EMC_H
 #define _MACH_TEGRA_TEGRA3_EMC_H
 
-#include "tegra_emc.h"
+#include <mach/tegra_emc.h>
 
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
