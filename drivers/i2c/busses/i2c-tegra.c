@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2013 NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2010-2014 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -669,7 +669,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	if (i2c_dev->is_dvc)
 		tegra_dvc_init(i2c_dev);
 
-	val = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN |
+	val = I2C_CNFG_NEW_MASTER_FSM |
 		(0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
 	i2c_writel(i2c_dev, val, I2C_CNFG);
 	i2c_writel(i2c_dev, 0, I2C_INT_MASK);
@@ -950,6 +950,8 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	int ret;
 	unsigned long flags = 0;
 	unsigned long timeout = jiffies + HZ;
+	u32 cnfg;
+	u32 val;
 
 	if (msg->len == 0)
 		return -EINVAL;
@@ -965,6 +967,28 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
 		spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
+
+	cnfg = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN
+		| (0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
+	i2c_writel(i2c_dev, cnfg, I2C_CNFG);
+
+	if (i2c_dev->chipdata->has_config_load_reg) {
+		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
+					I2C_CONFIG_LOAD);
+		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+			if (time_after(jiffies, timeout)) {
+				dev_warn(i2c_dev->dev,
+					"timeout config_load");
+				return -ETIMEDOUT;
+			}
+			udelay(2);
+		}
+	}
+	i2c_writel(i2c_dev, 0, I2C_INT_MASK);
+
+	val = 7 << I2C_FIFO_CONTROL_TX_TRIG_SHIFT |
+		0 << I2C_FIFO_CONTROL_RX_TRIG_SHIFT;
+	i2c_writel(i2c_dev, val, I2C_FIFO_CONTROL);
 
 	i2c_dev->msg_add = msg->addr;
 
@@ -1077,6 +1101,26 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 
 	if (i2c_dev->is_dvc)
 		dvc_i2c_mask_irq(i2c_dev, DVC_CTRL_REG3_I2C_DONE_INTR_EN);
+
+	cnfg = i2c_readl(i2c_dev, I2C_CNFG);
+	if (cnfg & I2C_CNFG_PACKET_MODE_EN)
+		i2c_writel(i2c_dev, cnfg & (~I2C_CNFG_PACKET_MODE_EN),
+								I2C_CNFG);
+	else
+		dev_err(i2c_dev->dev, "i2c_cnfg PACKET_MODE_EN not set\n");
+
+	if (i2c_dev->chipdata->has_config_load_reg) {
+		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
+					I2C_CONFIG_LOAD);
+		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+			if (time_after(jiffies, timeout)) {
+				dev_warn(i2c_dev->dev,
+					"timeout config_load");
+				return -ETIMEDOUT;
+			}
+			udelay(2);
+		}
+	}
 
 	if (ret == 0) {
 		dev_err(i2c_dev->dev,
