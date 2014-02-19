@@ -1,0 +1,270 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <linux/atomic.h>
+#include <linux/interrupt.h>
+#include <linux/irqdomain.h>
+#include <linux/platform_device.h>
+#include <linux/tegra_nvadsp.h>
+#include <linux/irqchip/tegra-agic.h>
+
+#include "dev.h"
+
+/*
+ * Mailbox 0 is for receiving messages
+ * from ADSP i.e. CPU <-- ADSP.
+ */
+#define RECV_HWMBOX	HWMBOX0_REG
+#define INT_RECV_HWMBOX	INT_AMISC_MBOX_FULL0
+
+/*
+ * Mailbox 1 is for sending messages
+ * to ADSP i.e. CPU --> ADSP
+ */
+#define SEND_HWMBOX	HWMBOX1_REG
+#define INT_SEND_HWMBOX	INT_AMISC_MBOX_EMPTY1
+
+static struct platform_device *nvadsp_pdev;
+static struct nvadsp_drv_data *nvadsp_drv_data;
+static atomic_t hwmbox_send_virq_count = ATOMIC_INIT(0);
+
+static inline u32 hwmbox_readl(u32 reg)
+{
+	return readl(nvadsp_drv_data->amisc_base + reg);
+}
+
+static inline void hwmbox_writel(u32 val, u32 reg)
+{
+	writel(val, nvadsp_drv_data->amisc_base + reg);
+}
+
+static inline void hwmbox_enable_irq(int irq)
+{
+	if (atomic_inc_return(&hwmbox_send_virq_count) == 1)
+		enable_irq(irq);
+}
+
+static inline void hwmbox_disable_irq(int irq)
+{
+	if (atomic_dec_return(&hwmbox_send_virq_count) == 0)
+		disable_irq_nosync(irq);
+}
+
+static void hwmboxq_init(struct hwmbox_queue *queue)
+{
+	queue->head = 0;
+	queue->tail = 0;
+	queue->count = 0;
+	init_completion(&queue->comp);
+	spin_lock_init(&queue->lock);
+}
+
+/* Must be called with queue lock held in non-interrupt context */
+static inline bool
+is_hwmboxq_empty(struct hwmbox_queue *queue)
+{
+	return (queue->count == 0);
+}
+
+/* Must be called with queue lock held in non-interrupt context */
+static inline bool
+is_hwmboxq_full(struct hwmbox_queue *queue)
+{
+	return (queue->count == HWMBOX_QUEUE_SIZE);
+}
+
+/* Must be called with queue lock held in non-interrupt context */
+static status_t hwmboxq_enqueue(struct hwmbox_queue *queue,
+					    uint32_t data)
+{
+	int ret = 0;
+
+	if (is_hwmboxq_full(queue)) {
+		ret = -EBUSY;
+		goto comp;
+	}
+	queue->array[queue->tail] = data;
+	queue->tail = (queue->tail + 1) & HWMBOX_QUEUE_SIZE_MASK;
+	queue->count++;
+
+	hwmbox_enable_irq(nvadsp_drv_data->hwmbox_send_virq);
+
+	if (is_hwmboxq_full(queue))
+		goto comp;
+	else
+		goto out;
+
+ comp:
+	INIT_COMPLETION(queue->comp);
+ out:
+	return ret;
+}
+
+status_t nvadsp_hwmbox_send_data(uint16_t mid, uint32_t data, uint32_t flags)
+{
+	unsigned long lockflags;
+	int ret = 0;
+
+	if (flags & NVADSP_MBOX_SMSG) {
+		data = PREPARE_HWMBOX_SMSG(mid, data);
+		pr_debug("nvadsp_mbox_send: data: 0x%x\n", data);
+	}
+
+	/* TODO handle LMSG */
+
+	spin_lock_irqsave(&nvadsp_drv_data->hwmbox_send_queue.lock,
+			  lockflags);
+	ret = hwmboxq_enqueue(&nvadsp_drv_data->hwmbox_send_queue,
+					  data);
+	spin_unlock_irqrestore(&nvadsp_drv_data->hwmbox_send_queue.lock,
+			       lockflags);
+	return ret;
+}
+
+/* Must be called with queue lock held in non-interrupt context */
+static status_t hwmboxq_dequeue(struct hwmbox_queue *queue,
+					    uint32_t *data)
+{
+	int ret = 0;
+
+	if (is_hwmboxq_empty(queue)) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if (is_hwmboxq_full(queue))
+		complete_all(&nvadsp_drv_data->hwmbox_send_queue.comp);
+
+	*data = queue->array[queue->head];
+	queue->head = (queue->head + 1) & HWMBOX_QUEUE_SIZE_MASK;
+	queue->count--;
+
+	hwmbox_disable_irq(nvadsp_drv_data->hwmbox_send_virq);
+ out:
+	return ret;
+}
+
+static irqreturn_t hwmbox_send_empty_int_handler(int irq, void *devid)
+{
+	uint32_t data;
+	int ret;
+
+	ret = hwmboxq_dequeue(&nvadsp_drv_data->hwmbox_send_queue,
+					  &data);
+	if (ret == 0) {
+		hwmbox_writel(data, SEND_HWMBOX);
+		pr_debug("Writing 0x%x to SEND_HWMBOX\n", data);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t hwmbox_recv_full_int_handler(int irq, void *devid)
+{
+	uint32_t data;
+	int ret;
+
+	data = hwmbox_readl(RECV_HWMBOX);
+	hwmbox_writel(PREPARE_HWMBOX_EMPTY_MSG(), RECV_HWMBOX);
+
+	if (IS_HWMBOX_MSG_SMSG(data)) {
+		uint16_t mboxid = HWMBOX_SMSG_MID(data);
+		struct nvadsp_mbox *mbox = nvadsp_drv_data->mboxes[mboxid];
+
+		if (!mbox) {
+			dev_info(&nvadsp_pdev->dev,
+				 "Failed to get mbox for mboxid: %u\n",
+				 mboxid);
+			goto out;
+		}
+
+		if (mbox->handler) {
+			mbox->handler(data, mbox->hdata);
+		} else {
+			ret = nvadsp_mboxq_enqueue(&mbox->recv_queue,
+						   HWMBOX_SMSG_MSG(data));
+			if (ret) {
+				dev_info(&nvadsp_pdev->dev,
+					 "Failed to deliver msg 0x%x to"
+					 " mbox id %u\n",
+					 HWMBOX_SMSG_MSG(data), mboxid);
+				goto out;
+			}
+		}
+	} else if (IS_HWMBOX_MSG_LMSG(data)) {
+		/* TODO */
+	}
+ out:
+	return IRQ_HANDLED;
+}
+
+int nvadsp_hwmbox_init(struct platform_device *pdev)
+{
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+	int recv_virq, send_virq;
+	int ret = 0;
+
+	ret = tegra_agic_route_interrupt(INT_AMISC_MBOX_EMPTY0,
+					 TEGRA_AGIC_ADSP);
+	if (ret)
+		goto route_empty;
+
+	ret = tegra_agic_route_interrupt(INT_AMISC_MBOX_FULL1,
+					 TEGRA_AGIC_ADSP);
+	if (ret)
+		goto route_full;
+
+	recv_virq = tegra_agic_irq_get_virq(INT_RECV_HWMBOX);
+	if (!recv_virq)
+		goto recv_virq;
+
+	send_virq = tegra_agic_irq_get_virq(INT_SEND_HWMBOX);
+	if (!send_virq)
+		goto send_virq;
+
+	ret = request_irq(recv_virq, hwmbox_recv_full_int_handler,
+			  0, "hwmbox0_recv_full", pdev);
+	if (ret)
+		goto req_recv_virq;
+
+	ret = request_irq(send_virq, hwmbox_send_empty_int_handler,
+			  0, "hwmbox1_send_empty", pdev);
+	if (ret)
+		goto req_send_virq;
+
+	disable_irq_nosync(send_virq);
+
+	drv->hwmbox_recv_virq = recv_virq;
+	drv->hwmbox_send_virq = send_virq;
+	hwmboxq_init(&drv->hwmbox_send_queue);
+
+	nvadsp_drv_data = drv;
+	nvadsp_pdev = pdev;
+
+	return ret;
+
+ req_send_virq:
+	free_irq(recv_virq, pdev);
+ req_recv_virq:
+	irq_dispose_mapping(send_virq);
+ send_virq:
+	irq_dispose_mapping(recv_virq);
+ recv_virq:
+	tegra_agic_route_interrupt(INT_AMISC_MBOX_FULL1,
+				   TEGRA_AGIC_APE_HOST);
+ route_full:
+	tegra_agic_route_interrupt(INT_AMISC_MBOX_EMPTY0,
+				   TEGRA_AGIC_APE_HOST);
+ route_empty:
+	return ret;
+}

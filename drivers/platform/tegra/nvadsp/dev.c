@@ -124,6 +124,9 @@ static int nvadsp_probe(struct platform_device *pdev)
 	drv_data->amisc_base = base;
 
 	platform_set_drvdata(pdev, drv_data);
+
+	ret = nvadsp_hwmbox_init(pdev);
+
  err:
 	return ret;
 }

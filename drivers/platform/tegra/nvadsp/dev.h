@@ -21,7 +21,13 @@
 
 #include <linux/tegra_nvadsp.h>
 
+#include "hwmailbox.h"
+
 struct nvadsp_drv_data {
 	void __iomem *amisc_base;
+
+	struct hwmbox_queue hwmbox_send_queue;
+	int hwmbox_send_virq;
+	int hwmbox_recv_virq;
 };
 #endif /* __TEGRA_NVADSP_DEV_H */
