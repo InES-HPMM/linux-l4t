@@ -22,7 +22,7 @@
 #define _MACH_TEGRA_TEGRA12_EMC_H
 
 #include <mach/tegra_emc.h>
-#include <linux/platform_data/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 int tegra12_emc_init(void);
 

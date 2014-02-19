@@ -18,7 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/platform_data/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 #include "board.h"
 #include "board-ardbeg.h"

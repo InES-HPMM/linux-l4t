@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_emc.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,12 +25,12 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/delay.h>
-#include <linux/platform_device.h>
-#include <linux/platform_data/tegra_emc.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/hrtimer.h>
 #include <linux/pasr.h>
+#include <linux/platform_device.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 #include <asm/cputime.h>
 

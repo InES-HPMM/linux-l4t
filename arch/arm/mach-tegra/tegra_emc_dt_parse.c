@@ -23,8 +23,7 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-
-#include <linux/platform_data/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 #include "common.h"
 

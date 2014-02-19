@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/nct.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #ifndef __MACH_TEGRA_NCT_H
 #define __MACH_TEGRA_NCT_H
 
-#include <linux/platform_data/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 #define NCT_MAGIC_ID		0x7443566E /* "nVCt" */
 

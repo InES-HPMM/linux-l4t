@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef __TEGRA_EMC_H_
-#define __TEGRA_EMC_H_
+#ifndef __TEGRA_EMC_PDATA_H__
+#define __TEGRA_EMC_PDATA_H__
 
 #define TEGRA14_MAX_TABLE_ID_LEN	16
 #define TEGRA12_MAX_TABLE_ID_LEN	50

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
- * Copyright (C) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -24,7 +24,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 #include "tegra2_emc.h"
 #include "common.h"
