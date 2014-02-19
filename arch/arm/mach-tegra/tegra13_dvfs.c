@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/pm_qos.h>
 #include <linux/tegra-fuse.h>
+#include <linux/delay.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -128,6 +129,43 @@ static struct dvfs_rail *tegra13_dvfs_rails[] = {
 	&tegra13_dvfs_rail_vdd_cpu,
 	&tegra13_dvfs_rail_vdd_core,
 	&tegra13_dvfs_rail_vdd_gpu,
+};
+
+static int tegra13_get_core_floor_mv(int cpu_mv)
+{
+	if (cpu_mv < 800)
+		return 800;
+	if (cpu_mv < 900)
+		return 830;
+	if (cpu_mv <= 1000)
+		return 870;
+	if (cpu_mv <= 1100)
+		return 900;
+	if (cpu_mv <= 1200)
+		return 940;
+	return 970;
+}
+
+/* vdd_core must be >= min_level as a function of vdd_cpu */
+static int tegra13_dvfs_rel_vdd_cpu_vdd_core(struct dvfs_rail *vdd_cpu,
+	struct dvfs_rail *vdd_core)
+{
+	int cpu_mv = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
+	int core_mv = tegra13_get_core_floor_mv(cpu_mv);
+	core_mv = max(vdd_core->new_millivolts, core_mv);
+
+	if (vdd_cpu->resolving_to && (core_mv < vdd_core->millivolts))
+		udelay(100);	/* let vdd_cpu discharging settle */
+	return core_mv;
+}
+
+static struct dvfs_relationship tegra13_dvfs_relationships[] = {
+	{
+		.from = &tegra13_dvfs_rail_vdd_cpu,
+		.to = &tegra13_dvfs_rail_vdd_core,
+		.solve = tegra13_dvfs_rel_vdd_cpu_vdd_core,
+		.solved_at_nominal = true,
+	},
 };
 
 void __init tegra13x_vdd_cpu_align(int step_uv, int offset_uv)
@@ -1068,6 +1106,8 @@ void __init tegra13x_init_dvfs(void)
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra13_dvfs_rails,
 		ARRAY_SIZE(tegra13_dvfs_rails));
+	tegra_dvfs_add_relationships(tegra13_dvfs_relationships,
+		ARRAY_SIZE(tegra13_dvfs_relationships));
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
