@@ -46,6 +46,8 @@
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
 #include <linux/pci-tegra.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
@@ -1846,16 +1848,49 @@ static int __init tegra_pcie_init(void)
 	return 0;
 }
 
+static void tegra_pcie_read_plat_data(void)
+{
+	struct device_node *node = tegra_pcie.dev->of_node;
+
+	PR_FUNC_LINE;
+	of_property_read_u32(node, "nvidia,port0_status",
+			&tegra_pcie.plat_data->port_status[0]);
+	of_property_read_u32(node, "nvidia,port1_status",
+			&tegra_pcie.plat_data->port_status[1]);
+	tegra_pcie.plat_data->gpio_hot_plug =
+		of_get_named_gpio(node, "nvidia,hot-plug-gpio", 0);
+	tegra_pcie.plat_data->gpio_wake =
+		of_get_named_gpio(node, "nvidia,wake-gpio", 0);
+	tegra_pcie.plat_data->gpio_x1_slot =
+		of_get_named_gpio(node, "nvidia,x1-slot-gpio", 0);
+	tegra_pcie.plat_data->has_clkreq =
+			of_property_read_bool(node, "has_clkreq");
+}
+
+static struct of_device_id tegra_pcie_of_match[] = {
+	{ .compatible = "nvidia,tegra124-pcie", },
+	{ }
+};
+
 static int __init tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
 
 	PR_FUNC_LINE;
 	tegra_pcie.dev = &pdev->dev;
-	tegra_pcie.plat_data = pdev->dev.platform_data;
-	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[0] %d\n",
+	if (tegra_pcie.dev->of_node) {
+		/* use DT way to init platform data */
+		tegra_pcie.plat_data = devm_kzalloc(tegra_pcie.dev,
+			sizeof(*tegra_pcie.plat_data), GFP_KERNEL);
+		if (!tegra_pcie.plat_data) {
+			dev_err(tegra_pcie.dev, "memory alloc failed\n");
+			return -ENOMEM;
+		}
+		tegra_pcie_read_plat_data();
+	}
+	dev_dbg(tegra_pcie.dev, "PCIE.C: %s : _port_status[0] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[0]);
-	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[1] %d\n",
+	dev_dbg(tegra_pcie.dev, "PCIE.C: %s : _port_status[1] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[1]);
 
 	/* Enable Runtime PM for PCIe, TODO: Need to add PCIe host device */
@@ -1970,6 +2005,7 @@ static struct platform_driver __refdata tegra_pcie_driver = {
 #ifdef CONFIG_PM
 		.pm    = &tegra_pcie_pm_ops,
 #endif
+		.of_match_table = tegra_pcie_of_match,
 	},
 };
 
