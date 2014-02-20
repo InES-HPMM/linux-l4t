@@ -648,8 +648,8 @@
 				ti,temp-polling-time-sec = <5>;
 				consumers {
 					c1 {
-						regulator-consumer-supply = "usb _bat_chg";
-						regulator-consumer-device = "teg ra-udc.0";
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
 					};
 				};
 			};
