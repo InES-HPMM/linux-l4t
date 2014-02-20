@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -499,6 +499,7 @@ static struct tegra_gpio_soc_config tegra30_gpio_config = {
 };
 
 static struct of_device_id tegra_gpio_of_match[] = {
+	{ .compatible = "nvidia,tegra210-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra124-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra148-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra114-gpio", .data = &tegra30_gpio_config },
