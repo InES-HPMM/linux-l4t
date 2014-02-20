@@ -890,12 +890,33 @@ struct tegra_hdmi_out {
 	int n_tmds_config;
 };
 
+enum {
+	DRIVE_CURRENT_L0 = 0,
+	DRIVE_CURRENT_L1 = 1,
+	DRIVE_CURRENT_L2 = 2,
+	DRIVE_CURRENT_L3 = 3,
+};
+
+enum {
+	PRE_EMPHASIS_L0 = 0,
+	PRE_EMPHASIS_L1 = 1,
+	PRE_EMPHASIS_L2 = 2,
+	PRE_EMPHASIS_L3 = 3,
+};
+
+enum {
+	POST_CURSOR2_L0 = 0,
+	POST_CURSOR2_L1 = 1,
+	POST_CURSOR2_L2 = 2,
+	POST_CURSOR2_L3 = 3,
+};
+
 struct tegra_dc_dp_lt_settings {
-	int drive_current;
-	int lane_preemphasis;
-	int post_cursor;
-	int tx_pu;
-	int load_adj;
+	u32 drive_current[4]; /* Entry for each lane */
+	u32 lane_preemphasis[4]; /* Entry for each lane */
+	u32 post_cursor[4]; /* Entry for each lane */
+	u32 tx_pu;
+	u32 load_adj;
 };
 
 struct tegra_dp_out {

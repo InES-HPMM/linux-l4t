@@ -545,10 +545,72 @@ static struct tegra_io_dpd dsid_io = {
 };
 
 static struct tegra_dc_dp_lt_settings ardbeg_edp_lt_data[] = {
-	/* DriveCurrent	Preemphasis	PostCursor	tx_pu	load_adj */
-	{0x13131313,	0x00000000,	0x00000000,	0x0,	0x3},
-	{0x13131313,	0x00000000,	0x00000000,	0x0,	0x4},
-	{0x19191919,	0x09090909,	0x00000000,	0x0,	0x6}
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x3,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x4,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x6,
+	},
 };
 
 static struct tegra_dp_out dp_settings = {
