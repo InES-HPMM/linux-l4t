@@ -704,6 +704,9 @@ static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 			write_seqcount_end(vmin_seqcnt);
 		if (vmax_seqcnt)
 			write_seqcount_end(vmax_seqcnt);
+
+		pr_debug("cl_dvfs limits_mV [%d : %d]\n",
+			 cld->v_limits.vmin, cld->v_limits.vmax);
 	}
 }
 
@@ -734,6 +737,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
 	u32 out_max, out_min;
 	u32 out_cap = get_output_cap(cld, req);
+	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
 
 	switch (cld->tune_state) {
 	case TEGRA_CL_DVFS_TUNE_LOW:
@@ -756,6 +760,22 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		BUG();
 	}
 
+	/*
+	 * Criteria to select new request and output boundaries. Listed in
+	 * the order of priorities to resolve conflicts (if any).
+	 *
+	 * 1) out_min is at/above minimum voltage level for current temperature
+	 *    and tuning ranges
+	 * 2) out_max is at/above PMIC guard-band forced minimum
+	 * 3) new request has at least on step room for regulation: request +/-1
+	 *    within [out_min, out_max] interval
+	 * 4) - if no other rail depends on DFLL rail, out_max is at/above
+	 *    minimax level to provide better convergence accuracy for rates
+	 *    close to tuning range boundaries
+	 *    - if some other rail depends on DFLL rail, out_max should match
+	 *    voltage from safe dvfs table used by s/w DVFS on other rails to
+	 *    resolve dependencies
+	 */
 	out_min = get_output_min(cld);
 	if (out_cap > (out_min + 1))
 		req->output = out_cap - 1;
@@ -763,7 +783,11 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		req->output = out_min + 1;
 	if (req->output == cld->safe_output)
 		req->output++;
-	out_max = max((u8)(req->output + 1), cld->minimax_output);
+
+	if (list_empty(&rail->relationships_to))
+		out_max = max((u8)(req->output + 1), cld->minimax_output);
+	else
+		out_max = req->output + 1;
 	out_max = max((u8)(out_max), cld->force_out_min);
 
 	set_output_limits(cld, out_min, out_max);
@@ -1032,6 +1056,10 @@ static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
 		cld->force_out_min = get_output_bottom(cld);
 		return;
 	}
+
+	WARN_ONCE(!list_empty(&cld->safe_dvfs->dvfs_rail->relationships_to),
+		  "%s: PMIC undershoot must fit DFLL rail dependency-to slack",
+		  __func__);
 
 	force_out_min = get_output_min(cld);
 	force_mv_min += get_mv(cld, force_out_min);
