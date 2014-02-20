@@ -1,0 +1,32 @@
+NVIDIA Tegra PCIe controller
+
+Required properties:
+- compatible: should be
+	"nvidia,tegra124-pcie"
+  Details:
+  nvidia,tegra124-pcie:
+	T124 uses 2 PCIE controllers with 5 lanes in X4_X1 and X2_X1 xbar modes
+
+- nvidia,port0_status: Current board supports port0 slot support status
+- nvidia,port1_status: Current board supports port1 slot support status
+- nvidia,hot-plug-gpio: Generic Tegra GPIO number used for hotplug event
+- nvidia,wake-gpio: Part of connector, used for wake up from LP0
+- nvidia,x1-slot-gpio: Board specific, used to enable port1 slot.
+
+Example:
+
+SoC DTSI:
+	pcie-controller {
+		compatible = "nvidia,tegra124-pcie";
+		status = "disabled";
+	};
+
+Board DTS:
+	pcie-controller {
+		nvidia,port0_status = <1>;
+		nvidia,port1_status = <1>;
+		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
+		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		nvidia,x1-slot-gpio = <&tca6416 8 0>; /* TCA6416_GPIO(8) */
+		status = "okay";
+        };
