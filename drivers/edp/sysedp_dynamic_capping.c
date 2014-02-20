@@ -202,26 +202,26 @@ static void update_cur_corecap(void)
 	i = capping_device_platdata->corecap_size - 1;
 	cap = capping_device_platdata->corecap + i;
 
-	switch (cap_method) {
-	default:
-		pr_warn("%s: Unknown cap_method, %x!  Assuming direct.\n",
-				__func__, cap_method);
-		cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT;
-		/* intentional fall-through */
-	case TEGRA_SYSEDP_CAP_METHOD_DIRECT:
-		relaxed_power = 0;
-		break;
-
-	case TEGRA_SYSEDP_CAP_METHOD_SIGNAL:
-		relaxed_power = min(avail_oc_relax, cap->pthrot);
-		break;
-
-	case TEGRA_SYSEDP_CAP_METHOD_RELAX:
-		relaxed_power = cap->pthrot;
-		break;
-	}
-
 	for (; i >= 0; i--, cap--) {
+		switch (cap_method) {
+		default:
+			pr_warn("%s: Unknown cap_method, %x!  Assuming direct.\n",
+					__func__, cap_method);
+			cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT;
+			/* Intentional fall-through*/
+		case TEGRA_SYSEDP_CAP_METHOD_DIRECT:
+			relaxed_power = 0;
+			break;
+
+		case TEGRA_SYSEDP_CAP_METHOD_SIGNAL:
+			relaxed_power = min(avail_oc_relax, cap->pthrot);
+			break;
+
+		case TEGRA_SYSEDP_CAP_METHOD_RELAX:
+			relaxed_power = cap->pthrot;
+			break;
+		}
+
 		if (cap->power <= power + relaxed_power) {
 			cur_corecap = cap;
 			cpu_power_balance = power + relaxed_power
@@ -447,7 +447,7 @@ static int status_show(struct seq_file *file, void *data)
 	seq_printf(file, "cpu cap     : %u kHz\n", cur_caps.cpu);
 	seq_printf(file, "gpu cap     : %u kHz\n", cur_caps.gpu);
 	seq_printf(file, "emc cap     : %u kHz\n", cur_caps.emc);
-	seq_printf(file, "cc method   : %u kHz\n", cap_method);
+	seq_printf(file, "cc method   : %u\n", cap_method);
 
 	mutex_unlock(&core_lock);
 	return 0;
