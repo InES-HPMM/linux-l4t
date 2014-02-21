@@ -159,6 +159,7 @@ struct tegra_dma_sg_req {
 	struct tegra_dma_channel_regs	ch_regs;
 	int				req_len;
 	bool				configured;
+	bool				skipped;
 	bool				last_sg;
 	bool				half_done;
 	struct list_head		node;
@@ -470,6 +471,7 @@ static void tegra_dma_configure_for_next(struct tegra_dma_channel *tdc,
 	if (status & TEGRA_APBDMA_STATUS_ISE_EOC) {
 		dev_err(tdc2dev(tdc),
 			"Skipping new configuration as interrupt is pending\n");
+		nsg_req->skipped = true;
 		tegra_dma_resume(tdc);
 		return;
 	}
@@ -483,6 +485,7 @@ static void tegra_dma_configure_for_next(struct tegra_dma_channel *tdc,
 	tdc_write(tdc, TEGRA_APBDMA_CHAN_CSR,
 				nsg_req->ch_regs.csr | TEGRA_APBDMA_CSR_ENB);
 	nsg_req->configured = true;
+	nsg_req->skipped = false;
 
 	tegra_dma_resume(tdc);
 }
@@ -498,6 +501,7 @@ static void tdc_start_head_req(struct tegra_dma_channel *tdc)
 					typeof(*sg_req), node);
 	tegra_dma_start(tdc, sg_req);
 	sg_req->configured = true;
+	sg_req->skipped = false;
 	tdc->busy = true;
 }
 
@@ -564,7 +568,7 @@ static bool handle_continuous_head_request(struct tegra_dma_channel *tdc,
 	 * looping of transfer can not continue.
 	 */
 	hsgreq = list_first_entry(&tdc->pending_sg_req, typeof(*hsgreq), node);
-	if (!hsgreq->configured) {
+	if (!hsgreq->configured && !hsgreq->skipped) {
 		tegra_dma_stop(tdc);
 		dev_err(tdc2dev(tdc), "Error in dma transfer, aborting dma\n");
 		tegra_dma_abort_all(tdc);
@@ -632,6 +636,7 @@ static void handle_cont_sngl_cycle_dma_done(struct tegra_dma_channel *tdc,
 	if (!list_is_last(&sgreq->node, &tdc->pending_sg_req)) {
 		list_move_tail(&sgreq->node, &tdc->pending_sg_req);
 		sgreq->configured = false;
+		sgreq->skipped = false;
 		st = handle_continuous_head_request(tdc, sgreq, to_terminate);
 		if (!st)
 			dma_desc->dma_status = DMA_ERROR;
@@ -1041,6 +1046,7 @@ static struct dma_async_tx_descriptor *tegra_dma_prep_slave_sg(
 		sg_req->ch_regs.apb_seq = apb_seq;
 		sg_req->ch_regs.ahb_seq = ahb_seq;
 		sg_req->configured = false;
+		sg_req->skipped = false;
 		sg_req->last_sg = false;
 		sg_req->dma_desc = dma_desc;
 		sg_req->req_len = len;
@@ -1175,6 +1181,7 @@ struct dma_async_tx_descriptor *tegra_dma_prep_dma_cyclic(
 		sg_req->ch_regs.apb_seq = apb_seq;
 		sg_req->ch_regs.ahb_seq = ahb_seq;
 		sg_req->configured = false;
+		sg_req->skipped = false;
 		sg_req->half_done = false;
 		sg_req->last_sg = false;
 		sg_req->dma_desc = dma_desc;
