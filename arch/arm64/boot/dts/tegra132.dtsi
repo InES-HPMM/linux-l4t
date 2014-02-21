@@ -61,4 +61,12 @@
 			     <1 10 0xff01>;
 		clock-frequency = <12000000>;
 	};
+
+	dfll@70040084 {
+		compatible = "nvidia,tegra132-dfll";
+		reg = <0x70040084 0x40>,
+		      <0x70110000 0x400>;
+		out-clock-name="dfll_cpu";
+		status = "disabled";
+	};
 };
