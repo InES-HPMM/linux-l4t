@@ -26,6 +26,15 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	aliases {
+		i2c0 = &i2c1;
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
+		i2c3 = &i2c4;
+		i2c4 = &i2c5;
+		i2c5 = &i2c6;
+	};
+
 	cpus {
 		#address-cells = <2>;
 		#size-cells = <0>;
@@ -393,5 +402,72 @@
 	pcie-controller {
 		compatible = "nvidia,tegra210-pcie", "nvidia,tegra124-pcie";
 		status = "disabled";
+	};
+
+	i2c1: i2c@7000c000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000c000 0x0 0x100>;
+		interrupts = <0 38 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <400000>;
+	};
+
+	i2c2: i2c@7000c400 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000c400 0x0 0x100>;
+		interrupts = <0 84 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
+	i2c3: i2c@7000c500 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000c500 0x0 0x100>;
+		interrupts = <0 92 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <400000>;
+	};
+
+	i2c4: i2c@7000c700 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000c700 0x0 0x100>;
+		interrupts = <0 120 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
+	i2c5: i2c@7000d000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000d000 0x0 0x100>;
+		interrupts = <0 53 0x04>;
+		nvidia,require-cldvfs-clock;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <400000>;
+	};
+
+	i2c6: i2c@7000d100 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-i2c";
+		reg = <0x0 0x7000d100 0x0 0x100>;
+		interrupts = <0 63 0x04>;
+		nvidia,memory-clients = <14>;
+		status = "okay";
+		clock-frequency = <400000>;
 	};
 };

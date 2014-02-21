@@ -98,6 +98,18 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				"tegra210-axbar", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-adma",  TEGRA_ADMA_BASE,
 				"tegra210-adma", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c000,
+				"tegra21-i2c.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c400,
+				"tegra21-i2c.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c500,
+				"tegra21-i2c.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c700,
+				"tegra21-i2c.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000d000,
+				"tegra21-i2c.4", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000d100,
+				"tegra21-i2c.5", NULL),
 	{}
 };
 
