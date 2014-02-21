@@ -3,6 +3,8 @@
  *
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
  *
+ *  Copyright (C) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -69,6 +71,8 @@ struct gic_chip_data {
 #ifdef CONFIG_GIC_NON_BANKED
 	void __iomem *(*get_base)(union gic_base *);
 #endif
+	struct irq_chip *arch_extn;
+	bool is_percpu;
 };
 
 static DEFINE_RAW_SPINLOCK(irq_controller_lock);
@@ -99,6 +103,8 @@ struct irq_chip gic_arch_extn = {
 #endif
 
 static struct gic_chip_data gic_data[MAX_GIC_NR] __read_mostly;
+
+static u8 gic_get_cpumask(struct gic_chip_data *gic);
 
 #ifdef CONFIG_GIC_NON_BANKED
 static void __iomem *gic_get_percpu_base(union gic_base *base)
@@ -154,32 +160,71 @@ static inline unsigned int gic_irq(struct irq_data *d)
  */
 static void gic_mask_irq(struct irq_data *d)
 {
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+	u8 val8;
 	u32 mask = 1 << (gic_irq(d) % 32);
+	u8 curr_cpu = gic_get_cpumask(gic);
+	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
 
 	raw_spin_lock(&irq_controller_lock);
+	/*
+	 * if it is not per-cpu then we should make sure the irq has
+	 * been routed to CPU.
+	 */
+	val8 = readb_relaxed(gic_dist_base(d) + irq_target);
+	if (!gic->is_percpu && !(val8 & curr_cpu))
+		goto end;
+
 	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_CLEAR + (gic_irq(d) / 32) * 4);
-	if (gic_arch_extn.irq_mask)
-		gic_arch_extn.irq_mask(d);
+
+	if (gic->arch_extn && gic->arch_extn->irq_mask)
+		gic->arch_extn->irq_mask(d);
+end:
 	raw_spin_unlock(&irq_controller_lock);
 }
 
 static void gic_unmask_irq(struct irq_data *d)
 {
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+	u8 val8;
 	u32 mask = 1 << (gic_irq(d) % 32);
+	u8 curr_cpu = gic_get_cpumask(gic);
+	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
 
 	raw_spin_lock(&irq_controller_lock);
-	if (gic_arch_extn.irq_unmask)
-		gic_arch_extn.irq_unmask(d);
+	/*
+	 * if it is not per-cpu then we should make sure the irq has
+	 * been routed to CPU.
+	 */
+	val8 = readb_relaxed(gic_dist_base(d) + irq_target);
+	if (!gic->is_percpu && !(val8 & curr_cpu))
+		goto end;
+
+	if (gic->arch_extn && gic->arch_extn->irq_unmask)
+		gic->arch_extn->irq_unmask(d);
 	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
+end:
 	raw_spin_unlock(&irq_controller_lock);
+}
+
+static inline void gic_irq_enable(struct irq_data *d)
+{
+	gic_unmask_irq(d);
+}
+
+static inline void gic_irq_disable(struct irq_data *d)
+{
+	gic_mask_irq(d);
 }
 
 static void gic_eoi_irq(struct irq_data *d)
 {
-	if (gic_arch_extn.irq_eoi) {
-		raw_spin_lock(&irq_controller_lock);
-		gic_arch_extn.irq_eoi(d);
-		raw_spin_unlock(&irq_controller_lock);
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+
+	if (gic->arch_extn && gic->arch_extn->irq_eoi) {
+			raw_spin_lock(&irq_controller_lock);
+			gic->arch_extn->irq_eoi(d);
+			raw_spin_unlock(&irq_controller_lock);
 	}
 
 	writel_relaxed(gic_irq(d), gic_cpu_base(d) + GIC_CPU_EOI);
@@ -195,6 +240,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	u32 confoff = (gicirq / 16) * 4;
 	bool enabled = false;
 	u32 val;
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
 
 	/* Interrupt configuration for SGIs can't be changed */
 	if (gicirq < 16)
@@ -205,8 +251,9 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 
 	raw_spin_lock(&irq_controller_lock);
 
-	if (gic_arch_extn.irq_set_type)
-		gic_arch_extn.irq_set_type(d, type);
+	if (gic->arch_extn && gic->arch_extn->irq_set_type)
+		gic->arch_extn->irq_set_type(d, type);
+
 
 	val = readl_relaxed(base + GIC_DIST_CONFIG + confoff);
 	if (type == IRQ_TYPE_LEVEL_HIGH)
@@ -235,8 +282,10 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 
 static int gic_retrigger(struct irq_data *d)
 {
-	if (gic_arch_extn.irq_retrigger)
-		return gic_arch_extn.irq_retrigger(d);
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+
+	if (gic->arch_extn && gic->arch_extn->irq_retrigger)
+		return gic->arch_extn->irq_retrigger(d);
 
 	/* the genirq layer expects 0 if we can't retrigger in hardware */
 	return 0;
@@ -249,6 +298,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	void __iomem *reg = gic_dist_base(d) + GIC_DIST_TARGET + (gic_irq(d) & ~3);
 	unsigned int shift = (gic_irq(d) % 4) * 8;
 	unsigned int cpu = cpumask_any_and(mask_val, cpu_online_mask);
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
 	u32 val, mask, bit;
 #ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
 	struct irq_desc *desc = irq_to_desc(d->irq);
@@ -256,6 +306,10 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 
 	if (cpu >= NR_GIC_CPU_IF || cpu >= nr_cpu_ids)
 		return -EINVAL;
+
+	/* do not set affinity to gic's which are not per cpu*/
+	if (!gic->is_percpu)
+		goto end;
 
 	mask = 0xff << shift;
 	bit = gic_cpu_map[cpu] << shift;
@@ -272,7 +326,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 #endif
 	writel_relaxed(val, reg);
 	raw_spin_unlock(&irq_controller_lock);
-
+end:
 	return IRQ_SET_MASK_OK;
 }
 #endif
@@ -281,9 +335,10 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 static int gic_set_wake(struct irq_data *d, unsigned int on)
 {
 	int ret = -ENXIO;
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
 
-	if (gic_arch_extn.irq_set_wake)
-		ret = gic_arch_extn.irq_set_wake(d, on);
+	if (gic->arch_extn && gic->arch_extn->irq_set_wake)
+		ret = gic->arch_extn->irq_set_wake(d, on);
 
 	return ret;
 }
@@ -612,6 +667,15 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 		if (!gic_data[i].get_base)
 			continue;
 #endif
+		/*
+		 * FIXME:This disables save/restore for gics which
+		 * are not per cpu.Need to provide a mechansim for
+		 * then to save and restore the state of their
+		 * registers
+		 */
+		if (!gic_data[i].is_percpu)
+			continue;
+
 		switch (cmd) {
 		case CPU_PM_ENTER:
 			gic_cpu_save(i);
@@ -750,6 +814,12 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 	BUG_ON(gic_nr >= MAX_GIC_NR);
 
 	gic = &gic_data[gic_nr];
+
+	gic->arch_extn =
+		of_property_read_bool(node, "no-gic-extension") ?
+						NULL : &gic_arch_extn;
+	gic->is_percpu =
+		!of_property_read_bool(node, "not-per-cpu");
 #ifdef CONFIG_GIC_NON_BANKED
 	if (percpu_offset) { /* Frankein-GIC without banked registers... */
 		unsigned int cpu;
@@ -823,13 +893,16 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 		return;
 
 #ifdef CONFIG_SMP
-	set_smp_cross_call(gic_raise_softirq);
-	register_cpu_notifier(&gic_cpu_notifier);
+	if (gic->is_percpu) {
+		set_smp_cross_call(gic_raise_softirq);
+		register_cpu_notifier(&gic_cpu_notifier);
+	}
 #endif
 
 	set_handle_irq(gic_handle_irq);
+	if (gic->arch_extn)
+		gic_chip.flags |= gic->arch_extn->flags;
 
-	gic_chip.flags |= gic_arch_extn.flags;
 	gic_dist_init(gic);
 	gic_cpu_init(gic);
 	gic_pm_init(gic);

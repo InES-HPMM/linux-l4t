@@ -49,7 +49,14 @@ Optional
   regions, used when the GIC doesn't have banked registers. The offset is
   cpu-offset * cpu-nr.
 
-Example:
+- no-gic-extension : This property is required when there is a need
+  to support GICs with and without arch extension simultanously. In such a
+  case GICs without arch extension need to specify this property.
+
+- not-per-cpu : GICs that are shared and accessed across two or more
+  different processors/clusters need to use this property.
+
+Examples:
 
 	intc: interrupt-controller@fff11000 {
 		compatible = "arm,cortex-a9-gic";
@@ -60,6 +67,16 @@ Example:
 		      <0xfff10100 0x100>;
 	};
 
+	intc: interrupt-controller@fff11000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		#address-cells = <1>;
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0xfff11000 0x1000>,
+		      <0xfff10100 0x100>;
+	};
 
 * GIC virtualization extensions (VGIC)
 
