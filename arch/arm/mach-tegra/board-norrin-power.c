@@ -388,9 +388,29 @@ static struct tegra_cl_dvfs_platform_data norrin_cl_dvfs_data = {
 	.cfg_param = &norrin_cl_dvfs_param,
 };
 
+
+static const struct of_device_id dfll_of_match[] = {
+	{ .compatible	= "nvidia,tegra124-dfll", },
+	{ .compatible	= "nvidia,tegra132-dfll", },
+	{ },
+};
+
 static int __init norrin_cl_dvfs_init(void)
 {
 	struct board_info board_info;
+	struct device_node *dn = of_find_matching_node(NULL, dfll_of_match);
+
+	/*
+	 * Norrin platforms maybe used with different DT variants. Some of them
+	 * include DFLL data in DT, some - not. Check DT here, and continue with
+	 * platform device registration only if DT DFLL node is not present.
+	 */
+	if (dn) {
+		bool available = of_device_is_available(dn);
+		of_node_put(dn);
+		if (available)
+			return 0;
+	}
 
 	tegra_get_board_info(&board_info);
 
