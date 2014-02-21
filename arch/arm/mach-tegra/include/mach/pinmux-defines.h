@@ -1,7 +1,7 @@
 /*
  * pinmux-defines.h: Definition of the pinmux enus and structures
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -153,6 +153,31 @@
 	TEGRA_MUX(PE0) \
 	TEGRA_MUX(PE1) \
 	/* End of Tegra124 MUX selectors */\
+	TEGRA_MUX(UA3) \
+	TEGRA_MUX(UB3) \
+	TEGRA_MUX(UC3) \
+	TEGRA_MUX(UD3) \
+	TEGRA_MUX(UART) \
+	TEGRA_MUX(IQC0) \
+	TEGRA_MUX(IQC1) \
+	TEGRA_MUX(I2CVI) \
+	TEGRA_MUX(I2S5) \
+	TEGRA_MUX(I2SVI) \
+	TEGRA_MUX(DMIC2) \
+	TEGRA_MUX(DMIC3) \
+	TEGRA_MUX(QSPI) \
+	TEGRA_MUX(CORE) \
+	TEGRA_MUX(PM3) \
+	TEGRA_MUX(SOR0) \
+	TEGRA_MUX(SOR1) \
+	TEGRA_MUX(DCA) \
+	TEGRA_MUX(DCB) \
+	TEGRA_MUX(TOUCH) \
+	TEGRA_MUX(AUD) \
+	TEGRA_MUX(SHUTDOWN) \
+	TEGRA_MUX(VIMCLK_ALT3) \
+	TEGRA_MUX(VIMCLK2_ALT3) \
+	TEGRA_MUX(JTAG_RTCK) \
 
 enum tegra_mux_func {
 #define TEGRA_MUX(mux) TEGRA_MUX_##mux,
