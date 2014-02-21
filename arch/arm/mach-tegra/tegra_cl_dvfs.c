@@ -2262,6 +2262,8 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "missing register base\n");
 		return -ENOMEM;
 	}
+	dev_dbg(&pdev->dev, "DFLL MMIO [0x%lx ... 0x%lx]\n",
+		(unsigned long)res->start, (unsigned long)res->end);
 
 	if (pdev->num_resources > 1) {
 		res_i2c = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -2269,6 +2271,9 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "missing i2c register base\n");
 			return -ENOMEM;
 		}
+		dev_dbg(&pdev->dev, "DFLL I2C MMIO [0x%lx ... 0x%lx]\n",
+			(unsigned long)res_i2c->start,
+			(unsigned long)res_i2c->end);
 	}
 
 	p_data = pdev->dev.platform_data;
@@ -2408,6 +2413,7 @@ err_out:
 static struct of_device_id tegra_cl_dvfs_of_match[] = {
 	{ .compatible = "nvidia,tegra114-dfll", },
 	{ .compatible = "nvidia,tegra124-dfll", },
+	{ .compatible = "nvidia,tegra132-dfll", },
 	{ .compatible = "nvidia,tegra148-dfll", },
 	{ },
 };
