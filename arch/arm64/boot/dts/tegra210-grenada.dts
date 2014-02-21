@@ -20,6 +20,8 @@
 
 /dts-v1/;
 
+/memreserve/ 0x80000000 0x00004000;
+
 /include/ "tegra210.dtsi"
 
 / {
