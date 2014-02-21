@@ -20,6 +20,7 @@
 #include <linux/sched.h>
 #include <linux/irq.h>
 #include <linux/completion.h>
+#include <linux/cpu.h>
 
 extern volatile ulong secondary_holding_pen_release;
 
@@ -41,3 +42,32 @@ void tegra_cpu_die(unsigned int cpu)
 		: "r" (pmstate));
 	} while (secondary_holding_pen_release != cpu);
 }
+
+noinline void setup_mca(void *info)
+{
+	unsigned long serr_ctl_enable = 1;
+	asm volatile("msr s3_0_c15_c3_2, %0" : : "r" (serr_ctl_enable));
+}
+
+noinline int mca_cpu_callback(struct notifier_block *nfb,
+				unsigned long action, void *hcpu)
+{
+	if(action == CPU_ONLINE || action == CPU_ONLINE_FROZEN)
+		smp_call_function_single((int) hcpu, setup_mca, NULL, 1);
+	return 0;
+}
+
+static struct notifier_block mca_cpu_notifier =
+{
+	.notifier_call = mca_cpu_callback,
+};
+
+noinline int __init mca_init(void){
+	/* make sure all hotplugged cpus enable mca */
+	register_hotcpu_notifier(&mca_cpu_notifier);
+	/* make boot cpu enable mca */
+	setup_mca(NULL);
+	return 0;
+}
+
+early_initcall(mca_init);
