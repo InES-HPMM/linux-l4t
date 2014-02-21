@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -802,6 +802,12 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		match = of_match_device(tegra_vi_of_match, &pdev->dev);
 		if (match)
 			ndata = (struct nvhost_device_data *) match->data;
+
+		/*
+		 * Device Tree will initialize this ID as -1
+		 * Set it to the right value for future usage
+		 */
+		pdev->id = pdev->dev.id;
 	} else
 		ndata = pdev->dev.platform_data;
 
@@ -823,7 +829,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	cam->ici.priv = cam;
 	cam->ici.v4l2_dev.dev = &pdev->dev;
-	cam->ici.nr = pdev->dev.id;
+	cam->ici.nr = pdev->id;
 	cam->ici.drv_name = dev_name(&pdev->dev);
 	cam->ici.ops = &tegra_soc_camera_host_ops;
 

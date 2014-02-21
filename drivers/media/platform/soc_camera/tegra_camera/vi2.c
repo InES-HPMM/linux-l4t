@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -329,20 +329,10 @@ static struct tegra_camera_clk vi2_clks1[] = {
 static int vi2_clks_init(struct tegra_camera_dev *cam)
 {
 	struct platform_device *pdev = cam->ndev;
-	char devname[MAX_DEVID_LENGTH];
-	const char *pdev_name;
 	struct tegra_camera_clk *clks;
-	int i, dev_id, ret;
+	int i;
 
-	pdev_name = dev_name(&pdev->dev);
-	ret = sscanf(pdev_name, "vi.%1d", &dev_id);
-	if (ret != 1) {
-		dev_err(&pdev->dev, "Read dev_id failed!\n");
-		return -ENODEV;
-	}
-	snprintf(devname, MAX_DEVID_LENGTH, "tegra_%s", pdev_name);
-
-	switch (dev_id) {
+	switch (pdev->id) {
 	case 0:
 		cam->num_clks = ARRAY_SIZE(vi2_clks0);
 		cam->clks = vi2_clks0;
@@ -352,16 +342,19 @@ static int vi2_clks_init(struct tegra_camera_dev *cam)
 		cam->clks = vi2_clks1;
 		break;
 	default:
-		dev_err(&pdev->dev, "Wrong device ID %d\n", dev_id);
+		dev_err(&pdev->dev, "Wrong device ID %d\n", pdev->id);
 		return -ENODEV;
 	}
 
 	for (i = 0; i < cam->num_clks; i++) {
 		clks = &cam->clks[i];
 
-		if (clks->use_devname)
+		if (clks->use_devname) {
+			char devname[MAX_DEVID_LENGTH];
+			snprintf(devname, MAX_DEVID_LENGTH,
+				 "tegra_%s", dev_name(&pdev->dev));
 			clks->clk = clk_get_sys(devname, clks->name);
-		else
+		} else
 			clks->clk = clk_get(&pdev->dev, clks->name);
 		if (IS_ERR_OR_NULL(clks->clk)) {
 			dev_err(&pdev->dev, "Failed to get clock %s.\n",
