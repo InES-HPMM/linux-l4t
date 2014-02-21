@@ -1,0 +1,28 @@
+Tegra AGIC Interrupt Controller Bindings
+----------------------------------------
+
+AGIC is based on generic interrupt controller ARM IP GIC400. The
+GIC-400 complies to AMBA AXI4 protocol and Version 2 of the ARM
+GIC Architecture Specification. The GIC-400 implements the GICv2
+Security Extension.
+
+Required properties:
+ - compatible: should be set to "nvidia,tegra210-agic"
+ - reg: should contain AGIC distributor and cpu interface base
+   address
+ - interrupt-controller: detect this node as an interrupt-controller
+ - no-gic-extension: This gic is standalone int controller and does
+   not have external interrupt controller to support.
+ - not-per-cpu: This gic is shared between the CPU's and the adsp and
+   does not provide per-cpu interface.
+
+Example:
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+	};

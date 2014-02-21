@@ -48,6 +48,9 @@
 #include <asm/irq.h>
 #include <asm/exception.h>
 #include <asm/smp_plat.h>
+#ifdef CONFIG_TEGRA_APE_AGIC
+#include <linux/irqchip/tegra-agic.h>
+#endif
 
 #include "irqchip.h"
 
@@ -136,6 +139,71 @@ static inline void gic_set_base_accessor(struct gic_chip_data *data,
 #define gic_data_dist_base(d)	((d)->dist_base.common_base)
 #define gic_data_cpu_base(d)	((d)->cpu_base.common_base)
 #define gic_set_base_accessor(d, f)
+#endif
+
+#ifdef CONFIG_TEGRA_APE_AGIC
+
+static struct gic_chip_data *tegra_agic;
+
+int tegra_agic_irq_get_virq(int irq)
+{
+	return irq_create_mapping(tegra_agic->domain, irq);
+}
+EXPORT_SYMBOL_GPL(tegra_agic_irq_get_virq);
+
+bool tegra_agic_irq_is_pending(int irq)
+{
+	int value;
+	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
+	u32 pending = GIC_DIST_PENDING_SET + (irq / 32 * 4);
+
+	value = readl_relaxed(dist_base + pending);
+	/* checks the irq bit is set */
+	return value & (1 << (irq % 32));
+}
+EXPORT_SYMBOL_GPL(tegra_agic_irq_is_pending);
+
+bool tegra_agic_irq_is_active(int irq)
+{
+	int value;
+	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
+	u32 active = GIC_DIST_ACTIVE_SET + (irq / 32 * 4);
+
+	value = readl_relaxed(dist_base + active);
+	/* checks the irq bit is set */
+	return value & (1 << (irq % 32));
+}
+EXPORT_SYMBOL_GPL(tegra_agic_irq_is_active);
+
+int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
+{
+	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
+	u32 irq_target = GIC_DIST_TARGET + irq;
+	u32 irq_clear_enable = GIC_DIST_ENABLE_CLEAR + (irq / 32) * 4;
+	u32 val32;
+	u8 val8;
+	u8 routing_cpu = 1 << (u32)cpu;
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&irq_controller_lock, flags);
+	val8 = readb_relaxed(dist_base + irq_target);
+	if (val8 & routing_cpu) {
+		raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+		return -EINVAL;
+	}
+
+	val32 =  readl(dist_base + irq_clear_enable);
+
+	/* Check whether the irq is enabled */
+	if (val32 & (1 << (irq % 32))) {
+		raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+		return -EPERM;
+	}
+	writeb_relaxed(routing_cpu, dist_base + irq_target);
+	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_agic_route_interrupt);
 #endif
 
 static inline void __iomem *gic_dist_base(struct irq_data *d)
@@ -815,6 +883,10 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 
 	gic = &gic_data[gic_nr];
 
+#ifdef CONFIG_TEGRA_APE_AGIC
+	if (!of_find_compatible_node(node, NULL, TEGRA_AGIC_COMPAT))
+		tegra_agic = gic;
+#endif
 	gic->arch_extn =
 		of_property_read_bool(node, "no-gic-extension") ?
 						NULL : &gic_arch_extn;
@@ -903,6 +975,17 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 	if (gic->arch_extn)
 		gic_chip.flags |= gic->arch_extn->flags;
 
+#ifdef CONFIG_TEGRA_APE_AGIC
+	/*
+	 * need to disable/enable the interrupt on hardware when
+	 * disable_irq/enable_irq API is being called.
+	 */
+	if (!gic->is_percpu) {
+		gic_chip.irq_enable = gic_irq_enable;
+		gic_chip.irq_disable = gic_irq_disable;
+	}
+#endif
+
 	gic_dist_init(gic);
 	gic_cpu_init(gic);
 	gic_pm_init(gic);
@@ -943,5 +1026,8 @@ IRQCHIP_DECLARE(cortex_a15_gic, "arm,cortex-a15-gic", gic_of_init);
 IRQCHIP_DECLARE(cortex_a9_gic, "arm,cortex-a9-gic", gic_of_init);
 IRQCHIP_DECLARE(msm_8660_qgic, "qcom,msm-8660-qgic", gic_of_init);
 IRQCHIP_DECLARE(msm_qgic2, "qcom,msm-qgic2", gic_of_init);
+#ifdef CONFIG_TEGRA_APE_AGIC
+IRQCHIP_DECLARE(tegra_agic, TEGRA_AGIC_COMPAT, gic_of_init);
+#endif
 
 #endif

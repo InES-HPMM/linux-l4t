@@ -6,3 +6,14 @@ config TEGRA_NVADSP
 	  Enables support for Host ADSP driver.
 
 	  If unsure, say N
+
+config TEGRA_APE_AGIC
+	bool "Enable AGIC interrupt controller"
+	depends on ARCH_TEGRA_APE
+	default n
+	help
+	  The AGIC interrupt controller is based on GIC 400. Use this
+	  controller if the tegra platform needs interrupts from/to
+	  APE modules.
+
+	  If unsure, say N
