@@ -355,20 +355,17 @@ static struct tegra_cl_dvfs_cfg_param norrin_cl_dvfs_param = {
 	.droop_restore_ramp = 0x0,
 	.scale_out_ramp = 0x0,
 };
-#endif
 
 /* Norrin: fixed 10mV steps from 700mV to 1400mV */
 #define PMU_CPU_VDD_MAP_SIZE ((1400000 - 700000) / 10000 + 1)
 static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
-static inline void fill_reg_map(void)
+static inline void fill_reg_map(struct board_info *board_info)
 {
 	int i;
 	u32 reg_init_value = 0x0a;
-	struct board_info board_info;
 
-	tegra_get_board_info(&board_info);
-	if ((board_info.board_id == BOARD_PM374) &&
-			(board_info.fab == 0x01))
+	if ((board_info->board_id == BOARD_PM374) &&
+			(board_info->fab == 0x01))
 		reg_init_value = 0x1e;
 
 	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
@@ -377,7 +374,6 @@ static inline void fill_reg_map(void)
 	}
 }
 
-#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct tegra_cl_dvfs_platform_data norrin_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
@@ -394,8 +390,14 @@ static struct tegra_cl_dvfs_platform_data norrin_cl_dvfs_data = {
 
 static int __init norrin_cl_dvfs_init(void)
 {
-	fill_reg_map();
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	fill_reg_map(&board_info);
 	norrin_cl_dvfs_data.flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
+	if (board_info.board_id == BOARD_PM374)
+		norrin_cl_dvfs_data.flags |= TEGRA_CL_DVFS_DATA_NEW_NO_USE;
 	tegra_cl_dvfs_device.dev.platform_data = &norrin_cl_dvfs_data;
 	platform_device_register(&tegra_cl_dvfs_device);
 
