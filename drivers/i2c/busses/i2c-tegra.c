@@ -1416,9 +1416,12 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 };
 
 #define tegra124_i2c_chipdata tegra148_i2c_chipdata
+#define tegra210_i2c_chipdata tegra148_i2c_chipdata
 
 /* Match table for of_platform binding */
 static const struct of_device_id tegra_i2c_of_match[] = {
+	{ .compatible = "nvidia,tegra210-i2c",
+					.data = &tegra210_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra124-i2c", .data = &tegra124_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra148-i2c", .data = &tegra148_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra114-i2c", .data = &tegra114_i2c_chipdata, },
@@ -1453,6 +1456,10 @@ static struct platform_device_id tegra_i2c_devtype[] = {
 	{
 		.name = "tegra12-i2c",
 		.driver_data = (unsigned long)&tegra124_i2c_chipdata,
+	},
+	{
+		.name = "tegra21-i2c",
+		.driver_data = (unsigned long)&tegra210_i2c_chipdata,
 	},
 };
 
