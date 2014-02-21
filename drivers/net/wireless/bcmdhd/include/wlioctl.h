@@ -2215,6 +2215,7 @@ struct ampdu_tid_control_mode {
 struct ampdu_ea_tid {
 	struct ether_addr ea;		/* Station address */
 	uint8 tid;			/* tid */
+	uint8 initiator;	/* 0 is recipient, 1 is originator */
 };
 /* structure for identifying retry/tid for retry_limit_tid/rr_retry_limit_tid */
 struct ampdu_retry_tid {
