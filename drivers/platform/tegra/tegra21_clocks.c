@@ -5782,6 +5782,27 @@ static struct clk tegra_pll_c3 = {
 	},
 };
 
+static struct clk tegra_pll_a1 = {
+	.name      = "pll_a1",
+	.ops       = &tegra_pllcx_ops,
+	.flags     = PLL_ALT_MISC_REG,
+	.reg       = 0x6a4,
+	.parent    = &tegra_pll_ref,
+	.max_rate  = 1200000000,
+	.u.pll = {
+		.input_min = 12000000,
+		.input_max = 48000000,
+		.cf_min    = 12000000,
+		.cf_max    = 50000000,
+		.vco_min   = 600000000,
+		.vco_max   = 1200000000,
+		.freq_table = tegra_pll_cx_freq_table,
+		.lock_delay = 300,
+		.misc1 = 0x6ac - 0x6a4,
+		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
+	},
+};
+
 static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 12000000, 800000000, 66, 1, 1},	/* actual: 792.0 MHz */
 	{ 19200000, 800000000, 41, 1, 1},	/* actual: 787.2 MHz */
@@ -7625,6 +7646,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_c_out1,
 	&tegra_pll_c2,
 	&tegra_pll_c3,
+	&tegra_pll_a1,
 	&tegra_pll_p,
 	&tegra_pll_p_out1,
 	&tegra_pll_p_out2,
