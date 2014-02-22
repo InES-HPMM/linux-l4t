@@ -2,12 +2,15 @@ NVIDIA Tegra DFLL clock source data in the SoC DTS file:
 
 Required properties:
 - compatible : Must be one of the following
+	"nvidia,tegra132-dfll"
 	"nvidia,tegra124-dfll"
 	"nvidia,tegra148-dfll"
 	"nvidia,tegra114-dfll"
 - reg : Must contain the starting physical address and length for the DFLL's
   MMIO register space including the DFLL-to-I2C controller interface and the
-  DFLL's I2C controller.
+  DFLL's I2C controller. If DFLL configuration and I2C register spaces are
+  not contiguous, 2 separate ranges should be specified with configuration
+  range as the first one.
 - out-clock-name : Must contain a "dfll_cpu" string, name of the DFLL output
   clock.
 
@@ -15,13 +18,21 @@ Optional properties:
 - status : device availability -- managed by the DT integration code.
   Should be set to "disabled" in the SoC DTS file.
 
-Example:
+Examples:
 
 dfll@70110000 {
         compatible = "nvidia,tegra124-dfll";
         reg = <0x70110000 0x400>;
         out-clock-name = "dfll_cpu";
         status = "disabled";
+};
+
+dfll@70040084 {
+	compatible = "nvidia,tegra132-dfll";
+	reg = <0x70040084 0x40>,
+	      <0x70110000 0x400>;
+	out-clock-name="dfll_cpu";
+	status = "disabled";
 };
 
 
@@ -132,7 +143,8 @@ cpu_dfll_pmic_integration {
 DFLL PWM PMIC integration subnode in the board DTS file
 
 Required properties:
-- compatible : Must be
+- compatible : Must be one of the following
+	"nvidia,tegra132-dfll-pwm"
 	"nvidia,tegra124-dfll-pwm"
 - pwm-data-gpio : DFLL PWM data GPIO.
 
