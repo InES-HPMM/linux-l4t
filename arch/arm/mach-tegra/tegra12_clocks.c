@@ -1152,6 +1152,7 @@ static int tegra12_super_clk_set_rate(struct clk *c, unsigned long rate)
 }
 
 #ifdef CONFIG_PM_SLEEP
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static void tegra12_super_clk_resume(struct clk *c, struct clk *backup,
 				     u32 setting)
 {
@@ -1192,6 +1193,7 @@ static void tegra12_super_clk_resume(struct clk *c, struct clk *backup,
 	}
 	BUG();
 }
+#endif
 #endif
 
 static struct clk_ops tegra_super_ops = {
@@ -1265,9 +1267,9 @@ static int tegra13_cpu_clk_set_parent(struct clk *c, struct clk *p)
 			val |= (sel->value & CLK13_SOURCE_MASK) << shift;
 
 			if (c->flags & DIV_U71) {
-				/* Make sure 7.1 divider is 1:1 */
+				/* Make sure 7.1 divider is 1:1
 				u32 div = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
-				/* BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK); */
+				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK); */
 			}
 
 			if (c->refcnt)
@@ -1302,19 +1304,6 @@ static int tegra13_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	 */
 	return clk_set_rate(c->parent, rate);
 }
-
-#ifdef CONFIG_PM_SLEEP
-static void tegra13_cpu_clk_resume(struct clk *c, struct clk *backup,
-				u32 setting)
-{
-	/* For sclk and cclk_g super clock just restore saved value */
-	if (!(c->flags & DIV_2)) {
-		clk13_writel_delay(setting, c->reg);
-		return;
-	}
-	BUG();
-}
-#endif
 
 static struct clk_ops tegra13_cpu_ops = {
 	.init			= tegra13_cpu_clk_init,
@@ -4333,7 +4322,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 #endif
 }
 
-static void tegra12_dfll_clk_init(struct clk *c)
+static void __init tegra12_dfll_clk_init(struct clk *c)
 {
 	c->ops->init = tegra12_dfll_cpu_late_init;
 }
@@ -8966,8 +8955,10 @@ static bool tegra12_is_dyn_ramp(
 
 static void tegra12_pllp_init_dependencies(unsigned long pllp_rate)
 {
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 	u32 div;
 	unsigned long backup_rate;
+#endif
 
 	switch (pllp_rate) {
 	case 216000000:
