@@ -102,7 +102,6 @@ int macallan_edp_init(void);
 int macallan_panel_init(void);
 int roth_panel_init(void);
 int macallan_kbc_init(void);
-int macallan_pmon_init(void);
 int macallan_soctherm_init(void);
 
 

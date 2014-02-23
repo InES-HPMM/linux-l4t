@@ -1,0 +1,208 @@
+/ {
+	i2c@7000c400 {
+		ina219@40{
+			compatible = "ina219x";
+			reg = <0x40>;
+			ti,rail-name = "VD_CPU";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0x7CD2>;
+			ti,power-lsb = <2563>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@41{
+			compatible = "ina219x";
+			reg = <0x41>;
+			ti,rail-name = "VD_SOC";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0x7CD2>;
+			ti,power-lsb = <2563>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <1>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@42{
+			compatible = "ina219x";
+			reg = <0x42>;
+			ti,rail-name = "VS_DDR0";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@43{
+			compatible = "ina219x";
+			reg = <0x43>;
+			ti,rail-name = "VS_DDR1";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@44{
+			compatible = "ina219x";
+			reg = <0x44>;
+			ti,rail-name = "";
+			ti,continuous-config = <0x0000>;
+			ti,trigger-config = <0x0000>;
+			ti,calibration-data = <0x4C4C4543>;
+			ti,divisor = <17494>;
+		};
+
+		ina219@45{
+			compatible = "ina219x";
+			reg = <0x45>;
+			ti,rail-name = "VD_LCD_HV";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@46{
+			compatible = "ina219x";
+			reg = <0x46>;
+			ti,rail-name = "VS_SYS_1V8";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0x7CD2>;
+			ti,power-lsb = <2563>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@47{
+			compatible = "ina219x";
+			reg = <0x47>;
+			ti,rail-name = "VD_AP_1V8";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@48{
+			compatible = "ina219x";
+			reg = <0x48>;
+			ti,rail-name = "VD_AP_RTC";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@49{
+			compatible = "ina219x";
+			reg = <0x49>;
+			ti,rail-name = "VS_AUD_SYS";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4a{
+			compatible = "ina219x";
+			reg = <0x4a>;
+			ti,rail-name = "VD_DDR0";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xAEC0>;
+			ti,power-lsb = <1831>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4b{
+			compatible = "ina219x";
+			reg = <0x4b>;
+			ti,rail-name = "VD_DDR1";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xAEC0>;
+			ti,power-lsb = <1831>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4c{
+			compatible = "ina219x";
+			reg = <0x4c>;
+			ti,rail-name = "VD_AP_VBUS";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <200>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4d{
+			compatible = "ina219x";
+			reg = <0x4d>;
+			ti,rail-name = "VS_SYS_2V9";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4e{
+			compatible = "ina219x";
+			reg = <0x4e>;
+			ti,rail-name = "VA_PLLX";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+
+		ina219@4f{
+			compatible = "ina219x";
+			reg = <0x4f>;
+			ti,rail-name = "VA_AP_1V2";
+			ti,continuous-config = <0x3FFF>;
+			ti,trigger-config = <0x01DB>;
+			ti,calibration-data = <0xFFFE>;
+			ti,power-lsb = <1250>;
+			ti,divisor = <20>;
+			ti,shunt-resistor-mohm = <10>;
+			ti,precision-multiplier = <1000>;
+		};
+	};
+};

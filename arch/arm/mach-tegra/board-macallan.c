@@ -558,7 +558,6 @@ static void __init tegra_macallan_late_init(void)
 	macallan_touch_init();
 	macallan_panel_init();
 	macallan_kbc_init();
-	macallan_pmon_init();
 #if defined CONFIG_TI_ST || defined CONFIG_TI_ST_MODULE
 	macallan_bt_st();
 	macallan_tegra_setup_st_host_wake();
