@@ -110,7 +110,6 @@ int pismo_edp_init(void);
 int pismo_panel_init(void);
 int roth_panel_init(void);
 int pismo_kbc_init(void);
-int pismo_pmon_init(void);
 int pismo_soctherm_init(void);
 
 /* Baseband IDs */

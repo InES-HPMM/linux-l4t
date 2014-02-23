@@ -3,6 +3,7 @@
 /include/ "tegra114.dtsi"
 #include <tegra114-platforms/tegra114-pismo-gpio-default.dtsi>
 #include <tegra114-platforms/tegra114-pismo-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-pismo-powermon.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 Pismo evaluation board";

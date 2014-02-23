@@ -602,7 +602,6 @@ static void __init tegra_pismo_init(void)
 	pismo_emc_init();
 	pismo_edp_init();
 	pismo_panel_init();
-	pismo_pmon_init();
 #ifdef CONFIG_BT_BLUESLEEP
 	pismo_setup_bluesleep();
 	pismo_setup_bt_rfkill();
