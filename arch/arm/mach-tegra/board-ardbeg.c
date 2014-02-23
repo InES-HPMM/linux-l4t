@@ -1257,7 +1257,7 @@ static void __init tegra_ardbeg_late_init(void)
 		break;
 	case BOARD_E1784:
 	case BOARD_P1761:
-		tn8_p1761_pmon_init();
+		/* power mon is in DT */
 		break;
 	default:
 		ardbeg_pmon_init();
