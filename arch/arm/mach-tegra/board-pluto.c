@@ -1242,7 +1242,6 @@ static void __init tegra_pluto_late_init(void)
 	pluto_edp_init();
 	isomgr_init();
 	pluto_panel_init();
-	pluto_pmon_init();
 	pluto_kbc_init();
 #ifdef CONFIG_BT_BLUESLEEP
 	pluto_setup_bluesleep();

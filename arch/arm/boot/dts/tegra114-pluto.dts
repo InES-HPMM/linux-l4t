@@ -20,17 +20,11 @@
 /include/ "panel-l-720p-5.dts"
 #include <tegra114-platforms/tegra114-pluto-e1580-gpio-default.dtsi>
 #include <tegra114-platforms/tegra114-pluto-e1580-pinmux.dtsi>
+#include <tegra114-platforms/tegra114-pluto-powermon.dtsi>
 
 / {
 	model = "NVIDIA Tegra114 pluto evaluation board";
 	compatible = "nvidia,pluto", "nvidia,tegra114";
-
-	aliases {
-		i2c5 = &pca9546_i2c0;
-		i2c6 = &pca9546_i2c1;
-		i2c7 = &pca9546_i2c2;
-		i2c8 = &pca9546_i2c3;
-	};
 
 	host1x {
 		dsi {
@@ -82,35 +76,6 @@
 	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
-	};
-
-	i2c@7000c400 {
-
-		pca9546@71 {
-			compatible = "nxp,pca9546";
-			reg = <0x71>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			pca9546_i2c0: i2c@0 {
-				reg = <0>;
-				i2c-mux,deselect-on-exit;
-			};
-
-			pca9546_i2c1: i2c@1 {
-				reg = <1>;
-				i2c-mux,deselect-on-exit;
-			};
-
-			pca9546_i2c2: i2c@2 {
-				reg = <2>;
-				i2c-mux,deselect-on-exit;
-			};
-
-			pca9546_i2c3: i2c@3 {
-				reg = <3>;
-				i2c-mux,deselect-on-exit;
-			};
-		};
 	};
 
 	i2c@7000c500 {

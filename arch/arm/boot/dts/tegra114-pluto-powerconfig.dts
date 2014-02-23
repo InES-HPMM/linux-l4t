@@ -1,0 +1,54 @@
+#include "tegra114-pluto.dts"
+
+/ {
+	i2c@7000c400 {
+		pca9546@71 {
+			pca9546_i2c1: i2c@1 {
+				ina230@40{
+					ti,calibration-data = <0x0426>;
+					ti,power-lsb = <1205>;
+				};
+
+				ina230@41{
+					ti,calibration-data = <0x2134>;
+					ti,power-lsb = <301>;
+				};
+
+				ina230@42{
+					ti,calibration-data = <0x2134>;
+					ti,power-lsb = <301>;
+				};
+
+				ina230@43{
+					ti,calibration-data = <0x3756>;
+					ti,power-lsb = <180>;
+				};
+
+				ina230@44{
+					ti,calibration-data = <0x084D>;
+					ti,power-lsb = <120>;
+				};
+
+				ina230@45{
+					ti,calibration-data = <0x14C0>;
+					ti,power-lsb = <240>;
+				};
+
+				ina230@47{
+					ti,calibration-data = <0x18E7>;
+					ti,power-lsb = <40>;
+				};
+
+				ina230@48{
+					ti,calibration-data = <0x0EAD>;
+					ti,power-lsb = <68>;
+				};
+
+				ina230@4c{
+					ti,calibration-data = <0x1E95>;
+					ti,power-lsb = <81>;
+				};
+			};
+		};
+	};
+};
