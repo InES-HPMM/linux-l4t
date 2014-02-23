@@ -259,7 +259,6 @@ obj-${CONFIG_MACH_LOKI}               	+= board-loki-memory.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-fan.o
 obj-${CONFIG_MACH_LOKI}               	+= board-tn8-power.o
-obj-${CONFIG_MACH_LOKI}               	+= board-loki-powermon.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o
