@@ -35,7 +35,6 @@ void arbdeg_sata_clk_gate(void);
 int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
-int ardbeg_pmon_init(void);
 int ardbeg_rail_alignment_init(void);
 int ardbeg_soctherm_init(void);
 int ardbeg_edp_init(void);
@@ -61,14 +60,6 @@ void shield_sysedp_batmon_init(void);
 /* generated soc_therm OC interrupts */
 #define TEGRA_SOC_OC_IRQ_BASE	TEGRA_NR_IRQS
 #define TEGRA_SOC_OC_NUM_IRQ	TEGRA_SOC_OC_IRQ_MAX
-
-/* PCA954x I2C bus expander bus addresses */
-#define PCA954x_I2C_BUS_BASE    6
-#define PCA954x_I2C_BUS0        (PCA954x_I2C_BUS_BASE + 0)
-#define PCA954x_I2C_BUS1        (PCA954x_I2C_BUS_BASE + 1)
-#define PCA954x_I2C_BUS2        (PCA954x_I2C_BUS_BASE + 2)
-#define PCA954x_I2C_BUS3        (PCA954x_I2C_BUS_BASE + 3)
-
 
 #define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
 #define PALMAS_TEGRA_IRQ_BASE	(TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_NUM_IRQ)

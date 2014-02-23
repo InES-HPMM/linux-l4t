@@ -1251,21 +1251,7 @@ static void __init tegra_ardbeg_late_init(void)
 	isomgr_init();
 	ardbeg_touch_init();
 	ardbeg_panel_init();
-	switch (board_info.board_id) {
-	case BOARD_PM358:
-		/* power mon is in DT */
-		break;
-	case BOARD_PM359:
-		; /* powermon is not present in Laguna ERS-S */
-		break;
-	case BOARD_E1784:
-	case BOARD_P1761:
-		/* power mon is in DT */
-		break;
-	default:
-		ardbeg_pmon_init();
-		break;
-	}
+
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
