@@ -1374,7 +1374,17 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		cld->lut_max = get_output_cap(cld, NULL);
 	}
 
+	/*
+	 * Disable output interface. If configuration and I2C address spaces
+	 * are separated, output enable/disable control and output limits are
+	 * in different apertures and output must be disabled 1st to avoid
+	 * spurious I2C transaction. If configuration and I2C address spaces
+	 * are combined output enable/disable control and output limits are
+	 * in the same register, and it is safe to just clear it.
+	 */
 	cl_dvfs_i2c_writel(cld, 0, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_i2c_wmb(cld);
+
 	val = (cld->safe_output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		(out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
 		(out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT);
