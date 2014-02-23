@@ -29,7 +29,6 @@ obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
 obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
-obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-powermon.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sensors.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-kbc.o

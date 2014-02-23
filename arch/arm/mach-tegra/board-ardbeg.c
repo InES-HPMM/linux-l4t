@@ -1250,7 +1250,7 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_panel_init();
 	switch (board_info.board_id) {
 	case BOARD_PM358:
-		laguna_pm358_pmon_init();
+		/* power mon is in DT */
 		break;
 	case BOARD_PM359:
 		; /* powermon is not present in Laguna ERS-S */
