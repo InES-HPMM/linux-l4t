@@ -689,7 +689,6 @@ static void __init tegra_dalmore_late_init(void)
 	else
 		dalmore_panel_init();
 	dalmore_kbc_init();
-	dalmore_pmon_init();
 #if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	dalmore_setup_bluesleep();
 	dalmore_setup_bt_rfkill();
