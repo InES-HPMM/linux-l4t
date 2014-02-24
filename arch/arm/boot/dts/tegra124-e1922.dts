@@ -3,7 +3,7 @@
 #include "tegra124-tn8.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc-e1922-1100-a00.dtsi"
-#include "tegra124-platforms/tegra124-tn8-powermon-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-powermon-e1780-1000-a01.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pmic-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-fixed-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-sensor-p1761-1470-a00.dtsi"

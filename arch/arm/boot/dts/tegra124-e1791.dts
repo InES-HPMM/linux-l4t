@@ -2,7 +2,7 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
-#include "tegra124-platforms/tegra124-tn8-powermon-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-powermon-e1780-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1791-e1736-pmic.dtsi"
 #include "tegra124-platforms/tegra124-tn8-fixed-e1736-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
