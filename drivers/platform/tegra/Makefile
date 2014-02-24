@@ -28,7 +28,6 @@ obj-y += devices.o
 obj-y += io.o
 obj-y += clock.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
-obj-y += timerinfo.o
 
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups.o
 
