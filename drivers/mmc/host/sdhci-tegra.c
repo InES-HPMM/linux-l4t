@@ -280,7 +280,7 @@ struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
 struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	27,	118295,
 		27,	118295,	48,	188148),
-	SET_TUNING_COEFFS("sdhci-tegra.2",	1250,	950,	29,	124427,
+	SET_TUNING_COEFFS("sdhci-tegra.2",	1150,	950,	29,	124427,
 		29, 124427,	 54,	203707),
 	SET_TUNING_COEFFS("sdhci-tegra.0",	1150,	950,	25,	115933,
 		25,	115933,	47,	187224),
