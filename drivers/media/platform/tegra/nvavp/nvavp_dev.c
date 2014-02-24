@@ -705,7 +705,14 @@ static int nvavp_reset_avp(struct nvavp_info *nvavp, unsigned long reset_addr)
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 	unsigned long stub_code_phys = virt_to_phys(_tegra_avp_boot_stub);
 	dma_addr_t stub_data_phys;
+#endif
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	if (!(nvavp_check_idle(nvavp, NVAVP_AUDIO_CHANNEL)))
+		return 0;
+#endif
+
+#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 	_tegra_avp_boot_stub_data.map_phys_addr = avp->kernel_phys;
 	_tegra_avp_boot_stub_data.jump_addr = reset_addr;
 	wmb();
