@@ -225,8 +225,9 @@
 #define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_MASK		(0xF8 << 19)
 #define PCIE2_RP_L1_PM_SUBSTATES_CYA_T_PWRN_VAL_SHIFT		(19)
 
-#define BOARD_PM359						0x0167
-#define BOARD_PM358						0x0166
+#define NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA			0x00000C04
+#define PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_MASK	(0x1FF << 13)
+#define PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_VAL	(0x50 << 13)
 
 /*
  * AXI address map for the PCIe aperture , defines 1GB in the AXI
@@ -1484,6 +1485,12 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 			data |= PCIE2_RP_TX_HDR_LIMIT_NPT_1;
 			rp_writel(data, NV_PCIE2_RP_TX_HDR_LIMIT, 1);
 		}
+		/* Bug#1461732 WAR, set clkreq asserted delay greater than */
+		/* power off time (2us) to avoid RP wakeup in L1.2_ENTRY */
+		data = rp_readl(NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA, index);
+		data &= ~PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_MASK;
+		data |= PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_VAL;
+		rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA, index);
 #endif
 	}
 }
@@ -2004,6 +2011,19 @@ static void tegra_pcie_enable_aspm(void)
 		}
 	}
 	if (config_l1ss) {
+		/* Make CLKREQ# bi-directional if L1 PM SS are enabled */
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_PIN_OD_ENABLE);
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_PIN_OD_ENABLE);
 		tegra_pcie_config_l1ss_tpwr_on(pos);
 		tegra_pcie_config_l1ss_cm_rtime(pos);
 		tegra_pcie_config_l1ss_l12_thtime(pos);
