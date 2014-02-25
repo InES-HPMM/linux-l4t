@@ -26,10 +26,12 @@ struct data_stat_entry {
 	ktime_t start_ktime;
 	u32 duration_usecs;
 	u32 total_usecs;
+	u32 total_transfers;
 	u32 current_transferred_bytes;
 	u64 total_bytes;
 	u32 stat_blk_size;
 	u32 stat_blks_per_transfer;
+	bool is_read;
 	struct data_stat_entry *next;
 };
 

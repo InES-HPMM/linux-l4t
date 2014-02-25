@@ -78,7 +78,18 @@
 		(host->mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 
 #ifdef CONFIG_DEBUG_FS
+
 #define IS_32_BIT(x)	(x < (1ULL << 32))
+
+#define IS_DATA_READ(flags)	((flags & MMC_DATA_READ) ? true : false)
+
+#define PERF_STAT_COMPARE(stat, blk_size, blk_count, is_read) \
+		( \
+			(stat->is_read == is_read) && \
+			(stat->stat_blk_size == blk_size) && \
+			(stat->stat_blks_per_transfer == blk_count) \
+		)
+
 #endif
 
 static unsigned int debug_quirks = 0;
@@ -1072,29 +1083,41 @@ static void free_stats_nodes(struct sdhci_host *host)
 	while (ptr) {
 		ptr2 = ptr->next;
 		host->sdhci_data_stat.stat_size--;
-		kfree(ptr);
+		devm_kfree(host->mmc->parent, ptr);
 		ptr = ptr2;
 	}
 	if (host->sdhci_data_stat.stat_size)
 		pr_err("stat_size=%d after free %s\n",
 			host->sdhci_data_stat.stat_size,
 			__func__);
+	host->sdhci_data_stat.head = NULL;
 }
 
 static struct data_stat_entry *add_entry_sorted(struct sdhci_host *host,
-	unsigned int blk_size, unsigned int blk_count)
+	unsigned int blk_size, unsigned int blk_count,
+	unsigned int data_flags)
 {
 	struct data_stat_entry *node, *ptr;
+	bool is_read;
+
+	if (!blk_count) {
+		pr_err("%s %s: call blk_size=%d, blk_count=%d, data_flags=0x%x\n",
+			mmc_hostname(host->mmc), __func__,
+			blk_size, blk_count, data_flags);
+		goto end;
+	}
 
 	node = devm_kzalloc(host->mmc->parent, sizeof(struct data_stat_entry),
 		GFP_KERNEL);
 	if (!node) {
-		pr_err("%s, %s, line=%d: unable to allocate data_stat_entry\n",
-			__FILE__, __func__, __LINE__);
-		return NULL;
+		pr_err("%s, %s, line=%d %s: unable to allocate data_stat_entry\n",
+			__FILE__, __func__, __LINE__, mmc_hostname(host->mmc));
+		goto end;
 	}
 	node->stat_blk_size = blk_size;
 	node->stat_blks_per_transfer = blk_count;
+	is_read = IS_DATA_READ(data_flags);
+	node->is_read = is_read;
 	host->sdhci_data_stat.stat_size++;
 	/* assume existing list is sorted and try to insert this new node
 	 * into the increasing order sorted array
@@ -1132,73 +1155,87 @@ static struct data_stat_entry *add_entry_sorted(struct sdhci_host *host,
 	}
 	if ((ptr->next->stat_blk_size > blk_size) ||
 		((ptr->next->stat_blk_size == blk_size) &&
-		(ptr->next->stat_blks_per_transfer > blk_count))) {
+		(ptr->next->stat_blks_per_transfer > blk_count)) ||
+		((ptr->next->stat_blk_size == blk_size) &&
+		(ptr->next->stat_blks_per_transfer == blk_count) &&
+		(ptr->next->is_read != is_read))) {
 		node->next = ptr->next;
 		ptr->next = node;
 		return node;
 	}
-	pr_err("%s line=%d should be unreachable\n", __func__, __LINE__);
+	pr_err("%s %s: line=%d should be unreachable ptr-next->blk_size=%d, blks_per_xfer=%d, is_read=%d, new blk_size=%d, blks_per_xfer=%d, data_flags=0x%x\n",
+		mmc_hostname(host->mmc), __func__, __LINE__,
+		ptr->next->stat_blk_size, ptr->next->stat_blks_per_transfer,
+		ptr->next->is_read, blk_size, blk_count, data_flags);
+end:
 	return NULL;
 }
 
 static void free_data_entry(struct sdhci_host *host,
-				unsigned int blk_size, unsigned int blk_count)
+				unsigned int blk_size, unsigned int blk_count,
+				unsigned int data_flags)
 {
 	struct data_stat_entry *ptr, *ptr2;
+	bool is_read;
 
 	ptr = host->sdhci_data_stat.head;
 	if (!ptr)
 		return;
-	if ((ptr->stat_blk_size == blk_size) &&
-		(ptr->stat_blks_per_transfer == blk_count)) {
+	is_read = IS_DATA_READ(data_flags);
+	if (PERF_STAT_COMPARE(ptr, blk_size, blk_count, is_read)) {
 		host->sdhci_data_stat.head = ptr->next;
 		devm_kfree(host->mmc->parent, ptr);
-		return;
-	}
-	if ((!ptr->next) && ((ptr->stat_blk_size == blk_size) &&
-		(ptr->stat_blks_per_transfer == blk_count))) {
-		pr_err("Error %s: only data_entry found has blk_size=%d, given blk_size=%d not found\n",
-			__func__, ptr->stat_blk_size, blk_size);
+		host->sdhci_data_stat.stat_size--;
 		return;
 	}
 	while (ptr->next) {
-		if ((ptr->next->stat_blk_size == blk_size) &&
-			(ptr->next->stat_blks_per_transfer == blk_count)) {
+		if (PERF_STAT_COMPARE(ptr->next, blk_size, blk_count,
+			is_read)) {
 			ptr2 = ptr->next->next;
 			devm_kfree(host->mmc->parent, ptr->next);
+			host->sdhci_data_stat.stat_size--;
 			ptr->next = ptr2;
 			return;
 		}
 		ptr = ptr->next;
 	}
-	pr_err("Error %s: given blk_size=%d not found\n", __func__, blk_size);
+	pr_err("Error %s %s: given blk_size=%d not found\n",
+		mmc_hostname(host->mmc), __func__, blk_size);
 	return;
 }
 
-static void update_stat(struct sdhci_host *host, u32 blk_size, u8 blk_count,
-			bool is_start_stat, bool is_data_error)
+static void update_stat(struct sdhci_host *host, u32 blk_size, u32 blk_count,
+			bool is_start_stat, bool is_data_error,
+			unsigned int data_flags)
 {
 	u32 new_kbps;
 	struct data_stat_entry *stat;
 	ktime_t t;
+	bool is_read;
 
 	if (!host->enable_sdhci_perf_stats)
-		return;
+		goto end;
 
+	if (!blk_count) {
+		pr_err("%s %s error stats case: blk_size=%d, blk_count=0, is_start_stat=%d, is_data_error=%d, data_flags=0x%x\n",
+			mmc_hostname(host->mmc), __func__, blk_size,
+			(int)is_start_stat, (int)is_data_error, data_flags);
+		goto end;
+	}
 	stat = host->sdhci_data_stat.head;
+	is_read = IS_DATA_READ(data_flags);
 	while (stat) {
-		if ((stat->stat_blk_size == blk_size) &&
-			(stat->stat_blks_per_transfer == blk_count))
+		if (PERF_STAT_COMPARE(stat, blk_size, blk_count, is_read))
 			break;
 		stat = stat->next;
 	}
 	if (!stat) {
 		/* allocate an entry */
-		stat = add_entry_sorted(host, blk_size, blk_count);
+		stat = add_entry_sorted(host, blk_size, blk_count, data_flags);
 		if (!stat) {
-			pr_err("%s line=%d: stat entry not found\n",
-				__func__, __LINE__);
-			return;
+			pr_err("%s %s line=%d: stat entry not found\n",
+				mmc_hostname(host->mmc), __func__, __LINE__);
+			goto end;
 		}
 	}
 
@@ -1206,10 +1243,14 @@ static void update_stat(struct sdhci_host *host, u32 blk_size, u8 blk_count,
 		stat->start_ktime = ktime_get();
 	} else {
 		if (is_data_error) {
+			pr_err("%s %s error stats case: blk_size=%d, blk_count=0, is_start_stat=%d, data Error case ... data_flags=0x%x\n",
+				mmc_hostname(host->mmc), __func__, blk_size,
+				(int)is_start_stat, data_flags);
 			memset(&stat->start_ktime, 0, sizeof(ktime_t));
 			if (!stat->total_bytes)
-				free_data_entry(host, blk_size, blk_count);
-			return;
+				free_data_entry(host, blk_size, blk_count,
+					data_flags);
+			goto end;
 		}
 		t = ktime_get();
 		stat->duration_usecs = ktime_us_delta(t, stat->start_ktime);
@@ -1230,7 +1271,10 @@ static void update_stat(struct sdhci_host *host, u32 blk_size, u8 blk_count,
 		/* update the total bytes figure for this entry */
 		stat->total_usecs += stat->duration_usecs;
 		stat->total_bytes += stat->current_transferred_bytes;
+		stat->total_transfers++;
 	}
+end:
+	return;
 }
 #endif
 
@@ -1288,11 +1332,13 @@ static void sdhci_finish_data(struct sdhci_host *host)
 		tasklet_schedule(&host->finish_tasklet);
 #ifdef CONFIG_DEBUG_FS
 	if (data->bytes_xfered) {
-		update_stat(host, data->blksz, data->blocks, false, false);
+		update_stat(host, data->blksz, data->blocks, false, false,
+			data->flags);
 	} else {
 		host->no_data_transfer_count++;
 		/* performance stats does not include cases of data error */
-		update_stat(host, data->blksz, data->blocks, false, true);
+		update_stat(host, data->blksz, data->blocks, false, true,
+			data->flags);
 	}
 #endif
 }
@@ -1701,9 +1747,9 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host = mmc_priv(mmc);
 
 #ifdef CONFIG_DEBUG_FS
-	if (mrq->data)
+	if (mrq->data && mrq->data->blocks)
 		update_stat(host, mrq->data->blksz, mrq->data->blocks,
-			true, false);
+			true, false, mrq->data->flags);
 #endif
 
 	sdhci_runtime_pm_get(host);
@@ -3538,15 +3584,20 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 		seq_puts(s,
 		"Note: Performance figures in kilo bits per sec(kbps)\n");
 		seq_puts(s,
-		"S.No.    Block       Num blks/        Total                Total          Last            Last usec          Avg kbps        Last kbps           Min kbps   Max kbps\n");
+		"S.No.    Block       Direction    Num blks/        Total     Total           Total          Last            Last usec          Avg kbps        Last kbps           Min kbps   Max kbps\n");
 		seq_puts(s,
-		"         Size        transfer         Bytes                Time(usec)     Bytes           Duration           Perf            Perf                Perf       Perf\n");
+		"         Size        (R/W)        transfer         Bytes     Transfers       Time(usec)     Bytes           Duration           Perf            Perf                Perf       Perf\n");
 	}
 	for (i = 0; i < host->sdhci_data_stat.stat_size; i++) {
 		if (!stat)
 			stat = host->sdhci_data_stat.head;
 		else
 			stat = stat->next;
+		if (!stat) {
+			pr_err("%s %s: sdhci data stat head NULL i=%d\n",
+				mmc_hostname(host->mmc), __func__, i);
+			break;
+		}
 		get_kbps_from_size_n_usec_64bit(
 			((stat->total_bytes << 3) * 1000),
 			stat->total_usecs, &avg_perf2);
@@ -3555,11 +3606,13 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 			stat->duration_usecs,
 			&last_perf_in_class);
 		snprintf(buf, 250,
-			"%2d    %4d      %8d    %16lld            %8d    %8d            %8d           %8d         %8d         %8d    %8d\n",
+			"%2d    %4d           %c       %8d    %16lld    %8d        %8d    %8d            %8d           %8d         %8d         %8d    %8d\n",
 			(i + 1),
 			stat->stat_blk_size,
+			stat->is_read ? 'R' : 'W',
 			stat->stat_blks_per_transfer,
 			stat->total_bytes,
+			stat->total_transfers,
 			stat->total_usecs,
 			stat->current_transferred_bytes,
 			stat->duration_usecs,
