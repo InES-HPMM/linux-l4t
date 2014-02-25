@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki-powermon.c
  *
- * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ static struct ina3221_platform_data power_mon_info[] = {
 	[VDD_BAT_VBUS_MODEM_P2530_A03] = {
 		.rail_name = {"VDD_BATT", "VDD_VBUS",
 							"VDD_MODEM"},
-		.shunt_resistor = {5, 5, 5},
+		.shunt_resistor = {5, 10, 10},
 		.cont_conf_data = INA3221_CONT_CONFIG_DATA,
 		.trig_conf_data = INA3221_TRIG_CONFIG_DATA,
 		.warn_conf_limits = {-1, -1, -1},
