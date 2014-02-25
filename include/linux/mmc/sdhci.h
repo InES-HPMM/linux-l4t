@@ -240,6 +240,7 @@ struct sdhci_host {
 #ifdef CONFIG_DEBUG_FS
 	bool			enable_sdhci_perf_stats;
 #endif
+	int			clk_gate_tmout_ticks;
 
 	unsigned long private[0] ____cacheline_aligned;
 };

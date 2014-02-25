@@ -172,6 +172,9 @@
 		  SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO | \
 		  SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
 
+#define IS_QUIRKS2_DELAYED_CLK_GATE(host) \
+		(host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE)
+
 /* Interface voltages */
 #define SDHOST_1V8_OCR_MASK	0x8
 #define SDHOST_HIGH_VOLT_MIN	2700000
@@ -3578,6 +3581,16 @@ static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
 		saved_line = __LINE__;
 		goto err_node;
 	}
+	if (IS_QUIRKS2_DELAYED_CLK_GATE(host)) {
+		host->clk_gate_tmout_ticks = -1;
+		if (!debugfs_create_u32("clk_gate_tmout_ticks",
+			S_IRUGO | S_IWUSR,
+			root, (u32 *)&host->clk_gate_tmout_ticks)) {
+			saved_line = __LINE__;
+			goto err_node;
+		}
+	}
+
 	return;
 
 err_node:

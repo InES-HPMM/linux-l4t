@@ -55,7 +55,16 @@
 
 #define MAX_TUNING_LOOP 40
 
-#define SDIO_CLK_GATING_TICK_TMOUT (HZ / 50)
+#define SDIO_CLK_GATING_TICK_TMOUT (HZ / 1000) /* 1msec timeout */
+#define EMMC_CLK_GATING_TICK_TMOUT (HZ / 50) /* 20msec timeout */
+
+#define IS_SDIO_CARD(host) \
+		(host->mmc->card && \
+		(host->mmc->card->type == MMC_TYPE_SDIO))
+
+#define IS_EMMC_CARD(host) \
+		(host->mmc->card && \
+		(host->mmc->card->type == MMC_TYPE_MMC))
 
 #define IS_SDIO_CARD_OR_EMMC(host) \
 		(host->mmc->card && \
@@ -2499,9 +2508,18 @@ int sdhci_disable(struct mmc_host *mmc)
 		return 0;
 
 	if (IS_DELAYED_CLK_GATE(host)) {
-		if (host->is_clk_on)
-			schedule_delayed_work(&host->delayed_clk_gate_wrk,
-				SDIO_CLK_GATING_TICK_TMOUT);
+		if (host->is_clk_on) {
+			if (IS_SDIO_CARD(host))
+				host->clk_gate_tmout_ticks =
+					SDIO_CLK_GATING_TICK_TMOUT;
+			else if (IS_EMMC_CARD(host))
+				host->clk_gate_tmout_ticks =
+					EMMC_CLK_GATING_TICK_TMOUT;
+			if (host->clk_gate_tmout_ticks > 0)
+				schedule_delayed_work(
+					&host->delayed_clk_gate_wrk,
+					host->clk_gate_tmout_ticks);
+		}
 		return 0;
 	}
 
