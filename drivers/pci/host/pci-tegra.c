@@ -1031,9 +1031,11 @@ static int tegra_pcie_enable_controller(void)
 		/* Extract 2 upper bits from odmdata[28:30] and configure */
 		/* T124 pcie lanes in X2_X1/X4_X1 config based on them */
 		lane_owner = tegra_get_lane_owner_info() >> 1;
-		if (lane_owner == PCIE_LANES_X2_X1)
+		if (lane_owner == PCIE_LANES_X2_X1) {
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
-		else {
+			if (tegra_pcie.plat_data->port_status[1])
+				val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
+		} else {
 			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
 			if ((tegra_pcie.plat_data->port_status[1]) &&
 				(lane_owner == PCIE_LANES_X4_X1))
