@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include "hier_ictlr.h"
 
 #define HIER_GROUP_CPU_ENABLE                                 0x00000000
 #define HIER_GROUP_CPU_STATUS                                 0x00000004
@@ -38,12 +39,7 @@
 
 #define MSELECT_TIMEOUT_TIMER_0                                     0x5c
 #define MSELECT_ERROR_STATUS_0                                      0x60
-
-struct tegra_hier_ictlr {
-	u32 irq;
-	void __iomem *hier_ictlr_base;
-	void __iomem *mselect_base;
-};
+#define MSELECT_DEFAULT_TIMEOUT                                 0xFFFFFF
 
 static irqreturn_t tegra_hier_ictlr_irq_handler(int irq, void *data)
 {
@@ -128,7 +124,7 @@ static int tegra_hier_ictlr_mselect_init(struct platform_device *pdev,
 {
 	unsigned long reg;
 
-	writel(0xFFFFFF, ictlr->mselect_base + MSELECT_TIMEOUT_TIMER_0);
+	tegra_hier_ictlr_set_mselect_timeout(ictlr, MSELECT_DEFAULT_TIMEOUT);
 
 	reg = readl(ictlr->mselect_base + MSELECT_CONFIG_0);
 	writel(reg |
@@ -143,6 +139,15 @@ static int tegra_hier_ictlr_mselect_init(struct platform_device *pdev,
 		ictlr->hier_ictlr_base + MSELECT_CONFIG_0);
 
 	return 0;
+}
+
+void tegra_hier_ictlr_set_mselect_timeout(struct tegra_hier_ictlr *ictlr,
+					  u32 timeout_cycles)
+{
+	ictlr->mselect_timeout_cycles = timeout_cycles;
+
+	writel(ictlr->mselect_timeout_cycles, ictlr->mselect_base +
+		MSELECT_TIMEOUT_TIMER_0);
 }
 
 static int tegra_hier_ictlr_probe(struct platform_device *pdev)
@@ -167,9 +172,17 @@ static int tegra_hier_ictlr_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	tegra_hier_ictlr_create_sysfs(pdev);
+
 	dev_notice(&pdev->dev, "probed\n");
 
 	dev_set_drvdata(&pdev->dev, ictlr);
+	return 0;
+}
+
+static int __exit tegra_hier_ictlr_remove(struct platform_device *pdev)
+{
+	tegra_hier_ictlr_remove_sysfs(pdev);
 	return 0;
 }
 
@@ -179,6 +192,7 @@ static struct platform_driver tegra_hier_ictlr_driver = {
 		   .owner = THIS_MODULE,
 		   },
 	.probe = tegra_hier_ictlr_probe,
+	.remove = __exit_p(tegra_hier_ictrl_remove),
 };
 
 static int __init tegra_hier_ictlr_init(void)
@@ -186,7 +200,13 @@ static int __init tegra_hier_ictlr_init(void)
 	return platform_driver_register(&tegra_hier_ictlr_driver);
 }
 
+static void __exit tegra_hier_ictlr_exit(void)
+{
+	platform_driver_unregister(&tegra_hier_ictlr_driver);
+}
+
 module_init(tegra_hier_ictlr_init);
+module_exit(tegra_hier_ictlr_exit);
 
 MODULE_DESCRIPTION("Tegra Hierarchical Interrupt Controller Driver");
 MODULE_LICENSE("GPL v2");
