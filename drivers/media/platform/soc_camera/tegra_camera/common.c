@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -873,9 +873,6 @@ static int tegra_camera_probe(struct platform_device *pdev)
 				__func__, err);
 		goto exit_deinit_clk;
 	}
-
-	/* Init syncpts */
-	cam->ops->init_syncpts(cam);
 
 	cam->reg_base = ndata->aperture[0];
 	if (!cam->reg_base) {
