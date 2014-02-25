@@ -244,33 +244,32 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 {
 	struct i2c_client *client = chip->client;
 	int old_csum;
-	int temp;
+	u8 temp;
 	int new_csum;
 	int old_des_cap;
 	int old_des_energy;
 	int old_taper_rate;
 	int old_terminate_voltage;
 	int old_v_chg_term;
-	int old_des_cap_lsb;
-	int old_des_cap_msb;
-	int old_taper_rate_lsb;
-	int old_taper_rate_msb;
-	int old_des_energy_lsb;
-	int old_des_energy_msb;
-	int old_terminate_voltage_lsb;
-	int old_terminate_voltage_msb;
-	int old_v_chg_term_msb;
-	int old_v_chg_term_lsb;
+	u8 old_des_cap_lsb;
+	u8 old_des_cap_msb;
+	u8 old_taper_rate_lsb;
+	u8 old_taper_rate_msb;
+	u8 old_des_energy_lsb;
+	u8 old_des_energy_msb;
+	u8 old_terminate_voltage_lsb;
+	u8 old_terminate_voltage_msb;
+	u8 old_v_chg_term_msb;
+	u8 old_v_chg_term_lsb;
 	int flags_lsb;
 
 	unsigned long timeout = jiffies + HZ;
 	int ret;
 
+
 	flags_lsb = bq27441_read_byte(client, BQ27441_FLAGS);
-	if (!(flags_lsb & BQ27441_FLAGS_ITPOR)) {
-		dev_info(&chip->client->dev, "FG is already programmed\n");
-		return 0;
-	}
+
+	/* Unseal the fuel gauge for data access */
 
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x00);
 	if (ret < 0)
@@ -287,22 +286,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x13);
-	if (ret < 0)
-		goto fail;
-
-	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x00);
-	if (ret < 0)
-		goto fail;
-
-	while (!(bq27441_read_byte(client, BQ27441_FLAGS) & 0x10)) {
-		if (time_after(jiffies, timeout)) {
-			dev_warn(&chip->client->dev,
-					"timeout waiting for cfg update\n");
-			return -ETIMEDOUT;
-		}
-		msleep(1);
-	}
+	/* setup fuel gauge state data block block for ram access */
 
 	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
 	if (ret < 0)
@@ -316,7 +300,13 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
+
+	/* read check sum */
+	mdelay(1);
+
 	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	/* read all the old values that we want to update */
 
 	old_des_cap = bq27441_read_word(client, BQ27441_DESIGN_CAPACITY_1);
 	old_des_cap_msb = old_des_cap & 0xFF;
@@ -335,6 +325,55 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	old_terminate_voltage_msb = old_terminate_voltage & 0xFF;
 	old_terminate_voltage_lsb = (old_terminate_voltage & 0xFF00) >> 8;
 
+
+	dev_info(&chip->client->dev, "FG values:\n capacity old: %d new: %d\n"
+			"design_energy old:%d new:%d\n"
+			"taper_rate old:%d new:%d\n"
+			"terminate_voltage old:%d new:%d\n"
+			"itpor flag:%d checksum:%d\n",
+			be16_to_cpu(old_des_cap), chip->full_capacity,
+			be16_to_cpu(old_des_energy), chip->design_energy,
+			be16_to_cpu(old_taper_rate), chip->taper_rate,
+			be16_to_cpu(old_terminate_voltage),
+			chip->terminate_voltage,
+			(flags_lsb & BQ27441_FLAGS_ITPOR), old_csum);
+
+	/*
+	if the values match with the required ones or if POR bit is not set
+	seal the fuel gauge and return
+	*/
+	if ((chip->full_capacity == be16_to_cpu(old_des_cap))
+	  && (chip->design_energy == be16_to_cpu(old_des_energy))
+	  && (chip->taper_rate == be16_to_cpu(old_taper_rate))
+	  && (chip->terminate_voltage == be16_to_cpu(old_terminate_voltage))
+	  && (!(flags_lsb & BQ27441_FLAGS_ITPOR))) {
+		dev_info(&chip->client->dev, "FG is already programmed\n");
+		goto unseal;
+	}
+
+	/* place the fuel gauge into config update */
+
+	dev_info(&chip->client->dev, "Programming Bq27441!\n");
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x13);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	while (!(bq27441_read_byte(client, BQ27441_FLAGS) & 0x10)) {
+		if (time_after(jiffies, timeout)) {
+			dev_warn(&chip->client->dev,
+					"timeout waiting for cfg update\n");
+			return -ETIMEDOUT;
+		}
+		msleep(1);
+	}
+
+
+	/* update new config to fuel gauge */
 	ret = bq27441_write_byte(client, BQ27441_DESIGN_CAPACITY_1,
 					(chip->full_capacity & 0xFF00) >> 8);
 	if (ret < 0)
@@ -375,12 +414,13 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
+	/* calculate the new checksum */
 	temp = (255 - old_csum - old_des_cap_lsb - old_des_cap_msb
 		- old_des_energy_lsb - old_des_energy_msb
 		- old_taper_rate_lsb - old_taper_rate_msb
-		- old_terminate_voltage_lsb - old_terminate_voltage_msb);
+		- old_terminate_voltage_lsb - old_terminate_voltage_msb) % 256;
 
-	new_csum = 255 - ((temp + (chip->full_capacity & 0xFF)
+	new_csum = 255 - (((temp + (chip->full_capacity & 0xFF)
 				+ ((chip->full_capacity & 0xFF00) >> 8)
 				+ (chip->design_energy & 0xFF)
 				+ ((chip->design_energy & 0xFF00) >> 8)
@@ -388,11 +428,27 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 				+ ((chip->taper_rate & 0xFF00) >> 8)
 				+ (chip->terminate_voltage & 0xFF)
 				+ ((chip->terminate_voltage & 0xFF00) >> 8)
-				));
+				)) % 256);
 
 	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CHECKSUM, new_csum);
 	if (ret < 0)
 		goto fail;
+
+	/* read checksum again to ensure that data was written properly */
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x52);
+	if (ret < 0)
+		goto fail;
+
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	if (old_csum != new_csum)
+		dev_info(&chip->client->dev,
+		"checksum write failed old:%d, new:%d\n", new_csum, old_csum);
+	else
+		dev_info(&chip->client->dev,
+		"checksum written old:%d, new:%d\n", new_csum, old_csum);
+
+	/* setup fuel gauge state data block block for ram access */
 
 	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
 	if (ret < 0)
@@ -405,6 +461,8 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK, 0x01);
 	if (ret < 0)
 		goto fail;
+
+	mdelay(1);
 
 	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
 
@@ -432,6 +490,22 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
+	/* read checksum again to ensure that data was written properly */
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x52);
+	if (ret < 0)
+		goto fail;
+
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	if (old_csum != new_csum)
+		dev_info(&chip->client->dev,
+		"checksum write failed old:%d, new:%d\n", new_csum, old_csum);
+	else
+		dev_info(&chip->client->dev,
+		"checksum written old:%d, new:%d\n", new_csum, old_csum);
+
+
+	/* exit config update mode */
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x42);
 	if (ret < 0)
 		goto fail;
@@ -449,6 +523,8 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 		msleep(1);
 	}
 
+unseal:
+	/* unseal the fuel gauge before exit */
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x20);
 	if (ret < 0)
 		goto fail;
