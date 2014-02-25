@@ -18,8 +18,6 @@
  *
  */
 
-/include/ "skeleton.dtsi"
-
 / {
 	compatible = "nvidia,tegra210";
 	interrupt-parent = <&intc>;
