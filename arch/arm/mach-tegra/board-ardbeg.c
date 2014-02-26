@@ -655,6 +655,9 @@ static void ardbeg_usb_init(void)
 			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 3000;
 		}
 
+		if (board_info.board_id == BOARD_P1761)
+			tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
+
 		switch (bi.board_id) {
 		case BOARD_E1733:
 			/* Host cable is detected through PMU Interrupt */
