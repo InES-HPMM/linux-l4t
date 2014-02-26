@@ -110,6 +110,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				"tegra21-i2c.4", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000d100,
 				"tegra21-i2c.5", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
+				NULL),
 	{}
 };
 
