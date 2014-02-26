@@ -85,6 +85,7 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_dvfs.o
 endif
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra_emc_therm.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_therm.o
 
 obj-y                                   += latency_allowance.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_la.o

@@ -44,7 +44,7 @@
 #include "tegra12_emc.h"
 #include "tegra_emc_dt_parse.h"
 #include "devices.h"
-
+#include "common.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
@@ -79,6 +79,13 @@ static u32 tegra12_ddr3_emc_usage_shared_general[] = {
 	20, 26, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 50
 };
 
+/* LPDDR3 4x refresh temp derating table */
+static u32 tegra12_lpddr3_4x_emc_usage_shared_os_idle[] = {
+	15, 24, 38, 42, 46, 54, 62, 66, 71, 71, 64, 50, 40
+};
+static u32 tegra12_lpddr3_4x_emc_usage_shared_general[] = {
+	15, 20, 30, 40, 45, 50, 50, 50, 50, 48, 44, 40, 35
+};
 
 static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw);
 static u8 iso_share_calc_t124_general(unsigned long iso_bw);
@@ -128,6 +135,7 @@ enum {
 #define EMC_CLK_SOURCE_SHIFT		29
 #define EMC_CLK_SOURCE_MASK		(0x7 << EMC_CLK_SOURCE_SHIFT)
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
+#define EMC_CLK_FORCE_CC_TRIGGER        (0x1 << 27)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
 
 #define BURST_REG_LIST \
@@ -363,12 +371,13 @@ struct emc_sel {
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct tegra12_emc_table start_timing;
 static const struct tegra12_emc_table *emc_timing;
+static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
 static ktime_t clkchange_time;
 static int clkchange_delay = 100;
 
-static const u32 *dram_to_soc_bit_map;
 static const struct tegra12_emc_table *tegra_emc_table;
+static const struct tegra12_emc_table *tegra_emc_table_derated;
 static int tegra_emc_table_size;
 
 static u32 dram_dev_num;
@@ -521,6 +530,47 @@ static inline void wait_auto_cal_disable(void)
 		BUG();
 	}
 }
+
+static inline void set_over_temp_timing(
+	const struct tegra12_emc_table *next_timing, unsigned long state)
+{
+#define REFRESH_X2      1
+#define REFRESH_X4      2
+#define REFRESH_SPEEDUP(val, speedup)					\
+	do {					\
+		val = ((val) & 0xFFFF0000) |				\
+			(((val) & 0xFFFF) >> (speedup));		\
+	} while (0)
+
+	u32 ref = next_timing->burst_regs[EMC_REFRESH_INDEX];
+	u32 pre_ref = next_timing->burst_regs[EMC_PRE_REFRESH_REQ_CNT_INDEX];
+	u32 dsr_cntrl = next_timing->burst_regs[EMC_DYN_SELF_REF_CONTROL_INDEX];
+
+	switch (state) {
+	case DRAM_OVER_TEMP_NONE:
+		break;
+	case DRAM_OVER_TEMP_REFRESH_X2:
+		REFRESH_SPEEDUP(ref, REFRESH_X2);
+		REFRESH_SPEEDUP(pre_ref, REFRESH_X2);
+		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X2);
+		break;
+	case DRAM_OVER_TEMP_REFRESH_X4:
+	case DRAM_OVER_TEMP_THROTTLE:
+		REFRESH_SPEEDUP(ref, REFRESH_X4);
+		REFRESH_SPEEDUP(pre_ref, REFRESH_X4);
+		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X4);
+		break;
+	default:
+	WARN(1, "%s: Failed to set dram over temp state %lu\n",
+		__func__, state);
+	return;
+	}
+
+	__raw_writel(ref, burst_reg_addr[EMC_REFRESH_INDEX]);
+	__raw_writel(pre_ref, burst_reg_addr[EMC_PRE_REFRESH_REQ_CNT_INDEX]);
+	__raw_writel(dsr_cntrl, burst_reg_addr[EMC_DYN_SELF_REF_CONTROL_INDEX]);
+}
+
 static inline unsigned int bgbias_preset(const struct tegra12_emc_table *next_timing,
 			      const struct tegra12_emc_table *last_timing)
 {
@@ -972,6 +1022,16 @@ default_val:
 	return 2000;
 }
 
+static const struct tegra12_emc_table *emc_get_table(
+	unsigned long over_temp_state)
+{
+	if ((over_temp_state == DRAM_OVER_TEMP_THROTTLE) &&
+	    (tegra_emc_table_derated != NULL))
+		return tegra_emc_table_derated;
+	else
+		return tegra_emc_table;
+}
+
 /* The EMC registers have shadow registers. When the EMC clock is updated
  * in the clock controller, the shadow registers are copied to the active
  * registers, allowing glitchless memory bus frequency changes.
@@ -984,6 +1044,7 @@ int tegra_emc_set_rate(unsigned long rate)
 	int i;
 	u32 clk_setting;
 	const struct tegra12_emc_table *last_timing;
+	const struct tegra12_emc_table *current_table;
 	unsigned long flags;
 	s64 last_change_delay;
 
@@ -1020,9 +1081,13 @@ int tegra_emc_set_rate(unsigned long rate)
 		udelay(clkchange_delay - (int)last_change_delay);
 
 	spin_lock_irqsave(&emc_access_lock, flags);
-	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
-	clkchange_time = ktime_get();
-	emc_timing = &tegra_emc_table[i];
+	/* Pick from the EMC tables based on the status of the over temp state
+	   flag. */
+	current_table = emc_get_table(dram_over_temp_state);
+	clk_setting = current_table[i].src_sel_reg;
+	emc_set_clock(&current_table[i], last_timing, clk_setting);
+	clkchange_time = timekeeping_suspended ? clkchange_time : ktime_get();
+	emc_timing = &current_table[i];
 	tegra_mc_divider_update(emc);
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
@@ -1333,7 +1398,9 @@ static int purge_emc_table(unsigned long max_rate)
 #define purge_emc_table(max_rate) (0)
 #endif
 
-static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
+static int init_emc_table(const struct tegra12_emc_table *table,
+			  const struct tegra12_emc_table *table_der,
+			  int table_size)
 {
 	int i, mv;
 	u32 reg;
@@ -1373,6 +1440,20 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
 			table[0].rev);
 		return -ENODATA;
+	}
+
+	if (table_der) {
+		/* Check that the derated table and non-derated table match. */
+		for (i = 0; i < tegra_emc_table_size; i++) {
+			if (table[i].rate        != table_der[i].rate ||
+			    table[i].rev         != table_der[i].rev ||
+			    table[i].emc_min_mv  != table_der[i].emc_min_mv ||
+			    table[i].src_sel_reg != table_der[i].src_sel_reg) {
+				pr_err("tegra: emc: Derated table mismatch.\n");
+				return -EINVAL;
+			}
+		}
+		pr_info("tegra: emc: Derated table is valid.\n");
 	}
 
 	/* Match EMC source/divider settings with table entries */
@@ -1417,6 +1498,7 @@ static int init_emc_table(const struct tegra12_emc_table *table, int table_size)
 	}
 
 	tegra_emc_table = table;
+	tegra_emc_table_derated = table_der;
 
 	/*
 	 * Purge rates that cannot be reached because table does not specify
@@ -1598,7 +1680,8 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 		return -ENODATA;
 	}
 
-	return init_emc_table(pdata->tables, pdata->num_tables);
+	return init_emc_table(pdata->tables, pdata->tables_derated,
+			      pdata->num_tables);
 }
 
 static struct of_device_id tegra12_emc_of_match[] = {
@@ -1657,29 +1740,6 @@ int tegra_emc_get_dram_type(void)
 	return dram_type;
 }
 
-static u32 soc_to_dram_bit_swap(u32 soc_val, u32 dram_mask, u32 dram_shift)
-{
-	int bit;
-	u32 dram_val = 0;
-
-	/* tegra clocks definitions use shifted mask always */
-	if (!dram_to_soc_bit_map)
-		return soc_val & dram_mask;
-
-	for (bit = dram_shift; bit < 32; bit++) {
-		u32 dram_bit_mask = 0x1 << bit;
-		u32 soc_bit_mask = dram_to_soc_bit_map[bit];
-
-		if (!(dram_bit_mask & dram_mask))
-			break;
-
-		if (soc_bit_mask & soc_val)
-			dram_val |= dram_bit_mask;
-	}
-
-	return dram_val;
-}
-
 static int emc_read_mrr(int dev, int addr)
 {
 	int ret;
@@ -1716,7 +1776,7 @@ static int emc_read_mrr(int dev, int addr)
 
 int tegra_emc_get_dram_temperature(void)
 {
-	int mr4;
+	int mr4 = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&emc_access_lock, flags);
@@ -1726,11 +1786,63 @@ int tegra_emc_get_dram_temperature(void)
 		spin_unlock_irqrestore(&emc_access_lock, flags);
 		return mr4;
 	}
+
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
-	mr4 = soc_to_dram_bit_swap(
-		mr4, LPDDR2_MR4_TEMP_MASK, LPDDR2_MR4_TEMP_SHIFT);
+	mr4 = (mr4 & LPDDR2_MR4_TEMP_MASK) >> LPDDR2_MR4_TEMP_SHIFT;
 	return mr4;
+}
+
+int tegra_emc_set_over_temp_state(unsigned long state)
+{
+	int offset;
+	unsigned long flags;
+	const struct tegra12_emc_table *current_table;
+	const struct tegra12_emc_table *new_table;
+
+	if (dram_type != DRAM_TYPE_LPDDR2 || !emc_timing)
+		return -ENODEV;
+
+	if (state > DRAM_OVER_TEMP_THROTTLE)
+		return -EINVAL;
+
+	/* Silently do nothing if there is no state change. */
+	if (state == dram_over_temp_state)
+		return 0;
+
+	/*
+	 * If derating needs to be turned on/off force a clock change. That
+	 * will take care of the refresh as well. In derating is not going to
+	 * be changed then all that is needed is an update to the refresh
+	 * settings.
+	 */
+	spin_lock_irqsave(&emc_access_lock, flags);
+
+	current_table = emc_get_table(dram_over_temp_state);
+	new_table = emc_get_table(state);
+	dram_over_temp_state = state;
+
+	if (current_table != new_table) {
+		offset = emc_timing - current_table;
+		emc_set_clock(&new_table[offset], emc_timing,
+			new_table[offset].src_sel_reg |
+			EMC_CLK_FORCE_CC_TRIGGER);
+		emc_timing = &new_table[offset];
+		tegra_mc_divider_update(emc);
+	} else {
+		set_over_temp_timing(emc_timing, state);
+		emc_timing_update();
+		if (state != DRAM_OVER_TEMP_NONE)
+			emc_writel(EMC_REF_FORCE_CMD, EMC_REF);
+	}
+
+	spin_unlock_irqrestore(&emc_access_lock, flags);
+
+	pr_debug("[emc] %s: temp_state: %lu  - selected %s table\n",
+		__func__, dram_over_temp_state,
+		new_table == tegra_emc_table ? "regular" : "derated");
+
+	return 0;
 }
 
 
@@ -1839,17 +1951,25 @@ static inline int bw_calc_get_freq_idx(unsigned long bw)
 static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw)
 {
 	int freq_idx = bw_calc_get_freq_idx(iso_bw);
-	return (dram_type != DRAM_TYPE_DDR3) ?
-		tegra12_lpddr3_emc_usage_shared_os_idle[freq_idx] :
-		tegra12_ddr3_emc_usage_shared_os_idle[freq_idx];
+
+	if (dram_type == DRAM_TYPE_DDR3)
+		return tegra12_ddr3_emc_usage_shared_os_idle[freq_idx];
+	else if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+		return tegra12_lpddr3_4x_emc_usage_shared_os_idle[freq_idx];
+	else
+		return tegra12_lpddr3_emc_usage_shared_os_idle[freq_idx];
 }
 
 static u8 iso_share_calc_t124_general(unsigned long iso_bw)
 {
 	int freq_idx = bw_calc_get_freq_idx(iso_bw);
-	return (dram_type != DRAM_TYPE_DDR3) ?
-		tegra12_lpddr3_emc_usage_shared_general[freq_idx] :
-		tegra12_ddr3_emc_usage_shared_general[freq_idx];
+
+	if (dram_type == DRAM_TYPE_DDR3)
+		return tegra12_ddr3_emc_usage_shared_general[freq_idx];
+	else if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+		return tegra12_lpddr3_4x_emc_usage_shared_general[freq_idx];
+	else
+		return tegra12_lpddr3_emc_usage_shared_general[freq_idx];
 }
 
 
@@ -1926,6 +2046,18 @@ static int dram_temperature_get(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(dram_temperature_fops, dram_temperature_get,
 			NULL, "%lld\n");
 
+static int over_temp_state_get(void *data, u64 *val)
+{
+	*val = dram_over_temp_state;
+	return 0;
+}
+static int over_temp_state_set(void *data, u64 val)
+{
+	return tegra_emc_set_over_temp_state(val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(over_temp_state_fops, over_temp_state_get,
+			over_temp_state_set, "%llu\n");
+
 static int efficiency_get(void *data, u64 *val)
 {
 	*val = tegra_emc_bw_efficiency;
@@ -1961,6 +2093,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("dram_temperature", S_IRUGO, emc_debugfs_root,
 				 NULL, &dram_temperature_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("over_temp_state", S_IRUGO | S_IWUSR,
+				emc_debugfs_root, NULL, &over_temp_state_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
