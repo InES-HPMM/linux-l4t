@@ -27,13 +27,6 @@ config TEGRA_GRHOST_FORCE_NVMAP
 	help
 	  Force using nvmap instead of dma mapping API
 
-config TEGRA_GRHOST_USE_DMABUF
-	bool "Support dmabuf buffers"
-	default y
-	select DMA_SHARED_BUFFER
-	help
-	  Support dmabuf buffers.
-
 config TEGRA_GRHOST_DEFAULT_TIMEOUT
 	depends on TEGRA_GRHOST
 	int "Default timeout for submits"
