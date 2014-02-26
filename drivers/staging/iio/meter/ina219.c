@@ -683,7 +683,7 @@ static int ina219_probe(struct i2c_client *client,
 
 	chip = iio_priv(indio_dev);
 
-	i2c_set_clientdata(client, chip);
+	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->pdata = pdata;
