@@ -219,7 +219,7 @@
 #define T12X_LA_REAL_TO_FPA(val)		((val) * \
 						T12X_LA_FP_FACTOR * \
 						T12X_LA_ADDITIONAL_FP_FACTOR)
-#define T12X_LA_STATIC_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP	70000
+#define T12X_LA_ST_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP	70000
 #define T12X_LA_DRAM_WIDTH_BITS					64
 #define T12X_LA_DISP_CATCHUP_FACTOR_FP				1100
 #define T12X_MC_PTSA_MIN_DEFAULT_MASK				0x3f
@@ -1183,7 +1183,7 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 	unsigned int dvfs_buffering_reqd_bytes = 0;
 	unsigned int thresh_dvfs_bytes = 0;
 	unsigned int total_buf_sz_bytes = 0;
-	unsigned int effective_mccif_buf_sz = 0;
+	int effective_mccif_buf_sz = 0;
 	unsigned int la_bw_upper_bound_nsec_fp = 0;
 	unsigned int la_bw_upper_bound_nsec = 0;
 	unsigned int la_nsec = 0;
@@ -1222,27 +1222,33 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 		cs->disp_clients[DISP_CLIENT_LA_ID(id)].mccif_size_bytes :
 		total_buf_sz_bytes - thresh_dvfs_bytes;
 
-	la_bw_upper_bound_nsec_fp = effective_mccif_buf_sz *
-					T12X_LA_FP_FACTOR /
-					bw_mbps;
-	la_bw_upper_bound_nsec_fp = la_bw_upper_bound_nsec_fp *
-					T12X_LA_FP_FACTOR /
-					T12X_LA_DISP_CATCHUP_FACTOR_FP;
-	la_bw_upper_bound_nsec_fp =
-		la_bw_upper_bound_nsec_fp -
-		(T12X_LA_STATIC_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP +
-		T12X_EXP_TIME_EMCCLKS_FP) /
-		emc_freq_mhz;
-	la_bw_upper_bound_nsec_fp *= T12X_LA_USEC_TO_NSEC_FACTOR;
-	la_bw_upper_bound_nsec = T12X_LA_FP_TO_REAL(
+	if (effective_mccif_buf_sz >= 0) {
+		la_bw_upper_bound_nsec_fp = effective_mccif_buf_sz *
+						T12X_LA_FP_FACTOR /
+						bw_mbps;
+		la_bw_upper_bound_nsec_fp = la_bw_upper_bound_nsec_fp *
+						T12X_LA_FP_FACTOR /
+						T12X_LA_DISP_CATCHUP_FACTOR_FP;
+		la_bw_upper_bound_nsec_fp =
+			la_bw_upper_bound_nsec_fp -
+			(T12X_LA_ST_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP +
+			T12X_EXP_TIME_EMCCLKS_FP) /
+			emc_freq_mhz;
+		la_bw_upper_bound_nsec_fp *= T12X_LA_USEC_TO_NSEC_FACTOR;
+		la_bw_upper_bound_nsec = T12X_LA_FP_TO_REAL(
 						la_bw_upper_bound_nsec_fp);
 
 
-	la_nsec = min(la_bw_upper_bound_nsec,
-			(unsigned int)T12X_MAX_LA_NSEC);
+		la_nsec = min(la_bw_upper_bound_nsec,
+				(unsigned int)T12X_MAX_LA_NSEC);
 
-	la_to_set = min(la_nsec / cs->ns_per_tick,
-			(unsigned int)T12X_MC_LA_MAX_VALUE);
+		la_to_set = min(la_nsec / cs->ns_per_tick,
+				(unsigned int)T12X_MC_LA_MAX_VALUE);
+	} else {
+		printk("%s: effective_mccif_buf_sz is negative.\n", __func__);
+		printk("%s: Hard coding LA value to 1.\n", __func__);
+		la_to_set = 1;
+	}
 
 	program_la(ci, la_to_set);
 	return 0;
@@ -1292,7 +1298,7 @@ void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 	cs_la->la_params.la_real_to_fp = tegra12x_la_real_to_fp;
 	cs_la->la_params.la_fp_to_real = tegra12x_la_fp_to_real;
 	cs_la->la_params.static_la_minus_snap_arb_to_row_srt_emcclks_fp =
-			T12X_LA_STATIC_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP;
+			T12X_LA_ST_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP;
 	cs_la->la_params.dram_width_bits = T12X_LA_DRAM_WIDTH_BITS;
 	cs_la->la_params.disp_catchup_factor_fp =
 						T12X_LA_DISP_CATCHUP_FACTOR_FP;
