@@ -610,11 +610,11 @@ int snd_soc_suspend(struct device *dev)
 		snd_soc_dapm_stream_event(&card->rtd[i],
 					  SNDRV_PCM_STREAM_CAPTURE,
 					  SND_SOC_DAPM_STREAM_SUSPEND);
-	}
 
-	/* Recheck all analogue paths too */
-	dapm_mark_io_dirty(&card->dapm);
-	snd_soc_dapm_sync(&card->dapm);
+		/* Recheck all analogue paths too */
+		dapm_mark_io_dirty(&card->dapm);
+		snd_soc_dapm_sync(&card->dapm);
+	}
 
 	/* suspend all CODECs */
 	list_for_each_entry(codec, &card->codec_dev_list, card_list) {
