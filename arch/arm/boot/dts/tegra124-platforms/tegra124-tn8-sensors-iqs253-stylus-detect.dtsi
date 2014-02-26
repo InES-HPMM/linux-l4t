@@ -1,9 +1,0 @@
-/ {
-	i2c@7000c400 {
-		status = "okay";
-
-		iqs253@44 {
-			stylus-detect;
-		};
-	};
-};
