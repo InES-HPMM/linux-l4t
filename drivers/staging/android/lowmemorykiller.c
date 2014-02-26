@@ -88,8 +88,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #endif
 			 ;
 	int other_file = global_page_state(NR_FILE_PAGES)
-			 - global_page_state(NR_FILE_MAPPED) -
-			global_page_state(NR_SHMEM);
+			- global_page_state(NR_SHMEM)
+			- global_page_state(NR_FILE_MAPPED)
+			- total_swapcache_pages();
 
 	if (other_file < 0)
 		other_file = 0;
