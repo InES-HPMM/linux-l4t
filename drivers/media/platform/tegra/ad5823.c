@@ -283,13 +283,6 @@ static int ad5823_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	ad5823_device.parent = &client->dev;
-	err = misc_register(&ad5823_device);
-	if (err) {
-		dev_err(&client->dev, "ad5823: Unable to register misc device!\n");
-		goto ERROR_RET;
-	}
-
 	if (client->dev.of_node) {
 		info->pdata = ad5823_parse_dt(client);
 		if (IS_ERR(info->pdata)) {
@@ -311,12 +304,24 @@ static int ad5823_probe(struct i2c_client *client,
 	if (err)
 		goto ERROR_RET;
 
+	ad5823_device.parent = &client->dev;
+	err = misc_register(&ad5823_device);
+	if (err) {
+		dev_err(&client->dev, "ad5823: Unable to register misc device!\n");
+		goto ERROR_RET;
+	}
+
 	info->regulator = devm_regulator_get(&client->dev, "vdd");
-	if (IS_ERR_OR_NULL(info->regulator) &&
-				regulator_enable(info->regulator)) {
+	if (IS_ERR(info->regulator)) {
 		dev_err(&client->dev, "unable to get regulator %s\n",
 			dev_name(&client->dev));
 		info->regulator = NULL;
+	} else {
+		if (0 != regulator_enable(info->regulator)) {
+			dev_err(&client->dev,
+				"Failed to enable regulator.\n");
+			info->regulator = NULL;
+		}
 	}
 
 	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
