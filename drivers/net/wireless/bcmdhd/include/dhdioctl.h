@@ -40,6 +40,18 @@
 
 
 /* Linux network driver ioctl encoding */
+#ifdef CONFIG_COMPAT
+typedef struct dhd_ioctl_compat {
+	uint cmd;	/* common ioctl definition */
+	u32 buf;        /* pointer to user buffer */
+	uint len;	/* length of user buffer */
+	bool set;	/* get or set request (optional) */
+	uint used;	/* bytes read or written (optional) */
+	uint needed;	/* bytes needed (optional) */
+	uint driver;	/* to identify target driver */
+} dhd_ioctl_compat_t;
+#endif
+
 typedef struct dhd_ioctl {
 	uint cmd;	/* common ioctl definition */
 	void *buf;	/* pointer to user buffer */

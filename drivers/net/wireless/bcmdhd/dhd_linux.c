@@ -43,6 +43,7 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 #include <linux/ip.h>
+#include <linux/compat.h>
 #include <net/addrconf.h>
 #include <linux/cpufreq.h>
 
@@ -2768,6 +2769,9 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
 	dhd_ioctl_t ioc;
+#ifdef CONFIG_COMPAT
+	dhd_ioctl_compat_t ioc_compat;
+#endif
 	int bcmerror = 0;
 	int ifidx;
 	int ret;
@@ -2824,7 +2828,37 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 	}
 
 	memset(&ioc, 0, sizeof(ioc));
+#ifdef CONFIG_COMPAT
+	memset(&ioc_compat, 0, sizeof(ioc_compat));
 
+	if (is_compat_task()) {
+		/* Copy the ioc control structure part of ioctl request */
+		if (copy_from_user(&ioc_compat, ifr->ifr_data, sizeof(dhd_ioctl_compat_t))) {
+			bcmerror = BCME_BADADDR;
+			goto done;
+		}
+		ioc.cmd = ioc_compat.cmd;
+		ioc.buf = (void *)(uintptr_t) ioc_compat.buf;
+		ioc.len = ioc_compat.len;
+		ioc.set = ioc_compat.set;
+		ioc.used = ioc_compat.used;
+		ioc.needed = ioc_compat.needed;
+		ioc.driver = ioc_compat.driver;
+	} else {
+		/* Copy the ioc control structure part of ioctl request */
+		if (copy_from_user(&ioc, ifr->ifr_data, sizeof(wl_ioctl_t))) {
+			bcmerror = BCME_BADADDR;
+			goto done;
+		}
+
+		/* To differentiate between wl and dhd read 4 more byes */
+		if ((copy_from_user(&ioc.driver, (char *)ifr->ifr_data + sizeof(wl_ioctl_t),
+			sizeof(uint)) != 0)) {
+			bcmerror = BCME_BADADDR;
+			goto done;
+		}
+	}
+#else
 	/* Copy the ioc control structure part of ioctl request */
 	if (copy_from_user(&ioc, ifr->ifr_data, sizeof(wl_ioctl_t))) {
 		bcmerror = BCME_BADADDR;
@@ -2837,6 +2871,7 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 		bcmerror = BCME_BADADDR;
 		goto done;
 	}
+#endif
 
 	if (!capable(CAP_NET_ADMIN)) {
 		bcmerror = BCME_EPERM;

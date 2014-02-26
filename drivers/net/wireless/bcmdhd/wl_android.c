@@ -26,6 +26,7 @@
 
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/compat.h>
 #include <net/netlink.h>
 
 #include <wl_android.h>
@@ -150,12 +151,16 @@ struct io_cfg {
 	struct list_head list;
 };
 
-typedef struct android_wifi_priv_cmd {
-#ifdef CONFIG_64BIT
-	u64 bufaddr;
-#else
-	char *bufaddr;
+#ifdef CONFIG_COMPAT
+typedef struct android_wifi_priv_cmd_compat {
+	u32 bufaddr;
+	int used_len;
+	int total_len;
+} android_wifi_priv_cmd_compat;
 #endif
+
+typedef struct android_wifi_priv_cmd {
+	char *bufaddr;
 	int used_len;
 	int total_len;
 } android_wifi_priv_cmd;
@@ -1278,6 +1283,9 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	char *buf = NULL;
 	int bytes_written = 0;
 	android_wifi_priv_cmd priv_cmd;
+#ifdef CONFIG_COMPAT
+	android_wifi_priv_cmd_compat priv_cmd_compat;
+#endif
 
 	net_os_wake_lock(net);
 
@@ -1285,10 +1293,27 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -EINVAL;
 		goto exit;
 	}
+#ifdef CONFIG_COMPAT
+	if (is_compat_task()) {
+		if (copy_from_user(&priv_cmd_compat, ifr->ifr_data, sizeof(android_wifi_priv_cmd_compat))) {
+			ret = -EFAULT;
+			goto exit;
+		}
+		priv_cmd.bufaddr = (char *)(uintptr_t) priv_cmd_compat.bufaddr;
+		priv_cmd.used_len = priv_cmd_compat.used_len;
+		priv_cmd.total_len = priv_cmd_compat.total_len;
+	} else {
+		if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(android_wifi_priv_cmd))) {
+			ret = -EFAULT;
+			goto exit;
+		}
+	}
+#else
 	if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(android_wifi_priv_cmd))) {
 		ret = -EFAULT;
 		goto exit;
 	}
+#endif
 	if (priv_cmd.total_len > PRIVATE_COMMAND_MAX_LEN)
 	{
 		DHD_ERROR(("%s: too long priavte command\n", __FUNCTION__));
