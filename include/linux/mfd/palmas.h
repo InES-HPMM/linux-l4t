@@ -3841,7 +3841,7 @@ enum usb_irq_events {
 #define PALMAS_CHARGER_REG09					0x09
 #define PALMAS_CHARGER_REG10					0x0a
 
-#define BQ24190_IC_VER                  0x40
+#define BQ24190_IC_VER                  0x20
 #define BQ24192_IC_VER                  0x28
 #define BQ24192i_IC_VER                 0x18
 
