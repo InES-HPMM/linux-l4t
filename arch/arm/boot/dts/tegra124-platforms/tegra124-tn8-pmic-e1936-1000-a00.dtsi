@@ -642,6 +642,7 @@
 				ti,auto-recharge-time = <1800>;
 				ti,disbale-suspend-during-charging;
 				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,charge-term-current-limit-milliamp = <260>;
 				ti,temp-range = <10 15 60>;
 				ti,charge-current-limit = <1024 2048 5200>;
 				ti,thermal-zone = "battery";
