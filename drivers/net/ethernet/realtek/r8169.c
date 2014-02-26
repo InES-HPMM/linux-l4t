@@ -6983,8 +6983,8 @@ rtl_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		tp->cp_cmd |= PCIDAC;
 		dev->features |= NETIF_F_HIGHDMA;
 	} else {
-		rc = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
-		if (rc < 0) {
+		if ((pci_set_dma_mask(pdev, DMA_BIT_MASK(64)) < 0) &&
+			(pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) < 0) {
 			netif_err(tp, probe, dev, "DMA configuration failed\n");
 			goto err_out_free_res_3;
 		}
