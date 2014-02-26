@@ -20,13 +20,14 @@
 #define __GK20A_H
 
 struct channel_gk20a;
+struct platform_device;
 
 #ifdef CONFIG_GK20A
 void gk20a_channel_update(struct channel_gk20a *c, int nr_completed);
+void gk20a_debug_dump_device(struct platform_device *pdev);
 #else
 static inline void gk20a_channel_update(struct channel_gk20a *c,
-					int nr_completed)
-{
-}
+					int nr_completed) {}
+static inline void gk20a_debug_dump_device(struct platform_device *pdev) {}
 #endif
 #endif
