@@ -93,6 +93,9 @@ static void throughput_flip_callback(void)
 			return;
 		}
 
+		if (target_frame_time == 0)
+			return;
+
 		throughput_hint =
 			((int) target_frame_time * 1000) / timediff;
 
