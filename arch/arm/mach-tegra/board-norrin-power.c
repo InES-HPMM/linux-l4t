@@ -789,16 +789,6 @@ static struct thermal_zone_params soctherm_tzp = {
 	.governor_params = &soctherm_pid_params,
 };
 
-static struct tegra_tsensor_pmu_data tpdata_palmas = {
-	.reset_tegra = 1,
-	.pmu_16bit_ops = 0,
-	.controller_type = 0,
-	.pmu_i2c_addr = 0x58,
-	.i2c_controller_id = 4,
-	.poweroff_reg_addr = 0xa0,
-	.poweroff_reg_data = 0x0,
-};
-
 static struct tegra_tsensor_pmu_data tpdata_as3722 = {
 	.reset_tegra = 1,
 	.pmu_16bit_ops = 0,
