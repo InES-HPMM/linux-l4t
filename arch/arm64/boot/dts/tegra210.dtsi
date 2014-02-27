@@ -183,6 +183,11 @@
 		};
 	};
 
+	pmc {
+		compatible = "nvidia,tegra210-pmc";
+		reg = <0x0 0x7000e400 0x0 0x400>;
+	};
+
 	adma {
 		compatible = "nvidia,tegra210-adma";
 		reg = <0x0 0x702e2000 0x0 0x2000>;
