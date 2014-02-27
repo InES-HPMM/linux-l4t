@@ -969,6 +969,7 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.codec_dai_name = "rt5639-aif1",
 		.init = tegra_rt5639_init,
 		.ops = &tegra_rt5639_ops,
+		.ignore_pmdown_time = 1,
 	},
 
 	[DAI_LINK_SPDIF] = {
@@ -997,6 +998,7 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.cpu_dai_name = "dit-hifi",
 		.codec_dai_name = "rt5639-aif1",
 		.ops = &tegra_rt5639_voice_call_ops,
+		.ignore_pmdown_time = 1,
 	},
 	[DAI_LINK_BT_VOICE_CALL] = {
 		.name = "BT VOICE CALL",
