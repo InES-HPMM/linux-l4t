@@ -455,6 +455,7 @@
 
 	adsp {
 	     compatible = "nvidia,tegra210-adsp";
+	     reg = <0x0 0x702ef000 0x0 0x1000>;
 	     status = "disabled";
 	};
 
