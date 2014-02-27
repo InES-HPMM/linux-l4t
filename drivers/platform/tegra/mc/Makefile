@@ -10,7 +10,9 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += mcerr-t3.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += mcerr-t11.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mcerr-t12.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += mcerr-t14.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += mcerr-t12.o
 
 ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += mc-timing-t210.o
 endif
