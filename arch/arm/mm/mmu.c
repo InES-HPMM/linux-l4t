@@ -669,8 +669,6 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 				      bool force_pages)
 {
 	pmd_t *pmd = pmd_offset(pud, addr);
-	unsigned long pages_2m = 0, pages_4k = 0;
-	unsigned long stash_phys = phys;
 	unsigned long next;
 
 	do {
@@ -687,10 +685,8 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		if (type->prot_sect &&
 				((addr | next | phys) & ~SECTION_MASK) == 0 &&
 				!force_pages) {
-			pages_2m += (end-addr) >> (PGDIR_SHIFT);
 			__map_init_section(pmd, addr, next, phys, type);
 		} else {
-			pages_4k += (end-addr) >> PAGE_SHIFT;
 			alloc_init_pte(pmd, addr, next,
 						__phys_to_pfn(phys), type);
 		}
@@ -698,13 +694,6 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		phys += next - addr;
 
 	} while (pmd++, addr = next, addr != end);
-
-	if ((stash_phys >= PHYS_OFFSET) && (stash_phys < arm_lowmem_limit)) {
-#ifdef CONFIG_CPA
-		update_page_count(PG_LEVEL_2M, pages_2m);
-		update_page_count(PG_LEVEL_4K, pages_4k);
-#endif
-	}
 }
 
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
