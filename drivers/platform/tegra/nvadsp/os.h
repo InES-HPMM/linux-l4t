@@ -1,5 +1,5 @@
 /*
- * nvadsp_os.h
+ * os.h
  *
  * A header file containing data structures shared with ADSP OS
  *
@@ -17,4 +17,8 @@
  */
 #ifndef __TEGRA_NVADSP_OS_H
 #define __TEGRA_NVADSP_OS_H
+
+int nvadsp_os_probe(struct platform_device *);
+int adsp_add_load_mappings(phys_addr_t, void *, int);
+
 #endif /* __TEGRA_NVADSP_OS_H */

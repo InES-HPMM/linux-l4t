@@ -178,7 +178,7 @@ void nvadsp_aram_release(char *start, size_t size);
  */
 void nvadsp_adsp_init(void);
 int nvadsp_os_load(void);
-void nvadsp_os_start(void);
+int nvadsp_os_start(void);
 void nvadsp_os_stop(void);
 
 /*

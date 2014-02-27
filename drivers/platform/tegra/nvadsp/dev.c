@@ -24,40 +24,14 @@
 #include <linux/of_device.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/io.h>
+#include <linux/tegra_nvadsp.h>
+#include <linux/miscdevice.h>
 
 #include "dev.h"
+#include "os.h"
 
 status_t nvadsp_mbox_init(struct platform_device *pdev);
-
-static int nvadsp_open(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-
-static int nvadsp_release(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-
-static long nvadsp_ioctl(struct file *filp, unsigned int cmd,
-			 unsigned long arg)
-{
-	return 0;
-}
-
-static long nvadsp_compat_ioctl(struct file *filp, unsigned int cmd,
-				 unsigned long arg)
-{
-	return 0;
-}
-
-static const struct file_operations nvadsp_fops = {
-	.owner		= THIS_MODULE,
-	.open		= nvadsp_open,
-	.release	= nvadsp_release,
-	.unlocked_ioctl	= nvadsp_ioctl,
-	.compat_ioctl	= nvadsp_compat_ioctl,
-};
 
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
@@ -96,13 +70,14 @@ static const struct dev_pm_ops nvadsp_pm_ops = {
 static int nvadsp_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data;
-	struct resource *res = NULL;
 	void __iomem *base = NULL;
 	int ret = 0;
+	int iter;
+	struct device *dev = &pdev->dev;
 
-	dev_info(&pdev->dev, "in probe()...\n");
+	dev_info(dev, "in probe()...\n");
 
-	drv_data = devm_kzalloc(&pdev->dev, sizeof(*drv_data),
+	drv_data = devm_kzalloc(dev, sizeof(*drv_data),
 				GFP_KERNEL);
 	if (!drv_data) {
 		dev_err(&pdev->dev, "Failed to allocate driver data");
@@ -110,29 +85,50 @@ static int nvadsp_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
-		dev_err(&pdev->dev, "Failed to get AMISC resource\n");
-		ret = -EINVAL;
+	drv_data->base_regs =
+		devm_kzalloc(dev, sizeof(void *) * APE_MAX_REG,
+							GFP_KERNEL);
+	if (!drv_data->base_regs) {
+		dev_err(dev, "Failed to allocate regs");
+		ret = -ENOMEM;
 		goto err;
 	}
 
-	base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(base)) {
-		dev_err(&pdev->dev, "Failed to remap AMISC resource\n");
-		ret = PTR_ERR(base);
-		goto err;
+	for (iter = 0; iter < APE_MAX_REG; iter++) {
+		struct resource *res = NULL;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, iter);
+		if (!res) {
+			dev_err(dev,
+			"Failed to get resource with ID %d\n",
+							iter);
+			ret = -EINVAL;
+			goto err;
+		}
+
+		base = devm_ioremap_resource(dev, res);
+		if (IS_ERR(base)) {
+			dev_err(dev,
+				"Failed to remap AMISC resource\n");
+			ret = PTR_ERR(base);
+			goto err;
+		}
+		drv_data->base_regs[iter] = base;
+
+		adsp_add_load_mappings(res->start, base,
+						resource_size(res));
 	}
-	drv_data->amisc_base = base;
 
 	platform_set_drvdata(pdev, drv_data);
+	ret = nvadsp_os_probe(pdev);
+	if (ret)
+		goto err;
 
 	ret = nvadsp_hwmbox_init(pdev);
 	if (ret)
 		goto err;
 
 	ret = nvadsp_mbox_init(pdev);
- err:
+err:
 	return ret;
 }
 

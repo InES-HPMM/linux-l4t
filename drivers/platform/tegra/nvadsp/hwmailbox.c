@@ -40,12 +40,12 @@ static atomic_t hwmbox_send_virq_count = ATOMIC_INIT(0);
 
 static inline u32 hwmbox_readl(u32 reg)
 {
-	return readl(nvadsp_drv_data->amisc_base + reg);
+	return readl(nvadsp_drv_data->base_regs[AMISC] + reg);
 }
 
 static inline void hwmbox_writel(u32 val, u32 reg)
 {
-	writel(val, nvadsp_drv_data->amisc_base + reg);
+	writel(val, nvadsp_drv_data->base_regs[AMISC] + reg);
 }
 
 static inline void hwmbox_enable_irq(int irq)
