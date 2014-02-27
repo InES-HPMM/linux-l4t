@@ -330,7 +330,7 @@ struct thermal_cooling_device *balanced_throttle_register(
 	if (!throttle_debugfs_root || IS_ERR_OR_NULL(
 		debugfs_create_file(name, 0644, throttle_debugfs_root,
 					bthrot, &table_fops)))
-			return -EINVAL;
+		return ERR_PTR(-ENODEV);
 #endif
 
 	bthrot->cdev = thermal_cooling_device_register(
