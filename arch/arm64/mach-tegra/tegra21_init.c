@@ -180,7 +180,6 @@ void __init tegra21x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra21x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra21x_cbus_init_table);
-	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
