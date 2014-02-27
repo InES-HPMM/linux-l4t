@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -410,17 +410,19 @@ static void vi_clks_disable(struct tegra_camera_dev *cam)
 
 static void vi_save_syncpts(struct tegra_camera_dev *cam)
 {
-	cam->syncpt_csi_a =
-		nvhost_syncpt_read_ext(cam->ndev,
-				       TEGRA_VI_SYNCPT_CSI_A);
+	u32 val;
 
-	cam->syncpt_csi_b =
-		nvhost_syncpt_read_ext(cam->ndev,
-				       TEGRA_VI_SYNCPT_CSI_B);
+	if (!nvhost_syncpt_read_ext_check(cam->ndev,
+			TEGRA_VI_SYNCPT_CSI_A, &val))
+		cam->syncpt_csi_a = val;
 
-	cam->syncpt_vip =
-		nvhost_syncpt_read_ext(cam->ndev,
-				       TEGRA_VI_SYNCPT_VI);
+	if (!nvhost_syncpt_read_ext_check(cam->ndev,
+			TEGRA_VI_SYNCPT_CSI_B, &val))
+		cam->syncpt_csi_b = val;
+
+	if (!nvhost_syncpt_read_ext_check(cam->ndev,
+			TEGRA_VI_SYNCPT_VI, &val))
+		cam->syncpt_vip = val;
 }
 
 static void vi_incr_syncpts(struct tegra_camera_dev *cam)

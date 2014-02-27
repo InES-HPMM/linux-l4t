@@ -433,13 +433,15 @@ static void vi2_clks_disable(struct tegra_camera_dev *cam)
 
 static void vi2_save_syncpts(struct tegra_camera_dev *cam)
 {
-	cam->syncpt_csi_a =
-		nvhost_syncpt_read_ext(cam->ndev,
-				       TEGRA_VI_SYNCPT_CSI_A);
+	u32 val;
 
-	cam->syncpt_csi_b =
-		nvhost_syncpt_read_ext(cam->ndev,
-				       TEGRA_VI_SYNCPT_CSI_B);
+	if (!nvhost_syncpt_read_ext_check(cam->ndev,
+			TEGRA_VI_SYNCPT_CSI_A, &val))
+		cam->syncpt_csi_a = val;
+
+	if (!nvhost_syncpt_read_ext_check(cam->ndev,
+			TEGRA_VI_SYNCPT_CSI_B, &val))
+		cam->syncpt_csi_b = val;
 }
 
 static void vi2_incr_syncpts(struct tegra_camera_dev *cam)
