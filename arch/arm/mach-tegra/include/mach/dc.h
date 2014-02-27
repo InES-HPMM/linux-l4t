@@ -94,7 +94,7 @@ enum {
 	TEGRA_DSI_DELAY_MS,
 	TEGRA_DSI_GPIO_SET,
 	TEGRA_DSI_SEND_FRAME,
-	TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD,
+	TEGRA_DSI_PACKET_VBLANK_CMD,
 };
 enum {
 	TEGRA_DSI_LINK0,
@@ -145,7 +145,7 @@ struct tegra_dsi_cmd {
 
 #define DSI_CMD_VBLANK_SHORT(di, p0, p1) \
 			_DSI_CMD_SHORT(di, p0, p1, TEGRA_DSI_LINK0,\
-				TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD)
+				TEGRA_DSI_PACKET_VBLANK_CMD)
 
 #define DSI_CMD_SHORT_LINK(di, p0, p1, lnk_id) \
 			_DSI_CMD_SHORT(di, p0, p1, lnk_id, TEGRA_DSI_PACKET_CMD)
@@ -174,7 +174,7 @@ struct tegra_dsi_cmd {
 
 #define DSI_CMD_VBLANK_LONG(di, ptr)	\
 		_DSI_CMD_LONG(di, ptr, TEGRA_DSI_LINK0,\
-				TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD)
+				TEGRA_DSI_PACKET_VBLANK_CMD)
 
 #define DSI_CMD_LONG_LINK(di, ptr, lnk_id)	\
 		_DSI_CMD_LONG(di, ptr, lnk_id, TEGRA_DSI_PACKET_CMD)

@@ -1,7 +1,7 @@
 /*
  * include/dt-bindings/display/tegra-panel.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,7 +39,7 @@
 #define TEGRA_DSI_DELAY_MS 1
 #define TEGRA_DSI_GPIO_SET 2
 #define TEGRA_DSI_SEND_FRAME 3
-#define TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD 4
+#define TEGRA_DSI_PACKET_VBLANK_CMD 4
 
 #define TEGRA_DSI_LINK0 0
 #define TEGRA_DSI_LINK1 1
