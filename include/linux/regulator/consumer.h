@@ -381,6 +381,11 @@ static inline unsigned int regulator_get_mode(struct regulator *regulator)
 	return REGULATOR_MODE_NORMAL;
 }
 
+static inline int regulator_can_set_mode(struct regulator *regulator)
+{
+	return 0;
+}
+
 static inline int regulator_set_optimum_mode(struct regulator *regulator,
 					int load_uA)
 {
