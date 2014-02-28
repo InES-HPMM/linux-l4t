@@ -15,18 +15,6 @@ config TEGRA_GRHOST_VI
 	  To compile this driver as a module, choose M here:
 	  the  module will be called nvhost-vi.
 
-config TEGRA_GRHOST_USE_NVMAP
-	bool "Use nvmap as graphics memory manager"
-	default y if TEGRA_NVMAP
-	help
-	  Use nvmap as the graphics memory manager.
-
-config TEGRA_GRHOST_FORCE_NVMAP
-	bool "Use nvmap as graphics memory manager"
-	default n
-	help
-	  Force using nvmap instead of dma mapping API
-
 config TEGRA_GRHOST_DEFAULT_TIMEOUT
 	depends on TEGRA_GRHOST
 	int "Default timeout for submits"
