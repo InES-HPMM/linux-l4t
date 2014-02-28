@@ -151,7 +151,7 @@
 
 		usb0_vbus: regulator@6 {
 			compatible = "regulator-fixed-sync";
-			reg = <1>;
+			reg = <6>;
 			regulator-name = "usb0-vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -162,7 +162,7 @@
 
 		usb1_vbus: regulator@7 {
 			compatible = "regulator-fixed-sync";
-			reg = <2>;
+			reg = <7>;
 			regulator-name = "usb1-vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -181,7 +181,7 @@
 
 		usb2_vbus: regulator@8 {
 			compatible = "regulator-fixed-sync";
-			reg = <3>;
+			reg = <8>;
 			regulator-name = "usb2-vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -199,7 +199,7 @@
 		};
 		vddio_hdmi_5v0: regulator@9 {
 			compatible = "regulator-fixed-sync";
-			reg = <6>;
+			reg = <9>;
 			regulator-name = "vddio_hdmi_5v0";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -214,7 +214,5 @@
 							};
 			};
 		};
-
-
 	};
 };
