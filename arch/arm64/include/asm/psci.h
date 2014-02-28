@@ -42,7 +42,7 @@ extern struct psci_operations psci_ops;
 #define PSCI_POWER_STATE_AFFL_MASK	0x3
 #define PSCI_POWER_STATE_AFFL_SHIFT	24
 
-int psci_init(void);
+void psci_init(void);
 u32 psci_power_state_pack(struct psci_power_state state);
 struct psci_power_state to_psci_power_state(unsigned long arg);
 
