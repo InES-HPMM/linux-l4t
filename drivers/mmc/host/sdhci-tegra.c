@@ -470,6 +470,13 @@ struct sdhci_tegra_sd_stats {
 	unsigned int cmd_to_count;
 };
 
+#ifdef CONFIG_DEBUG_FS
+struct dbg_cfg_data {
+	unsigned int		tap_val;
+	unsigned int		trim_val;
+	bool			clk_ungated;
+};
+#endif
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
@@ -525,6 +532,10 @@ struct sdhci_tegra {
 	struct tegra_tuning_data tuning_data[DFS_FREQ_COUNT];
 	struct tegra_freq_gov_data *gov_data;
 	u32 speedo;
+#ifdef CONFIG_DEBUG_FS
+	/* Override debug config data */
+	struct dbg_cfg_data dbg_cfg;
+#endif
 };
 
 static struct clk *pll_c;
@@ -545,6 +556,8 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	u8 option, int min_uV, int max_uV);
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci);
+static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
+	unsigned int trim_delay);
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
@@ -938,7 +951,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		unsigned int uhs)
 {
 	u16 clk, ctrl_2;
-	u32 vndr_ctrl, best_tap_value;
+	u32 vndr_ctrl, trim_delay, best_tap_value;
 	struct tegra_tuning_data *tuning_data;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -982,10 +995,11 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 
 		/* Set the ddr mode trim delay if required */
 		if (plat->ddr_trim_delay != -1) {
+			trim_delay = plat->ddr_trim_delay;
 			vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
 			vndr_ctrl &= ~(0x1F <<
 				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
-			vndr_ctrl |= (plat->ddr_trim_delay <<
+			vndr_ctrl |= (trim_delay <<
 				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 			sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
 		}
@@ -1697,6 +1711,17 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+}
+
+static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
+	unsigned int trim_delay)
+{
+	u32 vendor_ctrl;
+
+	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+	vendor_ctrl &= ~(0x1F << SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+	vendor_ctrl |= (trim_delay << SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 }
 
@@ -3355,11 +3380,134 @@ static int set_active_load_high_threshold(void *data, u64 value)
 	return 0;
 }
 
+static int show_disableclkgating_value(void *data, u64 *value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		struct sdhci_tegra *tegra_host = pltfm_host->priv;
+		if (tegra_host != NULL)
+			*value = tegra_host->dbg_cfg.clk_ungated;
+	}
+	return 0;
+}
+
+static int set_disableclkgating_value(void *data, u64 value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		if (pltfm_host != NULL) {
+			struct sdhci_tegra *tegra_host = pltfm_host->priv;
+			/* Set the CAPS2 register to reflect
+			 * the clk gating value
+			 */
+			if (tegra_host != NULL) {
+				if (value) {
+					host->mmc->ops->set_ios(host->mmc,
+						&host->mmc->ios);
+					tegra_host->dbg_cfg.clk_ungated = true;
+					host->mmc->caps2 &=
+						~MMC_CAP2_CLOCK_GATING;
+				} else {
+					tegra_host->dbg_cfg.clk_ungated = false;
+					host->mmc->caps2 |=
+						MMC_CAP2_CLOCK_GATING;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+static int set_trim_override_value(void *data, u64 value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		if (pltfm_host != NULL) {
+			struct sdhci_tegra *tegra_host = pltfm_host->priv;
+			if (tegra_host != NULL) {
+				/* Make sure clock gating is disabled */
+				if ((tegra_host->dbg_cfg.clk_ungated) &&
+				(tegra_host->clk_enabled)) {
+					sdhci_tegra_set_trim_delay(host, value);
+					tegra_host->dbg_cfg.trim_val =
+						value;
+				} else {
+					pr_info("%s: Disable clock gating before setting value\n",
+						mmc_hostname(host->mmc));
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+static int show_trim_override_value(void *data, u64 *value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		if (pltfm_host != NULL) {
+			struct sdhci_tegra *tegra_host = pltfm_host->priv;
+			if (tegra_host != NULL)
+				*value = tegra_host->dbg_cfg.trim_val;
+		}
+	}
+	return 0;
+}
+
+static int show_tap_override_value(void *data, u64 *value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		if (pltfm_host != NULL) {
+			struct sdhci_tegra *tegra_host = pltfm_host->priv;
+			if (tegra_host != NULL)
+				*value = tegra_host->dbg_cfg.tap_val;
+		}
+	}
+	return 0;
+}
+
+static int set_tap_override_value(void *data, u64 value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	if (host != NULL) {
+		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		if (pltfm_host != NULL) {
+			struct sdhci_tegra *tegra_host = pltfm_host->priv;
+			if (tegra_host != NULL) {
+				/* Make sure clock gating is disabled */
+				if ((tegra_host->dbg_cfg.clk_ungated) &&
+				(tegra_host->clk_enabled)) {
+					sdhci_tegra_set_tap_delay(host, value);
+					tegra_host->dbg_cfg.tap_val = value;
+				} else {
+					pr_info("%s: Disable clock gating before setting value\n",
+						mmc_hostname(host->mmc));
+				}
+			}
+		}
+	}
+	return 0;
+}
 DEFINE_SIMPLE_ATTRIBUTE(sdhci_polling_period_fops, show_polling_period,
 		set_polling_period, "%llu\n");
 DEFINE_SIMPLE_ATTRIBUTE(sdhci_active_load_high_threshold_fops,
 		show_active_load_high_threshold,
 		set_active_load_high_threshold, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_disable_clkgating_fops,
+		show_disableclkgating_value,
+		set_disableclkgating_value, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_override_trim_data_fops,
+		show_trim_override_value,
+		set_trim_override_value, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_override_tap_data_fops,
+		show_tap_override_value,
+		set_tap_override_value, "%llu\n");
 
 static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
 {
@@ -3400,6 +3548,33 @@ static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
 	if (!debugfs_create_file("active_load_high_threshold", 0644,
 				dfs_root, (void *)host,
 				&sdhci_active_load_high_threshold_fops)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	dfs_root = debugfs_create_dir("override_data", root);
+	if (IS_ERR_OR_NULL(dfs_root)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	if (!debugfs_create_file("clk_gate_disabled", 0644,
+				dfs_root, (void *)host,
+				&sdhci_disable_clkgating_fops)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	if (!debugfs_create_file("tap_value", 0644,
+				dfs_root, (void *)host,
+				&sdhci_override_tap_data_fops)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	if (!debugfs_create_file("trim_value", 0644,
+				dfs_root, (void *)host,
+				&sdhci_override_trim_data_fops)) {
 		saved_line = __LINE__;
 		goto err_node;
 	}
@@ -4092,6 +4267,14 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			tegra_sdhci_reboot_notify;
 		register_reboot_notifier(&tegra_host->reboot_notify);
 	}
+#ifdef CONFIG_DEBUG_FS
+	tegra_host->dbg_cfg.tap_val =
+		plat->tap_delay;
+	tegra_host->dbg_cfg.trim_val =
+		plat->ddr_trim_delay;
+	tegra_host->dbg_cfg.clk_ungated =
+		plat->disable_clock_gate;
+#endif
 	return 0;
 
 err_cd_irq_req:
