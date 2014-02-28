@@ -67,6 +67,7 @@
 
 /* Board SKU */
 #define BOARD_SKU_FOSTER  0x0384
+#define BOARD_SKU_0       0x0000
 #define BOARD_SKU_100     0x0064
 /* Panel board ID */
 #define    BOARD_E1605    0x0645

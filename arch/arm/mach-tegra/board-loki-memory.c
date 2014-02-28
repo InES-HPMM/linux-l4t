@@ -11996,12 +11996,12 @@ int __init loki_emc_init(void)
 			return -EINVAL;
 		}
 		switch (bi.sku) {
-		case 0x0:
+		case BOARD_SKU_0:
 			pr_info("Loading Loki B00 sku0 EMC table.\n");
 			tegra_emc_device.dev.platform_data =
 				&loki_b00_sku0_emc_pdata;
 			break;
-		case 0x64:
+		case BOARD_SKU_100:
 		default:
 			WARN(1, "EMC for this loki sku not supported: %u\n",
 					bi.sku);
@@ -12014,13 +12014,13 @@ int __init loki_emc_init(void)
 	} else if (bi.board_id == BOARD_P2530) {
 		switch (bi.sku) {
 		case BOARD_SKU_FOSTER:
-		case 0x0:
+		case BOARD_SKU_0:
 			pr_info("Loading Loki FFD sku0 EMC table: 0x%08x\n",
 				bi.sku);
 			tegra_emc_device.dev.platform_data =
 				&loki_ffd_sku0_emc_pdata;
 			break;
-		case 0x64:
+		case BOARD_SKU_100:
 			pr_info("Loading Loki FFD sku100 EMC table: 0x%08x\n",
 				bi.sku);
 			tegra_emc_device.dev.platform_data =
