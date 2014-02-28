@@ -30,6 +30,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-fuse.h>
 
 #include <asm/clkdev.h>
 
@@ -4316,8 +4317,13 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	ret = tegra_init_cl_dvfs();
 	if (!ret) {
 		c->state = OFF;
-		if (tegra_platform_is_silicon())
+		if (tegra_platform_is_silicon()) {
 			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+			if (tegra_cpu_speedo_id() == 0)
+				use_dfll = 0;
+#endif
+		}
 		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
 		tegra_cl_dvfs_debug_init(c);
 		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n", use_dfll);
