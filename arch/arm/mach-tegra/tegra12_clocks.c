@@ -1234,7 +1234,7 @@ static void tegra13_super_cclk_init(struct clk *c)
 		 */
 		val = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
 		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
-		val = 0x00020000;
+		val = 0;
 		clk13_writel(val, c->reg + SUPER_CLK_DIVIDER);
 	}
 	else
@@ -1266,9 +1266,9 @@ static int tegra13_super_cclk_set_parent(struct clk *c, struct clk *p)
 			val |= (sel->value & CLK13_SOURCE_MASK) << shift;
 
 			if (c->flags & DIV_U71) {
-				/* Make sure 7.1 divider is 1:1
+				/* Make sure 7.1 divider is 1:1 */
 				u32 div = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
-				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK); */
+				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK);
 			}
 
 			if (c->refcnt)
@@ -4342,17 +4342,10 @@ static void tegra12_dfll_clk_disable(struct clk *c)
 
 static int tegra12_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
-#ifdef CONFIG_ARCH_TEGRA_13x_SOC
-	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate*2);
-
-	if (!ret)
-		c->rate = tegra_cl_dvfs_request_get(c->u.dfll.cl_dvfs)/2;
-#else
 	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
 
 	if (!ret)
 		c->rate = tegra_cl_dvfs_request_get(c->u.dfll.cl_dvfs);
-#endif
 
 	return ret;
 }
@@ -7390,9 +7383,9 @@ static struct clk_mux_sel mux_cclk_g[] = {
         { .input = &tegra_clk_sclk,	.value = 6},
         { .input = &tegra_clk_m,        .value = 7},
         { .input = &tegra_pll_x,        .value = 8},
-        { .input = &tegra_dfll_cpu,	.value = 9}, /*  - High jitter DFLL */
+        /* { .input = ,        		.value = 9},  - High jitter DFLL */
         /* { .input = ,        		.value = 14}, - High jitter PLLX */
-        /* { .input = &tegra_dfll_cpu,     .value = 15}, */
+        { .input = &tegra_dfll_cpu,     .value = 15},
         { 0, 0},
 };
 
