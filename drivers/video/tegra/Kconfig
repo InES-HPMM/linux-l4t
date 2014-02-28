@@ -255,18 +255,6 @@ config NVMAP_FORCE_ZEROED_USER_PAGES
 	  significant overhead to allocation operations depending on the
 	  allocation size requested.
 
-config NVMAP_USE_FD_FOR_HANDLE
-	bool "Use Fd's to represent NvMap handles"
-	depends on TEGRA_NVMAP
-	default y
-	help
-	  Say Y here to use Fd's for representing NvMap handles
-	  in user space. Enabling this config returns DmaBuf
-	  compatible Fd's to user space during handle creation
-	  requests. The kernel component that receives these Fd's
-	  can use either NvMap interface or DmaBuf interface in order
-	  to access NvMap handle memory.
-
 config NVMAP_USE_CMA_FOR_CARVEOUT
 	bool "Use CMA memory for carveouts"
 	depends on TEGRA_NVMAP
