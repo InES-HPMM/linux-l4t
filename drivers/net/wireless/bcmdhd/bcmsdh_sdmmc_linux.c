@@ -176,8 +176,11 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	sd_info(("Function#: 0x%04x\n", func->num));
 
 	/* 4318 doesn't have function 2 */
-	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
+	if ((func->num == 2) || (func->num == 1 && func->device == 0x4)) {
 		ret = sdioh_probe(func);
+		if (mmc_power_save_host(func->card->host))
+			sd_err(("%s: card power save fail", __FUNCTION__));
+	}
 
 	return ret;
 }

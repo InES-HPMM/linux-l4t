@@ -115,4 +115,10 @@ int wldev_get_band(struct net_device *dev, uint *pband);
 
 int wldev_set_band(struct net_device *dev, uint band);
 
+
+int wldev_miracast_tuning(struct net_device *dev, char *command, int total_len);
+int wldev_get_assoc_resp_ie(struct net_device *dev, char *command, int total_len);
+int wldev_get_rx_rate_stats(struct net_device *dev, char *command, int total_len);
+int wldev_get_max_linkspeed(struct net_device *dev, char *command, int total_len);
+extern void dhd_set_ampdu_rx_tid(struct net_device *dev, int ampdu_rx_tid);
 #endif /* __WLDEV_COMMON_H__ */

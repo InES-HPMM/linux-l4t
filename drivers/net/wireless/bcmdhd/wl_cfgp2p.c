@@ -1857,6 +1857,12 @@ void
 wl_cfgp2p_generate_bss_mac(struct ether_addr *primary_addr,
             struct ether_addr *out_dev_addr, struct ether_addr *out_int_addr)
 {
+
+	if ((out_dev_addr == NULL) || (out_int_addr == NULL)) {
+		WL_ERR(("Invalid input data\n"));
+		return;
+	}
+
 	memset(out_dev_addr, 0, sizeof(*out_dev_addr));
 	memset(out_int_addr, 0, sizeof(*out_int_addr));
 

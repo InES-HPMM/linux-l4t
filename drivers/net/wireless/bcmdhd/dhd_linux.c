@@ -4006,6 +4006,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
+#ifdef CUSTOM_AMPDU_BA_WSIZE
+	struct ampdu_tid_control atc;
+#endif
 #ifdef DISABLE_11N
 	uint32 nmode = 0;
 #endif /* DISABLE_11N */
@@ -4316,6 +4319,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 				__FUNCTION__, ampdu_ba_wsize, ret));
 		}
 	}
+
+	atc.tid = 7;
+        atc.enable = 0;
+        bcm_mkiovar("ampdu_rx_tid", (char *)&atc, sizeof(atc), iovbuf, sizeof(iovbuf));
+        dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
 #endif 
 #if defined(CUSTOM_AMPDU_MPDU)
 	ampdu_mpdu = CUSTOM_AMPDU_MPDU;
@@ -4524,6 +4533,22 @@ done:
 	return ret;
 }
 
+void dhd_set_ampdu_rx_tid(struct net_device *dev, int ampdu_rx_tid)
+{
+	int i, ret = 0;
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *pub = &dhd->pub;
+	char iovbuf[32];
+	for (i = 0; i < 8; i++) { /* One bit each for traffic class CS7 - CS0 */
+		struct ampdu_tid_control atc;
+		atc.tid = i;
+		atc.enable = (ampdu_rx_tid >> i) & 1;
+		bcm_mkiovar("ampdu_rx_tid", (char *)&atc, sizeof(atc), iovbuf,sizeof(iovbuf));
+		ret = dhd_wl_ioctl_cmd(pub, WLC_SET_VAR, iovbuf, sizeof(iovbuf),TRUE, 0);
+		if (ret < 0)
+			DHD_ERROR(("%s failed %d\n", __func__, ret));
+	}
+}
 
 int
 dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, int set)
