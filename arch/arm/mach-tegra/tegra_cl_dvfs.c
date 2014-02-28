@@ -254,6 +254,8 @@ struct tegra_cl_dvfs {
 		(DIV_ROUND_UP(rate, (ref_rate) / 2) * ((ref_rate) / 2))
 #define GET_DIV(ref_rate, out_rate, scale)	\
 		DIV_ROUND_UP((ref_rate), (out_rate) * (scale))
+#define GET_SAMPLE_PERIOD(cld)	\
+		DIV_ROUND_UP(1000000, (cld)->p_data->cfg_param->sample_rate)
 
 static const char *mode_name[] = {
 	[TEGRA_CL_DVFS_UNINITIALIZED] = "uninitialized",
@@ -404,6 +406,17 @@ static inline int get_mv(struct tegra_cl_dvfs *cld, u32 out_val)
 {
 	return is_i2c(cld) ? cld->out_map[out_val]->reg_uV / 1000 :
 		cld->p_data->vdd_map[out_val].reg_uV / 1000;
+}
+
+static inline bool is_vmin_delivered(struct tegra_cl_dvfs *cld)
+{
+	if (is_i2c(cld)) {
+		u32 val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		val = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
+		return val >= cld->lut_min;
+	}
+	/* PWM cannot be stalled */
+	return true;
 }
 
 static int output_enable(struct tegra_cl_dvfs *cld)
@@ -860,7 +873,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	if (cld->p_data->flags & TEGRA_CL_DVFS_DATA_NEW_NO_USE) {
 		/* Cannot use DATA_NEW synch - get data after one full sample
 		   period (with 10us margin) */
-		int delay = 1000000 / cld->p_data->cfg_param->sample_rate + 10;
+		int delay = GET_SAMPLE_PERIOD(cld) + 10;
 		udelay(delay);
 	}
 	wait_data_new(cld, &data);
@@ -1670,6 +1683,8 @@ static int tegra_cl_dvfs_set_vmin_cdev_state(
 		if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 			tegra_cl_dvfs_request_rate(cld,
 				tegra_cl_dvfs_request_get(cld));
+			/* Delay to make sure new Vmin delivery started */
+			udelay(2 * GET_SAMPLE_PERIOD(cld));
 		}
 	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
@@ -1742,6 +1757,8 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
+		/* Delay to make sure new Vmin delivery started */
+		udelay(2 * GET_SAMPLE_PERIOD(cld));
 	}
 	cld->suspended_force_out = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	clk_unlock_restore(cld->dfll_clk, &flags);
@@ -2543,14 +2560,26 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 {
 	int ret;
+	bool in_range;
 
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
 		set_ol_config(cld);
+		in_range = is_vmin_delivered(cld);
+
+		/* allow grace 2 sample periods to get in range */
+		if (!in_range)
+			udelay(2 * GET_SAMPLE_PERIOD(cld));
+
 		ret = output_disable_ol_prepare(cld);
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
 		if (!ret)
 			ret = output_disable_post_ol(cld);
+
+		if (!ret && !in_range && !is_vmin_delivered(cld)) {
+			pr_err("cl_dvfs: exiting closed loop out of range\n");
+			return -EINVAL;
+		}
 		return ret;
 
 	case TEGRA_CL_DVFS_OPEN_LOOP:
