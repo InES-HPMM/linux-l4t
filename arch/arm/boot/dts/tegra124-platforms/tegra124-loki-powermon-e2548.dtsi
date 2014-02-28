@@ -4,7 +4,7 @@
 			compatible = "ti,ina3221x";
 			reg = <0x40>;
 			ti,trigger-config = <0x7003>;
-			ti,continuous-config = <0x7727>;
+			ti,continuous-config = <0x7607>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 
@@ -32,7 +32,7 @@
 			compatible = "ti,ina3221x";
 			reg = <0x41>;
 			ti,trigger-config = <0x7003>;
-			ti,continuous-config = <0x7727>;
+			ti,continuous-config = <0x7607>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 
@@ -59,7 +59,7 @@
 			compatible = "ti,ina3221x";
 			reg = <0x42>;
 			ti,trigger-config = <0x7003>;
-			ti,continuous-config = <0x7727>;
+			ti,continuous-config = <0x7607>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 
