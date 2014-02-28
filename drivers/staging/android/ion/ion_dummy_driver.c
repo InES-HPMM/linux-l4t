@@ -54,10 +54,15 @@ struct ion_platform_heap dummy_heaps[] = {
 			.align	= SZ_16K,
 			.priv	= (void *)(SZ_16K),
 		},
+		{
+			.id	= ION_HEAP_TYPE_DMA,
+			.type	= ION_HEAP_TYPE_DMA,
+			.name	= "dma",
+		},
 };
 
 struct ion_platform_data dummy_ion_pdata = {
-	.nr = 4,
+	.nr = 5,
 	.heaps = dummy_heaps,
 };
 
