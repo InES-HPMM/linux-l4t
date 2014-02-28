@@ -3,7 +3,7 @@
  *
  * Author: Nikesh Oswal <noswal@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
- * Copyright (C) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -654,10 +654,12 @@ static void tegra30_dam_write_coeff_ram(struct tegra30_dam_context *dam, int fsi
 	tegra30_dam_writel(dam, 0x00005000,
 			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
 
-	for (i = 0; i < 64; i++) {
-		val = coefRam[i];
-		tegra30_dam_writel(dam, val,
+	if (coefRam) {
+		for (i = 0; i < 64; i++) {
+			val = coefRam[i];
+			tegra30_dam_writel(dam, val,
 				TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0);
+		}
 	}
 }
 
