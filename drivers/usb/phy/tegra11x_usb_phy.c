@@ -2203,6 +2203,10 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 		val = readl(base + UHSIC_PMC_WAKEUP0);
 		val |= EVENT_INT_ENB;
 		writel(val, base + UHSIC_PMC_WAKEUP0);
+
+		val = readl(base + USB_SUSP_CTRL);
+		val &= ~USB_WAKE_ON_CNNT_EN_DEV;
+		writel(val, base + USB_SUSP_CTRL);
 	} else {
 		phy->pmc_sleepwalk = true;
 	}
