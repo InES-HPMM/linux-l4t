@@ -6,6 +6,7 @@
 #include "tegra124-platforms/tegra124-tn8-fixed-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
+#include "tegra132-platforms/tegra132-bowmore-powermon-e1971-1100-a00.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
 
 / {
@@ -49,6 +50,10 @@
 	i2c@7000c400 {
 		status = "okay";
 		clock-frequency = <100000>;
+
+		pca9546@71 {
+			vcc-supply = <&palmas_smps9>;
+		};
 	};
 
 	i2c@7000c500 {
