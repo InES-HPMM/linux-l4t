@@ -5294,6 +5294,7 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 	unsigned long bw = 0;
 	unsigned long iso_bw = 0;
 	unsigned long ceiling = bus->max_rate;
+	unsigned long ceiling_but_iso = bus->max_rate;
 	u32 usage_flags = 0;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
@@ -5305,7 +5306,8 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 		 * bus just because ceiling is set.
 		 */
 		if (c->u.shared_bus_user.enabled ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
+		    (c->u.shared_bus_user.mode == SHARED_CEILING) ||
+		    (c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO)) {
 			unsigned long request_rate = c->u.shared_bus_user.rate *
 				(c->div ? : 1);
 			usage_flags |= c->u.shared_bus_user.usage_flag;
@@ -5320,6 +5322,10 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 				bw += request_rate;
 				if (bw > bus->max_rate)
 					bw = bus->max_rate;
+				break;
+			case SHARED_CEILING_BUT_ISO:
+				ceiling_but_iso =
+					min(request_rate, ceiling_but_iso);
 				break;
 			case SHARED_CEILING:
 				ceiling = min(request_rate, ceiling);
@@ -5357,6 +5363,7 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 	}
 
 	rate = override_rate ? : max(rate, bw);
+	ceiling = min(ceiling, ceiling_but_iso);
 	ceiling = override_rate ? bus->max_rate : ceiling;
 
 	if (bus_top && bus_slow && rate_cap) {
@@ -5405,7 +5412,8 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 	c->state = OFF;
 	c->set = true;
 
-	if (c->u.shared_bus_user.mode == SHARED_CEILING) {
+	if ((c->u.shared_bus_user.mode == SHARED_CEILING) ||
+	    (c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO)) {
 		c->state = ON;
 		c->refcnt++;
 	}
