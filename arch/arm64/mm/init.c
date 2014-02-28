@@ -174,6 +174,7 @@ void __init arm64_memblock_init(void)
 	if (machine_desc->reserve)
 		machine_desc->reserve();
 #endif
+	early_init_fdt_scan_reserved_mem();
 
 	/* reserve memory for DMA contigouos allocations */
 	dma_contiguous_reserve(arm_dma_limit);
