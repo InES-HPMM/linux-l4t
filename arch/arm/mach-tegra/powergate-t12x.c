@@ -290,6 +290,7 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 #define PMC_GPU_RG_CNTRL_0		0x2d4
 
 static DEFINE_SPINLOCK(tegra12x_powergate_lock);
+static DEFINE_MUTEX(tegra12x_powergate_disp_lock);
 
 static struct dvfs_rail *gpu_rail;
 
@@ -542,30 +543,44 @@ static int tegra12x_disp_powergate(int id)
 	int ref_countb = atomic_read(&ref_count_dispb);
 	int ref_countve = atomic_read(&ref_count_venc);
 
+	mutex_lock(&tegra12x_powergate_disp_lock);
 	if (id == TEGRA_POWERGATE_DISA) {
 		ref_counta = atomic_dec_return(&ref_count_dispa);
 		WARN_ONCE(ref_counta < 0, "DISPA ref count underflow");
 	} else if (id == TEGRA_POWERGATE_DISB) {
 		if (ref_countb > 0)
 			ref_countb = atomic_dec_return(&ref_count_dispb);
-		if (ref_countb <= 0)
-			CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISB));
+		if ((ref_countb <= 0) &&
+			tegra12x_powergate(TEGRA_POWERGATE_DISB)) {
+			ret = -EBUSY;
+			goto error_out;
+		}
 	}
 
 	if ((ref_counta <= 0) && (ref_countb <= 0) && (ref_countve <= 0)) {
-		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_SOR));
-		CHECK_RET(tegra12x_powergate(TEGRA_POWERGATE_DISA));
+		if (tegra12x_powergate(TEGRA_POWERGATE_SOR) ||
+			tegra12x_powergate(TEGRA_POWERGATE_DISA)) {
+			ret = -EBUSY;
+			goto error_out;
+		}
 	}
+
+error_out:
+	mutex_unlock(&tegra12x_powergate_disp_lock);
 	return ret;
 }
 
 static int tegra12x_disp_unpowergate(int id)
 {
-	int ret;
+	int ret = 0;
 
+	mutex_lock(&tegra12x_powergate_disp_lock);
 	/* always unpowergate dispA and SOR partition */
-	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_DISA));
-	CHECK_RET(tegra12x_unpowergate(TEGRA_POWERGATE_SOR));
+	if (tegra12x_unpowergate(TEGRA_POWERGATE_DISA) ||
+		tegra12x_unpowergate(TEGRA_POWERGATE_SOR)) {
+			ret = -EBUSY;
+			goto error_out;
+	}
 
 	if (id == TEGRA_POWERGATE_DISA)
 		atomic_inc(&ref_count_dispa);
@@ -573,7 +588,8 @@ static int tegra12x_disp_unpowergate(int id)
 		atomic_inc(&ref_count_dispb);
 		ret = tegra12x_unpowergate(TEGRA_POWERGATE_DISB);
 	}
-
+error_out:
+	mutex_unlock(&tegra12x_powergate_disp_lock);
 	return ret;
 }
 
