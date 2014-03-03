@@ -3,6 +3,7 @@
  * drivers/staging/android/ion/ion.c
  *
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (c) 2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1033,7 +1034,17 @@ static int ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 
 static void ion_dma_buf_release(struct dma_buf *dmabuf)
 {
+	int i;
 	struct ion_buffer *buffer = dmabuf->priv;
+
+	for (i = 0; i < ARRAY_SIZE(buffer->importer); i++) {
+		struct ion_importer *imp;
+
+		imp = &buffer->importer[i];
+		if (imp->dev && imp->delete)
+			imp->delete(imp->priv);
+	}
+
 	ion_buffer_put(buffer);
 }
 
@@ -1081,6 +1092,66 @@ static void ion_dma_buf_end_cpu_access(struct dma_buf *dmabuf, size_t start,
 	mutex_unlock(&buffer->lock);
 }
 
+static int ion_dma_buf_set_private(struct dma_buf *dmabuf, struct device *dev,
+				   void *priv, void (*delete)(void *))
+{
+	int i, empty = -1, err = 0;
+	struct ion_buffer *buffer = dmabuf->priv;
+	struct ion_importer *imp;
+
+	mutex_lock(&buffer->lock);
+	for (i = 0; i < ARRAY_SIZE(buffer->importer); i++) {
+		imp = &buffer->importer[i];
+		if ((empty == -1) && !imp->dev)
+			empty = i;
+
+		if (dev == imp->dev)
+			break;
+	}
+
+	if (i == ARRAY_SIZE(buffer->importer)) {
+		if (empty == -1) {
+			pr_err("ION: Needs more importer space\n");
+			err = -ENOMEM;
+			goto out;
+		}
+		imp = &buffer->importer[empty];
+		i = empty;
+	}
+
+	imp->dev = dev;
+	imp->priv = priv;
+	imp->delete = delete;
+out:
+	mutex_unlock(&buffer->lock);
+	dev_dbg(dev, "%s() dmabuf=%p err=%d i=%d priv=%p\n",
+		__func__, dmabuf, err, i, priv);
+	return err;
+}
+
+static void *ion_dma_buf_get_private(struct dma_buf *dmabuf,
+				     struct device *dev)
+{
+	int i;
+	void *priv = NULL;
+	struct ion_buffer *buffer = dmabuf->priv;
+
+	mutex_lock(&buffer->lock);
+	for (i = 0; i < ARRAY_SIZE(buffer->importer); i++) {
+		struct ion_importer *imp;
+
+		imp = &buffer->importer[i];
+		if (dev == imp->dev) {
+			priv = imp->priv;
+			break;
+		}
+	}
+	mutex_unlock(&buffer->lock);
+	dev_dbg(dev, "%s() dmabuf=%p i=%d priv=%p\n",
+		__func__, dmabuf, i, priv);
+	return priv;
+}
+
 static struct dma_buf_ops dma_buf_ops = {
 	.map_dma_buf = ion_map_dma_buf,
 	.unmap_dma_buf = ion_unmap_dma_buf,
@@ -1092,6 +1163,8 @@ static struct dma_buf_ops dma_buf_ops = {
 	.kunmap_atomic = ion_dma_buf_kunmap,
 	.kmap = ion_dma_buf_kmap,
 	.kunmap = ion_dma_buf_kunmap,
+	.set_drvdata = ion_dma_buf_set_private,
+	.get_drvdata = ion_dma_buf_get_private,
 };
 
 struct dma_buf *ion_share_dma_buf(struct ion_client *client,

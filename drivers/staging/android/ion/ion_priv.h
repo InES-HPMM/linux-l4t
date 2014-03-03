@@ -2,6 +2,7 @@
  * drivers/staging/android/ion/ion_priv.h
  *
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (c) 2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -30,6 +31,13 @@
 #include "ion.h"
 
 struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
+
+struct ion_importer {
+	struct device *dev;
+	void *priv;
+	void (*delete)(void *);
+};
+#define NUM_ION_IMPORTER 5 /* FIXME: dynamically allocate more than this */
 
 /**
  * struct ion_buffer - metadata for a particular buffer
@@ -84,6 +92,8 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
+
+	struct ion_importer importer[NUM_ION_IMPORTER];
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
