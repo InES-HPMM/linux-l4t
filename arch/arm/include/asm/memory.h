@@ -141,6 +141,15 @@
 #define page_to_phys(page)	(__pfn_to_phys(page_to_pfn(page)))
 #define phys_to_page(phys)	(pfn_to_page(__phys_to_pfn(phys)))
 
+/* Max physical memory supported (used in zsmalloc allocator) */
+#ifndef MAX_PHYSMEM_BITS
+#ifdef CONFIG_ARM_LPAE
+#define MAX_PHYSMEM_BITS	40
+#else /* !CONFIG_ARM_LPAE */
+#define MAX_PHYSMEM_BITS	32
+#endif
+#endif
+
 #ifndef __ASSEMBLY__
 
 /*
