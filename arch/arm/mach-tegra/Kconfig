@@ -1029,4 +1029,13 @@ config TEGRA_USE_SIMON
 	default n
 	help
 	  Enable Tegra silicon state monitoring, grading, and notification.
+
+config AID_FUSE
+	bool "Support AID fuse reads"
+	default n if ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC || \
+	(ARCH_TEGRA_12x_SOC && !ARCH_TEGRA_13x_SOC)
+	default y
+	help
+	  When enabled, allows sysfs reads of the AID fuse, which contains
+	  the chip family ID and a chip-unique Tegra ID. Supported on t132+.
 endif
