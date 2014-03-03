@@ -82,9 +82,33 @@ struct dmic_params_t {
 	unsigned int captured_data_size;
 };
 
+enum AHUB_MODULE_ID {
+	MODULE_ADMAIF,
+	MODULE_SFC,
+	MODULE_OPE,
+	MODULE_PEQ,
+	MODULE_MBDRC,
+	MODULE_SPKPROT,
+	MODULE_I2S,
+	MODULE_AMIXER,
+	MODULE_DMIC,
+	MODULE_ADSP,
+	MODULE_NUM,
+};
+
 enum tegra210_audio_test_id {
-	TEST_ID_LOOPBACK = 0x1,
-	TEST_ID_REG_ACCESS = 0x2,
+	TEST_ID_REG_ACCESS = 0x1,
+	TEST_ID_STATUS_REG_CHECK,
+	TEST_ID_RUNTIME_SOFT_RESET,
+	TEST_ID_GET_POSITION,
+	TEST_ID_COEFF_RAM_SEQ,
+	TEST_ID_COEFF_RAM_NON_SEQ,
+};
+
+struct tegra210_audio_test_param {
+	enum AHUB_MODULE_ID module;
+	u32 cif;
+	enum tegra210_audio_test_id test_id;
 };
 
 struct tegra210_audio_axbar_test_param {
@@ -99,6 +123,8 @@ struct tegra210_audio_admaif_test_param {
 	unsigned int out_channels;
 	unsigned int in_bps;
 	unsigned int out_bps;
+	unsigned int buffer_size;
+	unsigned int periods;
 };
 
 
@@ -295,7 +321,7 @@ struct tegra210_audio_dmic_test_param {
 
 /* Tegra210 AHUB test specific macros */
 #define TEGRA210_AUDIO_TEST_EXEC	_IOW(TEGRA_AUDIO_MAGIC, 71, \
-					     unsigned int *)
+				    struct tegra210_audio_test_param *)
 #define TEGRA210_AUDIO_AXBAR_CONNECT	_IOW(TEGRA_AUDIO_MAGIC, 72, \
 				    struct tegra210_audio_axbar_test_param *)
 #define TEGRA210_AUDIO_ADMAIF_TEST_PARAM _IOW(TEGRA_AUDIO_MAGIC, 73, \
