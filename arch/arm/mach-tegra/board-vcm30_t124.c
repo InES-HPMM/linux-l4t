@@ -139,7 +139,17 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
+#ifdef CONFIG_ANDROID
+	/* [WAR] : bug 1440706
+		There are lots of WARN_ON messages during Video playback.
+		Those make some jerky Video playback issues.
+		Temporarily changed the expected rate from 316800000
+		to 12000000 but it should be fixed correctly.
+	*/
+	SET_FIXED_TARGET_RATE("sbus",		 12000000),
+#else
 	SET_FIXED_TARGET_RATE("sbus",		316800000),
+#endif
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	SET_FIXED_TARGET_RATE("pll_c2",		432000000),
