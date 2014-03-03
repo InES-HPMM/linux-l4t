@@ -633,6 +633,19 @@ config SIM_PALMAS
 	If yes, the Palmas SIM driver will be enabled. It supports SIM card
 	detection and SIM configuration for Palmas PMICs.
 
+config MODS
+	tristate "NVIDIA MODS driver"
+	default n
+	---help---
+	The NVIDIA MODS driver gives user space software direct access
+	to hardware. The NVIDIA Diagnostic Software uses this to test hardware.
+	This driver should normally be disabled in all production builds.
+
+	Say Y here to compile the NVIDIA MODS driver into the kernel or say M
+	to compile it as a module.
+
+	If unsure, say N here.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
