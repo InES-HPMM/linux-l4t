@@ -795,7 +795,8 @@ static int max17048_probe(struct i2c_client *client,
 	schedule_delayed_work(&chip->work, 0);
 
 	battery_gauge_record_snapshot_values(chip->bg_dev,
-					jiffies_to_msecs(MAX17048_DELAY/2));
+					jiffies_to_msecs
+					(BATTERY_SNAPSHOT_INTERVAL));
 
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,

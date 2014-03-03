@@ -764,7 +764,7 @@ static int bq27441_probe(struct i2c_client *client,
 	schedule_delayed_work(&chip->work, 0);
 
 	battery_gauge_record_snapshot_values(chip->bg_dev,
-				jiffies_to_msecs(BQ27441_DELAY/2));
+				jiffies_to_msecs(BATTERY_SNAPSHOT_INTERVAL));
 
 	return 0;
 bg_err:
