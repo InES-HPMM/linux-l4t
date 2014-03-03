@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD)
  * Prefered Network Offload and Wi-Fi Location Service(WLS) code.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,8 +22,9 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_pno.c 435029 2013-11-08 02:47:59Z $
+ * $Id: dhd_pno.c 423669 2013-09-18 13:01:55Z yangj$
  */
+#ifdef PNO_SUPPORT
 #include <typedefs.h>
 #include <osl.h>
 
@@ -91,7 +92,6 @@ is_dfs(uint16 channel)
 	else
 		return FALSE;
 }
-
 int
 dhd_pno_clean(dhd_pub_t *dhd)
 {
@@ -670,6 +670,7 @@ _dhd_pno_reinitialize_prof(dhd_pub_t *dhd, dhd_pno_params_t *params, dhd_pno_mod
 				kfree(iter);
 			}
 		}
+		params->params_legacy.nssid = 0;
 		params->params_legacy.scan_fr = 0;
 		params->params_legacy.pno_freq_expo_max = 0;
 		params->params_legacy.pno_repeat = 0;
@@ -1872,6 +1873,12 @@ int dhd_pno_deinit(dhd_pub_t *dhd)
 	DHD_PNO(("%s enter\n", __FUNCTION__));
 	_pno_state = PNO_GET_PNOSTATE(dhd);
 	NULL_CHECK(_pno_state, "pno_state is NULL", err);
+	/* may need to free legacy ssid_list */
+	if (_pno_state->pno_mode & DHD_PNO_LEGACY_MODE) {
+		_params = &_pno_state->pno_params_arr[INDEX_OF_LEGACY_PARAMS];
+		_dhd_pno_reinitialize_prof(dhd, _params, DHD_PNO_LEGACY_MODE);
+	}
+
 	if (_pno_state->pno_mode & DHD_PNO_BATCH_MODE) {
 		_params = &_pno_state->pno_params_arr[INDEX_OF_BATCH_PARAMS];
 		/* clear resource if the BATCH MODE is on */
@@ -1882,3 +1889,4 @@ int dhd_pno_deinit(dhd_pub_t *dhd)
 	dhd->pno_state = NULL;
 	return err;
 }
+#endif /* PNO_SUPPORT */
