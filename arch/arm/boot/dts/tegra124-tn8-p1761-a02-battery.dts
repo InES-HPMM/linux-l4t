@@ -4,6 +4,7 @@
 	i2c@7000c400 {
 		lc709203f@0b {
 			status = "okay";
+			onsemi,kernel-threshold-soc = < 2 >;
 		};
 
 		hpa2163@6b {
