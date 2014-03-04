@@ -442,9 +442,12 @@ static struct platform_device *vcm30_t124_devices[] __initdata = {
 #endif
 };
 
-#if defined(CONFIG_USB_G_ANDROID)
 static struct tegra_usb_platform_data tegra_udc_pdata = {
+#if defined(CONFIG_USB_TEGRA_OTG)
+	.port_otg = true,
+#else
 	.port_otg = false,
+#endif
 	.has_hostpc = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
@@ -467,9 +470,14 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 		.xcvr_use_lsb = 1,
 	},
 };
-#else
+
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+#if defined(CONFIG_USB_TEGRA_OTG)
+	.port_otg = true,
+	.id_det_type = TEGRA_USB_VIRTUAL_ID,
+#else
 	.port_otg = false,
+#endif
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
@@ -494,7 +502,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.vbus_oc_map = 0x4,
 	},
 };
-#endif
+
 
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
@@ -551,20 +559,34 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 };
 
+static struct tegra_usb_otg_data tegra_otg_pdata = {
+	.ehci_device = &tegra_ehci1_device,
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
+};
+
 static void vcm30_t124_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		tegra_otg_pdata.is_xhci = false;
+		tegra_udc_pdata.u_data.dev.is_xhci = false;
+
+#if defined(CONFIG_USB_TEGRA_OTG)
+		/* register OTG device */
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
+
 		/* Setup the udc platform data */
-#if defined(CONFIG_USB_G_ANDROID)
 		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 		platform_device_register(&tegra_udc_device);
 #else
+		/* register host mode */
 		tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 		platform_device_register(&tegra_ehci1_device);
 #endif
 	}
+
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 		platform_device_register(&tegra_ehci2_device);
