@@ -2025,7 +2025,9 @@ nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
 
 	nonseekable_open(file->f_inode, filp);
 	mutex_lock(&nvavp->open_lock);
-	err = tegra_nvavp_open(nvavp, &clientctx, clientctx->channel_id);
+	err = tegra_nvavp_open(nvavp,
+		(struct nvavp_clientctx **)&file->private_data,
+		clientctx->channel_id);
 	if (err) {
 		put_unused_fd(fd);
 		fput(file);
