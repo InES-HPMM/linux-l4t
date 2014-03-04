@@ -119,7 +119,6 @@ obj-y					+= tegra_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
-obj-y                                   += pmc.o
 obj-y                                   += flowctrl.o
 obj-$(CONFIG_CPU_IDLE)                  += cpuidle.o
 obj-$(CONFIG_CPU_IDLE)                  += sleep.o
