@@ -29,6 +29,13 @@
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
 		};
+
+		ltr659@10 {
+			compatible = "lite-on,ltr659";
+			reg = <0x10>;
+			vdd-supply = <&palmas_smps9>;
+			vled-supply = <&palmas_smps8>;
+		};
 	};
 };
 
