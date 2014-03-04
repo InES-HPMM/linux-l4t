@@ -585,7 +585,7 @@
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
-#define USE_PLLE_INPUT_PLLRE    0
+#define USE_PLLE_INPUT_PLLRE    1
 
 static bool tegra21_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
@@ -6227,6 +6227,7 @@ static struct clk tegra_pll_re_out = {
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
+	{ 672000000, 100000000, 100, 42,  16, 11},
 	{ 336000000, 100000000, 100, 21,  16, 11},
 	{ 312000000, 100000000, 200, 26,  24, 13},
 	{ 13000000,  100000000, 200, 1,  26, 13},
