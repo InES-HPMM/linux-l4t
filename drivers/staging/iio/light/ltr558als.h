@@ -1,6 +1,6 @@
 /* Lite-On LTR-558ALS Linux Driver
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA Corporation.  All Rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,6 +68,8 @@
 
 #define ALS_RANGE1_320	1
 #define ALS_RANGE2_64K 	2
+
+#define LTR_MANUFACTURER_ID	0x05
 
 /* Power On response time in ms */
 #define PON_DELAY	600

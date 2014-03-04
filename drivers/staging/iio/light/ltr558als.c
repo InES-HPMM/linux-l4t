@@ -1,6 +1,6 @@
 /* Lite-On LTR-558ALS Linux Driver
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
+#include <linux/regulator/consumer.h>
 #include <asm/uaccess.h>
 
 #include "ltr558als.h"
@@ -30,10 +31,17 @@
 #define DRIVER_VERSION "1.0"
 #define DEVICE_NAME "ltr558"
 
+enum {
+	VDD = 0,
+	LED
+};
+
 struct ltr558_chip {
 	struct i2c_client	*client;
 	struct mutex	lock;
 	int		irq;
+
+	struct regulator	*supply[2];
 
 	bool	is_als_enable;
 	bool	als_enabled_before_suspend;
@@ -266,10 +274,27 @@ static ssize_t store_prox_enable(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
-	if (lval == 1)
+	if (lval == 1) {
+		if (chip->supply[VDD]) {
+			err = regulator_enable(chip->supply[VDD]);
+			dev_err(dev, "vdd regulator enable failed\n");
+		}
+		if (chip->supply[LED]) {
+			err = regulator_enable(chip->supply[LED]);
+			dev_err(dev, "led regulator enable failed\n");
+		}
 		err = ltr558_ps_enable(client, PS_RANGE1);
-	else
+	} else {
 		err = ltr558_ps_disable(client);
+		if (chip->supply[VDD]) {
+			err = regulator_disable(chip->supply[VDD]);
+			dev_err(dev, "vdd regulator enable failed\n");
+		}
+		if (chip->supply[LED]) {
+			err = regulator_disable(chip->supply[LED]);
+			dev_err(dev, "led regulator enable failed\n");
+		}
+	}
 
 	if (err < 0)
 		dev_err(dev, "Error in enabling proximity\n");
@@ -772,6 +797,48 @@ static int ltr558_probe(struct i2c_client *client,
 		goto exit_irq;
 	}
 
+	chip->supply[VDD] = regulator_get(&client->dev, "vdd");
+
+	if (IS_ERR(chip->supply[VDD])) {
+		dev_err(&client->dev, "could not get vdd regulator\n");
+		ret = PTR_ERR(chip->supply[VDD]);
+		goto exit_irq;
+	}
+
+	chip->supply[LED] = regulator_get(&client->dev, "vled");
+
+	if (IS_ERR(chip->supply[LED])) {
+		dev_err(&client->dev, "could not get vled regulator\n");
+		ret = PTR_ERR(chip->supply[LED]);
+		goto exit_irq;
+	}
+
+	ret = regulator_enable(chip->supply[VDD]);
+	if (ret) {
+		dev_err(&client->dev,
+			"func:%s regulator enable failed\n", __func__);
+		goto exit_irq;
+	}
+
+	ret = i2c_smbus_read_byte_data(client, LTR558_MANUFACTURER_ID);
+	if (ret < 0) {
+		dev_err(&client->dev, "Err in reading register %d, error %d\n",
+				LTR558_MANUFACTURER_ID, ret);
+		goto exit_irq;
+	}
+
+	if (ret != LTR_MANUFACTURER_ID) {
+		dev_err(&client->dev, "sensor not found\n");
+		goto exit_irq;
+	}
+
+	ret = regulator_disable(chip->supply[VDD]);
+	if (ret) {
+		dev_err(&client->dev,
+			"func:%s regulator disable failed\n", __func__);
+		goto exit_irq;
+	}
+
 	dev_dbg(&client->dev, "%s() success\n", __func__);
 	return 0;
 
@@ -845,7 +912,14 @@ static const struct i2c_device_id ltr558_id[] = {
 	{ DEVICE_NAME, 0 },
 	{}
 };
+MODULE_DEVICE_TABLE(i2c, ltr558_id);
 
+static const struct of_device_id ltr558_of_match[] = {
+	{ .compatible = "lite-on,ltr558", },
+	{ .compatible = "lite-on,ltr659", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, ltr558_of_match);
 
 static struct i2c_driver ltr558_driver = {
 	.class	= I2C_CLASS_HWMON,
@@ -855,6 +929,7 @@ static struct i2c_driver ltr558_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = DEVICE_NAME,
+		.of_match_table = of_match_ptr(ltr558_of_match),
 	},
 	.suspend = ltr558_suspend,
 	.resume = ltr558_resume,
