@@ -8431,8 +8431,10 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("sbc6.sclk", "tegra12-spi.5",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 
 	SHARED_EMC_CLK("avp.emc",	"tegra-avp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
-	SHARED_EMC_CLK("mon_cpu.emc", "tegra_mon", "cpu_emc",
-						&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("mon_cpu.emc",	"tegra_mon", "cpu_emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	SHARED_EMC_CLK("cpu.emc",	"tegra-cpu", "cpu_emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+#endif
 	SHARED_EMC_CLK("disp1.emc",	"tegradc.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC1)),
 	SHARED_EMC_CLK("disp2.emc",	"tegradc.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC2)),
 	SHARED_EMC_CLK("hdmi.emc",	"hdmi",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -9276,6 +9278,7 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	return &freq_table_data;
 }
 
+/* EMC/CPU frequency ratio for power/performance optimization */
 unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 {
 	static unsigned long emc_max_rate;
@@ -9299,6 +9302,29 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 	else
 		return 0;		/* emc min */
 }
+
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+/* EMC/CPU frequency operational requirement limit */
+unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
+{
+	static unsigned long last_emc_rate;
+	unsigned long emc_rate;
+
+	/* Vote on memory bus frequency based on cpu frequency;
+	   cpu rate is in kHz, emc rate is in Hz */
+	if (cpu_rate > 1122000)
+		emc_rate = 600000000;	/* cpu > 1.1GHz, emc 600MHz */
+	else
+		emc_rate = 300000000;	/* 300MHz floor always */
+
+	/* When going down, allow some time for CPU DFLL to settle */
+	if (emc_rate < last_emc_rate)
+		udelay(200);		/* FIXME: to be characterized */
+
+	last_emc_rate = emc_rate;
+	return emc_rate;
+}
+#endif
 
 int tegra_update_mselect_rate(unsigned long cpu_rate)
 {

@@ -47,6 +47,7 @@
 static struct cpufreq_frequency_table *freq_table;
 
 static struct clk *cpu_clk;
+static struct clk *emc_clk;
 
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
@@ -648,6 +649,16 @@ int tegra_update_cpu_speed(unsigned long rate)
 			       " frequency %u kHz\n", freqs.new);
 			return ret;
 		}
+
+		if (emc_clk) {
+			ret = clk_set_rate(emc_clk,
+					   tegra_emc_cpu_limit(freqs.new));
+			if (ret) {
+				pr_err("cpu-tegra: Failed to scale emc for cpu"
+				       " frequency %u kHz\n", freqs.new);
+				return ret;
+			}
+		}
 	}
 
 	for_each_online_cpu(freqs.cpu)
@@ -668,8 +679,12 @@ int tegra_update_cpu_speed(unsigned long rate)
 	for_each_online_cpu(freqs.cpu)
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
-	if (freqs.old > freqs.new)
+	if (freqs.old > freqs.new) {
+		if (emc_clk)
+			clk_set_rate(emc_clk, tegra_emc_cpu_limit(freqs.new));
 		tegra_update_mselect_rate(freqs.new);
+	}
+
 _out:
 	mode = REGULATOR_MODE_IDLE;
 	if ((mode_limit >= freqs.new) && (reg_mode != mode))
@@ -880,13 +895,21 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	if (IS_ERR(cpu_clk))
 		return PTR_ERR(cpu_clk);
 
+	emc_clk = clk_get_sys("tegra-cpu", "cpu_emc");
+	if (IS_ERR(emc_clk))
+		emc_clk = NULL;
+
+	freq = tegra_getspeed(policy->cpu);
+	if (emc_clk) {
+		clk_set_rate(emc_clk, tegra_emc_cpu_limit(freq));
+		clk_prepare_enable(emc_clk);
+	}
 	clk_prepare_enable(cpu_clk);
 
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
 
 	/* clip boot frequency to table entry */
-	freq = tegra_getspeed(policy->cpu);
 	ret = cpufreq_frequency_table_target(policy, freq_table, freq,
 		CPUFREQ_RELATION_H, &idx);
 	if (!ret && (freq != freq_table[idx].frequency)) {
@@ -908,6 +931,10 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 static int tegra_cpu_exit(struct cpufreq_policy *policy)
 {
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
+	if (emc_clk) {
+		clk_disable_unprepare(emc_clk);
+		clk_put(emc_clk);
+	}
 	clk_put(cpu_clk);
 	return 0;
 }

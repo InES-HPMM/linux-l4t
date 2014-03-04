@@ -500,6 +500,12 @@ static inline int tegra_update_mselect_rate(unsigned long cpu_rate)
 #else
 int tegra_update_mselect_rate(unsigned long cpu_rate);
 #endif
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate);
+#else
+static inline unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
+{ return 0; }
+#endif
 #else
 static inline unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 { return 0; }
