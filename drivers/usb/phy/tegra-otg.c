@@ -553,8 +553,11 @@ static ssize_t show_host_en(struct device *dev, struct device_attribute *attr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg *tegra = platform_get_drvdata(pdev);
+	struct usb_otg *otg = tegra->phy.otg;
 
-	*buf = tegra->interrupt_mode ? '0': '1';
+	*buf = ((!tegra->interrupt_mode) &&
+			(otg->phy->state == OTG_STATE_A_HOST)) ? '1' : '0';
+
 	strcat(buf, "\n");
 	return strlen(buf);
 }
@@ -571,6 +574,7 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 
 	if (host) {
 		enable_interrupt(tegra, false);
+		tegra->interrupt_mode = true;
 		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
 		tegra_change_otg_state(tegra, OTG_STATE_A_HOST);
 		tegra->interrupt_mode = false;
@@ -584,6 +588,48 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR(enable_host, 0644, show_host_en, store_host_en);
+
+static ssize_t show_device_en(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_otg *tegra = platform_get_drvdata(pdev);
+	struct usb_otg *otg = tegra->phy.otg;
+
+	*buf = ((!tegra->interrupt_mode) &&
+			otg->phy->state == OTG_STATE_B_PERIPHERAL) ? '1' : '0';
+
+	strcat(buf, "\n");
+	return strlen(buf);
+}
+
+static ssize_t store_device_en(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_otg *tegra = platform_get_drvdata(pdev);
+	unsigned long device;
+
+	if (sscanf(buf, "%lu", &device) != 1 || device < 0 || device > 1)
+		return -EINVAL;
+
+	if (device) {
+		enable_interrupt(tegra, false);
+		tegra->interrupt_mode = true;
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
+		tegra_change_otg_state(tegra, OTG_STATE_B_PERIPHERAL);
+		tegra->interrupt_mode = false;
+	} else {
+		tegra->interrupt_mode = true;
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
+		enable_interrupt(tegra, true);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(enable_device, 0644, show_device_en, store_device_en);
 
 static int tegra_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
@@ -844,7 +890,15 @@ static int tegra_otg_probe(struct platform_device *pdev)
 					&& !tegra->support_gpio_id) {
 		err = device_create_file(&pdev->dev, &dev_attr_enable_host);
 		if (err) {
-			dev_warn(&pdev->dev, "Can't register sysfs attribute\n");
+			dev_warn(&pdev->dev,
+				"Can't register host-sysfs attribute\n");
+			goto err;
+		}
+		err = device_create_file(&pdev->dev, &dev_attr_enable_device);
+		if (err) {
+			dev_warn(&pdev->dev,
+				"Can't register device-sysfs attribute\n");
+			device_remove_file(&pdev->dev, &dev_attr_enable_host);
 			goto err;
 		}
 	}
