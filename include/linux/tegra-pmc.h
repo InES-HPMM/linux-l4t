@@ -24,6 +24,7 @@
 extern void tegra_pmc_set_dpd_sample(void);
 extern void tegra_pmc_clear_dpd_sample(void);
 extern void tegra_pmc_remove_dpd_req(void);
+extern void __iomem *tegra_pmc_base;
 
 extern bool tegra_is_dpd_mode;
 
@@ -59,6 +60,5 @@ int tegra_pmc_cpu_power_on(int cpuid);
 int tegra_pmc_cpu_remove_clamping(int cpuid);
 void tegra_pmc_pmu_interrupt_polarity(bool active_low);
 struct pmc_pm_data *tegra_get_pm_data(void);
-
 
 #endif	/* __LINUX_TEGRA_PMC_H__ */

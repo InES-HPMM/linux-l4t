@@ -53,7 +53,7 @@ static u8 tegra_cpu_domains[] = {
 };
 static DEFINE_SPINLOCK(tegra_powergate_lock);
 
-static void __iomem *tegra_pmc_base;
+void __iomem *tegra_pmc_base;
 static bool tegra_pmc_invert_interrupt;
 #if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
 static struct clk *tegra_pclk;
@@ -79,21 +79,12 @@ EXPORT_SYMBOL(tegra_get_pm_data);
 
 static inline u32 tegra_pmc_readl(u32 reg)
 {
-#if defined(CONFIG_OF)
 	return readl(tegra_pmc_base + reg);
-#else
-	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
-#endif
 }
 
 static inline void tegra_pmc_writel(u32 val, u32 reg)
 {
-#if defined(CONFIG_OF)
 	writel(val, tegra_pmc_base + reg);
-#else
-	writel(val, IO_ADDRESS(TEGRA_PMC_BASE + reg));
-	return readl(IO_ADDRESS(TEGRA_PMC_BASE + reg));
-#endif
 }
 
 void tegra_pmc_set_dpd_sample()
