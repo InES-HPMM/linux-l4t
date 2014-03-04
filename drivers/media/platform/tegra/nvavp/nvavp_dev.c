@@ -2023,12 +2023,16 @@ nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
 
 	fd_install(fd, file);
 
-	err = tegra_nvavp_open(file->f_inode, file, clientctx->channel_id);
+	nonseekable_open(file->f_inode, filp);
+	mutex_lock(&nvavp->open_lock);
+	err = tegra_nvavp_open(nvavp, &clientctx, clientctx->channel_id);
 	if (err) {
 		put_unused_fd(fd);
 		fput(file);
+		mutex_unlock(&nvavp->open_lock);
 		return err;
 	}
+	mutex_unlock(&nvavp->open_lock);
 
 	arg->channel_fd = fd;
 	return err;
