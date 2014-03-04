@@ -235,7 +235,7 @@ int utmi_phy_pad_enable(void)
 
 	val = readl(pad_base + UTMIP_BIAS_CFG0);
 	val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
-	val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x1) |
+	val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
 		UTMIP_HSDISCON_LEVEL_MSB;
 	writel(val, pad_base + UTMIP_BIAS_CFG0);
 
