@@ -139,6 +139,13 @@ phys_addr_t tegra_tsec_start;
 phys_addr_t tegra_tsec_size;
 phys_addr_t tegra_lp0_vec_start;
 phys_addr_t tegra_lp0_vec_size;
+
+phys_addr_t tegra_bl_debug_data_start = 0;
+EXPORT_SYMBOL(tegra_bl_debug_data_start);
+
+phys_addr_t tegra_bl_debug_data_size = 0;
+EXPORT_SYMBOL(tegra_bl_debug_data_size);
+
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 phys_addr_t tegra_wb0_params_address;
 phys_addr_t tegra_wb0_params_instances;
@@ -1052,6 +1059,22 @@ static int __init tegra_lp0_vec_arg(char *options)
 	return 0;
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
+
+static int __init tegra_bl_debug_data_arg(char *options)
+{
+	char *p = options;
+
+	tegra_bl_debug_data_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_bl_debug_data_start = memparse(p+1, &p);
+	if (!tegra_bl_debug_data_size || !tegra_bl_debug_data_start) {
+		tegra_bl_debug_data_size = 0;
+		tegra_bl_debug_data_start = 0;
+	}
+
+	return 0;
+}
+early_param("bl_debug_data", tegra_bl_debug_data_arg);
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static int __init tegra_wb0_params_arg(char *options)
@@ -2050,6 +2073,46 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	} else
 		tegra_lp0_vec_relocate = true;
 
+	if (tegra_bl_debug_data_size &&
+		(tegra_bl_debug_data_start < memblock_end_of_DRAM())) {
+		if (memblock_reserve(tegra_bl_debug_data_start, tegra_bl_debug_data_size)) {
+			pr_err("Failed to reserve bl_debug_data %08llx@%08llx\n",
+				(u64)tegra_bl_debug_data_size,
+				(u64)tegra_bl_debug_data_start);
+			tegra_bl_debug_data_start = 0;
+			tegra_bl_debug_data_size = 0;
+		}
+	} else if (tegra_bl_debug_data_size) {
+		unsigned char *reloc_bl_debug_data;
+		unsigned long tmp;
+		void __iomem *orig;
+		reloc_bl_debug_data = kmalloc(tegra_bl_debug_data_size + L1_CACHE_BYTES - 1,
+				GFP_KERNEL);
+		WARN_ON(!reloc_bl_debug_data);
+		if (!reloc_bl_debug_data) {
+			pr_err("%s: Failed to allocate reloc_bl_debug_data\n",
+				__func__);
+			goto out;
+		}
+
+		orig = ioremap(tegra_bl_debug_data_start, tegra_bl_debug_data_size);
+		WARN_ON(!orig);
+		if (!orig) {
+			pr_err("%s: Failed to map tegra_bl_debug_data_start %08x\n",
+				__func__, (unsigned int) tegra_bl_debug_data_start);
+			kfree(reloc_bl_debug_data);
+			goto out;
+		}
+
+		tmp = (unsigned long) reloc_bl_debug_data;
+		tmp = (tmp + L1_CACHE_BYTES - 1) & ~(L1_CACHE_BYTES - 1);
+		reloc_bl_debug_data = (unsigned char *)tmp;
+		memcpy(reloc_bl_debug_data, orig, tegra_bl_debug_data_size);
+		iounmap(orig);
+		tegra_bl_debug_data_start = virt_to_phys(reloc_bl_debug_data);
+	}
+
+out:
 #ifdef CONFIG_TEGRA_NVDUMPER
 	if (nvdumper_reserved) {
 		if (memblock_reserve(nvdumper_reserved, NVDUMPER_RESERVED_SIZE)) {
@@ -2112,7 +2175,11 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		"Carveout:               %08llx - %08llx\n"
 		"Vpr:                    %08llx - %08llx\n"
 #endif
-		"Tsec:                   %08llx - %08llx\n",
+		"Tsec:                   %08llx - %08llx\n"
+#ifdef CONFIG_TEGRA_BOOTLOADER_DEBUG
+		"Bootloader Debug Data:  %08llx - %08llx\n"
+#endif
+		,
 		(u64)tegra_lp0_vec_start,
 		(u64)(tegra_lp0_vec_size ?
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0),
@@ -2140,8 +2207,14 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #endif
 		(u64)tegra_tsec_start,
 		(u64)(tegra_tsec_size ?
-			tegra_tsec_start + tegra_tsec_size - 1 : 0));
-
+			tegra_tsec_start + tegra_tsec_size - 1 : 0)
+#ifdef CONFIG_TEGRA_BOOTLOADER_DEBUG
+		,
+		(u64)(tegra_bl_debug_data_start),
+		(u64)(tegra_bl_debug_data_size ?
+			tegra_bl_debug_data_start + tegra_bl_debug_data_size - 1 : 0)
+#endif
+		);
 
 #ifdef CONFIG_TEGRA_NVDUMPER
 	if (nvdumper_reserved) {
