@@ -39,8 +39,8 @@
 #define INPUT_DEVICES               2
 #define INPUT_ENABLE_DISABLE        0
 #define FB_CALLBACK                 1
-#define SUSPEND_POWER_OFF           1
-#define DOUBLE_TAP                  1
+#define SUSPEND_POWER_OFF           0
+#define DOUBLE_TAP                  0
 #define NV_ENABLE_CPU_BOOST         1
 #define NV_STYLUS_FINGER_EXCLUSION  1
 
@@ -947,9 +947,11 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	u8                            i, inp;
 	int                           ret;
 
+#if DOUBLE_TAP || SUSPEND_POWER_OFF
 	if (dd->expect_resume_ack && msg_id != DR_DECONFIG &&
 	    msg_id != DR_RESUME_ACK)
 		return false;
+#endif
 
 	switch (msg_id) {
 	case DR_ADD_MC_GROUP:
@@ -1736,7 +1738,6 @@ static int processing_thread(void *arg)
 
 			INFO("%s: suspended.", __func__);
 
-			dd->expect_resume_ack = true;
 			while (!dd->resume_in_progress) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
@@ -2048,7 +2049,7 @@ static struct spi_driver driver = {
 	.driver = {
 		.name   = MAXIM_STI_NAME,
 		.owner  = THIS_MODULE,
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP) && DOUBLE_TAP
 		.pm     = &pm_ops,
 #endif
 	},
