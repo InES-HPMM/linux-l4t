@@ -158,6 +158,8 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 	sku_id = tegra_get_sku_id();
 	switch (sku_id) {
 	case 0x1F:
+	case 0x27:
+	case 0x87:
 		break;
 	default:
 		pr_warn("%s: Unknown tn8 sku id, %x!  Assuming td570d.\n",
