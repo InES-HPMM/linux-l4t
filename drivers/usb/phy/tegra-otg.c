@@ -658,7 +658,8 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	tegra->suspended = false;
 	tegra->turn_off_vbus_on_lp0 =
 			pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0;
-	tegra->support_y_cable = true;
+	tegra->support_y_cable =
+			pdata->ehci_pdata->u_data.host.support_y_cable;
 	tegra->y_cable_conn = false;
 	tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
 	tegra->id_det_gpio = pdata->id_det_gpio ? pdata->id_det_gpio : -1;
