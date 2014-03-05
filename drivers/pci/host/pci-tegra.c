@@ -1012,6 +1012,9 @@ static int tegra_pcie_enable_controller(void)
 
 	/* Disable all execptions */
 	afi_writel(0, AFI_FPCI_ERROR_MASKS);
+	/* Take the PCIe interface module out of reset */
+	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
+
 	/* deassert PEX reset signal */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		val = afi_readl(pex_controller_registers[i]);
@@ -1111,6 +1114,8 @@ static int tegra_pcie_power_ungate(void)
 		pr_err("PCIE: powerup sequence failed: %d\n", err);
 		return err;
 	}
+
+	tegra_periph_reset_assert(tegra_pcie.pcie_xclk);
 	err = clk_prepare_enable(tegra_pcie.pcie_mselect);
 	if (err) {
 		pr_err("PCIE: mselect clk enable failed: %d\n", err);
