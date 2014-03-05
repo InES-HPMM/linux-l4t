@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/edp.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -391,21 +391,14 @@ static int init_cpu_edp_limits_calculated(void)
 				   * freq_voltage_lut_size, GFP_KERNEL);
 	if (!freq_voltage_lut) {
 		pr_err("%s: failed alloc mem for freq/voltage LUT\n", __func__);
-		kfree(power_edp_calc_limits);
-		kfree(reg_idle_calc_limits);
-		kfree(edp_calculated_limits);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	ret = edp_relate_freq_voltage(clk_cpu_g, cpu_speedo_idx,
 				freq_voltage_lut_size, freq_voltage_lut);
-	if (ret) {
-		kfree(power_edp_calc_limits);
-		kfree(reg_idle_calc_limits);
-		kfree(edp_calculated_limits);
-		kfree(freq_voltage_lut);
-		return ret;
-	}
+	if (ret)
+		goto err;
 
 	if (freq_voltage_lut_size != freq_voltage_lut_size_saved) {
 		/* release previous table if present */
@@ -417,11 +410,8 @@ static int init_cpu_edp_limits_calculated(void)
 		if (!freq_voltage_lut_saved) {
 			pr_err("%s: failed alloc mem for freq/voltage LUT\n",
 				__func__);
-			kfree(freq_voltage_lut);
-			kfree(edp_calculated_limits);
-			kfree(reg_idle_calc_limits);
-			kfree(power_edp_calc_limits);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto err;
 		}
 		freq_voltage_lut_size_saved = freq_voltage_lut_size;
 	}
@@ -442,8 +432,10 @@ static int init_cpu_edp_limits_calculated(void)
 						   0,
 						   iddq_mA,
 						   n_cores_idx);
-			if (limit == -EINVAL)
-				return -EINVAL;
+			if (limit == -EINVAL) {
+				ret = -EINVAL;
+				goto err;
+			}
 			/* apply safety cap if it is specified */
 			if (n_cores_idx < 4) {
 				cap = params->safety_cap[n_cores_idx];
@@ -536,6 +528,20 @@ static int init_cpu_edp_limits_calculated(void)
 
 	kfree(freq_voltage_lut);
 	return 0;
+
+ err:
+	kfree(freq_voltage_lut);
+	freq_voltage_lut = NULL;
+	kfree(edp_calculated_limits);
+	edp_calculated_limits = NULL;
+	kfree(reg_idle_calc_limits);
+	reg_idle_calc_limits = NULL;
+	kfree(power_edp_calc_limits);
+	power_edp_calc_limits = NULL;
+	kfree(freq_voltage_lut_saved);
+	freq_voltage_lut_saved = NULL;
+
+	return ret;
 }
 
 void tegra_recalculate_cpu_edp_limits(void)
