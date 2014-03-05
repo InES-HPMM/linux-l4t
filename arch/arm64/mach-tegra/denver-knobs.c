@@ -24,12 +24,17 @@
 #include <linux/cpumask.h>
 #include <linux/kernel.h>
 
+#include <asm/traps.h>
+
 #include <mach/hardware.h>
 
 #include "denver-knobs.h"
 
 #define BG_CLR_SHIFT	16
 #define BG_STATUS_SHIFT	32
+
+/* 4 instructions to skip upon undef exception */
+#define CREGS_NR_JUMP_OFFSET 16
 
 #ifdef CONFIG_DEBUG_FS
 struct denver_creg {
@@ -338,6 +343,62 @@ static int __init create_denver_nvmstats(void)
 	return 0;
 }
 
+static bool backdoor_enabled;
+
+bool denver_backdoor_enabled(void)
+{
+	return backdoor_enabled;
+}
+
+/*
+ * Handle the invalid instruction exception caused by Denver
+ * backdoor accesses on a system where backdoor is disabled.
+ */
+static int undef_handler(struct pt_regs *regs, unsigned int instr)
+{
+	backdoor_enabled = false;
+
+	/*
+	 * Skip all 4 instructions denver_creg_get(). We are here
+	 * because the 1st SYS caused the undef instr exception.
+	 */
+	regs->pc += CREGS_NR_JUMP_OFFSET;
+
+	return 0;
+}
+
+/*
+ * We need to handle only the below instruction which is used
+ * by a pilot command during init such that no further backdoor
+ * will be executed if the pilot trigged an exception.
+ *
+ *  Instr: sys 0, c11, c0, 1, <x>
+ */
+static struct undef_hook undef_backdoor_hook = {
+	.instr_mask	= 0xffffffe0,
+	.instr_val	= 0xd508b020,
+	.pstate_mask	= 0x0,	/* ignore */
+	.pstate_val	= 0x0, /* ignore */
+	.fn		= undef_handler
+};
+
+static void check_backdoor(void)
+{
+	u64 val;
+
+	/* Assume true unless proved otherwise */
+	backdoor_enabled = true;
+
+	/* Install hook */
+	register_undef_hook(&undef_backdoor_hook);
+
+	/* Pilot command */
+	denver_creg_get(&denver_cregs[0], &val);
+
+	pr_info("Denver: backdoor interface is %savailable.\n",
+	backdoor_enabled ? "" : "NOT ");
+}
+
 static int __init denver_knobs_init(void)
 {
 	int error;
@@ -347,17 +408,24 @@ static int __init denver_knobs_init(void)
 
 	denver_debugfs_root = debugfs_create_dir("tegra_denver", NULL);
 
-	error = create_denver_bgallowed();
-	if (error)
-		return error;
+	check_backdoor();
 
-	error = create_denver_cregs();
+	/* BGALLOWED/NVMSTATS don't go through the SYS backdoor
+	 *  interface such that we can always enable them.
+	 */
+	error = create_denver_bgallowed();
 	if (error)
 		return error;
 
 	error = create_denver_nvmstats();
 	if (error)
 		return error;
+
+	if (backdoor_enabled) {
+		error = create_denver_cregs();
+		if (error)
+			return error;
+	}
 
 	return 0;
 }

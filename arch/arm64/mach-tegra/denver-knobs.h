@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,5 +19,7 @@
 
 bool denver_get_bg_allowed(int cpu);
 void denver_set_bg_allowed(int cpu, bool enable);
+
+bool denver_backdoor_enabled(void);
 
 #endif /* _MACH_DENVER_KNOBS_H_ */
