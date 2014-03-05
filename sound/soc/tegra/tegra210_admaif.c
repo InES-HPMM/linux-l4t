@@ -5,7 +5,7 @@
  * Author: Dara Ramesh <dramesh@nvidia.com>
  * Based on code by Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -333,6 +333,15 @@ static bool tegra210_admaif_rd_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_ADMAIF_XBAR_TX_STATUS:
 	case TEGRA210_ADMAIF_XBAR_RX_INT_STATUS:
 	case TEGRA210_ADMAIF_XBAR_TX_INT_STATUS:
+	case TEGRA210_ADMAIF_XBAR_TX_ENABLE:
+	case TEGRA210_ADMAIF_XBAR_TX_FIFO_CTRL:
+	case TEGRA210_ADMAIF_CHAN_ACIF_TX_CTRL:
+	case TEGRA210_ADMAIF_XBAR_RX_ENABLE:
+	case TEGRA210_ADMAIF_XBAR_RX_FIFO_CTRL:
+	case TEGRA210_ADMAIF_CHAN_ACIF_RX_CTRL:
+	case TEGRA210_ADMAIF_GLOBAL_ENABLE:
+	case TEGRA210_ADMAIF_XBAR_TX_SOFT_RESET:
+	case TEGRA210_ADMAIF_XBAR_RX_SOFT_RESET:
 		return true;
 	default:
 		return false;
