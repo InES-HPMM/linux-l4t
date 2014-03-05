@@ -251,8 +251,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2116500,       {1260000, 0, 0}, {1260000, 0, 0}},
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
-		.vmin_trips_table = { 20, 35, 55, 75, },
-		.therm_floors_table = { 900, 800, 790, 770, },
+		.vmin_trips_table = { 15, },
+		.therm_floors_table = { 900, },
 	},
 };
 
