@@ -2097,6 +2097,7 @@ static void tegra_pcie_read_plat_data(void)
 }
 
 static struct of_device_id tegra_pcie_of_match[] = {
+	{ .compatible = "nvidia,tegra210-pcie", },
 	{ .compatible = "nvidia,tegra124-pcie", },
 	{ }
 };
