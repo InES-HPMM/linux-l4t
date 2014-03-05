@@ -1,3 +1,16 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
 /dts-v1/;
 
 #include "tegra124.dtsi"
@@ -16,6 +29,15 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		lightbar {
+			label = "foster::led_lightbar";
+			gpios = <&gpio TEGRA_GPIO(Q, 3) GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "default-on";
+		};
 	};
 
 	serial@70006000 {
