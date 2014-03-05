@@ -25,7 +25,6 @@
 
 
 #include "iomap.h"
-#include "pmc.h"
 
 #define PMC_CTRL			0x0
 #define PMC_CTRL_INTR_LOW		(1 << 17)

@@ -23,6 +23,9 @@
 #include <asm/suspend.h>
 #include <asm/cacheflush.h>
 
+#include <linux/tegra-pmc.h>
+
+#include "pm.h"
 #include "sleep.h"
 #include "flowctrl.h"
 #include "pm-soc.h"

@@ -55,6 +55,7 @@
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/cacheflush.h>
 #include <asm/idmap.h>
@@ -75,10 +76,20 @@
 #include "pm.h"
 #include "pm-soc.h"
 #include "reset.h"
-#include "pmc.h"
 #include "sleep.h"
 #include "dvfs.h"
 #include "cpu-tegra.h"
+#include "flowctrl.h"
+#include "board.h"
+
+#include "pm-tegra132.h"
+
+/* core power request enable */
+#define TEGRA_POWER_PWRREQ_OE		(1 << 9)
+/* enter LP0 when CPU pwr gated */
+#define TEGRA_POWER_EFFECT_LP0		(1 << 14)
+/* CPU pwr req enable */
+#define TEGRA_POWER_CPU_PWRREQ_OE	(1 << 16)
 
 struct suspend_context {
 	/*

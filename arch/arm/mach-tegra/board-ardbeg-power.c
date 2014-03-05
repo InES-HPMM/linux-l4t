@@ -38,12 +38,12 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2419x-charger.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
 #include <mach/pinmux-t12.h>
 
 #include "pm.h"
-#include "pmc.h"
 #include "dvfs.h"
 #include "board.h"
 #include "tegra-board-id.h"

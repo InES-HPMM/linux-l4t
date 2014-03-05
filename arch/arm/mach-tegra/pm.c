@@ -54,6 +54,7 @@
 #include <linux/tegra-cpuidle.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra-pm.h>
+#include <linux/tegra-pmc.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -78,7 +79,6 @@
 #include "iomap.h"
 #include "pm.h"
 #include "reset.h"
-#include "pmc.h"
 #include "sleep.h"
 #include "dvfs.h"
 #include "cpu-tegra.h"

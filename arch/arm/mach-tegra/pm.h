@@ -29,10 +29,10 @@
 #include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/clkdev.h>
+#include <linux/tegra-pmc.h>
 
 #include "iomap.h"
 
-#include "pmc.h"
 
 #define PMC_SCRATCH0		0x50
 #define PMC_SCRATCH1		0x54
