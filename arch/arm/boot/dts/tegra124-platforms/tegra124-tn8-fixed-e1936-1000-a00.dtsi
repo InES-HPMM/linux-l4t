@@ -149,57 +149,9 @@
 			};
 		};
 
-		usb0_vbus: regulator@6 {
+		vddio_hdmi_5v0: regulator@6 {
 			compatible = "regulator-fixed-sync";
 			reg = <6>;
-			regulator-name = "usb0-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio TEGRA_GPIO(N, 4) 0>;
-			enable-active-high;
-			gpio-open-drain;
-		};
-
-		usb1_vbus: regulator@7 {
-			compatible = "regulator-fixed-sync";
-			reg = <7>;
-			regulator-name = "usb1-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
-			gpio-open-drain;
-			vin-supply = <&palmas_smps10_out2>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "usb_vbus";
-					regulator-consumer-device = "tegra-ehci.1";
-				};
-			};
-		};
-
-		usb2_vbus: regulator@8 {
-			compatible = "regulator-fixed-sync";
-			reg = <8>;
-			regulator-name = "usb2-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			gpio = <&gpio TEGRA_GPIO(FF, 1) 0>;
-			gpio-open-drain;
-			vin-supply = <&palmas_smps10_out2>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "usb_vbus";
-					regulator-consumer-device = "tegra-ehci.2";
-				};
-			};
-		};
-		vddio_hdmi_5v0: regulator@9 {
-			compatible = "regulator-fixed-sync";
-			reg = <9>;
 			regulator-name = "vddio_hdmi_5v0";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;

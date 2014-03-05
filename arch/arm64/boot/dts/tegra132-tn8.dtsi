@@ -38,9 +38,6 @@
 		nvidia,ss_portmap = <0x0>; /* SSP0 on USB2P0 */
 		nvidia,lane_owner = <4>; /* USB3P0 */
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		usb_vbus0-supply = <&usb0_vbus>;
-		usb_vbus1-supply = <&usb1_vbus>;
-		usb_vbus2-supply = <&usb2_vbus>;
 		hvdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		vddio_hsic-supply = <&ldo5_reg>;
