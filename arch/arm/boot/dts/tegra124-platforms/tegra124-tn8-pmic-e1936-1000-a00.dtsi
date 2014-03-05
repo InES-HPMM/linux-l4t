@@ -671,6 +671,8 @@
 				ti,charge-current-limit = <1024 2048 5200>;
 				ti,thermal-zone = "battery";
 				ti,temp-polling-time-sec = <5>;
+				ti,ir-comp-voltage-millivolt = <80>;
+				ti,ir-comp-resister-ohm = <70>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_bat_chg";
