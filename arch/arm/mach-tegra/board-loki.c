@@ -489,6 +489,9 @@ static void loki_usb_init(void)
 	tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
 	tegra_ehci1_utmi_pdata.vbus_extcon_dev_name = "palmas-extcon";
 
+	/* Enable Y-Cable support */
+	tegra_ehci1_utmi_pdata.u_data.host.support_y_cable = true;
+
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 		platform_device_register(&tegra_otg_device);
