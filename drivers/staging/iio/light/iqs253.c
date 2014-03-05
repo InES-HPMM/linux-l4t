@@ -667,7 +667,7 @@ static int iqs253_remove(struct i2c_client *client)
 
 static void iqs253_shutdown(struct i2c_client *client)
 {
-	iqs253_remove(client);
+
 }
 
 static const struct i2c_device_id iqs253_id[] = {
