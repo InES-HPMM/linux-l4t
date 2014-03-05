@@ -699,6 +699,18 @@ fail:
 	return err;
 }
 
+static int tegra_suspend_valid(suspend_state_t state)
+{
+	int valid = 1;
+
+	/* LP0 is not supported on T132 A01 silicon */
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13 && \
+		tegra_revision == TEGRA_REVISION_A01)
+		valid = 0;
+
+	return valid;
+}
+
 static int tegra_suspend_prepare_late(void)
 {
 	suspend_in_progress = true;
@@ -716,7 +728,7 @@ static void tegra_suspend_finish(void)
 
 static const struct platform_suspend_ops tegra_suspend_ops = {
 	.prepare_late = tegra_suspend_prepare_late,
-	.valid		= suspend_valid_only_mem,
+	.valid		= tegra_suspend_valid,
 	.finish		= tegra_suspend_finish,
 	.enter		= tegra_suspend_enter,
 };
