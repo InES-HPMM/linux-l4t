@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2013 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -39,7 +39,7 @@
 #include <asm/delay.h>
 
 #include "../../arch/arm/mach-tegra/clock.h"
-
+#include "../../arch/arm/mach-tegra/common.h"
 
 static u32 arch_timer_us_mult, arch_timer_us_shift;
 
@@ -134,9 +134,9 @@ void __init tegra_cpu_timer_init(void)
 
 static void tegra_arch_timer_per_cpu_init(void)
 {
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	return;
-#else
+	if (tegra_cpu_is_secure())
+		return;
+
 	if (arch_timer_initialized) {
 		u32 tsc_ref_freq = tegra_clk_measure_input_freq();
 
@@ -151,7 +151,6 @@ static void tegra_arch_timer_per_cpu_init(void)
 		   NOTE: this is a write once (per CPU reset) register. */
 		__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
 	}
-#endif
 }
 
 static int arch_timer_cpu_notify(struct notifier_block *self,
