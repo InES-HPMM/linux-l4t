@@ -24,8 +24,11 @@
 #include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/tegra_emc.h>
+
+#include "tegra12_emc.h"
 
 u8 tegra_emc_iso_share = 100;
 static unsigned long emc_iso_allocation;
@@ -33,6 +36,17 @@ static unsigned long last_iso_bw;
 
 static struct emc_iso_usage emc_usage_table[TEGRA_EMC_ISO_USE_CASES_MAX_NUM];
 
+
+u32 tegra_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
+{
+	switch (tegra_get_chipid()) {
+	case TEGRA_CHIPID_TEGRA12:
+	case TEGRA_CHIPID_TEGRA13:
+		return tegra12_get_dvfs_clk_change_latency_nsec(emc_freq_khz);
+	default:
+		return 0;
+	}
+}
 
 void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
 					   int size)

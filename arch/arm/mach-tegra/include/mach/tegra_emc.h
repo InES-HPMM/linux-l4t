@@ -94,4 +94,6 @@ static inline void tegra_mc_timing_restore(void)
 { }
 #endif
 
+u32 tegra_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz);
+
 #endif

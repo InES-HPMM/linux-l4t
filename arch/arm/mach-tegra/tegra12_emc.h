@@ -38,6 +38,8 @@ enum {
 
 void tegra12_mc_holdoff_enable(void);
 
+u32 tegra12_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz);
+
 #define DRAM_BROADCAST(num)			\
 	(((num) > 1) ? DRAM_DEV_SEL_ALL : DRAM_DEV_SEL_0)
 

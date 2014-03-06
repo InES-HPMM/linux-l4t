@@ -932,6 +932,46 @@ static inline void emc_get_timing(struct tegra12_emc_table *timing)
 	timing->rate = clk_get_rate_locked(emc) / 1000;
 }
 
+u32 tegra12_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
+{
+	int i;
+
+	if (!tegra_emc_table)
+		goto default_val;
+
+	if (emc_freq_khz > tegra_emc_table[tegra_emc_table_size - 1].rate) {
+		i = tegra_emc_table_size - 1;
+		if (tegra_emc_table[i].clock_change_latency != 0)
+			return tegra_emc_table[i].clock_change_latency;
+		else
+			goto default_val;
+	}
+
+	for (i = get_start_idx(emc_freq_khz); i < tegra_emc_table_size; i++) {
+		if (tegra_emc_table[i].rate == emc_freq_khz)
+			break;
+
+		if (tegra_emc_table[i].rate > emc_freq_khz) {
+			/* emc_freq_khz was not found in the emc table. Use the
+			   DVFS latency value of the EMC frequency just below
+			   emc_freq_khz. */
+			i--;
+			break;
+		}
+	}
+
+	if (tegra_emc_table[i].clock_change_latency != 0)
+		return tegra_emc_table[i].clock_change_latency;
+
+default_val:
+	/* The DVFS clock change latency value couldn't be found. Use
+	   a default value. */
+	WARN_ONCE(1, "%s: Couldn't find DVFS clock change latency "
+			"value - using default value\n",
+		__func__);
+	return 2000;
+}
+
 /* The EMC registers have shadow registers. When the EMC clock is updated
  * in the clock controller, the shadow registers are copied to the active
  * registers, allowing glitchless memory bus frequency changes.
