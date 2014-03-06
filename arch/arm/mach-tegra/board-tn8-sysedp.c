@@ -109,8 +109,6 @@ void __init tn8_new_sysedp_init(void)
 }
 
 static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
-	.corecap = td575d_sysedp_corecap,
-	.corecap_size = td575d_sysedp_corecap_sz,
 	.core_gain = 100,
 	.init_req_watts = 20000,
 	.pthrot_ratio = 75,
@@ -145,29 +143,24 @@ static struct platform_device tn8_sysedp_reactive_capping_oc1 = {
 void __init tn8_sysedp_dynamic_capping_init(void)
 {
 	int r;
-	int sku_id;
+	struct tegra_sysedp_corecap *corecap;
+	unsigned int corecap_size;
 	struct board_info board;
+
+
+	corecap = tegra_get_sysedp_corecap(&corecap_size);
+	if (!corecap) {
+		WARN_ON(1);
+		return;
+	}
+	tn8_sysedp_dynamic_capping_platdata.corecap = corecap;
+	tn8_sysedp_dynamic_capping_platdata.corecap_size = corecap_size;
 
 	tn8_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
 		&tn8_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
 	if (!tn8_sysedp_dynamic_capping_platdata.cpufreq_lim) {
 		WARN_ON(1);
 		return;
-	}
-
-	sku_id = tegra_get_sku_id();
-	switch (sku_id) {
-	case 0x1F:
-	case 0x27:
-	case 0x87:
-		break;
-	default:
-		pr_warn("%s: Unknown tn8 sku id, %x!  Assuming td570d.\n",
-				__func__, sku_id);
-	case 0xF:
-		tn8_sysedp_dynamic_capping_platdata.corecap = td570d_sysedp_corecap;
-		tn8_sysedp_dynamic_capping_platdata.corecap_size = td570d_sysedp_corecap_sz;
-		break;
 	}
 
 	tegra_get_board_info(&board);

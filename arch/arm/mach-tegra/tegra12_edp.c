@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_edp.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,6 +23,7 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/tegra-fuse.h>
 
 #include <mach/edp.h>
 
@@ -35,7 +36,8 @@
 #define	TOTAL_CAPS (CORE_EDP_PROFILES_NUM * CORE_MODULES_STATES *\
 			TEMPERATURE_RANGES * CAP_CLKS_NUM)
 
-struct tegra_sysedp_corecap td580d_sysedp_corecap[td580d_sysedp_corecap_sz] = {
+#ifdef CONFIG_SYSEDP_FRAMEWORK
+static struct tegra_sysedp_corecap td580d_sysedp_corecap[] = {
 /*
 TD580D/CD580M/SD580N
 GPU MaxF	853000 KHz
@@ -74,7 +76,7 @@ CPU MaxBudget	12000  mW
 	{33000, {12000, 804000, 933000 }, {10000, 853000, 933000 }, 17721 },
 };
 
-struct tegra_sysedp_corecap td570d_sysedp_corecap[td570d_sysedp_corecap_sz] = {
+static struct tegra_sysedp_corecap td570d_sysedp_corecap[] = {
 /*
 TD570D/SD570N
 GPU MaxF	648000 KHz
@@ -113,7 +115,7 @@ CPU MaxBudget	9000   mW
 	{33000, {9000, 648000, 792000 }, {9000, 648000, 792000 }, 12066 },
 };
 
-struct tegra_sysedp_corecap td575d_sysedp_corecap[td575d_sysedp_corecap_sz] = {
+static struct tegra_sysedp_corecap td575d_sysedp_corecap[] = {
 /*
 TD575D/CD575M/SD575N
 GPU MaxF	853000 KHz
@@ -152,7 +154,7 @@ CPU MaxBudget	10000  mW
 	{33000, {10000, 853000, 933000}, {10000, 853000, 933000 }, 17721 },
 };
 
-struct tegra_sysedp_corecap cd570m_sysedp_corecap[cd570m_sysedp_corecap_sz] = {
+static struct tegra_sysedp_corecap cd570m_sysedp_corecap[] = {
 /*
 CD570M
 GPU MaxF	648000 KHz
@@ -190,6 +192,48 @@ CPU MaxBudget	10000  mW
 	{32000, {10000, 648000, 933000}, {10000, 648000, 933000}, 12904 },
 	{33000, {10000, 648000, 933000}, {10000, 648000, 933000}, 12904 },
 };
+
+struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz)
+{
+	int cpu_speedo_id;
+	int gpu_speedo_id;
+
+	BUG_ON(sz == NULL);
+
+	cpu_speedo_id = tegra_cpu_speedo_id();
+	gpu_speedo_id = tegra_gpu_speedo_id();
+
+	switch (cpu_speedo_id) {
+	case 0x2:
+		if (gpu_speedo_id == 1) {
+			/* 575 variants */
+			*sz = ARRAY_SIZE(td575d_sysedp_corecap);
+			return td575d_sysedp_corecap;
+		} else {
+			/* CD570M */
+			*sz = ARRAY_SIZE(cd570m_sysedp_corecap);
+			return cd570m_sysedp_corecap;
+		}
+
+	case 0x3:
+	case 0x1:
+		/* 580 variants */
+		*sz = ARRAY_SIZE(td580d_sysedp_corecap);
+		return td580d_sysedp_corecap;
+
+
+	default:
+		pr_warn("%s: Unknown cpu_speedo_id, 0x%x. "
+			" Assuming td570d sysedp_corecap table.\n",
+			__func__, cpu_speedo_id);
+		/* intentional fall-through */
+	case 0x0:
+		/* 570 variants */
+		*sz = ARRAY_SIZE(td570d_sysedp_corecap);
+		return td570d_sysedp_corecap;
+	}
+}
+#endif
 
 struct core_edp_entry {
 	int sku;

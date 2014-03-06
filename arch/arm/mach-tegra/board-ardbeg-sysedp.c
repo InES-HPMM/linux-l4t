@@ -153,8 +153,6 @@ void __init shield_sysedp_batmon_init(void)
 }
 
 static struct tegra_sysedp_platform_data shield_sysedp_dynamic_capping_platdata = {
-	.corecap = td580d_sysedp_corecap,
-	.corecap_size = td580d_sysedp_corecap_sz,
 	.core_gain = 100,
 	.init_req_watts = 20000,
 };
@@ -168,6 +166,16 @@ static struct platform_device shield_sysedp_dynamic_capping = {
 void __init shield_sysedp_dynamic_capping_init(void)
 {
 	int r;
+	struct tegra_sysedp_corecap *corecap;
+	unsigned int corecap_size;
+
+	corecap = tegra_get_sysedp_corecap(&corecap_size);
+	if (!corecap) {
+		WARN_ON(1);
+		return;
+	}
+	shield_sysedp_dynamic_capping_platdata.corecap = corecap;
+	shield_sysedp_dynamic_capping_platdata.corecap_size = corecap_size;
 
 	shield_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
 		&shield_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
