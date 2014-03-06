@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,6 +31,7 @@ LIST_HEAD(registered_consumers);
 static struct sysedp_platform_data *pdata;
 unsigned int avail_budget = 1000000;
 int margin;
+int min_budget;
 
 void sysedp_set_avail_budget(unsigned int power)
 {
@@ -57,7 +58,7 @@ void _sysedp_refresh(void)
 	}
 
 	limit = (int)avail_budget - pmax_sum - margin;
-	limit = limit >= 0 ? limit : 0;
+	limit = limit >= min_budget ? limit : min_budget;
 	oc_relax = pmax_sum - pthres_sum;
 	oc_relax = oc_relax >= 0 ? oc_relax : 0;
 
@@ -212,6 +213,7 @@ static int sysedp_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	margin = pdata->margin;
+	min_budget = (pdata->min_budget >= 0) ? min_budget : 0;
 	sysedp_init_sysfs();
 	sysedp_init_debugfs();
 	return 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -38,7 +38,7 @@ static int sysedp_status_show(struct seq_file *file, void *data)
 	}
 
 	limit = (int)avail_budget - pmax_sum - margin;
-	limit = limit >= 0 ? limit : 0;
+	limit = limit >= min_budget ? limit : min_budget;
 	oc_relax = pmax_sum - pthres_sum;
 	oc_relax = oc_relax >= 0 ? oc_relax : 0;
 
@@ -46,6 +46,7 @@ static int sysedp_status_show(struct seq_file *file, void *data)
 	seq_printf(file, "  avail_budget     : %u\n", avail_budget);
 	seq_printf(file, "- pmax_sum         : %u\n", pmax_sum);
 	seq_printf(file, "- margin           : %d\n", margin);
+	seq_printf(file, "( minimum budget   : %d)\n", min_budget);
 	seq_printf(file, "= remaining (OC=1) : %d\n", limit);
 	seq_printf(file, "+ oc_relax         : %d\n", oc_relax);
 	seq_printf(file, "= remaining (OC=0) : %d\n", limit + oc_relax);
@@ -72,6 +73,36 @@ static const struct file_operations sysedp_status_fops = {
 	.read = seq_read,
 };
 
+
+static int sysedp_min_budget_set(void *data, u64 val)
+{
+	int old;
+
+	old = min_budget;
+	min_budget = (((int)val) < 0) ? 0 : (int)val;
+
+	if (old != min_budget) {
+		mutex_lock(&sysedp_lock);
+		/* Changes to min_budget require sysedp refresh */
+		_sysedp_refresh();
+		mutex_unlock(&sysedp_lock);
+	}
+
+	return 0;
+}
+
+
+static int sysedp_min_budget_get(void *data, u64 *val)
+{
+	*val = min_budget;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(sysedp_min_budget_fops,
+			sysedp_min_budget_get,
+			sysedp_min_budget_set, "%lld\n");
+
+
 void sysedp_init_debugfs(void)
 {
 	struct dentry *d;
@@ -92,5 +123,10 @@ void sysedp_init_debugfs(void)
 
 	d = debugfs_create_file("status", S_IRUGO, sysedp_debugfs_dir, NULL,
 				&sysedp_status_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
+
+	d = debugfs_create_file("min_budget", S_IRUGO | S_IWUSR,
+				sysedp_debugfs_dir, NULL,
+				&sysedp_min_budget_fops);
 	WARN_ON(IS_ERR_OR_NULL(d));
 }
