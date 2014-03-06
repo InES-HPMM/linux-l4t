@@ -668,7 +668,7 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 			dsi_instance = DSI_INSTANCE_0;
 			break;
 		default:
-			panel = &dsi_a_1200_1920_7_0;
+			panel = &dsi_a_1200_1920_8_0;
 			dsi_instance = DSI_INSTANCE_0;
 			break;
 		}
@@ -706,7 +706,7 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		break;
 	case BOARD_P1761:
 		if (tegra_get_board_panel_id())
-			panel = &dsi_a_1200_1920_7_0;
+			panel = &dsi_a_1200_1920_8_0;
 		else
 			panel = &dsi_a_1200_800_8_0;
 		dsi_instance = DSI_INSTANCE_0;

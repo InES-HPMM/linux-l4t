@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/panel-a-1200-1920-7-0.c
+ * arch/arm/mach-tegra/panel-a-1200-1920-8-0.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -47,7 +47,7 @@ static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_en;
 static struct regulator *dvdd_lcd_1v8;
 
-static struct tegra_dc_sd_settings dsi_a_1200_1920_7_0_sd_settings = {
+static struct tegra_dc_sd_settings dsi_a_1200_1920_8_0_sd_settings = {
 	.enable = 1, /* enabled by default. */
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
@@ -96,7 +96,7 @@ static struct tegra_dc_sd_settings dsi_a_1200_1920_7_0_sd_settings = {
 	.use_vpulse2 = true,
 };
 
-static tegra_dc_bl_output dsi_a_1200_1920_7_0_bl_output_measured = {
+static tegra_dc_bl_output dsi_a_1200_1920_8_0_bl_output_measured = {
 	0, 0, 1, 2, 3, 4, 5, 6,
 	7, 8, 9, 9, 10, 11, 12, 13,
 	13, 14, 15, 16, 17, 17, 18, 19,
@@ -131,12 +131,12 @@ static tegra_dc_bl_output dsi_a_1200_1920_7_0_bl_output_measured = {
 	247, 248, 249, 250, 251, 252, 253, 255
 };
 
-static struct tegra_dsi_cmd dsi_a_1200_1920_7_0_init_cmd[] = {
+static struct tegra_dsi_cmd dsi_a_1200_1920_8_0_init_cmd[] = {
     /* no init command required */
 };
 
 
-static struct tegra_dsi_out dsi_a_1200_1920_7_0_pdata = {
+static struct tegra_dsi_out dsi_a_1200_1920_8_0_pdata = {
 	.controller_vs = DSI_VS_1,
 	.n_data_lanes = 4,
 	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
@@ -149,12 +149,12 @@ static struct tegra_dsi_out dsi_a_1200_1920_7_0_pdata = {
 	.power_saving_suspend = true,
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
-	.dsi_init_cmd = dsi_a_1200_1920_7_0_init_cmd,
-	.n_init_cmd = ARRAY_SIZE(dsi_a_1200_1920_7_0_init_cmd),
+	.dsi_init_cmd = dsi_a_1200_1920_8_0_init_cmd,
+	.n_init_cmd = ARRAY_SIZE(dsi_a_1200_1920_8_0_init_cmd),
 	.boardinfo = {BOARD_P1761, 0, 0, 1},
 };
 
-static int dsi_a_1200_1920_7_0_regulator_get(struct device *dev)
+static int dsi_a_1200_1920_8_0_regulator_get(struct device *dev)
 {
 	int err = 0;
 
@@ -191,14 +191,14 @@ fail:
 	return err;
 }
 
-static int dsi_a_1200_1920_7_0_gpio_get(void)
+static int dsi_a_1200_1920_8_0_gpio_get(void)
 {
 	int err = 0;
 
 	if (gpio_requested)
 		return 0;
 
-	err = gpio_request(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio,
+	err = gpio_request(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio,
 		"panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
@@ -206,31 +206,31 @@ static int dsi_a_1200_1920_7_0_gpio_get(void)
 	}
 
 	/* free pwm GPIO */
-	err = gpio_request(dsi_a_1200_1920_7_0_pdata.dsi_panel_bl_pwm_gpio,
+	err = gpio_request(dsi_a_1200_1920_8_0_pdata.dsi_panel_bl_pwm_gpio,
 		"panel pwm");
 	if (err < 0) {
 		pr_err("panel pwm gpio request failed\n");
 		goto fail;
 	}
 
-	gpio_free(dsi_a_1200_1920_7_0_pdata.dsi_panel_bl_pwm_gpio);
+	gpio_free(dsi_a_1200_1920_8_0_pdata.dsi_panel_bl_pwm_gpio);
 	gpio_requested = true;
 	return 0;
 fail:
 	return err;
 }
 
-static int dsi_a_1200_1920_7_0_enable(struct device *dev)
+static int dsi_a_1200_1920_8_0_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = dsi_a_1200_1920_7_0_regulator_get(dev);
+	err = dsi_a_1200_1920_8_0_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
 	}
 
-	err = dsi_a_1200_1920_7_0_gpio_get();
+	err = dsi_a_1200_1920_8_0_gpio_get();
 	if (err < 0) {
 		pr_err("dsi gpio request failed\n");
 		goto fail;
@@ -262,11 +262,11 @@ static int dsi_a_1200_1920_7_0_enable(struct device *dev)
 
 	msleep(100);
 #if DSI_PANEL_RESET
-	gpio_direction_output(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 1);
+	gpio_direction_output(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio, 1);
 	usleep_range(1000, 5000);
-	gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 0);
+	gpio_set_value(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio, 0);
 	msleep(150);
-	gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 1);
+	gpio_set_value(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio, 1);
 	msleep(20);
 #endif
 
@@ -275,10 +275,10 @@ fail:
 	return err;
 }
 
-static int dsi_a_1200_1920_7_0_disable(void)
+static int dsi_a_1200_1920_8_0_disable(void)
 {
-	if (gpio_is_valid(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio))
-		gpio_set_value(dsi_a_1200_1920_7_0_pdata.dsi_panel_rst_gpio, 0);
+	if (gpio_is_valid(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio))
+		gpio_set_value(dsi_a_1200_1920_8_0_pdata.dsi_panel_rst_gpio, 0);
 	msleep(120);
 
 	if (vdd_lcd_bl_en)
@@ -293,12 +293,12 @@ static int dsi_a_1200_1920_7_0_disable(void)
 	return 0;
 }
 
-static int dsi_a_1200_1920_7_0_postsuspend(void)
+static int dsi_a_1200_1920_8_0_postsuspend(void)
 {
 	return 0;
 }
 
-static struct tegra_dc_mode dsi_a_1200_1920_7_0_modes[] = {
+static struct tegra_dc_mode dsi_a_1200_1920_8_0_modes[] = {
 	{
 		.pclk = 154779200,
 		.h_ref_to_sync = 4,
@@ -315,7 +315,7 @@ static struct tegra_dc_mode dsi_a_1200_1920_7_0_modes[] = {
 };
 
 #ifdef CONFIG_TEGRA_DC_CMU
-static struct tegra_dc_cmu dsi_a_1200_1920_7_0_cmu = {
+static struct tegra_dc_cmu dsi_a_1200_1920_8_0_cmu = {
 	/* lut1 maps sRGB to linear space. */
 	{
 	0,    1,    2,    4,    5,    6,    7,    9,
@@ -483,7 +483,7 @@ static struct tegra_dc_cmu dsi_a_1200_1920_7_0_cmu = {
 };
 #endif
 
-static int dsi_a_1200_1920_7_0_bl_notify(struct device *unused, int brightness)
+static int dsi_a_1200_1920_8_0_bl_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 
@@ -494,47 +494,47 @@ static int dsi_a_1200_1920_7_0_bl_notify(struct device *unused, int brightness)
 	if (brightness > 255)
 		pr_info("Error: Brightness > 255!\n");
 	else
-		brightness = dsi_a_1200_1920_7_0_bl_output_measured[brightness];
+		brightness = dsi_a_1200_1920_8_0_bl_output_measured[brightness];
 
 	return brightness;
 }
 
-static int dsi_a_1200_1920_7_0_check_fb(struct device *dev,
+static int dsi_a_1200_1920_8_0_check_fb(struct device *dev,
 	struct fb_info *info)
 {
 	return info->device == &disp_device->dev;
 }
 
-static struct platform_pwm_backlight_data dsi_a_1200_1920_7_0_bl_data = {
+static struct platform_pwm_backlight_data dsi_a_1200_1920_8_0_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
 	.pwm_gpio	= TEGRA_GPIO_INVALID,
-	.notify		= dsi_a_1200_1920_7_0_bl_notify,
+	.notify		= dsi_a_1200_1920_8_0_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
-	.check_fb	= dsi_a_1200_1920_7_0_check_fb,
+	.check_fb	= dsi_a_1200_1920_8_0_check_fb,
 };
 
 static struct platform_device __maybe_unused
-		dsi_a_1200_1920_7_0_bl_device = {
+		dsi_a_1200_1920_8_0_bl_device = {
 	.name	= "pwm-backlight",
 	.id	= -1,
 	.dev	= {
-		.platform_data = &dsi_a_1200_1920_7_0_bl_data,
+		.platform_data = &dsi_a_1200_1920_8_0_bl_data,
 	},
 };
 
 static struct platform_device __maybe_unused
-			*dsi_a_1200_1920_7_0_bl_devices[] __initdata = {
-	&dsi_a_1200_1920_7_0_bl_device,
+			*dsi_a_1200_1920_8_0_bl_devices[] __initdata = {
+	&dsi_a_1200_1920_8_0_bl_device,
 };
 
-static int  __init dsi_a_1200_1920_7_0_register_bl_dev(void)
+static int  __init dsi_a_1200_1920_8_0_register_bl_dev(void)
 {
 	int err = 0;
-	err = platform_add_devices(dsi_a_1200_1920_7_0_bl_devices,
-				ARRAY_SIZE(dsi_a_1200_1920_7_0_bl_devices));
+	err = platform_add_devices(dsi_a_1200_1920_8_0_bl_devices,
+				ARRAY_SIZE(dsi_a_1200_1920_8_0_bl_devices));
 	if (err) {
 		pr_err("disp1 bl device registration failed");
 		return err;
@@ -542,51 +542,51 @@ static int  __init dsi_a_1200_1920_7_0_register_bl_dev(void)
 	return err;
 }
 
-static void dsi_a_1200_1920_7_0_set_disp_device(
+static void dsi_a_1200_1920_8_0_set_disp_device(
 	struct platform_device *display_device)
 {
 	disp_device = display_device;
 }
 
-static void dsi_a_1200_1920_7_0_dc_out_init(struct tegra_dc_out *dc)
+static void dsi_a_1200_1920_8_0_dc_out_init(struct tegra_dc_out *dc)
 {
-	dc->dsi = &dsi_a_1200_1920_7_0_pdata;
+	dc->dsi = &dsi_a_1200_1920_8_0_pdata;
 	dc->parent_clk = "pll_d_out0";
-	dc->modes = dsi_a_1200_1920_7_0_modes;
-	dc->n_modes = ARRAY_SIZE(dsi_a_1200_1920_7_0_modes);
-	dc->enable = dsi_a_1200_1920_7_0_enable;
-	dc->disable = dsi_a_1200_1920_7_0_disable;
-	dc->postsuspend	= dsi_a_1200_1920_7_0_postsuspend,
-	dc->width = 100;
-	dc->height = 100;
+	dc->modes = dsi_a_1200_1920_8_0_modes;
+	dc->n_modes = ARRAY_SIZE(dsi_a_1200_1920_8_0_modes);
+	dc->enable = dsi_a_1200_1920_8_0_enable;
+	dc->disable = dsi_a_1200_1920_8_0_disable;
+	dc->postsuspend	= dsi_a_1200_1920_8_0_postsuspend,
+	dc->width = 107;
+	dc->height = 172;
 	dc->flags = DC_CTRL_MODE;
 }
 
-static void dsi_a_1200_1920_7_0_fb_data_init(struct tegra_fb_data *fb)
+static void dsi_a_1200_1920_8_0_fb_data_init(struct tegra_fb_data *fb)
 {
-	fb->xres = dsi_a_1200_1920_7_0_modes[0].h_active;
-	fb->yres = dsi_a_1200_1920_7_0_modes[0].v_active;
+	fb->xres = dsi_a_1200_1920_8_0_modes[0].h_active;
+	fb->yres = dsi_a_1200_1920_8_0_modes[0].v_active;
 }
 
 static void
-dsi_a_1200_1920_7_0_sd_settings_init(struct tegra_dc_sd_settings *settings)
+dsi_a_1200_1920_8_0_sd_settings_init(struct tegra_dc_sd_settings *settings)
 {
-	*settings = dsi_a_1200_1920_7_0_sd_settings;
+	*settings = dsi_a_1200_1920_8_0_sd_settings;
 	settings->bl_device_name = "pwm-backlight";
 }
 
-static void dsi_a_1200_1920_7_0_cmu_init(struct tegra_dc_platform_data *pdata)
+static void dsi_a_1200_1920_8_0_cmu_init(struct tegra_dc_platform_data *pdata)
 {
-	pdata->cmu = &dsi_a_1200_1920_7_0_cmu;
+	pdata->cmu = &dsi_a_1200_1920_8_0_cmu;
 }
 
-struct tegra_panel __initdata dsi_a_1200_1920_7_0 = {
-	.init_sd_settings = dsi_a_1200_1920_7_0_sd_settings_init,
-	.init_dc_out = dsi_a_1200_1920_7_0_dc_out_init,
-	.init_fb_data = dsi_a_1200_1920_7_0_fb_data_init,
-	.register_bl_dev = dsi_a_1200_1920_7_0_register_bl_dev,
-	.init_cmu_data = dsi_a_1200_1920_7_0_cmu_init,
-	.set_disp_device = dsi_a_1200_1920_7_0_set_disp_device,
+struct tegra_panel __initdata dsi_a_1200_1920_8_0 = {
+	.init_sd_settings = dsi_a_1200_1920_8_0_sd_settings_init,
+	.init_dc_out = dsi_a_1200_1920_8_0_dc_out_init,
+	.init_fb_data = dsi_a_1200_1920_8_0_fb_data_init,
+	.register_bl_dev = dsi_a_1200_1920_8_0_register_bl_dev,
+	.init_cmu_data = dsi_a_1200_1920_8_0_cmu_init,
+	.set_disp_device = dsi_a_1200_1920_8_0_set_disp_device,
 };
-EXPORT_SYMBOL(dsi_a_1200_1920_7_0);
+EXPORT_SYMBOL(dsi_a_1200_1920_8_0);
 
