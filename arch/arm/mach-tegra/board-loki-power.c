@@ -141,14 +141,16 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 
 static void loki_suspend_dfll_bypass(void)
 {
-	/* tristate external PWM buffer */
-	__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 1);
+/* tristate external PWM buffer */
+	if (gpio_is_valid(loki_cl_dvfs_data.u.pmu_pwm.out_gpio))
+		__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 1);
 }
 
 static void loki_resume_dfll_bypass(void)
 {
-	/* enable PWM buffer operations */
-	__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 0);
+/* enable PWM buffer operations */
+	if (gpio_is_valid(loki_cl_dvfs_data.u.pmu_pwm.out_gpio))
+		__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 0);
 }
 static int __init loki_cl_dvfs_init(void)
 {
@@ -157,7 +159,9 @@ static int __init loki_cl_dvfs_init(void)
 
 	tegra_get_board_info(&bi);
 	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xc0) {
-		loki_cl_dvfs_data.u.pmu_pwm.out_gpio = TEGRA_GPIO_PU1;
+		loki_cl_dvfs_data.u.pmu_pwm.out_gpio =  -1;
+		loki_cl_dvfs_data.u.pmu_pwm.pwm_bus =
+			TEGRA_CL_DVFS_PWM_1WIRE_DIRECT;
 	}
 
 	{
