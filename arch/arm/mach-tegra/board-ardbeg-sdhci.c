@@ -486,6 +486,10 @@ int __init ardbeg_sdhci_init(void)
 			tegra_sdhci_platform_data2.uhs_mask =
 				MMC_UHS_MASK_SDR50;
 	}
+
+	if (board_info.board_id == BOARD_E1991)
+		tegra_sdhci_platform_data0.max_clk_limit = 204000000;
+
 	if (board_info.board_id == BOARD_PM374 ||
 		board_info.board_id == BOARD_PM359) {
 			tegra_sdhci_platform_data2.uhs_mask =
