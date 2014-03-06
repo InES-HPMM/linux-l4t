@@ -555,11 +555,13 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	 * need to fill it with data first.
 	 */
 
-	host->align_addr = dma_map_single(mmc_dev(host->mmc),
-		host->align_buffer, 128 * 8, direction);
-	if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr))
-		goto fail;
-	BUG_ON(host->align_addr & 0x3);
+	if (!host->use_dma_alloc) {
+		host->align_addr = dma_map_single(mmc_dev(host->mmc),
+			host->align_buffer, 128 * 8, direction);
+		if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr))
+			goto fail;
+		BUG_ON(host->align_addr & 0x3);
+	}
 
 	host->sg_count = dma_map_sg(mmc_dev(host->mmc),
 		data->sg, data->sg_len, direction);
@@ -655,11 +657,13 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 			host->align_addr, 128 * 8, direction);
 	}
 
-	host->adma_addr = dma_map_single(mmc_dev(host->mmc),
-		host->adma_desc, (128 * 2 + 1) * 8, DMA_TO_DEVICE);
-	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
-		goto unmap_entries;
-	BUG_ON(host->adma_addr & 0x3);
+	if (!host->use_dma_alloc) {
+		host->adma_addr = dma_map_single(mmc_dev(host->mmc),
+			host->adma_desc, (128 * 2 + 1) * 8, DMA_TO_DEVICE);
+		if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
+			goto unmap_entries;
+		BUG_ON(host->adma_addr & 0x3);
+	}
 
 	return 0;
 
@@ -667,8 +671,9 @@ unmap_entries:
 	dma_unmap_sg(mmc_dev(host->mmc), data->sg,
 		data->sg_len, direction);
 unmap_align:
-	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 8, direction);
+	if (!host->use_dma_alloc)
+		dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
+				128 * 8, direction);
 fail:
 	return -EINVAL;
 }
@@ -689,11 +694,13 @@ static void sdhci_adma_table_post(struct sdhci_host *host,
 	else
 		direction = DMA_TO_DEVICE;
 
-	dma_unmap_single(mmc_dev(host->mmc), host->adma_addr,
-		(128 * 2 + 1) * 8, DMA_TO_DEVICE);
+	if (!host->use_dma_alloc) {
+		dma_unmap_single(mmc_dev(host->mmc), host->adma_addr,
+			(128 * 2 + 1) * 8, DMA_TO_DEVICE);
 
-	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 8, direction);
+		dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
+			128 * 8, direction);
+	}
 
 	if (data->flags & MMC_DATA_READ) {
 		dma_sync_sg_for_cpu(mmc_dev(host->mmc), data->sg,
@@ -3620,6 +3627,34 @@ int sdhci_add_host(struct sdhci_host *host)
 		 * each of those entries. Simply allocating 128 bits
 		 * for each entry
 		 */
+		if (mmc_dev(host->mmc)->dma_mask &&
+				mmc_dev(host->mmc)->coherent_dma_mask) {
+			host->adma_desc = dma_alloc_coherent(
+					mmc_dev(host->mmc), (128 * 2 + 1) * 8,
+					&host->adma_addr, GFP_KERNEL);
+			if (!host->adma_desc)
+				goto err_dma_alloc;
+
+			host->align_buffer = dma_alloc_coherent(
+					mmc_dev(host->mmc), 128 * 8,
+					&host->align_addr, GFP_KERNEL);
+			if (!host->align_buffer) {
+				dma_free_coherent(mmc_dev(host->mmc),
+						(128 * 2 + 1) * 8,
+						host->adma_desc,
+						host->adma_addr);
+				host->adma_desc = NULL;
+				goto err_dma_alloc;
+			}
+
+			host->use_dma_alloc = true;
+
+			BUG_ON(host->adma_addr & 0x3);
+			BUG_ON(host->align_addr & 0x3);
+			goto out_dma_alloc;
+		}
+err_dma_alloc:
+
 		host->adma_desc = kmalloc((128 * 2 + 1) * 8, GFP_KERNEL);
 		host->align_buffer = kmalloc(128 * 8, GFP_KERNEL);
 		if (!host->adma_desc || !host->align_buffer) {
@@ -3631,6 +3666,7 @@ int sdhci_add_host(struct sdhci_host *host)
 			host->flags &= ~SDHCI_USE_ADMA;
 		}
 	}
+out_dma_alloc:
 
 	/*
 	 * If we use DMA, then it's up to the caller to set the DMA
@@ -4116,8 +4152,15 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 		regulator_put(host->vqmmc);
 	}
 
-	kfree(host->adma_desc);
-	kfree(host->align_buffer);
+	if (host->use_dma_alloc) {
+		dma_free_coherent(mmc_dev(host->mmc), (128 * 2 + 1) * 8,
+				host->adma_desc, host->adma_addr);
+		dma_free_coherent(mmc_dev(host->mmc), 128 * 8,
+				host->align_buffer, host->align_addr);
+	} else {
+		kfree(host->adma_desc);
+		kfree(host->align_buffer);
+	}
 
 	host->adma_desc = NULL;
 	host->align_buffer = NULL;
