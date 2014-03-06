@@ -510,6 +510,10 @@
 								regulator-consumer-supply = "vana";
 								regulator-consumer-device = "2-0048";
 							};
+							c6 {
+								regulator-consumer-supply = "vana";
+								regulator-consumer-device = "2-0036";
+							};
 						};
 					};
 
