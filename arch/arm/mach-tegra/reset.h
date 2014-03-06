@@ -3,7 +3,7 @@
  *
  * CPU reset dispatcher.
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2014, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -106,8 +106,6 @@ void tegra_secondary_startup(void);
 #define tegra_cpu_reset_handler_size \
 		(__tegra_cpu_reset_handler_end - \
 		 __tegra_cpu_reset_handler_start)
-
-void __init tegra_cpu_reset_handler_init(void);
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_cpu_reset_handler_save(void);

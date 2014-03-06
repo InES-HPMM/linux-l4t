@@ -7,7 +7,7 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
- *  Copyright (C) 2013, NVIDIA Corporation. All rights reserved.
+ *  Copyright (C) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -38,11 +38,6 @@ static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 #define pmc_writel(value, reg)	writel(value, pmc + (reg))
 #define pmc_readl(reg)		readl(pmc + (reg))
 
-static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
-{
-	tegra_cpu_reset_handler_init();
-}
-
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
@@ -60,7 +55,6 @@ static int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 #endif
 
 struct smp_operations tegra_smp_ops __initdata = {
-	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	.smp_boot_secondary	= tegra_boot_secondary,
 #endif

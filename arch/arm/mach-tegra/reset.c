@@ -100,7 +100,7 @@ void tegra_cpu_reset_handler_restore(void)
 }
 #endif
 
-void __init tegra_cpu_reset_handler_init(void)
+static int __init tegra_cpu_reset_handler_init(void)
 {
 #ifdef CONFIG_SMP
 	__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_PRESENT] =
@@ -132,4 +132,7 @@ void __init tegra_cpu_reset_handler_init(void)
 
 	if (!tegra_cpu_is_dsim()) /* Can't write IRAM on DSIM/MTS (yet) */
 		tegra_cpu_reset_handler_enable();
+
+	return 0;
 }
+early_initcall(tegra_cpu_reset_handler_init);
