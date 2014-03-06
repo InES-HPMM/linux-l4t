@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -342,7 +342,7 @@ void tegra_smp_restore_power_mask(void);
 #endif
 
 #ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
-void tegra_generic_smc(u32 type, u32 subtype, u32 arg);
+u32 tegra_generic_smc(u32 type, u32 subtype, u32 arg);
 #endif
 
 /* The debug channel uart base physical address */

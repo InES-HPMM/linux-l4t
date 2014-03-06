@@ -49,6 +49,7 @@
 #include <asm/localtimer.h>
 #include <asm/suspend.h>
 #include <asm/cputype.h>
+#include <asm/psci.h>
 
 #include <mach/irqs.h>
 
@@ -426,7 +427,15 @@ static int tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
 	unsigned int cpu = cpu_number(dev->cpu);
-
+#if defined(CONFIG_ARM_PSCI)
+	int psci_ret = -EPERM;
+	unsigned long entry_point = TEGRA_RESET_HANDLER_BASE +
+		tegra_cpu_reset_handler_offset;
+	struct psci_power_state pps = {
+		TEGRA_ID_CPU_SUSPEND_STDBY,
+		PSCI_POWER_STATE_TYPE_POWER_DOWN
+	};
+#endif
 	if ((tegra_cpu_timer_get_remain(&request) == -ETIME) ||
 		(request <= state->target_residency) || (!ts) ||
 		(ts->nohz_mode == NOHZ_MODE_INACTIVE) ||
@@ -458,13 +467,16 @@ static int tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = ktime_to_us(entry_time) + request;
 	smp_wmb();
 
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+#if defined(CONFIG_ARM_PSCI)
 	if ((cpu == 0) || (cpu == 4)) {
-		tegra_generic_smc(0x84000001, ((1 << 16) | 5),
-				(TEGRA_RESET_HANDLER_BASE +
-				tegra_cpu_reset_handler_offset));
+		if (psci_ops.cpu_suspend) {
+			psci_ret = psci_ops.cpu_suspend(pps, entry_point);
+			while (psci_ret == -EPERM)
+				psci_ret = tegra_generic_smc(60 << 24, 0, 0);
+		}
 	}
 #endif
+
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 
 	tegra11x_restore_vmin();

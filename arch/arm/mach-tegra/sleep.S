@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -207,17 +207,9 @@ ENDPROC(tegra_flush_l1_cache)
  * tegra?_tear_down_cpu
  */
 ENTRY(tegra_sleep_cpu_finish)
-	mov	r4, r0
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	ldr	r0, =0x84000001
-	ldr	r1, =((1 << 16) | 4)
-	ldr	r2, =TEGRA_RESET_HANDLER_BASE
-	bl	tegra_generic_smc
-#else
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	bl	tegra_flush_cache
 #endif
-
-	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -350,18 +342,7 @@ ENDPROC(tegra_cpu_pllp)
  * the specified parameters.
  */
 ENTRY(tegra_generic_smc)
-	mov	r3, #0
-	dsb
 	smc	#0
-restart:
-	ldr	r3, =0xFFFFFFFD
-	cmp	r0, r3
-	bne	done
-	mov	r0, #(60 << 24)
-	dsb
-	smc	#0
-	b	restart
-done:
 	mov	pc, lr
 ENDPROC(tegra_generic_smc)
 #endif

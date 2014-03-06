@@ -66,6 +66,7 @@
 #include <asm/suspend.h>
 #include <asm/smp_plat.h>
 #include <asm/rodata.h>
+#include <asm/psci.h>
 
 #include <mach/irqs.h>
 #include <mach/tegra_smmu.h>
@@ -712,20 +713,36 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
 #ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+#if defined(CONFIG_ARM_PSCI)
+	struct psci_power_state pps;
+#endif
 	outer_flush_range(__pa(&tegra_resume_timestamps_start),
 			  __pa(&tegra_resume_timestamps_end));
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 		trace_smc_sleep_core(NVSEC_SMC_START);
 
-		tegra_generic_smc(0x84000001, ((1 << 16) | (1 << 24) | 1),
-				  virt_to_phys(tegra_resume));
+#if defined(CONFIG_ARM_PSCI)
+		if (psci_ops.cpu_suspend) {
+			pps.id = TEGRA_ID_CPU_SUSPEND_LP0;
+			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
+			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_CLUSTER;
+
+			psci_ops.cpu_suspend(pps, virt_to_phys(tegra_resume));
+		}
+#endif
 	} else {
 		trace_smc_sleep_core(NVSEC_SMC_START);
 
-		tegra_generic_smc(0x84000001, ((1 << 16) | 2),
-				  (TEGRA_RESET_HANDLER_BASE +
-				   tegra_cpu_reset_handler_offset));
+#if defined(CONFIG_ARM_PSCI)
+		if (psci_ops.cpu_suspend) {
+			pps.id = TEGRA_ID_CPU_SUSPEND_LP1;
+			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
+
+			psci_ops.cpu_suspend(pps, (TEGRA_RESET_HANDLER_BASE +
+				tegra_cpu_reset_handler_offset));
+		}
+#endif
 	}
 
 	trace_smc_sleep_core(NVSEC_SMC_DONE);
@@ -738,22 +755,51 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 #endif
 }
 
+static int tegra_sleep_cpu_prefinish(unsigned long v2p)
+{
+#if defined(CONFIG_ARM_PSCI)
+	int psci_ret = -EPERM;
+	struct psci_power_state pps = {
+		TEGRA_ID_CPU_SUSPEND_CLUSTER,
+		PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		TEGRA_PWR_DN_AFFINITY_CLUSTER
+	};
+
+	if (psci_ops.cpu_suspend) {
+		psci_ret = psci_ops.cpu_suspend(pps, TEGRA_RESET_HANDLER_BASE);
+		while (psci_ret == -EPERM)
+			psci_ret = tegra_generic_smc(60 << 24, 0, 0);
+	}
+#endif
+
+	tegra_sleep_cpu_finish(v2p);
+	return 0;
+}
+
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
-	cpu_suspend(v2p, tegra_sleep_cpu_finish);
+	cpu_suspend(v2p, tegra_sleep_cpu_prefinish);
 }
 
 static inline void tegra_stop_mc_clk(unsigned long v2p)
 {
 #ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+#if defined(CONFIG_ARM_PSCI)
+	struct psci_power_state pps = {
+		TEGRA_ID_CPU_SUSPEND_LP1_STOP_MCCLK,
+		PSCI_POWER_STATE_TYPE_POWER_DOWN
+	};
+#endif
 	outer_flush_range(__pa(&tegra_resume_timestamps_start),
 			  __pa(&tegra_resume_timestamps_end));
 	trace_smc_sleep_core(NVSEC_SMC_START);
 
-	tegra_generic_smc(0x84000001, ((1 << 16) | 3),
-			  (TEGRA_RESET_HANDLER_BASE +
-			   tegra_cpu_reset_handler_offset));
-
+#if defined(CONFIG_ARM_PSCI)
+	if (psci_ops.cpu_suspend) {
+		psci_ops.cpu_suspend(pps, (TEGRA_RESET_HANDLER_BASE +
+			tegra_cpu_reset_handler_offset));
+	}
+#endif
 	trace_smc_sleep_core(NVSEC_SMC_DONE);
 #endif
 	cpu_suspend(v2p, tegra3_stop_mc_clk_finish);
@@ -2223,13 +2269,4 @@ static int __init tegra_pm_core_debug_init(void)
 }
 
 late_initcall(tegra_pm_core_debug_init);
-#endif
-
-#ifdef CONFIG_DEBUG_RODATA
-void set_platform_text_rw(void)
-{
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
-	set_memory_rw((unsigned long)tegra_generic_smc, 1);
-#endif
-}
 #endif
