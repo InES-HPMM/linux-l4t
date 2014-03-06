@@ -36,7 +36,7 @@ enum {
 struct tegra_camera_clk_info {
 	uint id;
 	uint clk_id;
-	unsigned long rate;
+	uint rate;
 	uint flag;	/* to inform if any special bits need to enabled/disabled */
 };
 
