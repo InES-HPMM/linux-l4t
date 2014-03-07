@@ -40,6 +40,12 @@ extern char vdso_start, vdso_end;
 static unsigned long vdso_pages;
 static struct page **vdso_pagelist;
 
+#ifdef CONFIG_COMPAT
+extern char vdso32_start, vdso32_end;
+static unsigned long vdso32_pages;
+static struct page **vdso32_pagelist;
+#endif
+
 /*
  * The vDSO data page.
  */
@@ -107,7 +113,10 @@ int aarch32_setup_vectors_page(struct linux_binprm *bprm, int uses_interp)
 static int __init vdso_init(void)
 {
 	struct page *pg;
-	char *vbase;
+	char *vbase64;
+#ifdef CONFIG_COMPAT
+	char *vbase32;
+#endif
 	int i, ret = 0;
 
 	vdso_pages = (&vdso_end - &vdso_start) >> PAGE_SHIFT;
@@ -131,14 +140,14 @@ static int __init vdso_init(void)
 	}
 
 	/* Sanity check the shared object header. */
-	vbase = vmap(vdso_pagelist, 1, 0, PAGE_KERNEL);
-	if (vbase == NULL) {
+	vbase64 = vmap(vdso_pagelist, 1, 0, PAGE_KERNEL);
+	if (vbase64 == NULL) {
 		pr_err("Failed to map vDSO pagelist!\n");
 		return -ENOMEM;
-	} else if (memcmp(vbase, "\177ELF", 4)) {
+	} else if (memcmp(vbase64, "\177ELF", 4)) {
 		pr_err("vDSO is not a valid ELF object!\n");
 		ret = -EINVAL;
-		goto unmap;
+		goto unmap64;
 	}
 
 	/* Grab the vDSO data page. */
@@ -146,8 +155,48 @@ static int __init vdso_init(void)
 	get_page(pg);
 	vdso_pagelist[i] = pg;
 
-unmap:
-	vunmap(vbase);
+#ifdef CONFIG_COMPAT
+	vdso32_pages = (&vdso32_end - &vdso32_start) >> PAGE_SHIFT;
+	pr_info("vdso32: %ld pages (%ld code, %ld data) at base %p\n",
+		vdso32_pages + 1, vdso32_pages, 1L, &vdso32_start);
+
+	vdso32_pagelist = kzalloc(sizeof(struct page *) * (vdso32_pages + 1),
+				   GFP_KERNEL);
+	if (vdso32_pagelist == NULL) {
+		pr_err("Failed to allocate vDSO32 pagelist!\n");
+		return -ENOMEM;
+	}
+
+	/* Grab the vDSO code pages. */
+	for (i = 0; i < vdso32_pages; i++) {
+		pg = virt_to_page(&vdso32_start + i*PAGE_SIZE);
+		ClearPageReserved(pg);
+		get_page(pg);
+		vdso32_pagelist[i] = pg;
+	}
+
+	/* Sanity check the shared object header. */
+	vbase32 = vmap(vdso32_pagelist, 1, 0, PAGE_KERNEL);
+	if (vbase32 == NULL) {
+		pr_err("Failed to map vDSO pagelist!\n");
+		return -ENOMEM;
+	} else if (memcmp(vbase32, "\177ELF", 4)) {
+		pr_err("vDSO 32 is not a valid ELF object!\n");
+		ret = -EINVAL;
+		goto unmap32;
+	}
+
+	/* Grab the vDSO data page. */
+	pg = virt_to_page(vdso_data);
+	get_page(pg);
+	vdso32_pagelist[i] = pg;
+
+unmap32:
+	vunmap(vbase32);
+#endif
+
+unmap64:
+	vunmap(vbase64);
 	return ret;
 }
 arch_initcall(vdso_init);
@@ -157,10 +206,26 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 {
 	struct mm_struct *mm = current->mm;
 	unsigned long vdso_base, vdso_mapping_len;
+	struct page **local_vdso_pagelist;
+	unsigned long local_vdso_pages;
 	int ret;
 
+#ifdef CONFIG_COMPAT
+	if (is_compat_task()) {
+		aarch32_setup_vectors_page(bprm, uses_interp);
+		local_vdso_pagelist = vdso32_pagelist;
+		local_vdso_pages = vdso32_pages;
+	} else {
+		local_vdso_pagelist = vdso_pagelist;
+		local_vdso_pages = vdso_pages;
+	}
+#else
+	local_vdso_pagelist = vdso_pagelist;
+	local_vdso_pages = vdso_pages;
+#endif
+
 	/* Be sure to map the data page */
-	vdso_mapping_len = (vdso_pages + 1) << PAGE_SHIFT;
+	vdso_mapping_len = (local_vdso_pages + 1) << PAGE_SHIFT;
 
 	down_write(&mm->mmap_sem);
 	vdso_base = get_unmapped_area(NULL, 0, vdso_mapping_len, 0, 0);
@@ -173,7 +238,7 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	ret = install_special_mapping(mm, vdso_base, vdso_mapping_len,
 				      VM_READ|VM_EXEC|
 				      VM_MAYREAD|VM_MAYWRITE|VM_MAYEXEC,
-				      vdso_pagelist);
+				      local_vdso_pagelist);
 	if (ret) {
 		mm->context.vdso = NULL;
 		goto up_fail;
