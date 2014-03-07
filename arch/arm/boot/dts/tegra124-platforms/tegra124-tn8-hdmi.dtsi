@@ -31,24 +31,9 @@
 				nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
 				nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
 				nvidia,out-parent-clk = "pll_d2";
-				nvidia,out-max-pixclk = <297000>;
+				nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
 				nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
 				nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
-			};
-			display-timings {
-				680x480-32 {
-					clock-frequency = <25200>;
-					hactive = <640>;
-					vactive = <480>;
-					hfront-porch = <16>;
-					hback-porch = <48>;
-					hsync-len = <96>;
-					vfront-porch = <10>;
-					vback-porch = <33>;
-					vsync-len = <2>;
-					nvidia,h-ref-to-sync = <1>;
-					nvidia,v-ref-to-sync = <1>;
-				};
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
@@ -63,36 +48,48 @@
 			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(N, 7) 1>; /* PN7 */
 			nvidia,out-tmds-cfg {
 				tmds-cfg@0 {
+					version = <1 0>;
 					pclk = <27000000>;
-					pll0 = <0x01003110>;
-					pll1 = <0x00300f00>;
-					pe-current = <0x08080808>;
-					drive-current = <0x2e2e2e2e>;
-					peak-current = <0x00000000>;
+					pll0 = <0x01003010>;
+					pll1 = <0x00301b00>;
+					pe-current = <0x00000000>;
+					drive-current = <0x1f1f1f1f>;
+					peak-current = <0x03030303>;
+					pad-ctls0-mask = <0xfffff0ff>;
+					pad-ctls0-setting = <0x00000400>;
 				};
 				tmds-cfg@1 {
+					version = <1 0>;
 					pclk = <74250000>;
-					pll0 = <0x01003310>;
-					pll1 = <0x10300f00>;
-					pe-current = <0x08080808>;
-					drive-current = <0x20202020>;
-					peak-current = <0x00000000>;
+					pll0 = <0x01003110>;
+					pll1 = <0x00301500>;
+					pe-current = <0x00000000>;
+					drive-current = <0x2c2c2c2c>;
+					peak-current = <0x07070707>;
+					pad-ctls0-mask = <0xfffff0ff>;
+					pad-ctls0-setting = <0x00000400>;
 				};
 				tmds-cfg@2 {
+					version = <1 0>;
 					pclk = <148500000>;
 					pll0 = <0x01003310>;
-					pll1 = <0x10300f00>;
-					pe-current = <0x08080808>;
-					drive-current = <0x20202020>;
-					peak-current = <0x00000000>;
+					pll1 = <0x00301500>;
+					pe-current = <0x00000000>;
+					drive-current = <0x33333333>;
+					peak-current = <0x0c0c0c0c>;
+					pad-ctls0-mask = <0xfffff0ff>;
+					pad-ctls0-setting = <0x00000400>;
 				};
 				tmds-cfg@3 {
+					version = <1 0>;
 					pclk = <0x7fffffff>;
-					pll0 = <0x01003310>;
-					pll1 = <0x10300f00>;
-					pe-current = <0x08080808>;
-					drive-current = <0x3a353536>;
-					peak-current = <0x00000000>;
+					pll0 = <0x01003f10>;
+					pll1 = <0x00300f00>;
+					pe-current = <0x00000000>;
+					drive-current = <0x37373737>;
+					peak-current = <0x17171717>;
+					pad-ctls0-mask = <0xfffff0ff>;
+					pad-ctls0-setting = <0x00000600>;
 				};
 			};
 		};
