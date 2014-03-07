@@ -251,6 +251,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		57820,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -476,6 +477,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		35610,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -701,6 +703,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		20850,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -926,6 +929,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		10720,      /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -1151,6 +1155,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -1376,6 +1381,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		3420,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -1601,6 +1607,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		2680,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -1826,6 +1833,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200000, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		2180,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -2051,6 +2059,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -2276,6 +2285,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200010, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1440,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -2501,6 +2511,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1200,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.12 */
@@ -2726,6 +2737,7 @@ static struct tegra12_emc_table ardbeg_ddr3_emc_table_pm358[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -6366,6 +6378,7 @@ static struct tegra12_emc_table ardbeg_emc_table[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200020, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1180,       /* expected dvfs latency (ns) */
 	},
 };
 
@@ -11821,6 +11834,7 @@ static struct tegra12_emc_table ardbeg_lpddr3_emc_table_E1781[] = {
 		0x80100003, /* Mode Register 1 */
 		0x80200008, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		6890,       /* expected dvfs latency (ns) */
 	},
 	{
 		0x18,       /* V5.0.10 */
@@ -12046,6 +12060,7 @@ static struct tegra12_emc_table ardbeg_lpddr3_emc_table_E1781[] = {
 		0x80100002, /* Mode Register 1 */
 		0x80200018, /* Mode Register 2 */
 		0x00000000, /* Mode Register 4 */
+		1200,       /* expected dvfs latency (ns) */
 	},
 };
 
