@@ -53,6 +53,11 @@
 		status = "okay";
 	};
 
+	spi@7000d600 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
 	pinmux: pinmux {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinmux_default>;
