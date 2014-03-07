@@ -426,7 +426,8 @@ static void dr_controller_run(struct tegra_udc *udc)
 	temp |= USB_CMD_ITC_1_MICRO_FRM;
 	if (can_pullup(udc)) {
 		temp |= USB_CMD_RUN_STOP;
-		if (udc->connect_type == CONNECT_TYPE_SDP)
+		if (udc->charging_supported &&
+			(udc->connect_type == CONNECT_TYPE_SDP))
 			schedule_delayed_work(&udc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
 	}
@@ -1524,6 +1525,11 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 
 static int tegra_detect_cable_type(struct tegra_udc *udc)
 {
+	if (!udc->charging_supported) {
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
+		return 0;
+	}
+
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
 		if (tegra_usb_phy_qc2_charger_detected(udc->phy,
 				udc->qc2_voltage))
@@ -1659,7 +1665,8 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 		 * non-standard charger if no setup packet is received after
 		 * enumeration started.
 		 */
-		if (udc->connect_type == CONNECT_TYPE_SDP)
+		if (udc->charging_supported &&
+			(udc->connect_type == CONNECT_TYPE_SDP))
 			schedule_delayed_work(&udc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
 	} else
@@ -2861,6 +2868,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			udc->fence_read = false;
 		else
 			udc->fence_read = true;
+
+		udc->charging_supported = pdata->u_data.dev.charging_supported;
 
 		if (pdata->u_data.dev.dcp_current_limit_ma)
 			udc->dcp_current_limit =

@@ -476,6 +476,7 @@ struct tegra_udc {
 	bool support_pmu_vbus;
 	bool fence_read;
 	bool vbus_in_lp0;
+	bool charging_supported;
 	enum tegra_usb_qc2_voltage qc2_voltage;
 #ifdef CONFIG_EXTCON
 	struct extcon_dev *edev;
