@@ -395,7 +395,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.u_data.dev = {
 		.vbus_pmu_irq = 0,
 		.vbus_gpio = -1,
-		.charging_supported = false,
+		.charging_supported = true,
 		.remote_wakeup_supported = false,
 	},
 	.u_cfg.utmi = {
