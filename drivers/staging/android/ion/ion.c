@@ -1246,16 +1246,24 @@ static void *ion_dma_buf_get_private(struct dma_buf *dmabuf,
 
 static void *ion_dma_buf_vmap(struct dma_buf *dmabuf)
 {
-	void *addr = ion_dma_buf_kmap(dmabuf, 0);
+	struct ion_buffer *buffer = dmabuf->priv;
+	void *addr;
 
-	pr_info("%s() %p\n", __func__, addr);
+	mutex_lock(&buffer->lock);
+	addr = ion_buffer_kmap_get(buffer);
+	mutex_unlock(&buffer->lock);
+	pr_debug("%s() %p\n", __func__, addr);
 	return addr;
 }
 
 static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 {
-	pr_info("%s() %p\n", __func__, vaddr);
-	ion_dma_buf_kunmap(dmabuf, 0, vaddr);
+	struct ion_buffer *buffer = dmabuf->priv;
+
+	pr_debug("%s() %p\n", __func__, vaddr);
+	mutex_lock(&buffer->lock);
+	ion_buffer_kmap_put(buffer);
+	mutex_unlock(&buffer->lock);
 }
 
 static struct dma_buf_ops dma_buf_ops = {
