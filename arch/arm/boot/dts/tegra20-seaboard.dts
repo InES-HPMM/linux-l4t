@@ -541,7 +541,7 @@
 		nvidia,sys-clock-req-active-high;
 	};
 
-	memory-controller@7000f400 {
+	emc@7000f400 {
 		emc-table@190000 {
 			reg = <190000>;
 			compatible = "nvidia,tegra20-emc-table";
