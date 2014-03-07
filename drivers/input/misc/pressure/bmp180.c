@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+/* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -966,7 +966,8 @@ static int bmp_init_hw(struct bmp_inf *inf)
 
 	p_rom16 = (u16 *)&inf->rom;
 	for (i = 0; i < (inf->hal->rom_size >> 1); i++) {
-		*p_rom16 = be16_to_cpup(p_rom16);
+		*p_rom16 = inf->dev_id == BMPX80_REG_ID_BMP180 ?
+				be16_to_cpup(p_rom16) : le16_to_cpup(p_rom16);
 		p_rom16++;
 	}
 	inf->initd = true;
