@@ -262,6 +262,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sdmmc4", -1, -1, 1, KHZ,   102000, 102000, 178200, 178200,  178200),
 
 	CORE_DVFS("hdmi",   -1, -1, 1, KHZ,    99000, 118800, 148500, 198000,  198000),
+	CORE_DVFS("pciex",  -1, -1, 1, KHZ,   250000, 250000, 250000, 500000,  500000),
 
 	/*
 	 * The clock rate for the display controllers that determines the
