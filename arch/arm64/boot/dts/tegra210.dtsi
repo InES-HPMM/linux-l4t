@@ -192,6 +192,15 @@
 		nvidia,memory-clients = <14>;
 	};
 
+	serial1: serial@70006040 {
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra30-uart", "nvidia,tegra20-uart";
+		reg = <0x0 0x70006040 0x0 0x40>;
+		reg-shift = <2>;
+		interrupts = <0 37 0x04>;
+		clock-frequency = <408000000>;
+		nvidia,memory-clients = <14>;
+	};
+
 	host1x {
 		compatible = "nvidia,tegra210-host1x", "simple-bus";
 		reg = <0x0 0x50000000 0x0 0x00024000>;
