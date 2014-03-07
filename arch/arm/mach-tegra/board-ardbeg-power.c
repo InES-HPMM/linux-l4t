@@ -1340,6 +1340,16 @@ static struct soctherm_therm ardbeg_therm_pop[THERM_SIZE] = {
 	},
 	[THERM_PLL] = {
 		.zone_enable = true,
+		.num_trips = 1,
+		.trips = {
+			{
+				.cdev_type = "tegra-dram",
+				.trip_temp = 78000,
+				.trip_type = THERMAL_TRIP_ACTIVE,
+				.upper = 1,
+				.lower = 1,
+			},
+		},
 		.tzp = &soctherm_tzp,
 	},
 };
