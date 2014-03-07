@@ -306,6 +306,7 @@ config MACH_LOKI
        depends on ARCH_TEGRA_12x_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5645 if SND_SOC
+       select LEDS_PWM
        help
          Support for NVIDIA LOKI Development platform
 

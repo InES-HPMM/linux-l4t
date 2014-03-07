@@ -31,11 +31,12 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
-	gpio-leds {
-		compatible = "gpio-leds";
+	pwm-leds {
+		compatible = "pwm-leds";
 		lightbar {
-			label = "foster::led_lightbar";
-			gpios = <&gpio TEGRA_GPIO(Q, 3) GPIO_ACTIVE_HIGH>;
+			label = "led_lightbar";
+			pwms = <&tegra_pwm 2 10000000>;
+			max_brightness = <255>;
 			linux,default-trigger = "default-on";
 		};
 	};
