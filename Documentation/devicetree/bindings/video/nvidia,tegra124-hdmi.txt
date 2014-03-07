@@ -32,6 +32,7 @@ NVIDIA TEGRA124 High Definition Multimedia Interface
 
  Required properties:
  - name: Can be arbitrary, but each sibling node should have unique name.
+ - version: tmds configuration version. two tuples items needs to be written.: <major minor>
  - pclk: pixel clk required in tmds table for each mode.
  - pll0: See HDMI_NV_PDISP_SOR_PLL0_0 in Tegra TRM.
  - pll1: See HDMI_NV_PDISP_SOR_PLL1_0 in Tegra TRM.
@@ -41,6 +42,8 @@ NVIDIA TEGRA124 High Definition Multimedia Interface
    See HDMI_NV_PDISP_SOR_LANE_DRIVE_CURRENT_0 in Tegra TRM.
  - peak-current: New pad controls for 28nm macro TMDS_X4_HP 8 bits per lane.
    See HDMI_NV_PDISP_SOR_IO_PEAK_CURRENT_0 in Tegra TRM.
+ - pad-ctls0-mask: HDMI_NV_PDISP_SOR_PAD_CTLS0_0 register and mask.
+ - pad-ctls0-setting: HDMI_NV_PDISP_SOR_PAD_CTLS0_0 register or mask.
 
 Example
 	host1x {
