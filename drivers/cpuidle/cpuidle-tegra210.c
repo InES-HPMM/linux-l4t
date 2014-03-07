@@ -90,9 +90,6 @@ static int tegra210_enter_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
-static DEFINE_SPINLOCK(lock);
-static int cluster_down;
-
 static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
@@ -117,20 +114,10 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 		 */
 		ps.id = 6;
 		ps.affinity_level = 1;
-		cpu_cluster_pm_enter();
-		cluster_down = 1;
 	}
 
 	arg = psci_power_state_pack(ps);
 	cpu_suspend(arg, NULL);
-
-	/* Lock down, so only the first CPU does cpu_cluster_pm_exit() */
-	spin_lock(&lock);
-	if (cluster_down) {
-		cpu_cluster_pm_exit();
-		cluster_down = 0;
-	}
-	spin_unlock(&lock);
 
 	cpu_pm_exit();
 
