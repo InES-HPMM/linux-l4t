@@ -3,7 +3,7 @@
  *
  * CPU reset dispatcher.
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -13,7 +13,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
  */
 
 #ifndef __MACH_TEGRA_RESET_H
@@ -30,7 +29,8 @@
 #define TEGRA_RESET_C1_L2_TAG_LATENCY	8
 #define TEGRA_RESET_C1_L2_DATA_LATENCY	9
 #define TEGRA_RESET_MASK_MC_CLK		10
-#define TEGRA_RESET_DATA_SIZE		11
+#define TEGRA_RESET_SECURE_FW_PRESENT	11
+#define TEGRA_RESET_DATA_SIZE		12
 
 #ifdef CONFIG_ARM64
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*8)

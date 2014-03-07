@@ -137,6 +137,9 @@ static int __init tegra_cpu_reset_handler_init(void)
 	if (!tegra_cpu_is_dsim()) /* Can't write IRAM on DSIM/MTS (yet) */
 		tegra_cpu_reset_handler_enable();
 
+	__tegra_cpu_reset_handler_data[TEGRA_RESET_SECURE_FW_PRESENT] =
+		tegra_cpu_is_secure();
+
 	return 0;
 }
 early_initcall(tegra_cpu_reset_handler_init);

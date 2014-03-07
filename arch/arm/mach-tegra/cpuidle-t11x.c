@@ -472,7 +472,7 @@ static int tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		if (psci_ops.cpu_suspend) {
 			psci_ret = psci_ops.cpu_suspend(pps, entry_point);
 			while (psci_ret == -EPERM)
-				psci_ret = tegra_generic_smc(60 << 24, 0, 0);
+				psci_ret = tegra_restart_prev_smc();
 		}
 	}
 #endif

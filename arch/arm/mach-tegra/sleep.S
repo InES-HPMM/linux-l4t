@@ -52,6 +52,8 @@
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
 					+ IO_PPSB_VIRT)
 
+#define TEGRA_SMC_RESTART (60 << 24)
+
 /*
  * tegra_pen_lock
  *
@@ -207,9 +209,6 @@ ENDPROC(tegra_flush_l1_cache)
  * tegra?_tear_down_cpu
  */
 ENTRY(tegra_sleep_cpu_finish)
-#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
-	bl	tegra_flush_cache
-#endif
 	bl	tegra_cpu_exit_coherency
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -290,8 +289,12 @@ tegra_shut_off_mmu:
 	dsb
 	mcr	p15, 0, r3, c1, c0, 0
 	isb
-#if defined(CONFIG_CACHE_L2X0) && \
-		!defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
+#if defined(CONFIG_CACHE_L2X0)
+	ldr	r1, =tegra_with_secure_firmware
+	ldr	r1, [r1]
+	cmp	r1, #1
+	beq	2f
+
 	tst	r11, #1
 	beq	2f
 	mov32	r1, TEGRA_ARM_PL310_BASE
@@ -310,7 +313,7 @@ tegra_shut_off_mmu:
 	mov	r2, #0
 	str	r2, [r1, #L2X0_CACHE_SYNC]
 	str	r2, [r1, #L2X0_CTRL]
-#endif /* CONFIG_CACHE_L2X0 && !CONFIG_TEGRA_USE_SECURE_KERNEL */
+#endif /* CONFIG_CACHE_L2X0 */
 2:	mov	pc, r0
 
 /*
@@ -330,19 +333,18 @@ ENTRY(tegra_cpu_pllp)
 ENDPROC(tegra_cpu_pllp)
 #endif
 
-#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 /*
- * tegra_generic_smc
+ * tegra_restart_prev_smc
  *
- * r0 = smc type
- * r1 = smc subtype
- * r2 = argument passed to smc
- *
- * issues SMC (secure monitor call) instruction with
- * the specified parameters.
+ * issues TEGRA_SMC_RESTART, to restart execution of the previous SMC
  */
-ENTRY(tegra_generic_smc)
+ENTRY(tegra_restart_prev_smc)
+	stmfd	sp!, { r1-r3 }
+	mov	r0, #TEGRA_SMC_RESTART
+	mov	r1, #0
+	mov	r2, #0
+	mov	r3, #0
 	smc	#0
+	ldmia	sp!, { r1-r3 }
 	mov	pc, lr
-ENDPROC(tegra_generic_smc)
-#endif
+ENDPROC(tegra_restart_prev_smc)

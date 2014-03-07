@@ -341,9 +341,7 @@ void tegra_smp_save_power_mask(void);
 void tegra_smp_restore_power_mask(void);
 #endif
 
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
-u32 tegra_generic_smc(u32 type, u32 subtype, u32 arg);
-#endif
+u32 tegra_restart_prev_smc(void);
 
 /* The debug channel uart base physical address */
 extern unsigned long  debug_uart_port_base;
