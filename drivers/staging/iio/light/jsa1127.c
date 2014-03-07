@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -578,13 +578,13 @@ static void jsa1127_shutdown(struct i2c_client *client)
 	struct jsa1127_chip *chip = iio_priv(indio_dev);
 	int ret;
 
+	destroy_workqueue(chip->wq);
 	if (chip->regulator && (chip->als_state != CHIP_POWER_OFF))
 		regulator_disable(chip->regulator);
 
 	if (!chip->regulator || regulator_is_enabled(chip->regulator))
 		ret = jsa1127_send_cmd_locked(chip, JSA1127_CMD_STANDBY);
 
-	destroy_workqueue(chip->wq);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 }
