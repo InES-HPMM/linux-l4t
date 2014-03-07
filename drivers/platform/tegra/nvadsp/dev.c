@@ -1,5 +1,5 @@
 /*
- * nvadsp_dev.c
+ * dev.c
  *
  * A device driver for ADSP and APE
  *
@@ -16,7 +16,7 @@
  *
  */
 
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/pm.h>
@@ -24,6 +24,8 @@
 #include <linux/of_device.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+
+#include "dev.h"
 
 static int nvadsp_open(struct inode *inode, struct file *filp)
 {
@@ -91,8 +93,39 @@ static const struct dev_pm_ops nvadsp_pm_ops = {
 
 static int nvadsp_probe(struct platform_device *pdev)
 {
-	pr_info("In nvadsp probe...\n");
-	return 0;
+	struct nvadsp_drv_data *drv_data;
+	struct resource *res = NULL;
+	void __iomem *base = NULL;
+	int ret = 0;
+
+	dev_info(&pdev->dev, "in probe()...\n");
+
+	drv_data = devm_kzalloc(&pdev->dev, sizeof(*drv_data),
+				GFP_KERNEL);
+	if (!drv_data) {
+		dev_err(&pdev->dev, "Failed to allocate driver data");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		dev_err(&pdev->dev, "Failed to get AMISC resource\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(base)) {
+		dev_err(&pdev->dev, "Failed to remap AMISC resource\n");
+		ret = PTR_ERR(base);
+		goto err;
+	}
+	drv_data->amisc_base = base;
+
+	platform_set_drvdata(pdev, drv_data);
+ err:
+	return ret;
 }
 
 static int nvadsp_remove(struct platform_device *pdev)

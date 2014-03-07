@@ -1,5 +1,5 @@
 /*
- * nvadsp_dev.h
+ * dev.h
  *
  * A header file for Host driver for ADSP and APE
  *
@@ -19,4 +19,9 @@
 #ifndef __TEGRA_NVADSP_DEV_H
 #define __TEGRA_NVADSP_DEV_H
 
+#include <linux/tegra_nvadsp.h>
+
+struct nvadsp_drv_data {
+	void __iomem *amisc_base;
+};
 #endif /* __TEGRA_NVADSP_DEV_H */
