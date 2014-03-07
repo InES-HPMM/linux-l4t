@@ -352,6 +352,8 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		ranges = <0x70300000 0x0 0x70300000 0x00010000>;
+
 		tegra_i2s0: i2s@70301000 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301000 0x100>;
