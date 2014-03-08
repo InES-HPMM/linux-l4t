@@ -135,7 +135,7 @@ static int tegra13_get_core_floor_mv(int cpu_mv)
 {
 	if (cpu_mv < 800)
 		return 800;
-	if (cpu_mv < 900)
+	if (cpu_mv <= 900)
 		return 830;
 	if (cpu_mv <= 1000)
 		return 870;
@@ -150,8 +150,16 @@ static int tegra13_get_core_floor_mv(int cpu_mv)
 static int tegra13_dvfs_rel_vdd_cpu_vdd_core(struct dvfs_rail *vdd_cpu,
 	struct dvfs_rail *vdd_core)
 {
+	int core_mv;
 	int cpu_mv = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
-	int core_mv = tegra13_get_core_floor_mv(cpu_mv);
+
+	if (tegra_dvfs_rail_is_dfll_mode(vdd_cpu)) {
+		/* 30mV thermal floor slack in dfll mode */
+		int cpu_floor_mv = tegra_dvfs_rail_get_thermal_floor(vdd_cpu);
+		cpu_mv = max(cpu_mv, cpu_floor_mv + 30);
+	}
+
+	core_mv = tegra13_get_core_floor_mv(cpu_mv);
 	core_mv = max(vdd_core->new_millivolts, core_mv);
 
 	if (vdd_cpu->resolving_to && (core_mv < vdd_core->millivolts))
