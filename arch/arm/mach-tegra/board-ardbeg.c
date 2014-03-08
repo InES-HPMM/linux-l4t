@@ -1212,8 +1212,8 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("norrin");
 	else if (of_machine_is_compatible("nvidia,bowmore"))
 		tegra_soc_device_init("bowmore");
-	else if (of_machine_is_compatible("nvidia,loki"))
-		tegra_soc_device_init("loki");
+	else if (of_machine_is_compatible("nvidia,t132loki"))
+		tegra_soc_device_init("t132loki");
 	else
 		tegra_soc_device_init("ardbeg");
 }
@@ -1422,12 +1422,12 @@ static const char * const bowmore_dt_board_compat[] = {
 };
 
 static const char * const loki_dt_board_compat[] = {
-	"nvidia,loki",
+	"nvidia,t132loki",
 	NULL
 };
 
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
-DT_MACHINE_START(LOKI, "loki")
+DT_MACHINE_START(LOKI, "t132loki")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
