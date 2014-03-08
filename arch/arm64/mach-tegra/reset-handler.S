@@ -111,8 +111,10 @@ start_ns:
 	mrs	x0, mpidr_el1
 	and x0, x0, #15
 
+#ifdef CONFIG_SMP
 	/* Secondary cores */
 	cbnz	x0, secondary_holding_pen
+#endif
 
 	/* Below is only carried out on core0 */
 
