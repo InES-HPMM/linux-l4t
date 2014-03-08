@@ -214,7 +214,7 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         810,    860,    900,    1000,    1100*/
 	/* Clock limits for internal blocks, PLLs */
-	CORE_DVFS("emc",    -1, -1, 1, KHZ,   264000, 348000, 384000, 528000,  924000),
+	CORE_DVFS("emc",    -1, -1, 1, KHZ,   264000, 348000, 384000, 528000,  1599000),
 
 	CORE_DVFS("cpu_lp", -1, -1, 1, KHZ,   144000, 252000, 288000, 444000,  624000),
 
@@ -243,7 +243,7 @@ static struct dvfs core_dvfs_table[] = {
 #endif
 	CORE_DVFS("c4bus",  -1, -1, 1, KHZ,   120000, 156000, 182000, 312000,  444000),
 
-	CORE_DVFS("pll_m",  -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
+	CORE_DVFS("pll_m",  -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1599000),
 	CORE_DVFS("pll_c",  -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
 	CORE_DVFS("pll_c2", -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
 	CORE_DVFS("pll_c3", -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),

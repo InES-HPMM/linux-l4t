@@ -4757,6 +4757,9 @@ static int tegra21_clk_emc_bus_update(struct clk *bus)
 	if (rate == clk_get_rate_locked(bus))
 		return 0;
 
+	if (tegra_platform_is_fpga())
+		return 0;
+
 	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
 		if (bus->parent == p) {
 			/* need backup to re-lock current parent */
