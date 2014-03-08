@@ -201,7 +201,7 @@
 
 /* returns the offset of the flow controller halt register for a cpu */
 .macro cpu_to_halt_reg rd, rcpu
-	cmp	rcpu, #0
+	cmp	\rcpu, #0
 	mov	\rd, #0
 	beq	1001f
 	sub	\rd, \rcpu, #1
