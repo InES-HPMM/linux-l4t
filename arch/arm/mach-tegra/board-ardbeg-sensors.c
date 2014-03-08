@@ -251,6 +251,18 @@ static struct tegra_io_dpd csib_io = {
 	.io_dpd_bit		= 1,
 };
 
+static struct tegra_io_dpd csic_io = {
+	.name			= "CSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 10,
+};
+
+static struct tegra_io_dpd csid_io = {
+	.name			= "CSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 11,
+};
+
 static struct tegra_io_dpd csie_io = {
 	.name			= "CSIE",
 	.io_dpd_reg_index	= 1,
@@ -771,11 +783,200 @@ static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, CAM1_PWDN, true, 0, },
 };
 
+#define NV_GUID(a, b, c, d, e, f, g, h) \
+	((u64) ((((a)&0xffULL) << 56ULL) | (((b)&0xffULL) << 48ULL) | \
+	(((c)&0xffULL) << 40ULL) | (((d)&0xffULL) << 32ULL) | \
+	(((e)&0xffULL) << 24ULL) | (((f)&0xffULL) << 16ULL) | \
+	(((g)&0xffULL) << 8ULL) | (((h)&0xffULL))))
+
+static struct nvc_imager_cap ov5693_cap = {
+	.identifier				= "OV5693",
+	.sensor_nvc_interface	= 3,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction				= 0,
+	.initial_clock_rate_khz	= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port				= 0,
+	.data_lanes				= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode	= 1,
+	.cil_threshold_settle	= 0,
+	.min_blank_time_width	= 16,
+	.min_blank_time_height	= 16,
+	.preferred_mode_index	= 0,
+	.focuser_guid			=
+		NV_GUID('f', '_', 'A', 'D', '5', '8', '2', '3'),
+	.torch_guid				=
+		NV_GUID('l', '_', 'N', 'V', 'C', 'A', 'M', '0'),
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled	= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr					= 1,
+};
+
+
 static struct ov5693_platform_data ardbeg_ov5693_pdata = {
 	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
 	.gpio		= ov5693_gpio_pdata,
 	.power_on	= ardbeg_ov5693_power_on,
 	.power_off	= ardbeg_ov5693_power_off,
+	.dev_name	= "ov5693",
+	.cap		= &ov5693_cap,
+	.mclk_name	= "mclk",
+	.regulators = {
+			.avdd = "avdd_ov5693",
+			.dvdd = "dvdd",
+			.dovdd = "dovdd",
+	},
+	.has_eeprom = 1,
+};
+
+static int ardbeg_ov5693_front_power_on(struct ov5693_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
+		return -EFAULT;
+
+	/* disable CSIC/D IOs DPD mode to turn on camera for ardbeg */
+	tegra_io_dpd_disable(&csic_io);
+	tegra_io_dpd_disable(&csid_io);
+
+	if (ardbeg_get_extra_regulators())
+		goto ov5693_front_poweron_fail;
+
+	gpio_set_value(CAM2_PWDN, 0);
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto ov5693_front_avdd_fail;
+
+	err = regulator_enable(pw->dovdd);
+	if (err)
+		goto ov5693_front_iovdd_fail;
+
+	udelay(2);
+	gpio_set_value(CAM2_PWDN, 1);
+	gpio_set_value(CAM_RSTN, 1);
+
+	err = regulator_enable(ardbeg_vcmvdd);
+	if (unlikely(err))
+		goto ov5693_front_vcmvdd_fail;
+
+	usleep_range(300, 310);
+
+	return 0;
+
+ov5693_front_vcmvdd_fail:
+	regulator_disable(pw->dovdd);
+
+ov5693_front_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov5693_front_avdd_fail:
+	gpio_set_value(CAM2_PWDN, 0);
+	gpio_set_value(CAM_RSTN, 0);
+
+ov5693_front_poweron_fail:
+	/* put CSIC/D IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csic_io);
+	tegra_io_dpd_enable(&csid_io);
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_ov5693_front_power_off(struct ov5693_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd))) {
+		/* put CSIC/D IOs into DPD mode to
+		 * save additional power for ardbeg
+		 */
+		tegra_io_dpd_enable(&csic_io);
+		tegra_io_dpd_enable(&csid_io);
+		return -EFAULT;
+	}
+
+	usleep_range(21, 25);
+	gpio_set_value(CAM2_PWDN, 0);
+	gpio_set_value(CAM_RSTN, 0);
+	udelay(2);
+
+	regulator_disable(ardbeg_vcmvdd);
+	regulator_disable(pw->dovdd);
+	regulator_disable(pw->avdd);
+
+	/* put CSIC/D IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csic_io);
+	tegra_io_dpd_enable(&csid_io);
+	return 0;
+}
+
+static struct nvc_gpio_pdata ov5693_front_gpio_pdata[] = {
+	{ OV5693_GPIO_TYPE_PWRDN, CAM2_PWDN, true, 0, },
+	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
+};
+
+static struct nvc_imager_cap ov5693_front_cap = {
+	.identifier				= "OV5693.1",
+	.sensor_nvc_interface	= 4,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction				= 0,
+	.initial_clock_rate_khz	= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port				= 1,
+	.data_lanes				= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode	= 1,
+	.cil_threshold_settle	= 0,
+	.min_blank_time_width	= 16,
+	.min_blank_time_height	= 16,
+	.preferred_mode_index	= 0,
+	.focuser_guid			= 0,
+	.torch_guid				= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled	= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr					= 1,
+};
+
+static struct ov5693_platform_data ardbeg_ov5693_front_pdata = {
+	.gpio_count	= ARRAY_SIZE(ov5693_front_gpio_pdata),
+	.gpio		= ov5693_front_gpio_pdata,
+	.power_on	= ardbeg_ov5693_front_power_on,
+	.power_off	= ardbeg_ov5693_front_power_off,
+	.dev_name	= "ov5693.1",
+	.mclk_name	= "mclk2",
+	.cap		= &ov5693_front_cap,
+	.regulators = {
+			.avdd = "vana",
+			.dvdd = "vdig",
+			.dovdd = "vif",
+	},
+	.has_eeprom = 0,
 };
 
 static int ardbeg_ad5823_power_on(struct ad5823_platform_data *pdata)
@@ -822,6 +1023,11 @@ static struct i2c_board_info	ardbeg_i2c_board_info_dw9718 = {
 static struct i2c_board_info	ardbeg_i2c_board_info_ov5693 = {
 	I2C_BOARD_INFO("ov5693", 0x10),
 	.platform_data = &ardbeg_ov5693_pdata,
+};
+
+static struct i2c_board_info	ardbeg_i2c_board_info_ov5693_front = {
+	I2C_BOARD_INFO("ov5693.1", 0x36),
+	.platform_data = &ardbeg_ov5693_front_pdata,
 };
 
 static struct i2c_board_info	ardbeg_i2c_board_info_ov7695 = {
@@ -873,7 +1079,11 @@ static struct camera_module ardbeg_camera_module_info[] = {
 		/* front camera */
 		.sensor = &ardbeg_i2c_board_info_mt9m114,
 	},
-
+	/* E1633 camera board */
+	{
+		/* front camera */
+		.sensor = &ardbeg_i2c_board_info_ov5693_front,
+	},
 	{}
 };
 
@@ -900,11 +1110,13 @@ static int ardbeg_camera_init(void)
 		ardbeg_camera_module_info[2].flash = NULL;
 	}
 
-	/* put CSIA/B/E IOs into DPD mode to
+	/* put CSIA/B/C/D/E IOs into DPD mode to
 	 * save additional power for ardbeg
 	 */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
+	tegra_io_dpd_enable(&csic_io);
+	tegra_io_dpd_enable(&csid_io);
 	tegra_io_dpd_enable(&csie_io);
 
 	platform_device_add_data(&ardbeg_camera_generic,
