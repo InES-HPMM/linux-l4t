@@ -2762,7 +2762,6 @@ static void ov5693_regulator_get(struct ov5693_info *info,
 		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
 			__func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);
-		reg = NULL;
 	} else {
 		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
 			__func__, vreg_name);
@@ -2777,11 +2776,12 @@ static void ov5693_pm_init(struct ov5693_info *info)
 
 	ov5693_gpio_init(info);
 
-	ov5693_regulator_get(info, &pw->dvdd, "dvdd");
+	ov5693_regulator_get(info, &pw->avdd, info->pdata->regulators.avdd);
 
-	ov5693_regulator_get(info, &pw->avdd, "avdd_ov5693");
+	ov5693_regulator_get(info, &pw->dvdd, info->pdata->regulators.dvdd);
 
-	ov5693_regulator_get(info, &pw->dovdd, "dovdd");
+	ov5693_regulator_get(info, &pw->dovdd, info->pdata->regulators.dovdd);
+
 	info->power_on = false;
 }
 
@@ -3031,6 +3031,32 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	int err;
 
 	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(OV5693_IOCTL_SET_POWER):
+	{
+		u32 powerlevel = (u32) arg;
+
+		if (!info->pdata)
+			break;
+		if (powerlevel > NVC_PWR_ON) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Invalid power level.\n",
+			__func__);
+			return -EFAULT;
+		}
+
+		err = ov5693_pm_wr(info, powerlevel);
+		return err;
+	}
+	case _IOC_NR(OV5693_IOCTL_GET_CAPS):
+		if (copy_to_user((void __user *)arg,
+				 info->pdata->cap,
+				 sizeof(struct nvc_imager_cap))) {
+			dev_err(&info->i2c_client->dev,
+				"%s copy_to_user err line %d\n",
+				__func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
 	case _IOC_NR(OV5693_IOCTL_SET_MODE):
 	{
 		struct ov5693_mode mode;
@@ -3147,6 +3173,9 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case _IOC_NR(OV5693_IOCTL_GET_EEPROM_DATA):
 		{
+			if (!info->pdata->has_eeprom)
+				return -EFAULT;
+
 			ov5693_read_eeprom(info,
 				0,
 				OV5693_EEPROM_SIZE,
@@ -3165,6 +3194,10 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case _IOC_NR(OV5693_IOCTL_SET_EEPROM_DATA):
 		{
 			int i;
+
+			if (!info->pdata->has_eeprom)
+				return -EFAULT;
+
 			if (copy_from_user(info->eeprom_buf,
 				(const void __user *)arg, OV5693_EEPROM_SIZE)) {
 				dev_err(&info->i2c_client->dev,
@@ -3219,7 +3252,7 @@ static int ov5693_open(struct inode *inode, struct file *file)
 	return err;
 }
 
-int ov5693_release(struct inode *inode, struct file *file)
+static int ov5693_release(struct inode *inode, struct file *file)
 {
 	struct ov5693_info *info = file->private_data;
 
@@ -3253,7 +3286,8 @@ static int ov5693_remove(struct i2c_client *client)
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
 	sysedp_free_consumer(info->sysedpc);
-	ov5693_eeprom_device_release(info);
+	if (info->pdata->has_eeprom)
+		ov5693_eeprom_device_release(info);
 	ov5693_del(info);
 	return 0;
 }
@@ -3445,11 +3479,13 @@ static int ov5693_probe(
 		return err;
 	}
 
-	err = ov5693_eeprom_device_init(info);
-	if (err) {
-		dev_err(&client->dev,
+	if (info->pdata->has_eeprom) {
+		err = ov5693_eeprom_device_init(info);
+		if (err) {
+			dev_err(&client->dev,
 			"Failed to allocate eeprom register map: %d\n", err);
-		return err;
+			return err;
+		}
 	}
 
 	mclk_name = info->pdata->mclk_name ?
@@ -3463,8 +3499,8 @@ static int ov5693_probe(
 
 	i2c_set_clientdata(client, info);
 	ov5693_pm_init(info);
-	if (!info->regulators.avdd || !info->regulators.dovdd)
-		return -EFAULT;
+	if (IS_ERR(info->regulators.avdd) || IS_ERR(info->regulators.dovdd))
+			return -EFAULT;
 
 	info->sysedpc = sysedp_create_consumer("ov5693", "ov5693");
 
@@ -3506,6 +3542,7 @@ static int ov5693_probe(
 
 static const struct i2c_device_id ov5693_id[] = {
 	{ "ov5693", 0 },
+	{ "ov5693.1", 0 },
 	{ },
 };
 
