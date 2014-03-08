@@ -514,6 +514,10 @@
 								regulator-consumer-supply = "vana";
 								regulator-consumer-device = "2-0036";
 							};
+							c7 {
+								regulator-consumer-supply = "vin";
+								regulator-consumer-device = "2-0030";
+							};
 						};
 					};
 
@@ -705,6 +709,6 @@
 
 	/* Populate fuse supply */
 	efuse@7000f800 {
-		vpp_fuse-supply = <&vpp_fuse>; 
+		vpp_fuse-supply = <&vpp_fuse>;
 	};
 };
