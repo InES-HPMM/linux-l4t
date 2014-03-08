@@ -2173,6 +2173,10 @@ static int dvfs_tree_sort_cmp(void *p, struct list_head *a, struct list_head *b)
 	return strcmp(da->clk_name, db->clk_name);
 }
 
+/* To emulate and show rail relations with 0 mV on dependent rail-to */
+static struct dvfs_rail show_to;
+static struct dvfs_relationship show_rel;
+
 static int dvfs_tree_show(struct seq_file *s, void *data)
 {
 	struct dvfs *d;
@@ -2192,8 +2196,13 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
-			seq_printf(s, "   %-10s %-7d mV %-4d mV\n",
+			show_rel = *rel;
+			show_rel.to = &show_to;
+			show_to = *rel->to;
+			show_to.millivolts = show_to.new_millivolts = 0;
+			seq_printf(s, "   %-10s %-7d mV %-4d mV .. %-4d mV\n",
 				rel->from->reg_id, rel->from->millivolts,
+				dvfs_solve_relationship(&show_rel),
 				dvfs_solve_relationship(rel));
 		}
 		seq_printf(s, "   nominal    %-7d mV\n",
