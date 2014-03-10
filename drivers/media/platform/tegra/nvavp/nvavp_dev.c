@@ -2586,11 +2586,6 @@ static int tegra_nvavp_suspend(struct device *dev)
 
 	tegra_nvavp_runtime_suspend(dev);
 
-	/* Partition vde has to be left on before suspend for the
-	 * device to wakeup on resume
-	 */
-	nvavp_unpowergate_vde(nvavp);
-
 	mutex_unlock(&nvavp->open_lock);
 
 	return 0;
