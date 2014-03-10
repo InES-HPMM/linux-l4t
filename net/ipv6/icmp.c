@@ -85,12 +85,18 @@ static inline struct sock *icmpv6_sk(struct net *net)
 static void icmpv6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
 		       u8 type, u8 code, int offset, __be32 info)
 {
+	/* icmpv6_notify checks 8 bytes can be pulled, icmp6hdr is 8 bytes */
+	struct icmp6hdr *icmp6 = (struct icmp6hdr *) (skb->data + offset);
 	struct net *net = dev_net(skb->dev);
 
 	if (type == ICMPV6_PKT_TOOBIG)
 		ip6_update_pmtu(skb, net, info, 0, 0);
 	else if (type == NDISC_REDIRECT)
 		ip6_redirect(skb, net, 0, 0);
+
+	if (!(type & ICMPV6_INFOMSG_MASK))
+		if (icmp6->icmp6_type == ICMPV6_ECHO_REQUEST)
+			ping_err(skb, offset, info);
 }
 
 static int icmpv6_rcv(struct sk_buff *skb);
@@ -699,7 +705,8 @@ static int icmpv6_rcv(struct sk_buff *skb)
 		skb->csum = ~csum_unfold(csum_ipv6_magic(saddr, daddr, skb->len,
 					     IPPROTO_ICMPV6, 0));
 		if (__skb_checksum_complete(skb)) {
-			LIMIT_NETDEBUG(KERN_DEBUG "ICMPv6 checksum failed [%pI6 > %pI6]\n",
+			LIMIT_NETDEBUG(KERN_DEBUG
+				       "ICMPv6 checksum failed [%pI6c > %pI6c]\n",
 				       saddr, daddr);
 			goto csum_error;
 		}
