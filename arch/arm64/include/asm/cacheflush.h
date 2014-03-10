@@ -80,6 +80,8 @@ extern void dmac_map_area(const void *, size_t, int);
 extern void dmac_unmap_area(const void *, size_t, int);
 extern void dmac_flush_range(const void *, const void *);
 
+#define flush_cache_louis() flush_dcache_louis()
+
 static inline void flush_cache_mm(struct mm_struct *mm)
 {
 }
