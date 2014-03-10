@@ -148,6 +148,7 @@ struct bq2419x_charger_platform_data {
 	int n_temp_profile;
 	u32 *temp_range;
 	u32 *chg_current_limit;
+	u32 *chg_thermal_voltage_limit;
 };
 
 /*
