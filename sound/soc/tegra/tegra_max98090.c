@@ -1200,6 +1200,7 @@ static int tegra_max98090_set_bias_level_post(struct snd_soc_card *card,
 
 static int tegra_late_probe(struct snd_soc_card *card)
 {
+	struct device_node *np = card->dev->of_node;
 	struct snd_soc_codec *codec236 =
 				card->rtd[DAI_LINK_HIFI_MAX97236].codec;
 	int ret;
@@ -1207,13 +1208,16 @@ static int tegra_late_probe(struct snd_soc_card *card)
 	if (of_machine_is_compatible("nvidia,norrin"))
 		return 0;
 
-	ret = snd_soc_jack_new(codec236,
-			"Headphone Jack",
-			SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00,
-			&tegra_max98090_hp_jack);
-	if (ret) {
-		dev_err(codec236->dev, "snd_soc_jack_new returned %d\n", ret);
-		return ret;
+	if (of_device_is_compatible(np, "nvidia,max97236")) {
+		ret = snd_soc_jack_new(codec236,
+				"Headphone Jack",
+				SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00,
+				&tegra_max98090_hp_jack);
+		if (ret) {
+			dev_err(codec236->dev,
+				"snd_soc_jack_new returned %d\n", ret);
+			return ret;
+		}
 	}
 
 #ifdef CONFIG_SWITCH
@@ -1225,7 +1229,8 @@ static int tegra_late_probe(struct snd_soc_card *card)
 			tegra_max98090_hs_jack_pins);
 #endif
 
-	max97236_mic_detect(codec236, &tegra_max98090_hp_jack);
+	if (of_device_is_compatible(np, "nvidia,max97236"))
+		max97236_mic_detect(codec236, &tegra_max98090_hp_jack);
 
 	return 0;
 }
@@ -1251,24 +1256,88 @@ static struct snd_soc_card snd_soc_tegra_max98090 = {
 	.late_probe	= tegra_late_probe,
 };
 
-static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
+/*
+ * DT provides platform_data
+ */
+static struct tegra_asoc_platform_data *
+	tegra_max98090_get_dt_data(struct device *dev)
+{
+	struct tegra_asoc_platform_data *pdata;
+	struct device_node *np = NULL;
+
+	np = dev->of_node;
+	if (!np)
+		return ERR_PTR(-ENODEV);
+
+	dev_info(dev, "Platform data supplied via DT\n");
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	of_property_read_string(np, "nvidia,codec-name",
+				&pdata->codec_name);
+	of_property_read_string(np, "nvidia,codec-dai-name",
+				&pdata->codec_dai_name);
+	of_property_read_u32(np, "nvidia,gpio-hp-det",
+				&pdata->gpio_hp_det);
+	of_property_read_u32(np, "nvidia,num-links",
+				&pdata->num_links);
+	pdata->edp_support =
+		of_property_read_bool(np, "nvidia,edp-support");
+	of_property_read_u32_array(np, "nvidia,edp-states",
+			pdata->edp_states, ARRAY_SIZE(pdata->edp_states));
+
+	of_property_read_u32(np, "nvidia,i2s-param,0,audio-port-id",
+				&pdata->i2s_param[HIFI_CODEC].audio_port_id);
+	of_property_read_u32(np, "nvidia,i2s-param,0,is-i2s-master",
+				&pdata->i2s_param[HIFI_CODEC].is_i2s_master);
+	of_property_read_u32(np, "nvidia,i2s-param,0,i2s-mode",
+				&pdata->i2s_param[HIFI_CODEC].i2s_mode);
+	of_property_read_u32(np, "nvidia,i2s-param,0,sample-size",
+				&pdata->i2s_param[HIFI_CODEC].sample_size);
+	of_property_read_u32(np, "nvidia,i2s-param,0,channels",
+				&pdata->i2s_param[HIFI_CODEC].channels);
+	of_property_read_u32(np, "nvidia,i2s-param,0,bit-clk",
+				&pdata->i2s_param[HIFI_CODEC].bit_clk);
+
+	return pdata;
+}
+
+static struct of_device_id tegra_max98090_of_match[] = {
+	{ .compatible = "nvidia,tegra-snd-max98090", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tegra_max98090_of_match);
+
+static int tegra_max98090_driver_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_tegra_max98090;
 	struct tegra_max98090 *machine;
 	struct tegra_asoc_platform_data *pdata;
 	int ret, i;
 
+	dev_info(&pdev->dev, "tegra_max98090_driver_probe\n");
+
 	if (of_machine_is_compatible("nvidia,norrin"))
 		card->num_links = DAI_LINK_BTSCO + 1;
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
-		dev_err(&pdev->dev, "No platform data supplied\n");
-		return -EINVAL;
+		pdata = tegra_max98090_get_dt_data(&pdev->dev);
+		if (IS_ERR(pdata))
+			return PTR_ERR(pdata);
 	}
 
-	if (pdata->codec_name)
+	if (pdata->num_links)
+		card->num_links = pdata->num_links;
+
+	if (pdata->codec_name) {
+		card->dai_link[DAI_LINK_HIFI].codec_name = pdata->codec_name;
 		card->dai_link->codec_name = pdata->codec_name;
+	}
 
 	if (pdata->codec_dai_name)
 		card->dai_link->codec_dai_name = pdata->codec_dai_name;
@@ -1276,7 +1345,8 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	machine = kzalloc(sizeof(struct tegra_max98090), GFP_KERNEL);
 	if (!machine) {
 		dev_err(&pdev->dev, "Can't allocate tegra_max98090 struct\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_free_pdata;
 	}
 
 	machine->pdata = pdata;
@@ -1288,15 +1358,15 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_machine;
 
-	machine->avdd_aud_reg = regulator_get(&pdev->dev, "avdd_aud");
+	machine->avdd_aud_reg = regulator_get(&pdev->dev, "avdd-aud");
 	if (IS_ERR(machine->avdd_aud_reg)) {
 		dev_info(&pdev->dev, "avdd_aud regulator not found\n");
 		machine->avdd_aud_reg = 0;
 	}
 
-	machine->vdd_sw_1v8_reg = regulator_get(&pdev->dev, "vdd_aud_dgtl");
+	machine->vdd_sw_1v8_reg = regulator_get(&pdev->dev, "vdd-aud-dgtl");
 	if (IS_ERR(machine->vdd_sw_1v8_reg)) {
-		dev_info(&pdev->dev, "vdd_sw_1v8_reg regulator not found\n");
+		dev_info(&pdev->dev, "vdd_aud_dgtl regulator not found\n");
 		machine->vdd_sw_1v8_reg = 0;
 	}
 
@@ -1398,6 +1468,10 @@ err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
 	kfree(machine);
+err_free_pdata:
+	if (!pdev->dev.platform_data)
+		kfree(pdata);
+
 	return ret;
 }
 
@@ -1440,6 +1514,7 @@ static struct platform_driver tegra_max98090_driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
+		.of_match_table = of_match_ptr(tegra_max98090_of_match),
 	},
 	.probe = tegra_max98090_driver_probe,
 	.remove = __devexit_p(tegra_max98090_driver_remove),
