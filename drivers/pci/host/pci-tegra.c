@@ -1442,20 +1442,62 @@ retry:
 	return false;
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static bool is_all_gen2(void)
+{
+	struct pci_dev *pdev = NULL;
+	u16 lnk_spd;
+
+	PR_FUNC_LINE;
+	for_each_pci_dev(pdev) {
+		pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &lnk_spd);
+		lnk_spd &= PCI_EXP_LNKSTA_CLS;
+		if (lnk_spd != PCI_EXP_LNKSTA_CLS_5_0GB)
+			return false;
+	}
+	return true;
+}
+#endif
 static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 {
 	unsigned int data;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	int lane_owner;
+	bool t210_war;
 #endif
 	struct pci_dev *pdev = NULL;
 
 	PR_FUNC_LINE;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* T210 WAR for perf bugs required when LPDDR4 */
+	/* memory is used with both ctlrs in X4_X1 config */
+	lane_owner = tegra_get_lane_owner_info() >> 1;
+	t210_war = (tegra_pcie.plat_data->has_memtype_lpddr4 &&
+		tegra_pcie.port[0].link_up && tegra_pcie.port[1].link_up &&
+		(lane_owner == PCIE_LANES_X4_X1));
+#endif
 	if (enum_done) {
 		/* disable msi for port driver to avoid panic */
 		for_each_pci_dev(pdev)
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
 				pdev->msi_enabled = 0;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		/* raise emc freq to 508MHz to reach expected gen2 */
+		/* bandwidth if all have gen2 enabled, bug#1452749 */
+		if (t210_war && is_all_gen2()) {
+			struct clk *emc_clk;
+			emc_clk = clk_get_sys("tegra_pcie", "emc");
+			if (IS_ERR_OR_NULL(emc_clk)) {
+				pr_err("unable to get emc clk\n");
+				goto fail;
+			}
+			if (clk_enable(emc_clk)) {
+				pr_err("emc clk enable failed\n");
+				goto fail;
+			}
+			clk_set_rate(emc_clk, 508000000);
+		}
+#endif
 	} else {
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
 		data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
@@ -1466,11 +1508,8 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
 		rp_writel(data, NV_PCIE2_RP_INTR_BCR, index);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		/* WAR for perf bug#1447522 required for LPDDR4 memory */
-		/* and both ctlr used in X4_X1 config only in T210 */
-		lane_owner = tegra_get_lane_owner_info() >> 1;
-		if (tegra_pcie.port[0].link_up && tegra_pcie.port[1].link_up &&
-			(lane_owner == PCIE_LANES_X4_X1)) {
+		/* resize buffers for better perf, bug#1447522 */
+		if (t210_war) {
 			data = rp_readl(NV_PCIE2_RP_XP_CTL_1, 0);
 			data |= PCIE2_RP_XP_CTL_1_SPARE_BIT29;
 			rp_writel(data, NV_PCIE2_RP_XP_CTL_1, 0);
@@ -1493,6 +1532,8 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA, index);
 #endif
 	}
+fail:
+	return;
 }
 
 /* Enable various features of root port */
@@ -2125,7 +2166,9 @@ static void tegra_pcie_read_plat_data(void)
 	tegra_pcie.plat_data->gpio_x1_slot =
 		of_get_named_gpio(node, "nvidia,x1-slot-gpio", 0);
 	tegra_pcie.plat_data->has_clkreq =
-			of_property_read_bool(node, "has_clkreq");
+		of_property_read_bool(node, "nvidia,has_clkreq");
+	tegra_pcie.plat_data->has_memtype_lpddr4 =
+		of_property_read_bool(node, "nvidia,has_memtype_lpddr4");
 }
 
 static struct of_device_id tegra_pcie_of_match[] = {
