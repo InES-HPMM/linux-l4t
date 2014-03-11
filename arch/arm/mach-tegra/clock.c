@@ -628,6 +628,7 @@ unsigned long clk_get_rate_all_locked(struct clk *c)
 
 	rate = c->rate;
 	rate *= mul;
+	rate += div - 1; /* round up */
 	do_div(rate, div);
 
 	return rate;
