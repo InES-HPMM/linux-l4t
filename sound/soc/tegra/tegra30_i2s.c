@@ -163,7 +163,7 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 				unsigned int fmt)
 {
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
-	unsigned int mask, val;
+	unsigned int mask = 0, val = 0;
 
 	mask = TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK |
 		TEGRA30_I2S_CH_CTRL_HIGHZ_CTRL_MASK;
@@ -188,10 +188,10 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 	}
 	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CH_CTRL, mask, val);
 
-	mask = TEGRA30_I2S_CTRL_MASTER_ENABLE;
+	mask |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBS_CFS:
-		val = TEGRA30_I2S_CTRL_MASTER_ENABLE;
+		val |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 		break;
 	case SND_SOC_DAIFMT_CBM_CFM:
 		val = 0;

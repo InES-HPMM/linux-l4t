@@ -2520,6 +2520,16 @@ static int max98090_set_bias_level(struct snd_soc_codec *codec,
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
+		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
+			ret = snd_soc_cache_sync(codec);
+			if (ret != 0) {
+				dev_err(codec->dev,
+					"Failed to sync cache: %d\n", ret);
+				return ret;
+			}
+		}
+		break;
+
 	case SND_SOC_BIAS_OFF:
 		snd_soc_update_bits(codec, M98090_REG_3E_PWR_EN_IN,
 			M98090_PWR_MBEN_MASK, 0);
