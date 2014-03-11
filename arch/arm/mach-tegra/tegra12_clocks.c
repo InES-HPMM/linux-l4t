@@ -9344,7 +9344,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 27];
+			   PERIPH_CLK_SOURCE_NUM + 25];
 
 static int tegra12_clk_suspend(void)
 {
@@ -9364,8 +9364,6 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
-	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_BASE);
-	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_MISC(&tegra_pll_d2));
 
 	*ctx++ = clk_readl(tegra_pll_m_out1.reg);
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
@@ -9419,6 +9417,10 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(CLK_MASK_ARM);
 
 	*ctx++ = clk_get_rate_all_locked(&tegra_clk_emc);
+
+	pr_debug("%s: suspend entries: %d, suspend array: %d\n", __func__,
+		(ctx - clk_rst_suspend), ARRAY_SIZE(clk_rst_suspend));
+	BUG_ON((ctx - clk_rst_suspend) > ARRAY_SIZE(clk_rst_suspend));
 	return 0;
 }
 
@@ -9429,7 +9431,6 @@ static void tegra12_clk_resume(void)
 	u32 val;
 	u32 plla_base;
 	u32 plld_base;
-	u32 plld2_base;
 	u32 pll_p_out12, pll_p_out34;
 	u32 pll_a_out0, pll_m_out1, pll_c_out1;
 	struct clk *p;
@@ -9473,10 +9474,6 @@ static void tegra12_clk_resume(void)
 	plld_base = *ctx++;
 	clk_writel(*ctx++, tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
 	clk_writel(plld_base | PLL_BASE_ENABLE, tegra_pll_d.reg + PLL_BASE);
-
-	plld2_base = *ctx++;
-	clk_writel(*ctx++, tegra_pll_d2.reg + PLL_MISC(&tegra_pll_d2));
-	clk_writel(plld2_base | PLL_BASE_ENABLE, tegra_pll_d2.reg + PLL_BASE);
 
 	udelay(1000);
 
@@ -9590,7 +9587,6 @@ static void tegra12_clk_resume(void)
 
 	clk_writel(plla_base, tegra_pll_a.reg + PLL_BASE);
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
-	clk_writel(plld2_base, tegra_pll_d2.reg + PLL_BASE);
 
 	clk_writel(pll_m_out1, tegra_pll_m_out1.reg);
 	clk_writel(pll_a_out0, tegra_pll_a_out0.reg);
