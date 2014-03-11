@@ -2456,7 +2456,7 @@ wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 	s32 err = 0;
 	struct wl_priv *wl = wiphy_priv(wiphy);
 #if defined(WL_CFG80211_P2P_DEV_IF)
-	struct net_device *ndev = wl_to_prmry_ndev(wl);
+	struct net_device *ndev = wdev_to_wlc_ndev(request->wdev, wl);
 #endif /* WL_CFG80211_P2P_DEV_IF */
 
 	WL_DBG(("Enter \n"));
