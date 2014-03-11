@@ -1,4 +1,4 @@
-	/*
+/*
  * arch/arm/mach-tegra/tegra12_clocks.c
  *
  * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
@@ -9344,7 +9344,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 26];
+			   PERIPH_CLK_SOURCE_NUM + 27];
 
 static int tegra12_clk_suspend(void)
 {
@@ -9358,6 +9358,7 @@ static int tegra12_clk_suspend(void)
 
 	*ctx++ = clk_readl(tegra_pll_p_out1.reg);
 	*ctx++ = clk_readl(tegra_pll_p_out3.reg);
+	*ctx++ = clk_readl(tegra_pll_p_out5.reg);
 
 	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
@@ -9452,6 +9453,9 @@ static void tegra12_clk_resume(void)
 	clk_writel(pll_p_out12 | val, tegra_pll_p_out1.reg);
 	pll_p_out34 = *ctx++;
 	clk_writel(pll_p_out34 | val, tegra_pll_p_out3.reg);
+
+	/* Restore as is, GPU is rail-gated, anyway */
+	clk_writel(*ctx++, tegra_pll_p_out5.reg);
 
 	tegra12_pllss_clk_resume_enable(&tegra_pll_c4);
 	tegra12_pllss_clk_resume_enable(&tegra_pll_d2);
