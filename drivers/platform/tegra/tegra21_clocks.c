@@ -7411,7 +7411,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2cslow",	"i2cslow",		NULL,	81,	0x3fc,	26000000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
+#ifdef CONFIG_TEGRA_SE_ON_CBUS
 	PERIPH_CLK("se",	"se",			NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+#else
+	PERIPH_CLK("se",	"tegra21-se",		NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+#endif
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	408000000, mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
@@ -7491,7 +7495,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("nvdec.cbus","tegra_nvdec",		"nvdec",&tegra_clk_cbus, "nvdec", 0, 0),
 	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
 	SHARED_CLK("tsecb.cbus","tegra_tsecb",		"tsecb", &tegra_clk_cbus, "tsecb", 0, 0),
+#ifdef CONFIG_TEGRA_SE_ON_CBUS
 	SHARED_CLK("se.cbus",	"tegra21-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
+#endif
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.cbus",	"cap_throttle",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
