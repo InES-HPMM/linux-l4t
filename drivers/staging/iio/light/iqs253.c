@@ -98,9 +98,15 @@ struct iqs253_chip {
 	u32			value;
 	struct regulator	*vddhi;
 	u32			using_regulator;
+#if defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 	struct lightsensor_spec	*ls_spec;
+#endif
 	struct workqueue_struct	*wq;
 	struct delayed_work	dw;
+#if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
+	struct workqueue_struct	*sar_wq;
+	struct delayed_work	sar_dw;
+#endif
 	struct input_dev	*idev;
 	u32			stylus_inserted;
 };
@@ -211,6 +217,7 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 	return 0;
 }
 
+#if defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 /* device's registration with iio to facilitate user operations */
 static ssize_t iqs253_chan_regulator_enable(
 		struct iio_dev *indio_dev, uintptr_t private,
@@ -378,6 +385,60 @@ static struct iio_info iqs253_iio_info = {
 	.read_raw = &iqs253_read_raw,
 	.attrs = &iqs253_attr_group,
 };
+
+#else
+static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
+{
+	int ret;
+	struct iqs253_chip *chip;
+
+	chip = container_of(ws, struct iqs253_chip, dw.work);
+
+	if (!chip->using_regulator) {
+		ret = regulator_enable(chip->vddhi);
+		if (ret)
+			goto finish;
+		chip->using_regulator = true;
+	}
+
+	if (chip->mode != NORMAL_MODE) {
+		ret = iqs253_set(chip, NORMAL_MODE);
+		if (ret)
+			goto finish;
+	}
+
+	ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
+	chip->value = -1;
+	if (ret >= 0) {
+		if ((ret >= 0) && (chip->mode == NORMAL_MODE)) {
+			ret = ret & PROXIMITY_ONLY;
+			/*
+			 * if both channel detect proximity => distance = 0;
+			 * if one channel detects proximity => distance = 1;
+			 * if no channel detects proximity => distance = 2;
+			 */
+			chip->value = (ret == (PROX_CH1 | PROX_CH2)) ? 0 :
+								ret ? 1 : 2;
+		}
+	}
+	if (chip->value == -1)
+		goto finish;
+	/* provide input to SAR */
+	if (chip->value)
+		gpio_direction_output(chip->sar_gpio, 0);
+	else
+		gpio_direction_output(chip->sar_gpio, 1);
+
+	ret = regulator_disable(chip->vddhi);
+	if (ret)
+		goto finish;
+	chip->using_regulator = false;
+
+finish:
+	queue_delayed_work(chip->wq, &chip->dw, msecs_to_jiffies(2000));
+}
+
+#endif /* CONFIG_SENSORS_IQS253_AS_PROXIMITY */
 
 #ifdef CONFIG_PM_SLEEP
 static int iqs253_suspend(struct device *dev)
@@ -552,6 +613,7 @@ static int iqs253_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, indio_dev);
 	iqs253_chip = iio_priv(indio_dev);
 
+#if defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 	iqs253_chip->ls_spec = of_get_ls_spec(&client->dev);
 	if (!iqs253_chip->ls_spec) {
 		dev_err(&client->dev,
@@ -561,8 +623,8 @@ static int iqs253_probe(struct i2c_client *client,
 	}
 
 	fill_ls_attrs(iqs253_chip->ls_spec, iqs253_attrs);
-	indio_dev->info = &iqs253_iio_info;
 	indio_dev->channels = iqs253_channels;
+	indio_dev->info = &iqs253_iio_info;
 	indio_dev->num_channels = 1;
 	indio_dev->name = id->name;
 	indio_dev->dev.parent = &client->dev;
@@ -574,6 +636,7 @@ static int iqs253_probe(struct i2c_client *client,
 			id->name, __func__, __LINE__);
 		goto err_iio_register;
 	}
+#endif
 
 	iqs253_chip->client = client;
 	iqs253_chip->id = id;
@@ -627,6 +690,19 @@ static int iqs253_probe(struct i2c_client *client,
 	if (!stylus_detect)
 		goto finish;
 
+#if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
+	iqs253_chip->sar_wq = create_freezable_workqueue("iqs253_sar");
+	if (!iqs253_chip->sar_wq) {
+		dev_err(&iqs253_chip->client->dev, "unable to create work queue\n");
+		goto err_gpio_request;
+	}
+
+	INIT_DELAYED_WORK(&iqs253_chip->sar_dw,
+				iqs253_sar_proximity_detect_work);
+
+	queue_delayed_work(iqs253_chip->sar_wq, &iqs253_chip->sar_dw, 0);
+#endif
+
 	idev = iqs253_stylus_input_init(iqs253_chip);
 	if (IS_ERR_OR_NULL(idev))
 		goto err_gpio_request;
@@ -639,9 +715,15 @@ finish:
 	return 0;
 
 err_gpio_request:
+#if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
+	if (iqs253_chip->sar_wq)
+		destroy_workqueue(iqs253_chip->sar_wq);
+#endif
 err_regulator_get:
+#if defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 	iio_device_unregister(indio_dev);
 err_iio_register:
+#endif
 	iio_device_free(indio_dev);
 
 	dev_err(&client->dev, "devname:%s func:%s line:%d probe failed\n",
@@ -654,13 +736,19 @@ static int iqs253_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct iqs253_chip *chip = iio_priv(indio_dev);
 	gpio_free(chip->rdy_gpio);
+#if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
+	if (chip->sar_wq)
+		destroy_workqueue(chip->sar_wq);
+#endif
 	if (chip->wq)
 		destroy_workqueue(chip->wq);
 	if (chip->idev) {
 		input_unregister_device(chip->idev);
 		input_free_device(chip->idev);
 	}
+#if defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 	iio_device_unregister(indio_dev);
+#endif
 	iio_device_free(indio_dev);
 	return 0;
 }
