@@ -275,6 +275,16 @@ config BACKLIGHT_TEGRA_PWM
 	  If you have a pwm backlight adjustable by the DC PM0 or PM1 signal
 	  control on tegra, say Y to enable this driver.
 
+config BACKLIGHT_TEGRA_DSI
+	bool "Tegra DSI based Backlight Driver"
+	depends on TEGRA_DC
+	depends on TEGRA_DSI
+	help
+	  Enable support for Tegra DSI backlight driver. If you have a
+	  backlight adjustable by sending DSI command for DSI panel, say Y
+	  to enable this driver. Providing backlight control sequence by
+	  following the format of Tegra DSI driver is also required.
+
 config BACKLIGHT_DA903X
 	tristate "Backlight Driver for DA9030/DA9034 using WLED"
 	depends on PMIC_DA903X
