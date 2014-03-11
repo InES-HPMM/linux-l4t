@@ -27,6 +27,7 @@
 #include "flowctrl.h"
 #include "pm-soc.h"
 #include "pm-tegra132.h"
+#include "denver-knobs.h"
 
 #define HALT_REG_CORE0 \
 	FLOW_CTRL_WAIT_FOR_INTERRUPT | \
@@ -39,6 +40,8 @@ static int tegra132_enter_sleep(unsigned long pmstate)
 {
 	u32 reg;
 	int cpu = smp_processor_id();
+
+	denver_set_bg_allowed(cpu, false);
 
 	reg = cpu ? HALT_REG_CORE1 : HALT_REG_CORE0;
 	flowctrl_write_cpu_halt(cpu, reg);
