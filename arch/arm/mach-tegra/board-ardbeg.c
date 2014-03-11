@@ -989,6 +989,23 @@ static struct rm_spi_ts_platform_data rm31080ts_norrin_data = {
 	.name_of_clock_con = "extern2",
 };
 
+struct rm_spi_ts_platform_data rm31080ts_t132loki_data = {
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_L005,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+};
+
+struct rm_spi_ts_platform_data rm31080ts_t132loki_data_jdi_5 = {
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_L005,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+	.gpio_sensor_select0 = false,
+	.gpio_sensor_select1 = true,
+};
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.tx_clk_tap_delay = 16,
@@ -1041,6 +1058,28 @@ static int __init ardbeg_touch_init(void)
 					&rm31080ts_norrin_data,
 					&rm31080a_norrin_spi_board[0],
 					ARRAY_SIZE(rm31080a_norrin_spi_board));
+		} else if ((board_info.board_id == BOARD_P2530) ||
+			(board_info.board_id == BOARD_E2548)) {
+			if (board_info.sku == BOARD_SKU_FOSTER)
+				return 0;
+			if (tegra_get_touch_panel_id() == TOUCHPANEL_LOKI_JDI5)
+				rm31080a_ardbeg_spi_board[0].platform_data =
+					&rm31080ts_t132loki_data_jdi_5;
+			else
+				rm31080a_ardbeg_spi_board[0].platform_data =
+					&rm31080ts_t132loki_data;
+			if (board_info.fab >= 0xa3) {
+				rm31080ts_t132loki_data.name_of_clock = NULL;
+				rm31080ts_t132loki_data.name_of_clock_con = NULL;
+			} else
+				tegra_clk_init_from_table(touch_clk_init_table);
+			rm31080a_ardbeg_spi_board[0].irq =
+				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+					TOUCH_GPIO_RST_RAYDIUM_SPI,
+					&rm31080ts_t132loki_data,
+					&rm31080a_ardbeg_spi_board[0],
+					ARRAY_SIZE(rm31080a_ardbeg_spi_board));
 		} else {
 			rm31080a_ardbeg_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);

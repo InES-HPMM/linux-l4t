@@ -698,16 +698,24 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 
 static void loki_suspend_dfll_bypass(void)
 {
-	__gpio_set_value(TEGRA_GPIO_PU6, 1); /* tristate external PWM buffer */
+	/* tristate external PWM buffer */
+	__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 1);
 }
 
 static void loki_resume_dfll_bypass(void)
 {
-	__gpio_set_value(TEGRA_GPIO_PU6, 0); /* enable PWM buffer operations */
+	/* enable PWM buffer operations */
+	__gpio_set_value(loki_cl_dvfs_data.u.pmu_pwm.out_gpio, 0);
 }
 static int __init loki_cl_dvfs_init(void)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
+	struct board_info bi;
+
+	tegra_get_board_info(&bi);
+	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xc0) {
+		loki_cl_dvfs_data.u.pmu_pwm.out_gpio = TEGRA_GPIO_PU1;
+	}
 
 	{
 		data = &loki_cl_dvfs_data;
@@ -796,7 +804,8 @@ static int __init loki_fixed_regulator_init(void)
 	struct board_info bi;
 
 
-	if (!of_machine_is_compatible("nvidia,loki"))
+	if ((!of_machine_is_compatible("nvidia,loki")) &&
+		(!of_machine_is_compatible("nvidia,t132loki")))
 		return 0;
 
 	tegra_get_board_info(&bi);
