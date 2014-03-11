@@ -155,6 +155,7 @@
 #define AS3722_ASIC_ID2_REG				0x91
 #define AS3722_LOCK_REG					0x9E
 #define AS3722_FUSE15					0xAF
+#define AS3722_ASIC_ID3_REG				0xCC
 #define AS3722_NCELL_MASK				0x03
 #define AS3722_MAX_REGISTER				0xF4
 

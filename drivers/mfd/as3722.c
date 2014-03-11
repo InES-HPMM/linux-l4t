@@ -238,30 +238,88 @@ static const struct regmap_irq_chip as3722_irq_chip = {
 	.mask_base = AS3722_INTERRUPT_MASK1_REG,
 };
 
+/* OTP version table
+ * Version: ID1(90h): ID2(91h): ID3(CCh[7:4])
+ * 1v0	0Ch	0h	0h
+ * 1v1	0Ch	1h	0h
+ * 1v2	0Ch	1h	0h
+ * 1v21	0Ch	1h	1h
+ *
+ * Note: for 1V1 and 1V2, the actual version is detected by platform data.
+ * If there is no platfrom data then use the 1V1.
+ */
 static int as3722_check_device_id(struct as3722 *as3722)
 {
-	u32 val;
+	u32 id1, id2, id3;
+	int major, minor;
 	int ret;
 
 	/* Check that this is actually a AS3722 */
-	ret = as3722_read(as3722, AS3722_ASIC_ID1_REG, &val);
+	ret = as3722_read(as3722, AS3722_ASIC_ID1_REG, &id1);
 	if (ret < 0) {
 		dev_err(as3722->dev, "ASIC_ID1 read failed: %d\n", ret);
 		return ret;
 	}
 
-	if (val != AS3722_DEVICE_ID) {
-		dev_err(as3722->dev, "Device is not AS3722, ID is 0x%x\n", val);
+	if (id1 != AS3722_DEVICE_ID) {
+		dev_err(as3722->dev, "Device is not AS3722, ID is 0x%x\n", id1);
 		return -ENODEV;
 	}
 
-	ret = as3722_read(as3722, AS3722_ASIC_ID2_REG, &val);
+	ret = as3722_read(as3722, AS3722_ASIC_ID2_REG, &id2);
 	if (ret < 0) {
 		dev_err(as3722->dev, "ASIC_ID2 read failed: %d\n", ret);
 		return ret;
 	}
 
-	dev_info(as3722->dev, "AS3722 with revision 0x%x found\n", val);
+	ret = as3722_read(as3722, AS3722_ASIC_ID3_REG, &id3);
+	if (ret < 0) {
+		dev_err(as3722->dev, "ASIC_ID3 read failed: %d\n", ret);
+		return ret;
+	}
+
+	dev_info(as3722->dev,
+		"AS3722 ID: ID1:ID2:ID3 = 0x%02x:0x%02x:0x%02x\n",
+		id1, id2, id3);
+
+	id3 = (id3 >> 4) & 0xF;
+	major = 1;
+	switch (id2) {
+	case 0:
+		if (id3 == 0) {
+			minor = 0;
+		} else {
+			dev_err(as3722->dev, "Non supported IDs\n");
+			return -ENODEV;
+		}
+		break;
+	case 1:
+		if (id3 == 0) {
+			minor = 1;
+		} else if (id3 == 1) {
+			minor = 21;
+		} else {
+			dev_err(as3722->dev, "Non supported IDs\n");
+			return -ENODEV;
+		}
+		break;
+	default:
+		dev_err(as3722->dev, "Non supported IDs\n");
+		return -ENODEV;
+	}
+
+	/* Override the major/minor for 1V1 and 1V2 only */
+	if (as3722->major_rev && as3722->minor_rev && (minor == 1)) {
+		dev_info(as3722->dev,
+			"Device version %dV%d and platform version %dV%d\n",
+			major, minor, as3722->major_rev, as3722->minor_rev);
+	} else {
+		as3722->major_rev = major;
+		as3722->minor_rev = minor;
+	}
+
+	dev_info(as3722->dev, "Final OTP version %dV%d\n",
+		as3722->major_rev, as3722->minor_rev);
 	return 0;
 }
 
