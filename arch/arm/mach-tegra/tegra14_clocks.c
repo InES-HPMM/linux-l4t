@@ -2656,7 +2656,7 @@ static void tegra14_pllcx_clk_resume_enable(struct clk *c)
 	c->state = OFF;
 	pllcx_set_defaults(c, rate, c->mul);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra14_pllcx_clk_set_rate(c, rate);
 	tegra14_pllcx_clk_enable(c);
 	c->state = state;
@@ -2943,7 +2943,7 @@ static void tegra14_pllxc_clk_resume_enable(struct clk *c)
 	else
 		pllc_set_defaults(c, rate);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra14_pllxc_clk_set_rate(c, rate);
 	tegra14_pllxc_clk_enable(c);
 	c->state = state;

@@ -3118,7 +3118,7 @@ static void tegra12_pllcx_clk_resume_enable(struct clk *c)
 	c->state = OFF;
 	pllcx_set_defaults(c, rate, c->mul);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra12_pllcx_clk_set_rate(c, rate);
 	tegra12_pllcx_clk_enable(c);
 	c->state = state;
@@ -3459,7 +3459,7 @@ static void tegra12_pllxc_clk_resume_enable(struct clk *c)
 	else
 		pllc_set_defaults(c, rate);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra12_pllxc_clk_set_rate(c, rate);
 	tegra12_pllxc_clk_enable(c);
 	c->state = state;
@@ -3861,7 +3861,7 @@ static void tegra12_pllss_clk_resume_enable(struct clk *c)
 	c->state = OFF;
 	pllss_set_defaults(c, rate);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra12_pllss_clk_set_rate(c, rate);
 	tegra12_pllss_clk_enable(c);
 	c->state = state;
@@ -4097,7 +4097,7 @@ static void tegra12_pllre_clk_resume_enable(struct clk *c)
 	pllre_set_defaults(c->parent, rate);
 
 	/* restore PLLRE VCO feedback loop (m, n) */
-	rate = clk_get_rate_all_locked(c->parent) + 1;
+	rate = clk_get_rate_all_locked(c->parent);
 	tegra12_pllre_clk_set_rate(c->parent, rate);
 
 	/* restore PLLRE post-divider */
