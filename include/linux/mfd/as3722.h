@@ -460,11 +460,31 @@ static inline int as3722_irq_get_virq(struct as3722 *as3722, int irq)
 static inline bool as3722_device_rev(struct as3722 *as3722, u32 major_rev,
 		u32 minor_rev)
 {
-
 	if ((as3722->major_rev == major_rev) &&
 			(as3722->minor_rev == minor_rev))
 		return true;
 	else
 		return false;
+}
+
+static inline bool as3722_device_rev_eq_later(struct as3722 *as3722,
+	u32 major_rev, u32 minor_rev)
+{
+	u32 minor;
+
+	if (as3722->major_rev < major_rev)
+		return false;
+
+	if (as3722->major_rev > major_rev)
+		return true;
+
+	minor = as3722->minor_rev;
+	if (as3722->minor_rev >= 10)
+		minor = as3722->minor_rev / 10;
+
+	if (minor < minor_rev)
+		return false;
+
+	return true;
 }
 #endif

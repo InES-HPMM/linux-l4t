@@ -863,17 +863,12 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 				ops = &as3722_sd016_extcntrl_ops;
 			else
 				ops = &as3722_sd016_ops;
-			if (id == AS3722_REGULATOR_ID_SD0) {
-				/* AMS version revision id is wrong in silicon
-				 * and therefore this woraround to decide based
-				 * on boardID
-				 */
-				if (as3722_device_rev(as3722, 1, 2))
-					as3722_regs->desc[id].min_uV = 410000;
-				else
-					as3722_regs->desc[id].min_uV = 610000;
-			} else
-				as3722_regs->desc[id].min_uV = 610000;
+			as3722_regs->desc[id].min_uV = 610000;
+			/* AS3722 1V2/later for SD0 has mini_uV 410000 */
+			if ((id == AS3722_REGULATOR_ID_SD0) &&
+				as3722_device_rev_eq_later(as3722, 1, 2))
+				as3722_regs->desc[id].min_uV = 410000;
+
 			as3722_regs->desc[id].uV_step = 10000;
 			as3722_regs->desc[id].linear_min_sel = 1;
 			as3722_regs->desc[id].enable_time = 275;
