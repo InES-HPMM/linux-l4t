@@ -94,9 +94,7 @@ static u32 fuse_pgm_mask[NFUSES / 2];
 static u32 tmp_fuse_pgm_data[NFUSES / 2];
 
 static struct fuse_data fuse_info;
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static struct regulator *fuse_regulator;
-#endif
 static struct clk *clk_fuse;
 
 struct param_info {
@@ -966,9 +964,7 @@ int tegra_fuse_program(struct device *dev,
 	u32 reg;
 	int i = 0;
 	int index;
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	int ret;
-#endif
 	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
@@ -981,12 +977,10 @@ int tegra_fuse_program(struct device *dev,
 		return -ENODEV;
 	}
 
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (IS_ERR(fuse_regulator)) {
 		dev_err(dev, "fuse regulator is NULL");
 		return -ENODEV;
 	}
-#endif
 
 	if (fuse_odm_prod_mode() && !(flags &
 				(FLAGS_ODMRSVD | FLAGS_ODM_LOCK))) {
@@ -1038,11 +1032,9 @@ int tegra_fuse_program(struct device *dev,
 			fuse_info_tbl[i].sz);
 	}
 
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	ret = regulator_enable(fuse_regulator);
 	if (ret)
 		BUG_ON("regulator enable fail\n");
-#endif
 
 	populate_fuse_arrs(dev, &fuse_info, flags);
 
@@ -1053,9 +1045,7 @@ int tegra_fuse_program(struct device *dev,
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	regulator_disable(fuse_regulator);
-#endif
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
@@ -1232,12 +1222,11 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 {
 	struct resource *fuse_res;
 
-#ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* get fuse_regulator regulator */
 	fuse_regulator = devm_regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
 	if (IS_ERR(fuse_regulator))
-		dev_err(&pdev->dev, "no fuse_regulator, fuse write disabled\n");
-#endif
+		pr_err("%s: no fuse_regulator. fuse write disabled\n",
+				__func__);
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR(clk_fuse)) {

@@ -443,30 +443,6 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out5", "pll_p",	102000000,	true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	{ "pll_m_out1",	"pll_m",	275000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "pll_p_out2",	"pll_p",	108000000,	false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "sclk",	"pll_p_out2",	108000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "pll_p_out4",	"pll_p",	216000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "hclk",	"sclk",		108000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "pclk",	"hclk",		54000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "mselect",	"pll_p",	108000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "host1x",	"pll_p",	108000000,	false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "cl_dvfs_ref", "clk_m",	13000000,	false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "cl_dvfs_soc", "clk_m",	13000000,	false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "vde",	"pll_c3",	48400000,	true,
-		TEGRA_CLK_INIT_CPU_ASIM},
-#endif
 #ifdef CONFIG_TEGRA_SLOW_CSITE
 	{ "csite",	"clk_m",	1000000,	true },
 #else
@@ -2428,18 +2404,6 @@ early_param("tegra_split_mem", set_tegra_split_mem);
 #define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
 #define RAM_CODE_SHIFT 4
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-static enum tegra_platform tegra_platform;
-static bool cpu_is_asim;
-static bool cpu_is_dsim;
-static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
-	[TEGRA_PLATFORM_SILICON] = "silicon",
-	[TEGRA_PLATFORM_QT]      = "quickturn",
-	[TEGRA_PLATFORM_LINSIM]  = "linsim",
-	[TEGRA_PLATFORM_FPGA]    = "fpga",
-};
-#endif
-
 static u32 tegra_chip_sku_id;
 static u32 tegra_chip_id;
 static u32 tegra_chip_bct_strapping;
@@ -2538,14 +2502,6 @@ void tegra_init_fuse(void)
 		tegra_revision_name[tegra_revision],
 		sku_id, tegra_cpu_process_id(),
 		tegra_core_process_id());
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	if (!tegra_platform_is_silicon()) {
-		pr_info("Tegra Platform: %s%s%s\n",
-			tegra_cpu_is_asim() ? "ASIM+" : "",
-			tegra_cpu_is_dsim() ? "DSIM+" : "",
-			tegra_platform_name[tegra_platform]);
-	}
-#endif
 }
 
 void __init display_tegra_dt_info(void)

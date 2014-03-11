@@ -1126,12 +1126,6 @@ void __init tegra12x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_GPU_DVFS
 	tegra_dvfs_gpu_disabled = true;
 #endif
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	if (!tegra_platform_is_silicon()) {
-		tegra_dvfs_core_disabled = true;
-		tegra_dvfs_cpu_disabled = true;
-	}
-#endif
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail

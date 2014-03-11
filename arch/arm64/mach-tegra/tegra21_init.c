@@ -67,26 +67,6 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out5", "pll_p",        102000000,      true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	{ "pll_p_out2", "pll_p",        108000000,      false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "sclk",       "pll_p_out2",   108000000,      true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "pll_p_out4", "pll_p",        216000000,      true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "hclk",       "sclk",         108000000,      true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "pclk",       "hclk",         54000000,       true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "mselect",    "pll_p",        108000000,      true,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "host1x",     "pll_p",        108000000,      false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "cl_dvfs_ref", "clk_m",       13000000,       false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-	{ "cl_dvfs_soc", "clk_m",       13000000,       false,
-		TEGRA_CLK_INIT_PLATFORM_NON_SI },
-#endif
 #ifdef CONFIG_TEGRA_SLOW_CSITE
 	{ "csite",      "clk_m",        1000000,        true },
 #else

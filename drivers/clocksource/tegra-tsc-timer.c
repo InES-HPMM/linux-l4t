@@ -46,26 +46,6 @@ static u32 arch_timer_us_mult, arch_timer_us_shift;
 bool arch_timer_initialized;
 static struct delay_timer arch_delay_timer;
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
-/* Time Stamp Counter (TSC) base address */
-static void __iomem *tsc;
-#endif
-
-#define TSC_CNTCR		0		/* TSC control registers */
-#define TSC_CNTCR_ENABLE	(1 << 0)	/* Enable*/
-#define TSC_CNTCR_HDBG		(1 << 1)	/* Halt on debug */
-
-#define TSC_CNTCV0		0x8		/* TSC counter (LSW) */
-#define TSC_CNTCV1		0xC		/* TSC counter (MSW) */
-#define TSC_CNTFID0		0x20		/* TSC freq id 0 */
-
-#define tsc_writel(value, reg) \
-	__raw_writel(value, tsc + (reg))
-#define tsc_readl(reg) \
-	__raw_readl(tsc + (reg))
-#endif /* CONFIG_TEGRA_PRE_SILICON_SUPPORT */
-
 /* Is the optional system timer available? */
 static int local_timer_is_architected(void)
 {
@@ -84,9 +64,6 @@ static unsigned long arch_timer_read_current_timer(void)
 void __init tegra_cpu_timer_init(void)
 {
 	u32 tsc_ref_freq;
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	u32 reg;
-#endif
 
 	if (!local_timer_is_architected())
 		return;
@@ -101,26 +78,6 @@ void __init tegra_cpu_timer_init(void)
 		pr_info("fake tsc_ref_req=%d in QT\n", tsc_ref_freq);
 	}
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	if (tegra_platform_is_linsim()) {
-		/* Set the Timer System Counter (TSC) reference frequency
-		   NOTE: this is a write once register */
-		tsc_writel(tsc_ref_freq, TSC_CNTFID0);
-
-		/* Program CNTFRQ to the same value.
-		   NOTE: this is a write once (per CPU reset) register. */
-		__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
-
-		/* CNTFRQ must agree with the TSC reference frequency. */
-		__asm__("mrc p15, 0, %0, c14, c0, 0\n" : "=r" (reg));
-		BUG_ON(reg != tsc_ref_freq);
-
-		/* Enable the TSC. */
-		reg = tsc_readl(TSC_CNTCR);
-		reg |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
-		tsc_writel(reg, TSC_CNTCR);
-	}
-#endif
 	clocks_calc_mult_shift(&arch_timer_us_mult, &arch_timer_us_shift,
 				tsc_ref_freq, USEC_PER_SEC, 0);
 
@@ -217,17 +174,3 @@ int tegra_cpu_timer_get_remain(s64 *time)
 
 	return ret;
 }
-
-
-#if defined(CONFIG_TEGRA_PRE_SILICON_SUPPORT) && \
-			!defined(CONFIG_TRUSTED_FOUNDATIONS)
-static void __init tegra_init_tsc(struct device_node *np)
-{
-	tsc = of_iomap(np, 0);
-	if (!tsc) {
-		pr_err("%s: Can't map tsc registers", __func__);
-		BUG();
-	}
-}
-CLOCKSOURCE_OF_DECLARE(tegra_tsc, "nvidia,tegra-tsc", tegra_init_tsc);
-#endif

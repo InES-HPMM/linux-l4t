@@ -37,10 +37,6 @@
 #include <linux/ktime.h>
 #endif
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#include <linux/tegra-soc.h>
-#endif
-
 #include "sdhci.h"
 
 #define DRIVER_NAME "sdhci"
@@ -1529,10 +1525,6 @@ clock_set:
 	if (real_div)
 		host->mmc->actual_clock = (host->max_clk * clk_mul) / real_div;
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-	if (tegra_platform_is_fpga() && clock > 400000)
-		div = 1;
-#endif
 	clk |= (div & SDHCI_DIV_MASK) << SDHCI_DIVIDER_SHIFT;
 	clk |= ((div & SDHCI_DIV_HI_MASK) >> SDHCI_DIV_MASK_LEN)
 		<< SDHCI_DIVIDER_HI_SHIFT;
