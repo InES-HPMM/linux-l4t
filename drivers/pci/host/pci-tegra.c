@@ -379,17 +379,17 @@ static unsigned long tegra_pcie_conf_offset(unsigned int devfn, int where)
 
 static struct tegra_pcie_bus *tegra_pcie_bus_alloc(unsigned int busnr)
 {
+	phys_addr_t cs = (phys_addr_t)PCIE_CFG_OFF;
+	struct tegra_pcie_bus *bus;
+	unsigned int i;
+	int err;
 #ifndef CONFIG_ARM64
 	pgprot_t prot = L_PTE_PRESENT | L_PTE_YOUNG | L_PTE_DIRTY | L_PTE_XN |
 			L_PTE_MT_DEV_SHARED | L_PTE_SHARED;
 #else
 	pgprot_t prot = PTE_PRESENT | PTE_YOUNG | PTE_DIRTY | PTE_XN | PTE_SHARED;
-	pgprot_dmacoherent(prot); /* L_PTE_MT_DEV_SHARED */
+	(void)pgprot_dmacoherent(prot); /* L_PTE_MT_DEV_SHARED */
 #endif
-	phys_addr_t cs = (phys_addr_t)PCIE_CFG_OFF;
-	struct tegra_pcie_bus *bus;
-	unsigned int i;
-	int err;
 
 	PR_FUNC_LINE;
 	bus = kzalloc(sizeof(*bus), GFP_KERNEL);
@@ -2133,7 +2133,7 @@ static irqreturn_t tegra_pcie_msi_isr(int irq, void *arg)
 static bool tegra_pcie_enable_msi(bool no_init)
 {
 	u32 reg;
-	static u32 msi_base;
+	static uintptr_t msi_base;
 
 	PR_FUNC_LINE;
 	if (!msi_base) {
