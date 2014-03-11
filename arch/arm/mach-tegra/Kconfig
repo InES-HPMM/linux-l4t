@@ -136,7 +136,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
-	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
+	select TEGRA_MC_PTSA
 	select TEGRA_VDD_CORE_OVERRIDE if TEGRA_EMC_SCALING_ENABLE
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_EHCI_TEGRA if USB_SUPPORT
@@ -277,7 +277,6 @@ comment "Tegra board type"
 config MACH_BONAIRE
        bool "Bonaire board"
        depends on ARCH_TEGRA_12x_SOC
-       select TEGRA_FPGA_PLATFORM
        help
          Support for NVIDIA Bonaire FPGA development platform
 
@@ -379,14 +378,6 @@ config TEGRA_SIMULATION_PLATFORM
           Select this only if you are an NVIDIA developer working
           on a simulation platform.
 
-config TEGRA_FPGA_PLATFORM
-        bool "FPGA"
-	select LESS_GCC_OPT if DEBUG_KERNEL
-	select READABLE_ASM if DEBUG_KERNEL
-        help
-          This enables support for a Tegra FPGA platform.
-          Select this only if you are an NVIDIA developer working
-          on a FPGA platform.
 endchoice
 
 config TEGRA_SIMULATION_SPLIT_MEM

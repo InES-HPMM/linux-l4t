@@ -162,14 +162,12 @@ cpu_not_secure:
 #endif /* CONFIG_ARCH_TEGRA_3x_SOC || CONFIG_ARCH_TEGRA_14x_SOC */
 	str	r0, [r3, #L2X0_TAG_LATENCY_CTRL]
 	str	r1, [r3, #L2X0_DATA_LATENCY_CTRL]
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	mov32	r0, 0x40000007	/* Enable double line fill */
 #else
 	mov	r0, #7
 #endif
 	str	r0, [r3, #L2X0_PREFETCH_CTRL]
-#endif /* !CONFIG_TEGRA_FPGA_PLATFORM */
 	mov	r0, #3
 	str	r0, [r3, #L2X0_POWER_CTRL]
 	/* figure out aux ctrl */

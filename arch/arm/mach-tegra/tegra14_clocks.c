@@ -3171,15 +3171,6 @@ static void __init tegra14_dfll_cpu_late_init(struct clk *c)
 	}
 	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	u32 netlist, patchid;
-	tegra_get_netlist_revision(&netlist, &patchid);
-	if (netlist < 12) {
-		pr_err("%s: CL-DVFS is not available on net %d\n",
-		       __func__, netlist);
-		return;
-	}
-#endif
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
 	tegra_periph_reset_deassert(c);

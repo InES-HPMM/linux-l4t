@@ -4272,7 +4272,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_HS200)
 		host->mmc->caps2 |= MMC_CAP2_HS200;
-
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
