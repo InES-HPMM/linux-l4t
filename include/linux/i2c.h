@@ -424,6 +424,7 @@ struct i2c_adapter {
 	struct device dev;		/* the adapter device */
 
 	bool cancel_xfer_on_shutdown;
+	bool atomic_xfer_only;
 
 	int nr;
 	char name[48];
