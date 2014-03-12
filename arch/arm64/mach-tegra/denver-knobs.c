@@ -127,6 +127,10 @@ void denver_set_bg_allowed(int cpu, bool enable)
 		regval <<= BG_CLR_SHIFT;
 
 	asm volatile("msr s3_0_c15_c0_2, %0" : : "r" (regval));
+
+	/* Flush all background work for disable */
+	if (!enable)
+		while (denver_get_bg_allowed(cpu));
 }
 
 #ifdef CONFIG_DEBUG_FS
