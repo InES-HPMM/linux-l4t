@@ -119,7 +119,7 @@
 			compatible = "solteam-opto,jsa1127";
 			reg = <0x39>;
 			solteam-opto,rint = <100>;
-			solteam-opto,integration-time = <200>;
+			solteam-opto,integration-time = <2000>;
 			solteam-opto,use-internal-integration-timing = <1>;
 			solteam-opto,tint-coeff = <22>;
 			solteam-opto,noisy = <1>;
