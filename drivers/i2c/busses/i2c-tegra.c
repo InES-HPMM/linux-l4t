@@ -1235,8 +1235,12 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (i2c_dev->is_suspended)
 		return -EBUSY;
 
-	if (i2c_dev->is_shutdown && i2c_dev->bit_banging_xfer_after_shutdown)
+	if ((i2c_dev->is_shutdown || adap->atomic_xfer_only)
+		&& i2c_dev->bit_banging_xfer_after_shutdown)
 		return tegra_i2c_gpio_xfer(adap, msgs, num);
+
+	if (adap->atomic_xfer_only)
+		return -EBUSY;
 
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
