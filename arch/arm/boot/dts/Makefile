@@ -248,6 +248,22 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-e1791.dtb \
 	tegra124-e1922.dtb \
 	tegra124-e1923.dtb \
+	tegra124-tn8-e1780-1100-a02-01.dtb \
+	tegra124-tn8-e1780-1100-a02-battery.dtb \
+	tegra124-tn8-e1780-1100-a02.dtb \
+	tegra124-tn8-e1780-1100-a03-01-battery.dtb \
+	tegra124-tn8-e1780-1100-a03-01.dtb \
+	tegra124-tn8-e1780-1100-a03-battery.dtb \
+	tegra124-tn8-e1780-1100-a03.dtb \
+	tegra124-tn8-e1784-1101-a00-battery.dtb \
+	tegra124-tn8-e1784-1101-a00.dtb \
+	tegra124-tn8-e1922-1100-a00.dtb \
+	tegra124-tn8-p1761-1270-a00-battery.dtb \
+	tegra124-tn8-p1761-1270-a00.dtb \
+	tegra124-tn8-p1761-1270-a02-battery.dtb \
+	tegra124-tn8-p1761-1270-a02.dtb \
+	tegra124-tn8-p1761-1470-a00-battery.dtb \
+	tegra124-tn8-p1761-1470-a00.dtb \
 	tegra124-ardbeg_sata.dtb \
 	tegra124-vcm30_t124.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
