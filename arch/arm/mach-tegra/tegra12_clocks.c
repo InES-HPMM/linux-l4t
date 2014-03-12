@@ -3753,9 +3753,8 @@ static void tegra12_pllss_clk_init(struct clk *c)
 	c->div = m * pllss_p[p_div];
 	c->mul = n;
 
-	/* FIXME: hack for bringup */
-	pr_info("%s: val=%08x m=%d n=%d p_div=%d input_rate=%lu\n",
-		c->name, val, m, n, p_div, input_rate);
+	pr_debug("%s: val=%08x m=%d n=%d p_div=%d input_rate=%lu\n",
+		 c->name, val, m, n, p_div, input_rate);
 
 }
 
