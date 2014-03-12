@@ -692,13 +692,14 @@ static void get_fuse(enum fuse_io_param io_param, u32 *out)
 	} while (nbits > 0);
 }
 
-int tegra_fuse_read(enum fuse_io_param io_param, u32 *data, int size)
+int tegra_fuse_read(struct device *dev,
+		enum fuse_io_param io_param, u32 *data, int size)
 {
 	int nbits;
 	u32 sbk[4], devkey = 0;
 
 	if (IS_ERR_OR_NULL(clk_fuse)) {
-		pr_err("fuse read disabled");
+		dev_err(dev, "fuse read disabled");
 		return -ENODEV;
 	}
 
@@ -706,8 +707,9 @@ int tegra_fuse_read(enum fuse_io_param io_param, u32 *data, int size)
 		return -EINVAL;
 
 	if (size != fuse_info_tbl[io_param].sz) {
-		pr_err("%s: size mismatch(%d), %d vs %d\n", __func__,
-			(int)io_param, size, fuse_info_tbl[io_param].sz);
+		dev_err(dev, "size mismatch(%d), %d vs %d\n",
+				(int)io_param, size,
+				fuse_info_tbl[io_param].sz);
 		return -EINVAL;
 	}
 
@@ -776,7 +778,8 @@ static void set_fuse(enum fuse_io_param io_param, u32 *data)
 	} while (nbits > 0);
 }
 
-static void populate_fuse_arrs(struct fuse_data *info, u32 flags)
+static void populate_fuse_arrs(struct device *dev,
+		struct fuse_data *info, u32 flags)
 {
 	u32 *src = (u32 *)info;
 	int i;
@@ -797,7 +800,7 @@ static void populate_fuse_arrs(struct fuse_data *info, u32 flags)
 		set_fuse(i, src + fuse_info_tbl[i].data_offset);
 
 out:
-	pr_debug("ready to program");
+	dev_dbg(dev, "ready to program");
 }
 
 static void fuse_power_enable(void)
@@ -812,7 +815,7 @@ static void fuse_power_disable(void)
 	udelay(1);
 }
 
-static void fuse_program_array(int pgm_cycles)
+static void fuse_program_array(struct device *dev, int pgm_cycles)
 {
 	u32 reg, fuse_val[2];
 	u32 *data = tmp_fuse_pgm_data, addr = 0, *mask = fuse_pgm_mask;
@@ -858,7 +861,7 @@ static void fuse_program_array(int pgm_cycles)
 
 	for (addr = 0; addr < NFUSES; addr += 2, data++, mask++) {
 		reg = fuse_cmd_read(addr);
-		pr_debug("%d: 0x%x 0x%x 0x%x\n", addr, (u32)(*data),
+		dev_dbg(dev, "%d: 0x%x 0x%x 0x%x\n", addr, (u32)(*data),
 			~reg, (u32)(*mask));
 		*data = (*data & ~reg) & *mask;
 	}
@@ -900,7 +903,8 @@ static void fuse_program_array(int pgm_cycles)
 
 }
 
-static int fuse_set(enum fuse_io_param io_param, u32 *param, int size)
+static int fuse_set(struct device *dev,
+		enum fuse_io_param io_param, u32 *param, int size)
 {
 	int i, nwords = size / sizeof(u32);
 	u32 *data;
@@ -910,7 +914,7 @@ static int fuse_set(enum fuse_io_param io_param, u32 *param, int size)
 
 	data = kzalloc(size, GFP_KERNEL);
 	if (!data) {
-		pr_err("failed to alloc %d bytes\n", size);
+		dev_err(dev, "failed to alloc %d bytes\n", size);
 		return -ENOMEM;
 	}
 
@@ -961,7 +965,8 @@ static int fuse_get_pgm_cycles(int index)
 	return cycles;
 }
 
-int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
+int tegra_fuse_program(struct device *dev,
+		struct fuse_data *pgm_data, u32 flags)
 {
 	u32 reg;
 	int i = 0;
@@ -972,32 +977,32 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	int fuse_pgm_cycles;
 
 	if (!pgm_data || !flags) {
-		pr_err("invalid parameter");
+		dev_err(dev, "invalid parameter");
 		return -EINVAL;
 	}
 
 	if (IS_ERR_OR_NULL(clk_fuse)) {
-		pr_err("fuse clk is NULL");
+		dev_err(dev, "fuse clk is NULL");
 		return -ENODEV;
 	}
 
 #ifndef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (IS_ERR(fuse_regulator)) {
-		pr_err("fuse regulator is NULL");
+		dev_err(dev, "fuse regulator is NULL");
 		return -ENODEV;
 	}
 #endif
 
 	if (fuse_odm_prod_mode() && !(flags &
 				(FLAGS_ODMRSVD | FLAGS_ODM_LOCK))) {
-		pr_err("Non ODM reserved fuses cannot be burnt after ODM"
+		dev_err(dev, "Non ODM reserved fuses cannot be burnt after ODM"
 			"production mode/secure mode fuse is burnt");
 		return -EPERM;
 	}
 
 	if ((flags & FLAGS_ODM_PROD_MODE) &&
 		(flags & (FLAGS_SBK | FLAGS_DEVKEY))) {
-		pr_err("odm production mode and sbk/devkey not allowed");
+		dev_err(dev, "odm production mode and sbk/devkey not allowed");
 		return -EPERM;
 	}
 
@@ -1011,8 +1016,8 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	fuse_pgm_cycles = fuse_get_pgm_cycles(index);
-	pr_debug("%s: use %d programming cycles\n", __func__,
-						fuse_pgm_cycles);
+	dev_dbg(dev, "use %d programming cycles\n",
+			fuse_pgm_cycles);
 	if (fuse_pgm_cycles == 0)
 		return -EPERM;
 
@@ -1023,7 +1028,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	reg = fuse_readl(FUSE_DIS_PGM);
 	mutex_unlock(&fuse_lock);
 	if (reg) {
-		pr_err("fuse programming disabled");
+		dev_err(dev, "fuse programming disabled");
 		clk_disable(clk_fuse);
 		return -EACCES;
 	}
@@ -1034,7 +1039,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	mutex_lock(&fuse_lock);
 	memcpy(&fuse_info, pgm_data, sizeof(fuse_info));
 	for_each_set_bit(i, (unsigned long *)&flags, MAX_PARAMS) {
-		fuse_set((u32)i, fuse_info_tbl[i].addr,
+		fuse_set(dev, (u32)i, fuse_info_tbl[i].addr,
 			fuse_info_tbl[i].sz);
 	}
 
@@ -1044,12 +1049,12 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		BUG_ON("regulator enable fail\n");
 #endif
 
-	populate_fuse_arrs(&fuse_info, flags);
+	populate_fuse_arrs(dev, &fuse_info, flags);
 
 	/* FIXME: Ideally, this delay should not be present */
 	mdelay(1);
 
-	fuse_program_array(fuse_pgm_cycles);
+	fuse_program_array(dev, fuse_pgm_cycles);
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
@@ -1085,14 +1090,6 @@ static int char_to_xdigit(char c)
 		(c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1;
 }
 
-#define CHK_ERR(x) \
-{ \
-	if (x) { \
-		pr_err("%s: sysfs_create_file fail(%d)!", __func__, x); \
-		return x; \
-	} \
-}
-
 ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t count)
 {
@@ -1105,7 +1102,7 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 	struct wake_lock fuse_wk_lock;
 
 	if ((param == -1) || (param == -ENODATA)) {
-		pr_err("%s: invalid fuse\n", __func__);
+		dev_err(dev, "invalid fuse\n");
 		return -EINVAL;
 	}
 
@@ -1114,8 +1111,8 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 
 	if (fuse_odm_prod_mode() && (param != ODM_RSVD)
 					&& (param != ODM_LOCK)) {
-		pr_err("%s: Non ODM reserved fuses cannot be burnt after"
-		"ODM production mode/secure mode fuse is burnt\n", __func__);
+		dev_err(dev, "Non ODM reserved fuses cannot be burnt after...\n");
+		dev_err(dev, "..ODM production mode/secure mode fuse is burnt\n");
 		return -EPERM;
 	}
 
@@ -1130,8 +1127,8 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 
 	count--;
 	if (DIV_ROUND_UP(count, 2) > fuse_info_tbl[param].sz) {
-		pr_err("%s: fuse parameter too long, should be %d character(s)\n",
-			__func__, fuse_info_tbl[param].sz * 2);
+		dev_err(dev, "fuse parameter too long, should be %d character(s)\n",
+				fuse_info_tbl[param].sz * 2);
 		return -EINVAL;
 	}
 
@@ -1160,33 +1157,33 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 		}
 	}
 
-	ret = tegra_fuse_program(&data, BIT(param));
+	ret = tegra_fuse_program(dev, &data, BIT(param));
 	if (ret) {
-		pr_err("%s: fuse program fail(%d)\n", __func__, ret);
+		dev_err(dev, "fuse program fail(%d)\n", ret);
 		orig_count = ret;
 		goto done;
 	}
 
 	/* if odm prodn mode fuse is burnt, change file permissions to 0440 */
 	if (param == ODM_PROD_MODE) {
-		CHK_ERR(sysfs_chmod_file(&dev->kobj, &attr->attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj, &dev_attr_device_key.attr,
-								0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
+					&attr->attr, 0440));
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
+					&dev_attr_device_key.attr, 0440));
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 					&dev_attr_jtag_disable.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 					&dev_attr_sec_boot_dev_cfg.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 					&dev_attr_sec_boot_dev_sel.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 					&dev_attr_secure_boot_key.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 					&dev_attr_sw_reserved.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+		CHK_ERR(dev, sysfs_chmod_file(&dev->kobj,
 				&dev_attr_ignore_dev_sel_straps.attr, 0440));
-		tegra_fuse_ch_sysfs_perm(&dev->kobj);
+		tegra_fuse_ch_sysfs_perm(dev, &dev->kobj);
 	}
-
 
 done:
 	wake_unlock(&fuse_wk_lock);
@@ -1203,19 +1200,19 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 	int ret, i;
 
 	if ((param == -1) || (param == -ENODATA)) {
-		pr_err("%s: invalid fuse\n", __func__);
+		dev_err(dev, "invalid fuse\n");
 		return -EINVAL;
 	}
 
 	if ((param == SBK) && fuse_odm_prod_mode()) {
-		pr_err("device locked. sbk read not allowed\n");
+		dev_err(dev, "device locked. sbk read not allowed\n");
 		return 0;
 	}
 
 	memset(data, 0, sizeof(data));
-	ret = tegra_fuse_read(param, data, fuse_info_tbl[param].sz);
+	ret = tegra_fuse_read(dev, param, data, fuse_info_tbl[param].sz);
 	if (ret) {
-		pr_err("%s: read fail(%d)\n", __func__, ret);
+		dev_err(dev, "read fail(%d)\n", ret);
 		return ret;
 	}
 
@@ -1230,8 +1227,8 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 }
 
 static struct of_device_id tegra_fuse_of_match[] = {
-	{ .compatible = "nvidia, tegra114-efuse", },
-	{ .compatible = "nvidia, tegra124-efuse", },
+	{ .compatible = "nvidia,tegra114-efuse", },
+	{ .compatible = "nvidia,tegra124-efuse", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, tegra_fuse_of_match);
@@ -1244,13 +1241,12 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	/* get fuse_regulator regulator */
 	fuse_regulator = devm_regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
 	if (IS_ERR(fuse_regulator))
-		pr_err("%s: no fuse_regulator. fuse write disabled\n",
-				__func__);
+		dev_err(&pdev->dev, "no fuse_regulator, fuse write disabled\n");
 #endif
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR(clk_fuse)) {
-		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
+		dev_err(&pdev->dev, "no clk_fuse. fuse read/write disabled\n");
 		return -ENODEV;
 	}
 
@@ -1277,25 +1273,26 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	}
 	dev_attr_odm_reserved.attr.mode = 0640;
 
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_odm_production_mode.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_device_key.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
-						&dev_attr_jtag_disable.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_device_key.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_jtag_disable.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_sec_boot_dev_cfg.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_sec_boot_dev_sel.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_secure_boot_key.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_sw_reserved.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_ignore_dev_sel_straps.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 					&dev_attr_odm_reserved.attr));
 #ifdef CONFIG_AID_FUSE
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 					&dev_attr_aid.attr));
 #endif
 	tegra_fuse_add_sysfs_variables(pdev, fuse_odm_prod_mode());

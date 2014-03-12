@@ -130,6 +130,14 @@ enum {
 #define FLAGS_VP8_EN			BIT(VP8_ENABLE)
 #define FLAGS_ODM_LOCK			BIT(ODM_LOCK)
 
+#define CHK_ERR(dev, err) \
+{ \
+	if (err) { \
+		dev_err(dev, "sysfs_create_file fail(%d)!", err); \
+		return err; \
+	} \
+}
+
 struct fuse_data {
 	u32 devkey;
 	u32 jtag_dis;

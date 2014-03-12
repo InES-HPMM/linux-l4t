@@ -15,6 +15,7 @@
  */
 
 #include <linux/tegra-soc.h>
+#include "fuse.h"
 
 #ifndef __TEGRA12x_FUSE_OFFSETS_H
 #define __TEGRA12x_FUSE_OFFSETS_H
@@ -118,14 +119,6 @@
 #define TEGRA_FUSE_SUPPLY	"vpp_fuse"
 
 #define PGM_TIME_US 12
-
-#define CHK_ERR(x) \
-{ \
-	if (x) { \
-		pr_err("%s: sysfs_create_file fail(%d)!", __func__, x); \
-		return x; \
-	} \
-}
 
 DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
@@ -412,10 +405,14 @@ int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 		dev_attr_pkc_disable.attr.mode = 0640;
 		dev_attr_vp8_enable.attr.mode = 0640;
 	}
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_public_key.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_pkc_disable.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_vp8_enable.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_odm_lock.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_public_key.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_pkc_disable.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_vp8_enable.attr));
+	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_odm_lock.attr));
 
 	return 0;
 }
@@ -430,11 +427,14 @@ int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
 	return 0;
 }
 
-int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
+int tegra_fuse_ch_sysfs_perm(struct device *dev, struct kobject *kobj)
 {
-	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_public_key.attr, 0440));
-	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_pkc_disable.attr, 0440));
-	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_vp8_enable.attr, 0440));
+	CHK_ERR(dev, sysfs_chmod_file(kobj,
+				&dev_attr_public_key.attr, 0440));
+	CHK_ERR(dev, sysfs_chmod_file(kobj,
+				&dev_attr_pkc_disable.attr, 0440));
+	CHK_ERR(dev, sysfs_chmod_file(kobj,
+				&dev_attr_vp8_enable.attr, 0440));
 
 	return 0;
 }
