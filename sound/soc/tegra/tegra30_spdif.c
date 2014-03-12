@@ -5,7 +5,7 @@
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2013 NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2009-2014 NVIDIA Corporation.  All Rights Reserved.
  * Scott Peterson <speterson@nvidia.com>
  *
  * Copyright (C) 2010 Google, Inc.
@@ -37,7 +37,6 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/clk/tegra.h>
-#include <mach/hdmi-audio.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -218,7 +217,6 @@ static int tegra30_spdif_hw_params(struct snd_pcm_substream *substream,
 	spdif->reg_ctrl &= ~TEGRA30_SPDIF_CTRL_BIT_MODE_MASK;
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-		spdif->reg_ctrl |= TEGRA30_SPDIF_CTRL_PACK_ENABLE;
 		spdif->reg_ctrl |= TEGRA30_SPDIF_CTRL_BIT_MODE_16BIT;
 		break;
 	default:
@@ -285,21 +283,6 @@ static int tegra30_spdif_hw_params(struct snd_pcm_substream *substream,
 	ret = clk_set_rate(spdif->clk_spdif_out, spdifclock);
 	if (ret) {
 		dev_err(dev, "Can't set SPDIF clock rate: %d\n", ret);
-		return ret;
-	}
-
-	tegra30_spdif_enable_clocks(spdif);
-
-	tegra30_spdif_write(spdif, TEGRA30_SPDIF_CH_STA_TX_A,
-						spdif->reg_ch_sta_a);
-	tegra30_spdif_write(spdif, TEGRA30_SPDIF_CH_STA_TX_B,
-						spdif->reg_ch_sta_b);
-
-	tegra30_spdif_disable_clocks(spdif);
-
-	ret = tegra_hdmi_setup_audio_freq_source(srate, SPDIF);
-	if (ret) {
-		dev_err(dev, "Can't set HDMI audio freq source: %d\n", ret);
 		return ret;
 	}
 
