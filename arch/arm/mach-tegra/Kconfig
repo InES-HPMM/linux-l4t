@@ -451,17 +451,6 @@ config TEGRA_DVFS_RAIL_CONNECT_ALL
 	 if you want to enable voltage scaling only when all the rails matched
 	 by dvfs connect successfully to the system
 
-config TEGRA_GK20A
-	bool "Enable the GK20A GPU on Tegra"
-	depends on ARCH_TEGRA_12x_SOC
-	depends on TEGRA_GRHOST
-	select GK20A
-	default y
-	help
-	  Enable support for the GK20A graphics engine on Tegra
-	  by adding a Tegra platfrom interface to the GK20A driver.
-	  The Tegra platform interface requires TEGRA_GRHOST (host1x).
-
 config TEGRA_AVP_KERNEL_ON_MMU
 	bool "Use AVP MMU to relocate AVP kernel"
 	depends on ARCH_TEGRA_2x_SOC
