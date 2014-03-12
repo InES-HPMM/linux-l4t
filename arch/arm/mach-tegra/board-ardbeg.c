@@ -232,8 +232,9 @@ static void ardbeg_i2c_init(void)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
 
 	if (board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363) {
+		board_info.board_id == BOARD_PM358 ||
+		board_info.board_id == BOARD_PM363 ||
+		board_info.board_id == BOARD_PM374) {
 		i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
 		i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
 
