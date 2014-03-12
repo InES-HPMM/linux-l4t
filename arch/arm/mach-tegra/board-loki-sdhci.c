@@ -441,9 +441,12 @@ static int __init loki_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init loki_wifi_prepower(void)
 {
+
 	if ((!of_machine_is_compatible("nvidia,loki")) &&
-		(!of_machine_is_compatible("nvidia,t132loki")))
+		(!of_machine_is_compatible("nvidia,t132loki")) &&
+		(!of_machine_is_compatible("nvidia,foster")))
 		return 0;
+
 	loki_wifi_power(1);
 
 	return 0;

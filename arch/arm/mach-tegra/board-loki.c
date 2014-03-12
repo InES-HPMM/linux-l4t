@@ -952,6 +952,11 @@ static const char * const loki_dt_board_compat[] = {
 	NULL
 };
 
+static const char * const foster_dt_board_compat[] = {
+	"nvidia,foster",
+	NULL
+};
+
 static void __init tegra_loki_init_early(void)
 {
 	loki_rail_alignment_init();
@@ -969,5 +974,19 @@ DT_MACHINE_START(LOKI, "loki")
 	.init_machine	= tegra_loki_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= loki_dt_board_compat,
+	.init_late	= tegra_init_late
+MACHINE_END
+
+DT_MACHINE_START(FOSTER, "foster")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_loki_reserve,
+	.init_early	= tegra_loki_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_loki_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= foster_dt_board_compat,
 	.init_late	= tegra_init_late
 MACHINE_END

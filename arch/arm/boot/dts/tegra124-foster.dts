@@ -23,7 +23,7 @@
 
 / {
 	model = "NVIDIA Tegra124 Foster";
-	compatible = "nvidia,loki", "nvidia,tegra124";
+	compatible = "nvidia,foster", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
