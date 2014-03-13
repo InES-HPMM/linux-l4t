@@ -682,6 +682,8 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
+				NULL),
 	{}
 };
 #endif
@@ -866,6 +868,7 @@ static void __init tegra_loki_dt_init(void)
 
 	tegra_loki_early_init();
 #ifdef CONFIG_USE_OF
+	loki_camera_auxdata(loki_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, loki_auxdata_lookup,
 		&platform_bus);

@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/nct1008.h>
 #include <linux/tegra-fuse.h>
+#include <linux/of_platform.h>
 #include <media/camera.h>
 #include <media/mt9m114.h>
 #include <media/ov7695.h>
@@ -326,29 +327,22 @@ struct ov7695_platform_data loki_ov7695_pdata = {
 	.power_off = loki_ov7695_power_off,
 };
 
-static struct i2c_board_info loki_i2c_board_info_ov7695 = {
-	I2C_BOARD_INFO("ov7695", 0x21),
-	.platform_data = &loki_ov7695_pdata,
+static struct camera_data_blob loki_camera_lut[] = {
+	{"loki_ov7695_pdata", &loki_ov7695_pdata},
+	{},
 };
 
-static struct camera_module loki_camera_module_info[] = {
-	{
-		/* front camera */
-		.sensor = &loki_i2c_board_info_ov7695,
-	},
-
-	{}
-};
-
-static struct camera_platform_data loki_pcl_pdata = {
-	.cfg = 0xAA55AA55,
-	.modules = loki_camera_module_info,
-};
-
-static struct platform_device loki_camera_generic = {
-	.name = "pcl-generic",
-	.id = -1,
-};
+void __init loki_camera_auxdata(void *data)
+{
+	struct of_dev_auxdata *aux_lut = data;
+	while (aux_lut && aux_lut->compatible) {
+		if (!strcmp(aux_lut->compatible, "nvidia,tegra124-camera")) {
+			pr_info("%s: update camera lookup table.\n", __func__);
+			aux_lut->platform_data = loki_camera_lut;
+		}
+		aux_lut++;
+	}
+}
 
 static int loki_camera_init(void)
 {
@@ -365,9 +359,6 @@ static int loki_camera_init(void)
 	if (board_info.board_id == BOARD_P2530 && board_info.fab >= 0xa3)
 		loki_ov7695_pdata.mclk_name = "ext_mclk";
 
-	platform_device_add_data(&loki_camera_generic,
-		&loki_pcl_pdata, sizeof(loki_pcl_pdata));
-	platform_device_register(&loki_camera_generic);
 	return 0;
 }
 

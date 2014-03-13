@@ -41,6 +41,7 @@ int ardbeg_edp_init(void);
 void shield_new_sysedp_init(void);
 void shield_sysedp_dynamic_capping_init(void);
 void shield_sysedp_batmon_init(void);
+void ardbeg_camera_auxdata(void *);
 
 
 /* Invensense MPU Definitions */
