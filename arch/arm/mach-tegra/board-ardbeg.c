@@ -782,8 +782,8 @@ static void ardbeg_xusb_init(void)
 			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
 		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
 			xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P2 |
-						TEGRA_XUSB_SS_P0);
-		xusb_pdata.portmap &= ~(TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P1);
+					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0);
+		xusb_pdata.portmap &= ~(TEGRA_XUSB_SS_P1);
 	} else {
 		/* Ardbeg */
 		if (board_info.board_id == BOARD_E1781) {
