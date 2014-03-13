@@ -21,6 +21,9 @@
 #define CTR_L1IP_SHIFT		14
 #define CTR_L1IP_MASK		3
 
+#define CLIDR_LOUIS_SHIFT	21
+#define CLIDR_LOUIS_MASK	7
+
 #define ICACHE_POLICY_RESERVED	0
 #define ICACHE_POLICY_AIVIVT	1
 #define ICACHE_POLICY_VIPT	2
@@ -43,6 +46,25 @@ static inline int icache_is_aliasing(void)
 static inline int icache_is_aivivt(void)
 {
 	return icache_policy() == ICACHE_POLICY_AIVIVT;
+}
+
+/*
+* If the LoUIS field value is 0x0, this means that no levels of
+* cache need to cleaned or invalidated when cleaning or
+* invalidating to the point of unification for the Inner
+* Shareable shareability domain.
+*/
+static inline int need_user_flush_range(void)
+{
+	static int read, louis;
+
+	if (!read) {
+		read = 1;
+		asm ("mrs %0, CLIDR_EL1" : "=r" (louis));
+		louis = (louis >> CLIDR_LOUIS_SHIFT) & CLIDR_LOUIS_MASK;
+	}
+
+	return louis;
 }
 
 #endif	/* __ASM_CACHETYPE_H */

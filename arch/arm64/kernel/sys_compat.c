@@ -25,6 +25,7 @@
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 
+#include <asm/cachetype.h>
 #include <asm/cacheflush.h>
 #include <asm/unistd32.h>
 
@@ -74,7 +75,9 @@ long compat_arm_syscall(struct pt_regs *regs)
 	 * the specified region).
 	 */
 	case __ARM_NR_compat_cacheflush:
-		do_compat_cache_op(regs->regs[0], regs->regs[1], regs->regs[2]);
+		if (need_user_flush_range())
+			do_compat_cache_op(regs->regs[0],
+				regs->regs[1], regs->regs[2]);
 		return 0;
 
 	case __ARM_NR_compat_set_tls:
