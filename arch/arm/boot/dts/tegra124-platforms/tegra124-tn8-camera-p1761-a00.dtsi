@@ -1,0 +1,130 @@
+/ {
+	camera-pcl {
+		compatible = "nvidia,tegra124-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module1 {
+				sensor {
+					devicename = "ov5693";
+					addr = <0x10>;
+					platformdata = "ardbeg_ov5693_pdata";
+				};
+				focuser {
+					devicename = "ad5823";
+					addr = <0x0c>;
+					platformdata = "ardbeg_ad5823_pdata";
+				};
+			};
+			module2 {
+				sensor {
+					devicename = "mt9m114";
+					addr = <0x48>;
+					platformdata = "ardbeg_mt9m114_pdata";
+				};
+			};
+		};
+
+		profiles {
+			profile1 {
+				index = <1>;
+				chipname = "pcl_OV5693";
+				type = "sensor";
+				guid = "s_OV5693";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x10>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "avdd_ov5693", "vdd_af1", "dovdd";
+				clocks = "mclk";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <0xF0000032 10000
+					0xF000001F 221
+					0xF0000002 1
+					0xF0000014 0x80000000
+					0xF0000014 0x80000001
+					0xF0000014 0x80000002
+					0xF0000002 1
+					0xF000001E 221
+					0xF0000002 10
+					0xF0000009 00000>;
+				poweroff = <0xF0000032 0
+					0xF000001F 221
+					0xF0000001 10
+					0xF0000014 2
+					0xF0000014 1
+					0xF0000014 0
+					0xF0000009 00000>;
+			};
+			profile2 {
+				index = <2>;
+				chipname = "pcl_MT9M114";
+				type = "sensor";
+				guid = "sMT9M114";
+				position = <1>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x48>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "mclk2";
+				drivername = "mt9m114";
+				detect = <0x0002 0x0000 0xFFFF 0x2481>;
+				devid = <0x1040>;
+				poweron = <0xF0000032 10000
+					0xF000001F 219
+					0xF000001E 222
+					0xF0000014 0x80000000
+					0xF0000014 0x80000001
+					0xF0000002 10
+					0xF000001F 222
+					0xF000001E 219
+					0xF0000002 20
+					0xF0000009 00000>;
+				poweroff = <0xF0000032 0
+					0xF000001E 222
+					0xF000001F 219
+					0xF0000001 10
+					0xF0000014 1
+					0xF0000014 0
+					0xF0000009 00000>;
+			};
+			profile3 {
+				index = <3>;
+				chipname = "pcl_AD5823";
+				type = "focuser";
+				guid = "f_AD5823";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0xc>;
+				datalen = <1>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vdd", "vdd_i2c";
+				drivername = "ad5823";
+				detect = <0x0002 0x0006 0xFFFF 0x0010>;
+				devid = <0x5823>;
+				poweron = <0xF0000014 0x80000001
+					0xF0000014 0x80000000
+					0xF0000001 10
+					0xF000001E 223
+					0xF0000001 10
+					0xF0000009 00000>;
+				poweroff = <0xF0000014 0
+					0xF0000014 1
+					0xF000001F 223
+					0xF0000001 10
+					0xF0000009 00000>;
+			};
+		};
+	};
+};
+
