@@ -204,6 +204,7 @@ struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz)
 	gpu_speedo_id = tegra_gpu_speedo_id();
 
 	switch (cpu_speedo_id) {
+	case 0x5:
 	case 0x2:
 		if (gpu_speedo_id == 1) {
 			/* 575 variants */
@@ -314,6 +315,10 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 	},
 	{
 		.cpu_speedo_id      = 3, /* Prod SKU */
+		EDP_PARAMS_COMMON_PART,
+	},
+	{
+		.cpu_speedo_id      = 5, /* Prod SKU */
 		EDP_PARAMS_COMMON_PART,
 	},
 };
