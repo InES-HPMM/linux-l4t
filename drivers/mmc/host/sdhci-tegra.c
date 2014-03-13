@@ -1009,7 +1009,10 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		}
 	}
 	/* Set the best tap value based on timing */
-	if (uhs == MMC_TIMING_MMC_HS200) {
+	if (((uhs == MMC_TIMING_MMC_HS200) ||
+		(uhs == MMC_TIMING_UHS_SDR104) ||
+		(uhs == MMC_TIMING_UHS_SDR50)) &&
+		(tegra_host->tuning_status == TUNING_STATUS_DONE)) {
 		tuning_data = sdhci_tegra_get_tuning_data(host,
 			host->mmc->ios.clock);
 		best_tap_value = (tegra_host->tap_cmd ==
