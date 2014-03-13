@@ -233,11 +233,6 @@ int __init tn8_regulator_init(void)
 	return 0;
 }
 
-int __init tn8_fixed_regulator_init(void)
-{
-	return 0;
-}
-
 int __init tn8_edp_init(void)
 {
 	unsigned int regulator_mA;

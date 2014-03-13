@@ -1147,7 +1147,7 @@ int __init ardbeg_regulator_init(void)
 		pmu_board_info.board_id == BOARD_E1769 ||
 		pmu_board_info.board_id == BOARD_P1761) {
 		tn8_regulator_init();
-		return tn8_fixed_regulator_init();
+		return 0;
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);

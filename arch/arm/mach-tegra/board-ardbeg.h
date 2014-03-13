@@ -190,7 +190,6 @@ int loki_rail_alignment_init(void);
 /* TN8 specific */
 
 int tn8_regulator_init(void);
-int tn8_fixed_regulator_init(void);
 int tn8_edp_init(void);
 void tn8_new_sysedp_init(void);
 void tn8_sysedp_dynamic_capping_init(void);
