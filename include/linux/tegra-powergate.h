@@ -2,7 +2,7 @@
  * drivers/regulator/tegra-regulator.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (C) 2011-2014 NVIDIA Corporation.
+ * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -32,14 +32,17 @@
 #define TEGRA_POWERGATE_3D0	TEGRA_POWERGATE_3D
 #define TEGRA_POWERGATE_GPU	TEGRA_POWERGATE_3D
 #define TEGRA_POWERGATE_VENC	2
+#define TEGRA_POWERGATE_VE	TEGRA_POWERGATE_VENC
 #define TEGRA_POWERGATE_PCIE	3
 #define TEGRA_POWERGATE_VDEC	4
+#define TEGRA_POWERGATE_NVDEC	TEGRA_POWERGATE_VDEC
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define TEGRA_POWERGATE_C0L2	5
 #else
 #define TEGRA_POWERGATE_L2	5
 #endif
 #define TEGRA_POWERGATE_MPE	6
+#define TEGRA_POWERGATE_NVENC	TEGRA_POWERGATE_MPE
 #define TEGRA_POWERGATE_HEG	7
 #define TEGRA_POWERGATE_SATA	8
 #define TEGRA_POWERGATE_CPU1	9
@@ -65,6 +68,12 @@
 #define TEGRA_POWERGATE_IRAM	24
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define TEGRA_POWERGATE_VE2	24
+#define TEGRA_POWERGATE_NVJPG	25
+#define TEGRA_POWERGATE_APE	26
+#endif
+
 #define TEGRA_POWERGATE_CPU	TEGRA_POWERGATE_CPU0
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
@@ -76,6 +85,8 @@
 #define TEGRA_NUM_POWERGATE	14
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define TEGRA_NUM_POWERGATE	23
+#elif defined(CONFIG_ARCH_TGRA_21x_SOC)
+#define TEGRA_NUM_POWERGATE	27
 #else
 #define TEGRA_NUM_POWERGATE	24
 #endif

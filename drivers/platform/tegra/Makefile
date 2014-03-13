@@ -53,6 +53,7 @@ obj-y += powergate.o
 obj-y += powergate-ops-txx.o
 obj-y += powergate-ops-t1xx.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += powergate-t21x.o
 
 obj-y += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o

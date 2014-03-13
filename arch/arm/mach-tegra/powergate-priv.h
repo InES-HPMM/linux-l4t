@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -75,6 +75,7 @@ struct partition_clk_info {
 struct powergate_partition_info {
 	const char *name;
 	struct partition_clk_info clk_info[MAX_CLK_EN_NUM];
+	int refcount;
 };
 
 struct powergate_ops {
@@ -167,4 +168,12 @@ static inline struct powergate_ops *tegra14x_powergate_init_chip_support(void)
 }
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+struct powergate_ops *tegra210_powergate_init_chip_support(void);
+#else
+static inline struct powergate_ops *tegra210_powergate_init_chip_support(void)
+{
+	return NULL;
+}
+#endif
 #endif /* __POWERGATE_PRIV_H__ */
