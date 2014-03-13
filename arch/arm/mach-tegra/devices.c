@@ -1871,12 +1871,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "mpe",	.swgids = SWGID(MPE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(VDE), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC) | SWGID(A9AVP), },
-	{ .name = "sdhci-tegra.1",	.swgids = SWGID(SDMMC2A), },
-	/*
-	 * FIX ME: Make sdhci-tegra.2 IOMMUable once Bug 1374895 is fixed
-	 * { .name = "sdhci-tegra.2",	.swgids = SWGID(SDMMC3A), },
-	 */
-	{ .name = "sdhci-tegra.3",	.swgids = SWGID(SDMMC4A), },
 	{ .name = "serial8250",	.swgids = SWGID(PPCS), },
 	{ .name = "serial-tegra",	.swgids = SWGID(PPCS), },
 	{ .name = "dtv",	.swgids = SWGID(PPCS), },
