@@ -54,8 +54,6 @@
 #include <asm/memblock.h>
 #include <asm/mmu_context.h>
 #include <asm/psci.h>
-#include <asm/virt.h>
-#include <asm/arch_timer.h>
 
 #include <asm/mach/arch.h>
 #include <asm/system_misc.h>
@@ -414,15 +412,6 @@ void __init setup_arch(char **cmdline_p)
 	conswitchp = &dummy_con;
 #endif
 #endif
-
-	/* Supply the real ARCH timer counter to skip the
-	 * arch_timer_read_zero (arm_arch_timer.c) which
-	 * causes hang in udelay. Proper counter setup will
-	 * be performed in a later state in time_init. */
-	if (is_hyp_mode_available())
-		arch_timer_read_counter = arch_counter_get_cntpct;
-	else
-		arch_timer_read_counter = arch_counter_get_cntvct;
 
 	if (machine_desc->init_early)
 		machine_desc->init_early();
