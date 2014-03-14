@@ -493,7 +493,7 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int ret;
 	long temperature;
 
-	if (!bg_dev)
+	if (!bg_dev || !bg_dev->tz_name)
 		return -EINVAL;
 
 	if (!bg_dev->battery_tz)
@@ -548,7 +548,7 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	bg_dev->drv_data = drv_data;
 	bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
 
-	if (!bg_dev->tz_name) {
+	if (bg_dev->tz_name) {
 		bg_dev->battery_tz = thermal_zone_device_find_by_name(
 			bg_dev->tz_name);
 		if (!bg_dev->battery_tz)
