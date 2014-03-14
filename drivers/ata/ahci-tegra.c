@@ -480,6 +480,7 @@ static inline void port_writel(u32 val, u32 offset)
 {
 	AHCI_DBG_PRINT("[0x%x] => 0x%08x\n", PORT_BASE + offset, val);
 	writel(val, IO_ADDRESS(PORT_BASE + offset));
+	readl(IO_ADDRESS(PORT_BASE + offset));
 }
 
 static inline u32 bar5_readl(u32 offset)
@@ -496,6 +497,7 @@ static inline void bar5_writel(u32 val, u32 offset)
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_SATA_BAR5_BASE+offset,
 			val);
 	writel(val, IO_ADDRESS(TEGRA_SATA_BAR5_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_SATA_BAR5_BASE + offset));
 }
 
 
@@ -513,6 +515,7 @@ static inline void xusb_writel(u32 val, u32 offset)
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_XUSB_PADCTL_BASE+offset,
 			val);
 	writel(val, IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE + offset));
 }
 
 
@@ -528,6 +531,7 @@ static inline void pmc_writel(u32 val, u32 offset)
 {
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_PMC_BASE+offset, val);
 	writel(val, IO_ADDRESS(TEGRA_PMC_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_PMC_BASE + offset));
 }
 
 static inline u32 clk_readl(u32 offset)
@@ -543,6 +547,7 @@ static inline void clk_writel(u32 val, u32 offset)
 {
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_CLK_RESET_BASE+offset, val);
 	writel(val, IO_ADDRESS(TEGRA_CLK_RESET_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + offset));
 }
 
 static inline u32 misc_readl(u32 offset)
@@ -558,6 +563,7 @@ static inline void misc_writel(u32 val, u32 offset)
 {
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_APB_MISC_BASE+offset, val);
 	writel(val, IO_ADDRESS(TEGRA_APB_MISC_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + offset));
 }
 
 static inline u32 sata_readl(u32 offset)
@@ -573,6 +579,7 @@ static inline void sata_writel(u32 val, u32 offset)
 {
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_SATA_BASE+offset, val);
 	writel(val, IO_ADDRESS(TEGRA_SATA_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_SATA_BASE + offset));
 }
 
 static inline u32 scfg_readl(u32 offset)
@@ -590,6 +597,7 @@ static inline void scfg_writel(u32 val, u32 offset)
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_SATA_CONFIG_BASE+offset,
 					     val);
 	writel(val, IO_ADDRESS(TEGRA_SATA_CONFIG_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_SATA_CONFIG_BASE + offset));
 }
 
 static inline u32 pictlr_readl(u32 offset)
@@ -607,6 +615,7 @@ static inline void pictlr_writel(u32 val, u32 offset)
 	AHCI_DBG_PRINT("[0x%x] <= 0x%08x\n", TEGRA_PRIMARY_ICTLR_BASE+offset,
 					     val);
 	writel(val, IO_ADDRESS(TEGRA_PRIMARY_ICTLR_BASE + offset));
+	readl(IO_ADDRESS(TEGRA_PRIMARY_ICTLR_BASE + offset));
 }
 
 static inline u32 fuse_readl(u32 offset)
