@@ -29,7 +29,6 @@
 #include <linux/sched.h>
 #include <linux/time.h>
 #include <linux/timer.h>
-#include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/power/bq2477x-charger.h>
@@ -49,7 +48,6 @@ struct bq2477x_chip {
 	struct regmap	*regmap_word;
 	struct mutex	mutex;
 	int	irq;
-	int	gpio;
 	int	ac_online;
 	int	dac_ichg;
 	int	dac_v;
@@ -259,28 +257,11 @@ static int bq2477x_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	ret = gpio_request(pdata->gpio, "bq2477x-charger");
-	if (ret) {
-		dev_err(&client->dev, "Failed to request gpio pin: %d\n", ret);
-		return ret;
-	}
-
-	ret = gpio_direction_output(pdata->gpio, 1);
-	if (ret) {
-		dev_err(&client->dev,
-			"Failed to set gpio to output: %d\n", ret);
-		goto gpio_err;
-	}
-
-	gpio_set_value(pdata->gpio, 1);
-
-	msleep(20);
-
 	bq2477x = devm_kzalloc(&client->dev, sizeof(*bq2477x), GFP_KERNEL);
 	if (!bq2477x) {
 		dev_err(&client->dev, "Memory allocation failed\n");
 		ret = -ENOMEM;
-		goto gpio_err;
+		return ret;
 	}
 	bq2477x->dev = &client->dev;
 
@@ -289,7 +270,6 @@ static int bq2477x_probe(struct i2c_client *client,
 	bq2477x->dac_minsv = pdata->dac_minsv;
 	bq2477x->dac_iin = pdata->dac_iin;
 	bq2477x->wdt_refresh_timeout = pdata->wdt_refresh_timeout;
-	bq2477x->gpio = pdata->gpio;
 
 	i2c_set_clientdata(client, bq2477x);
 	bq2477x->irq = client->irq;
@@ -301,7 +281,7 @@ static int bq2477x_probe(struct i2c_client *client,
 	if (IS_ERR(bq2477x->regmap)) {
 		ret = PTR_ERR(bq2477x->regmap);
 		dev_err(&client->dev, "regmap init failed with err %d\n", ret);
-		goto gpio_err;
+		return ret;
 	}
 
 	bq2477x->regmap_word = devm_regmap_init_i2c(client,
@@ -310,13 +290,13 @@ static int bq2477x_probe(struct i2c_client *client,
 		ret = PTR_ERR(bq2477x->regmap_word);
 		dev_err(&client->dev,
 			"regmap_word init failed with err %d\n", ret);
-		goto gpio_err;
+		return ret;
 	}
 
 	ret = bq2477x_show_chip_version(bq2477x);
 	if (ret < 0) {
 		dev_err(bq2477x->dev, "version read failed %d\n", ret);
-		goto gpio_err;
+		return ret;
 	}
 
 	bq2477x->ac.name	= "bq2477x-ac";
@@ -329,7 +309,7 @@ static int bq2477x_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(bq2477x->dev,
 			"AC power supply register failed %d\n", ret);
-		goto gpio_err;
+		return ret;
 	}
 
 	ret = bq2477x_hw_init(bq2477x);
@@ -359,8 +339,6 @@ static int bq2477x_probe(struct i2c_client *client,
 
 psy_err:
 	power_supply_unregister(&bq2477x->ac);
-gpio_err:
-	gpio_free(bq2477x->gpio);
 	return ret;
 }
 
@@ -370,7 +348,6 @@ static int bq2477x_remove(struct i2c_client *client)
 	flush_kthread_worker(&bq2477x->bq_kworker);
 	kthread_stop(bq2477x->bq_kworker_task);
 	power_supply_unregister(&bq2477x->ac);
-	gpio_free(bq2477x->gpio);
 	return 0;
 }
 
