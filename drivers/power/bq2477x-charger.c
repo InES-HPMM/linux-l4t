@@ -40,6 +40,8 @@
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
 #include <linux/sched/rt.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 
 struct bq2477x_chip {
 	struct device	*dev;
@@ -48,6 +50,8 @@ struct bq2477x_chip {
 	struct regmap	*regmap_word;
 	struct mutex	mutex;
 	int	irq;
+	int	charger_detect_gpio;
+	int	charger_detect_gpio_active_low;
 	int	ac_online;
 	int	dac_ichg;
 	int	dac_v;
@@ -281,6 +285,29 @@ static void of_bq2477x_parse_platform_data(struct i2c_client *client,
 	else
 		dev_warn(&client->dev, "wdt-refresh-timeout not provided\n");
 
+	ret = of_property_read_u32(np, "ti,charger-detect-gpio-active-low", &pval);
+	if (!ret)
+		pdata->charger_detect_gpio_active_low = pval;
+	else
+		dev_warn(&client->dev, "charger_detect_gpio_active_low not provided\n");
+
+	pdata->charger_detect_gpio = of_get_named_gpio(np, "charger-detect-gpio", 0);
+	if (pdata->charger_detect_gpio < 0)
+		dev_warn(&client->dev, "invalid pdata->charger_detect_gpio\n");
+}
+
+static irqreturn_t bq2477x_charger_detect_irq(int irq, void *data)
+{
+	struct bq2477x_chip *bq2477x = data;
+	bq2477x->ac_online =
+			gpio_get_value_cansleep(bq2477x->charger_detect_gpio);
+	bq2477x->ac_online ^= bq2477x->charger_detect_gpio_active_low;
+
+	if (bq2477x->ac_online == 1)
+		bq2477x_hw_init(bq2477x);
+
+	power_supply_changed(&bq2477x->ac);
+	return IRQ_HANDLED;
 }
 
 static int bq2477x_probe(struct i2c_client *client,
@@ -317,9 +344,11 @@ static int bq2477x_probe(struct i2c_client *client,
 	bq2477x->dac_minsv = pdata->dac_minsv;
 	bq2477x->dac_iin = pdata->dac_iin;
 	bq2477x->wdt_refresh_timeout = pdata->wdt_refresh_timeout;
+	bq2477x->charger_detect_gpio = pdata->charger_detect_gpio;
+	bq2477x->charger_detect_gpio_active_low =
+					pdata->charger_detect_gpio_active_low;
 
 	i2c_set_clientdata(client, bq2477x);
-	bq2477x->irq = client->irq;
 	mutex_init(&bq2477x->mutex);
 
 	bq2477x->ac_online = 0;
@@ -357,6 +386,31 @@ static int bq2477x_probe(struct i2c_client *client,
 		dev_err(bq2477x->dev,
 			"AC power supply register failed %d\n", ret);
 		return ret;
+	}
+
+	if (gpio_is_valid(bq2477x->charger_detect_gpio)) {
+		ret = devm_gpio_request_one(bq2477x->dev,
+				bq2477x->charger_detect_gpio, GPIOF_IN,
+						"bq2477x-charger-detect");
+		if (ret) {
+			dev_err(bq2477x->dev, "gpio request failed %d\n", ret);
+			goto psy_err;
+		}
+
+		bq2477x->irq = gpio_to_irq(bq2477x->charger_detect_gpio);
+		bq2477x->ac_online =
+			gpio_get_value_cansleep(bq2477x->charger_detect_gpio);
+		bq2477x->ac_online ^= bq2477x->charger_detect_gpio_active_low;
+
+		ret = devm_request_threaded_irq(bq2477x->dev, bq2477x->irq,
+			NULL, bq2477x_charger_detect_irq,
+			IRQF_ONESHOT | IRQF_TRIGGER_RISING
+			| IRQF_TRIGGER_FALLING, dev_name(bq2477x->dev),
+			bq2477x);
+		if (ret < 0) {
+                        dev_err(bq2477x->dev, "Failed to request irq %d\n", ret);
+			goto psy_err;
+		}
 	}
 
 	ret = bq2477x_hw_init(bq2477x);

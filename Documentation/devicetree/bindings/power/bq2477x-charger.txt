@@ -8,6 +8,10 @@ Required properties :
  - ti,dac-minsv : The minimum System voltage that must be programmed
  - ti,dac-iin : The input current that must be programmed
  - ti,wdt-refresh-timeout : watch dog timer that must be programmed
+ - charger-detect-gpio : the GPIO used for AC adapter detection
+ - ti,charger-detect-gpio-active-low : The flag that determines if AC adapter
+	presence is indicated by active low. Set this to 1 if active low
+	indicates adapter is present, else 0.
 
 Example:
 
@@ -19,4 +23,6 @@ Example:
 		ti,dac-minsv = <4608>;
 		ti,dac-iin = <4992>;
 		ti,wdt-refresh-timeout = <40>;
+		charger-detect-gpio = <&gpio 85 0>;
+		ti,charger-detect-gpio-active-low = <1>;
 	 };
