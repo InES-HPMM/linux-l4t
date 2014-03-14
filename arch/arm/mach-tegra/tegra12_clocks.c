@@ -706,10 +706,6 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	__raw_writel(value, reg_clk_base + (reg))
 #define clk_readl(reg) \
 	__raw_readl(reg_clk_base + (reg))
-#define clk13_writel(value, reg) \
-	__raw_writel(value, reg_clk13_base + (reg))
-#define clk13_readl(reg) \
-	__raw_readl(reg_clk13_base + (reg))
 #define pmc_writel(value, reg) \
 	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
@@ -726,13 +722,6 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 		udelay(2);						\
 	} while (0)
 
-#define clk13_writel_delay(value, reg) 					\
-	do {								\
-		clk13_writel(value, reg);					\
-		clk13_readl(reg);						\
-		udelay(2);						\
-	} while (0)
-
 #define pll_writel_delay(value, reg)					\
 	do {								\
 		__raw_writel((value), reg_clk_base + (reg));		\
@@ -744,30 +733,18 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 #ifndef CONFIG_ARCH_TEGRA_13x_SOC
 
 #define clk_writelx(value, reg) \
-	__raw_writel(value, (void *)((uintptr_t)reg_clk_base + (reg)))
+	__raw_writel(value, reg_clk_base + (reg))
 #define clk_readlx(reg) \
-	__raw_readl((void *)((uintptr_t)reg_clk_base + (reg)))
-
-#define clk_writelx_delay(value, reg) 					\
-	do {								\
-		clk_writelx(value, reg);					\
-		clk_readlx(reg);						\
-		udelay(2);						\
-	} while (0)
-
-#define pll_writelx_delay(value, reg)					\
-	do {								\
-		clk_writelx(value, reg);					\
-		clk_readlx(reg);						\
-		udelay(1);						\
-	} while (0)
+	__raw_readl(reg_clk_base + (reg))
 
 #else
 
 #define clk_writelx(value, reg) \
-	__raw_writel(value, (void *)((uintptr_t)reg_clk13_base + (reg)))
+	__raw_writel(value, reg_clk13_base + (reg))
 #define clk_readlx(reg) \
-	__raw_readl((void *)((uintptr_t)reg_clk13_base + (reg)))
+	__raw_readl(reg_clk13_base + (reg))
+
+#endif
 
 #define clk_writelx_delay(value, reg) 					\
 	do {								\
@@ -782,8 +759,6 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 		clk_readlx(reg);						\
 		udelay(1);						\
 	} while (0)
-
-#endif
 
 static inline int clk_set_div(struct clk *c, u32 n)
 {
@@ -1237,7 +1212,7 @@ static void tegra13_super_cclk_init(struct clk *c)
 	int source;
 	int shift;
 	const struct clk_mux_sel *sel;
-	val = clk13_readl(c->reg + SUPER_CLK_MUX);
+	val = clk_readlx(c->reg + SUPER_CLK_MUX);
 	c->state = ON;
 
 	shift  = CLK13_SOURCE_SHIFT;
@@ -1258,13 +1233,13 @@ static void tegra13_super_cclk_init(struct clk *c)
 		 * Make sure 7.1 divider is 1:1; clear h/w skipper control -
 		 * it will be enabled by soctherm later
 		 */
-		val = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
+		val = clk_readlx(c->reg + SUPER_CLK_DIVIDER);
 		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
 		val = 0;
-		clk13_writel(val, c->reg + SUPER_CLK_DIVIDER);
+		clk_writelx(val, c->reg + SUPER_CLK_DIVIDER);
 	}
 	else
-		clk13_writel(0, c->reg + SUPER_CLK_DIVIDER);
+		clk_writelx(0, c->reg + SUPER_CLK_DIVIDER);
 }
 
 static int tegra13_super_cclk_enable(struct clk *c)
@@ -1284,7 +1259,7 @@ static int tegra13_super_cclk_set_parent(struct clk *c, struct clk *p)
 	const struct clk_mux_sel *sel;
 	int shift;
 
-	val = clk13_readl(c->reg);
+	val = clk_readlx(c->reg);
 	shift = CLK13_SOURCE_SHIFT;
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
@@ -1293,14 +1268,14 @@ static int tegra13_super_cclk_set_parent(struct clk *c, struct clk *p)
 
 			if (c->flags & DIV_U71) {
 				/* Make sure 7.1 divider is 1:1 */
-				u32 div = clk13_readl(c->reg + SUPER_CLK_DIVIDER);
+				u32 div = clk_readlx(c->reg + SUPER_CLK_DIVIDER);
 				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK);
 			}
 
 			if (c->refcnt)
 				clk_enable(p);
 
-			clk13_writel_delay(val, c->reg);
+			clk_writelx_delay(val, c->reg);
 
 			if (c->refcnt && c->parent)
 				clk_disable(c->parent);
