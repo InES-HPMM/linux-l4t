@@ -48,6 +48,8 @@
 			ti,dac-minsv = <4608>;
 			ti,dac-iin = <4992>;
 			ti,wdt-refresh-timeout = <40>;
+			ti,charger-detect-gpio-active-low = <1>;
+			charger-detect-gpio = <&gpio TEGRA_GPIO(J, 0) 0>;
 		};
 	};
 
