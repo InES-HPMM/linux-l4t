@@ -723,7 +723,7 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 	has_accl = (st->chip_type != INV_ITG3500);
 	packet_size = 6 + 6 * has_accl;
 
-	result = nvi_pm_wr(st, INV_CLK_PLL, 0, 0);
+	result = nvi_pm(st, NVI_PM_ON_FULL);
 	if (result)
 		return result;
 
@@ -872,6 +872,7 @@ static void inv_recover_setting(struct inv_gyro_state_s *st)
 	st->chip_config.gyro_enable ^= 7;
 	st->chip_config.gyro_fifo_enable ^= 7;
 	nvi_gyro_enable(st, enable, fifo_enable);
+	nvi_pm(st, NVI_PM_AUTO);
 }
 
 /**

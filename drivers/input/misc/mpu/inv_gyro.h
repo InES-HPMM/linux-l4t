@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -502,6 +502,9 @@ struct inv_mpu_slave {
 #define REG_3500_OTP            (0x00)
 #define REG_AUX_VDDIO           (0x01)
 #define REG_ST_GCT_X            (0x0D)
+#define REG_6500_ACCEL_CONFIG2  (0x1D)
+#define BIT_ACCEL_FCHOCIE_B     (0x08)
+#define BIT_FIFO_SIZE_1K        (0x40)
 #define REG_6500_LP_ACCEL_ODR   (0x1E)
 #define REG_MOT_THR             (0x1F)
 #define REG_MOT_DUR             (0x20)
@@ -763,8 +766,7 @@ int nvi_user_ctrl_reset_wr(struct inv_gyro_state_s *inf, u8 val);
 int nvi_user_ctrl_en_wr(struct inv_gyro_state_s *inf, u8 val);
 int nvi_user_ctrl_en(struct inv_gyro_state_s *inf,
 		     bool fifo_enable, bool i2c_enable);
-int nvi_pm_wr(struct inv_gyro_state_s *inf,
-	      u8 pwr_mgmt_1, u8 pwr_mgmt_2, u8 lpa);
+int nvi_pm(struct inv_gyro_state_s *inf, int pm_req);
 int nvi_gyro_enable(struct inv_gyro_state_s *inf,
 		    unsigned char enable, unsigned char fifo_enable);
 int nvi_accl_enable(struct inv_gyro_state_s *inf,
