@@ -394,7 +394,7 @@ static int __init bq2477x_module_init(void)
 {
 	return i2c_add_driver(&bq2477x_i2c_driver);
 }
-subsys_initcall(bq2477x_module_init);
+module_init(bq2477x_module_init);
 
 static void __exit bq2477x_cleanup(void)
 {
