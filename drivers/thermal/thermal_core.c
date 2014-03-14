@@ -327,49 +327,28 @@ exit:
 static void thermal_zone_device_set_polling(struct thermal_zone_device *tz,
 					    int delay)
 {
-	int jiffies;
-
-	if (delay <= 0)
-		return;
-
 	if (delay > 1000)
-		jiffies = round_jiffies(msecs_to_jiffies(delay));
+		mod_delayed_work(system_freezable_wq, &tz->poll_queue,
+				 round_jiffies(msecs_to_jiffies(delay)));
+	else if (delay)
+		mod_delayed_work(system_freezable_wq, &tz->poll_queue,
+				 msecs_to_jiffies(delay));
 	else
-		jiffies = msecs_to_jiffies(delay);
-
-	mod_delayed_work(system_freezable_wq, &tz->poll_queue, jiffies);
-}
-
-/**
- * thermal_zone_device_cancel_polling() - cancels polling of thermal zone.
- * @tz: a valid pointer to a struct thermal_zone_device
- *
- * We should never call this routine while holding thermal zone mutex,
- * or else it can potentially deadlock.
- */
-static void thermal_zone_device_cancel_polling(struct thermal_zone_device *tz)
-{
-	cancel_delayed_work_sync(&tz->poll_queue);
+		cancel_delayed_work(&tz->poll_queue);
 }
 
 static void monitor_thermal_zone(struct thermal_zone_device *tz)
 {
-	int delay = 0;
-
 	mutex_lock(&tz->lock);
 
 	if (tz->passive)
-		delay = tz->passive_delay;
+		thermal_zone_device_set_polling(tz, tz->passive_delay);
+	else if (tz->polling_delay)
+		thermal_zone_device_set_polling(tz, tz->polling_delay);
 	else
-		delay = tz->polling_delay;
-
-	if (delay > 0)
-		thermal_zone_device_set_polling(tz, delay);
+		thermal_zone_device_set_polling(tz, 0);
 
 	mutex_unlock(&tz->lock);
-
-	if (delay <= 0)
-		thermal_zone_device_cancel_polling(tz);
 }
 
 static void handle_non_critical_trips(struct thermal_zone_device *tz,
@@ -1735,7 +1714,7 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 	INIT_DELAYED_WORK(&(tz->poll_queue), thermal_zone_device_check);
 
 	if (!tz->ops->get_temp)
-		thermal_zone_device_cancel_polling(tz);
+		thermal_zone_device_set_polling(tz, 0);
 
 	thermal_zone_device_update(tz);
 
@@ -1801,7 +1780,7 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 
 	mutex_unlock(&thermal_list_lock);
 
-	thermal_zone_device_cancel_polling(tz);
+	thermal_zone_device_set_polling(tz, 0);
 
 	if (tz->type[0])
 		device_remove_file(&tz->device, &dev_attr_type);
