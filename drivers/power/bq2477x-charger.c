@@ -244,6 +244,45 @@ static void bq2477x_work_thread(struct kthread_work *work)
 	}
 }
 
+static void of_bq2477x_parse_platform_data(struct i2c_client *client,
+				struct bq2477x_platform_data *pdata)
+{
+	struct device_node *np = client->dev.of_node;
+	u32 pval;
+	int ret;
+
+	ret = of_property_read_u32(np, "ti,dac-ichg", &pval);
+	if (!ret)
+		pdata->dac_ichg = pval;
+	else
+		dev_warn(&client->dev, "dac-ichg not provided\n");
+
+	ret = of_property_read_u32(np, "ti,dac-v", &pval);
+	if (!ret)
+		pdata->dac_v = pval;
+	else
+		dev_warn(&client->dev, "dac-v not provided\n");
+
+	ret = of_property_read_u32(np, "ti,dac-minsv", &pval);
+	if (!ret)
+		pdata->dac_minsv = pval;
+	else
+		dev_warn(&client->dev, "dac-minsv not provided\n");
+
+	ret = of_property_read_u32(np, "ti,dac-iin", &pval);
+	if (!ret)
+		pdata->dac_iin = pval;
+	else
+		dev_warn(&client->dev, "dac-iin not provided\n");
+
+	ret = of_property_read_u32(np, "ti,wdt-refresh-timeout", &pval);
+	if (!ret)
+		pdata->wdt_refresh_timeout = pval;
+	else
+		dev_warn(&client->dev, "wdt-refresh-timeout not provided\n");
+
+}
+
 static int bq2477x_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -251,7 +290,15 @@ static int bq2477x_probe(struct i2c_client *client,
 	struct bq2477x_platform_data *pdata;
 	int ret = 0;
 
-	pdata = client->dev.platform_data;
+	if (client->dev.of_node) {
+		pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+		if (!pdata)
+			return -ENOMEM;
+		of_bq2477x_parse_platform_data(client, pdata);
+	} else {
+		pdata = client->dev.platform_data;
+	}
+
 	if (!pdata) {
 		dev_err(&client->dev, "No Platform data");
 		return -EINVAL;

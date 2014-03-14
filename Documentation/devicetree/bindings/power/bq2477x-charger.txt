@@ -1,0 +1,22 @@
+bq2477x charger
+~~~~~~~~~~~~~~~
+
+Required properties :
+ - compatible : should contain "ti,bq2477x".
+ - ti,dac-ichg : Charge current that must be programmed
+ - ti,dac-v : The maximum charge voltage that must be programmed
+ - ti,dac-minsv : The minimum System voltage that must be programmed
+ - ti,dac-iin : The input current that must be programmed
+ - ti,wdt-refresh-timeout : watch dog timer that must be programmed
+
+Example:
+
+	bq2477x@6a {
+		compatible = "ti,bq2477x";
+		reg = <0x6a>;
+		ti,dac-ichg = <2240>;
+		ti,dac-v = <9008>;
+		ti,dac-minsv = <4608>;
+		ti,dac-iin = <4992>;
+		ti,wdt-refresh-timeout = <40>;
+	 };
