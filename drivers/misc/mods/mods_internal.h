@@ -24,6 +24,7 @@
 #include <linux/list.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/miscdevice.h>
 
 #define		NvU8	u8
 #define		NvU16	u16
@@ -442,5 +443,16 @@ int esc_mods_clock_reset_deassert(struct file *,
 int esc_mods_flush_cpu_cache_range(struct file *,
 				  struct MODS_FLUSH_CPU_CACHE_RANGE *);
 #endif
+
+#ifdef CONFIG_DEBUG_FS
+int mods_create_debugfs(struct miscdevice *modsdev);
+void mods_remove_debugfs(void);
+#else
+static inline int mods_create_debugfs(struct miscdevice *modsdev)
+{
+	return 0;
+}
+static inline void mods_remove_debugfs(void) {}
+#endif /* CONFIG_DEBUG_FS */
 
 #endif	/* _MODS_INTERNAL_H_  */

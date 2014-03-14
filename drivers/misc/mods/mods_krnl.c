@@ -94,6 +94,10 @@ static int __init mods_init_module(void)
 	mods_init_clock_api();
 #endif
 
+	rc = mods_create_debugfs(&mods_dev);
+	if (rc < 0)
+		return rc;
+
 	mods_info_printk("driver loaded, version %x.%02x\n",
 			 (MODS_DRIVER_VERSION>>8),
 			 (MODS_DRIVER_VERSION&0xFF));
@@ -104,6 +108,9 @@ static int __init mods_init_module(void)
 static void __exit mods_exit_module(void)
 {
 	LOG_ENT();
+
+	mods_remove_debugfs();
+
 	mods_cleanup_irq();
 
 	misc_deregister(&mods_dev);
