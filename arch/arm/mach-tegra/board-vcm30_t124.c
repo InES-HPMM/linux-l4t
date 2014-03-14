@@ -46,8 +46,6 @@
 #include <asm/mach-types.h>
 #include "tegra-of-dev-auxdata.h"
 
-static struct board_info board_info, display_board_info;
-
 #if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
 static struct resource vcm30_t124_bluedroid_pm_resources[] = {
 	[0] = {
@@ -409,9 +407,6 @@ static struct i2c_board_info __initdata ad1937_board_info = {
 
 static void vcm30_t124_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
 	i2c_register_board_info(0, &ak4618_board_info, 1);
 	i2c_register_board_info(0, &wm8731_board_info, 1);
 	i2c_register_board_info(0, &ad1937_board_info, 1);
@@ -729,12 +724,6 @@ static void __init tegra_vcm30_t124_early_init(void)
 
 static void __init tegra_vcm30_t124_late_init(void)
 {
-	struct board_info board_info;
-	tegra_get_board_info(&board_info);
-	pr_info("board_info: id:sku:fab:major:minor = 0x%04x:0x%04x:0x%02x:0x%02x:0x%02x\n",
-		board_info.board_id, board_info.sku,
-		board_info.fab, board_info.major_revision,
-		board_info.minor_revision);
 	vcm30_t124_usb_init();
 /*	vcm30_t124_xusb_init(); */
 	vcm30_t124_nor_init();
@@ -777,9 +766,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 
 static void __init tegra_vcm30_t124_dt_init(void)
 {
-	tegra_get_board_info(&board_info);
-	tegra_get_display_board_info(&display_board_info);
-
 	tegra_vcm30_t124_early_init();
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	carveout_linear_set(&tegra_generic_cma_dev);
