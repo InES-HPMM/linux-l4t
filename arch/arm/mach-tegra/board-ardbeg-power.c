@@ -775,6 +775,10 @@ static struct regulator_consumer_supply fixed_reg_en_avdd_3v3_dp_supply[] = {
 	REGULATOR_SUPPLY("avdd_3v3_dp", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_en_en_bat_supply[] = {
+	REGULATOR_SUPPLY("en_bat", NULL),
+};
+
 #define fixed_reg_en_ti913_gpio2_supply fixed_reg_en_as3722_gpio1_supply
 #define fixed_reg_en_ti913_gpio3_supply fixed_reg_en_as3722_gpio4_supply
 #define fixed_reg_en_ti913_gpio4_supply fixed_reg_en_tca6408_p0_supply
@@ -870,6 +874,9 @@ FIXED_REG(21,	avdd_3v3_dp,	avdd_3v3_dp,
 	NULL,	0,	0,	TEGRA_GPIO_PH3,
 	false,	true,	0,	3300,	0);
 
+FIXED_REG(22,	en_bat,	en_bat,
+	NULL,	1,	1,	TEGRA_GPIO_PK5,
+	false,	true,	1,	1800,	0);
 /*
  * Creating fixed regulator device tables
  */
@@ -883,7 +890,8 @@ FIXED_REG(21,	avdd_3v3_dp,	avdd_3v3_dp,
 	ADD_FIXED_REG(lcd_bl_en),		\
 	ADD_FIXED_REG(dcdc_1v8),		\
 	ADD_FIXED_REG(vdd_sys_5v0),		\
-	ADD_FIXED_REG(vdd_sd),
+	ADD_FIXED_REG(vdd_sd),			\
+	ADD_FIXED_REG(en_bat),
 
 #define ARDBEG_E1733_FIXED_REG			\
 	ADD_FIXED_REG(as3722_gpio2),		\
