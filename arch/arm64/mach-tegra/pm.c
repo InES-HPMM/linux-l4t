@@ -622,7 +622,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
 
-	flush_cache_all();
+	if (tegra_get_chipid() != TEGRA_CHIPID_TEGRA13)
+		flush_cache_all();
 
 	if (mode == TEGRA_SUSPEND_LP2)
 		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
