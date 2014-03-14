@@ -1778,6 +1778,10 @@ static void tegra_pcie_enable_aspm(void)
 	u16 val = 0, aspm = 0;
 
 	PR_FUNC_LINE;
+	if (!pcie_aspm_support_enabled()) {
+		pr_info("PCIE: ASPM not enabled\n");
+		return;
+	}
 	for_each_pci_dev(pdev) {
 		/* Find ASPM capability */
 		pcie_capability_read_word(pdev, PCI_EXP_LNKCAP, &aspm);
