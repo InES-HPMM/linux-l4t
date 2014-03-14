@@ -38,6 +38,17 @@
 			sbs,i2c-retry-count = <2>;
 			sbs,poll-retry-count = <100>;
 		};
+
+		bq2477x@6a {
+			compatible = "ti,bq2477x";
+			reg = <0x6a>;
+			status = "disabled";
+			ti,dac-ichg = <2240>;
+			ti,dac-v = <9008>;
+			ti,dac-minsv = <4608>;
+			ti,dac-iin = <4992>;
+			ti,wdt-refresh-timeout = <40>;
+		};
 	};
 
 	i2c@7000d000 {

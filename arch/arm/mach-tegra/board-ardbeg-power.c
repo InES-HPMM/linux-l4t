@@ -37,7 +37,6 @@
 #include <linux/gpio.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/bq2419x-charger.h>
-#include <linux/power/bq2477x-charger.h>
 #include <linux/tegra-fuse.h>
 
 #include <asm/mach-types.h>
@@ -613,22 +612,6 @@ static const struct i2c_board_info tca6408_expander[] = {
 	},
 };
 
-struct bq2477x_platform_data ardbeg_bq2477x_pdata = {
-	.dac_ichg		= 2240,
-	.dac_v			= 9008,
-	.dac_minsv		= 4608,
-	.dac_iin		= 4992,
-	.wdt_refresh_timeout	= 40,
-	.gpio			= TEGRA_GPIO_PK5,
-};
-
-static struct i2c_board_info __initdata bq2477x_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("bq2477x", 0x6A),
-		.platform_data	= &ardbeg_bq2477x_pdata,
-	},
-};
-
 static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.cpu_timer      = 500,
 	.cpu_off_timer  = 300,
@@ -1159,11 +1142,6 @@ int __init ardbeg_regulator_init(void)
 	} else {
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);
-	}
-
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
-		i2c_register_board_info(1, bq2477x_boardinfo,
-			ARRAY_SIZE(bq2477x_boardinfo));
 	}
 
 	platform_device_register(&power_supply_extcon_device);
