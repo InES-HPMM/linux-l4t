@@ -430,7 +430,11 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 static struct tegra_dc_out ardbeg_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	.parent_clk	= "pll_d2",
+#else
+	.parent_clk	= "pll_d",
+#endif /* CONFIG_TEGRA_HDMI_PRIMARY */
 
 	.dcc_bus	= 3,
 	.hotplug_gpio	= ardbeg_hdmi_hpd,
