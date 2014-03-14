@@ -45,6 +45,37 @@
 #define PMC_IO_DPD_REQ		0x1B8
 #define PMC_IO_DPD2_REQ		0x1C0
 
+/* pmc register offsets needed for powering off PMU */
+#define PMC_SCRATCH_WRITE_SHIFT			2
+#define PMC_SCRATCH_WRITE_MASK			BIT(2)
+#define PMC_ENABLE_RST_SHIFT			1
+#define PMC_ENABLE_RST_MASK			BIT(1)
+#define PMC_SENSOR_CTRL				0x1B0
+#define PMC_SCRATCH54				0x258
+#define PMC_SCRATCH55				0x25C
+
+/* scratch54 register bit fields */
+#define PMU_OFF_DATA_SHIFT			8
+#define PMU_OFF_DATA_MASK			0xff
+#define PMU_OFF_ADDR_SHIFT			0
+#define PMU_OFF_ADDR_MASK			0xff
+
+/* scratch55 register bit fields */
+#define RESET_TEGRA_SHIFT			31
+#define RESET_TEGRA_MASK			0x1
+#define CONTROLLER_TYPE_SHIFT			30
+#define CONTROLLER_TYPE_MASK			0x1
+#define I2C_CONTROLLER_ID_SHIFT			27
+#define I2C_CONTROLLER_ID_MASK			0x7
+#define PINMUX_SHIFT				24
+#define PINMUX_MASK				0x7
+#define CHECKSUM_SHIFT				16
+#define CHECKSUM_MASK				0xff
+#define PMU_16BIT_SUPPORT_SHIFT			15
+#define PMU_16BIT_SUPPORT_MASK			0x1
+#define PMU_I2C_ADDRESS_SHIFT			0
+#define PMU_I2C_ADDRESS_MASK			0x7f
+
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
 	TEGRA_POWERGATE_CPU1,
@@ -86,6 +117,97 @@ static inline void tegra_pmc_writel(u32 val, u32 reg)
 {
 	writel(val, tegra_pmc_base + reg);
 }
+
+/**
+ * _compute_pmic_checksum - compute checksum for some PMC_SCRATCH regs
+ * @a: First half of the top PMC_SCRATCH register
+ * @b: Second half of the top PMC_SCRATCH register
+ * @v: Complete contents of the bottom PMC_SCRATCH register (except checksum)
+ *
+ * Compute a simple eight-bit checksum across two PMC_SCRATCH register
+ * values.  There are two sets of two registers in the PMC scratch
+ * space, and they are intended to configure how the boot ROM reacts
+ * to certain exceptional cases (overtemperature and watchdog timer
+ * expiration).  See the "Checksum Calculation" section in the "Boot
+ * Process" section of the Tegra K1 TRM for more details here.
+ * Originally intended for use with PMC_SCRATCH54/55.  Returns the
+ * computed checksum byte.
+ */
+static u8 _compute_pmic_checksum(u32 a, u32 b, u32 v)
+{
+	u32 c;
+
+	c = a + b;
+	c += (v & 0xff) + ((v >> 8) & 0xff) + ((v >> 24) & 0xff);
+	c &= 0xff;
+	c = 0x100 - c;
+	c &= 0xff;
+
+	return c;
+}
+
+/**
+ * tegra_pmc_enable_thermal_trip - enable hardware-controlled thermal reset
+ *
+ * Configure the PMC to initiate a hardware reset when the SOC_THERM
+ * IP block detects a high temperature condition, and to allow us to
+ * write to the PMC scratch registers to store the PMIC shutdown
+ * command (in another function).  No return value.
+ */
+void tegra_pmc_enable_thermal_trip(void)
+{
+	u32 val;
+
+	val = tegra_pmc_readl(PMC_SENSOR_CTRL);
+	val &= ~PMC_SCRATCH_WRITE_MASK;
+	val |= PMC_ENABLE_RST_MASK;
+	tegra_pmc_writel(val, PMC_SENSOR_CTRL);
+}
+EXPORT_SYMBOL(tegra_pmc_enable_thermal_trip);
+
+/**
+ * tegra_pmc_config_thermal_trip - set PMC_SCRATCH54/55 from parameters
+ * @poweroff_reg_data: What register value to write to the PMIC to power off
+ * @poweroff_reg_addr: The PMIC register address to write @poweroff_reg_data
+ * @controller_type: 0 for I2C, 1 for SPI, 2 for GPIO
+ * @i2c_controller_id: I2C controller ID
+ * @pinmux: pinmux configuration ID for the @controller_type pads
+ * @pmu_16bit_ops: Must be set to 0.
+ * @pmu_i2c_addr: I2C bus address of the PMIC to write to
+ *
+ * Configure the hardware thermal reset PMIC interaction functions of
+ * the Tegra SoC.  More information on the argument values can be
+ * found in include/linux/tegra-pmc.h.  No return value.
+ *
+ * XXX This function does no input validation, but it should.
+ * XXX This function should read back the values that it programs into the
+ * PMIC scratch registers to ensure that the writes weren't blocked by
+ * the BLOCK_SCRATCH_WRITES hardware mechanism.
+ */
+void tegra_pmc_config_thermal_trip(struct tegra_tsensor_pmu_data *data)
+{
+	u32 v = 0;
+	u32 c;
+
+	/* Fill scratch registers to shutdown device on therm TRIP */
+	v = data->poweroff_reg_data << PMU_OFF_DATA_SHIFT;
+	v |= data->poweroff_reg_addr << PMU_OFF_ADDR_SHIFT;
+	tegra_pmc_writel(v, PMC_SCRATCH54);
+
+	v = 1 << RESET_TEGRA_SHIFT;
+	v |= data->controller_type << CONTROLLER_TYPE_SHIFT;
+	v |= data->i2c_controller_id << I2C_CONTROLLER_ID_SHIFT;
+	v |= data->pinmux << PINMUX_SHIFT;
+	v |= data->pmu_16bit_ops << PMU_16BIT_SUPPORT_SHIFT;
+	v |= data->pmu_i2c_addr << PMU_I2C_ADDRESS_SHIFT;
+
+	c = _compute_pmic_checksum(data->poweroff_reg_addr,
+				   data->poweroff_reg_data, v);
+	v |= c << CHECKSUM_SHIFT;
+
+	tegra_pmc_writel(v, PMC_SCRATCH55);
+}
+EXPORT_SYMBOL(tegra_pmc_config_thermal_trip);
 
 void tegra_pmc_set_dpd_sample()
 {

@@ -29,6 +29,7 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/power/power_supply_extcon.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra-pmc.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
@@ -50,7 +51,6 @@
 #include "dvfs.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra11_soctherm.h"
-#include "tegra3_tsensor.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)

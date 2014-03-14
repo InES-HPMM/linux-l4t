@@ -38,10 +38,10 @@
 #include <linux/platform_data/thermal_sensors.h>
 #include <linux/bug.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra-pmc.h>
 #include <linux/regulator/consumer.h>
 
 #include "iomap.h"
-#include "tegra3_tsensor.h"
 #include "tegra11_soctherm.h"
 #include "gpio-names.h"
 #include "common.h"
@@ -388,37 +388,6 @@ static const int precision; /* default 0 -> low precision */
 #define CDIVG_DIVISOR_MASK		0xff
 #define CDIVG_DIVISOR_SHIFT		0
 
-/* pmc register offsets needed for powering off PMU */
-#define PMC_SCRATCH_WRITE_SHIFT			2
-#define PMC_SCRATCH_WRITE_MASK			0x1
-#define PMC_ENABLE_RST_SHIFT			1
-#define PMC_ENABLE_RST_MASK			0x1
-#define PMC_SENSOR_CTRL				0x1B0
-#define PMC_SCRATCH54				0x258
-#define PMC_SCRATCH55				0x25C
-
-/* scratch54 register bit fields */
-#define PMU_OFF_DATA_SHIFT			8
-#define PMU_OFF_DATA_MASK			0xff
-#define PMU_OFF_ADDR_SHIFT			0
-#define PMU_OFF_ADDR_MASK			0xff
-
-/* scratch55 register bit fields */
-#define RESET_TEGRA_SHIFT			31
-#define RESET_TEGRA_MASK			0x1
-#define CONTROLLER_TYPE_SHIFT			30
-#define CONTROLLER_TYPE_MASK			0x1
-#define I2C_CONTROLLER_ID_SHIFT			27
-#define I2C_CONTROLLER_ID_MASK			0x7
-#define PINMUX_SHIFT				24
-#define PINMUX_MASK				0x7
-#define CHECKSUM_SHIFT				16
-#define CHECKSUM_MASK				0xff
-#define PMU_16BIT_SUPPORT_SHIFT			15
-#define PMU_16BIT_SUPPORT_MASK			0x1
-#define PMU_I2C_ADDRESS_SHIFT			0
-#define PMU_I2C_ADDRESS_MASK			0x7f
-
 #define CAR_SUPER_CLK_DIVIDER_REGISTER()	(IS_T13X ? \
 						 CAR13_SUPER_CCLKG_DIVIDER : \
 						 CAR_SUPER_CCLKG_DIVIDER)
@@ -478,7 +447,6 @@ static const int precision; /* default 0 -> low precision */
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
 static void __iomem *reg_soctherm_base = IOMEM(IO_ADDRESS(TEGRA_SOCTHERM_BASE));
-static void __iomem *pmc_base = IOMEM(IO_ADDRESS(TEGRA_PMC_BASE));
 static void __iomem *clk_reset_base = IOMEM(IO_ADDRESS(TEGRA_CLK_RESET_BASE));
 static void __iomem *clk13_rst_base = IOMEM(IO_ADDRESS(TEGRA_CLK13_RESET_BASE));
 
@@ -547,17 +515,6 @@ static inline u32 throtctl_readl(u32 reg)
 		return __raw_readl(clk13_rst_base + reg);
 	else
 		return soctherm_readl(reg);
-}
-
-static inline void pmc_writel(u32 value, u32 reg)
-{
-	__raw_writel(value, (void __iomem *)
-		(pmc_base + reg));
-}
-
-static inline u32 pmc_readl(u32 reg)
-{
-	return __raw_readl(pmc_base + reg);
 }
 
 static inline void clk_reset_writel(u32 value, u32 reg)
@@ -2648,39 +2605,11 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
  */
 static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 {
-	u32 val, checksum;
-
 	if (!data)
 		return;
 
-	/* enable therm trip at PMC */
-	val = pmc_readl(PMC_SENSOR_CTRL);
-	val = REG_SET(val, PMC_SCRATCH_WRITE, 0);
-	val = REG_SET(val, PMC_ENABLE_RST, 1);
-	pmc_writel(val, PMC_SENSOR_CTRL);
-
-	/* Fill scratch registers to shutdown device on therm TRIP */
-	val = REG_SET(0, PMU_OFF_DATA, data->poweroff_reg_data);
-	val = REG_SET(val, PMU_OFF_ADDR, data->poweroff_reg_addr);
-	pmc_writel(val, PMC_SCRATCH54);
-
-	val = REG_SET(0, RESET_TEGRA, 1);
-	val = REG_SET(val, CONTROLLER_TYPE, data->controller_type);
-	val = REG_SET(val, I2C_CONTROLLER_ID, data->i2c_controller_id);
-	val = REG_SET(val, PINMUX, data->pinmux);
-	val = REG_SET(val, PMU_16BIT_SUPPORT, data->pmu_16bit_ops);
-	val = REG_SET(val, PMU_I2C_ADDRESS, data->pmu_i2c_addr);
-
-	checksum = data->poweroff_reg_addr +
-		data->poweroff_reg_data +
-		(val & 0xFF) +
-		((val >> 8) & 0xFF) +
-		((val >> 24) & 0xFF);
-	checksum &= 0xFF;
-	checksum = 0x100 - checksum;
-
-	val = REG_SET(val, CHECKSUM, checksum);
-	pmc_writel(val, PMC_SCRATCH55);
+	tegra_pmc_enable_thermal_trip();
+	tegra_pmc_config_thermal_trip(data);
 }
 
 /**

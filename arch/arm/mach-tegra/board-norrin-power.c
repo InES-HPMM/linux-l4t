@@ -45,7 +45,6 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include "iomap.h"
-#include "tegra3_tsensor.h"
 
 int __init norrin_as3722_regulator_init(void)
 {

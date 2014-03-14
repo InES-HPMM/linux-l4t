@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-power.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -33,6 +33,7 @@
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
 
@@ -51,7 +52,6 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include "iomap.h"
-#include "tegra3_tsensor.h"
 #include "battery-ini-model-data.h"
 
 #define PMC_CTRL		0x0

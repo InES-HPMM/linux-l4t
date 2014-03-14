@@ -22,6 +22,7 @@
 #include <linux/regulator/max15569-regulator.h>
 #include <linux/gpio.h>
 #include <linux/i2c/pca953x.h>
+#include <linux/tegra-pmc.h>
 
 #include <mach/edp.h>
 
@@ -33,7 +34,6 @@
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include "tegra11_soctherm.h"
-#include "tegra3_tsensor.h"
 #include <mach/board_id.h>
 
 #define PMC_CTRL		0x0

@@ -53,7 +53,6 @@
 #include "iomap.h"
 #include "tegra_cl_dvfs.h"
 #include "tegra11_soctherm.h"
-#include "tegra3_tsensor.h"
 
 #define E1735_EMULATE_E1767_SKU	1001
 

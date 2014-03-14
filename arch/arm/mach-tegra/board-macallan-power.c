@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,6 +34,7 @@
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -53,7 +54,6 @@
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include "tegra11_soctherm.h"
-#include "tegra3_tsensor.h"
 #include "iomap.h"
 #include "battery-ini-model-data.h"
 
