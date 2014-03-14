@@ -59,7 +59,6 @@
 					TEGRA_GPIO(R, 3)
 					TEGRA_GPIO(EE, 1)
 					TEGRA_GPIO(U, 1)
-					TEGRA_GPIO(U, 4)
 					TEGRA_GPIO(K, 5)>;
 			gpio-output-high = <TEGRA_GPIO(K, 0)
 					TEGRA_GPIO(Q, 7)
