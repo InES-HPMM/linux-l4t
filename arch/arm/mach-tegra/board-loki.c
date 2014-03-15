@@ -226,7 +226,10 @@ static struct tegra_asoc_platform_data loki_audio_pdata_rt5639 = {
 	.gpio_codec3 = -1,
 	.i2s_param[HIFI_CODEC]       = {
 		.audio_port_id = 1,
-		.is_i2s_master = 0,
+		.is_i2s_master = 1,
+		.sample_size   = 16,
+		.channels      = 2,
+		.bit_clk       = 1536000,
 		.i2s_mode = TEGRA_DAIFMT_I2S,
 	},
 	.i2s_param[BT_SCO] = {
