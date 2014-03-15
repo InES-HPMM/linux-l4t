@@ -25,10 +25,8 @@
 #include <linux/hrtimer.h>
 #include <linux/thermal.h>
 #include <linux/regulator/consumer.h>
-#include <linux/tegra-soc.h>
 
 #include "tegra_simon.h"
-#include "common.h"
 #include "clock.h"
 #include "dvfs.h"
 #include "pm.h"
@@ -36,7 +34,7 @@
 
 static DEFINE_MUTEX(simon_lock);
 static RAW_NOTIFIER_HEAD(simon_nh);
-static void tegra_simon_grade_update(struct work_struct *work);
+static void tegra_simon_grade_notify(struct work_struct *work);
 
 static u32 grading_sec = TEGRA_SIMON_GRADING_INTERVAL_SEC;
 
@@ -71,7 +69,7 @@ static int tegra_simon_gpu_grading_cb(
 		return NOTIFY_DONE;
 
 	mv = (mv > 0) ? mv / 1000 : mv;
-	if ((mv <= 0) || (mv > grader->grading_mv_limit))
+	if ((mv <= 0) || (mv > grader->desc->grading_mv_limit))
 		return NOTIFY_OK;
 
 	if (grader->last_grading.tv64 &&
@@ -85,8 +83,8 @@ static int tegra_simon_gpu_grading_cb(
 		return NOTIFY_OK;
 	}
 
-	if (grader->grade_simon_domain) {
-		grade = grader->grade_simon_domain(grader->domain, mv, t);
+	if (grader->desc->grade_simon_domain) {
+		grade = grader->desc->grade_simon_domain(grader->domain, mv, t);
 		if (grade < 0) {
 			pr_err("%s: Failed to grade %s\n",
 			       __func__, grader->domain_name);
@@ -110,19 +108,7 @@ static int __init tegra_simon_init_gpu(void)
 	struct tegra_simon_grader *grader =
 		&simon_graders[TEGRA_SIMON_DOMAIN_GPU];
 
-	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
-
-	switch (tegra_get_chip_id()) {
-	case TEGRA_CHIPID_TEGRA12:
-		/* FIXME: move settings below to tegar12_ specific file */
-		grader->grading_mv_limit = 850;
-		grader->grade_simon_domain = NULL;
-		break;
-	default:
-		pr_info("%s: simon %s grading is not supported on chip ID %d\n",
-		       __func__, grader->domain_name, tegra_get_chip_id());
-		return -ENOSYS;
-	}
+	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_notify);
 
 	grader->tzd = thermal_zone_device_find_by_name("GPU-therm");
 	if (!grader->tzd) {
@@ -168,7 +154,7 @@ static int tegra_simon_cpu_grading_cb(
 	int mv;
 	int grade = 0;
 
-	if (is_lp_cluster() || (rate > grader->garding_rate_limit) ||
+	if (is_lp_cluster() || (rate > grader->desc->garding_rate_limit) ||
 	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		return NOTIFY_OK;
 
@@ -193,8 +179,8 @@ static int tegra_simon_cpu_grading_cb(
 
 	mv = tegra_cl_dvfs_vmin_read_begin(cld, &start);
 
-	if (grader->grade_simon_domain) {
-		grade = grader->grade_simon_domain(grader->domain, mv, t);
+	if (grader->desc->grade_simon_domain) {
+		grade = grader->desc->grade_simon_domain(grader->domain, mv, t);
 		if (grade < 0) {
 			pr_err("%s: Failed to grade %s\n",
 			       __func__, grader->domain_name);
@@ -225,19 +211,7 @@ static int __init tegra_simon_init_cpu(void)
 	struct clk *c;
 	int r;
 
-	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_update);
-
-	switch (tegra_get_chip_id()) {
-	case TEGRA_CHIPID_TEGRA12:
-		/* FIXME: move settings below to tegar12_ specific file */
-		grader->garding_rate_limit = 714000000;
-		grader->grade_simon_domain = NULL;
-		break;
-	default:
-		pr_info("%s: simon %s grading is not supported on chip ID %d\n",
-		       __func__, grader->domain_name, tegra_get_chip_id());
-		return -ENOSYS;
-	}
+	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_notify);
 
 	grader->tzd = thermal_zone_device_find_by_name("CPU-therm");
 	if (!grader->tzd) {
@@ -265,6 +239,54 @@ static int __init tegra_simon_init_cpu(void)
 	return 0;
 }
 
+/*
+ * Interface for grader driver to add grader description
+ */
+int tegra_simon_add_grader(struct tegra_simon_grader_desc *desc)
+{
+	int ret;
+	struct tegra_simon_grader *grader;
+
+	if (!desc || (desc->domain >= TEGRA_SIMON_DOMAIN_NUM)) {
+		pr_err("%s: Invalid grader data\n", __func__);
+		return -EINVAL;
+	}
+
+	grader = &simon_graders[desc->domain];
+	if (grader->desc) {
+		pr_err("%s: Duplicate grader for %s\n",
+		       __func__, grader->domain_name);
+		return -EINVAL;
+	}
+
+	set_mb(grader->desc, desc);
+
+	switch (grader->domain) {
+	case TEGRA_SIMON_DOMAIN_CPU:
+		ret = tegra_simon_init_cpu();
+		break;
+	case TEGRA_SIMON_DOMAIN_GPU:
+		ret = tegra_simon_init_gpu();
+		break;
+	default:
+		pr_err("%s: Grader for %s is not supported\n",
+		       __func__, grader->domain_name);
+		return -EINVAL;
+	}
+
+	if (ret) {
+		grader->desc = NULL;
+		pr_err("%s: Failed to initialize grader for %s\n",
+		       __func__, grader->domain_name);
+		return ret;
+	}
+
+	return 0;
+}
+
+/*
+ * Grade notification chain
+ */
 int tegra_register_simon_notifier(struct notifier_block *nb)
 {
 	int ret;
@@ -282,15 +304,20 @@ void tegra_unregister_simon_notifier(struct notifier_block *nb)
 	mutex_unlock(&simon_lock);
 }
 
-static void tegra_simon_grade_update(struct work_struct *work)
+static void grade_notify(struct tegra_simon_grader *grader)
 {
-	struct tegra_simon_grader *grader = container_of(
-		work, struct tegra_simon_grader, grade_update_work);
-
 	mutex_lock(&simon_lock);
 	raw_notifier_call_chain(&simon_nh, grader->grade,
 				(void *)((long)grader->domain));
 	mutex_unlock(&simon_lock);
+}
+
+static void tegra_simon_grade_notify(struct work_struct *work)
+{
+	struct tegra_simon_grader *grader = container_of(
+		work, struct tegra_simon_grader, grade_update_work);
+
+	grade_notify(grader);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -316,7 +343,7 @@ static int grade_set(void *data, u64 val)
 
 	if (grader->grade != (int)val) {
 		grader->grade = (int)val;
-		schedule_work(&grader->grade_update_work);
+		grade_notify(grader);
 	}
 	return 0;
 }
@@ -368,18 +395,34 @@ err_out:
 	debugfs_remove_recursive(dir);
 	return -ENOMEM;
 }
+
+late_initcall(simon_debugfs_init);
 #endif
 
-static int __init tegra_simon_init(void)
+/* FIXME: Add fake graders - to be removed when actual graders are implemnted */
+#if CONFIG_ARCH_TEGRA_12x_SOC
+static int fake_grader(int domain, int mv, int temperature)
 {
-	tegra_simon_init_gpu();
-	tegra_simon_init_cpu();
-
-#ifdef CONFIG_DEBUG_FS
-	simon_debugfs_init();
-#endif
-	return 0;
-
+	return 0;	/* safe low grade */
 }
-late_initcall_sync(tegra_simon_init);
 
+static struct tegra_simon_grader_desc gpu_grader_desc = {
+	.domain = TEGRA_SIMON_DOMAIN_GPU,
+	.grading_mv_limit = 850,
+	.grade_simon_domain = fake_grader,
+};
+
+static struct tegra_simon_grader_desc cpu_grader_desc = {
+	.domain = TEGRA_SIMON_DOMAIN_CPU,
+	.garding_rate_limit = 714000000,
+	.grade_simon_domain = fake_grader,
+};
+
+static int __init tegra_simon_add_graders(void)
+{
+	tegra_simon_add_grader(&gpu_grader_desc);
+	tegra_simon_add_grader(&cpu_grader_desc);
+	return 0;
+}
+late_initcall_sync(tegra_simon_add_graders);
+#endif
