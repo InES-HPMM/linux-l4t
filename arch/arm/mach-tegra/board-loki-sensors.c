@@ -466,7 +466,8 @@ static struct balanced_throttle tj_throttle = {
 
 static int __init loki_throttle_init(void)
 {
-	if (of_machine_is_compatible("nvidia,loki"))
+	if (of_machine_is_compatible("nvidia,loki") ||
+		of_machine_is_compatible("nvidia,t132loki"))
 		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
