@@ -23,6 +23,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/hrtimer.h>
+#include <linux/delay.h>
 #include <linux/thermal.h>
 #include <linux/regulator/consumer.h>
 
@@ -48,6 +49,16 @@ static struct tegra_simon_grader simon_graders[TEGRA_SIMON_DOMAIN_NUM] = {
 		.domain = TEGRA_SIMON_DOMAIN_GPU,
 	},
 };
+
+static void settle_delay(struct tegra_simon_grader *grader)
+{
+	int us = grader->desc->settle_us;
+
+	if (us < MAX_UDELAY_MS * 1000)
+		udelay(us);
+	else
+		usleep_range(us, us + 100);
+}
 
 /*
  * GPU grading is implemented within vdd_gpu post-change notification chain that
@@ -84,6 +95,7 @@ static int tegra_simon_gpu_grading_cb(
 	}
 
 	if (grader->desc->grade_simon_domain) {
+		settle_delay(grader);	/* delay for voltage to settle */
 		grade = grader->desc->grade_simon_domain(grader->domain, mv, t);
 		if (grade < 0) {
 			pr_err("%s: Failed to grade %s\n",
@@ -180,6 +192,7 @@ static int tegra_simon_cpu_grading_cb(
 	mv = tegra_cl_dvfs_vmin_read_begin(cld, &start);
 
 	if (grader->desc->grade_simon_domain) {
+		settle_delay(grader);	/* delay for voltage to settle */
 		grade = grader->desc->grade_simon_domain(grader->domain, mv, t);
 		if (grade < 0) {
 			pr_err("%s: Failed to grade %s\n",
@@ -409,12 +422,14 @@ static int fake_grader(int domain, int mv, int temperature)
 static struct tegra_simon_grader_desc gpu_grader_desc = {
 	.domain = TEGRA_SIMON_DOMAIN_GPU,
 	.grading_mv_limit = 850,
+	.settle_us = 3000,
 	.grade_simon_domain = fake_grader,
 };
 
 static struct tegra_simon_grader_desc cpu_grader_desc = {
 	.domain = TEGRA_SIMON_DOMAIN_CPU,
 	.garding_rate_limit = 714000000,
+	.settle_us = 3000,
 	.grade_simon_domain = fake_grader,
 };
 

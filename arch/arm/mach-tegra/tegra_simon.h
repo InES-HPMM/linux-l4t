@@ -30,6 +30,7 @@ enum tegra_simon_domain {
 
 struct tegra_simon_grader_desc {
 	enum tegra_simon_domain		domain;
+	int				settle_us;
 	int				grading_mv_limit;
 	unsigned long			garding_rate_limit;
 	int (*grade_simon_domain) (int domain, int mv, int temperature);
