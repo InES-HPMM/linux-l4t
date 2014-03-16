@@ -40,6 +40,7 @@ struct tegra_simon_grader {
 	enum tegra_simon_domain		domain;
 	const char			*domain_name;
 	ktime_t				last_grading;
+	bool				stop_grading;
 	int				grade;
 	struct work_struct		grade_update_work;
 	struct notifier_block		grading_condition_nb;

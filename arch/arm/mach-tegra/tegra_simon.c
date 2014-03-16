@@ -79,6 +79,9 @@ static int tegra_simon_gpu_grading_cb(
 	if (!(event & REGULATOR_EVENT_OUT_POSTCHANGE))
 		return NOTIFY_DONE;
 
+	if (grader->stop_grading)
+		return NOTIFY_OK;
+
 	mv = (mv > 0) ? mv / 1000 : mv;
 	if ((mv <= 0) || (mv > grader->desc->grading_mv_limit))
 		return NOTIFY_OK;
@@ -106,6 +109,9 @@ static int tegra_simon_gpu_grading_cb(
 
 	grader->last_grading = now;
 	if (grader->grade != grade) {
+		/* once return to low grade, stay until next boot */
+		if (grade == 0)
+			grader->stop_grading = true;
 		set_mb(grader->grade, grade);
 		schedule_work(&grader->grade_update_work);
 	}
@@ -166,6 +172,9 @@ static int tegra_simon_cpu_grading_cb(
 	int mv;
 	int grade = 0;
 
+	if (grader->stop_grading)
+		return NOTIFY_OK;
+
 	if (is_lp_cluster() || (rate > grader->desc->garding_rate_limit) ||
 	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		return NOTIFY_OK;
@@ -209,6 +218,9 @@ static int tegra_simon_cpu_grading_cb(
 
 	grader->last_grading = now;
 	if (grader->grade != grade) {
+		/* once return to low grade, stay until next boot */
+		if (grade == 0)
+			grader->stop_grading = true;
 		set_mb(grader->grade, grade);
 		schedule_work(&grader->grade_update_work);
 	}
@@ -373,6 +385,10 @@ static int __init simon_debugfs_init_domain(struct dentry *dir,
 
 	if (!debugfs_create_file("grade", S_IWUSR | S_IRUGO, d,
 				 (void *)grader, &grade_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_bool("grading_stopped", S_IRUGO, d,
+				(u32 *)&grader->stop_grading))
 		return -ENOMEM;
 
 	return 0;
