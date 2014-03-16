@@ -324,7 +324,23 @@ static inline void invalidate_request(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-static inline void disable_forced_output(struct tegra_cl_dvfs *cld)
+static inline u32 output_force_set_val(struct tegra_cl_dvfs *cld, u8 out_val)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	val = (val & CL_DVFS_OUTPUT_FORCE_ENABLE) | (out_val & OUT_MASK);
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
+	return cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+}
+
+static inline void output_force_enable(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	val |= CL_DVFS_OUTPUT_FORCE_ENABLE;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
+	cl_dvfs_wmb(cld);
+}
+
+static inline void output_force_disable(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	val &= ~CL_DVFS_OUTPUT_FORCE_ENABLE;
@@ -897,7 +913,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		/* Forced output must be disabled in closed loop mode */
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 		if (val & CL_DVFS_OUTPUT_FORCE_ENABLE) {
-			disable_forced_output(cld);
+			output_force_disable(cld);
 			calibration_timer_update(cld);
 			return;
 		}
@@ -1789,16 +1805,10 @@ static int tegra_cl_dvfs_force_output(void *data, unsigned int out_sel)
 
 	clk_lock_save(cld->dfll_clk, &flags);
 
-	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
-	val = (val & CL_DVFS_OUTPUT_FORCE_ENABLE) | out_sel;
-	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
-	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
-
+	val = output_force_set_val(cld, out_sel);
 	if ((cld->mode < TEGRA_CL_DVFS_CLOSED_LOOP) &&
 	    !(val & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
-		val |= CL_DVFS_OUTPUT_FORCE_ENABLE;
-		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
-		cl_dvfs_wmb(cld);
+		output_force_enable(cld);
 		/* enable output only if bypass h/w is alive */
 		if (!cld->safe_dvfs->dfll_data.is_bypass_down ||
 		    !cld->safe_dvfs->dfll_data.is_bypass_down())
@@ -2544,7 +2554,7 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		set_request(cld, req);
-		disable_forced_output(cld);
+		output_force_disable(cld);
 		calibration_timer_update(cld);
 		return 0;
 
@@ -2822,33 +2832,19 @@ static int fout_mv_set(void *data, u64 val)
 	struct clk *c = (struct clk *)data;
 	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
 
-	/* FIXME: do we need it in i2c mode ? */
-	if (is_i2c(cld))
-		return -ENOSYS;
-
-	clk_lock_save(c, &flags);
 	clk_enable(cld->soc_clk);
+	clk_lock_save(c, &flags);
 
-	v = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	if (val) {
-		val = find_mv_out_cap(cld, (int)val);
-		v = (v & CL_DVFS_OUTPUT_FORCE_ENABLE) | (u32)val;
-		cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
-		cl_dvfs_wmb(cld);
-
-		if (!(v & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
-			v |= CL_DVFS_OUTPUT_FORCE_ENABLE;
-			cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
-			cl_dvfs_wmb(cld);
-		}
-	} else if (v & CL_DVFS_OUTPUT_FORCE_ENABLE) {
-		v &= ~CL_DVFS_OUTPUT_FORCE_ENABLE;
-		cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
-		cl_dvfs_wmb(cld);
+		v = output_force_set_val(cld, find_mv_out_cap(cld, (int)val));
+		if (!(v & CL_DVFS_OUTPUT_FORCE_ENABLE))
+			output_force_enable(cld);
+	} else {
+		output_force_disable(cld);
 	}
 
-	clk_disable(cld->soc_clk);
 	clk_unlock_restore(c, &flags);
+	clk_disable(cld->soc_clk);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(fout_mv_fops, fout_mv_get, fout_mv_set, "%llu\n");
