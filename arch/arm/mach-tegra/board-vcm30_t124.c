@@ -163,7 +163,6 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
 	SET_FIXED_TARGET_RATE("pll_x",		150000000),
-	SET_FIXED_TARGET_RATE("pll_d_out0",	474000000),
 	SET_FIXED_TARGET_RATE("gbus",		600000000),
 
 	SET_FIXED_TARGET_RATE("gk20a.gbus",	600000000),
@@ -188,10 +187,6 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 
 	SET_FIXED_TARGET_RATE("host1x",		264000000),
 	SET_FIXED_TARGET_RATE("mselect",	408000000),
-
-	SET_FIXED_TARGET_RATE("disp1",		474000000),
-	SET_FIXED_TARGET_RATE("disp2",		474000000),
-	SET_FIXED_TARGET_RATE("hdmi",		297000000),
 
 	SET_FIXED_TARGET_RATE("i2s0",		24576000),
 	SET_FIXED_TARGET_RATE("i2s1",		24576000),
