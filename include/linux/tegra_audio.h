@@ -93,6 +93,7 @@ enum AHUB_MODULE_ID {
 	MODULE_AMIXER,
 	MODULE_DMIC,
 	MODULE_ADSP,
+	MODULE_MVC,
 	MODULE_NUM,
 };
 
@@ -103,6 +104,8 @@ enum tegra210_audio_test_id {
 	TEST_ID_GET_POSITION,
 	TEST_ID_COEFF_RAM_SEQ,
 	TEST_ID_COEFF_RAM_NON_SEQ,
+	TEST_ID_MVC_MUTE_CTRL,
+	TEST_ID_MVC_UNMUTE_CTRL,
 };
 
 struct tegra210_audio_test_param {
@@ -243,6 +246,24 @@ struct tegra210_audio_amixer_test_param {
 	unsigned int gain;
 };
 
+struct tegra210_audio_mvc_test_param {
+	int mvc_id;
+	int test_id;
+	unsigned int bypass_en;
+	unsigned int per_ch_ctrl_en;
+	u8 mute_unmute_ctrl;
+	unsigned int curve_type;
+	unsigned int rounding_type;
+	int init_vol[8];
+	int target_vol[8];
+	unsigned int duration_in_samples;
+	unsigned int inv_duration_in_samples;
+	unsigned int curve_split_points[2];
+	unsigned int curve_coef[9];
+	unsigned int peakmeter_mode;
+	unsigned int peakmeter_window_size;
+};
+
 struct tegra210_audio_dmic_test_param {
 	int test_id;
 	int dmic_id;
@@ -342,6 +363,8 @@ struct tegra210_audio_dmic_test_param {
 				    struct tegra210_audio_amixer_test_param *)
 #define TEGRA210_AUDIO_DMIC_TEST_PARAM		_IOW(TEGRA_AUDIO_MAGIC, 81, \
 				    struct tegra210_audio_dmic_test_param *)
+#define TEGRA210_AUDIO_MVC_TEST_PARAM	_IOW(TEGRA_AUDIO_MAGIC, 82, \
+				    struct tegra210_audio_mvc_test_param *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
