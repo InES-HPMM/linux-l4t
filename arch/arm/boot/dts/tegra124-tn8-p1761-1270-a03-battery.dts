@@ -1,0 +1,17 @@
+#include "tegra124-tn8-p1761-1270-a03.dts"
+
+/ {
+	i2c@7000c400 {
+		lc709203f@0b {
+			status = "okay";
+			onsemi,kernel-threshold-soc = < 2 >;
+		};
+
+		hpa2163@6b {
+			charger {
+				status = "okay";
+			};
+		};
+	};
+};
+
