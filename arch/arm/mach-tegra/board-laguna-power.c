@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-laguna-power.c
  *
- * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -120,11 +120,12 @@ static inline void fill_reg_map(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-	if ((board_info.board_id == BOARD_PM359) &&
+	if (board_info.board_id == BOARD_PM375 ||
+	((board_info.board_id == BOARD_PM359) &&
 	((board_info.sku >= 0x0003) ||
 	((board_info.sku == 0x0002) && (board_info.major_revision == 'B')) ||
 	((board_info.sku == 0x0001) && (board_info.major_revision == 'C')) ||
-	((board_info.sku == 0x0000) && (board_info.major_revision == 'C'))))
+	((board_info.sku == 0x0000) && (board_info.major_revision == 'C')))))
 		reg_init_value = 0x1e;
 
 	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
@@ -132,6 +133,7 @@ static inline void fill_reg_map(void)
 		pmu_cpu_vdd_map[i].reg_uV = 700000 + 10000 * i;
 	}
 }
+
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct tegra_cl_dvfs_platform_data laguna_cl_dvfs_data = {

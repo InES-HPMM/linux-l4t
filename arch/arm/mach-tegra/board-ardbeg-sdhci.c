@@ -469,8 +469,11 @@ int __init ardbeg_sdhci_init(void)
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
-	platform_device_register(&tegra_sdhci_device0);
-	ardbeg_wifi_init();
+	if (board_info.board_id != BOARD_PM359 &&
+			board_info.board_id != BOARD_PM375) {
+		platform_device_register(&tegra_sdhci_device0);
+		ardbeg_wifi_init();
+	}
 
 	return 0;
 }
