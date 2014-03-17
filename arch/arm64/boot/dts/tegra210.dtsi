@@ -450,6 +450,20 @@
 			status = "disabled";
 		};
 
+		mvc@702da000 {
+			compatible = "nvidia,tegra210-mvc";
+			reg = <0x702DA000 0x200>;
+			nvidia,ahub-mvc-id = <0>;
+			status = "disabled";
+		};
+
+		mvc@0x702da200 {
+			compatible = "nvidia,tegra210-mvc";
+			reg = <0x702DA200 0x200>;
+			nvidia,ahub-mvc-id = <1>;
+			status = "disabled";
+		};
+
 		amixer@702dbb00 {
 			compatible = "nvidia,tegra210-amixer";
 			reg = <0x702dbb00 0x800>;

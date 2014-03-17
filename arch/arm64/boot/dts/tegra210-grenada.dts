@@ -583,6 +583,14 @@
 			status = "okay";
 		};
 
+		mvc@702da000 {
+			status = "okay";
+		};
+
+		mvc@0x702da200 {
+			status = "okay";
+		};
+
 		amixer@702dbb00 {
 			status = "okay";
 		};
