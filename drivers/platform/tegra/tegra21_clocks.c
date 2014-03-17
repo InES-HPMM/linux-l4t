@@ -6691,12 +6691,12 @@ static struct clk_mux_sel mux_pllc_pllp_plla[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllc_pllp_plla_v2[] = {
+static struct clk_mux_sel mux_pllc_pllp_plla_pllc4[] = {
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_pll_a_out0, .value = 3},
 	/* Skip C2(4) */
-	/* Skip C2(5) */
+	{ .input = &tegra_pll_c4, .value = 5},
 	{ 0, 0},
 };
 
@@ -6710,21 +6710,22 @@ static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllc_pllp_plla_pllc4[] = {
-	/* Skip C2(1) */
+static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_pllc4[] = {
+	{ .input = &tegra_pll_c2, .value = 1},
 	{ .input = &tegra_pll_c, .value = 2},
-	/* Skip C2(3) */
+	{ .input = &tegra_pll_c3, .value = 3},
 	{ .input = &tegra_pll_p, .value = 4},
-	{ .input = &tegra_pll_a_out0, .value = 6},
+	{ .input = &tegra_pll_a1, .value = 6},
 	{ .input = &tegra_pll_c4, .value = 7},
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllc_pllp_plla_clkm_pllc4[] = {
+static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4[] = {
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
-	{ .input = &tegra_pll_a_out0, .value = 3},
-	/* Skip C2(4) & C3(5) */
+	{ .input = &tegra_pll_a1, .value = 3},
+	{ .input = &tegra_pll_c2, .value = 4},
+	{ .input = &tegra_pll_c3, .value = 5},
 	{ .input = &tegra_clk_m, .value = 6},
 	{ .input = &tegra_pll_c4, .value = 7},
 	{ 0, 0},
@@ -7178,7 +7179,7 @@ static struct clk tegra_clk_isp = {
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x144,
 	.max_rate = 600000000,
-	.inputs = mux_pllc_pllp_plla_clkm_pllc4,
+	.inputs = mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4,
 	.flags = MUX | DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
 };
 
@@ -7368,7 +7369,7 @@ struct clk tegra_list_clks[] = {
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	500000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71),
 #endif
-	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
+	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("msenc",	"msenc",		NULL,	219,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
@@ -7419,7 +7420,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	408000000, mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	408000000, mux_pllc_pllp_plla_v2,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	408000000, mux_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | PERIPH_ON_APB),
 
 	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("mc_bbc",	"mc_bbc",		NULL,	170,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
