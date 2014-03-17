@@ -4,7 +4,7 @@
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
  * Based on code by Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -303,6 +303,10 @@ struct of_dev_auxdata axbar_auxdata[] = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-dmic", 0x702D4200, "tegra210-dmic.2",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-mvc", 0x702DA000, "tegra210-mvc.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-mvc", 0x702DA200, "tegra210-mvc.1",
+			NULL),
 	{}
 };
 

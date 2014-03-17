@@ -261,7 +261,7 @@ enum tegra210_ahub_cifs {
 
 /* MVC speicific macros */
 #define MVC_RX_SHIFT(cif)	(cif - MVC1_RX0)
-#define MVC_TX_SHIFT(cif)	(cif - MVC1_RX0)
+#define MVC_TX_SHIFT(cif)	(cif - MVC1_TX0)
 #define IS_MVC_RX(cif)		((cif >= MVC1_RX0) && (cif <= MVC2_RX0))
 #define IS_MVC_TX(cif)		((cif >= MVC1_TX0) && (cif <= MVC2_TX0))
 #define IS_MVC(cif)		(IS_MVC_RX(cif) || IS_MVC_TX(cif))
