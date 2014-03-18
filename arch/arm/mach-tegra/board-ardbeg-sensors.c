@@ -1505,8 +1505,12 @@ static int ardbeg_nct72_init(void)
 			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
 	}
 
-	tegra_add_all_vmin_trips(ardbeg_nct72_pdata.sensors[EXT].trips,
-		&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+	/* vmin trips are bound to soctherm on norrin and bowmore */
+	if (!(board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_E1971 ||
+		board_info.board_id == BOARD_E1991))
+		tegra_add_all_vmin_trips(ardbeg_nct72_pdata.sensors[EXT].trips,
+			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
 
 	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 

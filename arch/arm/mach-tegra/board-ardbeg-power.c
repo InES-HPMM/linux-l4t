@@ -1546,6 +1546,8 @@ int __init ardbeg_soctherm_init(void)
 
 	if (board_info.board_id == BOARD_P1761 ||
 		board_info.board_id == BOARD_E1784 ||
+		board_info.board_id == BOARD_E1971 ||
+		board_info.board_id == BOARD_E1991 ||
 		board_info.board_id == BOARD_E1922) {
 		tegra_add_cpu_vmin_trips(
 			ardbeg_soctherm_data.therm[THERM_CPU].trips,

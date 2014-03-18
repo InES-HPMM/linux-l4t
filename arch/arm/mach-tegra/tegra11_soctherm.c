@@ -1106,9 +1106,6 @@ static struct thermal_cooling_device_ops soctherm_suspend_ops = {
  * @thz:	The thermal zone device to be bound
  * @cdev:	The cooling device to be bound
  *
- * If a trip point is already bound to a cooling device, it is
- * not rebound.
- *
  * If thermal sensor calibration data is missing from fuses,
  * the cooling devices are not bound.
  *
@@ -1141,8 +1138,6 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 
 	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
 		trip_state = &plat_data.therm[index].trips[i];
-		if (trip_state->bound)
-			continue;
 		if (trip_state->cdev_type &&
 		    !strncmp(trip_state->cdev_type, cdev->type,
 						THERMAL_NAME_LENGTH)) {

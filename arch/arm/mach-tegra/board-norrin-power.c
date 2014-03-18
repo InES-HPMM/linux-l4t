@@ -924,6 +924,20 @@ int __init norrin_soctherm_init(void)
 			&norrin_soctherm_data.therm[THERM_PLL].num_trips);
 	}
 
+	if (board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_E1971 ||
+		board_info.board_id == BOARD_E1991) {
+		tegra_add_cpu_vmin_trips(
+			norrin_soctherm_data.therm[THERM_CPU].trips,
+			&norrin_soctherm_data.therm[THERM_CPU].num_trips);
+		tegra_add_gpu_vmin_trips(
+			norrin_soctherm_data.therm[THERM_GPU].trips,
+			&norrin_soctherm_data.therm[THERM_GPU].num_trips);
+		tegra_add_core_vmin_trips(
+			norrin_soctherm_data.therm[THERM_PLL].trips,
+			&norrin_soctherm_data.therm[THERM_PLL].num_trips);
+	}
+
 	tegra_get_pmu_board_info(&pmu_board_info);
 
 	if (pmu_board_info.board_id == BOARD_PM374)
