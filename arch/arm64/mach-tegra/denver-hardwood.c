@@ -83,8 +83,7 @@ static int minor_map[N_CPU] = { -1 };
 
 static int TRACER_IRQS[] = { 48, 54 };
 
-static bool hardwood_init_done;
-static DEFINE_SPINLOCK(hardwood_init_lock);
+static bool hardwood_init_done[N_CPU];
 
 static bool hardwood_supported;
 
@@ -99,7 +98,7 @@ static bool hardwood_supported;
 	} \
 }
 
-static void hardwood_late_init(void);
+static void hardwood_late_init(int cpu);
 
 static irqreturn_t hardwood_handler(int irq, void *dev_id)
 {
@@ -124,15 +123,15 @@ static int hardwood_open(struct inode *inode, struct file *file)
 		return -ENOENT;
 	}
 
-	if (!hardwood_init_done)
-		hardwood_late_init();
-
 	for (cpu = 0; cpu < N_CPU; ++cpu)
 		if (minor_map[cpu] == minor) {
 			found = 1;
 			break;
 		}
 	BUG_ON(!found);
+
+	hardwood_late_init(cpu);
+
 	file->private_data = &hardwood_devs[cpu];
 	return nonseekable_open(inode, file);
 }
@@ -347,7 +346,8 @@ static __init void init_one_buffer(int cpu, int buf_id)
 	buf->va = NULL;
 	buf->pa = 0;
 
-	buf->va = dma_alloc_coherent(NULL, BUFFER_SIZE, &buf->pa, GFP_KERNEL);
+	buf->va = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+	buf->pa = virt_to_phys(buf->va);
 	BUG_ON(!buf->va || !buf->pa);
 
 	/* Set buffer physical address */
@@ -364,6 +364,16 @@ static __init void init_one_buffer(int cpu, int buf_id)
 	for (i = 0; i < BUFFER_SIZE; i += sizeof(u32))
 		/* Fill in some poison data */
 		*ptr++ = 0xdeadbeef;
+}
+
+static void hardwood_late_init(int cpu)
+{
+	int i;
+	if (hardwood_init_done[cpu])
+		return;
+	for (i = 0; i < N_BUFFER; i++)
+		init_one_buffer(cpu, i);
+	hardwood_init_done[cpu] = 1;
 }
 
 static void init_one_cpu(int cpu)
@@ -397,21 +407,6 @@ static void init_one_cpu(int cpu)
 	hdev->buf_status = 0;
 	hdev->signaled = 0;
 	spin_lock_init(&hdev->buf_status_lock);
-}
-
-static void hardwood_late_init(void)
-{
-	int cpu;
-	int i;
-	spin_lock(&hardwood_init_lock);
-	if (!hardwood_init_done) {
-		for (cpu = 0; cpu < N_CPU; ++cpu)
-			for (i = 0; i < N_BUFFER; i++)
-				init_one_buffer(cpu, i);
-
-		hardwood_init_done = 1;
-	}
-	spin_unlock(&hardwood_init_lock);
 }
 
 static __init int hardwood_init(void)
