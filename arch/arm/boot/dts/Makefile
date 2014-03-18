@@ -214,6 +214,8 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-ardbeg-e1733.dtb \
 	tegra124-ardbeg-e1733-a03-00.dtb \
 	tegra124-ardbeg-e1735-a03-powerconfig.dtb \
+	tegra124-ardbeg-e1792-1100-a00-00.dtb \
+	tegra124-ardbeg-e1792-1100-a00-01.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-norrin.dtb \

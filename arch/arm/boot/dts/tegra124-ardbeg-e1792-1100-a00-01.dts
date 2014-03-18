@@ -1,0 +1,2 @@
+#include "tegra124-ardbeg-a03-00.dts"
+#include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
