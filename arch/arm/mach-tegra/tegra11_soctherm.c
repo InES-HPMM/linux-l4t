@@ -47,7 +47,8 @@
 #include "common.h"
 #include "dvfs.h"
 
-static const int MAX_HIGH_TEMP = 128000;
+static const int MAX_HIGH_TEMP = 127000;
+static const int MIN_LOW_TEMP = -127000;
 
 /* Min temp granularity specified as X in 2^X.
  * -1: Hi precision option: 2^-1 = 0.5C (T12x onwards)
@@ -747,7 +748,6 @@ static inline s64 div64_s64_precise(s64 a, s32 b)
  *
  * Return: the translated temperature in millicelsius
  */
-
 static inline long temp_translate(int readback)
 {
 	int abs = readback >> 8;
@@ -759,6 +759,34 @@ static inline long temp_translate(int readback)
 }
 
 #ifdef CONFIG_THERMAL
+
+/**
+ * enforce_temp_range() - check and enforce temperature range [min, max]
+ * @trip_temp:		The trip temperature to check
+ *
+ * Checks and enforces the permitted temperature range that SOC_THERM
+ * HW can support with 8-bit registers to specify temperature. This is
+ * done while taking care of precision.
+ *
+ * Return: The precsion adjusted capped temperature in millicelsius.
+ */
+static int enforce_temp_range(long trip_temp)
+{
+	long temp = LOWER_PRECISION_FOR_TEMP(trip_temp);
+
+	if (temp < MIN_LOW_TEMP) {
+		pr_info("soctherm: trip_point temp %ld forced to %d\n",
+			trip_temp, LOWER_PRECISION_FOR_CONV(MIN_LOW_TEMP));
+		temp = MIN_LOW_TEMP;
+	} else if (temp > MAX_HIGH_TEMP) {
+		pr_info("soctherm: trip_point temp %ld forced to %d\n",
+			trip_temp, LOWER_PRECISION_FOR_CONV(MAX_HIGH_TEMP));
+		temp = MAX_HIGH_TEMP;
+	}
+
+	return temp;
+}
+
 /**
  * prog_hw_shutdown() - Configures the hardware to shut down the
  * system if a given sensor group reaches a given temperature
@@ -778,24 +806,26 @@ static inline long temp_translate(int readback)
 static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
 				    int therm)
 {
-	int trip_temp;
 	u32 r;
+	int temp;
 
-	trip_temp = LOWER_PRECISION_FOR_TEMP(trip_state->trip_temp / 1000);
+
+
+	temp = enforce_temp_range(trip_state->trip_temp) / 1000;
 
 	r = soctherm_readl(THERMTRIP);
 	if (therm == THERM_CPU) {
 		r = REG_SET(r, THERMTRIP_CPU_EN, 1);
-		r = REG_SET(r, THERMTRIP_CPU_THRESH, trip_temp);
+		r = REG_SET(r, THERMTRIP_CPU_THRESH, temp);
 	} else if (therm == THERM_GPU) {
 		r = REG_SET(r, THERMTRIP_GPU_EN, 1);
-		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
+		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, temp);
 	} else if (therm == THERM_PLL) {
 		r = REG_SET(r, THERMTRIP_TSENSE_EN, 1);
-		r = REG_SET(r, THERMTRIP_TSENSE_THRESH, trip_temp);
+		r = REG_SET(r, THERMTRIP_TSENSE_THRESH, temp);
 	} else if (therm == THERM_MEM) {
 		r = REG_SET(r, THERMTRIP_MEM_EN, 1);
-		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
+		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, temp);
 	}
 	r = REG_SET(r, THERMTRIP_ANY_EN, 0);
 	soctherm_writel(r, THERMTRIP);
@@ -815,17 +845,17 @@ static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
 static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 				     int therm, int throt)
 {
-	int trip_temp;
 	u32 r, reg_off;
+	int temp;
 
-	trip_temp = LOWER_PRECISION_FOR_TEMP(trip_state->trip_temp / 1000);
+	temp = enforce_temp_range(trip_state->trip_temp) / 1000;
 
 	/* Hardcode LITE on level-1 and HEAVY on level-2 */
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, throt + 1, therm);
 
 	r = soctherm_readl(reg_off);
-	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, trip_temp);
-	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
+	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, temp);
+	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
 
 	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
@@ -836,7 +866,6 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 		    throt == THROTTLE_HEAVY ?
 		    CTL_LVL0_CPU0_GPU_THROT_HEAVY :
 		    CTL_LVL0_CPU0_GPU_THROT_LIGHT);
-
 	soctherm_writel(r, reg_off);
 }
 
@@ -854,15 +883,15 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 				long lo_limit, long hi_limit)
 {
 	u32 r, reg_off;
+	int lo_temp, hi_temp;
+
+	lo_temp = enforce_temp_range(lo_limit) / 1000;
+	hi_temp = enforce_temp_range(hi_limit) / 1000;
 
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
 	r = soctherm_readl(reg_off);
-
-	lo_limit = LOWER_PRECISION_FOR_TEMP(lo_limit);
-	hi_limit = LOWER_PRECISION_FOR_TEMP(hi_limit);
-
-	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_limit);
-	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_limit);
+	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_temp);
+	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
 	soctherm_writel(r, reg_off);
 
@@ -944,7 +973,7 @@ static void soctherm_update_zone(int zn)
 	if (passive_low_temp != MAX_HIGH_TEMP)
 		low_temp = max(low_temp, passive_low_temp);
 
-	soctherm_set_limits(zn, low_temp/1000, high_temp/1000);
+	soctherm_set_limits(zn, low_temp, high_temp);
 }
 
 /**
@@ -1366,7 +1395,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 
 	trip_state = &plat_data.therm[index].trips[trip];
 
-	trip_state->trip_temp = temp;
+	trip_state->trip_temp = enforce_temp_range(temp);
 
 	rem = trip_state->trip_temp % LOWER_PRECISION_FOR_CONV(1000);
 	if (rem) {
@@ -3276,6 +3305,8 @@ static int regs_show(struct seq_file *s, void *data)
 					sensor2therm_b[i]));
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, i));
+		state = REG_GET(r, TS_CPU0_CONFIG0_STOP);
+		seq_printf(s, "Stop(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG0_TALL);
 		seq_printf(s, "Tall(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG0_TCALC_OVER);
