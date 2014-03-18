@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2013 NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2014 NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -2099,6 +2099,7 @@ int nvi_gyro_enable(struct inv_gyro_state_s *inf,
 	fifo_enable_old = inf->chip_config.gyro_fifo_enable;
 	inf->chip_config.gyro_fifo_enable = fifo_enable;
 	inf->chip_config.gyro_enable = enable;
+	disable_irq(inf->i2c->irq);
 	err_t = nvi_pm(inf, NVI_PM_ON_FULL);
 	if (enable != enable_old) {
 		if (enable) {
@@ -2120,6 +2121,7 @@ int nvi_gyro_enable(struct inv_gyro_state_s *inf,
 	else
 		inf->chip_config.temp_enable &= ~NVI_TEMP_GYRO;
 	err_t |= nvi_pm(inf, NVI_PM_AUTO);
+	enable_irq(inf->i2c->irq);
 	return err_t;
 }
 
