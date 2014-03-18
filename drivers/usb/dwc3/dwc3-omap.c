@@ -50,6 +50,8 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/extcon.h>
+#include <linux/regulator/consumer.h>
 
 #include <linux/usb/otg.h>
 
@@ -380,6 +382,32 @@ static int dwc3_omap_probe(struct platform_device *pdev)
 	}
 
 	dwc3_omap_enable_irqs(omap);
+
+	if (of_property_read_bool(node, "extcon")) {
+		edev = extcon_get_edev_by_phandle(dev, 0);
+		if (IS_ERR(edev)) {
+			dev_vdbg(dev, "couldn't get extcon device\n");
+			ret = -EPROBE_DEFER;
+			goto err2;
+		}
+
+		omap->vbus_nb.notifier_call = dwc3_omap_vbus_notifier;
+		ret = extcon_register_interest(&omap->extcon_vbus_dev,
+			edev->name, "USB", &omap->vbus_nb);
+		if (ret < 0)
+			dev_vdbg(dev, "failed to register notifier for USB\n");
+		omap->id_nb.notifier_call = dwc3_omap_id_notifier;
+		ret = extcon_register_interest(&omap->extcon_id_dev, edev->name,
+					 "USB-HOST", &omap->id_nb);
+		if (ret < 0)
+			dev_vdbg(dev,
+				"failed to register notifier for USB-HOST\n");
+
+		if (extcon_get_cable_state(edev, "USB") == true)
+			dwc3_omap_set_mailbox(omap, OMAP_DWC3_VBUS_VALID);
+		if (extcon_get_cable_state(edev, "USB-HOST") == true)
+			dwc3_omap_set_mailbox(omap, OMAP_DWC3_ID_GROUND);
+	}
 
 	ret = of_platform_populate(node, NULL, NULL, dev);
 	if (ret) {
