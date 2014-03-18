@@ -277,22 +277,26 @@ static ssize_t store_prox_enable(struct device *dev,
 	if (lval == 1) {
 		if (chip->supply[VDD]) {
 			err = regulator_enable(chip->supply[VDD]);
-			dev_err(dev, "vdd regulator enable failed\n");
+			if (err)
+				dev_err(dev, "vdd regulator enable failed\n");
 		}
 		if (chip->supply[LED]) {
 			err = regulator_enable(chip->supply[LED]);
-			dev_err(dev, "led regulator enable failed\n");
+			if (err)
+				dev_err(dev, "led regulator enable failed\n");
 		}
 		err = ltr558_ps_enable(client, PS_RANGE1);
 	} else {
 		err = ltr558_ps_disable(client);
 		if (chip->supply[VDD]) {
 			err = regulator_disable(chip->supply[VDD]);
-			dev_err(dev, "vdd regulator enable failed\n");
+			if (err)
+				dev_err(dev, "vdd regulator disable failed\n");
 		}
 		if (chip->supply[LED]) {
 			err = regulator_disable(chip->supply[LED]);
-			dev_err(dev, "led regulator enable failed\n");
+			if (err)
+				dev_err(dev, "led regulator disable failed\n");
 		}
 	}
 
@@ -633,9 +637,7 @@ static ssize_t show_als_data(struct device *dev,
 static ssize_t show_name(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
-	return sprintf(buf, "%s\n", chip->client->name);
+	return sprintf(buf, "%s\n", DEVICE_NAME);
 }
 
 static IIO_DEVICE_ATTR(proximity_low_threshold, S_IRUGO | S_IWUSR,
