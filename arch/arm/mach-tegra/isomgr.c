@@ -1102,7 +1102,9 @@ int __init isomgr_init(void)
 	}
 
 	if (!isomgr.max_iso_bw) {
-		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
+		/* With DVFS disabled, bus children cannot get real max emc freq supported
+		 * Only the root parent EMC node is set to max possible rate*/
+		max_emc_clk = clk_round_rate(clk_get_parent(isomgr.emc_clk), ULONG_MAX) / 1000;
 		pr_info("iso emc max clk=%dKHz", max_emc_clk);
 		max_emc_bw = tegra_emc_freq_req_to_bw(max_emc_clk);
 		/* ISO clients can use iso_bw_percentage of max emc bw. */
