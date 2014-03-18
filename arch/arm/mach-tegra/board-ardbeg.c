@@ -467,6 +467,8 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&bluetooth_dit_device,
 	&baseband_dit_device,
 	&tegra_hda_device,
+	&tegra_offload_device,
+	&tegra30_avp_audio_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
