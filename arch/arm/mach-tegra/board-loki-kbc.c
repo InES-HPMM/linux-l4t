@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-loki-kbc.c
  * Keys configuration for Nvidia tegra4 loki platform.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -61,6 +61,7 @@
 #define PMC_WAKE_STATUS         0x14
 #define TEGRA_WAKE_PWR_INT      (1UL << 18)
 #define PMC_WAKE2_STATUS        0x168
+#define LOKI_FFD_A00		0x0a
 
 static int loki_wakeup_key(void);
 
@@ -130,6 +131,10 @@ int __init loki_kbc_init(void)
 	tegra_get_board_info(&board_info);
 	pr_info("Boardid:SKU = 0x%04x:0x%04x\n",
 			board_info.board_id, board_info.sku);
+
+	/* GPIO PS6 is not used for Loki FFD A00 board */
+	if (board_info.fab == LOKI_FFD_A00)
+		loki_int_keys_pdata.nbuttons -= 1;
 
 	ret = platform_device_register(&loki_int_keys_device);
 	return ret;
