@@ -653,6 +653,7 @@ static ssize_t ina3221_set_channel(struct device *dev,
 	int channel = UNPACK_CHAN(this_attr->address);
 	long val;
 	int current_ma;
+	int ret;
 
 	if (channel >= 3) {
 		dev_err(dev, "Invalid channel Id %d\n", channel);
@@ -665,7 +666,8 @@ static ssize_t ina3221_set_channel(struct device *dev,
 			return -EINVAL;
 
 		current_ma = (int) val;
-		return ina3221_set_channel_critical(chip, channel, current_ma);
+		ret = ina3221_set_channel_critical(chip, channel, current_ma);
+		return ret < 0 ? ret : len;
 
 	case RUNNING_MODE:
 		return ina3221_set_mode(chip, buf, len);
