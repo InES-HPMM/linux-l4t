@@ -24,6 +24,11 @@
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
 
+struct nvadsp_platform_data {
+	phys_addr_t co_pa;
+	unsigned long co_size;
+};
+
 typedef int status_t;
 
 /*

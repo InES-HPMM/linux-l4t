@@ -1857,6 +1857,18 @@ static void __init tegra_reserve_bpmp(void)
 static inline void __init tegra_reserve_bpmp(void) {}
 #endif
 
+phys_addr_t __init tegra_reserve_adsp(unsigned long size)
+{
+	phys_addr_t reserve = memblock_end_of_4G() - size;
+	if (memblock_remove(reserve, size)) {
+		pr_err("%s failed for %llx:%lx\n",
+				__func__, (u64)reserve, size);
+	}
+	pr_info("%s: reserved %llx:%lx\n",
+				__func__, (u64)reserve, size);
+	return reserve;
+}
+
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
