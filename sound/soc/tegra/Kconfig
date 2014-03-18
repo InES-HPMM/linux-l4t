@@ -279,6 +279,7 @@ config SND_SOC_TEGRA_RT5639
 	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_RT5639
 	select SND_SOC_SPDIF
+	select SND_SOC_TEGRA30_AVP if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
