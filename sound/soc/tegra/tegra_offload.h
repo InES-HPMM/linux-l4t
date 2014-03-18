@@ -39,8 +39,8 @@ struct tegra_offload_pcm_params {
 	int				period_size;	/* bytes */
 	struct tegra_offload_mem	source_buf;
 	struct tegra_offload_dma_params dma_params;
-	void				(*period_elapsed_cb)(void *args);
-	void				*period_elapsed_args;
+	void	(*period_elapsed_cb)(void *args, unsigned int is_eos);
+	void	*period_elapsed_args;
 };
 
 struct tegra_offload_compr_params {
@@ -51,8 +51,8 @@ struct tegra_offload_compr_params {
 	int				fragment_size;	/* bytes */
 	int				fragments;
 	struct tegra_offload_dma_params	dma_params;
-	void				(*fragments_elapsed_cb)(void *args);
-	void				*fragments_elapsed_args;
+	void	(*fragments_elapsed_cb)(void *args, unsigned int is_eos);
+	void	*fragments_elapsed_args;
 };
 
 struct tegra_offload_pcm_ops {

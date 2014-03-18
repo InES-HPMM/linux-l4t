@@ -123,8 +123,9 @@ struct tegra30_avp_stream {
 	unsigned int			notification_received;
 	unsigned int			source_buffer_offset;
 
-	void				(*notify_cb)(void *args);
-	void				*notify_args;
+	void		(*notify_cb)(void *args, unsigned int is_eos);
+	void		*notify_args;
+	unsigned int	is_drain_called;
 };
 
 struct tegra30_avp_audio {
@@ -649,6 +650,7 @@ static void tegra30_avp_stream_notify(void)
 	struct tegra30_avp_stream *avp_stream;
 	struct stream_data *stream;
 	int i;
+	unsigned int eos = 0;
 
 	/* dev_vdbg(audio_avp->dev, "tegra30_avp_stream_notify"); */
 
@@ -670,7 +672,13 @@ static void tegra30_avp_stream_notify(void)
 			avp_stream->notification_received++;
 
 			while (data_processed >= avp_stream->period_size) {
-				avp_stream->notify_cb(avp_stream->notify_args);
+				if ((avp_stream->notification_received >=
+					stream->stream_notification_request)
+					&& avp_stream->is_drain_called) {
+					eos = 1;
+				}
+				avp_stream->notify_cb(avp_stream->notify_args,
+								eos);
 				avp_stream->last_notification_offset +=
 					avp_stream->period_size;
 				avp_stream->last_notification_offset %=
@@ -904,6 +912,7 @@ static int tegra30_avp_compr_open(int *id)
 		dev_err(audio_avp->dev, "All AVP COMPR streams are busy");
 		return -EBUSY;
 	}
+	audio_avp->avp_stream[*id].is_drain_called = 0;
 	tegra30_avp_audio_set_state(KSSTATE_RUN);
 	return 0;
 }
@@ -1027,6 +1036,7 @@ static int tegra30_avp_compr_set_params(int id,
 static int tegra30_avp_compr_set_state(int id, int state)
 {
 	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
+	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
 
 	dev_vdbg(audio_avp->dev, "%s : id %d state %d",
 		 __func__, id, state);
@@ -1048,6 +1058,7 @@ static int tegra30_avp_compr_set_state(int id, int state)
 		return 0;
 	case SND_COMPR_TRIGGER_DRAIN:
 		/* TODO */
+		avp_stream->is_drain_called = 1;
 		return 0;
 	default:
 		dev_err(audio_avp->dev, "Unsupported state.");

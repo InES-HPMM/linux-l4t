@@ -96,12 +96,15 @@ int tegra_register_offload_ops(struct tegra_offload_ops *ops)
 EXPORT_SYMBOL_GPL(tegra_register_offload_ops);
 
 /* Compress playback related APIs */
-static void tegra_offload_compr_fragment_elapsed(void *arg)
+static void tegra_offload_compr_fragment_elapsed(void *arg, unsigned int is_eos)
 {
 	struct snd_compr_stream *stream = arg;
 
-	if (stream)
+	if (stream) {
 		snd_compr_fragment_elapsed(stream);
+		if (is_eos)
+			snd_compr_drain_notify(stream);
+	}
 }
 
 static int tegra_offload_compr_open(struct snd_compr_stream *stream)
@@ -303,7 +306,7 @@ static struct snd_compr_ops tegra_compr_ops = {
 };
 
 /* PCM playback related APIs */
-static void tegra_offload_pcm_period_elapsed(void *arg)
+static void tegra_offload_pcm_period_elapsed(void *arg, unsigned int is_eos)
 {
 	struct snd_pcm_substream *substream = arg;
 
