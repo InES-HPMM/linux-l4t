@@ -1,1 +1,26 @@
-#include "tegra124-ardbeg-a03-00.dts"
+/dts-v1/;
+
+#include "tegra124-ardbeg-e1780-1000-a03-common.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-pmic-e1735-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-fixed-e1735-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
+
+/ {
+	nvidia,boardids = "1792:1100:00;1735:1000:01";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "1792:1100:00";
+	nvidia,pmu-boardid = "1735:1000:01";
+
+	i2c@7000d000 {
+		tps65913@58 {
+			pmic {
+				regulators {
+					smps7 {
+						regulator-min-microvolt = <1200000>;
+						regulator-max-microvolt = <1200000>;
+					};
+				};
+			};
+		};
+	};
+};
