@@ -178,4 +178,6 @@ source "drivers/reset/Kconfig"
 
 source "drivers/edp/Kconfig"
 
+source "drivers/gpu/nvgpu/Kconfig"
+
 endmenu

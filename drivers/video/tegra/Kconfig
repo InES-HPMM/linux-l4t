@@ -349,5 +349,3 @@ config TEGRA_CAMERA
 	  Enables support for the Tegra camera interface
 
 	  If unsure, say Y
-
-source "drivers/video/tegra/host/gk20a/Kconfig"

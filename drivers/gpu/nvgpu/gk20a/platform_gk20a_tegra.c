@@ -24,7 +24,7 @@
 #include <mach/irqs.h>
 #include <mach/pm_domains.h>
 
-#include "../../../../../arch/arm/mach-tegra/iomap.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #include "gk20a.h"
 #include "hal_gk20a.h"

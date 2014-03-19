@@ -33,7 +33,7 @@ struct sim_gk20a;
 #include <linux/nvhost_gpu_ioctl.h>
 #include <linux/tegra-soc.h>
 
-#include "../../../../../arch/arm/mach-tegra/iomap.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #include "as_gk20a.h"
 #include "clk_gk20a.h"
