@@ -1,4 +1,6 @@
-#include "tegra124-ardbeg-a03-00.dts"
+/dts-v1/;
+
+#include "tegra124-ardbeg-e1780-1000-a03-common.dtsi"
 
 / {
 	nvidia,boardids = "1780:1000:03:B:3;1733:1000:00:B:4";

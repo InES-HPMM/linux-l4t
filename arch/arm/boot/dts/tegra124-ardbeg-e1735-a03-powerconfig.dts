@@ -1,4 +1,4 @@
-#include "tegra124-ardbeg-e1735-a03-00.dts"
+#include "tegra124-ardbeg-e1780-1000-a03-00.dts"
 / {
 	i2c@7000c400 {
 		pca9546@71 {

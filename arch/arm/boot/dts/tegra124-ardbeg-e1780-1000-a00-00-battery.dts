@@ -1,1 +1,9 @@
-#include "tegra124-ardbeg-battery.dts"
+#include "tegra124-ardbeg-e1780-1000-a00-00.dts"
+
+/ {
+	i2c@7000c400 {
+		bq20z75@0b {
+			status = "okay";
+		};
+	};
+};
