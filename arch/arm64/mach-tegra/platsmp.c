@@ -38,10 +38,11 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
 	/* Always mark the boot CPU as initially powered up */
 	cpumask_set_cpu(0, tegra_cpu_power_mask);
-
-	tegra_cpu_reset_handler_init();
 }
 
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
+#if defined(CONFIG_HOTPLUG_CPU) && defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	.cpu_die		= tegra_cpu_die,
+#endif
 };

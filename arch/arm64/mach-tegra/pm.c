@@ -987,7 +987,9 @@ out:
 	}
 
 	/* Initialize SOC-specific data */
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
 	tegra_soc_suspend_init();
+#endif
 	if (!tegra_tear_down_cpu || !tegra_sleep_core_finish) {
 		pr_err("%s: unable to obtain suspend info -- "
 				"disabling LP0\n", __func__);
