@@ -136,7 +136,7 @@ static struct i2c_board_info __initdata max77663_regulators[] = {
 	{
 		/* The I2C address was determined by OTP factory setting */
 		I2C_BOARD_INFO("max77663", 0x3c),
-		.irq		= INT_EXTERNAL_PMU,
+		.irq		= -1,
 		.platform_data	= &max77663_pdata,
 	},
 };
@@ -215,14 +215,6 @@ static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
 
 static int __init vcm30_t124_max77663_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-
-	/* configure the power management controller to trigger PMU
-	 * interrupts when low */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
 	i2c_register_board_info(4, max77663_regulators,
 				ARRAY_SIZE(max77663_regulators));
 
