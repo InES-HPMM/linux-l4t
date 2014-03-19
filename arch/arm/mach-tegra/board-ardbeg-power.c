@@ -1120,32 +1120,36 @@ int __init ardbeg_regulator_init(void)
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
-	if ((pmu_board_info.board_id == BOARD_E1733) ||
-		(pmu_board_info.board_id == BOARD_E1734)) {
+	switch (pmu_board_info.board_id) {
+	case BOARD_E1733:
+	case BOARD_E1734:
 		i2c_register_board_info(0, tca6408_expander,
 				ARRAY_SIZE(tca6408_expander));
 		ardbeg_ams_regulator_init();
 		regulator_has_full_constraints();
-	} else if (pmu_board_info.board_id == BOARD_E1735) {
+		platform_device_register(&power_supply_extcon_device);
+		break;
+
+	case BOARD_E1735:
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
 		tegra_init_cpu_reg_mode_limits(
 			E1735_CPU_VDD_IDLE_MA, REGULATOR_MODE_IDLE);
 #endif
-	} else if (pmu_board_info.board_id == BOARD_E1736 ||
-		pmu_board_info.board_id == BOARD_E1936 ||
-		pmu_board_info.board_id == BOARD_E1769 ||
-		pmu_board_info.board_id == BOARD_P1761) {
+		break;
+
+	case BOARD_E1736:
+	case BOARD_E1936:
+	case BOARD_E1769:
+	case BOARD_P1761:
 		tn8_regulator_init();
 		return 0;
-	} else {
+	default:
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);
+		break;
 	}
-
-	if (pmu_board_info.board_id != BOARD_E1735)
-		platform_device_register(&power_supply_extcon_device);
 
 	ardbeg_cl_dvfs_init(&pmu_board_info);
 	return 0;
@@ -1167,21 +1171,20 @@ static int __init ardbeg_fixed_regulator_init(void)
 			ARRAY_SIZE(fixed_reg_devs_e1824));
 
 	tegra_get_pmu_board_info(&pmu_board_info);
-
-	if (pmu_board_info.board_id == BOARD_E1733)
+	switch (pmu_board_info.board_id) {
+	case BOARD_E1733:
 		return platform_add_devices(fixed_reg_devs_e1733,
 			ARRAY_SIZE(fixed_reg_devs_e1733));
-	else if (pmu_board_info.board_id == BOARD_E1735)
+	case BOARD_E1735:
 		return platform_add_devices(fixed_reg_devs_e1735,
 			ARRAY_SIZE(fixed_reg_devs_e1735));
-	else if (pmu_board_info.board_id == BOARD_E1736 ||
-		 pmu_board_info.board_id == BOARD_P1761 ||
-		 pmu_board_info.board_id == BOARD_E1936)
-		return 0;
-	else
-		pr_warn("The PMU board id 0x%04x is not supported\n",
-			pmu_board_info.board_id);
 
+	case BOARD_E1736:
+	case BOARD_P1761:
+	case BOARD_E1936:
+		return 0;
+	}
+	pr_warn("The PMU board id %04d is not supported\n", pmu_board_info.board_id);
 	return 0;
 }
 
