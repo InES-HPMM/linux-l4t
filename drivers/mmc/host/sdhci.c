@@ -2183,7 +2183,8 @@ static int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 	err = sdhci_do_start_signal_voltage_switch(host, ios);
 	/* Do any post voltage switch platform specific configuration */
 	if  (host->ops->switch_signal_voltage_exit)
-		host->ops->switch_signal_voltage_exit(host);
+		host->ops->switch_signal_voltage_exit(host,
+			ios->signal_voltage);
 	sdhci_runtime_pm_put(host);
 	return err;
 }
@@ -3237,7 +3238,8 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 	sdhci_do_start_signal_voltage_switch(host, &host->mmc->ios);
 	/* Do any post voltage switch platform specific configuration */
 	if  (host->ops->switch_signal_voltage_exit)
-		host->ops->switch_signal_voltage_exit(host);
+		host->ops->switch_signal_voltage_exit(host,
+			host->mmc->ios.signal_voltage);
 	if ((host_flags & SDHCI_PV_ENABLED) &&
 		!(host->quirks2 & SDHCI_QUIRK2_PRESET_VALUE_BROKEN)) {
 		spin_lock_irqsave(&host->lock, flags);
