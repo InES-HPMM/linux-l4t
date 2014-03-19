@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/pm_domains.h
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -40,9 +40,9 @@ void tegra_pd_add_device(struct device *dev);
 void tegra_pd_remove_device(struct device *dev);
 void tegra_pd_add_sd(struct generic_pm_domain *sd);
 #else
-#define tegra_pd_add_device(dev) do { } while (0)
-#define tegra_pd_remove_device(dev) do { } while (0)
-#define tegra_pd_add_sd(sd) do { } while (0)
+static inline void tegra_pd_add_device(struct device *dev) { }
+static inline void tegra_pd_remove_device(struct device *dev) { }
+static inline void tegra_pd_add_sd(struct generic_pm_domain *sd) { }
 #endif /* CONFIG_TEGRA_MC_DOMAINS */
 
 #endif /* _MACH_TEGRA_PM_DOMAINS_H_ */
