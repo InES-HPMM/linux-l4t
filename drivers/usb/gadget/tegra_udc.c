@@ -1646,8 +1646,10 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 			(udc->connect_type == CONNECT_TYPE_SDP))
 			schedule_delayed_work(&udc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
-	} else
+	} else {
+		cancel_delayed_work(&udc->non_std_charger_work);
 		udc_writel(udc, (tmp & ~USB_CMD_RUN_STOP), USB_CMD_REG_OFFSET);
+	}
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
