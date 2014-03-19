@@ -59,8 +59,8 @@
 
 
 struct mtk_gps_hardware{
-	int (*ext_power_on)(int);
-	int (*ext_power_off)(int);
+	int (*ext_power_on)();
+	int (*ext_power_off)();
 	int ext_force_on;
 };
 
@@ -219,12 +219,12 @@ static char *str_reason[] = {"none", "init", "monitor", "wakeup", "TTFF", "force
 /******************************************************************************
 * Functions
 ******************************************************************************/
-static int mt3332_gps_ext_power_on(int force_on)
+static int mt3332_gps_ext_power_on()
 {
 	int ret = 0;
 
 	if (gpio_is_valid(mt3332_gpios.force_on)) {
-		gpio_set_value(mt3332_gpios.force_on, force_on);
+		gpio_set_value(mt3332_gpios.force_on, 1);
 		GPS_DBG("(enable gps)\n");
 		mdelay(10);
 	} else {
@@ -233,7 +233,7 @@ static int mt3332_gps_ext_power_on(int force_on)
 	return ret;
 }
 
-int mt3332_gps_ext_power_off(int force_on)
+int mt3332_gps_ext_power_off()
 {
 	int ret = 0;
 
@@ -248,10 +248,8 @@ int mt3332_gps_ext_power_off(int force_on)
 }
 
 static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
-									unsigned int on, unsigned int force)
+				unsigned int on, unsigned int force)
 {
-	/*FIX ME: PM_api should provide a function to get current status*/
-	static unsigned int power_on = 1;
 	int err;
 	GPS_DBG("Switching GPS device %s\n", on ? "on" : "off");
 	if (!hw) {
@@ -259,11 +257,9 @@ static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
 		return;
 	}
 
-	if (power_on == on) {
-		GPS_DBG("ignore power control: %d\n", on);
-	} else if (on) {
+	if (on) {
 		if (hw->ext_power_on) {
-			err = hw->ext_power_on(1);
+			err = hw->ext_power_on();
 			if (err)
 				GPS_ERR("ext_power_on fail\n");
 		}
@@ -272,14 +268,13 @@ static inline void mt3332_gps_power(struct mtk_gps_hardware *hw,
 	} else {
 
 		if (hw->ext_power_off) {
-				err = hw->ext_power_off(force);
+				err = hw->ext_power_off();
 			if (err)
 				GPS_ERR("ext_power_off fail\n");
 		}
 		mdelay(10);
 
 	}
-	power_on = on;
 }
 
 
