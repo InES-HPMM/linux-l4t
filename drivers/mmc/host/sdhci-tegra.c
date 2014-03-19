@@ -559,9 +559,10 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	unsigned int tap_delay);
 static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	u8 option, int min_uV, int max_uV);
-static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci);
 static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 	unsigned int trim_delay);
+static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
+	unsigned char signal_voltage);
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
@@ -1483,29 +1484,15 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	mutex_unlock(&tegra_host->set_clock_mutex);
 }
 
-static unsigned int get_calibration_offsets(struct sdhci_host *sdhci)
-{
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
-	unsigned int offsets = 0;
-
-	if (sdhci->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_330)
-		offsets = plat->calib_3v3_offsets;
-	else if (sdhci->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180)
-		offsets = plat->calib_1v8_offsets;
-
-	return offsets;
-}
-
-static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
+static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
+	unsigned char signal_voltage)
 {
 	unsigned int val;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	unsigned int timeout = 10;
-	unsigned int calib_offsets;
+	unsigned int calib_offsets = 0;
 
 	/* No Calibration for sdmmc4 */
 	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_SDMMC4_CALIB) &&
@@ -1527,7 +1514,10 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
 	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
 	if (unlikely(soc_data->nvquirks & NVQUIRK_SET_CALIBRATION_OFFSETS)) {
-		calib_offsets = get_calibration_offsets(sdhci);
+		if (signal_voltage == MMC_SIGNAL_VOLTAGE_330)
+			calib_offsets = tegra_host->plat->calib_3v3_offsets;
+		else if (signal_voltage == MMC_SIGNAL_VOLTAGE_180)
+			calib_offsets = tegra_host->plat->calib_1v8_offsets;
 		if (calib_offsets) {
 			/* Program Auto cal PD offset(bits 8:14) */
 			val &= ~(0x7F <<
@@ -3255,6 +3245,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev;
 	struct tegra_sdhci_platform_data *plat;
+	unsigned int signal_voltage = 0;
 	int err;
 
 	pdev = to_platform_device(mmc_dev(sdhci->mmc));
@@ -3278,13 +3269,12 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 			return err;
 		}
 		if (tegra_host->vdd_io_reg) {
-			if (plat->mmc_data.ocr_mask &
-						SDHOST_1V8_OCR_MASK)
-				tegra_sdhci_signal_voltage_switch(sdhci,
-						MMC_SIGNAL_VOLTAGE_180);
+			if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK)
+				signal_voltage = MMC_SIGNAL_VOLTAGE_180;
 			else
-				tegra_sdhci_signal_voltage_switch(sdhci,
-						MMC_SIGNAL_VOLTAGE_330);
+				signal_voltage = MMC_SIGNAL_VOLTAGE_330;
+			tegra_sdhci_signal_voltage_switch(sdhci,
+				signal_voltage);
 		}
 	}
 
@@ -3293,6 +3283,8 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		tegra_sdhci_reset(sdhci, SDHCI_RESET_ALL);
 		sdhci_writeb(sdhci, SDHCI_POWER_ON, SDHCI_POWER_CONTROL);
 		sdhci->pwr = 0;
+
+		tegra_sdhci_do_calibration(sdhci, signal_voltage);
 	}
 
 	return 0;
