@@ -27,6 +27,7 @@
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/pm.h>
 #include <linux/jiffies.h>
+#include <linux/interrupt.h>
 
 #define LC709203F_THERMISTOR_B		0x06
 #define LC709203F_INITIAL_RSOC		0x07
@@ -60,6 +61,8 @@ struct lc709203f_platform_data {
 	u32 therm_adjustment;
 	u32 threshold_soc;
 	u32 maximum_soc;
+	u32 alert_low_rsoc;
+	u32 alert_low_voltage;
 };
 
 struct lc709203f_chip {
@@ -293,6 +296,23 @@ static struct battery_gauge_info lc709203f_bgi = {
 	.bg_ops = &lc709203f_bg_ops,
 };
 
+static irqreturn_t lc709203f_irq(int id, void *dev)
+{
+	struct lc709203f_chip *chip = dev;
+	struct i2c_client *client = chip->client;
+
+	dev_info(&client->dev, "%s(): STATUS_VL\n", __func__);
+	/* Forced set SOC 0 to power off */
+	chip->soc = 0;
+	chip->lasttime_soc = chip->soc;
+	chip->status = chip->lasttime_status;
+	chip->health = POWER_SUPPLY_HEALTH_DEAD;
+	chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
+	power_supply_changed(&chip->battery);
+
+	return IRQ_HANDLED;
+}
+
 static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 				struct lc709203f_platform_data *pdata)
 {
@@ -340,6 +360,14 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 		pdata->maximum_soc = pval;
 	else
 		pdata->maximum_soc = 100;
+
+	ret = of_property_read_u32(np, "onsemi,alert-low-rsoc", &pval);
+	if (!ret)
+		pdata->alert_low_rsoc = pval;
+
+	ret = of_property_read_u32(np, "onsemi,alert-low-voltage", &pval);
+	if (!ret)
+		pdata->alert_low_voltage = pval;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -446,6 +474,20 @@ static int lc709203f_probe(struct i2c_client *client,
 	dev_info(&client->dev, "initial-rsoc: 0x%04x\n",
 			chip->pdata->initial_rsoc);
 
+	ret = lc709203f_write_word(chip->client,
+		LC709203F_ALARM_LOW_CELL_RSOC, chip->pdata->alert_low_rsoc);
+	if (ret < 0) {
+		dev_err(&client->dev, "LOW_RSOC write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = lc709203f_write_word(chip->client,
+		LC709203F_ALARM_LOW_CELL_VOLT, chip->pdata->alert_low_voltage);
+	if (ret < 0) {
+		dev_err(&client->dev, "LOW_VOLT write failed: %d\n", ret);
+		return ret;
+	}
+
 	if (chip->pdata->appli_adjustment) {
 		ret = lc709203f_write_word(chip->client,
 			LC709203F_ADJUSTMENT_PACK_APPLI,
@@ -515,7 +557,24 @@ skip_thermistor_config:
 
 	lc709203f_debugfs_init(client);
 
+	if (client->irq) {
+		ret = devm_request_threaded_irq(&client->dev, client->irq,
+			NULL, lc709203f_irq,
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+			dev_name(&client->dev), chip);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"%s: request IRQ %d fail, err = %d\n",
+				__func__, client->irq, ret);
+			client->irq = 0;
+			goto irq_reg_error;
+		}
+	}
+	device_set_wakeup_capable(&client->dev, 1);
+
 	return 0;
+irq_reg_error:
+	cancel_delayed_work_sync(&chip->work);
 bg_err:
 	power_supply_unregister(&chip->battery);
 error:
@@ -552,12 +611,20 @@ static int lc709203f_suspend(struct device *dev)
 {
 	struct lc709203f_chip *chip = dev_get_drvdata(dev);
 	cancel_delayed_work_sync(&chip->work);
+
+	if (device_may_wakeup(&chip->client->dev))
+		enable_irq_wake(chip->client->irq);
+
 	return 0;
 }
 
 static int lc709203f_resume(struct device *dev)
 {
 	struct lc709203f_chip *chip = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(&chip->client->dev))
+		disable_irq_wake(chip->client->irq);
+
 	schedule_delayed_work(&chip->work, LC709203F_DELAY);
 	return 0;
 }

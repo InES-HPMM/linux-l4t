@@ -17,6 +17,8 @@ Optional properties:
 	Kernel read maximum SoC from device for given battery. Kernel
 	translate the SoC to 100% before reporting to framework if it
 	reads equal/more than this value.
+ - onsemi,alert-low-rsoc : Alarm low RSOC programed to generate event
+ - onsemi,alert-low-voltage : Alarm low Voltage programed to generate event
 
 Note: The device has capabilty to read battery temp through thermistor.
 This also calulate SoC based on temperature of battery. If thermistor
@@ -41,4 +43,6 @@ Example:
 		onsemi,initial-rsoc = 0xAA55;
 		onsemi,kernel-threshold-soc = <5>;
 		onsemi,kernel-maximum-soc = <99>;
+		onsemi,alert-low-rsoc = <0x0>;
+		onsemi,alert-low-voltage = <0x0>;
 	};
