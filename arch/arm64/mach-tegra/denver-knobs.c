@@ -23,6 +23,7 @@
 #include <linux/debugfs.h>
 #include <linux/cpumask.h>
 #include <linux/kernel.h>
+#include <linux/of_platform.h>
 
 #include <asm/traps.h>
 
@@ -32,6 +33,8 @@
 
 #define BG_CLR_SHIFT	16
 #define BG_STATUS_SHIFT	32
+
+#define NVG_CHANNEL_PMIC	0
 
 /* 4 instructions to skip upon undef exception */
 #define CREGS_NR_JUMP_OFFSET 16
@@ -105,6 +108,16 @@ enum creg_command {
 	CREG_WRITE
 };
 #endif
+
+static const char * const pmic_names[] = {
+	[UNDEFINED] = "none",
+	[AMS_372x] = "AMS 3722/3720",
+	[TI_TPS_65913_22] = "TI TPS65913 2.2",
+	[OPEN_VR] = "Open VR",
+	[TI_TPS_65913_23] = "TI TPS65913 2.3",
+};
+
+static DEFINE_SPINLOCK(nvg_lock);
 
 bool denver_get_bg_allowed(int cpu)
 {
@@ -361,6 +374,106 @@ static void denver_get_mts_nvgdata(u64 *data)
 {
 	asm volatile("mrs %0, s3_0_c15_c1_3" : "=r" (*data));
 }
+
+int denver_set_pmic_config(enum denver_pmic_type type,
+		u16 ret_vol, bool lock)
+{
+	u64 reg;
+	static bool locked;
+
+	if (type >= NR_PMIC_TYPES)
+		return -EINVAL;
+
+	if (locked) {
+		pr_warn("Denver: PMIC config is locked.\n");
+		return -EINVAL;
+	}
+
+	spin_lock(&nvg_lock);
+
+	denver_set_mts_nvgindex(NVG_CHANNEL_PMIC);
+
+	/* retention voltage is sanitized by MTS */
+	reg = type | (ret_vol << 16) | ((u64)lock << 63);
+
+	denver_set_mts_nvgdata(reg);
+
+	spin_unlock(&nvg_lock);
+
+	locked = lock;
+
+	return 0;
+}
+
+int denver_get_pmic_config(enum denver_pmic_type *type,
+		u16 *ret_vol, bool *lock)
+{
+	u64 reg = 0;
+
+	spin_lock(&nvg_lock);
+
+	denver_set_mts_nvgindex(NVG_CHANNEL_PMIC);
+
+	denver_get_mts_nvgdata(&reg);
+
+	spin_unlock(&nvg_lock);
+
+	*type = reg & 0xffff;
+	*ret_vol = (reg >> 16) & 0xffff;
+	*lock = (reg >> 63);
+
+	return 0;
+}
+
+static int __init denver_pmic_init(void)
+{
+	u32 voltage;
+	u32 type;
+	u32 lock;
+	int err;
+	struct device_node *np;
+
+	np = of_find_node_by_path("/denver_cpuidle_pmic");
+	if (!np) {
+		pr_debug("Denver: using default PMIC setting.\n");
+		return 0;
+	}
+
+	err = of_property_read_u32(np, "type", &type);
+	if (err) {
+		pr_err("%s: failed to read PMIC type\n", __func__);
+		goto done;
+	}
+	if (type > NR_PMIC_TYPES) {
+		pr_err("%s: invalid PMIC type: %d\n", __func__, type);
+		goto done;
+	}
+
+	err = of_property_read_u32(np, "retention-voltage", &voltage);
+	if (err) {
+		pr_err("%s: failed to read voltage\n", __func__);
+		goto done;
+	}
+
+	err = of_property_read_u32(np, "lock", &lock);
+	if (err) {
+		pr_err("%s: failed to read lock\n", __func__);
+		goto done;
+	}
+	if (lock != 0 && lock != 1) {
+		pr_err("%s: invalid lock setting [0|1]: read %d\n", __func__, lock);
+		goto done;
+	}
+
+	err = denver_set_pmic_config(type, (u16)voltage, lock);
+
+	pr_info("Denver: PMIC: type = %s, voltage = %d, locked = %d\n",
+			pmic_names[type], voltage, lock);
+
+done:
+	return err;
+}
+arch_initcall(denver_pmic_init);
 
 static bool backdoor_enabled;
 

@@ -22,4 +22,19 @@ void denver_set_bg_allowed(int cpu, bool enable);
 
 bool denver_backdoor_enabled(void);
 
+enum denver_pmic_type {
+	UNDEFINED,
+	AMS_372x,
+	TI_TPS_65913_22,
+	OPEN_VR,
+	TI_TPS_65913_23,
+	NR_PMIC_TYPES
+};
+
+#define DENVER_PMIC_DEF_RET_VOL 0xffff
+
+int denver_set_pmic_config(enum denver_pmic_type type, u16 ret_vol, bool lock);
+int denver_get_pmic_config(enum denver_pmic_type *type,
+		u16 *ret_vol, bool *lock);
+
 #endif /* _MACH_DENVER_KNOBS_H_ */
