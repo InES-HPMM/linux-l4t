@@ -385,3 +385,13 @@ config SND_SOC_TEGRA_DMIC_REV1
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the DMIC_REV1 codec. Currently, only supported board is
 	  E1664 (dolak).
+
+config SND_SOC_TEGRA_DUMMY
+	tristate "SoC Audio support for Tegra boards that doesn't use codecs"
+	depends on SND_SOC_TEGRA
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_SPDIF
+	help
+	  Say Y or M here if you want to add support for SoC audio on Tegra
+	  boards that doesn't use codecs (like SPDIF).
+	  One such board is a customer board called Sandman.

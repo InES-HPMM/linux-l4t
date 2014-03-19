@@ -45,6 +45,7 @@ snd-soc-tegra-vcm-objs := tegra_vcm.o
 snd-soc-tegra-cs42l73-objs := tegra_cs42l73.o
 snd-soc-tegra-max98090-objs := tegra_max98090.o
 snd-soc-tegra-dmic-rev1-objs := tegra_dmic_rev1.o
+snd-soc-tegra-dummy-objs := tegra_dummy_machine.o
 
 obj-$(CONFIG_SND_SOC_TEGRA_WM8753) += snd-soc-tegra-wm8753.o
 obj-$(CONFIG_SND_SOC_TEGRA_WM8903) += snd-soc-tegra-wm8903.o
@@ -63,3 +64,4 @@ obj-$(CONFIG_SND_SOC_TEGRA_P852) += snd-soc-tegra-vcm.o
 obj-$(CONFIG_SND_SOC_TEGRA_CS42L73) += snd-soc-tegra-cs42l73.o
 obj-$(CONFIG_SND_SOC_TEGRA_MAX98090) += snd-soc-tegra-max98090.o
 obj-$(CONFIG_SND_SOC_TEGRA_DMIC_REV1) += snd-soc-tegra-dmic-rev1.o
+obj-$(CONFIG_SND_SOC_TEGRA_DUMMY) += snd-soc-tegra-dummy.o
