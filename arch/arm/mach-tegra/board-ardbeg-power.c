@@ -1144,7 +1144,8 @@ int __init ardbeg_regulator_init(void)
 			pmu_board_info.board_id);
 	}
 
-	platform_device_register(&power_supply_extcon_device);
+	if (pmu_board_info.board_id != BOARD_E1735)
+		platform_device_register(&power_supply_extcon_device);
 
 	ardbeg_cl_dvfs_init(&pmu_board_info);
 	return 0;
