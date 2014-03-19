@@ -1,1 +1,9 @@
 #include "tegra124-ardbeg.dts"
+#include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
+
+/ {
+	nvidia,boardids = "1780:1000:00:B:3;1735:1000:01:D:3";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "1780:1000:00:B:3";
+	nvidia,pmu-boardid = "1735:1000:01:D:3";
+};
