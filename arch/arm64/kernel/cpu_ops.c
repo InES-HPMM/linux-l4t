@@ -18,6 +18,7 @@
 
 #include <asm/cpu_ops.h>
 #include <asm/smp_plat.h>
+#include <asm/cputype.h>
 #include <linux/errno.h>
 #include <linux/of.h>
 #include <linux/string.h>
@@ -90,6 +91,7 @@ void __init cpu_read_bootcpu_ops(void)
 			continue;
 
 		hwid = of_read_number(prop, of_n_addr_cells(dn));
+		hwid &= MPIDR_HWID_BITMASK;
 		if (hwid == mpidr) {
 			cpu_read_ops(dn, 0);
 			of_node_put(dn);

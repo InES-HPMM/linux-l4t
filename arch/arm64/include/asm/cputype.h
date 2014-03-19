@@ -28,7 +28,7 @@
 
 #define INVALID_HWID		ULONG_MAX
 
-#define MPIDR_HWID_BITMASK	0xff00ffffff
+#define MPIDR_HWID_BITMASK	0xf
 
 #define MPIDR_LEVEL_BITS 8
 #define MPIDR_LEVEL_MASK ((1 << MPIDR_LEVEL_BITS) - 1)
