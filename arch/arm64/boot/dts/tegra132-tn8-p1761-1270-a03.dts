@@ -23,5 +23,17 @@
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
+
+	i2c@7000c000 {
+		max44006@44 {
+			status = "disabled";
+		};
+
+		cm3217@10 {
+			compatible = "capella,cm3217";
+			reg = <0x10>;
+			vdd-supply = <&palmas_smps9>;
+		};
+	};
 };
 
