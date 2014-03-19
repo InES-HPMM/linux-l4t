@@ -347,6 +347,21 @@ static int __init create_denver_nvmstats(void)
 	return 0;
 }
 
+static void denver_set_mts_nvgindex(u32 index)
+{
+	asm volatile("msr s3_0_c15_c1_2, %0" : : "r" (index));
+}
+
+static void denver_set_mts_nvgdata(u64 data)
+{
+	asm volatile("msr s3_0_c15_c1_3, %0" : : "r" (data));
+}
+
+static void denver_get_mts_nvgdata(u64 *data)
+{
+	asm volatile("mrs %0, s3_0_c15_c1_3" : "=r" (*data));
+}
+
 static bool backdoor_enabled;
 
 bool denver_backdoor_enabled(void)
