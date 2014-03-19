@@ -222,6 +222,8 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00.dtb \
 	tegra124-ardbeg-e1780-1000-a03-01.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-battery.dtb \
+	tegra124-ardbeg-e1780-1000-a03-00-powerconfig.dtb \
+	tegra124-ardbeg-e1780-1000-a03-00-sata.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-norrin.dtb \
