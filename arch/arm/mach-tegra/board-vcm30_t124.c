@@ -188,12 +188,6 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("host1x",		264000000),
 	SET_FIXED_TARGET_RATE("mselect",	408000000),
 
-	SET_FIXED_TARGET_RATE("i2s0",		24576000),
-	SET_FIXED_TARGET_RATE("i2s1",		24576000),
-	SET_FIXED_TARGET_RATE("i2s2",		24576000),
-	SET_FIXED_TARGET_RATE("i2s3",		24576000),
-	SET_FIXED_TARGET_RATE("i2s4",		24576000),
-
 	SET_FIXED_TARGET_RATE("dam0",		40000000),
 	SET_FIXED_TARGET_RATE("dam1",		40000000),
 	SET_FIXED_TARGET_RATE("dam2",		40000000),
@@ -216,11 +210,29 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("uartd",		408000000),
 };
 
+static struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
+	SET_FIXED_TARGET_RATE("i2s0",		3072000),
+	SET_FIXED_TARGET_RATE("i2s1",		24576000),
+	SET_FIXED_TARGET_RATE("i2s2",		24576000),
+	SET_FIXED_TARGET_RATE("i2s3",		24576000),
+	SET_FIXED_TARGET_RATE("i2s4",		12288000),
+};
+
+static struct tegra_clk_init_table vcm30t124_b0x_i2s_clk_table[] = {
+	SET_FIXED_TARGET_RATE("i2s0",		12288000),
+	SET_FIXED_TARGET_RATE("i2s1",		24576000),
+	SET_FIXED_TARGET_RATE("i2s2",		24576000),
+	SET_FIXED_TARGET_RATE("i2s3",		24576000),
+	SET_FIXED_TARGET_RATE("i2s4",		12288000),
+};
+
 static int __init tegra_fixed_target_rate_init(void)
 {
 	struct clk *c;
 	unsigned long flags;
-	int i;
+	int i, is_e1860_b00 = 0;
+
+	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 
 	/* Set POR value for all clocks given in the table */
 	for (i = 0; i < ARRAY_SIZE(vcm30t124_fixed_target_clk_table); i++) {
@@ -232,9 +244,32 @@ static int __init tegra_fixed_target_rate_init(void)
 			c->fixed_target_rate =
 				vcm30t124_fixed_target_clk_table[i].rate;
 			clk_unlock_restore(c, &flags);
-		} else
+		} else {
 			pr_warn("%s: Clock %s not found\n", __func__,
 					vcm30t124_fixed_target_clk_table[i].name);
+		}
+	}
+
+	/* Set POR value for all clocks given in the table */
+	for (i = 0; i < ARRAY_SIZE(vcm30t124_a0x_i2s_clk_table); i++) {
+
+		c = tegra_get_clock_by_name(
+				(is_e1860_b00 ?
+				vcm30t124_b0x_i2s_clk_table[i].name :
+				vcm30t124_a0x_i2s_clk_table[i].name));
+		if (c) {
+			clk_lock_save(c, &flags);
+			c->fixed_target_rate =
+				(is_e1860_b00 ?
+				vcm30t124_b0x_i2s_clk_table[i].rate :
+				vcm30t124_a0x_i2s_clk_table[i].rate);
+			clk_unlock_restore(c, &flags);
+		} else {
+			pr_warn("%s: Clock %s not found\n", __func__,
+					(is_e1860_b00 ?
+					vcm30t124_b0x_i2s_clk_table[i].name :
+					vcm30t124_a0x_i2s_clk_table[i].name));
+		}
 	}
 
 	return 0;
