@@ -841,32 +841,54 @@ static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
  * Configure sensor group @therm to engage a hardware throttling response at
  * the threshold indicated by @trip_state.
  *
+ * Checks to see if HW config register needs reprogramming:
+ *
+ * There's an intentional side-effect of writing trip temperature thresholds
+ * in HW; It resets the up/down state machine that track hysteresis and can
+ * cause unnecessary thermal events (interrupts).
+ *
+ * Avoid unnecessary events by checking if the trip config register is
+ * being configured to the same settings and skipping the write.
  */
 static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 				     int therm, int throt)
 {
 	u32 r, reg_off;
 	int temp;
+	bool reprogram;
+	int cpu_throt, gpu_throt;
 
 	temp = enforce_temp_range(trip_state->trip_temp) / 1000;
 
 	/* Hardcode LITE on level-1 and HEAVY on level-2 */
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, throt + 1, therm);
 
-	r = soctherm_readl(reg_off);
-	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, temp);
-	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, temp);
-	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	if (throt == THROTTLE_LIGHT) {
+		cpu_throt = CTL_LVL0_CPU0_CPU_THROT_LIGHT;
+		gpu_throt = CTL_LVL0_CPU0_GPU_THROT_LIGHT;
+	} else {
+		cpu_throt = CTL_LVL0_CPU0_CPU_THROT_HEAVY;
+		gpu_throt = CTL_LVL0_CPU0_GPU_THROT_HEAVY;
+		if (throt != THROTTLE_HEAVY)
+			pr_warn("soctherm: invalid throt %d - assuming HEAVY",
+				throt);
+	}
 
-	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
-		    throt == THROTTLE_HEAVY ?
-		    CTL_LVL0_CPU0_CPU_THROT_HEAVY :
-		    CTL_LVL0_CPU0_CPU_THROT_LIGHT);
-	r = REG_SET(r, CTL_LVL0_CPU0_GPU_THROT,
-		    throt == THROTTLE_HEAVY ?
-		    CTL_LVL0_CPU0_GPU_THROT_HEAVY :
-		    CTL_LVL0_CPU0_GPU_THROT_LIGHT);
-	soctherm_writel(r, reg_off);
+	r = soctherm_readl(reg_off);
+	reprogram = ((REG_GET(r, CTL_LVL0_CPU0_DN_THRESH) != temp) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_UP_THRESH) != temp) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_CPU_THROT) != cpu_throt) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_GPU_THROT) != gpu_throt) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_EN) != 1));
+
+	if (reprogram) {
+		r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, temp);
+		r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, temp);
+		r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT, cpu_throt);
+		r = REG_SET(r, CTL_LVL0_CPU0_GPU_THROT, gpu_throt);
+		r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+		soctherm_writel(r, reg_off);
+	}
 }
 
 /**
@@ -878,22 +900,33 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
  *
  * Configures sensor group @therm to raise an interrupt when temperature goes
  * above @hi_limit or below @lo_limit.
+ *
+ * Checks to see if HW config register needs reprogramming. See comment in
+ * prog_hw_threshold().
  */
 static void soctherm_set_limits(enum soctherm_therm_id therm,
 				long lo_limit, long hi_limit)
 {
 	u32 r, reg_off;
-	int lo_temp, hi_temp;
+	int rlo_limit, rhi_limit;
+	bool reprogram;
 
-	lo_temp = enforce_temp_range(lo_limit) / 1000;
-	hi_temp = enforce_temp_range(hi_limit) / 1000;
+	rlo_limit = LOWER_PRECISION_FOR_TEMP(lo_limit) / 1000;
+	rhi_limit = LOWER_PRECISION_FOR_TEMP(hi_limit) / 1000;
 
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
 	r = soctherm_readl(reg_off);
-	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_temp);
-	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_temp);
-	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
-	soctherm_writel(r, reg_off);
+
+	reprogram = ((REG_GET(r, CTL_LVL0_CPU0_DN_THRESH) != rlo_limit) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_UP_THRESH) != rhi_limit) ||
+		     (REG_GET(r, CTL_LVL0_CPU0_EN) != 1));
+
+	if (reprogram) {
+		r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, rlo_limit);
+		r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, rhi_limit);
+		r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+		soctherm_writel(r, reg_off);
+	}
 
 	switch (therm) {
 	case THERM_CPU:
