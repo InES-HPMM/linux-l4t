@@ -66,8 +66,8 @@ static acpi_status mods_acpi_find_acpi_handler(
 static int mods_extract_acpi_object(
 	char *method,
 	union acpi_object *obj,
-	NvU8 **buf,
-	NvU8 *buf_end
+	u8 **buf,
+	u8 *buf_end
 )
 {
 	int ret = OK;
@@ -121,7 +121,7 @@ static int mods_extract_acpi_object(
 			u32 size = 0;
 			u32 i;
 			for (i = 0; i < obj->package.count; i++) {
-				NvU8 *old_buf = *buf;
+				u8 *old_buf = *buf;
 				ret = mods_extract_acpi_object(method,
 							       &elements[i],
 							       buf,
@@ -247,7 +247,7 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 				  p->method_name);
 		ret = -EINVAL;
 	} else {
-		NvU8 *buf = p->out_buffer;
+		u8 *buf = p->out_buffer;
 		ret = mods_extract_acpi_object(p->method_name,
 					       acpi_method,
 					       &buf,
@@ -290,7 +290,7 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 	union acpi_object ddc_arg0 = { ACPI_TYPE_INTEGER };
 	struct acpi_object_list input = { 1, &ddc_arg0 };
 	struct list_head *node, *next;
-	NvU32 i;
+	u32 i;
 	acpi_handle dev_handle	= NULL;
 	acpi_handle lcd_dev_handle	= NULL;
 

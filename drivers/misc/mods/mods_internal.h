@@ -26,12 +26,6 @@
 #include <linux/slab.h>
 #include <linux/miscdevice.h>
 
-#define		NvU8	u8
-#define		NvU16	u16
-#define		NvU32	u32
-#define		NvS32	s32
-#define		NvU64	u64
-
 #include "mods_config.h"
 #include "mods.h"
 
@@ -54,7 +48,7 @@
 #define MSI_DEV_NOT_FOUND 0
 
 struct SYS_PAGE_TABLE {
-	NvU64	     dma_addr;
+	u64	     dma_addr;
 	struct page *p_page;
 };
 
@@ -64,9 +58,9 @@ struct en_dev_entry {
 };
 
 struct mem_type {
-	NvU64 dma_addr;
-	NvU64 size;
-	NvU32 type;
+	u64 dma_addr;
+	u64 size;
+	u32 type;
 };
 
 /* file private data */
@@ -88,22 +82,22 @@ struct mods_vm_private_data {
 
 /* system memory allocation tracking */
 struct SYS_MEM_MODS_INFO {
-	NvU32		 alloc_type;
+	u32		 alloc_type;
 
 	/* tells how the memory is cached:
 	 * (MODS_MEMORY_CACHED, MODS_MEMORY_UNCACHED, MODS_MEMORY_WRITECOMBINE)
 	 */
-	NvU32		 cache_type;
+	u32		 cache_type;
 
-	NvU32		 length;    /* actual number of bytes allocated */
-	NvU32		 order;	    /* 2^order pages allocated (contig alloc) */
-	NvU32		 num_pages; /* number of allocated pages */
-	NvU32		 k_mapping_ref_cnt;
+	u32		 length;    /* actual number of bytes allocated */
+	u32		 order;	    /* 2^order pages allocated (contig alloc) */
+	u32		 num_pages; /* number of allocated pages */
+	u32		 k_mapping_ref_cnt;
 
-	NvU32		 addr_bits;
+	u32		 addr_bits;
 	struct page	*p_page;
-	NvU64		 logical_addr; /* kernel logical address */
-	NvU64		 dma_addr;     /* physical address, for contig alloc,
+	u64		 logical_addr; /* kernel logical address */
+	u64		 dma_addr;     /* physical address, for contig alloc,
 					  machine address on Xen */
 	int		 numa_node;    /* numa node for the allocation */
 
@@ -119,11 +113,11 @@ struct SYS_MEM_MODS_INFO {
 
 /* map memory tracking */
 struct SYS_MAP_MEMORY {
-	NvU32 contiguous;
-	NvU64 dma_addr;		  /* first physical address of given mapping,
+	u32 contiguous;
+	u64 dma_addr;		  /* first physical address of given mapping,
 				     machine address on Xen */
-	NvU64 virtual_addr;   /* virtual address of given mapping */
-	NvU32 mapping_length; /* tells how many bytes were mapped */
+	u64 virtual_addr;   /* virtual address of given mapping */
+	u32 mapping_length; /* tells how many bytes were mapped */
 
 	/* helps to unmap noncontiguous memory, NULL for contiguous */
 	struct SYS_MEM_MODS_INFO *p_mem_info;
@@ -132,11 +126,14 @@ struct SYS_MAP_MEMORY {
 };
 
 /* functions used to avoid global debug variables */
+void mods_set_debug_level(int);
+int mods_get_debug_level(void);
 int mods_check_debug_level(int);
 int mods_get_mem4g(void);
 int mods_get_highmem4g(void);
 void mods_set_highmem4g(int);
 int mods_get_multi_instance(void);
+void mods_set_multi_instance(int);
 int mods_get_mem4goffset(void);
 
 #define IRQ_MAX			(256+PCI_IRQ_MAX)
@@ -146,16 +143,20 @@ int mods_get_mem4goffset(void);
 #define IRQ_VAL_POISON		0xfafbfcfdU
 
 /* debug print masks */
-#define DEBUG_IOCTL		0x2
+#define DEBUG_IOCTL			0x2
 #define DEBUG_PCICFG		0x4
-#define DEBUG_ACPI		0x8
-#define DEBUG_ISR		0x10
-#define DEBUG_MEM		0x20
-#define DEBUG_FUNC		0x40
-#define DEBUG_CLOCK		0x80
+#define DEBUG_ACPI			0x8
+#define DEBUG_ISR			0x10
+#define DEBUG_MEM			0x20
+#define DEBUG_FUNC			0x40
+#define DEBUG_CLOCK			0x80
 #define DEBUG_DETAILED		0x100
+#define DEBUG_TEGRADC		0x200
 #define DEBUG_ISR_DETAILED	(DEBUG_ISR | DEBUG_DETAILED)
 #define DEBUG_MEM_DETAILED	(DEBUG_MEM | DEBUG_DETAILED)
+#define DEBUG_ALL	        (DEBUG_IOCTL | DEBUG_PCICFG | DEBUG_ACPI | \
+	DEBUG_ISR | DEBUG_MEM | DEBUG_FUNC | DEBUG_CLOCK | DEBUG_DETAILED | \
+	DEBUG_TEGRADC)
 
 #define LOG_ENT() mods_debug_printk(DEBUG_FUNC, "> %s\n", __func__)
 #define LOG_EXT() mods_debug_printk(DEBUG_FUNC, "< %s\n", __func__)
@@ -180,26 +181,26 @@ int mods_get_mem4goffset(void);
 	pr_info("mods warning: " fmt, ##args)
 
 struct irq_q_data {
-	NvU32		time;
+	u32		time;
 	struct pci_dev *dev;
-	NvU32		irq;
+	u32		irq;
 };
 
 struct irq_q_info {
 	struct irq_q_data data[MODS_MAX_IRQS];
-	NvU32		  head;
-	NvU32		  tail;
+	u32		  head;
+	u32		  tail;
 };
 
 struct dev_irq_map {
 	void		*dev_irq_aperture;
-	NvU32		*dev_irq_mask_reg;
-	NvU32		*dev_irq_state;
-	NvU32		 irq_and_mask;
-	NvU32		 irq_or_mask;
-	NvU32		 apic_irq;
-	NvU8		 type;
-	NvU8		 channel;
+	u32		*dev_irq_mask_reg;
+	u32		*dev_irq_state;
+	u32		 irq_and_mask;
+	u32		 irq_or_mask;
+	u32		 apic_irq;
+	u8		 type;
+	u8		 channel;
 	struct pci_dev	*dev;
 	struct list_head list;
 };
@@ -301,7 +302,7 @@ struct mods_priv {
 /* VMA */
 #define MODS_VMA_PGOFF(vma)	((vma)->vm_pgoff)
 #define MODS_VMA_SIZE(vma)	((vma)->vm_end - (vma)->vm_start)
-#define MODS_VMA_OFFSET(vma)	(((NvU64)(vma)->vm_pgoff) << PAGE_SHIFT)
+#define MODS_VMA_OFFSET(vma)	(((u64)(vma)->vm_pgoff) << PAGE_SHIFT)
 #define MODS_VMA_PRIVATE(vma)	((vma)->vm_private_data)
 #define MODS_VMA_FILE(vma)	((vma)->vm_file)
 
@@ -367,11 +368,11 @@ int mods_irq_event_check(unsigned char);
 
 /* mem */
 void mods_init_mem(void);
-void mods_add_mem(void *, NvU32, const char *, NvU32);
-void mods_del_mem(void *, NvU32, const char *, NvU32);
+void mods_add_mem(void *, u32, const char *, u32);
+void mods_del_mem(void *, u32, const char *, u32);
 void mods_check_mem(void);
 void mods_unregister_all_alloc(struct file *fp);
-struct SYS_MEM_MODS_INFO *mods_find_alloc(struct file *, NvU64);
+struct SYS_MEM_MODS_INFO *mods_find_alloc(struct file *, u64);
 
 /* clock */
 #ifdef CONFIG_ARCH_TEGRA
@@ -442,6 +443,10 @@ int esc_mods_clock_reset_deassert(struct file *,
 				 struct MODS_CLOCK_HANDLE *);
 int esc_mods_flush_cpu_cache_range(struct file *,
 				  struct MODS_FLUSH_CPU_CACHE_RANGE *);
+#ifdef CONFIG_TEGRA_DC
+int esc_mods_tegra_dc_config_possible(struct file *,
+				struct MODS_TEGRA_DC_CONFIG_POSSIBLE *);
+#endif
 #endif
 
 #ifdef CONFIG_DEBUG_FS

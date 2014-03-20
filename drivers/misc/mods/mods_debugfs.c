@@ -17,16 +17,21 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "mods_internal.h"
+
+#ifdef MODS_HAS_DEBUGFS
+
+#include <linux/module.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-
-#ifdef CONFIG_TEGRA_DC
-#include <../drivers/video/tegra/dc/dc_config.h>
-#endif
+#include <linux/miscdevice.h>
+#include <linux/device.h>
 
 static struct dentry *mods_debugfs_dir;
 
 #ifdef CONFIG_TEGRA_DC
+#include <../drivers/video/tegra/dc/dc_config.h>
+
 static int mods_dc_color_formats_show(struct seq_file *s, void *unused)
 {
 	struct tegra_dc *dc = s->private;
@@ -254,16 +259,45 @@ static const struct file_operations mods_dc_scaling_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
-#endif
+#endif /* CONFIG_TEGRA_DC */
+
+static int mods_debug_get(void *data, u64 *val)
+{
+	*val = (u64)(mods_get_debug_level() & DEBUG_ALL);
+	return 0;
+}
+static int mods_debug_set(void *data, u64 val)
+{
+	mods_set_debug_level((int)val & DEBUG_ALL);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_debug_fops, mods_debug_get, mods_debug_set,
+						"0x%08llx\n");
+
+static int mods_mi_get(void *data, u64 *val)
+{
+	*val = (u64)mods_get_multi_instance();
+	return 0;
+}
+static int mods_mi_set(void *data, u64 val)
+{
+	mods_set_multi_instance((int)val);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_mi_fops, mods_mi_get, mods_mi_set, "%llu\n");
+#endif /* MODS_HAS_DEBUGFS */
 
 void mods_remove_debugfs(void)
 {
+#ifdef MODS_HAS_DEBUGFS
 	debugfs_remove_recursive(mods_debugfs_dir);
 	mods_debugfs_dir = NULL;
+#endif
 }
 
 int mods_create_debugfs(struct miscdevice *modsdev)
 {
+#ifdef MODS_HAS_DEBUGFS
 	struct dentry *retval;
 #ifdef CONFIG_TEGRA_DC
 	unsigned dc_idx;
@@ -273,6 +307,20 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 	mods_debugfs_dir = debugfs_create_dir(dev_name(modsdev->this_device),
 		NULL);
 	if (IS_ERR(mods_debugfs_dir)) {
+		err = -EIO;
+		goto remove_out;
+	}
+
+	retval = debugfs_create_file("debug", S_IRUGO | S_IWUSR,
+		mods_debugfs_dir, 0, &mods_debug_fops);
+	if (IS_ERR(retval)) {
+		err = -EIO;
+		goto remove_out;
+	}
+
+	retval = debugfs_create_file("multi_instance", S_IRUGO | S_IWUSR,
+		mods_debugfs_dir, 0, &mods_mi_fops);
+	if (IS_ERR(retval)) {
 		err = -EIO;
 		goto remove_out;
 	}
@@ -341,5 +389,8 @@ remove_out:
 	dev_err(modsdev->this_device, "could not create debugfs\n");
 	mods_remove_debugfs();
 	return err;
+#else
+	return 0;
+#endif
 }
 

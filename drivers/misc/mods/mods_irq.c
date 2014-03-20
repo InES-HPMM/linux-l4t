@@ -145,7 +145,7 @@ static void rec_irq_done(struct nv_device *dev,
 				if (cur == t->dev)
 					return;
 			} else {
-				NvU32 cur
+				u32 cur
 					= q->data[i & (MODS_MAX_IRQS - 1)].irq;
 				if (cur == t->apic_irq)
 					return;
@@ -275,7 +275,7 @@ static int mods_lookup_irq(unsigned char channel, struct pci_dev *pdev,
 
 static int add_irq_map(unsigned char channel,
 		       struct pci_dev *pdev,
-		       NvU32 irq,
+		       u32 irq,
 		       unsigned int type)
 {
 	struct dev_irq_map *newmap = NULL;
@@ -333,8 +333,8 @@ static int add_irq_map(unsigned char channel,
 						pci_resource_start(pdev, 0),
 						0x200);
 				newmap->dev_irq_aperture = bar;
-				newmap->dev_irq_mask_reg = (NvU32 *)(bar+0x140);
-				newmap->dev_irq_state    = (NvU32 *)(bar+0x100);
+				newmap->dev_irq_mask_reg = (u32 *)(bar+0x140);
+				newmap->dev_irq_state    = (u32 *)(bar+0x100);
 				newmap->irq_and_mask	 = 0;
 				newmap->irq_or_mask      = 0;
 			}
@@ -873,7 +873,7 @@ int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
 	unsigned long flags = 0;
 	unsigned char channel;
 	struct pci_dev *dev = 0;
-	NvU32 irq = ~0U;
+	u32 irq = ~0U;
 	struct dev_irq_map *t = NULL;
 	struct dev_irq_map *next = NULL;
 	int ret = -EINVAL;
@@ -959,7 +959,7 @@ int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
 				if (bar) {
 					t->dev_irq_aperture = bar;
 					t->dev_irq_mask_reg
-					    = (NvU32 *)(bar + p->reg_offset);
+					    = (u32 *)(bar + p->reg_offset);
 					t->dev_irq_state = 0;
 					t->irq_and_mask = p->and_mask;
 					t->irq_or_mask = p->or_mask;
@@ -985,7 +985,7 @@ int esc_mods_irq_handled(struct file *pfile, struct MODS_REGISTER_IRQ *p)
 	struct mods_priv *pmp = get_all_data();
 	unsigned long flags = 0;
 	unsigned char channel;
-	NvU32 irq = p->dev.bus;
+	u32 irq = p->dev.bus;
 	struct dev_irq_map *t = NULL;
 	struct dev_irq_map *next = NULL;
 	int ret = -EINVAL;

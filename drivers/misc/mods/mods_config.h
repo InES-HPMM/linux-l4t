@@ -28,6 +28,9 @@
 #define MODS_HAS_WC 1
 #define MODS_HAS_DEV_TO_NUMA_NODE 1
 #define MODS_HAS_NEW_ACPI_WALK 1
+#ifdef CONFIG_DEBUG_FS
+#define MODS_HAS_DEBUGFS 1
+#endif
 
 #endif /* _MODS_CONFIG_H_  */
 

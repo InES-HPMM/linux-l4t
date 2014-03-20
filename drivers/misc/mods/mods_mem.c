@@ -29,17 +29,17 @@
 #define P2M(x) ((x) >> (20 - PAGE_SHIFT))
 
 static spinlock_t km_lock;
-static NvU32 km_usage;
+static u32 km_usage;
 
 static struct rb_root km_root;
-static int mods_post_alloc(NvU64 vaddr, NvU64 paddr, NvU64 pages,
-						   NvU32 cachetype);
+static int mods_post_alloc(u64 vaddr, u64 paddr, u64 pages,
+						   u32 cachetype);
 
 struct mem_tracker {
 	void	*addr;
-	NvU32	 size;
+	u32	 size;
 	const char *file;
-	NvU32	 line;
+	u32	 line;
 	struct rb_node node;
 };
 
@@ -142,7 +142,7 @@ static void mods_del_list_mem(void)
 
 #if !defined(CONFIG_ARCH_TEGRA) || defined(CONFIG_CPA) ||\
 	defined(CONFIG_ARCH_TEGRA_3x_SOC)
-static int mods_set_mem_type(NvU64 virt_addr, NvU64 pages, NvU32 type)
+static int mods_set_mem_type(u64 virt_addr, u64 pages, u32 type)
 {
 	if (type == MODS_MEMORY_UNCACHED)
 		return MODS_SET_MEMORY_UC(virt_addr, pages);
@@ -152,9 +152,9 @@ static int mods_set_mem_type(NvU64 virt_addr, NvU64 pages, NvU32 type)
 }
 #endif
 
-static int mods_restore_mem_type(NvU64 virt_addr,
-				 NvU64 pages,
-				 NvU32 type_override)
+static int mods_restore_mem_type(u64 virt_addr,
+				 u64 pages,
+				 u32 type_override)
 {
 	if ((type_override == MODS_MEMORY_UNCACHED) ||
 			(type_override == MODS_MEMORY_WRITECOMBINE)) {
@@ -175,10 +175,10 @@ static void mods_free_contig_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 
 static void mods_alloc_contig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 {
-	NvU32 order = 0;
-	NvU64 phys_addr;
-	NvU32 num_pages = 0;
-	NvU32 i_page = 0;
+	u32 order = 0;
+	u64 phys_addr;
+	u32 num_pages = 0;
+	u32 i_page = 0;
 	LOG_ENT();
 
 	while ((1 << order) < p_mem_info->num_pages)
@@ -198,7 +198,7 @@ static void mods_alloc_contig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 		mods_debug_printk(DEBUG_MEM,
 	"failed to allocate %u contiguous pages, falling back to bigphysarea\n",
 				  num_pages);
-		p_mem_info->logical_addr = (NvU64)
+		p_mem_info->logical_addr = (u64)
 			bigphysarea_alloc_pages(num_pages, 0, GFP_KERNEL);
 		p_mem_info->alloc_type = MODS_ALLOC_TYPE_BIGPHYS_AREA;
 	}
@@ -241,13 +241,13 @@ static void mods_alloc_contig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 	}
 
 	for (i_page = 0; i_page < num_pages; i_page++) {
-		NvU64 ptr = 0;
+		u64 ptr = 0;
 #ifdef CONFIG_BIGPHYS_AREA
 		if (p_mem_info->alloc_type == MODS_ALLOC_TYPE_BIGPHYS_AREA) {
 			ptr = p_mem_info->logical_addr + i_page * PAGE_SIZE;
 		} else
 #endif
-			ptr = (NvU64)(size_t)kmap(p_mem_info->p_page + i_page);
+			ptr = (u64)(size_t)kmap(p_mem_info->p_page + i_page);
 		if (ptr == 0) {
 			mods_error_printk(
 			    "alloc_contig_sys_pages: unable to map pages\n");
@@ -277,17 +277,17 @@ static void mods_alloc_contig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 
 static void mods_free_contig_sys_mem(struct SYS_MEM_MODS_INFO *p_mem_info)
 {
-	NvU32 num_pages = 1 << p_mem_info->order;
-	NvU32 i_page = 0;
+	u32 num_pages = 1 << p_mem_info->order;
+	u32 i_page = 0;
 
 	for (i_page = 0; i_page < num_pages; i_page++) {
-		NvU64 ptr = 0;
+		u64 ptr = 0;
 #ifdef CONFIG_BIGPHYS_AREA
 		if (p_mem_info->alloc_type == MODS_ALLOC_TYPE_BIGPHYS_AREA) {
 			ptr = p_mem_info->logical_addr + i_page * PAGE_SIZE;
 		} else
 #endif
-			ptr = (NvU64)(size_t)kmap(p_mem_info->p_page + i_page);
+			ptr = (u64)(size_t)kmap(p_mem_info->p_page + i_page);
 		mods_restore_mem_type(ptr, 1, p_mem_info->cache_type);
 #ifdef CONFIG_BIGPHYS_AREA
 		if (p_mem_info->alloc_type != MODS_ALLOC_TYPE_BIGPHYS_AREA)
@@ -317,7 +317,7 @@ static void mods_free_noncontig_sys_mem(struct SYS_MEM_MODS_INFO *p_mem_info)
 			}
 			ptr = kmap(pt->p_page);
 			if (ptr != NULL) {
-				mods_restore_mem_type((NvU64)(size_t)ptr,
+				mods_restore_mem_type((u64)(size_t)ptr,
 						      1,
 						      p_mem_info->cache_type);
 				kunmap(pt->p_page);
@@ -355,7 +355,7 @@ static void mods_alloc_noncontig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 
 	/* alloc pages */
 	for (i = 0; i < p_mem_info->num_pages; i++) {
-		NvU64 phys_addr = 0;
+		u64 phys_addr = 0;
 		pt = p_mem_info->p_page_tbl[i];
 
 		__MODS_ALLOC_PAGES(pt->p_page, 0, GFP_KERNEL
@@ -388,7 +388,7 @@ static void mods_alloc_noncontig_sys_pages(struct SYS_MEM_MODS_INFO *p_mem_info)
 			"alloc_noncontig_sys_pages: unable to map page\n");
 				goto failed;
 			}
-			ret = mods_post_alloc((NvU64)(size_t)ptr,
+			ret = mods_post_alloc((u64)(size_t)ptr,
 					      phys_addr,
 					      1,
 					      p_mem_info->cache_type);
@@ -472,7 +472,7 @@ void mods_init_mem(void)
 }
 
 /* implements mods kmalloc */
-void mods_add_mem(void *addr, NvU32 size, const char *file, NvU32 line)
+void mods_add_mem(void *addr, u32 size, const char *file, u32 line)
 {
 	struct mem_tracker *mem_t;
 	unsigned long __eflags;
@@ -500,7 +500,7 @@ void mods_add_mem(void *addr, NvU32 size, const char *file, NvU32 line)
 }
 
 /* implements mods kfree */
-void mods_del_mem(void *addr, NvU32 size, const char *file, NvU32 line)
+void mods_del_mem(void *addr, u32 size, const char *file, u32 line)
 {
 	struct rb_root	   *root = &km_root;
 	struct mem_tracker *pmem_t;
@@ -555,8 +555,8 @@ void mods_unregister_all_alloc(struct file *fp)
  * If dma address doesn't belong to the allocation, returns ERROR
  */
 int mods_get_alloc_offset(struct SYS_MEM_MODS_INFO *p_mem_info,
-			  NvU64 dma_addr,
-			  NvU32 *ret_offs)
+			  u64 dma_addr,
+			  u32 *ret_offs)
 {
 	int i;
 	int offset = 0;
@@ -571,7 +571,7 @@ int mods_get_alloc_offset(struct SYS_MEM_MODS_INFO *p_mem_info,
 	} else {
 		/* Non-contiguous: one page at a time */
 		for (i = 0; i < p_mem_info->num_pages; i++) {
-			NvU64 start_addr = p_mem_info->p_page_tbl[i]->dma_addr;
+			u64 start_addr = p_mem_info->p_page_tbl[i]->dma_addr;
 			if (start_addr <= dma_addr &&
 			    start_addr + PAGE_SIZE > dma_addr) {
 
@@ -587,13 +587,13 @@ int mods_get_alloc_offset(struct SYS_MEM_MODS_INFO *p_mem_info,
 	return ERROR;
 }
 
-struct SYS_MEM_MODS_INFO *mods_find_alloc(struct file *fp, NvU64 phys_addr)
+struct SYS_MEM_MODS_INFO *mods_find_alloc(struct file *fp, u64 phys_addr)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
 	struct list_head	  *plist_head = private_data->mods_alloc_list;
 	struct list_head	  *plist_iter;
 	struct SYS_MEM_MODS_INFO  *p_mem_info;
-	NvU32			   offset;
+	u32			   offset;
 
 	list_for_each(plist_iter, plist_head) {
 		int ret;
@@ -702,7 +702,7 @@ int esc_mods_device_alloc_pages(struct file *fp,
 		}
 	}
 
-	p->memory_handle = (NvU64) (long) p_mem_info;
+	p->memory_handle = (u64) (long) p_mem_info;
 
 	/* Register the allocation of the memory */
 	mods_register_alloc(fp, p_mem_info);
@@ -788,8 +788,8 @@ int esc_mods_get_phys_addr(struct file *fp, struct MODS_GET_PHYSICAL_ADDRESS *p)
 {
 	struct SYS_MEM_MODS_INFO *p_mem_info
 		= (struct SYS_MEM_MODS_INFO *)(long)p->memory_handle;
-	NvU32	page_n;
-	NvU32	page_offs;
+	u32	page_n;
+	u32	page_offs;
 
 	LOG_ENT();
 
@@ -831,9 +831,9 @@ int esc_mods_virtual_to_phys(struct file *fp,
 	MODS_PRIVATE_DATA(private_data, fp);
 	struct list_head *head;
 	struct list_head *iter;
-	NvU32	phys_offset;
-	NvU32	virt_offset;
-	NvU32	rc;
+	u32	phys_offset;
+	u32	virt_offset;
+	u32	rc;
 
 	LOG_ENT_C("virt_addr=0x%llx\n", p->virtual_address);
 
@@ -869,7 +869,7 @@ int esc_mods_virtual_to_phys(struct file *fp,
 			}
 
 			get_phys_addr.memory_handle =
-				(NvU64)(long)p_map_mem->p_mem_info;
+				(u64)(long)p_map_mem->p_mem_info;
 			get_phys_addr.offset = virt_offset + phys_offset;
 
 			spin_unlock(&private_data->lock);
@@ -898,8 +898,8 @@ int esc_mods_phys_to_virtual(struct file *fp,
 	MODS_PRIVATE_DATA(private_data, fp);
 	struct list_head *head;
 	struct list_head *iter;
-	NvU32	offset;
-	NvU32	map_offset;
+	u32	offset;
+	u32	map_offset;
 
 	LOG_ENT_C("physAddr=0x%llx\n", p->physical_address);
 
@@ -964,15 +964,15 @@ int esc_mods_memory_barrier(struct file *fp)
 
 static void clear_contiguous_cache
 (
-	NvU64 virt_start,
-	NvU64 virt_end,
-	NvU64 phys_start,
-	NvU64 phys_end
+	u64 virt_start,
+	u64 virt_end,
+	u64 phys_start,
+	u64 phys_end
 )
 {
 	/* We are expecting virt_end and phys_end to point to the first address
 	 * of the next range */
-	NvU32 size = virt_end - virt_start;
+	u32 size = virt_end - virt_start;
 	size += (~virt_end + 1) % PAGE_SIZE;  /* Align up to page boundary */
 
 #ifdef CONFIG_ARM64
@@ -990,21 +990,21 @@ static void clear_contiguous_cache
 static void clear_entry_cache_mappings
 (
 	struct SYS_MAP_MEMORY *p_map_mem,
-	NvU64 virt_start,
-	NvU64 virt_end
+	u64 virt_start,
+	u64 virt_end
 )
 {
 	struct SYS_MEM_MODS_INFO *p_mem_info = p_map_mem->p_mem_info;
-	NvU64 original_virt_end = virt_end;
-	NvU64 phys_start;
-	NvU64 phys_end;
-	NvU64 v_start_offset;
-	NvU64 v_end_offset;
-	NvU64 start_offset;
-	NvU64 start_page;
-	NvU64 end_offset;
-	NvU64 end_page;
-	NvU64 i;
+	u64 original_virt_end = virt_end;
+	u64 phys_start;
+	u64 phys_end;
+	u64 v_start_offset;
+	u64 v_end_offset;
+	u64 start_offset;
+	u64 start_page;
+	u64 end_offset;
+	u64 end_page;
+	u64 i;
 
 	if (NULL == p_mem_info || NULL == p_mem_info->p_page_tbl) {
 		mods_debug_printk(DEBUG_MEM_DETAILED,
@@ -1021,7 +1021,7 @@ static void clear_entry_cache_mappings
 	v_start_offset = (virt_start - p_map_mem->virtual_addr);
 	v_end_offset   = (virt_end - p_map_mem->virtual_addr);
 	if (p_map_mem->contiguous) {
-		NvU64 start_addr = MODS_DMA_TO_PHYS(p_map_mem->dma_addr);
+		u64 start_addr = MODS_DMA_TO_PHYS(p_map_mem->dma_addr);
 		phys_start = start_addr + v_start_offset;
 		phys_end   = start_addr + v_end_offset;
 
@@ -1039,7 +1039,7 @@ static void clear_entry_cache_mappings
 	end_offset   = v_end_offset % PAGE_SIZE;
 
 	for (i = start_page; i <= end_page && i < p_mem_info->num_pages; i++) {
-		NvU64 start_addr = MODS_DMA_TO_PHYS(
+		u64 start_addr = MODS_DMA_TO_PHYS(
 				p_mem_info->p_page_tbl[i]->dma_addr);
 		if (i == start_page) {
 			phys_start = start_addr + start_offset;
@@ -1087,10 +1087,10 @@ int esc_mods_flush_cpu_cache_range(struct file *fp,
 		struct SYS_MAP_MEMORY *p_map_mem
 			= list_entry(iter, struct SYS_MAP_MEMORY, list);
 
-		NvU64 mapped_va = p_map_mem->virtual_addr;
+		u64 mapped_va = p_map_mem->virtual_addr;
 
 		/* Note: mapping end points to the first address of next range*/
-		NvU64 mapping_end = mapped_va + p_map_mem->mapping_length;
+		u64 mapping_end = mapped_va + p_map_mem->mapping_length;
 
 		int start_on_page = p->virt_addr_start >= mapped_va
 				    && p->virt_addr_start < mapping_end;
@@ -1098,11 +1098,11 @@ int esc_mods_flush_cpu_cache_range(struct file *fp,
 		int end_on_page = p->virt_addr_end >= mapped_va
 				  && p->virt_addr_end < mapping_end;
 		int end_after_page = p->virt_addr_end >= mapping_end;
-		NvU64 virt_start = p->virt_addr_start;
+		u64 virt_start = p->virt_addr_start;
 
 		/* Kernel expects end to point to the first address of next
 		 * range */
-		NvU64 virt_end = p->virt_addr_end + 1;
+		u64 virt_end = p->virt_addr_end + 1;
 
 		if ((start_on_page || start_before_page)
 			&& (end_on_page || end_after_page)) {
@@ -1122,14 +1122,14 @@ int esc_mods_flush_cpu_cache_range(struct file *fp,
 
 #endif
 
-static int mods_post_alloc(NvU64 vaddr,
-			   NvU64 paddr,
-			   NvU64 pages,
-			   NvU32 cachetype)
+static int mods_post_alloc(u64 vaddr,
+			   u64 paddr,
+			   u64 pages,
+			   u32 cachetype)
 {
 #if defined(CONFIG_ARCH_TEGRA) && !defined(CONFIG_CPA) &&\
 	!defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	NvU64 size = pages * PAGE_SIZE;
+	u64 size = pages * PAGE_SIZE;
 	clear_contiguous_cache(vaddr,
 			       vaddr + size,
 			       paddr,

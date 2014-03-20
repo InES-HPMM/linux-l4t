@@ -62,9 +62,24 @@ struct miscdevice mods_dev = {
 static int debug = -0x80000000;
 static int multi_instance = -1;
 
+void mods_set_debug_level(int mask)
+{
+	debug = mask;
+}
+
+int mods_get_debug_level()
+{
+	return debug;
+}
+
 int mods_check_debug_level(int mask)
 {
 	return ((debug & mask) == mask) ? 1 : 0;
+}
+
+void mods_set_multi_instance(int mi)
+{
+	multi_instance = (mi > 0) ? 1 : -1;
 }
 
 int mods_get_multi_instance(void)
@@ -171,9 +186,9 @@ static void mods_disable_all_devices(struct mods_file_private_data *priv)
 static int mods_register_mapping(
 	struct file *fp,
 	struct SYS_MEM_MODS_INFO *p_mem_info,
-	NvU64 dma_addr,
-	NvU64 virtual_address,
-	NvU32 mapping_length)
+	u64 dma_addr,
+	u64 virtual_address,
+	u32 mapping_length)
 {
 	struct SYS_MAP_MEMORY *p_map_mem;
 	MODS_PRIVATE_DATA(private_data, fp);
@@ -205,7 +220,7 @@ static int mods_register_mapping(
 	return OK;
 }
 
-static void mods_unregister_mapping(struct file *fp, NvU64 virtual_address)
+static void mods_unregister_mapping(struct file *fp, u64 virtual_address)
 {
 	struct SYS_MAP_MEMORY *p_map_mem;
 	MODS_PRIVATE_DATA(private_data, fp);
@@ -250,7 +265,7 @@ static void mods_unregister_all_mappings(struct file *fp)
 	LOG_EXT();
 }
 
-static pgprot_t mods_get_prot(NvU32 mem_type, pgprot_t prot)
+static pgprot_t mods_get_prot(u32 mem_type, pgprot_t prot)
 {
 	switch (mem_type) {
 	case MODS_MEMORY_CACHED:
@@ -269,8 +284,8 @@ static pgprot_t mods_get_prot(NvU32 mem_type, pgprot_t prot)
 	}
 }
 
-static pgprot_t mods_get_prot_for_range(struct file *fp, NvU64 dma_addr,
-					NvU64 size, pgprot_t prot)
+static pgprot_t mods_get_prot_for_range(struct file *fp, u64 dma_addr,
+					u64 size, pgprot_t prot)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
 	if ((dma_addr == private_data->mem_type.dma_addr) &&
@@ -281,7 +296,7 @@ static pgprot_t mods_get_prot_for_range(struct file *fp, NvU64 dma_addr,
 	return prot;
 }
 
-static char *mods_get_prot_str(NvU32 mem_type)
+static char *mods_get_prot_str(u32 mem_type)
 {
 	switch (mem_type) {
 	case MODS_MEMORY_CACHED:
@@ -298,8 +313,8 @@ static char *mods_get_prot_str(NvU32 mem_type)
 	}
 }
 
-static char *mods_get_prot_str_for_range(struct file *fp, NvU64 dma_addr,
-					 NvU64 size)
+static char *mods_get_prot_str_for_range(struct file *fp, u64 dma_addr,
+					 u64 size)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
 	if ((dma_addr == private_data->mem_type.dma_addr) &&
@@ -321,7 +336,7 @@ static void mods_krnl_vma_open(struct vm_area_struct *vma)
 	mods_debug_printk(DEBUG_MEM_DETAILED,
 			  "open vma, virt 0x%lx, phys 0x%llx\n",
 			  vma->vm_start,
-			  (NvU64)(MODS_VMA_PGOFF(vma) << PAGE_SHIFT));
+			  (u64)(MODS_VMA_PGOFF(vma) << PAGE_SHIFT));
 
 	if (MODS_VMA_PRIVATE(vma)) {
 		vma_private_data = MODS_VMA_PRIVATE(vma);
@@ -514,8 +529,8 @@ static int mods_krnl_map_inner(struct file *fp, struct vm_area_struct *vma)
 	/* system memory */
 	if (p_mem_info != NULL) {
 		if (p_mem_info->alloc_type != MODS_ALLOC_TYPE_NON_CONTIG) {
-			NvU64 dma_addr = MODS_VMA_OFFSET(vma);
-			NvU32 pfn = MODS_DMA_TO_PHYS(dma_addr) >> PAGE_SHIFT;
+			u64 dma_addr = MODS_VMA_OFFSET(vma);
+			u32 pfn = MODS_DMA_TO_PHYS(dma_addr) >> PAGE_SHIFT;
 			pgprot_t prot = mods_get_prot(p_mem_info->cache_type,
 						      vma->vm_page_prot);
 
@@ -549,7 +564,7 @@ static int mods_krnl_map_inner(struct file *fp, struct vm_area_struct *vma)
 			/* insert consecutive pages one at a time */
 
 			unsigned long start = 0;
-			NvU64 dma_addr = 0;
+			u64 dma_addr = 0;
 			struct SYS_PAGE_TABLE **p_page_tbl
 				= p_mem_info->p_page_tbl;
 			const pgprot_t prot
@@ -564,7 +579,7 @@ static int mods_krnl_map_inner(struct file *fp, struct vm_area_struct *vma)
 				mods_get_prot_str(p_mem_info->cache_type));
 
 			for (i = 0; i < p_mem_info->num_pages; i++) {
-				NvU64 offs = MODS_VMA_OFFSET(vma);
+				u64 offs = MODS_VMA_OFFSET(vma);
 				dma_addr = p_page_tbl[i]->dma_addr;
 				if ((offs >= dma_addr) &&
 				    (offs <  dma_addr + PAGE_SIZE)) {
@@ -613,7 +628,7 @@ static int mods_krnl_map_inner(struct file *fp, struct vm_area_struct *vma)
 	} else {
 		/* device memory */
 
-		NvU64 dma_addr = MODS_VMA_OFFSET(vma);
+		u64 dma_addr = MODS_VMA_OFFSET(vma);
 		mods_debug_printk(DEBUG_MEM,
 			    "map device mem: "
 			    "dma 0x%llx, virt 0x%lx, size 0x%x, caching %s\n",
@@ -980,6 +995,13 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_flush_cpu_cache_range,
 				    MODS_FLUSH_CPU_CACHE_RANGE);
 		break;
+#if defined(CONFIG_TEGRA_DC) && defined(CONFIG_TEGRA_ISOMGR)
+	case MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE:
+		MODS_IOCTL(MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE,
+				   esc_mods_tegra_dc_config_possible,
+				   MODS_TEGRA_DC_CONFIG_POSSIBLE);
+		break;
+#endif
 #endif
 	case MODS_ESC_MEMORY_BARRIER:
 		MODS_IOCTL_VOID(MODS_ESC_MEMORY_BARRIER,
