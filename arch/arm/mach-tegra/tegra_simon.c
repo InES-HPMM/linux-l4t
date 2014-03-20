@@ -454,7 +454,7 @@ static struct tegra_simon_grader_desc gpu_grader_desc = {
 
 static struct tegra_simon_grader_desc cpu_grader_desc = {
 	.domain = TEGRA_SIMON_DOMAIN_CPU,
-	.garding_rate_max = 714000000,
+	.garding_rate_max = 850000000,
 	.grading_temperature_min = 20000,
 	.settle_us = 3000,
 	.grade_simon_domain = fake_grader,
