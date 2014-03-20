@@ -109,7 +109,7 @@ enum {
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
 #define SMMU_PTC_FLUSH_TYPE_ADR			1
-#define SMMU_PTC_FLUSH_ADR_SHIFT		4
+#define SMMU_PTC_FLUSH_ADR_MASK			0xfffffff0
 
 #define SMMU_PTC_FLUSH_1			0x9b8
 
@@ -562,7 +562,9 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 		smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
 	}
 
-	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
+	val = SMMU_PTC_FLUSH_TYPE_ADR |
+		(VA_PAGE_TO_PA(pte, page) & SMMU_PTC_FLUSH_ADR_MASK);
+
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
 }
 
