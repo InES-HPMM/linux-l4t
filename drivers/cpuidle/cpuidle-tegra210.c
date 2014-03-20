@@ -126,10 +126,40 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 		/*
 		 * We are the last core standing and bpmp says GO.
 		 * Change to CC6 config.
-		 * Only one CPU within this if block -
-		 * so no need to apply any lock
 		 */
-		ps.id = 6;
+		ps.id = TEGRA210_CPUIDLE_CC6;
+		ps.affinity_level = 1;
+	}
+
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+
+	cpu_pm_exit();
+
+	return idx;
+}
+
+static int tegra210_enter_crail_gate(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	unsigned long arg;
+
+	/* Assume C7 config by default */
+	struct psci_power_state ps = {
+		.id = 0,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 0,
+	};
+
+	cpu_pm_enter();
+
+	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7)) {
+		/*
+		 * We are the last core standing and bpmp says GO.
+		 * Change to CC7 config.
+		 */
+		ps.id = TEGRA210_CPUIDLE_CC7;
 		ps.affinity_level = 1;
 	}
 
@@ -197,11 +227,21 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->enter = tegra210_enter_cluster_pg;
 	state->exit_latency = 20;
 	state->target_residency = 30;
-	state->power_usage = 1500;
+	state->power_usage = 400;
 	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
 	state->disabled = true;
 
-	drv->state_count = 4;
+	state = &drv->states[4];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "CC7");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU rail gate");
+	state->enter = tegra210_enter_crail_gate;
+	state->exit_latency = 30;
+	state->target_residency = 40;
+	state->power_usage = 300;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	drv->state_count = 5;
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
