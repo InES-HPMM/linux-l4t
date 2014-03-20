@@ -351,8 +351,12 @@ int __init vcm30_t124_panel_init(void)
 
 	vcm30_t124_carveouts[1].base = tegra_carveout_start;
 	vcm30_t124_carveouts[1].size = tegra_carveout_size;
+	vcm30_t124_carveouts[2].dma_dev = &tegra_generic_dev;
+
 	vcm30_t124_carveouts[2].base = tegra_vpr_start;
 	vcm30_t124_carveouts[2].size = tegra_vpr_size;
+	vcm30_t124_carveouts[2].dma_dev = &tegra_vpr_dev;
+
 	generic_dma_info.name = "generic";
 	generic_dma_info.base = tegra_carveout_start;
 	generic_dma_info.size = tegra_carveout_size;
