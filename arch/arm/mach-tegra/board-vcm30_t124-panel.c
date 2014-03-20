@@ -375,7 +375,6 @@ int __init vcm30_t124_panel_init(void)
 	carveout_linear_set(&tegra_vpr_cma_dev);
 	vcm30_t124_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
 	vcm30_t124_carveouts[2].resize = true;
-	vcm30_t124_carveouts[2].cma_chunk_size = SZ_32M;
 
 	vpr_dma_info.size = SZ_32M;
 	vpr_dma_info.resize = true;
