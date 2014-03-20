@@ -4,7 +4,7 @@
 #include "tegra124-platforms/tegra124-tn8-emc-p1761-1270-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pmic-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-fixed-e1936-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1270-a03.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-p1761-1270-a03.dtsi"
@@ -26,11 +26,5 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
-	i2c@7000c000 {
-		max44006@44 {
-			maxim,gain = <1>;
-			maxim,als-resolution = "0.75";
-		};
-	};
 };
 
