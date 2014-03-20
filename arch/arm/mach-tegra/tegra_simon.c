@@ -83,7 +83,7 @@ static int tegra_simon_gpu_grading_cb(
 		return NOTIFY_OK;
 
 	mv = (mv > 0) ? mv / 1000 : mv;
-	if ((mv <= 0) || (mv > grader->desc->grading_mv_limit))
+	if ((mv <= 0) || (mv > grader->desc->grading_mv_max))
 		return NOTIFY_OK;
 
 	if (grader->last_grading.tv64 &&
@@ -96,6 +96,9 @@ static int tegra_simon_gpu_grading_cb(
 		       __func__, grader->domain_name);
 		return NOTIFY_OK;
 	}
+
+	if (t < grader->desc->grading_temperature_min)
+		return NOTIFY_OK;
 
 	if (grader->desc->grade_simon_domain) {
 		settle_delay(grader);	/* delay for voltage to settle */
@@ -175,7 +178,7 @@ static int tegra_simon_cpu_grading_cb(
 	if (grader->stop_grading)
 		return NOTIFY_OK;
 
-	if (is_lp_cluster() || (rate > grader->desc->garding_rate_limit) ||
+	if (is_lp_cluster() || (rate > grader->desc->garding_rate_max) ||
 	    !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		return NOTIFY_OK;
 
@@ -189,6 +192,9 @@ static int tegra_simon_cpu_grading_cb(
 		       __func__, grader->domain_name);
 		return NOTIFY_OK;
 	}
+
+	if (t < grader->desc->grading_temperature_min)
+		return NOTIFY_OK;
 
 	cld = tegra_dfll_get_cl_dvfs_data(
 		clk_get_parent(clk_get_parent(grader->clk)));
@@ -437,14 +443,16 @@ static int fake_grader(int domain, int mv, int temperature)
 
 static struct tegra_simon_grader_desc gpu_grader_desc = {
 	.domain = TEGRA_SIMON_DOMAIN_GPU,
-	.grading_mv_limit = 850,
+	.grading_mv_max = 850,
+	.grading_temperature_min = 20000,
 	.settle_us = 3000,
 	.grade_simon_domain = fake_grader,
 };
 
 static struct tegra_simon_grader_desc cpu_grader_desc = {
 	.domain = TEGRA_SIMON_DOMAIN_CPU,
-	.garding_rate_limit = 714000000,
+	.garding_rate_max = 714000000,
+	.grading_temperature_min = 20000,
 	.settle_us = 3000,
 	.grade_simon_domain = fake_grader,
 };
