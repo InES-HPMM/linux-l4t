@@ -64,6 +64,7 @@
 #include <asm/tlbflush.h>
 #include <asm/suspend.h>
 #include <asm/smp_plat.h>
+#include <asm/psci.h>
 
 #include <mach/irqs.h>
 #include <mach/tegra_smmu.h>
@@ -210,7 +211,7 @@ bool tegra_is_dpd_mode = false;
 
 static bool suspend_in_progress;
 
-bool tegra_suspend_in_progress()
+bool tegra_suspend_in_progress(void)
 {
 	return suspend_in_progress;
 }
@@ -431,6 +432,26 @@ static void suspend_cpu_complex(u32 mode)
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
+	struct psci_power_state pps;
+
+	if (tegra_cpu_is_secure()) {
+		__flush_dcache_area(&tegra_resume_timestamps_start,
+					(&tegra_resume_timestamps_end -
+					 &tegra_resume_timestamps_start));
+
+		BUG_ON(mode != TEGRA_SUSPEND_LP0);
+
+		trace_smc_sleep_core(NVSEC_SMC_START);
+		if (psci_ops.cpu_suspend) {
+			pps.id = TEGRA_ID_CPU_SUSPEND_LP0;
+			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
+			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_CLUSTER;
+
+			psci_ops.cpu_suspend(pps, virt_to_phys(tegra_resume));
+		}
+		trace_smc_sleep_core(NVSEC_SMC_DONE);
+	}
+
 	tegra_get_suspend_time();
 	cpu_suspend(v2p, tegra_sleep_core_finish);
 }

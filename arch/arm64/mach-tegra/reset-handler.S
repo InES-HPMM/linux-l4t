@@ -137,6 +137,26 @@ done:
 ENDPROC(tegra_resume)
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+/* start of timestamps */
+.globl tegra_resume_timestamps_start
+tegra_resume_timestamps_start:
+
+.globl tegra_resume_smc_entry_time
+tegra_resume_smc_entry_time:
+	.long	0
+.globl tegra_resume_smc_exit_time
+tegra_resume_smc_exit_time:
+	.long	0
+.globl tegra_resume_entry_time
+tegra_resume_entry_time:
+	.long	0
+
+/* end of timestamps */
+.global tegra_resume_timestamps_end
+tegra_resume_timestamps_end:
+#endif
+
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_start)
 
