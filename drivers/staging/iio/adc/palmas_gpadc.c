@@ -327,6 +327,19 @@ static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
 	return 0;
 }
 
+static inline int palmas_gpadc_set_current_src(struct palmas_gpadc *adc,
+					       u8 ch0_current, u8 ch3_current)
+{
+	unsigned int mask, val;
+
+	mask = (PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
+		PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK);
+	val = (ch0_current << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
+		(ch3_current << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+	return palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				  PALMAS_GPADC_CTRL1, mask, val);
+}
+
 static int palmas_gpadc_check_status(struct palmas_gpadc *adc)
 {
 	int retry_cnt = 3;
@@ -632,16 +645,11 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 
 		if ((adc_chan == PALMAS_ADC_CH_IN3)
 				&& adc->ch3_dual_current && val2) {
-			unsigned int reg_mask, reg_val;
-
-			reg_mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
-			reg_val = ((adc->ch3_current + 1)
-				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
-			ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-						PALMAS_GPADC_CTRL1,
-						reg_mask, reg_val);
+			ret = palmas_gpadc_set_current_src(adc,
+					adc->ch0_current, adc->ch3_current + 1);
 			if (ret < 0) {
-				dev_err(adc->dev, "CTRL1 update failed\n");
+				dev_err(adc->dev,
+					"Failed to set current src: %d\n", ret);
 				goto out;
 			}
 
@@ -1118,6 +1126,14 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_400;
 	else
 		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_800;
+
+	/* Init current source for CH0 and CH3 */
+	ret = palmas_gpadc_set_current_src(adc, adc->ch0_current,
+					   adc->ch3_current);
+	if (ret < 0) {
+		dev_err(adc->dev, "Failed to set current src: %d\n", ret);
+		goto out_irq_auto1_free;
+	}
 
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
 	 * ch3_current and the next current of ch3_current. */
