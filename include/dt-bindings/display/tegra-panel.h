@@ -1,7 +1,7 @@
 /*
  * include/dt-bindings/display/tegra-panel.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -113,5 +113,11 @@
 
 #define DSI_INSTANCE_0 0
 #define DSI_INSTANCE_1 1
+
+/* Aggressiveness level of DSI suspend. The higher, the more aggressive. */
+#define DSI_NO_SUSPEND			0
+#define DSI_HOST_SUSPEND_LV0		1
+#define DSI_HOST_SUSPEND_LV1		2
+#define DSI_HOST_SUSPEND_LV2		3
 
 #endif /* __TEGRA_PANEL_H */
