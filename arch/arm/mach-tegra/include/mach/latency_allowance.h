@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/latency_allowance.h
  *
- * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -194,9 +194,6 @@ int tegra_enable_latency_scaling(enum tegra_la_id id,
 void tegra_disable_latency_scaling(enum tegra_la_id id);
 
 struct la_to_dc_params tegra_get_la_to_dc_params(void);
-
-/* FIXME!!:- This function needs to be implemented properly elsewhere. */
-unsigned int tegra_get_dvfs_time_nsec(unsigned long emc_freq_mhz);
 
 extern const struct disp_client *tegra_la_disp_clients_info;
 

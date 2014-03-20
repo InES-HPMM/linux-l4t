@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12x_la.c
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,6 +18,7 @@
 #include <linux/clk.h>
 #include <asm/io.h>
 #include <mach/latency_allowance.h>
+#include <mach/tegra_emc.h>
 #include "la_priv.h"
 #include "clock.h"
 #include "iomap.h"
@@ -1178,7 +1179,7 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 	struct la_client_info *ci = NULL;
 	unsigned int la_to_set = 0;
 	struct clk *emc_clk = NULL;
-	unsigned long emc_freq_mhz = 0;
+	unsigned long emc_freq_hz = 0;
 	unsigned int dvfs_time_nsec = 0;
 	unsigned int dvfs_buffering_reqd_bytes = 0;
 	unsigned int thresh_dvfs_bytes = 0;
@@ -1203,9 +1204,9 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 	ci = &cs->la_info_array[idx];
 	la_to_set = 0;
 	emc_clk = clk_get(NULL, "emc");
-	emc_freq_mhz = clk_get_rate(emc_clk) /
-			T12X_LA_HZ_TO_MHZ_FACTOR;
-	dvfs_time_nsec = tegra_get_dvfs_time_nsec(emc_freq_mhz);
+	emc_freq_hz = clk_get_rate(emc_clk);
+	dvfs_time_nsec =
+		tegra_get_dvfs_clk_change_latency_nsec(emc_freq_hz / 1000);
 	dvfs_buffering_reqd_bytes = bw_mbps *
 					dvfs_time_nsec /
 					T12X_LA_USEC_TO_NSEC_FACTOR;
@@ -1233,7 +1234,7 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 			la_bw_upper_bound_nsec_fp -
 			(T12X_LA_ST_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP +
 			T12X_EXP_TIME_EMCCLKS_FP) /
-			emc_freq_mhz;
+			(emc_freq_hz / T12X_LA_HZ_TO_MHZ_FACTOR);
 		la_bw_upper_bound_nsec_fp *= T12X_LA_USEC_TO_NSEC_FACTOR;
 		la_bw_upper_bound_nsec = T12X_LA_FP_TO_REAL(
 						la_bw_upper_bound_nsec_fp);

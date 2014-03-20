@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/latency_allowance.c
  *
- * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -47,23 +47,6 @@ module_param_named(disable_disp_ptsa,
 	cs.disable_disp_ptsa, bool, S_IRUGO | S_IWUSR);
 module_param_named(disable_bbc_ptsa,
 	cs.disable_bbc_ptsa, bool, S_IRUGO | S_IWUSR);
-
-/* FIXME!!:- This function needs to be implemented properly. */
-unsigned int tegra_get_dvfs_time_nsec(unsigned long emc_freq_mhz)
-{
-	if ((emc_freq_mhz >= 100) && (emc_freq_mhz <= 120))
-		return 6679;
-	else if ((emc_freq_mhz >= 200) && (emc_freq_mhz <= 220))
-		return 3954;
-	else if ((emc_freq_mhz >= 400) && (emc_freq_mhz <= 420))
-		return 2396;
-	else if ((emc_freq_mhz >= 780) && (emc_freq_mhz <= 800))
-		return 1583;
-	else if ((emc_freq_mhz >= 920) && (emc_freq_mhz <= 940))
-		return 1452;
-	else
-		return 3000;
-}
 
 static void init_chip_specific(void)
 {
