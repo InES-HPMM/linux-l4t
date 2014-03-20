@@ -40,6 +40,7 @@
 #include <linux/wakelock.h>
 #include <linux/iio/consumer.h>
 #include <linux/iio/iio.h>
+#include <linux/iio/types.h>
 
 #define JETI_TEMP_COLD		0
 #define JETI_TEMP_COOL		10
@@ -264,15 +265,45 @@ static ssize_t battery_show_snapshot_capacity(struct device *dev,
 				bg_dev->battery_snapshot_capacity);
 }
 
+static ssize_t battery_show_max_capacity(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct iio_channel *channel;
+	int val, ret;
+
+	channel = iio_channel_get(dev, "batt_id");
+	if (IS_ERR(channel)) {
+		dev_err(dev,
+			"%s: Failed to get channel batt_id, %ld\n",
+			__func__, PTR_ERR(channel));
+			return 0;
+	}
+
+	ret = iio_read_channel_raw(channel, &val);
+	if (ret < 0) {
+		dev_err(dev,
+			"%s: Failed to read channel, %d\n",
+			__func__, ret);
+			return 0;
+	}
+
+	return snprintf(buf, MAX_STR_PRINT, "%d\n", val);
+}
+
 static DEVICE_ATTR(battery_snapshot_voltage, S_IRUGO,
 		battery_show_snapshot_voltage, NULL);
 
 static DEVICE_ATTR(battery_snapshot_capacity, S_IRUGO,
 		battery_show_snapshot_capacity, NULL);
 
+static DEVICE_ATTR(battery_max_capacity, S_IRUGO,
+		battery_show_max_capacity, NULL);
+
 static struct attribute *battery_snapshot_attributes[] = {
 	&dev_attr_battery_snapshot_voltage.attr,
 	&dev_attr_battery_snapshot_capacity.attr,
+	&dev_attr_battery_max_capacity.attr,
 	NULL
 };
 

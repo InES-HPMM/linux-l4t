@@ -116,10 +116,17 @@
 				interrupts = <18 0
 					      16 0
 					      17 0>;
+				ti,channel0-current-microamp = <5>;
 				ti,channel3-current-microamp = <400>;
 				ti,enable-channel3-dual-current;
 				ti,enable-extended-delay;
 				iio_map {
+					ch0 {
+						ti,adc-channel-number = <0>;
+						ti,adc-consumer-device = "1-000b";
+						ti,adc-consumer-channel ="batt_id";
+					};
+
 					ch1 {
 						ti,adc-channel-number = <1>;
 						ti,adc-consumer-device = "generic-adc-thermal.1";
