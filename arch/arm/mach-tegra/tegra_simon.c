@@ -154,14 +154,15 @@ static int __init tegra_simon_init_gpu(void)
  * CPU grading is implemented within CPU rate post-change notification chain
  * that guarantees constant frequency during grading. Grading is executed only
  * when running on G-CPU, with DFLL as clock source, at rate low enough for DFLL
- * to saturate at minimum voltage at any temperature. Still it is possible that
- * Vmin changes during grading because of temperature fluctuation. In the latter
- * case grading results are discarded.
+ * to be close to saturation at minimum voltage. To avoid still possible closed
+ * loop voltage fluctuation for sure, DFLL maximum limit is clamped to minimum
+ * during measurements.
  *
  * First grading after boot can be executed anytime the conditions above are
  * met, next grading is always separated by the grading interval from the last
  * successful grading.
  */
+extern int tegra_cl_dvfs_clamp_at_vmin(struct tegra_cl_dvfs *cld, bool clamp);
 static int tegra_simon_cpu_grading_cb(
 	struct notifier_block *nb, unsigned long rate, void *v)
 {
@@ -170,7 +171,6 @@ static int tegra_simon_cpu_grading_cb(
 	struct tegra_cl_dvfs *cld;
 	ktime_t now = ktime_get();
 
-	unsigned int start;
 	unsigned long t;
 	int mv;
 	int grade = 0;
@@ -204,7 +204,12 @@ static int tegra_simon_cpu_grading_cb(
 		return NOTIFY_OK;
 	}
 
-	mv = tegra_cl_dvfs_vmin_read_begin(cld, &start);
+	mv = tegra_cl_dvfs_clamp_at_vmin(cld, true);
+	if (mv < 0) {
+		pr_err("%s: Failed to clamp %s voltage\n",
+		       __func__, grader->domain_name);
+		return NOTIFY_OK;
+	}
 
 	if (grader->desc->grade_simon_domain) {
 		settle_delay(grader);	/* delay for voltage to settle */
@@ -212,15 +217,12 @@ static int tegra_simon_cpu_grading_cb(
 		if (grade < 0) {
 			pr_err("%s: Failed to grade %s\n",
 			       __func__, grader->domain_name);
+			tegra_cl_dvfs_clamp_at_vmin(cld, false);
 			return NOTIFY_OK;
 		}
 
-		if (tegra_cl_dvfs_vmin_read_retry(cld, start)) {
-			pr_info("%s: deferred %s grading: unstable vmin %d\n",
-			       __func__, grader->domain_name, mv);
-			return NOTIFY_OK;
-		}
 	}
+	tegra_cl_dvfs_clamp_at_vmin(cld, false);
 
 	grader->last_grading = now;
 	if (grader->grade != grade) {
