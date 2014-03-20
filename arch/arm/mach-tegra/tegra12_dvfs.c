@@ -43,7 +43,7 @@ static bool tegra_dvfs_gpu_disabled;
 #define VDD_SAFE_STEP			100
 
 static int cpu_vmin_offsets[] = { 0, -30, };
-static int gpu_vmin_offsets[] = { 0, -30, };
+static int gpu_vmin_offsets[] = { 0, -20, };
 
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
