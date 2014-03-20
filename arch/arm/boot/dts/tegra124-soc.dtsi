@@ -428,7 +428,7 @@
 
 	host1x {
 		compatible = "nvidia,tegra124-host1x", "simple-bus";
-		reg = <0x0 0x50000000 0x0 0x00028000>;
+		reg = <0x0 0x50000000 0x0 0x00034000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
 		nvidia,memory-clients = <4 6 7 17>;
