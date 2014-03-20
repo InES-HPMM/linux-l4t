@@ -1,6 +1,8 @@
 /dts-v1/;
 
 #include "tegra124-ardbeg-e1780-1000-a03-common.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-pmic-e1733-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-fixed-e1733-1000-a00.dtsi"
 
 / {
 	nvidia,boardids = "1780:1000:03:B:3;1733:1000:00:B:4";

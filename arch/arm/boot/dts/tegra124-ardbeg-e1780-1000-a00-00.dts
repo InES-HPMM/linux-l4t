@@ -1,6 +1,8 @@
 /dts-v1/;
 
 #include "tegra124-ardbeg-e1780-1000-a00-common.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-pmic-e1735-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-fixed-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
 
 / {

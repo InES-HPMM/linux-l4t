@@ -1098,6 +1098,7 @@ int __init ardbeg_rail_alignment_init(void)
 int __init ardbeg_regulator_init(void)
 {
 	struct board_info pmu_board_info;
+	struct device_node *np;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
@@ -1105,15 +1106,28 @@ int __init ardbeg_regulator_init(void)
 	case BOARD_E1733:
 	case BOARD_E1734:
 		tegra_pmc_pmu_interrupt_polarity(true);
+		np = of_find_compatible_node(NULL, NULL, "ams,as3722");
+		if (np) {
+			pr_info("AS3722 registration from DT power tree\n");
+			break;
+		}
+
+		pr_info("AS3722 registration from board power tree\n");
 		i2c_register_board_info(0, tca6408_expander,
 				ARRAY_SIZE(tca6408_expander));
 		ardbeg_ams_regulator_init();
 		regulator_has_full_constraints();
-		platform_device_register(&power_supply_extcon_device);
 		break;
 
 	case BOARD_E1735:
 		tegra_pmc_pmu_interrupt_polarity(true);
+		np = of_find_compatible_node(NULL, NULL, "ti,palmas");
+		if (np) {
+			pr_info("Palmas registration from DT power tree\n");
+			break;
+		}
+
+		pr_info("Palmas registration from board power tree\n");
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
@@ -1134,6 +1148,9 @@ int __init ardbeg_regulator_init(void)
 		break;
 	}
 
+	if (pmu_board_info.board_id != BOARD_E1735)
+		platform_device_register(&power_supply_extcon_device);
+
 	ardbeg_cl_dvfs_init(&pmu_board_info);
 	return 0;
 }
@@ -1142,6 +1159,7 @@ static int __init ardbeg_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
 	struct board_info display_board_info;
+	struct device_node *np;
 
 	if ((!of_machine_is_compatible("nvidia,ardbeg")) &&
 	    (!of_machine_is_compatible("nvidia,ardbeg_sata")))
@@ -1153,6 +1171,13 @@ static int __init ardbeg_fixed_regulator_init(void)
 		platform_add_devices(fixed_reg_devs_e1824,
 			ARRAY_SIZE(fixed_reg_devs_e1824));
 
+	np = of_find_compatible_node(NULL, "fixed-regulators", "simple-bus");
+	if (np) {
+		pr_info("Fixed Regulator is from the DT\n");
+		return 0;
+	}
+
+	pr_info("Fixed Regulator is from board files.\n");
 	tegra_get_pmu_board_info(&pmu_board_info);
 	switch (pmu_board_info.board_id) {
 	case BOARD_E1733:
