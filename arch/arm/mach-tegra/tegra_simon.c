@@ -373,6 +373,7 @@ static int grade_set(void *data, u64 val)
 		return -EINVAL;
 
 	if (grader->grade != (int)val) {
+		grader->stop_grading = false;
 		grader->grade = (int)val;
 		grade_notify(grader);
 	}
