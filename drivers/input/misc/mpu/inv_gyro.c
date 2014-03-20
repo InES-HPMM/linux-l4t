@@ -4167,7 +4167,9 @@ static void inv_input_close(struct input_dev *d)
 	struct inv_gyro_state_s *inf;
 
 	inf = input_get_drvdata(d);
-	nvi_pm_exit(inf);
+	mutex_lock(&inf->mutex);
+	nvi_pm(inf, NVI_PM_OFF_FORCE);
+	mutex_unlock(&inf->mutex);
 }
 
 /**
