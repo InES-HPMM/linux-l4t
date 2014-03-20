@@ -104,11 +104,19 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 static int tegra_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tegra_runtime_data *tegra_prtd;
 
 	if (rtd->dai_link->no_pcm)
 		return 0;
 
+	tegra_prtd =
+		(struct tegra_runtime_data *)snd_dmaengine_pcm_get_data(
+						substream);
+	kfree(tegra_prtd);
+
+	snd_dmaengine_pcm_set_data(substream, NULL);
 	snd_dmaengine_pcm_close_release_chan(substream);
+
 	return 0;
 }
 
