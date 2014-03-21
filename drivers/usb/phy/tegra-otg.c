@@ -494,6 +494,7 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 	otg->gadget = gadget;
 
 	val = enable_interrupt(tegra, true);
+	tegra->suspended = false;
 
 	if (((val & USB_ID_STATUS) || tegra->support_pmu_id) &&
 		 (val & USB_VBUS_STATUS) && !tegra->support_pmu_vbus)
@@ -701,7 +702,7 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	tegra_clone = tegra;
 
 	tegra->interrupt_mode = true;
-	tegra->suspended = false;
+	tegra->suspended = true;
 	tegra->turn_off_vbus_on_lp0 =
 			pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0;
 	tegra->support_y_cable =
