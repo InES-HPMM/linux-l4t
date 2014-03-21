@@ -206,9 +206,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-bonaire_sim.dtb \
 	tegra124-bonaire.dtb \
 	tegra124-ardbeg.dtb \
-	tegra124-ardbeg-battery.dtb \
 	tegra124-ardbeg-a03-00.dtb \
-	tegra124-ardbeg-a03-00-battery.dtb \
 	tegra124-ardbeg-e1792-1100-a00-00.dtb \
 	tegra124-ardbeg-e1792-1100-a00-01.dtb \
 	tegra124-ardbeg-e1780-1000-a00-00.dtb \

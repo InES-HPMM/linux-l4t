@@ -1,8 +1,0 @@
-#include "tegra124-ardbeg.dts"
-/ {
-	i2c@7000c400 {
-		bq20z75@0b {
-			status = "okay";
-		};
-	};
-};
