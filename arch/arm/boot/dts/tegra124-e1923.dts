@@ -1,3 +1,22 @@
+/*
+ * arch/arm/boot/dts/tegra124-e1923.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 /dts-v1/;
 
 #include "tegra124.dtsi"
@@ -5,7 +24,8 @@
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
-#include "panel-p-wuxga-10-1.dts"
+#include "tegra-panel.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Ardbeg ERS-S POP";
@@ -21,6 +41,26 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
 		dsi {
 			nvidia,dsi-controller-vs = <1>;
 			status = "okay";

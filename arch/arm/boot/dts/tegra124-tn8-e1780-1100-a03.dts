@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/tegra124-tn8-a03-00.dts
+ * arch/arm/boot/dts/tegra124-tn8-e1780-1100-a03.dts
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -29,8 +29,8 @@
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-sensor-e1845-1000-a00.dtsi"
-#include "panel-l-wxga-7.dtsi"
-#include "tegra124-platforms/tegra124-tn8-hdmi.dtsi"
+#include "tegra-panel.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-e1780-1100-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8";
@@ -47,8 +47,25 @@
 	};
 
 	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
 		/* tegradc.1 */
 		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 			avdd_hdmi-supply = <&palmas_ldoln>;
 			avdd_hdmi_pll-supply = <&palmas_ldo1>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi>;

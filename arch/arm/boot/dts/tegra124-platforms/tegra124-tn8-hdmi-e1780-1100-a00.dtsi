@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/tegra124-ardbeg-e1780-1000-a00-01.dts
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-hdmi-e1780-1100-a00.dtsi
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -17,23 +17,6 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-/dts-v1/;
 
-#include "tegra124-ardbeg-e1780-1000-a00-common.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-pmic-e1733-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-fixed-e1733-1000-a00.dtsi"
+#include "tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 
-/ {
-	nvidia,boardids = "1780:1000:00:B:3;1733:1000:00:B:4";
-	nvidia,dtsfilename = __FILE__;
-	nvidia,proc-boardid = "1780:1000:00:B:3";
-	nvidia,pmu-boardid = "1733:1000:00:B:4";
-	host1x {
-		/* tegradc.1 */
-		dc@54240000 {
-			avdd_hdmi-supply = <&as3722_sd4>;
-			avdd_hdmi_pll-supply = <&as3722_sd4>;
-			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
-		};
-	};
-};

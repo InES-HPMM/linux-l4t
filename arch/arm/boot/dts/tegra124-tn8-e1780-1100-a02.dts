@@ -1,3 +1,22 @@
+/*
+ * arch/arm/boot/dts/tegra124-tn8-e1780-1100-a02.dts
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 /dts-v1/;
 
 #include "tegra124-tn8.dtsi"
@@ -11,6 +30,8 @@
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-sensor-e1794-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-camera-e1780-a00.dtsi"
+#include "tegra-panel.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-e1780-1100-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8";
@@ -24,6 +45,43 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+			avdd_hdmi-supply = <&palmas_ldoln>;
+			avdd_hdmi_pll-supply = <&palmas_ldo1>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-l-wxga-7 {
+				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+			panel-p-wuxga-10-1 {
+				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+		};
 	};
 
 	i2c@7000c400 {

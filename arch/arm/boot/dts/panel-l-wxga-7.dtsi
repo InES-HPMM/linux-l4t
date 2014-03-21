@@ -22,77 +22,6 @@
 
 / {
 	host1x {
-		/* tegradc.0 */
-		dc@54200000 {
-			status = "okay";
-			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
-			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <1>;
-			nvidia,low-v-win = <0x2>;
-			dc-default-out {
-				nvidia,out-type = <TEGRA_DC_OUT_DSI>;
-				nvidia,out-width = <94>;
-				nvidia,out-height = <150>;
-				nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
-				nvidia,out-parent-clk = "pll_d_out0";
-			};
-			display-timings {
-				800x1280-32 {
-					clock-frequency = <71000000>;
-					hactive = <800>;
-					vactive = <1280>;
-					hfront-porch = <32>;
-					hback-porch = <57>;
-					hsync-len = <1>;
-					vfront-porch = <28>;
-					vback-porch = <14>;
-					vsync-len = <1>;
-					nvidia,h-ref-to-sync = <10>;
-					nvidia,v-ref-to-sync = <1>;
-				};
-			};
-			framebuffer-data {
-				nvidia,fb-bpp = <32>; /* bits per pixel */
-				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
-				nvidia,fb-xres = <800>;
-				nvidia,fb-yres = <1280>;
-			};
-			smartdimmer {
-				status = "okay";
-				nvidia,use-auto-pwm = <0>;
-				nvidia,hw-update-delay = <0>;
-				nvidia,bin-width = <0xffffffff>;
-				nvidia,aggressiveness = <5>;
-				nvidia,use-vid-luma = <0>;
-				nvidia,phase-in-settings = <0>;
-				nvidia,phase-in-adjustments = <0>;
-				nvidia,k-limit-enable = <1>;
-				nvidia,k-limit = <200>;
-				nvidia,sd-window-enable = <0>;
-				nvidia,soft-clipping-enable= <1>;
-				nvidia,soft-clipping-threshold = <128>;
-				nvidia,smooth-k-enable = <0>;
-				nvidia,smooth-k-incr = <64>;
-				nvidia,coeff = <5 9 2>;
-				nvidia,fc = <0 0>;
-				nvidia,blp = <1024 255>;
-				nvidia,bltf = <57 65 73 82
-						  92 103 114 125
-						  138 150 164 178
-						  193 208 224 241>;
-				nvidia,lut = <255 255 255
-						 199 199 199
-						 153 153 153
-						 116 116 116
-						 85 85 85
-						 59 59 59
-						 36 36 36
-						 17 17 17
-						 0 0 0>;
-				nvidia,use-vpulse2 = <1>;
-				nvidia,bl-device-name = "pwm-backlight";
-			};
-		};
 		dsi {
 			panel-l-wxga-7 {
 				status = "okay";
@@ -128,6 +57,64 @@
 				nvidia,dsi-early-suspend-cmd = <0x0 0x15 0x11 0x0 0x0>,
 							       <1 160>;
 				nvidia,dsi-n-early-suspend-cmd = <2>;
+				disp-default-out {
+					nvidia,out-width = <94>;
+					nvidia,out-height = <150>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,out-xres = <800>;
+					nvidia,out-yres = <1280>;
+				};
+				display-timings {
+					800x1280-32 {
+						clock-frequency = <71000000>;
+						hactive = <800>;
+						vactive = <1280>;
+						hfront-porch = <32>;
+						hback-porch = <57>;
+						hsync-len = <1>;
+						vfront-porch = <28>;
+						vback-porch = <14>;
+						vsync-len = <1>;
+						nvidia,h-ref-to-sync = <10>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				smartdimmer {
+					status = "okay";
+					nvidia,use-auto-pwm = <0>;
+					nvidia,hw-update-delay = <0>;
+					nvidia,bin-width = <0xffffffff>;
+					nvidia,aggressiveness = <5>;
+					nvidia,use-vid-luma = <0>;
+					nvidia,phase-in-settings = <0>;
+					nvidia,phase-in-adjustments = <0>;
+					nvidia,k-limit-enable = <1>;
+					nvidia,k-limit = <200>;
+					nvidia,sd-window-enable = <0>;
+					nvidia,soft-clipping-enable= <1>;
+					nvidia,soft-clipping-threshold = <128>;
+					nvidia,smooth-k-enable = <0>;
+					nvidia,smooth-k-incr = <64>;
+					nvidia,coeff = <5 9 2>;
+					nvidia,fc = <0 0>;
+					nvidia,blp = <1024 255>;
+					nvidia,bltf = <57 65 73 82
+						       92 103 114 125
+						       138 150 164 178
+						       193 208 224 241>;
+					nvidia,lut = <255 255 255
+						      199 199 199
+						      153 153 153
+						      116 116 116
+						      85 85 85
+						      59 59 59
+						      36 36 36
+						      17 17 17
+						      0 0 0>;
+					nvidia,use-vpulse2 = <1>;
+					nvidia,bl-device-name = "pwm-backlight";
+				};
 			};
 		};
 	};
