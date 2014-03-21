@@ -43,6 +43,7 @@
 #include <mach/pinmux-t12.h>
 
 #include "pm.h"
+#include "pmc.h"
 #include "dvfs.h"
 #include "board.h"
 #include "tegra-board-id.h"
@@ -57,8 +58,6 @@
 
 #define E1735_EMULATE_E1767_SKU	1001
 
-#define PMC_CTRL                0x0
-#define PMC_CTRL_INTR_LOW       (1 << 17)
 
 /************************ ARDBEG E1733 based regulators ***********/
 static struct regulator_consumer_supply as3722_ldo0_supply[] = {
@@ -305,16 +304,7 @@ static struct i2c_board_info __initdata as3722_regulators[] = {
 
 int __init ardbeg_as3722_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
 	struct board_info board_info;
-
-	/* AS3722: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	/* Set vdd_gpu init uV to 1V */
 	as3722_sd6_reg_idata.constraints.init_uV = 900000;
@@ -562,17 +552,8 @@ static struct i2c_board_info palma_ti913_device[] = {
 
 int __init ardbeg_tps65913_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
 	int i;
 	struct board_info board_info;
-
-	/* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	/* Tracking configuration */
 	reg_init_data_ti913_ldo8.config_flags =
@@ -1123,6 +1104,7 @@ int __init ardbeg_regulator_init(void)
 	switch (pmu_board_info.board_id) {
 	case BOARD_E1733:
 	case BOARD_E1734:
+		tegra_pmc_pmu_interrupt_polarity(true);
 		i2c_register_board_info(0, tca6408_expander,
 				ARRAY_SIZE(tca6408_expander));
 		ardbeg_ams_regulator_init();
@@ -1131,6 +1113,7 @@ int __init ardbeg_regulator_init(void)
 		break;
 
 	case BOARD_E1735:
+		tegra_pmc_pmu_interrupt_polarity(true);
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS

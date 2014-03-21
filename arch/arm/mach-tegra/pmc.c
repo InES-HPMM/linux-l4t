@@ -117,6 +117,19 @@ void tegra_pmc_remove_dpd_req()
 }
 EXPORT_SYMBOL(tegra_pmc_remove_dpd_req);
 
+void tegra_pmc_pmu_interrupt_polarity(bool active_low)
+{
+	u32 pmc_ctrl;
+
+	 pmc_ctrl = tegra_pmc_readl(PMC_CTRL);
+	 if (active_low)
+		 pmc_ctrl |= PMC_CTRL_INTR_LOW;
+	else
+		 pmc_ctrl &= ~PMC_CTRL_INTR_LOW;
+	tegra_pmc_writel(pmc_ctrl, PMC_CTRL);
+}
+EXPORT_SYMBOL(tegra_pmc_pmu_interrupt_polarity);
+
 static int tegra_pmc_get_cpu_powerdomain_id(int cpuid)
 {
 	if (cpuid <= 0 || cpuid >= num_possible_cpus())
