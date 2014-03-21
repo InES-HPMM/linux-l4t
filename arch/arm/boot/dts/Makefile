@@ -232,25 +232,6 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-foster.dtb \
 	tegra124-thor195.dtb \
 	tegra124-loki-thor195-e2549-a00.dtb \
-	tegra124-tn8.dtb \
-	tegra124-tn8-p1761.dtb \
-	tegra124-tn8-p1761-2gb.dtb \
-	tegra124-tn8-p1761-battery.dtb \
-	tegra124-tn8-p1761-2gb-battery.dtb \
-	tegra124-tn8-e1784-2gb.dtb \
-	tegra124-tn8-e1784-battery.dtb \
-	tegra124-tn8-aio.dtb \
-	tegra124-tn8-battery.dtb \
-	tegra124-tn8-a03-00.dtb \
-	tegra124-tn8-a03-00-battery.dtb \
-	tegra124-tn8-a03-01.dtb \
-	tegra124-tn8-a03-01-battery.dtb \
-	tegra124-tn8-p1761-a02.dtb \
-	tegra124-tn8-p1761-a02-battery.dtb \
-	tegra124-e1782_sku1100.dtb \
-	tegra124-e1791.dtb \
-	tegra124-e1922.dtb \
-	tegra124-e1923.dtb \
 	tegra124-tn8-e1780-1100-a02-01.dtb \
 	tegra124-tn8-e1780-1100-a02-battery.dtb \
 	tegra124-tn8-e1780-1100-a02.dtb \
@@ -269,6 +250,9 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-tn8-p1761-1270-a03.dtb \
 	tegra124-tn8-p1761-1470-a00-battery.dtb \
 	tegra124-tn8-p1761-1470-a00.dtb \
+	tegra124-e1782_sku1100.dtb \
+	tegra124-e1791.dtb \
+	tegra124-e1923.dtb \
 	tegra124-vcm30_t124.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
