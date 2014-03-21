@@ -1,0 +1,37 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	tegra_pwm: pwm@7000a000 {
+		compatible = "nvidia,tegra124-pwm";
+		reg = <0x0 0x7000a000 0x0 0x100>;
+		#pwm-cells = <2>;
+		status = "okay";
+	};
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_gpu: regulator@0 {
+			compatible = "regulator-pwm";
+			reg = <0>;
+			regulator-name = "vdd-gpu";
+			regulator-min-microvolt = <710000>;
+			regulator-max-microvolt = <1320000>;
+			regulator-init-microvolt = <1000000>;
+			regulator-ramp-delay = <500>;
+			regulator-n-voltages = <62>;
+			regulator-enable-ramp-delay = <500>;
+			enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
+			pwms = <&tegra_pwm 3 4880>;
+			regulator-boot-on;
+
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_gpu";
+				};
+			};
+		};
+	};
+
+};
