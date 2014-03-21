@@ -48,6 +48,11 @@ static void of_get_regulator_consumer_list(struct device *dev,
 
 	ncount = 0;
 	for_each_child_of_node(np_consumer, child) {
+		/* Ignore the consumer if it is disabled. */
+		ret = of_device_is_available(child);
+		if (!ret)
+			continue;
+
 		ret = of_property_read_string(child,
 				"regulator-consumer-supply",
 				&consumer[ncount].supply);
