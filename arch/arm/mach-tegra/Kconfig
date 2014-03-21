@@ -356,6 +356,7 @@ config MACH_ROTH
        depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
+       select TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
        help
          Support for NVIDIA THOR development platform
 
@@ -639,6 +640,17 @@ config TEGRA_EHCI_BOOST_CPU_FREQ
           This value is the amount of the cpu frequency (in Mhz)
           to be boosted. If it is zero boosting frequency will not
           be enabled. This value will be used only by usb ehci driver.
+
+config TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
+	bool "Initialize CPU governor to a performance after DVFS initialization"
+	default 0
+	help
+	  During a boot up, once DVFS is initialized, there is a period of
+	  time in which the frequency could adjusted higher before the userspace
+	  configures the governor by using a more performance governor for
+	  a faster boot up. Selecting this option will make the system to choose
+	  a performance governor once the DVFS initialization is complete. Userspace
+	  or init script can override the governor chosen here.
 
 config TEGRA_DYNAMIC_PWRDET
 	bool "Enable dynamic activation of IO level auto-detection"
