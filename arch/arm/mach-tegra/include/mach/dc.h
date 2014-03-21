@@ -812,6 +812,7 @@ void tegra_dc_vsync_enable(struct tegra_dc *dc);
 void tegra_dc_vsync_disable(struct tegra_dc *dc);
 int tegra_dc_wait_for_vsync(struct tegra_dc *dc);
 void tegra_dc_blank(struct tegra_dc *dc, unsigned windows);
+int tegra_dc_restore(struct tegra_dc *dc);
 
 void tegra_dc_enable(struct tegra_dc *dc);
 void tegra_dc_disable(struct tegra_dc *dc);
