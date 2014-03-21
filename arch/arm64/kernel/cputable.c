@@ -24,6 +24,12 @@ extern unsigned long __cpu_setup(void);
 
 struct cpu_info cpu_table[] = {
 	{
+		.cpu_id_val	= 0x4e0f0000,
+		.cpu_id_mask	= 0xffff000f,
+		.cpu_name	= "NVIDIA Denver 1.0",
+		.cpu_setup	= __cpu_setup,
+	},
+	{
 		.cpu_id_val	= 0x000f0000,
 		.cpu_id_mask	= 0x000f0000,
 		.cpu_name	= "AArch64 Processor",
