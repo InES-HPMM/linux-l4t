@@ -756,16 +756,8 @@ static void ardbeg_panel_select(void)
 
 			tegra_get_board_info(&mainboard);
 			if ((mainboard.board_id == BOARD_E1784) ||
-				(mainboard.board_id == BOARD_P1761)) {
-
+				(mainboard.board_id == BOARD_P1761))
 				ardbeg_disp1_out.rotation = 180;
-
-				if ((board.board_id == BOARD_E1937) &&
-					(board.sku == 1000))
-					ardbeg_disp1_out.dsi->
-						dsi_panel_rst_gpio =
-						TEGRA_GPIO_PN4;
-			}
 		}
 
 		if (panel->init_fb_data)
