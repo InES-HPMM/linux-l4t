@@ -57,8 +57,10 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 
 			ptent = ptep_modify_prot_start(mm, addr, pte);
 			if (!prot_numa) {
+				pte_t old_ptent = ptent;
 				ptent = pte_modify(ptent, newprot);
-				updated = true;
+				if (ptent != old_ptent)
+					updated = true;
 			} else {
 				struct page *page;
 
