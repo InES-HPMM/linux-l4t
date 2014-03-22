@@ -3972,6 +3972,35 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	return plat;
 }
 
+/*
+ * sdhci_tegra_check_bondout
+ *
+ * check whether the specified SDHCI instance is bonded out
+ *
+ * do not validate ID itself, instead, just make sure it's less
+ * than 4, so that we do not index beyond the end of position array
+ *
+ * non-zero return value means bond-out, so that instance doesn't exist
+ */
+static inline int sdhci_tegra_check_bondout(unsigned int id)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	enum tegra_bondout_dev dev[4] = {
+		BOND_OUT_SDMMC1,
+		BOND_OUT_SDMMC2,
+		BOND_OUT_SDMMC3,
+		BOND_OUT_SDMMC4
+	};
+
+	if (id < 4)
+		return tegra_bonded_out_dev(dev[id]);
+	else
+		return 1;
+#else
+	return 0;
+#endif
+}
+
 static int sdhci_tegra_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
@@ -4016,6 +4045,12 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat == NULL) {
 		dev_err(mmc_dev(host->mmc), "missing platform data\n");
 		rc = -ENXIO;
+		goto err_no_plat;
+	}
+
+	if (sdhci_tegra_check_bondout(plat->id)) {
+		dev_err(mmc_dev(host->mmc), "bonded out\n");
+		rc = -ENODEV;
 		goto err_no_plat;
 	}
 
