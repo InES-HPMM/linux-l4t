@@ -267,6 +267,9 @@ static const int precision; /* default 0 -> low precision */
 #define STATS_CTL_EN_UP		0x1
 
 #define THROT_GLOBAL_CFG	0x400
+#define THROT13_GLOBAL_CFG	0x148
+#define THROT_GLOBAL_ENB_SHIFT	0
+#define THROT_GLOBAL_ENB_MASK	0x1
 
 #define OC1_CFG				0x310
 #define OC1_CFG_LONG_LATENCY_SHIFT	6
@@ -329,6 +332,7 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_STATUS_ENABLED_MASK		0x1
 
 #define THROT_PSKIP_CTRL_LITE_CPU		0x430
+#define THROT13_PSKIP_CTRL_LOW_CPU		0x154
 #define THROT_PSKIP_CTRL_ENABLE_SHIFT		31
 #define THROT_PSKIP_CTRL_ENABLE_MASK		0x1
 #define THROT_PSKIP_CTRL_DIVIDEND_SHIFT		8
@@ -337,18 +341,22 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_PSKIP_CTRL_DIVISOR_MASK		0xff
 
 #define THROT_PSKIP_RAMP_LITE_CPU		0x434
+#define THROT13_PSKIP_RAMP_LOW_CPU		0x150
+#define THROT_PSKIP_RAMP_SEQ_BYPASS_MODE_SHIFT	31
+#define THROT_PSKIP_RAMP_SEQ_BYPASS_MODE_MASK	0x1
 #define THROT_PSKIP_RAMP_DURATION_SHIFT		8
 #define THROT_PSKIP_RAMP_DURATION_MASK		0xffff
 #define THROT_PSKIP_RAMP_STEP_SHIFT		0
 #define THROT_PSKIP_RAMP_STEP_MASK		0xff
 
-#define THROT_PSKIP_CTRL_LITE_GPU	0x438
-#define THROT_PSKIP_CTRL_THROT_DEPTH_SHIFT		16
-#define THROT_PSKIP_CTRL_THROT_DEPTH_MASK		0x7
-#define THROT_DEPTH_NONE	0x0
-#define THROT_DEPTH_LOW		0x1
-#define THROT_DEPTH_MED		0x2
-#define THROT_DEPTH_HIG		0x4
+#define THROT_PSKIP_CTRL_LITE_GPU		0x438
+#define THROT_PSKIP_CTRL_THROT_DEPTH_SHIFT	16
+#define THROT_PSKIP_CTRL_THROT_DEPTH_MASK	0x7
+
+#define THROT_DEPTH_NONE		0x0 /* 3'b000 */
+#define THROT_DEPTH_LOW			0x1 /* 3'b001 */
+#define THROT_DEPTH_MED			0x3 /* 3'b011 */
+#define THROT_DEPTH_HVY			0x7 /* 3'b111 */
 
 #define THROT_PRIORITY_LITE			0x444
 #define THROT_PRIORITY_LITE_PRIO_SHIFT		0
@@ -359,6 +367,7 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_DELAY_LITE_DELAY_MASK		0xff
 
 #define THROT_OFFSET				0x30
+#define THROT13_OFFSET				0x0c
 #define ALARM_OFFSET				0x14
 
 #define FUSE_TSENSOR_CALIB_FT_SHIFT	13
@@ -369,8 +378,15 @@ static const int precision; /* default 0 -> low precision */
 
 /* car register offsets needed for enabling HW throttling */
 #define CAR_SUPER_CCLKG_DIVIDER		0x36c
+#define CAR13_SUPER_CCLKG_DIVIDER	0x024
+#define CDIVG_ENABLE_SHIFT		31
+#define CDIVG_ENABLE_MASK		0x1
 #define CDIVG_USE_THERM_CONTROLS_SHIFT	30
 #define CDIVG_USE_THERM_CONTROLS_MASK	0x1
+#define CDIVG_DIVIDEND_MASK		0xff
+#define CDIVG_DIVIDEND_SHIFT		8
+#define CDIVG_DIVISOR_MASK		0xff
+#define CDIVG_DIVISOR_SHIFT		0
 
 /* pmc register offsets needed for powering off PMU */
 #define PMC_SCRATCH_WRITE_SHIFT			2
@@ -403,12 +419,22 @@ static const int precision; /* default 0 -> low precision */
 #define PMU_I2C_ADDRESS_SHIFT			0
 #define PMU_I2C_ADDRESS_MASK			0x7f
 
+#define CAR_SUPER_CLK_DIVIDER_REGISTER()	(IS_T13X ? \
+						 CAR13_SUPER_CCLKG_DIVIDER : \
+						 CAR_SUPER_CCLKG_DIVIDER)
+#define THROT_GLOBAL_CFG_REGISTER()		(IS_T13X ? \
+						 THROT13_GLOBAL_CFG : \
+						 THROT_GLOBAL_CFG)
 #define THROT_PSKIP_CTRL(throt, dev)		(THROT_PSKIP_CTRL_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
 #define THROT_PSKIP_RAMP(throt, dev)		(THROT_PSKIP_RAMP_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
+#define THROT13_PSKIP_CTRL(vect)		(THROT13_PSKIP_CTRL_LOW_CPU + \
+						 (THROT13_OFFSET * vect))
+#define THROT13_PSKIP_RAMP(vect)		(THROT13_PSKIP_RAMP_LOW_CPU + \
+						 (THROT13_OFFSET * vect))
 #define THROT_PRIORITY_CTRL(throt)		(THROT_PRIORITY_LITE + \
 						(THROT_OFFSET * throt))
 #define THROT_DELAY_CTRL(throt)			(THROT_DELAY_LITE + \
@@ -446,13 +472,15 @@ static const int precision; /* default 0 -> low precision */
 #define REG_GET(r, _name)	(REG_GET_BIT(r, _name) >> _name##_SHIFT)
 #define MAKE_SIGNED32(val, nb)	((s32)(val) << (32 - (nb)) >> (32 - (nb)))
 
-#define IS_T12X_T13X() \
-	(tegra_chip_id == TEGRA_CHIPID_TEGRA12 || \
-	 tegra_chip_id == TEGRA_CHIPID_TEGRA13)
+#define IS_T11X		(tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+#define IS_T14X		(tegra_chip_id == TEGRA_CHIPID_TEGRA14)
+#define IS_T12X		(tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+#define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
 static void __iomem *reg_soctherm_base = IOMEM(IO_ADDRESS(TEGRA_SOCTHERM_BASE));
 static void __iomem *pmc_base = IOMEM(IO_ADDRESS(TEGRA_PMC_BASE));
 static void __iomem *clk_reset_base = IOMEM(IO_ADDRESS(TEGRA_CLK_RESET_BASE));
+static void __iomem *clk13_rst_base = IOMEM(IO_ADDRESS(TEGRA_CLK13_RESET_BASE));
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
 
@@ -483,7 +511,6 @@ static struct clk *tsensor_clk;
  *
  * Writes the @value to @reg if the soctherm device is not suspended.
  */
-
 static inline void soctherm_writel(u32 value, u32 reg)
 {
 	if (!soctherm_suspended)
@@ -504,6 +531,24 @@ static inline u32 soctherm_readl(u32 reg)
 	return __raw_readl(reg_soctherm_base + reg);
 }
 
+static inline void throtctl_writel(u32 value, u32 reg)
+{
+	if (IS_T13X) {
+		__raw_writel(value, clk13_rst_base + reg);
+		__raw_readl(clk13_rst_base + reg);
+		return;
+	} else
+		soctherm_writel(value, reg);
+}
+
+static inline u32 throtctl_readl(u32 reg)
+{
+	if (IS_T13X)
+		return __raw_readl(clk13_rst_base + reg);
+	else
+		return soctherm_readl(reg);
+}
+
 static inline void pmc_writel(u32 value, u32 reg)
 {
 	__raw_writel(value, (void __iomem *)
@@ -517,13 +562,19 @@ static inline u32 pmc_readl(u32 reg)
 
 static inline void clk_reset_writel(u32 value, u32 reg)
 {
-	__raw_writel(value, (void __iomem *)
-		(clk_reset_base + reg));
+	if (IS_T13X) {
+		__raw_writel(value, clk13_rst_base + reg);
+		__raw_readl(clk13_rst_base + reg);
+	} else
+		__raw_writel(value, clk_reset_base + reg);
 }
 
 static inline u32 clk_reset_readl(u32 reg)
 {
-	return __raw_readl(clk_reset_base + reg);
+	if (IS_T13X)
+		return __raw_readl(clk13_rst_base + reg);
+	else
+		return __raw_readl(clk_reset_base + reg);
 }
 
 /**
@@ -1092,11 +1143,12 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 				 * be read safely. So we mirror the CPU status.
 				 */
 			*cur_state |=
-				(IS_T12X_T13X()) ?
+				(IS_T12X || IS_T13X) ?
 				((*cur_state & (1 << THROTTLE_DEV_CPU)) ?
 				 (1 << THROTTLE_DEV_GPU) : 0) :
 				((m == devs->dividend && n == devs->divisor) ?
 				 (1 << THROTTLE_DEV_GPU) : 0);
+	/* FIXME: For T132 switch to Denver:CCROC NV_THERM style status */
 		}
 	}
 	return 0;
@@ -1976,63 +2028,170 @@ static irqreturn_t soctherm_edp_isr(int irq, void *arg)
 }
 
 /**
+ * throttlectl_cpu() - programs CPU pulse skippers' configuration
+ * @throt	soctherm_throttle_id describing the level of throttling
+ *
+ * Pulse skippers are used to throttle clock frequencies.
+ * This function programs the pulse skippers based on @throt and platform data.
+ *
+ * For T132 this function programs soctherm's interface to Denver:CCROC NV_THERM
+ * in terms of Low, Medium and Heavy throttling vectors. PSKIP_BYPASS mode is
+ * set as required per HW spec.
+ *
+ * Return: boolean true if HW was programmed
+ */
+static bool throttlectl_cpu(enum soctherm_throttle_id throt)
+{
+	u32 r, throt_vector = THROT_DEPTH_LOW;
+	int throt_level = 0;
+
+	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
+
+	if (!dev->enable)
+		return false;
+
+	if (IS_T13X) {
+		/* Denver:CCROC NV_THERM interface N:3 Mapping */
+		if (!strcmp(dev->throttling_depth, "heavy_throttling")) {
+			throt_level = 2;
+			throt_vector = THROT_DEPTH_HVY;
+		} else if (!strcmp(dev->throttling_depth,
+						"medium_throttling")) {
+			throt_level = 1;
+			throt_vector = THROT_DEPTH_MED;
+		}
+	}
+
+	if (dev->depth)
+		THROT_DEPTH(dev, dev->depth);
+
+	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+	/* for T32: setup throttle vector in soctherm register */
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND,
+				IS_T13X ? throt_vector : dev->dividend);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR,
+				IS_T13X ? throt_vector : dev->dividend);
+	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
+
+	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+	r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
+	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
+	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+
+	if (IS_T13X) {
+		/* for T32: setup actual depth in ccroc nv_therm register */
+		r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+		r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+		soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+
+		r = throtctl_readl(THROT13_PSKIP_RAMP(throt_level));
+		r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+		throtctl_writel(r, THROT13_PSKIP_RAMP(throt_level));
+
+		r = throtctl_readl(THROT13_PSKIP_RAMP(throt_level));
+		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
+		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
+		throtctl_writel(r, THROT13_PSKIP_CTRL(throt_level));
+	}
+
+	return true;
+}
+
+/**
+ * throttlectl_gpu_gk20a_nv_therm_style() - programs GK20a NV_THERM config
+ * @dev		device struct pointer to GPU device
+ * @throt	soctherm_throttle_id describing the level of throttling
+ *
+ * This function programs soctherm's interface to GK20a NV_THERM in
+ * terms of Low, Medium and Heavy throttling preset levels.
+ *
+ * Return: boolean true if HW was programmed
+ */
+static bool throttlectl_gpu_gk20a_nv_therm_style(
+				struct soctherm_throttle_dev *dev,
+				enum soctherm_throttle_id throt)
+{
+	u32 r;
+	int throt_level;
+
+	/* gk20a nv_therm interface N:3 Mapping */
+	if (!strcmp(dev->throttling_depth, "heavy_throttling"))
+		throt_level = THROT_DEPTH_HVY;
+	else if (!strcmp(dev->throttling_depth, "medium_throttling"))
+		throt_level = THROT_DEPTH_MED;
+	else
+		throt_level = THROT_DEPTH_LOW;
+
+	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+	r = REG_SET(r, THROT_PSKIP_CTRL_THROT_DEPTH, throt_level);
+	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
+
+	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
+	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
+
+	return true;
+}
+
+/**
+ * throttlectl_gpu() - programs GPU pulse skippers' configuration
+ * @throt	soctherm_throttle_id describing the level of throttling
+ *
+ * Pulse skippers are used to throttle clock frequencies.
+ * This function programs the pulse skippers based on @throt and platform data.
+ *
+ * Return: boolean true if HW was programmed
+ */
+static bool throttlectl_gpu(enum soctherm_throttle_id throt)
+{
+	u32 r;
+	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_GPU];
+
+	if (!dev->enable)
+		return false;
+
+	if (IS_T12X || IS_T13X)
+		return throttlectl_gpu_gk20a_nv_therm_style(dev, throt);
+
+	if (dev->depth)
+		THROT_DEPTH(dev, dev->depth);
+
+	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
+	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
+
+	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
+	r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
+	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
+	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
+
+	return true;
+}
+
+/**
  * soctherm_throttle_program() - programs pulse skippers' configuration
  * @throt	soctherm_throttle_id describing the level of throttling
  *
  * Pulse skippers are used to throttle clock frequencies.
  * This function programs the pulse skippers based on @throt and platform data.
  *
+ * Return: Nothing is returned (void).
  */
 static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 {
 	u32 r;
-	int i;
-	u8 gk20a_throt;
-	bool throt_enable = false;
-	struct soctherm_throttle_dev *dev;
+	bool throt_enable;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 
-	for (i = 0; i < THROTTLE_DEV_SIZE; i++) {
-		dev = &data->devs[i];
-		if (!dev->enable)
-			continue;
-		throt_enable = true;
-
-		if (i == THROTTLE_DEV_GPU && IS_T12X_T13X()) {
-			/* gk20a interface N:3 Mapping */
-			if (!strcmp(dev->throttling_depth,
-				    "heavy_throttling"))
-				gk20a_throt = THROT_DEPTH_HIG;
-			else if (!strcmp(dev->throttling_depth,
-					 "medium_throttling"))
-				gk20a_throt = THROT_DEPTH_MED;
-			else
-				gk20a_throt = THROT_DEPTH_LOW;
-
-			r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
-			r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-
-			r = REG_SET(r, THROT_PSKIP_CTRL_THROT_DEPTH,
-				gk20a_throt);
-
-			soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
-			continue;
-		}
-		if (dev->depth)
-			THROT_DEPTH(dev, dev->depth);
-
-		r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
-		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-		soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
-
-		r = soctherm_readl(THROT_PSKIP_RAMP(throt, i));
-		r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
-		r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
-		soctherm_writel(r, THROT_PSKIP_RAMP(throt, i));
-	}
+	throt_enable = throttlectl_cpu(throt);
+	throt_enable |= throttlectl_gpu(throt);
 
 	r = REG_SET(0, THROT_PRIORITY_LITE_PRIO, data->priority);
 	soctherm_writel(r, THROT_PRIORITY_CTRL(throt));
@@ -2164,21 +2323,15 @@ static int __init soctherm_clk_init(void)
 	}
 
 	/* initialize default clock rates */
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
-		default_soctherm_clk_rate =
-			default_t11x_soctherm_clk_rate;
-		default_tsensor_clk_rate =
-			default_t11x_tsensor_clk_rate;
-	} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14) {
-		default_soctherm_clk_rate =
-			default_t14x_soctherm_clk_rate;
-		default_tsensor_clk_rate =
-			default_t14x_tsensor_clk_rate;
-	} else if (IS_T12X_T13X()) {
-		default_soctherm_clk_rate =
-			default_t12x_soctherm_clk_rate;
-		default_tsensor_clk_rate =
-			default_t12x_tsensor_clk_rate;
+	if (IS_T11X) {
+		default_soctherm_clk_rate = default_t11x_soctherm_clk_rate;
+		default_tsensor_clk_rate = default_t11x_tsensor_clk_rate;
+	} else if (IS_T14X) {
+		default_soctherm_clk_rate = default_t14x_soctherm_clk_rate;
+		default_tsensor_clk_rate = default_t14x_tsensor_clk_rate;
+	} else if ((IS_T12X || IS_T13X)) {
+		default_soctherm_clk_rate = default_t12x_soctherm_clk_rate;
+		default_tsensor_clk_rate = default_t12x_tsensor_clk_rate;
 	} else {
 		BUG();
 	}
@@ -2244,11 +2397,9 @@ static int soctherm_fuse_read_calib_base(void)
 	}
 
 	nominal_calib_cp = 25;
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+	if (IS_T11X)
 		nominal_calib_ft = 90;
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
-		nominal_calib_ft = 105;
-	else if (IS_T12X_T13X())
+	else if (IS_T14X || IS_T12X || IS_T13X)
 		nominal_calib_ft = 105;
 	else
 		BUG();
@@ -2400,7 +2551,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 
 	/* FUSE corrections for Tegra when precision is set LOW */
 	if (PRECISION_IS_LOWER()) {
-		if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
+		if (IS_T11X) {
 			t11x_fuse_corr_alpha[sensor] =
 				t11x_fuse_corr_alpha[sensor] ?: 1000000;
 			therm_a = div64_s64_precise(
@@ -2409,7 +2560,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 			therm_b = div64_s64_precise(
 				(s64)therm_b * t11x_fuse_corr_alpha[sensor] +
 				t11x_fuse_corr_beta[sensor], (s64)1000000LL);
-		} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14) {
+		} else if (IS_T14X) {
 			t14x_fuse_corr_alpha[sensor] =
 				t14x_fuse_corr_alpha[sensor] ?: 1000000;
 			therm_a = div64_s64_precise(
@@ -2420,7 +2571,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
 		}
 	} else {
-		if (IS_T12X_T13X()) {
+		if ((IS_T12X || IS_T13X)) {
 			if (fuse_rev == 0) { /* new CP1/CP2 */
 				t12x_fuse_corr_alpa2[sensor] =
 					t12x_fuse_corr_alpa2[sensor] ?: 1000000;
@@ -2650,11 +2801,11 @@ static int soctherm_init_platform_data(void)
 	long gsh = MAX_HIGH_TEMP;
 	u32 r;
 
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+	if (IS_T11X)
 		sensor_defaults = default_t11x_sensor_params;
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
+	else if (IS_T14X)
 		sensor_defaults = default_t14x_sensor_params;
-	else if (IS_T12X_T13X())
+	else if ((IS_T12X || IS_T13X))
 		sensor_defaults = default_t12x_sensor_params;
 	else
 		BUG();
@@ -2751,6 +2902,9 @@ static int soctherm_init_platform_data(void)
 		}
 	}
 
+	r = REG_SET(0, THROT_GLOBAL_ENB, 1);
+	throtctl_writel(r, THROT_GLOBAL_CFG_REGISTER());
+
 	if (plat_data.throttle[THROTTLE_HEAVY].priority <
 	    plat_data.throttle[THROTTLE_LIGHT].priority)
 		pr_err("soctherm: ERROR: Priority of HEAVY less than LIGHT\n");
@@ -2764,9 +2918,9 @@ static int soctherm_init_platform_data(void)
 	/* Enable PMC to shutdown */
 	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
 
-	r = clk_reset_readl(CAR_SUPER_CCLKG_DIVIDER);
+	r = clk_reset_readl(CAR_SUPER_CLK_DIVIDER_REGISTER());
 	r = REG_SET(r, CDIVG_USE_THERM_CONTROLS, 1);
-	clk_reset_writel(r, CAR_SUPER_CCLKG_DIVIDER);
+	clk_reset_writel(r, CAR_SUPER_CLK_DIVIDER_REGISTER());
 
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -3106,7 +3260,7 @@ static int core_rail_regulator_notifier_cb(
 	int rv = NOTIFY_DONE;
 	int core_vmin_limit_uv;
 
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+	if (IS_T12X) {
 		core_vmin_limit_uv = 900000;
 		if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
 			if (uv >= core_vmin_limit_uv) {
@@ -3155,9 +3309,7 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int ret;
 	tegra_chip_id = tegra_get_chip_id();
-	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
-	      tegra_chip_id == TEGRA_CHIPID_TEGRA14 ||
-	      IS_T12X_T13X())) {
+	if (!(IS_T11X || IS_T14X || IS_T12X || IS_T13X)) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
 		return -1;
 	}
@@ -3219,7 +3371,7 @@ void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 
 void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 {
-	if (IS_T12X_T13X()) {
+	if ((IS_T12X || IS_T13X)) {
 		if (!vdd_core_low_voltage != high_voltage_range) {
 			vdd_core_low_voltage = !high_voltage_range;
 			soctherm_adjust_zone(THERM_GPU);
@@ -3405,17 +3557,23 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, "enabled(%d)\n", state);
 
 	r = soctherm_readl(CPU_PSKIP_STATUS);
-	state = REG_GET(r, XPU_PSKIP_STATUS_M);
-	seq_printf(s, "%s PSKIP STATUS: M(%d) ",
-		   throt_dev_names[THROTTLE_DEV_CPU], state);
-
-	state = REG_GET(r, XPU_PSKIP_STATUS_N);
-	seq_printf(s, "N(%d) ", state);
-	state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-	seq_printf(s, "enabled(%d)\n", state);
+	if (IS_T13X) {
+		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
+		seq_printf(s, "%s PSKIP STATUS: ",
+			   throt_dev_names[THROTTLE_DEV_CPU]);
+		seq_printf(s, "enabled(%d)\n", state);
+	} else {
+		state = REG_GET(r, XPU_PSKIP_STATUS_M);
+		seq_printf(s, "%s PSKIP STATUS: M(%d) ",
+			   throt_dev_names[THROTTLE_DEV_CPU], state);
+		state = REG_GET(r, XPU_PSKIP_STATUS_N);
+		seq_printf(s, "N(%d) ", state);
+		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
+		seq_printf(s, "enabled(%d)\n", state);
+	}
 
 	r = soctherm_readl(GPU_PSKIP_STATUS);
-	if (IS_T12X_T13X()) {
+	if ((IS_T12X || IS_T13X)) {
 		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
 		seq_printf(s, "%s PSKIP STATUS: ",
 			   throt_dev_names[THROTTLE_DEV_GPU]);
@@ -3449,12 +3607,28 @@ static int regs_show(struct seq_file *s, void *data)
 				   j ? "" : throt_names[i],
 				   throt_dev_names[j], state);
 
+			if (j == THROTTLE_DEV_CPU) {
+				if (IS_T13X) {
+					state = REG_GET(r,
+						THROT_PSKIP_CTRL_DIVIDEND);
+					seq_printf(s, "%6s  ",
+						   state == THROT_DEPTH_HVY ?
+						   "heavy" :
+						   state == THROT_DEPTH_MED ?
+						   "medium" :
+						   state == THROT_DEPTH_LOW ?
+						   "light" : "none");
+				}
+				seq_puts(s, "\n");
+				continue;
+			}
+
 			if (j == THROTTLE_DEV_GPU) {
-				if (IS_T12X_T13X()) {
+				if (IS_T12X || IS_T13X) {
 					state = REG_GET(r,
 						THROT_PSKIP_CTRL_THROT_DEPTH);
 					seq_printf(s, "%6s  ",
-						   state == THROT_DEPTH_HIG ?
+						   state == THROT_DEPTH_HVY ?
 						   "heavy" :
 						   state == THROT_DEPTH_MED ?
 						   "medium" :
