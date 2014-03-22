@@ -66,7 +66,7 @@ static struct platform_device *t210_gfx_devices[] __initdata = {
 	&t210_nvmap_device,
 };
 
-static void __init tegra_grenada_reserve(void)
+static void __init tegra_t210_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
 	tegra_reserve(0, SZ_16M + SZ_2M, SZ_4M);
@@ -156,9 +156,9 @@ static const char * const tegra210_dt_board_compat[] = {
 	NULL
 };
 
-DT_MACHINE_START(TEGRA210_DT, "grenada")
+DT_MACHINE_START(TEGRA210_DT, "t210")
 	.map_io		= tegra_map_common_io,
-	.reserve	= tegra_grenada_reserve,
+	.reserve	= tegra_t210_reserve,
 	.init_early	= tegra21x_init_early,
 	.init_late	= tegra_init_late,
 	.init_machine	= tegra210_dt_init,
