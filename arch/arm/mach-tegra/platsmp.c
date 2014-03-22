@@ -269,6 +269,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 
 		reg = PMC_TOGGLE_START | TEGRA_CPU_POWERGATE_ID(cpu);
 		pmc_writel(reg, PWRGATE_TOGGLE);
+		pmc_readl(PWRGATE_TOGGLE);
 	}
 
 	return 0;

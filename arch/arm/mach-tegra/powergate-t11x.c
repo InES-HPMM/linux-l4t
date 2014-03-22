@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -505,6 +505,7 @@ int tegra11x_powergate_mc_flush_done(int id)
 		rst_ctrl = mc_read(MC_CLIENT_HOTRESET_CTRL);
 		rst_ctrl &= ~(1 << mcClientBit);
 		mc_write(rst_ctrl, MC_CLIENT_HOTRESET_CTRL);
+		mc_read(MC_CLIENT_HOTRESET_CTRL);
 
 		spin_unlock_irqrestore(&tegra11x_powergate_lock, flags);
 	}

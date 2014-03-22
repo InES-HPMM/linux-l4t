@@ -85,6 +85,7 @@ int tegra_powergate_set(int id, bool new_state)
 		/* CPU ungated in s/w only during boot/resume with outer
 		   waiting loop and no contention from other CPUs */
 		pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
+		pmc_read(PWRGATE_TOGGLE);
 		spin_unlock_irqrestore(lock, flags);
 		return 0;
 	}

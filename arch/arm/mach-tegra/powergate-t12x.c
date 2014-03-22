@@ -393,6 +393,7 @@ int tegra12x_powergate_mc_flush_done(int id)
 		rst_ctrl = mc_read(rst_ctrl_reg);
 		rst_ctrl &= ~(1 << mcClientBit);
 		mc_write(rst_ctrl, rst_ctrl_reg);
+		mc_read(rst_ctrl_reg);
 
 		spin_unlock_irqrestore(&tegra12x_powergate_lock, flags);
 	}
@@ -416,6 +417,7 @@ static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_in
 
 	/* enable clamp */
 	pmc_write(0x1, PMC_GPU_RG_CNTRL_0);
+	pmc_read(PMC_GPU_RG_CNTRL_0);
 
 	udelay(10);
 
@@ -488,6 +490,7 @@ static int tegra12x_gpu_unpowergate(int id,
 
 	/* disable clamp */
 	pmc_write(0, PMC_GPU_RG_CNTRL_0);
+	pmc_read(PMC_GPU_RG_CNTRL_0);
 
 	udelay(10);
 
