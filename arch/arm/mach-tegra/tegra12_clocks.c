@@ -715,19 +715,21 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 #define xusb_padctl_readl(reg) \
 	readl(reg_xusb_padctl_base + (reg))
 
-#define clk_writel_delay(value, reg) 					\
-	do {								\
-		__raw_writel((value), reg_clk_base + (reg));		\
-		__raw_readl(reg_clk_base + (reg));			\
-		udelay(2);						\
-	} while (0)
+static inline void clk_writel_delay(u32 value, u32 reg)
+{
+	__raw_writel((value), reg_clk_base + (reg));
+	__raw_readl(reg_clk_base + (reg));
+	dsb();
+	udelay(2);
+}
 
-#define pll_writel_delay(value, reg)					\
-	do {								\
-		__raw_writel((value), reg_clk_base + (reg));		\
-		__raw_readl(reg_clk_base + (reg));			\
-		udelay(1);						\
-	} while (0)
+static inline void pll_writel_delay(u32 value, u32 reg)
+{
+	__raw_writel((value), reg_clk_base + (reg));
+	__raw_readl(reg_clk_base + (reg));
+	dsb();
+	udelay(1);
+}
 
 /* Overloading clk_writelx macro based on the TEGRA_13x_SOC define */
 #ifndef CONFIG_ARCH_TEGRA_13x_SOC
@@ -746,19 +748,21 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #endif
 
-#define clk_writelx_delay(value, reg) 					\
-	do {								\
-		clk_writelx(value, reg);					\
-		clk_readlx(reg);						\
-		udelay(2);						\
-	} while (0)
+static inline void clk_writelx_delay(u32 value, u32 reg)
+{
+	clk_writelx(value, reg);
+	clk_readlx(reg);
+	dsb();
+	udelay(2);
+}
 
-#define pll_writelx_delay(value, reg)					\
-	do {								\
-		clk_writelx(value, reg);					\
-		clk_readlx(reg);						\
-		udelay(1);						\
-	} while (0)
+static inline void pll_writelx_delay(u32 value, u32 reg)
+{
+	clk_writelx(value, reg);
+	clk_readlx(reg);
+	dsb();
+	udelay(1);
+}
 
 static inline int clk_set_div(struct clk *c, u32 n)
 {
