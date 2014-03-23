@@ -713,7 +713,7 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 #define xusb_padctl_writel(value, reg) \
 	 __raw_writel(value, reg_xusb_padctl_base + (reg))
 #define xusb_padctl_readl(reg) \
-	__raw_readl(reg_xusb_padctl_base + (reg))
+	readl(reg_xusb_padctl_base + (reg))
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
@@ -2364,23 +2364,19 @@ static void tegra12_utmi_param_configure(struct clk *c)
 	reg = clk_readl(UTMIP_PLL_CFG1);
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
-	clk_writel(reg, UTMIP_PLL_CFG1);
-
-	udelay(1);
+	pll_writel_delay(reg, UTMIP_PLL_CFG1);
 
 	/* Setup SW override of UTMIPLL assuming USB2.0
 	   ports are assigned to USB2 */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
-
-	udelay(1);
+	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	/* Enable HW control UTMIPLL */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
-	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
+	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
 static void tegra12_pll_clk_init(struct clk *c)
@@ -2432,13 +2428,14 @@ static void tegra12_pll_clk_init(struct clk *c)
 
 		val = clk_readl(c->reg + PLL_BASE);
 		val &= ~PLLU_BASE_OVERRIDE;
-		clk_writel(val, c->reg + PLL_BASE);
+		pll_writel_delay(val, c->reg + PLL_BASE);
 
 		/* Set XUSB PLL pad pwr override and iddq */
 		val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
 		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
 		xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+		xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 	}
 }
 
@@ -4156,7 +4153,7 @@ static void tegra12_plle_clk_disable(struct clk *c)
 	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
 	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
 	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-
+	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 }
 
 static int tegra12_plle_clk_enable(struct clk *c)
@@ -4248,6 +4245,7 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
 	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
 	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 
 	/* enable hw control of xusb brick pll */
 	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
