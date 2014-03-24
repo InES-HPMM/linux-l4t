@@ -26,6 +26,7 @@
 #include <linux/sched.h>
 #include <linux/mm.h>
 #include <linux/pagemap.h>
+#include <asm/smp_plat.h>
 
 #include "ote_protocol.h"
 
@@ -334,8 +335,37 @@ static void do_smc_compat(struct te_request_compat *request,
 	tlk_generic_smc(request->type, smc_args, smc_params);
 }
 
+struct tlk_smc_work_args {
+	uint32_t arg0;
+	uint32_t arg1;
+	uint32_t arg2;
+};
+
+static long tlk_generic_smc_on_cpu0(void *args)
+{
+	struct tlk_smc_work_args *work;
+	int cpu = cpu_logical_map(smp_processor_id());
+	uint32_t retval;
+
+	BUG_ON(cpu != 0);
+
+	work = (struct tlk_smc_work_args *)args;
+	retval = _tlk_generic_smc(work->arg0, work->arg1, work->arg2);
+	while (retval == 0xFFFFFFFD)
+		retval = _tlk_generic_smc((60 << 24), 0, 0);
+	return retval;
+}
+
 /*
  * VPR programming SMC
+ *
+ * This routine is called both from normal threads and worker threads.
+ * The worker threads are per-cpu and have PF_NO_SETAFFINITY set, so
+ * any calls to sched_setaffinity will fail.
+ *
+ * If it's a worker thread on CPU0, just invoke the SMC directly. If
+ * it's running on a non-CPU0, use work_on_cpu() to schedule the SMC
+ * on CPU0.
  */
 int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 {
@@ -344,8 +374,24 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR, (uintptr_t)vpr_base,
-			vpr_size);
+	if (current->flags & PF_WQ_WORKER) {
+		struct tlk_smc_work_args work_args;
+		int cpu = cpu_logical_map(smp_processor_id());
+
+		work_args.arg0 = TE_SMC_PROGRAM_VPR;
+		work_args.arg1 = (uint32_t)vpr_base;
+		work_args.arg2 = vpr_size;
+
+		/* depending on the CPU, execute directly or sched work */
+		if (cpu == 0)
+			retval = tlk_generic_smc_on_cpu0(&work_args);
+		else
+			retval = work_on_cpu(0,
+					tlk_generic_smc_on_cpu0, &work_args);
+	} else {
+		retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR,
+					(uintptr_t)vpr_base, vpr_size);
+	}
 
 	mutex_unlock(&smc_lock);
 
