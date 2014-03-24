@@ -1,11 +1,42 @@
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 
 / {
+
+	i2c@7000c000 {
+                pinctrl-names = "hs_mode";
+                pinctrl-0 = <&gen1_i2c_hs_drive>;
+        };
+
+	i2c@7000c400 {
+                pinctrl-names = "hs_mode";
+                pinctrl-0 = <&gen2_i2c_hs_drive>;
+        };
+
+	i2c@7000c500 {
+                pinctrl-names = "hs_mode";
+                pinctrl-0 = <&cam_i2c_hs_drive>;
+        };
+
+	i2c@7000c700 {
+                pinctrl-names = "hs_mode";
+                pinctrl-0 = <&ddc_i2c_hs_drive>;
+        };
+
+	i2c@7000d000 {
+                pinctrl-names = "hs_mode";
+                pinctrl-0 = <&pwr_i2c_hs_drive>;
+        };
+
 	pinmux: pinmux {
-		pinctrl-names = "default", "drive", "unused";
+		pinctrl-names = "default", "drive", "unused", "gen1_i2c_hs", "gen2_i2c_hs", "cam_i2c_hs", "ddc_i2c_hs", "pwr_i2c_hs";
 		pinctrl-0 = <&pinmux_default>;
 		pinctrl-1 = <&drive_default>;
 		pinctrl-2 = <&pinmux_unused_lowpower>;
+		pinctrl-3 = <&gen1_i2c_hs_drive>;
+		pinctrl-4 = <&gen2_i2c_hs_drive>;
+		pinctrl-5 = <&cam_i2c_hs_drive>;
+		pinctrl-6 = <&ddc_i2c_hs_drive>;
+		pinctrl-7 = <&pwr_i2c_hs_drive>;
 
 		pinmux_default: common {
 			dap_mclk1_pw4 {
@@ -1583,6 +1614,71 @@
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,drive-type = <1>;
+			};
+		};
+
+		gen1_i2c_hs_drive: gen1_i2c_drive {
+			drive_dbg {
+				nvidia,pins = "drive_dbg";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
+				nvidia,pull-down-strength = <0>;
+				nvidia,pull-up-strength = <0>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+		};
+
+		gen2_i2c_hs_drive: gen2_i2c_drive {
+			drive_at5 {
+				nvidia,pins = "drive_at5";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
+				nvidia,pull-down-strength = <0>;
+				nvidia,pull-up-strength = <0>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+		};
+
+		cam_i2c_hs_drive: cam_i2c_drive {
+			drive_gme {
+				nvidia,pins = "drive_gme";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
+				nvidia,pull-down-strength = <0>;
+				nvidia,pull-up-strength = <0>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+		};
+
+		ddc_i2c_hs_drive: ddc_i2c_drive {
+			drive_ddc {
+				nvidia,pins = "drive_ddc";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
+				nvidia,pull-down-strength = <0>;
+				nvidia,pull-up-strength = <0>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+		};
+
+		pwr_i2c_hs_drive: pwr_i2c_drive {
+			drive_ao1 {
+				nvidia,pins = "drive_ao1";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,low-power-mode = <TEGRA_PIN_LP_DRIVE_DIV_1>;
+				nvidia,pull-down-strength = <0>;
+				nvidia,pull-up-strength = <0>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 			};
 		};
 	};
