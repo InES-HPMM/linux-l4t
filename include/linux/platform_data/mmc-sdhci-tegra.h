@@ -38,6 +38,7 @@
 #define MMC_UHS_MASK_DDR50	0x8
 #define MMC_UHS_MASK_SDR104	0x10
 #define MMC_MASK_HS200		0x20
+#define MMC_MASK_HS400		0x40
 
 struct tegra_sdhci_platform_data {
 	int cd_gpio;

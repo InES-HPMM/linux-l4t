@@ -1,7 +1,7 @@
 /*
  *  linux/include/linux/mmc/host.h
  *
- *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
+ *  Copyright (c) 2013-2014, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -52,7 +52,7 @@ struct mmc_ios {
 #define MMC_BUS_WIDTH_4		2
 #define MMC_BUS_WIDTH_8		3
 
-	unsigned char	timing;			/* timing specification used */
+	u16		timing;			/* timing specification used */
 
 #define MMC_TIMING_LEGACY	0
 #define MMC_TIMING_MMC_HS	1
@@ -63,6 +63,7 @@ struct mmc_ios {
 #define MMC_TIMING_UHS_SDR104	6
 #define MMC_TIMING_UHS_DDR50	7
 #define MMC_TIMING_MMC_HS200	8
+#define MMC_TIMING_MMC_HS400	9
 
 #define MMC_SDR_MODE		0
 #define MMC_1_2V_DDR_MODE	1
@@ -311,7 +312,10 @@ struct mmc_host {
 #define MMC_CAP2_NO_PRESCAN_POWERUP (1 << 14)	/* Don't power up before scan */
 #define MMC_CAP2_FREQ_SCALING	(1 << 15)	/* Allow frequency scaling */
 #define MMC_CAP2_CLOCK_GATING	(1 << 16)	/* Enable Clock Gating */
-
+#define MMC_CAP2_HS400_1_8V_DDR	(1 << 17)        /* can support HS400*/
+#define MMC_CAP2_HS400_1_2V_DDR	(1 << 18)        /* can support HS400*/
+#define MMC_CAP2_HS400		(MMC_CAP2_HS400_1_8V_DDR | \
+				 MMC_CAP2_HS400_1_2V_DDR)
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 #ifdef CONFIG_MMC_CLKGATE
