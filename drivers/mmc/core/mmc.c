@@ -4,7 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
- *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -262,6 +262,12 @@ static void mmc_select_card_type(struct mmc_card *card)
 	    (caps2 & MMC_CAP2_HS200_1_2V_SDR &&
 			card_type & EXT_CSD_CARD_TYPE_SDR_1_2V))
 		hs_max_dtr = MMC_HS200_MAX_DTR;
+
+	if ((caps2 & MMC_CAP2_HS400_1_8V_DDR &&
+			card_type & EXT_CSD_CARD_TYPE_UHS_DDR_1_8V) ||
+	    (caps2 & MMC_CAP2_HS400_1_2V_DDR &&
+			card_type & EXT_CSD_CARD_TYPE_UHS_DDR_1_2V))
+		hs_max_dtr = MMC_HS400_MAX_DTR;
 
 	card->ext_csd.hs_max_dtr = hs_max_dtr;
 	card->ext_csd.card_type = card_type;
@@ -718,8 +724,12 @@ static int mmc_select_powerclass(struct mmc_card *card,
 			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
 				EXT_CSD_PWR_CL_52_195 :
 				EXT_CSD_PWR_CL_DDR_52_195;
-		else if (host->ios.clock <= 200000000)
-			index = EXT_CSD_PWR_CL_200_195;
+		else if (host->ios.clock <= 200000000) {
+			if (mmc_card_hs400(card))
+				index = EXT_CSD_PWR_CL_DDR_200;
+			else
+				index = EXT_CSD_PWR_CL_200_195;
+		}
 		break;
 	case MMC_VDD_27_28:
 	case MMC_VDD_28_29:
@@ -837,6 +847,72 @@ static int mmc_select_hs200(struct mmc_card *card)
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_HS_TIMING, 2, 0);
 err:
+	return err;
+}
+
+static int mmc_select_highspeed(struct mmc_card *card)
+{
+	int err;
+	struct mmc_host *host;
+
+	BUG_ON(!card);
+
+	host = card->host;
+
+	/* Switch to High Speed mode */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_HS_TIMING, 1,
+			card->ext_csd.generic_cmd6_time);
+	if (err) {
+		dev_err(mmc_dev(host),
+			"switch to High Speed Timing failed%d\n", err);
+		return err;
+	}
+
+	mmc_card_set_highspeed(card);
+	mmc_set_timing(host, MMC_TIMING_MMC_HS);
+	mmc_set_clock(host, MMC_HIGH_52_MAX_DTR);
+
+	return err;
+}
+
+/*
+ * Selects the desired buswidth and switch to the HS400 mode
+ * if bus width set without error
+ */
+static int mmc_select_hs400(struct mmc_card *card)
+{
+	int err = -EINVAL;
+	struct mmc_host *host;
+
+	BUG_ON(!card);
+
+	host = card->host;
+
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				 EXT_CSD_BUS_WIDTH,
+				 EXT_CSD_DDR_BUS_WIDTH_8,
+				 card->ext_csd.generic_cmd6_time);
+	if (err) {
+		dev_err(mmc_dev(host),
+			"switch to DDR 8bit mode failed%d\n", err);
+		return err;
+	}
+
+	/* switch to HS400 mode */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			 EXT_CSD_HS_TIMING, 3, 0);
+	if (err)
+		return err;
+
+	mmc_set_timing(host, MMC_TIMING_MMC_HS400);
+	mmc_set_bus_width(host, MMC_BUS_WIDTH_8);
+
+	if (!(host->caps & MMC_CAP_BUS_WIDTH_TEST))
+		err = mmc_compare_ext_csds(card, MMC_BUS_WIDTH_8);
+	else
+		err = mmc_bus_test(card, MMC_BUS_WIDTH_8);
+
 	return err;
 }
 
@@ -1150,9 +1226,39 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	}
 
 	/*
+	 * Indicate HS400 DDR mode (if supported).
+	 */
+	if (mmc_card_hs200(card) && (host->caps2 & MMC_CAP2_HS400)) {
+		/* switch to High Speed mode before switching to HS400 mode */
+		err = mmc_select_highspeed(card);
+		if (err)
+			goto err;
+
+		err = mmc_select_hs400(card);
+		if (err) {
+			dev_err(mmc_dev(host),
+				"switch to HS400 mode failed err:%d\n", err);
+			goto err;
+		}
+
+		pr_info("%s: switch to HS400 mode is successful\n",
+				mmc_hostname(card->host));
+		mmc_card_set_hs400(card);
+		mmc_card_clr_highspeed(card);
+		mmc_set_clock(host, MMC_HS400_MAX_DTR);
+		err = mmc_select_powerclass(card, EXT_CSD_DDR_BUS_WIDTH_8,
+				ext_csd);
+		if (err) {
+			dev_err(mmc_dev(host), "power class selection failed "\
+					"for HS400 mode\n");
+			goto err;
+		}
+	}
+
+	/*
 	 * Activate wide bus and DDR (if supported).
 	 */
-	if (!mmc_card_hs200(card) &&
+	if (!mmc_card_hs200(card) && !mmc_card_hs400(card) &&
 	    (card->csd.mmca_vsn >= CSD_SPEC_VER_4) &&
 	    (host->caps & (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA))) {
 		static unsigned ext_csd_bits[][2] = {

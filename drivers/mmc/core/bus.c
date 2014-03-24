@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2003 Russell King, All Rights Reserved.
  *  Copyright (C) 2007 Pierre Ossman
+ *  Copyright (c) 2014, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -326,7 +327,8 @@ int mmc_add_card(struct mmc_card *card)
 			mmc_hostname(card->host),
 			mmc_sd_card_uhs(card) ? "ultra high speed " :
 			(mmc_card_highspeed(card) ? "high speed " : ""),
-			(mmc_card_hs200(card) ? "HS200 " : ""),
+			(mmc_card_hs400(card) ? "HS400 " :
+			 (mmc_card_hs200(card) ? "HS200 " : "")),
 			mmc_card_ddr_mode(card) ? "DDR " : "",
 			uhs_bus_speed_mode, type, card->rca);
 	}
