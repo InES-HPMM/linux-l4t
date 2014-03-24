@@ -74,6 +74,12 @@
 #define SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK		0x180
 #define SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT	17
 
+#define SDHCI_VNDR_TUN_CTRL				0x1c0
+/* Enable Re-tuning request only when CRC error is detected
+ * in SDR50/SDR104/HS200 modes
+ */
+#define SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN		0x8000000
+
 #define SDHCI_VNDR_PRESET_VAL0_0	0x1d4
 #define SDCLK_FREQ_SEL_HS_SHIFT		20
 #define SDCLK_FREQ_SEL_DEFAULT_SHIFT	10
@@ -147,6 +153,8 @@
 /* Disable SDMMC3 external loopback */
 #define NVQUIRK_DISABLE_EXTERNAL_LOOPBACK	BIT(23)
 #define NVQUIRK_TMP_VAR_1_5_TAP_MARGIN		BIT(24)
+/* Disable Timer Based Re-tuning mode */
+#define NVQUIRK_DISABLE_TIMER_BASED_TUNING	BIT(25)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1242,6 +1250,13 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (plat->uhs_mask & MMC_MASK_HS200)
 		host->mmc->caps2 &= ~MMC_CAP2_HS200;
 #endif
+
+	if (soc_data->nvquirks &
+		NVQUIRK_DISABLE_TIMER_BASED_TUNING) {
+		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL);
+		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN;
+		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL);
+	}
 }
 
 static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
@@ -1599,7 +1614,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	unsigned int max_uV = tegra_host->vddio_max_uv;
 	unsigned int rc = 0;
 	u16 ctrl;
-
 
 	ctrl = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
@@ -3895,8 +3909,11 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 
 static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
 	.quirks = TEGRA_SDHCI_QUIRKS,
-	.quirks2 = TEGRA_SDHCI_QUIRKS2 |
-		SDHCI_QUIRK2_SUPPORT_64BIT_DMA,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
+		   SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING |
+		   SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO |
+		   SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK |
+		   SDHCI_QUIRK2_SUPPORT_64BIT_DMA,
 	.ops  = &tegra_sdhci_ops,
 };
 
@@ -3910,6 +3927,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
+		    NVQUIRK_DISABLE_TIMER_BASED_TUNING |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
 };
 
