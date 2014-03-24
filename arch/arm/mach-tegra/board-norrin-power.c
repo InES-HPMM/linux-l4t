@@ -264,18 +264,6 @@ static struct as3722_platform_data as3722_pdata = {
 	.minor_rev = 1,
 };
 
-static struct pca953x_platform_data tca6416_pdata = {
-	.gpio_base = PMU_TCA6416_GPIO_BASE,
-	.irq_base = PMU_TCA6416_IRQ_BASE,
-};
-
-static struct i2c_board_info tca6416_expander[] = {
-	{
-		I2C_BOARD_INFO("tca6416", 0x20),
-		.platform_data = &tca6416_pdata,
-	},
-};
-
 static struct i2c_board_info __initdata as3722_regulators[] = {
 	{
 		I2C_BOARD_INFO("as3722", 0x40),
@@ -322,9 +310,6 @@ int __init norrin_as3722_regulator_init(void)
 	pr_info("%s: i2c_register_board_info\n", __func__);
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
-	tca6416_expander[0].irq = gpio_to_irq(TEGRA_GPIO_PQ5);
-	i2c_register_board_info(0, tca6416_expander,
-			ARRAY_SIZE(tca6416_expander));
 	return 0;
 }
 

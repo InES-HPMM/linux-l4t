@@ -155,7 +155,6 @@ int laguna_edp_init(void);
 
 /* Norrin specific */
 int norrin_regulator_init(void);
-int norrin_kbc_init(void);
 int norrin_soctherm_init(void);
 int norrin_emc_init(void);
 

@@ -22,7 +22,6 @@ obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sata.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-norrin64-memory.o
-obj-${CONFIG_MACH_EXUMA}              += board-norrin-kbc.o
 obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
@@ -42,7 +41,6 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sensors.o
-obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-kbc.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-panel.o
