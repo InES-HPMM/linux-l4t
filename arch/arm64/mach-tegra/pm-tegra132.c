@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/smp.h>
+#include <linux/cpu.h>
 #include <linux/cpu_pm.h>
 
 #include <asm/suspend.h>
@@ -43,8 +44,6 @@ static int tegra132_enter_sleep(unsigned long pmstate)
 {
 	u32 reg;
 	int cpu = smp_processor_id();
-
-	denver_set_bg_allowed(cpu, false);
 
 	reg = cpu ? HALT_REG_CORE1 : HALT_REG_CORE0;
 	flowctrl_write_cpu_halt(cpu, reg);
@@ -105,8 +104,56 @@ static int tegra132_sleep_core_finish(unsigned long v2p)
 	return 0;
 }
 
+static int cpu_pm_notify(struct notifier_block *self,
+					 unsigned long action, void *hcpu)
+{
+	int cpu = smp_processor_id();
+
+	switch (action) {
+	case CPU_PM_ENTER:
+	case CPU_CLUSTER_PM_ENTER:
+		denver_set_bg_allowed(cpu, false);
+		break;
+
+	case CPU_CLUSTER_PM_EXIT:
+		denver_set_bg_allowed(cpu, true);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cpu_pm_notifier_block = {
+	.notifier_call = cpu_pm_notify,
+};
+
+static int cpu_notify(struct notifier_block *self,
+					 unsigned long action, void *hcpu)
+{
+	long cpu = (long) hcpu;
+
+	switch (action) {
+	case CPU_ONLINE:
+	case CPU_ONLINE_FROZEN:
+		denver_set_bg_allowed(cpu, true);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cpu_notifier_block = {
+	.notifier_call = cpu_notify,
+};
+
 void tegra_soc_suspend_init(void)
 {
 	tegra_tear_down_cpu = tegra132_tear_down_cpu;
 	tegra_sleep_core_finish = tegra132_sleep_core_finish;
+
+	/* Notifier to disable/enable BGALLOW */
+	cpu_pm_register_notifier(&cpu_pm_notifier_block);
+
+	/* Notifier to enable BGALLOW for CPU1-only */
+	register_hotcpu_notifier(&cpu_notifier_block);
 }
