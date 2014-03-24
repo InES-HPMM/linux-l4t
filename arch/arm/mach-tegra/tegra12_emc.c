@@ -2091,8 +2091,13 @@ static int __init tegra_emc_debug_init(void)
 		emc_debugfs_root, (u32 *)&clkchange_delay))
 		goto err_out;
 
-	if (!debugfs_create_file("dram_temperature", S_IRUGO, emc_debugfs_root,
-				 NULL, &dram_temperature_fops))
+	/*
+	 * Reading dram temperature supported only for LP DDR variants,
+	 * Currently two variants of DDR are supported i.e. LPDDR2 and DDR3
+	 */
+	if (dram_type == DRAM_TYPE_LPDDR2 &&
+		!debugfs_create_file("dram_temperature",
+		S_IRUGO, emc_debugfs_root, NULL, &dram_temperature_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("over_temp_state", S_IRUGO | S_IWUSR,
