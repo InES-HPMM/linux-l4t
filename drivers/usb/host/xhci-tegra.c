@@ -2465,10 +2465,6 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	cfg_tbl->ss_portmap |=
 		(tegra->bdata->portmap & ((1 << XUSB_SS_PORT_COUNT) - 1));
 
-	/* enable mbox interrupt */
-	writel(readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD) | MBOX_INT_EN,
-		tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-
 	/* First thing, reset the ARU. By the time we get to
 	 * loading boot code below, reset would be complete.
 	 * alternatively we can busy wait on rst pending bit.
@@ -3103,6 +3099,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 			csb_read(tegra, XUSB_FALC_FS_PVTPORTSC3));
 	debug_print_portsc(xhci);
 
+	tegra_xhci_enable_fw_message(tegra);
 	ret = load_firmware(tegra, false /* EPLG exit, do not reset ARU */);
 	if (ret < 0) {
 		xhci_err(xhci, "%s: failed to load firmware %d\n",
@@ -4629,8 +4626,6 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	tegra->mbox_owner = 0xffff;
 	INIT_WORK(&tegra->mbox_work, tegra_xhci_process_mbox_message);
 
-	tegra_xhci_enable_fw_message(tegra);
-
 	/* do ss partition elpg exit related initialization */
 	INIT_WORK(&tegra->ss_elpg_exit_work, ss_partition_elpg_exit_work);
 
@@ -4675,6 +4670,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		tegra->dfe_ctx_saved[port] = false;
 	}
 
+	tegra_xhci_enable_fw_message(tegra);
 	hsic_pad_pretend_connect(tegra);
 
 	tegra_xhci_debug_read_pads(tegra);
