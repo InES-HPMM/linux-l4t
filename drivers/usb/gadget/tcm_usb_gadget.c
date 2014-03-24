@@ -2618,6 +2618,24 @@ static void usbg_delayed_set_alt(struct work_struct *wq)
 	usb_composite_setup_continue(fu->function.config->cdev);
 }
 
+static int usbg_get_alt(struct usb_function *f, unsigned intf)
+{
+	struct f_uas *fu = to_f_uas(f);
+	/* The UASP Gadget Driver support only one interface(if number 0) with
+	 * multiple alternate settings
+	 */
+	if (intf != 0)
+		return -EINVAL;
+
+	if (fu->flags & USBG_IS_BOT)
+		return USB_G_ALT_INT_BBB;
+	else if (fu->flags & USBG_IS_UAS)
+		return USB_G_ALT_INT_UAS;
+	else
+		/* The protocol driver is not yet attached */
+		return -EUNATCH;
+}
+
 static int usbg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 {
 	struct f_uas *fu = to_f_uas(f);
@@ -2671,6 +2689,7 @@ static int usbg_cfg_bind(struct usb_configuration *c)
 	fu->function.bind = usbg_bind;
 	fu->function.unbind = usbg_unbind;
 	fu->function.set_alt = usbg_set_alt;
+	fu->function.get_alt = usbg_get_alt;
 	fu->function.setup = usbg_setup;
 	fu->function.disable = usbg_disable;
 	fu->tpg = the_only_tpg_I_currently_have;
