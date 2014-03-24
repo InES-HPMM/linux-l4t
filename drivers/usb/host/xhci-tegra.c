@@ -3385,12 +3385,13 @@ static irqreturn_t tegra_xhci_smi_irq(int irq, void *ptrdev)
 	 */
 
 	temp = readl(tegra->fpci_base + XUSB_CFG_ARU_SMI_INTR);
-
-	/* write 1 to clear SMI INTR en bit ( bit 3 ) */
-	temp = MBOX_SMI_INTR_EN;
 	writel(temp, tegra->fpci_base + XUSB_CFG_ARU_SMI_INTR);
 
-	schedule_work(&tegra->mbox_work);
+	xhci_dbg(tegra->xhci, "SMI INTR status 0x%x\n", temp);
+	if (temp & SMI_INTR_STATUS_FW_REINIT)
+		xhci_err(tegra->xhci, "Firmware reinit.\n");
+	if (temp & SMI_INTR_STATUS_MBOX)
+		schedule_work(&tegra->mbox_work);
 
 	spin_unlock(&tegra->lock);
 	return IRQ_HANDLED;

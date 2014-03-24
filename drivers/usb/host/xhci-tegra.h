@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.h - Nvidia xHCI host controller related data
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -229,7 +229,8 @@
 #define MBOX_OWNER_SW						2
 #define MBOX_OWNER_ID_MASK					0xFF
 
-#define MBOX_SMI_INTR_EN					(1 << 3)
+#define SMI_INTR_STATUS_MBOX				(1 << 3)
+#define SMI_INTR_STATUS_FW_REINIT			(1 << 1)
 
 /* PMC Register */
 #define PMC_SCRATCH34						0x124
