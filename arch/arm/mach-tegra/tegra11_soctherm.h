@@ -75,7 +75,6 @@ enum soctherm_polarity_id {
 
 struct soctherm_sensor {
 	bool sensor_enable;
-	bool zone_enable;
 	int tall;
 	int tiddq;
 	int ten_count;
