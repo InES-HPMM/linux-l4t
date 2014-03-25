@@ -278,6 +278,7 @@ obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-panel.o
+obj-${CONFIG_MACH_VCM30_T124}           += panel-a-edp-1080p-14-0.o
 obj-${CONFIG_MACH_VCM30_T124}           += therm-monitor.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o

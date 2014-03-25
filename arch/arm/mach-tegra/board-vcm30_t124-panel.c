@@ -60,8 +60,7 @@ struct platform_device * __init vcm30_t124_host1x_init(void)
 }
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
-/* XXX: EDP is not functionally tested yet */
-static struct resource vcm30_t124_disp1_resources[] = {
+static struct resource vcm30_t124_disp1_dp_resources[] = {
 	{
 		.name	= "irq",
 		.start	= INT_DISPLAY_GENERAL,
@@ -111,8 +110,11 @@ static struct tegra_fb_data vcm30_t124_disp1_fb_data = {
 	.bits_per_pixel = 32,
 };
 
+static struct tegra_dc_sd_settings  sd_settings;
+
 static struct tegra_dc_out vcm30_t124_disp1_out = {
 	.type		= TEGRA_DC_OUT_DP,
+	.sd_settings	= &sd_settings,
 
 	/* eDP max pixel rate to T124 POR */
 	.max_pixclock	= KHZ2PICOS(540000),  /* 540MPix/S 3840x2160@60 */
@@ -131,8 +133,8 @@ static struct tegra_dc_platform_data vcm30_t124_disp1_pdata = {
 static struct platform_device vcm30_t124_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
-	.resource	= vcm30_t124_disp1_resources,
-	.num_resources	= ARRAY_SIZE(vcm30_t124_disp1_resources),
+	.resource	= vcm30_t124_disp1_dp_resources,
+	.num_resources	= ARRAY_SIZE(vcm30_t124_disp1_dp_resources),
 	.dev = {
 		.platform_data = &vcm30_t124_disp1_pdata,
 	},
@@ -343,6 +345,44 @@ static struct platform_device vcm30_t124_nvmap_device  = {
 	},
 };
 
+
+static void __init vcm30_t124_panel_select(void)
+{
+	struct tegra_panel *panel = NULL;
+
+	/* for eDP */
+	panel = &edp_a_1080p_14_0;
+	vcm30_t124_disp1_out.type = TEGRA_DC_OUT_DP;
+	vcm30_t124_disp1_device.resource = vcm30_t124_disp1_dp_resources;
+	vcm30_t124_disp1_device.num_resources =
+		ARRAY_SIZE(vcm30_t124_disp1_dp_resources);
+
+	if (panel) {
+		if (panel->init_sd_settings)
+			panel->init_sd_settings(&sd_settings);
+
+		if (panel->init_dc_out)
+			panel->init_dc_out(&vcm30_t124_disp1_out);
+
+		if (panel->init_fb_data)
+			panel->init_fb_data(&vcm30_t124_disp1_fb_data);
+
+		if (panel->init_cmu_data)
+			panel->init_cmu_data(&vcm30_t124_disp1_pdata);
+
+		if (panel->set_disp_device)
+			panel->set_disp_device(&vcm30_t124_disp1_device);
+
+		if (panel->register_bl_dev)
+			panel->register_bl_dev();
+
+		if (panel->register_i2c_bridge)
+			panel->register_i2c_bridge();
+	}
+
+}
+
+
 int __init vcm30_t124_panel_init(void)
 {
 	int err = 0;
@@ -351,7 +391,13 @@ int __init vcm30_t124_panel_init(void)
 #ifdef CONFIG_TEGRA_NVMAP
 	struct dma_declare_info vpr_dma_info;
 	struct dma_declare_info generic_dma_info;
+#endif
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	vcm30_t124_panel_select();
+#endif
+
+#ifdef CONFIG_TEGRA_NVMAP
 	vcm30_t124_carveouts[1].base = tegra_carveout_start;
 	vcm30_t124_carveouts[1].size = tegra_carveout_size;
 	vcm30_t124_carveouts[2].dma_dev = &tegra_generic_dev;
