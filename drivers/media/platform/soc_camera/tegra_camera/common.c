@@ -119,12 +119,16 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 	},
 };
 
-static void tegra_camera_activate(struct tegra_camera_dev *cam)
+static int tegra_camera_activate(struct tegra_camera_dev *cam)
 {
 	struct tegra_camera_ops *cam_ops = cam->ops;
 	int ret;
 
-	nvhost_module_busy_ext(cam->ndev);
+	ret = nvhost_module_busy_ext(cam->ndev);
+	if (ret) {
+		dev_err(&cam->ndev->dev, "nvhost module is busy\n");
+		return ret;
+	}
 
 	/* Enable external power */
 	if (cam->reg) {
@@ -147,6 +151,8 @@ static void tegra_camera_activate(struct tegra_camera_dev *cam)
 
 	if (cam_ops->save_syncpts)
 		cam_ops->save_syncpts(cam);
+
+	return 0;
 }
 
 static void tegra_camera_deactivate(struct tegra_camera_dev *cam)
@@ -550,9 +556,12 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 {
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *cam = ici->priv;
+	int ret;
 
 	if (!cam->enable_refcnt) {
-		tegra_camera_activate(cam);
+		ret = tegra_camera_activate(cam);
+		if (ret)
+			return ret;
 		cam->num_frames = 0;
 	}
 	cam->enable_refcnt++;
