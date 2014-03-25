@@ -561,6 +561,7 @@
 	     compatible = "nvidia,tegra210-adsp";
 	     reg = <0x0 0x702ef000 0x0 0x1000>, /* AMC */
 		   <0x0 0x702ec000 0x0 0x2000>; /* AMISC */
+	     nvidia,memory-clients = <34>;
 	     status = "disabled";
 	};
 
