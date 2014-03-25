@@ -706,11 +706,6 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_PM354:
 		panel = &dsi_a_1080p_14_0;
 		break;
-	case BOARD_E1627:
-		panel = &dsi_p_wuxga_10_1;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
-		break;
 	case BOARD_E1549:
 		panel = &dsi_lgd_wxga_7_0;
 		break;
