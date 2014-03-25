@@ -22,8 +22,8 @@
 #ifndef _MACH_TEGRA_TEGRA21_EMC_H
 #define _MACH_TEGRA_TEGRA21_EMC_H
 
-#include "../../../../arch/arm/mach-tegra/tegra_emc.h"
-#include <linux/platform_data/tegra_emc.h>
+#include <mach/tegra_emc.h>
+#include <linux/platform_data/tegra_emc_pdata.h>
 
 int tegra12_emc_init(void);
 
