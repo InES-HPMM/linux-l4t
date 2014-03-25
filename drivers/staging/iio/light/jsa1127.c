@@ -519,6 +519,16 @@ static int jsa1127_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
 
+	chip->regulator = devm_regulator_get(&client->dev, "vdd");
+	if (IS_ERR(chip->regulator)) {
+		dev_info(&client->dev,
+			"idname:%s func:%s line:%d regulator not found.\n"
+			"Assuming regulator is not needed\n",
+			id->name, __func__, __LINE__);
+		chip->regulator = NULL;
+		goto finish;
+	}
+
 	indio_dev->info = &jsa1127_iio_info;
 	indio_dev->channels = jsa1127_channels;
 	indio_dev->num_channels = 1;
@@ -536,16 +546,6 @@ static int jsa1127_probe(struct i2c_client *client,
 	chip->wq = alloc_workqueue(id->name, WQ_FREEZABLE |
 					WQ_NON_REENTRANT | WQ_UNBOUND, 1);
 	INIT_DELAYED_WORK(&chip->dw, jsa1127_work_func);
-
-	chip->regulator = devm_regulator_get(&client->dev, "vdd");
-	if (IS_ERR(chip->regulator)) {
-		dev_info(&client->dev,
-			"idname:%s func:%s line:%d regulator not found.\n"
-			"Assuming regulator is not needed\n",
-			id->name, __func__, __LINE__);
-		chip->regulator = NULL;
-		goto finish;
-	}
 
 	if (regulator_is_enabled(chip->regulator))
 		jsa1127_send_cmd_locked(chip, JSA1127_CMD_STANDBY);
@@ -567,14 +567,13 @@ free_iio_dev:
 	return ret;
 }
 
-/* no need for any additional shutdown flag as
- * by now workqueue will not schedule */
-static void jsa1127_shutdown(struct i2c_client *client)
+static int jsa1127_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct jsa1127_chip *chip = iio_priv(indio_dev);
 	int ret;
 
+	iio_device_unregister(indio_dev);
 	destroy_workqueue(chip->wq);
 	if (chip->regulator && (chip->als_state != CHIP_POWER_OFF))
 		regulator_disable(chip->regulator);
@@ -582,13 +581,7 @@ static void jsa1127_shutdown(struct i2c_client *client)
 	if (!chip->regulator || regulator_is_enabled(chip->regulator))
 		ret = jsa1127_send_cmd_locked(chip, JSA1127_CMD_STANDBY);
 
-	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
-}
-
-static int jsa1127_remove(struct i2c_client *client)
-{
-	jsa1127_shutdown(client);
 	return 0;
 }
 #undef SEND
@@ -616,7 +609,6 @@ static struct i2c_driver jsa1127_driver = {
 	.id_table = jsa1127_id,
 	.probe = jsa1127_probe,
 	.remove = jsa1127_remove,
-	.shutdown = jsa1127_shutdown,
 };
 module_i2c_driver(jsa1127_driver);
 
