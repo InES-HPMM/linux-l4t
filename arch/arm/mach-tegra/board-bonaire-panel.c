@@ -723,21 +723,18 @@ static struct nvmap_platform_carveout bonaire_carveouts[] = {
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
 		.base		= TEGRA_IRAM_BASE,
 		.size		= TEGRA_IRAM_SIZE,
-		.buddy_size	= 0, /* no buddy allocation for IRAM */
 	},
 	[1] = {
 		.name		= "generic-0",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
 		.base		= 0,	/* Filled in by bonaire_panel_init() */
 		.size		= 0,	/* Filled in by bonaire_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 	[2] = {
 		.name		= "vpr",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
 		.base		= 0,	/* Filled in by bonaire_panel_init() */
 		.size		= 0,	/* Filled in by bonaire_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 };
 

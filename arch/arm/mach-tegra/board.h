@@ -80,7 +80,6 @@
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,			\
 		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,	\
 		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,	\
-		.buddy_size	= 0, /* no buddy allocation for IRAM */		\
 	}
 #endif
 
