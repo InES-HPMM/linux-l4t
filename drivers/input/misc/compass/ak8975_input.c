@@ -1429,6 +1429,10 @@ static struct mpu_platform_data *akm_parse_dt(struct i2c_client *client)
 		return ERR_PTR(-EINVAL);
 	}
 
+	if (of_property_read_u32(np, "sec-slave-id",
+				&pdata->sec_slave_id) < 0)
+		dev_info(&client->dev, "Cannot read sec-slave-id\n");
+
 	return pdata;
 }
 
@@ -1461,13 +1465,19 @@ static int akm_probe(struct i2c_client *client,
 	inf->pdata = *pd;
 	akm_pm_init(inf);
 	err = akm_id(inf);
-	akm_pm(inf, false);
 	if (err == -EAGAIN)
 		goto akm_probe_again;
 	else if (err)
 		goto akm_probe_err;
-
 	mutex_init(&inf->mutex_data);
+	if (!inf->initd) {
+		if (akm_init_hw(inf))
+			dev_err(&client->dev,
+			"%s akm init_hw failed: calibration not loaded\n",
+			__func__);
+	}
+	akm_pm(inf, false);
+
 	err = akm_input_create(inf);
 	if (err)
 		goto akm_probe_err;
