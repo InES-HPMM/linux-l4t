@@ -185,7 +185,8 @@ void tegra210_i2s_loopback_enable(enum tegra210_ahub_cifs cif)
 EXPORT_SYMBOL(tegra210_i2s_loopback_enable);
 
 int tegra210_i2s_set_fmt(enum tegra210_ahub_cifs cif,
-				unsigned int fmt, unsigned int bit_size)
+				unsigned int fmt, unsigned int bit_size,
+				int fsync_width)
 {
 	struct tegra210_i2s_ctx *i2s;
 	unsigned int mask, val, mask_highz, val_highz;
@@ -276,6 +277,11 @@ int tegra210_i2s_set_fmt(enum tegra210_ahub_cifs cif,
 	default:
 		return -EINVAL;
 	}
+
+	mask |= TEGRA210_I2S_CTRL_FSYNC_WIDTH_MASK;
+	val |= fsync_width <<
+			TEGRA210_I2S_CTRL_FSYNC_WIDTH_SHIFT;
+
 	regmap_update_bits(i2s->regmap, TEGRA210_I2S_CTRL, mask, val);
 
 	return 0;
@@ -291,8 +297,15 @@ void tegra210_i2s_set_channel_bit_count(enum tegra210_ahub_cifs cif,
 	int id = I2S_ID(cif);
 
 	i2s = tegra210_i2s[id];
-	bitcnt = (i2sclock / (2 * srate)) - 1;
-	sym_bitclk = !(i2sclock % (2 * srate));
+
+	if (i2s->daifmt == SND_SOC_DAIFMT_DSP_A) {
+		bitcnt = (i2sclock / srate) - 1;
+		sym_bitclk = !(i2sclock % srate);
+	} else {
+		bitcnt = (i2sclock / (2 * srate)) - 1;
+		sym_bitclk = !(i2sclock % (2 * srate));
+	}
+
 	mask = TEGRA210_I2S_TIMING_CHANNEL_BIT_COUNT_MASK;
 	val = bitcnt << TEGRA210_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
 	dev_vdbg(i2s->dev,

@@ -209,7 +209,8 @@ void tegra210_i2s_set_data_offset(enum tegra210_ahub_cifs cif,
 void tegra210_i2s_set_slot_control(enum tegra210_ahub_cifs cif,
 				int slot_enables, int total_slots);
 int tegra210_i2s_set_fmt(enum tegra210_ahub_cifs cif,
-				unsigned int fmt, unsigned int bit_size);
+				unsigned int fmt, unsigned int bit_size,
+				int fsync_width);
 void tegra210_i2s_loopback_enable(enum tegra210_ahub_cifs cif);
 void tegra210_i2s_start_capture(enum tegra210_ahub_cifs cif);
 void tegra210_i2s_start_playback(enum tegra210_ahub_cifs cif);
