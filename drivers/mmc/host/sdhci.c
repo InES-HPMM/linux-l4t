@@ -2990,6 +2990,9 @@ again:
 		sdhci_data_irq(host, intmask & SDHCI_INT_DATA_MASK);
 	}
 
+	if (intmask & SDHCI_INT_RETUNING_EVENT)
+		host->flags |= SDHCI_NEEDS_RETUNING;
+
 	if ((intmask & SDHCI_INT_DATA_MASK) || (intmask & SDHCI_INT_CMD_MASK))
 		if (host->ops->sd_error_stats)
 			host->ops->sd_error_stats(host, intmask);
