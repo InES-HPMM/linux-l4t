@@ -65,14 +65,16 @@ static struct platform_device *t210_gfx_devices[] __initdata = {
 	&t210_nvmap_device,
 };
 
-#if defined(CONFIG_TEGRA_NVADSP)
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
 static struct nvadsp_platform_data nvadsp_plat_data;
 #endif
 
 static void __init tegra_t210_reserve(void)
 {
-#if defined(CONFIG_TEGRA_NVADSP)
-	nvadsp_plat_data.co_pa = tegra_reserve_adsp(SZ_128M);
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	nvadsp_plat_data.co_pa = tegra_reserve_adsp(SZ_32M);
 	nvadsp_plat_data.co_size = SZ_32M;
 #endif
 
@@ -140,7 +142,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
 				NULL),
-#ifdef CONFIG_TEGRA_NVADSP
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
 	OF_DEV_AUXDATA("nvidia,tegra210-adsp", TEGRA_APE_AMC_BASE,
 				"tegra210-adsp", &nvadsp_plat_data),
 #endif

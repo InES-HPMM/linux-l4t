@@ -17,3 +17,10 @@ config TEGRA_APE_AGIC
 	  APE modules.
 
 	  If unsure, say N
+
+config TEGRA_NVADSP_ON_SMMU
+	bool "Use SMMU to relocate ADSP"
+	depends on TEGRA_IOMMU_SMMU && TEGRA_NVADSP
+	default y
+	help
+	  Use SMMU to relocate ADSP OS.
