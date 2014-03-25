@@ -238,6 +238,7 @@ extern void __iounmap(volatile void __iomem *addr);
 
 #define PROT_SECT_DEFAULT	(PMD_TYPE_SECT | PMD_SECT_AF)
 #define PROT_SECT_DEVICE_nGnRE	(PROT_SECT_DEFAULT | PTE_PXN | PTE_UXN | PMD_ATTRINDX(MT_DEVICE_nGnRE))
+#define PROT_SECT_NORMAL_NC	(PROT_SECT_DEFAULT | PMD_ATTRINDX(MT_NORMAL_NC))
 
 #define ARCH_HAS_IOREMAP_WC
 #include <asm-generic/iomap.h>

@@ -651,13 +651,11 @@ int pci_mmap_page_range(struct pci_dev *dev, struct vm_area_struct *vma,
 	return 0;
 }
 
-#define MT_DEVICE               0
-
 void __init pci_map_io_early(unsigned long pfn)
 {
 	struct map_desc pci_io_desc = {
 		.virtual	= (unsigned long)PCI_IOBASE,
-		.type		= MT_DEVICE,
+		.type		= MT_DEVICE_nGnRE,
 		.length		= SZ_64K,
 	};
 
