@@ -234,7 +234,7 @@ struct palmas {
 	DECLARE_BITMAP(volatile_smps_registers, PALMAS_MAX_FN_REGISTERS);
 
 	/* Stored chip id */
-	int id;
+	u32 id;
 
 	unsigned int submodule_lists;
 

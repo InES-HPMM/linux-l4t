@@ -2,7 +2,7 @@
  * TI Palmas MFD Driver
  *
  * Copyright 2011-2012 Texas Instruments Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  *
@@ -1058,7 +1058,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 				&i2c->dev);
 		if (!match)
 			return -ENODATA;
-		palmas->id = (unsigned int)match->data;
+		palmas->id = (u32)((uintptr_t)match->data);
 	} else {
 		palmas->id = id->driver_data;
 	}
