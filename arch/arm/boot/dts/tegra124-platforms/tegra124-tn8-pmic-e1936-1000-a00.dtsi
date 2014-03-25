@@ -280,37 +280,33 @@
 								regulator-consumer-device = "0-0069";
 							};
 							c20 {
-								regulator-consumer-supply = "dvdd";
-								regulator-consumer-device = "spi0.0";
-							};
-							c21 {
 								regulator-consumer-supply = "dmicvdd";
 								regulator-consumer-device = "tegra-snd-rt5639.0";
 							};
-							c22 {
+							c21 {
 								regulator-consumer-supply = "dmicvdd";
 								regulator-consumer-device = "tegra-snd-rt5645.0";
 							};
-							c23 {
+							c22 {
 								regulator-consumer-supply = "vid";
 								regulator-consumer-device = "0-000d";
 							};
-							c24 {
+							c23 {
 								regulator-consumer-supply = "pwrdet_nand";
 							};
-							c25 {
+							c24 {
 								regulator-consumer-supply = "pwrdet_sdmmc1";
 							};
-							c26 {
+							c25 {
 								regulator-consumer-supply = "pwrdet_sdmmc4";
 							};
-							c27 {
+							c26 {
 								regulator-consumer-supply = "pwrdet_audio";
 							};
-							c28 {
+							c27 {
 								regulator-consumer-supply = "pwrdet_uart";
 							};
-							c29 {
+							c28 {
 								regulator-consumer-supply = "pwrdet_bb";
 							};
 						};
@@ -415,18 +411,10 @@
 						};
 					};
 
-					ldo3 {
+					ldo3_reg: ldo3 {
 						regulator-name = "vdd-touch";
 						regulator-min-microvolt = <3000000>;
 						regulator-max-microvolt = <3000000>;
-
-						consumers {
-							c1 {
-								regulator-consumer-supply = "avdd";
-								regulator-consumer-device = "spi0.0";
-							};
-
-						};
 					};
 
 					ldo4 {
