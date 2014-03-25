@@ -655,7 +655,6 @@
 			reg = <0x0b>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;
-			onsemi,initial-rsoc = <0xAA55>;
 			onsemi,thermistor-beta = <0x0d6b>;
 			onsemi,alert-low-rsoc = <0x0>;
 			onsemi,alert-low-voltage = <0x0>;
