@@ -322,12 +322,8 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 	int ret;
 
 	ret = of_property_read_u32(np, "onsemi,initial-rsoc", &pval);
-	if (!ret) {
+	if (!ret)
 		pdata->initial_rsoc = pval;
-	} else {
-		dev_warn(&client->dev, "initial-rsoc not provided\n");
-		pdata->initial_rsoc = 0xAA55;
-	}
 
 	ret = of_property_read_u32(np, "onsemi,appli-adjustment", &pval);
 	if (!ret)
@@ -465,14 +461,17 @@ static int lc709203f_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
-	ret = lc709203f_write_word(chip->client,
-		LC709203F_INITIAL_RSOC, chip->pdata->initial_rsoc);
-	if (ret < 0) {
-		dev_err(&client->dev, "INITIAL_RSOC write failed: %d\n", ret);
-		return ret;
-	}
-	dev_info(&client->dev, "initial-rsoc: 0x%04x\n",
+	if (chip->pdata->initial_rsoc) {
+		ret = lc709203f_write_word(chip->client,
+			LC709203F_INITIAL_RSOC, chip->pdata->initial_rsoc);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"INITIAL_RSOC write failed: %d\n", ret);
+			return ret;
+		}
+		dev_info(&client->dev, "initial-rsoc: 0x%04x\n",
 			chip->pdata->initial_rsoc);
+	}
 
 	ret = lc709203f_write_word(chip->client,
 		LC709203F_ALARM_LOW_CELL_RSOC, chip->pdata->alert_low_rsoc);
