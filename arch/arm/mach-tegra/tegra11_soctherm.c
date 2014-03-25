@@ -587,7 +587,7 @@ static inline u32 temp_translate_rev(long temp)
 }
 
 #ifdef CONFIG_THERMAL
-static struct thermal_zone_device *thz[THERM_SIZE];
+static struct thermal_zone_device *soctherm_th_zones[THERM_SIZE];
 #endif
 struct soctherm_oc_irq_chip_data {
 	int			irq_base;
@@ -937,7 +937,7 @@ static void soctherm_update_zone(int zn)
 	long trip_temp, passive_low_temp = MAX_HIGH_TEMP, zone_temp;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
-	struct thermal_zone_device *cur_thz = thz[zn];
+	struct thermal_zone_device *cur_thz = soctherm_th_zones[zn];
 	int count, trips;
 
 	thermal_zone_device_update(cur_thz);
@@ -991,7 +991,7 @@ static void soctherm_update(void)
 		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (thz[i] && thz[i]->trips)
+		if (soctherm_th_zones[i] && soctherm_th_zones[i]->trips)
 			soctherm_update_zone(i);
 	}
 }
@@ -1386,7 +1386,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	}
 
 	/* Allow SW to shutdown at 'Critical temperature reached' */
-	thermal_notify_framework(&thz[thz->id], trip);
+	thermal_notify_framework(soctherm_th_zones[thz->id], trip);
 
 	/* Reprogram HW thermtrip */
 	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
@@ -1615,15 +1615,15 @@ static int __init soctherm_thermal_sys_init(void)
 		}
 
 		snprintf(name, THERMAL_NAME_LENGTH, "%s-therm", therm_names[i]);
-		thz[i] = thermal_zone_device_register(
-					name,
-					therm->num_trips,
-					(1ULL << therm->num_trips) - 1,
-					therm,
-					&soctherm_ops,
-					therm->tzp,
-					therm->passive_delay,
-					0);
+		soctherm_th_zones[i] = thermal_zone_device_register(
+						name,
+						therm->num_trips,
+						(1ULL << therm->num_trips) - 1,
+						therm,
+						&soctherm_ops,
+						therm->tzp,
+						therm->passive_delay,
+						0);
 
 		for (j = THROTTLE_OC1; !oc_en && j < THROTTLE_SIZE; j++)
 			if ((therm2dev[i] != THROTTLE_DEV_NONE) &&
