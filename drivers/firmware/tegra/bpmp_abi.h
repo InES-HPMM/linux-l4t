@@ -63,6 +63,7 @@
 #define MRQ_TRACE_MODIFY	7
 #define MRQ_WRITE_TRACE		8
 #define MRQ_THREADED_PING	(9 | __MRQ_PUBLIC)
+#define MRQ_CPUIDLE_USAGE	10
 #define MRQ_MODULE_MAIL		(11 | __MRQ_PUBLIC)
 
 #endif

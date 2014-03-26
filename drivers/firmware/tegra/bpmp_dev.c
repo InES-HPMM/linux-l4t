@@ -221,6 +221,97 @@ clean:
 	return -EFAULT;
 }
 
+struct bpmp_cpuidle_state {
+	int id;
+	const char *name;
+};
+
+static int bpmp_cpuidle_name_show(struct seq_file *file, void *data)
+{
+	struct bpmp_cpuidle_state *state = file->private;
+	seq_printf(file, "%s\n", state->name);
+	return 0;
+}
+
+static int bpmp_cpuidle_name_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_cpuidle_name_show, inode->i_private);
+}
+
+static const struct file_operations cpuidle_name_fops = {
+	.open = bpmp_cpuidle_name_open,
+	.read = seq_read,
+	.release = single_release
+};
+
+static int bpmp_cpuidle_usage_show(void *data, u64 *val)
+{
+	struct bpmp_cpuidle_state *state = data;
+	*val = bpmp_cpuidle_usage(state->id);
+	return 0;
+}
+
+static int bpmp_cpuidle_time_show(void *data, u64 *val)
+{
+	struct bpmp_cpuidle_state *state = data;
+	*val = bpmp_cpuidle_time(state->id);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(cpuidle_usage_fops, bpmp_cpuidle_usage_show,
+		NULL, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(cpuidle_time_fops, bpmp_cpuidle_time_show,
+		NULL, "%lld\n");
+
+static const struct fops_entry cpuidle_attrs[] = {
+	{ "name", &cpuidle_name_fops, S_IRUGO },
+	{ "usage", &cpuidle_usage_fops, S_IRUGO },
+	{ "time", &cpuidle_time_fops, S_IRUGO },
+	{ NULL, NULL, 0 }
+};
+
+static struct bpmp_cpuidle_state cpuidle_state[] = {
+	{ TEGRA_PM_CC4, "CC4" },
+	{ TEGRA_PM_CC6, "CC6" },
+	{ TEGRA_PM_CC7, "CC7" },
+	{ TEGRA_PM_SC2, "SC2" },
+	{ TEGRA_PM_SC3, "SC3" },
+	{ TEGRA_PM_SC4, "SC4" },
+	{ TEGRA_PM_SC7, "SC7" }
+};
+
+static int bpmp_create_cpuidle_debug(int index, struct dentry *parent)
+{
+	struct bpmp_cpuidle_state *state;
+	struct dentry *top;
+	char name[16];
+
+	sprintf(name, "state%d", index);
+	top = debugfs_create_dir(name, parent);
+	if (IS_ERR_OR_NULL(top))
+		return -EFAULT;
+
+	state = &cpuidle_state[index];
+	return bpmp_create_attrs(cpuidle_attrs, top, state);
+}
+
+static int bpmp_init_cpuidle_debug(struct dentry *root)
+{
+	struct dentry *d;
+	unsigned int i;
+
+	d = debugfs_create_dir("cpuidle", root);
+	if (IS_ERR_OR_NULL(d))
+		return -EFAULT;
+
+	for (i = 0; i < ARRAY_SIZE(cpuidle_state); i++) {
+		if (bpmp_create_cpuidle_debug(i, d))
+			return -EFAULT;
+	}
+
+	return 0;
+}
+
 static int bpmp_ping_show(void *data, u64 *val)
 {
 	*val = bpmp_ping();
@@ -309,6 +400,9 @@ static int bpmp_init_debug(struct platform_device *pdev)
 		goto clean;
 
 	if (bpmp_create_attrs(root_attrs, root, pdev))
+		goto clean;
+
+	if (bpmp_init_cpuidle_debug(root))
 		goto clean;
 
 	bpmp_root = root;

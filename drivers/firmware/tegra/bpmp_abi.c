@@ -137,6 +137,20 @@ int tegra_bpmp_switch_cluster(int cpu)
 	return on_cpus;
 }
 
+int bpmp_cpuidle_usage(int state)
+{
+	struct { int usage; uint64_t time; } ib;
+	return bpmp_threaded_rpc(MRQ_CPUIDLE_USAGE, &state, sizeof(state),
+			&ib, sizeof(ib)) ?: ib.usage;
+}
+
+uint64_t bpmp_cpuidle_time(int state)
+{
+	struct { int usage; uint64_t time; } ib;
+	return bpmp_threaded_rpc(MRQ_CPUIDLE_USAGE, &state, sizeof(state),
+			&ib, sizeof(ib)) ?: ib.time;
+}
+
 int bpmp_write_trace(uint32_t phys, int size, int *eof)
 {
 	uint32_t ob[] = { phys, size };
