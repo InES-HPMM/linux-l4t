@@ -1482,51 +1482,6 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 	return ret;
 }
 
-static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
-{
-	u32 portsc;
-	u32 temp;
-	unsigned long flags;
-
-	/* use spinlock to prevent kernel preemption here */
-	spin_lock_irqsave(&udc->lock, flags);
-	if (udc->support_pmu_vbus) {
-			temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
-			temp |= (USB_SYS_VBUS_A_VLD_SW_VALUE |
-					USB_SYS_VBUS_A_VLD_SW_EN |
-					USB_SYS_VBUS_ASESSION_VLD_SW_VALUE |
-					USB_SYS_VBUS_ASESSION_VLD_SW_EN);
-			udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
-	}
-
-	/* set controller to run which cause D+ pull high */
-	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
-	temp |= USB_CMD_RUN_STOP;
-	udc_writel(udc, temp, USB_CMD_REG_OFFSET);
-
-	udelay(10);
-
-	/* use D+ and D- status to check it is CDP or DCP */
-	portsc = udc_readl(udc, PORTSCX_REG_OFFSET);
-	portsc &= PORTSCX_LINE_STATUS_BITS;
-	if (portsc == PORTSCX_LINE_STATUS_BITS)
-		tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP);
-	else if (portsc == PORTSCX_LINE_STATUS_DP_BIT)
-		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
-	else
-		/*
-		 * If it take more 100mS between D+ pull high and read
-		 * Line Status, host might initiate the RESET, then we
-		 * see both  line status as 0 (SE0). This really should
-		 * not happen as we disabled the kernel preemption
-		 * before reaching here.
-		 * Bug can be raised here but it is also safe to assume
-		 * as CDP.
-		 */
-		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
-	spin_unlock_irqrestore(&udc->lock, flags);
-}
-
 static int tegra_detect_cable_type(struct tegra_udc *udc)
 {
 	if (!udc->charging_supported) {
@@ -1535,11 +1490,29 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 	}
 
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
-		if (tegra_usb_phy_qc2_charger_detected(udc->phy,
-				udc->qc2_voltage))
-			tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP_QC2);
-		else
-			tegra_detect_charging_type_is_cdp_or_dcp(udc);
+		if (tegra_usb_phy_cdp_charger_detected(udc->phy))
+			tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
+		else if (udc->qc2_voltage) {
+			/* Must be DCP -- figure out if Quick Charge 2 or DCP.
+			 * Initially set low current since QC2 will reset to
+			 * 5V if current is too high when it changes to higher
+			 * voltage during detection. So setting to non-standard
+			 * which sets for low current. Also, setting current
+			 * early allows the charging icon to show up on UI.
+			 */
+			tegra_udc_set_charger_type(udc,
+					CONNECT_TYPE_NON_STANDARD_CHARGER);
+			tegra_usb_set_charging_current(udc);
+
+			 if (tegra_usb_phy_qc2_charger_detected(udc->phy,
+					udc->qc2_voltage))
+				tegra_udc_set_charger_type(udc,
+					CONNECT_TYPE_DCP_QC2);
+			else
+				tegra_udc_set_charger_type(udc,
+					CONNECT_TYPE_DCP);
+		} else
+			tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP);
 	}
 #if !defined(CONFIG_ARCH_TEGRA_11x_SOC) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	else if (tegra_usb_phy_apple_500ma_charger_detected(udc->phy))
@@ -2874,19 +2847,21 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			udc->fence_read = true;
 
 		udc->charging_supported = pdata->u_data.dev.charging_supported;
+		udc->qc2_voltage = pdata->qc2_voltage;
+
+		udc->qc2_current_limit =
+			pdata->u_data.dev.qc2_current_limit_ma * 1000;
+
+		DBG("%s: QC2 voltage = %d, current = %d\n",
+			__func__,
+			udc->qc2_voltage_limit,
+			udc->qc2_current_limit);
 
 		if (pdata->u_data.dev.dcp_current_limit_ma)
 			udc->dcp_current_limit =
 				pdata->u_data.dev.dcp_current_limit_ma * 1000;
 		else
 			udc->dcp_current_limit =
-				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
-
-		if (pdata->u_data.dev.qc2_current_limit_ma)
-			udc->qc2_current_limit =
-				pdata->u_data.dev.qc2_current_limit_ma * 1000;
-		else
-			udc->qc2_current_limit =
 				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
 	} else {
 		dev_err(&pdev->dev, "failed to get platform_data\n");
@@ -3008,11 +2983,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			"usb_bat_chg regulator not registered:"
 				" USB charging will not be enabled\n");
 		udc->vbus_reg = NULL;
-	} else {
-		udc->qc2_voltage = pdata->qc2_voltage;
-		DBG("%s: qc2_v(i) = %d, qc2_v(o) = %d\n",
-			__func__,
-			pdata->qc2_voltage, udc->qc2_voltage);
 	}
 
 	if (pdata->port_otg)
