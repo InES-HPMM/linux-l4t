@@ -1563,6 +1563,7 @@ int __init ardbeg_soctherm_init(void)
 	else if (pmu_board_info.board_id == BOARD_E1735 ||
 		 pmu_board_info.board_id == BOARD_E1736 ||
 		 pmu_board_info.board_id == BOARD_E1769 ||
+		 pmu_board_info.board_id == BOARD_P1761 ||
 		 pmu_board_info.board_id == BOARD_E1936)
 		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_palmas;
 	else
