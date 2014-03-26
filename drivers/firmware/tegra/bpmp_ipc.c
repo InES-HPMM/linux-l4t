@@ -90,7 +90,7 @@ static DEFINE_SPINLOCK(lock);
 
 static u32 bpmp_ch_sta(int ch)
 {
-	return readl(RES_SEMA_SHRD_SMP_STA) & CH_MASK(ch);
+	return __raw_readl(RES_SEMA_SHRD_SMP_STA) & CH_MASK(ch);
 }
 
 static bool bpmp_master_free(int ch)
@@ -110,7 +110,7 @@ static bool bpmp_master_acked(int ch)
 
 static void bpmp_signal_slave(int ch)
 {
-	writel(CH_MASK(ch), RES_SEMA_SHRD_SMP_CLR);
+	__raw_writel(CH_MASK(ch), RES_SEMA_SHRD_SMP_CLR);
 }
 
 static void bpmp_ack_master(int ch, int flags)
@@ -226,12 +226,17 @@ irqreturn_t bpmp_inbox_irq(int irq, void *data)
 
 static unsigned int usec_counter(void)
 {
-	return readl(TIMERUS_CNTR_1US);
+	return __raw_readl(TIMERUS_CNTR_1US);
 }
 
 static int bpmp_wait_master_free(int ch)
 {
-	unsigned int start = usec_counter();
+	unsigned int start;
+
+	if (bpmp_master_free(ch))
+		return 0;
+
+	start = usec_counter();
 
 	while (usec_counter() - start < CHANNEL_TIMEOUT) {
 		if (bpmp_master_free(ch))
@@ -247,7 +252,8 @@ static void __bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 
 	p->code = mrq;
 	p->flags = flags;
-	memcpy(p->data, data, sz);
+	if (data)
+		memcpy(p->data, data, sz);
 	bpmp_signal_slave(ch);
 }
 
@@ -318,7 +324,8 @@ static int bpmp_write_threaded_ch(int ch, int mrq, void *data, int sz)
 static int __bpmp_read_ch(int ch, void *data, int sz)
 {
 	struct mb_data *p = channel_area[ch];
-	memcpy(data, p->data, sz);
+	if (data)
+		memcpy(data, p->data, sz);
 	bpmp_free_master(ch);
 	return p->code;
 }
