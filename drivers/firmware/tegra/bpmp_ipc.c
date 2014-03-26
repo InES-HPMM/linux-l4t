@@ -137,26 +137,48 @@ static void bpmp_ring_doorbell(void)
 	writel(FIR_BIT(CPU_OB_IRQ), ICTLR_FIR_SET(CPU_OB_IRQ));
 }
 
-static void bpmp_dispatch_mrq(int ch)
+static u32 bpmp_mail_readl(int ch, int offset)
+{
+	u32 *data = (u32 *)(channel_area[ch]->data + offset);
+	return *data;
+}
+
+static void bpmp_mail_return(int ch, int code, int v)
 {
 	struct mb_data *p = channel_area[ch];
+	int *data = (int *)p->data;
 
+	p->code = code;
+	*data = v;
+
+	bpmp_ack_master(ch, p->flags);
+	if (p->flags & RING_DOORBELL)
+		bpmp_ring_doorbell();
+}
+
+static void bpmp_mrq_ping(int ch)
+{
+	int challenge;
+	int reply;
+	challenge = bpmp_mail_readl(ch, 0);
+	reply = challenge  << (smp_processor_id() + 1);
+	bpmp_mail_return(ch, 0, reply);
+}
+
+static void bpmp_dispatch_mrq(int ch)
+{
 	if (!connected) {
 		WARN_ON(1);
 		return;
 	}
 
-	switch (p->code) {
+	switch (channel_area[ch]->code) {
 	case MRQ_PING:
-		p->code = 0;
+		bpmp_mrq_ping(ch);
 		break;
 	default:
-		p->code = -EINVAL;
+		bpmp_mail_return(ch, -EINVAL, 0);
 	}
-
-	bpmp_ack_master(ch, p->flags);
-	if (p->flags & RING_DOORBELL)
-		bpmp_ring_doorbell();
 }
 
 static struct completion *bpmp_completion_obj(int ch)
