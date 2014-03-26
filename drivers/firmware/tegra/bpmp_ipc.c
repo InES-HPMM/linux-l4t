@@ -268,9 +268,19 @@ static int bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 	return 0;
 }
 
-static int bpmp_ob_channel(bool threaded)
+static int __bpmp_ob_channel(void)
 {
-	return smp_processor_id() + (threaded ? CPU0_OB_CH1 : CPU0_OB_CH0);
+	return smp_processor_id() + CPU0_OB_CH0;
+}
+
+static int bpmp_ob_channel(void)
+{
+	int ret;
+	unsigned long flags;
+	local_irq_save(flags);
+	ret = smp_processor_id() + CPU0_OB_CH1;
+	local_irq_restore(flags);
+	return ret;
 }
 
 static int bpmp_try_locked_write(int ch, int mrq, void *data, int sz)
@@ -340,7 +350,7 @@ int bpmp_post(int mrq, void *data, int sz)
 	int ch;
 	int r;
 
-	ch = bpmp_ob_channel(false);
+	ch = __bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, 0, data, sz);
 	if (r)
 		return r;
@@ -355,7 +365,7 @@ int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 	int ch;
 	int r;
 
-	ch = bpmp_ob_channel(false);
+	ch = __bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, DO_ACK, ob_data, ob_sz);
 	if (r)
 		return r;
@@ -377,7 +387,7 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 	int ch;
 	int r;
 
-	ch = bpmp_ob_channel(true);
+	ch = bpmp_ob_channel();
 	r = bpmp_write_threaded_ch(ch, mrq, ob_data, ob_sz);
 	if (r)
 		return r;
