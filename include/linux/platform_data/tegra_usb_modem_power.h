@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 #define __MACH_TEGRA_USB_MODEM_POWER_H
 
 #include <linux/interrupt.h>
-#include <linux/edp.h>
 #include <linux/usb.h>
 
 /* modem capabilities */
@@ -51,11 +50,6 @@ struct tegra_usb_modem_power_platform_data {
 	int short_autosuspend_delay;	/* short autosuspend delay in ms */
 	const struct platform_device *tegra_ehci_device; /* USB host device */
 	struct tegra_usb_platform_data *tegra_ehci_pdata;
-	struct edp_client *modem_boot_edp_client;
-	char *edp_manager_name;
-	unsigned int i_breach_ppm;
-	unsigned int i_thresh_3g_adjperiod;
-	unsigned int i_thresh_lte_adjperiod;
 	char *sysedpc_name;		/* sysedp consumer name */
 };
 
