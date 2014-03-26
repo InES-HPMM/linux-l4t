@@ -249,10 +249,54 @@ DEFINE_SIMPLE_ATTRIBUTE(trace_enable_fops, bpmp_trace_enable_show,
 DEFINE_SIMPLE_ATTRIBUTE(trace_disable_fops, NULL,
 		bpmp_trace_disable_store, "%lld\n");
 
+static int bpmp_copy_trace(struct seq_file *file, dma_addr_t phys, void *virt,
+		int size)
+{
+	int ret;
+	int eof = 0;
+
+	while (!eof) {
+		ret = bpmp_write_trace(phys, size, &eof);
+		if (ret < 0)
+			return ret;
+		seq_write(file, virt, ret);
+	}
+
+	return 0;
+}
+
+static int bpmp_trace_show(struct seq_file *file, void *data)
+{
+	dma_addr_t phys;
+	void *virt;
+	int size = SZ_16K;
+	int ret;
+
+	virt = dma_alloc_coherent(device, size, &phys, GFP_KERNEL);
+	if (!virt)
+		return -ENOMEM;
+
+	ret = bpmp_copy_trace(file, phys, virt, size);
+	dma_free_coherent(device, size, virt, phys);
+	return ret;
+}
+
+static int bpmp_trace_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_trace_show, inode->i_private);
+}
+
+static const struct file_operations trace_fops = {
+	.open = bpmp_trace_open,
+	.read = seq_read,
+	.release = single_release
+};
+
 static const struct fops_entry root_attrs[] = {
 	{ "ping", &bpmp_ping_fops, S_IRUGO },
 	{ "trace_enable", &trace_enable_fops, S_IRUGO | S_IWUSR },
 	{ "trace_disable", &trace_disable_fops, S_IWUSR },
+	{ "trace", &trace_fops, S_IRUGO },
 	{ NULL, NULL, 0 }
 };
 
