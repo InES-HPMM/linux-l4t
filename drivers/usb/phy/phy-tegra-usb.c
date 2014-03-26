@@ -607,6 +607,17 @@ bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy)
 	return status;
 }
 
+bool tegra_usb_phy_cdp_charger_detected(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->ops && phy->ops->cdp_charger_detect)
+		status = phy->ops->cdp_charger_detect(phy);
+
+	return status;
+}
+
 bool tegra_usb_phy_qc2_charger_detected(struct tegra_usb_phy *phy,
 			int max_voltage)
 {
