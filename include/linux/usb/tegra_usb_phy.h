@@ -96,11 +96,16 @@ bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy);
 
 /**
  * Indicates whether qc2 charger is connected or not
- * if QuickCharge 2 DCP returns true
- * if standard CDP/DCP returns false
+ * if QuickCharge 2 DCP detected returns true else false
  */
 bool tegra_usb_phy_qc2_charger_detected(struct tegra_usb_phy *phy,
 		int max_voltage);
+
+/**
+ * Indicates whether CDP charger is connected or not
+ * if CDP is connected then returns true else false
+ */
+bool tegra_usb_phy_cdp_charger_detected(struct tegra_usb_phy *phy);
 
 /**
  * Indicates whether nvidia proprietary charger is connected or not
