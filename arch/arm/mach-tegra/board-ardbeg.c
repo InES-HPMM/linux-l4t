@@ -663,21 +663,20 @@ static void ardbeg_usb_init(void)
 		 * vbus voltages larger then 5V.  Enable this.
 		 */
 		if (board_info.board_id == BOARD_P1761 ||
-			board_info.board_id == BOARD_E1784) {
+			board_info.board_id == BOARD_E1784 ||
+			board_info.board_id == BOARD_E1780) {
+
 			/*
 			 * Set the maximum voltage that can be supplied
 			 * over USB vbus that the board supports if we use
 			 * a quick charge 2 wall charger.
 			 */
 			tegra_udc_pdata.qc2_voltage = TEGRA_USB_QC2_9V;
-			/*
-			 * TN8 board design can handle 3A charging
-			 */
-			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 3000;
-		}
+			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 1200;
 
-		if (board_info.board_id == BOARD_P1761)
+			/* charger needs to be set to 2A - h/w will do 1.8A */
 			tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
+		}
 
 		switch (bi.board_id) {
 		case BOARD_E1733:
