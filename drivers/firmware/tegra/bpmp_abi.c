@@ -14,10 +14,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/dma-mapping.h>
 #include <linux/hrtimer.h>
 #include <linux/kernel.h>
 #include <linux/ktime.h>
 #include <linux/platform_data/tegra_bpmp.h>
+#include <linux/slab.h>
 #include "bpmp_abi.h"
 #include "bpmp_private.h"
 
@@ -83,6 +85,36 @@ int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
 	local_irq_restore(flags);
 
 	return r;
+}
+
+int bpmp_module_load(struct device *dev, const void *base, u32 size,
+		u32 *handle)
+{
+	void *virt;
+	dma_addr_t phys;
+	struct { u32 phys; u32 size; } __packed msg;
+	int r;
+
+	virt = dma_alloc_coherent(dev, size, &phys, GFP_KERNEL);
+	if (virt == NULL)
+		return -ENOMEM;
+
+	memcpy(virt, base, size);
+
+	msg.phys = phys;
+	msg.size = size;
+
+	r = bpmp_threaded_rpc(MRQ_MODULE_LOAD, &msg, sizeof(msg),
+			handle, sizeof(*handle));
+
+	dma_free_coherent(dev, size, virt, phys);
+	return r;
+}
+
+int bpmp_module_unload(struct device *dev, u32 handle)
+{
+	return bpmp_threaded_rpc(MRQ_MODULE_UNLOAD, &handle, sizeof(handle),
+			NULL, 0);
 }
 
 /*
