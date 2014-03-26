@@ -1493,6 +1493,6 @@ static struct platform_driver tegra_spi_driver = {
 module_platform_driver(tegra_spi_driver);
 
 MODULE_ALIAS("platform:spi-tegra114");
-MODULE_DESCRIPTION("NVIDIA Tegra114 SPI Controller Driver");
+MODULE_DESCRIPTION("NVIDIA Tegra114/124 SPI Controller Driver");
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_LICENSE("GPL v2");
