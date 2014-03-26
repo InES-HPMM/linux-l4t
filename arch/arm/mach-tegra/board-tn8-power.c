@@ -30,7 +30,6 @@
 
 #include <linux/gpio.h>
 #include <linux/power/bq2419x-charger.h>
-#include <linux/power/power_supply_extcon.h>
 #include <linux/max17048_battery.h>
 #include <linux/tegra-soc.h>
 #include <linux/generic_adc_thermal.h>
@@ -195,18 +194,6 @@ static struct platform_device gadc_thermal_battery = {
 	},
 };
 
-static struct power_supply_extcon_plat_data extcon_pdata = {
-	.extcon_name = "tegra-udc",
-};
-
-static struct platform_device power_supply_extcon_device = {
-	.name	= "power-supply-extcon",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &extcon_pdata,
-	},
-};
-
 int __init tn8_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -229,7 +216,6 @@ int __init tn8_regulator_init(void)
 		platform_device_register(&gadc_thermal_battery);
 	}
 
-	platform_device_register(&power_supply_extcon_device);
 	return 0;
 }
 

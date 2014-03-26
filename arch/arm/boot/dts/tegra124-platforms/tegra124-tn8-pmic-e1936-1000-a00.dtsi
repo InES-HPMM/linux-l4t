@@ -715,4 +715,9 @@
 	efuse@7000f800 {
 		vpp_fuse-supply = <&vpp_fuse>;
 	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		power-supply,extcon-dev = "tegra-udc";
+	};
 };

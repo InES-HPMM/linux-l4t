@@ -30,7 +30,6 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/as3722-plat.h>
-#include <linux/power/power_supply_extcon.h>
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
@@ -609,18 +608,6 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.min_residency_crail = 20000,
 };
 
-static struct power_supply_extcon_plat_data extcon_pdata = {
-	.extcon_name = "tegra-udc",
-};
-
-static struct platform_device power_supply_extcon_device = {
-	.name	= "power-supply-extcon",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &extcon_pdata,
-	},
-};
-
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply,			\
@@ -1147,9 +1134,6 @@ int __init ardbeg_regulator_init(void)
 			pmu_board_info.board_id);
 		break;
 	}
-
-	if (pmu_board_info.board_id != BOARD_E1735)
-		platform_device_register(&power_supply_extcon_device);
 
 	ardbeg_cl_dvfs_init(&pmu_board_info);
 	return 0;
