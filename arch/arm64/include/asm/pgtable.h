@@ -124,8 +124,12 @@ extern pgprot_t pgprot_default;
  * ZERO_PAGE is a global shared page that is always zero: used
  * for zero-mapped memory areas etc..
  */
-extern struct page *empty_zero_page;
-#define ZERO_PAGE(vaddr)	(empty_zero_page)
+extern unsigned long empty_zero_page;
+extern unsigned long zero_page_mask;
+
+#define ZERO_PAGE(vaddr) \
+	(virt_to_page((void *)(empty_zero_page + (((unsigned long)(vaddr)) & zero_page_mask))))
+#define __HAVE_COLOR_ZERO_PAGE
 
 #define pte_pfn(pte)		((pte_val(pte) & PHYS_MASK) >> PAGE_SHIFT)
 

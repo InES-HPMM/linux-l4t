@@ -44,8 +44,10 @@
  * Empty_zero_page is a special page that is used for zero-initialized data
  * and COW.
  */
-struct page *empty_zero_page;
+unsigned long empty_zero_page;
 EXPORT_SYMBOL(empty_zero_page);
+unsigned long zero_page_mask;
+static zero_page_order = 3;
 
 pgprot_t pgprot_default;
 EXPORT_SYMBOL(pgprot_default);
@@ -371,8 +373,6 @@ static void __init map_mem(void)
  */
 void __init paging_init(void)
 {
-	void *zero_page;
-
 	/*
 	 * Maximum PGDIR_SIZE addressable via the initial direct kernel
 	 * mapping in swapper_pg_dir.
@@ -396,11 +396,11 @@ void __init paging_init(void)
 	flush_tlb_all();
 
 	/* allocate the zero page. */
-	zero_page = early_alloc(PAGE_SIZE);
+	empty_zero_page = (ulong)early_alloc(PAGE_SIZE << zero_page_order);
+	zero_page_mask = ((PAGE_SIZE << zero_page_order) - 1) & PAGE_MASK;
 
 	bootmem_init();
 
-	empty_zero_page = virt_to_page(zero_page);
 
 	dma_contiguous_remap();
 	/*
