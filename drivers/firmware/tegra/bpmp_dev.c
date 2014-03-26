@@ -70,17 +70,8 @@ clean:
 static inline int bpmp_init_debug(struct platform_device *pdev) { return 0; }
 #endif
 
-static int bpmp_probe(struct platform_device *pdev)
+static int init_clks(void)
 {
-	int r;
-
-	device = &pdev->dev;
-	platform_data = device->platform_data;
-
-	bpmp_virt = ioremap(platform_data->phys_start, platform_data->size);
-	dev_info(device, "%x@%x mapped to %p\n", (u32)platform_data->size,
-			(u32)platform_data->phys_start, bpmp_virt);
-
 	cop_clk = clk_get_sys(NULL, "cop");
 	if (IS_ERR(cop_clk)) {
 		dev_err(device, "cannot get cop clock\n");
@@ -102,14 +93,37 @@ static int bpmp_probe(struct platform_device *pdev)
 	clk_prepare_enable(cop_clk);
 	clk_prepare_enable(sclk);
 	clk_prepare_enable(emc_clk);
-	clk_set_rate(sclk, ULONG_MAX);
-	clk_set_rate(emc_clk, ULONG_MAX);
+
+	return 0;
+}
+
+static int bpmp_probe(struct platform_device *pdev)
+{
+	int r;
+
+	device = &pdev->dev;
+	platform_data = device->platform_data;
+
+	bpmp_virt = ioremap(platform_data->phys_start, platform_data->size);
+	dev_info(device, "%x@%x mapped to %p\n", (u32)platform_data->size,
+			(u32)platform_data->phys_start, bpmp_virt);
+
+	r = init_clks();
+	if (r)
+		goto abort;
 
 	r = bpmp_ipc_init(pdev);
 	if (r)
-		return r;
+		goto abort;
 
-	return bpmp_init_debug(pdev);
+	r = bpmp_init_debug(pdev);
+	if (r)
+		goto abort;
+
+	return 0;
+
+abort:
+	return r;
 }
 
 static struct platform_driver bpmp_driver = {
