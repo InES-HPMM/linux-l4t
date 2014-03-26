@@ -60,5 +60,6 @@
 #define MRQ_MODULE_LOAD		4
 #define MRQ_MODULE_UNLOAD	5
 #define MRQ_SWITCH_CLUSTER	6
+#define MRQ_WRITE_TRACE		8
 
 #endif

@@ -33,6 +33,8 @@
 #define BPMP_FIRMWARE_NAME		"bpmp.bin"
 #define BPMP_MODULE_MAGIC		0x646f6d
 
+#define SHARED_SIZE			512
+
 static struct clk *cop_clk;
 static struct clk *sclk;
 static struct clk *emc_clk;
@@ -40,6 +42,9 @@ static void *bpmp_virt;
 static struct tegra_bpmp_platform_data *platform_data;
 static struct device *device;
 static struct mutex bpmp_lock;
+static void *shared_virt;
+static uint32_t shared_phys;
+static DEFINE_SPINLOCK(shared_lock);
 
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *bpmp_root;
@@ -228,6 +233,23 @@ clean:
 static inline int bpmp_init_debug(struct platform_device *pdev) { return 0; }
 #endif
 
+void tegra_bpmp_trace_printk(void)
+{
+	unsigned long flags;
+	int eof = 0;
+
+	spin_lock_irqsave(&shared_lock, flags);
+
+	while (!eof) {
+		if (bpmp_write_trace(shared_phys, SHARED_SIZE, &eof) <= 0)
+			goto done;
+		pr_info("%s", (char *)shared_virt);
+	}
+
+done:
+	spin_unlock_irqrestore(&shared_lock, flags);
+}
+
 static int init_clks(void)
 {
 	cop_clk = clk_get_sys(NULL, "cop");
@@ -257,6 +279,8 @@ static int init_clks(void)
 
 static int bpmp_probe(struct platform_device *pdev)
 {
+	dma_addr_t phys;
+	void *virt;
 	int r;
 
 	device = &pdev->dev;
@@ -265,6 +289,10 @@ static int bpmp_probe(struct platform_device *pdev)
 	bpmp_virt = ioremap(platform_data->phys_start, platform_data->size);
 	dev_info(device, "%x@%x mapped to %p\n", (u32)platform_data->size,
 			(u32)platform_data->phys_start, bpmp_virt);
+
+	virt = dma_alloc_coherent(device, SHARED_SIZE, &phys, GFP_KERNEL);
+	if (!virt)
+		return -ENOMEM;
 
 	r = init_clks();
 	if (r)
@@ -284,9 +312,12 @@ static int bpmp_probe(struct platform_device *pdev)
 	if (r)
 		goto abort;
 
+	shared_virt = virt;
+	shared_phys = (uint32_t)phys;
 	return 0;
 
 abort:
+	dma_free_coherent(device, SHARED_SIZE, virt, phys);
 	return r;
 }
 

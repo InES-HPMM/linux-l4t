@@ -32,9 +32,11 @@ int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
 int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
 
+int __bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
 int bpmp_ping(void);
 int bpmp_module_load(struct device *dev, const void *base, u32 size,
 		u32 *handle);
 int bpmp_module_unload(struct device *dev, u32 handle);
+int bpmp_write_trace(uint32_t phys, int size, int *eof);
 
 #endif

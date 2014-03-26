@@ -136,3 +136,9 @@ int tegra_bpmp_switch_cluster(int cpu)
 
 	return on_cpus;
 }
+
+int bpmp_write_trace(uint32_t phys, int size, int *eof)
+{
+	uint32_t ob[] = { phys, size };
+	return __bpmp_rpc(MRQ_WRITE_TRACE, ob, sizeof(ob), eof, sizeof(*eof));
+}
