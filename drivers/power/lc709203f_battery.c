@@ -84,6 +84,8 @@ struct lc709203f_chip {
 	/* battery capacity */
 	int capacity_level;
 
+	int temperature;
+
 	int lasttime_soc;
 	int lasttime_status;
 	int shutdown_complete;
@@ -95,38 +97,20 @@ static int lc709203f_read_word(struct i2c_client *client, u8 reg)
 {
 	int ret;
 
-	struct lc709203f_chip *chip = i2c_get_clientdata(client);
-
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
 	ret = i2c_smbus_read_word_data(client, reg);
 	if (ret < 0)
 		dev_err(&client->dev, "err reading reg: 0x%x, %d\n", reg, ret);
-
-	mutex_unlock(&chip->mutex);
 	return ret;
 }
 
 static int lc709203f_write_word(struct i2c_client *client, u8 reg, u16 value)
 {
-	struct lc709203f_chip *chip = i2c_get_clientdata(client);
 	int ret;
-
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
 
 	ret = i2c_smbus_write_word_data(client, reg, value);
 	if (ret < 0)
 		dev_err(&client->dev, "err writing 0x%0x, %d\n" , reg, ret);
 
-	mutex_unlock(&chip->mutex);
 	return ret;
 }
 
@@ -174,6 +158,12 @@ static void lc709203f_work(struct work_struct *work)
 
 	chip = container_of(work, struct lc709203f_chip, work.work);
 
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return;
+	}
+
 	lc709203f_update_soc_voltage(chip);
 
 	if (chip->soc != chip->lasttime_soc ||
@@ -185,13 +175,16 @@ static void lc709203f_work(struct work_struct *work)
 	if (chip->pdata->tz_name) {
 		val = battery_gauge_get_battery_temperature(chip->bg_dev,
 							&temperature);
-		if (val < 0)
+		if (val < 0) {
 			dev_err(&chip->client->dev, "temp invalid\n");
-		else
+		} else {
 			lc709203f_write_word(chip->client, LC709203F_TEMPERATURE
 						, temperature * 10 + 2732);
+			chip->temperature = temperature;
+		}
 	}
 
+	mutex_unlock(&chip->mutex);
 	schedule_delayed_work(&chip->work, LC709203F_DELAY);
 }
 
@@ -199,11 +192,15 @@ static int lc709203f_get_temperature(struct lc709203f_chip *chip)
 {
 	int val;
 
+	if (chip->shutdown_complete)
+		return chip->temperature;
+
 	val = lc709203f_read_word(chip->client, LC709203F_TEMPERATURE);
 	if (val < 0) {
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
-		return -EINVAL;
+		return val;
 	}
+	chip->temperature = val;
 	return val;
 }
 
@@ -227,7 +224,9 @@ static int lc709203f_get_property(struct power_supply *psy,
 				struct lc709203f_chip, battery);
 	int temperature;
 	int curr_ma;
-	int ret;
+	int ret = 0;
+
+	mutex_lock(&chip->mutex);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -276,15 +275,24 @@ static int lc709203f_get_property(struct power_supply *psy,
 			val->intval = curr_ma;
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
-	return 0;
+
+	mutex_unlock(&chip->mutex);
+	return ret;
 }
 
 static int lc709203f_update_battery_status(struct battery_gauge_dev *bg_dev,
 		enum battery_charger_status status)
 {
 	struct lc709203f_chip *chip = battery_gauge_get_drvdata(bg_dev);
+
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return 0;
+	}
 
 	if (status == BATTERY_CHARGING) {
 		chip->charge_complete = 0;
@@ -293,13 +301,15 @@ static int lc709203f_update_battery_status(struct battery_gauge_dev *bg_dev,
 		chip->charge_complete = 1;
 		chip->soc = LC709203F_BATTERY_FULL;
 		chip->status = POWER_SUPPLY_STATUS_FULL;
-		power_supply_changed(&chip->battery);
-		return 0;
+		goto done;
 	} else {
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 		chip->charge_complete = 0;
 	}
 	chip->lasttime_status = chip->status;
+
+done:
+	mutex_unlock(&chip->mutex);
 	power_supply_changed(&chip->battery);
 	return 0;
 }
@@ -625,11 +635,11 @@ static void lc709203f_shutdown(struct i2c_client *client)
 {
 	struct lc709203f_chip *chip = i2c_get_clientdata(client);
 
-	cancel_delayed_work_sync(&chip->work);
 	mutex_lock(&chip->mutex);
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->mutex);
 
+	cancel_delayed_work_sync(&chip->work);
 }
 
 #ifdef CONFIG_PM_SLEEP
