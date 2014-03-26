@@ -50,7 +50,7 @@
 #define NR_THREAD_CH		4
 #define ALL_FREE		0xaaaaaaaa
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
-#define THREAD_CH_TIMEOUT	(USEC_PER_SEC * 60)
+#define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
 /*
  * IPC message format
@@ -384,7 +384,7 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 
 	bpmp_ring_doorbell();
 	w = bpmp_completion_obj(ch);
-	timeout = msecs_to_jiffies(THREAD_CH_TIMEOUT);
+	timeout = usecs_to_jiffies(THREAD_CH_TIMEOUT);
 	if (!wait_for_completion_timeout(w, timeout))
 		return -ETIMEDOUT;
 
