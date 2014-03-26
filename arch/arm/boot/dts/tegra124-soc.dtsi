@@ -231,6 +231,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 41>;
 		status = "disabled";
 	};
 
@@ -242,6 +243,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 44>;
 		status = "disabled";
 	};
 
@@ -253,6 +255,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 46>;
 		status = "disabled";
 	};
 
@@ -264,6 +267,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 68>;
 		status = "disabled";
 	};
 
@@ -275,6 +279,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 104>;
 		status = "disabled";
 	};
 
@@ -286,6 +291,7 @@
 		nvidia,memory-clients = <14>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		clocks = <&tegra_car 105>;
 		status = "disabled";
 	};
 
