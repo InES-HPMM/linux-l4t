@@ -75,9 +75,11 @@ struct tegra_usb_modem {
 	int short_autosuspend_enabled;
 	struct platform_device *hc;	/* USB host controller */
 	struct mutex hc_lock;
-	struct sysedp_consumer *sysedpc;
-	unsigned int sysedpc_state_updated;
-	struct work_struct sysedp_work;
+	struct mutex sysedp_lock;
+	unsigned int mdm_power_irq;	/* modem power increase irq */
+	bool mdm_power_irq_wakeable;	/* not used for LP0 wakeup */
+	int sysedp_prev_request;	/* previous modem request */
+	int sysedp_file_created;	/* sysedp state file created */
 };
 
 
@@ -127,19 +129,6 @@ static void cpu_freq_boost(struct work_struct *ws)
 			      msecs_to_jiffies(BOOST_CPU_FREQ_TIMEOUT));
 }
 
-static void sysedp_work(struct work_struct *ws)
-{
-	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
-						     sysedp_work);
-
-	mutex_lock(&modem->lock);
-
-	sysedp_set_state(modem->sysedpc, 1);
-	modem->sysedpc_state_updated = 1;
-
-	mutex_unlock(&modem->lock);
-}
-
 static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 {
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
@@ -171,6 +160,45 @@ static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+static irqreturn_t tegra_usb_modem_sysedp_thread(int irq, void *data)
+{
+	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
+
+	mutex_lock(&modem->sysedp_lock);
+	if (gpio_get_value(modem->pdata->mdm_power_report_gpio))
+		sysedp_set_state_by_name("icemdm", 0);
+	else
+		sysedp_set_state_by_name("icemdm", modem->sysedp_prev_request);
+	mutex_unlock(&modem->sysedp_lock);
+
+	return IRQ_HANDLED;
+}
+
+static ssize_t store_sysedp_state(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+	int state;
+
+	if (sscanf(buf, "%d", &state) != 1)
+		return -EINVAL;
+
+	mutex_lock(&modem->sysedp_lock);
+	/*
+	 * If the GPIO is low we set the state, otherwise the threaded
+	 * interrupt handler will set it.
+	 */
+	if (!gpio_get_value(modem->pdata->mdm_power_report_gpio))
+		sysedp_set_state_by_name("icemdm", state);
+
+	/* store state for threaded interrupt handler */
+	modem->sysedp_prev_request = state;
+	mutex_unlock(&modem->sysedp_lock);
+
+	return count;
+}
+static DEVICE_ATTR(sysedp_state, S_IWUSR, NULL, store_sysedp_state);
 
 static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 {
@@ -190,9 +218,6 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 	/* boost CPU freq */
 	if (!work_pending(&modem->cpu_boost_work))
 		queue_work(modem->wq, &modem->cpu_boost_work);
-
-	if (modem->sysedpc && !modem->sysedpc_state_updated)
-		queue_work(modem->wq, &modem->sysedp_work);
 
 	/* USB disconnect maybe on going... */
 	mutex_lock(&modem->lock);
@@ -541,14 +566,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		}
 	}
 
-	if (pdata->sysedpc_name) {
-		modem->sysedpc = sysedp_create_consumer(pdata->sysedpc_name,
-							pdata->sysedpc_name);
-
-		if (modem->sysedpc)
-			INIT_WORK(&modem->sysedp_work, sysedp_work);
-	}
-
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
 
@@ -593,6 +610,31 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		}
 	} else
 		dev_warn(&pdev->dev, "boot irq not specified\n");
+
+	if (gpio_is_valid(pdata->mdm_power_report_gpio)) {
+		ret = mdm_request_irq(modem,
+				      tegra_usb_modem_sysedp_thread,
+				      pdata->mdm_power_report_gpio,
+				      pdata->mdm_power_irq_flags,
+				      "mdm_power_report",
+				      &modem->mdm_power_irq,
+				      &modem->mdm_power_irq_wakeable);
+		if (ret) {
+			dev_err(&pdev->dev, "request power irq error\n");
+			goto error;
+		}
+
+		disable_irq_wake(modem->mdm_power_irq);
+		modem->mdm_power_irq_wakeable = false;
+
+		ret = device_create_file(&pdev->dev, &dev_attr_sysedp_state);
+		if (ret) {
+			dev_err(&pdev->dev, "can't create edp sysfs file\n");
+			goto error;
+		}
+		modem->sysedp_file_created = 1;
+		mutex_init(&modem->sysedp_lock);
+	}
 
 	/* create sysfs node to load/unload host controller */
 	ret = device_create_file(&pdev->dev, &dev_attr_load_host);
@@ -642,10 +684,11 @@ error:
 	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
 
-	if (modem->sysedpc) {
-		cancel_work_sync(&modem->sysedp_work);
-		sysedp_free_consumer(modem->sysedpc);
-	}
+	if (modem->sysedp_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_sysedp_state);
+
+	if (modem->mdm_power_irq)
+		free_irq(modem->mdm_power_irq, modem);
 
 	if (!IS_ERR(modem->regulator))
 		regulator_put(modem->regulator);
@@ -695,13 +738,14 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
 
+	if (modem->mdm_power_irq)
+		free_irq(modem->mdm_power_irq, modem);
+
+	if (modem->sysedp_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_sysedp_state);
+
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
-
-	if (modem->sysedpc) {
-		cancel_work_sync(&modem->sysedp_work);
-		sysedp_free_consumer(modem->sysedpc);
-	}
 
 	if (!IS_ERR(modem->regulator))
 		regulator_put(modem->regulator);

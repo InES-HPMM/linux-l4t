@@ -50,7 +50,8 @@ struct tegra_usb_modem_power_platform_data {
 	int short_autosuspend_delay;	/* short autosuspend delay in ms */
 	const struct platform_device *tegra_ehci_device; /* USB host device */
 	struct tegra_usb_platform_data *tegra_ehci_pdata;
-	char *sysedpc_name;		/* sysedp consumer name */
+	int mdm_power_report_gpio;	/* modem power increase report gpio */
+	unsigned long mdm_power_irq_flags; /* modem boot irq flags */
 };
 
 #endif /* __MACH_TEGRA_USB_MODEM_POWER_H */
