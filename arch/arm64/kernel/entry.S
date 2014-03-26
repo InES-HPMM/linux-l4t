@@ -380,30 +380,44 @@ el0_sync_compat:
 	lsr	x24, x25, #ESR_EL1_EC_SHIFT	// exception class
 	cmp	x24, #ESR_EL1_EC_SVC32		// SVC in 32-bit state
 	b.eq	el0_svc_compat
-	adr	lr, ret_from_exception
+	adr	x26, el0_da
 	cmp	x24, #ESR_EL1_EC_DABT_EL0	// data abort in EL0
-	b.eq	el0_da
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_ia
 	cmp	x24, #ESR_EL1_EC_IABT_EL0	// instruction abort in EL0
-	b.eq	el0_ia
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_fpsimd_acc
 	cmp	x24, #ESR_EL1_EC_FP_ASIMD	// FP/ASIMD access
-	b.eq	el0_fpsimd_acc
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_fpsimd_exc
 	cmp	x24, #ESR_EL1_EC_FP_EXC32	// FP/ASIMD exception
-	b.eq	el0_fpsimd_exc
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_UNKNOWN	// unknown exception in EL0
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP15_32	// CP15 MRC/MCR trap
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP15_64	// CP15 MRRC/MCRR trap
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_MR	// CP14 MRC/MCR trap
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_LS	// CP14 LDC/STC trap
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_64	// CP14 MRRC/MCRR trap
-	b.eq	el0_undef
+	b.eq	el0_sync_compat_tramp
+	adr	x26, el0_dbg
 	cmp	x24, #ESR_EL1_EC_BREAKPT_EL0	// debug exception in EL0
-	b.ge	el0_dbg
+	b.ge	el0_sync_compat_tramp
 	b	el0_inv
+el0_sync_compat_tramp:
+	blr	x26
+	b	ret_from_exception
+
 el0_svc_compat:
 	/*
 	 * AArch32 syscall handling
@@ -567,6 +581,36 @@ ENTRY(cpu_switch_to)
 ENDPROC(cpu_switch_to)
 
 /*
+ * SVC handler.
+ */
+ni_sys:
+	mov     x0, sp
+	bl      do_ni_syscall
+	b       ret_fast_syscall
+
+	.align	6
+el0_svc:
+	adrp	stbl, sys_call_table		// load syscall table pointer
+	uxtw	scno, w8			// syscall number in w8
+	mov	sc_nr, #__NR_syscalls
+el0_svc_naked:					// compat entry point
+	stp	x0, scno, [sp, #S_ORIG_X0]	// save the original x0 and syscall number
+	disable_step x16
+	isb
+	enable_dbg
+	enable_irq
+
+	get_thread_info tsk
+	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall tracing
+	tbnz	x16, #TIF_SYSCALL_TRACE, __sys_trace // are we tracing syscalls?
+	cmp     scno, sc_nr                     // check upper syscall limit
+	b.hs	ni_sys
+	ldr	x16, [stbl, scno, lsl #3]	// address in the syscall table
+	blr	x16				// call sys_* routine
+	/* Fall through */
+ENDPROC(el0_svc)
+
+/*
  * This is the fast syscall return path.  We do as little as possible here,
  * and this includes saving x0 back into the kernel stack.
  */
@@ -627,34 +671,6 @@ ENTRY(ret_from_fork)
 	b	ret_to_user
 ENDPROC(ret_from_fork)
 
-/*
- * SVC handler.
- */
-	.align	6
-el0_svc:
-	adrp	stbl, sys_call_table		// load syscall table pointer
-	uxtw	scno, w8			// syscall number in w8
-	mov	sc_nr, #__NR_syscalls
-el0_svc_naked:					// compat entry point
-	stp	x0, scno, [sp, #S_ORIG_X0]	// save the original x0 and syscall number
-	disable_step x16
-	isb
-	enable_dbg
-	enable_irq
-
-	get_thread_info tsk
-	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall tracing
-	tbnz	x16, #TIF_SYSCALL_TRACE, __sys_trace // are we tracing syscalls?
-	adr	lr, ret_fast_syscall		// return address
-	cmp     scno, sc_nr                     // check upper syscall limit
-	b.hs	ni_sys
-	ldr	x16, [stbl, scno, lsl #3]	// address in the syscall table
-	br	x16				// call sys_* routine
-ni_sys:
-	mov	x0, sp
-	b	do_ni_syscall
-ENDPROC(el0_svc)
-
 	/*
 	 * This is the really slow path.  We're going to be doing context
 	 * switches, and waiting for our parent to respond.
@@ -663,7 +679,6 @@ __sys_trace:
 	mov	x1, sp
 	mov	w0, #0				// trace entry
 	bl	syscall_trace
-	adr	lr, __sys_trace_return		// return address
 	uxtw	scno, w0			// syscall number (possibly new)
 	mov	x1, sp				// pointer to regs
 	cmp	scno, sc_nr			// check upper syscall limit
@@ -673,7 +688,7 @@ __sys_trace:
 	ldp	x4, x5, [sp, #S_X4]
 	ldp	x6, x7, [sp, #S_X6]
 	ldr	x16, [stbl, scno, lsl #3]	// address in the syscall table
-	br	x16				// call sys_* routine
+	blr	x16				// call sys_* routine
 
 __sys_trace_return:
 	str	x0, [sp]			// save returned x0
