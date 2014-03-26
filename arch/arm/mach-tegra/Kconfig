@@ -475,7 +475,7 @@ config TEGRA_AVP_KERNEL_ON_MMU
 
 config TEGRA_AVP_KERNEL_ON_SMMU
 	bool "Use SMMU to relocate AVP kernel"
-	depends on TEGRA_IOVMM_SMMU || TEGRA_IOMMU_SMMU
+	depends on TEGRA_IOMMU_SMMU
 	default y
 	help
 	  Use SMMU to relocate AVP kernel (nvrm_avp.bin).
