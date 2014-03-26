@@ -446,8 +446,11 @@ struct palmas_irq_chip_data {
 	int			irq_base;
 	int			irq;
 	struct mutex		irq_lock;
+	struct mutex		shutdown_irq_lock;
 	struct irq_chip		irq_chip;
 	struct irq_domain	*domain;
+
+	int			shutdown_irq;
 
 	struct palmas_irq_regs	*irq_regs;
 	struct palmas_irq	*irqs;
@@ -605,6 +608,12 @@ static irqreturn_t palmas_irq_thread(int irq, void *data)
 	if (d->wakeup_print_enable && (irq == get_wakeup_reason_irq()))
 		print_wakeup = true;
 
+	mutex_lock(&d->shutdown_irq_lock);
+	if (d->shutdown_irq) {
+		dev_err(d->palmas->dev, "IRQ %d is shutdown state\n", irq);
+		goto exit;
+	}
+
 	for (i = 0; i < d->num_mask_regs; i++) {
 		ret = palmas_read(d->palmas,
 				d->irq_regs->status_reg[i].reg_base,
@@ -614,7 +623,7 @@ static irqreturn_t palmas_irq_thread(int irq, void *data)
 		if (ret != 0) {
 			dev_err(d->palmas->dev,
 				"Failed to read IRQ status: %d\n", ret);
-			return IRQ_NONE;
+			goto exit;
 		}
 		d->status_value[i] &= ~d->mask_value[i];
 	}
@@ -631,6 +640,8 @@ static irqreturn_t palmas_irq_thread(int irq, void *data)
 	}
 	d->wakeup_print_enable = false;
 
+exit:
+	mutex_unlock(&d->shutdown_irq_lock);
 	if (handled)
 		return IRQ_HANDLED;
 	else
@@ -690,6 +701,8 @@ static int palmas_add_irq_chip(struct palmas *palmas, int irq, int irq_flags,
 	d->irq = irq;
 	d->irq_base = irq_base;
 	mutex_init(&d->irq_lock);
+	mutex_init(&d->shutdown_irq_lock);
+	d->shutdown_irq = 0;
 	d->irq_chip = palmas_irq_chip;
 	d->irq_chip.name = dev_name(palmas->dev);
 	d->irq_regs = &palmas_irq_regs;
@@ -1305,6 +1318,24 @@ static int palmas_i2c_resume(struct device *dev)
 static void palmas_i2c_shutdown(struct i2c_client *i2c)
 {
 	struct palmas *palmas = i2c_get_clientdata(i2c);
+	struct palmas_irq_chip_data *d = palmas->irq_chip_data;
+	int i, ret;
+
+	mutex_lock(&d->shutdown_irq_lock);
+	d->shutdown_irq = true;
+	disable_irq(palmas->irq);
+
+	dev_info(d->palmas->dev, "masking all palmas interrupts\n");
+	for (i = 0; i < d->num_mask_regs; i++) {
+		ret = palmas_update_bits(d->palmas,
+				d->irq_regs->mask_reg[i].reg_base,
+				d->irq_regs->mask_reg[i].reg_add,
+				d->mask_def_value[i], d->mask_def_value[i]);
+		if (ret < 0)
+			dev_err(d->palmas->dev, "Failed to update masks in %x\n",
+					d->irq_regs->mask_reg[i].reg_add);
+	}
+	mutex_unlock(&d->shutdown_irq_lock);
 
 	palmas->shutdown = true;
 }
