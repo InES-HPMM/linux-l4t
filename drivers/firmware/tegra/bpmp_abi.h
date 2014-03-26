@@ -61,5 +61,6 @@
 #define MRQ_MODULE_UNLOAD	5
 #define MRQ_SWITCH_CLUSTER	6
 #define MRQ_WRITE_TRACE		8
+#define MRQ_THREADED_PING	(9 | __MRQ_PUBLIC)
 
 #endif
