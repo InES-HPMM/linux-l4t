@@ -391,6 +391,23 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 	return bpmp_read_ch(ch, ib_data, ib_sz);
 }
 
+int __bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
+{
+	if (irqs_disabled())
+		return bpmp_rpc(mrq, ob_data, ob_sz, ib_data, ib_sz);
+
+	return bpmp_threaded_rpc(mrq, ob_data, ob_sz, ib_data, ib_sz);
+}
+
+int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
+{
+	if (!(mrq & __MRQ_PUBLIC))
+		return -EPERM;
+
+	return __bpmp_rpc(mrq, ob_data, ob_sz, ib_data, ib_sz);
+}
+EXPORT_SYMBOL(tegra_bpmp_rpc);
+
 static void bpmp_init_completion(void)
 {
 	int i;

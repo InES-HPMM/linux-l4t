@@ -50,6 +50,9 @@
 #define DO_ACK			(1 << 0)
 #define RING_DOORBELL		(1 << 1)
 
+#define __MRQ_ATTRS		0xff000000
+#define __MRQ_PUBLIC		(1 << 31)
+
 #define MRQ_PING		0
 #define MRQ_LEGACY_LP0		1
 #define MRQ_DO_IDLE		2
