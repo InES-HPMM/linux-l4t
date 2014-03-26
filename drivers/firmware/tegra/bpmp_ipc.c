@@ -304,6 +304,9 @@ static int bpmp_write_threaded_ch(int ch, int mrq, void *data, int sz)
 {
 	unsigned int start = usec_counter();
 
+	if (!connected)
+		return -ENODEV;
+
 	while (usec_counter() - start < THREAD_CH_TIMEOUT) {
 		if (bpmp_try_locked_write(ch, mrq, data, sz))
 			return 0;
