@@ -142,3 +142,11 @@ int bpmp_write_trace(uint32_t phys, int size, int *eof)
 	uint32_t ob[] = { phys, size };
 	return __bpmp_rpc(MRQ_WRITE_TRACE, ob, sizeof(ob), eof, sizeof(*eof));
 }
+
+int bpmp_modify_trace_mask(uint32_t clr, uint32_t set)
+{
+	uint32_t ob[] = { clr, set };
+	uint32_t new;
+	return bpmp_threaded_rpc(MRQ_TRACE_MODIFY, ob, sizeof(ob),
+			&new, sizeof(new)) ?: new;
+}

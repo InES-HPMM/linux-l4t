@@ -68,6 +68,28 @@ struct module_hdr {
 	u32 cleanup_offset;
 };
 
+struct fops_entry {
+	char *name;
+	const struct file_operations *fops;
+	mode_t mode;
+};
+
+static int bpmp_create_attrs(const struct fops_entry *fent,
+		struct dentry *parent, void *data)
+{
+	struct dentry *d;
+
+	while (fent->name) {
+		d = debugfs_create_file(fent->name, fent->mode, parent, data,
+				fent->fops);
+		if (IS_ERR_OR_NULL(d))
+			return -EFAULT;
+		fent++;
+	}
+
+	return 0;
+}
+
 static int bpmp_module_unload_show(void *data, u64 *val)
 {
 	struct bpmp_module *m = data;
@@ -205,23 +227,47 @@ static int bpmp_ping_show(void *data, u64 *val)
 	return 0;
 }
 
+static int bpmp_trace_enable_show(void *data, u64 *val)
+{
+	*val = bpmp_modify_trace_mask(0, 0);
+	return 0;
+}
+
+static int bpmp_trace_enable_store(void *data, u64 val)
+{
+	return bpmp_modify_trace_mask(0, val);
+}
+
+static int bpmp_trace_disable_store(void *data, u64 val)
+{
+	return bpmp_modify_trace_mask(val, 0);
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_ping_fops, bpmp_ping_show, NULL, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(trace_enable_fops, bpmp_trace_enable_show,
+		bpmp_trace_enable_store, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(trace_disable_fops, NULL,
+		bpmp_trace_disable_store, "%lld\n");
+
+static const struct fops_entry root_attrs[] = {
+	{ "ping", &bpmp_ping_fops, S_IRUGO },
+	{ "trace_enable", &trace_enable_fops, S_IRUGO | S_IWUSR },
+	{ "trace_disable", &trace_disable_fops, S_IWUSR },
+	{ NULL, NULL, 0 }
+};
 
 static int bpmp_init_debug(struct platform_device *pdev)
 {
 	struct dentry *root;
-	struct dentry *d;
 
 	root = debugfs_create_dir("bpmp", NULL);
-	if (IS_ERR_OR_NULL(root)) {
-		WARN_ON(1);
-		return -EFAULT;
-	}
-
-	d = debugfs_create_file("ping", S_IRUSR, root, pdev, &bpmp_ping_fops);
-	if (IS_ERR_OR_NULL(d))
+	if (IS_ERR_OR_NULL(root))
 		goto clean;
 
+	if (bpmp_create_attrs(root_attrs, root, pdev))
+		goto clean;
+
+	bpmp_root = root;
 	return 0;
 
 clean:

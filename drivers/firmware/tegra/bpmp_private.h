@@ -38,5 +38,6 @@ int bpmp_module_load(struct device *dev, const void *base, u32 size,
 		u32 *handle);
 int bpmp_module_unload(struct device *dev, u32 handle);
 int bpmp_write_trace(uint32_t phys, int size, int *eof);
+int bpmp_modify_trace_mask(uint32_t clr, uint32_t set);
 
 #endif
