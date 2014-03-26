@@ -26,6 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
 
@@ -35,7 +36,6 @@
 
 #include "cpu-tegra.h"
 #include "pm.h"
-#include "pmc.h"
 #include "tegra-board-id.h"
 #include "board.h"
 #include "gpio-names.h"
