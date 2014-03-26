@@ -2142,15 +2142,6 @@ static const struct ov5693_reg *mode_table[] = {
 	[OV5693_MODE_1280x720_HDR_60FPS] = ov5693_1280x720_HDR_60fps_i2c,
 };
 
-static int ov5693_i2c_rd8(struct ov5693_info *info, u16 reg, u8 *val)
-{
-	unsigned int data;
-	int ret = regmap_read(info->regmap, reg, &data);
-	*val = data;
-
-	return ret;
-}
-
 static int ov5693_i2c_wr_table(struct ov5693_info *info,
 				const struct ov5693_reg table[])
 {
@@ -2915,14 +2906,43 @@ ov5693_mode_wr_err:
 
 static int ov5693_get_fuse_id(struct ov5693_info *info)
 {
-	int i;
-	regmap_write(info->regmap, 0x3D84, 0xC0);
-	regmap_write(info->regmap, 0x3D81, 0x40);
-	for (i = 0; i < OV5693_FUSE_ID_SIZE; i++) {
-		ov5693_i2c_rd8(info, 0x3D00 + i, &info->fuseid.data[i]);
-		dev_dbg(&info->i2c_client->dev, "ov5693 fuse_id byte %d:\t0x%0x\n",
-				i, info->fuseid.data[i]);
+	/* fuse stored at ov5693 bank 0 */
+	int err;
+	err = regmap_write(info->regmap, 0x0100, 0x01);
+	if (err != 0) {
+		dev_err(&info->i2c_client->dev,
+			"%s ERR %d: cannot write stream mode\n", __func__,
+			err);
+		return err;
 	}
+	usleep_range(10000, 11000);
+
+	err = regmap_write(info->regmap, 0x3D84, 0xC0);
+	if (err != 0) {
+		dev_err(&info->i2c_client->dev,
+			"%s ERR %d: cannot write bank index 0\n", __func__,
+			err);
+		return err;
+	}
+	usleep_range(10000, 11000);
+
+	err = regmap_write(info->regmap, 0x3D81, 0x01);
+	if (err != 0) {
+		dev_err(&info->i2c_client->dev,
+			"%s ERR %d: cannot load OTP data\n", __func__, err);
+		return err;
+	}
+	usleep_range(10000, 11000);
+
+	err = regmap_bulk_read(info->regmap, 0x3D00,
+		info->fuseid.data, OV5693_FUSE_ID_SIZE);
+	if (err != 0) {
+		dev_err(&info->i2c_client->dev,
+			"%s ERR %d: cannot read OTP buffer\n", __func__,
+			err);
+		return err;
+	}
+
 	info->fuseid.size = OV5693_FUSE_ID_SIZE;
 
 	return 0;
