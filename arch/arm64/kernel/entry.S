@@ -597,8 +597,7 @@ el0_svc_naked:					// compat entry point
 	stp	x0, scno, [sp, #S_ORIG_X0]	// save the original x0 and syscall number
 	disable_step x16
 	isb
-	enable_dbg
-	enable_irq
+	enable_dbg_irq
 
 	get_thread_info tsk
 	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall tracing
