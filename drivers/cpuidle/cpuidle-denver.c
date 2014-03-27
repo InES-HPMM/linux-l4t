@@ -1,7 +1,7 @@
 /*
  * drivers/cpuidle/cpuidle-denver.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -155,6 +155,9 @@ static int __init denver_cpuidle_devices_init(void)
 			kfree(dev);
 			return -EIO;
 		}
+		#ifndef CONFIG_SMP
+			break;
+		#endif
 	}
 
 	return 0;
