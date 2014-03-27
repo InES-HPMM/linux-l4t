@@ -49,6 +49,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_ahci.h>
+#include <linux/tegra-soc.h>
 
 #include "../../arch/arm/mach-tegra/iomap.h"
 
@@ -161,6 +162,9 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define CLK_RST_CONTROLLER_CLK_ENB_V_CLR_0	0x444
 #define CLK_RST_CONTROLLER_CLK_ENB_V_SET_0	0x440
 #define CLK_RST_CONTROLLER_CLK_ENB_V_0		0x360
+#define CLK_RST_CONTROLLER_RST_DEV_W_SET	0x438
+#define CLK_RST_CONTROLLER_RST_DEV_V_SET	0x430
+#define SET_CEC_RESET				0x100
 
 
 #define CLR_CLK_ENB_SATA_OOB			(1 << 27)
@@ -446,7 +450,7 @@ static const struct dev_pm_ops tegra_ahci_dev_rt_ops = {
 #endif
 
 static const struct of_device_id of_ahci_tegra_match[] = {
-	{ .compatible = "nvidia,tegra124-sata", },
+	{ .compatible = "nvidia,tegra114-ahci-sata", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_ahci_tegra_match);
@@ -2365,6 +2369,20 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 
 	return 0;
 }
+void tegra_ahci_sata_clk_gate(void)
+{
+	u32 val;
+
+	if (!tegra_platform_is_silicon())
+		return;
+
+	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_SET);
+	if (val & SET_CEC_RESET)
+		clk_writel(0x108, CLK_RST_CONTROLLER_RST_DEV_V_SET);
+	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_SET);
+	while (val & SET_CEC_RESET)
+		val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_SET);
+}
 
 static int tegra_ahci_init_one(struct platform_device *pdev)
 {
@@ -2435,6 +2453,11 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 		tegra_hpriv->pexp_gpio =
 			of_get_named_gpio(np, "nvidia,pexp-gpio", 0);
+		if (!of_property_read_bool(np, "nvidia,enable-sata-port")) {
+			dev_err(dev, "Not able to find enable-sata-port property\n");
+			tegra_ahci_sata_clk_gate();
+			goto fail;
+		}
 	} else {
 		ahci_pdata = tegra_hpriv->dev->platform_data;
 		tegra_hpriv->pexp_gpio = ahci_pdata->pexp_gpio;
