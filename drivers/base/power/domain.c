@@ -1683,6 +1683,7 @@ int __pm_genpd_add_device(struct generic_pm_domain *genpd, struct device *dev,
 
 	return ret;
 }
+EXPORT_SYMBOL(__pm_genpd_add_device);
 
 /**
  * __pm_genpd_of_add_device - Add a device to an I/O PM domain.
@@ -2416,7 +2417,7 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	list_add(&genpd->gpd_list_node, &gpd_list);
 	mutex_unlock(&gpd_list_lock);
 }
-
+EXPORT_SYMBOL(pm_genpd_init);
 #ifdef CONFIG_DEBUG_FS
 /* Genpd status debugfs */
 static int genpd_status_show(struct seq_file *s, void *data)
