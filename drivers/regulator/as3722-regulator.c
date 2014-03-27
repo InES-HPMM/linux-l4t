@@ -330,7 +330,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 
 
 static const int as3722_ldo_current[] = { 150000, 300000 };
-static const int as3722_sd016_current[] = { 2500000, 3000000, 3500000 };
+static const int as3722_sd016_current[] = { 2500000, 3000000, 3500000,
+						4000000 };
 
 static int as3722_current_to_index(int min_uA, int max_uA,
 		const int *curr_table, int n_currents)
@@ -560,8 +561,6 @@ static int as3722_sd016_get_current_limit(struct regulator_dev *rdev)
 	}
 	val &= mask;
 	val >>= ffs(mask) - 1;
-	if (val == 3)
-		return -EINVAL;
 	return as3722_sd016_current[val];
 }
 
