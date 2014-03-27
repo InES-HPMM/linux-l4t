@@ -1,21 +1,15 @@
 /*
  * drivers/input/input-cfboost.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
  */
 
 #include <linux/slab.h>
@@ -93,6 +87,7 @@ int cfb_add_device(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL(cfb_add_device);
 
 void cfb_remove_device(struct device *dev)
 {
@@ -105,6 +100,7 @@ void cfb_remove_device(struct device *dev)
 
 	mutex_unlock(&gpu_device_lock);
 }
+EXPORT_SYMBOL(cfb_remove_device);
 
 static void cfb_boost(struct kthread_work *w)
 {
