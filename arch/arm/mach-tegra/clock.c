@@ -1165,6 +1165,7 @@ int tegra_clk_register_export_ops(struct clk *c,
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_clk_register_export_ops);
 
 #define OSC_FREQ_DET			0x58
 #define OSC_FREQ_DET_TRIG		BIT(31)
