@@ -977,6 +977,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	 * It works as SDR 104 in SD 4-bit mode and HS200 in eMMC 8-bit mode.
 	 * SDR50 mode timing seems to have issues. Programming SDR104
          * mode for SDR50 mode for reliable transfers over interface.
+	 * For HS400 we need to set UHS_MODE_SEL to HS400.
 	 */
 	ctrl_2 &= ~SDHCI_CTRL_UHS_MASK;
 	switch (uhs) {
@@ -995,6 +996,9 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		break;
 	case MMC_TIMING_UHS_DDR50:
 		ctrl_2 |= SDHCI_CTRL_UHS_DDR50;
+		break;
+	case MMC_TIMING_MMC_HS400:
+		ctrl_2 |= SDHCI_CTRL_UHS_HS400;
 		break;
 	}
 
@@ -1243,6 +1247,9 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 
 	if (plat->uhs_mask & MMC_UHS_MASK_SDR12)
 		host->mmc->caps &= ~MMC_CAP_UHS_SDR12;
+
+	if (plat->uhs_mask & MMC_MASK_HS400)
+		host->mmc->caps &= ~MMC_CAP2_HS400;
 
 #ifdef CONFIG_MMC_SDHCI_TEGRA_HS200_DISABLE
 	host->mmc->caps2 &= ~MMC_CAP2_HS200;
