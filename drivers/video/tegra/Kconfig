@@ -276,6 +276,37 @@ config NVMAP_CPA
 	  results due to speculative memory loads/stores. If unsure,
 	  say N.
 
+config NVMAP_FD_START
+	hex "FD number to start allocation from"
+	depends on TEGRA_NVMAP
+	default 0x400
+	help
+	  NvMap handles are represented with FD's in the user processes.
+	  To avoid Linux FD usage limitations, NvMap allocates FD starting
+	  from this number.
+
+config NVMAP_DEFER_FD_RECYCLE
+	bool "Defer FD recycle"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to enable deferred FD recycle.
+	  A released nvmap handle would release memory and FD. This FD
+	  can be reused immediately for subsequent nvmap allocation req in
+	  the same process. Any buggy code in client process that continues to
+	  use FD of released allocation would continue to use new allocation
+	  and can lead to undesired consequences, which can be hard to debug.
+	  Enabling this option would defer recycling FD for longer time and
+	  allows debugging incorrect FD references by clients by returning errors
+	  for the accesses that occur after handle/FD release.
+
+config NVMAP_DEFER_FD_RECYCLE_MAX_FD
+	hex "FD number to start free FD recycle"
+	depends on NVMAP_DEFER_FD_RECYCLE
+	default 0x8000
+	help
+	  Once last allocated FD reaches this number, allocation of subsequent
+	  FD's start from NVMAP_START_FD.
+
 config TEGRA_DSI
 	bool "Enable DSI panel."
 	help
