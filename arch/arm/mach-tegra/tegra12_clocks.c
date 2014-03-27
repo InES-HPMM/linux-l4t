@@ -9397,8 +9397,8 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(CLK_OUT_ENB_W);
 	*ctx++ = clk_readl(CLK_OUT_ENB_X);
 
-	*ctx++ = clk_readl(tegra_clk_cclk_g.reg);
-	*ctx++ = clk_readl(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
+	*ctx++ = clk_readlx(tegra_clk_cclk_g.reg);
+	*ctx++ = clk_readlx(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 
 	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
@@ -9537,8 +9537,8 @@ static void tegra12_clk_resume(void)
 	tegra12_dfll_clk_resume(&tegra_dfll_cpu);
 
 	/* CPU G clock restored after DFLL and PLLs */
-	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
-	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
+	clk_writelx(*ctx++, tegra_clk_cclk_g.reg);
+	clk_writelx(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 
 	clk_writel(*ctx++, SPARE_REG);
 	clk_writel(*ctx++, MISC_CLK_ENB);
