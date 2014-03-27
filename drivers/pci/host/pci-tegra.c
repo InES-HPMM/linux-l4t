@@ -122,7 +122,7 @@
 #define AFI_INTR_MASK_MSI_MASK					(1 << 8)
 
 #define AFI_INTR_CODE							0xb8
-#define AFI_INTR_CODE_MASK						0xf
+#define AFI_INTR_CODE_MASK						0x1f
 #define AFI_INTR_MASTER_ABORT						4
 #define AFI_INTR_LEGACY						6
 #define AFI_INTR_PRSNT_SENSE						10
@@ -824,6 +824,10 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 		"AXI response decoding error",
 		"Transcation timeout",
 		"",
+		"Slot Clock request change",
+		"TMS Clock clamp change",
+		"TMS power down",
+		"Peer to Peer error",
 	};
 
 	u32 code, signature;
