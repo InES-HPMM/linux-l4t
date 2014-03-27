@@ -1397,6 +1397,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 {
 	struct soctherm_therm *therm = thz->devdata;
 	struct thermal_trip_info *trip_state;
+	ptrdiff_t index = therm - plat_data.therm;
 	long rem;
 
 	trip_state = &therm->trips[trip];
@@ -1412,18 +1413,18 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	if (trip_state->trip_type == THERMAL_TRIP_HOT) {
 		if (strnstr(trip_state->cdev_type,
 			    "heavy", THERMAL_NAME_LENGTH))
-			prog_hw_threshold(trip_state, thz->id, THROTTLE_HEAVY);
+			prog_hw_threshold(trip_state, index, THROTTLE_HEAVY);
 		else if (strnstr(trip_state->cdev_type,
 				 "light", THERMAL_NAME_LENGTH))
-			prog_hw_threshold(trip_state, thz->id, THROTTLE_LIGHT);
+			prog_hw_threshold(trip_state, index, THROTTLE_LIGHT);
 	}
 
 	/* Allow SW to shutdown at 'Critical temperature reached' */
-	thermal_notify_framework(soctherm_th_zones[thz->id], trip);
+	thermal_notify_framework(thz, trip);
 
 	/* Reprogram HW thermtrip */
 	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
-		prog_hw_shutdown(trip_state, thz->id);
+		prog_hw_shutdown(trip_state, index);
 
 	return 0;
 }
