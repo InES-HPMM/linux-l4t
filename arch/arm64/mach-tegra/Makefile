@@ -67,7 +67,6 @@ obj-${CONFIG_MACH_T132REF}              += panel-i-edp-1080p-11-6.o
 
 obj-y                                   += board-touch-maxim_sti-spi.o
 
-
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
 endif
@@ -84,6 +83,8 @@ obj-y                                 += pm.o
 obj-y                                 += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += pm-tegra132.o
 endif
+
+obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 
 # To override the "-march=armv7-xxx" in arm/mach-tegra/Makefile
 AFLAGS_sleep.o :=
