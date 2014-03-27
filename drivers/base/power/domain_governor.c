@@ -252,3 +252,4 @@ struct dev_power_governor pm_domain_always_on_gov = {
 	.power_down_ok = always_on_power_down_ok,
 	.stop_ok = default_stop_ok,
 };
+EXPORT_SYMBOL(pm_domain_always_on_gov);
