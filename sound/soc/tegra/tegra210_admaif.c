@@ -36,6 +36,7 @@
 #include <linux/io.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
+#include <linux/delay.h>
 
 #include "tegra210_admaif.h"
 #include "tegra210_axbar.h"
@@ -73,6 +74,26 @@ void tegra210_admaif_disable_clk(void)
 		pr_err("ADMAIF driver not initialized\n");
 }
 EXPORT_SYMBOL_GPL(tegra210_admaif_disable_clk);
+
+int tegra210_admaif_soft_reset(enum tegra210_ahub_cifs cif)
+{
+	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
+	unsigned int val, dcnt = 10;
+
+	u32 reg = IS_ADMAIF_TX(cif) ? TEGRA210_ADMAIF_XBAR_TX_SOFT_RESET :
+				    TEGRA210_ADMAIF_XBAR_RX_SOFT_RESET;
+	reg += (ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE);
+
+	regmap_write(admaif->regmap, reg, 1);
+
+	do {
+		udelay(100);
+		regmap_read(admaif->regmap, reg, &val);
+	} while (val && dcnt--);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_admaif_soft_reset);
 
 /* Allocate a ADMIF channel. If cif = CIF_NONE is passed admaif driver
  * will allocate any available free channel */
@@ -187,6 +208,12 @@ int tegra210_admaif_enable(enum tegra210_ahub_cifs cif, int en)
 	u32 reg = IS_ADMAIF_TX(cif) ? TEGRA210_ADMAIF_XBAR_TX_ENABLE :
 				    TEGRA210_ADMAIF_XBAR_RX_ENABLE;
 	reg += (ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE);
+
+	/* soft reset ADMAIF channel to discard/drop any stale data of
+	 * previous transfer. */
+	if (en)
+		tegra210_admaif_soft_reset(cif);
+
 	regmap_write(admaif->regmap, reg, en);
 	return 0;
 }
@@ -289,20 +316,6 @@ int tegra210_admaif_xbar_transfer_status(enum tegra210_ahub_cifs cif)
 }
 EXPORT_SYMBOL(tegra210_admaif_xbar_transfer_status);
 
-int tegra210_admaif_soft_reset(enum tegra210_ahub_cifs cif)
-{
-	struct tegra210_admaif_ctx *admaif = tegra210_admaif;
-	u32 reg = (ADMAIF_CIF_ID(cif) * TEGRA210_ADMAIF_CHANNEL_REG_STRIDE);
-	int val = IS_ADMAIF_TX(cif) ? TEGRA210_ADMAIF_XBAR_TX_SOFT_RESET :
-				    TEGRA210_ADMAIF_XBAR_RX_SOFT_RESET;
-
-	regmap_update_bits(admaif->regmap,
-			   reg,
-			   val, 1);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tegra210_admaif_soft_reset);
 
 /* Regmap callback functions */
 static bool tegra210_admaif_rw_reg(struct device *dev, unsigned int reg)
@@ -311,13 +324,14 @@ static bool tegra210_admaif_rw_reg(struct device *dev, unsigned int reg)
 
 	switch (reg) {
 	case TEGRA210_ADMAIF_XBAR_TX_ENABLE:
-	case TEGRA210_ADMAIF_XBAR_TX_STATUS:
 	case TEGRA210_ADMAIF_XBAR_TX_FIFO_CTRL:
 	case TEGRA210_ADMAIF_CHAN_ACIF_TX_CTRL:
 	case TEGRA210_ADMAIF_XBAR_RX_ENABLE:
 	case TEGRA210_ADMAIF_XBAR_RX_FIFO_CTRL:
 	case TEGRA210_ADMAIF_CHAN_ACIF_RX_CTRL:
 	case TEGRA210_ADMAIF_GLOBAL_ENABLE:
+	case TEGRA210_ADMAIF_XBAR_TX_SOFT_RESET:
+	case TEGRA210_ADMAIF_XBAR_RX_SOFT_RESET:
 		return true;
 	default:
 		return false;
