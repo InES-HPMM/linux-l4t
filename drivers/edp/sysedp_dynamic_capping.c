@@ -289,6 +289,7 @@ void tegra_edp_notify_gpu_load(unsigned int load)
 		schedule_delayed_work(&capping_work,
 				msecs_to_jiffies(gpu_window));
 }
+EXPORT_SYMBOL(tegra_edp_notify_gpu_load);
 
 static int tegra_edp_cpu_notify(struct notifier_block *nb,
 		unsigned long action, void *data)
