@@ -32,6 +32,7 @@
 #include <linux/sysedp.h>
 #include <media/ov5693.h>
 #include <media/nvc.h>
+#include "regmap_util.h"
 
 #define OV5693_ID			0x5693
 #define OV5693_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
@@ -39,7 +40,6 @@
 #define OV5693_SIZEOF_I2C_BUF		16
 #define OV5693_TABLE_WAIT_MS		0
 #define OV5693_TABLE_END		1
-#define OV5693_TABLE_RESET		2
 #define OV5693_TABLE_RESET_TIMEOUT	50
 #define OV5693_LENS_MAX_APERTURE	0	/* _INT2FLOAT_DIVISOR */
 #define OV5693_LENS_FNUMBER		0	/* _INT2FLOAT_DIVISOR */
@@ -80,15 +80,10 @@ struct ov5693_info {
 	u8 eeprom_buf[OV5693_EEPROM_SIZE];
 };
 
-struct ov5693_reg {
-	u16 addr;
-	u16 val;
-};
-
 struct ov5693_mode_data {
 	struct nvc_imager_mode sensor_mode;
 	struct nvc_imager_dynamic_nvc sensor_dnvc;
-	struct ov5693_reg *p_mode_i2c;
+	struct reg_8 *p_mode_i2c;
 };
 
 static struct ov5693_platform_data ov5693_dflt_pdata = {
@@ -121,8 +116,8 @@ static struct nvc_imager_static_nvc ov5693_dflt_sdata = {
 	.res_chg_wait_time	= OV5693_RES_CHG_WAIT_TIME_MS,
 };
 
-static const struct ov5693_reg ov5693_2592x1944_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_2592x1944_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
 	{0x3006, 0x00},
@@ -386,8 +381,8 @@ static const struct ov5693_reg ov5693_2592x1944_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_1296x972_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_1296x972_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
 	{0x3006, 0x00},
@@ -633,8 +628,8 @@ static const struct ov5693_reg ov5693_1296x972_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_1920x1080_i2c[] = {
-	{OV5693_TABLE_RESET, 0x0},/*, 0xIncluding, 0xsw, 0xreset, 0x*/
+static const struct reg_8 ov5693_1920x1080_i2c[] = {
+	{0x0100, 0x00},/*, 0xIncluding, 0xsw, 0xreset, 0x*/
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
 	{0x3006, 0x00},
@@ -881,8 +876,8 @@ static const struct ov5693_reg ov5693_1920x1080_i2c[] = {
 };
 
 
-static const struct ov5693_reg ov5693_1280x720_120fps_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_1280x720_120fps_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
 	{0x3006, 0x00},
@@ -1128,8 +1123,8 @@ static const struct ov5693_reg ov5693_1280x720_120fps_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_2592x1944_HDR_24fps_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_2592x1944_HDR_24fps_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1376,8 +1371,8 @@ static const struct ov5693_reg ov5693_2592x1944_HDR_24fps_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_1920x1080_HDR_30fps_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_1920x1080_HDR_30fps_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1624,8 +1619,8 @@ static const struct ov5693_reg ov5693_1920x1080_HDR_30fps_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_1296x972_HDR_30fps_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_1296x972_HDR_30fps_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1872,8 +1867,8 @@ static const struct ov5693_reg ov5693_1296x972_HDR_30fps_i2c[] = {
 	{OV5693_TABLE_END, 0x0000}
 };
 
-static const struct ov5693_reg ov5693_1280x720_HDR_60fps_i2c[] = {
-	{OV5693_TABLE_RESET, 0},/* Including sw reset */
+static const struct reg_8 ov5693_1280x720_HDR_60fps_i2c[] = {
+	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -2131,7 +2126,7 @@ enum {
 	OV5693_MODE_1280x720_HDR_60FPS,
 };
 
-static const struct ov5693_reg *mode_table[] = {
+static const struct reg_8 *mode_table[] = {
 	[OV5693_MODE_2592x1944]		= ov5693_2592x1944_i2c,
 	[OV5693_MODE_1920x1080]		= ov5693_1920x1080_i2c,
 	[OV5693_MODE_1296x972]		= ov5693_1296x972_i2c,
@@ -2142,56 +2137,7 @@ static const struct ov5693_reg *mode_table[] = {
 	[OV5693_MODE_1280x720_HDR_60FPS] = ov5693_1280x720_HDR_60fps_i2c,
 };
 
-static int ov5693_i2c_wr_table(struct ov5693_info *info,
-				const struct ov5693_reg table[])
-{
-	int err;
-	int buf_count = 0;
-	const struct ov5693_reg *next, *n_next;
-	u16 i2c_reg = 0;
-	u8 i2c_buf[OV5693_SIZEOF_I2C_BUF];
-
-	u8 *b_ptr = i2c_buf;
-
-	for (next = table; next->addr != OV5693_TABLE_END; next++) {
-		if (next->addr == OV5693_TABLE_WAIT_MS) {
-			msleep(next->val);
-			continue;
-		} else if (next->addr == OV5693_TABLE_RESET) {
-			err = regmap_write(info->regmap, 0x0100, 0x00);
-			if (err)
-				return err;
-			continue;
-		}
-
-		if (buf_count == 0) {
-			b_ptr = i2c_buf;
-			i2c_reg = next->addr;
-		}
-
-		*b_ptr++ = next->val;
-		buf_count++;
-		n_next = next + 1;
-		if (n_next->addr == next->addr + 1 &&
-			n_next->addr != OV5693_TABLE_WAIT_MS &&
-			buf_count < OV5693_SIZEOF_I2C_BUF &&
-			n_next->addr != OV5693_TABLE_RESET &&
-			n_next->addr != OV5693_TABLE_END)
-			continue;
-
-		err = regmap_bulk_write(info->regmap, i2c_reg,
-					i2c_buf, buf_count);
-		if (err)
-			return err;
-
-		buf_count = 0;
-	}
-
-	return 0;
-}
-
-
-static inline int ov5693_frame_length_reg(struct ov5693_reg *regs,
+static inline int ov5693_frame_length_reg(struct reg_8 *regs,
 					u32 frame_length)
 {
 	regs->addr = 0x380E;
@@ -2202,7 +2148,7 @@ static inline int ov5693_frame_length_reg(struct ov5693_reg *regs,
 	return 2;
 }
 
-static inline int ov5693_coarse_time_reg(struct ov5693_reg *regs,
+static inline int ov5693_coarse_time_reg(struct reg_8 *regs,
 					u32 coarse_time, u32 coarse_time_short)
 {
 	int ret = 0;
@@ -2254,7 +2200,7 @@ static inline int ov5693_coarse_time_reg(struct ov5693_reg *regs,
 static int ov5693_set_frame_length(struct ov5693_info *info,
 				   u32 frame_length, bool group_hold)
 {
-	struct ov5693_reg reg_list[9];
+	struct reg_8 reg_list[9];
 	int err = 0;
 	int offset = 0;
 
@@ -2265,7 +2211,10 @@ static int ov5693_set_frame_length(struct ov5693_info *info,
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
@@ -2274,7 +2223,7 @@ static int ov5693_set_coarse_time(struct ov5693_info *info,
 				  u32 coarse_time, u32 coarse_time_short,
 				  bool group_hold)
 {
-	struct ov5693_reg reg_list[16];
+	struct reg_8 reg_list[16];
 	int err = 0;
 	int offset = 0;
 
@@ -2287,12 +2236,15 @@ static int ov5693_set_coarse_time(struct ov5693_info *info,
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
 
-static inline int ov5693_gain_reg(struct ov5693_reg *regs, u32 gain)
+static inline int ov5693_gain_reg(struct reg_8 *regs, u32 gain)
 {
 	(regs)->addr = 0x350A;
 	(regs)->val = gain >> 8;
@@ -2320,7 +2272,7 @@ static int ov5693_bin_wr(struct ov5693_info *info, u8 enable)
 static int ov5693_exposure_wr(struct ov5693_info *info,
 				struct ov5693_mode *mode)
 {
-	struct ov5693_reg reg_list[16];
+	struct reg_8 reg_list[16];
 	int err = 0;
 	int offset = 0;
 	bool group_hold = true; /* To use GROUP_HOLD macros */
@@ -2333,7 +2285,10 @@ static int ov5693_exposure_wr(struct ov5693_info *info,
 	OV5693_LEAVE_GROUP_HOLD(group_hold);
 
 	reg_list[offset].addr = OV5693_TABLE_END;
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
@@ -2341,7 +2296,7 @@ static int ov5693_exposure_wr(struct ov5693_info *info,
 
 static int ov5693_set_gain(struct ov5693_info *info, u32 gain, bool group_hold)
 {
-	struct ov5693_reg reg_list[9];
+	struct reg_8 reg_list[9];
 	int err = 0;
 	int offset = 0;
 
@@ -2352,14 +2307,17 @@ static int ov5693_set_gain(struct ov5693_info *info, u32 gain, bool group_hold)
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
 
 static int ov5693_awb_wr(struct ov5693_info *info)
 {
-	struct ov5693_reg reg_list[10];
+	struct reg_8 reg_list[10];
 	int rg, bg, rg_typical, bg_typical;
 	int R_gain, G_gain, B_gain, G_gain_R, G_gain_B;
 	int offset;
@@ -2435,14 +2393,17 @@ static int ov5693_awb_wr(struct ov5693_info *info)
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
 
 static int ov5693_lsc_wr(struct ov5693_info *info)
 {
-	struct ov5693_reg reg_list[64];
+	struct reg_8 reg_list[64];
 	int offset;
 	int err;
 	int i;
@@ -2462,7 +2423,10 @@ static int ov5693_lsc_wr(struct ov5693_info *info)
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
-	err = ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
@@ -2471,7 +2435,7 @@ static int ov5693_set_group_hold(struct ov5693_info *info,
 				struct ov5693_ae *ae)
 {
 	int err = 0;
-	struct ov5693_reg reg_list[16];
+	struct reg_8 reg_list[16];
 	int offset = 0;
 	bool group_hold = true; /* To use GROUP_HOLD macros */
 
@@ -2488,7 +2452,10 @@ static int ov5693_set_group_hold(struct ov5693_info *info,
 	OV5693_LEAVE_GROUP_HOLD(group_hold);
 
 	reg_list[offset].addr = OV5693_TABLE_END;
-	err |= ov5693_i2c_wr_table(info, reg_list);
+	err = regmap_util_write_table_8(info->regmap,
+					reg_list, NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 
 	return err;
 }
@@ -2802,7 +2769,11 @@ static int ov5693_mode_wr_full(struct ov5693_info *info, u32 mode_index)
 
 	ov5693_pm_dev_wr(info, NVC_PWR_ON);
 	ov5693_bin_wr(info, 0);
-	err = ov5693_i2c_wr_table(info, mode_table[mode_index]);
+	err = regmap_util_write_table_8(info->regmap,
+					mode_table[mode_index],
+					NULL, 0,
+					OV5693_TABLE_WAIT_MS,
+					OV5693_TABLE_END);
 	if (!err) {
 		dev_dbg(&info->i2c_client->dev,
 			"init done(mode=%d)!!!\n", mode_index);

@@ -37,11 +37,7 @@
 #include <linux/of_gpio.h>
 
 #include "nvc_utilities.h"
-
-struct imx135_reg {
-	u16 addr;
-	u8 val;
-};
+#include "regmap_util.h"
 
 struct imx135_info {
 	struct miscdevice		miscdev_info;
@@ -85,7 +81,7 @@ static const struct regmap_config sensor_regmap_config = {
 
 #ifdef IMX135_4208x3120_HDR
 /* HDR */
-static struct imx135_reg mode_4208x3120[] = {
+static struct reg_8 mode_4208x3120[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -251,7 +247,7 @@ static struct imx135_reg mode_4208x3120[] = {
 };
 #else
 /* standard */
-static struct imx135_reg mode_4208x3120[] = {
+static struct reg_8 mode_4208x3120[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -418,7 +414,7 @@ static struct imx135_reg mode_4208x3120[] = {
 
 #ifdef IMX135_4160x3120_HDR
 /* HDR */
-static struct imx135_reg mode_4160x3120[] = {
+static struct reg_8 mode_4160x3120[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -584,7 +580,7 @@ static struct imx135_reg mode_4160x3120[] = {
 };
 #else
 /* standard */
-static struct imx135_reg mode_4160x3120[] = {
+static struct reg_8 mode_4160x3120[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -749,7 +745,7 @@ static struct imx135_reg mode_4160x3120[] = {
 };
 #endif
 
-static struct imx135_reg mode_1920x1080[] = {
+static struct reg_8 mode_1920x1080[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -915,7 +911,7 @@ static struct imx135_reg mode_1920x1080[] = {
 
 #ifdef IMX135_1280x720_90_FPS
 /* 720p 90fps */
-static struct imx135_reg mode_1280x720[] = {
+static struct reg_8 mode_1280x720[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1080,7 +1076,7 @@ static struct imx135_reg mode_1280x720[] = {
 };
 #else
 /* 720p 30fps */
-static struct imx135_reg mode_1280x720[] = {
+static struct reg_8 mode_1280x720[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1245,7 +1241,7 @@ static struct imx135_reg mode_1280x720[] = {
 };
 #endif
 
-static struct imx135_reg mode_2616x1472[] = {
+static struct reg_8 mode_2616x1472[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1410,7 +1406,7 @@ static struct imx135_reg mode_2616x1472[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_3896x2192[] = {
+static struct reg_8 mode_3896x2192[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1575,7 +1571,7 @@ static struct imx135_reg mode_3896x2192[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_2104x1560[] = {
+static struct reg_8 mode_2104x1560[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1747,7 +1743,7 @@ static struct imx135_reg mode_2104x1560[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_2624x1476[] = {
+static struct reg_8 mode_2624x1476[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -1912,7 +1908,7 @@ static struct imx135_reg mode_2624x1476[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_3904x2196[] = {
+static struct reg_8 mode_3904x2196[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -2077,10 +2073,10 @@ static struct imx135_reg mode_3904x2196[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_3840x2160[] = {
-	/* software reset */
+static struct reg_8 mode_3840x2160[] = {
+	/*software reset*/
 	{0x0103, 0x01},
-	/* global settings */
+	/*global settings*/
 	{0x0101, 0x00},
 	{0x0105, 0x01},
 	{0x0110, 0x00},
@@ -2112,7 +2108,7 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x3494, 0x1E},
 	{0x3511, 0x8F},
 	{0x364F, 0x2D},
-	/* Clock Setting */
+	/*Clock Setting*/
 	{0x011E, 0x18},
 	{0x011F, 0x00},
 	{0x0301, 0x05},
@@ -2124,7 +2120,7 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x030D, 0xC2},
 	{0x030E, 0x01},
 	{0x3A06, 0x11},
-	/* Mode Settings */
+	/*Mode Settings*/
 	{0x0108, 0x03},
 	{0x0112, 0x0E},
 	{0x0113, 0x0A},
@@ -2141,14 +2137,14 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x4082, 0x01},
 	{0x4083, 0x01},
 	{0x7006, 0x04},
-	/* Optinal/Function settings */
+	/*Optinal/Function settings*/
 	{0x0700, 0x00},
 	{0x3A63, 0x00},
 	{0x4100, 0xF8},
 	{0x4203, 0xFF},
 	{0x4344, 0x00},
 	{0x441C, 0x01},
-	/* Size Setting */
+	/*Size Setting*/
 	{0x0340, 0x0A},
 	{0x0341, 0x40},
 	{0x0342, 0x11},
@@ -2185,7 +2181,7 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x4086, 0x00},
 	{0x4087, 0x00},
 	{0x4400, 0x00},
-	/* Global Timing Setting */
+	/*Global Timing Setting*/
 	{0x0830, 0x87},
 	{0x0831, 0x3F},
 	{0x0832, 0x67},
@@ -2197,10 +2193,10 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x0839, 0x1F},
 	{0x083A, 0x17},
 	{0x083B, 0x02},
-	/* Integration Time Setting */
+	/*Integration Time Setting*/
 	{0x0202, 0x0A},
 	{0x0203, 0x3C},
-	/* Gain Setting */
+	/*Gain Setting*/
 	{0x0205, 0x00},
 	{0x020E, 0x01},
 	{0x020F, 0x00},
@@ -2210,7 +2206,7 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x0213, 0x00},
 	{0x0214, 0x01},
 	{0x0215, 0x00},
-	/* HDR Setting */
+	/*HDR Setting*/
 	{0x0230, 0x00},
 	{0x0231, 0x00},
 	{0x0233, 0x00},
@@ -2226,13 +2222,13 @@ static struct imx135_reg mode_3840x2160[] = {
 	{0x33B4, 0x01},
 	{0x3800, 0x00},
 	{0x3A43, 0x01},
-	/* stream on */
+	/*stream on*/
 	{0x0100, 0x01},
 	{IMX135_TABLE_WAIT_MS, IMX135_WAIT_MS},
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_2080x1560[] = {
+static struct reg_8 mode_2080x1560[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -2404,7 +2400,7 @@ static struct imx135_reg mode_2080x1560[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_640x480[] = {
+static struct reg_8 mode_640x480[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -2567,7 +2563,7 @@ static struct imx135_reg mode_640x480[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_quality_hdr[] = {
+static struct reg_8 mode_quality_hdr[] = {
 	/* defect correction */
 	{0x380A, 0x00},
 	{0x380B, 0x00},
@@ -2745,7 +2741,7 @@ static struct imx135_reg mode_quality_hdr[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_quality[] = {
+static struct reg_8 mode_quality[] = {
 	/* defect correction */
 	{0x380A, 0x00},
 	{0x380B, 0x00},
@@ -2940,7 +2936,7 @@ enum {
 	IMX135_MODE_640X480,
 };
 
-static struct imx135_reg *mode_table[] = {
+static struct reg_8 *mode_table[] = {
 	[IMX135_MODE_4208X3120] = mode_4208x3120,
 	[IMX135_MODE_1920X1080] = mode_1920x1080,
 	[IMX135_MODE_1280X720]  = mode_1280x720,
@@ -2957,7 +2953,7 @@ static struct imx135_reg *mode_table[] = {
 	[IMX135_MODE_640X480]  = mode_640x480,
 };
 
-static struct imx135_reg flash_strobe_mod[] = {
+static struct reg_8 flash_strobe_mod[] = {
 	{0x0800, 0x01},	/* flash strobe output enble on ERS mode */
 	{0x0801, 0x01},	/* reference dividor fron EXT CLK */
 	{0x0804, 0x04},	/* shutter sync mode */
@@ -2978,13 +2974,7 @@ static struct imx135_reg flash_strobe_mod[] = {
 };
 
 static inline void
-msleep_range(unsigned int delay_base)
-{
-	usleep_range(delay_base*1000, delay_base*1000+500);
-}
-
-static inline void
-imx135_get_frame_length_regs(struct imx135_reg *regs, u32 frame_length)
+imx135_get_frame_length_regs(struct reg_8 *regs, u32 frame_length)
 {
 	regs->addr = IMX135_FRAME_LENGTH_ADDR_MSB;
 	regs->val = (frame_length >> 8) & 0xff;
@@ -2993,7 +2983,7 @@ imx135_get_frame_length_regs(struct imx135_reg *regs, u32 frame_length)
 }
 
 static inline void
-imx135_get_coarse_time_regs(struct imx135_reg *regs, u32 coarse_time)
+imx135_get_coarse_time_regs(struct reg_8 *regs, u32 coarse_time)
 {
 	regs->addr = IMX135_COARSE_TIME_ADDR_MSB;
 	regs->val = (coarse_time >> 8) & 0xff;
@@ -3002,7 +2992,7 @@ imx135_get_coarse_time_regs(struct imx135_reg *regs, u32 coarse_time)
 }
 
 static inline void
-imx135_get_coarse_time_short_regs(struct imx135_reg *regs, u32 coarse_time)
+imx135_get_coarse_time_short_regs(struct reg_8 *regs, u32 coarse_time)
 {
 	regs->addr = IMX135_COARSE_TIME_SHORT_ADDR_MSB;
 	regs->val = (coarse_time >> 8) & 0xff;
@@ -3011,14 +3001,14 @@ imx135_get_coarse_time_short_regs(struct imx135_reg *regs, u32 coarse_time)
 }
 
 static inline void
-imx135_get_gain_reg(struct imx135_reg *regs, u16 gain)
+imx135_get_gain_reg(struct reg_8 *regs, u16 gain)
 {
 	regs->addr = IMX135_GAIN_ADDR;
 	regs->val = gain;
 }
 
 static inline void
-imx135_get_gain_short_reg(struct imx135_reg *regs, u16 gain)
+imx135_get_gain_short_reg(struct reg_8 *regs, u16 gain)
 {
 	regs->addr = IMX135_GAIN_SHORT_ADDR;
 	regs->val = gain;
@@ -3044,45 +3034,6 @@ imx135_write_reg(struct imx135_info *info, u16 addr, u8 val)
 	return err;
 }
 
-static int
-imx135_write_table(struct imx135_info *info,
-				 const struct imx135_reg table[],
-				 const struct imx135_reg override_list[],
-				 int num_override_regs)
-{
-	int err;
-	const struct imx135_reg *next;
-	int i;
-	u16 val;
-
-	for (next = table; next->addr != IMX135_TABLE_END; next++) {
-		if (next->addr == IMX135_TABLE_WAIT_MS) {
-			msleep_range(next->val);
-			continue;
-		}
-
-		val = next->val;
-
-		/* When an override list is passed in, replace the reg */
-		/* value to write if the reg is in the list            */
-		if (override_list) {
-			for (i = 0; i < num_override_regs; i++) {
-				if (next->addr == override_list[i].addr) {
-					val = override_list[i].val;
-					break;
-				}
-			}
-		}
-
-		err = imx135_write_reg(info, next->addr, val);
-		if (err) {
-			pr_err("%s:imx135_write_table:%d", __func__, err);
-			return err;
-		}
-	}
-	return 0;
-}
-
 static int imx135_set_flash_output(struct imx135_info *info)
 {
 	struct imx135_flash_control *fctl;
@@ -3095,7 +3046,10 @@ static int imx135_set_flash_output(struct imx135_info *info)
 	dev_dbg(&info->i2c_client->dev, "edg: %x, st: %x, rpt: %x, dly: %x\n",
 		fctl->edge_trig_en, fctl->start_edge,
 		fctl->repeat, fctl->delay_frm);
-	return imx135_write_table(info, flash_strobe_mod, NULL, 0);
+	return regmap_util_write_table_8(info->regmap,
+					flash_strobe_mod,
+					NULL, 0, IMX135_TABLE_WAIT_MS,
+					IMX135_TABLE_END);
 }
 
 static int imx135_get_flash_cap(struct imx135_info *info)
@@ -3131,7 +3085,7 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	int sensor_mode;
 	u8 quality_hdr;
 	int err;
-	struct imx135_reg reg_list[8];
+	struct reg_8 reg_list[8];
 
 	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u, hdr %d\n",
 			 __func__, mode->xres, mode->yres, mode->frame_length,
@@ -3191,19 +3145,22 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 			reg_list + 6, mode->coarse_time_short);
 	}
 
-	err = imx135_write_table(info,
+	err = regmap_util_write_table_8(info->regmap,
 				mode_table[sensor_mode],
-				reg_list, mode->hdr_en ? 8 : 5);
+				reg_list, mode->hdr_en ? 8 : 5,
+				IMX135_TABLE_WAIT_MS, IMX135_TABLE_END);
 	if (err)
 		return err;
 	if (quality_hdr)
-		err = imx135_write_table(info,
+		err = regmap_util_write_table_8(info->regmap,
 				mode_table[IMX135_MODE_QUALITY_HDR],
-				reg_list, 0);
+				reg_list, 0,
+				IMX135_TABLE_WAIT_MS, IMX135_TABLE_END);
 	else
-		err = imx135_write_table(info,
+		err = regmap_util_write_table_8(info->regmap,
 				mode_table[IMX135_MODE_QUALITY],
-				reg_list, 0);
+				reg_list, 0,
+				IMX135_TABLE_WAIT_MS, IMX135_TABLE_END);
 	if (err)
 		return err;
 
@@ -3225,7 +3182,7 @@ static int
 imx135_set_frame_length(struct imx135_info *info, u32 frame_length,
 						 bool group_hold)
 {
-	struct imx135_reg reg_list[2];
+	struct reg_8 reg_list[2];
 	int i = 0;
 	int ret;
 
@@ -3259,7 +3216,7 @@ imx135_set_coarse_time(struct imx135_info *info, u32 coarse_time,
 {
 	int ret;
 
-	struct imx135_reg reg_list[2];
+	struct reg_8 reg_list[2];
 	int i = 0;
 
 	imx135_get_coarse_time_regs(reg_list, coarse_time);
@@ -3289,7 +3246,7 @@ static int
 imx135_set_gain(struct imx135_info *info, u16 gain, bool group_hold)
 {
 	int ret;
-	struct imx135_reg reg_list;
+	struct reg_8 reg_list;
 
 	imx135_get_gain_reg(&reg_list, gain);
 
@@ -3316,8 +3273,8 @@ imx135_set_gain(struct imx135_info *info, u16 gain, bool group_hold)
 static int
 imx135_set_hdr_coarse_time(struct imx135_info *info, struct imx135_hdr *values)
 {
-	struct imx135_reg reg_list[2];
-	struct imx135_reg reg_list_short[2];
+	struct reg_8 reg_list[2];
+	struct reg_8 reg_list_short[2];
 	int ret, i = 0;
 
 	/* get long and short coarse time registers */

@@ -30,10 +30,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
-struct ar0261_reg {
-	u16 addr;
-	u16 val;
-};
+#include "regmap_util.h"
 
 struct ar0261_info {
 	struct miscdevice miscdev_info;
@@ -56,7 +53,7 @@ static const struct regmap_config sensor_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-static struct ar0261_reg mode_1920x1080[] = {
+static struct reg_16 mode_1920x1080[] = {
 	{0x301A, 0x0019},
 	{AR0261_TABLE_WAIT_MS, 10},
 	{0x301A, 0x0218},
@@ -336,7 +333,7 @@ static struct ar0261_reg mode_1920x1080[] = {
 	{0x301A, 0x001C},
 	{AR0261_TABLE_END, 0x0000}
 };
-static struct ar0261_reg mode_1920x1080_HDR[] = {
+static struct reg_16 mode_1920x1080_HDR[] = {
 	{0x301A, 0x0019},
 	{AR0261_TABLE_WAIT_MS, 10},
 	{0x301A, 0x0218},
@@ -619,7 +616,7 @@ static struct ar0261_reg mode_1920x1080_HDR[] = {
 	{AR0261_TABLE_END, 0x0000}
 };
 
-static struct ar0261_reg mode_640X480[] = {
+static struct reg_16 mode_640X480[] = {
 	{0x301A, 0x0019},
 	{AR0261_TABLE_WAIT_MS, 10},
 	{0x301A, 0x0218},
@@ -910,41 +907,35 @@ enum {
 	AR0261_MODE_640X480,
 };
 
-static struct ar0261_reg *mode_table[] = {
+static struct reg_16 *mode_table[] = {
 	[AR0261_MODE_1920X1080] = mode_1920x1080,
 	[AR0261_MODE_1920X1080_HDR] = mode_1920x1080_HDR,
 	[AR0261_MODE_640X480] = mode_640X480,
 };
 
 static inline void
-msleep_range(unsigned int delay_base)
-{
-	usleep_range(delay_base*1000, delay_base*1000+500);
-}
-
-static inline void
-ar0261_get_frame_length_regs(struct ar0261_reg *regs, u32 frame_length)
+ar0261_get_frame_length_regs(struct reg_16 *regs, u32 frame_length)
 {
 	regs->addr = AR0261_FRAME_LEN_LINES;
 	regs->val = frame_length;
 }
 
 static inline void
-ar0261_get_coarse_time_regs(struct ar0261_reg *regs, u32 coarse_time)
+ar0261_get_coarse_time_regs(struct reg_16 *regs, u32 coarse_time)
 {
 	regs->addr = AR0261_COARSE_INTEGRATION_TIME;
 	regs->val = coarse_time;
 }
 
 static inline void
-ar0261_get_coarse_time_short_regs(struct ar0261_reg *regs, u32 coarse_time)
+ar0261_get_coarse_time_short_regs(struct reg_16 *regs, u32 coarse_time)
 {
 	regs->addr = AR0261_COARSE_INTEGRATION_SHORT_TIME;
 	regs->val = coarse_time;
 }
 
 static inline void
-ar0261_get_gain_reg(struct ar0261_reg *regs, u16 gain)
+ar0261_get_gain_reg(struct reg_16 *regs, u16 gain)
 {
 	regs->addr = AR0261_ANA_GAIN_GLOBAL;
 	regs->val = gain;
@@ -985,53 +976,12 @@ static inline int ar0261_i2c_wr8(struct ar0261_info *info, u16 reg, u8 val)
 }
 
 static int
-ar0261_write_table(struct ar0261_info *info,
-			 const struct ar0261_reg table[],
-			 const struct ar0261_reg override_list[],
-			 int num_override_regs)
-{
-	const struct ar0261_reg *next;
-	int err = 0;
-	int i;
-	u16 val;
-
-	dev_info(&info->i2c_client->dev, "ar0261_write_table\n");
-
-	for (next = table; next->addr != AR0261_TABLE_END; next++) {
-
-		if (next->addr == AR0261_TABLE_WAIT_MS) {
-			msleep_range(next->val);
-			continue;
-		}
-
-		val = next->val;
-
-		/* When an override list is passed in, replace the reg */
-		/* value to write if the reg is in the list */
-		if (override_list) {
-			for (i = 0; i < num_override_regs; i++) {
-				if (next->addr == override_list[i].addr) {
-					val = override_list[i].val;
-					break;
-				}
-			}
-		}
-
-		err = ar0261_write_reg(info, next->addr, val);
-		if (err)
-			break;
-	}
-
-	return err;
-}
-
-static int
 ar0261_set_mode(struct ar0261_info *info, struct ar0261_mode *mode)
 {
 	struct device *dev = &info->i2c_client->dev;
 	int sensor_mode;
 	int err;
-	struct ar0261_reg reg_list[HDR_MODE_OVERRIDE_REGS];
+	struct reg_16 reg_list[HDR_MODE_OVERRIDE_REGS];
 
 	dev_info(dev, "%s: res [%ux%u] framelen %u coarsetime %u gain %u hdr %d\n",
 		__func__, mode->xres, mode->yres,
@@ -1069,9 +1019,11 @@ ar0261_set_mode(struct ar0261_info *info, struct ar0261_mode *mode)
 			reg_list + 3, mode->coarse_time_short);
 	}
 
-	err = ar0261_write_table(info, mode_table[sensor_mode],
+	err = regmap_util_write_table_16_as_8(
+			info->regmap, mode_table[sensor_mode],
 			reg_list, mode->hdr_en ? HDR_MODE_OVERRIDE_REGS :
-			NORMAL_MODE_OVERRIDE_REGS);
+			NORMAL_MODE_OVERRIDE_REGS,
+			AR0261_TABLE_WAIT_MS, AR0261_TABLE_END);
 	if (err)
 		return err;
 
@@ -1093,7 +1045,7 @@ ar0261_set_frame_length(struct ar0261_info *info,
 				u32 frame_length,
 				bool group_hold)
 {
-	struct ar0261_reg reg_list;
+	struct reg_16 reg_list;
 	int ret;
 
 	ar0261_get_frame_length_regs(&reg_list, frame_length);
@@ -1123,7 +1075,7 @@ ar0261_set_coarse_time(struct ar0261_info *info,
 				bool group_hold)
 {
 	int ret;
-	struct ar0261_reg reg_list;
+	struct reg_16 reg_list;
 
 	ar0261_get_coarse_time_regs(&reg_list, coarse_time);
 
@@ -1150,8 +1102,8 @@ ar0261_set_hdr_coarse_time(struct ar0261_info *info,
 				struct ar0261_hdr *values,
 				bool group_hold)
 {
-	struct ar0261_reg reg_list;
-	struct ar0261_reg reg_list_short;
+	struct reg_16 reg_list;
+	struct reg_16 reg_list_short;
 	int ret;
 
 	/* get long and short coarse time registers */
@@ -1188,7 +1140,7 @@ static int
 ar0261_set_gain(struct ar0261_info *info, u16 gain, bool group_hold)
 {
 	int ret;
-	struct ar0261_reg reg_list;
+	struct reg_16 reg_list;
 
 	ar0261_get_gain_reg(&reg_list, gain);
 

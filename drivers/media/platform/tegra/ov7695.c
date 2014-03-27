@@ -30,22 +30,16 @@
 #include <linux/regmap.h>
 #include <linux/export.h>
 #include <linux/module.h>
+#include "regmap_util.h"
 
 #include <media/ov7695.h>
 
 #define SIZEOF_I2C_TRANSBUF 128
 
-#define	OV7695_TABLE_START	0x01
 #define	OV7695_TABLE_END	0x02
 #define	OV7695_WAIT_MS		0xFFFF
 
-struct ov7695_reg {
-	u16 addr;
-	u16 val;
-};
-
-static struct ov7695_reg mode_640x480_30fps[] = {
-	{OV7695_TABLE_START, 0x01},
+static struct reg_8 mode_640x480_30fps[] = {
 	{0x0100, 0x00},
 	{OV7695_WAIT_MS, 0x0a},
 	{0x0103, 0x01},
@@ -191,12 +185,12 @@ static struct ov7695_reg mode_640x480_30fps[] = {
 	{OV7695_TABLE_END, 0x01},
 };
 
-static struct ov7695_reg ov7695_Whitebalance_Auto[] = {
+static struct reg_8 ov7695_Whitebalance_Auto[] = {
 	{0x5200, 0x00},
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_Whitebalance_Daylight[] = {
+static struct reg_8 ov7695_Whitebalance_Daylight[] = {
 	{0x5200, 0x20},
 	{0x5204, 0x05},
 	{0x5205, 0x1e},
@@ -207,7 +201,7 @@ static struct ov7695_reg ov7695_Whitebalance_Daylight[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_Whitebalance_Cloudy[] = {
+static struct reg_8 ov7695_Whitebalance_Cloudy[] = {
 	{0x5200, 0x20},
 	{0x5204, 0x06},
 	{0x5205, 0x00},
@@ -218,7 +212,7 @@ static struct ov7695_reg ov7695_Whitebalance_Cloudy[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_Whitebalance_Incandescent[] = {
+static struct reg_8 ov7695_Whitebalance_Incandescent[] = {
 	{0x5200, 0x20},
 	{0x5204, 0x04},
 	{0x5205, 0x00},
@@ -229,7 +223,7 @@ static struct ov7695_reg ov7695_Whitebalance_Incandescent[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_Whitebalance_Fluorescent[] = {
+static struct reg_8 ov7695_Whitebalance_Fluorescent[] = {
 	{0x5200, 0x20},
 	{0x5204, 0x04},
 	{0x5205, 0x00},
@@ -241,7 +235,7 @@ static struct ov7695_reg ov7695_Whitebalance_Fluorescent[] = {
 };
 
 
-static struct ov7695_reg ov7695_EV_zero[] = {
+static struct reg_8 ov7695_EV_zero[] = {
 	{0x3a0f, 0x48},
 	{0x3a10, 0x40},
 	{0x3a11, 0x90},
@@ -251,7 +245,7 @@ static struct ov7695_reg ov7695_EV_zero[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_EV_plus_1[] = {
+static struct reg_8 ov7695_EV_plus_1[] = {
 	{0x3a0f, 0x50},
 	{0x3a10, 0x48},
 	{0x3a11, 0x98},
@@ -261,7 +255,7 @@ static struct ov7695_reg ov7695_EV_plus_1[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_EV_plus_2[] = {
+static struct reg_8 ov7695_EV_plus_2[] = {
 	{0x3a0f, 0x58},
 	{0x3a10, 0x50},
 	{0x3a11, 0xa0},
@@ -271,7 +265,7 @@ static struct ov7695_reg ov7695_EV_plus_2[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_EV_minus_1[] = {
+static struct reg_8 ov7695_EV_minus_1[] = {
 	{0x3a0f, 0x40},
 	{0x3a10, 0x38},
 	{0x3a11, 0x88},
@@ -281,7 +275,7 @@ static struct ov7695_reg ov7695_EV_minus_1[] = {
 	{OV7695_TABLE_END, 0x0000}
 };
 
-static struct ov7695_reg ov7695_EV_minus_2[] = {
+static struct reg_8 ov7695_EV_minus_2[] = {
 	{0x3a0f, 0x38},
 	{0x3a10, 0x30},
 	{0x3a11, 0x80},
@@ -300,7 +294,7 @@ struct ov7695_info {
 	struct ov7695_platform_data	*pdata;
 	struct regmap			*regmap;
 	atomic_t			in_use;
-	const struct ov7695_reg		*mode;
+	const struct reg_8		*mode;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry			*debugfs_root;
 	u32				debug_i2c_offset;
@@ -311,7 +305,7 @@ struct ov7695_info {
 struct ov7695_mode_desc {
 	u16			xres;
 	u16			yres;
-	const struct ov7695_reg *mode_tbl;
+	const struct reg_8 *mode_tbl;
 	struct ov7695_modeinfo	mode_info;
 };
 
@@ -343,12 +337,6 @@ static inline int ov7695_read_reg(struct ov7695_info *info, u16 addr, u8 *val)
 	return regmap_read(info->regmap, addr, (unsigned int *) val);
 }
 
-static int ov7695_write_reg8(struct ov7695_info *info, u16 addr, u8 val)
-{
-	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
-	return regmap_write(info->regmap, addr, val);
-}
-
 static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
 {
 	unsigned char data[2];
@@ -358,34 +346,6 @@ static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
 
 	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
 	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
-}
-
-static int ov7695_write_table(
-	struct ov7695_info *info,
-	const struct ov7695_reg table[])
-{
-	int err;
-	const struct ov7695_reg *next;
-	u16 val;
-
-	dev_dbg(&info->i2c_client->dev, "yuv %s\n", __func__);
-
-	for (next = table; next->addr != OV7695_TABLE_END; next++) {
-		if (next->addr == OV7695_WAIT_MS) {
-			msleep(next->val);
-			continue;
-		}
-
-		val = next->val;
-
-		dev_dbg(&info->i2c_client->dev,
-			"%s: addr = 0x%4x, val = 0x%2x\n",
-			__func__, next->addr, val);
-		err = ov7695_write_reg8(info, next->addr, val);
-		if (err)
-			return err;
-	}
-	return 0;
 }
 
 static void ov7695_mclk_disable(struct ov7695_info *info)
@@ -668,7 +628,7 @@ static struct ov7695_mode_desc *ov7695_get_mode(
 static int ov7695_mode_info_init(struct ov7695_info *info)
 {
 	struct ov7695_mode_desc *md = mode_table;
-	const struct ov7695_reg *mt;
+	const struct reg_8 *mt;
 	struct ov7695_modeinfo *mi;
 
 	dev_dbg(&info->i2c_client->dev, "%s", __func__);
@@ -702,8 +662,10 @@ static int ov7695_set_mode(struct ov7695_info *info,
 		return -EINVAL;
 	}
 
-	err = ov7695_write_table(
-		info, sensor_mode->mode_tbl);
+	err = regmap_util_write_table_8(info->regmap,
+				sensor_mode->mode_tbl,
+				NULL, 0, OV7695_WAIT_MS,
+				OV7695_TABLE_END);
 	if (err)
 		return err;
 
@@ -743,24 +705,34 @@ static long ov7695_ioctl(struct file *file,
 		}
 		switch (whitebalance) {
 		case OV7695_YUV_Whitebalance_Auto:
-			err = ov7695_write_table(info,
-					ov7695_Whitebalance_Auto);
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_Whitebalance_Auto,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
 			break;
 		case OV7695_YUV_Whitebalance_Daylight:
-			err = ov7695_write_table(info,
-					ov7695_Whitebalance_Daylight);
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_Whitebalance_Daylight,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
 			break;
 		case OV7695_YUV_Whitebalance_CloudyDaylight:
-			err = ov7695_write_table(info,
-					ov7695_Whitebalance_Cloudy);
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_Whitebalance_Cloudy,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
 			break;
 		case OV7695_YUV_Whitebalance_Incandescent:
-			err = ov7695_write_table(info,
-					ov7695_Whitebalance_Incandescent);
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_Whitebalance_Incandescent,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
 			break;
 		case OV7695_YUV_Whitebalance_Fluorescent:
-			err = ov7695_write_table(info,
-					ov7695_Whitebalance_Fluorescent);
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_Whitebalance_Fluorescent,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
 			break;
 		default:
 			/* unsupported white balance mode*/
@@ -783,19 +755,34 @@ static long ov7695_ioctl(struct file *file,
 			return -EFAULT;
 		switch (ev) {
 		case 0:
-			err = ov7695_write_table(info, ov7695_EV_zero);
+			err = regmap_util_write_table_8(info->regmap,
+						ov7695_EV_zero,
+						NULL, 0, OV7695_WAIT_MS,
+						OV7695_TABLE_END);
 			break;
 		case 1:
-			err = ov7695_write_table(info, ov7695_EV_plus_1);
+			err = regmap_util_write_table_8(info->regmap,
+						ov7695_EV_plus_1,
+						NULL, 0, OV7695_WAIT_MS,
+						OV7695_TABLE_END);
 			break;
 		case 2:
-			err = ov7695_write_table(info, ov7695_EV_plus_2);
+			err = regmap_util_write_table_8(info->regmap,
+						ov7695_EV_plus_2,
+						NULL, 0, OV7695_WAIT_MS,
+						OV7695_TABLE_END);
 			break;
 		case -1:
-			err = ov7695_write_table(info, ov7695_EV_minus_1);
+			err = regmap_util_write_table_8(info->regmap,
+						ov7695_EV_minus_1,
+						NULL, 0, OV7695_WAIT_MS,
+						OV7695_TABLE_END);
 			break;
 		case -2:
-			err = ov7695_write_table(info, ov7695_EV_minus_2);
+			err = regmap_util_write_table_8(info->regmap,
+						ov7695_EV_minus_2,
+						NULL, 0, OV7695_WAIT_MS,
+						OV7695_TABLE_END);
 			break;
 		default:
 			/* unsupported EV setting */
