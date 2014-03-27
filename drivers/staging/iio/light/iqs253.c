@@ -690,6 +690,13 @@ static int iqs253_probe(struct i2c_client *client,
 	if (!stylus_detect)
 		goto finish;
 
+	idev = iqs253_stylus_input_init(iqs253_chip);
+	if (IS_ERR_OR_NULL(idev))
+		goto err_gpio_request;
+	iqs253_chip->idev = idev;
+
+finish:
+
 #if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
 	iqs253_chip->sar_wq = create_freezable_workqueue("iqs253_sar");
 	if (!iqs253_chip->sar_wq) {
@@ -703,12 +710,6 @@ static int iqs253_probe(struct i2c_client *client,
 	queue_delayed_work(iqs253_chip->sar_wq, &iqs253_chip->sar_dw, 0);
 #endif
 
-	idev = iqs253_stylus_input_init(iqs253_chip);
-	if (IS_ERR_OR_NULL(idev))
-		goto err_gpio_request;
-	iqs253_chip->idev = idev;
-
-finish:
 	dev_info(&client->dev, "devname:%s func:%s line:%d probe success\n",
 			id->name, __func__, __LINE__);
 
