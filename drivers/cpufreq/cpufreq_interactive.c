@@ -2,7 +2,7 @@
  * drivers/cpufreq/cpufreq_interactive.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -383,21 +383,13 @@ static void cpufreq_interactive_timer(unsigned long data)
 	cpu_load = loadadjfreq / pcpu->target_freq;
 	boosted = tunables->boost_val || now < tunables->boostpulse_endtime;
 
+	new_freq = choose_freq(pcpu, loadadjfreq);
 	if (cpu_load >= tunables->go_hispeed_load || boosted) {
-		if (pcpu->target_freq < tunables->hispeed_freq) {
-			if (tunables->boost_factor)
-				new_freq = min((pcpu->target_freq
+		new_freq = max(new_freq, tunables->hispeed_freq);
+		if (pcpu->target_freq < tunables->hispeed_freq &&
+				tunables->boost_factor)
+			new_freq = min((pcpu->target_freq
 					* tunables->boost_factor), tunables->hispeed_freq);
-			else
-				new_freq = tunables->hispeed_freq;
-		} else {
-			new_freq = choose_freq(pcpu, loadadjfreq);
-
-			if (new_freq < tunables->hispeed_freq)
-				new_freq = tunables->hispeed_freq;
-		}
-	} else {
-		new_freq = choose_freq(pcpu, loadadjfreq);
 	}
 
 	if (pcpu->target_freq >= tunables->hispeed_freq &&
