@@ -926,6 +926,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", 0x70027000, "tegra-sata.0",
+		NULL),
 	{}
 };
 #endif
@@ -1290,12 +1292,6 @@ static void __init tegra_ardbeg_late_init(void)
 		loki_sdhci_init();
 	else
 		ardbeg_sdhci_init();
-	if (board_info.board_id == BOARD_E1782 ||
-			board_info.board_id == BOARD_PM374)
-		ardbeg_sata_init();
-	else if (board_info.board_id != BOARD_PM358 &&
-			board_info.board_id != BOARD_PM359)
-		arbdeg_sata_clk_gate();
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM370 ||

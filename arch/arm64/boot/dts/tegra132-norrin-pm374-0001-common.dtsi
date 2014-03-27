@@ -137,4 +137,10 @@
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 		status = "okay";
 	};
+
+	sata@0x70020000 {
+		status = "okay";
+		nvidia,pexp-gpio = <&tca6416 9 0>;
+		nvidia,enable-sata-port;
+	};
 };

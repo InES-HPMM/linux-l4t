@@ -109,4 +109,10 @@
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
 		status = "okay";
 	};
+
+	sata@0x70020000 {
+		status = "okay";
+		nvidia,pexp-gpio = <&tca6416 9 0>;
+		nvidia,enable-sata-port;
+	};
 };
