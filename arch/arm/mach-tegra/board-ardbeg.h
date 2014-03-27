@@ -72,6 +72,7 @@ void ardbeg_camera_auxdata(void *);
 #define MDM_RST			TEGRA_GPIO_PS3
 #define MDM_COLDBOOT		TEGRA_GPIO_PO5
 #define MDM_SAR0		TEGRA_GPIO_PG2
+#define MDM_POWER_REPORT	TEGRA_GPIO_PK0
 
 /* Baseband IDs */
 enum tegra_bb_type {
