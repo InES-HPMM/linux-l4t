@@ -2170,8 +2170,8 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 		err = 0;
 		sdhci->tuning_done = 1;
 	} else {
-		tegra_sdhci_reset(sdhci, SDHCI_RESET_CMD);
 		tegra_sdhci_reset(sdhci, SDHCI_RESET_DATA);
+		tegra_sdhci_reset(sdhci, SDHCI_RESET_CMD);
 		err = -EIO;
 	}
 
