@@ -25,6 +25,7 @@
 #include <asm/cache.h>
 #include <asm/page.h>
 #include <asm/hardware/cache-l2x0.h>
+#include <asm/memory.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
@@ -52,6 +53,7 @@ ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
 
 	ldr	r0, =tegra_with_secure_firmware
+	sub	r0, #PAGE_OFFSET
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	secondary_startup
@@ -84,6 +86,7 @@ ENDPROC(tegra_secondary_startup)
  */
 ENTRY(tegra_resume)
 	ldr	r1, =tegra_with_secure_firmware
+	sub	r1, #PAGE_OFFSET
 	ldr	r1, [r1]
 	cmp	r1, #1
 	bne	cpu_not_secure
@@ -238,6 +241,7 @@ __invalidate_cpu_state:
 	beq	cortex_a9
 
 	ldr	r0, =tegra_with_secure_firmware
+	sub	r0, #PAGE_OFFSET
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	__enable_i_cache_branch_pred
@@ -388,6 +392,7 @@ ENTRY(__tegra_cpu_reset_handler)
 #endif
 
 	ldr	r0, =tegra_with_secure_firmware
+	sub	r0, #PAGE_OFFSET
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	cpu_is_secure
