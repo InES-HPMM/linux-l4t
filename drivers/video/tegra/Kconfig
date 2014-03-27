@@ -41,7 +41,6 @@ config TEGRA_DC
 
 config TEGRA_DC_CMU
 	bool "Tegra Color Management Unit"
-	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
 	default y
 	help
 	  Say Y here to enable Tegra color management unit.
@@ -51,65 +50,52 @@ config TEGRA_DC_CMU
 
 config TEGRA_DC_WIN_H
     bool
-    default y if ARCH_TEGRA_14x_SOC
-    default n
 
 config TEGRA_MIPI_CAL
 	bool
-	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
 	default y
 
 config TEGRA_DC_SCAN_COLUMN
 	bool
-	default y if ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC
-	default n
+	default y if ARCH_TEGRA_12x_SOC
 
 config TEGRA_DC_BLENDER_GEN2
     bool
-    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC
     default y
 
 config TEGRA_DC_BLENDER_DEPTH
     bool
     default y if ARCH_TEGRA_12x_SOC
-    default n
 
 config TEGRA_DC_BLOCK_LINEAR
     bool
     default y if ARCH_TEGRA_12x_SOC
-    default n
 
 config TEGRA_DC_INTERLACE
 	bool
 	default y if ARCH_TEGRA_12x_SOC
-	default n
 
 config TEGRA_DC_64BIT_SUPPORT
 	bool
-	default n
 	help
 		T12x LPAE support in dc driver
 
 config TEGRA_DC_LOW_LATENCY_CURSOR
 	bool
 	default y if ARCH_TEGRA_12x_SOC
-	default n
 
 config TEGRA_DC_CLOCK_GEN2
     bool
     default y if ARCH_TEGRA_12x_SOC
-    default n
     help
         T12x redefined pll usages for pll_d and pll_d2.
 
 config TEGRA_SD_GEN2
 	bool
-	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
 	default y
 
 config TEGRA_DC_TEMPORAL_DITHER
 	bool
-	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
 	default y
 
 config FB_TEGRA
@@ -150,7 +136,6 @@ config TEGRA_NVMAP
 config NVMAP_HIGHMEM_ONLY
 	bool "Use only HIGHMEM for nvmap"
 	depends on TEGRA_NVMAP && IOMMU_API && HIGHMEM
-	default n
 	help
 	  Say Y here to restrict nvmap system memory allocations (both
 	  physical system memory and IOVMM) to just HIGHMEM pages.
@@ -158,7 +143,6 @@ config NVMAP_HIGHMEM_ONLY
 config NVMAP_CARVEOUT_KILLER
 	bool "Reclaim nvmap carveout by killing processes"
 	depends on TEGRA_NVMAP
-	default n
 	help
 	  Say Y here to allow the system to reclaim carveout space by killing
 	  processes. This will kill the largest consumers of lowest priority
@@ -262,7 +246,6 @@ config NVMAP_DMABUF_STASH_STATS
 config NVMAP_VPR
 	bool "Enable VPR Heap."
 	depends on TEGRA_NVMAP
-	default n
 	help
 	  Say Y here to enable Video Protection Region(VPR) heap.
 	  if unsure, say N.
@@ -295,19 +278,16 @@ config NVMAP_CPA
 
 config TEGRA_DSI
 	bool "Enable DSI panel."
-	default n
 	help
 	  Say Y here to enable the DSI panel.
 
 config TEGRA_DSI2EDP_TC358767
 	bool "Enable DSI2EDP TC358767 bridge."
-	default n
 	help
 	  Say Y here to enable the DSI2EDP TOSHIBA 358767 adapter.
 
 config TEGRA_DSI2EDP_SN65DSI86
 	bool "Enable DSI2EDP SN65DSI86 bridge."
-	default n
 	help
 	  Say Y here to enable the DSI2EDP TI SN65DSI86 adapter.
 
@@ -349,14 +329,12 @@ config NVMAP_HANDLE_MARSHAL
 
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
-	default n
 	help
 	  Say Y here to support NVHDCP upstream and downstream protocols, this
 	  requires a correctly fused chip to negotiate keys.
 
 config TEGRA_HDMI_74MHZ_LIMIT
 	bool "Support only up to 74.25 MHz HDMI pixel frequency"
-	default n
 	help
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
