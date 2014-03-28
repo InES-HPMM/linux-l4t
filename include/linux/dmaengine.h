@@ -23,6 +23,7 @@
 #define LINUX_DMAENGINE_H
 
 #include <linux/device.h>
+#include <linux/err.h>
 #include <linux/uio.h>
 #include <linux/bug.h>
 #include <linux/scatterlist.h>
@@ -970,6 +971,8 @@ enum dma_status dma_wait_for_async_tx(struct dma_async_tx_descriptor *tx);
 void dma_issue_pending_all(void);
 struct dma_chan *__dma_request_channel(const dma_cap_mask_t *mask,
 					dma_filter_fn fn, void *fn_param);
+struct dma_chan *dma_request_slave_channel_reason(struct device *dev,
+						const char *name);
 struct dma_chan *dma_request_slave_channel(struct device *dev, const char *name);
 void dma_release_channel(struct dma_chan *chan);
 #else
@@ -985,6 +988,12 @@ static inline struct dma_chan *__dma_request_channel(const dma_cap_mask_t *mask,
 {
 	return NULL;
 }
+static inline struct dma_chan *dma_request_slave_channel_reason(
+					struct device *dev, const char *name)
+{
+	return ERR_PTR(-ENODEV);
+}
+
 static inline struct dma_chan *dma_request_slave_channel(struct device *dev,
 							 const char *name)
 {
