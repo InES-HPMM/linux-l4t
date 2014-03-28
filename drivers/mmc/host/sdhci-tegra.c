@@ -159,6 +159,10 @@
 #define NVQUIRK_TMP_VAR_1_5_TAP_MARGIN		BIT(24)
 /* Disable Timer Based Re-tuning mode */
 #define NVQUIRK_DISABLE_TIMER_BASED_TUNING	BIT(25)
+/* Enable HS400 mode */
+#define NVQUIRK_ENABLE_HS400			BIT(26)
+/* Enable AUTO CMD23 */
+#define NVQUIRK_ENABLE_AUTO_CMD23		BIT(27)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -3886,6 +3890,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra11 = {
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
 		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
 		    NVQUIRK_DISABLE_SDMMC4_CALIB,
@@ -3912,6 +3917,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
 		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
@@ -3941,6 +3947,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
 		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_ENABLE_HS400 |
+		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
@@ -4364,13 +4372,17 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	/* disable access to boot partitions */
 	host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC;
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_HS200)
 		host->mmc->caps2 |= MMC_CAP2_HS200;
+
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_HS400)
+		host->mmc->caps2 |= MMC_CAP2_HS400;
+
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_AUTO_CMD23)
+		host->mmc->caps |= MMC_CAP_CMD23;
+
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
-	host->mmc->caps |= MMC_CAP_CMD23;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
-#endif
 
 	/*
 	 * Enable dyamic frequency scaling support only if the platform clock
