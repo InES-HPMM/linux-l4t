@@ -626,7 +626,8 @@ static void ardbeg_usb_init(void)
 	struct board_info bi;
 	tegra_get_pmu_board_info(&bi);
 
-	if (board_info.sku == 1100 || board_info.board_id == BOARD_P1761)
+	if (board_info.sku == 1100 || board_info.board_id == BOARD_P1761 ||
+					board_info.board_id == BOARD_E1784)
 		tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
 
 	if (board_info.board_id == BOARD_PM359 ||
