@@ -33,7 +33,7 @@ struct tegra_simon_grader_desc {
 	enum tegra_simon_domain		domain;
 	int				settle_us;
 	int				grading_mv_max;
-	unsigned long			garding_rate_max;
+	unsigned long			grading_rate_max;
 	int				grading_temperature_min;
 	int (*grade_simon_domain) (int domain, int mv, int temperature);
 };
