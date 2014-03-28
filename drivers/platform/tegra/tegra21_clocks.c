@@ -761,6 +761,31 @@ static int clk_div16_get_divider(unsigned long parent_rate, unsigned long rate)
 	return divider_u16 - 1;
 }
 
+static long fixed_src_bus_round_updown(struct clk *c, struct clk *src,
+					u32 flags, unsigned long rate, bool up)
+{
+	int divider;
+	unsigned long source_rate, round_rate;
+
+	source_rate = clk_get_rate(src);
+
+	divider = clk_div71_get_divider(source_rate, rate + (up ? -1 : 1),
+		flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
+	if (divider < 0)
+		return c->min_rate;
+
+	round_rate = source_rate * 2 / (divider + 2);
+
+	if (round_rate > c->max_rate) {
+		divider += flags & DIV_U71_INT ? 2 : 1;
+#if !DIVIDER_1_5_ALLOWED
+		divider = max(2, divider);
+#endif
+		round_rate = source_rate * 2 / (divider + 2);
+	}
+	return round_rate;
+}
+
 static inline bool bus_user_is_slower(struct clk *a, struct clk *b)
 {
 	return a->u.shared_bus_user.client->max_rate * a->div <
@@ -1741,29 +1766,16 @@ static void tegra21_sbus_cmplx_init(struct clk *c)
 static long tegra21_sbus_cmplx_round_updown(struct clk *c, unsigned long rate,
 					    bool up)
 {
-	int divider;
-	unsigned long source_rate, round_rate;
+	unsigned long round_rate;
 	struct clk *new_parent;
 
 	rate = max(rate, c->min_rate);
 
 	new_parent = (rate <= c->u.system.threshold) ?
 		c->u.system.sclk_low : c->u.system.sclk_high;
-	source_rate = clk_get_rate(new_parent->parent);
 
-	divider = clk_div71_get_divider(source_rate, rate,
-		new_parent->flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
-	if (divider < 0)
-		return c->min_rate;
-
-	if (divider == 1)
-		divider = 0;
-
-	round_rate = source_rate * 2 / (divider + 2);
-	if (round_rate > c->max_rate) {
-		divider = max(2, (divider + 1));
-		round_rate = source_rate * 2 / (divider + 2);
-	}
+	round_rate = fixed_src_bus_round_updown(
+		c, new_parent->parent, new_parent->flags, rate, up);
 
 	if (new_parent == c->u.system.sclk_high) {
 		/* Prevent oscillation across threshold */
@@ -4458,26 +4470,7 @@ static struct clk_ops tegra_periph_clk_ops = {
 static long _1x_round_updown(struct clk *c, struct clk *src,
 				unsigned long rate, bool up)
 {
-	int divider;
-	unsigned long source_rate, round_rate;
-
-	source_rate = clk_get_rate(src);
-
-	divider = clk_div71_get_divider(source_rate, rate + (up ? -1 : 1),
-		c->flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
-	if (divider < 0)
-		return c->min_rate;
-
-	round_rate = source_rate * 2 / (divider + 2);
-
-	if (round_rate > c->max_rate) {
-		divider += c->flags & DIV_U71_INT ? 2 : 1;
-#if !DIVIDER_1_5_ALLOWED
-		divider = max(2, divider);
-#endif
-		round_rate = source_rate * 2 / (divider + 2);
-	}
-	return round_rate;
+	return fixed_src_bus_round_updown(c, src, c->flags, rate, up);
 }
 
 static long tegra21_1xbus_round_updown(struct clk *c, unsigned long rate,
@@ -6855,15 +6848,6 @@ static struct clk tegra_clk_blink = {
 
 
 /* Multimedia modules muxes */
-static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla[] = {
-	{ .input = &tegra_pll_c2, .value = 1},
-	{ .input = &tegra_pll_c,  .value = 2},
-	{ .input = &tegra_pll_c3, .value = 3},
-	{ .input = &tegra_pll_p,  .value = 4},
-	{ .input = &tegra_pll_a_out0, .value = 6},
-	{ 0, 0},
-};
-
 static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_clkm[] = {
 	{ .input = &tegra_pll_c2, .value = 1},
 	{ .input = &tegra_pll_c,  .value = 2},
@@ -7009,12 +6993,6 @@ static struct clk_mux_sel mux_pllp_clkm1[] = {
 
 static struct clk_mux_sel mux_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 0},
-	{ .input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
-};
-
-static struct clk_mux_sel mux_pllp_clkm_v2[] = {
-	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 6},
 	{ 0, 0},
 };
