@@ -26,8 +26,8 @@ enum tegra_simon_domain {
 	TEGRA_SIMON_DOMAIN_NUM,
 };
 
-#define TEGRA_SIMON_GRADING_INTERVAL_SEC	5000000
-#define TEGRA_SIMON_GRADING_TIMEOUT_SEC		100000000
+#define TEGRA_SIMON_GRADING_INTERVAL_SEC	86400
+#define TEGRA_SIMON_GRADING_TIMEOUT_SEC		864000
 
 struct tegra_simon_grader_desc {
 	enum tegra_simon_domain		domain;
