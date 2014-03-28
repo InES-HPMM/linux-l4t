@@ -3,7 +3,7 @@
  *
  * High-speed serial driver for NVIDIA Tegra SoCs
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -120,7 +120,6 @@ struct tegra_uart_port {
 	bool					rx_timeout;
 	int					rx_in_progress;
 	int					symb_bit;
-	int					dma_req_sel;
 
 	struct dma_chan				*rx_dma_chan;
 	struct dma_chan				*tx_dma_chan;
@@ -908,15 +907,14 @@ static int tegra_uart_dma_channel_allocate(struct tegra_uart_port *tup,
 	dma_addr_t dma_phys;
 	int ret;
 	struct dma_slave_config dma_sconfig;
-	dma_cap_mask_t mask;
 
-	dma_cap_zero(mask);
-	dma_cap_set(DMA_SLAVE, mask);
-	dma_chan = dma_request_channel(mask, NULL, NULL);
-	if (!dma_chan) {
+	dma_chan = dma_request_slave_channel_reason(tup->uport.dev,
+						dma_to_memory ? "rx" : "tx");
+	if (IS_ERR(dma_chan)) {
+		ret = PTR_ERR(dma_chan);
 		dev_err(tup->uport.dev,
-			"Dma channel is not available, will try later\n");
-		return -EPROBE_DEFER;
+			"DMA channel alloc failed: %d\n", ret);
+		return ret;
 	}
 
 	if (dma_to_memory) {
@@ -936,7 +934,6 @@ static int tegra_uart_dma_channel_allocate(struct tegra_uart_port *tup,
 		dma_buf = tup->uport.state->xmit.buf;
 	}
 
-	dma_sconfig.slave_id = tup->dma_req_sel;
 	if (dma_to_memory) {
 		dma_sconfig.src_addr = tup->uport.mapbase;
 		dma_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
@@ -1220,16 +1217,7 @@ static int tegra_uart_parse_dt(struct platform_device *pdev,
 	struct tegra_uart_port *tup)
 {
 	struct device_node *np = pdev->dev.of_node;
-	u32 of_dma[2];
 	int port;
-
-	if (of_property_read_u32_array(np, "nvidia,dma-request-selector",
-				of_dma, 2) >= 0) {
-		tup->dma_req_sel = of_dma[1];
-	} else {
-		dev_err(&pdev->dev, "missing dma requestor in device tree\n");
-		return -EINVAL;
-	}
 
 	port = of_alias_get_id(np, "serial");
 	if (port < 0) {
@@ -1320,7 +1308,6 @@ board_file:
 	} else {
 		tup->uport.line = pdev->id;
 		tup->enable_modem_interrupt = pdata->modem_interrupt;
-		tup->dma_req_sel = pdata->dma_req_selector;
 	}
 
 	u = &tup->uport;
