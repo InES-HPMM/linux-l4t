@@ -100,6 +100,7 @@ enum {
 	TEGRA_DSI_LINK0,
 	TEGRA_DSI_LINK1,
 };
+
 struct tegra_dsi_cmd {
 	u8	cmd_type;
 	u8	data_id;
@@ -115,7 +116,11 @@ struct tegra_dsi_cmd {
 	} sp_len_dly;
 	u8	*pdata;
 	u8   link_id;
+	bool	club_cmd;
 };
+
+#define CMD_CLUBBED				true
+#define CMD_NOT_CLUBBED				false
 
 #define DSI_GENERIC_LONG_WRITE			0x29
 #define DSI_DCS_LONG_WRITE			0x39
@@ -135,20 +140,27 @@ struct tegra_dsi_cmd {
 #define DSI_NULL_PKT_NO_DATA			0x9
 #define DSI_BLANKING_PKT_NO_DATA		0x19
 
-#define _DSI_CMD_SHORT(di, p0, p1, lnk_id, _cmd_type)	{ \
+#define IS_DSI_SHORT_PKT(cmd)	((cmd.data_id == DSI_DCS_WRITE_0_PARAM) ||\
+			(cmd.data_id == DSI_DCS_WRITE_1_PARAM) ||\
+			(cmd.data_id == DSI_GENERIC_SHORT_WRITE_1_PARAMS) ||\
+			(cmd.data_id == DSI_GENERIC_SHORT_WRITE_2_PARAMS))
+
+#define _DSI_CMD_SHORT(di, p0, p1, lnk_id, _cmd_type, club)	{ \
 					.cmd_type = _cmd_type, \
 					.data_id = di, \
 					.sp_len_dly.sp.data0 = p0, \
 					.sp_len_dly.sp.data1 = p1, \
 					.link_id = lnk_id, \
+					.club_cmd = club,\
 					}
 
-#define DSI_CMD_VBLANK_SHORT(di, p0, p1) \
+#define DSI_CMD_VBLANK_SHORT(di, p0, p1, club) \
 			_DSI_CMD_SHORT(di, p0, p1, TEGRA_DSI_LINK0,\
-				TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD)
+				TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD, club)
 
 #define DSI_CMD_SHORT_LINK(di, p0, p1, lnk_id) \
-			_DSI_CMD_SHORT(di, p0, p1, lnk_id, TEGRA_DSI_PACKET_CMD)
+			_DSI_CMD_SHORT(di, p0, p1, lnk_id,\
+				TEGRA_DSI_PACKET_CMD, CMD_NOT_CLUBBED)
 
 #define DSI_CMD_SHORT(di, p0, p1)	\
 			DSI_CMD_SHORT_LINK(di, p0, p1, TEGRA_DSI_LINK0)
@@ -173,8 +185,8 @@ struct tegra_dsi_cmd {
 				}
 
 #define DSI_CMD_VBLANK_LONG(di, ptr)	\
-		_DSI_CMD_LONG(di, ptr, TEGRA_DSI_LINK0,\
-				TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD)
+		_DSI_CMD_LONG(di, ptr, TEGRA_DSI_LINK0, \
+					TEGRA_DSI_PACKET_VIDEO_VBLANK_CMD)
 
 #define DSI_CMD_LONG_LINK(di, ptr, lnk_id)	\
 		_DSI_CMD_LONG(di, ptr, lnk_id, TEGRA_DSI_PACKET_CMD)
