@@ -2536,6 +2536,7 @@ int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld)
 
 	cl_dvfs_enable_clocks(cld);
 	set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
+	udelay(1);
 	return 0;
 }
 
