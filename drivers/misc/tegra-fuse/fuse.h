@@ -38,6 +38,7 @@
 
 /* fuse registers */
 #define FUSE_CTRL		0x000
+#define FUSE_CTRL_PD		BIT(26)
 #define FUSE_REG_ADDR		0x004
 #define FUSE_REG_READ		0x008
 #define FUSE_REG_WRITE		0x00C
@@ -61,6 +62,10 @@
 #define PMC_OSC_FREQ_MASK	(BIT(2) | BIT(3))
 #define PMC_OSC_FREQ_SHIFT	2
 #define CAR_OSC_FREQ_SHIFT	28
+
+#define PMC_FUSE_CTRL			0x450
+#define PMC_FUSE_CTRL_PS18_LATCH_SET	BIT(8)
+#define PMC_FUSE_CTRL_PS18_LATCH_CLEAR	BIT(9)
 
 #define FUSE_SENSE_DONE_BIT	BIT(30)
 #define START_DATA		BIT(0)

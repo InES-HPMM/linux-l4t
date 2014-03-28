@@ -50,6 +50,7 @@
 /* reserved_sw[7:4] */
 #define SW_RESERVED_START_OFFSET	0x2E
 #define SW_RESERVED_START_BIT		27
+#define SW_RESERVED_SIZE_BITS       4
 
 /* reserved_sw[3] */
 #define IGNORE_DEVSEL_START_OFFSET	0x2E

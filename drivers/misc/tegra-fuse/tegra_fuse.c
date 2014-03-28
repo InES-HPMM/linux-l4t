@@ -52,7 +52,7 @@
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 #include "tegra12x_fuse_offsets.h"
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include "tegra12x_fuse_offsets.h"
+#include "tegra21x_fuse_offsets.h"
 #endif
 
 DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
@@ -119,6 +119,12 @@ static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
 	[TEGRA_PLATFORM_FPGA]    = "fpga",
 };
 
+struct tegra_fuse_chip_data {
+	bool ext_regulator;
+	bool power_down_mode;
+};
+static const struct tegra_fuse_chip_data *fuse_chip_data;
+
 static struct param_info fuse_info_tbl[] = {
 	[DEVKEY] = {
 		.addr = &fuse_info.devkey,
@@ -179,7 +185,7 @@ static struct param_info fuse_info_tbl[] = {
 		.sz = sizeof(fuse_info.sw_rsvd),
 		.start_off = SW_RESERVED_START_OFFSET,
 		.start_bit = SW_RESERVED_START_BIT,
-		.nbits = 4,
+		.nbits = SW_RESERVED_SIZE_BITS,
 		.data_offset = 9,
 		.sysfs_name = "sw_reserved",
 	},
@@ -977,9 +983,13 @@ int tegra_fuse_program(struct device *dev,
 		return -ENODEV;
 	}
 
-	if (IS_ERR(fuse_regulator)) {
-		dev_err(dev, "fuse regulator is NULL");
-		return -ENODEV;
+	if (tegra_platform_is_silicon()) {
+		if (fuse_chip_data->ext_regulator) {
+			if (IS_ERR(fuse_regulator)) {
+				dev_err(dev, "fuse regulator is NULL");
+				return -ENODEV;
+			}
+		}
 	}
 
 	if (fuse_odm_prod_mode() && !(flags &
@@ -1032,9 +1042,21 @@ int tegra_fuse_program(struct device *dev,
 			fuse_info_tbl[i].sz);
 	}
 
-	ret = regulator_enable(fuse_regulator);
-	if (ret)
-		BUG_ON("regulator enable fail\n");
+	if (tegra_platform_is_silicon()) {
+		if (fuse_chip_data->ext_regulator) {
+			ret = regulator_enable(fuse_regulator);
+			if (ret)
+				BUG_ON("regulator enable fail\n");
+		} else {
+			reg = tegra_read_pmc_reg(PMC_FUSE_CTRL);
+			reg &= ~(PMC_FUSE_CTRL_PS18_LATCH_CLEAR);
+			tegra_write_pmc_reg(reg, PMC_FUSE_CTRL);
+			mdelay(1);
+			reg |= (PMC_FUSE_CTRL_PS18_LATCH_SET);
+			tegra_write_pmc_reg(reg, PMC_FUSE_CTRL);
+			mdelay(1);
+		}
+	}
 
 	populate_fuse_arrs(dev, &fuse_info, flags);
 
@@ -1045,7 +1067,19 @@ int tegra_fuse_program(struct device *dev,
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
 
-	regulator_disable(fuse_regulator);
+	if (tegra_platform_is_silicon()) {
+		if (fuse_chip_data->ext_regulator)
+			regulator_disable(fuse_regulator);
+		else {
+			reg = tegra_read_pmc_reg(PMC_FUSE_CTRL);
+			reg &= ~(PMC_FUSE_CTRL_PS18_LATCH_SET);
+			tegra_write_pmc_reg(reg, PMC_FUSE_CTRL);
+			mdelay(1);
+			reg |= (PMC_FUSE_CTRL_PS18_LATCH_CLEAR);
+			tegra_write_pmc_reg(reg, PMC_FUSE_CTRL);
+			mdelay(1);
+		}
+	}
 	mutex_unlock(&fuse_lock);
 
 	/* disable software writes to the fuse registers */
@@ -1211,9 +1245,32 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
+static struct tegra_fuse_chip_data tegra114_fuse_chip_data = {
+	.ext_regulator = true,
+	.power_down_mode = false,
+};
+
+static struct tegra_fuse_chip_data tegra124_fuse_chip_data = {
+	.ext_regulator = true,
+	.power_down_mode = false,
+};
+
+static struct tegra_fuse_chip_data tegra210_fuse_chip_data = {
+	.ext_regulator = false,
+	.power_down_mode = true,
+};
+
 static struct of_device_id tegra_fuse_of_match[] = {
-	{ .compatible = "nvidia,tegra114-efuse", },
-	{ .compatible = "nvidia,tegra124-efuse", },
+	{
+		.compatible = "nvidia,tegra114-efuse",
+		.data = &tegra114_fuse_chip_data,
+	}, {
+		.compatible = "nvidia,tegra124-efuse",
+		.data = &tegra124_fuse_chip_data,
+	}, {
+		.compatible = "nvidia,tegra210-efuse",
+		.data = &tegra210_fuse_chip_data,
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, tegra_fuse_of_match);
@@ -1221,12 +1278,27 @@ MODULE_DEVICE_TABLE(of, tegra_fuse_of_match);
 static int tegra_fuse_probe(struct platform_device *pdev)
 {
 	struct resource *fuse_res;
+	const struct of_device_id *match;
+	const struct tegra_fuse_chip_data *chip_data;
+	u32 reg;
 
-	/* get fuse_regulator regulator */
-	fuse_regulator = devm_regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
-	if (IS_ERR(fuse_regulator))
-		pr_err("%s: no fuse_regulator. fuse write disabled\n",
-				__func__);
+	match = of_match_device(tegra_fuse_of_match, &pdev->dev);
+	if (!match) {
+		dev_err(&pdev->dev, "device match failed\n");
+		return -ENODEV;
+	}
+	chip_data = match->data;
+	fuse_chip_data = chip_data;
+
+	if (tegra_platform_is_silicon()) {
+		if (chip_data->ext_regulator) {
+			fuse_regulator = devm_regulator_get(&pdev->dev,
+					TEGRA_FUSE_SUPPLY);
+			if (IS_ERR(fuse_regulator))
+				dev_err(&pdev->dev,
+						"no fuse_regulator, fuse write disabled\n");
+		}
+	}
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR(clk_fuse)) {
@@ -1243,6 +1315,15 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	fuse_base = devm_ioremap_resource(&pdev->dev, fuse_res);
 	if (IS_ERR(fuse_base))
 		return PTR_ERR(fuse_base);
+
+	if (chip_data->power_down_mode) {
+		/* Disable power down mode if enabled */
+		reg = fuse_readl(FUSE_CTRL);
+		if (FUSE_CTRL_PD & reg) {
+			reg &= ~FUSE_CTRL_PD;
+			fuse_writel(reg, FUSE_CTRL);
+		}
+	}
 
 	/* change fuse file permissions, if ODM production fuse is not blown */
 	if (!fuse_odm_prod_mode()) {

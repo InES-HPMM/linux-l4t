@@ -2426,6 +2426,11 @@ u32 tegra_read_pmc_reg(int offset)
 	return readl(IO_ADDRESS(TEGRA_PMC_BASE) + offset);
 }
 
+void tegra_write_pmc_reg(u32 val, int offset)
+{
+	writel(val, IO_ADDRESS(TEGRA_PMC_BASE + offset));
+}
+
 u32 tegra_read_clk_ctrl_reg(int offset)
 {
 	return readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + offset);
