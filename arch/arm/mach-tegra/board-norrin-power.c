@@ -301,7 +301,7 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 					.depth = 80,
 				},
 				[THROTTLE_DEV_GPU] = {
-					.enable = false,
+					.enable = true,
 					.throttling_depth = "heavy_throttling",
 				},
 			},
