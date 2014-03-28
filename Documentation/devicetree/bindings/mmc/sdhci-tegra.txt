@@ -17,6 +17,11 @@ Optional properties:
 - max-clk-limit: Specify the maximum clock limit for the device
 - mmc-ocr-mask: Specify OCR register masking details
 - uhs_mask: Specify modes that are masked for the device
+	Mask HS200 mode: 0x20
+	Mask HS400 mode: 0x40
+	Mask SDR104 mode: 0x10
+	Mask SDR50 mode: 0x4
+	Mask DDR50 mode: 0x8
 - calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
 
 Example:
