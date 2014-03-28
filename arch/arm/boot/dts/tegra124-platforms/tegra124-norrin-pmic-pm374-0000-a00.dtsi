@@ -113,6 +113,8 @@
 
 				as3722_sd4: sd4 {
 				    regulator-name = "avdd-pll-pex";
+				    regulator-min-microvolt = <1050000>;
+				    regulator-max-microvolt = <1050000>;
 				    regulator-always-on;
 				    regulator-boot-on;
 				    ams,ext-control = <AS3722_EXT_CONTROL_ENABLE1>;
