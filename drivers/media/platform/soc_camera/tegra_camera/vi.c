@@ -412,6 +412,15 @@ static void vi_init_syncpts(struct tegra_camera_dev *cam)
 	cam->syncpt_id_vip = nvhost_get_syncpt_client_managed("vi_vip");
 }
 
+static void vi_free_syncpts(struct tegra_camera_dev *cam)
+{
+	nvhost_free_syncpt(cam->syncpt_id_csi_a);
+
+	nvhost_free_syncpt(cam->syncpt_id_csi_b);
+
+	nvhost_free_syncpt(cam->syncpt_id_vip);
+}
+
 static void vi_save_syncpts(struct tegra_camera_dev *cam)
 {
 	u32 val;
@@ -1057,6 +1066,7 @@ struct tegra_camera_ops vi_ops = {
 	.deactivate = vi_powergate,
 
 	.init_syncpts = vi_init_syncpts,
+	.free_syncpts = vi_free_syncpts,
 	.save_syncpts = vi_save_syncpts,
 	.incr_syncpts = vi_incr_syncpts,
 

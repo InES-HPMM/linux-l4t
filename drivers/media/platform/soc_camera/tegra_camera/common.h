@@ -68,6 +68,7 @@ struct tegra_camera_ops {
 	int (*capture_stop)(struct tegra_camera_dev *vi2_cam, int port);
 
 	void (*init_syncpts)(struct tegra_camera_dev *vi2_cam);
+	void (*free_syncpts)(struct tegra_camera_dev *vi2_cam);
 	void (*incr_syncpts)(struct tegra_camera_dev *vi2_cam);
 	void (*save_syncpts)(struct tegra_camera_dev *vi2_cam);
 

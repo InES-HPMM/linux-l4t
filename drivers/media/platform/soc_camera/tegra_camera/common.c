@@ -942,6 +942,9 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	vb2_dma_contig_cleanup_ctx(cam->alloc_ctx);
 
 	if (cam->ops)
+		cam->ops->free_syncpts(cam);
+
+	if (cam->ops)
 		cam->ops->clks_deinit(cam);
 
 	kfree(cam);
