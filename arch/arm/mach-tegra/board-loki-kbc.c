@@ -106,16 +106,16 @@ static struct platform_device loki_int_keys_device = {
 static int loki_wakeup_key(void)
 {
 	int wakeup_key;
-	u32 status;
+	u64 status;
 	status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
 		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
 		+ PMC_WAKE2_STATUS) << 32;
 
-	if (status & TEGRA_WAKE_GPIO_PQ0)
+	if (status & (1ULL << TEGRA_WAKE_GPIO_PQ0))
 		wakeup_key = KEY_POWER;
-	else if (status & (1UL << TEGRA_WAKE_GPIO_PS0))
+	else if (status & (1ULL << TEGRA_WAKE_GPIO_PS0))
 		wakeup_key = SW_LID;
-	else if (status & (1UL << TEGRA_WAKE_GPIO_PS6))
+	else if (status & (1ULL << TEGRA_WAKE_GPIO_PS6))
 		wakeup_key = KEY_WAKEUP;
 	else
 		wakeup_key = -1;
