@@ -1863,7 +1863,7 @@ static int cl_dvfs_simon_grade_notify_cb(struct notifier_block *nb,
 {
 	unsigned long flags;
 	int i, simon_offset;
-	int curr_domain = (int)v;
+	int curr_domain = (int)((long)v);
 	struct tegra_cl_dvfs *cld = container_of(
 		nb, struct tegra_cl_dvfs, simon_grade_nb);
 	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
