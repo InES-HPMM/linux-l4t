@@ -64,11 +64,7 @@ struct nct_serial_number_type {
 	char sn[30];
 };
 
-struct nct_wifi_mac_addr_type {
-	u8 addr[6];
-};
-
-struct nct_bt_addr_type {
+struct nct_mac_addr_type {
 	u8 addr[6];
 };
 
@@ -107,8 +103,8 @@ union nct_tegra_emc_table_type {
 
 union nct_item_type {
 	struct nct_serial_number_type	serial_number;
-	struct nct_wifi_mac_addr_type	wifi_mac_addr;
-	struct nct_bt_addr_type		bt_addr;
+	struct nct_mac_addr_type	wifi_mac_addr;
+	struct nct_mac_addr_type	bt_addr;
 	struct nct_cm_id_type		cm_id;
 	struct nct_lbh_id_type		lbh_id;
 	struct nct_factory_mode_type	factory_mode;

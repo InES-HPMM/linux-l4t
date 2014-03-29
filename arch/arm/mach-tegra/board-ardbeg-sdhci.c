@@ -32,6 +32,7 @@
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
+#include <mach/nct.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -287,17 +288,36 @@ static int ardbeg_wifi_reset(int on)
 	return 0;
 }
 
-#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
+static int _ardbeg_wifi_get_mac_addr_nct(unsigned char *buf)
+{
+	int ret = -ENODATA;
+#ifdef CONFIG_TEGRA_USE_NCT
+	union nct_item_type *entry = NULL;
+	entry = kmalloc(sizeof(union nct_item_type), GFP_KERNEL);
+	if (entry) {
+		if (!tegra_nct_read_item(NCT_ID_WIFI_MAC_ADDR, entry)) {
+			memcpy(buf, entry->wifi_mac_addr.addr,
+					sizeof(struct nct_mac_addr_type));
+			ret = 0;
+		}
+		kfree(entry);
+	}
 
-static int ardbeg_wifi_get_mac_addr(unsigned char *buf)
+	if (ret)
+		pr_warn("%s: Couldn't find MAC address from NCT\n", __func__);
+#endif
+
+	return ret;
+}
+
+#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
+static int _ardbeg_wifi_get_mac_addr_file(unsigned char *buf)
 {
 	struct file *fp;
 	int rdlen;
 	char str[32];
 	int mac[6];
 	int ret = 0;
-
-	pr_debug("%s\n", __func__);
 
 	/* open wifi mac address file */
 	fp = filp_open(ARDBEG_WIFI_MAC_ADDR_FILE, O_RDONLY, 0);
@@ -339,6 +359,15 @@ static int ardbeg_wifi_get_mac_addr(unsigned char *buf)
 	filp_close(fp, NULL);
 
 	return ret;
+}
+
+static int ardbeg_wifi_get_mac_addr(unsigned char *buf)
+{
+	/* try to get mac address stored in NCT first */
+	if (_ardbeg_wifi_get_mac_addr_nct(buf))
+		return _ardbeg_wifi_get_mac_addr_file(buf);
+
+	return 0;
 }
 
 static int __init ardbeg_wifi_init(void)
