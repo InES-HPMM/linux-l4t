@@ -157,6 +157,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.uhs_mask = MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
+	.max_clk_limit = 204000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -497,8 +498,6 @@ int __init loki_sdhci_init(void)
 		tegra_sdhci_platform_data2.boot_vcore_mv = boot_vcore_mv;
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
-
-	tegra_sdhci_platform_data0.max_clk_limit = 136000000;
 
 	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
