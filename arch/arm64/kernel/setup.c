@@ -437,6 +437,11 @@ static int __init topology_init(void)
 	for_each_possible_cpu(i) {
 		struct cpu *cpu = &per_cpu(cpu_data, i);
 		cpu->hotpluggable = 1;
+#if !defined(CONFIG_HOTPLUG_CPU0)
+		if (i == 0)
+			cpu->hotpluggable = 0;
+#endif
+
 		register_cpu(cpu, i);
 	}
 

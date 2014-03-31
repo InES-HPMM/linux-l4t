@@ -221,6 +221,14 @@ config HOTPLUG_CPU
 
 	  If you don't know what to do here, say N.
 
+config HOTPLUG_CPU0
+	bool "Support for CPU0 hotplug"
+	depends on HOTPLUG_CPU
+	default n
+	help
+	  CPU0 hotplug is not supported on all arm64 platforms. Select Y to
+	  enable CPU0 hotplug. If you're unsure, leave CPU0 hotplug disabled.
+
 config SWP_EMULATE
 	bool "Emulate SWP/SWPB instructions"
 	help
