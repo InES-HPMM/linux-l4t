@@ -104,6 +104,8 @@ void __init tegra14x_init_early(void);
 void __init tegra_map_common_io(void);
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size);
+void __init tegra_reserve4(ulong carveout_size, ulong fb_size,
+	ulong fb2_size, ulong vpr_size);
 int __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);

@@ -1117,6 +1117,7 @@ int tegra_get_sku_override(void)
 	return sku_override;
 }
 
+#ifndef CONFIG_TRUSTED_LITTLE_KERNEL
 static int __init tegra_vpr_arg(char *options)
 {
 	char *p = options;
@@ -1129,6 +1130,7 @@ static int __init tegra_vpr_arg(char *options)
 	return 0;
 }
 early_param("vpr", tegra_vpr_arg);
+#endif
 
 static int __init tegra_tsec_arg(char *options)
 {
@@ -2149,6 +2151,16 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #ifdef CONFIG_PSTORE_RAM
 	tegra_reserve_ramoops_memory(RAMOOPS_MEM_SIZE);
 #endif
+}
+
+void tegra_reserve4(ulong carveout_size, ulong fb_size,
+		       ulong fb2_size, ulong vpr_size)
+{
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	tegra_vpr_start = 0;
+	tegra_vpr_size = vpr_size;
+#endif
+	tegra_reserve(carveout_size, fb_size, fb2_size);
 }
 
 void tegra_get_fb_resource(struct resource *fb_res)
