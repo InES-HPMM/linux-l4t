@@ -72,8 +72,12 @@
 					INA3221_TRIG_MODE) /* 0x7723 */
 #define INA3221_NUMBER_OF_RAILS		3
 
+#define INA3221_CVRF                    0x01
+
 #define CPU_THRESHOLD			2
 #define CPU_FREQ_THRESHOLD		102000
+
+#define INA3221_MAX_CONVERSION_TRIALS 10
 
 #define PACK_MODE_CHAN(mode, chan)	((mode) | ((chan) << 8))
 #define UNPACK_MODE(address)		((address) & 0xFF)
@@ -114,6 +118,7 @@ struct ina3221_chip {
 	int shutdown_complete;
 	int is_suspended;
 	int mode;
+	int alert_enabled;
 	struct notifier_block nb_hot;
 	struct notifier_block nb_cpufreq;
 };
@@ -189,12 +194,33 @@ static int __locked_power_up_ina3221(struct ina3221_chip *chip, int config)
 
 static int __locked_start_conversion(struct ina3221_chip *chip)
 {
-	int ret = 0;
+	int ret, cvrf, trials = 0;
 
-	if (chip->mode == TRIGGERED)
+	if (chip->mode == TRIGGERED) {
 		ret = __locked_power_up_ina3221(chip,
-					chip->pdata->trig_conf_data);
-	return ret;
+						chip->pdata->trig_conf_data);
+
+		if (ret < 0)
+			return ret;
+
+		/* wait till conversion ready bit is set */
+		do {
+			ret = i2c_smbus_read_word_data(chip->client,
+						       INA3221_MASK_ENABLE);
+			if (ret < 0) {
+				dev_err(chip->dev, "MASK read failed: %d\n",
+					ret);
+				return ret;
+			}
+			cvrf = be16_to_cpu(ret) & INA3221_CVRF;
+		} while ((!cvrf) && (++trials < INA3221_MAX_CONVERSION_TRIALS));
+		if (trials == INA3221_MAX_CONVERSION_TRIALS) {
+			dev_err(chip->dev, "maximum retries exceeded\n");
+			return -EAGAIN;
+		}
+	}
+
+	return 0;
 }
 
 static int __locked_end_conversion(struct ina3221_chip *chip)
@@ -262,10 +288,15 @@ static int ina3221_set_mode(struct ina3221_chip *chip,
 		if (!ret)
 			chip->mode = FORCED_CONTINUOUS;
 	} else if (chip->mode == FORCED_CONTINUOUS) {
-		chip->mode = CONTINUOUS;
-		cpufreq = cpufreq_quick_get(0);
-		cpus = num_online_cpus();
-		ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
+		if (chip->alert_enabled) {
+			chip->mode = CONTINUOUS;
+			cpufreq = cpufreq_quick_get(0);
+			cpus = num_online_cpus();
+			ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
+		} else {
+			chip->mode = TRIGGERED;
+			ret = __locked_power_down_ina3221(chip);
+		}
 	}
 	mutex_unlock(&chip->mutex);
 	return ret ? ret : count;
@@ -371,42 +402,50 @@ exit:
 	return ret;
 }
 
-static int __locked_set_crit_warn_register(struct ina3221_chip *chip,
-	u32 channel, u32 reg_addr)
+static int __locked_set_crit_alert_register(struct ina3221_chip *chip,
+					    u32 channel)
 {
 	struct ina3221_chan_pdata *cpdata = &chip->pdata->cpdata[channel];
 	int shunt_volt_limit;
 
+	chip->alert_enabled = 1;
 	shunt_volt_limit = cpdata->crit_conf_limits * cpdata->shunt_resistor;
 	shunt_volt_limit = uv_to_shuntv_register(shunt_volt_limit);
 
-	return i2c_smbus_write_word_data(chip->client, reg_addr,
-				cpu_to_be16(shunt_volt_limit));
+	return i2c_smbus_write_word_data(chip->client, INA3221_CRIT(channel),
+					 cpu_to_be16(shunt_volt_limit));
+}
+
+static int __locked_set_warn_alert_register(struct ina3221_chip *chip,
+					    u32 channel)
+{
+	struct ina3221_chan_pdata *cpdata = &chip->pdata->cpdata[channel];
+	int shunt_volt_limit;
+
+	chip->alert_enabled = 1;
+	shunt_volt_limit = cpdata->warn_conf_limits * cpdata->shunt_resistor;
+	shunt_volt_limit = uv_to_shuntv_register(shunt_volt_limit);
+	return i2c_smbus_write_word_data(chip->client, INA3221_WARN(channel),
+					 cpu_to_be16(shunt_volt_limit));
 }
 
 static int __locked_set_crit_warn_limits(struct ina3221_chip *chip)
 {
 	struct ina3221_chan_pdata *cpdata;
-	u32 crit_reg_addr;
-	u32 warn_reg_addr;
 	int i;
 	int ret = 0;
 
 	for (i = 0; i < INA3221_NUMBER_OF_RAILS; i++) {
-		crit_reg_addr = INA3221_CRIT(i);
-		warn_reg_addr = INA3221_WARN(i);
 		cpdata = &chip->pdata->cpdata[i];
 
 		if (cpdata->crit_conf_limits != U32_MINUS_1) {
-			ret = __locked_set_crit_warn_register(chip,
-						i, crit_reg_addr);
+			ret = __locked_set_crit_alert_register(chip, i);
 			if (ret < 0)
 				break;
 		}
 
 		if (cpdata->warn_conf_limits != U32_MINUS_1) {
-			ret = __locked_set_crit_warn_register(chip,
-						i, warn_reg_addr);
+			ret = __locked_set_warn_alert_register(chip, i);
 			if (ret < 0)
 				break;
 		}
@@ -418,12 +457,11 @@ static int ina3221_set_channel_critical(struct ina3221_chip *chip,
 	int channel, int curr_limit)
 {
 	struct ina3221_chan_pdata *cpdata = &chip->pdata->cpdata[channel];
-	u32 crit_reg_addr = INA3221_CRIT(channel);
 	int ret;
 
 	mutex_lock(&chip->mutex);
 	cpdata->crit_conf_limits = curr_limit;
-	ret = __locked_set_crit_warn_register(chip, channel, crit_reg_addr);
+	ret = __locked_set_crit_alert_register(chip, channel);
 	mutex_unlock(&chip->mutex);
 	return ret;
 }
@@ -457,6 +495,9 @@ static int __locked_ina3221_switch_mode(struct ina3221_chip *chip,
 		   int cpus, int cpufreq)
 {
 	int ret = 0;
+
+	if (!chip->alert_enabled)
+		return 0;
 
 	switch (chip->mode) {
 	case TRIGGERED:
