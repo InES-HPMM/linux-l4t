@@ -246,6 +246,8 @@ IIO
   devm_iio_device_unregister()
 
 IO region
+  devm_request_resource()
+  devm_release_resource()
   devm_request_region()
   devm_request_mem_region()
   devm_release_region()
