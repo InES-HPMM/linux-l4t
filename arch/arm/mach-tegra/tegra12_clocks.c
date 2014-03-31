@@ -4744,7 +4744,8 @@ static int tegra12_periph_clk_enable(struct clk *c)
 	if (!(c->flags & PERIPH_NO_RESET) && !(c->flags & PERIPH_MANUAL_RESET)) {
 		if (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c)) {
 			udelay(RESET_PROPAGATION_DELAY);
-			clk_writel(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_RST_CLR_REG(c));
+			clk_writel_delay(PERIPH_CLK_TO_BIT(c),
+					 PERIPH_CLK_TO_RST_CLR_REG(c));
 		}
 	}
 	spin_unlock_irqrestore(&periph_refcount_lock, flags);
@@ -4795,11 +4796,11 @@ static void tegra12_periph_clk_reset(struct clk *c, bool assert)
 			if (c->flags & PERIPH_ON_APB)
 				val = tegra_read_chipid();
 
-			clk_writel(PERIPH_CLK_TO_BIT(c),
-				   PERIPH_CLK_TO_RST_SET_REG(c));
+			clk_writel_delay(PERIPH_CLK_TO_BIT(c),
+					 PERIPH_CLK_TO_RST_SET_REG(c));
 		} else
-			clk_writel(PERIPH_CLK_TO_BIT(c),
-				   PERIPH_CLK_TO_RST_CLR_REG(c));
+			clk_writel_delay(PERIPH_CLK_TO_BIT(c),
+					 PERIPH_CLK_TO_RST_CLR_REG(c));
 	}
 }
 
