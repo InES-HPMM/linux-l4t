@@ -392,7 +392,7 @@ static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
 	int ret;
 	struct iqs253_chip *chip;
 
-	chip = container_of(ws, struct iqs253_chip, dw.work);
+	chip = container_of(ws, struct iqs253_chip, sar_dw.work);
 
 	if (!chip->using_regulator) {
 		ret = regulator_enable(chip->vddhi);
@@ -435,7 +435,7 @@ static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
 	chip->using_regulator = false;
 
 finish:
-	queue_delayed_work(chip->wq, &chip->dw, msecs_to_jiffies(2000));
+	queue_delayed_work(chip->sar_wq, &chip->sar_dw, msecs_to_jiffies(2000));
 }
 
 #endif /* CONFIG_SENSORS_IQS253_AS_PROXIMITY */
