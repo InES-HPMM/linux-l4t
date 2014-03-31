@@ -285,8 +285,8 @@ static inline void cl_dvfs_i2c_writel(struct tegra_cl_dvfs *cld,
 }
 static inline void cl_dvfs_i2c_wmb(struct tegra_cl_dvfs *cld)
 {
-	wmb();
 	cl_dvfs_i2c_readl(cld, CL_DVFS_I2C_CFG);
+	dsb();
 }
 
 static inline u32 cl_dvfs_readl(struct tegra_cl_dvfs *cld, u32 offs)
@@ -305,8 +305,8 @@ static inline void cl_dvfs_writel(struct tegra_cl_dvfs *cld, u32 val, u32 offs)
 }
 static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
 {
-	wmb();
 	cl_dvfs_readl(cld, CL_DVFS_CTRL);
+	dsb();
 }
 
 static inline void switch_monitor(struct tegra_cl_dvfs *cld, u32 selector)
