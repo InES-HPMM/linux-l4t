@@ -1427,12 +1427,6 @@ static irqreturn_t irq_handler(int irq, void *context)
 
 	trace_touchscreen_maxim_irq("irq_handler");
 
-#if NV_ENABLE_CPU_BOOST
-	if (time_after(jiffies, dd->last_irq_jiffies + INPUT_IDLE_PERIOD))
-		input_event(dd->input_dev[0], EV_MSC, MSC_ACTIVITY, 1);
-	dd->last_irq_jiffies = jiffies;
-#endif
-
 #if DOUBLE_TAP
 	if (unlikely(dd->suspend_in_progress))
 		return IRQ_WAKE_THREAD;
