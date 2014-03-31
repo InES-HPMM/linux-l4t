@@ -148,8 +148,8 @@ static inline void actmon_writel(u32 val, u32 offset)
 }
 static inline void actmon_wmb(void)
 {
-	wmb();
 	actmon_readl(ACTMON_GLB_STATUS);
+	dsb();
 }
 
 #define offs(x)		(dev->reg + x)
