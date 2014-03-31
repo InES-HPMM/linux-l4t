@@ -267,12 +267,20 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 	return addr;
 
 }
+
+extern bool device_is_iommuable(struct device *dev);
+
 #else
 static inline dma_addr_t
 dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 	return DMA_ERROR_CODE;
+}
+
+static inline bool device_is_iommuable(struct device *dev)
+{
+	return false;
 }
 #endif
 

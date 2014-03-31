@@ -387,7 +387,14 @@ static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
 }
 #endif
 
-
+#ifdef CONFIG_ARM_DMA_USE_IOMMU
+extern bool device_is_iommuable(struct device *dev);
+#else
+static inline bool device_is_iommuable(struct device *dev)
+{
+	return false;
+}
+#endif
 
 #endif	/* __KERNEL__ */
 #endif	/* __ASM_DMA_MAPPING_H */

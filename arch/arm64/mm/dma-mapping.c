@@ -2260,6 +2260,12 @@ struct dma_map_ops iommu_coherent_ops = {
 	.dma_supported	= arm_dma_supported,
 };
 
+bool device_is_iommuable(struct device *dev)
+{
+	return (dev->archdata.dma_ops == &iommu_ops) ||
+		(dev->archdata.dma_ops == &iommu_coherent_ops);
+}
+
 /**
  * arm_iommu_create_mapping
  * @bus: pointer to the bus holding the client device (for IOMMU calls)
