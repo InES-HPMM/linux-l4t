@@ -1,7 +1,7 @@
 /*
- * spi-tegra.h: SPI interface for Nvidia Tegra20 SLINK controller.
+ * spi-tegra.h: SPI interface for Nvidia slink/spi controller.
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #ifndef _LINUX_SPI_TEGRA_H
 #define _LINUX_SPI_TEGRA_H
 
+#include <linux/spi/spi.h>
+
 struct tegra_spi_platform_data {
 	int dma_req_sel;
 	unsigned int spi_max_frequency;
@@ -39,5 +41,25 @@ struct tegra_spi_device_controller_data {
 	int rx_clk_tap_delay;
 	int tx_clk_tap_delay;
 };
+
+typedef int (*spi_callback)(void *client_data);
+
+/**
+ * Client can register atmost two callbacks for notification depending upon
+ * the requirement. Ready_func can be used to get notification that the
+ * controller is ready for transction. In the callback functions client can
+ * do specific action like toggling gpio to inform master if slave is ready
+ * or not.
+ *
+ * @spi: struct spi_device - refer to linux/spi/spi.h
+ * @ready_func: Callback function to notify clilent that slave is ready.
+ * @isr_func: Callback function to notify clilent that slave got interrupt.
+ * @client_data: callback related data
+ * Context: can not sleep
+ */
+
+int tegra_spi_slave_register_callback(struct spi_device *spi,
+		spi_callback func_ready, spi_callback func_isr,
+		void *client_data);
 
 #endif /* _LINUX_SPI_TEGRA_H */

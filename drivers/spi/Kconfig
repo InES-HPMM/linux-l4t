@@ -438,6 +438,12 @@ config SPI_TEGRA114
 	  is different than the older SoCs spi controller and register interface
 	  also get changed with this controller.
 
+config SPI_TEGRA114_SLAVE
+	tristate "Nvidia Tegra114 SPI Slave Controller"
+	depends on ARCH_TEGRA && TEGRA20_APB_DMA
+	help
+	  SPI slave driver for Nvidia Tegra114 and later soc SPI Controller interface.
+
 config SPI_TI_SSP
 	tristate "TI Sequencer Serial Port - SPI Support"
 	depends on MFD_TI_SSP
