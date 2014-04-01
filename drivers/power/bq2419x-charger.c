@@ -480,7 +480,7 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 	int timeout;
 
 	mutex_lock(&bq2419x->mutex);
-	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
+	dev_dbg(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
 	if (bq2419x->emulate_input_disconnected)
