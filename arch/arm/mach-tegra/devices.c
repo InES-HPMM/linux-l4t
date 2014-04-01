@@ -2334,8 +2334,8 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	  SWGID(PPCS2), },
 	{ .name = "spdif-dit",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
-	{ .name = "tegra12-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
-	  SWGID(PPCS2), },
+	{ .name = "tegra21-se",	.swgids = SWGID(PPCS) | SWGID(SE) |
+	  SWGID(SE1), },
 	{ .name = "spi-tegra114",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "tegra14-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
