@@ -2724,6 +2724,42 @@ int tegra_cl_dvfs_vmax_read_retry(struct tegra_cl_dvfs *cld, uint start)
 	return read_seqcount_retry(&cld->v_limits.vmax_seqcnt, start);
 }
 
+
+/*
+ * Compare actually set (last delivered) and required Vmin. These levels may
+ * be different if temperature or SiMon grade changes while cl-dvfs output
+ * interface is disabled, and new required setting is not delivered to PMIC.
+ * It actually may happen while cl_dvfs is disabled, or during transition
+ * to/from disabled state.
+ *
+ * Return:
+ * 0 if levels are equal,
+ * +1 if last Vmin is above required,
+ * -1 if last Vmin is below required.
+ */
+int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld, int *needed_mv)
+{
+	int ret = 0;
+	unsigned long flags;
+	u8 needed_out_min, last_out_min;
+
+
+	clk_lock_save(cld->dfll_clk, &flags);
+	needed_out_min = get_output_min(cld);
+	last_out_min = cld->lut_min;
+
+	if (last_out_min > needed_out_min)
+		ret = 1;
+	else if (last_out_min < needed_out_min)
+		ret = -1;
+
+	if (needed_mv)
+		*needed_mv = get_mv(cld, needed_out_min);
+
+	clk_unlock_restore(cld->dfll_clk, &flags);
+	return ret;
+}
+
 /*
  * Voltage clamping interface: set maximum and minimum voltage limits at the
  * same lowest safe (for current temperature and tuning range) level. Allows
