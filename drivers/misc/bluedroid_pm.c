@@ -1,7 +1,7 @@
 /*
  * drivers/misc/bluedroid_pm.c
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,11 +100,29 @@ EXPORT_SYMBOL(bt_wlan_unlock);
 /** bluedroid_m busy timer */
 static void bluedroid_pm_timer_expire(unsigned long data);
 static DEFINE_TIMER(bluedroid_pm_timer, bluedroid_pm_timer_expire, 0, 0);
+static int bluedroid_pm_gpio_get_value(unsigned int gpio);
+static void bluedroid_pm_gpio_set_value(unsigned int gpio, int value);
 
 static irqreturn_t bluedroid_pm_hostwake_isr(int irq, void *dev_id)
 {
 	/* schedule a tasklet to handle the change in the host wake line */
 	return IRQ_HANDLED;
+}
+
+static int bluedroid_pm_gpio_get_value(unsigned int gpio)
+{
+	if (gpio_cansleep(gpio))
+		return gpio_get_value_cansleep(gpio);
+	else
+		return gpio_get_value(gpio);
+}
+
+static void bluedroid_pm_gpio_set_value(unsigned int gpio, int value)
+{
+	if (gpio_cansleep(gpio))
+		gpio_set_value_cansleep(gpio, value);
+	else
+		gpio_set_value(gpio, value);
 }
 
 /**
@@ -123,10 +141,10 @@ static void bluedroid_pm_timer_expire(unsigned long data)
 	if (!bluedroid_pm || test_bit(BT_WAKE, &bluedroid_pm->flags))
 		return;
 
-	if (!gpio_get_value(bluedroid_pm->host_wake)) {
+	if (!bluedroid_pm_gpio_get_value(bluedroid_pm->host_wake)) {
 		/* BT can sleep */
 		BDP_DBG("Tx and Rx are idle, BT sleeping");
-		gpio_set_value(bluedroid_pm->ext_wake, 0);
+		bluedroid_pm_gpio_set_value(bluedroid_pm->ext_wake, 0);
 		wake_unlock(&bluedroid_pm->wake_lock);
 	} else {
 		/* BT Rx is busy, Reset Timer */
@@ -143,15 +161,18 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 	 * check if BT gpio_shutdown line status and current request are same.
 	 * If same, then return, else perform requested operation.
 	 */
-	if (gpio_get_value(bluedroid_pm->gpio_shutdown) == !blocked)
+	if (bluedroid_pm_gpio_get_value(bluedroid_pm->gpio_shutdown)
+		== !blocked)
 		return 0;
 
 	mdelay(100);
 	if (blocked) {
 		if (bluedroid_pm->gpio_shutdown)
-			gpio_set_value(bluedroid_pm->gpio_shutdown, 0);
+			bluedroid_pm_gpio_set_value(
+				bluedroid_pm->gpio_shutdown, 0);
 		if (bluedroid_pm->gpio_reset)
-			gpio_set_value(bluedroid_pm->gpio_reset, 0);
+			bluedroid_pm_gpio_set_value(
+				bluedroid_pm->gpio_reset, 0);
 		if (bluedroid_pm->vdd_3v3)
 			regulator_disable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
@@ -167,9 +188,11 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 		if (bluedroid_pm->vdd_1v8)
 			regulator_enable(bluedroid_pm->vdd_1v8);
 		if (bluedroid_pm->gpio_shutdown)
-			gpio_set_value(bluedroid_pm->gpio_shutdown, 1);
+			bluedroid_pm_gpio_set_value(
+				bluedroid_pm->gpio_shutdown, 1);
 		if (bluedroid_pm->gpio_reset)
-			gpio_set_value(bluedroid_pm->gpio_reset, 1);
+			bluedroid_pm_gpio_set_value(
+				bluedroid_pm->gpio_reset, 1);
 		if (bluedroid_pm->resume_min_frequency)
 			pm_qos_add_request(&bluedroid_pm->
 						resume_cpu_freq_req,
@@ -332,7 +355,7 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		/* Initialize timer */
 		init_timer(&bluedroid_pm_timer);
 		bluedroid_pm_timer.function = bluedroid_pm_timer_expire;
-		bluedroid_pm_timer.data = bluedroid_pm;
+		bluedroid_pm_timer.data = (unsigned long)bluedroid_pm;
 	} else {
 		BDP_DBG("gpio_ext_wake not registered\n");
 		bluedroid_pm->ext_wake = 0;
@@ -461,10 +484,12 @@ static ssize_t lpm_write_proc(struct file *file, const char __user *buffer,
 
 	if (!bluedroid_pm->is_blocked) {
 		if (buf[0] == '0') {
-			if (!gpio_get_value(bluedroid_pm->host_wake)) {
+			if (!bluedroid_pm_gpio_get_value(
+				bluedroid_pm->host_wake)) {
 				/* BT can sleep */
 				BDP_DBG("Tx and Rx are idle, BT sleeping");
-					gpio_set_value(bluedroid_pm->ext_wake, 0);
+					bluedroid_pm_gpio_set_value(
+						bluedroid_pm->ext_wake, 0);
 					wake_unlock(&bluedroid_pm->wake_lock);
 				} else {
 					/* Reset Timer */
@@ -475,7 +500,8 @@ static ssize_t lpm_write_proc(struct file *file, const char __user *buffer,
 			clear_bit(BT_WAKE, &bluedroid_pm->flags);
 		} else if (buf[0] == '1') {
 			BDP_DBG("Tx is busy, wake_lock taken, delete timer");
-			gpio_set_value(bluedroid_pm->ext_wake, 1);
+			bluedroid_pm_gpio_set_value(
+				bluedroid_pm->ext_wake, 1);
 			wake_lock(&bluedroid_pm->wake_lock);
 			del_timer(&bluedroid_pm_timer);
 			set_bit(BT_WAKE, &bluedroid_pm->flags);
