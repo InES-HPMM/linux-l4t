@@ -197,6 +197,7 @@
 			      0 142 0x04
 			      0 143 0x04>;
 		clocks = <&tegra_car 34>;
+		#dma-cells = <1>;
 	};
 
 	ahb: ahb {
@@ -242,6 +243,8 @@
 		interrupts = <0 36 0x04>;
 		nvidia,dma-request-selector = <&apbdma 8>;
 		clocks = <&tegra_car 6>;
+		dmas = <&apbdma 8>, <&apbdma 8>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -252,6 +255,8 @@
 		interrupts = <0 37 0x04>;
 		nvidia,dma-request-selector = <&apbdma 9>;
 		clocks = <&tegra_car 160>;
+		dmas = <&apbdma 9>, <&apbdma 9>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -262,6 +267,8 @@
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
 		clocks = <&tegra_car 55>;
+		dmas = <&apbdma 10>, <&apbdma 10>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -272,6 +279,8 @@
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
 		clocks = <&tegra_car 65>;
+		dmas = <&apbdma 19>, <&apbdma 19>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -282,6 +291,8 @@
 		interrupts = <0 91 0x04>;
 		nvidia,dma-request-selector = <&apbdma 20>;
 		clocks = <&tegra_car 66>;
+		dmas = <&apbdma 20>, <&apbdma 20>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -362,6 +373,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 41>;
+		dmas = <&apbdma 15>, <&apbdma 15>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -373,6 +386,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 44>;
+		dmas = <&apbdma 16>, <&apbdma 16>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -384,6 +399,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 46>;
+		dmas = <&apbdma 17>, <&apbdma 17>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -395,6 +412,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 68>;
+		dmas = <&apbdma 18>, <&apbdma 18>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -406,6 +425,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 104>;
+		dmas = <&apbdma 27>, <&apbdma 27>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -417,6 +438,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&tegra_car 105>;
+		dmas = <&apbdma 28>, <&apbdma 28>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 

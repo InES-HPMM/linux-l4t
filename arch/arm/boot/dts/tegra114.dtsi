@@ -210,6 +210,7 @@
 			      0 142 0x04
 			      0 143 0x04>;
 		clocks = <&tegra_car 34>;
+		#dma-cells = <1>;
 	};
 
 	ahb: ahb {
@@ -262,6 +263,8 @@
 		nvidia,dma-request-selector = <&apbdma 8>;
 		status = "disabled";
 		clocks = <&tegra_car 6>;
+		dmas = <&apbdma 8>, <&apbdma 8>;
+		dma-names = "rx", "tx";
 	};
 
 	uartb: serial@70006040 {
@@ -272,6 +275,8 @@
 		nvidia,dma-request-selector = <&apbdma 9>;
 		status = "disabled";
 		clocks = <&tegra_car 192>;
+		dmas = <&apbdma 9>, <&apbdma 9>;
+		dma-names = "rx", "tx";
 	};
 
 	uartc: serial@70006200 {
@@ -282,6 +287,8 @@
 		nvidia,dma-request-selector = <&apbdma 10>;
 		status = "disabled";
 		clocks = <&tegra_car 55>;
+		dmas = <&apbdma 10>, <&apbdma 10>;
+		dma-names = "rx", "tx";
 	};
 
 	uartd: serial@70006300 {
@@ -292,6 +299,8 @@
 		nvidia,dma-request-selector = <&apbdma 19>;
 		status = "disabled";
 		clocks = <&tegra_car 65>;
+		dmas = <&apbdma 19>, <&apbdma 19>;
+		dma-names = "rx", "tx";
 	};
 
 	pwm: pwm@7000a000 {
@@ -389,6 +398,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 41>;
 		clock-names = "spi";
+		dmas = <&apbdma 15>, <&apbdma 15>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -401,6 +412,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 44>;
 		clock-names = "spi";
+		dmas = <&apbdma 16>, <&apbdma 16>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -413,6 +426,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 46>;
 		clock-names = "spi";
+		dmas = <&apbdma 17>, <&apbdma 17>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -425,6 +440,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 68>;
 		clock-names = "spi";
+		dmas = <&apbdma 18>, <&apbdma 18>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -437,6 +454,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 104>;
 		clock-names = "spi";
+		dmas = <&apbdma 27>, <&apbdma 27>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
@@ -449,6 +468,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 105>;
 		clock-names = "spi";
+		dmas = <&apbdma 28>, <&apbdma 28>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
