@@ -140,14 +140,6 @@ config NVMAP_HIGHMEM_ONLY
 	  Say Y here to restrict nvmap system memory allocations (both
 	  physical system memory and IOVMM) to just HIGHMEM pages.
 
-config NVMAP_CARVEOUT_KILLER
-	bool "Reclaim nvmap carveout by killing processes"
-	depends on TEGRA_NVMAP
-	help
-	  Say Y here to allow the system to reclaim carveout space by killing
-	  processes. This will kill the largest consumers of lowest priority
-	  first.
-
 config NVMAP_PAGE_POOLS
 	bool "Use page pools to reduce allocation overhead"
 	depends on TEGRA_NVMAP
@@ -215,17 +207,6 @@ config NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
 	  bigger than size of outer cache. This option has no effect on
 	  system without outer cache.
 
-config NVMAP_DEFERRED_CACHE_MAINT
-	bool "Enable deferred cache maintenance"
-	depends on TEGRA_NVMAP
-	help
-	  Say Y here if you want to defer flush requests for
-	  nvmap memory buffer. Cache maintenance of deferred requests
-	  is more efficient since there is a high chance that cache lines
-	  of earlier requests are already flushed. Also, if total size of
-	  deferred ranges is big enough, we flush whole inner or outer
-	  cache.
-
 config NVMAP_DMABUF_STASH
 	bool "Enable stashing of IOVA maps with dmabuf"
 	depends on TEGRA_NVMAP
@@ -243,13 +224,6 @@ config NVMAP_DMABUF_STASH_STATS
 	  stash. This adds some overhead but should be very useful for
 	  debugging memory leaks.
 
-config NVMAP_VPR
-	bool "Enable VPR Heap."
-	depends on TEGRA_NVMAP
-	help
-	  Say Y here to enable Video Protection Region(VPR) heap.
-	  if unsure, say N.
-
 config NVMAP_FORCE_ZEROED_USER_PAGES
 	bool "Only alloc zeroed pages for user space"
 	depends on TEGRA_NVMAP
@@ -266,15 +240,6 @@ config NVMAP_USE_CMA_FOR_CARVEOUT
 	  Say Y here to reserve carveout memory using CMA
 	  API. CMA reserved memory can be used by applications
 	  when it is not in use by the device that reserved it.
-
-config NVMAP_CPA
-	bool "Use CPA API in nvmap"
-	depends on CPA
-	help
-	  Say Y here to have nvmap use CPA. CPA is necessary for
-	  certain chips where page table aliasing can cause undefined
-	  results due to speculative memory loads/stores. If unsure,
-	  say N.
 
 config NVMAP_FD_START
 	hex "FD number to start allocation from"
@@ -347,16 +312,6 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	help
 	  Say Y here to force to convert carveout memory requests to
 	  I/O virtual memory requests.
-
-config NVMAP_HANDLE_MARSHAL
-	bool "Marshal nvmap handle id"
-	depends on TEGRA_NVMAP
-	help
-	  Enables nvmap handle id marshalling. Marshalling converts
-	  the nvmap handle id into an unique number before passing
-	  the handle id to user/kernel clients. The marshalling
-	  would allow sharing a 64-bit handle id as 32-bit id to
-	  user space when kernel is 64-bit and user space is 32-bit.
 
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
