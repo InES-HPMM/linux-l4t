@@ -685,4 +685,9 @@
 		interrupts = < 0 14 0x04 >;
 		status = "disabled";
 	};
+
+	efuse@7000f800 {
+		compatible = "nvidia,tegra210-efuse";
+		reg = <0x0 0x7000f800 0x0 0x400>;
+	};
 };
