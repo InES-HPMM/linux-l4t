@@ -148,9 +148,7 @@ struct suspend_context tegra_sctx;
 #define PMC_DPAD_ORIDE		0x1C
 #define PMC_WAKE_DELAY		0xe0
 #define PMC_DPD_SAMPLE		0x20
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define PMC_DPD_ENABLE		0x24
-#endif
 #define PMC_IO_DPD_REQ          0x1B8
 #define PMC_IO_DPD2_REQ         0x1C0
 
@@ -1170,7 +1168,6 @@ static u32 tsc_resume_start;
 #define pmc_readl(reg) \
 		readl(pmc + (reg))
 
-#define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define PMC_DPD_ENABLE_ON		(1 << 0)
