@@ -494,6 +494,8 @@ struct inv_mpu_slave {
 };
 
 /* register definition*/
+#define REG_6500_XG_ST_DATA     (0x00)
+#define REG_6500_XA_ST_DATA     (0x0D)
 #define REG_3050_AUX_VDDIO      (0x13)
 #define REG_3050_SLAVE_ADDR     (0x14)
 #define REG_3050_SLAVE_REG      (0x18)
