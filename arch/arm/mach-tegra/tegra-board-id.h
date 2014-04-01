@@ -108,5 +108,6 @@
 #define BOARD_FAB_A05			0x5
 #define BOARD_FAB_A06			0x6
 #define BOARD_FAB_A07			0x7
+#define BOARD_FAB_C00			0xC0
 
 #endif
