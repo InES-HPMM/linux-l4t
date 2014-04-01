@@ -1273,7 +1273,7 @@ err_exit:
 	return err;
 }
 
-static int tegra_pcie_power_off(void)
+static int tegra_pcie_power_off(bool all)
 {
 	int err = 0;
 
@@ -1282,9 +1282,11 @@ static int tegra_pcie_power_off(void)
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
 	}
-	tegra_pcie_prsnt_map_override(0, false);
-	tegra_pcie_pme_turnoff();
-	tegra_pcie_enable_pads(false);
+	if (all) {
+		tegra_pcie_prsnt_map_override(0, false);
+		tegra_pcie_pme_turnoff();
+		tegra_pcie_enable_pads(false);
+	}
 	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pcie_mselect)
 		clk_disable(tegra_pcie.pcie_mselect);
@@ -1361,7 +1363,7 @@ static int tegra_pcie_get_resources(void)
 	return 0;
 
 err_pwr_on:
-	tegra_pcie_power_off();
+	tegra_pcie_power_off(false);
 err_clk_get:
 	tegra_pcie_clocks_put();
 	return err;
@@ -1829,17 +1831,18 @@ static int __init tegra_pcie_init(void)
 	err = tegra_pcie_enable_pads(true);
 	if (err) {
 		pr_err("PCIE: enable pads failed\n");
+		tegra_pcie_power_off(false);
 		return err;
 	}
 	err = tegra_pcie_enable_controller();
 	if (err) {
 		pr_err("PCIE: enable controller failed\n");
-		return err;
+		goto fail;
 	}
 	err = tegra_pcie_conf_gpios();
 	if (err) {
 		pr_err("PCIE: configuring gpios failed\n");
-		return err;
+		goto fail;
 	}
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations();
@@ -1848,17 +1851,17 @@ static int __init tegra_pcie_init(void)
 	if (tegra_pcie.num_ports)
 		pci_common_init(&tegra_pcie_hw);
 	else {
-		err = tegra_pcie_power_off();
-		if (err < 0) {
-			pr_err("Unable to power off pcie\n");
-			return err;
-		}
+		pr_err("PCIE: no ports detected\n");
+		goto fail;
 	}
 	tegra_pcie_enable_features();
 	/* register pcie device as wakeup source */
 	device_init_wakeup(tegra_pcie.dev, true);
 
 	return 0;
+fail:
+	tegra_pcie_power_off(true);
+	return err;
 }
 
 static void tegra_pcie_read_plat_data(void)
@@ -1933,7 +1936,7 @@ static int tegra_pcie_suspend_noirq(struct device *dev)
 			return ret;
 		}
 	}
-	return tegra_pcie_power_off();
+	return tegra_pcie_power_off(true);
 }
 
 static bool tegra_pcie_enable_msi(bool);
@@ -1968,7 +1971,7 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 
 	tegra_pcie_check_ports();
 	if (!tegra_pcie.num_ports) {
-		tegra_pcie_power_off();
+		tegra_pcie_power_off(true);
 		goto exit;
 	}
 	resume_path = false;
