@@ -288,6 +288,9 @@ struct tegra_pcie_info {
 	struct regulator	*regulator_pexio;
 	struct regulator	*regulator_avdd_plle;
 	struct clk		*pcie_xclk;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct clk		*pex_uphy;
+#endif
 	struct clk		*pcie_mselect;
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
@@ -951,11 +954,19 @@ static int tegra_pcie_enable_pads(bool enable)
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
 		pads_writel(0x44ac44ac, PADS_REFCLK_CFG0);
 		pads_writel(0x00000028, PADS_REFCLK_BIAS);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		if (!enable)
+			tegra_periph_reset_assert(tegra_pcie.pex_uphy);
+#endif
 		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
 		err = pcie_phy_pad_enable(enable,
 				tegra_get_lane_owner_info() >> 1);
 		if (err)
 			pr_err("%s unable to initalize pads\n", __func__);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		if (enable)
+			tegra_periph_reset_deassert(tegra_pcie.pex_uphy);
+#endif
 	}
 	return err;
 }
@@ -1335,6 +1346,13 @@ static int tegra_pcie_clocks_get(void)
 		pr_err("%s: unable to get PCIE Xclock\n", __func__);
 		return -EINVAL;
 	}
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra_pcie.pex_uphy = clk_get_sys("tegra_pcie", "pex_uphy");
+	if (IS_ERR_OR_NULL(tegra_pcie.pex_uphy)) {
+		pr_err("%s: unable to get PCIE pex_uphy clock\n", __func__);
+		return -EINVAL;
+	}
+#endif
 	tegra_pcie.pcie_mselect = clk_get_sys("tegra_pcie", "mselect");
 	if (IS_ERR_OR_NULL(tegra_pcie.pcie_mselect)) {
 		pr_err("%s: unable to get PCIE mselect clock\n", __func__);
@@ -1348,6 +1366,10 @@ static void tegra_pcie_clocks_put(void)
 	PR_FUNC_LINE;
 	if (tegra_pcie.pcie_xclk)
 		clk_put(tegra_pcie.pcie_xclk);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (tegra_pcie.pex_uphy)
+		clk_put(tegra_pcie.pex_uphy);
+#endif
 	if (tegra_pcie.pcie_mselect)
 		clk_put(tegra_pcie.pcie_mselect);
 }

@@ -6526,6 +6526,16 @@ static struct clk tegra_pciex_clk = {
 	},
 };
 
+static struct clk tegra_pex_uphy_clk = {
+	.name      = "pex_uphy",
+	.parent    = &tegra_pll_e,
+	.ops       = &tegra_pciex_clk_ops,
+	.max_rate  = 500000000,
+	.u.periph  = {
+		.clk_num   = 205,
+	},
+};
+
 /* Audio sync clocks */
 #define SYNC_SOURCE(_id, _dev)				\
 	{						\
@@ -7869,6 +7879,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
 	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
+	CLK_DUPLICATE("pex_uphy", "tegra_pcie", "pex_uphy"),
 	CLK_DUPLICATE("clk_m", NULL, "apb_pclk"),
 	CLK_DUPLICATE("i2c1", "tegra-i2c-slave.0", NULL),
 	CLK_DUPLICATE("i2c2", "tegra-i2c-slave.1", NULL),
