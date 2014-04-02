@@ -3049,7 +3049,7 @@ static int sdhci_tegra_verify_best_tap(struct sdhci_host *sdhci)
 			"Trying to verify invalid best tap value\n");
 		return -EINVAL;
 	} else {
-		dev_err(mmc_dev(sdhci->mmc),
+		dev_info(mmc_dev(sdhci->mmc),
 			"%s: tuning freq %dhz, best tap %d\n",
 			__func__, tuning_data->freq_hz,
 			tuning_data->best_tap_value);
