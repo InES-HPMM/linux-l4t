@@ -1398,7 +1398,7 @@ static int tegra14_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		if (ret)
 			goto abort;
 
-		ret = tegra_dvfs_rail_dfll_mode_set_cold(tegra_cpu_rail);
+		ret = tegra_dvfs_rail_dfll_mode_set_cold(tegra_cpu_rail, dfll);
 		if (ret)
 			goto abort;
 

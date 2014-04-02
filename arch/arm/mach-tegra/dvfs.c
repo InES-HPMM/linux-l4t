@@ -39,6 +39,7 @@
 #include "board.h"
 #include "clock.h"
 #include "dvfs.h"
+#include "tegra_cl_dvfs.h"
 
 #define DVFS_RAIL_STATS_BIN	12500
 
@@ -1995,7 +1996,8 @@ int __init tegra_dvfs_init_thermal_dvfs_voltages(int *therm_voltages,
 }
 
 /* Directly set cold temperature limit in dfll mode */
-int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
+int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail,
+				       struct clk *dfll_clk)
 {
 	int ret = 0;
 
@@ -2004,14 +2006,15 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 		return ret;
 
 	/*
-	 * Since cooling thresholds are the same in pll and dfll modes, pll mode
-	 * thermal index can be used to decide if cold limit should be set in
-	 * dfll mode.
+	 * Compare last set Vmin with requirement based on current temperature,
+	 * and set cold limit at regulator only Vmin is below requirement.
 	 */
 	mutex_lock(&dvfs_lock);
 	if (rail->dfll_mode) {
-		int mv = tegra_dvfs_rail_get_thermal_floor(rail);
-		if (mv)
+		int mv, cmp;
+		cmp = tegra_cl_dvfs_vmin_cmp_needed(
+			tegra_dfll_get_cl_dvfs_data(dfll_clk), &mv);
+		if (cmp < 0)
 			ret = dvfs_rail_set_voltage_reg(rail, mv);
 	}
 	mutex_unlock(&dvfs_lock);
