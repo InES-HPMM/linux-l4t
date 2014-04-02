@@ -381,6 +381,8 @@ struct sdhci_ops {
 	void	(*dfs_gov_exit)(struct sdhci_host *host);
 	unsigned long	(*dfs_gov_get_target_freq)(struct sdhci_host *host,
 		struct devfreq_dev_status *dev_status);
+	int	(*get_drive_strength)(struct sdhci_host *host,
+		unsigned int max_dtr, int host_drv, int card_drv);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

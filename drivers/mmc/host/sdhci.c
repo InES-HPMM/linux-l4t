@@ -2572,6 +2572,31 @@ static void sdhci_gov_exit(struct mmc_host *mmc)
 		host->ops->dfs_gov_exit(host);
 }
 #endif
+
+static int sdhci_select_drive_strength(struct mmc_host *mmc,
+				       unsigned int max_dtr,
+				       int host_drv,
+				       int card_drv)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+	unsigned char	drv_type;
+
+	/* return default strength if no handler in driver */
+	if (!host->ops->get_drive_strength)
+		return MMC_SET_DRIVER_TYPE_B;
+
+	drv_type = host->ops->get_drive_strength(host, max_dtr,
+			host_drv, card_drv);
+
+	if (drv_type > MMC_SET_DRIVER_TYPE_D) {
+		pr_err("%s: Error on getting drive strength. Got drv_type %d\n"
+			, mmc_hostname(host->mmc), drv_type);
+		return MMC_SET_DRIVER_TYPE_B;
+	}
+
+	return drv_type;
+}
+
 static const struct mmc_host_ops sdhci_ops = {
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
@@ -2590,6 +2615,7 @@ static const struct mmc_host_ops sdhci_ops = {
 	.dfs_governor_exit		= sdhci_gov_exit,
 	.dfs_governor_get_target	= sdhci_gov_get_target,
 #endif
+	.select_drive_strength		= sdhci_select_drive_strength,
 };
 
 /*****************************************************************************\
