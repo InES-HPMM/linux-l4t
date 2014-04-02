@@ -698,6 +698,16 @@ static inline void tune_high(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
+static inline int cl_tune_target(struct tegra_cl_dvfs *cld, u32 out_cap)
+{
+	bool tune_low_at_cold = cld->safe_dvfs->dfll_data.tune0_low_at_cold;
+
+	if ((out_cap > cld->tune_high_out_start) &&
+	    (!tune_low_at_cold || cld->therm_floor_idx))
+		return TEGRA_CL_DVFS_TUNE_HIGH;
+	return TEGRA_CL_DVFS_TUNE_LOW;
+}
+
 static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 {
 	seqcount_t *vmin_seqcnt = NULL;
@@ -752,7 +762,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	switch (cld->tune_state) {
 	case TEGRA_CL_DVFS_TUNE_LOW:
-		if (out_cap > cld->tune_high_out_start) {
+		if (cl_tune_target(cld, out_cap) > TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
 			cl_dvfs_set_force_out_min(cld);
@@ -761,7 +771,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	case TEGRA_CL_DVFS_TUNE_HIGH:
 	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST:
-		if (out_cap <= cld->tune_high_out_start) {
+		if (cl_tune_target(cld, out_cap) == TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 			tune_low(cld);
 			cl_dvfs_set_force_out_min(cld);
