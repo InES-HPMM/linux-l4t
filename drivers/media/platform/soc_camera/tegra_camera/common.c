@@ -890,7 +890,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "%s: failed to map register base\n",
 				__func__);
 		err = -ENXIO;
-		goto exit_deinit_clk;
+		goto exit_free_syncpts;
 	}
 
 	nvhost_module_init(pdev);
@@ -899,13 +899,13 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "%s: nvhost init failed %d\n",
 				__func__, err);
-		goto exit_deinit_clk;
+		goto exit_free_syncpts;
 	}
 
 	cam->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
 	if (IS_ERR(cam->alloc_ctx)) {
 		err = PTR_ERR(cam->alloc_ctx);
-		goto exit_deinit_clk;
+		goto exit_free_syncpts;
 	}
 
 	platform_set_drvdata(pdev, cam);
@@ -920,6 +920,8 @@ static int tegra_camera_probe(struct platform_device *pdev)
 exit_cleanup_alloc_ctx:
 	platform_set_drvdata(pdev, cam->ndata);
 	vb2_dma_contig_cleanup_ctx(cam->alloc_ctx);
+exit_free_syncpts:
+	cam->ops->free_syncpts(cam);
 exit_deinit_clk:
 	cam->ops->clks_deinit(cam);
 	kfree(cam);
