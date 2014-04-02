@@ -490,7 +490,7 @@
 			compatible = "nvidia,tegra124-dc";
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
-			nvidia,memory-clients = <2>;
+			nvidia,memory-clients = <2 10>;
 			status = "disabled";
 
 			rgb {
