@@ -1273,6 +1273,40 @@ err_exit:
 	return err;
 }
 
+static int tegra_pcie_power_off(void)
+{
+	int err = 0;
+
+	PR_FUNC_LINE;
+	if (tegra_pcie.pcie_power_enabled == 0) {
+		pr_debug("PCIE: Already powered off");
+		goto err_exit;
+	}
+	tegra_pcie_prsnt_map_override(0, false);
+	tegra_pcie_pme_turnoff();
+	tegra_pcie_enable_pads(false);
+	tegra_pcie_unmap_resources();
+	if (tegra_pcie.pcie_mselect)
+		clk_disable(tegra_pcie.pcie_mselect);
+	if (tegra_pcie.pcie_xclk)
+		clk_disable(tegra_pcie.pcie_xclk);
+	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+	if (err)
+		goto err_exit;
+
+	if (!tegra_platform_is_fpga()) {
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
+	}
+	pm_runtime_put(tegra_pcie.dev);
+
+	tegra_pcie.pcie_power_enabled = 0;
+err_exit:
+	return err;
+}
+
 static int tegra_pcie_clocks_get(void)
 {
 	PR_FUNC_LINE;
@@ -1293,49 +1327,10 @@ static int tegra_pcie_clocks_get(void)
 static void tegra_pcie_clocks_put(void)
 {
 	PR_FUNC_LINE;
-	if (tegra_pcie.pcie_xclk) {
-		clk_put(tegra_pcie.pcie_xclk);
-		tegra_pcie.pcie_xclk = NULL;
-	}
-	if (tegra_pcie.pcie_mselect) {
-		clk_put(tegra_pcie.pcie_mselect);
-		tegra_pcie.pcie_mselect = NULL;
-	}
-}
-
-static int tegra_pcie_power_off(void)
-{
-	int err = 0;
-
-	PR_FUNC_LINE;
-	if (tegra_pcie.pcie_power_enabled == 0) {
-		pr_debug("PCIE: Already powered off");
-		goto err_exit;
-	}
-	tegra_pcie_prsnt_map_override(0, false);
-	tegra_pcie_pme_turnoff();
-	tegra_pcie_enable_pads(false);
-	tegra_pcie_unmap_resources();
-	if (tegra_pcie.pcie_mselect)
-		clk_disable(tegra_pcie.pcie_mselect);
 	if (tegra_pcie.pcie_xclk)
-		clk_disable(tegra_pcie.pcie_xclk);
-	tegra_pcie_clocks_put();
-	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
-	if (err)
-		goto err_exit;
-
-	if (!tegra_platform_is_fpga()) {
-		/* put PEX pads into DPD mode to save additional power */
-		tegra_io_dpd_enable(&pexbias_io);
-		tegra_io_dpd_enable(&pexclk1_io);
-		tegra_io_dpd_enable(&pexclk2_io);
-	}
-	pm_runtime_put(tegra_pcie.dev);
-
-	tegra_pcie.pcie_power_enabled = 0;
-err_exit:
-	return err;
+		clk_put(tegra_pcie.pcie_xclk);
+	if (tegra_pcie.pcie_mselect)
+		clk_put(tegra_pcie.pcie_mselect);
 }
 
 static int tegra_pcie_get_resources(void)
@@ -1834,17 +1829,17 @@ static int __init tegra_pcie_init(void)
 	err = tegra_pcie_enable_pads(true);
 	if (err) {
 		pr_err("PCIE: enable pads failed\n");
-		goto fail;
+		return err;
 	}
 	err = tegra_pcie_enable_controller();
 	if (err) {
 		pr_err("PCIE: enable controller failed\n");
-		goto fail;
+		return err;
 	}
 	err = tegra_pcie_conf_gpios();
 	if (err) {
 		pr_err("PCIE: configuring gpios failed\n");
-		goto fail;
+		return err;
 	}
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations();
@@ -1853,17 +1848,17 @@ static int __init tegra_pcie_init(void)
 	if (tegra_pcie.num_ports)
 		pci_common_init(&tegra_pcie_hw);
 	else {
-		pr_err("PCIE: no ports detected\n");
-		goto fail;
+		err = tegra_pcie_power_off();
+		if (err < 0) {
+			pr_err("Unable to power off pcie\n");
+			return err;
+		}
 	}
 	tegra_pcie_enable_features();
 	/* register pcie device as wakeup source */
 	device_init_wakeup(tegra_pcie.dev, true);
 
 	return 0;
-fail:
-	tegra_pcie_power_off();
-	return err;
 }
 
 static void tegra_pcie_read_plat_data(void)
