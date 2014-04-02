@@ -811,6 +811,7 @@ static int get_transfer_param(struct tegra_adma_chan *tdc,
 				ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
 		*ctrl |= MEMORY_TO_AHUB <<
 				ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT;
+		*ctrl &= ~ADMA_CH_CTRL_TX_REQUEST_SELECT_MASK;
 		*ctrl |= tdc->dma_sconfig.slave_id <<
 				ADMA_CH_CTRL_TX_REQUEST_SELECT_SHIFT;
 		*ahub_fifo_ctrl |= 3 <<
@@ -822,6 +823,7 @@ static int get_transfer_param(struct tegra_adma_chan *tdc,
 				ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
 		*ctrl |= AHUB_TO_MEMORY <<
 				ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT;
+		*ctrl &= ~ADMA_CH_CTRL_RX_REQUEST_SELECT_MASK;
 		*ctrl |= tdc->dma_sconfig.slave_id  <<
 				ADMA_CH_CTRL_RX_REQUEST_SELECT_SHIFT;
 		*ahub_fifo_ctrl |= 3 <<
