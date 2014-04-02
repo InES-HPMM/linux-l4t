@@ -1,0 +1,60 @@
+#include <dt-bindings/media/camera.h>
+
+/ {
+	camera-pcl {
+		compatible = "nvidia,tegra124-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module1: module1@modules {
+				compatible = "sensor,front";
+				badge_info = "loki_front_camera_device";
+
+				sensor {
+					profile = <&ov7695_1>;
+					platformdata = "loki_ov7695_pdata";
+				};
+			};
+		};
+
+		profiles {
+			ov7695_1: ov7695@2_0021 {
+				index = <7>;
+				chipname = "pcl_OV7695";
+				type = "sensor";
+				guid = "s_OV7695";
+				position = <1>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x21>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif2";
+				clocks = "mclk2";
+				drivername = "ov7695";
+				detect = <0x0002 0x300A 0xFFFF 0x7695>;
+				devid = <0x7695>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(222)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(40)
+					CAMERA_GPIO_SET(222)
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(222)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+		};
+	};
+};
+

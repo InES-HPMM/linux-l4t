@@ -1,68 +1,76 @@
+#include <dt-bindings/media/camera.h>
+
 / {
 	camera-pcl {
 		compatible = "nvidia,tegra124-camera", "simple-bus";
 		configuration = <0xAA55AA55>;
 
 		modules {
-			module1 {
+			module1: module1@modules {
+				compatible = "sensor,rear";
+				badge_info = "e1793_rear_camera";
+
 				sensor {
-					devicename = "ov5693";
-					addr = <0x10>;
+					profile = <&ov5693_1>;
 					platformdata = "ardbeg_ov5693_pdata";
 				};
 				focuser {
-					devicename = "ad5823";
-					addr = <0x0c>;
+					profile = <&ad5823_1>;
 					platformdata = "ardbeg_ad5823_pdata";
 				};
 				flash {
-					devicename = "as3648";
-					addr = <0x30>;
+					profile = <&as3648_1>;
 					platformdata = "ardbeg_as3648_pdata";
 				};
 			};
-			module2 {
+			module2: module2@modules {
+				compatible = "sensor,front";
+				badge_info = "e1793_front_camera";
+
 				sensor {
-					devicename = "mt9m114";
-					addr = <0x48>;
+					profile = <&mt9m114_1>;
 					platformdata = "ardbeg_mt9m114_pdata";
 				};
 			};
-			module3 {
+			module3: module3@modules {
+				compatible = "sensor,rear";
+				badge_info = "e1823_rear_camera";
+
 				sensor {
-					devicename = "imx135";
-					addr = <0x10>;
+					profile = <&imx135_1>;
 					platformdata = "ardbeg_imx135_pdata";
 				};
 				focuser {
-					devicename = "dw9718";
-					addr = <0x0c>;
+					profile = <&dw9718_1>;
 					platformdata = "ardbeg_dw9718_pdata";
 				};
 				flash {
-					devicename = "as3648";
-					addr = <0x30>;
+					profile = <&as3648_1>;
 					platformdata = "ardbeg_as3648_pdata";
 				};
 			};
-			module4 {
+			module4: module4@modules {
+				compatible = "sensor,front";
+				badge_info = "e1823_front_camera";
+
 				sensor {
-					devicename = "ar0261";
-					addr = <0x36>;
+					profile = <&ar0261_1>;
 					platformdata = "ardbeg_ar0261_pdata";
 				};
 			};
-			module5 {
+			module5: module5@modules {
+				compatible = "sensor,front";
+				badge_info = "loki_front_camera_brd";
+
 				sensor {
-					devicename = "ov7695";
-					addr = <0x21>;
+					profile = <&ov7695_1>;
 					platformdata = "ardbeg_ov7695_pdata";
 				};
 			};
 		};
 
 		profiles {
-			profile1 {
+			ov5693_1: ov5693@2_0010 {
 				index = <1>;
 				chipname = "pcl_OV5693";
 				type = "sensor";
@@ -79,25 +87,29 @@
 				drivername = "ov5693";
 				detect = <0x0002 0x300A 0xFFFF 0x5690>;
 				devid = <0x5693>;
-				poweron = <0xF0000032 10000
-					0xF000001F 221
-					0xF0000002 1
-					0xF0000014 0x80000000
-					0xF0000014 0x80000001
-					0xF0000014 0x80000002
-					0xF0000002 1
-					0xF000001E 221
-					0xF0000002 10
-					0xF0000009 00000>;
-				poweroff = <0xF0000032 0
-					0xF000001F 221
-					0xF0000001 10
-					0xF0000014 2
-					0xF0000014 1
-					0xF0000014 0
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(221)
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
 			};
-			profile2 {
+			mt9m114_1: mt9m114@2_0048 {
 				index = <2>;
 				chipname = "pcl_MT9M114";
 				type = "sensor";
@@ -114,25 +126,29 @@
 				drivername = "mt9m114";
 				detect = <0x0002 0x0000 0xFFFF 0x2481>;
 				devid = <0x1040>;
-				poweron = <0xF0000032 10000
-					0xF000001F 219
-					0xF000001E 222
-					0xF0000014 0x80000000
-					0xF0000014 0x80000001
-					0xF0000002 10
-					0xF000001F 222
-					0xF000001E 219
-					0xF0000002 20
-					0xF0000009 00000>;
-				poweroff = <0xF0000032 0
-					0xF000001E 222
-					0xF000001F 219
-					0xF0000001 10
-					0xF0000014 1
-					0xF0000014 0
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_SET(222)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(10)
+					CAMERA_GPIO_CLR(222)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITMS(20)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_SET(222)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
 			};
-			profile3 {
+			ad5823_1: ad5823@2_000c {
 				index = <3>;
 				chipname = "pcl_AD5823";
 				type = "focuser";
@@ -148,19 +164,23 @@
 				drivername = "ad5823";
 				detect = <0x0002 0x0006 0xFFFF 0x0010>;
 				devid = <0x5823>;
-				poweron = <0xF0000014 0x80000001
-					0xF0000014 0x80000000
-					0xF0000001 10
-					0xF000001E 223
-					0xF0000001 10
-					0xF0000009 00000>;
-				poweroff = <0xF0000014 0
-					0xF0000014 1
-					0xF000001F 223
-					0xF0000001 10
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
 			};
-			profile4 {
+			as3648_1: as3648@2_0030 {
 				index = <4>;
 				chipname = "pcl_AS3648";
 				type = "flash";
@@ -176,16 +196,20 @@
 				drivername = "as3648";
 				detect = <0x0001 0x0000 0x00F0 0x00b0>;
 				devid = <0x3648>;
-				poweron = <0xF0000014 0x80000001
-					0xF0000014 0x80000000
-					0xF0000001 1000
-					0xF0000009 00000>;
-				poweroff = <0xF0000014 0
-					0xF0000014 1
-					0xF0000001 10
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(1000)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
 			};
-			profile5 {
+			imx135_1: imx135@2_0010 {
 				index = <5>;
 				chipname = "pcl_IMX135";
 				type = "sensor";
@@ -202,25 +226,29 @@
 				drivername = "imx135";
 				detect = <0x0002 0x0016 0xFFFF 0x0135>;
 				devid = <0x0135>;
-				poweron = <0xF0000032 10000
-					0xF000001F 221
-					0xF0000001 10
-					0xF0000014 0x80000002
-					0xF0000014 0x80000001
-					0xF0000014 0x80000000
-					0xF0000002 5
-					0xF000001E 221
-					0xF0000001 300
-					0xF0000009 00000>;
-				poweroff = <0xF0000032 0
-					0xF000001F 221
-					0xF0000001 10
-					0xF0000014 2
-					0xF0000014 1
-					0xF0000014 0
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITMS(5)
+					CAMERA_GPIO_SET(221)
+					CAMERA_WAITUS(300)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
 			};
-			profile6 {
+			ar0261_1: ar0261@2_0036 {
 				index = <6>;
 				chipname = "pcl_AR0261";
 				type = "sensor";
@@ -237,24 +265,28 @@
 				drivername = "ar0261";
 				detect = <0x0002 0x0003 0xFFFF 0x060A>;
 				devid = <0x0261>;
-				poweron = <0xF0000032 10000
-					0xF000001F 219
-					0xF0000014 0x80000000
-					0xF0000014 0x80000001
-					0xF0000014 0x80000002
-					0xF0000002 40
-					0xF000001E 219
-					0xF0000002 20
-					0xF0000009 00000>;
-				poweroff = <0xF0000032 0
-					0xF000001F 219
-					0xF0000001 10
-					0xF0000014 2
-					0xF0000014 1
-					0xF0000014 0
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_WAITMS(40)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITMS(20)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(219)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
 			};
-			profile7 {
+			ov7695_1: ov7695@2_0021 {
 				index = <7>;
 				chipname = "pcl_OV7695";
 				type = "sensor";
@@ -271,22 +303,26 @@
 				drivername = "ov7695";
 				detect = <0x0002 0x300A 0xFFFF 0x7695>;
 				devid = <0x7695>;
-				poweron = <0xF0000032 10000
-					0xF000001F 222
-					0xF0000014 0x80000000
-					0xF0000014 0x80000001
-					0xF0000002 40
-					0xF000001E 222
-					0xF0000002 10
-					0xF0000009 00000>;
-				poweroff = <0xF0000032 0
-					0xF000001F 222
-					0xF0000001 10
-					0xF0000014 1
-					0xF0000014 0
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(222)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(40)
+					CAMERA_GPIO_SET(222)
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(222)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
 			};
-			profile8 {
+			dw9718_1: dw9718@2_000c {
 				index = <8>;
 				chipname = "pcl_DW9718";
 				type = "focuser";
@@ -302,42 +338,21 @@
 				drivername = "dw9718";
 				detect = <0x0002 0x0004 0xFFFF 0x0060>;
 				devid = <0x9718>;
-				poweron = <0xF0000014 0x80000001
-					0xF0000014 0x80000000
-					0xF0000001 10
-					0xF000001E 223
-					0xF0000001 10
-					0xF0000009 00000>;
-				poweroff = <0xF0000014 0
-					0xF0000014 1
-					0xF000001F 223
-					0xF0000001 10
-					0xF0000009 00000>;
-			};
-			profile9 {
-				index = <9>;
-				chipname = "pcl_MAX77387";
-				type = "flash";
-				guid = "l_NVCAM0";
-				position = <0>;
-				bustype = "i2c";
-				busnum = <2>;
-				addr = <0x4A>;
-				datalen = <1>;
-				pinmuxgrp = <0xFFFF>;
-				gpios = <3>;
-				regulators = "vdd", "vin";
-				drivername = "max77387";
-				detect = <0x0002 0x0000 0xFF00 0x9100>;
-				devid = <0x77387>;
-				poweron = <0xF0000014 0x80000001
-					0xF0000014 0x80000000
-					0xF0000001 10
-					0xF0000009 00000>;
-				poweroff = <0xF0000014 0
-					0xF0000014 1
-					0xF0000001 10
-					0xF0000009 00000>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
 			};
 		};
 	};

@@ -4,6 +4,7 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <tegra124-platforms/tegra124-loki-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
+#include <tegra124-platforms/tegra124-loki-camera-a00.dtsi>
 
 
 / {
