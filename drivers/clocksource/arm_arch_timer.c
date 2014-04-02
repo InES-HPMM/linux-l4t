@@ -205,7 +205,7 @@ u32 arch_timer_get_rate(void)
 	return arch_timer_rate;
 }
 
-u64 arch_timer_read_counter(void)
+notrace u64 arch_timer_read_counter(void)
 {
 	return arch_counter_get_cntvct();
 }
