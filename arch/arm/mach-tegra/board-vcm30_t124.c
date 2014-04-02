@@ -198,7 +198,8 @@ struct therm_monitor_data vcm30t30_therm_monitor_data = {
  * don't care for this table.
  */
 
-static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
+static  __initdata struct tegra_clk_init_table
+				vcm30t124_fixed_target_clk_table[] = {
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
@@ -275,7 +276,7 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 #endif
 };
 
-static struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
+static __initdata struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
 	SET_FIXED_TARGET_RATE("i2s0",		3072000),
 	SET_FIXED_TARGET_RATE("i2s1",		24576000),
 	SET_FIXED_TARGET_RATE("i2s2",		24576000),
@@ -283,7 +284,7 @@ static struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
 	SET_FIXED_TARGET_RATE("i2s4",		12288000),
 };
 
-static struct tegra_clk_init_table vcm30t124_b0x_i2s_clk_table[] = {
+static __initdata struct tegra_clk_init_table vcm30t124_b0x_i2s_clk_table[] = {
 	SET_FIXED_TARGET_RATE("i2s0",		12288000),
 	SET_FIXED_TARGET_RATE("i2s1",		24576000),
 	SET_FIXED_TARGET_RATE("i2s2",		24576000),
@@ -374,7 +375,7 @@ static struct cs_info vcm30_t124_cs_info[] = {
 	},
 };
 
-static void vcm30_t124_nor_init(void)
+static void  __init vcm30_t124_nor_init(void)
 {
 	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE + SZ_64M - 1;
 
@@ -405,7 +406,7 @@ static struct i2c_board_info __initdata ad1937_board_info = {
 	I2C_BOARD_INFO("ad1937", 0x07),
 };
 
-static void vcm30_t124_i2c_init(void)
+static void __init vcm30_t124_i2c_init(void)
 {
 	i2c_register_board_info(0, &ak4618_board_info, 1);
 	i2c_register_board_info(0, &wm8731_board_info, 1);
@@ -508,7 +509,6 @@ static void __init vcm30_t124_audio_init(void)
 		platform_device_register(&tegra_snd_vcm30t124);
 }
 
-/* FIXME: Check which devices are needed from the below list */
 static struct platform_device *vcm30_t124_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -645,7 +645,7 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-static void vcm30_t124_usb_init(void)
+static void __init vcm30_t124_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
