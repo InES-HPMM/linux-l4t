@@ -244,7 +244,7 @@ static int sysedp_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	margin = pdata->margin;
-	min_budget = (pdata->min_budget >= 0) ? min_budget : 0;
+	min_budget = (pdata->min_budget >= 0) ? pdata->min_budget : 0;
 	sysedp_init_sysfs();
 	sysedp_init_debugfs();
 	return 0;
