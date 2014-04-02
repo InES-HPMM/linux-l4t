@@ -4189,7 +4189,6 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	val |= PLLE_MISC_IDDQ_SW_CTRL;
 	val &= ~PLLE_MISC_IDDQ_SW_VALUE;
 	val |= PLLE_MISC_PLLE_PTS;
-	val |= PLLE_MISC_VREG_BG_CTRL_MASK | PLLE_MISC_VREG_CTRL_MASK;
 	clk_writel(val, c->reg + PLL_MISC(c));
 	udelay(5);
 
