@@ -29,7 +29,7 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra_fiq_debugger.h>
 
-#include <asm/fiq_debugger.h>
+#include "../../../drivers/staging/android/fiq_debugger/fiq_debugger.h"
 
 #include <linux/uaccess.h>
 
@@ -138,6 +138,7 @@ static int debug_resume(struct platform_device *pdev)
 }
 
 
+#ifdef CONFIG_FIQ
 static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 {
 	if (on)
@@ -145,6 +146,7 @@ static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 	else
 		tegra_fiq_disable(irq);
 }
+#endif
 
 static int tegra_fiq_debugger_id;
 
@@ -168,7 +170,12 @@ static void __tegra_serial_debug_init(unsigned int base, int fiq, int irq,
 	t->pdata.uart_flush = debug_flush;
 	t->pdata.uart_dev_suspend = debug_suspend;
 	t->pdata.uart_dev_resume = debug_resume;
+
+#ifdef CONFIG_FIQ
 	t->pdata.fiq_enable = fiq_enable;
+#else
+	BUG_ON(fiq >= 0);
+#endif
 
 	t->debug_port_base = ioremap(base, PAGE_SIZE);
 	if (!t->debug_port_base) {
@@ -237,11 +244,13 @@ out1:
 	kfree(t);
 }
 
+#ifdef CONFIG_FIQ
 void tegra_serial_debug_init(unsigned int base, int fiq,
 			   struct clk *clk, int signal_irq, int wakeup_irq)
 {
 	__tegra_serial_debug_init(base, fiq, -1, clk, signal_irq, wakeup_irq);
 }
+#endif
 
 void tegra_serial_debug_init_irq_mode(unsigned int base, int irq,
 			   struct clk *clk, int signal_irq, int wakeup_irq)
