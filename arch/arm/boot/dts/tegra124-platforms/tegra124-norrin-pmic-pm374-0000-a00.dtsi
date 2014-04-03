@@ -63,7 +63,6 @@
 				    regulator-name = "vdd-cpu";
 				    regulator-min-microvolt = <700000>;
 				    regulator-max-microvolt = <1400000>;
-				    regulator-min-microamp = <3500000>;
 				    regulator-max-microamp = <3500000>;
 				    regulator-always-on;
 				    regulator-boot-on;
@@ -79,8 +78,7 @@
 				    regulator-name = "vdd-core";
 				    regulator-min-microvolt = <700000>;
 				    regulator-max-microvolt = <1350000>;
-				    regulator-min-microamp = <2500000>;
-				    regulator-max-microamp = <2500000>;
+				    regulator-max-microamp = <3500000>;
 				    regulator-always-on;
 				    regulator-boot-on;
 				    ams,ext-control = <AS3722_EXT_CONTROL_ENABLE1>;
@@ -210,7 +208,6 @@
 				    regulator-name = "vdd-gpu";
 				    regulator-min-microvolt = <650000>;
 				    regulator-max-microvolt = <1200000>;
-				    regulator-min-microamp = <3500000>;
 				    regulator-max-microamp = <3500000>;
 				    regulator-init-microvolt = <1000000>;
 				    regulator-boot-on;
