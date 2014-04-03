@@ -2049,7 +2049,7 @@ static dma_addr_t arm_coherent_iommu_map_page(struct device *dev, struct page *p
 	if (ret < 0)
 		goto fail;
 
-	trace_dmadebug_map_page(dev, dma_addr, len, page);
+	trace_dmadebug_map_page(dev, dma_addr + offset, size, page);
 	return dma_addr + offset;
 fail:
 	__free_iova(mapping, dma_addr, len, attrs);
