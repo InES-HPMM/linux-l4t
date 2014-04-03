@@ -385,6 +385,7 @@
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301000 0x100>;
 			nvidia,ahub-cif-ids = <4 4>;
+			nvidia,ahub-i2s-id = <0>;
 			status = "disabled";
 		};
 
@@ -392,6 +393,7 @@
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301100 0x100>;
 			nvidia,ahub-cif-ids = <5 5>;
+			nvidia,ahub-i2s-id = <1>;
 			status = "disabled";
 		};
 
@@ -399,6 +401,7 @@
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301200 0x100>;
 			nvidia,ahub-cif-ids = <6 6>;
+			nvidia,ahub-i2s-id = <2>;
 			status = "disabled";
 		};
 
@@ -406,6 +409,7 @@
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301300 0x100>;
 			nvidia,ahub-cif-ids = <7 7>;
+			nvidia,ahub-i2s-id = <3>;
 			status = "disabled";
 		};
 
@@ -413,6 +417,7 @@
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301400 0x100>;
 			nvidia,ahub-cif-ids = <8 8>;
+			nvidia,ahub-i2s-id = <4>;
 			status = "disabled";
 		};
 
