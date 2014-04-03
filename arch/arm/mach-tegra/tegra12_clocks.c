@@ -2899,11 +2899,9 @@ static void pllcx_strobe(struct clk *c)
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
 {
 	u32 misc1val = PLLCX_MISC1_DEFAULT_VALUE;
-	if (c->state == ON)
-		BUG_ON(!tegra_platform_is_linsim());
-	else
-		misc1val |= PLLCX_MISC1_IDDQ;
 
+	if (c->state != ON)
+		misc1val |= PLLCX_MISC1_IDDQ;
 	clk_writel(PLLCX_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
 	clk_writel(misc1val, c->reg + PLL_MISCN(c, 1));
 	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 2));
@@ -2931,7 +2929,8 @@ static void tegra12_pllcx_clk_init(struct clk *c)
 	 * and no enabled module clocks should use it as a source during clock
 	 * init.
 	 */
-	BUG_ON(c->state == ON && !tegra_platform_is_linsim());
+	BUG_ON(c->state == ON && !tegra_platform_is_linsim() &&
+			!is_tegra_hypervisor_mode());
 	/*
 	 * Most of PLLCX register fields are shadowed, and can not be read
 	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
