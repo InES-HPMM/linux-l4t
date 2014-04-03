@@ -166,4 +166,5 @@ ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 								char *buf);
 ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count);
+static u32 fuse_cmd_read(u32 addr);
 #endif /* FUSE_H */

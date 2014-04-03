@@ -320,10 +320,18 @@ static inline void __tegra_fuse_writel(u32 val,
 
 u32 tegra_fuse_readl(unsigned long offset)
 {
-	if (fuse_base)
-		return readl(fuse_base + offset);
+	u32 val;
 
-	return __tegra_fuse_readl(offset);
+	if (fuse_base)
+		val = readl(fuse_base + offset);
+	else
+		val = __tegra_fuse_readl(offset);
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	fuse_update_overridden_reg_val(offset, &val);
+#endif
+
+	return val;
 }
 
 void tegra_fuse_writel(u32 val, unsigned long offset)
@@ -1362,6 +1370,9 @@ void tegra_init_fuse(void)
 	u32 sku_id;
 
 	tegra_fuse_cfg_reg_visible();
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	tegra_fuse_override_chip_option_regs();
+#endif
 	tegra_set_sku_id();
 	sku_id = tegra_get_sku_id();
 	tegra_set_bct_strapping();
