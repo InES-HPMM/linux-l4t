@@ -300,7 +300,9 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 	struct tegra_wdt *wdt = file->private_data;
 	static DEFINE_SPINLOCK(lock);
 	int new_timeout;
+#ifndef CONFIG_WATCHDOG_NOWAYOUT
 	int option;
+#endif
 	static const struct watchdog_info ident = {
 		.identity = "Tegra Watchdog",
 		.options = WDIOF_SETTIMEOUT,
