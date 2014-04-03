@@ -445,7 +445,13 @@ static int tegra_xusb_padctl_phy_enable(void)
 		XUSB_PADCTL_IOPHY_PLL_P0_CTL2_TXCLKREF_EN |
 		XUSB_PADCTL_IOPHY_PLL_P0_CTL2_TXCLKREF_SEL);
 	writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL2_0);
-
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	/* recommended prod setting */
+	val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL2_0);
+	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL2_PLL0_CP_CNTL_MASK;
+	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL2_PLL0_CP_CNTL_VAL;
+	writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL2_0);
+#endif
 	/* take PLL out of reset */
 	val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_PLL_RST_;
