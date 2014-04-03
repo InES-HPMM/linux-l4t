@@ -2626,7 +2626,8 @@ static int tegra_udc_start(struct usb_gadget *g,
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
-	if (vbus_enabled(udc))
+	if (vbus_enabled(udc) && !(udc->transceiver
+			&& udc->transceiver->state != OTG_STATE_B_PERIPHERAL))
 		tegra_vbus_session(&udc->gadget, 1);
 
 	printk(KERN_INFO "%s: bind to driver %s\n",
