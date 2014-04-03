@@ -2141,12 +2141,11 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!iova)
 		return;
 
+	trace_dmadebug_unmap_page(dev, handle, size,
+		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 	pg_iommu_unmap(mapping->domain, iova, len, (int)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
-
-	trace_dmadebug_unmap_page(dev, handle, size,
-		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 }
 
 /**
