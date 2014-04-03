@@ -1,5 +1,6 @@
 /*
  * Copyright(c) 2004 - 2006 Intel Corporation. All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -502,6 +503,51 @@ static struct dma_chan *private_candidate(const dma_cap_mask_t *mask,
 
 	return NULL;
 }
+
+struct dma_chan *dma_get_any_slave_channel(struct dma_device *device)
+{
+	dma_cap_mask_t mask;
+	struct dma_chan *chan;
+	int err;
+
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+
+	/* lock against __dma_request_channel */
+	mutex_lock(&dma_list_mutex);
+
+	chan = private_candidate(&mask, device, NULL, NULL);
+	if (chan) {
+		/* Found a suitable channel, try to grab, prep, and
+		 * return it.  We first set DMA_PRIVATE to disable
+		 * balance_ref_count as this channel will not be
+		 * published in the general-purpose allocator
+		 */
+		dma_cap_set(DMA_PRIVATE, device->cap_mask);
+		device->privatecnt++;
+		err = dma_chan_get(chan);
+		if (err == -ENODEV) {
+			pr_debug("%s: %s module removed\n",
+				 __func__, dma_chan_name(chan));
+			list_del_rcu(&device->global_node);
+		} else if (err) {
+			pr_debug("%s: failed to get %s: (%d)\n",
+				__func__, dma_chan_name(chan), err);
+		} else {
+			mutex_unlock(&dma_list_mutex);
+			return chan;
+		}
+
+		if (--device->privatecnt == 0)
+			dma_cap_clear(DMA_PRIVATE, device->cap_mask);
+		chan = NULL;
+	}
+
+	mutex_unlock(&dma_list_mutex);
+
+	return chan;
+}
+EXPORT_SYMBOL_GPL(dma_get_any_slave_channel);
 
 /**
  * dma_request_channel - try to allocate an exclusive channel
