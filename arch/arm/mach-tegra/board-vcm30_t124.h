@@ -108,4 +108,11 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 #define PCA953X_MISCIO_0_ADDR		0x75
 #define PCA953X_MISCIO_1_ADDR		0x76
 
+/* Thermal monitor data */
+#define DELTA_TEMP 4000
+#define DELTA_TIME 2000
+#define REMT_OFFSET 8000
+#define I2C_ADDR_TMP411 0x4c
+#define I2C_BUS_TMP411 1
+
 #endif
