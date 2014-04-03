@@ -384,6 +384,9 @@ static void __init vcm30_t124_panel_select(void)
 			panel->register_i2c_bridge();
 	}
 
+	/* let EDID sets eDP/miniDP color depth */
+	vcm30_t124_disp1_out.depth = 0;
+
 }
 #endif
 
