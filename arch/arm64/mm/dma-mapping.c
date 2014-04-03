@@ -2049,7 +2049,7 @@ static dma_addr_t arm_coherent_iommu_map_page(struct device *dev, struct page *p
 	if (ret < 0)
 		goto fail;
 
-	trace_dmadebug_map_page(dev, dma_addr, len, page);
+	trace_dmadebug_map_page(dev, dma_addr + offset, size, page);
 	return dma_addr + offset;
 fail:
 	__free_iova(mapping, dma_addr, len, attrs);
@@ -2141,12 +2141,11 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!iova)
 		return;
 
+	trace_dmadebug_unmap_page(dev, handle, size,
+		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 	pg_iommu_unmap(mapping->domain, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
-
-	trace_dmadebug_unmap_page(dev, handle, size,
-		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 }
 
 /**
@@ -2174,6 +2173,8 @@ static void arm_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
 		__dma_page_dev_to_cpu(page, offset, size, dir);
 
+	trace_dmadebug_unmap_page(dev, handle, size,
+		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
 	pg_iommu_unmap(mapping->domain, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
