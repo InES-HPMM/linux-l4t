@@ -372,10 +372,8 @@ int __init vcm30_t124_panel_init(void)
 	vpr_dma_info.resize = false;
 	vpr_dma_info.cma_dev = NULL;
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
 	vcm30_t124_carveouts[1].cma_dev = &tegra_generic_cma_dev;
 	vcm30_t124_carveouts[1].resize = false;
-	carveout_linear_set(&tegra_vpr_cma_dev);
 	vcm30_t124_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
 	vcm30_t124_carveouts[2].resize = true;
 
