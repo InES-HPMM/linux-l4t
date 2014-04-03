@@ -1057,13 +1057,25 @@ int iio_device_register(struct iio_dev *indio_dev)
 	ret = device_add(&indio_dev->dev);
 	if (ret < 0)
 		goto error_unreg_eventset;
+
+	ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
+			&indio_dev->dev.kobj, "iio_device");
+	if (ret) {
+		dev_err(indio_dev->dev.parent,
+			"Failed to create link for iio_device %d\n", ret);
+		goto error_del_device;
+	}
+
 	cdev_init(&indio_dev->chrdev, &iio_buffer_fileops);
 	indio_dev->chrdev.owner = indio_dev->info->driver_module;
 	ret = cdev_add(&indio_dev->chrdev, indio_dev->dev.devt, 1);
 	if (ret < 0)
-		goto error_del_device;
+		goto error_free_syslink;
+
 	return 0;
 
+error_free_syslink:
+	sysfs_remove_link(&indio_dev->dev.parent->kobj, "iio_device");
 error_del_device:
 	device_del(&indio_dev->dev);
 error_unreg_eventset:
