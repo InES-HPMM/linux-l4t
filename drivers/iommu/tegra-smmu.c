@@ -1627,6 +1627,135 @@ static void smmu_debugfs_delete(struct smmu_device *smmu)
 	kfree(smmu->debugfs_info);
 }
 
+struct smmu_addr_marker {
+	u32 start_address;
+	const char *name;
+};
+
+#define SZ_3G	(SZ_1G + SZ_2G)
+static struct smmu_addr_marker address_markers[] = {
+	{ 0,		"0x0000:0000", },
+	{ SZ_1G,	"0x4000:0000", },
+	{ SZ_2G,	"0x8000:0000", },
+	{ SZ_3G,	"0xc000:0000", },
+	{ -1,			NULL, },
+};
+
+struct smmu_pg_state {
+	struct seq_file *seq;
+	const struct smmu_addr_marker *marker;
+	u32 start_address;
+	unsigned level;
+	u32 current_prot;
+};
+
+static void smmu_dump_attr(struct smmu_pg_state *st)
+{
+	int i;
+	const char prot_set[] = "RW-";
+	const char prot_clr[] = "--S";
+
+	for (i = 0; i < ARRAY_SIZE(prot_set); i++) {
+		if (st->current_prot & BIT(31 - i))
+			seq_printf(st->seq, "%c", prot_set[i]);
+		else
+			seq_printf(st->seq, "%c", prot_clr[i]);
+	}
+}
+
+static void smmu_note_page(struct smmu_pg_state *st, u32 addr, int level,
+			   u32 val)
+{
+	static const char units[] = "KMGTPE";
+	u32 prot = val & _MASK_ATTR;
+
+	if (!st->level) {
+		st->level = level;
+		st->current_prot = prot;
+		seq_printf(st->seq, "---[ %s ]---\n", st->marker->name);
+	} else if (prot != st->current_prot || level != st->level ||
+		   addr >= st->marker[1].start_address) {
+		const char *unit = units;
+		unsigned long delta;
+
+		if (st->current_prot) {
+			seq_printf(st->seq, "0x%08x-0x%08x   ",
+				   st->start_address, addr);
+
+			delta = (addr - st->start_address) >> 10;
+			while (!(delta & 1023) && unit[1]) {
+				delta >>= 10;
+				unit++;
+			}
+			seq_printf(st->seq, "%9lu%c ", delta, *unit);
+			smmu_dump_attr(st);
+			seq_puts(st->seq, "\n");
+		}
+
+		if (addr >= st->marker[1].start_address) {
+			st->marker++;
+			seq_printf(st->seq, "---[ %s ]---\n", st->marker->name);
+		}
+
+		st->start_address = addr;
+		st->current_prot = prot;
+		st->level = level;
+	}
+}
+
+static void smmu_walk_pte(struct smmu_pg_state *st, u32 *pgd, u32 start)
+{
+	int i;
+	u32 *pte = page_address(SMMU_EX_PTBL_PAGE(*pgd));
+
+	for (i = 0; i < PTRS_PER_PTE; i++, pte++)
+		smmu_note_page(st, start + i * PAGE_SIZE, 2, *pte);
+}
+
+static void smmu_walk_pgd(struct seq_file *m, struct smmu_as *as)
+{
+	int i;
+	u32 *pgd;
+	struct smmu_pg_state st = {
+		.seq	= m,
+		.marker	= address_markers,
+	};
+
+	if (!pfn_valid(page_to_pfn(as->pdir_page)))
+		return;
+
+	pgd = page_address(as->pdir_page);
+	for (i = 0; i < SMMU_PDIR_COUNT; i++, pgd++) {
+		u32 addr = i * SMMU_PAGE_SIZE * SMMU_PTBL_COUNT;
+
+		if (*pgd & _PDE_NEXT)
+			smmu_walk_pte(&st, pgd, addr);
+		else
+			smmu_note_page(&st, addr, 1, *pgd);
+	}
+
+	smmu_note_page(&st, 0, 0, 0);
+}
+
+static int smmu_ptdump_show(struct seq_file *m, void *v)
+{
+	smmu_walk_pgd(m, m->private);
+	return 0;
+}
+
+static int smmu_ptdump_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_ptdump_show, inode->i_private);
+}
+
+static const struct file_operations smmu_ptdump_fops = {
+	.open		= smmu_ptdump_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+
 static void smmu_debugfs_create(struct smmu_device *smmu)
 {
 	int i;
@@ -1643,6 +1772,17 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 	if (!root)
 		goto err_out;
 	smmu->debugfs_root = root;
+
+	for (i = 0; i < smmu->num_as; i++) {
+		struct dentry *pt;
+		char name[20];
+
+		sprintf(name, "page_tables%03d", i);
+		pt = debugfs_create_file(name, 0400, smmu->debugfs_root,
+					 smmu->as + i, &smmu_ptdump_fops);
+		if (!pt)
+			goto err_out;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_mc); i++) {
 		int j;
