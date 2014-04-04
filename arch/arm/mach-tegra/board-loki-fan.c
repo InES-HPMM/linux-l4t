@@ -31,27 +31,25 @@
 #include "tegra-board-id.h"
 
 static int active_pwm_loki[MAX_ACTIVE_STATES] = {
-		0, 80*1024, 110*1024 , 150*1024, 200*1024, 240*1024,
-		245*1024, 250*1024, 252*1024, 255*1024};
+		0, 80, 110 , 150, 200, 240,
+		245, 250, 252, 255};
 
 static int active_pwm_foster[MAX_ACTIVE_STATES] = {
-		0, 70*1024, 115*1024 , 135*1024, 135*1024, 240*1024,
-		245*1024, 250*1024, 252*1024, 255*1024};
+		0, 70, 115 , 135, 135, 240,
+		245, 250, 252, 255};
 
 static struct pwm_fan_platform_data fan_data_delta_6k = {
 	.active_steps = MAX_ACTIVE_STATES,
 	.active_rpm = {
 		0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 10000, 11000},
-	.active_rru = {1024*40, 1024*2, 1024, 256,
-						256, 256, 256, 256, 256, 256},
-	.active_rrd = {1024*40, 1024*2, 1024, 256, 256,
-						256, 256, 128, 128, 128},
+	.active_rru = {40, 2, 1, 1, 1, 1, 1, 1, 1, 1},
+	.active_rrd = {40, 2, 1, 1, 1, 1, 1, 1, 1, 1},
 	.state_cap_lookup = {2, 2, 2, 2, 3, 3, 3, 4, 4, 4},
-	.pwm_period = 256,
+	.pwm_period = 45334,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
 	.state_cap = 7,
-	.precision_multiplier = 1024,
+	.active_pwm_max = 256,
 	.tach_gpio = TEGRA_GPIO_PU2,
 	.pwm_gpio = TEGRA_GPIO_PU3,
 };
