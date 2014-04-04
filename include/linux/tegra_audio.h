@@ -106,6 +106,7 @@ enum tegra210_audio_test_id {
 	TEST_ID_COEFF_RAM_NON_SEQ,
 	TEST_ID_MVC_MUTE_CTRL,
 	TEST_ID_MVC_UNMUTE_CTRL,
+	TEST_ID_AMIXER_PEAK_VALUE_SAMPLE_COUNT,
 };
 
 struct tegra210_audio_test_param {
@@ -244,6 +245,8 @@ struct tegra210_audio_amixer_test_param {
 	unsigned int act_th;
 	unsigned int deact_th;
 	unsigned int gain;
+	unsigned int peakmeter_mode;
+	unsigned int peakmeter_window_size;
 };
 
 struct tegra210_audio_mvc_test_param {
