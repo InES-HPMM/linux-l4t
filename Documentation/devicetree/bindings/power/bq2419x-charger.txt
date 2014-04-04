@@ -50,6 +50,8 @@ Optional properties:
 		11 to 15 -> 2048mA
 		16 to 60 -> 5200 mA
 		> 60 : Charging will be disabled by HW.
+-ti,auto-recharge-time-suspend: time setting in seconds to register
+                      rtc alarm timer to wake the device from LP0.
 
 Subnode properties:
 ==================

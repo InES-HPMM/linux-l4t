@@ -104,6 +104,7 @@ struct bq2419x_chip {
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
 	int				last_temp;
+	u32				auto_recharge_time_supend;
 	struct bq2419x_reg_info		input_src;
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
@@ -701,6 +702,25 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			dev_err(bq2419x->dev, "Reset safety timer failed %d\n",
 							ret);
 			return ret;
+		}
+
+		ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &val);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "PWR_ON_REG read failed %d",
+							ret);
+			return ret;
+		}
+
+		if ((val & BQ2419X_ENABLE_CHARGE_MASK) ==
+						BQ2419X_DISABLE_CHARGE) {
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_PWR_ON_REG, BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+					"PWR_ON_REG update failed, %d\n", ret);
+				return ret;
+			}
 		}
 		check_chg_state = 1;
 		break;
@@ -1356,6 +1376,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 							chg_restart_time;
 
 		ret = of_property_read_u32(batt_reg_node,
+				"ti,auto-recharge-time-suspend",
+				&chg_restart_time);
+		if (!ret)
+			pdata->bcharger_pdata->auto_recharge_time_supend =
+							chg_restart_time;
+
+		ret = of_property_read_u32(batt_reg_node,
 			"ti,temp-polling-time-sec", &temp_polling_time);
 		if (!ret)
 			bcharger_pdata->temp_polling_time_sec =
@@ -1553,6 +1580,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->last_temp = -1000;
 	bq2419x->disable_suspend_during_charging =
 			pdata->bcharger_pdata->disable_suspend_during_charging;
+	bq2419x->auto_recharge_time_supend =
+			pdata->bcharger_pdata->auto_recharge_time_supend;
 
 	bq2419x_process_charger_plat_data(bq2419x, pdata->bcharger_pdata);
 
@@ -1689,7 +1718,18 @@ static int bq2419x_suspend(struct device *dev)
 		(bq2419x->in_current_limit > 500)) {
 			battery_charging_wakeup(bq2419x->bc_dev,
 					bq2419x->wdt_refresh_timeout);
-	} else  {
+	} else if (bq2419x->cable_connected &&
+		bq2419x->auto_recharge_time_supend &&
+		(bq2419x->in_current_limit > 500) &&
+		(bq2419x->chg_status == BATTERY_CHARGING_DONE)){
+			battery_charging_wakeup(bq2419x->bc_dev,
+					bq2419x->auto_recharge_time_supend);
+			ret = bq2419x_set_charging_current_suspend(
+					bq2419x, 500);
+			if (ret < 0)
+				dev_err(bq2419x->dev,
+				"Configuration of charging failed: %d\n", ret);
+	} else {
 		ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
 		if (ret < 0)
 			dev_err(bq2419x->dev,
@@ -1748,6 +1788,35 @@ static int bq2419x_resume(struct device *dev)
 		ret = bq2419x_reset_wdt(bq2419x, "Resume");
 		if (ret < 0)
 			dev_err(bq2419x->dev, "Reset WDT failed: %d\n", ret);
+	}
+
+	if(val & BQ2419x_FAULT_CHRG_SAFTY) {
+		bq_chg_err(bq2419x, "Safety timer Expired\n");
+		ret = bq2419x_reset_safety_timer(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"Reset safety timer failed %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &val);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"PWR_ON_REG read failed %d", ret);
+			return ret;
+		}
+
+		if ((val & BQ2419X_ENABLE_CHARGE_MASK) ==
+					BQ2419X_DISABLE_CHARGE) {
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_PWR_ON_REG, BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+					"PWR_ON_REG update failed, %d\n", ret);
+				return ret;
+			}
+		}
 	}
 
 	return 0;
