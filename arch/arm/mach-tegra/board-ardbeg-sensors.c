@@ -31,6 +31,7 @@
 #include <media/camera.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
+#include <media/imx179.h>
 #include <media/dw9718.h>
 #include <media/as364x.h>
 #include <media/ov5693.h>
@@ -466,6 +467,73 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 	return 0;
 }
 
+static int ardbeg_imx179_power_on(struct imx179_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
+	tegra_io_dpd_disable(&csia_io);
+	tegra_io_dpd_disable(&csib_io);
+
+	gpio_set_value(CAM_AF_PWDN, 1);
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM1_PWDN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto imx179_avdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (err)
+		goto imx179_iovdd_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (err)
+		goto imx179_dvdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM_RSTN, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+
+imx179_dvdd_fail:
+	regulator_disable(pw->iovdd);
+
+imx179_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+imx179_avdd_fail:
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_imx179_power_off(struct imx179_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
+		tegra_io_dpd_enable(&csia_io);
+		tegra_io_dpd_enable(&csib_io);
+		return -EFAULT;
+	}
+
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->avdd);
+
+	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	return 0;
+}
+
 struct imx135_platform_data ardbeg_imx135_data = {
 	.flash_cap = {
 		.enable = 1,
@@ -476,6 +544,18 @@ struct imx135_platform_data ardbeg_imx135_data = {
 	},
 	.power_on = ardbeg_imx135_power_on,
 	.power_off = ardbeg_imx135_power_off,
+};
+
+struct imx179_platform_data ardbeg_imx179_data = {
+	.flash_cap = {
+		.enable = 1,
+		.edge_trig_en = 1,
+		.start_edge = 0,
+		.repeat = 1,
+		.delay_frm = 0,
+	},
+	.power_on = ardbeg_imx179_power_on,
+	.power_off = ardbeg_imx179_power_off,
 };
 
 static int ardbeg_dw9718_power_on(struct dw9718_power_rail *pw)
@@ -1010,6 +1090,11 @@ static struct i2c_board_info	ardbeg_i2c_board_info_imx135 = {
 	.platform_data = &ardbeg_imx135_data,
 };
 
+static struct i2c_board_info	ardbeg_i2c_board_info_imx179 = {
+	I2C_BOARD_INFO("imx179", 0x10),
+	.platform_data = &ardbeg_imx179_data,
+};
+
 static struct i2c_board_info	ardbeg_i2c_board_info_ar0261 = {
 	I2C_BOARD_INFO("ar0261", 0x36),
 	.platform_data = &ardbeg_ar0261_data,
@@ -1083,6 +1168,13 @@ static struct camera_module ardbeg_camera_module_info[] = {
 	{
 		/* front camera */
 		.sensor = &ardbeg_i2c_board_info_ov5693_front,
+	},
+	/* IMX179 camera board */
+	{
+		/* rear camera */
+		.sensor = &ardbeg_i2c_board_info_imx179,
+		.focuser = &ardbeg_i2c_board_info_ad5823,
+		.flash = &ardbeg_i2c_board_info_as3648,
 	},
 	{}
 };
