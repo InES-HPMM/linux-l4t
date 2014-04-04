@@ -33,6 +33,7 @@
 	#size-cells = <2>;
 
 	chosen {
+		nvidia,tegra-hypervisor-mode;
 	};
 
 	i2c@7000c400 {
