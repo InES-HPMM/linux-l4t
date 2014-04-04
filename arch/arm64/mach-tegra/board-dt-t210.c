@@ -39,14 +39,12 @@ static struct nvmap_platform_carveout t210_carveouts[] = {
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
 		.base		= 0,	/* Filled in by t210_panel_init() */
 		.size		= 0,	/* Filled in by t210_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 	[1] = {
 		.name		= "vpr",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
 		.base		= 0,	/* Filled in by t210_panel_init() */
 		.size		= 0,	/* Filled in by t210_panel_init() */
-		.buddy_size	= SZ_32K,
 	},
 };
 
