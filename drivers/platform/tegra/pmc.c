@@ -180,19 +180,19 @@ EXPORT_SYMBOL(tegra_pmc_enable_thermal_trip);
  * found in include/linux/tegra-pmc.h.  No return value.
  *
  * XXX This function does no input validation, but it should.
- * XXX This function should read back the values that it programs into the
- * PMIC scratch registers to ensure that the writes weren't blocked by
- * the BLOCK_SCRATCH_WRITES hardware mechanism.
  */
 void tegra_pmc_config_thermal_trip(struct tegra_tsensor_pmu_data *data)
 {
 	u32 v = 0;
-	u32 c;
+	u32 c, w;
 
 	/* Fill scratch registers to shutdown device on therm TRIP */
 	v = data->poweroff_reg_data << PMU_OFF_DATA_SHIFT;
 	v |= data->poweroff_reg_addr << PMU_OFF_ADDR_SHIFT;
 	tegra_pmc_writel(v, PMC_SCRATCH54);
+
+	w = tegra_pmc_readl(PMC_SCRATCH54);
+	WARN(w != v, "PMC_SCRATCH%d value mismatch - chip may not shutdown PMIC correctly upon a thermal trip event", 54);
 
 	v = 1 << RESET_TEGRA_SHIFT;
 	v |= data->controller_type << CONTROLLER_TYPE_SHIFT;
@@ -206,6 +206,9 @@ void tegra_pmc_config_thermal_trip(struct tegra_tsensor_pmu_data *data)
 	v |= c << CHECKSUM_SHIFT;
 
 	tegra_pmc_writel(v, PMC_SCRATCH55);
+
+	w = tegra_pmc_readl(PMC_SCRATCH55);
+	WARN(w != v, "PMC_SCRATCH%d value mismatch - chip may not shutdown PMIC correctly upon a thermal trip event", 55);
 }
 EXPORT_SYMBOL(tegra_pmc_config_thermal_trip);
 
