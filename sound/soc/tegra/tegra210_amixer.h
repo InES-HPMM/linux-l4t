@@ -145,7 +145,7 @@ enum T210_AMIXER_PEAK_TYPE {
 	PEAK_RESET_ON_READ = 1,
 };
 
-#define TEGRA210_AMIXER_MAX_PEAK_WIN_SIZE	((2^31) - 1)
+#define TEGRA210_AMIXER_MAX_PEAK_WIN_SIZE	0x7fffffff
 #define TEGRA210_AMIXER_GAIN_COEF_DEPTH		16
 
 /* AMIXER APIs */
@@ -170,7 +170,7 @@ int tegra210_amixer_rx_set_gain_coef(enum tegra210_ahub_cifs cif, u32 *coef);
 int tegra210_amixer_rx_set_peak_ctrl(enum tegra210_ahub_cifs cif, int type,
 				unsigned int win_size);
 int tegra210_amixer_rx_get_peak_values(enum tegra210_ahub_cifs cif, u32 *peak);
-int tegra210_amixer_rx_get_sample_count(enum tegra210_ahub_cifs cif);
+u32 tegra210_amixer_rx_get_sample_count(enum tegra210_ahub_cifs cif);
 int tegra210_amixer_tx_enable(enum tegra210_ahub_cifs cif, bool en);
 int tegra210_amixer_tx_reset(enum tegra210_ahub_cifs cif);
 int tegra210_amixer_tx_enable_input(enum tegra210_ahub_cifs txcif,

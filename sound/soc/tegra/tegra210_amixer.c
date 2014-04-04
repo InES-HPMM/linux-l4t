@@ -410,7 +410,7 @@ EXPORT_SYMBOL_GPL(tegra210_amixer_rx_get_peak_values);
  *  tegra210_amixer_rx_get_sample_count - gets sample count on an input
  *  @cif : mixer rxcif
  */
-int tegra210_amixer_rx_get_sample_count(enum tegra210_ahub_cifs cif)
+u32 tegra210_amixer_rx_get_sample_count(enum tegra210_ahub_cifs cif)
 {
 	u32 reg, sample_cnt = 0, cif_id = MIXER_CIF_ID(cif);
 	dev_vdbg(tegra210_amixer->dev, "%s rx %d", __func__, cif_id);
@@ -514,7 +514,6 @@ static bool tegra210_amixer_wr_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_AMIXER_RX_CIF_CTRL:
 	case TEGRA210_AMIXER_RX_CTRL:
 	case TEGRA210_AMIXER_RX_PEAK_CTRL:
-	case TEGRA210_AMIXER_RX_SAMPLE_COUNT:
 
 	case TEGRA210_AMIXER_TX_ENABLE:
 	case TEGRA210_AMIXER_TX_SOFT_RESET:
