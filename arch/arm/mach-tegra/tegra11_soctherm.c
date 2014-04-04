@@ -2495,6 +2495,28 @@ static int t12x_fuse_corr_beta2[] = { /* scaled *1000000 */
 	[TSENSE_PLLX] =  -6729300,
 };
 
+static int t13x_fuse_corr_alpha[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] = 1119800,
+	[TSENSE_CPU1] = 1094100,
+	[TSENSE_CPU2] = 1108800,
+	[TSENSE_CPU3] = 1103200,
+	[TSENSE_MEM0] = 1168400,
+	[TSENSE_MEM1] = 1185600,
+	[TSENSE_GPU]  = 1158500,
+	[TSENSE_PLLX] = 1150000,
+};
+
+static int t13x_fuse_corr_beta[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] =   -6330400,
+	[TSENSE_CPU1] =   -3751800,
+	[TSENSE_CPU2] =   -3835200,
+	[TSENSE_CPU3] =   -5132100,
+	[TSENSE_MEM0] =  -11266000,
+	[TSENSE_MEM1] =  -10861000,
+	[TSENSE_GPU]  =  -10714000,
+	[TSENSE_PLLX] =  -11899000,
+};
+
 /**
  * soctherm_fuse_read_tsensor() - calculates therm_a and therm_b for a sensor
  * @sensor:	The sensor for which to calculate.
@@ -2571,7 +2593,16 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
 		}
 	} else {
-		if ((IS_T12X || IS_T13X)) {
+		if (IS_T13X) {
+			t13x_fuse_corr_alpha[sensor] =
+				t13x_fuse_corr_alpha[sensor] ?: 1000000;
+			therm_a = div64_s64_precise(
+				(s64)therm_a * t13x_fuse_corr_alpha[sensor],
+				(s64)1000000LL);
+			therm_b = div64_s64_precise(
+				(s64)therm_b * t13x_fuse_corr_alpha[sensor] +
+				t13x_fuse_corr_beta[sensor], (s64)1000000LL);
+		} else if (IS_T12X) {
 			if (fuse_rev == 0) { /* new CP1/CP2 */
 				t12x_fuse_corr_alpa2[sensor] =
 					t12x_fuse_corr_alpa2[sensor] ?: 1000000;
