@@ -658,4 +658,17 @@
 		calib_1v8_offsets = <0x7676>;
 		status = "okay";
 	};
+	sdhci@700b0200 {
+		tap-delay = <4>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <200000000>;
+		uhs_mask = <0x0>;
+		bus-width = <8>;
+		id = <1>;
+		built-in;
+		calib_3v3_offsets = <0x0202>;
+		calib_1v8_offsets = <0x0202>;
+		status = "okay";
+	};
 };
