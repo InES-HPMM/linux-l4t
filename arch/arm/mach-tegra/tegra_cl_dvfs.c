@@ -864,7 +864,8 @@ static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
 {
 	if (!cld->calibration_delay)
 		return;
-	mod_timer(&cld->calibration_timer, jiffies + cld->calibration_delay);
+	mod_timer(&cld->calibration_timer,
+		  jiffies + cld->calibration_delay + 1);
 }
 
 static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
@@ -952,19 +953,24 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	cld->dvco_rate_min = clamp(rate_min,
 			cld->calibration_range_min, cld->calibration_range_max);
 	calibration_timer_update(cld);
-	pr_debug("%s: calibrated dvco_rate_min %lu\n",
-		 __func__, cld->dvco_rate_min);
+	pr_debug("%s: calibrated dvco_rate_min %lu (%lu)\n",
+		 __func__, cld->dvco_rate_min, rate_min);
 }
 
 static void calibration_timer_cb(unsigned long data)
 {
-	unsigned long flags;
+	unsigned long flags, rate_min;
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)data;
 
 	pr_debug("%s\n", __func__);
 
 	clk_lock_save(cld->dfll_clk, &flags);
+	rate_min = cld->dvco_rate_min;
 	cl_dvfs_calibrate(cld);
+	if (rate_min != cld->dvco_rate_min) {
+		tegra_cl_dvfs_request_rate(cld,
+			tegra_cl_dvfs_request_get(cld));
+	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
 }
 
@@ -1080,7 +1086,7 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 		 __func__, cld->dvco_rate_min);
 
 	/* dvco min rate is under-estimated - skewed range up */
-	cld->calibration_range_min = cld->dvco_rate_min - 4 * RATE_STEP(cld);
+	cld->calibration_range_min = cld->dvco_rate_min - 8 * RATE_STEP(cld);
 	if (cld->calibration_range_min < cld->safe_dvfs->freqs[0])
 		cld->calibration_range_min = cld->safe_dvfs->freqs[0];
 	cld->calibration_range_max = cld->dvco_rate_min + 24 * RATE_STEP(cld);
@@ -2622,6 +2628,7 @@ int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
 	u32 val;
+	bool dvco_min_crossed;
 	struct dfll_rate_req req;
 	req.rate = rate;
 
@@ -2647,6 +2654,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		req.scale = scale - 1;
 		rate = cld->dvco_rate_min;
 	}
+	dvco_min_crossed = (rate == cld->dvco_rate_min) &&
+		(cld->last_req.rate > cld->dvco_rate_min);
 
 	/* Convert requested rate into frequency request and scale settings */
 	val = GET_REQUEST_FREQ(rate, cld->ref_rate);
@@ -2675,6 +2684,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
+		if (dvco_min_crossed)
+			calibration_timer_update(cld);
 	}
 	return 0;
 }
