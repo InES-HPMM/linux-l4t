@@ -774,7 +774,6 @@ int __init loki_regulator_init(void)
 {
 	int i;
 	struct board_info bi;
-	struct device_node *np;
 
 	tegra_pmc_pmu_interrupt_polarity(true);
 
@@ -807,6 +806,9 @@ int __init loki_regulator_init(void)
 		}
 	}
 
+
+	i2c_register_board_info(4, palma_device,
+			ARRAY_SIZE(palma_device));
 	if (bi.board_id == BOARD_P2530 && bi.fab >= 0xa1) {
 		pmic_platform.reg_data[PALMAS_REG_SMPS7] =
 			PALMAS_REG_PDATA(smps7_a01);
@@ -822,16 +824,6 @@ int __init loki_regulator_init(void)
 			PALMAS_REG_INIT_DATA(ldo5_a01);
 	}
 
-
-	np = of_find_compatible_node(NULL, NULL, "ti,palmas");
-	if (np) {
-		pr_info("Palmas registration from DT power tree\n");
-	} else {
-		pr_info("Palmas registration from board power tree\n");
-		i2c_register_board_info(4, palma_device,
-				ARRAY_SIZE(palma_device));
-	}
-
 	platform_device_register(&power_supply_extcon_device);
 
 	loki_cl_dvfs_init();
@@ -842,18 +834,11 @@ static int __init loki_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
 	struct board_info bi;
-	struct device_node *np;
 
 
 	if ((!of_machine_is_compatible("nvidia,loki")) &&
 		(!of_machine_is_compatible("nvidia,t132loki")))
 		return 0;
-
-	np = of_find_compatible_node(NULL, "fixed-regulators", "simple-bus");
-	if (np) {
-		pr_info("Fixed Regulator is from the DT\n");
-		return 0;
-	}
 
 	tegra_get_board_info(&bi);
 	tegra_get_pmu_board_info(&pmu_board_info);
@@ -868,8 +853,8 @@ static int __init loki_fixed_regulator_init(void)
 
 	return 0;
 }
-subsys_initcall_sync(loki_fixed_regulator_init);
 
+subsys_initcall_sync(loki_fixed_regulator_init);
 int __init loki_edp_init(void)
 {
 	unsigned int regulator_mA;
