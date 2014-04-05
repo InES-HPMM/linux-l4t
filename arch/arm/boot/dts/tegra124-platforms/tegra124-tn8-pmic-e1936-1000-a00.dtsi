@@ -92,6 +92,15 @@
 				system-pmic-power-reset;
 			};
 
+			palmas_ldousb_in {
+				compatible = "ti,palmas-ldousb-in";
+				ti,ldousb-in-threshold-voltage = <3500>;
+				ti,threshold-voltage-tolerance = <100>;
+				ti,enable-in1-above-threshold;
+				ldousb-in1-supply = <&palmas_smps10_out2>;
+				ldousb-in2-supply = <&vdd_ac_bat_reg>;
+			};
+
 			gpadc {
 				compatible = "ti,palmas-gpadc";
 				interrupt-parent = <&palmas>;
