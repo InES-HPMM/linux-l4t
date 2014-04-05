@@ -211,8 +211,12 @@ struct tegra_cl_dvfs {
 	struct voltage_reg_map		*out_map[MAX_CL_DVFS_VOLTAGES];
 	u8				num_voltages;
 	u8				safe_output;
+
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
+	unsigned long			tune_high_dvco_rate_min;
+	unsigned long			tune_high_out_rate_min;
+
 	u8				minimax_output;
 	u8				thermal_out_caps[MAX_THERMAL_LIMITS];
 	u8				thermal_out_floors[MAX_THERMAL_LIMITS];
@@ -698,11 +702,11 @@ static inline void tune_high(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-static inline int cl_tune_target(struct tegra_cl_dvfs *cld, u32 out_cap)
+static inline int cl_tune_target(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
 	bool tune_low_at_cold = cld->safe_dvfs->dfll_data.tune0_low_at_cold;
 
-	if ((out_cap > cld->tune_high_out_start) &&
+	if ((rate >= cld->tune_high_out_rate_min) &&
 	    (!tune_low_at_cold || cld->therm_floor_idx))
 		return TEGRA_CL_DVFS_TUNE_HIGH;
 	return TEGRA_CL_DVFS_TUNE_LOW;
@@ -762,7 +766,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	switch (cld->tune_state) {
 	case TEGRA_CL_DVFS_TUNE_LOW:
-		if (cl_tune_target(cld, out_cap) > TEGRA_CL_DVFS_TUNE_LOW) {
+		if (cl_tune_target(cld, req->rate) > TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
 			cl_dvfs_set_force_out_min(cld);
@@ -771,7 +775,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	case TEGRA_CL_DVFS_TUNE_HIGH:
 	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST:
-		if (cl_tune_target(cld, out_cap) == TEGRA_CL_DVFS_TUNE_LOW) {
+		if (cl_tune_target(cld, req->rate) == TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 			tune_low(cld);
 			cl_dvfs_set_force_out_min(cld);
@@ -955,6 +959,11 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	else if (rate > (cld->dvco_rate_min + step))
 		rate_min += step;
 	else {
+		if ((cld->tune_state == TEGRA_CL_DVFS_TUNE_HIGH) &&
+		    (cld->tune_high_out_min == out_min)) {
+			cld->tune_high_dvco_rate_min = rate_min;
+			return;
+		}
 		if (cld->thermal_out_floors[cld->therm_floor_idx] == out_min)
 			cld->dvco_rate_floors[cld->therm_floor_idx] = rate_min;
 		return;
@@ -1068,7 +1077,8 @@ static int find_safe_output(
 	return -EINVAL;
 }
 
-static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
+/* Return rate with predicted voltage closest/below or equal out_min */
+static unsigned long get_dvco_rate_below(struct tegra_cl_dvfs *cld, u8 out_min)
 {
 	int i;
 
@@ -1080,15 +1090,31 @@ static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
 	return cld->safe_dvfs->freqs[i];
 }
 
-static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
+/* Return rate with predicted voltage closest/above out_min */
+static unsigned long get_dvco_rate_above(struct tegra_cl_dvfs *cld, u8 out_min)
+{
+	int i;
+
+	for (i = 0; i < cld->safe_dvfs->num_freqs; i++) {
+		if (cld->clk_dvfs_map[i] > out_min)
+			return cld->safe_dvfs->freqs[i];
+	}
+	return cld->safe_dvfs->freqs[i-1];
+}
+
+static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld,
+				      struct dfll_rate_req *req)
 {
 	unsigned long rate = cld->dvco_rate_floors[cld->therm_floor_idx];
 	if (!rate) {
 		rate = cld->safe_dvfs->dfll_data.out_rate_min;
 		if (cld->therm_floor_idx < cld->therm_floors_num)
-			rate = find_dvco_rate_min(cld,
+			rate = get_dvco_rate_below(cld,
 				cld->thermal_out_floors[cld->therm_floor_idx]);
 	}
+
+	if (cl_tune_target(cld, req->rate) > TEGRA_CL_DVFS_TUNE_LOW)
+		rate = max(rate, cld->tune_high_dvco_rate_min);
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
 	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
@@ -1224,6 +1250,10 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 			cld->tune_high_out_start = out_start;
 			if (cld->minimax_output <= out_start)
 				cld->minimax_output = out_start + 1;
+			cld->tune_high_dvco_rate_min =
+				get_dvco_rate_above(cld, out_start + 1);
+			cld->tune_high_out_rate_min =
+				get_dvco_rate_above(cld, out_min);
 		}
 	}
 }
@@ -1403,7 +1433,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	cld->tune_state = TEGRA_CL_DVFS_TUNE_LOW;
 	cld->therm_cap_idx = cld->therm_caps_num;
 	cld->therm_floor_idx = 0;
-	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_dvco_rate_min(cld, &cld->last_req);
 	cl_dvfs_set_force_out_min(cld);
 
 	if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
@@ -1720,7 +1750,7 @@ static int tegra_cl_dvfs_set_vmin_cdev_state(
 
 	if (cld->therm_floor_idx != cur_state) {
 		cld->therm_floor_idx = cur_state;
-		cl_dvfs_set_dvco_rate_min(cld);
+		cl_dvfs_set_dvco_rate_min(cld, &cld->last_req);
 		cl_dvfs_set_force_out_min(cld);
 		if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 			tegra_cl_dvfs_request_rate(cld,
@@ -1794,7 +1824,7 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 	if (cld->vmin_cdev)
 		cld->vmin_cdev->updated = false;
 	cld->therm_floor_idx = 0;
-	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_dvco_rate_min(cld, &cld->last_req);
 	cl_dvfs_set_force_out_min(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
@@ -1899,7 +1929,7 @@ static int cl_dvfs_simon_grade_notify_cb(struct notifier_block *nb,
 	for (i = 0; i < cld->therm_floors_num; i++)
 		cld->dvco_rate_floors[i] = 0;
 
-	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_dvco_rate_min(cld, &cld->last_req);
 	cl_dvfs_set_force_out_min(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		tegra_cl_dvfs_request_rate(cld,
@@ -2638,7 +2668,7 @@ int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
 	u32 val;
-	bool dvco_min_crossed;
+	bool dvco_min_crossed, dvco_min_updated;
 	struct dfll_rate_req req;
 	req.rate = rate;
 
@@ -2651,6 +2681,12 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Calibrate dfll minimum rate */
 	cl_dvfs_calibrate(cld);
 
+	/* Update minimum dvco rate if we are crossing tuning threshold */
+	dvco_min_updated = cl_tune_target(cld, rate) !=
+		cl_tune_target(cld, cld->last_req.rate);
+	if (dvco_min_updated)
+		cl_dvfs_set_dvco_rate_min(cld, &req);
+
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dvco_rate_min) {
@@ -2659,7 +2695,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		if (!scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
-			return -EINVAL;
+			goto req_err;
 		}
 		req.scale = scale - 1;
 		rate = cld->dvco_rate_min;
@@ -2671,7 +2707,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	val = GET_REQUEST_FREQ(rate, cld->ref_rate);
 	if (val > FREQ_MAX) {
 		pr_err("%s: Rate %lu is above dfll range\n", __func__, rate);
-		return -EINVAL;
+		goto req_err;
 	}
 	req.freq = val;
 	rate = GET_REQUEST_RATE(val, cld->ref_rate);
@@ -2680,7 +2716,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	if (find_safe_output(cld, rate, &req.output)) {
 		pr_err("%s: Failed to find safe output for rate %lu\n",
 		       __func__, rate);
-		return -EINVAL;
+		goto req_err;
 	}
 	req.cap = req.output;
 
@@ -2694,10 +2730,17 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
-		if (dvco_min_crossed)
+		if (dvco_min_crossed || dvco_min_updated)
 			calibration_timer_update(cld);
 	}
 	return 0;
+
+req_err:
+	/* Restore dvco rate minimum */
+	if (dvco_min_updated)
+		cl_dvfs_set_dvco_rate_min(cld, &cld->last_req);
+	return -EINVAL;
+
 }
 
 unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
@@ -2915,8 +2958,8 @@ static int tune_high_mv_set(void *data, u64 val)
 	cld->safe_dvfs->dfll_data.tune_high_min_millivolts = val;
 	cl_dvfs_init_output_thresholds(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
-		set_cl_config(cld, &cld->last_req);
-		set_request(cld, &cld->last_req);
+		tegra_cl_dvfs_request_rate(cld,
+			tegra_cl_dvfs_request_get(cld));
 	}
 
 	clk_unlock_restore(c, &flags);
@@ -3036,8 +3079,12 @@ static int cl_profiles_show(struct seq_file *s, void *data)
 	}
 
 	seq_puts(s, "TUNE HIGH:\n");
-	seq_printf(s, "start  %5dmV\n", get_mv(cld, cld->tune_high_out_start));
-	seq_printf(s, "min    %5dmV\n", get_mv(cld, cld->tune_high_out_min));
+	seq_printf(s, "start  %5dmV%9lukHz\n",
+		   get_mv(cld, cld->tune_high_out_start),
+		   cld->tune_high_dvco_rate_min / 1000);
+	seq_printf(s, "min    %5dmV%9lukHz\n",
+		   get_mv(cld, cld->tune_high_out_min),
+		   cld->tune_high_out_rate_min / 1000);
 
 	seq_printf(s, "THERM FLOORS:%s\n", cld->therm_floors_num ? "" : " NONE");
 	for (i = 0; i < cld->therm_floors_num; i++) {
@@ -3046,7 +3093,7 @@ static int cl_profiles_show(struct seq_file *s, void *data)
 		trips = cld->safe_dvfs->dvfs_rail->vmin_cdev->trip_temperatures;
 		seq_printf(s, " ..%3dC%5dmV%9lukHz%s\n",
 			   trips[i], get_mv(cld, v),
-			   (r ? : find_dvco_rate_min(cld, v)) / 1000,
+			   (r ? : get_dvco_rate_below(cld, v)) / 1000,
 			   r ? " (calibrated)"  : "");
 	}
 	r = cld->dvco_rate_floors[i];
