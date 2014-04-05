@@ -5,6 +5,8 @@
  * Created:		Aug 11th 2005
  * Copyright:	Wolfson Microelectronics. PLC.
  *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -162,18 +164,25 @@
 		{.reg = xreg, .min = xmin, .max = xmax, \
 		 .platform_max = xmax} }
 #define SOC_ENUM_DOUBLE(xreg, xshift_l, xshift_r, xmax, xtexts) \
-{	.reg = xreg, .shift_l = xshift_l, .shift_r = xshift_r, \
-	.max = xmax, .texts = xtexts, \
-	.mask = xmax ? roundup_pow_of_two(xmax) - 1 : 0}
+{	.reg = &(int){(xreg)}, .shift_l = xshift_l, \
+	.shift_r = xshift_r, .max = xmax, .texts = xtexts, \
+	.mask = &(unsigned int){(xmax ? roundup_pow_of_two(xmax) - 1 : 0)}, \
+	.num_regs = 1, .type = SND_SOC_ENUM_BINARY }
 #define SOC_ENUM_SINGLE(xreg, xshift, xmax, xtexts) \
 	SOC_ENUM_DOUBLE(xreg, xshift, xshift, xmax, xtexts)
 #define SOC_ENUM_SINGLE_EXT(xmax, xtexts) \
 {	.max = xmax, .texts = xtexts }
 #define SOC_VALUE_ENUM_DOUBLE(xreg, xshift_l, xshift_r, xmask, xmax, xtexts, xvalues) \
-{	.reg = xreg, .shift_l = xshift_l, .shift_r = xshift_r, \
-	.mask = xmask, .max = xmax, .texts = xtexts, .values = xvalues}
+{	.reg = &(int){(xreg)}, .shift_l = xshift_l, \
+	.shift_r = xshift_r, .mask = &(unsigned int){(xmask)}, \
+	.num_regs = 1, .max = xmax, .texts = xtexts, \
+	.values = xvalues, .type = SND_SOC_ENUM_BINARY }
 #define SOC_VALUE_ENUM_SINGLE(xreg, xshift, xmask, xmax, xtexts, xvalues) \
 	SOC_VALUE_ENUM_DOUBLE(xreg, xshift, xshift, xmask, xmax, xtexts, xvalues)
+#define SOC_VALUE_ENUM_ONEHOT(xregs, xmasks, xnum_regs, xmax, xtexts, xvalues) \
+{	.reg = xregs, .mask = xmasks, .num_regs = xnum_regs, \
+	.max = xmax, .texts = xtexts, .values = xvalues, \
+	.type = SND_SOC_ENUM_ONEHOT }
 #define SOC_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,\
 	.info = snd_soc_info_enum_double, \
@@ -282,7 +291,9 @@
 							ARRAY_SIZE(xtexts), xtexts, xvalues)
 #define SOC_VALUE_ENUM_SINGLE_DECL(name, xreg, xshift, xmask, xtexts, xvalues) \
 	SOC_VALUE_ENUM_DOUBLE_DECL(name, xreg, xshift, xshift, xmask, xtexts, xvalues)
-
+#define SOC_VALUE_ENUM_ONEHOT_DECL(name, xregs, xmasks, xnum_regs, xtexts, xvalues) \
+	struct soc_enum name = SOC_VALUE_ENUM_ONEHOT(xregs, xmasks, xnum_regs, \
+							ARRAY_SIZE(xtexts), xtexts, xvalues)
 /*
  * Component probe and remove ordering levels for components with runtime
  * dependencies.
@@ -309,6 +320,16 @@ enum snd_soc_bias_level {
 	SND_SOC_BIAS_STANDBY = 1,
 	SND_SOC_BIAS_PREPARE = 2,
 	SND_SOC_BIAS_ON = 3,
+};
+
+/*
+ * enum snd_soc_enum_type - Type of ASoC enum control
+ * @SND_SOC_ENUM_BINARY: soc_enum type for SINGLE, DOUBLE or VIRTUAL mux
+ * @SND_SOC_ENUM_ONEHOT: soc_enum type for ONEHOT encoding mux
+ */
+enum snd_soc_enum_type {
+	SND_SOC_ENUM_BINARY = 0,
+	SND_SOC_ENUM_ONEHOT = 1,
 };
 
 struct device_node;
@@ -1103,14 +1124,15 @@ struct soc_mreg_control {
 
 /* enumerated kcontrol */
 struct soc_enum {
-	unsigned short reg;
-	unsigned short reg2;
+	int *reg;
 	unsigned char shift_l;
 	unsigned char shift_r;
 	unsigned int max;
-	unsigned int mask;
+	unsigned int *mask;
 	const char * const *texts;
 	const unsigned int *values;
+	enum snd_soc_enum_type type;
+	unsigned int num_regs;
 };
 
 /* codec IO */
@@ -1186,6 +1208,30 @@ static inline bool snd_soc_volsw_is_stereo(struct soc_mixer_control *mc)
 	 * stereo (bits in one register or in two registers)
 	 */
 	return 1;
+}
+
+static inline unsigned int snd_soc_enum_val_to_item(struct soc_enum *e,
+	unsigned int val)
+{
+	unsigned int i;
+
+	if (!e->values)
+		return val;
+
+	for (i = 0; i < e->max; i++)
+		if (val == e->values[i])
+			return i;
+
+	return 0;
+}
+
+static inline unsigned int snd_soc_enum_item_to_val(struct soc_enum *e,
+	unsigned int item)
+{
+	if (!e->values)
+		return item;
+
+	return e->values[item];
 }
 
 int snd_soc_util_init(void);

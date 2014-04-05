@@ -6,6 +6,8 @@
  * Copyright (C) 2010 Slimlogic Ltd.
  * Copyright (C) 2010 Texas Instruments Inc.
  *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
  * Author: Liam Girdwood <lrg@slimlogic.co.uk>
  *         with code, comments and ideas from :-
  *         Richard Purdie <richard@openedhand.com>
@@ -2432,12 +2434,12 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int val;
 
-	val = snd_soc_read(codec, e->reg);
+	val = snd_soc_read(codec, e->reg[0]);
 	ucontrol->value.enumerated.item[0]
-		= (val >> e->shift_l) & e->mask;
+		= (val >> e->shift_l) & e->mask[0];
 	if (e->shift_l != e->shift_r)
 		ucontrol->value.enumerated.item[1] =
-			(val >> e->shift_r) & e->mask;
+			(val >> e->shift_r) & e->mask[0];
 
 	return 0;
 }
@@ -2463,15 +2465,15 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
 	if (ucontrol->value.enumerated.item[0] > e->max - 1)
 		return -EINVAL;
 	val = ucontrol->value.enumerated.item[0] << e->shift_l;
-	mask = e->mask << e->shift_l;
+	mask = e->mask[0] << e->shift_l;
 	if (e->shift_l != e->shift_r) {
 		if (ucontrol->value.enumerated.item[1] > e->max - 1)
 			return -EINVAL;
 		val |= ucontrol->value.enumerated.item[1] << e->shift_r;
-		mask |= e->mask << e->shift_r;
+		mask |= e->mask[0] << e->shift_r;
 	}
 
-	return snd_soc_update_bits_locked(codec, e->reg, mask, val);
+	return snd_soc_update_bits_locked(codec, e->reg[0], mask, val);
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_enum_double);
 
@@ -2494,15 +2496,15 @@ int snd_soc_get_value_enum_double(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int reg_val, val, mux;
 
-	reg_val = snd_soc_read(codec, e->reg);
-	val = (reg_val >> e->shift_l) & e->mask;
+	reg_val = snd_soc_read(codec, e->reg[0]);
+	val = (reg_val >> e->shift_l) & e->mask[0];
 	for (mux = 0; mux < e->max; mux++) {
 		if (val == e->values[mux])
 			break;
 	}
 	ucontrol->value.enumerated.item[0] = mux;
 	if (e->shift_l != e->shift_r) {
-		val = (reg_val >> e->shift_r) & e->mask;
+		val = (reg_val >> e->shift_r) & e->mask[0];
 		for (mux = 0; mux < e->max; mux++) {
 			if (val == e->values[mux])
 				break;
@@ -2537,15 +2539,15 @@ int snd_soc_put_value_enum_double(struct snd_kcontrol *kcontrol,
 	if (ucontrol->value.enumerated.item[0] > e->max - 1)
 		return -EINVAL;
 	val = e->values[ucontrol->value.enumerated.item[0]] << e->shift_l;
-	mask = e->mask << e->shift_l;
+	mask = e->mask[0] << e->shift_l;
 	if (e->shift_l != e->shift_r) {
 		if (ucontrol->value.enumerated.item[1] > e->max - 1)
 			return -EINVAL;
 		val |= e->values[ucontrol->value.enumerated.item[1]] << e->shift_r;
-		mask |= e->mask << e->shift_r;
+		mask |= e->mask[0] << e->shift_r;
 	}
 
-	return snd_soc_update_bits_locked(codec, e->reg, mask, val);
+	return snd_soc_update_bits_locked(codec, e->reg[0], mask, val);
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_value_enum_double);
 
