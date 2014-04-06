@@ -883,6 +883,45 @@ static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
 	PALMAS_ADC_CHAN_IIO(IN15),
 };
 
+static int palmas_gpadc_get_autoconv_prop(struct device *dev,
+		struct device_node *np, const char *node_name,
+		struct palmas_adc_auto_conv_property **conv_prop)
+{
+	struct device_node *conv_node;
+	struct palmas_adc_auto_conv_property *cprop;
+	int ret;
+	u32 pval;
+	s32 thres;
+
+	conv_node = of_get_child_by_name(np, node_name);
+	if (!conv_node)
+		return -EINVAL;
+
+	cprop = devm_kzalloc(dev, sizeof(*cprop), GFP_KERNEL);
+	if (!cprop)
+		return -ENOMEM;
+
+	ret = of_property_read_u32(conv_node, "ti,adc-channel-number", &pval);
+	if (ret < 0) {
+		dev_err(dev, "Autoconversion channel is missing\n");
+		return ret;
+	}
+	cprop->adc_channel_number = pval;
+
+	ret = of_property_read_s32(conv_node, "ti,adc-high-threshold", &thres);
+	if (!ret)
+		cprop->adc_high_threshold = thres;
+
+	ret = of_property_read_s32(conv_node, "ti,adc-low-threshold", &thres);
+	if (!ret)
+		cprop->adc_low_threshold = thres;
+
+	cprop->adc_shutdown = of_property_read_bool(conv_node,
+			"ti,enable-shutdown");
+	*conv_prop = cprop;
+	return 0;
+}
+
 static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 	struct palmas_gpadc_platform_data **gpadc_pdata)
 {
@@ -891,6 +930,7 @@ static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 	struct device_node *map_node;
 	struct device_node *child;
 	struct iio_map *palmas_iio_map;
+	struct palmas_adc_auto_conv_property *conv_prop;
 	int ret;
 	u32 pval;
 	int nmap, nvalid_map;
@@ -912,6 +952,20 @@ static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 
 	gp_data->extended_delay = of_property_read_bool(np,
 					"ti,enable-extended-delay");
+
+	ret = of_property_read_u32(np, "ti,auto-conversion-period-ms", &pval);
+	if (!ret)
+		gp_data->auto_conversion_period_ms = pval;
+
+	ret = palmas_gpadc_get_autoconv_prop(&pdev->dev, np, "auto_conv0",
+				&conv_prop);
+	if (!ret)
+		gp_data->adc_auto_conv0_data = conv_prop;
+
+	ret = palmas_gpadc_get_autoconv_prop(&pdev->dev, np, "auto_conv1",
+				&conv_prop);
+	if (!ret)
+		gp_data->adc_auto_conv1_data = conv_prop;
 
 	map_node = of_get_child_by_name(np, "iio_map");
 	if (!map_node) {
