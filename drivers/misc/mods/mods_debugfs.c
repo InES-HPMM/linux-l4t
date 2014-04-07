@@ -31,6 +31,7 @@ static struct dentry *mods_debugfs_dir;
 
 #ifdef CONFIG_TEGRA_DC
 #include <../drivers/video/tegra/dc/dc_config.h>
+#include <../drivers/video/tegra/dc/dsi.h>
 
 static int mods_dc_color_formats_show(struct seq_file *s, void *unused)
 {
@@ -259,6 +260,59 @@ static const struct file_operations mods_dc_scaling_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+
+static int mods_dsi_ganged_get(void *data, u64 *val)
+{
+	struct tegra_dc_dsi_data *dsi = data;
+	*val = (u64)dsi->info.ganged_type;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_dsi_ganged_fops, mods_dsi_ganged_get, NULL,
+	"%llu\n");
+
+static int mods_dsi_inst_get(void *data, u64 *val)
+{
+	struct tegra_dc_dsi_data *dsi = data;
+	*val = (u64)dsi->info.dsi_instance;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_dsi_inst_fops, mods_dsi_inst_get, NULL, "%llu\n");
+
+
+static int mods_dc_border_get(void *data, u64 *val)
+{
+	struct tegra_dc *dc = data;
+#if !defined(CONFIG_TEGRA_DC_BLENDER_GEN2)
+	u32 blender_reg = DC_DISP_BORDER_COLOR;
+#else
+	u32 blender_reg = DC_DISP_BLEND_BACKGROUND_COLOR;
+#endif
+	if (!dc->enabled)
+		*val = 0ULL;
+	else
+		*val = (u64)tegra_dc_readl(dc, blender_reg);
+	return 0;
+}
+static int mods_dc_border_set(void *data, u64 val)
+{
+	struct tegra_dc *dc = data;
+#if !defined(CONFIG_TEGRA_DC_BLENDER_GEN2)
+	u32 blender_reg = DC_DISP_BORDER_COLOR;
+#else
+	u32 blender_reg = DC_DISP_BLEND_BACKGROUND_COLOR;
+#endif
+	if (!dc->enabled)
+		return 0;
+	mutex_lock(&dc->lock);
+	tegra_dc_get(dc);
+	tegra_dc_writel(dc, val, blender_reg);
+	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	tegra_dc_put(dc);
+	mutex_unlock(&dc->lock);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_dc_border_fops, mods_dc_border_get,
+	mods_dc_border_set, "0x%llx\n");
 #endif /* CONFIG_TEGRA_DC */
 
 static int mods_debug_get(void *data, u64 *val)
@@ -380,6 +434,36 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 		if (IS_ERR(retval)) {
 			err = -EIO;
 			goto remove_out;
+		}
+		retval = debugfs_create_file("border_color", S_IRUGO | S_IWUSR,
+			dc_debugfs_dir, dc, &mods_dc_border_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+
+		if (dc->out->type == TEGRA_DC_OUT_DSI) {
+			struct dentry *dsi_debugfs_dir;
+			dsi_debugfs_dir = debugfs_create_dir("dsi",
+				dc_debugfs_dir);
+			if (IS_ERR(dsi_debugfs_dir)) {
+				err = -EIO;
+				goto remove_out;
+			}
+			retval = debugfs_create_file("ganged", S_IRUGO,
+				dsi_debugfs_dir, tegra_dc_get_outdata(dc),
+				&mods_dsi_ganged_fops);
+			if (IS_ERR(retval)) {
+				err = -EIO;
+				goto remove_out;
+			}
+			retval = debugfs_create_file("instance", S_IRUGO,
+				dsi_debugfs_dir, tegra_dc_get_outdata(dc),
+				&mods_dsi_inst_fops);
+			if (IS_ERR(retval)) {
+				err = -EIO;
+				goto remove_out;
+			}
 		}
 	}
 #endif
