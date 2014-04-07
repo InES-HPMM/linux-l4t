@@ -111,12 +111,6 @@ void tegra_mc_timing_restore(void)
 
 	mc_writel(0x1, MC_TIMING_CONTROL);
 	off = mc_readl(MC_TIMING_CONTROL);
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	/* Bug 1059264
-	 * Set extra snap level to avoid VI starving and dropping data.
-	 */
-	mc_writel(1, MC_VE_EXTRA_SNAP_LEVELS);
-#endif
 }
 #else
 #define tegra_mc_timing_save()
@@ -260,18 +254,12 @@ EXPORT_SYMBOL(tegra_mc_flush_done);
 static int __init tegra_mc_init(void)
 {
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-				defined(CONFIG_TEGRA_MC_EARLY_ACK)
+#if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	u32 reg;
 #endif
 	struct dentry *mc_debugfs_dir;
 
 	tegra_mc_timing_save();
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	reg = 0x0f7f1010;
-	mc_writel(reg, MC_RESERVED_RSV);
-#endif
 
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	reg = mc_readl(MC_EMEM_ARB_OVERRIDE);
