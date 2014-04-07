@@ -2,12 +2,12 @@
 #include "tegra124-platforms/tegra124-loki-powermon-e2530-a01.dtsi"
 
 / {
-  i2c@7000c400 {
-    ina3221x@40 {
-      channel@0 {
-        ti,shunt-resistor-mohm = <5>;
-      };
-    };
-  };
+	i2c@7000c400 {
+		ina3221x@40 {
+			channel@0 {
+				ti,shunt-resistor-mohm = <5>;
+			};
+		};
+	};
 };
 
