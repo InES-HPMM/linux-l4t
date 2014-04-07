@@ -51,6 +51,18 @@ config TEGRA_DC_CMU
 	  It is used to make the representation of color match
 	  accross displays.
 
+config TEGRA_DC_CDE
+	bool "Tegra Color Decompression Engine"
+	depends on TEGRA_DC && ARCH_TEGRA_21x_SOC
+	default y
+	help
+	  Say Y here to enable Tegra color decompression engine
+	  Enabled by default to support compressed framebuffer.
+	  It is used to save bandwidth on memory request with surfaces created
+	  by graphics. The amount of memory required for a surface is the same,
+	  but compression bit tags are used to indicate if a block contains
+	  infomation on a larger number of pixels.
+
 config TEGRA_DC_WIN_H
 	bool "Use Window H instead of Cursor"
 	depends on TEGRA_DC && ARCH_TEGRA_14x_SOC

@@ -709,6 +709,15 @@ struct tegra_dc_win {
 #if defined(CONFIG_TEGRA_DC_BLOCK_LINEAR)
 	u8	block_height_log2;
 #endif
+#if defined(CONFIG_TEGRA_DC_CDE)
+	struct {
+		dma_addr_t cde_addr;
+		unsigned offset_x;
+		unsigned offset_y;
+		u32 zbc_color;
+		unsigned ctb_entry;
+	} cde;
+#endif
 };
 
 #define TEGRA_WIN_PPFLAG_CP_ENABLE	(1 << 0) /* enable RGB color lut */
