@@ -2277,6 +2277,8 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	/* set Rtune impedance to 50 ohm */
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	val |= UHSIC_TX_RTUNE_P(0xA);
+#elif CONFIG_ARCH_TEGRA_13x_SOC
+	val |= UHSIC_TX_RTUNE_P(0x8);
 #else
 	val |= UHSIC_TX_RTUNE_P(0xC);
 #endif
