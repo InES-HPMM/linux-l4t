@@ -249,6 +249,9 @@ uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 
 	restore_cpumask();
 
+	/* Print TLK logs if any */
+	ote_print_logs();
+
 	return retval;
 }
 
@@ -263,6 +266,9 @@ uint32_t tlk_extended_smc(uintptr_t *regs)
 		retval = _tlk_generic_smc((60 << 24), 0, 0);
 
 	restore_cpumask();
+
+	/* Print TLK logs if any */
+	ote_print_logs();
 
 	return retval;
 }
@@ -287,12 +293,6 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 	}
 
 	tlk_generic_smc(request->type, smc_args, smc_params);
-
-	/*
-	 * Check to see if there are any logs in written by TLK.
-	 * If there are, print them out.
-	 */
-	ote_print_logs();
 }
 
 /*
@@ -311,12 +311,6 @@ static void do_smc_compat(struct te_request_compat *request,
 	}
 
 	tlk_generic_smc(request->type, smc_args, smc_params);
-
-	/*
-	 * Check to see if there are any logs in written by TLK.
-	 * If there are, print them out.
-	 */
-	ote_print_logs();
 }
 
 /*
