@@ -349,6 +349,14 @@ static int tegra_adf_check_windowattr(struct tegra_adf_info *adf_info,
 		/* TODO: also check current window blocklinear support */
 	}
 
+	if ((attr->flags & TEGRA_ADF_FLIP_FLAG_SCAN_COLUMN) &&
+			!tegra_dc_feature_has_scan_column(dc,
+					attr->win_index)) {
+		dev_err(&dc->ndev->dev, "rotation not supported for window %d.\n",
+				attr->win_index);
+		goto fail;
+	}
+
 	return 0;
 fail:
 	return -EINVAL;
