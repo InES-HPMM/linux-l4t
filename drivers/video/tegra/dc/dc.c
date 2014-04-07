@@ -2665,6 +2665,7 @@ void tegra_dc_disable(struct tegra_dc *dc)
 
 	if (dc->enabled) {
 		dc->enabled = false;
+		dc->blanked = false;
 
 		if (!dc->suspended)
 			_tegra_dc_disable(dc);
