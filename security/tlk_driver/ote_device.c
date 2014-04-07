@@ -76,7 +76,7 @@ static int te_create_free_cmd_list(struct tlk_device *dev)
 					&dev->param_addr_phys, GFP_KERNEL);
 	}
 
-	if ((dev->req_addr == NULL) || (dev->param_addr == NULL)) {
+	if (!dev->req_addr || !dev->param_addr || !dev->req_param_buf) {
 		ret = -ENOMEM;
 		goto error;
 	}
