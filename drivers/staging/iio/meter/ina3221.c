@@ -93,9 +93,13 @@ enum {
 
 enum mode {
 	TRIGGERED = 0,
-	CONTINUOUS,
-	FORCED_CONTINUOUS,
+	FORCED_TRIGGERED = 1,
+	CONTINUOUS = 2,
+	FORCED_CONTINUOUS = 3,
 };
+
+#define IS_TRIGGERED(x) (!((x) & 2))
+#define IS_CONTINUOUS(x) ((x) & 2)
 
 struct ina3221_chan_pdata {
 	const char *rail_name;
@@ -196,7 +200,7 @@ static int __locked_start_conversion(struct ina3221_chip *chip)
 {
 	int ret, cvrf, trials = 0;
 
-	if (chip->mode == TRIGGERED) {
+	if (IS_TRIGGERED(chip->mode)) {
 		ret = __locked_power_up_ina3221(chip,
 						chip->pdata->trig_conf_data);
 
@@ -227,7 +231,7 @@ static int __locked_end_conversion(struct ina3221_chip *chip)
 {
 	int ret = 0;
 
-	if (chip->mode == TRIGGERED)
+	if (IS_TRIGGERED(chip->mode))
 		ret = __locked_power_down_ina3221(chip);
 
 	return ret;
@@ -265,7 +269,7 @@ static int ina3221_get_mode(struct ina3221_chip *chip, char *buf)
 	int v;
 
 	mutex_lock(&chip->mutex);
-	v = (chip->mode == TRIGGERED) ? 0 : 1;
+	v = (IS_TRIGGERED(chip->mode)) ? 0 : 1;
 	mutex_unlock(&chip->mutex);
 	return sprintf(buf, "%d\n", v);
 }
@@ -282,14 +286,21 @@ static int ina3221_set_mode(struct ina3221_chip *chip,
 		return -EINVAL;
 
 	mutex_lock(&chip->mutex);
-	if (val != TRIGGERED) {
+	if (val > 0) {
 		ret = __locked_power_up_ina3221(chip,
 				chip->pdata->cont_conf_data);
 		if (!ret)
 			chip->mode = FORCED_CONTINUOUS;
-	} else if (chip->mode == FORCED_CONTINUOUS) {
+	} else if (val == 0) {
+		chip->mode = FORCED_TRIGGERED;
+		ret = __locked_power_down_ina3221(chip);
+	} else {
 		if (chip->alert_enabled) {
-			chip->mode = CONTINUOUS;
+			if (IS_TRIGGERED(chip->mode))
+				chip->mode = TRIGGERED;
+			else
+				chip->mode = CONTINUOUS;
+			/* evaluate the state */
 			cpufreq = cpufreq_quick_get(0);
 			cpus = num_online_cpus();
 			ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
@@ -331,7 +342,7 @@ static int ina3221_get_channel_current(struct ina3221_chip *chip,
 	mutex_lock(&chip->mutex);
 
 	/* return 0 if INA is off */
-	if (trigger && (chip->mode == TRIGGERED)) {
+	if (trigger && (IS_TRIGGERED(chip->mode))) {
 		*current_ma = 0;
 		goto exit;
 	}
@@ -358,7 +369,7 @@ static int ina3221_get_channel_power(struct ina3221_chip *chip,
 
 	mutex_lock(&chip->mutex);
 
-	if (trigger && (chip->mode == TRIGGERED)) {
+	if (trigger && (IS_TRIGGERED(chip->mode))) {
 		*power_mw = 0;
 		goto exit;
 	}
@@ -539,6 +550,7 @@ static int __locked_ina3221_switch_mode(struct ina3221_chip *chip,
 		}
 		break;
 	case FORCED_CONTINUOUS:
+	case FORCED_TRIGGERED:
 	default:
 		break;
 	}
@@ -991,7 +1003,8 @@ static int ina3221_suspend(struct device *dev)
 		dev_err(dev, "INA can't be turned off: 0x%x\n", ret);
 		goto error;
 	}
-	chip->mode = TRIGGERED;
+	if (chip->mode == CONTINUOUS)
+		chip->mode = TRIGGERED;
 	chip->is_suspended = 1;
 error:
 	mutex_unlock(&chip->mutex);
@@ -1005,9 +1018,14 @@ static int ina3221_resume(struct device *dev)
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
-	cpufreq = cpufreq_quick_get(0);
-	cpus = num_online_cpus();
-	ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
+	if (chip->mode == FORCED_CONTINUOUS) {
+		ret = __locked_power_up_ina3221(chip,
+						chip->pdata->cont_conf_data);
+	} else {
+		cpufreq = cpufreq_quick_get(0);
+		cpus = num_online_cpus();
+		ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
+	}
 	if (ret < 0)
 		dev_err(dev, "INA can't be turned off/on: 0x%x\n", ret);
 	chip->is_suspended = 0;
