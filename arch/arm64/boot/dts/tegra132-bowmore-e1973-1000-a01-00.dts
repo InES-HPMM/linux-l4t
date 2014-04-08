@@ -5,6 +5,7 @@
 #include "tegra124-platforms/tegra124-ardbeg-pmic-e1733-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-fixed-e1733-1000-a00.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
+#include "tegra132-platforms/tegra132-bowmore-sensor-e1934-1000-a00.dtsi"
 
 / {
 	model = "bowmore";
@@ -53,7 +54,20 @@
 
 	i2c@7000c000 {
 		clock-frequency = <100000>;
-	};
+		mpu6515@69 {
+			vlogic-supply = <&as3722_sd5>;
+			vdd-supply = <&as3722_sd5>;
+		};
+
+		ak8963c@0d {
+			vid-supply = <&as3722_sd5>;
+			vdd-supply = <&as3722_sd5>;
+		};
+
+		max44006@44 {
+			vcc-supply = <&as3722_sd5>;
+		};
+        };
 
 	i2c@7000d000 {
 		nvidia,bit-banging-xfer-after-shutdown;
