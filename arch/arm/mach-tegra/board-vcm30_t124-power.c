@@ -397,12 +397,14 @@ int __init vcm30_t124_soctherm_init(void)
  * WiFi stack.
  */
 static struct gpio vcm30_t124_system_0_gpios[] = {
-	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_LOW,     "wifi_en"},
-	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_LOW,     "wifi_rst"},
-	{MISCIO_BT_WAKEUP_GPIO,	GPIOF_OUT_INIT_HIGH,	"bt_wk"},
-	{MISCIO_ABB_RST_GPIO,	GPIOF_OUT_INIT_HIGH,	"ebb_rst"},
-	{MISCIO_USER_LED2_GPIO,	GPIOF_OUT_INIT_LOW,	"usr_led2"},
-	{MISCIO_USER_LED1_GPIO, GPIOF_OUT_INIT_LOW,	"usr_led1"},
+	{MISCIO_BT_RST_GPIO,    GPIOF_OUT_INIT_HIGH, "bt_rst"},
+	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_LOW,  "wifi_en"},
+	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_LOW,  "wifi_rst"},
+	{MISCIO_BT_EN_GPIO,     GPIOF_OUT_INIT_HIGH, "bt_en"},
+	{MISCIO_BT_WAKEUP_GPIO, GPIOF_OUT_INIT_HIGH, "bt_wk"},
+	{MISCIO_ABB_RST_GPIO,   GPIOF_OUT_INIT_HIGH, "ebb_rst"},
+	{MISCIO_USER_LED2_GPIO, GPIOF_OUT_INIT_LOW,  "usr_led2"},
+	{MISCIO_USER_LED1_GPIO, GPIOF_OUT_INIT_LOW,  "usr_led1"},
 };
 
 /*

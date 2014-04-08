@@ -48,6 +48,35 @@
 
 static struct board_info board_info, display_board_info;
 
+#if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
+static struct resource vcm30_t124_bluedroid_pm_resources[] = {
+	[0] = {
+		.name	= "reset_gpio",
+		.start	= MISCIO_BT_RST_GPIO,
+		.end	= MISCIO_BT_RST_GPIO,
+		.flags	= IORESOURCE_IO,
+	},
+	[1] = {
+		.name	= "shutdown_gpio",
+		.start	= MISCIO_BT_EN_GPIO,
+		.end	= MISCIO_BT_EN_GPIO,
+		.flags	= IORESOURCE_IO,
+	},
+};
+
+static struct platform_device vcm30_t124_bluedroid_pm_device = {
+	.name = "bluedroid_pm",
+	.id             = 0,
+	.num_resources  = ARRAY_SIZE(vcm30_t124_bluedroid_pm_resources),
+	.resource       = vcm30_t124_bluedroid_pm_resources,
+};
+
+static noinline void __init vcm30_t124_setup_bluedroid_pm(void)
+{
+	platform_device_register(&vcm30_t124_bluedroid_pm_device);
+}
+#endif
+
 /*
  * Set clock values as per automotive POR
  */
@@ -243,7 +272,9 @@ static struct tegra_clk_init_table vcm30t124_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("uarta",		408000000),
 	SET_FIXED_TARGET_RATE("uartb",		408000000),
 	SET_FIXED_TARGET_RATE("uartc",		408000000),
+#ifndef CONFIG_ANDROID
 	SET_FIXED_TARGET_RATE("uartd",		408000000),
+#endif
 };
 
 static struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
@@ -751,6 +782,9 @@ static void __init tegra_vcm30_t124_late_init(void)
 	register_therm_monitor(&vcm30t30_therm_monitor_data);
 #endif
 
+#if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
+	vcm30_t124_setup_bluedroid_pm();
+#endif
 }
 
 static void __init tegra_vcm30_t124_dt_init(void)
