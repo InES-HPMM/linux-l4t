@@ -167,11 +167,6 @@ static void bpmp_mrq_ping(int ch)
 
 static void bpmp_dispatch_mrq(int ch)
 {
-	if (!connected) {
-		WARN_ON(1);
-		return;
-	}
-
 	switch (channel_area[ch]->code) {
 	case MRQ_PING:
 		bpmp_mrq_ping(ch);
@@ -193,11 +188,6 @@ static void bpmp_signal_thread(int ch)
 {
 	struct mb_data *p = channel_area[ch];
 	struct completion *w;
-
-	if (!connected) {
-		WARN_ON(1);
-		return;
-	}
 
 	if (!(p->flags & RING_DOORBELL))
 		return;
@@ -224,6 +214,9 @@ irqreturn_t bpmp_inbox_irq(int irq, void *data)
 	unsigned long flags;
 	int ch;
 	int i;
+
+	if (!connected)
+		return IRQ_HANDLED;
 
 	ch = (long)data;
 	bpmp_ack_doorbell(irq);
@@ -283,11 +276,6 @@ static int bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 {
 	int r;
 
-	if (!connected) {
-		WARN_ON(1);
-		return -ENODEV;
-	}
-
 	r = bpmp_wait_master_free(ch);
 	if (r)
 		return r;
@@ -331,9 +319,6 @@ static int bpmp_try_locked_write(int ch, int mrq, void *data, int sz)
 static int bpmp_write_threaded_ch(int ch, int mrq, void *data, int sz)
 {
 	unsigned int start = usec_counter();
-
-	if (!connected)
-		return -ENODEV;
 
 	while (usec_counter() - start < THREAD_CH_TIMEOUT) {
 		if (bpmp_try_locked_write(ch, mrq, data, sz))
@@ -382,6 +367,9 @@ int bpmp_post(int mrq, void *data, int sz)
 	int ch;
 	int r;
 
+	if (!connected)
+		return -ENODEV;
+
 	ch = __bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, 0, data, sz);
 	if (r)
@@ -396,6 +384,9 @@ int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 {
 	int ch;
 	int r;
+
+	if (!connected)
+		return -ENODEV;
 
 	ch = __bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, DO_ACK, ob_data, ob_sz);
@@ -418,6 +409,9 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 	unsigned long timeout;
 	int ch;
 	int r;
+
+	if (!connected)
+		return -ENODEV;
 
 	ch = bpmp_ob_channel();
 	r = bpmp_write_threaded_ch(ch, mrq, ob_data, ob_sz);
