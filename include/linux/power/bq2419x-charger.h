@@ -141,6 +141,7 @@ struct bq2419x_charger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
+	int auto_recharge_time_power_off;
 	const char *tz_name; /* Thermal zone name */
 	bool disable_suspend_during_charging;
 	bool enable_thermal_monitor; /* TRUE if FuelGauge provides temp */
