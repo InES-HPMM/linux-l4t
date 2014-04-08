@@ -53,6 +53,7 @@ struct tegra_bpmp_platform_data {
 #ifdef CONFIG_TEGRA_BPMP
 int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx);
 int tegra_bpmp_tolerate_idle(int cpu, int ccxtl);
+int tegra_bpmp_scx_enable(int scx);
 int tegra_bpmp_switch_cluster(int cpu);
 void tegra_bpmp_trace_printk(void);
 extern int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
@@ -62,6 +63,7 @@ static inline int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 { return -ENODEV; }
 static inline int tegra_bpmp_tolerate_idle(int cpu, int ccxtl)
 { return -ENODEV; }
+static inline int tegra_bpmp_scx_enable(int scx) { return -ENODEV; }
 static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,

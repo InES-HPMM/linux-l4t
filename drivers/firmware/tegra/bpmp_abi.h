@@ -65,5 +65,6 @@
 #define MRQ_THREADED_PING	(9 | __MRQ_PUBLIC)
 #define MRQ_CPUIDLE_USAGE	10
 #define MRQ_MODULE_MAIL		(11 | __MRQ_PUBLIC)
+#define MRQ_SCX_ENABLE		12
 
 #endif

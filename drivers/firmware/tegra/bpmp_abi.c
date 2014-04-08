@@ -80,6 +80,11 @@ int tegra_bpmp_tolerate_idle(int cpu, int ccxtl)
 	return bpmp_post(MRQ_TOLERATE_IDLE, data, sizeof(data));
 }
 
+int tegra_bpmp_scx_enable(int scx)
+{
+	return bpmp_post(MRQ_SCX_ENABLE, &scx, sizeof(scx));
+}
+
 int bpmp_module_load(struct device *dev, const void *base, u32 size,
 		u32 *handle)
 {
