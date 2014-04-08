@@ -25,12 +25,24 @@
 /*
  * Hardware page table definitions.
  *
+ * Level 1 descriptor (PGD).
+ */
+#define PGD_TYPE_MASK		(_AT(pmdval_t, 3) << 0)
+#define PGD_TYPE_FAULT		(_AT(pmdval_t, 0) << 0)
+#define PGD_TYPE_TABLE		(_AT(pmdval_t, 3) << 0)
+#define PGD_TYPE_SECT		(_AT(pmdval_t, 1) << 0)
+
+#define pgd_table(x) ((pgd_val(x) & PGD_TYPE_MASK) == PGD_TYPE_TABLE)
+
+/*
  * Level 2 descriptor (PMD).
  */
 #define PMD_TYPE_MASK		(_AT(pmdval_t, 3) << 0)
 #define PMD_TYPE_FAULT		(_AT(pmdval_t, 0) << 0)
 #define PMD_TYPE_TABLE		(_AT(pmdval_t, 3) << 0)
 #define PMD_TYPE_SECT		(_AT(pmdval_t, 1) << 0)
+
+#define pmd_table(x) ((pmd_val(x) & PMD_TYPE_MASK) == PMD_TYPE_TABLE)
 
 /*
  * Section
@@ -58,6 +70,7 @@
 #define PTE_SHARED		(_AT(pteval_t, 3) << 8)		/* SH[1:0], inner shareable */
 #define PTE_AF			(_AT(pteval_t, 1) << 10)	/* Access Flag */
 #define PTE_NG			(_AT(pteval_t, 1) << 11)	/* nG */
+#define PTE_CONT		(_AT(pteval_t, 1) << 52)	/* Contiguous hint */
 #define PTE_PXN			(_AT(pteval_t, 1) << 53)	/* Privileged XN */
 #define PTE_UXN			(_AT(pteval_t, 1) << 54)	/* User XN */
 
