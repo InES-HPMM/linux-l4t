@@ -47,22 +47,22 @@ int bpmp_ping(void)
  * transition is granted and a non-zero return value means either an
  * error or that the transition is denied.
  *
+ * If the CCx entry do happen, bpmp will execute the given SCx entry as
+ * a side effect. The last CPU's scx value prevails over any previous
+ * requests.
+ *
  * Should be called from the cpuidle driver after disabling interrupts
  *
  * @cpu: CPU id
- * @tolerance: tolerance of the given CPU
+ * @ccxtl: CCx tolerance of the given CPU
+ * @scx: SCx side-effect mode
  */
-int tegra_bpmp_do_idle(int cpu, int tolerance)
+int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 {
-	int data[] = { cpu, tolerance };
+	int data[] = { cpu, ccxtl, scx };
 	int tl;
-
-	if (bpmp_rpc(MRQ_DO_IDLE, data, sizeof(data), &tl, sizeof(tl))) {
-		WARN_ON(1);
-		return -EFAULT;
-	}
-
-	return tl;
+	return bpmp_rpc(MRQ_DO_IDLE, data, sizeof(data),
+			&tl, sizeof(tl)) ?: tl;
 }
 
 /*
@@ -72,19 +72,12 @@ int tegra_bpmp_do_idle(int cpu, int tolerance)
  * Can be called from interrupt or thread context
  *
  * @cpu: CPU id
- * @tolerance: tolerance of the given CPU
+ * @ccxtl: CCx tolerance of the given CPU
  */
-int tegra_bpmp_tolerate_idle(int cpu, int tolerance)
+int tegra_bpmp_tolerate_idle(int cpu, int ccxtl)
 {
-	unsigned long flags;
-	int data[] = { cpu, tolerance };
-	int r;
-
-	local_irq_save(flags);
-	r = bpmp_post(MRQ_TOLERATE_IDLE, data, sizeof(data));
-	local_irq_restore(flags);
-
-	return r;
+	int data[] = { cpu, ccxtl };
+	return bpmp_post(MRQ_TOLERATE_IDLE, data, sizeof(data));
 }
 
 int bpmp_module_load(struct device *dev, const void *base, u32 size,

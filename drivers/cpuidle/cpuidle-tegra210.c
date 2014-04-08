@@ -122,7 +122,7 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 
 	cpu_pm_enter();
 
-	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC6)) {
+	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC6, TEGRA_PM_SC1)) {
 		/*
 		 * We are the last core standing and bpmp says GO.
 		 * Change to CC6 config.
@@ -154,7 +154,7 @@ static int tegra210_enter_crail_gate(struct cpuidle_device *dev,
 
 	cpu_pm_enter();
 
-	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7)) {
+	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7, TEGRA_PM_SC1)) {
 		/*
 		 * We are the last core standing and bpmp says GO.
 		 * Change to CC7 config.
@@ -261,10 +261,10 @@ static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
 
 	switch (action) {
 	case CPU_DOWN_PREPARE:
-		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_SC7);
+		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC7);
 		break;
 	case CPU_ONLINE:
-		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_C0);
+		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC1);
 		break;
 	}
 
