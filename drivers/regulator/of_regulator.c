@@ -128,6 +128,10 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (ramp_delay)
 		constraints->ramp_delay = be32_to_cpu(*ramp_delay);
 
+	ret = of_property_read_u32(np, "regulator-ramp-delay-scale", &pval);
+	if (!ret)
+		constraints->ramp_delay_scale = pval;
+
 	ret = of_property_read_u32(np, "regulator-enable-ramp-delay", &pval);
 	if (!ret)
 		constraints->enable_time = pval;
