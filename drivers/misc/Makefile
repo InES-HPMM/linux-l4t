@@ -77,6 +77,7 @@ obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
 obj-$(CONFIG_SIM_MAX77660)	+= max77660-sim.o
 obj-$(CONFIG_SIM_PALMAS)	+= palmas-sim.o
+obj-$(CONFIG_PALMAS_LDOUSB_INPUT)	+= palmas-ldousb-in.o
 obj-y				+= issp/
 obj-$(CONFIG_TEGRA_PROFILER)    += tegra-profiler/
 obj-$(CONFIG_MTK_GPS)		+= gps/

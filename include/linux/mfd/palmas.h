@@ -597,6 +597,12 @@ struct palmas_sim_platform_data {
 	unsigned det2_pd:1;
 };
 
+struct palmas_ldousb_in_platform_data {
+	u32 ldousb_in_threshold_voltage;
+	u32 threshold_voltage_tolerance;
+	bool enable_in1_above_threshold;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -614,6 +620,7 @@ struct palmas_platform_data {
 	struct palmas_pm_platform_data *pm_pdata;
 	struct palmas_battery_platform_data *battery_pdata;
 	struct palmas_sim_platform_data *sim_pdata;
+	struct palmas_ldousb_in_platform_data  *ldousb_in_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
@@ -1675,6 +1682,9 @@ enum usb_irq_events {
 #define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_SMPS6		0x6
 #define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS			0x01
 #define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS_SHIFT		0
+#define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS_MASK		0x1
+#define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS_IN1			0x1
+#define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS_IN2			0x0
 
 /* Bit definitions for LDO_PD_CTRL1 */
 #define PALMAS_LDO_PD_CTRL1_LDO8				0x80

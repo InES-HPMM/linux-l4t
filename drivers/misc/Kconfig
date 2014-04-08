@@ -633,6 +633,13 @@ config SIM_PALMAS
 	If yes, the Palmas SIM driver will be enabled. It supports SIM card
 	detection and SIM configuration for Palmas PMICs.
 
+config PALMAS_LDOUSB_INPUT
+        tristate "Palmas LDOUSB input driver support"
+        depends on MFD_PALMAS
+       ---help---
+          Say Y here to enable palmas LDOUSB input selection based on
+          battery voltage.
+
 config MODS
 	tristate "NVIDIA MODS driver"
 	default n
