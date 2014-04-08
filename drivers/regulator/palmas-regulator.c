@@ -560,6 +560,9 @@ static int palmas_smps_set_ramp_delay(struct regulator_dev *rdev,
 	}
 
 	pmic->ramp_delay[id] = palmas_smps_ramp_delay[reg];
+	dev_info(pmic->palmas->dev,
+		"Ramp delay of rail %s(id:%d) is %d uV/us\n",
+		palmas_regs_info[id].name, id, pmic->ramp_delay[id]);
 	return ret;
 }
 
