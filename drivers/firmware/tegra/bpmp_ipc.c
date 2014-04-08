@@ -364,19 +364,22 @@ static int bpmp_wait_ack(int ch)
 /* One-way: do not wait for ACK */
 int bpmp_post(int mrq, void *data, int sz)
 {
+	unsigned long flags;
 	int ch;
 	int r;
 
 	if (!connected)
 		return -ENODEV;
 
+	local_irq_save(flags);
+
 	ch = __bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, 0, data, sz);
-	if (r)
-		return r;
+	if (!r)
+		bpmp_ring_doorbell();
 
-	bpmp_ring_doorbell();
-	return 0;
+	local_irq_restore(flags);
+	return r;
 }
 
 /* Atomic */
