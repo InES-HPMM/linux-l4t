@@ -1,15 +1,16 @@
 /dts-v1/;
 
 #include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc-p1761-1270-a00.dtsi"
-#include "tegra124-platforms/tegra124-tn8-powermon-e1784-1101-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pmic-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-fixed-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-sensor-p1761-1470-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
-#include "tegra124-platforms/tegra124-tn8-camera-e1780-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-e1784-1101-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-camera-p1761-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
