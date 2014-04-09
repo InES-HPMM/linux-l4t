@@ -977,8 +977,10 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 	{"IN56", NULL, "MICBIAS"},
 	{"DMICL", NULL, "DMic Pri"},
 	{"DMICR", NULL, "DMic Pri"},
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	{"DMIC3", NULL, "DMic Sec"},
 	{"DMIC4", NULL, "DMic Sec"},
+#endif
 };
 
 static const struct snd_kcontrol_new tegra_max98090_controls[] = {
@@ -989,7 +991,9 @@ static const struct snd_kcontrol_new tegra_max98090_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
 	SOC_DAPM_PIN_SWITCH("Ext Mic"),
 	SOC_DAPM_PIN_SWITCH("DMic Pri"),
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	SOC_DAPM_PIN_SWITCH("DMic Sec"),
+#endif
 };
 
 static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
