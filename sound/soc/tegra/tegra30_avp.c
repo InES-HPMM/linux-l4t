@@ -798,7 +798,8 @@ static int tegra30_avp_pcm_set_params(int id,
 	avp_stream->notify_cb = params->period_elapsed_cb;
 	avp_stream->notify_args = params->period_elapsed_args;
 
-	stream->source_buffer_system = params->source_buf.virt_addr;
+	stream->source_buffer_system =
+			(uintptr_t) (params->source_buf.virt_addr);
 	stream->source_buffer_avp = params->source_buf.phys_addr;
 	stream->source_buffer_size = params->buffer_size;
 
@@ -1011,7 +1012,8 @@ static int tegra30_avp_compr_set_params(int id,
 		return ret;
 	}
 
-	stream->source_buffer_system = avp_stream->source_buf.virt_addr;
+	stream->source_buffer_system =
+			(uintptr_t) avp_stream->source_buf.virt_addr;
 	stream->source_buffer_avp = avp_stream->source_buf.phys_addr;
 
 	if (stream->source_buffer_size > AVP_COMPR_THRESHOLD) {
@@ -1096,7 +1098,7 @@ static int tegra30_avp_compr_write(int id, char __user *buf, int bytes)
 	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
 	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
 	struct stream_data *stream = avp_stream->stream;
-	void *dst = stream->source_buffer_system +
+	void *dst = (char *)(uintptr_t)stream->source_buffer_system +
 		stream->source_buffer_write_position;
 	int avail = 0;
 	int write = 0;
@@ -1134,8 +1136,8 @@ static int tegra30_avp_compr_write(int id, char __user *buf, int bytes)
 			return -EFAULT;
 		}
 
-		ret = copy_from_user(stream->source_buffer_system, buf + write,
-			bytes - write);
+		ret = copy_from_user((void *)(uintptr_t)stream->source_buffer_system,
+				buf + write, bytes - write);
 		if (ret < 0) {
 			dev_err(audio_avp->dev, "Failed to copy user data.");
 			return -EFAULT;

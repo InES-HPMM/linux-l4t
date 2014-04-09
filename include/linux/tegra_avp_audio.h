@@ -114,7 +114,7 @@ struct stream_data {
 	unsigned int                stream_allocated;
 	enum KSSTATE                stream_state_target;
 
-	void                        *source_buffer_system;
+	unsigned long long          source_buffer_system;
 	unsigned int                source_buffer_avp;
 	unsigned int                source_buffer_size;
 	unsigned int                source_buffer_write_position;
@@ -144,7 +144,7 @@ struct stream_data {
 struct audio_engine_data {
 	unsigned int            apb_channel_handle;
 
-	void                    *device_buffer_system;
+	unsigned long long      device_buffer_system;
 	unsigned int            device_buffer_avp;
 
 	unsigned int            track_audio_latency;
