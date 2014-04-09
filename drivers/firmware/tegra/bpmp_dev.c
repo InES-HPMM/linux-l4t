@@ -33,6 +33,11 @@
 #define BPMP_FIRMWARE_NAME		"bpmp.bin"
 #define BPMP_MODULE_MAGIC		0x646f6d
 
+#define FLOW_CTRL_HALT_COP_EVENTS	IO_ADDRESS(TEGRA_FLOW_CTRL_BASE + 0x4)
+#define FLOW_MODE_STOP			(0x2 << 29)
+#define FLOW_MODE_NONE			0x0
+#define TEGRA_NVAVP_RESET_VECTOR_ADDR	IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x200)
+
 #define SHARED_SIZE			512
 
 static struct clk *cop_clk;
@@ -50,6 +55,24 @@ static DEFINE_SPINLOCK(shared_lock);
 static struct dentry *bpmp_root;
 static struct dentry *module_root;
 static LIST_HEAD(modules);
+
+struct fwheader {
+	u32 magic;
+	u32 version;
+	u32 chipid;
+	u32 memsize;
+	u32 reset_off;
+};
+
+struct platform_config {
+	u32 magic;
+	u32 version;
+	u32 chip_id;
+	u32 chip_version;
+	u32 sku;
+	u32 pmic_id;
+	u32 pmic_sku;
+};
 
 struct bpmp_module {
 	struct list_head entry;
@@ -199,6 +222,19 @@ static int bpmp_module_load_show(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_module_load_fops, bpmp_module_load_show,
 		NULL, "%lld\n");
 
+static void bpmp_cleanup_modules(void)
+{
+	debugfs_remove_recursive(module_root);
+
+	while (!list_empty(&modules)) {
+		struct bpmp_module *m = list_first_entry(&modules,
+				struct bpmp_module,
+				entry);
+		list_del(&m->entry);
+		kfree(m);
+	}
+}
+
 static int bpmp_init_modules(struct platform_device *pdev)
 {
 	struct dentry *d;
@@ -312,6 +348,100 @@ static int bpmp_init_cpuidle_debug(struct dentry *root)
 	return 0;
 }
 
+static void bpmp_stop(void)
+{
+	writel(FLOW_MODE_STOP, FLOW_CTRL_HALT_COP_EVENTS);
+}
+
+static void bpmp_reset(u32 addr)
+{
+	bpmp_stop();
+	writel(addr, TEGRA_NVAVP_RESET_VECTOR_ADDR);
+
+	tegra_periph_reset_assert(cop_clk);
+	udelay(2);
+	tegra_periph_reset_deassert(cop_clk);
+
+	writel(FLOW_MODE_NONE, FLOW_CTRL_HALT_COP_EVENTS);
+}
+
+static void bpmp_loadfw(const void *data, int size)
+{
+	struct fwheader *h;
+	struct platform_config bpmp_config;
+	unsigned int cfgsz = sizeof(bpmp_config);
+	u32 reset_addr;
+	int r;
+
+	if (!data || !size) {
+		dev_err(device, "no data to load\n");
+		return;
+	}
+
+	dev_info(device, "firmware ready: %d bytes\n", size);
+
+	h = (struct fwheader *)data;
+	reset_addr = platform_data->phys_start + h->reset_off;
+
+	dev_info(device, "magic     : %x\n", h->magic);
+	dev_info(device, "version   : %x\n", h->version);
+	dev_info(device, "chip      : %x\n", h->chipid);
+	dev_info(device, "memsize   : %u bytes\n", h->memsize);
+	dev_info(device, "reset off : %x\n", h->reset_off);
+	dev_info(device, "reset addr: %x\n", reset_addr);
+
+	if (size > h->memsize || h->memsize + cfgsz > platform_data->size) {
+		dev_err(device, "firmware too big\n");
+		return;
+	}
+
+	bpmp_stop();
+	bpmp_detach();
+
+	/* TODO */
+	memset(&bpmp_config, 0, cfgsz);
+
+	memcpy(bpmp_virt, data, size);
+	memset(bpmp_virt + size, 0, platform_data->size - size);
+	memcpy(bpmp_virt + h->memsize, &bpmp_config, cfgsz);
+
+	bpmp_reset(reset_addr);
+	r = bpmp_attach();
+	if (r) {
+		dev_err(device, "attach failed with error %d\n", r);
+		return;
+	}
+
+	dev_info(device, "firmware load done\n");
+}
+
+static void bpmp_fwready(const struct firmware *fw, void *context)
+{
+	struct platform_device *pdev = context;
+
+	if (!fw) {
+		dev_err(device, "firmware not ready\n");
+		return;
+	}
+
+	mutex_lock(&bpmp_lock);
+	bpmp_cleanup_modules();
+	bpmp_init_modules(pdev);
+	bpmp_loadfw(fw->data, fw->size);
+	mutex_unlock(&bpmp_lock);
+
+	release_firmware(fw);
+	uncache_firmware(BPMP_FIRMWARE_NAME);
+}
+
+static int bpmp_reset_store(void *data, u64 val)
+{
+	struct platform_device *pdev = data;
+
+	return request_firmware_nowait(THIS_MODULE, false, BPMP_FIRMWARE_NAME,
+			&pdev->dev, GFP_KERNEL, pdev, bpmp_fwready);
+}
+
 static int bpmp_ping_show(void *data, u64 *val)
 {
 	*val = bpmp_ping();
@@ -334,6 +464,7 @@ static int bpmp_trace_disable_store(void *data, u64 val)
 	return bpmp_modify_trace_mask(val, 0);
 }
 
+DEFINE_SIMPLE_ATTRIBUTE(bpmp_reset_fops, NULL, bpmp_reset_store, "%lld\n");
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_ping_fops, bpmp_ping_show, NULL, "%lld\n");
 DEFINE_SIMPLE_ATTRIBUTE(trace_enable_fops, bpmp_trace_enable_show,
 		bpmp_trace_enable_store, "%lld\n");
@@ -384,6 +515,7 @@ static const struct file_operations trace_fops = {
 };
 
 static const struct fops_entry root_attrs[] = {
+	{ "reset", &bpmp_reset_fops, S_IWUSR },
 	{ "ping", &bpmp_ping_fops, S_IRUGO },
 	{ "trace_enable", &trace_enable_fops, S_IRUGO | S_IWUSR },
 	{ "trace_disable", &trace_disable_fops, S_IWUSR },
@@ -461,48 +593,67 @@ static int init_clks(void)
 	return 0;
 }
 
-static int bpmp_probe(struct platform_device *pdev)
+static int bpmp_alloc_coherent(void)
 {
 	dma_addr_t phys;
-	void *virt;
+
+	if (!platform_data->phys_start) {
+		platform_data->size = SZ_128K;
+		bpmp_virt = dma_alloc_coherent(device, platform_data->size,
+				&platform_data->phys_start, GFP_KERNEL);
+	} else {
+		/* TODO: remove this once bpmp carveout is available */
+		bpmp_virt = ioremap(platform_data->phys_start,
+				platform_data->size);
+	}
+
+	dev_info(device, "phys_start %x\n", (u32)platform_data->phys_start);
+	if (!bpmp_virt)
+		return -ENOMEM;
+
+	shared_virt = dma_alloc_coherent(device, SHARED_SIZE, &phys,
+			GFP_KERNEL);
+	if (!shared_virt)
+		goto abort;
+
+	shared_phys = phys;
+	return 0;
+
+abort:
+	dma_free_coherent(device, platform_data->size, bpmp_virt,
+			platform_data->phys_start);
+	platform_data->phys_start = 0;
+	platform_data->size = 0;
+	bpmp_virt = 0;
+	return -ENOMEM;
+}
+
+static int bpmp_probe(struct platform_device *pdev)
+{
 	int r;
 
 	device = &pdev->dev;
 	platform_data = device->platform_data;
 
-	bpmp_virt = ioremap(platform_data->phys_start, platform_data->size);
-	dev_info(device, "%x@%x mapped to %p\n", (u32)platform_data->size,
-			(u32)platform_data->phys_start, bpmp_virt);
+	mutex_init(&bpmp_lock);
 
-	virt = dma_alloc_coherent(device, SHARED_SIZE, &phys, GFP_KERNEL);
-	if (!virt)
-		return -ENOMEM;
+	r = bpmp_alloc_coherent();
+	if (r)
+		return r;
 
 	r = init_clks();
 	if (r)
-		goto abort;
-
-	r = bpmp_ipc_init(pdev);
-	if (r)
-		goto abort;
-
-	mutex_init(&bpmp_lock);
+		return r;
 
 	r = bpmp_init_debug(pdev);
 	if (r)
-		goto abort;
+		return r;
 
 	r = bpmp_init_modules(pdev);
 	if (r)
-		goto abort;
+		return r;
 
-	shared_virt = virt;
-	shared_phys = (uint32_t)phys;
-	return 0;
-
-abort:
-	dma_free_coherent(device, SHARED_SIZE, virt, phys);
-	return r;
+	return bpmp_ipc_init(pdev);
 }
 
 static struct platform_driver bpmp_driver = {

@@ -551,7 +551,34 @@ static int bpmp_connect(void)
 			return -EFAULT;
 	}
 
+	connected = 1;
 	return 0;
+}
+
+void bpmp_detach(void)
+{
+	int i;
+
+	connected = 0;
+	writel(0xffffffff, RES_SEMA_SHRD_SMP_CLR);
+
+	for (i = 0; i < NR_CHANNELS; i++)
+		channel_area[i] = 0;
+}
+
+int bpmp_attach(void)
+{
+	int i;
+
+	WARN_ON(connected);
+
+	for (i = 0; i < MSEC_PER_SEC * 60; i++) {
+		if (!bpmp_connect())
+			return 0;
+		msleep(20);
+	}
+
+	return -ETIMEDOUT;
 }
 
 int bpmp_ipc_init(struct platform_device *pdev)
@@ -566,12 +593,10 @@ int bpmp_ipc_init(struct platform_device *pdev)
 	}
 
 	r = bpmp_connect();
-	if (r) {
-		dev_err(&pdev->dev, "connect failed (%d)\n", r);
-		return r;
-	}
+	dev_info(&pdev->dev, "bpmp_connect returned %d\n", r);
 
-	dev_info(&pdev->dev, "IPC init OK\n");
-	connected = 1;
+	/* Ignore connection failures - bpmp can be loaded post boot
+	 * TODO: remove this after POR bootflow is ready
+	 */
 	return 0;
 }

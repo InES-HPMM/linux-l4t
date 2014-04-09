@@ -21,6 +21,8 @@
 #include <linux/platform_device.h>
 
 int bpmp_ipc_init(struct platform_device *pdev);
+int bpmp_attach(void);
+void bpmp_detach(void);
 
 /* should be called from non-preemptible context */
 int bpmp_post(int mrq, void *data, int sz);
