@@ -2038,6 +2038,54 @@ static void tegra_pcie_enable_ltr_support(void)
 			break;
 	}
 }
+
+static void tegra_pcie_config_clkreq(bool enable)
+{
+	if (enable) {
+		/* Make CLKREQ# bi-directional if L1PM SS are enabled */
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_PIN_OD_ENABLE);
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_PIN_OD_ENABLE);
+	} else {
+		struct pci_dev *pdev = NULL;
+		u16 val = 0;
+
+		/* Make CLKREQ# input only if L1PM SS is disabled later */
+		/* also disable ASPM L1 momentarily before doing this */
+		for_each_pci_dev(pdev) {
+			pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
+			val &= ~PCI_EXP_LNKCTL_ASPM_L1;
+			pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
+		}
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_TRI_TRISTATE);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
+			TEGRA_PIN_OD_DISABLE);
+		tegra_pinmux_set_tristate(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_TRI_TRISTATE);
+		tegra_pinmux_set_od(
+			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
+			TEGRA_PIN_OD_DISABLE);
+		for_each_pci_dev(pdev) {
+			pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
+			val |= PCI_EXP_LNKCTL_ASPM_L1;
+			pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
+		}
+	}
+}
+
 #endif
 
 /* Enable ASPM support of all devices based on it's capability */
@@ -2086,19 +2134,7 @@ static void tegra_pcie_enable_aspm(void)
 			break;
 	}
 	if (config_l1ss) {
-		/* Make CLKREQ# bi-directional if L1 PM SS are enabled */
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_PIN_OD_ENABLE);
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_PIN_OD_ENABLE);
+		tegra_pcie_config_clkreq(true);
 		tegra_pcie_config_l1ss_tpwr_on();
 		tegra_pcie_config_l1ss_cm_rtime();
 		tegra_pcie_config_l1ss_l12_thtime();
