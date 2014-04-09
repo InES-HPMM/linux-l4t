@@ -29,6 +29,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_dma.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
@@ -36,8 +37,8 @@
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
 #include <linux/irqchip/tegra-agic.h>
+#include <linux/tegra_pm_domains.h>
 
-#include <mach/pm_domains.h>
 #include "dmaengine.h"
 
 #include  "tegra210-adma.h"
@@ -1132,6 +1133,22 @@ static void tegra_adma_free_chan_resources(struct dma_chan *dc)
 	}
 }
 
+static struct dma_chan *tegra_dma_of_xlate(struct of_phandle_args *dma_spec,
+					   struct of_dma *ofdma)
+{
+	struct tegra_adma *tdma = ofdma->of_dma_data;
+	struct dma_chan *chan;
+	struct tegra_adma_chan *tdc;
+
+	chan = dma_get_any_slave_channel(&tdma->dma_dev);
+	if (!chan)
+		return NULL;
+
+	tdc = to_tegra_adma_chan(chan);
+
+	return chan;
+}
+
 static const struct tegra_adma_chip_data tegra210_adma_chip_data = {
 	.nr_channels            = 22,
 	.channel_reg_size       = 0x80,
@@ -1296,10 +1313,20 @@ static int tegra_adma_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+	ret = of_dma_controller_register(pdev->dev.of_node,
+					 tegra_dma_of_xlate, tdma);
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"Tegra210 ADMA OF registration failed %d\n", ret);
+		goto err_unregister_dma_dev;
+	}
+
 	dev_info(&pdev->dev, "Tegra210 ADMA driver register %d channels\n",
 			cdata->nr_channels);
 	return 0;
 
+err_unregister_dma_dev:
+	dma_async_device_unregister(&tdma->dma_dev);
 err_irq:
 	while (--i >= 0) {
 		struct tegra_adma_chan *tdc = &tdma->channels[i];
@@ -1447,7 +1474,7 @@ static struct platform_driver tegra_admac_driver = {
 
 module_platform_driver(tegra_admac_driver);
 
-MODULE_ALIAS("platform:tegra210_adma");
+MODULE_ALIAS("platform:tegra210-adma");
 MODULE_DESCRIPTION("NVIDIA Tegra ADMA Controller driver");
 MODULE_AUTHOR("Dara Ramesh <dramesh@nvidia.com>");
 MODULE_LICENSE("GPL v2");

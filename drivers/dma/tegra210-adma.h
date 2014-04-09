@@ -1,5 +1,5 @@
 /*
- * tegra210_adma.c - Tegra ADMA driver.
+ * tegra210_adma.h - Tegra ADMA driver.
  *
  * Author: Dara Ramesh <dramesh@nvidia.com>
  *
