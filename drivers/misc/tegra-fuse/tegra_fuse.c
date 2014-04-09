@@ -75,6 +75,8 @@ DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 #define MINOR_DSIM_ASIM_LINSIM	4
 
 #define FUSE_SKU_INFO       0x110
+#define FUSE_SKU_MSB_MASK	0xFF00
+#define FUSE_SKU_MSB_SHIFT	8
 #define STRAP_OPT 0x008
 #define GMI_AD0 BIT(4)
 #define GMI_AD1 BIT(5)
@@ -1329,7 +1331,13 @@ static void tegra_set_sku_id(void)
 	u32 reg;
 
 	reg = tegra_fuse_readl(FUSE_SKU_INFO);
-	tegra_chip_sku_id = reg & 0xFF;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (reg & FUSE_SKU_MSB_MASK)
+		tegra_chip_sku_id = (reg >> FUSE_SKU_MSB_SHIFT);
+	else
+#endif
+		tegra_chip_sku_id = reg & 0xFF;
+
 }
 
 static void tegra_set_chip_id(void)
