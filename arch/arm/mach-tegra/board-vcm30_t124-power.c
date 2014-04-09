@@ -371,8 +371,13 @@ int __init vcm30_t124_soctherm_init(void)
  */
 static struct gpio vcm30_t124_system_0_gpios[] = {
 	{MISCIO_BT_RST_GPIO,    GPIOF_OUT_INIT_HIGH, "bt_rst"},
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_HIGH, "wifi_en"},
+	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_HIGH, "wifi_rst"},
+#else
 	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_LOW,  "wifi_en"},
 	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_LOW,  "wifi_rst"},
+#endif
 	{MISCIO_BT_EN_GPIO,     GPIOF_OUT_INIT_HIGH, "bt_en"},
 	{MISCIO_BT_WAKEUP_GPIO, GPIOF_OUT_INIT_HIGH, "bt_wk"},
 	{MISCIO_ABB_RST_GPIO,   GPIOF_OUT_INIT_HIGH, "ebb_rst"},
