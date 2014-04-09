@@ -125,6 +125,7 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 
 	/* go through the available ELF segments */
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		void *va;
 		u32 da = phdr->p_paddr;
 		u32 memsz = phdr->p_memsz;
 		u32 filesz = phdr->p_filesz;
@@ -133,8 +134,17 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 		if (phdr->p_type != PT_LOAD)
 			continue;
 
+
 		dev_info(dev, "phdr: type %d da 0x%x memsz 0x%x filesz 0x%x\n",
 					phdr->p_type, da, memsz, filesz);
+
+		va = adsp_da_to_va_mappings(da, filesz);
+		if (!va) {
+			dev_err(dev, "no va for da 0x%x filesz 0x%x\n",
+							da, filesz);
+			ret = -EINVAL;
+			break;
+		}
 
 		if (filesz > memsz) {
 			dev_err(dev, "bad phdr filesz 0x%x memsz 0x%x\n",
@@ -151,9 +161,8 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 		}
 
 		/* put the segment where the remote processor expects it */
-		if (phdr->p_filesz)
-			memcpy(adsp_da_to_va_mappings(da, filesz),
-				elf_data + phdr->p_offset, filesz);
+		if (filesz)
+			memcpy(va, elf_data + offset, filesz);
 	}
 
 	return ret;
@@ -202,6 +211,12 @@ int nvadsp_os_load(void)
 	int ret;
 	struct device *dev = &priv.pdev->dev;
 
+	if (!dev) {
+		pr_info("ADSP Driver is not initialized\n");
+		ret = -EINVAL;
+		goto end;
+	}
+
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
 		dev_info(dev,
@@ -230,6 +245,11 @@ EXPORT_SYMBOL(nvadsp_os_load);
 int nvadsp_os_start(void)
 {
 	struct device *dev = &priv.pdev->dev;
+	if (!dev) {
+		pr_info("ADSP Driver is not initialized\n");
+		return -EINVAL;
+	}
+
 	dev_info(dev, "starting ADSP OS ....\n");
 	writel(APE_RESET, priv.reset_reg);
 	return 0;
