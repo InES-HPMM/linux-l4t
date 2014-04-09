@@ -186,9 +186,11 @@ static int __init ote_logger_init(void)
 
 	smc_args[0] = TE_SMC_INIT_LOGGER;
 	smc_args[1] = (uintptr_t)cb;
-	tlk_generic_smc(smc_args[0], smc_args[1], 0);
 
-	ote_logging_enabled = 1;
+	/* enable logging only if secure firmware supports it */
+	if (!tlk_generic_smc(smc_args[0], smc_args[1], 0))
+		ote_logging_enabled = 1;
+
 	ote_print_logs();
 #else
 	smc_args[0] = TE_SMC_INIT_LOGGER;
