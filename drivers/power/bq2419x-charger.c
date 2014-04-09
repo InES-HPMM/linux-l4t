@@ -415,6 +415,16 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq2419x->chg_status = BATTERY_DISCHARGING;
 		battery_charger_thermal_stop_monitoring(
 				bq2419x->bc_dev);
+	} else if ((val & BQ2419x_CHRG_STATE_MASK) ==
+				BQ2419x_CHRG_STATE_CHARGE_DONE) {
+		dev_info(bq2419x->dev, "Charging completed\n");
+		bq2419x->chg_status = BATTERY_CHARGING_DONE;
+		bq2419x->cable_connected = 1;
+		in_current_limit = max_uA/1000;
+		battery_charging_restart(bq2419x->bc_dev,
+					bq2419x->chg_restart_time);
+		battery_charger_thermal_stop_monitoring(
+				bq2419x->bc_dev);
 	} else {
 		in_current_limit = max_uA/1000;
 		bq2419x->cable_connected = 1;
@@ -428,7 +438,8 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 
 	battery_charging_status_update(bq2419x->bc_dev, bq2419x->chg_status);
 	if (bq2419x->disable_suspend_during_charging) {
-		if (bq2419x->cable_connected && in_current_limit > 500)
+		if (bq2419x->cable_connected && in_current_limit > 500
+			&& (bq2419x->chg_status != BATTERY_CHARGING_DONE))
 			battery_charger_acquire_wake_lock(bq2419x->bc_dev);
 		else if (!bq2419x->cable_connected && old_current_limit > 500)
 			battery_charger_release_wake_lock(bq2419x->bc_dev);
