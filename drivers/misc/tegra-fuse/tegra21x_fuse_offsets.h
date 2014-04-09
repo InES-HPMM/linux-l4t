@@ -63,10 +63,6 @@
 #define PKC_DISABLE_START_OFFSET	0x52
 #define PKC_DISABLE_START_BIT		7
 
-/* video vp8 enable */
-#define VP8_ENABLE_START_OFFSET	0x2E
-#define VP8_ENABLE_START_BIT		4
-
 /* odm lock */
 #define ODM_LOCK_START_OFFSET		0x0
 #define ODM_LOCK_START_BIT		6
@@ -465,7 +461,6 @@ static void fuse_update_overridden_reg_val(unsigned long offset,
 
 DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
 int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
@@ -475,18 +470,14 @@ int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 	if (odm_security_mode) {
 		dev_attr_public_key.attr.mode =  0440;
 		dev_attr_pkc_disable.attr.mode = 0440;
-		dev_attr_vp8_enable.attr.mode = 0440;
 	} else {
 		dev_attr_public_key.attr.mode =  0640;
 		dev_attr_pkc_disable.attr.mode = 0640;
-		dev_attr_vp8_enable.attr.mode = 0640;
 	}
 	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_public_key.attr));
 	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_pkc_disable.attr));
-	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
-				&dev_attr_vp8_enable.attr));
 	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_odm_lock.attr));
 
@@ -497,7 +488,6 @@ int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
 {
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_public_key.attr);
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_pkc_disable.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_vp8_enable.attr);
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_odm_lock.attr);
 
 	return 0;
@@ -509,8 +499,6 @@ int tegra_fuse_ch_sysfs_perm(struct device *dev, struct kobject *kobj)
 				&dev_attr_public_key.attr, 0440));
 	CHK_ERR(dev, sysfs_chmod_file(kobj,
 				&dev_attr_pkc_disable.attr, 0440));
-	CHK_ERR(dev, sysfs_chmod_file(kobj,
-				&dev_attr_vp8_enable.attr, 0440));
 
 	return 0;
 }

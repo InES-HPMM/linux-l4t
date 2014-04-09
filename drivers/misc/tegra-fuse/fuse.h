@@ -155,7 +155,9 @@ struct fuse_data {
 	u32 odm_rsvd[8];
 	u32 public_key[8];
 	u32 pkc_disable;
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	u32 vp8_enable;
+#endif
 	u32 odm_lock;
 #ifdef CONFIG_AID_FUSE
 	u32 aid;

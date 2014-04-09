@@ -102,7 +102,9 @@ struct tegra_id {
 
 static struct tegra_id tegra_id;
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static unsigned int tegra_fuse_vp8_enable;
+#endif
 static int tegra_gpu_num_pixel_pipes;
 static int tegra_gpu_num_alus_per_pixel_pipe;
 
@@ -247,6 +249,7 @@ static struct param_info fuse_info_tbl[] = {
 		.data_offset = 13,
 		.sysfs_name = "pkc_disable",
 	},
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	[VP8_ENABLE] = {
 		.addr = &fuse_info.vp8_enable,
 		.sz = sizeof(fuse_info.vp8_enable),
@@ -256,6 +259,7 @@ static struct param_info fuse_info_tbl[] = {
 		.data_offset = 14,
 		.sysfs_name = "vp8_enable",
 	},
+#endif
 	[ODM_LOCK] = {
 		.addr = &fuse_info.odm_lock,
 		.sz = sizeof(fuse_info.odm_lock),
@@ -655,13 +659,6 @@ static int get_revision(char *val, const struct kernel_param *kp)
 	return param_get_uint(val, kp);
 }
 
-static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
-{
-	tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
-
-	return param_get_uint(val, kp);
-}
-
 static struct kernel_param_ops tegra_chip_id_ops = {
 	.get = get_chip_id,
 };
@@ -673,9 +670,18 @@ static struct kernel_param_ops tegra_revision_ops = {
 module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_id.chipid, 0444);
 module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_id.revision, 0444);
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
+static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
+{
+	tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+
+	return param_get_uint(val, kp);
+}
+
 module_param_call(tegra_fuse_vp8_enable, NULL, get_fuse_vp8_enable,
 		&tegra_fuse_vp8_enable, 0444);
 __MODULE_PARM_TYPE(tegra_fuse_vp8_enable, "uint");
+#endif
 
 static void wait_for_idle(void)
 {
