@@ -55,8 +55,10 @@
 
 #define MAX_TUNING_LOOP 40
 
-#define SDIO_CLK_GATING_TICK_TMOUT (HZ / 1000) /* 1msec timeout */
-#define EMMC_CLK_GATING_TICK_TMOUT (HZ / 50) /* 20msec timeout */
+/* SDIO 1msec timeout, but use 10msec timeout for HZ=100 */
+#define SDIO_CLK_GATING_TICK_TMOUT ((HZ >= 1000) ? (HZ / 1000) : 1)
+/* 20msec EMMC delayed clock gate timeout */
+#define EMMC_CLK_GATING_TICK_TMOUT ((HZ >= 50) ? (HZ / 50) : 2)
 
 #define IS_SDIO_CARD(host) \
 		(host->mmc->card && \
