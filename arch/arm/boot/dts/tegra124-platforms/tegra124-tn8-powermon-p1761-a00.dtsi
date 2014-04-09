@@ -19,7 +19,7 @@
 		ina3221x@40 {
 		compatible = "ti,ina3221x";
 			reg = <0x40>;
-			ti,trigger-config = <0x7003>;
+			ti,trigger-config = <0x7203>;
 			ti,continuous-config = <0x7c07>;
 			#address-cells = <1>;
 			#size-cells = <0>;
