@@ -919,7 +919,8 @@ static int suspend_prepare(struct regulator_dev *rdev, suspend_state_t state)
 static void print_constraints(struct regulator_dev *rdev)
 {
 	struct regulation_constraints *constraints = rdev->constraints;
-	char buf[80] = "";
+	unsigned int ramp_delay = 0;
+	char buf[110] = "";
 	int count = 0;
 	int ret;
 
@@ -972,7 +973,15 @@ static void print_constraints(struct regulator_dev *rdev)
 	if (constraints->valid_modes_mask & REGULATOR_MODE_IDLE)
 		count += sprintf(buf + count, "idle ");
 	if (constraints->valid_modes_mask & REGULATOR_MODE_STANDBY)
-		count += sprintf(buf + count, "standby");
+		count += sprintf(buf + count, "standby ");
+
+	if (rdev->constraints->ramp_delay)
+		ramp_delay = rdev->constraints->ramp_delay;
+	else if (rdev->desc->ramp_delay)
+		ramp_delay = rdev->desc->ramp_delay;
+	if (ramp_delay)
+		count += sprintf(buf + count, "with ramp delay %u uV/us ",
+				ramp_delay);
 
 	if (!count)
 		sprintf(buf, "no parameters");
