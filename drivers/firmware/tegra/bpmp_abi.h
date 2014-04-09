@@ -66,5 +66,6 @@
 #define MRQ_CPUIDLE_USAGE	10
 #define MRQ_MODULE_MAIL		(11 | __MRQ_PUBLIC)
 #define MRQ_SCX_ENABLE		12
+#define MRQ_INIT_NR_CPUS	13
 
 #endif

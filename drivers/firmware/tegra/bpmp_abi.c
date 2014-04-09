@@ -162,3 +162,8 @@ int bpmp_modify_trace_mask(uint32_t clr, uint32_t set)
 	return bpmp_threaded_rpc(MRQ_TRACE_MODIFY, ob, sizeof(ob),
 			&new, sizeof(new)) ?: new;
 }
+
+int bpmp_init_cpus_present(int nr_cpus)
+{
+	return bpmp_post(MRQ_INIT_NR_CPUS, &nr_cpus, sizeof(nr_cpus));
+}

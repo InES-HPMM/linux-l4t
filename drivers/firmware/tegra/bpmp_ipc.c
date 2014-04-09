@@ -452,31 +452,28 @@ static int cpu_irqs[] = { CPU0_IB_IRQ, CPU1_IB_IRQ, CPU2_IB_IRQ, CPU3_IB_IRQ };
 
 static void bpmp_irq_set_affinity(int cpu)
 {
+	int nr_cpus = num_present_cpus();
 	int r;
+	int i;
 
-	if (cpu > ARRAY_SIZE(cpu_irqs)) {
-		WARN_ON(1);
-		return;
+	for (i = cpu; i < ARRAY_SIZE(cpu_irqs); i += nr_cpus) {
+		r = irq_set_affinity(cpu_irqs[i], cpumask_of(cpu));
+		WARN_ON(r);
 	}
-
-	r = irq_set_affinity(cpu_irqs[cpu], cpumask_of(cpu));
-	WARN_ON(r);
 }
 
 static void bpmp_irq_clr_affinity(int cpu)
 {
-	int r;
+	int nr_cpus = num_present_cpus();
 	int new_cpu;
+	int r;
+	int i;
 
-	if (cpu > ARRAY_SIZE(cpu_irqs)) {
-		WARN_ON(1);
-		return;
+	for (i = cpu; i < ARRAY_SIZE(cpu_irqs); i += nr_cpus) {
+		new_cpu = cpumask_any_but(cpu_online_mask, cpu);
+		r = irq_set_affinity(cpu_irqs[i], cpumask_of(new_cpu));
+		WARN_ON(r);
 	}
-
-	new_cpu = cpumask_any_but(cpu_online_mask, cpu);
-
-	r = irq_set_affinity(cpu_irqs[cpu], cpumask_of(new_cpu));
-	WARN_ON(r);
 }
 
 /*
@@ -522,7 +519,7 @@ static int bpmp_init_irq(struct platform_device *pdev)
 	if (r)
 		return r;
 
-	for (i = 0; i < ARRAY_SIZE(cpu_irqs); i++)
+	for_each_present_cpu(i)
 		bpmp_irq_set_affinity(i);
 
 	return 0;
@@ -552,7 +549,7 @@ static int bpmp_connect(void)
 	}
 
 	connected = 1;
-	return 0;
+	return bpmp_init_cpus_present(num_present_cpus());
 }
 
 void bpmp_detach(void)
