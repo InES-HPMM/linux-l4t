@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/notifier.h>
 #include <linux/platform_data/tegra_bpmp.h>
+#include <linux/semaphore.h>
 #include <linux/spinlock.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp_abi.h"
@@ -45,6 +46,7 @@
 #define RES_SEMA_SHRD_SMP_CLR	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x08)
 
 #define THREAD_CH(i)		(CPU0_OB_CH1 + i)
+#define THREAD_CH_INDEX(i)	(i - CPU0_OB_CH1)
 #define PER_CPU_IB_CH(i)	(CPU0_IB_CH + i)
 
 #define NR_THREAD_CH		4
@@ -284,48 +286,39 @@ static int bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 	return 0;
 }
 
-static int __bpmp_ob_channel(void)
+static int bpmp_ob_channel(void)
 {
 	return smp_processor_id() + CPU0_OB_CH0;
 }
 
-static int bpmp_ob_channel(void)
-{
-	int ret;
-	unsigned long flags;
-	local_irq_save(flags);
-	ret = smp_processor_id() + CPU0_OB_CH1;
-	local_irq_restore(flags);
-	return ret;
-}
+static int tch_free = (1 << NR_THREAD_CH) - 1;
+static struct semaphore tch_sem =
+		__SEMAPHORE_INITIALIZER(tch_sem, NR_THREAD_CH);
 
-static int bpmp_try_locked_write(int ch, int mrq, void *data, int sz)
+static int bpmp_write_threaded_ch(int *ch, int mrq, void *data, int sz)
 {
 	unsigned long flags;
-	int r = 0;
+	int ret;
+	int i;
+
+	ret = down_timeout(&tch_sem, usecs_to_jiffies(THREAD_CH_TIMEOUT));
+	if (ret)
+		return ret;
 
 	spin_lock_irqsave(&lock, flags);
 
-	if (bpmp_master_free(ch)) {
-		__bpmp_write_ch(ch, mrq, DO_ACK | RING_DOORBELL, data, sz);
-		to_complete |= (1 << ch);
-		r = 1;
+	i = __ffs(tch_free);
+	*ch = THREAD_CH(i);
+
+	ret = bpmp_master_free(*ch) ? 0 : -EFAULT;
+	if (!ret) {
+		tch_free &= ~(1 << i);
+		__bpmp_write_ch(*ch, mrq, DO_ACK | RING_DOORBELL, data, sz);
+		to_complete |= 1 << *ch;
 	}
 
 	spin_unlock_irqrestore(&lock, flags);
-	return r;
-}
-
-static int bpmp_write_threaded_ch(int ch, int mrq, void *data, int sz)
-{
-	unsigned int start = usec_counter();
-
-	while (usec_counter() - start < THREAD_CH_TIMEOUT) {
-		if (bpmp_try_locked_write(ch, mrq, data, sz))
-			return 0;
-	}
-
-	return -ETIMEDOUT;
+	return ret;
 }
 
 static int __bpmp_read_ch(int ch, void *data, int sz)
@@ -344,8 +337,10 @@ static int bpmp_read_ch(int ch, void *data, int sz)
 
 	spin_lock_irqsave(&lock, flags);
 	r = __bpmp_read_ch(ch, data, sz);
+	tch_free |= (1 << THREAD_CH_INDEX(ch));
 	spin_unlock_irqrestore(&lock, flags);
 
+	up(&tch_sem);
 	return r;
 }
 
@@ -373,7 +368,7 @@ int bpmp_post(int mrq, void *data, int sz)
 
 	local_irq_save(flags);
 
-	ch = __bpmp_ob_channel();
+	ch = bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, 0, data, sz);
 	if (!r)
 		bpmp_ring_doorbell();
@@ -391,7 +386,7 @@ int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 	if (!connected)
 		return -ENODEV;
 
-	ch = __bpmp_ob_channel();
+	ch = bpmp_ob_channel();
 	r = bpmp_write_ch(ch, mrq, DO_ACK, ob_data, ob_sz);
 	if (r)
 		return r;
@@ -416,8 +411,7 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 	if (!connected)
 		return -ENODEV;
 
-	ch = bpmp_ob_channel();
-	r = bpmp_write_threaded_ch(ch, mrq, ob_data, ob_sz);
+	r = bpmp_write_threaded_ch(&ch, mrq, ob_data, ob_sz);
 	if (r)
 		return r;
 
