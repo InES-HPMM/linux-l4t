@@ -226,8 +226,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 1,
 		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x00FF15FF,
-			.tune0_high_mv	= 0x008040FF,
 			.tune1		= 0x000000FF,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
@@ -730,6 +728,19 @@ static int round_voltage(int mv, struct rail_alignment *align, bool up)
 	return mv;
 }
 
+static void __init set_cpu_dfll_tuning_data(struct cpu_cvb_dvfs *d, int speedo)
+{
+	if (d->speedo_id == 1) {
+		if (speedo <= 2336) {
+			d->dfll_tune_data.tune0 = 0x9315FF;
+			d->dfll_tune_data.tune0_high_mv = 0x9340FF;
+		} else {
+			d->dfll_tune_data.tune0 = 0x8315FF;
+			d->dfll_tune_data.tune0_high_mv = 0x8340FF;
+		}
+	}
+}
+
 static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
@@ -740,6 +751,8 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 	struct rail_alignment *align = &tegra13_dvfs_rail_vdd_cpu.alignment;
+
+	set_cpu_dfll_tuning_data(d, speedo);
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
 	min_dfll_mv =  round_voltage(min_dfll_mv, align, true);
