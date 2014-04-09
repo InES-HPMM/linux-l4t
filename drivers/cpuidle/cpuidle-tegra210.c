@@ -82,14 +82,14 @@ static void do_cc4_init(void)
 }
 
 /*
- * tegra210_enter_state - Programs CPU to enter the specified state
+ * tegra210_enter_c7 - Programs CPU to enter power gate state
  *
  * @dev: cpuidle device
  * @drv: cpuidle driver
  * @idx: state index
  *
  */
-static int tegra210_enter_pg(struct cpuidle_device *dev,
+static int tegra210_enter_c7(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
@@ -107,9 +107,9 @@ static int tegra210_enter_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
-static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv,
-				int idx)
+static int tegra210_enter_cc_state(struct cpuidle_device *dev,
+			int cc_state_tolerance, int sc_state_tolerance,
+			int state_id, int idx)
 {
 	unsigned long arg;
 
@@ -122,12 +122,13 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 
 	cpu_pm_enter();
 
-	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC6, TEGRA_PM_SC1)) {
+	if (!tegra_bpmp_do_idle(dev->cpu, cc_state_tolerance,
+					sc_state_tolerance)) {
 		/*
 		 * We are the last core standing and bpmp says GO.
-		 * Change to CC6 config.
+		 * Change to CCx config.
 		 */
-		ps.id = TEGRA210_CPUIDLE_CC6;
+		ps.id = state_id;
 		ps.affinity_level = 1;
 	}
 
@@ -139,36 +140,52 @@ static int tegra210_enter_cluster_pg(struct cpuidle_device *dev,
 	return idx;
 }
 
-static int tegra210_enter_crail_gate(struct cpuidle_device *dev,
+static int tegra210_enter_cc6(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
-	unsigned long arg;
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC1,
+					TEGRA210_CPUIDLE_CC6, idx);
+}
 
-	/* Assume C7 config by default */
-	struct psci_power_state ps = {
-		.id = 0,
-		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 0,
-	};
+static int tegra210_enter_cc7(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC7, TEGRA_PM_SC1,
+					TEGRA210_CPUIDLE_CC7, idx);
+}
 
-	cpu_pm_enter();
+static int tegra210_enter_sc2(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC2,
+					TEGRA210_CPUIDLE_CC6, idx);
+}
 
-	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7, TEGRA_PM_SC1)) {
-		/*
-		 * We are the last core standing and bpmp says GO.
-		 * Change to CC7 config.
-		 */
-		ps.id = TEGRA210_CPUIDLE_CC7;
-		ps.affinity_level = 1;
-	}
+static int tegra210_enter_sc3(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC3,
+					TEGRA210_CPUIDLE_CC6, idx);
+}
 
-	arg = psci_power_state_pack(ps);
-	cpu_suspend(arg, NULL);
+static int tegra210_enter_sc4(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC4,
+					TEGRA210_CPUIDLE_CC6, idx);
+}
 
-	cpu_pm_exit();
-
-	return idx;
+static int tegra210_enter_sc7(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv,
+				int idx)
+{
+	return tegra210_enter_cc_state(dev, TEGRA_PM_CC7, TEGRA_PM_SC7,
+					TEGRA210_CPUIDLE_SC7, idx);
 }
 
 static int tegra210_enter_cg(struct cpuidle_device *dev,
@@ -214,7 +231,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[2];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU Core Powergate");
-	state->enter = tegra210_enter_pg;
+	state->enter = tegra210_enter_c7;
 	state->exit_latency = 10;
 	state->target_residency = 20;
 	state->power_usage = 500;
@@ -224,7 +241,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[3];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "Cluster power gate");
-	state->enter = tegra210_enter_cluster_pg;
+	state->enter = tegra210_enter_cc6;
 	state->exit_latency = 20;
 	state->target_residency = 30;
 	state->power_usage = 400;
@@ -234,14 +251,54 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[4];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU rail gate");
-	state->enter = tegra210_enter_crail_gate;
+	state->enter = tegra210_enter_cc7;
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
 	state->disabled = true;
 
-	drv->state_count = 5;
+	state = &drv->states[5];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "SC2");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG");
+	state->enter = tegra210_enter_sc2;
+	state->exit_latency = 30;
+	state->target_residency = 40;
+	state->power_usage = 300;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	state = &drv->states[6];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "SC3");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL disabled");
+	state->enter = tegra210_enter_sc3;
+	state->exit_latency = 30;
+	state->target_residency = 40;
+	state->power_usage = 300;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	state = &drv->states[7];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "SC4");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL & PLLP disabled");
+	state->enter = tegra210_enter_sc4;
+	state->exit_latency = 30;
+	state->target_residency = 40;
+	state->power_usage = 300;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	state = &drv->states[8];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "SC7");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "VDD_SOC turned off");
+	state->enter = tegra210_enter_sc7;
+	state->exit_latency = 30;
+	state->target_residency = 40;
+	state->power_usage = 300;
+	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->disabled = true;
+
+	drv->state_count = 9;
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
