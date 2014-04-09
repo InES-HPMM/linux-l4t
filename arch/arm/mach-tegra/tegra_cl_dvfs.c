@@ -237,8 +237,8 @@ struct tegra_cl_dvfs {
 	enum tegra_cl_dvfs_tune_state	tune_state;
 	enum tegra_cl_dvfs_ctrl_mode	mode;
 
-	struct timer_list		tune_timer;
-	unsigned long			tune_delay;
+	struct hrtimer			tune_timer;
+	ktime_t				tune_delay;
 	struct timer_list		calibration_timer;
 	unsigned long			calibration_delay;
 	ktime_t				last_calibration;
@@ -768,7 +768,8 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	case TEGRA_CL_DVFS_TUNE_LOW:
 		if (cl_tune_target(cld, req->rate) > TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
-			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
+			hrtimer_start(&cld->tune_timer, cld->tune_delay,
+				      HRTIMER_MODE_REL);
 			cl_dvfs_set_force_out_min(cld);
 		}
 		break;
@@ -846,11 +847,12 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 }
 
-static void tune_timer_cb(unsigned long data)
+static enum hrtimer_restart tune_timer_cb(struct hrtimer *timer)
 {
 	unsigned long flags;
 	u32 val, out_min, out_last;
-	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)data;
+	struct tegra_cl_dvfs *cld =
+		container_of(timer, struct tegra_cl_dvfs, tune_timer);
 
 	clk_lock_save(cld->dfll_clk, &flags);
 
@@ -868,10 +870,13 @@ static void tune_timer_cb(unsigned long data)
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
 			tune_high(cld);
 		} else {
-			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
+			hrtimer_start(&cld->tune_timer, cld->tune_delay,
+				      HRTIMER_MODE_REL);
 		}
 	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
+
+	return HRTIMER_NORESTART;
 }
 
 static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
@@ -1621,10 +1626,9 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	BUG_ON(!cld->ref_rate);
 
 	/* init tuning timer */
-	init_timer(&cld->tune_timer);
+	hrtimer_init(&cld->tune_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	cld->tune_timer.function = tune_timer_cb;
-	cld->tune_timer.data = (unsigned long)cld;
-	cld->tune_delay = usecs_to_jiffies(CL_DVFS_TUNE_HIGH_DELAY);
+	cld->tune_delay = ktime_set(0, CL_DVFS_TUNE_HIGH_DELAY * 1000);
 
 	/* init calibration timer */
 	init_timer_deferrable(&cld->calibration_timer);
