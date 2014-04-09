@@ -265,7 +265,7 @@ static void tegra_uart_fifo_reset(struct tegra_uart_port *tup, u8 fcr_bits)
 	tegra_uart_read(tup, UART_SCR);
 
 	/* Wait for the flush to propagate. */
-	tegra_uart_wait_sym_time(tup, 1);
+	tegra_uart_wait_sym_time(tup, 2);
 }
 
 static int tegra_set_baudrate(struct tegra_uart_port *tup, unsigned int baud)
