@@ -681,6 +681,62 @@ out:
 }
 
 #ifdef CONFIG_DEBUG_FS
+static int palams_gpadc_get_auto_conv_val(struct palmas_gpadc *adc,
+					int auto_conv_ch)
+{
+	unsigned int reg;
+	unsigned int val;
+	int ret;
+
+	if (auto_conv_ch == 0) {
+		reg = PALMAS_GPADC_AUTO_CONV0_LSB;
+	} else if (auto_conv_ch == 1) {
+		reg = PALMAS_GPADC_AUTO_CONV1_LSB;
+	} else {
+		dev_err(adc->dev, "%s: Invalid auto conv channel %d\n\n",
+			__func__, auto_conv_ch);
+		return -EINVAL;
+	}
+
+	ret = palmas_bulk_read(adc->palmas, PALMAS_GPADC_BASE, reg, &val, 2);
+	if (ret < 0) {
+		dev_err(adc->dev, "%s: Auto conv%d data read failed: %d\n",
+			__func__, auto_conv_ch, ret);
+		return ret;
+	}
+
+	return (val & 0xFFF);
+}
+
+static ssize_t auto_conv_val_read(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct palmas_gpadc *adc = file->private_data;
+	unsigned char *d_iname;
+	char buf[64] = { 0, };
+	ssize_t ret = 0;
+	int auto_conv_ch = -1;
+
+	d_iname = file->f_path.dentry->d_iname;
+
+	if (!strcmp("auto_conv0_val", d_iname))
+		auto_conv_ch = 0;
+	else if (!strcmp("auto_conv1_val", d_iname))
+		auto_conv_ch = 1;
+
+	ret = palams_gpadc_get_auto_conv_val(adc, auto_conv_ch);
+	if (ret < 0)
+		return ret;
+
+	ret = snprintf(buf, sizeof(buf), "%d\n", ret);
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
+static const struct file_operations auto_conv_val_fops = {
+	.open		= simple_open,
+	.read		= auto_conv_val_read,
+};
+
 static int auto_conv_period_get(void *data, u64 *val)
 {
 	struct palmas_gpadc *adc = (struct palmas_gpadc *)data;
@@ -826,6 +882,8 @@ static void palmas_gpadc_debugfs_init(struct palmas_gpadc *adc)
 				    adc->dentry, adc, &auto_conv_data_fops);
 		debugfs_create_file("auto_conv0_shutdown", 0644,
 				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv0_val", 0444,
+				    adc->dentry, adc, &auto_conv_val_fops);
 	}
 
 	if (adc->auto_conv1_enable) {
@@ -837,6 +895,8 @@ static void palmas_gpadc_debugfs_init(struct palmas_gpadc *adc)
 				    adc->dentry, adc, &auto_conv_data_fops);
 		debugfs_create_file("auto_conv1_shutdown", 0644,
 				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv1_val", 0444,
+				    adc->dentry, adc, &auto_conv_val_fops);
 	}
 }
 #else
