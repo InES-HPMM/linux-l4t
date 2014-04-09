@@ -59,6 +59,8 @@
 #define NVADSP_ELF "adsp.elf"
 #define NVADSP_FIRMWARE NVADSP_ELF
 
+#define MAILBOX_REGION ".mbox_shared_data"
+
 /* Maximum number of LOAD MAPPINGS supported */
 #define NM_LOAD_MAPPINGS 20
 
@@ -110,6 +112,64 @@ void *adsp_da_to_va_mappings(u64 da, int len)
 		break;
 	}
 	return ptr;
+}
+
+static struct elf32_shdr *
+get_section(const struct firmware *fw, char *sec_name)
+{
+	int i;
+	struct device *dev = &priv.pdev->dev;
+	const u8 *elf_data = fw->data;
+	struct elf32_hdr *ehdr = (struct elf32_hdr *)elf_data;
+	struct elf32_shdr *shdr;
+	const char *name_table;
+
+	/* look for the resource table and handle it */
+	shdr = (struct elf32_shdr *)(elf_data + ehdr->e_shoff);
+	name_table = elf_data + shdr[ehdr->e_shstrndx].sh_offset;
+
+	for (i = 0; i < ehdr->e_shnum; i++, shdr++)
+		if (!strcmp(name_table + shdr->sh_name, sec_name)) {
+			dev_dbg(dev, "found the section %s\n",
+					name_table + shdr->sh_name);
+			return shdr;
+		}
+	return NULL;
+}
+
+void *get_mailbox_shared_region(void)
+{
+	const struct firmware *fw;
+	struct device *dev = &priv.pdev->dev;
+	struct elf32_shdr *shdr;
+	int addr;
+	int size;
+	int ret;
+
+	if (!dev) {
+		pr_info("ADSP Driver is not initialized\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
+	if (ret < 0) {
+		dev_info(dev,
+			"reqest firmware for %s failed with %d\n",
+					NVADSP_FIRMWARE, ret);
+		return ERR_PTR(ret);
+	}
+
+	shdr = get_section(fw, MAILBOX_REGION);
+	if (!shdr) {
+		dev_info(dev, "section %s not found\n", MAILBOX_REGION);
+		return ERR_PTR(-EINVAL);
+	}
+
+	dev_dbg(dev,
+		"the section is present at 0x%x\n", shdr->sh_addr);
+	addr = shdr->sh_addr;
+	size = shdr->sh_size;
+	return adsp_da_to_va_mappings(addr, size);
 }
 
 int nvadsp_os_elf_load(const struct firmware *fw)
@@ -234,6 +294,7 @@ int nvadsp_os_load(void)
 
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
+
 	ret = nvadsp_os_elf_load(fw);
 	if (ret)
 		dev_info(dev, "failed to load %s\n", NVADSP_FIRMWARE);

@@ -20,5 +20,6 @@
 
 int nvadsp_os_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
+void *get_mailbox_shared_region(void);
 
 #endif /* __TEGRA_NVADSP_OS_H */
