@@ -46,6 +46,7 @@ struct pwm_regulator {
 	int			enable_gpio;
 	int			idle_gpio;
 	int			standby_gpio;
+	unsigned int		voltage_time_sel;
 };
 
 static int pwm_regulator_set_voltage_sel(
@@ -118,12 +119,22 @@ static unsigned int pwm_regulator_get_mode(struct regulator_dev *rdev)
 		return REGULATOR_MODE_IDLE;
 }
 
+static int pwm_regulator_set_voltage_time_sel(struct regulator_dev *rdev,
+		unsigned int old_selector, unsigned int new_selector)
+{
+	struct pwm_regulator *preg = rdev_get_drvdata(rdev);
+
+	if (preg->voltage_time_sel)
+		return preg->voltage_time_sel;
+	return regulator_set_voltage_time_sel(rdev, old_selector, new_selector);
+}
+
 static struct regulator_ops pwm_regulator_ops = {
 	.set_voltage_sel = pwm_regulator_set_voltage_sel,
 	.get_voltage_sel = pwm_regulator_get_voltage_sel,
 	.list_voltage = regulator_list_voltage_linear,
 	.map_voltage = regulator_map_voltage_linear,
-	.set_voltage_time_sel   = regulator_set_voltage_time_sel,
+	.set_voltage_time_sel   = pwm_regulator_set_voltage_time_sel,
 	.set_mode = pwm_regulator_set_mode,
 	.get_mode = pwm_regulator_get_mode,
 };
@@ -148,6 +159,10 @@ static int pwm_regulator_parse_dt(struct device *dev,
 		dev_err(dev, "Number of voltages is missing\n");
 		return ret;
 	}
+
+	ret = of_property_read_u32(node, "voltage-time-sel", &pval);
+	if (!ret)
+		preg->voltage_time_sel = pval;
 
 	preg->enable_gpio = of_get_named_gpio(node, "enable-gpio", 0);
 	if ((preg->enable_gpio < 0) && (preg->enable_gpio != -ENOENT)) {
