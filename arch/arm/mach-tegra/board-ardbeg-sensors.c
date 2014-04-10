@@ -957,7 +957,7 @@ static int ardbeg_ov5693_front_power_on(struct ov5693_power_rail *pw)
 	if (unlikely(err))
 		goto ov5693_front_vcmvdd_fail;
 
-	usleep_range(300, 310);
+	usleep_range(1000, 1110);
 
 	return 0;
 
