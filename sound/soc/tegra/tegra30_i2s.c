@@ -666,7 +666,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		}
 	} else {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
-		reg = TEGRA30_I2S_CIF_TX_CTRL, val;
+		reg = TEGRA30_I2S_CIF_TX_CTRL;
 
 		tegra30_ahub_set_rx_cif_channels(i2s->capture_fifo_cif,
 						 params_channels(params),
