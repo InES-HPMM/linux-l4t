@@ -43,6 +43,8 @@
 #define CAMERA_TABLE_INX_CGATE		(CAMERA_INT_MASK | 51)
 #define CAMERA_TABLE_EDP_STATE		(CAMERA_INT_MASK | 60)
 
+#define CAMERA_TABLE_DEV_READ		0xe0000000
+
 #define CAMERA_TABLE_PWR_FLAG_MASK	0xf0000000
 #define CAMERA_TABLE_PWR_FLAG_ON	0x80000000
 #define CAMERA_TABLE_PINMUX_FLAG_MASK	0xf0000000
@@ -69,6 +71,7 @@
 #define PCLLK_IOCTL_PARAM_RD	_IOWR('o', 141, struct nvc_param)
 #define PCLLK_IOCTL_DRV_ADD	_IOW('o', 150, struct nvc_param)
 #define PCLLK_IOCTL_DT_GET	_IOWR('o', 160, struct nvc_param)
+#define PCLLK_IOCTL_MSG		_IOWR('o', 170, struct nvc_param)
 
 #define CAMERA_MAX_EDP_ENTRIES  16
 #define CAMERA_MAX_NAME_LENGTH	32
@@ -356,7 +359,7 @@ int camera_regulator_get(struct device *, struct nvc_regulator *, char *);
 
 /* device access functions */
 int camera_dev_parser(
-	struct camera_device *, u32, u32, struct camera_seq_status *
+	struct camera_device *, u32, u32 *, struct camera_seq_status *
 );
 int camera_dev_wr_table(
 	struct camera_device *, struct camera_reg *, struct camera_seq_status *

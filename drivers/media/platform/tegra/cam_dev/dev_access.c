@@ -257,9 +257,10 @@ static int camera_dev_wr_blk(
 
 int camera_dev_parser(
 	struct camera_device *cdev,
-	u32 command, u32 val,
+	u32 command, u32 *pdat,
 	struct camera_seq_status *pst)
 {
+	u32 val = *pdat;
 	int err = 0;
 	u8 flag = 0;
 
@@ -416,6 +417,19 @@ int camera_dev_parser(
 		usleep_range(val, val + 20);
 		break;
 	default:
+		if ((command & CAMERA_INT_MASK) == CAMERA_TABLE_DEV_READ) {
+			/* feature: read data in table write function */
+			struct camera_reg regs[2];
+			regs[0].addr = command & ~CAMERA_INT_MASK;
+			regs[1].addr = CAMERA_TABLE_END;
+			err = camera_dev_rd_table(cdev, regs);
+			if (err < 0)
+				return err;
+			*pdat = regs[0].val;
+			if (pst)
+				pst->status = command;
+			break;
+		}
 		dev_err(cdev->dev, "unrecognized cmd %x.\n", command);
 		return -ENODEV;
 	}
@@ -428,7 +442,7 @@ int camera_dev_wr_table(
 	struct camera_reg *table,
 	struct camera_seq_status *pst)
 {
-	const struct camera_reg *next;
+	struct camera_reg *next, *blk_start = NULL;
 	u8 *b_ptr = cdev->i2c_buf;
 	u8 byte_num;
 	u16 buf_count = 0;
@@ -452,13 +466,13 @@ int camera_dev_wr_table(
 		dev_dbg(cdev->dev, "%x - %x\n", next->addr, next->val);
 		if (next->addr & CAMERA_INT_MASK) {
 			err = camera_dev_parser(
-				cdev, next->addr, next->val, pst);
+				cdev, next->addr, &next->val, pst);
 			if (err > 0) { /* special cmd executed */
 				err = 0;
 				continue;
 			}
 			if (err < 0) { /* this is a real error */
-				if (pst)
+				if (pst) /* store where the error happened */
 					pst->idx = (next - table) /
 						sizeof(*table) + 1;
 				break;
@@ -468,6 +482,7 @@ int camera_dev_wr_table(
 		if (!buf_count) {
 			b_ptr = cdev->i2c_buf;
 			addr = next->addr;
+			blk_start = next;
 		}
 		switch (byte_num) {
 		case 2:
@@ -487,12 +502,18 @@ int camera_dev_wr_table(
 		}
 
 		err = camera_dev_wr_blk(cdev, addr, cdev->i2c_buf, buf_count);
-		if (err)
+		if (err) {
+			if (pst) /* store the index which caused the error */
+				pst->idx = (blk_start - table) /
+					sizeof(*table) + 1;
 			break;
+		}
 
 		buf_count = 0;
 	}
 
+	if (!err && pst && pst->status)
+		err = 1;
 	return err;
 }
 

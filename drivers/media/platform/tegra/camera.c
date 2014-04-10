@@ -68,6 +68,38 @@ static struct camera_platform_info cam_desc = {
 	.chip_list = &chip_list,
 };
 
+static int camera_get_params(
+	struct camera_info *cam, unsigned long arg, int u_size,
+	struct nvc_param *prm, void **data)
+{
+	void *buf;
+	unsigned size;
+
+	if (copy_from_user(prm, (const void __user *)arg, sizeof(*prm))) {
+		dev_err(cam->dev, "%s copy_from_user err line %d\n",
+			__func__, __LINE__);
+		return -EFAULT;
+	}
+	if (!data)
+		return 0;
+
+	size = prm->sizeofvalue * u_size;
+	buf = kzalloc(size, GFP_KERNEL);
+	if (!buf) {
+		dev_err(cam->dev, "%s allocate memory failed!\n", __func__);
+		return -ENOMEM;
+	}
+	if (copy_from_user(buf, MAKE_CONSTUSER_PTR(prm->p_value), size)) {
+		dev_err(cam->dev, "%s copy_from_user err line %d\n",
+			__func__, __LINE__);
+		kfree(buf);
+		return -EFAULT;
+	}
+	*data = buf;
+
+	return 0;
+}
+
 static int camera_seq_rd(struct camera_info *cam, unsigned long arg)
 {
 	struct nvc_param params;
@@ -75,26 +107,9 @@ static int camera_seq_rd(struct camera_info *cam, unsigned long arg)
 	int err;
 
 	dev_dbg(cam->dev, "%s %lx\n", __func__, arg);
-	if (copy_from_user(&params, (const void __user *)arg,
-		sizeof(struct nvc_param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		return -EFAULT;
-	}
-
-	p_i2c_table = kzalloc(sizeof(params.sizeofvalue), GFP_KERNEL);
-	if (p_i2c_table == NULL) {
-		dev_err(cam->dev, "%s: kzalloc error\n", __func__);
-		return -ENOMEM;
-	}
-
-	if (copy_from_user(p_i2c_table, MAKE_CONSTUSER_PTR(params.p_value),
-		params.sizeofvalue)) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		kfree(p_i2c_table);
-		return -EINVAL;
-	}
+	err = camera_get_params(cam, arg, 1, &params, (void **)&p_i2c_table);
+	if (err)
+		return err;
 
 	err = camera_dev_rd_table(cam->cdev, p_i2c_table);
 	if (!err && copy_to_user(MAKE_USER_PTR(params.p_value),
@@ -120,12 +135,9 @@ static int camera_seq_wr(struct camera_info *cam, unsigned long arg)
 
 	dev_dbg(cam->dev, "%s %lx", __func__, arg);
 
-	if (copy_from_user(&params, (const void __user *)arg,
-		sizeof(struct nvc_param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		return -EFAULT;
-	}
+	err = camera_get_params(cam, arg, 0, &params, NULL);
+	if (err)
+		return err;
 
 	dev_dbg(cam->dev, "param: %x, size %d\n", params.param,
 		params.sizeofvalue);
@@ -190,6 +202,7 @@ seq_wr_table:
 	if (err < 0)
 		goto seq_wr_end;
 
+	memset(&seqs, 0, sizeof(seqs));
 	mutex_lock(&cdev->mutex);
 	err = camera_dev_wr_table(cdev, p_i2c_table, &seqs);
 	mutex_unlock(&cdev->mutex);
@@ -207,8 +220,16 @@ seq_wr_upd:
 	}
 
 seq_wr_end:
-	if (pfree)
+	if (pfree) {
+		/* if table has been updated, send it back */
+		if (err > 0 && copy_to_user(MAKE_USER_PTR(params.p_value),
+			p_i2c_table, params.sizeofvalue)) {
+			dev_err(cam->dev, "%s copy_to_user err line %d\n",
+				__func__, __LINE__);
+			err = -EFAULT;
+		}
 		devm_kfree(cdev->dev, p_i2c_table);
+	}
 	return err;
 }
 
@@ -360,9 +381,10 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 		&dev_info, (const void __user *)arg, sizeof(dev_info))) {
 		dev_err(cam_desc.dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
-			err = -EFAULT;
-			goto new_device_end;
+		err = -EFAULT;
+		goto new_device_end;
 	}
+
 	dev_dbg(cam->dev, "%s - %d %d %x\n",
 		dev_info.name, dev_info.type, dev_info.bus, dev_info.addr);
 
@@ -463,13 +485,15 @@ new_device_end:
 	return err;
 }
 
-static void camera_app_remove(struct camera_info *cam)
+static void camera_app_remove(struct camera_info *cam, bool ref_chk)
 {
 	dev_dbg(cam->dev, "%s\n", __func__);
 
-	WARN_ON(atomic_xchg(&cam->in_use, 0));
+	if (ref_chk)
+		WARN_ON(atomic_xchg(&cam->in_use, 0));
 	if (cam->cdev) {
-		WARN_ON(atomic_xchg(&cam->cdev->in_use, 0));
+		if (ref_chk)
+			WARN_ON(atomic_xchg(&cam->cdev->in_use, 0));
 		cam->cdev->cam = NULL;
 	}
 	kfree(cam);
@@ -486,34 +510,35 @@ static int camera_update(struct camera_info *cam, unsigned long arg)
 	dev_dbg(cam->dev, "%s %lx", __func__, arg);
 	if (!chip->update) {
 		dev_dbg(cam->dev, "no update pointer.\n");
-		goto update_end;
+		return err;
 	}
 
-	if (copy_from_user(&param, (const void __user *)arg, sizeof(param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		err = -EFAULT;
-		goto update_end;
-	}
-	upd = kzalloc(param.sizeofvalue * sizeof(*upd), GFP_KERNEL);
-	if (!upd) {
-		dev_err(cam->dev, "%s allocate memory failed!\n", __func__);
-		err = -ENOMEM;
-		goto update_end;
-	}
-	if (copy_from_user(upd, MAKE_CONSTUSER_PTR(param.p_value),
-		param.sizeofvalue * sizeof(*upd))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		err = -EFAULT;
-		goto update_end;
-	}
+	err = camera_get_params(cam, arg, sizeof(*upd), &param, (void **)&upd);
+	if (err)
+		return err;
 
 	err = chip->update(cdev, upd, param.sizeofvalue);
 
-update_end:
 	kfree(upd);
 	return err;
+}
+
+/* need this feature for auto detect to display notifications */
+static int camera_msg(struct camera_info *cam, unsigned long arg)
+{
+	struct nvc_param param;
+	char *str;
+	int err = 0;
+
+	dev_dbg(cam->dev, "%s %lx", __func__, arg);
+	err = camera_get_params(cam, arg, 1, &param, (void **)&str);
+	if (err)
+		return err;
+	if (str[param.sizeofvalue - 1] == '\0')
+		dev_info(cam->dev, "%s\n", str);
+	kfree(str);
+
+	return 0;
 }
 
 static int camera_layout_update(struct camera_info *cam, unsigned long arg)
@@ -530,27 +555,9 @@ static int camera_layout_update(struct camera_info *cam, unsigned long arg)
 		goto layout_end;
 	}
 
-	if (copy_from_user(&param, (const void __user *)arg, sizeof(param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		err = -EFAULT;
+	err = camera_get_params(cam, arg, 1, &param, &upd);
+	if (err)
 		goto layout_end;
-	}
-
-	upd = kzalloc(param.sizeofvalue, GFP_KERNEL);
-	if (!upd) {
-		dev_err(cam->dev, "%s allocate memory failed!\n", __func__);
-		err = -ENOMEM;
-		goto layout_end;
-	}
-	if (copy_from_user(upd, MAKE_CONSTUSER_PTR(param.p_value),
-		param.sizeofvalue)) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		kfree(upd);
-		err = -EFAULT;
-		goto layout_end;
-	}
 
 	cam_desc.layout = upd;
 	cam_desc.size_layout = param.sizeofvalue;
@@ -573,14 +580,17 @@ static int camera_layout_get(struct camera_info *cam, unsigned long arg)
 		goto getlayout_end;
 	}
 
-	if (copy_from_user(&param, (const void __user *)arg, sizeof(param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		err = -EFAULT;
-		goto getlayout_end;
-	}
+	err = camera_get_params(cam, arg, 0, &param, NULL);
+	if (err)
+		return err;
 
 	len = (int)cam_desc.size_layout - param.variant;
+	if (len <= 0) {
+		dev_err(cam->dev, "%s invalid offset %d\n",
+			__func__, param.variant);
+		err = -EINVAL;
+		goto getlayout_end;
+	}
 	if (len > param.sizeofvalue) {
 		len = param.sizeofvalue;
 		err = -EAGAIN;
@@ -594,6 +604,7 @@ static int camera_layout_get(struct camera_info *cam, unsigned long arg)
 	}
 
 	param.sizeofvalue = len;
+	param.variant = cam_desc.size_layout;
 	if (copy_to_user((void __user *)arg, &param, sizeof(param))) {
 		dev_err(cam->dev, "%s copy_to_user err line %d\n",
 			__func__, __LINE__);
@@ -712,13 +723,13 @@ static int camera_add_drv_by_module(
 static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 {
 	struct nvc_param param;
+	int err;
 
 	dev_dbg(cam->dev, "%s %lx", __func__, arg);
-	if (copy_from_user(&param, (const void __user *)arg, sizeof(param))) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		return -EFAULT;
-	}
+	err = camera_get_params(cam, arg, 0, &param, NULL);
+	if (err)
+		return err;
+
 	if (param.param == 0)
 		return camera_add_drv_by_sensor_name(cam, &param);
 	return camera_add_drv_by_module(cam, &param);
@@ -789,6 +800,9 @@ static long camera_ioctl(struct file *file,
 	case _IOC_NR(PCLLK_IOCTL_DT_GET):
 		err = of_camera_get_property(cam, arg);
 		break;
+	case _IOC_NR(PCLLK_IOCTL_MSG):
+		err = camera_msg(cam, arg);
+		break;
 	default:
 		dev_err(cam->dev, "%s unsupported ioctl: %x\n",
 			__func__, cmd);
@@ -837,7 +851,7 @@ static int camera_release(struct inode *inode, struct file *file)
 	list_del(&cam->list);
 	mutex_unlock(cam_desc.u_mutex);
 
-	camera_app_remove(cam);
+	camera_app_remove(cam, true);
 
 	file->private_data = NULL;
 	return 0;
@@ -865,7 +879,7 @@ static int camera_remove(struct platform_device *dev)
 		mutex_lock(cam_desc.u_mutex);
 		list_del(&cam->list);
 		mutex_unlock(cam_desc.u_mutex);
-		camera_app_remove(cam);
+		camera_app_remove(cam, false);
 	}
 
 	list_for_each_entry(cdev, cam_desc.dev_list, list) {
