@@ -515,7 +515,7 @@ static struct platform_device *vcm30_t124_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
 #if defined(CONFIG_TEGRA_WATCHDOG)
@@ -710,6 +710,10 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 #ifdef CONFIG_SATA_AHCI_TEGRA
 	OF_DEV_AUXDATA("nvidia,tegra124-sata", TEGRA_SATA_BAR5_BASE, "tegra-sata", NULL),
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+	OF_DEV_AUXDATA("nvidia,tegra124-se", TEGRA_SE_BASE, "tegra12-se", NULL),
 #endif
 	{}
 };
