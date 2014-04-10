@@ -44,6 +44,7 @@ struct tegra_simon_grader {
 
 	spinlock_t			grade_lock;
 	struct timer_list		grade_wdt;
+	struct timer_list		grade_timer;
 	ktime_t				last_grading;
 	bool				stop_grading;
 	int				grade;
