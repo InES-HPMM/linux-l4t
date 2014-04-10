@@ -35,6 +35,8 @@
 #define DRIVER_VERSION "1.0"
 #define DEVICE_NAME "ltr558"
 
+#define PS_DEFAULT_DETECT_THRESHOLD	125
+
 enum {
 	VDD = 0,
 	LED
@@ -60,6 +62,7 @@ struct ltr558_chip {
 	int		ps_gainrange;
 	int		prox_persist;
 	int		prox_reading;
+	int		prox_detect_thres;
 	int		prox_low_thres;
 	int		prox_high_thres;
 };
@@ -395,6 +398,17 @@ static ssize_t store_proxim_high_threshold(struct device *dev,
 	return count;
 }
 
+/* Proximity thresholds  */
+static ssize_t show_proxim_detect_threshold(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct ltr558_chip *chip = iio_priv(indio_dev);
+
+	dev_vdbg(dev, "%s()\n", __func__);
+	return sprintf(buf, "%d\n", chip->prox_detect_thres);
+}
+
 /* als enable/disable  */
 static ssize_t show_als_enable(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -648,6 +662,8 @@ static IIO_DEVICE_ATTR(proximity_low_threshold, S_IRUGO | S_IWUSR,
 		show_proxim_low_threshold, store_proxim_low_threshold, 0);
 static IIO_DEVICE_ATTR(proximity_high_threshold, S_IRUGO | S_IWUSR,
 		show_proxim_high_threshold, store_proxim_high_threshold, 0);
+static IIO_DEVICE_ATTR(proximity_detect_threshold, S_IRUGO,
+		show_proxim_detect_threshold, NULL, 0);
 static IIO_DEVICE_ATTR(proximity_persist, S_IRUGO | S_IWUSR,
 		show_proxim_persist, store_proxim_persist, 0);
 static IIO_DEVICE_ATTR(proximity_enable, S_IRUGO | S_IWUSR,
@@ -679,6 +695,7 @@ static struct attribute *ltr558_attributes[] = {
 
 	&iio_dev_attr_proximity_low_threshold.dev_attr.attr,
 	&iio_dev_attr_proximity_high_threshold.dev_attr.attr,
+	&iio_dev_attr_proximity_detect_threshold.dev_attr.attr,
 	&iio_dev_attr_proximity_enable.dev_attr.attr,
 	&iio_dev_attr_proximity_persist.dev_attr.attr,
 	&iio_dev_attr_proximity_value.dev_attr.attr,
@@ -694,6 +711,7 @@ static int ltr558_chip_init(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	int error = 0;
+	u32 val;
 
 	mdelay(PON_DELAY);
 
@@ -701,6 +719,12 @@ static int ltr558_chip_init(struct i2c_client *client)
 	chip->prox_low_thres = 0;
 	chip->prox_high_thres = 0x7FF;
 	chip->prox_reading = 0;
+	if (!of_property_read_u32(client->dev.of_node, "threshold", &val)) {
+		chip->prox_detect_thres = val;
+	} else {
+		chip->prox_detect_thres = PS_DEFAULT_DETECT_THRESHOLD;
+		dev_warn(&client->dev, "Could not get threshold value\n");
+	}
 
 	chip->als_low_thres = 0;
 	chip->als_high_thres = 0xFFFF;
