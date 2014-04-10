@@ -286,7 +286,7 @@ static void __init create_mapping(struct map_desc *io_desc)
 }
 
 /* To support old-style static device memory mapping. */
-void iotable_init(struct map_desc *io_desc, int nr)
+__init void iotable_init(struct map_desc *io_desc, int nr)
 {
 	struct map_desc *md;
 	struct vm_struct *vm;
