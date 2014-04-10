@@ -126,4 +126,8 @@
 		nvidia,port1_status = <1>;
 		status = "okay";
 	};
+
+	sata-controller {
+		status = "okay";
+	};
 };

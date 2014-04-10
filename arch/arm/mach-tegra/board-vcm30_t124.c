@@ -491,20 +491,6 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-#ifdef CONFIG_SATA_AHCI_TEGRA
-static struct tegra_ahci_platform_data ahci_plat_data = {
-        .gen2_rx_eq = 7,
-};
-
-static void vcm30_t124_sata_init(void)
-{
-        tegra_sata_device.dev.platform_data = &ahci_plat_data;
-        platform_device_register(&tegra_sata_device);
-}
-#else
-static void vcm30_t124_sata_init(void) { }
-#endif
-
 static struct platform_device tegra_snd_vcm30t124 = {
 	.name = "tegra-snd-vcm30t124",
 	.id = 0,
@@ -727,6 +713,9 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 				NULL),
+#ifdef CONFIG_SATA_AHCI_TEGRA
+	OF_DEV_AUXDATA("nvidia,tegra124-sata", TEGRA_SATA_BAR5_BASE, "tegra-sata", NULL),
+#endif
 	{}
 };
 #endif
@@ -766,7 +755,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 	isomgr_init();
 	/* vcm30_t124_panel_init(); */
 	/* vcm30_t124_pmon_init(); */
-	vcm30_t124_sata_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
