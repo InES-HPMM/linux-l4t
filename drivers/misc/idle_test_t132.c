@@ -46,6 +46,8 @@
 
 #define POWER_BACKDOOR_I2C_CC4_VOLTAGE_DOWN		0x14
 #define POWER_BACKDOOR_I2C_CC4_VOLTAGE_UP		0x15
+#define POWER_BACKDOOR_SLEEP_EN_CC4_CORE_MASK		0x16
+#define POWER_BACKDOOR_SLEEP_EN_CC4_CLUSTER_MASK	0x17
 
 static struct dentry *dfs_dir;
 static long pmstate = T132_CLUSTER_C4;
@@ -59,13 +61,13 @@ static void tegra132_do_idle(ulong pmstate)
 	: "r" (pmstate));
 }
 
-static void tegra132_set_voltage(long voltage, ulong power_state)
+static void tegra132_backdoor(long data, ulong command)
 {
 	asm volatile(
 	"	sys 0, c11, c0, 1, %0\n"
 	"	sys 0, c11, c0, 0, %1\n"
 	:
-	: "r" (voltage), "r" (power_state));
+	: "r" (data), "r" (command));
 }
 
 void suspend_all_device_irqs(void)
@@ -152,7 +154,7 @@ static int voltage_write(void *data, u64 val)
 
 	DBG_PRINT("retention_vol is %ld\n", retention_vol);
 
-	tegra132_set_voltage(retention_vol,
+	tegra132_backdoor(retention_vol,
 			POWER_BACKDOOR_I2C_CC4_VOLTAGE_DOWN);
 
 	return 0;
@@ -167,11 +169,41 @@ static int pmstate_write(void *data, u64 val)
 	return 0;
 }
 
+static int sleep_core_mask_write(void *data, u64 val)
+{
+	long sleep_core_mask = (long)val;
+
+	DBG_PRINT("sleep_core_mask is %ld\n", sleep_core_mask);
+
+	tegra132_backdoor(sleep_core_mask,
+			POWER_BACKDOOR_SLEEP_EN_CC4_CORE_MASK);
+
+	return 0;
+}
+
+static int sleep_cluster_mask_write(void *data, u64 val)
+{
+	long sleep_cluster_mask = (long)val;
+
+	DBG_PRINT("sleep_cluster_mask is %ld\n", sleep_cluster_mask);
+
+	tegra132_backdoor(sleep_cluster_mask,
+			POWER_BACKDOOR_SLEEP_EN_CC4_CLUSTER_MASK);
+
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(idle_fops, NULL, idle_write, "%llu\n");
 
 DEFINE_SIMPLE_ATTRIBUTE(voltage_fops, NULL, voltage_write, "%llu\n");
 
 DEFINE_SIMPLE_ATTRIBUTE(pmstate_fops, NULL, pmstate_write, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(sleep_core_mask_fops, NULL,
+	sleep_core_mask_write, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(sleep_cluster_mask_fops, NULL,
+	sleep_cluster_mask_write, "%llu\n");
 
 static int __init init_debug(void)
 {
@@ -180,23 +212,37 @@ static int __init init_debug(void)
 
 	dfs_dir = debugfs_create_dir("denver_idle_test", NULL);
 	dfs_file = debugfs_create_file("idlecpu", 0644, dfs_dir,
-						&filevalue, &idle_fops);
+					&filevalue, &idle_fops);
 	if (!dfs_file) {
 		DBG_PRINT("error creating idlecpu file");
 		return -ENODEV;
 	}
 
 	dfs_file = debugfs_create_file("voltage", 0644, dfs_dir,
-						&filevalue, &voltage_fops);
+					&filevalue, &voltage_fops);
 	if (!dfs_file) {
 		DBG_PRINT("error creating voltage file");
 		return -ENODEV;
 	}
 
 	dfs_file = debugfs_create_file("pmstate", 0644, dfs_dir,
-						&filevalue, &pmstate_fops);
+					&filevalue, &pmstate_fops);
 	if (!dfs_file) {
 		DBG_PRINT("error creating pmstate file");
+		return -ENODEV;
+	}
+
+	dfs_file = debugfs_create_file("sleep_core_mask", 0644, dfs_dir,
+					&filevalue, &sleep_core_mask_fops);
+	if (!dfs_file) {
+		DBG_PRINT("error creating sleep_core_mask file");
+		return -ENODEV;
+	}
+
+	dfs_file = debugfs_create_file("sleep_cluster_mask", 0644, dfs_dir,
+					&filevalue, &sleep_cluster_mask_fops);
+	if (!dfs_file) {
+		DBG_PRINT("error creating sleep_cluster_mask file");
 		return -ENODEV;
 	}
 
