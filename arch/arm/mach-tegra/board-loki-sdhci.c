@@ -449,7 +449,7 @@ static int __init loki_wifi_prepower(void)
 	return 0;
 }
 
-subsys_initcall_sync(loki_wifi_prepower);
+fs_initcall(loki_wifi_prepower);
 #endif
 
 int __init loki_sdhci_init(void)
