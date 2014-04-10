@@ -1143,6 +1143,9 @@ out:
 	return err;
 }
 
+#define sg_num_pages(sg)					\
+	(PAGE_ALIGN((sg)->offset + (sg)->length) >> PAGE_SHIFT)
+
 static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			     struct scatterlist *sgl, int npages, unsigned long prot)
 {
@@ -1154,8 +1157,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	struct smmu_device *smmu = as->smmu;
 	int attrs = as->pte_attr;
 	size_t total = npages;
-	size_t sg_remaining =
-		PAGE_ALIGN(sgl->offset + sgl->length) >> PAGE_SHIFT;
+	size_t sg_remaining = sg_num_pages(sgl);
 	unsigned long sg_pfn = page_to_pfn(sg_page(sgl));
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
@@ -1202,9 +1204,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			sgl = sg_next(sgl);
 			if (sgl) {
 				sg_pfn = page_to_pfn(sg_page(sgl));
-				sg_remaining =
-					PAGE_ALIGN(sgl->offset + sgl->length)
-					>> PAGE_SHIFT;
+				sg_remaining = sg_num_pages(sgl);
 			}
 		}
 
