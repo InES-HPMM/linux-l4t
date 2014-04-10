@@ -1040,7 +1040,7 @@ static void seq_print_dma_areas(struct seq_file *s, void *bitmap,
 		end = find_next_zero_bit(bitmap, bits, pos);
 		start_addr = bit_to_addr(pos, base, order);
 		end_addr = bit_to_addr(end, base, order) - 1;
-		seq_printf(s, "    %pa-%pa pages=%d\n",
+		seq_printf(s, "    %pa-%pa pages=%zu\n",
 			   &start_addr, &end_addr, (end - pos) << order);
 	}
 }
