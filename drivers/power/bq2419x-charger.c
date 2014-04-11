@@ -79,6 +79,7 @@ struct bq2419x_chip {
 	int				gpio_otg_iusb;
 	int				wdt_refresh_timeout;
 	int				wdt_time_sec;
+	bool				emulate_input_disconnected;
 
 	struct mutex			mutex;
 	int				in_current_limit;
@@ -351,11 +352,14 @@ static int bq2419x_configure_charging_current(struct bq2419x_chip *bq2419x,
 	int floor = 0;
 
 	/* Clear EN_HIZ */
-	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+	if (!bq2419x->emulate_input_disconnected) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
 			BQ2419X_EN_HIZ, 0);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed %d\n", ret);
-		return ret;
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"INPUT_SRC_REG update failed %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* Configure input current limit in steps */
@@ -479,8 +483,12 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
-	ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	if (bq2419x->emulate_input_disconnected)
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+				BQ2419X_EN_HIZ, BQ2419X_EN_HIZ);
+	else
+		ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
 		goto scrub;
@@ -970,6 +978,63 @@ static ssize_t bq2419x_set_charging_state(struct device *dev,
 	return count;
 }
 
+static ssize_t bq2419x_show_input_cable_state(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	unsigned int reg_val;
+	int ret;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, &reg_val);
+	if (ret < 0) {
+		dev_err(dev, "BQ2419X_PWR_ON register read failed: %d\n", ret);
+		return ret;
+	}
+
+	if ((reg_val & BQ2419X_EN_HIZ) == BQ2419X_EN_HIZ)
+		return snprintf(buf, MAX_STR_PRINT, "Disconnected\n");
+	else
+		return snprintf(buf, MAX_STR_PRINT, "Connected\n");
+}
+
+static ssize_t bq2419x_set_input_cable_state(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	bool connect;
+	int ret;
+
+	if ((*buf == 'C') || (*buf == 'c'))
+		connect = true;
+	else if ((*buf == 'D') || (*buf == 'd'))
+		connect = false;
+	else
+		return -EINVAL;
+
+	if (connect) {
+		bq2419x->emulate_input_disconnected = false;
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+				BQ2419X_EN_HIZ, 0);
+	} else {
+		bq2419x->emulate_input_disconnected = true;
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+				BQ2419X_EN_HIZ, BQ2419X_EN_HIZ);
+	}
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "register update failed, %d\n", ret);
+		return ret;
+	}
+	if (connect)
+		dev_info(bq2419x->dev,
+			"Emulation of charger cable disconnect disabled\n");
+	else
+		dev_info(bq2419x->dev,
+			"Emulated as charger cable Disconnected\n");
+	return count;
+}
+
 static ssize_t bq2419x_show_output_charging_current(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -1038,11 +1103,15 @@ static DEVICE_ATTR(input_charging_current_mA, (S_IRUGO | (S_IWUSR | S_IWGRP)),
 static DEVICE_ATTR(charging_state, (S_IRUGO | (S_IWUSR | S_IWGRP)),
 		bq2419x_show_charging_state, bq2419x_set_charging_state);
 
+static DEVICE_ATTR(input_cable_state, (S_IRUGO | (S_IWUSR | S_IWGRP)),
+		bq2419x_show_input_cable_state, bq2419x_set_input_cable_state);
+
 static struct attribute *bq2419x_attributes[] = {
 	&dev_attr_output_charging_current.attr,
 	&dev_attr_output_current_allowed_values.attr,
 	&dev_attr_input_charging_current_mA.attr,
 	&dev_attr_charging_state.attr,
+	&dev_attr_input_cable_state.attr,
 	NULL
 };
 
