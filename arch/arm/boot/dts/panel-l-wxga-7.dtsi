@@ -58,6 +58,7 @@
 							       <1 160>;
 				nvidia,dsi-n-early-suspend-cmd = <2>;
 				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 					nvidia,out-width = <94>;
 					nvidia,out-height = <150>;
 					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;

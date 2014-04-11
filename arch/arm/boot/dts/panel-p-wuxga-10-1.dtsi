@@ -44,6 +44,7 @@
 					 <CMD_HS LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT PKT_LP LINE_STOP>,
 					 <CMD_HS LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT CMD_BLNK LEN_HBP CMD_RGB_24BPP LEN_HACTIVE3 CMD_BLNK LEN_HFP LINE_STOP>;
 				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 					nvidia,out-width = <217>;
 					nvidia,out-height = <135>;
 					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;

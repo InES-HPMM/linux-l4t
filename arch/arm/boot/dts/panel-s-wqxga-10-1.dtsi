@@ -74,6 +74,7 @@
 							<TEGRA_DSI_DELAY_MS 20>;
 				nvidia,dsi-n-suspend-cmd = <6>;
 				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 					nvidia,out-width = <216>;
 					nvidia,out-height = <135>;
 					nvidia,out-flags = <TEGRA_DC_OUT_ONE_SHOT_MODE TEGRA_DC_OUT_ONE_SHOT_LP_MODE>;
