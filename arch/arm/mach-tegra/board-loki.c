@@ -483,12 +483,26 @@ static void loki_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 	int modem_id = tegra_get_modem_id();
+	int rc = 0;
 
 	/* Device cable is detected through PMU Interrupt */
 	tegra_udc_pdata.support_pmu_vbus = true;
 	tegra_udc_pdata.vbus_extcon_dev_name = "palmas-extcon";
 	tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
 	tegra_ehci1_utmi_pdata.vbus_extcon_dev_name = "palmas-extcon";
+
+	if (board_info.board_id == BOARD_P2530 &&
+		board_info.sku == BOARD_SKU_FOSTER) {
+		rc = gpio_request(TEGRA_GPIO_PK5, "r8152_rst");
+		if (rc)
+			pr_err("RTL8152 gpio request failed:%d\n", rc);
+		rc = gpio_direction_output(TEGRA_GPIO_PK5, 0);
+		if (rc)
+			pr_err("RTL8152 gpio direction failed:%d\n", rc);
+		rc = gpio_direction_output(TEGRA_GPIO_PK5, 1);
+		if (rc)
+			pr_err("RTL8152 gpio direction failed:%d\n", rc);
+	}
 
 	/* Enable Y-Cable support */
 	tegra_ehci1_utmi_pdata.u_data.host.support_y_cable = true;
