@@ -4561,14 +4561,8 @@ static void nvi_shutdown(struct i2c_client *client)
 		}
 	}
 	inf->shutdown = true;
-	if (inf->inv_dev)
-		remove_sysfs_interfaces(inf);
 	free_irq(client->irq, inf);
 	mutex_unlock(&inf->mutex);
-	if (inf->idev)
-		input_unregister_device(inf->idev);
-	if ((INV_ITG3500 != inf->chip_type) && (inf->idev_dmp))
-		input_unregister_device(inf->idev_dmp);
 }
 
 static int nvi_remove(struct i2c_client *client)
@@ -4578,6 +4572,14 @@ static int nvi_remove(struct i2c_client *client)
 	nvi_shutdown(client);
 	inf = i2c_get_clientdata(client);
 	if (inf != NULL) {
+		mutex_lock(&inf->mutex);
+		if (inf->inv_dev)
+			remove_sysfs_interfaces(inf);
+		mutex_unlock(&inf->mutex);
+		if (inf->idev)
+			input_unregister_device(inf->idev);
+		if ((INV_ITG3500 != inf->chip_type) && (inf->idev_dmp))
+			input_unregister_device(inf->idev_dmp);
 		nvi_pm_exit(inf);
 		kfifo_free(&inf->trigger.timestamps);
 		kfree(inf);
