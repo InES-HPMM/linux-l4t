@@ -32,6 +32,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/pm_runtime.h>
+#include <linux/tegra_pm_domains.h>
 
 #ifndef CONFIG_ARM64
 #include <asm/gpio.h>
@@ -45,7 +46,6 @@
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <mach/pinmux.h>
-#include <mach/pm_domains.h>
 
 #include "sdhci-pltfm.h"
 

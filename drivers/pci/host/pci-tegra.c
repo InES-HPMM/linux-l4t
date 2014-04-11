@@ -48,13 +48,13 @@
 #include <linux/pci-tegra.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/tegra_pm_domains.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
 #include <asm/io.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
-#include <mach/pm_domains.h>
 #include <mach/io_dpd.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>

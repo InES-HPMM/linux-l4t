@@ -36,8 +36,8 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/hcd.h>
+#include <linux/tegra_pm_domains.h>
 
-#include <mach/pm_domains.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 
 #define USB_PHY_WAKEUP		0x408

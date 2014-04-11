@@ -69,7 +69,7 @@
 #endif
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #include <linux/tegra-powergate.h>
-#include <mach/pm_domains.h>
+#include <linux/tegra_pm_domains.h>
 #endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;

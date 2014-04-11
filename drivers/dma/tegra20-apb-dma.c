@@ -35,8 +35,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra_pm_domains.h>
 
-#include <mach/pm_domains.h>
 #include "dmaengine.h"
 
 #define TEGRA_APBDMA_GENERAL			0x0

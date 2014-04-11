@@ -44,8 +44,8 @@
 #include <linux/sched.h>
 #include <linux/memblock.h>
 #include <linux/anon_inodes.h>
+#include <linux/tegra_pm_domains.h>
 
-#include <mach/pm_domains.h>
 
 #include <linux/pm_qos.h>
 

@@ -16,6 +16,8 @@ obj-y += mc/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-y += pmc.o
 
+obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -48,8 +50,6 @@ obj-y += powergate-ops-txx.o
 obj-y += powergate-ops-t1xx.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
-obj-$(CONFIG_PM_GENERIC_DOMAINS) += pm_domains.o
-
 obj-y += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
@@ -76,6 +76,8 @@ obj-y += tegra_emc.o
 
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_emc.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra_emc_dt_parse.o
+
+obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 
 obj-y += flowctrl.o
 obj-y += reset.o

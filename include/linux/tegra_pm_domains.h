@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/pm_domains.h
+ * include/linux/tegra_pm_domains.h
  *
  * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -17,8 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef _MACH_TEGRA_PM_DOMAINS_H_
-#define _MACH_TEGRA_PM_DOMAINS_H_
+#ifndef _INCLUDE_TEGRA_PM_DOMAINS_H_
+#define _INCLUDE_TEGRA_PM_DOMAINS_H_
 
 #include <linux/clk.h>
 #include <linux/pm_domain.h>
@@ -45,4 +45,4 @@ static inline void tegra_pd_remove_device(struct device *dev) { }
 static inline void tegra_pd_add_sd(struct generic_pm_domain *sd) { }
 #endif /* CONFIG_TEGRA_MC_DOMAINS */
 
-#endif /* _MACH_TEGRA_PM_DOMAINS_H_ */
+#endif /* _INCLUDE_TEGRA_PM_DOMAINS_H_ */

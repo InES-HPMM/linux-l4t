@@ -30,7 +30,7 @@
 
 #include <linux/usb/tegra_usb_phy.h>
 
-#include <mach/pm_domains.h>
+#include <linux/tegra_pm_domains.h>
 #include <linux/pm_qos.h>
 
 /* HACK! This needs to come from DT */

@@ -41,10 +41,10 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra_pm_domains.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
-#include <mach/pm_domains.h>
 #include <mach/mc.h>
 #include <mach/xusb.h>
 

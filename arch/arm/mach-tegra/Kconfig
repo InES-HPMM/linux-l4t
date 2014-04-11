@@ -971,13 +971,6 @@ config ARCH_TEGRA_VIC
 	  Say Y here if the SOC supports the Tegra Video Image Compositor.
 	  Note that this not the same as the ARM Vectored Interrupt Controller.
 
-config TEGRA_MC_DOMAINS
-	bool "Enable MC domains"
-	depends on PM_GENERIC_DOMAINS
-	default n
-	help
-	  When enabled, clock gates MC when it's not needed.
-
 config TEGRA_USE_NCT
 	bool "Enable NCT partition access"
 	help
