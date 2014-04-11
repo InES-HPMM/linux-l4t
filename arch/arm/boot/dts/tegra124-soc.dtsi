@@ -626,22 +626,22 @@
 			nvidia,memory-clients = <23>;
 		};
 
-		gk20a {
-			compatible = "nvidia,tegra124-gk20a";
-			nvidia,host1x = <&host1x>;
-			reg = <0x57000000 0x01000000>,
-			      <0x58000000 0x01000000>,
-			      <0x538F0000 0x00001000>;
-			interrupts = <0 157 0x04
-				      0 158 0x04>;
-			nvidia,memory-clients = <30 31>;
-		};
-
 		nvavp {
 			compatible = "nvidia,tegra124-nvavp";
 			interrupts = <0 4 0x04>; /* mailbox AVP IRQ */
 			reg = <0x60001000 0x0000e200>;
 		};
+	};
+
+	gk20a {
+		compatible = "nvidia,tegra124-gk20a";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x57000000 0x0 0x01000000>,
+		      <0x0 0x58000000 0x0 0x01000000>,
+		      <0x0 0x538F0000 0x0 0x00001000>;
+		interrupts = <0 157 0x04
+			      0 158 0x04>;
+		nvidia,memory-clients = <30 31>;
 	};
 
 	xusb@70090000 {
