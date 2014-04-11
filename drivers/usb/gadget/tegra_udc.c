@@ -2477,7 +2477,6 @@ static void tegra_udc_non_std_charger_detect_work(struct work_struct *work)
 					non_std_charger_work.work);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	dr_controller_stop(udc);
 	tegra_udc_set_charger_type(udc, CONNECT_TYPE_NON_STANDARD_CHARGER);
 	tegra_usb_set_charging_current(udc);
 
