@@ -4,6 +4,8 @@
 #include "tegra124-platforms/tegra124-loki-fixed-e2530-0000-a00.dtsi"
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000d000 {
 		tps65913 {
 			gpadc {

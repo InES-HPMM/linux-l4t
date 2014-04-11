@@ -9,7 +9,6 @@
 / {
 	model = "t132loki";
 	compatible = "nvidia,t132loki", "nvidia,tegra132";
-	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
 
