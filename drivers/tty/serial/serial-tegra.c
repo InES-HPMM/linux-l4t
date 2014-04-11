@@ -120,6 +120,7 @@ struct tegra_uart_port {
 	bool					rx_timeout;
 	int					rx_in_progress;
 	int					symb_bit;
+	int					dma_req_sel;
 
 	struct dma_chan				*rx_dma_chan;
 	struct dma_chan				*tx_dma_chan;
@@ -908,8 +909,19 @@ static int tegra_uart_dma_channel_allocate(struct tegra_uart_port *tup,
 	int ret;
 	struct dma_slave_config dma_sconfig;
 
-	dma_chan = dma_request_slave_channel_reason(tup->uport.dev,
+	if (!tup->uport.dev->of_node) {
+		dma_cap_mask_t mask;
+		dma_sconfig.slave_id = tup->dma_req_sel;
+		dma_cap_zero(mask);
+		dma_cap_set(DMA_SLAVE, mask);
+		dma_chan = dma_request_channel(mask, NULL, NULL);
+		if (!dma_chan)
+			dma_chan = ERR_PTR(-EINVAL);
+	} else {
+		dma_chan = dma_request_slave_channel_reason(tup->uport.dev,
 						dma_to_memory ? "rx" : "tx");
+	}
+
 	if (IS_ERR(dma_chan)) {
 		ret = PTR_ERR(dma_chan);
 		dev_err(tup->uport.dev,
@@ -1308,6 +1320,7 @@ board_file:
 	} else {
 		tup->uport.line = pdev->id;
 		tup->enable_modem_interrupt = pdata->modem_interrupt;
+		tup->dma_req_sel = pdata->dma_req_selector;
 	}
 
 	u = &tup->uport;
