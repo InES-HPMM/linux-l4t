@@ -30,6 +30,7 @@
 			compatible = "capella,cm3217";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
+			illuminance,resolution = "7675";
 		};
 
 		ltr659@23 {
