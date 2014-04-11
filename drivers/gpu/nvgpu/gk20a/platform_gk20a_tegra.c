@@ -15,6 +15,7 @@
  * more details.
  */
 
+#include <linux/of_platform.h>
 #include <linux/debugfs.h>
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_edp.h>
@@ -94,6 +95,7 @@ int FXDIV(int x, int y)
 
 static int gk20a_tegra_channel_busy(struct platform_device *dev)
 {
+	struct gk20a_platform *platform = platform_get_drvdata(dev);
 	int ret = 0;
 
 	/* Explicitly turn on the host1x clocks
@@ -109,18 +111,19 @@ static int gk20a_tegra_channel_busy(struct platform_device *dev)
 	 * OS-Idle-Display-ON case
 	 * - The code below fixes this use-case
 	 */
-	if (to_platform_device(dev->dev.parent))
-		ret = nvhost_module_busy_ext(
-			to_platform_device(dev->dev.parent));
+	if (platform->g->host1x_dev)
+		ret = nvhost_module_busy_ext(platform->g->host1x_dev);
 
 	return ret;
 }
 
 static void gk20a_tegra_channel_idle(struct platform_device *dev)
 {
+	struct gk20a_platform *platform = platform_get_drvdata(dev);
+
 	/* Explicitly turn off the host1x clocks */
-	if (to_platform_device(dev->dev.parent))
-		nvhost_module_idle_ext(to_platform_device(dev->dev.parent));
+	if (platform->g->host1x_dev)
+		nvhost_module_idle_ext(platform->g->host1x_dev);
 }
 
 static void gk20a_tegra_secure_destroy(struct platform_device *pdev,
@@ -434,12 +437,33 @@ static void gk20a_tegra_debug_dump(struct platform_device *pdev)
 {
 	struct gk20a_platform *platform = gk20a_get_platform(pdev);
 	struct gk20a *g = platform->g;
-	nvhost_debug_dump_device(g->dev);
+	nvhost_debug_dump_device(g->host1x_dev);
 }
 
 static int gk20a_tegra_probe(struct platform_device *dev)
 {
 	struct gk20a_platform *platform = gk20a_get_platform(dev);
+	struct device_node *np = dev->dev.of_node;
+	const __be32 *host1x_ptr;
+	struct platform_device *host1x_pdev = NULL;
+
+	host1x_ptr = of_get_property(np, "nvidia,host1x", NULL);
+	if (host1x_ptr) {
+		struct device_node *host1x_node =
+			of_find_node_by_phandle(be32_to_cpup(host1x_ptr));
+
+		host1x_pdev = of_find_device_by_node(host1x_node);
+		if (!host1x_pdev) {
+			dev_warn(&dev->dev, "host1x device not available");
+			return -EPROBE_DEFER;
+		}
+
+	} else {
+		host1x_pdev = to_platform_device(dev->dev.parent);
+		dev_warn(&dev->dev, "host1x reference not found. assuming host1x to be parent");
+	}
+
+	platform->g->host1x_dev = host1x_pdev;
 
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13) {
 		t132_gk20a_tegra_platform.g = platform->g;
