@@ -1004,8 +1004,12 @@ static int tegra30_avp_compr_set_params(int id,
 
 	stream->source_buffer_size = (params->fragments *
 			params->fragment_size);
-	tegra30_avp_mem_alloc(&avp_stream->source_buf,
+	ret = tegra30_avp_mem_alloc(&avp_stream->source_buf,
 			      stream->source_buffer_size);
+	if (ret < 0) {
+		dev_err(audio_avp->dev, "Failed to allocate source buf memory");
+		return ret;
+	}
 
 	stream->source_buffer_system = avp_stream->source_buf.virt_addr;
 	stream->source_buffer_avp = avp_stream->source_buf.phys_addr;
