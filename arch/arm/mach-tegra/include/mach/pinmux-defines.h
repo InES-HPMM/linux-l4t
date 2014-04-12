@@ -246,6 +246,12 @@ enum tegra_pin_rcv_sel {
 	TEGRA_PIN_RCV_SEL_HIGH,
 };
 
+enum tegra_pin_e_io_hv {
+	TEGRA_PIN_E_IO_HV_DEFAULT = 0,
+	TEGRA_PIN_E_IO_HV_LOW,
+	TEGRA_PIN_E_IO_HV_HIGH,
+};
+
 enum tegra_vddio {
 	TEGRA_VDDIO_BB = 0,
 	TEGRA_VDDIO_LCD,
@@ -275,6 +281,7 @@ struct tegra_pingroup_config {
 	enum tegra_pin_od	od;
 	enum tegra_pin_ioreset	ioreset;
 	enum tegra_pin_rcv_sel	rcv_sel;
+	enum tegra_pin_e_io_hv	e_io_hv;
 };
 
 enum tegra_slew {

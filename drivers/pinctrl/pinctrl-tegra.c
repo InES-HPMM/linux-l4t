@@ -217,6 +217,7 @@ static const struct cfg_param {
 	{"nvidia,lock",			TEGRA_PINCONF_PARAM_LOCK},
 	{"nvidia,io-reset",		TEGRA_PINCONF_PARAM_IORESET},
 	{"nvidia,rcv-sel",		TEGRA_PINCONF_PARAM_RCV_SEL},
+	{"nvidia,e_io_hv",		TEGRA_PINCONF_PARAM_E_IO_HV},
 	{"nvidia,high-speed-mode",	TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE},
 	{"nvidia,schmitt",		TEGRA_PINCONF_PARAM_SCHMITT},
 	{"nvidia,low-power-mode",	TEGRA_PINCONF_PARAM_LOW_POWER_MODE},
@@ -486,6 +487,12 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 		*bank = g->rcv_sel_bank;
 		*reg = g->rcv_sel_reg;
 		*bit = g->rcv_sel_bit;
+		*width = 1;
+		break;
+	case TEGRA_PINCONF_PARAM_E_IO_HV:
+		*bank = g->e_io_hv_bank;
+		*reg = g->e_io_hv_reg;
+		*bit = g->e_io_hv_bit;
 		*width = 1;
 		break;
 	case TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE:
@@ -1146,6 +1153,23 @@ static const char *tegra_pinctrl_rcv_sel_name(unsigned long val)
 	}
 }
 
+static const char *tegra_pinctrl_e_io_hv_name(unsigned long val)
+{
+	switch (val) {
+	case TEGRA_PIN_E_IO_HV_DEFAULT:
+		return "IO_HV_DEFAULT";
+
+	case TEGRA_PIN_E_IO_HV_LOW:
+		return "HIGH(3.3V)";
+
+	case TEGRA_PIN_E_IO_HV_HIGH:
+		return "LOW(1.8V)";
+
+	default:
+		return "IO_HV_DEFAULT";
+	}
+}
+
 static const char *drive_pinmux_name(int pg)
 {
 	if (pg < 0 || !pmx || pg >=  pmx->soc->ngroups)
@@ -1284,7 +1308,7 @@ int tegra_pinctrl_pg_set_func(const struct tegra_pingroup_config *config)
 			g->name,  tegra_pinctrl_function_name(func));
 		return -EINVAL;
 	}
-	
+
 	ret = tegra_pinctrl_enable(pmx->pctl, func_dt, pg);
 	if (ret < 0) {
 		pr_err("Not able to set function %s for pin group %s\n",
@@ -1444,6 +1468,27 @@ int tegra_pinctrl_pg_set_rcv_sel(int pg, int rcv_sel)
 }
 EXPORT_SYMBOL(tegra_pinctrl_pg_set_rcv_sel);
 
+int tegra_pinctrl_pg_set_e_io_hv(int pg, int e_io_hv)
+{
+	int io_hv = (e_io_hv == TEGRA_PIN_E_IO_HV_LOW) ? 0 : 1;
+
+	if (!pmx) {
+		pr_err("Pingroup not registered yet\n");
+		return -EPROBE_DEFER;
+	}
+
+	if (pg < 0 || pg >= pmx->soc->ngroups)
+		return -ERANGE;
+
+	if (e_io_hv == TEGRA_PIN_E_IO_HV_DEFAULT)
+		return 0;
+
+	tegra_pinctrl_set_config(pmx->pctl, pg,
+		TEGRA_PINCONF_PARAM_E_IO_HV, io_hv);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_pinctrl_pg_set_e_io_hv);
+
 int tegra_pinctrl_pg_set_pullupdown(int pg, int pupd)
 {
 	if (!pmx) {
@@ -1477,6 +1522,7 @@ void tegra_pinctrl_pg_config_pingroup(
 	enum tegra_pin_od od	 = config->od;
 	enum tegra_pin_ioreset ioreset = config->ioreset;
 	enum tegra_pin_rcv_sel rcv_sel = config->rcv_sel;
+	enum tegra_pin_e_io_hv e_io_hv = config->e_io_hv;
 #endif
 	const struct tegra_pingroup *g;
 	int err;
@@ -1539,6 +1585,14 @@ void tegra_pinctrl_pg_config_pingroup(
 		if (err < 0)
 			pr_err("pinmux: can't set pingroup %s rcv_sel to %s: %d\n",
 			       g->name, tegra_pinctrl_rcv_sel_name(rcv_sel),
+				err);
+	}
+
+	if (g->e_io_hv_reg > 0) {
+		err = tegra_pinctrl_pg_set_e_io_hv(pg, e_io_hv);
+		if (err < 0)
+			pr_err("pinmux: can't set pingroup %s e_io_hv to %s: %d\n",
+				g->name, tegra_pinctrl_e_io_hv_name(e_io_hv),
 				err);
 	}
 #endif
@@ -1961,6 +2015,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 
 		if (pmx->soc->groups[i].tri_reg < 0) {
 			seq_puts(s, "TEGRA_TRI_NORMAL");
+			len = strlen("NORMAL");
 		} else {
 			reg = pmx_readl(pmx, pmx->soc->groups[i].tri_bank,
 					pmx->soc->groups[i].tri_reg);
@@ -1968,6 +2023,17 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 
 			seq_printf(s, "TEGRA_TRI_%s",
 					tegra_pinctrl_tri_name(tri));
+			len = strlen(tegra_pinctrl_tri_name(tri));
+		}
+		dbg_pad_field(s, 6 - len);
+
+		if (pmx->soc->groups[i].e_io_hv_reg > 0) {
+			unsigned long e_io_hv;
+			reg = pmx_readl(pmx, pmx->soc->groups[i].e_io_hv_bank,
+					pmx->soc->groups[i].e_io_hv_reg);
+			e_io_hv = (reg >> pmx->soc->groups[i].e_io_hv_bit) & 0x1;
+			seq_printf(s, "TEGRA_E_IO_HV_%s",
+				tegra_pinctrl_e_io_hv_name(e_io_hv));
 		}
 		seq_puts(s, "},\n");
 	}
@@ -1995,6 +2061,7 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	char *pbuf = &buf[0];
 	char *token;
 	struct tegra_pingroup_config pg_config;
+	const struct tegra_pingroup *g;
 	int i;
 
 	if (sizeof(buf) <= count)
@@ -2057,9 +2124,27 @@ static ssize_t dbg_pinmux_write(struct file *file,
 	}
 	pg_config.tristate = i;
 
-	pr_debug("pingroup=%d, func=%d, io=%d, pupd=%d, tristate=%d\n",
-			pg_config.pingroup, pg_config.func, pg_config.io,
-			pg_config.pupd, pg_config.tristate);
+	pr_debug("pingroup=%d, func=%d, io=%d, pupd=%d, tristate=%d, ",
+		pg_config.pingroup, pg_config.func, pg_config.io,
+		pg_config.pupd, pg_config.tristate);
+
+	g = &pmx->soc->groups[pg_config.pingroup];
+
+	if (g->e_io_hv_reg > 0) {
+		/* e_io_hv by name */
+		token = strsep(&pbuf, FIELD_DELIMITER);
+		i = !strcasecmp(token, "LOW(1.8V)") ? 0 :
+			!strcasecmp(token, "HIGH(3.3V)") ? 1 : -1;
+		if (i == -1) { /* no E_IO_HV matched with name */
+			pr_err("no E_IO_HV matched with name\n");
+			return -EINVAL;
+		}
+		pg_config.e_io_hv = i;
+		pr_debug("e_io_hv=%d", pg_config.e_io_hv);
+		tegra_pinctrl_pg_set_e_io_hv(pg_config.pingroup,
+						pg_config.e_io_hv);
+	}
+	pr_debug("\n");
 	tegra_pinctrl_pg_set_func(&pg_config);
 	tegra_pinctrl_pg_set_pullupdown(pg_config.pingroup, pg_config.pupd);
 	tegra_pinctrl_pg_set_tristate(pg_config.pingroup, pg_config.tristate);

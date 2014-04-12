@@ -1,7 +1,7 @@
 /*
  * Driver for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,6 +54,9 @@ struct tegra_function {
  * @rcv_sel_reg:	Receiver select offset. -1 if unsupported.
  * @rcv_sel_bank:	Receiver select bank. 0 if unsupported.
  * @rcv_sel_bit:	Receiver select bit. 0 if unsupported.
+ * @e_io_hv_reg:	E_IO_HV register offset. -1 if unsupported.
+ * @e_io_hv_bank:	E_IO_HV register bank. 0 if unsupported.
+ * @e_io_hv_bit:	E_IO_HV register bit. 0 if unsupported.
  * @drv_reg:		Drive fields register offset. -1 if unsupported.
  *			This register contains the hsm, schmitt, lpmd, drvdn,
  *			drvup, slwr, and slwf parameters.
@@ -97,6 +100,7 @@ struct tegra_pingroup {
 	s16 lock_reg;
 	s16 ioreset_reg;
 	s16 rcv_sel_reg;
+	s16 e_io_hv_reg;
 	s16 drv_reg;
 	s16 drvtype_reg;
 	int mux_bank;
@@ -106,6 +110,7 @@ struct tegra_pingroup {
 	int odrain_bank;
 	int ioreset_bank;
 	int rcv_sel_bank;
+	int e_io_hv_bank;
 	int lock_bank;
 	int drv_bank;
 	int drvtype_bank;
@@ -117,6 +122,7 @@ struct tegra_pingroup {
 	int lock_bit;
 	int ioreset_bit;
 	int rcv_sel_bit;
+	int e_io_hv_bit;
 	int hsm_bit;
 	int schmitt_bit;
 	int lpmd_bit;

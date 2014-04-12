@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tegra/include/mach/pinmux.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -68,6 +68,12 @@ static inline int tegra_pinmux_set_rcv_sel(
 		int pg, enum tegra_pin_rcv_sel rcv_sel)
 {
 	return tegra_pinctrl_pg_set_rcv_sel(pg, rcv_sel);
+}
+
+static inline int tegra_pinmux_set_e_io_hv(
+		int pg, enum tegra_pin_e_io_hv e_io_hv)
+{
+	return tegra_pinctrl_pg_set_e_io_hv(pg, e_io_hv);
 }
 
 static inline int tegra_pinmux_set_pullupdown(

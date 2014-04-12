@@ -1,7 +1,7 @@
 /*
  * Pincontrol driver interface.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -32,6 +32,7 @@ extern int tegra_pinctrl_pg_set_lock(int pg, int lock);
 extern int tegra_pinctrl_pg_set_od(int pg, int od);
 extern int tegra_pinctrl_pg_set_ioreset(int pg, int ioreset);
 extern int tegra_pinctrl_pg_set_rcv_sel(int pg, int rcv_sel);
+extern int tegra_pinctrl_pg_set_e_io_hv(int pg, int e_io_hv);
 extern int tegra_pinctrl_pg_set_pullupdown(int pg, int pupd);
 extern void tegra_pinctrl_pg_config_pingroup(
 	const struct tegra_pingroup_config *config);

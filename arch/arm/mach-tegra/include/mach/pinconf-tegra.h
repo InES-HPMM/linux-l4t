@@ -1,7 +1,7 @@
 /*
  * pinctrl configuration definitions for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,6 +31,8 @@ enum tegra_pinconf_param {
 	TEGRA_PINCONF_PARAM_IORESET,
 	/* argument: Boolean */
 	TEGRA_PINCONF_PARAM_RCV_SEL,
+	/* argument: Boolean */
+	TEGRA_PINCONF_PARAM_E_IO_HV,
 	/* argument: Boolean */
 	TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
 	/* argument: Boolean */
