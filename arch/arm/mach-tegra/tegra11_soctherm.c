@@ -398,9 +398,6 @@ static const int precision; /* default 0 -> low precision */
 #define CAR_SUPER_CLK_DIVIDER_REGISTER()	(IS_T13X ? \
 						 CAR13_SUPER_CCLKG_DIVIDER : \
 						 CAR_SUPER_CCLKG_DIVIDER)
-#define THROT_GLOBAL_CFG_REGISTER()		(IS_T13X ? \
-						 THROT13_GLOBAL_CFG : \
-						 THROT_GLOBAL_CFG)
 #define THROT_PSKIP_CTRL(throt, dev)		(THROT_PSKIP_CTRL_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
@@ -506,22 +503,19 @@ static inline u32 soctherm_readl(u32 reg)
 	return __raw_readl(reg_soctherm_base + reg);
 }
 
-static inline void throtctl_writel(u32 value, u32 reg)
+/* XXX Temporary until CCROC accesses are split out */
+static void clk_reset13_writel(u32 value, u32 reg)
 {
-	if (IS_T13X) {
-		__raw_writel(value, clk13_rst_base + reg);
-		__raw_readl(clk13_rst_base + reg);
-		return;
-	} else
-		soctherm_writel(value, reg);
+	BUG_ON(!IS_T13X);
+	__raw_writel(value, clk13_rst_base + reg);
+	__raw_readl(clk13_rst_base + reg);
 }
 
-static inline u32 throtctl_readl(u32 reg)
+/* XXX Temporary until CCROC accesses are split out */
+static u32 clk_reset13_readl(u32 reg)
 {
-	if (IS_T13X)
-		return __raw_readl(clk13_rst_base + reg);
-	else
-		return soctherm_readl(reg);
+	BUG_ON(!IS_T13X);
+	return __raw_readl(clk13_rst_base + reg);
 }
 
 static inline void clk_reset_writel(u32 value, u32 reg)
@@ -2085,15 +2079,15 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
 	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
 
-	r = throtctl_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
+	r = clk_reset13_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
 	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
-	throtctl_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
+	clk_reset13_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
 
-	r = throtctl_readl(THROT13_PSKIP_CTRL_CPU(throt_level));
+	r = clk_reset13_readl(THROT13_PSKIP_CTRL_CPU(throt_level));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
 	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
 	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-	throtctl_writel(r, THROT13_PSKIP_CTRL_CPU(throt_level));
+	clk_reset13_writel(r, THROT13_PSKIP_CTRL_CPU(throt_level));
 
 	return true;
 }
@@ -2904,7 +2898,10 @@ static int soctherm_init_platform_data(void)
 	}
 
 	r = REG_SET(0, THROT_GLOBAL_ENB, 1);
-	throtctl_writel(r, THROT_GLOBAL_CFG_REGISTER());
+	if (IS_T13X)
+		clk_reset13_writel(r, THROT13_GLOBAL_CFG);
+	else
+		soctherm_writel(r, THROT_GLOBAL_CFG);
 
 	if (plat_data.throttle[THROTTLE_HEAVY].priority <
 	    plat_data.throttle[THROTTLE_LIGHT].priority)
@@ -3644,8 +3641,8 @@ static int regs_show(struct seq_file *s, void *data)
 			}
 
 			if (IS_T13X && j == THROTTLE_DEV_CPU)
-				r = throtctl_readl(
-						THROT13_PSKIP_CTRL_CPU(level));
+				r = clk_reset13_readl(
+					THROT13_PSKIP_CTRL_CPU(level));
 			else
 				r = soctherm_readl(THROT_PSKIP_CTRL(i, j));
 
@@ -3657,8 +3654,8 @@ static int regs_show(struct seq_file *s, void *data)
 			seq_printf(s, "%7u  ", n);
 
 			if (IS_T13X && j == THROTTLE_DEV_CPU)
-				r = throtctl_readl(
-						THROT13_PSKIP_RAMP_CPU(level));
+				r = clk_reset13_readl(
+					THROT13_PSKIP_RAMP_CPU(level));
 			else
 				r = soctherm_readl(THROT_PSKIP_RAMP(i, j));
 
