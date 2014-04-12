@@ -2011,57 +2011,32 @@ static irqreturn_t soctherm_edp_isr(int irq, void *arg)
 }
 
 /**
- * throttlectl_cpu() - programs CPU pulse skippers' configuration
- * @throt	soctherm_throttle_id describing the level of throttling
+ * throttlectl_cpu_mn() - program CPU pulse skipper configuration
+ * @throt: soctherm_throttle_id describing the level of throttling
  *
- * Pulse skippers are used to throttle clock frequencies.
- * This function programs the pulse skippers based on @throt and platform data.
+ * Pulse skippers are used to throttle clock frequencies.  This
+ * function programs the pulse skippers based on @throt and platform
+ * data.  This function is used for CPUs that have "remote" pulse
+ * skipper control, e.g., the CPU pulse skipper is controlled by the
+ * SOC_THERM IP block.  (SOC_THERM is located outside the CPU
+ * complex.)
  *
- * For T132 this function programs soctherm's interface to Denver:CCROC NV_THERM
- * in terms of Low, Medium and Heavy throttling vectors. PSKIP_BYPASS mode is
- * set as required per HW spec.
- *
- * Return: boolean true if HW was programmed
+ * Return: boolean true if HW was programmed, or false if the desired
+ * configuration is not supported.
  */
-static bool throttlectl_cpu(enum soctherm_throttle_id throt)
+static bool throttlectl_cpu_mn(enum soctherm_throttle_id throt)
 {
-	u32 r, throt_vect = 0;
-	int throt_level = 0;
-
+	u32 r;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
 	if (!dev->enable)
 		return false;
 
-	if (IS_T13X) {
-		/* Denver:CCROC NV_THERM interface N:3 Mapping */
-		if (!strcmp(dev->throttling_depth, "heavy_throttling")) {
-			throt_level = THROT_LEVEL_HVY;
-			throt_vect = THROT_VECT_HVY;
-		} else if (!strcmp(dev->throttling_depth,
-						"medium_throttling")) {
-			throt_level = THROT_LEVEL_MED;
-			throt_vect = THROT_VECT_MED;
-		} else {
-			throt_level = THROT_LEVEL_LOW;
-			throt_vect = THROT_VECT_LOW;
-		}
-	}
-
-	if (dev->depth)
-		THROT_DEPTH(dev, dev->depth);
-
 	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-	/* for T32: setup throttle vector in soctherm register */
-	if (!IS_T13X) {
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-	} else {
-		r = REG_SET(r, THROT_PSKIP_CTRL_VECT_CPU, throt_vect);
-		r = REG_SET(r, THROT_PSKIP_CTRL_VECT2_CPU, throt_vect);
-	}
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
 	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 
 	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
@@ -2069,22 +2044,75 @@ static bool throttlectl_cpu(enum soctherm_throttle_id throt)
 	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
 	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
 
-	if (IS_T13X) {
-		/* for T32: setup actual depth in ccroc nv_therm register */
-		r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
-		r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
-		soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+	return true;
+}
 
-		r = throtctl_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
-		r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
-		throtctl_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
+/**
+ * throttlectl_cpu_level() - program CPU pulse skipper configuration
+ * @throt: soctherm_throttle_id describing the level of throttling
+ *
+ * Pulse skippers are used to throttle clock frequencies.  This
+ * function programs the pulse skippers based on @throt and platform
+ * data.  This function is used on SoCs which have CPU-local pulse
+ * skipper control, such as T13x. It programs soctherm's interface to
+ * Denver:CCROC NV_THERM in terms of Low, Medium and Heavy throttling
+ * vectors. PSKIP_BYPASS mode is set as required per HW spec.
+ *
+ * It's also necessary to set up the CPU-local NV_THERM instance with
+ * the M/N values desired for each level.  This function does this
+ * also, although it should be handled by a separate driver.
+ *
+ * Return: boolean true if HW was programmed, or false if the desired
+ * configuration is not supported.
+ */
+static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
+{
+	u32 r, throt_vect = 0;
+	int throt_level = 0;
+	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
-		r = throtctl_readl(THROT13_PSKIP_CTRL_CPU(throt_level));
-		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
-		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-		throtctl_writel(r, THROT13_PSKIP_CTRL_CPU(throt_level));
+	if (!dev->enable)
+		return false;
+
+	/* Denver:CCROC NV_THERM interface N:3 Mapping */
+	if (!strcmp(dev->throttling_depth, "heavy_throttling")) {
+		throt_level = THROT_LEVEL_HVY;
+		throt_vect = THROT_VECT_HVY;
+	} else if (!strcmp(dev->throttling_depth, "medium_throttling")) {
+		throt_level = THROT_LEVEL_MED;
+		throt_vect = THROT_VECT_MED;
+	} else {
+		throt_level = THROT_LEVEL_LOW;
+		throt_vect = THROT_VECT_LOW;
 	}
+
+	if (dev->depth)
+		THROT_DEPTH(dev, dev->depth);
+
+	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+	/* for T132: setup throttle vector in soctherm register */
+	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_CPU, throt_vect);
+	r = REG_SET(r, THROT_PSKIP_CTRL_VECT2_CPU, throt_vect);
+	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
+
+	/* No point programming the sequencer, since we're bypassing it */
+
+	/* for T132: setup actual depth in ccroc nv_therm register */
+	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
+
+	r = throtctl_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
+	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+	throtctl_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
+
+	r = throtctl_readl(THROT13_PSKIP_CTRL_CPU(throt_level));
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
+	throtctl_writel(r, THROT13_PSKIP_CTRL_CPU(throt_level));
 
 	return true;
 }
@@ -2178,7 +2206,8 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 	bool throt_enable;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 
-	throt_enable = throttlectl_cpu(throt);
+	throt_enable = (IS_T13X) ? throttlectl_cpu_level(throt) :
+		throttlectl_cpu_mn(throt);
 	throt_enable |= throttlectl_gpu(throt);
 
 	r = REG_SET(0, THROT_PRIORITY_LITE_PRIO, data->priority);
