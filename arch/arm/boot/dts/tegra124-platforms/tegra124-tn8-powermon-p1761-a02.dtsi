@@ -16,13 +16,14 @@
 
 / {
 	i2c@7000c400 {
-		ina3221x@40 {
-		compatible = "ti,ina3221x";
+		ina3221x: ina3221x@40 {
+			compatible = "ti,ina3221x";
 			reg = <0x40>;
 			ti,trigger-config = <0x7203>;
 			ti,continuous-config = <0x7c07>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			#io-channel-cells = <1>;
 
 			channel@0 {
 				reg = <0x0>;
