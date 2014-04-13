@@ -38,6 +38,8 @@
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/power/reset/system-pmic.h>
 #include <linux/wakelock.h>
+#include <linux/iio/consumer.h>
+#include <linux/iio/iio.h>
 
 #define JETI_TEMP_COLD		0
 #define JETI_TEMP_COOL		10
@@ -80,6 +82,8 @@ struct battery_gauge_dev {
 	int				battery_capacity;
 	int				battery_snapshot_voltage;
 	int				battery_snapshot_capacity;
+	const char			*bat_curr_channel_name;
+	struct iio_channel		*bat_current_iio_channel;
 };
 
 struct battery_gauge_dev *bg_temp;
@@ -516,6 +520,36 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_battery_temperature);
 
+int battery_gauge_get_battery_current(struct battery_gauge_dev *bg_dev,
+	int *current_ma)
+{
+	int ret;
+
+	if (!bg_dev || !bg_dev->bat_curr_channel_name)
+		return -EINVAL;
+
+	if (!bg_dev->bat_current_iio_channel)
+		bg_dev->bat_current_iio_channel =
+			iio_channel_get(bg_dev->parent_dev,
+					bg_dev->bat_curr_channel_name);
+	if (!bg_dev->bat_current_iio_channel || IS_ERR(bg_dev->bat_current_iio_channel)) {
+		dev_info(bg_dev->parent_dev,
+			"Battery IIO current channel %s not registered yet\n",
+			bg_dev->bat_curr_channel_name);
+		bg_dev->bat_current_iio_channel = NULL;
+		return -ENODEV;
+	}
+
+	ret = iio_read_channel_processed(bg_dev->bat_current_iio_channel,
+			current_ma);
+	if (ret < 0) {
+		dev_err(bg_dev->parent_dev, " The channel read failed: %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_gauge_get_battery_current);
+
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	struct battery_gauge_info *bgi, void *drv_data)
 {
@@ -547,6 +581,9 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	bg_dev->parent_dev = dev;
 	bg_dev->drv_data = drv_data;
 	bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
+
+	if (bgi->current_channel_name)
+		bg_dev->bat_curr_channel_name = bgi->current_channel_name;
 
 	if (bg_dev->tz_name) {
 		bg_dev->battery_tz = thermal_zone_device_find_by_name(
