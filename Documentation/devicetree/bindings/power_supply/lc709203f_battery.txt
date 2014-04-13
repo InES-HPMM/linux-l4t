@@ -34,6 +34,16 @@ if battery thermistor isnot connected to device and temperature is read from
 other source then following properties are required:
 	onsemi,tz-name
 
+Battery current monitoring:
+	Driver supports the battery current monitoring through IIO interface
+	and if platform supports it then following properties are required to
+	enable it as per iio-binding.txt.
+
+	io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
+	io-channel-names = "battery-current";
+
+	Here iio-channel name for battry current is "battery-current".
+
 Example:
 
 	lc709203f@0b {
