@@ -388,7 +388,7 @@ bool tegra_powergate_is_powered(int id)
 	u32 status;
 
 	if (!pg_ops) {
-		pr_info("This SOC doesn't support powergating\n");
+		pr_debug("This SOC doesn't support powergating\n");
 		return -EINVAL;
 	}
 
