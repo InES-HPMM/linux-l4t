@@ -29,15 +29,7 @@
 #include <asm/proc-fns.h>
 #include <asm/suspend.h>
 
-struct psci_operations {
-	int (*cpu_suspend)(struct psci_power_state state,
-			   unsigned long entry_point);
-	int (*cpu_off)(struct psci_power_state state);
-	int (*cpu_on)(unsigned long cpuid, unsigned long entry_point);
-	int (*migrate)(unsigned long cpuid);
-};
-
-static struct psci_operations psci_ops;
+struct psci_operations psci_ops;
 
 static int (*invoke_psci_fn)(u64, u64, u64, u64);
 
