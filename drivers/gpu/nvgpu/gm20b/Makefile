@@ -1,13 +1,11 @@
 GCOV_PROFILE := y
-ccflags-y += -Idrivers/video/tegra/host
+ccflags-y += -Idrivers/gpu/nvgpu
 ccflags-y += -Wno-multichar
 
-nvhost-gm20b-objs  = \
+obj-$(CONFIG_GK20A)  = \
 	hal_gm20b.o \
 	ltc_gm20b.o \
 	gr_gm20b.o \
 	gr_gm20b.o \
 	fb_gm20b.o \
 	gm20b_gating_reglist.o
-
-obj-$(CONFIG_TEGRA_GK20A) += nvhost-gm20b.o
