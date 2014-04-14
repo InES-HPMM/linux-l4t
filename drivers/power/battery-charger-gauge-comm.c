@@ -611,12 +611,13 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	bg_dev->ops = bgi->bg_ops;
 	bg_dev->parent_dev = dev;
 	bg_dev->drv_data = drv_data;
-	bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
+	bg_dev->tz_name = NULL;
 
 	if (bgi->current_channel_name)
 		bg_dev->bat_curr_channel_name = bgi->current_channel_name;
 
-	if (bg_dev->tz_name) {
+	if (bgi->tz_name) {
+		bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
 		bg_dev->battery_tz = thermal_zone_device_find_by_name(
 			bg_dev->tz_name);
 		if (!bg_dev->battery_tz)
