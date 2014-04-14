@@ -26,7 +26,7 @@
 
 /* arm_debug_dis */
 #define JTAG_START_OFFSET		0x0
-#define JTAG_START_BIT			3
+#define JTAG_START_BIT			12
 
 /* security_mode */
 #define ODM_PROD_START_OFFSET		0x0
