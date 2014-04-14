@@ -1716,6 +1716,7 @@ end:
 static int bq2419x_suspend(struct device *dev)
 {
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
+	int next_wakeup = 0;
 	int ret;
 
 	if (!bq2419x->battery_presense)
@@ -1723,34 +1724,42 @@ static int bq2419x_suspend(struct device *dev)
 
 	battery_charging_restart_cancel(bq2419x->bc_dev);
 
+	if (!bq2419x->cable_connected || bq2419x->in_current_limit <= 500)
+		goto charge_500;
+
 	ret = bq2419x_reset_wdt(bq2419x, "Suspend");
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Reset WDT failed: %d\n", ret);
 
-	if (bq2419x->cable_connected &&
-		!bq2419x->disable_suspend_during_charging &&
-		(bq2419x->in_current_limit > 500)) {
-			battery_charging_wakeup(bq2419x->bc_dev,
-					bq2419x->wdt_refresh_timeout);
-	} else if (bq2419x->cable_connected &&
-		bq2419x->auto_recharge_time_supend &&
-		(bq2419x->in_current_limit > 500) &&
-		(bq2419x->chg_status == BATTERY_CHARGING_DONE)){
-			battery_charging_wakeup(bq2419x->bc_dev,
-					bq2419x->auto_recharge_time_supend);
-			ret = bq2419x_set_charging_current_suspend(
-					bq2419x, 500);
-			if (ret < 0)
-				dev_err(bq2419x->dev,
-				"Configuration of charging failed: %d\n", ret);
-	} else {
-		ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
-		if (ret < 0)
+	switch (bq2419x->chg_status) {
+	case BATTERY_CHARGING_DONE:
+		next_wakeup = bq2419x->auto_recharge_time_supend;
+		break;
+	case BATTERY_CHARGING:
+		if (bq2419x->disable_suspend_during_charging) {
 			dev_err(bq2419x->dev,
-				"Configuration of charging failed: %d\n", ret);
+				"ERROR: Device suspended during charging\n");
+			next_wakeup = bq2419x->auto_recharge_time_supend;
+		} else {
+			next_wakeup = bq2419x->wdt_refresh_timeout;
+		}
+		break;
+	default:
+		break;
 	}
 
+	if (next_wakeup)
+		battery_charging_wakeup(bq2419x->bc_dev, next_wakeup);
+
+	if (next_wakeup == bq2419x->auto_recharge_time_supend)
+		goto charge_500;
+
 	return 0;
+charge_500:
+	ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "Config of charging failed: %d\n", ret);
+	return ret;
 }
 
 static int bq2419x_resume(struct device *dev)
