@@ -175,6 +175,7 @@
 #define AFI_MSG_PM_PME_MASK					0x00100010
 #define AFI_MSG_INTX_MASK					0x1f001f00
 #define AFI_MSG_PM_PME0						(1 << 4)
+#define AFI_MSG_RP_INT_MASK					0x10001000
 
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
@@ -801,7 +802,9 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 	schedule_work(&tegra_pcie.hotplug_detect);
 	return IRQ_HANDLED;
 }
-
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static bool raise_emc_freq(void);
+#endif
 static void notify_device_isr(u32 mesg)
 {
 	pr_debug(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
@@ -828,6 +831,10 @@ static void handle_sb_intr(void)
 		rp_writel(mesg, NV_PCIE2_RP_RSR, idx);
 	} else
 		afi_writel(mesg, AFI_MSG_0);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (mesg & AFI_MSG_RP_INT_MASK)
+		raise_emc_freq();
+#endif
 }
 
 static irqreturn_t tegra_pcie_isr(int irq, void *arg)
@@ -1465,6 +1472,7 @@ retry:
 }
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static bool t210_war;
 static bool is_all_gen2(void)
 {
 	struct pci_dev *pdev = NULL;
@@ -1479,13 +1487,32 @@ static bool is_all_gen2(void)
 	}
 	return true;
 }
+static bool raise_emc_freq(void)
+{
+	/* raise emc freq to 508MHz to reach expected gen2 */
+	/* bandwidth if all have gen2 enabled, bug#1452749 */
+	if (t210_war && is_all_gen2()) {
+		struct clk *emc_clk;
+		emc_clk = clk_get_sys("tegra_pcie", "emc");
+		if (IS_ERR_OR_NULL(emc_clk)) {
+			pr_err("unable to get emc clk\n");
+			goto fail;
+		}
+		if (clk_enable(emc_clk)) {
+			pr_err("emc clk enable failed\n");
+			goto fail;
+		}
+		clk_set_rate(emc_clk, 508000000);
+	}
+fail:
+	return;
+}
 #endif
 static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 {
 	unsigned int data;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	int lane_owner;
-	bool t210_war;
 #endif
 	struct pci_dev *pdev = NULL;
 
@@ -1504,21 +1531,7 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
 				pdev->msi_enabled = 0;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		/* raise emc freq to 508MHz to reach expected gen2 */
-		/* bandwidth if all have gen2 enabled, bug#1452749 */
-		if (t210_war && is_all_gen2()) {
-			struct clk *emc_clk;
-			emc_clk = clk_get_sys("tegra_pcie", "emc");
-			if (IS_ERR_OR_NULL(emc_clk)) {
-				pr_err("unable to get emc clk\n");
-				goto fail;
-			}
-			if (clk_enable(emc_clk)) {
-				pr_err("emc clk enable failed\n");
-				goto fail;
-			}
-			clk_set_rate(emc_clk, 508000000);
-		}
+		raise_emc_freq();
 #endif
 	} else {
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
@@ -1554,8 +1567,6 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA, index);
 #endif
 	}
-fail:
-	return;
 }
 
 /* Enable various features of root port */
