@@ -113,7 +113,8 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 	return IRQ_HANDLED;
 }
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC) \
+	|| defined(CONFIG_ARCH_TEGRA_12x_SOC)
 
 #define TIMER_PTV			0
  #define TIMER_EN			(1 << 31)
