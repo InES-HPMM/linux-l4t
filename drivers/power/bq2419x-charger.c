@@ -623,21 +623,43 @@ static void bq2419x_wdt_restart_wq(struct work_struct *work)
 
 }
 
-static int bq2419x_reset_safety_timer(struct bq2419x_chip *bq2419x)
+static int bq2419x_handle_safety_timer_expire(struct bq2419x_chip *bq2419x)
 {
+	struct device *dev = bq2419x->dev;
+	unsigned int val;
 	int ret;
 
+	/* Reset saftty timer by setting 0 and then making 1 */
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
 			BQ2419X_EN_SFT_TIMER_MASK, 0);
 	if (ret < 0) {
-		dev_err(bq2419x->dev, "TIME_CTRL_REG update failed: %d\n", ret);
+		dev_err(dev, "TIME_CTRL_REG update failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
 			BQ2419X_EN_SFT_TIMER_MASK, BQ2419X_EN_SFT_TIMER_MASK);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "TIME_CTRL_REG update failed: %d\n", ret);
+	if (ret < 0) {
+		dev_err(dev, "TIME_CTRL_REG update failed: %d\n", ret);
+		return ret;
+	}
+
+	/* Reenable charging if get disabled */
+	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &val);
+	if (ret < 0) {
+		dev_err(dev, "PWR_ON_REG read failed %d", ret);
+		return ret;
+	}
+
+	if ((val & BQ2419X_ENABLE_CHARGE_MASK) == BQ2419X_DISABLE_CHARGE) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+		if (ret < 0) {
+			dev_err(dev, "PWR_ON_REG update failed %d\n", ret);
+			return ret;
+		}
+	}
 	return ret;
 }
 
@@ -697,30 +719,11 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		break;
 	case BQ2419x_FAULT_CHRG_SAFTY:
 		bq_chg_err(bq2419x, "Safety timer expiration\n");
-		ret = bq2419x_reset_safety_timer(bq2419x);
+		ret = bq2419x_handle_safety_timer_expire(bq2419x);
 		if (ret < 0) {
-			dev_err(bq2419x->dev, "Reset safety timer failed %d\n",
-							ret);
-			return ret;
-		}
-
-		ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &val);
-		if (ret < 0) {
-			dev_err(bq2419x->dev, "PWR_ON_REG read failed %d",
-							ret);
-			return ret;
-		}
-
-		if ((val & BQ2419X_ENABLE_CHARGE_MASK) ==
-						BQ2419X_DISABLE_CHARGE) {
-			ret = regmap_update_bits(bq2419x->regmap,
-				BQ2419X_PWR_ON_REG, BQ2419X_ENABLE_CHARGE_MASK,
-				BQ2419X_ENABLE_CHARGE);
-			if (ret < 0) {
-				dev_err(bq2419x->dev,
-					"PWR_ON_REG update failed, %d\n", ret);
-				return ret;
-			}
+			dev_err(bq2419x->dev,
+				"Handling of safty timer expire failed: %d\n",
+				ret);
 		}
 		check_chg_state = 1;
 		break;
@@ -1801,32 +1804,13 @@ static int bq2419x_resume(struct device *dev)
 			dev_err(bq2419x->dev, "Reset WDT failed: %d\n", ret);
 	}
 
-	if(val & BQ2419x_FAULT_CHRG_SAFTY) {
+	if (val & BQ2419x_FAULT_CHRG_SAFTY) {
 		bq_chg_err(bq2419x, "Safety timer Expired\n");
-		ret = bq2419x_reset_safety_timer(bq2419x);
+		ret = bq2419x_handle_safety_timer_expire(bq2419x);
 		if (ret < 0) {
 			dev_err(bq2419x->dev,
-				"Reset safety timer failed %d\n", ret);
-			return ret;
-		}
-
-		ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &val);
-		if (ret < 0) {
-			dev_err(bq2419x->dev,
-				"PWR_ON_REG read failed %d", ret);
-			return ret;
-		}
-
-		if ((val & BQ2419X_ENABLE_CHARGE_MASK) ==
-					BQ2419X_DISABLE_CHARGE) {
-			ret = regmap_update_bits(bq2419x->regmap,
-				BQ2419X_PWR_ON_REG, BQ2419X_ENABLE_CHARGE_MASK,
-				BQ2419X_ENABLE_CHARGE);
-			if (ret < 0) {
-				dev_err(bq2419x->dev,
-					"PWR_ON_REG update failed, %d\n", ret);
-				return ret;
-			}
+				"Handling of safty timer expire failed: %d\n",
+				ret);
 		}
 	}
 
