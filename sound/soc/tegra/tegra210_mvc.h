@@ -241,10 +241,6 @@ enum T210_MVC_PEAK_TYPE {
 #define TEGRA210_MVC_MAX_PEAK_WIN_SIZE	((2<<24)-1)
 #define TEGRA210_MVC_NUMBER_OF_COEFS		9
 
-enum T210_MVC_CURVE_TYPE {
-	MVC_CURVE_POLYNOMIAL = 0,
-	MVC_CURVE_LINEAR_RAMP = 1,
-};
 
 enum mvc_switch_type {
 	DURATION_SWITCH = 1,
@@ -260,6 +256,10 @@ enum MVC_CONFIG_ERROR {
 	DURATION_CONFIG_ERROR,
 };
 
+enum T210_MVC_RND_TYPE {
+	MVC_RND_BIASED = 0,
+	MVC_RND_UN_BIASED = 1,
+};
 
 /* MVC APIs */
 int tegra210_mvc_get(enum tegra210_ahub_cifs *cif);

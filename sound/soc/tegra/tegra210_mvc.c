@@ -127,15 +127,13 @@ int tegra210_mvc_enable(enum tegra210_ahub_cifs cif, bool en)
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
 	int cnt = AHUB_OP_MAX_RETRY;
 
-	dev_vdbg(mvc->dev, "%s MVC enable %d count %d",
+	dev_vdbg(mvc->dev, "%s MVC enable en=%d count %d",
 		 __func__, en, mvc->enable_count);
 
 	if (en) {
 		mvc->enable_count++;
 		if (mvc->enable_count > 1)
 			return 0;
-		/* reset MVC before enabling data flow */
-		tegra210_mvc_reset(cif);
 	} else if (mvc->enable_count > 0) {
 		mvc->enable_count--;
 		if (mvc->enable_count > 0)
@@ -493,19 +491,23 @@ int tegra210_mvc_set_switch(enum tegra210_ahub_cifs cif,
 	dev_vdbg(mvc->dev, "%s mvc id %d set switch %d", __func__, id,
 		switch_type);
 	if (switch_type & DURATION_SWITCH) {
+		dev_vdbg(mvc->dev, "%s mvc id %d set dur_switch %d reg update",
+		__func__, id, switch_type);
 		regmap_update_bits(mvc->regmap, TEGRA210_MVC_SWITCH,
 			TEGRA210_MVC_SWITCH_DURATION_SET,
 			(switch_data & DURATION_SWITCH) ?
 				TEGRA210_MVC_SWITCH_DURATION_SET : 0);
 	}
 	if (switch_type & COEFF_SWITCH) {
+		dev_vdbg(mvc->dev, "%s mvc id %d set coef_switch %d reg update",
+		__func__, id, switch_type);
 		regmap_update_bits(mvc->regmap, TEGRA210_MVC_SWITCH,
 			TEGRA210_MVC_SWITCH_COEF_SET,
 			(switch_data & COEFF_SWITCH) ?
 			TEGRA210_MVC_SWITCH_COEF_SET : 0);
 	}
 	if (switch_type & VOLUME_SWITCH) {
-		dev_vdbg(mvc->dev, "%s mvc id %d set switch %d reg update ",
+		dev_vdbg(mvc->dev, "%s mvc id %d set vol_switch %d reg update ",
 		__func__, id, switch_type);
 		regmap_update_bits(mvc->regmap, TEGRA210_MVC_SWITCH,
 			TEGRA210_MVC_SWITCH_VOLUME_SET,
@@ -527,11 +529,8 @@ bool tegra210_mvc_is_switch_done(enum tegra210_ahub_cifs cif,
 	int id = MVC_ID(cif);
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
 
-	dev_vdbg(mvc->dev, "%s switch_type %d", __func__, switch_type);
-
 	regmap_read(mvc->regmap, TEGRA210_MVC_SWITCH, &val);
-	dev_vdbg(mvc->dev, "%s switch_type %d val=0x%x ", __func__, switch_type,
-				val);
+
 	switch (switch_type) {
 	case DURATION_SWITCH:
 		retvalue = (val & 0x1);
@@ -545,8 +544,8 @@ bool tegra210_mvc_is_switch_done(enum tegra210_ahub_cifs cif,
 	default:
 			break;
 	}
-	dev_vdbg(mvc->dev, "%s switch_type %d retvalue=0x%x ", __func__,
-				switch_type, retvalue);
+	dev_vdbg(mvc->dev, "%s switch_type %d switch-done=0x%x ", __func__,
+				switch_type, (retvalue ? false : true));
 	return retvalue ? false : true;
 }
 EXPORT_SYMBOL_GPL(tegra210_mvc_is_switch_done);
@@ -565,11 +564,11 @@ int tegra210_mvc_set_init_vol(enum tegra210_ahub_cifs cif, int *init_vol)
 
 	if (tegra210_mvc_is_switch_done(cif, VOLUME_SWITCH)) {
 		for (i = 0; i < TEGRA210_MVC_MAX_CHANNEL_COUNT; i++) {
-			reg = reg + (i * 0x4);
 			regmap_write(mvc->regmap, reg, *init_vol);
 			init_vol++;
+			reg = reg + 0x4;
 		}
-		return 0;
+	return 0;
 	}
 
 	return -EBUSY;
@@ -584,15 +583,16 @@ int tegra210_mvc_set_target_vol(enum tegra210_ahub_cifs cif, int *target_vol)
 {
 	u32 reg = TEGRA210_MVC_TARGET_VOL, i;
 	int id = MVC_ID(cif);
+	int *t_vol = target_vol;
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
 
 	dev_vdbg(mvc->dev, "%s mvc id %d", __func__, id);
 
 	if (tegra210_mvc_is_switch_done(cif, VOLUME_SWITCH)) {
 		for (i = 0; i < TEGRA210_MVC_MAX_CHANNEL_COUNT; i++) {
-			reg = reg + (i * 0x4);
-			regmap_write(mvc->regmap, reg, *target_vol);
+			regmap_write(mvc->regmap, reg, t_vol[i]);
 			target_vol++;
+			reg = reg + 0x4;
 		}
 		return 0;
 	}
@@ -652,14 +652,15 @@ int tegra210_mvc_set_poly_curve_split_points(enum tegra210_ahub_cifs cif,
 	int id = MVC_ID(cif);
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
 
-	dev_vdbg(mvc->dev, "%s mvc id %d", __func__, id);
+	dev_vdbg(mvc->dev, "%s mvc id %d, split_points: 0x%x 0x%0x",
+		__func__, id,	split_points[0], split_points[1]);
 
 	if (tegra210_mvc_is_switch_done(cif, DURATION_SWITCH)) {
 		regmap_update_bits(mvc->regmap, TEGRA210_MVC_POLY_N1,
 			TEGRA210_MVC_POLY_N1_MASK,
 			split_points[0] << TEGRA210_MVC_POLY_N1_SHIFT);
 
-	regmap_update_bits(mvc->regmap, TEGRA210_MVC_POLY_N2,
+		regmap_update_bits(mvc->regmap, TEGRA210_MVC_POLY_N2,
 			TEGRA210_MVC_POLY_N2_MASK,
 			split_points[1] << TEGRA210_MVC_POLY_N2_SHIFT);
 	}
@@ -683,8 +684,9 @@ int tegra210_mvc_set_poly_curve_coefs(enum tegra210_ahub_cifs cif, u32 *coef)
 		tegra210_ahubram_write(mvc->dev,
 				TEGRA210_MVC_AHUBRAMCTL_CONFIG_RAM_CTRL,
 				TEGRA210_MVC_AHUBRAMCTL_CONFIG_RAM_DATA,
-				id*TEGRA210_MVC_NUMBER_OF_COEFS,
+				0,
 				coef, TEGRA210_MVC_NUMBER_OF_COEFS);
+
 		return 0;
 	}
 
