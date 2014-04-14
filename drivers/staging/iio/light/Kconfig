@@ -98,9 +98,14 @@ config SENSORS_TCS3772
 config SENSORS_CM3217
 	tristate "CM3217 Ambient light sensor"
 	depends on I2C
+	select LS_OF
+	select LS_SYSFS
 	default n
 	help
 	  Say Y here to enable the CM3217 Ambient Light Sensor.
+	  This driver will provide the measurements of ambient light intensity
+	  in its own units.
+	  Data from sensor is accessible via sysfs.
 
 config LS_OF
 	tristate "Device Tree parsing for Light sensor specification details"

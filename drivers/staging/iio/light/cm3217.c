@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+/* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,6 +19,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
+#include <linux/iio/light/ls_sysfs.h>
+#include <linux/iio/light/ls_dt.h>
 
 /* IT = Integration Time.  The amount of time the photons hit the sensor.
  * STEP = the value from HW which is the photon count during IT.
@@ -445,6 +447,7 @@ static int cm3217_probe(struct i2c_client *client,
 {
 	struct cm3217_inf *inf;
 	struct iio_dev *indio_dev;
+	struct lightsensor_spec *ls_spec;
 	int err;
 
 	indio_dev = iio_device_alloc(sizeof(*inf));
@@ -454,6 +457,15 @@ static int cm3217_probe(struct i2c_client *client,
 	}
 
 	inf = iio_priv(indio_dev);
+
+	ls_spec = of_get_ls_spec(&client->dev);
+	if (!ls_spec) {
+		dev_warn(&client->dev,
+			"devname:%s func:%s line:%d invalid meta data, use default\n",
+			id->name, __func__, __LINE__);
+	} else {
+		fill_ls_attrs(ls_spec, cm3217_attrs);
+	}
 
 	inf->wq = create_singlethread_workqueue(CM3217_NAME);
 	if (!inf->wq) {
