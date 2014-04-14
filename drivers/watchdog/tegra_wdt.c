@@ -39,7 +39,6 @@
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
 #include <mach/irqs.h>
 #endif
-#include <mach/iomap.h>
 
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
@@ -141,7 +140,6 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
  #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
 #define ICTLR_IEP_CLASS			0x2C
 #define MAX_NR_CPU_WDT			0x4
-#define PMC_RST_STATUS			0x1b4
 
 struct tegra_wdt *tegra_wdt[MAX_NR_CPU_WDT];
 
@@ -329,62 +327,6 @@ static ssize_t tegra_wdt_write(struct file *file, const char __user *data,
 	return len;
 }
 
-static void tegra_wdt_log_reset_reason(struct platform_device *pdev,
-		struct tegra_wdt *wdt)
-{
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	/*
-	 * There are two pathes to make the WDT reset:
-	 *  (a) WDT -> PMC -> CAR
-	 *		^
-	 *		|
-	 *		v
-	 *	       PMIC
-	 *
-	 *  (b) WDT -> CAR
-	 *
-	 *  Path (a) is enabled by WDT_CFG_PMC2CAR_RST_EN bit in the WDT
-	 *  configuration register, as it will reset the CAR module, and we
-	 *  cannot read back the reset reason from the CAR module. However, we
-	 *  can read back the reaset reason from the PMC module.
-	 *
-	 *  Path (b) is enabled by the WDT_CFG_SYS_RST_EN bit, and we can
-	 *  read back the reset reason from the CAR moudle. However, this reset
-	 *  path will not reset the peripherals which might be the hard hang
-	 *  source. We will not use this path.
-	 */
-	u32 val;
-	void __iomem *pmc_base;
-#define RESET_STR(REASON) "last reset is due to "#REASON"\n"
-	char *reset_reason[] = {
-		RESET_STR(power on reset),
-		RESET_STR(watchdog timeout),
-		RESET_STR(sensor),
-		RESET_STR(software reset),
-		RESET_STR(deep sleep reset),
-	};
-
-	/* report reset reason only once */
-	if (pdev->id > 0)
-		return;
-
-	pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-	val = readl(pmc_base + PMC_RST_STATUS) & 0x7;
-	if (val >= ARRAY_SIZE(reset_reason))
-		dev_info(&pdev->dev, "last reset value is invalid 0x%x\n", val);
-	else
-		dev_info(&pdev->dev, reset_reason[val]);
-
-#else
-	u32 val;
-
-	val = readl(wdt->wdt_source);
-	if (val & BIT(12))
-		dev_info(&pdev->dev, "last reset due to watchdog timeout\n");
-#endif
-}
-
 static const struct file_operations tegra_wdt_fops = {
 	.owner		= THIS_MODULE,
 	.llseek		= no_llseek,
@@ -399,6 +341,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	struct resource *res_src, *res_wdt, *res_irq;
 	struct resource	*res_int_base = NULL;
 	struct tegra_wdt *wdt;
+	u32 src;
 	int ret = 0;
 
 	if (pdev->id < -1 && pdev->id > 3) {
@@ -475,7 +418,9 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	tegra_wdt_log_reset_reason(pdev, wdt);
+	src = readl(wdt->wdt_source);
+	if (src & BIT(12))
+		dev_info(&pdev->dev, "last reset due to watchdog timeout\n");
 
 	tegra_wdt_disable(wdt);
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
