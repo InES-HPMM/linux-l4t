@@ -338,11 +338,11 @@ static const struct file_operations tegra_wdt_fops = {
 
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
-	struct resource *res_src, *res_wdt, *res_irq;
-	struct resource	*res_int_base = NULL;
+	struct resource *res_src, *res_wdt, *res_irq, *res_int_base;
 	struct tegra_wdt *wdt;
 	u32 src;
 	int ret = 0;
+	u32 val = 0;
 
 	if (pdev->id < -1 && pdev->id > 3) {
 		dev_err(&pdev->dev, "only IDs 3:0 supported\n");
@@ -477,7 +477,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 #ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
 	/* Init and enable watchdog on WDT0 with timer 8 during probe */
 	if (!(pdev->id)) {
-		u32 val = 0;
 		wdt->status = WDT_ENABLED | WDT_ENABLED_AT_PROBE;
 		wdt->timeout = heartbeat;
 		tegra_wdt_enable(wdt);
