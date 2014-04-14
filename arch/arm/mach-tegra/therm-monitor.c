@@ -21,8 +21,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
 #include <linux/platform_data/tmon_tmp411.h>
-#include <iomap.h>
 #include <asm/io.h>
+#include "iomap.h"
 #include "therm-monitor.h"
 
 static struct therm_monitor_ldep_data *lc_temp_reg_data;
