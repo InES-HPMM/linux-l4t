@@ -29,9 +29,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
-#include <linux/notifier.h>
 #include <linux/platform_device.h>
-#include <linux/reboot.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
@@ -50,7 +48,6 @@ enum tegra_wdt_status {
 
 struct tegra_wdt {
 	struct miscdevice	miscdev;
-	struct notifier_block	notifier;
 	struct resource		*res_src;
 	struct resource		*res_wdt;
 	unsigned long		users;
@@ -171,16 +168,6 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 }
 
 #endif
-
-static int tegra_wdt_notify(struct notifier_block *this,
-			    unsigned long code, void *dev)
-{
-	struct tegra_wdt *wdt = container_of(this, struct tegra_wdt, notifier);
-
-	if (code == SYS_DOWN || code == SYS_HALT)
-		tegra_wdt_disable(wdt);
-	return NOTIFY_DONE;
-}
 
 static int tegra_wdt_open(struct inode *inode, struct file *file)
 {
@@ -337,8 +324,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	}
 	wdt->miscdev.fops = &tegra_wdt_fops;
 
-	wdt->notifier.notifier_call = tegra_wdt_notify;
-
 	res_src = request_mem_region(res_src->start, resource_size(res_src),
 				     pdev->name);
 	res_wdt = request_mem_region(res_wdt->start, resource_size(res_wdt),
@@ -371,16 +356,9 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	wdt->res_wdt = res_wdt;
 	wdt->status = WDT_DISABLED;
 
-	ret = register_reboot_notifier(&wdt->notifier);
-	if (ret) {
-		dev_err(&pdev->dev, "cannot register reboot notifier\n");
-		goto fail;
-	}
-
 	ret = misc_register(&wdt->miscdev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register misc device\n");
-		unregister_reboot_notifier(&wdt->notifier);
 		goto fail;
 	}
 
@@ -416,7 +394,6 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 
 	tegra_wdt_disable(wdt);
 
-	unregister_reboot_notifier(&wdt->notifier);
 	misc_deregister(&wdt->miscdev);
 	iounmap(wdt->wdt_source);
 	iounmap(wdt->wdt_timer);
