@@ -107,6 +107,10 @@ enum tegra210_audio_test_id {
 	TEST_ID_MVC_MUTE_CTRL,
 	TEST_ID_MVC_UNMUTE_CTRL,
 	TEST_ID_AMIXER_PEAK_VALUE_SAMPLE_COUNT,
+	TEST_ID_MVC_MUTE_UNMUTE_CTRL,
+	TEST_ID_MVC_START_STOP,
+	TEST_ID_RUNTIME_PEAKMETER,
+	TEST_ID_MVC_MUTE_FIRST_CH,
 };
 
 struct tegra210_audio_test_param {
@@ -249,16 +253,22 @@ struct tegra210_audio_amixer_test_param {
 	unsigned int peakmeter_window_size;
 };
 
+enum T210_MVC_CURVE_TYPE {
+	MVC_CURVE_POLYNOMIAL = 0,
+	MVC_CURVE_LINEAR_RAMP = 1,
+};
+
 struct tegra210_audio_mvc_test_param {
 	int mvc_id;
 	int test_id;
 	unsigned int bypass_en;
+	unsigned int channels;
 	unsigned int per_ch_ctrl_en;
-	u8 mute_unmute_ctrl;
+	unsigned int mute_unmute_ctrl;
 	unsigned int curve_type;
 	unsigned int rounding_type;
-	int init_vol[8];
-	int target_vol[8];
+	unsigned int init_vol[8];
+	unsigned int target_vol[8];
 	unsigned int duration_in_samples;
 	unsigned int inv_duration_in_samples;
 	unsigned int curve_split_points[2];
