@@ -603,6 +603,20 @@ static int as3722_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static int as3722_i2c_suspend_no_irq(struct device *dev)
+{
+	struct as3722 *as3722 = dev_get_drvdata(dev);
+
+	return regmap_irq_suspend_noirq(as3722->irq_data);
+}
+
+static int palmas_i2c_resume(struct device *dev)
+{
+	struct as3722 *as3722 = dev_get_drvdata(dev);
+
+	return regmap_irq_resume(as3722->irq_data);
+}
+
 static void as3722_i2c_shutdown(struct i2c_client *i2c)
 {
 	struct as3722 *as3722 = i2c_get_clientdata(i2c);
@@ -622,11 +636,17 @@ static const struct i2c_device_id as3722_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, as3722_i2c_id);
 
+static const struct dev_pm_ops as3722_pm_ops = {
+	.suspend_noirq = as3722_i2c_suspend_no_irq,
+	.resume = palmas_i2c_resume,
+};
+
 static struct i2c_driver as3722_i2c_driver = {
 	.driver = {
 		.name = "as3722",
 		.owner = THIS_MODULE,
 		.of_match_table = as3722_of_match,
+		.pm = &as3722_pm_ops,
 	},
 	.probe = as3722_i2c_probe,
 	.remove = as3722_i2c_remove,
