@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/mc.h
  *
  * Copyright (C) 2010-2012 Google, Inc.
- * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -26,35 +26,36 @@
 	do { /* nothing for now */ } while (0)
 
 /*
- * Number of unique interrupts we have for this chip.
+ * Maximum number of unique interrupts . DT specifies the actual number.
  */
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#define INTR_COUNT	6
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define INTR_COUNT	8
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#define INTR_COUNT	8
-#else
-#define INTR_COUNT	4
-#endif
+#define MC_MAX_INTR_COUNT	32
+
+extern int mc_intr_count;
 
 struct mc_client {
 	const char *name;
 	const char *swgid;
-	unsigned int intr_counts[INTR_COUNT];
+	unsigned int intr_counts[MC_MAX_INTR_COUNT];
 };
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#define MC_DUAL_CHANNEL
-#endif
-
 extern void __iomem *mc;
-#ifdef MC_DUAL_CHANNEL
 extern void __iomem *mc1;
-#endif
 
 #include <linux/io.h>
 #include <linux/debugfs.h>
+
+/*
+ * This must be either 1 or 2.
+ */
+extern int mc_channels;
+
+/*
+ * Check if dual channel or not.
+ */
+static inline int mc_dual_channel(void)
+{
+	return mc_channels == 2;
+}
 
 /*
  * Read and write functions for hitting the MC. mc_ind corresponds to the MC
@@ -63,44 +64,50 @@ extern void __iomem *mc1;
  */
 static inline u32 __mc_readl(int mc_ind, u32 reg)
 {
+	if (WARN(!mc, "Read before MC init'ed"))
+		return 0;
+
 	if (!mc_ind)
 		return readl(mc + reg);
-#ifdef MC_DUAL_CHANNEL
-	else
+	else if (mc_dual_channel())
 		return readl(mc1 + reg);
-#endif
-	return 0;
+	else
+		return 0;
 }
 
 static inline void __mc_writel(int mc_ind, u32 val, u32 reg)
 {
+	if (WARN(!mc, "Write before MC init'ed"))
+		return;
+
 	if (!mc_ind)
 		writel(val, mc + reg);
-#ifdef MC_DUAL_CHANNEL
-	else
+	else if (mc_dual_channel())
 		writel(val, mc1 + reg);
-#endif
 }
 
 static inline u32 __mc_raw_readl(int mc_ind, u32 reg)
 {
+	if (WARN(!mc, "Read before MC init'ed"))
+		return 0;
+
 	if (!mc_ind)
 		return __raw_readl(mc + reg);
-#ifdef MC_DUAL_CHANNEL
-	else
+	else if (mc_dual_channel())
 		return __raw_readl(mc1 + reg);
-#endif
+
 	return 0;
 }
 
 static inline void __mc_raw_writel(int mc_ind, u32 val, u32 reg)
 {
+	if (WARN(!mc, "Write before MC init'ed"))
+		return;
+
 	if (!mc_ind)
 		__raw_writel(val, mc + reg);
-#ifdef MC_DUAL_CHANNEL
-	else
+	else if (mc_dual_channel())
 		__raw_writel(val, mc1 + reg);
-#endif
 }
 
 #define mc_readl(reg)       __mc_readl(0, reg)

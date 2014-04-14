@@ -25,6 +25,9 @@
 #include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/tegra-soc.h>
+#include <linux/of_device.h>
+#include <linux/of_address.h>
+#include <linux/platform_device.h>
 
 #include <mach/mc.h>
 #include <mach/mcerr.h>
@@ -50,10 +53,14 @@
 #endif
 
 static DEFINE_SPINLOCK(tegra_mc_lock);
-void __iomem *mc = (void __iomem *)IO_ADDRESS(TEGRA_MC_BASE);
-#ifdef MC_DUAL_CHANNEL
-void __iomem *mc1 = (void __iomem *)IO_ADDRESS(TEGRA_MC1_BASE);
-#endif
+int mc_channels;
+void __iomem *mc;
+
+/* Only populated if there are 2 channels. */
+void __iomem *mc0;
+void __iomem *mc1;
+
+int mc_intr_count;
 
 #ifdef CONFIG_PM_SLEEP
 static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
@@ -200,6 +207,9 @@ int tegra_mc_flush(int id)
 	unsigned int timeout;
 	bool ret;
 
+	if (!mc)
+		return 0;
+
 	if (id < 32) {
 		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
 		rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
@@ -241,6 +251,9 @@ int tegra_mc_flush_done(int id)
 	u32 rst_ctrl_reg, rst_stat_reg;
 	unsigned long flags;
 
+	if (!mc)
+		return 0;
+
 	if (id < 32) {
 		rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
 		rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
@@ -257,21 +270,115 @@ int tegra_mc_flush_done(int id)
 	mc_writel(rst_ctrl, rst_ctrl_reg);
 
 	spin_unlock_irqrestore(&tegra_mc_lock, flags);
-
 	return 0;
 }
 EXPORT_SYMBOL(tegra_mc_flush_done);
 
 /*
+ * Map an MC register space. Each MC has a set of register ranges which must
+ * be parsed. The first starting address in the set of ranges is returned as
+ * it is expected that the DT file has the register ranges in ascending
+ * order.
+ *
+ * device 0 = global channel.
+ * device n = specific channel device-1, e.g device = 1 ==> channel 0.
+ */
+static void __iomem *tegra_mc_map_regs(struct platform_device *pdev, int device)
+{
+	const void *prop;
+	void __iomem *regs;
+	void __iomem *regs_start = NULL;
+	u32 reg_ranges;
+	int i, start;
+
+	prop = of_get_property(pdev->dev.of_node, "reg-ranges", NULL);
+	if (!prop) {
+		pr_err("Failed to get MC MMIO region\n");
+		pr_err("  device = %d: missing reg-ranges\n", device);
+		return NULL;
+	}
+
+	reg_ranges = be32_to_cpup(prop);
+	start = device * reg_ranges;
+
+	for (i = 0; i < reg_ranges; i++) {
+		regs = of_iomap(pdev->dev.of_node, start + i);
+		if (!regs) {
+			pr_err("Failed to get MC MMIO region\n");
+			pr_err("  device = %d, range = %u\n", device, i);
+			return NULL;
+		}
+
+		if (i == 0)
+			regs_start = regs;
+	}
+
+	return regs_start;
+}
+
+static const struct of_device_id mc_of_ids[] = {
+	{ .compatible = "nvidia,tegra-mc" },
+	{ }
+};
+
+/*
  * MC driver init.
  */
-static int __init tegra_mc_init(void)
+static int tegra_mc_probe(struct platform_device *pdev)
 {
 
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	u32 reg;
 #endif
+	const void *prop;
 	struct dentry *mc_debugfs_dir;
+	const struct of_device_id *match;
+
+	if (!pdev->dev.of_node)
+		return -EINVAL;
+
+	match = of_match_device(mc_of_ids, &pdev->dev);
+	if (!match) {
+		pr_err("Missing DT entry!\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * Channel count.
+	 */
+	prop = of_get_property(pdev->dev.of_node, "channels", NULL);
+	if (!prop)
+		mc_channels = 1;
+	else
+		mc_channels = be32_to_cpup(prop);
+
+	if (mc_channels != 1 && mc_channels != 2) {
+		pr_err("Invalid number of memory channels: %d\n", mc_channels);
+		return -EINVAL;
+	}
+
+	/*
+	 * IO mem.
+	 */
+	mc = tegra_mc_map_regs(pdev, 0);
+	if (!mc)
+		return -ENOMEM;
+	pr_info("MC mapped MMIO address: 0x%p\n", mc);
+
+	if (mc_dual_channel()) {
+		mc0 = tegra_mc_map_regs(pdev, 1);
+		if (!mc0) {
+			pr_err("Failed to make channel 0\n");
+			return -ENOMEM;
+		}
+		pr_info("MC0 mapped MMIO address: 0x%p\n", mc0);
+		mc1 = tegra_mc_map_regs(pdev, 2);
+		if (!mc1) {
+			pr_err("Failed to make channel 0\n");
+			return -ENOMEM;
+		}
+		pr_info("MC1 mapped MMIO address: 0x%p\n", mc1);
+	}
 
 	tegra_mc_timing_save();
 
@@ -292,8 +399,40 @@ static int __init tegra_mc_init(void)
 		return PTR_ERR(mc_debugfs_dir);
 	}
 
-	tegra_mcerr_init(mc_debugfs_dir);
+	tegra_mcerr_init(mc_debugfs_dir, pdev);
+
+	return 0;
+}
+
+static int tegra_mc_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static struct platform_driver mc_driver = {
+	.driver = {
+		.name	= "tegra-mc",
+		.of_match_table = mc_of_ids,
+		.owner	= THIS_MODULE,
+	},
+
+	.probe		= tegra_mc_probe,
+	.remove		= tegra_mc_remove,
+};
+
+static int __init tegra_mc_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&mc_driver);
+	if (ret)
+		return ret;
 
 	return 0;
 }
 arch_initcall(tegra_mc_init);
+
+static void __exit tegra_mc_fini(void)
+{
+}
+module_exit(tegra_mc_fini);
