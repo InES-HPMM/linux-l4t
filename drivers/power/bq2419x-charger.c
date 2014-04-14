@@ -1673,28 +1673,39 @@ static void bq2419x_shutdown(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
 	int ret;
+	int next_poweron_time = 0;
 
-	if (!bq2419x->battery_presense)
-		return;
+	if (!bq2419x->battery_presense || !bq2419x->cable_connected)
+		goto end;
+
+	if (bq2419x->in_current_limit <= 500)
+		goto end;
 
 	ret = bq2419x_reset_wdt(bq2419x, "SHUTDOWN");
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Reset WDT failed: %d\n", ret);
 
-	if (bq2419x->cable_connected && bq2419x->in_current_limit > 500 &&
-			bq2419x->wdt_refresh_timeout) {
-		if ((bq2419x->chg_status == BATTERY_CHARGING_DONE)
-			&& bq2419x->auto_recharge_time_power_off)
-			bq2419x->wdt_refresh_timeout =
-				bq2419x->auto_recharge_time_power_off;
-		ret = battery_charging_system_reset_after(bq2419x->bc_dev,
-				bq2419x->wdt_refresh_timeout);
-		if (ret < 0)
-			dev_err(bq2419x->dev,
-				"System reset after %d config failed %d\n",
-				bq2419x->wdt_refresh_timeout, ret);
+	switch (bq2419x->chg_status) {
+	case BATTERY_CHARGING:
+		next_poweron_time = bq2419x->wdt_refresh_timeout;
+		break;
+	case BATTERY_CHARGING_DONE:
+		next_poweron_time = bq2419x->auto_recharge_time_power_off;
+		break;
+	default:
+		break;
 	}
 
+	if (!next_poweron_time)
+		goto end;
+
+	ret = battery_charging_system_reset_after(bq2419x->bc_dev,
+				next_poweron_time);
+	if (ret < 0)
+		dev_err(bq2419x->dev,
+			"System poweron after %d config failed %d\n",
+			next_poweron_time, ret);
+end:
 	battery_charging_system_power_on_usb_event(bq2419x->bc_dev);
 }
 
