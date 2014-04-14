@@ -2117,6 +2117,13 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 		phy->ctrlr_suspended = false;
 	}
 
+	val = tegra_usb_pmc_reg_read(PMC_UHSIC_SLEEP_CFG(phy->inst));
+	if (val & UHSIC_MASTER_ENABLE(phy->inst)) {
+		val = readl(base + UHSIC_PADS_CFG1);
+		val &= ~(UHSIC_PD_TX);
+		writel(val, base + UHSIC_PADS_CFG1);
+	}
+
 	pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
 	phy->pmc_remote_wakeup = false;
 
@@ -2338,9 +2345,12 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 	udelay(1);
 
-	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~(UHSIC_PD_TX);
-	writel(val, base + UHSIC_PADS_CFG1);
+	val = tegra_usb_pmc_reg_read(PMC_UHSIC_SLEEP_CFG(phy->inst));
+	if (!(val & UHSIC_MASTER_ENABLE(phy->inst))) {
+		val = readl(base + UHSIC_PADS_CFG1);
+		val &= ~(UHSIC_PD_TX);
+		writel(val, base + UHSIC_PADS_CFG1);
+	}
 
 	/* HSIC pad tracking circuit power down sequence */
 	val = readl(base + UHSIC_PADS_CFG1);
