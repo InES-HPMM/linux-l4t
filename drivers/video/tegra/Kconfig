@@ -227,6 +227,7 @@ config NVMAP_DMABUF_STASH_STATS
 config NVMAP_FORCE_ZEROED_USER_PAGES
 	bool "Only alloc zeroed pages for user space"
 	depends on TEGRA_NVMAP
+	default y
 	help
 	  Say Y here to force zeroing of pages allocated for user space. This
 	  avoids leaking kernel secure data to user space. This can add
