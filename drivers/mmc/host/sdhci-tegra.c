@@ -1995,7 +1995,7 @@ static int find_best_tap_value(struct tegra_tuning_data *tuning_data,
 			tuning_data->calc_values.t2t_vmax);
 	}
 
-	pr_err("best tap win - (%d-%d), best tap value %d\n",
+	pr_info("best tap win - (%d-%d), best tap value %d\n",
 		tap_data->win_start, tap_data->win_end, best_tap_value);
 	return best_tap_value;
 }
