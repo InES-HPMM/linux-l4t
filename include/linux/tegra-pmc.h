@@ -21,20 +21,14 @@
 #ifndef __LINUX_TEGRA_PMC_H__
 #define __LINUX_TEGRA_PMC_H__
 
+#include <linux/tegra-pm.h>
+
 extern void tegra_pmc_set_dpd_sample(void);
 extern void tegra_pmc_clear_dpd_sample(void);
 extern void tegra_pmc_remove_dpd_req(void);
 extern void __iomem *tegra_pmc_base;
 
 extern bool tegra_is_dpd_mode;
-
-enum tegra_suspend_mode {
-	TEGRA_SUSPEND_NONE = 0,
-	TEGRA_SUSPEND_LP2,	/* CPU voltage off */
-	TEGRA_SUSPEND_LP1,	/* CPU voltage off, DRAM self-refresh */
-	TEGRA_SUSPEND_LP0,      /* CPU + core voltage off, DRAM self-refresh */
-	TEGRA_MAX_SUSPEND_MODE,
-};
 
 struct pmc_pm_data {
 	u32 cpu_good_time;	/* CPU power good time in uS */

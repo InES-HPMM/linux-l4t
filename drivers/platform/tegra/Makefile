@@ -15,6 +15,7 @@ endif
 obj-y += mc/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-y += pmc.o
+obj-y += pm.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 

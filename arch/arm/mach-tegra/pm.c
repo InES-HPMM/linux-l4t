@@ -134,8 +134,6 @@ static u64 suspend_time;
 static u64 suspend_entry_time;
 #endif
 
-static RAW_NOTIFIER_HEAD(tegra_pm_chain_head);
-
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static void update_pmc_registers(unsigned long rate);
 #endif
@@ -278,27 +276,6 @@ void tegra_cluster_switch_time(unsigned int flags, int id)
 	}
 	stats->exp_avg = (stats->exp_avg * (CLUSTER_SWITCH_AVG_SAMPLES - 1) +
 			  stats->avg) >> CLUSTER_SWITCH_TIME_AVG_SHIFT;
-}
-#endif
-
-int tegra_register_pm_notifier(struct notifier_block *nb)
-{
-	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
-}
-EXPORT_SYMBOL(tegra_register_pm_notifier);
-
-int tegra_unregister_pm_notifier(struct notifier_block *nb)
-{
-	return raw_notifier_chain_unregister(&tegra_pm_chain_head, nb);
-}
-EXPORT_SYMBOL(tegra_unregister_pm_notifier);
-
-#ifdef CONFIG_TEGRA_LP0_IN_IDLE
-static int tegra_pm_notifier_call_chain(unsigned int val)
-{
-	int ret = raw_notifier_call_chain(&tegra_pm_chain_head, val, NULL);
-
-	return notifier_to_errno(ret);
 }
 #endif
 
@@ -1331,49 +1308,6 @@ static void tegra_disable_lp1bb_interrupt(void)
 }
 #endif
 
-#ifdef CONFIG_TEGRA_LP0_IN_IDLE
-int tegra_enter_lp0(unsigned long sleep_time)
-{
-	int err = 0;
-
-	/* This state is managed by power domains, hence no voice call expected if
-	 * we are entering this state */
-
-	tegra_pm_notifier_call_chain(TEGRA_PM_SUSPEND);
-
-	tegra_rtc_set_trigger(sleep_time);
-
-	tegra_actmon_save();
-
-	tegra_dma_save();
-
-	tegra_smmu_save();
-
-	err = syscore_save();
-	if (err) {
-		tegra_smmu_restore();
-		tegra_dma_restore();
-		tegra_rtc_set_trigger(0);
-		return err;
-	}
-
-	tegra_suspend_dram(TEGRA_SUSPEND_LP0, 0);
-
-	syscore_restore();
-
-	tegra_smmu_restore();
-
-	tegra_dma_restore();
-
-	tegra_actmon_restore();
-
-	tegra_rtc_set_trigger(0);
-
-	tegra_pm_notifier_call_chain(TEGRA_PM_RESUME);
-
-	return 0;
-}
-#endif
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {

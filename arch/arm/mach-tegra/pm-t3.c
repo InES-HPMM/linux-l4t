@@ -3,7 +3,7 @@
  *
  * Tegra3 SOC-specific power and cluster management
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-cpuidle.h>
+#include <linux/tegra-pm.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>

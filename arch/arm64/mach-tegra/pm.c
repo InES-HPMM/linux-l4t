@@ -127,8 +127,6 @@ static u64 suspend_time;
 static u64 suspend_entry_time;
 #endif
 
-static RAW_NOTIFIER_HEAD(tegra_pm_chain_head);
-
 struct suspend_context tegra_sctx;
 
 #define TEGRA_POWER_PWRREQ_POLARITY	(1 << 8)   /* core power request polarity */
@@ -215,18 +213,6 @@ bool tegra_suspend_in_progress(void)
 {
 	return suspend_in_progress;
 }
-
-int tegra_register_pm_notifier(struct notifier_block *nb)
-{
-	return raw_notifier_chain_register(&tegra_pm_chain_head, nb);
-}
-EXPORT_SYMBOL(tegra_register_pm_notifier);
-
-int tegra_unregister_pm_notifier(struct notifier_block *nb)
-{
-	return raw_notifier_chain_unregister(&tegra_pm_chain_head, nb);
-}
-EXPORT_SYMBOL(tegra_unregister_pm_notifier);
 
 bool tegra_dvfs_is_dfll_bypass(void)
 {
