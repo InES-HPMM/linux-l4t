@@ -730,17 +730,6 @@ static int soctherm_ocx_to_wake_gpio[TEGRA_SOC_OC_IRQ_MAX] = {
 static int sensor2therm_a[TSENSE_SIZE];
 static int sensor2therm_b[TSENSE_SIZE];
 
-static struct pid_thermal_gov_params t13_pid_params = {
-	.max_err_temp = 12000,
-	/* other fields are same */
-};
-
-struct soctherm_therm t13_therm = {
-	.passive_delay = 500,
-	.hotspot_offset = 0,
-	/* other fields are same */
-};
-
 /**
  * div64_s64_precise() - wrapper for div64_s64()
  * @a:	the dividend
@@ -1642,7 +1631,6 @@ static int __init soctherm_thermal_sys_init(void)
 {
 	char name[THERMAL_NAME_LENGTH];
 	struct soctherm_therm *therm;
-	struct pid_thermal_gov_params *gov;
 	bool oc_en = false;
 	int i, j;
 
@@ -1674,13 +1662,6 @@ static int __init soctherm_thermal_sys_init(void)
 			case THERMAL_TRIP_ACTIVE:
 				break; /* done elsewhere */
 			}
-		}
-
-		/* XXX: temporarily adjust paramters for T132 */
-		if (IS_T13X) {
-			gov = therm->tzp->governor_params;
-			gov->max_err_temp = t13_pid_params.max_err_temp;
-			therm->passive_delay = t13_therm.passive_delay;
 		}
 
 		snprintf(name, THERMAL_NAME_LENGTH, "%s-therm", therm_names[i]);
@@ -2882,24 +2863,7 @@ static int soctherm_init_platform_data(void)
 					i, j, therm->trips[j].trip_temp);
 				therm->trips[j].trip_temp -= rem;
 			}
-
-			/* XXX: temporarily lower thresholds for T132 */
-			if (IS_T13X) {
-				if (therm->trips[j].trip_type ==
-							THERMAL_TRIP_HOT)
-					therm->trips[j].trip_temp -= 2000;
-				else if (therm->trips[j].trip_type ==
-							THERMAL_TRIP_PASSIVE)
-					therm->trips[j].trip_temp -= 5000;
-			}
 		}
-	}
-
-	/* XXX: temporarily use ZERO hotspot offset for T132 */
-	if (IS_T13X) {
-		plat_data.therm[THERM_CPU].hotspot_offset = 0;
-		plat_data.therm[THERM_GPU].hotspot_offset = 0;
-		plat_data.therm[THERM_MEM].hotspot_offset = 0;
 	}
 
 	/* Program hotspot offsets per THERM */
