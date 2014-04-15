@@ -655,8 +655,16 @@ static void ardbeg_usb_init(void)
 			board_info.board_id == BOARD_PM363) {
 		/* Laguna */
 		/* Host cable is detected through AMS PMU Interrupt */
-		tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
-		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+		if (board_info.major_revision >= 'A' &&
+			board_info.major_revision <= 'D' &&
+			board_info.board_id == BOARD_PM375) {
+			tegra_udc_pdata.id_det_type = TEGRA_USB_VIRTUAL_ID;
+			tegra_ehci1_utmi_pdata.id_det_type =
+						TEGRA_USB_VIRTUAL_ID;
+		} else {
+			tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
+			tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+		}
 		tegra_ehci1_utmi_pdata.id_extcon_dev_name = "as3722-extcon";
 	} else {
 		/* Ardbeg and TN8 */
