@@ -149,7 +149,7 @@ struct soctherm_tsensor_pmu_data {
  *				responses.
  *				See struct soctherm_throttle.
  * @tshut_pmu_trip_data:	PMU-specific thermal shutdown settings.
- *				See struct tegra_tsensor_pmu_data.
+ *				See struct tegra_thermtrip_pmic_data.
  *
  * therm is used for trip point configuration and should be moved out of
  * soctherm_platform_data.
@@ -164,7 +164,7 @@ struct soctherm_platform_data {
 	struct soctherm_sensor sensor_data[TSENSE_SIZE];
 	struct soctherm_therm therm[THERM_SIZE];
 	struct soctherm_throttle throttle[THROTTLE_SIZE];
-	struct tegra_tsensor_pmu_data *tshut_pmu_trip_data;
+	struct tegra_thermtrip_pmic_data *tshut_pmu_trip_data;
 };
 
 #ifdef CONFIG_TEGRA_SOCTHERM

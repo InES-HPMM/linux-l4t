@@ -273,7 +273,7 @@ static struct thermal_zone_params soctherm_tzp = {
 	.governor_name = "pid_thermal_gov",
 };
 
-static struct tegra_tsensor_pmu_data tpdata_palmas = {
+static struct tegra_thermtrip_pmic_data tpdata_palmas = {
 	.reset_tegra = 1,
 	.pmu_16bit_ops = 0,
 	.controller_type = 0,
@@ -283,7 +283,7 @@ static struct tegra_tsensor_pmu_data tpdata_palmas = {
 	.poweroff_reg_data = 0x0,
 };
 
-static struct tegra_tsensor_pmu_data tpdata_max77663 = {
+static struct tegra_thermtrip_pmic_data tpdata_max77663 = {
 	.reset_tegra = 1,
 	.pmu_16bit_ops = 0,
 	.controller_type = 0,

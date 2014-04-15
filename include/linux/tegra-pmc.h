@@ -52,8 +52,7 @@ struct pmc_pm_data {
 };
 
 /**
- * struct tegra_tsensor_pmu_data - PMIC temperature sensor
- * configuration
+ * struct tegra_thermtrip_pmic_data - PMIC shutdown command data
  * @poweroff_reg_data:	The data to write to turn the system off
  * @poweroff_reg_addr:	The PMU address of poweroff register
  * @reset_tegra:	Flag indicating whether or not the system
@@ -76,8 +75,11 @@ struct pmc_pm_data {
  *			operations.
  * @pmu_i2c_addr:	The address of the PMIC on the I2C bus
  *
- * When the temperature gets too high, the PMIC will power off the device
- * based on what is written to the PMIC registers.
+ * When the SoC temperature gets too high, the SOC_THERM hardware can
+ * reset the SoC, and, by setting a bit in one of its registers, can
+ * instruct the boot ROM to power off the Tegra SoC. This data
+ * structure contains the information that the boot ROM needs to tell
+ * the PMIC to shut down.
  *
  * @poweroff_reg_data and @poweroff_reg_addr are written to the PMC SCRATCH54
  * register.
@@ -85,7 +87,7 @@ struct pmc_pm_data {
  * @reset_tegra, @controller_type, @i2c_controller_id, @pinmux, @pmu_16bit_ops
  * and @pmu_i2c_addr are written to the PMC SCRATCH55 register.
  */
-struct tegra_tsensor_pmu_data {
+struct tegra_thermtrip_pmic_data {
 	u8 poweroff_reg_data;
 	u8 poweroff_reg_addr;
 	u8 reset_tegra;
@@ -106,7 +108,7 @@ int tegra_pmc_cpu_remove_clamping(int cpuid);
 void tegra_pmc_pmu_interrupt_polarity(bool active_low);
 struct pmc_pm_data *tegra_get_pm_data(void);
 
-extern void tegra_pmc_config_thermal_trip(struct tegra_tsensor_pmu_data *data);
+extern void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data);
 
 extern void tegra_pmc_enable_thermal_trip(void);
 

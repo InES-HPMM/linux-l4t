@@ -817,7 +817,7 @@ int __init pismo_edp_init(void)
 
 /* place holder for tpdata for as3720 regulator
  * TODO: fill the correct i2c type, bus, reg_addr and data here:
-static struct tegra_tsensor_pmu_data tpdata_as3720 = {
+static struct tegra_thermtrip_pmic_data tpdata_as3720 = {
 	.reset_tegra = ,
 	.pmu_16bit_ops = ,
 	.controller_type = ,

@@ -181,7 +181,7 @@ EXPORT_SYMBOL(tegra_pmc_enable_thermal_trip);
  *
  * XXX This function does no input validation, but it should.
  */
-void tegra_pmc_config_thermal_trip(struct tegra_tsensor_pmu_data *data)
+void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data)
 {
 	u32 v = 0;
 	u32 c, w;

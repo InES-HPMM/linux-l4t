@@ -2634,7 +2634,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
  * PMC will use if SOC_THERM requests a shutdown based on excessive
  * temperature (i.e. a thermtrip).
  */
-static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
+static void soctherm_therm_trip_init(struct tegra_thermtrip_pmic_data *data)
 {
 	if (!data)
 		return;

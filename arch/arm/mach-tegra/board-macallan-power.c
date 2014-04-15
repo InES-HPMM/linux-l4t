@@ -759,7 +759,7 @@ static struct thermal_zone_params macallan_soctherm_therm_cpu_tzp = {
 	.governor_params = &soctherm_cpu_pid_params,
 };
 
-static struct tegra_tsensor_pmu_data tpdata_palmas = {
+static struct tegra_thermtrip_pmic_data tpdata_palmas = {
 	.reset_tegra = 1,
 	.pmu_16bit_ops = 0,
 	.controller_type = 0,
