@@ -40,6 +40,10 @@
 
 #include "mm.h"
 
+/* HACK: These should come from pgtable.h. Remove these when upgrading the kernel */
+#define pmd_pfn(pmd)  (((pmd_val(pmd) & PMD_MASK) & PHYS_MASK) >> PAGE_SHIFT)
+#define pmd_sect(pmd) ((pmd_val(pmd) & PMD_TYPE_MASK) == PMD_TYPE_SECT)
+
 /*
  * Empty_zero_page is a special page that is used for zero-initialized data
  * and COW.
@@ -507,6 +511,9 @@ int kern_addr_valid(unsigned long addr)
 	pmd = pmd_offset(pud, addr);
 	if (pmd_none(*pmd))
 		return 0;
+
+	if (pmd_sect(*pmd))
+		return pfn_valid(pmd_pfn(*pmd));
 
 	pte = pte_offset_kernel(pmd, addr);
 	if (pte_none(*pte))
