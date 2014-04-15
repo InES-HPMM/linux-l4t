@@ -236,7 +236,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = chip->status;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = chip->vcell;
+		val->intval = 1000 * chip->vcell;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->soc;
@@ -272,7 +272,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = 0;
 		ret = battery_gauge_get_battery_current(chip->bg_dev, &curr_ma);
 		if (!ret)
-			val->intval = curr_ma;
+			val->intval = 1000 * curr_ma;
 		break;
 	default:
 		ret = -EINVAL;
