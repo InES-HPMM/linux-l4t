@@ -85,6 +85,7 @@ struct tegra_xusb_board_data {
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;
 	struct tegra_xusb_hsic_config hsic[XUSB_HSIC_COUNT];
+	const char *firmware_file_dt;
 };
 
 struct tegra_xusb_platform_data {
@@ -122,6 +123,7 @@ struct tegra_xusb_soc_config {
 	/* chip specific */
 	unsigned long quirks;
 	struct tegra_xusb_regulator_name supply;
+	const char *default_firmware_file;
 };
 
 #define TEGRA_XUSB_USE_HS_SRC_CLOCK2 BIT(0)
