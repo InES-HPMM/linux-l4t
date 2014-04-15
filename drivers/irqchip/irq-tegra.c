@@ -55,11 +55,8 @@
 #define ICTLR_COP_IER_CLR	0x38
 #define ICTLR_COP_IEP_CLASS	0x3c
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define NUM_ICTLRS 4
-#else
-#define NUM_ICTLRS 5
-#endif
+/* Current max for T210 */
+#define MAX_ICTLRS 6
 
 #define FIRST_LEGACY_IRQ 32
 #define ARM_VERSION_CORTEX_A15	0xC0F
@@ -76,12 +73,12 @@ static int num_ictlrs;
 static void __iomem **ictlr_reg_base;
 
 #ifdef CONFIG_PM_SLEEP
-static u32 cop_ier[NUM_ICTLRS];
-static u32 cop_iep[NUM_ICTLRS];
-static u32 cpu_ier[NUM_ICTLRS];
-static u32 cpu_iep[NUM_ICTLRS];
+static u32 cop_ier[MAX_ICTLRS];
+static u32 cop_iep[MAX_ICTLRS];
+static u32 cpu_ier[MAX_ICTLRS];
+static u32 cpu_iep[MAX_ICTLRS];
 
-static u32 ictlr_wake_mask[NUM_ICTLRS];
+static u32 ictlr_wake_mask[MAX_ICTLRS];
 #endif
 
 #ifdef CONFIG_FIQ
@@ -400,7 +397,7 @@ static int tegra_legacy_irq_suspend(void)
 	int i;
 
 	local_irq_save(flags);
-	for (i = 0; i < NUM_ICTLRS; i++) {
+	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		/* save interrupt state */
 		cpu_ier[i] = readl(ictlr + ICTLR_CPU_IER);
@@ -428,7 +425,7 @@ static void tegra_legacy_irq_resume(void)
 	int i;
 
 	local_irq_save(flags);
-	for (i = 0; i < NUM_ICTLRS; i++) {
+	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(cpu_iep[i], ictlr + ICTLR_CPU_IEP_CLASS);
 		writel(~0ul, ictlr + ICTLR_CPU_IER_CLR);
@@ -461,7 +458,7 @@ void tegra_init_legacy_irq_cop(void)
 {
 	int i;
 
-	for (i = 0; i < NUM_ICTLRS; i++) {
+	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(~0, ictlr + ICTLR_COP_IER_CLR);
 		writel(0, ictlr + ICTLR_COP_IEP_CLASS);
