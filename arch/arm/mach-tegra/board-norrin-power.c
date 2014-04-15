@@ -216,30 +216,6 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 101000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 99000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "cpu-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
 			.tzp = &soctherm_tzp,
 		},
 		[THERM_GPU] = {
@@ -288,6 +264,31 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+			.passive_delay = 1000,
+			.num_trips = 3,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 99000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 96000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "cpu-balanced",
+					.trip_temp = 86000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
 			.tzp = &soctherm_tzp,
 		},
 	},
@@ -315,23 +316,27 @@ int __init norrin_soctherm_init(void)
 	u32 base_ft, shft_ft;
 	struct board_info pmu_board_info;
 	struct board_info board_info;
+	enum soctherm_therm_id therm_cpu;
 
 	tegra_get_board_info(&board_info);
+
+	/* For T132 platforms: ATE rev check (TODO) */
+	therm_cpu = THERM_PLL;
 
 	/* do this only for supported CP,FT fuses */
 	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
 	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
 		tegra_platform_edp_init(
-			norrin_soctherm_data.therm[THERM_CPU].trips,
-			&norrin_soctherm_data.therm[THERM_CPU].num_trips,
+			norrin_soctherm_data.therm[therm_cpu].trips,
+			&norrin_soctherm_data.therm[therm_cpu].num_trips,
 			7000); /* edp temperature margin */
 		tegra_platform_gpu_edp_init(
 			norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips,
 			7000);
 		tegra_add_cpu_vmax_trips(
-			norrin_soctherm_data.therm[THERM_CPU].trips,
-			&norrin_soctherm_data.therm[THERM_CPU].num_trips);
+			norrin_soctherm_data.therm[therm_cpu].trips,
+			&norrin_soctherm_data.therm[therm_cpu].num_trips);
 		tegra_add_tgpu_trips(
 			norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips);
@@ -344,8 +349,8 @@ int __init norrin_soctherm_init(void)
 		board_info.board_id == BOARD_E1971 ||
 		board_info.board_id == BOARD_E1991) {
 		tegra_add_cpu_vmin_trips(
-			norrin_soctherm_data.therm[THERM_CPU].trips,
-			&norrin_soctherm_data.therm[THERM_CPU].num_trips);
+			norrin_soctherm_data.therm[therm_cpu].trips,
+			&norrin_soctherm_data.therm[therm_cpu].num_trips);
 		tegra_add_gpu_vmin_trips(
 			norrin_soctherm_data.therm[THERM_GPU].trips,
 			&norrin_soctherm_data.therm[THERM_GPU].num_trips);
