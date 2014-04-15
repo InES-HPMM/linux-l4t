@@ -346,6 +346,7 @@ static struct platform_device vcm30_t124_nvmap_device  = {
 };
 
 
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static void __init vcm30_t124_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
@@ -381,7 +382,7 @@ static void __init vcm30_t124_panel_select(void)
 	}
 
 }
-
+#endif
 
 int __init vcm30_t124_panel_init(void)
 {
