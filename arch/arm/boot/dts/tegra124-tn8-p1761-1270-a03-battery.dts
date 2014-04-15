@@ -6,12 +6,17 @@
 	i2c@7000c400 {
 		lc709203f@0b {
 			status = "okay";
-			onsemi,kernel-threshold-soc = < 2 >;
+			onsemi,kernel-threshold-soc = <2>;
+			onsemi,kernel-maximum-soc = <100>;
 		};
 
 		hpa2163@6b {
 			charger {
 				status = "okay";
+				ti,charge-voltage-limit-millivolt = <4350>;
+				ti,temp-range = <10 15 45 60>;
+				ti,charge-thermal-voltage-limit = <4350 4350 4350 4200>;
+				ti,charge-current-limit = <1024 2048 5200 2600>;
 			};
 		};
 	};
