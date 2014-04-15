@@ -1061,8 +1061,8 @@ static void seq_print_dma_areas(struct seq_file *s, void *bitmap,
 static void seq_print_mapping(struct seq_file *s,
 			      struct dma_iommu_mapping *mapping)
 {
-	seq_printf(s, "  memory map: base=0x%lx size=%lx order=%d domain=%p\n",
-		   mapping->base, mapping->end - mapping->base,
+	seq_printf(s, "  memory map: base=%pa size=%zu order=%d domain=%p\n",
+		   &mapping->base, (size_t)(mapping->end - mapping->base),
 		   mapping->order, mapping->domain);
 
 	seq_print_dma_areas(s, mapping->bitmap, mapping->base, mapping->bits,
