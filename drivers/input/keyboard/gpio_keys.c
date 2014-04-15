@@ -506,6 +506,8 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 
 		isr = gpio_keys_irq_isr;
 		irqflags = 0;
+		if (button->wakeup)
+			irqflags |= IRQF_EARLY_RESUME;
 	}
 
 	input_set_capability(input, button->type ?: EV_KEY, button->code);
