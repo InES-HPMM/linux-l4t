@@ -11,11 +11,11 @@
  * more details.
  */
 
-#include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
-
 #ifndef __IIO_LS_SYSFS_H__
 #define __IIO_LS_SYSFS_H__
+
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
 
 #define MAX_CHAN 2
 
@@ -40,7 +40,8 @@ struct lightsensor_spec {
 #ifdef CONFIG_LS_SYSFS
 extern void fill_ls_attrs(struct lightsensor_spec *, struct attribute **);
 #else
-void fill_ls_attrs(struct lightsensor_spec *meta, struct attribute **attrs)
+static inline void fill_ls_attrs(
+		struct lightsensor_spec *meta, struct attribute **attrs)
 {
 }
 #endif
