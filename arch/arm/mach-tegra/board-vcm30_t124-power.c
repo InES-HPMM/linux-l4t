@@ -24,8 +24,6 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/tegra-pmc.h>
 
-#include <mach/edp.h>
-
 #include "pm.h"
 #include "board.h"
 #include "gpio-names.h"
@@ -247,28 +245,6 @@ int __init vcm30_t124_suspend_init(void)
 	return 0;
 }
 
-/* FIXME: Should this be called? */
-int __init vcm30_t124_edp_init(void)
-{
-	unsigned int regulator_mA;
-
-	regulator_mA = get_maximum_cpu_current_supported();
-	if (!regulator_mA)
-		regulator_mA = 14000;
-
-	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_cpu_edp_limits(regulator_mA);
-
-	regulator_mA = get_maximum_core_current_supported();
-	if (!regulator_mA)
-		regulator_mA = 14000;
-
-	pr_info("%s: core regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_core_edp_limits(regulator_mA);
-
-	return 0;
-}
-
 static struct thermal_zone_params soctherm_tzp = {
 	.governor_name = "pid_thermal_gov",
 };
@@ -379,9 +355,6 @@ int __init vcm30_t124_soctherm_init(void)
 
 	vcm30_t124_soctherm_data.tshut_pmu_trip_data = &tpdata_max77663;
 
-	tegra_platform_edp_init(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
-			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips,
-			8000); /* edp temperature margin */
 	tegra_add_cpu_vmax_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
 	/*tegra_add_vc_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,

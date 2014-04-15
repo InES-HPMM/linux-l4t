@@ -733,28 +733,15 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_audio_init();
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
-	tegra_io_dpd_init();
 	vcm30_t124_sdhci_init();
 	vcm30_t124_regulator_init();
 	vcm30_t124_suspend_init();
-#if 0
-	vcm30_t124_emc_init();
-	vcm30_t124_edp_init();
-#endif
 	isomgr_init();
-	/* vcm30_t124_panel_init(); */
-	/* vcm30_t124_pmon_init(); */
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
-	/* FIXME: Required? */
-#if 0
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-
-	vcm30_t124_sensors_init();
-	vcm30_t124_soctherm_init();
-#endif
 	vcm30_t124_panel_init();
+
 #ifdef CONFIG_SENSORS_TMON_TMP411
 	register_therm_monitor(&vcm30t30_therm_monitor_data);
 #endif
