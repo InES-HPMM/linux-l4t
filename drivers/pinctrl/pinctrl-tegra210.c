@@ -200,7 +200,15 @@
 #define SDMMC1_CLK_LPBK_CTRL_OFFSET	0
 #define SDMMC3_CLK_LPBK_CTRL_OFFSET	4
 
-const struct pinctrl_pin_desc  tegra210_pins[] = {
+#define EMMC2_PAD_CFGPADCTRL_OFFSET	0x1C8
+#define EMMC4_PAD_CFGPADCTRL_OFFSET	0x1E0
+
+#define EMMC_DPD_PARKING(x)	(x << EMMC_PARKING_BIT)
+#define EMMC_PARKING_BIT	0xE
+#define PARKING_SET	0x1FFF
+#define PARKING_CLEAR	0x0
+
+static const struct pinctrl_pin_desc  tegra210_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_PEX_L0_RST_N_PA0, "PEX_L0_RST_N_PA0"),
 	PINCTRL_PIN(TEGRA_PIN_PEX_L0_CLKREQ_N_PA1, "PEX_L0_CLKREQ_N_PA1"),
 	PINCTRL_PIN(TEGRA_PIN_PEX_WAKE_N_PA2, "PEX_WAKE_N_PA2"),
@@ -3168,12 +3176,55 @@ static const struct tegra_pingroup tegra210_groups[] = {
 
 static int tegra210_pinctrl_suspend(u32 *pg_data)
 {
+	int i;
+	u32 *ctx = pg_data;
+
+	/* Save current Pinmux register data */
+	for (i = 0; i <  ARRAY_SIZE(tegra210_groups); i++) {
+		if (tegra210_groups[i].drv_reg < 0)
+			*ctx++ =
+				tegra_pinctrl_readl(tegra210_groups[i].mux_bank,
+					tegra210_groups[i].mux_reg);
+		else
+			*ctx++ =
+				tegra_pinctrl_readl(tegra210_groups[i].drv_bank,
+					tegra210_groups[i].drv_reg);
+	}
 	return 0;
 }
 
 static void tegra210_pinctrl_resume(u32 *pg_data)
 {
-	return;
+	int i;
+	u32 *ctx = pg_data;
+	u32 reg_value;
+
+	/* Restore Pinmux register data.
+	 * PARK bit cleared as part of this.
+	 */
+	for (i = 0; i <  ARRAY_SIZE(tegra210_groups); i++) {
+		if (tegra210_groups[i].drv_reg < 0)
+			tegra_pinctrl_writel(*ctx++,
+				tegra210_groups[i].mux_bank,
+				tegra210_groups[i].mux_reg);
+		else
+			tegra_pinctrl_writel(*ctx++,
+				tegra210_groups[i].drv_bank,
+				tegra210_groups[i].drv_reg);
+	}
+
+	/* Clear parking bit for EMMC IO brick pads */
+	reg_value = tegra_pinctrl_readl(tegra210_groups[i].drv_bank,
+					EMMC2_PAD_CFGPADCTRL_OFFSET);
+	reg_value &= ~(EMMC_DPD_PARKING(PARKING_SET));
+	tegra_pinctrl_writel(reg_value, tegra210_groups[i].drv_bank,
+					EMMC2_PAD_CFGPADCTRL_OFFSET);
+
+	reg_value = tegra_pinctrl_readl(tegra210_groups[i].drv_bank,
+					EMMC4_PAD_CFGPADCTRL_OFFSET);
+	reg_value &= ~(EMMC_DPD_PARKING(PARKING_SET));
+	tegra_pinctrl_writel(reg_value, tegra210_groups[i].drv_bank,
+					EMMC4_PAD_CFGPADCTRL_OFFSET);
 }
 
 static int tegra210_gpio_request_enable(unsigned pin)
