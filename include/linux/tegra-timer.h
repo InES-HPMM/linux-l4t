@@ -103,6 +103,7 @@ static inline void tegra_tsc_wait_for_resume(void) {};
 #endif
 
 u64 tegra_rtc_read_ms(void);
+u32 notrace tegra_read_usec_raw(void);
 
 int hotplug_cpu_register(struct device_node *);
 #endif /* _MACH_TEGRA_TIMER_H_ */
