@@ -433,11 +433,9 @@ static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
 
-#define FIRMWARE_FILE "tegra_xusb_firmware"
-static char *firmware_file = FIRMWARE_FILE;
+static char *firmware_file = "";
 #define FIRMWARE_FILE_HELP	\
-	"used to specify firmware file of Tegra XHCI host controller. "\
-	"Default value is \"" FIRMWARE_FILE "\"."
+	"used to specify firmware file of Tegra XHCI host controller. "
 
 module_param(firmware_file, charp, S_IRUGO);
 MODULE_PARM_DESC(firmware_file, FIRMWARE_FILE_HELP);
@@ -3779,6 +3777,13 @@ static int init_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 	struct platform_device *pdev = tegra->pdev;
 	int ret;
 
+	if (!strcmp(firmware_file, ""))
+		if (tegra->bdata->firmware_file_dt)
+			firmware_file = tegra->bdata->firmware_file_dt;
+		else
+			firmware_file =
+				tegra->soc_config->default_firmware_file;
+
 	ret = request_firmware_nowait(THIS_MODULE, true, firmware_file,
 		&pdev->dev, GFP_KERNEL, tegra, init_filesystem_firmware_done);
 	if (ret < 0) {
@@ -4132,6 +4137,8 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 	ret = of_property_read_u8_array(node, "nvidia,hsic1",
 					(u8 *) &bdata->hsic[1],
 					sizeof(bdata->hsic[0]));
+	ret = of_property_read_string(node, "nvidia,firmware_file",
+					&bdata->firmware_file_dt);
 	/* TODO: Add error conditions check */
 }
 
@@ -4178,6 +4185,7 @@ static const struct tegra_xusb_soc_config tegra114_soc_config = {
 		.vddio_hsic = "vddio_hsic",
 		.s1p05v = "avddio_usb",
 	},
+	.default_firmware_file = "tegra_xusb_firmware",
 };
 
 static const struct tegra_xusb_soc_config tegra124_soc_config = {
@@ -4201,6 +4209,7 @@ static const struct tegra_xusb_soc_config tegra124_soc_config = {
 		.vddio_hsic = "vddio_hsic",
 		.s1p05v = "avddio_usb",
 	},
+	.default_firmware_file = "tegra_xusb_firmware",
 };
 
 static struct of_device_id tegra_xhci_of_match[] = {
