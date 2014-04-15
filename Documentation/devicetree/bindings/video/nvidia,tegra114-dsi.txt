@@ -92,8 +92,7 @@ NVIDIA TEGRA114 Display Serial Interface
 
 1.A.i.x) NVIDIA Display Controller Mode timing
  This must be contained in display-timings parent node. This contains mode settings, including
- display timings. For hdmi out-type case, display-timings properties are only valid in case of
- hdmi fb console mode.
+ display timings.
 
  Required properties:
  - name: Can be arbitrary, but each sibling node should have unique name.
@@ -113,6 +112,7 @@ NVIDIA TEGRA114 Display Serial Interface
 
  Required properties:
  - name: Should be "disp-default-out".
+ - nvidia,out-type: Output type. Should be TEGRA_DC_OUT_DSI.
  - nvidia,out-width: Width in struct fb_var_screeninfo. width of picture in mm.
  - nvidia,out-height: Height in struct fb_var_screeninfo. height of picture in mm.
  - nvidia,out-flags: One item or an array of several tuples items can be chosen.
@@ -131,8 +131,6 @@ NVIDIA TEGRA114 Display Serial Interface
    BASE_COLOR_SIZE111, BASE_COLOR_SIZE222, BASE_COLOR_SIZE332, BASE_COLOR_SIZE333,
    BASE_COLOR_SIZE444, BASE_COLOR_SIZE555, BASE_COLOR_SIZE565, BASE_COLOR_SIZE666,
    and BASE_COLOR_SIZE888, respectively. In default, BASE_COLOR_SIZE888 is chosen.
-   For hdmi out-type case, depth selection is only valid for hdmi fb console mode,
-   otherwise, BASE_COLOR_SIZE888 is chosen as a default.
  - nvidia,out-xres: Visible resolution for width.
  - nvidia,out-yres: Visible resolution for height.
 
@@ -221,6 +219,7 @@ Example
 					 <CMD_HS LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT PKT_LP LINE_STOP>,
 					 <CMD_HS LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT CMD_BLNK LEN_HBP CMD_RGB_24BPP LEN_HACTIVE3 CMD_BLNK LEN_HFP LINE_STOP>;
 				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 					nvidia,out-width = <217>;
 					nvidia,out-height = <135>;
 					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;

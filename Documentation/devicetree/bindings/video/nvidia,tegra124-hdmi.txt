@@ -59,6 +59,7 @@ NVIDIA TEGRA124 High Definition Multimedia Interface
 
  Required properties:
  - name: Should be "disp-default-out".
+ - nvidia,out-type: Output type. Should be TEGRA_DC_OUT_HDMI.
  - nvidia,out-width: Width in struct fb_var_screeninfo. width of picture in mm.
  - nvidia,out-height: Height in struct fb_var_screeninfo. height of picture in mm.
  - nvidia,out-flags: One item or an array of several tuples items can be chosen.
@@ -175,6 +176,7 @@ Example
 			hdmi-display {
 				status = "okay";
 				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
 					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
 					nvidia,out-parent-clk = "pll_d2";
 					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
