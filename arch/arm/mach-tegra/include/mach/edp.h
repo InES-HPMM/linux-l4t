@@ -182,6 +182,7 @@ void tegra_init_gpu_edp_limits(unsigned int regulator_mA);
 void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 struct tegra_edp_gpu_leakage_params *tegra12x_get_gpu_leakage_params(void);
+struct tegra_edp_gpu_leakage_params *tegra13x_get_gpu_leakage_params(void);
 #else
 static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin)
@@ -190,6 +191,9 @@ static inline void tegra_init_gpu_edp_limits(unsigned int regulator_mA)
 {}
 static inline struct tegra_edp_gpu_leakage_params
 					*tegra12x_get_gpu_leakage_params(void)
+{ return NULL; }
+static inline struct tegra_edp_gpu_leakage_params
+					*tegra13x_get_gpu_leakage_params(void)
 { return NULL; }
 #endif
 
@@ -240,8 +244,12 @@ static inline struct tegra_edp_cpu_leakage_params *tegra14x_get_leakage_params
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,
 							unsigned int *sz);
+struct tegra_edp_cpu_leakage_params *tegra13x_get_leakage_params(int index,
+							unsigned int *sz);
 #else
 static inline struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params
+(int index, unsigned int *sz) { return NULL; }
+static inline struct tegra_edp_cpu_leakage_params *tegra13x_get_leakage_params
 (int index, unsigned int *sz) { return NULL; }
 #endif
 

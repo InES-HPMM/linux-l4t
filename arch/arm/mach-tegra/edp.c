@@ -47,7 +47,8 @@
 #define IS_T11X		(tegra_chip_id == TEGRA_CHIPID_TEGRA11)
 #define IS_T14X		(tegra_chip_id == TEGRA_CHIPID_TEGRA14)
 #define IS_T12X		(tegra_chip_id == TEGRA_CHIPID_TEGRA12)
-#define IS_T1XX		(IS_T11X || IS_T14X || IS_T12X)
+#define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
+#define IS_T1XX		(IS_T11X || IS_T14X || IS_T12X || IS_T13X)
 
 static u32 tegra_chip_id = 0xdeadbeef;
 
@@ -323,6 +324,8 @@ static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 		params = tegra14x_get_leakage_params(0, &array_size);
 	else if (IS_T12X)
 		params = tegra12x_get_leakage_params(0, &array_size);
+	else if (IS_T13X)
+		params = tegra13x_get_leakage_params(0, &array_size);
 	else
 		array_size = 0;
 
@@ -367,6 +370,8 @@ static int init_cpu_edp_limits_calculated(void)
 		params = tegra14x_get_leakage_params(cpu_speedo_idx, NULL);
 	else if (IS_T12X)
 		params = tegra12x_get_leakage_params(cpu_speedo_idx, NULL);
+	else if (IS_T13X)
+		params = tegra13x_get_leakage_params(cpu_speedo_idx, NULL);
 	else
 		return -EINVAL;
 
@@ -823,6 +828,8 @@ static int init_gpu_edp_limits_calculated(void)
 
 	if (IS_T12X)
 		params = tegra12x_get_gpu_leakage_params();
+	else if (IS_T13X)
+		params = tegra13x_get_gpu_leakage_params();
 	else
 		return -EINVAL;
 
@@ -925,7 +932,7 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_mA)
 	if (tegra_chip_id == 0xdeadbeef)
 		tegra_chip_id = tegra_get_chip_id();
 
-	if (!IS_T12X)
+	if (!(IS_T12X || IS_T13X))
 		return;
 
 	if (!regulator_mA) {
@@ -1166,7 +1173,7 @@ static ssize_t gpu_edp_reg_override_write(struct file *file,
 	unsigned int gpu_edp_reg_override_mA_temp;
 	unsigned int gpu_edp_reg_override_mA_prev = gpu_edp_reg_override_mA;
 
-	if (!IS_T12X)
+	if (!(IS_T12X || IS_T13X))
 		return -EINVAL;
 
 	if (sizeof(buf) <= count)

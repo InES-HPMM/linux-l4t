@@ -323,6 +323,57 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 	},
 };
 
+#define LEAKAGE13_CONSTS_IJK_COMMON					\
+{									\
+	/* i = 0 */							\
+	{ {     379418152,   -346934015,    78200120,   -4417754, },	\
+	  {   -1206883115,   1104697779,  -249217981,   14061354, },	\
+	  {    1254008683,  -1149673559,   259614111,  -14624565, },	\
+	  {    -425176538,    391251722,   -88449682,    4972193, },	\
+	},								\
+	/* i = 1 */							\
+	{ {    -503813674,    440324321,   -98337254,    5557249, },	\
+	  {    1602759501,  -1397938820,   312576285,  -17649754, },	\
+	  {   -1665439839,   1449369020,  -324538025,   18306811, },	\
+	  {     565165401,   -490769906,   110089714,   -6198017, },	\
+	},								\
+	/* i = 2 */							\
+	{ {     173847877,   -151521690,    33543642,   -1892650, },	\
+	  {    -551852158,    480614203,  -106527695,    6012566, },	\
+	  {     571798826,   -497665481,   110462057,   -6235968, },	\
+	  {    -193342746,    168293820,   -37412123,    2112012, },	\
+	},								\
+	/* i = 3 */							\
+	{ {     -16787513,     14607225,    -3223101,     181933, },	\
+	  {      53238061,    -46295241,    10228756,    -577786, },	\
+	  {     -55099102,     47886289,   -10596814,     598956, },	\
+	  {      18611025,    -16172040,     3585182,    -202741, },	\
+	},								\
+}
+
+#define EDP13_PARAMS_COMMON_PART					\
+	.temp_scaled      = 10,						\
+	.dyn_scaled       = 1000,					\
+	.dyn_consts_n     = { 2700, 4900 },				\
+	.consts_scaled    = 100,					\
+	.leakage_consts_n = { 60, 100 },				\
+	.ijk_scaled       = 10000,					\
+	.leakage_min      = 30,						\
+	/* .safety_cap       = { 2400000, 2200000, }, */		\
+	/* .volt_temp_cap = { 70, 1240 }, - TODO for T132 */		\
+	.leakage_consts_ijk = LEAKAGE13_CONSTS_IJK_COMMON
+
+static struct tegra_edp_cpu_leakage_params t13x_leakage_params[] = {
+	{
+		.cpu_speedo_id      = 0, /* Engg SKU */
+		EDP13_PARAMS_COMMON_PART,
+	},
+	{
+		.cpu_speedo_id      = 1, /* Engg SKU */
+		EDP13_PARAMS_COMMON_PART,
+	},
+};
+
 #ifdef CONFIG_TEGRA_GPU_EDP
 static struct tegra_edp_gpu_leakage_params t12x_gpu_leakage_params = {
 	.temp_scaled      = 10,
@@ -364,6 +415,11 @@ struct tegra_edp_gpu_leakage_params *tegra12x_get_gpu_leakage_params(void)
 {
 	return &t12x_gpu_leakage_params;
 }
+
+struct tegra_edp_gpu_leakage_params *tegra13x_get_gpu_leakage_params(void)
+{
+	return &t12x_gpu_leakage_params; /* T132 has same GPU_EDP params */
+}
 #endif
 
 struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,
@@ -373,6 +429,15 @@ struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,
 	if (sz)
 		*sz = ARRAY_SIZE(t12x_leakage_params);
 	return &t12x_leakage_params[index];
+}
+
+struct tegra_edp_cpu_leakage_params *tegra13x_get_leakage_params(int index,
+							unsigned int *sz)
+{
+	BUG_ON(index >= ARRAY_SIZE(t13x_leakage_params));
+	if (sz)
+		*sz = ARRAY_SIZE(t13x_leakage_params);
+	return &t13x_leakage_params[index];
 }
 #endif
 
