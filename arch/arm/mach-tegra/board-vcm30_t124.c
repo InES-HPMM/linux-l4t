@@ -709,7 +709,7 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 				NULL),
 #ifdef CONFIG_SATA_AHCI_TEGRA
-	OF_DEV_AUXDATA("nvidia,tegra124-sata", TEGRA_SATA_BAR5_BASE, "tegra-sata", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", TEGRA_SATA_BAR5_BASE, "tegra-sata", NULL),
 #endif
 
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)

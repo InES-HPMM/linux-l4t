@@ -127,7 +127,8 @@
 		status = "okay";
 	};
 
-	sata-controller {
+	sata@0x70020000 {
 		status = "okay";
+		nvidia,enable-sata-port;
 	};
 };
