@@ -29,6 +29,10 @@
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+#include <linux/gpio.h>
+#include <linux/system-wakeup.h>
+#include <linux/syscore_ops.h>
+#include <linux/delay.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
@@ -54,6 +58,56 @@
 #define PMC_CTRL_INTR_LOW       (1 << 17)
 void tegra13x_vdd_cpu_align(int step_uv, int offset_uv);
 
+static void loki_reset_gamepad(void)
+{
+	int ret = 0;
+	int gpio_gamepad_rst = TEGRA_GPIO_PQ7;
+
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+
+	if (bi.board_id == BOARD_E2548 ||
+		(bi.board_id == BOARD_P2530 && bi.fab == 0xA0))
+		gpio_gamepad_rst = TEGRA_GPIO_PK0;
+
+	ret = gpio_request(gpio_gamepad_rst, "GAMEPAD_RST");
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return;
+	}
+
+	ret = gpio_direction_output(gpio_gamepad_rst, 1);
+	if (ret < 0) {
+		gpio_free(gpio_gamepad_rst);
+		pr_err("%s: gpio_direction_output failed %d\n", __func__, ret);
+		return;
+	}
+
+	gpio_set_value(gpio_gamepad_rst, 0);
+	udelay(20);
+	gpio_set_value(gpio_gamepad_rst, 1);
+	gpio_free(gpio_gamepad_rst);
+
+	pr_info("%s: done\n", __func__);
+
+	return;
+}
+
+static void loki_board_resume(void)
+{
+	int wakeup_irq = get_wakeup_reason_irq();
+
+	/* if wake up by LID open, reset gamepad uC */
+	if (gpio_to_irq(TEGRA_GPIO_PS0) == wakeup_irq)
+		loki_reset_gamepad();
+
+	return;
+}
+
+static struct syscore_ops loki_pm_syscore_ops = {
+	.resume = loki_board_resume,
+};
+
 static struct tegra_suspend_platform_data loki_suspend_data = {
 	.cpu_timer      = 3500,
 	.cpu_off_timer  = 300,
@@ -76,6 +130,9 @@ int __init loki_suspend_init(void)
 		loki_suspend_data.cpu_timer = 500;
 
 	tegra_init_suspend(&loki_suspend_data);
+
+	register_syscore_ops(&loki_pm_syscore_ops);
+
 	return 0;
 }
 
