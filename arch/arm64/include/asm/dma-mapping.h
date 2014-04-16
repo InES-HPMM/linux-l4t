@@ -24,13 +24,14 @@
 #include <asm-generic/dma-coherent.h>
 
 #define ARCH_HAS_DMA_GET_REQUIRED_MASK
-#define DMA_ERROR_CODE  (~0)
 
 #define PG_PROT_KERNEL PAGE_KERNEL
 #define FLUSH_TLB_PAGE(addr) flush_tlb_kernel_range(addr, PAGE_SIZE)
 #define FLUSH_DCACHE_AREA __flush_dcache_area
 
 extern struct dma_map_ops arm_dma_ops;
+#define DMA_ERROR_CODE	(~(dma_addr_t)0)
+extern struct dma_map_ops *dma_ops;
 
 static inline struct dma_map_ops *get_dma_ops(struct device *dev)
 {
