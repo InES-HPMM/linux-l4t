@@ -229,12 +229,13 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune1		= 0x000000FF,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 800,
+			.min_millivolts = 700,
 			.tune_high_margin_mv = 30,
 		},
 		.max_mv = 1260,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
+		.thermal_scale = 10,
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
@@ -263,11 +264,13 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2397000,       {2527648,-83645,1013}, {1260000,0,0}},
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
-		.vmin_trips_table = { 15, },
-		.therm_floors_table = { 900, },
+		.cvb_vmin =  {  0, { 2870000, -174300, 3600, -357,  -339,  53}, },
+		.vmin_trips_table = { 15, 30, 50, 70, 120, },
+		.therm_floors_table = { 890, 760, 740, 720, 700, },
 	},
 };
 
+static int cpu_vmin[MAX_THERMAL_RANGES];
 static int cpu_millivolts[MAX_DVFS_FREQS];
 static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
 
@@ -741,6 +744,60 @@ static void __init set_cpu_dfll_tuning_data(struct cpu_cvb_dvfs *d, int speedo)
 	}
 }
 
+static void __init set_cpu_dfll_vmin_data(
+	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs,
+	int speedo, struct rail_alignment *align)
+{
+	int mv, mvj, t, j;
+	struct dvfs_rail *rail = &tegra13_dvfs_rail_vdd_cpu;
+
+	/* First install fixed Vmin profile */
+	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
+		d->therm_floors_table, rail, &cpu_dvfs->dfll_data);
+
+	if (!rail->therm_mv_floors || !rail->therm_mv_floors_num ||
+	    !d->cvb_vmin.cvb_dfll_param.c0)
+		return;
+
+	/*
+	 * If fixed profile installed successfully, and speedo dependency is
+	 * specified, calculate Vmin for each temperature range based on CVB
+	 * equations for DFLL mode with the following restrictions:
+	 * - keep fixed floor in lowest temperature range
+	 * - apply Vmin at left (low) boundary trip-point to the entire range
+	 * - don't allow Vmin below fixed floor
+	 * - make sure calculated Vmin profile is descending with temperature
+	 */
+	mv = get_cvb_voltage(
+		speedo, d->speedo_scale, &d->cvb_vmin.cvb_dfll_param);
+
+	for (j = rail->therm_mv_floors_num - 1;; j--) {
+		cpu_vmin[j] = d->therm_floors_table[j];
+		if (j < rail->therm_mv_floors_num - 1)
+			cpu_vmin[j] = max(cpu_vmin[j], cpu_vmin[j+1]);
+		if (j == 0)
+			break;
+
+		/* add Vmin thermal offset */
+		t = d->vmin_trips_table[j-1];
+		mvj = mv + get_cvb_t_voltage(speedo, d->speedo_scale,
+			t, d->thermal_scale, &d->cvb_vmin.cvb_dfll_param);
+		mvj = round_cvb_voltage(mvj, d->voltage_scale, align);
+		cpu_vmin[j] = max(cpu_vmin[j], mvj);
+	}
+
+	/*
+	 * Overwrite fixed Vmin profile with CVB Vmin profile. Although CVB
+	 * calculations are done using DFLL mode coefficients, resulting limits
+	 * can be applied in PLL mode as well (with no actual limitations, since
+	 * PLL mode Vmin requirements are higher, and embedded into PLL DVFS
+	 * table)
+	 */
+	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
+		cpu_vmin, rail, &cpu_dvfs->dfll_data);
+}
+
+
 static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
@@ -845,9 +902,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	cpu_dvfs->dfll_data.is_bypass_down = is_lp_cluster;
 
 	/* Init cpu thermal floors */
-	tegra_dvfs_rail_init_vmin_thermal_profile(
-		d->vmin_trips_table, d->therm_floors_table,
-		&tegra13_dvfs_rail_vdd_cpu, &cpu_dvfs->dfll_data);
+	set_cpu_dfll_vmin_data(d, cpu_dvfs, speedo, align);
 
 	/* Init cpu thermal caps */
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
