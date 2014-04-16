@@ -642,6 +642,7 @@ static unsigned long tegra12_clk_cap_shared_bus(struct clk *bus,
 	unsigned long rate, unsigned long ceiling);
 
 static bool tegra12_periph_is_special_reset(struct clk *c);
+static void tegra12_dfll_cpu_late_init(struct clk *c);
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -4286,38 +4287,6 @@ static void tune_cpu_trimmers(bool trim_high)
 	tegra_soctherm_adjust_cpu_zone(trim_high);
 }
 #endif
-
-static void __init tegra12_dfll_cpu_late_init(struct clk *c)
-{
-#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-	int ret;
-	struct clk *cpu = tegra_get_clock_by_name("cpu_g");
-
-	if (!cpu || !cpu->dvfs) {
-		pr_err("%s: CPU dvfs is not present\n", __func__);
-		return;
-	}
-	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
-
-	/* release dfll clock source reset, init cl_dvfs control logic, and
-	   move dfll to initialized state, so it can be used as CPU source */
-	tegra_periph_reset_deassert(c);
-	ret = tegra_init_cl_dvfs();
-	if (!ret) {
-		c->state = OFF;
-		if (tegra_platform_is_silicon()) {
-			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
-#ifdef CONFIG_ARCH_TEGRA_13x_SOC
-			if (tegra_cpu_speedo_id() == 0)
-				use_dfll = 0;
-#endif
-		}
-		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
-		tegra_cl_dvfs_debug_init(c);
-		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n", use_dfll);
-	}
-#endif
-}
 
 static void __init tegra12_dfll_clk_init(struct clk *c)
 {
@@ -8917,6 +8886,40 @@ static bool tegra12_is_dyn_ramp(
 	}
 #endif
 	return false;
+}
+
+/* DFLL late init called with CPU clock lock taken */
+static void __init tegra12_dfll_cpu_late_init(struct clk *c)
+{
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	int ret;
+	struct clk *cpu = &tegra_clk_virtual_cpu_g;
+
+	if (!cpu || !cpu->dvfs) {
+		pr_err("%s: CPU dvfs is not present\n", __func__);
+		return;
+	}
+	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
+
+	/* release dfll clock source reset, init cl_dvfs control logic, and
+	   move dfll to initialized state, so it can be used as CPU source */
+	tegra_periph_reset_deassert(c);
+	ret = tegra_init_cl_dvfs();
+	if (!ret) {
+		c->state = OFF;
+		if (tegra_platform_is_silicon()) {
+			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+			if (tegra_cpu_speedo_id() == 0)
+				use_dfll = 0;
+#endif
+		}
+		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		tegra_cl_dvfs_debug_init(c);
+		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n",
+			use_dfll);
+	}
+#endif
 }
 
 /*
