@@ -184,37 +184,31 @@ struct gpio_chip *gpio_to_chip(unsigned gpio)
 }
 
 /* dynamic allocation of GPIOs, e.g. on a hotplugged device */
-static int gpiochip_find_base(struct gpio_chip *req_chip)
+static int gpiochip_find_base(struct gpio_chip *req_chip, int aliased_base)
 {
 	struct gpio_chip *chip;
 	int ngpio = req_chip->ngpio;
 	int base = -1;
 
-#ifdef CONFIG_OF
-	if (req_chip->of_node) {
-		int gpio_nr;
+	if (aliased_base >= 0) {
+		int start_gpio = aliased_base;
+		int end_gpio = aliased_base + req_chip->ngpio;
 
-		gpio_nr = of_alias_get_id(req_chip->of_node, "gpio");
-		if (gpio_nr >= 0) {
-			int start_gpio = gpio_nr;
-			int end_gpio = gpio_nr + req_chip->ngpio;
+		/* Check if aliased base is not already allocated */
+		list_for_each_entry(chip, &gpio_chips, list) {
+			if (chip->base > end_gpio)
+				continue;
 
-			list_for_each_entry(chip, &gpio_chips, list) {
-				if (chip->base > end_gpio)
+			if ((chip->base < start_gpio) &&
+				((chip->base + chip->ngpio) < start_gpio))
 					continue;
-
-				if ((chip->base < start_gpio) &&
-					((chip->base + chip->ngpio) < start_gpio))
-						continue;
-				pr_err("GPIO %d to %d is already allocated\n",
-						start_gpio, end_gpio);
-				gpio_nr = -1;
-				break;
-			}
+			pr_err("GPIO %d to %d is already allocated\n",
+					start_gpio, end_gpio);
+			aliased_base = -1;
+			break;
 		}
-		base = gpio_nr;
+		base = aliased_base;
 	}
-#endif
 
 	if (base >= 0)
 		goto found;
@@ -1206,6 +1200,7 @@ int gpiochip_add(struct gpio_chip *chip)
 	int		status = 0;
 	unsigned	id;
 	int		base = chip->base;
+	int		aliased_base = -1;
 
 	if ((!gpio_is_valid(base) || !gpio_is_valid(base + chip->ngpio - 1))
 			&& base >= 0) {
@@ -1213,10 +1208,15 @@ int gpiochip_add(struct gpio_chip *chip)
 		goto fail;
 	}
 
+#ifdef CONFIG_OF
+	if (chip->of_node)
+		aliased_base = of_alias_get_id(chip->of_node, "gpio");
+#endif
+
 	spin_lock_irqsave(&gpio_lock, flags);
 
 	if (base < 0) {
-		base = gpiochip_find_base(chip);
+		base = gpiochip_find_base(chip, aliased_base);
 		if (base < 0) {
 			status = base;
 			goto unlock;
