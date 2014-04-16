@@ -1678,7 +1678,10 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	int ret;
 	int next_poweron_time = 0;
 
-	if (!bq2419x->battery_presense || !bq2419x->cable_connected)
+	if (!bq2419x->battery_presense)
+		return;
+
+	if (!bq2419x->cable_connected)
 		goto end;
 
 	if (bq2419x->in_current_limit <= 500)
