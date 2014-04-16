@@ -45,12 +45,6 @@
 #include "tegra11_soctherm.h"
 #include "iomap.h"
 
-int __init norrin_as3722_regulator_init(void)
-{
-	tegra_pmc_pmu_interrupt_polarity(true);
-	return 0;
-}
-
 static struct tegra_suspend_platform_data norrin_suspend_data = {
 	.cpu_timer	= 2000,
 	.cpu_off_timer	= 2000,
@@ -152,7 +146,7 @@ int __init norrin_regulator_init(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	norrin_cl_dvfs_init();
 #endif
-	norrin_as3722_regulator_init();
+	tegra_pmc_pmu_interrupt_polarity(true);
 
 	return 0;
 }

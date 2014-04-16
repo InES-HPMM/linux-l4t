@@ -29,6 +29,7 @@
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/power/bq2471x-charger.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
 
@@ -49,9 +50,6 @@
 #include "tegra11_soctherm.h"
 #include "iomap.h"
 
-#define PMC_CTRL		0x0
-#define PMC_CTRL_INTR_LOW	(1 << 17)
-
 struct bq2471x_platform_data laguna_bq2471x_pdata = {
 	.charge_broadcast_mode = 1,
 	.gpio_active_low = 1,
@@ -64,21 +62,6 @@ static struct i2c_board_info __initdata bq2471x_boardinfo[] = {
 		.platform_data  = &laguna_bq2471x_pdata,
 	},
 };
-
-int __init laguna_as3722_regulator_init(void)
-{
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-
-	/* AS3722: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
-	return 0;
-}
 
 static struct tegra_suspend_platform_data laguna_suspend_data = {
 	.cpu_timer	= 2000,
@@ -164,7 +147,7 @@ int __init laguna_regulator_init(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	laguna_cl_dvfs_init();
 #endif
-	laguna_as3722_regulator_init();
+	tegra_pmc_pmu_interrupt_polarity(true);
 
 	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
 		i2c_register_board_info(1, bq2471x_boardinfo,
