@@ -109,7 +109,7 @@ void __init early_print(const char *str, ...)
 	vsnprintf(buf, sizeof(buf), str, ap);
 	va_end(ap);
 
-	printk("%s", buf);
+	pr_info("%s", buf);
 }
 
 struct mpidr_hash mpidr_hash;
@@ -193,14 +193,14 @@ static void __init setup_processor(void)
 	 */
 	cpu_info = lookup_processor_type(read_cpuid_id());
 	if (!cpu_info) {
-		printk("CPU configuration botched (ID %08x), unable to continue.\n",
+		pr_info("CPU configuration botched (ID %08x), unable to continue.\n",
 		       read_cpuid_id());
 		while (1);
 	}
 
 	cpu_name = cpu_info->cpu_name;
 
-	printk("CPU: %s [%08x] revision %d\n",
+	pr_info("CPU: %s [%08x] revision %d\n",
 	       cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
 
 	sprintf(init_utsname()->machine, "aarch64");
