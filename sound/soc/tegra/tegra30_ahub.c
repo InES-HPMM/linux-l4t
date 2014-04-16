@@ -623,6 +623,20 @@ static const char * const configlink_clocks[] = {
 #ifndef CONFIG_ARCH_TEGRA_14x_SOC
 	"spdif_in",
 #endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	"amx",
+	"adx",
+#endif
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	"amx1",
+	"adx1",
+	"afc0",
+	"afc1",
+	"afc2",
+	"afc3",
+	"afc4",
+	"afc5",
+#endif
 };
 
 struct of_dev_auxdata ahub_auxdata[] = {
