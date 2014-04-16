@@ -393,13 +393,22 @@ static void gpio_keys_irq_timer(unsigned long _data)
 {
 	struct gpio_button_data *bdata = (struct gpio_button_data *)_data;
 	struct input_dev *input = bdata->input;
+	const struct gpio_keys_button *button = bdata->button;
 	unsigned long flags;
+	int state = 1;
 
 	spin_lock_irqsave(&bdata->lock, flags);
 	if (bdata->key_pressed) {
-		input_event(input, EV_KEY, bdata->button->code, 0);
-		input_sync(input);
-		bdata->key_pressed = false;
+		if (button->gpio && gpio_is_valid(button->gpio))
+			state = gpio_get_value_cansleep(button->gpio);
+		if (state == 0) {
+			mod_timer(&bdata->timer, jiffies +
+					msecs_to_jiffies(bdata->timer_debounce));
+		} else {
+			input_event(input, EV_KEY, bdata->button->code, 0);
+			input_sync(input);
+			bdata->key_pressed = false;
+		}
 	}
 	spin_unlock_irqrestore(&bdata->lock, flags);
 }
@@ -454,8 +463,7 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 	bdata->button = button;
 	spin_lock_init(&bdata->lock);
 
-	if (gpio_is_valid(button->gpio)) {
-
+	if (gpio_is_valid(button->gpio) && !button->irq) {
 		error = gpio_request_one(button->gpio, GPIOF_IN, desc);
 		if (error < 0) {
 			dev_err(dev, "Failed to request GPIO %d, error %d\n",
@@ -499,6 +507,15 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 		if (button->type && button->type != EV_KEY) {
 			dev_err(dev, "Only EV_KEY allowed for IRQ buttons.\n");
 			return -EINVAL;
+		}
+
+		if (button->gpio && gpio_is_valid(button->gpio)) {
+			error = gpio_request_one(button->gpio, GPIOF_IN, desc);
+			if (error < 0) {
+				dev_err(dev, "Failed to request GPIO %d, error %d\n",
+					button->gpio, error);
+				return error;
+			}
 		}
 
 		bdata->timer_debounce = button->debounce_interval;
