@@ -1,11 +1,5 @@
 menu "Device Drivers"
 
-source "drivers/cpufreq/Kconfig"
-
-source "drivers/cpuidle/Kconfig"
-
-source "drivers/cpuquiet/Kconfig"
-
 source "drivers/base/Kconfig"
 
 source "drivers/bus/Kconfig"
