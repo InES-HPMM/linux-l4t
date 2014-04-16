@@ -503,7 +503,10 @@ static u8 gic_get_cpumask(struct gic_chip_data *gic)
 			break;
 	}
 
-	if (!mask)
+	/* read number of cpu interfaces */
+	i = readl_relaxed(gic_data_dist_base(gic) + GIC_DIST_CTR) & 0xe0;
+
+	if (!mask && (i > 0))
 		pr_crit("GIC CPU mask not found - kernel will fail to boot.\n");
 
 	return mask;
