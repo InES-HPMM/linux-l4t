@@ -19,7 +19,6 @@
 #ifndef _MACH_TEGRA_BOARD_VCM30_T124_H
 #define _MACH_TEGRA_BOARD_VCM30_T124_H
 
-#include <linux/mfd/as3722-plat.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
@@ -33,10 +32,6 @@ int vcm30_t124_suspend_init(void);
 int vcm30_t124_pmon_init(void);
 int vcm30_t124_panel_init(void);
 int vcm30_t124_pca953x_init(void);
-
-/* FIXME: Needed? */
-#define AS3722_GPIO_BASE	TEGRA_NR_GPIOS
-#define AS3722_GPIO_END	(AS3722_GPIO_BASE + AS3722_NUM_GPIO)
 
 #define UTMI1_PORT_OWNER_XUSB   0x1
 #define UTMI2_PORT_OWNER_XUSB   0x2

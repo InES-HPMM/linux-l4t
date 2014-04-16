@@ -25,7 +25,6 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
-#include <linux/mfd/as3722-plat.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
@@ -52,7 +51,6 @@
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
-#define AS3722_SUPPLY(_name) "as3722_"#_name
 
 struct bq2471x_platform_data laguna_bq2471x_pdata = {
 	.charge_broadcast_mode = 1,
