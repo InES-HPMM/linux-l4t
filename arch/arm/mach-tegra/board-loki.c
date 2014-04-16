@@ -465,16 +465,17 @@ static void loki_usb_init(void)
 	tegra_ehci1_utmi_pdata.vbus_extcon_dev_name = "palmas-extcon";
 
 	if (board_info.board_id == BOARD_P2530 &&
-		board_info.sku == BOARD_SKU_FOSTER) {
+		board_info.sku == BOARD_SKU_FOSTER &&
+		board_info.fab >= 0xC0) {
 		rc = gpio_request(TEGRA_GPIO_PK5, "r8152_rst");
 		if (rc)
-			pr_err("RTL8152 gpio request failed:%d\n", rc);
+			pr_warn("RTL8152 gpio request failed:%d\n", rc);
 		rc = gpio_direction_output(TEGRA_GPIO_PK5, 0);
 		if (rc)
-			pr_err("RTL8152 gpio direction failed:%d\n", rc);
+			pr_warn("RTL8152 gpio direction failed:%d\n", rc);
 		rc = gpio_direction_output(TEGRA_GPIO_PK5, 1);
 		if (rc)
-			pr_err("RTL8152 gpio direction failed:%d\n", rc);
+			pr_warn("RTL8152 gpio direction failed:%d\n", rc);
 	}
 
 	/* Enable Y-Cable support */
