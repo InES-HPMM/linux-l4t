@@ -1690,6 +1690,27 @@ static struct clk_ops tegra_cop_ops = {
 };
 
 /* bus clock functions */
+static DEFINE_SPINLOCK(bus_clk_lock);
+
+static int bus_set_div(struct clk *c, int div)
+{
+	u32 val;
+	unsigned long flags;
+
+	if (!div || (div > (BUS_CLK_DIV_MASK + 1)))
+		return -EINVAL;
+
+	spin_lock_irqsave(&bus_clk_lock, flags);
+	val = clk_readl(c->reg);
+	val &= ~(BUS_CLK_DIV_MASK << c->reg_shift);
+	val |= (div - 1) << c->reg_shift;
+	clk_writel(val, c->reg);
+	c->div = div;
+	spin_unlock_irqrestore(&bus_clk_lock, flags);
+
+	return 0;
+}
+
 static void tegra21_bus_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
@@ -1715,19 +1736,12 @@ static void tegra21_bus_clk_disable(struct clk *c)
 
 static int tegra21_bus_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	u32 val = clk_readl(c->reg);
 	unsigned long parent_rate = clk_get_rate(c->parent);
 	int i;
 
 	for (i = 1; i <= 4; i++) {
-		if (rate >= parent_rate / i) {
-			val &= ~(BUS_CLK_DIV_MASK << c->reg_shift);
-			val |= (i - 1) << c->reg_shift;
-			clk_writel(val, c->reg);
-			c->div = i;
-			c->mul = 1;
-			return 0;
-		}
+		if (rate >= parent_rate / i)
+			return bus_set_div(c, i);
 	}
 	return -EINVAL;
 }
@@ -1800,23 +1814,51 @@ static long tegra21_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 	return tegra21_sbus_cmplx_round_updown(c, rate, true);
 }
 
+/*
+ * FIXME: This limitation may have been relaxed on Tegra12.
+ * This issue has to be visited again once the new limitation is clarified.
+ *
+ * Limitations on SCLK/HCLK/PCLK dividers:
+ * (A) H/w limitation:
+ *	if SCLK >= 60MHz, SCLK:PCLK >= 2
+ * (B) S/w policy limitation, in addition to (A):
+ *	if any APB bus shared user request is enabled, HCLK:PCLK >= 2
+ *  Reason for (B): assuming APB bus shared user has requested X < 60MHz,
+ *  HCLK = PCLK = X, and new AHB user is coming on-line requesting Y >= 60MHz,
+ *  we can consider 2 paths depending on order of changing HCLK rate and
+ *  HCLK:PCLK ratio
+ *  (i)  HCLK:PCLK = X:X => Y:Y* => Y:Y/2,   (*) violates rule (A)
+ *  (ii) HCLK:PCLK = X:X => X:X/2* => Y:Y/2, (*) under-clocks APB user
+ *  In this case we can not guarantee safe transition from HCLK:PCLK = 1:1
+ *  below 60MHz to HCLK rate above 60MHz without under-clocking APB user.
+ *  Hence, policy (B).
+ *
+ *  Note: when there are no request from APB users, path (ii) can be used to
+ *  increase HCLK above 60MHz, and HCLK:PCLK = 1:1 is allowed.
+ */
+
+#define SCLK_PCLK_UNITY_RATIO_RATE_MAX	60000000
+#define BUS_AHB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
+#define BUS_APB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
+
 static int tegra21_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
 	struct clk *new_parent;
 
-	/* - select the appropriate sclk parent
-	   - keep hclk at the same rate as sclk
-	   - set pclk at 1:2 rate of hclk unless pclk minimum is violated,
-	     in the latter case switch to 1:1 ratio */
+	/*
+	 * Configure SCLK/HCLK/PCLK guranteed safe combination:
+	 * - select the appropriate sclk parent
+	 * - keep hclk at the same rate as sclk
+	 * - set pclk at 1:2 rate of hclk
+	 */
+	bus_set_div(c->u.system.pclk, 2);
+	bus_set_div(c->u.system.hclk, 1);
+	c->child_bus->child_bus->div = 2;
+	c->child_bus->div = 1;
 
-	if (rate >= c->u.system.pclk->min_rate * 2) {
-		ret = clk_set_div(c->u.system.pclk, 2);
-		if (ret) {
-			pr_err("Failed to set 1 : 2 pclk divider\n");
-			return ret;
-		}
-	}
+	if (rate == clk_get_rate_locked(c))
+		return 0;
 
 	new_parent = (rate <= c->u.system.threshold) ?
 		c->u.system.sclk_low : c->u.system.sclk_high;
@@ -1837,31 +1879,66 @@ static int tegra21_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
 		}
 	}
 
-	if (rate < c->u.system.pclk->min_rate * 2) {
-		ret = clk_set_div(c->u.system.pclk, 1);
-		if (ret) {
-			pr_err("Failed to set 1 : 1 pclk divider\n");
-			return ret;
-		}
-	}
-
 	return 0;
 }
 
 static int tegra21_clk_sbus_update(struct clk *bus)
 {
-	unsigned long rate, old_rate;
+	int ret, div;
+	bool p_requested;
+	unsigned long s_rate, h_rate, p_rate, ceiling;
+	struct clk *ahb, *apb;
 
 	if (detach_shared_bus)
 		return 0;
 
-	rate = tegra21_clk_shared_bus_update(bus, NULL, NULL, NULL);
+	s_rate = tegra21_clk_shared_bus_update(bus, &ahb, &apb, &ceiling);
+	if (bus->override_rate)
+		return clk_set_rate_locked(bus, s_rate);
 
-	old_rate = clk_get_rate_locked(bus);
-	if (rate == old_rate)
-		return 0;
+	ahb = bus->child_bus;
+	apb = ahb->child_bus;
+	h_rate = ahb->u.shared_bus_user.rate;
+	p_rate = apb->u.shared_bus_user.rate;
+	p_requested = apb->refcnt > 1;
 
-	return clk_set_rate_locked(bus, rate);
+	/* Propagate ratio requirements up from PCLK to SCLK */
+	if (p_requested)
+		h_rate = max(h_rate, p_rate * 2);
+	s_rate = max(s_rate, h_rate);
+	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+		s_rate = max(s_rate, p_rate * 2);
+
+	/* Propagate cap requirements down from SCLK to PCLK */
+	s_rate = tegra21_clk_cap_shared_bus(bus, s_rate, ceiling);
+	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+		p_rate = min(p_rate, s_rate / 2);
+	h_rate = min(h_rate, s_rate);
+	if (p_requested)
+		p_rate = min(p_rate, h_rate / 2);
+
+
+	/* Set new sclk rate in safe 1:1:2, rounded "up" configuration */
+	ret = clk_set_rate_locked(bus, s_rate);
+	if (ret)
+		return ret;
+
+	/* Finally settle new bus divider values */
+	s_rate = clk_get_rate_locked(bus);
+	div = min(s_rate / h_rate, BUS_AHB_DIV_MAX);
+	if (div != 1) {
+		bus_set_div(bus->u.system.hclk, div);
+		ahb->div = div;
+	}
+
+	h_rate = clk_get_rate(bus->u.system.hclk);
+	div = min(h_rate / p_rate, BUS_APB_DIV_MAX);
+	if (div != 2) {
+		bus_set_div(bus->u.system.pclk, div);
+		apb->div = div;
+	}
+
+	return 0;
 }
 
 static struct clk_ops tegra_sbus_cmplx_ops = {
@@ -5565,13 +5642,14 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 		 * Ignore requests from disabled floor and bw users, and from
 		 * auto-users riding the bus. Always honor ceiling users, even
 		 * if they are disabled - we do not want to keep enabled parent
-		 * bus just because ceiling is set.
+		 * bus just because ceiling is set. Ignore SCLK/AHB/APB dividers
+		 * to propagate flat max request.
 		 */
 		if (c->u.shared_bus_user.enabled ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING) ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING_BUT_ISO)) {
-			unsigned long request_rate = c->u.shared_bus_user.rate *
-				(c->div ? : 1);
+		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
+			unsigned long request_rate = c->u.shared_bus_user.rate;
+			if (!(c->flags & DIV_BUS))
+				request_rate *=	c->div ? : 1;
 			usage_flags |= c->u.shared_bus_user.usage_flag;
 
 			switch (c->u.shared_bus_user.mode) {
@@ -5630,6 +5708,7 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 	rate = override_rate ? : max(rate, bw);
 	ceiling = min(ceiling, ceiling_but_iso);
 	ceiling = override_rate ? bus->max_rate : ceiling;
+	bus->override_rate = override_rate;
 
 	if (bus_top && bus_slow && rate_cap) {
 		/* If dynamic bus dvfs table, let the caller to complete
@@ -5762,12 +5841,16 @@ static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 static long tegra_clk_shared_bus_user_round_rate(
 	struct clk *c, unsigned long rate)
 {
-	/* Defer rounding requests until aggregated. BW users must not be
-	   rounded at all, others just clipped to bus range (some clients
-	   may use round api to find limits) */
+	/*
+	 * Defer rounding requests until aggregated. BW users must not be
+	 * rounded at all, others just clipped to bus range (some clients
+	 * may use round api to find limits). Ignore SCLK/AHB and AHB/APB
+	 * dividers to keep flat bus requests propagation.
+	 */
+
 	if ((c->u.shared_bus_user.mode != SHARED_BW) &&
 	    (c->u.shared_bus_user.mode != SHARED_ISO_BW)) {
-		if (c->div > 1)
+		if (!(c->flags & DIV_BUS) && (c->div > 1))
 			rate *= c->div;
 
 		if (rate > c->parent->max_rate)
@@ -5775,7 +5858,7 @@ static long tegra_clk_shared_bus_user_round_rate(
 		else if (rate < c->parent->min_rate)
 			rate = c->parent->min_rate;
 
-		if (c->div > 1)
+		if (!(c->flags & DIV_BUS) && (c->div > 1))
 			rate /= c->div;
 	}
 	return rate;
@@ -5909,6 +5992,66 @@ static void tegra21_clk_coupled_gate_disable(struct clk *c)
 			clk_disable(sel->input);
 	}
 }
+
+/*
+ * AHB and APB shared bus operations
+ * APB shared bus is a user of AHB shared bus
+ * AHB shared bus is a user of SCLK complex shared bus
+ * SCLK/AHB and AHB/APB dividers can be dynamically changed. When AHB and APB
+ * users requests are propagated to SBUS target rate, current values of the
+ * dividers are ignored, and flat maximum request is selected as SCLK bus final
+ * target. Then the dividers will be re-evaluated, based on AHB and APB targets.
+ * Both AHB and APB buses are always enabled.
+ */
+static void tegra21_clk_ahb_apb_init(struct clk *c, struct clk *bus_clk)
+{
+	tegra_clk_shared_bus_user_init(c);
+	c->max_rate = bus_clk->max_rate;
+	c->min_rate = bus_clk->min_rate;
+	c->mul = bus_clk->mul;
+	c->div = bus_clk->div;
+
+	c->u.shared_bus_user.rate = clk_get_rate(bus_clk);
+	c->u.shared_bus_user.enabled = true;
+	c->parent->child_bus = c;
+}
+
+static void tegra21_clk_ahb_init(struct clk *c)
+{
+	struct clk *bus_clk = c->parent->u.system.hclk;
+	tegra21_clk_ahb_apb_init(c, bus_clk);
+}
+
+static void tegra21_clk_apb_init(struct clk *c)
+{
+	struct clk *bus_clk = c->parent->parent->u.system.pclk;
+	tegra21_clk_ahb_apb_init(c, bus_clk);
+}
+
+static int tegra21_clk_ahb_apb_update(struct clk *bus)
+{
+	unsigned long rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra21_clk_shared_bus_update(bus, NULL, NULL, NULL);
+	return clk_set_rate_locked(bus, rate);
+}
+
+static struct clk_ops tegra_clk_ahb_ops = {
+	.init = tegra21_clk_ahb_init,
+	.set_rate = tegra_clk_shared_bus_user_set_rate,
+	.round_rate = tegra_clk_shared_bus_user_round_rate,
+	.shared_bus_update = tegra21_clk_ahb_apb_update,
+};
+
+static struct clk_ops tegra_clk_apb_ops = {
+	.init = tegra21_clk_apb_init,
+	.set_rate = tegra_clk_shared_bus_user_set_rate,
+	.round_rate = tegra_clk_shared_bus_user_round_rate,
+	.shared_bus_update = tegra21_clk_ahb_apb_update,
+};
 
 static struct clk_ops tegra_clk_coupled_gate_ops = {
 	.init			= tegra21_periph_clk_init,
@@ -6883,6 +7026,20 @@ static struct clk tegra_clk_sbus_cmplx = {
 	.rate_change_nh = &sbus_rate_change_nh,
 };
 
+static struct clk tegra_clk_ahb = {
+	.name	   = "ahb.sclk",
+	.flags	   = DIV_BUS,
+	.parent    = &tegra_clk_sbus_cmplx,
+	.ops       = &tegra_clk_ahb_ops,
+};
+
+static struct clk tegra_clk_apb = {
+	.name	   = "apb.sclk",
+	.flags	   = DIV_BUS,
+	.parent    = &tegra_clk_ahb,
+	.ops       = &tegra_clk_apb_ops,
+};
+
 static struct clk tegra_clk_blink = {
 	.name		= "blink",
 	.parent		= &tegra_clk_32k,
@@ -7548,6 +7705,24 @@ static struct clk tegra_clk_c4bus = {
 		},					\
 	}
 
+static DEFINE_MUTEX(sbus_cross_mutex);
+#define SHARED_SCLK(_name, _dev, _con, _parent, _id, _div, _mode)\
+	{						\
+		.name = _name,				\
+		.lookup = {				\
+			.dev_id = _dev,			\
+			.con_id = _con,			\
+		},					\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
+		.parent = _parent,			\
+		.u.shared_bus_user = {			\
+			.client_id = _id,		\
+			.client_div = _div,		\
+			.mode = _mode,			\
+		},					\
+		.cross_clk_mutex = &sbus_cross_mutex,	\
+}
+
 struct clk tegra_list_clks[] = {
 	PERIPH_CLK("apbdma",	"tegra-apbdma",		NULL,	34,	0,	26000000,  mux_clk_m,			0),
 	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB),
@@ -7678,16 +7853,19 @@ struct clk tegra_list_clks[] = {
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
-	SHARED_CLK("usbd.sclk",	"tegra-udc.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
-	SHARED_CLK("usb1.sclk",	"tegra-ehci.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
-	SHARED_CLK("usb2.sclk",	"tegra-ehci.1",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
-	SHARED_CLK("usb3.sclk",	"tegra-ehci.2",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("usbd.sclk",	"tegra-udc.0",		"sclk",	&tegra_clk_ahb, NULL, 0, 0),
+	SHARED_CLK("usb1.sclk",	"tegra-ehci.0",		"sclk",	&tegra_clk_ahb, NULL, 0, 0),
+	SHARED_CLK("usb2.sclk",	"tegra-ehci.1",		"sclk",	&tegra_clk_ahb, NULL, 0, 0),
+	SHARED_CLK("usb3.sclk",	"tegra-ehci.2",		"sclk",	&tegra_clk_ahb, NULL, 0, 0),
 	SHARED_CLK("wake.sclk",	"wake_sclk",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("mon.avp",	"tegra_actmon",		"avp",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("cap.sclk",	"cap_sclk",		NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.sclk",	"cap_throttle",	NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_CEILING),
 	SHARED_CLK("floor.sclk", "floor_sclk",		NULL,	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("override.sclk", "override_sclk",    NULL,   &tegra_clk_sbus_cmplx, NULL, 0, SHARED_OVERRIDE),
+	SHARED_SCLK("sbc1.sclk", "tegra12-spi.0",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("sbc2.sclk", "tegra12-spi.1",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("sbc3.sclk", "tegra12-spi.2",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 
 	SHARED_EMC_CLK("avp.emc",	"tegra-avp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("cpu.emc",	"cpu",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -8006,6 +8184,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_blink,
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
+	&tegra_clk_ahb,
+	&tegra_clk_apb,
 	&tegra_clk_emc,
 	&tegra_clk_mc,
 	&tegra_clk_host1x,
