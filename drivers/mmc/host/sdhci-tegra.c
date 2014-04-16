@@ -1436,7 +1436,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 
 	/* FPGA supports 26MHz of clock for SDMMC. */
 	if (tegra_platform_is_fpga())
-		sdhci->max_clk = 26000000;
+		sdhci->max_clk = 13000000;
 
 #ifdef CONFIG_MMC_FREQ_SCALING
 	/* Set the tap delay if tuning is done and dfs is enabled */
@@ -1632,10 +1632,14 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	struct tegra_sdhci_platform_data *plat;
 	unsigned int min_uV = tegra_host->vddio_min_uv;
 	unsigned int max_uV = tegra_host->vddio_max_uv;
 	unsigned int rc = 0;
 	u16 ctrl;
+
+	plat = pdev->dev.platform_data;
 
 	ctrl = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
@@ -1663,6 +1667,14 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		rc = tegra_sdhci_configure_regulators(tegra_host,
 			CONFIG_REG_SET_VOLT, SDHOST_HIGH_VOLT_MIN,
 			SDHOST_HIGH_VOLT_MAX);
+	}
+	if (gpio_is_valid(plat->power_gpio)) {
+		if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
+			gpio_set_value(plat->power_gpio, 1);
+		} else {
+			gpio_set_value(plat->power_gpio, 0);
+			mdelay(1000);
+		}
 	}
 
 	return rc;
