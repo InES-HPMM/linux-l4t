@@ -1323,7 +1323,7 @@ static void palmas_i2c_shutdown(struct i2c_client *i2c)
 
 	mutex_lock(&d->shutdown_irq_lock);
 	d->shutdown_irq = true;
-	disable_irq(palmas->irq);
+	disable_irq_nosync(palmas->irq);
 
 	dev_info(d->palmas->dev, "masking all palmas interrupts\n");
 	for (i = 0; i < d->num_mask_regs; i++) {
@@ -1336,6 +1336,7 @@ static void palmas_i2c_shutdown(struct i2c_client *i2c)
 					d->irq_regs->mask_reg[i].reg_add);
 	}
 	mutex_unlock(&d->shutdown_irq_lock);
+	synchronize_irq(palmas->irq);
 
 	palmas->shutdown = true;
 }
