@@ -9401,8 +9401,8 @@ static int tegra12_clk_suspend(void)
 
 	*ctx++ = clk_get_rate_all_locked(&tegra_clk_emc);
 
-	pr_debug("%s: suspend entries: %d, suspend array: %d\n", __func__,
-		(ctx - clk_rst_suspend), ARRAY_SIZE(clk_rst_suspend));
+	pr_debug("%s: suspend entries: %d, suspend array: %u\n", __func__,
+		(s32)(ctx - clk_rst_suspend), (u32)ARRAY_SIZE(clk_rst_suspend));
 	BUG_ON((ctx - clk_rst_suspend) > ARRAY_SIZE(clk_rst_suspend));
 	return 0;
 }
