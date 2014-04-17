@@ -19,6 +19,8 @@
 #ifndef __GK20A_H
 #define __GK20A_H
 
+#include <linux/errno.h>
+
 struct channel_gk20a;
 struct platform_device;
 
