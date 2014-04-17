@@ -3798,6 +3798,16 @@ void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci, struct mmc_ios *ios)
 		tegra_sdhci_set_clock(sdhci, 0);
 }
 
+static int tegra_sdhci_get_drive_strength(struct sdhci_host *sdhci,
+		unsigned int max_dtr, int host_drv, int card_drv)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+
+	return plat->default_drv_type;
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.get_cd     = tegra_sdhci_get_cd,
@@ -3823,6 +3833,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.dfs_gov_init		= sdhci_tegra_freq_gov_init,
 	.dfs_gov_get_target_freq	= sdhci_tegra_get_target_freq,
 #endif
+	.get_drive_strength	= tegra_sdhci_get_drive_strength,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra11_pdata = {
