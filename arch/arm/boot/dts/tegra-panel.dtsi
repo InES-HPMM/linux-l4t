@@ -21,4 +21,6 @@
 #include "panel-l-wxga-7.dtsi"
 #include "panel-p-wuxga-10-1.dtsi"
 #include "panel-s-wqxga-10-1.dtsi"
+#include "panel-a-wxga-8-0.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
 

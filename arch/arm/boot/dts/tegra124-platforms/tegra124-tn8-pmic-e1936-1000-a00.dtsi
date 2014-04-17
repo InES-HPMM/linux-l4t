@@ -564,7 +564,7 @@
 						};
 					};
 
-					ldoln {
+					ldoln_reg: ldoln {
 						regulator-name = "vddio-hv";
 						regulator-always-on;
 						regulator-boot-on;
