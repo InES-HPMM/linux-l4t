@@ -2583,6 +2583,7 @@ static struct soctherm_fuse_correction_war t12x_fuse_war2[] = {
 	[TSENSE_PLLX] = { 1106500, -6729300 },
 };
 
+/* old ATE pattern */
 static struct soctherm_fuse_correction_war t13x_fuse_war1[] = {
 	[TSENSE_CPU0] = { 1119800,  -6330400 },
 	[TSENSE_CPU1] = { 1094100,  -3751800 },
@@ -2592,6 +2593,18 @@ static struct soctherm_fuse_correction_war t13x_fuse_war1[] = {
 	[TSENSE_MEM1] = { 1185600, -10861000 },
 	[TSENSE_GPU]  = { 1158500, -10714000 },
 	[TSENSE_PLLX] = { 1150000, -11899000 },
+};
+
+/* new ATE pattern */
+static struct soctherm_fuse_correction_war t13x_fuse_war2[] = {
+	[TSENSE_CPU0] = { 1126600, -9433500 },
+	[TSENSE_CPU1] = { 1110800, -7383000 },
+	[TSENSE_CPU2] = { 1113800, -6215200 },
+	[TSENSE_CPU3] = { 1129600, -8196100 },
+	[TSENSE_MEM0] = { 1132900, -6755300 },
+	[TSENSE_MEM1] = { 1142300, -7374200 },
+	[TSENSE_GPU]  = { 1125100, -6350400 },
+	[TSENSE_PLLX] = { 1118100, -8208800 },
 };
 
 /**
@@ -2621,6 +2634,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	fuse_rev = tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp);
 	if (fuse_rev < 0)
 		return fuse_rev;
+	pr_debug("%s: fuse_rev %d\n", __func__, fuse_rev);
 
 	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &value);
 
@@ -2660,7 +2674,10 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 		war = fuse_rev ?
 			&t12x_fuse_war1[sensor] : &t12x_fuse_war2[sensor];
 	else if (IS_T13X)
-		war = &t13x_fuse_war1[sensor];
+		war = fuse_rev ?
+			&t13x_fuse_war1[sensor] : &t13x_fuse_war2[sensor];
+	else
+		war = &no_fuse_war[sensor];
 
 	therm_a = div64_s64_precise((s64)therm_a * war->a,
 				    (s64)1000000LL);

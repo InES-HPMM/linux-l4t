@@ -126,10 +126,12 @@ DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
 /*
- * Check CP fuse revision.
- *  ERROR:    -ve:	Negative return value
- *  CP/FT:	1:	Old style CP/FT fuse
- *  CP1/CP2:	0:	New style CP1/CP2 fuse (default)
+ * Check CP fuse revision. Return value (depending on chip) is as below:
+ *   Any: ERROR:      -ve:	Negative return value
+ *  T12x: CP/FT:	1:	Old style CP/FT fuse
+ *  T12x: CP1/CP2:	0:	New style CP1/CP2 fuse (default for t12x)
+ *  T13x: Old pattern:	1:	Old ATE pattern CP1/CP2 fuse
+ *  T13x: New pattern:	0:	New ATE pattern CP1/CP2 fuse (default for t13x)
  */
 static inline int fuse_cp_rev_check(void)
 {
@@ -144,26 +146,33 @@ static inline int fuse_cp_rev_check(void)
 	if (!chip_id)
 		chip_id = tegra_get_chipid();
 
-	/* T13x: No min CP rev (yet) */
-	if (chip_id == TEGRA_CHIPID_TEGRA13)
-		return 1; /* Use (old) CP/FT fuse style */
+	/* T13x: all CP rev are valid */
+	if (chip_id == TEGRA_CHIPID_TEGRA13) {
+		/* CP rev < 00.9 is old ATE pattern */
+		if ((rev_major == 0) && (rev_minor < 9))
+			return 1;
+		return 0; /* default new ATE pattern */
+	}
 
-	/* CP rev < 00.4 is unsupported */
-	if ((rev_major == 0) && (rev_minor < 4))
-		return -EINVAL;
+	if (chip_id == TEGRA_CHIPID_TEGRA12) {
+		/* CP rev < 00.4 is unsupported */
+		if ((rev_major == 0) && (rev_minor < 4))
+			return -EINVAL;
+		/* CP rev < 00.8 is CP/FT (old style) */
+		if ((rev_major == 0) && (rev_minor < 8))
+			return 1;
+		return 0; /* default new CP1/CP2 fuse */
+	}
 
-	/* CP rev < 00.8 is CP/FT (old style) */
-	if ((rev_major == 0) && (rev_minor < 8))
-		return 1;
-
-	return 0;
+	return -EINVAL;
 }
 
 /*
  * Check FT fuse revision.
  * We check CP-rev and if it shows NEW style, we return ERROR.
  *  ERROR:    -ve:	Negative return value
- *  CP/FT:	0:	Old style CP/FT fuse (default)
+ *  CP/FT:	0:	Old style CP/FT fuse (default for t12x)
+ *  T13x:	1:	CP1/CP2 new ATE pattern (default for t13x)
  */
 static inline int fuse_ft_rev_check(void)
 {
@@ -171,22 +180,23 @@ static inline int fuse_ft_rev_check(void)
 	u32 rev, rev_major, rev_minor;
 	int check_cp = fuse_cp_rev_check();
 
-	rev = tegra_fuse_readl(FUSE_FT_REV);
-	rev_minor = rev & 0x1f;
-	rev_major = (rev >> 5) & 0x3f;
-	pr_debug("%s: FT rev %d.%d\n", __func__, rev_major, rev_minor);
-
 	if (!chip_id)
 		chip_id = tegra_get_chipid();
 
-	/* T13x: No min FT rev (yet) */
+	/* T13x does not use FT */
 	if (chip_id == TEGRA_CHIPID_TEGRA13)
-		return 0;
+		return 1;
 
+	/* T12x */
 	if (check_cp < 0)
 		return check_cp;
 	if (check_cp == 0)
 		return -ENODEV; /* No FT rev in CP1/CP2 mode */
+
+	rev = tegra_fuse_readl(FUSE_FT_REV);
+	rev_minor = rev & 0x1f;
+	rev_major = (rev >> 5) & 0x3f;
+	pr_debug("%s: FT rev %d.%d\n", __func__, rev_major, rev_minor);
 
 	/* FT rev < 00.5 is unsupported */
 	if ((rev_major == 0) && (rev_minor < 5))
@@ -368,7 +378,7 @@ int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 	if (check_cp < 0)
 		return check_cp;
 	/* when check_cp is 1, check_ft must be valid */
-	if (check_cp != 0 && check_ft != 0)
+	if (check_cp != 0 && check_ft < 0)
 		return -EINVAL;
 
 	val = tegra_fuse_readl(FUSE_TSENSOR_CALIB_8);
