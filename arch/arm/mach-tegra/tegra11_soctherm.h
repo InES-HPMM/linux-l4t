@@ -133,6 +133,12 @@ struct soctherm_tsensor_pmu_data {
 	u8 pmu_i2c_addr;
 };
 
+struct soctherm_fuse_correction_war {
+	/* both scaled *1000000 */
+	int a;
+	int b;
+};
+
 /**
  * struct soctherm_platform_data - Board specific SOC_THERM info.
  * @oc_irq_base:		Base over-current IRQ number
@@ -154,7 +160,6 @@ struct soctherm_tsensor_pmu_data {
  * therm is used for trip point configuration and should be moved out of
  * soctherm_platform_data.
  */
-
 struct soctherm_platform_data {
 	int oc_irq_base;
 	int num_oc_irqs;

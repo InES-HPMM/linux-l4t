@@ -2526,110 +2526,72 @@ static int soctherm_fuse_read_calib_base(void)
 	return 0;
 }
 
-static int t11x_fuse_corr_alpha[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = 1196400,
-	[TSENSE_CPU1] = 1196400,
-	[TSENSE_CPU2] = 1196400,
-	[TSENSE_CPU3] = 1196400,
-	[TSENSE_GPU]  = 1124500,
-	[TSENSE_PLLX] = 1224200,
+static struct soctherm_fuse_correction_war no_fuse_war[] = {
+	[TSENSE_CPU0] = { 1000000, 0 },
+	[TSENSE_CPU1] = { 1000000, 0 },
+	[TSENSE_CPU2] = { 1000000, 0 },
+	[TSENSE_CPU3] = { 1000000, 0 },
+	[TSENSE_MEM0] = { 1000000, 0 },
+	[TSENSE_MEM1] = { 1000000, 0 },
+	[TSENSE_GPU]  = { 1000000, 0 },
+	[TSENSE_PLLX] = { 1000000, 0 },
 };
 
-static int t11x_fuse_corr_beta[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = -13600000,
-	[TSENSE_CPU1] = -13600000,
-	[TSENSE_CPU2] = -13600000,
-	[TSENSE_CPU3] = -13600000,
-	[TSENSE_GPU]  =  -9793100,
-	[TSENSE_PLLX] = -14665000,
+static struct soctherm_fuse_correction_war t11x_fuse_war[] = {
+	[TSENSE_CPU0] = { 1196400, -13600000 },
+	[TSENSE_CPU1] = { 1196400, -13600000 },
+	[TSENSE_CPU2] = { 1196400, -13600000 },
+	[TSENSE_CPU3] = { 1196400, -13600000 },
+	[TSENSE_MEM0] = { 1000000,  -1000000 },
+	[TSENSE_MEM1] = { 1000000,  -1000000 },
+	[TSENSE_GPU]  = { 1124500,  -9793100 },
+	[TSENSE_PLLX] = { 1224200, -14665000 },
 };
 
-static int t14x_fuse_corr_alpha[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = 1149000,
-	[TSENSE_CPU1] = 1148800,
-	[TSENSE_CPU2] = 1139100,
-	[TSENSE_CPU3] = 1141800,
-	[TSENSE_MEM0] = 1082300,
-	[TSENSE_MEM1] = 1061800,
-	[TSENSE_GPU]  = 1078900,
-	[TSENSE_PLLX] = 1125900,
+static struct soctherm_fuse_correction_war t14x_fuse_war[] = {
+	[TSENSE_CPU0] = { 1149000, -16753000 },
+	[TSENSE_CPU1] = { 1148800, -16287000 },
+	[TSENSE_CPU2] = { 1139100, -12552000 },
+	[TSENSE_CPU3] = { 1141800, -11061000 },
+	[TSENSE_MEM0] = { 1082300, -11061000 },
+	[TSENSE_MEM1] = { 1061800,  -7596500 },
+	[TSENSE_GPU]  = { 1078900, -10480000 },
+	[TSENSE_PLLX] = { 1125900, -14736000 },
 };
 
-static int t14x_fuse_corr_beta[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = -16753000,
-	[TSENSE_CPU1] = -16287000,
-	[TSENSE_CPU2] = -12552000,
-	[TSENSE_CPU3] = -11061000,
-	[TSENSE_MEM0] = -11061000,
-	[TSENSE_MEM1] =  -7596500,
-	[TSENSE_GPU]  = -10480000,
-	[TSENSE_PLLX] = -14736000,
+/* old CP/FT */
+static struct soctherm_fuse_correction_war t12x_fuse_war1[] = {
+	[TSENSE_CPU0] = { 1148300, -6572300 },
+	[TSENSE_CPU1] = { 1126100, -5794600 },
+	[TSENSE_CPU2] = { 1155800, -7462800 },
+	[TSENSE_CPU3] = { 1134900, -6810800 },
+	[TSENSE_MEM0] = { 1062700, -4463200 },
+	[TSENSE_MEM1] = { 1084700, -5603400 },
+	[TSENSE_GPU]  = { 1084300, -5111900 },
+	[TSENSE_PLLX] = { 1134500, -7410700 },
 };
 
-static int t12x_fuse_corr_alpha[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = 1148300,
-	[TSENSE_CPU1] = 1126100,
-	[TSENSE_CPU2] = 1155800,
-	[TSENSE_CPU3] = 1134900,
-	[TSENSE_MEM0] = 1062700,
-	[TSENSE_MEM1] = 1084700,
-	[TSENSE_GPU]  = 1084300,
-	[TSENSE_PLLX] = 1134500,
+/* new CP1/CP2 */
+static struct soctherm_fuse_correction_war t12x_fuse_war2[] = {
+	[TSENSE_CPU0] = { 1135400, -6266900 },
+	[TSENSE_CPU1] = { 1122220, -5700700 },
+	[TSENSE_CPU2] = { 1127000, -6768200 },
+	[TSENSE_CPU3] = { 1110900, -6232000 },
+	[TSENSE_MEM0] = { 1122300, -5936400 },
+	[TSENSE_MEM1] = { 1145700, -7124600 },
+	[TSENSE_GPU]  = { 1120100, -6000500 },
+	[TSENSE_PLLX] = { 1106500, -6729300 },
 };
 
-static int t12x_fuse_corr_beta[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] =  -6572300,
-	[TSENSE_CPU1] =  -5794600,
-	[TSENSE_CPU2] =  -7462800,
-	[TSENSE_CPU3] =  -6810800,
-	[TSENSE_MEM0] =  -4463200,
-	[TSENSE_MEM1] =  -5603400,
-	[TSENSE_GPU]  =  -5111900,
-	[TSENSE_PLLX] =  -7410700,
-};
-
-static int t12x_fuse_corr_alpa2[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = 1135400,
-	[TSENSE_CPU1] = 1122220,
-	[TSENSE_CPU2] = 1127000,
-	[TSENSE_CPU3] = 1110900,
-	[TSENSE_MEM0] = 1122300,
-	[TSENSE_MEM1] = 1145700,
-	[TSENSE_GPU]  = 1120100,
-	[TSENSE_PLLX] = 1106500,
-};
-
-static int t12x_fuse_corr_beta2[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] =  -6266900,
-	[TSENSE_CPU1] =  -5700700,
-	[TSENSE_CPU2] =  -6768200,
-	[TSENSE_CPU3] =  -6232000,
-	[TSENSE_MEM0] =  -5936400,
-	[TSENSE_MEM1] =  -7124600,
-	[TSENSE_GPU]  =  -6000500,
-	[TSENSE_PLLX] =  -6729300,
-};
-
-static int t13x_fuse_corr_alpha[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] = 1119800,
-	[TSENSE_CPU1] = 1094100,
-	[TSENSE_CPU2] = 1108800,
-	[TSENSE_CPU3] = 1103200,
-	[TSENSE_MEM0] = 1168400,
-	[TSENSE_MEM1] = 1185600,
-	[TSENSE_GPU]  = 1158500,
-	[TSENSE_PLLX] = 1150000,
-};
-
-static int t13x_fuse_corr_beta[] = { /* scaled *1000000 */
-	[TSENSE_CPU0] =   -6330400,
-	[TSENSE_CPU1] =   -3751800,
-	[TSENSE_CPU2] =   -3835200,
-	[TSENSE_CPU3] =   -5132100,
-	[TSENSE_MEM0] =  -11266000,
-	[TSENSE_MEM1] =  -10861000,
-	[TSENSE_GPU]  =  -10714000,
-	[TSENSE_PLLX] =  -11899000,
+static struct soctherm_fuse_correction_war t13x_fuse_war1[] = {
+	[TSENSE_CPU0] = { 1119800,  -6330400 },
+	[TSENSE_CPU1] = { 1094100,  -3751800 },
+	[TSENSE_CPU2] = { 1108800,  -3835200 },
+	[TSENSE_CPU3] = { 1103200,  -5132100 },
+	[TSENSE_MEM0] = { 1168400, -11266000 },
+	[TSENSE_MEM1] = { 1185600, -10861000 },
+	[TSENSE_GPU]  = { 1158500, -10714000 },
+	[TSENSE_PLLX] = { 1150000, -11899000 },
 };
 
 /**
@@ -2654,6 +2616,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	int fuse_rev;
 	u32 base_cp;
 	s32 shft_cp;
+	struct soctherm_fuse_correction_war *war;
 
 	fuse_rev = tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp);
 	if (fuse_rev < 0)
@@ -2686,60 +2649,23 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				     ((s64)actual_tsensor_cp * actual_temp_ft)),
 				    (s64)delta_sens);
 
-	/* FUSE corrections for Tegra when precision is set LOW */
-	if (PRECISION_IS_LOWER()) {
-		if (IS_T11X) {
-			t11x_fuse_corr_alpha[sensor] =
-				t11x_fuse_corr_alpha[sensor] ?: 1000000;
-			therm_a = div64_s64_precise(
-				(s64)therm_a * t11x_fuse_corr_alpha[sensor],
-				(s64)1000000LL);
-			therm_b = div64_s64_precise(
-				(s64)therm_b * t11x_fuse_corr_alpha[sensor] +
-				t11x_fuse_corr_beta[sensor], (s64)1000000LL);
-		} else if (IS_T14X) {
-			t14x_fuse_corr_alpha[sensor] =
-				t14x_fuse_corr_alpha[sensor] ?: 1000000;
-			therm_a = div64_s64_precise(
-				(s64)therm_a * t14x_fuse_corr_alpha[sensor],
-				(s64)1000000LL);
-			therm_b = div64_s64_precise(
-				(s64)therm_b * t14x_fuse_corr_alpha[sensor] +
-				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
-		}
-	} else {
-		if (IS_T13X) {
-			t13x_fuse_corr_alpha[sensor] =
-				t13x_fuse_corr_alpha[sensor] ?: 1000000;
-			therm_a = div64_s64_precise(
-				(s64)therm_a * t13x_fuse_corr_alpha[sensor],
-				(s64)1000000LL);
-			therm_b = div64_s64_precise(
-				(s64)therm_b * t13x_fuse_corr_alpha[sensor] +
-				t13x_fuse_corr_beta[sensor], (s64)1000000LL);
-		} else if (IS_T12X) {
-			if (fuse_rev == 0) { /* new CP1/CP2 */
-				t12x_fuse_corr_alpa2[sensor] =
-					t12x_fuse_corr_alpa2[sensor] ?: 1000000;
-				therm_a = div64_s64_precise(
-				  (s64)therm_a * t12x_fuse_corr_alpa2[sensor],
-				  (s64)1000000LL);
-				therm_b = div64_s64_precise(
-				  (s64)therm_b * t12x_fuse_corr_alpa2[sensor] +
-				  t12x_fuse_corr_beta2[sensor], (s64)1000000LL);
-			} else { /* old CP/FT */
-				t12x_fuse_corr_alpha[sensor] =
-					t12x_fuse_corr_alpha[sensor] ?: 1000000;
-				therm_a = div64_s64_precise(
-				  (s64)therm_a * t12x_fuse_corr_alpha[sensor],
-				  (s64)1000000LL);
-				therm_b = div64_s64_precise(
-				  (s64)therm_b * t12x_fuse_corr_alpha[sensor] +
-				  t12x_fuse_corr_beta[sensor], (s64)1000000LL);
-			}
-		}
-	}
+	/* FUSE correction WARs */
+	if (IS_T11X)
+		war = PRECISION_IS_LOWER() ?
+			&t11x_fuse_war[sensor] : &no_fuse_war[sensor];
+	else if (IS_T14X)
+		war = PRECISION_IS_LOWER() ?
+			&t14x_fuse_war[sensor] : &no_fuse_war[sensor];
+	else if (IS_T12X)
+		war = fuse_rev ?
+			&t12x_fuse_war1[sensor] : &t12x_fuse_war2[sensor];
+	else if (IS_T13X)
+		war = &t13x_fuse_war1[sensor];
 
+	therm_a = div64_s64_precise((s64)therm_a * war->a,
+				    (s64)1000000LL);
+	therm_b = div64_s64_precise((s64)therm_b * war->a + war->b,
+				    (s64)1000000LL);
 	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
 	therm_b = LOWER_PRECISION_FOR_TEMP(therm_b);
 
