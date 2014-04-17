@@ -127,7 +127,8 @@ static int __init tegra_nct_init(void)
 	if (nct_head.magicId != NCT_MAGIC_ID) {
 		pr_err("%s: magic ID error (0x%x/0x%x)\n", __func__,
 			nct_head.magicId, NCT_MAGIC_ID);
-		BUG();
+		iounmap(nct_ptr);
+		return -ENOKEY;
 	}
 
 	tegra_nct_initialized = true;
