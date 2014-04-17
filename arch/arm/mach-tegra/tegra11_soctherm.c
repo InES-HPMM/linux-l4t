@@ -693,13 +693,13 @@ static const struct soctherm_sensor default_t14x_sensor_params = {
 	.pdiv_ate  = 8,
 };
 
-/* TODO: not the final sensor data for T124 */
+/* Used for T124 and T132 */
 static const struct soctherm_sensor default_t12x_sensor_params = {
 	.tall      = 16300,
 	.tiddq     = 1,
 	.ten_count = 1,
 	.tsample   = 120,
-	.tsamp_ate = 481,
+	.tsamp_ate = 480,
 	.pdiv      = 8,
 	.pdiv_ate  = 8,
 };
