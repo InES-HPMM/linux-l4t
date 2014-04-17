@@ -1255,6 +1255,10 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	tegra_disp_defer_vcore_override();
 #endif
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+	tegra_serial_debug_init_irq_mode(TEGRA_UARTD_BASE, INT_UARTD, NULL,
+		-1, -1);
+#endif
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM

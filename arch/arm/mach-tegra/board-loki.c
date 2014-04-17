@@ -797,7 +797,6 @@ static void __init tegra_loki_late_init(void)
 
 	loki_soctherm_init();
 	loki_setup_bluedroid_pm();
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 #ifdef CONFIG_C2PORT_LOKI
 	tegra_loki_mcu_debugger_init();
 #endif
