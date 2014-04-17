@@ -912,6 +912,7 @@ int __init ardbeg_soctherm_init(void)
 		       sizeof(battery_oc_throttle));
 		break;
 	case BOARD_P1761:
+	case BOARD_E1936:
 		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
 		       &battery_oc_throttle,
 		       sizeof(battery_oc_throttle));
