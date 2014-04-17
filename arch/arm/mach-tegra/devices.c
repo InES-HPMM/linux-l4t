@@ -1131,7 +1131,12 @@ static struct plat_serial8250_port debug_uarta_platform_data[] = {
 		.membase        = IO_ADDRESS(TEGRA_UARTA_BASE),
 		.mapbase        = TEGRA_UARTA_BASE,
 		.irq            = INT_UARTA,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC) \
+		|| defined(CONFIG_ARCH_TEGRA_13x_SOC)
+		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_BUGGY_UART,
+#else
 		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+#endif
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
@@ -1146,7 +1151,12 @@ static struct plat_serial8250_port debug_uartb_platform_data[] = {
 		.membase        = IO_ADDRESS(TEGRA_UARTB_BASE),
 		.mapbase        = TEGRA_UARTB_BASE,
 		.irq            = INT_UARTB,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC) \
+		|| defined(CONFIG_ARCH_TEGRA_13x_SOC)
+		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_BUGGY_UART,
+#else
 		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+#endif
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
@@ -1161,7 +1171,12 @@ static struct plat_serial8250_port debug_uartc_platform_data[] = {
 		.membase        = IO_ADDRESS(TEGRA_UARTC_BASE),
 		.mapbase        = TEGRA_UARTC_BASE,
 		.irq            = INT_UARTC,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC) \
+		|| defined(CONFIG_ARCH_TEGRA_13x_SOC)
+		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_BUGGY_UART,
+#else
 		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+#endif
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
@@ -1176,7 +1191,12 @@ static struct plat_serial8250_port debug_uartd_platform_data[] = {
 		.membase        = IO_ADDRESS(TEGRA_UARTD_BASE),
 		.mapbase        = TEGRA_UARTD_BASE,
 		.irq            = INT_UARTD,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC) \
+		|| defined(CONFIG_ARCH_TEGRA_13x_SOC)
+		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_BUGGY_UART,
+#else
 		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+#endif
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
@@ -1192,7 +1212,7 @@ static struct plat_serial8250_port debug_uarte_platform_data[] = {
 		.membase        = IO_ADDRESS(TEGRA_UARTE_BASE),
 		.mapbase        = TEGRA_UARTE_BASE,
 		.irq            = INT_UARTE,
-		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+		.flags          = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_BUGGY_UART,
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
