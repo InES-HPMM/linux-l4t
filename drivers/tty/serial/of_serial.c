@@ -39,7 +39,7 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 	struct resource resource;
 	struct device_node *np = ofdev->dev.of_node;
 	u32 clk, spd, prop;
-	int ret;
+	int ret, cmp_ret;
 
 	memset(port, 0, sizeof *port);
 	if (of_property_read_u32(np, "clock-frequency", &clk)) {
@@ -108,8 +108,12 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 
 	port->dev = &ofdev->dev;
 
-	if (type == PORT_TEGRA)
+	if (type == PORT_TEGRA) {
 		port->handle_break = tegra_serial_handle_break;
+		cmp_ret = of_device_is_compatible(np, "nvidia,tegra210-uart");
+		if (!cmp_ret)
+			port->flags |= UPF_BUGGY_UART;
+	}
 
 	return 0;
 out:
@@ -229,6 +233,7 @@ static struct of_device_id of_platform_serial_table[] = {
 	{ .compatible = "ns16750",  .data = (void *)PORT_16750, },
 	{ .compatible = "ns16850",  .data = (void *)PORT_16850, },
 	{ .compatible = "nvidia,tegra20-uart", .data = (void *)PORT_TEGRA, },
+	{ .compatible = "nvidia,tegra210-uart", .data = (void *)PORT_TEGRA, },
 	{ .compatible = "nxp,lpc3220-uart", .data = (void *)PORT_LPC3220, },
 	{ .compatible = "altr,16550-FIFO32",
 		.data = (void *)PORT_ALTR_16550_F32, },
