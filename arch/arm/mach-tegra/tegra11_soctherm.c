@@ -317,6 +317,8 @@ static const int precision; /* default 0 -> low precision */
 #define XPU_PSKIP_STATUS_M_MASK			0xff
 #define XPU_PSKIP_STATUS_N_SHIFT		4
 #define XPU_PSKIP_STATUS_N_MASK			0xff
+#define XPU_PSKIP_STATUS_SW_OVERRIDE_SHIFT	1
+#define XPU_PSKIP_STATUS_SW_OVERRIDE_MASK	0x1
 #define XPU_PSKIP_STATUS_ENABLED_SHIFT		0
 #define XPU_PSKIP_STATUS_ENABLED_MASK		0x1
 
@@ -770,6 +772,71 @@ static inline long temp_translate(int readback)
 #ifdef CONFIG_THERMAL
 
 /**
+ * soctherm_has_mn_cpu_pskip_status() - does CPU use M,N values for pskip status?
+ *
+ * If the currently-running SoC reports the CPU thermal throttling
+ * pulse skipper status with (M, N) values via SOC_THERM registers,
+ * then return true; otherwise, return false.  XXX Temporary - should
+ * be replaced by autodetection or DT properties/compatible flags.
+ *
+ * Return: true if CPU thermal pulse-skipper M,N status values are available via
+ * SOC_THERM, or false if not.
+ */
+static int soctherm_has_mn_cpu_pskip_status(void)
+{
+	return IS_T11X || IS_T14X || IS_T12X;
+}
+
+/**
+ * soctherm_get_mn_cpu_pskip_status() - read state of CPU thermal pulse skipper
+ * @enabled: pointer to a u8: return 0 if the skipper is disabled, 1 if enabled
+ * @sw_override: ptr to a u8: return 0 if sw override is disabled, 1 if enabled
+ * @m: pointer to a u16 to return the current pulse skipper ratio numerator into
+ * @n: pointer to a u16 to return the current pulse skipper ratio denominator to
+ *
+ * Read the current status of the thermal throttling pulse skipper
+ * attached to the CPU clock, and return the status into the variables
+ * pointed to by @enabled, @sw_override, @m, and @n.  The M and N
+ * values are not what is stored in the register bitfields, but
+ * instead are the actual values used by the pulse skipper -- i.e.,
+ * they are the bitfield values _plus one_; they have valid ranges of
+ * 1-256.  This function is only defined for chips that report M,N
+ * thermal throttling states
+ *
+ * Return: 0 upon success, -ENOTSUPP if called on a chip that uses
+ * CPU-local (i.e., non-SOC_THERM) pulse-skipper status, or -EINVAL if
+ * any of the arguments are NULL.
+ */
+int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m,
+				     u16 *n)
+{
+	u32 v;
+
+	if (!enabled || !m || !n || !sw_override)
+		return -EINVAL;
+
+	/*
+	 * XXX should be replaced with an earlier DT property read to
+	 * determine the GPU type (or GPU->SOC_THERM integration) in
+	 * use
+	 */
+	if (!soctherm_has_mn_cpu_pskip_status())
+		return -ENOTSUPP;
+
+	v = soctherm_readl(CPU_PSKIP_STATUS);
+	if (REG_GET(v, XPU_PSKIP_STATUS_ENABLED)) {
+		*enabled = 1;
+		*sw_override = REG_GET(v, XPU_PSKIP_STATUS_SW_OVERRIDE);
+		*m = REG_GET(v, XPU_PSKIP_STATUS_M) + 1;
+		*n = REG_GET(v, XPU_PSKIP_STATUS_N) + 1;
+	} else {
+		*enabled = 0;
+	}
+
+	return 0;
+}
+
+/**
  * enforce_temp_range() - check and enforce temperature range [min, max]
  * @trip_temp:		The trip temperature to check
  *
@@ -1060,6 +1127,63 @@ static int soctherm_hw_action_get_max_state(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+/**
+ * soctherm_get_cpu_throt_state - read the current state of the CPU pulse skipper
+ * @dividend: pulse skipper numerator value to test against (1-256)
+ * @divisor: pulse skipper denominator value to test against (1-256)
+ * @cur_state: ptr to the variable that the current throttle state is stored in
+ *
+ * Determine the current state of the CPU thermal throttling pulse
+ * skipper, and if it's enabled and at its configured ending state,
+ * set the appropriate 'enabled' bit in the variable pointed to by
+ * @cur_state.  This works on T114, T124, and T148 by comparing
+ * @dividend and @divisor with the current state of the hardware -
+ * though note that @dividend and @divisor must be the actual dividend
+ * and divisor values.  That is, they must be in 1-256 range, not the
+ * 0-255 range used by the hardware bitfields.
+ *
+ * FIXME: For T132 switch to Denver:CCROC NV_THERM style status.  Does
+ * not currently work on T132.
+ *
+ * Return: 0 upon success, -ENOTSUPP on T12x and T13x, or -EINVAL if
+ * the arguments are invalid or out of range.
+ *
+ */
+static int soctherm_get_cpu_throt_state(u16 dividend, u16 divisor,
+					unsigned long *cur_state)
+{
+	u16 m, n;
+	u8 enabled, sw_override;
+
+	if (!cur_state || dividend == 0 || divisor == 0 ||
+	    dividend > 256 || divisor > 256)
+		return -EINVAL;
+
+	if (soctherm_has_mn_cpu_pskip_status()) {
+		soctherm_get_mn_cpu_pskip_status(&enabled, &sw_override, &m, &n);
+
+		if (enabled && m == dividend && n == divisor)
+			*cur_state |= (1 << THROTTLE_DEV_CPU);
+	} else {
+		pr_warn_once("CPU throttling status not yet available on this SoC\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * soctherm_hw_action_get_cur_state() - get the current CPU/GPU throttling state
+ * @cdev: ptr to the struct thermal_cooling_device associated with SOC_THERM
+ * @cur_state: ptr to a variable to return the throttling state into
+ *
+ * Query the current state of the SOC_THERM cooling device represented
+ * by @cdev, and return its current state into the variable pointed to
+ * by @cur_state.  Intended to be used as a thermal framework callback
+ * function.
+ *
+ * Return: 0.
+ */
 static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 					    unsigned long *cur_state)
 {
@@ -1080,35 +1204,34 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 			     THERMAL_NAME_LENGTH))
 			continue;
 
-		r = soctherm_readl(CPU_PSKIP_STATUS);
 		devs = &plat_data.throttle[i].devs[THROTTLE_DEV_CPU];
-		if (REG_GET(r, XPU_PSKIP_STATUS_ENABLED) && devs->enable) {
-			m = REG_GET(r, XPU_PSKIP_STATUS_M);
-			n = REG_GET(r, XPU_PSKIP_STATUS_N);
-			if (m == devs->dividend && n == devs->divisor)
-				*cur_state |= (1 << THROTTLE_DEV_CPU);
-		}
+		if (devs->enable)
+			soctherm_get_cpu_throt_state(devs->dividend + 1,
+						     devs->divisor + 1,
+						     cur_state);
 
 		r = soctherm_readl(GPU_PSKIP_STATUS);
 		devs = &plat_data.throttle[i].devs[THROTTLE_DEV_GPU];
 		if (REG_GET(r, XPU_PSKIP_STATUS_ENABLED) && devs->enable) {
 			m = REG_GET(r, XPU_PSKIP_STATUS_M);
 			n = REG_GET(r, XPU_PSKIP_STATUS_N);
-				/*
-				 * On Tegra12x OC5 is a reserved alarm. Hence
-				 * GPU 'PSKIP' state always shows ON. The real
-				 * status register 'NV_THERM_CLK_STATUS' can't
-				 * be read safely. So we mirror the CPU status.
-				 */
+			/*
+			 * On Tegra12x OC5 is a reserved alarm. Hence
+			 * GPU 'PSKIP' state always shows ON. The real
+			 * status register 'NV_THERM_CLK_STATUS' can't
+			 * be read safely. So we mirror the CPU status.
+			 */
 			*cur_state |=
 				(IS_T12X || IS_T13X) ?
 				((*cur_state & (1 << THROTTLE_DEV_CPU)) ?
 				 (1 << THROTTLE_DEV_GPU) : 0) :
 				((m == devs->dividend && n == devs->divisor) ?
 				 (1 << THROTTLE_DEV_GPU) : 0);
-	/* FIXME: For T132 switch to Denver:CCROC NV_THERM style status */
+			/* FIXME: For T132 switch to Denver:CCROC NV_THERM style status */
 		}
+
 	}
+
 	return 0;
 }
 
