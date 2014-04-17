@@ -32,6 +32,11 @@
 			};
 		};
 	};
+	i2c@7000d000 {
+		as3722@40 {
+			ams,minor-rev = <1>;
+		};
+	};
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
