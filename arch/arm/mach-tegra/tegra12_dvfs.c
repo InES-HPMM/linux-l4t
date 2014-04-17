@@ -111,7 +111,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.stats = {
 		.bin_uV = 10000, /* 10mV */
 	},
-	.version = "P4v36",
+	.version = "P4v39",
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
@@ -351,6 +351,8 @@ static struct dvfs core_dvfs_table[] = {
 
 	CORE_DVFS("hda",    	     -1, -1, 1, KHZ,  	  1, 108000, 108000, 108000, 108000, 108000 ,  108000,  108000, 108000),
 	CORE_DVFS("hda2codec_2x",    -1, -1, 1, KHZ,  	  1,  48000,  48000,  48000,  48000,  48000 ,   48000,   48000, 48000),
+
+	CORE_DVFS("sor0",            -1, -1, 1, KHZ, 162000, 270000, 540000, 540000, 540000,  540000,  540000,  540000, 540000),
 
 	OVRRD_DVFS("sdmmc1",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000,  136000,  204000),
 	OVRRD_DVFS("sdmmc3",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000,  136000,  204000),
