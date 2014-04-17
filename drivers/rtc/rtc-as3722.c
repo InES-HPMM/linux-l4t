@@ -130,6 +130,7 @@ static int as3722_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	}
 
 	as3722_reg_to_time(as_time_array, &alrm->time);
+	alrm->enabled = (as3722_rtc->irq_enable) ? 1 : 0;
 	return 0;
 }
 
