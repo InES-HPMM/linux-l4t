@@ -2778,10 +2778,11 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 
 	if (port->type == PORT_TEGRA) {
 		up->bugs |= UART_BUG_NOMSR;
-		port->handle_irq = serial8250_tegra_handle_irq;
 #if defined CONFIG_ARCH_TEGRA
 		port->handle_break = tegra_serial_handle_break;
 #endif
+		if (port->flags & UPF_BUGGY_UART)
+			port->handle_irq = serial8250_tegra_handle_irq;
 	}
 
 	if (port->type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
