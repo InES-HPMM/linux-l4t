@@ -2,7 +2,7 @@
  * drivers/regulator/tegra-regulator.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2014 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -137,5 +137,4 @@ int tegra_powergate_partition(int id);
 int tegra_unpowergate_partition(int id);
 
 bool tegra_powergate_check_clamping(int id);
-int tegra12x_powergate_init_refcount(void);
 #endif /* _MACH_TEGRA_POWERGATE_H_ */

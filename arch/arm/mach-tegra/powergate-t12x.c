@@ -558,11 +558,14 @@ static inline int tegra12x_unpowergate(int id)
 static int tegra12x_disp_powergate(int id)
 {
 	int ret = 0;
-	int ref_counta = atomic_read(&ref_count_dispa);
-	int ref_countb = atomic_read(&ref_count_dispb);
-	int ref_countve = atomic_read(&ref_count_venc);
+	int ref_counta = 0;
+	int ref_countb = 0;
 
 	mutex_lock(&tegra12x_powergate_disp_lock);
+
+	ref_counta = atomic_read(&ref_count_dispa);
+	ref_countb = atomic_read(&ref_count_dispb);
+
 	if (id == TEGRA_POWERGATE_DISA) {
 		if (ref_counta > 0)
 			ref_counta = atomic_dec_return(&ref_count_dispa);
@@ -581,7 +584,7 @@ static int tegra12x_disp_powergate(int id)
 		}
 	}
 
-	if ((ref_counta <= 0) && (ref_countb <= 0) && (ref_countve <= 0)) {
+	if ((ref_counta <= 0) && (ref_countb <= 0)) {
 		if (tegra12x_powergate(TEGRA_POWERGATE_SOR)) {
 			ret = -EBUSY;
 			goto error_out;
@@ -618,19 +621,18 @@ error_out:
 static int tegra12x_venc_powergate(int id)
 {
 	int ret = 0;
-	int ref_count = atomic_read(&ref_count_venc);
+	int ref_count = 0;
 
 	if (!TEGRA_IS_VENC_POWERGATE_ID(id))
 		return -EINVAL;
 
 	ref_count = atomic_dec_return(&ref_count_venc);
+	WARN_ON(ref_count < 0);
 
-	if (ref_count > 0)
-		return ret;
-
-	if (ref_count <= 0) {
+	/* only powergate when decrementing ref_count from 1 to 0 */
+	if (ref_count == 0) {
 		CHECK_RET(tegra12x_powergate(id));
-		CHECK_RET(tegra12x_disp_powergate(id));
+		CHECK_RET(tegra12x_disp_powergate(TEGRA_POWERGATE_DISA));
 	}
 
 	return ret;
@@ -639,14 +641,19 @@ static int tegra12x_venc_powergate(int id)
 static int tegra12x_venc_unpowergate(int id)
 {
 	int ret = 0;
+	int ref_count = 0;
 
 	if (!TEGRA_IS_VENC_POWERGATE_ID(id))
 		return -EINVAL;
 
-	CHECK_RET(tegra12x_disp_unpowergate(id));
+	ref_count = atomic_inc_return(&ref_count_venc);
+	WARN_ON(ref_count < 1);
 
-	atomic_inc(&ref_count_venc);
-	CHECK_RET(tegra12x_unpowergate(id));
+	/* only unpowergate when incrementing ref_count from 0 to 1 */
+	if (ref_count == 1) {
+		CHECK_RET(tegra12x_disp_unpowergate(TEGRA_POWERGATE_DISA));
+		CHECK_RET(tegra12x_unpowergate(id));
+	}
 
 	return ret;
 }
@@ -747,22 +754,33 @@ bool tegra12x_powergate_is_powered(int id)
 	return status;
 }
 
-int tegra12x_powergate_init_refcount(void)
+static int tegra12x_powergate_init_refcount(void)
 {
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC))
-		atomic_set(&ref_count_venc, 1);
-	else
-		atomic_set(&ref_count_venc, 0);
+	bool disa_powered = tegra_powergate_is_powered(TEGRA_POWERGATE_DISA);
+	bool venc_powered = tegra_powergate_is_powered(TEGRA_POWERGATE_VENC);
 
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISA))
+	WARN_ON(venc_powered && !disa_powered);
+
+	/* if it wasn't powered on, power it on */
+	if (!disa_powered) {
+		tegra12x_disp_unpowergate(TEGRA_POWERGATE_DISA);
+	} else { /* if it was, set the refcount to 1 */
 		atomic_set(&ref_count_dispa, 1);
-	else
-		atomic_set(&ref_count_dispa, 0);
+	}
+	/* either way you end up with disa powered on and the
+	 * refcount set to 1 */
 
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISB))
-		atomic_set(&ref_count_dispb, 1);
-	else
-		atomic_set(&ref_count_dispb, 0);
+	if (venc_powered) {
+		/* venc_unpowergate() take a ref_count on dispa to account for
+		 * the hardware dependency between the two. This needs to
+		 * happen here as well to match that behaviour.
+		 */
+		atomic_inc(&ref_count_dispa);
+		atomic_set(&ref_count_venc, 1);
+	} else {
+		atomic_set(&ref_count_venc, 0);
+	}
+
 	return 0;
 }
 
@@ -788,13 +806,11 @@ static struct powergate_ops tegra12x_powergate_ops = {
 
 	.powergate_skip = tegra12x_powergate_skip,
 
+	.powergate_init_refcount = tegra12x_powergate_init_refcount,
 	.powergate_is_powered = tegra12x_powergate_is_powered,
 };
 
 struct powergate_ops *tegra12x_powergate_init_chip_support(void)
 {
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC))
-		atomic_set(&ref_count_venc, 1);
-
 	return &tegra12x_powergate_ops;
 }

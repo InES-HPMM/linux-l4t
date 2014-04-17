@@ -941,7 +941,6 @@ static void __init tegra_loki_init_early(void)
 {
 	loki_rail_alignment_init();
 	tegra12x_init_early();
-	tegra12x_powergate_init_refcount();
 }
 
 DT_MACHINE_START(LOKI, "loki")
