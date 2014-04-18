@@ -2018,6 +2018,8 @@ static int sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 			(vmin > tegra_host->boot_vcore_mv)) {
 			dev_err(mmc_dev(sdhci->mmc),
 				"No best tap for any vcore range\n");
+			kfree(temp_tap_data);
+			temp_tap_data = NULL;
 			return -EINVAL;
 		}
 
