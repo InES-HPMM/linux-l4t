@@ -221,6 +221,8 @@ struct tegra210_audio_sfc_test_param {
 	unsigned int out_rate;
 };
 
+#define TEGRA210_SPKPROT_ARF_MAX_BIQ 3
+#define SPKPROT_MAX_CH 8
 struct tegra210_audio_spkprot_test_param {
 	int spkprot_id;
 	int test_id;
@@ -233,6 +235,15 @@ struct tegra210_audio_spkprot_test_param {
 	unsigned int spfilter_biquad_stages;
 	unsigned int gain_l;
 	unsigned int gain_h;
+	int threshold;
+	unsigned int reconfig;
+	unsigned int pre_gain[SPKPROT_MAX_CH];
+	unsigned int post_gain[SPKPROT_MAX_CH];
+	unsigned int biquad_b0[SPKPROT_MAX_CH][TEGRA210_SPKPROT_ARF_MAX_BIQ];
+	unsigned int biquad_b1[SPKPROT_MAX_CH][TEGRA210_SPKPROT_ARF_MAX_BIQ];
+	unsigned int biquad_b2[SPKPROT_MAX_CH][TEGRA210_SPKPROT_ARF_MAX_BIQ];
+	unsigned int biquad_a1[SPKPROT_MAX_CH][TEGRA210_SPKPROT_ARF_MAX_BIQ];
+	unsigned int biquad_a2[SPKPROT_MAX_CH][TEGRA210_SPKPROT_ARF_MAX_BIQ];
 };
 
 struct tegra210_audio_i2s_test_param {
