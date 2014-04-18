@@ -46,7 +46,6 @@
 enum tegra_wdt_status {
 	WDT_DISABLED = 1 << 0,
 	WDT_ENABLED = 1 << 1,
-	WDT_ENABLED_AT_PROBE = 1 << 2,
 };
 
 struct tegra_wdt {
@@ -57,7 +56,6 @@ struct tegra_wdt {
 	unsigned long		users;
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
-	int			irq;
 	int			tmrsrc;
 	int			timeout;
 	int			status;
@@ -68,6 +66,11 @@ struct tegra_wdt {
  * for cases where the spinlock disabled irqs.
  */
 static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
+#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
+static bool enable_on_probe = true;
+#else
+static bool enable_on_probe;
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 
@@ -106,13 +109,6 @@ static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 	return;
 }
 
-static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
-{
-	struct tegra_wdt *wdt = dev_id;
-
-	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
-	return IRQ_HANDLED;
-}
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC) \
 	|| defined(CONFIG_ARCH_TEGRA_12x_SOC)
 
@@ -134,8 +130,6 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 #define WDT_UNLOCK			(0xC)
  #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
 #define MAX_NR_CPU_WDT			0x4
-
-struct tegra_wdt *tegra_wdt[MAX_NR_CPU_WDT];
 
 static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 {
@@ -176,21 +170,6 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 	writel(0, wdt->wdt_timer + TIMER_PTV);
 }
 
-static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
-{
-	unsigned i, status;
-
-	for (i = 0; i < MAX_NR_CPU_WDT; i++) {
-		if (tegra_wdt[i] == NULL)
-			continue;
-		status = readl(tegra_wdt[i]->wdt_source + WDT_STATUS);
-		if ((tegra_wdt[i]->status & WDT_ENABLED) &&
-		    (status & WDT_INTR_STAT))
-			tegra_wdt_ping(tegra_wdt[i]);
-	}
-
-	return IRQ_HANDLED;
-}
 #endif
 
 static int tegra_wdt_notify(struct notifier_block *this,
@@ -316,7 +295,7 @@ static const struct file_operations tegra_wdt_fops = {
 
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
-	struct resource *res_src, *res_wdt, *res_irq;
+	struct resource *res_src, *res_wdt;
 	struct tegra_wdt *wdt;
 	u32 src;
 	int ret = 0;
@@ -329,15 +308,9 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 
 	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 
-	if (!res_src || !res_wdt || (!pdev->id && !res_irq)) {
+	if (!res_src || !res_wdt) {
 		dev_err(&pdev->dev, "incorrect resources\n");
-		return -ENOENT;
-	}
-
-	if (pdev->id == -1 && !res_irq) {
-		dev_err(&pdev->dev, "incorrect irq\n");
 		return -ENOENT;
 	}
 
@@ -347,7 +320,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	wdt->irq = -1;
 	wdt->miscdev.parent = &pdev->dev;
 	if (pdev->id == -1) {
 		wdt->miscdev.minor = WATCHDOG_MINOR;
@@ -395,16 +367,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt_disable(wdt);
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 
-	if (res_irq != NULL) {
-		ret = request_irq(res_irq->start, tegra_wdt_interrupt,
-				  IRQF_DISABLED, dev_name(&pdev->dev), wdt);
-		if (ret) {
-			dev_err(&pdev->dev, "unable to configure IRQ\n");
-			goto fail;
-		}
-		wdt->irq = res_irq->start;
-	}
-
 	wdt->res_src = res_src;
 	wdt->res_wdt = res_wdt;
 	wdt->status = WDT_DISABLED;
@@ -425,25 +387,17 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, wdt);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
 	/* Init and enable watchdog on WDT0 with timer 8 during probe */
-	if (!(pdev->id)) {
-		wdt->status = WDT_ENABLED | WDT_ENABLED_AT_PROBE;
+	if (enable_on_probe) {
+		wdt->status = WDT_ENABLED;
 		wdt->timeout = heartbeat;
 		tegra_wdt_enable(wdt);
-		val = readl(wdt->wdt_source + WDT_CFG);
-		val |= WDT_CFG_INT_EN;
-		writel(val, wdt->wdt_source + WDT_CFG);
 		pr_info("WDT heartbeat enabled on probe\n");
 	}
-#endif
-	tegra_wdt[pdev->id] = wdt;
 #endif
 	pr_info("%s done\n", __func__);
 	return 0;
 fail:
-	if (wdt->irq != -1)
-		free_irq(wdt->irq, wdt);
 	if (wdt->wdt_source)
 		iounmap(wdt->wdt_source);
 	if (wdt->wdt_timer)
@@ -464,8 +418,6 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 
 	unregister_reboot_notifier(&wdt->notifier);
 	misc_deregister(&wdt->miscdev);
-	if (wdt->irq != -1)
-		free_irq(wdt->irq, wdt);
 	iounmap(wdt->wdt_source);
 	iounmap(wdt->wdt_timer);
 	release_mem_region(wdt->res_src->start, resource_size(wdt->res_src));
@@ -491,16 +443,6 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 	if (wdt->status & WDT_ENABLED)
 		tegra_wdt_enable(wdt);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Enable interrupt for WDT3 heartbeat watchdog */
-	if (wdt->status & WDT_ENABLED_AT_PROBE) {
-		u32 val = 0;
-		val = readl(wdt->wdt_source + WDT_CFG);
-		val |= WDT_CFG_INT_EN;
-		writel(val, wdt->wdt_source + WDT_CFG);
-		pr_info("WDT heartbeat enabled on probe\n");
-	}
-#endif
 	return 0;
 }
 #endif
@@ -537,6 +479,10 @@ MODULE_DESCRIPTION("Tegra Watchdog Driver");
 module_param(heartbeat, int, 0);
 MODULE_PARM_DESC(heartbeat,
 		 "Watchdog heartbeat period in seconds");
+
+module_param(enable_on_probe, bool, 0);
+MODULE_PARM_DESC(enable_on_probe,
+		 "Start watchdog during boot");
 
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
