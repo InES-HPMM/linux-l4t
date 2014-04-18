@@ -2,7 +2,7 @@
  * Driver for Regulator part of Palmas PMIC Chips
  *
  * Copyright 2011-2013 Texas Instruments Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Ian Lartey <ian@slimlogic.co.uk>
@@ -308,6 +308,14 @@ static unsigned int palmas_smps_ramp_delay[4] = {0, 10000, 5000, 2500};
 
 #define REGULATOR_SLAVE			0
 
+/* Number of TAU for SMPS ramp delay.
+ * This can be adjusted between 2 or 3 according to the required accuracy.
+ * When TSTEP = 10mV/us, for N=3 output voltage settling error is less
+ * than 0.4 % of VFINAL in all conditions in the 0.5 V - 1.65 V range.
+ * For N=2, output voltage settling error is less than 1.1 % of VFINAL.
+ */
+#define NUM_T_AU			2
+
 static int palmas_smps_read(struct palmas *palmas, unsigned int reg,
 		unsigned int *dest)
 {
@@ -510,6 +518,10 @@ static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
 	int id = rdev_get_id(rdev);
 	int old_uv, new_uv;
 	unsigned int ramp_delay = pmic->ramp_delay[id];
+	int num_steps;
+	int step = pmic->range[id] ? 20000 : 10000;
+	int min_uv = pmic->range[id] ? 1000000 : 500000;
+	int t_fixed, t_au, t_total;
 
 	if (!pmic->ramp_delay_support[id])
 		return 0;
@@ -529,7 +541,17 @@ static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
 	if (new_uv < 0)
 		return new_uv;
 
-	return DIV_ROUND_UP(abs(old_uv - new_uv), ramp_delay);
+	/* Number of DVS steps. */
+	num_steps = DIV_ROUND_UP(abs(old_uv - new_uv), step);
+	/* Fixed delay from DVS steps excluding the last one. */
+	t_fixed = (num_steps - 1) * (step / ramp_delay);
+	/* Time constant for last DVS step. */
+	t_au = DIV_ROUND_UP((112500 * (10 + (new_uv - min_uv) / 10000)),
+			    1000000);
+	/* Total setting time is t_fixed + (NUM_T_AU * t_au). */
+	t_total = t_fixed + (NUM_T_AU * t_au);
+
+	return t_total;
 }
 
 static int palmas_smps_set_ramp_delay(struct regulator_dev *rdev,
