@@ -13,10 +13,10 @@
 		hpa2163@6b {
 			charger {
 				status = "okay";
-				ti,charge-voltage-limit-millivolt = <4350>;
-				ti,temp-range = <10 15 45 60>;
-				ti,charge-thermal-voltage-limit = <4350 4350 4350 4200>;
-				ti,charge-current-limit = <1024 2048 5200 2600>;
+				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,temp-range = <10 15 25 45 60>;
+				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200>;
+				ti,charge-current-limit = <1040 1040 2600 5200 2600>;
 			};
 		};
 	};
