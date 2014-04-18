@@ -18,7 +18,7 @@
 / {
 emc@7001b000 {
 		compatible = "nvidia,tegra12-emc";
-		reg = <0x7001b000 0x800>;
+		reg = <0x0 0x7001b000 0x0 0x800>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		emc-table@204000 {
