@@ -487,6 +487,7 @@ late_initcall(simon_debugfs_init);
 
 /* FIXME: Add fake graders - to be removed when actual graders are implemnted */
 #if CONFIG_ARCH_TEGRA_12x_SOC
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static int fake_grader(int domain, int mv, int temperature)
 {
 	return 0;	/* safe low grade */
@@ -515,4 +516,5 @@ static int __init tegra_simon_add_graders(void)
 	return 0;
 }
 late_initcall_sync(tegra_simon_add_graders);
+#endif
 #endif
