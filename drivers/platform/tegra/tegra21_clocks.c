@@ -114,6 +114,34 @@
 	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
 		CLK_OUT_ENB_CLR_X, CLK_OUT_ENB_CLR_Y, 8)
 
+#define PLL_BASE_SET_DIV(PLL, m, n, p, val)				       \
+do {									       \
+	(val) &= ~(PLL##_BASE_DIVN_MASK | PLL##_BASE_DIVN_MASK |	       \
+		PLL##_BASE_DIVP_MASK);					       \
+	(val) |= ((m) << PLL##_BASE_DIVM_SHIFT) |			       \
+		((n) << PLL##_BASE_DIVN_SHIFT) |			       \
+		((p) << PLL##_BASE_DIVP_SHIFT);				       \
+} while (0)
+
+#define PLL_BASE_PARSE_CFG(PLL, p_to_pdiv, cfg, b)			 \
+do {									 \
+	(cfg).m = ((b) & PLL##_BASE_DIVM_MASK) >> PLL##_BASE_DIVM_SHIFT; \
+	(cfg).n = ((b) & PLL##_BASE_DIVN_MASK) >> PLL##_BASE_DIVN_SHIFT; \
+	(cfg).p = ((b) & PLL##_BASE_DIVP_MASK) >> PLL##_BASE_DIVP_SHIFT; \
+	(cfg).p = p_to_pdiv[(cfg).p];					 \
+} while (0)
+
+#define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val)			       \
+do {									       \
+	u32 boot_val = clk_readl((c)->reg + (c)->u.pll.misc##misc_num);	       \
+	if (boot_val != (default_val)) {				       \
+		pr_warn("%s boot misc" #misc_num " = 0x%x (expected 0x%x)\n",  \
+			(c)->name, boot_val, (default_val));		       \
+			(c)->u.pll.defaults_set = false;		       \
+	}								       \
+} while (0)
+
+
 #define CLK_MASK_ARM			0x44
 #define MISC_CLK_ENB			0x48
 
@@ -188,6 +216,8 @@
 #define PLL_BASE_BYPASS			(1<<31)
 #define PLL_BASE_ENABLE			(1<<30)
 #define PLL_BASE_REF_ENABLE		(1<<29)
+
+/* FIXME: no longer common should be eventually removed */
 #define PLL_BASE_OVERRIDE		(1<<28)
 #define PLL_BASE_LOCK			(1<<27)
 #define PLL_BASE_DIVP_MASK		(0x7<<20)
@@ -200,15 +230,14 @@
 #define PLLD_BASE_DIVN_MASK		(0xFF<<11)
 #define PLLD_BASE_DIVN_SHIFT		11
 
-#define PLLC_BASE_DIVN_MASK		(0xFF<<10)
-#define PLLC_BASE_DIVN_SHIFT		10
-#define PLLC_BASE_DIVP_MASK		(0x1F<<20)
+/* FIXME: remove */
 #define PLLC_BASE_DIVM_MASK		0xFF
 
 #define PLLU_BASE_DIVN_MASK		(0xFF<<8)
 #define PLLU_BASE_DIVP_MASK		(0x1F << 16)
 #define PLLU_BASE_DIVP_SHIFT		16
 
+/* FXME: to be removed */
 #define PLL_BASE_PARSE(pll, cfg, b)					       \
 	do {								       \
 		(cfg).m = ((b) & pll##_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT; \
@@ -222,6 +251,7 @@
 #define PLL_OUT_CLKEN			(1<<1)
 #define PLL_OUT_RESET_DISABLE		(1<<0)
 
+/* FXME: to be removed */
 #define PLL_MISC(c)			\
 	(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
 #define PLL_MISCN(c, n)		\
@@ -237,7 +267,7 @@
 #define PLL_MISC_VCOCON_SHIFT		0
 #define PLL_MISC_VCOCON_MASK		(0xF<<PLL_MISC_VCOCON_SHIFT)
 
-#define PLL_FIXED_MDIV(c, ref)		((ref) > (c)->u.pll.cf_max ? 2 : 1)
+#define PLL_FIXED_MDIV(c, ref)		((ref) == 38400000 ? 2 : 1)
 
 /* PLLU */
 #define PLLU_BASE_OVERRIDE		(1<<24)
@@ -255,50 +285,30 @@
 
 #define PLLDU_LFCON			2
 
-/* PLLC2 and PLLC3 (PLLCX) */
+/* PLLC, PLLC2, PLLC3 and PLLA1 */
 #define PLLCX_USE_DYN_RAMP		0
-#define PLLCX_BASE_PHASE_LOCK		(1<<26)
-#define PLLCX_BASE_DIVP_MASK		(0x7<<PLL_BASE_DIVP_SHIFT)
-#define PLLCX_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
-#define PLLCX_BASE_DIVM_MASK		(0x3<<PLL_BASE_DIVM_SHIFT)
-#define PLLCX_PDIV_MAX	((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT))
-#define PLLCX_IS_DYN(new_p, old_p)	(((new_p) <= 8) && ((old_p) <= 8))
+#define PLLCX_PDIV_MAX			16
 
-#define PLLCX_MISC_STROBE		(1<<31)
-#define PLLCX_MISC_RESET		(1<<30)
-#define PLLCX_MISC_SDM_DIV_SHIFT	28
-#define PLLCX_MISC_SDM_DIV_MASK		(0x3 << PLLCX_MISC_SDM_DIV_SHIFT)
-#define PLLCX_MISC_FILT_DIV_SHIFT	26
-#define PLLCX_MISC_FILT_DIV_MASK	(0x3 << PLLCX_MISC_FILT_DIV_SHIFT)
-#define PLLCX_MISC_ALPHA_SHIFT		18
-#define PLLCX_MISC_ALPHA_MASK		(0xFF << PLLCX_MISC_ALPHA_SHIFT)
-#define PLLCX_MISC_KB_SHIFT		9
-#define PLLCX_MISC_KB_MASK		(0x1FF << PLLCX_MISC_KB_SHIFT)
-#define PLLCX_MISC_KA_SHIFT		2
-#define PLLCX_MISC_KA_MASK		(0x7F << PLLCX_MISC_KA_SHIFT)
-#define PLLCX_MISC_VCO_GAIN_SHIFT	0
-#define PLLCX_MISC_VCO_GAIN_MASK	(0x3 << PLLCX_MISC_VCO_GAIN_SHIFT)
+#define PLLCX_BASE_LOCK			(1 << 26)
+#define PLLCX_BASE_DIVP_SHIFT		20
+#define PLLCX_BASE_DIVP_MASK		(0x1F << PLLCX_BASE_DIVP_SHIFT)
+#define PLLCX_BASE_DIVN_SHIFT		10
+#define PLLCX_BASE_DIVN_MASK		(0xFF << PLLCX_BASE_DIVN_SHIFT)
+#define PLLCX_BASE_DIVM_SHIFT		0
+#define PLLCX_BASE_DIVM_MASK		(0xFF << PLLCX_BASE_DIVM_SHIFT)
 
-#define PLLCX_MISC_KOEF_LOW_RANGE	\
-	((0x14 << PLLCX_MISC_KA_SHIFT) | (0x38 << PLLCX_MISC_KB_SHIFT))
+#define PLLCX_MISC0_RESET		(1 << 30)
+#define PLLCX_MISC0_LOOP_CTRL_SHIFT	0
+#define PLLCX_MISC0_LOOP_CTRL_MASK	(0x3 << PLLCX_BASE_DIVM_SHIFT)
 
-#define PLLCX_MISC_DIV_LOW_RANGE	\
-	((0x2 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x2 << PLLCX_MISC_FILT_DIV_SHIFT))
-#define PLLCX_MISC_DIV_HIGH_RANGE	\
-	((0x1 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x1 << PLLCX_MISC_FILT_DIV_SHIFT))
+#define PLLCX_MISC1_IDDQ		(1 << 27)
 
-#define PLLCX_MISC_DEFAULT_VALUE	((0x0 << PLLCX_MISC_VCO_GAIN_SHIFT) | \
-					PLLCX_MISC_KOEF_LOW_RANGE | \
-					(0x19 << PLLCX_MISC_ALPHA_SHIFT) | \
-					PLLCX_MISC_DIV_LOW_RANGE | \
-					PLLCX_MISC_RESET)
-#define PLLCX_MISC1_DEFAULT_VALUE	0x000d2308
-#define PLLCX_MISC2_DEFAULT_VALUE	0x30211200
-#define PLLCX_MISC3_DEFAULT_VALUE	0x200
+#define PLLCX_MISC0_DEFAULT_VALUE	0x40080000
+#define PLLCX_MISC1_DEFAULT_VALUE	0x08000000
+#define PLLCX_MISC2_DEFAULT_VALUE	0x1f720f05
+#define PLLCX_MISC3_DEFAULT_VALUE	0x000000c4
 
-#define PLLCX_MISC1_IDDQ		(0x1 << 27)
-
-/* PLLX and PLLC (PLLXC)*/
+/* PLLX */
 #define PLLXC_USE_DYN_RAMP		0
 #define PLLXC_BASE_DIVP_MASK		(0xF<<PLL_BASE_DIVP_SHIFT)
 #define PLLXC_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
@@ -325,22 +335,6 @@
 
 #define PLLX_HW_CTRL_CFG		0x548
 #define PLLX_HW_CTRL_CFG_SWCTRL		(0x1 << 0)
-
-/* PLLC */
-#define PLLC_BASE_LOCK_OVERRIDE		(1<<28)
-
-#define PLLC_MISC_IDDQ			(0x1 << 26)
-#define PLLC_MISC_LOCK_ENABLE		(0x1 << 24)
-
-#define PLLC_MISC1_CLAMP_NDIV		(0x1 << 26)
-#define PLLC_MISC1_EN_DYNRAMP		(0x1 << 25)
-#define PLLC_MISC1_DYNRAMP_STEPA_SHIFT	17
-#define PLLC_MISC1_DYNRAMP_STEPA_MASK	(0xFF << PLLC_MISC1_DYNRAMP_STEPA_SHIFT)
-#define PLLC_MISC1_DYNRAMP_STEPB_SHIFT	9
-#define PLLC_MISC1_DYNRAMP_STEPB_MASK	(0xFF << PLLC_MISC1_DYNRAMP_STEPB_SHIFT)
-#define PLLC_MISC1_NDIV_NEW_SHIFT	1
-#define PLLC_MISC1_NDIV_NEW_MASK	(0xFF << PLLC_MISC1_NDIV_NEW_SHIFT)
-#define PLLC_MISC1_DYNRAMP_DONE		(0x1 << 0)
 
 /* PLLM */
 #define PLLM_BASE_DIVP_MASK		(0xF << PLL_BASE_DIVP_SHIFT)
@@ -2051,23 +2045,9 @@ static int tegra21_pll_clk_wait_for_lock(
 		}
 	}
 
-	/* PLLCX lock bits may fluctuate after the lock - do detailed reporting
-	   at debug level (phase lock bit happens to uniquely identify PLLCX) */
-	if (lock_bits & PLLCX_BASE_PHASE_LOCK) {
-		pr_debug("Timed out waiting %s locks: %s %s not set\n", c->name,
-		       val & PLL_BASE_LOCK ? "" : "frequency_lock",
-		       val & PLLCX_BASE_PHASE_LOCK ? "" : "phase_lock");
-		pr_debug("base =  0x%x\n", val);
-		pr_debug("misc =  0x%x\n", clk_readl(c->reg + PLL_MISC(c)));
-		pr_debug("misc1 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 1)));
-		pr_debug("misc2 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 2)));
-		pr_debug("misc3 = 0x%x\n", clk_readl(c->reg + PLL_MISCN(c, 3)));
-		return -ETIMEDOUT;
-	} else {
-		pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
-		       c->name, lock_reg, val);
-		return -ETIMEDOUT;
-	}
+	pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
+	       c->name, lock_reg, val);
+	return -ETIMEDOUT;
 #endif
 	udelay(c->u.pll.lock_delay);
 	return 0;
@@ -2507,7 +2487,7 @@ static struct clk_ops tegra_plld_ops = {
 static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
-	u32 p;
+	int p;
 
 	if (!rate)
 		return -EINVAL;
@@ -2520,12 +2500,9 @@ static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	cfg->m = PLL_FIXED_MDIV(c, input_rate);
 	cfg->p = p;
 	cfg->output_rate = rate * cfg->p;
+	if (cfg->output_rate > c->u.pll.vco_max)
+		cfg->output_rate = c->u.pll.vco_max;
 	cfg->n = cfg->output_rate * cfg->m / input_rate;
-
-	/* can use PLLCX N-divider field layout for all dynamic ramp PLLs */
-	if ((cfg->n > (PLLCX_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
-	    (cfg->output_rate > c->u.pll.vco_max))
-		return -EINVAL;
 
 	return 0;
 }
@@ -2538,7 +2515,7 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	/* Check if the target rate is tabulated */
 	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
 		if (sel->input_rate == input_rate && sel->output_rate == rate) {
-			u32 p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
+			int p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
 			BUG_ON(IS_ERR_VALUE(p));
 			BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 			*cfg = *sel;
@@ -2555,20 +2532,36 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
-static inline void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
+static void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
 {
 	u32 val = clk_readl(c->reg + offs);
 	if (set)
 		val |= iddq_bit;
 	else
 		val &= ~iddq_bit;
-	clk_writel_delay(val, c->reg + offs);
+	pll_writel_delay(val, c->reg + offs);
+	if (!set)
+		udelay(2); /* increased out of IDDQ delay to 3us */
 }
 
+static void pll_do_enable(struct clk *c)
+{
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	val &= ~PLL_BASE_BYPASS;
+	val |= PLL_BASE_ENABLE;
+	pll_writel_delay(val, c->reg + PLL_BASE);
+}
+
+static void pll_do_disable(struct clk *c)
+{
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
+	pll_writel_delay(val, c->reg + PLL_BASE);
+}
 
 static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
-/* PDIV: 0, 1, 2, 3, 4, 5,  6,  7 */
-/* p: */ 1, 2, 3, 4, 6, 8, 12, 16 };
+/* PDIV: 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15, 16 */
+/* p: */ 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32 };
 
 static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
 {
@@ -2576,10 +2569,6 @@ static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
 
 	if (p) {
 		for (i = 0; i <= PLLCX_PDIV_MAX; i++) {
-			/* Do not use DIV3 p values - mapped to even PDIV */
-			if (i && ((i & 0x1) == 0))
-				continue;
-
 			if (p <= pllcx_p[i]) {
 				if (pdiv)
 					*pdiv = i;
@@ -2590,68 +2579,39 @@ static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
 	return -EINVAL;
 }
 
-static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
-					u32 n)
+static void pllcx_set_defaults(struct clk *c, unsigned long input_rate)
 {
-	u32 val, n_threshold;
+	c->u.pll.defaults_set = true;
 
-	switch (input_rate) {
-	case 12000000:
-	case 13000000:
-		n_threshold = 70;
-		break;
-	case 19200000:
-		n_threshold = 48;
-		break;
-	case 38400000:
-		n_threshold = 48; /* HACK!!! FIXME for T210 !!! */
-		break;
-	default:
-		pr_err("%s: Unexpected reference rate %lu\n",
-			__func__, input_rate);
-		BUG();
-		return;
-	}
-
-	val = clk_readl(c->reg + PLL_MISC(c));
-	val &= ~(PLLCX_MISC_SDM_DIV_MASK | PLLCX_MISC_FILT_DIV_MASK);
-	val |= n <= n_threshold ?
-		PLLCX_MISC_DIV_LOW_RANGE : PLLCX_MISC_DIV_HIGH_RANGE;
-	clk_writel(val, c->reg + PLL_MISC(c));
+	clk_writel(PLLCX_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + c->u.pll.misc1);
+	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + c->u.pll.misc2);
+	pll_writel_delay(PLLCX_MISC3_DEFAULT_VALUE, c->reg + c->u.pll.misc3);
 }
 
-static void pllcx_strobe(struct clk *c)
+static void pllcx_check_defaults(struct clk *c, unsigned long input_rate)
 {
-	u32 reg = c->reg + PLL_MISC(c);
-	u32 val = clk_readl(reg);
+	u32 default_val;
 
-	val |= PLLCX_MISC_STROBE;
-	pll_writel_delay(val, reg);
+	c->u.pll.defaults_set = true;
 
-	val &= ~PLLCX_MISC_STROBE;
-	clk_writel(val, reg);
-}
+	default_val = PLLCX_MISC0_DEFAULT_VALUE & (~PLLCX_MISC0_RESET);
+	PLL_MISC_CHK_DEFAULT(c, 0, default_val);
 
-static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
-{
-	u32 misc1val = PLLCX_MISC1_DEFAULT_VALUE;
-	if (c->state == ON)
-		BUG_ON(!tegra_platform_is_linsim());
-	else
-		misc1val |= PLLCX_MISC1_IDDQ;
+	default_val = PLLCX_MISC1_DEFAULT_VALUE & (~PLLCX_MISC1_IDDQ);
+	PLL_MISC_CHK_DEFAULT(c, 1, default_val);
 
-	clk_writel(PLLCX_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
-	clk_writel(misc1val, c->reg + PLL_MISCN(c, 1));
-	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 2));
-	clk_writel(PLLCX_MISC3_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 3));
+	default_val = PLLCX_MISC2_DEFAULT_VALUE;
+	PLL_MISC_CHK_DEFAULT(c, 2, default_val);
 
-	pllcx_update_dynamic_koef(c, input_rate, n);
+	default_val = PLLCX_MISC3_DEFAULT_VALUE;
+	PLL_MISC_CHK_DEFAULT(c, 3, default_val);
 }
 
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
-	u32 m, n, p, val;
+	u32 m, n, p, pdiv, val;
 
 	/* clip vco_min to exact multiple of input rate to avoid crossover
 	   by rounding */
@@ -2663,27 +2623,34 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
 	/*
-	 * PLLCX is not a boot PLL, it should be left disabled by boot-loader,
-	 * and no enabled module clocks should use it as a source during clock
-	 * init.
+	 * If PLLCX is enabled on boot, keep it as is, just check if boot-loader
+	 * set correct PLL parameters - if not, parameters will be reset at the
+	 * 1st opportunity of reconfiguring PLL.
 	 */
-	BUG_ON(c->state == ON && !tegra_platform_is_linsim());
+	if (c->state == ON) {
+		struct clk_pll_freq_table cfg;
+		pllcx_check_defaults(c, input_rate);
+		PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, cfg, val);
+		c->mul = cfg.n;
+		c->div = cfg.m * cfg.p;
+		return;
+	}
+
 	/*
-	 * Most of PLLCX register fields are shadowed, and can not be read
-	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
-	 * Initialize PLL to default state: disabled, reset; shadow registers
-	 * loaded with default parameters; dividers are preset for half of
-	 * minimum VCO rate (the latter assured that shadowed divider settings
-	 * are within supported range).
+	 * Initialize PLL to default state: disabled, reset; registers are
+	 * loaded with default parameters; dividers are preset for 1/4 of
+	 * minimum VCO rate.
 	 */
 	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
-	p = pllcx_p[2];
-	val = (m << PLL_BASE_DIVM_SHIFT) | (n << PLL_BASE_DIVN_SHIFT) |
-		(2 << PLL_BASE_DIVP_SHIFT);
-	clk_writel(val, c->reg + PLL_BASE);	/* PLL disabled */
+	pdiv = 3;
+	p = pllcx_p[pdiv];
 
-	pllcx_set_defaults(c, input_rate, n);
+	val = 0;	/* PLL disabled, reference running */
+	PLL_BASE_SET_DIV(PLLCX, m, n, pdiv, val);
+	pll_writel_delay(val, c->reg + PLL_BASE);
+
+	pllcx_set_defaults(c, input_rate);
 
 	c->mul = n;
 	c->div = m * p;
@@ -2694,20 +2661,15 @@ static int tegra21_pllcx_clk_enable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, false);
+	/* out-of-iddq -> out-of-reset -> enable */
+	pll_do_iddq(c, c->u.pll.misc1, PLLCX_MISC1_IDDQ, false);
 
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_BYPASS;
-	val |= PLL_BASE_ENABLE;
-	pll_writel_delay(val, c->reg + PLL_BASE);
+	val = clk_readl(c->reg + c->u.pll.misc0);
+	val &= ~PLLCX_MISC0_RESET;
+	pll_writel_delay(val, c->reg + c->u.pll.misc0);
 
-	val = clk_readl(c->reg + PLL_MISC(c));
-	val &= ~PLLCX_MISC_RESET;
-	pll_writel_delay(val, c->reg + PLL_MISC(c));
-
-	pllcx_strobe(c);
-	tegra21_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
-			PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
+	pll_do_enable(c);
+	tegra21_pll_clk_wait_for_lock(c, c->reg + PLL_BASE, PLLCX_BASE_LOCK);
 	return 0;
 }
 
@@ -2716,15 +2678,14 @@ static void tegra21_pllcx_clk_disable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	val = clk_readl(c->reg);
-	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
-	clk_writel(val, c->reg);
+	/* disable -> reset -> iddq */
+	pll_do_disable(c);
 
-	val = clk_readl(c->reg + PLL_MISC(c));
-	val |= PLLCX_MISC_RESET;
-	pll_writel_delay(val, c->reg + PLL_MISC(c));
+	val = clk_readl(c->reg + c->u.pll.misc0);
+	val |= PLLCX_MISC0_RESET;
+	pll_writel_delay(val, c->reg + c->u.pll.misc0);
 
-	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, true);
+	pll_do_iddq(c, c->u.pll.misc1, PLLCX_MISC1_IDDQ, true);
 }
 
 static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
@@ -2745,60 +2706,30 @@ static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	c->div = sel->m * sel->p;
 
 	val = clk_readl(c->reg + PLL_BASE);
-	PLL_BASE_PARSE(PLLCX, old_cfg, val);
-	old_cfg.p = pllcx_p[old_cfg.p];
+	PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, old_cfg, val);
 
-	BUG_ON(old_cfg.m != sel->m);
-	if ((sel->n == old_cfg.n) && (sel->p == old_cfg.p))
+	if ((sel->m == old_cfg.m) && (sel->n == old_cfg.n) &&
+	    (sel->p == old_cfg.p))
 		return 0;
 
 #if PLLCX_USE_DYN_RAMP
-	if (c->state == ON && ((sel->n == old_cfg.n) ||
-			       PLLCX_IS_DYN(sel->p, old_cfg.p))) {
-		/*
-		 * Dynamic ramp if PLL is enabled, and M divider is unchanged:
-		 * - Change P divider 1st if intermediate rate is below either
-		 *   old or new rate.
-		 * - Change N divider with DFS strobe - target rate is either
-		 *   final new rate or below old rate
-		 * - If divider has been changed, exit without waiting for lock.
-		 *   Otherwise, wait for lock and change divider.
-		 */
-		if (sel->p > old_cfg.p) {
-			val &= ~PLLCX_BASE_DIVP_MASK;
-			val |= pdiv << PLL_BASE_DIVP_SHIFT;
-			clk_writel(val, c->reg + PLL_BASE);
-		}
-
-		if (sel->n != old_cfg.n) {
-			pllcx_update_dynamic_koef(c, input_rate, sel->n);
-			val &= ~PLLCX_BASE_DIVN_MASK;
-			val |= sel->n << PLL_BASE_DIVN_SHIFT;
-			pll_writel_delay(val, c->reg + PLL_BASE);
-
-			pllcx_strobe(c);
-			tegra21_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
-					PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
-		}
-
-		if (sel->p < old_cfg.p) {
-			val &= ~PLLCX_BASE_DIVP_MASK;
-			val |= pdiv << PLL_BASE_DIVP_SHIFT;
-			clk_writel(val, c->reg + PLL_BASE);
-		}
+	if (c->state == ON && c->u.pll.defaults_set &&
+	    (sel->m == old_cfg.m) && (sel->p == old_cfg.p)) {
+		val &= ~PLLCX_BASE_DIVN_MASK;
+		val |= sel->n << PLLCX_BASE_DIVN_SHIFT;
+		pll_writel_delay(val, c->reg + PLL_BASE);
 		return 0;
 	}
 #endif
-
-	val &= ~(PLLCX_BASE_DIVN_MASK | PLLCX_BASE_DIVP_MASK);
-	val |= (sel->n << PLL_BASE_DIVN_SHIFT) |
-		(pdiv << PLL_BASE_DIVP_SHIFT);
-
+	PLL_BASE_SET_DIV(PLLCX, sel->m, sel->n, pdiv, val);
 	if (c->state == ON) {
 		tegra21_pllcx_clk_disable(c);
 		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
 	}
-	pllcx_update_dynamic_koef(c, input_rate, sel->n);
+
+	if (!c->u.pll.defaults_set)
+		pllcx_set_defaults(c, input_rate);
+
 	clk_writel(val, c->reg + PLL_BASE);
 	if (c->state == ON)
 		tegra21_pllcx_clk_enable(c);
@@ -2816,17 +2747,12 @@ static void tegra21_pllcx_clk_resume_enable(struct clk *c)
 	if (val & PLL_BASE_ENABLE)
 		return;		/* already resumed */
 
-	/* Restore input divider */
-	val &= ~PLLCX_BASE_DIVM_MASK;
-	val |= PLL_FIXED_MDIV(c, rate) << PLL_BASE_DIVM_SHIFT;
-	clk_writel(val, c->reg + PLL_BASE);
-
 	/* temporarily sync h/w and s/w states, final sync happens
 	   in tegra_clk_resume later */
 	c->state = OFF;
-	pllcx_set_defaults(c, rate, c->mul);
+	pllcx_set_defaults(c, rate);
 
-	rate = clk_get_rate_all_locked(c) + 1;
+	rate = clk_get_rate_all_locked(c);
 	tegra21_pllcx_clk_set_rate(c, rate);
 	tegra21_pllcx_clk_enable(c);
 	c->state = state;
@@ -2913,38 +2839,6 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	}
 }
 
-static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
-{
-	u32 val;
-	u32 step_a, step_b;
-
-	/* Get ready dyn ramp state machine */
-	pllxc_get_dyn_steps(c, input_rate, &step_a, &step_b);
-	val = step_a << PLLC_MISC1_DYNRAMP_STEPA_SHIFT;
-	val |= step_b << PLLC_MISC1_DYNRAMP_STEPB_SHIFT;
-	clk_writel(val, c->reg + PLL_MISCN(c, 1));
-
-	/* Configure lock and check/set IDDQ */
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLLC_BASE_LOCK_OVERRIDE;
-	clk_writel(val, c->reg + PLL_BASE);
-
-	val = clk_readl(c->reg + PLL_MISC(c));
-#if USE_PLL_LOCK_BITS
-	val |= PLLC_MISC_LOCK_ENABLE;
-#else
-	val &= ~PLLC_MISC_LOCK_ENABLE;
-#endif
-	clk_writel(val, c->reg + PLL_MISC(c));
-
-	if (c->state == ON) {
-		BUG_ON(val & PLLC_MISC_IDDQ && !tegra_platform_is_linsim());
-	} else {
-		val |= PLLC_MISC_IDDQ;
-		clk_writel(val, c->reg + PLL_MISC(c));
-	}
-}
-
 static void tegra21_pllxc_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
@@ -2964,12 +2858,6 @@ static void tegra21_pllxc_clk_init(struct clk *c)
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
-	if (!(c->flags & PLLX)) {
-		pll_divm_mask = PLLC_BASE_DIVM_MASK;
-		pll_divp_mask = PLLC_BASE_DIVP_MASK;
-		pll_divn_mask = PLLC_BASE_DIVN_MASK;
-		pll_divn_shift = PLLC_BASE_DIVN_SHIFT;
-	}
 	m = (val & pll_divm_mask) >> PLL_BASE_DIVM_SHIFT;
 	p = (val & pll_divp_mask) >> PLL_BASE_DIVP_SHIFT;
 	BUG_ON(p > PLLXC_PDIV_MAX);
@@ -2980,8 +2868,6 @@ static void tegra21_pllxc_clk_init(struct clk *c)
 
 	if (c->flags & PLLX)
 		pllx_set_defaults(c, input_rate);
-	else
-		pllc_set_defaults(c, input_rate);
 }
 
 static int tegra21_pllxc_clk_enable(struct clk *c)
@@ -2991,8 +2877,6 @@ static int tegra21_pllxc_clk_enable(struct clk *c)
 
 	if (c->flags & PLLX)
 		pll_do_iddq(c, PLL_MISCN(c, 3), PLLX_MISC3_IDDQ, false);
-	else
-		pll_do_iddq(c, PLL_MISC(c), PLLC_MISC_IDDQ, false);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	val |= PLL_BASE_ENABLE;
@@ -3014,9 +2898,6 @@ static void tegra21_pllxc_clk_disable(struct clk *c)
 
 	if (c->flags & PLLX)
 		pll_do_iddq(c, PLL_MISCN(c, 3), PLLX_MISC3_IDDQ, true);
-	else
-		pll_do_iddq(c, PLL_MISC(c), PLLC_MISC_IDDQ, true);
-
 }
 
 #define PLLXC_DYN_RAMP(pll_misc, reg)					\
@@ -3076,11 +2957,7 @@ static int tegra21_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 		if (c->flags & PLLX) {
 			u32 reg = c->reg + PLL_MISCN(c, 2);
 			PLLXC_DYN_RAMP(PLLX_MISC2, reg);
-		} else {
-			u32 reg = c->reg + PLL_MISCN(c, 1);
-			PLLXC_DYN_RAMP(PLLC_MISC1, reg);
 		}
-
 		return 0;
 	}
 #endif
@@ -3119,8 +2996,6 @@ static void tegra21_pllxc_clk_resume_enable(struct clk *c)
 	c->state = OFF;
 	if (c->flags & PLLX)
 		pllx_set_defaults(c, rate);
-	else
-		pllc_set_defaults(c, rate);
 
 	rate = clk_get_rate_all_locked(c) + 1;
 	tegra21_pllxc_clk_set_rate(c, rate);
@@ -6120,31 +5995,33 @@ static struct clk tegra_pll_ref = {
 	.max_rate  = 38400000,
 };
 
-static struct clk_pll_freq_table tegra_pll_c_freq_table[] = {
-	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 19200000, 600000000,  62, 1, 2},
-	{ 38400000, 600000000,  31, 1, 2},	/* FIXME !!!actual: 595.2 MHz */
+static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
+	{ 12000000, 510000000,  85, 1, 2},
+	{ 13000000, 510000000,  78, 1, 2},	/* actual: 507.0 MHz */
+	{ 38400000, 510000000,  53, 2, 2},	/* actual: 508.8 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
 static struct clk tegra_pll_c = {
 	.name      = "pll_c",
-	.ops       = &tegra_pllxc_ops,
+	.ops       = &tegra_pllcx_ops,
 	.reg       = 0x80,
 	.parent    = &tegra_pll_ref,
-	.max_rate  = 1400000000,
+	.max_rate  = 1200000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 800000000,
+		.input_max = 700000000,
 		.cf_min    = 12000000,
-		.cf_max    = 19200000,	/* s/w policy, h/w capability 50 MHz */
+		.cf_max    = 50000000,
 		.vco_min   = 600000000,
-		.vco_max   = 1400000000,
-		.freq_table = tegra_pll_c_freq_table,
+		.vco_max   = 1200000000,
+		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
-		.misc1 = 0x88 - 0x80,
-		.round_p_to_pdiv = pllxc_round_p_to_pdiv,
+		.misc0 = 0x88 - 0x80,
+		.misc1 = 0x8c - 0x80,
+		.misc2 = 0x5d0 - 0x80,
+		.misc3 = 0x5d4 - 0x80,
+		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
 
@@ -6158,31 +6035,25 @@ static struct clk tegra_pll_c_out1 = {
 	.max_rate  = 700000000,
 };
 
-static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
-	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 38400000, 600000000,  31, 1, 2},	/* FIXME!!! actual: 595.2 MHz */
-	{ 0, 0, 0, 0, 0, 0 },
-};
-
 static struct clk tegra_pll_c2 = {
 	.name      = "pll_c2",
 	.ops       = &tegra_pllcx_ops,
-	.flags     = PLL_ALT_MISC_REG,
 	.reg       = 0x4e8,
 	.parent    = &tegra_pll_ref,
 	.max_rate  = 1200000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 48000000,
+		.input_max = 700000000,
 		.cf_min    = 12000000,
-		.cf_max    = 19200000,
+		.cf_max    = 50000000,
 		.vco_min   = 600000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
+		.misc0 = 0x4ec - 0x4e8,
 		.misc1 = 0x4f0 - 0x4e8,
+		.misc2 = 0x4f4 - 0x4e8,
+		.misc3 = 0x4f8 - 0x4e8,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -6190,20 +6061,22 @@ static struct clk tegra_pll_c2 = {
 static struct clk tegra_pll_c3 = {
 	.name      = "pll_c3",
 	.ops       = &tegra_pllcx_ops,
-	.flags     = PLL_ALT_MISC_REG,
 	.reg       = 0x4fc,
 	.parent    = &tegra_pll_ref,
 	.max_rate  = 1200000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 48000000,
+		.input_max = 700000000,
 		.cf_min    = 12000000,
-		.cf_max    = 19200000,
+		.cf_max    = 50000000,
 		.vco_min   = 600000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
+		.misc0 = 0x500 - 0x4fc,
 		.misc1 = 0x504 - 0x4fc,
+		.misc2 = 0x508 - 0x4fc,
+		.misc3 = 0x50c - 0x4fc,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -6211,20 +6084,22 @@ static struct clk tegra_pll_c3 = {
 static struct clk tegra_pll_a1 = {
 	.name      = "pll_a1",
 	.ops       = &tegra_pllcx_ops,
-	.flags     = PLL_ALT_MISC_REG,
 	.reg       = 0x6a4,
 	.parent    = &tegra_pll_ref,
 	.max_rate  = 1200000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 48000000,
+		.input_max = 700000000,
 		.cf_min    = 12000000,
 		.cf_max    = 50000000,
 		.vco_min   = 600000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
+		.misc0 = 0x6a8 - 0x6a4,
 		.misc1 = 0x6ac - 0x6a4,
+		.misc2 = 0x6b0 - 0x6a4,
+		.misc3 = 0x6b4 - 0x6a4,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -8233,25 +8108,24 @@ static bool tegra21_is_dyn_ramp(
 {
 #if PLLCX_USE_DYN_RAMP
 	/* PLLC2, PLLC3 support dynamic ramp only when output divider <= 8 */
-	if ((c == &tegra_pll_c2) || (c == &tegra_pll_c3)) {
+	if ((c == &tegra_pll_c) || (c == &tegra_pll_c2) ||
+	    (c == &tegra_pll_c3) || (c == &tegra_pll_a1)) {
 		struct clk_pll_freq_table cfg, old_cfg;
 		unsigned long input_rate = clk_get_rate(c->parent);
 
 		u32 val = clk_readl(c->reg + PLL_BASE);
-		PLL_BASE_PARSE(PLLCX, old_cfg, val);
-		old_cfg.p = pllcx_p[old_cfg.p];
+		PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, old_cfg, val);
 
 		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
-			if ((cfg.n == old_cfg.n) ||
-			    PLLCX_IS_DYN(cfg.p, old_cfg.p))
-				return true;
+			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
+				return c->u.pll.defaults_set;
 		}
 	}
 #endif
 
 #if PLLXC_USE_DYN_RAMP
 	/* PPLX, PLLC support dynamic ramp when changing NDIV only */
-	if ((c == &tegra_pll_x) || (c == &tegra_pll_c)) {
+	if (c == &tegra_pll_x) {
 		struct clk_pll_freq_table cfg, old_cfg;
 		unsigned long input_rate = clk_get_rate(c->parent);
 
@@ -8695,7 +8569,8 @@ static void tegra21_clk_resume(void)
 	tegra21_pllss_clk_resume_enable(&tegra_pll_dp);
 	tegra21_pllcx_clk_resume_enable(&tegra_pll_c2);
 	tegra21_pllcx_clk_resume_enable(&tegra_pll_c3);
-	tegra21_pllxc_clk_resume_enable(&tegra_pll_c);
+	tegra21_pllcx_clk_resume_enable(&tegra_pll_c);
+	tegra21_pllcx_clk_resume_enable(&tegra_pll_a1);
 	tegra21_pllxc_clk_resume_enable(&tegra_pll_x);
 	tegra21_pllre_clk_resume_enable(&tegra_pll_re_out);
 
