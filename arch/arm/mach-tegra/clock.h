@@ -221,7 +221,11 @@ struct clk {
 			const struct clk_pll_freq_table	*freq_table;
 			int				lock_delay;
 			unsigned long			fixed_rate;
+			u32				misc0;
 			u32				misc1;
+			u32				misc2;
+			u32				misc3;
+			bool				defaults_set;
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
 		struct {
