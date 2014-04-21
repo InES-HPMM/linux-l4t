@@ -2771,7 +2771,7 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(bcl),
 };
 
-#define DRV_PINGROUP_REG_A	0x8e4	/* bank 0 */
+#define DRV_PINGROUP_REG_A	0x8d4	/* bank 0 */
 #define PINGROUP_REG_A		0x3000	/* bank 1 */
 
 #define PINGROUP_REG_Y(r) ((r) - PINGROUP_REG_A)
