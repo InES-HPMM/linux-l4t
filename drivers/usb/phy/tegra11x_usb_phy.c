@@ -1146,7 +1146,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	utmi_phy_iddq_override(false);
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
-		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2500))
+		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2600))
 		pr_warn("%s: timeout waiting for phy to stabilize\n", __func__);
 
 	val = readl(base + HOSTPC1_DEVLC);
