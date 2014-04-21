@@ -28,6 +28,7 @@
 #include <linux/firmware.h>
 #include <linux/tegra_nvadsp.h>
 #include <linux/elf.h>
+#include <linux/device.h>
 
 #include "os.h"
 
@@ -63,10 +64,17 @@
 
 /* Maximum number of LOAD MAPPINGS supported */
 #define NM_LOAD_MAPPINGS 20
+#define SYM_NAME_SZ 128
+
+struct global_sym_info {
+	uint32_t addr;
+	char name[SYM_NAME_SZ];
+};
 
 struct nvadsp_os_data {
 	void __iomem *reset_reg;
 	struct platform_device *pdev;
+	struct global_sym_info *adsp_glo_sym_tbl;
 };
 
 static struct nvadsp_os_data priv;
@@ -161,6 +169,88 @@ nvadsp_get_section(const struct firmware *fw, char *sec_name)
 			return shdr;
 		}
 	return NULL;
+}
+
+static inline void dump_global_symbol_table(void)
+{
+	struct device *dev = &priv.pdev->dev;
+	struct global_sym_info *table = priv.adsp_glo_sym_tbl;
+	int num_ent;
+	int i;
+
+	if (!table) {
+		dev_info(dev, "no table not created\n");
+		return;
+	}
+	num_ent = table[0].addr;
+
+	for (i = 1; i < num_ent; i++)
+		pr_info("%s %x\n", table[i].name, table[i].addr);
+}
+
+static int
+create_global_symbol_table(const struct firmware *fw)
+{
+	int i;
+	struct device *dev = &priv.pdev->dev;
+	struct elf32_shdr *sym_shdr =
+				nvadsp_get_section(fw, ".symtab");
+	struct elf32_shdr *str_shdr =
+				nvadsp_get_section(fw, ".strtab");
+	const u8 *elf_data = fw->data;
+	const char *name_table;
+	/* The first entry stores the number of entries in the array */
+	int num_ent = 1;
+	struct elf32_sym *sym;
+	struct elf32_sym *last_sym;
+
+	sym = (struct elf32_sym *)(elf_data + sym_shdr->sh_offset);
+	name_table = elf_data + str_shdr->sh_offset;
+
+	num_ent += sym_shdr->sh_size / sizeof(struct elf32_sym);
+	priv.adsp_glo_sym_tbl =
+		devm_kzalloc(dev,
+			sizeof(struct global_sym_info) * num_ent,
+			GFP_KERNEL);
+	if (!priv.adsp_glo_sym_tbl)
+		return -ENOMEM;
+
+	last_sym = sym + num_ent;
+
+	for (i = 1; sym < last_sym; sym++) {
+		if ((ELF32_ST_BIND(sym->st_info) == STB_GLOBAL) &&
+		((ELF32_ST_TYPE(sym->st_info) == STT_OBJECT) ||
+		(ELF32_ST_TYPE(sym->st_info) == STT_FUNC))) {
+			char *name = priv.adsp_glo_sym_tbl[i].name;
+			strncpy(name, name_table + sym->st_name,
+							SYM_NAME_SZ);
+			priv.adsp_glo_sym_tbl[i].addr =
+						sym->st_value - 1;
+			i++;
+		}
+	}
+	priv.adsp_glo_sym_tbl[0].addr = i;
+	return 0;
+}
+
+uint32_t find_global_symbol(const char *sym_name)
+{
+	struct device *dev = &priv.pdev->dev;
+	struct global_sym_info *table = priv.adsp_glo_sym_tbl;
+	int num_ent;
+	int i;
+
+	if (unlikely(!table)) {
+		dev_info(dev, "symbol table not present\n");
+		return 0;
+	}
+	num_ent = table[0].addr;
+
+	for (i = 1; i < num_ent; i++) {
+		if (!strcmp(table[i].name, sym_name))
+			return table[i].addr;
+	}
+	return 0;
 }
 
 void *get_mailbox_shared_region(void)
@@ -309,6 +399,13 @@ int nvadsp_os_load(void)
 		dev_info(dev,
 			"reqest firmware for %s failed with %d\n",
 					NVADSP_FIRMWARE, ret);
+		goto end;
+	}
+
+	ret = create_global_symbol_table(fw);
+	if (ret) {
+		dev_info(dev,
+			"unable to create global symbol table\n");
 		goto end;
 	}
 

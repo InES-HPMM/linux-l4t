@@ -24,4 +24,5 @@ int adsp_add_load_mappings(phys_addr_t, void *, int);
 void *get_mailbox_shared_region(void);
 struct elf32_shdr *nvadsp_get_section(const struct firmware *fw,
 						char *sec_name);
+uint32_t find_global_symbol(const char *);
 #endif /* __TEGRA_NVADSP_OS_H */
