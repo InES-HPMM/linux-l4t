@@ -141,7 +141,6 @@ int norrin_soctherm_init(void);
 int norrin_emc_init(void);
 
 /* loki specific */
-int loki_pinmux_init(void);
 int loki_regulator_init(void);
 int loki_emc_init(void);
 int loki_sdhci_init(void);

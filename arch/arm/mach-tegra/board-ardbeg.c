@@ -64,6 +64,8 @@
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/irqchip/tegra.h>
 #include <sound/max98090.h>
+#include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/consumer.h>
 
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -417,6 +419,21 @@ static void __init ardbeg_uart_init(void)
 		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
 		platform_device_register(&tegra_uartd_device);
 	}
+}
+
+static void __init loki_pinmux_configure_uart_over_sd(void)
+{
+	struct pinctrl_dev *pin_dev;
+
+	if (!is_uart_over_sd_enabled())
+		return;
+
+	pin_dev = tegra_get_pinctrl_device_handle();
+	if (!pin_dev)
+		return;
+
+	pinctrl_configure_user_state(pin_dev, "uart-over-sd");
+	set_sd_uart_port_id(0);
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -1273,7 +1290,7 @@ static void __init tegra_ardbeg_late_init(void)
 
 	if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
-		loki_pinmux_init();
+		loki_pinmux_configure_uart_over_sd();
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif

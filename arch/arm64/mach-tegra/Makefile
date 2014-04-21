@@ -25,7 +25,6 @@ obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-p1761-powermon.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
-obj-${CONFIG_MACH_LOKI}               += board-loki-pinmux.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-sensors.o
