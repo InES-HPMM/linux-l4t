@@ -2324,8 +2324,8 @@ static int tegra21_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		case 19200000:
 			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
 			break;
-		case 38400000: /* HACK!!! FIXME!!! */
-			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
+		case 38400000:
+			cfreq = 2400000;
 			break;
 		default:
 			if (c->parent->flags & DIV_U71_FIXED) {
