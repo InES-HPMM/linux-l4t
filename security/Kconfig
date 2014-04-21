@@ -121,7 +121,6 @@ source security/selinux/Kconfig
 source security/smack/Kconfig
 source security/tomoyo/Kconfig
 source security/apparmor/Kconfig
-source security/tf_driver/Kconfig
 source security/tlk_driver/Kconfig
 source security/yama/Kconfig
 
