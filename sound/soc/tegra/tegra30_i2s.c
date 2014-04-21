@@ -478,9 +478,11 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		sample_size = 16;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
-		val = TEGRA30_I2S_CTRL_BIT_SIZE_24;
-		sample_size = 24;
-		break;
+	/* Fallthrough
+	 * for 24 bit audio we support only S24_LE (S24_3LE is not
+	 * supported) which is rendered on bus in 32 bits packet so
+	 * consider as 32 bit
+	 */
 	case SNDRV_PCM_FORMAT_S32_LE:
 		val = TEGRA30_I2S_CTRL_BIT_SIZE_32;
 		sample_size = 32;
@@ -948,7 +950,7 @@ static struct snd_soc_dai_driver tegra30_i2s_dai_template = {
 		.stream_name = "Playback",
 		.channels_min = 1,
 		.channels_max = 16,
-		.rates = SNDRV_PCM_RATE_8000_96000,
+		.rates = SNDRV_PCM_RATE_8000_192000,
 		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE |
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 	},

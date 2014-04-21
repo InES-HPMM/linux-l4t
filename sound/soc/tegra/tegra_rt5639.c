@@ -312,12 +312,13 @@ static int tegra_rt5639_hw_params(struct snd_pcm_substream *substream,
 		}
 	}
 
-	/*for 24 bit audio we support only S24_LE (S24_3LE is not supported)
-	which is rendered on bus in 32 bits packet so consider as 32 bit
-	depth in clock calculations, extra 4 is required by codec,
-	God knows why ?*/
+	/*
+	 * For 24 bit audio we support only S24_LE (S24_3LE is not supported)
+	 * which is rendered on bus in 32 bits packet so consider as 32 bit
+	 * depth in clock calculations
+	 */
 	if (sample_size == 24)
-		i2sclock = srate * params_channels(params) * 32 * 4;
+		i2sclock = srate * params_channels(params) * 32;
 	else
 		i2sclock = 0;
 

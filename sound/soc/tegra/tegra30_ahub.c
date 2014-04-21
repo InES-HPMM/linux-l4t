@@ -1,7 +1,7 @@
 /*
  * tegra30_ahub.c - Tegra30 AHUB driver
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -766,7 +766,6 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	struct resource *res0, *res1, *region;
 	u32 of_dma[2];
 	void __iomem *regs_apbif, *regs_ahub;
-	int clkm_rate;
 	int ret = 0;
 
 	if (ahub)
@@ -806,12 +805,6 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		ret = PTR_ERR(ahub->clk_d_audio);
 		goto err;
 	}
-	clkm_rate = clk_get_rate(clk_get_parent(ahub->clk_d_audio));
-
-	while (clkm_rate > 13000000)
-		clkm_rate >>= 1;
-
-	clk_set_rate(ahub->clk_d_audio,clkm_rate);
 
 	ahub->clk_apbif = clk_get(&pdev->dev, "apbif");
 	if (IS_ERR(ahub->clk_apbif)) {
