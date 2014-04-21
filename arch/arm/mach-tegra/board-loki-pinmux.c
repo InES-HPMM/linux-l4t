@@ -35,41 +35,8 @@ static __initdata struct tegra_pingroup_config loki_sdmmc3_uart_pinmux[] = {
 	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,      NORMAL,   NORMAL,   OUTPUT),
 };
 
-static __initdata struct tegra_pingroup_config loki_ffd_pinmux_common[] = { 
-	GPIO_PINMUX_NON_OD(DP_HPD, PULL_DOWN, NORMAL, OUTPUT),
-};
-
-static struct gpio_init_pin_info init_gpio_mode_loki_ffd_common[] = {
-        GPIO_INIT_PIN_MODE(TEGRA_GPIO_PFF0, false, 0),
-};
-
-static void __init loki_gpio_init_configure(void)
-{
-	int len;
-	int i;
-	struct gpio_init_pin_info *pins_info;
-
-	len = ARRAY_SIZE(init_gpio_mode_loki_ffd_common);
-	pins_info = init_gpio_mode_loki_ffd_common;
-
-	for (i = 0; i < len; ++i) {
-		tegra_gpio_init_configure(pins_info->gpio_nr,
-			pins_info->is_input, pins_info->value);
-		pins_info++;
-	}
-}
-
 int __init loki_pinmux_init(void)
 {
-	struct board_info bi;
-
-	tegra_get_board_info(&bi);
-	if (bi.board_id == BOARD_P2530) {
-		loki_gpio_init_configure();
-		tegra_pinmux_config_table(loki_ffd_pinmux_common,
-			ARRAY_SIZE(loki_ffd_pinmux_common));
-	};
-
 	if (is_uart_over_sd_enabled()) {
 		tegra_pinmux_config_table(loki_sdmmc3_uart_pinmux,
 				 ARRAY_SIZE(loki_sdmmc3_uart_pinmux));
