@@ -2123,6 +2123,11 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 	int flags;
 	u32 intstatus;
 
+	if (gpio_is_valid(tegra_host->plat->cd_gpio) &&
+		(gpio_get_value(tegra_host->plat->cd_gpio) != 0)) {
+		dev_err(mmc_dev(sdhci->mmc), "device removed during tuning\n");
+		return -ENOMEDIUM;
+	}
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
 	while (sdhci_readl(sdhci, SDHCI_PRESENT_STATE) & mask) {
 		if (timeout == 0) {
@@ -2202,7 +2207,7 @@ out:
 }
 
 static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
-	unsigned int starting_tap, bool expect_failure)
+	unsigned int starting_tap, bool expect_failure, int *status)
 {
 	unsigned int tap_value = starting_tap;
 	int err;
@@ -2214,6 +2219,10 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
 
 		/* Run frequency tuning */
 		err = sdhci_tegra_issue_tuning_cmd(sdhci);
+		if (err == -ENOMEDIUM) {
+			*status = err;
+			return -1;
+		}
 		if (err && retry) {
 			retry--;
 			continue;
@@ -2226,6 +2235,7 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
 		tap_value++;
 	} while (tap_value <= MAX_TAP_VALUES);
 
+	*status = 0;
 	return tap_value;
 }
 
@@ -2544,8 +2554,8 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tap_window_data *tap_data;
 	struct tuning_ui tuning_ui[10];
-	int err = 0, partial_win_start = 0, temp_margin = 0;
-	unsigned int tap_value, calc_ui = 0;
+	int err = 0, partial_win_start = 0, temp_margin = 0, tap_value;
+	unsigned int calc_ui = 0;
 	u8 prev_boundary_end = 0, num_of_wins = 0;
 	u8 num_of_uis = 0, valid_num_uis = 0;
 	u8 ref_ui, first_valid_full_win = 0;
@@ -2570,7 +2580,12 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	do {
 		tap_data = &tuning_data->tap_data[num_of_wins];
 		/* Get the window start */
-		tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true);
+		tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true,
+				&err);
+		if ((tap_value < 0) && (err == -ENOMEDIUM)) {
+			spin_unlock(&sdhci->lock);
+			return err;
+		}
 		tap_data->win_start = min_t(u8, tap_value, MAX_TAP_VALUES);
 		tap_value++;
 		if (tap_value >= MAX_TAP_VALUES) {
@@ -2588,7 +2603,11 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 
 		/* Get the window end */
 		tap_value = sdhci_tegra_scan_tap_values(sdhci,
-				tap_value, false);
+				tap_value, false, &err);
+		if ((tap_value < 0) && (err == -ENOMEDIUM)) {
+			spin_unlock(&sdhci->lock);
+			return err;
+		}
 		tap_data->win_end = min_t(u8, (tap_value - 1), MAX_TAP_VALUES);
 		tap_data->win_size = tap_data->win_end - tap_data->win_start;
 		tap_value++;
