@@ -351,12 +351,25 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 	},								\
 }
 
+/* XXX: On T132, offlining a core within Linux is not sufficient to guarantee
+ * that the core is continually in a powered-down state. Until we do have a
+ * sufficient guarantee, we will use EDP tables to always enforce the 2-core
+ * freq cap even when a single core is ONLINE.
+ *
+ * To do this in the simplest way, values in the dynamic_constants[] array and
+ * the leakage_constants[] array are all set to the 2-core value below in the
+ * structure init. With this, there's no need to modify the code edp logic in
+ * edp.c and it remains specific to this chip.
+ *
+ * The actual 1-core values for these two arrays is saved as a comment to
+ * resurrect when actually needed.
+ */
 #define EDP13_PARAMS_COMMON_PART					\
 	.temp_scaled      = 10,						\
 	.dyn_scaled       = 1000,					\
-	.dyn_consts_n     = { 2700, 4900 },				\
+	.dyn_consts_n     = { 4900, 4900 }, /* { save: 2700, 4900 } */ 	\
 	.consts_scaled    = 100,					\
-	.leakage_consts_n = { 60, 100 },				\
+	.leakage_consts_n = { 100, 100 }, /* { save: 60, 100 } */	\
 	.ijk_scaled       = 10000,					\
 	.leakage_min      = 30,						\
 	/* .safety_cap       = { 2400000, 2200000, }, */		\
