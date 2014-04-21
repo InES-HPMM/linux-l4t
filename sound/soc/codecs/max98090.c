@@ -3756,18 +3756,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 
 	INIT_DELAYED_WORK(&max98090->jack_work, max98090_jack_work);
 
-	/* Enable jack detection */
-	snd_soc_write(codec, M98090_REG_3D_CFG_JACK,
-		M98090_JDETEN_MASK | M98090_JDEB_25MS);
-
 	max98090_handle_pdata(codec);
-
-	/* Register for interrupts */
-	if ((request_threaded_irq(audio_int, NULL,
-		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-		"max98090_interrupt", codec)) < 0) {
-		dev_info(codec->dev, "request_irq failed\n");
-	}
 
 #ifdef MAX98090_HIGH_PERFORMANCE
 	/* High Performance */
@@ -3798,6 +3787,20 @@ static int max98090_probe(struct snd_soc_codec *codec)
 		M98090_VCM_MODE_MASK);
 
 	max98090_add_widgets(codec);
+
+	/* Clear existing interrupts */
+	snd_soc_read(codec, M98090_REG_01_IRQ_STATUS);
+
+	/* Register for interrupts */
+	if ((request_threaded_irq(audio_int, NULL,
+		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+		"max98090_interrupt", codec)) < 0) {
+		dev_info(codec->dev, "request_irq failed\n");
+	}
+
+	/* Enable jack detection */
+	snd_soc_write(codec, M98090_REG_3D_CFG_JACK,
+		M98090_JDETEN_MASK | M98090_JDEB_25MS);
 
 err_access:
 	return ret;
