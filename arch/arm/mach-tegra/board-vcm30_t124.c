@@ -715,6 +715,10 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	OF_DEV_AUXDATA("nvidia,tegra124-se", TEGRA_SE_BASE, "tegra12-se", NULL),
 #endif
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC1_BASE, "sdhci-tegra.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC2_BASE, "sdhci-tegra.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC3_BASE, "sdhci-tegra.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC4_BASE, "sdhci-tegra.3", NULL),
 	{}
 };
 #endif

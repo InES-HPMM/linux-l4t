@@ -131,4 +131,42 @@
 		status = "okay";
 		nvidia,enable-sata-port;
 	};
+
+	sdhci@700b0600 {
+		tap-delay = <0x4>;
+		trim-delay = <0x4>;
+		ddr-trim-delay = <0x4>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x20>;
+		bus-width = <8>;
+		built-in;
+		ddr-clk-limit = <51000000>;
+		max-clk-limit = <200000000>;
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		tap-delay = <0x1>;
+		trim-delay = <0x3>;
+		ddr-trim-delay = <0x3>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x20>;
+		built-in;
+		ddr-clk-limit = <30000000>;
+		max-clk-limit = <51000000>;
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		cd-gpios = <&gpio 133 0>;
+		wp-gpios = <&gpio 132 0>;
+		tap-delay = <0>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <3>;
+		uhs_mask = <0x2F>;
+		bus-width = <4>;
+		max-clk-limit = <50000000>;
+		status = "okay";
+	};
+
 };

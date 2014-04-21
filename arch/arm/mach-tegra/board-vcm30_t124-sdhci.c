@@ -108,57 +108,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.calib_1v8_offsets = 0x7676,
 	.disable_clock_gate = 1,
 };
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.is_8bit = false,
-	.tap_delay = 0x4,
-	.trim_delay = 0x4,
-	.ddr_trim_delay = 0x4,
-	.mmc_data = {
-		.built_in = 1,
-		.ocr_mask = MMC_OCR_1V8_MASK,
-	},
-	.uhs_mask = MMC_MASK_HS200,
-	.ddr_clk_limit = 30000000,
-	.max_clk_limit = 52000000,
-	/*      .max_clk = 12000000, */
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
-	.cd_gpio = TEGRA_GPIO_PQ5,
-	.wp_gpio = TEGRA_GPIO_PQ4,
-	.power_gpio = -1,
-	.tap_delay = 0x0,
-	.trim_delay = 0x3,
-	/*FIXME: Enable UHS modes for SD, bug 1381913 */
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50 | MMC_UHS_MASK_SDR12 | MMC_UHS_MASK_SDR25,
-	.mmc_data = {
-		.ocr_mask = MMC_OCR_2V8_MASK,
-	},
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data4 = {
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.is_8bit = true,
-	.tap_delay = 0x4,
-	.trim_delay = 0x4,
-	.ddr_trim_delay = 0x4,
-	.mmc_data = {
-		.built_in = 1,
-		.ocr_mask = MMC_OCR_1V8_MASK,
-	},
-	.uhs_mask = MMC_MASK_HS200,
-	.ddr_clk_limit = 51000000,
-	.max_clk_limit = 102000000,
-	/*      .max_clk = 12000000, */
-};
-
 static int vcm30_t124_wifi_status_register(
 			void (*callback) (int card_present, void *dev_id),
 			void *dev_id)
@@ -220,18 +169,7 @@ int __init vcm30_t124_wifi_init(void)
 int __init vcm30_t124_sdhci_init(void)
 {
 	tegra_sdhci_device1.dev.platform_data = &tegra_sdhci_platform_data1;
-	tegra_sdhci_device2.dev.platform_data = &tegra_sdhci_platform_data2;
-	tegra_sdhci_device3.dev.platform_data = &tegra_sdhci_platform_data3;
-	tegra_sdhci_device4.dev.platform_data = &tegra_sdhci_platform_data4;
 
-	/* FIXME: Enable this check after SKU support is working */
-	/*	is_e1860 = tegra_is_board(NULL, "61860", NULL, NULL, NULL);
-		if (is_e1860)*/
-	tegra_sdhci_platform_data3.mmc_data.ocr_mask = MMC_OCR_3V3_MASK;
-
-	platform_device_register(&tegra_sdhci_device4);
-	platform_device_register(&tegra_sdhci_device3);
-	/* platform_device_register(&tegra_sdhci_device2); */
 	platform_device_register(&tegra_sdhci_device1);
 	vcm30_t124_wifi_init();
 

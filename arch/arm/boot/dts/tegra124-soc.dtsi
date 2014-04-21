@@ -596,4 +596,33 @@
 		cpu_suspend = <0x84000001>;
 		cpu_on = <0x84000003>;
 	};
+
+	sdhci@700b0600 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0600 0x0 0x200>;
+		interrupts = < 0 31 0x04 >;
+		nvidia,memory-clients = <28>;
+		status = "disabled";
+	};
+	sdhci@700b0400 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0400 0x0 0x200>;
+		interrupts = < 0 19 0x04 >;
+		nvidia,memory-clients = <27>;
+		status = "disabled";
+	};
+	sdhci@700b0200 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0200 0x0 0x200>;
+		interrupts = < 0 15 0x04 >;
+		nvidia,memory-clients = <26>;
+		status = "disabled";
+	};
+	sdhci@700b0000 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0000 0x0 0x200>;
+		interrupts = < 0 14 0x04 >;
+		nvidia,memory-clients = <25>;
+		status = "disabled";
+	};
 };
