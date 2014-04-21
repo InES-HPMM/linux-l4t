@@ -102,6 +102,7 @@ struct regulator {
 	struct device_attribute dev_attr;
 	struct regulator_dev *rdev;
 	struct dentry *debugfs;
+	int use_count;
 };
 
 static int _regulator_is_enabled(struct regulator_dev *rdev);
@@ -1960,6 +1961,8 @@ int regulator_enable(struct regulator *regulator)
 
 	mutex_lock(&rdev->mutex);
 	ret = _regulator_enable(rdev);
+	if (!ret)
+		regulator->use_count++;
 	mutex_unlock(&rdev->mutex);
 
 	if (rdev->supply &&
@@ -2068,7 +2071,16 @@ int regulator_disable(struct regulator *regulator)
 		return 0;
 
 	mutex_lock(&rdev->mutex);
+	if (regulator->use_count <= 0) {
+		WARN_ON(1);
+		dev_err(regulator->dev, "unbalanced regulator disables\n");
+		mutex_unlock(&rdev->mutex);
+		return -EIO;
+	}
+
 	ret = _regulator_disable(rdev);
+	if (!ret)
+		regulator->use_count--;
 	mutex_unlock(&rdev->mutex);
 
 	if (ret == 0 && rdev->supply) {
