@@ -400,7 +400,7 @@ out:
 
 }
 
-static int ioctl_rpmb_card_status_poll(struct mmc_card *card, u32 *status,
+static int mmc_blk_ioctl_card_status_poll(struct mmc_card *card, u32 *status,
 				       u32 retries_max)
 {
 	int err;
@@ -416,7 +416,7 @@ static int ioctl_rpmb_card_status_poll(struct mmc_card *card, u32 *status,
 
 		if (!R1_STATUS(*status) &&
 				(R1_CURRENT_STATE(*status) != R1_STATE_PRG))
-			break; /* RPMB programming operation complete */
+			break;
 
 		/*
 		 * Rechedule to give the MMC device a chance to continue
@@ -546,7 +546,7 @@ static int _mmc_blk_ioctl_cmd_locked(struct mmc_blk_data *md,
 		 * Ensure RPMB command has completed by polling CMD13
 		 * "Send Status".
 		 */
-		err = ioctl_rpmb_card_status_poll(card, &status, 5);
+		err = mmc_blk_ioctl_card_status_poll(card, &status, 5);
 		if (err)
 			dev_err(mmc_dev(card->host),
 					"%s: Card Status=0x%08X, error %d\n",
@@ -588,6 +588,11 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 		goto cmd_done;
 	}
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host))
+		mmc_resume_bus(card->host);
+#endif
+
 	mmc_claim_host(card->host);
 
 	err = _mmc_blk_ioctl_cmd_locked(md, idata);
@@ -607,13 +612,14 @@ cmd_err:
 static int mmc_blk_ioctl_combo_cmd(struct block_device *bdev,
 		struct mmc_combo_cmd_info __user *user)
 {
-	int err, i;
+	int err = -EFAULT, i;
 	struct mmc_combo_cmd_info mcci = {0};
 	u8 num_cmd;
 	struct mmc_blk_ioc_data **ioc_data = NULL;
 	u32 usr_ptr;
 	struct mmc_card *card;
 	struct mmc_blk_data *md;
+	u32 status = 0;
 
 	/*
 	 * The caller must have CAP_SYS_RAWIO, and must be calling this on the
@@ -665,6 +671,10 @@ static int mmc_blk_ioctl_combo_cmd(struct block_device *bdev,
 		}
 	}
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host))
+		mmc_resume_bus(card->host);
+#endif
 	mmc_claim_host(card->host);
 	for (i = 0; i < num_cmd; i++) {
 		err = _mmc_blk_ioctl_cmd_locked(md,
@@ -675,6 +685,13 @@ static int mmc_blk_ioctl_combo_cmd(struct block_device *bdev,
 			goto free_all;
 		}
 	}
+	/* Ensure all command has completed by polling CMD13 status */
+	err = mmc_blk_ioctl_card_status_poll(card, &status, 5);
+	if (err)
+		dev_err(mmc_dev(card->host),
+				"%s: Card Status=0x%08X, error %d\n",
+				__func__, status, err);
+
 	mmc_release_host(card->host);
 
 	/* copy to user if data and response */
