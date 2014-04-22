@@ -1106,8 +1106,10 @@ void __init tegra13x_init_dvfs(void)
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra13_dvfs_rails,
 		ARRAY_SIZE(tegra13_dvfs_rails));
-	tegra_dvfs_add_relationships(tegra13_dvfs_relationships,
-		ARRAY_SIZE(tegra13_dvfs_relationships));
+	if ((tegra_revision == TEGRA_REVISION_A01) ||
+	    (tegra_revision == TEGRA_REVISION_A02))
+		tegra_dvfs_add_relationships(tegra13_dvfs_relationships,
+			ARRAY_SIZE(tegra13_dvfs_relationships));
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
