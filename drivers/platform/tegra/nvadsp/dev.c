@@ -32,8 +32,6 @@
 #include "os.h"
 #include "ape_actmon.h"
 
-status_t nvadsp_mbox_init(struct platform_device *pdev);
-
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
 {
@@ -133,6 +131,10 @@ static int nvadsp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, drv_data);
 	ret = nvadsp_os_probe(pdev);
+	if (ret)
+		goto err;
+
+	ret = nvadsp_aram_init(pdev);
 	if (ret)
 		goto err;
 

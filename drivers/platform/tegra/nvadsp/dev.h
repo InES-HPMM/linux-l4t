@@ -52,4 +52,7 @@ struct nvadsp_drv_data {
 	spinlock_t mbox_lock;
 };
 
+status_t nvadsp_mbox_init(struct platform_device *pdev);
+status_t nvadsp_aram_init(struct platform_device *pdev);
+
 #endif /* __TEGRA_NVADSP_DEV_H */
