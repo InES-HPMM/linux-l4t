@@ -6,6 +6,8 @@ ccflags-$(CONFIG_DEBUG_PINCTRL)	+= -DDEBUG
 obj-$(CONFIG_PINCTRL)		+= core.o pinctrl-utils.o
 obj-$(CONFIG_PINMUX)		+= pinmux.o
 obj-$(CONFIG_PINCONF)		+= pinconf.o
+obj-$(CONFIG_PINCTRL_CONSUMER)	+= pinctrl-consumer.o
+
 ifeq ($(CONFIG_OF),y)
 obj-$(CONFIG_PINCTRL)		+= devicetree.o
 endif

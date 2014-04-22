@@ -20,6 +20,9 @@ config GENERIC_PINCONF
 	bool
 	select PINCONF
 
+config PINCTRL_CONSUMER
+	bool
+
 config DEBUG_PINCTRL
 	bool "Debug PINCTRL calls"
 	depends on DEBUG_KERNEL
@@ -173,6 +176,7 @@ config PINCTRL_TEGRA
 	bool
 	select PINMUX
 	select PINCONF
+	select PINCTRL_CONSUMER
 
 config PINCTRL_TEGRA20
 	bool

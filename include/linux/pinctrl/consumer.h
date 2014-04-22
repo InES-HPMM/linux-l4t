@@ -22,6 +22,7 @@ struct pinctrl;
 struct pinctrl_state;
 struct device;
 struct pinctrl_dev;
+struct device_node;
 
 #ifdef CONFIG_PINCTRL
 
@@ -209,5 +210,152 @@ static inline int pin_config_group_set(const char *dev_name,
 }
 
 #endif
+
+#ifdef CONFIG_PINCTRL_CONSUMER
+extern struct pinctrl_dev *pinctrl_get_dev_from_of_node(struct device_node *np);
+extern struct pinctrl_dev *pinctrl_get_dev_from_of_compatible(
+		const char *compatible);
+extern struct pinctrl_dev *pinctrl_get_dev_from_of_property(
+		struct device_node *dev_node, const char *prop);
+extern struct pinctrl_dev *pinctrl_get_dev_from_gpio(int gpio);
+extern int pinctrl_get_dev_n_pin_from_gpio(int gpio,
+	struct pinctrl_dev **pinctrl_dev, int *pin);
+extern int pinctrl_get_pin_from_pin_name(struct pinctrl_dev *pctldev,
+		const char *pin_name);
+extern int pinctrl_get_pin_from_gpio(struct pinctrl_dev *pctldev,
+		int gpio);
+extern int pinctrl_get_selector_from_group_name(struct pinctrl_dev *pctldev,
+		const char *group_name);
+extern int pinctrl_get_selector_from_pin(struct pinctrl_dev *pctldev,
+		int pin);
+extern int pinctrl_get_selector_from_gpio(struct pinctrl_dev *pctldev,
+		int gpio);
+extern int pinctrl_get_pins_from_group_name(struct pinctrl_dev *pctldev,
+		const char *pin_group, const unsigned **pins,
+		unsigned *num_pins);
+extern int pinctrl_get_group_from_group_name(struct pinctrl_dev *pctldev,
+		const char *group_name);
+extern int pinctrl_set_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
+			   unsigned long config);
+extern int pinctrl_get_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
+			   unsigned long *config);
+extern int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
+	unsigned group_sel, unsigned long config);
+extern int pinctrl_get_config_for_group_sel(struct pinctrl_dev *pctldev,
+		unsigned group_sel, unsigned long *config);
+extern int pinctrl_set_config_for_group_name(struct pinctrl_dev *pctldev,
+	const char *pin_group, unsigned long config);
+extern int pinctrl_get_config_for_group_name(struct pinctrl_dev *pctldev,
+		const char *pin_group, unsigned long *config);
+
+#else
+static inline struct pinctrl_dev *pinctrl_get_dev_from_of_node(
+		struct device_node *np)
+{
+	return NULL;
+}
+
+static inline struct pinctrl_dev *pinctrl_get_dev_from_of_compatible(
+		const char *compatible)
+{
+	return NULL;
+}
+
+static inline struct pinctrl_dev *pinctrl_get_dev_from_of_property(
+		struct device_node *dev_node, const char *prop)
+{
+	return NULL;
+}
+
+static inline truct pinctrl_dev *pinctrl_get_dev_from_gpio(int gpio)
+{
+	return NULL;
+}
+
+static inline int pinctrl_get_dev_n_pin_from_gpio(int gpio,
+	struct pinctrl_dev **pinctrl_dev, int *pin);
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_pin_from_pin_name(struct pinctrl_dev *pctldev,
+		const char *pin_name)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_pin_from_gpio(struct pinctrl_dev *pctldev,
+		int gpio)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_selector_from_group_name(struct pinctrl_dev *pctldev,
+		const char *group_name)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_selector_from_pin(struct pinctrl_dev *pctldev,
+		int pin)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_selector_from_gpio(struct pinctrl_dev *pctldev,
+		int gpio)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_pins_from_group_name(struct pinctrl_dev *pctldev,
+		const char *pin_group, const unsigned **pins,
+		unsigned *num_pins)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_group_from_group_name(struct pinctrl_dev *pctldev,
+		const char *group_name)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_set_config_for_pin(struct pinctrl_dev *pctldev,
+		unsigned pin, unsigned long config)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_config_for_pin(struct pinctrl_dev *pctldev,
+		unsigned pin, unsigned long *config)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
+	unsigned group_sel, unsigned long config)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_config_for_group_sel(struct pinctrl_dev *pctldev,
+		unsigned group_sel, unsigned long *config)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_set_config_for_group_name(struct pinctrl_dev *pctldev,
+	const char *pin_group, unsigned long config)
+{
+	return -EINVAL;
+}
+
+static inline int pinctrl_get_config_for_group_name(struct pinctrl_dev *pctldev,
+		const char *pin_group, unsigned long *config)
+{
+	return -EINVAL;
+}
+#endif /* CONFIG_PINCTRL_CONSUMER */
 
 #endif /* __LINUX_PINCTRL_CONSUMER_H */
