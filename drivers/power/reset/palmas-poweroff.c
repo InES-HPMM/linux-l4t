@@ -1,7 +1,7 @@
 /*
  * palmas-poweroff.c : Power off and reset for Palma device.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -133,6 +133,12 @@ static void palmas_power_off(void *drv_data)
 				PALMAS_SWOFF_COLDRST, 0x0);
 
 	dev_info(palmas_pm->dev, "Powering off the device\n");
+
+	/* Lock LONG PRESS KEY bits */
+	palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+			PALMAS_LONG_PRESS_KEY,
+			PALMAS_LONG_PRESS_KEY_LPK_LOCK,
+			PALMAS_LONG_PRESS_KEY_LPK_LOCK);
 
 	/* Power off the device */
 	palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
