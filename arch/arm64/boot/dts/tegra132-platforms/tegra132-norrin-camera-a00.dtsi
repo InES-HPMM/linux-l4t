@@ -23,15 +23,18 @@
 					platformdata = "ardbeg_as3648_pdata";
 				};
 			};
-			module2: module4@modules {
-				compatible = "sensor,front";
-				badge_info = "e1823_front_camera";
-
-				sensor {
-					profile = <&ar0261_1>;
-					platformdata = "ardbeg_ar0261_pdata";
-				};
-			};
+/*
+ * Bug 1461788: Norrin PM374 does not support front sensor
+ *			module2: module4@modules {
+ *				compatible = "sensor,front";
+ *				badge_info = "e1823_front_camera";
+ *
+ *				sensor {
+ *					profile = <&ar0261_1>;
+ *					platformdata = "ardbeg_ar0261_pdata";
+ *				};
+ *			};
+ */
 		};
 
 		profiles {
