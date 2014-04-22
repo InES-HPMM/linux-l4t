@@ -3973,6 +3973,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	of_property_read_u32(np, "tap-delay", &plat->tap_delay);
 	of_property_read_u32(np, "trim-delay", &plat->trim_delay);
+	of_property_read_u32(np, "ddr-trim-delay", &plat->ddr_trim_delay);
 	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
 	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
 	of_property_read_u32(np, "id", &plat->id);

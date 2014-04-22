@@ -12,11 +12,21 @@ Required properties:
 
 Optional properties:
 - power-gpios : Specify GPIOs for power control
-- tap-delay : Integer. Valid range 0...31.
-- trim-delay : Integer. Valid range 0...255.
+- tap-delay : Integer. Valid range 0...255.
+- trim-delay : Integer. Valid range 0...31.
+- ddr-trim-delay : Integer. Valid range 0...31.
 - ddr-clk-limit : Integer.
+- max-clk-limit : Integer.
 - built-in : Boolean, indicates whether it is built-in card or not.
 - mmc-ocr-mask : 0: 1V8, 1: 2V8.
+- uhs_mask : Integer. For masking multiple modes OR the suitable values
+	- 0x1  : MMC_UHS_MASK_SDR12
+	- 0x2  :MMC_UHS_MASK_SDR25
+	- 0x4  :MMC_UHS_MASK_SDR50
+	- 0x8  :MMC_UHS_MASK_DDR50
+	- 0x10 :MMC_UHS_MASK_SDR104
+	- 0x20 :MMC_MASK_HS200
+	- 0x40 :MMC_MASK_HS400
 
 Example:
 
