@@ -1026,10 +1026,113 @@ static  int tegra_spi_cs_low(struct spi_device *spi,
 	return 0;
 }
 
+static int tegra_spi_wait_on_message_xfer(struct tegra_spi_data *tspi)
+{
+	int ret;
+
+	ret = wait_for_completion_timeout(&tspi->xfer_completion,
+			SPI_DMA_TIMEOUT);
+	if (WARN_ON(ret == 0)) {
+		dev_err(tspi->dev,
+				"spi trasfer timeout, err %d\n", ret);
+		if (tspi->is_curr_dma_xfer &&
+				(tspi->cur_direction & DATA_DIR_TX))
+			dmaengine_terminate_all(tspi->tx_dma_chan);
+		if (tspi->is_curr_dma_xfer &&
+				(tspi->cur_direction & DATA_DIR_RX))
+			dmaengine_terminate_all(tspi->rx_dma_chan);
+		ret = -EIO;
+		return ret;
+	}
+	if (tspi->tx_status ||  tspi->rx_status) {
+		dev_err(tspi->dev, "Error in Transfer\n");
+		ret = -EIO;
+	}
+
+	return 0;
+}
+
+static int tegra_spi_wait_remain_message(struct tegra_spi_data *tspi,
+		struct spi_transfer *xfer)
+{
+	unsigned total_fifo_words;
+	int ret = 0;
+
+	INIT_COMPLETION(tspi->xfer_completion);
+
+	if (tspi->is_curr_dma_xfer) {
+		total_fifo_words = tegra_spi_calculate_curr_xfer_param(
+				tspi->cur_spi, tspi, xfer);
+		if (total_fifo_words > SPI_FIFO_DEPTH)
+			ret = tegra_spi_start_dma_based_transfer(tspi, xfer);
+		else
+			ret = tegra_spi_start_cpu_based_transfer(tspi, xfer);
+	} else {
+		tegra_spi_calculate_curr_xfer_param(tspi->cur_spi, tspi, xfer);
+		tegra_spi_start_cpu_based_transfer(tspi, xfer);
+	}
+
+	ret = tegra_spi_wait_on_message_xfer(tspi);
+
+	return ret;
+}
+
+static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
+		struct spi_transfer *xfer)
+{
+	int ret = 0;
+	long wait_status;
+
+	if (!tspi->is_curr_dma_xfer) {
+		if (tspi->cur_direction & DATA_DIR_RX)
+			tegra_spi_read_rx_fifo_to_client_rxbuf(tspi, xfer);
+		if (tspi->cur_direction & DATA_DIR_TX)
+			tspi->cur_pos = tspi->cur_tx_pos;
+		else if (tspi->cur_direction & DATA_DIR_RX)
+			tspi->cur_pos = tspi->cur_rx_pos;
+		else
+			WARN_ON(1);
+	} else {
+		if (tspi->cur_direction & DATA_DIR_TX) {
+			wait_status = wait_for_completion_interruptible_timeout(
+					&tspi->tx_dma_complete,
+					SPI_DMA_TIMEOUT);
+			if (wait_status <= 0) {
+				dmaengine_terminate_all(tspi->tx_dma_chan);
+				dev_err(tspi->dev, "TxDma Xfer failed\n");
+				ret = -EIO;
+				return ret;
+			}
+		}
+		if (tspi->cur_direction & DATA_DIR_RX) {
+			wait_status = wait_for_completion_interruptible_timeout(
+					&tspi->rx_dma_complete,
+					SPI_DMA_TIMEOUT);
+			if (wait_status <= 0) {
+				dmaengine_terminate_all(tspi->rx_dma_chan);
+				dev_err(tspi->dev,
+						"RxDma Xfer failed\n");
+				ret = -EIO;
+				return ret;
+			}
+		}
+		if (tspi->cur_direction & DATA_DIR_RX)
+			tegra_spi_copy_spi_rxbuf_to_client_rxbuf(tspi, xfer);
+
+		if (tspi->cur_direction & DATA_DIR_TX)
+			tspi->cur_pos = tspi->cur_tx_pos;
+		else
+			tspi->cur_pos = tspi->cur_rx_pos;
+
+	}
+	return 0;
+}
+
 static int tegra_spi_transfer_one_message(struct spi_master *master,
 			struct spi_message *msg)
 {
 	bool is_first_msg = true;
+	bool is_new_msg = true;
 	int single_xfer;
 	struct tegra_spi_data *tspi = spi_master_get_devdata(master);
 	struct spi_transfer *xfer;
@@ -1049,35 +1152,42 @@ static int tegra_spi_transfer_one_message(struct spi_master *master,
 
 	single_xfer = list_is_singular(&msg->transfers);
 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
-		INIT_COMPLETION(tspi->xfer_completion);
-		ret = tegra_spi_start_transfer_one(spi, xfer,
-					is_first_msg, single_xfer);
-		if (ret < 0) {
-			dev_err(tspi->dev,
-				"spi can not start transfer, err %d\n", ret);
-			goto exit;
-		}
-		is_first_msg = false;
-		ret = wait_for_completion_timeout(&tspi->xfer_completion,
-						SPI_DMA_TIMEOUT);
-		if (WARN_ON(ret == 0)) {
-			dev_err(tspi->dev,
-				"spi transfer timeout, err %d\n", ret);
-			if (tspi->is_curr_dma_xfer &&
-					(tspi->cur_direction & DATA_DIR_TX))
-				dmaengine_terminate_all(tspi->tx_dma_chan);
-			if (tspi->is_curr_dma_xfer &&
-					(tspi->cur_direction & DATA_DIR_RX))
-				dmaengine_terminate_all(tspi->rx_dma_chan);
-			ret = -EIO;
-			goto exit;
-		}
-
-		if (tspi->tx_status ||  tspi->rx_status) {
-			dev_err(tspi->dev, "Error in Transfer\n");
-			ret = -EIO;
-			goto exit;
-		}
+		while (1) {
+			if (is_new_msg) {
+				INIT_COMPLETION(tspi->xfer_completion);
+				ret = tegra_spi_start_transfer_one(spi, xfer,
+						is_first_msg, single_xfer);
+				if (ret < 0) {
+					dev_err(tspi->dev,
+							"spi cannot start transfer,err %d\n",
+							ret);
+					goto exit;
+				}
+				is_first_msg = false;
+				is_new_msg = false;
+				ret = tegra_spi_wait_on_message_xfer(tspi);
+				if (ret)
+					goto exit;
+				ret = tegra_spi_handle_message(tspi, xfer);
+				if (ret)
+					goto exit;
+				if (tspi->cur_pos == xfer->len) {
+					is_new_msg = true;
+					break;
+				}
+			} else {
+				ret = tegra_spi_wait_remain_message(tspi, xfer);
+				if (ret)
+					goto exit;
+				ret = tegra_spi_handle_message(tspi, xfer);
+				if (ret)
+					goto exit;
+				if (tspi->cur_pos == xfer->len) {
+					is_new_msg = true;
+					break;
+				}
+			}
+		} /* End of while */
 		msg->actual_length += xfer->len;
 		if (xfer->cs_change && xfer->delay_usecs) {
 			tegra_spi_writel(tspi, tspi->def_command1_reg,
@@ -1094,9 +1204,8 @@ exit:
 	return ret;
 }
 
-static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
+static void handle_cpu_based_err_xfer(struct tegra_spi_data *tspi)
 {
-	struct spi_transfer *t = tspi->curr_xfer;
 	unsigned long flags;
 
 	spin_lock_irqsave(&tspi->lock, flags);
@@ -1108,51 +1217,21 @@ static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
-		complete(&tspi->xfer_completion);
-		goto exit;
 	}
-
-	if (tspi->cur_direction & DATA_DIR_RX)
-		tegra_spi_read_rx_fifo_to_client_rxbuf(tspi, t);
-
-	if (tspi->cur_direction & DATA_DIR_TX)
-		tspi->cur_pos = tspi->cur_tx_pos;
-	else
-		tspi->cur_pos = tspi->cur_rx_pos;
-
-	if (tspi->cur_pos == t->len) {
-		complete(&tspi->xfer_completion);
-		goto exit;
-	}
-
-	tegra_spi_calculate_curr_xfer_param(tspi->cur_spi, tspi, t);
-	tegra_spi_start_cpu_based_transfer(tspi, t);
-exit:
 	spin_unlock_irqrestore(&tspi->lock, flags);
-	return IRQ_HANDLED;
 }
 
-static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
+static void handle_dma_based_err_xfer(struct tegra_spi_data *tspi)
 {
-	struct spi_transfer *t = tspi->curr_xfer;
-	long wait_status;
 	int err = 0;
-	unsigned total_fifo_words;
 	unsigned long flags;
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
 		if (tspi->tx_status) {
 			dmaengine_terminate_all(tspi->tx_dma_chan);
 			err += 1;
-		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->tx_dma_complete, SPI_DMA_TIMEOUT);
-			if (wait_status <= 0) {
-				dmaengine_terminate_all(tspi->tx_dma_chan);
-				dev_err(tspi->dev, "TxDma Xfer failed\n");
-				err += 1;
-			}
 		}
 	}
 
@@ -1160,18 +1239,9 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 		if (tspi->rx_status) {
 			dmaengine_terminate_all(tspi->rx_dma_chan);
 			err += 2;
-		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->rx_dma_complete, SPI_DMA_TIMEOUT);
-			if (wait_status <= 0) {
-				dmaengine_terminate_all(tspi->rx_dma_chan);
-				dev_err(tspi->dev, "RxDma Xfer failed\n");
-				err += 2;
-			}
 		}
 	}
 
-	spin_lock_irqsave(&tspi->lock, flags);
 	if (err) {
 		dev_err(tspi->dev, "DmaXfer: ERROR bit set 0x%x\n",
 			tspi->status_reg);
@@ -1180,44 +1250,8 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
-		complete(&tspi->xfer_completion);
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return IRQ_HANDLED;
 	}
-
-	if (tspi->cur_direction & DATA_DIR_RX)
-		tegra_spi_copy_spi_rxbuf_to_client_rxbuf(tspi, t);
-
-	if (tspi->cur_direction & DATA_DIR_TX)
-		tspi->cur_pos = tspi->cur_tx_pos;
-	else
-		tspi->cur_pos = tspi->cur_rx_pos;
-
-	if (tspi->cur_pos == t->len) {
-		complete(&tspi->xfer_completion);
-		goto exit;
-	}
-
-	/* Continue transfer in current message */
-	total_fifo_words = tegra_spi_calculate_curr_xfer_param(tspi->cur_spi,
-							tspi, t);
-	if (total_fifo_words > SPI_FIFO_DEPTH)
-		err = tegra_spi_start_dma_based_transfer(tspi, t);
-	else
-		err = tegra_spi_start_cpu_based_transfer(tspi, t);
-
-exit:
 	spin_unlock_irqrestore(&tspi->lock, flags);
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t tegra_spi_isr_thread(int irq, void *context_data)
-{
-	struct tegra_spi_data *tspi = context_data;
-
-	if (!tspi->is_curr_dma_xfer)
-		return handle_cpu_based_xfer(tspi);
-	return handle_dma_based_xfer(tspi);
 }
 
 static irqreturn_t tegra_spi_isr(int irq, void *context_data)
@@ -1239,8 +1273,13 @@ static irqreturn_t tegra_spi_isr(int irq, void *context_data)
 				tspi->status_reg);
 
 	tegra_spi_clear_status(tspi);
+	if (!tspi->is_curr_dma_xfer)
+		handle_cpu_based_err_xfer(tspi);
+	else
+		handle_dma_based_err_xfer(tspi);
 
-	return IRQ_WAKE_THREAD;
+	complete(&tspi->xfer_completion);
+	return IRQ_HANDLED;
 }
 
 static struct tegra_spi_platform_data *tegra_spi_parse_dt(
@@ -1366,8 +1405,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 
 	spi_irq = platform_get_irq(pdev, 0);
 	tspi->irq = spi_irq;
-	ret = request_threaded_irq(tspi->irq, tegra_spi_isr,
-			tegra_spi_isr_thread, IRQF_ONESHOT,
+	ret = request_irq(tspi->irq, tegra_spi_isr, 0,
 			dev_name(&pdev->dev), tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
