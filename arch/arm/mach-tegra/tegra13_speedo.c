@@ -96,7 +96,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		soc_speedo_id = 0;
 		gpu_speedo_id = 0;
 		threshold_index = 0;
-	} else if (rev == TEGRA_REVISION_A02) {
+	} else {
 		switch (sku) {
 		case 0x00: /* Engg sku */
 			cpu_speedo_id = 1;
