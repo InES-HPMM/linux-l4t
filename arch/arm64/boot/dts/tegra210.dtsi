@@ -82,7 +82,7 @@
 	mc {
 		compatible = "nvidia,tegra-mc";
 
-		reg-ranges = <9>; /* Per channel. */
+		reg-ranges = <10>; /* Per channel. */
 		reg = <0x0 0x70019000 0x0 0x00c>,
 		      <0x0 0x70019050 0x0 0x19c>,
 		      <0x0 0x70019200 0x0 0x024>,
