@@ -236,12 +236,9 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("vi",     -1, -1, 1, KHZ,   120000, 156000, 182000, 312000,  444000),
 	CORE_DVFS("isp",    -1, -1, 1, KHZ,   120000, 156000, 182000, 312000,  444000),
 
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	CORE_DVFS("c2bus",  -1, -1, 1, KHZ,    72000,  84000, 102000, 180000,  252000),
 	CORE_DVFS("c3bus",  -1, -1, 1, KHZ,   120000, 144000, 168000, 216000,  372000),
-#else
-	CORE_DVFS("cbus",   -1, -1, 1, KHZ,   120000, 144000, 168000, 216000,  372000),
-#endif
+
 	CORE_DVFS("c4bus",  -1, -1, 1, KHZ,   120000, 156000, 182000, 312000,  444000),
 
 	CORE_DVFS("pll_m",  -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1599000),
@@ -884,12 +881,8 @@ static struct kobject *cap_kobj;
 static struct kobject *gpu_kobj;
 
 static struct core_dvfs_cap_table tegra21_core_cap_table[] = {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ .cap_name = "cap.c2bus" },
 	{ .cap_name = "cap.c3bus" },
-#else
-	{ .cap_name = "cap.cbus" },
-#endif
 	{ .cap_name = "cap.sclk" },
 	{ .cap_name = "cap.emc" },
 	{ .cap_name = "cap.host1x" },

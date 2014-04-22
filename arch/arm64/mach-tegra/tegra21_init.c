@@ -109,13 +109,9 @@ static __initdata struct tegra_clk_init_table tegra21x_cbus_init_table[] = {
 	/* Initialize c2bus, c3bus, or cbus at the end of the list
 	   * after all the clocks are moved under the proper parents.
 	*/
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ "c2bus",      "pll_c2",       250000000,      false },
 	{ "c3bus",      "pll_c3",       250000000,      false },
 	{ "pll_c",      NULL,           792000000,      false },
-#else
-	{ "cbus",       "pll_c",        200000000,      false },
-#endif
 	{ "pll_c_out1", "pll_c",        100000000,      false },
 	{ "c4bus",      "pll_c4",       200000000,      false },
 	{ NULL,         NULL,           0,              0},

@@ -7247,8 +7247,6 @@ static struct clk tegra_clk_host1x = {
 	.rate_change_nh = &host1x_rate_change_nh,
 };
 
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-
 static struct raw_notifier_head c2bus_rate_change_nh;
 static struct raw_notifier_head c3bus_rate_change_nh;
 
@@ -7311,25 +7309,6 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 		},					\
 		.cross_clk_mutex = CROSS_CBUS_MUTEX,	\
 	}
-
-#else
-
-static struct raw_notifier_head cbus_rate_change_nh;
-
-static struct clk tegra_clk_cbus = {
-	.name	   = "cbus",
-	.parent    = &tegra_pll_c,
-	.ops       = &tegra_clk_cbus_ops,
-	.max_rate  = 700000000,
-	.mul	   = 1,
-	.div	   = 2,
-	.flags     = PERIPH_ON_CBUS,
-	.shared_bus_backup = {
-		.input = &tegra_pll_p,
-	},
-	.rate_change_nh = &cbus_rate_change_nh,
-};
-#endif
 
 static struct clk_ops tegra_clk_gpu_ops = {
 	.enable		= &tegra21_periph_clk_enable,
@@ -7788,7 +7767,6 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0),
 #endif
 
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
 	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c2bus, "nvjpg", 0, 0),
 	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c2bus, "nvdec", 0, 0),
@@ -7807,24 +7785,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 	SHARED_CLK("override.c3bus",	"override.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,  0, SHARED_OVERRIDE),
-#else
-#ifdef CONFIG_ARCH_TEGRA_VIC
-	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
-#endif
-	SHARED_CLK("msenc.cbus","tegra_msenc",		"msenc",&tegra_clk_cbus, "msenc", 0, 0),
-	SHARED_CLK("nvjpg.cbus","tegra_nvjpg",		"nvjpg",&tegra_clk_cbus, "nvjpg", 0, 0),
-	SHARED_CLK("nvdec.cbus","tegra_nvdec",		"nvdec",&tegra_clk_cbus, "nvdec", 0, 0),
-	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
-	SHARED_CLK("tsecb.cbus","tegra_tsecb",		"tsecb", &tegra_clk_cbus, "tsecb", 0, 0),
-#ifdef CONFIG_TEGRA_SE_ON_CBUS
-	SHARED_CLK("se.cbus",	"tegra21-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
-#endif
-	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.cbus",	"cap_throttle",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
-	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
-	SHARED_CLK("override.cbus", "override.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_OVERRIDE),
-	SHARED_CLK("edp.cbus",	"edp.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
-#endif
+
 	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
 	SHARED_CLK("cap.gbus",		"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
@@ -8084,12 +8045,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_emc,
 	&tegra_clk_mc,
 	&tegra_clk_host1x,
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
-#else
-	&tegra_clk_cbus,
-#endif
 	&tegra_clk_gpu,
 	&tegra_clk_gbus,
 	&tegra_clk_isp,
@@ -8237,12 +8194,8 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	if ((p == &tegra_pll_c) && (c != &tegra_pll_c_out1)) {
 		if (c->ops == &tegra_super_ops)
 			return false;
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 #ifndef CONFIG_TEGRA_PLLM_SCALED
 		return c->flags & PERIPH_EMC_ENB;
-#endif
-#else
-		return c->flags & PERIPH_ON_CBUS;
 #endif
 	}
 
@@ -8751,6 +8704,9 @@ void __init tegra21x_init_clocks(void)
 	int i;
 	struct clk *c;
 
+#ifndef	CONFIG_TEGRA_DUAL_CBUS
+	BUILD_BUG()
+#endif
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra21_init_one_clock(tegra_ptr_clks[i]);
 
