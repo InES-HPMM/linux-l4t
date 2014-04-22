@@ -1036,11 +1036,17 @@ static int __init tegra_cpufreq_governor_init(void)
 	 * Set the CPU governor to performance for a faster boot up
 	 */
 	unsigned int i;
-	static char *start_scaling_governor = "performance";
+	struct cpufreq_policy *policy;
+	static char *start_scaling_gov = "performance";
 	for_each_online_cpu(i) {
-		if (cpufreq_set_gov(start_scaling_governor, i))
+		policy = cpufreq_cpu_get(i);
+		if (!(policy && policy->governor &&
+			!(strcmp(policy->governor->name, start_scaling_gov) &&
+				cpufreq_set_gov(start_scaling_gov, i))))
 			pr_info("Failed to set the governor to %s for cpu %u\n",
-				start_scaling_governor, i);
+				start_scaling_gov, i);
+		if (policy)
+			cpufreq_cpu_put(policy);
 	}
 	return 0;
 }
