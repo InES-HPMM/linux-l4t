@@ -772,6 +772,79 @@ static inline long temp_translate(int readback)
 #ifdef CONFIG_THERMAL
 
 /**
+ * soctherm_read_temp() - reads the temperature for a sensor index
+ * @index: thermal sensor index to read the temperature from (XXX see what?)
+ * @temp: a pointer to where the temperature will be stored
+ *
+ * Reads the sensor associated with the given thermal sensor index
+ * @index, converts the reading to millicelcius, and places it into
+ * the variable pointed to by @temp. This function is passed to the
+ * thermal framework as a callback function when the zone is created
+ * and registered.
+ *
+ * XXX Returning the PLL temperature on a parameter error is bogus.
+ * This needs to return an error in such a case.
+ *
+ * Return: 0
+ */
+static int soctherm_read_temp(u8 index, unsigned long *temp)
+{
+	u32 r, regv, shft, mask;
+	enum soctherm_sense i, j;
+	int tt, ti;
+
+	switch (index) {
+	case THERM_CPU:
+		regv = TS_TEMP1;
+		shft = TS_TEMP1_CPU_TEMP_SHIFT;
+		mask = TS_TEMP1_CPU_TEMP_MASK;
+		i = TSENSE_CPU0;
+		j = TSENSE_CPU3;
+		break;
+
+	case THERM_GPU:
+		regv = TS_TEMP1;
+		shft = TS_TEMP1_GPU_TEMP_SHIFT;
+		mask = TS_TEMP1_GPU_TEMP_MASK;
+		i = TSENSE_GPU;
+		j = TSENSE_GPU;
+		break;
+
+	case THERM_MEM:
+		regv = TS_TEMP2;
+		shft = TS_TEMP2_MEM_TEMP_SHIFT;
+		mask = TS_TEMP2_MEM_TEMP_MASK;
+		i = TSENSE_MEM0;
+		j = TSENSE_MEM1;
+		break;
+
+	case THERM_PLL:
+	default: /* if devdata has error, return PLL temp to be safe */
+		regv = TS_TEMP2;
+		shft = TS_TEMP2_PLLX_TEMP_SHIFT;
+		mask = TS_TEMP2_PLLX_TEMP_MASK;
+		i = TSENSE_PLLX;
+		j = TSENSE_PLLX;
+		break;
+	}
+
+	if (read_hw_temp) {
+		r = soctherm_readl(regv);
+		*temp = temp_translate((r & (mask << shft)) >> shft);
+	} else {
+		for (tt = 0; i <= j; i++) {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+						TS_CPU0_STATUS0, i));
+			ti = temp_convert(REG_GET(r, TS_CPU0_STATUS0_CAPTURE),
+						sensor2therm_a[i],
+						sensor2therm_b[i]);
+			*temp = tt = max(tt, ti);
+		}
+	}
+	return 0;
+}
+
+/**
  * soctherm_has_mn_cpu_pskip_status() - does CPU use M,N values for pskip status?
  *
  * If the currently-running SoC reports the CPU thermal throttling
@@ -1515,63 +1588,18 @@ static int soctherm_unbind(struct thermal_zone_device *thz,
  * Return: 0
  */
 static int soctherm_get_temp(struct thermal_zone_device *thz,
-					unsigned long *temp)
+			     unsigned long *temp)
 {
 	struct soctherm_therm *therm = thz->devdata;
 	ptrdiff_t index = therm - plat_data.therm;
-	u32 r, regv, shft, mask;
-	enum soctherm_sense i, j;
-	int tt, ti;
 
-	switch (index) {
-	case THERM_CPU:
-		regv = TS_TEMP1;
-		shft = TS_TEMP1_CPU_TEMP_SHIFT;
-		mask = TS_TEMP1_CPU_TEMP_MASK;
-		i = TSENSE_CPU0;
-		j = TSENSE_CPU3;
-		break;
-
-	case THERM_GPU:
-		regv = TS_TEMP1;
-		shft = TS_TEMP1_GPU_TEMP_SHIFT;
-		mask = TS_TEMP1_GPU_TEMP_MASK;
-		i = TSENSE_GPU;
-		j = TSENSE_GPU;
-		break;
-
-	case THERM_MEM:
-		regv = TS_TEMP2;
-		shft = TS_TEMP2_MEM_TEMP_SHIFT;
-		mask = TS_TEMP2_MEM_TEMP_MASK;
-		i = TSENSE_MEM0;
-		j = TSENSE_MEM1;
-		break;
-
-	case THERM_PLL:
-	default: /* if devdata has error, return PLL temp to be safe */
-		regv = TS_TEMP2;
-		shft = TS_TEMP2_PLLX_TEMP_SHIFT;
-		mask = TS_TEMP2_PLLX_TEMP_MASK;
-		i = TSENSE_PLLX;
-		j = TSENSE_PLLX;
-		break;
+	if (index != THERM_CPU && index != THERM_GPU && index != THERM_MEM &&
+	    index != THERM_PLL) {
+		WARN(1, "Unknown thermal sensor index %d", index);
+		index = THERM_PLL;
 	}
 
-	if (read_hw_temp) {
-		r = soctherm_readl(regv);
-		*temp = temp_translate((r & (mask << shft)) >> shft);
-	} else {
-		for (tt = 0; i <= j; i++) {
-			r = soctherm_readl(TS_TSENSE_REG_OFFSET(
-						TS_CPU0_STATUS0, i));
-			ti = temp_convert(REG_GET(r, TS_CPU0_STATUS0_CAPTURE),
-						sensor2therm_a[i],
-						sensor2therm_b[i]);
-			*temp = tt = max(tt, ti);
-		}
-	}
-	return 0;
+	return soctherm_read_temp(index, temp);
 }
 
 /**
