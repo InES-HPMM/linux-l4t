@@ -59,7 +59,7 @@ enum soctherm_throttle_dev_id {
 	THROTTLE_DEV_NONE,
 };
 
-enum soctherem_oc_irq_id {
+enum soctherm_oc_irq_id {
 	TEGRA_SOC_OC_IRQ_1,
 	TEGRA_SOC_OC_IRQ_2,
 	TEGRA_SOC_OC_IRQ_3,

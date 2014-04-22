@@ -3364,7 +3364,7 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
 };
 
 /**
- * tegra11_soctherem_oc_int_init() - Initial enabling of the over
+ * tegra11_soctherm_oc_int_init() - Initial enabling of the over
  * current interrupts
  * @irq_base:	The interrupt request base number from platform data
  * @num_irqs:	The number of new interrupt requests
@@ -3375,7 +3375,7 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
  * -ENOMEM (out of memory), or irq_base if the function failed to
  * allocate the irqs
  */
-static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
+static int tegra11_soctherm_oc_int_init(int irq_base, int num_irqs)
 {
 	if (irq_base <= 0 || !num_irqs) {
 		pr_info("%s(): OC interrupts are not enabled\n", __func__);
@@ -3488,10 +3488,10 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	soctherm_init_platform_done = true;
 
-	ret = tegra11_soctherem_oc_int_init(data->oc_irq_base,
+	ret = tegra11_soctherm_oc_int_init(data->oc_irq_base,
 			data->num_oc_irqs);
 	if (ret < 0) {
-		pr_err("soctherem_oc_int_init failed: %d\n", ret);
+		pr_err("soctherm_oc_int_init failed: %d\n", ret);
 		return ret;
 	}
 
