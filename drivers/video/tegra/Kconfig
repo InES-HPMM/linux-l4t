@@ -41,6 +41,14 @@ config TEGRA_GRHOST_SYNC
 
 source "drivers/video/tegra/nvmap/Kconfig"
 
+config TEGRA_GR_VIRTUALIZATION
+	bool "Tegra graphics virtualization support"
+	default n
+	depends on TEGRA_HV_MANAGER
+	help
+	  Adds Tegra graphics virtualization (host and gpu) support to client
+	  drivers.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on (ARCH_TEGRA || PLATFORM_TEGRA) && TEGRA_GRHOST && I2C
