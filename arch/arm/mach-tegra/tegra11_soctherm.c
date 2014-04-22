@@ -1448,51 +1448,6 @@ static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.set_cur_state = soctherm_hw_action_set_cur_state,
 };
 
-static int soctherm_suspend_get_max_state(struct thermal_cooling_device *cdev,
-					  unsigned long *max_state)
-{
-	*max_state = 1;
-	return 0;
-}
-
-static int soctherm_suspend_get_cur_state(struct thermal_cooling_device *cdev,
-					  unsigned long *cur_state)
-{
-	*cur_state = !soctherm_suspended;
-	return 0;
-}
-
-/**
- * soctherm_suspend_set_cur_state() - Resumes or suspends soctherm
- * @cdev:		Thermal cooling device. Currently not being used.
- * @cur_state:		The current state
- *
- * Ensures that the SOC_THERM device is suspended or resumed to match
- * @cur_state. This function is passed to the thermal framework as part of a
- * cooling device. This is a workaround to suspend the SOC_THERM IP block, which
- * is only needed because this is not yet a device driver. Once this code is
- * converted to be a device driver, the soctherm_suspend implementation can
- * be removed
- * Return: 0 (success).
- */
-static int soctherm_suspend_set_cur_state(struct thermal_cooling_device *cdev,
-					  unsigned long cur_state)
-{
-	if (!cur_state != soctherm_suspended) {
-		if (cur_state)
-			soctherm_resume();
-		else
-			soctherm_suspend();
-	}
-	return 0;
-}
-
-static struct thermal_cooling_device_ops soctherm_suspend_ops = {
-	.get_max_state = soctherm_suspend_get_max_state,
-	.get_cur_state = soctherm_suspend_get_cur_state,
-	.set_cur_state = soctherm_suspend_set_cur_state,
-};
-
 /**
  * soctherm_bind() - Binds the given thermal zone's trip
  * points with the given cooling device.
@@ -1887,8 +1842,7 @@ static void __init soctherm_hot_cdev_register(int i, int trip)
  * After the board-specific data has been initalized, this creates a thermal
  * zone device for each enabled sensor and each enabled sensor group.
  * It also creates a cooling zone device for each enabled thermal zone that has
- * a critical trip point. It enables the suspend feature if no over-current
- * alarms are enabled.
+ * a critical trip point.
  *
  * Once all of the thermal zones have been registered, it runs
  * soctherm_update(), which sets high and low temperature thresholds.
@@ -1901,7 +1855,6 @@ static int __init soctherm_thermal_sys_init(void)
 {
 	char name[THERMAL_NAME_LENGTH];
 	struct soctherm_therm *therm;
-	bool oc_en = false;
 	int i, j;
 
 	if (!soctherm_init_platform_done)
@@ -1944,20 +1897,7 @@ static int __init soctherm_thermal_sys_init(void)
 						therm->tzp,
 						therm->passive_delay,
 						0);
-
-		for (j = THROTTLE_OC1; !oc_en && j < THROTTLE_SIZE; j++)
-			if ((therm2dev[i] != THROTTLE_DEV_NONE) &&
-			    (plat_data.throttle[j].devs[therm2dev[i]].enable))
-				oc_en = true;
 	}
-
-	/* do not enable suspend feature if any OC alarms are enabled */
-	if (!oc_en)
-		thermal_cooling_device_register("suspend_soctherm", NULL,
-						&soctherm_suspend_ops);
-	else
-		pr_warn("soctherm: Suspend feature CANNOT be enabled %s\n",
-			"when any OC alarm is enabled");
 
 	soctherm_update();
 	return 0;
