@@ -1,0 +1,5 @@
+#include "tegra124-loki-e2530-a01.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+};
