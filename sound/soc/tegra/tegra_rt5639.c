@@ -1080,9 +1080,27 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 	},
 };
 
+static int tegra_rt5639_suspend_pre(struct snd_soc_card *card)
+{
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	struct snd_soc_jack_gpio *gpio = &tegra_rt5639_hp_jack_gpio;
+	int i, suspend_allowed = 1;
+
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
+	}
+
+	/* If allowed, disable the irq so that device goes to suspend*/
+	if ((suspend_allowed) && (gpio_is_valid(gpio->gpio)))
+		disable_irq(gpio_to_irq(gpio->gpio));
+	return 0;
+}
+
 static int tegra_rt5639_suspend_post(struct snd_soc_card *card)
 {
-	struct snd_soc_jack_gpio *gpio = &tegra_rt5639_hp_jack_gpio;
 	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
 	int i, suspend_allowed = 1;
 
@@ -1095,9 +1113,6 @@ static int tegra_rt5639_suspend_post(struct snd_soc_card *card)
 	}
 
 	if (suspend_allowed) {
-		/*Disable the irq so that device goes to suspend*/
-		if (gpio_is_valid(gpio->gpio))
-			disable_irq(gpio_to_irq(gpio->gpio));
 		/*This may be required if dapm setbias level is not called in
 		some cases, may be due to a wrong dapm map*/
 		if (machine->clock_enabled) {
@@ -1184,6 +1199,7 @@ static struct snd_soc_card snd_soc_tegra_rt5639 = {
 	.dai_link = tegra_rt5639_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5639_dai),
 	.suspend_post = tegra_rt5639_suspend_post,
+	.suspend_pre = tegra_rt5639_suspend_pre,
 	.resume_pre = tegra_rt5639_resume_pre,
 	.set_bias_level = tegra_rt5639_set_bias_level,
 	.set_bias_level_post = tegra_rt5639_set_bias_level_post,
