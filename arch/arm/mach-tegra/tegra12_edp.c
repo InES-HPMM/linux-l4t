@@ -36,7 +36,7 @@
 #define	TOTAL_CAPS (CORE_EDP_PROFILES_NUM * CORE_MODULES_STATES *\
 			TEMPERATURE_RANGES * CAP_CLKS_NUM)
 
-#ifdef CONFIG_SYSEDP_FRAMEWORK
+#if defined(CONFIG_SYSEDP_FRAMEWORK) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
 static struct tegra_sysedp_corecap td580d_sysedp_corecap[] = {
 /*
 TD580D/CD580M/SD580N
