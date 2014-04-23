@@ -459,6 +459,61 @@ pinctrl_find_gpio_range_from_pin(struct pinctrl_dev *pctldev,
 EXPORT_SYMBOL_GPL(pinctrl_find_gpio_range_from_pin);
 
 /**
+ * pinctrl_get_pin_id_from_gpio() - Get pinID from the gpio
+ * @pctldev: the pin controller device to look in
+ * @gpio: GPIO number whose pinid need to be find.
+ */
+int pinctrl_get_pin_id_from_gpio(struct pinctrl_dev *pctldev,
+		unsigned gpio)
+{
+	struct pinctrl_gpio_range *range;
+	int ret = -EINVAL;
+
+	mutex_lock(&pctldev->mutex);
+
+	range = pinctrl_match_gpio_range(pctldev, gpio);
+	if (range != NULL) {
+		pr_err("Pincontrol does not have gpio %d\n", gpio);
+		goto unlock;
+	}
+
+	/* Convert to the pin controllers number space */
+	ret = gpio - range->base + range->pin_base;
+
+unlock:
+	mutex_unlock(&pctldev->mutex);
+	return ret;
+}
+
+/**
+ * pinctrl_get_pinctrl_dev_pin_id_from_gpio() - Get pinID and pincontrol dev
+ * from the gpio. It returns the pinctrl device handle and pin id for the gpio
+ * which it belongs to.
+ * @gpio: GPIO number whose pinid need to be find.
+ */
+int pinctrl_get_pinctrl_dev_pin_id_from_gpio(unsigned gpio,
+	struct pinctrl_dev **pctl_dev, unsigned *pin_id)
+{
+	struct pinctrl_dev *pctldev;
+	struct pinctrl_gpio_range *range;
+	int ret;
+
+	mutex_lock(&pinctrldev_list_mutex);
+
+	ret = pinctrl_get_device_gpio_range(gpio, &pctldev, &range);
+	if (ret < 0) {
+		pr_err("Pincontrol not found for gpio %d\n", gpio);
+		goto unlock;
+	}
+
+	*pctl_dev = pctldev;
+	*pin_id = gpio - range->base + range->pin_base;
+unlock:
+	mutex_unlock(&pinctrldev_list_mutex);
+	return ret;
+}
+
+/**
  * pinctrl_remove_gpio_range() - remove a range of GPIOs fro a pin controller
  * @pctldev: pin controller device to remove the range from
  * @range: the GPIO range to remove
@@ -502,6 +557,48 @@ int pinctrl_get_group_selector(struct pinctrl_dev *pctldev,
 		pin_group);
 
 	return -EINVAL;
+}
+
+/**
+ * pinctrl_get_group_selector_from_pin() - returns the group selector for a pin
+ * @pctldev: the pin controller handling the group
+ * @pin: the pin id on the look up
+ */
+int pinctrl_get_group_selector_from_pin(struct pinctrl_dev *pctldev,
+			unsigned int pin)
+{
+	const struct pinctrl_ops *ops = pctldev->desc->pctlops;
+	unsigned ngroups, selector;
+	bool found = false;
+
+	mutex_lock(&pctldev->mutex);
+
+	ngroups = ops->get_groups_count(pctldev);
+	for (selector = 0; selector < ngroups; ++selector) {
+		const unsigned *pins;
+		unsigned num_pins;
+		int ret;
+
+		ret = ops->get_group_pins(pctldev, selector, &pins, &num_pins);
+		if (ret < 0) {
+			dev_err(pctldev->dev,
+				"Not getting group pins for selector %u\n",
+				selector);
+			continue;
+		}
+		if (num_pins != 1) {
+			dev_dbg(pctldev->dev,
+				"Multiple pins for the selector %u\n",
+				selector);
+			continue;
+		}
+		if (pins[0] == pin) {
+			found = true;
+			break;
+		}
+	}
+	mutex_unlock(&pctldev->mutex);
+	return found ? selector : -EINVAL;
 }
 
 /**

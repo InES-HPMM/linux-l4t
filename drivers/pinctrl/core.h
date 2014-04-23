@@ -171,8 +171,13 @@ struct pinctrl_maps {
 
 int pin_get_from_name(struct pinctrl_dev *pctldev, const char *name);
 const char *pin_get_name(struct pinctrl_dev *pctldev, const unsigned pin);
+int pinctrl_get_pin_id_from_gpio(struct pinctrl_dev *pctldev, unsigned gpio);
+int pinctrl_get_pinctrl_dev_pin_id_from_gpio(unsigned gpio,
+		struct pinctrl_dev **pctl_dev, unsigned *pin_id);
 int pinctrl_get_group_selector(struct pinctrl_dev *pctldev,
 			       const char *pin_group);
+int pinctrl_get_group_selector_from_pin(struct pinctrl_dev *pctldev,
+		unsigned int pin);
 
 static inline struct pin_desc *pin_desc_get(struct pinctrl_dev *pctldev,
 					    unsigned int pin)
