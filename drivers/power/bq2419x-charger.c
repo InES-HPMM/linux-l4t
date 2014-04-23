@@ -784,7 +784,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	ret = bq2419x_fault_clear_sts(bq2419x, &val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
-		return ret;
+		return IRQ_NONE;
 	}
 
 	dev_info(bq2419x->dev, "%s() Irq %d status 0x%02x\n",
@@ -795,7 +795,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		ret = bq2419x_disable_otg_mode(bq2419x);
 		if (ret < 0) {
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
-			return ret;
+			return IRQ_HANDLED;
 		}
 	}
 
@@ -807,7 +807,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		ret = bq2419x_reconfigure_charger_param(bq2419x, "WDT-EXP-ISR");
 		if (ret < 0) {
 			dev_err(bq2419x->dev, "BQ reconfig failed %d\n", ret);
-			return ret;
+			return IRQ_HANDLED;
 		}
 	}
 
@@ -822,7 +822,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		ret = bq2419x_disable_otg_mode(bq2419x);
 		if (ret < 0) {
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
-			return ret;
+			return IRQ_HANDLED;
 		}
 		break;
 	case BQ2419x_FAULT_CHRG_SAFTY:
@@ -848,7 +848,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "SYS_STAT_REG read failed %d\n", ret);
-		return ret;
+		return IRQ_HANDLED;
 	}
 
 	if ((val & BQ2419x_CHRG_STATE_MASK) == BQ2419x_CHRG_STATE_CHARGE_DONE) {
