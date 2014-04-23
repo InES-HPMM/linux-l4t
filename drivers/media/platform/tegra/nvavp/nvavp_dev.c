@@ -2572,6 +2572,9 @@ static int tegra_nvavp_resume(struct device *dev)
 
 	mutex_lock(&nvavp->open_lock);
 
+	/* To balance the unpowergate in suspend routine */
+	nvavp_powergate_vde(nvavp);
+
 	tegra_nvavp_runtime_resume(dev);
 
 	mutex_unlock(&nvavp->open_lock);
@@ -2587,6 +2590,11 @@ static int tegra_nvavp_suspend(struct device *dev)
 	mutex_lock(&nvavp->open_lock);
 
 	tegra_nvavp_runtime_suspend(dev);
+
+	/* WAR: Leave partition vde on before suspend so that access
+	 * to BSEV registers immediatly after LP0 exit won't fail.
+	 */
+	nvavp_unpowergate_vde(nvavp);
 
 	mutex_unlock(&nvavp->open_lock);
 
