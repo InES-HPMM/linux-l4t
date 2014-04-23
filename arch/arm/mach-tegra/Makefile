@@ -103,10 +103,7 @@ obj-y                                   += tegra13_speedo.o
 else
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
 endif
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
-obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_actmon.o
-obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra3_actmon.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra3_actmon.o
+obj-$(CONFIG_TEGRA_ACTMON)              += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_emc.o
