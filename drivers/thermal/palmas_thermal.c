@@ -225,9 +225,8 @@ static int palmas_thermal_remove(struct platform_device *pdev)
 {
 	struct palmas_therm_zone *ptherm_zone = platform_get_drvdata(pdev);
 
-	thermal_zone_device_unregister(ptherm_zone->tz_device);
 	free_irq(ptherm_zone->irq, ptherm_zone);
-	kfree(ptherm_zone);
+	thermal_zone_device_unregister(ptherm_zone->tz_device);
 	return 0;
 }
 
