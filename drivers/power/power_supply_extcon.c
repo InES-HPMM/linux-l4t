@@ -66,6 +66,9 @@ static struct power_supply_cables psy_cables[] = {
 		.name	= "QC2",
 	},
 	{
+		.name	= "MAXIM",
+	},
+	{
 		.name	= "Fast-charger",
 	},
 	{
@@ -152,6 +155,9 @@ static int power_supply_extcon_attach_cable(
 	} else if (true == extcon_get_cable_state(edev, "QC2")) {
 		psy_extcon->ac_online = 1;
 		dev_info(psy_extcon->dev, "USB QC2-charger cable detected\n");
+	} else if (true == extcon_get_cable_state(edev, "MAXIM")) {
+		psy_extcon->ac_online = 1;
+		dev_info(psy_extcon->dev, "USB Maxim-charger cable detected\n");
 	} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
 		psy_extcon->ac_online = 1;
 		dev_info(psy_extcon->dev, "USB Fast-charger cable detected\n");
