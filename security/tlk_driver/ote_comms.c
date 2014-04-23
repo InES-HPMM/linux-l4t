@@ -244,8 +244,15 @@ uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 	switch_cpumask_to_cpu0();
 
 	retval = _tlk_generic_smc(arg0, arg1, arg2);
-	while (retval == 0xFFFFFFFD)
-		retval = _tlk_generic_smc((60 << 24), 0, 0);
+	while (retval == TE_ERROR_PREEMPT_BY_IRQ ||
+	       retval == TE_ERROR_PREEMPT_BY_FS) {
+		if (retval == TE_ERROR_PREEMPT_BY_IRQ) {
+			retval = _tlk_generic_smc((60 << 24), 0, 0);
+		} else {
+			tlk_ss_op();
+			retval = _tlk_generic_smc(TE_SMC_SS_REQ_COMPLETE, 0, 0);
+		}
+	}
 
 	restore_cpumask();
 
