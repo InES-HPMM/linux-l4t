@@ -90,12 +90,41 @@ struct tegra_otg {
 	int id_det_gpio;
 	struct extcon_dev *id_extcon_dev;
 	struct extcon_dev *vbus_extcon_dev;
+	struct extcon_dev *edev;
 };
 
 static struct tegra_otg *tegra_clone;
 static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
 struct extcon_specific_cable_nb *extcondev;
+
+enum tegra_connect_type {
+	CONNECT_TYPE_Y_CABLE
+};
+
+static char *const tegra_otg_extcon_cable[] = {
+	[CONNECT_TYPE_Y_CABLE] = "Y-cable",
+	NULL,
+};
+
+static void tegra_otg_set_extcon_state(struct tegra_otg *tegra)
+{
+	const char **cables;
+	struct extcon_dev *edev;
+
+	if (tegra->edev == NULL || tegra->edev->supported_cable == NULL)
+		return;
+
+	edev = tegra->edev;
+	cables = tegra->edev->supported_cable;
+
+	if (tegra->y_cable_conn)
+		extcon_set_cable_state(edev, cables[CONNECT_TYPE_Y_CABLE],
+				true);
+	else
+		extcon_set_cable_state(edev,
+				cables[CONNECT_TYPE_Y_CABLE], false);
+}
 
 static int otg_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
@@ -336,6 +365,7 @@ static int tegra_otg_start_host(struct tegra_otg *tegra, int on)
 			tegra_otg_set_current(tegra->vbus_bat_reg,
 					YCABLE_CHARGING_CURRENT_UA);
 			tegra->y_cable_conn = true;
+			tegra_otg_set_extcon_state(tegra);
 		} else {
 			tegra_otg_vbus_enable(tegra->vbus_reg, 1);
 		}
@@ -348,6 +378,7 @@ static int tegra_otg_start_host(struct tegra_otg *tegra, int on)
 		if (tegra->support_y_cable && tegra->y_cable_conn) {
 			tegra_otg_set_current(tegra->vbus_bat_reg, 0);
 			tegra->y_cable_conn = false;
+			tegra_otg_set_extcon_state(tegra);
 		}
 	}
 	return 0;
@@ -401,6 +432,8 @@ static void tegra_change_otg_state(struct tegra_otg *tegra,
 			DBG("%s(%d) Charger disconnect\n", __func__, __LINE__);
 			tegra_otg_set_current(tegra->vbus_bat_reg, 0);
 			tegra_otg_vbus_enable(tegra->vbus_reg, 1);
+			tegra->y_cable_conn = false;
+			tegra_otg_set_extcon_state(tegra);
 		}
 	}
 }
@@ -849,9 +882,28 @@ static int tegra_otg_start(struct platform_device *pdev)
 					PTR_ERR(tegra->vbus_bat_reg));
 			tegra->vbus_bat_reg = NULL;
 		}
+
+		tegra->edev = kzalloc(sizeof(struct extcon_dev), GFP_KERNEL);
+		if (!tegra->edev) {
+			dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
+			err = -ENOMEM;
+			goto err_id_free_irq;
+		}
+		tegra->edev->name = "tegra-otg";
+		tegra->edev->supported_cable =
+				(const char **) tegra_otg_extcon_cable;
+		err = extcon_dev_register(tegra->edev, &pdev->dev);
+		if (err) {
+			dev_err(&pdev->dev, "failed to register extcon device\n");
+			kfree(tegra->edev);
+			tegra->edev = NULL;
+		}
 	}
 
 	return 0;
+err_id_free_irq:
+	if (gpio_is_valid(tegra->id_det_gpio))
+		free_irq(gpio_to_irq(tegra->id_det_gpio), tegra);
 err_id_gpio_irq:
 	if (gpio_is_valid(tegra->id_det_gpio))
 		gpio_free(tegra->id_det_gpio);
@@ -934,6 +986,11 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 	if (tegra->support_pmu_vbus)
 		extcon_unregister_notifier(tegra->vbus_extcon_dev,
 							&otg_vbus_nb);
+
+	if (tegra->edev != NULL) {
+		extcon_dev_unregister(tegra->edev);
+		kfree(tegra->edev);
+	}
 
 	pm_runtime_disable(tegra->phy.dev);
 	usb_remove_phy(&tegra->phy);
@@ -1061,9 +1118,6 @@ static void tegra_otg_resume(struct device *dev)
 		mutex_lock(&tegra->irq_work_mutex);
 	}
 
-	if (tegra->turn_off_vbus_on_lp0 && !(tegra->int_status & USB_ID_STATUS))
-		tegra_otg_vbus_enable(tegra->vbus_reg, 1);
-
 	if (tegra->turn_off_vbus_on_lp0 &&
 		!(tegra->int_status & USB_ID_STATUS)) {
 		/* Handle Y-cable */
@@ -1072,6 +1126,7 @@ static void tegra_otg_resume(struct device *dev)
 			tegra_otg_set_current(tegra->vbus_bat_reg,
 				YCABLE_CHARGING_CURRENT_UA);
 			tegra->y_cable_conn = true;
+			tegra_otg_set_extcon_state(tegra);
 		} else {
 			tegra_otg_vbus_enable(tegra->vbus_reg, 1);
 		}
