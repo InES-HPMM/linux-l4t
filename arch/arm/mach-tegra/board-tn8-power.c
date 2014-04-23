@@ -46,12 +46,16 @@
 #include "board-ardbeg.h"
 #include "board-pmu-defines.h"
 #include "devices.h"
+#include "common.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
 #include "battery-ini-model-data.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
+
+static u32 tegra_chip_id;
+#define IS_T13X			(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
 struct batt_thermistor_adc_table {
 	int temp;
@@ -223,9 +227,16 @@ int __init tn8_edp_init(void)
 {
 	unsigned int regulator_mA;
 
+	if (!tegra_chip_id)
+		tegra_chip_id = tegra_get_chip_id();
+
 	regulator_mA = get_maximum_cpu_current_supported();
-	if (!regulator_mA)
-		regulator_mA = 12000;
+	if (!regulator_mA) {
+		if (IS_T13X)
+			regulator_mA = 16800;
+		else
+			regulator_mA = 12000;
+	}
 
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
