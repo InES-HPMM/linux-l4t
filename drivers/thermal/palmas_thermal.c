@@ -240,17 +240,7 @@ static struct platform_driver palmas_thermal_driver = {
 	},
 };
 
-static int __init palmas_thermal_init(void)
-{
-	return platform_driver_register(&palmas_thermal_driver);
-}
-module_init(palmas_thermal_init);
-
-static void __exit palmas_thermal_exit(void)
-{
-	platform_driver_unregister(&palmas_thermal_driver);
-}
-module_exit(palmas_thermal_exit);
+module_platform_dirver(palmas_thermal_driver);
 
 MODULE_DESCRIPTION("Palmas Thermal driver");
 MODULE_AUTHOR("Pradeep Goudagunta<pgoudagunta@nvidia.com>");
