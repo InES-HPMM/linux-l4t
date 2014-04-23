@@ -111,9 +111,8 @@ static __initdata struct tegra_clk_init_table tegra21x_cbus_init_table[] = {
 	*/
 	{ "c2bus",      "pll_c2",       250000000,      false },
 	{ "c3bus",      "pll_c3",       250000000,      false },
-	{ "pll_c",      NULL,           792000000,      false },
+	{ "cbus",       "pll_c",        250000000,      false },
 	{ "pll_c_out1", "pll_c",        100000000,      false },
-	{ "c4bus",      "pll_c4",       200000000,      false },
 	{ NULL,         NULL,           0,              0},
 };
 static void __init tegra_perf_init(void)

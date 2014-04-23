@@ -7463,19 +7463,20 @@ static struct clk_mux_sel mux_isp[] = {
 	{ 0, 0},
 };
 
-static struct raw_notifier_head c4bus_rate_change_nh;
+static struct raw_notifier_head cbus_rate_change_nh;
 
-static struct clk tegra_clk_c4bus = {
-	.name	   = "c4bus",
-	.parent    = &tegra_pll_c4,
+static struct clk tegra_clk_cbus = {
+	.name	   = "cbus",
+	.parent    = &tegra_pll_c,
 	.ops       = &tegra_clk_cbus_ops,
-	.max_rate  = 600000000,
+	.max_rate  = 700000000,
 	.mul	   = 1,
 	.div	   = 1,
+	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
 	},
-	.rate_change_nh = &c4bus_rate_change_nh,
+	.rate_change_nh = &cbus_rate_change_nh,
 };
 
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
@@ -7661,9 +7662,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartape",	"uartape",		NULL,	212,	0x710,	50000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_NO_RESET | PERIPH_ON_APB),
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	500000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71),
-#endif
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
@@ -7763,22 +7762,20 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
 	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,   &tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
-#ifdef CONFIG_ARCH_TEGRA_VIC
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0),
-#endif
 
-	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
-	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c2bus, "nvjpg", 0, 0),
-	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c2bus, "nvdec", 0, 0),
-	DUAL_CBUS_CLK("se.cbus",	"tegra21-se",		NULL,	 &tegra_clk_c2bus, "se",    0, 0),
+	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c2bus, "vic03", 0, 0),
 	SHARED_CLK("cap.c2bus",		"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("cap.throttle.c2bus", "cap_throttle",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	 &tegra_clk_c2bus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.c2bus",         "edp.c2bus",            NULL,   &tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
-#ifdef CONFIG_ARCH_TEGRA_VIC
-	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c3bus, "vic03", 0, 0),
-#endif
+
+	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c3bus, "msenc", 0, 0),
+	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c3bus, "nvjpg", 0, 0),
+	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c3bus, "nvdec", 0, 0),
+	DUAL_CBUS_CLK("se.cbus",	"tegra21-se",		NULL,	 &tegra_clk_c3bus, "se",    0, 0),
+	/* FIXME: move tsec out of cbus */
 	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c3bus,  "tsec", 0, 0),
 	DUAL_CBUS_CLK("tsecb.cbus",	"tegra_tsecb",		"tsecb",  &tegra_clk_c3bus,  "tsecb", 0, 0),
 	SHARED_CLK("cap.c3bus",		"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
@@ -7793,6 +7790,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("override.gbus",	"override.gbus", NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("floor.gbus",	"floor.gbus", NULL,	&tegra_clk_gbus, NULL,  0, 0),
 	SHARED_CLK("floor.profile.gbus", "profile.gbus", "floor", &tegra_clk_gbus, NULL,  0, 0),
+
 	SHARED_CLK("nv.host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("vi.host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("cap.host1x", "cap.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
@@ -7802,15 +7800,15 @@ struct clk tegra_list_clks[] = {
 
 /* VI, ISP buses */
 static struct clk tegra_visp_clks[] = {
-	SHARED_CONNECT("vi.c4bus",	"vi.c4bus",	NULL,	&tegra_clk_c4bus,   "vi",    0, 0),
-	SHARED_CONNECT("isp.c4bus",	"isp.c4bus",	NULL,	&tegra_clk_c4bus,   "isp",   0, 0),
-	SHARED_CLK("override.c4bus",	"override.c4bus", NULL,	&tegra_clk_c4bus,    NULL,   0, SHARED_OVERRIDE),
+	SHARED_CONNECT("vi.cbus",	"vi.cbus",	NULL,	&tegra_clk_cbus,   "vi",    0, 0),
+	SHARED_CONNECT("isp.cbus",	"isp.cbus",	NULL,	&tegra_clk_cbus,   "isp",   0, 0),
+	SHARED_CLK("override.cbus",	"override.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_OVERRIDE),
 
-	SHARED_CLK("via.vi.c4bus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
-	SHARED_CLK("vib.vi.c4bus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+	SHARED_CLK("via.vi.cbus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+	SHARED_CLK("vib.vi.cbus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
 
-	SHARED_CLK("ispa.isp.c4bus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
-	SHARED_CLK("ispb.isp.c4bus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
+	SHARED_CLK("ispa.isp.cbus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
+	SHARED_CLK("ispb.isp.cbus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
 };
 
 /* XUSB clocks */
@@ -7972,10 +7970,10 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("gpu_ref", "tegra_gk20a", "PLLG_ref"),
 	CLK_DUPLICATE("gbus", "tegra_gk20a", "PLLG_out"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a", "pwr"),
-	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp", "isp"),
-	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
-	CLK_DUPLICATE("via.vi.c4bus", "tegra_vi", "vi"),
-	CLK_DUPLICATE("vib.vi.c4bus", "tegra_vi.1", "vi"),
+	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
+	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
+	CLK_DUPLICATE("via.vi.cbus", "tegra_vi", "vi"),
+	CLK_DUPLICATE("vib.vi.cbus", "tegra_vi.1", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
 	CLK_DUPLICATE("csi", "tegra_vi.1", "csi"),
 	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
@@ -8050,7 +8048,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_gpu,
 	&tegra_clk_gbus,
 	&tegra_clk_isp,
-	&tegra_clk_c4bus,
+	&tegra_clk_cbus,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
@@ -8176,45 +8174,29 @@ void tegra_edp_throttle_cpu_now(u8 factor)
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
 	/*
-	 * Most of the Tegra12 multimedia and peripheral muxes include pll_c2
+	 * Most of the Tegra21 multimedia and peripheral muxes include pll_c2
 	 * and pll_c3 as possible inputs. However, per clock policy these plls
 	 * are allowed to be used only by handful devices aggregated on cbus.
 	 * For all others, instead of enforcing policy at run-time in this
 	 * function, we simply stripped out pll_c2 and pll_c3 options from the
-	 * respective muxes statically.
+	 * respective muxes statically. Similarly pll_a1 is removed from the
+	 * set of possible parents of non-cbus  modules.
+	 *
+	 * Traditionally ubiquitous on tegra chips pll_c is allowed to be used
+	 * as parent for cbus modules only as well, but it is not stripped out
+	 * from muxes statically, and the respective policy is enforced by this
+	 * function.
 	 */
+	if ((p == &tegra_pll_c) && (c != &tegra_pll_c_out1))
+		return c->flags & PERIPH_ON_CBUS;
 
 	/*
-	 * In configuration with dual cbus pll_c can be used as a scaled clock
-	 * source for EMC only when pll_m is fixed, or as a general fixed rate
-	 * clock source for EMC and other peripherals if pll_m is scaled. In
-	 * configuration with single cbus pll_c can be used as a scaled cbus
-	 * clock source only. No direct use for pll_c by super clocks.
+	 * On Tegra21 in any configuration pll_m must be used as a clock source
+	 * for EMC only.
 	 */
-	if ((p == &tegra_pll_c) && (c != &tegra_pll_c_out1)) {
-		if (c->ops == &tegra_super_ops)
-			return false;
-#ifndef CONFIG_TEGRA_PLLM_SCALED
+	if (p == &tegra_pll_m)
 		return c->flags & PERIPH_EMC_ENB;
-#endif
-	}
 
-	/*
-	 * In any configuration pll_m must not be used as a clock source for
-	 * cbus modules. If pll_m is scaled it can be used as EMC source only.
-	 * Otherwise fixed rate pll_m can be used as clock source for EMC and
-	 * other peripherals. No direct use for pll_m by super clocks.
-	 */
-	if (p == &tegra_pll_m) {
-		if (c->ops == &tegra_super_ops)
-			return false;
-
-		if (c->flags & PERIPH_ON_CBUS)
-			return false;
-#ifdef CONFIG_TEGRA_PLLM_SCALED
-		return c->flags & PERIPH_EMC_ENB;
-#endif
-	}
 	return true;
 }
 
