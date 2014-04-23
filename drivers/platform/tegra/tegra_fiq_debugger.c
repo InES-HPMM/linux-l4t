@@ -72,7 +72,7 @@ static int debug_port_init(struct platform_device *pdev)
 	tegra_write(t, UART_FCR_ENABLE_FIFO | UART_FCR_CLEAR_RCVR |
 				UART_FCR_CLEAR_XMIT, UART_FCR);
 	tegra_write(t, 0, UART_FCR);
-	tegra_write(t, UART_FCR, UART_FCR_ENABLE_FIFO);
+	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
 
 	/* clear LSR */
 	tegra_read(t, UART_LSR);
