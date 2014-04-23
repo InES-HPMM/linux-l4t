@@ -487,6 +487,10 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
+static struct i2c_board_info tegra_snd_max9485_info = {
+	.type = "max9485",
+};
+
 static struct platform_device tegra_snd_vcm30t124 = {
 	.name = "tegra-snd-vcm30t124",
 	.id = 0,
@@ -500,13 +504,25 @@ static struct platform_device tegra_snd_vcm30t124_b00 = {
 static void __init vcm30_t124_audio_init(void)
 {
 	int is_e1860_b00 = 0;
+	int is_e1892 = 0;
 
+	/* check the version of embedded breakout board */
+	is_e1892 = tegra_is_board(NULL, "61892", NULL, NULL, NULL);
+
+	/* check the version of embedded base board */
 	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 
-	if (is_e1860_b00)
+	tegra_snd_max9485_info.addr = is_e1892 ? 0x70 : 0x60;
+
+	if (is_e1860_b00) {
+		tegra_snd_vcm30t124_b00.dev.platform_data =
+			&tegra_snd_max9485_info;
 		platform_device_register(&tegra_snd_vcm30t124_b00);
-	else
+	} else {
+		tegra_snd_vcm30t124.dev.platform_data =
+			&tegra_snd_max9485_info;
 		platform_device_register(&tegra_snd_vcm30t124);
+	}
 }
 
 static struct platform_device *vcm30_t124_devices[] __initdata = {
