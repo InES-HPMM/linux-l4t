@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/thermal.h>
+#include <linux/of.h>
 #include <linux/mfd/palmas.h>
 
 #define PALMAS_NORMAL_OPERATING_TEMP 100000
@@ -39,11 +40,13 @@ struct palmas_therm_zone {
 	struct thermal_zone_device	*tz_device;
 	int				irq;
 	int				is_crit_temp;
+	unsigned long			hd_threshold_temp;
+	const char				*tz_name;
 };
 
 struct palmas_trip_point {
 	unsigned long temp;
-	 enum thermal_trip_type type;
+	enum thermal_trip_type type;
 };
 
 static struct palmas_trip_point palmas_tpoint = {
@@ -134,19 +137,36 @@ static irqreturn_t palmas_thermal_irq(int irq, void *data)
 
 static int palmas_thermal_probe(struct platform_device *pdev)
 {
-	struct palmas_therm_zone *ptherm_zone;
-	struct palmas_platform_data *pdata;
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
-	char *default_tz_name = "palmas-junc-tz";
+	struct palmas_platform_data *pdata;
+	struct palmas_therm_zone *ptherm_zone;
+	struct device_node *np = pdev->dev.of_node;
+	const char *tz_name = NULL;
+	u32 hd_threshold_temp = 0;
+	u32 pval;
 	int ret;
 	u8 val;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
-
-	if (!pdata || !(pdata->hd_threshold_temp)) {
-		dev_err(&pdev->dev, "No platform data\n");
-		return -ENODEV;
+	if (pdata) {
+		tz_name = pdata->tz_name;
+		hd_threshold_temp = pdata->hd_threshold_temp;
+	} else {
+		if (np) {
+			tz_name = of_get_property(np, "ti,tz-name", NULL);
+			ret = of_property_read_u32(np,
+					"ti,hot-die-threshold-temp", &pval);
+			if (!ret)
+				hd_threshold_temp = pval;
+		}
 	}
+	if (!hd_threshold_temp) {
+		dev_err(&pdev->dev, "Hot die temp is not provided\n");
+		return -EINVAL;
+	}
+
+	if (!tz_name)
+		tz_name = "palmas-die-thermal";
 
 	ptherm_zone = devm_kzalloc(&pdev->dev, sizeof(*ptherm_zone),
 			GFP_KERNEL);
@@ -158,10 +178,10 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ptherm_zone);
 	ptherm_zone->dev = &pdev->dev;
 	ptherm_zone->palmas = palmas;
-	if (!(pdata->tz_name))
-		pdata->tz_name = default_tz_name;
+	ptherm_zone->hd_threshold_temp = (unsigned long) hd_threshold_temp;
+	ptherm_zone->tz_name = tz_name;
 
-	ptherm_zone->tz_device = thermal_zone_device_register(pdata->tz_name,
+	ptherm_zone->tz_device = thermal_zone_device_register(tz_name,
 					1, 0, ptherm_zone, &palmas_tz_ops,
 					NULL, 0, 0);
 	if (IS_ERR_OR_NULL(ptherm_zone->tz_device)) {
@@ -170,7 +190,7 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		return PTR_ERR(ptherm_zone->tz_device);
 	}
 
-	palmas_tpoint.temp = pdata->hd_threshold_temp;
+	palmas_tpoint.temp = ptherm_zone->hd_threshold_temp;
 
 	ptherm_zone->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(ptherm_zone->irq, NULL,
@@ -183,25 +203,16 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		goto int_req_failed;
 	}
 
-	switch (palmas_tpoint.temp) {
-	case 108000:
+	if (palmas_tpoint.temp <= 108000UL)
 		val = 0;
-		break;
-	case 112000:
+	else if (palmas_tpoint.temp <= 112000UL)
 		val = 1;
-		break;
-	case 116000:
+	else if (palmas_tpoint.temp <= 116000UL)
 		val = 2;
-		break;
-	case 120000:
+	else if (palmas_tpoint.temp <= 120000UL)
 		val = 3;
-		break;
-	default:
-		dev_err(&pdev->dev, "%ld threshold is not supported",
-				palmas_tpoint.temp);
-		ret = -EINVAL;
-		goto error;
-	}
+	else
+		val = 3;
 
 	val <<= PALMAS_OSC_THERM_CTRL_THERM_HD_SEL_SHIFT;
 	ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
@@ -230,16 +241,23 @@ static int palmas_thermal_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id palmas_thermal_match[] = {
+	{ .compatible = "ti,palmas-thermal", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, palmas_thermal_match);
+
 static struct platform_driver palmas_thermal_driver = {
 	.probe = palmas_thermal_probe,
 	.remove = palmas_thermal_remove,
 	.driver = {
 		.name = "palmas-thermal",
 		.owner = THIS_MODULE,
+		.of_match_table = palmas_thermal_match,
 	},
 };
 
-module_platform_dirver(palmas_thermal_driver);
+module_platform_driver(palmas_thermal_driver);
 
 MODULE_DESCRIPTION("Palmas Thermal driver");
 MODULE_AUTHOR("Pradeep Goudagunta<pgoudagunta@nvidia.com>");
