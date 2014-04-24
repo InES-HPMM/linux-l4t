@@ -26,8 +26,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/clk/tegra.h>
-#include <mach/pinmux.h>
-#include <mach/pinmux-t11.h>
 #include <mach/tegra_usb_pmc.h>
 
 #include "../../../arch/arm/mach-tegra/iomap.h"
