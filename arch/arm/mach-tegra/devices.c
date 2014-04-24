@@ -2259,6 +2259,8 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "mpe",	.swgids = SWGID(MPE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(VDE), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC) | SWGID(A9AVP), },
+	{ .name = "sdhci-tegra.1",	.swgids = SWGID(SDMMC2A) },
+	{ .name = "sdhci-tegra.2",	.swgids = SWGID(SDMMC3A) },
 	{ .name = "serial8250",	.swgids = SWGID(PPCS), },
 	{ .name = "serial-tegra",	.swgids = SWGID(PPCS), },
 	{ .name = "dtv",	.swgids = SWGID(PPCS), },
