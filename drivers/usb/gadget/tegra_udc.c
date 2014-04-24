@@ -1087,6 +1087,10 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		return -EINVAL;
 
 	spin_lock_irqsave(&ep->udc->lock, flags);
+	if (!ep->desc) {
+		spin_unlock_irqrestore(&ep->udc->lock, flags);
+		return -EINVAL;
+	}
 	stopped = ep->stopped;
 
 	/* Stop the ep before we deal with the queue */
