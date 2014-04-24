@@ -23,6 +23,8 @@
 
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
+#include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/consumer.h>
 
 extern struct platform_device *uart_console_debug_device;
 int  uart_console_debug_init(int defaul_debug_port);
@@ -36,5 +38,5 @@ void tegra_add_core_edp_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_tgpu_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_core_vmax_trips(struct thermal_trip_info *trips, int *num_trips);
-
+struct pinctrl_dev *tegra_get_pinctrl_device_handle(void);
 #endif

@@ -218,3 +218,18 @@ void tegra_add_core_vmax_trips(struct thermal_trip_info *trips, int *num_trips)
 	tegra_add_trip_points(trips, num_trips,
 			      tegra_dvfs_get_core_vmax_cdev());
 }
+
+struct pinctrl_dev *tegra_get_pinctrl_device_handle(void)
+{
+	static struct pinctrl_dev *pctl_dev = NULL;
+
+	if (pctl_dev)
+		return pctl_dev;
+
+	pctl_dev = pinctrl_get_dev_from_of_compatible(
+					"nvidia,tegra124-pinmux");
+	if (!pctl_dev)
+		pr_err("%s(): ERROR: No Tegra pincontrol driver\n", __func__);
+
+	return pctl_dev;
+}
