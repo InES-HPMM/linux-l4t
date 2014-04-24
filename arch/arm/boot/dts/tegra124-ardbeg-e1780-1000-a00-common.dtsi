@@ -27,7 +27,8 @@
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
-#include "tegra-panel.dtsi"
+#include "panel-p-wuxga-10-1.dtsi"
+#include "panel-s-wqxga-10-1.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-camera-e1780-a00.dtsi"
 

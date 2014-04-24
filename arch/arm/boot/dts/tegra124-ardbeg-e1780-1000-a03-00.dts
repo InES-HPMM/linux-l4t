@@ -23,7 +23,9 @@
 #include "tegra124-platforms/tegra124-ardbeg-pmic-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-fixed-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
-#include "tegra-panel.dtsi"
+#include "panel-l-wxga-7.dtsi"
+#include "panel-p-wuxga-10-1.dtsi"
+#include "panel-s-wqxga-10-1.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 / {
 	nvidia,boardids = "1780:1000:03:B:3;1735:1000:01:D:3";
