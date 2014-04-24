@@ -1,5 +1,7 @@
 #include "tegra124-tn8-p1761-1270-a03.dts"
 #include <dt-bindings/iio/meter/ina3221x.h>
+#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
+
 
 / {
 	nvidia,dtsfilename = __FILE__;
