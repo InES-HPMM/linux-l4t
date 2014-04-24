@@ -976,6 +976,13 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		}
 	}
 
+	/* Defer if we are still sending request force_val - possible when
+	   request updated outside this driver by CPU internal pm controller */
+	if (val == cld->last_req.output) {
+		calibration_timer_update(cld);
+		return;
+	}
+
 	/* Adjust minimum rate */
 	rate = GET_MONITORED_RATE(data, cld->ref_rate);
 	if ((val > out_min) || (rate < (rate_min - step)))
