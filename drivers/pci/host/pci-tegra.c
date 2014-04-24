@@ -49,6 +49,9 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/pinconf-tegra.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
@@ -56,8 +59,6 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/io_dpd.h>
-#include <mach/pinmux.h>
-#include <mach/pinmux-t12.h>
 
 /* register definitions */
 #define AFI_OFFSET							0x3800
@@ -268,6 +269,17 @@
 #define PR_FUNC_LINE	pr_info("PCIE: %s(%d)\n", __func__, __LINE__)
 #else
 #define PR_FUNC_LINE	do {} while (0)
+#endif
+
+/* Pinctrl configuration paramaters */
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define pinctrl_compatible	"nvidia,tegra210-pinmux"
+#define pin_pex_l0_clkreq	"pex_l0_clkreq_n_pa1"
+#define pin_pex_l1_clkreq	"pex_l1_clkreq_n_pa4"
+#else
+#define pinctrl_compatible	"nvidia,tegra124-pinmux"
+#define pin_pex_l0_clkreq	"pex_l0_clkreq_n_pdd2"
+#define pin_pex_l1_clkreq	"pex_l1_clkreq_n_pdd6"
 #endif
 
 struct tegra_pcie_port {
@@ -1879,7 +1891,16 @@ EXPORT_SYMBOL(tegra_pcie_link_speed);
 /* support PLL power down in L1 dynamically based on platform */
 static void tegra_pcie_pll_pdn(void)
 {
+	static struct pinctrl_dev *pctl_dev = NULL;
 	struct pci_dev *pdev = NULL;
+
+	if (!pctl_dev)
+		pctl_dev = pinctrl_get_dev_from_of_compatible(
+					pinctrl_compatible);
+	if (!pctl_dev) {
+		pr_err("%s(): tegra pincontrol does not found\n", __func__);
+		return;
+	}
 
 	PR_FUNC_LINE;
 	/* CLKREQ# to PD if device connected to RP doesn't have CLKREQ# */
@@ -1891,23 +1912,22 @@ static void tegra_pcie_pll_pdn(void)
 		if ((pci_pcie_type(pdev->bus->self) ==
 			PCI_EXP_TYPE_ROOT_PORT)) {
 			u32 val = 0;
+			unsigned long config;
 
 			pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &val);
 			if (val & PCI_EXP_LNKCAP_CLKPM) {
-				tegra_pinmux_set_pullupdown(
-					TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-					TEGRA_PUPD_PULL_UP);
-				tegra_pinmux_set_pullupdown(
-					TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-					TEGRA_PUPD_PULL_UP);
+				config = TEGRA_PINCONF_PACK(
+						TEGRA_PINCONF_PARAM_PULL,
+						TEGRA_PIN_PULL_UP);
 			} else {
-				tegra_pinmux_set_pullupdown(
-					TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-					TEGRA_PUPD_PULL_DOWN);
-				tegra_pinmux_set_pullupdown(
-					TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-					TEGRA_PUPD_PULL_DOWN);
+				config = TEGRA_PINCONF_PACK(
+						TEGRA_PINCONF_PARAM_PULL,
+						TEGRA_PIN_PULL_DOWN);
 			}
+			pinctrl_set_config_for_group_name(pctl_dev,
+					pin_pex_l0_clkreq, config);
+			pinctrl_set_config_for_group_name(pctl_dev,
+					pin_pex_l1_clkreq, config);
 			break;
 		}
 	}
@@ -2052,20 +2072,37 @@ static void tegra_pcie_enable_ltr_support(void)
 
 static void tegra_pcie_config_clkreq(bool enable)
 {
+	static struct pinctrl_dev *pctl_dev = NULL;
+	unsigned long od_conf, tr_conf;
+
+	if (!pctl_dev)
+		pctl_dev = pinctrl_get_dev_from_of_compatible(
+				pinctrl_compatible);
+	if (!pctl_dev) {
+		pr_err("%s(): tegra pincontrol does not found\n", __func__);
+		return;
+	}
+	if (enable) {
+		od_conf = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_OPEN_DRAIN,
+					TEGRA_PIN_ENABLE);
+		tr_conf = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_TRISTATE,
+					TEGRA_PIN_DISABLE);
+	} else {
+		od_conf = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_OPEN_DRAIN,
+					TEGRA_PIN_DISABLE);
+		tr_conf = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_TRISTATE,
+					TEGRA_PIN_ENABLE);
+	}
 	if (enable) {
 		/* Make CLKREQ# bi-directional if L1PM SS are enabled */
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_PIN_OD_ENABLE);
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_PIN_OD_ENABLE);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l0_clkreq, tr_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l0_clkreq, od_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l1_clkreq, tr_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l1_clkreq, od_conf);
 	} else {
 		struct pci_dev *pdev = NULL;
 		u16 val = 0;
@@ -2077,18 +2114,14 @@ static void tegra_pcie_config_clkreq(bool enable)
 			val &= ~PCI_EXP_LNKCTL_ASPM_L1;
 			pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
 		}
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_TRI_TRISTATE);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L0_CLKREQ_N,
-			TEGRA_PIN_OD_DISABLE);
-		tegra_pinmux_set_tristate(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_TRI_TRISTATE);
-		tegra_pinmux_set_od(
-			TEGRA_PINGROUP_PEX_L1_CLKREQ_N,
-			TEGRA_PIN_OD_DISABLE);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l0_clkreq, tr_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l0_clkreq, od_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l1_clkreq, tr_conf);
+		pinctrl_set_config_for_group_name(pctl_dev,
+				pin_pex_l1_clkreq, od_conf);
 		for_each_pci_dev(pdev) {
 			pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
 			val |= PCI_EXP_LNKCTL_ASPM_L1;
