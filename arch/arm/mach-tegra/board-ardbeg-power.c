@@ -33,6 +33,7 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
+#include <linux/pinctrl/pinconf-tegra.h>
 
 #include <asm/mach-types.h>
 #include <mach/pinmux-t12.h>
@@ -140,14 +141,31 @@ static void e1735_resume_dfll_bypass(void)
 	__gpio_set_value(TEGRA_GPIO_PS5, 0); /* enable PWM buffer operations */
 }
 
+static void e1767_configure_dvfs_pwm_tristate(const char *gname, int tristate)
+{
+	struct pinctrl_dev *pctl_dev = NULL;
+	unsigned long config;
+	int ret;
+
+	pctl_dev = tegra_get_pinctrl_device_handle();
+	if (!pctl_dev)
+		return;
+
+	config = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_TRISTATE, tristate);
+	ret = pinctrl_set_config_for_group_name(pctl_dev, gname, config);
+	if (ret < 0)
+		pr_err("%s(): ERROR: Not able to set %s to TRISTATE %d: %d\n",
+			__func__, gname, tristate, ret);
+}
+
 static void e1767_suspend_dfll_bypass(void)
 {
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DVFS_PWM, TEGRA_TRI_TRISTATE);
+	e1767_configure_dvfs_pwm_tristate("dvfs_pwm_px0", TEGRA_PIN_ENABLE);
 }
 
 static void e1767_resume_dfll_bypass(void)
 {
-	 tegra_pinmux_set_tristate(TEGRA_PINGROUP_DVFS_PWM, TEGRA_TRI_NORMAL);
+	e1767_configure_dvfs_pwm_tristate("dvfs_pwm_px0", TEGRA_PIN_DISABLE);
 }
 
 static struct tegra_cl_dvfs_cfg_param e1733_ardbeg_cl_dvfs_param = {
