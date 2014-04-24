@@ -63,10 +63,10 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/pinconf-tegra.h>
+
 
 #include <mach/irqs.h>
-#include <mach/pinmux.h>
-#include <mach/pinmux-t12.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/isomgr.h>
@@ -581,6 +581,7 @@ static void loki_xusb_init(void)
 
 static int baseband_init(void)
 {
+	struct pinctrl_dev *pctl_dev;
 	int ret;
 
 	ret = gpio_request_array(modem_gpios, ARRAY_SIZE(modem_gpios));
@@ -590,8 +591,23 @@ static int baseband_init(void)
 	}
 
 	/* enable pull-down for MDM_COLD_BOOT */
-	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4,
-				    TEGRA_PUPD_PULL_DOWN);
+	pctl_dev = tegra_get_pinctrl_device_handle();
+	if (pctl_dev) {
+		unsigned long config;
+
+		config = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_PULL,
+						TEGRA_PIN_PULL_DOWN);
+		ret = pinctrl_set_config_for_group_name(pctl_dev,
+				"ulpi_data4_po5", config);
+		if (ret < 0) {
+			pr_err("ERROR: %s(): ulpi_data4 config failed: %d\n",
+				__func__, ret);
+			return ret;
+		}
+	} else {
+		pr_err("ERROR: %s(): No Tegra pincontrol driver\n", __func__);
+		return -EINVAL;
+	}
 
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MDM_RST, false);
