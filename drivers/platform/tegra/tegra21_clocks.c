@@ -7507,6 +7507,7 @@ static struct clk tegra_clk_gbus = {
 	.ops       = &tegra_clk_gbus_ops,
 	.parent    = &tegra_clk_gpu,
 	.max_rate  = 1000000000,
+	.shared_bus_flags = SHARED_BUS_RETENTION,
 };
 
 static void tegra21_camera_mclk_init(struct clk *c)
