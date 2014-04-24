@@ -23,8 +23,6 @@
 #include <linux/tegra-fuse.h>
 #include <linux/of_platform.h>
 #include <mach/edp.h>
-#include <mach/pinmux-t12.h>
-#include <mach/pinmux.h>
 #include <mach/io_dpd.h>
 #include <media/camera.h>
 #include <media/ar0261.h>
