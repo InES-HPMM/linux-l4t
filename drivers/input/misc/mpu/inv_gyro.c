@@ -3294,6 +3294,26 @@ static ssize_t inv_key_show(struct device *dev, struct device_attribute *attr,
 		key[13], key[14], key[15]);
 }
 
+static ssize_t inv_accl_max_range_st_show(struct device *dev,
+				       struct device_attribute *attr, char *buf)
+{
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
+	unsigned int range;
+
+	range = inv_hwselftest_accel_fsr(st);
+	return sprintf(buf, "%u\n", range);
+}
+
+static ssize_t inv_gyro_max_range_st_show(struct device *dev,
+				       struct device_attribute *attr, char *buf)
+{
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
+	unsigned int range;
+
+	range = inv_hwselftest_gyro_fsr(st);
+	return sprintf(buf, "%u\n", range);
+}
+
 /**
  *  OBSOLETE
  */
@@ -4122,6 +4142,10 @@ static DEVICE_ATTR(power_state, S_IRUGO | S_IWUSR | S_IWGRP,
 		   inv_power_state_show, inv_power_state_store);
 static DEVICE_ATTR(key, S_IRUGO | S_IWUSR | S_IWGRP,
 		   inv_key_show, inv_key_store);
+static DEVICE_ATTR(accl_max_range_st, S_IRUGO,
+		   inv_accl_max_range_st_show, NULL);
+static DEVICE_ATTR(gyro_max_range_st, S_IRUGO,
+		   inv_gyro_max_range_st_show, NULL);
 
 static struct device_attribute *inv_attributes[] = {
 	&dev_attr_accl_enable,
@@ -4144,6 +4168,8 @@ static struct device_attribute *inv_attributes[] = {
 	&dev_attr_enable,
 	&dev_attr_power_state,
 	&dev_attr_key,
+	&dev_attr_accl_max_range_st,
+	&dev_attr_gyro_max_range_st,
 #ifdef DEBUG_SYSFS_INTERFACE
 	&dev_attr_dbg_reg,
 	&dev_attr_dbg_dat,
@@ -4711,6 +4737,8 @@ static int nvi_probe(struct i2c_client *client,
 	result = nvi_dev_init(st, id);
 	if (result)
 		goto out_free;
+
+	inv_hwselftest_setting(st);
 
 	INIT_KFIFO(st->trigger.timestamps);
 	result = create_sysfs_interfaces(st);

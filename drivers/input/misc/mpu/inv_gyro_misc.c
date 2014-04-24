@@ -53,8 +53,10 @@
 /* LPF parameter */
 #define DEF_SELFTEST_LPF_PARA                (1)
 /* full scale setting dps */
-#define DEF_SELFTEST_GYRO_FULL_SCALE         (0 << 3)
-#define DEF_SELFTEST_ACCL_FULL_SCALE         (0 << 3)
+#define DEF_SELFTEST_GYRO_FULL_SCALE_MPU6500         (0)
+#define DEF_SELFTEST_ACCL_FULL_SCALE_MPU6500         (0)
+#define DEF_SELFTEST_GYRO_FULL_SCALE                 (0)
+#define DEF_SELFTEST_ACCL_FULL_SCALE                 (2)
 /* wait time before collecting data */
 #define DEF_GYRO_WAIT_TIME          (30)
 #define DEF_GYRO_PACKET_THRESH      DEF_GYRO_WAIT_TIME
@@ -96,6 +98,8 @@
 			DEF_SELFTEST_ACCL_FULL_SCALE) * DEF_ST_PRECISION)
 #define ACCL_G_SCALE                (2L)  /* +-2g */
 
+static struct test_setup_t test_setup;
+/*
 static struct test_setup_t test_setup = {
 	.gyro_sens	= 32768 / 250,
 	.sample_rate	= DEF_SELFTEST_SAMPLE_RATE,
@@ -103,6 +107,7 @@ static struct test_setup_t test_setup = {
 	.gyro_fsr	= DEF_SELFTEST_GYRO_FULL_SCALE,
 	.accl_fsr	= DEF_SELFTEST_ACCL_FULL_SCALE
 };
+*/
 
 /* NOTE: product entries are in chronological order */
 static struct prod_rev_map_t prod_rev_map[] = {
@@ -527,6 +532,94 @@ int inv_get_silicon_rev_mpu6050(struct inv_gyro_state_s *st)
 	return result;
 }
 
+int inv_hwselftest_setting(struct inv_gyro_state_s *st)
+{
+	int gyro_fs, accel_fs;
+
+	test_setup.sample_rate = DEF_SELFTEST_SAMPLE_RATE;
+	test_setup.lpf = DEF_SELFTEST_LPF_PARA;
+
+	if (st->chip_type == INV_MPU6500) {
+		accel_fs = (ACCL_G_SCALE
+			<< DEF_SELFTEST_ACCL_FULL_SCALE_MPU6500);
+		gyro_fs = (GYRO_DPS_SCALE
+			<< DEF_SELFTEST_GYRO_FULL_SCALE_MPU6500);
+
+		test_setup.accl_fsr =
+			DEF_SELFTEST_ACCL_FULL_SCALE_MPU6500 << 3;
+		test_setup.gyro_fsr =
+			DEF_SELFTEST_GYRO_FULL_SCALE_MPU6500 << 3;
+
+		test_setup.gyro_sens =
+			(unsigned int)(DEF_ST_SCALE / gyro_fs);
+		test_setup.accl_sens[X] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+		test_setup.accl_sens[Y] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+		test_setup.accl_sens[Z] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+
+		dev_info(&st->i2c->dev,
+			"%s MPU6500 st->chip_type = %d\n",
+			__func__, st->chip_type);
+
+	} else {
+
+		accel_fs = (ACCL_G_SCALE
+		<< DEF_SELFTEST_ACCL_FULL_SCALE);
+		gyro_fs = (GYRO_DPS_SCALE
+		<< DEF_SELFTEST_GYRO_FULL_SCALE);
+
+		test_setup.accl_fsr =
+			DEF_SELFTEST_ACCL_FULL_SCALE << 3;
+		test_setup.gyro_fsr =
+			DEF_SELFTEST_GYRO_FULL_SCALE << 3;
+
+		test_setup.gyro_sens =
+			(unsigned int)(DEF_ST_SCALE / gyro_fs);
+		test_setup.accl_sens[X] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+		test_setup.accl_sens[Y] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+		test_setup.accl_sens[Z] =
+			(unsigned int)(DEF_ST_SCALE / accel_fs);
+
+		if (MPL_PROD_KEY(st->chip_info.product_id,
+			st->chip_info.product_revision) ==
+			MPU_PRODUCT_KEY_B1_E1_5) {
+			/* half sensitivity Z accelerometer parts */
+			test_setup.accl_sens[Z] /= 2;
+		} else {
+			/* half sensitivity X, Y, Z accelerometer parts */
+			test_setup.accl_sens[X] /= st->chip_info.multi;
+			test_setup.accl_sens[Y] /= st->chip_info.multi;
+			test_setup.accl_sens[Z] /= st->chip_info.multi;
+		}
+
+		dev_info(&st->i2c->dev,
+			"%s MPU6050 st->chip_type = %d\n",
+			__func__, st->chip_type);
+
+	}
+
+	dev_info(&st->i2c->dev,
+		"%s gyro_sens = %u; accl_sens = %u; fsr = %u; accl_fs = %u\n",
+		__func__, test_setup.gyro_sens, test_setup.accl_sens[X],
+		test_setup.gyro_fsr, test_setup.accl_fsr);
+
+	return 0;
+}
+
+int inv_hwselftest_accel_fsr(struct inv_gyro_state_s *st)
+{
+	return ACCL_G_SCALE << (test_setup.accl_fsr >> 3);
+}
+
+int inv_hwselftest_gyro_fsr(struct inv_gyro_state_s *st)
+{
+	return GYRO_DPS_SCALE << (test_setup.gyro_fsr >> 3);
+}
+
 /**
  *  @internal
  *  @brief  read the accelerometer hardware self-test bias shift calculated
@@ -567,57 +660,6 @@ static int read_accel_hw_self_test_prod_shift(struct inv_gyro_state_s *st,
 	return 0;
 }
 
-static int inv_check_accl_self_test_raw(struct inv_gyro_state_s *st,
-	int *reg_avg, int accel_thres_mg)
-{
-	int j, ret_val = 0;
-	int accel_bias[3];
-	long thres;
-
-	accel_bias[X] = abs(reg_avg[X] * st->chip_info.multi);
-	accel_bias[Y] = abs(reg_avg[Y] * st->chip_info.multi);
-	accel_bias[Z] = abs(abs(reg_avg[Z] * st->chip_info.multi)
-			- DEF_ST_PRECISION * DEF_ST_SCALE
-			/ (ACCL_G_SCALE << DEF_SELFTEST_ACCL_FULL_SCALE));
-	thres = accel_thres_mg * DEF_ST_SCALE
-			/ (ACCL_G_SCALE << DEF_SELFTEST_ACCL_FULL_SCALE);
-	dev_info(&st->i2c->dev,
-		"%s: accel_bias=%d %d %d, thres=%ld(%d mg)\n", __func__,
-		accel_bias[X], accel_bias[Y], accel_bias[Z],
-		thres, accel_thres_mg);
-
-	for (j = 0; j < 3; j++) {
-		if (accel_bias[j] > thres) {
-			ret_val |= (1<<j);
-			dev_info(&st->i2c->dev,
-				"%s, axis(%d) > accel_thres_mg\n", __func__, j);
-		}
-	}
-
-	return ret_val;
-}
-
-static int inv_check_gyro_self_test_raw(struct inv_gyro_state_s *st,
-	int *reg_avg, int gyro_thres_dps)
-{
-	int i, ret_val = 0;
-	long thres;
-
-	thres = gyro_thres_dps * DEF_ST_PRECISION * DEF_ST_SCALE
-			/ (GYRO_DPS_SCALE << DEF_SELFTEST_GYRO_FULL_SCALE);
-	dev_info(&st->i2c->dev,
-		"%s: gyro_bias=%ld %ld %ld, thres=%ld(%d dps)\n", __func__,
-		abs(reg_avg[X]), abs(reg_avg[Y]), abs(reg_avg[Z]),
-		thres, gyro_thres_dps);
-
-	for (i = 0; i < 3; i++) {
-		if (abs(reg_avg[i]) > thres)
-			ret_val |= (1<<i);
-	}
-
-	return ret_val;
-}
-
 static int inv_check_accl_self_test(struct inv_gyro_state_s *st,
 	int *reg_avg, int *st_avg){
 	int gravity, reg_z_avg, g_z_sign, fs, j, ret_val;
@@ -628,31 +670,19 @@ static int inv_check_accl_self_test(struct inv_gyro_state_s *st,
 		st->chip_info.product_revision < DEF_OLDEST_SUPP_PROD_REV)
 		return 0;
 
-	fs = 8000UL;    /* assume +/- 2 mg as typical */
 	g_z_sign = 1;
 	ret_val = 0;
-	test_setup.accl_sens[X] = (unsigned int)((1L << 15) * 1000 / fs);
-	test_setup.accl_sens[Y] = (unsigned int)((1L << 15) * 1000 / fs);
-	test_setup.accl_sens[Z] = (unsigned int)((1L << 15) * 1000 / fs);
+
 	dev_info(&st->i2c->dev,
 		"%s accel_sens[X] = %u; accl_sens[Y] = %u; accl_sens[Z] = %u\n",
 		__func__, test_setup.accl_sens[X], test_setup.accl_sens[Y],
 		test_setup.accl_sens[Z]);
-	if (MPL_PROD_KEY(st->chip_info.product_id,
-		st->chip_info.product_revision) ==
-		MPU_PRODUCT_KEY_B1_E1_5) {
-		/* half sensitivity Z accelerometer parts */
-		test_setup.accl_sens[Z] /= 2;
-	} else {
-		/* half sensitivity X, Y, Z accelerometer parts */
-		test_setup.accl_sens[X] /= st->chip_info.multi;
-		test_setup.accl_sens[Y] /= st->chip_info.multi;
-		test_setup.accl_sens[Z] /= st->chip_info.multi;
-	}
+
 	dev_info(&st->i2c->dev,
 		"%s accel_sens[X] = %u; accl_sens[Y] = %u; accl_sens[Z] = %u\n",
 		__func__, test_setup.accl_sens[X], test_setup.accl_sens[Y],
 		test_setup.accl_sens[Z]);
+
 	gravity = test_setup.accl_sens[Z];
 	reg_z_avg = reg_avg[Z] - g_z_sign * gravity * DEF_GYRO_PRECISION;
 	read_accel_hw_self_test_prod_shift(st, st_shift_prod);
@@ -742,7 +772,7 @@ static int inv_check_3500_gyro_self_test(struct inv_gyro_state_s *st,
 
 	return ret_val;
 }
-static int inv_check_6050_gyro_self_test(struct inv_gyro_state_s *st,
+static int inv_check_gyro_self_test(struct inv_gyro_state_s *st,
 					 int *reg_avg, int *st_avg)
 {
 	int result;
@@ -874,7 +904,7 @@ static int inv_check_6500_gyro_self_test(struct inv_gyro_state_s *st,
 	} else {
 		/* Self Test Pass/Fail Criteria B */
 		dev_info(&st->i2c->dev, "%s: GYRO:CRITERIA B\n", __func__);
-		gyro_st_al = DEF_GYRO_ST_AL * DEF_SELFTEST_GYRO_SENS
+		gyro_st_al = DEF_GYRO_ST_AL * test_setup.gyro_sens
 					* DEF_ST_PRECISION;
 		for (i = 0; i < 3; i++) {
 			st_shift_cust[i] = st_avg[i] - reg_avg[i];
@@ -885,7 +915,7 @@ static int inv_check_6500_gyro_self_test(struct inv_gyro_state_s *st,
 
 	if (ret_val == 0) {
 		/* Self Test Pass/Fail Criteria C */
-		gyro_offset_max = DEF_GYRO_OFFSET_MAX * DEF_SELFTEST_GYRO_SENS
+		gyro_offset_max = DEF_GYRO_OFFSET_MAX * test_setup.gyro_sens
 						* DEF_ST_PRECISION;
 		for (i = 0; i < 3; i++) {
 			if (abs(reg_avg[i]) > gyro_offset_max)
@@ -954,8 +984,7 @@ static int inv_check_6500_accl_self_test(struct inv_gyro_state_s *st,
 	} else {
 		dev_info(&st->i2c->dev, "%s: ACCEL:CRITERIA B\n", __func__);
 		/* Self Test Pass/Fail Criteria B */
-		gravity = (u32)(DEF_ST_SCALE * DEF_ST_PRECISION
-					/ DEF_ST_ACCL_FULL_SCALE);
+		gravity = (u32)test_setup.accl_sens[X];
 		accel_st_al_min = DEF_ACCEL_ST_AL_MIN * gravity;
 		accel_st_al_max = DEF_ACCEL_ST_AL_MAX * gravity;
 		for (i = 0; i < 3; i++) {
@@ -1204,10 +1233,10 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 					      gyro_bias_regular, gyro_bias_st);
 	} else {
 		if (st->chip_type == INV_MPU6050) {
-			accel_result = !inv_check_accl_self_test_raw(st,
-				accl_bias_regular, ACCEL_BIAS_THRESHOLD_SMT);
-			gyro_result = !inv_check_gyro_self_test_raw(st,
-				gyro_bias_regular, GYRO_DPS_THRESHOLD_SMT);
+			accel_result = !inv_check_accl_self_test(st,
+				accl_bias_regular, accl_bias_st);
+			gyro_result = !inv_check_gyro_self_test(st,
+				gyro_bias_regular, gyro_bias_st);
 		} else if (st->chip_type == INV_MPU6500) {
 			accel_result = !inv_check_6500_accl_self_test(st,
 				accl_bias_regular, accl_bias_st);

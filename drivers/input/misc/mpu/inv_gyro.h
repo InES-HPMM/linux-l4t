@@ -741,6 +741,9 @@ enum inv_clock_sel_e {
 	NUM_CLK
 };
 
+int inv_hwselftest_accel_fsr(struct inv_gyro_state_s *st);
+int inv_hwselftest_gyro_fsr(struct inv_gyro_state_s *st);
+int inv_hwselftest_setting(struct inv_gyro_state_s *st);
 int inv_hw_self_test(struct inv_gyro_state_s *st, int *gyro_bias_regular);
 int inv_get_silicon_rev_mpu6050(struct inv_gyro_state_s *st);
 int inv_get_silicon_rev_mpu6500(struct inv_gyro_state_s *st);
