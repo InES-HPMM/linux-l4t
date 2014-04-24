@@ -85,6 +85,7 @@ endif
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o
+obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper_regdump.o
 
 # To override the "-march=armv7-xxx" in arm/mach-tegra/Makefile
 AFLAGS_sleep.o :=
