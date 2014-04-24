@@ -36,7 +36,6 @@
 #include <linux/pinctrl/pinconf-tegra.h>
 
 #include <asm/mach-types.h>
-#include <mach/pinmux-t12.h>
 
 #include "pm.h"
 #include "dvfs.h"
@@ -120,7 +119,6 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 		.pwm_rate = 12750000,
 		.min_uV = E1735_CPU_VDD_MIN_UV,
 		.step_uV = E1735_CPU_VDD_STEP_UV,
-		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PS5,
 		.out_enable_high = false,
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
@@ -255,6 +253,19 @@ static int __init ardbeg_cl_dvfs_init(struct board_info *pmu_board_info)
 		}
 
 		data = &e1735_cl_dvfs_data;
+
+		data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
+		if (!data->u.pmu_pwm.pinctrl_dev)
+			return -EINVAL;
+
+		data->u.pmu_pwm.pwm_pingroup =
+				pinctrl_get_selector_from_group_name(
+					data->u.pmu_pwm.pinctrl_dev,
+					"dvfs_pwm_px0");
+		if (data->u.pmu_pwm.pwm_pingroup < 0) {
+			pr_err("%s: Tegra pin dvfs_pwm_px0 not found\n", __func__);
+			return -EINVAL;
+		}
 
 		data->u.pmu_pwm.pwm_bus = e1767 ?
 			TEGRA_CL_DVFS_PWM_1WIRE_DIRECT :

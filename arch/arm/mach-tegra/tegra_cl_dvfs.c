@@ -35,9 +35,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/tegra-soc.h>
+#include <linux/pinctrl/pinconf-tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/pinmux.h>
 
 #include "tegra_cl_dvfs.h"
 #include "clock.h"
@@ -440,6 +440,25 @@ static inline bool is_vmin_delivered(struct tegra_cl_dvfs *cld)
 	return true;
 }
 
+static int tegra_pinctrl_set_tristate(struct tegra_cl_dvfs_platform_data *d,
+		int group_sel, int tristate)
+{
+	int ret;
+	unsigned long config = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_TRISTATE,
+					tristate);
+	if (!d->u.pmu_pwm.pinctrl_dev) {
+		pr_err("%s(): ERROR: No Tegra pincontrol driver\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = pinctrl_set_config_for_group_sel(d->u.pmu_pwm.pinctrl_dev,
+				group_sel, config);
+	if (ret < 0)
+		pr_err("%s(): ERROR: pinconfig for pin group %d failed: %d\n",
+			__func__, group_sel, ret);
+	return ret;
+}
+
 static int output_enable(struct tegra_cl_dvfs *cld)
 {
 	if (is_i2c(cld)) {
@@ -459,7 +478,7 @@ static int output_enable(struct tegra_cl_dvfs *cld)
 
 		if (d->u.pmu_pwm.pwm_bus == TEGRA_CL_DVFS_PWM_1WIRE_DIRECT) {
 			int pg = d->u.pmu_pwm.pwm_pingroup;
-			tegra_pinmux_set_tristate(pg, TEGRA_TRI_NORMAL);
+			tegra_pinctrl_set_tristate(d, pg, TEGRA_PIN_DISABLE);
 			return 0;
 		}
 
@@ -485,7 +504,7 @@ static int output_disable_pwm(struct tegra_cl_dvfs *cld)
 
 	if (d->u.pmu_pwm.pwm_bus == TEGRA_CL_DVFS_PWM_1WIRE_DIRECT) {
 		int pg = d->u.pmu_pwm.pwm_pingroup;
-		tegra_pinmux_set_tristate(pg, TEGRA_TRI_TRISTATE);
+		tegra_pinctrl_set_tristate(d, pg, TEGRA_PIN_ENABLE);
 		return 0;
 	}
 
@@ -1370,18 +1389,18 @@ static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
 
 	switch (p_data->u.pmu_pwm.pwm_bus) {
 	case TEGRA_CL_DVFS_PWM_1WIRE_BUFFER:
-		tegra_pinmux_set_tristate(pg, TEGRA_TRI_NORMAL);
+		tegra_pinctrl_set_tristate(p_data, pg, TEGRA_PIN_DISABLE);
 		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
 		break;
 
 	case TEGRA_CL_DVFS_PWM_1WIRE_DIRECT:
-		tegra_pinmux_set_tristate(pg, TEGRA_TRI_TRISTATE);
+		tegra_pinctrl_set_tristate(p_data, pg, TEGRA_PIN_ENABLE);
 		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
 		break;
 
 	case TEGRA_CL_DVFS_PWM_2WIRE:
-		tegra_pinmux_set_tristate(pg, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(pcg, TEGRA_TRI_NORMAL);
+		tegra_pinctrl_set_tristate(p_data, pg, TEGRA_PIN_DISABLE);
+		tegra_pinctrl_set_tristate(p_data, pcg, TEGRA_PIN_DISABLE);
 		break;
 
 	default:
@@ -2177,7 +2196,13 @@ static int dt_parse_pwm_pmic_params(struct platform_device *pdev,
 
 	/* pwm pins data */
 	OF_GET_GPIO(pmic_dn, pwm-data-gpio, pin, f);
-	p_data->u.pmu_pwm.pwm_pingroup = tegra_pinmux_get_pingroup(pin);
+	p_data->u.pmu_pwm.pinctrl_dev = pinctrl_get_dev_from_gpio(pin);
+	if (!p_data->u.pmu_pwm.pinctrl_dev) {
+		dev_err(&pdev->dev, "No tegra pincontrol driver\n");
+		goto err_out;
+	}
+	p_data->u.pmu_pwm.pwm_pingroup = pinctrl_get_selector_from_gpio(
+					p_data->u.pmu_pwm.pinctrl_dev, pin);
 	if (p_data->u.pmu_pwm.pwm_pingroup < 0) {
 		dev_err(&pdev->dev, "invalid gpio %d\n", pin);
 		goto err_out;
@@ -2190,7 +2215,8 @@ static int dt_parse_pwm_pmic_params(struct platform_device *pdev,
 	} else if (pwm_2wire) {
 		OF_GET_GPIO(pmic_dn, pwm-clk-gpio, pin, f);
 		p_data->u.pmu_pwm.pwm_clk_pingroup =
-			tegra_pinmux_get_pingroup(pin);
+			pinctrl_get_selector_from_gpio(
+				p_data->u.pmu_pwm.pinctrl_dev, pin);
 		if (p_data->u.pmu_pwm.pwm_pingroup < 0) {
 			dev_err(&pdev->dev, "invalid gpio %d\n", pin);
 			goto err_out;

@@ -20,6 +20,7 @@
 #define _TEGRA_CL_DVFS_H_
 
 struct tegra_cl_dvfs;
+struct pinctrl_dev;
 
 #define MAX_CL_DVFS_VOLTAGES		33
 
@@ -95,6 +96,7 @@ struct tegra_cl_dvfs_platform_data {
 			int			out_gpio;
 			bool			out_enable_high;
 			struct platform_device	*dfll_bypass_dev;
+			struct pinctrl_dev	*pinctrl_dev;
 		} pmu_pwm;
 	} u;
 

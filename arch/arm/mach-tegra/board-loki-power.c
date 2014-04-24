@@ -28,10 +28,10 @@
 #include <linux/power/power_supply_extcon.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
+#include <linux/pinctrl/pinconf-tegra.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
-#include <mach/pinmux-t12.h>
 
 #include <linux/pid_thermal_gov.h>
 
@@ -129,7 +129,6 @@ static struct tegra_cl_dvfs_platform_data loki_cl_dvfs_data = {
 		.min_uV = LOKI_CPU_VDD_MIN_UV,
 		.step_uV = LOKI_CPU_VDD_STEP_UV,
 		.pwm_bus = TEGRA_CL_DVFS_PWM_1WIRE_BUFFER,
-		.pwm_pingroup = TEGRA_PINGROUP_DVFS_PWM,
 		.out_gpio = TEGRA_GPIO_PU6,
 		.out_enable_high = false,
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
@@ -163,6 +162,23 @@ static int __init loki_cl_dvfs_init(void)
 
 	{
 		data = &loki_cl_dvfs_data;
+
+		data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
+		if (!data->u.pmu_pwm.pinctrl_dev) {
+			pr_err("%s: Tegra pincontrol driver not found\n",
+				__func__);
+			return -EINVAL;
+		}
+
+		data->u.pmu_pwm.pwm_pingroup =
+			pinctrl_get_selector_from_group_name(
+				data->u.pmu_pwm.pinctrl_dev, "dvfs_pwm_px0");
+		if (data->u.pmu_pwm.pwm_pingroup < 0) {
+			pr_err("%s: Tegra pin dvfs_pwm_px0 not found\n",
+				__func__);
+			return -EINVAL;
+		}
+
 		if (data->u.pmu_pwm.dfll_bypass_dev) {
 			/* this has to be exact to 1uV level from table */
 			loki_suspend_data.suspend_dfll_bypass =
