@@ -27,6 +27,18 @@ config MFD_AS3711
 	help
 	  Support for the AS3711 PMIC from AMS
 
+config MFD_MAX77620
+	bool "Maxim MAX77620"
+	select MFD_CORE
+	select REGMAP_I2C
+	select REGMAP_IRQ
+	depends on I2C=y && GENERIC_HARDIRQS
+	help
+	  Say yes here to add support for Maxim's Max77620. This only
+	  enables the I2C core functionality of the the device. The individual
+	  components for GPIO/ RTC/ Regulator and others need to be enabled by
+	  their corresponding menus.
+
 config PMIC_ADP5520
 	bool "Analog Devices ADP5520/01 MFD PMIC Core Support"
 	depends on I2C=y
