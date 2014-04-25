@@ -182,6 +182,7 @@ struct clk {
 	struct clk		*parent;
 	u32			div;
 	u32			mul;
+	struct clk		*skipper;
 	struct clk_stats 	stats;
 
 	const struct clk_mux_sel	*inputs;

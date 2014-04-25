@@ -452,6 +452,15 @@ do {									       \
 #define SUPER_CLOCK_DIV_U71_SHIFT	16
 #define SUPER_CLOCK_DIV_U71_MASK	(0xff << SUPER_CLOCK_DIV_U71_SHIFT)
 
+#define SUPER_SKIPPER_ENABLE		(1 << 31)
+#define SUPER_SKIPPER_TERM_SIZE		8
+#define SUPER_SKIPPER_MUL_SHIFT		8
+#define SUPER_SKIPPER_MUL_MASK		(((1 << SUPER_SKIPPER_TERM_SIZE) - 1) \
+					<< SUPER_SKIPPER_MUL_SHIFT)
+#define SUPER_SKIPPER_DIV_SHIFT		0
+#define SUPER_SKIPPER_DIV_MASK		(((1 << SUPER_SKIPPER_TERM_SIZE) - 1) \
+					<< SUPER_SKIPPER_DIV_SHIFT)
+
 #define BUS_CLK_DISABLE			(1<<3)
 #define BUS_CLK_DIV_MASK		0x3
 
@@ -4462,6 +4471,89 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
+/* Supper skipper ops */
+static void tegra21_clk_super_skip_init(struct clk *c)
+{
+	u32 val = clk_readl(c->reg);
+
+	if (!c->parent)
+		c->parent = c - 1;
+	c->parent->skipper = c;
+
+	/* Skipper is always ON (does not gate the clock) */
+	c->state = ON;
+	c->set = true;
+	c->refcnt++;
+
+	c->max_rate = c->parent->max_rate;
+
+	if (val & SUPER_SKIPPER_ENABLE) {
+		c->div = ((val & SUPER_SKIPPER_DIV_MASK) >>
+			  SUPER_SKIPPER_DIV_SHIFT) + 1;
+		c->mul = ((val & SUPER_SKIPPER_MUL_MASK) >>
+			  SUPER_SKIPPER_MUL_SHIFT) + 1;
+	} else {
+		c->div = 1;
+		c->mul = 1;
+	}
+}
+
+static int tegra21_clk_super_skip_enable(struct clk *c)
+{
+	/* no clock gate in skipper, just pass thru to parent */
+	return 0;
+}
+
+static void tegra21_clk_super_skip_disable(struct clk *c)
+{
+	/* no clock gate in skipper, just pass thru to parent */
+}
+
+static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
+{
+	u32 val, mul, div;
+	u64 output_rate = rate;
+	unsigned long input_rate, flags;
+
+	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+
+	/*
+	 * Locking parent clock prevents parent rate change while super skipper
+	 * is updated. It also takes care of super skippers that share h/w
+	 * register with parent clock divider.
+	 */
+	clk_lock_save(c->parent, &flags);
+	input_rate = clk_get_rate_locked(c->parent);
+
+	div = 1 << SUPER_SKIPPER_TERM_SIZE;
+	output_rate <<= SUPER_SKIPPER_TERM_SIZE;
+	do_div(output_rate, input_rate);
+	mul = output_rate ? : 1;
+
+	if (mul < div) {
+		val = SUPER_SKIPPER_ENABLE |
+			((mul - 1) << SUPER_SKIPPER_MUL_SHIFT) |
+			((div - 1) << SUPER_SKIPPER_DIV_SHIFT);
+		c->div = div;
+		c->mul = mul;
+	} else {
+		val = 0;
+		c->div = 1;
+		c->mul = 1;
+	}
+	clk_writel(val, c->reg);
+
+	clk_unlock_restore(c->parent, &flags);
+	return 0;
+}
+
+static struct clk_ops tegra_clk_super_skip_ops = {
+	.init			= &tegra21_clk_super_skip_init,
+	.enable			= &tegra21_clk_super_skip_enable,
+	.disable		= &tegra21_clk_super_skip_disable,
+	.set_rate		= &tegra21_clk_super_skip_set_rate,
+};
+
 /* 1x shared bus ops */
 static long _1x_round_updown(struct clk *c, struct clk *src,
 				unsigned long rate, bool up)
@@ -7514,6 +7606,23 @@ static struct clk tegra_clk_cbus = {
 		},					\
 	}
 
+#define SUPER_SKIP_CLK(_name, _dev, _con, _reg, _parent, _flags) \
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id	   = _con,		\
+		},					\
+		.ops       = &tegra_clk_super_skip_ops,	\
+		.reg       = _reg,			\
+		.parent    = _parent,			\
+		.flags     = _flags,			\
+	}
+
+#define PERIPH_CLK_SKIP(_name, _dev, _con, _clk_num, _reg, _reg_skip, _max, _inputs, _flags) \
+	PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags), \
+	SUPER_SKIP_CLK(_name "_skip", _dev, "skip", _reg_skip, NULL, 0)
+
 #define D_AUDIO_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
 		.name      = _name,			\
@@ -7662,15 +7771,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartape",	"uartape",		NULL,	212,	0x710,	50000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("vic03",	"vic03",		NULL,	178,	0x678,	500000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71),
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	600000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("msenc",	"msenc",		NULL,	219,	0x6a0,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
-	PERIPH_CLK("nvdec",	"nvdec",		NULL,	194,	0x698,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm, MUX | DIV_U71 | DIV_U71_INT),
-	PERIPH_CLK("nvjpg",	"nvjpg",		NULL,	195,	0x69c,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm, MUX | DIV_U71 | DIV_U71_INT),
-	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
-	PERIPH_CLK("tsecb",	"tsecb",		NULL,	206,	0x6d8,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
@@ -7707,11 +7810,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2cslow",	"i2cslow",		NULL,	81,	0x3fc,	26000000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
-#ifdef CONFIG_TEGRA_SE_ON_CBUS
-	PERIPH_CLK("se",	"se",			NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-#else
-	PERIPH_CLK("se",	"tegra21-se",		NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-#endif
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	408000000, mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
@@ -7723,6 +7821,18 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("mc_cbpa",	"mc_cbpa",		NULL,	168,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_ccpa",	"mc_ccpa",		NULL,	201,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_cdpa",	"mc_cdpa",		NULL,	200,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+
+	PERIPH_CLK_SKIP("vic03", "vic03",	NULL,	178,	0x678,	0x6f0,	500000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71),
+	PERIPH_CLK_SKIP("msenc", "msenc",	NULL,	219,	0x6a0,	0x6e8,  768000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK_SKIP("nvdec", "nvdec",	NULL,	194,	0x698,	0x6f4,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm, MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK_SKIP("nvjpg", "nvjpg",	NULL,	195,	0x69c,	0x700,	768000000, mux_pllc2_c_c3_pllp_plla1_clkm, MUX | DIV_U71 | DIV_U71_INT),
+#ifdef CONFIG_TEGRA_SE_ON_CBUS
+	PERIPH_CLK_SKIP("se",	"se",		NULL,	127,	0x42c,	0x704,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+#else
+	PERIPH_CLK_SKIP("se",	"tegra21-se",	NULL,	127,	0x42c,	0x704,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+#endif
+	PERIPH_CLK_SKIP("tsec",	"tsec",		NULL,	83,	0x1f4,	0x708,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK_SKIP("tsecb", "tsecb",	NULL,	206,	0x6d8,	0x70c,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
