@@ -273,7 +273,8 @@ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage)
 			if (IS_ERR(acl))
 				return PTR_ERR(acl);
 		}
-		if (!acl)
+		if (!acl && !(test_opt(sbi, ANDROID_EMU) &&
+				F2FS_I(inode)->i_advise & FADVISE_ANDROID_EMU))
 			inode->i_mode &= ~current_umask();
 	}
 

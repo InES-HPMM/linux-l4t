@@ -45,6 +45,7 @@ enum {
 	Opt_err_continue,
 	Opt_err_panic,
 	Opt_err_recover,
+	Opt_android_emu,
 	Opt_err,
 };
 
@@ -60,6 +61,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_err_continue, "errors=continue"},
 	{Opt_err_panic, "errors=panic"},
 	{Opt_err_recover, "errors=recover"},
+	{Opt_android_emu, "android_emu=%s"},
 	{Opt_err, NULL},
 };
 
@@ -264,6 +266,14 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
 
+	if (test_opt(sbi, ANDROID_EMU))
+		seq_printf(seq, ",android_emu=%u:%u:%ho%s",
+				sbi->android_emu_uid,
+				sbi->android_emu_gid,
+				sbi->android_emu_mode,
+				(sbi->android_emu_flags &
+					F2FS_ANDROID_EMU_NOCASE) ?
+						":nocase" : "");
 
 	return 0;
 }
@@ -327,6 +337,40 @@ static const struct export_operations f2fs_export_ops = {
 	.fh_to_parent = f2fs_fh_to_parent,
 	.get_parent = f2fs_get_parent,
 };
+
+static int parse_android_emu(struct f2fs_sb_info *sbi, char *args)
+{
+	char *sep = args;
+	char *sepres;
+	int ret;
+
+	if (!sep)
+		return -EINVAL;
+
+	sepres = strsep(&sep, ":");
+	if (!sep)
+		return -EINVAL;
+	ret = kstrtou32(sepres, 0, &sbi->android_emu_uid);
+	if (ret)
+		return ret;
+
+	sepres = strsep(&sep, ":");
+	if (!sep)
+		return -EINVAL;
+	ret = kstrtou32(sepres, 0, &sbi->android_emu_gid);
+	if (ret)
+		return ret;
+
+	sepres = strsep(&sep, ":");
+	ret = kstrtou16(sepres, 8, &sbi->android_emu_mode);
+	if (ret)
+		return ret;
+
+	if (sep && strstr(sep, "nocase"))
+		sbi->android_emu_flags = F2FS_ANDROID_EMU_NOCASE;
+
+	return 0;
+}
 
 static int parse_options(struct super_block *sb, struct f2fs_sb_info *sbi,
 				char *options)
@@ -402,6 +446,21 @@ static int parse_options(struct super_block *sb, struct f2fs_sb_info *sbi,
 		case Opt_err_recover:
 			set_opt(sbi, ERRORS_RECOVER);
 			clear_opt(sbi, ERRORS_PANIC);
+			break;
+		case Opt_android_emu:
+			if (args->from) {
+				int ret;
+				char *perms = match_strdup(args);
+
+				ret = parse_android_emu(sbi, perms);
+				kfree(perms);
+
+				if (ret)
+					return -EINVAL;
+
+				set_opt(sbi, ANDROID_EMU);
+			} else
+				return -EINVAL;
 			break;
 		default:
 			f2fs_msg(sb, KERN_ERR,
@@ -558,6 +617,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	struct inode *root;
 	long err = -EINVAL;
 	int i;
+	const char *descr = "";
 
 	f2fs_msg(sb, KERN_INFO, "mounting..");
 	/* allocate memory for f2fs-specific super block info */
@@ -729,7 +789,9 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 					"the device does not support discard");
 	}
 
-	f2fs_msg(sb, KERN_INFO, "mounted filesystem");
+	if (test_opt(sbi, ANDROID_EMU))
+		descr = " with android sdcard emulation";
+	f2fs_msg(sb, KERN_INFO, "mounted filesystem%s", descr);
 
 	return 0;
 fail:
