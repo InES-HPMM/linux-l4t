@@ -117,7 +117,6 @@
 						regulator-name = "vdd-core";
 						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
-						regulator-init-microvolt = <1000000>;
 						regulator-always-on;
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 						regulator-boot-on;
