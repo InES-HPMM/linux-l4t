@@ -364,6 +364,29 @@ int snd_dmaengine_pcm_open_request_chan(struct snd_pcm_substream *substream,
 EXPORT_SYMBOL_GPL(snd_dmaengine_pcm_open_request_chan);
 
 /**
+ * snd_dmaengine_pcm_open_request_chan_name - Open a dmaengine based PCM substream
+ * and request channel with the channel name
+ *
+ * @substream: PCM substream
+ * @chan_name: DMA channel name to open
+ *
+ * Returns 0 on success, a negative error code otherwise.
+ *
+ * This function will request a DMA channel using the name.
+ */
+int snd_dmaengine_pcm_open_request_chan_with_name(
+	struct snd_pcm_substream *substream,
+	const char *chan_name)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct device *dev = rtd->platform->dev;
+
+	return snd_dmaengine_pcm_open(substream,
+			dma_request_slave_channel(dev, chan_name));
+}
+EXPORT_SYMBOL_GPL(snd_dmaengine_pcm_open_request_chan_with_name);
+
+/**
  * snd_dmaengine_pcm_close - Close a dmaengine based PCM substream
  * @substream: PCM substream
  */
