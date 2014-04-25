@@ -191,11 +191,18 @@ static void lc709203f_work(struct work_struct *work)
 static int lc709203f_get_temperature(struct lc709203f_chip *chip)
 {
 	int val;
+	int retries = 2;
+	int i;
 
 	if (chip->shutdown_complete)
 		return chip->temperature;
 
-	val = lc709203f_read_word(chip->client, LC709203F_TEMPERATURE);
+	for (i = 0; i < retries; i++) {
+		val = lc709203f_read_word(chip->client, LC709203F_TEMPERATURE);
+		if (val < 0)
+			continue;
+	}
+
 	if (val < 0) {
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
 		return val;
