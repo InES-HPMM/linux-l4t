@@ -111,6 +111,7 @@ enum tegra210_audio_test_id {
 	TEST_ID_MVC_START_STOP,
 	TEST_ID_RUNTIME_PEAKMETER,
 	TEST_ID_MVC_MUTE_FIRST_CH,
+	TEST_ID_RUNTIME_PARAM_SWITCH,
 };
 
 struct tegra210_audio_test_param {
