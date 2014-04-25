@@ -1299,6 +1299,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
 		int temp_range_len, chg_current_lim_len, chg_voltage_lim_len;
+		int count;
 		int wdt_timeout;
 		int chg_restart_time;
 		int auto_recharge_time_power_off;
@@ -1408,27 +1409,32 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 		chg_pdata->tz_name = of_get_property(batt_reg_node,
 						"ti,thermal-zone", NULL);
 
-		temp_range_len = of_property_count_u32(batt_reg_node,
-					"ti,temp-range");
-		chg_current_lim_len = of_property_count_u32(batt_reg_node,
+		count = of_property_count_u32(batt_reg_node, "ti,temp-range");
+		temp_range_len = (count > 0) ? count : 0;
+
+		count = of_property_count_u32(batt_reg_node,
 					"ti,charge-current-limit");
-		if (!chg_current_lim_len)
-			chg_current_lim_len = of_property_count_u32(batt_reg_node,
+		if (count <= 0)
+			count = of_property_count_u32(batt_reg_node,
 					"ti,charge-thermal-current-limit");
-		chg_voltage_lim_len = of_property_count_u32(batt_reg_node,
+		chg_current_lim_len = (count > 0) ? count : 0;
+
+		count = of_property_count_u32(batt_reg_node,
 					"ti,charge-thermal-voltage-limit");
-		if (temp_range_len < 0)
+		chg_voltage_lim_len = (count > 0) ? count : 0;
+
+		if (!temp_range_len)
 			goto skip_therm_profile;
 
 		if (temp_range_len != chg_current_lim_len) {
 			dev_info(&client->dev,
-				"thermal profile data is not correct\n");
+				"current thermal profile is not correct\n");
 			goto skip_therm_profile;
 		}
 
 		if (chg_voltage_lim_len && (temp_range_len != chg_voltage_lim_len)) {
 			dev_info(&client->dev,
-				"thermal profile data is not correct\n");
+				"voltage thermal profile is not correct\n");
 			goto skip_therm_profile;
 		}
 
