@@ -41,9 +41,11 @@
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #include "../../../../arch/arm/mach-tegra/tegra12_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
+#define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #include "../../../../drivers/platform/tegra/mc/tegra21_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
+#define MC_ERR_34BIT_PHYS_ADDR
 #endif
 
 #define MAX_PRINTS			6
