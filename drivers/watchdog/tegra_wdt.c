@@ -321,7 +321,7 @@ static int tegra_wdt_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_wdt *tegra_wdt = platform_get_drvdata(pdev);
 
-	__tegra_wdt_disable(&tegra_wdt);
+	__tegra_wdt_disable(tegra_wdt);
 	return 0;
 }
 
@@ -330,7 +330,7 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 	struct tegra_wdt *tegra_wdt = platform_get_drvdata(pdev);
 
 	if (watchdog_active(&tegra_wdt->wdt))
-		__tegra_wdt_enable(&tegra_wdt);
+		__tegra_wdt_enable(tegra_wdt);
 
 	return 0;
 }
@@ -374,5 +374,4 @@ MODULE_PARM_DESC(enable_on_probe,
 		 "Start watchdog during boot");
 
 MODULE_LICENSE("GPL");
-MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_ALIAS("platform:tegra_wdt");
