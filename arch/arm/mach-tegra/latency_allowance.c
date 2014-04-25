@@ -164,10 +164,11 @@ static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 }
 
 int tegra_set_disp_latency_allowance(enum tegra_la_id id,
+					unsigned long emc_freq_hz,
 					unsigned int bw_mbps,
 					struct dc_to_la_params disp_params) {
 	if (cs.set_disp_la)
-		return cs.set_disp_la(id, bw_mbps, disp_params);
+		return cs.set_disp_la(id, emc_freq_hz, bw_mbps, disp_params);
 	else if (cs.set_la)
 		return cs.set_la(id, bw_mbps);
 	return 0;

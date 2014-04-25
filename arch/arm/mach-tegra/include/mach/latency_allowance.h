@@ -160,6 +160,7 @@ struct disp_client {
 struct dc_to_la_params {
 	unsigned int thresh_lwm_bytes;
 	unsigned int spool_up_buffering_adj_bytes;
+	unsigned int drain_time_usec_fp;
 	unsigned int total_dc0_bw;
 	unsigned int total_dc1_bw;
 };
@@ -174,6 +175,7 @@ struct la_to_dc_params {
 };
 
 int tegra_set_disp_latency_allowance(enum tegra_la_id id,
+					unsigned long emc_freq_hz,
 					unsigned int bandwidth_in_mbps,
 					struct dc_to_la_params disp_params);
 
