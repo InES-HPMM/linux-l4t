@@ -355,7 +355,7 @@ int tegra210_mbdrc_set_config(enum tegra210_ahub_cifs cif,
 
 	regmap_update_bits(mbdrc->regmap,
 		TEGRA210_MBDRC_CHAN_MASK,
-		TEGRA210_MBDRC_CHAN_MASK,
+		TEGRA210_MBDRC_CHAN_MASK_MASK,
 		config->chan_mask << TEGRA210_MBDRC_CHAN_MASK_SHIFT);
 
 	val = (config->fa_fact << TEGRA210_MBDRC_FAST_FACTOR_FA_FACTOR_SHIFT |
