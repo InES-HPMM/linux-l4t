@@ -802,14 +802,14 @@ static long fixed_src_bus_round_updown(struct clk *c, struct clk *src,
 
 static inline bool bus_user_is_slower(struct clk *a, struct clk *b)
 {
-	return a->u.shared_bus_user.client->max_rate * a->div <
-		b->u.shared_bus_user.client->max_rate * b->div;
+	return a->u.shared_bus_user.client->max_rate <
+		b->u.shared_bus_user.client->max_rate;
 }
 
 static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
 {
-	return a->u.shared_bus_user.rate * a->div <
-		b->u.shared_bus_user.rate * b->div;
+	return a->u.shared_bus_user.rate <
+		b->u.shared_bus_user.rate;
 }
 
 /* clk_m functions */
@@ -5336,10 +5336,9 @@ static int cbus_backup(struct clk *c)
 		struct clk *client = user->u.shared_bus_user.client;
 		if (client && (client->state == ON) &&
 		    (client->parent == c->parent)) {
-			ret = cbus_switch_one(client,
-					      c->shared_bus_backup.input,
-					      c->shared_bus_backup.value *
-					      user->div, true);
+			ret = cbus_switch_one(
+				client, c->shared_bus_backup.input,
+				c->shared_bus_backup.value, true);
 			if (ret)
 				return ret;
 		}
@@ -5370,9 +5369,30 @@ static void cbus_restore(struct clk *c)
 
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
-		if (user->u.shared_bus_user.client)
-			cbus_switch_one(user->u.shared_bus_user.client,
-					c->parent, c->div * user->div, false);
+		struct clk *client = user->u.shared_bus_user.client;
+		if (client)
+			cbus_switch_one(client, c->parent, c->div, false);
+	}
+}
+
+static void cbus_skip(struct clk *c, unsigned long bus_rate)
+{
+	struct clk *user;
+	unsigned long rate;
+
+	list_for_each_entry(user, &c->shared_bus_list,
+			u.shared_bus_user.node) {
+		struct clk *client = user->u.shared_bus_user.client;
+		if (client && client->skipper &&
+		    user->u.shared_bus_user.enabled) {
+			/* Make sure skipper output is above the target */
+			rate = user->u.shared_bus_user.rate;
+			rate += bus_rate >> SUPER_SKIPPER_TERM_SIZE;
+
+			clk_set_rate(client->skipper, rate);
+			user->div = client->skipper->div;
+			user->mul = client->skipper->mul;
+		}
 	}
 }
 
@@ -5397,6 +5417,7 @@ static int tegra21_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 
 	if (rate == 0)
 		return 0;
+
 	ret = clk_enable(c->parent);
 	if (ret) {
 		pr_err("%s: failed to enable %s clock: %d\n",
@@ -5426,6 +5447,7 @@ static int tegra21_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 		ret = cbus_dvfs_set_rate(c, rate);
 
 	cbus_restore(c);
+	cbus_skip(c, rate);
 
 out:
 	clk_disable(c->parent);
@@ -5462,11 +5484,7 @@ static int tegra21_clk_cbus_update(struct clk *bus)
 		unsigned long *dest = &bus->dvfs->freqs[0];
 		unsigned long *src =
 			&slow->u.shared_bus_user.client->dvfs->freqs[0];
-		if (slow->div > 1)
-			for (i = 0; i < bus->dvfs->num_freqs; i++)
-				dest[i] = src[i] * slow->div;
-		else
-			memcpy(dest, src, sizeof(*dest) * bus->dvfs->num_freqs);
+		memcpy(dest, src, sizeof(*dest) * bus->dvfs->num_freqs);
 	}
 
 	/* update bus state variables and rate */
@@ -5492,6 +5510,9 @@ static int tegra21_clk_cbus_update(struct clk *bus)
 		ret = bus->ops->set_rate(bus, rate);
 		if (ret)
 			return ret;
+	} else {
+		/* Skippers may change even if bus rate is the same */
+		cbus_skip(bus, rate);
 	}
 
 	if (bus->dvfs) {
@@ -5515,8 +5536,11 @@ static int tegra21_clk_cbus_update(struct clk *bus)
 	rate = tegra21_clk_shared_bus_update(bus, NULL, NULL, NULL);
 
 	old_rate = clk_get_rate_locked(bus);
-	if (rate == old_rate)
+	if (rate == old_rate) {
+		/* Skippers may change even if bus rate is the same */
+		cbus_skip(bus, rate);
 		return 0;
+	}
 
 	return clk_set_rate_locked(bus, rate);
 }
@@ -5622,13 +5646,10 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 		 * Ignore requests from disabled floor and bw users, and from
 		 * auto-users riding the bus. Always honor ceiling users, even
 		 * if they are disabled - we do not want to keep enabled parent
-		 * bus just because ceiling is set. Ignore SCLK/AHB/APB dividers
-		 * to propagate flat max request.
+		 * bus just because ceiling is set.
 		 */
 		if (c->u.shared_bus_user.enabled || cap_user) {
 			unsigned long request_rate = c->u.shared_bus_user.rate;
-			if (!(c->flags & DIV_BUS))
-				request_rate *=	c->div ? : 1;
 			usage_flags |= c->u.shared_bus_user.usage_flag;
 
 			if (!cap_user)
@@ -5762,7 +5783,7 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 		c->u.shared_bus_user.client->flags |=
 			c->parent->flags & PERIPH_ON_CBUS;
 		c->flags |= c->parent->flags & PERIPH_ON_CBUS;
-		c->div = c->u.shared_bus_user.client_div ? : 1;
+		c->div = 1;
 		c->mul = 1;
 	}
 
@@ -5833,22 +5854,23 @@ static long tegra_clk_shared_bus_user_round_rate(
 	/*
 	 * Defer rounding requests until aggregated. BW users must not be
 	 * rounded at all, others just clipped to bus range (some clients
-	 * may use round api to find limits). Ignore SCLK/AHB and AHB/APB
-	 * dividers to keep flat bus requests propagation.
+	 * may use round api to find limits).
 	 */
 
 	if ((c->u.shared_bus_user.mode != SHARED_BW) &&
 	    (c->u.shared_bus_user.mode != SHARED_ISO_BW)) {
-		if (!(c->flags & DIV_BUS) && (c->div > 1))
-			rate *= c->div;
-
-		if (rate > c->parent->max_rate)
+		if (rate > c->parent->max_rate) {
 			rate = c->parent->max_rate;
-		else if (rate < c->parent->min_rate)
-			rate = c->parent->min_rate;
+		} else {
+			/* Skippers allow to run below bus minimum */
+			struct clk *client = c->u.shared_bus_user.client;
+			int skip = (client && client->skipper) ?
+				SUPER_SKIPPER_TERM_SIZE : 0;
+			unsigned long min_rate = c->parent->min_rate >> skip;
 
-		if (!(c->flags & DIV_BUS) && (c->div > 1))
-			rate /= c->div;
+			if (rate < min_rate)
+				rate = min_rate;
+		}
 	}
 	return rate;
 }
