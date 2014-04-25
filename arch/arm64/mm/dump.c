@@ -28,8 +28,8 @@ struct addr_marker {
 static struct addr_marker address_markers[] = {
 	{ VMALLOC_START,	"vmalloc() Area" },
 	{ VMALLOC_END,		"vmalloc() End" },
-	{ VMEMMAP_START,	"vmemmap Area(8GB)" },
-	{ VMEMMAP_END,		"vmemmap End" },
+	{ 0xffffffbc00000000,	"vmemmap Area(8GB)" },
+	{ 0xffffffbdffffffff,	"vmemmap End" },
 	{ 0xffffffbffbc00000,	"earlyprintk device(2MB)" },
 	{ 0xffffffbffbdfffff,	"earlyprintk device End" },
 	{ 0xffffffbffbe00000,	"PCI I/O space start" },
