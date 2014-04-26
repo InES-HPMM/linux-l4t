@@ -60,7 +60,7 @@ static inline int need_user_flush_range(void)
 
 	if (!read) {
 		read = 1;
-		asm ("mrs %0, CLIDR_EL1" : "=r" (louis));
+		asm volatile ("mrs %0, CLIDR_EL1" : "=r" (louis));
 		louis = (louis >> CLIDR_LOUIS_SHIFT) & CLIDR_LOUIS_MASK;
 	}
 
