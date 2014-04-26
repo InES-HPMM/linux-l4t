@@ -627,13 +627,15 @@ static inline int dec_valid_block_count(struct f2fs_sb_info *sbi,
 
 	if (sbi->total_valid_block_count < (block_t)count) {
 		pr_crit("F2FS-fs (%s): block accounting error: %u < %llu\n",
-			sbi->sb->s_id, sbi->total_valid_block_count, count);
+			sbi->sb->s_id, sbi->total_valid_block_count,
+			(unsigned long long)count);
 		f2fs_handle_error(sbi);
 		sbi->total_valid_block_count = count;
 	}
 	if (inode->i_blocks < count) {
 		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %llu\n",
-			sbi->sb->s_id, inode->i_blocks, count);
+			sbi->sb->s_id, (unsigned long long)inode->i_blocks,
+			(unsigned long long)count);
 		f2fs_handle_error(sbi);
 		inode->i_blocks = count;
 	}
@@ -771,7 +773,9 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 
 	if (sbi->total_valid_block_count < count) {
 		pr_crit("F2FS-fs (%s): block accounting error: %llu < %u\n",
-			sbi->sb->s_id, sbi->total_valid_block_count, count);
+			sbi->sb->s_id,
+			(unsigned long long)sbi->total_valid_block_count,
+			count);
 		f2fs_handle_error(sbi);
 		sbi->total_valid_block_count = count;
 	}
@@ -783,7 +787,8 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 	}
 	if (inode->i_blocks < count) {
 		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %u\n",
-			sbi->sb->s_id, inode->i_blocks, count);
+			sbi->sb->s_id, (unsigned long long)inode->i_blocks,
+			count);
 		f2fs_handle_error(sbi);
 		inode->i_blocks = count;
 	}
