@@ -28,9 +28,9 @@
 #define F2FS_MOUNT_XATTR_USER		0x00000010
 #define F2FS_MOUNT_POSIX_ACL		0x00000020
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
+#define F2FS_MOUNT_ANDROID_EMU		0x00001000
 #define F2FS_MOUNT_ERRORS_PANIC		0x00002000
 #define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
-#define F2FS_MOUNT_ANDROID_EMU		0x00001000
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
