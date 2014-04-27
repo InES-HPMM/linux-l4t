@@ -1348,9 +1348,12 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 				snprintf(div, sizeof(div), "x%d.%d", mul, mul2);
 			else
 				snprintf(div, sizeof(div), "x%d.%d..", mul, mul2);
+		} else if (c->div < UINT_MAX / 100) {
+			snprintf(div, sizeof(div), "%d.%d", c->div / c->mul,
+				 (c->div * 100 / c->mul) % 100);
 		} else {
 			snprintf(div, sizeof(div), "%d%s", c->div / c->mul,
-				(c->div % c->mul) ? ".5" : "");
+				 (c->div % c->mul) ? ".5" : "");
 		}
 	}
 
