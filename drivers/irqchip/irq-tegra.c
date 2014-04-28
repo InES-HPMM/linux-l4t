@@ -81,6 +81,8 @@ static u32 cpu_iep[MAX_ICTLRS];
 static u32 ictlr_wake_mask[MAX_ICTLRS];
 #endif
 
+static bool manage_cop_irq;
+
 #ifdef CONFIG_FIQ
 static void tegra_legacy_select_fiq(unsigned int irq, bool fiq)
 {
@@ -402,14 +404,16 @@ static int tegra_legacy_irq_suspend(void)
 		/* save interrupt state */
 		cpu_ier[i] = readl(ictlr + ICTLR_CPU_IER);
 		cpu_iep[i] = readl(ictlr + ICTLR_CPU_IEP_CLASS);
-		cop_ier[i] = readl(ictlr + ICTLR_COP_IER);
-		cop_iep[i] = readl(ictlr + ICTLR_COP_IEP_CLASS);
-
-		/* disable COP interrupts */
-		writel(~0, ictlr + ICTLR_COP_IER_CLR);
 
 		/* disable CPU interrupts */
 		writel(~0, ictlr + ICTLR_CPU_IER_CLR);
+
+		if (manage_cop_irq) {
+			cop_ier[i] = readl(ictlr + ICTLR_COP_IER);
+			cop_iep[i] = readl(ictlr + ICTLR_COP_IEP_CLASS);
+			/* disable COP interrupts */
+			writel(~0, ictlr + ICTLR_COP_IER_CLR);
+		}
 
 		/* enable lp1 wake sources */
 		writel(ictlr_wake_mask[i], ictlr + ICTLR_CPU_IER_SET);
@@ -430,9 +434,12 @@ static void tegra_legacy_irq_resume(void)
 		writel(cpu_iep[i], ictlr + ICTLR_CPU_IEP_CLASS);
 		writel(~0ul, ictlr + ICTLR_CPU_IER_CLR);
 		writel(cpu_ier[i], ictlr + ICTLR_CPU_IER_SET);
-		writel(cop_iep[i], ictlr + ICTLR_COP_IEP_CLASS);
-		writel(~0ul, ictlr + ICTLR_COP_IER_CLR);
-		writel(cop_ier[i], ictlr + ICTLR_COP_IER_SET);
+
+		if (manage_cop_irq) {
+			writel(cop_iep[i], ictlr + ICTLR_COP_IEP_CLASS);
+			writel(~0ul, ictlr + ICTLR_COP_IER_CLR);
+			writel(cop_ier[i], ictlr + ICTLR_COP_IER_SET);
+		}
 	}
 	local_irq_restore(flags);
 }
@@ -457,6 +464,8 @@ static int __init tegra_legacy_irq_syscore_init(void)
 void tegra_init_legacy_irq_cop(void)
 {
 	int i;
+
+	manage_cop_irq = true;
 
 	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
