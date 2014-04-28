@@ -147,6 +147,8 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "automotive.host1x",	NULL,		264000000,	true},
 
+	{ "sdmmc2",		"pll_p",	48000000,	false},
+
 	{ NULL,			NULL,		0,		0},
 };
 
