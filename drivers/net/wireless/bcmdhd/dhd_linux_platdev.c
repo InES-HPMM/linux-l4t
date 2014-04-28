@@ -543,12 +543,14 @@ static int dhd_wifi_platform_load_sdio(void)
 		return -EINVAL;
 
 #if defined(BCMLXSDMMC)
+	sema_init(&dhd_registration_sem, 0);
+#endif
+#if defined(BCMLXSDMMC) && !defined(CONFIG_TEGRA_PREPOWER_WIFI)
 	if (dhd_wifi_platdata == NULL) {
 		DHD_ERROR(("DHD wifi platform data is required for Android build\n"));
 		return -EINVAL;
 	}
 
-	sema_init(&dhd_registration_sem, 0);
 	/* power up all adapters */
 	for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
 		bool chip_up = FALSE;
