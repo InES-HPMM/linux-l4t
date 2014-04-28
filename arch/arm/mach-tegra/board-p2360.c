@@ -481,6 +481,9 @@ static void __init tegra_p2360_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
+
+	tegra_init_board_info();
+
 	p2360_usb_init();
 
 	p2360_nor_init();
