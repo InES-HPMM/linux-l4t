@@ -31,6 +31,7 @@ int p2360_regulator_init(void);
 #define UTMI2_PORT_OWNER_XUSB	0x2
 
 /* Tegra GPIOs */
+#define TEGRA_GPIO_FPDLINK	TEGRA_GPIO_PR4
 #define TEGRA_GPIO_GPUPWR	TEGRA_GPIO_PR2
 
 #define TEGRA_GPIO_TV1ENA	TEGRA_GPIO_PI5

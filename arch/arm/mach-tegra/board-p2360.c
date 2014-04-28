@@ -361,6 +361,17 @@ static int __init p2360_gpio_init(void)
 {
 	int err;
 
+	err = gpio_request(TEGRA_GPIO_FPDLINK, "fpdlink");
+	if (err < 0) {
+		pr_err("Err %d: FPDLink Power GPIO request failed\n",
+				err);
+		return err;
+	}
+	gpio_direction_output(TEGRA_GPIO_FPDLINK, 1);
+
+	/* Put the FPDLink in Pwer Down mode */
+	gpio_set_value(TEGRA_GPIO_FPDLINK, 0);
+
 	err = gpio_request(TEGRA_GPIO_TV1ENA, "tv1_ena");
 	if (err < 0) {
 		pr_err("Err %d: TV1 enable GPIO request failed\n", err);
