@@ -125,5 +125,12 @@ unsigned int serial8250_modem_status(struct uart_8250_port *up);
 extern void serial8250_set_isa_configurator(void (*v)
 					(int port, struct uart_port *up,
 						unsigned short *capabilities));
+#ifdef CONFIG_ARCH_TEGRA
+extern void tegra_serial_handle_break(struct uart_port *p);
+#else
+static inline void tegra_serial_handle_break(struct uart_port *port)
+{
+}
+#endif
 
 #endif

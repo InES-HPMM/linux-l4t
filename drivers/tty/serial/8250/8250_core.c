@@ -1601,6 +1601,24 @@ static int serial8250_tegra_handle_irq(struct uart_port *port)
 	return 1;
 }
 
+#ifdef CONFIG_ARCH_TEGRA
+void tegra_serial_handle_break(struct uart_port *p)
+{
+	unsigned int status, tmout = 10000;
+
+	do {
+		status = p->serial_in(p, UART_LSR);
+		if (status & (UART_LSR_FIFOE | UART_LSR_BRK_ERROR_BITS))
+			status = p->serial_in(p, UART_RX);
+		else
+			break;
+		if (--tmout == 0)
+			break;
+		udelay(1);
+	} while (1);
+}
+#endif
+
 /*
  * These Exar UARTs have an extra interrupt indicator that could
  * fire for a few unimplemented interrupts.  One of which is a
@@ -2761,6 +2779,9 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 	if (port->type == PORT_TEGRA) {
 		up->bugs |= UART_BUG_NOMSR;
 		port->handle_irq = serial8250_tegra_handle_irq;
+#if defined CONFIG_ARCH_TEGRA
+		port->handle_break = tegra_serial_handle_break;
+#endif
 	}
 
 	if (port->type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
