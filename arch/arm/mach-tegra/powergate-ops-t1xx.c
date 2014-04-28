@@ -26,8 +26,10 @@ int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info)
 		get_clk_info(pg_info);
 
 	ret = partition_clk_enable(pg_info);
-	if (ret)
+	if (ret) {
 		WARN(1, "Couldn't enable clock");
+		return ret;
+	}
 
 	udelay(10);
 
