@@ -31,6 +31,58 @@ enum tegra_suspend_mode {
 	TEGRA_MAX_SUSPEND_MODE,
 };
 
+enum suspend_stage {
+	TEGRA_SUSPEND_BEFORE_PERIPHERAL,
+	TEGRA_SUSPEND_BEFORE_CPU,
+};
+
+enum resume_stage {
+	TEGRA_RESUME_AFTER_PERIPHERAL,
+	TEGRA_RESUME_AFTER_CPU,
+};
+
+struct tegra_suspend_platform_data {
+	unsigned long cpu_timer;   /* CPU power good time in us,  LP2/LP1 */
+	unsigned long cpu_off_timer;	/* CPU power off time us, LP2/LP1 */
+	unsigned long core_timer;  /* core power good time in ticks,  LP0 */
+	unsigned long core_off_timer;	/* core power off time ticks, LP0 */
+	bool corereq_high;         /* Core power request active-high */
+	bool sysclkreq_high;       /* System clock request is active-high */
+	bool sysclkreq_gpio;       /* if System clock request is set to gpio */
+	bool combined_req;         /* if core & CPU power requests are combined */
+	enum tegra_suspend_mode suspend_mode;
+	unsigned long cpu_lp2_min_residency; /* Min LP2 state residency in us */
+	void (*board_suspend)(int lp_state, enum suspend_stage stg);
+	/* lp_state = 0 for LP0 state, 1 for LP1 state, 2 for LP2 state */
+	void (*board_resume)(int lp_state, enum resume_stage stg);
+	unsigned int cpu_resume_boost;	/* CPU frequency resume boost in kHz */
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	bool lp1_lowvolt_support;
+	unsigned int i2c_base_addr;
+	unsigned int pmuslave_addr;
+	unsigned int core_reg_addr;
+	unsigned int lp1_core_volt_low_cold;
+	unsigned int lp1_core_volt_low;
+	unsigned int lp1_core_volt_high;
+#endif
+	unsigned int lp1bb_core_volt_min;
+	unsigned long lp1bb_emc_rate_min;
+	unsigned long lp1bb_emc_rate_max;
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	unsigned long min_residency_vmin_fmin;
+	unsigned long min_residency_ncpu_slow;
+	unsigned long min_residency_ncpu_fast;
+	unsigned long min_residency_crail;
+	bool crail_up_early;
+#endif
+	unsigned long min_residency_mclk_stop;
+	bool usb_vbus_internal_wake; /* support for internal vbus wake */
+	bool usb_id_internal_wake; /* support for internal id wake */
+
+	void (*suspend_dfll_bypass)(void);
+	void (*resume_dfll_bypass)(void);
+};
+
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
 int tegra_register_pm_notifier(struct notifier_block *nb);
