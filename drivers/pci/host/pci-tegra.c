@@ -2159,6 +2159,10 @@ static void tegra_pcie_enable_aspm(void)
 		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
 		val |= (u16)aspm >> 10;
 		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
+#if defined CONFIG_ARCH_TEGRA_12x_SOC
+		pcie_capability_clear_word(pdev, PCI_EXP_LNKCTL,
+				PCI_EXP_LNKCTL_ASPM_L0S);
+#endif
 	}
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* L1SS configuration as per IAS */
