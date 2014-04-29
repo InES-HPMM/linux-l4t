@@ -15,11 +15,14 @@
  *
  */
 
+#include <linux/memblock.h>
 #include <linux/gfp.h>
 #include <media/videobuf2-dma-contig.h>
 #include <video/adf.h>
+#include <video/adf_client.h>
 #include <video/adf_fbdev.h>
 #include <video/adf_format.h>
+#include <video/adf_memblock.h>
 
 #include "dc/dc_config.h"
 #include "dc/dc_priv.h"
@@ -866,7 +869,11 @@ static long tegra_adf_dev_ioctl(struct adf_obj *obj, unsigned int cmd,
 void tegra_adf_process_vblank(struct tegra_adf_info *adf_info,
 		ktime_t timestamp)
 {
-	adf_vsync_notify(&adf_info->intf, timestamp);
+	if (unlikely(!adf_info))
+		pr_debug("%s: suppressing vblank event since ADF is not finished probing\n",
+				__func__);
+	else
+		adf_vsync_notify(&adf_info->intf, timestamp);
 }
 
 static bool tegra_adf_intf_supports_event(struct adf_obj *obj,
@@ -1135,9 +1142,45 @@ struct fb_ops tegra_adf_fb_ops = {
 	.fb_mmap = adf_fbdev_mmap,
 };
 
+static void tegra_adf_save_bootloader_logo(struct tegra_adf_info *adf_info,
+            struct resource *fb_mem)
+{
+	struct device *dev = adf_info->base.dev;
+	struct adf_buffer logo;
+	struct sync_fence *fence;
+
+	memset(&logo, 0, sizeof(logo));
+	logo.dma_bufs[0] = adf_memblock_export(fb_mem->start,
+			resource_size(fb_mem), 0);
+	if (IS_ERR(logo.dma_bufs[0])) {
+		dev_warn(dev, "failed to export bootloader logo: %ld\n",
+				PTR_ERR(logo.dma_bufs[0]));
+		return;
+	}
+
+	logo.overlay_engine = &adf_info->eng;
+	logo.w = adf_info->fb_data->xres;
+	logo.h = adf_info->fb_data->yres;
+	logo.format = adf_info->fb_data->bits_per_pixel == 16 ?
+			DRM_FORMAT_RGB565 :
+			DRM_FORMAT_RGBA8888;
+	logo.pitch[0] = logo.w * adf_info->fb_data->bits_per_pixel / 8;
+	logo.n_planes = 1;
+
+	fence = adf_interface_simple_post(&adf_info->intf, &logo);
+	if (IS_ERR(fence))
+		dev_warn(dev, "failed to post bootloader logo: %ld\n",
+				PTR_ERR(fence));
+	else
+		sync_fence_put(fence);
+
+	dma_buf_put(logo.dma_bufs[0]);
+}
+
 struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 		struct tegra_dc *dc,
-		struct tegra_fb_data *fb_data)
+		struct tegra_fb_data *fb_data,
+		struct resource *fb_mem)
 {
 	struct tegra_adf_info *adf_info;
 	int err;
@@ -1205,6 +1248,11 @@ struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
 
 	if (dc->enabled)
 		adf_info->intf.dpms_state = DRM_MODE_DPMS_ON;
+
+	if (fb_data->flags & TEGRA_FB_FLIP_ON_PROBE)
+		tegra_adf_save_bootloader_logo(adf_info, fb_mem);
+	else
+		memblock_free(fb_mem->start, resource_size(fb_mem));
 
 	dev_info(&ndev->dev, "ADF initialized\n");
 

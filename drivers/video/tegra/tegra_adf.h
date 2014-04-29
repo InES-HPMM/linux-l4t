@@ -32,7 +32,8 @@ int tegra_adf_process_bandwidth_renegotiate(struct tegra_adf_info *adf_info,
 		struct tegra_dc_bw_data *bw);
 
 struct tegra_adf_info *tegra_adf_init(struct platform_device *ndev,
-		struct tegra_dc *dc, struct tegra_fb_data *fb_data);
+		struct tegra_dc *dc, struct tegra_fb_data *fb_data,
+		struct resource *fb_mem);
 void tegra_adf_unregister(struct tegra_adf_info *adf_info);
 #else
 static inline int tegra_adf_process_hotplug_connected(
