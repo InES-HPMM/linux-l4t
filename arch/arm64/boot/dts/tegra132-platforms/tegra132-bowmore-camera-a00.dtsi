@@ -8,7 +8,7 @@
 		modules {
 			module1: module1@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1793_rear_camera";
+				badge_info = "e1806_rear_camera";
 
 				sensor {
 					profile = <&ov5693_1>;
@@ -25,7 +25,7 @@
 			};
 			module2: module2@modules {
 				compatible = "sensor,front";
-				badge_info = "e1793_front_camera";
+				badge_info = "e1933_front_camera";
 
 				sensor {
 					profile = <&mt9m114_1>;
@@ -59,12 +59,16 @@
 				};
 			};
 			module5: module5@modules {
-				compatible = "sensor,front";
-				badge_info = "loki_front_camera_brd";
+				compatible = "sensor,rear";
+				badge_info = "e1933_rear_camera";
 
 				sensor {
-					profile = <&ov7695_1>;
-					platformdata = "ardbeg_ov7695_pdata";
+					profile = <&ov5693_1>;
+					platformdata = "ardbeg_ov5693_pdata";
+				};
+				focuser {
+					profile = <&ad5823_1>;
+					platformdata = "ardbeg_ad5823_pdata";
 				};
 			};
 		};
@@ -281,42 +285,6 @@
 					CAMERA_GPIO_CLR(219)
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(2)
-					CAMERA_REGULATOR_OFF(1)
-					CAMERA_REGULATOR_OFF(0)
-					CAMERA_END
-					>;
-			};
-			ov7695_1: ov7695@2_0021 {
-				index = <7>;
-				chipname = "pcl_OV7695";
-				type = "sensor";
-				guid = "s_OV7695";
-				position = <1>;
-				bustype = "i2c";
-				busnum = <2>;
-				addr = <0x21>;
-				datalen = <2>;
-				pinmuxgrp = <0xFFFF>;
-				gpios = <3>;
-				regulators = "vana", "vif2";
-				clocks = "mclk2";
-				drivername = "ov7695";
-				detect = <0x0002 0x300A 0xFFFF 0x7695>;
-				devid = <0x7695>;
-				poweron = <
-					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(222)
-					CAMERA_REGULATOR_ON(0)
-					CAMERA_REGULATOR_ON(1)
-					CAMERA_WAITMS(40)
-					CAMERA_GPIO_SET(222)
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				poweroff = <
-					CAMERA_IND_CLK_CLR
-					CAMERA_GPIO_CLR(222)
-					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
