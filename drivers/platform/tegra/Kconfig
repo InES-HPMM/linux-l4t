@@ -21,3 +21,9 @@ config TEGRA_MC_DOMAINS
 	default n
 	help
 	  When enabled, clock gates MC when it's not needed.
+
+config TEGRA_BOOTLOADER_DEBUG
+	tristate "Creates sys-fs interface dumping registers read by bootloader"
+	default n
+	help
+	  When enabled, tegra_bootloader_verify_regs sys-fs is created.
