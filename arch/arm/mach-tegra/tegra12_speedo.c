@@ -106,6 +106,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	case 0x1F:
 	case 0x87:
 	case 0x27:
+	case 0x24:
 		cpu_speedo_id = sku == 0x87 ? 2 : 5;
 		soc_speedo_id = 0;
 		gpu_speedo_id = 1;

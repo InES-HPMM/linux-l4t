@@ -97,7 +97,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 10000, /* 10mV */
 	},
-	.version = "P4v36",
+	.version = "P4v40",
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
@@ -111,7 +111,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.stats = {
 		.bin_uV = 10000, /* 10mV */
 	},
-	.version = "P4v39",
+	.version = "P4v40",
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
@@ -130,7 +130,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 10000, /* 10mV */
 	},
-	.version = "P4v36",
+	.version = "P4v40",
 };
 
 static struct dvfs_rail *tegra12_dvfs_rails[] = {
