@@ -1090,6 +1090,7 @@ static struct camera_data_blob ardbeg_camera_lut[] = {
 	{"ardbeg_ad5823_pdata", &ardbeg_ad5823_pdata},
 	{"ardbeg_as3648_pdata", &ardbeg_as3648_data},
 	{"ardbeg_ov7695_pdata", &ardbeg_ov7695_pdata},
+	{"ardbeg_imx179_pdata", &ardbeg_imx179_data},
 	{"ardbeg_ov5693f_pdata", &ardbeg_ov5693_front_pdata},
 	{},
 };
