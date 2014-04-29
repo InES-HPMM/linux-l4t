@@ -176,7 +176,7 @@ static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 	seq_printf(s, fmt_hdr,
 		   "swgid", "client", "decerr", "secerr", "smmuerr",
 		   "apberr", "decerr-VPR", "secerr-SEC",
-		   "decerr_MST", "unknown");
+		   "decerr-MTS", "unknown");
 	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
 		do_print = 0;
 		if (strcmp(mc_clients[i].name, "dummy") == 0)
