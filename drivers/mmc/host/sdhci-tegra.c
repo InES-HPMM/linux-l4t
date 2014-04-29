@@ -3963,7 +3963,7 @@ static const struct of_device_id sdhci_tegra_dt_match[] = {
 	{ .compatible = "nvidia,tegra114-sdhci", .data = &soc_data_tegra11 },
 	{}
 };
-MODULE_DEVICE_TABLE(of, sdhci_dt_ids);
+MODULE_DEVICE_TABLE(of, sdhci_tegra_dt_match);
 
 static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 						struct platform_device *pdev)
