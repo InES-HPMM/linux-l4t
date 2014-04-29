@@ -371,8 +371,8 @@
 
 				as3722_ldo4: ldo4 {
 				     regulator-name = "avdd-cam";
-				     regulator-min-microvolt = <2700000>;
-				     regulator-max-microvolt = <2700000>;
+				     regulator-min-microvolt = <2800000>;
+				     regulator-max-microvolt = <2800000>;
 
 				     consumers {
 					     c1 {
@@ -394,8 +394,8 @@
 
 				as3722_ldo5: ldo5 {
 				     regulator-name = "vdd-1v2-cam";
-				     regulator-min-microvolt = <1200000>;
-				     regulator-max-microvolt = <1200000>;
+				     regulator-min-microvolt = <1175000>;
+				     regulator-max-microvolt = <1175000>;
 
 				     consumers {
 					     c1 {
@@ -426,8 +426,8 @@
 
 				as3722_ldo7: ldo7 {
 				     regulator-name = "vdd-1v1-cam";
-				     regulator-min-microvolt = <1050000>;
-				     regulator-max-microvolt = <1050000>;
+				     regulator-min-microvolt = <1275000>;
+				     regulator-max-microvolt = <1275000>;
 
 				     consumers {
 					     c1 {
@@ -455,8 +455,8 @@
 
 				as3722_ldo10: ldo10 {
 				      regulator-name = "vdd-2v7-cam";
-				      regulator-min-microvolt = <2700000>;
-				      regulator-max-microvolt = <2700000>;
+				      regulator-min-microvolt = <2800000>;
+				      regulator-max-microvolt = <2800000>;
 
 				      consumers {
 					      c1 {
