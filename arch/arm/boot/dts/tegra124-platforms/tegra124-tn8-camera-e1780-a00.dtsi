@@ -67,6 +67,23 @@
 					platformdata = "ardbeg_ov7695_pdata";
 				};
 			};
+			module6: module6@modules {
+				compatible = "sensor,rear";
+				badge_info = "mipad_rear_camera";
+
+				sensor {
+					profile = <&imx179_1>;
+					platformdata = "ardbeg_imx179_pdata";
+				};
+				focuser {
+					profile = <&ad5823_1>;
+					platformdata = "ardbeg_ad5823_pdata";
+				};
+				flash {
+					profile = <&as3648_1>;
+					platformdata = "ardbeg_as3648_pdata";
+				};
+			};
 		};
 
 		profiles {
@@ -351,6 +368,53 @@
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_GPIO_CLR(223)
 					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+			};
+			imx179_1: imx179@2_0010 {
+				index = <9>;
+				chipname = "pcl_IMX179";
+				type = "sensor";
+				guid = "s_IMX179";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x10>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig", "vif", "imx135_reg1", "imx135_reg2";
+				clocks = "mclk";
+				drivername = "imx179";
+				detect = <0x0002 0x0002 0xFFFF 0x8179>;
+				devid = <0x0179>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_SET(223)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_REGULATOR_ON(3)
+					CAMERA_REGULATOR_ON(4)
+					CAMERA_WAITMS(5)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITUS(300)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(221)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(4)
+					CAMERA_REGULATOR_OFF(3)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
 			};
