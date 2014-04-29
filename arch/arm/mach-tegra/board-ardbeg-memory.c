@@ -20081,7 +20081,6 @@ static struct tegra12_emc_pdata pm375_2GB_emc_pdata = {
 int __init ardbeg_emc_init(void)
 {
 	struct board_info bi;
-	int use_dt_emc_table = 0;
 
 	/*
 	 * If the EMC table is successfully read from the NCT partition,
@@ -20093,12 +20092,12 @@ int __init ardbeg_emc_init(void)
 	if (!tegra12_nct_emc_table_init(&board_emc_pdata)) {
 		tegra_emc_device.dev.platform_data = &board_emc_pdata;
 		pr_info("Loading EMC table read from NCT partition.\n");
+		platform_device_register(&tegra_emc_device);
 	} else
 	#endif
 	if (of_find_compatible_node(NULL, NULL, "nvidia,tegra12-emc")) {
 		/* If Device Tree Partition contains emc-tables, load them */
 		pr_info("Loading EMC tables from DeviceTree.\n");
-		use_dt_emc_table = true;
 	} else {
 		tegra_get_board_info(&bi);
 
@@ -20125,10 +20124,6 @@ int __init ardbeg_emc_init(void)
 					&ardbeg_emc_pdata;
 			}
 			break;
-		case BOARD_E1791:
-			pr_info("Loading Ardbeg EMC tables from DeviceTree.\n");
-			use_dt_emc_table = true;
-			break;
 		case BOARD_E1792:
 			pr_info("Loading Ardbeg EMC tables.\n");
 			tegra_emc_device.dev.platform_data =
@@ -20154,10 +20149,9 @@ int __init ardbeg_emc_init(void)
 			pr_info("emc dvfs table not present\n");
 			return -EINVAL;
 		}
-	}
 
-	if (!use_dt_emc_table)
 		platform_device_register(&tegra_emc_device);
+	}
 
 	tegra12_emc_init();
 	return 0;
