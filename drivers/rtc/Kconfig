@@ -1268,6 +1268,13 @@ config RTC_DRV_MAX77660
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-max77660.
 
+config RTC_DRV_MAX77620
+	tristate "Maxim MAX77620"
+	depends on MFD_MAX77620
+	help
+	  If you say yes here you will get support for the
+	  RTC of Maxim MAX77620 PMIC.
+
 config RTC_DRV_MXC
 	tristate "Freescale MXC Real Time Clock"
 	depends on ARCH_MXC
