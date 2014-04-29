@@ -564,8 +564,6 @@ static struct clk *pll_c;
 static struct clk *pll_p;
 static unsigned long pll_c_rate;
 static unsigned long pll_p_rate;
-static bool vcore_overrides_allowed;
-static bool maintain_boot_voltage;
 static unsigned int boot_volt_req_refcount;
 DEFINE_MUTEX(tuning_mutex);
 
@@ -3031,8 +3029,7 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 	int err = 0;
 	bool nom_emc_freq_set = false;
 
-	if (voltage && (voltage != tegra_host->boot_vcore_mv) &&
-		!vcore_overrides_allowed) {
+	if (voltage && (voltage != tegra_host->boot_vcore_mv)) {
 		SDHCI_TEGRA_DBG("%s: Override vcore %dmv not allowed\n",
 			mmc_hostname(sdhci->mmc), voltage);
 		return -EPERM;
@@ -3281,14 +3278,6 @@ out:
 	}
 	return err;
 }
-
-static int __init sdhci_tegra_enable_vcore_override_tuning(void)
-{
-	vcore_overrides_allowed = true;
-	maintain_boot_voltage = false;
-	return 0;
-}
-late_initcall(sdhci_tegra_enable_vcore_override_tuning);
 
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 {
