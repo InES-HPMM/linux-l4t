@@ -963,6 +963,14 @@ int __init ardbeg_panel_init(void)
 		else
 			ardbeg_hdmi_out.tmds_config = ardbeg_tn8_tmds_config;
 		break;
+	case BOARD_PM375:
+		ardbeg_tmds_config[1].pe_current = 0x08080808;
+		ardbeg_tmds_config[1].drive_current = 0x2d2d2d2d;
+		ardbeg_tmds_config[1].peak_current = 0x0;
+		ardbeg_tmds_config[2].pe_current = 0x0;
+		ardbeg_tmds_config[2].drive_current = 0x2d2d2d2d;
+		ardbeg_tmds_config[2].peak_current = 0x05050505;
+		break;
 	case BOARD_PM359:
 	case BOARD_E1971:
 	case BOARD_E1973:
