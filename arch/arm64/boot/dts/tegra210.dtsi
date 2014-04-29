@@ -386,16 +386,17 @@
 			nvidia,memory-clients = <36>;
 		};
 
-		gm20b {
-			compatible = "nvidia,tegra210-gm20b";
-			nvidia,host1x = <&host1x>;
-			reg = <0x57000000 0x01000000>,
-			    <0x58000000 0x01000000>,
-			    <0x538f0000 0x00001000>;
-			    interrupts = <0 157 0x04
-				    0 158 0x04>;
-			nvidia,memory-clients = <30 31>;
-		};
+	};
+
+	gm20b {
+		compatible = "nvidia,tegra210-gm20b";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x57000000 0x0 0x01000000>,
+		    <0x0 0x58000000 0x0 0x01000000>,
+		    <0x0 0x538f0000 0x0 0x00001000>;
+		    interrupts = <0 157 0x04
+			    0 158 0x04>;
+		nvidia,memory-clients = <30 31>;
 	};
 
 	pmc {
