@@ -119,6 +119,33 @@
 		adx@70303900 {
 			status = "okay";
 		};
+		dam@70302000 {
+			status = "okay";
+		};
+		dam@70302200 {
+			status = "okay";
+		};
+		dam@70302400 {
+			status = "okay";
+		};
+		afc@70307000 {
+			status = "okay";
+		};
+		afc@70307100 {
+			status = "okay";
+		};
+		afc@70307200 {
+			status = "okay";
+		};
+		afc@70307300 {
+			status = "okay";
+		};
+		afc@70307400 {
+			status = "okay";
+		};
+		afc@70307500 {
+			status = "okay";
+		};
 	};
 
 	pcie-controller {

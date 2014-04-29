@@ -471,6 +471,69 @@
 			reg = <0x70306000 0x100>;
 			status = "disabled";
 		};
+
+		tegra_dam0: dam@70302000 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302000 0x200>;
+			nvidia,ahub-dam-id = <0>;
+			status = "disabled";
+		};
+
+		tegra_dam1: dam@70302200 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302200 0x200>;
+			nvidia,ahub-dam-id = <1>;
+			status = "disabled";
+		};
+
+		tegra_dam2: dam@70302400 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302400 0x200>;
+			nvidia,ahub-dam-id = <2>;
+			status = "disabled";
+		};
+
+		tegra_afc0: afc@70307000 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307000 0x100>;
+			nvidia,ahub-afc-id = <0>;
+			status = "disabled";
+		};
+
+		tegra_afc1: afc@70307100 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307100 0x100>;
+			nvidia,ahub-afc-id = <1>;
+			status = "disabled";
+		};
+
+		tegra_afc2: afc@70307200 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307200 0x100>;
+			nvidia,ahub-afc-id = <2>;
+			status = "disabled";
+		};
+
+		tegra_afc3: afc@70307300 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307300 0x100>;
+			nvidia,ahub-afc-id = <3>;
+			status = "disabled";
+		};
+
+		tegra_afc4: afc@70307400 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307400 0x100>;
+			nvidia,ahub-afc-id = <4>;
+			status = "disabled";
+		};
+
+		tegra_afc5: afc@70307500 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307500 0x100>;
+			nvidia,ahub-afc-id = <5>;
+			status = "disabled";
+		};
 	};
 
 	host1x {
