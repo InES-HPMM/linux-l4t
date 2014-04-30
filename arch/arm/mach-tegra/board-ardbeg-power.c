@@ -67,6 +67,15 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.min_residency_ncpu_slow = 5000,
 	.min_residency_mclk_stop = 5000,
 	.min_residency_crail = 20000,
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0xB0,
+	.core_reg_addr = 0x33,
+	.lp1_core_volt_low_cold = 0x33,
+	.lp1_core_volt_low = 0x33,
+	.lp1_core_volt_high = 0x42,
+#endif
 };
 
 /************************ ARDBEG CL-DVFS DATA *********************/
