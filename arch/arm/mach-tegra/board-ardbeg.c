@@ -869,6 +869,9 @@ static int baseband_init(void)
 		return -EINVAL;
 	}
 
+	/* Release modem reset to start boot */
+	gpio_set_value(MDM_RST, 1);
+
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MDM_RST, false);
 	gpio_export(MDM_SAR0, false);
