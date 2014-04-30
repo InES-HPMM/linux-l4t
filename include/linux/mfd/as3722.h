@@ -365,6 +365,19 @@
 
 #define AS3722_CTRL_SEQ1_AC_OK_PWR_ON			BIT(0)
 
+#define AS3722_BBCCUR_MASK				0x18
+#define AS3722_BBCCUR_VAL(n)				((n)  << 3)
+#define AS3722_BBCCUR_50UA				AS3722_BBCCUR_VAL(0)
+#define AS3722_BBCCUR_200UA				AS3722_BBCCUR_VAL(1)
+#define AS3722_BBCCUR_100UA				AS3722_BBCCUR_VAL(2)
+#define AS3722_BBCCUR_400UA				AS3722_BBCCUR_VAL(3)
+#define AS3722_BBCRESOFF_MASK				BIT(2)
+#define AS3722_BBCMODE_MASK				0x03
+#define AS3722_BBCMODE_OFF				0
+#define AS3722_BBCMODE_ACTIVE				1
+#define AS3722_BBCMODE_ACT_STBY				2
+#define AS3722_BBCMODE_ACT_STBY_OFF			3
+
 /* Interrupt IDs */
 enum as3722_irq {
 	AS3722_IRQ_LID,
@@ -418,6 +431,10 @@ struct as3722 {
 	u32 minor_rev;
 	struct mutex mutex_config;
 	bool shutdown;
+	bool backup_battery_chargable;
+	bool battery_backup_enable_bypass;
+	u32 backup_battery_charge_current;
+	u32 battery_backup_charge_mode;
 };
 
 static inline int as3722_read(struct as3722 *as3722, u32 reg, u32 *dest)
