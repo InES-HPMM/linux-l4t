@@ -635,6 +635,8 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	int err = 0;
 	int ilock;
 
+	trace_f2fs_write_begin(inode, pos, len, flags);
+
 	f2fs_balance_fs(sbi);
 repeat:
 	page = grab_cache_page_write_begin(mapping, index, flags);
@@ -703,6 +705,8 @@ static int f2fs_write_end(struct file *file,
 			struct page *page, void *fsdata)
 {
 	struct inode *inode = page->mapping->host;
+
+	trace_f2fs_write_end(inode, pos, len, copied);
 
 	SetPageUptodate(page);
 	set_page_dirty(page);
