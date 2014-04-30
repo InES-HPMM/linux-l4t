@@ -25,6 +25,10 @@
 			ams,hi-threshold = <256>;
 			ams,low-threshold = <128>;
 			ams,enable-clock32k-out;
+			ams,backup-battery-chargable;
+			ams,battery-backup-charge-current = <AS3722_BBCCUR_400UA>;
+			ams,battery-backup-enable-bypass;
+			ams,battery-backup-charge-mode = <AS3722_BBCMODE_ACT_STBY_OFF>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&as3722_default>;
