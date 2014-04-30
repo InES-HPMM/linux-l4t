@@ -2586,10 +2586,15 @@ static int tegra_nvavp_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	mutex_lock(&nvavp->open_lock);
 
-	tegra_nvavp_runtime_suspend(dev);
+	ret = tegra_nvavp_runtime_suspend(dev);
+	if (ret) {
+		mutex_unlock(&nvavp->open_lock);
+		return ret;
+	}
 
 	/* WAR: Leave partition vde on before suspend so that access
 	 * to BSEV registers immediatly after LP0 exit won't fail.
