@@ -1756,6 +1756,8 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 			nvavp_clks_disable(nvavp);
 		}
 		mutex_unlock(&nvavp->open_lock);
+		if (!nvavp->stay_on)
+			schedule_work(&nvavp->clock_disable_work);
 	}
 	return 0;
 }
