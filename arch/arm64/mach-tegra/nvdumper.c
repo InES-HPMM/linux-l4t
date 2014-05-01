@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include "board.h"
 #include <mach/nvdumper.h>
+#include <mach/nvdumper-footprint.h>
 
 #ifdef CONFIG_TEGRA_USE_NCT
 #include <mach/nct.h>
@@ -95,6 +96,8 @@ static int __init nvdumper_init(void)
 	if (ret)
 		goto err_out2;
 
+	nvdumper_dbg_footprint_init();
+
 	dirty = get_dirty_state();
 	switch (dirty) {
 	case 0:
@@ -151,6 +154,7 @@ err_out1:
 static void __exit nvdumper_exit(void)
 {
 	nvdumper_regdump_exit();
+	nvdumper_dbg_footprint_exit();
 	unregister_reboot_notifier(&nvdumper_reboot_notifier);
 	set_dirty_state(0);
 	iounmap(nvdumper_ptr);

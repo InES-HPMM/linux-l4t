@@ -25,7 +25,7 @@
 #define THREAD_INFO(sp) ((struct thread_info *) \
 		((unsigned long)(sp) & ~(THREAD_SIZE - 1)))
 
-#define DEBUG_REGDUMP 1
+#define DEBUG_REGDUMP 0
 
 static int max_cpus;
 struct nvdumper_cpu_data_t *nvdumper_cpu_data;

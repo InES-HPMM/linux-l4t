@@ -25,6 +25,8 @@
 
 #include <asm/suspend.h>
 
+#include <mach/nvdumper-footprint.h>
+
 #include "sleep.h"
 #include "pm-soc.h"
 #include "pm-tegra132.h"
@@ -62,6 +64,12 @@ void tegra_cpu_die(unsigned int cpu)
 			: "r" (pmstate));
 		} while (secondary_holding_pen_release != cpu);
 	}
+
+#ifdef CONFIG_TEGRA_NVDUMPER
+	/* set debug footprint */
+	dbg_set_cpu_hotplug_on(cpu, 0xDEAD);
+#endif
+
 }
 
 noinline void setup_mca(void *info)

@@ -36,6 +36,7 @@
 #include <asm/cputime.h>
 
 #include <mach/nct.h>
+#include <mach/nvdumper-footprint.h>
 
 #include "clock.h"
 #include "board.h"
@@ -899,6 +900,12 @@ static noinline void emc_set_clock(const struct tegra12_emc_table *next_timing,
 	/* 12-14. read any MC register to ensure the programming is done
 	   change EMC clock source register wait for clk change completion */
 	do_clock_change(clk_setting);
+
+#ifdef CONFIG_TEGRA_NVDUMPER
+	/* set debug footprint */
+	dbg_set_emc_frequency(clk_setting);
+#endif
+
 
 	/* 14.2 program burst_up_down registers if emc rate is going up */
 	if (next_timing->rate > last_timing->rate) {
