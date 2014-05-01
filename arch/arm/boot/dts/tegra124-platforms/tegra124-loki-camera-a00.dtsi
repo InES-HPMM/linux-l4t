@@ -23,7 +23,7 @@
 				chipname = "pcl_OV7695";
 				type = "sensor";
 				guid = "s_OV7695";
-				position = <1>;
+				position = <0>;
 				bustype = "i2c";
 				busnum = <2>;
 				addr = <0x21>;
