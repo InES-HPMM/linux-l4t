@@ -33,6 +33,7 @@
 	#size-cells = <2>;
 
 	chosen {
+		nvidia,tegra-hypervisor-mode;
 	};
 
 	i2c@7000c400 {
@@ -123,6 +124,48 @@
 	pcie-controller {
 		nvidia,port0_status = <1>;
 		nvidia,port1_status = <1>;
+		status = "okay";
+	};
+
+	sata@0x70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
+	sdhci@700b0600 {
+		tap-delay = <0x4>;
+		trim-delay = <0x4>;
+		ddr-trim-delay = <0x4>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x20>;
+		bus-width = <8>;
+		built-in;
+		ddr-clk-limit = <51000000>;
+		max-clk-limit = <200000000>;
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		tap-delay = <0x1>;
+		trim-delay = <0x3>;
+		ddr-trim-delay = <0x3>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x20>;
+		built-in;
+		ddr-clk-limit = <30000000>;
+		max-clk-limit = <51000000>;
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		cd-gpios = <&gpio 133 0>;
+		wp-gpios = <&gpio 132 0>;
+		tap-delay = <0>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <3>;
+		uhs_mask = <0x2F>;
+		bus-width = <4>;
+		max-clk-limit = <50000000>;
 		status = "okay";
 	};
 
