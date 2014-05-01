@@ -1019,7 +1019,10 @@ static void prog_hw_shutdown(struct thermal_trip_info *trip_state, int therm)
 	u32 r;
 	int temp;
 
-	temp = enforce_temp_range(trip_state->trip_temp) / 1000;
+	/* Add 1'C to HW shutdown threshold so SW can try to shutdown first */
+	temp = trip_state->trip_temp + LOWER_PRECISION_FOR_CONV(1000);
+
+	temp = enforce_temp_range(temp) / 1000;
 
 	r = soctherm_readl(THERMTRIP);
 	if (therm == THERM_CPU) {
