@@ -429,21 +429,15 @@ static SIMPLE_DEV_PM_OPS(cm3217_pm_ops, cm3217_suspend, cm3217_resume);
 
 static int cm3217_remove(struct i2c_client *client)
 {
-	struct cm3217_inf *inf;
-	struct iio_dev *indio_dev;
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
 
-	indio_dev = i2c_get_clientdata(client);
-	inf = iio_priv(indio_dev);
-	cm3217_vreg_exit(inf);
+	iio_device_unregister(indio_dev);
 	destroy_workqueue(inf->wq);
+	cm3217_vreg_exit(inf);
 	iio_device_free(indio_dev);
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 	return 0;
-}
-
-static void cm3217_shutdown(struct i2c_client *client)
-{
-	cm3217_remove(client);
 }
 
 static int cm3217_probe(struct i2c_client *client,
@@ -461,7 +455,24 @@ static int cm3217_probe(struct i2c_client *client,
 
 	inf = iio_priv(indio_dev);
 
+	inf->wq = create_singlethread_workqueue(CM3217_NAME);
+	if (!inf->wq) {
+		dev_err(&client->dev, "%s workqueue err\n", __func__);
+		err = -ENOMEM;
+		goto err_wq;
+	}
+
 	inf->i2c = client;
+	err = cm3217_vreg_init(inf);
+	if (err) {
+		dev_info(&client->dev,
+			"%s regulator init failed, assume always on", __func__);
+		goto err_vreg_init;
+	}
+
+	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
+	inf->als_state = 0;
+
 	i2c_set_clientdata(client, indio_dev);
 	indio_dev->info = &cm3217_iio_info;
 	indio_dev->name = id->name;
@@ -473,29 +484,14 @@ static int cm3217_probe(struct i2c_client *client,
 		goto err_iio_register;
 	}
 
-	inf->wq = create_singlethread_workqueue(CM3217_NAME);
-	if (!inf->wq) {
-		dev_err(&client->dev, "%s workqueue err\n", __func__);
-		err = -ENOMEM;
-		goto err_wq;
-	}
-
-	err = cm3217_vreg_init(inf);
-	if (err) {
-		dev_info(&client->dev,
-			"%s regulator init failed, assume always on", __func__);
-	}
-
-	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
-	inf->als_state = 0;
-
 	dev_info(&client->dev, "%s success\n", __func__);
 	return 0;
 
-err_wq:
-	destroy_workqueue(inf->wq);
-	iio_device_unregister(indio_dev);
 err_iio_register:
+	cm3217_vreg_exit(inf);
+err_vreg_init:
+	destroy_workqueue(inf->wq);
+err_wq:
 	iio_device_free(indio_dev);
 	dev_err(&client->dev, "%s err=%d\n", __func__, err);
 	return err;
@@ -526,7 +522,6 @@ static struct i2c_driver cm3217_driver = {
 		.of_match_table = of_match_ptr(cm3217_of_match),
 		.pm = CM3217_PM_OPS,
 	},
-	.shutdown	= cm3217_shutdown,
 };
 module_i2c_driver(cm3217_driver);
 
