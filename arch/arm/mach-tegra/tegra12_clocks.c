@@ -8370,7 +8370,11 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("usb3.sclk", "tegra-ehci.2",	"sclk",	&tegra_clk_ahb,        NULL, 0, 0),
 	SHARED_SCLK("wake.sclk", "wake_sclk",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_SCLK("automotive.sclk", "automotive",	"sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
+#ifdef CONFIG_VI_ONE_DEVICE
+	SHARED_SCLK("vi.sclk",	"tegra_vi",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+#else
 	SHARED_SCLK("via.sclk",	"tegra_vi.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+#endif
 	SHARED_SCLK("vib.sclk",	"tegra_vi.1",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_SCLK("ispa.sclk",	"tegra_isp.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_SCLK("ispb.sclk",	"tegra_isp.1",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -8408,8 +8412,12 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("3d.emc",	"tegra_gk20a.0", "emc",	&tegra_clk_emc, NULL, 0, 0, BIT(EMC_USER_3D)),
 	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_MSENC)),
 	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+#ifdef CONFIG_VI_ONE_DEVICE
+	SHARED_EMC_CLK("vi.emc",	"tegra_vi",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI)),
+#else
 	SHARED_EMC_CLK("via.emc",	"tegra_vi.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI)),
 	SHARED_EMC_CLK("vib.emc",	"tegra_vi.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI2)),
+#endif
 	SHARED_EMC_CLK("ispa.emc",	"tegra_isp.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP1)),
 	SHARED_EMC_CLK("ispb.emc",	"tegra_isp.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP2)),
 	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -8479,8 +8487,10 @@ static struct clk tegra_visp_clks[] = {
 	SHARED_CONNECT("isp.c4bus",	"isp.c4bus",	NULL,	&tegra_clk_c4bus,   "isp",   0, 0),
 	SHARED_CLK("override.c4bus",	"override.c4bus", NULL,	&tegra_clk_c4bus,    NULL,   0, SHARED_OVERRIDE),
 
+#ifndef CONFIG_VI_ONE_DEVICE
 	SHARED_CLK("via.vi.c4bus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
 	SHARED_CLK("vib.vi.c4bus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+#endif
 
 	SHARED_CLK("ispa.isp.c4bus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
 	SHARED_CLK("ispb.isp.c4bus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
@@ -8646,6 +8656,15 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp.0", "isp"),
 	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
+#ifdef CONFIG_VI_ONE_DEVICE
+	CLK_DUPLICATE("vi.c4bus", "tegra_vi", "vi"),
+	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
+	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
+	CLK_DUPLICATE("vim2_clk", "tegra_vi", "vim2_clk"),
+	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
+	CLK_DUPLICATE("cilcd", "tegra_vi", "cilcd"),
+	CLK_DUPLICATE("cile", "tegra_vi", "cile"),
+#else
 	CLK_DUPLICATE("via.vi.c4bus", "tegra_vi.0", "vi"),
 	CLK_DUPLICATE("vib.vi.c4bus", "tegra_vi.1", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi.0", "csi"),
@@ -8655,6 +8674,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi.0", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi.1", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi.1", "cile"),
+#endif
 	CLK_DUPLICATE("i2s0", NULL, "i2s0"),
 	CLK_DUPLICATE("i2s1", NULL, "i2s1"),
 	CLK_DUPLICATE("i2s2", NULL, "i2s2"),
