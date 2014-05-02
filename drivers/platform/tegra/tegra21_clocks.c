@@ -114,22 +114,26 @@
 	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
 		CLK_OUT_ENB_CLR_X, CLK_OUT_ENB_CLR_Y, 8)
 
-#define PLL_BASE_SET_DIV(PLL, m, n, p, val)				       \
-do {									       \
-	(val) &= ~(PLL##_BASE_DIVN_MASK | PLL##_BASE_DIVN_MASK |	       \
-		PLL##_BASE_DIVP_MASK);					       \
-	(val) |= ((m) << PLL##_BASE_DIVM_SHIFT) |			       \
-		((n) << PLL##_BASE_DIVN_SHIFT) |			       \
-		((p) << PLL##_BASE_DIVP_SHIFT);				       \
-} while (0)
+static u32 pll_base_set_div(struct clk *c, u32 m, u32 n, u32 pdiv, u32 val)
+{
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
 
-#define PLL_BASE_PARSE_CFG(PLL, p_to_pdiv, cfg, b)			 \
-do {									 \
-	(cfg).m = ((b) & PLL##_BASE_DIVM_MASK) >> PLL##_BASE_DIVM_SHIFT; \
-	(cfg).n = ((b) & PLL##_BASE_DIVN_MASK) >> PLL##_BASE_DIVN_SHIFT; \
-	(cfg).p = ((b) & PLL##_BASE_DIVP_MASK) >> PLL##_BASE_DIVP_SHIFT; \
-	(cfg).p = p_to_pdiv[(cfg).p];					 \
-} while (0)
+	val &= ~(divs->mdiv_mask | divs->ndiv_mask | divs->pdiv_mask);
+	val |= m << divs->mdiv_shift | n << divs->ndiv_shift |
+		pdiv << divs->pdiv_shift;
+	return val;
+}
+
+static void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
+			       u32 base)
+{
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+
+	cfg->m = (base & divs->mdiv_mask) >> divs->mdiv_shift;
+	cfg->n = (base & divs->ndiv_mask) >> divs->ndiv_shift;
+	cfg->p = (base & divs->pdiv_mask) >> divs->pdiv_shift;
+	cfg->p = divs->pdiv_to_p[cfg->p];
+}
 
 #define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val)			       \
 do {									       \
@@ -288,18 +292,11 @@ do {									       \
 /* PLLC, PLLC2, PLLC3 and PLLA1 */
 #define PLLCX_USE_DYN_RAMP		0
 #define PLLCX_PDIV_MAX			16
-
 #define PLLCX_BASE_LOCK			(1 << 26)
-#define PLLCX_BASE_DIVP_SHIFT		20
-#define PLLCX_BASE_DIVP_MASK		(0x1F << PLLCX_BASE_DIVP_SHIFT)
-#define PLLCX_BASE_DIVN_SHIFT		10
-#define PLLCX_BASE_DIVN_MASK		(0xFF << PLLCX_BASE_DIVN_SHIFT)
-#define PLLCX_BASE_DIVM_SHIFT		0
-#define PLLCX_BASE_DIVM_MASK		(0xFF << PLLCX_BASE_DIVM_SHIFT)
 
 #define PLLCX_MISC0_RESET		(1 << 30)
 #define PLLCX_MISC0_LOOP_CTRL_SHIFT	0
-#define PLLCX_MISC0_LOOP_CTRL_MASK	(0x3 << PLLCX_BASE_DIVM_SHIFT)
+#define PLLCX_MISC0_LOOP_CTRL_MASK	(0x3 << PLLCX_MISC0_LOOP_CTRL_SHIFT)
 
 #define PLLCX_MISC1_IDDQ		(1 << 27)
 
@@ -2621,12 +2618,14 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
 	u32 m, n, p, pdiv, val;
+	u8 *pdiv_to_p = c->u.pll.div_layout->pdiv_to_p;
 
 	/* clip vco_min to exact multiple of input rate to avoid crossover
 	   by rounding */
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
-	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min, pllcx_p[PLLCX_PDIV_MAX]);
+	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
+		pdiv_to_p[c->u.pll.div_layout->pdiv_max]);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
@@ -2639,7 +2638,7 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	if (c->state == ON) {
 		struct clk_pll_freq_table cfg;
 		pllcx_check_defaults(c, input_rate);
-		PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, cfg, val);
+		pll_base_parse_cfg(c, &cfg, val);
 		c->mul = cfg.n;
 		c->div = cfg.m * cfg.p;
 		return;
@@ -2653,10 +2652,10 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
 	pdiv = 3;
-	p = pllcx_p[pdiv];
+	p = pdiv_to_p[pdiv];
 
 	val = 0;	/* PLL disabled, reference running */
-	PLL_BASE_SET_DIV(PLLCX, m, n, pdiv, val);
+	val = pll_base_set_div(c, m, n, pdiv, val);
 	pll_writel_delay(val, c->reg + PLL_BASE);
 
 	pllcx_set_defaults(c, input_rate);
@@ -2715,7 +2714,7 @@ static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	c->div = sel->m * sel->p;
 
 	val = clk_readl(c->reg + PLL_BASE);
-	PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, old_cfg, val);
+	pll_base_parse_cfg(c, &old_cfg, val);
 
 	if ((sel->m == old_cfg.m) && (sel->n == old_cfg.n) &&
 	    (sel->p == old_cfg.p))
@@ -2730,7 +2729,7 @@ static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 		return 0;
 	}
 #endif
-	PLL_BASE_SET_DIV(PLLCX, sel->m, sel->n, pdiv, val);
+	val = pll_base_set_div(c, sel->m, sel->n, pdiv, val);
 	if (c->state == ON) {
 		tegra21_pllcx_clk_disable(c);
 		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
@@ -5480,7 +5479,6 @@ static int tegra21_clk_cbus_update(struct clk *bus)
 
 	/* use dvfs table of the slowest enabled client as cbus dvfs table */
 	if (bus->dvfs && slow && (slow != bus->u.cbus.slow_user)) {
-		int i;
 		unsigned long *dest = &bus->dvfs->freqs[0];
 		unsigned long *src =
 			&slow->u.shared_bus_user.client->dvfs->freqs[0];
@@ -6130,6 +6128,17 @@ static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
+static struct clk_pll_div_layout pllcx_div_layout = {
+	.mdiv_shift = 0,
+	.mdiv_mask = 0xff,
+	.ndiv_shift = 10,
+	.ndiv_mask = 0xff << 10,
+	.pdiv_shift = 20,
+	.pdiv_mask = 0x1f << 20,
+	.pdiv_to_p = pllcx_p,
+	.pdiv_max = PLLCX_PDIV_MAX,
+};
+
 static struct clk tegra_pll_c = {
 	.name      = "pll_c",
 	.ops       = &tegra_pllcx_ops,
@@ -6149,6 +6158,7 @@ static struct clk tegra_pll_c = {
 		.misc1 = 0x8c - 0x80,
 		.misc2 = 0x5d0 - 0x80,
 		.misc3 = 0x5d4 - 0x80,
+		.div_layout = &pllcx_div_layout,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -6182,6 +6192,7 @@ static struct clk tegra_pll_c2 = {
 		.misc1 = 0x4f0 - 0x4e8,
 		.misc2 = 0x4f4 - 0x4e8,
 		.misc3 = 0x4f8 - 0x4e8,
+		.div_layout = &pllcx_div_layout,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -6205,6 +6216,7 @@ static struct clk tegra_pll_c3 = {
 		.misc1 = 0x504 - 0x4fc,
 		.misc2 = 0x508 - 0x4fc,
 		.misc3 = 0x50c - 0x4fc,
+		.div_layout = &pllcx_div_layout,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -6228,6 +6240,7 @@ static struct clk tegra_pll_a1 = {
 		.misc1 = 0x6ac - 0x6a4,
 		.misc2 = 0x6b0 - 0x6a4,
 		.misc3 = 0x6b4 - 0x6a4,
+		.div_layout = &pllcx_div_layout,
 		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
@@ -8219,7 +8232,7 @@ static bool tegra21_is_dyn_ramp(
 		unsigned long input_rate = clk_get_rate(c->parent);
 
 		u32 val = clk_readl(c->reg + PLL_BASE);
-		PLL_BASE_PARSE_CFG(PLLCX, pllcx_p, old_cfg, val);
+		pll_base_parse_cfg(c, &old_cfg, val);
 
 		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))

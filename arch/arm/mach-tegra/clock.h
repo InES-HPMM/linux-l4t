@@ -114,6 +114,17 @@ struct clk_pll_freq_table {
 	u8		cpcon;
 };
 
+struct clk_pll_div_layout {
+	u32		ndiv_shift;
+	u32		ndiv_mask;
+	u32		mdiv_shift;
+	u32		mdiv_mask;
+	u32		pdiv_shift;
+	u32		pdiv_mask;
+	u8		*pdiv_to_p;
+	int		pdiv_max;
+};
+
 enum clk_state {
 	UNINITIALIZED = 0,
 	ON,
@@ -227,6 +238,7 @@ struct clk {
 			u32				misc2;
 			u32				misc3;
 			bool				defaults_set;
+			struct clk_pll_div_layout	*div_layout;
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
 		struct {
