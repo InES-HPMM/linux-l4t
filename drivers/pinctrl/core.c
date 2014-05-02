@@ -467,21 +467,16 @@ int pinctrl_get_pin_id_from_gpio(struct pinctrl_dev *pctldev,
 		unsigned gpio)
 {
 	struct pinctrl_gpio_range *range;
-	int ret = -EINVAL;
-
-	mutex_lock(&pctldev->mutex);
+	int ret;
 
 	range = pinctrl_match_gpio_range(pctldev, gpio);
-	if (range != NULL) {
+	if (!range) {
 		pr_err("Pincontrol does not have gpio %d\n", gpio);
-		goto unlock;
+		return -EINVAL;
 	}
 
 	/* Convert to the pin controllers number space */
 	ret = gpio - range->base + range->pin_base;
-
-unlock:
-	mutex_unlock(&pctldev->mutex);
 	return ret;
 }
 
