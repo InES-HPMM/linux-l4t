@@ -28,10 +28,14 @@
 #include <linux/miscdevice.h>
 #include <linux/dma-mapping.h>
 #include <linux/spinlock.h>
+#include <linux/kthread.h>
+#include <linux/cpu.h>
 
 #include <asm/cacheflush.h>
 
-#include "denver-knobs.h"
+#include "denver-knobs.h" /* backdoor detection */
+
+#include "denver-hardwood.h"
 
 /* #define MY_DEBUG 1 */
 
@@ -42,24 +46,8 @@
 #define DBG_PRINT(format, arg...)
 #endif
 
-#include "denver-hardwood.h"
-
 #define TRACER_OSDUMP_BUFFER_CMD		100
 #define TRACER_OSDUMP_BUFFER_CMD_DATA	101
-
-#define CORE_GUARD_MASK \
-	~(BIT(HARDWOOD_GET_IP_ADDRESS) | \
-	BIT(HARDWOOD_ENABLE_TRACE_DUMP) | \
-	BIT(HARDWOOD_DISABLE_TRACE_DUMP) | \
-	BIT(HARDWOOD_SET_TRACER_MASK) | \
-	BIT(HARDWOOD_CLR_TRACER_MASK) | \
-	/* Below are called during cleanup */ \
-	BIT(HARDWOOD_GET_STATUS) | \
-	BIT(HARDWOOD_GET_BYTES_USED) | \
-	BIT(HARDWOOD_GET_PHYS_ADDR) | \
-	BIT(HARDWOOD_RELEASE_BUFFER) | \
-	BIT(HARDWOOD_WAKEUP_READERS))
-
 #define HW_CMD(c, b, m) ((c) | ((b) << 8) | ((m) << 16))
 
 struct hardwood_buf {
@@ -68,14 +56,24 @@ struct hardwood_buf {
 };
 
 struct hardwood_device {
+	/* device info */
 	int cpu;
 	char name[32];
 	struct miscdevice dev;
 	struct irqaction irq;
-	wait_queue_head_t wait_q;
+
+	/* sleeping support */
 	int signaled;
+	wait_queue_head_t wait_q;
+
+	/* bitmask for buffer availability */
 	ulong buf_status;
 	spinlock_t buf_status_lock;
+
+	/* bitmask for buffer occupation by userspace */
+	ulong buf_occupied;
+
+	/* Per CPU buffers */
 	struct hardwood_buf bufs[N_BUFFER];
 } hardwood_devs[N_CPU];
 
@@ -83,37 +81,42 @@ static int minor_map[N_CPU] = { -1 };
 
 static int TRACER_IRQS[] = { 48, 54 };
 
-static bool hardwood_init_done[N_CPU];
-
+static bool hardwood_init_done;
 static bool hardwood_supported;
 
-#define CPU_GUARD(target, error) \
-{ \
-	int core = smp_processor_id(); \
-	BUG_ON(target >= N_CPU); \
-	if (core != target) { \
-		pr_err("%s: invalid target core: %d (cur = %d)\n", \
-				__func__, target, core); \
-		return error; \
-	} \
-}
+/* Thread for probing buffers when some CPUs are hot-unplugged */
+static struct task_struct *agent_thread;
+static bool agent_stopped;
+
+static void hardwood_init_agent(void);
 
 static void hardwood_late_init(int cpu);
+
+static bool check_buffers(struct hardwood_device *dev, bool lock);
 
 static irqreturn_t hardwood_handler(int irq, void *dev_id)
 {
 	struct hardwood_device *dev = (struct hardwood_device *) dev_id;
 
-	dev->signaled = 1;
-	wake_up_interruptible(&dev->wait_q);
+	DBG_PRINT("IRQ%d received\n", irq);
 
-	DBG_PRINT("core%d is interrupted\n", dev->cpu);
+	if (num_online_cpus() == N_CPU) {
+		/* All CPUs are online, waking up target CPU */
+		dev->signaled = 1;
+		wake_up_interruptible(&dev->wait_q);
+		DBG_PRINT("CPU%d is interrupted\n", dev->cpu);
+	} else {
+		/* Some CPUs are offline, waking up agent */
+		wake_up_process(agent_thread);
+		DBG_PRINT("Agent is interrupted\n");
+	}
 
 	return IRQ_HANDLED;
 }
 
 static int hardwood_open(struct inode *inode, struct file *file)
 {
+	int i;
 	int cpu;
 	int found = 0;
 	int minor = iminor(inode);
@@ -130,7 +133,12 @@ static int hardwood_open(struct inode *inode, struct file *file)
 		}
 	BUG_ON(!found);
 
-	hardwood_late_init(cpu);
+	/* Initialize all CPUs at once */
+	if (!hardwood_init_done) {
+		hardwood_init_agent();
+		for (i = 0; i < N_CPU; i++)
+			hardwood_late_init(i);
+	}
 
 	file->private_data = &hardwood_devs[cpu];
 	return nonseekable_open(inode, file);
@@ -165,12 +173,10 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	u32 trace_cmd;
 	struct hardwood_cmd op;
+	struct hardwood_device *dev;
 
 	if (copy_from_user(&op, (void __user *)arg, sizeof(op)))
 		return -EFAULT;
-
-	if (BIT(cmd) & CORE_GUARD_MASK)
-		CPU_GUARD(op.core_id, -EINVAL);
 
 	if (op.buffer_id >= N_BUFFER)
 		return -EINVAL;
@@ -202,6 +208,10 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case HARDWOOD_DISABLE_TRACE_DUMP:
 	case HARDWOOD_MARK_EMPTY:
 		hw_run_cmd(trace_cmd);
+		dev = &hardwood_devs[op.core_id];
+		if (cmd == HARDWOOD_MARK_EMPTY)
+			/* Removing its occupying bit */
+			clear_bit(op.buffer_id, &dev->buf_occupied);
 		break;
 
 	case HARDWOOD_SET_TRACER_MASK:
@@ -212,6 +222,7 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		/* upper 64bits */
 		hw_set_data(op.data2);
 		hw_run_cmd(HW_CMD(0, 1, cmd));
+		break;
 
 	/* SW-only CMD */
 	case HARDWOOD_GET_PHYS_ADDR:
@@ -222,8 +233,10 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case HARDWOOD_WAKEUP_READERS:
 		DBG_PRINT("core%d is FORCED to wake up\n", op.core_id);
-		hardwood_handler(TRACER_IRQS[op.core_id],
-				&hardwood_devs[op.core_id]);
+		dev = &hardwood_devs[op.core_id];
+		check_buffers(dev, true);
+		dev->signaled = 1;
+		wake_up_interruptible(&dev->wait_q);
 		break;
 
 	default:
@@ -236,6 +249,8 @@ static bool is_buffer_ready(int cpu, int buf)
 {
 	u64 status;
 	u64 bytes_used;
+
+	DBG_PRINT("Probing buffer %d:%d\n", cpu, buf);
 
 	hw_run_cmd(HW_CMD(cpu, buf, HARDWOOD_GET_BYTES_USED));
 	hw_get_data(&bytes_used);
@@ -254,21 +269,69 @@ static bool is_buffer_ready(int cpu, int buf)
 	return (bytes_used > 0) && (status == 1);
 }
 
-ssize_t hardwood_read(struct file *file, char __user *p, size_t s, loff_t *r)
+static bool check_buffers(struct hardwood_device *dev, bool lock)
 {
 	int i;
+
+	if (lock)
+		spin_lock(&dev->buf_status_lock);
+
+	/* Poll each buffer */
+	for (i = 0; i < N_BUFFER; ++i)
+		if (is_buffer_ready(dev->cpu, i)) {
+			/* Present buffer only if not occupied */
+			if (!test_bit(i, &dev->buf_occupied))
+				set_bit(i, &dev->buf_status);
+		}
+
+	if (lock)
+		spin_unlock(&dev->buf_status_lock);
+
+	return dev->buf_status != 0;
+}
+
+static int agent_thread_fn(void *data)
+{
+	int cpu;
+	struct hardwood_device *dev;
+	while (!agent_stopped) {
+		DBG_PRINT("agent: start waiting\n");
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule();
+
+		/* woken up by interrupt */
+		DBG_PRINT("agent: woken up\n");
+		set_current_state(TASK_RUNNING);
+
+		for (cpu = 0; cpu < N_CPU; ++cpu) {
+			DBG_PRINT("agent: checking CPU %d\n", cpu);
+			dev = &hardwood_devs[cpu];
+			if (check_buffers(dev, true)) {
+				DBG_PRINT("Waking up reader %d\n", cpu);
+				dev->signaled = 1;
+				wake_up_interruptible(&dev->wait_q);
+			}
+		}
+
+		DBG_PRINT("agent: done one pass\n");
+	}
+	return 0;
+}
+
+ssize_t hardwood_read(struct file *file, char __user *p, size_t s, loff_t *r)
+{
 	int buf_id = -EAGAIN;
 	struct hardwood_device *dev;
+	bool found;
 
 	dev = (struct hardwood_device *)file->private_data;
-
-	CPU_GUARD(dev->cpu, 0);
 
 	if (s != sizeof(u32)) {
 		DBG_PRINT("must use u32 to read.\n");
 		return 0;
 	}
 
+	/* Check if any buffers is available NOW */
 	spin_lock(&dev->buf_status_lock);
 	if (dev->buf_status) {
 		buf_id = find_first_bit(&dev->buf_status, sizeof(ulong));
@@ -278,36 +341,35 @@ ssize_t hardwood_read(struct file *file, char __user *p, size_t s, loff_t *r)
 
 	if (buf_id < 0) {
 		/* No buffer available for readout */
+		DBG_PRINT("[HW] CPU%d is waiting on %p\n",
+			dev == &hardwood_devs[0] ? 0 : 1, &dev->wait_q);
+
+		/* Sleep until signaled by IRQ handler */
 		if (wait_event_interruptible(dev->wait_q, dev->signaled))
 			return -ERESTARTSYS;
 
 		/* Restore signal */
 		dev->signaled = 0;
 
-		DBG_PRINT("core%d is up\n", dev->cpu);
+		DBG_PRINT("CPU%d is woken up\n", dev->cpu);
 
 		spin_lock(&dev->buf_status_lock);
 
-		/* Recheck */
-		if (dev->buf_status) {
+		/* Re-probe */
+		found = true;
+		if (!dev->buf_status)
+			found = check_buffers(dev, false);
+
+		/* Some buffers are available NOW, we grab one */
+		if (found) {
 			buf_id = find_first_bit(&dev->buf_status,
 					sizeof(ulong));
 			clear_bit(buf_id, &dev->buf_status);
-		} else {
-			/* Poll each buffer */
-			for (i = 0; i < N_BUFFER; ++i) {
-				if (is_buffer_ready(dev->cpu, i)) {
-					if (buf_id < 0) {
-						buf_id = i;
-						/* consider buf_id used */
-						continue;
-					}
-					set_bit(i, &dev->buf_status);
-				}
-			}
+			set_bit(buf_id, &dev->buf_occupied);
 		}
 
-		DBG_PRINT("buf_status = %lx\n", dev->buf_status);
+		DBG_PRINT("buf_status = %lx, buf_id = %d\n",
+			dev->buf_status, buf_id);
 
 		spin_unlock(&dev->buf_status_lock);
 	}
@@ -369,11 +431,14 @@ static __init void init_one_buffer(int cpu, int buf_id)
 static void hardwood_late_init(int cpu)
 {
 	int i;
-	if (hardwood_init_done[cpu])
-		return;
 	for (i = 0; i < N_BUFFER; i++)
 		init_one_buffer(cpu, i);
-	hardwood_init_done[cpu] = 1;
+	hardwood_init_done = 1;
+}
+
+static void hardwood_init_agent(void)
+{
+	agent_thread = kthread_create(agent_thread_fn, 0, "hardwood-agent");
 }
 
 static void init_one_cpu(int cpu)
@@ -405,9 +470,40 @@ static void init_one_cpu(int cpu)
 	BUG_ON(setup_irq(TRACER_IRQS[cpu], irq));
 
 	hdev->buf_status = 0;
+	hdev->buf_occupied = 0;
 	hdev->signaled = 0;
 	spin_lock_init(&hdev->buf_status_lock);
 }
+
+static int hardwood_cpu_notify(struct notifier_block *self,
+					 unsigned long action, void *hcpu)
+{
+	long cpu = (long) hcpu;
+	long new_cpu;
+
+	switch (action) {
+	case CPU_ONLINE:
+	case CPU_ONLINE_FROZEN:
+		new_cpu = cpu;
+		break;
+
+	case CPU_DEAD:
+	case CPU_DEAD_FROZEN:
+		new_cpu = cpu == 0 ? 1 : 0;
+		break;
+
+	default:
+		return NOTIFY_OK;
+	}
+
+	hw_run_cmd(HW_CMD(cpu, new_cpu, HARDWOOD_SET_IRQ_TARGET));
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block hardwood_cpu_notifier = {
+	.notifier_call = hardwood_cpu_notify,
+};
 
 static __init int hardwood_init(void)
 {
@@ -418,9 +514,11 @@ static __init int hardwood_init(void)
 	pr_info("Denver: hardwood is %ssupported.\n",
 		hardwood_supported ? "" : "NOT ");
 
-	if (hardwood_supported)
+	if (hardwood_supported) {
 		for (cpu = 0; cpu < N_CPU; ++cpu)
 			init_one_cpu(cpu);
+		register_hotcpu_notifier(&hardwood_cpu_notifier);
+	}
 
 	return 0;
 }
