@@ -41,6 +41,13 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
+config BCMDHD_HW_OOB
+	bool "Use out of band interrupt"
+	depends on BCMDHD
+	default y
+	---help---
+	  Use out of band interrupt for card interrupt and wake on wireless.
+
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
 	depends on BCMDHD && CFG80211 = n
