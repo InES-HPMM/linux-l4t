@@ -146,6 +146,13 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "automotive.host1x",	NULL,		264000000,	true},
 
+	{ "i2c1",		"pll_p",	408000000,	false},
+	{ "i2c2",		"pll_p",	408000000,	false},
+	{ "i2c3",		"pll_p",	408000000,	false},
+	{ "i2c4",		"pll_p",	408000000,	false},
+	{ "i2c5",		"pll_p",	408000000,	false},
+	{ "i2c6",		"pll_p",	408000000,	false},
+
 	{ "sdmmc2",		"pll_p",	48000000,	false},
 
 	{ NULL,			NULL,		0,		0},
