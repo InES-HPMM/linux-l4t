@@ -339,6 +339,7 @@ u32 tegra_fuse_readl(unsigned long offset)
 
 	return val;
 }
+EXPORT_SYMBOL(tegra_fuse_readl);
 
 void tegra_fuse_writel(u32 val, unsigned long offset)
 {
