@@ -1415,7 +1415,8 @@ static int gk20a_probe(struct platform_device *dev)
 
 	gk20a->gr_idle_timeout_default =
 			CONFIG_GK20A_DEFAULT_TIMEOUT;
-	gk20a->timeouts_enabled = true;
+	if (tegra_platform_is_silicon())
+		gk20a->timeouts_enabled = true;
 
 	/* Set up initial clock gating settings */
 	if (tegra_platform_is_silicon()) {
