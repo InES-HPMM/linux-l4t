@@ -154,7 +154,13 @@ struct tegra_wdt *tegra_wdt[MAX_NR_CPU_WDT];
 
 static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 {
+	u32 val;
+
+	val = (wdt->timeout * 1000000ul) >> 2;
+	val |= (TIMER_EN | TIMER_PERIODIC);
+	writel(val, wdt->wdt_timer + TIMER_PTV);
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+
 #if defined(CONFIG_TRUSTED_LITTLE_KERNEL) && \
 	defined(CONFIG_ARCH_TEGRA_12x_SOC) && defined(CONFIG_FIQ_DEBUGGER)
 	/* Comment out to test FIQ debugger */
