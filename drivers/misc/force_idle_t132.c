@@ -36,8 +36,6 @@
 #include <linux/tick.h>
 #include <linux/gpio.h>
 #include <linux/tegra-soc.h>
-#include <mach/pinmux-defines.h>
-#include <mach/pinmux-t12.h>
 
 #include "../../arch/arm/mach-tegra/gpio-names.h"
 #include "../../kernel/irq/internals.h"
