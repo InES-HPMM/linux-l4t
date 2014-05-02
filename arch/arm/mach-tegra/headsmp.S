@@ -53,7 +53,7 @@ ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
 
 	ldr	r0, =tegra_with_secure_firmware
-	sub	r0, #PAGE_OFFSET
+	sub	r0, #(PAGE_OFFSET - TEGRA_DRAM_BASE)
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	secondary_startup
@@ -86,7 +86,7 @@ ENDPROC(tegra_secondary_startup)
  */
 ENTRY(tegra_resume)
 	ldr	r1, =tegra_with_secure_firmware
-	sub	r1, #PAGE_OFFSET
+	sub	r1, #(PAGE_OFFSET - TEGRA_DRAM_BASE)
 	ldr	r1, [r1]
 	cmp	r1, #1
 	bne	cpu_not_secure
@@ -130,6 +130,7 @@ cpu_not_secure:
 #ifdef CONFIG_CACHE_L2X0
 #if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	ldr	r1, =tegra_with_secure_firmware
+	sub	r1, #(PAGE_OFFSET - TEGRA_DRAM_BASE)
 	ldr	r1, [r1]
 	cmp	r1, #1
 	beq	cpu_resume
@@ -239,7 +240,7 @@ __invalidate_cpu_state:
 	beq	cortex_a9
 
 	ldr	r0, =tegra_with_secure_firmware
-	sub	r0, #PAGE_OFFSET
+	sub	r0, #(PAGE_OFFSET - TEGRA_DRAM_BASE)
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	__enable_i_cache_branch_pred
@@ -390,7 +391,7 @@ ENTRY(__tegra_cpu_reset_handler)
 #endif
 
 	ldr	r0, =tegra_with_secure_firmware
-	sub	r0, #PAGE_OFFSET
+	sub	r0, #(PAGE_OFFSET - TEGRA_DRAM_BASE)
 	ldr	r0, [r0]
 	cmp	r0, #1
 	beq	cpu_is_secure
@@ -530,6 +531,9 @@ __die:
 
 	/* If the CPU still isn't dead, just spin here. */
 	b	.
+	/* Include literal pool in the handler itself so it does get copied to
+	 * IRAM too */
+	.ltorg
 ENDPROC(__tegra_cpu_reset_handler)
 
 	.align L1_CACHE_SHIFT
