@@ -77,8 +77,8 @@ static int debug_port_init(struct platform_device *pdev)
 	/* clear LSR */
 	tegra_read(t, UART_LSR);
 
-	/* enable rx and lsr interrupt */
-	tegra_write(t, UART_IER_RLSI | UART_IER_RDI, UART_IER);
+	/* enable rx interrupt */
+	tegra_write(t, UART_IER_RDI, UART_IER);
 
 	return 0;
 }
