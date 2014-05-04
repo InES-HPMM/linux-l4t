@@ -2,6 +2,8 @@
 #include "tegra124-platforms/tegra124-tn8-sysedp-e1780-1100-a02.dtsi"
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000c000 {
 		max17048@36 {
 			status = "okay";

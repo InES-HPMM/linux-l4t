@@ -2,6 +2,8 @@
 #include <dt-bindings/iio/meter/ina3221x.h>
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000c400 {
 		lc709203f@0b {
 			status = "okay";
