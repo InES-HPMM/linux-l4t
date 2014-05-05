@@ -230,19 +230,21 @@ int tegra_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 	s32 cp;
 	u32 val = tegra_fuse_readl(FUSE_VSENSOR_CALIB_0);
 
-	*base_cp = (((val) &
-		(FUSE_BASE_CP_MASK << FUSE_BASE_CP_SHIFT))
-		>> FUSE_BASE_CP_SHIFT);
-	if (!(*base_cp)) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled.\n");
+	if (!val)
 		return -EINVAL;
-	}
-	cp = (((val) &
-		(FUSE_SHIFT_CP_MASK << FUSE_SHIFT_CP_SHIFT))
-		>> FUSE_SHIFT_CP_SHIFT);
-	*shifted_cp = ((s32)(cp) <<
-		(32 - FUSE_SHIFT_CP_BITS) >>
-		(32 - FUSE_SHIFT_CP_BITS));
+
+	if (base_cp)
+		*base_cp = (((val) & (FUSE_BASE_CP_MASK
+					<< FUSE_BASE_CP_SHIFT))
+					>> FUSE_BASE_CP_SHIFT);
+
+	cp = (((val) & (FUSE_SHIFT_CP_MASK
+				<< FUSE_SHIFT_CP_SHIFT))
+				>> FUSE_SHIFT_CP_SHIFT);
+	if (shifted_cp)
+		*shifted_cp = ((s32)(cp)
+				<< (32 - FUSE_SHIFT_CP_BITS)
+				>> (32 - FUSE_SHIFT_CP_BITS));
 	return 0;
 }
 
@@ -251,19 +253,21 @@ int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 	s32 ft;
 	u32 val = tegra_fuse_readl(FUSE_VSENSOR_CALIB_0);
 
-	*base_ft = (((val) &
-		(FUSE_BASE_FT_MASK << FUSE_BASE_FT_SHIFT))
-		>> FUSE_BASE_FT_SHIFT);
-	if (!(*base_ft)) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled.\n");
+	if (!val)
 		return -EINVAL;
-	}
-	ft = (((val) &
-		(FUSE_SHIFT_FT_MASK << FUSE_SHIFT_FT_SHIFT))
-		>> FUSE_SHIFT_FT_SHIFT);
-	*shifted_ft = ((s32)(ft) <<
-		(32 - FUSE_SHIFT_FT_BITS) >>
-		(32 - FUSE_SHIFT_FT_BITS));
+
+	if (base_ft)
+		*base_ft = (((val) & (FUSE_BASE_FT_MASK
+					<< FUSE_BASE_FT_SHIFT))
+					>> FUSE_BASE_FT_SHIFT);
+
+	ft = (((val) & (FUSE_SHIFT_FT_MASK
+				<< FUSE_SHIFT_FT_SHIFT))
+				>> FUSE_SHIFT_FT_SHIFT);
+	if (shifted_ft)
+		*shifted_ft = ((s32)(ft) <<
+			(32 - FUSE_SHIFT_FT_BITS) >>
+			(32 - FUSE_SHIFT_FT_BITS));
 	return 0;
 }
 

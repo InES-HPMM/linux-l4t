@@ -1474,12 +1474,10 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 	int i;
 	struct soctherm_therm *therm = thz->devdata;
 	struct thermal_trip_info *trip_state;
-	u32 base_cp, base_ft;
-	s32 shft_cp, shft_ft;
 
 	/* skip binding cooling devices on improperly fused soctherm */
-	if (tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) < 0 ||
-	    tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) < 0)
+	if (tegra_fuse_calib_base_get_cp(NULL, NULL) < 0 ||
+	    tegra_fuse_calib_base_get_ft(NULL, NULL) < 0)
 		return 0;
 
 	for (i = 0; i < therm->num_trips; i++) {
@@ -2720,11 +2718,9 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	s16 therm_a, therm_b;
 	s32 div, mult, actual_tsensor_ft, actual_tsensor_cp;
 	int fuse_rev;
-	u32 base_cp;
-	s32 shft_cp;
 	struct soctherm_fuse_correction_war *war;
 
-	fuse_rev = tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp);
+	fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
 	if (fuse_rev < 0)
 		return fuse_rev;
 	pr_debug("%s: fuse_rev %d\n", __func__, fuse_rev);

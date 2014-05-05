@@ -346,8 +346,8 @@ int tegra_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 
 	if (base_cp)
 		*base_cp = (((val) & (FUSE_BASE_CP_MASK
-				<< FUSE_BASE_CP_SHIFT))
-				>> FUSE_BASE_CP_SHIFT);
+					<< FUSE_BASE_CP_SHIFT))
+					>> FUSE_BASE_CP_SHIFT);
 
 	val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
 	cp = (((val) & (FUSE_SHIFT_CP_MASK
@@ -388,8 +388,8 @@ int tegra_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 
 	if (base_ft)
 		*base_ft = (((val) & (FUSE_BASE_FT_MASK
-				<< FUSE_BASE_FT_SHIFT))
-				>> FUSE_BASE_FT_SHIFT);
+					<< FUSE_BASE_FT_SHIFT))
+					>> FUSE_BASE_FT_SHIFT);
 
 	ft_or_cp2 = (((val) & (FUSE_SHIFT_FT_MASK
 				<< FUSE_SHIFT_FT_SHIFT))

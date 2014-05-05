@@ -735,8 +735,7 @@ static struct soctherm_throttle voltmon_throttle = {
 
 int __init ardbeg_soctherm_init(void)
 {
-	s32 base_cp, shft_cp;
-	u32 base_ft, shft_ft;
+	int cp_rev, ft_rev;
 	struct board_info pmu_board_info;
 	struct board_info board_info;
 	enum soctherm_therm_id therm_cpu;
@@ -748,6 +747,9 @@ int __init ardbeg_soctherm_init(void)
 		memcpy(ardbeg_soctherm_data.therm,
 				ardbeg_therm_pop, sizeof(ardbeg_therm_pop));
 	}
+
+	cp_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
+	ft_rev = tegra_fuse_calib_base_get_ft(NULL, NULL);
 
 	/* Bowmore and P1761 are T132 platforms: ATE rev check (TODO) */
 	if (board_info.board_id == BOARD_E1971 ||
@@ -765,8 +767,7 @@ int __init ardbeg_soctherm_init(void)
 	}
 
 	/* do this only for supported CP,FT fuses */
-	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
-	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
+	if ((cp_rev >= 0) && (ft_rev >= 0)) {
 		tegra_platform_edp_init(
 			ardbeg_soctherm_data.therm[therm_cpu].trips,
 			&ardbeg_soctherm_data.therm[therm_cpu].num_trips,

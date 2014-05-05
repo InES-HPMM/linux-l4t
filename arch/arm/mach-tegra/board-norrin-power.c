@@ -285,8 +285,6 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 
 int __init norrin_soctherm_init(void)
 {
-	s32 base_cp, shft_cp;
-	u32 base_ft, shft_ft;
 	struct board_info pmu_board_info;
 	struct board_info board_info;
 	enum soctherm_therm_id therm_cpu;
@@ -297,8 +295,8 @@ int __init norrin_soctherm_init(void)
 	therm_cpu = THERM_PLL;
 
 	/* do this only for supported CP,FT fuses */
-	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
-	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
+	if ((tegra_fuse_calib_base_get_cp(NULL, NULL) >= 0) &&
+	    (tegra_fuse_calib_base_get_ft(NULL, NULL) >= 0)) {
 		tegra_platform_edp_init(
 			norrin_soctherm_data.therm[therm_cpu].trips,
 			&norrin_soctherm_data.therm[therm_cpu].num_trips,
