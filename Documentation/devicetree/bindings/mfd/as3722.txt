@@ -13,6 +13,18 @@ Required properties:
   The second cell is the flags, encoded as the trigger masks from binding document
 	interrupts.txt, using dt-bindings/irq.
 
+Optional properties:
+-------------------
+- ams,backup-battery-chargable: Support for backup battery charging present or not. Default is
+          0 for not supported.
+- ams,battery-backup-charge-current: Backup Battery Charge Current. It can take four values from 0 to 3 for current
+          value of 50, 200, 100 and 400 uA respectively. Default is 0 for 50uA
+- ams,battery-backup-enable-bypass: Enable or Bypass output resistor during Backup Battery Charging. Default is
+          1 for Bypass
+- ams,battery-backup-charge-mode: Enable or Disable Backup Battery charger during various mode. It can take four
+          values from 0 to 3 for Disable, Enable in Active Mode, Enable in Active and Standby mode,
+	  Enable in Active, Standby and poweroff Mode respectively. Default value is  0 for Disable.
+
 Optional submodule and their properties:
 =======================================
 
