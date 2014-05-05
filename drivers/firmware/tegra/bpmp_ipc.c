@@ -23,6 +23,7 @@
 #include <linux/notifier.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <linux/semaphore.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp_abi.h"
@@ -513,6 +514,93 @@ static int bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data)
 	return 0;
 }
 
+static LIST_HEAD(module_mrq_list);
+
+struct module_mrq {
+	struct list_head link;
+	uint32_t base;
+	bpmp_mrq_handler handler;
+	void *data;
+};
+
+static struct module_mrq *bpmp_find_module_mrq(uint32_t module_base)
+{
+	struct module_mrq *item;
+
+	list_for_each_entry(item, &module_mrq_list, link) {
+		if (item->base == module_base)
+			return item;
+	}
+
+	return NULL;
+}
+
+static void bpmp_mrq_module_mail(int code, void *data, int ch)
+{
+	unsigned long flags;
+	struct module_mrq *item;
+	uint32_t base;
+
+	base = tegra_bpmp_mail_readl(ch, 0);
+
+	spin_lock_irqsave(&lock, flags);
+	item = bpmp_find_module_mrq(base);
+	if (item)
+		item->handler(code, item->data, ch);
+	else
+		tegra_bpmp_mail_return(ch, -ENODEV, 0);
+	spin_unlock_irqrestore(&lock, flags);
+}
+
+int tegra_bpmp_request_module_mrq(uint32_t module_base,
+		bpmp_mrq_handler handler, void *data)
+{
+	struct module_mrq *item;
+	unsigned long flags;
+
+	if (!module_base || !handler)
+		return -EINVAL;
+
+	item = kmalloc(sizeof(*item), GFP_KERNEL);
+	if (!item)
+		return -ENOMEM;
+
+	item->base = module_base;
+	item->handler = handler;
+	item->data = data;
+
+	spin_lock_irqsave(&lock, flags);
+
+	if (bpmp_find_module_mrq(module_base)) {
+		spin_unlock_irqrestore(&lock, flags);
+		kfree(item);
+		return -EEXIST;
+	}
+
+	list_add(&item->link, &module_mrq_list);
+	spin_unlock_irqrestore(&lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_bpmp_request_module_mrq);
+
+void tegra_bpmp_cancel_module_mrq(uint32_t module_base)
+{
+	struct module_mrq *item;
+	unsigned long flags;
+
+	if (!module_base)
+		return;
+
+	spin_lock_irqsave(&lock, flags);
+	item = bpmp_find_module_mrq(module_base);
+	if (item)
+		list_del(&item->link);
+	spin_unlock_irqrestore(&lock, flags);
+
+	kfree(item);
+}
+EXPORT_SYMBOL(tegra_bpmp_cancel_module_mrq);
+
 static int bpmp_mrq_init(void)
 {
 	int i;
@@ -528,7 +616,7 @@ static int bpmp_mrq_init(void)
 	if (r)
 		return r;
 
-	return 0;
+	return bpmp_request_mrq(MRQ_MODULE_MAIL, bpmp_mrq_module_mail, NULL);
 }
 
 static void bpmp_init_completion(void)

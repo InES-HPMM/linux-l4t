@@ -60,6 +60,9 @@ int tegra_bpmp_switch_cluster(int cpu);
 void tegra_bpmp_trace_printk(void);
 int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
+int tegra_bpmp_request_module_mrq(uint32_t module_base,
+		bpmp_mrq_handler handler, void *data);
+void tegra_bpmp_cancel_module_mrq(uint32_t module_base);
 uint32_t tegra_bpmp_mail_readl(int ch, int offset);
 void tegra_bpmp_mail_return(int ch, int code, int v);
 void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz);
@@ -73,6 +76,9 @@ static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz) { return -ENODEV; }
+static inline int tegra_bpmp_request_module_mrq(uint32_t module_base,
+		bpmp_mrq_handler handler, void *data) { return -ENODEV; }
+static inline void tegra_bpmp_cancel_module_mrq(uint32_t module_base) {}
 static inline uint32_t tegra_bpmp_mail_readl(int ch, int offset) { return 0; }
 static inline void tegra_bpmp_mail_return(int ch, int code, int v, int sz) { }
 static inline void tegra_bpmp_mail_return_data(int ch, int code,
