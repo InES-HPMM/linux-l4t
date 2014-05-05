@@ -27,6 +27,14 @@
 		linux,initrd-end = <0x824B5300>;
 	};
 
+	i2c@7000d000 {
+		tps65913 {
+			thermal {
+				status = "okay";
+			};
+		};
+	};
+
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
