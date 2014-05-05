@@ -109,7 +109,7 @@ static struct dvfs_rail tegra13_dvfs_rail_vdd_core = {
 
 static struct dvfs_rail tegra13_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
-	.version = "p4_v4",
+	.version = "p4_v8",
 	.max_millivolts = 1350,
 	.min_millivolts = 650,
 	.step = VDD_SAFE_STEP,
@@ -458,7 +458,7 @@ static int resolve_core_override(int min_override_mv)
 /* GPU DVFS tables */
 static unsigned long gpu_max_freq[] = {
 /* speedo_id	0	1	2	*/
-		804000, 924000,
+		804000, 852000,
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
