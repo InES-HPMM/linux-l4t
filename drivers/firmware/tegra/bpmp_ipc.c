@@ -54,6 +54,8 @@
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
+#define __MRQ_INDEX(id)		((id) & ~__MRQ_ATTRS)
+
 /*
  * IPC message format
  * @code: either an MRQ number (outgoing) or an error code (incoming)
@@ -66,6 +68,18 @@ struct mb_data {
 	u8 data[MSG_DATA_SZ];
 };
 
+struct mrq_handler_data {
+	bpmp_mrq_handler handler;
+	void *data;
+};
+
+static int cpu_mrqs[] = {
+	MRQ_PING,
+	MRQ_MODULE_MAIL
+};
+
+static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
+static uint8_t mrq_handler_index[NR_MRQS];
 static struct mb_data *channel_area[NR_CHANNELS];
 struct completion completion[NR_THREAD_CH];
 static int connected;
@@ -139,43 +153,73 @@ static void bpmp_ring_doorbell(void)
 	writel(FIR_BIT(CPU_OB_IRQ), ICTLR_FIR_SET(CPU_OB_IRQ));
 }
 
-static u32 bpmp_mail_readl(int ch, int offset)
+uint32_t tegra_bpmp_mail_readl(int ch, int offset)
 {
 	u32 *data = (u32 *)(channel_area[ch]->data + offset);
 	return *data;
 }
+EXPORT_SYMBOL(tegra_bpmp_mail_readl);
 
-static void bpmp_mail_return(int ch, int code, int v)
+void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz)
 {
-	struct mb_data *p = channel_area[ch];
-	int *data = (int *)p->data;
+	struct mb_data *p;
+	int flags;
 
+	if (sz > MSG_DATA_SZ) {
+		WARN_ON(1);
+		return;
+	}
+
+	p = channel_area[ch];
 	p->code = code;
-	*data = v;
+	memcpy(p->data, data, sz);
 
-	bpmp_ack_master(ch, p->flags);
-	if (p->flags & RING_DOORBELL)
+	flags = p->flags;
+	bpmp_ack_master(ch, flags);
+	if (flags & RING_DOORBELL)
 		bpmp_ring_doorbell();
 }
+EXPORT_SYMBOL(tegra_bpmp_mail_return_data);
 
-static void bpmp_mrq_ping(int ch)
+void tegra_bpmp_mail_return(int ch, int code, int v)
+{
+	tegra_bpmp_mail_return_data(ch, code, &v, sizeof(v));
+}
+EXPORT_SYMBOL(tegra_bpmp_mail_return);
+
+static void bpmp_mrq_ping(int code, void *data, int ch)
 {
 	int challenge;
 	int reply;
-	challenge = bpmp_mail_readl(ch, 0);
+	challenge = tegra_bpmp_mail_readl(ch, 0);
 	reply = challenge  << (smp_processor_id() + 1);
-	bpmp_mail_return(ch, 0, reply);
+	tegra_bpmp_mail_return(ch, 0, reply);
 }
 
 static void bpmp_dispatch_mrq(int ch)
 {
-	switch (channel_area[ch]->code) {
-	case MRQ_PING:
-		bpmp_mrq_ping(ch);
-		break;
-	default:
-		bpmp_mail_return(ch, -EINVAL, 0);
-	}
+	struct mb_data *p;
+	struct mrq_handler_data *h;
+	unsigned int i;
+
+	p = channel_area[ch];
+	i = __MRQ_INDEX(p->code);
+
+	if (i >= NR_MRQS)
+		goto err_out;
+
+	if (!mrq_handler_index[i])
+		goto err_out;
+
+	h = mrq_handlers + mrq_handler_index[i] - 1;
+	if (!h->handler)
+		goto err_out;
+
+	h->handler(p->code, h->data, ch);
+	return;
+
+err_out:
+	tegra_bpmp_mail_return(ch, -EINVAL, 0);
 }
 
 static struct completion *bpmp_completion_obj(int ch)
@@ -441,6 +485,52 @@ int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 }
 EXPORT_SYMBOL(tegra_bpmp_rpc);
 
+static int bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data)
+{
+	struct mrq_handler_data *ph;
+	unsigned long f;
+	unsigned int i;
+
+	i = __MRQ_INDEX(mrq);
+	if (i >= NR_MRQS)
+		return -EINVAL;
+
+	if (!mrq_handler_index[i])
+		return -EINVAL;
+
+	spin_lock_irqsave(&lock, f);
+
+	ph = mrq_handlers + mrq_handler_index[i] - 1;
+	if (ph->handler) {
+		spin_unlock_irqrestore(&lock, f);
+		return -EEXIST;
+	}
+
+	ph->handler = handler;
+	ph->data = data;
+
+	spin_unlock_irqrestore(&lock, f);
+	return 0;
+}
+
+static int bpmp_mrq_init(void)
+{
+	int i;
+	int j;
+	int r;
+
+	for (i = 0; i < ARRAY_SIZE(cpu_mrqs); i++) {
+		j = __MRQ_INDEX(cpu_mrqs[i]);
+		mrq_handler_index[j] = i + 1;
+	}
+
+	r = bpmp_request_mrq(MRQ_PING, bpmp_mrq_ping, NULL);
+	if (r)
+		return r;
+
+	return 0;
+}
+
 static void bpmp_init_completion(void)
 {
 	int i;
@@ -586,6 +676,12 @@ int bpmp_ipc_init(struct platform_device *pdev)
 	r = bpmp_init_irq(pdev);
 	if (r) {
 		dev_err(&pdev->dev, "irq init failed (%d)\n", r);
+		return r;
+	}
+
+	r = bpmp_mrq_init();
+	if (r) {
+		dev_err(&pdev->dev, "mrq init failed (%d)\n", r);
 		return r;
 	}
 

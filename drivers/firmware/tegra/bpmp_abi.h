@@ -68,4 +68,6 @@
 #define MRQ_SCX_ENABLE		12
 #define MRQ_INIT_NR_CPUS	13
 
+#define NR_MRQS			32
+
 #endif

@@ -50,14 +50,19 @@ struct tegra_bpmp_platform_data {
 	phys_addr_t size;
 };
 
+typedef void (*bpmp_mrq_handler)(int mrq, void *data, int ch);
+
 #ifdef CONFIG_TEGRA_BPMP
 int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx);
 int tegra_bpmp_tolerate_idle(int cpu, int ccxtl);
 int tegra_bpmp_scx_enable(int scx);
 int tegra_bpmp_switch_cluster(int cpu);
 void tegra_bpmp_trace_printk(void);
-extern int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
+int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
+uint32_t tegra_bpmp_mail_readl(int ch, int offset);
+void tegra_bpmp_mail_return(int ch, int code, int v);
+void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz);
 #else
 static inline int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 { return -ENODEV; }
@@ -68,6 +73,10 @@ static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz) { return -ENODEV; }
+static inline uint32_t tegra_bpmp_mail_readl(int ch, int offset) { return 0; }
+static inline void tegra_bpmp_mail_return(int ch, int code, int v, int sz) { }
+static inline void tegra_bpmp_mail_return_data(int ch, int code,
+		void *data, int sz) { }
 #endif
 
 #endif
