@@ -129,10 +129,12 @@ DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 /*
  * Check CP fuse revision. Return value (depending on chip) is as below:
  *   Any: ERROR:      -ve:	Negative return value
- *  T12x: CP/FT:	1:	Old style CP/FT fuse
- *  T12x: CP1/CP2:	0:	New style CP1/CP2 fuse (default for t12x)
- *  T13x: Old pattern:	1:	Old ATE pattern CP1/CP2 fuse
- *  T13x: New pattern:	0:	New ATE pattern CP1/CP2 fuse (default for t13x)
+ *  T12x: CP/FT:	1:	T124: Old style CP/FT fuse
+ *  T12x: CP1/CP2:	0:	T124: New style CP1/CP2 fuse (default)
+ *
+ *  T13x: Old pattern:	2:	T132: Old ATE CP1/CP2 fuse (rev upto 0.8)
+ *  T13x: Mid pattern:	1:	T132: Mid ATE CP1/CP2 fuse (rev 0.9 - 0.11)
+ *  T13x: New pattern:	0:	T132: New ATE CP1/CP2 fuse (rev 0.12 onwards)
  */
 static inline int fuse_cp_rev_check(void)
 {
@@ -149,8 +151,11 @@ static inline int fuse_cp_rev_check(void)
 
 	/* T13x: all CP rev are valid */
 	if (chip_id == TEGRA_CHIPID_TEGRA13) {
-		/* CP rev < 00.9 is old ATE pattern */
-		if ((rev_major == 0) && (rev_minor < 9))
+		/* CP rev <= 00.8 is old ATE pattern */
+		if ((rev_major == 0) && (rev_minor <= 8))
+			return 2;
+		/* CP 00.8 > rev >= 00.11 is mid ATE pattern */
+		if ((rev_major == 0) && (rev_minor <= 11))
 			return 1;
 		return 0; /* default new ATE pattern */
 	}

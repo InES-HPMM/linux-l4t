@@ -1548,7 +1548,7 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 
 	if (index != THERM_CPU && index != THERM_GPU && index != THERM_MEM &&
 	    index != THERM_PLL) {
-		WARN(1, "Unknown thermal sensor index %d", index);
+		WARN(1, "Unknown thermal sensor index %d", (int)index);
 		index = THERM_PLL;
 	}
 
@@ -2723,7 +2723,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
 	if (fuse_rev < 0)
 		return fuse_rev;
-	pr_debug("%s: fuse_rev %d\n", __func__, fuse_rev);
 
 	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &value);
 
@@ -2763,7 +2762,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 		war = fuse_rev ?
 			&t12x_fuse_war1[sensor] : &t12x_fuse_war2[sensor];
 	else if (IS_T13X)
-		war = fuse_rev ?
+		war = fuse_rev == 2 ?
 			&t13x_fuse_war1[sensor] : &t13x_fuse_war2[sensor];
 	else
 		war = &no_fuse_war[sensor];
@@ -3555,13 +3554,15 @@ static int regs_show(struct seq_file *s, void *data)
 	uint m, n, q;
 	char *depth;
 
+	seq_printf(s, "-----TSENSE (precision %s  fuse %d  convert %s)-----\n",
+		   PRECISION_TO_STR(), tegra_fuse_calib_base_get_cp(NULL, NULL),
+		   read_hw_temp ? "HW" : "SW");
+
 	if (soctherm_suspended) {
 		seq_puts(s, "SOC_THERM is SUSPENDED\n");
 		return 0;
 	}
 
-	seq_printf(s, "-----TSENSE (precision %s  convert %s)-----\n",
-		   PRECISION_TO_STR(), read_hw_temp ? "HW" : "SW");
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, i));
 		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
