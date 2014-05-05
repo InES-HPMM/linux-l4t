@@ -62,21 +62,6 @@ static void init_chip_specific(void)
 	cid = tegra_get_chipid();
 
 	switch (cid) {
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	case TEGRA_CHIPID_TEGRA3:
-		tegra_la_get_t3_specific(&cs);
-		break;
-#endif
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	case TEGRA_CHIPID_TEGRA11:
-		tegra_la_get_t11x_specific(&cs);
-		break;
-#endif
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	case TEGRA_CHIPID_TEGRA14:
-		tegra_la_get_t14x_specific(&cs);
-		break;
-#endif
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	case TEGRA_CHIPID_TEGRA12:
 	case TEGRA_CHIPID_TEGRA13:
@@ -244,14 +229,6 @@ void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick)
 			cs.scaling_info[i].la_set = la;
 		}
 		spin_unlock(&cs.lock);
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-		/* Re-scale G2PR, G2SR, G2DR, G2DW with updated ns_per_tick */
-		tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
-		tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
-		tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
-		tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
-#endif
 	}
 }
 
@@ -393,12 +370,6 @@ static int __init tegra_latency_allowance_init(void)
 				la_to_set);
 		}
 	}
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
-#endif
 
 	if (cs.init_ptsa)
 		cs.init_ptsa();

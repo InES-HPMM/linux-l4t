@@ -196,13 +196,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra30-cardhu-a02.dtb \
 	tegra30-cardhu-a04.dtb \
 	tegra114-dalmore.dtb \
-	tegra114-dalmore-e1611-1000-a00-00.dtb \
-	tegra114-dalmore-e1611-1001-a00-00.dtb \
-	tegra114-macallan.dtb \
-	tegra114-roth.dtb \
 	tegra114-pluto.dtb \
-	tegra114-pluto-powerconfig.dtb \
-	tegra114-pismo.dtb \
 	tegra124-bonaire_sim.dtb \
 	tegra124-bonaire.dtb \
 	tegra124-ardbeg.dtb \

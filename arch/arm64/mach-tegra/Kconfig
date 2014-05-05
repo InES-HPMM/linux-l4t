@@ -4,7 +4,6 @@ source arch/arm/mach-tegra/Kconfig
 
 config ARCH_TEGRA_13x_SOC
 	bool "Tegra 13x family SOC"
-	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V8
 	select DENVER_CPU
@@ -35,7 +34,6 @@ config ARCH_TEGRA_13x_SOC
 
 config ARCH_TEGRA_21x_SOC
 	bool "Tegra 21x family SOC"
-	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V8
 	select ARM_GIC

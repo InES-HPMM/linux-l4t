@@ -69,9 +69,6 @@ obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra3_throttle.o
 endif
 
 obj-y += latency_allowance.o
-obj-y += tegra3_la.o
-obj-y += tegra11x_la.o
-obj-y += tegra14x_la.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra12x_la.o
 

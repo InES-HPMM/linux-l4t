@@ -22,27 +22,10 @@
 #define _MACH_TEGRA_BOARD_ID_H
 
 /* Processor Board  ID */
-#define BOARD_E1545   0x0609
-#define BOARD_E1575   0x0627
-#define BOARD_E1577   0x0629
-#define BOARD_E1580   0x062C
-#define BOARD_E1582   0x062E
 #define BOARD_E1611   0x064B
 #define BOARD_E1612   0x064C
 #define BOARD_E1613   0x064D
-#define BOARD_E1614   0x064E
-#define BOARD_E1641   0x0669
-#define BOARD_P2454   0x0996
-#define BOARD_PM347   0x015B
-#define BOARD_E1545   0x0609
-#define BOARD_E1569   0x0621
-#define BOARD_E1680   0x0690
-#define BOARD_E1681   0x0691
-#define BOARD_E1670   0x0686
-#define BOARD_E1671   0x0687
-#define BOARD_E1690   0x069A
-#define BOARD_E1740   0x06CC
-#define BOARD_P2560   0x0A00
+#define BOARD_E1580   0x062C
 #define BOARD_E1780   0x06F4
 #define BOARD_E1781   0x06F5
 #define BOARD_E1792   0x0700
@@ -71,8 +54,6 @@
 #define BOARD_SKU_0       0x0000
 #define BOARD_SKU_100     0x0064
 /* Panel board ID */
-#define    BOARD_E1605    0x0645
-
 #define    BOARD_E1627    0x065b
 #define    BOARD_E1639    0x0667
 #define    BOARD_E1631    0x065f
