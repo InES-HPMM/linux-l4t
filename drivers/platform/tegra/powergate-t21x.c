@@ -16,11 +16,14 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 
 #include "../../../arch/arm/mach-tegra/powergate-priv.h"
 #include "../../../arch/arm/mach-tegra/powergate-ops-t1xx.h"
 #include "../../../arch/arm/mach-tegra/powergate-ops-txx.h"
 #include "../../../arch/arm/mach-tegra/dvfs.h"
+
+#define EMULATION_MC_FLUSH_TIMEOUT 100
 
 enum mc_client {
 	MC_CLIENT_AFI		= 0,
@@ -334,6 +337,7 @@ static int tegra210_pg_mc_flush(int id)
 	u32 rst_control_reg, rst_status_reg;
 	enum mc_client mc_client_bit;
 	unsigned long flags;
+	unsigned int timeout;
 	bool ret;
 	int reg_idx;
 
@@ -353,11 +357,18 @@ static int tegra210_pg_mc_flush(int id)
 		mc_write(rst_control, rst_control_reg);
 		spin_unlock_irqrestore(&tegra210_pg_lock, flags);
 
+		timeout = 0;
 		do {
 			udelay(10);
 			rst_status = 0;
 			ret = tegra210_pg_hotreset_check(rst_status_reg,
 								&rst_status);
+			if ((timeout++ > EMULATION_MC_FLUSH_TIMEOUT) &&
+				(tegra_platform_is_qt() ||
+				tegra_platform_is_fpga())) {
+				pr_warn("%s flush %d timeout\n", __func__, id);
+				break;
+			}
 			if (!ret)
 				continue;
 		} while (!(rst_status & (1 << mc_client_bit)));
