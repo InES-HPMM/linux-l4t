@@ -8198,6 +8198,10 @@ static struct clk tegra_xusb_coupled_clks[] = {
  * table under two names.
  */
 struct clk_duplicate tegra_clk_duplicates[] = {
+	CLK_DUPLICATE("uarta",  "serial8250.0", NULL),
+	CLK_DUPLICATE("uartb",  "serial8250.1", NULL),
+	CLK_DUPLICATE("uartc",  "serial8250.2", NULL),
+	CLK_DUPLICATE("uartd",  "serial8250.3", NULL),
 	CLK_DUPLICATE("usbd", "utmip-pad", NULL),
 	CLK_DUPLICATE("usbd", "tegra-ehci.0", NULL),
 	CLK_DUPLICATE("usbd", "tegra-otg", NULL),
