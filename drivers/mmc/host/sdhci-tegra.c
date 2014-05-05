@@ -4359,10 +4359,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
-	tegra_host->instance = pdev->id;
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	tegra_host->instance = plat->id;
-#endif
+	if (match)
+		tegra_host->instance = plat->id;
+	else
+		tegra_host->instance = pdev->id;
+
 	tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE;
 	tegra_host->speedo = plat->cpu_speedo;
 	dev_info(mmc_dev(host->mmc), "Speedo value %d\n", tegra_host->speedo);
