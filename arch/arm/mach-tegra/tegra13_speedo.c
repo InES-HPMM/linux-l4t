@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra13_speedo.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -99,6 +99,8 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	} else {
 		switch (sku) {
 		case 0x00: /* Engg sku */
+		case 0x0f:
+		case 0x83:
 			cpu_speedo_id = 1;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 1;
