@@ -20,11 +20,10 @@
 #include <linux/smp.h>
 #include <linux/cpu.h>
 #include <linux/cpu_pm.h>
+#include <linux/tegra-pmc.h>
 
 #include <asm/suspend.h>
 #include <asm/cacheflush.h>
-
-#include <linux/tegra-pmc.h>
 
 #include "pm.h"
 #include "sleep.h"
@@ -39,6 +38,13 @@
 	FLOW_CTRL_HALT_LIC_FIQ;
 
 #define HALT_REG_CORE1 FLOW_CTRL_WAITEVENT
+
+#define NS_RST_VEC_WR_DIS	0x2
+
+/* AARCH64 reset vector */
+extern void tegra_resume(void);
+
+static int tegra132_reset_vector_init(void);
 
 static int tegra132_enter_sleep(unsigned long pmstate)
 {
@@ -119,6 +125,7 @@ static int cpu_pm_notify(struct notifier_block *self,
 
 	case CPU_CLUSTER_PM_EXIT:
 		denver_set_bg_allowed(cpu, true);
+		tegra132_reset_vector_init();
 		break;
 	}
 
@@ -148,7 +155,7 @@ static struct notifier_block cpu_notifier_block = {
 	.notifier_call = cpu_notify,
 };
 
-void tegra_soc_suspend_init(void)
+void __init tegra_soc_suspend_init(void)
 {
 	tegra_tear_down_cpu = tegra132_tear_down_cpu;
 	tegra_sleep_core_finish = tegra132_sleep_core_finish;
@@ -159,3 +166,31 @@ void tegra_soc_suspend_init(void)
 	/* Notifier to enable BGALLOW for CPU1-only */
 	register_hotcpu_notifier(&cpu_notifier_block);
 }
+
+static int tegra132_reset_vector_init(void)
+{
+	extern void *__aarch64_tramp;
+	void __iomem *evp_cpu_reset;
+	void __iomem *sb_ctrl;
+	unsigned long reg;
+
+	/* SecureOS controls reset vector if present */
+	if (tegra_cpu_is_secure())
+		return 0;
+
+	evp_cpu_reset = IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x100);
+	sb_ctrl = IO_ADDRESS(TEGRA_SB_BASE);
+
+	writel(virt_to_phys(&__aarch64_tramp), evp_cpu_reset);
+	wmb();
+	reg = readl(evp_cpu_reset);
+
+	/* Prevent further modifications to the physical reset vector. */
+	reg = readl(sb_ctrl);
+	reg |= NS_RST_VEC_WR_DIS;
+	writel(reg, sb_ctrl);
+	wmb();
+
+	return 0;
+}
+early_initcall(tegra132_reset_vector_init);
