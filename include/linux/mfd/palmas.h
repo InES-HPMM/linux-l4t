@@ -721,6 +721,7 @@ struct palmas_pmic {
 
 	int smps123;
 	int smps457;
+	int irq;
 	bool smps10_regulator_enabled;
 	int ldo_vref0p425;
 	bool smps10_boost_disable_deferred;

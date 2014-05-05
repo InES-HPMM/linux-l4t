@@ -29,6 +29,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/reboot.h>
 
 struct regs_info {
 	char	*name;
@@ -1148,6 +1149,33 @@ static ssize_t palmas_show_dvfs_data(struct device *dev,
 }
 static DEVICE_ATTR(dvfs_data, 0444, palmas_show_dvfs_data, NULL);
 
+static irqreturn_t palmas_reg_overload_irq_handler(int irq, void *_palmas_pmic)
+{
+	struct palmas_pmic *palmas_pmic = _palmas_pmic;
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(palmas_pmic->palmas,
+		PALMAS_SMPS_SHORT_STATUS, &reg);
+	if (ret < 0) {
+		dev_err(palmas_pmic->dev,
+			"%s: Failed to read SHORT_STATUS, %d\n",
+			__func__, ret);
+		return IRQ_HANDLED;
+	}
+
+	if (!reg)
+		/* Interrupt is not for SMPS short */
+		return IRQ_NONE;
+
+	/* SMPS rail short detected */
+	dev_info(palmas_pmic->dev,
+		"SMPS rail short detected. SMPS_SHORT_STATUS: 0x%02x\n",
+		reg);
+	machine_restart(NULL);
+	return IRQ_HANDLED;
+}
+
 static void palmas_dvfs_init(struct palmas *palmas,
 			struct palmas_pmic_platform_data *pdata)
 {
@@ -1744,6 +1772,19 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				goto err_unregister_regulator;
 			}
 		}
+	}
+
+	/* Enable overload detection*/
+	pmic->irq = palmas_irq_get_virq(palmas, PALMAS_SHORT_IRQ);
+	ret = devm_request_threaded_irq(pmic->dev, pmic->irq,
+			NULL, palmas_reg_overload_irq_handler,
+			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING |
+			IRQF_ONESHOT | IRQF_EARLY_RESUME,
+			"palmas_pmic", pmic);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
+				pmic->irq, ret);
+		goto err_unregister_regulator;
 	}
 
 	palmas_dvfs_init(palmas, pdata);
