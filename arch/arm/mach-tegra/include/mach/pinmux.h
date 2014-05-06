@@ -18,12 +18,22 @@
 #ifndef __MACH_TEGRA_PINMUX_H
 #define __MACH_TEGRA_PINMUX_H
 
-#include <mach/pinmux-defines.h>
-#include <linux/pinctrl/pinctrl-tegra.h>
+struct tegra_pingroup_config {
+	int pingroup;
+	int	func;
+	int	pupd;
+	int	tristate;
+	int	io;
+	int	lock;
+	int	od;
+	int	ioreset;
+	int	rcv_sel;
+	int	e_io_hv;
+};
 
 static inline void tegra_pinmux_config_table(
 		const struct tegra_pingroup_config *config, int len)
 {
-	tegra_pinctrl_pg_config_table(config, len);
+	return;
 }
 #endif
