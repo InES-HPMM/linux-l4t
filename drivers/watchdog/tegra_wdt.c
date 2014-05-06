@@ -28,6 +28,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -37,8 +38,6 @@
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
 #define MAX_WDT_PERIOD	1000
-/* Assign Timer 7 to Timer 10 for WDT0 to WDT3, respectively */
-#define TMR_SRC_START	7
 
 enum tegra_wdt_status {
 	WDT_DISABLED = 1 << 0,
@@ -253,7 +252,10 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt->wdt_source = ioremap(res_src->start, resource_size(res_src));
 	tegra_wdt->wdt_timer = ioremap(res_wdt->start, resource_size(res_wdt));
 	/* tmrsrc will be used to set WDT_CFG */
-	tegra_wdt->tmrsrc = (TMR_SRC_START + pdev->id) % 10;
+	if ((res_wdt->start & 0xff) < 0x50)
+		tegra_wdt->tmrsrc = 1 + (res_wdt->start & 0xf) / 8;
+	else
+		tegra_wdt->tmrsrc = (3 + ((res_wdt->start & 0xff) - 0x50) / 8) % 10;
 	if (!tegra_wdt->wdt_source || !tegra_wdt->wdt_timer) {
 		dev_err(&pdev->dev, "unable to map registers\n");
 		ret = -ENOMEM;
@@ -336,6 +338,11 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 }
 #endif
 
+static const struct of_device_id tegra_wdt_match[] = {
+	{ .compatible = "nvidia,tegra-wdt", },
+	{}
+};
+
 static struct platform_driver tegra_wdt_driver = {
 	.probe		= tegra_wdt_probe,
 	.remove		= tegra_wdt_remove,
@@ -346,6 +353,7 @@ static struct platform_driver tegra_wdt_driver = {
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "tegra_wdt",
+		.of_match_table = of_match_ptr(tegra_wdt_match),
 	},
 };
 
