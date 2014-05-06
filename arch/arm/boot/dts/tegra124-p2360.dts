@@ -30,5 +30,6 @@
 	#size-cells = <2>;
 
 	chosen {
+		nvidia,tegra-hypervisor-mode;
 	};
 };
