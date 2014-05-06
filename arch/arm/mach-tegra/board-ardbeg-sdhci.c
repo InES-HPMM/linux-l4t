@@ -425,7 +425,8 @@ static int __init ardbeg_wifi_prepower(void)
 		!of_machine_is_compatible("nvidia,ardbeg_sata") &&
 		!of_machine_is_compatible("nvidia,tn8") &&
 		!of_machine_is_compatible("nvidia,norrin") &&
-		!of_machine_is_compatible("nvidia,bowmore"))
+		!of_machine_is_compatible("nvidia,bowmore") &&
+		!of_machine_is_compatible("nvidia,jetson-tk1"))
 		return 0;
 	ardbeg_wifi_power(1);
 
@@ -467,7 +468,8 @@ int __init ardbeg_sdhci_init(void)
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
 
-	if (of_machine_is_compatible("nvidia,laguna"))
+	if (of_machine_is_compatible("nvidia,laguna") ||
+	    of_machine_is_compatible("nvidia,jetson-tk1"))
 		tegra_sdhci_platform_data2.wp_gpio = ARDBEG_SD_WP;
 
 	tegra_get_board_info(&board_info);
