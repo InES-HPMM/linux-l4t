@@ -166,8 +166,10 @@ static void __init tegra210_dt_init(void)
 	/* HACK HACK HACK -- this should be done in panel init */
 	t210_carveouts[0].base = tegra_carveout_start;
 	t210_carveouts[0].size = tegra_carveout_size;
+	t210_carveouts[0].dma_dev = &tegra_generic_dev;
 	t210_carveouts[1].base = tegra_vpr_start;
 	t210_carveouts[1].size = tegra_vpr_size;
+	t210_carveouts[1].dma_dev = &tegra_vpr_dev;
 }
 
 static const char * const tegra210_dt_board_compat[] = {
