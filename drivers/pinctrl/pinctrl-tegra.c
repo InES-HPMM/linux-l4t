@@ -432,12 +432,22 @@ static void tegra_pinctrl_disable(struct pinctrl_dev *pctldev,
 	spin_unlock_irqrestore(&mux_lock, flags);
 }
 
+static int tegra_gpio_request_enable(struct pinctrl_dev *pctldev,
+				struct pinctrl_gpio_range *range,
+				unsigned pin)
+{
+	if (pmx->soc->gpio_request_enable)
+		return pmx->soc->gpio_request_enable(pin);
+	return 0;
+}
+
 static const struct pinmux_ops tegra_pinmux_ops = {
 	.get_functions_count = tegra_pinctrl_get_funcs_count,
 	.get_function_name = tegra_pinctrl_get_func_name,
 	.get_function_groups = tegra_pinctrl_get_func_groups,
 	.enable = tegra_pinctrl_enable,
 	.disable = tegra_pinctrl_disable,
+	.gpio_request_enable = tegra_gpio_request_enable,
 };
 
 static int tegra_pinconf_reg(struct tegra_pmx *pmx,

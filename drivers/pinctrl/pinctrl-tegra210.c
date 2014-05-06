@@ -198,7 +198,10 @@
 #define TEGRA_PIN_CLK_REQ			_PIN(6)
 #define TEGRA_PIN_SHUTDOWN			_PIN(7)
 
-static const struct pinctrl_pin_desc  tegra210_pins[] = {
+#define SDMMC1_CLK_LPBK_CTRL_OFFSET	0
+#define SDMMC3_CLK_LPBK_CTRL_OFFSET	4
+
+const struct pinctrl_pin_desc  tegra210_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_PEX_L0_RST_N_PA0, "PEX_L0_RST_N_PA0"),
 	PINCTRL_PIN(TEGRA_PIN_PEX_L0_CLKREQ_N_PA1, "PEX_L0_CLKREQ_N_PA1"),
 	PINCTRL_PIN(TEGRA_PIN_PEX_WAKE_N_PA2, "PEX_WAKE_N_PA2"),
@@ -3181,6 +3184,25 @@ static void tegra210_pinctrl_resume(u32 *pg_data)
 	return;
 }
 
+static int tegra210_gpio_request_enable(unsigned pin)
+{
+	/* Clear E_LPBK for SDMMC1_CLK and SDMMC3_CLK pads
+	 * before using them as GPIOs
+	 */
+	switch (pin) {
+	case TEGRA_PIN_SDMMC1_CLK_PM0:
+		tegra_pinctrl_writel(0, 0, SDMMC1_CLK_LPBK_CTRL_OFFSET);
+		break;
+	case TEGRA_PIN_SDMMC3_CLK_PP0:
+		tegra_pinctrl_writel(0, 0, SDMMC3_CLK_LPBK_CTRL_OFFSET);
+		break;
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
 static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.ngpios = NUM_GPIOS,
 	.pins = tegra210_pins,
@@ -3191,6 +3213,7 @@ static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.ngroups = ARRAY_SIZE(tegra210_groups),
 	.suspend = tegra210_pinctrl_suspend,
 	.resume = tegra210_pinctrl_resume,
+	.gpio_request_enable = tegra210_gpio_request_enable,
 };
 
 static int tegra210_pinctrl_probe(struct platform_device *pdev)

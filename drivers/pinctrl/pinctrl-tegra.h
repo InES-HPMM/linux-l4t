@@ -189,6 +189,7 @@ struct tegra_pinctrl_soc_data {
 	unsigned nconfig_data;
 	int (*suspend)(u32 *pg_data);
 	void (*resume)(u32 *pg_data);
+	int (*gpio_request_enable)(unsigned pin);
 };
 
 int tegra_pinctrl_probe(struct platform_device *pdev,
