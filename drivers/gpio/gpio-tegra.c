@@ -52,6 +52,7 @@
 #define GPIO_INT_ENB(x)		(GPIO_REG(x) + 0x50)
 #define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
 #define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
+#define GPIO_DBC_CNT(x)		(GPIO_REG(x) + 0xF0)
 
 #define GPIO_MSK_CNF(x)		(GPIO_REG(x) + tegra_gpio_upper_offset + 0x00)
 #define GPIO_MSK_OE(x)		(GPIO_REG(x) + tegra_gpio_upper_offset + 0x10)
@@ -59,6 +60,7 @@
 #define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x40)
 #define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x50)
 #define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x60)
+#define GPIO_MSK_DBC_EN(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x30)
 
 #define GPIO_INT_LVL_MASK		0x010101
 #define GPIO_INT_LVL_EDGE_RISING	0x000101
@@ -197,6 +199,15 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 				unsigned debounce)
 {
+	/* Debounce feature implemented only for
+	 * ports(I,J,K,L) in Controller 2 */
+
+	if (GPIO_BANK(offset) == 2) {
+		tegra_gpio_mask_write(GPIO_MSK_DBC_EN(offset), offset, 1);
+		tegra_gpio_writel(debounce, GPIO_DBC_CNT(offset));
+		return 0;
+	}
+
 	return -ENOSYS;
 }
 
