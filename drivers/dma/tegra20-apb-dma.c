@@ -594,7 +594,9 @@ static void handle_once_dma_done(struct tegra_dma_channel *tdc,
 	tdc->busy = false;
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	dma_desc->bytes_transferred += sgreq->req_len;
+	dma_desc->bytes_transferred = (dma_desc->bytes_transferred +
+					sgreq->req_len) %
+					dma_desc->bytes_requested;
 
 	list_del(&sgreq->node);
 	if (sgreq->last_sg) {
@@ -629,7 +631,9 @@ static void handle_cont_sngl_cycle_dma_done(struct tegra_dma_channel *tdc,
 
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	dma_desc->bytes_transferred += sgreq->req_len;
+	dma_desc->bytes_transferred = (dma_desc->bytes_transferred +
+					sgreq->req_len) %
+					dma_desc->bytes_requested;
 
 	/* Callback need to be call */
 	if (!dma_desc->cb_count)
@@ -789,8 +793,10 @@ static void tegra_dma_terminate_all(struct dma_chan *dc)
 					typeof(*sgreq), node);
 		if (!tdc->tdma->chip_data->support_separate_wcount_reg)
 			wcount = status;
-		sgreq->dma_desc->bytes_transferred +=
-				get_current_xferred_count(tdc, sgreq, wcount);
+		sgreq->dma_desc->bytes_transferred =
+				(sgreq->dma_desc->bytes_transferred +
+				get_current_xferred_count(tdc, sgreq, wcount)) %
+				sgreq->dma_desc->bytes_requested;
 	}
 	tegra_dma_resume(tdc);
 	clk_disable(tdc->tdma->dma_clk);
@@ -831,8 +837,7 @@ static enum dma_status tegra_dma_tx_status(struct dma_chan *dc,
 	list_for_each_entry(dma_desc, &tdc->free_dma_desc, node) {
 		if (dma_desc->txd.cookie == cookie) {
 			residual =  dma_desc->bytes_requested -
-					(dma_desc->bytes_transferred %
-						dma_desc->bytes_requested);
+					dma_desc->bytes_transferred;
 			dma_set_residue(txstate, residual);
 			ret = dma_desc->dma_status;
 			spin_unlock_irqrestore(&tdc->lock, flags);
@@ -845,8 +850,7 @@ static enum dma_status tegra_dma_tx_status(struct dma_chan *dc,
 		dma_desc = sg_req->dma_desc;
 		if (dma_desc->txd.cookie == cookie) {
 			residual =  dma_desc->bytes_requested -
-					(dma_desc->bytes_transferred %
-						dma_desc->bytes_requested);
+					dma_desc->bytes_transferred;
 			dma_set_residue(txstate, residual);
 			ret = dma_desc->dma_status;
 			spin_unlock_irqrestore(&tdc->lock, flags);
