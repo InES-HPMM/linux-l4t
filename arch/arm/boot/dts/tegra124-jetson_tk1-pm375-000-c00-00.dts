@@ -8,7 +8,7 @@
 
 / {
 	model = "NVIDIA Tegra124 PM375";
-	compatible = "nvidia,jetson-tk1", "nvidia,laguna", "nvidia,tegra124";
+	compatible = "nvidia,jetson-tk1", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
