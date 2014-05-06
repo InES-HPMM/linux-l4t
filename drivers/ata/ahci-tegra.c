@@ -2649,7 +2649,10 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 	u32 i;
 
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	tegra_ahci_runtime_resume(g_tegra_hpriv->dev);
+	if (g_tegra_hpriv)
+		tegra_ahci_runtime_resume(g_tegra_hpriv->dev);
+	else
+		return 0;
 #endif
 
 	base = TEGRA_SATA_CONFIG_BASE;
