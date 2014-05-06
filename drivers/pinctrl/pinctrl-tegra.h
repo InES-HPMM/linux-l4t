@@ -90,8 +90,6 @@ struct tegra_pingroup {
 	unsigned npins;
 	unsigned funcs[4];
 	unsigned func_safe;
-	unsigned funcs_non_dt[4];
-	unsigned func_safe_non_dt;
 	s16 mux_reg;
 	s16 pupd_reg;
 	s16 tri_reg;
@@ -136,7 +134,6 @@ struct tegra_pingroup {
 	int slwr_width;
 	int slwf_width;
 	int drvtype_width;
-	const char *dev_id;
 };
 
 /* struct tegra_pinctrl_driver_config_data: Drive pingroup default data.
