@@ -125,6 +125,26 @@ struct clk_pll_div_layout {
 	int		pdiv_max;
 };
 
+struct clk_pll_controls {
+	u32		enable_mask;
+	u32		bypass_mask;
+
+	u32		reset_mask;
+	u32		reset_reg_idx;
+	u32		iddq_mask;
+	u32		iddq_reg_idx;
+	u32		lock_mask;
+	u32		lock_reg_idx;
+};
+
+enum pll_reg_indx {
+	PLL_BASE_IDX = 0,
+	PLL_MISC0_IDX,
+	PLL_MISC1_IDX,
+	PLL_MISC2_IDX,
+	PLL_MISC3_IDX,
+};
+
 enum clk_state {
 	UNINITIALIZED = 0,
 	ON,
@@ -238,6 +258,7 @@ struct clk {
 			u32				misc2;
 			u32				misc3;
 			bool				defaults_set;
+			struct clk_pll_controls		*controls;
 			struct clk_pll_div_layout	*div_layout;
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
