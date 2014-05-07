@@ -125,12 +125,14 @@ void machine_shutdown(void)
 
 void machine_halt(void)
 {
+	local_irq_disable();
 	machine_shutdown();
 	while (1);
 }
 
 void machine_power_off(void)
 {
+	local_irq_disable();
 	machine_shutdown();
 	if (pm_power_off)
 		pm_power_off();
@@ -138,11 +140,12 @@ void machine_power_off(void)
 
 void machine_restart(char *cmd)
 {
-	machine_shutdown();
 
 	/* Disable interrupts first */
 	local_irq_disable();
 	local_fiq_disable();
+
+	machine_shutdown();
 
 	/* Now call the architecture specific reboot code. */
 	if (arm_pm_restart)
