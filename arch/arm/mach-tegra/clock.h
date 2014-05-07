@@ -261,6 +261,10 @@ struct clk {
 			struct clk_pll_controls		*controls;
 			struct clk_pll_div_layout	*div_layout;
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
+			int	(*dyn_ramp)(struct clk *c,
+					    struct clk_pll_freq_table *cfg);
+			void	(*set_defaults)(struct clk *c,
+						unsigned long input_rate);
 		} pll;
 		struct {
 			void				*cl_dvfs;

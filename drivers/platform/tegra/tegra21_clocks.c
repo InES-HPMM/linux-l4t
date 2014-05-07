@@ -153,6 +153,13 @@ static u32 pll_reg_idx_to_addr(struct clk *c, int idx)
 	return 0;
 }
 
+static bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
+			    struct clk_pll_freq_table *new_cfg)
+{
+	return c->state == ON && c->u.pll.defaults_set && c->u.pll.dyn_ramp &&
+		(new_cfg->m == old_cfg->m) && (new_cfg->p == old_cfg->p);
+}
+
 #define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val)			       \
 do {									       \
 	u32 boot_val = clk_readl((c)->reg + (c)->u.pll.misc##misc_num);	       \
@@ -240,6 +247,9 @@ do {									       \
 #define PLL_BASE_ENABLE			(1<<30)
 #define PLL_BASE_REF_ENABLE		(1<<29)
 
+/* Quasi-linear PLL divider */
+#define PLL_QLIN_PDIV_MAX		16
+
 /* FIXME: no longer common should be eventually removed */
 #define PLL_BASE_OVERRIDE		(1<<28)
 #define PLL_BASE_LOCK			(1<<27)
@@ -310,7 +320,6 @@ do {									       \
 
 /* PLLC, PLLC2, PLLC3 and PLLA1 */
 #define PLLCX_USE_DYN_RAMP		0
-#define PLLCX_PDIV_MAX			16
 #define PLLCX_BASE_LOCK			(1 << 26)
 
 #define PLLCX_MISC0_RESET		(1 << 30)
@@ -2557,6 +2566,62 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
+static int pll_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	u32 val, pdiv = 0;
+	struct clk_pll_freq_table cfg = { };
+	struct clk_pll_freq_table old_cfg = { };
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	unsigned long input_rate = clk_get_rate(c->parent);
+
+	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
+		return -EINVAL;
+
+	c->mul = cfg.n;
+	c->div = cfg.m * cfg.p;
+
+	val = clk_readl(c->reg);
+	pll_base_parse_cfg(c, &old_cfg, val);
+
+	if ((cfg.m == old_cfg.m) && (cfg.n == old_cfg.n) &&
+	    (cfg.p == old_cfg.p))
+		return 0;
+
+	if (!c->u.pll.defaults_set && c->u.pll.set_defaults) {
+		c->ops->disable(c);
+		c->u.pll.set_defaults(c, input_rate);
+
+		val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
+		pll_writel_delay(val, c->reg);
+
+		if (c->state == ON)
+			c->ops->enable(c);
+		return 0;
+	}
+
+	if (pll_is_dyn_ramp(c, &old_cfg, &cfg)) {
+		if (!c->u.pll.dyn_ramp(c, &cfg))
+			return 0;
+	}
+
+	if (c->state == ON) {
+		val &= ~ctrl->enable_mask;
+		pll_writel_delay(val, c->reg);
+	}
+
+	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
+	pll_writel_delay(val, c->reg);
+
+	if (c->state == ON) {
+		u32 reg = pll_reg_idx_to_addr(c, ctrl->lock_reg_idx);
+		val |= ctrl->enable_mask;
+		pll_writel_delay(val, c->reg);
+		tegra21_pll_clk_wait_for_lock(c, reg, ctrl->lock_mask);
+	}
+
+	return 0;
+}
+
 /* FIXME: to be removed */
 static void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
 {
@@ -2627,26 +2692,31 @@ static void pll_clk_disable(struct clk *c)
 	}
 }
 
-static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
+static u8 pll_qlin_pdiv_to_p[PLL_QLIN_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15, 16 */
 /* p: */ 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32 };
 
-static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
+static u32 pll_qlin_p_to_pdiv(u32 p, u32 *pdiv)
 {
 	int i;
 
 	if (p) {
-		for (i = 0; i <= PLLCX_PDIV_MAX; i++) {
-			if (p <= pllcx_p[i]) {
+		for (i = 0; i <= PLL_QLIN_PDIV_MAX; i++) {
+			if (p <= pll_qlin_pdiv_to_p[i]) {
 				if (pdiv)
 					*pdiv = i;
-				return pllcx_p[i];
+				return pll_qlin_pdiv_to_p[i];
 			}
 		}
 	}
 	return -EINVAL;
 }
 
+/*
+ * PLLCX: PLLC, PLLC2, PLLC3, PLLA1
+ * Hybrid PLLs with dynamic ramp. Dynamic ramp is allowed for any transition
+ * that changes NDIV only, while PLL is already locked.
+ */
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate)
 {
 	c->u.pll.defaults_set = true;
@@ -2676,21 +2746,44 @@ static void pllcx_check_defaults(struct clk *c, unsigned long input_rate)
 	PLL_MISC_CHK_DEFAULT(c, 3, default_val);
 }
 
+static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
+{
+#if PLLCX_USE_DYN_RAMP
+	u32 reg;
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+
+	u32 val = clk_readl(c->reg);
+	val &= ~divs->ndiv_mask;
+	val |= cfg->n << divs->ndiv_shift;
+	pll_writel_delay(val, c->reg);
+
+	reg = pll_reg_idx_to_addr(c, ctrl->lock_reg_idx);
+	tegra21_pll_clk_wait_for_lock(c, reg, ctrl->lock_mask);
+
+	return 0;
+#else
+	return -ENOSYS;
+#endif
+}
+
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
 	u32 m, n, p, pdiv, val;
-	u8 *pdiv_to_p = c->u.pll.div_layout->pdiv_to_p;
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+	BUG_ON(!ctrl || !divs);
 
 	/* clip vco_min to exact multiple of input rate to avoid crossover
 	   by rounding */
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
 	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
-		pdiv_to_p[c->u.pll.div_layout->pdiv_max]);
+				   divs->pdiv_to_p[divs->pdiv_max]);
 
 	val = clk_readl(c->reg + PLL_BASE);
-	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
+	c->state = (val & ctrl->enable_mask) ? ON : OFF;
 
 	/*
 	 * If PLLCX is enabled on boot, keep it as is, just check if boot-loader
@@ -2714,7 +2807,7 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
 	pdiv = 3;
-	p = pdiv_to_p[pdiv];
+	p = divs->pdiv_to_p[pdiv];
 
 	val = 0;	/* PLL disabled, reference running */
 	val = pll_base_set_div(c, m, n, pdiv, val);
@@ -2741,51 +2834,8 @@ static void tegra21_pllcx_clk_disable(struct clk *c)
 
 static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	u32 val, pdiv;
-	unsigned long input_rate;
-	struct clk_pll_freq_table cfg, old_cfg;
-	const struct clk_pll_freq_table *sel = &cfg;
-
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
-
-	input_rate = clk_get_rate(c->parent);
-
-	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
-		return -EINVAL;
-
-	c->mul = sel->n;
-	c->div = sel->m * sel->p;
-
-	val = clk_readl(c->reg + PLL_BASE);
-	pll_base_parse_cfg(c, &old_cfg, val);
-
-	if ((sel->m == old_cfg.m) && (sel->n == old_cfg.n) &&
-	    (sel->p == old_cfg.p))
-		return 0;
-
-#if PLLCX_USE_DYN_RAMP
-	if (c->state == ON && c->u.pll.defaults_set &&
-	    (sel->m == old_cfg.m) && (sel->p == old_cfg.p)) {
-		val &= ~PLLCX_BASE_DIVN_MASK;
-		val |= sel->n << PLLCX_BASE_DIVN_SHIFT;
-		pll_writel_delay(val, c->reg + PLL_BASE);
-		return 0;
-	}
-#endif
-	val = pll_base_set_div(c, sel->m, sel->n, pdiv, val);
-	if (c->state == ON) {
-		tegra21_pllcx_clk_disable(c);
-		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
-	}
-
-	if (!c->u.pll.defaults_set)
-		pllcx_set_defaults(c, input_rate);
-
-	clk_writel(val, c->reg + PLL_BASE);
-	if (c->state == ON)
-		tegra21_pllcx_clk_enable(c);
-
-	return 0;
+	return pll_clk_set_rate(c, rate);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -2795,7 +2845,7 @@ static void tegra21_pllcx_clk_resume_enable(struct clk *c)
 	u32 val = clk_readl(c->reg + PLL_BASE);
 	enum clk_state state = c->state;
 
-	if (val & PLL_BASE_ENABLE)
+	if (val & c->u.pll.controls->enable_mask)
 		return;		/* already resumed */
 
 	/* temporarily sync h/w and s/w states, final sync happens
@@ -6189,8 +6239,8 @@ static struct clk_pll_div_layout pllcx_div_layout = {
 	.ndiv_mask = 0xff << 10,
 	.pdiv_shift = 20,
 	.pdiv_mask = 0x1f << 20,
-	.pdiv_to_p = pllcx_p,
-	.pdiv_max = PLLCX_PDIV_MAX,
+	.pdiv_to_p = pll_qlin_pdiv_to_p,
+	.pdiv_max = PLL_QLIN_PDIV_MAX,
 };
 
 static struct clk tegra_pll_c = {
@@ -6214,7 +6264,9 @@ static struct clk tegra_pll_c = {
 		.misc3 = 0x5d4 - 0x80,
 		.controls = &pllcx_controls,
 		.div_layout = &pllcx_div_layout,
-		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.dyn_ramp = pllcx_dyn_ramp,
+		.set_defaults = pllcx_set_defaults,
 	},
 };
 
@@ -6249,7 +6301,9 @@ static struct clk tegra_pll_c2 = {
 		.misc3 = 0x4f8 - 0x4e8,
 		.controls = &pllcx_controls,
 		.div_layout = &pllcx_div_layout,
-		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.dyn_ramp = pllcx_dyn_ramp,
+		.set_defaults = pllcx_set_defaults,
 	},
 };
 
@@ -6274,7 +6328,9 @@ static struct clk tegra_pll_c3 = {
 		.misc3 = 0x50c - 0x4fc,
 		.controls = &pllcx_controls,
 		.div_layout = &pllcx_div_layout,
-		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.dyn_ramp = pllcx_dyn_ramp,
+		.set_defaults = pllcx_set_defaults,
 	},
 };
 
@@ -6299,7 +6355,9 @@ static struct clk tegra_pll_a1 = {
 		.misc3 = 0x6b4 - 0x6a4,
 		.controls = &pllcx_controls,
 		.div_layout = &pllcx_div_layout,
-		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.dyn_ramp = pllcx_dyn_ramp,
+		.set_defaults = pllcx_set_defaults,
 	},
 };
 
