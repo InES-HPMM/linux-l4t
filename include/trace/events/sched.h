@@ -152,6 +152,22 @@ TRACE_EVENT(sched_switch,
 		__entry->next_comm, __entry->next_pid, __entry->next_prio)
 );
 
+TRACE_EVENT(sched_switch_end,
+
+	TP_PROTO(u32 a),
+
+	TP_ARGS(a),
+
+	TP_STRUCT__entry(
+	),
+
+	TP_fast_assign(
+	),
+
+	TP_printk("none %d", 0)
+);
+
+
 /*
  * Tracepoint for a task being migrated:
  */
