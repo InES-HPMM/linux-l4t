@@ -20,6 +20,7 @@
 /* Powergate and Suspend finishers */
 extern void (*tegra_tear_down_cpu)(void);
 extern int (*tegra_sleep_core_finish)(unsigned long v2p);
+extern void (*tegra_boot_secondary_cpu)(int cpu);
 
 /* Implemented by SOC-specific suspend driver */
 void tegra_soc_suspend_init(void);

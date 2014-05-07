@@ -28,6 +28,7 @@
 
 #include "common.h"
 #include "reset.h"
+#include "pm-soc.h"
 
 static DECLARE_BITMAP(tegra_cpu_power_up_by_fc, CONFIG_NR_CPUS) __read_mostly;
 struct cpumask *tegra_cpu_power_mask =
@@ -40,8 +41,23 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 	cpumask_set_cpu(0, tegra_cpu_power_mask);
 }
 
+void (*tegra_boot_secondary_cpu)(int cpu);
+
+static int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
+{
+	BUG_ON(cpu == smp_processor_id());
+
+	if (tegra_boot_secondary_cpu) {
+		cpu = cpu_logical_map(cpu);
+		tegra_boot_secondary_cpu(cpu);
+	}
+
+	return 0;
+}
+
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
+	.smp_boot_secondary	= tegra_boot_secondary,
 #if defined(CONFIG_HOTPLUG_CPU) && defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	.cpu_die		= tegra_cpu_die,
 #endif

@@ -21,6 +21,8 @@
 #include <linux/cpu.h>
 #include <linux/cpu_pm.h>
 #include <linux/tegra-pmc.h>
+#include <linux/clk/tegra.h>
+#include <linux/tegra-powergate.h>
 
 #include <asm/suspend.h>
 #include <asm/cacheflush.h>
@@ -29,8 +31,14 @@
 #include "sleep.h"
 #include "flowctrl.h"
 #include "pm-soc.h"
-#include "pm-tegra132.h"
+#include "common.h"
+#include "iomap.h"
+#include "flowctrl.h"
 #include "denver-knobs.h"
+
+#include "pm-tegra132.h"
+
+#define PMC_SCRATCH41	0x140 // stores AARCH64 reset vector
 
 #define HALT_REG_CORE0 \
 	FLOW_CTRL_WAIT_FOR_INTERRUPT | \
@@ -132,6 +140,17 @@ static int cpu_pm_notify(struct notifier_block *self,
 	return NOTIFY_OK;
 }
 
+static void set_cpu_reset_vector(u32 vec_phys)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	/* SecureOS controls reset vector if present */
+	if (tegra_cpu_is_secure())
+		return;
+	writel(vec_phys, pmc + PMC_SCRATCH41);
+	readl(pmc + PMC_SCRATCH41);
+}
+
 static struct notifier_block cpu_pm_notifier_block = {
 	.notifier_call = cpu_pm_notify,
 };
@@ -145,6 +164,7 @@ static int cpu_notify(struct notifier_block *self,
 	case CPU_ONLINE:
 	case CPU_ONLINE_FROZEN:
 		denver_set_bg_allowed(cpu, true);
+		set_cpu_reset_vector(0);
 		break;
 	}
 
@@ -155,10 +175,28 @@ static struct notifier_block cpu_notifier_block = {
 	.notifier_call = cpu_notify,
 };
 
+static void tegra132_boot_secondary_cpu(int cpu)
+{
+	/* CPU1 is taken out of reset by bootloader for cold boot */
+	if (tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu)))
+		return;
+
+	/* AARCH64 reset vector */
+	set_cpu_reset_vector(virt_to_phys(tegra_resume));
+
+	/* Power ungate CPU */
+	tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
+
+	/* Remove CPU from reset */
+	flowctrl_write_cpu_halt(cpu, 0);
+	tegra_cpu_car_ops->out_of_reset(cpu);
+}
+
 void __init tegra_soc_suspend_init(void)
 {
 	tegra_tear_down_cpu = tegra132_tear_down_cpu;
 	tegra_sleep_core_finish = tegra132_sleep_core_finish;
+	tegra_boot_secondary_cpu = tegra132_boot_secondary_cpu;
 
 	/* Notifier to disable/enable BGALLOW */
 	cpu_pm_register_notifier(&cpu_pm_notifier_block);
