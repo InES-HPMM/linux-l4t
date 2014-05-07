@@ -8,7 +8,7 @@
 		modules {
 			module1: module1@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1793_rear_camera";
+				badge_info = "e1806_rear_BA519B";
 
 				sensor {
 					profile = <&ov5693_1>;
@@ -25,7 +25,7 @@
 			};
 			module2: module2@modules {
 				compatible = "sensor,front";
-				badge_info = "e1793_front_camera";
+				badge_info = "e1806_front_P1M03B";
 
 				sensor {
 					profile = <&mt9m114_1>;
@@ -34,7 +34,7 @@
 			};
 			module3: module3@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1823_rear_camera";
+				badge_info = "e1823_rear_D9A951";
 
 				sensor {
 					profile = <&imx135_1>;
@@ -51,7 +51,7 @@
 			};
 			module4: module4@modules {
 				compatible = "sensor,front";
-				badge_info = "e1823_front_camera";
+				badge_info = "e1823_front_Q2M12A";
 
 				sensor {
 					profile = <&ar0261_1>;
@@ -60,7 +60,7 @@
 			};
 			module5: module5@modules {
 				compatible = "sensor,front";
-				badge_info = "loki_front_camera_brd";
+				badge_info = "e1793_front_Q034A";
 
 				sensor {
 					profile = <&ov7695_1>;

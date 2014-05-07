@@ -8,7 +8,7 @@
 		modules {
 			module1: module1@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1793_rear_camera";
+				badge_info = "tn8_a00_rear_BA519C";
 
 				sensor {
 					profile = <&ov5693_1>;
@@ -21,7 +21,7 @@
 			};
 			module2: module2@modules {
 				compatible = "sensor,front";
-				badge_info = "e1793_front_camera";
+				badge_info = "tn8_a00_front_Q1M03H";
 
 				sensor {
 					profile = <&mt9m114_1>;

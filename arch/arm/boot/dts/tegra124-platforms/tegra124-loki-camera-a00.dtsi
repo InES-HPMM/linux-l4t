@@ -8,7 +8,7 @@
 		modules {
 			module1: module1@modules {
 				compatible = "sensor,front";
-				badge_info = "loki_front_camera_device";
+				badge_info = "loki_front_P2528";
 
 				sensor {
 					profile = <&ov7695_1>;
