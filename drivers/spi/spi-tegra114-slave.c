@@ -149,7 +149,7 @@
 
 #define MAX_CHIP_SELECT				4
 #define SPI_FIFO_DEPTH				64
-
+#define SPI_FIFO_FLUSH_MAX_DELAY		2000
 
 struct tegra_spi_chip_data {
 	bool intr_mask_reg;
@@ -515,6 +515,30 @@ static int tegra_spi_start_rx_dma(struct tegra_spi_data *tspi, int len)
 	return 0;
 }
 
+static int check_and_clear_fifo(struct tegra_spi_data *tspi)
+{
+	unsigned long status;
+	int cnt = SPI_FIFO_FLUSH_MAX_DELAY;
+
+	/* Make sure that Rx and Tx fifo are empty */
+	status = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
+	if ((status & SPI_FIFO_EMPTY) != SPI_FIFO_EMPTY) {
+		/* flush the fifo */
+		status |= (SPI_RX_FIFO_FLUSH | SPI_TX_FIFO_FLUSH);
+		tegra_spi_writel(tspi, status, SPI_FIFO_STATUS);
+		do {
+			status = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
+			if ((status & SPI_FIFO_EMPTY) == SPI_FIFO_EMPTY)
+				return 0;
+			udelay(1);
+		} while (cnt--);
+		dev_err(tspi->dev,
+			"Rx/Tx fifo are not empty status 0x%08lx\n", status);
+		return -EIO;
+	}
+	return 0;
+}
+
 static int tegra_spi_start_dma_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
@@ -525,12 +549,10 @@ static int tegra_spi_start_dma_based_transfer(
 	unsigned long status;
 
 	/* Make sure that Rx and Tx fifo are empty */
-	status = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
-	if ((status & SPI_FIFO_EMPTY) != SPI_FIFO_EMPTY) {
-		dev_err(tspi->dev,
-			"Rx/Tx fifo are not empty status 0x%08lx\n", status);
-		return -EIO;
-	}
+	ret = check_and_clear_fifo(tspi);
+	if (ret != 0)
+		return ret;
+
 
 	val = SPI_DMA_BLK_SET(tspi->curr_dma_words - 1);
 	tegra_spi_writel(tspi, val, SPI_DMA_BLK);
@@ -614,6 +636,11 @@ static int tegra_spi_start_cpu_based_transfer(
 	unsigned long val;
 	unsigned long intr_mask;
 	unsigned cur_words;
+	int ret = 0;
+
+	ret = check_and_clear_fifo(tspi);
+	if (ret != 0)
+		return ret;
 
 	if (tspi->cur_direction & DATA_DIR_TX)
 		cur_words = tegra_spi_fill_tx_fifo_from_client_txbuf(tspi, t);
