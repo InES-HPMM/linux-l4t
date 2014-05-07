@@ -474,6 +474,8 @@ static int as3722_i2c_of_probe(struct i2c_client *i2c,
 {
 	struct device_node *np = i2c->dev.of_node;
 	struct irq_data *irq_data;
+	u32 pval;
+	int ret;
 
 	if (!np) {
 		dev_err(&i2c->dev, "Device Tree not found\n");
@@ -496,14 +498,25 @@ static int as3722_i2c_of_probe(struct i2c_client *i2c,
 	as3722->irq_base = -1;
 	of_property_read_u32(np, "ams,major-rev", &as3722->major_rev);
 	of_property_read_u32(np, "ams,minor-rev", &as3722->minor_rev);
+
 	as3722->backup_battery_chargable =
 		of_property_read_bool(np, "ams,backup-battery-chargable");
-	of_property_read_u32(np, "ams,battery-backup-charge-current",
-				&as3722->backup_battery_charge_current);
-	as3722->battery_backup_enable_bypass =
-		of_property_read_bool(np, "ams,battery-backup-enable-bypass");
-	of_property_read_u32(np, "ams,battery-backup-charge-mode",
-				&as3722->battery_backup_charge_mode);
+	if (!as3722->backup_battery_chargable)
+		goto skip_chg_param;
+
+	ret = of_property_read_u32(np, "ams,battery-backup-charge-current",
+			&pval);
+	if (!ret)
+		as3722->backup_battery_charge_current = pval;
+
+	as3722->battery_backup_enable_bypass = of_property_read_bool(np,
+			"ams,battery-backup-bypass-out-resistor");
+
+	ret = of_property_read_u32(np, "ams,battery-backup-charge-mode", &pval);
+	if (!ret)
+		as3722->battery_backup_charge_mode = pval;
+
+skip_chg_param:
 	dev_dbg(&i2c->dev, "IRQ flags are 0x%08lx\n", as3722->irq_flags);
 	return 0;
 }
@@ -592,35 +605,25 @@ static int as3722_i2c_probe(struct i2c_client *i2c,
 		goto scrub;
 	}
 	if (as3722->backup_battery_chargable) {
-		ret = as3722_update_bits(as3722, AS3722_BB_CHARGER_REG,
-			AS3722_BBCCUR_MASK,
-			AS3722_BBCCUR_VAL(as3722->backup_battery_charge_current)
-			);
-		if (ret < 0) {
-			dev_err(as3722->dev,
-			"BB_CHARGING current update failed: %d\n", ret);
-			goto scrub;
-		}
+		unsigned int val;
+		unsigned int mask;
+
+		mask = AS3722_BBCCUR_MASK | AS3722_BBCRESOFF_MASK |
+				AS3722_BBCMODE_MASK;
+
+		val = AS3722_BBCCUR_VAL(as3722->backup_battery_charge_current) |
+				as3722->battery_backup_charge_mode;
 		if (as3722->battery_backup_enable_bypass)
-			val = AS3722_BBCRESOFF_MASK;
-		else
-			val = 0;
+			val |= AS3722_BBCRESOFF_MASK;
 		ret = as3722_update_bits(as3722, AS3722_BB_CHARGER_REG,
-				AS3722_BBCRESOFF_MASK, val);
+			mask, val);
 		if (ret < 0) {
 			dev_err(as3722->dev,
-			"BB_CHARGING reg offset update failed: %d\n", ret);
-			goto scrub;
-		}
-		ret = as3722_update_bits(as3722, AS3722_BB_CHARGER_REG,
-				AS3722_BBCMODE_MASK,
-				as3722->battery_backup_charge_mode);
-		if (ret < 0) {
-			dev_err(as3722->dev,
-				"BB_CHARGING mode update failed: %d\n", ret);
+				"BB_CHARGING update failed: %d\n", ret);
 			goto scrub;
 		}
 	}
+
 	ret = mfd_add_devices(&i2c->dev, -1, as3722_devs,
 			ARRAY_SIZE(as3722_devs), NULL, 0,
 			regmap_irq_get_domain(as3722->irq_data));
