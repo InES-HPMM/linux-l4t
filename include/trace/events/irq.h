@@ -144,6 +144,40 @@ DEFINE_EVENT(softirq, softirq_raise,
 	TP_ARGS(vec_nr)
 );
 
+TRACE_EVENT(ipi_enter,
+
+	TP_PROTO(u32 irq),
+
+	TP_ARGS(irq),
+
+	TP_STRUCT__entry(
+		__field( u32, irq)
+	),
+
+	TP_fast_assign(
+		__entry->irq = irq;
+	),
+
+	TP_printk("ipinr=%d", __entry->irq)
+);
+
+TRACE_EVENT(ipi_exit,
+
+	TP_PROTO(u32 irq),
+
+	TP_ARGS(irq),
+
+	TP_STRUCT__entry(
+		__field( u32, irq)
+	),
+
+	TP_fast_assign(
+		__entry->irq = irq;
+	),
+
+	TP_printk("ipinr=%d", __entry->irq)
+);
+
 #endif /*  _TRACE_IRQ_H */
 
 /* This part must be outside protection */

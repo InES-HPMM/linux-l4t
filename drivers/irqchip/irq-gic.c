@@ -44,6 +44,7 @@
 #include <linux/ftrace.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqchip/arm-gic.h>
+#include <trace/events/irq.h>
 
 #include <asm/irq.h>
 #include <asm/exception.h>
@@ -437,7 +438,9 @@ static asmlinkage void __exception_irq_entry gic_handle_irq(struct pt_regs *regs
 		if (irqnr < 16) {
 			writel_relaxed(irqstat, cpu_base + GIC_CPU_EOI);
 #ifdef CONFIG_SMP
+			trace_ipi_enter(irqnr);
 			handle_IPI(irqnr, regs);
+			trace_ipi_exit(irqnr);
 #endif
 			continue;
 		}
