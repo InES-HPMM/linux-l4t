@@ -155,7 +155,6 @@ extern struct platform_device tegra_uartb_device;
 extern struct platform_device tegra_uartc_device;
 extern struct platform_device tegra_uartd_device;
 extern struct platform_device tegra_uarte_device;
-extern struct platform_device tegra_avp_device;
 extern struct platform_device nvavp_device;
 extern struct platform_device tegra_aes_device;
 #if defined(CONFIG_TEGRA_SKIN_THROTTLE)

@@ -308,7 +308,6 @@ static struct platform_device *bonaire_devices[] __initdata = {
 #if defined(CONFIG_SND_HDA_TEGRA)
 	&tegra_hda_device,
 #endif
-	&tegra_avp_device,
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
 #endif

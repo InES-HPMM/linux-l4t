@@ -319,9 +319,6 @@ static void __init p2360_uart_init(void)
 /* FIXME: Check which devices are needed from the below list */
 static struct platform_device *p2360_devices[] __initdata = {
 	&tegra_pmu_device,
-#if defined(CONFIG_TEGRA_AVP)
-	&tegra_avp_device,
-#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra12_se_device,
 #endif

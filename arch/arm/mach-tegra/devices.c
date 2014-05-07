@@ -26,7 +26,6 @@
 #include <linux/mipi-bif-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_data/tegra_bpmp.h>
-#include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
 #include <linux/tegra-soc.h>
@@ -2683,14 +2682,6 @@ struct platform_device tegra_wdt0_device = {
 
 #endif
 
-static struct tegra_avp_platform_data tegra_avp_pdata = {
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	.emc_clk_rate = ULONG_MAX,
-#else
-	.emc_clk_rate = 200000000,
-#endif
-};
-
 struct resource tegra_nvavp_resources[] = {
 	[0] = {
 		.start  = INT_SHR_SEM_INBOX_IBF,
@@ -2707,27 +2698,6 @@ struct platform_device nvavp_device = {
 	.num_resources  = ARRAY_SIZE(tegra_nvavp_resources),
 	.dev  = {
 		.coherent_dma_mask	= 0xffffffffULL,
-		.platform_data		= &tegra_avp_pdata,
-	},
-};
-
-static struct resource tegra_avp_resources[] = {
-	[0] = {
-		.start	= INT_SHR_SEM_INBOX_IBF,
-		.end	= INT_SHR_SEM_INBOX_IBF,
-		.flags	= IORESOURCE_IRQ,
-		.name	= "mbox_from_avp_pending",
-	},
-};
-
-struct platform_device tegra_avp_device = {
-	.name		= "tegra-avp",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(tegra_avp_resources),
-	.resource	= tegra_avp_resources,
-	.dev  = {
-		.coherent_dma_mask	= 0xffffffffULL,
-		.platform_data		= &tegra_avp_pdata,
 	},
 };
 
