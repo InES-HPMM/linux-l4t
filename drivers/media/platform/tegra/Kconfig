@@ -2,8 +2,6 @@
 # camera/video device drivers supported.
 #
 
-source "drivers/media/platform/tegra/avp/Kconfig"
-source "drivers/media/platform/tegra/mediaserver/Kconfig"
 source "drivers/media/platform/tegra/nvavp/Kconfig"
 
 # only involve device specific PCL drivers while virtual driver cannot
