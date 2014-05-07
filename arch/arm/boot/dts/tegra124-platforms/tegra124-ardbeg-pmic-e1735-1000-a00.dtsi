@@ -105,6 +105,7 @@
 						regulator-init-microvolt = <900000>;
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 						regulator-boot-on;
+						ti,disable-active-discharge-idle;
 
 						consumers {
 							c0 {
@@ -121,6 +122,7 @@
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+						ti,disable-active-discharge-idle;
 
 						consumers {
 							c0 {
