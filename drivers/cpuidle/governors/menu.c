@@ -21,6 +21,9 @@
 #include <linux/math64.h>
 #include <linux/module.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/idle.h>
+
 #define BUCKETS 12
 #define INTERVALS 8
 #define RESOLUTION 1024
@@ -297,6 +300,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->predicted_us = div_round64(data->expected_us * data->correction_factor[data->bucket],
 					 RESOLUTION * DECAY);
 
+	trace_idle_entry(data->predicted_us);
 	get_typical_interval(data);
 
 	/*
