@@ -3887,9 +3887,7 @@ static int __init max98090_init(void)
 	if (ret)
 		pr_err("Failed to register MAX98090 I2C driver: %d\n", ret);
 	else
-		pr_info("MAX98090 driver built on %s at %s\n",
-			__DATE__,
-			__TIME__);
+		pr_info("MAX98090 driver registered\n");
 
 	return ret;
 }

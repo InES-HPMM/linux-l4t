@@ -1211,13 +1211,9 @@ static int max97236_probe(struct snd_soc_codec *codec)
 	int ret;
 
 #ifdef MAX97236_AUTOMODE1_JACK_DETECTION
-	dev_info(codec->dev, "built on %s at %s, mode is DETECT1\n",
-		__DATE__,
-		__TIME__);
+	dev_info(codec->dev, "mode is DETECT1\n");
 #else
-	dev_info(codec->dev, "built on %s at %s, mode is DETECT0\n",
-		__DATE__,
-		__TIME__);
+	dev_info(codec->dev, "mode is DETECT0\n");
 #endif
 
 	dev_info(codec->dev, "build number %s\n", MAX97236_REVISION);
