@@ -203,8 +203,11 @@ static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 	 * ports(I,J,K,L) in Controller 2 */
 
 	if (GPIO_BANK(offset) == 2) {
+		unsigned debounce_ms = DIV_ROUND_UP(debounce, 1000);
+
+		debounce_ms = max(debounce_ms, 255U);
 		tegra_gpio_mask_write(GPIO_MSK_DBC_EN(offset), offset, 1);
-		tegra_gpio_writel(debounce, GPIO_DBC_CNT(offset));
+		tegra_gpio_writel(debounce_ms, GPIO_DBC_CNT(offset));
 		return 0;
 	}
 
