@@ -26,6 +26,7 @@
 #include <linux/seq_file.h>
 #include <linux/miscdevice.h>
 #include <linux/device.h>
+#include <linux/uaccess.h>
 
 static struct dentry *mods_debugfs_dir;
 
@@ -278,7 +279,6 @@ static int mods_dsi_inst_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(mods_dsi_inst_fops, mods_dsi_inst_get, NULL, "%llu\n");
 
-
 static int mods_dc_border_get(void *data, u64 *val)
 {
 	struct tegra_dc *dc = data;
@@ -312,7 +312,258 @@ static int mods_dc_border_set(void *data, u64 val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(mods_dc_border_fops, mods_dc_border_get,
-	mods_dc_border_set, "0x%llx\n");
+	mods_dc_border_set, "%0xllx\n");
+
+static int mods_sd_brightness_get(void *data, u64 *val)
+{
+	struct tegra_dc *dc = data;
+	if (!dc->enabled)
+		*val = 0ULL;
+	else {
+		*val = (u64)tegra_dc_readl(dc, DC_DISP_SD_BL_CONTROL);
+		*val = SD_BLC_BRIGHTNESS(*val);
+	}
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_sd_brightness_fops, mods_sd_brightness_get,
+	NULL, "%llu\n");
+
+static int mods_sd_pixel_count_get(void *data, u64 *val)
+{
+	struct tegra_dc *dc = data;
+	if (!dc->enabled)
+		*val = 0ULL;
+	else
+		*val = (u64)tegra_dc_readl(dc, DC_DISP_SD_PIXEL_COUNT);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_sd_pixel_count_fops, mods_sd_pixel_count_get,
+	NULL, "%llu\n");
+
+static int mods_sd_hw_k_rgb_show(struct seq_file *s, void *unused)
+{
+	struct tegra_dc *dc = s->private;
+	u32 val;
+
+	if (!dc->enabled)
+		val = 0U;
+	else
+		val = tegra_dc_readl(dc, DC_DISP_SD_HW_K_VALUES);
+
+	seq_printf(s, "%u %u %u\n", SD_HW_K_R(val), SD_HW_K_G(val),
+		SD_HW_K_B(val));
+	return 0;
+}
+
+static int mods_sd_hw_k_rgb_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_sd_hw_k_rgb_show, inode->i_private);
+}
+
+static const struct file_operations mods_sd_hw_k_rgb_fops = {
+	.open		= mods_sd_hw_k_rgb_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int mods_sd_histogram_show(struct seq_file *s, void *unused)
+{
+	struct tegra_dc *dc = s->private;
+	u32 i;
+
+	for (i = 0; i < DC_DISP_SD_HISTOGRAM_NUM; i++) {
+		u32 val;
+
+		if (!dc->enabled)
+			val = 0U;
+		else
+			val = tegra_dc_readl(dc, DC_DISP_SD_HISTOGRAM(i));
+		seq_printf(s, "%u %u %u %u\n",
+			SD_HISTOGRAM_BIN_0(val),
+			SD_HISTOGRAM_BIN_1(val),
+			SD_HISTOGRAM_BIN_2(val),
+			SD_HISTOGRAM_BIN_3(val));
+	}
+
+	return 0;
+}
+
+static int mods_sd_histogram_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_sd_histogram_show, inode->i_private);
+}
+
+static const struct file_operations mods_sd_histogram_fops = {
+	.open		= mods_sd_histogram_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+
+static int mods_dc_ocp_show(struct seq_file *s, void *unused)
+{
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	seq_puts(s, "rgb\nrgb_lim\n601\n709\n");
+#else
+	seq_puts(s, "rgb\n");
+#endif
+	return 0;
+}
+
+static int mods_dc_ocp_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_dc_ocp_show, inode->i_private);
+}
+
+static const struct file_operations mods_dc_ocp_fops = {
+	.open		= mods_dc_ocp_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+
+#define DC_DISP_CSC2_CONTROL		0x4ef
+#define  CSC2_OUTPUT_COLOR_RGB		(0 << 0)
+#define  CSC2_OUTPUT_COLOR_709		(1 << 0)
+#define  CSC2_OUTPUT_COLOR_601		(2 << 0)
+#define  CSC2_OUTPUT_COLOR(val)		(val & 0x3)
+#define  CSC2_LIMIT_RGB_DISABLE		(0 << 2)
+#define  CSC2_LIMIT_RGB_ENABLE		(1 << 2)
+
+static int mods_dc_oc_show(struct seq_file *s, void *unused)
+{
+	u32 val;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	struct tegra_dc *dc = s->private;
+	if (!dc->enabled)
+		val = 0U;
+	else
+		val = tegra_dc_readl(dc, DC_DISP_CSC2_CONTROL);
+#else
+	val = 0U;
+#endif
+	switch (CSC2_OUTPUT_COLOR(val)) {
+	case CSC2_OUTPUT_COLOR_RGB:
+		if (val & CSC2_LIMIT_RGB_ENABLE)
+			seq_puts(s, "rgb_lim\n");
+		else
+			seq_puts(s, "rgb\n");
+		break;
+	case CSC2_OUTPUT_COLOR_709:
+		seq_puts(s, "709\n");
+		break;
+	case CSC2_OUTPUT_COLOR_601:
+		seq_puts(s, "601\n");
+		break;
+	default:
+		seq_puts(s, "unknown\n");
+		break;
+	}
+	return 0;
+}
+
+static int mods_dc_oc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_dc_oc_show, inode->i_private);
+}
+
+static ssize_t mods_dc_oc_write(struct file *file, const char __user *user_buf,
+			      size_t size, loff_t *ppos)
+{
+	char buf[8];
+	int buf_size;
+
+	buf_size = min(size, (sizeof(buf) - 1));
+	if (strncpy_from_user(buf, user_buf, buf_size) < 0)
+		return -EFAULT;
+	buf[buf_size] = 0;
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	{
+		struct tegra_dc *dc =
+			((struct seq_file *)(file->private_data))->private;
+		u32 val;
+
+		if (!dc->enabled)
+			return -EBUSY;
+
+		if (strncmp(buf, "rgb", 3) == 0)
+			val = CSC2_OUTPUT_COLOR_RGB;
+		else if (strncmp(buf, "rgb_lim", 7) == 0)
+			val = CSC2_OUTPUT_COLOR_RGB | CSC2_LIMIT_RGB_ENABLE;
+		else if (strncmp(buf, "709", 3) == 0)
+			val = CSC2_OUTPUT_COLOR_709;
+		else if (strncmp(buf, "601", 3) == 0)
+			val = CSC2_OUTPUT_COLOR_601;
+		else
+			return -EINVAL;
+
+		mutex_lock(&dc->lock);
+		tegra_dc_get(dc);
+		tegra_dc_writel(dc, val, DC_DISP_CSC2_CONTROL);
+		tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+		tegra_dc_put(dc);
+		mutex_unlock(&dc->lock);
+	}
+#else
+	if (strncmp(buf, "rgb", 3) != 0)
+		return -EINVAL;
+#endif
+	*ppos += size;
+	return size;
+}
+
+static const struct file_operations mods_dc_oc_fops = {
+	.open		= mods_dc_oc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= mods_dc_oc_write,
+};
+
+static int mods_dc_ddc_bus_get(void *data, u64 *val)
+{
+	struct tegra_dc *dc = data;
+	*val = dc->out->ddc_bus;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mods_dc_ddc_bus_fops, mods_dc_ddc_bus_get,
+	NULL, "%lld\n");
+
+
+static int mods_dc_crc_latched_show(struct seq_file *s, void *unused)
+{
+	struct tegra_dc *dc = s->private;
+	u32 crc = tegra_dc_read_checksum_latched(dc);
+	u32 field = 0;
+
+#ifdef CONFIG_TEGRA_DC_INTERLACE
+	{
+		u32 val;
+		val = tegra_dc_readl(dc, DC_DISP_INTERLACE_CONTROL);
+		if (val & INTERLACE_MODE_ENABLE)
+			field = (val & INTERLACE_STATUS_FIELD_2) ? 1 : 0;
+	}
+#endif
+	seq_printf(s, "0x%08x %u\n", crc, field);
+
+	return 0;
+}
+
+static int mods_dc_crc_latched_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_dc_crc_latched_show, inode->i_private);
+}
+
+static const struct file_operations mods_dc_crc_latched_fops = {
+	.open		= mods_dc_crc_latched_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 #endif /* CONFIG_TEGRA_DC */
 
 static int mods_debug_get(void *data, u64 *val)
@@ -382,6 +633,7 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 #ifdef CONFIG_TEGRA_DC
 	for (dc_idx = 0; dc_idx < TEGRA_MAX_DC; dc_idx++) {
 		struct dentry *dc_debugfs_dir;
+		struct dentry *sd_debugfs_dir;
 		struct tegra_dc *dc = tegra_dc_get_dc(dc_idx);
 		if (!dc)
 			continue;
@@ -442,6 +694,54 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 			goto remove_out;
 		}
 
+		retval = debugfs_create_file("output_color_possible", S_IRUGO,
+			dc_debugfs_dir, NULL, &mods_dc_ocp_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+		retval = debugfs_create_file("output_color", S_IRUGO | S_IWUSR,
+			dc_debugfs_dir, dc, &mods_dc_oc_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+
+		retval = debugfs_create_file("crc_checksum_latched", S_IRUGO,
+			dc_debugfs_dir, dc, &mods_dc_crc_latched_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+
+		sd_debugfs_dir = debugfs_create_dir("smartdimmer",
+			dc_debugfs_dir);
+
+		retval = debugfs_create_file("brightness", S_IRUGO,
+			sd_debugfs_dir, dc, &mods_sd_brightness_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+		retval = debugfs_create_file("pixel_count", S_IRUGO,
+			sd_debugfs_dir, dc, &mods_sd_pixel_count_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+		retval = debugfs_create_file("hw_k_rgb", S_IRUGO,
+			sd_debugfs_dir, dc, &mods_sd_hw_k_rgb_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+		retval = debugfs_create_file("histogram", S_IRUGO,
+			sd_debugfs_dir, dc, &mods_sd_histogram_fops);
+		if (IS_ERR(retval)) {
+			err = -EIO;
+			goto remove_out;
+		}
+
 		if (dc->out->type == TEGRA_DC_OUT_DSI) {
 			struct dentry *dsi_debugfs_dir;
 			dsi_debugfs_dir = debugfs_create_dir("dsi",
@@ -460,6 +760,15 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 			retval = debugfs_create_file("instance", S_IRUGO,
 				dsi_debugfs_dir, tegra_dc_get_outdata(dc),
 				&mods_dsi_inst_fops);
+			if (IS_ERR(retval)) {
+				err = -EIO;
+				goto remove_out;
+			}
+		}
+
+		if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+			retval = debugfs_create_file("ddc_bus", S_IRUGO,
+				dc_debugfs_dir, dc, &mods_dc_ddc_bus_fops);
 			if (IS_ERR(retval)) {
 				err = -EIO;
 				goto remove_out;

@@ -446,6 +446,7 @@ int esc_mods_flush_cpu_cache_range(struct file *,
 #ifdef CONFIG_TEGRA_DC
 int esc_mods_tegra_dc_config_possible(struct file *,
 				struct MODS_TEGRA_DC_CONFIG_POSSIBLE *);
+int esc_mods_tegra_dc_setup_sd(struct file *, struct MODS_TEGRA_DC_SETUP_SD *);
 #endif
 #endif
 
@@ -459,5 +460,13 @@ static inline int mods_create_debugfs(struct miscdevice *modsdev)
 }
 static inline void mods_remove_debugfs(void) {}
 #endif /* CONFIG_DEBUG_FS */
+
+#ifdef CONFIG_TEGRA_DC
+int mods_init_tegradc(void);
+void mods_exit_tegradc(void);
+#else
+static inline int mods_init_tegradc(void) { return 0; }
+static inline void mods_exit_tegradc(void) {}
+#endif
 
 #endif	/* _MODS_INTERNAL_H_  */

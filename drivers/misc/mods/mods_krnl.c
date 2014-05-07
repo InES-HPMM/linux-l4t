@@ -113,6 +113,10 @@ static int __init mods_init_module(void)
 	if (rc < 0)
 		return rc;
 
+	rc = mods_init_tegradc();
+	if (rc < 0)
+		return rc;
+
 	mods_info_printk("driver loaded, version %x.%02x\n",
 			 (MODS_DRIVER_VERSION>>8),
 			 (MODS_DRIVER_VERSION&0xFF));
@@ -123,6 +127,8 @@ static int __init mods_init_module(void)
 static void __exit mods_exit_module(void)
 {
 	LOG_ENT();
+
+	mods_exit_tegradc();
 
 	mods_remove_debugfs();
 
@@ -995,11 +1001,18 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_flush_cpu_cache_range,
 				    MODS_FLUSH_CPU_CACHE_RANGE);
 		break;
-#if defined(CONFIG_TEGRA_DC) && defined(CONFIG_TEGRA_ISOMGR)
+#ifdef CONFIG_TEGRA_DC
+#ifdef CONFIG_TEGRA_ISOMGR
 	case MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE:
 		MODS_IOCTL(MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE,
 				   esc_mods_tegra_dc_config_possible,
 				   MODS_TEGRA_DC_CONFIG_POSSIBLE);
+		break;
+#endif
+	case MODS_ESC_TEGRA_DC_SETUP_SD:
+		MODS_IOCTL(MODS_ESC_TEGRA_DC_SETUP_SD,
+				   esc_mods_tegra_dc_setup_sd,
+				   MODS_TEGRA_DC_SETUP_SD);
 		break;
 #endif
 #endif
