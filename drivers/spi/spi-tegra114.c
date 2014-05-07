@@ -796,6 +796,10 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	tspi->rx_status = 0;
 	total_fifo_words = tegra_spi_calculate_curr_xfer_param(spi, tspi, t);
 
+	/* Check that the all words are available */
+	if (t->len % tspi->bytes_per_word != 0)
+		return -EINVAL;
+
 	if (is_first_of_msg) {
 		tegra_spi_clear_status(tspi);
 
