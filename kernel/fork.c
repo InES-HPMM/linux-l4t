@@ -80,6 +80,7 @@
 #include <asm/tlbflush.h>
 
 #include <trace/events/sched.h>
+#include <trace/events/sys_calls.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>

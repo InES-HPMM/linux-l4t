@@ -27,6 +27,8 @@
 #include <linux/cn_proc.h>
 #include <linux/compat.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/sys_calls.h>
 
 static int ptrace_trapping_sleep_fn(void *flags)
 {
