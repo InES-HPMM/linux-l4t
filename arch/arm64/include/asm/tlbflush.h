@@ -42,6 +42,7 @@ static inline int cpumask_ran_on_only(const struct cpumask *mask, unsigned int c
 	return (mask->bits[0] & ~(1 << cpu) ? 0 : 1);
 }
 
+#define FLUSH_TLB_ALL_THRESHOLD (PAGE_SIZE * 128)
 
 /*
  *	TLB Management
@@ -126,19 +127,29 @@ static inline void flush_tlb_page(struct vm_area_struct *vma,
 	dsb();
 }
 
-/*
- * Convert calls to our calling convention.
- */
-
-static inline void flush_tlb_range(struct vm_area_struct *vma, unsigned long start, unsigned long end)
+static inline void flush_tlb_range(struct vm_area_struct *vma,
+					unsigned long start, unsigned long end)
 {
 	if (cpumask_ran_on_only(mm_cpumask(vma->vm_mm), smp_processor_id()))
-		__local_cpu_flush_user_tlb_range(start, end, vma);
+		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
+			local_flush_tlb_all();
+		else
+			__local_cpu_flush_user_tlb_range(start,end,vma);
 	else
-		__cpu_flush_user_tlb_range(start, end, vma);
+		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
+			flush_tlb_all();
+		else
+			__cpu_flush_user_tlb_range(start,end,vma);
 }
 
-#define flush_tlb_kernel_range(s,e)	__cpu_flush_kern_tlb_range(s,e)
+static inline void flush_tlb_kernel_range(unsigned long start,
+					unsigned long end)
+{
+	if (end - start > FLUSH_TLB_ALL_THRESHOLD)
+		flush_tlb_all();
+	else
+		__cpu_flush_kern_tlb_range(start, end);
+}
 
 /*
  * On AArch64, the cache coherency is handled via the set_pte_at() function.
