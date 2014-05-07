@@ -231,12 +231,64 @@ static ssize_t set_ledstate(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t show_ledstate2(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	struct usb_interface *intf = to_usb_interface(dev);
+	struct nvshield_led *led = usb_get_intfdata(intf);
+
+	switch (led->state[LED_TOUCH]) {
+	case LED_NORMAL:
+		return sprintf(buf, "%s\n", LED_STATE_NORMAL);
+	case LED_BLINK:
+		return sprintf(buf, "%s\n", LED_STATE_BLINK);
+	case LED_BREATHE:
+		return sprintf(buf, "%s\n", LED_STATE_BREATHE);
+	case LED_OFF:
+		return sprintf(buf, "%s\n", LED_STATE_OFF);
+	default:
+		return sprintf(buf, LED_STATE_UNKNOW);
+	}
+}
+
+static ssize_t set_ledstate2(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct usb_interface *intf = to_usb_interface(dev);
+	struct nvshield_led *led = usb_get_intfdata(intf);
+	char ledstate_name[LED_STATE_MAXCHAR];
+	size_t len;
+
+	ledstate_name[sizeof(ledstate_name) - 1] = '\0';
+	strncpy(ledstate_name, buf, sizeof(ledstate_name) - 1);
+	len = strlen(ledstate_name);
+
+	if (len && ledstate_name[len - 1] == '\n')
+		ledstate_name[len - 1] = '\0';
+
+	if (!strcmp(ledstate_name, LED_STATE_NORMAL))
+		led->state[LED_TOUCH] = LED_NORMAL;
+	else if (!strcmp(ledstate_name, LED_STATE_BLINK))
+		led->state[LED_TOUCH] = LED_BLINK;
+	else if (!strcmp(ledstate_name, LED_STATE_BREATHE))
+		led->state[LED_TOUCH] = LED_BREATHE;
+	else if (!strcmp(ledstate_name, LED_STATE_OFF))
+		led->state[LED_TOUCH] = LED_OFF;
+	else
+		return count;
+
+	send_command(led, LED_TOUCH);
+	return count;
+}
+
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR,
 		show_brightness, set_brightness);
 static DEVICE_ATTR(state, S_IRUGO | S_IWUSR,
 		show_ledstate, set_ledstate);
 static DEVICE_ATTR(brightness2, S_IRUGO | S_IWUSR,
 		show_brightness2, set_brightness2);
+static DEVICE_ATTR(state2, S_IRUGO | S_IWUSR,
+		show_ledstate2, set_ledstate2);
 
 static int nvshieldled_reboot_callback(struct notifier_block *nb,
 		unsigned long code,
@@ -244,7 +296,9 @@ static int nvshieldled_reboot_callback(struct notifier_block *nb,
 	if (!g_dev)
 		return NOTIFY_DONE;
 	g_dev->state[LED_NVBUTTON] = LED_NORMAL;
+	g_dev->state[LED_TOUCH] = LED_NORMAL;
 	send_command(g_dev, LED_NVBUTTON);
+	send_command(g_dev, LED_TOUCH);
 	return NOTIFY_DONE;
 }
 
@@ -283,13 +337,18 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	retval = device_create_file(&interface->dev, &dev_attr_brightness2);
 	if (retval)
 		goto error3;
+	retval = device_create_file(&interface->dev, &dev_attr_state2);
+	if (retval)
+		goto error4;
 	dev_info(&interface->dev, "Nvidia Shield LED attached\n");
 
 	retval = register_reboot_notifier(&nvshieldled_notifier);
 	if (retval)
-		goto error4;
+		goto error5;
 	return 0;
 
+error5:
+	device_remove_file(&interface->dev, &dev_attr_state2);
 error4:
 	device_remove_file(&interface->dev, &dev_attr_brightness2);
 error3:
@@ -314,6 +373,7 @@ static void nvshieldled_disconnect(struct usb_interface *interface)
 	device_remove_file(&interface->dev, &dev_attr_brightness);
 	device_remove_file(&interface->dev, &dev_attr_state);
 	device_remove_file(&interface->dev, &dev_attr_brightness2);
+	device_remove_file(&interface->dev, &dev_attr_state2);
 
 	usb_set_intfdata(interface, NULL);
 	usb_put_dev(dev->udev);
