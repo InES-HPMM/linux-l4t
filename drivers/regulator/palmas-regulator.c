@@ -37,7 +37,9 @@ struct regs_info {
 	u8	ctrl_addr;
 	u8	tstep_addr;
 	u8	fvsel_addr;
+	u8	pd_cntrl_addr;
 	int	sleep_id;
+	int	pd_bit;
 };
 
 static const struct regs_info palmas_regs_info[] = {
@@ -49,6 +51,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.tstep_addr	= PALMAS_SMPS12_TSTEP,
 		.fvsel_addr	= PALMAS_SMPS12_FORCE,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS12,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS12,
 	},
 	{
 		.name		= "SMPS123",
@@ -57,6 +61,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.ctrl_addr	= PALMAS_SMPS12_CTRL,
 		.tstep_addr	= PALMAS_SMPS12_TSTEP,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS12,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS12,
 	},
 	{
 		.name		= "SMPS3",
@@ -66,6 +72,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.tstep_addr	= PALMAS_SMPS3_TSTEP,
 		.fvsel_addr	= PALMAS_SMPS3_FORCE,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS3,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS3,
 	},
 	{
 		.name		= "SMPS45",
@@ -74,6 +82,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.ctrl_addr	= PALMAS_SMPS45_CTRL,
 		.tstep_addr	= PALMAS_SMPS45_TSTEP,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS45,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS45,
 	},
 	{
 		.name		= "SMPS457",
@@ -82,6 +92,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.ctrl_addr	= PALMAS_SMPS45_CTRL,
 		.tstep_addr	= PALMAS_SMPS45_TSTEP,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS45,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS45,
 	},
 	{
 		.name		= "SMPS6",
@@ -91,6 +103,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.tstep_addr	= PALMAS_SMPS6_TSTEP,
 		.fvsel_addr	= PALMAS_SMPS6_FORCE,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS6,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS6,
 	},
 	{
 		.name		= "SMPS7",
@@ -98,6 +112,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS7_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS7_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS7,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS7,
 	},
 	{
 		.name		= "SMPS8",
@@ -106,6 +122,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.ctrl_addr	= PALMAS_SMPS8_CTRL,
 		.tstep_addr	= PALMAS_SMPS8_TSTEP,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS8,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS8,
 	},
 	{
 		.name		= "SMPS9",
@@ -113,6 +131,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS9_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS9_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_SMPS9,
+		.pd_cntrl_addr	= PALMAS_SMPS_PD_CTRL,
+		.pd_bit		= PALMAS_SMPS_PD_CTRL_SMPS9,
 	},
 	{
 		.name		= "SMPS10_OUT2",
@@ -132,6 +152,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO1_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO1_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO1,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO1,
 	},
 	{
 		.name		= "LDO2",
@@ -139,6 +161,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO2_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO2_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO2,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO2,
 	},
 	{
 		.name		= "LDO3",
@@ -146,6 +170,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO3_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO3_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO3,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO3,
 	},
 	{
 		.name		= "LDO4",
@@ -153,6 +179,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO4_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO4_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO4,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO4,
 	},
 	{
 		.name		= "LDO5",
@@ -160,6 +188,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO5_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO5_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO5,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO5,
 	},
 	{
 		.name		= "LDO6",
@@ -167,6 +197,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO6_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO6_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO6,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO6,
 	},
 	{
 		.name		= "LDO7",
@@ -174,6 +206,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO7_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO7_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO7,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO7,
 	},
 	{
 		.name		= "LDO8",
@@ -181,6 +215,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO8_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO8_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO8,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
+		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO8,
 	},
 	{
 		.name		= "LDO9",
@@ -188,6 +224,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO9_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO9_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO9,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO9,
 	},
 	{
 		.name		= "LDO10",
@@ -195,6 +233,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO10_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO10_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO10,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO10,
 	},
 	{
 		.name		= "LDO11",
@@ -202,6 +242,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO11_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO11_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO11,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO11,
 	},
 	{
 		.name		= "LDO12",
@@ -209,6 +251,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO12_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO12_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO12,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO12,
 	},
 	{
 		.name		= "LDO13",
@@ -216,6 +260,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO13_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO13_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO13,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO13,
 	},
 	{
 		.name		= "LDO14",
@@ -223,6 +269,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDO14_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO14_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO14,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO14,
 	},
 	{
 		.name		= "LDOLN",
@@ -230,6 +278,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDOLN_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDOLN_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDOLN,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDOLN,
 	},
 	{
 		.name		= "LDOUSB",
@@ -237,6 +287,8 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_LDOUSB_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDOUSB_CTRL,
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDOUSB,
+		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
+		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDOUSB,
 	},
 	{
 		.name		= "REGEN1",
@@ -818,6 +870,32 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	return;
 }
 
+
+static int palams_rail_pd_control(struct palmas *palmas, int id, bool disable)
+{
+	unsigned int bit;
+	unsigned int base;
+	unsigned int addr;
+	unsigned int val;
+	int ret;
+
+	if (!palmas_regs_info[id].pd_cntrl_addr)
+		return 0;
+
+	base = (id < PALMAS_REG_LDO1) ? PALMAS_SMPS_BASE : PALMAS_LDO_BASE;
+
+	addr = palmas_regs_info[id].pd_cntrl_addr;
+	bit = palmas_regs_info[id].pd_bit;
+
+	val = (disable) ? 0 : bit;
+	ret = palmas_update_bits(palmas, PALMAS_SMPS_BASE, addr, bit, val);
+	if (ret < 0) {
+		dev_err(palmas->dev, "PD control config failed %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+
 /*
  * setup the hardware based sleep configuration of the SMPS/LDO regulators
  * from the platform data. This is different to the software based control
@@ -909,7 +987,8 @@ static int palmas_smps_init(struct regulator_dev *rdev,
 			return ret;
 	}
 
-
+	palams_rail_pd_control(palmas, id,
+		reg_init->disable_active_discharge_idle);
 	return 0;
 }
 
@@ -960,6 +1039,9 @@ static int palmas_ldo_init(struct regulator_dev *rdev,
 			return ret;
 		}
 	}
+
+	palams_rail_pd_control(palmas, id,
+		reg_init->disable_active_discharge_idle);
 	return 0;
 }
 
@@ -1286,6 +1368,11 @@ static void palmas_dt_to_pdata(struct device *dev,
 				"ti,config-flags", &prop);
 		if (!ret)
 			pdata->reg_init[idx]->config_flags = prop;
+
+		pdata->reg_init[idx]->disable_active_discharge_idle =
+				of_property_read_bool(
+					palmas_matches[idx].of_node,
+					"ti,disable-active-discharge-idle");
 	}
 
 	pdata->ldo6_vibrator = of_property_read_bool(node, "ti,ldo6-vibrator");
@@ -1517,6 +1604,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		/* Initialise sleep/init values from platform data */
 		if (reg_init) {
 			pmic->config_flags[id] = reg_init->config_flags;
+			pmic->disable_active_discharge_idle[id] =
+					reg_init->disable_active_discharge_idle;
 			ret = palmas_smps_init(rdev, palmas, id, reg_init);
 			if (ret)
 				goto err_unregister_regulator;
@@ -1642,6 +1731,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		/* Initialise sleep/init values from platform data */
 		if (pdata && reg_init && (id != PALMAS_REG_CHARGER_PUMP)) {
 			pmic->config_flags[id] = reg_init->config_flags;
+			pmic->disable_active_discharge_idle[id] =
+					reg_init->disable_active_discharge_idle;
 			if (id < PALMAS_REG_REGEN1)
 				ret = palmas_ldo_init(rdev, palmas, id,
 							reg_init);
@@ -1672,6 +1763,15 @@ static int palmas_regulators_remove(struct platform_device *pdev)
 	for (id = 0; id < PALMAS_NUM_REGS; id++)
 		regulator_unregister(pmic->rdev[id]);
 	return 0;
+}
+
+static void palams_regulators_shutdown(struct platform_device *pdev)
+{
+	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
+	int id;
+
+	for (id = 0; id < PALMAS_NUM_REGS; id++)
+		palams_rail_pd_control(palmas, id, false);
 }
 
 static struct of_device_id of_palmas_match_tbl[] = {
@@ -1707,6 +1807,7 @@ static int palmas_suspend(struct device *dev)
 			if (pmic->desc[id].ops->disable)
 				pmic->desc[id].ops->disable(pmic->rdev[id]);
 		}
+		palams_rail_pd_control(palmas, id, false);
 	}
 	return 0;
 }
@@ -1731,6 +1832,9 @@ static int palmas_resume(struct device *dev)
 			if (pmic->desc[id].ops->enable)
 				pmic->desc[id].ops->enable(pmic->rdev[id]);
 		}
+
+		palams_rail_pd_control(palmas, id,
+				pmic->disable_active_discharge_idle[id]);
 	}
 	return 0;
 }
@@ -1748,6 +1852,7 @@ static struct platform_driver palmas_driver = {
 	},
 	.probe = palmas_regulators_probe,
 	.remove = palmas_regulators_remove,
+	.shutdown = palams_regulators_shutdown,
 };
 
 static int __init palmas_init(void)

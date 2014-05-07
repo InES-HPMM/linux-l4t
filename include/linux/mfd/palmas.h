@@ -363,6 +363,12 @@ struct palmas_reg_init {
 	 * device supports.
 	 */
 	int tracking_regulator;
+
+	/*
+	 * disable active discharge on idle. This will keep disablign active
+	 * discharge on idle state and enable on suspend/shutdown.
+	 */
+	bool disable_active_discharge_idle;
 };
 
 enum palmas_regulators {
@@ -724,6 +730,7 @@ struct palmas_pmic {
 	bool ramp_delay_support[PALMAS_NUM_REGS];
 	unsigned int current_reg_mode[PALMAS_REG_SMPS10_OUT1];
 	unsigned long config_flags[PALMAS_NUM_REGS];
+	bool disable_active_discharge_idle[PALMAS_NUM_REGS];
 };
 
 struct palmas_resource {
