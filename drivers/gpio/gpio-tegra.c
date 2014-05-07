@@ -491,6 +491,7 @@ static struct irq_chip tegra_gpio_irq_chip = {
 struct tegra_gpio_soc_config {
 	u32 bank_stride;
 	u32 upper_offset;
+	bool debounce_support;
 };
 
 static struct tegra_gpio_soc_config tegra20_gpio_config = {
@@ -503,8 +504,14 @@ static struct tegra_gpio_soc_config tegra30_gpio_config = {
 	.upper_offset = 0x80,
 };
 
+static struct tegra_gpio_soc_config tegra210_gpio_config = {
+	.bank_stride = 0x100,
+	.upper_offset = 0x80,
+	.debounce_support = true,
+};
+
 static struct of_device_id tegra_gpio_of_match[] = {
-	{ .compatible = "nvidia,tegra210-gpio", .data = &tegra30_gpio_config },
+	{ .compatible = "nvidia,tegra210-gpio", .data = &tegra210_gpio_config },
 	{ .compatible = "nvidia,tegra124-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra148-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra114-gpio", .data = &tegra30_gpio_config },
@@ -551,6 +558,8 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 
 	tegra_gpio_chip.dev = &pdev->dev;
 	tegra_gpio_chip.ngpio = tegra_gpio_bank_count * 32;
+	if (!config->debounce_support)
+		tegra_gpio_chip.set_debounce = NULL;
 
 	tegra_gpio_banks = devm_kzalloc(&pdev->dev,
 			tegra_gpio_bank_count * sizeof(*tegra_gpio_banks),
