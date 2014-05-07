@@ -695,7 +695,10 @@ static struct soctherm_platform_data t132ref_v1_soctherm_data = {
 static struct soctherm_throttle battery_oc_throttle = {
 	.throt_mode = BRIEF,
 	.polarity = SOCTHERM_ACTIVE_LOW,
-	.priority = 100,
+	.priority = 50,
+	.intr = true,
+	.alarm_cnt_threshold = 15,
+	.alarm_filter = 5100000,
 	.devs = {
 		[THROTTLE_DEV_CPU] = {
 			.enable = true,
@@ -822,7 +825,12 @@ int __init ardbeg_soctherm_init(void)
 			pmu_board_info.board_id);
 
 	/* Enable soc_therm OC throttling on selected platforms */
-	switch (pmu_board_info.board_id) {
+	switch (board_info.board_id) {
+	case BOARD_E1971:
+		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
+		       &battery_oc_throttle,
+		       sizeof(battery_oc_throttle));
+		break;
 	case BOARD_P1761:
 		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
 		       &battery_oc_throttle,

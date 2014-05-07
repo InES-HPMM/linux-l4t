@@ -2070,7 +2070,7 @@ static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
 		break;
 
 	case THROTTLE_OC4:
-		pr_info("soctherm: Successfully handled OC4 alarm\n");
+		pr_debug("soctherm: Successfully handled OC4 alarm\n");
 		/* TODO: add OC4 alarm handling code here */
 		rv = 0;
 		break;

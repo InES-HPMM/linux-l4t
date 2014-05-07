@@ -136,8 +136,26 @@ struct sysedp_reactive_capping_platform_data tn8_voltmon_oc1_platdata = {
 
 static struct platform_device tn8_sysedp_reactive_capping_oc1 = {
 	.name = "sysedp_reactive_capping",
-	.id = -1,
+	.id = 0,
 	.dev = { .platform_data = &tn8_voltmon_oc1_platdata }
+};
+
+struct sysedp_reactive_capping_platform_data tn8_battery_oc4_platdata = {
+	.max_capping_mw = 15000,
+	.step_alarm_mw = 1000,
+	.step_relax_mw = 500,
+	.relax_ms = 250,
+	.sysedpc = {
+		.name = "battery_oc4"
+	},
+	.irq = TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_IRQ_4,
+	.irq_flags = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+};
+
+static struct platform_device tn8_sysedp_reactive_capping_oc4 = {
+	.name = "sysedp_reactive_capping",
+	.id = 1,
+	.dev = { .platform_data = &tn8_battery_oc4_platdata }
 };
 
 
@@ -176,5 +194,8 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 	WARN_ON(r);
 
 	r = platform_device_register(&tn8_sysedp_reactive_capping_oc1);
+	WARN_ON(r);
+
+	r = platform_device_register(&tn8_sysedp_reactive_capping_oc4);
 	WARN_ON(r);
 }
