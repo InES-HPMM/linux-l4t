@@ -47,19 +47,10 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
 		f2fs_android_emu(sbi, inode, &inode->i_uid,
 				 &inode->i_gid, &mode);
 	} else {
-		inode->i_uid = current_fsuid();
-
-		if (dir->i_mode & S_ISGID) {
-			inode->i_gid = dir->i_gid;
-			if (S_ISDIR(mode))
-				mode |= S_ISGID;
-		} else {
-			inode->i_gid = current_fsgid();
-		}
+		inode_init_owner(inode, dir, mode);
 	}
 
 	inode->i_ino = ino;
-	inode->i_mode = mode;
 	inode->i_blocks = 0;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
 	inode->i_generation = sbi->s_next_generation++;
