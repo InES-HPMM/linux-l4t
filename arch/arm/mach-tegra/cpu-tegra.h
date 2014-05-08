@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/cpu-tegra.h
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,13 +37,7 @@ unsigned long tegra_cpu_highest_speed(void);
 #if defined(CONFIG_TEGRA_AUTO_HOTPLUG) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 int tegra_auto_hotplug_init(struct mutex *cpulock);
 void tegra_auto_hotplug_exit(void);
-#ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);
-#else
-static inline void tegra_auto_hotplug_governor(unsigned int cpu_freq,
-						bool suspend)
-{}
-#endif
 #else
 static inline int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 { return 0; }
