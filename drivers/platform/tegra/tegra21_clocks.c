@@ -160,9 +160,10 @@ static bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
 		(new_cfg->m == old_cfg->m) && (new_cfg->p == old_cfg->p);
 }
 
-#define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val)			       \
+#define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val, write_mask)	       \
 do {									       \
 	u32 boot_val = clk_readl((c)->reg + (c)->u.pll.misc##misc_num);	       \
+	boot_val &= write_mask;						       \
 	if (boot_val != (default_val)) {				       \
 		pr_warn("%s boot misc" #misc_num " = 0x%x (expected 0x%x)\n",  \
 			(c)->name, boot_val, (default_val));		       \
@@ -329,9 +330,13 @@ do {									       \
 #define PLLCX_MISC1_IDDQ		(1 << 27)
 
 #define PLLCX_MISC0_DEFAULT_VALUE	0x40080000
+#define PLLCX_MISC0_WRITE_MASK		0x400ffffb
 #define PLLCX_MISC1_DEFAULT_VALUE	0x08000000
+#define PLLCX_MISC1_WRITE_MASK		0x08003cff
 #define PLLCX_MISC2_DEFAULT_VALUE	0x1f720f05
+#define PLLCX_MISC2_WRITE_MASK		0xffffff17
 #define PLLCX_MISC3_DEFAULT_VALUE	0x000000c4
+#define PLLCX_MISC3_WRITE_MASK		0x00ffffff
 
 /* PLLX */
 #define PLLXC_USE_DYN_RAMP		0
@@ -2734,16 +2739,16 @@ static void pllcx_check_defaults(struct clk *c, unsigned long input_rate)
 	c->u.pll.defaults_set = true;
 
 	default_val = PLLCX_MISC0_DEFAULT_VALUE & (~PLLCX_MISC0_RESET);
-	PLL_MISC_CHK_DEFAULT(c, 0, default_val);
+	PLL_MISC_CHK_DEFAULT(c, 0, default_val, PLLCX_MISC0_WRITE_MASK);
 
 	default_val = PLLCX_MISC1_DEFAULT_VALUE & (~PLLCX_MISC1_IDDQ);
-	PLL_MISC_CHK_DEFAULT(c, 1, default_val);
+	PLL_MISC_CHK_DEFAULT(c, 1, default_val, PLLCX_MISC1_WRITE_MASK);
 
 	default_val = PLLCX_MISC2_DEFAULT_VALUE;
-	PLL_MISC_CHK_DEFAULT(c, 2, default_val);
+	PLL_MISC_CHK_DEFAULT(c, 2, default_val, PLLCX_MISC2_WRITE_MASK);
 
 	default_val = PLLCX_MISC3_DEFAULT_VALUE;
-	PLL_MISC_CHK_DEFAULT(c, 3, default_val);
+	PLL_MISC_CHK_DEFAULT(c, 3, default_val, PLLCX_MISC3_WRITE_MASK);
 }
 
 static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
