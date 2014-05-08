@@ -936,6 +936,13 @@ enum {
 	POST_CURSOR2_L3 = 3,
 };
 
+enum {
+	SOR_LINK_SPEED_G1_62 = 6,
+	SOR_LINK_SPEED_G2_7 = 10,
+	SOR_LINK_SPEED_G5_4 = 20,
+	SOR_LINK_SPEED_LVDS = 7,
+};
+
 struct tegra_dc_dp_lt_settings {
 	u32 drive_current[4]; /* Entry for each lane */
 	u32 lane_preemphasis[4]; /* Entry for each lane */
@@ -948,6 +955,7 @@ struct tegra_dp_out {
 	struct tegra_dc_dp_lt_settings *lt_settings;
 	int n_lt_settings;
 	bool tx_pu_disable;
+	u8 link_bw;
 };
 
 #ifdef CONFIG_PM_SLEEP
