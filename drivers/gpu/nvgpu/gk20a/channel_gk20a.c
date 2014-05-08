@@ -1619,13 +1619,6 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		incr_cmd->gp_put = c->gpfifo.put;
 	}
 
-	/* Invalidate tlb if it's dirty...                                   */
-	/* TBD: this should be done in the cmd stream, not with PRIs.        */
-	/* We don't know what context is currently running...                */
-	/* Note also: there can be more than one context associated with the */
-	/* address space (vm).   */
-	gk20a_mm_tlb_invalidate(c->vm);
-
 	/* TODO! Check for errors... */
 	gk20a_channel_add_job(c, &c->last_submit_fence);
 
