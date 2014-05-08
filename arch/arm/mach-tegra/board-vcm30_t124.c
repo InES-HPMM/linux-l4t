@@ -607,8 +607,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
-		/* FIXME: Set this only for E1855. */
-		.vbus_gpio = TEGRA_GPIO_PN5,
+		.vbus_gpio = -1,
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
