@@ -21,7 +21,7 @@
 				ti,auto-conversion-period-ms = <1000>;
 				auto_conv1 {
 					ti,adc-channel-number = <4>;
-					ti,adc-low-threshold = <748>;
+					ti,adc-low-threshold = <952>;
 					ti,enable-shutdown;
 				};
 
