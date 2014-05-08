@@ -309,6 +309,9 @@ static int mmc_speed_opt_get(void *data, u64 *val)
 	const char *str = "";
 	*val = 0;
 
+	if (!host || !host->card)
+		return 0;
+
 	if (mmc_sd_card_uhs(host->card) &&
 		(host->card->sd_bus_speed < ARRAY_SIZE(uhs_speeds))) {
 		str = uhs_speeds[host->card->sd_bus_speed];
