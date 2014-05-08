@@ -115,6 +115,7 @@ struct clk_pll_freq_table {
 };
 
 struct clk_pll_div_layout {
+	/* base dividers */
 	u32		ndiv_shift;
 	u32		ndiv_mask;
 	u32		mdiv_shift;
@@ -123,6 +124,10 @@ struct clk_pll_div_layout {
 	u32		pdiv_mask;
 	u8		*pdiv_to_p;
 	int		pdiv_max;
+
+	/* misc dividers */
+	u32		ndiv_new_shift;
+	u32		ndiv_new_reg_idx;
 };
 
 struct clk_pll_controls {
@@ -135,6 +140,10 @@ struct clk_pll_controls {
 	u32		iddq_reg_idx;
 	u32		lock_mask;
 	u32		lock_reg_idx;
+
+	u32		dramp_en_mask;
+	u32		dramp_done_mask;
+	u32		dramp_ctrl_reg_idx;
 };
 
 enum pll_reg_indx {
@@ -143,6 +152,8 @@ enum pll_reg_indx {
 	PLL_MISC1_IDX,
 	PLL_MISC2_IDX,
 	PLL_MISC3_IDX,
+	PLL_MISC4_IDX,
+	PLL_MISC5_IDX,
 };
 
 enum clk_state {
@@ -257,6 +268,8 @@ struct clk {
 			u32				misc1;
 			u32				misc2;
 			u32				misc3;
+			u32				misc4;
+			u32				misc5;
 			bool				defaults_set;
 			struct clk_pll_controls		*controls;
 			struct clk_pll_div_layout	*div_layout;
