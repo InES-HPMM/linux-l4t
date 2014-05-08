@@ -1,0 +1,303 @@
+/*
+ * MAX77620 pin control driver.
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
+ *
+ * Author: Chaitanya Bandi <bandik@nvidia.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include <linux/delay.h>
+#include <linux/gpio.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/mfd/max77620.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/machine.h>
+#include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/pinconf-generic.h>
+#include <linux/pinctrl/pinconf.h>
+#include <linux/pinctrl/pinmux.h>
+#include <linux/pm.h>
+#include <linux/slab.h>
+
+#include "core.h"
+#include "pinconf.h"
+#include "pinctrl-utils.h"
+
+struct max77620_pin_function {
+	const char *name;
+	const char * const *groups;
+	unsigned ngroups;
+	int mux_option;
+};
+
+enum max77620_alternate_pinmux_option {
+	MAX77620_PINMUX_GPIO				= 0,
+	MAX77620_PINMUX_LOW_POWER_MODE_CONTROL_IN	= 1,
+	MAX77620_PINMUX_FLEXIBLE_POWER_SEQUENCER_OUT	= 2,
+	MAX77620_PINMUX_32K_OUT1			= 3,
+	MAX77620_PINMUX_SD0_DYNAMIC_VOLTAGE_SCALING_IN	= 4,
+	MAX77620_PINMUX_SD1_DYNAMIC_VOLTAGE_SCALING_IN	= 5,
+	MAX77620_PINMUX_REFERENCE_OUT			= 6,
+};
+
+struct max77620_pingroup {
+	const char *name;
+	const unsigned pins[1];
+	unsigned npins;
+	enum max77620_alternate_pinmux_option alt_option;
+};
+
+struct max77620_pctrl_info {
+	struct device *dev;
+	struct pinctrl_dev *pctl;
+	struct max77620_chip *max77620;
+	int pins_current_opt[MAX77620_GPIO_NR];
+	const struct max77620_pin_function *functions;
+	unsigned num_functions;
+	const struct max77620_pingroup *pin_groups;
+	int num_pin_groups;
+	const struct pinctrl_pin_desc *pins;
+	unsigned num_pins;
+};
+
+static const struct pinctrl_pin_desc max77620_pins_desc[] = {
+	PINCTRL_PIN(MAX77620_GPIO0, "gpio0"),
+	PINCTRL_PIN(MAX77620_GPIO1, "gpio1"),
+	PINCTRL_PIN(MAX77620_GPIO2, "gpio2"),
+	PINCTRL_PIN(MAX77620_GPIO3, "gpio3"),
+	PINCTRL_PIN(MAX77620_GPIO4, "gpio4"),
+	PINCTRL_PIN(MAX77620_GPIO5, "gpio5"),
+	PINCTRL_PIN(MAX77620_GPIO6, "gpio6"),
+	PINCTRL_PIN(MAX77620_GPIO7, "gpio7"),
+};
+
+static const char * const gpio_groups[] = {
+	"gpio0",
+	"gpio1",
+	"gpio2",
+	"gpio3",
+	"gpio4",
+	"gpio5",
+	"gpio6",
+	"gpio7",
+};
+
+#define FUNCTION_GROUP(fname, mux)			\
+	{						\
+		.name = #fname,				\
+		.groups = gpio_groups,			\
+		.ngroups = ARRAY_SIZE(gpio_groups),	\
+		.mux_option = MAX77620_PINMUX_##mux,	\
+	}
+
+static const struct max77620_pin_function max77620_pin_function[] = {
+	FUNCTION_GROUP(gpio, GPIO),
+	FUNCTION_GROUP(low-power-mode-control-in, LOW_POWER_MODE_CONTROL_IN),
+	FUNCTION_GROUP(flexible-power-sequencer-out, FLEXIBLE_POWER_SEQUENCER_OUT),
+	FUNCTION_GROUP(32k-out1, 32K_OUT1),
+	FUNCTION_GROUP(sd0-dynamic-voltage-scaling-in, SD0_DYNAMIC_VOLTAGE_SCALING_IN),
+	FUNCTION_GROUP(sd1-dynamic-voltage-scaling-in, SD1_DYNAMIC_VOLTAGE_SCALING_IN),
+	FUNCTION_GROUP(reference-out, REFERENCE_OUT),
+};
+
+#define MAX77620_PINGROUP(pg_name, pin_id, option) \
+	{								\
+		.name = #pg_name,					\
+		.pins = {MAX77620_##pin_id},				\
+		.npins = 1,						\
+		.alt_option = MAX77620_PINMUX_##option,			\
+	}
+
+static const struct max77620_pingroup max77620_pingroups[] = {
+	MAX77620_PINGROUP(gpio0,	GPIO0,	LOW_POWER_MODE_CONTROL_IN),
+	MAX77620_PINGROUP(gpio1,	GPIO1,	FLEXIBLE_POWER_SEQUENCER_OUT),
+	MAX77620_PINGROUP(gpio2,	GPIO2,	FLEXIBLE_POWER_SEQUENCER_OUT),
+	MAX77620_PINGROUP(gpio3,	GPIO3,	FLEXIBLE_POWER_SEQUENCER_OUT),
+	MAX77620_PINGROUP(gpio4,	GPIO4,	32K_OUT1),
+	MAX77620_PINGROUP(gpio5,	GPIO5,	SD0_DYNAMIC_VOLTAGE_SCALING_IN),
+	MAX77620_PINGROUP(gpio6,	GPIO6,	SD1_DYNAMIC_VOLTAGE_SCALING_IN),
+	MAX77620_PINGROUP(gpio7,	GPIO7,	REFERENCE_OUT),
+};
+
+static int max77620_pinctrl_get_groups_count(struct pinctrl_dev *pctldev)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	return max77620_pci->num_pin_groups;
+}
+
+static const char *max77620_pinctrl_get_group_name(struct pinctrl_dev *pctldev,
+		unsigned group)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	return max77620_pci->pin_groups[group].name;
+}
+
+static int max77620_pinctrl_get_group_pins(struct pinctrl_dev *pctldev,
+		unsigned group, const unsigned **pins, unsigned *num_pins)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	*pins = max77620_pci->pin_groups[group].pins;
+	*num_pins = max77620_pci->pin_groups[group].npins;
+	return 0;
+}
+
+static const struct pinctrl_ops max77620_pinctrl_ops = {
+	.get_groups_count = max77620_pinctrl_get_groups_count,
+	.get_group_name = max77620_pinctrl_get_group_name,
+	.get_group_pins = max77620_pinctrl_get_group_pins,
+	.dt_node_to_map = pinconf_generic_dt_node_to_map_pin,
+	.dt_free_map = pinctrl_utils_dt_free_map,
+};
+
+static int max77620_pinctrl_get_funcs_count(struct pinctrl_dev *pctldev)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	return max77620_pci->num_functions;
+}
+
+static const char *max77620_pinctrl_get_func_name(struct pinctrl_dev *pctldev,
+			unsigned function)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	return max77620_pci->functions[function].name;
+}
+
+static int max77620_pinctrl_get_func_groups(struct pinctrl_dev *pctldev,
+		unsigned function, const char * const **groups,
+		unsigned * const num_groups)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	*groups = max77620_pci->functions[function].groups;
+	*num_groups = max77620_pci->functions[function].ngroups;
+	return 0;
+}
+
+static int max77620_pinctrl_enable(struct pinctrl_dev *pctldev,
+		unsigned function, unsigned group)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	int bit = group;
+	if (function == MAX77620_PINMUX_GPIO) {
+		max77620_reg_update(max77620_pci->max77620->dev,
+			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO, bit, 0);
+	} else if (function == max77620_pci->pin_groups[group].alt_option) {
+		max77620_reg_update(max77620_pci->max77620->dev,
+			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO, bit, 1);
+	} else {
+		dev_err(max77620_pci->dev, "%s(): GPIO %u doesn't have %u\n",
+		__func__, group, function);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static const struct pinmux_ops max77620_pinmux_ops = {
+	.get_functions_count	= max77620_pinctrl_get_funcs_count,
+	.get_function_name	= max77620_pinctrl_get_func_name,
+	.get_function_groups	= max77620_pinctrl_get_func_groups,
+	.enable			= max77620_pinctrl_enable,
+};
+
+static struct pinctrl_desc max77620_pinctrl_desc = {
+	.pctlops = &max77620_pinctrl_ops,
+	.pmxops = &max77620_pinmux_ops,
+	.owner = THIS_MODULE,
+};
+
+static int max77620_pinctrl_probe(struct platform_device *pdev)
+{
+	struct max77620_pctrl_info *max77620_pci;
+	struct max77620_chip *max77620 = dev_get_drvdata(pdev->dev.parent);
+
+	max77620_pci = devm_kzalloc(&pdev->dev,
+					sizeof(*max77620_pci), GFP_KERNEL);
+	if (!max77620_pci) {
+		dev_err(&pdev->dev, "Couldn't allocate mem\n");
+		return -ENOMEM;
+	}
+
+	max77620_pci->dev = &pdev->dev;
+	max77620_pci->dev->of_node = pdev->dev.parent->of_node;
+	max77620_pci->max77620 = max77620;
+
+	max77620_pci->pins = max77620_pins_desc;
+	max77620_pci->num_pins = ARRAY_SIZE(max77620_pins_desc);
+	max77620_pci->functions = max77620_pin_function;
+	max77620_pci->num_functions = ARRAY_SIZE(max77620_pin_function);
+	max77620_pci->pin_groups = max77620_pingroups;
+	max77620_pci->num_pin_groups = ARRAY_SIZE(max77620_pingroups);
+	platform_set_drvdata(pdev, max77620_pci);
+
+	max77620_pinctrl_desc.name = dev_name(&pdev->dev);
+	max77620_pinctrl_desc.pins = max77620_pins_desc;
+	max77620_pinctrl_desc.npins = ARRAY_SIZE(max77620_pins_desc);
+
+	max77620_pci->pctl = pinctrl_register(&max77620_pinctrl_desc,
+					&pdev->dev, max77620_pci);
+	if (!max77620_pci->pctl) {
+		dev_err(&pdev->dev, "Couldn't register pinctrl driver\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int max77620_pinctrl_remove(struct platform_device *pdev)
+{
+	struct max77620_pctrl_info *max77620_pci = platform_get_drvdata(pdev);
+	pinctrl_unregister(max77620_pci->pctl);
+	return 0;
+}
+
+static struct of_device_id max77620_pinctrl_of_match[] = {
+	{ .compatible = "max,max77620-pinctrl", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, max77620_pinctrl_of_match);
+
+static struct platform_driver max77620_pinctrl_driver = {
+	.driver = {
+		.name = "max77620-pinctrl",
+		.owner = THIS_MODULE,
+		.of_match_table = max77620_pinctrl_of_match,
+	},
+	.probe = max77620_pinctrl_probe,
+	.remove = max77620_pinctrl_remove,
+};
+
+static int __init max77620_pinctrl_init(void)
+{
+	return platform_driver_register(&max77620_pinctrl_driver);
+}
+subsys_initcall(max77620_pinctrl_init);
+
+static void __exit max77620_pinctrl_exit(void)
+{
+	platform_driver_unregister(&max77620_pinctrl_driver);
+}
+module_exit(max77620_pinctrl_exit);
+
+MODULE_ALIAS("platform:max77620-pinctrl");
+MODULE_DESCRIPTION("max77620 pin control driver");
+MODULE_AUTHOR("Chaitanya Bandi<bandik@nvidia.com>");
+MODULE_LICENSE("GPL v2");

@@ -242,6 +242,14 @@ config PINCTRL_MAX77660
 	help
 	  MAX77660 is a PMIC from MAXIM for smartphone and tablets. This PMIC
 
+config PINCTRL_MAX77620
+	tristate "MAX77620 Pincontrol support"
+	depends on MFD_MAX77620
+	select GENERIC_PINCONF
+	help
+	  Say Yes here to enable Pin control support for Maxim's PMIC MAX77620.
+	  This PMIC has 8 GPIO pins that as well function in alternate mode.
+
 config PINCTRL_PALMAS
 	tristate "PALMAS Pincontrol support"
 	depends on MFD_PALMAS
