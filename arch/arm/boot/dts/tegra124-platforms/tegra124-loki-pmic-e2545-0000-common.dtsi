@@ -376,8 +376,8 @@
 
 					palmas_ldo6: ldo6 {
 						regulator-name = "vdd-sensor";
-						regulator-min-microvolt = <2800000>;
-						regulator-max-microvolt = <2800000>;
+						regulator-min-microvolt = <2850000>;
+						regulator-max-microvolt = <2850000>;
 
 						consumers {
 							c0 {
