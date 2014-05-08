@@ -2,7 +2,9 @@
 # Makefile for industrial I/O Magnetometer sensor drivers
 #
 
-obj-$(CONFIG_AK8975)	+= ak8975.o
+obj-$(CONFIG_AK8975) += ak8975.o
+obj-$(CONFIG_NVI_AK89XX) += nvi-ak89xx.o
+nvi-ak89xx-objs += nvi_ak89xx.o
 obj-$(CONFIG_HID_SENSOR_MAGNETOMETER_3D) += hid-sensor-magn-3d.o
 
 obj-$(CONFIG_IIO_ST_MAGN_3AXIS) += st_magn.o

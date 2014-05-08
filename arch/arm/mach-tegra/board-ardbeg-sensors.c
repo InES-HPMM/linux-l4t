@@ -15,7 +15,7 @@
 
 #include <linux/i2c.h>
 #include <linux/gpio.h>
-#include <linux/mpu.h>
+#include <linux/mpu_iio.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/nct1008.h>
@@ -58,64 +58,69 @@ static struct i2c_board_info ardbeg_i2c_board_info_cm32181[] = {
 
 /* MPU board file definition    */
 static struct mpu_platform_data mpu9250_gyro_data = {
-	.int_config     = 0x10,
-	.level_shifter  = 0,
-	/* Located in board_[platformname].h */
-	.orientation    = MPU_GYRO_ORIENTATION,
-	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
-	.key            = {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
-			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+	.orientation    = MTMAT_TOP_CCW_0,
 };
 
 static struct mpu_platform_data mpu9250_gyro_data_e1762 = {
-	.int_config     = 0x10,
-	.level_shifter  = 0,
-	/* Located in board_[platformname].h */
-	.orientation    = MPU_GYRO_ORIENTATION_E1762,
-	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
-	.key            = {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
-			0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+	.orientation    = MTMAT_TOP_CCW_270,
 };
 
 static struct mpu_platform_data mpu_compass_data = {
-	.orientation    = MPU_COMPASS_ORIENTATION,
-	.config         = NVI_CONFIG_BOOT_MPU,
-};
-
-static struct mpu_platform_data mpu_bmp_pdata = {
-	.config         = NVI_CONFIG_BOOT_MPU,
+	.orientation = MTMAT_TOP_CCW_270,
 };
 
 static struct i2c_board_info __initdata inv_mpu9250_i2c0_board_info[] = {
 	{
-		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
+		I2C_BOARD_INFO("mpu6xxx", 0x69),
 		.platform_data = &mpu9250_gyro_data,
 	},
 	{
-		/* The actual BMP180 address is 0x77 but because this conflicts
-		 * with another device, this address is hacked so Linux will
-		 * call the driver.  The conflict is technically okay since the
-		 * BMP180 is behind the MPU.  Also, the BMP180 driver uses a
-		 * hard-coded address of 0x77 since it can't be changed anyway.
-		 */
-		I2C_BOARD_INFO(MPU_BMP_NAME, MPU_BMP_ADDR),
-		.platform_data = &mpu_bmp_pdata,
+		I2C_BOARD_INFO("bmpX80", 0x77),
 	},
 	{
-		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		I2C_BOARD_INFO("ak89xx", 0x0C),
 		.platform_data = &mpu_compass_data,
+	},
+	{
+		I2C_BOARD_INFO("cm3217", 0x10),
+	},
+	{
+		I2C_BOARD_INFO("cm3218x", 0x48),
+	},
+	{
+		I2C_BOARD_INFO("max4400x", 0x44),
 	},
 };
 
 static void mpuirq_init(void)
 {
 	int ret = 0;
-	unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
-	unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
+/*	unsigned gyro_irq_gpio = TEGRA_GPIO_PR3; oldest platforms */
+/*	unsigned gyro_irq_gpio = TEGRA_GPIO_PO7; older platforms */
+	unsigned gyro_irq_gpio = TEGRA_GPIO_PS0;
+	unsigned als_irq_gpio = TEGRA_GPIO_PX3;
 	char *gyro_name = MPU_GYRO_NAME;
 	struct board_info board_info;
 
 	pr_info("*** MPU START *** mpuirq_init...\n");
+
+	ret = gpio_request(als_irq_gpio, "als");
+	if (ret < 0) {
+		pr_err("%s: gpio_request %d failed %d\n",
+		       __func__, als_irq_gpio, ret);
+	} else {
+		ret = gpio_direction_input(als_irq_gpio);
+		if (ret < 0) {
+			pr_err("%s: gpio_direction_input %d failed %d\n",
+			        __func__, als_irq_gpio, ret);
+			gpio_free(als_irq_gpio);
+		} else {
+			inv_mpu9250_i2c0_board_info[4].irq =
+						     gpio_to_irq(als_irq_gpio);
+			inv_mpu9250_i2c0_board_info[5].irq =
+						     gpio_to_irq(als_irq_gpio);
+		}
+	}
 
 	tegra_get_board_info(&board_info);
 
@@ -140,8 +145,8 @@ static void mpuirq_init(void)
 	if (board_info.board_id == BOARD_E1762)
 		inv_mpu9250_i2c0_board_info[0].platform_data =
 					&mpu9250_gyro_data_e1762;
-	inv_mpu9250_i2c0_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-	i2c_register_board_info(gyro_bus_num, inv_mpu9250_i2c0_board_info,
+	inv_mpu9250_i2c0_board_info[0].irq = gpio_to_irq(gyro_irq_gpio);
+	i2c_register_board_info(0, inv_mpu9250_i2c0_board_info,
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));
 }
 
