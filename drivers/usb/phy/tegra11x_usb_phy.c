@@ -2495,6 +2495,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 
 static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.init		= _usb_phy_init,
+	.reset		= usb_phy_reset,
 	.open		= uhsic_phy_open,
 	.close		= uhsic_phy_close,
 	.irq		= uhsic_phy_irq,
