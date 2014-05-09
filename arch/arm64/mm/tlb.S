@@ -49,6 +49,21 @@ ENTRY(__cpu_flush_user_tlb_range)
 	ret
 ENDPROC(__cpu_flush_user_tlb_range)
 
+ENTRY(__local_cpu_flush_user_tlb_range)
+	vma_vm_mm x3, x2			// get vma->vm_mm
+	mmid	x3, x3				// get vm_mm->context.id
+	dsb	sy
+	lsr	x0, x0, #12			// align address
+	lsr	x1, x1, #12
+	bfi	x0, x3, #48, #16		// start VA and ASID
+	bfi	x1, x3, #48, #16		// end VA and ASID
+1:	tlbi	vae1, x0			// TLB invalidate by address and ASID
+	add	x0, x0, #1
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(__cpu_flush_user_tlb_range)
 /*
  *	__cpu_flush_kern_tlb_range(start,end)
  *
