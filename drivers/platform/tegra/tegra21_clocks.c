@@ -114,27 +114,6 @@
 	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
 		CLK_OUT_ENB_CLR_X, CLK_OUT_ENB_CLR_Y, 8)
 
-static u32 pll_base_set_div(struct clk *c, u32 m, u32 n, u32 pdiv, u32 val)
-{
-	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
-
-	val &= ~(divs->mdiv_mask | divs->ndiv_mask | divs->pdiv_mask);
-	val |= m << divs->mdiv_shift | n << divs->ndiv_shift |
-		pdiv << divs->pdiv_shift;
-	return val;
-}
-
-static void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
-			       u32 base)
-{
-	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
-
-	cfg->m = (base & divs->mdiv_mask) >> divs->mdiv_shift;
-	cfg->n = (base & divs->ndiv_mask) >> divs->ndiv_shift;
-	cfg->p = (base & divs->pdiv_mask) >> divs->pdiv_shift;
-	cfg->p = divs->pdiv_to_p[cfg->p];
-}
-
 static u32 pll_reg_idx_to_addr(struct clk *c, int idx)
 {
 	switch (idx) {
@@ -2523,6 +2502,49 @@ static struct clk_ops tegra_plld_ops = {
  *   choose minimum necessary P-value for output rates below VCO minimum
  * - calculate N-value based on selected M and P
  */
+
+static u8 pll_qlin_pdiv_to_p[PLL_QLIN_PDIV_MAX + 1] = {
+/* PDIV: 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15, 16 */
+/* p: */ 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32 };
+
+static u32 pll_qlin_p_to_pdiv(u32 p, u32 *pdiv)
+{
+	int i;
+
+	if (p) {
+		for (i = 0; i <= PLL_QLIN_PDIV_MAX; i++) {
+			if (p <= pll_qlin_pdiv_to_p[i]) {
+				if (pdiv)
+					*pdiv = i;
+				return pll_qlin_pdiv_to_p[i];
+			}
+		}
+	}
+	return -EINVAL;
+}
+
+static u32 pll_base_set_div(struct clk *c, u32 m, u32 n, u32 pdiv, u32 val)
+{
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+
+	val &= ~(divs->mdiv_mask | divs->ndiv_mask | divs->pdiv_mask);
+	val |= m << divs->mdiv_shift | n << divs->ndiv_shift |
+		pdiv << divs->pdiv_shift;
+	pll_writel_delay(val, c->reg);
+	return val;
+}
+
+static void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg)
+{
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+	u32 base = clk_readl(c->reg);
+
+	cfg->m = (base & divs->mdiv_mask) >> divs->mdiv_shift;
+	cfg->n = (base & divs->ndiv_mask) >> divs->ndiv_shift;
+	cfg->p = (base & divs->pdiv_mask) >> divs->pdiv_shift;
+	cfg->p = divs->pdiv_to_p[cfg->p];
+}
+
 static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
@@ -2571,7 +2593,7 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
-static int pll_clk_set_rate(struct clk *c, unsigned long rate)
+static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, pdiv = 0;
 	struct clk_pll_freq_table cfg = { };
@@ -2579,25 +2601,26 @@ static int pll_clk_set_rate(struct clk *c, unsigned long rate)
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	unsigned long input_rate = clk_get_rate(c->parent);
 
+	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+
 	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
 		return -EINVAL;
 
-	c->mul = cfg.n;
-	c->div = cfg.m * cfg.p;
-
-	val = clk_readl(c->reg);
-	pll_base_parse_cfg(c, &old_cfg, val);
+	pll_base_parse_cfg(c, &old_cfg);
 
 	if ((cfg.m == old_cfg.m) && (cfg.n == old_cfg.n) &&
 	    (cfg.p == old_cfg.p))
 		return 0;
 
+	c->mul = cfg.n;
+	c->div = cfg.m * cfg.p;
+
 	if (!c->u.pll.defaults_set && c->u.pll.set_defaults) {
 		c->ops->disable(c);
 		c->u.pll.set_defaults(c, input_rate);
 
+		val = clk_readl(c->reg);
 		val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
-		pll_writel_delay(val, c->reg);
 
 		if (c->state == ON)
 			c->ops->enable(c);
@@ -2609,13 +2632,13 @@ static int pll_clk_set_rate(struct clk *c, unsigned long rate)
 			return 0;
 	}
 
+	val = clk_readl(c->reg);
 	if (c->state == ON) {
 		val &= ~ctrl->enable_mask;
 		pll_writel_delay(val, c->reg);
 	}
 
 	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
-	pll_writel_delay(val, c->reg);
 
 	if (c->state == ON) {
 		u32 reg = pll_reg_idx_to_addr(c, ctrl->lock_reg_idx);
@@ -2640,10 +2663,12 @@ static void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
 		udelay(2); /* increased out of IDDQ delay to 3us */
 }
 
-static void pll_clk_enable(struct clk *c)
+static int tegra_pll_clk_enable(struct clk *c)
 {
 	u32 val, reg;
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
 
 	if (ctrl->iddq_mask) {
 		reg = pll_reg_idx_to_addr(c, ctrl->iddq_reg_idx);
@@ -2671,12 +2696,16 @@ static void pll_clk_enable(struct clk *c)
 		val &= ~ctrl->bypass_mask;
 		pll_writel_delay(val, c->reg);
 	}
+
+	return 0;
 }
 
-static void pll_clk_disable(struct clk *c)
+static void tegra_pll_clk_disable(struct clk *c)
 {
 	u32 val, reg;
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
 
 	val = clk_readl(c->reg);
 	val &= ~ctrl->enable_mask;
@@ -2697,25 +2726,28 @@ static void pll_clk_disable(struct clk *c)
 	}
 }
 
-static u8 pll_qlin_pdiv_to_p[PLL_QLIN_PDIV_MAX + 1] = {
-/* PDIV: 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15, 16 */
-/* p: */ 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32 };
-
-static u32 pll_qlin_p_to_pdiv(u32 p, u32 *pdiv)
+#ifdef CONFIG_PM_SLEEP
+static void tegra_pll_clk_resume_enable(struct clk *c)
 {
-	int i;
+	unsigned long rate = clk_get_rate_all_locked(c->parent);
+	u32 val = clk_readl(c->reg);
+	enum clk_state state = c->state;
 
-	if (p) {
-		for (i = 0; i <= PLL_QLIN_PDIV_MAX; i++) {
-			if (p <= pll_qlin_pdiv_to_p[i]) {
-				if (pdiv)
-					*pdiv = i;
-				return pll_qlin_pdiv_to_p[i];
-			}
-		}
-	}
-	return -EINVAL;
+	if (val & c->u.pll.controls->enable_mask)
+		return;		/* already resumed */
+
+	/* temporarily sync h/w and s/w states, final sync happens
+	   in tegra_clk_resume later */
+	c->state = OFF;
+	if (c->u.pll.set_defaults)
+		c->u.pll.set_defaults(c, rate);
+
+	rate = clk_get_rate_all_locked(c);
+	c->ops->set_rate(c, rate);
+	c->ops->enable(c);
+	c->state = state;
 }
+#endif
 
 /*
  * PLLCX: PLLC, PLLC2, PLLC3, PLLA1
@@ -2780,7 +2812,8 @@ static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
-	u32 m, n, p, pdiv, val;
+	u32 pdiv, val;
+	struct clk_pll_freq_table cfg = { };
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
 	BUG_ON(!ctrl || !divs);
@@ -2801,10 +2834,9 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	 * 1st opportunity of reconfiguring PLL.
 	 */
 	if (c->state == ON) {
-		struct clk_pll_freq_table cfg;
 		if (c->u.pll.set_defaults) /* check only since PLL is ON */
 			c->u.pll.set_defaults(c, input_rate);
-		pll_base_parse_cfg(c, &cfg, val);
+		pll_base_parse_cfg(c, &cfg);
 		c->mul = cfg.n;
 		c->div = cfg.m * cfg.p;
 		return;
@@ -2815,69 +2847,26 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	 * loaded with default parameters; dividers are preset for 1/4 of
 	 * minimum VCO rate.
 	 */
-	m = PLL_FIXED_MDIV(c, input_rate);
-	n = m * c->u.pll.vco_min / input_rate;
+	cfg.m = PLL_FIXED_MDIV(c, input_rate);
+	cfg.n = cfg.m * c->u.pll.vco_min / input_rate;
 	pdiv = 3;
-	p = divs->pdiv_to_p[pdiv];
+	cfg.p = divs->pdiv_to_p[pdiv];
 
 	val = 0;	/* PLL disabled, reference running */
-	val = pll_base_set_div(c, m, n, pdiv, val);
-	pll_writel_delay(val, c->reg + PLL_BASE);
+	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
 
 	if (c->u.pll.set_defaults)
 		c->u.pll.set_defaults(c, input_rate);
 
-	c->mul = n;
-	c->div = m * p;
+	c->mul = cfg.n;
+	c->div = cfg.m * cfg.p;
 }
-
-static int tegra21_pllcx_clk_enable(struct clk *c)
-{
-	pr_debug("%s on clock %s\n", __func__, c->name);
-	pll_clk_enable(c);
-	return 0;
-}
-
-static void tegra21_pllcx_clk_disable(struct clk *c)
-{
-	pr_debug("%s on clock %s\n", __func__, c->name);
-	pll_clk_disable(c);
-}
-
-static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
-{
-	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
-	return pll_clk_set_rate(c, rate);
-}
-
-#ifdef CONFIG_PM_SLEEP
-static void tegra21_pllcx_clk_resume_enable(struct clk *c)
-{
-	unsigned long rate = clk_get_rate_all_locked(c->parent);
-	u32 val = clk_readl(c->reg);
-	enum clk_state state = c->state;
-
-	if (val & c->u.pll.controls->enable_mask)
-		return;		/* already resumed */
-
-	/* temporarily sync h/w and s/w states, final sync happens
-	   in tegra_clk_resume later */
-	c->state = OFF;
-	if (c->u.pll.set_defaults)
-		c->u.pll.set_defaults(c, rate);
-
-	rate = clk_get_rate_all_locked(c);
-	c->ops->set_rate(c, rate);
-	c->ops->enable(c);
-	c->state = state;
-}
-#endif
 
 static struct clk_ops tegra_pllcx_ops = {
 	.init			= tegra21_pllcx_clk_init,
-	.enable			= tegra21_pllcx_clk_enable,
-	.disable		= tegra21_pllcx_clk_disable,
-	.set_rate		= tegra21_pllcx_clk_set_rate,
+	.enable			= tegra_pll_clk_enable,
+	.disable		= tegra_pll_clk_disable,
+	.set_rate		= tegra_pll_clk_set_rate,
 };
 
 
@@ -8354,8 +8343,7 @@ static bool tegra21_is_dyn_ramp(
 		struct clk_pll_freq_table cfg, old_cfg;
 		unsigned long input_rate = clk_get_rate(c->parent);
 
-		u32 val = clk_readl(c->reg + PLL_BASE);
-		pll_base_parse_cfg(c, &old_cfg, val);
+		pll_base_parse_cfg(c, &old_cfg);
 
 		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
@@ -8788,10 +8776,10 @@ static void tegra21_clk_resume(void)
 	tegra21_pllss_clk_resume_enable(&tegra_pll_c4);
 	tegra21_pllss_clk_resume_enable(&tegra_pll_d2);
 	tegra21_pllss_clk_resume_enable(&tegra_pll_dp);
-	tegra21_pllcx_clk_resume_enable(&tegra_pll_c2);
-	tegra21_pllcx_clk_resume_enable(&tegra_pll_c3);
-	tegra21_pllcx_clk_resume_enable(&tegra_pll_c);
-	tegra21_pllcx_clk_resume_enable(&tegra_pll_a1);
+	tegra_pll_clk_resume_enable(&tegra_pll_c2);
+	tegra_pll_clk_resume_enable(&tegra_pll_c3);
+	tegra_pll_clk_resume_enable(&tegra_pll_c);
+	tegra_pll_clk_resume_enable(&tegra_pll_a1);
 	tegra21_pllxc_clk_resume_enable(&tegra_pll_x);
 	tegra21_pllre_clk_resume_enable(&tegra_pll_re_out);
 
@@ -8892,13 +8880,16 @@ static void tegra21_clk_resume(void)
 		tegra21_pllss_clk_disable(p);
 	p = &tegra_pll_c2;
 	if (p->state == OFF)
-		tegra21_pllcx_clk_disable(p);
+		p->ops->disable(p);
 	p = &tegra_pll_c3;
 	if (p->state == OFF)
-		tegra21_pllcx_clk_disable(p);
+		p->ops->disable(p);
 	p = &tegra_pll_c;
 	if (p->state == OFF)
-		tegra21_pllxc_clk_disable(p);
+		p->ops->disable(p);
+	p = &tegra_pll_a1;
+	if (p->state == OFF)
+		p->ops->disable(p);
 	p = &tegra_pll_x;
 	if (p->state == OFF)
 		tegra21_pllxc_clk_disable(p);
