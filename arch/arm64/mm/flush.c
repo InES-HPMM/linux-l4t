@@ -75,6 +75,11 @@ void __flush_dcache_page(struct page *page)
 	__flush_dcache_area(page_address(page), PAGE_SIZE);
 }
 
+void __clean_dcache_page(struct page *page)
+{
+	__clean_dcache_area(page_address(page), PAGE_SIZE);
+}
+
 void __sync_icache_dcache(pte_t pte, unsigned long addr)
 {
 	struct page *page = pte_page(pte);
