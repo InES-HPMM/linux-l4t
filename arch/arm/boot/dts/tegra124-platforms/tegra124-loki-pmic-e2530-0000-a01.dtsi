@@ -27,7 +27,6 @@
 						regulator-name = "avdd-pll";
 						regulator-min-microvolt = <1050000>;
 						regulator-max-microvolt = <1050000>;
-						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 
