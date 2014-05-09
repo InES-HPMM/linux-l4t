@@ -160,10 +160,10 @@ static bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
 		(new_cfg->m == old_cfg->m) && (new_cfg->p == old_cfg->p);
 }
 
-#define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val, write_mask)	       \
+#define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val, mask)		       \
 do {									       \
 	u32 boot_val = clk_readl((c)->reg + (c)->u.pll.misc##misc_num);	       \
-	boot_val &= write_mask;						       \
+	boot_val &= (mask);						       \
 	if (boot_val != (default_val)) {				       \
 		pr_warn("%s boot misc" #misc_num " = 0x%x (expected 0x%x)\n",  \
 			(c)->name, boot_val, (default_val));		       \
@@ -2722,21 +2722,9 @@ static u32 pll_qlin_p_to_pdiv(u32 p, u32 *pdiv)
  * Hybrid PLLs with dynamic ramp. Dynamic ramp is allowed for any transition
  * that changes NDIV only, while PLL is already locked.
  */
-static void pllcx_set_defaults(struct clk *c, unsigned long input_rate)
-{
-	c->u.pll.defaults_set = true;
-
-	clk_writel(PLLCX_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
-	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + c->u.pll.misc1);
-	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + c->u.pll.misc2);
-	pll_writel_delay(PLLCX_MISC3_DEFAULT_VALUE, c->reg + c->u.pll.misc3);
-}
-
 static void pllcx_check_defaults(struct clk *c, unsigned long input_rate)
 {
 	u32 default_val;
-
-	c->u.pll.defaults_set = true;
 
 	default_val = PLLCX_MISC0_DEFAULT_VALUE & (~PLLCX_MISC0_RESET);
 	PLL_MISC_CHK_DEFAULT(c, 0, default_val, PLLCX_MISC0_WRITE_MASK);
@@ -2749,6 +2737,23 @@ static void pllcx_check_defaults(struct clk *c, unsigned long input_rate)
 
 	default_val = PLLCX_MISC3_DEFAULT_VALUE;
 	PLL_MISC_CHK_DEFAULT(c, 3, default_val, PLLCX_MISC3_WRITE_MASK);
+}
+
+static void pllcx_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	c->u.pll.defaults_set = true;
+
+	if (clk_readl(c->reg) & c->u.pll.controls->enable_mask) {
+		/* PLL is ON: only check if defaults already set */
+		pllcx_check_defaults(c, input_rate);
+		return;
+	}
+
+	/* Defaults assert PLL reset, and set IDDQ */
+	clk_writel(PLLCX_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + c->u.pll.misc1);
+	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + c->u.pll.misc2);
+	pll_writel_delay(PLLCX_MISC3_DEFAULT_VALUE, c->reg + c->u.pll.misc3);
 }
 
 static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
@@ -2787,7 +2792,7 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
 				   divs->pdiv_to_p[divs->pdiv_max]);
 
-	val = clk_readl(c->reg + PLL_BASE);
+	val = clk_readl(c->reg);
 	c->state = (val & ctrl->enable_mask) ? ON : OFF;
 
 	/*
@@ -2797,7 +2802,8 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	 */
 	if (c->state == ON) {
 		struct clk_pll_freq_table cfg;
-		pllcx_check_defaults(c, input_rate);
+		if (c->u.pll.set_defaults) /* check only since PLL is ON */
+			c->u.pll.set_defaults(c, input_rate);
 		pll_base_parse_cfg(c, &cfg, val);
 		c->mul = cfg.n;
 		c->div = cfg.m * cfg.p;
@@ -2818,7 +2824,8 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	val = pll_base_set_div(c, m, n, pdiv, val);
 	pll_writel_delay(val, c->reg + PLL_BASE);
 
-	pllcx_set_defaults(c, input_rate);
+	if (c->u.pll.set_defaults)
+		c->u.pll.set_defaults(c, input_rate);
 
 	c->mul = n;
 	c->div = m * p;
@@ -2847,7 +2854,7 @@ static int tegra21_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 static void tegra21_pllcx_clk_resume_enable(struct clk *c)
 {
 	unsigned long rate = clk_get_rate_all_locked(c->parent);
-	u32 val = clk_readl(c->reg + PLL_BASE);
+	u32 val = clk_readl(c->reg);
 	enum clk_state state = c->state;
 
 	if (val & c->u.pll.controls->enable_mask)
@@ -2856,11 +2863,12 @@ static void tegra21_pllcx_clk_resume_enable(struct clk *c)
 	/* temporarily sync h/w and s/w states, final sync happens
 	   in tegra_clk_resume later */
 	c->state = OFF;
-	pllcx_set_defaults(c, rate);
+	if (c->u.pll.set_defaults)
+		c->u.pll.set_defaults(c, rate);
 
 	rate = clk_get_rate_all_locked(c);
-	tegra21_pllcx_clk_set_rate(c, rate);
-	tegra21_pllcx_clk_enable(c);
+	c->ops->set_rate(c, rate);
+	c->ops->enable(c);
 	c->state = state;
 }
 #endif
