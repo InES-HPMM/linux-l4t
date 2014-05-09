@@ -52,7 +52,11 @@
 #define NVMAP_CARVEOUT_KILLER_RETRY_TIME 100 /* msecs */
 
 /* this is basically the L2 cache size */
+#ifdef CONFIG_DENVER_CPU
+size_t cache_maint_inner_threshold = SZ_2M * 8;
+#else
 size_t cache_maint_inner_threshold = SZ_2M;
+#endif
 
 #ifdef CONFIG_NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
 size_t cache_maint_outer_threshold = SZ_1M;
