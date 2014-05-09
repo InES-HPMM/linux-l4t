@@ -247,29 +247,11 @@ enum {
 	MAX77620_IRQ_NR,
 };
 
-struct max77620_rtc_platform_data {
-
-};
-
-struct max77620_pmic_platform_data {
-
-};
-
-struct max77620_platform_data {
-	int irq_base;
-	int gpio_base;
-
-	struct max77620_pmic_platform_data *pmic_pdata;
-	struct max77620_rtc_platform_data *rtc_pdata;
-};
-
 struct max77620_chip {
 	struct device *dev;
 
 	struct i2c_client *clients[MAX77620_NUM_SLAVES];
 	struct regmap *rmap[MAX77620_NUM_SLAVES];
-
-	struct max77620_platform_data *pdata;
 
 	int chip_irq;
 	int irq_base;
@@ -278,17 +260,16 @@ struct max77620_chip {
 	struct regmap_irq_chip_data *gpio_irq_data;
 };
 
-
 static inline int max77620_reg_write(struct device *dev, int sid,
-		int reg, u8 val)
+		unsigned int reg, u8 val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 
 	return regmap_write(chip->rmap[sid], reg, val);
 }
 
-static inline int max77620_reg_writes(struct device *dev, int sid, int reg,
-		int len, void *val)
+static inline int max77620_reg_writes(struct device *dev, int sid,
+		unsigned int reg, int len, void *val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 
@@ -296,7 +277,7 @@ static inline int max77620_reg_writes(struct device *dev, int sid, int reg,
 }
 
 static inline int max77620_reg_read(struct device *dev, int sid,
-		int reg, u8 *val)
+		unsigned int reg, u8 *val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 	unsigned int ival;
@@ -312,32 +293,15 @@ static inline int max77620_reg_read(struct device *dev, int sid,
 }
 
 static inline int max77620_reg_reads(struct device *dev, int sid,
-		int reg, int len, void *val)
+		unsigned int reg, int len, void *val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 
 	return regmap_bulk_read(chip->rmap[sid], reg, val, len);
 }
 
-static inline int max77620_reg_set_bits(struct device *dev, int sid,
-		int reg, u8 bit_mask, u8 value)
-{
-	struct max77620_chip *chip = dev_get_drvdata(dev);
-
-	return regmap_update_bits(chip->rmap[sid], reg,
-				bit_mask, value);
-}
-
-static inline int max77620_reg_clr_bits(struct device *dev, int sid,
-		int reg, u8 bit_mask)
-{
-	struct max77620_chip *chip = dev_get_drvdata(dev);
-
-	return regmap_update_bits(chip->rmap[sid], reg, bit_mask, 0);
-}
-
 static inline int max77620_reg_update(struct device *dev, int sid,
-		int reg, u8 val, uint8_t mask)
+		unsigned int reg, unsigned int mask, unsigned int val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 

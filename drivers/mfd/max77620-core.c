@@ -3,11 +3,14 @@
  *
  * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
 
 #include <linux/interrupt.h>
@@ -114,21 +117,6 @@ static struct regmap_irq_chip max77620_top_irq_chip = {
 	.mask_base = MAX77620_REG_IRQTOPM,
 };
 
-static int max77620_init_irqs(struct max77620_chip *chip)
-{
-	int ret;
-
-	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
-		chip->chip_irq, IRQF_ONESHOT, chip->pdata->irq_base,
-		&max77620_top_irq_chip, &chip->top_irq_data);
-	if (ret < 0) {
-		dev_err(chip->dev, "Failed to add top irq_chip %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
 static const struct regmap_config max77620_regmap_config[] = {
 	[MAX77620_PWR_SLAVE] = {
 		.reg_bits = 8,
@@ -147,19 +135,18 @@ static int max77620_slave_address[MAX77620_NUM_SLAVES] = {
 	MAX77620_RTC_I2C_ADDR,
 };
 
-static void max77620_dt_to_pdata(struct i2c_client *i2c,
-		struct max77620_platform_data *pdata)
-{
-	pdata->irq_base = -1;
-}
-
 static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
+	struct device_node *node = client->dev.of_node;
 	struct max77620_chip *chip;
 	int i = 0;
 	int ret = 0;
-	struct device_node *node = client->dev.of_node;
+
+	if (!node) {
+		dev_err(&client->dev, "Device is not from DT\n");
+		return -ENODEV;
+	}
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL) {
@@ -167,21 +154,9 @@ static int max77620_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	if (node) {
-		chip->pdata = devm_kzalloc(&client->dev,
-					sizeof(*chip->pdata), GFP_KERNEL);
-		if (!chip->pdata)
-			return -ENOMEM;
-		max77620_dt_to_pdata(client, chip->pdata);
-	} else
-		chip->pdata = client->dev.platform_data;
-
-	if (!chip->pdata)
-		return -ENODATA;
-
 	i2c_set_clientdata(client, chip);
 	chip->dev = &client->dev;
-	chip->irq_base = chip->pdata->irq_base;
+	chip->irq_base = -1;
 	chip->chip_irq = client->irq;
 
 	for (i = 0; i < MAX77620_NUM_SLAVES; i++) {
@@ -196,6 +171,7 @@ static int max77620_probe(struct i2c_client *client,
 			goto fail_client_reg;
 		}
 
+		chip->clients[i]->dev.of_node = node;
 		i2c_set_clientdata(chip->clients[i], chip);
 		chip->rmap[i] = devm_regmap_init_i2c(chip->clients[i],
 					&max77620_regmap_config[i]);
@@ -207,47 +183,33 @@ static int max77620_probe(struct i2c_client *client,
 		}
 	}
 
-	ret = max77620_init_irqs(chip);
-	if (ret < 0)
+	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
+		chip->chip_irq, IRQF_ONESHOT, chip->irq_base,
+		&max77620_top_irq_chip, &chip->top_irq_data);
+	if (ret < 0) {
+		dev_err(chip->dev, "Failed to add top irq_chip %d\n", ret);
 		goto fail_client_reg;
-
-	if (node) {
-		ret = of_platform_populate(node, NULL, NULL, &client->dev);
-		if (ret < 0) {
-			dev_err(&client->dev,
-				"Couldn't populate max77620 devs, %d\n", ret);
-			goto fail_free_irq;
-		}
-
-	} else {
-		max77620_children[MAX77620_PMIC_ID].platform_data =
-						chip->pdata->pmic_pdata;
-		max77620_children[MAX77620_PMIC_ID].pdata_size =
-					sizeof(*chip->pdata->pmic_pdata);
-
-		max77620_children[MAX77620_RTC_ID].platform_data =
-						chip->pdata->rtc_pdata;
-		max77620_children[MAX77620_RTC_ID].pdata_size =
-					sizeof(*chip->pdata->rtc_pdata);
-
-		ret =  mfd_add_devices(&client->dev, -1, max77620_children,
-					ARRAY_SIZE(max77620_children),
-					NULL, chip->irq_base, NULL);
-		if (ret < 0) {
-			dev_err(&client->dev, "mfd add dev fail %d\n", ret);
-			goto fail_free_irq;
-		}
 	}
 
-	dev_info(&client->dev, "max77620 loaded successfully\n");
+	ret =  mfd_add_devices(&client->dev, -1, max77620_children,
+			ARRAY_SIZE(max77620_children), NULL, 0,
+			regmap_irq_get_domain(chip->top_irq_data));
+	if (ret < 0) {
+		dev_err(&client->dev, "mfd add dev fail %d\n", ret);
+		goto fail_free_irq;
+	}
+
+	dev_info(&client->dev, "max77620 probe successfully\n");
 	return 0;
 
 fail_free_irq:
 	regmap_del_irq_chip(chip->chip_irq, chip->top_irq_data);
+
 fail_client_reg:
-	for (i = 1; i < MAX77620_NUM_SLAVES; i++) {
-		if (chip->clients[i])
-			i2c_unregister_device(chip->clients[i]);
+	for (i = 0; i < MAX77620_NUM_SLAVES; i++) {
+		if (!chip->clients[i] || chip->clients[i] == client)
+			continue;
+		i2c_unregister_device(chip->clients[i]);
 	}
 	return ret;
 }
