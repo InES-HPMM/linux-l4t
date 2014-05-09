@@ -106,8 +106,8 @@
 				ti,ldousb-in-threshold-voltage = <3500000>;
 				ti,threshold-voltage-tolerance = <100000>;
 				ti,enable-in1-above-threshold;
-				ldousb-in1-supply = <&palmas_smps10_out2>;
-				ldousb-in2-supply = <&vdd_ac_bat_reg>;
+				ldousb-in1-supply = <&vdd_ac_bat_reg>;
+				ldousb-in2-supply = <&palmas_smps10_out2>;
 			};
 
 			gpadc {
