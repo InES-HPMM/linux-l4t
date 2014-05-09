@@ -1752,6 +1752,9 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	int vdd_bit = -1;
 	u8 ctrl;
 
+	/* cancel delayed clk gate work */
+	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+
 	/* Do any required preparations prior to setting ios */
 	if (host->ops->platform_ios_config_enter)
 		host->ops->platform_ios_config_enter(host, ios);
@@ -2461,9 +2464,8 @@ int sdhci_enable(struct mmc_host *mmc)
 	if (!mmc->card || !(mmc->caps2 & MMC_CAP2_CLOCK_GATING))
 		return 0;
 
-	if (IS_DELAYED_CLK_GATE(host))
-		/* cancel sdio clk gate work */
-		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+	/* cancel delayed clk gate work */
+	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	sysedp_set_state(host->sysedpc, 1);
 
@@ -3125,7 +3127,7 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
 			SDHCI_INT_CARD_INT;
 
-	/* cancel sdio clk gate work */
+	/* cancel delayed clk gate work */
 	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {
