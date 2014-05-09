@@ -540,7 +540,7 @@
 					palmas_regen2:regen2 {
 						regulator-name = "vdd-regen2";
 						regulator-max-microvolt = <5000000>;
-						regulator-always-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 						regulator-boot-on;
 					};
 				};
