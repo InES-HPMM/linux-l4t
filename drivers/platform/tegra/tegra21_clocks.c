@@ -1013,8 +1013,10 @@ static void tegra21_super_clk_init(struct clk *c)
 		c->mul = 2;
 		c->div = 2;
 
-		/* Make sure 7.1 divider is 1:1, clear s/w skipper control */
-		/* FIXME: set? preserve? thermal h/w skipper control */
+		/*
+		 * Make sure 7.1 divider is 1:1, clear h/w skipper control -
+		 * it will be enabled by soctherm later
+		 */
 		val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
 		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
 		val = 0;
@@ -6671,9 +6673,6 @@ static struct clk tegra_pll_x_out0 = {
 	.max_rate  = 700000000,
 };
 
-/* FIXME: remove; for now, should be always checked-in as "0" */
-#define USE_LP_CPU_TO_TEST_DFLL		0
-
 static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
 	.flags     = DFLL,
@@ -8766,7 +8765,6 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL1);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL2);
 
-	/* FIXME: DFLL? */
 	/* Since we are going to reset devices and switch clock sources in this
 	 * function, plls and secondary dividers is required to be enabled. The
 	 * actual value will be restored back later. Note that boot plls: pllm,
@@ -8854,7 +8852,12 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_L);
 	clk_writel(*ctx++, CLK_OUT_ENB_H);
 	clk_writel(*ctx++, CLK_OUT_ENB_U);
-	clk_writel(*ctx++, CLK_OUT_ENB_V);
+
+	/* For LP0 resume, clk to lpcpu is required to be on */
+	val = *ctx++;
+	val |= CLK_OUT_ENB_V_CLK_ENB_CPULP_EN;
+	clk_writel(val, CLK_OUT_ENB_V);
+
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
 	clk_writel(*ctx++, CLK_OUT_ENB_X);
 	clk_writel(*ctx++, CLK_OUT_ENB_Y);
