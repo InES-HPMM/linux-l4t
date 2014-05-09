@@ -31,7 +31,6 @@
 #define PSCI_RET_EINVAL                 -2
 #define PSCI_RET_EPERM                  -3
 
-static int cluster_switch_pending;
 static DEFINE_MUTEX(cluster_switch_lock);
 static unsigned long pg_core_arg, pg_cluster_arg;
 
@@ -62,9 +61,9 @@ static inline unsigned int is_slow_cluster(void)
 
 static void shutdown_core(void *info)
 {
-	int *pending = (int *)info;
+	uintptr_t target_cluster = (uintptr_t)info;
 
-	if (*pending) {
+	if (target_cluster != is_slow_cluster()) {
 		cpu_pm_enter();
 		cpu_suspend(pg_core_arg, NULL);
 		cpu_pm_exit();
@@ -85,9 +84,10 @@ static void switch_cluster(int val)
 	struct cpumask mask;
 	int bpmp_cpu_mask;
 	int phys_cpu_id;
+	uintptr_t target_cluster;
 
 	mutex_lock(&cluster_switch_lock);
-	cluster_switch_pending = 1;
+	target_cluster = val;
 
 	preempt_disable();
 
@@ -104,7 +104,7 @@ static void switch_cluster(int val)
 		cpumask_set_cpu(3, &mask);
 
 	cpumask_clear_cpu(phys_cpu_id, &mask);
-	smp_call_function_many(&mask, shutdown_core, &cluster_switch_pending,
+	smp_call_function_many(&mask, shutdown_core, (void *)target_cluster,
 			       false);
 
 	local_irq_disable();
@@ -112,8 +112,6 @@ static void switch_cluster(int val)
 	local_irq_enable();
 
 	preempt_enable();
-
-	cluster_switch_pending = 0;
 
 	mutex_unlock(&cluster_switch_lock);
 }
