@@ -137,6 +137,26 @@ static int cluster_get(void *data, u64 *val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(cluster_ops, cluster_get, cluster_set, "%llu\n");
+
+static int cluster_name_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "%s\n", is_slow_cluster() ? "slow" : "fast");
+
+	return 0;
+}
+
+static int cluster_name_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cluster_name_show, NULL);
+}
+
+static const struct file_operations cluster_name_ops = {
+	.open		= cluster_name_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 #endif
 
 static void _setup_debugfs(void)
@@ -145,9 +165,12 @@ static void _setup_debugfs(void)
 	struct dentry *rootdir;
 
 	rootdir = debugfs_create_dir("tegra_cluster", NULL);
-	if (rootdir)
-		debugfs_create_file("current_cluster", S_IRUGO, rootdir,
-					NULL, &cluster_ops);
+	if (rootdir) {
+		debugfs_create_file("current_cluster", S_IRUGO | S_IWUSR,
+					rootdir, NULL, &cluster_ops);
+		debugfs_create_file("current_cluster_name", S_IRUGO,
+					rootdir, NULL, &cluster_name_ops);
+	}
 #endif
 }
 
