@@ -48,12 +48,19 @@
 struct ad5823_info {
 	struct i2c_client *i2c_client;
 	struct regulator *regulator;
+	struct regulator *regulator_i2c;
 	struct nv_focuser_config config;
 	struct ad5823_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct regmap *regmap;
 	struct camera_sync_dev *csync_dev;
+	u32 cur_pos;
 };
+
+static inline void msleep_range(unsigned int delay_base)
+{
+	usleep_range(delay_base*1000, delay_base*1000+500);
+}
 
 static int ad5823_set_position(struct ad5823_info *info, u32 position)
 {
@@ -95,6 +102,8 @@ static int ad5823_set_position(struct ad5823_info *info, u32 position)
 		position & 0xFF);
 #endif
 
+	if (!ret)
+		info->cur_pos = position;
 	return ret;
 }
 
@@ -180,6 +189,10 @@ static int ad5823_open(struct inode *inode, struct file *file)
 	if (info->regulator)
 		err = regulator_enable(info->regulator);
 
+	if (info->regulator_i2c)
+		err = regulator_enable(info->regulator_i2c);
+
+
 	if (info->pdata->power_on)
 		err = info->pdata->power_on(info->pdata);
 
@@ -190,12 +203,24 @@ static int ad5823_open(struct inode *inode, struct file *file)
 int ad5823_release(struct inode *inode, struct file *file)
 {
 	struct ad5823_info *info = file->private_data;
+	int pos;
+
+	for (pos = info->cur_pos; pos > 0; pos -= 20) {
+		regmap_write(info->regmap,
+			AD5823_VCM_CODE_MSB, ((pos >> 8) & 0x3) | 1 << 2);
+		regmap_write(info->regmap,
+			AD5823_VCM_CODE_LSB, pos & 0xFF);
+		msleep_range(SETTLETIME_MS);
+	}
 
 	if (info->pdata->power_off)
 		info->pdata->power_off(info->pdata);
 
 	if (info->regulator)
 		regulator_disable(info->regulator);
+
+	if (info->regulator_i2c)
+		regulator_disable(info->regulator_i2c);
 	file->private_data = NULL;
 
 	return 0;
@@ -324,6 +349,19 @@ static int ad5823_probe(struct i2c_client *client,
 		}
 	}
 
+	info->regulator_i2c = devm_regulator_get(&client->dev, "vdd_i2c");
+	if (IS_ERR(info->regulator_i2c)) {
+		dev_err(&client->dev, "unable to get regulator_i2c %s\n",
+			dev_name(&client->dev));
+		info->regulator_i2c = NULL;
+	} else {
+		if (0 != regulator_enable(info->regulator_i2c)) {
+			dev_err(&client->dev,
+				"Failed to enable regulator_i2c.\n");
+			info->regulator_i2c = NULL;
+		}
+	}
+
 	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
 	if (IS_ERR(info->regmap)) {
 		err = PTR_ERR(info->regmap);
@@ -342,6 +380,9 @@ static int ad5823_probe(struct i2c_client *client,
 
 	if (info->regulator)
 		regulator_disable(info->regulator);
+
+	if (info->regulator_i2c)
+		regulator_disable(info->regulator_i2c);
 
 	info->config.focal_length = FOCAL_LENGTH;
 	info->config.fnumber = FNUMBER;
@@ -368,6 +409,9 @@ static int ad5823_probe(struct i2c_client *client,
 ERROR_RET:
 	if (info->regulator)
 		regulator_disable(info->regulator);
+
+	if (info->regulator_i2c)
+		regulator_disable(info->regulator_i2c);
 
 	misc_deregister(&ad5823_device);
 	return err;
