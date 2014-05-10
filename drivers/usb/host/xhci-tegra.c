@@ -4718,6 +4718,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		struct xhci_hcd	*xhci = NULL;
 		struct usb_hcd *hcd = NULL;
 
+		utmi_phy_pad_disable();
+		utmi_phy_iddq_override(true);
+
 		xhci = tegra->xhci;
 		hcd = xhci_to_hcd(xhci);
 
@@ -4742,9 +4745,6 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);
-
-	utmi_phy_pad_disable();
-	utmi_phy_iddq_override(true);
 
 	tegra_pd_remove_device(&pdev->dev);
 	platform_set_drvdata(pdev, NULL);
