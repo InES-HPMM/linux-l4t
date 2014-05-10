@@ -7591,6 +7591,7 @@ static struct clk tegra_clk_gpu = {
 	.max_rate  = 48000000,
 	.min_rate  = 12000000,
 };
+#define RATE_GRANULARITY	100000 /* 0.1 MHz */
 
 static void tegra21_clk_gbus_init(struct clk *c)
 {
@@ -7604,8 +7605,8 @@ static void tegra21_clk_gbus_init(struct clk *c)
 		return;
 
 	c->u.export_clk.ops->init(c->u.export_clk.ops->data, &rate, &enabled);
-	c->div = clk_get_rate(c->parent) / 1000000;
-	c->mul = rate / 1000000;
+	c->div = clk_get_rate(c->parent) / RATE_GRANULARITY;
+	c->mul = rate / RATE_GRANULARITY;
 	c->state = enabled ? ON : OFF;
 }
 
@@ -7643,7 +7644,7 @@ static int tegra21_clk_gbus_set_rate(struct clk *c, unsigned long rate)
 
 	ret = c->u.export_clk.ops->set_rate(c->u.export_clk.ops->data, &rate);
 	if (!ret)
-		c->mul = rate / 1000000;
+		c->mul = rate / RATE_GRANULARITY;
 	return ret;
 }
 
