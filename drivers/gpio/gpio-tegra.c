@@ -80,6 +80,8 @@ struct tegra_gpio_bank {
 	u32 int_enb[4];
 	u32 int_lvl[4];
 	u32 wake_enb[4];
+	u32 dbc_enb[4];
+	u32 dbc_cnt[4];
 	int wake_depth;
 #endif
 };
@@ -361,6 +363,12 @@ static void tegra_gpio_resume(void)
 			tegra_gpio_writel(bank->oe[p], GPIO_OE(gpio));
 			tegra_gpio_writel(bank->int_lvl[p], GPIO_INT_LVL(gpio));
 			tegra_gpio_writel(bank->int_enb[p], GPIO_INT_ENB(gpio));
+			if (b == 2 && tegra_gpio_chip.set_debounce) {
+				tegra_gpio_writel(bank->dbc_enb[p],
+							GPIO_MSK_DBC_EN(gpio));
+				tegra_gpio_writel(bank->dbc_cnt[p],
+							GPIO_DBC_CNT(gpio));
+			}
 		}
 	}
 
@@ -384,6 +392,12 @@ static int tegra_gpio_suspend(void)
 			bank->oe[p] = tegra_gpio_readl(GPIO_OE(gpio));
 			bank->int_enb[p] = tegra_gpio_readl(GPIO_INT_ENB(gpio));
 			bank->int_lvl[p] = tegra_gpio_readl(GPIO_INT_LVL(gpio));
+			if (b == 2 && tegra_gpio_chip.set_debounce) {
+				bank->dbc_enb[p] =
+					tegra_gpio_readl(GPIO_MSK_DBC_EN(gpio));
+				bank->dbc_cnt[p] =
+					tegra_gpio_readl(GPIO_DBC_CNT(gpio));
+			}
 
 			/* disable gpio interrupts that are not wake sources */
 			tegra_gpio_writel(bank->wake_enb[p], GPIO_INT_ENB(gpio));
