@@ -235,6 +235,9 @@ do {									       \
 /* Quasi-linear PLL divider */
 #define PLL_QLIN_PDIV_MAX		16
 
+/* PLL with SDM:  effective n value: ndiv + 1/2 + sdm_din/PLL_SDM_COEFF */
+#define PLL_SDM_COEFF			(1 << 13)
+
 /* FIXME: no longer common should be eventually removed */
 #define PLL_BASE_OVERRIDE		(1<<28)
 #define PLL_BASE_LOCK			(1<<27)
@@ -2509,14 +2512,6 @@ static struct clk_ops tegra_plld_ops = {
  * Of course, dynamic ramp is applied provided PLL is already enabled.
  */
 
-/*
- * Common configuration policy for dynamic ramp PLLs:
- * - always set fixed M-value based on the reference rate
- * - always set P-value value 1:1 for output rates above VCO minimum, and
- *   choose minimum necessary P-value for output rates below VCO minimum
- * - calculate N-value based on selected M and P
- */
-
 static u8 pll_qlin_pdiv_to_p[PLL_QLIN_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15, 16 */
 /* p: */ 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32 };
@@ -2548,8 +2543,34 @@ static u32 pll_base_set_div(struct clk *c, u32 m, u32 n, u32 pdiv, u32 val)
 	return val;
 }
 
+static void pll_sdm_set_din(struct clk *c, struct clk_pll_freq_table *cfg)
+{
+	u32 reg, val;
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+
+	if (!ctrl->sdm_en_mask)
+		return;
+
+	if (cfg->sdm_din) {
+		reg = pll_reg_idx_to_addr(c, divs->sdm_din_reg_idx);
+		val = clk_readl(reg) & (~divs->sdm_din_mask);
+		val |= cfg->sdm_din << divs->sdm_din_shift;
+		pll_writel_delay(val, reg);
+	}
+
+	reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
+	val = clk_readl(reg);
+	if (!cfg->sdm_din != !(val & ctrl->sdm_en_mask)) {
+		val ^= ctrl->sdm_en_mask;
+		pll_writel_delay(val, reg);
+	}
+}
+
+
 static void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg)
 {
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
 	u32 base = clk_readl(c->reg);
 
@@ -2557,12 +2578,42 @@ static void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg)
 	cfg->n = (base & divs->ndiv_mask) >> divs->ndiv_shift;
 	cfg->p = (base & divs->pdiv_mask) >> divs->pdiv_shift;
 	cfg->p = divs->pdiv_to_p[cfg->p];
+
+	cfg->sdm_din = 0;
+	if (ctrl->sdm_en_mask) {
+		u32 reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
+		if (ctrl->sdm_en_mask & clk_readl(reg)) {
+			reg = pll_reg_idx_to_addr(c, divs->sdm_din_reg_idx);
+			cfg->sdm_din = (clk_readl(reg) & divs->sdm_din_mask) >>
+				divs->sdm_din_shift;
+		}
+	}
 }
 
+static void pll_clk_set_gain(struct clk *c, struct clk_pll_freq_table *cfg)
+{
+	c->mul = cfg->n;
+	c->div = cfg->m * cfg->p;
+
+	if (cfg->sdm_din) {
+		c->mul = c->mul*PLL_SDM_COEFF + PLL_SDM_COEFF/2 + cfg->sdm_din;
+		c->div *= PLL_SDM_COEFF;
+	}
+}
+
+/*
+ * Common configuration for PLLs with fixed input divider policy:
+ * - always set fixed M-value based on the reference rate
+ * - always set P-value value 1:1 for output rates above VCO minimum, and
+ *   choose minimum necessary P-value for output rates below VCO minimum
+ * - calculate N-value based on selected M and P
+ * - calculate SDM_DIN fractional part
+ */
 static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
 	int p;
+	unsigned long cf;
 
 	if (!rate)
 		return -EINVAL;
@@ -2577,7 +2628,19 @@ static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	cfg->output_rate = rate * cfg->p;
 	if (cfg->output_rate > c->u.pll.vco_max)
 		cfg->output_rate = c->u.pll.vco_max;
-	cfg->n = cfg->output_rate * cfg->m / input_rate;
+	cf = input_rate / cfg->m;
+	cfg->n = cfg->output_rate / cf;
+
+	cfg->sdm_din = 0;
+	if (c->u.pll.controls->sdm_en_mask) {
+		unsigned long rem = cfg->output_rate - cf * cfg->n;
+		if (rem) {
+			u64 s = rem * PLL_SDM_COEFF;
+			do_div(s, cf);
+			cfg->sdm_din = s + PLL_SDM_COEFF / 2;
+			cfg->n--;
+		}
+	}
 
 	return 0;
 }
@@ -2593,6 +2656,8 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 			int p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
 			BUG_ON(IS_ERR_VALUE(p));
 			BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
+			BUG_ON(!c->u.pll.controls->sdm_en_mask &&
+			       sel->sdm_din);
 			*cfg = *sel;
 			return 0;
 		}
@@ -2623,11 +2688,10 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	pll_base_parse_cfg(c, &old_cfg);
 
 	if ((cfg.m == old_cfg.m) && (cfg.n == old_cfg.n) &&
-	    (cfg.p == old_cfg.p))
+	    (cfg.p == old_cfg.p) && (cfg.sdm_din == old_cfg.sdm_din))
 		return 0;
 
-	c->mul = cfg.n;
-	c->div = cfg.m * cfg.p;
+	pll_clk_set_gain(c, &cfg);
 
 	if (!c->u.pll.defaults_set && c->u.pll.set_defaults) {
 		c->ops->disable(c);
@@ -2635,6 +2699,7 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 		val = clk_readl(c->reg);
 		val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
+		pll_sdm_set_din(c, &cfg);
 
 		if (c->state == ON)
 			c->ops->enable(c);
@@ -2653,6 +2718,7 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	}
 
 	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
+	pll_sdm_set_din(c, &cfg);
 
 	if (c->state == ON) {
 		u32 reg = pll_reg_idx_to_addr(c, ctrl->lock_reg_idx);
@@ -2851,8 +2917,7 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 		if (c->u.pll.set_defaults) /* check only since PLL is ON */
 			c->u.pll.set_defaults(c, input_rate);
 		pll_base_parse_cfg(c, &cfg);
-		c->mul = cfg.n;
-		c->div = cfg.m * cfg.p;
+		pll_clk_set_gain(c, &cfg);
 		return;
 	}
 
@@ -2872,8 +2937,7 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	if (c->u.pll.set_defaults)
 		c->u.pll.set_defaults(c, input_rate);
 
-	c->mul = cfg.n;
-	c->div = cfg.m * cfg.p;
+	pll_clk_set_gain(c, &cfg);
 }
 
 static struct clk_ops tegra_pllcx_ops = {

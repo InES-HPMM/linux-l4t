@@ -112,6 +112,7 @@ struct clk_pll_freq_table {
 	u16		m;
 	u8		p;
 	u8		cpcon;
+	u16		sdm_din;
 };
 
 struct clk_pll_div_layout {
@@ -128,6 +129,9 @@ struct clk_pll_div_layout {
 	/* misc dividers */
 	u32		ndiv_new_shift;
 	u32		ndiv_new_reg_idx;
+	u32		sdm_din_mask;
+	u32		sdm_din_shift;
+	u32		sdm_din_reg_idx;
 };
 
 struct clk_pll_controls {
@@ -144,6 +148,8 @@ struct clk_pll_controls {
 	u32		dramp_en_mask;
 	u32		dramp_done_mask;
 	u32		dramp_ctrl_reg_idx;
+	u32		sdm_en_mask;
+	u32		sdm_ctrl_reg_idx;
 };
 
 enum pll_reg_indx {
