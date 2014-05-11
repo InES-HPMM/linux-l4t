@@ -273,6 +273,15 @@ config REGULATOR_MAX77663
 	  via I2C bus. The provided regulator is suitable for Tegra
 	  chip to control Step-Down DC-DC and LDOs.
 
+config REGULATOR_MAX77620
+	tristate "Maxim 77620 voltage regulator"
+	depends on MFD_MAX77620
+	help
+	  This driver controls Maxim MAX77620 voltage output regulator
+	  via I2C bus. The provided regulator is suitable for Tegra
+	  chip to control Step-Down DC-DC and LDOs. Say Y here to
+	  enable the regulator driver.
+
 config REGULATOR_MAX15569
 	tristate "Maxim 15569 voltage regulator"
 	help
