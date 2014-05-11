@@ -325,6 +325,20 @@ do {									       \
 #define PLLCX_MISC3_DEFAULT_VALUE	0x000000c4
 #define PLLCX_MISC3_WRITE_MASK		0x00ffffff
 
+/* PLLA */
+#define PLLA_BASE_LOCK			(1 << 27)
+#define PLLA_BASE_IDDQ			(1 << 25)
+
+#define PLLA_MISC0_LOCK_ENABLE		(1 << 28)
+
+#define PLLA_MISC2_EN_SDM		(1 << 26)
+#define PLLA_MISC2_EN_DYNRAMP		(1 << 25)
+
+#define PLLA_MISC0_DEFAULT_VALUE	0x12000000
+#define PLLA_MISC0_WRITE_MASK		0x7fffffff
+#define PLLA_MISC2_DEFAULT_VALUE	0x0
+#define PLLA_MISC2_WRITE_MASK		0x06ffffff
+
 /* PLLX */
 #define PLLX_USE_DYN_RAMP		0
 #define PLLX_BASE_LOCK			(1 << 27)
@@ -2959,6 +2973,54 @@ static struct clk_ops tegra_pllcx_ops = {
 	.set_rate		= tegra_pll_clk_set_rate,
 };
 
+/*
+ * PLLA
+ * PLL with dynamic ramp and fractional SDM. Dynamic ramp is not used.
+ * Fractional SDM is allowed to provide exact audio rates.
+ */
+static void plla_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	u32 val = clk_readl(c->reg);
+	c->u.pll.defaults_set = true;
+
+	if (val & c->u.pll.controls->enable_mask) {
+		/* PLL is ON: only check if defaults already set */
+		if (val & PLLA_BASE_IDDQ) {
+			pr_warn("%s boot enabled with IDDQ set", c->name);
+			c->u.pll.defaults_set = false;
+		}
+		val = PLLA_MISC0_DEFAULT_VALUE;	/* ignore lock enable */
+		PLL_MISC_CHK_DEFAULT(c, 0, val, PLLA_MISC0_WRITE_MASK &
+				     (~PLLA_MISC0_LOCK_ENABLE));
+		val = PLLX_MISC2_DEFAULT_VALUE; /* ignore all but control bit */
+		PLL_MISC_CHK_DEFAULT(c, 2, val, PLLA_MISC2_EN_DYNRAMP);
+
+		/* If mandatory defaults are set enable lock detect in flight */
+		if (c->u.pll.defaults_set)
+			pll_writel_delay(PLLA_MISC0_DEFAULT_VALUE,
+					 c->reg + c->u.pll.misc0);
+		return;
+	}
+
+	/* set IDDQ, enable lock detect, disable dynamic ramp and SDM */
+	val |= PLLA_BASE_IDDQ;
+	clk_writel(val, c->reg);
+	clk_writel(PLLA_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+	pll_writel_delay(PLLA_MISC2_DEFAULT_VALUE, c->reg + c->u.pll.misc2);
+}
+
+static void tegra21_plla_clk_init(struct clk *c)
+{
+	/* Same as PLLCX initialization */
+	tegra21_pllcx_clk_init(c);
+}
+
+static struct clk_ops tegra_plla_ops = {
+	.init			= tegra21_plla_clk_init,
+	.enable			= tegra_pll_clk_enable,
+	.disable		= tegra_pll_clk_disable,
+	.set_rate		= tegra_pll_clk_set_rate,
+};
 
 /*
  * PLLX
@@ -6365,6 +6427,84 @@ static struct clk tegra_pll_a1 = {
 	},
 };
 
+static struct clk_pll_freq_table tegra_pll_a_freq_table[] = {
+	{ 12000000, 282240000, 46, 1, 2, 1, 4424},	/* actual: 282240234 */
+	{ 12000000, 368640000, 60, 1, 2, 1, 7701},	/* actual: 368640381 */
+	{ 12000000, 240000000, 60, 1, 3, 1, },
+
+	{ 13000000, 282240000, 42, 1, 2, 1, 7549},	/* actual: 282239807 */
+	{ 13000000, 368640000, 55, 1, 2, 1, 9944},	/* actual: 368640137 */
+	{ 13000000, 240000000, 55, 1, 3, 1, },		/* actual: 238.3 MHz */
+
+	{ 38400000, 282240000, 28, 2, 2, 1, 7373},	/* actual: 282240234 */
+	{ 38400000, 368640000, 37, 2, 2, 1, 7373},	/* actual: 368640234 */
+	{ 38400000, 240000000, 50, 2, 4, 1,},
+	{ 0, 0, 0, 0, 0, 0 },
+};
+
+struct clk_pll_controls plla_controls = {
+	.enable_mask = PLL_BASE_ENABLE,
+	.bypass_mask = PLL_BASE_BYPASS,
+	.iddq_mask = PLLA_BASE_IDDQ,
+	.iddq_reg_idx = PLL_BASE_IDX,
+	.lock_mask = PLLA_BASE_LOCK,
+	.lock_reg_idx = PLL_BASE_IDX,
+
+	.sdm_en_mask = PLLA_MISC2_EN_SDM,
+	.sdm_ctrl_reg_idx = PLL_MISC2_IDX,
+};
+
+static struct clk_pll_div_layout plla_div_layout = {
+	.mdiv_shift = 0,
+	.mdiv_mask = 0xff,
+	.ndiv_shift = 8,
+	.ndiv_mask = 0xff << 8,
+	.pdiv_shift = 20,
+	.pdiv_mask = 0x1f << 20,
+	.pdiv_to_p = pll_qlin_pdiv_to_p,
+	.pdiv_max = PLL_QLIN_PDIV_MAX,
+
+	.sdm_din_shift = 0,
+	.sdm_din_mask = 0xffff,
+	.sdm_din_reg_idx = PLL_MISC1_IDX,
+};
+
+static struct clk tegra_pll_a = {
+	.name      = "pll_a",
+	.ops       = &tegra_plla_ops,
+	.reg       = 0xb0,
+	.parent    = &tegra_pll_ref,
+	.max_rate  = 1000000000,
+	.u.pll = {
+		.input_min = 12000000,
+		.input_max = 800000000,
+		.cf_min    = 12000000,
+		.cf_max    = 19200000,
+		.vco_min   = 500000000,
+		.vco_max   = 1000000000,
+		.freq_table = tegra_pll_a_freq_table,
+		.lock_delay = 300,
+		.misc0 = 0xbc - 0xb0,
+		.misc1 = 0xb8 - 0xb0,
+		.misc2 = 0x5d8 - 0xb0,
+		.controls = &plla_controls,
+		.div_layout = &plla_div_layout,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.set_defaults = plla_set_defaults,
+	},
+};
+
+static struct clk tegra_pll_a_out0 = {
+	.name      = "pll_a_out0",
+	.ops       = &tegra_pll_div_ops,
+	.flags     = DIV_U71,
+	.parent    = &tegra_pll_a,
+	.reg       = 0xb4,
+	.reg_shift = 0,
+	.max_rate  = 100000000,
+};
+
+
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	/* 1 GHz */
 	{ 12000000, 1000000000, 166, 1, 2},	/* actual: 996.0 MHz */
@@ -6542,46 +6682,6 @@ static struct clk tegra_pll_p_out5 = {
 	.reg       = 0x67c,
 	.reg_shift = 16,
 	.max_rate  = 432000000,
-};
-
-static struct clk_pll_freq_table tegra_pll_a_freq_table[] = {
-	{  9600000, 282240000, 147,  5, 1, 4},
-	{  9600000, 368640000, 192,  5, 1, 4},
-	{  9600000, 240000000, 200,  8, 1, 8},
-
-	{ 28800000, 282240000, 245, 25, 1, 8},
-	{ 28800000, 368640000, 320, 25, 1, 8},
-	{ 28800000, 240000000, 200, 24, 1, 8},
-	{ 0, 0, 0, 0, 0, 0 },
-};
-
-static struct clk tegra_pll_a = {
-	.name      = "pll_a",
-	.flags     = PLL_HAS_CPCON,
-	.ops       = &tegra_pll_ops,
-	.reg       = 0xb0,
-	.parent    = &tegra_pll_p_out1,
-	.max_rate  = 700000000,
-	.u.pll = {
-		.input_min = 2000000,
-		.input_max = 31000000,
-		.cf_min    = 1000000,
-		.cf_max    = 6000000,
-		.vco_min   = 200000000,
-		.vco_max   = 700000000,
-		.freq_table = tegra_pll_a_freq_table,
-		.lock_delay = 300,
-	},
-};
-
-static struct clk tegra_pll_a_out0 = {
-	.name      = "pll_a_out0",
-	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71,
-	.parent    = &tegra_pll_a,
-	.reg       = 0xb4,
-	.reg_shift = 0,
-	.max_rate  = 100000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
@@ -8725,8 +8825,6 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_p_out1.reg);
 	*ctx++ = clk_readl(tegra_pll_p_out3.reg);
 
-	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_BASE);
-	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
 	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_BASE);
@@ -8787,7 +8885,6 @@ static void tegra21_clk_resume(void)
 	unsigned long off;
 	const u32 *ctx = clk_rst_suspend;
 	u32 val;
-	u32 plla_base;
 	u32 plld_base;
 	u32 plld2_base;
 	u32 pll_p_out12, pll_p_out34;
@@ -8821,12 +8918,9 @@ static void tegra21_clk_resume(void)
 	tegra_pll_clk_resume_enable(&tegra_pll_c3);
 	tegra_pll_clk_resume_enable(&tegra_pll_c);
 	tegra_pll_clk_resume_enable(&tegra_pll_a1);
+	tegra_pll_clk_resume_enable(&tegra_pll_a);
 	tegra_pll_clk_resume_enable(&tegra_pll_x);
 	tegra21_pllre_clk_resume_enable(&tegra_pll_re_out);
-
-	plla_base = *ctx++;
-	clk_writel(*ctx++, tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
-	clk_writel(plla_base | PLL_BASE_ENABLE, tegra_pll_a.reg + PLL_BASE);
 
 	plld_base = *ctx++;
 	clk_writel(*ctx++, tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
@@ -8936,6 +9030,9 @@ static void tegra21_clk_resume(void)
 	p = &tegra_pll_a1;
 	if (p->state == OFF)
 		p->ops->disable(p);
+	p = &tegra_pll_a;
+	if (p->state == OFF)
+		p->ops->disable(p);
 	p = &tegra_pll_x;
 	if (p->state == OFF)
 		p->ops->disable(p);
@@ -8943,7 +9040,6 @@ static void tegra21_clk_resume(void)
 	if (p->state == OFF)
 		tegra21_pllre_clk_disable(p);
 
-	clk_writel(plla_base, tegra_pll_a.reg + PLL_BASE);
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
 	clk_writel(plld2_base, tegra_pll_d2.reg + PLL_BASE);
 
