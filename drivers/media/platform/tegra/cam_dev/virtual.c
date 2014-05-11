@@ -30,14 +30,11 @@
 
 #include <media/nvc.h>
 #include <media/camera.h>
+#include "camera_common.h"
 
 struct chip_config {
 	int clk_num;
 	int gpio_num;
-	int reg_num;
-	struct camera_reg *seq_power_on;
-	struct camera_reg *seq_power_off;
-	char *reg_names[];
 };
 
 static int virtual_update(
@@ -52,41 +49,8 @@ static int virtual_update(
 		switch (upd[idx].type) {
 		case UPDATE_EDP:
 		{
-			struct edp_cfg ec;
-			struct camera_edp_cfg *pec = &cdev->edpc;
-
-			dev_dbg(cdev->dev, "%s UPDATE_EDP config\n", __func__);
-			if (pec->edp_client) {
-				dev_err(cdev->dev, "edp client already set!\n");
-				err = -EEXIST;
-				break;
-			}
-			if (upd[idx].size != sizeof(ec)) {
-				dev_err(cdev->dev, "Invalid edp cfg size!\n");
-				err = -EINVAL;
-				break;
-			}
-			memset(&ec, 0, sizeof(ec));
-			if (copy_from_user(&ec,
-				((const void __user *)
-				(unsigned long)upd[idx].arg),
-				sizeof(ec))) {
-				dev_err(cdev->dev,
-					"%s copy_from_user err line %d\n",
-					__func__, __LINE__);
-				err = -EFAULT;
-				break;
-			}
-			if (ec.num > CAMERA_MAX_EDP_ENTRIES) {
-				dev_err(cdev->dev, "too many estate entries!\n");
-				err = -E2BIG;
-				break;
-			}
-
-			memcpy(pec->estates, ec.estates,
-				ec.num * sizeof(pec->estates[0]));
-			pec->num = ec.num;
-			camera_edp_register(cdev);
+			dev_dbg(cdev->dev, "%s UPDATE_EDP is deprecated\n",
+				__func__);
 			break;
 		}
 		case UPDATE_CLOCK:
@@ -178,8 +142,7 @@ static int virtual_update(
 
 static int virtual_power_on(struct camera_device *cdev)
 {
-	struct chip_config *c_info = cdev->chip->private;
-	struct camera_reg *pwr_seq = c_info->seq_power_on;
+	struct camera_reg *pwr_seq = cdev->seq_power_on;
 	int err = 0;
 
 	dev_dbg(cdev->dev, "%s %x %p\n",
@@ -197,8 +160,7 @@ static int virtual_power_on(struct camera_device *cdev)
 
 static int virtual_power_off(struct camera_device *cdev)
 {
-	struct chip_config *c_info = cdev->chip->private;
-	struct camera_reg *pwr_seq = c_info->seq_power_off;
+	struct camera_reg *pwr_seq = cdev->seq_power_off;
 	int err = 0;
 
 	dev_dbg(cdev->dev, "%s %x %p\n",
@@ -255,38 +217,99 @@ static int virtual_instance_destroy(struct camera_device *cdev)
 static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 {
 	struct chip_config *c_info = cdev->chip->private;
-	u32 idx;
+	struct camera_reg *pwr_seq = NULL;
+	const char *reg_names[8], *clks;
+	void *buf;
+	u32 idx, pwron_size, pwroff_size, reg_num, clk_num;
 
 	dev_dbg(cdev->dev, "%s\n", __func__);
-	cdev->gpios = kzalloc(c_info->gpio_num * sizeof(*cdev->gpios) +
-		c_info->reg_num * sizeof(*cdev->regs) +
-		c_info->clk_num * sizeof(*cdev->clks),
+	memset(reg_names, 0 , sizeof(reg_names));
+	if (cdev->of_node) {
+		pwr_seq = of_camera_get_pwrseq(
+			cdev->dev, cdev->of_node, &pwron_size, &pwroff_size);
+		reg_num = of_camera_get_regulators(cdev->dev, cdev->of_node,
+			reg_names, sizeof(reg_names) / sizeof(reg_names[0]));
+		clks = of_camera_get_clocks(cdev->dev, cdev->of_node, &clk_num);
+	} else {
+		pwron_size = 0;
+		pwroff_size = 0;
+		reg_num = 0;
+		clks = NULL;
+		clk_num = 0;
+	}
+
+	buf = kzalloc(c_info->gpio_num * sizeof(*cdev->gpios) +
+		reg_num * sizeof(*cdev->regs) +
+		c_info->clk_num * sizeof(*cdev->clks) +
+		(pwron_size + pwroff_size) * sizeof(*pwr_seq),
 		GFP_KERNEL);
-	if (cdev->gpios == NULL) {
+	if (buf == NULL) {
 		dev_err(cdev->dev, "%s memory low!\n", __func__);
 		return -ENOMEM;
 	}
 
+	cdev->gpios = buf;
+	cdev->regs = (void *)(cdev->gpios + c_info->gpio_num);
+	cdev->clks = (void *)(cdev->regs + reg_num);
 	cdev->num_gpio = c_info->gpio_num;
-	cdev->regs = (void *)cdev->gpios +
-		c_info->gpio_num * sizeof(*cdev->gpios);
-	cdev->num_reg = c_info->reg_num;
-	cdev->clks = (void *)cdev->regs + c_info->reg_num * sizeof(*cdev->regs);
+	cdev->num_reg = reg_num;
 	cdev->num_clk = c_info->clk_num;
 	cdev->mclk_enable_idx = CAMDEV_INVALID;
 	cdev->mclk_disable_idx = CAMDEV_INVALID;
+	if (pdata) {
+		cdev->pinmux_num =
+			((struct camera_platform_data *)pdata)->pinmux_num;
+		cdev->pinmux_tbl =
+			((struct camera_platform_data *)pdata)->pinmux;
+	}
 
 	for (idx = 0; idx < cdev->num_gpio; idx++)
 		cdev->gpios[idx].valid = false;
 
 	for (idx = 0; idx < cdev->num_reg; idx++) {
-		cdev->regs[idx].vreg_name =
-			(const char *)c_info->reg_names[idx];
+		cdev->regs[idx].vreg_name = (void *)reg_names[idx];
 		camera_regulator_get(cdev->dev, &cdev->regs[idx],
 			(char *)cdev->regs[idx].vreg_name);
 	}
 
+	for (idx = 0; idx < cdev->num_clk && idx < clk_num; idx++) {
+		if (clks == NULL)
+			break;
+		cdev->clks[idx] = devm_clk_get(cdev->dev, clks);
+		if (IS_ERR(cdev->clks[idx])) {
+			dev_err(cdev->dev, "%s: get clock %s FAILED.\n",
+					__func__, clks);
+			kfree(buf);
+			return PTR_ERR(cdev->clks[idx]);
+		}
+		dev_dbg(cdev->dev, "%s - clock: %s\n", __func__, clks);
+		clks += strlen(clks) + 1;
+	}
+
 	dev_set_drvdata(cdev->dev, cdev->gpios);
+
+	if (pwr_seq) {
+		cdev->seq_power_on = (void *)(cdev->clks + c_info->clk_num);
+		cdev->seq_power_off = cdev->seq_power_on + pwron_size;
+		memcpy(cdev->seq_power_on, pwr_seq,
+			(pwron_size + pwroff_size) * sizeof(*pwr_seq));
+
+		dev_dbg(cdev->dev, "%s power_on: %p %u\n",
+			__func__, cdev->seq_power_on, pwron_size);
+		for (idx = 0; idx < pwron_size; idx++) {
+			dev_dbg(cdev->dev, "    %08x - %08x\n",
+				cdev->seq_power_on[idx].addr,
+				cdev->seq_power_on[idx].val);
+		}
+		dev_dbg(cdev->dev, "%s power_off: %p %u\n",
+			__func__, cdev->seq_power_off, pwroff_size);
+		for (idx = 0; idx < pwroff_size; idx++) {
+			dev_dbg(cdev->dev, "    %08x - %08x\n",
+				cdev->seq_power_off[idx].addr,
+				cdev->seq_power_off[idx].val);
+		}
+	}
+	of_camera_put_pwrseq(cdev->dev, pwr_seq);
 	return 0;
 }
 
@@ -297,75 +320,75 @@ static struct regmap_config regmap_cfg_default = {
 };
 
 static int virtual_device_sanity_check(
-	struct device *dev, struct virtual_device *dev_info, int *len)
+	struct device *dev, struct virtual_device *pvd, int *len)
 {
 	u32 num;
 	u8 *nptr;
 	int n;
 
 	dev_dbg(dev, "%s: %s, bus type %d, addr bits %d, val bits %d\n",
-		__func__, dev_info->name, dev_info->bus_type,
-		dev_info->regmap_cfg.addr_bits, dev_info->regmap_cfg.val_bits);
+		__func__, pvd->name, pvd->bus_type,
+		pvd->regmap_cfg.addr_bits, pvd->regmap_cfg.val_bits);
 	dev_dbg(dev, "gpios %d, regs %d, clks %d\n",
-		dev_info->gpio_num, dev_info->reg_num, dev_info->clk_num);
-	if (dev_info->name[0] == '\0') {
+		pvd->gpio_num, pvd->reg_num, pvd->clk_num);
+	if (pvd->name[0] == '\0') {
 		dev_err(dev, "%s need a device name!\n", __func__);
 		return -ENODEV;
 	}
 
-	if (dev_info->bus_type != CAMERA_DEVICE_TYPE_I2C) {
+	if (pvd->bus_type != CAMERA_DEVICE_TYPE_I2C) {
 		dev_err(dev, "%s unsupported device type %d!\n",
-		__func__, dev_info->bus_type);
+		__func__, pvd->bus_type);
 		return -ENODEV;
 	}
 
-	if (dev_info->regmap_cfg.addr_bits != 0 &&
-		dev_info->regmap_cfg.addr_bits != 8 &&
-		dev_info->regmap_cfg.addr_bits != 16) {
+	if (pvd->regmap_cfg.addr_bits != 0 &&
+		pvd->regmap_cfg.addr_bits != 8 &&
+		pvd->regmap_cfg.addr_bits != 16) {
 		dev_err(dev, "%s unsupported address bits %d!\n",
-		__func__, dev_info->regmap_cfg.addr_bits);
+		__func__, pvd->regmap_cfg.addr_bits);
 		return -ENODEV;
 	}
 
-	if (dev_info->regmap_cfg.val_bits != 8 &&
-		dev_info->regmap_cfg.val_bits != 16) {
+	if (pvd->regmap_cfg.val_bits != 8 &&
+		pvd->regmap_cfg.val_bits != 16) {
 		dev_err(dev, "%s unsupported data bits %d!\n",
-		__func__, dev_info->regmap_cfg.val_bits);
+		__func__, pvd->regmap_cfg.val_bits);
 		return -ENODEV;
 	}
 
-	if (dev_info->regmap_cfg.cache_type != REGCACHE_NONE &&
-		dev_info->regmap_cfg.cache_type != REGCACHE_RBTREE &&
-		dev_info->regmap_cfg.cache_type != REGCACHE_COMPRESSED) {
+	if (pvd->regmap_cfg.cache_type != REGCACHE_NONE &&
+		pvd->regmap_cfg.cache_type != REGCACHE_RBTREE &&
+		pvd->regmap_cfg.cache_type != REGCACHE_COMPRESSED) {
 		dev_err(dev, "%s unsupported cache type %d!\n",
-		__func__, dev_info->regmap_cfg.cache_type);
+		__func__, pvd->regmap_cfg.cache_type);
 		return -ENODEV;
 	}
 
-	if (dev_info->gpio_num >= ARCH_NR_GPIOS) {
+	if (pvd->gpio_num >= ARCH_NR_GPIOS) {
 		dev_err(dev, "%s too many gpios %d!\n",
-		__func__, dev_info->gpio_num);
+		__func__, pvd->gpio_num);
 		return -ENODEV;
 	}
 
-	if (dev_info->gpio_num >= 6) {
+	if (pvd->gpio_num >= 6) {
 		dev_notice(dev, "%s WHAT?! Are you sure you need %d gpios?\n",
-			__func__, dev_info->gpio_num);
+			__func__, pvd->gpio_num);
 	}
 
-	if (dev_info->clk_num >= 5) {
+	if (pvd->clk_num >= 5) {
 		dev_notice(dev, "%s WHAT?! Are you sure you need %d clocks?\n",
-			__func__, dev_info->clk_num);
+			__func__, pvd->clk_num);
 	}
 
 	*len = 0;
-	num = dev_info->reg_num;
-	nptr = &dev_info->reg_names[0];
+	num = pvd->reg_num;
+	nptr = &pvd->reg_names[0];
 	while (num) {
 		n = strlen(nptr);
 		if (!n) {
 			dev_err(dev, "%s NULL reg name @ %d\n",
-				__func__, dev_info->reg_num - num);
+				__func__, pvd->reg_num - num);
 			return -ENODEV;
 		}
 		*len += n + 1;
@@ -379,57 +402,18 @@ static int virtual_device_sanity_check(
 
 static int virtual_chip_config(
 	struct device *dev,
-	struct virtual_device *dev_info,
+	struct virtual_device *pvd,
 	struct chip_config *c_info)
 {
-	char *rptr = (void *)c_info;
-	char *nptr = dev_info->reg_names;
-	int len;
-	u32 idx;
-
 	dev_dbg(dev, "%s regulators:\n", __func__);
-	c_info->clk_num = dev_info->clk_num;
-	c_info->gpio_num = dev_info->gpio_num;
-	c_info->reg_num = dev_info->reg_num;
-	rptr += sizeof(*c_info) + sizeof(char *) * c_info->reg_num;
-	for (idx = 0; idx < c_info->reg_num; idx++) {
-		c_info->reg_names[idx] = rptr;
-		len = strlen(nptr);
-		dev_dbg(dev, "#%d %s len %d\n", idx, nptr, len);
-		strcpy(rptr, nptr);
-		rptr[len] = '\0';
-		rptr += len + 1;
-		nptr += CAMERA_MAX_NAME_LENGTH;
-		dev_dbg(dev, "#%d - %s\n", idx, c_info->reg_names[idx]);
-	}
-
-	c_info->seq_power_on = (void *)rptr;
-	if (copy_from_user(
-		c_info->seq_power_on,
-		(const void __user *)(unsigned long)dev_info->power_on,
-		sizeof(struct camera_reg) * dev_info->pwr_on_size)) {
-		dev_err(dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-			return -EFAULT;
-	}
-
-	c_info->seq_power_off = (void *)c_info->seq_power_on +
-		sizeof(struct camera_reg) * dev_info->pwr_on_size;
-	if (copy_from_user(
-		c_info->seq_power_off,
-		(const void __user *)(unsigned long)dev_info->power_off,
-		sizeof(struct camera_reg) * dev_info->pwr_off_size)) {
-		dev_err(dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-			return -EFAULT;
-	}
+	c_info->clk_num = pvd->clk_num;
+	c_info->gpio_num = pvd->gpio_num;
 
 	return 0;
 }
 
-int virtual_device_add(struct device *dev, unsigned long arg)
+void *virtual_chip_add(struct device *dev, struct virtual_device *pvd)
 {
-	struct virtual_device dev_info;
 	struct camera_chip *v_chip;
 	struct chip_config *c_info;
 	struct regmap_config *p_regmap;
@@ -438,45 +422,43 @@ int virtual_device_add(struct device *dev, unsigned long arg)
 
 	dev_info(dev, "%s\n", __func__);
 
-	if (copy_from_user(
-		&dev_info, (const void __user *)arg, sizeof(dev_info))) {
-		dev_err(dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-			return -EFAULT;
+	if (pvd == NULL) {
+		dev_err(dev, "%s EMPTY virtual device.\n", __func__);
+		return ERR_PTR(-EFAULT);
 	}
 
-	err = virtual_device_sanity_check(dev, &dev_info, &buf_len);
+	err = virtual_device_sanity_check(dev, pvd, &buf_len);
 	if (err)
-		return err;
+		return ERR_PTR(err);
 
-	buf_len += sizeof(char *) * dev_info.reg_num +
-		sizeof(struct camera_reg) * dev_info.pwr_on_size +
-		sizeof(struct camera_reg) * dev_info.pwr_off_size;
+	buf_len += sizeof(char *) * pvd->reg_num +
+		sizeof(struct camera_reg) * pvd->pwr_on_size +
+		sizeof(struct camera_reg) * pvd->pwr_off_size;
 	v_chip = kzalloc(
 		sizeof(*v_chip) + sizeof(*c_info) + buf_len, GFP_KERNEL);
 	if (!v_chip) {
 		dev_err(dev, "%s unable to allocate memory!\n", __func__);
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	c_info = (void *)v_chip + sizeof(*v_chip);
-	err = virtual_chip_config(dev, &dev_info, c_info);
+	err = virtual_chip_config(dev, pvd, c_info);
 	if (err) {
 		kfree(v_chip);
-		return err;
+		return ERR_PTR(err);
 	}
 
-	strncpy((u8 *)v_chip->name, (u8 const *)dev_info.name,
+	strncpy((u8 *)v_chip->name, (u8 const *)pvd->name,
 		sizeof(v_chip->name));
 
 	p_regmap = (struct regmap_config *)&v_chip->regmap_cfg;
 	memcpy(p_regmap, &regmap_cfg_default, sizeof(*p_regmap));
-	v_chip->type = dev_info.bus_type;
-	if (dev_info.regmap_cfg.addr_bits)
-		p_regmap->reg_bits = dev_info.regmap_cfg.addr_bits;
-	if (dev_info.regmap_cfg.val_bits)
-		p_regmap->val_bits = dev_info.regmap_cfg.val_bits;
-	p_regmap->cache_type = dev_info.regmap_cfg.cache_type;
+	v_chip->type = pvd->bus_type;
+	if (pvd->regmap_cfg.addr_bits)
+		p_regmap->reg_bits = pvd->regmap_cfg.addr_bits;
+	if (pvd->regmap_cfg.val_bits)
+		p_regmap->val_bits = pvd->regmap_cfg.val_bits;
+	p_regmap->cache_type = pvd->regmap_cfg.cache_type;
 
 	INIT_LIST_HEAD(&v_chip->list);
 	v_chip->private = c_info;
@@ -490,11 +472,12 @@ int virtual_device_add(struct device *dev, unsigned long arg)
 	err = camera_chip_add(v_chip);
 	if (err) {
 		kfree(v_chip);
-		if (err == -EEXIST)
-			err = 0;
+		if (err != -EEXIST)
+			return ERR_PTR(err);
+		return NULL;
 	}
 
-	return err;
+	return v_chip;
 }
 
 static int __init virtual_init(void)

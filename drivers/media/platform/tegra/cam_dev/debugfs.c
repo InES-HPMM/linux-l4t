@@ -1,5 +1,5 @@
 /*
- * debugfs.c
+ * debugfs.c - debug fs access support
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
@@ -28,9 +28,42 @@
 
 #include <media/nvc.h>
 #include <media/camera.h>
+#include "camera_common.h"
+
+#define GET_POINTER(p, o) ((unsigned long)p + (unsigned long)o)
+
+struct cam_module {
+	u32 id;
+	u32 sensor;
+	u32 focuser;
+	u32 flash;
+	u32 rom;
+	u32 reserved[14];
+	u32 pos;
+};
+
+struct dev_profile {
+	u32 off_name;
+	u32 index;
+	u32 type;
+	u32 reserved0;
+	u64 guid;
+	u32 present;
+	u32 pos;
+	u32 bustype;
+	u8 bus;
+	u8 addr;
+	u8 reserved1[2];
+	u32 addr_byte;
+	u32 reserved2[14];
+	u32 off_drv_name;
+	u32 reserved3[2];
+	u32 dev_id;
+	u32 reserved4[3];
+};
 
 static struct camera_platform_info *cam_desc;
-static const char *device_type[] = {
+static char *device_type[] = {
 	"sensor",
 	"focuser",
 	"flash",
@@ -42,31 +75,90 @@ static const char *device_type[] = {
 	"unsupported type"
 };
 
-static int camera_debugfs_layout(struct seq_file *s)
+static void camdbg_dev_prof(struct seq_file *s, void *pl, u32 offset)
 {
-	struct cam_device_layout *layout = cam_desc->layout;
-	int num = cam_desc->size_layout / sizeof(*layout);
+	struct dev_profile *prf = (void *)GET_POINTER(pl, offset);
+
+	seq_printf(s, "%016llx %.20s %.20s %1x %1x %.2x %1x %.8x %x %.20s\n",
+		prf->guid,
+		prf->type < ARRAY_SIZE(device_type) ? device_type[prf->type] :
+		device_type[ARRAY_SIZE(device_type) - 1],
+		(char *)GET_POINTER(pl, prf->off_drv_name),
+		prf->pos, prf->bus, prf->addr, prf->addr_byte, prf->dev_id,
+		prf->index, (char *)GET_POINTER(pl, prf->off_name));
+}
+
+static void camdbg_dev_layout(struct seq_file *s, struct cam_device_layout *pl)
+{
 	const char *pt;
 
-	if (!layout)
+	if (pl->type < ARRAY_SIZE(device_type))
+		pt = device_type[pl->type];
+	else
+		pt = device_type[ARRAY_SIZE(device_type) - 1];
+	seq_printf(s, "%016llx %.20s %.20s %1x %1x %.2x %1x %.8x %x %.20s\n",
+		pl->guid, pt, pl->alt_name, pl->pos, pl->bus, pl->addr,
+		pl->addr_byte, pl->dev_id, pl->index, pl->name);
+}
+
+static int camera_debugfs_layout(struct seq_file *s)
+{
+	void *pl = cam_desc->layout;
+	struct cam_layout_hdr *hdr = (struct cam_layout_hdr *)pl;
+	struct cam_device_layout *layout;
+	int num;
+
+	if (!pl)
 		return -EEXIST;
 
-	if (unlikely(num * sizeof(*layout) != cam_desc->size_layout)) {
-		seq_printf(s, "WHAT? layout size mismatch: %zx vs %d\n",
-			cam_desc->size_layout, num);
-		return -EFAULT;
+	if (*((u32 *)pl) == 2) { /* version 3 */
+		struct cam_module_layout *pmod =
+			(void *)GET_POINTER(pl, sizeof(*hdr));
+		for (num = 0; num < hdr->mod_num; num++) {
+			layout = (void *)GET_POINTER(pl, pmod[num].off_sensor);
+			if (pmod[num].off_sensor)
+				camdbg_dev_layout(s, layout);
+
+			layout = (void *)GET_POINTER(pl, pmod[num].off_focuser);
+			if (pmod[num].off_focuser)
+				camdbg_dev_layout(s, layout);
+
+			layout = (void *)GET_POINTER(pl, pmod[num].off_flash);
+			if (pmod[num].off_flash)
+				camdbg_dev_layout(s, layout);
+		}
+		return 0;
+	}
+
+	if (*((u32 *)pl) == 1) { /* version 1 */
+		struct cam_module *pmod = (void *)GET_POINTER(pl, sizeof(*hdr));
+		for (num = 0; num < hdr->mod_num; num++) {
+			if (pmod[num].sensor)
+				camdbg_dev_prof(s, pl, pmod[num].sensor);
+			if (pmod[num].focuser)
+				camdbg_dev_prof(s, pl, pmod[num].focuser);
+			if (pmod[num].flash)
+				camdbg_dev_prof(s, pl, pmod[num].flash);
+		}
+		return 0;
+	}
+
+	if (*((u32 *)pl) == 0) {
+		layout = (void *)((unsigned long)pl +
+			sizeof(struct cam_layout_hdr));
+		num = ((struct cam_layout_hdr *)pl)->dev_num;
+	} else {
+		layout = pl;
+		num = cam_desc->size_layout / sizeof(*layout);
+		if (unlikely(num * sizeof(*layout) != cam_desc->size_layout)) {
+			seq_printf(s, "WHAT? layout size mismatch: %zx vs %d\n",
+				cam_desc->size_layout, num);
+			return -EFAULT;
+		}
 	}
 
 	while (num--) {
-		if (layout->type < ARRAY_SIZE(device_type))
-			pt = device_type[layout->type];
-		else
-			pt = device_type[ARRAY_SIZE(device_type) - 1];
-		seq_printf(s,
-			"%016llx %.20s %.20s %1x %1x %.2x %1x %.8x %x %.20s\n",
-			layout->guid, pt, layout->alt_name, layout->pos,
-			layout->bus, layout->addr, layout->addr_byte,
-			layout->dev_id, layout->index, layout->name);
+		camdbg_dev_layout(s, layout);
 		layout++;
 	}
 	return 0;
@@ -77,6 +169,7 @@ static int camera_debugfs_platform_data(struct seq_file *s)
 	struct camera_platform_data *pd = cam_desc->pdata;
 	struct camera_module *md = pd->modules;
 	struct i2c_board_info *bi;
+	char ch;
 
 	seq_printf(s, "\nplatform data(%s): cfg = %x\n",
 		pd->freeable ? "freeable" : "static", pd->cfg);
@@ -86,16 +179,43 @@ static int camera_debugfs_platform_data(struct seq_file *s)
 			break;
 
 		seq_puts(s, "        {");
+		if ((md->sensor.flags & CAMERA_MODULE_FLAG_TRIED) &&
+			!(md->sensor.flags & CAMERA_MODULE_FLAG_INSTALLED))
+			ch = '#';
+		else
+			ch = ' ';
 		bi = md->sensor.bi;
 		if (bi)
-			seq_printf(s, " sensor %s @%02x,", bi->type, bi->addr);
+			seq_printf(s, "%csensor %s @%02x,",
+				ch, bi->type, bi->addr);
+
+		if ((md->focuser.flags & CAMERA_MODULE_FLAG_TRIED) &&
+			!(md->focuser.flags & CAMERA_MODULE_FLAG_INSTALLED))
+			ch = '#';
+		else
+			ch = ' ';
 		bi = md->focuser.bi;
 		if (bi)
-			seq_printf(s, " focuser %s @%02x,", bi->type, bi->addr);
+			seq_printf(s, "%cfocuser %s @%02x,",
+				ch, bi->type, bi->addr);
+
+		if ((md->flash.flags & CAMERA_MODULE_FLAG_TRIED) &&
+			!(md->flash.flags & CAMERA_MODULE_FLAG_INSTALLED))
+			ch = '#';
+		else
+			ch = ' ';
 		bi = md->flash.bi;
 		if (bi)
-			seq_printf(s, " flash %s @%02x", bi->type, bi->addr);
-		seq_puts(s, " }\n");
+			seq_printf(s, "%cflash %s @%02x",
+				ch, bi->type, bi->addr);
+
+		if (md->flags & CAMERA_MODULE_FLAG_INSTALLED)
+			ch = '*';
+		else if (md->flags & CAMERA_MODULE_FLAG_TRIED)
+			ch = '#';
+		else
+			ch = ' ';
+		seq_printf(s, " }  %c\n", ch);
 		md++;
 	}
 

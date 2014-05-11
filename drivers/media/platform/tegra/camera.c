@@ -19,17 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Implementation
- * --------------
- * The board level details about the device are to be provided in the board
- * file with the <device>_platform_data structure.
- * Standard among NVC kernel drivers in this structure is:
- * .dev_name = The MISC driver name the device registers as.  If not used,
- *	     then the part number of the device is used for the driver name.
- *	     If using the NVC user driver then use the name found in this
- *	     driver under _default_pdata.
- */
-
 #define CAMERA_DEVICE_INTERNAL
 #include <linux/fs.h>
 #include <linux/platform_device.h>
@@ -46,6 +35,8 @@
 #include "t124/t124.h"
 #include <isp.h>
 #include <media/camera.h>
+
+#include "cam_dev/camera_common.h"
 
 static struct camera_platform_data camera_dflt_pdata = {
 	.cfg = 0,
@@ -292,7 +283,6 @@ static int camera_dev_pwr_set(struct camera_info *cam, unsigned long pwr)
 	case NVC_PWR_STDBY_OFF:
 		if (chip->power_off)
 			err |= chip->power_off(cdev);
-		camera_edp_lowest(cdev);
 		break;
 	case NVC_PWR_STDBY:
 	case NVC_PWR_COMM:
@@ -335,7 +325,7 @@ static int camera_dev_pwr_get(struct camera_info *cam, unsigned long arg)
 	return err;
 }
 
-static struct camera_chip *camera_chip_chk(char *name)
+void *camera_chip_chk(char *name)
 {
 	struct camera_chip *ccp;
 
@@ -372,7 +362,7 @@ int camera_chip_add(struct camera_chip *chip)
 }
 EXPORT_SYMBOL_GPL(camera_chip_add);
 
-static int camera_remove_device(struct camera_device *cdev, bool ref_dec)
+static int camera_rm_dev(struct camera_device *cdev, bool ref_dec)
 {
 	dev_dbg(cdev->dev, "%s %s\n", __func__, cdev->name);
 	if (!cdev) {
@@ -398,21 +388,29 @@ static int camera_remove_device(struct camera_device *cdev, bool ref_dec)
 	return 0;
 }
 
-static int camera_free_device(struct camera_info *cam, unsigned long arg)
+int camera_remove_device(struct camera_device *cdev)
 {
-	struct camera_device *cdev = cam->cdev;
-
-	dev_dbg(cam->dev, "%s %lx", __func__, arg);
 	mutex_lock(cam_desc.d_mutex);
-	atomic_set(&cdev->in_use, 0);
+	list_del(&cdev->list);
+	mutex_unlock(cam_desc.d_mutex);
+	return camera_rm_dev(cdev, true);
+}
+
+int camera_free_device(struct camera_device *cam)
+{
+	if (!cam)
+		return -ENODEV;
+	dev_dbg(cam->dev, "%s", __func__);
+	mutex_lock(cam_desc.d_mutex);
+	atomic_set(&cam->in_use, 0);
 	mutex_unlock(cam_desc.d_mutex);
 
 	return 0;
 }
 
-static int camera_new_device(struct camera_info *cam, unsigned long arg)
+void *camera_new_device(
+	struct device *dev, struct camera_device_info *info)
 {
-	struct camera_device_info dev_info;
 	struct camera_device *new_dev;
 	struct camera_device *next_dev;
 	struct camera_chip *c_chip;
@@ -421,45 +419,33 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 	struct i2c_client *client;
 	int err = 0;
 
-	dev_dbg(cam->dev, "%s %lx", __func__, arg);
-	if (copy_from_user(
-		&dev_info, (const void __user *)arg, sizeof(dev_info))) {
-		dev_err(cam_desc.dev, "%s copy_from_user err line %d\n",
-			__func__, __LINE__);
-		err = -EFAULT;
-		goto new_device_end;
-	}
+	dev_dbg(dev, "%s: %s - %d %d %x\n", __func__,
+		info->name, info->type, info->bus, info->addr);
 
-	dev_dbg(cam->dev, "%s - %d %d %x\n",
-		dev_info.name, dev_info.type, dev_info.bus, dev_info.addr);
-
-	c_chip = camera_chip_chk(dev_info.name);
+	c_chip = camera_chip_chk(info->name);
 	if (c_chip == NULL) {
-		dev_err(cam->dev, "%s device %s not found\n",
-			__func__, dev_info.name);
-		err = -ENODEV;
-		goto new_device_end;
+		dev_err(dev, "%s device %s not found\n",
+			__func__, info->name);
+		return ERR_PTR(-ENODEV);
 	}
 
-	adap = i2c_get_adapter(dev_info.bus);
+	adap = i2c_get_adapter(info->bus);
 	if (!adap) {
 		dev_err(cam_desc.dev, "%s no such i2c bus %d\n",
-			__func__, dev_info.bus);
-		err = -ENODEV;
-		goto new_device_end;
+			__func__, info->bus);
+		return ERR_PTR(-ENODEV);
 	}
 
 	new_dev = kzalloc(sizeof(*new_dev), GFP_KERNEL);
 	if (!new_dev) {
 		dev_err(cam_desc.dev, "%s memory low!\n", __func__);
-		err = -ENOMEM;
-		goto new_device_end;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	new_dev->chip = c_chip;
 	memset(&brd, 0, sizeof(brd));
-	strncpy(brd.type, dev_info.name, sizeof(brd.type));
-	brd.addr = dev_info.addr;
+	strncpy(brd.type, info->name, sizeof(brd.type));
+	brd.addr = info->addr;
 
 	mutex_lock(cam_desc.d_mutex);
 
@@ -467,10 +453,10 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 	list_for_each_entry(next_dev, cam_desc.dev_list, list) {
 		if (next_dev->client &&
 			next_dev->client->adapter == adap &&
-			next_dev->client->addr == dev_info.addr) {
+			next_dev->client->addr == info->addr) {
 			dev_dbg(cam_desc.dev,
 				"%s: device already exists.\n", __func__);
-			camera_remove_device(new_dev, false);
+			camera_rm_dev(new_dev, false);
 			if (atomic_xchg(&next_dev->in_use, 1)) {
 				dev_err(cam_desc.dev, "%s device %s BUSY\n",
 					__func__, next_dev->name);
@@ -482,13 +468,13 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 		}
 	}
 
-	of_camera_find_node(cam, adap->nr, &brd);
+	of_camera_find_node(dev, adap->nr, &brd);
 	/* device is not present in the dev_list, add it */
 	client = i2c_new_device(adap, &brd);
 	if (!client) {
 		dev_err(cam_desc.dev,
 			"%s cannot allocate client: %s bus %d, %x\n",
-			__func__, dev_info.name, dev_info.bus, dev_info.addr);
+			__func__, info->name, info->bus, info->addr);
 		err = -EINVAL;
 		goto new_device_err;
 	}
@@ -501,7 +487,9 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 		err = -ENODEV;
 		goto new_device_err;
 	}
-	strncpy(new_dev->name, dev_info.name, sizeof(new_dev->name));
+	strncpy(new_dev->name, info->name, sizeof(new_dev->name));
+	new_dev->of_node =
+		of_camera_get_node(new_dev->dev, info, cam_desc.pdata);
 	INIT_LIST_HEAD(&new_dev->list);
 	mutex_init(&new_dev->mutex);
 	new_dev->client = client;
@@ -517,17 +505,90 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 
 new_device_done:
 	mutex_unlock(cam_desc.d_mutex);
+	return new_dev;
+
+new_device_err:
+	mutex_unlock(cam_desc.d_mutex);
+	camera_rm_dev(new_dev, false);
+
+	return ERR_PTR(err);
+}
+
+static int cam_add_device(struct camera_info *cam, unsigned long arg)
+{
+	struct camera_device_info d_info;
+	struct camera_device *new_dev;
+
+	dev_dbg(cam->dev, "%s %lx", __func__, arg);
+	if (copy_from_user(
+		&d_info, (const void __user *)arg, sizeof(d_info))) {
+		dev_err(cam_desc.dev, "%s copy_from_user err line %d\n",
+			__func__, __LINE__);
+		return -EFAULT;
+	}
+
+	new_dev = camera_new_device(cam->dev, &d_info);
+	if (IS_ERR(new_dev))
+		return PTR_ERR(new_dev);
 
 	cam->cdev = new_dev;
 	cam->dev = new_dev->dev;
 	new_dev->cam = cam;
-	goto new_device_end;
+	return 0;
+}
 
-new_device_err:
-	mutex_unlock(cam_desc.d_mutex);
-	camera_remove_device(new_dev, false);
+static int camera_add_vchip(struct device *dev, unsigned long arg)
+{
+	struct virtual_device d_info;
+	void *pchp;
 
-new_device_end:
+	dev_dbg(dev, "%s\n", __func__);
+
+	if (copy_from_user(
+		&d_info, (const void __user *)arg, sizeof(d_info))) {
+		dev_err(dev, "%s copy_from_user err line %d\n",
+			__func__, __LINE__);
+			return -EFAULT;
+	}
+
+	pchp = virtual_chip_add(dev, &d_info);
+
+	if (IS_ERR(pchp))
+		return PTR_ERR(pchp);
+	return 0;
+}
+
+static int camera_get_dt(struct camera_info *cam, unsigned long arg)
+{
+	struct nvc_param param;
+	void *pdata = NULL;
+	int err;
+
+	dev_dbg(cam->dev, "%s %lx\n", __func__, arg);
+	err = camera_get_params(cam, arg, 1, &param, (void **)&pdata);
+	if (err)
+		goto get_dt_end;
+
+	err = of_camera_get_property(cam, &param, pdata);
+	if (err)
+		goto get_dt_end;
+
+	if (copy_to_user((void __user *)arg, &param, sizeof(param))) {
+		dev_err(cam->dev, "%s copy_to_user err line %d\n",
+			__func__, __LINE__);
+		err = -EFAULT;
+		goto get_dt_end;
+	}
+	if (!err && param.sizeofvalue && param.p_value &&
+		copy_to_user(MAKE_USER_PTR(param.p_value),
+		pdata, param.sizeofvalue)) {
+		dev_err(cam->dev, "%s copy_to_user err line %d\n",
+			__func__, __LINE__);
+		err = -EFAULT;
+	}
+
+get_dt_end:
+	kfree(pdata);
 	return err;
 }
 
@@ -662,7 +723,7 @@ getlayout_end:
 }
 
 static int camera_add_dev_drv(
-	struct camera_info *cam,
+	struct device *dev,
 	struct i2c_adapter *adap,
 	struct camera_board *cb)
 {
@@ -676,22 +737,23 @@ static int camera_add_dev_drv(
 	if (!adap)
 		adap = i2c_get_adapter(cb->busnum);
 	/* validate board of_node */
-	of_camera_find_node(cam, adap->nr, &brd);
+	of_camera_find_node(dev, adap->nr, &brd);
 	if (strlen(brd.type)) {
-		dev_dbg(cam->dev, "%s: installing %s @ %d-%04x\n",
+		dev_dbg(dev, "%s: installing %s @ %d-%04x\n",
 			__func__, brd.type, adap->nr, brd.addr);
 		client = i2c_new_device(adap, &brd);
 		if (!client) {
-			dev_err(cam->dev, "%s add driver %s fail\n",
+			dev_err(dev, "%s add driver %s fail\n",
 				__func__, brd.type);
 			return -EFAULT;
 		}
+		cb->flags |= CAMERA_MODULE_FLAG_INSTALLED;
 	}
 	return 0;
 }
 
 static int camera_add_drv_by_sensor_name(
-	struct camera_info *cam, struct nvc_param *param)
+	struct device *dev, struct nvc_param *param)
 {
 	struct camera_module *cm = cam_desc.pdata->modules;
 	struct i2c_adapter *adap = NULL;
@@ -700,7 +762,7 @@ static int camera_add_drv_by_sensor_name(
 	int err = 0;
 
 	if (param->sizeofvalue > sizeof(ref_name) - 1) {
-		dev_err(cam->dev, "%s driver name too long %d\n",
+		dev_err(dev, "%s driver name too long %d\n",
 			__func__, param->sizeofvalue);
 		err = -EFAULT;
 		goto add_sensor_driver_end;
@@ -709,13 +771,13 @@ static int camera_add_drv_by_sensor_name(
 	memset(ref_name, 0, sizeof(ref_name));
 	if (copy_from_user(ref_name, MAKE_CONSTUSER_PTR(param->p_value),
 		param->sizeofvalue)) {
-		dev_err(cam->dev, "%s copy_from_user err line %d\n",
+		dev_err(dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
 		err = -EFAULT;
 		goto add_sensor_driver_end;
 	}
 
-	dev_dbg(cam->dev, "%s looking for %s on %d\n",
+	dev_dbg(dev, "%s looking for %s on %d\n",
 		__func__, ref_name, param->variant);
 	adap = i2c_get_adapter(param->variant);
 	while (cm) {
@@ -723,19 +785,21 @@ static int camera_add_drv_by_sensor_name(
 		if (!bi || !strlen(bi->type))
 			break;
 
-		dev_dbg(cam->dev, "%s\n", bi->type);
+		dev_dbg(dev, "%s\n", bi->type);
 		if (!strcmp(bi->type, ref_name)) {
-			err = camera_add_dev_drv(cam, adap, &cm->sensor);
+			cm->flags |= CAMERA_MODULE_FLAG_TRIED;
+			err = camera_add_dev_drv(dev, adap, &cm->sensor);
 			if (err)
 				break;
 
-			err = camera_add_dev_drv(cam, adap, &cm->focuser);
+			err = camera_add_dev_drv(dev, adap, &cm->focuser);
 			if (err)
 				break;
 
-			err = camera_add_dev_drv(cam, adap, &cm->flash);
+			err = camera_add_dev_drv(dev, adap, &cm->flash);
 			if (err)
 				break;
+			cm->flags |= CAMERA_MODULE_FLAG_INSTALLED;
 		}
 		cm++;
 	}
@@ -744,31 +808,34 @@ add_sensor_driver_end:
 	return err;
 }
 
-static int camera_add_drv_by_module(
-	struct camera_info *cam, struct nvc_param *param)
+int camera_add_drv_by_module(struct device *dev, int index)
 {
 	struct camera_module *cm;
 	int err;
 
-	if (!cam_desc.pdata->modules ||
-		param->variant >= cam_desc.pdata->mod_num) {
-		dev_err(cam->dev, "%s module %p %d not exists\n",
-			__func__, cam_desc.pdata->modules, param->variant);
+	if (!cam_desc.pdata->modules || index >= cam_desc.pdata->mod_num) {
+		dev_err(dev, "%s module %p %d not exists\n",
+			__func__, cam_desc.pdata->modules, index);
 		return -ENODEV;
 	}
-	dev_dbg(cam->dev, "%s install module %d\n", __func__, param->variant);
-	cm = &cam_desc.pdata->modules[param->variant];
+	dev_dbg(dev, "%s install module %d\n", __func__, index);
+	cm = &cam_desc.pdata->modules[index];
+	cm->flags |= CAMERA_MODULE_FLAG_TRIED;
 
-	err = camera_add_dev_drv(cam, NULL, &cm->sensor);
+	err = camera_add_dev_drv(dev, NULL, &cm->sensor);
 	if (err)
 		return err;
 
-	err = camera_add_dev_drv(cam, NULL, &cm->focuser);
+	err = camera_add_dev_drv(dev, NULL, &cm->focuser);
 	if (err)
 		return err;
 
-	err = camera_add_dev_drv(cam, NULL, &cm->flash);
-	return err;
+	err = camera_add_dev_drv(dev, NULL, &cm->flash);
+	if (err)
+		return err;
+
+	cm->flags |= CAMERA_MODULE_FLAG_INSTALLED;
+	return 0;
 }
 
 static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
@@ -782,8 +849,8 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 		return err;
 
 	if (param.param == 0)
-		return camera_add_drv_by_sensor_name(cam, &param);
-	return camera_add_drv_by_module(cam, &param);
+		return camera_add_drv_by_sensor_name(cam->dev, &param);
+	return camera_add_drv_by_module(cam->dev, param.variant);
 }
 
 static long camera_ioctl(struct file *file,
@@ -797,9 +864,9 @@ static long camera_ioctl(struct file *file,
 		return -ENOTTY;
 
 	cam = file->private_data;
-	if (!cam->cdev && ((cmd == PCLLK_IOCTL_SEQ_WR) ||
-		(cmd == PCLLK_IOCTL_PWR_WR) ||
-		(cmd == PCLLK_IOCTL_PWR_RD))) {
+	if (!cam->cdev && ((cmd == CAMERA_IOCTL_SEQ_WR) ||
+		(cmd == CAMERA_IOCTL_PWR_WR) ||
+		(cmd == CAMERA_IOCTL_PWR_RD))) {
 		dev_err(cam_desc.dev, "%s %x - no device activated.\n",
 			__func__, cmd);
 		err = -ENODEV;
@@ -808,53 +875,50 @@ static long camera_ioctl(struct file *file,
 
 	/* command distributor */
 	switch (_IOC_NR(cmd)) {
-	case _IOC_NR(PCLLK_IOCTL_CHIP_REG):
-		err = virtual_device_add(cam_desc.dev, arg);
+	case _IOC_NR(CAMERA_IOCTL_CHIP_REG):
+		err = camera_add_vchip(cam_desc.dev, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_DEV_REG):
-		err = camera_new_device(cam, arg);
+	case _IOC_NR(CAMERA_IOCTL_DEV_REG):
+		err = cam_add_device(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_DEV_DEL):
-		mutex_lock(cam_desc.d_mutex);
-		list_del(&cam->cdev->list);
-		mutex_unlock(cam_desc.d_mutex);
-		camera_remove_device(cam->cdev, true);
+	case _IOC_NR(CAMERA_IOCTL_DEV_DEL):
+		camera_remove_device(cam->cdev);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_DEV_FREE):
-		err = camera_free_device(cam, arg);
+	case _IOC_NR(CAMERA_IOCTL_DEV_FREE):
+		err = camera_free_device(cam->cdev);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_SEQ_WR):
+	case _IOC_NR(CAMERA_IOCTL_SEQ_WR):
 		err = camera_seq_wr(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_SEQ_RD):
+	case _IOC_NR(CAMERA_IOCTL_SEQ_RD):
 		err = camera_seq_rd(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_PARAM_RD):
+	case _IOC_NR(CAMERA_IOCTL_PARAM_RD):
 		/* err = camera_param_rd(cam, arg); */
 		break;
-	case _IOC_NR(PCLLK_IOCTL_PWR_WR):
+	case _IOC_NR(CAMERA_IOCTL_PWR_WR):
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		err = camera_dev_pwr_set(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_PWR_RD):
+	case _IOC_NR(CAMERA_IOCTL_PWR_RD):
 		err = camera_dev_pwr_get(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_UPDATE):
+	case _IOC_NR(CAMERA_IOCTL_UPDATE):
 		err = camera_update(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_LAYOUT_WR):
+	case _IOC_NR(CAMERA_IOCTL_LAYOUT_WR):
 		err = camera_layout_update(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_LAYOUT_RD):
+	case _IOC_NR(CAMERA_IOCTL_LAYOUT_RD):
 		err = camera_layout_get(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_DRV_ADD):
+	case _IOC_NR(CAMERA_IOCTL_DRV_ADD):
 		err = camera_add_drivers(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_DT_GET):
-		err = of_camera_get_property(cam, arg);
+	case _IOC_NR(CAMERA_IOCTL_DT_GET):
+		err = camera_get_dt(cam, arg);
 		break;
-	case _IOC_NR(PCLLK_IOCTL_MSG):
+	case _IOC_NR(CAMERA_IOCTL_MSG):
 		err = camera_msg(cam, arg);
 		break;
 	default:
@@ -952,10 +1016,7 @@ static int camera_remove(struct platform_device *dev)
 	}
 
 	list_for_each_entry(cdev, cam_desc.dev_list, list) {
-		mutex_lock(cam_desc.d_mutex);
-		list_del(&cdev->list);
-		mutex_unlock(cam_desc.d_mutex);
-		camera_remove_device(cdev, true);
+		camera_remove_device(cdev);
 	}
 
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
@@ -974,7 +1035,7 @@ static int camera_remove(struct platform_device *dev)
 
 static int camera_probe(struct platform_device *dev)
 {
-	struct camera_platform_data *pd;
+	struct camera_platform_data *pd = NULL;
 
 	dev_dbg(&dev->dev, "%s\n", __func__);
 	if (atomic_xchg(&cam_desc.in_use, 1)) {
@@ -987,7 +1048,7 @@ static int camera_probe(struct platform_device *dev)
 	if (dev->dev.of_node) {
 		pd = of_camera_create_pdata(dev);
 		if (IS_ERR(pd))
-			return (int)pd;
+			return PTR_ERR(pd);
 		cam_desc.pdata = pd;
 	} else if (dev->dev.platform_data) {
 		cam_desc.pdata = dev->dev.platform_data;
@@ -1017,6 +1078,8 @@ static int camera_probe(struct platform_device *dev)
 	}
 
 	camera_debugfs_init(&cam_desc);
+	if (pd)
+		camera_module_detect(&cam_desc);
 	camera_ref_init();
 	return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * dev_access.c
+ * dev_access.c - functions to access hw and resources
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
@@ -32,6 +32,7 @@
 #include "t124/t124.h"
 #include <media/nvc.h>
 #include <media/camera.h>
+#include "camera_common.h"
 
 /*#define DEBUG_I2C_TRAFFIC*/
 #ifdef DEBUG_I2C_TRAFFIC
@@ -265,13 +266,6 @@ int camera_dev_parser(
 	u8 flag = 0;
 
 	switch (command) {
-	case CAMERA_TABLE_EDP_STATE:
-		err = camera_edp_req(cdev, val);
-		if (pst)
-			pst->status = cdev->edpc.edp_state;
-		if (err < 0)
-			return err;
-		break;
 	case CAMERA_TABLE_INX_CGATE:
 	case CAMERA_TABLE_INX_CLOCK:
 	{

@@ -22,7 +22,6 @@
 #include <linux/miscdevice.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
-#include <linux/sysedp.h>
 #include <media/nvc.h>
 #endif
 
@@ -56,31 +55,29 @@
 #define CAMERA_TABLE_CLOCK_INDEX_MASK	\
 			((u32)(-1) << (32 - CAMERA_TABLE_CLOCK_INDEX_BITS))
 
-#define PCLLK_IOCTL_CHIP_REG	_IOW('o', 100, struct virtual_device)
-#define PCLLK_IOCTL_DEV_REG	_IOW('o', 104, struct camera_device_info)
-#define PCLLK_IOCTL_DEV_DEL	_IOW('o', 105, int)
-#define PCLLK_IOCTL_DEV_FREE	_IOW('o', 106, int)
-#define PCLLK_IOCTL_PWR_WR	_IOW('o', 108, int)
-#define PCLLK_IOCTL_PWR_RD	_IOR('o', 109, int)
-#define PCLLK_IOCTL_SEQ_WR	_IOWR('o', 112, struct nvc_param)
-#define PCLLK_IOCTL_SEQ_RD	_IOWR('o', 113, struct nvc_param)
-#define PCLLK_IOCTL_UPDATE	_IOW('o', 116, struct nvc_param)
-#define PCLLK_IOCTL_LAYOUT_WR	_IOW('o', 120, struct nvc_param)
-#define PCLLK_IOCTL_LAYOUT_RD	_IOWR('o', 121, struct nvc_param)
-#define PCLLK_IOCTL_PARAM_WR	_IOWR('o', 140, struct nvc_param)
-#define PCLLK_IOCTL_PARAM_RD	_IOWR('o', 141, struct nvc_param)
-#define PCLLK_IOCTL_DRV_ADD	_IOW('o', 150, struct nvc_param)
-#define PCLLK_IOCTL_DT_GET	_IOWR('o', 160, struct nvc_param)
-#define PCLLK_IOCTL_MSG		_IOWR('o', 170, struct nvc_param)
+#define CAMERA_IOCTL_CHIP_REG	_IOW('o', 100, struct virtual_device)
+#define CAMERA_IOCTL_DEV_REG	_IOW('o', 104, struct camera_device_info)
+#define CAMERA_IOCTL_DEV_DEL	_IOW('o', 105, int)
+#define CAMERA_IOCTL_DEV_FREE	_IOW('o', 106, int)
+#define CAMERA_IOCTL_PWR_WR	_IOW('o', 108, int)
+#define CAMERA_IOCTL_PWR_RD	_IOR('o', 109, int)
+#define CAMERA_IOCTL_SEQ_WR	_IOWR('o', 112, struct nvc_param)
+#define CAMERA_IOCTL_SEQ_RD	_IOWR('o', 113, struct nvc_param)
+#define CAMERA_IOCTL_UPDATE	_IOW('o', 116, struct nvc_param)
+#define CAMERA_IOCTL_LAYOUT_WR	_IOW('o', 120, struct nvc_param)
+#define CAMERA_IOCTL_LAYOUT_RD	_IOWR('o', 121, struct nvc_param)
+#define CAMERA_IOCTL_PARAM_WR	_IOWR('o', 140, struct nvc_param)
+#define CAMERA_IOCTL_PARAM_RD	_IOWR('o', 141, struct nvc_param)
+#define CAMERA_IOCTL_DRV_ADD	_IOW('o', 150, struct nvc_param)
+#define CAMERA_IOCTL_DT_GET	_IOWR('o', 160, struct nvc_param)
+#define CAMERA_IOCTL_MSG		_IOWR('o', 170, struct nvc_param)
 
-#define CAMERA_MAX_EDP_ENTRIES  16
 #define CAMERA_MAX_NAME_LENGTH	32
 #define CAMDEV_INVALID		0xffffffff
 
 #define	CAMERA_SEQ_STATUS_MASK	0xf0000000
 #define	CAMERA_SEQ_INDEX_MASK	0x0000ffff
 #define	CAMERA_SEQ_FLAG_MASK	(~CAMERA_SEQ_INDEX_MASK)
-#define	CAMERA_SEQ_FLAG_EDP	0x80000000
 
 #define CAMERA_DT_HANDLE_MASK		0xffff00
 #define CAMERA_DT_HANDLE_PROFILE	0x000000
@@ -140,11 +137,6 @@ struct gpio_cfg {
 	u8 reserved;
 };
 
-struct edp_cfg {
-	uint estates[CAMERA_MAX_EDP_ENTRIES];
-	uint num;
-};
-
 #define VIRTUAL_DEV_MAX_REGULATORS	8
 #define VIRTUAL_DEV_MAX_GPIOS		8
 #define VIRTUAL_REGNAME_SIZE		(VIRTUAL_DEV_MAX_REGULATORS * \
@@ -192,21 +184,6 @@ enum {
 	DEVICE_MAX_NUM,
 };
 
-struct cam_device_layout {
-	__u64 guid;
-	__u8 name[CAMERA_MAX_NAME_LENGTH];
-	__u8 type;
-	__u8 alt_name[CAMERA_MAX_NAME_LENGTH];
-	__u8 pos;
-	__u8 bus;
-	__u8 addr;
-	__u8 addr_byte;
-	__u32 dev_id;
-	__u32 index;
-	__u32 reserved1;
-	__u32 reserved2;
-};
-
 struct camera_property_info {
 	u8 name[CAMERA_MAX_NAME_LENGTH];
 	u32 type;
@@ -214,94 +191,11 @@ struct camera_property_info {
 
 #ifdef __KERNEL__
 
-#define NUM_OF_SEQSTACK		16
-#define SIZEOF_I2C_BUF		32
-#define CAMERA_REGCACHE_MAX (128)
-
-struct camera_device;
+#define CAMERA_REGCACHE_MAX		(128)
 
 struct camera_data_blob {
 	char *name;
 	void *data;
-};
-
-struct camera_board {
-	int busnum;
-	const char *chipname;
-	struct i2c_board_info *bi;
-};
-
-struct camera_module {
-	struct camera_board sensor;
-	struct camera_board focuser;
-	struct camera_board flash;
-	struct device_node *of_node;
-};
-
-struct camera_platform_data {
-	unsigned cfg;
-	struct camera_module *modules;
-	struct camera_data_blob *lut;
-	struct device_node *of_profiles;
-	uint prof_num;
-	uint mod_num;
-	uint max_blob_size;
-	bool freeable;
-};
-
-struct camera_edp_cfg {
-	struct sysedp_consumer *edp_client;
-	unsigned edp_state;
-	uint estates[CAMERA_MAX_EDP_ENTRIES];
-	uint num;
-};
-
-struct camera_seq_status {
-	u32 idx;
-	u32 status;
-};
-
-struct camera_device {
-	struct list_head list;
-	u8 name[CAMERA_MAX_NAME_LENGTH];
-	struct device *dev;
-	struct i2c_client *client;
-	struct camera_chip *chip;
-	struct regmap *regmap;
-	struct camera_info *cam;
-	atomic_t in_use;
-	struct mutex mutex;
-	struct camera_edp_cfg edpc;
-	struct clk **clks;
-	u32 num_clk;
-	struct nvc_regulator *regs;
-	u32 num_reg;
-	struct nvc_gpio *gpios;
-	u32 num_gpio;
-	u32 mclk_enable_idx;
-	u32 mclk_disable_idx;
-	struct regulator *ext_regs;
-	struct camera_reg *seq_stack[NUM_OF_SEQSTACK];
-	int pwr_state;
-	u8 is_power_on;
-	u8 i2c_buf[SIZEOF_I2C_BUF];
-};
-
-struct camera_chip {
-	const u8			name[CAMERA_MAX_NAME_LENGTH];
-	u32				type;
-	const struct regmap_config	regmap_cfg;
-	struct list_head		list;
-	atomic_t			ref_cnt;
-	void				*private;
-	/* function pointers */
-	int	(*init)(struct camera_device *cdev, void *);
-	int	(*release)(struct camera_device *cdev);
-	int	(*power_on)(struct camera_device *cdev);
-	int	(*power_off)(struct camera_device *cdev);
-	int	(*shutdown)(struct camera_device *cdev);
-	int	(*update)(struct camera_device *cdev,
-			struct cam_update *upd, int num);
 };
 
 struct camera_sync_dev {
@@ -312,8 +206,6 @@ struct camera_sync_dev {
 	struct list_head list;
 };
 
-int camera_chip_add(struct camera_chip *chip);
-
 int camera_dev_sync_init(void);
 void camera_dev_sync_cb(void *stub);
 extern int camera_dev_sync_clear(struct camera_sync_dev *csyncdev);
@@ -321,71 +213,6 @@ extern int camera_dev_sync_wr_add(
 	struct camera_sync_dev *csyncdev, u32 offset, u32 val);
 extern int camera_dev_add_regmap(
 	struct camera_sync_dev **csyncdev, u8 *name, struct regmap *regmap);
-
-#ifdef CAMERA_DEVICE_INTERNAL
-
-struct camera_info {
-	struct list_head list;
-	atomic_t in_use;
-	struct device *dev;
-	struct mutex k_mutex;
-	struct camera_device *cdev;
-};
-
-struct camera_platform_info {
-	char dname[CAMERA_MAX_NAME_LENGTH];
-	struct miscdevice miscdev;
-	atomic_t in_use;
-	struct device *dev;
-	struct camera_platform_data *pdata;
-	struct mutex *u_mutex;
-	struct list_head *app_list;
-	struct mutex *d_mutex;
-	struct list_head *dev_list;
-	struct mutex *c_mutex;
-	struct list_head *chip_list;
-	struct dentry *d_entry;
-	void *layout;
-	size_t size_layout;
-};
-
-/* common functions */
-int virtual_device_add(struct device *, unsigned long);
-int camera_regulator_get(struct device *, struct nvc_regulator *, char *);
-
-/* device access functions */
-int camera_dev_parser(
-	struct camera_device *, u32, u32 *, struct camera_seq_status *
-);
-int camera_dev_wr_table(
-	struct camera_device *, struct camera_reg *, struct camera_seq_status *
-);
-int camera_dev_rd_table(struct camera_device *, struct camera_reg *);
-
-/* edp functions */
-void camera_edp_register(
-	struct camera_device *
-);
-int camera_edp_req(
-	struct camera_device *, unsigned
-);
-void camera_edp_lowest(
-	struct camera_device *
-);
-
-/* debugfs functions */
-int camera_debugfs_init(
-	struct camera_platform_info *
-);
-int camera_debugfs_remove(void);
-
-/* device tree parser functions */
-int of_camera_init(struct camera_platform_info *);
-int of_camera_get_property(struct camera_info *, unsigned long);
-struct camera_platform_data *of_camera_create_pdata(struct platform_device *);
-int of_camera_find_node(struct camera_info *, int, struct i2c_board_info *);
-
-#endif
 
 #endif
 #endif
