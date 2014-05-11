@@ -3026,10 +3026,9 @@ static const struct tegra_function tegra124_functions[] = {
 #define DRV_PINGROUP_DVRTYPE_Y(r) ((r) - DRV_PINGROUP_REG_A)
 #define DRV_PINGROUP_DVRTYPE_N(r) -1
 
-#define DRV_PINGROUP(pg_name, r, hsm_b, schmitt_b, lpmd_b,	\
-		     drvdn_b, drvdn_w, drvup_b, drvup_w,	\
-		     slwr_b, slwr_w, slwf_b, slwf_w,		\
-		     drvtype)					\
+#define DRV_PINGROUP(pg_name, r, hsm_b, schmitt_b, drvdn_b,	\
+		drvdn_w, drvup_b, drvup_w, slwr_b, slwr_w,	\
+		slwf_b, slwf_w,	drvtype)			\
 	{							\
 		.name = "drive_" #pg_name,			\
 		.pins = drive_##pg_name##_pins,			\
@@ -3046,7 +3045,7 @@ static const struct tegra_function tegra124_functions[] = {
 		.drv_bank = 0,					\
 		.hsm_bit = hsm_b,				\
 		.schmitt_bit = schmitt_b,			\
-		.lpmd_bit = lpmd_b,				\
+		.lpmd_bit = -1,					\
 		.drvdn_bit = drvdn_b,				\
 		.drvdn_width = drvdn_w,				\
 		.drvup_bit = drvup_b,				\
@@ -3256,47 +3255,47 @@ static const struct tegra_pingroup tegra124_groups[] = {
 	PINGROUP(pff2,			SATA,		RSVD2,		RSVD3,		RSVD4,		RSVD2,		0x3418,  Y,  N,  N),
 	PINGROUP(dp_hpd_pff0,		DP,		RSVD2,		RSVD3,		RSVD4,		DP,		0x3430,  N,  N,  N),
 
-	/* pg_name, r, hsm_b, schmitt_b, lpmd_b, drvdn_b, drvdn_w, drvup_b, drvup_w, slwr_b, slwr_w, slwf_b, slwf_w, drvtype */
-	DRV_PINGROUP(ao1,   0x868,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(ao2,   0x86c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(at1,   0x870,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(at2,   0x874,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(at3,   0x878,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(at4,   0x87c,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(at5,   0x880,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(cdev1, 0x884,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(cdev2, 0x888,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dap1,  0x890,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dap2,  0x894,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dap3,  0x898,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dap4,  0x89c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dbg,   0x8a0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(sdio3, 0x8b0,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(spi,   0x8b4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(uaa,   0x8b8,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(uab,   0x8bc,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(uart2, 0x8c0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(uart3, 0x8c4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(sdio1, 0x8ec,  2,  3, -1,  12,  7,  20,  7,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(ddc,   0x8fc,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gma,   0x900,  2,  3,  4,  14,  5,  20,  5,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(gme,   0x910,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gmf,   0x914,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gmg,   0x918,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gmh,   0x91c,  2,  3,  4,  14,  5,  19,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(owr,   0x920,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(uda,   0x924,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(gpv,   0x928,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(dev3,  0x92c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(cec,   0x938,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(at6,   0x994,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
-	DRV_PINGROUP(dap5,  0x998,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(usb_vbus_en,  0x99c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(ao3,   0x9a8,  2,  3,  4,  12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
-	DRV_PINGROUP(ao0,   0x9b0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(hv0,   0x9b4,  2,  3,  4,  12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
-	DRV_PINGROUP(sdio4, 0x9c4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(ao4,   0x9c8,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	/* pg_name, r, hsm_b, schmitt_b,  drvdn_b, drvdn_w, drvup_b, drvup_w, slwr_b, slwr_w, slwf_b, slwf_w, drvtype */
+	DRV_PINGROUP(ao1,   0x868,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(ao2,   0x86c,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(at1,   0x870,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(at2,   0x874,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(at3,   0x878,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(at4,   0x87c,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(at5,   0x880,  2,  3, 14,  5,  19,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(cdev1, 0x884,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(cdev2, 0x888,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dap1,  0x890,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dap2,  0x894,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dap3,  0x898,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dap4,  0x89c,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dbg,   0x8a0,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(sdio3, 0x8b0,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(spi,   0x8b4,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(uaa,   0x8b8,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(uab,   0x8bc,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(uart2, 0x8c0,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(uart3, 0x8c4,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(sdio1, 0x8ec,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(ddc,   0x8fc,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(gma,   0x900,  2,  3, 14,  5,  20,  5,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(gme,   0x910,  2,  3, 14,  5,  19,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(gmf,   0x914,  2,  3, 14,  5,  19,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(gmg,   0x918,  2,  3, 14,  5,  19,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(gmh,   0x91c,  2,  3, 14,  5,  19,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(owr,   0x920,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(uda,   0x924,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(gpv,   0x928,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(dev3,  0x92c,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(cec,   0x938,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(at6,   0x994,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
+	DRV_PINGROUP(dap5,  0x998,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(usb_vbus_en,  0x99c,  2,  3,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(ao3,   0x9a8,  2,  3, 12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
+	DRV_PINGROUP(ao0,   0x9b0,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(hv0,   0x9b4,  2,  3, 12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
+	DRV_PINGROUP(sdio4, 0x9c4,  2,  3, 12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(ao4,   0x9c8,  2,  3, 12,  7,  20,  7,  28,  2,  30,  2,  Y),
 
 };
 
@@ -3351,18 +3350,18 @@ static void tegra124_pinctrl_resume(u32 *pg_data)
 }
 
 static struct tegra_pinctrl_group_config_data t124_pin_drv_group_soc_data[] = {
-	TEGRA_PINCTRL_SET_DRIVE(dap2, 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(dap1, 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(dap3, 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(dap4, 0, 1, 3, 5, 6, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(dap5, 0, 1, 3, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap2, 0, 1, 0, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap1, 0, 1, 0, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap3, 0, 1, 0, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap4, 0, 1, 0, 5, 6, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(dap5, 0, 1, 0, 5, 6, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(dbg, 1, 1, 0, 5, 5, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(at5, 1, 1, 0, 5, 5, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(gme, 1, 1, 0, 5, 5, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(ddc, 1, 1, 0, 5, 5, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(ao1, 1, 1, 0, 5, 5, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(uart2, 0, 0, 3, 0, 0, 3, 3, 0),
-	TEGRA_PINCTRL_SET_DRIVE(uart3, 0, 0, 3, 0, 0, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uart2, 0, 0, 0, 0, 0, 3, 3, 0),
+	TEGRA_PINCTRL_SET_DRIVE(uart3, 0, 0, 0, 0, 0, 3, 3, 0),
 	TEGRA_PINCTRL_SET_DRIVE(at2, 0, 0, 0, 55, 63, 0, 0, 0),
 	TEGRA_PINCTRL_SET_DRIVE(uda, 0, 0, 0, 23, 23, 3, 3, 0),
 	TEGRA_PINCTRL_SET_DRIVE(uaa, 0, 0, 0, 23, 23, 3, 3, 0),
