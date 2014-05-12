@@ -1666,7 +1666,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	/* create the pdata from DT information */
 	pm_dat = tegra_get_pm_data();
 	if (pm_dat) {
-		pr_err("PMC dt information non-NULL %s\n", __func__);
+		pr_debug("PMC dt information non-NULL %s\n", __func__);
 		is_board_pdata = false;
 		pdata = kzalloc(sizeof(struct tegra_suspend_platform_data),
 			GFP_KERNEL);
