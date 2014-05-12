@@ -62,7 +62,7 @@
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
 
-unsigned int elf_hwcap __read_mostly;
+unsigned long elf_hwcap __read_mostly;
 EXPORT_SYMBOL_GPL(elf_hwcap);
 
 #ifdef CONFIG_COMPAT
@@ -191,17 +191,17 @@ static void __init smp_build_mpidr_hash(void)
 	__flush_dcache_area(&mpidr_hash, sizeof(struct mpidr_hash));
 }
 #endif
+bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
+{
+	return phys_id == cpu_logical_map(cpu);
+}
 
 static void __init setup_processor(void)
 {
 	struct cpu_info *cpu_info;
 	u64 reg_value;
+	u64 features, block;
 
-	/*
-	 * locate processor in the list of supported processor
-	 * types.  The linker builds this table for us from the
-	 * entries in arch/arm/mm/proc.S
-	 */
 	cpu_info = lookup_processor_type(read_cpuid_id());
 	if (!cpu_info) {
 		pr_info("CPU configuration botched (ID %08x), unable to continue.\n",
@@ -214,11 +214,13 @@ static void __init setup_processor(void)
 	pr_info("CPU: %s [%08x] revision %d\n",
 	       cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
 
-	sprintf(init_utsname()->machine, "aarch64");
+	sprintf(init_utsname()->machine, ELF_PLATFORM);
 	elf_hwcap = 0;
 
 	/* Read the number of ASID bits */
-	reg_value = read_cpuid(ID_AA64MMFR0_EL1) & 0xf0;
+	reg_value = read_cpuid(ID_AA64MMFR0_EL1);
+	features=reg_value;
+	reg_value=reg_value & 0xf0;
 	if (reg_value == 0x00)
 		max_asid_bits = 8;
 	else if (reg_value == 0x20)
@@ -226,6 +228,35 @@ static void __init setup_processor(void)
 	else
 		BUG_ON(1);
 	cpu_last_asid = 1 << max_asid_bits;
+	/*
+	 * ID_AA64ISAR0_EL1 contains 4-bit wide signed feature blocks.
+	 * The blocks we test below represent incremental functionality
+	 * for non-negative values. Negative values are reserved.
+	 */
+	block = (features >> 4) & 0xf;
+	if (!(block & 0x8)) {
+		switch (block) {
+		default:
+		case 2:
+			elf_hwcap |= HWCAP_PMULL;
+		case 1:
+			elf_hwcap |= HWCAP_AES;
+		case 0:
+			break;
+		}
+	}
+
+	block = (features >> 8) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_SHA1;
+
+	block = (features >> 12) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_SHA2;
+
+	block = (features >> 16) & 0xf;
+	if (block && !(block & 0x8))
+		elf_hwcap |= HWCAP_CRC32;
 }
 
 static struct machine_desc * __init setup_machine_fdt(phys_addr_t dt_phys)
@@ -306,29 +337,6 @@ static struct machine_desc * __init setup_machine_fdt(phys_addr_t dt_phys)
 	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
 
 	return mdesc_best;
-}
-
-void __init early_init_dt_add_memory_arch(u64 base, u64 size)
-{
-	base &= PAGE_MASK;
-	size &= PAGE_MASK;
-	if (base + size < PHYS_OFFSET) {
-		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
-			   base, base + size);
-		return;
-	}
-	if (base < PHYS_OFFSET) {
-		pr_warning("Ignoring memory range 0x%llx - 0x%llx\n",
-			   base, PHYS_OFFSET);
-		size -= PHYS_OFFSET - base;
-		base = PHYS_OFFSET;
-	}
-	memblock_add(base, size);
-}
-
-void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
-{
-	return __va(memblock_alloc(size, align));
 }
 
 /*
@@ -465,6 +473,11 @@ static const char *hwcap_str[] = {
 	"fp",
 	"asimd",
 	"evtstrm",
+	"aes",
+	"pmull",
+	"sha1",
+	"sha2",
+	"crc32",
 	NULL
 };
 

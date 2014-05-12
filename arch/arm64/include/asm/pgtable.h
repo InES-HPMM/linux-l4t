@@ -25,10 +25,11 @@
  * Software defined PTE bits definition.
  */
 #define PTE_VALID		(_AT(pteval_t, 1) << 0)
-#define PTE_PROT_NONE		(_AT(pteval_t, 1) << 1)	/* only when !PTE_VALID */
 #define PTE_FILE		(_AT(pteval_t, 1) << 2)	/* only when !pte_present() */
 #define PTE_DIRTY		(_AT(pteval_t, 1) << 55)
 #define PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
+#define PTE_WRITE		(_AT(pteval_t, 1) << 57)
+#define PTE_PROT_NONE		(_AT(pteval_t, 1) << 58) /* only when !PTE_VALID */
 
 /*
  * Some extra PTE bits definition.
@@ -40,7 +41,7 @@
 /*
  * VMALLOC and SPARSEMEM_VMEMMAP ranges.
  */
-#define VMALLOC_START		UL(0xffffff8000000000)
+#define VMALLOC_START		(UL(0xffffffffffffffff) << VA_BITS)
 #define VMALLOC_END		(PAGE_OFFSET - UL(0x400000000) - SZ_64K)
 
 #define vmemmap			((struct page *)(VMALLOC_END + SZ_64K))
@@ -148,26 +149,57 @@ extern unsigned long zero_page_mask;
 /*
  * The following only work if pte_present(). Undefined behaviour otherwise.
  */
-#define pte_present(pte)	(pte_val(pte) & (PTE_VALID | PTE_PROT_NONE))
-#define pte_dirty(pte)		(pte_val(pte) & PTE_DIRTY)
-#define pte_young(pte)		(pte_val(pte) & PTE_AF)
-#define pte_special(pte)	(pte_val(pte) & PTE_SPECIAL)
-#define pte_write(pte)		(!(pte_val(pte) & PTE_RDONLY))
+#define pte_present(pte)	(!!(pte_val(pte) & (PTE_VALID | PTE_PROT_NONE)))
+#define pte_dirty(pte)		(!!(pte_val(pte) & PTE_DIRTY))
+#define pte_young(pte)		(!!(pte_val(pte) & PTE_AF))
+#define pte_special(pte)	(!!(pte_val(pte) & PTE_SPECIAL))
+#define pte_write(pte)		(!!(pte_val(pte) & PTE_WRITE))
 #define pte_exec(pte)		(!(pte_val(pte) & PTE_UXN))
 
 #define pte_valid_user(pte) \
 	((pte_val(pte) & (PTE_VALID | PTE_USER)) == (PTE_VALID | PTE_USER))
 
-#define PTE_BIT_FUNC(fn,op) \
-static inline pte_t pte_##fn(pte_t pte) { pte_val(pte) op; return pte; }
+static inline pte_t pte_wrprotect(pte_t pte)
+{
+	pte_val(pte) &= ~PTE_WRITE;
+	return pte;
+}
 
-PTE_BIT_FUNC(wrprotect, |= PTE_RDONLY);
-PTE_BIT_FUNC(mkwrite,   &= ~PTE_RDONLY);
-PTE_BIT_FUNC(mkclean,   &= ~PTE_DIRTY);
-PTE_BIT_FUNC(mkdirty,   |= PTE_DIRTY);
-PTE_BIT_FUNC(mkold,     &= ~PTE_AF);
-PTE_BIT_FUNC(mkyoung,   |= PTE_AF);
-PTE_BIT_FUNC(mkspecial, |= PTE_SPECIAL);
+static inline pte_t pte_mkwrite(pte_t pte)
+{
+	pte_val(pte) |= PTE_WRITE;
+	return pte;
+}
+
+static inline pte_t pte_mkclean(pte_t pte)
+{
+	pte_val(pte) &= ~PTE_DIRTY;
+	return pte;
+}
+
+static inline pte_t pte_mkdirty(pte_t pte)
+{
+	pte_val(pte) |= PTE_DIRTY;
+	return pte;
+}
+
+static inline pte_t pte_mkold(pte_t pte)
+{
+	pte_val(pte) &= ~PTE_AF;
+	return pte;
+}
+
+static inline pte_t pte_mkyoung(pte_t pte)
+{
+	pte_val(pte) |= PTE_AF;
+	return pte;
+}
+
+static inline pte_t pte_mkspecial(pte_t pte)
+{
+	pte_val(pte) |= PTE_SPECIAL;
+	return pte;
+}
 
 static inline void set_pte(pte_t *ptep, pte_t pte)
 {
@@ -182,8 +214,10 @@ static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
 	if (pte_valid_user(pte)) {
 		if (pte_exec(pte))
 			__sync_icache_dcache(pte, addr);
-		if (!pte_dirty(pte))
-			pte = pte_wrprotect(pte);
+		if (pte_dirty(pte) && pte_write(pte))
+			pte_val(pte) &= ~PTE_RDONLY;
+		else
+			pte_val(pte) |= PTE_RDONLY;
 	}
 
 	set_pte(ptep, pte);
@@ -287,7 +321,7 @@ static inline pmd_t *pmd_offset(pud_t *pud, unsigned long addr)
 static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
 {
 	const pteval_t mask = PTE_USER | PTE_PXN | PTE_UXN | PTE_RDONLY |
-			      PTE_PROT_NONE | PTE_VALID;
+			      PTE_PROT_NONE | PTE_VALID | PTE_WRITE;
 	pte_val(pte) = (pte_val(pte) & ~mask) | (pgprot_val(newprot) & mask);
 	return pte;
 }
@@ -303,15 +337,17 @@ extern pgd_t idmap_pg_dir[PTRS_PER_PGD];
  *	bits 0-1:	present (must be zero)
  *	bit  2:		PTE_FILE
  *	bits 3-8:	swap type
- *	bits 9-63:	swap offset
+ *	bits 9-57:	swap offset
  */
 #define __SWP_TYPE_SHIFT	3
 #define __SWP_TYPE_BITS		6
+#define __SWP_OFFSET_BITS	49
 #define __SWP_TYPE_MASK		((1 << __SWP_TYPE_BITS) - 1)
 #define __SWP_OFFSET_SHIFT	(__SWP_TYPE_BITS + __SWP_TYPE_SHIFT)
+#define __SWP_OFFSET_MASK	((1UL << __SWP_OFFSET_BITS) - 1)
 
 #define __swp_type(x)		(((x).val >> __SWP_TYPE_SHIFT) & __SWP_TYPE_MASK)
-#define __swp_offset(x)		((x).val >> __SWP_OFFSET_SHIFT)
+#define __swp_offset(x)		(((x).val >> __SWP_OFFSET_SHIFT) & __SWP_OFFSET_MASK)
 #define __swp_entry(type,offset) ((swp_entry_t) { ((type) << __SWP_TYPE_SHIFT) | ((offset) << __SWP_OFFSET_SHIFT) })
 
 #define __pte_to_swp_entry(pte)	((swp_entry_t) { pte_val(pte) })
@@ -327,13 +363,13 @@ extern pgd_t idmap_pg_dir[PTRS_PER_PGD];
  * Encode and decode a file entry:
  *	bits 0-1:	present (must be zero)
  *	bit  2:		PTE_FILE
- *	bits 3-63:	file offset / PAGE_SIZE
+ *	bits 3-57:	file offset / PAGE_SIZE
  */
 #define pte_file(pte)		(pte_val(pte) & PTE_FILE)
 #define pte_to_pgoff(x)		(pte_val(x) >> 3)
 #define pgoff_to_pte(x)		__pte(((x) << 3) | PTE_FILE)
 
-#define PTE_FILE_MAX_BITS	61
+#define PTE_FILE_MAX_BITS	55
 
 extern int kern_addr_valid(unsigned long addr);
 

@@ -9,7 +9,7 @@ AFLAGS_head.o		:= -DTEXT_OFFSET=$(TEXT_OFFSET)
 arm64-obj-y		:= cputable.o debug-monitors.o entry.o irq.o fpsimd.o	\
 			   entry-fpsimd.o process.o ptrace.o setup.o signal.o	\
 			   sys.o stacktrace.o time.o traps.o io.o vdso.o	\
-			   hyp-stub.o psci.o opcodes.o cpu_ops.o
+			   hyp-stub.o psci.o opcodes.o cpu_ops.o insn.o
 
 arm64-obj-$(CONFIG_COMPAT)		+= sys32.o kuser32.o signal32.o	\
 					   sys_compat.o
@@ -23,6 +23,7 @@ arm64-obj-$(CONFIG_ARM_CPU_SUSPEND)	+= sleep.o suspend.o
 
 obj-$(CONFIG_PCI)               += bios32.o
 obj-$(CONFIG_SWP_EMULATE)	+= swp_emulate.o
+arm64-obj-$(CONFIG_JUMP_LABEL)		+= jump_label.o
 
 obj-y					+= $(arm64-obj-y) vdso/
 obj-m					+= $(arm64-obj-m)

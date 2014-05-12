@@ -6,9 +6,16 @@
  * preempt_count (used for kernel preemption, interrupt count, etc.)
  */
 
-#include <linux/thread_info.h>
 #include <linux/linkage.h>
 #include <linux/list.h>
+
+/*
+ * We use the MSB mostly because its available; see <linux/preempt_mask.h> for
+ * the other bits -- can't include that header due to inclusion hell.
+ */
+#define PREEMPT_NEED_RESCHED	0x80000000
+
+#include <asm/preempt.h>
 
 #if defined(CONFIG_DEBUG_PREEMPT) || defined(CONFIG_PREEMPT_TRACER)
   extern void add_preempt_count(int val);

@@ -252,10 +252,14 @@ static inline void arch_spin_unlock(arch_spinlock_t *lock)
 	: "memory");
 }
 
+static inline int arch_spin_value_unlocked(arch_spinlock_t lock)
+{
+	return lock.owner == lock.next;
+}
+
 static inline int arch_spin_is_locked(arch_spinlock_t *lock)
 {
-	arch_spinlock_t lockval = ACCESS_ONCE(*lock);
-	return lockval.owner != lockval.next;
+	return !arch_spin_value_unlocked(ACCESS_ONCE(*lock));
 }
 
 static inline int arch_spin_is_contended(arch_spinlock_t *lock)
@@ -288,7 +292,7 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 	"	cbnz	%w0, 2b\n"
 	: "=&r" (tmp), "+Q" (rw->lock)
 	: "r" (0x80000000)
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline int arch_write_trylock(arch_rwlock_t *rw)
@@ -302,7 +306,7 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 	"1:\n"
 	: "=&r" (tmp), "+Q" (rw->lock)
 	: "r" (0x80000000)
-	: "cc", "memory");
+	: "memory");
 
 	return !tmp;
 }
@@ -343,7 +347,7 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 	"	cbnz	%w1, 2b\n"
 	: "=&r" (tmp), "=&r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline void arch_read_unlock(arch_rwlock_t *rw)
@@ -357,7 +361,7 @@ static inline void arch_read_unlock(arch_rwlock_t *rw)
 	"	cbnz	%w1, 1b\n"
 	: "=&r" (tmp), "=&r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 }
 
 static inline int arch_read_trylock(arch_rwlock_t *rw)
@@ -372,7 +376,7 @@ static inline int arch_read_trylock(arch_rwlock_t *rw)
 	"1:\n"
 	: "=&r" (tmp), "+r" (tmp2), "+Q" (rw->lock)
 	:
-	: "cc", "memory");
+	: "memory");
 
 	return !tmp2;
 }

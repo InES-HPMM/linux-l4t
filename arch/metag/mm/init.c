@@ -12,7 +12,6 @@
 #include <linux/percpu.h>
 #include <linux/memblock.h>
 #include <linux/initrd.h>
-#include <linux/of_fdt.h>
 
 #include <asm/setup.h>
 #include <asm/page.h>
@@ -417,12 +416,3 @@ void free_initrd_mem(unsigned long start, unsigned long end)
 	free_reserved_area(start, end, POISON_FREE_INITMEM, "initrd");
 }
 #endif
-
-#ifdef CONFIG_OF_FLATTREE
-void __init early_init_dt_setup_initrd_arch(unsigned long start,
-					    unsigned long end)
-{
-	pr_err("%s(%lx, %lx)\n",
-	       __func__, start, end);
-}
-#endif /* CONFIG_OF_FLATTREE */

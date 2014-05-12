@@ -544,20 +544,34 @@ void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 	memblock_add(base, size);
 }
 
-void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
+static void __init early_reserve_mem_dt(void)
 {
-	return __va(memblock_alloc(size, align));
-}
+	unsigned long i, len, dt_root;
+	const __be32 *prop;
 
-#ifdef CONFIG_BLK_DEV_INITRD
-void __init early_init_dt_setup_initrd_arch(unsigned long start,
-		unsigned long end)
-{
-	initrd_start = (unsigned long)__va(start);
-	initrd_end = (unsigned long)__va(end);
-	initrd_below_start_ok = 1;
+	dt_root = of_get_flat_dt_root();
+
+	prop = of_get_flat_dt_prop(dt_root, "reserved-ranges", &len);
+
+	if (!prop)
+		return;
+
+	DBG("Found new-style reserved-ranges\n");
+
+	/* Each reserved range is an (address,size) pair, 2 cells each,
+	 * totalling 4 cells per range. */
+	for (i = 0; i < len / (sizeof(*prop) * 4); i++) {
+		u64 base, size;
+
+		base = of_read_number(prop + (i * 4) + 0, 2);
+		size = of_read_number(prop + (i * 4) + 2, 2);
+
+		if (size) {
+			DBG("reserving: %llx -> %llx\n", base, size);
+			memblock_reserve(base, size);
+		}
+	}
 }
-#endif
 
 static void __init early_reserve_mem(void)
 {
