@@ -33,7 +33,7 @@
 #include "cpu-tegra.h"
 
 extern unsigned long  debug_uart_port_base;
-extern struct clk *debug_uart_clk;
+static struct clk *debug_uart_clk;
 
 struct platform_device *uart_console_debug_device = NULL;
 

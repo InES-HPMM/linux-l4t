@@ -286,9 +286,4 @@ u32 tegra_restart_prev_smc(void);
 /* The debug channel uart base physical address */
 extern unsigned long  debug_uart_port_base;
 
-extern struct clk *debug_uart_clk;
-void tegra_console_uart_suspend(void);
-void tegra_console_uart_resume(void);
-
-
 #endif /* _MACH_TEGRA_PM_H_ */
