@@ -25,10 +25,12 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/percpu.h>
+#include <linux/syscore_ops.h>
 
 static u32 tegra210_timer_freq;
 static void __iomem *tegra210_timer_reg_base;
 phys_addr_t timer_reg_base_pa = 0x60005000;
+static u32 usec_config;
 
 #define TIMERUS_CNTR_1US 0x10
 #define TIMERUS_USEC_CFG 0x14
@@ -155,6 +157,24 @@ u32 notrace tegra_read_usec_raw(void)
 	return __raw_readl(tegra210_timer_reg_base + TIMERUS_CNTR_1US);
 }
 
+static int tegra_timer_suspend(void)
+{
+	usec_config = __raw_readl(tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+	return 0;
+}
+
+static void tegra_timer_resume(void)
+{
+	__raw_writel(usec_config, tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+}
+
+static struct syscore_ops tegra_timer_syscore_ops = {
+	.suspend = tegra_timer_suspend,
+	.resume = tegra_timer_resume,
+	.save = tegra_timer_suspend,
+	.restore = tegra_timer_resume,
+};
+
 static void __init tegra210_timer_init(struct device_node *np)
 {
 	int cpu;
@@ -236,6 +256,8 @@ static void __init tegra210_timer_init(struct device_node *np)
 		pr_err("%s: cannot setup CPU notifier\n", __func__);
 		BUG();
 	}
+
+	register_syscore_ops(&tegra_timer_syscore_ops);
 
 	of_node_put(np);
 }
