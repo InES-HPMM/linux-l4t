@@ -374,7 +374,8 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	if (current->flags & PF_WQ_WORKER) {
+	if (current->flags &
+	    (PF_WQ_WORKER | PF_NO_SETAFFINITY | PF_KTHREAD)) {
 		struct tlk_smc_work_args work_args;
 		int cpu = cpu_logical_map(smp_processor_id());
 
@@ -382,8 +383,9 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 		work_args.arg1 = (uint32_t)vpr_base;
 		work_args.arg2 = vpr_size;
 
-		/* depending on the CPU, execute directly or sched work */
-		if (cpu == 0)
+		/* workers don't change CPU. depending on the CPU, execute
+		 * directly or sched work */
+		if (cpu == 0 && (current->flags & PF_WQ_WORKER))
 			retval = tlk_generic_smc_on_cpu0(&work_args);
 		else
 			retval = work_on_cpu(0,
