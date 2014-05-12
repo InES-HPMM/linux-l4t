@@ -219,33 +219,19 @@ static void switch_cpumask_to_cpu0(void)
 {
 	long ret;
 	cpumask_t local_cpu_mask = CPU_MASK_NONE;
-	unsigned long flags;
-
-	flags = current->flags;
-	current->flags &= ~PF_NO_SETAFFINITY;
 
 	cpu_set(0, local_cpu_mask);
 	cpumask_copy(&saved_cpu_mask, tsk_cpus_allowed(current));
 	ret = sched_setaffinity(0, &local_cpu_mask);
 	if (ret)
 		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
-
-	current->flags = flags;
 }
 
 static void restore_cpumask(void)
 {
-	unsigned long flags;
-	long ret;
-
-	flags = current->flags;
-	current->flags &= ~PF_NO_SETAFFINITY;
-
-	ret = sched_setaffinity(0, &saved_cpu_mask);
+	long ret = sched_setaffinity(0, &saved_cpu_mask);
 	if (ret)
 		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
-
-	current->flags = flags;
 }
 #else
 static inline void switch_cpumask_to_cpu0(void) {};
