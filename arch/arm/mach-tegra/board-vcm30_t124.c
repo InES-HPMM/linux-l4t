@@ -756,7 +756,9 @@ static void __init tegra_vcm30_t124_late_init(void)
 	vcm30_t124_audio_init();
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
+#ifdef CONFIG_BCM43241
 	vcm30_t124_sdhci_init();
+#endif
 	vcm30_t124_regulator_init();
 	vcm30_t124_suspend_init();
 	isomgr_init();
