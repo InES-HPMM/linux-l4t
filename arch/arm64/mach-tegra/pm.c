@@ -53,6 +53,7 @@
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra-pm.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/tegra_smmu.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -68,7 +69,6 @@
 #include <asm/psci.h>
 
 #include <mach/irqs.h>
-#include <mach/tegra_smmu.h>
 
 #include "board.h"
 #include "clock.h"

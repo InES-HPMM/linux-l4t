@@ -28,8 +28,7 @@
 #include <linux/errno.h>
 #include <linux/power_supply.h>
 #include <linux/memory.h>
-
-#include <mach/tegra_smmu.h>
+#include <linux/tegra_smmu.h>
 
 /*
  * OF is always used on ARM64

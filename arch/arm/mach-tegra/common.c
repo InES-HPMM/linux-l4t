@@ -51,6 +51,7 @@
 #include <linux/ote_protocol.h>
 #endif
 #include <linux/gk20a.h>
+#include <linux/tegra_smmu.h>
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/arm-gic.h>
@@ -61,7 +62,6 @@
 #endif
 #include <asm/dma-mapping.h>
 
-#include <mach/tegra_smmu.h>
 #include <mach/nct.h>
 #include <mach/dc.h>
 

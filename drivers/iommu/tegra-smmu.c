@@ -39,13 +39,13 @@
 #include <linux/dma-mapping.h>
 #include <linux/bitops.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra_smmu.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
 #include <asm/outercache.h>
 #include <asm/dma-iommu.h>
 
-#include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
 
 /* HACK! This needs to come from device tree */
