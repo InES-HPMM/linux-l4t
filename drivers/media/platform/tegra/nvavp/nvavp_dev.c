@@ -869,7 +869,9 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	u32 index, value = -1;
 	int ret = 0;
 
+	mutex_lock(&nvavp->open_lock);
 	nvavp_runtime_get(nvavp);
+	mutex_unlock(&nvavp->open_lock);
 	channel_info = nvavp_get_channel_info(nvavp, channel_id);
 
 	control = channel_info->os_control;
@@ -959,7 +961,9 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 		if (IS_AUDIO_CHANNEL_ID(channel_id)) {
 			pr_debug("Wake up Audio Channel\n");
 			if (!audio_enabled) {
+				mutex_lock(&nvavp->open_lock);
 				nvavp_runtime_get(nvavp);
+				mutex_unlock(&nvavp->open_lock);
 				audio_enabled = true;
 			}
 			ret = nvavp_outbox_write(0xA0000002);
