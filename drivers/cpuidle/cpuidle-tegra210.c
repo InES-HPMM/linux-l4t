@@ -235,7 +235,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 10;
 	state->target_residency = 20;
 	state->power_usage = 500;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[3];
@@ -245,7 +245,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 20;
 	state->target_residency = 30;
 	state->power_usage = 400;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[4];
@@ -255,7 +255,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[5];
@@ -265,7 +265,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[6];
@@ -275,7 +275,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[7];
@@ -285,7 +285,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	state = &drv->states[8];
@@ -295,7 +295,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->exit_latency = 30;
 	state->target_residency = 40;
 	state->power_usage = 300;
-	state->flags = CPUIDLE_FLAG_TIME_VALID | CPUIDLE_FLAG_TIMER_STOP;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->disabled = true;
 
 	drv->state_count = 9;
