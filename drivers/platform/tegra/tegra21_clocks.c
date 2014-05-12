@@ -230,7 +230,7 @@ do {									       \
 #define PLL_BASE			0x0
 #define PLL_BASE_BYPASS			(1<<31)
 #define PLL_BASE_ENABLE			(1<<30)
-#define PLL_BASE_REF_ENABLE		(1<<29)
+#define PLL_BASE_REF_DISABLE		(1<<29)
 
 /* Quasi-linear PLL divider */
 #define PLL_QLIN_PDIV_MAX		16
@@ -2891,17 +2891,28 @@ static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
-	unsigned long input_rate = clk_get_rate(c->parent);
 	u32 pdiv, val;
+	unsigned long vco_min;
+	unsigned long input_rate = clk_get_rate(c->parent);
+	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
+
 	struct clk_pll_freq_table cfg = { };
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
 	BUG_ON(!ctrl || !divs);
 
-	/* clip vco_min to exact multiple of input rate to avoid crossover
-	   by rounding */
-	c->u.pll.vco_min =
-		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
+	/*
+	 * To avoid vco_min crossover by rounding:
+	 * - clip vco_min to exact multiple of comparison frequency if PLL does
+	 *   not support SDM fractional divider
+	 * - limit increase in vco_min to SDM resolution if SDM is supported
+	 */
+	vco_min = DIV_ROUND_UP(c->u.pll.vco_min, cf) * cf;
+	if (ctrl->sdm_en_mask) {
+		c->u.pll.vco_min += DIV_ROUND_UP(cf, PLL_SDM_COEFF);
+		vco_min = min(vco_min, c->u.pll.vco_min);
+	}
+	c->u.pll.vco_min = vco_min;
 	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
 				   divs->pdiv_to_p[divs->pdiv_max]);
 
@@ -2927,11 +2938,12 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	 * minimum VCO rate.
 	 */
 	cfg.m = PLL_FIXED_MDIV(c, input_rate);
-	cfg.n = cfg.m * c->u.pll.vco_min / input_rate;
-	pdiv = 3;
-	cfg.p = divs->pdiv_to_p[pdiv];
+	cfg.n = c->u.pll.vco_min / cf;
+	cfg.p = 4;
+	BUG_ON(cfg.p != c->u.pll.round_p_to_pdiv(cfg.p, &pdiv));
 
-	val = 0;	/* PLL disabled, reference running */
+	/* PLL disabled, reference running */
+	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
 	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
 
 	if (c->u.pll.set_defaults)
