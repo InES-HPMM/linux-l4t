@@ -91,8 +91,6 @@ unsigned long tegra_lp1bb_emc_min_rate_get(void);
 #define FUSE_SKU_DISABLE_ALL_CPUS	(1<<5)
 #define FUSE_SKU_NUM_DISABLED_CPUS(x)	(((x) >> 3) & 3)
 
-void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat);
-
 u64 tegra_rtc_read_ms(void);
 
 /*

@@ -20,7 +20,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/tegra_nvadsp.h>
-
+#include <linux/tegra-pm.h>
 
 #include <asm/mach/arch.h>
 #include <linux/platform_device.h>
@@ -32,6 +32,7 @@
 #include "clock.h"
 #include "common.h"
 #include "iomap.h"
+#include "board-common.h"
 
 static struct nvmap_platform_carveout t210_carveouts[] = {
 	[0] = {
@@ -154,6 +155,16 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	{}
 };
 
+static struct tegra_suspend_platform_data tegra21_suspend_data = {
+	.cpu_timer      = 500,
+	.cpu_off_timer  = 300,
+	.suspend_mode   = TEGRA_SUSPEND_LP0,
+	.core_timer     = 0x157e,
+	.core_off_timer = 10,
+	.corereq_high   = true,
+	.sysclkreq_high = true,
+};
+
 static void __init tegra210_dt_init(void)
 {
 	platform_add_devices(t210_gfx_devices, ARRAY_SIZE(t210_gfx_devices));
@@ -170,6 +181,9 @@ static void __init tegra210_dt_init(void)
 	t210_carveouts[1].base = tegra_vpr_start;
 	t210_carveouts[1].size = tegra_vpr_size;
 	t210_carveouts[1].dma_dev = &tegra_vpr_dev;
+
+	uart_console_debug_init(0);
+	tegra_init_suspend(&tegra21_suspend_data);
 }
 
 static const char * const tegra210_dt_board_compat[] = {
