@@ -93,11 +93,6 @@ unsigned long tegra_lp1bb_emc_min_rate_get(void);
 
 u64 tegra_rtc_read_ms(void);
 
-/*
- * Callbacks for platform drivers to implement.
- */
-extern void (*tegra_deep_sleep)(int);
-
 unsigned int tegra_idle_power_down_last(unsigned int us, unsigned int flags);
 
 #if defined(CONFIG_PM_SLEEP) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
