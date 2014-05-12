@@ -9,4 +9,9 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "1780:1000:03:B:3";
 	nvidia,pmu-boardid = "1733:1000:00:B:4";
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
 };

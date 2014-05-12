@@ -426,7 +426,7 @@
 					};
 				};
 
-				ldo2 {
+				as3722_ldo2: ldo2 {
 					regulator-name = "avdd-hsic";
 
 					consumers {

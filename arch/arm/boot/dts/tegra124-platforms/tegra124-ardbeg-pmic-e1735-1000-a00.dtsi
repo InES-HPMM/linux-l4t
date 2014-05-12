@@ -409,7 +409,7 @@
 						};
 					};
 
-					ldo4 {
+					palams_ldo4: ldo4 {
 						regulator-name = "avdd-hsic";
 
 						consumers {

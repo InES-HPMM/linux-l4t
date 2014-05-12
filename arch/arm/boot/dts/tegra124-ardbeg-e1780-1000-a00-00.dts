@@ -36,5 +36,9 @@
 			avdd_hdmi_pll-supply = <&palmas_smps9>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
 		};
+
+		vi {
+			avdd_dsi_csi-supply = <&palams_ldo4>;
+		};
 	};
 };

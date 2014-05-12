@@ -35,5 +35,8 @@
 			avdd_hdmi_pll-supply = <&as3722_sd4>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
 		};
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
 	};
 };

@@ -70,6 +70,9 @@
 				nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(R, 6) 0>; /* PR6 */
 			};
 		};
+		vi {
+			avdd_dsi_csi-supply = <&palams_ldo4>;
+		};
 	};
 
 };
