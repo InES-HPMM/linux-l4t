@@ -340,18 +340,20 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 #endif
 
 /*
- * restore_cpu_complex
- *
- * restores cpu clock setting, clears flow controller
- *
- * Always called on CPU 0.
+ * restore_csite_clock
  */
-static void restore_cpu_complex(u32 mode)
+static void restore_csite_clock(void)
+{
+	writel(tegra_sctx.clk_csite_src, clk_rst + CLK_RESET_SOURCE_CSITE);
+}
+
+/*
+ * Clear flow controller registers
+ */
+static void clear_flow_controller(void)
 {
 	int cpu = cpu_logical_map(smp_processor_id());
 	unsigned int reg;
-
-	writel(tegra_sctx.clk_csite_src, clk_rst + CLK_RESET_SOURCE_CSITE);
 
 	/* Do not power-gate CPU 0 when flow controlled */
 	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
@@ -364,18 +366,13 @@ static void restore_cpu_complex(u32 mode)
 }
 
 /*
- * suspend_cpu_complex
- *
- * saves pll state for use by restart_plls, prepares flow controller for
- * transition to suspend state
+ * saves pll state for use by restart_plls
  *
  * Must always be called on cpu 0.
  */
-static void suspend_cpu_complex(u32 mode)
+static void save_pll_state(void)
 {
 	int cpu = cpu_logical_map(smp_processor_id());
-	unsigned int reg;
-	int i;
 
 	BUG_ON(cpu != 0);
 
@@ -391,7 +388,20 @@ static void suspend_cpu_complex(u32 mode)
 	tegra_sctx.pllp_outb = readl(clk_rst + CLK_RESET_PLLP_OUTB);
 	tegra_sctx.pllp_misc = readl(clk_rst + CLK_RESET_PLLP_MISC);
 	tegra_sctx.cclk_divider = readl(clk_rst + CLK_RESET_CCLK_DIVIDER);
+}
 
+/*
+ * Prepares flow controller for transition to suspend state
+ *
+ * Must always be called on cpu 0.
+ */
+static void prepare_flow_controller(void)
+{
+	int cpu = cpu_logical_map(smp_processor_id());
+	unsigned int reg;
+	int i;
+
+	BUG_ON(cpu != 0);
 	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
 	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
 	reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
@@ -655,7 +665,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	}
 
 	cpu_cluster_pm_enter();
-	suspend_cpu_complex(flags);
+	save_pll_state();
+	prepare_flow_controller();
 
 	if (tegra_get_chipid() != TEGRA_CHIPID_TEGRA13)
 		flush_cache_all();
@@ -679,7 +690,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	if (scratch37 != 0xDEADBEEF)
 		pmc_32kwritel(scratch37, PMC_SCRATCH37);
 
-	restore_cpu_complex(flags);
+	restore_csite_clock();
+	clear_flow_controller();
 	cpu_cluster_pm_exit();
 
 	/* for platforms where the core & CPU power requests are
