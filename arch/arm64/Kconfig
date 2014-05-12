@@ -2,6 +2,7 @@ config ARM64
 	def_bool y
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
 	select ARCH_HAVE_CUSTOM_GPIO_H
+	select ARCH_USE_CMPXCHG_LOCKREF
 	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
 	select ARCH_WANT_OPTIONAL_GPIOLIB
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
@@ -13,6 +14,7 @@ config ARM64
 	select CLONE_BACKWARDS
 #	select COMMON_CLK
 	select CPU_PM if (SUSPEND || CPU_IDLE)
+	select DCACHE_WORD_ACCESS
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_CLOCKEVENTS_BROADCAST if SMP
 	select GENERIC_IOMAP
@@ -20,19 +22,24 @@ config ARM64
 	select GENERIC_IRQ_SHOW
 	select GENERIC_SCHED_CLOCK
 	select GENERIC_SMP_IDLE_THREAD
+	select GENERIC_STRNCPY_FROM_USER
+	select GENERIC_STRNLEN_USER
 	select GENERIC_TIME_VSYSCALL
 	select HARDIRQS_SW_RESEND
 	select GENERIC_PCI_IOMAP
+	select HAVE_ARCH_JUMP_LABEL
 	select HAVE_ARCH_TRACEHOOK
 	select HAVE_DEBUG_BUGVERBOSE
 	select HAVE_DEBUG_KMEMLEAK
 	select HAVE_DMA_API_DEBUG
 	select HAVE_DMA_ATTRS
 	select HAVE_DMA_CONTIGUOUS if MMU
+	select HAVE_EFFICIENT_UNALIGNED_ACCESS
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_HW_BREAKPOINT if PERF_EVENTS
 	select HAVE_MEMBLOCK
+	select HAVE_PATA_PLATFORM
 	select HAVE_PERF_EVENTS
 	select HAVE_PERF_REGS
 	select HAVE_PERF_USER_STACK_DUMP
@@ -133,6 +140,8 @@ config MULTI_IRQ_HANDLER
         bool
         help
 	  Allow each machine to specify it's own IRQ handler at run time.
+config KERNEL_MODE_NEON
+	def_bool y
 
 config KERNEL_MODE_NEON
 	def_bool y
@@ -200,9 +209,13 @@ config ARM64_64K_PAGES
 	  look-up. AArch32 emulation is not available when this feature
 	  is enabled.
 
+config CPU_BIG_ENDIAN
+       bool "Build big-endian kernel"
+       help
+         Say Y if you plan on running a kernel in big-endian mode.
+
 config SMP
 	bool "Symmetric Multi-Processing"
-	select USE_GENERIC_SMP_HELPERS
 	help
 	  This enables support for systems with more than one CPU.  If
 	  you say N here, the kernel will run on single and
@@ -218,7 +231,8 @@ config NR_CPUS
 	int "Maximum number of CPUs (2-32)"
 	range 2 32
 	depends on SMP
-	default "4"
+	# These have to remain sorted largest to smallest
+	default "8"
 
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs"

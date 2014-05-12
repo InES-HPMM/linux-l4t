@@ -56,6 +56,7 @@ SECTIONS
 
 	RO_DATA(PAGE_SIZE)
 	EXCEPTION_TABLE(8)
+	NOTES
 	_etext = .;			/* End of text and rodata section */
 
 	. = ALIGN(PAGE_SIZE);
@@ -89,17 +90,12 @@ SECTIONS
 
 	. = ALIGN(PAGE_SIZE);
 	_data = .;
-	__data_loc = _data - LOAD_OFFSET;
 	_sdata = .;
 	RW_DATA_SECTION(64, PAGE_SIZE, THREAD_SIZE)
 	_edata = .;
-	_edata_loc = __data_loc + SIZEOF(.data);
-
-	NOTES
 
 	BSS_SECTION(0, 0, 0)
 	_end = .;
 
 	STABS_DEBUG
-	.comment 0 : { *(.comment) }
 }

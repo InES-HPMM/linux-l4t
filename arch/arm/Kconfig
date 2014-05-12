@@ -1528,10 +1528,9 @@ config SMP
 	depends on CPU_V6K || CPU_V7
 	depends on GENERIC_CLOCKEVENTS
 	depends on HAVE_SMP
-	depends on MMU
 	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP && \
 		 (!ARCH_TEGRA || ARCH_TEGRA_HAS_ARM_SCU)
-	select USE_GENERIC_SMP_HELPERS
+	depends on MMU || ARM_MPU
 	help
 	  This enables support for systems with more than one CPU. If you have
 	  a system with only one CPU, like most personal computers, say N. If

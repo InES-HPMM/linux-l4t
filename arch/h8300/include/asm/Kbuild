@@ -4,3 +4,8 @@ generic-y += exec.h
 generic-y += mmu.h
 generic-y += module.h
 generic-y += trace_clock.h
+<<<<<<< HEAD
+=======
+generic-y += xor.h
+generic-y += preempt.h
+>>>>>>> a787870... sched, arch: Create asm/preempt.h

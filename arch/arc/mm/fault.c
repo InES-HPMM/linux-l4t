@@ -59,6 +59,7 @@ void do_page_fault(struct pt_regs *regs, int write, unsigned long address,
 	struct mm_struct *mm = tsk->mm;
 	siginfo_t info;
 	int fault, ret;
+	int write = regs->ecr_cause & ECR_C_PROTV_STORE;  /* ST/EX */
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 
 	/*

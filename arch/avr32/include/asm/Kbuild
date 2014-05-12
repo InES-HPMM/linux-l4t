@@ -3,3 +3,6 @@ generic-y	+= clkdev.h
 generic-y	+= exec.h
 generic-y	+= trace_clock.h
 generic-y	+= param.h
+generic-y 	+= preempt.h
+generic-y       += xor.h
+generic-y	+= hash.h

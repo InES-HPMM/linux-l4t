@@ -11,6 +11,7 @@
 
 #include <linux/kernel.h>
 #include <linux/initrd.h>
+#include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
@@ -550,9 +551,10 @@ int __init of_flat_dt_match(unsigned long node, const char *const *compat)
  * early_init_dt_check_for_initrd - Decode initrd location from flat tree
  * @node: reference to node containing initrd location ('chosen')
  */
-void __init early_init_dt_check_for_initrd(unsigned long node)
+static void __init early_init_dt_check_for_initrd(unsigned long node)
 {
-	unsigned long start, end, len;
+	u64 start, end;
+	unsigned long len;
 	__be32 *prop;
 
 	pr_debug("Looking for initrd properties... ");
@@ -560,18 +562,22 @@ void __init early_init_dt_check_for_initrd(unsigned long node)
 	prop = of_get_flat_dt_prop(node, "linux,initrd-start", &len);
 	if (!prop)
 		return;
-	start = of_read_ulong(prop, len/4);
+	start = of_read_number(prop, len/4);
 
 	prop = of_get_flat_dt_prop(node, "linux,initrd-end", &len);
 	if (!prop)
 		return;
-	end = of_read_ulong(prop, len/4);
+	end = of_read_number(prop, len/4);
 
-	early_init_dt_setup_initrd_arch(start, end);
-	pr_debug("initrd_start=0x%lx  initrd_end=0x%lx\n", start, end);
+	initrd_start = (unsigned long)__va(start);
+	initrd_end = (unsigned long)__va(end);
+	initrd_below_start_ok = 1;
+
+	pr_debug("initrd_start=0x%llx  initrd_end=0x%llx\n",
+		 (unsigned long long)start, (unsigned long long)end);
 }
 #else
-inline void early_init_dt_check_for_initrd(unsigned long node)
+static inline void early_init_dt_check_for_initrd(unsigned long node)
 {
 }
 #endif /* CONFIG_BLK_DEV_INITRD */
@@ -696,6 +702,62 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 
 	/* break now */
 	return 1;
+}
+
+#ifdef CONFIG_HAVE_MEMBLOCK
+void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
+{
+	const u64 phys_offset = __pa(PAGE_OFFSET);
+	base &= PAGE_MASK;
+	size &= PAGE_MASK;
+	if (base + size < phys_offset) {
+		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
+			   base, base + size);
+		return;
+	}
+	if (base < phys_offset) {
+		pr_warning("Ignoring memory range 0x%llx - 0x%llx\n",
+			   base, phys_offset);
+		size -= phys_offset - base;
+		base = phys_offset;
+	}
+	memblock_add(base, size);
+}
+
+/*
+ * called from unflatten_device_tree() to bootstrap devicetree itself
+ * Architectures can override this definition if memblock isn't used
+ */
+void * __init __weak early_init_dt_alloc_memory_arch(u64 size, u64 align)
+{
+	return __va(memblock_alloc(size, align));
+}
+#endif
+
+bool __init early_init_dt_scan(void *params)
+{
+	if (!params)
+		return false;
+
+	/* Setup flat device-tree pointer */
+	initial_boot_params = params;
+
+	/* check device tree validity */
+	if (be32_to_cpu(initial_boot_params->magic) != OF_DT_HEADER) {
+		initial_boot_params = NULL;
+		return false;
+	}
+
+	/* Retrieve various information from the /chosen node */
+	of_scan_flat_dt(early_init_dt_scan_chosen, boot_command_line);
+
+	/* Initialize {size,address}-cells info */
+	of_scan_flat_dt(early_init_dt_scan_root, NULL);
+
+	/* Setup memory, calling early_init_dt_add_memory_arch */
+	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
+
+	return true;
 }
 
 /**

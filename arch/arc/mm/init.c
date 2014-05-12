@@ -155,11 +155,3 @@ void __init free_initrd_mem(unsigned long start, unsigned long end)
 	free_reserved_area(start, end, 0, "initrd");
 }
 #endif
-
-#ifdef CONFIG_OF_FLATTREE
-void __init early_init_dt_setup_initrd_arch(unsigned long start,
-					    unsigned long end)
-{
-	pr_err("%s(%lx, %lx)\n", __func__, start, end);
-}
-#endif /* CONFIG_OF_FLATTREE */
