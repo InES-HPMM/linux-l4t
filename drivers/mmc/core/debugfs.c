@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2008 Atmel Corporation
  *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -204,8 +206,20 @@ static int mmc_set_bus_speed_mode(struct mmc_card *card, u32 speed)
 {
 	int err = 0;
 	u32 clock = 0;
+	u32 bus_width = 0;
+	u8 card_type = card->ext_csd.raw_card_type & EXT_CSD_CARD_TYPE_MASK;
+	u32 caps = card->host->caps, caps2 = card->host->caps2;
+
 	/* HS_TIMING is set to 2 in HS200 and all other modes needs to be 1 */
 	if (speed == UHS_DDR50_BUS_SPEED) {
+		/* check card and host capability for DDR50 to proceed */
+		if (!(((caps & MMC_CAP_1_8V_DDR) &&
+				(card_type & EXT_CSD_CARD_TYPE_DDR_1_8V)) ||
+		  ((caps & MMC_CAP_1_2V_DDR) &&
+				(card_type & EXT_CSD_CARD_TYPE_DDR_1_2V)))) {
+			err = -EINVAL;
+			goto err_node;
+		}
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					EXT_CSD_HS_TIMING, 1, 0);
 		if (err) {
@@ -213,16 +227,43 @@ static int mmc_set_bus_speed_mode(struct mmc_card *card, u32 speed)
 				mmc_hostname(card->host), err);
 			goto err_node;
 		} else {
+			if (card->host->caps & MMC_CAP_8_BIT_DATA)
+				bus_width = EXT_CSD_DDR_BUS_WIDTH_8;
+			else
+				bus_width = EXT_CSD_DDR_BUS_WIDTH_4;
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					EXT_CSD_BUS_WIDTH,
-					EXT_CSD_DDR_BUS_WIDTH_8,
+					bus_width,
 					card->ext_csd.generic_cmd6_time);
+			if (err) {
+				pr_err("%s: switch to bus width failed",
+						mmc_hostname(card->host));
+				pr_err("with error %d\n", err);
+				goto err_node;
+			}
 			clock = MMC_HIGH_DDR_MAX_DTR;
 		}
 	} else {
+		/* check card and host capability for HS200 to proceed */
+		if (!(((caps2 & MMC_CAP2_HS200_1_8V_SDR) &&
+				(card_type & EXT_CSD_CARD_TYPE_SDR_1_8V)) ||
+		  ((caps2 & MMC_CAP2_HS200_1_2V_SDR) &&
+				(card_type & EXT_CSD_CARD_TYPE_SDR_1_2V)))) {
+			err = -EINVAL;
+			goto err_node;
+		}
+
+		/* Based on host capability, set card side bus width */
+		if (card->host->caps & MMC_CAP_8_BIT_DATA)
+			bus_width = EXT_CSD_BUS_WIDTH_8;
+		else if (card->host->caps & MMC_CAP_4_BIT_DATA)
+			bus_width = EXT_CSD_BUS_WIDTH_4;
+		else
+			bus_width = EXT_CSD_BUS_WIDTH_1;
+
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					EXT_CSD_BUS_WIDTH,
-					EXT_CSD_BUS_WIDTH_8,
+					bus_width,
 					card->ext_csd.generic_cmd6_time);
 		if (err) {
 			pr_err("%s: switch to bus width failed with error %d\n",
@@ -246,7 +287,20 @@ static int mmc_set_bus_speed_mode(struct mmc_card *card, u32 speed)
 		mmc_card_set_hs200(card);
 		card->state &= ~MMC_STATE_HIGHSPEED_DDR;
 	}
-	mmc_set_bus_width(card->host, MMC_BUS_WIDTH_8);
+	/* Based on bus width selected for card, set host side bus width */
+	switch (bus_width) {
+	case EXT_CSD_BUS_WIDTH_8:
+	case EXT_CSD_DDR_BUS_WIDTH_8:
+		mmc_set_bus_width(card->host, MMC_BUS_WIDTH_8);
+		break;
+	case EXT_CSD_BUS_WIDTH_4:
+	case EXT_CSD_DDR_BUS_WIDTH_4:
+		mmc_set_bus_width(card->host, MMC_BUS_WIDTH_4);
+		break;
+	default:
+		mmc_set_bus_width(card->host, MMC_BUS_WIDTH_1);
+	}
+
 	mmc_set_clock(card->host, clock);
 
 err_node:
