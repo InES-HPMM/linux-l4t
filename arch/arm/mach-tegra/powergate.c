@@ -726,16 +726,82 @@ static const struct file_operations powergate_fops = {
 	.release	= single_release,
 };
 
+static struct dentry *pg_debugfs_root;
+
+static int state_set(void *data, u64 val)
+{
+	int ret;
+	unsigned long id = (unsigned long)data;
+
+	if (val)
+		ret = tegra_unpowergate_partition(id);
+	else
+		ret = tegra_powergate_partition(id);
+
+	return ret;
+}
+
+static int state_get(void *data, u64 *val)
+{
+	unsigned long id = (unsigned long)data;
+
+	if (tegra_powergate_is_powered(id))
+		*val = 1;
+	else
+		*val = 0;
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, state_set, "%llu\n");
+
+static int powergate_debugfs_register_one(unsigned long id, const char *name)
+{
+	struct dentry *dir, *d;
+
+	dir = debugfs_create_dir(name, pg_debugfs_root);
+	if (!dir)
+		return -ENOMEM;
+
+	d = debugfs_create_file("state", S_IRUGO | S_IWUSR, dir, (void *)id, &state_fops);
+	if (!d) {
+		debugfs_remove_recursive(dir);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 int __init tegra_powergate_debugfs_init(void)
 {
 	struct dentry *d;
+	int i, ret;
+	const char *name;
 
 	d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
 		&powergate_fops);
 	if (!d)
 		return -ENOMEM;
 
+	d = debugfs_create_dir("pg_domains", NULL);
+	if (!d)
+		return -ENOMEM;
+
+	pg_debugfs_root = d;
+
+	for (i = 0; i < pg_ops->num_powerdomains; i++) {
+		name = tegra_powergate_get_name(i);
+		if (name) {
+			ret = powergate_debugfs_register_one(i, name);
+			if (ret)
+				goto err_out;
+		}
+	}
+
 	return 0;
+
+err_out:
+	debugfs_remove_recursive(pg_debugfs_root);
+	return -ENOMEM;
 }
 
 #endif
