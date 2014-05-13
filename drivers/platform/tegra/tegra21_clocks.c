@@ -606,6 +606,15 @@ do {									       \
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
 
+/* ADSP */
+#define ADSP_NEON		(1 << 26)
+#define ADSP_SCU		(1 << 25)
+#define ADSP_WDT		(1 << 24)
+#define ADSP_DBG		(1 << 23)
+#define ADSP_PERIPH		(1 << 22)
+#define ADSP_INTF		(1 << 21)
+#define ADSP_CORE		(1 << 7)
+
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 #define DIVIDER_1_5_ALLOWED	0
@@ -7422,6 +7431,58 @@ static struct clk_mux_sel mux_sclk[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_aclk_adsp[] = {
+	{ .input = &tegra_pll_a1,	.value = 0},
+	{ .input = &tegra_pll_p,	.value = 2},
+	{ .input = &tegra_pll_a_out0,	.value = 3},
+	{ .input = &tegra_clk_m,	.value = 6},
+	{ .input = &tegra_pll_a,	.value = 7},
+	{ 0, 0},
+};
+
+static void tegra21_adsp_clk_reset(struct clk *c, bool assert)
+{
+	unsigned long reg = assert ? RST_DEVICES_SET_Y : RST_DEVICES_CLR_Y;
+	u32 val = ADSP_NEON | ADSP_SCU | ADSP_WDT | ADSP_DBG
+		| ADSP_PERIPH | ADSP_INTF | ADSP_CORE;
+
+	pr_debug("%s %s\n", __func__, assert ? "assert" : "deassert");
+	clk_writel(val, reg);
+}
+
+static int tegra21_adsp_clk_enable(struct clk *c)
+{
+	u32 val = ADSP_NEON | ADSP_CORE;
+
+	clk_writel(val, CLK_OUT_ENB_SET_Y);
+	return 0;
+}
+
+static void tegra21_adsp_clk_disable(struct clk *c)
+{
+	u32 val = ADSP_NEON | ADSP_CORE;
+
+	clk_writel(val, CLK_OUT_ENB_CLR_Y);
+}
+
+static struct clk_ops tegra_adsp_ops = {
+	.init		= tegra21_super_clk_init,
+	.enable		= tegra21_adsp_clk_enable,
+	.disable	= tegra21_adsp_clk_disable,
+	.set_parent	= tegra21_super_clk_set_parent,
+	.set_rate	= tegra21_super_clk_set_rate,
+	.reset		= tegra21_adsp_clk_reset,
+};
+
+static struct clk tegra_clk_aclk_adsp = {
+	.name   = "adsp",
+	.flags  = DIV_U71 | DIV_U71_INT | MUX,
+	.inputs	= mux_aclk_adsp,
+	.reg	= 0x6e0,
+	.ops	= &tegra_adsp_ops,
+	.max_rate = 600000000UL,
+};
+
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
 	.flags  = DIV_U71 | DIV_U71_INT | MUX,
@@ -7795,7 +7856,6 @@ static struct clk_mux_sel mux_plld[] = {
 	{ .input = &tegra_pll_d_out0, .value = 1},
 	{ 0, 0},
 };
-
 
 static struct raw_notifier_head emc_rate_change_nh;
 
@@ -8684,6 +8744,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_sclk,
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
+	&tegra_clk_aclk_adsp,
 	&tegra_clk_virtual_cpu_g,
 	&tegra_clk_cpu_cmplx,
 	&tegra_clk_blink,
