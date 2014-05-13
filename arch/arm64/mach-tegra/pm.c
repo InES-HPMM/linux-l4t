@@ -422,11 +422,24 @@ static void prepare_flow_controller(void)
 	tegra_gic_cpu_disable(true);
 }
 
-static void tegra_sleep_core(enum tegra_suspend_mode mode,
-			     unsigned long v2p)
+void tegra_psci_suspend_cpu(void *entry_point)
 {
 	struct psci_power_state pps;
 
+	if (tegra_cpu_is_secure()) {
+		if (psci_ops.cpu_suspend) {
+			pps.id = TEGRA_ID_CPU_SUSPEND_LP0;
+			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
+			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_CLUSTER;
+
+			psci_ops.cpu_suspend(pps, virt_to_phys(entry_point));
+		}
+	}
+}
+
+static void tegra_sleep_core(enum tegra_suspend_mode mode,
+			     unsigned long v2p)
+{
 	if (tegra_cpu_is_secure()) {
 		__flush_dcache_area(&tegra_resume_timestamps_start,
 					(&tegra_resume_timestamps_end -
@@ -435,13 +448,7 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 		BUG_ON(mode != TEGRA_SUSPEND_LP0);
 
 		trace_smc_sleep_core(NVSEC_SMC_START);
-		if (psci_ops.cpu_suspend) {
-			pps.id = TEGRA_ID_CPU_SUSPEND_LP0;
-			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
-			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_CLUSTER;
-
-			psci_ops.cpu_suspend(pps, virt_to_phys(tegra_resume));
-		}
+		tegra_psci_suspend_cpu(tegra_resume);
 		trace_smc_sleep_core(NVSEC_SMC_DONE);
 	}
 

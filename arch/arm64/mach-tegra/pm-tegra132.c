@@ -72,6 +72,8 @@ static void tegra132_tear_down_cpu(void)
 
 	BUG_ON(cpu == 0);
 
+	tegra_psci_suspend_cpu(tegra_resume);
+
 	local_irq_disable();
 	local_fiq_disable();
 

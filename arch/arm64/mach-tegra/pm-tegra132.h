@@ -21,6 +21,8 @@
 #ifndef __ASM_ARM_T132_H
 #define __ASM_ARM_T132_H
 
+extern void tegra_psci_suspend_cpu(void *entry_point);
+
 enum tegra132_power_states {
 	T132_CORE_C1 = 0,
 	T132_CORE_C4 = 1,
