@@ -556,7 +556,7 @@ EXPORT_SYMBOL_GPL(tegra210_mvc_is_switch_done);
  */
 int tegra210_mvc_set_init_vol(enum tegra210_ahub_cifs cif, int *init_vol)
 {
-	u32 reg = TEGRA210_MVC_INIT_VOL, i;
+	u32 reg = TEGRA210_MVC_INIT_VOL_CH0, i;
 	int id = MVC_ID(cif);
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
 
@@ -581,7 +581,7 @@ EXPORT_SYMBOL_GPL(tegra210_mvc_set_init_vol);
  */
 int tegra210_mvc_set_target_vol(enum tegra210_ahub_cifs cif, int *target_vol)
 {
-	u32 reg = TEGRA210_MVC_TARGET_VOL, i;
+	u32 reg = TEGRA210_MVC_TARGET_VOL_CH0, i;
 	int id = MVC_ID(cif);
 	int *t_vol = target_vol;
 	struct tegra210_mvc_ctx *mvc = tegra210_mvc[id];
@@ -714,8 +714,22 @@ static bool tegra210_mvc_wr_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_MVC_CG:
 	case TEGRA210_MVC_CTRL:
 	case TEGRA210_MVC_SWITCH:
-	case TEGRA210_MVC_INIT_VOL:
-	case TEGRA210_MVC_TARGET_VOL:
+	case TEGRA210_MVC_INIT_VOL_CH0:
+	case TEGRA210_MVC_INIT_VOL_CH1:
+	case TEGRA210_MVC_INIT_VOL_CH2:
+	case TEGRA210_MVC_INIT_VOL_CH3:
+	case TEGRA210_MVC_INIT_VOL_CH4:
+	case TEGRA210_MVC_INIT_VOL_CH5:
+	case TEGRA210_MVC_INIT_VOL_CH6:
+	case TEGRA210_MVC_INIT_VOL_CH7:
+	case TEGRA210_MVC_TARGET_VOL_CH0:
+	case TEGRA210_MVC_TARGET_VOL_CH1:
+	case TEGRA210_MVC_TARGET_VOL_CH2:
+	case TEGRA210_MVC_TARGET_VOL_CH3:
+	case TEGRA210_MVC_TARGET_VOL_CH4:
+	case TEGRA210_MVC_TARGET_VOL_CH5:
+	case TEGRA210_MVC_TARGET_VOL_CH6:
+	case TEGRA210_MVC_TARGET_VOL_CH7:
 	case TEGRA210_MVC_DURATION:
 	case TEGRA210_MVC_DURATION_INV:
 	case TEGRA210_MVC_POLY_N1:
@@ -753,8 +767,22 @@ static bool tegra210_mvc_rd_reg(struct device *dev, unsigned int reg)
 	case TEGRA210_MVC_INT_STATUS:
 	case TEGRA210_MVC_CTRL:
 	case TEGRA210_MVC_SWITCH:
-	case TEGRA210_MVC_INIT_VOL:
-	case TEGRA210_MVC_TARGET_VOL:
+	case TEGRA210_MVC_INIT_VOL_CH0:
+	case TEGRA210_MVC_INIT_VOL_CH1:
+	case TEGRA210_MVC_INIT_VOL_CH2:
+	case TEGRA210_MVC_INIT_VOL_CH3:
+	case TEGRA210_MVC_INIT_VOL_CH4:
+	case TEGRA210_MVC_INIT_VOL_CH5:
+	case TEGRA210_MVC_INIT_VOL_CH6:
+	case TEGRA210_MVC_INIT_VOL_CH7:
+	case TEGRA210_MVC_TARGET_VOL_CH0:
+	case TEGRA210_MVC_TARGET_VOL_CH1:
+	case TEGRA210_MVC_TARGET_VOL_CH2:
+	case TEGRA210_MVC_TARGET_VOL_CH3:
+	case TEGRA210_MVC_TARGET_VOL_CH4:
+	case TEGRA210_MVC_TARGET_VOL_CH5:
+	case TEGRA210_MVC_TARGET_VOL_CH6:
+	case TEGRA210_MVC_TARGET_VOL_CH7:
 	case TEGRA210_MVC_DURATION:
 	case TEGRA210_MVC_DURATION_INV:
 	case TEGRA210_MVC_POLY_N1:
