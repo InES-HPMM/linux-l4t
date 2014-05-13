@@ -326,64 +326,61 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 #define LEAKAGE13_CONSTS_IJK_COMMON					\
 {									\
 	/* i = 0 */							\
-	{ {     379418152,   -346934015,    78200120,   -4417754, },	\
-	  {   -1206883115,   1104697779,  -249217981,   14061354, },	\
-	  {    1254008683,  -1149673559,   259614111,  -14624565, },	\
-	  {    -425176538,    391251722,   -88449682,    4972193, },	\
+	{ {     37941815,   -34693402,    7820012,   -441775, },	\
+	  {   -120688312,   110469778,  -24921798,   1406135, },	\
+	  {    125400868,  -114967356,   25961411,  -1462457, },	\
+	  {    -42517654,    39125172,   -8844968,    497219, },	\
 	},								\
 	/* i = 1 */							\
-	{ {    -503813674,    440324321,   -98337254,    5557249, },	\
-	  {    1602759501,  -1397938820,   312576285,  -17649754, },	\
-	  {   -1665439839,   1449369020,  -324538025,   18306811, },	\
-	  {     565165401,   -490769906,   110089714,   -6198017, },	\
+	{ {    -50381367,    44032432,   -9833725,    555725, },	\
+	  {    160275950,  -139793882,   31257629,  -1764975, },	\
+	  {   -166543984,   144936902,  -32453803,   1830681, },	\
+	  {     56516540,   -49076991,   11008971,   -619802, },	\
 	},								\
 	/* i = 2 */							\
-	{ {     173847877,   -151521690,    33543642,   -1892650, },	\
-	  {    -551852158,    480614203,  -106527695,    6012566, },	\
-	  {     571798826,   -497665481,   110462057,   -6235968, },	\
-	  {    -193342746,    168293820,   -37412123,    2112012, },	\
+	{ {     17384788,   -15152169,    3354364,   -189265, },	\
+	  {    -55185216,    48061420,  -10652770,    601257, },	\
+	  {     57179883,   -49766548,   11046206,   -623597, },	\
+	  {    -19334275,    16829382,   -3741212,    211201, },	\
 	},								\
 	/* i = 3 */							\
-	{ {     -16787513,     14607225,    -3223101,     181933, },	\
-	  {      53238061,    -46295241,    10228756,    -577786, },	\
-	  {     -55099102,     47886289,   -10596814,     598956, },	\
-	  {      18611025,    -16172040,     3585182,    -202741, },	\
+	{ {     -1678751,     1460723,    -322310,     18193, },	\
+	  {      5323806,    -4629524,    1022876,    -57779, },	\
+	  {     -5509910,     4788629,   -1059681,     59896, },	\
+	  {      1861103,    -1617204,     358518,    -20274, },	\
 	},								\
 }
 
-/* XXX: On T132, offlining a core within Linux is not sufficient to guarantee
- * that the core is continually in a powered-down state. Until we do have a
- * sufficient guarantee, we will use EDP tables to always enforce the 2-core
- * freq cap even when a single core is ONLINE.
+/* On T132, offlining core1 within Linux is not sufficient to guarantee that
+ * it is powered-off all the time. Until we have a sufficient guarantee, we
+ * use EDP tables to account for partial times core-1 could be ONLINE.
  *
- * To do this in the simplest way, values in the dynamic_constants[] array and
- * the leakage_constants[] array are all set to the 2-core value below in the
- * structure init. With this, there's no need to modify the code edp logic in
- * edp.c and it remains specific to this chip.
+ * The one-core value in dynamic_constants[] is adjusted to account for this.
+ * The one-core value in leakage_constants[] is set to the two-core value.
  *
- * The actual 1-core values for these two arrays is saved as a comment to
- * resurrect when actually needed.
+ * The original 'pure single-core' values for these two arrays are saved in
+ * comments for reference.
  */
 #define EDP13_PARAMS_COMMON_PART					\
 	.temp_scaled      = 10,						\
 	.dyn_scaled       = 1000,					\
-	.dyn_consts_n     = { 4900, 4900 }, /* { save: 2700, 4900 } */ 	\
+	.dyn_consts_n     = { 3900, 5900 }, /* { save: 2700, 5900 } */	\
 	.consts_scaled    = 100,					\
 	.leakage_consts_n = { 100, 100 }, /* { save: 60, 100 } */	\
-	.ijk_scaled       = 10000,					\
+	.ijk_scaled       = 1000,					\
 	.leakage_min      = 30,						\
-	/* .safety_cap       = { 2400000, 2200000, }, */		\
-	/* .volt_temp_cap = { 70, 1240 }, - TODO for T132 */		\
 	.leakage_consts_ijk = LEAKAGE13_CONSTS_IJK_COMMON
 
 static struct tegra_edp_cpu_leakage_params t13x_leakage_params[] = {
 	{
-		.cpu_speedo_id      = 0, /* Engg SKU */
+		.cpu_speedo_id = 1, /* array-index[0] is DSC */
 		EDP13_PARAMS_COMMON_PART,
+		.safety_cap    = { 2500000, 2300000, },
 	},
 	{
-		.cpu_speedo_id      = 1, /* Engg SKU */
+		.cpu_speedo_id = 1, /* array-index[1] is MID */
 		EDP13_PARAMS_COMMON_PART,
+		/* .safety_cap    = { 2500000, 2500000, }, */
 	},
 };
 

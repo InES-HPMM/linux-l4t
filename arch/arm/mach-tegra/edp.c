@@ -324,9 +324,11 @@ static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 		params = tegra14x_get_leakage_params(0, &array_size);
 	else if (IS_T12X)
 		params = tegra12x_get_leakage_params(0, &array_size);
-	else if (IS_T13X)
-		params = tegra13x_get_leakage_params(0, &array_size);
-	else
+	else if (IS_T13X) {
+		/* pick edp_params array-index based on package */
+		*cpu_speedo_idx = (tegra_package_id() == 1);
+		return 0;
+	} else
 		array_size = 0;
 
 	for (i = 0; i < array_size; i++)

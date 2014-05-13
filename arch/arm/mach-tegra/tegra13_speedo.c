@@ -41,6 +41,7 @@
 #define FUSE_SOC_SPEEDO_0	0x134
 #define FUSE_SOC_SPEEDO_1	0x138
 #define FUSE_SOC_SPEEDO_2	0x13c
+#define FUSE_PACKAGE_INFO	0X1FC
 #define FUSE_CPU_IDDQ		0x118
 #define FUSE_SOC_IDDQ		0x140
 #define FUSE_GPU_IDDQ		0x228
@@ -140,6 +141,8 @@ void tegra_init_speedo_data(void)
 		gpu_iddq_value = 0;
 		return;
 	}
+
+	package_id = tegra_fuse_readl(FUSE_PACKAGE_INFO) & 0x0F;
 
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
