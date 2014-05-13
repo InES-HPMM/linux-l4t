@@ -4366,12 +4366,15 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra_xusb_read_calib_data(tegra);
 	tegra_xusb_read_board_data(tegra);
 	tegra->pdata = dev_get_platdata(&pdev->dev);
-	tegra->bdata->portmap = tegra->pdata->portmap;
-	tegra->bdata->hsic[0].pretend_connect =
+	if (tegra->pdata) {
+		tegra->bdata->portmap = tegra->pdata->portmap;
+		tegra->bdata->hsic[0].pretend_connect =
 				tegra->pdata->pretend_connect_0;
+		tegra->bdata->lane_owner = tegra->pdata->lane_owner;
+	}
 	if (tegra->bdata->portmap == NULL)
 		return -ENODEV;
-	tegra->bdata->lane_owner = tegra->pdata->lane_owner;
+
 	tegra->soc_config = soc_config;
 	tegra->ss_pwr_gated = false;
 	tegra->host_pwr_gated = false;
