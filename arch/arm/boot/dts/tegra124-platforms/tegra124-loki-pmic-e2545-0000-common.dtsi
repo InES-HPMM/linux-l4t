@@ -124,7 +124,7 @@
 						regulator-max-microvolt = <1250000>;
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
-						regulator-ramp-delay = <2500>;
+						regulator-ramp-delay = <5000>;
 
 						consumers {
 							c0 {
