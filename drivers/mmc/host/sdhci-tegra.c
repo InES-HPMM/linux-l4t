@@ -2058,8 +2058,10 @@ static int sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 
 	curr_vmin = tegra_dvfs_predict_millivolts(pltfm_host->clk,
 		tuning_data->freq_hz);
-	vmin = curr_vmin;
+	if (!curr_vmin)
+		curr_vmin = tegra_host->boot_vcore_mv;
 
+	vmin = curr_vmin;
 	do {
 		SDHCI_TEGRA_DBG("%s: checking for win opening with vmin %d\n",
 			mmc_hostname(sdhci->mmc), vmin);
@@ -2101,11 +2103,25 @@ static int sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 	tuning_data->best_tap_value = best_tap_value;
 	tuning_data->nom_best_tap_value = best_tap_value;
 
-	/* Set the new vmin if there is any change. */
-	if ((tuning_data->best_tap_value >= 0) && (curr_vmin != vmin))
+	/*
+	 * Set the new vmin if there is any change. If dvfs overrides are
+	 * disabled, then print the error message but continue execution
+	 * rather than disabling tuning altogether.
+	 */
+	if ((tuning_data->best_tap_value >= 0) && (curr_vmin != vmin)) {
 		err = tegra_dvfs_set_fmax_at_vmin(pltfm_host->clk,
 			tuning_data->freq_hz, vmin);
-
+		if ((err == -EPERM) || (err == -ENOSYS)) {
+			/*
+			 * tegra_dvfs_set_fmax_at_vmin: will return EPERM or
+			 * ENOSYS, when DVFS override is not enabled, continue
+			 * tuning with default core voltage.
+			 */
+			SDHCI_TEGRA_DBG(
+				"dvfs overrides disabled. Vmin not updated\n");
+			err = 0;
+		}
+	}
 	kfree(temp_tap_data);
 	return err;
 }
@@ -3037,8 +3053,21 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 
 	SDHCI_TEGRA_DBG("%s: Setting vcore override %d\n",
 		mmc_hostname(sdhci->mmc), voltage);
-	/* First clear any previous dvfs override settings */
+	/*
+	 * First clear any previous dvfs override settings. If dvfs overrides
+	 * are disabled, then print the error message but continue execution
+	 * rather than failing tuning altogether.
+	 */
 	err = tegra_dvfs_override_core_voltage(pltfm_host->clk, 0);
+	if ((err == -EPERM) || (err == -ENOSYS)) {
+		/*
+		 * tegra_dvfs_override_core_voltage will return EPERM or ENOSYS,
+		 * when DVFS override is not enabled. Continue tuning
+		 * with default core voltage
+		 */
+		SDHCI_TEGRA_DBG("dvfs overrides disabled. Nothing to clear\n");
+		err = 0;
+	}
 	if (!voltage)
 		return err;
 
@@ -3055,8 +3084,20 @@ static int sdhci_tegra_set_tuning_voltage(struct sdhci_host *sdhci,
 			nom_emc_freq_set = true;
 	}
 
+	/*
+	 * If dvfs overrides are disabled, then print the error message but
+	 * continue tuning execution rather than failing tuning altogether.
+	 */
 	err = tegra_dvfs_override_core_voltage(pltfm_host->clk, voltage);
-	if (err)
+	if ((err == -EPERM) || (err == -ENOSYS)) {
+		/*
+		 * tegra_dvfs_override_core_voltage will return EPERM or ENOSYS,
+		 * when DVFS override is not enabled. Continue tuning
+		 * with default core voltage
+		 */
+		SDHCI_TEGRA_DBG("dvfs overrides disabled. No overrides set\n");
+		err = 0;
+	} else if (err)
 		dev_err(mmc_dev(sdhci->mmc),
 			"failed to set vcore override %dmv\n", voltage);
 
