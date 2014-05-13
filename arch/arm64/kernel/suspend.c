@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/export.h>
 #include <linux/slab.h>
 #include <asm/cacheflush.h>
 #include <asm/cpu_ops.h>
@@ -107,6 +108,7 @@ int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 
 	return ret;
 }
+EXPORT_SYMBOL(cpu_suspend);
 
 extern struct sleep_save_sp sleep_save_sp;
 
