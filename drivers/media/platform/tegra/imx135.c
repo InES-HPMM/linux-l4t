@@ -39,6 +39,12 @@
 #include "nvc_utilities.h"
 #include "regmap_util.h"
 
+#define CONFIG_T210_FPGA 0
+
+#if CONFIG_T210_FPGA
+#include <linux/vi_i2c.h>
+#endif
+
 struct imx135_info {
 	struct miscdevice		miscdev_info;
 	int				mode;
@@ -2919,9 +2925,155 @@ static struct reg_8 mode_quality[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
+#if CONFIG_T210_FPGA
+static struct reg_8 mode_1952x1096[] = {
+	/* software reset */
+	{0x0103, 0x01},
+	/* global settings */
+	{0x0101, 0x00},
+	{0x0105, 0x01},
+	{0x0110, 0x00},
+	{0x0220, 0x01},
+	{0x3302, 0x11},
+	{0x3833, 0x20},
+	{0x3893, 0x00},
+	{0x3906, 0x08},
+	{0x3907, 0x01},
+	{0x391B, 0x01},
+	{0x3C09, 0x01},
+	{0x600A, 0x00},
+	{0x3008, 0xB0},
+	{0x320A, 0x01},
+	{0x320D, 0x10},
+	{0x3216, 0x2E},
+	{0x322C, 0x02},
+	{0x3409, 0x0C},
+	{0x340C, 0x2D},
+	{0x3411, 0x39},
+	{0x3414, 0x1E},
+	{0x3427, 0x04},
+	{0x3480, 0x1E},
+	{0x3484, 0x1E},
+	{0x3488, 0x1E},
+	{0x348C, 0x1E},
+	{0x3490, 0x1E},
+	{0x3494, 0x1E},
+	{0x3511, 0x8F},
+	{0x364F, 0x2D},
+	{0x011E, 0x0D},
+	{0x011F, 0x00},
+	{0x0301, 0x05},
+	{0x0303, 0x01},
+	{0x0305, 0x0C},
+	{0x0309, 0x05},
+	{0x030B, 0x02},
+	{0x030C, 0x00},
+	{0x030D, 0x41},
+	{0x030E, 0x01},
+	{0x3A06, 0x12},
+	{0x0108, 0x03},
+	{0x0112, 0x0A},
+	{0x0113, 0x0A},
+	{0x0381, 0x01},
+	{0x0383, 0x01},
+	{0x0385, 0x01},
+	{0x0387, 0x01},
+	{0x0390, 0x01},
+	{0x0391, 0x22},
+	{0x0392, 0x00},
+	{0x0401, 0x02},
+	{0x0404, 0x00},
+	{0x0405, 0x11},
+	{0x4082, 0x00},
+	{0x4083, 0x00},
+	{0x4203, 0xFF},
+	{0x7006, 0x04},
+	{0x0340, 0x0A},
+	{0x0341, 0x40},
+	{0x0342, 0x11},
+	{0x0343, 0xDC},
+	{0x0344, 0x00},
+	{0x0345, 0x22},
+	{0x0346, 0x01},
+	{0x0347, 0x8C},
+	{0x0348, 0x10},
+	{0x0349, 0x4D},
+	{0x034A, 0x0A},
+	{0x034B, 0xA7},
+	{0x034C, 0x07},
+	{0x034D, 0x9C},
+	{0x034E, 0x04},
+	{0x034F, 0x48},
+	{0x0350, 0x00},
+	{0x0351, 0x00},
+	{0x0352, 0x00},
+	{0x0353, 0x00},
+	{0x0354, 0x08},
+	{0x0355, 0x16},
+	{0x0356, 0x04},
+	{0x0357, 0x8E},
+	{0x301D, 0x30},
+	{0x3310, 0x07},
+	{0x3311, 0x9C},
+	{0x3312, 0x04},
+	{0x3313, 0x48},
+	{0x331C, 0x00},
+	{0x331D, 0xD2},
+	{0x4084, 0x07},
+	{0x4085, 0x9C},
+	{0x4086, 0x04},
+	{0x4087, 0x48},
+	{0x4400, 0x00},
+	{0x0830, 0x87},
+	{0x0831, 0x3F},
+	{0x0832, 0x10},
+	{0x0833, 0x3F},
+	{0x0834, 0x3F},
+	{0x0835, 0x4F},
+	{0x0836, 0xDF},
+	{0x0837, 0x47},
+	{0x0839, 0x1F},
+	{0x083A, 0x17},
+	{0x083B, 0x02},
+	{0x0202, 0x0C},
+	{0x0203, 0xCC},
+	{0x0205, 0x00},
+	{0x020E, 0x01},
+	{0x020F, 0x00},
+	{0x0210, 0x01},
+	{0x0211, 0x00},
+	{0x0212, 0x01},
+	{0x0213, 0x00},
+	{0x0214, 0x01},
+	{0x0215, 0x00},
+	{0x0230, 0x00},
+	{0x0231, 0x00},
+	{0x0233, 0x00},
+	{0x0234, 0x00},
+	{0x0235, 0x40},
+	{0x0238, 0x00},
+	{0x0239, 0x04},
+	{0x023B, 0x00},
+	{0x023C, 0x01},
+	{0x33B0, 0x04},
+	{0x33B1, 0x00},
+	{0x33B3, 0x00},
+	{0x33B4, 0x01},
+	{0x3800, 0x00},
+	{0x0601, 0x00},
+	{0x0100, 0x01},
+	{0x0100, 0x01},
+	{IMX135_TABLE_WAIT_MS, IMX135_WAIT_MS},
+	{IMX135_TABLE_END, 0x00}
+};
+#endif
+
 enum {
 	IMX135_MODE_4208X3120,
 	IMX135_MODE_1920X1080,
+#if CONFIG_T210_FPGA
+	IMX135_MODE_1952X1096,
+#endif
 	IMX135_MODE_1280X720,
 	IMX135_MODE_2616X1472,
 	IMX135_MODE_3896X2192,
@@ -2939,6 +3091,9 @@ enum {
 static struct reg_8 *mode_table[] = {
 	[IMX135_MODE_4208X3120] = mode_4208x3120,
 	[IMX135_MODE_1920X1080] = mode_1920x1080,
+#if CONFIG_T210_FPGA
+	[IMX135_MODE_1952X1096] = mode_1952x1096,
+#endif
 	[IMX135_MODE_1280X720]  = mode_1280x720,
 	[IMX135_MODE_2616X1472]  = mode_2616x1472,
 	[IMX135_MODE_3896X2192]  = mode_3896x2192,
@@ -3017,7 +3172,12 @@ imx135_get_gain_short_reg(struct reg_8 *regs, u16 gain)
 static inline int
 imx135_read_reg(struct imx135_info *info, u16 addr, u8 *val)
 {
+#if !CONFIG_T210_FPGA
 	return regmap_read(info->regmap, addr, (unsigned int *) val);
+#else
+	*val = vi_i2c_read_method(addr);
+#endif
+	return 0;
 }
 
 static int
@@ -3025,7 +3185,11 @@ imx135_write_reg(struct imx135_info *info, u16 addr, u8 val)
 {
 	int err;
 
+#if !CONFIG_T210_FPGA
 	err = regmap_write(info->regmap, addr, val);
+#else
+	err = vi_i2c_write_direct_test(addr, val);
+#endif
 
 	if (err)
 		pr_err("%s:i2c write failed, %x = %x\n",
@@ -3033,6 +3197,47 @@ imx135_write_reg(struct imx135_info *info, u16 addr, u8 val)
 
 	return err;
 }
+
+#if CONFIG_T210_FPGA
+static int
+imx135_write_table(struct imx135_info *info,
+				 const struct reg_8 table[],
+				 const struct reg_8 override_list[],
+				 int num_override_regs)
+{
+	int err;
+	const struct reg_8 *next;
+	int i;
+	u16 val;
+
+	for (next = table; next->addr != IMX135_TABLE_END; next++) {
+		if (next->addr == IMX135_TABLE_WAIT_MS) {
+			msleep_range(next->val);
+			continue;
+		}
+
+		val = next->val;
+
+		/* When an override list is passed in, replace the reg */
+		/* value to write if the reg is in the list            */
+		if (override_list) {
+			for (i = 0; i < num_override_regs; i++) {
+				if (next->addr == override_list[i].addr) {
+					val = override_list[i].val;
+					break;
+				}
+			}
+		}
+
+		err = imx135_write_reg(info, next->addr, val);
+		if (err) {
+			pr_err("%s:imx135_write_table:%d", __func__, err);
+			return err;
+		}
+	}
+	return 0;
+}
+#endif
 
 static int imx135_set_flash_output(struct imx135_info *info)
 {
@@ -3087,6 +3292,7 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	int err;
 	struct reg_8 reg_list[8];
 
+	pr_info("[IMX135] sensor %s:%d ++\n", __func__, __LINE__);
 	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u, hdr %d\n",
 			 __func__, mode->xres, mode->yres, mode->frame_length,
 			 mode->coarse_time, mode->gain, mode->hdr_en);
@@ -3127,12 +3333,24 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	} else if (mode->xres == 640 && mode->yres == 480) {
 		sensor_mode = IMX135_MODE_640X480;
 		quality_hdr = 0;
+#if CONFIG_T210_FPGA
+	} else if (mode->xres == 1952 && mode->yres == 1096) {
+		sensor_mode = IMX135_MODE_1952X1096;
+		quality_hdr = 0;
+#endif
 	} else {
 		pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 			 __func__, mode->xres, mode->yres);
 		return -EINVAL;
 	}
 
+#if CONFIG_T210_FPGA
+	err = imx135_write_table(info,
+				mode_table[sensor_mode],
+				reg_list, 5);
+	if (err)
+		return err;
+#else
 	/* get a list of override regs for the asking frame length, */
 	/* coarse integration time, and gain.                       */
 	imx135_get_frame_length_regs(reg_list, mode->frame_length);
@@ -3165,6 +3383,8 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 		return err;
 
 	imx135_set_flash_output(info);
+
+#endif
 
 	info->mode = sensor_mode;
 	pr_info("[IMX135]: stream on.\n");
@@ -3613,6 +3833,9 @@ imx135_ioctl(struct file *file,
 		err = -EINVAL;
 	}
 
+#if CONFIG_T210_FPGA
+	err = 0;
+#endif
 	return err;
 }
 
@@ -3994,7 +4217,7 @@ static struct imx135_platform_data *imx135_parse_dt(struct i2c_client *client)
 	return board_info_pdata;
 }
 
-static int
+int
 imx135_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -4072,6 +4295,7 @@ imx135_probe_fail:
 
 	return err;
 }
+EXPORT_SYMBOL(imx135_probe);
 
 static int
 imx135_remove(struct i2c_client *client)
