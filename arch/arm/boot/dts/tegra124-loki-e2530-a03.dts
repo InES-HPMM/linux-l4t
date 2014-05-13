@@ -25,6 +25,12 @@
 					ti,enable-shutdown;
 				};
 
+				auto_conv0 {
+					ti,adc-channel-number = <1>;
+					ti,adc-low-threshold = <765>;
+					ti,enable-shutdown;
+				};
+
 				iio_map {
 					ch1 {
 						ti,adc-channel-number = <1>;
