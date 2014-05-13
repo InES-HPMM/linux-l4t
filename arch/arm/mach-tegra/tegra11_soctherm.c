@@ -2815,7 +2815,7 @@ static void soctherm_adjust_zone(int tz)
 {
 	u32 r, s;
 	int i;
-	unsigned long ztemp, pll_temp, diff;
+	long ztemp, pll_temp, diff;
 	bool low_voltage;
 
 	if (soctherm_suspended)
@@ -2850,6 +2850,10 @@ static void soctherm_adjust_zone(int tz)
 			diff = ztemp - pll_temp;
 		else
 			diff = 0;
+
+		/* cap hotspot offset to max offset from pdata */
+		if (diff > plat_data.therm[tz].hotspot_offset)
+			diff = plat_data.therm[tz].hotspot_offset;
 
 		/* Program hotspot offsets per <tz> ~ PLL diff */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
