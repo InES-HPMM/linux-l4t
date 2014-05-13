@@ -896,48 +896,6 @@ static int ltr558_remove(struct i2c_client *client)
 	return 0;
 }
 
-
-static int ltr558_suspend(struct i2c_client *client, pm_message_t mesg)
-{
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
-	int ret;
-
-	if (chip->is_als_enable == 1)
-		chip->als_enabled_before_suspend = 1;
-	if (chip->is_prox_enable == 1)
-		chip->prox_enabled_before_suspend = 1;
-
-	ret = ltr558_ps_disable(client);
-	if (ret == 0)
-		ret = ltr558_als_disable(client);
-
-	return ret;
-}
-
-
-static int ltr558_resume(struct i2c_client *client)
-{
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
-	int error = 0;
-
-	mdelay(PON_DELAY);
-
-	if (chip->prox_enabled_before_suspend == 1) {
-		error = ltr558_ps_enable(client, chip->ps_gainrange);
-		if (error < 0)
-			goto out;
-	}
-
-	if (chip->als_enabled_before_suspend == 1) {
-		error = ltr558_als_enable(client, chip->als_gainrange);
-	}
-out:
-	return error;
-}
-
-
 static const struct i2c_device_id ltr558_id[] = {
 	{ DEVICE_NAME, 0 },
 	{}
@@ -961,8 +919,6 @@ static struct i2c_driver ltr558_driver = {
 		.name = DEVICE_NAME,
 		.of_match_table = of_match_ptr(ltr558_of_match),
 	},
-	.suspend = ltr558_suspend,
-	.resume = ltr558_resume,
 };
 
 
