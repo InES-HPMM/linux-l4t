@@ -190,9 +190,9 @@
 		tap-delay = <0>;
 		trim-delay = <3>;
 		mmc-ocr-mask = <3>;
-		uhs_mask = <0x2F>;
+		uhs_mask = <0x28>;
 		bus-width = <4>;
-		max-clk-limit = <50000000>;
+		max-clk-limit = <204000000>;
 		status = "okay";
 	};
 
