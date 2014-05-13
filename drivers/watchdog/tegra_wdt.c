@@ -367,7 +367,7 @@ static void __exit tegra_wdt_exit(void)
 	platform_driver_unregister(&tegra_wdt_driver);
 }
 
-module_init(tegra_wdt_init);
+subsys_initcall(tegra_wdt_init);
 module_exit(tegra_wdt_exit);
 
 MODULE_AUTHOR("NVIDIA Corporation");
