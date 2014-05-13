@@ -394,6 +394,9 @@ void __init tegra_init_timer(struct device_node *np)
 	case 12000000:
 		timer_writel(0x000b, TIMERUS_USEC_CFG);
 		break;
+	case 12800000:
+		timer_writel(0x043F, TIMERUS_USEC_CFG);
+		break;
 	case 13000000:
 		timer_writel(0x000c, TIMERUS_USEC_CFG);
 		break;
