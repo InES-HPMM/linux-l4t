@@ -880,20 +880,20 @@ static void tegra21_clk_m_init(struct clk *c)
 
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	BUG_ON((spare & SPARE_REG_CLK_M_DIVISOR_MASK) != 0);
-
 	spare &= ~SPARE_REG_CLK_M_DIVISOR_MASK;
 
 	rate = clk_get_rate(c->parent); /* the rate of osc clock */
 
 	/* on QT platform, do not divide clk-m since it affects uart */
-	if (rate == 38400000) {
-		/* Set divider to (2 + 1) to still maintain
-		   clk_m to 13MHz instead of reporting clk_m as
-		   19.2 MHz when it is actually set to 13MHz */
-		spare |= (2 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
-		if (!tegra_platform_is_qt())
-			clk_writel(spare, SPARE_REG);
+	if (!tegra_platform_is_silicon()) {
+		if (rate == 38400000) {
+			/* Set divider to (2 + 1) to still maintain
+			clk_m to 13MHz instead of reporting clk_m as
+			19.2 MHz when it is actually set to 13MHz */
+			spare |= (2 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
+			if (!tegra_platform_is_qt())
+				clk_writel(spare, SPARE_REG);
+		}
 	}
 
 	c->div = ((spare & SPARE_REG_CLK_M_DIVISOR_MASK)
