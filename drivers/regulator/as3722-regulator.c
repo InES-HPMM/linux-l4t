@@ -886,6 +886,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].n_linear_ranges =
 					ARRAY_SIZE(as3722_sd2345_ranges);
 			as3722_regs->desc[id].vsel_persist = true;
+			as3722_regs->desc[id].enable_time = 275;
 			break;
 		default:
 			if (reg_config->ext_control)
