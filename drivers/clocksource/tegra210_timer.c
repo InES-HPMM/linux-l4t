@@ -35,15 +35,15 @@ static u32 usec_config;
 #define TIMERUS_CNTR_1US 0x10
 #define TIMERUS_USEC_CFG 0x14
 
-#define TIMER10_OFFSET 0x90
-#define TIMER11_OFFSET 0x98
-#define TIMER12_OFFSET 0xa0
-#define TIMER13_OFFSET 0xa8
+#define TIMER3_OFFSET 0x50
+#define TIMER4_OFFSET 0x58
+#define TIMER5_OFFSET 0x60
+#define TIMER6_OFFSET 0x68
 
 #define TIMER_PTV 0x0 /* present trigger value register */
 #define TIMER_PCR 0x4 /* present counter value register */
 
-#define TIMER_FOR_CPU(cpu) (TIMER10_OFFSET + (cpu) * 8)
+#define TIMER_FOR_CPU(cpu) (TIMER3_OFFSET + (cpu) * 8)
 
 #define TNAMELEN 20
 
@@ -78,7 +78,7 @@ static void tegra210_timer_set_mode(enum clock_event_mode mode,
 	case CLOCK_EVT_MODE_PERIODIC:
 		__raw_writel((1 << 31) /* EN=1, enable timer */
 			     | (1 << 30) /* PER=1, periodic mode */
-			     | ((tegra210_timer_freq / HZ) - 1),
+			     | ((1000000 / HZ) - 1),
 			     tevt->reg_base + TIMER_PTV);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
@@ -122,7 +122,7 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 		       __func__, tevt->evt.irq, cpu);
 		BUG();
 	}
-	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
+	clockevents_config_and_register(&tevt->evt, 1000000,
 					1, /* min */
 					0x1fffffff); /* 29 bits */
 }
