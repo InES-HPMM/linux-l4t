@@ -7755,7 +7755,13 @@ static struct clk_mux_sel mux_pllp_pllc[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllp_clkm1[] = {
+static struct clk_mux_sel mux_pllp_clkm_2[] = {
+	{ .input = &tegra_pll_p, .value = 2},
+	{ .input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllp_clkm_1[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 2},
 	{ 0, 0},
@@ -7847,6 +7853,11 @@ static struct clk_mux_sel mux_pllp3_pllc_clkm[] = {
 /* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllp[] = {
+	{ .input = &tegra_pll_p, .value = 0},
 	{ 0, 0},
 };
 
@@ -8297,7 +8308,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	38400000,  mux_clk_m,			0),
 	PERIPH_CLK("spare1",	"spare1",		NULL,	192,	0,	38400000,  mux_clk_m,			0),
 	PERIPH_CLK("axiap",	"axiap",		NULL,	196,	0,	38400000,  mux_clk_m,			0),
-	PERIPH_CLK("sor_safe",	"sor_safe",		NULL,	222,	0,	600000000,  mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("sor_safe",	"sor_safe",		NULL,	222,	0,	600000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("pllp_out_cpu", "pllp_out_cpu",	NULL,	223,	0,	408000000, mux_pllp,			PERIPH_NO_RESET),
 	PERIPH_CLK("iqc1",	"iqc1",			NULL,	221,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("iqc2",	"iqc2",			NULL,	220,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("kfuse",	"kfuse-tegra",		NULL,	40,	0,	38400000,  mux_clk_m,			PERIPH_ON_APB),
@@ -8348,6 +8360,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c4",	"tegra21-i2c.3",	"div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c5",	"tegra21-i2c.4",	"div-clk",	47,	0x128,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c6",	"tegra21-i2c.5",	"div-clk",	166,	0x65c,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
+	PERIPH_CLK("mipibif",	"mipibif",		NULL,	173,	0x660,	408000000,  mux_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	60000000,  mux_clk_m, PERIPH_ON_APB),
 	PERIPH_CLK("mipi-cal-fixed", "mipi-cal-fixed",	NULL,	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("uarta",	"serial-tegra.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
@@ -8363,7 +8376,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	408000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX | DIV_U71, &tegra_sor_clk_ops),
 	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_plld_plld2_clkm,	MUX | DIV_U71, &tegra_sor_clk_ops),
-	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	38400000, mux_clk_m,			0),
+	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	408000000, mux_pllp,			0),
+	PERIPH_CLK("dpaux1",	"dpaux1",		NULL,	207,	0,	408000000, mux_pllp,			0),
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			0),
@@ -8383,8 +8397,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("cile",	"vi",			"cile",  146,	0x61c,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
-	PERIPH_CLK("entropy",	"entropy",		NULL, 149,	0x628,	102000000, mux_pllp_clkm1,		MUX | DIV_U71),
+	PERIPH_CLK("entropy",	"entropy",		NULL, 149,	0x628,	102000000, mux_pllp_clkm_1,		MUX | DIV_U71),
 	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL, 177,	0x66c,	102000000, mux_pllp3_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("dbgapb",	"dbgapb",		NULL, 185,	0x718,	136000000, mux_pllp_clkm_2,		MUX | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
@@ -8403,6 +8418,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("mc_bbc",	"mc_bbc",		NULL,	170,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_capa",	"mc_capa",		NULL,	167,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_cbpa",	"mc_cbpa",		NULL,	168,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
+	PERIPH_CLK("mc_cpu",	"mc_cpu",		NULL,	169,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_ccpa",	"mc_ccpa",		NULL,	201,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_cdpa",	"mc_cdpa",		NULL,	200,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 
