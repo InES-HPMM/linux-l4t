@@ -353,25 +353,33 @@ el0_sync:
 	lsr	x24, x25, #ESR_EL1_EC_SHIFT	// exception class
 	cmp	x24, #ESR_EL1_EC_SVC64		// SVC in 64-bit state
 	b.eq	el0_svc
-	adr	lr, ret_from_exception
+	adr 	x26, el0_da
 	cmp	x24, #ESR_EL1_EC_DABT_EL0	// data abort in EL0
-	b.eq	el0_da
+	b.eq	el0_sync_tramp
+	adr 	x26, el0_ia
 	cmp	x24, #ESR_EL1_EC_IABT_EL0	// instruction abort in EL0
-	b.eq	el0_ia
+	b.eq	el0_sync_tramp
+	adr 	x26, el0_fpsimd_acc
 	cmp	x24, #ESR_EL1_EC_FP_ASIMD	// FP/ASIMD access
-	b.eq	el0_fpsimd_acc
+	b.eq	el0_sync_tramp
+	adr 	x26, el0_fpsimd_exc
 	cmp	x24, #ESR_EL1_EC_FP_EXC64	// FP/ASIMD exception
-	b.eq	el0_fpsimd_exc
+	b.eq	el0_sync_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_SYS64		// configurable trap
-	b.eq	el0_undef
+	b.eq	el0_sync_tramp
+	adr	x26, el0_sp_pc
 	cmp	x24, #ESR_EL1_EC_SP_ALIGN	// stack alignment exception
-	b.eq	el0_sp_pc
+	b.eq	el0_sync_tramp
+	adr 	x26, el0_sp_pc
 	cmp	x24, #ESR_EL1_EC_PC_ALIGN	// pc alignment exception
-	b.eq	el0_sp_pc
+	b.eq	el0_sync_tramp
+	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_UNKNOWN	// unknown exception in EL0
-	b.eq	el0_undef
+	b.eq	el0_sync_tramp
+	adr	x26, el0_dbg
 	cmp	x24, #ESR_EL1_EC_BREAKPT_EL0	// debug exception in EL0
-	b.ge	el0_dbg
+	b.ge	el0_sync_tramp
 	b	el0_inv
 
 #ifdef CONFIG_COMPAT
@@ -384,41 +392,48 @@ el0_sync_compat:
 	b.eq	el0_svc_compat
 	adr	x26, el0_da
 	cmp	x24, #ESR_EL1_EC_DABT_EL0	// data abort in EL0
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_ia
 	cmp	x24, #ESR_EL1_EC_IABT_EL0	// instruction abort in EL0
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_fpsimd_acc
 	cmp	x24, #ESR_EL1_EC_FP_ASIMD	// FP/ASIMD access
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_fpsimd_exc
 	cmp	x24, #ESR_EL1_EC_FP_EXC32	// FP/ASIMD exception
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_UNKNOWN	// unknown exception in EL0
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP15_32	// CP15 MRC/MCR trap
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP15_64	// CP15 MRRC/MCRR trap
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_MR	// CP14 MRC/MCR trap
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_LS	// CP14 LDC/STC trap
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_64	// CP14 MRRC/MCRR trap
-	b.eq	el0_sync_compat_tramp
+	b.eq	el0_sync_tramp
 	adr	x26, el0_dbg
 	cmp	x24, #ESR_EL1_EC_BREAKPT_EL0	// debug exception in EL0
-	b.ge	el0_sync_compat_tramp
+	b.ge	el0_sync_tramp
 	b	el0_inv
-el0_sync_compat_tramp:
+el0_sync_tramp:
 	blr	x26
-	b	ret_from_exception
+	/* Fall through	*/
+/*
+ * This is the return code to user mode for abort handlers
+ */
+ret_from_exception:
+	get_thread_info tsk
+	b	ret_to_user
+ENDPROC(ret_from_exception)
 
 el0_svc_compat:
 	/*
@@ -545,14 +560,6 @@ el0_irq_naked:
 #endif
 	b	ret_to_user
 ENDPROC(el0_irq)
-
-/*
- * This is the return code to user mode for abort handlers
- */
-ret_from_exception:
-	get_thread_info tsk
-	b	ret_to_user
-ENDPROC(ret_from_exception)
 
 /*
  * Register switch for AArch64. The callee-saved registers need to be saved
