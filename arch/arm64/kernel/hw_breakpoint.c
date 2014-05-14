@@ -292,37 +292,7 @@ static int hw_breakpoint_control(struct perf_event *bp,
  */
 int arch_install_hw_breakpoint(struct perf_event *bp)
 {
-	struct arch_hw_breakpoint *info = counter_arch_bp(bp);
-	struct perf_event **slot, **slots;
-	int i, max_slots, base;
-
-	if (info->ctrl.type == ARM_BREAKPOINT_EXECUTE) {
-		/* Breakpoint */
-		base = AARCH64_DBG_REG_BCR;
-		slots = this_cpu_ptr(bp_on_reg);
-		max_slots = core_num_brps;
-	} else {
-		/* Watchpoint */
-		base = AARCH64_DBG_REG_WCR;
-		slots = this_cpu_ptr(wp_on_reg);
-		max_slots = core_num_wrps;
-	}
-
-	/* Remove the breakpoint. */
-	for (i = 0; i < max_slots; ++i) {
-		slot = &slots[i];
-
-		if (*slot == bp) {
-			*slot = NULL;
-			break;
-		}
-	}
-
-	if (WARN_ONCE(i == max_slots, "Can't find any breakpoint slot"))
-		return;
-
-	/* Reset the control register. */
-	write_wb_reg(base, i, 0);
+	return hw_breakpoint_control(bp, HW_BREAKPOINT_INSTALL);
 }
 void arch_uninstall_hw_breakpoint(struct perf_event *bp)
 {
