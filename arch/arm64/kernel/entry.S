@@ -678,6 +678,11 @@ ENDPROC(ret_from_fork)
 	 * This is the really slow path.  We're going to be doing context
 	 * switches, and waiting for our parent to respond.
 	 */
+ni_sys_systrace:
+	mov     x0, sp
+	bl      do_ni_syscall
+	b       __sys_trace_return
+
 __sys_trace:
 	mov	x1, sp
 	mov	w0, #0				// trace entry
@@ -685,7 +690,7 @@ __sys_trace:
 	uxtw	scno, w0			// syscall number (possibly new)
 	mov	x1, sp				// pointer to regs
 	cmp	scno, sc_nr			// check upper syscall limit
-	b.hs	ni_sys
+	b.hs	ni_sys_systrace
 	ldp	x0, x1, [sp]			// restore the syscall args
 	ldp	x2, x3, [sp, #S_X2]
 	ldp	x4, x5, [sp, #S_X4]
