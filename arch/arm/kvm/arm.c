@@ -809,8 +809,8 @@ static void cpu_init_hyp_mode(void *dummy)
 	/* Switch from the HYP stub to our own HYP init vector */
 	__hyp_set_vectors(kvm_get_idmap_vector());
 
-	boot_pgd_ptr = kvm_mmu_get_boot_httbr();
-	pgd_ptr = kvm_mmu_get_httbr();
+	boot_pgd_ptr = (unsigned long long)kvm_mmu_get_boot_httbr();
+	pgd_ptr = (unsigned long long)kvm_mmu_get_httbr();
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
 	hyp_stack_ptr = stack_page + PAGE_SIZE;
 	vector_ptr = (unsigned long)__kvm_hyp_vector;
