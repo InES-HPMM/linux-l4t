@@ -69,7 +69,11 @@ static struct sysedp_platform_data tn8_sysedp_platform_data = {
 	.consumer_data = tn8_sysedp_consumer_data,
 	.consumer_data_size = ARRAY_SIZE(tn8_sysedp_consumer_data),
 	.margin = 0,
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	.min_budget = 0,
+#else
 	.min_budget = 4400,
+#endif
 };
 
 static struct platform_device tn8_sysedp_device = {
@@ -109,12 +113,21 @@ void __init tn8_new_sysedp_init(void)
 	WARN_ON(r);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
+static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
+	.core_gain = 100,
+	.init_req_watts = 20000,
+	.pthrot_ratio = 75,
+	.cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL,
+};
+#else
 static struct tegra_sysedp_platform_data tn8_sysedp_dynamic_capping_platdata = {
 	.core_gain = 115,
 	.init_req_watts = 20000,
 	.pthrot_ratio = 75,
 	.cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL,
 };
+#endif
 
 static struct platform_device tn8_sysedp_dynamic_capping = {
 	.name = "sysedp_dynamic_capping",
