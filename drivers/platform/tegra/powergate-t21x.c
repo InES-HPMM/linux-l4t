@@ -731,5 +731,8 @@ static struct powergate_ops tegra210_pg_ops = {
 
 struct powergate_ops *tegra210_powergate_init_chip_support(void)
 {
+	if (tegra_platform_is_linsim())
+		return NULL;
+
 	return &tegra210_pg_ops;
 }
