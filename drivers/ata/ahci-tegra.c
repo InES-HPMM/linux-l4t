@@ -50,7 +50,6 @@
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/tegra-soc.h>
-
 #include "../../arch/arm/mach-tegra/iomap.h"
 
 #define DRV_NAME	"tegra-sata"
@@ -382,6 +381,9 @@ struct tegra_ahci_host_priv {
 	int			pexp_gpio;
 };
 
+#ifdef	CONFIG_DEBUG_FS
+static int tegra_ahci_dump_debuginit(void);
+#endif
 static int tegra_ahci_init_one(struct platform_device *pdev);
 static int tegra_ahci_remove_one(struct platform_device *pdev);
 static void tegra_ahci_set_clk_rst_cnt_rst_dev(void);
@@ -2599,7 +2601,17 @@ fail:
 
 static int __init ahci_init(void)
 {
-	return platform_driver_register(&tegra_platform_ahci_driver);
+	int ret = 0;
+
+	ret = platform_driver_register(&tegra_platform_ahci_driver);
+	if (ret < 0)
+		return ret;
+
+#ifdef	CONFIG_DEBUG_FS
+	ret = tegra_ahci_dump_debuginit();
+#endif
+	return ret;
+
 }
 
 static void __exit ahci_exit(void)
@@ -2692,7 +2704,7 @@ static const struct file_operations debug_fops = {
 	.release	= single_release,
 };
 
-static int __init tegra_ahci_dump_debuginit(void)
+static int tegra_ahci_dump_debuginit(void)
 {
 	(void) debugfs_create_file("tegra_ahci", S_IRUGO,
 				   NULL, NULL, &debug_fops);
@@ -2703,7 +2715,6 @@ static int __init tegra_ahci_dump_debuginit(void)
 #endif
 	return 0;
 }
-late_initcall(tegra_ahci_dump_debuginit);
 #endif
 
 MODULE_AUTHOR("NVIDIA");
