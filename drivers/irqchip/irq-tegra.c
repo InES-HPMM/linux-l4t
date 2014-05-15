@@ -59,6 +59,10 @@
 #define MAX_ICTLRS 6
 
 #define FIRST_LEGACY_IRQ 32
+
+/* max per controller interrupts */
+#define ICTLR_IRQS_PER_LIC	32
+
 #define ARM_VERSION_CORTEX_A15	0xC0F
 
 
@@ -83,6 +87,12 @@ static u32 ictlr_wake_mask[MAX_ICTLRS];
 
 static bool manage_cop_irq;
 
+static bool tegra_irq_range_valid(int irq)
+{
+	return ((irq >= FIRST_LEGACY_IRQ) &&
+		(irq < FIRST_LEGACY_IRQ + (num_ictlrs * ICTLR_IRQS_PER_LIC)));
+}
+
 #ifdef CONFIG_FIQ
 static void tegra_legacy_select_fiq(unsigned int irq, bool fiq)
 {
@@ -99,7 +109,7 @@ static void tegra_fiq_mask(struct irq_data *d)
 	void __iomem *base;
 	int leg_irq;
 
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	leg_irq = d->irq - FIRST_LEGACY_IRQ;
@@ -112,7 +122,7 @@ static void tegra_fiq_unmask(struct irq_data *d)
 	void __iomem *base;
 	int leg_irq;
 
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	leg_irq = d->irq - FIRST_LEGACY_IRQ;
@@ -250,8 +260,7 @@ int tegra_update_lp1_irq_wake(unsigned int irq, bool enable)
 	u8 index;
 	u32 mask;
 
-	BUG_ON(irq < FIRST_LEGACY_IRQ ||
-		irq >= FIRST_LEGACY_IRQ + num_ictlrs * 32);
+	BUG_ON(!tegra_irq_range_valid(irq));
 
 	index = ((irq - FIRST_LEGACY_IRQ) / 32);
 	mask = BIT((irq - FIRST_LEGACY_IRQ) % 32);
@@ -269,8 +278,7 @@ static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 	void __iomem *base;
 	u32 mask;
 
-	BUG_ON(irq < FIRST_LEGACY_IRQ ||
-		irq >= FIRST_LEGACY_IRQ + num_ictlrs * 32);
+	BUG_ON(!tegra_irq_range_valid(irq));
 
 	base = ictlr_reg_base[(irq - FIRST_LEGACY_IRQ) / 32];
 	mask = BIT((irq - FIRST_LEGACY_IRQ) % 32);
@@ -280,7 +288,7 @@ static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 
 static void tegra_mask(struct irq_data *d)
 {
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR);
@@ -288,7 +296,7 @@ static void tegra_mask(struct irq_data *d)
 
 static void tegra_unmask(struct irq_data *d)
 {
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET);
@@ -296,7 +304,7 @@ static void tegra_unmask(struct irq_data *d)
 
 static void tegra_ack(struct irq_data *d)
 {
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	tegra_irq_write_mask(d->irq, ICTLR_CPU_IEP_FIR_CLR);
@@ -304,7 +312,7 @@ static void tegra_ack(struct irq_data *d)
 
 static void tegra_eoi(struct irq_data *d)
 {
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return;
 
 	/*
@@ -326,7 +334,7 @@ static void tegra_eoi(struct irq_data *d)
 
 static int tegra_retrigger(struct irq_data *d)
 {
-	if (d->irq < FIRST_LEGACY_IRQ)
+	if (!tegra_irq_range_valid(d->irq))
 		return 0;
 
 	tegra_irq_write_mask(d->irq, ICTLR_CPU_IEP_FIR_SET);
