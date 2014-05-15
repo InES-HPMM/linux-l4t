@@ -388,6 +388,7 @@ int nvadsp_os_load(void)
 	const struct firmware *fw;
 	int ret;
 	struct device *dev = &priv.pdev->dev;
+	void *ptr;
 
 	if (!dev) {
 		pr_info("ADSP Driver is not initialized\n");
@@ -420,6 +421,9 @@ int nvadsp_os_load(void)
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
 
+	ptr = get_mailbox_shared_region();
+	update_nvadsp_app_shared_ptr(ptr);
+
 	ret = nvadsp_os_elf_load(fw);
 	if (ret)
 		dev_info(dev, "failed to load %s\n", NVADSP_FIRMWARE);
@@ -431,6 +435,7 @@ EXPORT_SYMBOL(nvadsp_os_load);
 int nvadsp_os_start(void)
 {
 	struct device *dev = &priv.pdev->dev;
+
 	if (!dev) {
 		pr_info("ADSP Driver is not initialized\n");
 		return -EINVAL;
@@ -438,6 +443,8 @@ int nvadsp_os_start(void)
 
 	dev_info(dev, "starting ADSP OS ....\n");
 	writel(APE_RESET, priv.reset_reg);
+
+
 	return 0;
 }
 EXPORT_SYMBOL(nvadsp_os_start);

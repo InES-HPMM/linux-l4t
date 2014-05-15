@@ -23,6 +23,7 @@
 #include <linux/spinlock.h>
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
+#include <linux/list.h>
 
 struct nvadsp_platform_data {
 	phys_addr_t co_pa;
@@ -184,20 +185,53 @@ void nvadsp_os_stop(void);
 /*
  * ADSP OS App
  */
-#define NVADSP_MAX_APP_NAME (64+1)
+#define NVADSP_NAME_SZ	64
+
+#define ARGV_SIZE_IN_WORDS         128
+
+typedef const void *nvadsp_app_handle_t;
+
+typedef struct adsp_app_mem {
+	/* DRAM segment*/
+	void      *dram;
+	/* DRAM in shared memory segment. uncached */
+	void      *shared;
+	/* DRAM in shared memory segment. write combined */
+	void      *shared_wc;
+	/*  ARAM if available, DRAM OK */
+	void      *aram;
+	/* ARAM Segment. exclusively */
+	void      *aram_x;
+	/* set to 1 if ARAM allocation succeeded */
+	uint32_t   aram_x_flag;
+} adsp_app_mem_t;
+
+
+typedef struct nvadsp_app_args {
+	 /* number of arguments passed in */
+	int32_t  argc;
+	/* binary representation of arguments,*/
+	int32_t  argv[ARGV_SIZE_IN_WORDS];
+} nvadsp_app_args_t;
 
 typedef struct {
-	char name[NVADSP_MAX_APP_NAME];
+	const char *name;
+	const uint32_t token;
+	const int state;
+	adsp_app_mem_t mem;
+	struct list_head node;
+	uint32_t stack_size;
 } nvadsp_app_info_t;
 
-nvadsp_app_info_t *nvadsp_app_load(char *appname, char *appfile);
-void nvadsp_app_init(nvadsp_app_info_t *);
-void nvadsp_app_exit(nvadsp_app_info_t *);
-void nvadsp_app_unload(nvadsp_app_info_t *);
-int nvadsp_app_start(char *name, void *arg);
-int nvadsp_app_stop(char *name);
-void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags);
-void nvadsp_free_coherent(size_t size, void *va, dma_addr_t da);
-void *nvadsp_da_to_va_mappings(u64 da, int len);
+nvadsp_app_handle_t __must_check
+nvadsp_app_load(const char *, const char *);
+nvadsp_app_info_t __must_check
+*nvadsp_app_init(nvadsp_app_handle_t, nvadsp_app_args_t *);
+void nvadsp_app_unload(nvadsp_app_handle_t);
+int __must_check nvadsp_app_start(nvadsp_app_info_t *);
+int nvadsp_app_stop(nvadsp_app_info_t *);
+void *nvadsp_alloc_coherent(size_t, dma_addr_t *, gfp_t);
+void nvadsp_free_coherent(size_t, void *, dma_addr_t);
+void *nvadsp_da_to_va_mappings(u64, int);
 
 #endif /* __LINUX_TEGRA_NVADSP_H */

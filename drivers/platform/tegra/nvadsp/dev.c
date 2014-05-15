@@ -136,6 +136,7 @@ static int nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	ret = nvadsp_app_module_probe(pdev);
 err:
 	return ret;
 }
