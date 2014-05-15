@@ -985,6 +985,14 @@ static struct rm_spi_ts_platform_data rm31080ts_tn8_data = {
 	.name_of_clock_con = "extern2",
 };
 
+static struct rm_spi_ts_platform_data rm31080ts_tn8_p1765_data = {
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_T008_2,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+};
+
 static struct rm_spi_ts_platform_data rm31080ts_norrin_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
@@ -1045,6 +1053,18 @@ static struct spi_board_info rm31080a_tn8_spi_board[1] = {
 		.mode = SPI_MODE_0,
 		.controller_data = &dev_cdata,
 		.platform_data = &rm31080ts_tn8_data,
+	},
+};
+
+static struct spi_board_info rm31080a_tn8_p1765_spi_board[1] = {
+	{
+		.modalias = "rm_ts_spidev",
+		.bus_num = TOUCH_SPI_ID,
+		.chip_select = TOUCH_SPI_CS,
+		.max_speed_hz = 18 * 1000 * 1000,
+		.mode = SPI_MODE_0,
+		.controller_data = &dev_cdata,
+		.platform_data = &rm31080ts_tn8_p1765_data,
 	},
 };
 
@@ -1118,13 +1138,21 @@ static int __init ardbeg_touch_init(void)
 					&rm31080a_ardbeg_spi_board[0],
 					ARRAY_SIZE(rm31080a_ardbeg_spi_board));
 		} else if (board_info.board_id == BOARD_P1761) {
-			rm31080a_ardbeg_spi_board[0].irq =
+			rm31080a_tn8_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,
 				&rm31080ts_tn8_data,
 				&rm31080a_tn8_spi_board[0],
 				ARRAY_SIZE(rm31080a_tn8_spi_board));
+		} else if (board_info.board_id == BOARD_P1765) {
+			rm31080a_tn8_p1765_spi_board[0].irq =
+				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+				TOUCH_GPIO_RST_RAYDIUM_SPI,
+				&rm31080ts_tn8_p1765_data,
+				&rm31080a_tn8_p1765_spi_board[0],
+				ARRAY_SIZE(rm31080a_tn8_p1765_spi_board));
 		} else if (board_info.board_id == BOARD_E2141) {
 			rm31080a_e2141_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
