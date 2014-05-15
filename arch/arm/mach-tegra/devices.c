@@ -2486,6 +2486,9 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SDMMC2A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SDMMC3A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SDMMC4A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+#if defined(CONFIG_ARCH_TEGRA_APE)
+	[SYSTEM_ADSP] = {TEGRA_APE_DRAM_MAP2_BASE, TEGRA_APE_DRAM_MAP2_SIZE},
+#endif
 };
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
@@ -2553,6 +2556,11 @@ static int _tegra_smmu_get_asid(u64 swgids)
 
 	if (swgids & SWGID(GPUB))
 		return SYSTEM_GK20A;
+
+#if defined(CONFIG_ARCH_TEGRA_APE)
+	if (swgids & SWGID(APE))
+		return SYSTEM_ADSP;
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	if (swgids & SWGID(DC) ||
