@@ -151,7 +151,7 @@ static void iqs253_i2c_hand_shake(struct iqs253_chip *iqs253_chip)
 	int retry_count = 10;
 	do {
 		gpio_direction_output(iqs253_chip->rdy_gpio, 0);
-		mdelay(10);
+		usleep_range(10 * 1000, 10 * 1000);
 		/* put to tristate */
 		gpio_direction_input(iqs253_chip->rdy_gpio);
 	} while (gpio_get_value(iqs253_chip->rdy_gpio) && retry_count--);
@@ -206,8 +206,8 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 
 	/* wait for ATI to finish */
 	do {
+		usleep_range(10 * 1000, 10 * 1000);
 		ret = iqs253_i2c_read_byte(iqs253_chip, SYSFLAGS);
-		mdelay(10);
 	} while (ret & ATI_IN_PROGRESS);
 
 	iqs253_chip->mode = mode;
