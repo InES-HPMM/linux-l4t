@@ -392,6 +392,12 @@ static struct gpio vcm30_t124_system_1_gpios[] = {
 	{MISCIO_MUX_DAP_D_EN,	GPIOF_OUT_INIT_LOW,	"dap_d_en"},
 };
 
+static struct gpio vcm30_t124_system_2_gpios[] = {
+	{MISCIO_MDM_EN,		GPIOF_OUT_INIT_HIGH,	"mdm_en"},
+	{MISCIO_MDM_COLDBOOT,	GPIOF_IN,		"mdm_coldboot"},
+	{MISCIO_AP_MDM_RESET,	GPIOF_OUT_INIT_HIGH|GPIOF_EXPORT, "ap_mdm_rst"}
+};
+
 static int __init vcm30_t124_system_0_gpio_init(void)
 {
 	int ret, pin_count = 0;
@@ -430,6 +436,32 @@ static int __init vcm30_t124_system_1_gpio_init(void)
 	return ret;
 }
 
+static int __init vcm30_t124_system_2_gpio_init(void)
+{
+	int ret, pin_count = 0;
+	struct gpio *gpios_info = NULL;
+	gpios_info = vcm30_t124_system_2_gpios;
+	pin_count = ARRAY_SIZE(vcm30_t124_system_2_gpios);
+
+	/* Set required system GPIOs to initial bootup values */
+	ret = gpio_request_array(gpios_info, pin_count);
+
+	if (ret)
+		pr_err("%s gpio_request_array failed(%d)\r\n",
+				 __func__, ret);
+
+	/* We need to keep MDM_RESET exported, controled by modem RIL*/
+	while (pin_count--) {
+		if (gpios_info->gpio != MISCIO_AP_MDM_RESET)
+			gpio_free(gpios_info->gpio);
+
+		gpios_info++;
+	}
+
+	return ret;
+}
+
+
 /*
  * TODO: Check for the correct pca953x before invoking client
  *  init functions
@@ -447,6 +479,9 @@ static int pca953x_client_setup(struct i2c_client *client,
 		break;
 	case 1:
 		ret = vcm30_t124_system_1_gpio_init();
+		break;
+	case 2:
+		ret = vcm30_t124_system_2_gpio_init();
 		break;
 	default:
 		ret = -EINVAL;
@@ -474,6 +509,12 @@ static struct pca953x_platform_data vcm30_t124_miscio_1_pca9539_data = {
 	.context = (void *)1,
 };
 
+static struct pca953x_platform_data vcm30_t124_miscio_2_pca9539_data = {
+	.gpio_base  = PCA953X_MISCIO_2_GPIO_BASE,
+	.setup = pca953x_client_setup,
+	.context = (void *)2,
+};
+
 static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_0 = {
 	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_0_ADDR),
 	.platform_data = &vcm30_t124_miscio_0_pca9539_data,
@@ -482,6 +523,11 @@ static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_0 = {
 static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_1 = {
 	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_1_ADDR),
 	.platform_data = &vcm30_t124_miscio_1_pca9539_data,
+};
+
+static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_2 = {
+	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_2_ADDR),
+	.platform_data = &vcm30_t124_miscio_2_pca9539_data,
 };
 
 int __init vcm30_t124_pca953x_init(void)
@@ -493,8 +539,14 @@ int __init vcm30_t124_pca953x_init(void)
 	i2c_register_board_info(1, &vcm30_t124_i2c2_board_info_pca9539_0, 1);
 
 	if (is_e1860_b00) {
+
 		i2c_register_board_info(1,
 			&vcm30_t124_i2c2_board_info_pca9539_1, 1);
+
+	/* some pins of vcm30_t124_i2c2_board_info_pca9539_2 may be used
+	later on some other board versions, not only b00.*/
+		i2c_register_board_info(1,
+			&vcm30_t124_i2c2_board_info_pca9539_2, 1);
 	}
 
 	return 0;

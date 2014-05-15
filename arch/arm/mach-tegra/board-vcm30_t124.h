@@ -94,9 +94,17 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 #define MISCIO_MUX_DAP_D_EN		(PCA953X_MISCIO_1_GPIO_BASE + 1)
 #define PCA953X_MISCIO_1_GPIO_END	(PCA953X_MISCIO_1_GPIO_BASE + 15)
 
+#define PCA953X_MISCIO_2_GPIO_BASE      (PCA953X_MISCIO_1_GPIO_END + 1)
+#define MISCIO_MDM_EN                   (PCA953X_MISCIO_2_GPIO_BASE + 9)
+#define MISCIO_MDM_COLDBOOT             (PCA953X_MISCIO_2_GPIO_BASE + 11)
+#define MISCIO_AP_MDM_RESET             (PCA953X_MISCIO_2_GPIO_BASE + 15)
+#define PCA953X_MISCIO_2_GPIO_END       (PCA953X_MISCIO_2_GPIO_BASE + 15)
+
 /* PCA953X I2C IO expander bus addresses */
 #define PCA953X_MISCIO_0_ADDR		0x75
 #define PCA953X_MISCIO_1_ADDR		0x76
+#define PCA953X_MISCIO_2_ADDR		0x74
+
 
 /* Thermal monitor data */
 #define DELTA_TEMP 4000
