@@ -99,10 +99,15 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		switch (sku) {
 		case 0x00: /* Engg sku */
 		case 0x0f:
-		case 0x83:
 			cpu_speedo_id = 1;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 1;
+			threshold_index = 0;
+			break;
+		case 0x83:
+			cpu_speedo_id = 1;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 2;
 			threshold_index = 0;
 			break;
 		default:
