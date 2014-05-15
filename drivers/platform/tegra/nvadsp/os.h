@@ -17,9 +17,11 @@
  */
 #ifndef __TEGRA_NVADSP_OS_H
 #define __TEGRA_NVADSP_OS_H
+#include <linux/firmware.h>
 
 int nvadsp_os_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
 void *get_mailbox_shared_region(void);
-
+struct elf32_shdr *nvadsp_get_section(const struct firmware *fw,
+						char *sec_name);
 #endif /* __TEGRA_NVADSP_OS_H */

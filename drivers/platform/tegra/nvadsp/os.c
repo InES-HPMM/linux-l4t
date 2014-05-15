@@ -114,8 +114,8 @@ void *adsp_da_to_va_mappings(u64 da, int len)
 	return ptr;
 }
 
-static struct elf32_shdr *
-get_section(const struct firmware *fw, char *sec_name)
+struct elf32_shdr *
+nvadsp_get_section(const struct firmware *fw, char *sec_name)
 {
 	int i;
 	struct device *dev = &priv.pdev->dev;
@@ -159,14 +159,15 @@ void *get_mailbox_shared_region(void)
 		return ERR_PTR(ret);
 	}
 
-	shdr = get_section(fw, MAILBOX_REGION);
+	shdr = nvadsp_get_section(fw, MAILBOX_REGION);
 	if (!shdr) {
 		dev_info(dev, "section %s not found\n", MAILBOX_REGION);
 		return ERR_PTR(-EINVAL);
 	}
 
 	dev_dbg(dev,
-		"the section is present at 0x%x\n", shdr->sh_addr);
+		"the shared section is present at 0x%x\n",
+						shdr->sh_addr);
 	addr = shdr->sh_addr;
 	size = shdr->sh_size;
 	return adsp_da_to_va_mappings(addr, size);
