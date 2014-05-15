@@ -220,4 +220,42 @@
 		status = "disabled";
 	};
 
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+
+		local-loopbacks = <3 4>;
+
+		server-to-peers = <1>;
+
+		queues {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* guest 0 <-> guest 1 (frame based) */
+			ivc0 {
+				reg = <0>;
+				peers = <0 1>;
+			};
+
+			/* placeholder for serial & net IVC channels */
+
+			/* guest 1 <-> guest 1 (loop) */
+			ivc3 {
+				reg = <3>;
+				peers = <1 1>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 1 <-> guest 1 (loop) */
+			ivc4 {
+				reg = <4>;
+				peers = <1 1>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+		};
+	};
 };

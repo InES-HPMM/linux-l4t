@@ -200,4 +200,43 @@
 		dma-channels = <16>;
 		status = "okay";
 	};
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+
+		server-to-peers = <0 1>;
+
+		queues {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* guest 0 <-> guest 1 (frame based) */
+			ivc0 {
+				reg = <0>;
+				peers = <0 1>;
+				nframes = <2>;
+				frame-size = <50>;
+			};
+
+			/* placeholder for serial & net IVC channels */
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc5 {
+				reg = <5>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc6 {
+				reg = <6>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+		};
+	};
 };
