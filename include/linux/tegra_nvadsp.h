@@ -196,5 +196,7 @@ void nvadsp_app_exit(nvadsp_app_info_t *);
 void nvadsp_app_unload(nvadsp_app_info_t *);
 int nvadsp_app_start(char *name, void *arg);
 int nvadsp_app_stop(char *name);
+void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags);
+void nvadsp_free_coherent(size_t size, void *va, dma_addr_t da);
 
 #endif /* __LINUX_TEGRA_NVADSP_H */

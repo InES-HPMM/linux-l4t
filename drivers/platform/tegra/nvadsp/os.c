@@ -114,6 +114,32 @@ void *adsp_da_to_va_mappings(u64 da, int len)
 	return ptr;
 }
 
+void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags)
+{
+	struct device *dev = &priv.pdev->dev;
+	void *va;
+	va = dma_alloc_coherent(dev, size, da, flags);
+	if (!va) {
+		dev_err(dev,
+			"unable to allocate the memory for size %u\n",
+							(u32)size);
+		goto end;
+	}
+
+	WARN(*da != (*da & UINT_MAX),
+			"bus addr %llx beyond %x\n", *da, UINT_MAX);
+end:
+	return va;
+}
+EXPORT_SYMBOL(nvadsp_alloc_coherent);
+
+void nvadsp_free_coherent(size_t size, void *va, dma_addr_t da)
+{
+	struct device *dev = &priv.pdev->dev;
+	dma_free_coherent(dev, size, va, da);
+}
+EXPORT_SYMBOL(nvadsp_free_coherent);
+
 struct elf32_shdr *
 nvadsp_get_section(const struct firmware *fw, char *sec_name)
 {
@@ -229,7 +255,7 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 	return ret;
 }
 
-static int allocate_memeory_for_adsp_os(void)
+static int allocate_memory_for_adsp_os(void)
 {
 	struct platform_device *pdev = priv.pdev;
 	struct device *dev = &pdev->dev;
@@ -286,7 +312,7 @@ int nvadsp_os_load(void)
 		goto end;
 	}
 
-	ret = allocate_memeory_for_adsp_os();
+	ret = allocate_memory_for_adsp_os();
 	if (ret < 0) {
 		dev_info(dev,
 			"unable to allocate memory for adsp os\n");
