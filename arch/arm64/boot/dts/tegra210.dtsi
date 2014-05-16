@@ -35,6 +35,7 @@
 		spi1 = &spi1;
 		spi2 = &spi2;
 		spi3 = &spi3;
+		qspi6 = &qspi6;
 		serial2 = &uartc;
 	};
 
@@ -308,6 +309,17 @@
 		dma-names = "rx", "tx";
 		status = "disabled";
 	};
+
+	qspi6: spi@70410000 {
+		compatible = "nvidia,tegra210-qspi";
+		reg = <0x0 0x70410000 0x0 0x1000>;
+		interrupts = <0 10 0x04>;
+		nvidia,dma-request-selector = <&apbdma 5>;
+		nvidia,memory-clients = <14>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	      };
 
 	host1x: host1x {
 		compatible = "nvidia,tegra210-host1x", "simple-bus";

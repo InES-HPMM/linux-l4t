@@ -58,6 +58,24 @@
 		spi-max-frequency = <25000000>;
 	};
 
+	spi@70410000 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+
+			controller-data {
+				nvidia,x1-len-limit = <16>;
+				nvidia,x1-bus-speed = <50>; /* In Mhz */
+				nvidia,x1-dymmy-cycle = <0>;
+				nvidia,x4-bus-speed = <80>;
+				nvidia,x4-dymmy-cycle = <8>;
+			};
+
+		};
+	};
+
 	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
@@ -331,7 +349,7 @@
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
 			qspi_cs_n_pee1 {
@@ -339,7 +357,7 @@
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
 			qspi_io0_pee2 {
@@ -347,7 +365,7 @@
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
 			qspi_io1_pee3 {
@@ -355,7 +373,7 @@
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
 			qspi_io2_pee4 {
@@ -363,15 +381,15 @@
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
-			qspi_io3pee5 {
+			qspi_io3_pee5 {
 				nvidia,pins = "qspi_io3_pee5";
 				nvidia,function = "qspi";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
 			spi1_mosi_pc0 {
