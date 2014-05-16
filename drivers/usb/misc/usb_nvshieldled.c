@@ -254,12 +254,19 @@ static void nvshieldled_disconnect(struct usb_interface *interface)
 
 static int nvshieldled_suspend(struct usb_interface *interface)
 {
+	dev_info(&interface->dev, "Nvidia Shield LED suspended\n");
 	return 0;
 }
 
 static int nvshieldled_resume(struct usb_interface *interface)
 {
+	dev_info(&interface->dev, "Nvidia Shield LED resumed\n");
 	return 0;
+}
+
+static int nvshieldled_reset_resume(struct usb_interface *interface)
+{
+	dev_info(&interface->dev, "Nvidia Shield USB reset resume");
 }
 
 static struct usb_driver shieldled_driver = {
@@ -268,6 +275,7 @@ static struct usb_driver shieldled_driver = {
 	.disconnect = nvshieldled_disconnect,
 	.suspend =	nvshieldled_suspend,
 	.resume =	nvshieldled_resume,
+	.reset_resume = nvshieldled_reset_resume,
 	.id_table = nvshield_table,
 };
 
