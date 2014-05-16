@@ -340,6 +340,16 @@ config TEGRA_DP
 	help
 	  Say Y here to enable eDP panel.
 
+config TEGRA_HDMI2_0
+	bool "Enable hdmi2.0"
+	depends on TEGRA_DC
+	default n
+	help
+	  Say Y here to enable HDMI 2.0.
+	  Supported by sor-hdmi only.
+	  Suported on T21x and later chips only.
+	  Disabled by default since most chips are using older controller at present.
+
 config TEGRA_LVDS
 	bool "Enable LVDS panel."
 	depends on ARCH_TEGRA_12x_SOC
