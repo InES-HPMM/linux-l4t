@@ -144,7 +144,7 @@ static struct resource ardbeg_disp1_edp_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name   = "sor",
+		.name   = "sor0",
 		.start  = TEGRA_SOR_BASE,
 		.end    = TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
 		.flags  = IORESOURCE_MEM,

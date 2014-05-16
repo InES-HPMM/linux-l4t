@@ -86,7 +86,7 @@ static struct resource vcm30_t124_disp1_dp_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name   = "sor",
+		.name   = "sor0",
 		.start  = TEGRA_SOR_BASE,
 		.end    = TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
 		.flags  = IORESOURCE_MEM,

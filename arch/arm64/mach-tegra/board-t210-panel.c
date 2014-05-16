@@ -157,9 +157,15 @@ static struct resource t210_disp2_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name   = "sor",
+		.name   = "sor0",
 		.start  = TEGRA_SOR_BASE,
 		.end    = TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "sor1",
+		.start  = TEGRA_SOR1_BASE,
+		.end    = TEGRA_SOR1_BASE + TEGRA_SOR1_SIZE - 1,
 		.flags  = IORESOURCE_MEM,
 	},
 	{
@@ -274,8 +280,8 @@ struct tmds_config t210_tmds_config[] = {
 	.pclk = 27000000,
 	.pll0 = 0x01003110,
 	.pll1 = 0x00300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x2e2e2e2e,
+	.pe_current = 0x0,
+	.drive_current = 0xffffffff,
 	.peak_current = 0x00000000,
 	},
 	{ /* 720p / 74.25MHz modes */
@@ -309,8 +315,8 @@ struct tegra_hdmi_out t210_hdmi_out = {
 	.n_tmds_config = ARRAY_SIZE(t210_tmds_config),
 };
 
+static struct tegra_dc_mode t210_hdmi_modes[] = {
 #if defined(CONFIG_FRAMEBUFFER_CONSOLE)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
 		.pclk =			KHZ2PICOS(25200),
 		.h_ref_to_sync =	1,
@@ -324,9 +330,7 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 		.h_front_porch =	16,	/* right_margin */
 		.v_front_porch =	10,	/* lower_margin */
 	},
-};
 #elif defined(CONFIG_TEGRA_HDMI_PRIMARY)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
 		.pclk =			148500000,
 		.h_ref_to_sync =	1,
@@ -340,8 +344,37 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 		.h_front_porch =	88,	/* right_margin */
 		.v_front_porch =	4,	/* lower_margin */
 	},
+#else
+	{
+		.pclk =			27000000,
+		.h_ref_to_sync =	1,
+		.v_ref_to_sync =	1,
+		.h_sync_width =		62,	/* hsync_len */
+		.v_sync_width =		6,	/* vsync_len */
+		.h_back_porch =		60,	/* left_margin */
+		.v_back_porch =		30,	/* upper_margin */
+		.h_active =		720,	/* xres */
+		.v_active =		480,	/* yres */
+		.h_front_porch =	16,	/* right_margin */
+		.v_front_porch =	9,	/* lower_margin */
+	},
+#endif
 };
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE || CONFIG_TEGRA_HDMI_PRIMARY*/
+
+static struct tegra_dc_out_pin t210_hdmi_out_pins[] = {
+	{
+		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name   = TEGRA_DC_OUT_PIN_DATA_ENABLE,
+		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+};
 
 static struct tegra_dc_out t210_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
@@ -351,17 +384,20 @@ static struct tegra_dc_out t210_disp2_out = {
 	.dcc_bus	= 3,
 	.hotplug_gpio	= ardbeg_hdmi_hpd,
 	.hdmi_out	= &t210_hdmi_out,
+	.hotplug_state	= 1,
 
 	/* TODO: update max pclk to POR */
 	.max_pixclock	= KHZ2PICOS(297000),
-#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
-	.modes = hdmi_panel_modes,
-	.n_modes = ARRAY_SIZE(hdmi_panel_modes),
+
+	.modes = t210_hdmi_modes,
+	.n_modes = ARRAY_SIZE(t210_hdmi_modes),
 	.depth = 24,
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+
+	.out_pins		= t210_hdmi_out_pins,
+	.n_out_pins	= ARRAY_SIZE(t210_hdmi_out_pins),
 
 	.enable		= t210_hdmi_enable,
 	.disable	= t210_hdmi_disable,
@@ -544,6 +580,10 @@ static __init struct tegra_panel *t210_panel_configure(
 			memset(&t210_disp2_out, 0, sizeof(t210_disp2_out));
 			t210_disp2_out.dp_out = &dp_settings;
 			edp_c_1366_768_14_0.init_dc_out(&t210_disp2_out);
+#elif defined(CONFIG_TEGRA_HDMI2_0)
+			t210_disp2_fb_data.xres = 720;
+			t210_disp2_fb_data.yres = 480;
+			t210_disp2_fb_data.bits_per_pixel = -1;
 #endif
 		} else
 			panel = &dsi_s_wqxga_10_1;
@@ -761,7 +801,7 @@ int __init t210_panel_init(void)
 	if (!of_have_populated_dt() || !dc2_node ||
 		!of_device_is_available(dc2_node)) {
 		t210_disp2_device.dev.parent = &phost1x->dev;
-#if defined(CONFIG_TEGRA_DP) || defined(CONFIG_TEGRA_HDMI)
+#if defined(CONFIG_TEGRA_DP) || defined(CONFIG_TEGRA_HDMI2_0)
 		err = platform_device_register(&t210_disp2_device);
 		if (err) {
 			pr_err("disp2 device registration failed\n");
