@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
 
@@ -123,14 +124,20 @@ int uart_console_debug_init(int default_debug_port)
 		pr_info("The debug console clock name is %s\n",
 						debug_uart_clk->name);
 #endif
-		c = tegra_get_clock_by_name("pll_p");
+		if (tegra_platform_is_fpga())
+			c = tegra_get_clock_by_name("clk_m");
+		else
+			c = tegra_get_clock_by_name("pll_p");
+
 		if (IS_ERR_OR_NULL(c))
 			pr_err("Not getting the parent clock pll_p\n");
 		else
 			clk_set_parent(debug_uart_clk, c);
 
 		tegra_clk_prepare_enable(debug_uart_clk);
-		clk_set_rate(debug_uart_clk, clk_get_rate(c));
+
+		if (!tegra_platform_is_fpga())
+			clk_set_rate(debug_uart_clk, clk_get_rate(c));
 	} else {
 		pr_err("Not getting the clock for debug consolei %d\n",
 			debug_port_id);
