@@ -128,6 +128,7 @@ static int nvadsp_probe(struct platform_device *pdev)
 		goto err;
 
 	ret = nvadsp_mbox_init(pdev);
+
 err:
 	return ret;
 }
