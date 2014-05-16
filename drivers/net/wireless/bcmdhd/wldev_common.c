@@ -391,7 +391,6 @@ int wldev_miracast_tuning(
 	int error = 0;
 	int mode = 0;
 	int ampdu_mpdu;
-	int roam_off;
 	int ampdu_rx_tid = -1;
 	int disable_interference_mitigation = 0;
 	int auto_interference_mitigation = -1;
@@ -412,11 +411,6 @@ set_mode:
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
 		ampdu_mpdu = -1;	/* FW default */
-#if defined(ROAM_ENABLE)
-		roam_off = 0;	/* roam enable */
-#elif defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1;	/* roam disable */
-#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
@@ -425,9 +419,6 @@ set_mode:
 	else if (mode == 1) {
 		/* Miracast source mode */
 		ampdu_mpdu = 8;	/* for tx latency */
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1; /* roam disable */
-#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 1;	/* BW based */
 		mchan_bw = 25;	/* 25:75 */
@@ -436,9 +427,6 @@ set_mode:
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
 		ampdu_mpdu = 8;	/* FW default */
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1; /* roam disable */
-#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
@@ -485,15 +473,6 @@ set_mode:
 			mode, error));
 		return -1;
 	}
-
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-	error = wldev_iovar_setint(dev, "roam_off", roam_off);
-	if (error) {
-		WLDEV_ERROR(("Failed to set roam_off: mode:%d, error:%d\n",
-			mode, error));
-		return -1;
-	}
-#endif /* ROAM_ENABLE || DISABLE_BUILTIN_ROAM */
 
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
