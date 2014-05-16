@@ -149,6 +149,7 @@ struct clk_pll_controls {
 	u32		dramp_done_mask;
 	u32		dramp_ctrl_reg_idx;
 	u32		sdm_en_mask;
+	u32		ssc_en_mask;
 	u32		sdm_ctrl_reg_idx;
 };
 

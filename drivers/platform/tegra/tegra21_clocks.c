@@ -2616,6 +2616,31 @@ static void pll_clk_set_gain(struct clk *c, struct clk_pll_freq_table *cfg)
 	}
 }
 
+static void pll_clk_start_ss(struct clk *c)
+{
+	u32 reg, val;
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+
+	if (c->u.pll.defaults_set && ctrl->ssc_en_mask) {
+		reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
+		val = clk_readl(reg) | ctrl->ssc_en_mask;
+		pll_writel_delay(val, reg);
+
+	}
+}
+
+static void pll_clk_stop_ss(struct clk *c)
+{
+	u32 reg, val;
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+
+	if (ctrl->ssc_en_mask) {
+		reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
+		val = clk_readl(reg) & (~ctrl->ssc_en_mask);
+		pll_writel_delay(val, reg);
+	}
+}
+
 /*
  * Common configuration for PLLs with fixed input divider policy:
  * - always set fixed M-value based on the reference rate
@@ -2729,6 +2754,7 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 	val = clk_readl(c->reg);
 	if (c->state == ON) {
+		pll_clk_stop_ss(c);
 		val &= ~ctrl->enable_mask;
 		pll_writel_delay(val, c->reg);
 	}
@@ -2741,6 +2767,7 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		val |= ctrl->enable_mask;
 		pll_writel_delay(val, c->reg);
 		tegra21_pll_clk_wait_for_lock(c, reg, ctrl->lock_mask);
+		pll_clk_start_ss(c);
 	}
 
 	return 0;
@@ -2788,6 +2815,8 @@ static int tegra_pll_clk_enable(struct clk *c)
 	reg = pll_reg_idx_to_addr(c, ctrl->lock_reg_idx);
 	tegra21_pll_clk_wait_for_lock(c, reg, ctrl->lock_mask);
 
+	pll_clk_start_ss(c);
+
 	if (val & ctrl->bypass_mask) {
 		val &= ~ctrl->bypass_mask;
 		pll_writel_delay(val, c->reg);
@@ -2802,6 +2831,8 @@ static void tegra_pll_clk_disable(struct clk *c)
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 
 	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	pll_clk_stop_ss(c);
 
 	val = clk_readl(c->reg);
 	val &= ~ctrl->enable_mask;
