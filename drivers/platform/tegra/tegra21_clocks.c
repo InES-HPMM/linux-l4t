@@ -330,6 +330,7 @@ do {									       \
 #define PLLA_BASE_IDDQ			(1 << 25)
 
 #define PLLA_MISC0_LOCK_ENABLE		(1 << 28)
+#define PLLA_MISC0_LOCK_OVERRIDE	(1 << 27)
 
 #define PLLA_MISC2_EN_SDM		(1 << 26)
 #define PLLA_MISC2_EN_DYNRAMP		(1 << 25)
@@ -2702,7 +2703,8 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	pll_base_parse_cfg(c, &old_cfg);
 
 	if ((cfg.m == old_cfg.m) && (cfg.n == old_cfg.n) &&
-	    (cfg.p == old_cfg.p) && (cfg.sdm_din == old_cfg.sdm_din))
+	    (cfg.p == old_cfg.p) && (cfg.sdm_din == old_cfg.sdm_din) &&
+	    c->u.pll.defaults_set)
 		return 0;
 
 	pll_clk_set_gain(c, &cfg);
@@ -2946,6 +2948,10 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 		return;
 	}
 
+	/* Setup defaults */
+	if (c->u.pll.set_defaults)
+		c->u.pll.set_defaults(c, input_rate);
+
 	/*
 	 * Initialize PLL to default state: disabled, reset; registers are
 	 * loaded with default parameters; dividers are preset for 1/4 of
@@ -2957,11 +2963,10 @@ static void tegra21_pllcx_clk_init(struct clk *c)
 	BUG_ON(cfg.p != c->u.pll.round_p_to_pdiv(cfg.p, &pdiv));
 
 	/* PLL disabled, reference running */
+	val = clk_readl(c->reg);
 	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
 	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
-
-	if (c->u.pll.set_defaults)
-		c->u.pll.set_defaults(c, input_rate);
+	pll_sdm_set_din(c, &cfg);
 
 	pll_clk_set_gain(c, &cfg);
 }
@@ -2980,25 +2985,33 @@ static struct clk_ops tegra_pllcx_ops = {
  */
 static void plla_set_defaults(struct clk *c, unsigned long input_rate)
 {
+	u32 mask;
 	u32 val = clk_readl(c->reg);
 	c->u.pll.defaults_set = true;
 
 	if (val & c->u.pll.controls->enable_mask) {
-		/* PLL is ON: only check if defaults already set */
+		/*
+		 * PLL is ON: check if defaults already set, then set those
+		 * that can be updated in flight.
+		 */
 		if (val & PLLA_BASE_IDDQ) {
-			pr_warn("%s boot enabled with IDDQ set", c->name);
+			pr_warn("%s boot enabled with IDDQ set\n", c->name);
 			c->u.pll.defaults_set = false;
 		}
+
 		val = PLLA_MISC0_DEFAULT_VALUE;	/* ignore lock enable */
-		PLL_MISC_CHK_DEFAULT(c, 0, val, PLLA_MISC0_WRITE_MASK &
-				     (~PLLA_MISC0_LOCK_ENABLE));
-		val = PLLX_MISC2_DEFAULT_VALUE; /* ignore all but control bit */
+		mask = PLLA_MISC0_LOCK_ENABLE | PLLA_MISC0_LOCK_OVERRIDE;
+		PLL_MISC_CHK_DEFAULT(c, 0, val, ~mask & PLLA_MISC0_WRITE_MASK);
+
+		val = PLLA_MISC2_DEFAULT_VALUE; /* ignore all but control bit */
 		PLL_MISC_CHK_DEFAULT(c, 2, val, PLLA_MISC2_EN_DYNRAMP);
 
-		/* If mandatory defaults are set enable lock detect in flight */
-		if (c->u.pll.defaults_set)
-			pll_writel_delay(PLLA_MISC0_DEFAULT_VALUE,
-					 c->reg + c->u.pll.misc0);
+		/* Enable lock detect */
+		val = clk_readl(c->reg + c->u.pll.misc0);
+		val &= ~mask;
+		val |= PLLA_MISC0_DEFAULT_VALUE & mask;
+		pll_writel_delay(val, c->reg + c->u.pll.misc0);
+
 		return;
 	}
 
@@ -3093,20 +3106,21 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	val |= step_b << PLLX_MISC2_DYNRAMP_STEPB_SHIFT;
 
 	if (clk_readl(c->reg) & c->u.pll.controls->enable_mask) {
-		/* PLL is ON: only check if defaults already set */
+		/*
+		 * PLL is ON: check if defaults already set, then set those
+		 * that can be updated in flight.
+		 */
 		pllx_check_defaults(c, input_rate);
 
-		/*
-		 * If mandatory defaults are set, update those that were ignored
-		 * during check, since they can be set in flight.
-		 */
-		if (c->u.pll.defaults_set) {
-			/* Enable lock detect and CPU output */
-			clk_writel(PLLX_MISC0_DEFAULT_VALUE,
-				   c->reg + c->u.pll.misc0);
-			/* Configure dyn ramp, disable lock override */
-			pll_writel_delay(val, c->reg + c->u.pll.misc2);
-		}
+		/* Configure dyn ramp, disable lock override */
+		clk_writel(val, c->reg + c->u.pll.misc2);
+
+		/* Enable lock detect */
+		val = clk_readl(c->reg + c->u.pll.misc0);
+		val &= ~PLLX_MISC0_LOCK_ENABLE;
+		val |= PLLX_MISC0_DEFAULT_VALUE & PLLX_MISC0_LOCK_ENABLE;
+		pll_writel_delay(val, c->reg + c->u.pll.misc0);
+
 		return;
 	}
 
