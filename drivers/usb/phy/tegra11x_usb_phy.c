@@ -139,6 +139,11 @@
 #define   UTMIP_FORCE_PDDR_POWERDOWN	(1 << 4)
 #define   UTMIP_XCVR_TERM_RANGE_ADJ(x)	(((x) & 0xf) << 18)
 
+#define UTMIP_XCVR_CFG2		0x854
+#define   UTMIP_XCVR_VREG_MASK		(0x7 << 10)
+#define   UTMIP_XCVR_VREG_LEV_1P5V	(1 << 10)
+#define   UTMIP_XCVR_VREG_FIX18		(1 << 9)
+
 #define UTMIP_MISC_CFG0		0x824
 #define   UTMIP_DPDM_OBSERVE		(1 << 26)
 #define   UTMIP_DPDM_OBSERVE_SEL(x) (((x) & 0xf) << 27)
@@ -1100,6 +1105,18 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_TERM_RANGE_ADJ(config->term_range_adj);
 	writel(val, base + UTMIP_XCVR_CFG1);
 
+	/* 20soc process is not tolerant to 3.3v
+	 * activate protection circuits for usb2 pads
+	 */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(base + UTMIP_XCVR_CFG2);
+	val &= ~UTMIP_XCVR_VREG_MASK;
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE)
+		val |= UTMIP_XCVR_VREG_LEV_1P5V; /* sink cur */
+	else
+		val |= UTMIP_XCVR_VREG_FIX18; /* source cur */
+	writel(val, base + UTMIP_XCVR_CFG2);
+#endif
 	if (tegra_platform_is_silicon()) {
 		val = readl(base + UTMIP_BIAS_CFG1);
 		val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
