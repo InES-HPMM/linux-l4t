@@ -51,6 +51,9 @@ static struct camera_platform_data camera_dflt_pdata = {
 	.cfg = 0,
 };
 
+static atomic_t cam_ref;
+static DEFINE_MUTEX(cam_mutex);
+
 static DEFINE_MUTEX(app_mutex);
 static DEFINE_MUTEX(dev_mutex);
 static DEFINE_MUTEX(chip_mutex);
@@ -67,6 +70,47 @@ static struct camera_platform_info cam_desc = {
 	.dev_list = &dev_list,
 	.chip_list = &chip_list,
 };
+
+static inline void camera_ref_init(void)
+{
+	atomic_set(&cam_ref, 0);
+}
+
+static int camera_ref_raise(void)
+{
+	mutex_lock(&cam_mutex);
+	if (atomic_read(&cam_ref) < 0) {
+		mutex_unlock(&cam_mutex);
+		dev_err(cam_desc.dev, "%s - CAMERA DOWN.\n", __func__);
+		return -ENOTTY;
+	}
+	atomic_inc(&cam_ref);
+	mutex_unlock(&cam_mutex);
+
+	return 0;
+}
+
+static inline void camera_ref_down(void)
+{
+	atomic_dec(&cam_ref);
+}
+
+static void camera_ref_lock(void)
+{
+	int ref;
+
+	do {
+		mutex_lock(&cam_mutex);
+		ref = atomic_read(&cam_ref);
+		if (ref <= 0) {
+			atomic_set(&cam_ref, -1);
+			mutex_unlock(&cam_mutex);
+			break;
+		}
+		mutex_unlock(&cam_mutex);
+		usleep_range(10000, 10200);
+	} while (true);
+}
 
 static int camera_get_params(
 	struct camera_info *cam, unsigned long arg, int u_size,
@@ -343,12 +387,13 @@ static int camera_remove_device(struct camera_device *cdev, bool ref_dec)
 		cam->dev = cam_desc.dev;
 		atomic_set(&cam->in_use, 0);
 	}
-	if (cdev->chip)
+	if (cdev->chip) {
 		(cdev->chip->release)(cdev);
+		if (ref_dec)
+			atomic_dec(&cdev->chip->ref_cnt);
+	}
 	if (cdev->dev)
 		i2c_unregister_device(to_i2c_client(cdev->dev));
-	if (ref_dec)
-		atomic_dec(&cdev->chip->ref_cnt);
 	kfree(cdev);
 	return 0;
 }
@@ -739,10 +784,13 @@ static long camera_ioctl(struct file *file,
 			 unsigned int cmd,
 			 unsigned long arg)
 {
-	struct camera_info *cam = file->private_data;
+	struct camera_info *cam;
 	int err = 0;
 
-	dev_dbg(cam->dev, "%s %x %lx\n", __func__, cmd, arg);
+	if (camera_ref_raise())
+		return -ENOTTY;
+
+	cam = file->private_data;
 	if (!cam->cdev && ((cmd == PCLLK_IOCTL_SEQ_WR) ||
 		(cmd == PCLLK_IOCTL_PWR_WR) ||
 		(cmd == PCLLK_IOCTL_PWR_RD))) {
@@ -810,6 +858,7 @@ static long camera_ioctl(struct file *file,
 	}
 
 ioctl_end:
+	camera_ref_down();
 	if (err)
 		dev_dbg(cam->dev, "err = %d\n", err);
 
@@ -820,8 +869,12 @@ static int camera_open(struct inode *inode, struct file *file)
 {
 	struct camera_info *cam;
 
+	if (camera_ref_raise())
+		return -ENOTTY;
+
 	cam = kzalloc(sizeof(*cam), GFP_KERNEL);
 	if (!cam) {
+		camera_ref_down();
 		dev_err(cam_desc.dev,
 			"%s unable to allocate memory!\n", __func__);
 		return -ENOMEM;
@@ -837,22 +890,28 @@ static int camera_open(struct inode *inode, struct file *file)
 	list_add(&cam->list, cam_desc.app_list);
 	mutex_unlock(cam_desc.u_mutex);
 
+	camera_ref_down();
 	dev_dbg(cam_desc.dev, "%s\n", __func__);
 	return 0;
 }
 
 static int camera_release(struct inode *inode, struct file *file)
 {
-	struct camera_info *cam = file->private_data;
+	struct camera_info *cam;
 
 	dev_dbg(cam_desc.dev, "%s\n", __func__);
 
+	if (camera_ref_raise())
+		return -ENOTTY;
+
+	cam = file->private_data;
 	mutex_lock(cam_desc.u_mutex);
 	list_del(&cam->list);
 	mutex_unlock(cam_desc.u_mutex);
 
 	camera_app_remove(cam, true);
 
+	camera_ref_down();
 	file->private_data = NULL;
 	return 0;
 }
@@ -873,6 +932,10 @@ static int camera_remove(struct platform_device *dev)
 	struct camera_device *cdev;
 
 	dev_dbg(cam_desc.dev, "%s\n", __func__);
+
+	camera_ref_lock();
+
+	atomic_xchg(&cam_desc.in_use, 0);
 	misc_deregister(&cam_desc.miscdev);
 
 	list_for_each_entry(cam, cam_desc.app_list, list) {
@@ -895,6 +958,8 @@ static int camera_remove(struct platform_device *dev)
 	camera_debugfs_remove();
 
 	kfree(cam_desc.layout);
+	cam_desc.layout = NULL;
+	cam_desc.size_layout = 0;
 	if (cam_desc.pdata->freeable)
 		kfree(cam_desc.pdata);
 	cam_desc.pdata = NULL;
@@ -911,6 +976,7 @@ static int camera_probe(struct platform_device *dev)
 		return -EBUSY;
 	}
 
+	camera_ref_lock();
 	cam_desc.dev = &dev->dev;
 	if (dev->dev.of_node) {
 		pd = of_camera_create_pdata(dev);
@@ -929,6 +995,12 @@ static int camera_probe(struct platform_device *dev)
 	strcpy(cam_desc.dname, "camera.pcl");
 	dev_set_drvdata(&dev->dev, &cam_desc);
 
+#ifdef TEGRA_12X_OR_HIGHER_CONFIG
+	camera_dev_sync_init();
+	tegra_isp_register_mfi_cb(camera_dev_sync_cb, NULL);
+#endif
+	of_camera_init(&cam_desc);
+
 	cam_desc.miscdev.name = cam_desc.dname;
 	cam_desc.miscdev.fops = &camera_fileops;
 	cam_desc.miscdev.minor = MISC_DYNAMIC_MINOR;
@@ -938,13 +1010,18 @@ static int camera_probe(struct platform_device *dev)
 		return -ENODEV;
 	}
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	camera_dev_sync_init();
-	tegra_isp_register_mfi_cb(camera_dev_sync_cb, NULL);
-#endif
-	of_camera_init(&cam_desc);
 	camera_debugfs_init(&cam_desc);
+	camera_ref_init();
 	return 0;
+}
+
+static void camera_shutdown(struct platform_device *dev)
+{
+	dev_dbg(&dev->dev, "%s ...\n", __func__);
+
+	camera_ref_lock();
+	atomic_xchg(&cam_desc.in_use, 0);
+	dev_info(&dev->dev, "%s locked.\n", __func__);
 }
 
 static const struct platform_device_id camera_id[] = {
@@ -962,6 +1039,7 @@ static struct platform_driver camera_driver = {
 	.id_table = camera_id,
 	.probe = camera_probe,
 	.remove = camera_remove,
+	.shutdown = camera_shutdown,
 };
 
 module_platform_driver(camera_driver);
