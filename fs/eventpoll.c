@@ -9,7 +9,7 @@
  *
  *  Davide Libenzi <davidel@xmailserver.org>
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  */
 
@@ -1290,7 +1290,9 @@ static int ep_insert(struct eventpoll *ep, struct epoll_event *event,
 	spin_lock(&tfile->f_lock);
 	list_add_tail(&epi->fllink, &tfile->f_ep_links);
 	spin_unlock(&tfile->f_lock);
-	tfile->f_path.dentry->d_inode->i_private = get_thread_process(current);
+	if (tfile->f_path.dentry->d_inode->i_private == NULL)
+		tfile->f_path.dentry->d_inode->i_private =
+			get_thread_process(current);
 
 	/*
 	 * Add the current item to the RB tree. All RB tree operations are
