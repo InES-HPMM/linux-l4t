@@ -5,8 +5,6 @@
  * Created:		Aug 11th 2005
  * Copyright:	Wolfson Microelectronics. PLC.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
- *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -269,15 +267,9 @@ struct device;
 #define SOC_DAPM_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_enum_double, \
-	.get = snd_soc_dapm_get_enum_double, \
-	.put = snd_soc_dapm_put_enum_double, \
-	.private_value = (unsigned long)&xenum }
-#define SOC_DAPM_ENUM_ONEHOT(xname, xenum) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
-	.info = snd_soc_info_enum_double, \
-	.get = snd_soc_dapm_get_enum_onehot, \
-	.put = snd_soc_dapm_put_enum_onehot, \
-	.private_value = (unsigned long)&xenum }
+ 	.get = snd_soc_dapm_get_enum_double, \
+ 	.put = snd_soc_dapm_put_enum_double, \
+  	.private_value = (unsigned long)&xenum }
 #define SOC_DAPM_ENUM_VIRT(xname, xenum)		    \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_enum_double, \
@@ -331,9 +323,6 @@ struct device;
 /* regulator widget flags */
 #define SND_SOC_DAPM_REGULATOR_BYPASS     0x1     /* bypass when disabled */
 
-/* maximum registers to update */
-#define SND_SOC_DAPM_UPDATE_MAX_REG		3
-
 struct snd_soc_dapm_widget;
 enum snd_soc_dapm_type;
 struct snd_soc_dapm_path;
@@ -358,10 +347,6 @@ int snd_soc_dapm_get_volsw(struct snd_kcontrol *kcontrol,
 int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_get_enum_onehot(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_put_enum_onehot(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_get_enum_virt(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
@@ -575,10 +560,9 @@ struct snd_soc_dapm_widget {
 struct snd_soc_dapm_update {
 	struct snd_soc_dapm_widget *widget;
 	struct snd_kcontrol *kcontrol;
-	int reg[SND_SOC_DAPM_UPDATE_MAX_REG];
-	int mask[SND_SOC_DAPM_UPDATE_MAX_REG];
-	int val[SND_SOC_DAPM_UPDATE_MAX_REG];
-	unsigned int num_regs;
+	int reg;
+	int mask;
+	int val;
 };
 
 /* DAPM context */

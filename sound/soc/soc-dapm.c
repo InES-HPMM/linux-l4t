@@ -4,8 +4,6 @@
  * Copyright 2005 Wolfson Microelectronics PLC.
  * Author: Liam Girdwood <lrg@slimlogic.co.uk>
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
- *
  *  This program is free software; you can redistribute  it and/or modify it
  *  under  the terms of  the GNU General  Public License as published by the
  *  Free Software Foundation;  either version 2 of the  License, or (at your
@@ -364,8 +362,8 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 			w->kcontrol_news[i].private_value;
 		int val, item;
 
-		val = soc_widget_read(w, e->reg[0]);
-		item = (val >> e->shift_l) & e->mask[0];
+		val = soc_widget_read(w, e->reg);
+		item = (val >> e->shift_l) & e->mask;
 
 		p->connect = 0;
 		for (i = 0; i < e->max; i++) {
@@ -392,24 +390,13 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 	case snd_soc_dapm_value_mux: {
 		struct soc_enum *e = (struct soc_enum *)
 			w->kcontrol_news[i].private_value;
-		unsigned int bit_pos = 0;
 		int val, item;
 
-		if (e->type == SND_SOC_ENUM_ONEHOT) {
-			for (i = 0; i < e->num_regs; i++) {
-				val = soc_widget_read(w, e->reg[i]);
-				val = val & e->mask[i];
-				if (val != 0) {
-					bit_pos = ffs(val) +
-						(8 * w->codec->val_bytes * i);
-					break;
-				}
-			}
-			item = snd_soc_enum_val_to_item(e, bit_pos);
-		} else {
-			val = soc_widget_read(w, e->reg[0]);
-			val = (val >> e->shift_l) & e->mask[0];
-			item = snd_soc_enum_val_to_item(e, val);
+		val = soc_widget_read(w, e->reg);
+		val = (val >> e->shift_l) & e->mask;
+		for (item = 0; item < e->max; item++) {
+			if (val == e->values[item])
+				break;
 		}
 
 		p->connect = 0;
@@ -1466,7 +1453,7 @@ static void dapm_widget_update(struct snd_soc_dapm_context *dapm)
 {
 	struct snd_soc_dapm_update *update = dapm->update;
 	struct snd_soc_dapm_widget *w;
-	int ret = 0, i;
+	int ret;
 
 	if (!update)
 		return;
@@ -1481,16 +1468,11 @@ static void dapm_widget_update(struct snd_soc_dapm_context *dapm)
 			       w->name, ret);
 	}
 
-	/* dapm update for multiple registers */
-	for (i = 0; i < update->num_regs; i++) {
-		ret = soc_widget_update_bits_locked(w, update->reg[i],
-					update->mask[i], update->val[i]);
-		if (ret < 0) {
-			dev_err(w->dapm->dev, "ASoC: %s DAPM update failed: %d\n",
-				w->name, ret);
-			break;
-		}
-	}
+	ret = soc_widget_update_bits_locked(w, update->reg, update->mask,
+				  update->val);
+	if (ret < 0)
+		dev_err(dapm->dev, "ASoC: %s DAPM update failed: %d\n",
+			w->name, ret);
 
 	if (w->event &&
 	    (w->event_flags & SND_SOC_DAPM_POST_REG)) {
@@ -2736,10 +2718,9 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 
 			update.kcontrol = kcontrol;
 			update.widget = widget;
-			update.reg[0] = reg;
-			update.mask[0] = mask;
-			update.val[0] = val;
-			update.num_regs = 1;
+			update.reg = reg;
+			update.mask = mask;
+			update.val = val;
 			widget->dapm->update = &update;
 
 			soc_dapm_mixer_update_power(widget, kcontrol, connect);
@@ -2770,11 +2751,11 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int val;
 
-	val = snd_soc_read(widget->codec, e->reg[0]);
-	ucontrol->value.enumerated.item[0] = (val >> e->shift_l) & e->mask[0];
+	val = snd_soc_read(widget->codec, e->reg);
+	ucontrol->value.enumerated.item[0] = (val >> e->shift_l) & e->mask;
 	if (e->shift_l != e->shift_r)
 		ucontrol->value.enumerated.item[1] =
-			(val >> e->shift_r) & e->mask[0];
+			(val >> e->shift_r) & e->mask;
 
 	return 0;
 }
@@ -2806,17 +2787,17 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	mux = ucontrol->value.enumerated.item[0];
 	val = mux << e->shift_l;
-	mask = e->mask[0] << e->shift_l;
+	mask = e->mask << e->shift_l;
 	if (e->shift_l != e->shift_r) {
 		if (ucontrol->value.enumerated.item[1] > e->max - 1)
 			return -EINVAL;
 		val |= ucontrol->value.enumerated.item[1] << e->shift_r;
-		mask |= e->mask[0] << e->shift_r;
+		mask |= e->mask << e->shift_r;
 	}
 
 	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
 
-	change = snd_soc_test_bits(widget->codec, e->reg[0], mask, val);
+	change = snd_soc_test_bits(widget->codec, e->reg, mask, val);
 	if (change) {
 		for (wi = 0; wi < wlist->num_widgets; wi++) {
 			widget = wlist->widgets[wi];
@@ -2825,10 +2806,9 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 
 			update.kcontrol = kcontrol;
 			update.widget = widget;
-			update.reg[0] = e->reg[0];
-			update.mask[0] = mask;
-			update.val[0] = val;
-			update.num_regs = 1;
+			update.reg = e->reg;
+			update.mask = mask;
+			update.val = val;
 			widget->dapm->update = &update;
 
 			soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -2923,15 +2903,15 @@ int snd_soc_dapm_get_value_enum_double(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int reg_val, val, mux;
 
-	reg_val = snd_soc_read(widget->codec, e->reg[0]);
-	val = (reg_val >> e->shift_l) & e->mask[0];
+	reg_val = snd_soc_read(widget->codec, e->reg);
+	val = (reg_val >> e->shift_l) & e->mask;
 	for (mux = 0; mux < e->max; mux++) {
 		if (val == e->values[mux])
 			break;
 	}
 	ucontrol->value.enumerated.item[0] = mux;
 	if (e->shift_l != e->shift_r) {
-		val = (reg_val >> e->shift_r) & e->mask[0];
+		val = (reg_val >> e->shift_r) & e->mask;
 		for (mux = 0; mux < e->max; mux++) {
 			if (val == e->values[mux])
 				break;
@@ -2973,17 +2953,17 @@ int snd_soc_dapm_put_value_enum_double(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	mux = ucontrol->value.enumerated.item[0];
 	val = e->values[ucontrol->value.enumerated.item[0]] << e->shift_l;
-	mask = e->mask[0] << e->shift_l;
+	mask = e->mask << e->shift_l;
 	if (e->shift_l != e->shift_r) {
 		if (ucontrol->value.enumerated.item[1] > e->max - 1)
 			return -EINVAL;
 		val |= e->values[ucontrol->value.enumerated.item[1]] << e->shift_r;
-		mask |= e->mask[0] << e->shift_r;
+		mask |= e->mask << e->shift_r;
 	}
 
 	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
 
-	change = snd_soc_test_bits(widget->codec, e->reg[0], mask, val);
+	change = snd_soc_test_bits(widget->codec, e->reg, mask, val);
 	if (change) {
 		for (wi = 0; wi < wlist->num_widgets; wi++) {
 			widget = wlist->widgets[wi];
@@ -2992,10 +2972,9 @@ int snd_soc_dapm_put_value_enum_double(struct snd_kcontrol *kcontrol,
 
 			update.kcontrol = kcontrol;
 			update.widget = widget;
-			update.reg[0] = e->reg[0];
-			update.mask[0] = mask;
-			update.val[0] = val;
-			update.num_regs = 1;
+			update.reg = e->reg;
+			update.mask = mask;
+			update.val = val;
 			widget->dapm->update = &update;
 
 			soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -3008,120 +2987,6 @@ int snd_soc_dapm_put_value_enum_double(struct snd_kcontrol *kcontrol,
 	return change;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_put_value_enum_double);
-
-/**
- * snd_soc_dapm_get_enum_onehot - dapm enumerated onehot mixer get callback
- * @kcontrol: mixer control
- * @ucontrol: control element information
- *
- * Callback to get the value of a dapm enumerated onehot encoded mixer control
- *
- * Returns 0 for success.
- */
-int snd_soc_dapm_get_enum_onehot(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-	struct snd_soc_codec *codec = widget->codec;
-	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
-	unsigned int reg_val, val, bit_pos = 0, reg_idx;
-
-	for (reg_idx = 0; reg_idx < e->num_regs; reg_idx++) {
-		reg_val = snd_soc_read(codec, e->reg[reg_idx]);
-		val = reg_val & e->mask[reg_idx];
-		if (val != 0) {
-			bit_pos = ffs(val) + (8 * codec->val_bytes * reg_idx);
-			break;
-		}
-	}
-
-	ucontrol->value.enumerated.item[0] =
-			snd_soc_enum_val_to_item(e, bit_pos);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(snd_soc_dapm_get_enum_onehot);
-
-/**
- * snd_soc_dapm_put_enum_onehot - dapm enumerated onehot mixer put callback
- * @kcontrol: mixer control
- * @ucontrol: control element information
- *
- * Callback to put the value of a dapm enumerated onehot encoded mixer control
- *
- * Returns 0 for success.
- */
-int snd_soc_dapm_put_enum_onehot(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-	struct snd_soc_codec *codec = widget->codec;
-	struct snd_soc_card *card = codec->card;
-	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
-	unsigned int *item = ucontrol->value.enumerated.item;
-	unsigned int change = 0, reg_idx = 0, value, bit_pos;
-	unsigned int i, reg_val = 0, update_idx = 0;
-	struct snd_soc_dapm_update update;
-	int wi, ret = 0;
-
-	if (item[0] >= e->max || e->num_regs > SND_SOC_DAPM_UPDATE_MAX_REG)
-		return -EINVAL;
-
-	value = snd_soc_enum_item_to_val(e, item[0]);
-
-	if (value) {
-		/* get the register index and value to set */
-		reg_idx = (value - 1) / (8 * codec->val_bytes);
-		bit_pos = (value - 1) % (8 * codec->val_bytes);
-		reg_val = BIT(bit_pos);
-	}
-
-	for (i = 0; i < e->num_regs; i++) {
-		if (i == reg_idx) {
-			change |= snd_soc_test_bits(codec, e->reg[i],
-							e->mask[i], reg_val);
-			/* set the selected register */
-			update.reg[e->num_regs - 1] = e->reg[reg_idx];
-			update.mask[e->num_regs - 1] = e->mask[reg_idx];
-			update.val[e->num_regs - 1] = reg_val;
-		} else {
-			/* accumulate the change to update the DAPM path
-			    when none is selected */
-			change |= snd_soc_test_bits(codec, e->reg[i],
-							e->mask[i], 0);
-
-			/* clear the register when not selected */
-			update.reg[update_idx] = e->reg[i];
-			update.mask[update_idx] = e->mask[i];
-			update.val[update_idx++] = 0;
-		}
-	}
-
-	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
-
-	if (change) {
-		for (wi = 0; wi < wlist->num_widgets; wi++) {
-			widget = wlist->widgets[wi];
-			widget->value = reg_val;
-			update.kcontrol = kcontrol;
-			update.widget = widget;
-			update.num_regs = e->num_regs;
-			widget->dapm->update = &update;
-			soc_dapm_mux_update_power(widget, kcontrol, item[0], e);
-			widget->dapm->update = NULL;
-		}
-	}
-
-	mutex_unlock(&card->dapm_mutex);
-
-	if (ret > 0)
-		soc_dpcm_runtime_update(card);
-
-	return change;
-}
-EXPORT_SYMBOL_GPL(snd_soc_dapm_put_enum_onehot);
 
 /**
  * snd_soc_dapm_info_pin_switch - Info for a pin switch
