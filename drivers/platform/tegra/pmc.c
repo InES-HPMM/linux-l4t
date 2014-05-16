@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/export.h>
@@ -227,7 +228,13 @@ EXPORT_SYMBOL(tegra_pmc_clear_dpd_sample);
 void tegra_pmc_remove_dpd_req()
 {
 	tegra_pmc_writel(0x400fffff, PMC_IO_DPD_REQ);
+	tegra_pmc_readl(PMC_IO_DPD_REQ); /* unblock posted write */
+	/* delay apb_clk * (SEL_DPD_TIM*5) */
+	udelay(700);
+
 	tegra_pmc_writel(0x40001fff, PMC_IO_DPD2_REQ);
+	tegra_pmc_readl(PMC_IO_DPD2_REQ); /* unblock posted write */
+	udelay(700);
 }
 EXPORT_SYMBOL(tegra_pmc_remove_dpd_req);
 
