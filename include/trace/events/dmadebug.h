@@ -75,6 +75,47 @@ DMADEBUGEVENT(dmadebug_unmap_sg);
 
 #undef DMADEBUGEVENT
 
+DECLARE_EVENT_CLASS(dmadebug2,
+	TP_PROTO(struct device *dev, dma_addr_t dma_addr, size_t size,
+		struct page **pages, void *cpu_addr),
+
+	TP_ARGS(dev, dma_addr, size, pages, cpu_addr),
+
+	TP_STRUCT__entry(
+		__field(struct device *, dev)
+		__string(name, dev_name(dev))
+		__field(dma_addr_t, dma_addr)
+		__field(size_t, size)
+		__field(struct page **, pages)
+		__field(void *, cpu_addr)
+	),
+
+	TP_fast_assign(
+		__entry->dev = dev;
+		__assign_str(name, dev_name(dev));
+		__entry->dma_addr = dma_addr;
+		__entry->size = size;
+		__entry->pages = pages;
+		__entry->cpu_addr = cpu_addr;
+	),
+
+	TP_printk("device=%s, iova=%llx, size=%d pages=%p, va=%p,"
+		  " platformdata=%s",
+		   __get_str(name), (unsigned long long)__entry->dma_addr,
+		   __entry->size, (void *)__entry->pages, __entry->cpu_addr,
+		   debug_dma_platformdata(__entry->dev))
+);
+#define DMADEBUGEVENT2(ev) DEFINE_EVENT(dmadebug2, ev, \
+	TP_PROTO(struct device *dev, dma_addr_t dma_addr, size_t size, \
+		struct page **pages, void *cpu_addr), \
+	TP_ARGS(dev, dma_addr, size, pages, cpu_addr) \
+)
+
+DMADEBUGEVENT2(dmadebug_alloc_attrs);
+DMADEBUGEVENT2(dmadebug_free_attrs);
+
+#undef DMADEBUGEVENT2
+
 #endif /*  _TRACE_DMADEBUG_H */
 
 /* This part must be outside protection */

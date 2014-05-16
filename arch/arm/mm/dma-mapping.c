@@ -1696,8 +1696,11 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 
 	size = PAGE_ALIGN(size);
 
-	if (!(gfp & __GFP_WAIT))
-		return __iommu_alloc_atomic(dev, size, handle, attrs);
+	if (!(gfp & __GFP_WAIT)) {
+		addr = __iommu_alloc_atomic(dev, size, handle, attrs);
+		trace_dmadebug_alloc_attrs(dev, *handle, size, NULL, addr);
+		return addr;
+	}
 
 	pages = __iommu_alloc_buffer(dev, size, gfp, attrs);
 	if (!pages)
@@ -1720,6 +1723,7 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 	if (!addr)
 		goto err_mapping;
 
+	trace_dmadebug_alloc_attrs(dev, *handle, size, pages, addr);
 	return addr;
 
 err_mapping:
@@ -1771,6 +1775,7 @@ void arm_iommu_free_attrs(struct device *dev, size_t size, void *cpu_addr,
 	}
 
 	if (__in_atomic_pool(cpu_addr, size)) {
+		trace_dmadebug_free_attrs(dev, handle, size, NULL, cpu_addr);
 		__iommu_free_atomic(dev, cpu_addr, handle, size, attrs);
 		return;
 	}
@@ -1780,6 +1785,7 @@ void arm_iommu_free_attrs(struct device *dev, size_t size, void *cpu_addr,
 		vunmap(cpu_addr);
 	}
 
+	trace_dmadebug_free_attrs(dev, handle, size, pages, cpu_addr);
 	__iommu_remove_mapping(dev, handle, size, attrs);
 	__iommu_free_buffer(dev, pages, size, attrs);
 }
