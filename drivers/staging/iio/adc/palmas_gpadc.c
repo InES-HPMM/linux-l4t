@@ -37,6 +37,7 @@
 #include <linux/iio/iio.h>
 #include <linux/iio/machine.h>
 #include <linux/iio/driver.h>
+#include <linux/mutex.h>
 
 #define MOD_NAME		"palmas-gpadc"
 #define ADC_CONVERTION_TIMEOUT	(msecs_to_jiffies(5000))
@@ -103,6 +104,8 @@ struct palmas_gpadc {
 	int				auto_conversion_period;
 
 	struct dentry			*dentry;
+	bool is_shutdown;
+	struct mutex lock;
 };
 
 /*
@@ -599,8 +602,13 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 	if (adc_chan > PALMAS_ADC_CH_MAX)
 		return -EINVAL;
 
-	mutex_lock(&indio_dev->mlock);
+	mutex_lock(&adc->lock);
+	if (adc->is_shutdown) {
+		mutex_unlock(&adc->lock);
+		return -EINVAL;
+	}
 
+	mutex_lock(&indio_dev->mlock);
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 	case IIO_CHAN_INFO_PROCESSED:
@@ -672,11 +680,13 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 	}
 
 	mutex_unlock(&indio_dev->mlock);
+	mutex_unlock(&adc->lock);
 	return ret;
 
 out:
 	palmas_gpadc_read_done(adc, adc_chan);
 	mutex_unlock(&indio_dev->mlock);
+	mutex_unlock(&adc->lock);
 	return ret;
 }
 
@@ -1078,6 +1088,9 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	init_completion(&adc->conv_completion);
 	dev_set_drvdata(&pdev->dev, iodev);
 
+	adc->is_shutdown = false;
+	mutex_init(&adc->lock);
+
 	adc->auto_conversion_period = gpadc_pdata->auto_conversion_period_ms;
 	adc->irq = palmas_irq_get_virq(adc->palmas, PALMAS_GPADC_EOC_SW_IRQ);
 	ret = request_threaded_irq(adc->irq, NULL,
@@ -1238,8 +1251,11 @@ static void palmas_gpadc_shutdown(struct platform_device *pdev)
 	struct iio_dev *iodev = dev_get_drvdata(&pdev->dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
 
+	mutex_lock(&adc->lock);
+	adc->is_shutdown = true;
 	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
 		palmas_gpadc_auto_conv_reset(adc);
+	mutex_unlock(&adc->lock);
 }
 
 #ifdef CONFIG_PM_SLEEP
