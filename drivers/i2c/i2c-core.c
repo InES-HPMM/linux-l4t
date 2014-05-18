@@ -619,8 +619,10 @@ EXPORT_SYMBOL_GPL(i2c_shutdown_adapter);
 
 void i2c_shutdown_clear_adapter(struct i2c_adapter *adapter)
 {
+	i2c_lock_adapter(adapter);
 	adapter->cancel_xfer_on_shutdown = false;
 	adapter->atomic_xfer_only = true;
+	i2c_unlock_adapter(adapter);
 }
 EXPORT_SYMBOL_GPL(i2c_shutdown_clear_adapter);
 
@@ -1574,8 +1576,10 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 
 		if (!adap->cancel_xfer_on_shutdown)
 			ret = __i2c_transfer(adap, msgs, num);
-		else
+		else {
+			WARN_ON(1);
 			ret = -EPERM;
+		}
 		i2c_unlock_adapter(adap);
 
 		return ret;
