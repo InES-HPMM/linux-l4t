@@ -711,7 +711,7 @@ static IIO_DEVICE_ATTR(current_threshold, S_IRUGO | S_IWUSR,
 static IIO_DEVICE_ATTR(alert_flag, S_IRUGO,
 		ina230_show_channel, NULL, ALERT_FLAG);
 
-static IIO_DEVICE_ATTR(ui_input, S_IRUGO,
+static IIO_DEVICE_ATTR(ui_input, S_IRUSR|S_IRGRP,
 		       ina230_show_channel, NULL,
 		       VBUS_VOLTAGE_CURRENT);
 
