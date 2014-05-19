@@ -31,6 +31,7 @@ static u32 tegra210_timer_freq;
 static void __iomem *tegra210_timer_reg_base;
 phys_addr_t timer_reg_base_pa = 0x60005000;
 static u32 usec_config;
+static u32 timer_us_mult, timer_us_shift;
 
 #define TIMERUS_CNTR_1US 0x10
 #define TIMERUS_USEC_CFG 0x14
@@ -54,6 +55,21 @@ struct tegra210_clockevent {
 };
 
 static DEFINE_PER_CPU(struct tegra210_clockevent, tegra210_evt);
+
+int tegra210_timer_get_remain(unsigned int cpu, u64 *time)
+{
+	u64 tmr_pcr;
+	struct tegra210_clockevent *tevt;
+
+	tevt = &per_cpu(tegra210_evt, cpu);
+	tmr_pcr = __raw_readl(tevt->reg_base + TIMER_PCR);
+	if (tmr_pcr <= 0)
+		return -ETIME;
+
+	*time = (u64)((u64)tmr_pcr * timer_us_mult) >> timer_us_shift;
+
+	return 0;
+}
 
 static int tegra210_timer_set_next_event(unsigned long cycles,
 					 struct clock_event_device *evt)
@@ -251,6 +267,9 @@ static void __init tegra210_timer_init(struct device_node *np)
 		BUG();
 	}
 	tegra210_timer_setup(tevt);
+
+	clocks_calc_mult_shift(&timer_us_mult, &timer_us_shift, 1000000,
+				USEC_PER_SEC, 0);
 
 	if (register_cpu_notifier(&tegra210_timer_cpu_nb)) {
 		pr_err("%s: cannot setup CPU notifier\n", __func__);

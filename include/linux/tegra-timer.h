@@ -105,5 +105,12 @@ static inline void tegra_tsc_wait_for_resume(void) {};
 u64 tegra_rtc_read_ms(void);
 u32 notrace tegra_read_usec_raw(void);
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+int tegra210_timer_get_remain(unsigned int cpu, u64 *time);
+#else
+static inline int tegra210_timer_get_remain(unsigned int cpu, u64 *time)
+{ return -ETIME; }
+#endif
+
 int hotplug_cpu_register(struct device_node *);
 #endif /* _MACH_TEGRA_TIMER_H_ */
