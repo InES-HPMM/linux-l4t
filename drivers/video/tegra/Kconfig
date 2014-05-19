@@ -407,6 +407,17 @@ config TEGRA_NVHDCP
 	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
 	  unprotected content just fine.
 
+config TEGRA_HDMIHDCP
+	bool "Support HDCP content protection on HDMI2_0"
+	depends on TEGRA_HDMI2_0
+	help
+	  Say Y here to support HDCP upstream and downstream protocols for HDMI2_0,
+	  this requires a correctly fused chip to negotiate keys.
+	  It is only needed if you have an application that cares about checking
+	  for HDCP security while playing protected content. You do not need this
+	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
+	  unprotected content just fine.
+
 config TEGRA_HDMI_74MHZ_LIMIT
 	bool "Support only up to 74.25 MHz HDMI pixel frequency"
 	depends on TEGRA_HDMI
