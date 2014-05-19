@@ -126,12 +126,4 @@
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 		status = "okay";
 	};
-
-	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <0>;
-		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
-		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
-		status = "okay";
-	};
 };

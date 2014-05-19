@@ -299,7 +299,6 @@ struct tegra_pcie_info {
 
 	struct regulator	*regulator_hvdd;
 	struct regulator	*regulator_pexio;
-	struct regulator	*regulator_avdd_plle;
 	struct clk		*pcie_xclk;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct clk		*pex_uphy;
@@ -1077,9 +1076,10 @@ static int tegra_pcie_enable_controller(void)
 	return ret;
 }
 
-#ifdef USE_REGULATORS
 static int tegra_pcie_enable_regulators(void)
 {
+	int err = 0;
+
 	PR_FUNC_LINE;
 	if (tegra_pcie.power_rails_enabled) {
 		pr_debug("PCIE: Already power rails enabled");
@@ -1090,44 +1090,30 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_hvdd == NULL) {
 		pr_info("PCIE.C: %s : regulator hvdd_pex\n", __func__);
 		tegra_pcie.regulator_hvdd =
-			regulator_get(tegra_pcie.dev, "hvdd_pex");
+			regulator_get(tegra_pcie.dev, "reg-3v3-supply");
 		if (IS_ERR(tegra_pcie.regulator_hvdd)) {
 			pr_err("%s: unable to get hvdd_pex regulator\n",
 					__func__);
 			tegra_pcie.regulator_hvdd = 0;
 		}
 	}
-
 	if (tegra_pcie.regulator_pexio == NULL) {
 		pr_info("PCIE.C: %s : regulator pexio\n", __func__);
 		tegra_pcie.regulator_pexio =
-			regulator_get(tegra_pcie.dev, "avdd_pex_pll");
+			regulator_get(tegra_pcie.dev, "avdd-pll-pex");
 		if (IS_ERR(tegra_pcie.regulator_pexio)) {
 			pr_err("%s: unable to get pexio regulator\n", __func__);
 			tegra_pcie.regulator_pexio = 0;
 		}
 	}
-
-	/*SATA and PCIE use same PLLE, In default configuration,
-	* and we set default AVDD_PLLE with SATA.
-	* So if use default board, you have to turn on (LDO2) AVDD_PLLE.
-	 */
-	if (tegra_pcie.regulator_avdd_plle == NULL) {
-		pr_info("PCIE.C: %s : regulator avdd_plle\n", __func__);
-		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
-						"avdd_pll_erefe");
-		if (IS_ERR(tegra_pcie.regulator_avdd_plle)) {
-			pr_err("%s: unable to get avdd_plle regulator\n",
-				__func__);
-			tegra_pcie.regulator_avdd_plle = 0;
-		}
-	}
 	if (tegra_pcie.regulator_hvdd)
-		regulator_enable(tegra_pcie.regulator_hvdd);
+		err = regulator_enable(tegra_pcie.regulator_hvdd);
+		if (err)
+			pr_err("%s: can't enable hvdd_pex regulator\n", __func__);
 	if (tegra_pcie.regulator_pexio)
-		regulator_enable(tegra_pcie.regulator_pexio);
-	if (tegra_pcie.regulator_avdd_plle)
-		regulator_enable(tegra_pcie.regulator_avdd_plle);
+		err = regulator_enable(tegra_pcie.regulator_pexio);
+		if (err)
+			pr_err("%s: can't enable pexio regulator\n", __func__);
 
 	return 0;
 }
@@ -1149,13 +1135,10 @@ static int tegra_pcie_disable_regulators(void)
 		err = regulator_disable(tegra_pcie.regulator_pexio);
 	if (err)
 		goto err_exit;
-	if (tegra_pcie.regulator_avdd_plle)
-		err = regulator_disable(tegra_pcie.regulator_avdd_plle);
 	tegra_pcie.power_rails_enabled = 0;
 err_exit:
 	return err;
 }
-#endif
 
 static int tegra_pcie_power_ungate(void)
 {
@@ -1299,6 +1282,11 @@ static int tegra_pcie_power_on(void)
 		tegra_io_dpd_disable(&pexbias_io);
 		tegra_io_dpd_disable(&pexclk1_io);
 		tegra_io_dpd_disable(&pexclk2_io);
+		err = tegra_pcie_enable_regulators();
+		if (err) {
+			pr_err("PCIE: Failed to enable regulators\n");
+			goto err_exit;
+		}
 	}
 	err = tegra_pcie_power_ungate();
 	if (err) {
@@ -1346,6 +1334,9 @@ static int tegra_pcie_power_off(bool all)
 		goto err_exit;
 
 	if (!tegra_platform_is_fpga()) {
+		err = tegra_pcie_disable_regulators();
+		if (err)
+			goto err_exit;
 		/* put PEX pads into DPD mode to save additional power */
 		tegra_io_dpd_enable(&pexbias_io);
 		tegra_io_dpd_enable(&pexclk1_io);
