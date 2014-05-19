@@ -26,6 +26,7 @@
 #include <linux/of_irq.h>
 #include <linux/percpu.h>
 #include <linux/syscore_ops.h>
+#include <linux/tick.h>
 
 static u32 tegra210_timer_freq;
 static void __iomem *tegra210_timer_reg_base;
@@ -184,11 +185,25 @@ static void tegra_timer_resume(void)
 	__raw_writel(usec_config, tegra210_timer_reg_base + TIMERUS_USEC_CFG);
 }
 
+static void tegra_timer_restore(void)
+{
+	int cpu;
+
+	tegra_timer_resume();
+
+	for_each_online_cpu(cpu) {
+		struct tegra210_clockevent *tevt;
+
+		tevt = &per_cpu(tegra210_evt, cpu);
+		tick_program_event(tevt->evt.next_event, true);
+	}
+}
+
 static struct syscore_ops tegra_timer_syscore_ops = {
 	.suspend = tegra_timer_suspend,
 	.resume = tegra_timer_resume,
 	.save = tegra_timer_suspend,
-	.restore = tegra_timer_resume,
+	.restore = tegra_timer_restore,
 };
 
 static void __init tegra210_timer_init(struct device_node *np)
