@@ -805,23 +805,24 @@ static int tegra_adf_negotiate_bw(struct tegra_adf_info *adf_info,
 
 	for (i = 0; i < bw->win_num; i++) {
 		struct tegra_adf_flip_windowattr *attr = &bw->win[i].attr;
-		u32 fourcc = bw->win[i].format;
 		s32 idx = attr->win_index;
 
-		if (!adf_overlay_engine_supports_format(eng, fourcc)) {
-			char format_str[ADF_FORMAT_STR_SIZE];
-			adf_format_str(fourcc, format_str);
-			dev_err(&eng->base.dev, "%s: unsupported format %s\n",
-					__func__, format_str);
-			return -EINVAL;
-		}
+		if (attr->buf_index >= 0) {
+			u32 fourcc = bw->win[i].format;
+			if (!adf_overlay_engine_supports_format(eng, fourcc)) {
+				char format_str[ADF_FORMAT_STR_SIZE];
+				adf_format_str(fourcc, format_str);
+				dev_err(&eng->base.dev, "%s: unsupported format %s\n",
+						__func__, format_str);
+				return -EINVAL;
+			}
 
-		if (attr->buf_index >= 0)
 			tegra_adf_set_windowattr_basic(&dc->tmp_wins[idx],
 					attr, fourcc, bw->win[i].w,
 					bw->win[i].h);
-		else
+		} else {
 			dc->tmp_wins[i].flags = 0;
+		}
 
 		dc_wins[i] = &dc->tmp_wins[idx];
 	}
