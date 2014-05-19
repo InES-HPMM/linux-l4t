@@ -1189,6 +1189,8 @@ static int pm_genpd_suspend(struct device *dev)
 	if (IS_ERR(genpd))
 		return -EINVAL;
 
+	cancel_delayed_work_sync(&genpd->power_off_delayed_work);
+
 	return genpd->suspend_power_off ? 0 : genpd_suspend_dev(genpd, dev);
 }
 
@@ -1209,6 +1211,8 @@ static int pm_genpd_suspend_late(struct device *dev)
 	genpd = dev_to_genpd(dev);
 	if (IS_ERR(genpd))
 		return -EINVAL;
+
+	cancel_delayed_work_sync(&genpd->power_off_delayed_work);
 
 	return genpd->suspend_power_off ? 0 : genpd_suspend_late(genpd, dev);
 }
@@ -1239,6 +1243,8 @@ static int pm_genpd_suspend_noirq(struct device *dev)
 	if (psd && psd->domain_data &&
 	    !to_gpd_data(psd->domain_data)->need_save)
 		return 0;
+
+	cancel_delayed_work_sync(&genpd->power_off_delayed_work);
 
 	genpd_stop_dev(genpd, dev);
 
