@@ -464,7 +464,7 @@ static int resolve_core_override(int min_override_mv)
 /* GPU DVFS tables */
 static unsigned long gpu_max_freq[] = {
 /* speedo_id	0	1	2	 3	*/
-		648000, 852000, 1008000, 600000
+		648000, 852000, 1008000, 696000
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
@@ -477,12 +477,16 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.thermal_scale = 10,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f        dfll  pll:   c0,     c1,   c2,   c3,      c4,   c5 */
-			{  600000, {  }, { 2445508, -122039, 2232,    0,       0,    0}, },
+			/* c3 is used as fixed voltage(uv) setting in lower temperature range */
+			/*f        dfll  pll: c0,  c1,      c2,   c3,           c4,   c5 */
+			{  150000, {  }, {830000,  0,       0,    850000,       0,    0 }, },
+			{  300000, {  }, {830000,  0,       0,    850000,       0,    0 }, },
+			{  444000, {  }, {1289552, -41629,  940,  920000,       0,    0 }, },
+			{  600000, {  }, {2445508, -122653, 2255, 1010000,      0,    0 }, },
+			{  696000, {  }, {1728087, -39652,  183,  1060000,      0,    0 }, },
 			{       0, {  }, { }, },
 		},
-		.cvb_vmin =  {  0, {  }, { 1160000, -18900,    0,     0,  -6110,    0}, },
-		.vts_trips_table = { -40, 35, },
+		.vts_trips_table = { -40, 34, },
 	},
 
 	{
@@ -870,6 +874,88 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	return 0;
 }
 
+/* Automotive gpu_dvfs specific
+ * GPU voltage (mV) = c0 + c1*speedo + c2*speedo*speedo if T > Tlimit
+ * GPU voltage (mV) = c3 if T < Tlimit
+ * NOTE: Tlimit is specified in gpu_dvf Table
+ */
+static int __init set_atomtv_gpu_dvfs_data(unsigned long max_freq,
+	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
+{
+	int i, j, thermal_ranges, mv;
+	struct cvb_dvfs_table *table = NULL;
+	int speedo = tegra_gpu_speedo_value();
+	struct dvfs_rail *rail = &tegra12_dvfs_rail_vdd_gpu;
+	struct rail_alignment *align = &rail->alignment;
+
+	d->max_mv = round_voltage(d->max_mv, align, false);
+
+	/*
+	 * Init thermal trips, find number of thermal ranges; note that the
+	 * first trip-point is used for voltage calculations within the lowest
+	 * range, but should not be actually set. Hence, at least 2 trip-points
+	 * must be specified.
+	 */
+	if (tegra_dvfs_rail_init_thermal_dvfs_trips(d->vts_trips_table, rail))
+		return -ENOENT;
+	thermal_ranges = rail->vts_cdev->trip_temperatures_num;
+	rail->vts_cdev->trip_temperatures_num--;
+
+	if (thermal_ranges < 2)
+		WARN(1, "tegra12_dvfs: %d gpu trip: thermal dvfs is broken\n",
+		     thermal_ranges);
+
+	/*
+	 * Use CVB table to fill in gpu dvfs frequencies and voltages. Each
+	 * CVB entry specifies gpu frequency and CVB coefficients to calculate
+	 * the respective voltage.
+	 */
+	for (i = 0; i < MAX_DVFS_FREQS; i++) {
+		table = &d->cvb_table[i];
+		if (!table->freq || (table->freq > max_freq))
+			break;
+
+		mv = table->cvb_pll_param.c3;/* Cold mode voltage */
+		mv = round_cvb_voltage(mv, d->voltage_scale, align);
+		gpu_millivolts[0][i] = mv;
+
+		mv = get_cvb_voltage(
+			speedo, d->speedo_scale, &table->cvb_pll_param);
+		mv = round_cvb_voltage(mv, d->voltage_scale, align);
+		gpu_millivolts[1][i] = mv;
+
+		/* fill in gpu dvfs tables */
+		gpu_dvfs->freqs[i] = table->freq;
+	}
+
+	/*
+	 * Table must not be empty, must have at least one entry in range, and
+	 * must specify monotonically increasing voltage on frequency dependency
+	 * in each temperature range.
+	 */
+	if (!i || tegra_dvfs_init_thermal_dvfs_voltages(&gpu_millivolts[0][0],
+		gpu_peak_millivolts, i, thermal_ranges, gpu_dvfs)) {
+		pr_err("tegra12_dvfs: invalid gpu dvfs table\n");
+		return -ENOENT;
+	}
+
+	/* Shift out the 1st trip-point */
+	for (j = 1; j < thermal_ranges; j++)
+		rail->vts_cdev->trip_temperatures[j - 1] =
+		rail->vts_cdev->trip_temperatures[j];
+
+	/* dvfs tables are successfully populated - fill in the gpu dvfs */
+	gpu_dvfs->speedo_id = d->speedo_id;
+	gpu_dvfs->process_id = d->process_id;
+	gpu_dvfs->freqs_mult = d->freqs_mult;
+	gpu_dvfs->dvfs_rail->nominal_millivolts = d->max_mv;
+
+	*max_freq_index = i - 1;
+
+	return 0;
+}
+
+
 static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
@@ -1179,8 +1265,13 @@ void __init tegra12x_init_dvfs(void)
 		unsigned long max_freq = gpu_max_freq[gpu_speedo_id];
 		if (match_dvfs_one("gpu cvb", d->speedo_id, d->process_id,
 				   gpu_speedo_id, gpu_process_id)) {
-			ret = set_gpu_dvfs_data(max_freq,
-				d, &gpu_dvfs, &gpu_max_freq_index);
+			if (gpu_speedo_id != 3)
+				ret = set_gpu_dvfs_data(max_freq,
+					d, &gpu_dvfs, &gpu_max_freq_index);
+			else
+				/* Automotive gpu_dvfs specific */
+				ret = set_atomtv_gpu_dvfs_data(max_freq,
+					d, &gpu_dvfs, &gpu_max_freq_index);
 			break;
 		}
 	}

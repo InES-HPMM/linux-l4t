@@ -23,6 +23,7 @@
 #include <linux/gpio.h>
 #include <linux/i2c/pca953x.h>
 #include <linux/tegra-pmc.h>
+#include <linux/pid_thermal_gov.h>
 
 #include "pm.h"
 #include "board.h"
@@ -245,18 +246,18 @@ int __init vcm30_t124_suspend_init(void)
 	return 0;
 }
 
-static struct thermal_zone_params soctherm_tzp = {
-	.governor_name = "pid_thermal_gov",
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
+	.gain_p = 1000,
+	.gain_d = 0,
+	.up_compensation = 20,
+	.down_compensation = 20,
 };
 
-static struct tegra_thermtrip_pmic_data tpdata_palmas = {
-	.reset_tegra = 1,
-	.pmu_16bit_ops = 0,
-	.controller_type = 0,
-	.pmu_i2c_addr = 0x58,
-	.i2c_controller_id = 4,
-	.poweroff_reg_addr = 0xa0,
-	.poweroff_reg_data = 0x0,
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
 };
 
 static struct tegra_thermtrip_pmic_data tpdata_max77663 = {
@@ -275,91 +276,34 @@ static struct soctherm_platform_data vcm30_t124_soctherm_data = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 100000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
+			.num_trips = 0,
 			.tzp = &soctherm_tzp,
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 100000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
+			.num_trips = 0,
 			.tzp = &soctherm_tzp,
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
 		},
 	},
-	.throttle = {
-		[THROTTLE_HEAVY] = {
-			.priority = 100,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 80,
-				},
-			},
-		},
-	},
-	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
 /* FIXME: Needed? */
 int __init vcm30_t124_soctherm_init(void)
 {
-
 	vcm30_t124_soctherm_data.tshut_pmu_trip_data = &tpdata_max77663;
 
 	tegra_add_cpu_vmax_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
-	/*tegra_add_vc_trips(vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
-			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
-*/
+
+	tegra_add_tgpu_trips(
+			vcm30_t124_soctherm_data.therm[THERM_GPU].trips,
+			&vcm30_t124_soctherm_data.therm[THERM_GPU].num_trips);
+
 	return tegra11_soctherm_init(&vcm30_t124_soctherm_data);
 }
 

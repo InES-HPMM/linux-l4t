@@ -153,6 +153,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "i2c6",		"pll_p",	408000000,	false},
 
 	{ "sdmmc2",		"pll_p",	48000000,	false},
+	{"gk20a.gbus",		NULL,		600000000,	false},
 
 	{ NULL,			NULL,		0,		0},
 };
@@ -225,9 +226,7 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
 #endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
-	SET_FIXED_TARGET_RATE("gbus",		600000000),
 
-	SET_FIXED_TARGET_RATE("gk20a.gbus",	600000000),
 	SET_FIXED_TARGET_RATE("sclk",		316800000),
 	SET_FIXED_TARGET_RATE("hclk",		316800000),
 	SET_FIXED_TARGET_RATE("ahb.sclk",	316800000),
@@ -1123,7 +1122,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 #ifdef CONFIG_SENSORS_TMON_TMP411
 	register_therm_monitor(&vcm30t30_therm_monitor_data);
 #endif
-
+	vcm30_t124_soctherm_init();
 #if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
 	vcm30_t124_setup_bluedroid_pm();
 #endif
