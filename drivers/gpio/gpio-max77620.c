@@ -284,6 +284,9 @@ static int max77620_gpio_probe(struct platform_device *pdev)
 	max77620_gpio->gpio_chip.can_sleep = 1;
 	max77620_gpio->gpio_chip.base = -1;
 	max77620_gpio->irq_base = -1;
+#ifdef CONFIG_OF_GPIO
+	max77620_gpio->gpio_chip.of_node = pdev->dev.parent->of_node;
+#endif
 
 	platform_set_drvdata(pdev, max77620_gpio);
 
@@ -325,17 +328,9 @@ static int max77620_gpio_remove(struct platform_device *pdev)
 	return ret;
 }
 
-static struct of_device_id of_max77620_gpio_match[] = {
-	{ .compatible = "max,max77620-gpio"},
-	{ },
-};
-
-MODULE_DEVICE_TABLE(of, of_max77620_gpio_match);
-
 static struct platform_driver max77620_gpio_driver = {
 	.driver.name	= "max77620-gpio",
 	.driver.owner	= THIS_MODULE,
-	.driver.of_match_table = of_max77620_gpio_match,
 	.probe		= max77620_gpio_probe,
 	.remove		= max77620_gpio_remove,
 };
