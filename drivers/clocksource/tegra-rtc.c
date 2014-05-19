@@ -118,7 +118,6 @@ static int tegra_rtc_alarm_irq_enable(unsigned int enable)
 
 static irqreturn_t tegra_rtc_interrupt(int irq, void *dev_id)
 {
-	struct clock_event_device *evt;
 	u32 status;
 
 	status = readl(rtc_base + TEGRA_RTC_REG_INTR_STATUS);
@@ -128,11 +127,6 @@ static irqreturn_t tegra_rtc_interrupt(int irq, void *dev_id)
 		writel(0, rtc_base + TEGRA_RTC_REG_INTR_MASK);
 		writel(status, rtc_base + TEGRA_RTC_REG_INTR_STATUS);
 	}
-
-	evt = tick_get_broadcast_device()->evtdev;
-	if ((status & TEGRA_RTC_INTR_STATUS_MSEC_CDN_ALARM))
-		if (evt && evt->event_handler)
-			evt->event_handler(evt);
 
 	return IRQ_HANDLED;
 }
