@@ -1187,8 +1187,7 @@ static void soctherm_update_zone(int zn)
 	trips = cur_thz->trips;
 	for (count = 0; count < trips; count++) {
 		cur_thz->ops->get_trip_type(cur_thz, count, &trip_type);
-		if ((trip_type == THERMAL_TRIP_HOT) ||
-		    (trip_type == THERMAL_TRIP_CRITICAL))
+		if (trip_type == THERMAL_TRIP_HOT)
 			continue; /* handled in HW */
 
 		cur_thz->ops->get_trip_temp(cur_thz, count, &trip_temp);
@@ -1201,7 +1200,7 @@ static void soctherm_update_zone(int zn)
 				high_temp = trip_temp;
 		} else { /* tripped? update low */
 			if (trip_type != THERMAL_TRIP_PASSIVE) {
-				/* get highest ACTIVE */
+				/* get highest ACTIVE and CRITICAL*/
 				if (trip_temp > low_temp)
 					low_temp = trip_temp;
 			} else {
