@@ -87,4 +87,16 @@
 		nvidia,pexp-gpio = <&tca6416 9 0>;
 		status = "okay";
 	};
+
+         xusb@70090000 {
+		/* nvidia,uses_external_pmic; */
+		nvidia,gpio_controls_muxed_ss_lanes;
+		nvidia,gpio_ss1_sata = <&tca6416 9 0>;
+		nvidia,portmap = <0x703>; /* SSP0,SSP1, USB2P0, USB2P1, USB2P2 */
+		nvidia,ss_portmap = /bits/ 8 <0x12>; /* SSP0 on USB2P2 and SSP1 on USP2P1 */
+		nvidia,lane_owner = /bits/ 8 <5>; /* USB3P0 USB3S0 and PCIe_X4 */
+		nvidia,ulpicap = /bits/ 8 <0>; /* No ulpi support. can we remove */
+		status = "okay";
+	};
+
 };
