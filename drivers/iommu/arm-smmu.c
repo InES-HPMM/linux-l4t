@@ -46,6 +46,7 @@
 #include <linux/amba/bus.h>
 
 #include <asm/pgalloc.h>
+#include <asm/dma-iommu.h>
 
 /* Maximum number of stream IDs assigned to a single device */
 #define MAX_MASTER_STREAMIDS		MAX_PHANDLE_ARGS
@@ -1550,6 +1551,7 @@ static int arm_smmu_add_device(struct device *dev)
 	struct arm_smmu_master *master = NULL;
 	struct iommu_group *group;
 	int ret;
+	struct dma_iommu_mapping *mapping;
 
 	if (dev->archdata.iommu) {
 		dev_warn(dev, "IOMMU driver already assigned to device\n");
@@ -1595,8 +1597,27 @@ static int arm_smmu_add_device(struct device *dev)
 
 	ret = iommu_group_add_device(group, dev);
 	iommu_group_put(group);
-	dev->archdata.iommu = smmu;
+	if (ret)
+		return ret;
 
+	/* FIXME: specify IOVA range dynamically */
+	mapping = arm_iommu_create_mapping(&platform_bus_type, 0, ~0UL, 0);
+	if (IS_ERR(mapping)) {
+		ret = PTR_ERR(mapping);
+		goto err_create_mapping;
+	}
+
+	ret = arm_iommu_attach_device(dev, mapping);
+	if (ret)
+		goto err_attach_dev;
+
+	dev->archdata.iommu = smmu;
+	return 0;
+
+err_attach_dev:
+	arm_iommu_release_mapping(mapping);
+err_create_mapping:
+	iommu_group_put(group);
 	return ret;
 }
 
