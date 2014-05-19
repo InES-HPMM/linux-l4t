@@ -1474,6 +1474,31 @@ out_unlock:
 	return ret;
 }
 
+static int arm_smmu_map_sg(struct iommu_domain *domain, unsigned long iova,
+			struct scatterlist *sgl, int npages, unsigned long prot)
+{
+	int i;
+	struct scatterlist *sg;
+	struct arm_smmu_domain *smmu_domain = domain->priv;
+
+	for (i = 0, sg = sgl; i < npages; sg = sg_next(sg)) {
+		int err;
+		phys_addr_t pa = sg_phys(sg) & PAGE_MASK;
+		unsigned int len = PAGE_ALIGN(sg->offset + sg->length);
+
+		pr_debug("%s() iova=%lx pa=%pa size=%x\n",
+			__func__, iova, &pa, len);
+		err = arm_smmu_handle_mapping(smmu_domain, iova, pa, len, prot);
+		/* FIXME: error rewinding */
+		return err;
+
+		i += len >> PAGE_SHIFT;
+		iova += len;
+	}
+
+	return 0;
+}
+
 static int arm_smmu_map(struct iommu_domain *domain, unsigned long iova,
 			phys_addr_t paddr, size_t size, unsigned long prot)
 {
@@ -1632,6 +1657,7 @@ static struct iommu_ops arm_smmu_ops = {
 	.domain_destroy	= arm_smmu_domain_destroy,
 	.attach_dev	= arm_smmu_attach_dev,
 	.detach_dev	= arm_smmu_detach_dev,
+	.map_sg		= arm_smmu_map_sg,
 	.map		= arm_smmu_map,
 	.unmap		= arm_smmu_unmap,
 	.iova_to_phys	= arm_smmu_iova_to_phys,
