@@ -25,6 +25,12 @@
 #include <linux/tegra-soc.h>
 #include <linux/cpu_pm.h>
 #include <linux/io.h>
+#include <linux/tegra-pm.h>
+#include <linux/tegra_pm_domains.h>
+#include <linux/tegra-pmc.h>
+#include <linux/tegra_smmu.h>
+#include <linux/tegra-timer.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/suspend.h>
 #include <asm/smp.h>
@@ -184,8 +190,76 @@ static int tegra210_enter_sc7(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
-	return tegra210_enter_cc_state(dev, TEGRA_PM_CC7, TEGRA_PM_SC7,
-					TEGRA210_CPUIDLE_SC7, idx);
+	int err = idx;
+	int cpu;
+	unsigned long arg;
+	u64 sleep_time = ULONG_MAX;
+	u64 next_event;
+
+	/* Assume C7 config by default */
+	struct psci_power_state ps = {
+		.id = 0,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 0,
+	};
+
+	for_each_online_cpu(cpu) {
+		err = tegra210_timer_get_remain(dev->cpu, &next_event);
+		if (err)
+			return err;
+
+		if (next_event < sleep_time)
+			sleep_time = next_event;
+	}
+
+	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7,
+					TEGRA_PM_SC7)) {
+		/*
+		 * We are the last core standing and bpmp says GO.
+		 * Change to CCx config.
+		 */
+		ps.id = TEGRA210_CPUIDLE_SC7;
+		ps.affinity_level = 1;
+
+		tegra_rtc_set_trigger(sleep_time);
+
+		/* This state is managed by power domains, hence no voice call expected if
+		 * we are entering this state */
+		tegra_pm_notifier_call_chain(TEGRA_PM_SUSPEND);
+
+		tegra_actmon_save();
+
+		tegra_dma_save();
+
+		tegra_smmu_save();
+
+		err = syscore_save();
+		if (err)
+			goto syscore_failed;
+
+		err = tegra_pm_prepare_sc7();
+		if (err)
+			goto prepare_failed;
+	}
+
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+
+	tegra_pm_post_sc7();
+prepare_failed:
+
+	syscore_restore();
+
+syscore_failed:
+	tegra_smmu_restore();
+
+	tegra_dma_restore();
+
+	tegra_rtc_set_trigger(0);
+
+	tegra_pm_notifier_call_chain(TEGRA_PM_RESUME);
+
+	return err;
 }
 
 static int tegra210_enter_cg(struct cpuidle_device *dev,

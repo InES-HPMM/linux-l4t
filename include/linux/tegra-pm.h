@@ -89,12 +89,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
 int tegra_register_pm_notifier(struct notifier_block *nb);
 int tegra_unregister_pm_notifier(struct notifier_block *nb);
-
-#ifdef CONFIG_TEGRA_LP0_IN_IDLE
-int tegra_enter_lp0(unsigned long sleep_time);
-#else
-static inline int tegra_enter_lp0(unsigned long sleep_time)
-{ return 0; }
-#endif
+int tegra_pm_notifier_call_chain(unsigned int val);
+int tegra_pm_prepare_sc7(void);
+int tegra_pm_post_sc7(void);
 
 #endif /* _LINUX_TEGRA_PM_H_ */

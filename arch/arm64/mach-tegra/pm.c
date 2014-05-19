@@ -479,6 +479,90 @@ static void tegra_common_resume(void)
 	writel(0x0, pmc + PMC_SCRATCH41);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static void tegra_pm_sc7_set(void)
+{
+	u32 reg, boot_flag;
+	unsigned long rate = 32768;
+
+	reg = readl(pmc + PMC_CTRL);
+	reg |= TEGRA_POWER_PWRREQ_OE;
+	if (pdata->combined_req)
+		reg &= ~TEGRA_POWER_CPU_PWRREQ_OE;
+	else
+		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
+
+	reg &= ~TEGRA_POWER_EFFECT_LP0;
+
+	/* Enable DPD sample to trigger sampling pads data and direction
+	 * in which pad will be driven during lp0 mode*/
+	writel(0x1, pmc + PMC_DPD_SAMPLE);
+
+	/* Set warmboot flag */
+	boot_flag = readl(pmc + PMC_SCRATCH0);
+	pmc_32kwritel(boot_flag | 1, PMC_SCRATCH0);
+
+	pmc_32kwritel(tegra_lp0_vec_start, PMC_SCRATCH1);
+
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
+	set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer);
+#else
+	set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer, rate);
+#endif
+
+	pmc_32kwritel(reg, PMC_CTRL);
+}
+
+int tegra_pm_prepare_sc7(void)
+{
+	if (!tegra_pm_irq_lp0_allowed())
+		return -EINVAL;
+
+	tegra_common_suspend();
+
+	tegra_pm_sc7_set();
+
+	tegra_tsc_suspend();
+
+	tegra_lp0_suspend_mc();
+
+	tegra_tsc_wait_for_suspend();
+
+	save_pll_state();
+
+	return 0;
+}
+
+int tegra_pm_post_sc7(void)
+{
+	u32 reg;
+
+	tegra_tsc_resume();
+
+	tegra_lp0_resume_mc();
+
+	tegra_tsc_wait_for_resume();
+
+	restore_csite_clock();
+
+	/* for platforms where the core & CPU power requests are
+	 * combined as a single request to the PMU, transition out
+	 * of LP0 state by temporarily enabling both requests
+	 */
+	if (pdata->combined_req) {
+		reg = readl(pmc + PMC_CTRL);
+		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
+		pmc_32kwritel(reg, PMC_CTRL);
+		reg &= ~TEGRA_POWER_PWRREQ_OE;
+		pmc_32kwritel(reg, PMC_CTRL);
+	}
+
+	tegra_common_resume();
+
+	return 0;
+}
+#endif
+
 static void tegra_pm_set(enum tegra_suspend_mode mode)
 {
 	u32 reg, boot_flag;
