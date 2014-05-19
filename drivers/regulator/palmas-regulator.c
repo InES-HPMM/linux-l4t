@@ -428,7 +428,11 @@ static int palmas_enable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
-
+	mutex_lock(&pmic->mutex);
+	if (pmic->shutdown) {
+		mutex_unlock(&pmic->mutex);
+		return -EINVAL;
+	}
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
 	reg &= ~PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
@@ -438,6 +442,7 @@ static int palmas_enable_smps(struct regulator_dev *dev)
 		reg |= SMPS_CTRL_MODE_ON;
 
 	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+	mutex_unlock(&pmic->mutex);
 
 	return 0;
 }
@@ -447,12 +452,18 @@ static int palmas_disable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
+	mutex_lock(&pmic->mutex);
+	if (pmic->shutdown) {
+		mutex_unlock(&pmic->mutex);
+		return -EINVAL;
+	}
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
 	reg &= ~PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
 
 	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+	mutex_unlock(&pmic->mutex);
 
 	return 0;
 }
@@ -1497,9 +1508,12 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	if (!pmic)
 		return -ENOMEM;
 
+
+	mutex_init(&pmic->mutex);
 	pmic->dev = &pdev->dev;
 	pmic->palmas = palmas;
 	palmas->pmic = pmic;
+	pmic->shutdown = false;
 	platform_set_drvdata(pdev, pmic);
 
 	/* Read VREF0P425 of LDO_CTRL register for TPS80036 */
@@ -1879,11 +1893,14 @@ static void palams_regulators_shutdown(struct platform_device *pdev)
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_pmic *pmic = platform_get_drvdata(pdev);
 	int id;
+	mutex_lock(&palmas->pmic->mutex);
 
 	for (id = 0; id < PALMAS_NUM_REGS; id++) {
 		if (!pmic->disable_pull_down[id])
 			palams_rail_pd_control(palmas, id, false);
 	}
+	palmas->pmic->shutdown = true;
+	mutex_unlock(&palmas->pmic->mutex);
 }
 
 static struct of_device_id of_palmas_match_tbl[] = {
