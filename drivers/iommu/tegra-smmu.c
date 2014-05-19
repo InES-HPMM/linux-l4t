@@ -179,8 +179,8 @@ enum {
 #define SMMU_PTE_SHIFT	12
 #define SMMU_PFN_MASK	0x0fffffff
 
-#define SMMU_ADDR_TO_PTN(addr)	(((addr) >> 12) & (BIT(10) - 1))
-#define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
+#define SMMU_ADDR_TO_PTN(addr)	((((u32)addr) >> 12) & (BIT(10) - 1))
+#define SMMU_ADDR_TO_PDN(addr)	(((u32)addr) >> 22)
 #define SMMU_PDN_TO_ADDR(pdn)	((pdn) << 22)
 
 #define _READABLE	(1 << SMMU_PTB_DATA_ASID_READABLE_SHIFT)
@@ -202,7 +202,7 @@ enum {
 #undef	_PDE_VACANT
 #undef	_PTE_VACANT
 #define	_PDE_VACANT(pdn)	(((pdn) << 10) | _PDE_ATTR)
-#define	_PTE_VACANT(addr)	(((addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
+#define	_PTE_VACANT(addr)	((((u32)addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
 #endif
 
 #define SMMU_MK_PDIR(page, attr)	\
@@ -213,9 +213,10 @@ enum {
 		pfn_to_page((u32)(pde) & SMMU_PFN_MASK)
 #define SMMU_PFN_TO_PTE(pfn, attr)	(u32)((pfn) | (attr))
 
-#define SMMU_ASID_ENABLE(asid)	((asid) | (1 << 31))
+#define SMMU_ASID_ENABLE(asid, idx)   (((asid) << (idx * 8)) | (1 << 31))
 #define SMMU_ASID_DISABLE	0
-#define SMMU_ASID_ASID(n)	((n) & ~SMMU_ASID_ENABLE(0))
+#define MAX_AS_PER_DEV 4
+#define SMMU_ASID_GET_IDX(iova) (int)(((u64)iova >> 32) & (MAX_AS_PER_DEV - 1))
 
 #define SMMU_CLIENT_CONF0	0x40
 
@@ -304,6 +305,11 @@ int _tegra_smmu_get_asid(u64 swgids)
 	return SYSTEM_DEFAULT;
 }
 
+struct smmu_domain {
+	struct smmu_as *as[MAX_AS_PER_DEV];
+	unsigned long bitmap[1];
+};
+
 /*
  * Per client for address space
  */
@@ -311,6 +317,7 @@ struct smmu_client {
 	struct device		*dev;
 	struct list_head	list;
 	struct smmu_as		*as;
+	struct smmu_domain	*domain;
 	u64			swgids;
 
 	struct dentry		*debugfs_root;
@@ -340,12 +347,6 @@ struct smmu_debugfs_info {
 	int mc;
 	int cache;
 };
-
-struct smmu_domain {
-	struct smmu_as *as[1];
-};
-
-#define to_smmu_domain_as(domain) (((struct smmu_domain *)domain->priv)->as[0])
 
 /*
  * Per SMMU device - IOMMU device
@@ -378,6 +379,40 @@ struct smmu_device {
 	u32		num_as;
 	struct smmu_as	as[0];		/* Run-time allocated array */
 };
+
+static struct smmu_as *to_smmu_domain_as(struct iommu_domain *_domain,
+						unsigned long iova)
+{
+	struct smmu_domain *domain = _domain->priv;
+	int idx;
+
+	if (iova == -1)
+		idx = __ffs(domain->bitmap[0]);
+	else
+		idx = SMMU_ASID_GET_IDX(iova);
+
+	BUG_ON(idx >= MAX_AS_PER_DEV);
+	return domain->as[idx];
+}
+
+static void dma_map_to_as_bitmap(struct dma_iommu_mapping *map,
+				unsigned long *bitmap)
+{
+	int start_idx, end_idx;
+
+	start_idx = (int) ((u64)map->base >> 32);
+	end_idx = (int) ((u64)map->end >> 32);
+	BUG_ON(end_idx >= MAX_AS_PER_DEV);
+
+	*bitmap = 0;
+	while (start_idx <= end_idx) {
+		set_bit(start_idx, bitmap);
+		start_idx++;
+	}
+}
+
+#define smmu_as_bitmap(domain) \
+	(domain->as[__ffs(domain->bitmap[0])])
 
 static struct smmu_device *smmu_handle; /* unique for a system */
 
@@ -489,8 +524,9 @@ fix_up:
 static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	int i;
-	struct smmu_as *as = c->as;
-	u32 val, offs, mask = SMMU_ASID_ENABLE(as->asid);
+	struct smmu_domain *sd = c->domain;
+	struct smmu_as *as = smmu_as_bitmap(sd);
+	u32 val, offs, mask = 0;
 	struct smmu_device *smmu = as->smmu;
 
 	WARN_ON(!on && map);
@@ -498,6 +534,10 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		return -EINVAL;
 	if (!on)
 		map = c->swgids;
+
+	for_each_set_bit(i, (unsigned long *)&(sd->bitmap),
+				MAX_AS_PER_DEV)
+		mask |= SMMU_ASID_ENABLE(sd->as[i]->asid, i);
 
 	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
 
@@ -532,7 +572,8 @@ static int smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	u32 val;
 	unsigned long flags;
-	struct smmu_as *as = c->as;
+	struct smmu_domain *sd = c->domain;
+	struct smmu_as *as =  smmu_as_bitmap(sd);
 	struct smmu_device *smmu = as->smmu;
 
 	spin_lock_irqsave(&smmu->lock, flags);
@@ -1129,7 +1170,7 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			  phys_addr_t pa, size_t bytes, unsigned long prot)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, iova);
 	unsigned long flags;
 	int err;
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
@@ -1158,7 +1199,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 				struct page **pages, size_t total, unsigned long prot)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, iova);
 	struct smmu_device *smmu = as->smmu;
 	u32 *pdir = page_address(as->pdir_page);
 	int err = 0;
@@ -1235,7 +1276,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	int err = 0;
 	unsigned long iova_base = iova;
 	bool flush_all = (npages > smmu_flush_all_th_pages) ? true : false;
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, iova);
 	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
 	int attrs = as->pte_attr;
@@ -1325,7 +1366,7 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 			       size_t bytes)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, iova);
 	unsigned long flags;
 	size_t unmapped;
 
@@ -1340,7 +1381,7 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 					   dma_addr_t iova)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, iova);
 	unsigned long flags;
 	int pdn = SMMU_ADDR_TO_PDN(iova);
 	u32 *pdir = page_address(as->pdir_page);
@@ -1380,15 +1421,19 @@ char *debug_dma_platformdata(struct device *dev)
 {
 	static char buf[21];
 	struct dma_iommu_mapping *mapping = to_dma_iommu_mapping(dev);
-	struct smmu_as *as;
+	struct smmu_domain *sd = mapping->domain->priv;
 	int asid = -1;
 
 	if (mapping) {
-		as = to_smmu_domain_as(mapping->domain);
-		asid = as->asid;
-	}
+		int i, len = 0;
+		for_each_set_bit(i, (unsigned long *)&(sd->bitmap),
+				MAX_AS_PER_DEV) {
+			asid = sd->as[i]->asid;
+			len += sprintf(buf + len, "%d ", asid);
+		}
+	} else
+		sprintf(buf, "%d", asid);
 
-	sprintf(buf, "%d", asid);
 	return buf;
 }
 #endif
@@ -1453,34 +1498,44 @@ found:
 
 static void debugfs_create_master(struct smmu_client *c)
 {
-	struct dentry *dent;
-	char name[] = "as000";
-	char target[256];
+	int i;
 
-	dent = debugfs_create_dir(dev_name(c->dev), c->as->smmu->masters_root);
-	if (!dent)
-		return;
-	c->debugfs_root = dent;
+	for (i = 0; i < MAX_AS_PER_DEV; i++) {
+		char name[] = "as000";
+		char target[256];
+		struct smmu_as *as = c->domain->as[i];
 
-	sprintf(name, "as%03d", c->as->asid);
-	sprintf(target, "../../as%03d", c->as->asid);
-	debugfs_create_symlink(name, c->debugfs_root, target);
+		if (!as)
+			continue;
 
-	sprintf(target, "../masters/%s", dev_name(c->dev));
-	dent = debugfs_create_symlink(dev_name(c->dev), c->as->debugfs_root,
-				      target);
+		if (!c->debugfs_root)
+			c->debugfs_root =
+				debugfs_create_dir(dev_name(c->dev),
+						as->smmu->masters_root);
+		sprintf(name, "as%03d", as->asid);
+		sprintf(target, "../../as%03d", as->asid);
+		debugfs_create_symlink(name, c->debugfs_root, target);
+
+		sprintf(target, "../masters/%s", dev_name(c->dev));
+		debugfs_create_symlink(dev_name(c->dev), c->as->debugfs_root,
+					target);
+	}
 }
 
 static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 				 struct device *dev)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_domain *sd = domain->priv;
+	struct smmu_as *as;
 	struct smmu_device *smmu;
 	struct smmu_client *client, *c;
 	struct iommu_linear_map *area = NULL;
+	struct dma_iommu_mapping *dma_map;
 	u64 map, temp;
 	int err;
 	bool use_fixup = false;
+	int idx;
+	unsigned long as_bitmap[1];
 
 	map = tegra_smmu_of_get_swgids(dev);
 	temp = tegra_smmu_fixup_swgids(dev, &area);
@@ -1496,14 +1551,21 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		use_fixup = true;
 	}
 
-	if (!as) {
-		struct smmu_domain *sd = domain->priv;
+	dma_map = tegra_smmu_get_map(dev, map);
 
+	dma_map_to_as_bitmap(dma_map, as_bitmap);
+	for_each_set_bit(idx, as_bitmap, MAX_AS_PER_DEV) {
+		if (test_and_set_bit(idx, sd->bitmap))
+			continue;
 		as = smmu_as_alloc();
 		if (IS_ERR(as))
 			return PTR_ERR(as);
-		sd->as[0] = as;
+		sd->as[idx] = as;
 	}
+
+	/* get the first valid asid */
+	idx = __ffs(sd->bitmap[0]);
+	as = sd->as[idx];
 	smmu = as->smmu;
 
 	while (area && area->size) {
@@ -1530,6 +1592,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		return -ENOMEM;
 	client->dev = dev;
 	client->as = as;
+	client->domain = sd;
 
 	err = smmu_client_enable_hwgrp(client, map);
 	if (err)
@@ -1578,7 +1641,7 @@ err_hwgrp:
 static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 				  struct device *dev)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, -1);
 	struct smmu_device *smmu = as->smmu;
 	struct smmu_client *c;
 
@@ -1621,7 +1684,7 @@ static int smmu_iommu_domain_init(struct iommu_domain *domain)
 
 static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 {
-	struct smmu_as *as = to_smmu_domain_as(domain);
+	struct smmu_as *as = to_smmu_domain_as(domain, -1);
 	struct smmu_device *smmu = as->smmu;
 	unsigned long flags;
 
