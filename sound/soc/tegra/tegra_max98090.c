@@ -78,6 +78,10 @@
 #define DAI_LINK_VOICE_CALL	2
 #define DAI_LINK_BT_VOICE_CALL	3
 #define DAI_LINK_HIFI_MAX97236	4
+#define DAI_LINK_PCM_OFFLOAD_FE		5
+#define DAI_LINK_COMPR_OFFLOAD_FE		6
+#define DAI_LINK_I2S_OFFLOAD_BE		7
+
 
 const char *tegra_max98090_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 	"tegra30-i2s.0",
@@ -467,6 +471,30 @@ static int tegra_hw_free(struct snd_pcm_substream *substream)
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 0);
 
+	return 0;
+}
+
+static int tegra_offload_hw_params_be_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	if (!params_rate(params)) {
+		struct snd_interval *snd_rate = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_RATE);
+
+		snd_rate->min = snd_rate->max = 48000;
+	}
+
+	if (!params_channels(params)) {
+		struct snd_interval *snd_channels = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_CHANNELS);
+
+		snd_channels->min = snd_channels->max = 2;
+	}
+	snd_mask_set(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT),
+				ffs(SNDRV_PCM_FORMAT_S16_LE));
+
+	pr_debug("%s::%d %d %d\n", __func__, params_rate(params),
+			params_channels(params), params_format(params));
 	return 0;
 }
 
@@ -981,6 +1009,12 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 	{"DMIC3", NULL, "DMic Sec"},
 	{"DMIC4", NULL, "DMic Sec"},
 #endif
+
+	/* AHUB BE connections */
+	{"HiFi Playback", NULL, "I2S1_OUT"},
+
+	{"I2S1_OUT", NULL, "offload-pcm-playback"},
+	{"I2S1_OUT", NULL, "offload-compr-playback"},
 };
 
 static const struct snd_kcontrol_new tegra_max98090_controls[] = {
@@ -1100,6 +1134,44 @@ static struct snd_soc_dai_link tegra_max98090_dai[] = {
 		.platform_name = "tegra-pcm-audio",
 		.codec_dai_name = "max97236-HiFi",
 		.ops = NULL,
+	},
+	[DAI_LINK_PCM_OFFLOAD_FE] = {
+		.name = "offload-pcm",
+		.stream_name = "offload-pcm",
+
+		.platform_name = "tegra-offload",
+		.cpu_dai_name = "tegra-offload-pcm",
+
+		.codec_dai_name =  "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+
+		.dynamic = 1,
+	},
+	[DAI_LINK_COMPR_OFFLOAD_FE] = {
+		.name = "offload-compr",
+		.stream_name = "offload-compr",
+
+		.platform_name = "tegra-offload",
+		.cpu_dai_name = "tegra-offload-compr",
+
+		.codec_dai_name =  "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+
+		.dynamic = 1,
+	},
+	[DAI_LINK_I2S_OFFLOAD_BE] = {
+		.name = "offload-audio",
+		.stream_name = "offload-audio-pcm",
+		.codec_name = "max98090.0-0010",
+		.codec_dai_name = "HiFi",
+		.platform_name = "tegra30-i2s.1",
+		.cpu_dai_name = "tegra30-i2s.1",
+		.ops = &tegra_max98090_ops,
+
+		.no_pcm = 1,
+
+		.be_id = 0,
+		.be_hw_params_fixup = tegra_offload_hw_params_be_fixup,
 	},
 };
 
@@ -1325,8 +1397,14 @@ static int tegra_max98090_driver_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "tegra_max98090_driver_probe\n");
 
-	if (of_machine_is_compatible("nvidia,norrin"))
-		card->num_links = DAI_LINK_BTSCO + 1;
+	if (of_machine_is_compatible("nvidia,norrin")) {
+		card->num_links = ARRAY_SIZE(tegra_max98090_dai);
+
+		card->dai_link[DAI_LINK_HIFI_MAX97236].codec_name =
+				"snd-soc-dummy";
+		card->dai_link[DAI_LINK_HIFI_MAX97236].codec_dai_name =
+				"snd-soc-dummy-dai";
+	}
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
@@ -1341,10 +1419,19 @@ static int tegra_max98090_driver_probe(struct platform_device *pdev)
 	if (pdata->codec_name) {
 		card->dai_link[DAI_LINK_HIFI].codec_name = pdata->codec_name;
 		card->dai_link->codec_name = pdata->codec_name;
+		card->dai_link[DAI_LINK_I2S_OFFLOAD_BE].codec_name =
+			pdata->codec_name;
+		card->dai_link[DAI_LINK_VOICE_CALL].codec_name =
+			pdata->codec_name;
 	}
 
-	if (pdata->codec_dai_name)
+	if (pdata->codec_dai_name) {
 		card->dai_link->codec_dai_name = pdata->codec_dai_name;
+		card->dai_link[DAI_LINK_I2S_OFFLOAD_BE].codec_dai_name =
+			pdata->codec_dai_name;
+		card->dai_link[DAI_LINK_VOICE_CALL].codec_dai_name =
+			pdata->codec_dai_name;
+	}
 
 	machine = kzalloc(sizeof(struct tegra_max98090), GFP_KERNEL);
 	if (!machine) {
@@ -1438,7 +1525,16 @@ static int tegra_max98090_driver_probe(struct platform_device *pdev)
 	tegra_max98090_dai[DAI_LINK_BTSCO].platform_name =
 	tegra_max98090_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 
+	tegra_max98090_dai[DAI_LINK_VOICE_CALL].platform_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_max98090_dai[DAI_LINK_BT_VOICE_CALL].platform_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+
+	tegra_max98090_dai[DAI_LINK_I2S_OFFLOAD_BE].cpu_dai_name =
+	tegra_max98090_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+
 	card->dapm.idle_bias_off = 1;
+
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
