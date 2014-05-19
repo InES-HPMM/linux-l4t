@@ -31,7 +31,7 @@
 
 extern volatile ulong secondary_holding_pen_release;
 
-extern bool tegra_suspend_in_progress();
+extern bool tegra_suspend_in_progress(void);
 
 /*
  * platform-specific code to shutdown a CPU
@@ -74,7 +74,8 @@ noinline int mca_cpu_callback(struct notifier_block *nfb,
 				unsigned long action, void *hcpu)
 {
 	if(action == CPU_ONLINE || action == CPU_ONLINE_FROZEN)
-		smp_call_function_single((int) hcpu, setup_mca, NULL, 1);
+		smp_call_function_single((int)(uintptr_t) hcpu,
+						setup_mca, NULL, 1);
 	return 0;
 }
 
