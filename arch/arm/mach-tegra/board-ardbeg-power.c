@@ -129,6 +129,7 @@ static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
 	.cfg_param = &e1735_cl_dvfs_param,
 };
 
+#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
 static void e1735_suspend_dfll_bypass(void)
 {
 	__gpio_set_value(TEGRA_GPIO_PS5, 1); /* tristate external PWM buffer */
@@ -165,6 +166,7 @@ static void e1767_resume_dfll_bypass(void)
 {
 	e1767_configure_dvfs_pwm_tristate("dvfs_pwm_px0", TEGRA_PIN_DISABLE);
 }
+#endif
 
 static struct tegra_cl_dvfs_cfg_param e1733_ardbeg_cl_dvfs_param = {
 	.sample_rate = 12500,
