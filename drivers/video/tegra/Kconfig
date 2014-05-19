@@ -432,3 +432,11 @@ config VI_ONE_DEVICE
 	help
 	  Say Y here to nvhost to add only one Vi device node.
 	  If unsure, say N
+
+config TEGRA_DC_FAKE_PANEL_SUPPORT
+	bool "Enables fake panel support"
+	depends on TEGRA_DC
+	default n
+	help
+	  Say Y here to enable the fake panel support.
+	  If unsure, say N
