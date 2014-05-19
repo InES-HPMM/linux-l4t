@@ -1,6 +1,8 @@
 #include "tegra124-ardbeg-e1780-1000-a00-00.dts"
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000c400 {
 		bq20z75@0b {
 			status = "okay";

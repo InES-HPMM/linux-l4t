@@ -5,6 +5,8 @@
 #include <tegra124-platforms/tegra124-foster-pinmux-p2530-c00.dtsi>
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000c400 {
 		ina3221x@40 {
 			channel@0 {

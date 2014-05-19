@@ -1,6 +1,8 @@
 #include "tegra132-bowmore-e1971-1100-a00-00.dts"
 
 / {
+	nvidia,dtsfilename = __FILE__;
+
 	i2c@7000c400 {
 		pca9546@71 {
 			i2c@3 {

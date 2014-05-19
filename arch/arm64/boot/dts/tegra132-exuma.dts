@@ -5,6 +5,7 @@
 / {
 	model = "exuma_sim";
 	compatible = "nvidia,exuma", "nvidia,tegra132";
+	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
 
