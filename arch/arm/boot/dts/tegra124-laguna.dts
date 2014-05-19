@@ -15,7 +15,6 @@
 	#size-cells = <2>;
 
 	aliases {
-		gpio264 = &tca6416;
 		i2c6 = &pca9546_i2c0;
 		i2c7 = &pca9546_i2c1;
 		i2c8 = &pca9546_i2c2;

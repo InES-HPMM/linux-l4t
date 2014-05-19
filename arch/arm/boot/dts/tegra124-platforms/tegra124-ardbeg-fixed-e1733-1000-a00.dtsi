@@ -2,7 +2,7 @@
 
 / {
 	i2c@7000c000 {
-		tca6408: port@20 {
+		tca6408: gpio@20 {
 			compatible = "ti,tca6408";
 			reg = <0x20>;
 			gpio-controller;

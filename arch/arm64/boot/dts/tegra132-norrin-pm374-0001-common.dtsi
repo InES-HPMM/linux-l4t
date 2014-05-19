@@ -18,10 +18,6 @@
 		linux,initrd-end = <0x824B5300>;
 	};
 
-	aliases {
-		gpio264 = &tca6416;
-	};
-
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
