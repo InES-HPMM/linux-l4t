@@ -11,6 +11,7 @@
  */
 
 #include <linux/irq.h>
+#include <linux/i2c.h>
 #include <linux/mfd/core.h>
 #include <linux/regmap.h>
 #include <linux/regulator/machine.h>
@@ -225,6 +226,10 @@
 
 #define MAX77620_CNFG1_32K_OUT0_EN		BIT(2)
 
+#define MAX77620_ONOFFCNFG1_SFT_RST		BIT(7)
+#define MAX77620_ONOFFCNFG1_PWR_OFF		BIT(1)
+
+
 /* I2c Slave Id */
 enum {
 	MAX77620_PWR_SLAVE,
@@ -394,4 +399,9 @@ static inline int max77620_reg_update(struct device *dev, int sid,
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 
 	return regmap_update_bits(chip->rmap[sid], reg, mask, val);
+}
+
+static inline void max77620_allow_atomic_xfer(struct max77620_chip *max77620)
+{
+	i2c_shutdown_clear_adapter(max77620->clients[0]->adapter);
 }
