@@ -92,7 +92,7 @@ static void set_la(struct la_client_info *ci, int la)
 	cs.scaling_info[idx].la_set = la;
 	ci->la_set = la;
 	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
-		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+		(u32)(uintptr_t)ci->reg_addr, (u32)reg_read, (u32)reg_write);
 	spin_unlock(&cs.lock);
 }
 
