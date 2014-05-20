@@ -47,6 +47,7 @@
 #include <linux/devfreq.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-fuse.h>
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <mach/pinmux.h>
@@ -359,6 +360,8 @@ struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
 
 struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	200000,	1037,	106934,	1037,
+		106934,	558,	74315),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	198000,	1037,	106934,	1037,
 		106934,	558,	74315),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	136000,	1703,	186307,	1703,
 		186307,	890,	130617),
@@ -2075,7 +2078,7 @@ static int sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 		}
 
 		calculate_vmin_values(sdhci, tuning_data, vmin,
-			tegra_host->boot_vcore_mv);
+				tegra_host->boot_vcore_mv);
 
 		if (temp_tap_data == NULL) {
 			temp_tap_data = kzalloc(sizeof(struct tap_window_data) *
@@ -4414,7 +4417,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		tegra_host->instance = pdev->id;
 
 	tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE;
-	tegra_host->speedo = plat->cpu_speedo;
+	tegra_host->speedo = tegra_soc_speedo_0_value();
 	dev_info(mmc_dev(host->mmc), "Speedo value %d\n", tegra_host->speedo);
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
