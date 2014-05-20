@@ -164,7 +164,7 @@
 		trim-delay = <0x4>;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
-		uhs_mask = <0x20>;
+		uhs_mask = <0x40>;
 		bus-width = <8>;
 		built-in;
 		ddr-clk-limit = <51000000>;
