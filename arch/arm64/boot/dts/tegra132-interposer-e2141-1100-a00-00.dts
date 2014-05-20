@@ -1,0 +1,182 @@
+/dts-v1/;
+
+#include "tegra132.dtsi"
+#include "tegra132-platforms/tegra132-interposer-gpio-e2141-1100-a00.dtsi"
+#include "tegra132-platforms/tegra132-interposer-pinmux-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-e2141-e2174-dfll.dtsi"
+#include "tegra210-platforms/tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-fixed-e2174-1101-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
+
+/ {
+	model = "e2141";
+	compatible = "nvidia,e2141", "nvidia,tegra132";
+	nvidia,boardids = "2141:1100:00;2174:1101:00";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,proc-boardid = "2141:1100:00";
+	nvidia,pmu-boardid = "2174:1101:00";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8";
+		linux,initrd-start = <0x82080000>;
+		linux,initrd-end = <0x824B5300>;
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	i2c@7000c000 {
+		clock-frequency = <100000>;
+
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000d800 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x703>; /* SSP0, SSP1 USB2P0, USB2P1, USBP2 */
+		nvidia,ss_portmap = <0x20>; /* SSP0 on USB2P0, SSP1 on USB2P2 */
+		nvidia,lane_owner = <6>; /* USB3P0 USB3P1 */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,supply_utmi_vbuses = "usb_vbus0", "usb_vbus1", "usb_vbus2";
+		nvidia,supply_s3p3v = "hvdd_usb";
+		nvidia,supply_s1p8v = "avdd_pll_utmip";
+		nvidia,supply_vddio_hsic = "vddio_hsic";
+		nvidia,supply_s1p05v = "avddio_usb";
+		/* hsic config values in order defined in structure */
+		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
+		status = "okay";
+	};
+
+	pcie-controller {
+		nvidia,port0_status = <1>;
+		nvidia,port1_status = <0>;
+		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>; /* Fix me! */
+		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		status = "okay";
+	};
+
+	dfll@70110000 {
+		pwm-pmic-integration {
+			pwm-data-gpio = <&gpio TEGRA_GPIO(X, 0) 0>;
+		};
+	};
+
+	pwm_regulators {
+		pwm-regulator@0 {
+			idle-gpio = <&gpio TEGRA_GPIO(X, 2) 0>;
+		};
+	};
+
+	regulators {
+		regulator@6 {
+			gpio = <&gpio TEGRA_GPIO(H, 2) 0>;
+		};
+
+		regulator@7 {
+			gpio = <&gpio TEGRA_GPIO(R, 0) 0>;
+		};
+
+		regulator@8 {
+			gpio = <&gpio TEGRA_GPIO(BB, 3) 0>;
+		};
+
+		regulator@9 {
+			gpio = <&gpio TEGRA_GPIO(CC, 3) 0>;
+		};
+
+		vdd_lcd_1v2: regulator@100 {
+			compatible = "regulator-fixed-sync";
+			reg = <100>;
+			regulator-name = "lcd_1v2";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&pca9539_77 12 0>;
+			enable-active-high;
+
+			consumers {
+				c0 {
+					regulator-consumer-supply = "vdd_lcd_1v2_s";
+				};
+			};
+		};
+
+		vdd_cdc_1v2_aud: regulator@101 {
+			compatible = "regulator-fixed-sync";
+			reg = <101>;
+			regulator-name = "vdd_cdc_1v2_aud";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			gpio = <&pca9539_77 11 0>;
+			enable-active-high;
+			startup-delay-us = <250000>;
+
+			consumers {
+				c0 {
+					regulator-consumer-supply = "ldoen";
+				};
+			};
+		};
+	};
+
+	gpio-keys {
+		home {
+			gpios = <&gpio TEGRA_GPIO(Q, 2) GPIO_ACTIVE_LOW>;
+		};
+
+		power {
+			gpios = <&gpio TEGRA_GPIO(Q, 0) GPIO_ACTIVE_LOW>;
+		};
+
+		volume_down {
+			gpios = <&gpio TEGRA_GPIO(Q, 7) GPIO_ACTIVE_LOW>;
+		};
+
+		volume_up {
+			gpios = <&gpio TEGRA_GPIO(I, 1) GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	i2c@7000c000 {
+		iqs253@44 {
+			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
+			wake-gpio = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
+		};
+	};
+};

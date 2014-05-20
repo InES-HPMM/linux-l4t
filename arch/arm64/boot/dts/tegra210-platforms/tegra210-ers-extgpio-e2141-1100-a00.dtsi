@@ -1,0 +1,10 @@
+/ {
+	i2c@7000c000 {
+		pca9539_77: pca9532@77 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x77>;
+		};
+	};
+};

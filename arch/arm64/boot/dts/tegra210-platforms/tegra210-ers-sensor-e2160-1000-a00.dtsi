@@ -1,0 +1,41 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	i2c@7000c000 {
+		ak8963c@0d {
+			compatible = "ak,ak8963";
+			reg = <0x0d>;
+			orientation = [ff 00 00 00 01 00 00 00 ff];
+			config = "mpu";
+			vid-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		cm3217@10 {
+			compatible = "capella,cm3217";
+			reg = <0x10>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		ltr659@23 {
+			compatible = "lite-on,ltr659";
+			reg = <0x23>;
+			threshold = <125>;
+			vdd-supply = <&vdd_3v3>;
+			vled-supply = <&vdd_3v3>;
+		};
+
+		iqs253@44 {
+			compatible = "azoteq,iqs253";
+			reg = <0x44>;
+			vddhi-supply = <&vdd_3v3>;
+			vendor = "Azoteq";
+			proximity,max-range = "2"; /* 2 cm */
+			proximity,integration-time = "16000000"; /* 16 msec */
+			proximity,power-consumed = "1.67"; /* approx mA */
+			rdy-gpio = <&gpio TEGRA_GPIO(A, 6) GPIO_ACTIVE_LOW>;
+			wake-gpio = <&gpio TEGRA_GPIO(Y, 0) GPIO_ACTIVE_LOW>;
+			/* sar-gpio = <&gpio TEGRA_GPIO(I, 2) GPIO_ACTIVE_LOW>; */ /* Fix me! */
+		};
+	};
+};
