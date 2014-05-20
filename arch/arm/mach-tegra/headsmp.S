@@ -109,11 +109,11 @@ cpu_not_secure:
 	@ Clear the flow controller flags for this CPU.
 	cpu_to_csr_reg	r1, r0
 	mov32	r2, TEGRA_FLOW_CTRL_BASE
-	ldr	r1, [r2, r1]
-	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
+	ldr	r3, [r2, r1]
+	orr	r3, r3, #(1 << 15) | (1 << 14)	@ write to clear event & intr
 	movw	r0, #0x3FFD	@ enable, enable_ext, cluster_switch, immed, & bitmaps
-	bic	r1, r1, r0
-	str	r1, [r2]
+	bic	r3, r3, r0
+	str	r3, [r2, r1]
 #endif /* !CONFIG_ARCH_TEGRA_2x_SOC */
 
 #if defined(CONFIG_HAVE_ARM_SCU)
