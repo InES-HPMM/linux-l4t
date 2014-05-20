@@ -601,8 +601,11 @@ static struct actmon_dev actmon_dev_avp = {
 	},
 };
 
-
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
+#define CPU_AVG_ACT_THRESHOLD 2000
+#else
 #define CPU_AVG_ACT_THRESHOLD 50000
+#endif
 /* EMC-cpu activity monitor: frequency sampling device:
  * activity counter is incremented every 256 memory transactions, and
  * each transaction takes 2 EMC clocks; count_weight = 512 on Tegra3.
