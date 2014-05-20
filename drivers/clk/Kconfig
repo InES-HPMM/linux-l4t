@@ -83,6 +83,13 @@ config COMMON_CLK_AXI_CLKGEN
 
 endmenu
 
+config CLK_MAX77620
+	tristate "Clock driver for Max77620 PMIC"
+	depends on MFD_MAX77620
+	---help---
+          Supports the clocking subsystem of the MAX77620
+	  PMIC from Maxim. Say Y here to enable support for the same.
+
 config CLK_PALMAS
 	tristate "Clock driver for PALMAS PMICs"
 	depends on MFD_PALMAS

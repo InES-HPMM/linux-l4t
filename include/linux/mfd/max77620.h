@@ -223,6 +223,7 @@
 #define MAX77620_IRQ_LVL2_GPIO_EDGE6		BIT(6)
 #define MAX77620_IRQ_LVL2_GPIO_EDGE7		BIT(7)
 
+#define MAX77620_CNFG1_32K_OUT0_EN		BIT(2)
 
 /* I2c Slave Id */
 enum {

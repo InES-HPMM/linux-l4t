@@ -82,6 +82,7 @@ enum max77660_ids {
 	MAX77620_GPIO_ID,
 	MAX77620_RTC_ID,
 	MAX77620_PINCTRL_ID,
+	MAX77620_CLK_ID,
 };
 
 static struct mfd_cell max77620_children[] = {
@@ -104,6 +105,10 @@ static struct mfd_cell max77620_children[] = {
 	[MAX77620_PINCTRL_ID] = {
 		.name = "max77620-pinctrl",
 		.id = MAX77620_PINCTRL_ID,
+	},
+	[MAX77620_CLK_ID] = {
+		.name = "max77620-clk",
+		.id = MAX77620_CLK_ID,
 	},
 };
 
