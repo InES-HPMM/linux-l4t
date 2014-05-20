@@ -124,7 +124,7 @@ struct clk_pll_div_layout {
 	u32		pdiv_shift;
 	u32		pdiv_mask;
 	u8		*pdiv_to_p;
-	int		pdiv_max;
+	u8		pdiv_max;
 
 	/* misc dividers */
 	u32		ndiv_new_shift;
@@ -278,6 +278,7 @@ struct clk {
 			u32				misc4;
 			u32				misc5;
 			bool				defaults_set;
+			bool				vco_out;
 			struct clk_pll_controls		*controls;
 			struct clk_pll_div_layout	*div_layout;
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
