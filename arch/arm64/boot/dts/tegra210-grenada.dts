@@ -384,6 +384,14 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
+			pz4 {
+				nvidia,pins = "pz4";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
 			qspi_cs_n_pee1 {
 				nvidia,pins = "qspi_cs_n_pee1";
 				nvidia,function = "qspi";
