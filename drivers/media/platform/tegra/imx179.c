@@ -30,7 +30,6 @@
 #include <linux/module.h>
 
 #include <linux/kernel.h>
-#include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -53,7 +52,6 @@ struct imx179_info {
 	struct clk			*mclk;
 	struct regmap			*regmap;
 	struct mutex			imx179_camera_lock;
-	struct dentry			*debugdir;
 	atomic_t			in_use;
 };
 
@@ -594,130 +592,6 @@ imx179_ioctl(struct file *file,
 	return err;
 }
 
-static int imx179_debugfs_show(struct seq_file *s, void *unused)
-{
-	struct imx179_info *dev = s->private;
-
-	dev_dbg(&dev->i2c_client->dev, "%s: ++\n", __func__);
-
-	mutex_lock(&dev->imx179_camera_lock);
-	mutex_unlock(&dev->imx179_camera_lock);
-
-	return 0;
-}
-
-static ssize_t imx179_debugfs_write(
-	struct file *file,
-	char const __user *buf,
-	size_t count,
-	loff_t *offset)
-{
-	struct imx179_info *dev =
-			((struct seq_file *)file->private_data)->private;
-	struct i2c_client *i2c_client = dev->i2c_client;
-	int ret = 0;
-	char buffer[MAX_BUFFER_SIZE];
-	u32 address;
-	u32 data;
-	u8 readback;
-
-	dev_dbg(&i2c_client->dev, "%s: ++\n", __func__);
-
-	if (copy_from_user(&buffer, buf, sizeof(buffer)))
-		goto debugfs_write_fail;
-
-	if (sscanf(buf, "0x%x 0x%x", &address, &data) == 2)
-		goto set_attr;
-	if (sscanf(buf, "0X%x 0X%x", &address, &data) == 2)
-		goto set_attr;
-	if (sscanf(buf, "%d %d", &address, &data) == 2)
-		goto set_attr;
-
-	if (sscanf(buf, "0x%x 0x%x", &address, &data) == 1)
-		goto read;
-	if (sscanf(buf, "0X%x 0X%x", &address, &data) == 1)
-		goto read;
-	if (sscanf(buf, "%d %d", &address, &data) == 1)
-		goto read;
-
-	dev_err(&i2c_client->dev, "SYNTAX ERROR: %s\n", buf);
-	return -EFAULT;
-
-set_attr:
-	dev_info(&i2c_client->dev,
-			"new address = %x, data = %x\n", address, data);
-	ret |= imx179_write_reg(dev, address, data);
-read:
-	ret |= imx179_read_reg(dev, address, &readback);
-	dev_dbg(&i2c_client->dev,
-			"wrote to address 0x%x with value 0x%x\n",
-			address, readback);
-
-	if (ret)
-		goto debugfs_write_fail;
-
-	return count;
-
-debugfs_write_fail:
-	dev_err(&i2c_client->dev,
-			"%s: test pattern write failed\n", __func__);
-	return -EFAULT;
-}
-
-static int imx179_debugfs_open(struct inode *inode, struct file *file)
-{
-	struct imx179_info *dev = inode->i_private;
-	struct i2c_client *i2c_client = dev->i2c_client;
-
-	dev_dbg(&i2c_client->dev, "%s: ++\n", __func__);
-
-	return single_open(file, imx179_debugfs_show, inode->i_private);
-}
-
-static const struct file_operations imx179_debugfs_fops = {
-	.open		= imx179_debugfs_open,
-	.read		= seq_read,
-	.write		= imx179_debugfs_write,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
-static void imx179_remove_debugfs(struct imx179_info *dev)
-{
-	struct i2c_client *i2c_client = dev->i2c_client;
-
-	dev_dbg(&i2c_client->dev, "%s: ++\n", __func__);
-
-	debugfs_remove_recursive(dev->debugdir);
-	dev->debugdir = NULL;
-}
-
-static void imx179_create_debugfs(struct imx179_info *dev)
-{
-	struct dentry *ret;
-	struct i2c_client *i2c_client = dev->i2c_client;
-
-	dev_dbg(&i2c_client->dev, "%s\n", __func__);
-
-	dev->debugdir =
-		debugfs_create_dir(dev->miscdev_info.this_device->kobj.name,
-							NULL);
-	if (!dev->debugdir)
-		goto remove_debugfs;
-
-	ret = debugfs_create_file("d",
-				S_IWUSR | S_IRUGO,
-				dev->debugdir, dev,
-				&imx179_debugfs_fops);
-	if (!ret)
-		goto remove_debugfs;
-
-	return;
-remove_debugfs:
-	dev_err(&i2c_client->dev, "couldn't create debugfs\n");
-	imx179_remove_debugfs(dev);
-}
-
 static int imx179_get_extra_regulators(struct imx179_power_rail *pw)
 {
 	if (!pw->ext_reg1) {
@@ -1029,8 +903,8 @@ imx179_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, info);
-	/* create debugfs interface */
-	imx179_create_debugfs(info);
+
+	mutex_init(&info->imx179_camera_lock);
 	pr_err("[IMX179]: end of probing sensor.\n");
 	return 0;
 
@@ -1046,10 +920,10 @@ imx179_remove(struct i2c_client *client)
 	struct imx179_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&imx179_device);
+	mutex_destroy(&info->imx179_camera_lock);
 
 	imx179_power_put(&info->power);
 
-	imx179_remove_debugfs(info);
 	return 0;
 }
 
