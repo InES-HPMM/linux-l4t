@@ -90,8 +90,6 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 
 static void rev_sku_to_speedo_ids(int rev, int sku)
 {
-	int can_boost = tegra_spare_fuse(60); /* FIXME: boost board check */
-
 	if (rev == TEGRA_REVISION_A01) {
 		cpu_speedo_id = 0;
 		soc_speedo_id = 0;
