@@ -1453,7 +1453,7 @@ static void syncevent_one(struct clk *c)
 	}
 }
 
-static int syncevent_write(struct file *file, const char __user *user_buf,
+static ssize_t syncevent_write(struct file *file, const char __user *user_buf,
 				size_t count, loff_t *ppos)
 {
 	struct clk *c;
