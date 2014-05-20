@@ -335,7 +335,7 @@ static const struct file_operations raw_adc_fops = {
 	.release	= single_release,
 };
 
-static int temp_offset_write(struct file *file, const char __user *user_buf,
+static ssize_t temp_offset_write(struct file *file, const char __user *user_buf,
 			     size_t count, loff_t *ppos)
 {
 	struct gadc_thermal_driver_data *drvdata =
