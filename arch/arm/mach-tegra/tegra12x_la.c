@@ -1056,7 +1056,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0A_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0A_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0A_0, (u32)reg_write);
 	} else if (ci->id == ID(DISPLAY_0AB)) {
 		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_SHIFT) &
 			T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_MASK) |
@@ -1064,7 +1064,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0AB_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0AB_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0AB_0, (u32)reg_write);
 	} else if (ci->id == ID(DISPLAY_0B)) {
 		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_SHIFT) &
 			T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_MASK) |
@@ -1072,7 +1072,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0B_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0B_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0B_0, (u32)reg_write);
 	} else if (ci->id == ID(DISPLAY_0BB)) {
 		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_SHIFT) &
 			T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_MASK) |
@@ -1080,7 +1080,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0BB_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0BB_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0BB_0, (u32)reg_write);
 	} else if (ci->id == ID(DISPLAY_0C)) {
 		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_SHIFT) &
 			T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_MASK) |
@@ -1088,7 +1088,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0C_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0C_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0C_0, (u32)reg_write);
 	} else if (ci->id == ID(DISPLAY_0CB)) {
 		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_SHIFT) &
 			T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_MASK) |
@@ -1096,7 +1096,7 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 			T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_MASK);
 		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0CB_0);
 		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)T12X_MC_SCALED_LA_DISPLAY0CB_0, (u32)reg_write);
+		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0CB_0, (u32)reg_write);
 	}
 }
 static void program_la(struct la_client_info *ci, int la)
@@ -1113,7 +1113,7 @@ static void program_la(struct la_client_info *ci, int la)
 	writel(reg_write, ci->reg_addr);
 	ci->la_set = la;
 	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
-		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+		(u32)(uintptr_t)ci->reg_addr, (u32)reg_read, (u32)reg_write);
 
 	program_scaled_la(ci, la);
 
