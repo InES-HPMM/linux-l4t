@@ -47,6 +47,7 @@ static int __init tegra_tzram_carveout_init(void)
 	}
 
 	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	dma_set_attr(DMA_ATTR_SKIP_IOVA_GAP, &attrs);
 	dma_map_linear_attrs(&tegra_tzram_device.dev,
 		tegra_tzram_start, tegra_tzram_size, DMA_TO_DEVICE, &attrs);
 #endif
