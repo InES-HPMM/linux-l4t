@@ -6736,7 +6736,7 @@ static struct clk tegra_pll_a_out0 = {
 	.max_rate  = 100000000,
 };
 
-static struct clk_pll_freq_table tegra_plld2_freq_table[] = {
+static struct clk_pll_freq_table tegra_pll_d2_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  90, 1, 2, 0, 7247},	/* actual: 594000183 */
 	{ 38400000, 594000000,  60, 2, 2, 0, 11264},
@@ -6784,7 +6784,7 @@ static struct clk tegra_pll_d2 = {
 		.cf_max    = 38400000,
 		.vco_min   = 750000000,
 		.vco_max   = 1500000000,
-		.freq_table = tegra_plld2_freq_table,
+		.freq_table = tegra_pll_d2_freq_table,
 		.lock_delay = 300,
 		.misc0 = 0x4bc - 0x4b8,
 		.misc1 = 0x570 - 0x4b8,
@@ -6797,7 +6797,7 @@ static struct clk tegra_pll_d2 = {
 	},
 };
 
-static struct clk_pll_freq_table tegra_plldp_freq_table[] = {
+static struct clk_pll_freq_table tegra_pll_dp_freq_table[] = {
 	{ 12000000, 270000000,  90, 1, 4},
 	{ 13000000, 270000000,  83, 1, 4},	/* actual: 269.8 MHz */
 	{ 38400000, 270000000,  56, 2, 4},	/* actual: 268.8 MHz */
@@ -6830,7 +6830,7 @@ static struct clk tegra_pll_dp = {
 		.cf_max    = 38400000,
 		.vco_min   = 750000000,
 		.vco_max   = 1500000000,
-		.freq_table = tegra_plldp_freq_table,
+		.freq_table = tegra_pll_dp_freq_table,
 		.lock_delay = 300,
 		.misc0 = 0x594 - 0x590,
 		.misc1 = 0x598 - 0x590,
@@ -9123,7 +9123,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 24];
+			   PERIPH_CLK_SOURCE_NUM + 22];
 
 static int tegra21_clk_suspend(void)
 {
@@ -9140,8 +9140,6 @@ static int tegra21_clk_suspend(void)
 
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
-	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_BASE);
-	*ctx++ = clk_readl(tegra_pll_d2.reg + PLL_MISC(&tegra_pll_d2));
 
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
@@ -9199,7 +9197,6 @@ static void tegra21_clk_resume(void)
 	const u32 *ctx = clk_rst_suspend;
 	u32 val;
 	u32 plld_base;
-	u32 plld2_base;
 	u32 pll_p_out12, pll_p_out34;
 	u32 pll_a_out0, pll_c_out1;
 	struct clk *p;
@@ -9238,10 +9235,6 @@ static void tegra21_clk_resume(void)
 	plld_base = *ctx++;
 	clk_writel(*ctx++, tegra_pll_d.reg + PLL_MISC(&tegra_pll_d));
 	clk_writel(plld_base | PLL_BASE_ENABLE, tegra_pll_d.reg + PLL_BASE);
-
-	plld2_base = *ctx++;
-	clk_writel(*ctx++, tegra_pll_d2.reg + PLL_MISC(&tegra_pll_d2));
-	clk_writel(plld2_base | PLL_BASE_ENABLE, tegra_pll_d2.reg + PLL_BASE);
 
 	udelay(1000);
 
@@ -9349,7 +9342,6 @@ static void tegra21_clk_resume(void)
 		tegra21_pllre_clk_disable(p);
 
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
-	clk_writel(plld2_base, tegra_pll_d2.reg + PLL_BASE);
 
 	clk_writel(pll_a_out0, tegra_pll_a_out0.reg);
 	clk_writel(pll_c_out1, tegra_pll_c_out1.reg);
