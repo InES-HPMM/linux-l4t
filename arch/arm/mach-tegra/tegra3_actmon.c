@@ -540,7 +540,9 @@ static struct actmon_dev actmon_dev_emc = {
 	.boost_freq_step	= 16000,
 	.boost_up_coef		= 200,
 	.boost_down_coef	= 50,
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if (defined(CONFIG_ARCH_TEGRA_14x_SOC) || \
+	 defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
+	 defined(CONFIG_ARCH_TEGRA_13x_SOC))
 	.boost_up_threshold	= 70,
 	.boost_down_threshold	= 50,
 #else
@@ -553,7 +555,7 @@ static struct actmon_dev actmon_dev_emc = {
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.count_weight		= 0x200,
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	.count_weight		= 0x400,
 #else
 	.count_weight		= 0x100,
@@ -624,7 +626,7 @@ static struct actmon_dev actmon_dev_cpu_emc = {
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.count_weight		= 0x200,
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	.count_weight		= 0x400,
 #else
 	.count_weight		= 0x100,
