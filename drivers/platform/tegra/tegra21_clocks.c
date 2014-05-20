@@ -2864,6 +2864,72 @@ static void tegra_pll_clk_disable(struct clk *c)
 	}
 }
 
+static void tegra_pll_clk_init(struct clk *c)
+{
+	u32 pdiv, val;
+	unsigned long vco_min;
+	unsigned long input_rate = clk_get_rate(c->parent);
+	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
+
+	struct clk_pll_freq_table cfg = { };
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+	BUG_ON(!ctrl || !divs);
+
+	/*
+	 * To avoid vco_min crossover by rounding:
+	 * - clip vco_min to exact multiple of comparison frequency if PLL does
+	 *   not support SDM fractional divider
+	 * - limit increase in vco_min to SDM resolution if SDM is supported
+	 */
+	vco_min = DIV_ROUND_UP(c->u.pll.vco_min, cf) * cf;
+	if (ctrl->sdm_en_mask) {
+		c->u.pll.vco_min += DIV_ROUND_UP(cf, PLL_SDM_COEFF);
+		vco_min = min(vco_min, c->u.pll.vco_min);
+	}
+	c->u.pll.vco_min = vco_min;
+	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
+				   divs->pdiv_to_p[divs->pdiv_max]);
+
+	val = clk_readl(c->reg);
+	c->state = (val & ctrl->enable_mask) ? ON : OFF;
+
+	/*
+	 * If PLL is enabled on boot, keep it as is, just check if boot-loader
+	 * set correct PLL parameters - if not, parameters will be reset at the
+	 * 1st opportunity of reconfiguring PLL.
+	 */
+	if (c->state == ON) {
+		if (c->u.pll.set_defaults) /* check only since PLL is ON */
+			c->u.pll.set_defaults(c, input_rate);
+		pll_base_parse_cfg(c, &cfg);
+		pll_clk_set_gain(c, &cfg);
+		return;
+	}
+
+	/* Setup defaults */
+	if (c->u.pll.set_defaults)
+		c->u.pll.set_defaults(c, input_rate);
+
+	/*
+	 * Initialize PLL to default state: disabled, reset; registers are
+	 * loaded with default parameters; dividers are preset for 1/4 of
+	 * minimum VCO rate.
+	 */
+	cfg.m = PLL_FIXED_MDIV(c, input_rate);
+	cfg.n = c->u.pll.vco_min / cf;
+	cfg.p = 4;
+	BUG_ON(cfg.p != c->u.pll.round_p_to_pdiv(cfg.p, &pdiv));
+
+	/* PLL disabled, reference running */
+	val = clk_readl(c->reg);
+	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
+	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
+	pll_sdm_set_din(c, &cfg);
+
+	pll_clk_set_gain(c, &cfg);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static void tegra_pll_clk_resume_enable(struct clk *c)
 {
@@ -2949,68 +3015,7 @@ static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
-	u32 pdiv, val;
-	unsigned long vco_min;
-	unsigned long input_rate = clk_get_rate(c->parent);
-	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
-
-	struct clk_pll_freq_table cfg = { };
-	struct clk_pll_controls *ctrl = c->u.pll.controls;
-	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
-	BUG_ON(!ctrl || !divs);
-
-	/*
-	 * To avoid vco_min crossover by rounding:
-	 * - clip vco_min to exact multiple of comparison frequency if PLL does
-	 *   not support SDM fractional divider
-	 * - limit increase in vco_min to SDM resolution if SDM is supported
-	 */
-	vco_min = DIV_ROUND_UP(c->u.pll.vco_min, cf) * cf;
-	if (ctrl->sdm_en_mask) {
-		c->u.pll.vco_min += DIV_ROUND_UP(cf, PLL_SDM_COEFF);
-		vco_min = min(vco_min, c->u.pll.vco_min);
-	}
-	c->u.pll.vco_min = vco_min;
-	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
-				   divs->pdiv_to_p[divs->pdiv_max]);
-
-	val = clk_readl(c->reg);
-	c->state = (val & ctrl->enable_mask) ? ON : OFF;
-
-	/*
-	 * If PLLCX is enabled on boot, keep it as is, just check if boot-loader
-	 * set correct PLL parameters - if not, parameters will be reset at the
-	 * 1st opportunity of reconfiguring PLL.
-	 */
-	if (c->state == ON) {
-		if (c->u.pll.set_defaults) /* check only since PLL is ON */
-			c->u.pll.set_defaults(c, input_rate);
-		pll_base_parse_cfg(c, &cfg);
-		pll_clk_set_gain(c, &cfg);
-		return;
-	}
-
-	/* Setup defaults */
-	if (c->u.pll.set_defaults)
-		c->u.pll.set_defaults(c, input_rate);
-
-	/*
-	 * Initialize PLL to default state: disabled, reset; registers are
-	 * loaded with default parameters; dividers are preset for 1/4 of
-	 * minimum VCO rate.
-	 */
-	cfg.m = PLL_FIXED_MDIV(c, input_rate);
-	cfg.n = c->u.pll.vco_min / cf;
-	cfg.p = 4;
-	BUG_ON(cfg.p != c->u.pll.round_p_to_pdiv(cfg.p, &pdiv));
-
-	/* PLL disabled, reference running */
-	val = clk_readl(c->reg);
-	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
-	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
-	pll_sdm_set_din(c, &cfg);
-
-	pll_clk_set_gain(c, &cfg);
+	tegra_pll_clk_init(c);
 }
 
 static struct clk_ops tegra_pllcx_ops = {
@@ -3066,8 +3071,7 @@ static void plla_set_defaults(struct clk *c, unsigned long input_rate)
 
 static void tegra21_plla_clk_init(struct clk *c)
 {
-	/* Same as PLLCX initialization */
-	tegra21_pllcx_clk_init(c);
+	tegra_pll_clk_init(c);
 }
 
 static struct clk_ops tegra_plla_ops = {
@@ -3115,8 +3119,7 @@ static void plld_set_defaults(struct clk *c, unsigned long input_rate)
 
 static void tegra21_plld_clk_init(struct clk *c)
 {
-	/* Same as PLLCX initialization */
-	tegra21_pllcx_clk_init(c);
+	tegra_pll_clk_init(c);
 }
 
 static int
@@ -3280,8 +3283,7 @@ static void tegra21_plld2_clk_init(struct clk *c)
 	}
 	plldss_select_ref(c);
 
-	/* Same as PLLCX initialization */
-	tegra21_pllcx_clk_init(c);
+	tegra_pll_clk_init(c);
 }
 
 static struct clk_ops tegra_plld2_ops = {
@@ -3313,8 +3315,7 @@ static void tegra21_plldp_clk_init(struct clk *c)
 	}
 	plldss_select_ref(c);
 
-	/* Same as PLLCX initialization */
-	tegra21_pllcx_clk_init(c);
+	tegra_pll_clk_init(c);
 }
 
 static struct clk_ops tegra_plldp_ops = {
@@ -3469,8 +3470,7 @@ static void tegra21_pllx_clk_init(struct clk *c)
 	u32 val = clk_readl(PLLX_HW_CTRL_CFG);
 	BUG_ON(!(val & PLLX_HW_CTRL_CFG_SWCTRL) && !tegra_platform_is_linsim());
 
-	/* Same as PLLCX initialization */
-	tegra21_pllcx_clk_init(c);
+	tegra_pll_clk_init(c);
 }
 
 static struct clk_ops tegra_pllx_ops = {
