@@ -2866,7 +2866,7 @@ static void tegra_pll_clk_disable(struct clk *c)
 
 static void tegra_pll_clk_init(struct clk *c)
 {
-	u32 pdiv, val;
+	u32 val;
 	unsigned long vco_min;
 	unsigned long input_rate = clk_get_rate(c->parent);
 	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
@@ -2907,27 +2907,20 @@ static void tegra_pll_clk_init(struct clk *c)
 		return;
 	}
 
-	/* Setup defaults */
+	/*
+	 * Initialize PLL to default state: disabled, reference running;
+	 * registers are loaded with default parameters; rate is preset
+	 * (close) to 1/4 of minimum VCO rate.
+	 */
 	if (c->u.pll.set_defaults)
 		c->u.pll.set_defaults(c, input_rate);
 
-	/*
-	 * Initialize PLL to default state: disabled, reset; registers are
-	 * loaded with default parameters; dividers are preset for 1/4 of
-	 * minimum VCO rate.
-	 */
-	cfg.m = PLL_FIXED_MDIV(c, input_rate);
-	cfg.n = c->u.pll.vco_min / cf;
-	cfg.p = 4;
-	BUG_ON(cfg.p != c->u.pll.round_p_to_pdiv(cfg.p, &pdiv));
-
-	/* PLL disabled, reference running */
 	val = clk_readl(c->reg);
 	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
-	val = pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
-	pll_sdm_set_din(c, &cfg);
+	pll_writel_delay(val, c->reg);
 
-	pll_clk_set_gain(c, &cfg);
+	vco_min = DIV_ROUND_UP(vco_min, cf) * cf;
+	c->ops->set_rate(c, vco_min / 4);
 }
 
 #ifdef CONFIG_PM_SLEEP
