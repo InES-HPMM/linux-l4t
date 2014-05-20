@@ -1328,11 +1328,52 @@ char *debug_dma_platformdata(struct device *dev)
 }
 #endif
 
+static struct smmu_as *smmu_as_alloc(void)
+{
+	int i, err = -EAGAIN;
+	unsigned long flags;
+	struct smmu_as *as;
+	struct smmu_device *smmu = smmu_handle;
+
+	/* Look for a free AS with lock held */
+	for  (i = 0; i < smmu->num_as; i++) {
+		as = &smmu->as[i];
+
+		if (as->pdir_page)
+			continue;
+
+		err = alloc_pdir(as);
+		if (!err)
+			goto found;
+
+		if (err != -EAGAIN)
+			break;
+	}
+	if (i == smmu->num_as)
+		dev_err(smmu->dev,  "no free AS\n");
+	return ERR_PTR(err);
+
+found:
+	spin_lock_irqsave(&smmu->lock, flags);
+
+	/* Update PDIR register */
+	smmu_write(smmu, SMMU_PTB_ASID_CUR(as->asid), SMMU_PTB_ASID);
+	smmu_write(smmu,
+		   SMMU_MK_PDIR(as->pdir_page, as->pdir_attr), SMMU_PTB_DATA);
+	FLUSH_SMMU_REGS(smmu);
+
+	spin_unlock_irqrestore(&smmu->lock, flags);
+
+	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
+
+	return as;
+}
+
 static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 				 struct device *dev)
 {
-	struct smmu_as *as = domain->priv;
-	struct smmu_device *smmu = as->smmu;
+	struct smmu_as *as;
+	struct smmu_device *smmu;
 	struct smmu_client *client, *c;
 	struct iommu_linear_map *area = NULL;
 	u64 map, temp;
@@ -1349,6 +1390,17 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 
 	if (!map)
 		map = temp;
+
+	if (domain->priv) {
+		as = domain->priv;
+	} else {
+		as = smmu_as_alloc();
+		if (IS_ERR(as))
+			return PTR_ERR(as);
+
+		domain->priv = as;
+	}
+	smmu = as->smmu;
 
 	while (area && area->size) {
 		DEFINE_DMA_ATTRS(attrs);
@@ -1442,49 +1494,13 @@ out:
 
 static int smmu_iommu_domain_init(struct iommu_domain *domain)
 {
-	int i, err = -EAGAIN;
-	unsigned long flags;
-	struct smmu_as *as;
 	struct smmu_device *smmu = smmu_handle;
 
-	/* Look for a free AS with lock held */
-	for  (i = 0; i < smmu->num_as; i++) {
-		as = &smmu->as[i];
-
-		if (as->pdir_page)
-			continue;
-
-		err = alloc_pdir(as);
-		if (!err)
-			goto found;
-
-		if (err != -EAGAIN)
-			break;
-	}
-	if (i == smmu->num_as)
-		dev_err(smmu->dev,  "no free AS\n");
-	return err;
-
-found:
-	spin_lock_irqsave(&smmu->lock, flags);
-
-	/* Update PDIR register */
-	smmu_write(smmu, SMMU_PTB_ASID_CUR(as->asid), SMMU_PTB_ASID);
-	smmu_write(smmu,
-		   SMMU_MK_PDIR(as->pdir_page, as->pdir_attr), SMMU_PTB_DATA);
-	FLUSH_SMMU_REGS(smmu);
-
-	spin_unlock_irqrestore(&smmu->lock, flags);
-
-	domain->priv = as;
-
+	BUG_ON(domain->priv);
 	domain->geometry.aperture_start = smmu->iovmm_base;
 	domain->geometry.aperture_end   = smmu->iovmm_base +
 		smmu->page_count * SMMU_PAGE_SIZE - 1;
 	domain->geometry.force_aperture = true;
-
-	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
-
 	return 0;
 }
 
