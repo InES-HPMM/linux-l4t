@@ -103,6 +103,9 @@
 /* ADSP Standby WFE.  ADSP in idle mode. Waiting for Event */
 #define INT_WFE				85
 
+/* AMISC Actmon interrupt */
+#define INT_AMISC_ACTMON    87
+
 enum tegra_agic_cpu {
 	TEGRA_AGIC_APE_HOST = 0,
 	TEGRA_AGIC_ADSP

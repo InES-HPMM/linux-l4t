@@ -30,6 +30,7 @@
 
 #include "dev.h"
 #include "os.h"
+#include "ape_actmon.h"
 
 status_t nvadsp_mbox_init(struct platform_device *pdev);
 
@@ -128,6 +129,12 @@ static int nvadsp_probe(struct platform_device *pdev)
 		goto err;
 
 	ret = nvadsp_mbox_init(pdev);
+	if (ret)
+		goto err;
+
+	ret = ape_actmon_init(pdev);
+	if (ret)
+		goto err;
 
 err:
 	return ret;
