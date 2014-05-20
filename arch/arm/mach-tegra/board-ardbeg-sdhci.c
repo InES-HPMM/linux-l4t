@@ -512,6 +512,9 @@ int __init ardbeg_sdhci_init(void)
 			tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 	}
 
+	tegra_sdhci_platform_data3.disable_clock_gate = 1;
+	tegra_sdhci_platform_data2.disable_clock_gate = 1;
+
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	if (board_info.board_id != BOARD_PM359 &&
