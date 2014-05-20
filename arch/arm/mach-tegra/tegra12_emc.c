@@ -1541,7 +1541,7 @@ static bool tegra12_is_lpddr3(void)
 static void tegra12_pasr_apply_mask(u16 *mem_reg, void *cookie)
 {
 	u32 val = 0;
-	int device = (int)cookie;
+	int device = (int)(uintptr_t)cookie;
 
 	val = TEGRA_EMC_MODE_REG_17 | *mem_reg;
 	val |= device << TEGRA_EMC_MRW_DEV_SHIFT;
@@ -1549,7 +1549,7 @@ static void tegra12_pasr_apply_mask(u16 *mem_reg, void *cookie)
 	emc_writel(val, EMC_MRW);
 
 	pr_debug("%s: cookie = %d mem_reg = 0x%04x val = 0x%08x\n", __func__,
-			(int)cookie, *mem_reg, val);
+			(int)(uintptr_t)cookie, *mem_reg, val);
 }
 
 static void tegra12_pasr_remove_mask(phys_addr_t base, void *cookie)
