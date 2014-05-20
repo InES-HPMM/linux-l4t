@@ -615,6 +615,9 @@ skip_thermistor_config:
 	}
 	device_set_wakeup_capable(&client->dev, 1);
 
+	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
+
 	return 0;
 irq_reg_error:
 	cancel_delayed_work_sync(&chip->work);
