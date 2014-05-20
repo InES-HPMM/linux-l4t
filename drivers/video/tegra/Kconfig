@@ -38,9 +38,12 @@ config TEGRA_DC
 	select FB_MODE_HELPERS
 	help
 	  Tegra display controller support.
+	  Enable this to access the Tegra display controller using either framebuffer
+	  console interface and a proprietary dc-ext interface or with ADF.
 
 config TEGRA_DC_CMU
 	bool "Tegra Color Management Unit"
+	depends on TEGRA_DC
 	default y
 	help
 	  Say Y here to enable Tegra color management unit.
@@ -49,53 +52,95 @@ config TEGRA_DC_CMU
 	  accross displays.
 
 config TEGRA_DC_WIN_H
-    bool
+	bool "Use Window H instead of Cursor"
+	depends on TEGRA_DC && ARCH_TEGRA_14x_SOC
+	default y if ANDROID
+	help
+	  Say Y here to default to using the cursor hardware as a simple window.
+	  This window is labeled H for Hybrid.
+	  It is useful to enable for environments that need to blend multiple windows.
+	  For environments that are mouse oriented, the mouse cursor is the preferred mode.
 
 config TEGRA_MIPI_CAL
-	bool
+	bool "Enable MIPI Cal driver"
 	default y
+	help
+	  Provides an interfaces to do MIPI calibration for both DSI and CSI blocks.
+	  You will always want this enabled if you are using either Camera or Display.
+	  Disabling this can cause issues for drivers that depend on it being present.
+	  Leaving this on is harmless even if no drivers that need it are enabled.
 
 config TEGRA_DC_SCAN_COLUMN
 	bool
-	default y if ARCH_TEGRA_12x_SOC
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
+	help
+	  Enables access to scan column mode for providing 90 and 270 rotation.
+	  The pixel format for a surface using scancolumn must be encoding
+	  using BlockLinear.
+	  Failure to use proper pixel format will result in EINVAL errors.
 
 config TEGRA_DC_BLENDER_GEN2
-    bool
-    default y
+	bool
+	depends on TEGRA_DC
+	default y
 
 config TEGRA_DC_BLENDER_DEPTH
-    bool
-    default y if ARCH_TEGRA_12x_SOC
+	bool "Program blender depth for overlays"
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
+	help
+	  This option is required for chips that support it.
+	  Disabling this means multiple windows will not be blended correctly.
+	  This may be acceptable in situations where windows never overlap or
+	  if there is there are no overlays and only base.
 
 config TEGRA_DC_BLOCK_LINEAR
-    bool
-    default y if ARCH_TEGRA_12x_SOC
+	bool "Support Block Linear encoding"
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
+	help
+	  A swizzled format that makes vertical walks of a surface
+	  consume less bandwidth than a traditional pitched linear
+	  pixel format.
+	  This needs to be enabled on chips that support it.
 
 config TEGRA_DC_INTERLACE
 	bool
-	default y if ARCH_TEGRA_12x_SOC
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
+	help
+	  Support output in interlaced formats on chips that support it.
+	  This requires that a carefully constructed set of surfaces are
+	  used that match the needs of the interlaced mode.
+	  With this enabled HDMI 1080i is possible. But 480i is not, due
+	  to the lack of pixel doubling support.
 
 config TEGRA_DC_64BIT_SUPPORT
-	bool
+	bool "64-bit addressing in DC"
+	depends on TEGRA_DC && (ARCH_TEGRA_13x_SOC || ARCH_TEGRA_21x_SOC)
+	default y
 	help
-		T12x LPAE support in dc driver
-
-config TEGRA_DC_LOW_LATENCY_CURSOR
-	bool
-	default y if ARCH_TEGRA_12x_SOC
+	  T12x/T21x LPAE support in dc driver.
+	  This is needed to support buffers whose physical address does
+	  not fit into 32-bits.
+	  Default is to enable it on 64-bit platforms.
 
 config TEGRA_DC_CLOCK_GEN2
-    bool
-    default y if ARCH_TEGRA_12x_SOC
-    help
-        T12x redefined pll usages for pll_d and pll_d2.
+	bool
+	depends on TEGRA_DC
+	default y if ARCH_TEGRA_12x_SOC
+	help
+	  T12x redefined pll usages for pll_d and pll_d2.
 
 config TEGRA_SD_GEN2
 	bool
+	depends on TEGRA_DC
 	default y
 
 config TEGRA_DC_TEMPORAL_DITHER
 	bool
+	depends on TEGRA_DC
 	default y
 
 config FB_TEGRA
@@ -275,6 +320,7 @@ config NVMAP_DEFER_FD_RECYCLE_MAX_FD
 
 config TEGRA_DSI
 	bool "Enable DSI panel."
+	depends on TEGRA_DC && TEGRA_MIPI_CAL
 	help
 	  Say Y here to enable the DSI panel.
 
@@ -296,9 +342,23 @@ config TEGRA_DP
 
 config TEGRA_LVDS
 	bool "Enable LVDS panel."
-	default  n
+	depends on ARCH_TEGRA_12x_SOC
+	default n
 	help
 	  Say Y here to enable LVDS panel.
+	  This option is for the T12x/T13x family of SOR controllers. And provide single link LVDS.
+	  It is different from the RGB output on Tegra2/3.
+	  Default is to disable it, as it is rarely used.
+
+config TEGRA_HDMI
+	bool "Enable HDMI support."
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_14x_SOC)
+	default y
+	help
+	  Say Y here to enable HDMI output
+	  This option is for the Tegra2/3/12x/13x family of HDMI output resource.
+	  It is not for the newer Tegra21x family of HDMI, which uses sor/dp instead.
+	  Default is to enable it for chips that support it.
 
 config TEGRA_NVSR
 	bool "Enable NVSR support."
@@ -316,12 +376,18 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
+	depends on TEGRA_HDMI
 	help
 	  Say Y here to support NVHDCP upstream and downstream protocols, this
 	  requires a correctly fused chip to negotiate keys.
+	  It is only needed if you have an application that cares about checking
+	  for HDCP security while playing protected content. You do not need this
+	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
+	  unprotected content just fine.
 
 config TEGRA_HDMI_74MHZ_LIMIT
 	bool "Support only up to 74.25 MHz HDMI pixel frequency"
+	depends on TEGRA_HDMI
 	help
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.

@@ -1101,8 +1101,8 @@ static void program_scaled_la(struct la_client_info *ci, int la)
 }
 static void program_la(struct la_client_info *ci, int la)
 {
-	unsigned long reg_read;
-	unsigned long reg_write;
+	u32 reg_read;
+	u32 reg_write;
 
 	BUG_ON(la > T12X_MC_LA_MAX_VALUE);
 
