@@ -178,6 +178,73 @@ static struct tegra_pm_domain tegra_nvavp = {
 	.gpd.name = "tegra_nvavp",
 };
 
+static void suspend_devices_in_domain(struct generic_pm_domain *genpd)
+{
+	struct pm_domain_data *pdd;
+	struct device *dev;
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
+		dev = pdd->dev;
+
+		if (dev->pm_domain && dev->pm_domain->ops.suspend)
+			dev->pm_domain->ops.suspend(dev);
+	}
+}
+
+static void resume_devices_in_domain(struct generic_pm_domain *genpd)
+{
+	struct pm_domain_data *pdd;
+	struct device *dev;
+	list_for_each_entry(pdd, &genpd->dev_list, list_node) {
+		dev = pdd->dev;
+
+		if (dev->pm_domain && dev->pm_domain->ops.resume)
+			dev->pm_domain->ops.resume(dev);
+	}
+}
+
+static int tegra_core_power_on(struct generic_pm_domain *genpd)
+{
+	struct pm_domain_data *pdd;
+	struct gpd_link *link;
+
+	list_for_each_entry(link, &genpd->master_links, master_node)
+		resume_devices_in_domain(link->slave);
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node)
+		TEGRA_PD_DEV_CALLBACK(resume, pdd->dev);
+	return 0;
+}
+
+static int tegra_core_power_off(struct generic_pm_domain *genpd)
+{
+	struct pm_domain_data *pdd;
+	struct gpd_link *link;
+
+	list_for_each_entry(link, &genpd->master_links, master_node)
+		suspend_devices_in_domain(link->slave);
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node)
+		TEGRA_PD_DEV_CALLBACK(suspend, pdd->dev);
+
+	return 0;
+}
+
+
+static struct tegra_pm_domain tegra_sdhci3 = {
+	.gpd.name = "tegra_sdhci.3",
+	.gpd.power_off = tegra_core_power_off,
+	.gpd.power_on = tegra_core_power_on,
+	.gpd.power_off_delay = 5000,
+};
+
+static struct tegra_pm_domain tegra_sdhci2 = {
+	.gpd.name = "tegra_sdhci.2",
+	.gpd.power_off = tegra_core_power_off,
+	.gpd.power_on = tegra_core_power_on,
+	.gpd.power_off_delay = 5000,
+};
+
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
 	.gpd.power_off = tegra_mc_clk_power_off,
@@ -194,7 +261,10 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra-host1x", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra_nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "nvavp", .domain = &tegra_nvavp.gpd },
+	{ .name = "sdhci-tegra.3", .domain = &tegra_sdhci3.gpd },
+	{ .name = "sdhci-tegra.2", .domain = &tegra_sdhci2.gpd },
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
+	{ .name = "tegra_sdhci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra12-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-pcie", .domain = &tegra_mc_clk.gpd },
@@ -208,6 +278,19 @@ static int __init tegra_init_pm_domain(void)
 
 	pm_genpd_init(&tegra_nvavp.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_nvavp.gpd);
+
+	/*
+	 * Below Autosuspend delay can be increased/decreased based on
+	 * power and perf data
+	 */
+
+	pm_genpd_init(&tegra_sdhci3.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_sdhci3.gpd);
+	pm_genpd_set_poweroff_delay(&tegra_sdhci3.gpd, 5000);
+
+	pm_genpd_init(&tegra_sdhci2.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_sdhci2.gpd);
+	pm_genpd_set_poweroff_delay(&tegra_sdhci2.gpd, 5000);
 
 	return 0;
 }

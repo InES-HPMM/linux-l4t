@@ -23,6 +23,8 @@
 #include <linux/scatterlist.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
+#include <linux/platform_device.h>
+#include <linux/sched.h>
 
 #include <linux/leds.h>
 
@@ -40,6 +42,7 @@
 #include "sdhci.h"
 
 #define DRIVER_NAME "sdhci"
+#define DEFAULT_SDHOST_FREQ     50000000
 
 #define DBG(f, x...) \
 	pr_debug(DRIVER_NAME " [%s()]: " f, __func__,## x)
@@ -3082,6 +3085,9 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	int ret;
 	struct mmc_host *mmc = host->mmc;
 
+	host->suspend_task = current;
+	sdhci_runtime_resume_host(host);
+
 	if (host->ops->platform_suspend)
 		host->ops->platform_suspend(host);
 
@@ -3111,6 +3117,8 @@ int sdhci_suspend_host(struct sdhci_host *host)
 
 		sdhci_enable_card_detection(host);
 
+		sdhci_runtime_suspend_host(host);
+		host->suspend_task = NULL;
 		return ret;
 	}
 
@@ -3148,6 +3156,9 @@ int sdhci_suspend_host(struct sdhci_host *host)
 				host->ops->set_clock(host, 0);
 	}
 
+	sdhci_runtime_suspend_host(host);
+	host->suspend_task = NULL;
+
 	return ret;
 }
 
@@ -3157,6 +3168,9 @@ int sdhci_resume_host(struct sdhci_host *host)
 {
 	int ret;
 	struct mmc_host *mmc = host->mmc;
+
+	host->suspend_task = current;
+	sdhci_runtime_resume_host(host);
 
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if (host->ops->enable_dma)
@@ -3169,6 +3183,12 @@ int sdhci_resume_host(struct sdhci_host *host)
 	} else {
 		sdhci_disable_irq_wakeups(host);
 		disable_irq_wake(host->irq);
+	}
+
+	if (!host->clock || !host->mmc->ios.clock) {
+		if (host->ops->set_clock)
+			host->ops->set_clock(host, DEFAULT_SDHOST_FREQ);
+		sdhci_set_clock(host, DEFAULT_SDHOST_FREQ);
 	}
 
 	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER) &&
@@ -3199,6 +3219,8 @@ int sdhci_resume_host(struct sdhci_host *host)
 	if (host->flags & SDHCI_USING_RETUNING_TIMER)
 		host->flags |= SDHCI_NEEDS_RETUNING;
 
+	host->suspend_task = NULL;
+
 	return ret;
 }
 
@@ -3209,11 +3231,58 @@ EXPORT_SYMBOL_GPL(sdhci_resume_host);
 
 static int sdhci_runtime_pm_get(struct sdhci_host *host)
 {
+	int present;
+
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+
+	present = mmc_gpio_get_cd(host->mmc);
+	if (present < 0) {
+		/* If polling, assume that the card is always present. */
+		if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION)
+			if (host->ops->get_cd)
+				present = host->ops->get_cd(host);
+			else
+				present = 1;
+		else
+			present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
+					SDHCI_CARD_PRESENT;
+	}
+
+	if ((present && !host->mmc->card && (host->runtime_suspended == false))
+					|| host->suspend_task == current) {
+		pm_runtime_get_noresume(host->mmc->parent);
+		return 0;
+	}
+
 	return pm_runtime_get_sync(host->mmc->parent);
 }
 
 static int sdhci_runtime_pm_put(struct sdhci_host *host)
 {
+	int present;
+
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+
+	present = mmc_gpio_get_cd(host->mmc);
+	if (present < 0) {
+		/* If polling, assume that the card is always present. */
+		if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION)
+			if (host->ops->get_cd)
+				present = host->ops->get_cd(host);
+			else
+				present = 1;
+		else
+			present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
+					SDHCI_CARD_PRESENT;
+	}
+	if ((present && !host->mmc->card) || host->suspend_task == current) {
+		pm_runtime_mark_last_busy(host->mmc->parent);
+		pm_runtime_put_noidle(host->mmc->parent);
+		return 0;
+	}
+
 	pm_runtime_mark_last_busy(host->mmc->parent);
 	return pm_runtime_put_autosuspend(host->mmc->parent);
 }
@@ -3223,11 +3292,18 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 	unsigned long flags;
 	int ret = 0;
 
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+
 	/* Disable tuning since we are suspending */
 	if (host->flags & SDHCI_USING_RETUNING_TIMER) {
 		del_timer_sync(&host->tuning_timer);
 		host->flags &= ~SDHCI_NEEDS_RETUNING;
 	}
+
+	if (host->ops->set_clock)
+		host->ops->set_clock(host, host->mmc->f_min);
+	sdhci_set_clock(host, host->mmc->f_min);
 
 	spin_lock_irqsave(&host->lock, flags);
 	sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
@@ -3239,6 +3315,10 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 	host->runtime_suspended = true;
 	spin_unlock_irqrestore(&host->lock, flags);
 
+	sdhci_set_clock(host, 0);
+	if (host->ops->set_clock)
+		host->ops->set_clock(host, 0);
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(sdhci_runtime_suspend_host);
@@ -3247,6 +3327,13 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 {
 	unsigned long flags;
 	int ret = 0, host_flags = host->flags;
+
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+
+	if (host->ops->set_clock)
+		host->ops->set_clock(host, host->mmc->f_min);
+	sdhci_set_clock(host, host->mmc->f_min);
 
 	if (host_flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if (host->ops->enable_dma)
@@ -3260,11 +3347,14 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 	host->clock = 0;
 	sdhci_do_set_ios(host, &host->mmc->ios);
 
-	sdhci_do_start_signal_voltage_switch(host, &host->mmc->ios);
+	if (host->mmc->ios.clock) {
+		sdhci_do_start_signal_voltage_switch(host, &host->mmc->ios);
 	/* Do any post voltage switch platform specific configuration */
-	if  (host->ops->switch_signal_voltage_exit)
-		host->ops->switch_signal_voltage_exit(host,
-			host->mmc->ios.signal_voltage);
+		if (host->ops->switch_signal_voltage_exit)
+			host->ops->switch_signal_voltage_exit(host,
+				host->mmc->ios.signal_voltage);
+	}
+
 	if ((host_flags & SDHCI_PV_ENABLED) &&
 		!(host->quirks2 & SDHCI_QUIRK2_PRESET_VALUE_BROKEN)) {
 		spin_lock_irqsave(&host->lock, flags);
