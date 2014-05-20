@@ -9297,12 +9297,7 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_L);
 	clk_writel(*ctx++, CLK_OUT_ENB_H);
 	clk_writel(*ctx++, CLK_OUT_ENB_U);
-
-	/* For LP0 resume, clk to lpcpu is required to be on */
-	val = *ctx++;
-	val |= CLK_OUT_ENB_V_CLK_ENB_CPULP_EN;
-	clk_writel(val, CLK_OUT_ENB_V);
-
+	clk_writel(*ctx++, CLK_OUT_ENB_V);
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
 	clk_writel(*ctx++, CLK_OUT_ENB_X);
 	clk_writel(*ctx++, CLK_OUT_ENB_Y);
