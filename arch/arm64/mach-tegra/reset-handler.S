@@ -113,26 +113,19 @@ start_ns:
 	mrs	x0, mpidr_el1
 	and x0, x0, #15
 
-#ifdef CONFIG_SMP
-	/* Secondary cores */
-	cbnz	x0, secondary_holding_pen
-#endif
-
-	/* Below is only carried out on core0 */
-
 	/* Clear the flow controller flags for this CPU. */
 	cpu_to_csr_reg	x1, x0
 	ldr	x2, =TEGRA_FLOW_CTRL_BASE
-	ldr	x1, [x2, x1]
+	ldr	x3, [x2, x1]
 
 	/* Clear event & intr flag */
-	orr	x1, x1, #FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG
+	orr	x3, x3, #FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG
 
 	/* enable, cluster_switch, immed, & bitmaps */
 	movz	x0, #0x3ffd
 
-	bic	x1, x1, x0
-	str	x1, [x2]
+	bic	x3, x3, x0
+	str	x3, [x2, x1]
 
 done:
 	b	cpu_resume
