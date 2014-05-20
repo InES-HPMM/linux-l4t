@@ -1100,8 +1100,7 @@ int tegra_get_sku_override(void)
 	return sku_override;
 }
 
-#if !defined(CONFIG_TRUSTED_LITTLE_KERNEL) || \
-	!defined(CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT)
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 static int __init tegra_vpr_arg(char *options)
 {
 	char *p = options;
@@ -2164,6 +2163,10 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 void tegra_reserve4(ulong carveout_size, ulong fb_size,
 		       ulong fb2_size, ulong vpr_size)
 {
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	tegra_vpr_start = 0;
+	tegra_vpr_size = vpr_size;
+#endif
 	tegra_reserve(carveout_size, fb_size, fb2_size);
 }
 
