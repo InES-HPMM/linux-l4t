@@ -36,7 +36,7 @@
 			channel@1 {
 				reg = <0x1>;
 				ti,rail-name = "VDD_USB_5V0";
-				ti,shunt-resistor-mohm = <1>;
+				ti,shunt-resistor-mohm = <10>;
 			};
 
 			channel@2 {
