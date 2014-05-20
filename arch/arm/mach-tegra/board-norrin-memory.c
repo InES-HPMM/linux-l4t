@@ -2756,9 +2756,9 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 static struct tegra12_emc_table bowmore_emc_table[] = {
 	{
 		0x19,       /* V6.0.0 */
-		"01_12750_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_12750_01_V6.0.0_V1.1", /* DVFS table version */
 		12750,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x4000003e, /* CLK_SOURCE_EMC */
@@ -2983,9 +2983,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_20400_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_20400_01_V6.0.0_V1.1", /* DVFS table version */
 		20400,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000026, /* CLK_SOURCE_EMC */
@@ -3210,9 +3210,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_40800_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_40800_01_V6.0.0_V1.1", /* DVFS table version */
 		40800,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000012, /* CLK_SOURCE_EMC */
@@ -3437,9 +3437,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_68000_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_68000_01_V6.0.0_V1.1", /* DVFS table version */
 		68000,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x4000000a, /* CLK_SOURCE_EMC */
@@ -3664,9 +3664,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_102000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_102000_02_V6.0.0_V1.1", /* DVFS table version */
 		102000,     /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000006, /* CLK_SOURCE_EMC */
@@ -3891,9 +3891,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_204000_03_V6.0.0_V1.1", /* DVFS table version */
+		"04_204000_03_V6.0.0_V1.1", /* DVFS table version */
 		204000,     /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000002, /* CLK_SOURCE_EMC */
@@ -4118,7 +4118,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_300000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_300000_02_V6.0.0_V1.1", /* DVFS table version */
 		300000,     /* SDRAM frequency */
 		820,        /* min voltage */
 		820,        /* gpu min voltage */
@@ -4345,7 +4345,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_396000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_396000_02_V6.0.0_V1.1", /* DVFS table version */
 		396000,     /* SDRAM frequency */
 		850,        /* min voltage */
 		850,        /* gpu min voltage */
@@ -4572,7 +4572,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_528000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_528000_02_V6.0.0_V1.1", /* DVFS table version */
 		528000,     /* SDRAM frequency */
 		880,        /* min voltage */
 		870,        /* gpu min voltage */
@@ -4799,7 +4799,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_600000_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_600000_01_V6.0.0_V1.1", /* DVFS table version */
 		600000,     /* SDRAM frequency */
 		910,        /* min voltage */
 		910,        /* gpu min voltage */
@@ -5026,7 +5026,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_792000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_792000_02_V6.0.0_V1.1", /* DVFS table version */
 		792000,     /* SDRAM frequency */
 		980,        /* min voltage */
 		980,        /* gpu min voltage */
@@ -5253,7 +5253,7 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"01_924000_04_V6.0.0_V1.1", /* DVFS table version */
+		"04_924000_04_V6.0.0_V1.1", /* DVFS table version */
 		924000,     /* SDRAM frequency */
 		1010,       /* min voltage */
 		1010,       /* gpu min voltage */
@@ -5483,9 +5483,9 @@ static struct tegra12_emc_table bowmore_emc_table[] = {
 static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	{
 		0x19,       /* V6.0.0 */
-		"03_12750_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_12750_01_V6.0.0_V1.1", /* DVFS table version */
 		12750,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x4000003e, /* CLK_SOURCE_EMC */
@@ -5710,9 +5710,9 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_20400_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_20400_01_V6.0.0_V1.1", /* DVFS table version */
 		20400,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000026, /* CLK_SOURCE_EMC */
@@ -5937,9 +5937,9 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_40800_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_40800_01_V6.0.0_V1.1", /* DVFS table version */
 		40800,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000012, /* CLK_SOURCE_EMC */
@@ -6164,9 +6164,9 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_68000_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_68000_01_V6.0.0_V1.1", /* DVFS table version */
 		68000,      /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x4000000a, /* CLK_SOURCE_EMC */
@@ -6391,9 +6391,9 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_102000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_102000_02_V6.0.0_V1.1", /* DVFS table version */
 		102000,     /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000006, /* CLK_SOURCE_EMC */
@@ -6618,9 +6618,9 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_204000_03_V6.0.0_V1.1", /* DVFS table version */
+		"04_204000_03_V6.0.0_V1.1", /* DVFS table version */
 		204000,     /* SDRAM frequency */
-		820,        /* min voltage */
+		800,        /* min voltage */
 		800,        /* gpu min voltage */
 		"pllp_out0", /* clock source id */
 		0x40000002, /* CLK_SOURCE_EMC */
@@ -6845,7 +6845,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_300000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_300000_02_V6.0.0_V1.1", /* DVFS table version */
 		300000,     /* SDRAM frequency */
 		820,        /* min voltage */
 		820,        /* gpu min voltage */
@@ -7072,7 +7072,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_396000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_396000_02_V6.0.0_V1.1", /* DVFS table version */
 		396000,     /* SDRAM frequency */
 		850,        /* min voltage */
 		850,        /* gpu min voltage */
@@ -7299,7 +7299,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_528000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_528000_02_V6.0.0_V1.1", /* DVFS table version */
 		528000,     /* SDRAM frequency */
 		880,        /* min voltage */
 		870,        /* gpu min voltage */
@@ -7526,7 +7526,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_600000_01_V6.0.0_V1.1", /* DVFS table version */
+		"04_600000_01_V6.0.0_V1.1", /* DVFS table version */
 		600000,     /* SDRAM frequency */
 		910,        /* min voltage */
 		910,        /* gpu min voltage */
@@ -7753,7 +7753,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_792000_02_V6.0.0_V1.1", /* DVFS table version */
+		"04_792000_02_V6.0.0_V1.1", /* DVFS table version */
 		792000,     /* SDRAM frequency */
 		980,        /* min voltage */
 		980,        /* gpu min voltage */
@@ -7980,7 +7980,7 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 	},
 	{
 		0x19,       /* V6.0.0 */
-		"03_924000_04_V6.0.0_V1.1", /* DVFS table version */
+		"04_924000_04_V6.0.0_V1.1", /* DVFS table version */
 		924000,     /* SDRAM frequency */
 		1010,       /* min voltage */
 		1010,       /* gpu min voltage */
