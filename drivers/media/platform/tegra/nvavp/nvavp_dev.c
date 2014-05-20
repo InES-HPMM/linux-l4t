@@ -1596,6 +1596,8 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		}
 
 		target_phys_addr = sg_dma_address(target_sgt->sgl);
+		if (!target_phys_addr)
+			target_phys_addr = sg_phys(target_sgt->sgl);
 		target_phys_addr += clientctx->relocs[i].target_offset;
 		writel(target_phys_addr, reloc_addr);
 		dma_buf_unmap_attachment(target_attach, target_sgt,
