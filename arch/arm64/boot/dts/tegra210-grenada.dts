@@ -762,7 +762,7 @@
 			nvidia,xbar = <&tegra_axbar>;
 			nvidia,i2s-controller-1 = <&tegra_i2s1>;
 			nvidia,i2s-controller-2 = <&tegra_i2s2>;
-			nvidia,i2s-controller-3 = <&tegra_i2s3>;
+			nvidia,i2s-controller-3 = <&tegra_i2s5>;
 			nvidia,amx-1 = <&tegra_amx1>;
 			nvidia,adx-1 = <&tegra_adx1>;
 			nvidia,sfc-1 = <&tegra_sfc1>;
