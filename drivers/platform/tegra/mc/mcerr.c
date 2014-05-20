@@ -80,7 +80,7 @@ static const struct mc_error mc_errors[] = {
 	       "EMEM address decode error",
 	       0, MC_ERR_STATUS, MC_ERR_ADR),
 	MC_ERR(MC_INT_DECERR_VPR,
-	       "MC request violates VPR requirments",
+	       "MC request violates VPR requirements",
 	       0, MC_ERR_VPR_STATUS, MC_ERR_VPR_ADR),
 	MC_ERR(MC_INT_SECURITY_VIOLATION,
 	       "non secure access to secure region",
@@ -103,6 +103,10 @@ static const struct mc_error mc_errors[] = {
 	       E_SMMU, MC_ERR_SEC_STATUS, MC_ERR_SEC_ADR),
 	MC_ERR(MC_INT_INVALID_SMMU_PAGE | MC_INT_DECERR_VPR,
 	       "VPR SMMU address translation fault",
+	       E_SMMU, MC_ERR_VPR_STATUS, MC_ERR_VPR_ADR),
+	MC_ERR(MC_INT_INVALID_SMMU_PAGE | MC_INT_DECERR_VPR |
+	       MC_INT_DECERR_EMEM,
+	       "EMEM decode error on PDE or PTE entry on VPR context",
 	       E_SMMU, MC_ERR_VPR_STATUS, MC_ERR_VPR_ADR),
 
 	/*
