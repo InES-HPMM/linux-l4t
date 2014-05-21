@@ -495,6 +495,14 @@ int __init ardbeg_sdhci_init(void)
 		board_info.board_id == BOARD_PM359)
 			tegra_sdhci_platform_data0.disable_clock_gate = 1;
 
+	/*
+	 * FIXME: Set max clk limit to 200MHz for SDMMC3 for PM375.
+	 * Requesting 208MHz results in getting 204MHz from PLL_P
+	 * and CRC errors are seen with same.
+	 */
+	if (board_info.board_id == BOARD_PM375)
+		tegra_sdhci_platform_data2.max_clk_limit = 200000000;
+
 	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
 	tegra_sdhci_platform_data2.cpu_speedo = speedo;
