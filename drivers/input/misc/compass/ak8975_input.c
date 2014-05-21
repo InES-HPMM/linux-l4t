@@ -1,5 +1,5 @@
 /* Copyright (C) 2012 Invensense, Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -504,10 +504,7 @@ static int akm_delay(struct akm_inf *inf, unsigned int delay_us)
 					(unsigned int)delay_us);
 	if (!err) {
 		if (inf->dev_id == COMPASS_ID_AK8963) {
-			if (delay_us == (AKM_INPUT_DELAY_MS_MIN * 1000))
-				mode = AKM_CNTL1_MODE_CONT2;
-			else
-				mode = AKM_CNTL1_MODE_SINGLE;
+			mode = AKM_CNTL1_MODE_SINGLE;
 			err = akm_mode_wr(inf, false, inf->range_i, mode);
 		}
 	}
