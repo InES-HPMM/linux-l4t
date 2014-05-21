@@ -39,6 +39,12 @@
 		channels = <1>;
 	};
 
+	pinmux: pinmux {
+		compatible = "nvidia,tegra124-pinmux";
+		reg = <0x0 0x70000868 0x0 0x164		/* Pad control registers */
+		       0x0 0x70003000 0x0 0x434>;	/* Mux registers */
+	};
+
 	gpio: gpio@6000d000 {
 		compatible = "nvidia,tegra124-gpio", "nvidia,tegra30-gpio";
 		reg = <0x0 0x6000d000 0x0 0x1000>;
@@ -105,12 +111,6 @@
 			      0 142 0x04
 			      0 143 0x04>;
 		#dma-cells = <1>;
-	};
-
-	pinmux: pinmux {
-		compatible = "nvidia,tegra124-pinmux";
-		reg = <0x0 0x70000868 0x0 0x164		/* Pad control registers */
-		       0x0 0x70003000 0x0 0x434>;	/* Mux registers */
 	};
 
 	/*
