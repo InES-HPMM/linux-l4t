@@ -348,7 +348,7 @@ do {									       \
 #define PLLD_MISC1_DEFAULT_VALUE	0x0
 #define PLLD_MISC1_WRITE_MASK		0x00ffffff
 
-/* PLLD2 and PLLDP */
+/* PLLD2 and PLLDP  and PLLC4 */
 #define PLLDSS_BASE_LOCK		(1 << 27)
 #define PLLDSS_BASE_LOCK_OVERRIDE	(1 << 24)
 #define PLLDSS_BASE_IDDQ		(1 << 18)
@@ -374,6 +374,8 @@ do {									       \
 #define PLLDSS_MISC1_CFG_WRITE_MASK	0xf8000000
 #define PLLDSS_MISC2_CTRL1_WRITE_MASK	0xffffffff
 #define PLLDSS_MISC3_CTRL2_WRITE_MASK	0xffffffff
+
+#define PLLC4_MISC0_DEFAULT_VALUE	0x40000000
 
 /* PLLX */
 #define PLLX_USE_DYN_RAMP		0
@@ -435,59 +437,6 @@ do {									       \
 #define PMC_PLLM_WB0_OVERRIDE_2			0x2b0
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT	27
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0xF << 27)
-
-/* PLLSS */
-#define PLLSS_CFG(c)	((c)->u.pll.misc1 + 0)
-#define PLLSS_CTRL1(c)	((c)->u.pll.misc1 + 4)
-#define PLLSS_CTRL2(c)	((c)->u.pll.misc1 + 8)
-
-#define PLLSS_BASE_DIVP_MASK		(0xF << PLL_BASE_DIVP_SHIFT)
-#define PLLSS_BASE_DIVN_MASK		(0xFF << PLL_BASE_DIVN_SHIFT)
-#define PLLSS_BASE_DIVM_MASK		(0xFF << PLL_BASE_DIVM_SHIFT)
-#define PLLSS_BASE_SOURCE_SHIFT		25
-#define PLLSS_BASE_SOURCE_MASK		(3 << PLLSS_BASE_SOURCE_SHIFT)
-
-/* PLLSS has 4-bit PDIV, but entry 15 is not allowed in h/w,
-   and s/w usage is limited to 5 */
-#define PLLSS_PDIV_MAX			14
-#define PLLSS_SW_PDIV_MAX		5
-
-#define PLLSS_MISC_LOCK_ENABLE		(0x1 << 30)
-
-#define PLLSS_BASE_LOCK_OVERRIDE	(0x1 << 24)
-#define PLLSS_BASE_LOCK			(0x1 << 27)
-#define PLLSS_BASE_IDDQ			(0x1 << 19)
-
-#define PLLSS_MISC_DEFAULT_VALUE ( \
-	(PLLSS_MISC_KCP	<< 25) | \
-	(PLLSS_MISC_KVCO << 24) | \
-	(PLLSS_MISC_SETUP << 0))
-#define PLLSS_CFG_DEFAULT_VALUE ( \
-	(PLLSS_EN_SDM << 31) | \
-	(PLLSS_EN_SSC << 30) | \
-	(PLLSS_EN_DITHER2 << 29) | \
-	(PLLSS_EN_DITHER << 28) | \
-	(PLLSS_SDM_RESET << 27) | \
-	(PLLSS_CLAMP << 22))
-#define PLLSS_CTRL1_DEFAULT_VALUE \
-	((PLLSS_SDM_SSC_MAX << 16) | (PLLSS_SDM_SSC_MIN << 0))
-#define PLLSS_CTRL2_DEFAULT_VALUE \
-	((PLLSS_SDM_SSC_STEP << 16) | (PLLSS_SDM_DIN << 0))
-
-/* PLLSS configuration */
-#define PLLSS_MISC_KCP			0
-#define PLLSS_MISC_KVCO			0
-#define PLLSS_MISC_SETUP		0
-#define PLLSS_EN_SDM			0
-#define PLLSS_EN_SSC			0
-#define PLLSS_EN_DITHER2		0
-#define PLLSS_EN_DITHER			1
-#define PLLSS_SDM_RESET			0
-#define PLLSS_CLAMP			0
-#define PLLSS_SDM_SSC_MAX		0
-#define PLLSS_SDM_SSC_MIN		0
-#define PLLSS_SDM_SSC_STEP		0
-#define PLLSS_SDM_DIN			0
 
 /* PLLRE */
 #define PLLRE_BASE_DIVP_SHIFT		16
@@ -3214,7 +3163,8 @@ static void plldss_defaults(struct clk *c, u32 misc0_val, u32 misc1_val,
 
 		/*
 		 * If SSC is used, check all settings, otherwise just confirm
-		 * that SSC is not used on boot as well.
+		 * that SSC is not used on boot as well. Do nothing when using
+		 * this function for PLLC4 that has only MISC0.
 		 */
 		if (c->u.pll.controls->ssc_en_mask) {
 			default_val = misc1_val;
@@ -3226,7 +3176,7 @@ static void plldss_defaults(struct clk *c, u32 misc0_val, u32 misc1_val,
 			default_val = misc3_val;
 			PLL_MISC_CHK_DEFAULT(c, 3, default_val,
 					     PLLDSS_MISC3_CTRL2_WRITE_MASK);
-		} else {
+		} else if (c->u.pll.misc1) {
 			default_val = misc1_val;
 			PLL_MISC_CHK_DEFAULT(c, 1, default_val,
 					     PLLDSS_MISC1_CFG_WRITE_MASK &
@@ -3251,6 +3201,13 @@ static void plldss_defaults(struct clk *c, u32 misc0_val, u32 misc1_val,
 	val |= PLLDSS_BASE_IDDQ;
 	val &= ~PLLDSS_BASE_LOCK_OVERRIDE;
 	clk_writel(val, c->reg);
+
+	/* When using this function for PLLC4 exit here */
+	if (!c->u.pll.misc1) {
+		pll_writel_delay(misc0_val, c->reg + c->u.pll.misc0);
+		return;
+	}
+
 	clk_writel(misc0_val, c->reg + c->u.pll.misc0);
 	clk_writel(misc1_val & (~PLLDSS_MISC1_CFG_EN_SSC),
 		   c->reg + c->u.pll.misc1); /* if SSC used set by 1st enable */
@@ -3338,6 +3295,29 @@ static void tegra21_plldp_clk_init(struct clk *c)
 
 static struct clk_ops tegra_plldp_ops = {
 	.init			= tegra21_plldp_clk_init,
+	.enable			= tegra_pll_clk_enable,
+	.disable		= tegra_pll_clk_disable,
+	.set_rate		= tegra_pll_clk_set_rate,
+};
+
+/*
+ * PLLC4
+ * Base and misc0 layout is the same as PLLD2/PLLDP, but no SDM/SSC support.
+ * VCO is exposed to the clock tree via fixed 1/3 and 1/5 dividers.
+ */
+static void pllc4_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	plldss_defaults(c, PLLC4_MISC0_DEFAULT_VALUE, 0, 0, 0);
+}
+
+static void tegra21_pllc4_vco_init(struct clk *c)
+{
+	plldss_select_ref(c);
+	tegra_pll_clk_init(c);
+}
+
+static struct clk_ops tegra_pllc4_vco_ops = {
+	.init			= tegra21_pllc4_vco_init,
 	.enable			= tegra_pll_clk_enable,
 	.disable		= tegra_pll_clk_disable,
 	.set_rate		= tegra_pll_clk_set_rate,
@@ -3497,7 +3477,6 @@ static struct clk_ops tegra_pllx_ops = {
 	.disable		= tegra_pll_clk_disable,
 	.set_rate		= tegra_pll_clk_set_rate,
 };
-
 
 /* FIXME: pllm suspend/resume */
 
@@ -3684,214 +3663,6 @@ static struct clk_ops tegra_pllm_ops = {
 	.set_rate		= tegra21_pllm_clk_set_rate,
 };
 
-
-static u8 pllss_p[PLLSS_PDIV_MAX + 1] = {
-/* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
-/* p: */ 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
-
-static u32 pllss_round_p_to_pdiv(u32 p, u32 *pdiv)
-{
-	if (!p || (p > PLLSS_SW_PDIV_MAX + 1))
-		return -EINVAL;
-
-	if (pdiv)
-		*pdiv = p - 1;
-	return p;
-}
-
-static void pllss_set_defaults(struct clk *c, unsigned long input_rate)
-{
-	u32 val;
-
-	clk_writel(PLLSS_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
-	clk_writel(PLLSS_CFG_DEFAULT_VALUE, c->reg + PLLSS_CFG(c));
-	clk_writel(PLLSS_CTRL1_DEFAULT_VALUE, c->reg + PLLSS_CTRL1(c));
-	clk_writel(PLLSS_CTRL2_DEFAULT_VALUE, c->reg + PLLSS_CTRL2(c));
-
-	val = clk_readl(c->reg + PLL_MISC(c));
-#if USE_PLL_LOCK_BITS
-	val |= PLLSS_MISC_LOCK_ENABLE;
-#else
-	val &= ~PLLSS_MISC_LOCK_ENABLE;
-#endif
-	clk_writel(val, c->reg + PLL_MISC(c));
-
-	val = clk_readl(c->reg + PLL_BASE);
-	if (c->state != ON)
-		val |= PLLSS_BASE_IDDQ;
-	else
-		BUG_ON(val & PLLSS_BASE_IDDQ && !tegra_platform_is_linsim());
-	val &= ~PLLSS_BASE_LOCK_OVERRIDE;
-	clk_writel(val, c->reg + PLL_BASE);
-}
-
-static void tegra21_pllss_clk_init(struct clk *c)
-{
-	unsigned long input_rate;
-	u32 m, n, p_div, val;
-
-	val = clk_readl(c->reg + PLL_BASE);
-	BUG_ON(((val & PLLSS_BASE_SOURCE_MASK)
-			>> PLLSS_BASE_SOURCE_SHIFT) != 0);
-
-	input_rate = clk_get_rate(c->parent);
-
-	/* clip vco_min to exact multiple of input rate to avoid crossover
-	   by rounding */
-	c->u.pll.vco_min =
-		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
-	c->min_rate =
-		DIV_ROUND_UP(c->u.pll.vco_min, pllss_p[PLLSS_SW_PDIV_MAX]);
-
-	/* Assuming bootloader does not initialize these PLLs */
-	n = (val & PLLSS_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
-#ifndef CONFIG_ARCH_TEGRA_21x_SOC
-	BUG_ON(n > 1);
-#endif
-
-	/* Reset default value of those PLLs are not safe.
-	   For example, they cause problem in LP0 resume.
-	   Replace them here with the safe value. */
-	m = PLL_FIXED_MDIV(c, input_rate);
-	n = c->u.pll.vco_min / input_rate * m;
-	p_div = PLLSS_SW_PDIV_MAX;
-	val &= ~PLLSS_BASE_DIVM_MASK;
-	val &= ~PLLSS_BASE_DIVN_MASK;
-	val &= ~PLLSS_BASE_DIVP_MASK;
-	val |= m << PLL_BASE_DIVM_SHIFT;
-	val |= n << PLL_BASE_DIVN_SHIFT;
-	val |= p_div << PLL_BASE_DIVP_SHIFT;
-	clk_writel(val, c->reg + PLL_BASE);
-
-	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
-
-	m = (val & PLLSS_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-	n = (val & PLLSS_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
-	p_div = (val & PLLSS_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT;
-
-	c->div = m * pllss_p[p_div];
-	c->mul = n;
-
-	/* FIXME: hack for bringup */
-	pr_info("%s: val=%08x m=%d n=%d p_div=%d input_rate=%lu\n",
-		c->name, val, m, n, p_div, input_rate);
-
-	pllss_set_defaults(c, input_rate);
-}
-
-static int tegra21_pllss_clk_enable(struct clk *c)
-{
-	u32 val;
-	pr_debug("%s on clock %s\n", __func__, c->name);
-
-	pll_do_iddq(c, PLL_BASE, PLLSS_BASE_IDDQ, false);
-
-	val = clk_readl(c->reg + PLL_BASE);
-	val |= PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
-
-	tegra21_pll_clk_wait_for_lock(c, c->reg + PLL_BASE, PLLSS_BASE_LOCK);
-	return 0;
-}
-
-static void tegra21_pllss_clk_disable(struct clk *c)
-{
-	u32 val;
-	pr_debug("%s on clock %s\n", __func__, c->name);
-
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
-
-	pll_do_iddq(c, PLL_BASE, PLLSS_BASE_IDDQ, true);
-}
-
-static int tegra21_pllss_clk_set_rate(struct clk *c, unsigned long rate)
-{
-	u32 val, pdiv, old_base;
-	unsigned long input_rate;
-	struct clk_pll_freq_table cfg, old_cfg;
-	const struct clk_pll_freq_table *sel = &cfg;
-
-	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
-	input_rate = clk_get_rate(c->parent);
-
-	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
-		return -EINVAL;
-
-	c->mul = sel->n;
-	c->div = sel->m * sel->p;
-
-	val = clk_readl(c->reg + PLL_BASE);
-	PLL_BASE_PARSE(PLLSS, old_cfg, val);
-	old_cfg.p = pllss_p[old_cfg.p];
-
-	if ((sel->m == old_cfg.m) && (sel->n == old_cfg.n) &&
-	    (sel->p == old_cfg.p))
-		return 0;
-
-	val = old_base = clk_readl(c->reg + PLL_BASE);
-	val &= ~(PLLSS_BASE_DIVM_MASK
-		| PLLSS_BASE_DIVN_MASK | PLLSS_BASE_DIVP_MASK);
-	val |= (sel->m << PLL_BASE_DIVM_SHIFT)
-		| (sel->n << PLL_BASE_DIVN_SHIFT)
-		| (pdiv << PLL_BASE_DIVP_SHIFT);
-
-	if (val == old_base)
-		return 0;
-
-	if (c->state == ON) {
-		/* Use "ENABLE" pulse without placing PLL into IDDQ */
-		val &= ~PLL_BASE_ENABLE;
-		old_base &= ~PLL_BASE_ENABLE;
-		pll_writel_delay(old_base, c->reg + PLL_BASE);
-	}
-
-	clk_writel(val, c->reg + PLL_BASE);
-
-	if (c->state == ON) {
-		val |= PLL_BASE_ENABLE;
-		clk_writel(val, c->reg + PLL_BASE);
-		tegra21_pll_clk_wait_for_lock(
-			c, c->reg + PLL_BASE, PLLSS_BASE_LOCK);
-	}
-	return 0;
-}
-
-#ifdef CONFIG_PM_SLEEP
-static void tegra21_pllss_clk_resume_enable(struct clk *c)
-{
-	unsigned long rate = clk_get_rate_all_locked(c->parent);
-	u32 val = clk_readl(c->reg + PLL_BASE);
-	enum clk_state state = c->state;
-
-	if (val & PLL_BASE_ENABLE)
-		return;		/* already resumed */
-
-	/* Restore input divider */
-	val &= ~PLLSS_BASE_DIVM_MASK;
-	val |= PLL_FIXED_MDIV(c, rate) << PLL_BASE_DIVM_SHIFT;
-	clk_writel(val, c->reg + PLL_BASE);
-
-	/* temporarily sync h/w and s/w states, final sync happens
-	   in tegra_clk_resume later */
-	c->state = OFF;
-	pllss_set_defaults(c, rate);
-
-	rate = clk_get_rate_all_locked(c) + 1;
-	tegra21_pllss_clk_set_rate(c, rate);
-	tegra21_pllss_clk_enable(c);
-	c->state = state;
-}
-#endif
-
-static struct clk_ops tegra_pllss_ops = {
-	.init			= tegra21_pllss_clk_init,
-	.enable			= tegra21_pllss_clk_enable,
-	.disable		= tegra21_pllss_clk_disable,
-	.set_rate		= tegra21_pllss_clk_set_rate,
-	/* s/w policy, no set_parent, always use tegra_pll_ref */
-};
 
 /* non-monotonic mapping below is not a typo */
 static u8 pllre_p[PLLRE_PDIV_MAX + 1] = {
@@ -7126,6 +6897,89 @@ static struct clk tegra_pll_dp = {
 	},
 };
 
+static struct clk_pll_freq_table tegra_pllc4_vco_freq_table[] = {
+	{ 12000000, 600000000,  50, 1, 1},
+	{ 13000000, 600000000,  46, 1, 1},	/* actual: 598.0 MHz */
+	{ 38400000, 600000000,  31, 2, 1},	/* actual: 595.2 MHz */
+	{ 0, 0, 0, 0, 0, 0 },
+};
+
+struct clk_pll_controls pllc4_controls = {
+	.enable_mask = PLL_BASE_ENABLE,
+	.bypass_mask = PLL_BASE_BYPASS,
+	.iddq_mask = PLLDSS_BASE_IDDQ,
+	.iddq_reg_idx = PLL_BASE_IDX,
+	.lock_mask = PLLDSS_BASE_LOCK,
+	.lock_reg_idx = PLL_BASE_IDX,
+};
+
+static struct clk_pll_div_layout pllc4_div_layout = {
+	.mdiv_shift = 0,
+	.mdiv_mask = 0xff,
+	.ndiv_shift = 8,
+	.ndiv_mask = 0xff << 8,
+	.pdiv_shift = 19,
+	.pdiv_mask = 0x1f << 19,
+	.pdiv_to_p = pll_qlin_pdiv_to_p,
+	.pdiv_max = PLL_QLIN_PDIV_MAX,
+};
+
+static struct clk tegra_pll_c4_vco = {
+	.name      = "pll_c4",
+	.ops       = &tegra_pllc4_vco_ops,
+	.reg       = 0x5a4,
+	.parent    = &tegra_pll_ref,	/* s/w policy, always tegra_pll_ref */
+	.max_rate  = 1080000000,
+	.u.pll = {
+		.input_min = 9600000,
+		.input_max = 800000000,
+		.cf_min    = 9600000,
+		.cf_max    = 19200000,
+		.vco_min   = 500000000,
+		.vco_max   = 1080000000,
+		.freq_table = tegra_pllc4_vco_freq_table,
+		.lock_delay = 300,
+		.misc0 = 0x5a8 - 0x5a4,
+		.controls = &pllc4_controls,
+		.div_layout = &pllc4_div_layout,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.set_defaults = pllc4_set_defaults,
+		.vco_out = true,
+	},
+};
+
+static struct clk tegra_pll_c4_out0 = {
+	.name      = "pll_c4_out0",
+	.ops       = &tegra_pll_out_ops,
+	.parent    = &tegra_pll_c4_vco,
+};
+
+static struct clk tegra_pll_c4_out1 = {
+	.name      = "pll_c4_out1",
+	.ops       = &tegra_pll_out_fixed_ops,
+	.parent    = &tegra_pll_c4_vco,
+	.mul       = 1,
+	.div       = 3,
+};
+
+static struct clk tegra_pll_c4_out2 = {
+	.name      = "pll_c4_out2",
+	.ops       = &tegra_pll_out_fixed_ops,
+	.parent    = &tegra_pll_c4_vco,
+	.mul       = 1,
+	.div       = 5,
+};
+
+static struct clk tegra_pll_c4_out3 = {
+	.name      = "pll_c4_out3",
+	.ops       = &tegra_pll_div_ops,
+	.flags     = DIV_U71,
+	.parent    = &tegra_pll_c4_out0,
+	.reg       = 0x5e4,
+	.reg_shift = 0,
+	.max_rate  = 1080000000,
+};
+
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	/* 1 GHz */
 	{ 12000000, 1000000000, 166, 1, 2},	/* actual: 996.0 MHz */
@@ -7387,35 +7241,6 @@ static struct clk tegra_dfll_cpu = {
 	.ops       = &tegra_dfll_ops,
 	.reg	   = 0x2f4,
 	.max_rate  = 3000000000UL,
-};
-
-static struct clk_pll_freq_table tegra_pllc4_freq_table[] = {
-	{ 12000000, 600000000, 100, 1, 2},
-	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
-	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
-	{ 38400000, 600000000,  62, 2, 2},	/* actual: 595.2 MHz */
-	{ 0, 0, 0, 0, 0, 0 },
-};
-
-static struct clk tegra_pll_c4 = {
-	.name      = "pll_c4",
-	.flags     = PLL_ALT_MISC_REG,
-	.ops       = &tegra_pllss_ops,
-	.reg       = 0x5a4,
-	.parent    = &tegra_pll_ref,	/* s/w policy, always tegra_pll_ref */
-	.max_rate  = 600000000,
-	.u.pll = {
-		.input_min = 12000000,
-		.input_max = 1000000000,
-		.cf_min    = 12000000,
-		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
-		.vco_min   = 600000000,
-		.vco_max   = 1200000000,
-		.freq_table = tegra_pllc4_freq_table,
-		.lock_delay = 300,
-		.misc1 = 0x8,
-		.round_p_to_pdiv = pllss_round_p_to_pdiv,
-	},
 };
 
 static struct clk tegra_pll_re_vco = {
@@ -7869,7 +7694,7 @@ static struct clk_mux_sel mux_pllc_pllp_clkm_plla_pllc4[] = {
 	{ .input = &tegra_pll_p,  .value = 4},
 	{ .input = &tegra_clk_m,  .value = 5},
 	{ .input = &tegra_pll_a_out0, .value = 6},
-	{ .input = &tegra_pll_c4, .value = 7},
+	{ .input = &tegra_pll_c4_out0, .value = 7},
 	{ 0, 0},
 };
 
@@ -7885,7 +7710,7 @@ static struct clk_mux_sel mux_pllc_pllp_plla_pllc4[] = {
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_pll_a_out0, .value = 3},
 	/* Skip C2(4) */
-	{ .input = &tegra_pll_c4, .value = 5},
+	{ .input = &tegra_pll_c4_out0, .value = 5},
 	{ 0, 0},
 };
 
@@ -7905,7 +7730,7 @@ static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_pllc4[] = {
 	{ .input = &tegra_pll_c3, .value = 3},
 	{ .input = &tegra_pll_p, .value = 4},
 	{ .input = &tegra_pll_a1, .value = 6},
-	{ .input = &tegra_pll_c4, .value = 7},
+	{ .input = &tegra_pll_c4_out0, .value = 7},
 	{ 0, 0},
 };
 
@@ -7916,7 +7741,7 @@ static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4[] = {
 	{ .input = &tegra_pll_c2, .value = 4},
 	{ .input = &tegra_pll_c3, .value = 5},
 	{ .input = &tegra_clk_m, .value = 6},
-	{ .input = &tegra_pll_c4, .value = 7},
+	{ .input = &tegra_pll_c4_out0, .value = 7},
 	{ 0, 0},
 };
 
@@ -8023,7 +7848,7 @@ static struct clk_mux_sel mux_pllp_out3_pllc_c2_clkm_pllp_pllc4[] = {
 	{ .input = &tegra_pll_c2, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
 	{ .input = &tegra_pll_p, .value = 4},
-	{ .input = &tegra_pll_c4, .value = 5},
+	{ .input = &tegra_pll_c4_out0, .value = 5},
 	{ 0, 0},
 };
 
@@ -8987,7 +8812,11 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
 	&tegra_pll_d2,
-	&tegra_pll_c4,
+	&tegra_pll_c4_vco,
+	&tegra_pll_c4_out0,
+	&tegra_pll_c4_out1,
+	&tegra_pll_c4_out2,
+	&tegra_pll_c4_out3,
 	&tegra_pll_dp,
 	&tegra_pll_re_vco,
 	&tegra_pll_re_out,
@@ -9360,7 +9189,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 20];
+			   PERIPH_CLK_SOURCE_NUM + 21];
 
 static int tegra21_clk_suspend(void)
 {
@@ -9377,6 +9206,7 @@ static int tegra21_clk_suspend(void)
 
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
+	*ctx++ = clk_readl(tegra_pll_c4_out3.reg);
 
 	*ctx++ = clk_readl(tegra_clk_sclk.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
@@ -9431,7 +9261,7 @@ static void tegra21_clk_resume(void)
 	const u32 *ctx = clk_rst_suspend;
 	u32 val;
 	u32 pll_p_out12, pll_p_out34;
-	u32 pll_a_out0, pll_c_out1;
+	u32 pll_a_out0, pll_c_out1, pll_c4_out3;
 	struct clk *p;
 
 	/* FIXME: OSC_CTRL already restored by warm boot code? */
@@ -9454,7 +9284,6 @@ static void tegra21_clk_resume(void)
 	pll_p_out34 = *ctx++;
 	clk_writel(pll_p_out34 | val, tegra_pll_p_out3.reg);
 
-	tegra21_pllss_clk_resume_enable(&tegra_pll_c4);
 	tegra_pll_clk_resume_enable(&tegra_pll_c);
 	tegra_pll_clk_resume_enable(&tegra_pll_c2);
 	tegra_pll_clk_resume_enable(&tegra_pll_c3);
@@ -9464,6 +9293,7 @@ static void tegra21_clk_resume(void)
 	tegra_pll_clk_resume_enable(&tegra_pll_d2);
 	tegra_pll_clk_resume_enable(&tegra_pll_dp);
 	tegra_pll_clk_resume_enable(&tegra_pll_x);
+	tegra_pll_out_resume_enable(&tegra_pll_c4_out0);
 	tegra21_pllre_clk_resume_enable(&tegra_pll_re_out);
 
 	udelay(1000);
@@ -9473,6 +9303,8 @@ static void tegra21_clk_resume(void)
 	clk_writel(pll_a_out0 | val, tegra_pll_a_out0.reg);
 	pll_c_out1 = *ctx++;
 	clk_writel(pll_c_out1 | val, tegra_pll_c_out1.reg);
+	pll_c4_out3 = *ctx++;
+	clk_writel(pll_c4_out3 | val, tegra_pll_c4_out3.reg);
 
 	clk_writel(*ctx++, tegra_clk_sclk.reg);
 	clk_writel(*ctx++, tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
@@ -9540,9 +9372,6 @@ static void tegra21_clk_resume(void)
 	clk_writel(pll_p_out12, tegra_pll_p_out1.reg);
 	clk_writel(pll_p_out34, tegra_pll_p_out3.reg);
 
-	p = &tegra_pll_c4;
-	if (p->state == OFF)
-		tegra21_pllss_clk_disable(p);
 	p = &tegra_pll_c;
 	if (p->state == OFF)
 		p->ops->disable(p);
@@ -9570,12 +9399,16 @@ static void tegra21_clk_resume(void)
 	p = &tegra_pll_x;
 	if (p->state == OFF)
 		p->ops->disable(p);
+	p = &tegra_pll_c4_vco;
+	if (p->state == OFF)
+		p->ops->disable(p);
 	p = &tegra_pll_re_vco;
 	if (p->state == OFF)
 		tegra21_pllre_clk_disable(p);
 
 	clk_writel(pll_a_out0, tegra_pll_a_out0.reg);
 	clk_writel(pll_c_out1, tegra_pll_c_out1.reg);
+	clk_writel(pll_c4_out3, tegra_pll_c4_out3.reg);
 
 	/* Since EMC clock is not restored, and may not preserve parent across
 	   suspend, update current state, and mark EMC DFS as out of sync */
