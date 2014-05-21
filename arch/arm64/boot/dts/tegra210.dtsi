@@ -161,10 +161,10 @@
 	timer@60005000 {
 		compatible = "nvidia,tegra210-timer";
 		reg = <0x0 0x60005000 0x0 0x400>;
-		interrupts = <0 41 4>,
-			     <0 42 4>,
-			     <0 121 4>,
-			     <0 152 4>;
+		interrupts = <0 176 4>,
+			     <0 177 4>,
+			     <0 178 4>,
+			     <0 179 4>;
 		clock-frequency = <38400000>;
 	};
 
