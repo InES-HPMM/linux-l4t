@@ -2,6 +2,8 @@
 # Makefile for linux/drivers/platform/tegra
 # Tegra Platform-Specific Drivers
 #
+subdir-ccflags-y := -Werror
+
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_TEGRA_USB_SHARED_PAD)      += tegra_usb_pad_ctrl.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
@@ -29,11 +31,26 @@ asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
 
 
 obj-y += ahb.o
+
+# FIXME: Bug 1211919:
+# Remove CFLAGS_common.o flag for common.o when common.c
+# becomes stabilized for t210.
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+CFLAGS_common.o = -Werror -Wno-unused-function
+#endif
+
 obj-y += common.o
 obj-y += devices.o
 obj-y += io.o
 obj-y += clock.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
+
+# FIXME: Bug 1211919:
+# Remove CFLAGS_tegra21_clocks.o flag when tegra21_clocks.c becomes
+# stabilized.
+CFLAGS_tegra21_clocks.o = -Werror -Wno-unused-function -Wno-unused-variable
+
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_clocks.o
 
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups.o
@@ -57,6 +74,12 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += powergate-t21x.o
 
 obj-y += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
+
+# FIXME: Bug 1211919:
+# Remove CFLAGS_tegra21_dvfs.o flag when tegra21_dvfs.c becomes
+# stabilized.
+CFLAGS_tegra21_dvfs.o = -Werror -Wno-unused-function -Wno-unused-variable
+
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_dvfs.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
