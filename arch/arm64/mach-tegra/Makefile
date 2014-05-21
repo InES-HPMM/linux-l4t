@@ -5,6 +5,7 @@ ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
              -I$(srctree)/arch/arm/mach-tegra
 asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
              -I$(srctree)/arch/arm/mach-tegra
+subdir-ccflags-y := -Werror
 
 # Assemblies
 obj-y += reset-handler.o
