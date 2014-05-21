@@ -64,8 +64,8 @@ ARCH ?= $(shell echo $(uname_M) | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 				  -e s/sh[234].*/sh/ -e s/aarch64.*/arm64/ )
 NO_PERF_REGS := 1
 
-CC = $(CROSS_COMPILE)gcc
-AR = $(CROSS_COMPILE)ar
+export CC = $(CROSS_COMPILE)gcc
+export AR = $(CROSS_COMPILE)ar
 
 # Additional ARCH settings for x86
 ifeq ($(ARCH),i386)
