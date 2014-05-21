@@ -254,9 +254,9 @@ static inline void arch_decomp_setup(void)
 	 * depending on oscillator frequency
 	 * clk_m runs at 13 Mhz
 	 */
-	#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 		uart_dll = DEBUG_UART_DLL_408;
-	#else
+#else
 	addr = (volatile u32 *)PLLP_BASE;
 	val = *addr;
 	if (val & PLLP_BASE_OVERRIDE) {
@@ -279,7 +279,7 @@ static inline void arch_decomp_setup(void)
 			break;
 		}
 	}
-	#endif
+#endif
 
 	/* Set up debug UART. */
 	uart[UART_LCR << DEBUG_UART_SHIFT] |= UART_LCR_DLAB;
