@@ -290,6 +290,7 @@ static struct core_edp_entry core_edp_table[] = {
 }
 
 #define EDP_PARAMS_COMMON_PART						\
+{									\
 	.temp_scaled      = 10,						\
 	.dyn_scaled       = 1000,					\
 	.dyn_consts_n     = { 950,  1399, 2166, 3041 },			\
@@ -298,28 +299,29 @@ static struct core_edp_entry core_edp_table[] = {
 	.ijk_scaled       = 100000,					\
 	.leakage_min      = 30,						\
 	/* .volt_temp_cap = { 70, 1240 }, - TODO for T124 */		\
-	.leakage_consts_ijk = LEAKAGE_CONSTS_IJK_COMMON
+	.leakage_consts_ijk = LEAKAGE_CONSTS_IJK_COMMON			\
+}
 
-static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
+static struct tegra_edp_cpu_powermodel_params t12x_cpu_powermodel_params[] = {
 	{
-		.cpu_speedo_id      = 0, /* Engg SKU */
-		EDP_PARAMS_COMMON_PART,
+		.cpu_speedo_id = 0, /* Engg SKU */
+		.common = EDP_PARAMS_COMMON_PART,
 	},
 	{
-		.cpu_speedo_id      = 1, /* Prod SKU */
-		EDP_PARAMS_COMMON_PART,
+		.cpu_speedo_id = 1, /* Prod SKU */
+		.common = EDP_PARAMS_COMMON_PART,
 	},
 	{
-		.cpu_speedo_id      = 2, /* Prod SKU */
-		EDP_PARAMS_COMMON_PART,
+		.cpu_speedo_id = 2, /* Prod SKU */
+		.common = EDP_PARAMS_COMMON_PART,
 	},
 	{
-		.cpu_speedo_id      = 3, /* Prod SKU */
-		EDP_PARAMS_COMMON_PART,
+		.cpu_speedo_id = 3, /* Prod SKU */
+		.common = EDP_PARAMS_COMMON_PART,
 	},
 	{
-		.cpu_speedo_id      = 5, /* Prod SKU */
-		EDP_PARAMS_COMMON_PART,
+		.cpu_speedo_id = 5, /* Prod SKU */
+		.common = EDP_PARAMS_COMMON_PART,
 	},
 };
 
@@ -362,6 +364,7 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
  * comments for reference.
  */
 #define EDP13_PARAMS_COMMON_PART					\
+{									\
 	.temp_scaled      = 10,						\
 	.dyn_scaled       = 1000,					\
 	.dyn_consts_n     = { 3900, 5900 }, /* { save: 2700, 5900 } */	\
@@ -369,85 +372,90 @@ static struct tegra_edp_cpu_leakage_params t12x_leakage_params[] = {
 	.leakage_consts_n = { 100, 100 }, /* { save: 60, 100 } */	\
 	.ijk_scaled       = 1000,					\
 	.leakage_min      = 30,						\
-	.leakage_consts_ijk = LEAKAGE13_CONSTS_IJK_COMMON
+	 .leakage_consts_ijk = LEAKAGE13_CONSTS_IJK_COMMON		\
+}
 
-static struct tegra_edp_cpu_leakage_params t13x_leakage_params[] = {
+static struct tegra_edp_cpu_powermodel_params t13x_cpu_powermodel_params[] = {
 	{
 		.cpu_speedo_id = 1, /* array-index[0] is DSC */
-		EDP13_PARAMS_COMMON_PART,
-		.safety_cap    = { 2500000, 2300000, },
+		.common = EDP13_PARAMS_COMMON_PART,
+		.safety_cap = { 2500000, 2300000, },
 	},
 	{
 		.cpu_speedo_id = 1, /* array-index[1] is MID */
-		EDP13_PARAMS_COMMON_PART,
-		/* .safety_cap    = { 2500000, 2500000, }, */
+		.common = EDP13_PARAMS_COMMON_PART,
+		/* .safety_cap = { 2500000, 2500000, }, */
 	},
 };
 
 #ifdef CONFIG_TEGRA_GPU_EDP
-static struct tegra_edp_gpu_leakage_params t12x_gpu_leakage_params = {
-	.temp_scaled      = 10,
-	.dyn_scaled       = 1000,
-	.dyn_consts_n     = 10646,
-	.consts_scaled    = 1,
-	.leakage_consts_n = 1,
-	.ijk_scaled       = 100000,
-	.leakage_consts_ijk = {
-		/* i = 0 */
-		{ {  -208796792,     37746202,    -9648869,     725660, },
-		  {   704446675,   -133808535,    34470023,   -2464142, },
-		  {  -783701649,    146557393,   -38623024,    2654269, },
-		  {   292709580,    -51246839,    13984499,    -934964, },
-		},
-		/* i = 1 */
-		{ {   115095343,    -65602614,    11251896,    -838394, },
-		  {  -394753929,    263095142,   -49006854,    3326269, },
-		  {   441644020,   -313320338,    61612126,   -3916786, },
-		  {  -164021554,    118634317,   -24406245,    1517573, },
-		},
-		/* i = 2 */
-		{ {   -38857760,     12243796,    -1964159,     181232, },
-		  {   143265078,    -71110695,    13985680,    -917947, },
-		  {  -171456530,     98906114,   -21261015,    1216159, },
-		  {    67437536,    -40520060,     9265259,    -484818, },
-		},
-		/* i = 3 */
-		{ {     1795940,      -345535,       83004,     -20007, },
-		  {    -8549105,      6333235,    -1479815,     115441, },
-		  {    12192546,    -10880741,     2632212,    -161404, },
-		  {    -5328587,      4953756,    -1215038,      64556, },
+static struct tegra_edp_gpu_powermodel_params t12x_gpu_powermodel_params = {
+	.common = {
+		.temp_scaled      = 10,
+		.dyn_scaled       = 1000,
+		.dyn_consts_n     = { 10646, },
+		.consts_scaled    = 1,
+		.leakage_consts_n = { 1, },
+		.ijk_scaled       = 100000,
+		.leakage_min      = 30,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {  -208796792,   37746202,  -9648869,   725660, },
+			  {   704446675, -133808535,  34470023, -2464142, },
+			  {  -783701649,  146557393, -38623024,  2654269, },
+			  {   292709580,  -51246839,  13984499,  -934964, },
+			},
+			/* i = 1 */
+			{ {   115095343,  -65602614,  11251896,  -838394, },
+			  {  -394753929,  263095142, -49006854,  3326269, },
+			  {   441644020, -313320338,  61612126, -3916786, },
+			  {  -164021554,  118634317, -24406245,  1517573, },
+			},
+			/* i = 2 */
+			{ {   -38857760,   12243796,  -1964159,   181232, },
+			  {   143265078,  -71110695,  13985680,  -917947, },
+			  {  -171456530,   98906114, -21261015,  1216159, },
+			  {    67437536,  -40520060,   9265259,  -484818, },
+			},
+			/* i = 3 */
+			{ {     1795940,    -345535,     83004,   -20007, },
+			  {    -8549105,    6333235,  -1479815,   115441, },
+			  {    12192546,  -10880741,   2632212,  -161404, },
+			  {    -5328587,    4953756,  -1215038,    64556, },
+			},
 		},
 	},
-	.leakage_min = 30,
 };
 
-struct tegra_edp_gpu_leakage_params *tegra12x_get_gpu_leakage_params(void)
+struct tegra_edp_gpu_powermodel_params *tegra12x_get_gpu_powermodel_params(void)
 {
-	return &t12x_gpu_leakage_params;
+	return &t12x_gpu_powermodel_params;
 }
 
-struct tegra_edp_gpu_leakage_params *tegra13x_get_gpu_leakage_params(void)
+struct tegra_edp_gpu_powermodel_params *tegra13x_get_gpu_powermodel_params(void)
 {
-	return &t12x_gpu_leakage_params; /* T132 has same GPU_EDP params */
+	return &t12x_gpu_powermodel_params; /* T132 has same GPU_EDP params */
 }
 #endif
 
-struct tegra_edp_cpu_leakage_params *tegra12x_get_leakage_params(int index,
+struct tegra_edp_cpu_powermodel_params *tegra12x_get_cpu_powermodel_params(
+							int index,
 							unsigned int *sz)
 {
-	BUG_ON(index >= ARRAY_SIZE(t12x_leakage_params));
+	BUG_ON(index >= ARRAY_SIZE(t12x_cpu_powermodel_params));
 	if (sz)
-		*sz = ARRAY_SIZE(t12x_leakage_params);
-	return &t12x_leakage_params[index];
+		*sz = ARRAY_SIZE(t12x_cpu_powermodel_params);
+	return &t12x_cpu_powermodel_params[index];
 }
 
-struct tegra_edp_cpu_leakage_params *tegra13x_get_leakage_params(int index,
+struct tegra_edp_cpu_powermodel_params *tegra13x_get_cpu_powermodel_params(
+							int index,
 							unsigned int *sz)
 {
-	BUG_ON(index >= ARRAY_SIZE(t13x_leakage_params));
+	BUG_ON(index >= ARRAY_SIZE(t13x_cpu_powermodel_params));
 	if (sz)
-		*sz = ARRAY_SIZE(t13x_leakage_params);
-	return &t13x_leakage_params[index];
+		*sz = ARRAY_SIZE(t13x_cpu_powermodel_params);
+	return &t13x_cpu_powermodel_params[index];
 }
 #endif
 
