@@ -158,12 +158,12 @@ void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value)
 
 static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
-	return pinctrl_request_gpio(offset);
+	return pinctrl_request_gpio(chip->base + offset);
 }
 
 static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
-	pinctrl_free_gpio(offset);
+	pinctrl_free_gpio(chip->base + offset);
 	tegra_gpio_disable(offset);
 }
 
@@ -184,17 +184,33 @@ static int tegra_gpio_get(struct gpio_chip *chip, unsigned offset)
 
 static int tegra_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 {
+	int ret;
+
 	tegra_gpio_mask_write(GPIO_MSK_OE(offset), offset, 0);
 	tegra_gpio_enable(offset);
+
+	ret = pinctrl_gpio_direction_input(chip->base + offset);
+	if (ret < 0)
+		dev_err(chip->dev,
+			"Tegra gpio input: pinctrl input failed: %d\n", ret);
+
 	return 0;
 }
 
 static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 					int value)
 {
+	int ret;
+
 	tegra_gpio_set(chip, offset, value);
 	tegra_gpio_mask_write(GPIO_MSK_OE(offset), offset, 1);
 	tegra_gpio_enable(offset);
+
+	ret = pinctrl_gpio_direction_output(chip->base + offset);
+	if (ret < 0)
+		dev_err(chip->dev,
+			"Tegra gpio output: pinctrl output failed: %d\n", ret);
+
 	return 0;
 }
 
