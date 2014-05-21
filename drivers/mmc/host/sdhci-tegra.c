@@ -371,6 +371,8 @@ struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 		351666,	1583,	247913),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	204000,	468,	36031,	468,
 		36031,	253,	21264),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	200000,	468,	36031,	468,
+		36031,	253,	21264),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	136000,	1146,	117841,	1146,
 		117841,	589,	78993),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	100000,	1879,	206195,	1879,
@@ -4010,7 +4012,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 	.t2t_coeffs = t12x_tuning_coeffs,
 	.t2t_coeffs_count = 3,
 	.tap_hole_coeffs = t12x_tap_hole_coeffs,
-	.tap_hole_coeffs_count = 12,
+	.tap_hole_coeffs_count = 13,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
