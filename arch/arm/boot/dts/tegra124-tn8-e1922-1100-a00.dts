@@ -30,6 +30,10 @@
 		pca9546@71 {
 			vcc-supply = <&palmas_smps9>;
 		};
+
+		iqs253@44 {
+			status = "disabled";
+		};
 	};
 
 	pinmux {
