@@ -32,6 +32,7 @@
 #include <linux/irqdomain.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/pinctrl-tegra.h>
 #include <linux/pm.h>
 #include <linux/syscore_ops.h>
 #include <linux/tegra-soc.h>
@@ -650,6 +651,7 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 
 	}
 
+	tegra_pinctrl_add_gpio_range(tegra_gpio_chip.base);
 	return 0;
 }
 

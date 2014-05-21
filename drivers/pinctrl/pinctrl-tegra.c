@@ -21,6 +21,7 @@
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -749,7 +750,7 @@ static const struct pinconf_ops tegra_pinconf_ops = {
 static struct pinctrl_gpio_range tegra_pinctrl_gpio_range = {
 	.name = "Tegra GPIOs",
 	.id = 0,
-	.base = 0,
+	.base = -1,
 };
 
 static struct pinctrl_desc tegra_pinctrl_desc = {
@@ -989,7 +990,8 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
+	if (gpio_is_valid(tegra_pinctrl_gpio_range.base))
+		pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
 
 	platform_set_drvdata(pdev, pmx);
 
@@ -1001,7 +1003,7 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&pinctrl_syscore_ops);
 #endif
-	dev_dbg(&pdev->dev, "Probed Tegra pinctrl driver\n");
+	dev_info(&pdev->dev, "Probed Tegra pinctrl driver\n");
 
 	return 0;
 }
