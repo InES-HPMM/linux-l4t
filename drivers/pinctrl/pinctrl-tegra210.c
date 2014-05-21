@@ -1602,8 +1602,10 @@ static const unsigned drive_wifi_wake_ap_pins[] = {
 };
 
 enum tegra_mux_dt {
-	TEGRA_MUX_SAFE,
-	TEGRA_MUX_BLINK,
+	TEGRA_MUX_SAFE = TEGRA_PINMUX_SPECIAL_SAFE,
+	TEGRA_MUX_GPIO = TEGRA_PINMUX_SPECIAL_GPIO,
+	TEGRA_MUX_UNUSED = TEGRA_PINMUX_SPECIAL_UNUSED,
+	TEGRA_MUX_BLINK = TEGRA_PINMUX_SPECIAL_MAX,
 	TEGRA_MUX_CEC,
 	TEGRA_MUX_CLDVFS,
 	TEGRA_MUX_CPU,
@@ -2702,6 +2704,13 @@ static const char * const safe_groups[] = {
 	"dp_hpd0_pcc6",
 };
 
+#define FUNCTION_SPECIAL(fname)			\
+	{						\
+		.name = #fname,				\
+		.groups = safe_groups,			\
+		.ngroups = ARRAY_SIZE(safe_groups),	\
+	}						\
+
 #define FUNCTION(fname)					\
 	{						\
 		.name = #fname,				\
@@ -2710,7 +2719,9 @@ static const char * const safe_groups[] = {
 	}						\
 
 static const struct tegra_function tegra210_functions[] = {
-	FUNCTION(safe),
+	FUNCTION_SPECIAL(safe),
+	FUNCTION_SPECIAL(gpio),
+	FUNCTION_SPECIAL(unused),
 	FUNCTION(blink),
 	FUNCTION(cec),
 	FUNCTION(cldvfs),

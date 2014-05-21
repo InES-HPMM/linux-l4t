@@ -212,4 +212,11 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
 		.drive_type = _drive_type,				\
 	}
 
+/* Special pinmux options */
+#define TEGRA_PINMUX_SPECIAL_SAFE		0
+#define TEGRA_PINMUX_SPECIAL_GPIO		1
+#define TEGRA_PINMUX_SPECIAL_UNUSED		2
+#define TEGRA_PINMUX_SPECIAL_MAX		3
+
+
 #endif

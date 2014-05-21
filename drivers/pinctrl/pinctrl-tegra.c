@@ -386,9 +386,16 @@ static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned req_functi
 	if (WARN_ON(g->mux_reg < 0))
 		return -EINVAL;
 
-	/* Last function option is safe option */
-	if (!req_function)
+	switch (req_function) {
+	case TEGRA_PINMUX_SPECIAL_GPIO:
+	case TEGRA_PINMUX_SPECIAL_UNUSED:
+		return 0;
+	case TEGRA_PINMUX_SPECIAL_SAFE:
 		function = g->func_safe;
+		break;
+	default:
+		break;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(g->funcs); i++) {
 		if (g->funcs[i] == function)
