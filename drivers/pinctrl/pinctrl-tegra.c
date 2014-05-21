@@ -1029,6 +1029,14 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg)
 }
 EXPORT_SYMBOL_GPL(tegra_pinctrl_writel);
 
+void tegra_pinctrl_add_gpio_range(int gpio_base)
+{
+	tegra_pinctrl_gpio_range.base = gpio_base;
+	if (pmx)
+		pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
+}
+EXPORT_SYMBOL_GPL(tegra_pinctrl_add_gpio_range);
+
 #ifdef	CONFIG_DEBUG_FS
 
 #include <linux/debugfs.h>
