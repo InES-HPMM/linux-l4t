@@ -949,8 +949,6 @@ static void tegra_pm_enter_shutdown(void)
 static struct syscore_ops tegra_pm_enter_syscore_ops = {
 	.suspend = tegra_pm_enter_suspend,
 	.resume = tegra_pm_enter_resume,
-	.save = tegra_pm_enter_suspend,
-	.restore = tegra_pm_enter_resume,
 	.shutdown = tegra_pm_enter_shutdown,
 };
 
