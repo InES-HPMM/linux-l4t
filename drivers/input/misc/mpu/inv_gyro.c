@@ -1235,7 +1235,8 @@ static int nvi_aux_delay(struct inv_gyro_state_s *inf,
 	/* HW global delay */
 	delay_new *= 1000;
 	delay_new /= inf->sample_delay_us;
-	delay_new++;
+	if (delay_new)
+		delay_new--;
 	inf->aux.delay_hw = (u8)delay_new;
 	nvi_i2c_slv4_ctrl_wr(inf, (bool)(inf->hw.i2c_slv4_ctrl & BIT_SLV_EN));
 	/* HW port delay enable */
