@@ -27,25 +27,6 @@
 	compatible = "nvidia,p1859", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
-	host1x {
-		sor {
-			status = "disabled";
-		};
-
-		dpaux {
-			status = "disabled";
-		};
-
-		/* tegradc.0 */
-		dc@54200000 {
-			status = "disabled";
-		};
-
-		/* tegradc.1 */
-		dc@54240000 {
-			status = "disabled";
-		};
-	};
 
 	i2c@7000c400 {
 		status = "disabled";
@@ -196,9 +177,7 @@
 		compatible = "nvidia,tegra-hv";
 		status = "okay";
 
-		local-loopbacks = <3 4>;
-
-		server-to-peers = <1>;
+		server-to-peers = <0 1>;
 
 		queues {
 			#address-cells = <1>;
@@ -208,36 +187,101 @@
 			ivc0 {
 				reg = <0>;
 				peers = <0 1>;
+				nframes = <2>;
+				frame-size = <50>;
 			};
 
 			/* guest 0 <-> guest 1 (comm) */
 			ivc1 {
-				reg = <2>;
+				reg = <1>;
 				peers = <0 1>;
+				nframes = <4>;
+				frame-size = <16>;
 			};
 
 			/* guest 0 <-> guest 1 (net) */
 			ivc2 {
 				reg = <2>;
 				peers = <0 1>;
+				nframes = <32>;
+				frame-size = <1536>;
 			};
 
-			/* guest 1 <-> guest 1 (loop) */
-			ivc3 {
-				reg = <3>;
-				peers = <1 1>;
-				nframes = <4>;
-				frame-size = <16>;
+			/* guest 1 <-> guest 2 (vhost cmd) */
+			ivc7 {
+				reg = <7>;
+				peers = <1 2>;
 			};
 
-			/* guest 1 <-> guest 1 (loop) */
-			ivc4 {
-				reg = <4>;
-				peers = <1 1>;
-				nframes = <4>;
-				frame-size = <16>;
+			/* guest 1 <-> guest 2 (vhost intr) */
+			ivc8 {
+				reg = <8>;
+				peers = <1 2>;
+			};
+
+			/* guest 1 <-> guest 2 (vgpu cmd) */
+			ivc9 {
+				reg = <9>;
+				peers = <1 2>;
+			};
+
+			/* guest 1 <-> guest 2 (vgpu intr) */
+			ivc10 {
+				reg = <10>;
+				peers = <1 2>;
 			};
 		};
+	};
+
+	host1x {
+		reg = <0x0 0x50000000 0x0 0x00030000>;
+
+		virtual-dev = <1>;
+
+		ivc-queue0 = <&tegra_hv 7>;
+		ivc-queue1 = <&tegra_hv 8>;
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "disabled";
+		};
+
+		vi {
+			status = "disabled";
+		};
+
+		isp@54600000 {
+			status = "disabled";
+		};
+
+		isp@54680000 {
+			status = "disabled";
+		};
+
+		vic {
+			status = "disabled";
+		};
+
+		msenc {
+			status = "disabled";
+		};
+
+		tsec {
+			status = "disabled";
+		};
+	};
+
+	gk20a {
+                status = "disabled";
+	};
+
+	gk20a-vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+
+		ivc-queue2 = <&tegra_hv 9>;
+		ivc-queue3 = <&tegra_hv 10>;
 	};
 
 	/* the virtual serial device node */
