@@ -40,6 +40,7 @@
 #include "pm.h"
 #include "dvfs.h"
 #include "board.h"
+#include "common.h"
 #include "tegra-board-id.h"
 #include "board-pmu-defines.h"
 #include "board-common.h"
@@ -51,7 +52,7 @@
 #include "tegra11_soctherm.h"
 
 #define E1735_EMULATE_E1767_SKU	1001
-
+static u32 tegra_chip_id;
 static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.cpu_timer      = 500,
 	.cpu_off_timer  = 300,
@@ -761,7 +762,7 @@ static struct soctherm_platform_data t132ref_v2_soctherm_data = {
 	},
 };
 
-static struct soctherm_throttle battery_oc_throttle = {
+static struct soctherm_throttle battery_oc_throttle_t13x = {
 	.throt_mode = BRIEF,
 	.polarity = SOCTHERM_ACTIVE_LOW,
 	.priority = 50,
@@ -772,7 +773,7 @@ static struct soctherm_throttle battery_oc_throttle = {
 		[THROTTLE_DEV_CPU] = {
 			.enable = true,
 			.depth = 50,
-			.throttling_depth = "medium_throttling",
+			.throttling_depth = "low_throttling",
 		},
 		[THROTTLE_DEV_GPU] = {
 			.enable = true,
@@ -781,7 +782,26 @@ static struct soctherm_throttle battery_oc_throttle = {
 	},
 };
 
-static struct soctherm_throttle voltmon_throttle = {
+static struct soctherm_throttle battery_oc_throttle_t12x = {
+	.throt_mode = BRIEF,
+	.polarity = SOCTHERM_ACTIVE_LOW,
+	.priority = 50,
+	.intr = true,
+	.alarm_cnt_threshold = 15,
+	.alarm_filter = 5100000,
+	.devs = {
+		[THROTTLE_DEV_CPU] = {
+			.enable = true,
+			.depth = 50,
+		},
+		[THROTTLE_DEV_GPU] = {
+			.enable = true,
+			.throttling_depth = "medium_throttling",
+		},
+	},
+};
+
+static struct soctherm_throttle voltmon_throttle_t13x = {
 	.throt_mode = BRIEF,
 	.polarity = SOCTHERM_ACTIVE_LOW,
 	.priority = 50,
@@ -805,6 +825,29 @@ static struct soctherm_throttle voltmon_throttle = {
 	},
 };
 
+static struct soctherm_throttle voltmon_throttle_t12x = {
+	.throt_mode = BRIEF,
+	.polarity = SOCTHERM_ACTIVE_LOW,
+	.priority = 50,
+	.intr = true,
+	.alarm_cnt_threshold = 100,
+	.alarm_filter = 5100000,
+	.devs = {
+		[THROTTLE_DEV_CPU] = {
+			.enable = true,
+			/* throttle depth 75% with 3.76us ramp rate */
+			.dividend = 63,
+			.divisor = 255,
+			.duration = 0,
+			.step = 0,
+		},
+		[THROTTLE_DEV_GPU] = {
+			.enable = true,
+			.throttling_depth = "medium_throttling",
+		},
+	},
+};
+
 int __init ardbeg_soctherm_init(void)
 {
 	const int t12x_edp_temp_margin = 7000,
@@ -817,6 +860,7 @@ int __init ardbeg_soctherm_init(void)
 	enum soctherm_therm_id therm_cpu = THERM_CPU;
 
 	tegra_get_board_info(&board_info);
+	tegra_chip_id = tegra_get_chip_id();
 
 	if (board_info.board_id == BOARD_E1923 ||
 			board_info.board_id == BOARD_E1922) {
@@ -914,18 +958,28 @@ int __init ardbeg_soctherm_init(void)
 	switch (board_info.board_id) {
 	case BOARD_E1971:
 		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
-		       &battery_oc_throttle,
-		       sizeof(battery_oc_throttle));
+		       &battery_oc_throttle_t13x,
+		       sizeof(battery_oc_throttle_t13x));
 		break;
 	case BOARD_P1761:
 	case BOARD_E1936:
 	case BOARD_P1765:
-		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
-		       &battery_oc_throttle,
-		       sizeof(battery_oc_throttle));
-		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC1],
-		       &voltmon_throttle,
-		       sizeof(voltmon_throttle));
+		if (tegra_chip_id == TEGRA_CHIPID_TEGRA13) {
+			memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
+				   &battery_oc_throttle_t13x,
+				   sizeof(battery_oc_throttle_t13x));
+			memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC1],
+				   &voltmon_throttle_t13x,
+				   sizeof(voltmon_throttle_t13x));
+		} else {
+			memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
+				   &battery_oc_throttle_t12x,
+				   sizeof(battery_oc_throttle_t12x));
+			memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC1],
+				   &voltmon_throttle_t12x,
+				   sizeof(voltmon_throttle_t12x));
+		}
+
 
 		break;
 	default:
