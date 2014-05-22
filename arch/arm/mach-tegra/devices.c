@@ -1596,6 +1596,13 @@ static struct resource tegra_ope_resource1[] = {
 	}
 };
 
+struct platform_device tegra_ope_device1 = {
+	.name = "tegra210-ope",
+	.id = 1,
+	.resource      = tegra_ope_resource1,
+	.num_resources = ARRAY_SIZE(tegra_ope_resource1),
+};
+
 static struct resource tegra_peq_resource0[] = {
 	[0] = {
 		.start = TEGRA_PEQ1_BASE,
