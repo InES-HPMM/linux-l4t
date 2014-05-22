@@ -512,6 +512,8 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	int jack_type;
 	int sclk_src = RT5639_SCLK_S_MCLK;
 	int reg63, reg64;
+	int i, headphone = 0, headset = 0, previous_state = RT5639_NO_JACK;
+	bool hp_detected = false;
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
 
 	if (jack_insert) {
@@ -519,7 +521,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		reg64 = snd_soc_read(codec, RT5639_PWR_ANLG2);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5639_PWR_ANLG1, 0xa814);
-			snd_soc_write(codec, RT5639_MICBIAS, 0x3830);
+			snd_soc_write(codec, RT5639_MICBIAS, 0x3810);
 			snd_soc_write(codec, RT5639_GEN_CTRL1 , 0x3b01);
 		    snd_soc_update_bits(codec, RT5639_GLB_CLK,
 				RT5639_SCLK_SRC_MASK,
@@ -533,10 +535,11 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5639_MIC1_OVCD_MASK | RT5639_MIC1_OVTH_MASK |
 			RT5639_PWR_CLK25M_MASK | RT5639_PWR_MB_MASK,
 			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_600UA |
-			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
+			RT5639_PWR_MB_PD | RT5639_PWR_CLK25M_PU);
+		rt5639_index_update_bits(codec, 0x15, 0x0300, 0x0300);
 		snd_soc_update_bits(codec, RT5639_GEN_CTRL1,
 			0x1, 0x1);
-		msleep(500);
+		msleep(1000);
 
 		dev_info(codec->dev, "%s RT5639_PWR_ANLG1(0x%x) = 0x%x\n",
 			__func__, RT5639_PWR_ANLG1,
@@ -545,10 +548,57 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			__func__, RT5639_IRQ_CTRL2,
 			snd_soc_read(codec, RT5639_IRQ_CTRL2));
 
-		if (snd_soc_read(codec, RT5639_IRQ_CTRL2) & 0x8)
-			jack_type = RT5639_HEADPHO_DET;
-		else
-			jack_type = RT5639_HEADSET_DET;
+		for (i = 0; i < 450; i++) {
+			if (snd_soc_read(codec, RT5639_IRQ_CTRL2) & 0x8) {
+				if (previous_state == RT5639_HEADPHO_DET) {
+					headphone++;
+				} else {
+					headphone = 0;
+					previous_state = RT5639_HEADPHO_DET;
+				}
+			} else {
+				if (previous_state == RT5639_HEADSET_DET) {
+					headset++;
+				} else {
+					headset = 0;
+					previous_state = RT5639_HEADSET_DET;
+				}
+			}
+
+			if (headphone == 50) {
+				jack_type = RT5639_HEADPHO_DET;
+				hp_detected = true;
+				break;
+			}
+
+			if (headset == 50) {
+				jack_type = RT5639_HEADSET_DET;
+				hp_detected = true;
+				break;
+			}
+
+			mdelay(1);
+		}
+
+		if (!hp_detected) {
+			headphone = 0;
+			headset = 0;
+
+			for (i = 0; i < 50; i++) {
+				if (snd_soc_read(codec, RT5639_IRQ_CTRL2) & 0x8)
+					headphone++;
+				else
+					headset++;
+
+				mdelay(1);
+			}
+
+			if (headset >= headphone)
+				jack_type = RT5639_HEADSET_DET;
+			else
+				jack_type = RT5639_HEADPHO_DET;
+		}
+
 		snd_soc_update_bits(codec, RT5639_IRQ_CTRL2,
 			RT5639_MB1_OC_CLR, 0);
 
