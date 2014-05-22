@@ -81,10 +81,18 @@ static int max77620_poweroff_probe(struct platform_device *pdev)
 	bool use_power_reset = false;
 
 	if (np) {
+		bool system_pc;
+
 		use_power_off = of_property_read_bool(np,
-				"system-pmic-power-off");
+				"maxim,system-pmic-power-off");
 		use_power_reset = of_property_read_bool(np,
-				"system-pmic-power-reset");
+				"maxim,system-pmic-power-reset");
+		system_pc = of_property_read_bool(np,
+				"maxim,system-power-controller");
+		if (system_pc) {
+			use_power_off = true;
+			use_power_reset = true;
+		}
 	}
 
 	if (!use_power_off && !use_power_reset) {
