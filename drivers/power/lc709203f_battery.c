@@ -91,6 +91,7 @@ struct lc709203f_chip {
 	int shutdown_complete;
 	int charge_complete;
 	struct mutex mutex;
+	int read_failed;
 };
 
 static int lc709203f_read_word(struct i2c_client *client, u8 reg)
@@ -204,9 +205,13 @@ static int lc709203f_get_temperature(struct lc709203f_chip *chip)
 	}
 
 	if (val < 0) {
+		chip->read_failed++;
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
-		return val;
+		if (chip->read_failed > 50)
+			return val;
+		return chip->temperature;
 	}
+	chip->read_failed = 0;;
 	chip->temperature = val;
 	return val;
 }
