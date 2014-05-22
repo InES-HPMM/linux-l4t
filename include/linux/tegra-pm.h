@@ -83,6 +83,9 @@ struct tegra_suspend_platform_data {
 	void (*resume_dfll_bypass)(void);
 };
 
+/* The debug channel uart base physical address */
+extern unsigned long  debug_uart_port_base;
+
 void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);

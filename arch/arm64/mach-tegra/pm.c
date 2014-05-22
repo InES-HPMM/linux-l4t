@@ -111,7 +111,6 @@ struct suspend_context {
 	u32 cclk_divider;
 
 	u32 mc[3];
-	u8 uart[5];
 
 	struct tegra_twd_context twd;
 };
@@ -1192,85 +1191,6 @@ out:
 
 	current_suspend_mode = plat->suspend_mode;
 }
-
-unsigned long debug_uart_port_base;
-EXPORT_SYMBOL(debug_uart_port_base);
-
-static int tegra_debug_uart_suspend(void)
-{
-	void __iomem *uart;
-	u32 lcr;
-
-	if (!debug_uart_port_base)
-		return 0;
-
-	uart = IO_ADDRESS(debug_uart_port_base);
-
-	lcr = readb(uart + UART_LCR * 4);
-
-	tegra_sctx.uart[0] = lcr;
-	tegra_sctx.uart[1] = readb(uart + UART_MCR * 4);
-
-	/* DLAB = 0 */
-	writeb(lcr & ~UART_LCR_DLAB, uart + UART_LCR * 4);
-
-	tegra_sctx.uart[2] = readb(uart + UART_IER * 4);
-
-	/* DLAB = 1 */
-	writeb(lcr | UART_LCR_DLAB, uart + UART_LCR * 4);
-
-	tegra_sctx.uart[3] = readb(uart + UART_DLL * 4);
-	tegra_sctx.uart[4] = readb(uart + UART_DLM * 4);
-
-	writeb(lcr, uart + UART_LCR * 4);
-
-	return 0;
-}
-
-static void tegra_debug_uart_resume(void)
-{
-	void __iomem *uart;
-	u32 lcr;
-
-	if (!debug_uart_port_base)
-		return;
-
-	uart = IO_ADDRESS(debug_uart_port_base);
-
-	lcr = tegra_sctx.uart[0];
-
-	writeb(tegra_sctx.uart[1], uart + UART_MCR * 4);
-
-	/* DLAB = 0 */
-	writeb(lcr & ~UART_LCR_DLAB, uart + UART_LCR * 4);
-
-	writeb(UART_FCR_ENABLE_FIFO | UART_FCR_T_TRIG_01 | UART_FCR_R_TRIG_01,
-			uart + UART_FCR * 4);
-
-	writeb(tegra_sctx.uart[2], uart + UART_IER * 4);
-
-	/* DLAB = 1 */
-	writeb(lcr | UART_LCR_DLAB, uart + UART_LCR * 4);
-
-	writeb(tegra_sctx.uart[3], uart + UART_DLL * 4);
-	writeb(tegra_sctx.uart[4], uart + UART_DLM * 4);
-
-	writeb(lcr, uart + UART_LCR * 4);
-}
-
-static struct syscore_ops tegra_debug_uart_syscore_ops = {
-	.suspend = tegra_debug_uart_suspend,
-	.resume = tegra_debug_uart_resume,
-	.save = tegra_debug_uart_suspend,
-	.restore = tegra_debug_uart_resume,
-};
-
-static int tegra_debug_uart_syscore_init(void)
-{
-	register_syscore_ops(&tegra_debug_uart_syscore_ops);
-	return 0;
-}
-arch_initcall(tegra_debug_uart_syscore_init);
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 

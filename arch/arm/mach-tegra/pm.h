@@ -278,7 +278,4 @@ void tegra_smp_restore_power_mask(void);
 
 u32 tegra_restart_prev_smc(void);
 
-/* The debug channel uart base physical address */
-extern unsigned long  debug_uart_port_base;
-
 #endif /* _MACH_TEGRA_PM_H_ */
