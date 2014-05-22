@@ -32,4 +32,44 @@
 	chosen {
 		nvidia,tegra-hypervisor-mode;
 	};
+
+	spi@7000d400 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+			/* spi-cpha;
+			 * spi-cpol;
+			 * spi-cs-high;
+			 */
+		};
+	};
+
+	spi@7000d600 {
+		status = "okay";
+		spiflash@1 {
+			compatible = "s25fl512s";
+			reg = <1>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	spi@7000d800 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
+	spi@7000dc00 {
+		status = "okay";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
 };
