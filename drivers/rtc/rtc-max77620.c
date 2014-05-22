@@ -563,13 +563,7 @@ static int max77620_rtc_remove(struct platform_device *pdev)
 {
 	struct max77620_rtc *rtc = dev_get_drvdata(&pdev->dev);
 
-	if (rtc->irq != -1)
-		free_irq(rtc->irq, rtc);
-
-	rtc_device_unregister(rtc->rtc);
 	mutex_destroy(&rtc->io_lock);
-	kfree(rtc);
-
 	return 0;
 }
 
