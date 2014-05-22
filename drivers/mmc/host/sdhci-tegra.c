@@ -342,6 +342,15 @@ struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
 		82,	180096,	238,	444285),
 };
 
+struct tuning_t2t_coeffs t12x_automotive_tuning_coeffs[] = {
+	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	29,	130687,
+			29,	130687,	29,	130687),
+	SET_TUNING_COEFFS("sdhci-tegra.2",	1150,	950,	37,	148855,
+			36,	148855, 37,	148855),
+	SET_TUNING_COEFFS("sdhci-tegra.0",	1150,	950,	38,	149783,
+			38,	149783,	38,	149783),
+};
+
 struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	27,	118295,
 		27,	118295,	48,	188148),
@@ -401,6 +410,17 @@ struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
 		104850,	179,	50204),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	81600,	1893,	264746,	1333,
 		221722,	354,	109880),
+};
+
+struct tap_hole_coeffs t12x_automotive_tap_hole_coeffs[] = {
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	198000,	9259,	107053,	9259,
+		107053,	9259,	107053),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	189000,	9846,	114635,	9846,
+		114635,	9846,	114635),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	204000,	2956,	27274,	2956,
+		27274,	2956,	27274),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	204000,	5781,	67417,	5781,
+		67417,	5781,	67417),
 };
 
 struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
@@ -4799,6 +4819,18 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE;
 	tegra_host->speedo = tegra_soc_speedo_0_value();
 	dev_info(mmc_dev(host->mmc), "Speedo value %d\n", tegra_host->speedo);
+
+	/* update t2t and tap_hole for automotive speedo */
+	if (tegra_is_soc_automotive_speedo() &&
+			(soc_data == &soc_data_tegra12)) {
+		soc_data_tegra12.t2t_coeffs = t12x_automotive_tuning_coeffs;
+		soc_data_tegra12.t2t_coeffs_count =
+				ARRAY_SIZE(t12x_automotive_tuning_coeffs);
+		soc_data_tegra12.tap_hole_coeffs =
+				t12x_automotive_tap_hole_coeffs;
+		soc_data_tegra12.tap_hole_coeffs_count =
+				ARRAY_SIZE(t12x_automotive_tap_hole_coeffs);
+	}
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
 	host->mmc->caps |= MMC_CAP_ERASE;
