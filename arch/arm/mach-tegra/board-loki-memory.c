@@ -18181,6 +18181,7 @@ int __init loki_emc_init(void)
 					bi.sku);
 				tegra_emc_device.dev.platform_data =
 					&loki_ffd_a00_sku100_emc_pdata;
+				break;
 			default:
 				WARN(1, "EMC for this loki sku not supported: %u\n",
 						bi.sku);
