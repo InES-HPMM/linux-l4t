@@ -268,8 +268,34 @@ static int alarmtimer_suspend(struct device *dev)
 	}
 	return ret;
 }
+
+static void sync_to_rtc_time(struct device *dev)
+{
+	struct timespec ts_old;
+	struct rtc_time tm;
+
+	/* log old system time */
+	getnstimeofday(&ts_old);
+	rtc_time_to_tm(ts_old.tv_sec, &tm);
+	pr_info("alarmtimer: old system time %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, ts_old.tv_nsec);
+
+#ifdef CONFIG_RTC_HCTOSYS
+	rtc_hctosys();
+#else
+	pr_info("%s %s line=%d, missing function to sync system time to rtc time\n",
+		__FILE__, __func__, __LINE__);
+#endif
+	return;
+}
 #else
 static int alarmtimer_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static void sync_to_rtc_time(struct device *dev)
 {
 	return 0;
 }
@@ -765,6 +791,7 @@ out:
 /* Suspend hook structures */
 static const struct dev_pm_ops alarmtimer_pm_ops = {
 	.suspend = alarmtimer_suspend,
+	.complete = sync_to_rtc_time,
 };
 
 static struct platform_driver alarmtimer_driver = {
