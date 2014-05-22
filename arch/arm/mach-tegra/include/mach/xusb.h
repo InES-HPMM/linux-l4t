@@ -78,9 +78,9 @@ struct tegra_xusb_board_data {
 	 * SS0 or SS1 port may be mapped either to USB2_P0 or USB2_P1
 	 * ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map
 	 */
-	u8	ss_portmap;
-	u8	ulpicap;
-	u8	lane_owner;
+	u32	ss_portmap;
+	u32	ulpicap;
+	u32	lane_owner;
 	bool uses_external_pmic;
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;
