@@ -126,12 +126,6 @@ obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL)     += tegra_tzram.o
 
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire.o
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-panel.o
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-power.o
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sdhci.o
-obj-${CONFIG_MACH_BONAIRE}              += board-bonaire-sensors.o
-
 obj-y                                   += board-touch-raydium_spi.o
 obj-y                                   += board-touch-synaptics-spi.o
 obj-y                                   += board-touch-maxim_sti-spi.o

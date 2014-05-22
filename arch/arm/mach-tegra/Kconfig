@@ -147,12 +147,6 @@ config TEGRA_AHB
 
 comment "Tegra board type"
 
-config MACH_BONAIRE
-       bool "Bonaire board"
-       depends on ARCH_TEGRA_12x_SOC
-       help
-         Support for NVIDIA Bonaire FPGA development platform
-
 config MACH_ARDBEG
        bool "ARDBEG board"
        depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_11x_SOC
