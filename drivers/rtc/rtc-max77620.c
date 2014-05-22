@@ -584,12 +584,59 @@ static void max77620_rtc_shutdown(struct platform_device *pdev)
 	max77620_rtc_alarm_irq_enable(&pdev->dev, 0);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77620_rtc_suspend(struct device *dev)
+{
+	struct max77620_rtc *max77620_rtc = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev)) {
+		int ret;
+		struct rtc_wkalrm alm;
+
+		enable_irq_wake(max77620_rtc->irq);
+		ret = max77620_rtc_read_alarm(dev, &alm);
+		if (!ret)
+			dev_info(dev, "%s() alrm %d time %d %d %d %d %d %d\n",
+				__func__, alm.enabled,
+				alm.time.tm_year, alm.time.tm_mon,
+				alm.time.tm_mday, alm.time.tm_hour,
+				alm.time.tm_min, alm.time.tm_sec);
+	}
+
+	return 0;
+}
+
+static int max77620_rtc_resume(struct device *dev)
+{
+	struct max77620_rtc *max77620_rtc = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev)) {
+		struct rtc_time tm;
+		int ret;
+
+		disable_irq_wake(max77620_rtc->irq);
+		ret = max77620_rtc_read_time(dev, &tm);
+		if (!ret)
+			dev_info(dev, "%s() %d %d %d %d %d %d\n",
+				__func__, tm.tm_year, tm.tm_mon, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec);
+	}
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops max77620_rtc_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77620_rtc_suspend, max77620_rtc_resume)
+};
+
 static struct platform_driver max77620_rtc_driver = {
 	.probe = max77620_rtc_probe,
 	.remove = max77620_rtc_remove,
 	.driver = {
 			.name = "max77620-rtc",
 			.owner = THIS_MODULE,
+			.pm = &max77620_rtc_pm_ops,
 	},
 	.shutdown = max77620_rtc_shutdown,
 };
