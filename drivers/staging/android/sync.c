@@ -34,6 +34,7 @@
 static void sync_fence_signal_pt(struct sync_pt *pt);
 static int _sync_pt_has_signaled(struct sync_pt *pt);
 static void sync_fence_free(struct kref *kref);
+static void sync_fence_dump(struct sync_fence *fence);
 static void sync_dump(void);
 
 static LIST_HEAD(sync_timeline_list_head);
@@ -613,6 +614,7 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 
 	if (fence->status < 0) {
 		pr_info("fence error %d on [%p]\n", fence->status, fence);
+		sync_fence_dump(fence);
 		sync_dump();
 		return fence->status;
 	}
@@ -621,6 +623,7 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 		if (timeout > 0) {
 			pr_info("fence timeout on [%p] after %dms\n", fence,
 				jiffies_to_msecs(timeout));
+			sync_fence_dump(fence);
 			sync_dump();
 		}
 		return -ETIME;
@@ -840,6 +843,21 @@ static long sync_fence_ioctl(struct file *file, unsigned int cmd,
 	default:
 		return -ENOTTY;
 	}
+}
+
+static void sync_fence_dump(struct sync_fence *fence)
+{
+	struct sync_pt *pt;
+	char val[32];
+
+	list_for_each_entry(pt, &fence->pt_list_head, pt_list) {
+		val[0] = '\0';
+		if (pt->parent->ops->pt_value_str)
+			pt->parent->ops->pt_value_str(pt, val, sizeof(val));
+
+		pr_info("name=%s, value=%s\n", pt->parent->name, val);
+	}
+
 }
 
 #ifdef CONFIG_DEBUG_FS
