@@ -3236,6 +3236,8 @@ static void tegra210_pinctrl_resume(u32 *pg_data)
 	reg_value &= ~(EMMC_DPD_PARKING(PARKING_SET));
 	tegra_pinctrl_writel(reg_value, tegra210_groups[i].drv_bank,
 					EMMC4_PAD_CFGPADCTRL_OFFSET);
+
+	tegra_pmc_clear_dpd_sample();
 }
 
 static int tegra210_gpio_request_enable(unsigned pin)
