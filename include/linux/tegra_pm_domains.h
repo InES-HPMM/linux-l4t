@@ -30,10 +30,25 @@ struct tegra_pm_domain {
 
 #define to_tegra_pd(_pd) container_of(_pd, struct tegra_pm_domain, gpd);
 
+#if defined(CONFIG_TEGRA20_APB_DMA)
 int tegra_dma_restore(void);
 int tegra_dma_save(void);
+#else
+static inline int tegra_dma_restore(void)
+{ return -ENODEV; }
+static inline int tegra_dma_save(void)
+{ return -ENODEV; }
+#endif
+
+#if defined(CONFIG_TEGRA_ACTMON)
 int tegra_actmon_save(void);
 int tegra_actmon_restore(void);
+#else
+static inline int tegra_actmon_save(void)
+{ return -ENODEV; }
+static inline int tegra_actmon_restore(void)
+{ return -ENODEV; }
+#endif
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 void tegra_pd_add_device(struct device *dev);
