@@ -7628,8 +7628,7 @@ static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_clkm[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllc2_c_pllp_clkm_plla_pllc4[] = {
-	{ .input = &tegra_pll_c2, .value = 1},
+static struct clk_mux_sel mux_pllc_pllp_clkm_plla_pllc4[] = {
 	{ .input = &tegra_pll_c,  .value = 2},
 	{ .input = &tegra_pll_p,  .value = 4},
 	{ .input = &tegra_clk_m,  .value = 5},
@@ -7919,7 +7918,7 @@ static struct clk tegra_clk_host1x = {
 	},
 	.ops       = &tegra_1xbus_clk_ops,
 	.reg       = 0x180,
-	.inputs    = mux_pllc2_c_pllp_clkm_plla_pllc4,
+	.inputs    = mux_pllc_pllp_clkm_plla_pllc4,
 	.flags     = MUX | DIV_U71 | DIV_U71_INT,
 	.max_rate  = 408000000,
 	.min_rate  = 12000000,
