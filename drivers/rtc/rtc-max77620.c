@@ -1,13 +1,16 @@
 /*
  * Max77620 RTC driver
  *
- * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
 
 #include <linux/module.h>
@@ -581,35 +584,17 @@ static void max77620_rtc_shutdown(struct platform_device *pdev)
 	max77620_rtc_alarm_irq_enable(&pdev->dev, 0);
 }
 
-static struct of_device_id of_max77620_rtc_match[] = {
-	{ .compatible = "max,max77620-rtc"},
-	{ },
-};
-
-MODULE_DEVICE_TABLE(of, of_max77620_rtc_match);
-
 static struct platform_driver max77620_rtc_driver = {
 	.probe = max77620_rtc_probe,
 	.remove = max77620_rtc_remove,
 	.driver = {
 			.name = "max77620-rtc",
-			.of_match_table = of_max77620_rtc_match,
 			.owner = THIS_MODULE,
 	},
 	.shutdown = max77620_rtc_shutdown,
 };
 
-static int __init max77620_rtc_init(void)
-{
-	return platform_driver_register(&max77620_rtc_driver);
-}
-module_init(max77620_rtc_init);
-
-static void __exit max77620_rtc_exit(void)
-{
-	platform_driver_unregister(&max77620_rtc_driver);
-}
-module_exit(max77620_rtc_exit);
+module_platform_driver(max77620_rtc_driver);
 
 MODULE_DESCRIPTION("max77620 RTC driver");
 MODULE_LICENSE("GPL v2");
