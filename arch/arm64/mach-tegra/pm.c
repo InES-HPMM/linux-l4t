@@ -996,7 +996,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 			goto out;
 		}
 
-		orig = ioremap(tegra_lp0_vec_start, tegra_lp0_vec_size);
+		orig = ioremap_wc(tegra_lp0_vec_start, tegra_lp0_vec_size);
 		WARN_ON(!orig);
 		if (!orig) {
 			pr_err("%s: Failed to map tegra_lp0_vec_start %llx\n",
@@ -1009,6 +1009,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		tmp = (tmp + L1_CACHE_BYTES - 1) & ~(L1_CACHE_BYTES - 1);
 		reloc_lp0 = (unsigned char *)tmp;
 		memcpy(reloc_lp0, orig, tegra_lp0_vec_size);
+		wmb();
 		iounmap(orig);
 		tegra_lp0_vec_start = virt_to_phys(reloc_lp0);
 	}
