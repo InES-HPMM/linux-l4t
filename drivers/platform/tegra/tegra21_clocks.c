@@ -9374,3 +9374,10 @@ void __init tegra21x_init_clocks(void)
 	register_syscore_ops(&tegra_clk_syscore_ops);
 #endif
 }
+
+static int __init tegra21x_clk_late_init(void)
+{
+	clk_disable(&tegra_pll_re_vco);
+	return 0;
+}
+late_initcall(tegra21x_clk_late_init);
