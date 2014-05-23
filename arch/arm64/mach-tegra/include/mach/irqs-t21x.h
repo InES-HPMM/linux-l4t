@@ -191,7 +191,7 @@
 #define INT_TMR10			(INT_QUINT_BASE + 28)
 #define INT_GPU				(INT_QUINT_BASE + 29)
 #define INT_GPU_NONSTALL		(INT_QUINT_BASE + 30)
-#define INT_ARDPAUX			(INT_QUINT_BASE + 31)
+#define INT_DPAUX			(INT_QUINT_BASE + 31)
 
 /* Hexa Interrupt Controller */
 #define INT_HEXA_BASE			(INT_QUINT_BASE + 32)

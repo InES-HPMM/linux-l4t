@@ -33,6 +33,7 @@
 #include "common.h"
 #include "iomap.h"
 #include "board-common.h"
+#include "board-t210.h"
 
 static struct nvmap_platform_carveout t210_carveouts[] = {
 	[0] = {
@@ -62,7 +63,7 @@ static struct platform_device t210_nvmap_device = {
 	},
 };
 
-static struct platform_device *t210_gfx_devices[] __initdata = {
+static __maybe_unused struct platform_device *t210_gfx_devices[] __initdata = {
 	&t210_nvmap_device,
 };
 
@@ -175,20 +176,13 @@ static struct tegra_suspend_platform_data tegra21_suspend_data = {
 
 static void __init tegra210_dt_init(void)
 {
-	platform_add_devices(t210_gfx_devices, ARRAY_SIZE(t210_gfx_devices));
 	tegra_soc_device_init("granada");
 	of_platform_populate(NULL,
 			of_default_bus_match_table,
 			t210_auxdata_lookup,
 			&platform_bus);
 
-	/* HACK HACK HACK -- this should be done in panel init */
-	t210_carveouts[0].base = tegra_carveout_start;
-	t210_carveouts[0].size = tegra_carveout_size;
-	t210_carveouts[0].dma_dev = &tegra_generic_dev;
-	t210_carveouts[1].base = tegra_vpr_start;
-	t210_carveouts[1].size = tegra_vpr_size;
-	t210_carveouts[1].dma_dev = &tegra_vpr_dev;
+	t210_panel_init();
 
 	uart_console_debug_init(0);
 	tegra_init_suspend(&tegra21_suspend_data);

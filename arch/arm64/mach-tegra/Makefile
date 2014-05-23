@@ -72,6 +72,9 @@ endif
 obj-$(CONFIG_DENVER_CPU)              += denver-knobs.o
 obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210-panel.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += panel-a-edp-1080p-14-0.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += panel-c-edp-1366-768-14-0.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-dt-t210.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
 
