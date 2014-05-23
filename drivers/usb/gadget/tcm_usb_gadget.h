@@ -97,7 +97,7 @@ struct usbg_cmd {
 	enum uas_state state;
 	struct uas_stream *stream;
 	bool no_scsi_contact;
-
+	int cmd_status;
 	/* BOT only */
 	__le32 bot_tag;
 	unsigned int csw_code;

@@ -791,7 +791,11 @@ static int uasp_send_write_request(struct usbg_cmd *cmd)
 	}
 
 	wait_for_completion(&cmd->write_complete);
-	target_execute_cmd(se_cmd);
+	/* Continue processing the command only when the data transfer
+	 * is successful. Or else just return from this thread.
+	 */
+	if (!cmd->cmd_status)
+		target_execute_cmd(se_cmd);
 cleanup:
 	return ret;
 }
@@ -1227,7 +1231,7 @@ static void usbg_data_write_cmpl(struct usb_ep *ep, struct usb_request *req)
 {
 	struct usbg_cmd *cmd = req->context;
 	struct se_cmd *se_cmd = &cmd->se_cmd;
-
+	cmd->cmd_status = req->status;
 	if (req->status < 0) {
 		pr_err("%s() state %d transfer failed\n", __func__, cmd->state);
 		goto cleanup;
@@ -1240,11 +1244,9 @@ static void usbg_data_write_cmpl(struct usb_ep *ep, struct usb_request *req)
 				se_cmd->data_length);
 	}
 
+cleanup:
 	complete(&cmd->write_complete);
 	return;
-
-cleanup:
-	usbg_cleanup_cmd(cmd);
 }
 
 static int usbg_prepare_w_request(struct usbg_cmd *cmd, struct usb_request *req)
@@ -1331,6 +1333,13 @@ static void usbg_cmd_work(struct work_struct *work)
 			cmd->cmd_buf, cmd->sense_iu.sense, cmd->unpacked_lun,
 			0, cmd->prio_attr, dir, TARGET_SCF_UNKNOWN_SIZE) < 0)
 		goto out;
+	/* If there is an error in data transfer, then we wont continue
+	 * processing the command. So free the memory of cmd struct here.
+	 */
+	if (cmd->cmd_status) {
+		kref_put(&cmd->ref, usbg_cmd_release);
+		usbg_cleanup_cmd(cmd);
+	}
 
 	return;
 
