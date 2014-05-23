@@ -777,6 +777,9 @@ int __init tegra_powergate_debugfs_init(void)
 	int i, ret;
 	const char *name;
 
+	if (!pg_ops)
+		return -ENOMEM;
+
 	d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
 		&powergate_fops);
 	if (!d)
