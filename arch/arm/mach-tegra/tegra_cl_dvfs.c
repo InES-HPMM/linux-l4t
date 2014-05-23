@@ -1187,7 +1187,7 @@ static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
 static struct voltage_reg_map *find_vdd_map_entry(
 	struct tegra_cl_dvfs *cld, int mV, bool exact)
 {
-	int i, reg_mV;
+	int i, uninitialized_var(reg_mV);
 
 	for (i = 0; i < cld->p_data->vdd_map_size; i++) {
 		/* round down to 1mV */
