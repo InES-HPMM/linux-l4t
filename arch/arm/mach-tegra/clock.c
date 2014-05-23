@@ -1182,6 +1182,9 @@ unsigned long tegra_clk_measure_input_freq(void)
 		osc_freq = 38400000;
 	} else if (clock_autodetect >= 2928 - 3 && clock_autodetect <= 2928 + 3) {
 		osc_freq = 48000000;
+	} else if (tegra_platform_is_fpga()) {
+		if (clock_autodetect >= 529 - 3 && clock_autodetect <= 529 + 3)
+			osc_freq = 13000000;
 	} else if (tegra_platform_is_qt()) {
 		if (clock_autodetect >= 2 && clock_autodetect <= 9)
 			osc_freq = 115200;
