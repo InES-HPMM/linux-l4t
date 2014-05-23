@@ -25,6 +25,7 @@
 #include "tegra210.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
 	model = "grenada";
@@ -80,6 +81,19 @@
 	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
+	};
+
+	gpio_regulator: gpio-regulator {
+		compatible = "regulator-gpio";
+		regulator-name = "vddio_sdmmc";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpios = <&gpio TEGRA_GPIO(Z, 4) 0>;
+		states = <1800000 0x0
+			3300000 0x1>;
+		enable-active-high;
 	};
 
 	pinmux: pinmux {
