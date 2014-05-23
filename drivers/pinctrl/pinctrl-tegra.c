@@ -846,42 +846,42 @@ static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
 			continue;
 		}
 
-		if (pmx->soc->groups[i].hsm_bit >= 0)
+		if (pmx->soc->groups[group].hsm_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
 				cdata->high_speed_mode);
 
-		if (pmx->soc->groups[i].schmitt_bit >= 0)
+		if (pmx->soc->groups[group].schmitt_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SCHMITT,
 				cdata->schmitt);
 
-		if (pmx->soc->groups[i].lpmd_bit >= 0)
+		if (pmx->soc->groups[group].lpmd_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_LOW_POWER_MODE,
 				cdata->low_power_mode);
 
-		if (pmx->soc->groups[i].drvdn_bit >= 0)
+		if (pmx->soc->groups[group].drvdn_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_DRIVE_DOWN_STRENGTH,
 				cdata->pull_down_strength);
 
-		if (pmx->soc->groups[i].drvup_bit >= 0)
+		if (pmx->soc->groups[group].drvup_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
 				cdata->pull_up_strength);
 
-		if (pmx->soc->groups[i].slwf_bit >= 0)
+		if (pmx->soc->groups[group].slwf_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
 				cdata->slew_rate_falling);
 
-		if (pmx->soc->groups[i].slwr_bit >= 0)
+		if (pmx->soc->groups[group].slwr_bit >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 				TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
 				cdata->slew_rate_rising);
 
-		if (pmx->soc->groups[i].drvtype_reg >= 0)
+		if (pmx->soc->groups[group].drvtype_reg >= 0)
 			tegra_pinctrl_set_config(pmx->pctl, group,
 					TEGRA_PINCONF_PARAM_DRIVE_TYPE,
 					cdata->drive_type);
