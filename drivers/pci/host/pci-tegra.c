@@ -419,7 +419,8 @@ static struct tegra_pcie_bus *tegra_pcie_bus_alloc(unsigned int busnr)
 	pgprot_t prot = L_PTE_PRESENT | L_PTE_YOUNG | L_PTE_DIRTY | L_PTE_XN |
 			L_PTE_MT_DEV_SHARED | L_PTE_SHARED;
 #else
-	pgprot_t prot = PTE_PRESENT | PTE_YOUNG | PTE_DIRTY | PTE_XN | PTE_SHARED;
+	pgprot_t prot = PTE_PRESENT | PTE_YOUNG | PTE_DIRTY | PTE_XN |
+		PTE_SHARED | PTE_TYPE_PAGE;
 	(void)pgprot_dmacoherent(prot); /* L_PTE_MT_DEV_SHARED */
 #endif
 
