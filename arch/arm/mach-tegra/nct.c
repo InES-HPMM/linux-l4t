@@ -105,7 +105,7 @@ static int __init tegra_nct_init(void)
 		return -ENOTSUPP;
 	}
 
-	nct_ptr = ioremap_nocache(tegra_nck_start,
+	nct_ptr = ioremap_wc(tegra_nck_start,
 				tegra_nck_size);
 	if (!nct_ptr) {
 		pr_err("tegra_nct: failed to ioremap memory at 0x%08lx\n",
@@ -114,6 +114,7 @@ static int __init tegra_nct_init(void)
 	}
 
 	memcpy(&nct_head, nct_ptr, sizeof(nct_head));
+	wmb();
 
 	pr_info("%s: magic(0x%x),vid(0x%x),pid(0x%x),ver(V%x.%x),rev(%d)\n",
 		__func__,
