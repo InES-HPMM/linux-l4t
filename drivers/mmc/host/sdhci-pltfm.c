@@ -4,7 +4,6 @@
  *
  * Copyright (c) 2007, 2011 Freescale Semiconductor, Inc.
  * Copyright (c) 2009 MontaVista Software, Inc.
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Authors: Xiaobo Xie <X.Xie@freescale.com>
  *	    Anton Vorontsov <avorontsov@ru.mvista.com>
@@ -278,44 +277,9 @@ static int sdhci_pltfm_resume(struct device *dev)
 	return ret;
 }
 
-#ifdef CONFIG_PM_RUNTIME
-
-static int sdhci_runtime_suspend(struct device *dev)
-{
-	struct sdhci_host *host = dev_get_drvdata(dev);
-
-	return sdhci_runtime_suspend_host(host);
-
-}
-
-static int sdhci_runtime_resume(struct device *dev)
-{
-	struct sdhci_host *host = dev_get_drvdata(dev);
-
-	return sdhci_runtime_resume_host(host);
-
-}
-
-static int sdhci_runtime_idle(struct device *dev)
-{
-	return 0;
-}
-
-#else
-
-#define sdhci_acpi_runtime_suspend	NULL
-#define sdhci_acpi_runtime_resume	NULL
-#define sdhci_acpi_runtime_idle		NULL
-
-#endif
-
-
 const struct dev_pm_ops sdhci_pltfm_pmops = {
 	.suspend	= sdhci_pltfm_suspend,
 	.resume		= sdhci_pltfm_resume,
-	.runtime_suspend	= sdhci_runtime_suspend,
-	.runtime_resume		= sdhci_runtime_resume,
-	.runtime_idle		= sdhci_runtime_idle,
 };
 EXPORT_SYMBOL_GPL(sdhci_pltfm_pmops);
 #endif	/* CONFIG_PM */

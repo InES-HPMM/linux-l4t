@@ -493,6 +493,5 @@ extern void sdhci_enable_irq_wakeups(struct sdhci_host *host);
 extern int sdhci_runtime_suspend_host(struct sdhci_host *host);
 extern int sdhci_runtime_resume_host(struct sdhci_host *host);
 #endif
-extern struct task_struct *suspend_task;
 
 #endif /* __SDHCI_HW_H */
