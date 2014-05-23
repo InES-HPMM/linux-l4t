@@ -713,11 +713,114 @@ static void tegra30_avp_free_shared_mem(struct tegra_offload_mem *mem)
 	tegra30_avp_mem_free(mem);
 }
 
+/* Loopback APIs */
+static int tegra30_avp_loopback_set_params(int id,
+		struct tegra_offload_pcm_params *params)
+{
+	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
+	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
+	struct stream_data *stream = avp_stream->stream;
+	int ret = 0;
+
+	dev_vdbg(audio_avp->dev, "%s:entry\n", __func__);
+
+	/* TODO : check validity of parameters */
+	if (!stream) {
+		dev_err(audio_avp->dev, "AVP platform not initialized.");
+		return -ENODEV;
+	}
+
+
+	stream->stream_notification_interval = params->period_size;
+	stream->stream_notification_enable = 1;
+	stream->stream_params.rate = params->rate;
+	stream->stream_params.channels = params->channels;
+	stream->stream_params.bits_per_sample = params->bits_per_sample;
+
+
+	avp_stream->period_size = params->period_size;
+	avp_stream->notify_cb = params->period_elapsed_cb;
+	avp_stream->notify_args = params->period_elapsed_args;
+
+	stream->source_buffer_system =
+		(uintptr_t)(params->source_buf.virt_addr);
+	stream->source_buffer_avp = params->source_buf.phys_addr;
+	stream->source_buffer_size = params->buffer_size;
+	return ret;
+}
+
+static int tegra30_avp_loopback_set_state(int id, int state)
+{
+	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
+	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
+	struct stream_data *stream = avp_stream->stream;
+
+	dev_vdbg(audio_avp->dev, "%s : id %d state %d", __func__, id, state);
+
+	if (!stream) {
+		dev_err(audio_avp->dev, "AVP platform not initialized.");
+		return -ENODEV;
+	}
+
+	switch (state) {
+	case SNDRV_PCM_TRIGGER_START:
+		stream->stream_state_target = KSSTATE_RUN;
+		return 0;
+	case SNDRV_PCM_TRIGGER_STOP:
+		stream->stream_state_target = KSSTATE_STOP;
+		stream->source_buffer_write_position = 0;
+		stream->source_buffer_write_count = 0;
+		avp_stream->last_notification_offset = 0;
+		avp_stream->notification_received = 0;
+		avp_stream->source_buffer_offset = 0;
+		return 0;
+	default:
+		dev_err(audio_avp->dev, "Unsupported state.");
+		return -EINVAL;
+	}
+}
+
+static size_t tegra30_avp_loopback_get_position(int id)
+{
+	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
+	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
+	struct stream_data *stream = avp_stream->stream;
+	size_t pos = 0;
+
+	pos = (size_t)stream->source_buffer_read_position;
+
+	dev_vdbg(audio_avp->dev, "%s id %d pos %d", __func__, id, (u32)pos);
+
+	return pos;
+}
+
+static void tegra30_avp_loopback_data_ready(int id, int bytes)
+{
+	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
+	struct tegra30_avp_stream *avp_stream = &audio_avp->avp_stream[id];
+	struct stream_data *stream = avp_stream->stream;
+
+	dev_vdbg(audio_avp->dev, "%s :id %d size %d", __func__, id, bytes);
+
+	stream->source_buffer_write_position += bytes;
+	stream->source_buffer_write_position %= stream->source_buffer_size;
+
+	avp_stream->source_buffer_offset += bytes;
+	while (avp_stream->source_buffer_offset >=
+		stream->stream_notification_interval) {
+		stream->source_buffer_write_count++;
+		avp_stream->source_buffer_offset -=
+		stream->stream_notification_interval;
+	}
+	return;
+}
+
 /* PCM APIs */
-static int tegra30_avp_pcm_open(int *id)
+static int tegra30_avp_pcm_open(int *id, char *stream)
 {
 	struct tegra30_avp_audio *audio_avp = avp_audio_ctx;
 	struct audio_engine_data *audio_engine = audio_avp->audio_engine;
+	struct tegra30_avp_stream *avp_stream;
 	int ret = 0;
 
 	dev_vdbg(audio_avp->dev, "%s", __func__);
@@ -741,20 +844,36 @@ static int tegra30_avp_pcm_open(int *id)
 		audio_engine = audio_avp->audio_engine;
 	}
 
-	if (!audio_engine->stream[pcm_stream_id].stream_allocated)
-		*id = pcm_stream_id;
-	else if (!audio_engine->stream[pcm2_stream_id].stream_allocated)
-		*id = pcm2_stream_id;
-	else {
-		dev_err(audio_avp->dev, "All AVP PCM streams are busy");
-		return -EBUSY;
+	if (strcmp(stream, "pcm") == 0) {
+		avp_stream = &audio_avp->avp_stream[1];
+		if (!audio_engine->stream[pcm_stream_id].stream_allocated) {
+			*id = pcm_stream_id;
+			audio_engine->stream[*id].stream_allocated = 1;
+			atomic_inc(&audio_avp->stream_active_count);
+		} else if (
+		!audio_engine->stream[pcm2_stream_id].stream_allocated) {
+			*id = pcm2_stream_id;
+			audio_engine->stream[*id].stream_allocated = 1;
+			atomic_inc(&audio_avp->stream_active_count);
+		} else {
+			dev_err(audio_avp->dev, "All AVP PCM streams are busy");
+			return -EBUSY;
+		}
+	} else if (strcmp(stream, "loopback") == 0) {
+		avp_stream = &audio_avp->avp_stream[0];
+		if
+		(!audio_engine->stream[loopback_stream_id].stream_allocated) {
+			dev_vdbg(audio_avp->dev,
+			"Assigning loopback id:%d\n", loopback_stream_id);
+			audio_engine->stream[*id].stream_allocated = 1;
+			*id = loopback_stream_id;
+		} else {
+			dev_err(audio_avp->dev, "AVP loopback streams is busy");
+			return -EBUSY;
+		}
 	}
 
-	audio_engine->stream[*id].stream_allocated = 1;
-
-	atomic_inc(&audio_avp->stream_active_count);
 	tegra30_avp_audio_set_state(KSSTATE_RUN);
-
 	return 0;
 }
 
@@ -1248,6 +1367,9 @@ static void tegra30_avp_stream_close(int id)
 	stream->stream_allocated = 0;
 	tegra30_avp_stream_set_state(id, KSSTATE_STOP);
 
+	if (id == loopback_stream_id)
+		return;
+
 	if (atomic_dec_and_test(&audio_avp->stream_active_count)) {
 		tegra30_avp_audio_free_dma();
 		tegra30_avp_audio_set_state(KSSTATE_STOP);
@@ -1267,6 +1389,14 @@ static struct tegra_offload_ops avp_audio_platform = {
 		.set_stream_state = tegra30_avp_pcm_set_state,
 		.get_stream_position = tegra30_avp_pcm_get_position,
 		.data_ready = tegra30_avp_pcm_data_ready,
+	},
+	.loopback_ops = {
+		.stream_open = tegra30_avp_pcm_open,
+		.stream_close = tegra30_avp_stream_close,
+		.set_stream_params = tegra30_avp_loopback_set_params,
+		.set_stream_state = tegra30_avp_loopback_set_state,
+		.get_stream_position = tegra30_avp_loopback_get_position,
+		.data_ready = tegra30_avp_loopback_data_ready,
 	},
 	.compr_ops = {
 		.stream_open = tegra30_avp_compr_open,

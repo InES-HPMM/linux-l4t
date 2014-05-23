@@ -56,7 +56,7 @@ struct tegra_offload_compr_params {
 };
 
 struct tegra_offload_pcm_ops {
-	int	(*stream_open)(int *id);
+	int	(*stream_open)(int *id, char *stream);
 	void	(*stream_close)(int id);
 	int	(*set_stream_params)(int id,
 			struct tegra_offload_pcm_params *params);
@@ -88,6 +88,7 @@ struct tegra_offload_device_ops {
 struct tegra_offload_ops {
 	struct tegra_offload_device_ops device_ops;
 	struct tegra_offload_pcm_ops	pcm_ops;
+	struct tegra_offload_pcm_ops	loopback_ops;
 	struct tegra_offload_compr_ops	compr_ops;
 };
 

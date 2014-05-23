@@ -59,8 +59,9 @@
 #define DAI_LINK_BT_VOICE_CALL	4
 #define DAI_LINK_PCM_OFFLOAD_FE	5
 #define DAI_LINK_COMPR_OFFLOAD_FE	6
-#define DAI_LINK_I2S_OFFLOAD_BE	7
-#define NUM_DAI_LINKS		8
+#define DAI_LINK_PCM_OFFLOAD_CAPTURE_FE	7
+#define DAI_LINK_I2S_OFFLOAD_BE	8
+#define NUM_DAI_LINKS		9
 
 extern int g_is_call_mode;
 
@@ -1061,6 +1062,17 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.codec_name = "snd-soc-dummy",
 
 		.dynamic = 1,
+	},
+	[DAI_LINK_PCM_OFFLOAD_CAPTURE_FE] = {
+		.name = "offload-pcm-capture",
+		.stream_name = "offload-pcm-capture",
+
+		.platform_name = "tegra-offload",
+		.cpu_dai_name = "tegra-offload-pcm",
+
+		.codec_dai_name =  "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+
 	},
 	[DAI_LINK_I2S_OFFLOAD_BE] = {
 		.name = "offload-audio-codec",
