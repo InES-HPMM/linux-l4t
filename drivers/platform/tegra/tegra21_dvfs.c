@@ -306,7 +306,7 @@ static struct dvfs gpu_dvfs = {
 	.dvfs_rail	= &tegra21_dvfs_rail_vdd_gpu,
 };
 
-int read_gpu_dvfs_table(int **millivolts, unsigned long **freqs)
+int read_gpu_dvfs_table(const int **millivolts, unsigned long **freqs)
 {
 	*millivolts = gpu_dvfs.millivolts;
 	*freqs = gpu_dvfs.freqs;
