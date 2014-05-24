@@ -2613,6 +2613,22 @@ static void pll_clk_stop_ss(struct clk *c)
 	}
 }
 
+static void pll_clk_verify_fixed_rate(struct clk *c)
+{
+	unsigned long rate = clk_get_rate_locked(c);
+
+	/*
+	 * If boot rate is not equal to expected fixed rate, print
+	 * warning, but accept boot rate as new fixed rate, assuming
+	 * that warning will be fixed.
+	 */
+	if (rate != c->u.pll.fixed_rate) {
+		WARN(1, "%s: boot rate %lu != fixed rate %lu\n",
+		       c->name, rate, c->u.pll.fixed_rate);
+		c->u.pll.fixed_rate = rate;
+	}
+}
+
 /*
  * Common configuration for PLLs with fixed input divider policy:
  * - always set fixed M-value based on the reference rate
@@ -2701,6 +2717,15 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	unsigned long input_rate = clk_get_rate(c->parent);
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+
+	if (c->flags & PLL_FIXED) {
+		if (rate != c->u.pll.fixed_rate) {
+			pr_err("%s: can not change fixed rate %lu to %lu\n",
+			       c->name, c->u.pll.fixed_rate, rate);
+			return -EINVAL;
+		}
+		return 0;
+	}
 
 	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
 		return -EINVAL;
@@ -2877,6 +2902,8 @@ static void tegra_pll_clk_init(struct clk *c)
 			c->u.pll.set_defaults(c, input_rate);
 		pll_base_parse_cfg(c, &cfg);
 		pll_clk_set_gain(c, &cfg);
+		if (c->flags & PLL_FIXED)
+			pll_clk_verify_fixed_rate(c);
 		return;
 	}
 
@@ -2894,11 +2921,18 @@ static void tegra_pll_clk_init(struct clk *c)
 	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE | PLL_BASE_REF_DISABLE);
 	pll_writel_delay(val, c->reg);
 
-	vco_min = DIV_ROUND_UP(vco_min, cf) * cf;
-	if (!c->u.pll.vco_out)
-		c->ops->set_rate(c, vco_min / 4);
-	else
-		c->ops->set_rate(c, vco_min);
+	if (c->flags & PLL_FIXED) {
+		c->flags &= ~PLL_FIXED;	/* temporarily to allow set rate once */
+		c->ops->set_rate(c, c->u.pll.fixed_rate);
+		c->flags |= PLL_FIXED;
+		pll_clk_verify_fixed_rate(c);
+	} else {
+		vco_min = DIV_ROUND_UP(vco_min, cf) * cf;
+		if (!c->u.pll.vco_out)
+			c->ops->set_rate(c, vco_min / 4);
+		else
+			c->ops->set_rate(c, vco_min);
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -2917,8 +2951,14 @@ static void tegra_pll_clk_resume_enable(struct clk *c)
 	if (c->u.pll.set_defaults)
 		c->u.pll.set_defaults(c, rate);
 
-	rate = clk_get_rate_all_locked(c);
-	c->ops->set_rate(c, rate);
+	if (c->flags & PLL_FIXED) {
+		c->flags &= ~PLL_FIXED;	/* temporarily to allow set rate once */
+		c->ops->set_rate(c, c->u.pll.fixed_rate);
+		c->flags |= PLL_FIXED;
+	} else {
+		rate = clk_get_rate_all_locked(c);
+		c->ops->set_rate(c, rate);
+	}
 	c->ops->enable(c);
 	c->state = state;
 }
@@ -4080,6 +4120,15 @@ static int tegra21_pll_out_clk_set_rate(struct clk *c, unsigned long rate)
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
+	if (c->flags & PLL_FIXED) {
+		if (rate != c->u.pll.fixed_rate) {
+			pr_err("%s: can not change fixed rate %lu to %lu\n",
+			       c->name, c->u.pll.fixed_rate, rate);
+			return -EINVAL;
+		}
+		return 0;
+	}
+
 	if (!rate)
 		return -EINVAL;
 
@@ -4150,12 +4199,21 @@ static void tegra21_pll_out_clk_init(struct clk *c)
 		p = divs->pdiv_to_p[p];
 		c->div = p;
 		c->mul = 1;
+		if (c->flags & PLL_FIXED)
+			pll_clk_verify_fixed_rate(c);
 		return;
 	}
 
-	/* PLL is disabled - set 1/4 of VCO rate */
-	vco_rate = clk_get_rate(pll);
-	c->ops->set_rate(c, vco_rate / 4);
+	if (c->flags & PLL_FIXED) {
+		c->flags &= ~PLL_FIXED;	/* temporarily to allow set rate once */
+		c->ops->set_rate(c, c->u.pll.fixed_rate);
+		c->flags |= PLL_FIXED;
+		pll_clk_verify_fixed_rate(c);
+	} else {
+		/* PLL is disabled - set 1/4 of VCO rate */
+		vco_rate = clk_get_rate(pll);
+		c->ops->set_rate(c, vco_rate / 4);
+	}
 }
 
 static struct clk_ops tegra_pll_out_ops = {
