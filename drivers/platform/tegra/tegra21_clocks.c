@@ -344,7 +344,6 @@ do {									       \
 
 #define PLLD_MISC0_DEFAULT_VALUE	0x00140000
 #define PLLD_MISC0_WRITE_MASK		0x3ff7ffff
-#define PLLD_MISC0_DEFAULTS_MASK	0x3fd40000
 #define PLLD_MISC1_DEFAULT_VALUE	0x0
 #define PLLD_MISC1_WRITE_MASK		0x00ffffff
 
@@ -3060,6 +3059,8 @@ static struct clk_ops tegra_plla_ops = {
 static void plld_set_defaults(struct clk *c, unsigned long input_rate)
 {
 	u32 val = clk_readl(c->reg);
+	u32 mask = c->u.pll.div_layout->sdm_din_mask;
+
 	c->u.pll.defaults_set = true;
 
 	if (val & c->u.pll.controls->enable_mask) {
@@ -3072,13 +3073,15 @@ static void plld_set_defaults(struct clk *c, unsigned long input_rate)
 
 		/* ignore lock, DSI and SDM controls, make sure IDDQ not set */
 		val = PLLD_MISC0_DEFAULT_VALUE & (~PLLD_MISC0_IDDQ);
-		PLL_MISC_CHK_DEFAULT(c, 0, val, PLLD_MISC0_DEFAULTS_MASK);
+		mask |= PLLD_MISC0_DSI_CLKENABLE | PLLD_MISC0_LOCK_ENABLE |
+			PLLD_MISC0_LOCK_OVERRIDE | PLLD_MISC0_EN_SDM;
+		PLL_MISC_CHK_DEFAULT(c, 0, val, ~mask & PLLD_MISC0_WRITE_MASK);
 
 		/* Enable lock detect */
+		mask = PLLD_MISC0_LOCK_ENABLE | PLLD_MISC0_LOCK_OVERRIDE;
 		val = clk_readl(c->reg + c->u.pll.misc0);
-		val &= ~(PLLD_MISC0_LOCK_ENABLE | PLLD_MISC0_LOCK_OVERRIDE);
-		val |= PLLD_MISC0_DEFAULT_VALUE &
-			(PLLD_MISC0_LOCK_ENABLE | PLLD_MISC0_LOCK_OVERRIDE);
+		val &= ~mask;
+		val |= PLLD_MISC0_DEFAULT_VALUE & mask;
 		pll_writel_delay(val, c->reg + c->u.pll.misc0);
 
 		return;
