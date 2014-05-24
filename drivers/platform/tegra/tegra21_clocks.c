@@ -251,13 +251,6 @@ do {									       \
 #define PLL_BASE_DIVM_MASK		(0x1F)
 #define PLL_BASE_DIVM_SHIFT		0
 
-/* FIXME: remove */
-#define PLLC_BASE_DIVM_MASK		0xFF
-
-#define PLLU_BASE_DIVN_MASK		(0xFF<<8)
-#define PLLU_BASE_DIVP_MASK		(0x1F << 16)
-#define PLLU_BASE_DIVP_SHIFT		16
-
 /* FXME: to be removed */
 #define PLL_BASE_PARSE(pll, cfg, b)					       \
 	do {								       \
@@ -290,8 +283,6 @@ do {									       \
 
 #define PLL_FIXED_MDIV(c, ref)		((ref) == 38400000 ? 2 : 1)
 
-/* PLLU */
-#define PLLU_BASE_OVERRIDE		(1<<24)
 #define PLLU_BASE_POST_DIV		(1<<20)
 
 #define PLLDU_LFCON			2
@@ -387,6 +378,20 @@ do {									       \
 
 #define PLLRE_BASE_DEFAULT_MASK		0x1c000000
 #define PLLRE_MISC0_WRITE_MASK		0x67ffffff
+
+/* PLLU */
+#define PLLU_BASE_LOCK			(1 << 27)
+#define PLLU_BASE_OVERRIDE		(1 << 24)
+
+#define PLLU_MISC0_IDDQ			(1 << 31)
+#define PLLU_MISC0_LOCK_ENABLE		(1 << 29)
+#define PLLU_MISC1_LOCK_OVERRIDE	(1 << 0)
+
+#define PLLU_MISC0_DEFAULT_VALUE	0xa0000000
+#define PLLU_MISC1_DEFAULT_VALUE	0x0
+
+#define PLLU_MISC0_WRITE_MASK		0xbfffffff
+#define PLLU_MISC1_WRITE_MASK		0x00000007
 
 /* PLLX */
 #define PLLX_USE_DYN_RAMP		0
@@ -631,6 +636,8 @@ static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap);
 static unsigned long tegra21_clk_cap_shared_bus(struct clk *bus,
 	unsigned long rate, unsigned long ceiling);
+
+static struct clk *pll_u;
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -2223,8 +2230,10 @@ static void tegra21_pll_clk_init(struct clk *c)
 			divn_mask = PLLD_BASE_DIVN_MASK;
 			*/
 		} else if (c->flags & PLLU) {
+			/* FIXME: no longer happens to be removed
 			divn_mask = PLLU_BASE_DIVN_MASK;
 			divm_mask = PLLC_BASE_DIVM_MASK;
+			*/
 		}
 		c->mul = (val & divn_mask) >> divn_shift;
 		c->div = (val & divm_mask) >> PLL_BASE_DIVM_SHIFT;
@@ -2237,27 +2246,6 @@ static void tegra21_pll_clk_init(struct clk *c)
 		c->u.pll.fixed_rate = clk_get_rate_locked(c);
 	}
 
-	if (c->flags & PLLU) {
-		/* Configure UTMI PLL power management */
-		tegra21_utmi_param_configure(c);
-
-		/* Put PLLU under h/w control */
-		usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
-
-		val = clk_readl(c->reg + PLL_BASE);
-		val &= ~PLLU_BASE_OVERRIDE;
-		pll_writel_delay(val, c->reg + PLL_BASE);
-
-/* FIXME: Disable for initial Si bringup */
-#if 0
-		/* Set XUSB PLL pad pwr override and iddq */
-		val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
-		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
-		xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-		xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-#endif
-	}
 }
 
 static int tegra21_pll_clk_enable(struct clk *c)
@@ -2420,13 +2408,6 @@ static int tegra21_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 	return 0;
 }
-
-static struct clk_ops tegra_pll_ops = {
-	.init			= tegra21_pll_clk_init,
-	.enable			= tegra21_pll_clk_enable,
-	.disable		= tegra21_pll_clk_disable,
-	.set_rate		= tegra21_pll_clk_set_rate,
-};
 
 static void tegra21_pllp_clk_init(struct clk *c)
 {
@@ -3429,6 +3410,90 @@ static struct clk_ops tegra_pllre_vco_ops = {
 };
 
 /*
+ * PLLU
+ * VCO is exposed to the clock tree directly along with post-divider output.
+ * Both VCO and post-divider output rates are fixed at 480MHz and 240MHz,
+ * respectively.
+ */
+static void pllu_check_defaults(struct clk *c, bool hw_control)
+{
+	u32 val, mask;
+
+	/* Ignore lock enable (will be set) and IDDQ if under h/w control */
+	val = PLLU_MISC0_DEFAULT_VALUE & (~PLLU_MISC0_IDDQ);
+	mask = PLLU_MISC0_LOCK_ENABLE | (hw_control ? PLLU_MISC0_IDDQ : 0);
+	PLL_MISC_CHK_DEFAULT(c, 0, val, ~mask & PLLU_MISC0_WRITE_MASK);
+
+	val = PLLU_MISC1_DEFAULT_VALUE;
+	mask = PLLU_MISC1_LOCK_OVERRIDE;
+	PLL_MISC_CHK_DEFAULT(c, 1, val, ~mask & PLLU_MISC1_WRITE_MASK);
+}
+
+static void pllu_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	u32 val = clk_readl(c->reg);
+	c->u.pll.defaults_set = true;
+
+	if (val & c->u.pll.controls->enable_mask) {
+		/*
+		 * PLL is ON: check if defaults already set, then set those
+		 * that can be updated in flight.
+		 */
+		pllu_check_defaults(c, false);
+
+		/* Enable lock detect */
+		val = clk_readl(c->reg + c->u.pll.misc0);
+		val &= ~PLLU_MISC0_LOCK_ENABLE;
+		val |= PLLU_MISC0_DEFAULT_VALUE & PLLU_MISC0_LOCK_ENABLE;
+		pll_writel_delay(val, c->reg + c->u.pll.misc0);
+
+		val = clk_readl(c->reg + c->u.pll.misc1);
+		val &= ~PLLU_MISC1_LOCK_OVERRIDE;
+		val |= PLLU_MISC1_DEFAULT_VALUE & PLLU_MISC1_LOCK_OVERRIDE;
+		pll_writel_delay(val, c->reg + c->u.pll.misc1);
+
+		return;
+	}
+
+	/* set IDDQ, enable lock detect */
+	clk_writel(PLLU_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+	pll_writel_delay(PLLU_MISC1_DEFAULT_VALUE, c->reg + c->u.pll.misc1);
+}
+
+static void tegra21_pllu_vco_init(struct clk *c)
+{
+	u32 val = clk_readl(c->reg);
+	pll_u = c;
+
+	/*
+	 * If PLLU state is already under h/w control just check defaults, and
+	 * verify expected fixed VCO rate (pll dividers can still be read from
+	 * the * base register).
+	 */
+	if (!(val & PLLU_BASE_OVERRIDE)) {
+		struct clk_pll_freq_table cfg = { };
+		c->state = (val & c->u.pll.controls->enable_mask) ? ON : OFF;
+
+		pllu_check_defaults(c, true);
+		pll_base_parse_cfg(c, &cfg);
+		pll_clk_set_gain(c, &cfg);
+
+		pll_clk_verify_fixed_rate(c);
+		return;
+	}
+
+	/* S/w controlled initialization */
+	tegra_pll_clk_init(c);
+}
+
+static struct clk_ops tegra_pllu_vco_ops = {
+	.init			= tegra21_pllu_vco_init,
+	.enable			= tegra_pll_clk_enable,
+	.disable		= tegra_pll_clk_disable,
+	.set_rate		= tegra_pll_clk_set_rate,
+};
+
+/*
  * PLLX
  * PLL with dynamic ramp and fractional SDM. Dynamic ramp is allowed for any
  * transition that changes NDIV only, while PLL is already locked. SDM is not
@@ -4229,6 +4294,75 @@ static struct clk_ops tegra_pll_out_fixed_ops = {
 	.disable		= tegra21_pll_out_clk_disable,
 };
 
+static void tegra21_pllu_hw_ctrl_set(struct clk *c)
+{
+	u32 val = clk_readl(c->reg);
+
+	/* Put UTMI PLL under h/w control */
+	tegra21_utmi_param_configure(c);
+
+	/* Put PLLU under h/w control */
+	usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
+
+	if (val & PLLU_BASE_OVERRIDE) {
+		val &= ~PLLU_BASE_OVERRIDE;
+		pll_writel_delay(val, c->reg);
+	} else {
+		/* FIXME: should it be WARN() ? */
+		pr_info("%s: boot with h/w control already set\n", c->name);
+	}
+
+/* FIXME: Disable for initial Si bringup */
+#if 0
+	/* Set XUSB PLL pad pwr override and iddq */
+	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
+	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
+	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
+#endif
+}
+
+static void tegra21_pllu_out_clk_init(struct clk *c)
+{
+	u32 p, val;
+	struct clk *pll = c->parent;
+	val = clk_readl(pll->reg);
+
+	/*
+	 * If PLLU state is already under h/w control just record output ratio,
+	 * and verify expected fixed output rate.
+	 */
+	if (!(val & PLLU_BASE_OVERRIDE)) {
+		struct clk_pll_div_layout *divs = pll->u.pll.div_layout;
+
+		c->state = pll->state;
+		c->max_rate = pll->u.pll.vco_max;
+
+		p = (val & divs->pdiv_mask) >> divs->pdiv_shift;
+		if (p > divs->pdiv_max)
+			p = divs->pdiv_max; /* defer invalid p WARN to verify */
+		p = divs->pdiv_to_p[p];
+		c->div = p;
+		c->mul = 1;
+
+		pll_clk_verify_fixed_rate(c);
+	} else {
+		/* Complete PLLU output s/w controlled initialization */
+		tegra21_pll_out_clk_init(c);
+	}
+
+	/* Put USB plls under h/w control */
+	tegra21_pllu_hw_ctrl_set(pll);
+}
+
+static struct clk_ops tegra_pllu_out_ops = {
+	.init			= tegra21_pllu_out_clk_init,
+	.enable			= tegra21_pll_out_clk_enable,
+	.disable		= tegra21_pll_out_clk_disable,
+	.set_rate		= tegra21_pll_out_clk_set_rate,
+};
+
 #ifdef CONFIG_PM_SLEEP
 static void tegra_pll_out_resume_enable(struct clk *c)
 {
@@ -4249,6 +4383,16 @@ static void tegra_pll_out_resume_enable(struct clk *c)
 
 	/* Restore PLL feedback loop */
 	tegra_pll_clk_resume_enable(pll);
+}
+
+static void tegra_pllu_out_resume_enable(struct clk *c)
+{
+	u32 val = clk_readl(c->parent->reg);
+	if (!(val & PLLU_BASE_OVERRIDE) ||
+	    val & c->parent->u.pll.controls->enable_mask)
+		return;		/* already resumed */
+
+	tegra_pll_out_resume_enable(c);
 }
 #endif
 
@@ -4289,6 +4433,7 @@ static void tegra21_pll_div_clk_init(struct clk *c)
 	} else if (c->flags & PLLU) {
 		u32 val = clk_readl(c->reg);
 		c->state = val & (0x1 << c->reg_shift) ? ON : OFF;
+		c->max_rate = c->parent->max_rate;
 	} else {
 		c->state = ON;
 		c->div = 1;
@@ -4319,10 +4464,10 @@ static int tegra21_pll_div_clk_enable(struct clk *c)
 	} else if (c->flags & DIV_2) {
 		return 0;
 	} else if (c->flags & PLLU) {
-		clk_lock_save(c->parent, &flags);
+		clk_lock_save(pll_u, &flags);
 		val = clk_readl(c->reg) | (0x1 << c->reg_shift);
 		clk_writel_delay(val, c->reg);
-		clk_unlock_restore(c->parent, &flags);
+		clk_unlock_restore(pll_u, &flags);
 		return 0;
 	}
 	return -EINVAL;
@@ -4348,10 +4493,10 @@ static void tegra21_pll_div_clk_disable(struct clk *c)
 		clk_writel_delay(val, c->reg);
 		spin_unlock_irqrestore(&pll_div_lock, flags);
 	} else if (c->flags & PLLU) {
-		clk_lock_save(c->parent, &flags);
+		clk_lock_save(pll_u, &flags);
 		val = clk_readl(c->reg) & (~(0x1 << c->reg_shift));
 		clk_writel_delay(val, c->reg);
-		clk_unlock_restore(c->parent, &flags);
+		clk_unlock_restore(pll_u, &flags);
 	}
 }
 
@@ -7110,31 +7255,82 @@ static struct clk tegra_pll_p_out5 = {
 	.max_rate  = 432000000,
 };
 
-static struct clk_pll_freq_table tegra_pll_u_freq_table[] = {
-	{ 12000000, 480000000, 960, 12, 2, 12},
-	{ 13000000, 480000000, 960, 13, 2, 12},
-	{ 19200000, 480000000, 200, 4,  2, 3},
-	{ 38400000, 480000000, 100, 4,  2, 3}, /* HACK!!! FIXME for T210 !!! */
+static struct clk_pll_freq_table tegra_pll_u_vco_freq_table[] = {
+	{ 12000000, 480000000, 40, 1, 1},
+	{ 13000000, 480000000, 36, 1, 1},	/* actual: 468.0 MHz */
+	{ 38400000, 480000000, 25, 2, 1},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-static struct clk tegra_pll_u = {
-	.name      = "pll_u",
-	.flags     = PLL_HAS_CPCON | PLLU,
-	.ops       = &tegra_pll_ops,
+struct clk_pll_controls pllu_controls = {
+	.enable_mask = PLL_BASE_ENABLE,
+	.bypass_mask = PLL_BASE_BYPASS,
+	.iddq_mask = PLLU_MISC0_IDDQ,
+	.iddq_reg_idx = PLL_MISC0_IDX,
+	.lock_mask = PLLU_BASE_LOCK,
+	.lock_reg_idx = PLL_BASE_IDX,
+};
+
+static struct clk tegra_pll_u_vco = {
+	.name      = "pll_u_vco",
+	.flags     = PLLU | PLL_FIXED,
+	.ops       = &tegra_pllu_vco_ops,
 	.reg       = 0xc0,
 	.parent    = &tegra_pll_ref,
-	.max_rate  = 480000000,
+	.max_rate  = 700000000,
 	.u.pll = {
-		.input_min = 2000000,
-		.input_max = 40000000,
-		.cf_min    = 1000000,
-		.cf_max    = 6000000,
-		.vco_min   = 480000000,
-		.vco_max   = 960000000,
-		.freq_table = tegra_pll_u_freq_table,
-		.lock_delay = 1000,
-		.cpcon_default = 12,
+		.input_min = 9600000,
+		.input_max = 800000000,
+		.cf_min    = 9600000,
+		.cf_max    = 19200000,
+		.vco_min   = 350000000,
+		.vco_max   = 700000000,
+		.freq_table = tegra_pll_u_vco_freq_table,
+		.lock_delay = 300,
+		.misc0 = 0xcc - 0xc0,
+		.misc1 = 0xc8 - 0xc0,
+		.controls = &pllu_controls,
+		.div_layout = &pllre_div_layout,	/* same, re-used */
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.set_defaults = pllu_set_defaults,
+		.vco_out = true,
+		.fixed_rate = 480000000,
+	},
+};
+
+static struct clk tegra_pll_u_out = {
+	.name      = "pll_u_out",
+	.flags     = PLLU | PLL_FIXED,
+	.ops       = &tegra_pllu_out_ops,
+	.parent    = &tegra_pll_u_vco,
+	.u.pll = {
+		.fixed_rate = 240000000,
+	},
+};
+
+static struct clk tegra_pll_u_out1 = {
+	.name      = "pll_u_out1",
+	.ops       = &tegra_pll_div_ops,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
+	.parent    = &tegra_pll_u_out,
+	.reg       = 0xc4,
+	.reg_shift = 0,
+	.max_rate  = 480000000,
+	.u.pll_div = {
+		.default_rate = 48000000,
+	},
+};
+
+static struct clk tegra_pll_u_out2 = {
+	.name      = "pll_u_out2",
+	.ops       = &tegra_pll_div_ops,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
+	.parent    = &tegra_pll_u_out,
+	.reg       = 0xc4,
+	.reg_shift = 16,
+	.max_rate  = 480000000,
+	.u.pll_div = {
+		.default_rate = 60000000,
 	},
 };
 
@@ -7144,10 +7340,9 @@ static struct clk tegra_pll_u_480M = {
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
 	.reg_shift = 22,
-	.parent    = &tegra_pll_u,
+	.parent    = &tegra_pll_u_vco,
 	.mul       = 1,
 	.div       = 1,
-	.max_rate  = 480000000,
 };
 
 static struct clk tegra_pll_u_60M = {
@@ -7156,10 +7351,9 @@ static struct clk tegra_pll_u_60M = {
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
 	.reg_shift = 23,
-	.parent    = &tegra_pll_u,
+	.parent    = &tegra_pll_u_out2,
 	.mul       = 1,
-	.div       = 8,
-	.max_rate  = 60000000,
+	.div       = 1,
 };
 
 static struct clk tegra_pll_u_48M = {
@@ -7168,22 +7362,9 @@ static struct clk tegra_pll_u_48M = {
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
 	.reg_shift = 25,
-	.parent    = &tegra_pll_u,
+	.parent    = &tegra_pll_u_out1,
 	.mul       = 1,
-	.div       = 10,
-	.max_rate  = 48000000,
-};
-
-static struct clk tegra_pll_u_12M = {
-	.name      = "pll_u_12M",
-	.flags     = PLLU,
-	.ops       = &tegra_pll_div_ops,
-	.reg       = 0xc0,
-	.reg_shift = 21,
-	.parent    = &tegra_pll_u,
-	.mul       = 1,
-	.div       = 40,
-	.max_rate  = 12000000,
+	.div       = 1,
 };
 
 static struct clk tegra_dfll_cpu = {
@@ -8689,6 +8870,7 @@ static struct clk tegra_xusb_coupled_clks[] = {
  * table under two names.
  */
 struct clk_duplicate tegra_clk_duplicates[] = {
+	CLK_DUPLICATE("pll_u_out",  NULL, "pll_u"),
 	CLK_DUPLICATE("uarta",  "serial8250.0", NULL),
 	CLK_DUPLICATE("uartb",  "serial8250.1", NULL),
 	CLK_DUPLICATE("uartc",  "serial8250.2", NULL),
@@ -8792,11 +8974,13 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_d,
 	&tegra_pll_d_out0,
 	&tegra_clk_xusb_gate,
-	&tegra_pll_u,
+	&tegra_pll_u_vco,
+	&tegra_pll_u_out,
+	&tegra_pll_u_out1,
+	&tegra_pll_u_out2,
 	&tegra_pll_u_480M,
 	&tegra_pll_u_60M,
 	&tegra_pll_u_48M,
-	&tegra_pll_u_12M,
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
@@ -9180,7 +9364,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 22];
+			   PERIPH_CLK_SOURCE_NUM + 24];
 
 static int tegra21_clk_suspend(void)
 {
@@ -9194,6 +9378,8 @@ static int tegra21_clk_suspend(void)
 
 	*ctx++ = clk_readl(tegra_pll_p_out1.reg);
 	*ctx++ = clk_readl(tegra_pll_p_out3.reg);
+	*ctx++ = clk_readl(tegra_pll_u_out1.reg);
+	*ctx++ = clk_readl(tegra_pll_u_vco.reg);
 
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
@@ -9251,10 +9437,14 @@ static void tegra21_clk_resume(void)
 {
 	unsigned long off;
 	const u32 *ctx = clk_rst_suspend;
-	u32 val;
-	u32 pll_p_out12, pll_p_out34;
+	u32 val, pll_u_mask, pll_u_base;
+	u32 pll_p_out12, pll_p_out34, pll_u_out12;
 	u32 pll_a_out0, pll_c_out1, pll_c4_out3, pll_re_out1;
 	struct clk *p;
+
+	pll_u_mask = (1 << tegra_pll_u_480M.reg_shift) |
+		(1 << tegra_pll_u_60M.reg_shift) |
+		(1 << tegra_pll_u_48M.reg_shift);
 
 	/* FIXME: OSC_CTRL already restored by warm boot code? */
 	val = clk_readl(OSC_CTRL) & ~OSC_CTRL_MASK;
@@ -9267,7 +9457,7 @@ static void tegra21_clk_resume(void)
 	/* Since we are going to reset devices and switch clock sources in this
 	 * function, plls and secondary dividers is required to be enabled. The
 	 * actual value will be restored back later. Note that boot plls: pllm,
-	 * pllp, and pllu are already configured and enabled
+	 * and pllp, are already configured and enabled
 	 */
 	val = PLL_OUT_CLKEN | PLL_OUT_RESET_DISABLE;
 	val |= val << 16;
@@ -9275,6 +9465,13 @@ static void tegra21_clk_resume(void)
 	clk_writel(pll_p_out12 | val, tegra_pll_p_out1.reg);
 	pll_p_out34 = *ctx++;
 	clk_writel(pll_p_out34 | val, tegra_pll_p_out3.reg);
+
+	tegra_pllu_out_resume_enable(&tegra_pll_u_out);
+	pll_u_out12 = *ctx++;
+	clk_writel(pll_u_out12 | val, tegra_pll_u_out1.reg);
+	pll_u_base = *ctx++;
+	val = clk_readl(tegra_pll_u_vco.reg) | pll_u_mask;
+	clk_writel(val, tegra_pll_u_vco.reg);
 
 	tegra_pll_clk_resume_enable(&tegra_pll_c);
 	tegra_pll_clk_resume_enable(&tegra_pll_c2);
@@ -9366,6 +9563,9 @@ static void tegra21_clk_resume(void)
 	/* Restore back the actual pll and secondary divider values */
 	clk_writel(pll_p_out12, tegra_pll_p_out1.reg);
 	clk_writel(pll_p_out34, tegra_pll_p_out3.reg);
+	clk_writel(pll_u_out12, tegra_pll_u_out1.reg);
+	val = clk_readl(tegra_pll_u_vco.reg) & (~pll_u_mask);
+	clk_writel(val | (pll_u_base & pll_u_mask), tegra_pll_u_vco.reg);
 
 	p = &tegra_pll_c;
 	if (p->state == OFF)
@@ -9429,7 +9629,7 @@ static void tegra21_clk_resume(void)
 	}
 	tegra_emc_timing_invalidate();
 
-	tegra21_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
+	tegra21_pllu_hw_ctrl_set(&tegra_pll_u_vco); /* PLLU, UTMIP h/w ctrl */
 	tegra21_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 	tegra21_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
 }

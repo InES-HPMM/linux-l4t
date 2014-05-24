@@ -58,7 +58,9 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 #else
 	{ "csite",      NULL,           0,              true },
 #endif
-	{ "pll_u",      NULL,           480000000,      true },
+	{ "pll_u_out",  NULL,           0,		true },
+	{ "pll_u_out1", NULL,           0,		true },
+	{ "pll_u_out2", NULL,           0,		true },
 	{ "pll_re_vco", NULL,           672000000,      true },
 	{ "pll_re_out", NULL,           672000000,      false },
 	{ "xusb_falcon_src",    "pll_re_out",   224000000,      false},
