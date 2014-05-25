@@ -71,9 +71,11 @@ static const struct dev_pm_ops nvadsp_pm_ops = {
 static int nvadsp_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data;
+	struct resource *res = NULL;
 	void __iomem *base = NULL;
 	int ret = 0;
 	int iter;
+	int dram_iter;
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "in probe()...\n");
@@ -96,7 +98,6 @@ static int nvadsp_probe(struct platform_device *pdev)
 	}
 
 	for (iter = 0; iter < APE_MAX_REG; iter++) {
-		struct resource *res = NULL;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, iter);
 		if (!res) {
 			dev_err(dev,
@@ -114,9 +115,20 @@ static int nvadsp_probe(struct platform_device *pdev)
 			goto err;
 		}
 		drv_data->base_regs[iter] = base;
-
 		adsp_add_load_mappings(res->start, base,
 						resource_size(res));
+	}
+
+	for (dram_iter = 0; dram_iter < ADSP_MAX_DRAM_MAP; dram_iter++) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, iter++);
+		if (!res) {
+			dev_err(dev,
+			"Failed to get DRAM map with ID %d\n", iter);
+			ret = -EINVAL;
+			goto err;
+		}
+
+		drv_data->dram_region[dram_iter] = res;
 	}
 
 	platform_set_drvdata(pdev, drv_data);

@@ -40,11 +40,11 @@ int nvadsp_os_probe(struct platform_device *);
 int nvadsp_app_module_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
 void *get_mailbox_shared_region(void);
-struct elf32_shdr *nvadsp_get_section(const struct firmware *fw,
-						char *sec_name);
+struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 uint32_t find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);
 struct adsp_module
 *load_adsp_module(const char *, const char *, struct device *);
 int allocate_memory_from_adsp(void **, unsigned int);
+bool is_adsp_dram_addr(u64);
 #endif /* __TEGRA_NVADSP_OS_H */

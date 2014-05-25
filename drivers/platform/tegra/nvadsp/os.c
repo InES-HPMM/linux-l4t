@@ -29,8 +29,11 @@
 #include <linux/tegra_nvadsp.h>
 #include <linux/elf.h>
 #include <linux/device.h>
+#include <linux/clk.h>
+#include <linux/clk/tegra.h>
 
 #include "os.h"
+#include "dev.h"
 
 #define APE_FPGA_MISC_RST_DEVICES 0x702dc800 /*1882048512*/
 #define APE_RESET (1 << 6)
@@ -57,6 +60,9 @@
 
 #define AMC_EVP_SIZE (AMC_EVP_FIQ_ADDR_0 - AMC_EVP_RESET_VEC_0 + 4)
 
+#define ADSP_CONFIG	0x04
+#define MAXCLKLATENCY   (3 << 8)
+
 #define NVADSP_ELF "adsp.elf"
 #define NVADSP_FIRMWARE NVADSP_ELF
 
@@ -71,10 +77,18 @@ struct global_sym_info {
 	char name[SYM_NAME_SZ];
 };
 
+#define UART_BAUD_RATE	9600
+
+#define CONFIG_SYSTEM_FPGA 1
+
 struct nvadsp_os_data {
+#if !CONFIG_SYSTEM_FPGA
 	void __iomem *reset_reg;
+#endif
 	struct platform_device *pdev;
 	struct global_sym_info *adsp_glo_sym_tbl;
+	void __iomem *misc_base;
+	struct resource **dram_region;
 };
 
 static struct nvadsp_os_data priv;
@@ -87,6 +101,20 @@ struct nvadsp_mappings {
 
 static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
+
+bool is_adsp_dram_addr(u64 addr)
+{
+	int i;
+	struct resource **dram = priv.dram_region;
+
+	for (i = 0; i < ADSP_MAX_DRAM_MAP; i++) {
+		if ((addr >= dram[i]->start) &&
+				(addr <= dram[i]->end)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 int adsp_add_load_mappings(phys_addr_t pa, void *mapping, int len)
 {
@@ -135,7 +163,7 @@ void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags)
 		goto end;
 	}
 
-	WARN(*da != (*da & UINT_MAX),
+	WARN(!is_adsp_dram_addr(*da),
 			"bus addr %llx beyond %x\n", *da, UINT_MAX);
 end:
 	return va;
@@ -290,7 +318,16 @@ void *get_mailbox_shared_region(void)
 	return nvadsp_da_to_va_mappings(addr, size);
 }
 
-int nvadsp_os_elf_load(const struct firmware *fw)
+static void copy_io_in_l(void *to, const void *from, int sz)
+{
+	int i;
+	for (i = 0; i <= sz; i += 4) {
+		int val = *(int *)(from + i);
+		writel(val, to + i);
+	}
+}
+
+static int nvadsp_os_elf_load(const struct firmware *fw)
 {
 	struct device *dev = &priv.pdev->dev;
 	struct elf32_hdr *ehdr;
@@ -339,8 +376,14 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 		}
 
 		/* put the segment where the remote processor expects it */
-		if (filesz)
-			memcpy(va, elf_data + offset, filesz);
+		if (filesz) {
+			if (!is_adsp_dram_addr(da))
+				copy_io_in_l(va,
+					elf_data + offset, filesz);
+			else
+				memcpy(va, elf_data + offset,
+							filesz);
+		}
 	}
 
 	return ret;
@@ -389,6 +432,7 @@ int nvadsp_os_load(void)
 	int ret;
 	struct device *dev = &priv.pdev->dev;
 	void *ptr;
+	struct clk *clk_ape;
 
 	if (!dev) {
 		pr_info("ADSP Driver is not initialized\n");
@@ -420,6 +464,12 @@ int nvadsp_os_load(void)
 
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
+	clk_ape = clk_get_sys(NULL, "ape");
+	if (IS_ERR_OR_NULL(clk_ape)) {
+		dev_info(dev, "unable to find ape clock\n");
+		goto end;
+	}
+	tegra_periph_reset_deassert(clk_ape);
 
 	ptr = get_mailbox_shared_region();
 	update_nvadsp_app_shared_ptr(ptr);
@@ -435,22 +485,53 @@ EXPORT_SYMBOL(nvadsp_os_load);
 int nvadsp_os_start(void)
 {
 	struct device *dev = &priv.pdev->dev;
+	struct clk *adsp_clk;
+	struct clk *ape_uart;
+	int val;
 
 	if (!dev) {
 		pr_info("ADSP Driver is not initialized\n");
 		return -EINVAL;
 	}
 
+	/*FIXME:this will be replaced by pm_runtime API */
+	adsp_clk = clk_get_sys(NULL, "adsp");
+	if (IS_ERR_OR_NULL(adsp_clk)) {
+		dev_info(dev, "unable to find adsp clock\n");
+		return PTR_ERR(adsp_clk);
+	}
+	tegra_periph_reset_assert(adsp_clk);
+	udelay(10);
+
+	val = readl(priv.misc_base + ADSP_CONFIG);
+	writel(val | MAXCLKLATENCY, priv.misc_base + ADSP_CONFIG);
+
+	/* TODO: enable ape2apb clock */
+	ape_uart = clk_get_sys("uartape", NULL);
+	if (IS_ERR_OR_NULL(ape_uart)) {
+		dev_info(dev, "unable to find uart ape clk\n");
+		return PTR_ERR(ape_uart);
+	}
+
+	clk_prepare_enable(ape_uart);
+	clk_set_rate(ape_uart, UART_BAUD_RATE * 16);
+
+	dev_info(dev, "starting ADSP OS ....\n");
+	tegra_periph_reset_deassert(adsp_clk);
+
+#if !CONFIG_SYSTEM_FPGA
 	dev_info(dev, "starting ADSP OS ....\n");
 	writel(APE_RESET, priv.reset_reg);
-
-
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
 int nvadsp_os_probe(struct platform_device *pdev)
 {
+
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+#if !CONFIG_SYSTEM_FPGA
 	struct device *dev = &pdev->dev;
 
 	priv.reset_reg = ioremap(APE_FPGA_MISC_RST_DEVICES, 1);
@@ -458,8 +539,10 @@ int nvadsp_os_probe(struct platform_device *pdev)
 		dev_info(dev, "unable to map reset addr\n");
 		return -EINVAL;
 	}
-
+#endif
 	priv.pdev = pdev;
+	priv.misc_base = drv_data->base_regs[AMISC];
+	priv.dram_region = drv_data->dram_region;
 
 	return 0;
 }

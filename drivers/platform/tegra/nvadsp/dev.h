@@ -20,6 +20,7 @@
 #define __TEGRA_NVADSP_DEV_H
 
 #include <linux/tegra_nvadsp.h>
+#include <linux/ioport.h>
 
 #include "hwmailbox.h"
 
@@ -33,8 +34,15 @@ enum {
 	APE_MAX_REG
 };
 
+enum {
+	ADSP_DRAM1,
+	ADSP_DRAM2,
+	ADSP_MAX_DRAM_MAP
+};
+
 struct nvadsp_drv_data {
 	void __iomem **base_regs;
+	struct resource *dram_region[ADSP_MAX_DRAM_MAP];
 	struct hwmbox_queue hwmbox_send_queue;
 	int hwmbox_send_virq;
 	int hwmbox_recv_virq;
@@ -43,4 +51,5 @@ struct nvadsp_drv_data {
 	unsigned long *mbox_ids;
 	spinlock_t mbox_lock;
 };
+
 #endif /* __TEGRA_NVADSP_DEV_H */
