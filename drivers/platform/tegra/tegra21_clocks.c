@@ -8843,6 +8843,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
+	&tegra_pex_uphy_clk,
 	&tegra_clk_cclk_g,
 	&tegra_clk_sclk,
 	&tegra_clk_hclk,
