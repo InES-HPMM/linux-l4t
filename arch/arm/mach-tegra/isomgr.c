@@ -189,6 +189,14 @@ static struct isoclient_info tegra12x_isoclients[] = {
 		.dev_name = "tegradc.1",
 		.emc_clk_name = "emc",
 	},
+#ifdef CONFIG_VI_ONE_DEVICE
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+		.dev_name = "tegra_vi",
+		.emc_clk_name = "emc",
+	},
+#else
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
@@ -201,6 +209,7 @@ static struct isoclient_info tegra12x_isoclients[] = {
 		.dev_name = "tegra_vi.1",
 		.emc_clk_name = "emc",
 	},
+#endif
 	{
 		.client = TEGRA_ISO_CLIENT_ISP_A,
 		.name = "isp_a",
