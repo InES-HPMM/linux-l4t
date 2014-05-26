@@ -271,6 +271,8 @@ static ssize_t cm3217_chan_regulator_enable(struct device *dev,
 
 success:
 	inf->als_state = enable;
+	if (!enable && regulator_is_enabled(inf->vreg[0].consumer))
+		cm3217_cmd_wr(inf, 0, 0);
 fail:
 	return ret ? ret : 1;
 }
@@ -388,50 +390,6 @@ static const struct iio_info cm3217_iio_info = {
 	.driver_module = THIS_MODULE
 };
 
-#ifdef CONFIG_PM_SLEEP
-static int cm3217_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct cm3217_inf *inf = iio_priv(indio_dev);
-	int ret = 0;
-
-	if (inf->als_state != CHIP_POWER_OFF)
-		ret = cm3217_vreg_dis_all(inf);
-
-	if (ret)
-		dev_err(&client->adapter->dev,
-				"%s err in reg enable\n", __func__);
-	return ret;
-}
-
-static int cm3217_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct cm3217_inf *inf = iio_priv(indio_dev);
-	int ret = 0;
-
-	if (inf->als_state != CHIP_POWER_OFF)
-		ret = cm3217_vreg_en_all(inf);
-
-	if (ret)
-		dev_err(&client->adapter->dev,
-				"%s err in reg enable\n", __func__);
-	if (inf->als_state == CHIP_POWER_ON_ALS_ON)
-		ret = cm3217_cmd_wr(inf, 0, 0);
-	if (ret)
-		dev_err(&client->adapter->dev,
-				"%s err in cm3217 write\n", __func__);
-	return ret;
-}
-
-static SIMPLE_DEV_PM_OPS(cm3217_pm_ops, cm3217_suspend, cm3217_resume);
-#define CM3217_PM_OPS (&cm3217_pm_ops)
-#else
-#define CM3217_PM_OPS NULL
-#endif
-
 static int cm3217_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
@@ -536,7 +494,6 @@ static struct i2c_driver cm3217_driver = {
 		.name	= "cm3217",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(cm3217_of_match),
-		.pm = CM3217_PM_OPS,
 	},
 };
 module_i2c_driver(cm3217_driver);
