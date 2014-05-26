@@ -528,6 +528,19 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 	if (rate > max_rate)
 		rate = max_rate;
 
+	/* Check if rate is supposed to be fixed */
+	if (c->fixed_target_rate) {
+		/* If it is already set at target rate, do nothing */
+		if (old_rate == c->fixed_target_rate)
+			return 0;
+
+		pr_warn("clock %s was not running at expected target rate %lu"
+				" (old rate = %lu, requested rate = %lu), "
+				"fixing the same",
+				c->name, c->fixed_target_rate, old_rate, rate);
+		rate = c->fixed_target_rate;
+	}
+
 	if (c->ops && c->ops->round_rate) {
 		new_rate = c->ops->round_rate(c, rate);
 
@@ -574,15 +587,6 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 out:
 	if (disable)
 		clk_disable_locked(c);
-
-	if (c->fixed_target_rate &&
-			(clk_get_rate_locked(c) != c->fixed_target_rate)) {
-
-		pr_err("Violating expected target rate for clock:%s "
-				"expected rate:%lu, new rate set:%lu\n",
-				c->name, c->fixed_target_rate, clk_get_rate_locked(c));
-		WARN_ON(1);
-	}
 
 	return ret;
 }
