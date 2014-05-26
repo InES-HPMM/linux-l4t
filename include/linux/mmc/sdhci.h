@@ -242,6 +242,8 @@ struct sdhci_host {
 #endif
 	int			clk_gate_tmout_ticks;
 
+	struct task_struct *suspend_task;
+
 	unsigned long private[0] ____cacheline_aligned;
 };
 
