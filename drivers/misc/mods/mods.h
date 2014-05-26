@@ -24,7 +24,7 @@
 
 /* Driver version */
 #define MODS_DRIVER_VERSION_MAJOR 3
-#define MODS_DRIVER_VERSION_MINOR 46
+#define MODS_DRIVER_VERSION_MINOR 47
 #define MODS_DRIVER_VERSION ((MODS_DRIVER_VERSION_MAJOR << 8) | \
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
@@ -464,6 +464,18 @@ struct MODS_TEGRA_DC_SETUP_SD {
 	__u32 win_h;
 };
 
+/* MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS */
+struct MODS_DMABUF_GET_PHYSICAL_ADDRESS {
+	/* IN */
+	__s32 buf_fd;
+	__u32 padding;
+	__u64 offset;
+
+	/* OUT */
+	__u64 physical_address;
+	__u64 segment_size;
+};
+
 #pragma pack(pop)
 
 /* ************************************************************************* */
@@ -569,5 +581,8 @@ struct MODS_TEGRA_DC_SETUP_SD {
 		   struct MODS_TEGRA_DC_CONFIG_POSSIBLE)
 #define MODS_ESC_TEGRA_DC_SETUP_SD	\
 		   _IOW(MODS_IOC_MAGIC, 48, struct MODS_TEGRA_DC_SETUP_SD)
+#define MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS	\
+		   _IOWR(MODS_IOC_MAGIC, 49,    \
+			 struct MODS_DMABUF_GET_PHYSICAL_ADDRESS)
 
 #endif /* _MODS_H_  */

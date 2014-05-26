@@ -32,6 +32,9 @@
 #define MODS_HAS_DEBUGFS 1
 #endif
 #define MODS_HAS_KFUSE 1
+#ifdef CONFIG_DMA_SHARED_BUFFER
+#define MODS_HAS_DMABUF 1
+#endif
 
 #endif /* _MODS_CONFIG_H_  */
 

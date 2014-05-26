@@ -448,6 +448,14 @@ int esc_mods_tegra_dc_config_possible(struct file *,
 				struct MODS_TEGRA_DC_CONFIG_POSSIBLE *);
 int esc_mods_tegra_dc_setup_sd(struct file *, struct MODS_TEGRA_DC_SETUP_SD *);
 #endif
+#ifdef MODS_HAS_DMABUF
+int esc_mods_dmabuf_get_phys_addr(struct file *,
+				  struct MODS_DMABUF_GET_PHYSICAL_ADDRESS *);
+#else
+static inline int esc_mods_dmabuf_get_phys_addr(struct file *f,
+				  struct MODS_DMABUF_GET_PHYSICAL_ADDRESS *a)
+				  { return -EINVAL; }
+#endif
 #endif
 
 #ifdef CONFIG_DEBUG_FS
@@ -467,6 +475,14 @@ void mods_exit_tegradc(void);
 #else
 static inline int mods_init_tegradc(void) { return 0; }
 static inline void mods_exit_tegradc(void) {}
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA) && defined(MODS_HAS_DMABUF)
+int mods_init_dmabuf(void);
+void mods_exit_dmabuf(void);
+#else
+static inline int mods_init_dmabuf(void) { return 0; }
+static inline void mods_exit_dmabuf(void) {}
 #endif
 
 #endif	/* _MODS_INTERNAL_H_  */

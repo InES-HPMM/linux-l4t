@@ -117,6 +117,10 @@ static int __init mods_init_module(void)
 	if (rc < 0)
 		return rc;
 
+	rc = mods_init_dmabuf();
+	if (rc < 0)
+		return rc;
+
 	mods_info_printk("driver loaded, version %x.%02x\n",
 			 (MODS_DRIVER_VERSION>>8),
 			 (MODS_DRIVER_VERSION&0xFF));
@@ -127,6 +131,8 @@ static int __init mods_init_module(void)
 static void __exit mods_exit_module(void)
 {
 	LOG_ENT();
+
+	mods_exit_dmabuf();
 
 	mods_exit_tegradc();
 
@@ -1020,6 +1026,14 @@ static long mods_krnl_ioctl(struct file  *fp,
 		MODS_IOCTL_VOID(MODS_ESC_MEMORY_BARRIER,
 				esc_mods_memory_barrier);
 		break;
+
+#ifdef CONFIG_ARCH_TEGRA
+	case MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS:
+		MODS_IOCTL(MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS,
+			   esc_mods_dmabuf_get_phys_addr,
+			   MODS_DMABUF_GET_PHYSICAL_ADDRESS);
+		break;
+#endif
 
 	default:
 		mods_error_printk("unrecognized ioctl (0x%x)\n", cmd);
