@@ -179,29 +179,41 @@ EXPORT_SYMBOL_GPL(tegra_agic_irq_is_active);
 int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
 {
 	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
-	u32 irq_target = GIC_DIST_TARGET + irq;
+	u32 irq_target = GIC_DIST_TARGET + (irq & ~3);
+	u32 shift = (irq % 4) * 8;
 	u32 irq_clear_enable = GIC_DIST_ENABLE_CLEAR + (irq / 32) * 4;
 	u32 val32;
-	u8 val8;
+	u32 irq_aff;
 	u8 routing_cpu = 1 << (u32)cpu;
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&irq_controller_lock, flags);
-	val8 = readb_relaxed(dist_base + irq_target);
-	if (val8 & routing_cpu) {
-		raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+	irq_aff = readl_relaxed(dist_base + irq_target);
+	if (irq_aff & (routing_cpu << shift)) {
+		raw_spin_unlock_irqrestore(&irq_controller_lock,
+							flags);
+		pr_info("routing agic irq %d to same cpu\n", irq);
 		return -EINVAL;
 	}
 
-	val32 =  readl(dist_base + irq_clear_enable);
+	val32 = readl(dist_base + irq_clear_enable);
 
 	/* Check whether the irq is enabled */
 	if (val32 & (1 << (irq % 32))) {
-		raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+		raw_spin_unlock_irqrestore(&irq_controller_lock,
+							flags);
+		pr_info("agic irq %d is enabled, cannot be routed\n",
+								irq);
 		return -EPERM;
 	}
-	writeb_relaxed(routing_cpu, dist_base + irq_target);
+
+	/* clear the byte with the word field */
+	irq_aff = irq_aff & ~(0xFF << shift);
+	writel_relaxed(irq_aff, dist_base + irq_target);
+	irq_aff = irq_aff | (routing_cpu << shift);
+	writel_relaxed(irq_aff, dist_base + irq_target);
 	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra_agic_route_interrupt);
