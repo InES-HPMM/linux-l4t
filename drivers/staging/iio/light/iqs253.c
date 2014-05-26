@@ -81,7 +81,18 @@
 #define PROX_SETTING_NORMAL	0x25
 #define PROX_SETTING_STYLUS	0x26
 
+#define AUTO_ATI_DISABLE	BIT(7)
 #define ATI_IN_PROGRESS		0x04
+
+/* initial values */
+
+#define EVENT_MODE_DISABLE_MASK	0x04
+#define LTA_DISABLE		BIT(5)
+#define ACF_DISABLE		BIT(4)
+/* LTA always halt */
+#define LTA_HALT_11		(BIT(0) | BIT(1))
+
+#define ATI_ENABLED_MASK	0x80
 
 #define NUM_REG 17
 
@@ -112,6 +123,9 @@ enum mode {
 	MODE_NONE = -1,
 	NORMAL_MODE,
 	STYLUS_MODE,
+	INIT_MODE,
+	FORCE_ATI_MODE,
+	POST_INIT_MODE,
 	NUM_MODE
 };
 
@@ -143,6 +157,25 @@ struct reg_val_pair reg_val_map[NUM_MODE][NUM_REG] = {
 		{ ACTIVE_CHAN, STYLUS_ONLY},
 		{ DYCAL_CHANS, DISABLE_DYCAL},
 		{ EVENT_MODE_MASK, EVENT_PROX_ONLY}
+	},
+	{	/* init settings */
+		{ PROX_SETTINGS2, ACF_DISABLE | EVENT_MODE_DISABLE_MASK},
+		{ ACTIVE_CHAN, PROXIMITY_ONLY},
+		{ PROX_SETTINGS0, AUTO_ATI_DISABLE},
+		{ CH0_PTH, 0x04},
+		{ CH1_PTH, 0x04},
+		{ CH2_PTH, 0x04},
+		{ TARGET, 0x20},
+	},
+	{	/* force on ATI */
+		{ PROX_SETTINGS0, 0x50}, /* enable ATI and force auto ATI */
+	},
+	{
+		{ PROX_SETTINGS0, AUTO_ATI_DISABLE}, /* turn off ATI*/
+		{ PROX_SETTINGS2, ACF_DISABLE |
+				  EVENT_MODE_DISABLE_MASK | LTA_HALT_11},
+		{ DYCAL_CHANS, DISABLE_DYCAL},
+		/* turning on ATI is recommended but it has side effects */
 	},
 };
 
@@ -186,7 +219,7 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 	if ((mode != NORMAL_MODE) && (mode != STYLUS_MODE))
 		return -EINVAL;
 
-	reg_val_pair_map = reg_val_map[mode];
+	reg_val_pair_map = reg_val_map[INIT_MODE];
 
 	for (i = 0; i < NUM_REG; i++) {
 		if (!reg_val_pair_map[i].reg && !reg_val_pair_map[i].val)
@@ -204,12 +237,46 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip, int mode)
 		}
 	}
 
+	reg_val_pair_map = reg_val_map[FORCE_ATI_MODE];
+
+	for (i = 0; i < NUM_REG; i++) {
+		if (!reg_val_pair_map[i].reg && !reg_val_pair_map[i].val)
+			continue;
+
+		ret = iqs253_i2c_write_byte(iqs253_chip,
+					reg_val_pair_map[i].reg,
+					reg_val_pair_map[i].val);
+		if (ret) {
+			dev_err(&iqs253_chip->client->dev,
+				"iqs253 write val:%x to reg:%x failed\n",
+				reg_val_pair_map[i].val,
+				reg_val_pair_map[i].reg);
+			return ret;
+		}
+	}
 	/* wait for ATI to finish */
 	do {
 		usleep_range(10 * 1000, 10 * 1000);
 		ret = iqs253_i2c_read_byte(iqs253_chip, SYSFLAGS);
 	} while (ret & ATI_IN_PROGRESS);
 
+	reg_val_pair_map = reg_val_map[POST_INIT_MODE];
+
+	for (i = 0; i < NUM_REG; i++) {
+		if (!reg_val_pair_map[i].reg && !reg_val_pair_map[i].val)
+			continue;
+
+		ret = iqs253_i2c_write_byte(iqs253_chip,
+					reg_val_pair_map[i].reg,
+					reg_val_pair_map[i].val);
+		if (ret) {
+			dev_err(&iqs253_chip->client->dev,
+				"iqs253 write val:%x to reg:%x failed\n",
+				reg_val_pair_map[i].val,
+				reg_val_pair_map[i].reg);
+			return ret;
+		}
+	}
 	iqs253_chip->mode = mode;
 	return 0;
 }
@@ -432,7 +499,7 @@ static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
 	chip->using_regulator = false;
 
 finish:
-	queue_delayed_work(chip->sar_wq, &chip->sar_dw, msecs_to_jiffies(2000));
+	queue_delayed_work(chip->sar_wq, &chip->sar_dw, msecs_to_jiffies(1000));
 }
 
 #endif /* CONFIG_SENSORS_IQS253_AS_PROXIMITY */
