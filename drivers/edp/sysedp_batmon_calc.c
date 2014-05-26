@@ -296,7 +296,7 @@ static int rbat_show(struct seq_file *file, void *data)
 
 	seq_printf(file, " %8s", "capacity");
 	for (t = 0; t < lut->temp_size; t++)
-		seq_printf(file, "%7dC", lut->temp_axis[t]);
+		seq_printf(file, "%8d", lut->temp_axis[t]);
 	seq_puts(file, "\n");
 
 	for (c = 0; c < lut->capacity_size; c++) {
@@ -314,7 +314,7 @@ static int ibat_show(struct seq_file *file, void *data)
 
 	if (lut) {
 		do {
-			seq_printf(file, "%7dC %7dmA\n", lut->temp, lut->ibat);
+			seq_printf(file, "%7d %7dmA\n", lut->temp, lut->ibat);
 		} while ((lut++)->ibat);
 	}
 	return 0;
