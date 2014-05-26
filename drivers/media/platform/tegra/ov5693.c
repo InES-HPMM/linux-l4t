@@ -3493,8 +3493,6 @@ static int ov5693_probe(
 	if (IS_ERR(info->regulators.avdd) || IS_ERR(info->regulators.dovdd))
 			return -EFAULT;
 
-	info->sysedpc = sysedp_create_consumer("ov5693", "ov5693");
-
 	ov5693_sdata_init(info);
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		if (info->pdata->probe_clock) {
@@ -3526,6 +3524,8 @@ static int ov5693_probe(
 		ov5693_del(info);
 		return -ENODEV;
 	}
+
+	info->sysedpc = sysedp_create_consumer("ov5693", info->devname);
 
 	dev_dbg(&client->dev, "ov5693 sensor driver loading done\n");
 	return 0;
