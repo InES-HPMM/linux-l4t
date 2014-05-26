@@ -124,10 +124,10 @@ int uart_console_debug_init(int default_debug_port)
 		pr_info("The debug console clock name is %s\n",
 						debug_uart_clk->name);
 #endif
-		if (tegra_platform_is_fpga())
-			c = tegra_get_clock_by_name("clk_m");
-		else
+		if (tegra_platform_is_silicon())
 			c = tegra_get_clock_by_name("pll_p");
+		else
+			c = tegra_get_clock_by_name("clk_m");
 
 		if (IS_ERR_OR_NULL(c))
 			pr_err("Not getting the parent clock pll_p\n");
@@ -136,7 +136,7 @@ int uart_console_debug_init(int default_debug_port)
 
 		tegra_clk_prepare_enable(debug_uart_clk);
 
-		if (!tegra_platform_is_fpga())
+		if (tegra_platform_is_silicon())
 			clk_set_rate(debug_uart_clk, clk_get_rate(c));
 	} else {
 		pr_err("Not getting the clock for debug consolei %d\n",
