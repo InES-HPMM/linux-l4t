@@ -36,6 +36,7 @@ struct tegra_spi_platform_data {
  */
 struct tegra_spi_device_controller_data {
 	bool is_hw_based_cs;
+	bool variable_length_transfer;
 	int cs_setup_clk_count;
 	int cs_hold_clk_count;
 	int rx_clk_tap_delay;

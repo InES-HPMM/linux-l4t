@@ -98,7 +98,7 @@
 #define SPI_RX_FIFO_FULL_COUNT(val)		(((val) >> 23) & 0x7F)
 #define SPI_FRAME_END				(1 << 30)
 #define SPI_CS_INACTIVE				(1 << 31)
-
+#define IS_SPI_CS_INACTIVE(val)			(val >> 31)
 #define SPI_FIFO_ERROR				(SPI_RX_FIFO_UNF | \
 			SPI_RX_FIFO_OVF | SPI_TX_FIFO_UNF | SPI_TX_FIFO_OVF)
 #define SPI_FIFO_EMPTY			(SPI_RX_FIFO_EMPTY | SPI_TX_FIFO_EMPTY)
@@ -184,6 +184,7 @@ struct tegra_spi_data {
 	unsigned				max_buf_size;
 	bool					is_curr_dma_xfer;
 	bool					is_hw_based_cs;
+	bool					variable_length_transfer;
 
 	struct completion			rx_dma_complete;
 	struct completion			tx_dma_complete;
@@ -282,6 +283,14 @@ static void tegra_spi_clear_status(struct tegra_spi_data *tspi)
 	if (val & SPI_ERR)
 		tegra_spi_writel(tspi, SPI_ERR | SPI_FIFO_ERROR,
 				SPI_FIFO_STATUS);
+
+	if (val & SPI_CS_INACTIVE)
+		tegra_spi_writel(tspi, SPI_CS_INACTIVE,
+				 SPI_FIFO_STATUS);
+
+	if (val & SPI_FRAME_END)
+		tegra_spi_writel(tspi, SPI_FRAME_END,
+				 SPI_FIFO_STATUS);
 }
 
 static unsigned tegra_spi_calculate_curr_xfer_param(
@@ -367,6 +376,7 @@ static unsigned int tegra_spi_read_rx_fifo_to_client_rxbuf(
 {
 	unsigned rx_full_count;
 	unsigned long fifo_status;
+	unsigned int transfer_blk_count;
 	unsigned i, count;
 	unsigned long x;
 	unsigned int read_words = 0;
@@ -375,20 +385,27 @@ static unsigned int tegra_spi_read_rx_fifo_to_client_rxbuf(
 
 	fifo_status = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
 	rx_full_count = SPI_RX_FIFO_FULL_COUNT(fifo_status);
+
+	transfer_blk_count = SPI_BLK_CNT(
+			tegra_spi_readl(tspi, SPI_TRANS_STATUS));
+
 	if (tspi->is_packed) {
-		len = tspi->curr_dma_words * tspi->bytes_per_word;
+		len = transfer_blk_count * tspi->bytes_per_word;
+		WARN_ON((rx_full_count != (DIV_ROUND_UP(len, 4))));
 		for (count = 0; count < rx_full_count; count++) {
 			x = tegra_spi_readl(tspi, SPI_RX_FIFO);
 			for (i = 0; len && (i < 4); i++, len--)
 				*rx_buf++ = (x >> i*8) & 0xFF;
 		}
-		tspi->cur_rx_pos += tspi->curr_dma_words * tspi->bytes_per_word;
-		read_words += tspi->curr_dma_words;
+		tspi->cur_rx_pos += transfer_blk_count * tspi->bytes_per_word;
+		read_words += transfer_blk_count;
 	} else {
 		unsigned int bits_per_word;
 
 		bits_per_word = t->bits_per_word ? t->bits_per_word :
 						tspi->cur_spi->bits_per_word;
+
+		WARN_ON((rx_full_count != transfer_blk_count));
 		for (count = 0; count < rx_full_count; count++) {
 			x = tegra_spi_readl(tspi, SPI_RX_FIFO);
 			for (i = 0; (i < tspi->bytes_per_word); i++)
@@ -438,13 +455,15 @@ static void tegra_spi_copy_spi_rxbuf_to_client_rxbuf(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
 	unsigned len;
+	unsigned long transfer_blk_count = SPI_BLK_CNT(
+			tegra_spi_readl(tspi, SPI_TRANS_STATUS));
 
 	/* Make the dma buffer to read by cpu */
 	dma_sync_single_for_cpu(tspi->dev, tspi->rx_dma_phys,
 		tspi->dma_buf_size, DMA_FROM_DEVICE);
 
 	if (tspi->is_packed) {
-		len = tspi->curr_dma_words * tspi->bytes_per_word;
+		len = transfer_blk_count * tspi->bytes_per_word;
 		memcpy(t->rx_buf + tspi->cur_rx_pos, tspi->rx_dma_buf, len);
 	} else {
 		unsigned int i;
@@ -456,14 +475,14 @@ static void tegra_spi_copy_spi_rxbuf_to_client_rxbuf(
 		bits_per_word = t->bits_per_word ? t->bits_per_word :
 						tspi->cur_spi->bits_per_word;
 		rx_mask = (unsigned int)((1ULL << bits_per_word) - 1);
-		for (count = 0; count < tspi->curr_dma_words; count++) {
+		for (count = 0; count < transfer_blk_count; count++) {
 			x = tspi->rx_dma_buf[count];
 			x &= rx_mask;
 			for (i = 0; (i < tspi->bytes_per_word); i++)
 				*rx_buf++ = (x >> (i*8)) & 0xFF;
 		}
 	}
-	tspi->cur_rx_pos += tspi->curr_dma_words * tspi->bytes_per_word;
+	tspi->cur_rx_pos += transfer_blk_count * tspi->bytes_per_word;
 
 	/* Make the dma buffer to read by dma */
 	dma_sync_single_for_device(tspi->dev, tspi->rx_dma_phys,
@@ -546,7 +565,6 @@ static int tegra_spi_start_dma_based_transfer(
 	unsigned long intr_mask;
 	unsigned int len;
 	int ret = 0;
-	unsigned long status;
 
 	/* Make sure that Rx and Tx fifo are empty */
 	ret = check_and_clear_fifo(tspi);
@@ -789,8 +807,7 @@ static int tegra_spi_validate_request(struct spi_device *spi,
 	}
 
 	if (tspi->is_packed) {
-		if ((t->bits_per_word != 4) && (t->bits_per_word != 8)
-			&& (t->bits_per_word != 16)
+		if ((t->bits_per_word != 8) && (t->bits_per_word != 16)
 				&& (t->bits_per_word != 32)) {
 			dev_err(tspi->dev, "Packed mode does not support bpw = %d\n",
 					t->bits_per_word);
@@ -811,16 +828,13 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		bool is_single_xfer)
 {
 	struct tegra_spi_data *tspi = spi_master_get_devdata(spi->master);
+	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 	u32 speed;
 	u8 bits_per_word;
 	unsigned total_fifo_words;
 	int ret;
 	unsigned long command1;
 	int req_mode;
-
-	ret = tegra_spi_validate_request(spi, tspi, t);
-	if (ret < 0)
-		return ret;
 
 	bits_per_word = t->bits_per_word;
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
@@ -849,6 +863,10 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	tspi->rx_status = 0;
 	total_fifo_words = tegra_spi_calculate_curr_xfer_param(spi, tspi, t);
 
+	ret = tegra_spi_validate_request(spi, tspi, t);
+	if (ret < 0)
+		return ret;
+
 	if (is_first_of_msg) {
 		tegra_spi_clear_status(tspi);
 
@@ -867,6 +885,9 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 			command1 |= SPI_CONTROL_MODE_3;
 
 		tegra_spi_writel(tspi, command1, SPI_COMMAND1);
+		tspi->variable_length_transfer = false;
+		if (cdata && cdata->variable_length_transfer)
+			tspi->variable_length_transfer = true;
 	} else {
 		command1 = tspi->command1_reg;
 		command1 &= ~SPI_BIT_LENGTH(~0);
@@ -905,6 +926,7 @@ static struct tegra_spi_device_controller_data
 {
 	struct tegra_spi_device_controller_data *cdata;
 	struct device_node *slave_np, *data_np;
+	int ret;
 
 	slave_np = spi->dev.of_node;
 	if (!slave_np) {
@@ -926,6 +948,9 @@ static struct tegra_spi_device_controller_data
 		return NULL;
 	}
 
+	ret = of_property_read_bool(data_np, "nvidia,variable-length-transfer");
+	if (ret)
+		cdata->variable_length_transfer = 1;
 	of_node_put(data_np);
 	return cdata;
 }
@@ -1088,6 +1113,8 @@ static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
 {
 	struct spi_transfer *t = tspi->curr_xfer;
 	unsigned long flags;
+	unsigned long transfer_blk_count =
+			SPI_BLK_CNT(tegra_spi_readl(tspi, SPI_TRANS_STATUS));
 
 	spin_lock_irqsave(&tspi->lock, flags);
 	if (tspi->tx_status ||  tspi->rx_status) {
@@ -1106,15 +1133,17 @@ static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
 		tegra_spi_read_rx_fifo_to_client_rxbuf(tspi, t);
 
 	if (tspi->cur_direction & DATA_DIR_TX)
-		tspi->cur_pos = tspi->cur_tx_pos;
+		tspi->cur_pos += transfer_blk_count * tspi->bytes_per_word;
 	else
 		tspi->cur_pos = tspi->cur_rx_pos;
 
-	if (tspi->cur_pos == t->len) {
+	if ((tspi->cur_pos == t->len) ||
+		(IS_SPI_CS_INACTIVE(tspi->status_reg)
+			&& tspi->variable_length_transfer)) {
 		complete(&tspi->xfer_completion);
+		t->len = tspi->cur_pos;
 		goto exit;
 	}
-
 	tegra_spi_calculate_curr_xfer_param(tspi->cur_spi, tspi, t);
 	tegra_spi_start_cpu_based_transfer(tspi, t);
 exit:
@@ -1129,6 +1158,10 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 	int err = 0;
 	unsigned total_fifo_words;
 	unsigned long flags;
+	unsigned pending_rx_word_count;
+	unsigned long fifo_status, word_tfr_status, actual_word_tfr;
+	unsigned long transfer_blk_count =
+			SPI_BLK_CNT(tegra_spi_readl(tspi, SPI_TRANS_STATUS));
 
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
@@ -1136,12 +1169,22 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 			dmaengine_terminate_all(tspi->tx_dma_chan);
 			err += 1;
 		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->tx_dma_complete, SPI_DMA_TIMEOUT);
-			if (wait_status <= 0) {
+			if ((IS_SPI_CS_INACTIVE(tspi->status_reg)) &&
+				tspi->variable_length_transfer) {
 				dmaengine_terminate_all(tspi->tx_dma_chan);
-				dev_err(tspi->dev, "TxDma Xfer failed\n");
-				err += 1;
+				async_tx_ack(tspi->tx_dma_desc);
+			} else {
+				wait_status =
+				wait_for_completion_interruptible_timeout(
+						&tspi->tx_dma_complete,
+						SPI_DMA_TIMEOUT);
+
+				if (wait_status <= 0) {
+					dmaengine_terminate_all(
+						tspi->tx_dma_chan);
+					dev_err(tspi->dev, "TxDma Xfer failed\n");
+					err += 1;
+				}
 			}
 		}
 	}
@@ -1151,12 +1194,45 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 			dmaengine_terminate_all(tspi->rx_dma_chan);
 			err += 2;
 		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->rx_dma_complete, SPI_DMA_TIMEOUT);
-			if (wait_status <= 0) {
+			if ((IS_SPI_CS_INACTIVE(tspi->status_reg)) &&
+				tspi->variable_length_transfer) {
 				dmaengine_terminate_all(tspi->rx_dma_chan);
-				dev_err(tspi->dev, "RxDma Xfer failed\n");
-				err += 2;
+				async_tx_ack(tspi->rx_dma_desc);
+
+				fifo_status =
+					tegra_spi_readl(tspi, SPI_FIFO_STATUS);
+
+				pending_rx_word_count =
+					SPI_RX_FIFO_FULL_COUNT(fifo_status);
+
+				word_tfr_status =
+					DIV_ROUND_UP(transfer_blk_count ,
+						tspi->words_per_32bit);
+
+				actual_word_tfr =
+					word_tfr_status - pending_rx_word_count;
+
+				while (pending_rx_word_count > 0) {
+
+					tspi->rx_dma_buf[actual_word_tfr] =
+						tegra_spi_readl(tspi,
+							SPI_RX_FIFO);
+
+					actual_word_tfr++;
+					pending_rx_word_count--;
+				}
+			} else {
+				wait_status =
+				wait_for_completion_interruptible_timeout(
+						&tspi->rx_dma_complete,
+						SPI_DMA_TIMEOUT);
+
+				if (wait_status <= 0) {
+					dmaengine_terminate_all(
+						tspi->rx_dma_chan);
+					dev_err(tspi->dev, "RxDma Xfer failed\n");
+					err += 2;
+				}
 			}
 		}
 	}
@@ -1179,11 +1255,14 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 		tegra_spi_copy_spi_rxbuf_to_client_rxbuf(tspi, t);
 
 	if (tspi->cur_direction & DATA_DIR_TX)
-		tspi->cur_pos = tspi->cur_tx_pos;
+		tspi->cur_pos += transfer_blk_count * tspi->bytes_per_word;
 	else
 		tspi->cur_pos = tspi->cur_rx_pos;
 
-	if (tspi->cur_pos == t->len) {
+	if ((tspi->cur_pos == t->len) ||
+		(IS_SPI_CS_INACTIVE(tspi->status_reg) &&
+			tspi->variable_length_transfer)) {
+		t->len = tspi->cur_pos;
 		complete(&tspi->xfer_completion);
 		goto exit;
 	}
