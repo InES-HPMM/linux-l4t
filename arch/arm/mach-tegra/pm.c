@@ -57,6 +57,7 @@
 #include <linux/tegra-pmc.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/tegra_smmu.h>
+#include <linux/kmemleak.h>
 
 #include <trace/events/power.h>
 #include <trace/events/nvsecurity.h>
@@ -1794,6 +1795,12 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 				__func__);
 			goto out;
 		}
+
+		/* Avoid a kmemleak false positive. The allocated memory
+		 * block is later referenced by a physical address (i.e.
+		 * tegra_lp0_vec_start) which kmemleak can't detect.
+		 */
+		kmemleak_not_leak(reloc_lp0);
 
 		orig = ioremap(tegra_lp0_vec_start, tegra_lp0_vec_size);
 		WARN_ON(!orig);
