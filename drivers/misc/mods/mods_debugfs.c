@@ -30,6 +30,10 @@
 
 static struct dentry *mods_debugfs_dir;
 
+#ifdef CONFIG_ARCH_TEGRA
+#include <mach/kfuse.h>
+#endif
+
 #ifdef CONFIG_TEGRA_DC
 #include <../drivers/video/tegra/dc/dc_config.h>
 #include <../drivers/video/tegra/dc/dsi.h>
@@ -566,6 +570,38 @@ static const struct file_operations mods_dc_crc_latched_fops = {
 };
 #endif /* CONFIG_TEGRA_DC */
 
+#ifdef CONFIG_ARCH_TEGRA
+static int mods_kfuse_show(struct seq_file *s, void *unused)
+{
+	unsigned buf[KFUSE_DATA_SZ / 4];
+
+	/* copy load kfuse into buffer - only needed for early Tegra parts */
+	int ret = tegra_kfuse_read(buf, sizeof(buf));
+	int i;
+
+	if (ret)
+		return ret;
+
+	for (i = 0; i < KFUSE_DATA_SZ / 4; i += 4)
+		seq_printf(s, "0x%08x 0x%08x 0x%08x 0x%08x\n",
+			buf[i], buf[i+1], buf[i+2], buf[i+3]);
+
+	return 0;
+}
+
+static int mods_kfuse_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mods_kfuse_show, inode->i_private);
+}
+
+static const struct file_operations mods_kfuse_fops = {
+	.open		= mods_kfuse_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif /* CONFIG_ARCH_TEGRA */
+
 static int mods_debug_get(void *data, u64 *val)
 {
 	*val = (u64)(mods_get_debug_level() & DEBUG_ALL);
@@ -629,6 +665,15 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 		err = -EIO;
 		goto remove_out;
 	}
+
+#ifdef CONFIG_ARCH_TEGRA
+	retval = debugfs_create_file("kfuse_data", S_IRUGO,
+		mods_debugfs_dir, 0, &mods_kfuse_fops);
+	if (IS_ERR(retval)) {
+		err = -EIO;
+		goto remove_out;
+	}
+#endif
 
 #ifdef CONFIG_TEGRA_DC
 	for (dc_idx = 0; dc_idx < TEGRA_MAX_DC; dc_idx++) {
