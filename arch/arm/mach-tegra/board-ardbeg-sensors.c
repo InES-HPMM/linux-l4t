@@ -1714,10 +1714,15 @@ static int ardbeg_nct72_init(void)
 
 	/* vmin trips are bound to soctherm on norrin and bowmore */
 	if (!(board_info.board_id == BOARD_PM374 ||
+		board_info.board_id == BOARD_E2141 ||
 		board_info.board_id == BOARD_E1971 ||
 		board_info.board_id == BOARD_E1991))
 		tegra_add_all_vmin_trips(ardbeg_nct72_pdata.sensors[EXT].trips,
 			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+
+	/* T210_interposer use GPIO_PC7 for alert*/
+	if (board_info.board_id == BOARD_E2141)
+		nct72_port = TEGRA_GPIO_PC7;
 
 	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 
@@ -1770,6 +1775,7 @@ int __init ardbeg_sensors_init(void)
 		board_info.board_id != BOARD_PM359 &&
 		!of_machine_is_compatible("nvidia,tn8") &&
 		!of_machine_is_compatible("nvidia,bowmore") &&
+		!of_machine_is_compatible("nvidia,e2141") &&
 		board_info.board_id != BOARD_PM375)
 		mpuirq_init();
 	ardbeg_camera_init();

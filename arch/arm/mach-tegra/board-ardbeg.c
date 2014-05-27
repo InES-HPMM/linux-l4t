@@ -250,12 +250,14 @@ static struct platform_device *ardbeg_uart_devices[] __initdata = {
 	&tegra_uartb_device,
 	&tegra_uartc_device,
 };
+#endif
 
 static struct tegra_serial_platform_data ardbeg_uarta_pdata = {
 	.dma_req_selector = 8,
 	.modem_interrupt = false,
 };
 
+#ifndef CONFIG_USE_OF
 static struct tegra_serial_platform_data ardbeg_uartb_pdata = {
 	.dma_req_selector = 9,
 	.modem_interrupt = false,
@@ -417,6 +419,27 @@ static void __init ardbeg_uart_init(void)
 	} else {
 		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
 		platform_device_register(&tegra_uartd_device);
+	}
+}
+
+static void __init e2141_uart_init(void)
+{
+
+	tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
+	if (!is_tegra_debug_uartport_hs()) {
+		int debug_port_id = uart_console_debug_init(0);
+		if (debug_port_id < 0)
+			return;
+
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+		tegra_serial_debug_init(TEGRA_UARTA_BASE,
+				INT_WDT_CPU, NULL, -1, -1);
+#else
+		platform_device_register(uart_console_debug_device);
+#endif
+	} else {
+		tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
+		platform_device_register(&tegra_uarta_device);
 	}
 }
 
@@ -1102,6 +1125,15 @@ struct rm_spi_ts_platform_data rm31080ts_t132loki_data_jdi_5 = {
 	.gpio_sensor_select0 = false,
 	.gpio_sensor_select1 = true,
 };
+
+static struct rm_spi_ts_platform_data rm31080ts_e2141_data = {
+	.gpio_reset = E2141_TOUCH_GPIO_RST_RAYDIUM_SPI,
+	.config = 0,
+	.platform_id = RM_PLATFORM_T008,
+	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
+};
+
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.tx_clk_tap_delay = 16,
@@ -1140,6 +1172,18 @@ static struct spi_board_info rm31080a_norrin_spi_board[1] = {
 		.mode = SPI_MODE_0,
 		.controller_data = &dev_cdata,
 		.platform_data = &rm31080ts_norrin_data,
+	},
+};
+
+static struct spi_board_info rm31080a_e2141_spi_board[1] = {
+	{
+		.modalias = "rm_ts_spidev",
+		.bus_num = E2141_TOUCH_SPI_ID,
+		.chip_select = TOUCH_SPI_CS,
+		.max_speed_hz = 12 * 1000 * 1000,
+		.mode = SPI_MODE_0,
+		.controller_data = &dev_cdata,
+		.platform_data = &rm31080ts_e2141_data,
 	},
 };
 
@@ -1196,6 +1240,14 @@ static int __init ardbeg_touch_init(void)
 				&rm31080ts_tn8_data,
 				&rm31080a_tn8_spi_board[0],
 				ARRAY_SIZE(rm31080a_tn8_spi_board));
+		} else if (board_info.board_id == BOARD_E2141) {
+			rm31080a_e2141_spi_board[0].irq =
+				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+				E2141_TOUCH_GPIO_RST_RAYDIUM_SPI,
+				&rm31080ts_e2141_data,
+				&rm31080a_e2141_spi_board[0],
+				ARRAY_SIZE(rm31080a_e2141_spi_board));
 		} else {
 			rm31080a_ardbeg_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
@@ -1338,6 +1390,8 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("bowmore");
 	else if (of_machine_is_compatible("nvidia,t132loki"))
 		tegra_soc_device_init("t132loki");
+	else if (of_machine_is_compatible("nvidia,e2141"))
+		tegra_soc_device_init("e2141");
 	else
 		tegra_soc_device_init("ardbeg");
 }
@@ -1383,7 +1437,10 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif
-	ardbeg_uart_init();
+	if (of_machine_is_compatible("nvidia,e2141"))
+		e2141_uart_init();
+	else
+		ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
@@ -1413,6 +1470,8 @@ static void __init tegra_ardbeg_late_init(void)
 	else if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
 		loki_regulator_init();
+	else if (of_machine_is_compatible("nvidia,e2141"))
+		; /* T210_interposer use DT for power tree*/
 	else
 		ardbeg_regulator_init();
 	ardbeg_dtv_init();

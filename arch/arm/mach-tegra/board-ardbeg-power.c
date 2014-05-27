@@ -464,6 +464,16 @@ static struct tegra_thermtrip_pmic_data tpdata_as3722 = {
 	.poweroff_reg_data = 0x2,
 };
 
+static struct tegra_thermtrip_pmic_data tpdata_max77620 = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x3c,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0x41,
+	.poweroff_reg_data = 0x80,
+};
+
 static struct soctherm_therm ardbeg_therm_pop[THERM_SIZE] = {
 	[THERM_CPU] = {
 		.zone_enable = true,
@@ -875,6 +885,7 @@ int __init ardbeg_soctherm_init(void)
 	if (board_info.board_id == BOARD_E1971 ||
 			board_info.board_id == BOARD_P1761 ||
 			board_info.board_id == BOARD_P1765 ||
+			board_info.board_id == BOARD_E2141 ||
 			board_info.board_id == BOARD_E1991) {
 		cpu_edp_temp_margin = t13x_cpu_edp_temp_margin;
 		gpu_edp_temp_margin = t13x_gpu_edp_temp_margin;
@@ -925,6 +936,7 @@ int __init ardbeg_soctherm_init(void)
 		board_info.board_id == BOARD_P1765 ||
 		board_info.board_id == BOARD_E1784 ||
 		board_info.board_id == BOARD_E1971 ||
+		board_info.board_id == BOARD_E2141 ||
 		board_info.board_id == BOARD_E1991 ||
 		board_info.board_id == BOARD_E1922) {
 		tegra_add_cpu_vmin_trips(
@@ -950,12 +962,15 @@ int __init ardbeg_soctherm_init(void)
 		 pmu_board_info.board_id == BOARD_P1765 ||
 		 pmu_board_info.board_id == BOARD_E1936)
 		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_palmas;
+	else if (pmu_board_info.board_id == BOARD_E2174)
+		ardbeg_soctherm_data.tshut_pmu_trip_data = &tpdata_max77620;
 	else
 		pr_warn("soctherm THERMTRIP not supported on PMU (BOARD_E%d)\n",
 			pmu_board_info.board_id);
 
 	/* Enable soc_therm OC throttling on selected platforms */
 	switch (board_info.board_id) {
+	case BOARD_E2141:
 	case BOARD_E1971:
 		memcpy(&ardbeg_soctherm_data.throttle[THROTTLE_OC4],
 		       &battery_oc_throttle_t13x,
