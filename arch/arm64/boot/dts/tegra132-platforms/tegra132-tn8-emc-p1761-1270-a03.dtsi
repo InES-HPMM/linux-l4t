@@ -21,10 +21,1150 @@ emc@7001b000 {
 		reg = <0x0 0x7001b000 0x0 0x800>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		emc-table@12750 {
+			compatible = "nvidia,tegra12-emc-table";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "03_12750_01_V6.0.4_V1.1";
+			clock-frequency = <12750>;
+			nvidia,emc-min-mv = <800>;
+			nvidia,gk20a-min-mv = <800>;
+			nvidia,source = "pllp_out0";
+			nvidia,src-sel-reg = <0x4000003e>;
+			nvidia,burst-regs-num = <165>;
+			nvidia,burst-up-down-regs-num = <31>;
+			nvidia,emc-registers = <
+				0x00000000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000a
+				0x00000005
+				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000003
+				0x00000003
+				0x00000000
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00010000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000c
+				0x0000000d
+				0x0000000f
+				0x00000060
+				0x00000000
+				0x00000018
+				0x00000002
+				0x00000002
+				0x00000001
+				0x00000000
+				0x00000007
+				0x0000000f
+				0x00000005
+				0x00000005
+				0x00000004
+				0x00000005
+				0x00000004
+				0x00000000
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00000064
+				0x00000000
+				0x00000000
+				0x00000000
+				0x1069a298
+				0x002c00a0
+				0x00008000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x10000280
+				0x00000000
+				0x00111111
+				0x0130b118
+				0x00000000
+				0x00000000
+				0x77ffc081
+				0x00000909
+				0x81f1f108
+				0x07070004
+				0x0000003f
+				0x016eeeee
+				0x51451400
+				0x00514514
+				0x00514514
+				0x51451400
+				0x0000003f
+				0x00000007
+				0x00000000
+				0x00000000
+				0x00000042
+				0x000e000e
+				0x000e000e
+				0x00000000
+				0x00000003
+				0x0000f2f3
+				0x800001c5
+				0x0000000a
+				0x40040001
+				0x8000000a
+				0x00000001
+				0x00000001
+				0x00000002
+				0x00000000
+				0x00000002
+				0x00000001
+				0x00000003
+				0x00000008
+				0x00000003
+				0x00000002
+				0x00000003
+				0x00000006
+				0x06030203
+				0x000a0502
+				0x77e30303
+				0x70000f03
+				0x001f0000
+			>;
+			nvidia,emc-burst-up-down-regs = <
+			0x00000001
+			0x00000007
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0049
+			0x00ff0080
+			0x00ff0004
+			0x00ff0004
+			0x000800ff
+			0x000000ff
+			0x00ff0004
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0024
+			0x00ff00ff
+			0x000000ff
+			0x000000ff
+			0x00ff00ff
+			0x000000ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			>;
+			nvidia,emc-zcal-cnt-long = <0x00000042>;
+			nvidia,emc-acal-interval = <0x001fffff>;
+			nvidia,emc-ctt-term_ctrl = <0x00000802>;
+			nvidia,emc-cfg = <0x73240000>;
+			nvidia,emc-cfg-2 = <0x000008c5>;
+			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
+			nvidia,emc-cfg-dig-dll = <0x002c0068>;
+			nvidia,emc-bgbias-ctl0 = <0x00000008>;
+			nvidia,emc-auto-cal-config2 = <0x00000000>;
+			nvidia,emc-auto-cal-config3 = <0x00000000>;
+			nvidia,emc-auto-cal-config = <0xa1430000>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
+			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <57820>;
+		};
+		emc-table@20400 {
+			compatible = "nvidia,tegra12-emc-table";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "03_20400_01_V6.0.4_V1.1";
+			clock-frequency = <20400>;
+			nvidia,emc-min-mv = <800>;
+			nvidia,gk20a-min-mv = <800>;
+			nvidia,source = "pllp_out0";
+			nvidia,src-sel-reg = <0x40000026>;
+			nvidia,burst-regs-num = <165>;
+			nvidia,burst-up-down-regs-num = <31>;
+			nvidia,emc-registers = <
+				0x00000000
+				0x00000005
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000a
+				0x00000005
+				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000003
+				0x00000003
+				0x00000000
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00010000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000c
+				0x0000000d
+				0x0000000f
+				0x0000009a
+				0x00000000
+				0x00000026
+				0x00000002
+				0x00000002
+				0x00000001
+				0x00000000
+				0x00000007
+				0x0000000f
+				0x00000006
+				0x00000006
+				0x00000004
+				0x00000005
+				0x00000004
+				0x00000000
+				0x00000000
+				0x00000005
+				0x00000005
+				0x000000a0
+				0x00000000
+				0x00000000
+				0x00000000
+				0x1069a298
+				0x002c00a0
+				0x00008000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x10000280
+				0x00000000
+				0x00111111
+				0x0130b118
+				0x00000000
+				0x00000000
+				0x77ffc081
+				0x00000909
+				0x81f1f108
+				0x07070004
+				0x0000003f
+				0x016eeeee
+				0x51451400
+				0x00514514
+				0x00514514
+				0x51451400
+				0x0000003f
+				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000042
+				0x000e000e
+				0x000e000e
+				0x00000000
+				0x00000003
+				0x0000f2f3
+				0x8000023a
+				0x0000000a
+				0x40020001
+				0x80000012
+				0x00000001
+				0x00000001
+				0x00000002
+				0x00000000
+				0x00000002
+				0x00000001
+				0x00000003
+				0x00000008
+				0x00000003
+				0x00000002
+				0x00000003
+				0x00000006
+				0x06030203
+				0x000a0502
+				0x76230303
+				0x70000f03
+				0x001f0000
+			>;
+			nvidia,emc-burst-up-down-regs = <
+			0x00000001
+			0x0000000a
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0049
+			0x00ff0080
+			0x00ff0004
+			0x00ff0004
+			0x000800ff
+			0x000000ff
+			0x00ff0004
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0024
+			0x00ff00ff
+			0x000000ff
+			0x000000ff
+			0x00ff00ff
+			0x000000ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			>;
+			nvidia,emc-zcal-cnt-long = <0x00000042>;
+			nvidia,emc-acal-interval = <0x001fffff>;
+			nvidia,emc-ctt-term_ctrl = <0x00000802>;
+			nvidia,emc-cfg = <0x73240000>;
+			nvidia,emc-cfg-2 = <0x000008c5>;
+			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
+			nvidia,emc-cfg-dig-dll = <0x002c0068>;
+			nvidia,emc-bgbias-ctl0 = <0x00000008>;
+			nvidia,emc-auto-cal-config2 = <0x00000000>;
+			nvidia,emc-auto-cal-config3 = <0x00000000>;
+			nvidia,emc-auto-cal-config = <0xa1430000>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
+			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <35610>;
+		};
+		emc-table@40800 {
+			compatible = "nvidia,tegra12-emc-table";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "03_40800_01_V6.0.4_V1.1";
+			clock-frequency = <40800>;
+			nvidia,emc-min-mv = <800>;
+			nvidia,gk20a-min-mv = <800>;
+			nvidia,source = "pllp_out0";
+			nvidia,src-sel-reg = <0x40000012>;
+			nvidia,burst-regs-num = <165>;
+			nvidia,burst-up-down-regs-num = <31>;
+			nvidia,emc-registers = <
+				0x00000001
+				0x0000000a
+				0x00000000
+				0x00000001
+				0x00000000
+				0x00000004
+				0x0000000a
+				0x00000005
+				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000003
+				0x00000003
+				0x00000000
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00010000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000c
+				0x0000000d
+				0x0000000f
+				0x00000134
+				0x00000000
+				0x0000004d
+				0x00000002
+				0x00000002
+				0x00000001
+				0x00000000
+				0x00000008
+				0x0000000f
+				0x0000000c
+				0x0000000c
+				0x00000004
+				0x00000005
+				0x00000004
+				0x00000000
+				0x00000000
+				0x00000005
+				0x00000005
+				0x0000013f
+				0x00000000
+				0x00000000
+				0x00000000
+				0x1069a298
+				0x002c00a0
+				0x00008000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x10000280
+				0x00000000
+				0x00111111
+				0x0130b118
+				0x00000000
+				0x00000000
+				0x77ffc081
+				0x00000909
+				0x81f1f108
+				0x07070004
+				0x0000003f
+				0x016eeeee
+				0x51451400
+				0x00514514
+				0x00514514
+				0x51451400
+				0x0000003f
+				0x00000015
+				0x00000000
+				0x00000000
+				0x00000042
+				0x000e000e
+				0x000e000e
+				0x00000000
+				0x00000003
+				0x0000f2f3
+				0x80000370
+				0x0000000a
+				0xa0000001
+				0x80000017
+				0x00000001
+				0x00000001
+				0x00000002
+				0x00000000
+				0x00000002
+				0x00000001
+				0x00000003
+				0x00000008
+				0x00000003
+				0x00000002
+				0x00000003
+				0x00000006
+				0x06030203
+				0x000a0502
+				0x74a30303
+				0x70000f03
+				0x001f0000
+			>;
+			nvidia,emc-burst-up-down-regs = <
+			0x00000001
+			0x00000014
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0049
+			0x00ff0080
+			0x00ff0004
+			0x00ff0004
+			0x000800ff
+			0x000000ff
+			0x00ff0004
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff0024
+			0x00ff00ff
+			0x000000ff
+			0x000000ff
+			0x00ff00ff
+			0x000000ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			>;
+			nvidia,emc-zcal-cnt-long = <0x00000042>;
+			nvidia,emc-acal-interval = <0x001fffff>;
+			nvidia,emc-ctt-term_ctrl = <0x00000802>;
+			nvidia,emc-cfg = <0x73240000>;
+			nvidia,emc-cfg-2 = <0x000008c5>;
+			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
+			nvidia,emc-cfg-dig-dll = <0x002c0068>;
+			nvidia,emc-bgbias-ctl0 = <0x00000008>;
+			nvidia,emc-auto-cal-config2 = <0x00000000>;
+			nvidia,emc-auto-cal-config3 = <0x00000000>;
+			nvidia,emc-auto-cal-config = <0xa1430000>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
+			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <20850>;
+		};
+		emc-table@68000 {
+			compatible = "nvidia,tegra12-emc-table";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "03_68000_01_V6.0.4_V1.1";
+			clock-frequency = <68000>;
+			nvidia,emc-min-mv = <800>;
+			nvidia,gk20a-min-mv = <800>;
+			nvidia,source = "pllp_out0";
+			nvidia,src-sel-reg = <0x4000000a>;
+			nvidia,burst-regs-num = <165>;
+			nvidia,burst-up-down-regs-num = <31>;
+			nvidia,emc-registers = <
+				0x00000003
+				0x00000011
+				0x00000000
+				0x00000002
+				0x00000000
+				0x00000004
+				0x0000000a
+				0x00000005
+				0x0000000b
+				0x00000000
+				0x00000000
+				0x00000003
+				0x00000003
+				0x00000000
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00010000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000c
+				0x0000000d
+				0x0000000f
+				0x00000202
+				0x00000000
+				0x00000080
+				0x00000002
+				0x00000002
+				0x00000001
+				0x00000000
+				0x0000000f
+				0x0000000f
+				0x00000013
+				0x00000013
+				0x00000004
+				0x00000005
+				0x00000004
+				0x00000001
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00000213
+				0x00000000
+				0x00000000
+				0x00000000
+				0x1069a298
+				0x002c00a0
+				0x00008000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x10000280
+				0x00000000
+				0x00111111
+				0x0130b118
+				0x00000000
+				0x00000000
+				0x77ffc081
+				0x00000909
+				0x81f1f108
+				0x07070004
+				0x0000003f
+				0x016eeeee
+				0x51451400
+				0x00514514
+				0x00514514
+				0x51451400
+				0x0000003f
+				0x00000022
+				0x00000000
+				0x00000000
+				0x00000042
+				0x000e000e
+				0x000e000e
+				0x00000000
+				0x00000003
+				0x0000f2f3
+				0x8000050e
+				0x0000000a
+				0x00000001
+				0x8000001e
+				0x00000001
+				0x00000001
+				0x00000002
+				0x00000000
+				0x00000002
+				0x00000001
+				0x00000003
+				0x00000008
+				0x00000003
+				0x00000002
+				0x00000003
+				0x00000006
+				0x06030203
+				0x000a0502
+				0x74230403
+				0x70000f03
+				0x001f0000
+			>;
+			nvidia,emc-burst-up-down-regs = <
+			0x00000001
+			0x00000021
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00b0
+			0x00ff00ff
+			0x00ff00ec
+			0x00ff00ff
+			0x00ff00ec
+			0x00e90049
+			0x00ff0080
+			0x00ff0004
+			0x00ff0004
+			0x000800ff
+			0x000000ff
+			0x00ff0004
+			0x00ff00ff
+			0x00ff00a3
+			0x00ff0024
+			0x00ff00ff
+			0x000000ff
+			0x000000ef
+			0x00ff00ff
+			0x000000ef
+			0x00ff00ff
+			0x00ff00ff
+			0x00ee00ef
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			>;
+			nvidia,emc-zcal-cnt-long = <0x00000042>;
+			nvidia,emc-acal-interval = <0x001fffff>;
+			nvidia,emc-ctt-term_ctrl = <0x00000802>;
+			nvidia,emc-cfg = <0x73240000>;
+			nvidia,emc-cfg-2 = <0x000008c5>;
+			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
+			nvidia,emc-cfg-dig-dll = <0x002c0068>;
+			nvidia,emc-bgbias-ctl0 = <0x00000008>;
+			nvidia,emc-auto-cal-config2 = <0x00000000>;
+			nvidia,emc-auto-cal-config3 = <0x00000000>;
+			nvidia,emc-auto-cal-config = <0xa1430000>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
+			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <10720>;
+		};
+		emc-table@102000 {
+			compatible = "nvidia,tegra12-emc-table";
+			nvidia,revision = <0x19>;
+			nvidia,dvfs-version = "03_102000_01_V6.0.4_V1.1";
+			clock-frequency = <102000>;
+			nvidia,emc-min-mv = <800>;
+			nvidia,gk20a-min-mv = <800>;
+			nvidia,source = "pllp_out0";
+			nvidia,src-sel-reg = <0x40000006>;
+			nvidia,burst-regs-num = <165>;
+			nvidia,burst-up-down-regs-num = <31>;
+			nvidia,emc-registers = <
+				0x00000004
+				0x0000001a
+				0x00000000
+				0x00000003
+				0x00000001
+				0x00000004
+				0x0000000a
+				0x00000005
+				0x0000000b
+				0x00000001
+				0x00000001
+				0x00000003
+				0x00000003
+				0x00000000
+				0x00000006
+				0x00000006
+				0x00000006
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x00010000
+				0x00000003
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000004
+				0x0000000c
+				0x0000000d
+				0x0000000f
+				0x00000304
+				0x00000000
+				0x000000c1
+				0x00000002
+				0x00000002
+				0x00000001
+				0x00000000
+				0x00000018
+				0x0000000f
+				0x0000001c
+				0x0000001c
+				0x00000004
+				0x00000005
+				0x00000004
+				0x00000002
+				0x00000000
+				0x00000005
+				0x00000005
+				0x0000031c
+				0x00000000
+				0x00000000
+				0x00000000
+				0x1069a298
+				0x002c00a0
+				0x00008000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00064000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00014000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x00000000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x000fc000
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x0000fc00
+				0x10000280
+				0x00000000
+				0x00111111
+				0x0130b118
+				0x00000000
+				0x00000000
+				0x77ffc081
+				0x00000909
+				0x81f1f108
+				0x07070004
+				0x0000003f
+				0x016eeeee
+				0x51451400
+				0x00514514
+				0x00514514
+				0x51451400
+				0x0000003f
+				0x00000033
+				0x00000000
+				0x00000000
+				0x00000042
+				0x000e000e
+				0x000e000e
+				0x00000000
+				0x00000003
+				0x0000f2f3
+				0x80000713
+				0x0000000a
+				0x08000001
+				0x80000026
+				0x00000001
+				0x00000001
+				0x00000003
+				0x00000000
+				0x00000002
+				0x00000001
+				0x00000003
+				0x00000008
+				0x00000003
+				0x00000002
+				0x00000003
+				0x00000006
+				0x06030203
+				0x000a0503
+				0x73c30504
+				0x70000f03
+				0x001f0000
+			>;
+			nvidia,emc-burst-up-down-regs = <
+			0x00000001
+			0x00000031
+			0x00ff00da
+			0x00ff00da
+			0x00ff0075
+			0x00ff00ff
+			0x00ff009d
+			0x00ff00ff
+			0x00ff009d
+			0x009b0049
+			0x00ff0080
+			0x00ff0004
+			0x00ff0004
+			0x000800ad
+			0x000000ff
+			0x00ff0004
+			0x00ff00c6
+			0x00ff006d
+			0x00ff0024
+			0x00ff00d6
+			0x000000ff
+			0x0000009f
+			0x00ff00ff
+			0x0000009f
+			0x00ff00ff
+			0x00ff00ff
+			0x009f00a0
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00ff
+			0x00ff00da
+			>;
+			nvidia,emc-zcal-cnt-long = <0x00000042>;
+			nvidia,emc-acal-interval = <0x001fffff>;
+			nvidia,emc-ctt-term_ctrl = <0x00000802>;
+			nvidia,emc-cfg = <0x73240000>;
+			nvidia,emc-cfg-2 = <0x000008c5>;
+			nvidia,emc-sel-dpd-ctrl = <0x00040128>;
+			nvidia,emc-cfg-dig-dll = <0x002c0068>;
+			nvidia,emc-bgbias-ctl0 = <0x00000008>;
+			nvidia,emc-auto-cal-config2 = <0x00000000>;
+			nvidia,emc-auto-cal-config3 = <0x00000000>;
+			nvidia,emc-auto-cal-config = <0xa1430000>;
+			nvidia,emc-mode-0 = <0x80001221>;
+			nvidia,emc-mode-1 = <0x80100003>;
+			nvidia,emc-mode-2 = <0x80200008>;
+			nvidia,emc-mode-4 = <0x00000000>;
+			nvidia,emc-clock-latency-change = <6890>;
+		};
 		emc-table@204000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_204000_01_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_204000_01_V6.0.4_V1.1";
 			clock-frequency = <204000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <800>;
@@ -252,7 +1392,7 @@ emc@7001b000 {
 		emc-table@300000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_300000_00_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_300000_00_V6.0.4_V1.1";
 			clock-frequency = <300000>;
 			nvidia,emc-min-mv = <820>;
 			nvidia,gk20a-min-mv = <820>;
@@ -480,7 +1620,7 @@ emc@7001b000 {
 		emc-table@396000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_396000_01_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_396000_01_V6.0.4_V1.1";
 			clock-frequency = <396000>;
 			nvidia,emc-min-mv = <850>;
 			nvidia,gk20a-min-mv = <850>;
@@ -708,7 +1848,7 @@ emc@7001b000 {
 		emc-table@528000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_528000_01_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_528000_01_V6.0.4_V1.1";
 			clock-frequency = <528000>;
 			nvidia,emc-min-mv = <880>;
 			nvidia,gk20a-min-mv = <870>;
@@ -936,7 +2076,7 @@ emc@7001b000 {
 		emc-table@600000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_600000_00_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_600000_00_V6.0.4_V1.1";
 			clock-frequency = <600000>;
 			nvidia,emc-min-mv = <910>;
 			nvidia,gk20a-min-mv = <910>;
@@ -1164,7 +2304,7 @@ emc@7001b000 {
 		emc-table@792000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_792000_01_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_792000_01_V6.0.4_V1.1";
 			clock-frequency = <792000>;
 			nvidia,emc-min-mv = <980>;
 			nvidia,gk20a-min-mv = <980>;
@@ -1392,7 +2532,7 @@ emc@7001b000 {
 		emc-table@924000 {
 			compatible = "nvidia,tegra12-emc-table";
 			nvidia,revision = <0x19>;
-			nvidia,dvfs-version = "02_924000_01_V6.0.2_V1.1";
+			nvidia,dvfs-version = "03_924000_01_V6.0.4_V1.1";
 			clock-frequency = <924000>;
 			nvidia,emc-min-mv = <1010>;
 			nvidia,gk20a-min-mv = <1010>;
