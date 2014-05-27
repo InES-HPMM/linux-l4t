@@ -8,7 +8,7 @@
 		modules {
 			module1: module1@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1823_rear_camera";
+				badge_info = "e1823_rear_D9A951";
 
 				sensor {
 					profile = <&imx135_1>;
@@ -27,7 +27,7 @@
  * Bug 1461788: Norrin PM374 does not support front sensor
  *			module2: module4@modules {
  *				compatible = "sensor,front";
- *				badge_info = "e1823_front_camera";
+ *				badge_info = "e1823_front_Q2M12A";
  *
  *				sensor {
  *					profile = <&ar0261_1>;

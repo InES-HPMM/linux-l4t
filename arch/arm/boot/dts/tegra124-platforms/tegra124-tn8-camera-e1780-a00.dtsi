@@ -69,7 +69,7 @@
 			};
 			module6: module6@modules {
 				compatible = "sensor,rear";
-				badge_info = "mipad_rear_camera";
+				badge_info = "mipad_rear_A827P1";
 
 				sensor {
 					profile = <&imx179_1>;
