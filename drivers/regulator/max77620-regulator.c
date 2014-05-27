@@ -810,41 +810,25 @@ static int max77620_regulator_probe(struct platform_device *pdev)
 		if (ret < 0) {
 			dev_err(&pdev->dev, "Preinit regualtor %s failed: %d\n",
 				rdesc->name, ret);
-			goto clean_exit;
+			return ret;
 		}
 
-		pmic->rdev[id] = regulator_register(rdesc, &config);
+		pmic->rdev[id] = devm_regulator_register(&pdev->dev,
+						rdesc, &config);
 		if (IS_ERR(pmic->rdev[id])) {
 			ret = PTR_ERR(pmic->rdev[id]);
 			dev_err(&pdev->dev,
 				"regulator %s register failed: %d\n",
 				rdesc->name, ret);
-			goto clean_exit;
+			return ret;
 		}
 	}
-
-	return 0;
-
-clean_exit:
-	while (--id >= 0)
-		regulator_unregister(pmic->rdev[id]);
-	return ret;
-}
-
-static int max77620_regulator_remove(struct platform_device *pdev)
-{
-	struct max77620_regulator *pmic = platform_get_drvdata(pdev);
-	int id;
-
-	for (id = 0; id < MAX77620_NUM_REGS; id++)
-		regulator_unregister(pmic->rdev[id]);
 
 	return 0;
 }
 
 static struct platform_driver max77620_regulator_driver = {
 	.probe = max77620_regulator_probe,
-	.remove = max77620_regulator_remove,
 	.driver = {
 		.name = "max77620-pmic",
 		.owner = THIS_MODULE,
