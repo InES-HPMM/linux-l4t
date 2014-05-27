@@ -754,12 +754,6 @@ static const struct pinconf_ops tegra_pinconf_ops = {
 #endif
 };
 
-static struct pinctrl_gpio_range tegra_pinctrl_gpio_range = {
-	.name = "Tegra GPIOs",
-	.id = 0,
-	.base = -1,
-};
-
 static struct pinctrl_desc tegra_pinctrl_desc = {
 	.pctlops = &tegra_pinctrl_ops,
 	.pmxops = &tegra_pinmux_ops,
@@ -919,7 +913,6 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 		break;
 	}
 
-	tegra_pinctrl_gpio_range.npins = pmx->soc->ngpios;
 	tegra_pinctrl_desc.name = dev_name(&pdev->dev);
 	tegra_pinctrl_desc.pins = pmx->soc->pins;
 	tegra_pinctrl_desc.npins = pmx->soc->npins;
@@ -997,9 +990,6 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	if (gpio_is_valid(tegra_pinctrl_gpio_range.base))
-		pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
-
 	platform_set_drvdata(pdev, pmx);
 
 	tegra_pinctrl_default_soc_init(pmx);
@@ -1037,14 +1027,6 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg)
 	writel(val, pmx->regs[bank] + reg);
 }
 EXPORT_SYMBOL_GPL(tegra_pinctrl_writel);
-
-void tegra_pinctrl_add_gpio_range(int gpio_base)
-{
-	tegra_pinctrl_gpio_range.base = gpio_base;
-	if (pmx)
-		pinctrl_add_gpio_range(pmx->pctl, &tegra_pinctrl_gpio_range);
-}
-EXPORT_SYMBOL_GPL(tegra_pinctrl_add_gpio_range);
 
 #ifdef	CONFIG_DEBUG_FS
 

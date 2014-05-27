@@ -23,13 +23,4 @@
 
 #include <mach/pinmux-defines.h>
 
-#ifdef CONFIG_PINCTRL_TEGRA
-extern void tegra_pinctrl_add_gpio_range(int gpio_base);
-#else
-static inline void tegra_pinctrl_add_gpio_range(int gpio_base)
-{
-	pr_err(" Tegra pinctrl driver is not supported\n");
-}
-#endif
-
 #endif /* _LINUX_PINCTRL_TEGRA_H__ */
