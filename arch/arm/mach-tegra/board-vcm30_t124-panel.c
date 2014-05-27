@@ -118,6 +118,16 @@ static struct tegra_dc_out vcm30_t124_disp1_out = {
 
 	/* eDP max pixel rate to T124 POR */
 	.max_pixclock	= KHZ2PICOS(540000),  /* 540MPix/S 3840x2160@60 */
+
+	/*
+	 * To enable dithering for 18bpp eDP/miniDP panel/monitor.
+	 * 24bpp or better panel/monitor will have no effect.
+	 */
+#if defined(CONFIG_TEGRA_DC_TEMPORAL_DITHER)
+	.dither		= TEGRA_DC_TEMPORAL_DITHER
+#else
+	.dither		= TEGRA_DC_ORDERED_DITHER
+#endif
 };
 
 static struct tegra_dc_platform_data vcm30_t124_disp1_pdata = {
