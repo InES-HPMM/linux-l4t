@@ -98,7 +98,7 @@ static struct dvfs_rail tegra13_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra13_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.version = "p4v10",
+	.version = "p4v11",
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
@@ -366,8 +366,8 @@ static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         800,    850,    900,	 950,    1000,	1050,    1100,	 1150 */
 	/* Clock limits for I/O peripherals */
 
-	CORE_DVFS("dsia",   -1, -1, 1, KHZ,   500000, 500000, 750000, 750000,  750000, 750000, 750000, 750000),
-	CORE_DVFS("dsib",   -1, -1, 1, KHZ,   500000, 500000, 750000, 750000,  750000, 750000, 750000, 750000),
+	CORE_DVFS("dsia",   -1, -1, 1, KHZ,   402000, 500000, 750000, 750000,  750000, 750000, 750000, 750000),
+	CORE_DVFS("dsib",   -1, -1, 1, KHZ,   402000, 500000, 750000, 750000,  750000, 750000, 750000, 750000),
 	CORE_DVFS("dsialp",   -1, -1, 1, KHZ, 102000, 102000, 102000, 102000,  156000, 156000, 156000, 156000),
 	CORE_DVFS("dsiblp",   -1, -1, 1, KHZ, 102000, 102000, 102000, 102000,  156000, 156000, 156000, 156000),
 
@@ -390,7 +390,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("hda",    	     -1, -1, 1, KHZ,  	  1, 108000, 108000, 108000, 108000, 108000 ,  108000,  108000),
 	CORE_DVFS("hda2codec_2x",    -1, -1, 1, KHZ,  	  1,  48000,  48000,  48000,  48000,  48000 ,   48000,   48000),
 
-        CORE_DVFS("sor0",             0, -1, 1, KHZ,  148500, 270000, 540000, 540000, 540000,  540000,  540000,  540000),
+        CORE_DVFS("sor0",             0, -1, 1, KHZ,  162500, 270000, 540000, 540000, 540000,  540000,  540000,  540000),
 
 	OVRRD_DVFS("sdmmc1", -1, -1, 1, KHZ,       	  1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
 	OVRRD_DVFS("sdmmc3", -1, -1, 1, KHZ,          	  1,      1,  82000,  82000,  136000, 136000, 136000, 204000),
