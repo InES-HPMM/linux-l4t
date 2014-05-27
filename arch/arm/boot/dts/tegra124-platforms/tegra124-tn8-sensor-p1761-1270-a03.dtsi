@@ -31,6 +31,8 @@
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
 			illuminance,resolution = "7675";
+			illuminance,max-range  = "603193.3";
+			illuminance,power-consumed = "0.09";
 		};
 
 		ltr659@23 {
