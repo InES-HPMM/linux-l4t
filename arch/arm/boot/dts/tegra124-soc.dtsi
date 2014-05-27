@@ -62,6 +62,7 @@
 		compatible = "nvidia,tegra124-pinmux";
 		reg = <0x0 0x70000868 0x0 0x164		/* Pad control registers */
 		       0x0 0x70003000 0x0 0x434>;	/* Mux registers */
+		#gpio-range-cells = <3>;
 	};
 
 	gpio: gpio@6000d000 {
@@ -79,6 +80,7 @@
 		gpio-controller;
 		#interrupt-cells = <2>;
 		interrupt-controller;
+		gpio-ranges = <&pinmux 0 0 251>;
 	};
 
 	se: se@70012000 {

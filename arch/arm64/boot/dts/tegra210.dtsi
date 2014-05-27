@@ -210,6 +210,7 @@
                 compatible = "nvidia,tegra210-pinmux";
                 reg = <0x0 0x700008d4 0x0 0x299    /* Pad control registers */
                        0x0 0x70003000 0x0 0x290>; /* Mux registers */
+		#gpio-range-cells = <3>;
                 status = "okay";
         };
 
@@ -228,6 +229,7 @@
                 gpio-controller;
                 #interrupt-cells = <2>;
                 interrupt-controller;
+		gpio-ranges = <&pinmux 0 0 246>;
         };
 
 	uarta: serial@70006000 {
