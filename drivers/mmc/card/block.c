@@ -666,7 +666,7 @@ static int mmc_blk_ioctl_combo_cmd(struct block_device *bdev,
 	}
 
 	ioc_data = devm_kzalloc(mmc_dev(card->host),
-			sizeof(struct mmc_blk_ioc_data) * num_cmd,
+			sizeof(struct mmc_blk_ioc_data *) * num_cmd,
 			GFP_KERNEL);
 	if (!ioc_data) {
 		err = -ENOMEM;
