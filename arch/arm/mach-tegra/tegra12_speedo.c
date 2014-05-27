@@ -287,6 +287,7 @@ int tegra_soc_speedo_0_value(void)
 {
 	return soc_speedo_0_value;
 }
+EXPORT_SYMBOL(tegra_soc_speedo_0_value);
 
 int tegra_soc_speedo_1_value(void)
 {
