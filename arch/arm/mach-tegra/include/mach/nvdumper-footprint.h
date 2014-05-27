@@ -69,11 +69,12 @@ struct dbg_footprint_data_soc {
 };
 
 #define INIT_DBG_FOOTPRINT(var, element, stringname) do {\
-		memset(var.element.data, 0, sizeof(var.element.data)); \
+		memset((void *) var.element.data, 0, \
+			sizeof(var.element.data)); \
 		if (strlen(stringname) < DBG_FOOTPRINT_NAME_LEN - 1) \
-			strcpy(var.element.name, stringname); \
+			strcpy((char *) var.element.name, stringname); \
 		else \
-			strcpy(var.element.name, "error in name"); \
+			strcpy((char *) var.element.name, "error in name"); \
 	} while (0)
 
 #define GET_DBG_FP_DATA_CPU(element, core) (dbp_fp_cpu.element.data[core])

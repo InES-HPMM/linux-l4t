@@ -28,7 +28,7 @@
 #define DEBUG_REGDUMP 0
 
 static int max_cpus;
-struct nvdumper_cpu_data_t *nvdumper_cpu_data;
+static struct nvdumper_cpu_data_t *nvdumper_cpu_data;
 static dma_addr_t nvdumper_p;
 
 void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
@@ -62,7 +62,15 @@ void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
 void nvdumper_save_regs(void *data)
 {
 	int id = smp_processor_id();
-	nvdumper_cpu_data[id].current_task = current_thread_info()->task;
+
+	if (!nvdumper_cpu_data)	{
+		pr_info("nvdumper_cpu_data is not initialized!\n");
+		return;
+	}
+
+	if (current_thread_info())
+		nvdumper_cpu_data[id].current_task =
+				current_thread_info()->task;
 	nvdumper_cpu_data[id].is_online = true;
 
 	__asm__ __volatile__ (
@@ -140,6 +148,8 @@ void nvdumper_save_regs(void *data)
 	);
 
 	save_aar64_sys_regs(&nvdumper_cpu_data[id].aar64_sys_regs);
+
+	pr_info("nvdumper: all registers are saved.\n");
 }
 
 void nvdumper_crash_setup_regs(void)
