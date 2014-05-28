@@ -29,7 +29,7 @@
 			regulator-max-microvolt = <3300000>;
 			gpio = <&palmas_gpio 2 0>;
 			enable-active-high;
-			vin-supply = <&palmas_smps9>;
+			vin-supply = <&ldousb_reg>;
 
 			consumers {
 							c1 {
