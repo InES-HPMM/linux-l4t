@@ -95,6 +95,30 @@
 		};
 	};
 
+	xusb@70090000 {
+		nvidia,gpio_ss1_sata = <0>;
+
+		/*
+		 * BIT0 - BIT7 : SS ports
+		 * BIT8 - BIT15 : USB2 UTMI ports
+		 * BIT16 - BIT23 : HSIC ports
+		 * BIT24 - BIT31 : ULPI ports
+		 * XXXX XXXP XXXX XXHH XXXX XUUU XXXX XXSS
+		 */
+		nvidia,portmap = <0x402>; /* SSP1, USB2P2 */
+		/* XXXX .. XSSS XSSS */
+		nvidia,ss_portmap = <0x20>; /* SSP1 on USB2P2 */
+
+		/*
+		 * BIT 2 (0/1): PCIE-0/SSP0
+		 * BIT 1 (0/1): PCIE-1/SSP1
+		 * BIT 0 (0/1): SATA/SSP1
+		 */
+		nvidia,lane_owner = <0x2>; /* PCIE-0, SSP1 and SATA */
+		nvidia,ulpicap = <0>; /* No ulpi support */
+		status = "okay";
+	};
+
 	ahub {
 		status = "okay";
 

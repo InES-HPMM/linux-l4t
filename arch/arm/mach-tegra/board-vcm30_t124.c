@@ -33,6 +33,7 @@
 #include <asm/mach/arch.h>
 #include <mach/isomgr.h>
 #include <mach/board_id.h>
+#include <mach/xusb.h>
 
 #include "iomap.h"
 #include "board.h"
@@ -716,6 +717,8 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000,
 				"tegra30-ahub-apbif", NULL),
 	T124_I2C_OF_DEV_AUXDATA,
+	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci", NULL),
+
 	T124_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp",
 				NULL),
@@ -748,7 +751,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 {
 	tegra_init_board_info();
 	vcm30_t124_usb_init();
-/*	vcm30_t124_xusb_init(); */
 	vcm30_t124_nor_init();
 	vcm30_t124_i2c_init();
 	vcm30_t124_uart_init();
