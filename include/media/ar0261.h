@@ -69,6 +69,7 @@ struct ar0261_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
 	struct regulator *iovdd;
+	struct regulator *vcmvdd;
 };
 
 struct ar0261_platform_data {

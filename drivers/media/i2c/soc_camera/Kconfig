@@ -1,5 +1,11 @@
 comment "soc_camera sensor drivers"
 
+config SOC_CAMERA_AR0261
+	tristate "AR0261 support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports AR0261 camera from Aptina
+
 config SOC_CAMERA_IMX074
 	tristate "imx074 support"
 	depends on SOC_CAMERA && I2C
