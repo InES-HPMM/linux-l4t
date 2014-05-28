@@ -505,6 +505,12 @@ static int gadc_thermal_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void gadc_thermal_shutdown(struct platform_device *pdev)
+{
+	struct gadc_thermal_driver_data *drvdata = platform_get_drvdata(pdev);
+	thermal_zone_device_unregister(drvdata->tz);
+}
+
 static struct platform_driver gadc_thermal_driver = {
 	.driver = {
 		.name = "generic-adc-thermal",
@@ -512,6 +518,7 @@ static struct platform_driver gadc_thermal_driver = {
 	},
 	.probe = gadc_thermal_probe,
 	.remove = gadc_thermal_remove,
+	.shutdown = gadc_thermal_shutdown,
 };
 
 module_platform_driver(gadc_thermal_driver);
