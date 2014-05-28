@@ -265,21 +265,15 @@ static int max77620_pinctrl_probe(struct platform_device *pdev)
 static int max77620_pinctrl_remove(struct platform_device *pdev)
 {
 	struct max77620_pctrl_info *max77620_pci = platform_get_drvdata(pdev);
+
 	pinctrl_unregister(max77620_pci->pctl);
 	return 0;
 }
-
-static struct of_device_id max77620_pinctrl_of_match[] = {
-	{ .compatible = "max,max77620-pinctrl", },
-	{ },
-};
-MODULE_DEVICE_TABLE(of, max77620_pinctrl_of_match);
 
 static struct platform_driver max77620_pinctrl_driver = {
 	.driver = {
 		.name = "max77620-pinctrl",
 		.owner = THIS_MODULE,
-		.of_match_table = max77620_pinctrl_of_match,
 	},
 	.probe = max77620_pinctrl_probe,
 	.remove = max77620_pinctrl_remove,
