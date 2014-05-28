@@ -511,8 +511,14 @@ int virtual_device_add(struct device *dev, unsigned long arg)
 	v_chip->shutdown = virtual_shutdown,
 	v_chip->update = virtual_update,
 
-	camera_chip_add(v_chip);
-	return 0;
+	err = camera_chip_add(v_chip);
+	if (err) {
+		kfree(v_chip);
+		if (err == -EEXIST)
+			err = 0;
+	}
+
+	return err;
 }
 
 static int __init virtual_init(void)
