@@ -316,7 +316,7 @@ static int mods_dc_border_set(void *data, u64 val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(mods_dc_border_fops, mods_dc_border_get,
-	mods_dc_border_set, "%0xllx\n");
+	mods_dc_border_set, "0x%llx\n");
 
 static int mods_sd_brightness_get(void *data, u64 *val)
 {
