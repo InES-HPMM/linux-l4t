@@ -29,7 +29,7 @@
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
 
-#pragma pack(1)
+#pragma pack(push, 1)
 
 /* ************************************************************************* */
 /* ** ESCAPE INTERFACE STRUCTURE					     */
@@ -464,7 +464,7 @@ struct MODS_TEGRA_DC_SETUP_SD {
 	__u32 win_h;
 };
 
-#pragma pack()
+#pragma pack(pop)
 
 /* ************************************************************************* */
 /* ************************************************************************* */
