@@ -107,8 +107,24 @@ static int ltr558_ps_enable(struct i2c_client *client, int gainrange)
 			break;
 	}
 
-	error = ltr558_i2c_write_reg(client, LTR558_PS_CONTR, setgain);
-	mdelay(WAKEUP_DELAY);
+	/*
+	 * Per HW Suggestion, LED Current: 100mA, Duty Cycle: 100%, PMF: 30KHz
+	 * LED Pulse Count: 5, Measurement Repeat Rate: 200ms
+	 */
+	error = ltr558_i2c_write_reg(client, LTR558_PS_LED,
+			PS_LED_PMF_30KHZ | PS_LED_CUR_DUTY_100 |
+			PS_LED_CUR_LEVEL_100);
+	if (!error)
+		error = ltr558_i2c_write_reg(client, LTR558_PS_N_PULSES,
+				PS_N_PULSES_5);
+	if (!error)
+		error = ltr558_i2c_write_reg(client, LTR558_PS_MEAS_RATE,
+				PS_MEAS_RATE_200MS);
+	if (!error) {
+		error = ltr558_i2c_write_reg(client,
+					     LTR558_PS_CONTR, BIT(5) | setgain);
+		mdelay(WAKEUP_DELAY);
+	}
 	return error;
 }
 
@@ -132,6 +148,10 @@ static int ltr558_ps_read(struct i2c_client *client)
 		goto out;
 	}
 
+	/* PS should never saturate */
+	/* FIX ME: enable WARN_ON once sensor is calibrated */
+	/* WARN_ON(psval_hi & BIT(7)); */
+
 	psdata = ((psval_hi & 0x07) * 256) + psval_lo;
 out:
 	return psdata;
@@ -148,7 +168,7 @@ static int ltr558_als_enable(struct i2c_client *client, int gainrange)
 		error = ltr558_i2c_write_reg(client, LTR558_ALS_CONTR,
 				MODE_ALS_ON_Range2);
 
-	mdelay(WAKEUP_DELAY);
+	msleep(WAKEUP_DELAY);
 	return error;
 }
 
@@ -713,7 +733,7 @@ static int ltr558_chip_init(struct i2c_client *client)
 	int error = 0;
 	u32 val;
 
-	mdelay(PON_DELAY);
+	msleep(PON_DELAY);
 
 	chip->is_prox_enable  = 0;
 	chip->prox_low_thres = 0;

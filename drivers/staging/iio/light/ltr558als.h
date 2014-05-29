@@ -65,13 +65,57 @@
 #define MODE_PS_ON_Gain16	0x0F
 #define MODE_PS_StdBy		0x00
 
-#define PS_RANGE1 	1
+#define PS_LED_CUR_LEVEL_5	0x00
+#define PS_LED_CUR_LEVEL_10	0x01
+#define PS_LED_CUR_LEVEL_20	0x02
+#define PS_LED_CUR_LEVEL_50	0x03
+#define PS_LED_CUR_LEVEL_100	0x07
+
+#define PS_LED_CUR_DUTY_25	0x00
+#define PS_LED_CUR_DUTY_50	0x08
+#define PS_LED_CUR_DUTY_75	0x10
+#define PS_LED_CUR_DUTY_100	0x18
+
+#define PS_LED_PMF_30KHZ	0x0
+#define PS_LED_PMF_40KHZ	0x20
+#define PS_LED_PMF_50KHZ	0x40
+#define PS_LED_PMF_60KHZ	0x60
+#define PS_LED_PMF_70KHZ	0x80
+#define PS_LED_PMF_80KHZ	0xA0
+#define PS_LED_PMF_90KHZ	0xC0
+#define PS_LED_PMF_100KHZ	0xE0
+
+#define PS_N_PULSES_1		0x01
+#define PS_N_PULSES_2		0x02
+#define PS_N_PULSES_3		0x03
+#define PS_N_PULSES_4		0x04
+#define PS_N_PULSES_5		0x05
+#define PS_N_PULSES_6		0x06
+#define PS_N_PULSES_7		0x07
+#define PS_N_PULSES_8		0x08
+#define PS_N_PULSES_9		0x09
+#define PS_N_PULSES_10		0x0A
+#define PS_N_PULSES_11		0x0B
+#define PS_N_PULSES_12		0x0C
+#define PS_N_PULSES_13		0x0D
+#define PS_N_PULSES_14		0x0E
+#define PS_N_PULSES_15		0x0F
+
+#define PS_MEAS_RATE_50MS	0x00
+#define PS_MEAS_RATE_70MS	0x01
+#define PS_MEAS_RATE_100MS	0x02
+#define PS_MEAS_RATE_200MS	0x03
+#define PS_MEAS_RATE_500MS	0x04
+#define PS_MEAS_RATE_1000MS	0x05
+#define PS_MEAS_RATE_2000MS	0x07
+
+#define PS_RANGE1	1
 #define PS_RANGE4	2
-#define PS_RANGE8 	4
+#define PS_RANGE8	4
 #define PS_RANGE16	8
 
 #define ALS_RANGE1_320	1
-#define ALS_RANGE2_64K 	2
+#define ALS_RANGE2_64K	2
 
 #define LTR_MANUFACTURER_ID	0x05
 
