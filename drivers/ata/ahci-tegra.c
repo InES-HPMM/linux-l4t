@@ -319,6 +319,18 @@ static DECLARE_WORK(tegra_ahci_work, tegra_ahci_work_handler);
 static struct workqueue_struct *tegra_ahci_work_q;
 #endif
 
+#define CLK_RST_CONTROLLER_RST_DEVICES_Y_0	0x2a4
+#define SWR_PEX_USB_UPHY_RST			(0x1 << 13)
+#define SWR_SATA_USB_UPHY_RST			(0x1 << 12)
+
+/* FIXME
+ * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
+ */
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#define TEGRA_CHIPID_TEGRA210 0x210
+#endif
+
 enum {
 	AHCI_PCI_BAR = 5,
 };
@@ -1205,6 +1217,9 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	unsigned long flags;
+	enum tegra_chipid cid;
+
+	cid = tegra_get_chipid();
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -1236,6 +1251,20 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 
 	tegra_first_level_clk_gate();
 
+/* FIXME
+ * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
+ */
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (cid == TEGRA_CHIPID_TEGRA210) {
+		u32 val;
+
+		val = clk_readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+		val |= (SWR_PEX_USB_UPHY_RST | SWR_SATA_USB_UPHY_RST);
+		clk_writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+	}
+#endif
+
 	return tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
 }
 
@@ -1245,6 +1274,9 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	unsigned long flags;
 	int err;
+	enum tegra_chipid cid;
+
+	cid = tegra_get_chipid();
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -1254,6 +1286,18 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		return err;
 	}
 
+/* FIXME
+ * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
+ */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (cid == TEGRA_CHIPID_TEGRA210) {
+		u32 val;
+
+		val = clk_readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+		val &= ~(SWR_PEX_USB_UPHY_RST | SWR_SATA_USB_UPHY_RST);
+		clk_writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+	}
+#endif
 	err = tegra_first_level_clk_ungate();
 	if (err < 0) {
 		pr_err("%s: flcg ungate failed\n", __func__);
