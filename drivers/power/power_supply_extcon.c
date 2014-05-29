@@ -37,6 +37,7 @@
 struct power_supply_extcon {
 	struct device				*dev;
 	struct extcon_dev			*edev;
+	struct extcon_dev			*y_cable_edev;
 	struct power_supply			ac;
 	struct power_supply			usb;
 	uint8_t					ac_online;
@@ -81,6 +82,9 @@ static struct power_supply_cables psy_cables[] = {
 	},
 	{
 		.name	= "Apple 2A-charger",
+	},
+	{
+		.name	= "Y-cable",
 	},
 };
 
@@ -167,6 +171,9 @@ static int power_supply_extcon_attach_cable(
 		psy_extcon->ac_online = 1;
 		dev_info(psy_extcon->dev,
 			"USB Apple 2A-charger cable detected\n");
+	} else if (true == extcon_get_cable_state(edev, "Y-cable")) {
+		psy_extcon->ac_online = 1;
+		dev_info(psy_extcon->dev, "Y cable charging detected\n");
 	} else {
 		dev_info(psy_extcon->dev, "Unknown cable detected\n");
 	}
@@ -224,6 +231,11 @@ static struct power_supply_extcon_plat_data *psy_extcon_get_dt_pdata(
 	ret = of_property_read_string(np, "power-supply,extcon-dev", &pstr);
 	if (!ret)
 		pdata->extcon_name = pstr;
+
+	ret = of_property_read_string(np, "power-supply,y-cable-extcon-dev",
+					&pstr);
+	if (!ret)
+		pdata->y_cable_extcon_name = pstr;
 
 	return pdata;
 }
@@ -297,9 +309,17 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		cable->psy_extcon = psy_extcon;
 		cable->nb.notifier_call = psy_extcon_extcon_notifier;
 
-		ret = extcon_register_interest(cable->extcon_dev,
+		if (strcmp(cable->name, "Y-cable") == 0 &&
+				pdata->y_cable_extcon_name) {
+			ret = extcon_register_interest(cable->extcon_dev,
+				pdata->y_cable_extcon_name,
+				cable->name, &cable->nb);
+		} else {
+			ret = extcon_register_interest(cable->extcon_dev,
 				pdata->extcon_name,
 				cable->name, &cable->nb);
+		}
+
 		if (ret < 0)
 			dev_err(psy_extcon->dev,
 				"Cable %s registration failed: %d\n",
@@ -316,6 +336,19 @@ static int psy_extcon_probe(struct platform_device *pdev)
 	mutex_lock(&psy_extcon->lock);
 	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
 	mutex_unlock(&psy_extcon->lock);
+
+	if (pdata->y_cable_extcon_name) {
+		psy_extcon->y_cable_edev =
+			extcon_get_extcon_dev(pdata->y_cable_extcon_name);
+		if (!psy_extcon->y_cable_edev)
+			goto econ_err;
+
+		mutex_lock(&psy_extcon->lock);
+		power_supply_extcon_attach_cable(psy_extcon,
+				psy_extcon->y_cable_edev);
+		mutex_unlock(&psy_extcon->lock);
+	}
+
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
 	return 0;
 

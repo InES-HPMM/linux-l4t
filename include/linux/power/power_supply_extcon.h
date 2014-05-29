@@ -1,7 +1,7 @@
 /*
  * power_supply_extcon: Power supply detection through extcon.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  * Laxman Dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 
 struct power_supply_extcon_plat_data {
 	const char *extcon_name;
+	const char *y_cable_extcon_name;
 };
 
 #endif
