@@ -17,8 +17,13 @@
 #ifndef __INCLUDE_LINUX_TEGRA_SMMU_H
 #define __INCLUDE_LINUX_TEGRA_SMMU_H
 
+#if defined(CONFIG_TEGRA_IOMMU_SMMU)
 int tegra_smmu_save(void);
 int tegra_smmu_restore(void);
+#else
+static inline int tegra_smmu_save(void) { return 0; }
+static inline int tegra_smmu_restore(void) { return 0; }
+#endif
 
 #if defined(CONFIG_TEGRA_IOMMU_SMMU)
 extern struct resource *tegra_smmu_window(int wnum);
