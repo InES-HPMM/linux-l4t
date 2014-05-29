@@ -23,13 +23,13 @@
  */
 #define DBG_FOOTPRINT_NAME_LEN	16
 struct dbg_footprint_element_cpu {
-	char name[DBG_FOOTPRINT_NAME_LEN];
-	uint32_t data[NR_CPUS];	 /* NR_CPUS is defined in config file. */
+	volatile char name[DBG_FOOTPRINT_NAME_LEN];
+	volatile uint32_t data[NR_CPUS];/* NR_CPUS is defined in config file. */
 };
 
 struct dbg_footprint_element_default {
-	char name[DBG_FOOTPRINT_NAME_LEN];
-	uint32_t data[1];
+	volatile char name[DBG_FOOTPRINT_NAME_LEN];
+	volatile uint32_t data[1];
 };
 
 #define DECLARE_DBG_FOOTPRINT_DATA_CPU(name) \
