@@ -3198,32 +3198,53 @@ static int soctherm_sync(void)
 late_initcall_sync(soctherm_sync);
 
 /**
- * soctherm_pm_notify() - reacts to system PM suspend or resume events
+ * soctherm_pm_suspend() - reacts to system PM suspend event
  * @nb:         pointer to notifier_block. Currently not being used
  * @event:      type of action (suspend/resume)
  * @data:       argument for callback, currently not being used
  *
- * Currently supports %PM_SUSPEND_PREPARE and %PM_POST_SUSPEND
+ * Currently supports %PM_SUSPEND_PREPARE. Ignores %PM_POST_SUSPEND
  *
  * Return: %NOTIFY_OK
  */
-static int soctherm_pm_notify(struct notifier_block *nb,
+static int soctherm_pm_suspend(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
-	switch (event) {
-	case PM_SUSPEND_PREPARE:
+	if (event == PM_SUSPEND_PREPARE) {
 		soctherm_suspend();
-		break;
-	case PM_POST_SUSPEND:
-		soctherm_resume();
-		break;
+		pr_info("tegra_soctherm: suspended\n");
 	}
-
 	return NOTIFY_OK;
 }
 
-static struct notifier_block soctherm_nb = {
-	.notifier_call = soctherm_pm_notify,
+/**
+ * soctherm_pm_resume() - reacts to system PM resume event
+ * @nb:         pointer to notifier_block. Currently not being used
+ * @event:      type of action (suspend/resume)
+ * @data:       argument for callback, currently not being used
+ *
+ * Currently supports %PM_POST_SUSPEND. Ignores %PM_SUSPEND_PREPARE
+ *
+ * Return: %NOTIFY_OK
+ */
+static int soctherm_pm_resume(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	if (event == PM_POST_SUSPEND) {
+		soctherm_resume();
+		pr_info("tegra_soctherm: resumed\n");
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block soctherm_suspend_nb = {
+	.notifier_call = soctherm_pm_suspend,
+	.priority = -2,
+};
+
+static struct notifier_block soctherm_resume_nb = {
+	.notifier_call = soctherm_pm_resume,
+	.priority = 2,
 };
 
 /**
@@ -3463,13 +3484,15 @@ late_initcall_sync(soctherm_core_rail_notify_init);
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int ret;
+
 	tegra_chip_id = tegra_get_chip_id();
 	if (!(IS_T11X || IS_T14X || IS_T12X || IS_T13X)) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
 		return -1;
 	}
 
-	register_pm_notifier(&soctherm_nb);
+	register_pm_notifier(&soctherm_suspend_nb);
+	register_pm_notifier(&soctherm_resume_nb);
 
 	if (!data)
 		return -1;
