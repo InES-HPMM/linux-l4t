@@ -2603,9 +2603,11 @@ int arch_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 	if (map_entry == NULL)
 		goto exit;
 
-	retval = irq_alloc_desc(map_entry->irq);
+	retval = irq_alloc_desc(0);
 	if (retval < 0)
 		goto exit;
+	map_entry->irq = retval;
+
 	irq_set_chip_and_handler(map_entry->irq,
 				&tegra_irq_chip_msi_pcie,
 				handle_simple_irq);
