@@ -586,6 +586,18 @@ static int jsa1127_remove(struct i2c_client *client)
 }
 #undef SEND
 
+static void jsa1127_shutdown(struct i2c_client *client)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct jsa1127_chip *chip = iio_priv(indio_dev);
+
+	if (chip->als_state == CHIP_POWER_ON_ALS_ON) {
+		/* Do not fail to disable regulator when device is removed */
+		chip->als_state = CHIP_POWER_ON_ALS_OFF;
+		cancel_delayed_work_sync(&chip->dw);
+	}
+}
+
 static const struct i2c_device_id jsa1127_id[] = {
 	{"jsa1127", 0},
 	{ }
@@ -609,6 +621,7 @@ static struct i2c_driver jsa1127_driver = {
 	.id_table = jsa1127_id,
 	.probe = jsa1127_probe,
 	.remove = jsa1127_remove,
+	.shutdown = jsa1127_shutdown,
 };
 module_i2c_driver(jsa1127_driver);
 
