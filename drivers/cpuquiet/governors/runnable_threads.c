@@ -321,26 +321,11 @@ static void runnables_stop(void)
 
 static int runnables_start(void)
 {
-	int err, i;
+	int err;
 
 	err = runnables_sysfs();
 	if (err)
 		return err;
-
-	INIT_WORK(&runnables_work, runnables_work_func);
-
-	init_timer(&runnables_timer);
-	runnables_timer.function = runnables_avg_sampler;
-
-	for(i = 0; i < ARRAY_SIZE(nr_run_thresholds); ++i) {
-		if (i == (ARRAY_SIZE(nr_run_thresholds) - 1))
-			nr_run_thresholds[i] = UINT_MAX;
-		else if (i < ARRAY_SIZE(default_thresholds))
-			nr_run_thresholds[i] = default_thresholds[i];
-		else
-			nr_run_thresholds[i] = i + 1 +
-				NR_FSHIFT / default_threshold_level;
-	}
 
 	mutex_lock(&runnables_lock);
 	runnables_state = RUNNING;
@@ -362,6 +347,23 @@ struct cpuquiet_governor runnables_governor = {
 
 static int __init init_runnables(void)
 {
+	int i;
+
+	INIT_WORK(&runnables_work, runnables_work_func);
+
+	init_timer(&runnables_timer);
+	runnables_timer.function = runnables_avg_sampler;
+
+	for (i = 0; i < ARRAY_SIZE(nr_run_thresholds); ++i) {
+		if (i == (ARRAY_SIZE(nr_run_thresholds) - 1))
+			nr_run_thresholds[i] = UINT_MAX;
+		else if (i < ARRAY_SIZE(default_thresholds))
+			nr_run_thresholds[i] = default_thresholds[i];
+		else
+			nr_run_thresholds[i] = i + 1 +
+				NR_FSHIFT / default_threshold_level;
+	}
+
 	return cpuquiet_register_governor(&runnables_governor);
 }
 
