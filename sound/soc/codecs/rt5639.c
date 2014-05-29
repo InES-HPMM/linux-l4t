@@ -3023,7 +3023,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 				RT5639_PWR_BG | RT5639_PWR_VREF2,
 				RT5639_PWR_VREF1 | RT5639_PWR_MB |
 				RT5639_PWR_BG | RT5639_PWR_VREF2);
-			msleep(5);
+			mdelay(20);
 			snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2);
