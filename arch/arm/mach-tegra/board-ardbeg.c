@@ -714,6 +714,11 @@ static void ardbeg_usb_init(void)
 			tegra_ehci1_utmi_pdata.id_extcon_dev_name =
 							 "palmas-extcon";
 		}
+
+		/* Enable Y-Cable support */
+		if (bi.board_id == BOARD_P1761)
+			tegra_ehci1_utmi_pdata.u_data.host.support_y_cable =
+							true;
 	}
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
