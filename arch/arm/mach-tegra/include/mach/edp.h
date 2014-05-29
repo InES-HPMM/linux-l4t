@@ -191,39 +191,50 @@ static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
 void tegra_init_gpu_edp_limits(unsigned int regulator_ma);
 void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 struct tegra_edp_gpu_powermodel_params
 				*tegra12x_get_gpu_powermodel_params(void);
-struct tegra_edp_gpu_powermodel_params
-				*tegra13x_get_gpu_powermodel_params(void);
 #else
-static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
-					int *num_trips, int margin)
-{}
-static inline void tegra_init_gpu_edp_limits(unsigned int regulator_ma)
-{}
 static inline struct tegra_edp_gpu_powermodel_params
 				*tegra12x_get_gpu_powermodel_params(void)
 { return NULL; }
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+struct tegra_edp_gpu_powermodel_params
+				*tegra13x_get_gpu_powermodel_params(void);
+#else
 static inline struct tegra_edp_gpu_powermodel_params
 				*tegra13x_get_gpu_powermodel_params(void)
 { return NULL; }
 #endif
 
+#else
+static inline void tegra_init_gpu_edp_limits(unsigned int regulator_ma)
+{}
+static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin)
+{}
+#endif
+
 void tegra_edp_throttle_cpu_now(u8 factor);
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
 struct tegra_edp_cpu_powermodel_params *tegra12x_get_cpu_powermodel_params(
-							int index,
-							unsigned int *sz);
-struct tegra_edp_cpu_powermodel_params *tegra13x_get_cpu_powermodel_params(
-							int index,
-							unsigned int *sz);
+						int index, unsigned int *sz);
 #else
-static inline struct tegra_edp_cpu_powermodel_params *
-tegra12x_get_cpu_powermodel_params(int index, unsigned int *sz)
+static inline struct tegra_edp_cpu_powermodel_params
+	*tegra12x_get_cpu_powermodel_params(int index, unsigned int *sz)
 { return NULL; }
-static inline struct tegra_edp_cpu_powermodel_params *
-tegra13x_get_cpu_powermodel_params(int index, unsigned int *sz)
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_13x_SOC
+struct tegra_edp_cpu_powermodel_params *tegra13x_get_cpu_powermodel_params(
+						int index, unsigned int *sz);
+#else
+static inline struct tegra_edp_cpu_powermodel_params
+	*tegra13x_get_cpu_powermodel_params(int index, unsigned int *sz)
 { return NULL; }
 #endif
 
