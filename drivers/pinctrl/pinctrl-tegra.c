@@ -469,13 +469,52 @@ static void tegra_pinctrl_disable(struct pinctrl_dev *pctldev,
 	spin_unlock_irqrestore(&mux_lock, flags);
 }
 
-static int tegra_gpio_request_enable(struct pinctrl_dev *pctldev,
+static int tegra_pinctrl_gpio_request_enable(struct pinctrl_dev *pctldev,
 				struct pinctrl_gpio_range *range,
 				unsigned pin)
 {
+	struct tegra_pmx *pmx = pinctrl_dev_get_drvdata(pctldev);
+
 	if (pmx->soc->gpio_request_enable)
 		return pmx->soc->gpio_request_enable(pin);
 	return 0;
+}
+
+static int tegra_pinctrl_gpio_set_direction (struct pinctrl_dev *pctldev,
+	struct pinctrl_gpio_range *range, unsigned offset, bool input)
+{
+	struct tegra_pmx *pmx = pinctrl_dev_get_drvdata(pctldev);
+	unsigned  group;
+	const unsigned *pins;
+	unsigned num_pins;
+	int ret;
+
+	for (group = 0; group < pmx->soc->ngroups; ++group) {
+		ret = tegra_pinctrl_get_group_pins(pctldev, group,
+				&pins, &num_pins);
+		if (ret < 0 || num_pins != 1)
+			continue;
+		if (offset ==  pins[0])
+			break;
+	}
+
+	if (group == pmx->soc->ngroups) {
+		dev_err(pctldev->dev,
+			"Pingroup not found for pin %u\n", offset);
+		return -EINVAL;
+	}
+
+	/*
+	 * Set input = 1 for the input direction and
+	 * tristate = 0 for output direction.
+	 */
+	if (input)
+		ret = tegra_pinconfig_froup_set(pctldev, group,
+					TEGRA_PINCONF_PARAM_ENABLE_INPUT, 1);
+	else
+		ret = tegra_pinconfig_froup_set(pctldev, group,
+					TEGRA_PINCONF_PARAM_TRISTATE, 0);
+	return ret;
 }
 
 static const struct pinmux_ops tegra_pinmux_ops = {
@@ -484,7 +523,8 @@ static const struct pinmux_ops tegra_pinmux_ops = {
 	.get_function_groups = tegra_pinctrl_get_func_groups,
 	.enable = tegra_pinctrl_enable,
 	.disable = tegra_pinctrl_disable,
-	.gpio_request_enable = tegra_gpio_request_enable,
+	.gpio_request_enable = tegra_pinctrl_gpio_request_enable,
+	.gpio_set_direction = tegra_pinctrl_gpio_set_direction,
 };
 
 static int tegra_pinconf_reg(struct tegra_pmx *pmx,
