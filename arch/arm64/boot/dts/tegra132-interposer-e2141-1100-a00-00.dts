@@ -118,7 +118,7 @@
 		};
 
 		regulator@9 {
-			gpio = <&gpio TEGRA_GPIO(CC, 3) 0>;
+			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 		};
 
 		vdd_lcd_1v2: regulator@100 {
