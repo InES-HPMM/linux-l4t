@@ -18,6 +18,8 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
@@ -77,17 +79,17 @@ static inline u32 pmc_readl(unsigned long addr)
 /* Some IO pads does not have power detect cells, but still can/should be
  * turned off when no power - set pwrdet_mask=0 for such pads */
 static struct pwr_detect_cell pwr_detect_cells[] = {
-	POWER_CELL("pwrdet_nand",       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_uart",	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_bb",		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_audio",	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_mipi",		  0, (0x1 <<  9), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_cam",	(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_pex_ctl",	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_sdmmc1",	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_sdmmc3",	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-nand",       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-uart",	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-bb",		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-audio",	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-mipi",		  0, (0x1 <<  9), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-cam",	(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-pex-ctl",	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc1",	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc3",	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
 };
 
 static void pwr_detect_reset(u32 pwrdet_mask)
@@ -259,11 +261,11 @@ static int pwrdet_notify_cb(
 	return NOTIFY_OK;
 }
 
-static int __init pwr_detect_cell_init_one(
+static int pwr_detect_cell_init_one(struct device *dev,
 	struct pwr_detect_cell *cell, u32 *disabled_mask)
 {
 	int ret;
-	struct regulator *regulator = regulator_get(NULL, cell->reg_id);
+	struct regulator *regulator = regulator_get(dev, cell->reg_id);
 
 	if (IS_ERR(regulator))
 		return PTR_ERR(regulator);
@@ -282,7 +284,7 @@ static int __init pwr_detect_cell_init_one(
 	return 0;
 }
 
-int __init tegra_pwr_detect_cell_init(void)
+static int tegra_pwr_detect_probe(struct platform_device *pdev)
 {
 	int i, ret;
 	u32 package_mask;
@@ -338,4 +340,37 @@ int __init tegra_pwr_detect_cell_init(void)
 	return 0;
 }
 
-fs_initcall(tegra_pwr_detect_cell_init);
+static int tegra_pwr_detect_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static const struct of_device_id tegra_pwr_detect_of_match[] = {
+	{ .compatible = "nvidia,tegra210-pwr-detect", },
+	{ .compatible = "nvidia,tegra124-pwr-detect", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, tegra_pwr_detect_of_match);
+
+static struct platform_driver tegra_pwr_detect_driver = {
+	.probe   = tegra_pwr_detect_probe,
+	.remove  = tegra_pwr_detect_remove,
+	.driver  = {
+		.name  = "tegra-pwr-detect",
+		.owner = THIS_MODULE,
+		.of_match_table = tegra_pwr_detect_of_match,
+	},
+};
+
+static int __init tegra_pwr_detect_init_driver(void)
+{
+	return platform_driver_register(&tegra_pwr_detect_driver);
+}
+
+static void __exit tegra_pwr_detect_exit_driver(void)
+{
+	platform_driver_unregister(&tegra_pwr_detect_driver);
+}
+
+fs_initcall(tegra_pwr_detect_init_driver);
+module_exit(tegra_pwr_detect_exit_driver);
