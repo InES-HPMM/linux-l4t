@@ -8209,8 +8209,8 @@ static struct tegra12_emc_table bowmore_emc_table_der[] = {
 
 static struct tegra12_emc_table bowmore_emc_table_2GB[] = {
 	{
-		0x19,       /* V6.0.0 */
-		"03_204000_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_204000_01_V6.0.4_V1.1", /* DVFS table version */
 		204000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -8226,7 +8226,7 @@ static struct tegra12_emc_table bowmore_emc_table_2GB[] = {
 			0x00000002, /* EMC_RP */
 			0x00000005, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000002, /* EMC_RD_RCD */
 			0x00000002, /* EMC_WR_RCD */
@@ -8373,14 +8373,14 @@ static struct tegra12_emc_table bowmore_emc_table_2GB[] = {
 			0x00000002, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000004, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000004, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06040203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0404, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0504, /* MC_EMEM_ARB_DA_COVERS */
 			0x73840a05, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -8436,8 +8436,8 @@ static struct tegra12_emc_table bowmore_emc_table_2GB[] = {
 		3420,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_744000_01_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_744000_01_V6.0.4_V1.1", /* DVFS table version */
 		744000,     /* SDRAM frequency */
 		980,        /* min voltage */
 		980,        /* gpu min voltage */
