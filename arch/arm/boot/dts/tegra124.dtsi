@@ -41,4 +41,8 @@
 			out-clock-name="dfll_cpu";
 			status = "disabled";
 	};
+
+	power-detect {
+		compatible = "nvidia,tegra124-pwr-detect";
+	};
 };
