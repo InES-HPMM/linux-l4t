@@ -156,6 +156,7 @@
 #define CL_DVFS_TUNE_HIGH_DELAY		2000
 
 #define CL_DVFS_TUNE_HIGH_MARGIN_MV	20
+#define CL_DVFS_CAP_GUARD_BAND_STEPS	2
 
 enum tegra_cl_dvfs_ctrl_mode {
 	TEGRA_CL_DVFS_UNINITIALIZED = 0,
@@ -779,8 +780,9 @@ static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld);
 static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
-	u32 out_max, out_min;
-	u32 out_cap = get_output_cap(cld, req);
+	u8 cap_gb = CL_DVFS_CAP_GUARD_BAND_STEPS;
+	u8 out_max, out_min;
+	u8 out_cap = get_output_cap(cld, req);
 	struct dvfs_rail *rail = cld->safe_dvfs->dvfs_rail;
 
 	switch (cld->tune_state) {
@@ -814,7 +816,8 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	 * 2) out_max is at/above PMIC guard-band forced minimum
 	 * 3) new request has at least on step room for regulation: request +/-1
 	 *    within [out_min, out_max] interval
-	 * 4) - if no other rail depends on DFLL rail, out_max is at/above
+	 * 4) new request is at least CL_DVFS_CAP_GUARD_BAND_STEPS below out_max
+	 * 5) - if no other rail depends on DFLL rail, out_max is at/above
 	 *    minimax level to provide better convergence accuracy for rates
 	 *    close to tuning range boundaries
 	 *    - if some other rail depends on DFLL rail, out_max should match
@@ -822,18 +825,23 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	 *    resolve dependencies
 	 */
 	out_min = get_output_min(cld);
-	if (out_cap > (out_min + 1))
-		req->output = out_cap - 1;
-	else
+	if (out_cap > (out_min + cap_gb)) {
+		req->output = out_cap - cap_gb;
+		out_max = out_cap;
+	} else {
 		req->output = out_min + 1;
-	if (req->output == cld->safe_output)
+		out_max = req->output + 1;
+	}
+
+	if (req->output == cld->safe_output) {
 		req->output++;
+		out_max = max(out_max, (u8)(req->output + 1));
+	}
 
 	if (list_empty(&rail->relationships_to))
-		out_max = max((u8)(req->output + 1), cld->minimax_output);
-	else
-		out_max = req->output + 1;
-	out_max = max((u8)(out_max), cld->force_out_min);
+		out_max = max(out_max, cld->minimax_output);
+
+	out_max = max(out_max, cld->force_out_min);
 
 	set_output_limits(cld, out_min, out_max);
 }
