@@ -600,7 +600,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			.supply_name = max77620_rails(_name),	\
 			.id = MAX77620_REGULATOR_ID_##_id,	\
 			.ops = &max77620_regulator_ops,		\
-			.n_voltages = (((_max_uV - _min_uV) / _step_uV) / 100),	\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV),	\
 			.min_uV = _min_uV,	\
 			.uV_step = _step_uV,	\
 			.enable_time = 500,	\
@@ -637,7 +637,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			.supply_name = max77620_rails(_name),	\
 			.id = MAX77620_REGULATOR_ID_##_id,	\
 			.ops = &max77620_regulator_ops,		\
-			.n_voltages = (((_max_uV - _min_uV) / _step_uV) / 100),	\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV),	\
 			.min_uV = _min_uV,	\
 			.uV_step = _step_uV,	\
 			.enable_time = 500,	\
