@@ -35,6 +35,7 @@
 #ifdef CONFIG_DMA_SHARED_BUFFER
 #define MODS_HAS_DMABUF 1
 #endif
+#define MODS_MULTI_INSTANCE_DEFAULT_VALUE 1
 
 #endif /* _MODS_CONFIG_H_  */
 

@@ -60,7 +60,7 @@ struct miscdevice mods_dev = {
  * used to avoid globalization of variables    *
  ***********************************************/
 static int debug = -0x80000000;
-static int multi_instance = -1;
+static int multi_instance = MODS_MULTI_INSTANCE_DEFAULT_VALUE;
 
 void mods_set_debug_level(int mask)
 {
