@@ -74,6 +74,18 @@ struct of_phandle_args {
 	uint32_t args[MAX_PHANDLE_ARGS];
 };
 
+/*
+ * keep the state at iterating a list of phandles with variable number
+ * of args
+ */
+struct of_phandle_iter {
+	const __be32 *cur; /* current phandle */
+	const __be32 *end; /* end of the last phandle */
+	const char *cells_name;
+	int cell_count;
+	struct of_phandle_args out_args;
+};
+
 #ifdef CONFIG_OF_DYNAMIC
 extern struct device_node *of_node_get(struct device_node *node);
 extern void of_node_put(struct device_node *node);
@@ -283,6 +295,12 @@ extern int of_parse_phandle_with_args(const struct device_node *np,
 extern int of_count_phandle_with_args(const struct device_node *np,
 	const char *list_name, const char *cells_name);
 
+extern void of_phandle_iter_start(struct of_phandle_iter *iter,
+				  const struct device_node *np,
+				  const char *list_name,
+				  const char *cells_name, int cell_count);
+extern void of_phandle_iter_next(struct of_phandle_iter *iter);
+
 extern void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align));
 extern int of_alias_get_id(struct device_node *np, const char *stem);
 
@@ -342,6 +360,12 @@ const char *of_prop_next_string(struct property *prop, const char *cur);
 		s = of_prop_next_string(prop, NULL);		\
 		s;						\
 		s = of_prop_next_string(prop, s))
+
+#define of_property_for_each_phandle_with_args(iter, np, list_name,	\
+					       cells_name, cell_count)	\
+	for (of_phandle_iter_start(&iter, np, list_name,		\
+				   cells_name, cell_count);		\
+	     iter.cur; of_phandle_iter_next(&iter))
 
 #else /* CONFIG_OF */
 
@@ -493,6 +517,18 @@ static inline int of_count_phandle_with_args(struct device_node *np,
 					     const char *cells_name)
 {
 	return -ENOSYS;
+}
+
+static inline void of_phandle_iter_start(struct of_phandle_iter *iter,
+					 const struct device_node *np,
+					 const char *list_name,
+					 const char *cells_name,
+					 int cell_count);
+{
+}
+
+static inline void of_phandle_iter_next(struct of_phandle_iter *iter)
+{
 }
 
 static inline int of_alias_get_id(struct device_node *np, const char *stem)

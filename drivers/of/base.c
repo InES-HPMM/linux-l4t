@@ -1248,6 +1248,57 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 }
 EXPORT_SYMBOL(of_parse_phandle_with_args);
 
+void of_phandle_iter_next(struct of_phandle_iter *iter)
+{
+	struct device_node *dn;
+	int i, count;
+
+	if (!iter->cur || (iter->cur >= iter->end))
+		goto err_out;
+
+	dn = of_find_node_by_phandle(be32_to_cpup(iter->cur++));
+	if (!dn)
+		goto err_out;
+
+	if (iter->cells_name) {
+		if (of_property_read_u32(dn, iter->cells_name, &count))
+			goto err_out;
+	} else {
+		count =  iter->cell_count;
+	}
+
+	iter->out_args.np = dn;
+	iter->out_args.args_count = count;
+	for (i = 0; i < count; i++)
+		iter->out_args.args[i] = be32_to_cpup(iter->cur++);
+
+	return;
+
+err_out:
+	iter->cur = NULL;
+}
+EXPORT_SYMBOL_GPL(of_phandle_iter_next);
+
+void of_phandle_iter_start(struct of_phandle_iter *iter,
+			   const struct device_node *np,
+			   const char *list_name, const char *cells_name,
+			   int cell_count)
+{
+	size_t bytes;
+
+	iter->cur = of_get_property(np, list_name, &bytes);
+	if (!iter->cur)
+		return;
+	iter->end = iter->cur;
+	if (bytes)
+		iter->end += bytes / sizeof(*iter->cur);
+	iter->cells_name = cells_name;
+	iter->cell_count = cell_count;
+of_phandle_iter_next(iter);
+}
+EXPORT_SYMBOL_GPL(of_phandle_iter_start);
+
+
 /**
  * of_count_phandle_with_args() - Find the number of phandles references in a property
  * @np:		pointer to a device tree node containing a list
