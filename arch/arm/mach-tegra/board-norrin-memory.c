@@ -28,8 +28,8 @@
 
 static struct tegra12_emc_table norrin_emc_table[] = {
 	{
-		0x19,       /* V6.0.0 */
-		"03_12750_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_12750_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		12750,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -45,7 +45,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* EMC_RP */
 			0x00000004, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000000, /* EMC_RD_RCD */
 			0x00000000, /* EMC_WR_RCD */
@@ -192,14 +192,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000002, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06030203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0402, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0502, /* MC_EMEM_ARB_DA_COVERS */
 			0x77e30303, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -242,7 +242,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
 		0x000008c5, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -255,8 +255,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		57820,      /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_20400_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_20400_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		20400,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -272,7 +272,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* EMC_RP */
 			0x00000004, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000000, /* EMC_RD_RCD */
 			0x00000000, /* EMC_WR_RCD */
@@ -419,14 +419,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000002, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06030203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0402, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0502, /* MC_EMEM_ARB_DA_COVERS */
 			0x76230303, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -469,7 +469,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
 		0x000008c5, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -482,8 +482,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		35610,      /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_40800_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_40800_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		40800,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -499,7 +499,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* EMC_RP */
 			0x00000004, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000000, /* EMC_RD_RCD */
 			0x00000000, /* EMC_WR_RCD */
@@ -646,14 +646,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000002, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06030203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0402, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0502, /* MC_EMEM_ARB_DA_COVERS */
 			0x74a30303, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -696,7 +696,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
 		0x000008c5, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -709,8 +709,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		20850,      /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_68000_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_68000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		68000,      /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -726,19 +726,19 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* EMC_RP */
 			0x00000004, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000000, /* EMC_RD_RCD */
 			0x00000000, /* EMC_WR_RCD */
 			0x00000003, /* EMC_RRD */
 			0x00000003, /* EMC_REXT */
 			0x00000000, /* EMC_WEXT */
-			0x00000005, /* EMC_WDV */
-			0x00000005, /* EMC_WDV_MASK */
-			0x00000005, /* EMC_QUSE */
+			0x00000006, /* EMC_WDV */
+			0x00000006, /* EMC_WDV_MASK */
+			0x00000006, /* EMC_QUSE */
 			0x00000002, /* EMC_QUSE_WIDTH */
 			0x00000000, /* EMC_IBDLY */
-			0x00000004, /* EMC_EINPUT */
+			0x00000005, /* EMC_EINPUT */
 			0x00000005, /* EMC_EINPUT_DURATION */
 			0x00010000, /* EMC_PUTERM_EXTRA */
 			0x00000003, /* EMC_PUTERM_WIDTH */
@@ -746,10 +746,10 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* EMC_CDB_CNTL_1 */
 			0x00000000, /* EMC_CDB_CNTL_2 */
 			0x00000000, /* EMC_CDB_CNTL_3 */
-			0x00000003, /* EMC_QRST */
+			0x00000004, /* EMC_QRST */
 			0x0000000c, /* EMC_QSAFE */
-			0x0000000e, /* EMC_RDV */
-			0x00000010, /* EMC_RDV_MASK */
+			0x0000000d, /* EMC_RDV */
+			0x0000000f, /* EMC_RDV_MASK */
 			0x00000202, /* EMC_REFRESH */
 			0x00000000, /* EMC_BURST_REFRESH_NUM */
 			0x00000080, /* EMC_PRE_REFRESH_REQ_CNT */
@@ -862,9 +862,9 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x000e000e, /* EMC_MRS_WAIT_CNT2 */
 			0x00000000, /* EMC_CTT */
 			0x00000003, /* EMC_CTT_DURATION */
-			0x0000d2b3, /* EMC_CFG_PIPE */
+			0x0000f2f3, /* EMC_CFG_PIPE */
 			0x8000050e, /* EMC_DYN_SELF_REF_CONTROL */
-			0x00000009, /* EMC_QPOP */
+			0x0000000a, /* EMC_QPOP */
 			0x00000001, /* MC_EMEM_ARB_CFG */
 			0x8000001e, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
@@ -873,14 +873,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000002, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06030203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0402, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0502, /* MC_EMEM_ARB_DA_COVERS */
 			0x74230403, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -922,8 +922,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x001fffff, /* EMC_AUTO_CAL_INTERVAL */
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
-		0x000008cd, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x000008c5, /* EMC_CFG_2 */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -936,8 +936,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		10720,      /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_102000_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_102000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		102000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -953,7 +953,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000001, /* EMC_RP */
 			0x00000004, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000001, /* EMC_RD_RCD */
 			0x00000001, /* EMC_WR_RCD */
@@ -1100,14 +1100,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000000, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000002, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06030203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0403, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0503, /* MC_EMEM_ARB_DA_COVERS */
 			0x73c30504, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -1150,7 +1150,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
 		0x000008c5, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -1163,8 +1163,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		6890,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_204000_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_204000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		204000,     /* SDRAM frequency */
 		800,        /* min voltage */
 		800,        /* gpu min voltage */
@@ -1180,7 +1180,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000002, /* EMC_RP */
 			0x00000005, /* EMC_R2W */
 			0x0000000a, /* EMC_W2R */
-			0x00000003, /* EMC_R2P */
+			0x00000005, /* EMC_R2P */
 			0x0000000b, /* EMC_W2P */
 			0x00000002, /* EMC_RD_RCD */
 			0x00000002, /* EMC_WR_RCD */
@@ -1327,14 +1327,14 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x00000002, /* MC_EMEM_ARB_TIMING_RAS */
 			0x00000004, /* MC_EMEM_ARB_TIMING_FAW */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RRD */
-			0x00000002, /* MC_EMEM_ARB_TIMING_RAP2PRE */
+			0x00000003, /* MC_EMEM_ARB_TIMING_RAP2PRE */
 			0x00000008, /* MC_EMEM_ARB_TIMING_WAP2PRE */
 			0x00000003, /* MC_EMEM_ARB_TIMING_R2R */
 			0x00000002, /* MC_EMEM_ARB_TIMING_W2W */
 			0x00000004, /* MC_EMEM_ARB_TIMING_R2W */
 			0x00000006, /* MC_EMEM_ARB_TIMING_W2R */
 			0x06040203, /* MC_EMEM_ARB_DA_TURNS */
-			0x000a0404, /* MC_EMEM_ARB_DA_COVERS */
+			0x000a0504, /* MC_EMEM_ARB_DA_COVERS */
 			0x73840a05, /* MC_EMEM_ARB_MISC0 */
 			0x70000f03, /* MC_EMEM_ARB_MISC1 */
 			0x001f0000, /* MC_EMEM_ARB_RING1_THROTTLE */
@@ -1377,7 +1377,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73240000, /* EMC_CFG */
 		0x0000088d, /* EMC_CFG_2 */
-		0x00040008, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000008, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -1390,8 +1390,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		3420,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_300000_01_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_300000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		300000,     /* SDRAM frequency */
 		820,        /* min voltage */
 		820,        /* gpu min voltage */
@@ -1604,7 +1604,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73340000, /* EMC_CFG */
 		0x000008d5, /* EMC_CFG_2 */
-		0x00040128, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -1617,8 +1617,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		2680,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_396000_00_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_396000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		396000,     /* SDRAM frequency */
 		850,        /* min voltage */
 		850,        /* gpu min voltage */
@@ -1831,7 +1831,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73340000, /* EMC_CFG */
 		0x00000895, /* EMC_CFG_2 */
-		0x00040008, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0x002c0068, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -1844,8 +1844,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		2180,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_528000_01_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_528000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		528000,     /* SDRAM frequency */
 		880,        /* min voltage */
 		870,        /* gpu min voltage */
@@ -2058,7 +2058,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73300000, /* EMC_CFG */
 		0x0000089d, /* EMC_CFG_2 */
-		0x00040008, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0xe0120069, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -2071,8 +2071,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		1440,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_600000_01_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_600000_NoCfgVersion_V6.0.4_V1.1", /* DVFS table version */
 		600000,     /* SDRAM frequency */
 		910,        /* min voltage */
 		910,        /* gpu min voltage */
@@ -2285,7 +2285,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		0x00000802, /* EMC_CTT_TERM_CTRL */
 		0x73300000, /* EMC_CFG */
 		0x0000089d, /* EMC_CFG_2 */
-		0x00040008, /* EMC_SEL_DPD_CTRL */
+		0x00040000, /* EMC_SEL_DPD_CTRL */
 		0xe00e0069, /* EMC_CFG_DIG_DLL */
 		0x00000000, /* EMC_BGBIAS_CTL0 */
 		0x00000000, /* EMC_AUTO_CAL_CONFIG2 */
@@ -2298,8 +2298,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		1440,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_792000_01_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_792000_02_V6.0.4_V1.1", /* DVFS table version */
 		792000,     /* SDRAM frequency */
 		980,        /* min voltage */
 		980,        /* gpu min voltage */
@@ -2525,8 +2525,8 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 		1200,       /* expected dvfs latency (ns) */
 	},
 	{
-		0x19,       /* V6.0.0 */
-		"03_924000_03_V6.0.0_V1.1", /* DVFS table version */
+		0x19,       /* V6.0.4 */
+		"04_924000_04_V6.0.4_V1.1", /* DVFS table version */
 		924000,     /* SDRAM frequency */
 		1010,       /* min voltage */
 		1010,       /* gpu min voltage */
@@ -2585,7 +2585,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x0000000a, /* EMC_TCLKSTABLE */
 			0x0000000a, /* EMC_TCLKSTOP */
 			0x00001c28, /* EMC_TREFBW */
-			0x00000000, /* EMC_FBIO_CFG6 */
+			0x00000002, /* EMC_FBIO_CFG6 */
 			0x00000000, /* EMC_ODT_WRITE */
 			0x00000000, /* EMC_ODT_READ */
 			0x104ab898, /* EMC_FBIO_CFG5 */
@@ -2598,7 +2598,7 @@ static struct tegra12_emc_table norrin_emc_table[] = {
 			0x007fc008, /* EMC_DLL_XFORM_DQS4 */
 			0x007fc008, /* EMC_DLL_XFORM_DQS5 */
 			0x007fc008, /* EMC_DLL_XFORM_DQS6 */
-			0x007fc008, /* EMC_DLL_XFORM_DQS7 */
+			0x00000005, /* EMC_DLL_XFORM_DQS7 */
 			0x007fc00a, /* EMC_DLL_XFORM_DQS8 */
 			0x007fc00a, /* EMC_DLL_XFORM_DQS9 */
 			0x007fc008, /* EMC_DLL_XFORM_DQS10 */
