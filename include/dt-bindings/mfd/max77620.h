@@ -18,13 +18,13 @@
 #define FPS_TIME_PERIOD_1280US	5
 #define FPS_TIME_PERIOD_2560US	6
 #define FPS_TIME_PERIOD_5120US	7
-#define FPS_TIME_PERIOD_DEF	-1
+#define FPS_TIME_PERIOD_DEF	8
 
 #define FPS_SRC_0	0
 #define FPS_SRC_1	1
 #define FPS_SRC_2	2
 #define FPS_SRC_NONE	3
-#define FPS_SRC_DEF	-1
+#define FPS_SRC_DEF	4
 
 #define SLEW_RATE_SLOWEST	0
 #define SLEW_RATE_SLOW		1
@@ -39,6 +39,6 @@
 #define	FPS_POWER_PERIOD_5	5
 #define	FPS_POWER_PERIOD_6	6
 #define	FPS_POWER_PERIOD_7	7
-#define	FPS_POWER_PERIOD_DEF	-1
+#define	FPS_POWER_PERIOD_DEF	8
 
 #endif

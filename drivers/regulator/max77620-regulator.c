@@ -83,7 +83,7 @@ enum max77620_regulator_fps_time_period {
 	FPS_TIME_PERIOD_1280US,
 	FPS_TIME_PERIOD_2560US,
 	FPS_TIME_PERIOD_5120US,
-	FPS_TIME_PERIOD_DEF = -1,
+	FPS_TIME_PERIOD_DEF,
 };
 
 enum max77620_slew_rate {

@@ -321,7 +321,7 @@ enum max77620_regulator_fps_power_period {
 	FPS_POWER_PERIOD_5,
 	FPS_POWER_PERIOD_6,
 	FPS_POWER_PERIOD_7,
-	FPS_POWER_PERIOD_DEF = -1,
+	FPS_POWER_PERIOD_DEF,
 };
 
 /* FPS Source */
@@ -330,7 +330,7 @@ enum max77620_regulator_fps_src {
 	FPS_SRC_1,
 	FPS_SRC_2,
 	FPS_SRC_NONE,
-	FPS_SRC_DEF = -1,
+	FPS_SRC_DEF,
 };
 
 /* Regulator types */
