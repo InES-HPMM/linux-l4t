@@ -216,8 +216,8 @@ static struct kernel_param_ops pwrio_val_ops = {
 module_param_cb(pwrio_val, &pwrio_val_ops, &pwrio_val, 0444);
 
 
-static int pwrdet_notify_cb(
-	struct notifier_block *nb, unsigned long event, void *v)
+static int pwrdet_notify_cb(struct notifier_block *nb,
+		unsigned long event, void *v)
 {
 	unsigned long flags;
 	struct pwr_detect_cell *cell;
@@ -265,27 +265,32 @@ static int pwr_detect_cell_init_one(struct device *dev,
 	struct pwr_detect_cell *cell, u32 *disabled_mask)
 {
 	int ret;
-	struct regulator *regulator = regulator_get(dev, cell->reg_id);
+	struct regulator *regulator;
 
-	if (IS_ERR(regulator))
-		return PTR_ERR(regulator);
+	regulator = devm_regulator_get(dev, cell->reg_id);
+	if (IS_ERR(regulator)) {
+		ret = PTR_ERR(regulator);
+		dev_err(dev, "regulator %s not found: %d\n",
+				cell->reg_id, ret);
+		return ret;
+	}
 
 	cell->regulator_nb.notifier_call = pwrdet_notify_cb;
 	ret = regulator_register_notifier(regulator, &cell->regulator_nb);
 	if (ret) {
-		regulator_put(regulator);
+		dev_err(dev, "regulator notifier register failed for %s: %d\n",
+			cell->reg_id, ret);
 		return ret;
 	}
 
 	if (!regulator_is_enabled(regulator))
 		*disabled_mask |= cell->pwrio_mask;
-
-	regulator_put(regulator);
 	return 0;
 }
 
 static int tegra_pwr_detect_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	int i, ret;
 	u32 package_mask;
 	unsigned long flags;
@@ -296,8 +301,8 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 
 	i = tegra_package_id();
 	if ((i != -1) && (i & (~0x1F))) {
-		pr_err("tegra: not supported package id %d - io power detection"
-		       " is left always on\n", i);
+		dev_err(dev, "not supported package id %d - "
+			"io power detection is left always on\n", i);
 		return 0;
 	}
 	package_mask = (i == -1) ? i : (0x1 << i);
@@ -310,17 +315,18 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 			continue;
 		}
 
-		ret = pwr_detect_cell_init_one(cell, &pwrio_disabled_mask);
+		ret = pwr_detect_cell_init_one(dev, cell, &pwrio_disabled_mask);
 		if (ret) {
-			pr_err("tegra: failed to map regulator to power detect"
-			       " cell %s(%d)\n", cell->reg_id, ret);
+			dev_err(dev,
+			"regulator to power detect cell map %s failed: %d\n",
+				cell->reg_id, ret);
 			rails_found = false;
 		}
 	}
 
 	if (!rails_found) {
-		pr_err("tegra: failed regulators mapping - io power detection"
-		       " is left always on\n");
+		dev_err(dev, "Failed regulators mapping - io power detection"
+				" is left always on\n");
 		return 0;
 	}
 	pwrdet_rails_found = true;
@@ -334,8 +340,9 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 		pwr_io_disable(pwrio_disabled_mask);
 	spin_unlock_irqrestore(&pwr_lock, flags);
 
-	pr_info("tegra: started io power detection dynamic control\n");
-	pr_info("tegra: NO_IO_POWER setting 0x%x\n", pwrio_disabled_mask);
+	dev_info(dev, "started io power detection dynamic control\n");
+	dev_info(dev, "NO_IO_POWER setting 0x%x package mask 0x%x\n",
+			pwrio_disabled_mask, package_mask);
 
 	return 0;
 }
