@@ -7958,6 +7958,15 @@ static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0[] = {
+	{.input = &tegra_pll_p,             .value = 0},
+	{.input = &tegra_pll_c4_out2,       .value = 3},
+	{.input = &tegra_pll_c4_out1,       .value = 4},
+	{.input = &tegra_clk_m,             .value = 6},
+	{.input = &tegra_pll_c4_out0,       .value = 7},
+	{ 0, 0},
+};
+
 /* Peripheral muxes */
 static struct clk_mux_sel mux_pllp_pllc2_c_c3_clkm[] = {
 	{ .input = &tegra_pll_p,  .value = 0},
@@ -8001,13 +8010,13 @@ static struct clk_mux_sel mux_pllp_pllp_out3_clkm_clk32k_plla[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllp_out3_pllc_c2_clkm_pllp_pllc4[] = {
+static struct clk_mux_sel mux_pllp_out3_clkm_pllp_pllc4[] = {
 	{ .input = &tegra_pll_p_out3, .value = 0},
-	{ .input = &tegra_pll_c, .value = 1},
-	{ .input = &tegra_pll_c2, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
 	{ .input = &tegra_pll_p, .value = 4},
 	{ .input = &tegra_pll_c4_out0, .value = 5},
+	{ .input = &tegra_pll_c4_out1, .value = 6},
+	{ .input = &tegra_pll_c4_out2, .value = 7},
 	{ 0, 0},
 };
 
@@ -8576,11 +8585,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata",	"tegra_sata",		NULL,	124,	0x424,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m, PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	208000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc2",	"sdhci-tegra.1",	NULL,	9,	0x154,	200000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	200000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc_legacy",	"sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_pllc_c2_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc2",	"sdhci-tegra.1",	NULL,	9,	0x154,	200000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	200000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc_legacy",	"sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("vcp",	"nvavp",		"vcp",	29,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("bsea",	"nvavp",		"bsea",	62,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0),
