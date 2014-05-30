@@ -440,8 +440,6 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pclk",	"hclk",		51000000,	true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "wake.sclk",	NULL,		40000000,	true,
-		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "mselect",	"pll_p",	102000000,	true,
 		TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out5", "pll_p",	102000000,	true,
@@ -464,12 +462,6 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "sdmmc1_ddr",	"pll_p",	48000000,	false},
 	{ "sdmmc3_ddr",	"pll_p",	48000000,	false},
 	{ "sdmmc4_ddr",	"pll_p",	48000000,	false},
-	{ "sbc1.sclk",	NULL,		40000000,	false},
-	{ "sbc2.sclk",	NULL,		40000000,	false},
-	{ "sbc3.sclk",	NULL,		40000000,	false},
-	{ "sbc4.sclk",	NULL,		40000000,	false},
-	{ "sbc5.sclk",	NULL,		40000000,	false},
-	{ "sbc6.sclk",	NULL,		40000000,	false},
 	{ "cpu.mselect", NULL,		102000000,	true},
 	{ "gpu_ref",	NULL,		0,		true},
 	{ "gk20a.gbus",	NULL,		252000000,	false},
@@ -499,6 +491,17 @@ static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
 #endif
 	{ "pll_c_out1",	"pll_c",	100000000,	false },
 	{ "c4bus",	"pll_c4",	200000000,	false },
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra12x_sbus_init_table[] = {
+	/* Initialize sbus (system clock) users after cbus init PLLs */
+	{ "sbc1.sclk",	NULL,		40000000,	false},
+	{ "sbc2.sclk",	NULL,		40000000,	false},
+	{ "sbc3.sclk",	NULL,		40000000,	false},
+	{ "sbc4.sclk",	NULL,		40000000,	false},
+	{ "sbc5.sclk",	NULL,		40000000,	false},
+	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "wake.sclk",	NULL,		40000000,	true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -973,6 +976,7 @@ void __init tegra12x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
+	tegra_clk_init_from_table(tegra12x_sbus_init_table);
 	tegra_powergate_init();
 #ifndef CONFIG_ARM64
 	tegra30_hotplug_init();
