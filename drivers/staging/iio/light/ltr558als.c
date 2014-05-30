@@ -116,7 +116,7 @@ static int ltr558_ps_enable(struct i2c_client *client, int gainrange)
 			PS_LED_CUR_LEVEL_100);
 	if (!error)
 		error = ltr558_i2c_write_reg(client, LTR558_PS_N_PULSES,
-				PS_N_PULSES_5);
+				PS_N_PULSES_15);
 	if (!error)
 		error = ltr558_i2c_write_reg(client, LTR558_PS_MEAS_RATE,
 				PS_MEAS_RATE_200MS);
