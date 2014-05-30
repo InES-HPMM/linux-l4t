@@ -336,3 +336,11 @@ config TEGRA_CAMERA
 	  Enables support for the Tegra camera interface
 
 	  If unsure, say Y
+
+config VI_ONE_DEVICE
+	bool "Enables one Vi device support"
+	depends on ARCH_TEGRA
+	default n
+	help
+	  Say Y here to nvhost to add only one Vi device node.
+	  If unsure, say N
