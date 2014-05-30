@@ -77,41 +77,17 @@ static inline u32 pmc_readl(unsigned long addr)
 /* Some IO pads does not have power detect cells, but still can/should be
  * turned off when no power - set pwrdet_mask=0 for such pads */
 static struct pwr_detect_cell pwr_detect_cells[] = {
-#ifndef CONFIG_ARCH_TEGRA_14x_SOC
-	POWER_CELL("pwrdet_nand",	(0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
-#endif
+	POWER_CELL("pwrdet_nand",       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
 	POWER_CELL("pwrdet_uart",	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
-#ifndef CONFIG_ARCH_TEGRA_14x_SOC
 	POWER_CELL("pwrdet_bb",		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
-#endif
-#ifdef	CONFIG_ARCH_TEGRA_2x_SOC
-	POWER_CELL("pwrdet_vi",			  0, (0x1 <<  4), 0xFFFFFFFF),
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	/* Tegra3 VI is connected on MID package only (id = 1, mask = 0x2) */
-	POWER_CELL("pwrdet_vi",			  0, (0x1 <<  4), 0x00000002),
-#endif
 	POWER_CELL("pwrdet_audio",	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	POWER_CELL("pwrdet_lcd",	(0x1 <<  6), (0x1 <<  6), 0xFFFFFFFF),
-#endif
-#ifdef	CONFIG_ARCH_TEGRA_2x_SOC
-	POWER_CELL("pwrdet_sd",			  0, (0x1 <<  8), 0xFFFFFFFF),
-#endif
-#ifndef CONFIG_ARCH_TEGRA_14x_SOC
 	POWER_CELL("pwrdet_mipi",		  0, (0x1 <<  9), 0xFFFFFFFF),
-#endif
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	POWER_CELL("pwrdet_cam",	(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	POWER_CELL("pwrdet_pex_ctl",	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
-#endif
 	POWER_CELL("pwrdet_sdmmc1",	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
 	POWER_CELL("pwrdet_sdmmc3",	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
 	POWER_CELL("pwrdet_sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	POWER_CELL("pwrdet_hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
-#endif
-#endif
 };
 
 static void pwr_detect_reset(u32 pwrdet_mask)
