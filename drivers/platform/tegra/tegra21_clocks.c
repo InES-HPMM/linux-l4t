@@ -8510,8 +8510,10 @@ static struct clk tegra_visp_clks[] = {
 	SHARED_CONNECT("isp.cbus",	"isp.cbus",	NULL,	&tegra_clk_cbus,   "isp",   0, 0),
 	SHARED_CLK("override.cbus",	"override.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_OVERRIDE),
 
+#ifndef CONFIG_VI_ONE_DEVICE
 	SHARED_CLK("via.vi.cbus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
 	SHARED_CLK("vib.vi.cbus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0),
+#endif
 
 	SHARED_CLK("ispa.isp.cbus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
 	SHARED_CLK("ispb.isp.cbus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
@@ -8676,6 +8678,15 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("pll_p_out5", "tegra_gm20b.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
+#ifdef CONFIG_VI_ONE_DEVICE
+	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
+	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
+	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
+	CLK_DUPLICATE("vim2_clk", "tegra_vi", "vim2_clk"),
+	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
+	CLK_DUPLICATE("cilcd", "tegra_vi", "cilcd"),
+	CLK_DUPLICATE("cile", "tegra_vi", "cile"),
+#else
 	CLK_DUPLICATE("via.vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("vib.vi.cbus", "tegra_vi.1", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
@@ -8685,6 +8696,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi.1", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi.1", "cile"),
+#endif
 	CLK_DUPLICATE("spdif_in", NULL, "spdif_in"),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.0", NULL),
 	CLK_DUPLICATE("dmic2", "tegra-dmic.1", NULL),
