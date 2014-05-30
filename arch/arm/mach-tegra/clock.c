@@ -1322,7 +1322,7 @@ static void dvfs_show_one(struct seq_file *s, struct dvfs *d, int level)
 {
 	seq_printf(s, "%*s  %-*s%21s%d mV\n",
 			level * 3 + 1, "",
-			35 - level * 3, d->dvfs_rail->reg_id,
+			42 - level * 3, d->dvfs_rail->reg_id,
 			"",
 			d->cur_millivolts);
 }
@@ -1364,7 +1364,7 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 		level * 3 + 1, "",
 		rate > max_rate ? '!' : ' ',
 		!c->set ? '*' : ' ',
-		35 - level * 3, c->name,
+		42 - level * 3, c->name,
 		c->cansleep ? '$' : ' ',
 		state, c->refcnt, div, rate);
 	if (c->parent && !list_empty(&c->parent->shared_bus_list)) {
@@ -1406,8 +1406,8 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 static int clock_tree_show(struct seq_file *s, void *data)
 {
 	struct clk *c;
-	seq_printf(s, "   clock                               state  ref div      rate       (shared req / bw_margin / iso_margin)\n");
-	seq_printf(s, "-----------------------------------------------------------------------------------------------------------\n");
+	seq_printf(s, "   clock                                      state  ref div      rate       (shared req / bw_margin / iso_margin)\n");
+	seq_printf(s, "------------------------------------------------------------------------------------------------------------------\n");
 
 	mutex_lock(&clock_list_lock);
 	if (!tegra_platform_is_fpga())
