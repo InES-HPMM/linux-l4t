@@ -2090,8 +2090,9 @@ static int tegra21_pll_clk_wait_for_lock(
 		}
 	}
 
-	pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
-	       c->name, lock_reg, val);
+	if (tegra_platform_is_silicon())
+		pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
+		       c->name, lock_reg, val);
 	return -ETIMEDOUT;
 #endif
 	udelay(c->u.pll.lock_delay);
