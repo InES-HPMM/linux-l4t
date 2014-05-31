@@ -1,7 +1,7 @@
 /*
  * palmas_thermal.c -- TI PALMAS THERMAL.
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Pradeep Goudagunta <pgoudagunta@nvidia.com>
  *
@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
 #include <linux/of.h>
 #include <linux/mfd/palmas.h>
 
@@ -39,45 +40,39 @@ struct palmas_therm_zone {
 	struct palmas			*palmas;
 	struct thermal_zone_device	*tz_device;
 	int				irq;
-	int				is_crit_temp;
 	unsigned long			hd_threshold_temp;
-	const char				*tz_name;
+	const char			*tz_name;
 };
 
-struct palmas_trip_point {
-	unsigned long temp;
-	enum thermal_trip_type type;
+static struct thermal_trip_info palmas_tpoint = {
+	.cdev_type = "emergency-balanced",
+	.trip_temp = PALMAS_CRITICAL_DEFUALT_TEMP,
+	.trip_type = THERMAL_TRIP_ACTIVE,
+	.upper = THERMAL_NO_LIMIT,
+	.lower = THERMAL_NO_LIMIT,
 };
-
-static struct palmas_trip_point palmas_tpoint = {
-		.temp = PALMAS_CRITICAL_DEFUALT_TEMP,
-		.type = THERMAL_TRIP_CRITICAL,
-};
-
-static int palmas_thermal_get_crit_temp(struct thermal_zone_device *tz_device,
-			unsigned long *temp)
-{
-	*temp = palmas_tpoint.temp;
-
-	return 0;
-}
 
 static int palmas_thermal_get_temp(struct thermal_zone_device *tz_device,
 			unsigned long *temp)
 {
+	int ret;
+	unsigned int val;
 	struct palmas_therm_zone *ptherm_zone = tz_device->devdata;
 
-	if (ptherm_zone->is_crit_temp) {
-		/*
-		 * Set temperature greater than Critical trip
-		 * temp to trigger orderly power down sequence
-		 */
-		palmas_thermal_get_crit_temp(tz_device, temp);
-		*temp += 1;
-		return 0;
+	ret = palmas_read(ptherm_zone->palmas, PALMAS_INTERRUPT_BASE,
+				PALMAS_INT1_LINE_STATE, &val);
+	if (ret < 0) {
+		dev_err(ptherm_zone->dev,
+			"%s: Failed to read INT1_LINE_STATE, %d\n",
+			__func__, ret);
+		return -EINVAL;
 	}
 
-	*temp = PALMAS_NORMAL_OPERATING_TEMP;
+	if (val & PALMAS_INT1_STATUS_HOTDIE)
+		*temp = palmas_tpoint.trip_temp + 1; /* + 1 to trigger cdev */
+	else
+		*temp = PALMAS_NORMAL_OPERATING_TEMP;
+
 	return 0;
 }
 
@@ -87,7 +82,7 @@ static int palmas_thermal_get_trip_type(struct thermal_zone_device *tz_device,
 	if (trip >= 1)
 		return -EINVAL;
 
-	*type = palmas_tpoint.type;
+	*type = palmas_tpoint.trip_type;
 	return 0;
 }
 
@@ -97,41 +92,40 @@ static int palmas_thermal_get_trip_temp(struct thermal_zone_device *tz_device,
 	if (trip >= 1)
 		return -EINVAL;
 
-	*temp = palmas_tpoint.temp;
+	*temp = palmas_tpoint.trip_temp;
+	return 0;
+}
+
+static int palmas_thermal_bind(struct thermal_zone_device *thz,
+				struct thermal_cooling_device *cdev)
+{
+	if (!strncmp(palmas_tpoint.cdev_type, cdev->type, THERMAL_NAME_LENGTH))
+		thermal_zone_bind_cooling_device(
+			thz, 0, cdev, palmas_tpoint.upper, palmas_tpoint.lower);
+	return 0;
+}
+
+static int palmas_thermal_unbind(struct thermal_zone_device *thz,
+				struct thermal_cooling_device *cdev)
+{
+	if (!strncmp(palmas_tpoint.cdev_type, cdev->type, THERMAL_NAME_LENGTH))
+		thermal_zone_unbind_cooling_device(thz, 0, cdev);
 	return 0;
 }
 
 static struct thermal_zone_device_ops palmas_tz_ops = {
 	.get_temp = palmas_thermal_get_temp,
-	.get_crit_temp = palmas_thermal_get_crit_temp,
 	.get_trip_type = palmas_thermal_get_trip_type,
 	.get_trip_temp = palmas_thermal_get_trip_temp,
+	.bind = palmas_thermal_bind,
+	.unbind = palmas_thermal_unbind,
 };
 
 static irqreturn_t palmas_thermal_irq(int irq, void *data)
 {
 	struct palmas_therm_zone *ptherm_zone = data;
-	unsigned int val;
-	int ret;
 
-	/*
-	 * Necessary action can be taken here
-	 * e.g: thermal_zone_device_update(pz->tz_device);
-	 * will trigger orderly power down sequence.
-	 */
-	ret = palmas_read(ptherm_zone->palmas, PALMAS_INTERRUPT_BASE,
-			PALMAS_INT1_LINE_STATE, &val);
-	if (ret < 0) {
-		dev_err(ptherm_zone->dev,
-			"%s: Failed to read INT1_LINE_STATE, %d\n",
-			__func__, ret);
-	} else {
-		ptherm_zone->is_crit_temp =
-				val & PALMAS_INT1_STATUS_HOTDIE ? 1 : 0;
-		dev_info(ptherm_zone->dev, "%s: HOTDIE line is equal to %d\n",
-			__func__, ptherm_zone->is_crit_temp);
-	}
-
+	thermal_zone_device_update(ptherm_zone->tz_device);
 	return IRQ_HANDLED;
 }
 
@@ -190,7 +184,7 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		return PTR_ERR(ptherm_zone->tz_device);
 	}
 
-	palmas_tpoint.temp = ptherm_zone->hd_threshold_temp;
+	palmas_tpoint.trip_temp = ptherm_zone->hd_threshold_temp;
 
 	ptherm_zone->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(ptherm_zone->irq, NULL,
@@ -203,13 +197,13 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		goto int_req_failed;
 	}
 
-	if (palmas_tpoint.temp <= 108000UL)
+	if (palmas_tpoint.trip_temp <= 108000UL)
 		val = 0;
-	else if (palmas_tpoint.temp <= 112000UL)
+	else if (palmas_tpoint.trip_temp <= 112000UL)
 		val = 1;
-	else if (palmas_tpoint.temp <= 116000UL)
+	else if (palmas_tpoint.trip_temp <= 116000UL)
 		val = 2;
-	else if (palmas_tpoint.temp <= 120000UL)
+	else if (palmas_tpoint.trip_temp <= 120000UL)
 		val = 3;
 	else
 		val = 3;
