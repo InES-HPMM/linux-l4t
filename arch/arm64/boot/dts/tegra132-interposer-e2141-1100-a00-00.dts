@@ -117,7 +117,7 @@
 			gpio = <&gpio TEGRA_GPIO(BB, 3) 0>;
 		};
 
-		regulator@9 {
+		regulator@10 {
 			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 		};
 
