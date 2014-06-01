@@ -36,7 +36,8 @@ static int max77620_clks_prepare(struct max77620_clks *max77620_clks)
 	int ret;
 
 	ret = max77620_reg_update(max77620_clks->max77620->dev, MAX77620_PWR_SLAVE,
-			MAX77620_REG_CNFG1_32K,	MAX77620_CNFG1_32K_OUT0_EN, 1);
+			MAX77620_REG_CNFG1_32K,	MAX77620_CNFG1_32K_OUT0_EN,
+			MAX77620_CNFG1_32K_OUT0_EN);
 	if (ret < 0)
 		dev_err(max77620_clks->dev, "RTC_CONTROL_REG update failed, %d\n",
 			ret);
