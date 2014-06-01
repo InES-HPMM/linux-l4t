@@ -288,8 +288,8 @@ max77620_regulator_set_power_mode(struct max77620_regulator *reg,
 				(power_mode << MAX77620_SD_POWER_MODE_SHIFT));
 	else
 		ret = max77620_reg_update(dev,
-				rinfo->regs[VOLT_REG].addr,
 				MAX77620_PWR_SLAVE,
+				rinfo->regs[VOLT_REG].addr,
 				MAX77620_LDO_POWER_MODE_MASK,
 				(power_mode << MAX77620_LDO_POWER_MODE_SHIFT));
 	if (ret < 0) {
