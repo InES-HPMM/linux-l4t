@@ -196,13 +196,15 @@ static int max77620_pinctrl_enable(struct pinctrl_dev *pctldev,
 {
 	struct max77620_pctrl_info *max77620_pci =
 					pinctrl_dev_get_drvdata(pctldev);
-	int bit = group;
+
 	if (function == MAX77620_PINMUX_GPIO) {
 		max77620_reg_update(max77620_pci->max77620->dev,
-			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO, bit, 0);
+			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO,
+			1 << group, 0);
 	} else if (function == max77620_pci->pin_groups[group].alt_option) {
 		max77620_reg_update(max77620_pci->max77620->dev,
-			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO, bit, 1);
+			MAX77620_PWR_SLAVE, MAX77620_REG_AME_GPIO,
+			1 << group, 1 << group);
 	} else {
 		dev_err(max77620_pci->dev, "%s(): GPIO %u doesn't have %u\n",
 		__func__, group, function);
