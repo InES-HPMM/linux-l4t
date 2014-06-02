@@ -478,11 +478,31 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "dsiblp",     "pll_p",        70000000,       false },
 	{ NULL,		NULL,		0,		0},
 };
+
+#ifdef CONFIG_TEGRA_PLLCX_FIXED
+	/* Set PLLCx rates for automotive */
 static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
 	/* Initialize c2bus, c3bus, or cbus at the end of the list
 	 * after all the clocks are moved under the proper parents.
 	 */
 #ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	432000000,	false },
+	{ "c3bus",	"pll_c3",	660000000,	false },
+	{ "pll_c",	NULL,		792000000,	false },
+#else
+	{ "cbus",	"pll_c",	792000000,	false },
+#endif
+	{ "pll_c_out1",	"pll_c",	316800000,	false },
+	{ "c4bus",	"pll_c4",	600000000,	false },
+	{ NULL,		NULL,		0,		0},
+};
+#else
+
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
+	/* Initialize c2bus, c3bus, or cbus at the end of the list
+	 * after all the clocks are moved under the proper parents.
+	 */
 	{ "c2bus",	"pll_c2",	250000000,	false },
 	{ "c3bus",	"pll_c3",	250000000,	false },
 	{ "pll_c",	NULL,		600000000,	false },
@@ -493,6 +513,8 @@ static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
 	{ "c4bus",	"pll_c4",	200000000,	false },
 	{ NULL,		NULL,		0,		0},
 };
+#endif
+
 static __initdata struct tegra_clk_init_table tegra12x_sbus_init_table[] = {
 	/* Initialize sbus (system clock) users after cbus init PLLs */
 	{ "sbc1.sclk",	NULL,		40000000,	false},
