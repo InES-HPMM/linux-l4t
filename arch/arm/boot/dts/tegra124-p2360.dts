@@ -72,4 +72,10 @@
 			spi-max-frequency = <25000000>;
 		};
 	};
+
+	pcie-controller {
+		nvidia,port0_status = <1>;
+		nvidia,port1_status = <1>;
+		status = "okay";
+	};
 };
