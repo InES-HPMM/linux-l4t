@@ -126,9 +126,6 @@
 					c2 {
 					     regulator-consumer-supply = "dvddio_pex";
 					};
-					c3 {
-					     regulator-consumer-supply = "pwrdet_pex_ctl";
-					};
 					c4 {
 					     regulator-consumer-supply = "avdd_sata";
 					};
@@ -163,40 +160,22 @@
 					c2 {
 					     regulator-consumer-supply = "vddio_audio";
 					};
-					c3 {
-					     regulator-consumer-supply = "pwrdet_audio";
-					};
 					c4 {
 					     regulator-consumer-supply = "vddio_sdmmc";
 					     regulator-consumer-device = "sdhci-tegra.0";
-					};
-					c5 {
-					     regulator-consumer-supply = "pwrdet_sdmmc1";
 					};
 					c6 {
 					     regulator-consumer-supply = "vddio_sdmmc";
 					     regulator-consumer-device = "sdhci-tegra.3";
 					};
-					c7 {
-					     regulator-consumer-supply = "pwrdet_sdmmc4";
-					};
 					c8 {
 					     regulator-consumer-supply = "vddio_uart";
-					};
-					c9 {
-					     regulator-consumer-supply = "pwrdet_uart";
 					};
 					c10 {
 					     regulator-consumer-supply = "vddio_bb";
 					};
-					c11 {
-					     regulator-consumer-supply = "pwrdet_bb";
-					};
 					c12 {
 					     regulator-consumer-supply = "vddio_gmi";
-					};
-					c13 {
-					     regulator-consumer-supply = "pwrdet_nand";
 					};
 					c14 {
 					     regulator-consumer-supply = "avdd_osc";
@@ -267,9 +246,6 @@
 					     regulator-consumer-supply = "vddio_cam";
 					     regulator-consumer-device = "vi";
 					};
-					c1 {
-					     regulator-consumer-supply = "pwrdet_cam";
-					};
 					c2 {
 					     regulator-consumer-supply = "vdd_cam_1v8_cam";
 					};
@@ -316,9 +292,6 @@
 					c3 {
 					     regulator-consumer-supply = "avdd_dsi_csi";
 					     regulator-consumer-device = "vi.1";
-					};
-					c4 {
-					     regulator-consumer-supply = "pwrdet_mipi";
 					};
 					c5 {
 					     regulator-consumer-supply = "avdd_hsic_com";
@@ -404,9 +377,6 @@
 					c0 {
 					     regulator-consumer-supply = "vddio_sdmmc";
 					     regulator-consumer-device = "sdhci-tegra.2";
-					};
-					c1 {
-					     regulator-consumer-supply = "pwrdet_sdmmc3";
 					};
 				    };
 				};

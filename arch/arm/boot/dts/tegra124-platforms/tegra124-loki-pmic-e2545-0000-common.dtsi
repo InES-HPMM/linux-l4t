@@ -192,22 +192,13 @@
 							c9 {
 								regulator-consumer-supply = "vddio_gmi";
 							};
-							c10 {
-								regulator-consumer-supply = "pwrdet_nand";
-							};
 							c11 {
 								regulator-consumer-supply = "vddio_sdmmc";
 								regulator-consumer-device = "sdhci-tegra.0";
 							};
-							c12 {
-								regulator-consumer-supply = "pwrdet_sdmmc1";
-							};
 							c13 {
 								regulator-consumer-supply = "vddio_sdmmc";
 								regulator-consumer-device = "sdhci-tegra.3";
-							};
-							c14 {
-								regulator-consumer-supply = "pwrdet_sdmmc4";
 							};
 							c15 {
 								regulator-consumer-supply = "avdd_pll_utmip";
@@ -232,20 +223,11 @@
 							c20 {
 								regulator-consumer-supply = "vddio_audio";
 							};
-							c21 {
-								regulator-consumer-supply = "pwrdet_audio";
-							};
 							c22 {
 								regulator-consumer-supply = "vddio_uart";
 							};
-							c23 {
-								regulator-consumer-supply = "pwrdet_uart";
-							};
 							c24 {
 								regulator-consumer-supply = "vddio_bb";
-							};
-							c25 {
-								regulator-consumer-supply = "pwrdet_bb";
 							};
 							c26 {
 								regulator-consumer-supply = "vdd_dtv";
@@ -260,9 +242,6 @@
 							c29 {
 								regulator-consumer-supply = "vddio_cam";
 								regulator-consumer-device = "vi";
-							};
-							c30 {
-								regulator-consumer-supply = "pwrdet_cam";
 							};
 							c31 {
 								regulator-consumer-supply = "vlogic";
@@ -367,9 +346,6 @@
 								regulator-consumer-supply = "avdd_dsi_csi";
 								regulator-consumer-device = "vi.1";
 							};
-							c4 {
-								regulator-consumer-supply = "pwrdet_mipi";
-							};
 							c5 {
 								regulator-consumer-supply = "vddio_hsic";
 								regulator-consumer-device = "tegra-ehci.1";
@@ -453,9 +429,6 @@
 								regulator-consumer-supply = "vddio_sdmmc";
 								regulator-consumer-device = "sdhci-tegra.2";
 							};
-							c1 {
-								regulator-consumer-supply = "pwrdet_sdmmc3";
-							};
 						};
 					};
 
@@ -479,15 +452,9 @@
 								regulator-consumer-supply = "vddio_hv";
 								regulator-consumer-device = "tegradc.1";
 							};
-							c2 {
-								regulator-consumer-supply = "pwrdet_hv";
-							};
 							c3 {
 								regulator-consumer-supply = "vddio_pex_ctl";
 								regulator-consumer-device = "tegra-pcie";
-							};
-							c4 {
-								regulator-consumer-supply = "pwrdet_pex_ctl";
 							};
 							c5 {
 								regulator-consumer-supply = "avdd_hdmi";

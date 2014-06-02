@@ -219,22 +219,13 @@
 						c9 {
 							regulator-consumer-supply = "vddio_gmi";
 						};
-						c10 {
-							regulator-consumer-supply = "pwrdet_nand";
-						};
 						c11 {
 							regulator-consumer-supply = "vddio_sdmmc";
 							regulator-consumer-device = "sdhci-tegra.0";
 						};
-						c12 {
-							regulator-consumer-supply = "pwrdet_sdmmc1";
-						};
 						c13 {
 							regulator-consumer-supply = "vddio_sdmmc";
 							regulator-consumer-device = "sdhci-tegra.3";
-						};
-						c14 {
-							regulator-consumer-supply = "pwrdet_sdmmc4";
 						};
 						c15 {
 							regulator-consumer-supply = "avdd_pll_utmip";
@@ -259,20 +250,11 @@
 						c20 {
 							regulator-consumer-supply = "vddio_audio";
 						};
-						c21 {
-							regulator-consumer-supply = "pwrdet_audio";
-						};
 						c22 {
 							regulator-consumer-supply = "vddio_uart";
 						};
-						c23 {
-							regulator-consumer-supply = "pwrdet_uart";
-						};
 						c24 {
 							regulator-consumer-supply = "vddio_bb";
-						};
-						c25 {
-							regulator-consumer-supply = "pwrdet_bb";
 						};
 						c26 {
 							regulator-consumer-supply = "vdd_1v8b";
@@ -291,9 +273,6 @@
 						c30 {
 							regulator-consumer-supply = "vddio_cam";
 							regulator-consumer-device = "vi";
-						};
-						c31 {
-							regulator-consumer-supply = "pwrdet_cam";
 						};
 						c32 {
 							regulator-consumer-supply = "dvdd";
@@ -458,9 +437,6 @@
 							regulator-consumer-supply = "avdd_dsi_csi";
 							regulator-consumer-device = "vi.1";
 						};
-						c7 {
-							regulator-consumer-supply = "pwrdet_mipi";
-						};
 						c8 {
 							regulator-consumer-supply = "avdd_hsic_com";
 						};
@@ -546,9 +522,6 @@
 						c0 {
 							regulator-consumer-supply = "vddio_sdmmc";
 							regulator-consumer-device = "sdhci-tegra.2";
-						};
-						c1 {
-							regulator-consumer-supply = "pwrdet_sdmmc3";
 						};
 					};
 				};
