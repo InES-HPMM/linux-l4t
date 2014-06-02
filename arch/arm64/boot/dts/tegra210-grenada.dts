@@ -20,7 +20,7 @@
 
 /dts-v1/;
 
-/memreserve/ 0x80000000 0x00010000;
+/memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
