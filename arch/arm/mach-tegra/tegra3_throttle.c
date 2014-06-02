@@ -241,14 +241,17 @@ static int table_show(struct seq_file *s, void *data)
 
 	for (i = 0; i < bthrot->throt_tab_size; i++) {
 		/* CPU FREQ */
-		seq_printf(s, "[%d] = %7lu",
+		seq_printf(s, "%s[%d] = %7lu", i < 10 ? " " : "",
 			i, bthrot->throt_tab[i].cap_freqs[0]);
 
 		/* OTHER DVFS MODULE FREQS */
 		for (j = 1; j <= ARRAY_SIZE(cap_freqs_table); j++)
-			seq_printf(s, " %7lu",
-				bthrot->throt_tab[i].cap_freqs[j]);
-		seq_printf(s, "\n");
+			if (bthrot->throt_tab[i].cap_freqs[j] == NO_CAP)
+				seq_puts(s, "  NO CAP");
+			else
+				seq_printf(s, " %7lu",
+					bthrot->throt_tab[i].cap_freqs[j]);
+		seq_puts(s, "\n");
 	}
 
 	return 0;
