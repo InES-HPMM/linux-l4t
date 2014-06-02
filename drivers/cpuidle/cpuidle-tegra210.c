@@ -68,7 +68,7 @@ static int tegra210_enter_retention(struct cpuidle_device *dev,
 {
 	/* TODO: fix the counter */
 	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
-	cpu_retention_enable(1);
+	cpu_retention_enable(7);
 
 	cpu_do_idle();
 
