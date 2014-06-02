@@ -792,6 +792,15 @@ config TEGRA_PLLM_SCALED
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
 
+config TEGRA_PLLCX_FIXED
+	bool "Run PLLCx at fixed target rate"
+	depends on MACH_VCM30_T124 || MACH_P2360
+	default n
+	help
+	  When this option is enabled, PLLC, PLLC2, PLLC3 and PLLC4 will run
+	  at fixed target rate. So, no frequnecy scaling will happen
+	  for these PLLs
+
 config ARCH_TEGRA_VIC
 	bool "Tegra Video Image Compositor present"
 	default y
