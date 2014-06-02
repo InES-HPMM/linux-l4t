@@ -426,7 +426,7 @@ void __init tegra_init_timer(struct device_node *np)
 	}
 
 
-#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
+#ifdef CONFIG_PM_SLEEP
 	hotplug_cpu_register(np);
 #endif
 	of_node_put(np);

@@ -1,7 +1,7 @@
 /*
- * arch/arch/mach-tegra/timer-t3.c
+ * drivers/clocksource/tegra-wakeup-nvtimers.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -270,20 +270,26 @@ static int hotplug_notify(struct notifier_block *self,
 static struct notifier_block __cpuinitdata hotplug_notifier_block = {
 	.notifier_call = hotplug_notify,
 };
+#endif
 
+#ifdef CONFIG_PM_SLEEP
 int __init hotplug_cpu_register(struct device_node *np)
 {
 	int cpu;
-	for (cpu = 0;cpu < 4;cpu++) {
+	for (cpu = 0; cpu < ARRAY_SIZE(tegra_lp2wake_irq); cpu++) {
 		tegra_lp2wake_irq[cpu].irq =
 				irq_of_parse_and_map(np, cpu + 2);
 
-	if (tegra_lp2wake_irq[cpu].irq <= 0) {
+		if (tegra_lp2wake_irq[cpu].irq <= 0) {
 			pr_err("Failed to map wakeup timer IRQ\n");
 			BUG();
 		}
 	}
+#ifdef CONFIG_HOTPLUG_CPU
 	return register_cpu_notifier(&hotplug_notifier_block);
+#else
+	return 0;
+#endif
 }
 #endif
 #endif
