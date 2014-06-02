@@ -1140,18 +1140,6 @@ static void ion_dma_buf_release(struct dma_buf *dmabuf)
 	ion_buffer_put(buffer);
 }
 
-static void *ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
-{
-	struct ion_buffer *buffer = dmabuf->priv;
-	return buffer->vaddr + offset * PAGE_SIZE;
-}
-
-static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
-			       void *ptr)
-{
-	return;
-}
-
 static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf, size_t start,
 					size_t len,
 					enum dma_data_direction direction)
@@ -1182,6 +1170,24 @@ static void ion_dma_buf_end_cpu_access(struct dma_buf *dmabuf, size_t start,
 	mutex_lock(&buffer->lock);
 	ion_buffer_kmap_put(buffer);
 	mutex_unlock(&buffer->lock);
+}
+
+static void *ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+
+	/* FIXME: .begin_cpu_access was wrongly implemented */
+	if (ion_dma_buf_begin_cpu_access(dmabuf, 0, 0, DMA_NONE))
+		return NULL;
+
+	return buffer->vaddr + offset * PAGE_SIZE;
+}
+
+static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
+			       void *ptr)
+{
+	/* FIXME: .end_cpu_access was wronlgy implemented */
+	ion_dma_buf_end_cpu_access(dmabuf, 0, 0, DMA_NONE);
 }
 
 static int ion_dma_buf_set_private(struct dma_buf *dmabuf, struct device *dev,
