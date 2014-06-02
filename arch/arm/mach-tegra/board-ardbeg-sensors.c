@@ -1336,12 +1336,26 @@ static struct balanced_throttle gpu_throttle = {
 	.throt_tab = gpu_throttle_table,
 };
 
+/* throttle table that sets all clocks to approximately 50% of their max */
+static struct throttle_table emergency_throttle_table[] = {
+	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1122000, 391000, 288000, 420000, 252000, 396000 } },
+};
+
+static struct balanced_throttle emergency_throttle = {
+	.throt_tab_size = ARRAY_SIZE(emergency_throttle_table),
+	.throt_tab = emergency_throttle_table,
+};
+
 static int __init ardbeg_balanced_throttle_init(void)
 {
 	if (!balanced_throttle_register(&cpu_throttle, "cpu-balanced"))
 		pr_err("balanced_throttle_register 'cpu-balanced' FAILED.\n");
 	if (!balanced_throttle_register(&gpu_throttle, "gpu-balanced"))
 		pr_err("balanced_throttle_register 'gpu-balanced' FAILED.\n");
+	if (!balanced_throttle_register(&emergency_throttle,
+							"emergency-balanced"))
+		pr_err("balanced_throttle_register 'emergency-balanced' FAILED\n");
 
 	return 0;
 }
