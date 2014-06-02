@@ -30,7 +30,7 @@ struct cpufreq_stats {
 	unsigned long long  last_time;
 	unsigned int max_state;
 	unsigned int state_num;
-	unsigned int last_index;
+	int last_index;
 	u64 *time_in_state;
 	unsigned int *freq_table;
 #ifdef CONFIG_CPU_FREQ_STAT_DETAILS
