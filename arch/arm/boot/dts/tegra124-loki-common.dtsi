@@ -66,7 +66,7 @@
 			charger {
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
-				ti,watchdog-timeout = <40>;
+				ti,watchdog-timeout = <160>;
 				ti,rtc-alarm-time = <3600>;
 				ti,auto-recharge-time = <1800>;
 				ti,temp-polling-time-sec = <5>;
