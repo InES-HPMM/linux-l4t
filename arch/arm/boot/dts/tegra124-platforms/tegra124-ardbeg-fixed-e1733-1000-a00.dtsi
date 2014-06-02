@@ -405,4 +405,9 @@
 			enable-active-high;
 		};
 	};
+
+	power-detect {
+		pwrdet-hv-supply = <&as3722_gpio2>;
+		pwrdet-pex-ctl-supply = <&as3722_gpio2>;
+	};
 };

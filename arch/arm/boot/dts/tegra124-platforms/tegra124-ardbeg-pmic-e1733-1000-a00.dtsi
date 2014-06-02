@@ -537,7 +537,7 @@
 					};
 				};
 
-				ldo6 {
+				as3722_ldo6: ldo6 {
 					regulator-name = "vddio-sdmmc2";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <3300000>;
@@ -649,5 +649,17 @@
 	psy_extcon {
 		compatible = "power-supply-extcon";
 		power-supply,extcon-dev = "tegra-udc";
+	};
+
+	power-detect {
+		pwrdet-nand-supply = <&as3722_sd5>;
+		pwrdet-sdmmc1-supply = <&as3722_sd5>;
+		pwrdet-sdmmc4-supply = <&as3722_sd5>;
+		pwrdet-audio-supply = <&as3722_sd5>;
+		pwrdet-uart-supply = <&as3722_sd5>;
+		pwrdet-bb-supply = <&as3722_sd5>;
+		pwrdet-cam-supply = <&as3722_sd5>;
+		pwrdet-mipi-supply = <&as3722_ldo2>;
+		pwrdet-sdmmc3-supply = <&as3722_ldo6>;
 	};
 };

@@ -171,4 +171,8 @@
 			};
 		};
 	};
+
+	power-detect {
+		pwrdet-cam-supply = <&vdd_cam_af>;
+	};
 };

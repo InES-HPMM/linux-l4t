@@ -594,7 +594,7 @@
 						};
 					};
 
-					ldo9 {
+					palmas_ldo9: ldo9 {
 						regulator-name = "vddio-sdmmc2";
 						regulator-min-microvolt = <1800000>;
 						regulator-max-microvolt = <3300000>;
@@ -746,4 +746,18 @@
 	efuse@7000f800 {
 		vpp_fuse-supply = <&ldousb_reg>;
 	};
+
+	power-detect {
+		pwrdet-nand-supply = <&palmas_smps6>;
+		pwrdet-sdmmc1-supply = <&palmas_smps6>;
+		pwrdet-sdmmc4-supply = <&palmas_smps6>;
+		pwrdet-audio-supply = <&palmas_smps6>;
+		pwrdet-uart-supply = <&palmas_smps6>;
+		pwrdet-bb-supply = <&palmas_smps6>;
+		pwrdet-cam-supply = <&palmas_smps6>;
+		pwrdet-mipi-supply = <&palams_ldo4>;
+		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
+		pwrdet-pex-ctl-supply = <&palmas_ti913_regen1>;
+		pwrdet-hv-supply = <&palmas_ti913_regen1>;
+	};  
 };
