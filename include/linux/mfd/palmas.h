@@ -369,6 +369,9 @@ struct palmas_reg_init {
 	 * discharge on idle state and enable on suspend/shutdown.
 	 */
 	bool disable_active_discharge_idle;
+
+	/* Disable pull down fro LDO */
+	bool disable_pull_down;
 };
 
 enum palmas_regulators {
