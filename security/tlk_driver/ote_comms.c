@@ -36,7 +36,7 @@ core_param(verbose_smc, verbose_smc, bool, 0644);
 #define SET_RESULT(req, r, ro)	{ req->result = r; req->result_origin = ro; }
 
 static int te_pin_user_pages(void *buffer, size_t size,
-		unsigned long *pages_ptr)
+		unsigned long *pages_ptr, uint32_t buf_type)
 {
 	int ret = 0;
 	unsigned int nr_pages;
@@ -51,10 +51,9 @@ static int te_pin_user_pages(void *buffer, size_t size,
 
 	down_read(&current->mm->mmap_sem);
 	ret = get_user_pages(current, current->mm, (unsigned long)buffer,
-				nr_pages, WRITE, 0, pages, NULL);
-	if (ret < 0)
-		ret = get_user_pages(current, current->mm, (unsigned long)buffer,
-				nr_pages, WRITE, 1/*force*/, pages, NULL);
+			nr_pages, buf_type == TE_PARAM_TYPE_MEM_RW,
+			0, pages, NULL);
+
 	up_read(&current->mm->mmap_sem);
 
 	*pages_ptr = (unsigned long) pages;
@@ -81,19 +80,19 @@ static struct te_shmem_desc *te_add_shmem_desc(void *buffer, size_t size,
 }
 
 static int te_pin_mem_buffers(void *buffer, size_t size,
-		struct tlk_context *context)
+		struct tlk_context *context, uint32_t buf_type)
 {
+	unsigned long pages = 0;
 	struct te_shmem_desc *shmem_desc = NULL;
-	int ret = 0;
+	int ret = 0, nr_pages = 0;
 
-	nr_pages = te_pin_user_pages(buffer, size, &pages);
+	nr_pages = te_pin_user_pages(buffer, size, &pages, buf_type);
 	if (nr_pages <= 0) {
 		pr_err("%s: te_pin_user_pages Failed (%d)\n", __func__,
 			nr_pages);
 		ret = OTE_ERROR_OUT_OF_MEMORY;
 		goto error;
 	}
-
 	shmem_desc = te_add_shmem_desc(buffer, size,
 				nr_pages, (struct page **)pages, context);
 	if (!shmem_desc) {
@@ -125,7 +124,8 @@ static int te_setup_temp_buffers(struct te_request *request,
 			ret = te_pin_mem_buffers(
 				params[i].u.Mem.base,
 				params[i].u.Mem.len,
-				context);
+				context,
+				params[i].type);
 			if (ret < 0) {
 				pr_err("%s failed with err (%d)\n",
 					__func__, ret);
@@ -161,7 +161,8 @@ static int te_setup_temp_buffers_compat(struct te_request_compat *request,
 			ret = te_pin_mem_buffers(
 				(void *)(uintptr_t)params[i].u.Mem.base,
 				params[i].u.Mem.len,
-				context);
+				context,
+				params[i].type);
 			if (ret < 0) {
 				pr_err("%s failed with err (%d)\n",
 					__func__, ret);
@@ -178,16 +179,22 @@ static int te_setup_temp_buffers_compat(struct te_request_compat *request,
 	return ret;
 }
 
-static void te_del_shmem_desc(void *buffer, struct tlk_context *context)
+static void te_del_shmem_desc(void *buffer, struct tlk_context *context,
+			uint32_t buf_type)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
+	int i;
 
 	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
 		&(context->shmem_alloc_list), list) {
 		if (shmem_desc->buffer == buffer) {
 			list_del(&shmem_desc->list);
-			for (i = 0; i < shmem_desc->nr_pages; i++)
+			for (i = 0; i < shmem_desc->nr_pages; i++) {
+				if (buf_type == TE_PARAM_TYPE_MEM_RW)
+					set_page_dirty_lock(
+						shmem_desc->pages[i]);
 				page_cache_release(shmem_desc->pages[i]);
+			}
 			kfree(shmem_desc->pages);
 			kfree(shmem_desc);
 		}
@@ -198,10 +205,10 @@ static void te_del_shmem_desc(void *buffer, struct tlk_context *context)
  * Deregister previously initialized shared memory
  */
 void te_unregister_memory(void *buffer,
-	struct tlk_context *context)
+	struct tlk_context *context, uint32_t buf_type)
 {
 	if (!(list_empty(&(context->shmem_alloc_list))))
-		te_del_shmem_desc(buffer, context);
+		te_del_shmem_desc(buffer, context, buf_type);
 	else
 		pr_err("No buffers to unpin\n");
 }
@@ -220,7 +227,8 @@ static void te_unpin_temp_buffers(struct te_request *request,
 			break;
 		case TE_PARAM_TYPE_MEM_RO:
 		case TE_PARAM_TYPE_MEM_RW:
-			te_unregister_memory(params[i].u.Mem.base, context);
+			te_unregister_memory(params[i].u.Mem.base,
+				context, params[i].type);
 			break;
 		default:
 			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
@@ -246,7 +254,8 @@ static void te_unpin_temp_buffers_compat(struct te_request_compat *request,
 		case TE_PARAM_TYPE_MEM_RW:
 			te_unregister_memory(
 				(void *)(uintptr_t)params[i].u.Mem.base,
-				context);
+				context,
+				params[i].type);
 			break;
 		default:
 			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
