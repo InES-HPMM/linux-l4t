@@ -530,6 +530,7 @@ err_power:
 static atomic_t ref_count_dispa = ATOMIC_INIT(0);
 static atomic_t ref_count_dispb = ATOMIC_INIT(0);
 static atomic_t ref_count_venc = ATOMIC_INIT(0);
+static atomic_t ref_count_pcie = ATOMIC_INIT(0);
 
 #define CHECK_RET(x)			\
 	do {				\
@@ -658,6 +659,42 @@ static int tegra12x_venc_unpowergate(int id)
 	return ret;
 }
 
+static int tegra12x_pcie_powergate(int id)
+{
+	int ret = 0;
+	int ref_count = 0;
+
+	if (!TEGRA_IS_PCIE_POWERGATE_ID(id))
+		return -EINVAL;
+
+	ref_count = atomic_dec_return(&ref_count_pcie);
+	WARN_ON(ref_count < 0);
+
+	/* only powergate when decrementing ref_count from 1 to 0 */
+	if (ref_count == 0)
+		CHECK_RET(tegra12x_powergate(id));
+
+	return ret;
+}
+
+static int tegra12x_pcie_unpowergate(int id)
+{
+	int ret = 0;
+	int ref_count = 0;
+
+	if (!TEGRA_IS_PCIE_POWERGATE_ID(id))
+		return -EINVAL;
+
+	ref_count = atomic_inc_return(&ref_count_pcie);
+	WARN_ON(ref_count < 1);
+
+	/* only unpowergate when incrementing ref_count from 0 to 1 */
+	if (ref_count == 1)
+		CHECK_RET(tegra12x_unpowergate(id));
+
+	return ret;
+}
+
 int tegra12x_powergate_partition(int id)
 {
 	int ret;
@@ -671,6 +708,8 @@ int tegra12x_powergate_partition(int id)
 		ret = tegra_powergate_set(id, false);
 	else if (id == TEGRA_POWERGATE_VENC)
 		ret = tegra12x_venc_powergate(id);
+	else if (id == TEGRA_POWERGATE_PCIE)
+		ret = tegra12x_pcie_powergate(id);
 	else {
 		/* call common power-gate API for t1xx */
 		ret = tegra1xx_powergate(id,
@@ -693,6 +732,8 @@ int tegra12x_unpowergate_partition(int id)
 		ret = tegra_powergate_set(id, true);
 	else if (id == TEGRA_POWERGATE_VENC)
 		ret = tegra12x_venc_unpowergate(id);
+	else if (id == TEGRA_POWERGATE_PCIE)
+		ret = tegra12x_pcie_unpowergate(id);
 	else {
 		ret = tegra1xx_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);
@@ -758,6 +799,7 @@ static int tegra12x_powergate_init_refcount(void)
 {
 	bool disa_powered = tegra_powergate_is_powered(TEGRA_POWERGATE_DISA);
 	bool venc_powered = tegra_powergate_is_powered(TEGRA_POWERGATE_VENC);
+	bool pcie_powered = tegra_powergate_is_powered(TEGRA_POWERGATE_PCIE);
 
 	WARN_ON(venc_powered && !disa_powered);
 
@@ -780,6 +822,15 @@ static int tegra12x_powergate_init_refcount(void)
 	} else {
 		atomic_set(&ref_count_venc, 0);
 	}
+
+	/* PCIE needs refcount menchanism due to HW Bug#1320346.  PCIE should be
+	 * powergated only when both XUSB and PCIE are not active.
+	 */
+
+	if (pcie_powered)
+		atomic_set(&ref_count_pcie, 1);
+	else
+		atomic_set(&ref_count_pcie, 0);
 
 	return 0;
 }

@@ -100,6 +100,7 @@
 #define TEGRA_IS_DISP_POWERGATE_ID(id) (((id) == TEGRA_POWERGATE_DISA) || \
 					((id) == TEGRA_POWERGATE_DISB))
 #define TEGRA_IS_VENC_POWERGATE_ID(id)  ((id) == TEGRA_POWERGATE_VENC)
+#define TEGRA_IS_PCIE_POWERGATE_ID(id)  ((id) == TEGRA_POWERGATE_PCIE)
 #endif
 
 int  __init tegra_powergate_init(void);
