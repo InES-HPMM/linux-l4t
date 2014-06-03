@@ -2855,7 +2855,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 		DBG("%s: QC2 voltage = %d, current = %d\n",
 			__func__,
-			udc->qc2_voltage_limit,
+			udc->qc2_voltage,
 			udc->qc2_current_limit);
 
 		if (pdata->u_data.dev.dcp_current_limit_ma)
