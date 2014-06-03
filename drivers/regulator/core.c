@@ -1960,9 +1960,11 @@ int regulator_enable(struct regulator *regulator)
 	ret = _regulator_enable(rdev);
 	mutex_unlock(&rdev->mutex);
 
-	if (ret != 0 && rdev->supply)
+	if (rdev->supply &&
+		(ret || rdev->constraints->disable_parent_after_enable)) {
+		rdev_info(rdev, "Disabling parent\n");
 		regulator_disable(rdev->supply);
-
+	}
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regulator_enable);
@@ -2067,8 +2069,10 @@ int regulator_disable(struct regulator *regulator)
 	ret = _regulator_disable(rdev);
 	mutex_unlock(&rdev->mutex);
 
-	if (ret == 0 && rdev->supply)
-		regulator_disable(rdev->supply);
+	if (ret == 0 && rdev->supply) {
+		if (!rdev->constraints->disable_parent_after_enable)
+			regulator_disable(rdev->supply);
+	}
 
 	return ret;
 }
