@@ -1,7 +1,7 @@
 /*
  * max15569-regulator.c -- max15569 regulator driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,6 +27,7 @@
  * @base_voltage_uV: Base voltage
  * slew_rate_uv_per_us: Slew rate uV/us. The values can be
  *		4 to 44 mV/us.
+ * ena_gpio: enable gpio line number of regulator.
  */
 struct max15569_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
@@ -34,6 +35,7 @@ struct max15569_regulator_platform_data {
 	int max_voltage_uV;
 	int base_voltage_uV;
 	unsigned int slew_rate_mv_per_us;
+	int ena_gpio;
 };
 
 #endif /* __LINUX_REGULATOR_MAX15569_H */

@@ -360,6 +360,7 @@ static int max15569_probe(struct i2c_client *client,
 	rconfig.of_node = NULL;
 	rconfig.init_data = pdata->reg_init_data;
 	rconfig.driver_data = max;
+	rconfig.ena_gpio = pdata->ena_gpio;
 	rdev = regulator_register(&max->desc, &rconfig);
 
 	if (IS_ERR(rdev)) {
