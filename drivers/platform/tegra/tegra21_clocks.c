@@ -814,7 +814,7 @@ static int clk_div16_get_divider(unsigned long parent_rate, unsigned long rate)
 }
 
 static long fixed_src_bus_round_updown(struct clk *c, struct clk *src,
-					u32 flags, unsigned long rate, bool up)
+			u32 flags, unsigned long rate, bool up, u32 *div)
 {
 	int divider;
 	unsigned long source_rate, round_rate;
@@ -823,8 +823,11 @@ static long fixed_src_bus_round_updown(struct clk *c, struct clk *src,
 
 	divider = clk_div71_get_divider(source_rate, rate + (up ? -1 : 1),
 		flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
-	if (divider < 0)
-		return c->min_rate;
+	if (divider < 0) {
+		divider = flags & DIV_U71_INT ? 0xFE : 0xFF;
+		round_rate = source_rate * 2 / (divider + 2);
+		goto _out;
+	}
 
 	round_rate = source_rate * 2 / (divider + 2);
 
@@ -835,6 +838,9 @@ static long fixed_src_bus_round_updown(struct clk *c, struct clk *src,
 #endif
 		round_rate = source_rate * 2 / (divider + 2);
 	}
+_out:
+	if (div)
+		*div = divider + 2;
 	return round_rate;
 }
 
@@ -1799,30 +1805,54 @@ static struct clk_ops tegra_bus_ops = {
 	.set_rate		= tegra21_bus_clk_set_rate,
 };
 
-/* Virtual system bus complex clock is used to hide the sequence of
-   changing sclk/hclk/pclk parents and dividers to configure requested
-   sclk target rate. */
+/*
+ * Virtual system bus complex clock is used to hide the sequence of
+ * changing sclk/hclk/pclk parents and dividers to configure requested
+ * sclk target rate.
+ */
+#define BUS_AHB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
+#define BUS_APB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
+
+static unsigned long sclk_pclk_unity_ratio_rate_max = 136000000;
+
+struct clk_div_sel {
+	struct clk *src;
+	u32 div;
+	unsigned long rate;
+};
+static struct clk_div_sel sbus_round_table[MAX_DVFS_FREQS + 1];
+static int sbus_round_table_size;
+
+static int last_round_idx;
+static int get_start_idx(unsigned long rate)
+{
+	int i = last_round_idx;
+	if (rate == sbus_round_table[i].rate)
+		return i;
+	return 0;
+}
+
+
 static void tegra21_sbus_cmplx_init(struct clk *c)
 {
 	unsigned long rate;
+	struct clk *sclk_div = c->parent->parent;
 
-	c->max_rate = c->parent->max_rate;
-	c->min_rate = c->parent->min_rate;
+	c->max_rate = sclk_div->max_rate;
+	c->min_rate = sclk_div->min_rate;
 
-	/* Threshold must be an exact proper factor of low range parent,
-	   and both low/high range parents have 7.1 fractional dividers */
-	rate = clk_get_rate(c->u.system.sclk_low->parent);
-	if (c->u.system.threshold) {
-		BUG_ON(c->u.system.threshold > rate) ;
-		BUG_ON((rate % c->u.system.threshold) != 0);
-	}
-	BUG_ON(!(c->u.system.sclk_low->flags & DIV_U71));
-	BUG_ON(!(c->u.system.sclk_high->flags & DIV_U71));
+	rate = clk_get_rate(c->u.system.sclk_low);
+	if (tegra_platform_is_qt())
+		return;
+
+	/* Unity threshold must be an exact proper factor of low range parent */
+	BUG_ON((rate % sclk_pclk_unity_ratio_rate_max) != 0);
+	BUG_ON(!(sclk_div->flags & DIV_U71));
 }
 
 /* This special sbus round function is implemented because:
  *
- * (a) fractional 1 : 1.5 divider can not be used to derive system bus clock
+ * (a) sbus complex clock source is selected automatically based on rate
  *
  * (b) since sbus is a shared bus, and its frequency is set to the highest
  * enabled shared_bus_user clock, the target rate should be rounded up divider
@@ -1833,26 +1863,90 @@ static void tegra21_sbus_cmplx_init(struct clk *c)
  * recursive calls. Lost 1Hz is added in tegra21_sbus_cmplx_set_rate before
  * actually setting divider rate.
  */
+static void sbus_build_round_table_one(struct clk *c, unsigned long rate, int j)
+{
+	struct clk_div_sel sel;
+	struct clk *sclk_div = c->parent->parent;
+	u32 flags = sclk_div->flags;
+
+	sel.src = c->u.system.sclk_low;
+	sel.rate = fixed_src_bus_round_updown(
+		c, sel.src, flags, rate, false, &sel.div);
+	sbus_round_table[j] = sel;
+
+	sel.src = c->u.system.sclk_high;
+	sel.rate = fixed_src_bus_round_updown(
+		c, sel.src, flags, rate, false, &sel.div);
+	if (sbus_round_table[j].rate < sel.rate)
+		sbus_round_table[j] = sel;
+}
+
+/* Populate sbus (not Avalon) round table with dvfs entries (not knights) */
+static void sbus_build_round_table(struct clk *c)
+{
+	int i, j = 0;
+	unsigned long rate;
+	bool inserted = false;
+
+	/*
+	 * Make sure unity ratio threshold always inserted into the table.
+	 * If no dvfs specified, just add maximum rate entry. Othrwise, add
+	 * entries for all dvfs rates.
+	 */
+	if (!c->dvfs || !c->dvfs->num_freqs) {
+		sbus_build_round_table_one(
+			c, sclk_pclk_unity_ratio_rate_max, j++);
+		sbus_build_round_table_one(
+			c, c->max_rate, j++);
+		sbus_round_table_size = j;
+		return;
+	}
+
+	for (i = 0; i < c->dvfs->num_freqs; i++) {
+		rate = c->dvfs->freqs[i];
+		if (rate <= 1 * c->dvfs->freqs_mult)
+			continue; /* skip 1kHz place holders */
+
+		if (!inserted && (rate >= sclk_pclk_unity_ratio_rate_max)) {
+			inserted = true;
+			if (rate > sclk_pclk_unity_ratio_rate_max)
+				sbus_build_round_table_one(
+					c, sclk_pclk_unity_ratio_rate_max, j++);
+		}
+		sbus_build_round_table_one(c, rate, j++);
+	}
+	sbus_round_table_size = j;
+}
+
+/* Clip requested rate to the entry in the round table. Allow +/-1Hz slack. */
 static long tegra21_sbus_cmplx_round_updown(struct clk *c, unsigned long rate,
 					    bool up)
 {
-	unsigned long round_rate;
-	struct clk *new_parent;
+	int i;
+
+	if (!sbus_round_table_size) {
+		sbus_build_round_table(c);
+		if (!sbus_round_table_size) {
+			WARN(1, "Invalid sbus round table\n");
+			return -EINVAL;
+		}
+	}
 
 	rate = max(rate, c->min_rate);
 
-	new_parent = (rate <= c->u.system.threshold) ?
-		c->u.system.sclk_low : c->u.system.sclk_high;
-
-	round_rate = fixed_src_bus_round_updown(
-		c, new_parent->parent, new_parent->flags, rate, up);
-
-	if (new_parent == c->u.system.sclk_high) {
-		/* Prevent oscillation across threshold */
-		if (round_rate <= c->u.system.threshold)
-			round_rate = c->u.system.threshold;
+	i = get_start_idx(rate);
+	for (; i < sbus_round_table_size - 1; i++) {
+		unsigned long sel_rate = sbus_round_table[i].rate;
+		if (abs(rate - sel_rate) <= 1) {
+			break;
+		} else if (rate < sel_rate) {
+			if (!up && i)
+				i--;
+			break;
+		}
 	}
-	return round_rate;
+	last_round_idx = i;
+	return sbus_round_table[i].rate;
 }
 
 static long tegra21_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
@@ -1861,16 +1955,116 @@ static long tegra21_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 }
 
 /*
- * FIXME: This limitation may have been relaxed on Tegra12.
- * This issue has to be visited again once the new limitation is clarified.
- *
- * Limitations on SCLK/HCLK/PCLK dividers:
+ * Select {source : divider} setting from pre-built round table, and actually
+ * change the configuration. Since voltage during switch is at safe level for
+ * current and new sbus rates (but not above) over-clocking during the switch
+ * is not allowed. Hence, the order of switch: 1st change divider if its setting
+ * increases, then switch source clock, and finally change divider if it goes
+ * down. No over-clocking is guaranteed, but dip below both initial and final
+ * rates is possible.
+ */
+static int tegra21_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret, i;
+	struct clk *skipper = c->parent;
+	struct clk *sclk_div = skipper->parent;
+	struct clk *sclk_mux = sclk_div->parent;
+	struct clk_div_sel *new_sel = NULL;
+	unsigned long sclk_div_rate = clk_get_rate(sclk_div);
+
+	/*
+	 * Configure SCLK/HCLK/PCLK guranteed safe combination:
+	 * - keep hclk at the same rate as sclk
+	 * - set pclk at 1:2 rate of hclk
+	 * - disable sclk skipper
+	 */
+	bus_set_div(c->u.system.pclk, 2);
+	bus_set_div(c->u.system.hclk, 1);
+	c->child_bus->child_bus->div = 2;
+	c->child_bus->div = 1;
+	clk_set_rate(skipper, c->max_rate);
+
+	/* Select new source/divider */
+	i = get_start_idx(rate);
+	for (; i < sbus_round_table_size; i++) {
+		if (rate == sbus_round_table[i].rate) {
+			new_sel = &sbus_round_table[i];
+			break;
+		}
+	}
+	if (!new_sel)
+		return -EINVAL;
+
+	if (sclk_div_rate == rate) {
+		pr_debug("sbus_set_rate: no change in rate %lu on parent %s\n",
+			 clk_get_rate_locked(c), sclk_mux->parent->name);
+		return 0;
+	}
+
+	/* Raise voltage on the way up */
+	if (c->dvfs && (rate > sclk_div_rate)) {
+		ret = tegra_dvfs_set_rate(c, rate);
+		if (ret)
+			return ret;
+		pr_debug("sbus_set_rate: set %d mV\n", c->dvfs->cur_millivolts);
+	}
+
+	/* Do switch */
+	if (sclk_div->div < new_sel->div) {
+		unsigned long sdiv_rate = sclk_div_rate * sclk_div->div;
+		sdiv_rate = DIV_ROUND_UP(sdiv_rate, new_sel->div);
+		ret = clk_set_rate(sclk_div, sdiv_rate);
+		if (ret) {
+			pr_err("%s: Failed to set %s rate to %lu\n",
+			       __func__, sclk_div->name, sdiv_rate);
+			return ret;
+		}
+		pr_debug("sbus_set_rate: rate %lu on parent %s\n",
+			 clk_get_rate_locked(c), sclk_mux->parent->name);
+
+	}
+
+	if (new_sel->src != sclk_mux->parent) {
+		ret = clk_set_parent(sclk_mux, new_sel->src);
+		if (ret) {
+			pr_err("%s: Failed to switch sclk source to %s\n",
+			       __func__, new_sel->src->name);
+			return ret;
+		}
+		pr_debug("sbus_set_rate: rate %lu on parent %s\n",
+			 clk_get_rate_locked(c), sclk_mux->parent->name);
+	}
+
+	if (sclk_div->div > new_sel->div) {
+		ret = clk_set_rate(sclk_div, rate + 1);
+		if (ret) {
+			pr_err("%s: Failed to set %s rate to %lu\n",
+			       __func__, sclk_div->name, rate);
+			return ret;
+		}
+		pr_debug("sbus_set_rate: rate %lu on parent %s\n",
+			 clk_get_rate_locked(c), sclk_mux->parent->name);
+	}
+
+	/* Lower voltage on the way down */
+	if (c->dvfs && (rate < sclk_div_rate)) {
+		ret = tegra_dvfs_set_rate(c, rate);
+		if (ret)
+			return ret;
+		pr_debug("sbus_set_rate: set %d mV\n", c->dvfs->cur_millivolts);
+	}
+
+	return 0;
+}
+
+/*
+ * Limitations on SCLK/HCLK/PCLK ratios:
  * (A) H/w limitation:
- *	if SCLK >= 60MHz, SCLK:PCLK >= 2
+ *	if SCLK >= 136MHz, SCLK:PCLK >= 2
  * (B) S/w policy limitation, in addition to (A):
  *	if any APB bus shared user request is enabled, HCLK:PCLK >= 2
- *  Reason for (B): assuming APB bus shared user has requested X < 60MHz,
- *  HCLK = PCLK = X, and new AHB user is coming on-line requesting Y >= 60MHz,
+ *  Reason for (B): assuming APB bus shared user has requested X < 136MHz,
+ *  HCLK = PCLK = X, and new AHB user is coming on-line requesting Y >= 136MHz,
  *  we can consider 2 paths depending on order of changing HCLK rate and
  *  HCLK:PCLK ratio
  *  (i)  HCLK:PCLK = X:X => Y:Y* => Y:Y/2,   (*) violates rule (A)
@@ -1879,68 +2073,31 @@ static long tegra21_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
  *  below 60MHz to HCLK rate above 60MHz without under-clocking APB user.
  *  Hence, policy (B).
  *
- *  Note: when there are no request from APB users, path (ii) can be used to
- *  increase HCLK above 60MHz, and HCLK:PCLK = 1:1 is allowed.
+ *  When there are no request from APB users, path (ii) can be used to
+ *  increase HCLK above 136MHz, and HCLK:PCLK = 1:1 is allowed.
+ *
+ *  Note: with common divider used in the path for all SCLK sources SCLK rate
+ *  during switching may dip down, anyway. So, in general, policy (ii) does not
+ *  prevent underclocking users during clock transition.
  */
-
-#define SCLK_PCLK_UNITY_RATIO_RATE_MAX	60000000
-#define BUS_AHB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
-#define BUS_APB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
-
-static int tegra21_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
-{
-	int ret;
-	struct clk *new_parent;
-
-	/*
-	 * Configure SCLK/HCLK/PCLK guranteed safe combination:
-	 * - select the appropriate sclk parent
-	 * - keep hclk at the same rate as sclk
-	 * - set pclk at 1:2 rate of hclk
-	 */
-	bus_set_div(c->u.system.pclk, 2);
-	bus_set_div(c->u.system.hclk, 1);
-	c->child_bus->child_bus->div = 2;
-	c->child_bus->div = 1;
-
-	if (rate == clk_get_rate_locked(c))
-		return 0;
-
-	new_parent = (rate <= c->u.system.threshold) ?
-		c->u.system.sclk_low : c->u.system.sclk_high;
-
-	ret = clk_set_rate(new_parent, rate + 1);
-	if (ret) {
-		pr_err("Failed to set sclk source %s to %lu\n",
-		       new_parent->name, rate);
-		return ret;
-	}
-
-	if (new_parent != clk_get_parent(c->parent)) {
-		ret = clk_set_parent(c->parent, new_parent);
-		if (ret) {
-			pr_err("Failed to switch sclk source to %s\n",
-			       new_parent->name);
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
 static int tegra21_clk_sbus_update(struct clk *bus)
 {
 	int ret, div;
 	bool p_requested;
-	unsigned long s_rate, h_rate, p_rate, ceiling;
+	unsigned long s_rate, h_rate, p_rate, ceiling, s_rate_raw;
 	struct clk *ahb, *apb;
+	struct clk *skipper = bus->parent;
 
 	if (detach_shared_bus)
 		return 0;
 
 	s_rate = tegra21_clk_shared_bus_update(bus, &ahb, &apb, &ceiling);
-	if (bus->override_rate)
-		return clk_set_rate_locked(bus, s_rate);
+	if (bus->override_rate) {
+		ret = clk_set_rate_locked(bus, s_rate);
+		if (!ret)
+			clk_set_rate(skipper, s_rate);
+		return ret;
+	}
 
 	ahb = bus->child_bus;
 	apb = ahb->child_bus;
@@ -1952,12 +2109,13 @@ static int tegra21_clk_sbus_update(struct clk *bus)
 	if (p_requested)
 		h_rate = max(h_rate, p_rate * 2);
 	s_rate = max(s_rate, h_rate);
-	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+	if (s_rate >= sclk_pclk_unity_ratio_rate_max)
 		s_rate = max(s_rate, p_rate * 2);
 
 	/* Propagate cap requirements down from SCLK to PCLK */
+	s_rate_raw = s_rate;
 	s_rate = tegra21_clk_cap_shared_bus(bus, s_rate, ceiling);
-	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+	if (s_rate >= sclk_pclk_unity_ratio_rate_max)
 		p_rate = min(p_rate, s_rate / 2);
 	h_rate = min(h_rate, s_rate);
 	if (p_requested)
@@ -1968,6 +2126,7 @@ static int tegra21_clk_sbus_update(struct clk *bus)
 	ret = clk_set_rate_locked(bus, s_rate);
 	if (ret)
 		return ret;
+	clk_set_rate(skipper, s_rate_raw);
 
 	/* Finally settle new bus divider values */
 	s_rate = clk_get_rate_locked(bus);
@@ -4933,6 +5092,8 @@ static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
 		c->div = 1;
 		c->mul = 1;
 	}
+
+	/* FIXME: for SCLK c->reg, this write to be replaced with IPC to BPMP */
 	clk_writel(val, c->reg);
 
 	clk_unlock_restore(c->parent, &flags);
@@ -4949,7 +5110,7 @@ static struct clk_ops tegra_clk_super_skip_ops = {
 static long _1x_round_updown(struct clk *c, struct clk *src,
 				unsigned long rate, bool up)
 {
-	return fixed_src_bus_round_updown(c, src, c->flags, rate, up);
+	return fixed_src_bus_round_updown(c, src, c->flags, rate, up, NULL);
 }
 
 static long tegra21_1xbus_round_updown(struct clk *c, unsigned long rate,
@@ -7722,15 +7883,6 @@ static struct clk tegra_clk_cclk_g = {
 	.max_rate = 3000000000UL,
 };
 
-static struct clk tegra_clk_sclk = {
-	.name	= "sclk",
-	.inputs	= mux_sclk,
-	.reg	= 0x28,
-	.ops	= &tegra_super_ops,
-	.max_rate = 600000000,
-	.min_rate = 12000000,
-};
-
 static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
 	.parent    = &tegra_clk_cclk_g,
@@ -7754,6 +7906,37 @@ static struct clk tegra_clk_cpu_cmplx = {
 	.inputs    = mux_cpu_cmplx,
 	.ops       = &tegra_cpu_cmplx_ops,
 	.max_rate  = 3000000000UL,
+};
+
+static struct clk tegra_clk_sclk_mux = {
+	.name	= "sclk_mux",
+	.inputs	= mux_sclk,
+	.reg	= 0x28,
+	.ops	= &tegra_super_ops,
+	.max_rate = 600000000,
+	.min_rate = 12000000,
+};
+
+static struct clk_mux_sel sclk_mux_out[] = {
+	{ .input = &tegra_clk_sclk_mux, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk tegra_clk_sclk_div = {
+	.name = "sclk_div",
+	.ops = &tegra_periph_clk_ops,
+	.reg = 0x400,
+	.max_rate = 600000000,
+	.min_rate = 12000000,
+	.inputs = sclk_mux_out,
+	.flags = DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
+};
+
+static struct clk tegra_clk_sclk = {
+	.name = "sclk",
+	.ops = &tegra_clk_super_skip_ops,
+	.reg = 0x2c,
+	.parent = &tegra_clk_sclk_div,
 };
 
 static struct clk tegra_clk_cop = {
@@ -7794,8 +7977,8 @@ static struct clk tegra_clk_sbus_cmplx = {
 	.u.system  = {
 		.pclk = &tegra_clk_pclk,
 		.hclk = &tegra_clk_hclk,
-		.sclk_low = &tegra_pll_p_out2,
-		.sclk_high = &tegra_pll_p_out2,
+		.sclk_low = &tegra_pll_p,
+		.sclk_high = &tegra_pll_p,
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
 };
@@ -9000,6 +9183,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pciex_clk,
 	&tegra_pex_uphy_clk,
 	&tegra_clk_cclk_g,
+	&tegra_clk_sclk_mux,
+	&tegra_clk_sclk_div,
 	&tegra_clk_sclk,
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
@@ -9361,7 +9546,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 24];
+			   PERIPH_CLK_SOURCE_NUM + 25];
 
 static int tegra21_clk_suspend(void)
 {
@@ -9383,9 +9568,10 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_c4_out3.reg);
 	*ctx++ = clk_readl(tegra_pll_re_out1.reg);
 
-	*ctx++ = clk_readl(tegra_clk_sclk.reg);
-	*ctx++ = clk_readl(tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
 	*ctx++ = clk_readl(tegra_clk_pclk.reg);
+	*ctx++ = clk_readl(tegra_clk_sclk.reg);
+	*ctx++ = clk_readl(tegra_clk_sclk_div.reg);
+	*ctx++ = clk_readl(tegra_clk_sclk_mux.reg);
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
 			off += 4) {
@@ -9494,10 +9680,11 @@ static void tegra21_clk_resume(void)
 	pll_re_out1 = *ctx++;
 	clk_writel(pll_re_out1 | val, tegra_pll_re_out1.reg);
 
-
-	clk_writel(*ctx++, tegra_clk_sclk.reg);
-	clk_writel(*ctx++, tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
+	/* FIXME: the oder here to be checked against boot-rom exit state */
 	clk_writel(*ctx++, tegra_clk_pclk.reg);
+	clk_writel(*ctx++, tegra_clk_sclk.reg);
+	clk_writel(*ctx++, tegra_clk_sclk_div.reg);
+	clk_writel(*ctx++, tegra_clk_sclk_mux.reg);
 
 	/* enable all clocks before configuring clock sources */
 	clk_writel(CLK_OUT_ENB_L_RESET_MASK, CLK_OUT_ENB_L);

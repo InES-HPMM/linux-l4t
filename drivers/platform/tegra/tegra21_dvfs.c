@@ -219,7 +219,12 @@ static struct dvfs core_dvfs_table[] = {
 
 	CORE_DVFS("cpu_lp", -1, -1, 1, KHZ,   144000, 252000, 288000, 444000,  624000),
 
-	CORE_DVFS("sbus",   -1, -1, 1, KHZ,    81600, 102000, 136000, 204000,  204000),
+	/*
+	 * Disable framework auto-dvfs on sbus - let platform code to call
+	 * tegra_dvfs_set_rate manually. It is necessary for special handling
+	 * of system clock skipper enabled on T210
+	 */
+	CORE_DVFS("sbus",   -1, -1, 0, KHZ,    81600, 102000, 136000, 204000,  204000),
 
 	CORE_DVFS("vic03",  -1, -1, 1, KHZ,   120000, 144000, 168000, 216000,  372000),
 	CORE_DVFS("c2bus",  -1, -1, 1, KHZ,   120000, 144000, 168000, 216000,  372000),
@@ -432,8 +437,8 @@ static void __init init_rail_thermal_profile(
 
 static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 {
-	/* Don't update manual dvfs clocks */
-	if (!d->auto_dvfs)
+	/* Don't update manual dvfs, non-shared clocks */
+	if (!d->auto_dvfs && !c->ops->shared_bus_update)
 		return false;
 
 	/*
