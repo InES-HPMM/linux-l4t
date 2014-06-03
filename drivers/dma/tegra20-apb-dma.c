@@ -1384,6 +1384,9 @@ static int tegra_dma_probe(struct platform_device *pdev)
 	int ret;
 	int i;
 	const struct tegra_dma_chip_data *cdata = NULL;
+	struct tegra_dma_chip_data *chip_data = NULL;
+	int start_chan_idx;
+	int nr_chans;
 
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
@@ -1394,6 +1397,29 @@ static int tegra_dma_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 		cdata = match->data;
+
+		ret = of_property_read_u32(pdev->dev.of_node, "dma-channels",
+							&nr_chans);
+		if (!ret) {
+			/* Allocate chip data and update number of channels */
+			chip_data =
+				devm_kzalloc(&pdev->dev,
+					sizeof(struct tegra_dma_chip_data),
+								GFP_KERNEL);
+			if(!chip_data) {
+				dev_err(&pdev->dev, "Error: memory allocation failed\n");
+				return -ENOMEM;
+			}
+			memcpy(chip_data, cdata,
+				sizeof(struct tegra_dma_chip_data));
+			chip_data->nr_channels = nr_chans;
+			cdata = chip_data;
+		}
+		ret = of_property_read_u32(pdev->dev.of_node,
+				"nvidia,start-dma-channel-index",
+						&start_chan_idx);
+		if (ret)
+			start_chan_idx = 0;
 	} else {
 		/* If no device tree then fallback to tegra20 */
 		cdata = (struct tegra_dma_chip_data *)pdev->id_entry->driver_data;
@@ -1417,6 +1443,7 @@ static int tegra_dma_probe(struct platform_device *pdev)
 	}
 
 	tdma->base_addr = devm_ioremap_resource(&pdev->dev, res);
+
 	if (IS_ERR(tdma->base_addr))
 		return PTR_ERR(tdma->base_addr);
 
@@ -1465,9 +1492,10 @@ static int tegra_dma_probe(struct platform_device *pdev)
 		struct tegra_dma_channel *tdc = &tdma->channels[i];
 
 		tdc->chan_base_offset = TEGRA_APBDMA_CHANNEL_BASE_ADD_OFFSET +
+				start_chan_idx * cdata->channel_reg_size +
 					i * cdata->channel_reg_size;
-
-		res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
+		res = platform_get_resource(pdev, IORESOURCE_IRQ,
+							start_chan_idx + i);
 		if (!res) {
 			ret = -EINVAL;
 			dev_err(&pdev->dev, "No irq resource for chan %d\n", i);

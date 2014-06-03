@@ -196,4 +196,8 @@
 		status = "okay";
 	};
 
+	dma@60020000 {
+		dma-channels = <16>;
+		status = "okay";
+	};
 };

@@ -211,7 +211,9 @@
         };
 
 	apbdma: dma@60020000 {
-		status = "disabled";
+		dma-channels = <16>;
+		nvidia,start-dma-channel-index = <16>;
+		status = "okay";
 	};
 
 	vic {
