@@ -2710,13 +2710,11 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 		/* TODO: error handling? */
 		return ret;
 	}
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_PCIE)) {
-		ret = tegra_powergate_partition(TEGRA_POWERGATE_PCIE);
-		if (ret) {
-			xhci_err(xhci, "%s: could not powergate pex partition %d\n",
-				__func__, ret);
-			return ret;
-		}
+	ret = tegra_powergate_partition(TEGRA_POWERGATE_PCIE);
+	if (ret) {
+		xhci_err(xhci, "%s: could not powergate pex partition %d\n",
+			__func__, ret);
+		return ret;
 	}
 	tegra->host_pwr_gated = true;
 	clk_disable(tegra->host_clk);
@@ -3046,13 +3044,11 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 	/* unpwrgate PEX(if not done by PCIE driver) due to HW Bug1320346 */
-	if (!tegra_powergate_is_powered(TEGRA_POWERGATE_PCIE)) {
-		ret = tegra_unpowergate_partition(TEGRA_POWERGATE_PCIE);
-		if (ret) {
-			xhci_err(xhci, "%s: could not unpowergate pex partition %d\n",
-				__func__, ret);
-			goto out;
-		}
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_PCIE);
+	if (ret) {
+		xhci_err(xhci, "%s: could not unpowergate pex partition %d\n",
+			__func__, ret);
+		goto out;
 	}
 	clk_enable(tegra->host_clk);
 
@@ -4450,11 +4446,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
 
 	/* unpwrgate PEX(if not done by PCIE driver) due to HW Bug1320346 */
-	if (!tegra_powergate_is_powered(TEGRA_POWERGATE_PCIE)) {
-		ret = tegra_unpowergate_partition(TEGRA_POWERGATE_PCIE);
-		if (ret)
-			dev_err(&pdev->dev, "could not unpowergate pex partition\n");
-	}
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_PCIE);
+	if (ret)
+		dev_err(&pdev->dev, "could not unpowergate pex partition\n");
 
 	ret = tegra_enable_xusb_clk(tegra, pdev);
 	if (ret)
