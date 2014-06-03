@@ -93,5 +93,27 @@
 	psy_extcon {
 		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};
+
+	i2c@7000d000 {
+		tps65913 {
+			pmic {
+				regulators {
+					ldo3 {
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-enable-ramp-delay = <3000>;
+						ti,disable-pull-down;
+					};
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@8  {
+			vin-supply = <&ldo3_reg>;
+			regulator-disable-parent-after-enable;
+		};
+	};
 };
 
