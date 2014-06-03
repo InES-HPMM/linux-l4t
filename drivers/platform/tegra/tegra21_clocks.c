@@ -9096,19 +9096,16 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 	case 216000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 28800000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 72000000;
-		tegra_clk_sbus_cmplx.u.system.threshold = 108000000;
 		tegra_clk_host1x.u.periph.threshold = 108000000;
 		break;
 	case 408000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 9600000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
-		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
 		break;
 	case 204000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 4800000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
-		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
 		break;
 	default:
