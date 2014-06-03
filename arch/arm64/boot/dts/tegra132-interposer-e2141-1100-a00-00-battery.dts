@@ -2,12 +2,15 @@
 
 / {
 	nvidia,dtsfilename = __FILE__;
-	i2c@7000c500 {
-
-		bq2419x: bq2419x@6b {
+	i2c@7000c000 {
+		hpa2163@6b {
 			charger {
 				status = "okay";
 			};
+		};
+
+		bq27441@55 {
+			status = "okay";
 		};
 	};
 };
