@@ -1,5 +1,16 @@
 /*
  * This header provides constants for binding nvidia,swgroup ID
+ *
+ * Copyright (c) 2014 NVIDIA CORPORATION, All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 
 #ifndef _DT_BINDINGS_MEMORY_TEGRA_SWGROUP_H
@@ -40,10 +51,33 @@
 #define TEGRA_SWGROUP_GPU	30	/* 0xaa8 */
 #define TEGRA_SWGROUP_GPUB	31	/* 0xaac */
 #define TEGRA_SWGROUP_PPCS2	32	/* 0xab0 */
+#define TEGRA_SWGID_APE		34	/* 0xab8 */
+#define TEGRA_SWGID_SE		35	/* 0xabc */
+#define TEGRA_SWGID_NVJPG	36	/* 0xac0 */
+#define TEGRA_SWGID_HC1		37	/* 0xac4 */
+#define TEGRA_SWGID_SE1		38	/* 0xac8 */
+#define TEGRA_SWGID_AXIAP	39	/* 0xacc */
+#define TEGRA_SWGID_ETR		40	/* 0xad0 */
+#define TEGRA_SWGID_TSECB	41	/* 0xad4 */
+#define TEGRA_SWGID_TSEC1	42	/* 0xad8 */
+#define TEGRA_SWGID_TSECB1	43	/* 0xadc */
 
 #define TWO_U32_OF_U64(x)	((x) & 0xffffffff) ((x) >> 32)
 #define TEGRA_SWGROUP_BIT(x)	(1ULL << TEGRA_SWGROUP_##x)
 #define TEGRA_SWGROUP_CELLS(x)	TWO_U32_OF_U64(TEGRA_SWGROUP_BIT(x))
+
+#define TEGRA_SWGROUP_CELLS2(x1, x2)	 \
+				TWO_U32_OF_U64( TEGRA_SWGROUP_BIT(x1) | \
+						TEGRA_SWGROUP_BIT(x2))
+#define TEGRA_SWGROUP_CELLS3(x1, x2, x3)	 \
+				TWO_U32_OF_U64( TEGRA_SWGROUP_BIT(x1) | \
+						TEGRA_SWGROUP_BIT(x2) | \
+						TEGRA_SWGROUP_BIT(x3))
+#define TEGRA_SWGROUP_CELLS4(x1, x2, x3, x4)	 \
+				TWO_U32_OF_U64( TEGRA_SWGROUP_BIT(x1) | \
+						TEGRA_SWGROUP_BIT(x2) | \
+						TEGRA_SWGROUP_BIT(x3) | \
+						TEGRA_SWGROUP_BIT(x4))
 
 #define TEGRA_SWGROUP_MAX	64
 
