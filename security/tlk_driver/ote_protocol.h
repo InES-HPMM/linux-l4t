@@ -109,6 +109,8 @@ struct te_shmem_desc {
 	void *buffer;
 	size_t size;
 	unsigned int mem_type;
+	struct page **pages;
+	unsigned int nr_pages;
 };
 
 struct tlk_context {

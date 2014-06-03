@@ -35,7 +35,35 @@ core_param(verbose_smc, verbose_smc, bool, 0644);
 
 #define SET_RESULT(req, r, ro)	{ req->result = r; req->result_origin = ro; }
 
+static int te_pin_user_pages(void *buffer, size_t size,
+		unsigned long *pages_ptr)
+{
+	int ret = 0;
+	unsigned int nr_pages;
+	struct page **pages = NULL;
+
+	nr_pages = (((unsigned int)buffer & (PAGE_SIZE - 1)) +
+			(size + PAGE_SIZE - 1)) >> PAGE_SHIFT;
+
+	pages = kzalloc(nr_pages * sizeof(struct page *), GFP_KERNEL);
+	if (!pages)
+		return -ENOMEM;
+
+	down_read(&current->mm->mmap_sem);
+	ret = get_user_pages(current, current->mm, (unsigned long)buffer,
+				nr_pages, WRITE, 0, pages, NULL);
+	if (ret < 0)
+		ret = get_user_pages(current, current->mm, (unsigned long)buffer,
+				nr_pages, WRITE, 1/*force*/, pages, NULL);
+	up_read(&current->mm->mmap_sem);
+
+	*pages_ptr = (unsigned long) pages;
+
+	return ret;
+}
+
 static struct te_shmem_desc *te_add_shmem_desc(void *buffer, size_t size,
+		unsigned int nr_pages, struct page **pages,
 		struct tlk_context *context)
 {
 	struct te_shmem_desc *shmem_desc = NULL;
@@ -44,6 +72,8 @@ static struct te_shmem_desc *te_add_shmem_desc(void *buffer, size_t size,
 		INIT_LIST_HEAD(&(shmem_desc->list));
 		shmem_desc->buffer = buffer;
 		shmem_desc->size = size;
+		shmem_desc->nr_pages = nr_pages;
+		shmem_desc->pages = pages;
 		list_add_tail(&shmem_desc->list, &(context->shmem_alloc_list));
 	}
 
@@ -56,7 +86,16 @@ static int te_pin_mem_buffers(void *buffer, size_t size,
 	struct te_shmem_desc *shmem_desc = NULL;
 	int ret = 0;
 
-	shmem_desc = te_add_shmem_desc(buffer, size, context);
+	nr_pages = te_pin_user_pages(buffer, size, &pages);
+	if (nr_pages <= 0) {
+		pr_err("%s: te_pin_user_pages Failed (%d)\n", __func__,
+			nr_pages);
+		ret = OTE_ERROR_OUT_OF_MEMORY;
+		goto error;
+	}
+
+	shmem_desc = te_add_shmem_desc(buffer, size,
+				nr_pages, (struct page **)pages, context);
 	if (!shmem_desc) {
 		pr_err("%s: te_add_shmem_desc Failed\n", __func__);
 		ret = OTE_ERROR_OUT_OF_MEMORY;
@@ -147,6 +186,9 @@ static void te_del_shmem_desc(void *buffer, struct tlk_context *context)
 		&(context->shmem_alloc_list), list) {
 		if (shmem_desc->buffer == buffer) {
 			list_del(&shmem_desc->list);
+			for (i = 0; i < shmem_desc->nr_pages; i++)
+				page_cache_release(shmem_desc->pages[i]);
+			kfree(shmem_desc->pages);
 			kfree(shmem_desc);
 		}
 	}
