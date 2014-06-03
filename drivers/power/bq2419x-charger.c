@@ -44,6 +44,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/workqueue.h>
+#include <linux/extcon.h>
 
 #define MAX_STR_PRINT 50
 
@@ -72,6 +73,12 @@ struct bq2419x_reg_info {
 	u8 mask;
 	u8 val;
 };
+
+const char *bq2419x_extcon_cable[] = {
+	[0] = "USB",
+	NULL,
+};
+
 
 struct bq2419x_chip {
 	struct device			*dev;
@@ -115,6 +122,9 @@ struct bq2419x_chip {
 	struct bq2419x_reg_info		chg_voltage_control;
 	struct bq2419x_vbus_platform_data *vbus_pdata;
 	struct bq2419x_charger_platform_data *charger_pdata;
+
+	struct extcon_dev		edev;
+	const char			*ext_name;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -774,6 +784,23 @@ static int bq2419x_handle_safety_timer_expire(struct bq2419x_chip *bq2419x)
 	return ret;
 }
 
+
+static int bq2419x_extcon_cable_update(struct bq2419x_chip *bq2419x,
+							unsigned int val)
+{
+	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_USB) {
+		extcon_set_cable_state(&bq2419x->edev,
+						bq2419x_extcon_cable[0], true);
+		dev_info(bq2419x->dev, "USB is connected\n");
+	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
+		extcon_set_cable_state(&bq2419x->edev,
+						bq2419x_extcon_cable[0], false);
+		dev_info(bq2419x->dev, "USB is disconnected\n");
+	}
+
+	return 0;
+}
+
 static irqreturn_t bq2419x_irq(int irq, void *data)
 {
 	struct bq2419x_chip *bq2419x = data;
@@ -800,7 +827,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	}
 
 	if (!bq2419x->battery_presense)
-		return IRQ_HANDLED;
+		goto sys_stat_read;
 
 	if (val & BQ2419x_FAULT_WATCHDOG_FAULT) {
 		bq_chg_err(bq2419x, "WatchDog Expired\n");
@@ -845,11 +872,18 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		check_chg_state = 1;
 	}
 
+sys_stat_read:
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "SYS_STAT_REG read failed %d\n", ret);
 		return IRQ_HANDLED;
 	}
+
+	if (bq2419x->ext_name)
+		bq2419x_extcon_cable_update(bq2419x, val);
+
+	if (!bq2419x->battery_presense)
+		return IRQ_HANDLED;
 
 	if ((val & BQ2419x_CHRG_STATE_MASK) == BQ2419x_CHRG_STATE_CHARGE_DONE) {
 		dev_info(bq2419x->dev, "Charging completed\n");
@@ -1384,6 +1418,10 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
+	ret = of_property_read_string(np, "extcon-name", &pdata->ext_name);
+	if (ret < 0)
+		pdata->ext_name = NULL;
+
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
 		int temp_range_len, chg_current_lim_len, chg_voltage_lim_len;
@@ -1621,6 +1659,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	struct bq2419x_chip *bq2419x;
 	struct bq2419x_platform_data *pdata = NULL;
 	int ret = 0;
+	int val = 0;
 
 	if (client->dev.platform_data)
 		pdata = client->dev.platform_data;
@@ -1647,6 +1686,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	}
 	bq2419x->charger_pdata = pdata->bcharger_pdata;
 	bq2419x->vbus_pdata = pdata->vbus_pdata;
+	bq2419x->ext_name = pdata->ext_name;
 
 	bq2419x->regmap = devm_regmap_init_i2c(client, &bq2419x_regmap_config);
 	if (IS_ERR(bq2419x->regmap)) {
@@ -1672,6 +1712,25 @@ static int bq2419x_probe(struct i2c_client *client,
 		dev_err(&client->dev, "sysfs create failed %d\n", ret);
 		return ret;
 	}
+
+	if (bq2419x->ext_name) {
+		bq2419x->edev.supported_cable = bq2419x_extcon_cable;
+		bq2419x->edev.name = bq2419x->ext_name;
+
+		ret = extcon_dev_register(&bq2419x->edev, bq2419x->dev);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "failed to register extcon device\n");
+			return ret;
+		}
+		ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "SYS_STAT_REG rd failed %d\n",
+									ret);
+			return ret;
+		}
+		ret = bq2419x_extcon_cable_update(bq2419x, val);
+	} else
+		dev_info(bq2419x->dev, "vbus detection NOT enabled\n");
 
 	mutex_init(&bq2419x->mutex);
 
@@ -1744,6 +1803,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_wq;
 	}
 
+skip_bcharger_init:
 	ret = devm_request_threaded_irq(bq2419x->dev, bq2419x->irq, NULL,
 		bq2419x_irq, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 			dev_name(bq2419x->dev), bq2419x);
@@ -1755,7 +1815,6 @@ static int bq2419x_probe(struct i2c_client *client,
 		ret = 0;
 	}
 
-skip_bcharger_init:
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(&client->dev, "VBUS regulator init failed %d\n", ret);
@@ -1774,6 +1833,8 @@ scrub_wq:
 		battery_charger_unregister(bq2419x->bc_dev);
 	}
 scrub_mutex:
+	if (bq2419x->ext_name)
+		extcon_dev_unregister(&bq2419x->edev);
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
 	return ret;
@@ -1787,6 +1848,9 @@ static int bq2419x_remove(struct i2c_client *client)
 		battery_charger_unregister(bq2419x->bc_dev);
 		cancel_delayed_work(&bq2419x->wdt_restart_wq);
 	}
+	if (bq2419x->ext_name)
+		extcon_dev_unregister(&bq2419x->edev);
+
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
 	cancel_delayed_work_sync(&bq2419x->otg_reset_work);

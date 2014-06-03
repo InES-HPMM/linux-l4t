@@ -52,6 +52,7 @@ Optional properties:
 		> 60 : Charging will be disabled by HW.
 -ti,auto-recharge-time-suspend: time setting in seconds to register
                       rtc alarm timer to wake the device from LP0.
+-extcon-name: the extcon name to be used for USB VBUS detection
 
 Subnode properties:
 ==================
@@ -67,6 +68,7 @@ bq2419x: bq2419x@6b {
 	compatible = "ti,bq2419x";
 	reg = <0x6b>;
 	ti,charging-term-current-mA = <100>;
+	extcon-name = "bq2419x-extcon";
 	charger {
 			regulator-name = "batt_regulator";
 			regulator-max-microamp = <3000>;

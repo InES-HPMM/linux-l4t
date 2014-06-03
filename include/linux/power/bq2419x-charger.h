@@ -160,6 +160,7 @@ struct bq2419x_charger_platform_data {
 struct bq2419x_platform_data {
 	struct bq2419x_vbus_platform_data *vbus_pdata;
 	struct bq2419x_charger_platform_data *bcharger_pdata;
+	const char *ext_name;
 };
 
 #endif /* __LINUX_POWER_BQ2419X_CHARGER_H */
