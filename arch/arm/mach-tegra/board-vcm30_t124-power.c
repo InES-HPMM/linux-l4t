@@ -114,15 +114,9 @@ static struct max77663_gpio_config max77663_gpio_cfgs[] = {
 static struct max77663_platform_data max77663_pdata = {
 	.irq_base	= MAX77663_IRQ_BASE,
 	.gpio_base	= MAX77663_GPIO_BASE,
-
-	.num_gpio_cfgs	= ARRAY_SIZE(max77663_gpio_cfgs),
-	.gpio_cfgs	= max77663_gpio_cfgs,
-
 	.regulator_pdata = max77663_reg_pdata,
 	.num_regulator_pdata = ARRAY_SIZE(max77663_reg_pdata),
-
 	.rtc_i2c_addr	= 0x68,
-
 	.use_power_off	= false,
 };
 
@@ -189,6 +183,7 @@ static struct regulator_init_data max15569_vddgpu_init_data = {
 		.always_on = 0,
 		.boot_on =  0,
 		.apply_uV = 0,
+		.enable_time = 210, /* for ramp up time in usec */
 	},
 	.num_consumer_supplies = ARRAY_SIZE(max15569_vddgpu_supply),
 	.consumer_supplies = max15569_vddgpu_supply,
@@ -207,17 +202,24 @@ static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
 	},
 };
 
-static int __init vcm30_t124_max77663_regulator_init(void)
+int __init vcm30_t124_regulator_init(void)
 {
+	int sku_rev;
+	sku_rev = tegra_board_get_skurev("61859");
+
+	/* C01 boards have tegra gpio for gpu_pwr_req and
+	 *   boards before C01 have PMU gpio for gpu_pwr_req
+	 */
+	if (sku_rev >= 300) {
+		max15569_vddgpu_pdata.ena_gpio = TEGRA_GPIO_PR2;
+	} else {
+		max77663_pdata.num_gpio_cfgs = ARRAY_SIZE(max77663_gpio_cfgs);
+		max77663_pdata.gpio_cfgs = max77663_gpio_cfgs;
+	}
+
 	i2c_register_board_info(4, max77663_regulators,
 				ARRAY_SIZE(max77663_regulators));
 
-	return 0;
-}
-
-int __init vcm30_t124_regulator_init(void)
-{
-	vcm30_t124_max77663_regulator_init();
 	i2c_register_board_info(4, max15569_vddcpu_boardinfo, 1);
 	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
 
