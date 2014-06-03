@@ -4910,13 +4910,15 @@ static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
 	/*
 	 * Locking parent clock prevents parent rate change while super skipper
 	 * is updated. It also takes care of super skippers that share h/w
-	 * register with parent clock divider.
+	 * register with parent clock divider. Skipper output rate can be
+	 * rounded up, since volatge is set based on source clock rate.
 	 */
 	clk_lock_save(c->parent, &flags);
 	input_rate = clk_get_rate_locked(c->parent);
 
 	div = 1 << SUPER_SKIPPER_TERM_SIZE;
 	output_rate <<= SUPER_SKIPPER_TERM_SIZE;
+	output_rate += input_rate - 1;
 	do_div(output_rate, input_rate);
 	mul = output_rate ? : 1;
 
