@@ -1,0 +1,13 @@
+#include "tegra132-interposer-e2141-1100-a00-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	i2c@7000c500 {
+
+		bq2419x: bq2419x@6b {
+			charger {
+				status = "okay";
+			};
+		};
+	};
+};
