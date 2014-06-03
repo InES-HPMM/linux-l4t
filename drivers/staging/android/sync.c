@@ -849,13 +849,21 @@ static void sync_fence_dump(struct sync_fence *fence)
 {
 	struct sync_pt *pt;
 	char val[32];
+	char current_val[64];
 
 	list_for_each_entry(pt, &fence->pt_list_head, pt_list) {
 		val[0] = '\0';
+		current_val[0] = '\0';
 		if (pt->parent->ops->pt_value_str)
 			pt->parent->ops->pt_value_str(pt, val, sizeof(val));
 
-		pr_info("name=%s, value=%s\n", pt->parent->name, val);
+		if (pt->parent->ops->timeline_value_str)
+			pt->parent->ops->timeline_value_str(pt->parent,
+				current_val,
+				sizeof(current_val));
+
+		pr_info("name=%s, current value=%s waiting value=%s\n",
+			pt->parent->name, current_val, val);
 	}
 
 }
