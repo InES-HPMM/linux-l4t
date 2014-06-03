@@ -50,7 +50,6 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "cl_dvfs_soc", "pll_p",       54000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "hclk",       "sclk",         102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pclk",       "hclk",         51000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "wake.sclk",  NULL,           40000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "mselect",    "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out5", "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 #ifdef CONFIG_TEGRA_SLOW_CSITE
@@ -71,10 +70,6 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "sdmmc1",     "pll_p",        48000000,       false},
 	{ "sdmmc3",     "pll_p",        48000000,       false},
 	{ "sdmmc4",     "pll_p",        48000000,       false},
-	{ "sbc1.sclk",  NULL,           40000000,       false},
-	{ "sbc2.sclk",  NULL,           40000000,       false},
-	{ "sbc3.sclk",  NULL,           40000000,       false},
-	{ "sbc4.sclk",  NULL,           40000000,       false},
 	{ "gpu_ref",        NULL,           0,              true},
 	{ "mc_capa",        "mc",           0,              true},
 	{ "mc_cbpa",        "mc",           0,              true},
@@ -104,6 +99,17 @@ static __initdata struct tegra_clk_init_table tegra21x_cbus_init_table[] = {
 	{ "pll_c_out1", "pll_c",        100000000,      false },
 	{ NULL,         NULL,           0,              0},
 };
+
+static __initdata struct tegra_clk_init_table tegra21x_sbus_init_table[] = {
+	/* Initialize sbus (system clock) users after cbus init PLLs */
+	{ "sbc1.sclk",  NULL,           40000000,       false},
+	{ "sbc2.sclk",  NULL,           40000000,       false},
+	{ "sbc3.sclk",  NULL,           40000000,       false},
+	{ "sbc4.sclk",  NULL,           40000000,       false},
+	{ "wake.sclk",  NULL,           40000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
+	{ NULL,		NULL,		0,		0},
+};
+
 static void __init tegra_perf_init(void)
 {
 	u32 reg;
@@ -145,6 +151,7 @@ void __init tegra21x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra21x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra21x_cbus_init_table);
+	tegra_clk_init_from_table(tegra21x_sbus_init_table);
 	tegra_powergate_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
