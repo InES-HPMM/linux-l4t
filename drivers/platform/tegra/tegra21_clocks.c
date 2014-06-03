@@ -4226,10 +4226,6 @@ static int tegra21_pll_out_clk_enable(struct clk *c)
 	return 0;
 }
 
-static void tegra21_pll_out_clk_disable(struct clk *c)
-{
-}
-
 static void tegra21_pll_out_clk_init(struct clk *c)
 {
 	u32 p, val;
@@ -4237,7 +4233,7 @@ static void tegra21_pll_out_clk_init(struct clk *c)
 	struct clk *pll = c->parent;
 	struct clk_pll_div_layout *divs = pll->u.pll.div_layout;
 
-	c->state = pll->state;
+	c->state = ON;
 	c->max_rate = pll->u.pll.vco_max;
 	c->min_rate = pll->u.pll.vco_min;
 
@@ -4253,7 +4249,7 @@ static void tegra21_pll_out_clk_init(struct clk *c)
 				   divs->pdiv_to_p[divs->pdiv_max]);
 
 	/* PLL is enabled on boot - just record state */
-	if (c->state == ON) {
+	if (pll->state == ON) {
 		val = clk_readl(pll->reg);
 		p = (val & divs->pdiv_mask) >> divs->pdiv_shift;
 		if (p > divs->pdiv_max) {
@@ -4284,14 +4280,12 @@ static void tegra21_pll_out_clk_init(struct clk *c)
 static struct clk_ops tegra_pll_out_ops = {
 	.init			= tegra21_pll_out_clk_init,
 	.enable			= tegra21_pll_out_clk_enable,
-	.disable		= tegra21_pll_out_clk_disable,
 	.set_rate		= tegra21_pll_out_clk_set_rate,
 };
 
 static struct clk_ops tegra_pll_out_fixed_ops = {
 	.init			= tegra21_pll_out_clk_init,
 	.enable			= tegra21_pll_out_clk_enable,
-	.disable		= tegra21_pll_out_clk_disable,
 };
 
 static void tegra21_pllu_hw_ctrl_set(struct clk *c)
@@ -4336,7 +4330,7 @@ static void tegra21_pllu_out_clk_init(struct clk *c)
 	if (!(val & PLLU_BASE_OVERRIDE)) {
 		struct clk_pll_div_layout *divs = pll->u.pll.div_layout;
 
-		c->state = pll->state;
+		c->state = ON;
 		c->max_rate = pll->u.pll.vco_max;
 
 		p = (val & divs->pdiv_mask) >> divs->pdiv_shift;
@@ -4359,7 +4353,6 @@ static void tegra21_pllu_out_clk_init(struct clk *c)
 static struct clk_ops tegra_pllu_out_ops = {
 	.init			= tegra21_pllu_out_clk_init,
 	.enable			= tegra21_pll_out_clk_enable,
-	.disable		= tegra21_pll_out_clk_disable,
 	.set_rate		= tegra21_pll_out_clk_set_rate,
 };
 
@@ -4887,9 +4880,6 @@ static void tegra21_clk_super_skip_init(struct clk *c)
 
 	/* Skipper is always ON (does not gate the clock) */
 	c->state = ON;
-	c->set = true;
-	c->refcnt++;
-
 	c->max_rate = c->parent->max_rate;
 
 	if (val & SUPER_SKIPPER_ENABLE) {
@@ -4907,11 +4897,6 @@ static int tegra21_clk_super_skip_enable(struct clk *c)
 {
 	/* no clock gate in skipper, just pass thru to parent */
 	return 0;
-}
-
-static void tegra21_clk_super_skip_disable(struct clk *c)
-{
-	/* no clock gate in skipper, just pass thru to parent */
 }
 
 static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
@@ -4955,7 +4940,6 @@ static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
 static struct clk_ops tegra_clk_super_skip_ops = {
 	.init			= &tegra21_clk_super_skip_init,
 	.enable			= &tegra21_clk_super_skip_enable,
-	.disable		= &tegra21_clk_super_skip_disable,
 	.set_rate		= &tegra21_clk_super_skip_set_rate,
 };
 
