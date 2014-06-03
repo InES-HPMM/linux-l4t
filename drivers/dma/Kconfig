@@ -174,7 +174,7 @@ config TEGRA20_APB_DMA
 
 config TEGRA210_ADMA
 	bool "NVIDIA Tegra210 ADMA support"
-	depends on ARCH_TEGRA && ARCH_TEGRA_APE
+	depends on ARCH_TEGRA && ARCH_TEGRA_APE && TEGRA_APE_AGIC
 	select DMA_ENGINE
 	help
 	  Support for the NVIDIA Tegra210 ADMA controller driver. The
