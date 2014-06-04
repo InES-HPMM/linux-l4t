@@ -244,7 +244,7 @@ ENTRY(__cortexa57_cpu_setup)
 	b	__cpu_setup_post_flush
 ENDPROC(__cortexa57_cpu_setup)
 
-#ifdef CONFIG_ARMV7_COMPAT_CP15_BARRIER
+#ifdef CONFIG_ARMV7_COMPAT
 	/*
 	 *                 n n            T
 	 *       U E      WT T UD     US IHBS
