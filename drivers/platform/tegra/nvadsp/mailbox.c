@@ -125,8 +125,9 @@ status_t nvadsp_mbox_free_mboxid(uint16_t mid)
 	return 0;
 }
 
-status_t nvadsp_mbox_open(struct nvadsp_mbox *mbox, uint16_t *mid, char *name,
-			  nvadsp_mbox_handler_t handler, void *hdata)
+status_t nvadsp_mbox_open(struct nvadsp_mbox *mbox, uint16_t *mid,
+			  const char *name, nvadsp_mbox_handler_t handler,
+			  void *hdata)
 {
 	unsigned long flags;
 	int ret = 0;

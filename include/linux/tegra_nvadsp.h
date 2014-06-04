@@ -97,8 +97,9 @@ struct nvadsp_mbox {
 #define NVADSP_MBOX_SMSG       0x1
 #define NVADSP_MBOX_LMSG       0x2
 
-status_t nvadsp_mbox_open(struct nvadsp_mbox *mbox, uint16_t *mid, char *name,
-			  nvadsp_mbox_handler_t handler, void *hdata);
+status_t nvadsp_mbox_open(struct nvadsp_mbox *mbox, uint16_t *mid,
+			  const char *name, nvadsp_mbox_handler_t handler,
+			  void *hdata);
 status_t nvadsp_mbox_send(struct nvadsp_mbox *mbox, uint32_t data,
 			  uint32_t flags, bool block, unsigned int timeout);
 status_t nvadsp_mbox_recv(struct nvadsp_mbox *mbox, uint32_t *data, bool block,
