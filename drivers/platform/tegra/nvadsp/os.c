@@ -100,7 +100,7 @@ int adsp_add_load_mappings(phys_addr_t pa, void *mapping, int len)
 	return 0;
 }
 
-void *adsp_da_to_va_mappings(u64 da, int len)
+void *nvadsp_da_to_va_mappings(u64 da, int len)
 {
 	void *ptr = NULL;
 	int i;
@@ -121,6 +121,7 @@ void *adsp_da_to_va_mappings(u64 da, int len)
 	}
 	return ptr;
 }
+EXPORT_SYMBOL(nvadsp_da_to_va_mappings);
 
 void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags)
 {
@@ -286,7 +287,7 @@ void *get_mailbox_shared_region(void)
 						shdr->sh_addr);
 	addr = shdr->sh_addr;
 	size = shdr->sh_size;
-	return adsp_da_to_va_mappings(addr, size);
+	return nvadsp_da_to_va_mappings(addr, size);
 }
 
 int nvadsp_os_elf_load(const struct firmware *fw)
@@ -315,7 +316,7 @@ int nvadsp_os_elf_load(const struct firmware *fw)
 		dev_info(dev, "phdr: type %d da 0x%x memsz 0x%x filesz 0x%x\n",
 					phdr->p_type, da, memsz, filesz);
 
-		va = adsp_da_to_va_mappings(da, filesz);
+		va = nvadsp_da_to_va_mappings(da, filesz);
 		if (!va) {
 			dev_err(dev, "no va for da 0x%x filesz 0x%x\n",
 							da, filesz);
