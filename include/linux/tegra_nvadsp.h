@@ -110,30 +110,33 @@ status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
 /*
  * Circular Message Queue
  */
-typedef struct {
-	uint32_t type;
-	void *data;
-	size_t dlen;
-} nvadsp_cmsg_queue_msg_t;
+typedef struct _msgq_message_t {
+	int32_t size;		/* size of payload in words */
+	int32_t payload[1];	/* variable length payload */
+} msgq_message_t;
 
-typedef struct {
-	int magic;	/* 'cmgq' */
-	int key;
-	uint32_t head;
-	uint32_t tail;
-	uint32_t num;
-	uint32_t state;
-	nvadsp_cmsg_queue_msg_t *queue[]; /* XXX */
-} nvadsp_cmsg_queue_t;
+#define MSGQ_MESSAGE_HEADER_SIZE \
+	(sizeof(msgq_message_t) - sizeof(((msgq_message_t *)0)->payload))
+#define MSGQ_MESSAGE_HEADER_WSIZE \
+	(MSGQ_MESSAGE_HEADER_SIZE / sizeof(int32_t))
 
-status_t nvadsp_cmsg_queue_init(int mq_key, nvadsp_cmsg_queue_t *);
-nvadsp_cmsg_queue_t *nvadsp_cmsg_queue_connect(int mq_key);
-status_t nvadsp_cmsg_queue_enqueue(nvadsp_cmsg_queue_t *,
-				   nvadsp_cmsg_queue_msg_t *);
-nvadsp_cmsg_queue_msg_t *nvadsp_cmsg_queue_dequeue(nvadsp_cmsg_queue_t *);
-bool nvadsp_cmsg_queue_empty(nvadsp_cmsg_queue_t *);
-bool nvadsp_cmsg_queue_full(nvadsp_cmsg_queue_t *);
-status_t nvadsp_cmsg_queue_deinit(nvadsp_cmsg_queue_t *);
+typedef struct _msgq_t {
+	int32_t size;		/* queue size in words */
+	int32_t write_index;	/* queue write index */
+	int32_t read_index;	/* queue read index */
+	int32_t queue[1];	/* variable length queue */
+} msgq_t;
+
+#define MSGQ_HEADER_SIZE	(sizeof(msgq_t) - sizeof(((msgq_t *)0)->queue))
+#define MSGQ_HEADER_WSIZE	(MSGQ_HEADER_SIZE / sizeof(int32_t))
+#define MSGQ_MAX_QUEUE_WSIZE	(8192 - MSGQ_HEADER_WSIZE)
+#define MSGQ_MSG_SIZE(x) \
+	(((sizeof(x) + sizeof(int32_t) - 1) & (~(sizeof(int32_t)-1))) >> 2)
+
+void msgq_init(msgq_t *msgq, int32_t size);
+int32_t msgq_queue_message(msgq_t *msgq, const msgq_message_t *message);
+int32_t msgq_dequeue_message(msgq_t *msgq, msgq_message_t *message);
+#define msgq_discard_message(msgq) msgq_dequeue_message(msgq, NULL)
 
 /*
  * DRAM Sharing
