@@ -89,7 +89,6 @@ struct tegra_pingroup {
 	const unsigned *pins;
 	unsigned npins;
 	unsigned funcs[4];
-	unsigned func_safe;
 	s16 mux_reg;
 	s16 pupd_reg;
 	s16 tri_reg;
@@ -213,10 +212,9 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
 	}
 
 /* Special pinmux options */
-#define TEGRA_PINMUX_SPECIAL_SAFE		0
-#define TEGRA_PINMUX_SPECIAL_GPIO		1
-#define TEGRA_PINMUX_SPECIAL_UNUSED		2
-#define TEGRA_PINMUX_SPECIAL_MAX		3
+#define TEGRA_PINMUX_SPECIAL_GPIO		0
+#define TEGRA_PINMUX_SPECIAL_UNUSED		1
+#define TEGRA_PINMUX_SPECIAL_MAX		2
 
 
 #endif

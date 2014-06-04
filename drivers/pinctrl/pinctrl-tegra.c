@@ -419,10 +419,6 @@ static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned req_functi
 		/* Do nothing for gpio pins */
 		return 0;
 
-	case TEGRA_PINMUX_SPECIAL_SAFE:
-		function = g->func_safe;
-		break;
-
 	default:
 		break;
 	}
@@ -463,7 +459,6 @@ static void tegra_pinctrl_disable(struct pinctrl_dev *pctldev,
 
 	val = pmx_readl(pmx, g->mux_bank, g->mux_reg);
 	val &= ~(0x3 << g->mux_bit);
-	val |= g->func_safe << g->mux_bit;
 	pmx_writel(pmx, val, g->mux_bank, g->mux_reg);
 
 	spin_unlock_irqrestore(&mux_lock, flags);
