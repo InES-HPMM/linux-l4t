@@ -89,5 +89,9 @@
 			};
 		};
 	};
+
+	psy_extcon {
+		power-supply,y-cable-extcon-dev = "tegra-otg";
+	};
 };
 
