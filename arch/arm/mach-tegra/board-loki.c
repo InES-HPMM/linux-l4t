@@ -622,6 +622,8 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-ahci-sata", 0x70027000, "tegra-sata.0",
+		NULL),
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
@@ -838,6 +840,11 @@ static const char * const foster_dt_board_compat[] = {
 	NULL
 };
 
+static const char * const foster_hdd_dt_board_compat[] = {
+	"nvidia,foster_hdd",
+	NULL
+};
+
 static void __init tegra_loki_init_early(void)
 {
 	loki_rail_alignment_init();
@@ -869,5 +876,19 @@ DT_MACHINE_START(FOSTER, "foster")
 	.init_machine	= tegra_loki_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= foster_dt_board_compat,
+	.init_late	= tegra_init_late
+MACHINE_END
+
+DT_MACHINE_START(FOSTER_HDD, "foster_hdd")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_loki_reserve,
+	.init_early	= tegra_loki_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_loki_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= foster_hdd_dt_board_compat,
 	.init_late	= tegra_init_late
 MACHINE_END

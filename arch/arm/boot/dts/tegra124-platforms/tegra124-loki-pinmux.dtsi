@@ -1155,6 +1155,30 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				status = "disabled";
 				dt-override-status-odm-data = <0x00038000 0x00028000>;
+      };
+
+			dap_mclk1_req_pee2 {
+				nvidia,pins = "dap_mclk1_req_pee2";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			pff2 {
+				nvidia,pins = "pff2";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			dap1_dout_pn2 {
+				nvidia,pins = "dap1_dout_pn2";
+				nvidia,function = "safe";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 		};
 
@@ -1213,25 +1237,9 @@
 
 
 		pinmux_unused_lowpower: unused_pins {
-			dap_mclk1_req_pee2 {
-				nvidia,pins = "dap_mclk1_req_pee2";
-				nvidia,function = "dap";
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-			};
-
 			dap1_din_pn1 {
 				nvidia,pins = "dap1_din_pn1";
 				nvidia,function = "rsvd4";
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-			};
-
-			dap1_dout_pn2 {
-				nvidia,pins = "dap1_dout_pn2";
-				nvidia,function = "i2s0";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
@@ -1496,14 +1504,6 @@
 			usb_vbus_en2_pff1 {
 				nvidia,pins = "usb_vbus_en2_pff1";
 				nvidia,function = "usb";
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-			};
-
-			pff2 {
-				nvidia,pins = "pff2";
-				nvidia,function = "rsvd2";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;

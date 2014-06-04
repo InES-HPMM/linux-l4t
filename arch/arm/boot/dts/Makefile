@@ -226,6 +226,8 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-loki-mods.dtb \
 	tegra124-loki-foster.dtb \
 	tegra124-loki-foster-p2530-0900-c00-00.dtb \
+	tegra124-loki-fosterhdd-p2530-0900-a01-00.dtb \
+	tegra124-loki-fosterhdd-p2530-0900-c00-00.dtb \
 	tegra124-thor195.dtb \
 	tegra124-loki-thor195-e2549-a00.dtb \
 	tegra124-tn8-e1780-1100-a02-01.dtb \
