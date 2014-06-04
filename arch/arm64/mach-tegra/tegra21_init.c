@@ -162,7 +162,7 @@ static __initdata struct tegra_clk_init_table tegra21x_sbus_init_table[] = {
 	{ "sbc2.sclk",  NULL,           40000000,       false},
 	{ "sbc3.sclk",  NULL,           40000000,       false},
 	{ "sbc4.sclk",  NULL,           40000000,       false},
-	{ "wake.sclk",  NULL,           40000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
+	{ "boot.apb.sclk",  NULL,      136000000,       true },
 	{ NULL,		NULL,		0,		0},
 };
 

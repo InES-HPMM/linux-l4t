@@ -8613,6 +8613,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("sbc2.sclk", "tegra12-spi.1",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 	SHARED_SCLK("sbc3.sclk", "tegra12-spi.2",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
 	SHARED_SCLK("sbc4.sclk", "tegra12-spi.3",	"sclk", &tegra_clk_apb,        NULL, 0, 0),
+	SHARED_SCLK("boot.apb.sclk", "boot.apb.sclk",	NULL,	&tegra_clk_apb,        NULL, 0, 0),
 
 	SHARED_EMC_CLK("avp.emc",	"nvavp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("cpu.emc",	"cpu",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -9759,6 +9760,7 @@ void __init tegra21x_init_clocks(void)
 static int __init tegra21x_clk_late_init(void)
 {
 	clk_disable(&tegra_pll_re_vco);
+	clk_disable(tegra_get_clock_by_name("boot.apb.sclk"));
 	return 0;
 }
 late_initcall(tegra21x_clk_late_init);
