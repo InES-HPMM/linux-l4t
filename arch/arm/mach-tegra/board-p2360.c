@@ -472,6 +472,9 @@ struct of_dev_auxdata p2360_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 				NULL),
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+	OF_DEV_AUXDATA("nvidia,tegra124-se", TEGRA_SE_BASE, "tegra12-se", NULL),
+#endif
 	{}
 };
 #endif
