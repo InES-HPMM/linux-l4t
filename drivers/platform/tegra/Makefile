@@ -2,11 +2,12 @@
 # Makefile for linux/drivers/platform/tegra
 # Tegra Platform-Specific Drivers
 #
-subdir-ccflags-y := -Werror
+subdir-ccflags-y += -Werror
 
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_TEGRA_USB_SHARED_PAD)      += tegra_usb_pad_ctrl.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
+obj-$(CONFIG_TEGRA_IOMMU_SMMU)          += iommu.o
 
 ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)

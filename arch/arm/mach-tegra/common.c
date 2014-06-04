@@ -1882,7 +1882,7 @@ static void __init tegra_reserve_bpmp(void)
 		return;
 	}
 
-	tegra_bpmp_linear_set(start, TEGRA_IRAM_SIZE);
+	tegra_bpmp_platform_init(start, TEGRA_IRAM_SIZE);
 }
 #else
 static inline void __init tegra_reserve_bpmp(void) {}
