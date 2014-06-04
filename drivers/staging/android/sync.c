@@ -849,11 +849,16 @@ static void sync_fence_dump(struct sync_fence *fence)
 {
 	struct sync_pt *pt;
 	char val[32];
-	char current_val[64];
+	char current_val[32];
+	char name[32];
 
 	list_for_each_entry(pt, &fence->pt_list_head, pt_list) {
 		val[0] = '\0';
 		current_val[0] = '\0';
+		name[0] = '\0';
+		if (pt->parent->ops->get_pt_name)
+			pt->parent->ops->get_pt_name(pt, name, sizeof(name));
+
 		if (pt->parent->ops->pt_value_str)
 			pt->parent->ops->pt_value_str(pt, val, sizeof(val));
 
@@ -862,8 +867,8 @@ static void sync_fence_dump(struct sync_fence *fence)
 				current_val,
 				sizeof(current_val));
 
-		pr_info("name=%s, current value=%s waiting value=%s\n",
-			pt->parent->name, current_val, val);
+		pr_info("name=[%s:%s], current value=%s waiting value=%s\n",
+			pt->parent->name, name, current_val, val);
 	}
 
 }

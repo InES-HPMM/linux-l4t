@@ -48,6 +48,7 @@ struct sync_fence;
  *			  to userspace by SYNC_IOC_FENCE_INFO.
  * @timeline_value_str: fill str with the value of the sync_timeline's counter
  * @pt_value_str:	fill str with the value of the sync_pt
+ * @get_pt_name:	fill str with the name of the sync_pt
  */
 struct sync_timeline_ops {
 	const char *driver_name;
@@ -83,6 +84,9 @@ struct sync_timeline_ops {
 
 	/* optional */
 	void (*pt_value_str)(struct sync_pt *pt, char *str, int size);
+
+	/* optional */
+	void (*get_pt_name)(struct sync_pt *pt, char *str, int size);
 };
 
 /**
