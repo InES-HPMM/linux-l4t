@@ -33,6 +33,7 @@
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
 #include <linux/of_irq.h>
+#include <linux/atomic.h>
 
 #include <mach/mc.h>
 #include <mach/irqs.h>
@@ -130,8 +131,7 @@ static const struct mc_error mc_errors[] = {
 	MC_ERR(0, NULL, 0, 0, 0),
 };
 
-static DEFINE_SPINLOCK(mc_lock);
-static unsigned long error_count;
+static atomic_t error_count;
 
 static DECLARE_DELAYED_WORK(unthrottle_prints_work, unthrottle_prints);
 
@@ -181,11 +181,7 @@ static void arb_intr(void)
 
 static void unthrottle_prints(struct work_struct *work)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&mc_lock, flags);
-	error_count = 0;
-	spin_unlock_irqrestore(&mc_lock, flags);
+	atomic_set(&error_count, 0);
 }
 
 /*
@@ -211,9 +207,7 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 		intr &= ~MC_INT_ARBITRATION_EMEM;
 	}
 
-	spin_lock(&mc_lock);
-	count = ++error_count;
-	spin_unlock(&mc_lock);
+	count = atomic_inc_return(&error_count);
 
 	fault = chip_specific.mcerr_info(intr & mc_int_mask);
 	if (WARN(!fault, "[mcerr] Unknown error! intr sig: 0x%08x\n",
@@ -409,11 +403,7 @@ static int __get_throttle(void *data, u64 *val)
 
 static int __set_throttle(void *data, u64 val)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&mc_lock, flags);
-	error_count = 0;
-	spin_unlock_irqrestore(&mc_lock, flags);
+	atomic_set(&error_count, 0);
 
 	mcerr_throttle_enabled = (bool) val;
 	return 0;
