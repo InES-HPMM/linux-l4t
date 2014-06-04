@@ -388,12 +388,30 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 static u64 tegra_smmu_of_get_swgids(struct device *dev)
 {
 	size_t bytes = 0;
-	const char *propname = "nvidia,memory-clients";
+	struct of_phandle_iter iter;
 	const __be32 *prop;
 	int i;
 	u64 swgids = 0;
 
-	prop = of_get_property(dev->of_node, propname, (int *)&bytes);
+	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
+					       "iommu-cells", 0) {
+		if (iter.out_args.np != smmu_handle->dev->of_node)
+			continue;
+
+		if (iter.out_args.args_count < 2) {
+			pr_err("invalid iommus property for %s",
+				dev_name(dev));
+			continue;
+		}
+
+		memcpy(&swgids, iter.out_args.args, sizeof(u64));
+		pr_debug("swgids=%16llx ops=%p %s\n",
+			 swgids, dev->bus->iommu_ops, dev_name(dev));
+		return swgids;
+	}
+
+	prop = of_get_property(dev->of_node,
+			       "nvidia,memory-clients", (int *)&bytes);
 	if (!prop || !bytes)
 		return 0;
 
