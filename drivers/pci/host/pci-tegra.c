@@ -207,6 +207,10 @@
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
 #define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT	(1 << 21)
 
+#define NV_PCIE2_RP_VEND_CTL0					0x00000F44
+#define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK		(0xF << 12)
+#define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH			(0x9 << 12)
+
 #define NV_PCIE2_RP_VEND_CTL1					0x00000F48
 #define PCIE2_RP_VEND_CTL1_ERPT				(1 << 13)
 
@@ -1571,6 +1575,11 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		data &= ~PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_MASK;
 		data |= PCIE2_RP_L1_PM_SUBSTATES_1_CYA_CLKREQ_ASSERTED_DLY_VAL;
 		rp_writel(data, NV_PCIE2_RP_L1_PM_SUBSTATES_1_CYA, index);
+		/* take care of link speed change error in corner cases */
+		data = rp_readl(NV_PCIE2_RP_VEND_CTL0, index);
+		data &= ~PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK;
+		data |= PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH;
+		rp_writel(data, NV_PCIE2_RP_VEND_CTL0, index);
 #endif
 	}
 }
