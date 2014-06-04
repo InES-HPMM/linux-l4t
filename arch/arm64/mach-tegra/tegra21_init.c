@@ -40,8 +40,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "fuse",       NULL,           0,              true },
 	{ "sclk",       NULL,           0,              true },
 	{ "pll_p",      NULL,           0,              true, TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "pll_p_out1", "pll_p",        0,              false, TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "pll_p_out3", "pll_p",        0,              true, TEGRA_CLK_INIT_PLATFORM_SI },
+	{ "pll_p_out3", "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pll_p_out2", "pll_p",        204000000,      false, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "sclk_mux",   "pll_p_out2",   204000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "sclk_div",   "sclk_mux",	102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
@@ -52,7 +51,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "hclk",       "sclk",         102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "pclk",       "hclk",         51000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "mselect",    "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "pll_p_out5", "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
+	{ "pll_p_out5", "pll_p",        204000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 #ifdef CONFIG_TEGRA_SLOW_CSITE
 	{ "csite",      "clk_m",        1000000,        true },
 #else
