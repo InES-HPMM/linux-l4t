@@ -28,13 +28,13 @@
  * Generic stats tracking structures and functions
  */
 struct stats_entry {
-	int rate;
+	unsigned long rate;
 	cputime64_t time_at_rate;
 };
 
 struct stats_table {
 	struct stats_entry *entry;
-	int last_rate;
+	unsigned long last_rate;
 	cputime64_t last_updated;
 	spinlock_t spinlock;
 	unsigned int num_entries;
@@ -105,12 +105,30 @@ static int populate_rates(struct stats_table *table, struct clk *c)
 	return 0;
 }
 
+static int set_last_rate(struct stats_table *table, unsigned long rate)
+{
+	int i;
+
+	/*
+	 * clip new rate to possible rate bins (needed on platforms with bus
+	 * skippers)
+	 */
+	for (i = 0; i < table->num_entries; i++) {
+		if (rate <= table->entry[i].rate) {
+			table->last_rate = table->entry[i].rate;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
 /*
  * Function is called whenever a rate changes. The time spent
  * in the 'old rate' is finalized and the new rate is tracked.
  * Entries are tracked in increasing order of rate
  */
-static void update_stats_table(struct stats_table *table, int new_rate)
+static void update_stats_table(struct stats_table *table,
+			       unsigned long new_rate)
 {
 	int i = 0;
 	unsigned long flags;
@@ -131,7 +149,7 @@ static void update_stats_table(struct stats_table *table, int new_rate)
 	}
 
 	table->last_updated = cur_jiffies;
-	table->last_rate = new_rate;
+	set_last_rate(table, new_rate);
 
 	spin_unlock_irqrestore(&table->spinlock, flags);
 
@@ -193,7 +211,7 @@ static int track_clock(char *clk_name)
 	struct clock_data *d;
 	struct clk *c = clk_get(NULL, clk_name);
 	if (IS_ERR(c))
-		return PTR_ERR(c);
+		return -ENOENT;
 
 	d = kmalloc(sizeof(struct clock_data), GFP_KERNEL);
 	if (d == NULL)
@@ -211,6 +229,10 @@ static int track_clock(char *clk_name)
 
 	init_stats_table(&d->table);
 	ret = populate_rates(&d->table, c);
+	if (ret)
+		goto err_out;
+
+	ret = set_last_rate(&d->table, clk_get_rate(c));
 	if (ret)
 		goto err_out;
 
@@ -242,33 +264,29 @@ static int __init tegra_clocks_debug_init(void)
 
 	/* Start tracking individual clocks */
 	ret = track_clock("sbus");
-	if (0 != ret)
+	if (ret && (ret != -ENOENT))
 		goto err_out;
 
-#ifdef CONFIG_TEGRA_DUAL_CBUS
 	ret = track_clock("c2bus");
-	if (0 != ret)
+	if (ret && (ret != -ENOENT))
 		goto err_out;
 
 	ret = track_clock("c3bus");
-	if (0 != ret)
+	if (ret && (ret != -ENOENT))
 		goto err_out;
-#else
-	ret = track_clock("cbus");
-	if (0 != ret)
-		goto err_out;
-#endif
 
-/* FIXME: remove ifdef when track_clock gracefully handles "cannot get clock" */
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	ret = track_clock("cbus");
+	if (ret && (ret != -ENOENT))
+		goto err_out;
+
 	ret = track_clock("c4bus");
-	if (0 != ret)
+	if (ret && (ret != -ENOENT))
 		goto err_out;
 
 	ret = track_clock("gbus");
-	if (0 != ret)
+	if (ret && (ret != -ENOENT))
 		goto err_out;
-#endif
+
 	return 0;
 
 
