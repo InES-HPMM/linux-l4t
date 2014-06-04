@@ -662,7 +662,7 @@
 		dpaux {
 			compatible = "nvidia,tegra124-dpaux";
 			reg = <0x545c0000 0x00040000>;
-			interrupt = <0 159 0x4>; /* INT_DPAUX */
+			interrupts = <0 159 0x4>; /* INT_DPAUX */
 			status = "disabled";
 		};
 
