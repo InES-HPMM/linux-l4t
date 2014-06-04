@@ -188,7 +188,7 @@ static irqreturn_t hwmbox_recv_full_int_handler(int irq, void *devid)
 		}
 
 		if (mbox->handler) {
-			mbox->handler(data, mbox->hdata);
+			mbox->handler(HWMBOX_SMSG_MSG(data), mbox->hdata);
 		} else {
 			ret = nvadsp_mboxq_enqueue(&mbox->recv_queue,
 						   HWMBOX_SMSG_MSG(data));
