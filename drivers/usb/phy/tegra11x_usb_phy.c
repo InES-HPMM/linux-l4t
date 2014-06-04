@@ -1649,12 +1649,27 @@ static bool utmi_phy_qc2_charger_detect(struct tegra_usb_phy *phy,
 	writel(0, base + UTMIP_BAT_CHRG_CFG0);
 	utmi_phy_set_dp_dm_pull_up_down(phy, 0);
 
-	/* Force wall charger detection logic to reset */
-	org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
-		FORCE_PULLDN_DP | FORCE_PULLDN_DM);
-	ssleep(1);
-	msleep(500);
-	utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+	/*
+	 * The QC2 charger can be inserted when the system is
+	 * powered down.  In this case it will act as a DCP unless
+	 * it is forced to negotiate voltage.  This is because
+	 * the QC2 charger will not see D+/D- voltage signaling
+	 * with in its negotiation timer window.
+	 * We try to detect this condition.  We know that if
+	 * we enter suspend then system must be active before
+	 * the QC2 charger was seen.
+	 * In this case no reset of the charger is needed, otherwise
+	 * we force the D+ and D- Pull Up down which will reset a
+	 * QC2 charger but have no effect on a normal DCP.
+	 */
+	if (!phy->qc2_no_reset) {
+		phy->qc2_no_reset = true;
+		org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+			FORCE_PULLDN_DP | FORCE_PULLDN_DM);
+		ssleep(1);
+		msleep(500);
+		utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+	}
 
 	/* Enable charger detection logic */
 	val = readl(base + UTMIP_BAT_CHRG_CFG0);

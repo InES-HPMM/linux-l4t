@@ -115,6 +115,7 @@ struct tegra_usb_phy {
 	bool linkphy_init;
 	bool hot_plug;
 	bool ctrlr_suspended;
+	bool qc2_no_reset;
 };
 
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,
