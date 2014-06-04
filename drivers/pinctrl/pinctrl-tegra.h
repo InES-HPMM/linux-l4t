@@ -216,5 +216,14 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
 #define TEGRA_PINMUX_SPECIAL_UNUSED		1
 #define TEGRA_PINMUX_SPECIAL_MAX		2
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#define TEGRA_PINCTRL_SET_PROP(_name, _hsm, _schmitt, _drive_type)	\
+	{								\
+		.name = #_name,					\
+		.high_speed_mode = _hsm,				\
+		.schmitt = _schmitt,					\
+		.drive_type = _drive_type,				\
+	}
 
+#endif
 #endif

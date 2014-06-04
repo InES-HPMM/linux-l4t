@@ -1181,6 +1181,30 @@ static const unsigned drive_dap4_sclk_pins[] = {
 	TEGRA_PIN_DAP4_SCLK_PJ7,
 };
 
+static const unsigned drive_sdmmc1_pins[] = {
+	TEGRA_PIN_SDMMC1_CLK_PM0,
+	TEGRA_PIN_SDMMC1_CMD_PM1,
+	TEGRA_PIN_SDMMC1_DAT3_PM2,
+	TEGRA_PIN_SDMMC1_DAT2_PM3,
+	TEGRA_PIN_SDMMC1_DAT1_PM4,
+	TEGRA_PIN_SDMMC1_DAT0_PM5,
+};
+
+static const unsigned drive_sdmmc3_pins[] = {
+	TEGRA_PIN_SDMMC3_CLK_PP0,
+	TEGRA_PIN_SDMMC3_CMD_PP1,
+	TEGRA_PIN_SDMMC3_DAT3_PP2,
+	TEGRA_PIN_SDMMC3_DAT2_PP3,
+	TEGRA_PIN_SDMMC3_DAT1_PP4,
+	TEGRA_PIN_SDMMC3_DAT0_PP5,
+};
+
+static const unsigned drive_sdmmc2_pins[] = {
+};
+
+static const unsigned drive_sdmmc4_pins[] = {
+};
+
 static const unsigned drive_dmic1_clk_pins[] = {
 	TEGRA_PIN_DMIC1_CLK_PE0,
 };
@@ -3137,6 +3161,10 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	DRV_PINGROUP(pwr_int_n,		0xa74,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(qspi_sck,		0xa90,	-1,	-1,	-1,	-1,	28,	2,	30,	2),
 	DRV_PINGROUP(sata_led_active,	0xa94,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
+	DRV_PINGROUP(sdmmc1,		0xa98,	12,	7,	20,	7,	28,	2,	30,	2),
+	DRV_PINGROUP(sdmmc2,		0xa9c,	2,	6,	8,	6,	28,	2,	30,	2),
+	DRV_PINGROUP(sdmmc3,		0xab0,	12,	7,	20,	7,	28,	2,	30,	2),
+	DRV_PINGROUP(sdmmc4,		0xab4,	2,	6,	8,	6,	28,	2,	30,	2),
 	DRV_PINGROUP(shutdown,		0xac8,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(spdif_in,		0xacc,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(spdif_out,		0xad0,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
@@ -3255,6 +3283,25 @@ static int tegra210_gpio_request_enable(unsigned pin)
 	return 0;
 }
 
+static struct tegra_pinctrl_group_config_data t210_pin_drv_group_soc_data[] = {
+	TEGRA_PINCTRL_SET_DRIVE(sdmmc1, 0, 0, 0, 18, 18, 1, 1, 0),
+	TEGRA_PINCTRL_SET_DRIVE(sdmmc3, 0, 0, 0, 18, 18, 1, 1, 0),
+	TEGRA_PINCTRL_SET_DRIVE(sdmmc2, 0, 0, 0, 16, 16, 0, 0, 0),
+	TEGRA_PINCTRL_SET_DRIVE(sdmmc4, 0, 0, 0, 16, 16, 0, 0, 0),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_clk_pm0, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_cmd_pm1, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat3_pm2, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat2_pm3, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat1_pm4, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat0_pm5, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_clk_pp0, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_cmd_pp1, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat3_pp2, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat2_pp3, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat1_pp4, 0, 0, 1),
+	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat0_pp5, 0, 0, 1),
+};
+
 static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.ngpios = NUM_GPIOS,
 	.pins = tegra210_pins,
@@ -3266,6 +3313,8 @@ static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.suspend = tegra210_pinctrl_suspend,
 	.resume = tegra210_pinctrl_resume,
 	.gpio_request_enable = tegra210_gpio_request_enable,
+	.config_data = t210_pin_drv_group_soc_data,
+	.nconfig_data = ARRAY_SIZE(t210_pin_drv_group_soc_data),
 };
 
 static int tegra210_pinctrl_probe(struct platform_device *pdev)
