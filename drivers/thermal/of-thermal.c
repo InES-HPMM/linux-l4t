@@ -746,6 +746,20 @@ static inline void of_thermal_free_zone(struct __thermal_zone *tz)
 	kfree(tz);
 }
 
+static int of_parse_thermal_zone_params(struct device_node *np,
+		struct thermal_zone_params *tzp)
+{
+	const char *pstr;
+
+	pstr =  of_get_property(np, "governer-name", NULL);
+	if (pstr) {
+		int len = strlen(pstr);
+		len = min(len, THERMAL_NAME_LENGTH);
+		strncpy(tzp->governor_name, pstr, len);
+	}
+	return 0;
+}
+
 /**
  * of_parse_thermal_zones - parse device tree thermal data
  *
@@ -773,6 +787,7 @@ int __init of_parse_thermal_zones(void)
 	for_each_child_of_node(np, child) {
 		struct thermal_zone_device *zone;
 		struct thermal_zone_params *tzp;
+		struct device_node *param_child;
 
 		/* Check whether child is enabled or not */
 		if (!of_device_is_available(child))
@@ -796,8 +811,13 @@ int __init of_parse_thermal_zones(void)
 			goto exit_free;
 		}
 
-		/* No hwmon because there might be hwmon drivers registering */
-		tzp->no_hwmon = true;
+		/* Thermal zone params */
+		param_child = of_get_child_by_name(child, "thermal-zone-params");
+		if(!param_child)
+			/* No hwmon because there might be hwmon drivers registering */
+			tzp->no_hwmon = true;
+		else
+			of_parse_thermal_zone_params(param_child, tzp);
 
 		zone = thermal_zone_device_register(child->name, tz->ntrips,
 						    0, tz,
