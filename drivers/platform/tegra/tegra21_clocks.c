@@ -8413,6 +8413,7 @@ static struct clk tegra_clk_gpu = {
 	.min_rate  = 12000000,
 };
 #define RATE_GRANULARITY	100000 /* 0.1 MHz */
+#define gbus_round_pass_thru	0
 
 static void tegra21_clk_gbus_init(struct clk *c)
 {
@@ -8469,13 +8470,25 @@ static int tegra21_clk_gbus_set_rate(struct clk *c, unsigned long rate)
 	return ret;
 }
 
+static long tegra21_clk_gbus_round_updown(struct clk *c, unsigned long rate,
+					  bool up)
+{
+	return gbus_round_pass_thru ? rate :
+		tegra21_clk_cbus_round_updown(c, rate, up);
+}
+
+static long tegra21_clk_gbus_round_rate(struct clk *c, unsigned long rate)
+{
+	return tegra21_clk_gbus_round_updown(c, rate, true);
+}
+
 static struct clk_ops tegra_clk_gbus_ops = {
 	.init		= tegra21_clk_gbus_init,
 	.enable		= tegra21_clk_gbus_enable,
 	.disable	= tegra21_clk_gbus_disable,
 	.set_rate	= tegra21_clk_gbus_set_rate,
-	.round_rate	= tegra21_clk_cbus_round_rate,		  /* re-use */
-	.round_rate_updown = tegra21_clk_cbus_round_updown,	  /* re-use */
+	.round_rate	= tegra21_clk_gbus_round_rate,
+	.round_rate_updown = tegra21_clk_gbus_round_updown,
 	.shared_bus_update = tegra21_clk_shared_connector_update, /* re-use */
 };
 
