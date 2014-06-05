@@ -4217,7 +4217,7 @@ static struct imx135_platform_data *imx135_parse_dt(struct i2c_client *client)
 	return board_info_pdata;
 }
 
-int
+static int
 imx135_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -4295,7 +4295,6 @@ imx135_probe_fail:
 
 	return err;
 }
-EXPORT_SYMBOL(imx135_probe);
 
 static int
 imx135_remove(struct i2c_client *client)
