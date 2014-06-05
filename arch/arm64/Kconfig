@@ -57,6 +57,14 @@ config ARM64
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
+trysource ../kernel-t186/arch/arm64/Kconfig
+
+config ARCH_TEGRA_18x_SOC
+	bool "Tegra 18x family SOC Kconfig placeholder"
+	select ARCH_TEGRA_18x_SOC_PRIVATE
+	help
+	  Kconfig placeholder for NVIDIA Tegra18x family of SoCs
+
 config NEED_MACH_MEMORY_H
     bool
     help
