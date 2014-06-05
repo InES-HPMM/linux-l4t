@@ -1317,6 +1317,21 @@ static int gk20a_pm_init(struct platform_device *dev)
 	return err;
 }
 
+int gk20a_secure_page_alloc(struct platform_device *pdev)
+{
+	struct gk20a_platform *platform = platform_get_drvdata(pdev);
+	int err = 0;
+
+	if (platform->secure_page_alloc) {
+		tegra_periph_reset_assert(platform->clk[0]);
+		udelay(10);
+		err = platform->secure_page_alloc(pdev);
+		tegra_periph_reset_deassert(platform->clk[0]);
+	}
+
+	return err;
+}
+
 static int gk20a_probe(struct platform_device *dev)
 {
 	struct gk20a *gk20a;
@@ -1413,6 +1428,12 @@ static int gk20a_probe(struct platform_device *dev)
 			dev_err(&dev->dev, "late probe failed");
 			return err;
 		}
+	}
+
+	err = gk20a_secure_page_alloc(dev);
+	if (err) {
+		dev_err(&dev->dev, "failed to allocate secure buffer\n");
+		return err;
 	}
 
 	gk20a_debug_init(dev);
