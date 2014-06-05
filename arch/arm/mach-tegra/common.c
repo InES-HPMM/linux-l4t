@@ -207,10 +207,14 @@ EXPORT_SYMBOL(tegra_iram_dev);
 static void tegra_update_resize_cfg(phys_addr_t base , size_t size)
 {
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-	/* Config VPR_BOM/_SIZE in MC */
-	te_set_vpr_params((void *)(uintptr_t)base, size);
-	/* trigger GPU to refetch VPR base and size. */
-	nvhost_vpr_info_fetch();
+	int err = 0;
+
+	err = gk20a_do_idle();
+	if (!err) {
+		/* Config VPR_BOM/_SIZE in MC */
+		te_set_vpr_params((void *)(uintptr_t)base, size);
+		gk20a_do_unidle();
+	}
 #endif
 }
 
