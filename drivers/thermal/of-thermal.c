@@ -65,6 +65,7 @@ struct __thermal_bind_params {
 	unsigned int usage;
 	unsigned long min;
 	unsigned long max;
+	const char *type;
 };
 
 /**
@@ -151,7 +152,9 @@ static int of_thermal_bind(struct thermal_zone_device *thermal,
 	for (i = 0; i < data->num_tbps; i++) {
 		struct __thermal_bind_params *tbp = data->tbps + i;
 
-		if (tbp->cooling_device == cdev->np) {
+		if ((tbp->cooling_device == cdev->np) ||
+			(tbp->type && cdev->type &&
+			!strncmp(tbp->type, cdev->type, THERMAL_NAME_LENGTH))) {
 			int ret;
 
 			ret = thermal_zone_bind_cooling_device(thermal,
@@ -179,7 +182,9 @@ static int of_thermal_unbind(struct thermal_zone_device *thermal,
 	for (i = 0; i < data->num_tbps; i++) {
 		struct __thermal_bind_params *tbp = data->tbps + i;
 
-		if (tbp->cooling_device == cdev->np) {
+		if ((tbp->cooling_device == cdev->np) ||
+			(tbp->type && cdev->type &&
+			!strncmp(tbp->type, cdev->type, THERMAL_NAME_LENGTH))) {
 			int ret;
 
 			ret = thermal_zone_unbind_cooling_device(thermal,
@@ -506,6 +511,8 @@ static int thermal_of_populate_bind_params(struct device_node *np,
 	ret = of_property_read_u32(np, "contribution", &prop);
 	if (ret == 0)
 		__tbp->usage = prop;
+
+	__tbp->type =  of_get_property(np, "cdev-type", NULL);
 
 	trip = of_parse_phandle(np, "trip", 0);
 	if (!trip) {
