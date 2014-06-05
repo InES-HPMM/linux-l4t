@@ -358,6 +358,15 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_PSKIP_RAMP_STEP_SHIFT		0
 #define THROT_PSKIP_RAMP_STEP_MASK		0xff
 
+#define THROT_VECT_NONE				0x0 /* 3'b000 */
+#define THROT_VECT_LOW				0x1 /* 3'b001 */
+#define THROT_VECT_MED				0x3 /* 3'b011 */
+#define THROT_VECT_HVY				0x7 /* 3'b111 */
+
+#define THROT_LEVEL_LOW				0
+#define THROT_LEVEL_MED				1
+#define THROT_LEVEL_HVY				2
+
 #define THROT_PRIORITY_LITE			0x444
 #define THROT_PRIORITY_LITE_PRIO_SHIFT		0
 #define THROT_PRIORITY_LITE_PRIO_MASK		0xff
@@ -665,13 +674,6 @@ static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_MEM] = THROTTLE_DEV_NONE,
 	[THERM_GPU] = THROTTLE_DEV_GPU,
 	[THERM_PLL] = THROTTLE_DEV_NONE,
-};
-
-static const u32 level2vect[] = {
-	[THROT_LEVEL_NONE] = 0x0, /* 3'b000 */
-	[THROT_LEVEL_LOW]  = 0x1, /* 3'b001 */
-	[THROT_LEVEL_MED]  = 0x3, /* 3'b011 */
-	[THROT_LEVEL_HVY]  = 0x7, /* 3'b111 */
 };
 
 static const struct soctherm_sensor default_t11x_sensor_params = {
@@ -2253,8 +2255,8 @@ static bool throttlectl_cpu_mn(enum soctherm_throttle_id throt)
  */
 static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 {
-	u32 r;
-	enum soctherm_throt_vect_level_id level;
+	u32 r, throt_vect = 0;
+	int throt_level = 0;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
@@ -2262,14 +2264,16 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 		return false;
 
 	/* Denver:CCROC NV_THERM interface N:3 Mapping */
-	if (!strcmp(dev->throttling_depth, "heavy_throttling"))
-		level = THROT_LEVEL_HVY;
-	else if (!strcmp(dev->throttling_depth, "medium_throttling"))
-		level = THROT_LEVEL_MED;
-	else if (!strcmp(dev->throttling_depth, "low_throttling"))
-		level = THROT_LEVEL_LOW;
-	else
-		level = THROT_LEVEL_NONE;
+	if (!strcmp(dev->throttling_depth, "heavy_throttling")) {
+		throt_level = THROT_LEVEL_HVY;
+		throt_vect = THROT_VECT_HVY;
+	} else if (!strcmp(dev->throttling_depth, "medium_throttling")) {
+		throt_level = THROT_LEVEL_MED;
+		throt_vect = THROT_VECT_MED;
+	} else {
+		throt_level = THROT_LEVEL_LOW;
+		throt_vect = THROT_VECT_LOW;
+	}
 
 	if (dev->depth)
 		THROT_DEPTH(dev, dev->depth);
@@ -2277,8 +2281,8 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
 	/* for T132: setup throttle vector in soctherm register */
-	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_CPU, level2vect[level]);
-	r = REG_SET(r, THROT_PSKIP_CTRL_VECT2_CPU, level2vect[level]);
+	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_CPU, throt_vect);
+	r = REG_SET(r, THROT_PSKIP_CTRL_VECT2_CPU, throt_vect);
 	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 
 	/* No point programming the sequencer, since we're bypassing it */
@@ -2288,15 +2292,15 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
 	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
 
-	r = clk_reset13_readl(THROT13_PSKIP_RAMP_CPU(level));
+	r = clk_reset13_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
 	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
-	clk_reset13_writel(r, THROT13_PSKIP_RAMP_CPU(level));
+	clk_reset13_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
 
-	r = clk_reset13_readl(THROT13_PSKIP_CTRL_CPU(level));
+	r = clk_reset13_readl(THROT13_PSKIP_CTRL_CPU(throt_level));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
 	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
 	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-	clk_reset13_writel(r, THROT13_PSKIP_CTRL_CPU(level));
+	clk_reset13_writel(r, THROT13_PSKIP_CTRL_CPU(throt_level));
 
 	return true;
 }
@@ -2315,22 +2319,19 @@ static bool throttlectl_gpu_gk20a_nv_therm_style(
 				struct soctherm_throttle_dev *dev,
 				enum soctherm_throttle_id throt)
 {
-	u32 r;
-	enum soctherm_throt_vect_level_id level;
+	u32 r, throt_vect;
 
 	/* gk20a nv_therm interface N:3 Mapping */
 	if (!strcmp(dev->throttling_depth, "heavy_throttling"))
-		level = THROT_LEVEL_HVY;
+		throt_vect = THROT_VECT_HVY;
 	else if (!strcmp(dev->throttling_depth, "medium_throttling"))
-		level = THROT_LEVEL_MED;
-	else if (!strcmp(dev->throttling_depth, "low_throttling"))
-		level = THROT_LEVEL_LOW;
+		throt_vect = THROT_VECT_MED;
 	else
-		level = THROT_LEVEL_NONE;
+		throt_vect = THROT_VECT_LOW;
 
 	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_GPU, level2vect[level]);
+	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_GPU, throt_vect);
 	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
 
 	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
@@ -3791,39 +3792,32 @@ static int regs_show(struct seq_file *s, void *data)
 				continue;
 			}
 
-			level = THROT_LEVEL_NONE;
-			depth = "n/a";
+			level = THROT_LEVEL_LOW;
+			depth = "";
 			q = 0;
 			if (IS_T13X && j == THROTTLE_DEV_CPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_CPU);
-				if (state == level2vect[THROT_LEVEL_HVY]) {
+				if (state == THROT_VECT_HVY) {
 					level = THROT_LEVEL_HVY;
 					depth = "hi";
-				} else if (state ==
-						level2vect[THROT_LEVEL_MED]) {
+				} else if (state == THROT_VECT_MED) {
 					level = THROT_LEVEL_MED;
 					depth = "med";
-				} else if (state ==
-						level2vect[THROT_LEVEL_LOW]) {
+				} else if (state == THROT_VECT_LOW) {
 					level = THROT_LEVEL_LOW;
 					depth = "low";
 				}
 			}
 			if ((IS_T12X || IS_T13X) && j == THROTTLE_DEV_GPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_GPU);
-				if (state == level2vect[THROT_LEVEL_HVY]) {
+				if (state == THROT_VECT_HVY) {
 					q = 87;
-					level = THROT_LEVEL_HVY;
 					depth = "hi";
-				} else if (state ==
-						level2vect[THROT_LEVEL_MED]) {
+				} else if (state == THROT_VECT_MED) {
 					q = 75;
-					level = THROT_LEVEL_MED;
 					depth = "med";
-				} else if (state ==
-						level2vect[THROT_LEVEL_LOW]) {
+				} else if (state == THROT_VECT_LOW) {
 					q = 50;
-					level = THROT_LEVEL_LOW;
 					depth = "low";
 				}
 			}
@@ -3837,10 +3831,7 @@ static int regs_show(struct seq_file *s, void *data)
 			m = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
 			n = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
 			q = q ?: 100 - (((100 * (m+1)) + ((n+1) / 2)) / (n+1));
-			if (level != THROT_LEVEL_NONE)
-				seq_printf(s, "%2u%% %3s  ", q, depth);
-			else
-				seq_puts(s, " none    ");
+			seq_printf(s, "%2u%% %3s  ", q, depth);
 			seq_printf(s, "%8u  ", m);
 			seq_printf(s, "%7u  ", n);
 

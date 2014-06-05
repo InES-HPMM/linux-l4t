@@ -52,13 +52,6 @@ enum soctherm_throttle_id {
 	THROTTLE_SIZE,
 };
 
-enum soctherm_throt_vect_level_id {
-	THROT_LEVEL_NONE = 0,
-	THROT_LEVEL_LOW,
-	THROT_LEVEL_MED,
-	THROT_LEVEL_HVY,
-};
-
 enum soctherm_throttle_dev_id {
 	THROTTLE_DEV_CPU = 0,
 	THROTTLE_DEV_GPU,
