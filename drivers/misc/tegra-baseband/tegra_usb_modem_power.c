@@ -23,6 +23,9 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/usb.h>
 #include <linux/err.h>
 #include <linux/pm_runtime.h>
@@ -696,6 +699,77 @@ error:
 	return ret;
 }
 
+static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
+		struct tegra_usb_modem_power_platform_data *pdata)
+{
+	struct device_node *node = pdev->dev.of_node;
+	int gpio;
+	int ret;
+
+	dev_dbg(&pdev->dev, "read platform data from DT\n");
+
+	/* regulator */
+	pdata->regulator_name = of_get_property(node, "regulator", NULL);
+
+	/* GPIO */
+	gpio = of_get_named_gpio(node, "wake_gpio", 0);
+	pdata->wake_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	dev_info(&pdev->dev, "set wake_gpio:%d\n", pdata->wake_gpio);
+
+	gpio = of_get_named_gpio(node, "boot_gpio", 0);
+	pdata->boot_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	dev_info(&pdev->dev, "set boot_gpio:%d\n", pdata->boot_gpio);
+
+	gpio = of_get_named_gpio(node, "mdm_power_report_gpio", 0);
+	pdata->mdm_power_report_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	dev_info(&pdev->dev, "set mdm_power_report_gpio:%d\n",
+		pdata->mdm_power_report_gpio);
+
+	/* set GPIO IRQ flags */
+	pdata->wake_irq_flags = pdata->boot_irq_flags =
+		pdata->mdm_power_irq_flags =
+		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+
+	/* initialize necessary GPIO and start modem here */
+	gpio = of_get_named_gpio(node, "mdm_en_gpio", 0);
+	if (gpio_is_valid(gpio)) {
+		dev_info(&pdev->dev, "set MODEM EN (%d) to 1\n", gpio);
+		ret = gpio_request(gpio, "MODEM EN");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		gpio_direction_output(gpio, 1);
+	}
+
+	gpio = of_get_named_gpio(node, "mdm_sar0_gpio", 0);
+	if (gpio_is_valid(gpio)) {
+		dev_info(&pdev->dev, "set MODEM SAR0 (%d) to 0\n", gpio);
+		ret = gpio_request(gpio, "MODEM SAR0");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		gpio_direction_output(gpio, 0);
+		gpio_export(gpio, false);
+	}
+
+	gpio = of_get_named_gpio(node, "reset_gpio", 0);
+	if (gpio_is_valid(gpio)) {
+		dev_info(&pdev->dev, "set MODEM RESET (%d) to 1\n", gpio);
+		ret = gpio_request(gpio, "MODEM RESET");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		/* Release modem reset to start boot */
+		gpio_direction_output(gpio, 1);
+		gpio_export(gpio, false);
+	}
+
+	return 0;
+}
+
 static int tegra_usb_modem_probe(struct platform_device *pdev)
 {
 	struct tegra_usb_modem_power_platform_data *pdata =
@@ -706,6 +780,15 @@ static int tegra_usb_modem_probe(struct platform_device *pdev)
 	if (!pdata) {
 		dev_dbg(&pdev->dev, "platform_data not available\n");
 		return -EINVAL;
+	}
+
+	/* initialize from device tree */
+	if (pdev->dev.of_node) {
+		ret = tegra_usb_modem_parse_dt(pdev, pdata);
+		if (ret) {
+			dev_err(&pdev->dev, "device tree parsing error\n");
+			return -EINVAL;
+		}
 	}
 
 	modem = kzalloc(sizeof(struct tegra_usb_modem), GFP_KERNEL);
@@ -825,10 +908,17 @@ static int tegra_usb_modem_resume(struct platform_device *pdev)
 }
 #endif
 
+static const struct of_device_id tegra_usb_modem_match[] = {
+	{ .compatible = "nvidia,icera-i500", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, tegra_usb_modem_match);
+
 static struct platform_driver tegra_usb_modem_power_driver = {
 	.driver = {
 		   .name = "tegra_usb_modem_power",
 		   .owner = THIS_MODULE,
+		   .of_match_table = of_match_ptr(tegra_usb_modem_match),
 		   },
 	.probe = tegra_usb_modem_probe,
 	.remove = __exit_p(tegra_usb_modem_remove),
