@@ -847,15 +847,13 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 	if (status < 0)
 		return status;
 
-	if (rndis_string_defs[0].id == 0) {
-		status = usb_string_ids_tab(c->cdev, rndis_string_defs);
-		if (status)
-			return status;
+	status = usb_string_ids_tab(c->cdev, rndis_string_defs);
+	if (status)
+		return status;
 
-		rndis_control_intf.iInterface = rndis_string_defs[0].id;
-		rndis_data_intf.iInterface = rndis_string_defs[1].id;
-		rndis_iad_descriptor.iFunction = rndis_string_defs[2].id;
-	}
+	rndis_control_intf.iInterface = rndis_string_defs[0].id;
+	rndis_data_intf.iInterface = rndis_string_defs[1].id;
+	rndis_iad_descriptor.iFunction = rndis_string_defs[2].id;
 
 	/* allocate and initialize one new instance */
 	status = -ENOMEM;

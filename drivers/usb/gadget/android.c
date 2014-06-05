@@ -100,6 +100,7 @@ struct android_dev {
 	bool sw_connected;
 	struct work_struct work;
 	char ffs_aliases[256];
+	unsigned short ffs_string_ids;
 };
 
 static struct class *android_class;
@@ -152,6 +153,20 @@ static struct usb_configuration android_config_driver = {
 	.bConfigurationValue = 1,
 };
 
+static void android_gstring_cleanup(struct android_dev *dev)
+{
+	struct usb_composite_dev *cdev = dev->cdev;
+	struct usb_gadget_string_container *uc, *tmp;
+
+	list_for_each_entry_safe(uc, tmp, &cdev->gstrings, list) {
+		list_del(&uc->list);
+		kfree(uc);
+	}
+	/* reserve unfreed string ids */
+	cdev->next_string_id = ARRAY_SIZE(strings_dev) +
+		dev->ffs_string_ids - 1;
+}
+
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -202,6 +217,7 @@ static void android_disable(struct android_dev *dev)
 		/* Cancel pending control requests */
 		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 		usb_remove_config(cdev, &android_config_driver);
+		android_gstring_cleanup(dev);
 	}
 }
 
@@ -327,6 +343,7 @@ static int functionfs_ready_callback(struct ffs_data *ffs)
 
 	config->data = ffs;
 	config->opened = true;
+	dev->ffs_string_ids = ffs->strings_count;
 
 	if (config->enabled)
 		android_enable(dev);
@@ -350,6 +367,7 @@ static void functionfs_closed_callback(struct ffs_data *ffs)
 	config->data = NULL;
 
 	functionfs_unbind(ffs);
+	dev->ffs_string_ids = 0;
 
 	mutex_unlock(&dev->mutex);
 }

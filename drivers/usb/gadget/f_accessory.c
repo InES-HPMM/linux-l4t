@@ -1137,13 +1137,11 @@ static int acc_bind_config(struct usb_configuration *c)
 	printk(KERN_INFO "acc_bind_config\n");
 
 	/* allocate a string ID for our interface */
-	if (acc_string_defs[INTERFACE_STRING_INDEX].id == 0) {
-		ret = usb_string_id(c->cdev);
-		if (ret < 0)
-			return ret;
-		acc_string_defs[INTERFACE_STRING_INDEX].id = ret;
-		acc_interface_desc.iInterface = ret;
-	}
+	ret = usb_string_id(c->cdev);
+	if (ret < 0)
+		return ret;
+	acc_string_defs[INTERFACE_STRING_INDEX].id = ret;
+	acc_interface_desc.iInterface = ret;
 
 	dev->cdev = c->cdev;
 	dev->function.name = "accessory";
