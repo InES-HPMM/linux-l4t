@@ -137,6 +137,7 @@ int __init loki_suspend_init(void)
 
 static struct power_supply_extcon_plat_data extcon_pdata = {
 	.extcon_name = "tegra-udc",
+	.y_cable_extcon_name = "tegra-otg",
 };
 
 static struct platform_device power_supply_extcon_device = {
