@@ -33,6 +33,7 @@
 #include "panel-a-wxga-8-0.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
@@ -91,6 +92,16 @@
 
 	psy_extcon {
 		power-supply,y-cable-extcon-dev = "tegra-otg";
+	};
+
+	generic-adc-thermal@5 {
+		status = "okay";
+	};
+
+	thermal-zones {
+		battery-temp {
+			status = "okay";
+		};
 	};
 };
 
