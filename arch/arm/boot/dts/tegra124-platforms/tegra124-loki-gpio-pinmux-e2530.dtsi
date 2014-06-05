@@ -15,7 +15,7 @@
 		common {
 			dp_hpd_pff0 {
 				nvidia,pins = "dp_hpd_pff0";
-				nvidia,function = "safe";
+				nvidia,function = "dp";
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
