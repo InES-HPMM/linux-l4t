@@ -67,7 +67,7 @@
 				system-pmic-power-reset;
 			};
 
-			gpadc {
+			palams_gpadc: gpadc {
 				compatible = "ti,palmas-gpadc";
 				interrupt-parent = <&palmas>;
 				interrupts = <18 0
@@ -76,6 +76,7 @@
 				ti,channel3-current-microamp = <400>;
 				ti,enable-channel3-dual-current;
 				ti,enable-extended-delay;
+				#io-channel-cells = <1>;
 			};
 
 			clock {
