@@ -445,7 +445,7 @@ struct tegra_hdmi_out ardbeg_hdmi_out = {
 #if defined(CONFIG_FRAMEBUFFER_CONSOLE)
 static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
-		.pclk =			KHZ2PICOS(25200),
+		.pclk =			25200000,
 		.h_ref_to_sync =	1,
 		.v_ref_to_sync =	1,
 		.h_sync_width =		96,	/* hsync_len */
