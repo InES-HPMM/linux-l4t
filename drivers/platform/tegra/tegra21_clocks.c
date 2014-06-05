@@ -3632,12 +3632,13 @@ static void tegra21_pllu_vco_init(struct clk *c)
 	/*
 	 * If PLLU state is already under h/w control just check defaults, and
 	 * verify expected fixed VCO rate (pll dividers can still be read from
-	 * the * base register).
+	 * the base register).
 	 */
 	if (!(val & PLLU_BASE_OVERRIDE)) {
 		struct clk_pll_freq_table cfg = { };
 		c->state = (val & c->u.pll.controls->enable_mask) ? ON : OFF;
 
+		c->u.pll.defaults_set = true;
 		pllu_check_defaults(c, true);
 		pll_base_parse_cfg(c, &cfg);
 		pll_clk_set_gain(c, &cfg);
@@ -9080,7 +9081,7 @@ static struct clk tegra_xusb_coupled_clks[] = {
  * table under two names.
  */
 struct clk_duplicate tegra_clk_duplicates[] = {
-	CLK_DUPLICATE("pll_u_out",  NULL, "pll_u"),
+	CLK_DUPLICATE("pll_u_vco",  NULL, "pll_u"),
 	CLK_DUPLICATE("uarta",  "serial8250.0", NULL),
 	CLK_DUPLICATE("uartb",  "serial8250.1", NULL),
 	CLK_DUPLICATE("uartc",  "serial8250.2", NULL),
