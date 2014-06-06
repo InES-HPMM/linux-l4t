@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/kfuse.c
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -112,3 +112,4 @@ int tegra_kfuse_read(void *dest, size_t len)
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_kfuse_read);
