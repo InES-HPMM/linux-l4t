@@ -31,6 +31,7 @@
 #ifdef CONFIG_DEBUG_FS
 #define MODS_HAS_DEBUGFS 1
 #endif
+#define MODS_HAS_KFUSE 1
 
 #endif /* _MODS_CONFIG_H_  */
 

@@ -30,7 +30,7 @@
 
 static struct dentry *mods_debugfs_dir;
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(CONFIG_ARCH_TEGRA) && defined(MODS_HAS_KFUSE)
 #include <mach/kfuse.h>
 #endif
 
@@ -570,7 +570,7 @@ static const struct file_operations mods_dc_crc_latched_fops = {
 };
 #endif /* CONFIG_TEGRA_DC */
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(CONFIG_ARCH_TEGRA) && defined(MODS_HAS_KFUSE)
 static int mods_kfuse_show(struct seq_file *s, void *unused)
 {
 	unsigned buf[KFUSE_DATA_SZ / 4];
@@ -666,7 +666,7 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 		goto remove_out;
 	}
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(CONFIG_ARCH_TEGRA) && defined(MODS_HAS_KFUSE)
 	retval = debugfs_create_file("kfuse_data", S_IRUGO,
 		mods_debugfs_dir, 0, &mods_kfuse_fops);
 	if (IS_ERR(retval)) {
