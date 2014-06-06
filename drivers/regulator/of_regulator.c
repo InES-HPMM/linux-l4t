@@ -208,6 +208,8 @@ int of_regulator_match(struct device *dev, struct device_node *node,
 	}
 
 	for_each_child_of_node(node, child) {
+		if (!of_device_is_available(child))
+			continue;
 		name = of_get_property(child,
 					"regulator-compatible", NULL);
 		if (!name)
