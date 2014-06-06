@@ -197,8 +197,8 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 
 	tegra_get_board_info(&board);
 
-	if ((board.board_id == BOARD_P1761) &&
-		(board.fab >= BOARD_FAB_A02)) {
+	if ((board.board_id == BOARD_P1761 && board.fab >= BOARD_FAB_A02) ||
+	    board.board_id == BOARD_P1765) {
 		tn8_sysedp_dynamic_capping_platdata.cap_method =
 			TEGRA_SYSEDP_CAP_METHOD_RELAX;
 	}

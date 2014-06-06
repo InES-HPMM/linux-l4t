@@ -1219,6 +1219,7 @@ static void __init ardbeg_sysedp_init(void)
 	case BOARD_E1922:
 	case BOARD_E1784:
 	case BOARD_P1761:
+	case BOARD_P1765:
 		tn8_new_sysedp_init();
 		break;
 	case BOARD_PM358:
@@ -1246,6 +1247,7 @@ static void __init ardbeg_sysedp_dynamic_capping_init(void)
 	case BOARD_E1922:
 	case BOARD_E1784:
 	case BOARD_P1761:
+	case BOARD_P1765:
 		tn8_sysedp_dynamic_capping_init();
 		break;
 	case BOARD_PM358:
