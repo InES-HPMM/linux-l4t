@@ -7813,11 +7813,12 @@ static struct clk_mux_sel mux_cclk_g[] = {
 static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c_out1,	.value = 1},
-	{ .input = &tegra_pll_p_out4,	.value = 2},
+	{ .input = &tegra_pll_c4_out3,	.value = 2},
 	{ .input = &tegra_pll_p,	.value = 3},
 	{ .input = &tegra_pll_p_out2,	.value = 4},
-	{ .input = &tegra_pll_c,	.value = 5},
+	{ .input = &tegra_pll_c4_out1,	.value = 5},
 	{ .input = &tegra_clk_32k,	.value = 6},
+	{ .input = &tegra_pll_c4_out2,	.value = 7},
 	{ 0, 0},
 };
 
