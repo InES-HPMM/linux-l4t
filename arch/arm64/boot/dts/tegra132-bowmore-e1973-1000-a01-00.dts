@@ -172,7 +172,7 @@
 
 	denver_cpuidle_pmic {
 		type = <4>; /* TI TPS65913 2.3 */
-		retention-voltage = <16>;
+		retention-voltage = <11>;
 		lock = <0>;
 	};
 
