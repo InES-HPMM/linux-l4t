@@ -8,8 +8,8 @@
 		lc709203f@0b {
 			status = "okay";
 			onsemi,kernel-threshold-soc = <2>;
-			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
-			io-channel-names = "battery-current";
+			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL) &palams_gpadc 0>;
+			io-channel-names = "battery-current", "batt_id";
 		};
 
 		hpa2163@6b {
