@@ -995,9 +995,7 @@ static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct palmas_gpadc_platform_data *gp_data;
-	struct device_node *map_node;
 	struct device_node *child;
-	struct iio_map *palmas_iio_map;
 	struct palmas_adc_auto_conv_property *conv_prop;
 	int ret;
 	u32 pval;
@@ -1035,47 +1033,6 @@ static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 	if (!ret)
 		gp_data->adc_auto_conv1_data = conv_prop;
 
-	map_node = of_get_child_by_name(np, "iio_map");
-	if (!map_node) {
-		dev_warn(&pdev->dev, "IIO map table not found\n");
-		goto done;
-	}
-
-	nmap = of_get_child_count(map_node);
-	if (!nmap)
-		goto done;
-
-	nmap++;
-	palmas_iio_map = devm_kzalloc(&pdev->dev,
-				sizeof(*palmas_iio_map) * nmap, GFP_KERNEL);
-	if (!palmas_iio_map)
-		goto done;
-
-	nvalid_map = 0;
-	for_each_child_of_node(map_node, child) {
-		ret = of_property_read_u32(child, "ti,adc-channel-number",
-					&pval);
-		if (!ret && pval < ARRAY_SIZE(palmas_gpadc_iio_channel))
-			palmas_iio_map[nvalid_map].adc_channel_label =
-				palmas_gpadc_iio_channel[pval].datasheet_name;
-		of_property_read_string(child, "ti,adc-consumer-device",
-				&palmas_iio_map[nvalid_map].consumer_dev_name);
-		of_property_read_string(child, "ti,adc-consumer-channel",
-				&palmas_iio_map[nvalid_map].consumer_channel);
-		dev_dbg(&pdev->dev,
-			"Channel %s consumer dev %s and consumer channel %s\n",
-				palmas_iio_map[nvalid_map].adc_channel_label,
-				palmas_iio_map[nvalid_map].consumer_dev_name,
-				palmas_iio_map[nvalid_map].consumer_channel);
-		nvalid_map++;
-	}
-	palmas_iio_map[nvalid_map].adc_channel_label = NULL;
-	palmas_iio_map[nvalid_map].consumer_dev_name = NULL;
-	palmas_iio_map[nvalid_map].consumer_channel = NULL;
-
-	gp_data->iio_maps = palmas_iio_map;
-
-done:
 	*gpadc_pdata = gp_data;
 	return 0;
 }

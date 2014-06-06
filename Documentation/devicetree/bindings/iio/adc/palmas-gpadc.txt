@@ -31,19 +31,6 @@ pmic {
 			      17 0>;
 		ti,channel0-current-microamp = <5>;
 		ti,channel3-current-microamp = <10>;
-		iio_map {
-			ch1 {
-				ti,adc-channel-number = <1>;
-				ti,adc-consumer-device = "generic-adc-thermal.0";
-				ti,adc-consumer-channel ="battery-temp-channel";
-			};
-
-			ch6 {
-				ti,adc-channel-number = <6>;
-				ti,adc-consumer-device = "palmas-battery";
-				ti,adc-consumer-channel ="vbat_channel";
-			};
-		};
 	};
 	...
 };
