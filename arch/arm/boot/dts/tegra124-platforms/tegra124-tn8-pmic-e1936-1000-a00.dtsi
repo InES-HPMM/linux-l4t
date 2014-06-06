@@ -121,32 +121,6 @@
 				ti,enable-channel3-dual-current;
 				ti,enable-extended-delay;
 				#io-channel-cells = <1>;
-				iio_map {
-					ch0 {
-						ti,adc-channel-number = <0>;
-						ti,adc-consumer-device = "1-000b";
-						ti,adc-consumer-channel ="batt_id";
-					};
-
-					ch1 {
-						ti,adc-channel-number = <1>;
-						ti,adc-consumer-device = "generic-adc-thermal.1";
-						ti,adc-consumer-channel ="thermistor";
-					};
-
-					ch3 {
-						ti,adc-channel-number = <3>;
-						ti,adc-consumer-device = "generic-adc-thermal.2";
-						ti,adc-consumer-channel ="tdiode";
-					};
-
-					ch5 {
-						ti,adc-channel-number = <5>;
-						ti,adc-consumer-device = "generic-adc-thermal.0";
-						ti,adc-consumer-channel ="battery-temp-channel";
-					};
-
-				};
 			};
 
                         clock {
