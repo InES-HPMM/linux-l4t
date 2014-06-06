@@ -137,6 +137,12 @@ static struct platform_device ardbeg_bluedroid_pm_device = {
 
 static noinline void __init ardbeg_setup_bluedroid_pm(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E2141)
+		ardbeg_bluedroid_pm_resources[0].name = "";
+
 	ardbeg_bluedroid_pm_resources[1].start =
 		ardbeg_bluedroid_pm_resources[1].end =
 				gpio_to_irq(TEGRA_GPIO_PU6);
