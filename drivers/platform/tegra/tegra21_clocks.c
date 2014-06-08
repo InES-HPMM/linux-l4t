@@ -242,13 +242,8 @@ do {									       \
 #define PLL_SDM_COEFF			(1 << 13)
 
 /* FIXME: no longer common should be eventually removed */
-#define PLL_BASE_OVERRIDE		(1<<28)
-#define PLL_BASE_LOCK			(1<<27)
-#define PLL_BASE_DIVP_MASK		(0x7<<20)
 #define PLL_BASE_DIVP_SHIFT		20
-#define PLL_BASE_DIVN_MASK		(0x3FF<<8)
 #define PLL_BASE_DIVN_SHIFT		8
-#define PLL_BASE_DIVM_MASK		(0x1F)
 #define PLL_BASE_DIVM_SHIFT		0
 
 /* FXME: to be removed */
@@ -268,10 +263,6 @@ do {									       \
 /* FXME: to be removed */
 #define PLL_MISC(c)			\
 	(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
-#define PLL_MISCN(c, n)		\
-	((c)->u.pll.misc1 + ((n) - 1) * PLL_MISC(c))
-#define PLL_MISC_LOCK_ENABLE(c)	\
-	(((c)->flags & (PLLU | PLLD)) ? (1<<22) : (1<<18))
 
 #define PLL_FIXED_MDIV(c, ref)		((ref) == 38400000 ? 2 : 1)
 
@@ -436,30 +427,27 @@ do {									       \
 #define PLLX_HW_CTRL_CFG_SWCTRL		(0x1 << 0)
 
 /* PLLM */
-#define PLLM_BASE_DIVP_MASK		(0xF << PLL_BASE_DIVP_SHIFT)
-#define PLLM_BASE_DIVN_MASK		(0xFF << PLL_BASE_DIVN_SHIFT)
-#define PLLM_BASE_DIVM_MASK		(0xFF << PLL_BASE_DIVM_SHIFT)
+#define PLLM_BASE_LOCK			(1 << 27)
 
-/* PLLM has 4-bit PDIV, but entry 15 is not allowed in h/w,
-   and s/w usage is limited to 5 */
-#define PLLM_PDIV_MAX			14
-#define PLLM_SW_PDIV_MAX		5
-
-#define PLLM_MISC_FSM_SW_OVERRIDE	(0x1 << 10)
-#define PLLM_MISC_IDDQ			(0x1 << 5)
-#define PLLM_MISC_LOCK_DISABLE		(0x1 << 4)
-#define PLLM_MISC_LOCK_OVERRIDE		(0x1 << 3)
+#define PLLM_MISC0_SYNCMUX_CTRL_SHIFT	10
+#define PLLM_MISC0_SYNCMUX_CTRL_MASK	(0xF << PLLM_MISC0_SYNCMUX_CTRL_SHIFT)
+#define PLLM_MISC0_IDDQ			(1 << 5)
+#define PLLM_MISC0_LOCK_ENABLE		(1 << 4)
+#define PLLM_MISC0_LOCK_OVERRIDE	(1 << 3)
 
 #define PMC_PLLP_WB0_OVERRIDE			0xf8
+#define PMC_PLLP_WB0_OVERRIDE_PLLM_IDDQ		(1 << 14)
+#define PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO	(1 << 13)
 #define PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE	(1 << 12)
 #define PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE	(1 << 11)
 
 /* M, N layout for PLLM override and base registers are the same */
 #define PMC_PLLM_WB0_OVERRIDE			0x1dc
 
+/* PDIV override and base layouts are different */
 #define PMC_PLLM_WB0_OVERRIDE_2			0x2b0
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT	27
-#define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0xF << 27)
+#define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0x1F << 27)
 
 #define OUT_OF_TABLE_CPCON		0x8
 
@@ -2695,19 +2683,6 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
-/* FIXME: to be removed */
-static void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
-{
-	u32 val = clk_readl(c->reg + offs);
-	if (set)
-		val |= iddq_bit;
-	else
-		val &= ~iddq_bit;
-	pll_writel_delay(val, c->reg + offs);
-	if (!set)
-		udelay(2); /* increased out of IDDQ delay to 3us */
-}
-
 static int tegra_pll_clk_enable(struct clk *c)
 {
 	u32 val, reg;
@@ -3693,139 +3668,157 @@ static struct clk_ops tegra_pllx_ops = {
 	.set_rate		= tegra_pll_clk_set_rate,
 };
 
-/* FIXME: pllm suspend/resume */
-
-/* non-monotonic mapping below is not a typo */
-static u8 pllm_p[PLLM_PDIV_MAX + 1] = {
-/* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
-/* p: */ 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
-
-static u32 pllm_round_p_to_pdiv(u32 p, u32 *pdiv)
+/*
+ * Dual PLLM/PLLMB
+ *
+ * Identical PLLs used exclusively as memory clock source. Configuration
+ * and control fields in CAR module are separate for both PLL, and can
+ * be set independently. Most control fields (ENABLE, IDDQ, M/N/P dividers)
+ * have override counterparts in PMC module, however there is only one set
+ * of registers that applied either to PLLM or PLLMB depending on override
+ * VCO selection.
+ *
+ * By default selection between PLLM and PLLMB outputs is controlled by EMC
+ * clock switch h/w state machine. If any s/w override either in CAR, or in
+ * PMC is enabled on boot, PLLMB is no longer can be used as EMC parent.
+ *
+ * Only PLLM is used as boot PLL, setup by boot-rom.
+ */
+static void pllm_check_defaults(struct clk *c)
 {
-	if (!p || (p > PLLM_SW_PDIV_MAX + 1))
-		return -EINVAL;
+	u32 val;
+	c->u.pll.defaults_set = true;
 
-	if (pdiv)
-		*pdiv = p - 1;
-	return p;
-}
+	/*
+	 * PLLM is setup on boot/suspend exit by boot-rom.
+	 * Just enable lock, and check default configuration:
+	 * - PLLM syncmux is under h/w control
+	 * - PMC override is disabled
+	 */
+	val = clk_readl(c->reg + c->u.pll.misc0);
+	val &= ~PLLM_MISC0_LOCK_OVERRIDE;
+	val |= PLLM_MISC0_LOCK_ENABLE;
+	pll_writel_delay(val, c->reg + c->u.pll.misc0);
 
-static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
-{
-	u32 val = clk_readl(c->reg + PLL_MISC(c));
+	/* FIXME: no support for invalid configurations; replace with BUG() */
+	if (val & PLLM_MISC0_SYNCMUX_CTRL_MASK) {
+		WARN(1, "%s: Unsupported config: PLLM syncmux s/w control\n",
+		     __func__);
+		c->u.pll.defaults_set = false;
+	}
 
-	val &= ~PLLM_MISC_LOCK_OVERRIDE;
-#if USE_PLL_LOCK_BITS
-	val &= ~PLLM_MISC_LOCK_DISABLE;
-#else
-	val |= PLLM_MISC_LOCK_DISABLE;
-#endif
+	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
+		WARN(1, "%s: Unsupported config: PMC override enabled\n",
+		     __func__);
+		c->u.pll.defaults_set = false;
 
-	if (c->state != ON)
-		val |= PLLM_MISC_IDDQ;
-	else
-		BUG_ON(val & PLLM_MISC_IDDQ && !tegra_platform_is_linsim());
-
-	clk_writel(val, c->reg + PLL_MISC(c));
+		/* No boot on PLLMB */
+		BUG_ON(val & PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO);
+	}
 }
 
 static void tegra21_pllm_clk_init(struct clk *c)
 {
+	u32 val;
 	unsigned long input_rate = clk_get_rate(c->parent);
-	u32 m, p, val;
+	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
 
-	/* clip vco_min to exact multiple of input rate to avoid crossover
-	   by rounding */
-	c->u.pll.vco_min =
-		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
-	c->min_rate =
-		DIV_ROUND_UP(c->u.pll.vco_min, pllm_p[PLLM_SW_PDIV_MAX]);
+	struct clk_pll_freq_table cfg = { };
+	struct clk_pll_controls *ctrl = c->u.pll.controls;
+	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+	BUG_ON(!ctrl || !divs);
+
+	/* clip vco_min to exact multiple of comparison rate */
+	c->u.pll.vco_min = DIV_ROUND_UP(c->u.pll.vco_min, cf) * cf;
+	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min,
+				   divs->pdiv_to_p[divs->pdiv_max]);
+
+	/* Check PLLM setup */
+	pllm_check_defaults(c);
 
 	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
-	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
+	if ((val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) &&
+	    (~val & PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO)) {
 		c->state = (val & PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE) ? ON : OFF;
-
-		/* Tegra12 has bad default value of PMC_PLLM_WB0_OVERRIDE.
-		 * If bootloader does not initialize PLLM, kernel has to
-		 * initialize the register with sane value. */
-		if (c->state == OFF) {
+		if (c->state == ON) {
+			/* PLLM boot control from PMC + enabled: record rate */
 			val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
-			m = (val & PLLM_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-			if (m != PLL_FIXED_MDIV(c, input_rate)) {
-				/* Copy DIVM and DIVN from PLLM_BASE */
-				pr_info("%s: Fixing DIVM and DIVN\n", __func__);
-				val = clk_readl(c->reg + PLL_BASE);
-				val &= (PLLM_BASE_DIVM_MASK
-					| PLLM_BASE_DIVN_MASK);
-				pmc_writel(val, PMC_PLLM_WB0_OVERRIDE);
-			}
+			cfg.m = (val & divs->mdiv_mask) >> divs->mdiv_shift;
+			cfg.n = (val & divs->ndiv_mask) >> divs->ndiv_shift;
+
+			val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
+			cfg.p = (val & PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) >>
+				PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT;
+			cfg.p = divs->pdiv_to_p[cfg.p];
+			pll_clk_set_gain(c, &cfg);
+			return;
 		}
-
-		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
-		p = (val & PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) >>
-			PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT;
-
-		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
 	} else {
-		val = clk_readl(c->reg + PLL_BASE);
-		c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
-		p = (val & PLLM_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT;
+		val = clk_readl(c->reg);
+		c->state = (val & ctrl->enable_mask) ? ON : OFF;
+		if (c->state == ON) {
+			/* PLLM boot control from CAR + enabled: record rate */
+			pll_base_parse_cfg(c, &cfg);
+			pll_clk_set_gain(c, &cfg);
+			return;
+		}
 	}
 
-	m = (val & PLLM_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate)
-			 && tegra_platform_is_silicon());
-	c->div = m * pllm_p[p];
-	c->mul = (val & PLLM_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
-
-	pllm_set_defaults(c, input_rate);
+	/* PLLM is disabled on boot: set rate close to to 1/4 of minimum VCO */
+	c->ops->set_rate(c, c->u.pll.vco_min / 4);
 }
 
 static int tegra21_pllm_clk_enable(struct clk *c)
 {
-	u32 val;
-	pr_debug("%s on clock %s\n", __func__, c->name);
+	u32 val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 
-	pll_do_iddq(c, PLL_MISC(c), PLLM_MISC_IDDQ, false);
+	if ((val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) &&
+	    (~val & PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO)) {
+		pr_debug("%s on clock %s\n", __func__, c->name);
 
-	/* Just enable both base and override - one would work */
-	val = clk_readl(c->reg + PLL_BASE);
-	val |= PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
+		val &= ~PMC_PLLP_WB0_OVERRIDE_PLLM_IDDQ;
+		pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
+		val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+		udelay(5); /* out of IDDQ delay to 5us */
 
-	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
-	val |= PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE;
-	pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
-	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+		val |= PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE;
+		pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
+		val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 
-	tegra21_pll_clk_wait_for_lock(c, c->reg + PLL_BASE, PLL_BASE_LOCK);
-	return 0;
+		tegra21_pll_clk_wait_for_lock(c, c->reg, PLLM_BASE_LOCK);
+		return 0;
+	}
+	return tegra_pll_clk_enable(c);
 }
 
 static void tegra21_pllm_clk_disable(struct clk *c)
 {
-	u32 val;
-	pr_debug("%s on clock %s\n", __func__, c->name);
+	u32 val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 
-	/* Just disable both base and override - one would work */
-	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
-	val &= ~PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE;
-	pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
-	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+	if ((val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) &&
+	    (~val & PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO)) {
+		pr_debug("%s on clock %s\n", __func__, c->name);
 
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
+		val &= ~PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE;
+		pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
+		val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+		udelay(1);
 
-	pll_do_iddq(c, PLL_MISC(c), PLLM_MISC_IDDQ, true);
+		val |= PMC_PLLP_WB0_OVERRIDE_PLLM_IDDQ;
+		pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
+		val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
+		udelay(1);
+		return;
+	}
+	tegra_pll_clk_disable(c);
 }
 
 static int tegra21_pllm_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, pdiv;
-	unsigned long input_rate;
-	struct clk_pll_freq_table cfg;
-	const struct clk_pll_freq_table *sel = &cfg;
+	struct clk_pll_freq_table cfg = { };
+	unsigned long input_rate = clk_get_rate(c->parent);
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
@@ -3838,34 +3831,30 @@ static int tegra21_pllm_clk_set_rate(struct clk *c, unsigned long rate)
 		return 0;
 	}
 
-	input_rate = clk_get_rate(c->parent);
-
 	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
 		return -EINVAL;
 
-	c->mul = sel->n;
-	c->div = sel->m * sel->p;
+	pll_clk_set_gain(c, &cfg);
 
 	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
-	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
+	if ((val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) &&
+	    (~val & PMC_PLLP_WB0_OVERRIDE_PLLM_SEL_VCO)) {
+		struct clk_pll_div_layout *divs = c->u.pll.div_layout;
+
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
 		val &= ~PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK;
 		val |= pdiv << PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT;
 		pmc_writel(val, PMC_PLLM_WB0_OVERRIDE_2);
 
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
-		val &= ~(PLLM_BASE_DIVM_MASK | PLLM_BASE_DIVN_MASK);
-		val |= (sel->m << PLL_BASE_DIVM_SHIFT) |
-			(sel->n << PLL_BASE_DIVN_SHIFT);
+		val &= ~(divs->mdiv_mask | divs->ndiv_mask);
+		val |= cfg.m << divs->mdiv_shift | cfg.n << divs->ndiv_shift;
 		pmc_writel(val, PMC_PLLM_WB0_OVERRIDE);
+		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
+		udelay(1);
 	} else {
-		val = clk_readl(c->reg + PLL_BASE);
-		val &= ~(PLLM_BASE_DIVM_MASK | PLLM_BASE_DIVN_MASK |
-			 PLLM_BASE_DIVP_MASK);
-		val |= (sel->m << PLL_BASE_DIVM_SHIFT) |
-			(sel->n << PLL_BASE_DIVN_SHIFT) |
-			(pdiv << PLL_BASE_DIVP_SHIFT);
-		clk_writel(val, c->reg + PLL_BASE);
+		val = clk_readl(c->reg);
+		pll_base_set_div(c, cfg.m, cfg.n, pdiv, val);
 	}
 
 	return 0;
@@ -7226,9 +7215,27 @@ static struct clk tegra_pll_x_out0 = {
 static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 12000000, 800000000, 66, 1, 1},	/* actual: 792.0 MHz */
 	{ 13000000, 800000000, 61, 1, 1},	/* actual: 793.0 MHz */
-	{ 19200000, 800000000, 41, 1, 1},	/* actual: 787.2 MHz */
-	{ 38400000, 800000000, 41, 2, 1},	/* FIXME!!! actual: 787.2 MHz */
+	{ 38400000, 800000000, 41, 2, 1},	/* actual: 787.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
+};
+
+struct clk_pll_controls pllm_controls = {
+	.enable_mask = PLL_BASE_ENABLE,
+	.iddq_mask = PLLM_MISC0_IDDQ,
+	.iddq_reg_idx = PLL_MISC0_IDX,
+	.lock_mask = PLLM_BASE_LOCK,
+	.lock_reg_idx = PLL_BASE_IDX,
+};
+
+static struct clk_pll_div_layout pllm_div_layout = {
+	.mdiv_shift = 0,
+	.mdiv_mask = 0xff,
+	.ndiv_shift = 8,
+	.ndiv_mask = 0xff << 8,
+	.pdiv_shift = 20,
+	.pdiv_mask = 0x1f << 20,
+	.pdiv_to_p = pll_qlin_pdiv_to_p,
+	.pdiv_max = PLL_QLIN_PDIV_MAX,
 };
 
 static struct clk tegra_pll_m = {
@@ -7237,18 +7244,21 @@ static struct clk tegra_pll_m = {
 	.ops       = &tegra_pllm_ops,
 	.reg       = 0x90,
 	.parent    = &tegra_pll_ref,
-	.max_rate  = 1066000000,
+	.max_rate  = 1866000000,
 	.u.pll = {
-		.input_min = 12000000,
+		.input_min = 9600000,
 		.input_max = 500000000,
-		.cf_min    = 12000000,
-		.cf_max    = 19200000,	/* s/w policy, h/w capability 50 MHz */
-		.vco_min   = 500000000,
-		.vco_max   = 1066000000,
+		.cf_min    = 9600000,
+		.cf_max    = 19200000,
+		.vco_min   = 800000000,
+		.vco_max   = 1866000000,
 		.freq_table = tegra_pll_m_freq_table,
 		.lock_delay = 300,
+		.misc0 = 0x9c - 0x90,
 		.misc1 = 0x98 - 0x90,
-		.round_p_to_pdiv = pllm_round_p_to_pdiv,
+		.controls = &pllm_controls,
+		.div_layout = &pllm_div_layout,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
 	},
 };
 
@@ -9813,9 +9823,15 @@ static void tegra21_clk_resume(void)
 	p = tegra_clk_emc.parent;
 	tegra21_periph_clk_init(&tegra_clk_emc);
 
+	/* Turn Off pll_m if it was OFF before suspend, and emc was not switched
+	   to pll_m across suspend; re-init pll_m to sync s/w and h/w states */
+	if ((tegra_pll_m.state == OFF) &&
+	    (&tegra_pll_m != tegra_clk_emc.parent))
+		tegra21_pllm_clk_disable(&tegra_pll_m);
+	tegra21_pllm_clk_init(&tegra_pll_m);
+
+	/* FIXME: implement EMC resume */
 	if (p != tegra_clk_emc.parent) {
-		/* FIXME: old parent is left enabled here even if EMC was its
-		   only child before suspend (may happen on Tegra11 !!) */
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
 			p->name, p->refcnt, tegra_clk_emc.parent->name,
 			tegra_clk_emc.parent->refcnt);
