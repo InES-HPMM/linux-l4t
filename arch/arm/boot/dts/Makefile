@@ -213,7 +213,6 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-jetson_tk1-pm375-000-c00-00.dtb \
-	tegra124-norrin.dtb \
 	tegra124-norrin-pm374-0001-a00-00.dtb \
 	tegra124-norrin-pm374-0001-a01-00.dtb \
 	tegra124-loki.dtb \

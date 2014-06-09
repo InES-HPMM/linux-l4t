@@ -2,7 +2,6 @@ dtb-$(CONFIG_ARCH_VEXPRESS) += rtsm_ve-aemv8a.dtb foundation-v8.dtb
 
 targets += dtbs
 dtb-$(CONFIG_MACH_EXUMA) += tegra132-exuma.dtb
-dtb-$(CONFIG_MACH_T132REF) += tegra132-norrin.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-norrin-pm374-0001-a00-00.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-norrin-pm374-0001-a01-00.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-laguna.dtb
