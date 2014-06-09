@@ -165,4 +165,10 @@
 				"slow-charger", "apple-500ma", "apple-1a",
 				"apple-2a", "y-cable";
 	};
+
+	denver_cpuidle_pmic {
+		type = <1>; /* AMS 3722/3723 */
+		retention-voltage = <15>; /* vret = .55V */
+		lock = <0>;
+	};
 };
