@@ -26,6 +26,8 @@
 #include "panel-l-wxga-7.dtsi"
 #include "panel-p-wuxga-10-1.dtsi"
 #include "panel-s-wqxga-10-1.dtsi"
+#include "panel-a-edp-1080p-14-0.dtsi"
+#include "panel-i-edp-1080p-11-6.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 / {
 	nvidia,boardids = "1780:1000:03:B:3;1735:1000:01:D:3";
@@ -68,6 +70,19 @@
 				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
 				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 				nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(R, 6) 0>; /* PR6 */
+			};
+		};
+		sor {
+			status = "okay";
+		};
+		dpaux {
+			status = "okay";
+			nvidia,hpd-gpio = <&gpio 248 0>; /*PFF0*/
+			panel-a-edp-1080p-14-0 {
+				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+			panel-i-edp-1080p-11-6 {
+				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 		};
 		vi {
