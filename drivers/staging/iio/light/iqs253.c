@@ -820,6 +820,15 @@ static int iqs253_remove(struct i2c_client *client)
 
 static void iqs253_shutdown(struct i2c_client *client)
 {
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct iqs253_chip *chip = iio_priv(indio_dev);
+
+#if !defined(CONFIG_SENSORS_IQS253_AS_PROXIMITY)
+	if (chip->sar_wq)
+		cancel_delayed_work_sync(&chip->sar_dw);
+#endif
+	if (chip->wq)
+		cancel_delayed_work_sync(&chip->dw);
 
 }
 
