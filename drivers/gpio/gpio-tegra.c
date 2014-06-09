@@ -217,6 +217,7 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 				unsigned debounce)
 {
+	unsigned max_dbc;
 	/* Debounce feature implemented only for
 	 * ports(I,J,K,L) in Controller 2 */
 
@@ -224,8 +225,12 @@ static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 		unsigned debounce_ms = DIV_ROUND_UP(debounce, 1000);
 
 		debounce_ms = max(debounce_ms, 255U);
+
+		max_dbc = tegra_gpio_readl(GPIO_DBC_CNT(offset));
+		max_dbc = (max_dbc < debounce_ms) ? debounce_ms : max_dbc;
+
 		tegra_gpio_mask_write(GPIO_MSK_DBC_EN(offset), offset, 1);
-		tegra_gpio_writel(debounce_ms, GPIO_DBC_CNT(offset));
+		tegra_gpio_writel(max_dbc, GPIO_DBC_CNT(offset));
 		return 0;
 	}
 
