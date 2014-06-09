@@ -52,7 +52,6 @@
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
 			nvidia,low-v-win = <0x2>;
-			nvidia,dc-connection = "internal-lcd";
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
@@ -61,7 +60,6 @@
 			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <300000000>;
-			nvidia,dc-connection = "external-display";
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
