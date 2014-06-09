@@ -478,6 +478,16 @@ static const struct i2c_device_id cm3217_i2c_device_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, cm3217_i2c_device_id);
 
+static void cm3217_shutdown(struct i2c_client *client)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	inf->als_state = CHIP_POWER_OFF;
+	smp_wmb();
+	cancel_delayed_work_sync(&inf->dw);
+	cm3217_vreg_exit(inf);
+}
+
 #ifdef CONFIG_OF
 static const struct of_device_id cm3217_of_match[] = {
 	{ .compatible = "capella,cm3217", },
@@ -495,6 +505,7 @@ static struct i2c_driver cm3217_driver = {
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(cm3217_of_match),
 	},
+	.shutdown = cm3217_shutdown,
 };
 module_i2c_driver(cm3217_driver);
 
