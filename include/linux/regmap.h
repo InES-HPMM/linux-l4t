@@ -461,7 +461,15 @@ struct regmap_irq {
  * @num_type_reg:    Number of type registers.
  * @type_reg_stride: Stride to use for chips where type registers are not
  *			contiguous.
+ * @pre_irq:	The callback that is to be executed initially, before the main
+ *		handling in regmap irq	handler when an interrupt occurs.
+ * @post_irq:	The callback that is to be executed after the main handling in
+ *		the regmap irq handler when an interrupt occurs.
+ * @pre_post_irq_data: The driver specific data that is the parameter for the
+ *		pre_irq and post_irq callbacks.
+ *
  */
+
 struct regmap_irq_chip {
 	const char *name;
 
@@ -483,6 +491,10 @@ struct regmap_irq_chip {
 
 	int num_type_reg;
 	unsigned int type_reg_stride;
+
+	int (*pre_irq)(void *irq_data);
+	int (*post_irq)(void *irq_data);
+	void *pre_post_irq_data;
 };
 
 struct regmap_irq_chip_data;
