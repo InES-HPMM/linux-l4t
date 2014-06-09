@@ -85,9 +85,9 @@ static noinline void __init vcm30_t124_setup_bluedroid_pm(void)
 static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	/* name			parent		rate	enabled (always on)*/
 
-	{ "automotive.sclk",	NULL,		316800000,	true},
-	{ "automotive.hclk",	NULL,		316800000,	true},
-	{ "automotive.pclk",	NULL,		158400000,	true},
+	{ "automotive.sclk",	NULL,		264000000,	true},
+	{ "automotive.hclk",	NULL,		264000000,	true},
+	{ "automotive.pclk",	NULL,		132000000,	true},
 
 	{ "mselect",		"pll_p",	408000000,	true},
 	{ "automotive.mselect",	NULL,		408000000,	true},
@@ -98,6 +98,8 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "vic03.cbus",		NULL,		660000000,      false},
 	{ "tsec.cbus",		NULL,		660000000,      false},
+	{ "tsec",		"pll_c",	660000000,	false},
+	{ "vic03",		"pll_c",	660000000,	false},
 
 	{ "vi.c4bus",		NULL,		600000000,      false},
 	{ "isp.c4bus",		NULL,		600000000,      false},
@@ -194,6 +196,10 @@ struct therm_monitor_data vcm30t30_therm_monitor_data = {
 	.i2c_dev_name = "tmon-tmp411-sensor",
 };
 
+/*
+ * Set parent to NULL and enable = false since that is irrelevant
+ * here for setting POR rate.
+ */
 #define SET_FIXED_TARGET_RATE(clk_name, fixed_target_rate) \
 	{clk_name,	NULL,	fixed_target_rate,	false}
 
@@ -212,7 +218,7 @@ static  __initdata struct tegra_clk_init_table
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
-	SET_FIXED_TARGET_RATE("sbus",		316800000),
+	SET_FIXED_TARGET_RATE("sbus",		264000000),
 
 #ifdef CONFIG_TEGRA_PLLCX_FIXED
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -221,20 +227,19 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("pll_c3",		660000000),
 	SET_FIXED_TARGET_RATE("c3bus",		660000000),
 #endif
-	SET_FIXED_TARGET_RATE("pll_c",		792000000),
+	SET_FIXED_TARGET_RATE("pll_c",		660000000),
 	SET_FIXED_TARGET_RATE("pll_c4",		600000000),
 	SET_FIXED_TARGET_RATE("c4bus",		600000000),
-	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
+	SET_FIXED_TARGET_RATE("pll_c_out1",	264000000),
 #endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
 
-	SET_FIXED_TARGET_RATE("sclk",		316800000),
-	SET_FIXED_TARGET_RATE("hclk",		316800000),
-	SET_FIXED_TARGET_RATE("ahb.sclk",	316800000),
-	SET_FIXED_TARGET_RATE("pclk",		158400000),
-	SET_FIXED_TARGET_RATE("apb.sclk",	158400000),
-
-	SET_FIXED_TARGET_RATE("cpu_lp",		1092000000),
+	SET_FIXED_TARGET_RATE("sclk",		264000000),
+	SET_FIXED_TARGET_RATE("hclk",		264000000),
+	SET_FIXED_TARGET_RATE("ahb.sclk",	264000000),
+	SET_FIXED_TARGET_RATE("pclk",		132000000),
+	SET_FIXED_TARGET_RATE("apb.sclk",	132000000),
+	SET_FIXED_TARGET_RATE("cpu_lp",		1044000000),
 
 	SET_FIXED_TARGET_RATE("vde",		432000000),
 	SET_FIXED_TARGET_RATE("se",		432000000),
