@@ -379,8 +379,8 @@ static struct dvfs core_dvfs_table_automotive[] = {
 	/* Clock limits for internal blocks, PLLs */
 
 	CORE_DVFS("emc",        2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 792000,  792000),
-	CORE_DVFS("cpu_lp",     2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 1092000, 1092000),
-	CORE_DVFS("sbus",       2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 316800,  316800),
+	CORE_DVFS("cpu_lp",     2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 1044000, 1044000),
+	CORE_DVFS("sbus",       2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 264000,  264000),
 
 	CORE_DVFS("vic03",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 660000,  660000),
 	CORE_DVFS("tsec",       2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 660000,  660000),
@@ -388,7 +388,7 @@ static struct dvfs core_dvfs_table_automotive[] = {
 	CORE_DVFS("se",         2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 432000,  432000),
 	CORE_DVFS("vde",        2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 432000,  432000),
 
-	CORE_DVFS("host1x",     2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 372000,  372000),
+	CORE_DVFS("host1x",     2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 264000,  264000),
 	CORE_DVFS("vi",         2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 600000,  600000),
 	CORE_DVFS("isp",        2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 600000,  600000),
 
@@ -396,12 +396,12 @@ static struct dvfs core_dvfs_table_automotive[] = {
 	CORE_DVFS("c2bus",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 432000,  432000),
 	CORE_DVFS("c3bus",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 660000,  660000),
 #else
-	CORE_DVFS("cbus",      -1, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 372000,  372000),
+	CORE_DVFS("cbus",      -1, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 660000,  660000),
 #endif
 
 	CORE_DVFS("c4bus",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 600000,  600000),
 	CORE_DVFS("pll_m",	2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 792000,  792000),
-	CORE_DVFS("pll_c",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 792000,  792000),
+	CORE_DVFS("pll_c",      2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 660000,  660000),
 	CORE_DVFS("pll_c2",     2, -1, 1, KHZ,       1,      1,      1,      1,      1,      1,      1, 432000,  432000),
 	CORE_DVFS("pll_c3",  2, -1, 1, KHZ,          1,      1,      1,      1,      1,      1,      1, 660000,  660000),
 
