@@ -143,6 +143,8 @@
 
 				as3722_sd4: sd4 {
 					regulator-name = "pex-hdmi";
+					regulator-min-microvolt = <1050000>;
+				        regulator-max-microvolt = <1050000>;
 					regulator-boot-on;
 
 					consumers {
