@@ -32,7 +32,6 @@
 #include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/tegra-soc.h>
-#include <linux/tegra-pmc.h>
 
 #include <mach/irqs.h>
 
@@ -54,12 +53,6 @@
 
 static u32 tegra_chip_id;
 #define IS_T13X			(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
-
-int __init tn8_regulator_init(void)
-{
-	tegra_pmc_pmu_interrupt_polarity(true);
-	return 0;
-}
 
 int __init tn8_edp_init(void)
 {
