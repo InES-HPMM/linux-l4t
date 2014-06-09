@@ -32,6 +32,7 @@
 #include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/tegra-soc.h>
+#include <linux/tegra-pmc.h>
 
 #include <mach/irqs.h>
 
@@ -50,27 +51,13 @@
 #include "tegra-board-id.h"
 #include "battery-ini-model-data.h"
 
-#define PMC_CTRL                0x0
-#define PMC_CTRL_INTR_LOW       (1 << 17)
 
 static u32 tegra_chip_id;
 #define IS_T13X			(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
 int __init tn8_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-	/* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
+	tegra_pmc_pmu_interrupt_polarity(true);
 	return 0;
 }
 

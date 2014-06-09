@@ -34,10 +34,6 @@
 #include "tegra11_soctherm.h"
 #include <mach/board_id.h>
 
-#define PMC_CTRL		0x0
-#define PMC_CTRL_INTR_LOW	(1 << 17)
-
-
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),

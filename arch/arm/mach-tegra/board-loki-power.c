@@ -33,6 +33,7 @@
 #include <linux/system-wakeup.h>
 #include <linux/syscore_ops.h>
 #include <linux/delay.h>
+#include <linux/tegra-pmc.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
@@ -54,8 +55,6 @@
 #include "tegra_cl_dvfs.h"
 #include "tegra11_soctherm.h"
 
-#define PMC_CTRL                0x0
-#define PMC_CTRL_INTR_LOW       (1 << 17)
 void tegra13x_vdd_cpu_align(int step_uv, int offset_uv);
 
 static void loki_reset_gamepad(void)
@@ -277,15 +276,7 @@ int __init loki_rail_alignment_init(void)
 
 int __init loki_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-
-	/* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+	tegra_pmc_pmu_interrupt_polarity(true);
 
 	platform_device_register(&power_supply_extcon_device);
 
