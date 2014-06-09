@@ -70,7 +70,7 @@ char driver_version[] =
 
 /** Firmware name */
 char *fw_name;
-int req_fw_nowait;
+int req_fw_nowait = 1;
 
 /** MAC address */
 char *mac_addr;

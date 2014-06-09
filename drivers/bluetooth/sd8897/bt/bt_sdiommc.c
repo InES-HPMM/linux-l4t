@@ -33,7 +33,7 @@
 /** Firmware name */
 static char *fw_name;
 /** request firmware nowait */
-static int req_fw_nowait;
+static int req_fw_nowait = 1;
 static int multi_fn = BIT(2);
 
 #define DEFAULT_FW_NAME "sd8897_uapsta.bin"
