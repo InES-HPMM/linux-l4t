@@ -229,6 +229,8 @@
 #define MAX77620_ONOFFCNFG1_SFT_RST		BIT(7)
 #define MAX77620_ONOFFCNFG1_PWR_OFF		BIT(1)
 
+#define	MAX77620_GLBLM_MASK			BIT(1)
+
 
 /* I2c Slave Id */
 enum {

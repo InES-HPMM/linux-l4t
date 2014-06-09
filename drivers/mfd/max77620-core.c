@@ -56,23 +56,23 @@ static const struct regmap_irq max77620_top_irqs[] = {
 		.reg_offset = 0,
 	},
 	[MAX77620_IRQ_TOP_LDO] = {
-		.mask = MAX77620_IRQ_TOP_LDO,
+		.mask = MAX77620_IRQ_TOP_LDO_MASK,
 		.reg_offset = 0,
 	},
 	[MAX77620_IRQ_TOP_GPIO] = {
-		.mask = MAX77620_IRQ_TOP_GPIO,
-		.reg_offset = 0
+		.mask = MAX77620_IRQ_TOP_GPIO_MASK,
+		.reg_offset = 0,
 	},
 	[MAX77620_IRQ_TOP_RTC] = {
-		.mask = MAX77620_IRQ_TOP_RTC,
+		.mask = MAX77620_IRQ_TOP_RTC_MASK,
 		.reg_offset = 0,
 	},
 	[MAX77620_IRQ_TOP_32K] = {
-		.mask = MAX77620_IRQ_TOP_32K,
+		.mask = MAX77620_IRQ_TOP_32K_MASK,
 		.reg_offset = 0,
 	},
 	[MAX77620_IRQ_TOP_ONOFF] = {
-		.mask = MAX77620_IRQ_TOP_ONOFF,
+		.mask = MAX77620_IRQ_TOP_ONOFF_MASK,
 		.reg_offset = 0,
 	},
 };
@@ -117,6 +117,33 @@ static struct mfd_cell max77620_children[] = {
 	},
 };
 
+int max77620_top_irq_chip_pre_irq(void *data)
+{
+	struct max77620_chip *chip = data;
+	int ret = 0;
+
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+		MAX77620_REG_INTENLBT, MAX77620_GLBLM_MASK,
+		MAX77620_REG_INTENLBT);
+	if (ret < 0)
+		dev_err(chip->dev, "GLBLM masking failed: %d\n", ret);
+
+	return ret;
+}
+
+int max77620_top_irq_chip_post_irq(void *data)
+{
+	struct max77620_chip *chip = data;
+	int ret = 0;
+
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+		MAX77620_REG_INTENLBT, MAX77620_GLBLM_MASK, 0);
+	if (ret < 0)
+		dev_err(chip->dev, "GLBLM unmasking failed: %d\n", ret);
+
+	return ret;
+}
+
 static struct regmap_irq_chip max77620_top_irq_chip = {
 	.name = "max77620-top",
 	.irqs = max77620_top_irqs,
@@ -125,6 +152,8 @@ static struct regmap_irq_chip max77620_top_irq_chip = {
 	.irq_reg_stride = 1,
 	.status_base = MAX77620_REG_IRQTOP,
 	.mask_base = MAX77620_REG_IRQTOPM,
+	.pre_irq = max77620_top_irq_chip_pre_irq,
+	.post_irq = max77620_top_irq_chip_post_irq,
 };
 
 static const struct regmap_config max77620_regmap_config[] = {
@@ -192,6 +221,8 @@ static int max77620_probe(struct i2c_client *client,
 			goto fail_client_reg;
 		}
 	}
+
+	max77620_top_irq_chip.pre_post_irq_data = chip;
 
 	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
 		chip->chip_irq, IRQF_ONESHOT, chip->irq_base,
