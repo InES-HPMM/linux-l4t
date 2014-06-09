@@ -907,7 +907,9 @@ int tegra_dc_get_panel_sync_rate(void);
 
 int tegra_dc_get_out(const struct tegra_dc *dc);
 
-struct device_node *tegra_panel_get_dt_node(
+struct device_node *tegra_primary_panel_get_dt_node(
+				struct tegra_dc_platform_data *pdata);
+struct device_node *tegra_secondary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
 
 void find_dc_node(struct device_node **dc1_node,
