@@ -248,4 +248,9 @@
 			status = "disabled";
 		};
 	};
+
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+	};
 };
