@@ -643,68 +643,6 @@ static __init void t210_panel_select(void)
 
 }
 
-static struct nvmap_platform_carveout t210_carveouts[] = {
-	[0] = {
-		.name		= "iram",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
-		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.dma_dev	= &tegra_iram_dev,
-	},
-	[1] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0, /* Filled in by t210_panel_init() */
-		.size		= 0, /* Filled in by t210_panel_init() */
-		.dma_dev	= &tegra_generic_dev,
-	},
-	[2] = {
-		.name		= "vpr",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0, /* Filled in by t210_panel_init() */
-		.size		= 0, /* Filled in by t210_panel_init() */
-		.dma_dev	= &tegra_vpr_dev,
-	},
-};
-
-static struct nvmap_platform_data t210_nvmap_data = {
-	.carveouts	= t210_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(t210_carveouts),
-};
-static struct platform_device t210_nvmap_device  = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &t210_nvmap_data,
-	},
-};
-
-static __init int t210_nvmap_init(void)
-{
-	int err = 0;
-
-#ifdef CONFIG_TEGRA_NVMAP
-	t210_carveouts[1].base = tegra_carveout_start;
-	t210_carveouts[1].size = tegra_carveout_size;
-	t210_carveouts[1].dma_dev = &tegra_generic_dev;
-	t210_carveouts[2].base = tegra_vpr_start;
-	t210_carveouts[2].size = tegra_vpr_size;
-	t210_carveouts[2].dma_dev = &tegra_vpr_dev;
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	t210_carveouts[1].cma_dev = &tegra_generic_cma_dev;
-	t210_carveouts[1].resize = false;
-	carveout_linear_set(&tegra_vpr_cma_dev);
-	t210_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
-	t210_carveouts[2].resize = true;
-	t210_carveouts[2].cma_chunk_size = SZ_32M;
-#endif
-
-	err = platform_device_register(&t210_nvmap_device);
-#endif
-	return err;
-}
-
 static __init int t210_fb_init(void)
 {
 	struct resource *res;
@@ -732,25 +670,25 @@ static __init int t210_fb_copy(void)
 {
 	/* Copy the bootloader fb to the fb. */
 	if (tegra_bootloader_fb_size)
-		__tegra_move_framebuffer(&t210_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 					tegra_fb_start,
 					tegra_bootloader_fb_start,
 					min(tegra_fb_size,
 					tegra_bootloader_fb_size));
 	else
-		__tegra_clear_framebuffer(&t210_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 					  tegra_fb_start,
 					  tegra_fb_size);
 
 	/* Copy the bootloader fb2 to the fb2. */
 	if (tegra_bootloader_fb2_size)
-		__tegra_move_framebuffer(&t210_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 					tegra_fb2_start,
 					tegra_bootloader_fb2_start,
 					min(tegra_fb2_size,
 					tegra_bootloader_fb2_size));
 	else
-		__tegra_clear_framebuffer(&t210_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 					tegra_fb2_start,
 					tegra_fb2_size);
 	return 0;
@@ -769,7 +707,7 @@ int __init t210_panel_init(void)
 	t210_panel_select();
 #endif
 
-	err = t210_nvmap_init();
+	err = nvmap_init();
 	if (err) {
 		pr_err("nvmap device registration failed\n");
 		return err;

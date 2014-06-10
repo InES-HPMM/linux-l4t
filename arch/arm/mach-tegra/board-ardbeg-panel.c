@@ -840,10 +840,6 @@ int __init ardbeg_panel_init(void)
 
 	struct device_node *dc1_node = NULL;
 	struct device_node *dc2_node = NULL;
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	struct dma_declare_info vpr_dma_info;
-	struct dma_declare_info generic_dma_info;
-#endif
 
 	find_dc_node(&dc1_node, &dc2_node);
 
@@ -851,59 +847,7 @@ int __init ardbeg_panel_init(void)
 	ardbeg_panel_select();
 #endif
 
-#ifdef CONFIG_TEGRA_NVMAP
-	ardbeg_carveouts[1].base = tegra_carveout_start;
-	ardbeg_carveouts[1].size = tegra_carveout_size;
-
-	ardbeg_carveouts[2].base = tegra_vpr_start;
-	ardbeg_carveouts[2].size = tegra_vpr_size;
-
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	generic_dma_info.name = "generic";
-	generic_dma_info.base = tegra_carveout_start;
-	generic_dma_info.size = tegra_carveout_size;
-	generic_dma_info.resize = false;
-	generic_dma_info.cma_dev = NULL;
-
-	vpr_dma_info.name = "vpr";
-	vpr_dma_info.base = tegra_vpr_start;
-	vpr_dma_info.size = tegra_vpr_size;
-	vpr_dma_info.resize = false;
-	vpr_dma_info.cma_dev = NULL;
-	ardbeg_carveouts[1].cma_dev = &tegra_generic_cma_dev;
-	ardbeg_carveouts[1].resize = false;
-	ardbeg_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
-	ardbeg_carveouts[2].resize = true;
-
-	vpr_dma_info.size = SZ_32M;
-	vpr_dma_info.resize = true;
-	vpr_dma_info.cma_dev = &tegra_vpr_cma_dev;
-	vpr_dma_info.notifier.ops = &vpr_dev_ops;
-
-	if (tegra_carveout_size) {
-		err = dma_declare_coherent_resizable_cma_memory(
-				&tegra_generic_dev, &generic_dma_info);
-		if (err) {
-			pr_err("Generic coherent memory declaration failed\n");
-			return err;
-		}
-	}
-	if (tegra_vpr_size) {
-		err = dma_declare_coherent_resizable_cma_memory(
-				&tegra_vpr_dev, &vpr_dma_info);
-		if (err) {
-			pr_err("VPR coherent memory declaration failed\n");
-			return err;
-		}
-	}
-#endif
-
-	err = platform_device_register(&ardbeg_nvmap_device);
-	if (err) {
-		pr_err("nvmap device registration failed\n");
-		return err;
-	}
-#endif
+	nvmap_init();
 
 	phost1x = ardbeg_host1x_init();
 	if (!phost1x) {
