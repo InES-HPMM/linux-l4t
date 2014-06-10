@@ -41,8 +41,6 @@ struct regs_info {
 	u8	pd_cntrl_addr;
 	int	sleep_id;
 	int	pd_bit;
-	u8	pd_ctrl_addr;
-	int	pd_ctrl_bits;
 };
 
 static const struct regs_info palmas_regs_info[] = {
@@ -157,8 +155,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO1,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO1,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO1,
 	},
 	{
 		.name		= "LDO2",
@@ -168,8 +164,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO2,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO2,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO2,
 	},
 	{
 		.name		= "LDO3",
@@ -179,8 +173,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO3,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO3,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO3,
 	},
 	{
 		.name		= "LDO4",
@@ -190,8 +182,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO4,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO4,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO4,
 	},
 	{
 		.name		= "LDO5",
@@ -201,8 +191,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO5,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO5,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO5,
 	},
 	{
 		.name		= "LDO6",
@@ -212,8 +200,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO6,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO6,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO6,
 	},
 	{
 		.name		= "LDO7",
@@ -223,8 +209,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO7,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO7,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO7,
 	},
 	{
 		.name		= "LDO8",
@@ -234,8 +218,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO8,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL1,
 		.pd_bit		= PALMAS_LDO_PD_CTRL1_LDO8,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL1,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL1_LDO8,
 	},
 	{
 		.name		= "LDO9",
@@ -245,8 +227,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO9,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO9,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO9,
 	},
 	{
 		.name		= "LDO10",
@@ -256,8 +236,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO10,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO10,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO10,
 	},
 	{
 		.name		= "LDO11",
@@ -267,8 +245,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO11,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO11,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO11,
 	},
 	{
 		.name		= "LDO12",
@@ -278,8 +254,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO12,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO12,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO12,
 	},
 	{
 		.name		= "LDO13",
@@ -289,8 +263,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO13,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO13,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO13,
 	},
 	{
 		.name		= "LDO14",
@@ -300,8 +272,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDO14,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDO14,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDO14,
 	},
 	{
 		.name		= "LDOLN",
@@ -311,8 +281,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDOLN,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDOLN,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDOLN,
 	},
 	{
 		.name		= "LDOUSB",
@@ -322,8 +290,6 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_EXTERNAL_REQSTR_ID_LDOUSB,
 		.pd_cntrl_addr	= PALMAS_LDO_PD_CTRL2,
 		.pd_bit		= PALMAS_LDO_PD_CTRL2_LDOUSB,
-		.pd_ctrl_addr	= PALMAS_LDO_PD_CTRL2,
-		.pd_ctrl_bits	= PALMAS_LDO_PD_CTRL2_LDOUSB,
 	},
 	{
 		.name		= "REGEN1",
@@ -923,7 +889,7 @@ static int palams_rail_pd_control(struct palmas *palmas, int id, bool disable)
 	bit = palmas_regs_info[id].pd_bit;
 
 	val = (disable) ? 0 : bit;
-	ret = palmas_update_bits(palmas, PALMAS_SMPS_BASE, addr, bit, val);
+	ret = palmas_update_bits(palmas, base, addr, bit, val);
 	if (ret < 0) {
 		dev_err(palmas->dev, "PD control config failed %d\n", ret);
 		return ret;
@@ -1023,7 +989,8 @@ static int palmas_smps_init(struct regulator_dev *rdev,
 	}
 
 	palams_rail_pd_control(palmas, id,
-		reg_init->disable_active_discharge_idle);
+		reg_init->disable_active_discharge_idle ||
+			reg_init->disable_pull_down);
 	return 0;
 }
 
@@ -1076,19 +1043,8 @@ static int palmas_ldo_init(struct regulator_dev *rdev,
 	}
 
 	palams_rail_pd_control(palmas, id,
-		reg_init->disable_active_discharge_idle);
-
-	if (reg_init->disable_pull_down) {
-		ret = palmas_update_bits(palmas, PALMAS_LDO_BASE,
-			palmas_regs_info[id].pd_ctrl_addr,
-			palmas_regs_info[id].pd_ctrl_bits, 0);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"LDO_PD_CTRL 0x%02x update failed: %d\n",
-					palmas_regs_info[id].pd_ctrl_addr, ret);
-			return;
-		}
-	}
+		reg_init->disable_active_discharge_idle ||
+			reg_init->disable_pull_down);
 	return 0;
 }
 
@@ -1684,6 +1640,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->config_flags[id] = reg_init->config_flags;
 			pmic->disable_active_discharge_idle[id] =
 					reg_init->disable_active_discharge_idle;
+			pmic->disable_pull_down[id] =
+					reg_init->disable_pull_down;
 			ret = palmas_smps_init(rdev, palmas, id, reg_init);
 			if (ret)
 				goto err_unregister_regulator;
@@ -1811,6 +1769,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			pmic->config_flags[id] = reg_init->config_flags;
 			pmic->disable_active_discharge_idle[id] =
 					reg_init->disable_active_discharge_idle;
+			pmic->disable_pull_down[id] =
+					reg_init->disable_pull_down;
 			if (id < PALMAS_REG_REGEN1)
 				ret = palmas_ldo_init(rdev, palmas, id,
 							reg_init);
@@ -1859,10 +1819,13 @@ static int palmas_regulators_remove(struct platform_device *pdev)
 static void palams_regulators_shutdown(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
+	struct palmas_pmic *pmic = platform_get_drvdata(pdev);
 	int id;
 
-	for (id = 0; id < PALMAS_NUM_REGS; id++)
-		palams_rail_pd_control(palmas, id, false);
+	for (id = 0; id < PALMAS_NUM_REGS; id++) {
+		if (!pmic->disable_pull_down[id])
+			palams_rail_pd_control(palmas, id, false);
+	}
 }
 
 static struct of_device_id of_palmas_match_tbl[] = {
@@ -1898,7 +1861,8 @@ static int palmas_suspend(struct device *dev)
 			if (pmic->desc[id].ops->disable)
 				pmic->desc[id].ops->disable(pmic->rdev[id]);
 		}
-		palams_rail_pd_control(palmas, id, false);
+		if (!pmic->disable_pull_down[id])
+			palams_rail_pd_control(palmas, id, false);
 	}
 	return 0;
 }
@@ -1924,7 +1888,8 @@ static int palmas_resume(struct device *dev)
 				pmic->desc[id].ops->enable(pmic->rdev[id]);
 		}
 
-		palams_rail_pd_control(palmas, id,
+		if (!pmic->disable_pull_down[id])
+			palams_rail_pd_control(palmas, id,
 				pmic->disable_active_discharge_idle[id]);
 	}
 	return 0;
