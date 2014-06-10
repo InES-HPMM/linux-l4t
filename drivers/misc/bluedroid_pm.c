@@ -39,6 +39,8 @@
 #include <linux/bluedroid_pm.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 #define PROC_DIR	"bluetooth/sleep"
 
@@ -69,7 +71,7 @@ struct bluedroid_pm_data {
 	int is_blocked;
 	int resume_min_frequency;
 	unsigned long flags;
-	unsigned host_wake_irq;
+	int host_wake_irq;
 	struct regulator *vdd_3v3;
 	struct regulator *vdd_1v8;
 	struct rfkill *rfkill;
@@ -160,17 +162,17 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 
 	mdelay(100);
 	if (blocked) {
-		if (bluedroid_pm->gpio_shutdown)
+		if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_shutdown, 0);
-		if (bluedroid_pm->gpio_reset)
+		if (gpio_is_valid(bluedroid_pm->gpio_reset))
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_reset, 0);
 		if (bluedroid_pm->vdd_3v3)
 			regulator_disable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
 			regulator_disable(bluedroid_pm->vdd_1v8);
-		if (bluedroid_pm->ext_wake)
+		if (gpio_is_valid(bluedroid_pm->ext_wake))
 			wake_unlock(&bluedroid_pm->wake_lock);
 		if (bluedroid_pm->resume_min_frequency)
 			pm_qos_remove_request(&bluedroid_pm->
@@ -180,10 +182,10 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 			regulator_enable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
 			regulator_enable(bluedroid_pm->vdd_1v8);
-		if (bluedroid_pm->gpio_shutdown)
+		if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_shutdown, 1);
-		if (bluedroid_pm->gpio_reset)
+		if (gpio_is_valid(bluedroid_pm->gpio_reset))
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_reset, 1);
 		if (bluedroid_pm->resume_min_frequency)
@@ -221,6 +223,7 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 	bool enable = false;  /* off */
+	struct device_node *node;
 
 	bluedroid_pm = kzalloc(sizeof(*bluedroid_pm), GFP_KERNEL);
 	if (!bluedroid_pm)
@@ -237,24 +240,66 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		bluedroid_pm->vdd_1v8 = NULL;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO, "reset_gpio");
-	if (res) {
-		bluedroid_pm->gpio_reset = res->start;
+	if (pdev->dev.of_node) {
+		node = pdev->dev.of_node;
+
+		bluedroid_pm->gpio_reset =
+				of_get_named_gpio(node, "bluedroid_pm,reset-gpio", 0);
+		bluedroid_pm->gpio_shutdown =
+				of_get_named_gpio(node, "bluedroid_pm,shutdown-gpio", 0);
+		bluedroid_pm->host_wake =
+				of_get_named_gpio(node, "bluedroid_pm,host-wake-gpio", 0);
+		bluedroid_pm->host_wake_irq = platform_get_irq(pdev, 0);
+		bluedroid_pm->ext_wake =
+				of_get_named_gpio(node, "bluedroid_pm,ext-wake-gpio", 0);
+	} else {
+		res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+							"reset_gpio");
+		if (res)
+			bluedroid_pm->gpio_reset = res->start;
+		else
+			bluedroid_pm->gpio_reset = -1;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+							"shutdown_gpio");
+		if (res)
+			bluedroid_pm->gpio_shutdown = res->start;
+		else
+			bluedroid_pm->gpio_shutdown = -1;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+						"gpio_host_wake");
+		if (res)
+			bluedroid_pm->host_wake = res->start;
+		else
+			bluedroid_pm->host_wake = -1;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_IRQ,
+							"host_wake");
+		if (res)
+			bluedroid_pm->host_wake_irq = res->start;
+		else
+			bluedroid_pm->host_wake_irq = -1;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+						"gpio_ext_wake");
+		if (res)
+			bluedroid_pm->ext_wake = res->start;
+		else
+			bluedroid_pm->ext_wake = -1;
+	}
+
+	if (gpio_is_valid(bluedroid_pm->gpio_reset)) {
 		ret = gpio_request(bluedroid_pm->gpio_reset, "reset_gpio");
 		if (ret) {
 			BDP_ERR("Failed to get reset gpio\n");
 			goto free_res;
 		}
 		gpio_direction_output(bluedroid_pm->gpio_reset, enable);
-	} else {
+	} else
 		BDP_DBG("Reset gpio not registered.\n");
-		bluedroid_pm->gpio_reset = 0;
-	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-						"shutdown_gpio");
-	if (res) {
-		bluedroid_pm->gpio_shutdown = res->start;
+	if (gpio_is_valid(bluedroid_pm->gpio_shutdown)) {
 		ret = gpio_request(bluedroid_pm->gpio_shutdown,
 						"shutdown_gpio");
 		if (ret) {
@@ -262,16 +307,15 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 			goto free_res;
 		}
 		gpio_direction_output(bluedroid_pm->gpio_shutdown, enable);
-	} else {
+	} else
 		BDP_DBG("shutdown gpio not registered\n");
-		bluedroid_pm->gpio_shutdown = 0;
-	}
 
 	/*
 	 * make sure at-least one of the GPIO or regulators avaiable to
 	 * register with rfkill is defined
 	 */
-	if (bluedroid_pm->gpio_reset || bluedroid_pm->gpio_shutdown ||
+	if ((gpio_is_valid(bluedroid_pm->gpio_reset)) ||
+		(gpio_is_valid(bluedroid_pm->gpio_shutdown)) ||
 		bluedroid_pm->vdd_1v8 || bluedroid_pm->vdd_3v3) {
 		rfkill = rfkill_alloc(pdev->name, &pdev->dev,
 				RFKILL_TYPE_BLUETOOTH, &bluedroid_pm_rfkill_ops,
@@ -293,10 +337,7 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		bluedroid_pm->rfkill = rfkill;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-				"gpio_host_wake");
-	if (res) {
-		bluedroid_pm->host_wake = res->start;
+	if (gpio_is_valid(bluedroid_pm->host_wake)) {
 		ret = gpio_request(bluedroid_pm->host_wake, "bt_host_wake");
 		if (ret) {
 			BDP_ERR("Failed to get host_wake gpio\n");
@@ -304,16 +345,11 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		}
 		/* configure host_wake as input */
 		gpio_direction_input(bluedroid_pm->host_wake);
-	} else {
+	} else
 		BDP_DBG("gpio_host_wake not registered\n");
-		bluedroid_pm->host_wake = 0;
-	}
 
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "host_wake");
-	if (res) {
+	if (bluedroid_pm->host_wake_irq > -1) {
 		BDP_DBG("found host_wake irq\n");
-		bluedroid_pm->host_wake_irq = res->start;
 		ret = request_irq(bluedroid_pm->host_wake_irq,
 					bluedroid_pm_hostwake_isr,
 					IRQF_DISABLED | IRQF_TRIGGER_RISING,
@@ -322,15 +358,10 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 			BDP_ERR("Failed to get host_wake irq\n");
 			goto free_res;
 		}
-	} else {
+	} else
 		BDP_DBG("host_wake not registered\n");
-		bluedroid_pm->host_wake_irq = 0;
-	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-				"gpio_ext_wake");
-	if (res) {
-		bluedroid_pm->ext_wake = res->start;
+	if (gpio_is_valid(bluedroid_pm->ext_wake)) {
 		ret = gpio_request(bluedroid_pm->ext_wake, "bt_ext_wake");
 		if (ret) {
 			BDP_ERR("Failed to get ext_wake gpio\n");
@@ -349,10 +380,8 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		init_timer(&bluedroid_pm_timer);
 		bluedroid_pm_timer.function = bluedroid_pm_timer_expire;
 		bluedroid_pm_timer.data = (unsigned long)bluedroid_pm;
-	} else {
+	} else
 		BDP_DBG("gpio_ext_wake not registered\n");
-		bluedroid_pm->ext_wake = 0;
-	}
 
 	/* Update resume_min_frequency, if pdata is passed from board files */
 	if (pdata)
@@ -368,13 +397,13 @@ free_res:
 		regulator_put(bluedroid_pm->vdd_3v3);
 	if (bluedroid_pm->vdd_1v8)
 		regulator_put(bluedroid_pm->vdd_1v8);
-	if (bluedroid_pm->gpio_shutdown)
+	if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
 		gpio_free(bluedroid_pm->gpio_shutdown);
-	if (bluedroid_pm->gpio_reset)
+	if (gpio_is_valid(bluedroid_pm->gpio_reset))
 		gpio_free(bluedroid_pm->gpio_reset);
-	if (bluedroid_pm->ext_wake)
+	if (gpio_is_valid(bluedroid_pm->ext_wake))
 		gpio_free(bluedroid_pm->ext_wake);
-	if (bluedroid_pm->host_wake)
+	if (gpio_is_valid(bluedroid_pm->host_wake))
 		gpio_free(bluedroid_pm->host_wake);
 	if (bluedroid_pm->rfkill) {
 		rfkill_unregister(bluedroid_pm->rfkill);
@@ -438,14 +467,22 @@ static int bluedroid_pm_resume(struct platform_device *pdev)
 
 	return 0;
 }
+
+static struct of_device_id bdroid_of_match[] = {
+	{ .compatible = "nvidia,tegra-bluedroid_pm", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bdroid_of_match);
+
 static struct platform_driver bluedroid_pm_driver = {
 	.probe = bluedroid_pm_probe,
 	.remove = bluedroid_pm_remove,
 	.suspend = bluedroid_pm_suspend,
 	.resume = bluedroid_pm_resume,
 	.driver = {
-		   .name = "bluedroid_pm",
-		   .owner = THIS_MODULE,
+		.name = "bluedroid_pm",
+		.of_match_table = of_match_ptr(bdroid_of_match),
+		.owner = THIS_MODULE,
 	},
 };
 
