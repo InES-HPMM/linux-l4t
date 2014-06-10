@@ -33,8 +33,8 @@ struct gr_address_value {
 	unsigned int gr_value;
 };
 
-extern unsigned long tegra_bl_debug_data_start;
-extern unsigned long tegra_bl_debug_data_size;
+extern phys_addr_t tegra_bl_debug_data_start;
+extern phys_addr_t tegra_bl_debug_data_size;
 
 static int dbg_golden_register_show(struct seq_file *s, void *unused);
 static int dbg_golden_register_open(struct inode *inode, struct file *file);
@@ -51,14 +51,13 @@ static const struct file_operations debug_gr_fops = {
 static int dbg_golden_register_show(struct seq_file *s, void *unused)
 {
 	struct gr_address_value *gr_memory_dump;
-	int gr_entries = 0;
+	unsigned int gr_entries = 0;
 	int i;
 
 	gr_entries = tegra_bl_debug_data_size / sizeof(struct gr_address_value);
 
-	gr_memory_dump = (struct gr_address_value *)phys_to_virt(
-			(phys_addr_t)((struct gr_address_value *)
-			tegra_bl_debug_data_start));
+	gr_memory_dump = (struct gr_address_value *)
+				phys_to_virt(tegra_bl_debug_data_start);
 
 	for (i = 0; i < gr_entries; i++) {
 		seq_printf(s, "{Address 0x%08x}, {Value 0x%08x}\n",
