@@ -449,7 +449,15 @@ do {									       \
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT	27
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0x1F << 27)
 
-#define OUT_OF_TABLE_CPCON		0x8
+/* PLLMB */
+#define PLLMB_BASE_LOCK			(1 << 27)
+
+#define PLLMB_MISC0_LOCK_OVERRIDE	(1 << 18)
+#define PLLMB_MISC0_IDDQ		(1 << 17)
+#define PLLMB_MISC0_LOCK_ENABLE		(1 << 16)
+
+#define PLLMB_MISC0_DEFAULT_VALUE	0x00030000
+#define PLLMB_MISC0_WRITE_MASK		0x0007ffff
 
 #define SUPER_CLK_MUX			0x00
 #define SUPER_STATE_SHIFT		28
@@ -3867,6 +3875,59 @@ static struct clk_ops tegra_pllm_ops = {
 	.set_rate		= tegra21_pllm_clk_set_rate,
 };
 
+/* PLLMB */
+static void pllmb_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	u32 mask, val = clk_readl(c->reg);
+	c->u.pll.defaults_set = true;
+
+	if (val & c->u.pll.controls->enable_mask) {
+		/*
+		 * PLL is ON: check if defaults already set, then set those
+		 * that can be updated in flight.
+		 */
+		val = PLLMB_MISC0_DEFAULT_VALUE & (~PLLMB_MISC0_IDDQ);
+		mask = PLLMB_MISC0_LOCK_ENABLE | PLLMB_MISC0_LOCK_OVERRIDE;
+		PLL_MISC_CHK_DEFAULT(c, 0, val, ~mask & PLLMB_MISC0_WRITE_MASK);
+
+		/* Enable lock detect */
+		val = clk_readl(c->reg + c->u.pll.misc0);
+		val &= ~mask;
+		val |= PLLMB_MISC0_DEFAULT_VALUE & mask;
+		pll_writel_delay(val, c->reg + c->u.pll.misc0);
+
+		return;
+	}
+
+	/* set IDDQ, enable lock detect */
+	pll_writel_delay(PLLMB_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+}
+
+static int tegra21_pllmb_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	if (c->state == ON) {
+		if (rate != clk_get_rate_locked(c)) {
+			pr_err("%s: Can not change memory %s rate in flight\n",
+			       __func__, c->name);
+			return -EINVAL;
+		}
+		return 0;
+	}
+	return tegra_pll_clk_set_rate(c, rate);
+}
+
+static void tegra21_pllmb_clk_init(struct clk *c)
+{
+	tegra_pll_clk_init(c);
+}
+
+static struct clk_ops tegra_pllmb_ops = {
+	.init			= tegra21_pllmb_clk_init,
+	.enable			= tegra_pll_clk_enable,
+	.disable		= tegra_pll_clk_disable,
+	.set_rate		= tegra21_pllmb_clk_set_rate,
+};
+
 /* non-monotonic mapping below is not a typo */
 static u8 plle_p[PLLE_CMLDIV_MAX + 1] = {
 /* CMLDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
@@ -7262,6 +7323,37 @@ static struct clk tegra_pll_m = {
 	},
 };
 
+struct clk_pll_controls pllmb_controls = {
+	.enable_mask = PLL_BASE_ENABLE,
+	.iddq_mask = PLLMB_MISC0_IDDQ,
+	.iddq_reg_idx = PLL_MISC0_IDX,
+	.lock_mask = PLLMB_BASE_LOCK,
+	.lock_reg_idx = PLL_BASE_IDX,
+};
+
+static struct clk tegra_pll_mb = {
+	.name      = "pll_mb",
+	.ops       = &tegra_pllmb_ops,
+	.reg       = 0x5e8,
+	.parent    = &tegra_pll_ref,
+	.max_rate  = 1866000000,
+	.u.pll = {
+		.input_min = 9600000,
+		.input_max = 500000000,
+		.cf_min    = 9600000,
+		.cf_max    = 19200000,
+		.vco_min   = 800000000,
+		.vco_max   = 1866000000,
+		.freq_table = tegra_pll_m_freq_table,
+		.lock_delay = 300,
+		.misc0 = 0x5ec - 0x5e8,
+		.controls = &pllmb_controls,
+		.div_layout = &pllm_div_layout,		/* same, re-used */
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+		.set_defaults = pllmb_set_defaults,
+	},
+};
+
 static struct clk_pll_freq_table tegra_pll_p_vco_freq_table[] = {
 	{ 12000000, 408000000,  34,  1, 1},
 	{ 13000000, 408000000, 408, 13, 1}, /* cf = 1MHz - only on FPGA */
@@ -8076,10 +8168,10 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
-	{ .input = &tegra_pll_m, .value = 4}, /* low jitter PLLM output */
-	/* { .input = &tegra_pll_c2, .value = 5}, - no use on tegra21x */
-	/* { .input = &tegra_pll_c3, .value = 6}, - no use on tegra21x */
-	{ .input = &tegra_pll_c, .value = 7}, /* low jitter PLLC output */
+	{ .input = &tegra_pll_m, .value = 4},  /* low jitter PLLM output */
+	{ .input = &tegra_pll_mb, .value = 5}, /* low jitter PLLMB output */
+	{ .input = &tegra_pll_mb, .value = 6},
+	{ .input = &tegra_pll_p, .value = 7}, /* low jitter PLLP output */
 	{ 0, 0},
 };
 
@@ -9149,6 +9241,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_m_div4,
 	&tegra_pll_ref,
 	&tegra_pll_m,
+	&tegra_pll_mb,
 	&tegra_pll_c,
 	&tegra_pll_c_out1,
 	&tegra_pll_c2,
@@ -9357,11 +9450,12 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 		return c->flags & PERIPH_ON_CBUS;
 
 	/*
-	 * On Tegra21 in any configuration pll_m must be used as a clock source
-	 * for EMC only.
+	 * On Tegra21 both PLLM and PLLMB are statically connected to EMC mux
+	 * only. However, PLLMB allowed to be used only if PLLM is in default
+	 * configuration (i.e., all overrides are disabled).
 	 */
-	if (p == &tegra_pll_m)
-		return c->flags & PERIPH_EMC_ENB;
+	if (p == &tegra_pll_mb)
+		return tegra_pll_m.u.pll.defaults_set;
 
 	return true;
 }
