@@ -204,18 +204,19 @@ EXPORT_SYMBOL(tegra_iram_dev);
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvsecurity.h>
 
-static void tegra_update_resize_cfg(phys_addr_t base , size_t size)
+static int tegra_update_resize_cfg(phys_addr_t base , size_t size)
 {
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 	int err = 0;
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 
 	err = gk20a_do_idle();
 	if (!err) {
 		/* Config VPR_BOM/_SIZE in MC */
-		te_set_vpr_params((void *)(uintptr_t)base, size);
+		err = te_set_vpr_params((void *)(uintptr_t)base, size);
 		gk20a_do_unidle();
 	}
 #endif
+	return err;
 }
 
 struct dma_resize_notifier_ops vpr_dev_ops = {
