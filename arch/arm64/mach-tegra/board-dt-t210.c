@@ -35,38 +35,6 @@
 #include "board-common.h"
 #include "board-t210.h"
 
-static struct nvmap_platform_carveout t210_carveouts[] = {
-	[0] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0,	/* Filled in by t210_panel_init() */
-		.size		= 0,	/* Filled in by t210_panel_init() */
-	},
-	[1] = {
-		.name		= "vpr",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0,	/* Filled in by t210_panel_init() */
-		.size		= 0,	/* Filled in by t210_panel_init() */
-	},
-};
-
-static struct nvmap_platform_data t210_nvmap_data = {
-	.carveouts	= t210_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(t210_carveouts),
-};
-
-static struct platform_device t210_nvmap_device = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &t210_nvmap_data,
-	},
-};
-
-static __maybe_unused struct platform_device *t210_gfx_devices[] __initdata = {
-	&t210_nvmap_device,
-};
-
 #if defined(CONFIG_TEGRA_NVADSP) && \
 		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
 static struct nvadsp_platform_data nvadsp_plat_data;
