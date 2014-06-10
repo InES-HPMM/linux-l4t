@@ -179,7 +179,7 @@ static inline int dma_get_cache_alignment(void)
 #define DMA_MEMORY_NOMAP		0x10
 
 struct dma_resize_notifier_ops {
-	void (*resize)(phys_addr_t, size_t);
+	int (*resize)(phys_addr_t, size_t);
 };
 
 struct dma_resize_notifier {
