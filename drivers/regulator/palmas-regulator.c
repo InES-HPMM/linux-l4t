@@ -511,6 +511,42 @@ static unsigned int palmas_get_mode_smps(struct regulator_dev *dev)
 	return 0;
 }
 
+static int palmas_set_sleep_mode_smps(struct regulator_dev *dev,
+		unsigned int mode)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg, val = 0;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+			palmas_regs_info[id].ctrl_addr, &reg);
+	if (ret < 0)
+		return ret;
+
+	reg &= ~PALMAS_SMPS12_CTRL_MODE_SLEEP_MASK;
+
+	switch (mode) {
+	case REGULATOR_MODE_NORMAL:
+		val = SMPS_CTRL_MODE_ON;
+		break;
+	case REGULATOR_MODE_IDLE:
+		val = SMPS_CTRL_MODE_ECO;
+		break;
+	case REGULATOR_MODE_FAST:
+		val = SMPS_CTRL_MODE_PWM;
+		break;
+	case REGULATOR_MODE_OFF:
+	case REGULATOR_MODE_STANDBY:
+		val = SMPS_CTRL_MODE_OFF;
+		break;
+	}
+	reg |= val << PALMAS_SMPS12_CTRL_MODE_SLEEP_SHIFT;
+	ret = palmas_smps_write(pmic->palmas,
+			palmas_regs_info[id].ctrl_addr, reg);
+	return ret;
+}
+
 static int palmas_list_voltage_smps(struct regulator_dev *dev,
 					unsigned selector)
 {
@@ -641,6 +677,26 @@ static int palmas_smps_set_ramp_delay(struct regulator_dev *rdev,
 	return ret;
 }
 
+
+static int palams_smps_set_sleep_voltage_sel(struct regulator_dev *rdev,
+		unsigned sel)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+				palmas_regs_info[id].fvsel_addr, &reg);
+	if (ret < 0)
+		return ret;
+	reg &= ~PALMAS_SMPS12_FORCE_VSEL_MASK;
+	reg |= sel << PALMAS_SMPS12_FORCE_VSEL_SHIFT;
+	ret = palmas_smps_write(pmic->palmas,
+				palmas_regs_info[id].fvsel_addr, reg);
+	return ret;
+}
+
 static struct regulator_ops palmas_ops_smps = {
 	.is_enabled		= palmas_is_enabled_smps,
 	.enable			= palmas_enable_smps,
@@ -658,8 +714,10 @@ static struct regulator_ops palmas_ops_smps = {
 static struct regulator_ops palmas_ops_smps_extctrl = {
 	.set_mode		= palmas_set_mode_smps,
 	.get_mode		= palmas_get_mode_smps,
+	.set_sleep_mode		= palmas_set_sleep_mode_smps,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.set_sleep_voltage_sel	= palams_smps_set_sleep_voltage_sel,
 	.list_voltage		= palmas_list_voltage_smps,
 	.map_voltage		= palmas_map_voltage_smps,
 	.set_voltage_time_sel	= palma_smps_set_voltage_smps_time_sel,
