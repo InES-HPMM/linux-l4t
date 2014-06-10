@@ -85,7 +85,7 @@ static int __init denver_power_states_init(void)
 			state->flags = CPUIDLE_FLAG_TIME_VALID;
 			state->target_residency = prop;
 		}
-		if (of_property_read_u32(child, "power", &prop) != 0)
+		if (of_property_read_u32(child, "power", &prop) == 0)
 			state->exit_latency = prop;
 
 		state->enter = denver_enter_c_state;
