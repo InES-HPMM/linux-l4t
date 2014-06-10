@@ -157,13 +157,6 @@ static void bluedroid_pm_timer_expire(unsigned long data)
 static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 {
 	struct bluedroid_pm_data *bluedroid_pm = data;
-	/*
-	 * check if BT gpio_shutdown line status and current request are same.
-	 * If same, then return, else perform requested operation.
-	 */
-	if (bluedroid_pm_gpio_get_value(bluedroid_pm->gpio_shutdown)
-		== !blocked)
-		return 0;
 
 	mdelay(100);
 	if (blocked) {
