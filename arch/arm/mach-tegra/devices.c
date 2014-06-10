@@ -2444,11 +2444,6 @@ struct platform_device tegra_disp2_device = {
 };
 #endif
 
-struct platform_device tegra_nvmap_device = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-};
-
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static struct resource tegra_cec_resources[] = {
 	[0] = {
