@@ -205,6 +205,7 @@ struct power_supply {
 #ifdef CONFIG_THERMAL
 	struct thermal_zone_device *tzd;
 	struct thermal_cooling_device *tcd;
+	bool thermal_zone_sensor;
 #endif
 
 #ifdef CONFIG_LEDS_TRIGGERS
