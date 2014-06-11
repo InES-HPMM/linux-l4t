@@ -170,9 +170,11 @@ void __init arm64_memblock_init(void)
 		memblock_reserve(base, size);
 	}
 
+#ifdef CONFIG_ARM64_MACH_FRAMEWORK
 	/* reserve any platform specific memblock areas */
 	if (machine_desc->reserve)
 		machine_desc->reserve();
+#endif
 
 	/* reserve memory for DMA contigouos allocations */
 	dma_contiguous_reserve(arm_dma_limit);

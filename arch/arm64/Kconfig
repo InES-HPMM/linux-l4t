@@ -72,6 +72,15 @@ config NEED_MACH_MEMORY_H
       definitions for this platform.  The need for mach/memory.h should
       be avoided when possible.
 
+config ARM64_MACH_FRAMEWORK
+	def_bool y
+	depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC
+	help
+	  Enable support for the ARM64 machine framework. The machine framework
+	  provides hooks for vendors to provide customized machine init
+	  routines. WARNING: This feature will be deperacted for future chips.
+	  DO NOT enable this feature for future chips.
+
 config 64BIT
 	def_bool y
 
