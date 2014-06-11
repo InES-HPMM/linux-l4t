@@ -30,7 +30,7 @@
 #include <linux/power/power_supply_extcon.h>
 #include <linux/slab.h>
 #include <linux/extcon.h>
-#include <linux/mutex.h>
+#include <linux/spinlock.h>
 
 #define CHARGER_TYPE_DETECTION_DEFAULT_DEBOUNCE_TIME_MS		500
 
@@ -43,7 +43,7 @@ struct power_supply_extcon {
 	uint8_t					ac_online;
 	uint8_t					usb_online;
 	struct power_supply_extcon_plat_data	*pdata;
-	struct mutex				lock;
+	spinlock_t				lock;
 };
 
 struct power_supply_cables {
@@ -204,14 +204,14 @@ static int psy_extcon_extcon_notifier(struct notifier_block *self,
 	struct power_supply_extcon *psy_extcon = cable->psy_extcon;
 	struct extcon_dev *edev = cable->extcon_dev->edev;
 
-	mutex_lock(&psy_extcon->lock);
+	spin_lock(&psy_extcon->lock);
 	cable->event = event;
 	if (cable->event == 0)
 		power_supply_extcon_remove_cable(psy_extcon, edev);
 	else if (cable->event == 1)
 		power_supply_extcon_attach_cable(psy_extcon, edev);
 
-	mutex_unlock(&psy_extcon->lock);
+	spin_unlock(&psy_extcon->lock);
 
 	return NOTIFY_DONE;
 }
@@ -268,7 +268,7 @@ static int psy_extcon_probe(struct platform_device *pdev)
 
 	psy_extcon->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, psy_extcon);
-	mutex_init(&psy_extcon->lock);
+	spin_lock_init(&psy_extcon->lock);
 
 	dev_info(psy_extcon->dev, "Extcon name %s\n", pdata->extcon_name);
 
@@ -333,9 +333,9 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		goto econ_err;
 	}
 
-	mutex_lock(&psy_extcon->lock);
+	spin_lock(&psy_extcon->lock);
 	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
-	mutex_unlock(&psy_extcon->lock);
+	spin_unlock(&psy_extcon->lock);
 
 	if (pdata->y_cable_extcon_name) {
 		psy_extcon->y_cable_edev =
@@ -343,10 +343,10 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		if (!psy_extcon->y_cable_edev)
 			goto econ_err;
 
-		mutex_lock(&psy_extcon->lock);
+		spin_lock(&psy_extcon->lock);
 		power_supply_extcon_attach_cable(psy_extcon,
 				psy_extcon->y_cable_edev);
-		mutex_unlock(&psy_extcon->lock);
+		spin_unlock(&psy_extcon->lock);
 	}
 
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
