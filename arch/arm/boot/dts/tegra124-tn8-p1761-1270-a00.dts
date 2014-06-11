@@ -99,7 +99,7 @@
 	};
 
 	thermal-zones {
-		battery-temp {
+		Battery {
 			status = "okay";
 		};
 	};

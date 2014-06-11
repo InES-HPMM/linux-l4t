@@ -113,7 +113,7 @@
 			ti,taper-rate = <170>;
 			ti,terminate-voltage = <3400>;
 			ti,v-at-chg-term = <4200>;
-			ti,tz-name = "battery-temp";
+			ti,tz-name = "Battery";
 		};
 
 	};

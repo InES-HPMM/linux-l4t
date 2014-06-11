@@ -119,7 +119,7 @@
 			ti,taper-rate = <167>;
 			ti,terminate-voltage = <3150>;
 			ti,v-at-chg-term = <4200>;
-			ti,tz-name = "battery-temp";
+			ti,tz-name = "Battery";
 		};
 
 		jsa1127@39 {
@@ -135,7 +135,7 @@
 		lc709203f@0b {
 			compatible = "onsemi,lc709203f";
 			reg = <0x0b>;
-			onsemi,tz-name = "battery-temp";
+			onsemi,tz-name = "Battery";
 		};
 	};
 

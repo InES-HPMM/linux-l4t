@@ -136,7 +136,7 @@
 	};
 
 	thermal-zones {
-		battery-temp {
+		Battery {
 			status = "disabled";
 		};
 	};

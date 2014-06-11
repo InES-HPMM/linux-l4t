@@ -583,7 +583,7 @@
 			status = "disabled";
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;
-			tz-name = "battery-temp";
+			tz-name = "Battery";
 			alert-threshold = <0>;          /* 1% SOC */
 			one-percent-alerts = <1>;
 			valert-max = <5100>;            /* not use */
@@ -639,7 +639,7 @@
 				ti,charge-term-current-limit-milliamp = <260>;
 				ti,temp-range = <10 15 60>;
 				ti,charge-current-limit = <1024 2048 5200>;
-				ti,thermal-zone = "battery";
+				ti,thermal-zone = "Battery";
 				ti,temp-polling-time-sec = <5>;
 				ti,ir-comp-voltage-millivolt = <1>;
 				ti,ir-comp-resister-ohm = <70>;

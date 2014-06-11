@@ -733,7 +733,7 @@
 			status = "disabled";
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;        /* gpio PQ5 */
-			tz-name = "battery-temp";
+			tz-name = "Battery";
 			alert-threshold = <0>;          /* 1% SOC */
 			one-percent-alerts = <1>;
 			valert-max = <5100>;            /* not use */
