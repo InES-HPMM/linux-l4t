@@ -96,14 +96,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.trim_delay = 0x2,
 	.is_8bit = false,
 	.ddr_clk_limit = 30000000,
-	.max_clk_limit = 50000000,
-	/*
-	 * FIXME: Wifi currently working on HS mode.
-	 * enable SDR104, DDR50 and SDR50 mode for wifi using
-	 * bug 1457466
-	 */
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+	.max_clk_limit = 204000000,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
 	.disable_clock_gate = 1,
