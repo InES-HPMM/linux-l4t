@@ -186,6 +186,11 @@
 #define  PADS_REFCLK_CFG0					0x000000C8
 #define  PADS_REFCLK_CFG1					0x000000CC
 #define  PADS_REFCLK_BIAS					0x000000D0
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define REFCLK_POR_SETTINGS					0x409c409c
+#else
+#define REFCLK_POR_SETTINGS					0x44ac44ac
+#endif
 
 #define NV_PCIE2_RP_RSR					0x000000A0
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
@@ -1007,14 +1012,14 @@ static int tegra_pcie_enable_pads(bool enable)
 
 	PR_FUNC_LINE;
 	if (!tegra_platform_is_fpga()) {
-		/* WAR for Eye diagram failure on lanes for T124 platforms */
-		pads_writel(0x44ac44ac, PADS_REFCLK_CFG0);
-		pads_writel(0x00000028, PADS_REFCLK_BIAS);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		if (!enable)
 			tegra_periph_reset_assert(tegra_pcie.pex_uphy);
 #endif
-		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
+		/* WAR for Eye diagram failure */
+		pads_writel(REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
+		pads_writel(0x00000028, PADS_REFCLK_BIAS);
+		/* PCIe pad programming is moved to XUSB_PADCTL space */
 		err = pcie_phy_pad_enable(enable,
 				tegra_get_lane_owner_info() >> 1);
 		if (err)
