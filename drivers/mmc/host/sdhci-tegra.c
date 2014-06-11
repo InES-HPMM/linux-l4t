@@ -69,6 +69,9 @@
 #define SDHCI_VNDR_CLK_CTRL_SDR50_TUNING		0x20
 #define SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK		0x2
 
+#define SDHCI_VNDR_CAP_OVERRIDES_0			0x10c
+#define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT	8
+
 #define SDHCI_VNDR_MISC_CTRL				0x120
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR104_SUPPORT	0x8
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR50_SUPPORT	0x10
@@ -1023,6 +1026,15 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	}
 
 	sdhci_writew(host, ctrl_2, SDHCI_HOST_CONTROL2);
+
+	if (uhs == MMC_TIMING_MMC_HS400) {
+		ctrl_2 = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
+		ctrl_2 &= ~(0x3F <<
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
+		ctrl_2 |= ((plat->dqs_trim_delay & 0x3F) <<
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
+		sdhci_writel(host, ctrl_2, SDHCI_VNDR_CAP_OVERRIDES_0);
+	}
 
 	if (uhs == MMC_TIMING_UHS_DDR50) {
 		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
@@ -4090,6 +4102,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
 	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
 	of_property_read_u32(np, "id", &plat->id);
+	of_property_read_u32(np, "dqs-trim-delay", &plat->dqs_trim_delay);
 
 	of_property_read_u32(np, "uhs_mask", &plat->uhs_mask);
 	of_property_read_u32(np, "calib_3v3_offsets", &plat->calib_3v3_offsets);
