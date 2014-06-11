@@ -1301,6 +1301,7 @@ unsigned long tegra_clk_measure_input_freq(void)
 	return osc_freq;
 }
 
+
 #ifdef CONFIG_DEBUG_FS
 
 /*
@@ -1958,6 +1959,82 @@ static const struct file_operations fmax_at_vmin_fops = {
 	.write		= fmax_at_vmin_write,
 };
 
+static DEFINE_MUTEX(pto_lock);
+
+static void writel_pto_ctrl(u32 val, void __iomem *clk_base)
+{
+	writel(val, clk_base + 0x60);
+	readl(clk_base + 0x60);
+	udelay(1);
+}
+
+static u32 readl_pto_cnt(void __iomem *clk_base)
+{
+	return readl(clk_base + 0x64);
+}
+
+static int pto_get(void *data, u64 *output_val)
+{
+	struct clk *c = (struct clk *)data;
+	struct tegra_pto_table *pto_entry = c->pto_entry;
+
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	u32 val, orig_val = 0;
+	unsigned long flags;
+
+	mutex_lock(&pto_lock);
+
+	clk_lock_save(c, &flags);
+
+	if (!tegra_is_clk_enabled(c)) {
+		pr_info("Cannot measure rate of disabled %s\n", c->name);
+		clk_unlock_restore(c, &flags);
+		mutex_unlock(&pto_lock);
+		return -EPERM;
+	}
+
+	if (pto_entry->presel_reg) {
+		val = readl(clk_base + pto_entry->presel_reg);
+		orig_val = val & pto_entry->presel_mask;
+		val &= ~pto_entry->presel_mask;
+		val |= pto_entry->presel_value;
+		writel(val, clk_base + pto_entry->presel_reg);
+	}
+
+	val =  BIT(23) | (pto_entry->pto_id << 14) | BIT(13) | 0xf;
+
+	writel_pto_ctrl(val, clk_base);
+	writel_pto_ctrl(val | BIT(10), clk_base);
+	writel_pto_ctrl(val, clk_base);
+	writel_pto_ctrl(val | BIT(9), clk_base);
+
+	udelay(500);
+
+	do {
+		val = readl_pto_cnt(clk_base);
+	} while (val & BIT(31));
+	val &= (BIT(24) - 1);
+	val *= pto_entry->divider;
+	writel_pto_ctrl(0, clk_base);
+
+	/* 1 pulse/~500us resolution ~ 2kHz -- round output to 1kHz */
+	val = DIV_ROUND_CLOSEST(val, 1000) * 1000;
+	*output_val = (u64)val * (32768 / 16);
+
+	if (pto_entry->presel_reg) {
+		val = readl(clk_base + pto_entry->presel_reg);
+		val &= ~pto_entry->presel_mask;
+		val |= orig_val;
+		writel(val, clk_base + pto_entry->presel_reg);
+	}
+
+	clk_unlock_restore(c, &flags);
+	mutex_unlock(&pto_lock);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(pto_fops, pto_get, NULL, "%llu\n");
+
 static int clk_debugfs_register_one(struct clk *c)
 {
 	struct dentry *d;
@@ -2051,6 +2128,11 @@ static int clk_debugfs_register_one(struct clk *c)
 			goto err_out;
 	}
 
+	if (c->pto_entry) {
+		d = debugfs_create_file("pto_rate", S_IRUGO, c->dent,
+					c, &pto_fops);
+	}
+
 #ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
 	if (!strcmp(c->name, "gbus")) {
 		d = debugfs_create_file(
@@ -2117,5 +2199,16 @@ int __init tegra_clk_debugfs_init(void)
 err_out:
 	debugfs_remove_recursive(clk_debugfs_root);
 	return err;
+}
+
+void __init tegra_clk_add_pto_entries(struct tegra_pto_table *pto_table)
+{
+	struct tegra_pto_table *pto_entry;
+
+	for (pto_entry = pto_table; pto_entry->name; pto_entry++) {
+		struct clk *c = tegra_get_clock_by_name(pto_entry->name);
+		if (c)
+			c->pto_entry = pto_entry;
+	}
 }
 #endif

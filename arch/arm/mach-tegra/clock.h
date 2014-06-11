@@ -173,6 +173,15 @@ enum clk_state {
 	OFF,
 };
 
+struct tegra_pto_table {
+	char *name;
+	int divider;
+	u32 pto_id;
+	u32 presel_value;
+	u32 presel_reg;
+	u32 presel_mask;
+};
+
 #ifndef CONFIG_COMMON_CLK
 struct clk_ops {
 	void		(*init)(struct clk *);
@@ -216,6 +225,7 @@ struct clk {
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry		*dent;
+	struct tegra_pto_table	*pto_entry;
 #endif
 	bool			set;
 	struct clk_ops		*ops;
@@ -604,6 +614,9 @@ static const struct file_operations __fops = {				\
 	.llseek	 = generic_file_llseek,					\
 	.poll    = __poll,						\
 };
+
+void tegra_clk_add_pto_entries(struct tegra_pto_table *pto_table);
+
 #endif
 
 #endif
