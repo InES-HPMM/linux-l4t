@@ -28,12 +28,10 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/thermal.h>
-#include <linux/platform_data/thermal_sensors.h>
 #include <linux/of.h>
 #include <linux/mfd/palmas.h>
 
 #define PALMAS_NORMAL_OPERATING_TEMP 100000
-#define PALMAS_CRITICAL_DEFUALT_TEMP 108000
 
 struct palmas_therm_zone {
 	struct device			*dev;
@@ -41,23 +39,13 @@ struct palmas_therm_zone {
 	struct thermal_zone_device	*tz_device;
 	int				irq;
 	unsigned long			hd_threshold_temp;
-	const char			*tz_name;
 };
 
-static struct thermal_trip_info palmas_tpoint = {
-	.cdev_type = "emergency-balanced",
-	.trip_temp = PALMAS_CRITICAL_DEFUALT_TEMP,
-	.trip_type = THERMAL_TRIP_ACTIVE,
-	.upper = THERMAL_NO_LIMIT,
-	.lower = THERMAL_NO_LIMIT,
-};
-
-static int palmas_thermal_get_temp(struct thermal_zone_device *tz_device,
-			unsigned long *temp)
+static int palmas_thermal_read_temp(void *data, long *temp)
 {
-	int ret;
+	struct palmas_therm_zone *ptherm_zone = data;
 	unsigned int val;
-	struct palmas_therm_zone *ptherm_zone = tz_device->devdata;
+	int ret;
 
 	ret = palmas_read(ptherm_zone->palmas, PALMAS_INTERRUPT_BASE,
 				PALMAS_INT1_LINE_STATE, &val);
@@ -68,58 +56,14 @@ static int palmas_thermal_get_temp(struct thermal_zone_device *tz_device,
 		return -EINVAL;
 	}
 
+	/* + 1 to trigger cdev */
 	if (val & PALMAS_INT1_STATUS_HOTDIE)
-		*temp = palmas_tpoint.trip_temp + 1; /* + 1 to trigger cdev */
+		*temp = ptherm_zone->hd_threshold_temp + 1;
 	else
 		*temp = PALMAS_NORMAL_OPERATING_TEMP;
 
 	return 0;
 }
-
-static int palmas_thermal_get_trip_type(struct thermal_zone_device *tz_device,
-			int trip, enum thermal_trip_type *type)
-{
-	if (trip >= 1)
-		return -EINVAL;
-
-	*type = palmas_tpoint.trip_type;
-	return 0;
-}
-
-static int palmas_thermal_get_trip_temp(struct thermal_zone_device *tz_device,
-			int trip, unsigned long *temp)
-{
-	if (trip >= 1)
-		return -EINVAL;
-
-	*temp = palmas_tpoint.trip_temp;
-	return 0;
-}
-
-static int palmas_thermal_bind(struct thermal_zone_device *thz,
-				struct thermal_cooling_device *cdev)
-{
-	if (!strncmp(palmas_tpoint.cdev_type, cdev->type, THERMAL_NAME_LENGTH))
-		thermal_zone_bind_cooling_device(
-			thz, 0, cdev, palmas_tpoint.upper, palmas_tpoint.lower);
-	return 0;
-}
-
-static int palmas_thermal_unbind(struct thermal_zone_device *thz,
-				struct thermal_cooling_device *cdev)
-{
-	if (!strncmp(palmas_tpoint.cdev_type, cdev->type, THERMAL_NAME_LENGTH))
-		thermal_zone_unbind_cooling_device(thz, 0, cdev);
-	return 0;
-}
-
-static struct thermal_zone_device_ops palmas_tz_ops = {
-	.get_temp = palmas_thermal_get_temp,
-	.get_trip_type = palmas_thermal_get_trip_type,
-	.get_trip_temp = palmas_thermal_get_trip_temp,
-	.bind = palmas_thermal_bind,
-	.unbind = palmas_thermal_unbind,
-};
 
 static irqreturn_t palmas_thermal_irq(int irq, void *data)
 {
@@ -135,7 +79,6 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 	struct palmas_platform_data *pdata;
 	struct palmas_therm_zone *ptherm_zone;
 	struct device_node *np = pdev->dev.of_node;
-	const char *tz_name = NULL;
 	u32 hd_threshold_temp = 0;
 	u32 pval;
 	int ret;
@@ -143,11 +86,9 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 
 	pdata = dev_get_platdata(pdev->dev.parent);
 	if (pdata) {
-		tz_name = pdata->tz_name;
 		hd_threshold_temp = pdata->hd_threshold_temp;
 	} else {
 		if (np) {
-			tz_name = of_get_property(np, "ti,tz-name", NULL);
 			ret = of_property_read_u32(np,
 					"ti,hot-die-threshold-temp", &pval);
 			if (!ret)
@@ -158,9 +99,6 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Hot die temp is not provided\n");
 		return -EINVAL;
 	}
-
-	if (!tz_name)
-		tz_name = "palmas-die-thermal";
 
 	ptherm_zone = devm_kzalloc(&pdev->dev, sizeof(*ptherm_zone),
 			GFP_KERNEL);
@@ -173,18 +111,16 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 	ptherm_zone->dev = &pdev->dev;
 	ptherm_zone->palmas = palmas;
 	ptherm_zone->hd_threshold_temp = (unsigned long) hd_threshold_temp;
-	ptherm_zone->tz_name = tz_name;
 
-	ptherm_zone->tz_device = thermal_zone_device_register(tz_name,
-					1, 0, ptherm_zone, &palmas_tz_ops,
-					NULL, 0, 0);
-	if (IS_ERR_OR_NULL(ptherm_zone->tz_device)) {
+	ptherm_zone->tz_device = thermal_zone_of_sensor_register(&pdev->dev, 0,
+					ptherm_zone, palmas_thermal_read_temp,
+					NULL);
+	if (IS_ERR(ptherm_zone->tz_device)) {
+		ret = PTR_ERR(ptherm_zone->tz_device);
 		dev_err(ptherm_zone->dev,
-			"Register thermal zone device failed.\n");
-		return PTR_ERR(ptherm_zone->tz_device);
+			"Device can not register as thermal sensor: %d\n", ret);
+		return ret;
 	}
-
-	palmas_tpoint.trip_temp = ptherm_zone->hd_threshold_temp;
 
 	ptherm_zone->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(ptherm_zone->irq, NULL,
@@ -197,13 +133,13 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 		goto int_req_failed;
 	}
 
-	if (palmas_tpoint.trip_temp <= 108000UL)
+	if (hd_threshold_temp <= 108000UL)
 		val = 0;
-	else if (palmas_tpoint.trip_temp <= 112000UL)
+	else if (hd_threshold_temp <= 112000UL)
 		val = 1;
-	else if (palmas_tpoint.trip_temp <= 116000UL)
+	else if (hd_threshold_temp <= 116000UL)
 		val = 2;
-	else if (palmas_tpoint.trip_temp <= 120000UL)
+	else if (hd_threshold_temp <= 120000UL)
 		val = 3;
 	else
 		val = 3;
@@ -222,7 +158,7 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 error:
 	free_irq(ptherm_zone->irq, ptherm_zone);
 int_req_failed:
-	thermal_zone_device_unregister(ptherm_zone->tz_device);
+	thermal_zone_of_sensor_unregister(&pdev->dev, ptherm_zone->tz_device);
 	return ret;
 }
 
@@ -231,7 +167,7 @@ static int palmas_thermal_remove(struct platform_device *pdev)
 	struct palmas_therm_zone *ptherm_zone = platform_get_drvdata(pdev);
 
 	free_irq(ptherm_zone->irq, ptherm_zone);
-	thermal_zone_device_unregister(ptherm_zone->tz_device);
+	thermal_zone_of_sensor_unregister(&pdev->dev, ptherm_zone->tz_device);
 	return 0;
 }
 
