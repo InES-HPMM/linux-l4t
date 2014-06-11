@@ -97,6 +97,10 @@
 
 	i2c@7000d000 {
 		tps65913 {
+			thermal {
+				status = "okay";
+			};
+
 			pmic {
 				regulators {
 					ldo3 {
@@ -107,6 +111,12 @@
 					};
 				};
 			};
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			status = "okay";
 		};
 	};
 

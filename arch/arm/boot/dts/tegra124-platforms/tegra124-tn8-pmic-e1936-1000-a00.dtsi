@@ -38,11 +38,11 @@
 				interrupts = <8 0>;
 			};
 
-			thermal {
+			palams_thermal: thermal {
 				compatible = "ti,palmas-thermal";
+				#thermal-sensor-cells = <0>;
 				interrupt-parent = <&palmas>;
 				interrupts = <5 0>;
-				ti,tz-name = "palmas-thermal";
 				ti,hot-die-threshold-temp = <120000>;
 				status = "disabled";
 			};

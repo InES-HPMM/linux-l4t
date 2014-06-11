@@ -10,6 +10,7 @@
 #include "tegra132-tn8-dfll.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-sensor-e1934-1000-a00.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-camera-a00.dtsi"
+#include <dt-bindings/thermal/thermal.h>
 
 / {
 	model = "bowmore";
@@ -25,14 +26,6 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8";
 		linux,initrd-start = <0x82080000>;
 		linux,initrd-end = <0x824B5300>;
-	};
-
-	i2c@7000d000 {
-		tps65913 {
-			thermal {
-				status = "okay";
-			};
-		};
 	};
 
 	serial@70006000 {
@@ -66,6 +59,10 @@
 		nvidia,bit-banging-xfer-after-shutdown;
 
 		palmas: tps65913 {
+			palams_thermal: thermal {
+				status = "okay";
+			};
+
 			pmic {
 				regulators {
 					palmas_smps9: smps9 {
@@ -131,5 +128,36 @@
 		type = <4>; /* TI TPS65913 2.3 */
 		retention-voltage = <16>;
 		lock = <0>;
+	};
+
+	dummy_cool_dev: dummy-cool-dev {
+			compatible = "dummy-cooling-dev";
+			#cooling-cells = <2>; /* min followed by max */
+	};
+
+	thermal-zones {
+	       PMIC-Die {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&palams_thermal>;
+
+			trips {
+				die_temp_thresh: hot-die {
+					temperature = <120000>;
+					type = "active";
+					hysteresis = <0>;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&die_temp_thresh>;
+					cooling-device = <&dummy_cool_dev THERMAL_NO_LIMIT
+								THERMAL_NO_LIMIT>;
+					contribution = <100>;
+					cdev-type = "emergency-balanced";
+				};
+			};
+		};
 	};
 };

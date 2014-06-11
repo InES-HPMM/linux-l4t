@@ -96,6 +96,20 @@
 		};
 	};
 
+	i2c@7000d000 {
+		tps65913 {
+			thermal {
+				status = "okay";
+			};
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			status = "okay";
+		};
+	};
+
 	psy_extcon {
 		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};

@@ -35,5 +35,11 @@
 			};
 		};
 	};
+
+	thermal-zones {
+	       PMIC-Die {
+			status = "okay";
+		};
+	};
 };
 
