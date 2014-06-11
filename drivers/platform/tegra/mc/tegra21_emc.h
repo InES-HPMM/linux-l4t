@@ -25,12 +25,6 @@
 #include <mach/tegra_emc.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 
-int tegra12_emc_init(void);
-
-#ifdef CONFIG_TEGRA_USE_NCT
-extern int tegra12_nct_emc_table_init(struct tegra12_emc_pdata *nct_emc_pdata);
-#endif
-
 enum {
 	DRAM_DEV_SEL_ALL = 0,
 	DRAM_DEV_SEL_0	 = (2 << 30),
@@ -137,6 +131,7 @@ enum {
 #define EMC_MODE_SET_LONG_CNT			(0x1 << 26)
 #define EMC_EMRS				0xd0
 #define EMC_REF					0xd4
+#define EMC_REF_FORCE_CMD                       1
 #define EMC_PRE					0xd8
 #define EMC_NOP					0xdc
 
@@ -203,9 +198,11 @@ enum {
 #define EMC_TPD					0x15c
 
 #define EMC_AUTO_CAL_CONFIG			0x2a4
+#define EMC_AUTO_CAL_CONFIG_AUTO_CAL_START_SHIFT 31
 #define EMC_AUTO_CAL_INTERVAL			0x2a8
 #define EMC_AUTO_CAL_STATUS			0x2ac
 #define EMC_AUTO_CAL_STATUS_ACTIVE		(0x1 << 31)
+#define EMC_AUTO_CAL_STATUS_SHIFT	31
 #define EMC_REQ_CTRL				0x2b0
 #define EMC_STATUS				0x2b4
 #define EMC_STATUS_TIMING_UPDATE_STALLED	(0x1 << 23)
@@ -436,6 +433,82 @@ enum {
 #define MC_EMEM_ARB_ISOCHRONOUS_0		0x208
 #define MC_EMEM_ARB_ISOCHRONOUS_1		0x20c
 #define MC_EMEM_ARB_ISOCHRONOUS_2		0x210
+#define MC_EMEM_ARB_HYSTERESIS_0_0		0x218
+#define MC_EMEM_ARB_HYSTERESIS_1_0		0x21c
+#define MC_EMEM_ARB_HYSTERESIS_2_0		0x220
+#define MC_EMEM_ARB_HYSTERESIS_3_0		0x224
+
+#define HYST_SATAR				(0x1 << 31)
+#define HYST_PPCSAHBSLVR			(0x1 << 30)
+#define HYST_PPCSAHBDMAR			(0x1 << 29)
+#define HYST_NVENCSRD				(0x1 << 28)
+#define HYST_HOST1XR				(0x1 << 23)
+#define HYST_HOST1XDMAR				(0x1 << 22)
+#define HYST_HDAR				(0x1 << 21)
+#define HYST_DISPLAYHCB				(0x1 << 17)
+#define HYST_DISPLAYHC				(0x1 << 16)
+#define HYST_AVPCARM7R				(0x1 << 15)
+#define HYST_AFIR				(0x1 << 14)
+#define HYST_DISPLAY0CB				(0x1 << 6)
+#define HYST_DISPLAY0C				(0x1 << 5)
+#define HYST_DISPLAY0BB				(0x1 << 4)
+#define HYST_DISPLAY0B				(0x1 << 3)
+#define HYST_DISPLAY0AB				(0x1 << 2)
+#define HYST_DISPLAY0A				(0x1 << 1)
+#define HYST_PTCR				(0x1 << 0)
+
+#define HYST_VDEDBGW				(0x1 << 31)
+#define HYST_VDEBSEVW				(0x1 << 30)
+#define HYST_SATAW				(0x1 << 29)
+#define HYST_PPCSAHBSLVW			(0x1 << 28)
+#define HYST_PPCSAHBDMAW			(0x1 << 27)
+#define HYST_MPCOREW				(0x1 << 25)
+#define HYST_MPCORELPW				(0x1 << 24)
+#define HYST_HOST1XW				(0x1 << 22)
+#define HYST_HDAW				(0x1 << 21)
+#define HYST_AVPCARM7W				(0x1 << 18)
+#define HYST_AFIW				(0x1 << 17)
+#define HYST_NVENCSWR				(0x1 << 11)
+#define HYST_MPCORER				(0x1 << 7)
+#define HYST_MPCORELPR				(0x1 << 6)
+#define HYST_VDETPER				(0x1 << 5)
+#define HYST_VDEMCER				(0x1 << 4)
+#define HYST_VDEMBER				(0x1 << 3)
+#define HYST_VDEBSEVR				(0x1 << 2)
+
+#define HYST_DISPLAYT				(0x1 << 26)
+#define HYST_GPUSWR				(0x1 << 25)
+#define HYST_GPUSRD				(0x1 << 24)
+#define HYST_A9AVPSCW				(0x1 << 23)
+#define HYST_A9AVPSCR				(0x1 << 22)
+#define HYST_TSECSWR				(0x1 << 21)
+#define HYST_TSECSRD				(0x1 << 20)
+#define HYST_ISPWBB				(0x1 << 17)
+#define HYST_ISPWAB				(0x1 << 16)
+#define HYST_ISPRAB				(0x1 << 14)
+#define HYST_XUSB_DEVW				(0x1 << 13)
+#define HYST_XUSB_DEVR				(0x1 << 12)
+#define HYST_XUSB_HOSTW				(0x1 << 11)
+#define HYST_XUSB_HOSTR				(0x1 << 10)
+#define HYST_ISPWB				(0x1 << 7)
+#define HYST_ISPWA				(0x1 << 6)
+#define HYST_ISPRA				(0x1 << 4)
+#define HYST_VDETPMW				(0x1 << 1)
+#define HYST_VDEMBEW				(0x1 << 0)
+
+#define HYST_DISPLAYD				(0x1 << 19)
+#define HYST_VIW				(0x1 << 18)
+#define HYST_VICSWR				(0x1 << 13)
+#define HYST_VICSRD				(0x1 << 12)
+#define HYST_SDMMCWAB				(0x1 << 7)
+#define HYST_SDMMCW				(0x1 << 6)
+#define HYST_SDMMCWAA				(0x1 << 5)
+#define HYST_SDMMCWA				(0x1 << 4)
+#define HYST_SDMMCRAB				(0x1 << 3)
+#define HYST_SDMMCR				(0x1 << 2)
+#define HYST_SDMMCRAA				(0x1 << 1)
+#define HYST_SDMMCRA				(0x1 << 0)
+
 #define MC_DIS_EXTRA_SNAP_LEVELS		0x2ac
 
 #define MC_LATENCY_ALLOWANCE_AFI_0              0x2e0
@@ -450,12 +523,17 @@ enum {
 #define MC_LATENCY_ALLOWANCE_HC_1               0x314
 #define MC_LATENCY_ALLOWANCE_HDA_0              0x318
 #define MC_LATENCY_ALLOWANCE_MPCORE_0           0x320
+#define MC_LATENCY_ALLOWANCE_MPCORELP_0         0x324
 #define MC_LATENCY_ALLOWANCE_NVENC_0            0x328
 #define MC_LATENCY_ALLOWANCE_PPCS_0             0x344
 #define MC_LATENCY_ALLOWANCE_PPCS_1             0x348
 #define MC_LATENCY_ALLOWANCE_PTC_0              0x34c
 #define MC_LATENCY_ALLOWANCE_SATA_0             0x350
-#define MC_LATENCY_ALLOWANCE_ISP2_0             0x370
+#define MC_LATENCY_ALLOWANCE_VDE_0		0x354
+#define MC_LATENCY_ALLOWANCE_VDE_1		0x358
+#define MC_LATENCY_ALLOWANCE_VDE_2		0x35c
+#define MC_LATENCY_ALLOWANCE_VDE_3		0x360
+#define MC_LATENCY_ALLOWANCE_ISP2_0		0x370
 #define MC_LATENCY_ALLOWANCE_ISP2_1             0x374
 #define MC_LATENCY_ALLOWANCE_XUSB_0             0x37c
 #define MC_LATENCY_ALLOWANCE_XUSB_1             0x380
@@ -480,7 +558,7 @@ enum {
 #define MC_LATENCY_ALLOWANCE_ETR_0              0x3ec
 #define MC_LATENCY_ALLOWANCE_TSECB_0            0x3f0
 
-#define T21X_MC_LATENCY_ALLOWANCE_NUM_REGS      41
+#define T21X_MC_LATENCY_ALLOWANCE_NUM_REGS      46
 
 #define MC_VIDEO_PROTECT_VPR_OVERRIDE		0x418
 #define MC_MLL_MPCORER_PTSA_RATE			0x44c
