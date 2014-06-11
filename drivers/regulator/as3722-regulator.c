@@ -833,7 +833,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].min_uV = 825000;
 			as3722_regs->desc[id].uV_step = 25000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 150;
 			break;
 		case AS3722_REGULATOR_ID_LDO3:
 			if (reg_config->ext_control)
@@ -843,7 +843,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].min_uV = 620000;
 			as3722_regs->desc[id].uV_step = 20000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 350;
 			if (reg_config->enable_tracking) {
 				ret = as3722_ldo3_set_tracking_mode(as3722_regs,
 					id, AS3722_LDO3_MODE_PMOS_TRACKING);
@@ -896,7 +896,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 			as3722_regs->desc[id].min_uV = 825000;
 			as3722_regs->desc[id].uV_step = 25000;
 			as3722_regs->desc[id].linear_min_sel = 1;
-			as3722_regs->desc[id].enable_time = 500;
+			as3722_regs->desc[id].enable_time = 150;
 			as3722_regs->desc[id].linear_ranges = as3722_ldo_ranges;
 			as3722_regs->desc[id].n_linear_ranges =
 						ARRAY_SIZE(as3722_ldo_ranges);
