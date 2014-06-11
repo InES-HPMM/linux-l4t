@@ -12,6 +12,7 @@
 #include "tegra124-platforms/tegra124-tn8-powermon-p1761-a02.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-camera-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
 
 / {
 	model = "tn8";

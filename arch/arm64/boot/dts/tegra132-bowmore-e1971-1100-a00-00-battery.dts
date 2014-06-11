@@ -4,7 +4,7 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		lc709203f@0b {
+		fg_sensor: lc709203f@0b {
 			status = "okay";
 		};
 
@@ -12,6 +12,15 @@
 			charger {
 				status = "okay";
 			};
+		};
+	};
+
+	thermal-zones {
+		Battery {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&fg_sensor>;
+			status = "disabled";
 		};
 	};
 };

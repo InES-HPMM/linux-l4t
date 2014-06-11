@@ -4,7 +4,7 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		lc709203f@0b {
+		fg_sensor: lc709203f@0b {
 			status = "okay";
 			onsemi,kernel-threshold-soc = < 2 >;
 		};
@@ -14,6 +14,13 @@
 				status = "okay";
 			};
 		};
+	};
+
+	thermal-zones {
+		Battery {
+			thermal-sensors = <&fg_sensor>;
+			status = "okay";
+                };
 	};
 };
 
