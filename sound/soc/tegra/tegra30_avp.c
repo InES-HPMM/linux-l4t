@@ -647,7 +647,6 @@ static void tegra30_avp_stream_notify(void)
 	struct tegra30_avp_stream *avp_stream;
 	struct stream_data *stream;
 	int i;
-	unsigned int eos = 0;
 
 	/* dev_vdbg(audio_avp->dev, "tegra30_avp_stream_notify"); */
 
@@ -655,33 +654,22 @@ static void tegra30_avp_stream_notify(void)
 		avp_stream = &audio_avp->avp_stream[i];
 		stream = avp_stream->stream;
 
-		if (avp_stream->notify_cb &&
-			(stream->stream_state_target != KSSTATE_RUN))
+		if (!stream->stream_allocated)
 			continue;
-		while (stream->stream_notification_request >
-			avp_stream->notification_received) {
-			int data_processed =
-				stream->source_buffer_read_position -
-				avp_stream->last_notification_offset;
 
-			if (data_processed < 0)
-				data_processed += stream->source_buffer_size;
+		if (avp_stream->is_drain_called &&
+		   (stream->source_buffer_read_position ==
+			stream->source_buffer_write_position) &&
+		   (avp_stream->notification_received >=
+			stream->stream_notification_request)) {
+			/* End of stream occured and noitfy same with value 1 */
+			avp_stream->notify_cb(avp_stream->notify_args, 1);
+			tegra30_avp_stream_set_state(i, KSSTATE_STOP);
+		} else if (stream->stream_notification_request >
+			avp_stream->notification_received) {
 			avp_stream->notification_received++;
 
-			while (data_processed >= avp_stream->period_size) {
-				if ((avp_stream->notification_received >=
-					stream->stream_notification_request)
-					&& avp_stream->is_drain_called) {
-					eos = 1;
-				}
-				avp_stream->notify_cb(avp_stream->notify_args,
-								eos);
-				avp_stream->last_notification_offset +=
-					avp_stream->period_size;
-				avp_stream->last_notification_offset %=
-					stream->source_buffer_size;
-				data_processed -= avp_stream->period_size;
-			}
+			avp_stream->notify_cb(avp_stream->notify_args, 0);
 		}
 	}
 }
@@ -916,6 +904,7 @@ static int tegra30_avp_compr_open(int *id)
 		return -EBUSY;
 	}
 	audio_avp->avp_stream[*id].is_drain_called = 0;
+	audio_engine->stream[*id].stream_allocated = 1;
 
 	atomic_inc(&audio_avp->stream_active_count);
 	tegra30_avp_audio_set_state(KSSTATE_RUN);
@@ -1038,7 +1027,7 @@ static int tegra30_avp_compr_set_params(int id,
 
 	if ((params->codec_type == SND_AUDIOCODEC_MP3) ||
 	    (params->codec_type == SND_AUDIOCODEC_AAC)) {
-		dev_info(audio_avp->dev, "\n*** STARTING %s ULP PLAYBACK ***\n",
+		dev_info(audio_avp->dev, "\n*** STARTING %s Offload PLAYBACK ***\n",
 		   (params->codec_type == SND_AUDIOCODEC_MP3) ? "MP3" : "AAC");
 	}
 	return 0;
@@ -1068,7 +1057,7 @@ static int tegra30_avp_compr_set_state(int id, int state)
 		tegra30_avp_stream_set_state(id, KSSTATE_RUN);
 		return 0;
 	case SND_COMPR_TRIGGER_DRAIN:
-		/* TODO */
+	case SND_COMPR_TRIGGER_PARTIAL_DRAIN:
 		avp_stream->is_drain_called = 1;
 		return 0;
 	default:
