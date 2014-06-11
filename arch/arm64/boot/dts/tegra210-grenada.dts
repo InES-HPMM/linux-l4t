@@ -926,26 +926,26 @@
 
 	sdhci@700b0600 {
 		tap-delay = <4>;
-		trim-delay = <3>;
+		trim-delay = <8>;
+		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
 		uhs_mask = <0x0>;
 		bus-width = <8>;
 		id = <3>;
 		built-in;
-		calib_3v3_offsets = <0x0202>;
-		calib_1v8_offsets = <0x0202>;
+		calib_1v8_offsets = <0x0707>;
 		status = "okay";
 	};
 	sdhci@700b0400 {
-		tap-delay = <0>;
+		tap-delay = <1>;
 		trim-delay = <3>;
 		max-clk-limit = <204000000>;
 		ddr-clk-limit = <48000000>;
 		bus-width = <4>;
 		id = <2>;
-		calib_3v3_offsets = <0x7676>;
-		calib_1v8_offsets = <0x7676>;
+		calib_3v3_offsets = <0x0101>;
+		calib_1v8_offsets = <0x0202>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ2 0>;
 		wp-gpios = <&gpio TEGRA_GPIO_PZ3 0>;
 		mmc-ocr-mask = <3>;
@@ -954,15 +954,15 @@
 	};
 	sdhci@700b0200 {
 		tap-delay = <4>;
-		trim-delay = <3>;
+		trim-delay = <8>;
+		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
 		uhs_mask = <0x0>;
 		bus-width = <8>;
 		id = <1>;
 		built-in;
-		calib_3v3_offsets = <0x0202>;
-		calib_1v8_offsets = <0x0202>;
+		calib_1v8_offsets = <0x0707>;
 		status = "okay";
 	};
 

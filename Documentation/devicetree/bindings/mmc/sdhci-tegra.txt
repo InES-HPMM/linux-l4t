@@ -24,6 +24,7 @@ Optional properties:
 	Mask DDR50 mode: 0x8
 - calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
 - pll_source: Specify list of clock parents
+- dqs-trim-delay: Specify number of cycles to delay for reading data from device when the device is enumerated in HS400, HS533 or HS667 modes and this value is applicable only for eMMC device.
 
 Example:
 
