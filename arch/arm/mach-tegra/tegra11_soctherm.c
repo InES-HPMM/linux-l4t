@@ -366,6 +366,7 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_LEVEL_LOW				0
 #define THROT_LEVEL_MED				1
 #define THROT_LEVEL_HVY				2
+#define THROT_LEVEL_NONE			-1 /* invalid */
 
 #define THROT_PRIORITY_LITE			0x444
 #define THROT_PRIORITY_LITE_PRIO_SHIFT		0
@@ -3792,7 +3793,7 @@ static int regs_show(struct seq_file *s, void *data)
 				continue;
 			}
 
-			level = THROT_LEVEL_LOW;
+			level = THROT_LEVEL_NONE; /* invalid */
 			depth = "";
 			q = 0;
 			if (IS_T13X && j == THROTTLE_DEV_CPU) {
@@ -3810,6 +3811,7 @@ static int regs_show(struct seq_file *s, void *data)
 			}
 			if ((IS_T12X || IS_T13X) && j == THROTTLE_DEV_GPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_GPU);
+				/* Mapping is hard-coded in gk20a:nv_therm */
 				if (state == THROT_VECT_HVY) {
 					q = 87;
 					depth = "hi";
@@ -3822,7 +3824,9 @@ static int regs_show(struct seq_file *s, void *data)
 				}
 			}
 
-			if (IS_T13X && j == THROTTLE_DEV_CPU)
+			if (level == THROT_LEVEL_NONE)
+				r = 0;
+			else if (IS_T13X && j == THROTTLE_DEV_CPU)
 				r = clk_reset13_readl(
 					THROT13_PSKIP_CTRL_CPU(level));
 			else
