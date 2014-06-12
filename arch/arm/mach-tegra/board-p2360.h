@@ -27,6 +27,12 @@ int p2360_suspend_init(void);
 #define UTMI1_PORT_OWNER_XUSB	0x1
 #define UTMI2_PORT_OWNER_XUSB	0x2
 
+/* Tegra GPIOs */
+#define TEGRA_GPIO_TV1ENA	TEGRA_GPIO_PI5
+#define TEGRA_GPIO_TV2ENA	TEGRA_GPIO_PK2
+#define TEGRA_GPIO_TV3ENA	TEGRA_GPIO_PK0
+#define TEGRA_GPIO_TV4ENA	TEGRA_GPIO_PK1
+
 /* Thermal monitor data */
 #define DELTA_TEMP		4000
 #define DELTA_TIME		2000

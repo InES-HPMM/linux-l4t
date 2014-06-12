@@ -28,6 +28,7 @@
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/gpio.h>
 
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach/arch.h>
@@ -356,6 +357,41 @@ static void __init p2360_uart_init(void)
 	}
 }
 
+static int __init p2360_gpio_init(void)
+{
+	int err;
+
+	err = gpio_request(TEGRA_GPIO_TV1ENA, "tv1_ena");
+	if (err < 0) {
+		pr_err("Err %d: TV1 enable GPIO request failed\n", err);
+		return err;
+	}
+	gpio_direction_output(TEGRA_GPIO_TV1ENA, 1);
+
+	err = gpio_request(TEGRA_GPIO_TV2ENA, "tv2_ena");
+	if (err < 0) {
+		pr_err("Err %d: TV2 enable GPIO request failed\n", err);
+		return err;
+	}
+	gpio_direction_output(TEGRA_GPIO_TV2ENA, 1);
+
+	err = gpio_request(TEGRA_GPIO_TV3ENA, "tv3_ena");
+	if (err < 0) {
+		pr_err("Err %d: TV3 enable GPIO request failed\n", err);
+		return err;
+	}
+	gpio_direction_output(TEGRA_GPIO_TV3ENA, 1);
+
+	err = gpio_request(TEGRA_GPIO_TV4ENA, "tv4_ena");
+	if (err < 0) {
+		pr_err("Err %d: TV4 enable GPIO request failed\n", err);
+		return err;
+	}
+	gpio_direction_output(TEGRA_GPIO_TV4ENA, 1);
+
+	return 0;
+}
+
 /* FIXME: Check which devices are needed from the below list */
 static struct platform_device *p2360_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -521,6 +557,8 @@ static void __init tegra_p2360_early_init(void)
 
 static void __init tegra_p2360_late_init(void)
 {
+	bool is_p2360_a01;
+
 	tegra_init_board_info();
 
 	p2360_usb_init();
@@ -536,6 +574,10 @@ static void __init tegra_p2360_late_init(void)
 #ifdef CONFIG_SENSORS_TMON_TMP411
 	register_therm_monitor(&p2360_therm_monitor_data);
 #endif
+	is_p2360_a01 = tegra_is_board(NULL, "62360", NULL, "100", NULL);
+
+	if (is_p2360_a01)
+		p2360_gpio_init();
 }
 
 static void __init tegra_p2360_dt_init(void)
