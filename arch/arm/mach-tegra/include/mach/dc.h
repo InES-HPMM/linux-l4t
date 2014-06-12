@@ -409,6 +409,12 @@ enum {
 	TEGRA_DC_OUT_DP,
 	TEGRA_DC_OUT_LVDS,
 	TEGRA_DC_OUT_NVSR_DP,
+	TEGRA_DC_OUT_FAKE_DP,
+	TEGRA_DC_OUT_FAKE_DSIA,
+	TEGRA_DC_OUT_FAKE_DSIB,
+	TEGRA_DC_OUT_FAKE_DSI_GANGED,
+	TEGRA_DC_OUT_NULL,
+	TEGRA_DC_OUT_MAX /* Keep this always as last enum */
 };
 
 struct tegra_dc_out_pin {
