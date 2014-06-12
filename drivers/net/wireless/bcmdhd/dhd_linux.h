@@ -43,12 +43,15 @@ typedef struct wifi_adapter_info {
 	const char	*name;
 	uint		irq_num;
 	uint		intr_flags;
+	int		wlan_pwr;
+	int		wlan_rst;
 	const char	*fw_path;
 	const char	*nv_path;
 	void		*wifi_plat_data;	/* wifi ctrl func, for backward compatibility */
 	uint		bus_type;
 	uint		bus_num;
 	uint		slot_num;
+	struct sysedp_consumer *sysedpc;
 } wifi_adapter_info_t;
 
 typedef struct bcmdhd_wifi_platdata {
