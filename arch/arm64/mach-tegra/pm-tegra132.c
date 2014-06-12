@@ -20,6 +20,7 @@
 #include <linux/smp.h>
 #include <linux/cpu.h>
 #include <linux/cpu_pm.h>
+#include <linux/suspend.h>
 #include <linux/tegra-pmc.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
@@ -53,6 +54,14 @@
 extern void tegra_resume(void);
 
 static int tegra132_reset_vector_init(void);
+
+static bool suspend_in_progress;
+
+bool tegra_suspend_in_progress(void)
+{
+	smp_rmb();
+	return suspend_in_progress;
+}
 
 static int tegra132_enter_sleep(unsigned long pmstate)
 {
@@ -175,6 +184,51 @@ static struct notifier_block cpu_notifier_block = {
 	.notifier_call = cpu_notify,
 };
 
+/*
+ * LP0 WAR: Bring all CPUs online before LP0 so that they can be put into C7 on
+ * subsequent __cpu_downs otherwise we end up hanging the system by leaving a
+ * core in C6 and requesting LP0 from CPU0
+ */
+static int __cpuinit pm_suspend_notifier(struct notifier_block *nb,
+						unsigned long event, void *data)
+{
+	int cpu, ret;
+
+	if (event != PM_SUSPEND_PREPARE)
+		return NOTIFY_OK;
+
+	suspend_in_progress = true;
+
+	dsb();
+
+	for_each_present_cpu(cpu) {
+		if (!cpu)
+			continue;
+		ret = cpu_up(cpu);
+		if (ret)
+			pr_warn("%s: Couldn't bring up CPU%d on LP0 entry\n",
+					__func__, cpu);
+		/*
+		 * Error in getting CPU out of C6. Let -EINVAL through as CPU
+		 * could have come online
+		 */
+		if (ret && ret != -EINVAL)
+			return NOTIFY_BAD;
+	}
+
+	return NOTIFY_OK;
+}
+
+/*
+ * Note: The priority of this notifier needs to be higher than cpu_hotplug's
+ * suspend notifier otherwise the subsequent cpu_up operation in
+ * pm_suspend_notifier will fail
+ */
+static struct notifier_block __cpuinitdata suspend_notifier = {
+	.notifier_call = pm_suspend_notifier,
+	.priority = 1,
+};
+
 static void tegra132_boot_secondary_cpu(int cpu)
 {
 	/* CPU1 is taken out of reset by bootloader for cold boot */
@@ -203,6 +257,10 @@ void __init tegra_soc_suspend_init(void)
 
 	/* Notifier to enable BGALLOW for CPU1-only */
 	register_hotcpu_notifier(&cpu_notifier_block);
+
+	/* Notifier to wakeup CPU1 to enter C7 before LP0 */
+	if (register_pm_notifier(&suspend_notifier))
+		pr_err("%s: Failed to register suspend notifier\n", __func__);
 }
 
 static int tegra132_reset_vector_init(void)
