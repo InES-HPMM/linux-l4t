@@ -397,7 +397,7 @@ static int tegra_i2c_gpio_init(struct tegra_i2c_dev *i2c_dev)
 	bit_data->setscl = tegra_i2c_gpio_setscl;
 	bit_data->getscl = tegra_i2c_gpio_getscl;
 	bit_data->data = i2c_dev;
-	bit_data->udelay = 5; /* 100KHz */
+	bit_data->udelay = 20; /* 50KHz */
 	bit_data->timeout = HZ; /* 10 ms*/
 	i2c_dev->bit_algo = &i2c_bit_algo;
 	i2c_dev->adapter.algo_data = bit_data;
