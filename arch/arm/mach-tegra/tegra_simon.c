@@ -197,10 +197,11 @@ static int __init tegra_simon_init_gpu(void)
 		    (unsigned long)grader);
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_notify);
 
-	grader->tzd = thermal_zone_device_find_by_name("GPU-therm");
-	if (!grader->tzd) {
+	grader->tzd = thermal_zone_get_zone_by_name("GPU-therm");
+	if (IS_ERR(grader->tzd)) {
 		pr_err("%s: Failed to find %s thermal zone\n",
 		       __func__, grader->domain_name);
+		grader->tzd = NULL;
 		return -ENOENT;
 	}
 
@@ -305,8 +306,8 @@ static int __init tegra_simon_init_cpu(void)
 		    (unsigned long)grader);
 	INIT_WORK(&grader->grade_update_work, tegra_simon_grade_notify);
 
-	grader->tzd = thermal_zone_device_find_by_name("CPU-therm");
-	if (!grader->tzd) {
+	grader->tzd = thermal_zone_get_zone_by_name("CPU-therm");
+	if (IS_ERR(grader->tzd)) {
 		pr_err("%s: Failed to find %s thermal zone\n",
 		       __func__, grader->domain_name);
 		return -ENOENT;
