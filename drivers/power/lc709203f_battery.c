@@ -217,6 +217,7 @@ static int lc709203f_get_temperature(struct lc709203f_chip *chip)
 }
 
 static enum power_supply_property lc709203f_battery_props[] = {
+	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
@@ -224,7 +225,6 @@ static enum power_supply_property lc709203f_battery_props[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
-	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 };
 
@@ -272,6 +272,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = chip->capacity_level;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_TEMP_INFO:
 		temperature = lc709203f_get_temperature(chip);
 		/*
 		   Temp ready by device is deci-kelvin
@@ -579,6 +580,9 @@ skip_thermistor_config:
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->charge_complete		= 0;
+
+	if (chip->pdata->tz_name)
+		lc709203f_battery_props[0] = POWER_SUPPLY_PROP_TEMP_INFO;
 
 	/* Remove current property if it is not supported */
 	if (!chip->pdata->support_battery_current)
