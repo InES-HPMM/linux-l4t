@@ -188,7 +188,6 @@ obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-panel.o
 obj-${CONFIG_MACH_VCM30_T124}           += therm-monitor.o
 
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
-obj-${CONFIG_MACH_P2360}                += board-p2360-sdhci.o
 obj-${CONFIG_MACH_P2360}                += board-p2360-panel.o
 obj-${CONFIG_MACH_P2360}                += therm-monitor.o
 

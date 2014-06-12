@@ -538,7 +538,6 @@ static void __init tegra_p2360_late_init(void)
 
 	p2360_uart_init();
 	platform_add_devices(p2360_devices, ARRAY_SIZE(p2360_devices));
-	p2360_sdhci_init();
 
 	isomgr_init();
 

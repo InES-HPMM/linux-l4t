@@ -78,4 +78,17 @@
 		nvidia,port1_status = <1>;
 		status = "okay";
 	};
+
+	sdhci@700b0600 {
+		tap-delay = <0x4>;
+		trim-delay = <0x4>;
+		ddr-trim-delay = <0x4>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x20>;
+		bus-width = <8>;
+		built-in;
+		ddr-clk-limit = <51000000>;
+		max-clk-limit = <200000000>;
+		status = "okay";
+	};
 };
