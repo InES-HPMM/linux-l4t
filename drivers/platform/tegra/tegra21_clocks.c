@@ -9950,6 +9950,11 @@ static void tegra21_clk_resume(void)
 		tegra21_pllm_clk_disable(&tegra_pll_m);
 	tegra21_pllm_clk_init(&tegra_pll_m);
 
+	/* Resume pll_mb (FIXME: don't need to enable/disable) */
+	tegra_pll_clk_resume_enable(&tegra_pll_mb);
+	if (tegra_pll_mb.state == OFF)
+		tegra_pll_mb.ops->disable(&tegra_pll_mb);
+
 	/* FIXME: implement EMC resume */
 	if (p != tegra_clk_emc.parent) {
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
