@@ -2,36 +2,4 @@
 
 / {
 	nvidia,dtsfilename = __FILE__;
-
-	gpio-keys {
-		compatible = "gpio-keys";
-		input-name = "gpio-keys";
-
-		power {
-			label = "Power";
-			gpios = <&gpio TEGRA_GPIO(Q, 0) GPIO_ACTIVE_LOW>;
-			linux,code = <KEY_POWER>;
-			linux,input-type = <EV_KEY>;
-			gpio-key,wakeup;
-			debounce-interval = <10>;
-		};
-
-		hall_effect {
-			label = "Hall Effect Sensor";
-			gpios = <&gpio TEGRA_GPIO(S, 0) GPIO_ACTIVE_LOW>;
-			linux,code = <0>;
-			linux,input-type = <EV_SW>;
-			gpio-key,wakeup;
-			debounce-interval = <0>;
-		};
-
-		gamepad {
-			label = "Gamepad";
-			gpios = <&gpio TEGRA_GPIO(S, 6) GPIO_ACTIVE_LOW>;
-			linux,code = <KEY_WAKEUP>;
-			linux,input-type = <EV_KEY>;
-			gpio-key,wakeup;
-			debounce-interval = <0>;
-		};
-	};
 };
