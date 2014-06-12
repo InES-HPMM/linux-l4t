@@ -130,9 +130,11 @@ static int volt_cap_sysfs_init(void)
 static struct thermal_zone_device *get_cpu_tz(void)
 {
 	struct thermal_zone_device *tz;
-	tz = thermal_zone_device_find_by_name(CPU_THERMAL_ZONE_TYPE);
-	if (!tz)
-		tz = thermal_zone_device_find_by_name(ALTERNATE_CPU_TZ_TYPE);
+	tz = thermal_zone_get_zone_by_name(CPU_THERMAL_ZONE_TYPE);
+	if (IS_ERR(tz))
+		tz = thermal_zone_get_zone_by_name(ALTERNATE_CPU_TZ_TYPE);
+	if (IS_ERR(tz))
+		return NULL;
 	return tz;
 }
 
