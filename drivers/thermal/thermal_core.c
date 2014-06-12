@@ -1411,25 +1411,6 @@ struct thermal_zone_device *thermal_zone_device_find(void *data,
 }
 EXPORT_SYMBOL(thermal_zone_device_find);
 
-struct thermal_zone_device *thermal_zone_device_find_by_name(const char *name)
-{
-	struct thermal_zone_device *thz;
-
-	if (!name)
-		return NULL;
-
-	mutex_lock(&thermal_list_lock);
-	list_for_each_entry(thz, &thermal_tz_list, node) {
-		if (!strncmp(name, thz->type, strlen(name))) {
-			mutex_unlock(&thermal_list_lock);
-			return thz;
-		}
-	}
-	mutex_unlock(&thermal_list_lock);
-	return NULL;
-}
-EXPORT_SYMBOL(thermal_zone_device_find_by_name);
-
 /**
  * create_trip_attrs() - create attributes for trip points
  * @tz:		the thermal zone device
