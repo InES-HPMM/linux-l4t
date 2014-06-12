@@ -20,12 +20,19 @@
 #define __TEGRA_DC_H
 
 /* tegra_dc_out.type */
-#define TEGRA_DC_OUT_RGB	0
-#define TEGRA_DC_OUT_HDMI	1
-#define TEGRA_DC_OUT_DSI	2
-#define TEGRA_DC_OUT_DP		3
-#define TEGRA_DC_OUT_LVDS	4
-#define TEGRA_DC_OUT_NVSR_DP	5
+#define TEGRA_DC_OUT_RGB		0
+#define TEGRA_DC_OUT_HDMI		1
+#define TEGRA_DC_OUT_DSI		2
+#define TEGRA_DC_OUT_DP			3
+#define TEGRA_DC_OUT_LVDS		4
+#define TEGRA_DC_OUT_NVSR_DP		5
+#define TEGRA_DC_OUT_FAKE_DP		6
+#define TEGRA_DC_OUT_FAKE_DSIA		7
+#define TEGRA_DC_OUT_FAKE_DSIB		8
+#define TEGRA_DC_OUT_FAKE_DSI_GANGED	9
+#define TEGRA_DC_OUT_NULL		10
+/* Keep as the last dc_out_define*/
+#define TEGRA_DC_OUT_MAX		11
 
 /* tegra_dc_out.dither */
 #define TEGRA_DC_UNDEFINED_DITHER	0
