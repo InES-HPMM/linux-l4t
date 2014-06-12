@@ -34,6 +34,16 @@
 
 /* ----- global defines ----------------------------------------------- */
 
+#define bit_info(dev, format, args...) \
+	do { \
+		dev_info(dev, format, ##args); \
+	} while (0)
+
+#define bit_err(dev, format, args...) \
+	do { \
+		dev_err(dev, format, ##args); \
+	} while (0)
+
 #ifdef DEBUG
 #define bit_dbg(level, dev, format, args...) \
 	do { \
@@ -177,7 +187,7 @@ static int i2c_outb(struct i2c_adapter *i2c_adap, unsigned char c)
 		setsda(adap, sb);
 		udelay((adap->udelay + 1) / 2);
 		if (sclhi(adap) < 0) { /* timed out */
-			bit_dbg(1, &i2c_adap->dev, "i2c_outb: 0x%02x, "
+			bit_err(&i2c_adap->dev, "i2c_outb: 0x%02x, "
 				"timeout at bit #%d\n", (int)c, i);
 			return -ETIMEDOUT;
 		}
@@ -191,7 +201,7 @@ static int i2c_outb(struct i2c_adapter *i2c_adap, unsigned char c)
 	}
 	sdahi(adap);
 	if (sclhi(adap) < 0) { /* timeout */
-		bit_dbg(1, &i2c_adap->dev, "i2c_outb: 0x%02x, "
+		bit_err(&i2c_adap->dev, "i2c_outb: 0x%02x, "
 			"timeout at ack\n", (int)c);
 		return -ETIMEDOUT;
 	}
@@ -221,7 +231,7 @@ static int i2c_inb(struct i2c_adapter *i2c_adap)
 	sdahi(adap);
 	for (i = 0; i < 8; i++) {
 		if (sclhi(adap) < 0) { /* timeout */
-			bit_dbg(1, &i2c_adap->dev, "i2c_inb: timeout at bit "
+			bit_err(&i2c_adap->dev, "i2c_inb: timeout at bit "
 				"#%d\n", 7 - i);
 			return -ETIMEDOUT;
 		}
@@ -378,7 +388,7 @@ static int sendbytes(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 		retval = i2c_outb(i2c_adap, *temp);
 
 		/* OK/ACK; or ignored NAK */
-		if ((retval > 0) || (nak_ok && (retval == 0))) {
+		if ((retval > 0) || (nak_ok && (retval == 0)) || (count == 1)) {
 			count--;
 			temp++;
 			wrcount++;
@@ -388,7 +398,8 @@ static int sendbytes(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 		 * the SMBus PEC was wrong.
 		 */
 		} else if (retval == 0) {
-			dev_err(&i2c_adap->dev, "sendbytes: NAK bailout.\n");
+			dev_err(&i2c_adap->dev,
+				"sendbytes: NAK bailout on byte %d\n", count);
 			return -EIO;
 
 		/* Timeout; or (someday) lost arbitration
@@ -399,8 +410,9 @@ static int sendbytes(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 		 * to know or care about this ... it is *NOT* an error.
 		 */
 		} else {
-			dev_err(&i2c_adap->dev, "sendbytes: error %d\n",
-					retval);
+			dev_err(&i2c_adap->dev,
+				"sendbytes: error %d on byte %d\n",
+				retval, count);
 			return retval;
 		}
 	}
@@ -532,8 +544,10 @@ static int bit_doAddress(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 		if (flags & I2C_M_REV_DIR_ADDR)
 			addr ^= 1;
 		ret = try_address(i2c_adap, addr, retries);
-		if ((ret != 1) && !nak_ok)
+		if ((ret != 1) && !nak_ok) {
+			dev_err(&i2c_adap->dev, "Error on address cycle\n");
 			return -ENXIO;
+		}
 	}
 
 	return 0;
