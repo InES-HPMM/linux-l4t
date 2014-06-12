@@ -1371,8 +1371,7 @@ static void tegra_udc_set_extcon_state(struct tegra_udc *udc)
 	cables = udc->edev->supported_cable;
 	/* set previous cable type to false, then set current type to true */
 	if (udc->prev_connect_type != CONNECT_TYPE_NONE)
-		extcon_set_cable_state(edev, cables[udc->prev_connect_type],
-					false);
+		extcon_set_state(edev, 0x0);
 	if (udc->connect_type != udc->connect_type_lp0
 			&& udc->connect_type != CONNECT_TYPE_NONE)
 		extcon_set_cable_state(edev, cables[udc->connect_type], true);
