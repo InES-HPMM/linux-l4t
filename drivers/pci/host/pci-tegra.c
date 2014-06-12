@@ -240,6 +240,7 @@
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
 
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
+#define PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C				(0xD << 8)
 #define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
 
 #define NV_PCIE2_RP_XP_CTL_1					0x00000FEC
@@ -1578,6 +1579,7 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 	} else {
 		/* WAR for Eye diagram failure on lanes for T124 platforms */
 		data = rp_readl(NV_PCIE2_RP_ECTL_1_R2, index);
+		data |= PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C;
 		data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
 		rp_writel(data, NV_PCIE2_RP_ECTL_1_R2, index);
 		/* Avoid warning during enumeration for invalid IRQ of RP */
