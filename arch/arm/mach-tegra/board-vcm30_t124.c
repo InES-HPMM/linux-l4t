@@ -28,7 +28,7 @@
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 
-#include <mach/tegra_asoc_pdata.h>
+#include <mach/tegra_vcm30t124_pdata.h>
 #include <mach/io_dpd.h>
 #include <asm/mach/arch.h>
 #include <mach/isomgr.h>
@@ -319,11 +319,21 @@ static void do_set_fixed_target_rate(struct tegra_clk_init_table *table)
 
 static int __init tegra_fixed_target_rate_init(void)
 {
+	int modem_id = tegra_get_modem_id();
+	struct tegra_clk_init_table vcm30t124_b0x_i2s4_clk_table[] = {
+		{ "i2s4", "pll_a_out0", 1024000, false},
+		{ NULL,    NULL,        0,        0},
+	};
+
 	do_set_fixed_target_rate(vcm30t124_fixed_target_clk_table);
 	do_set_fixed_target_rate(
 			(is_e1860_b00) ?
 			 vcm30t124_b0x_i2s_clk_table :
 			 vcm30t124_a0x_i2s_clk_table);
+
+	/* For voice call in b0x, set i2s4 clock in master mode */
+	if (is_e1860_b00 && modem_id)
+		do_set_fixed_target_rate(vcm30t124_b0x_i2s4_clk_table);
 
 	return 0;
 }
@@ -442,8 +452,317 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-static struct i2c_board_info tegra_snd_max9485_info = {
-	.type = "max9485",
+
+#define TDM_SLOT_MAP(stream_id, nth_channel, nth_byte)	\
+	((stream_id << 16) | (nth_channel << 8) | nth_byte)
+
+static unsigned int tegra_vcm30t124_amx_slot_map[] = {
+	/* jack 0 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 1, 0),
+	TDM_SLOT_MAP(0, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 2, 0),
+	TDM_SLOT_MAP(0, 2, 1),
+	/* jack 1 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(1, 1, 0),
+	TDM_SLOT_MAP(1, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(1, 2, 0),
+	TDM_SLOT_MAP(1, 2, 1),
+	/* jack 2 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(2, 1, 0),
+	TDM_SLOT_MAP(2, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(2, 2, 0),
+	TDM_SLOT_MAP(2, 2, 1),
+	/* jack 3 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(3, 1, 0),
+	TDM_SLOT_MAP(3, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(3, 2, 0),
+	TDM_SLOT_MAP(3, 2, 1),
+};
+
+static unsigned int tegra_vcm30t124_adx_slot_map[] = {
+	/* jack 0 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 1, 0),
+	TDM_SLOT_MAP(0, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 2, 0),
+	TDM_SLOT_MAP(0, 2, 1),
+	/* jack 1 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(1, 1, 0),
+	TDM_SLOT_MAP(1, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(1, 2, 0),
+	TDM_SLOT_MAP(1, 2, 1),
+	/* jack 2 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(2, 1, 0),
+	TDM_SLOT_MAP(2, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(2, 2, 0),
+	TDM_SLOT_MAP(2, 2, 1),
+	/* jack 3 */
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(3, 1, 0),
+	TDM_SLOT_MAP(3, 1, 1),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(0, 0, 0),
+	TDM_SLOT_MAP(3, 2, 0),
+	TDM_SLOT_MAP(3, 2, 1),
+};
+
+static const struct snd_soc_dapm_route tegra_e1860_a0x_audio_map[] = {
+	{"Headphone-y",	NULL,	"y DAC1OUT"},
+	{"Headphone-y", NULL,	"y DAC2OUT"},
+	{"Headphone-y",	NULL,	"y DAC3OUT"},
+	{"Headphone-y", NULL,	"y DAC4OUT"},
+	{"y ADC1IN",	NULL,	"LineIn-y"},
+	{"y ADC2IN",	NULL,	"LineIn-y"},
+	{"Headphone-x",	NULL,	"x ROUT"},
+	{"Headphone-x",	NULL,	"x LOUT"},
+	{"x LLINEIN",	NULL,	"LineIn-x"},
+	{"x RLINEIN",	NULL,	"LineIn-x"},
+	{"Spdif-out",	NULL,	"z OUT"},
+	{"z IN",	NULL,	"Spdif-in"},
+};
+
+static const struct snd_soc_dapm_route tegra_e1860_b00_audio_map[] = {
+	{"Headphone-x",	NULL,	"x DACOUT1"},
+	{"Headphone-x",	NULL,	"x DACOUT2"},
+	{"Headphone-x",	NULL,	"x DACOUT3"},
+	{"Headphone-x",	NULL,	"x DACOUT4"},
+	{"Headphone-x",	NULL,	"x DACOUT5"},
+	{"Headphone-x",	NULL,	"x DACOUT6"},
+	{"Mic-x", NULL, "x MICBIAS"},
+	{"x IN1",	NULL,	"Mic-x"},
+	{"x IN2",	NULL,	"Mic-x"},
+	{"x IN3",	NULL,	"Mic-x"},
+	{"x IN4",	NULL,	"Mic-x"},
+	{"x IN5",	NULL,	"Mic-x"},
+	{"x IN6",	NULL,	"Mic-x"},
+	{"Headphone-y",	NULL,	"y DAC1OUT"},
+	{"Headphone-y", NULL,	"y DAC2OUT"},
+	{"Headphone-y",	NULL,	"y DAC3OUT"},
+	{"Headphone-y", NULL,	"y DAC4OUT"},
+	{"y ADC1IN",	NULL,	"LineIn-y"},
+	{"y ADC2IN",	NULL,	"LineIn-y"},
+	{"Spdif-out",	NULL,	"z OUT"},
+	{"z IN",	NULL,	"Spdif-in"},
+};
+
+static const struct snd_soc_dapm_route tegra_voice_call_audio_map[] = {
+	{"Headphone-x",	NULL,	"x DACOUT1"},
+	{"Headphone-x",	NULL,	"x DACOUT2"},
+	{"Headphone-x",	NULL,	"x DACOUT3"},
+	{"Headphone-x",	NULL,	"x DACOUT4"},
+	{"Headphone-x",	NULL,	"x DACOUT5"},
+	{"Headphone-x",	NULL,	"x DACOUT6"},
+	{"Mic-x", NULL, "x MICBIAS"},
+	{"x IN1",	NULL,	"Mic-x"},
+	{"x IN2",	NULL,	"Mic-x"},
+	{"x IN3",	NULL,	"Mic-x"},
+	{"x IN4",	NULL,	"Mic-x"},
+	{"x IN5",	NULL,	"Mic-x"},
+	{"x IN6",	NULL,	"Mic-x"},
+	{"Spdif-out",	NULL,	"y OUT"},
+	{"y IN",	NULL,	"Spdif-in"},
+};
+
+static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
+	/* initialize DAI link config */
+	.config[0] = {
+		.cpu_name = "tegra30-i2s.0",
+		.codec_name = "wm8731.0-001a",
+		.codec_dai_name = "wm8731-hifi",
+		.cpu_dai_name = "I2S0",
+		.codec_prefix = "x",
+		.dai_fmt = SND_SOC_DAIFMT_I2S |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 2,
+		.params.channels_max = 2,
+	},
+	.config[1] = {
+		.cpu_name = "tegra30-i2s.4",
+		.codec_name = "ad193x.0-0007",
+		.codec_dai_name = "ad193x-hifi",
+		.cpu_dai_name = "I2S4",
+		.codec_prefix = "y",
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBM_CFM,
+		.params.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 8,
+		.params.channels_max = 8,
+	},
+	.config[2] = {
+		.cpu_name = "tegra30-spdif",
+		.codec_name = "spdif-dit.0",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "SPDIF",
+		.codec_prefix = "z",
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 2,
+		.params.channels_max = 2,
+	},
+	.dev_num = 3,
+	/* initialize DAPM routes */
+	.dapm_routes = tegra_e1860_a0x_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(tegra_e1860_a0x_audio_map),
+	/* initialize AMX slot map */
+	.amx_slot_map[0] = tegra_vcm30t124_amx_slot_map,
+	.amx_slot_map[1] = tegra_vcm30t124_amx_slot_map,
+	.num_amx = 2,
+	/* initialize ADX slot map */
+	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
+	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
+	.num_adx = 2,
+	.max9485_addr = 0,
+	/* sound card: tegra-wm8731-ad1937 */
+	.card_name = "tegra-wm-ad",
+};
+
+static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
+	/* intialize DAI link config */
+	.config[0] = {
+		.cpu_name = "tegra30-i2s.0",
+		.codec_name = "ak4618.0-0010",
+		.codec_dai_name = "ak4618-hifi",
+		.cpu_dai_name = "I2S0",
+		.codec_prefix = "x",
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 8,
+		.params.channels_max = 8,
+	},
+	.config[1] = {
+		.cpu_name = "tegra30-i2s.4",
+		.codec_name = "ad193x.0-0007",
+		.codec_dai_name = "ad193x-hifi",
+		.cpu_dai_name = "I2S4",
+		.codec_prefix = "y",
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBM_CFM,
+		.params.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 8,
+		.params.channels_max = 8,
+	},
+	.config[2] = {
+		.cpu_name = "tegra30-spdif",
+		.codec_name = "spdif-dit.0",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "SPDIF",
+		.codec_prefix = "z",
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 2,
+		.params.channels_max = 2,
+	},
+	.dev_num = 3,
+	/* initialize DAPM routes */
+	.dapm_routes = tegra_e1860_b00_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(tegra_e1860_b00_audio_map),
+	/* initialize AMX slot map */
+	.amx_slot_map[0] = tegra_vcm30t124_amx_slot_map,
+	.amx_slot_map[1] = tegra_vcm30t124_amx_slot_map,
+	.num_amx = 2,
+	/* initialize ADX slot map */
+	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
+	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
+	.num_adx = 2,
+	.max9485_addr = 0,
+	/* sound card: tegra-ak4618-ad1937 */
+	.card_name = "tegra-ak-ad",
+};
+
+/* voice call related structures
+ * I2S0<-DAM0<-I2S4 (DAM0 in_rate = 16khz)
+ * I2S0->DAM1->I2S4 (DAM1 in_rate = 48khz) */
+static unsigned int tegra_voice_call_in_srate[2] = {
+	16000, /* DAM0 in_srate */
+	48000, /* DAM1 in_srate */
+};
+
+static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
+	/* initialize DAI link config */
+	.config[0] = {
+		.cpu_name = "tegra30-i2s.0",
+		.codec_name = "ak4618.0-0010",
+		.codec_dai_name = "ak4618-hifi",
+		.cpu_dai_name = "I2S0",
+		.codec_prefix = "x",
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.params.rate_min = 48000,
+		.params.rate_max = 48000,
+		.params.channels_min = 8,
+		.params.channels_max = 8,
+	},
+	.config[1] = {
+		.cpu_name = "tegra30-i2s.4",
+		.codec_name = "spdif-dit.0",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "I2S4",
+		.codec_prefix = "y",
+		.dai_fmt = SND_SOC_DAIFMT_I2S |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 16000,
+		.params.rate_max = 16000,
+		.params.channels_min = 2,
+		.params.channels_max = 2,
+	},
+	.dev_num = 2,
+	/* initialize DAPM routes */
+	.dapm_routes = tegra_voice_call_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(tegra_voice_call_audio_map),
+	/* initialize DAM input sampling rate */
+	.dam_in_srate = tegra_voice_call_in_srate,
+	.num_dam = 2,
+	.max9485_addr = 0,
+	/* sound card: tegra-ak4618-voicecall */
+	.card_name = "tegra-ak-vc",
 };
 
 static struct platform_device tegra_snd_vcm30t124 = {
@@ -451,28 +770,28 @@ static struct platform_device tegra_snd_vcm30t124 = {
 	.id = 0,
 };
 
-static struct platform_device tegra_snd_vcm30t124_b00 = {
-	.name = "tegra-snd-vcm30t124-b00",
+static struct platform_device tegra_spdif_dit = {
+	.name = "spdif-dit",
 	.id = 0,
 };
 
 static void __init vcm30_t124_audio_init(void)
 {
+	int modem_id = tegra_get_modem_id();
 	int is_e1892 = 0;
 
 	/* check the version of embedded breakout board */
 	is_e1892 = tegra_is_board(NULL, "61892", NULL, NULL, NULL);
-	tegra_snd_max9485_info.addr = is_e1892 ? 0x70 : 0x60;
+	tegra_e1860_b00_pdata.max9485_addr =
+	tegra_e1860_a0x_pdata.max9485_addr =
+		is_e1892 ? 0x70 : 0x60;
 
-	if (is_e1860_b00) {
-		tegra_snd_vcm30t124_b00.dev.platform_data =
-			&tegra_snd_max9485_info;
-		platform_device_register(&tegra_snd_vcm30t124_b00);
-	} else {
-		tegra_snd_vcm30t124.dev.platform_data =
-			&tegra_snd_max9485_info;
-		platform_device_register(&tegra_snd_vcm30t124);
-	}
+	tegra_snd_vcm30t124.dev.platform_data = is_e1860_b00 ?
+		(modem_id ? &tegra_voice_call_pdata :
+			&tegra_e1860_b00_pdata) : &tegra_e1860_a0x_pdata;
+
+	platform_device_register(&tegra_snd_vcm30t124);
+	platform_device_register(&tegra_spdif_dit);
 }
 
 static struct platform_device *vcm30_t124_devices[] __initdata = {
