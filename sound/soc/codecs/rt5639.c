@@ -1574,7 +1574,7 @@ static int rt5639_set_dmic2_event(struct snd_soc_dapm_widget *w,
 static void hp_amp_power(struct snd_soc_codec *codec, int on)
 {
 	static int hp_amp_power_count;
-	dev_info(codec->dev,
+	dev_dbg(codec->dev,
 		"one bit hp_amp_power on=%d hp_amp_power_count=%d\n",
 		on, hp_amp_power_count);
 
