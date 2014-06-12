@@ -55,8 +55,6 @@ static struct board_info board_info, display_board_info;
 static __initdata struct tegra_clk_init_table p2360_clk_init_table[] = {
 	/* name			parent		rate	enabled (always on)*/
 
-	{ "pll_c",		NULL,		792000000,	true},
-
 	{ "automotive.sclk",	NULL,		316800000,	true},
 	{ "automotive.hclk",	NULL,		316800000,	true},
 	{ "automotive.pclk",	NULL,		158400000,	true},
@@ -195,6 +193,7 @@ static struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("sbus",		316800000),
 #endif
 
+#ifdef CONFIG_TEGRA_PLLCX_FIXED
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	SET_FIXED_TARGET_RATE("pll_c2",		432000000),
 	SET_FIXED_TARGET_RATE("c2bus",		432000000),
@@ -205,6 +204,7 @@ static struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("pll_c4",		600000000),
 	SET_FIXED_TARGET_RATE("c4bus",		600000000),
 	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
+#endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
 	SET_FIXED_TARGET_RATE("pll_x",		150000000),
 	SET_FIXED_TARGET_RATE("gbus",		600000000),
