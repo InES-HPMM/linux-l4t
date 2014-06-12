@@ -2,19 +2,47 @@
 
 / {
 	i2c@7000c000 {
+		mpu6515@69 {
+			compatible = "invensense,mpu6515";
+			reg = <0x69>;
+			interrupt-parent = <&gpio>;
+			interrupts = <144 0x01>;
+			invensense,orientation = [01 00 00 00 01 00 00 00 01];
+			vlogic = <&max77620_sd3>;
+			vdd = <&vdd_3v3>;
+		};
+
 		ak8963c@0d {
 			compatible = "ak,ak8963";
 			reg = <0x0d>;
 			orientation = [ff 00 00 00 01 00 00 00 ff];
-			config = "mpu";
-			vid-supply = <&max77620_sd3>;
-			vdd-supply = <&vdd_3v3>;
+			vid = <&max77620_sd3>;
+			vdd = <&vdd_3v3>;
+		};
+
+		bmp280@77 {
+			compatible = "bmp,bmp280";
+			reg = <0x77>;
+			vddio = <&max77620_sd3>;
+			vdd = <&vdd_3v3>;
 		};
 
 		cm3217@10 {
 			compatible = "capella,cm3217";
 			reg = <0x10>;
-			vdd-supply = <&vdd_3v3>;
+			vdd = <&vdd_3v3>;
+		};
+
+		cm3218@48 {
+			compatible = "capella,cm3218";
+			reg = <0x48>;
+			vdd = <&vdd_3v3>;
+		};
+
+		max44006@44 {
+			compatible = "maxim,max44006";
+			reg = <0x44>;
+			vdd = <&vdd_3v3>;
 		};
 
 		ltr659@23 {
