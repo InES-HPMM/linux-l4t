@@ -361,6 +361,11 @@ static void ardbeg_audio_init(void)
 		ardbeg_audio_pdata_rt5639.gpio_ldo1_en = TEGRA_GPIO_LDO_EN;
 	}
 
+	if (board_info.board_id == BOARD_E2141) {
+		ardbeg_audio_pdata_rt5639.i2s_param[HIFI_CODEC].audio_port_id
+				= 0;
+		ardbeg_audio_pdata_rt5639.i2s_param[BT_SCO].audio_port_id = 1;
+	}
 	ardbeg_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
 	ardbeg_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
 
