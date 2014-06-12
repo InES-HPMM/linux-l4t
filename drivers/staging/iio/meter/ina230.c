@@ -687,6 +687,7 @@ static ssize_t ina230_set_channel(struct device *dev,
 	int mode = this_attr->address;
 	long val;
 	int current_ma;
+	int ret;
 
 	switch (mode) {
 	case CURRENT_THRESHOLD:
@@ -694,8 +695,10 @@ static ssize_t ina230_set_channel(struct device *dev,
 			return -EINVAL;
 
 		current_ma = (int) val;
-		return ina230_set_current_threshold(chip, current_ma);
-
+		ret = ina230_set_current_threshold(chip, current_ma);
+		if (ret)
+			return ret;
+		return len;
 	default:
 		break;
 	}
