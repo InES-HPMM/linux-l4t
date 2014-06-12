@@ -1,7 +1,7 @@
 /*
  * Generic PWM backlight driver data - see drivers/video/backlight/pwm_bl.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,6 +18,20 @@
 
 #include <linux/backlight.h>
 
+struct pwm_bl_data {
+	struct pwm_device *pwm;
+	struct device *dev;
+	unsigned int period;
+	unsigned int lth_brightness;
+	unsigned int *levels;
+	unsigned int pwm_gpio;
+	u8 *bl_measured;
+	int (*notify)(struct device *, int brightness);
+	void (*notify_after)(struct device *, int brightness);
+	int (*check_fb)(struct device *, struct fb_info *);
+	void (*exit)(struct device *);
+};
+
 struct platform_pwm_backlight_data {
 	int pwm_id;
 	unsigned int max_brightness;
@@ -26,6 +40,7 @@ struct platform_pwm_backlight_data {
 	unsigned int pwm_period_ns;
 	unsigned int *levels;
 	unsigned int pwm_gpio;
+	u8 *bl_measured;
 	int (*init)(struct device *dev);
 	int (*notify)(struct device *dev, int brightness);
 	void (*notify_after)(struct device *dev, int brightness);

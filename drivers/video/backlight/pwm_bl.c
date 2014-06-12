@@ -1,7 +1,7 @@
 /*
  * linux/drivers/video/backlight/pwm_bl.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -32,21 +32,6 @@
 #include <linux/pwm.h>
 #include <linux/pwm_backlight.h>
 #include <linux/slab.h>
-
-struct pwm_bl_data {
-	struct pwm_device	*pwm;
-	struct device		*dev;
-	unsigned int		period;
-	unsigned int		lth_brightness;
-	unsigned int		*levels;
-	unsigned int		pwm_gpio;
-	int			(*notify)(struct device *,
-					  int brightness);
-	void			(*notify_after)(struct device *,
-					int brightness);
-	int			(*check_fb)(struct device *, struct fb_info *);
-	void			(*exit)(struct device *);
-};
 
 static int pwm_backlight_set(struct backlight_device *bl, int brightness)
 {
@@ -226,6 +211,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 
 	pb->notify = data->notify;
 	pb->notify_after = data->notify_after;
+	pb->bl_measured = data->bl_measured;
 	pb->check_fb = data->check_fb;
 	pb->exit = data->exit;
 	pb->dev = &pdev->dev;
@@ -281,13 +267,13 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		data->dft_brightness = data->max_brightness;
 	}
 
+	platform_set_drvdata(pdev, bl);
 	bl->props.brightness = data->dft_brightness;
 	backlight_update_status(bl);
 
 	if (gpio_is_valid(pb->pwm_gpio))
 		gpio_free(pb->pwm_gpio);
 
-	platform_set_drvdata(pdev, bl);
 	return 0;
 
 err_alloc:
