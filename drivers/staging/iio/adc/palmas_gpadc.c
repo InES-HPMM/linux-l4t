@@ -995,11 +995,9 @@ static int palmas_gpadc_get_adc_dt_data(struct platform_device *pdev,
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct palmas_gpadc_platform_data *gp_data;
-	struct device_node *child;
 	struct palmas_adc_auto_conv_property *conv_prop;
 	int ret;
 	u32 pval;
-	int nmap, nvalid_map;
 
 	gp_data = devm_kzalloc(&pdev->dev, sizeof(*gp_data), GFP_KERNEL);
 	if (!gp_data)
