@@ -42,6 +42,7 @@
 #include "devices.h"
 #include "board-common.h"
 #include "common.h"
+#include "therm-monitor.h"
 
 #include <asm/mach-types.h>
 #include "tegra-of-dev-auxdata.h"
@@ -129,6 +130,41 @@ static __initdata struct tegra_clk_init_table p2360_clk_init_table[] = {
 	{ "i2c6",		"pll_p",	408000000,	false},
 
 	{ NULL,			NULL,		0,		0},
+};
+
+/*
+*  Padcontrol registers which need to modified
+*  based on local temperature changes.
+*  Format ex:
+*  {
+*    .reg_addr = 0x000008ec, --  only Offset
+*    .temperat = {10000, 85000, INT_MAX}, -- in Milli Deg C, Maximum 9 values
+*    .value    = {0xf101a000, 0xf161d000}, -- Maximum 9 values
+*  },
+*
+*  If local temperature is  < 10000  Milli Deg C then value "0xf101a000"
+*  will be written and if between 10000 to 85000 then value "0xf161d000"
+*  will be wriiten and so on.
+*/
+struct therm_monitor_ldep_data ltemp_reg_data[] = {
+	{
+		.reg_addr = INVALID_ADDR,
+	},
+};
+
+/* Platform data for external thermal sensor */
+struct therm_monitor_data p2360_therm_monitor_data = {
+	.brd_ltemp_reg_data = NULL,
+	.delta_temp = 4000,
+	.delta_time = 2000,
+	.remote_offset = 8000,
+	.alert_gpio = TEGRA_GPIO_PI6,
+	.local_temp_update = false,
+	.utmip_reg_update = false,	/* USB registers update is not
+					   required for now */
+	.i2c_bus_num = I2C_BUS_TMP411,
+	.i2c_dev_addrs = I2C_ADDR_TMP411,
+	.i2c_dev_name = "tmon-tmp411-sensor",
 };
 
 #define SET_FIXED_TARGET_RATE(clk_name, fixed_target_rate) \
@@ -509,6 +545,9 @@ static void __init tegra_p2360_late_init(void)
 	isomgr_init();
 
 	p2360_panel_init();
+#ifdef CONFIG_SENSORS_TMON_TMP411
+	register_therm_monitor(&p2360_therm_monitor_data);
+#endif
 }
 
 static void __init tegra_p2360_dt_init(void)

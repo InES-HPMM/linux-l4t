@@ -24,7 +24,14 @@ int p2360_panel_init(void);
 int p2360_sdhci_init(void);
 int p2360_suspend_init(void);
 
-#define UTMI1_PORT_OWNER_XUSB   0x1
-#define UTMI2_PORT_OWNER_XUSB   0x2
+#define UTMI1_PORT_OWNER_XUSB	0x1
+#define UTMI2_PORT_OWNER_XUSB	0x2
+
+/* Thermal monitor data */
+#define DELTA_TEMP		4000
+#define DELTA_TIME		2000
+#define REMT_OFFSET		8000
+#define I2C_ADDR_TMP411		0x4c
+#define I2C_BUS_TMP411		1
 
 #endif

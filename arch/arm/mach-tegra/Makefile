@@ -190,6 +190,7 @@ obj-${CONFIG_MACH_VCM30_T124}           += therm-monitor.o
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
 obj-${CONFIG_MACH_P2360}                += board-p2360-sdhci.o
 obj-${CONFIG_MACH_P2360}                += board-p2360-panel.o
+obj-${CONFIG_MACH_P2360}                += therm-monitor.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
