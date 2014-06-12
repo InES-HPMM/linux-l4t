@@ -146,6 +146,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-bcmdhd-wlan", 0, "bcm4329_wlan",
+				NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 0, "spdif-dit.0", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 1, "spdif-dit.1", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 2, "spdif-dit.2", NULL),
