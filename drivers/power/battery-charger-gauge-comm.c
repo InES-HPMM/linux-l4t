@@ -120,15 +120,16 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 
 	dev = bc_dev->parent_dev;
 	if (!bc_dev->battery_tz) {
-		bc_dev->battery_tz = thermal_zone_device_find_by_name(
+		bc_dev->battery_tz = thermal_zone_get_zone_by_name(
 					bc_dev->tz_name);
 
-		if (!bc_dev->battery_tz) {
+		if (IS_ERR(bc_dev->battery_tz)) {
 			dev_info(dev,
 			    "Battery thermal zone %s is not registered yet\n",
 				bc_dev->tz_name);
 			schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
 			    msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
+			bc_dev->battery_tz = NULL;
 			return;
 		}
 	}
@@ -533,12 +534,13 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 
 	if (!bg_dev->battery_tz)
 		bg_dev->battery_tz =
-			thermal_zone_device_find_by_name(bg_dev->tz_name);
+			thermal_zone_get_zone_by_name(bg_dev->tz_name);
 
-	if (!bg_dev->battery_tz) {
+	if (IS_ERR(bg_dev->battery_tz)) {
 		dev_info(bg_dev->parent_dev,
 			"Battery thermal zone %s is not registered yet\n",
 			bg_dev->tz_name);
+		bg_dev->battery_tz = NULL;
 		return -ENODEV;
 	}
 
@@ -618,12 +620,13 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 
 	if (bgi->tz_name) {
 		bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
-		bg_dev->battery_tz = thermal_zone_device_find_by_name(
+		bg_dev->battery_tz = thermal_zone_get_zone_by_name(
 			bg_dev->tz_name);
-		if (!bg_dev->battery_tz)
+		if (IS_ERR(bg_dev->battery_tz))
 			dev_info(dev,
 			"Battery thermal zone %s is not registered yet\n",
 			bg_dev->tz_name);
+			bg_dev->battery_tz = NULL;
 	}
 
 	list_add(&bg_dev->list, &gauge_list);
