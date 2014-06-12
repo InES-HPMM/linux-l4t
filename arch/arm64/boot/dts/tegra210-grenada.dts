@@ -749,6 +749,10 @@
 		};
 	};
 
+	adsp_audio {
+		status = "okay";
+	};
+
 	sound {
 		compatible = "nvidia,tegra-audio-grenada";
 		nvidia,model = "tegra-snd-grenada";
@@ -787,6 +791,7 @@
 			nvidia,audio-codec-y = "spdif-dit.1";
 			nvidia,audio-codec-z = "spdif-dit.2";
 			nvidia,audio-codec-s = "spdif-dit.3";
+			nvidia,adsp = <&tegra_adsp_audio>;
 	};
 
 	pcie-controller {
