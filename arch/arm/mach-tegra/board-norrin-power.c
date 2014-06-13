@@ -272,6 +272,7 @@ static struct soctherm_platform_data norrin_soctherm_data = {
 				[THROTTLE_DEV_CPU] = {
 					.enable = true,
 					.depth = 80,
+			/* see @PSKIP_CONFIG_NOTE in board-ardbeg-power.c */
 					.throttling_depth = "heavy_throttling",
 				},
 				[THROTTLE_DEV_GPU] = {

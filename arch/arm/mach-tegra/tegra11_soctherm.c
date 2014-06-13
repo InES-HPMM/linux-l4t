@@ -2254,8 +2254,8 @@ static bool throttlectl_cpu_mn(enum soctherm_throttle_id throt)
  */
 static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 {
-	u32 r, throt_vect = 0;
-	int throt_level = 0;
+	u32 r, throt_vect;
+	int throt_level;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
@@ -2269,9 +2269,12 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 	} else if (!strcmp(dev->throttling_depth, "medium_throttling")) {
 		throt_level = THROT_LEVEL_MED;
 		throt_vect = THROT_VECT_MED;
-	} else {
+	} else if (!strcmp(dev->throttling_depth, "low_throttling")) {
 		throt_level = THROT_LEVEL_LOW;
 		throt_vect = THROT_VECT_LOW;
+	} else {
+		throt_level = THROT_LEVEL_NONE;
+		throt_vect = THROT_VECT_NONE;
 	}
 
 	if (dev->depth)
@@ -2279,20 +2282,22 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 
 	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
-	/* for T132: setup throttle vector in soctherm register */
+	/* setup throttle vector in soctherm register */
 	r = REG_SET(r, THROT_PSKIP_CTRL_VECT_CPU, throt_vect);
 	r = REG_SET(r, THROT_PSKIP_CTRL_VECT2_CPU, throt_vect);
 	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_CPU));
 
-	/* No point programming the sequencer, since we're bypassing it */
-
-	/* for T132: setup actual depth in ccroc nv_therm register */
-	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
-	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+	/* bypass sequencer in soc_therm as it is programmed in ccroc */
+	r = REG_SET(0, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
 	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_CPU));
 
+	if (throt_level == THROT_LEVEL_NONE)
+		return true;
+
+	/* setup PSKIP in ccroc nv_therm registers */
 	r = clk_reset13_readl(THROT13_PSKIP_RAMP_CPU(throt_level));
-	r = REG_SET(r, THROT_PSKIP_RAMP_SEQ_BYPASS_MODE, 1);
+	r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
+	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
 	clk_reset13_writel(r, THROT13_PSKIP_RAMP_CPU(throt_level));
 
 	r = clk_reset13_readl(THROT13_PSKIP_CTRL_CPU(throt_level));

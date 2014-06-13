@@ -570,6 +570,19 @@ static struct soctherm_therm ardbeg_therm_pop[THERM_SIZE] = {
 	},
 };
 
+/*
+ * @PSKIP_CONFIG_NOTE: For T132, throttling config of PSKIP is no longer
+ * done in soctherm registers. These settings are now done via registers in
+ * denver:ccroc module which are at a different register offset. More
+ * importantly, there are _only_ three levels of throttling: 'low',
+ * 'medium' and 'heavy' and are selected via the 'throttling_depth' field
+ * in the throttle->devs[] section of the soctherm config. Since the depth
+ * specification is per device, it is necessary to manually make sure the
+ * depths specified alongwith a given level are the same across all devs,
+ * otherwise it will overwrite a previously set depth with a different
+ * depth. We will refer to this comment at each relevant location in the
+ * config sections below.
+ */
 static struct soctherm_platform_data ardbeg_soctherm_data = {
 	.oc_irq_base = TEGRA_SOC_OC_IRQ_BASE,
 	.num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ,
@@ -660,6 +673,7 @@ static struct soctherm_platform_data ardbeg_soctherm_data = {
 				[THROTTLE_DEV_CPU] = {
 					.enable = true,
 					.depth = 80,
+					/* see @PSKIP_CONFIG_NOTE */
 					.throttling_depth = "heavy_throttling",
 				},
 				[THROTTLE_DEV_GPU] = {
@@ -788,6 +802,7 @@ static struct soctherm_throttle battery_oc_throttle_t13x = {
 		[THROTTLE_DEV_CPU] = {
 			.enable = true,
 			.depth = 50,
+			/* see @PSKIP_CONFIG_NOTE */
 			.throttling_depth = "low_throttling",
 		},
 		[THROTTLE_DEV_GPU] = {
@@ -831,6 +846,7 @@ static struct soctherm_throttle voltmon_throttle_t13x = {
 			.divisor = 255,
 			.duration = 0,
 			.step = 0,
+			/* see @PSKIP_CONFIG_NOTE */
 			.throttling_depth = "medium_throttling",
 		},
 		[THROTTLE_DEV_GPU] = {
