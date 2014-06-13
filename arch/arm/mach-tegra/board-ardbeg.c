@@ -84,6 +84,7 @@
 #include "board.h"
 #include "board-ardbeg.h"
 #include "board-common.h"
+#include "board-panel.h"
 #include "board-touch-raydium.h"
 #include "board-touch-maxim_sti.h"
 #include "clock.h"
@@ -1003,6 +1004,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", 0x70027000, "tegra-sata.0",
 		NULL),
+	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	{}
 };
 #endif
@@ -1521,10 +1523,37 @@ static void __init tegra_ardbeg_init_early(void)
 	tegra12x_init_early();
 }
 
+static int tegra_ardbeg_notifier_call(struct notifier_block *nb,
+				    unsigned long event, void *data)
+{
+	struct device *dev = data;
+
+	switch (event) {
+	case BUS_NOTIFY_BIND_DRIVER:
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		if (dev->of_node) {
+			if (of_device_is_compatible(dev->of_node,
+				"pwm-backlight")) {
+				tegra_pwm_bl_ops_register(dev);
+			}
+		}
+#endif
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block platform_nb = {
+	.notifier_call = tegra_ardbeg_notifier_call,
+};
+
 static void __init tegra_ardbeg_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
 	tegra_get_display_board_info(&display_board_info);
+	bus_register_notifier(&platform_bus_type, &platform_nb);
 
 	tegra_ardbeg_early_init();
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
