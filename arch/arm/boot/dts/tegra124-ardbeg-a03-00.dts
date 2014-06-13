@@ -1,5 +1,0 @@
-#include "tegra124-ardbeg-e1780-1000-a03-00.dts"
-
-/ {
-	nvidia,dtsfilename = __FILE__;
-};
