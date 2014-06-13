@@ -358,7 +358,7 @@
 		dma-names = "rx", "tx";
 	};
 
-	pmc {
+	pmc@7000e400 {
 		compatible = "nvidia,tegra124-pmc";
 		reg = <0x0 0x7000e400 0x0 0x400>;
 		clocks = <&tegra_car 261>, <&clk32k_in>;

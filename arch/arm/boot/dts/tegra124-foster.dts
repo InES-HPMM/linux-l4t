@@ -90,7 +90,7 @@
 		spi-max-frequency = <25000000>;
 	};
 
-	pmc {
+	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
 		nvidia,suspend-mode = <3>;

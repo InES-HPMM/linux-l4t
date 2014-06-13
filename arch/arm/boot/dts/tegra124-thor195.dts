@@ -137,7 +137,7 @@
 		force-on-gpios = <&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;
 	};
 
-	pmc {
+	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
 		nvidia,suspend-mode = <3>;

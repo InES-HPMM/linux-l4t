@@ -421,7 +421,7 @@
 		nvidia,memory-clients = <30 31>;
 	};
 
-	pmc {
+	pmc@7000e400 {
 		compatible = "nvidia,tegra210-pmc";
 		reg = <0x0 0x7000e400 0x0 0x400>;
 	};
