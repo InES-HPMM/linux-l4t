@@ -697,6 +697,7 @@ struct tegra_dc_win {
 	unsigned		z;
 
 	struct tegra_dc_csc	csc;
+	bool			csc_dirty;
 
 	int			dirty;
 	int			underflows;
