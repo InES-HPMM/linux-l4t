@@ -19,7 +19,6 @@
  */
 #include <linux/ioport.h>
 #include <linux/fb.h>
-#include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -811,8 +810,6 @@ int __init ardbeg_panel_init(void)
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	ardbeg_panel_select();
 #endif
-
-	nvmap_init();
 
 	phost1x = ardbeg_host1x_init();
 	if (!phost1x) {

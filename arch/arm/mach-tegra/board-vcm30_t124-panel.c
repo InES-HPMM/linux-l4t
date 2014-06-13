@@ -19,7 +19,6 @@
  */
 #include <linux/ioport.h>
 #include <linux/fb.h>
-#include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -372,8 +371,6 @@ int __init vcm30_t124_panel_init(void)
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	vcm30_t124_panel_select();
 #endif
-
-	nvmap_init();
 
 	phost1x = vcm30_t124_host1x_init();
 	if (!phost1x) {
