@@ -900,6 +900,7 @@ int __init ardbeg_panel_init(void)
 	tegra_get_board_info(&board_info);
 	switch (board_info.board_id) {
 	case BOARD_E2141:
+		ardbeg_disp2_out.flags = TEGRA_DC_OUT_HOTPLUG_LOW;
 	case BOARD_E1991:
 		ardbeg_hdmi_out.tmds_config = ardbeg_tn8_tmds_config2;
 		break;
