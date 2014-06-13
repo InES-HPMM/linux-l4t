@@ -378,6 +378,21 @@
 #define AS3722_BBCMODE_ACT_STBY				2
 #define AS3722_BBCMODE_ACT_STBY_OFF			3
 
+#define AS3722_PG_AC_OK_INV_MASK			BIT(0)
+#define AS3722_PG_AC_OK_MASK				BIT(1)
+#define AS3722_PG_GPIO3_MASK				BIT(2)
+#define AS3722_PG_GPIO4_MASK				BIT(3)
+#define AS3722_PG_GPIO5_MASK				BIT(4)
+#define AS3722_PG_PWRGOOD_SD0_MASK			BIT(5)
+#define AS3722_PG_OVCURR_SD0_MASK			BIT(6)
+#define AS3722_PG_VRESFALL_MASK				BIT(7)
+
+#define AS3722_OC_PG_INVERT_MASK			BIT(0)
+#define AS3722_PG_VMASK_TIME_MASK			(3 << 1)
+#define AS3722_PG_SD6_OVC_ALARM_MASK			(7 << 3)
+#define AS3722_PG_POWERGOOD_SD6_MASK			BIT(6)
+#define AS3722_PG_OVCURR_SD6_MASK			BIT(7)
+
 /* Interrupt IDs */
 enum as3722_irq {
 	AS3722_IRQ_LID,
@@ -435,6 +450,7 @@ struct as3722 {
 	bool battery_backup_enable_bypass;
 	u32 backup_battery_charge_current;
 	u32 battery_backup_charge_mode;
+	u32 oc_pg_mask;
 };
 
 static inline int as3722_read(struct as3722 *as3722, u32 reg, u32 *dest)

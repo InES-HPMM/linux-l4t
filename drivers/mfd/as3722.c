@@ -517,6 +517,7 @@ static int as3722_i2c_of_probe(struct i2c_client *i2c,
 		as3722->battery_backup_charge_mode = pval;
 
 skip_chg_param:
+	of_property_read_u32(np, "ams,oc-pg-mask", &as3722->oc_pg_mask);
 	dev_dbg(&i2c->dev, "IRQ flags are 0x%08lx\n", as3722->irq_flags);
 	return 0;
 }
@@ -542,6 +543,7 @@ static int as3722_i2c_non_of_probe(struct i2c_client *i2c,
 	as3722->battery_backup_enable_bypass =
 		pdata->battery_backup_enable_bypass;
 	as3722->battery_backup_charge_mode = pdata->battery_backup_charge_mode;
+	as3722->oc_pg_mask = pdata->oc_pg_mask;
 	return 0;
 }
 
@@ -623,7 +625,45 @@ static int as3722_i2c_probe(struct i2c_client *i2c,
 			goto scrub;
 		}
 	}
+	if (as3722->oc_pg_mask) {
+		unsigned int mask1 = 0;
+		unsigned int mask2 = 0;
+		unsigned int oc_pg_mask = as3722->oc_pg_mask;
 
+		if (oc_pg_mask & AS3722_OC_PG_MASK_AC_OK)
+			mask1 |= AS3722_PG_AC_OK_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_GPIO3)
+			mask1 |= AS3722_PG_GPIO3_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_GPIO4)
+			mask1 |= AS3722_PG_GPIO4_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_GPIO5)
+			mask1 |= AS3722_PG_GPIO5_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_PWRGOOD_SD0)
+			mask1 |= AS3722_PG_PWRGOOD_SD0_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_OVCURR_SD0)
+			mask1 |= AS3722_PG_OVCURR_SD0_MASK;
+
+		if (oc_pg_mask & AS3722_OC_PG_MASK_POWERGOOD_SD6)
+			mask2 |= AS3722_PG_POWERGOOD_SD6_MASK;
+		if (oc_pg_mask & AS3722_OC_PG_MASK_OVCURR_SD6)
+			mask2 |= AS3722_PG_OVCURR_SD6_MASK;
+
+		ret = as3722_update_bits(as3722, AS3722_OC_PG_CTRL_REG,
+				mask1, mask1);
+		if (ret < 0) {
+			dev_err(as3722->dev, "oc_pg_ctrl update failed: %d\n",
+				ret);
+			goto scrub;
+		}
+
+		ret = as3722_update_bits(as3722, AS3722_OC_PG_CTRL2_REG,
+				mask2, mask2);
+		if (ret < 0) {
+			dev_err(as3722->dev, "oc_pg_ctrl2 update failed: %d\n",
+				ret);
+			goto scrub;
+		}
+	}
 	ret = mfd_add_devices(&i2c->dev, -1, as3722_devs,
 			ARRAY_SIZE(as3722_devs), NULL, 0,
 			regmap_irq_get_domain(as3722->irq_data));
