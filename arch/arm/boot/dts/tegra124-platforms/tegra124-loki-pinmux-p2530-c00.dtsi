@@ -2,7 +2,7 @@
 #include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
 
 / {
-	pinmux: pinmux {
+	pinmux: pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused";
 		pinctrl-0 = <&pinmux_default>;
 		pinctrl-1 = <&drive_default>;

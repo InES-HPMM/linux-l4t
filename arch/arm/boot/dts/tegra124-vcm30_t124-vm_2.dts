@@ -174,7 +174,7 @@
 		status = "disabled";
 	};
 
-	pinmux {
+	pinmux@70000868 {
 		status = "disabled";
 	};
 

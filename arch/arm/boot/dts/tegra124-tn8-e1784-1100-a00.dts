@@ -62,7 +62,7 @@
 		};
 	};
 
-	pinmux {
+	pinmux@70000868 {
 		unused_lowpower {
 			pi5 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;

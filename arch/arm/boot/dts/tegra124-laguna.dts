@@ -27,7 +27,7 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
-	pinmux {
+	pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "suspend";
 		pinctrl-3 = <&pinmux_suspend>;
 

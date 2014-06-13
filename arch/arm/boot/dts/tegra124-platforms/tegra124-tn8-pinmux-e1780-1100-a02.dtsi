@@ -45,7 +45,7 @@
                 pinctrl-0 = <&pwr_i2c_hs_drive>;
         };
 
-	pinmux: pinmux {
+	pinmux: pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "gen1_i2c_hs", "gen2_i2c_hs", "cam_i2c_hs", "ddc_i2c_hs", "pwr_i2c_hs";
 		pinctrl-0 = <&pinmux_default>;
 		pinctrl-1 = <&drive_default>;

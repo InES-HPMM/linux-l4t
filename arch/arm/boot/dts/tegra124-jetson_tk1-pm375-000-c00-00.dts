@@ -18,7 +18,7 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 	};
 
-	pinmux {
+	pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "suspend";
 		pinctrl-3 = <&pinmux_suspend>;
 

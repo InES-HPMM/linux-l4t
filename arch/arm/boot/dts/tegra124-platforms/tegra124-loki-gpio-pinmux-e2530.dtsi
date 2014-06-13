@@ -11,7 +11,7 @@
 		};
 	};
 
-	pinmux {
+	pinmux@70000868 {
 		common {
 			dp_hpd_pff0 {
 				nvidia,pins = "dp_hpd_pff0";
