@@ -86,11 +86,17 @@
 	};
 
 	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <0>;
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>; /* Fix me! */
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
 		status = "okay";
+
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
 	};
 
 	dfll@70040084 {

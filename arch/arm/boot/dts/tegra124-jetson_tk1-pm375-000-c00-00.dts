@@ -98,8 +98,6 @@
 	};
 
 	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <1>;
 		hvdd-pex-supply = <&reg_3v3_supply>;
 		hvdd-pex-pll-e-supply = <&reg_3v3_supply>;
 		dvddio-pex-supply = <&as3722_sd4>;
@@ -107,6 +105,13 @@
 		avdd-pex-pll-supply = <&as3722_sd4>;
 		vddio-pex-ctl-supply = <&as3722_sd4>;
 		status = "okay";
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
 	};
 
 	xusb@70090000 {

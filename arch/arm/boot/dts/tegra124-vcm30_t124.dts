@@ -183,6 +183,14 @@
 
 	pcie-controller {
 		status = "okay";
+
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
 	};
 
 	sata@0x70020000 {
