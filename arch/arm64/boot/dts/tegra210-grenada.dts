@@ -902,6 +902,9 @@
 			nvidia,sfc-2 = <&tegra_sfc2>;
 			nvidia,sfc-3 = <&tegra_sfc3>;
 			nvidia,sfc-4 = <&tegra_sfc4>;
+			nvidia,dmic-1 = <&tegra_dmic1>;
+			nvidia,dmic-2 = <&tegra_dmic2>;
+			nvidia,dmic-3 = <&tegra_dmic3>;
 			nvidia,afc-1 = <&tegra_afc1>;
 			nvidia,afc-2 = <&tegra_afc2>;
 			nvidia,afc-3 = <&tegra_afc3>;

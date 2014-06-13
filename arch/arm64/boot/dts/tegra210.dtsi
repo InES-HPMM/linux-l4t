@@ -809,21 +809,21 @@
 			status = "disabled";
 		};
 
-		dmic@702d4000 {
+		tegra_dmic1: dmic@702d4000 {
 			compatible = "nvidia,tegra210-dmic";
 			reg = <0x702d4000 0x100>;
 			nvidia,ahub-dmic-id = <0>;
 			status = "disabled";
 		};
 
-		dmic@702d4100 {
+		tegra_dmic2: dmic@702d4100 {
 			compatible = "nvidia,tegra210-dmic";
 			reg = <0x702d4100 0x100>;
 			nvidia,ahub-dmic-id = <1>;
 			status = "disabled";
 		};
 
-		dmic@702d4200 {
+		tegra_dmic3: dmic@702d4200 {
 			compatible = "nvidia,tegra210-dmic";
 			reg = <0x702d4200 0x100>;
 			nvidia,ahub-dmic-id = <2>;
