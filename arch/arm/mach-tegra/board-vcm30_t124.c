@@ -1048,10 +1048,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 static void __init tegra_vcm30_t124_dt_init(void)
 {
 	tegra_vcm30_t124_early_init();
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, vcm30_t124_auxdata_lookup,
