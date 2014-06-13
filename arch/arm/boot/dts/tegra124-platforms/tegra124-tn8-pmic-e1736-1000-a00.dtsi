@@ -727,7 +727,7 @@
 
 	i2c@7000c000 {
 
-		max17048@36 {
+		battery-gauge@36 {
 			compatible = "maxim,max17048";
 			reg = <0x36>;
 			status = "disabled";
@@ -758,7 +758,7 @@
 				0x0D 0x10 0x07 0x90 0x08 0x00 0x08 0x00>;
 		};
 
-		bq2419x: bq2419x@6b {
+		battery-charger@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 

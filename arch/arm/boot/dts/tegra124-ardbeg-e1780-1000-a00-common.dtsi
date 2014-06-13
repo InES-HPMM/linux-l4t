@@ -100,7 +100,7 @@
 	};
 
 	i2c@7000c400 {
-		bq20z75@0b {
+		battery-gauge@0b {
 			compatible = "sbs,sbs-battery";
 			reg = <0x0b>;
 			status = "disabled";

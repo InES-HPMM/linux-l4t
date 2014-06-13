@@ -44,7 +44,7 @@
 	};
 
 	i2c@7000c400 {
-		bq20z75@0b {
+		battery-gauge@0b {
 			compatible = "sbs,sbs-battery";
 			reg = <0x0b>;
 			status = "disabled";
@@ -52,7 +52,7 @@
 			sbs,poll-retry-count = <100>;
 		};
 
-		bq2477x@6a {
+		battery-charger@6a {
 			compatible = "ti,bq2477x";
 			reg = <0x6a>;
 			status = "disabled";

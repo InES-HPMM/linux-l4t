@@ -5,14 +5,14 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		fg_sensor: lc709203f@0b {
+		fg_sensor: battery-gauge@0b {
 			status = "okay";
 			onsemi,kernel-threshold-soc = <2>;
 			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL) &palams_gpadc 0>;
 			io-channel-names = "battery-current", "batt_id";
 		};
 
-		hpa2163@6b {
+		battery-charger@6b {
 			charger {
 				status = "okay";
 			};

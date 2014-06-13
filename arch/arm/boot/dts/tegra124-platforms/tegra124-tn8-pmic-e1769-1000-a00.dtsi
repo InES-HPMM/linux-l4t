@@ -711,7 +711,7 @@
 
 	i2c@7000c000 {
 
-		cw201x@62 {
+		battery-gauge@62 {
 			compatible = "cw,cw201x";
 			reg = <0x62>;
 			status = "disabled";
@@ -729,7 +729,7 @@
 				0x2F 0x7D 0x72 0xA5 0xB5 0xC1 0x5B 0x1D>;
 		};
 
-		bq2419x: bq2419x@6b {
+		battery-charger@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 

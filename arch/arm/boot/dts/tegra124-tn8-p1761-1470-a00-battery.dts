@@ -5,11 +5,11 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		max17048@36 {
+		battery-gauge@36 {
 			status = "okay";
 		};
 
-		hpa2163@6b {
+		battery-charger@6b {
 			charger {
 				status = "okay";
 			};

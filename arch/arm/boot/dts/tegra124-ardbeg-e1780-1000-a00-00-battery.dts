@@ -4,7 +4,7 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		bq20z75@0b {
+		battery-gauge@0b {
 			status = "okay";
 		};
 	};
