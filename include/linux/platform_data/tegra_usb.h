@@ -142,6 +142,7 @@ struct tegra_usb_host_mode_data {
 	bool power_off_on_suspend;
 	bool turn_off_vbus_on_lp0;
 	bool support_y_cable;
+	bool skip_resume;
 };
 
 /**
