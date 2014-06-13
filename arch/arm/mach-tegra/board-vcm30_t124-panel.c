@@ -322,43 +322,6 @@ static struct platform_device vcm30_t124_disp2_device = {
 	},
 };
 
-static struct nvmap_platform_carveout vcm30_t124_carveouts[] = {
-	[0] = {
-		.name		= "iram",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
-		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.dma_dev	= &tegra_iram_dev,
-	},
-	[1] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0, /* Filled in by vcm30_t124_panel_init() */
-		.size		= 0, /* Filled in by vcm30_t124_panel_init() */
-		.dma_dev	= &tegra_generic_dev,
-	},
-	[2] = {
-		.name		= "vpr",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0, /* Filled in by vcm30_t124_panel_init() */
-		.size		= 0, /* Filled in by vcm30_t124_panel_init() */
-		.dma_dev	= &tegra_vpr_dev,
-	},
-};
-
-static struct nvmap_platform_data vcm30_t124_nvmap_data = {
-	.carveouts	= vcm30_t124_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(vcm30_t124_carveouts),
-};
-static struct platform_device vcm30_t124_nvmap_device  = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &vcm30_t124_nvmap_data,
-	},
-};
-
-
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static void __init vcm30_t124_panel_select(void)
 {
@@ -429,17 +392,17 @@ int __init vcm30_t124_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 	/* clear FB for both DC and copy the bootloader FB */
-	__tegra_clear_framebuffer(&vcm30_t124_nvmap_device,
+	__tegra_clear_framebuffer(NULL,
 		tegra_fb_start, tegra_fb_size);
 	if (tegra_bootloader_fb_size)
-		__tegra_move_framebuffer(&vcm30_t124_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 			tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 	if (tegra_fb2_size) {
-		__tegra_clear_framebuffer(&vcm30_t124_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 			tegra_fb2_start, tegra_fb2_size);
 		if (tegra_bootloader_fb2_size)
-			__tegra_move_framebuffer(&vcm30_t124_nvmap_device,
+			__tegra_move_framebuffer(NULL,
 				tegra_fb2_start, tegra_bootloader_fb2_start,
 				min(tegra_fb2_size,
 					 tegra_bootloader_fb2_size));

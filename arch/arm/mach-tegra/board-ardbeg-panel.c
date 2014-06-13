@@ -566,41 +566,6 @@ static struct platform_device ardbeg_disp1_device = {
 };
 #endif
 
-static struct nvmap_platform_carveout ardbeg_carveouts[] = {
-	[0] = {
-		.name		= "iram",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
-		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.dma_dev	= &tegra_iram_dev,
-	},
-	[1] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0, /* Filled in by ardbeg_panel_init() */
-		.size		= 0, /* Filled in by ardbeg_panel_init() */
-		.dma_dev	= &tegra_generic_dev,
-	},
-	[2] = {
-		.name		= "vpr",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0, /* Filled in by ardbeg_panel_init() */
-		.size		= 0, /* Filled in by ardbeg_panel_init() */
-		.dma_dev	= &tegra_vpr_dev,
-	},
-};
-
-static struct nvmap_platform_data ardbeg_nvmap_data = {
-	.carveouts	= ardbeg_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(ardbeg_carveouts),
-};
-static struct platform_device ardbeg_nvmap_device  = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &ardbeg_nvmap_data,
-	},
-};
 static struct tegra_io_dpd dsic_io = {
 	.name			= "DSIC",
 	.io_dpd_reg_index	= 1,
@@ -870,20 +835,20 @@ int __init ardbeg_panel_init(void)
 
 	/* Copy the bootloader fb to the fb. */
 	if (tegra_bootloader_fb_size)
-		__tegra_move_framebuffer(&ardbeg_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 				tegra_fb_start, tegra_bootloader_fb_start,
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 	else
-		__tegra_clear_framebuffer(&ardbeg_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 					  tegra_fb_start, tegra_fb_size);
 
 	/* Copy the bootloader fb2 to the fb2. */
 	if (tegra_bootloader_fb2_size)
-		__tegra_move_framebuffer(&ardbeg_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 				tegra_fb2_start, tegra_bootloader_fb2_start,
 				min(tegra_fb2_size, tegra_bootloader_fb2_size));
 	else
-		__tegra_clear_framebuffer(&ardbeg_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 					tegra_fb2_start, tegra_fb2_size);
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
