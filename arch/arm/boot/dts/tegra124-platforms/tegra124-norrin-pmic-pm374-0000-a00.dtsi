@@ -23,6 +23,7 @@
 			ams,hi-threshold = <256>;
 			ams,low-threshold = <128>;
 			ams,enable-clock32k-out;
+			ams,oc-pg-mask = <AS3722_OC_PG_MASK_AC_OK>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&as3722_default>;
