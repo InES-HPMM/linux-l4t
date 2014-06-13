@@ -41,6 +41,19 @@ Optional properties:
 - ams,battery-backup-charge-voltage-maximum: boolean type, This sets the
 	charging voltage to maximum.
 		Device supports two level 2.5V and 3.0V
+- ams,oc-pg-mask: Enable or disable various powergood or overcurrent or
+	ac_ok mask. The multiple values can be ORed when provided the
+	value of this property. include/dt-binding/mfd/as3722 defines the
+	macro for different masks.
+		AS3722_OC_PG_MASK_AC_OK: AC_OK PG_OC mask
+		AS3722_OC_PG_MASK_GPIO3
+		AS3722_OC_PG_MASK_GPIO4
+		AS3722_OC_PG_MASK_GPIO5
+		AS3722_OC_PG_MASK_PWRGOOD_SD0
+		AS3722_OC_PG_MASK_OVCURR_SD0
+		AS3722_OC_PG_MASK_VRESFALL
+		AS3722_OC_PG_MASK_POWERGOOD_SD6
+		AS3722_OC_PG_MASK_OVCURR_SD6
 
 Optional submodule and their properties:
 =======================================
