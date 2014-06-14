@@ -598,8 +598,8 @@ int __init tegra_vcm30_t124_early_init(void)
 void __init tegra_vcm30_t124_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	/* 1920*1200*4*2 = 18432000 bytes */
-	tegra_reserve4(0, SZ_16M + SZ_2M, SZ_16M + SZ_2M, 64 * SZ_1M);
+	/* 2560*1440*4*2 = 29491200 = 28.125*1M = 29M bytes */
+	tegra_reserve4(0, 29 * SZ_1M, 29 * SZ_1M, 64 * SZ_1M);
 #else
 	tegra_reserve4(SZ_128M, SZ_16M + SZ_2M, SZ_16M + SZ_2M, 64 * SZ_1M);
 #endif
