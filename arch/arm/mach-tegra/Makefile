@@ -179,7 +179,7 @@ obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
 
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
-ifdef CONFIG_BCM43241
+ifdef CONFIG_TEGRA_WIFI_ENABLE
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
 endif
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
