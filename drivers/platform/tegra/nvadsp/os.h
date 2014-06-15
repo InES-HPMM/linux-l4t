@@ -20,6 +20,7 @@
 #include <linux/firmware.h>
 
 #define CONFIG_USE_STATIC_APP_LOAD	0
+#define CONFIG_SYSTEM_FPGA		1
 
 struct app_mem_size {
 	uint64_t dram;

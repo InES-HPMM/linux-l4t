@@ -31,6 +31,8 @@
 #include <linux/device.h>
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
+#include <linux/irqchip/tegra-agic.h>
+#include <linux/interrupt.h>
 
 #include "os.h"
 #include "dev.h"
@@ -78,8 +80,6 @@ struct global_sym_info {
 };
 
 #define UART_BAUD_RATE	9600
-
-#define CONFIG_SYSTEM_FPGA 1
 
 struct nvadsp_os_data {
 #if !CONFIG_SYSTEM_FPGA
@@ -153,8 +153,15 @@ EXPORT_SYMBOL(nvadsp_da_to_va_mappings);
 
 void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags)
 {
-	struct device *dev = &priv.pdev->dev;
-	void *va;
+	struct device *dev;
+	void *va = NULL;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		goto end;
+	}
+
+	dev = &priv.pdev->dev;
 	va = dma_alloc_coherent(dev, size, da, flags);
 	if (!va) {
 		dev_err(dev,
@@ -162,7 +169,6 @@ void *nvadsp_alloc_coherent(size_t size, dma_addr_t *da, gfp_t flags)
 							(u32)size);
 		goto end;
 	}
-
 	WARN(!is_adsp_dram_addr(*da),
 			"bus addr %llx beyond %x\n", *da, UINT_MAX);
 end:
@@ -172,7 +178,13 @@ EXPORT_SYMBOL(nvadsp_alloc_coherent);
 
 void nvadsp_free_coherent(size_t size, void *va, dma_addr_t da)
 {
-	struct device *dev = &priv.pdev->dev;
+	struct device *dev;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+	dev = &priv.pdev->dev;
 	dma_free_coherent(dev, size, va, da);
 }
 EXPORT_SYMBOL(nvadsp_free_coherent);
@@ -285,16 +297,18 @@ uint32_t find_global_symbol(const char *sym_name)
 void *get_mailbox_shared_region(void)
 {
 	const struct firmware *fw;
-	struct device *dev = &priv.pdev->dev;
+	struct device *dev;
 	struct elf32_shdr *shdr;
 	int addr;
 	int size;
 	int ret;
 
-	if (!dev) {
-		pr_info("ADSP Driver is not initialized\n");
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
 		return ERR_PTR(-EINVAL);
 	}
+
+	dev = &priv.pdev->dev;
 
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
@@ -349,9 +363,9 @@ static int nvadsp_os_elf_load(const struct firmware *fw)
 		if (phdr->p_type != PT_LOAD)
 			continue;
 
-
-		dev_info(dev, "phdr: type %d da 0x%x memsz 0x%x filesz 0x%x\n",
-					phdr->p_type, da, memsz, filesz);
+		dev_dbg(dev,
+		"phdr: type %d da 0x%x memsz 0x%x filesz 0x%x\n",
+				phdr->p_type, da, memsz, filesz);
 
 		va = nvadsp_da_to_va_mappings(da, filesz);
 		if (!va) {
@@ -430,15 +444,17 @@ int nvadsp_os_load(void)
 {
 	const struct firmware *fw;
 	int ret;
-	struct device *dev = &priv.pdev->dev;
+	struct device *dev;
 	void *ptr;
 	struct clk *clk_ape;
 
-	if (!dev) {
-		pr_info("ADSP Driver is not initialized\n");
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
 		ret = -EINVAL;
 		goto end;
 	}
+
+	dev = &priv.pdev->dev;
 
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
@@ -484,15 +500,17 @@ EXPORT_SYMBOL(nvadsp_os_load);
 
 int nvadsp_os_start(void)
 {
-	struct device *dev = &priv.pdev->dev;
+	struct device *dev;
 	struct clk *adsp_clk;
 	struct clk *ape_uart;
 	int val;
 
-	if (!dev) {
-		pr_info("ADSP Driver is not initialized\n");
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
 		return -EINVAL;
 	}
+
+	dev = &priv.pdev->dev;
 
 	/*FIXME:this will be replaced by pm_runtime API */
 	adsp_clk = clk_get_sys(NULL, "adsp");
@@ -520,7 +538,6 @@ int nvadsp_os_start(void)
 	tegra_periph_reset_deassert(adsp_clk);
 
 #if !CONFIG_SYSTEM_FPGA
-	dev_info(dev, "starting ADSP OS ....\n");
 	writel(APE_RESET, priv.reset_reg);
 #endif
 	wait_for_adsp_os_load_complete();
@@ -528,22 +545,44 @@ int nvadsp_os_start(void)
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
+
+static  irqreturn_t adsp_wdt_handler(int irq, void *arg)
+{
+	struct device *dev = arg;
+	dev_crit(dev, "ADSP OS crashed .... Restarting ADSP OS\n");
+#if CONFIG_SYSTEM_FPGA
+	if (nvadsp_os_start())
+		dev_crit(dev, "Unable to restart ADSP OS\n");
+#endif
+	return 0;
+}
+
 int nvadsp_os_probe(struct platform_device *pdev)
 {
 
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
-#if !CONFIG_SYSTEM_FPGA
+	int virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
 	struct device *dev = &pdev->dev;
-
+	int ret = 0;
+#if !CONFIG_SYSTEM_FPGA
 	priv.reset_reg = ioremap(APE_FPGA_MISC_RST_DEVICES, 1);
 	if (!priv.reset_reg) {
 		dev_info(dev, "unable to map reset addr\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto end;
 	}
 #endif
 	priv.pdev = pdev;
 	priv.misc_base = drv_data->base_regs[AMISC];
 	priv.dram_region = drv_data->dram_region;
 
-	return 0;
+	ret = request_irq(virq, adsp_wdt_handler,
+			IRQF_TRIGGER_RISING, "adsp watchdog", dev);
+	if (ret)
+		dev_err(dev, "failed to get adsp watchdog interrupt\n");
+
+#if !CONFIG_SYSTEM_FPGA
+end:
+#endif
+	return ret;
 }

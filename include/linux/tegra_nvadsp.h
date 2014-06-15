@@ -182,8 +182,8 @@ void nvadsp_aram_release(char *start, size_t size);
  * ADSP OS
  */
 void nvadsp_adsp_init(void);
-int nvadsp_os_load(void);
-int nvadsp_os_start(void);
+int __must_check nvadsp_os_load(void);
+int __must_check nvadsp_os_start(void);
 void nvadsp_os_stop(void);
 
 /*
