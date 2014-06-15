@@ -858,4 +858,12 @@ config AID_FUSE
 	help
 	  When enabled, allows sysfs reads of the AID fuse, which contains
 	  the chip family ID and a chip-unique Tegra ID. Supported on t132+.
+
+config TEGRA_WIFI_ENABLE
+	bool "Enable support for wifi"
+	default y if BCMDHD && (MACH_VCM30_T124 || MACH_P2360)
+	default n
+	help
+	  When enabled, SDHCI controller connected to wifi and wifi driver
+	  will be registered to platform.
 endif
