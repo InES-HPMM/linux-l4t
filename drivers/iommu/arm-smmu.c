@@ -1626,7 +1626,7 @@ static int arm_smmu_add_device(struct device *dev)
 		return ret;
 
 	/* FIXME: specify IOVA range dynamically */
-	mapping = arm_iommu_create_mapping(&platform_bus_type, 0, ~0UL, 0);
+	mapping = arm_iommu_create_mapping(&platform_bus_type, 0, UINT_MAX, 0);
 	if (IS_ERR(mapping)) {
 		ret = PTR_ERR(mapping);
 		goto err_create_mapping;
