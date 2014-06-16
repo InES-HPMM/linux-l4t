@@ -414,6 +414,14 @@ struct tegra_ep {
 	unsigned stopped:1;
 };
 
+struct tegra_udc_soc_data {
+	struct tegra_utmi_config utmi;
+	bool has_hostpc;
+	bool unaligned_dma_buf_supported;
+	enum tegra_usb_phy_interface phy_intf;
+	enum tegra_usb_operation_mode op_mode;
+};
+
 enum tegra_connect_type {
 	CONNECT_TYPE_NONE,
 	CONNECT_TYPE_SDP,

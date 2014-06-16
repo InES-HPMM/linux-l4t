@@ -38,6 +38,8 @@
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/pm_qos.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/platform_data/tegra_usb.h>
@@ -2779,6 +2781,73 @@ static int tegra_udc_ep_setup(struct tegra_udc *udc)
 	return 0;
 }
 
+static struct tegra_usb_platform_data *tegra_udc_dt_parse_pdata(
+		struct platform_device *pdev)
+{
+	struct tegra_usb_platform_data *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	const char *ext_name = NULL;
+	int status;
+
+	if (!np)
+		return NULL;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_platform_data),
+			GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pdata->port_otg = of_property_read_bool(np, "nvidia,port_otg");
+	pdata->support_pmu_vbus =
+		of_property_read_bool(np, "nvidia,support_pmu_vbus");
+	pdata->u_data.dev.charging_supported =
+		of_property_read_bool(np, "nvidia,charging_supported");
+	pdata->u_data.dev.is_xhci =
+		of_property_read_bool(np, "nvidia,is_xhci");
+
+	of_property_read_u32(np, "nvidia,dcp_current_limit_ma",
+				&pdata->u_data.dev.dcp_current_limit_ma);
+	of_property_read_u32(np, "nvidia,qc2_current_limit_ma",
+				&pdata->u_data.dev.qc2_current_limit_ma);
+	of_property_read_u32(np, "nvidia,qc2_input_voltage",
+				&pdata->qc2_voltage);
+	of_property_read_u32(np, "nvidia,id_det_type", &pdata->id_det_type);
+
+	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
+				&ext_name);
+	if (status < 0)
+		ext_name = NULL;
+	pdata->vbus_extcon_dev_name = ext_name;
+
+	DBG("%s(%d) DT parsing done\n", __func__, __LINE__);
+	return pdata;
+}
+
+static struct tegra_udc_soc_data tegra_soc_config = {
+	.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+};
+
+static struct of_device_id tegra_udc_of_match[] = {
+	{.compatible = "nvidia,tegra210-udc", .data = &tegra_soc_config, },
+	{.compatible = "nvidia,tegra132-udc", .data = &tegra_soc_config, },
+};
+MODULE_DEVICE_TABLE(of, tegra_udc_of_match);
 
 /* Driver probe function
  * all intialization operations implemented here except enabling usb_intr reg
@@ -2789,13 +2858,12 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	struct tegra_udc *udc;
 	struct resource *res;
 	struct tegra_usb_platform_data *pdata;
+	const struct of_device_id *match;
+	struct tegra_udc_soc_data *soc_data;
+	struct tegra_usb_dev_mode_data *dev_pdata;
+
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
-
-	if (strcmp(pdev->name, driver_name)) {
-		VDBG("Wrong device");
-		return -ENODEV;
-	}
 
 	the_udc = udc = kzalloc(sizeof(struct tegra_udc), GFP_KERNEL);
 	if (udc == NULL) {
@@ -2839,9 +2907,34 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-	/*Disable fence read if H/W support is disabled*/
+	if (pdev->dev.of_node) {
+		match = of_match_device(of_match_ptr(tegra_udc_of_match),
+				&pdev->dev);
+		if (!match) {
+			dev_err(&pdev->dev, "Error: No device match found\n");
+			return -ENODEV;
+		}
+
+		soc_data = (struct tegra_udc_soc_data *)match->data;
+		pdata =	tegra_udc_dt_parse_pdata(pdev);
+		pdata->has_hostpc = soc_data->has_hostpc;
+		pdata->unaligned_dma_buf_supported =
+			soc_data->unaligned_dma_buf_supported;
+		pdata->phy_intf = soc_data->phy_intf;
+		pdata->op_mode = soc_data->op_mode;
+		pdata->u_cfg.utmi = soc_data->utmi;
+		pdata->u_data.dev.vbus_gpio = -1;
+
+		dev_pdata = dev_get_platdata(&pdev->dev);
+		if (dev_pdata)
+			pdata->u_data.dev.is_xhci = dev_pdata->is_xhci;
+
+		pdev->dev.platform_data = pdata;
+	}
+
 	pdata = dev_get_platdata(&pdev->dev);
 	if (pdata) {
+		/*Disable fence read if H/W support is disabled*/
 		if (pdata->unaligned_dma_buf_supported)
 			udc->fence_read = false;
 		else
@@ -3193,6 +3286,7 @@ static struct platform_driver tegra_udc_driver = {
 	.driver  = {
 		.name = (char *)driver_name,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(tegra_udc_of_match),
 	},
 };
 

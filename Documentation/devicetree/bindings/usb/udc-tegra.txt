@@ -1,0 +1,44 @@
+* Nvidia USB tegra device controller
+
+This file documents the properties used by the tegra-udc driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra210-udc"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- port_otg: Specify whether given port supports otg or not.
+- charging_supported: Specify whether needs charging through USB.
+- support_pmu_vbus: Specify whether vbus detection is supported from PMU.
+- vbus_extcon_dev_name: If vbus detection is supported from PMU, specify the name of extcon device which gives notifications.
+- id_det_type: Specify how usb id detection type on the platform.
+        TEGRA_USB_ID = 0,
+        TEGRA_USB_PMU_ID = 1,
+        TEGRA_USB_GPIO_ID = 2,
+        TEGRA_USB_VIRTUAL_ID = 3,
+- qc2_voltage: Specify the input voltage needed to support QC2.0 charger.
+        TEGRA_USB_QC2_5V = 0,
+        TEGRA_USB_QC2_9V = 1,
+        TEGRA_USB_QC2_12V = 2,
+        TEGRA_USB_QC2_20V = 3,
+- qc2_current_limit_ma: Specify the QC2.0 charger current limit in milliamperes.
+- dcp_current_limit_ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
+- is_xhci: Specify whether this port is taken by XUSB.
+
+Example:
+	udc@0x7d000000 {
+		compatible = "nvidia,tegra210-udc";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
+
+		nvidia,port_otg;
+		nvidia,charging_supported;
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,qc2_input_voltage = <1>;
+		nvidia,qc2_current_limit_ma = <1200>;
+		nvidia,dcp_current_limit_ma = <1800>;
+		status = "okay";
+	};
+

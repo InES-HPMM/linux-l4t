@@ -154,8 +154,8 @@ struct tegra_usb_platform_data {
 	bool has_hostpc;
 	bool unaligned_dma_buf_supported;
 	bool support_pmu_vbus;
-	char *vbus_extcon_dev_name;
-	char *id_extcon_dev_name;
+	const char *vbus_extcon_dev_name;
+	const char *id_extcon_dev_name;
 	enum tegra_usb_id_detection id_det_type;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;

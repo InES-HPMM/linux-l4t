@@ -805,7 +805,11 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 
 	memcpy(phy->pdata, pdata, plat_data_size);
 	phy->pdev = pdev;
-	phy->inst = pdev->id;
+
+	if (pdev->dev.of_node && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE)
+		phy->inst = of_alias_get_id(pdev->dev.of_node, "udc");
+	else
+		phy->inst = pdev->id;
 
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
 		phy->hot_plug = phy->pdata->u_data.host.hot_plug;
