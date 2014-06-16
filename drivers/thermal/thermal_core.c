@@ -409,12 +409,12 @@ static void handle_thermal_trip(struct thermal_zone_device *tz, int trip)
  *
  * Return: On success returns 0, an error code otherwise
  */
-int thermal_zone_get_temp(struct thermal_zone_device *tz, unsigned long *temp)
+int thermal_zone_get_temp(struct thermal_zone_device *tz, long *temp)
 {
 	int ret = -EINVAL;
 #ifdef CONFIG_THERMAL_EMULATION
 	int count;
-	unsigned long crit_temp = -1UL;
+	long crit_temp = INT_MAX;
 	enum thermal_trip_type type;
 #endif
 
@@ -596,7 +596,7 @@ trip_point_temp_store(struct device *dev, struct device_attribute *attr,
 {
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	int trip, ret;
-	unsigned long temperature;
+	long temperature;
 
 	if (!tz->ops->set_trip_temp)
 		return -EPERM;
@@ -640,7 +640,7 @@ trip_point_hyst_store(struct device *dev, struct device_attribute *attr,
 {
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	int trip, ret;
-	unsigned long temperature;
+	long temperature;
 
 	if (!tz->ops->set_trip_hyst)
 		return -EPERM;
@@ -667,7 +667,7 @@ trip_point_hyst_show(struct device *dev, struct device_attribute *attr,
 {
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	int trip, ret;
-	unsigned long temperature;
+	long temperature;
 
 	if (!tz->ops->get_trip_hyst)
 		return -EPERM;
@@ -864,7 +864,7 @@ emul_temp_store(struct device *dev, struct device_attribute *attr,
 {
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	int ret = 0;
-	unsigned long temperature;
+	long temperature;
 
 	if (kstrtoul(buf, 10, &temperature))
 		return -EINVAL;

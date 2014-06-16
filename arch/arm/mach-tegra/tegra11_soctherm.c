@@ -1540,8 +1540,7 @@ static int soctherm_unbind(struct thermal_zone_device *thz,
  *
  * Return: 0
  */
-static int soctherm_get_temp(struct thermal_zone_device *thz,
-			     unsigned long *temp)
+static int soctherm_get_temp(struct thermal_zone_device *thz, long *temp)
 {
 	struct soctherm_therm *therm = thz->devdata;
 	ptrdiff_t index = therm - plat_data.therm;
@@ -1595,11 +1594,11 @@ static int soctherm_get_trip_type(struct thermal_zone_device *thz,
  */
 
 static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
-				int trip, unsigned long *temp)
+				int trip, long *temp)
 {
 	struct soctherm_therm *therm = thz->devdata;
 	struct thermal_trip_info *trip_state;
-	unsigned long trip_temp, zone_temp;
+	long trip_temp, zone_temp;
 
 	trip_state = &therm->trips[trip];
 	trip_temp = trip_state->trip_temp;
@@ -1632,7 +1631,7 @@ static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
  * Return: 0 if successful else %-EINVAL
  */
 static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
-				int trip, unsigned long temp)
+				int trip, long temp)
 {
 	struct soctherm_therm *therm = thz->devdata;
 	struct thermal_trip_info *trip_state;
@@ -1679,8 +1678,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
  * Return: 0 if it is able to find a critical temperature point and stores it
  * into the variable pointed by the address in @temp; Otherwise, return -EINVAL.
  */
-static int soctherm_get_crit_temp(struct thermal_zone_device *thz,
-				  unsigned long *temp)
+static int soctherm_get_crit_temp(struct thermal_zone_device *thz, long *temp)
 {
 	int i;
 	struct soctherm_therm *therm = thz->devdata;

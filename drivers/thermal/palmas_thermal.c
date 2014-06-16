@@ -38,7 +38,7 @@ struct palmas_therm_zone {
 	struct palmas			*palmas;
 	struct thermal_zone_device	*tz_device;
 	int				irq;
-	unsigned long			hd_threshold_temp;
+	long				hd_threshold_temp;
 };
 
 static int palmas_thermal_read_temp(void *data, long *temp)
@@ -110,7 +110,7 @@ static int palmas_thermal_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ptherm_zone);
 	ptherm_zone->dev = &pdev->dev;
 	ptherm_zone->palmas = palmas;
-	ptherm_zone->hd_threshold_temp = (unsigned long) hd_threshold_temp;
+	ptherm_zone->hd_threshold_temp = hd_threshold_temp;
 
 	ptherm_zone->tz_device = thermal_zone_of_sensor_register(&pdev->dev, 0,
 					ptherm_zone, palmas_thermal_read_temp,

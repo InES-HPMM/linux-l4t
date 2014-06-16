@@ -113,23 +113,19 @@ struct thermal_zone_device_ops {
 		     struct thermal_cooling_device *);
 	int (*unbind) (struct thermal_zone_device *,
 		       struct thermal_cooling_device *);
-	int (*get_temp) (struct thermal_zone_device *, unsigned long *);
+	int (*get_temp) (struct thermal_zone_device *, long *);
 	int (*get_mode) (struct thermal_zone_device *,
 			 enum thermal_device_mode *);
 	int (*set_mode) (struct thermal_zone_device *,
 		enum thermal_device_mode);
 	int (*get_trip_type) (struct thermal_zone_device *, int,
 		enum thermal_trip_type *);
-	int (*get_trip_temp) (struct thermal_zone_device *, int,
-			      unsigned long *);
-	int (*set_trip_temp) (struct thermal_zone_device *, int,
-			      unsigned long);
-	int (*get_trip_hyst) (struct thermal_zone_device *, int,
-			      unsigned long *);
-	int (*set_trip_hyst) (struct thermal_zone_device *, int,
-			      unsigned long);
-	int (*get_crit_temp) (struct thermal_zone_device *, unsigned long *);
-	int (*set_emul_temp) (struct thermal_zone_device *, unsigned long);
+	int (*get_trip_temp) (struct thermal_zone_device *, int, long *);
+	int (*set_trip_temp) (struct thermal_zone_device *, int, long);
+	int (*get_trip_hyst) (struct thermal_zone_device *, int, long *);
+	int (*set_trip_hyst) (struct thermal_zone_device *, int, long);
+	int (*get_crit_temp) (struct thermal_zone_device *, long *);
+	int (*set_emul_temp) (struct thermal_zone_device *, long);
 	int (*get_trend) (struct thermal_zone_device *, int,
 			  enum thermal_trend *);
 	int (*notify) (struct thermal_zone_device *, int,
@@ -175,7 +171,7 @@ struct thermal_zone_device {
 	int last_temperature;
 	int emul_temperature;
 	int passive;
-	unsigned int forced_passive;
+	int forced_passive;
 	struct thermal_zone_device_ops *ops;
 	const struct thermal_zone_params *tzp;
 	struct thermal_governor *governor;
@@ -301,7 +297,7 @@ thermal_of_cooling_device_register(struct device_node *np, char *, void *,
 				   const struct thermal_cooling_device_ops *);
 void thermal_cooling_device_unregister(struct thermal_cooling_device *);
 struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *name);
-int thermal_zone_get_temp(struct thermal_zone_device *tz, unsigned long *temp);
+int thermal_zone_get_temp(struct thermal_zone_device *tz, long *temp);
 struct thermal_zone_device *thermal_zone_device_find(void *data,
 	int (*match)(struct thermal_zone_device *, void *));
 

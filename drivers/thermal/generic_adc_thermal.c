@@ -149,8 +149,7 @@ static int gadc_thermal_unbind(struct thermal_zone_device *tz,
 	return 0;
 }
 
-static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
-				 unsigned long *temp)
+static int gadc_thermal_get_temp(struct thermal_zone_device *tz, long *temp)
 {
 	struct gadc_thermal_driver_data *drvdata = tz->devdata;
 	int val = 0, val2 = 0;
@@ -185,7 +184,7 @@ static int gadc_thermal_get_trip_type(struct thermal_zone_device *tz, int trip,
 }
 
 static int gadc_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip,
-				      unsigned long *temp)
+				      long *temp)
 {
 	struct gadc_thermal_driver_data *drvdata = tz->devdata;
 	struct thermal_trip_info *trip_state = &drvdata->pdata->trips[trip];
@@ -207,7 +206,7 @@ static int gadc_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip,
 }
 
 static int gadc_thermal_set_trip_temp(struct thermal_zone_device *tz, int trip,
-				      unsigned long temp)
+				      long temp)
 {
 	struct gadc_thermal_driver_data *drvdata = tz->devdata;
 	struct thermal_trip_info *trip_state = &drvdata->pdata->trips[trip];

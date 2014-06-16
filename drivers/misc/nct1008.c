@@ -794,8 +794,7 @@ static void nct1008_update(int sensor, struct nct1008_data *data)
 	nct1008_thermal_set_limits(sensor, data, low_temp, high_temp);
 }
 
-static int nct1008_ext_get_temp(struct thermal_zone_device *thz,
-					unsigned long *temp)
+static int nct1008_ext_get_temp(struct thermal_zone_device *thz, long *temp)
 {
 	struct nct1008_data *data = thz->devdata;
 
@@ -859,8 +858,7 @@ static inline int nct1008_loc_unbind(struct thermal_zone_device *thz,
 /* This function reads the temperature value set for the given trip point. */
 static int nct1008_get_trip_temp(int sensor,
 					struct thermal_zone_device *thz,
-					int trip,
-					unsigned long *temp)
+					int trip, long *temp)
 {
 	struct nct1008_data *data = thz->devdata;
 	struct thermal_trip_info *trip_state =
@@ -885,8 +883,7 @@ static int nct1008_get_trip_temp(int sensor,
 /* This function reads the temperature value set for the given trip point for
    the local sensor. */
 static inline int nct1008_loc_get_trip_temp(struct thermal_zone_device *thz,
-						int trip,
-						unsigned long *temp)
+						int trip, long *temp)
 {
 	return nct1008_get_trip_temp(LOC, thz, trip, temp);
 }
@@ -894,8 +891,7 @@ static inline int nct1008_loc_get_trip_temp(struct thermal_zone_device *thz,
 /* This function reads the temperature value set for the given trip point for
 	the remote sensor. */
 static inline int nct1008_ext_get_trip_temp(struct thermal_zone_device *thz,
-						int trip,
-						unsigned long *temp)
+						int trip, long *temp)
 {
 	return nct1008_get_trip_temp(EXT, thz, trip, temp);
 }
@@ -904,8 +900,7 @@ static inline int nct1008_ext_get_trip_temp(struct thermal_zone_device *thz,
    specified. */
 static int nct1008_set_trip_temp(int sensor,
 					struct thermal_zone_device *thz,
-					int trip,
-					unsigned long temp)
+					int trip, long temp)
 {
 	struct nct1008_data *data = thz->devdata;
 
@@ -916,8 +911,7 @@ static int nct1008_set_trip_temp(int sensor,
 
 /* This function allows setting trip point temperature for the local sensor. */
 static inline int nct1008_loc_set_trip_temp(struct thermal_zone_device *thz,
-						int trip,
-						unsigned long temp)
+						int trip, long temp)
 {
 	return nct1008_set_trip_temp(LOC, thz, trip, temp);
 }
@@ -925,8 +919,7 @@ static inline int nct1008_loc_set_trip_temp(struct thermal_zone_device *thz,
 /* This function allows setting trip point temperature for the external
  * sensor. */
 static inline int nct1008_ext_set_trip_temp(struct thermal_zone_device *thz,
-						int trip,
-						unsigned long temp)
+						int trip, long temp)
 {
 	return nct1008_set_trip_temp(EXT, thz, trip, temp);
 }
@@ -1007,8 +1000,7 @@ static inline int nct1008_ext_get_trend(struct thermal_zone_device *thz,
 }
 
 /* Helper function to get temperature of the local sensor. */
-static int nct1008_loc_get_temp(struct thermal_zone_device *thz,
-					unsigned long *temp)
+static int nct1008_loc_get_temp(struct thermal_zone_device *thz, long *temp)
 {
 	struct nct1008_data *data = thz->devdata;
 
