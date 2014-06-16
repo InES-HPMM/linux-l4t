@@ -1489,8 +1489,8 @@ static int arm_smmu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		pr_debug("%s() iova=%lx pa=%pa size=%x\n",
 			__func__, iova, &pa, len);
 		err = arm_smmu_handle_mapping(smmu_domain, iova, pa, len, prot);
-		/* FIXME: error rewinding */
-		return err;
+		if (err)
+			return err;
 
 		i += len >> PAGE_SHIFT;
 		iova += len;
