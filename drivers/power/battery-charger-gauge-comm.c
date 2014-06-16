@@ -81,8 +81,6 @@ struct battery_gauge_dev {
 	struct thermal_zone_device	*battery_tz;
 	int				battery_voltage;
 	int				battery_capacity;
-	int				battery_snapshot_voltage;
-	int				battery_snapshot_capacity;
 	const char			*bat_curr_channel_name;
 	struct iio_channel		*bat_current_iio_channel;
 };
@@ -246,26 +244,6 @@ int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec)
 }
 EXPORT_SYMBOL_GPL(battery_charging_restart);
 
-static ssize_t battery_show_snapshot_voltage(struct device *dev,
-				struct device_attribute *attr,
-				char *buf)
-{
-	struct battery_gauge_dev *bg_dev = bg_temp;
-
-	return snprintf(buf, MAX_STR_PRINT, "%d\n",
-				bg_dev->battery_snapshot_voltage);
-}
-
-static ssize_t battery_show_snapshot_capacity(struct device *dev,
-				struct device_attribute *attr,
-				char *buf)
-{
-	struct battery_gauge_dev *bg_dev = bg_temp;
-
-	return snprintf(buf, MAX_STR_PRINT, "%d\n",
-				bg_dev->battery_snapshot_capacity);
-}
-
 static ssize_t battery_show_max_capacity(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -292,63 +270,17 @@ static ssize_t battery_show_max_capacity(struct device *dev,
 	return snprintf(buf, MAX_STR_PRINT, "%d\n", val);
 }
 
-static DEVICE_ATTR(battery_snapshot_voltage, S_IRUGO,
-		battery_show_snapshot_voltage, NULL);
-
-static DEVICE_ATTR(battery_snapshot_capacity, S_IRUGO,
-		battery_show_snapshot_capacity, NULL);
-
 static DEVICE_ATTR(battery_max_capacity, S_IRUGO,
 		battery_show_max_capacity, NULL);
 
-static struct attribute *battery_snapshot_attributes[] = {
-	&dev_attr_battery_snapshot_voltage.attr,
-	&dev_attr_battery_snapshot_capacity.attr,
+static struct attribute *battery_sysfs_attributes[] = {
 	&dev_attr_battery_max_capacity.attr,
 	NULL
 };
 
-static const struct attribute_group battery_snapshot_attr_group = {
-	.attrs = battery_snapshot_attributes,
+static const struct attribute_group battery_sysfs_attr_group = {
+	.attrs = battery_sysfs_attributes,
 };
-
-int battery_gauge_record_voltage_value(struct battery_gauge_dev *bg_dev,
-							int voltage)
-{
-	if (!bg_dev)
-		return -EINVAL;
-
-	bg_dev->battery_voltage = voltage;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(battery_gauge_record_voltage_value);
-
-int battery_gauge_record_capacity_value(struct battery_gauge_dev *bg_dev,
-							int capacity)
-{
-	if (!bg_dev)
-		return -EINVAL;
-
-	bg_dev->battery_capacity = capacity;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(battery_gauge_record_capacity_value);
-
-int battery_gauge_record_snapshot_values(struct battery_gauge_dev *bg_dev,
-						int interval)
-{
-	msleep(interval);
-	if (!bg_dev)
-		return -EINVAL;
-
-	bg_dev->battery_snapshot_voltage = bg_dev->battery_voltage;
-	bg_dev->battery_snapshot_capacity = bg_dev->battery_capacity;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(battery_gauge_record_snapshot_values);
 
 int battery_gauge_get_scaled_soc(struct battery_gauge_dev *bg_dev,
 	int actual_soc_semi, int thresod_soc)
@@ -602,9 +534,9 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 		return ERR_PTR(-ENOMEM);
 	}
 
-	ret = sysfs_create_group(&dev->kobj, &battery_snapshot_attr_group);
+	ret = sysfs_create_group(&dev->kobj, &battery_sysfs_attr_group);
 	if (ret < 0)
-		dev_info(dev, "Could not create battery snapshot sysfs group\n");
+		dev_info(dev, "Could not create battery sysfs group\n");
 
 	mutex_lock(&charger_gauge_list_mutex);
 
