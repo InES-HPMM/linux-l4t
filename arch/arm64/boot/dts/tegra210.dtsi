@@ -37,6 +37,7 @@
 		spi3 = &spi3;
 		qspi6 = &qspi6;
 		serial2 = &uartc;
+		udc0 = &udc;
 	};
 
 	cpus {
@@ -834,6 +835,12 @@
 	efuse@7000f800 {
 		compatible = "nvidia,tegra210-efuse";
 		reg = <0x0 0x7000f800 0x0 0x400>;
+	};
+
+	udc: udc@0x7d000000 {
+		compatible = "nvidia,tegra210-udc";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
 	};
 
 	power-detect {

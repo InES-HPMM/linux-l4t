@@ -49,5 +49,18 @@
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x80000000>;
 	};
+
+	udc@0x7d000000 {
+		nvidia,port_otg;
+		nvidia,charging_supported;
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,id_det_type = <1>;
+		nvidia,id_extcon_dev_name = "palmas-extcon";
+		nvidia,qc2_input_voltage = <1>;
+		nvidia,qc2_current_limit_ma = <1200>;
+		nvidia,dcp_current_limit_ma = <1800>;
+		status = "okay";
+	};
 };
 

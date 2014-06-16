@@ -11,6 +11,10 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	aliases {
+		udc0 = &udc;
+	};
+
 	cpus {
 		#address-cells = <2>;
 		#size-cells = <0>;
@@ -72,5 +76,11 @@
 
 	power-detect {
 		compatible = "nvidia,tegra124-pwr-detect";
+	};
+
+	udc: udc@0x7d000000 {
+		compatible = "nvidia,tegra132-udc";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
 	};
 };

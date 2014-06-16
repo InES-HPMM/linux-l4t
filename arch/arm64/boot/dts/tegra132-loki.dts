@@ -180,4 +180,13 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		status = "okay";
 	};
+
+	udc@0x7d000000 {
+		nvidia,port_otg;
+		nvidia,charging_supported;
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,id_det_type = <1>;
+		status = "okay";
+	};
 };
