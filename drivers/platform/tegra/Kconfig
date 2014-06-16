@@ -22,6 +22,14 @@ config TEGRA_MC_DOMAINS
 	help
 	  When enabled, clock gates MC when it's not needed.
 
+config TEGRA_WAKEUP_MONITOR
+	bool "Enable tegra wakeup monitor"
+	depends on PM_SLEEP && ANDROID_INTF_ALARM_DEV
+	help
+	  This option enables support for the monitor of tegra wakeups, it will
+	  send out wakeup source and uevents which indicate suspend_prepare and
+	  post_suspend.
+
 config TEGRA_BOOTLOADER_DEBUG
 	tristate "Creates sys-fs interface dumping registers read by bootloader"
 	default n

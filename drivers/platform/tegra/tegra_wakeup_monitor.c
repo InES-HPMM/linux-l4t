@@ -1,7 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_wakeup_monitor.c
- *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,15 +19,17 @@
 #include <linux/completion.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
-#include <linux/irqchip/tegra.h>
+#include <linux/system-wakeup.h>
 
 #include <net/ip.h>
 #include <linux/netfilter_ipv4.h>
 #include <net/ipv6.h>
 #include <linux/proc_fs.h>
 
-#include <mach/tegra_wakeup_monitor.h>
-
+#include <linux/platform_data/tegra_wakeup_monitor.h>
+#ifndef CONFIG_ANDROID_INTF_ALARM_DEV
+#define set_rtc_wakeup_src(source) 0
+#endif
 
 #define MAX_PACKET_NUM 6
 #define MONITOR_HTABLE_SIZE 256
@@ -773,7 +773,7 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 	struct device *dev;
 
 	if (!monitor_table.twm || !monitor_table.program_hash) {
-		seq_printf(m, "monitor table not initialized\n");
+		seq_puts(m, "monitor table not initialized\n");
 		return 0;
 	}
 
@@ -801,7 +801,7 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
-	seq_printf(m, "Unmonitored wakeups\nTCP statistics:\n");
+	seq_puts(m, "Unmonitored wakeups\nTCP statistics:\n");
 	for (i = 0; i <= monitor_table.mask; i++) {
 		hslot = &monitor_table.tcp_hash[i];
 		if (hslot->count == 0)
@@ -825,7 +825,7 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 		}
 		spin_unlock_bh(&hslot->lock);
 	}
-	seq_printf(m, "UDP statistics:\n");
+	seq_puts(m, "UDP statistics:\n");
 	for (i = 0; i <= monitor_table.mask; i++) {
 		hslot = &monitor_table.udp_hash[i];
 		if (hslot->count == 0)
@@ -853,7 +853,8 @@ static int twm_offender_stat_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static int twm_offender_stat_open(struct inode *inode, struct file *file) {
+static int twm_offender_stat_open(struct inode *inode, struct file *file)
+{
 	return single_open(file, twm_offender_stat_show, PDE_DATA(inode));
 }
 
@@ -990,13 +991,13 @@ static int tegra_wakeup_monitor_resume(struct platform_device *pdev)
 	struct tegra_wakeup_monitor *twm = platform_get_drvdata(pdev);
 
 	/* read and save wake status */
-	u64 wake_status = tegra_read_pmc_wake_status();
+	int wake_reason_irq = get_wakeup_reason_irq();
 	nf_valid_flag = false;
 	if (twm->pdata->wifi_wakeup_source != -1) {
-		if (wake_status & BIT(twm->pdata->wifi_wakeup_source)) {
+		if (wake_reason_irq == twm->pdata->wifi_wakeup_source) {
 			twm->wakeup_source = TEGRA_WAKEUP_SOURCE_WIFI;
 			nf_valid_flag = true;
-		} else if (wake_status & BIT(twm->pdata->rtc_wakeup_source)) {
+		} else if (wake_reason_irq == twm->pdata->rtc_wakeup_source) {
 			twm->wakeup_source = TEGRA_WAKEUP_SOURCE_RTC;
 			if (twm->am_enable)
 				set_rtc_wakeup_src(1);

@@ -24,6 +24,8 @@ obj-y += pm.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 
+obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
