@@ -1632,14 +1632,15 @@ static int arm_smmu_add_device(struct device *dev)
 		goto err_create_mapping;
 	}
 
+	dev->archdata.iommu = smmu;
 	ret = arm_iommu_attach_device(dev, mapping);
 	if (ret)
 		goto err_attach_dev;
 
-	dev->archdata.iommu = smmu;
 	return 0;
 
 err_attach_dev:
+	dev->archdata.iommu = NULL;
 	arm_iommu_release_mapping(mapping);
 err_create_mapping:
 	iommu_group_put(group);
