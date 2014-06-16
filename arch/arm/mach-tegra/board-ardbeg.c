@@ -461,7 +461,9 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
 	&tegratab_tegra_wakeup_monitor_device,
 #endif
+#if !defined(CONFIG_ARM64)
 	&tegra_udc_device,
+#endif
 #if defined(CONFIG_TEGRA_WATCHDOG)
 	&tegra_wdt0_device,
 #endif
@@ -955,6 +957,10 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
+#if defined(CONFIG_ARM64)
+	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
+			&tegra_udc_pdata.u_data.dev),
+#endif
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
