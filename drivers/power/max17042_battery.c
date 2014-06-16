@@ -223,8 +223,6 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 
 		val->intval = ret * 625 / 8;
-		battery_gauge_record_voltage_value(chip->bg_dev,
-							val->intval);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
 		ret = max17042_read_reg(chip->client, MAX17042_AvgVCELL);
@@ -247,7 +245,6 @@ static int max17042_get_property(struct power_supply *psy,
 
 		val->intval = ret >> 8;
 		chip->cap = val->intval;
-		battery_gauge_record_capacity_value(chip->bg_dev, chip->cap);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
@@ -871,9 +868,6 @@ static int max17042_probe(struct i2c_client *client,
 
 	INIT_DEFERRABLE_WORK(&chip->work, max17042_init_worker);
 	schedule_delayed_work(&chip->work, 0);
-
-	battery_gauge_record_snapshot_values(chip->bg_dev,
-					MAX17047_DELAY/2);
 
 	return 0;
 

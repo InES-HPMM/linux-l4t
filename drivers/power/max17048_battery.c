@@ -192,11 +192,9 @@ static int max17048_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = chip->vcell;
-		battery_gauge_record_voltage_value(chip->bg_dev, chip->vcell);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->soc;
-		battery_gauge_record_capacity_value(chip->bg_dev, chip->soc);
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
@@ -793,10 +791,6 @@ static int max17048_probe(struct i2c_client *client,
 
 	INIT_DEFERRABLE_WORK(&chip->work, max17048_work);
 	schedule_delayed_work(&chip->work, 0);
-
-	battery_gauge_record_snapshot_values(chip->bg_dev,
-					jiffies_to_msecs
-					(BATTERY_SNAPSHOT_INTERVAL));
 
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
