@@ -43,8 +43,6 @@
 static struct clk *cop_clk;
 static struct clk *sclk;
 static struct clk *emc_clk;
-static void *bpmp_virt;
-static struct tegra_bpmp_platform_data *platform_data;
 static struct device *device;
 static struct mutex bpmp_lock;
 static void *shared_virt;
@@ -52,6 +50,8 @@ static uint32_t shared_phys;
 static DEFINE_SPINLOCK(shared_lock);
 
 #ifdef CONFIG_DEBUG_FS
+static phys_addr_t loadfw_phys;
+static void *loadfw_virt;
 static struct dentry *bpmp_root;
 static struct dentry *module_root;
 static LIST_HEAD(modules);
@@ -381,7 +381,7 @@ static void bpmp_loadfw(const void *data, int size)
 	dev_info(device, "firmware ready: %d bytes\n", size);
 
 	h = (struct fwheader *)data;
-	reset_addr = platform_data->phys_start + h->reset_off;
+	reset_addr = loadfw_phys + h->reset_off;
 
 	dev_info(device, "magic     : %x\n", h->magic);
 	dev_info(device, "version   : %x\n", h->version);
@@ -390,7 +390,7 @@ static void bpmp_loadfw(const void *data, int size)
 	dev_info(device, "reset off : %x\n", h->reset_off);
 	dev_info(device, "reset addr: %x\n", reset_addr);
 
-	if (size > h->memsize || h->memsize + cfgsz > platform_data->size) {
+	if (size > h->memsize || h->memsize + cfgsz > SZ_256K) {
 		dev_err(device, "firmware too big\n");
 		return;
 	}
@@ -401,9 +401,9 @@ static void bpmp_loadfw(const void *data, int size)
 	/* TODO */
 	memset(&bpmp_config, 0, cfgsz);
 
-	memcpy(bpmp_virt, data, size);
-	memset(bpmp_virt + size, 0, platform_data->size - size);
-	memcpy(bpmp_virt + h->memsize, &bpmp_config, cfgsz);
+	memcpy(loadfw_virt, data, size);
+	memset(loadfw_virt + size, 0, SZ_256K - size);
+	memcpy(loadfw_virt + h->memsize, &bpmp_config, cfgsz);
 
 	bpmp_reset(reset_addr);
 	r = bpmp_attach();
@@ -422,6 +422,17 @@ static void bpmp_fwready(const struct firmware *fw, void *context)
 	if (!fw) {
 		dev_err(device, "firmware not ready\n");
 		return;
+	}
+
+	if (!loadfw_virt) {
+		loadfw_virt = dma_alloc_coherent(device, SZ_256K,
+				&loadfw_phys, GFP_KERNEL);
+		dev_info(device, "loadfw_phys: 0x%llx\n", loadfw_phys);
+		dev_info(device, "loadfw_virt: 0x%p\n", loadfw_virt);
+		if (!loadfw_virt || !loadfw_phys) {
+			dev_err(device, "out of memory\n");
+			return;
+		}
 	}
 
 	mutex_lock(&bpmp_lock);
@@ -593,39 +604,17 @@ static int init_clks(void)
 	return 0;
 }
 
-static int bpmp_alloc_coherent(void)
+static int bpmp_mem_init(void)
 {
 	dma_addr_t phys;
-
-	if (!platform_data->phys_start) {
-		platform_data->size = SZ_128K;
-		bpmp_virt = dma_alloc_coherent(device, platform_data->size,
-				&platform_data->phys_start, GFP_KERNEL);
-	} else {
-		/* TODO: remove this once bpmp carveout is available */
-		bpmp_virt = ioremap(platform_data->phys_start,
-				platform_data->size);
-	}
-
-	dev_info(device, "phys_start %x\n", (u32)platform_data->phys_start);
-	if (!bpmp_virt)
-		return -ENOMEM;
 
 	shared_virt = dma_alloc_coherent(device, SHARED_SIZE, &phys,
 			GFP_KERNEL);
 	if (!shared_virt)
-		goto abort;
+		return -ENOMEM;
 
 	shared_phys = phys;
 	return 0;
-
-abort:
-	dma_free_coherent(device, platform_data->size, bpmp_virt,
-			platform_data->phys_start);
-	platform_data->phys_start = 0;
-	platform_data->size = 0;
-	bpmp_virt = 0;
-	return -ENOMEM;
 }
 
 static int bpmp_probe(struct platform_device *pdev)
@@ -633,11 +622,9 @@ static int bpmp_probe(struct platform_device *pdev)
 	int r;
 
 	device = &pdev->dev;
-	platform_data = device->platform_data;
-
 	mutex_init(&bpmp_lock);
 
-	r = bpmp_alloc_coherent();
+	r = bpmp_mem_init();
 	if (r)
 		return r;
 
