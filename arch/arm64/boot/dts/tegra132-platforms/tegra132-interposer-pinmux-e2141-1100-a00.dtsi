@@ -348,10 +348,10 @@
 
 			ph0 {
 				nvidia,pins = "ph0";
-				nvidia,function = "dtv";
+				nvidia,function = "pwm0";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
 			ph1 {

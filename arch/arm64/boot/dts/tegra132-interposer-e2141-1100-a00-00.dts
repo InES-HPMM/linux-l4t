@@ -92,7 +92,7 @@
 		status = "okay";
 	};
 
-	dfll@70110000 {
+	dfll@70040084 {
 		pwm-pmic-integration {
 			pwm-data-gpio = <&gpio TEGRA_GPIO(X, 0) 0>;
 		};
@@ -100,7 +100,7 @@
 
 	pwm_regulators {
 		pwm-regulator@0 {
-			idle-gpio = <&gpio TEGRA_GPIO(X, 2) 0>;
+			standby-gpio = <&gpio TEGRA_GPIO(X, 2) 0>;
 		};
 	};
 
