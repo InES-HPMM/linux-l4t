@@ -59,6 +59,10 @@ static void max77620_pm_power_reset(void *drv_data)
 	max77620_allow_atomic_xfer(max77620_poweroff->max77620);
 
 	ret = max77620_reg_update(max77620_poweroff->max77620->dev,
+		MAX77620_PWR_SLAVE, MAX77620_REG_ONOFFCNFG2,
+		MAX77620_ONOFFCNFG2_SFT_RST_WK, MAX77620_ONOFFCNFG2_SFT_RST_WK);
+
+	ret = max77620_reg_update(max77620_poweroff->max77620->dev,
 		MAX77620_PWR_SLAVE, MAX77620_REG_ONOFFCNFG1,
 		MAX77620_ONOFFCNFG1_SFT_RST, MAX77620_ONOFFCNFG1_SFT_RST);
 	if (ret < 0)
