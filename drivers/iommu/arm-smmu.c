@@ -388,6 +388,7 @@ struct arm_smmu_device {
 	struct rb_root			masters;
 
 	struct dentry			*debugfs_root;
+	struct debugfs_regset32		*regset;
 };
 
 struct arm_smmu_cfg {
@@ -1887,20 +1888,125 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 	return 0;
 }
 
+#define defreg(_name)				\
+	{					\
+		.name = __stringify(_name),	\
+		.offset = ARM_SMMU_ ## _name,	\
+	}
+#define defreg_gr0(_name) defreg(GR0_ ## _name)
+#define defreg_cb(_name)			\
+	{					\
+		.name = __stringify(_name),	\
+		.offset = ARM_SMMU_CB_ ## _name,\
+	}
+
+static const struct debugfs_reg32 arm_smmu_gr0_regs[] = {
+	defreg_gr0(sCR0),
+	defreg_gr0(ID0),
+	defreg_gr0(ID1),
+	defreg_gr0(ID2),
+	defreg_gr0(sGFSR),
+	defreg_gr0(sGFSYNR0),
+	defreg_gr0(sGFSYNR1),
+	defreg_gr0(sTLBGSTATUS),
+	defreg_gr0(PIDR2),
+};
+
+static const struct debugfs_reg32 arm_smmu_cb_regs[] = {
+	defreg_cb(SCTLR),
+	defreg_cb(TTBCR2),
+	defreg_cb(TTBR0_LO),
+	defreg_cb(TTBR0_HI),
+	defreg_cb(TTBCR),
+	defreg_cb(S1_MAIR0),
+	defreg_cb(FSR),
+	defreg_cb(FAR_LO),
+	defreg_cb(FAR_HI),
+	defreg_cb(FSYNR0),
+};
+
 static void arm_smmu_debugfs_delete(struct arm_smmu_device *smmu)
 {
+	int i;
+	const struct debugfs_reg32 *regs = smmu->regset->regs;
+
+	regs += ARRAY_SIZE(arm_smmu_gr0_regs);
+	for (i = 0; i < 4 * smmu->num_context_banks; i++)
+		kfree(regs[i].name);
+
+	kfree(smmu->regset);
 	debugfs_remove_recursive(smmu->debugfs_root);
 }
 
 static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 {
-	struct dentry *root;
+	int i;
+	struct dentry *dent;
+	struct debugfs_reg32 *regs;
+	size_t bytes;
 
-	root = debugfs_create_dir(dev_name(smmu->dev), NULL);
-	if (!root)
+	smmu->debugfs_root = debugfs_create_dir(dev_name(smmu->dev), NULL);
+	if (!smmu->debugfs_root)
+		return;
+
+	bytes = (smmu->num_context_banks + 1) * sizeof(*smmu->regset);
+	bytes += ARRAY_SIZE(arm_smmu_gr0_regs) * sizeof(*regs);
+	bytes += 4 * smmu->num_context_banks * sizeof(*regs);
+	smmu->regset = kzalloc(bytes, GFP_KERNEL);
+	if (!smmu->regset)
 		goto err_out;
 
-	smmu->debugfs_root = root;
+	smmu->regset->base = smmu->base;
+	smmu->regset->nregs = ARRAY_SIZE(arm_smmu_gr0_regs) +
+		4 * smmu->num_context_banks;
+	smmu->regset->regs = (struct debugfs_reg32 *)(smmu->regset +
+						smmu->num_context_banks + 1);
+	regs = (struct debugfs_reg32 *)smmu->regset->regs;
+	for (i = 0; i < ARRAY_SIZE(arm_smmu_gr0_regs); i++) {
+		regs->name = arm_smmu_gr0_regs[i].name;
+		regs->offset = arm_smmu_gr0_regs[i].offset;
+		regs++;
+	}
+
+	for (i = 0; i < smmu->num_context_banks; i++) {
+		char name[127];
+		struct debugfs_regset32	*cb;
+
+		regs->name = kasprintf(GFP_KERNEL, "GR0_SMR%03d", i);
+		regs->offset = ARM_SMMU_GR0_SMR(i);
+		regs++;
+
+		regs->name = kasprintf(GFP_KERNEL, "GR0_S2CR%03d", i);
+		regs->offset = ARM_SMMU_GR0_S2CR(i);
+		regs++;
+
+		regs->name = kasprintf(GFP_KERNEL, "GR1_CBAR%03d", i);
+		regs->offset = smmu->pagesize + ARM_SMMU_GR1_CBAR(i);
+		regs++;
+
+		regs->name = kasprintf(GFP_KERNEL, "GR1_CBA2R%03d", i);
+		regs->offset = smmu->pagesize + ARM_SMMU_GR1_CBA2R(i);
+		regs++;
+
+		sprintf(name, "cb%03d", i);
+		dent = debugfs_create_dir(name, smmu->debugfs_root);
+		if (!dent)
+			goto err_out;
+
+		cb = smmu->regset + 1 + i;
+		cb->regs = arm_smmu_cb_regs;
+		cb->nregs = ARRAY_SIZE(arm_smmu_cb_regs);
+		cb->base = smmu->base + (smmu->size >> 1) +
+			i * smmu->pagesize;
+		dent = debugfs_create_regset32("regdump", S_IRUGO, dent, cb);
+		if (!dent)
+			goto err_out;
+	}
+
+	dent = debugfs_create_regset32("regdump", S_IRUGO, smmu->debugfs_root,
+				smmu->regset);
+	if (!dent)
+		goto err_out;
 	return;
 
 err_out:
