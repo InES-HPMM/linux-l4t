@@ -20,6 +20,7 @@
 #include <linux/of_platform.h>
 #include <linux/nwpserial.h>
 #include <linux/clk.h>
+#include <linux/tegra-pm.h>
 
 #include "8250/8250.h"
 
@@ -67,6 +68,8 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 
 	spin_lock_init(&port->lock);
 	port->mapbase = resource.start;
+	if (of_property_read_bool(np, "console-port"))
+		debug_uart_port_base = port->mapbase;
 
 	/* Check for shifted address mapping */
 	if (of_property_read_u32(np, "reg-offset", &prop) == 0)
