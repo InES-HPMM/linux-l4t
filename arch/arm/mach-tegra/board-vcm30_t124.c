@@ -643,12 +643,7 @@ static void __init vcm30_t124_usb_init(void)
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTA_BASE,
-				"serial-tegra.0", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTB_BASE,
-				"serial-tegra.1", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTD_BASE,
-				"serial-tegra.3", NULL),
+	T124_UART_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE, "gk20a.0", NULL),

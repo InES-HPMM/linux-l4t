@@ -449,8 +449,7 @@ static void p2360_usb_init(void)
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata p2360_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", TEGRA_UARTB_BASE,
-				"serial-tegra.1", NULL),
+	T124_UART_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE, "gk20a.0", NULL),

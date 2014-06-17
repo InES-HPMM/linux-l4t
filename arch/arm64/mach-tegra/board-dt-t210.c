@@ -122,7 +122,17 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006040, "serial8250.1",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006200, "serial8250.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006300, "serial8250.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006300, "serial-tegra.3",
 				NULL),
 #if defined(CONFIG_TEGRA_NVADSP) && \
 		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
