@@ -136,7 +136,7 @@ static int tegra_hier_ictlr_mselect_init(struct platform_device *pdev,
 		 (1 << MSELECT_CONFIG_0_WRITE_TIMEOUT_EN_SLAVE2_SHIFT) |
 		 (1 << MSELECT_CONFIG_0_ERR_RESP_EN_SLAVE1_SHIFT)      |
 		 (1 << MSELECT_CONFIG_0_ERR_RESP_EN_SLAVE2_SHIFT)),
-		ictlr->hier_ictlr_base + MSELECT_CONFIG_0);
+		ictlr->mselect_base + MSELECT_CONFIG_0);
 
 	return 0;
 }
