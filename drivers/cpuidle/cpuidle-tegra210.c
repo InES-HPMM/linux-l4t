@@ -391,10 +391,10 @@ static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
 	int cpu = (long)data;
 
 	switch (action) {
-	case CPU_DOWN_PREPARE:
+	case CPU_POST_DEAD:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC7);
 		break;
-	case CPU_ONLINE:
+	case CPU_UP_PREPARE:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC1);
 		break;
 	}
