@@ -90,7 +90,10 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "tsensor",    "clk_m",        500000,         false },
 #endif
 	{ "csite",      NULL,           0,              true },
-	{ "uartb",	NULL,		0,		true },
+	{ "uarta",	"pll_p",	0,		false },
+	{ "uartb",	"pll_p",	0,		false },
+	{ "uartc",	"pll_p",	0,		false },
+	{ "uartd",	"pll_p",	0,		false },
 	{ NULL,         NULL,           0,              0},
 
 };
@@ -113,6 +116,14 @@ static __initdata struct tegra_clk_init_table tegra21x_sbus_init_table[] = {
 	{ "sbc3.sclk",  NULL,           40000000,       false},
 	{ "sbc4.sclk",  NULL,           40000000,       false},
 	{ "wake.sclk",  NULL,           40000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
+	{ NULL,		NULL,		0,		0},
+};
+
+static __initdata struct tegra_clk_init_table uart_non_si_clk_init_data[] = {
+	{ "uarta",	"clk_m",	0,	false},
+	{ "uartb",	"clk_m",	0,	true},
+	{ "uartc",	"clk_m",	0,	false},
+	{ "uartd",	"clk_m",	0,	false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -158,6 +169,8 @@ void __init tegra21x_init_early(void)
 	tegra_clk_init_from_table(tegra21x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra21x_cbus_init_table);
 	tegra_clk_init_from_table(tegra21x_sbus_init_table);
+	if (!tegra_platform_is_silicon())
+		tegra_clk_init_from_table(uart_non_si_clk_init_data);
 	tegra_powergate_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
