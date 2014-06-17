@@ -19,7 +19,6 @@
 #define AS3722_BBCMODE_ACT_STBY		2
 #define AS3722_BBCMODE_ACT_STBY_OFF	3
 
-
 /* Power Good OC Mask macro */
 #define AS3722_OC_PG_MASK_AC_OK            0x1
 #define AS3722_OC_PG_MASK_GPIO3            0x2
@@ -29,5 +28,19 @@
 #define AS3722_OC_PG_MASK_OVCURR_SD0       0x20
 #define AS3722_OC_PG_MASK_POWERGOOD_SD6    0x40
 #define AS3722_OC_PG_MASK_OVCURR_SD6       0x80
+
+/* Thermal sensor zones */
+#define AS3722_SD0_SENSOR              0
+#define AS3722_SD1_SENSOR              1
+#define AS3722_SD6_SENSOR              2
+
+/* SDx temperature ADC channel */
+#define AS3722_TEMP1_SD0               16
+#define AS3722_TEMP2_SD0               17
+#define AS3722_TEMP3_SD0               18
+#define AS3722_TEMP4_SD0               19
+#define AS3722_TEMP_SD1                20
+#define AS3722_TEMP1_SD6               21
+#define AS3722_TEMP2_SD6               22
 
 #endif
