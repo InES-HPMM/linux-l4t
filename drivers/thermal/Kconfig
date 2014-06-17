@@ -237,6 +237,16 @@ config MAX77620_THERMAL
          different critical temperature thresholds from which we can notify
          thermal core to orderly power off the system.
 
+config AS3722_THERMAL
+       bool "AMS AS3722 thermal driver"
+       depends on THERMAL_OF && MFD_AS3722
+       default n
+       help
+         AS3722 thermal driver which detects temperature trips
+         on regulators due to high current drainage.It then provides
+         current temp on the regulators using ADC and uses platform
+         cooling hooks to throttle CPU/GPU speeds.
+
 config SENSORS_TMP006
 	tristate "Skin Temperature Sensor"
 	depends on I2C
