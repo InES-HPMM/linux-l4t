@@ -42,6 +42,8 @@
 #include <linux/stat.h>
 #include <linux/pm_qos.h>
 #include <media/tegra_dtv.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 #include <linux/uaccess.h>
 #include "../../../../arch/arm/mach-tegra/iomap.h"
@@ -109,7 +111,7 @@ struct tegra_dtv_context {
 
 	phys_addr_t                phys;
 	void * __iomem base;
-	unsigned long              dma_req_sel;
+	unsigned int              dma_req_sel;
 
 	struct dtv_stream          stream;
 	/* debugfs */
@@ -643,13 +645,13 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 
 	if (!IS_ALIGNED(size, 4) || size < 4 ||
 	    size != dtv_ctx->stream.buf_size) {
-		pr_err("%s: invalid user size %d\n", __func__, size);
+		pr_err("%s: invalid user size %zu\n", __func__, size);
 		ret = -EINVAL;
 		mutex_unlock(&dtv_ctx->stream.mtx);
 		return ret;
 	}
 
-	pr_debug("%s: read %d bytes.\n", __func__, size);
+	pr_debug("%s: read %zu bytes.\n", __func__, size);
 
 	if (dtv_ctx->stream.stopped) {
 		pr_debug("%s: tegra dtv transferring is stopped.\n",
@@ -687,7 +689,7 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 		mutex_unlock(&dtv_ctx->stream.mtx);
 		return ret;
 	} else if (ret < 0) {
-		pr_err("%s: wait error %d", __func__, ret);
+		pr_err("%s: wait error %zu", __func__, ret);
 		mutex_unlock(&dtv_ctx->stream.mtx);
 		return ret;
 	}
@@ -714,7 +716,7 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 
 	mutex_unlock(&dtv_ctx->stream.mtx);
 
-	pr_debug("%s : done with ret = %d\n", __func__, ret);
+	pr_debug("%s : done with ret = %zu\n", __func__, ret);
 
 	return ret;
 }
@@ -1028,7 +1030,7 @@ static int setup_stream(struct dtv_stream *stream,
 	stream->num_bufs = profile->bufnum > DTV_MAX_NUM_BUFS ?
 		DTV_MAX_NUM_BUFS : profile->bufnum;
 
-	pr_info("%s: bufsize = %d, bufnum = %d", __func__,
+	pr_info("%s: bufsize = %zu, bufnum = %d", __func__,
 		stream->buf_size, stream->num_bufs);
 
 	/* init refs to buffers */
@@ -1099,6 +1101,16 @@ static inline void reconfig_pm_qos(struct tegra_dtv_context *dtv_ctx,
 		dtv_ctx->profile.cpuboost, dtv_ctx->profile.bitrate);
 }
 
+static struct of_device_id tegra_dtv_of_match[] = {
+	{
+		.compatible = "nvidia,tegra210-dtv",
+	},
+	{
+		.compatible = "nvidia,tegra132-dtv",
+	},
+};
+MODULE_DEVICE_TABLE(of, tegra_dtv_of_match);
+
 static int tegra_dtv_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1109,11 +1121,6 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 
 	pr_info("%s: probing dtv.\n", __func__);
 
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "No Platform data for tegra_dtv.\n");
-		ret = -ENODEV;
-	}
 
 	dtv_ctx = devm_kzalloc(&pdev->dev, sizeof(struct tegra_dtv_context),
 			       GFP_KERNEL);
@@ -1125,6 +1132,20 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, dtv_ctx);
 
+	if (pdev->dev.of_node) {
+		of_property_read_u32(pdev->dev.of_node,
+			"nvidia,dma-request-selector", &dtv_ctx->dma_req_sel);
+	}
+
+	if (pdev->dev.platform_data) {
+		pdata = pdev->dev.platform_data;
+		dtv_ctx->dma_req_sel = pdata->dma_req_selector;
+	}
+
+	if (!dtv_ctx->dma_req_sel) {
+		dev_err(&pdev->dev, "Platform data not found\n");
+		return -ENODATA;
+	}
 
 	/* for refer back */
 	dtv_ctx->pdev = pdev;
@@ -1187,8 +1208,9 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	dtv_ctx->profile.bufnum = DTV_NUM_BUFS;
 	dtv_ctx->profile.cpuboost = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE;
 	dtv_ctx->profile.bitrate = DTV_TS_MIN_BITRATE;
-	dtv_ctx->dma_req_sel = pdata->dma_req_selector;
-
+#if defined(CONFIG_ARM64)
+	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+#endif
 	ret = setup_stream(&dtv_ctx->stream, &dtv_ctx->profile);
 	if (ret < 0)
 		goto fail_setup_stream;
@@ -1309,6 +1331,7 @@ static struct platform_driver tegra_dtv_driver = {
 	.driver = {
 		.name = TEGRA_DTV_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(tegra_dtv_of_match),
 	},
 	.probe = tegra_dtv_probe,
 	.remove = tegra_dtv_remove,
