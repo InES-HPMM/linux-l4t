@@ -975,6 +975,9 @@ static void deinit_stream_buffers(struct dtv_stream *s)
 	struct dtv_buffer *buf;
 	int i;
 
+	if (!s->bufs)
+		return;
+
 	for (i = 0; i < s->num_bufs; ++i) {
 		buf = &s->bufs[i];
 		dma_free_coherent(&dtv_ctx->pdev->dev,
@@ -1068,8 +1071,10 @@ static int reconfig_stream(struct tegra_dtv_context *dtv_ctx,
 	tear_down_dma(dtv_ctx);
 
 	ret = setup_stream(&dtv_ctx->stream, new);
-	if (ret < 0)
-		goto fail_setup_stream;
+	if (ret < 0) {
+		pr_debug("%s(%d) : Setup stream failed\n", __func__, __LINE__);
+		return ret;
+	}
 
 	ret = setup_dma(dtv_ctx);
 	if (ret < 0)
@@ -1077,10 +1082,8 @@ static int reconfig_stream(struct tegra_dtv_context *dtv_ctx,
 
 	return ret;
 
-fail_setup_stream:
-	destroy_stream(&dtv_ctx->stream);
 fail_setup_dma:
-	tear_down_dma(dtv_ctx);
+	destroy_stream(&dtv_ctx->stream);
 
 	return ret;
 }
@@ -1196,7 +1199,7 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	if (!devm_request_mem_region(&pdev->dev, res->start,
 			resource_size(res), dev_name(&pdev->dev))) {
 		ret = -EBUSY;
-		return ret;
+		goto fail_no_res;
 	}
 	dtv_ctx->phys = res->start;
 	dtv_ctx->base = devm_ioremap(&pdev->dev, res->start,
@@ -1204,7 +1207,7 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	if (!dtv_ctx->base) {
 		dev_err(&pdev->dev, "cannot ioremap iomem.\n");
 		ret = -ENOMEM;
-		return ret;
+		goto fail_no_res;
 	}
 
 	dtv_ctx->profile.bufsize = DTV_BUF_SIZE;
@@ -1215,8 +1218,10 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
 #endif
 	ret = setup_stream(&dtv_ctx->stream, &dtv_ctx->profile);
-	if (ret < 0)
-		goto fail_setup_stream;
+	if (ret < 0) {
+		pr_err("%s(%d) : Setup stream failed\n", __func__, __LINE__);
+		goto fail_no_res;
+	}
 
 	ret = setup_dma(dtv_ctx);
 	if (ret < 0)
@@ -1244,13 +1249,11 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	return 0;
 
 fail_debugfs_reg:
-	dtv_debugfs_exit(dtv_ctx);
-fail_misc_reg:
 	misc_deregister(&dtv_ctx->miscdev);
-fail_setup_stream:
-	destroy_stream(&dtv_ctx->stream);
-fail_setup_dma:
+fail_misc_reg:
 	tear_down_dma(dtv_ctx);
+fail_setup_dma:
+	destroy_stream(&dtv_ctx->stream);
 fail_no_res:
 	pm_qos_remove_request(&dtv_ctx->min_cpufreq);
 	pm_qos_remove_request(&dtv_ctx->cpudma_lat);
