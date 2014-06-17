@@ -186,29 +186,6 @@ static void loki_i2c_init(void)
 	i2c_register_board_info(0, &rt5639_board_info, 1);
 }
 
-#ifndef CONFIG_USE_OF
-static struct platform_device *loki_uart_devices[] __initdata = {
-	&tegra_uarta_device,
-	&tegra_uartb_device,
-	&tegra_uartc_device,
-};
-
-static struct tegra_serial_platform_data loki_uarta_pdata = {
-	.dma_req_selector = 8,
-	.modem_interrupt = false,
-};
-
-static struct tegra_serial_platform_data loki_uartb_pdata = {
-	.dma_req_selector = 9,
-	.modem_interrupt = false,
-};
-
-static struct tegra_serial_platform_data loki_uartc_pdata = {
-	.dma_req_selector = 10,
-	.modem_interrupt = false,
-};
-#endif
-
 static struct tegra_serial_platform_data loki_uartd_pdata = {
 	.dma_req_selector = 19,
 	.modem_interrupt = false,
@@ -265,13 +242,6 @@ static void __init loki_uart_init(void)
 {
 	int debug_port_id;
 
-#ifndef CONFIG_USE_OF
-	tegra_uarta_device.dev.platform_data = &loki_uarta_pdata;
-	tegra_uartb_device.dev.platform_data = &loki_uartb_pdata;
-	tegra_uartc_device.dev.platform_data = &loki_uartc_pdata;
-	platform_add_devices(loki_uart_devices,
-			ARRAY_SIZE(loki_uart_devices));
-#endif
 	tegra_uartd_device.dev.platform_data = &loki_uartd_pdata;
 	if (!is_tegra_debug_uartport_hs()) {
 		debug_port_id = uart_console_debug_init(3);
