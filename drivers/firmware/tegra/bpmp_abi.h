@@ -54,7 +54,6 @@
 #define __MRQ_PUBLIC		(1 << 31)
 
 #define MRQ_PING		(0 | __MRQ_PUBLIC)
-#define MRQ_LEGACY_LP0		1
 #define MRQ_DO_IDLE		2
 #define MRQ_TOLERATE_IDLE	3
 #define MRQ_MODULE_LOAD		4
