@@ -15,6 +15,7 @@
 #include <linux/mfd/core.h>
 #include <linux/regmap.h>
 #include <linux/regulator/machine.h>
+#include <linux/mutex.h>
 
 /* RTC Registers */
 #define MAX77620_REG_RTCINT		0x00
@@ -350,6 +351,9 @@ struct max77620_chip {
 
 	int chip_irq;
 	int irq_base;
+
+	struct mutex mutex_config;
+	bool shutdown;
 
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *gpio_irq_data;

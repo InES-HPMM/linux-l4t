@@ -156,16 +156,42 @@ static struct regmap_irq_chip max77620_top_irq_chip = {
 	.post_irq = max77620_top_irq_chip_post_irq,
 };
 
-static const struct regmap_config max77620_regmap_config[] = {
+static void max77620_regmap_config_lock(void *lock)
+{
+	struct max77620_chip *chip = lock;
+
+	if (chip->shutdown && (in_atomic() || irqs_disabled())) {
+		dev_info(chip->dev, "Xfer without lock\n");
+		return;
+	}
+
+	mutex_lock(&chip->mutex_config);
+}
+
+static void max77620_regmap_config_unlock(void *lock)
+{
+	struct max77620_chip *chip = lock;
+
+	if (chip->shutdown && (in_atomic() || irqs_disabled()))
+		return;
+
+	mutex_unlock(&chip->mutex_config);
+}
+
+static struct regmap_config max77620_regmap_config[] = {
 	[MAX77620_PWR_SLAVE] = {
 		.reg_bits = 8,
 		.val_bits = 8,
 		.max_register = 0x5d,
+		.lock = max77620_regmap_config_lock,
+		.unlock = max77620_regmap_config_unlock,
 	},
 	[MAX77620_RTC_SLAVE] = {
 		.reg_bits = 8,
 		.val_bits = 8,
 		.max_register = 0x1b,
+		.lock = max77620_regmap_config_lock,
+		.unlock = max77620_regmap_config_unlock,
 	},
 };
 
@@ -197,6 +223,7 @@ static int max77620_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	chip->irq_base = -1;
 	chip->chip_irq = client->irq;
+	mutex_init(&chip->mutex_config);
 
 	for (i = 0; i < MAX77620_NUM_SLAVES; i++) {
 		if (max77620_slave_address[i] == client->addr)
@@ -212,8 +239,9 @@ static int max77620_probe(struct i2c_client *client,
 
 		chip->clients[i]->dev.of_node = node;
 		i2c_set_clientdata(chip->clients[i], chip);
+		max77620_regmap_config[i].lock_arg = chip;
 		chip->rmap[i] = devm_regmap_init_i2c(chip->clients[i],
-					&max77620_regmap_config[i]);
+		(const struct regmap_config *)&max77620_regmap_config[i]);
 		if (IS_ERR(chip->rmap[i])) {
 			ret = PTR_ERR(chip->rmap[i]);
 			dev_err(&client->dev,
@@ -272,6 +300,13 @@ static int max77620_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void max77620_shutdown(struct i2c_client *i2c)
+{
+	struct max77620_chip *chip = i2c_get_clientdata(i2c);
+
+	chip->shutdown = true;
+}
+
 static const struct i2c_device_id max77620_id[] = {
 	{"max77620", 0},
 	{},
@@ -285,6 +320,7 @@ static struct i2c_driver max77620_driver = {
 	},
 	.probe = max77620_probe,
 	.remove = max77620_remove,
+	.shutdown = max77620_shutdown,
 	.id_table = max77620_id,
 };
 
