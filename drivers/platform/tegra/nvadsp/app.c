@@ -30,12 +30,13 @@
 
 #define APP_LOADER_MBOX_ID		1
 
-#define LOAD_APP			0x3
-#define APP_LOAD_RET_STATUS		0x4
-#define APP_INIT			0x5
-#define APP_INIT_STATUS			0x6
-#define APP_START			0x7
-#define APP_START_STATUS		0x8
+#define OS_LOAD_COMPLETE		0x01
+#define LOAD_APP			0x03
+#define APP_LOAD_RET_STATUS		0x04
+#define APP_INIT			0x05
+#define APP_INIT_STATUS			0x06
+#define APP_START			0x07
+#define APP_START_STATUS		0x08
 
 struct nvadsp_app_service {
 	char name[NVADSP_NAME_SZ];
@@ -98,6 +99,7 @@ static struct work_struct mailbox_work;
 static struct nvadsp_mbox mbox;
 static struct list_head service_list;
 
+DECLARE_COMPLETION(os_load);
 DECLARE_COMPLETION(load_app_status);
 DECLARE_COMPLETION(app_init_status);
 DECLARE_COMPLETION(app_start_status);
@@ -117,6 +119,9 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 	while (1) {
 		nvadsp_mbox_recv(&mbox, &data, true, ~0);
 		switch (data) {
+		case OS_LOAD_COMPLETE:
+			dev_dbg(dev, "in OS_LOAD_COMPLETE\n");
+			complete(&os_load);
 		case APP_LOAD_RET_STATUS:
 			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
 			complete(&load_app_status);
@@ -133,6 +138,11 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 			dev_err(dev, "received wrong data\n");
 		}
 	}
+}
+
+void wait_for_adsp_os_load_complete(void)
+{
+	wait_for_completion(&os_load);
 }
 
 static int native_adsp_app_start(nvadsp_app_info_t *app)

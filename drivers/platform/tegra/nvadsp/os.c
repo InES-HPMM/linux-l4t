@@ -523,6 +523,7 @@ int nvadsp_os_start(void)
 	dev_info(dev, "starting ADSP OS ....\n");
 	writel(APE_RESET, priv.reset_reg);
 #endif
+	wait_for_adsp_os_load_complete();
 	return 0;
 }
 EXPORT_SYMBOL(nvadsp_os_start);

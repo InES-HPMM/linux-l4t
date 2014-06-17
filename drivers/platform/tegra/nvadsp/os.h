@@ -47,4 +47,5 @@ struct adsp_module
 *load_adsp_module(const char *, const char *, struct device *);
 int allocate_memory_from_adsp(void **, unsigned int);
 bool is_adsp_dram_addr(u64);
+void wait_for_adsp_os_load_complete(void);
 #endif /* __TEGRA_NVADSP_OS_H */
