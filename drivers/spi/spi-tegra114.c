@@ -898,6 +898,12 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		command1 |= SPI_BIT_LENGTH(bits_per_word - 1);
 	}
 
+
+	command1 &=  ~SPI_BOTH_EN_BIT;
+	if ((t->rx_nbits == SPI_NBITS_DUAL) ||
+			(t->tx_nbits == SPI_NBITS_DUAL))
+		command1 |=  SPI_BOTH_EN_BIT;
+
 	if (tspi->is_packed)
 		command1 |= SPI_PACKED;
 
@@ -1401,7 +1407,8 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	}
 
 	/* the spi->mode bits understood by this driver: */
-	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST |
+		SPI_TX_DUAL | SPI_RX_DUAL;
 	/* supported bpw 4-32 */
 	master->bits_per_word_mask = (u32) ~(BIT(0)|BIT(1)|BIT(2));
 	master->setup = tegra_spi_setup;
