@@ -96,7 +96,7 @@
 		enable-active-high;
 	};
 
-	pinmux: pinmux {
+	pinmux@700008d4 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinmux_default>;
 

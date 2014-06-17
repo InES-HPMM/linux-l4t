@@ -207,7 +207,7 @@
 		#dma-cells = <1>;
 	};
 
-	pinmux: pinmux {
+	pinmux: pinmux@700008d4 {
                 compatible = "nvidia,tegra210-pinmux";
                 reg = <0x0 0x700008d4 0x0 0x299    /* Pad control registers */
                        0x0 0x70003000 0x0 0x290>; /* Mux registers */
