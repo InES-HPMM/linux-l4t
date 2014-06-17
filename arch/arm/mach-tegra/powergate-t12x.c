@@ -695,6 +695,39 @@ static int tegra12x_pcie_unpowergate(int id)
 	return ret;
 }
 
+/*
+ * Due to a HW bug 1320346 in t12x/t13x, PCIE needs to be unpowergated when
+ * XUSB is to be accessed.  Since PCIE uses reference counter, we can attempt
+ * to powergated/unpowergate PCIE when XUSB is powergated/unpowergated.  This
+ * will ensure that PCIE is unpowergated when (either XUSB or PCIE) needs it
+ * and will be powergated when (neither XUSB nor PCIE) needs it.
+ */
+static int tegra12x_xusbc_powergate(int id)
+{
+	int ret = 0;
+
+	if (!TEGRA_IS_XUSBC_POWERGATE_ID(id))
+		return -EINVAL;
+
+	CHECK_RET(tegra12x_powergate(id));
+	CHECK_RET(tegra12x_pcie_powergate(TEGRA_POWERGATE_PCIE));
+
+	return ret;
+}
+
+static int tegra12x_xusbc_unpowergate(int id)
+{
+	int ret = 0;
+
+	if (!TEGRA_IS_XUSBC_POWERGATE_ID(id))
+		return -EINVAL;
+
+	CHECK_RET(tegra12x_unpowergate(id));
+	CHECK_RET(tegra12x_pcie_unpowergate(TEGRA_POWERGATE_PCIE));
+
+	return ret;
+}
+
 int tegra12x_powergate_partition(int id)
 {
 	int ret;
@@ -710,6 +743,8 @@ int tegra12x_powergate_partition(int id)
 		ret = tegra12x_venc_powergate(id);
 	else if (id == TEGRA_POWERGATE_PCIE)
 		ret = tegra12x_pcie_powergate(id);
+	else if (id == TEGRA_POWERGATE_XUSBC)
+		ret = tegra12x_xusbc_powergate(id);
 	else {
 		/* call common power-gate API for t1xx */
 		ret = tegra1xx_powergate(id,
@@ -734,6 +769,8 @@ int tegra12x_unpowergate_partition(int id)
 		ret = tegra12x_venc_unpowergate(id);
 	else if (id == TEGRA_POWERGATE_PCIE)
 		ret = tegra12x_pcie_unpowergate(id);
+	else if (id == TEGRA_POWERGATE_XUSBC)
+		ret = tegra12x_xusbc_unpowergate(id);
 	else {
 		ret = tegra1xx_unpowergate(id,
 			&tegra12x_powergate_partition_info[id]);
@@ -827,11 +864,23 @@ static int tegra12x_powergate_init_refcount(void)
 	 * powergated only when both XUSB and PCIE are not active.
 	 */
 
-	if (pcie_powered)
-		atomic_set(&ref_count_pcie, 1);
-	else
-		atomic_set(&ref_count_pcie, 0);
+	atomic_set(&ref_count_pcie, 0);
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+	if (pcie_powered)
+		atomic_inc(&ref_count_pcie);
+	else {
+		tegra12x_unpowergate_partition(TEGRA_POWERGATE_PCIE);
+		pcie_powered = true;
+	}
+#endif
+
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+	if (pcie_powered)
+		atomic_inc(&ref_count_pcie);
+	else
+		tegra12x_unpowergate_partition(TEGRA_POWERGATE_PCIE);
+#endif
 	return 0;
 }
 
