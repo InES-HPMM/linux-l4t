@@ -217,6 +217,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-loki-02-cell-battery.dtb \
 	tegra124-loki-03-cell-battery.dtb \
 	tegra124-loki-e2548-a00.dtb \
+	tegra124-loki-e2530-a00.dtb \
 	tegra124-loki-e2530-a01.dtb \
 	tegra124-loki-e2530-a03.dtb \
 	tegra124-loki-p2530-0000-c00-00.dtb \
