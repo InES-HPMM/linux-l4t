@@ -418,7 +418,8 @@ int thermal_zone_get_temp(struct thermal_zone_device *tz, long *temp)
 	enum thermal_trip_type type;
 #endif
 
-	if (!tz || IS_ERR(tz) || !tz->ops->get_temp)
+	if (!tz || IS_ERR(tz) || !tz->ops->get_temp ||
+			!device_is_registered(&tz->device))
 		goto exit;
 
 	mutex_lock(&tz->lock);
@@ -471,7 +472,7 @@ void thermal_zone_device_update(struct thermal_zone_device *tz)
 {
 	int count;
 
-	if (!tz->ops->get_temp)
+	if (!tz || !tz->ops->get_temp || !device_is_registered(&tz->device))
 		return;
 
 	update_temperature(tz);
