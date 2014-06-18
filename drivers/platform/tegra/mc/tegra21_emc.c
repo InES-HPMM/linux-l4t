@@ -26,6 +26,7 @@
 #include <linux/pasr.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
+#include <linux/tegra-soc.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 
 #include <asm/cputime.h>
@@ -133,6 +134,11 @@ enum {
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
 #define EMC_CLK_FORCE_CC_TRIGGER        (0x1 << 27)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
+
+#define EMC_CLK_SOURCE_PLLM		0x0
+#define EMC_CLK_SOURCE_PLLM_LJ		0x4
+#define EMC_CLK_SOURCE_PLLMB		0x6
+#define EMC_CLK_SOURCE_PLLMB_LJ		0x5
 
 #define BURST_REG_LIST \
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RC),			\
@@ -339,11 +345,10 @@ static void __iomem *burst_reg_addr[TEGRA12_EMC_MAX_NUM_REGS] = {
 	BURST_REG_LIST
 };
 
-#ifndef EMULATE_CLOCK_SWITCH
 static void __iomem *burst_up_down_reg_addr[TEGRA12_EMC_MAX_NUM_REGS] = {
 	BURST_UP_DOWN_REG_LIST
 };
-#endif
+
 #undef DEFINE_REG
 
 #define DEFINE_REG(base, reg)	reg##_INDEX
@@ -365,6 +370,7 @@ struct emc_sel {
 	unsigned long	input_rate;
 };
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
+static struct emc_sel tegra_emc_clk_sel_b[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct tegra21_emc_table start_timing;
 static const struct tegra21_emc_table *emc_timing;
 static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
@@ -704,10 +710,8 @@ static inline void do_clock_change(u32 clk_setting)
 	mc_readl(MC_EMEM_ADR_CFG);	/* completes prev writes */
 	emc_readl(EMC_INTSTATUS);
 
-	writel(clk_setting,
-		(void __iomem *)(clk_base + emc->reg));
-	readl((void __iomem *)(clk_base + emc->reg));
-				/* completes prev write */
+	writel(clk_setting, clk_base + emc->reg);
+	readl(clk_base + emc->reg);     /* completes prev write */
 
 	err = wait_for_update(EMC_INTSTATUS,
 			      EMC_INTSTATUS_CLKCHANGE_COMPLETE, true);
@@ -721,7 +725,6 @@ static noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 				   const struct tegra21_emc_table *last_timing,
 				   u32 clk_setting)
 {
-#ifndef EMULATE_CLOCK_SWITCH
 	int i, dll_change, pre_wait;
 	int ctt_term_changed = 0;
 	bool cfg_pow_features_enabled, zcal_long;
@@ -734,6 +737,14 @@ static noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	dll_change = get_dll_change(next_timing, last_timing);
 	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0) &&
 		(last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
+
+	if (!tegra_platform_is_silicon()) {
+		pr_info("tegra21_emc: Configuring EMC rate %lu (setting: 0x%x)\n",
+			next_timing->rate, clk_setting);
+		if (tegra_platform_is_fpga())
+			writel(clk_setting, clk_base + emc->reg);
+		return;
+	}
 
 	/* 1. clear clkchange_complete interrupts */
 	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
@@ -954,12 +965,6 @@ static noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	/* bug 1342517 */
 	emc_writel(next_timing->emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
 	emc_timing_update();
-#else
-	/* FIXME: implement */
-	pr_info("tegra21_emc: Configuring EMC rate %lu (setting: 0x%x)\n",
-		next_timing->rate, clk_setting);
-#endif
-
 }
 
 static inline void emc_get_timing(struct tegra21_emc_table *timing)
@@ -1042,7 +1047,7 @@ static const struct tegra21_emc_table *emc_get_table(
  * and relies on the clock lock on the emc clock to avoid races between
  * multiple frequency changes. In addition access lock prevents concurrent
  * access to EMC registers from reading MRR registers */
-int tegra_emc_set_rate(unsigned long rate)
+int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p)
 {
 	int i;
 	u32 clk_setting;
@@ -1050,6 +1055,7 @@ int tegra_emc_set_rate(unsigned long rate)
 	const struct tegra21_emc_table *current_table;
 	unsigned long flags;
 	s64 last_change_delay;
+	struct emc_sel *sel;
 
 	if (!tegra_emc_table)
 		return -EINVAL;
@@ -1077,17 +1083,18 @@ int tegra_emc_set_rate(unsigned long rate)
 	} else
 		last_timing = emc_timing;
 
-	clk_setting = tegra_emc_clk_sel[i].value;
+	/* Select settings of matching pll_m(b) */
+	sel = &tegra_emc_clk_sel[i];
+	clk_setting = (p == sel->input) ?
+		sel->value : tegra_emc_clk_sel_b[i].value;
 
 	last_change_delay = ktime_us_delta(ktime_get(), clkchange_time);
 	if ((last_change_delay >= 0) && (last_change_delay < clkchange_delay))
 		udelay(clkchange_delay - (int)last_change_delay);
 
 	spin_lock_irqsave(&emc_access_lock, flags);
-	/* Pick from the EMC tables based on the status of the over temp state
-	   flag. */
+	/* Pick EMC table based on the status of the over temp state flag */
 	current_table = emc_get_table(dram_over_temp_state);
-	clk_setting = current_table[i].src_sel_reg;
 	emc_set_clock(&current_table[i], last_timing, clk_setting);
 	clkchange_time = timekeeping_suspended ? clkchange_time : ktime_get();
 	emc_timing = &current_table[i];
@@ -1140,6 +1147,8 @@ long tegra_emc_round_rate_updown(unsigned long rate, bool up)
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 {
 	int i;
+	unsigned long pll_rate;
+	struct clk *p, *p_new;
 
 	if (!tegra_emc_table) {
 		if (rate == clk_get_rate_locked(emc)) {
@@ -1157,69 +1166,43 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 	i = get_start_idx(rate);
 	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_table[i].rate == rate) {
-			struct clk *p = tegra_emc_clk_sel[i].input;
+			p_new = tegra_emc_clk_sel[i].input;
+			if (!p_new)
+				continue;
 
-			if (p && (tegra_emc_clk_sel[i].input_rate ==
-				  clk_get_rate(p))) {
-				*div_value = (tegra_emc_clk_sel[i].value &
-					EMC_CLK_DIV_MASK) >> EMC_CLK_DIV_SHIFT;
+			pll_rate = tegra_emc_clk_sel[i].input_rate;
+			*div_value = (tegra_emc_clk_sel[i].value &
+				      EMC_CLK_DIV_MASK) >> EMC_CLK_DIV_SHIFT;
+
+			/*
+			 * pll_m/pll_mb ping-pong:
+			 * - select current parent when its rate matches table
+			 * - select pll_m or pll_mb, when it is not current
+			 *   parent; set pll rate if it is not matching table
+			 */
+			p = clk_get_parent(emc);
+			if (pll_rate == clk_get_rate(p))
 				return p;
+
+			if (p_new != p) {
+				if (pll_rate != clk_get_rate(p_new)) {
+					if (clk_set_rate(p_new, pll_rate))
+						return NULL;
+				}
+				return p_new;
+			}
+
+			p_new = tegra_emc_clk_sel_b[i].input;
+			if (p_new != p) {
+				if (pll_rate != clk_get_rate(p_new)) {
+					if (clk_set_rate(p_new, pll_rate))
+						return NULL;
+				}
+				return p_new;
 			}
 		}
 	}
 	return NULL;
-}
-
-bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
-		unsigned long *parent_rate, unsigned long *backup_rate)
-{
-
-	int i;
-	struct clk *p = NULL;
-	unsigned long p_rate = 0;
-
-	if (!tegra_emc_table)
-		return true;
-
-	pr_debug("%s: %lu\n", __func__, rate);
-
-	/* Table entries specify rate in kHz */
-	rate = rate / 1000;
-
-	i = get_start_idx(rate);
-	for (; i < tegra_emc_table_size; i++) {
-		if (tegra_emc_table[i].rate == rate) {
-			p = tegra_emc_clk_sel[i].input;
-			if (!p)
-				continue;	/* invalid entry */
-
-			p_rate = tegra_emc_clk_sel[i].input_rate;
-			if (p_rate == clk_get_rate(p))
-				return true;
-			break;
-		}
-	}
-
-	/* Table match not found - "non existing parent" is ready */
-	if (!p)
-		return true;
-
-	/*
-	 * Table match found, but parent is not ready - check if backup entry
-	 * was found during initialization, and return the respective backup
-	 * rate
-	 */
-	if (emc->shared_bus_backup.input &&
-	    (emc->shared_bus_backup.input != p)) {
-		*parent = p;
-		*parent_rate = p_rate;
-		*backup_rate = emc->shared_bus_backup.bus_rate;
-		return false;
-	}
-
-	/* Parent is not ready, and no backup found */
-	*backup_rate = -EINVAL;
-	return false;
 }
 
 static inline const struct clk_mux_sel *get_emc_input(u32 val)
@@ -1234,19 +1217,18 @@ static inline const struct clk_mux_sel *get_emc_input(u32 val)
 }
 
 static int find_matching_input(const struct tegra21_emc_table *table,
-	struct clk *pll_c, struct clk *pll_m, struct emc_sel *emc_clk_sel)
+	struct clk *pll_m, struct clk *pll_mb, int sel_idx)
 {
 	u32 div_value = (table->src_sel_reg & EMC_CLK_DIV_MASK) >>
 		EMC_CLK_DIV_SHIFT;
 	u32 src_value = (table->src_sel_reg & EMC_CLK_SOURCE_MASK) >>
 		EMC_CLK_SOURCE_SHIFT;
+
 	unsigned long input_rate = 0;
 	unsigned long table_rate = table->rate * 1000; /* table rate in kHz */
+	struct emc_sel *emc_clk_sel = &tegra_emc_clk_sel[sel_idx];
+	struct emc_sel *emc_clk_sel_b = &tegra_emc_clk_sel_b[sel_idx];
 	const struct clk_mux_sel *sel = get_emc_input(src_value);
-
-	struct clk *scalable_pll = pll_m;
-	pr_info_once("tegra: %s is selected as scalable EMC clock source\n",
-		     scalable_pll->name);
 
 	if (div_value & 0x1) {
 		pr_warn("tegra: invalid odd divider for EMC rate %lu\n",
@@ -1271,7 +1253,8 @@ static int find_matching_input(const struct tegra21_emc_table *table,
 		return -EINVAL;
 	}
 
-	if (sel->input == scalable_pll) {
+	if (sel->input == pll_m) {
+		/* pll_m(b) can scale to match target rate */
 		input_rate = table_rate * (1 + div_value / 2);
 	} else {
 		/* all other sources are fixed, must exactly match the rate */
@@ -1283,17 +1266,23 @@ static int find_matching_input(const struct tegra21_emc_table *table,
 		}
 	}
 
-	if (sel->input == pll_c) {
-		/* maybe overwritten in a loop - end up at max rate
-		   from pll_c */
-		emc->shared_bus_backup.input = pll_c;
-		emc->shared_bus_backup.bus_rate = table_rate;
-	}
-
 	/* Get ready emc clock selection settings for this table rate */
 	emc_clk_sel->input = sel->input;
 	emc_clk_sel->input_rate = input_rate;
 	emc_clk_sel->value = table->src_sel_reg;
+
+	emc_clk_sel_b->input = sel->input;
+	emc_clk_sel_b->input_rate = input_rate;
+	emc_clk_sel_b->value = table->src_sel_reg;
+
+	/* Replace PLLM with PLLMB is PLLMB selection able */
+	if (pll_mb && (sel->input == pll_m)) {
+		u32 src_value_b = src_value == EMC_CLK_SOURCE_PLLM_LJ ?
+			EMC_CLK_SOURCE_PLLMB_LJ : EMC_CLK_SOURCE_PLLMB;
+		emc_clk_sel_b->input = pll_mb;
+		emc_clk_sel_b->value &= ~EMC_CLK_SOURCE_MASK;
+		emc_clk_sel_b->value |= src_value_b << EMC_CLK_SOURCE_SHIFT;
+	}
 
 	return 0;
 }
@@ -1331,22 +1320,22 @@ static void adjust_emc_dvfs_table(const struct tegra21_emc_table *table,
 	emc->dvfs->num_freqs = i;
 }
 
-/* When pll_m is scaled, pll_c must provide backup rate;
-   if not - remove rates that require pll_m scaling */
+/*
+ * pll_m can be scaled provided pll_mb is available;
+ * if not - remove rates that require pll_m scaling
+ */
 static int purge_emc_table(unsigned long max_rate)
 {
 	int i;
 	int ret = 0;
 
-	if (emc->shared_bus_backup.input)
-		return ret;
-
-	pr_warn("tegra: selected pll_m scaling option but no backup source:\n");
+	pr_warn("tegra: cannot scale pll_m since pll_mb is not available:\n");
 	pr_warn("       removed not supported entries from the table:\n");
 
 	/* made all entries with non matching rate invalid */
 	for (i = 0; i < tegra_emc_table_size; i++) {
 		struct emc_sel *sel = &tegra_emc_clk_sel[i];
+		struct emc_sel *sel_b = &tegra_emc_clk_sel_b[i];
 		if (sel->input) {
 			if (clk_get_rate(sel->input) != sel->input_rate) {
 				pr_warn("       EMC rate %lu\n",
@@ -1354,6 +1343,7 @@ static int purge_emc_table(unsigned long max_rate)
 				sel->input = NULL;
 				sel->input_rate = 0;
 				sel->value = 0;
+				*sel_b = *sel;
 				if (max_rate == tegra_emc_table[i].rate)
 					ret = -EINVAL;
 			}
@@ -1371,8 +1361,13 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 	bool max_entry = false;
 	bool emc_max_dvfs_sel = 1; /* FIXME: restore get_emc_max_dvfs(); */
 	unsigned long boot_rate, max_rate;
-	struct clk *pll_c = tegra_get_clock_by_name("pll_c");
 	struct clk *pll_m = tegra_get_clock_by_name("pll_m");
+	struct clk *pll_mb = tegra_get_clock_by_name("pll_mb");
+
+	if (!tegra_clk_is_parent_allowed(emc, pll_mb)) {
+		WARN(1, "tegra: PLLMB can not be used for EMC DVFS\n");
+		pll_mb = NULL;
+	}
 
 	emc_stats.clkchange_count = 0;
 	spin_lock_init(&emc_stats.spinlock);
@@ -1434,8 +1429,7 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 
 		BUG_ON(table[i].rev != table[0].rev);
 
-		if (find_matching_input(&table[i], pll_c, pll_m,
-					&tegra_emc_clk_sel[i]))
+		if (find_matching_input(&table[i], pll_m, pll_mb, i))
 			continue;
 
 		if (table_rate == boot_rate)
@@ -1465,12 +1459,10 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 	tegra_emc_table_derated = table_der;
 
 	/*
-	 * Purge rates that cannot be reached because table does not specify
-	 * proper backup source. If maximum rate was purged, fall back on boot
-	 * rate as maximum limit. In any case propagate new maximum limit
-	 * down stream to shared users, and check it against nominal voltage.
+	 * Purge rates that cannot be reached because PLLMB can not be used
+	 * If maximum rate was purged, do not install table.
 	 */
-	if (purge_emc_table(max_rate)) {
+	if (!pll_mb && purge_emc_table(max_rate)) {
 		pr_err("tegra: invalid EMC DFS table: entry for max rate"
 		       " %lu kHz can not be reached\n", max_rate);
 		return -ENODATA;

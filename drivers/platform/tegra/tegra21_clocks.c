@@ -133,6 +133,7 @@
 #define PERIPH_CLK_SOURCE_I2S1		0x100
 #define PERIPH_CLK_SOURCE_EMC		0x19c
 #define PERIPH_CLK_SOURCE_EMC_MC_SAME	(1<<16)
+#define PERIPH_CLK_SOURCE_EMC_DIV2_EN	(1<<15)
 #define PERIPH_CLK_SOURCE_LA		0x1f8
 #define PERIPH_CLK_SOURCE_NUM1 \
 	((PERIPH_CLK_SOURCE_LA - PERIPH_CLK_SOURCE_I2S1) / 4)
@@ -5436,7 +5437,6 @@ static void tegra21_emc_clk_init(struct clk *c)
 {
 	tegra21_periph_clk_init(c);
 	tegra_emc_dram_type_init(c);
-	c->max_rate = clk_get_rate(c->parent);
 }
 
 static long tegra21_emc_clk_round_updown(struct clk *c, unsigned long rate,
@@ -5458,8 +5458,9 @@ static long tegra21_emc_clk_round_rate(struct clk *c, unsigned long rate)
 
 void tegra_mc_divider_update(struct clk *emc)
 {
-	emc->child_bus->div = (clk_readl(emc->reg) &
-			       PERIPH_CLK_SOURCE_EMC_MC_SAME) ? 1 : 2;
+	u32 val = clk_readl(emc->reg) &
+		(PERIPH_CLK_SOURCE_EMC_MC_SAME | PERIPH_CLK_SOURCE_EMC_DIV2_EN);
+	emc->child_bus->div = val == 1 ? 4 : (val == 2 ? 1 : 2);
 }
 
 static int tegra21_emc_clk_set_rate(struct clk *c, unsigned long rate)
@@ -5488,7 +5489,7 @@ static int tegra21_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	} else if (c->refcnt)
 		clk_enable(p);
 
-	ret = tegra_emc_set_rate(rate);
+	ret = tegra_emc_set_rate_on_parent(rate, p);
 	if (ret < 0)
 		return ret;
 
@@ -5514,32 +5515,6 @@ static int tegra21_clk_emc_bus_update(struct clk *bus)
 
 	if (rate == clk_get_rate_locked(bus))
 		return 0;
-
-	if (tegra_platform_is_fpga())
-		return 0;
-
-	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
-		if (bus->parent == p) {
-			/* need backup to re-lock current parent */
-			if (IS_ERR_VALUE(backup_rate) ||
-			    clk_set_rate_locked(bus, backup_rate)) {
-				pr_err("%s: Failed to backup %s for rate %lu\n",
-				       __func__, bus->name, rate);
-				return -EINVAL;
-			}
-
-			if (p->refcnt) {
-				pr_err("%s: %s has other than emc child\n",
-				       __func__, p->name);
-				return -EINVAL;
-			}
-		}
-		if (clk_set_rate(p, parent_rate)) {
-			pr_err("%s: Failed to set %s rate %lu\n",
-			       __func__, p->name, parent_rate);
-			return -EINVAL;
-		}
-	}
 
 	return clk_set_rate_locked(bus, rate);
 }

@@ -69,12 +69,16 @@ int tegra_emc_get_dram_type(void);
 int tegra_emc_get_dram_temperature(void);
 int tegra_emc_set_over_temp_state(unsigned long state);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p);
+#else
 int tegra_emc_set_rate(unsigned long rate);
+bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
+		unsigned long *parent_rate, unsigned long *backup_rate);
+#endif
 long tegra_emc_round_rate(unsigned long rate);
 long tegra_emc_round_rate_updown(unsigned long rate, bool up);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
-bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
-		unsigned long *parent_rate, unsigned long *backup_rate);
 void tegra_emc_timing_invalidate(void);
 void tegra_mc_divider_update(struct clk *emc);
 
