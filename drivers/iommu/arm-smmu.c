@@ -49,6 +49,7 @@
 
 #include <asm/pgalloc.h>
 #include <asm/dma-iommu.h>
+#include <asm/pgtable.h>
 
 /* Maximum number of stream IDs assigned to a single device */
 #define MAX_MASTER_STREAMIDS		MAX_PHANDLE_ARGS
@@ -1198,6 +1199,64 @@ static void arm_smmu_domain_remove_master(struct arm_smmu_domain *smmu_domain,
 	arm_smmu_master_free_smrs(smmu, master);
 }
 
+static int smmu_ptdump_show(struct seq_file *s, void *unused)
+{
+	struct arm_smmu_domain *smmu_domain = s->private;
+	struct arm_smmu_cfg *root_cfg = &smmu_domain->root_cfg;
+	pgd_t *pgd;
+	pud_t *pud;
+	pmd_t *pmd;
+	pte_t *pte;
+	int i, j, k, l;
+	unsigned long addr = 0;
+
+	pgd = root_cfg->pgd;
+	for (i = 0; i < PTRS_PER_PGD; ++i, pgd++) {
+		if (pgd_none(*pgd))
+			continue;
+		pud = pud_offset(pgd, addr);
+		for (j = 0; j < PTRS_PER_PUD; ++j, pud++) {
+			if (pud_none(*pud))
+				continue;
+			pmd = pmd_offset(pud, addr);
+			for (k = 0; k < PTRS_PER_PMD; ++k, pmd++) {
+				if (pmd_none(*pmd))
+					continue;
+				pte = pmd_page_vaddr(*pmd) + pte_index(addr);
+				for (l = 0; l < PTRS_PER_PTE; ++l, pte++) {
+					phys_addr_t pa;
+
+					pa = *pte;
+					pa &= smmu_domain->output_mask;
+					pa &= PAGE_MASK;
+					if (!pa)
+						continue;
+					seq_printf(s,
+						   "va=0x%016lx pa=%pa *pte=%pa\n",
+						   addr, &pa, &(*pte));
+					addr += PAGE_SIZE;
+				}
+				addr += PMD_SIZE;
+			}
+			addr += PUD_SIZE;
+		}
+		addr += PGDIR_SIZE;
+	}
+	return 0;
+}
+
+static int smmu_ptdump_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_ptdump_show, inode->i_private);
+}
+
+static const struct file_operations smmu_ptdump_fops = {
+	.open           = smmu_ptdump_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 #define defreg_cb(_name)			\
 	{					\
 		.name = __stringify(_name),	\
@@ -1236,6 +1295,8 @@ static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
 	cb->base = smmu->base + (smmu->size >> 1) +
 		cbndx * smmu->pagesize;
 	debugfs_create_regset32("regdump", S_IRUGO, dent, cb);
+	debugfs_create_file("ptdump", S_IRUGO, dent, smmu_domain,
+			    &smmu_ptdump_fops);
 }
 
 static int smmu_master_show(struct seq_file *s, void *unused)
