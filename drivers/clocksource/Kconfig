@@ -88,6 +88,7 @@ config CLKSRC_SAMSUNG_PWM
 
 config CLK_SRC_TEGRA_TIMER
 	bool "Clocksource for tegra based SOC's"
+	depends on ARCH_TEGRA
 	def_bool y if !ARCH_TEGRA_21x_SOC
 	help
 	  Use the always on PRCMU Timer as sched_clock
