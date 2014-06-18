@@ -46,8 +46,6 @@
 #include <asm/mach-types.h>
 #include "tegra-of-dev-auxdata.h"
 
-static struct board_info board_info, display_board_info;
-
 /*
  * Set clock values as per automotive POR
  * Values taken from VCM30T124 and curtailed for P2360
@@ -523,13 +521,6 @@ static void __init tegra_p2360_early_init(void)
 
 static void __init tegra_p2360_late_init(void)
 {
-	struct board_info board_info;
-	tegra_get_board_info(&board_info);
-	pr_info("board_info: id:sku:fab:major:minor = 0x%04x:0x%04x:0x%02x:0x%02x:0x%02x\n",
-		board_info.board_id, board_info.sku,
-		board_info.fab, board_info.major_revision,
-		board_info.minor_revision);
-
 	tegra_init_board_info();
 
 	p2360_usb_init();
@@ -549,10 +540,8 @@ static void __init tegra_p2360_late_init(void)
 
 static void __init tegra_p2360_dt_init(void)
 {
-	tegra_get_board_info(&board_info);
-	tegra_get_display_board_info(&display_board_info);
-
 	tegra_p2360_early_init();
+
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	carveout_linear_set(&tegra_generic_cma_dev);
 	carveout_linear_set(&tegra_vpr_cma_dev);
