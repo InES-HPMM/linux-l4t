@@ -82,6 +82,12 @@
 		cpu_suspend = <0xC4000001>;
 	};
 
+	bpmp {
+		compatible = "nvidia,tegra210-bpmp";
+		carveout-start = <0x80005000>;
+		carveout-size = <0x10000>;
+	};
+
 	mc {
 		compatible = "nvidia,tegra-mc";
 
