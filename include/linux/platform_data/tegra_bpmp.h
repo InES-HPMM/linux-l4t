@@ -45,11 +45,6 @@
 #define TEGRA_PM_SC6	22
 #define TEGRA_PM_SC7	23
 
-struct tegra_bpmp_platform_data {
-	phys_addr_t phys_start;
-	phys_addr_t size;
-};
-
 typedef void (*bpmp_mrq_handler)(int mrq, void *data, int ch);
 
 #ifdef CONFIG_TEGRA_BPMP
