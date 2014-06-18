@@ -101,5 +101,9 @@
 			status = "okay";
 		};
 	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 };
 

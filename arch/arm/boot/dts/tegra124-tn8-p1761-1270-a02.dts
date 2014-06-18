@@ -111,5 +111,9 @@
 	psy_extcon {
 		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 };
 

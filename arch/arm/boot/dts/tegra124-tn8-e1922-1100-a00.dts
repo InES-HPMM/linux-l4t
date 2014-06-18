@@ -98,5 +98,9 @@
 			};
 		};
 	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 };
 

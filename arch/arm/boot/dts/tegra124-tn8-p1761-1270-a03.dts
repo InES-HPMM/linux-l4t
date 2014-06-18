@@ -124,5 +124,9 @@
 			regulator-disable-parent-after-enable;
 		};
 	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 };
 
