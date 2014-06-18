@@ -1999,26 +1999,6 @@ static int __init tegra_register_ramoops_device(void)
 core_initcall(tegra_register_ramoops_device);
 #endif
 
-#ifdef CONFIG_TEGRA_BPMP
-static void __init tegra_reserve_bpmp(void)
-{
-	phys_addr_t start;
-
-	BUG_ON(memblock_end_of_4G() == 0);
-	start = memblock_end_of_4G() - TEGRA_IRAM_SIZE;
-
-	if (memblock_remove(start, TEGRA_IRAM_SIZE)) {
-		pr_err("Failed to remove bpmp area %x@%lx from memory map\n",
-				TEGRA_IRAM_SIZE, (long unsigned int)start);
-		return;
-	}
-
-	tegra_bpmp_platform_init(start, TEGRA_IRAM_SIZE);
-}
-#else
-static inline void __init tegra_reserve_bpmp(void) {}
-#endif
-
 phys_addr_t __init tegra_reserve_adsp(unsigned long size)
 {
 	phys_addr_t reserve = memblock_end_of_4G() - size;
