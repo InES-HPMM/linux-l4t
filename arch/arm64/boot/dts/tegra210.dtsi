@@ -843,6 +843,7 @@
 		compatible = "nvidia,tegra210-udc";
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
+		status = "disabled";
 	};
 
 	power-detect {

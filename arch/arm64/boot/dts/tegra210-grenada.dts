@@ -835,4 +835,8 @@
 		calib_1v8_offsets = <0x0202>;
 		status = "okay";
 	};
+
+	udc@0x7d000000 {
+		status = "okay";
+	};
 };

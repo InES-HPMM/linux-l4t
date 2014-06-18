@@ -130,7 +130,6 @@
 		nvidia,support_pmu_vbus;
 		nvidia,vbus_extcon_dev_name = "palmas-extcon";
 		nvidia,id_det_type = <1>;
-		nvidia,id_extcon_dev_name = "palmas-extcon";
 		status = "okay";
 	};
 
