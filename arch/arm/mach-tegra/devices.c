@@ -25,7 +25,6 @@
 #include <linux/serial_8250.h>
 #include <linux/mipi-bif-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
 #include <linux/tegra-soc.h>
@@ -2611,27 +2610,4 @@ struct platform_device tegra_hier_ictlr_device = {
 	.resource	= tegra_hier_ictlr_resource,
 	.num_resources	= ARRAY_SIZE(tegra_hier_ictlr_resource),
 };
-#endif
-#ifdef CONFIG_TEGRA_BPMP
-struct tegra_bpmp_platform_data bpmp_platform_data;
-
-void tegra_bpmp_platform_init(phys_addr_t start, phys_addr_t size)
-{
-	bpmp_platform_data.phys_start = start;
-	bpmp_platform_data.size = size;
-	tegra_bpmp_linear_set(start, size);
-}
-EXPORT_SYMBOL(tegra_bpmp_platform_init);
-
-static struct platform_device bpmp_device = {
-	.name = "bpmp",
-	.id = -1,
-	.dev = { .platform_data = &bpmp_platform_data }
-};
-
-int __init tegra_init_bpmp_device(void)
-{
-	return platform_device_register(&bpmp_device);
-}
-postcore_initcall(tegra_init_bpmp_device);
 #endif

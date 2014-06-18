@@ -173,8 +173,6 @@ void carveout_linear_set(struct device *cma_dev);
 static inline void carveout_linear_set(struct device *cma_dev) {}
 #endif
 
-void tegra_bpmp_linear_set(phys_addr_t start, phys_addr_t size);
-void tegra_bpmp_platform_init(phys_addr_t addr, phys_addr_t size);
 void tegra_init_late(void);
 
 #ifdef CONFIG_DEBUG_FS
