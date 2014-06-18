@@ -121,7 +121,6 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "spdif_out",		"pll_a_out0",	6144000,	false},
 	{ "spdif_in",		"pll_p",	48000000,	false},
-	{ "extern1",		"pll_a_out0",	12288000,	false},
 	{ "hda",		"pll_p",	48000000,	false},
 	{ "cilab",		"pll_p",	102000000,	false},
 	{ "cilcd",		"pll_p",	102000000,	false},
@@ -258,8 +257,6 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("adx1",		4096000),
 	SET_FIXED_TARGET_RATE("amx",		4096000),
 	SET_FIXED_TARGET_RATE("amx1",		4096000),
-	SET_FIXED_TARGET_RATE("extern1",	12288000),
-
 
 	SET_FIXED_TARGET_RATE("cilab",		102000000),
 	SET_FIXED_TARGET_RATE("cilcd",		102000000),
@@ -269,33 +266,35 @@ static  __initdata struct tegra_clk_init_table
 };
 
 static __initdata struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
-	{ "i2s4_sync", NULL, 12288000, false},
-	{ "audio4", "i2s4_sync", 12288000, false},
-	{ "audio4_2x", "audio4", 12288000, false},
-	{ "i2s2_sync", NULL, 12288000, false},
-	{ "audio2", "i2s2_sync", 12288000, false},
-	{ "audio2_2x", "audio2", 12288000, false},
-	{ "i2s0", "pll_a_out0",	3072000,  false},
-	{ "i2s1", "pll_a_out0",	24576000, false},
-	{ "i2s2", "audio2_2x",	12288000, false},
-	{ "i2s3", "pll_a_out0",	24576000, false},
-	{ "i2s4", "audio4_2x",	12288000, false},
-	{ NULL,    NULL,        0,        0},
+	{ "i2s4_sync",	NULL,		12288000,	false},
+	{ "audio4",	"i2s4_sync",	12288000,	false},
+	{ "audio4_2x",	"audio4",	12288000,	false},
+	{ "i2s2_sync",	NULL,		12288000,	false},
+	{ "audio2",	"i2s2_sync",	12288000,	false},
+	{ "audio2_2x",	"audio2",	12288000,	false},
+	{ "i2s0",	"pll_a_out0",	3072000,	false},
+	{ "i2s1",	"pll_a_out0",	3072000,	false},
+	{ "i2s2",	"audio2_2x",	12288000,	false},
+	{ "i2s3",	"pll_a_out0",	3072000,	false},
+	{ "i2s4",	"audio4_2x",	12288000,	false},
+	{ "extern1",	"pll_a_out0",	12288000,	false},
+	{ NULL,		NULL,		0,		0},
 };
 
 static __initdata struct tegra_clk_init_table vcm30t124_b0x_i2s_clk_table[] = {
-	{ "i2s4_sync", NULL, 12288000, false},
-	{ "audio4", "i2s4_sync", 12288000, false},
-	{ "audio4_2x", "audio4", 12288000, false},
-	{ "i2s2_sync", NULL, 12288000, false},
-	{ "audio2", "i2s2_sync", 12288000, false},
-	{ "audio2_2x", "audio2", 12288000, false},
-	{ "i2s0", "pll_a_out0",	12288000, false},
-	{ "i2s1", "pll_a_out0",	24576000, false},
-	{ "i2s2", "audio2_2x",	12288000, false},
-	{ "i2s3", "pll_a_out0",	24576000, false},
-	{ "i2s4", "audio4_2x",	12288000, false},
-	{ NULL,    NULL,        0,        0},
+	{ "i2s4_sync",	NULL,		12288000,	false},
+	{ "audio4",	"i2s4_sync",	12288000,	false},
+	{ "audio4_2x",	"audio4",	12288000,	false},
+	{ "i2s2_sync",	NULL,		12288000,	false},
+	{ "audio2",	"i2s2_sync",	12288000,	false},
+	{ "audio2_2x",	"audio2",	12288000,	false},
+	{ "i2s0",	"pll_a_out0",	12288000,	false},
+	{ "i2s1",	"pll_a_out0",	3072000,	false},
+	{ "i2s2",	"audio2_2x",	12288000,	false},
+	{ "i2s3",	"pll_a_out0",	3072000,	false},
+	{ "i2s4",	"audio4_2x",	12288000,	false},
+	{ "extern1",	"pll_a_out0",	24576000,	false},
+	{ NULL,		NULL,		0,		0},
 };
 
 /* Set POR value for all clocks given in the table */
