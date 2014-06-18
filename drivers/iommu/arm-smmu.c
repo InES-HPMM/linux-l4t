@@ -347,6 +347,8 @@ struct arm_smmu_master {
 	 * configure unmatched streams to bypass translation.
 	 */
 	struct arm_smmu_smr		*smrs;
+
+	struct dentry			*debugfs_root;
 };
 
 struct arm_smmu_device {
@@ -386,6 +388,7 @@ struct arm_smmu_device {
 
 	struct list_head		list;
 	struct rb_root			masters;
+	struct dentry			*masters_root;
 
 	struct dentry			*debugfs_root;
 	struct debugfs_regset32		*regset;
@@ -1193,6 +1196,46 @@ static void arm_smmu_domain_remove_master(struct arm_smmu_domain *smmu_domain,
 	arm_smmu_master_free_smrs(smmu, master);
 }
 
+static int smmu_master_show(struct seq_file *s, void *unused)
+{
+	int i;
+	struct arm_smmu_master *master = s->private;
+
+	for (i = 0; i < master->num_streamids; i++)
+		seq_printf(s, "streamids: % 3d ", master->streamids[i]);
+	seq_printf(s, "\n");
+	for (i = 0; i < master->num_streamids; i++)
+		seq_printf(s, "smrs:      % 3d ", master->smrs[i].idx);
+	seq_printf(s, "\n");
+	return 0;
+}
+
+static int smmu_master_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_master_show, inode->i_private);
+}
+
+static const struct file_operations smmu_master_fops = {
+	.open           = smmu_master_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void add_smmu_master_debugfs(struct arm_smmu_device *smmu,
+				    struct device *dev,
+				    struct arm_smmu_master *master)
+{
+	struct dentry *dent;
+
+	dent = debugfs_create_dir(dev_name(dev), smmu->masters_root);
+	if (!dent)
+		return;
+
+	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
+	master->debugfs_root = dent;
+}
+
 static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 {
 	int ret = -EINVAL;
@@ -1232,7 +1275,10 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	if (!master)
 		return -ENODEV;
 
-	return arm_smmu_domain_add_master(smmu_domain, master);
+	ret = arm_smmu_domain_add_master(smmu_domain, master);
+	if (!ret)
+		add_smmu_master_debugfs(device_smmu, dev, master);
+	return ret;
 
 err_unlock:
 	spin_unlock_irqrestore(&smmu_domain->lock, flags);
@@ -1245,8 +1291,11 @@ static void arm_smmu_detach_dev(struct iommu_domain *domain, struct device *dev)
 	struct arm_smmu_master *master;
 
 	master = find_smmu_master(smmu_domain->leaf_smmu, dev->of_node);
-	if (master)
-		arm_smmu_domain_remove_master(smmu_domain, master);
+	if (!master)
+		return;
+
+	debugfs_remove_recursive(master->debugfs_root);
+	arm_smmu_domain_remove_master(smmu_domain, master);
 }
 
 static bool arm_smmu_pte_is_contiguous_range(unsigned long addr,
@@ -1948,6 +1997,10 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 	smmu->debugfs_root = debugfs_create_dir(dev_name(smmu->dev), NULL);
 	if (!smmu->debugfs_root)
 		return;
+
+	smmu->masters_root = debugfs_create_dir("masters", smmu->debugfs_root);
+	if (!smmu->masters_root)
+		goto err_out;
 
 	bytes = (smmu->num_context_banks + 1) * sizeof(*smmu->regset);
 	bytes += ARRAY_SIZE(arm_smmu_gr0_regs) * sizeof(*regs);
