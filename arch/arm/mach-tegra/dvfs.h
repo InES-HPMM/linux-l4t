@@ -129,6 +129,7 @@ enum dfll_range {
 struct dvfs_dfll_data {
 	u32		tune0;
 	u32		tune0_high_mv;
+	u32		tune0_simon_mask;
 	u32		tune1;
 	bool		tune0_low_at_cold;
 	unsigned long	droop_rate_min;

@@ -213,6 +213,9 @@ struct tegra_cl_dvfs {
 	u8				num_voltages;
 	u8				safe_output;
 
+	u32				tune0_low;
+	u32				tune0_high;
+
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
 	unsigned long			tune_high_dvco_rate_min;
@@ -706,7 +709,7 @@ static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 static inline void tune_low(struct tegra_cl_dvfs *cld)
 {
 	/* a must order: 1st tune dfll low, then tune trimmers low */
-	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
+	cl_dvfs_writel(cld, cld->tune0_low, CL_DVFS_TUNE0);
 	cl_dvfs_wmb(cld);
 	if (cld->safe_dvfs->dfll_data.tune_trimmers)
 		cld->safe_dvfs->dfll_data.tune_trimmers(false);
@@ -717,8 +720,7 @@ static inline void tune_high(struct tegra_cl_dvfs *cld)
 	/* a must order: 1st tune trimmers high, then tune dfll high */
 	if (cld->safe_dvfs->dfll_data.tune_trimmers)
 		cld->safe_dvfs->dfll_data.tune_trimmers(true);
-	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0_high_mv,
-		       CL_DVFS_TUNE0);
+	cl_dvfs_writel(cld, cld->tune0_high, CL_DVFS_TUNE0);
 	cl_dvfs_wmb(cld);
 }
 
@@ -1562,7 +1564,7 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 		(param->cg_scale ? CL_DVFS_PARAMS_CG_SCALE : 0);
 	cl_dvfs_writel(cld, val, CL_DVFS_PARAMS);
 
-	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
+	cl_dvfs_writel(cld, cld->tune0_low, CL_DVFS_TUNE0);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune1, CL_DVFS_TUNE1);
 	cl_dvfs_wmb(cld);
 	if (cld->safe_dvfs->dfll_data.tune_trimmers)
@@ -1669,6 +1671,10 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	cld->calibration_timer.function = calibration_timer_cb;
 	cld->calibration_timer.data = (unsigned long)cld;
 	cld->calibration_delay = usecs_to_jiffies(CL_DVFS_CALIBR_TIME);
+
+	/* Init tune0 settings */
+	cld->tune0_low = cld->safe_dvfs->dfll_data.tune0;
+	cld->tune0_high = cld->safe_dvfs->dfll_data.tune0_high_mv;
 
 	/* Get ready ouput voltage mapping*/
 	cl_dvfs_init_maps(cld);
@@ -1940,8 +1946,45 @@ static void tegra_cl_dvfs_bypass_dev_register(struct tegra_cl_dvfs *cld,
  * The Silicon Monitor (SiMon) notification provides grade information on
  * the DFLL controlled rail. The resepctive minimum voltage offset is applied
  * to thermal floors profile. SiMon offsets are negative, the higher the grade
- * the lower the floor.
+ * the lower the floor. In addition SiMon grade may affect tuning settings: more
+ * aggressive settings may be used at grades above zero.
  */
+static void update_simon_tuning(struct tegra_cl_dvfs *cld, unsigned long grade)
+{
+
+	struct dvfs_dfll_data *dfll_data = &cld->safe_dvfs->dfll_data;
+	u32 mask = dfll_data->tune0_simon_mask;
+
+	if (!mask)
+		return;
+
+	/*
+	 * Safe order:
+	 * - switch to settings for low voltage tuning range at current grade
+	 * - update both low/high voltage range settings to match new grade
+	 *   notification (note that same toggle mask is applied to settings
+	 *   in both low and high voltage ranges).
+	 * - switch to settings for low voltage tuning range at new grade
+	 * - switch to settings for high voltage range at new grade if tuning
+	 *   state was high
+	 */
+	tune_low(cld);
+	udelay(1);
+	pr_debug("tune0: 0x%x\n", cl_dvfs_readl(cld, CL_DVFS_TUNE0));
+
+	cld->tune0_low = dfll_data->tune0 ^ (grade ? mask : 0);
+	cld->tune0_high = dfll_data->tune0_high_mv ^ (grade ? mask : 0);
+
+	tune_low(cld);
+	udelay(1);
+	pr_debug("tune0: 0x%x\n", cl_dvfs_readl(cld, CL_DVFS_TUNE0));
+
+	if (cld->tune_state == TEGRA_CL_DVFS_TUNE_HIGH) {
+		tune_high(cld);
+		pr_debug("tune0: 0x%x\n", cl_dvfs_readl(cld, CL_DVFS_TUNE0));
+	}
+}
+
 static int cl_dvfs_simon_grade_notify_cb(struct notifier_block *nb,
 					 unsigned long grade, void *v)
 {
@@ -1961,6 +2004,9 @@ static int cl_dvfs_simon_grade_notify_cb(struct notifier_block *nb,
 	BUG_ON(simon_offset > 0);
 
 	clk_lock_save(cld->dfll_clk, &flags);
+
+	/* Update tuning based on SiMon grade */
+	update_simon_tuning(cld, grade);
 
 	/* Convert new floors and invalidate minimum rates */
 	cl_dvfs_convert_cold_output_floor(cld, simon_offset);
