@@ -239,8 +239,10 @@ int utmi_phy_pad_enable(void)
 		UTMIP_HSDISCON_LEVEL_MSB;
 	writel(val, pad_base + UTMIP_BIAS_CFG0);
 
+#if defined(CONFIG_USB_XHCI_HCD)
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
 			, PD_MASK , 0);
+#endif
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 
 	clk_disable(utmi_pad_clk);
