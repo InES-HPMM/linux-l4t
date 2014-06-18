@@ -16,6 +16,7 @@
 #include <linux/tegra_smmu.h>
 #include <linux/dma-contiguous.h>
 #include <linux/tegra-soc.h>
+#include <linux/platform_data/tegra_bpmp.h>
 
 #include <asm/dma-iommu.h>
 
@@ -68,8 +69,14 @@ static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
 #ifdef CONFIG_TEGRA_BPMP
 static struct iommu_linear_map tegra_bpmp_linear_map[2];
+static void tegra_bpmp_linear_set(void)
+{
+	tegra_bpmp_get_smmu_data(&tegra_bpmp_linear_map[0].start,
+			&tegra_bpmp_linear_map[0].size);
+}
 #else
 #define tegra_bpmp_linear_map NULL
+static inline void tegra_bpmp_linear_set(void) {}
 #endif
 
 #define LINEAR_MAP_ADD(n) \
@@ -530,6 +537,7 @@ static inline void tegra_smmu_map_init(struct platform_device *pdev)
 
 static int __init tegra_smmu_init(void)
 {
+	tegra_bpmp_linear_set();
 	platform_device_register(&tegra_smmu_device);
 	tegra_smmu_map_init(&tegra_smmu_device);
 	return 0;
