@@ -23,9 +23,11 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/tegra_smmu.h>
 #include <mach/clk.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp_private.h"
@@ -604,6 +606,33 @@ static int init_clks(void)
 	return 0;
 }
 
+/* This gets called before _probe(), so read the DT entries directly */
+void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size)
+{
+	struct device_node *node;
+	uint32_t of_start;
+	uint32_t of_size;
+	int ret;
+
+	node = of_find_node_by_path("/bpmp");
+	WARN_ON(!node);
+	if (!node)
+		return;
+
+	ret = of_property_read_u32(node, "carveout-start", &of_start);
+	WARN_ON(ret);
+	if (ret)
+		return;
+
+	ret = of_property_read_u32(node, "carveout-size", &of_size);
+	WARN_ON(ret);
+	if (ret)
+		return;
+
+	*start = of_start;
+	*size = of_size;
+}
+
 static int bpmp_mem_init(void)
 {
 	dma_addr_t phys;
@@ -643,11 +672,17 @@ static int bpmp_probe(struct platform_device *pdev)
 	return bpmp_ipc_init(pdev);
 }
 
+static const struct of_device_id bpmp_of_matches[] = {
+	{ .compatible = "nvidia,tegra210-bpmp" },
+	{}
+};
+
 static struct platform_driver bpmp_driver = {
 	.probe = bpmp_probe,
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = "bpmp"
+		.name = "bpmp",
+		.of_match_table = of_match_ptr(bpmp_of_matches)
 	}
 };
 
@@ -655,4 +690,4 @@ static __init int bpmp_init(void)
 {
 	return platform_driver_register(&bpmp_driver);
 }
-module_init(bpmp_init);
+core_initcall(bpmp_init);
