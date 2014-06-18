@@ -1222,17 +1222,19 @@ static const struct file_operations smmu_master_fops = {
 	.release        = single_release,
 };
 
-static void add_smmu_master_debugfs(struct arm_smmu_device *smmu,
+static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 				    struct device *dev,
 				    struct arm_smmu_master *master)
 {
 	struct dentry *dent;
+	struct arm_smmu_device *smmu = dev->archdata.iommu;
 
 	dent = debugfs_create_dir(dev_name(dev), smmu->masters_root);
 	if (!dent)
 		return;
 
 	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
+	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->root_cfg.cbndx);
 	master->debugfs_root = dent;
 }
 
@@ -1277,7 +1279,7 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 
 	ret = arm_smmu_domain_add_master(smmu_domain, master);
 	if (!ret)
-		add_smmu_master_debugfs(device_smmu, dev, master);
+		add_smmu_master_debugfs(smmu_domain, dev, master);
 	return ret;
 
 err_unlock:
