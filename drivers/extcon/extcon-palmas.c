@@ -7,7 +7,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Kishon Vijay Abraham I <kishon@ti.com>
@@ -52,6 +52,8 @@ static char const *palmas_extcon_cable[] = {
 	[4] = "USB-ID-C",
 	NULL,
 };
+
+static const int mutually_exclusive[] = {0x3, 0x0};
 
 static void palmas_usb_wakeup(struct palmas *palmas, int enable)
 {
@@ -242,40 +244,11 @@ static irqreturn_t palmas_id_irq_handler(int irq, void *_palmas_usb)
 	palmas_read(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
 		PALMAS_USB_ID_INT_LATCH_SET, &set);
 
-	if (palmas_usb->enable_aca_detection) {
-		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-			PALMAS_USB_ID_INT_LATCH_CLR, set);
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_INT_LATCH_CLR, set);
 
-		schedule_delayed_work(&palmas_usb->cable_update_wq,
+	schedule_delayed_work(&palmas_usb->cable_update_wq,
 			msecs_to_jiffies(palmas_usb->cable_debounce_time));
-	} else {
-		dev_info(palmas_usb->dev, "id-irq() ID_INT_LATCH_SET 0x%02x\n",
-						set);
-		if (set & PALMAS_USB_ID_INT_SRC_ID_GND) {
-			palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-					PALMAS_USB_ID_INT_LATCH_CLR,
-					PALMAS_USB_ID_INT_EN_HI_CLR_ID_GND);
-			palmas_usb->id_linkstat = PALMAS_USB_STATE_ID_FLOAT;
-			extcon_set_cable_state(&palmas_usb->edev, "USB-Host",
-						true);
-			dev_info(palmas_usb->dev, "USB-HOST cable is attached\n");
-		} else if (set & PALMAS_USB_ID_INT_SRC_ID_FLOAT) {
-			palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-					PALMAS_USB_ID_INT_LATCH_CLR,
-					PALMAS_USB_ID_INT_EN_HI_CLR_ID_FLOAT);
-			palmas_usb->id_linkstat = PALMAS_USB_STATE_DISCONNECT;
-			extcon_set_cable_state(&palmas_usb->edev, "USB-Host",
-				       false);
-			dev_info(palmas_usb->dev, "USB-HOST cable is detached\n");
-		} else if ((palmas_usb->id_linkstat ==
-				PALMAS_USB_STATE_ID_FLOAT) &&
-				(!(set & PALMAS_USB_ID_INT_SRC_ID_GND))) {
-			palmas_usb->id_linkstat = PALMAS_USB_STATE_DISCONNECT;
-			extcon_set_cable_state(&palmas_usb->edev, "USB-Host",
-					false);
-			dev_info(palmas_usb->dev, "USB-HOST cable is detached\n");
-		}
-	}
 	return IRQ_HANDLED;
 }
 
@@ -289,42 +262,22 @@ static void palmas_enable_irq(struct palmas_usb *palmas_usb)
 		PALMAS_USB_VBUS_CTRL_SET,
 		PALMAS_USB_VBUS_CTRL_SET_VBUS_ACT_COMP);
 
-	if (palmas_usb->enable_aca_detection) {
-		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-			PALMAS_USB_ID_CTRL_CLEAR,
-			PALMAS_USB_ID_CTRL_SET_ID_SRC_5U);
-
-		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-			PALMAS_USB_ID_CTRL_SET,
-			PALMAS_USB_ID_CTRL_SET_ID_SRC_16U |
-			PALMAS_USB_ID_CTRL_SET_ID_ACT_COMP);
-	} else {
-		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-			PALMAS_USB_ID_CTRL_SET,
-			PALMAS_USB_ID_CTRL_SET_ID_ACT_COMP);
-
-		palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-			PALMAS_USB_ID_INT_EN_HI_SET,
-			PALMAS_USB_ID_INT_EN_HI_SET_ID_GND |
-			PALMAS_USB_ID_INT_EN_HI_SET_ID_FLOAT);
-	}
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_CTRL_CLEAR, PALMAS_USB_ID_CTRL_SET_ID_SRC_5U);
+	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
+		PALMAS_USB_ID_CTRL_SET, PALMAS_USB_ID_CTRL_SET_ID_SRC_16U |
+				PALMAS_USB_ID_CTRL_SET_ID_ACT_COMP);
 
 	if (palmas_usb->enable_vbus_detection)
 		palmas_vbus_irq_handler(palmas_usb->vbus_irq, palmas_usb);
 
 	if (palmas_usb->enable_id_detection) {
-		if (palmas_usb->enable_aca_detection) {
-			/* Wait for the comparator to update status */
-			msleep(palmas_usb->cable_debounce_time);
-			ret = palmas_usb_id_state_update(palmas_usb);
-			if (ret == -EAGAIN)
-				schedule_delayed_work(
-				&palmas_usb->cable_update_wq, msecs_to_jiffies(
-					    palmas_usb->cable_debounce_time));
-		} else {
-			msleep(30);
-			palmas_id_irq_handler(palmas_usb->id_irq, palmas_usb);
-		}
+		/* Wait for the comparator to update status */
+		msleep(palmas_usb->cable_debounce_time);
+		ret = palmas_usb_id_state_update(palmas_usb);
+		if (ret == -EAGAIN)
+			schedule_delayed_work(&palmas_usb->cable_update_wq,
+			    msecs_to_jiffies(palmas_usb->cable_debounce_time));
 	}
 }
 
@@ -352,8 +305,6 @@ static int palmas_usb_probe(struct platform_device *pdev)
 						"ti,enable-id-detection");
 		palmas_usb->enable_vbus_detection = of_property_read_bool(node,
 						"ti,enable-vbus-detection");
-		palmas_usb->enable_aca_detection = of_property_read_bool(node,
-						"ti,enable-aca-detection");
 		status = of_property_read_string(node, "extcon-name", &ext_name);
 		if (status < 0)
 			ext_name = NULL;
@@ -389,6 +340,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, palmas_usb);
 
 	palmas_usb->edev.supported_cable = palmas_extcon_cable;
+	palmas_usb->edev.mutually_exclusive = mutually_exclusive;
 	palmas_usb->edev.name  = (ext_name) ? ext_name : dev_name(&pdev->dev);
 
 	status = extcon_dev_register(&palmas_usb->edev, palmas_usb->dev);
@@ -409,9 +361,6 @@ static int palmas_usb_probe(struct platform_device *pdev)
 					palmas_usb->id_irq, status);
 			goto fail_extcon;
 		}
-	}
-
-	if (palmas_usb->enable_aca_detection) {
 		status = devm_request_threaded_irq(palmas_usb->dev,
 				palmas_usb->id_otg_irq,
 				NULL, palmas_id_irq_handler,
@@ -447,7 +396,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 
 fail_extcon:
 	extcon_dev_unregister(&palmas_usb->edev);
-	if (palmas_usb->enable_aca_detection)
+	if (palmas_usb->enable_id_detection)
 		cancel_delayed_work(&palmas_usb->cable_update_wq);
 
 	return status;
@@ -459,7 +408,7 @@ static int palmas_usb_remove(struct platform_device *pdev)
 
 	extcon_dev_unregister(&palmas_usb->edev);
 
-	if (palmas_usb->enable_aca_detection)
+	if (palmas_usb->enable_id_detection)
 		cancel_delayed_work(&palmas_usb->cable_update_wq);
 	return 0;
 }
