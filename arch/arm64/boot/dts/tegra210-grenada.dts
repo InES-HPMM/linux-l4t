@@ -78,6 +78,10 @@
 		};
 	};
 
+	serial@70006000 {
+		console-port;
+	};
+		
 	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";

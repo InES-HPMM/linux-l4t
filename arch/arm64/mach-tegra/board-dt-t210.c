@@ -164,7 +164,6 @@ static void __init tegra210_dt_init(void)
 
 	t210_panel_init();
 
-	uart_console_debug_init(0);
 	tegra_init_suspend(&tegra21_suspend_data);
 }
 
