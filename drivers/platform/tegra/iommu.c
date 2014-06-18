@@ -65,8 +65,11 @@ int tegra_smmu_window_count(void)
 }
 
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
+
 #ifdef CONFIG_TEGRA_BPMP
 static struct iommu_linear_map tegra_bpmp_linear_map[2];
+#else
+#define tegra_bpmp_linear_map NULL
 #endif
 
 #define LINEAR_MAP_ADD(n) \
@@ -93,15 +96,6 @@ void tegra_fb_linear_set(struct iommu_linear_map *map)
 #endif
 }
 EXPORT_SYMBOL(tegra_fb_linear_set);
-
-#ifdef CONFIG_TEGRA_BPMP
-void tegra_bpmp_linear_set(phys_addr_t start, phys_addr_t size)
-{
-	tegra_bpmp_linear_map[0].start = start;
-	tegra_bpmp_linear_map[0].size = size;
-}
-EXPORT_SYMBOL(tegra_bpmp_linear_set);
-#endif
 
 #ifdef CONFIG_CMA
 void carveout_linear_set(struct device *cma_dev)
@@ -280,13 +274,11 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "ape",	.swgids = SWGID(APE), },
 	{ .name = "tegra-aes",	.swgids = SWGID(NVDEC), },
 	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
-#ifdef CONFIG_TEGRA_BPMP
 	{
 		.name = "bpmp",
 		.swgids = SWGID(AVPC),
 		.linear_map = tegra_bpmp_linear_map
 	},
-#endif
 	{ .name = "sdhci-tegra.0",	.swgids = SWGID(SDMMC1A) },
 	{ .name = "sdhci-tegra.1",	.swgids = SWGID(SDMMC2A) },
 	{ .name = "sdhci-tegra.2",	.swgids = SWGID(SDMMC3A) },
