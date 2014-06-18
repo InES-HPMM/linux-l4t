@@ -732,8 +732,9 @@ static void __init set_cpu_dfll_tuning_data(struct cpu_cvb_dvfs *d, int speedo)
 {
 	if (d->speedo_id >= 1) {
 		if (speedo <= 2336) {
-			d->dfll_tune_data.tune0 = 0x9315FF;
-			d->dfll_tune_data.tune0_high_mv = 0x9340FF;
+			d->dfll_tune_data.tune0 = 0x8315FF;
+			d->dfll_tune_data.tune0_high_mv = 0x8340FF;
+			d->dfll_tune_data.tune0_simon_mask = 0x100000;
 		} else {
 			d->dfll_tune_data.tune0 = 0x8315FF;
 			d->dfll_tune_data.tune0_high_mv = 0x8340FF;
