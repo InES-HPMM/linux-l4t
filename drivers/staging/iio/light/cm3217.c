@@ -320,6 +320,7 @@ static ssize_t cm3217_enable_store(struct device *dev,
 	mutex_lock(&indio_dev->mlock);
 	if (enable) {
 		err = cm3217_cmd_wr(inf, 0, 0);
+		inf->raw_illuminance_val = -EINVAL;
 		queue_delayed_work(inf->wq, &inf->dw, CM3217_HW_DELAY);
 	} else {
 		cancel_delayed_work_sync(&inf->dw);
@@ -342,6 +343,8 @@ static ssize_t cm3217_raw_illuminance_val_show(struct device *dev,
 	if (inf->als_state != CHIP_POWER_ON_ALS_ON)
 		return sprintf(buf, "-1\n");
 	queue_delayed_work(inf->wq, &inf->dw, 0);
+	if (inf->raw_illuminance_val == -EINVAL)
+		return sprintf(buf, "-1\n");
 	return sprintf(buf, "%d\n", inf->raw_illuminance_val);
 }
 
@@ -496,6 +499,7 @@ static int cm3217_probe(struct i2c_client *client,
 		goto err_iio_register;
 	}
 
+	inf->raw_illuminance_val = -EINVAL;
 	dev_info(&client->dev, "%s success\n", __func__);
 	return 0;
 
