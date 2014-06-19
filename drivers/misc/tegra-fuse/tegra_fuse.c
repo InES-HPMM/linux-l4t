@@ -77,10 +77,14 @@ DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 #define FUSE_SKU_INFO       0x110
 #define FUSE_SKU_MSB_MASK	0xFF00
 #define FUSE_SKU_MSB_SHIFT	8
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define STRAP_OPT 0x464
+#define RAM_ID_MASK (0xF << 4)
+#else
 #define STRAP_OPT 0x008
-#define GMI_AD0 BIT(4)
-#define GMI_AD1 BIT(5)
-#define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
+#define RAM_ID_MASK (3 << 4)
+#endif
 #define RAM_CODE_SHIFT 4
 
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
@@ -1356,7 +1360,11 @@ static void tegra_set_bct_strapping(void)
 {
 	u32 reg;
 
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	reg = tegra_read_pmc_reg(STRAP_OPT);
+#else
+	reg = tegra_read_apb_misc_reg(STRAP_OPT);
+#endif
 	tegra_chip_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 }
 
