@@ -78,26 +78,23 @@ static __initdata struct tegra_clk_init_table p2360_clk_init_table[] = {
 	{ "pll_d2",		NULL,		297000000,	true},
 	{ "hdmi",		"pll_d2",	297000000,	false},
 
-	{ "pll_a_out0",		NULL,		24600000,	true},
-	{ "i2s0",		"pll_a_out0",	24600000,	false},
-	{ "i2s1",		"pll_a_out0",	24600000,	false},
-	{ "i2s2",		"pll_a_out0",	24600000,	false},
-	{ "i2s3",		"pll_a_out0",	24600000,	false},
-	{ "i2s4",		"pll_a_out0",	24600000,	false},
-
+	{ "pll_a",		"pll_p_out1",	368640000,	true},
+	{ "pll_a_out0",		"pll_a",	24576000,	true},
 	{ "dam0",		"pll_p",	19900000,	false},
 	{ "dam1",		"pll_p",	19900000,	false},
 	{ "dam2",		"pll_p",	19900000,	false},
-	{ "adx",		"pll_p",	19900000,	false},
-	{ "adx1",		"pll_p",	19900000,	false},
-	{ "amx",		"pll_p",	19900000,	false},
-	{ "amx1",		"pll_p",	19900000,	false},
+	{ "adx",		"pll_a_out0",	4096000,	false},
+	{ "adx1",		"pll_a_out0",	4096000,	false},
+	{ "amx",		"pll_a_out0",	4096000,	false},
+	{ "amx1",		"pll_a_out0",	4096000,	false},
 
-	{ "spdif_out",		"pll_a_out0",	24600000,	false},
+	{ "spdif_out",		"pll_a_out0",	6144000,	false},
+	{ "spdif_in",		"pll_p",	48000000,	false},
+	{ "extern1",		"pll_a_out0",	12288000,	false},
 	{ "hda",		"pll_p",	48000000,	false},
-	{ "cilab",		"pll_p",	10200000,	false},
-	{ "cilcd",		"pll_p",	10200000,	false},
-	{ "cile",		"pll_p",	10200000,	false},
+	{ "cilab",		"pll_p",	102000000,	false},
+	{ "cilcd",		"pll_p",	102000000,	false},
+	{ "cile",		"pll_p",	102000000,	false},
 
 	{ "nor",		"pll_p",	102000000,	false},
 
@@ -180,17 +177,7 @@ static __initdata struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
-#ifdef CONFIG_ANDROID
-	/* [WAR] : bug 1440706
-		There are lots of WARN_ON messages during Video playback.
-		Those make some jerky Video playback issues.
-		Temporarily changed the expected rate from 316800000
-		to 12000000 but it should be fixed correctly.
-	*/
-	SET_FIXED_TARGET_RATE("sbus",		 12000000),
-#else
 	SET_FIXED_TARGET_RATE("sbus",		316800000),
-#endif
 
 #ifdef CONFIG_TEGRA_PLLCX_FIXED
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -205,7 +192,6 @@ static __initdata struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("pll_c_out1",	316800000),
 #endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
-	SET_FIXED_TARGET_RATE("pll_x",		150000000),
 	SET_FIXED_TARGET_RATE("gbus",		600000000),
 
 	SET_FIXED_TARGET_RATE("gk20a.gbus",	600000000),
@@ -215,8 +201,7 @@ static __initdata struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("pclk",		158400000),
 	SET_FIXED_TARGET_RATE("apb.sclk",	158400000),
 
-	SET_FIXED_TARGET_RATE("cpu_g",		150000000),
-	SET_FIXED_TARGET_RATE("cpu_lp",		109200000),
+	SET_FIXED_TARGET_RATE("cpu_lp",		1092000000),
 
 	SET_FIXED_TARGET_RATE("vde",		432000000),
 	SET_FIXED_TARGET_RATE("se",		432000000),
@@ -231,57 +216,46 @@ static __initdata struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 	SET_FIXED_TARGET_RATE("host1x",		264000000),
 	SET_FIXED_TARGET_RATE("mselect",	408000000),
 
-	SET_FIXED_TARGET_RATE("dam0",		40000000),
-	SET_FIXED_TARGET_RATE("dam1",		40000000),
-	SET_FIXED_TARGET_RATE("dam2",		40000000),
-
-	SET_FIXED_TARGET_RATE("adx",		24600000),
-	SET_FIXED_TARGET_RATE("adx1",		24600000),
-	SET_FIXED_TARGET_RATE("amx",		24600000),
-	SET_FIXED_TARGET_RATE("amx1",		24600000),
-
-	SET_FIXED_TARGET_RATE("spdif_out",	24576000),
-	SET_FIXED_TARGET_RATE("hda",		108000000),
+	SET_FIXED_TARGET_RATE("pll_a_out0",	24576000),
+	SET_FIXED_TARGET_RATE("spdif_in",	48000000),
+	SET_FIXED_TARGET_RATE("spdif_out",	6144000),
+	SET_FIXED_TARGET_RATE("d_audio",	24576000),
+	SET_FIXED_TARGET_RATE("adx",		4096000),
+	SET_FIXED_TARGET_RATE("adx1",		4096000),
+	SET_FIXED_TARGET_RATE("amx",		4096000),
+	SET_FIXED_TARGET_RATE("amx1",		4096000),
+	SET_FIXED_TARGET_RATE("extern1",	12288000),
 
 	SET_FIXED_TARGET_RATE("cilab",		102000000),
 	SET_FIXED_TARGET_RATE("cilcd",		102000000),
 	SET_FIXED_TARGET_RATE("cile",		102000000),
 
-	SET_FIXED_TARGET_RATE("uarta",		408000000),
-	SET_FIXED_TARGET_RATE("uartb",		408000000),
-	SET_FIXED_TARGET_RATE("uartc",		408000000),
-#ifndef CONFIG_ANDROID
-	SET_FIXED_TARGET_RATE("uartd",		408000000),
-#endif
+	SET_FIXED_TARGET_RATE(NULL,		0),
 };
 
-static int __init tegra_fixed_target_rate_init(void)
+/* Set POR value for all clocks given in the table */
+static void do_set_fixed_target_rate(struct tegra_clk_init_table *table)
 {
 	struct clk *c;
 	unsigned long flags;
-	int i, is_e1860_b00 = 0;
-
-	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
-
-	/* Set POR value for all clocks given in the table */
-	for (i = 0; i < ARRAY_SIZE(p2360_fixed_target_clk_table); i++) {
-
-		c = tegra_get_clock_by_name(
-				p2360_fixed_target_clk_table[i].name);
+	for (; table->name; table++) {
+		c = tegra_get_clock_by_name(table->name);
 		if (c) {
 			clk_lock_save(c, &flags);
-			c->fixed_target_rate =
-				p2360_fixed_target_clk_table[i].rate;
+			c->fixed_target_rate = table->rate;
 			clk_unlock_restore(c, &flags);
 		} else {
-			pr_warn("%s: Clock %s not found\n", __func__,
-					p2360_fixed_target_clk_table[i].name);
+			pr_warn("%s: Clock %s not found\n", __func__, table->name);
+			BUG_ON(1);
 		}
 	}
+}
 
+static int __init tegra_fixed_target_rate_init(void)
+{
+	do_set_fixed_target_rate(p2360_fixed_target_clk_table);
 	return 0;
 }
-late_initcall_sync(tegra_fixed_target_rate_init);
 
 static struct tegra_nor_platform_data p2360_nor_data = {
 	.flash = {
@@ -565,6 +539,7 @@ static void __init tegra_p2360_early_init(void)
 {
 	tegra_clk_init_from_table(p2360_clk_init_table);
 	tegra_clk_verify_parents();
+	tegra_fixed_target_rate_init();
 	tegra_soc_device_init("p2360");
 }
 
