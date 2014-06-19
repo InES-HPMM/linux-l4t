@@ -398,6 +398,9 @@ static struct platform_device *p2360_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
+#if defined(CONFIG_TEGRA_WATCHDOG)
+	&tegra_wdt0_device,
+#endif
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
@@ -572,7 +575,9 @@ static void __init tegra_p2360_late_init(void)
 	p2360_suspend_init();
 
 	isomgr_init();
-
+#ifdef CONFIG_TEGRA_WDT_RECOVERY
+	tegra_wdt_recovery_init();
+#endif
 	p2360_panel_init();
 #ifdef CONFIG_SENSORS_TMON_TMP411
 	register_therm_monitor(&p2360_therm_monitor_data);
