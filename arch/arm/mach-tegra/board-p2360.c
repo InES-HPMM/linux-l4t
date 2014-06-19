@@ -176,7 +176,7 @@ struct therm_monitor_data p2360_therm_monitor_data = {
  * don't care for this table.
  */
 
-static struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
+static __initdata struct tegra_clk_init_table p2360_fixed_target_clk_table[] = {
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
@@ -315,7 +315,7 @@ static struct cs_info p2360_cs_info[] = {
 	},
 };
 
-static void p2360_nor_init(void)
+static void __init p2360_nor_init(void)
 {
 	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE + SZ_64M - 1;
 
@@ -392,7 +392,6 @@ static int __init p2360_gpio_init(void)
 	return 0;
 }
 
-/* FIXME: Check which devices are needed from the below list */
 static struct platform_device *p2360_devices[] __initdata = {
 	&tegra_pmu_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
@@ -494,7 +493,7 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-static void p2360_usb_init(void)
+static void __init p2360_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
