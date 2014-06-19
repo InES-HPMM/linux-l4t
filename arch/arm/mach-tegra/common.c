@@ -1478,46 +1478,66 @@ static int parse_arg_pmic_wdt_disable(char *options)
 }
 __setup("watchdog=", parse_arg_pmic_wdt_disable);
 
-void tegra_get_board_info(struct board_info *bi)
+static int tegra_get_board_info_properties(struct board_info *bi,
+		const char *property_name)
 {
-#ifdef CONFIG_OF
 	struct device_node *board_info;
+	char board_info_path[50] = {0};
 	u32 prop_val;
 	int err;
 
-	board_info = of_find_node_by_path("/chosen/board_info");
+	strcpy(board_info_path, "/chosen/");
+	strcat(board_info_path, property_name);
+
+	board_info = of_find_node_by_path(board_info_path);
 	if (!IS_ERR_OR_NULL(board_info)) {
 		memset(bi, 0, sizeof(*bi));
 
 		err = of_property_read_u32(board_info, "id", &prop_val);
 		if (err)
-			pr_err("failed to read /chosen/board_info/id\n");
+			pr_err("failed to read %s/id\n", board_info_path);
 		else
 			bi->board_id = prop_val;
 
 		err = of_property_read_u32(board_info, "sku", &prop_val);
 		if (err)
-			pr_err("failed to read /chosen/board_info/sku\n");
+			pr_err("failed to read %s/sku\n", board_info_path);
 		else
 			bi->sku = prop_val;
 
 		err = of_property_read_u32(board_info, "fab", &prop_val);
 		if (err)
-			pr_err("failed to read /chosen/board_info/fab\n");
+			pr_err("failed to read %s/fab\n", board_info_path);
 		else
 			bi->fab = prop_val;
 
 		err = of_property_read_u32(board_info, "major_revision", &prop_val);
 		if (err)
-			pr_err("failed to read /chosen/board_info/major_revision\n");
+			pr_err("failed to read %s/major_revision\n",
+					board_info_path);
 		else
 			bi->major_revision = prop_val;
 
 		err = of_property_read_u32(board_info, "minor_revision", &prop_val);
 		if (err)
-			pr_err("failed to read /chosen/board_info/minor_revision\n");
+			pr_err("failed to read %s/minor_revision\n",
+					board_info_path);
 		else
 			bi->minor_revision = prop_val;
+
+		return 0;
+	}
+	return -1;
+}
+
+void tegra_get_board_info(struct board_info *bi)
+{
+#ifdef CONFIG_OF
+	int ret;
+
+	memset(bi, 0, sizeof(*bi));
+	ret = tegra_get_board_info_properties(bi, "board_info");
+	if (ret == 0) {
 		system_serial_high = (bi->board_id << 16) | bi->sku;
 		system_serial_low = (bi->fab << 24) |
 			(bi->major_revision << 16) | (bi->minor_revision << 8);
@@ -1578,6 +1598,15 @@ static int __init tegra_pmu_board_info(char *info)
 
 void tegra_get_pmu_board_info(struct board_info *bi)
 {
+#ifdef CONFIG_OF
+	int ret;
+
+	memset(bi, 0, sizeof(*bi));
+	ret = tegra_get_board_info_properties(bi, "pmuboard");
+	if (ret == 0)
+		return;
+	else
+#endif
 	memcpy(bi, &pmu_board_info, sizeof(struct board_info));
 }
 
@@ -1596,6 +1625,15 @@ static int __init tegra_display_board_info(char *info)
 
 void tegra_get_display_board_info(struct board_info *bi)
 {
+#ifdef CONFIG_OF
+	int ret;
+
+	memset(bi, 0, sizeof(*bi));
+	ret = tegra_get_board_info_properties(bi, "displayboard");
+	if (ret == 0)
+		return;
+	else
+#endif
 	memcpy(bi, &display_board_info, sizeof(struct board_info));
 }
 
@@ -1614,6 +1652,15 @@ static int __init tegra_camera_board_info(char *info)
 
 void tegra_get_camera_board_info(struct board_info *bi)
 {
+#ifdef CONFIG_OF
+	int ret;
+
+	memset(bi, 0, sizeof(*bi));
+	ret = tegra_get_board_info_properties(bi, "cameraboard");
+	if (ret == 0)
+		return;
+	else
+#endif
 	memcpy(bi, &camera_board_info, sizeof(struct board_info));
 }
 
