@@ -1,0 +1,60 @@
+/dts-v1/;
+
+#include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc-p1761-1270-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pmic-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sensor-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-fixed-e1936-1000-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-pinmux-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-gpio-p1761-1470-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-keys-p1761-1270-a03.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-powermon-p1761-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-dfll-p1761-1270-a03.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8 FFD";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1761:1270:4";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	i2c@7000d000 {
+		palmas: tps65913 {
+			gpadc {
+				ti,auto-conversion-period-ms = <500>;
+				auto_conv0 {
+					ti,adc-channel-number = <3>;
+					ti,adc-low-threshold = <1980>;
+					ti,enable-shutdown;
+				};
+			};
+
+			pmic {
+				regulators {
+					ldo3 {
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-enable-ramp-delay = <3000>;
+						ti,disable-pull-down;
+					};
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@8  {
+			vin-supply = <&ldo3_reg>;
+			regulator-disable-parent-after-enable;
+		};
+	};
+};
+
