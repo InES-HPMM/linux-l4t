@@ -74,6 +74,8 @@ struct dma_map_ops {
 	size_t (*iova_get_free_total)(struct device *dev);
 	size_t (*iova_get_free_max)(struct device *dev);
 
+	phys_addr_t (*iova_to_phys)(struct device *dev, dma_addr_t iova);
+
 	int is_phys;
 };
 

@@ -155,6 +155,7 @@ extern int iommu_attach_group(struct iommu_domain *domain,
 			      struct iommu_group *group);
 extern void iommu_detach_group(struct iommu_domain *domain,
 			       struct iommu_group *group);
+extern phys_addr_t iommu_iova_to_phys(struct iommu_domain *domain, dma_addr_t iova);
 extern struct iommu_group *iommu_group_alloc(void);
 extern void *iommu_group_get_iommudata(struct iommu_group *group);
 extern void iommu_group_set_iommudata(struct iommu_group *group,

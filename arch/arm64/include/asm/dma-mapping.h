@@ -120,6 +120,15 @@ static inline void dma_free_coherent(struct device *dev, size_t size,
 	ops->free(dev, size, vaddr, dev_addr, NULL);
 }
 
+static inline phys_addr_t dma_iova_to_phys(struct device *dev, dma_addr_t iova)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+
+	if (!ops->iova_to_phys)
+		return 0;
+
+	return ops->iova_to_phys(dev, iova);
+}
 /*
  * There is no dma_cache_sync() implementation, so just return NULL here.
  */

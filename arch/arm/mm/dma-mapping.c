@@ -2214,6 +2214,13 @@ static void arm_iommu_sync_single_for_device(struct device *dev,
 	__dma_page_cpu_to_dev(page, offset, size, dir);
 }
 
+static phys_addr_t arm_iommu_iova_to_phys(struct device *dev, dma_addr_t iova)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+
+	return iommu_iova_to_phys(mapping->domain, iova);
+}
+
 struct dma_map_ops iommu_ops = {
 	.alloc		= arm_iommu_alloc_attrs,
 	.free		= arm_iommu_free_attrs,
@@ -2239,6 +2246,8 @@ struct dma_map_ops iommu_ops = {
 	.iova_free		= arm_iommu_iova_free,
 	.iova_get_free_total	= arm_iommu_iova_get_free_total,
 	.iova_get_free_max	= arm_iommu_iova_get_free_max,
+
+	.iova_to_phys		= arm_iommu_iova_to_phys,
 };
 
 struct dma_map_ops iommu_coherent_ops = {
