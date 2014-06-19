@@ -122,6 +122,7 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 		case OS_LOAD_COMPLETE:
 			dev_dbg(dev, "in OS_LOAD_COMPLETE\n");
 			complete(&os_load);
+			break;
 		case APP_LOAD_RET_STATUS:
 			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
 			complete(&load_app_status);
