@@ -43,6 +43,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/debugfs.h>
+#include <linux/uaccess.h>
 
 #include <linux/amba/bus.h>
 
@@ -392,6 +393,7 @@ struct arm_smmu_device {
 
 	struct dentry			*debugfs_root;
 	struct debugfs_regset32		*regset;
+	DECLARE_BITMAP(context_filter, ARM_SMMU_MAX_CBS);
 };
 
 struct arm_smmu_cfg {
@@ -1564,6 +1566,12 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 		iova = next;
 	} while (pgd++, iova != end);
 
+	if (test_bit(root_cfg->cbndx, smmu->context_filter)) {
+		/* FIXME: add ftrace support */
+		pr_debug("cbndx=%d iova=%pa paddr=%pa size=%zx prot=%x\n",
+			 root_cfg->cbndx, &iova, &paddr, size, prot);
+	}
+
 out_unlock:
 	spin_unlock_irqrestore(&smmu_domain->lock, flags);
 
@@ -1999,6 +2007,57 @@ static const struct debugfs_reg32 arm_smmu_gr0_regs[] = {
 	defreg_gr0(PIDR2),
 };
 
+static ssize_t smmu_context_filter_write(struct file *file,
+					 const char __user *user_buf,
+					 size_t count, loff_t *ppos)
+{
+	u8 cbndx;
+	char buf[] = __stringify(ARM_SMMU_MAX_CBS);
+	size_t bytes = min_t(size_t, sizeof(buf), count);
+	struct seq_file *seqf = file->private_data;
+	struct arm_smmu_device *smmu = seqf->private;
+	unsigned long *bitmap = smmu->context_filter;
+
+	if (kstrtou8_from_user(user_buf, bytes, 10, &cbndx))
+		return -EINVAL;
+
+	if (cbndx > ARM_SMMU_MAX_CBS)
+		return -EINVAL;
+
+	set_bit(cbndx, bitmap);
+	return count;
+}
+
+static int smmu_context_filter_show(struct seq_file *s, void *unused)
+{
+	struct arm_smmu_device *smmu = s->private;
+	unsigned long *bitmap = smmu->context_filter;
+	int idx = 0;
+
+	while (1) {
+		idx = find_next_bit(bitmap, ARM_SMMU_MAX_CBS, idx);
+		if (idx >= ARM_SMMU_MAX_CBS)
+			break;
+		seq_printf(s, "%d ", idx);
+		idx++;
+	}
+	seq_putc(s, '\n');
+	return 0;
+}
+
+static int smmu_context_filter_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_context_filter_show, inode->i_private);
+}
+
+static const struct file_operations smmu_context_filter_fops = {
+	.open		= smmu_context_filter_open,
+	.read		= seq_read,
+	.write		= smmu_context_filter_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static void arm_smmu_debugfs_delete(struct arm_smmu_device *smmu)
 {
 	int i;
@@ -2015,7 +2074,6 @@ static void arm_smmu_debugfs_delete(struct arm_smmu_device *smmu)
 static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 {
 	int i;
-	struct dentry *dent;
 	struct debugfs_reg32 *regs;
 	size_t bytes;
 
@@ -2064,10 +2122,11 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 		regs++;
 	}
 
-	dent = debugfs_create_regset32("regdump", S_IRUGO, smmu->debugfs_root,
+	debugfs_create_regset32("regdump", S_IRUGO, smmu->debugfs_root,
 				smmu->regset);
-	if (!dent)
-		goto err_out;
+	debugfs_create_file("context_filter", S_IRUGO | S_IWUSR,
+			    smmu->debugfs_root, smmu,
+			    &smmu_context_filter_fops);
 	return;
 
 err_out:
