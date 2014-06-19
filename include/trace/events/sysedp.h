@@ -67,27 +67,27 @@ TRACE_EVENT(sysedp_set_avail_budget,
 
 TRACE_EVENT(sysedp_dynamic_capping,
 
-	    TP_PROTO(unsigned int cpu, unsigned int gpu,
+	    TP_PROTO(unsigned int cpupwr, unsigned int gpu,
 		     unsigned int emc, bool favor_gpu),
 
-	    TP_ARGS(cpu, gpu, emc, favor_gpu),
+	    TP_ARGS(cpupwr, gpu, emc, favor_gpu),
 
 	    TP_STRUCT__entry(
-		    __field(unsigned int,       cpu)
+		    __field(unsigned int,    cpupwr)
 		    __field(unsigned int,       gpu)
 		    __field(unsigned int,       emc)
 		    __field(bool,         favor_gpu)
 		    ),
 
 	    TP_fast_assign(
-		    __entry->cpu = cpu;
+		    __entry->cpupwr = cpupwr;
 		    __entry->gpu = gpu;
 		    __entry->emc = emc;
 		    __entry->favor_gpu = favor_gpu;
 		    ),
 
-	    TP_printk("CPU %u, GPU %u, EMC %u, favor_gpu=%d",
-		      __entry->cpu / 1000, __entry->gpu / 1000,
+	    TP_printk("CPU PWR %u, GPU %u, EMC %u, favor_gpu=%d",
+		      __entry->cpupwr, __entry->gpu / 1000,
 		      __entry->emc / 1000, __entry->favor_gpu)
 	);
 
