@@ -23,73 +23,23 @@
 #include "tegra124-platforms/tegra124-ardbeg-pmic-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-fixed-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
-#include "panel-l-wxga-7.dtsi"
-#include "panel-p-wuxga-10-1.dtsi"
-#include "panel-s-wqxga-10-1.dtsi"
-#include "panel-a-edp-1080p-14-0.dtsi"
-#include "panel-i-edp-1080p-11-6.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
+
 / {
 	nvidia,boardids = "1780:1000:03:B:3;1735:1000:01:D:3";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "1780:1000:03:B:3";
 	nvidia,pmu-boardid = "1735:1000:01:D:3";
 	host1x {
-		/* tegradc.0 */
-		dc@54200000 {
-			status = "okay";
-			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
-			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <1>;
-			nvidia,low-v-win = <0x2>;
-			nvidia,fb-bpp = <32>; /* bits per pixel */
-			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
-		};
 		/* tegradc.1 */
 		dc@54240000 {
-			status = "okay";
-			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
-			nvidia,emc-clk-rate = <300000000>;
-			nvidia,fb-bpp = <32>; /* bits per pixel */
-			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 			avdd_hdmi-supply = <&palmas_smps9>;
 			avdd_hdmi_pll-supply = <&palmas_smps9>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
-		};
-		dsi {
-			nvidia,dsi-controller-vs = <DSI_VS_1>;
-			status = "okay";
-			panel-l-wxga-7 {
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
-			};
-			panel-p-wuxga-10-1 {
-				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
-			};
-			panel-s-wqxga-10-1 {
-				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
-				nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(R, 6) 0>; /* PR6 */
-			};
-		};
-		sor {
-			status = "okay";
-		};
-		dpaux {
-			status = "okay";
-			nvidia,hpd-gpio = <&gpio 248 0>; /*PFF0*/
-			panel-a-edp-1080p-14-0 {
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
-			};
-			panel-i-edp-1080p-11-6 {
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
-			};
 		};
 		vi {
 			avdd_dsi_csi-supply = <&palams_ldo4>;
 		};
 	};
-
 	i2c@7000d000 {
 		tps65913@58 {
 			extcon {
