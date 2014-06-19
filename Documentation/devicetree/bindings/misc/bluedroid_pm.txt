@@ -17,12 +17,14 @@ IO parameters needed to control bluetooth radio.
 
 Required Properties:
 - compatible: Must be  "nvidia,tegra-bluedroid_pm";
+
+Optional Properties:
 - "bluedoird_pm,shoutdown-gpio" is resource name to register radio's Enable/Shutdown gpio
 - "bluedoird_pm,reset-gpio" is resource name to regster radio's reset gpio
-    One of above is mandatory requirement.
+    One of above is mandatory requirement for registering rfkill interface.
 
 - "bluedoird_pm,ext-wake-gpio" is resource name to register radio's ext_wake gpio
-- "bluedoird_pm,host-wake--gpio" is resource name to register host wake gpio
+- "bluedoird_pm,host-wake-gpio" is resource name to register host wake gpio
 
 Example:
 bluedroid_pm {
