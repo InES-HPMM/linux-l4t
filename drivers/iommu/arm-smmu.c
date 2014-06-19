@@ -1196,6 +1196,46 @@ static void arm_smmu_domain_remove_master(struct arm_smmu_domain *smmu_domain,
 	arm_smmu_master_free_smrs(smmu, master);
 }
 
+#define defreg_cb(_name)			\
+	{					\
+		.name = __stringify(_name),	\
+		.offset = ARM_SMMU_CB_ ## _name,\
+	}
+
+static const struct debugfs_reg32 arm_smmu_cb_regs[] = {
+	defreg_cb(SCTLR),
+	defreg_cb(TTBCR2),
+	defreg_cb(TTBR0_LO),
+	defreg_cb(TTBR0_HI),
+	defreg_cb(TTBCR),
+	defreg_cb(S1_MAIR0),
+	defreg_cb(FSR),
+	defreg_cb(FAR_LO),
+	defreg_cb(FAR_HI),
+	defreg_cb(FSYNR0),
+};
+
+static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
+				   struct device *dev)
+{
+	struct dentry *dent;
+	char name[] = "cb000";
+	struct debugfs_regset32	*cb;
+	u8 cbndx = smmu_domain->root_cfg.cbndx;
+	struct arm_smmu_device *smmu = dev->archdata.iommu;
+
+	sprintf(name, "cb%03d", cbndx);
+	dent = debugfs_create_dir(name, smmu->debugfs_root);
+	if (!dent)
+		return;
+	cb = smmu->regset + 1 + cbndx;
+	cb->regs = arm_smmu_cb_regs;
+	cb->nregs = ARRAY_SIZE(arm_smmu_cb_regs);
+	cb->base = smmu->base + (smmu->size >> 1) +
+		cbndx * smmu->pagesize;
+	debugfs_create_regset32("regdump", S_IRUGO, dent, cb);
+}
+
 static int smmu_master_show(struct seq_file *s, void *unused)
 {
 	int i;
@@ -1235,6 +1275,7 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 
 	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
 	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->root_cfg.cbndx);
+	debugfs_create_smmu_cb(smmu_domain, dev);
 	master->debugfs_root = dent;
 }
 
@@ -1945,11 +1986,6 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 		.offset = ARM_SMMU_ ## _name,	\
 	}
 #define defreg_gr0(_name) defreg(GR0_ ## _name)
-#define defreg_cb(_name)			\
-	{					\
-		.name = __stringify(_name),	\
-		.offset = ARM_SMMU_CB_ ## _name,\
-	}
 
 static const struct debugfs_reg32 arm_smmu_gr0_regs[] = {
 	defreg_gr0(sCR0),
@@ -1961,19 +1997,6 @@ static const struct debugfs_reg32 arm_smmu_gr0_regs[] = {
 	defreg_gr0(sGFSYNR1),
 	defreg_gr0(sTLBGSTATUS),
 	defreg_gr0(PIDR2),
-};
-
-static const struct debugfs_reg32 arm_smmu_cb_regs[] = {
-	defreg_cb(SCTLR),
-	defreg_cb(TTBCR2),
-	defreg_cb(TTBR0_LO),
-	defreg_cb(TTBR0_HI),
-	defreg_cb(TTBCR),
-	defreg_cb(S1_MAIR0),
-	defreg_cb(FSR),
-	defreg_cb(FAR_LO),
-	defreg_cb(FAR_HI),
-	defreg_cb(FSYNR0),
 };
 
 static void arm_smmu_debugfs_delete(struct arm_smmu_device *smmu)
@@ -2024,9 +2047,6 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 	}
 
 	for (i = 0; i < smmu->num_context_banks; i++) {
-		char name[127];
-		struct debugfs_regset32	*cb;
-
 		regs->name = kasprintf(GFP_KERNEL, "GR0_SMR%03d", i);
 		regs->offset = ARM_SMMU_GR0_SMR(i);
 		regs++;
@@ -2042,20 +2062,6 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 		regs->name = kasprintf(GFP_KERNEL, "GR1_CBA2R%03d", i);
 		regs->offset = smmu->pagesize + ARM_SMMU_GR1_CBA2R(i);
 		regs++;
-
-		sprintf(name, "cb%03d", i);
-		dent = debugfs_create_dir(name, smmu->debugfs_root);
-		if (!dent)
-			goto err_out;
-
-		cb = smmu->regset + 1 + i;
-		cb->regs = arm_smmu_cb_regs;
-		cb->nregs = ARRAY_SIZE(arm_smmu_cb_regs);
-		cb->base = smmu->base + (smmu->size >> 1) +
-			i * smmu->pagesize;
-		dent = debugfs_create_regset32("regdump", S_IRUGO, dent, cb);
-		if (!dent)
-			goto err_out;
 	}
 
 	dent = debugfs_create_regset32("regdump", S_IRUGO, smmu->debugfs_root,
