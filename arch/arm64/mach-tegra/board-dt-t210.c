@@ -162,6 +162,7 @@ static void __init tegra210_dt_init(void)
 			t210_auxdata_lookup,
 			&platform_bus);
 
+	t210_emc_init();
 	t210_panel_init();
 
 	tegra_init_suspend(&tegra21_suspend_data);
