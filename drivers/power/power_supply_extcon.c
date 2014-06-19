@@ -350,7 +350,8 @@ static int psy_extcon_probe(struct platform_device *pdev)
 			goto econ_err;
 
 		spin_lock(&psy_extcon->lock);
-		power_supply_extcon_attach_cable(psy_extcon,
+		if (!psy_extcon->usb_online && !psy_extcon->ac_online)
+			power_supply_extcon_attach_cable(psy_extcon,
 				psy_extcon->y_cable_edev);
 		spin_unlock(&psy_extcon->lock);
 	}
