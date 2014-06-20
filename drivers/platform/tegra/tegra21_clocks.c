@@ -2509,7 +2509,7 @@ static void pll_clk_verify_fixed_rate(struct clk *c)
  * - calculate N-value based on selected M and P
  * - calculate SDM_DIN fractional part
  */
-static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
+static int pll_fixed_mdiv_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
 	int p;
@@ -2549,7 +2549,7 @@ static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
-static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
+static int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
 	const struct clk_pll_freq_table *sel;
@@ -2559,11 +2559,13 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 		if (sel->input_rate == input_rate && sel->output_rate == rate) {
 			if (!c->u.pll.vco_out) {
 				int p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
-				BUG_ON(IS_ERR_VALUE(p));
+				BUG_ON(IS_ERR_VALUE(p) || (p != sel->p));
 			} else {
 				BUG_ON(sel->p != 1);
 			}
-			BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
+
+			if (c->u.pll.controls->dramp_en_mask)
+				BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 			BUG_ON(!c->u.pll.controls->sdm_en_mask &&
 			       sel->sdm_din);
 			*cfg = *sel;
@@ -2572,7 +2574,7 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	}
 
 	/* Configure out-of-table rate */
-	if (pll_dyn_ramp_cfg(c, cfg, rate, input_rate, pdiv)) {
+	if (pll_fixed_mdiv_cfg(c, cfg, rate, input_rate, pdiv)) {
 		pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 		       __func__, c->name, rate);
 		return -EINVAL;
@@ -2599,7 +2601,7 @@ static int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		return 0;
 	}
 
-	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
+	if (pll_clk_find_cfg(c, &cfg, rate, input_rate, &pdiv))
 		return -EINVAL;
 
 	pll_base_parse_cfg(c, &old_cfg);
@@ -3798,7 +3800,7 @@ static int tegra21_pllm_clk_set_rate(struct clk *c, unsigned long rate)
 		return 0;
 	}
 
-	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
+	if (pll_clk_find_cfg(c, &cfg, rate, input_rate, &pdiv))
 		return -EINVAL;
 
 	pll_clk_set_gain(c, &cfg);
@@ -9309,7 +9311,7 @@ static bool tegra21_is_dyn_ramp(
 
 		pll_base_parse_cfg(c, &old_cfg);
 
-		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
+		if (!pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
 				return c->u.pll.defaults_set;
 		}
@@ -9331,7 +9333,7 @@ static bool tegra21_is_dyn_ramp(
 			old_cfg.p = pllxc_p[old_cfg.p];
 		}
 
-		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
+		if (!pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
 				return true;
 		}
