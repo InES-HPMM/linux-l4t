@@ -702,6 +702,47 @@ struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size)
 	return power_edp_limits;
 }
 
+/* To save some cycles from a linear search */
+static unsigned int cpu_lut_match(unsigned int power,
+		struct tegra_system_edp_entry *lut, unsigned int lutlen)
+{
+	unsigned int fv;
+	unsigned int lv;
+	unsigned int step;
+	unsigned int i;
+
+	if (lutlen == 1)
+		return 0;
+
+	fv = lut[0].power_limit_100mW * 100;
+	lv = lut[lutlen - 1].power_limit_100mW * 100;
+	step = (lv - fv) / (lutlen - 1);
+
+	i = (power - fv + step - 1) / step;
+	i = min_t(unsigned int, i, lutlen - 1);
+	if (lut[i].power_limit_100mW * 100 >= power)
+		return i;
+
+	/* Didn't work, search back from the end */
+	return lutlen - 1;
+}
+
+unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus)
+{
+	struct tegra_system_edp_entry *p;
+	int i;
+
+	i = cpu_lut_match(cpupwr, power_edp_limits, power_edp_limits_size);
+	p = power_edp_limits + i;
+
+	for (; i > 0; i--, p--) {
+		if (p->power_limit_100mW * 100 <= cpupwr)
+			break;
+	}
+
+	WARN_ON(p->power_limit_100mW * 100 > cpupwr);
+	return p->freq_limits[online_cpus - 1];
+}
 
 #ifdef CONFIG_TEGRA_GPU_EDP
 void tegra_get_gpu_edp_limits(const struct tegra_edp_gpu_limits **limits,
@@ -1377,6 +1418,46 @@ static int reg_idle_cur_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(reg_idle_cur_debugfs_fops,
 			reg_idle_cur_get, reg_idle_cur_set, "%llu\n");
 
+static int cpucaps_show(struct seq_file *file, void *data)
+{
+	struct tegra_system_edp_entry *p = power_edp_limits;
+	int max_nr_cpus = (int) num_possible_cpus();
+	int i, j;
+	char ncores[10] = "1-core";
+
+	if (!power_edp_limits)
+		return -ENODEV;
+
+	seq_printf(file, "Power");
+	for (j = 0; j < max_nr_cpus; j++) {
+		if (j != 0)
+			snprintf(ncores, 10, "%d-cores", (j+1));
+		seq_printf(file, " %10s", ncores );
+	}
+	seq_printf(file, "\n");
+
+	for (i = 0; i < power_edp_limits_size; i++, p++) {
+		seq_printf(file, "%5d", p->power_limit_100mW*100);
+		for (j = 0; j < max_nr_cpus; j++) {
+			seq_printf(file, " %10u", p->freq_limits[j]);
+		}
+		seq_printf(file, "\n");
+	}
+
+	return 0;
+}
+
+static int longattr_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, inode->i_private, NULL);
+}
+
+static const struct file_operations longattr_fops = {
+	.open = longattr_open,
+	.read = seq_read,
+};
+
+
 #ifdef CONFIG_TEGRA_GPU_EDP
 static int __init tegra_gpu_edp_debugfs_init(struct dentry *edp_dir)
 {
@@ -1444,6 +1525,7 @@ static int __init tegra_edp_debugfs_init(void)
 	struct dentry *d_edp_reg_override;
 	struct dentry *edp_dir;
 	struct dentry *vdd_cpu_dir;
+	struct dentry *d_cpu_caps;
 
 	if (!tegra_platform_is_silicon())
 		return -ENOSYS;
@@ -1478,6 +1560,12 @@ static int __init tegra_edp_debugfs_init(void)
 	if (!d_reg_idle_cur)
 		goto err_4;
 
+	d_cpu_caps = debugfs_create_file("cpu_caps", S_IRUGO, vdd_cpu_dir,
+					 cpucaps_show, &longattr_fops);
+	if (!d_cpu_caps)
+		goto err_5;
+
+
 	if (tegra_core_edp_debugfs_init(edp_dir))
 		return -ENOMEM;
 
@@ -1487,7 +1575,8 @@ static int __init tegra_edp_debugfs_init(void)
 #endif
 
 	return 0;
-
+err_5:
+	debugfs_remove(d_reg_idle_cur);
 err_4:
 	debugfs_remove(d_edp_reg_override);
 err_3:

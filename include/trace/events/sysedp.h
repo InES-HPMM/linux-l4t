@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -89,6 +89,26 @@ TRACE_EVENT(sysedp_dynamic_capping,
 	    TP_printk("CPU %u, GPU %u, EMC %u, favor_gpu=%d",
 		      __entry->cpu / 1000, __entry->gpu / 1000,
 		      __entry->emc / 1000, __entry->favor_gpu)
+	);
+
+TRACE_EVENT(sysedp_max_cpu_pwr,
+
+	    TP_PROTO(unsigned int cpupwr, unsigned int cpufreq),
+
+	    TP_ARGS(cpupwr, cpufreq),
+
+	    TP_STRUCT__entry(
+		    __field(unsigned int, cpupwr)
+		    __field(unsigned int, cpufreq)
+		    ),
+
+	    TP_fast_assign(
+		    __entry->cpupwr = cpupwr;
+		    __entry->cpufreq = cpufreq;
+		    ),
+
+	    TP_printk("CPU: PWR %u, FREQ %u",
+		    __entry->cpupwr, __entry->cpufreq / 1000)
 	);
 
 #endif /* _TRACE_SYSEDP_H */
