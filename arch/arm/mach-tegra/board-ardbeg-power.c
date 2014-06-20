@@ -90,6 +90,8 @@ static struct platform_device *fixed_reg_devs_e1824[] = {
 #define E1735_CPU_VDD_IDLE_MA		5000
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
+#define E2141_CPU_VDD_MIN_UV		703000
+#define E2141_CPU_VDD_STEP_UV		19200
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* E1735 board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param e1735_cl_dvfs_param = {
@@ -307,6 +309,9 @@ int __init ardbeg_rail_alignment_init(void)
 	tegra_get_pmu_board_info(&pmu_board_info);
 
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
+	if (of_machine_is_compatible("nvidia,e2141"))
+		tegra13x_vdd_cpu_align(E2141_CPU_VDD_STEP_UV,
+				       E2141_CPU_VDD_MIN_UV);
 #else
 	if (pmu_board_info.board_id == BOARD_E1735)
 		tegra12x_vdd_cpu_align(E1735_CPU_VDD_STEP_UV,
