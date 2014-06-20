@@ -185,7 +185,6 @@
 #define PERIPH_CLK_SOR_CLK_SEL_MASK	(0x3<<PERIPH_CLK_SOR_CLK_SEL_SHIFT)
 
 /* PLL common */
-#define PLL_BASE			0x0
 #define PLL_BASE_BYPASS			(1<<31)
 #define PLL_BASE_ENABLE			(1<<30)
 #define PLL_BASE_REF_DISABLE		(1<<29)
@@ -465,21 +464,15 @@
 #define UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN		(1 << 16)
 
 /* PLLE */
-/* FIXME: to be removed */
-#define PLL_MISC(c)			\
-	(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
-
-#define PLLE_BASE_LOCK_OVERRIDE		(0x1 << 29)
+#define PLLE_BASE_ENABLE		(1 << 31)
+#define PLLE_BASE_LOCK_OVERRIDE		(1 << 29)
 #define PLLE_BASE_DIVCML_SHIFT		24
-#define PLLE_BASE_DIVCML_MASK		(0xf<<PLLE_BASE_DIVCML_SHIFT)
+#define PLLE_BASE_DIVCML_MASK		(0x1F<<PLLE_BASE_DIVCML_SHIFT)
 #define PLLE_BASE_DIVN_SHIFT		8
 #define PLLE_BASE_DIVN_MASK		(0xFF<<PLLE_BASE_DIVN_SHIFT)
 #define PLLE_BASE_DIVM_SHIFT		0
 #define PLLE_BASE_DIVM_MASK		(0xFF<<PLLE_BASE_DIVM_SHIFT)
 
-/* PLLE has 4-bit CMLDIV, but entry 15 is not allowed in h/w */
-#define PLLE_CMLDIV_MAX			14
-#define PLLE_MISC_READY			(1<<15)
 #define PLLE_MISC_IDDQ_SW_CTRL		(1<<14)
 #define PLLE_MISC_IDDQ_SW_VALUE		(1<<13)
 #define PLLE_MISC_LOCK			(1<<11)
@@ -580,7 +573,7 @@
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
-#define USE_PLLE_INPUT_PLLRE    1
+#define USE_PLLE_INPUT_PLLRE    0
 
 static bool tegra21_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
@@ -3894,11 +3887,10 @@ static struct clk_ops tegra_pllmb_ops = {
 	.set_rate		= tegra21_pllmb_clk_set_rate,
 };
 
-/* non-monotonic mapping below is not a typo */
-static u8 plle_p[PLLE_CMLDIV_MAX + 1] = {
-/* CMLDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
-/* p: */   1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
-
+/*
+ * PLLE
+ * Analog interpolator based SS PLL (with optional SDM SS - not used).
+ */
 static inline void select_pll_e_input(u32 aux_reg)
 {
 #if USE_PLLE_INPUT_PLLRE
@@ -3906,7 +3898,7 @@ static inline void select_pll_e_input(u32 aux_reg)
 #else
 	aux_reg &= ~(PLLE_AUX_PLLRE_SEL | PLLE_AUX_PLLP_SEL);
 #endif
-	clk_writel(aux_reg, PLLE_AUX);
+	pll_writel_delay(aux_reg, PLLE_AUX);
 }
 
 static void tegra21_plle_clk_init(struct clk *c)
@@ -3921,12 +3913,13 @@ static void tegra21_plle_clk_init(struct clk *c)
 	struct clk *ref = pll_ref;
 #endif
 
-	val = clk_readl(c->reg + PLL_BASE);
-	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
+	val = clk_readl(c->reg);
+	c->state = (val & PLLE_BASE_ENABLE) ? ON : OFF;
+
 	c->mul = (val & PLLE_BASE_DIVN_MASK) >> PLLE_BASE_DIVN_SHIFT;
 	c->div = (val & PLLE_BASE_DIVM_MASK) >> PLLE_BASE_DIVM_SHIFT;
 	p = (val & PLLE_BASE_DIVCML_MASK) >> PLLE_BASE_DIVCML_SHIFT;
-	c->div *= plle_p[p];
+	c->div *= pll_qlin_pdiv_to_p[p];
 
 	val = clk_readl(PLLE_AUX);
 	c->parent = (val & PLLE_AUX_PLLRE_SEL) ? re_vco :
@@ -3948,13 +3941,13 @@ static void tegra21_plle_clk_disable(struct clk *c)
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
 	/* FIXME: do we need to restore other s/w controls ? */
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
+	val = clk_readl(c->reg);
+	val &= ~PLLE_BASE_ENABLE;
+	clk_writel(val, c->reg);
 
-	val = clk_readl(c->reg + PLL_MISC(c));
+	val = clk_readl(c->reg + c->u.pll.misc0);
 	val |= PLLE_MISC_IDDQ_SW_CTRL | PLLE_MISC_IDDQ_SW_VALUE;
-	pll_writel_delay(val, c->reg + PLL_MISC(c));
+	pll_writel_delay(val, c->reg + c->u.pll.misc0);
 
 /* FIXME: Disable for initial Si bringup */
 #if 0
@@ -3969,7 +3962,8 @@ static void tegra21_plle_clk_disable(struct clk *c)
 
 static int tegra21_plle_clk_enable(struct clk *c)
 {
-	u32 val;
+	int p;
+	u32 val, pdiv;
 	const struct clk_pll_freq_table *sel;
 	unsigned long rate = c->u.pll.fixed_rate;
 	unsigned long input_rate = clk_get_rate(c->parent);
@@ -3980,6 +3974,7 @@ static int tegra21_plle_clk_enable(struct clk *c)
 		return 0;
 	}
 
+	/* PLLE config must be tabulated */
 	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
 		if (sel->input_rate == input_rate && sel->output_rate == rate)
 			break;
@@ -3991,19 +3986,21 @@ static int tegra21_plle_clk_enable(struct clk *c)
 		return -EINVAL;
 	}
 
+	p = c->u.pll.round_p_to_pdiv(sel->p, &pdiv);
+	BUG_ON(IS_ERR_VALUE(p) || (p != sel->p));
+
 	/* setup locking configuration, s/w control of IDDQ and enable modes,
 	   take pll out of IDDQ via s/w control, setup VREG */
-	val = clk_readl(c->reg + PLL_BASE);
+	val = clk_readl(c->reg);
 	val &= ~PLLE_BASE_LOCK_OVERRIDE;
-	clk_writel(val, c->reg + PLL_BASE);
+	clk_writel(val, c->reg);
 
-	val = clk_readl(c->reg + PLL_MISC(c));
+	val = clk_readl(c->reg + c->u.pll.misc0);
 	val |= PLLE_MISC_LOCK_ENABLE;
 	val |= PLLE_MISC_IDDQ_SW_CTRL;
 	val &= ~PLLE_MISC_IDDQ_SW_VALUE;
 	val |= PLLE_MISC_PLLE_PTS;
-	val |= PLLE_MISC_VREG_BG_CTRL_MASK | PLLE_MISC_VREG_CTRL_MASK;
-	clk_writel(val, c->reg + PLL_MISC(c));
+	clk_writel(val, c->reg + c->u.pll.misc0);
 	udelay(5);
 
 	/* configure dividers, disable SS */
@@ -4011,21 +4008,22 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	val |= PLLE_SS_DISABLE;
 	clk_writel(val, PLLE_SS_CTRL);
 
-	val = clk_readl(c->reg + PLL_BASE);
+	val = clk_readl(c->reg);
 	val &= ~(PLLE_BASE_DIVM_MASK | PLLE_BASE_DIVN_MASK |
 		 PLLE_BASE_DIVCML_MASK);
 	val |= (sel->m << PLLE_BASE_DIVM_SHIFT) |
 		(sel->n << PLLE_BASE_DIVN_SHIFT) |
-		(sel->cpcon << PLLE_BASE_DIVCML_SHIFT);
-	pll_writel_delay(val, c->reg + PLL_BASE);
+		(pdiv << PLLE_BASE_DIVCML_SHIFT);
+	pll_writel_delay(val, c->reg);
 	c->mul = sel->n;
 	c->div = sel->m * sel->p;
 
 	/* enable and lock pll */
-	val |= PLL_BASE_ENABLE;
-	clk_writel(val, c->reg + PLL_BASE);
+	val |= PLLE_BASE_ENABLE;
+	clk_writel(val, c->reg);
 	tegra21_pll_clk_wait_for_lock(
-		c, c->reg + PLL_MISC(c), PLLE_MISC_LOCK);
+		c, c->reg + c->u.pll.misc0, PLLE_MISC_LOCK);
+
 #if USE_PLLE_SS
 	val = clk_readl(PLLE_SS_CTRL);
 	val &= ~(PLLE_SS_CNTL_CENTER | PLLE_SS_CNTL_INVERT);
@@ -4037,11 +4035,12 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	val &= ~PLLE_SS_CNTL_INTERP_RESET;
 	pll_writel_delay(val, PLLE_SS_CTRL);
 #endif
+
 #if !USE_PLLE_SWCTL
 	/* switch pll under h/w control */
-	val = clk_readl(c->reg + PLL_MISC(c));
+	val = clk_readl(c->reg + c->u.pll.misc0);
 	val &= ~PLLE_MISC_IDDQ_SW_CTRL;
-	clk_writel(val, c->reg + PLL_MISC(c));
+	clk_writel(val, c->reg + c->u.pll.misc0);
 
 	val = clk_readl(PLLE_AUX);
 	val |= PLLE_AUX_USE_LOCKDET;
@@ -4050,6 +4049,7 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
 #endif
+
 /* FIXME: Disable for initial Si bringup */
 #if 0
 	/* clear XUSB PLL pad pwr override and iddq */
@@ -4069,8 +4069,8 @@ static int tegra21_plle_clk_enable(struct clk *c)
 #ifdef CONFIG_PM_SLEEP
 static void tegra21_plle_clk_resume(struct clk *c)
 {
-	u32 val = clk_readl(c->reg + PLL_BASE);
-	if (val & PLL_BASE_ENABLE)
+	u32 val = clk_readl(c->reg);
+	if (val & PLLE_BASE_ENABLE)
 		return;		/* already resumed */
 
 	/* Restore parent */
@@ -7541,31 +7541,34 @@ static struct clk tegra_dfll_cpu = {
 };
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
-	/* PLLE special case: use cpcon field to store cml divider value */
-	{ 672000000, 100000000, 100, 42,  16, 11},
-	{ 336000000, 100000000, 100, 21,  16, 11},
-	{ 312000000, 100000000, 200, 26,  24, 13},
-	{ 13000000,  100000000, 200, 1,  26, 13},
-	{ 12000000,  100000000, 200, 1,  24, 13},
+	{ 672000000, 100000000, 125, 42,  20,},
+	{ 624000000, 100000000, 125, 39,  20,},
+	{ 336000000, 100000000, 125, 21,  20,},
+	{ 312000000, 100000000, 200, 26,  24,},
+	{ 38400000,  100000000, 125, 2,   24,},
+	{ 13000000,  100000000, 184, 1,   24,},	/* actual: 99.6MHz (FPGA) */
+	{ 12000000,  100000000, 200, 1,   24,},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
 static struct clk tegra_pll_e = {
 	.name      = "pll_e",
-	.flags     = PLL_ALT_MISC_REG,
+	.flags     = PLL_FIXED,
 	.ops       = &tegra_plle_ops,
 	.reg       = 0xe8,
 	.max_rate  = 100000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 1000000000,
+		.input_max = 800000000,
 		.cf_min    = 12000000,
-		.cf_max    = 75000000,
+		.cf_max    = 38400000,
 		.vco_min   = 1600000000,
-		.vco_max   = 2400000000U,
+		.vco_max   = 2500000000U,
 		.freq_table = tegra_pll_e_freq_table,
 		.lock_delay = 300,
 		.fixed_rate = 100000000,
+		.misc0 = 0xec - 0xe8,
+		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
 	},
 };
 
