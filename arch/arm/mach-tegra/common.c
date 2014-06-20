@@ -1490,7 +1490,7 @@ static int tegra_get_board_info_properties(struct board_info *bi,
 	strcat(board_info_path, property_name);
 
 	board_info = of_find_node_by_path(board_info_path);
-	if (!IS_ERR_OR_NULL(board_info)) {
+	if (!board_info) {
 		memset(bi, 0, sizeof(*bi));
 
 		err = of_property_read_u32(board_info, "id", &prop_val);
