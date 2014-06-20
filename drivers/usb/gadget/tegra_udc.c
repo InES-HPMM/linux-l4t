@@ -2874,6 +2874,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (tegra_bonded_out_dev(BOND_OUT_USBD))
+		return -ENODEV;
+#endif
+
 	the_udc = udc = kzalloc(sizeof(struct tegra_udc), GFP_KERNEL);
 	if (udc == NULL) {
 		ERR("malloc udc failed\n");
