@@ -187,14 +187,9 @@ extern struct usb_hcd *tegra_xhci_hcd;
 	/*---------global variables-------------------*/
 	/*--------------------------------------------*/
 
-	/*Figure 57*/
 enum EP_STATE_E {
 	EP_STATE_DISABLED = 0,
 	EP_STATE_RUNNING,
-	EP_STATE_HALTED,
-	EP_STATE_PAUSED,
-	EP_STATE_ERROR
-		/*4-7 reserved*/
 };
 
 enum EP_TYPE_E {
@@ -216,49 +211,10 @@ enum TRB_TYPE_E {
 	TRB_TYPE_XFER_DATA_STAGE,
 	TRB_TYPE_XFER_STATUS_STAGE,
 	TRB_TYPE_XFER_DATA_ISOCH,   /* 5*/
-	/*below applies to both transfer and command ring*/
 	TRB_TYPE_LINK,
-	TRB_TYPE_XFER_DATA_EVENT_DATA,
-	TRB_TYPE_XFER_NOP,
-
-	/* TRB Type 9 - 23 are for command TRBs*/
-	/*
-	   TRB_TYPE_CMD_ENABLE_SLOT,
-	   TRB_TYPE_CMD_DISABLE_SLOT,  // 10
-	   TRB_TYPE_CMD_ADDRESS_DEVICE,
-	   TRB_TYPE_CMD_CONFIGURE_EP,
-	   TRB_TYPE_CMD_EVALUATE_CONTEXT,
-	   TRB_TYPE_CMD_RESET_EP,  TRB_TYPE_CMD_STOP_EP,       // 15
-	   TRB_TYPE_CMD_SET_TR_DEQUEUE_PTR,
-	   TRB_TYPE_CMD_RESET_DEVICE,
-	// Optional:  Applicable to virtualization only.
-	TRB_TYPE_CMD_FORCE_EVENT,
-	// Next two cmd are optional
-	TRB_TYPE_CMD_NEGOTIATE_BANDWIDTH,
-	TRB_TYPE_CMD_SET_LATENCY_TOLERANCE, // 20
-	TRB_TYPE_CMD_GET_PORT_BANDWIDTH,    TRB_TYPE_CMD_FORCE_HEADER,
-	TRB_TYPE_CMD_NOP,
-	 */
-	/* TRB Types 24-31 are reserved.*/
-
-
-	/* TRB_TYPE_EVT_* TRBs are only allowed on event ring.*/
 	TRB_TYPE_EVT_TRANSFER = 32,
-	/*    TRB_TYPE_EVT_CMD_DONE,*/
 	TRB_TYPE_EVT_PORT_STATUS_CHANGE = 34,
-	/*
-	// Optional
-	TRB_TYPE_EVT_BANDWIDTH_REQUEST,
-
-	// Optional:  Applicable to virtualization only.
-	TRB_TYPE_EVT_DOORBELL,          // 36
-	TRB_TYPE_EVT_HOST_CONTROLLER,
-	TRB_TYPE_EVT_DEVICE_NOTIFICATION,
-	TRB_TYPE_EVT_MFINDEX_WRAP,
-
-	// TRB Types 40-47 are reserved.
-	 */
-	/* TRB Types 48-63 are vendor defined and optional.*/
+	TRB_TYPE_XFER_STREAM = 48,
 	TRB_TYPE_EVT_SETUP_PKT = 63,
 };
 
@@ -271,55 +227,24 @@ enum TRB_CMPL_CODES_E {
 	CMPL_CODE_USB_TRANS_ERR,
 	CMPL_CODE_TRB_ERR,  /*5*/
 	CMPL_CODE_TRB_STALL,
-	CMPL_CODE_RESOURCE_ERR,
-	CMPL_CODE_BANDWIDTH_ERR,
-	CMPL_CODE_NO_SLOT_AVAILABLE_ERR,
-	CMPL_CODE_INVALID_STREAM_TYPE_ERR,
-	/*10*/
-	CMPL_CODE_SLOT_NOT_ENABLED_ERR,
-	CMPL_CODE_EP_NOT_ENABLED_ERR,
-	CMPL_CODE_SHORT_PKT,
+	CMPL_CODE_INVALID_STREAM_TYPE_ERR = 10,
+	CMPL_CODE_SHORT_PKT = 13,
 	CMPL_CODE_RING_UNDERRUN,
 	CMPL_CODE_RING_OVERRUN, /*15*/
-	CMPL_CODE_VF_EVENT_RING_FULL_ERR,
-	CMPL_CODE_PARAM_ERR,
-	CMPL_CODE_BANDWIDTH_OVERRUN_ERR,
-	CMPL_CODE_CONTEXT_STATE_ERR,
-	CMPL_CODE_PORT_RESET_ERR, /*20*/
-	CMPL_CODE_EVENT_RING_FULL_ERR,
-	/* 22 is reserved */
-	CMPL_CODE_MISSED_SERVICE_ERR = 23,
-	CMPL_CODE_CMD_RING_STOPPED,
-	CMPL_CODE_CMD_ABORTED, /*25*/
-	CMPL_CODE_STOPPED,
-	CMPL_CODE_STOPPED_LENGTH_INVALID,
-	CMPL_CODE_CONTROL_ABORT_ERR,
-	CMPL_CODE_MAX_EXIT_LATENCY_TOO_LARGE_ERROR,
-	/* 30 is reserved */
+	CMPL_CODE_EVENT_RING_FULL_ERR = 21,
+	CMPL_CODE_STOPPED = 26,
 	CMPL_CODE_ISOCH_BUFFER_OVERRUN = 31,
-	CMPL_CODE_EVENT_LOST_ERR,
-	CMPL_CODE_UNDEFINED_ERR, /*33*/
-	CMPL_CODE_INVALID_STREAM_ID_ERR,
-	CMPL_CODE_SEC_BANDWIDTH_ERR,
-	CMPL_CODE_SPLIT_XFER_ERR,
-	/*37-191 RESERVED*/
 	/*192-224 vendor defined error*/
-	/* Returned if crcr0/1 are not written prior*/
-	/* to ringing cmd ring doorbell.*/
-	CMPL_CODE_NV_CMD_RING_NOT_INITED = 192,
-	CMPL_CODE_SUCCESS_NO_PUT_OUT_CX,
-	/*225-255 vendor defined info*/
 	CMPL_CODE_STREAM_NUMP_ERROR = 219,
-	CMPL_CODE_PRIME_PIPE_RECEIVED = 220,
-	CMPL_CODE_HOST_REJECTED = 221,
+	CMPL_CODE_PRIME_PIPE_RECEIVED,
+	CMPL_CODE_HOST_REJECTED,
 	CMPL_CODE_CTRL_DIR_ERR,
 	CMPL_CODE_CTRL_SEQNUM_ERR,
-	CMPL_CODE_PENDING = 225
 };
 
 
 /* Endpoint Context */
-struct EP_CX_S {
+struct ep_cx_s {
 #define EP_CX_EP_STATE_MASK         0x00000007
 #define EP_CX_EP_STATE_SHIFT                 0
 #define EP_CX_MULT_MASK             0x00000300
@@ -476,7 +401,7 @@ struct EP_CX_S {
 
 
 /* Transfer TRBs*/
-struct TRANSFER_TRB_S {
+struct transfer_trb_s {
 	__le32   data_buf_ptr_lo;
 	__le32   data_buf_ptr_hi;
 
@@ -523,7 +448,7 @@ struct TRANSFER_TRB_S {
 
 
 /*Event TRBs*/
-struct EVENT_TRB_S {
+struct event_trb_s {
 	u32 trb_pointer_lo;
 	u32 trb_pointer_hi;
 
@@ -546,13 +471,13 @@ struct EVENT_TRB_S {
 	u32 eve_trb_dword3;
 };
 
-struct NV_UDC_REQUEST {
+struct nv_udc_request {
 	struct usb_request usb_req;
 	struct list_head queue;
 	bool mapped;
 	u64 buff_len_left;
 	u32 trbs_needed;
-	struct TRANSFER_TRB_S *td_start;
+	struct transfer_trb_s *td_start;
 	bool all_trbs_queued;
 	bool short_pkt;
 };
@@ -562,27 +487,27 @@ struct nv_setup_packet {
 	u16 seqnum;
 };
 
-struct NV_BUFFER_INFO_S {
+struct nv_buffer_info_s {
 	void *vaddr;
 	dma_addr_t dma;
 	u32 len;
 };
 
-struct NV_UDC_EP {
+struct nv_udc_ep {
 	struct usb_ep usb_ep;
 #ifdef PRIME_NOT_RCVD_WAR
 	struct delayed_work work;
 #endif
-	struct NV_BUFFER_INFO_S tran_ring_info;
+	struct nv_buffer_info_s tran_ring_info;
 	union {
-		struct TRANSFER_TRB_S *tran_ring_ptr;
-		struct TRANSFER_TRB_S *first_trb;
+		struct transfer_trb_s *tran_ring_ptr;
+		struct transfer_trb_s *first_trb;
 	};
 	union {
-		struct TRANSFER_TRB_S *link_trb;
-		struct TRANSFER_TRB_S *last_trb;
+		struct transfer_trb_s *link_trb;
+		struct transfer_trb_s *last_trb;
 	};
-	struct TRANSFER_TRB_S *enq_pt;
+	struct transfer_trb_s *enq_pt;
 	u8 pcs;
 #ifdef PRIME_NOT_RCVD_WAR
 	u8 stream_rejected_retry_count;
@@ -593,10 +518,10 @@ struct NV_UDC_EP {
 	const struct usb_endpoint_descriptor *desc;
 	const struct usb_ss_ep_comp_descriptor *comp_desc;
 	bool tran_ring_full;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 };
 
-struct SEL_VALUE_S {
+struct sel_value_s {
 	u16 u2_pel_value;
 	u16 u2_sel_value;
 	u8 u1_pel_value;
@@ -617,7 +542,7 @@ struct xudc_board_data {
 	u32 lane_owner;
 };
 
-struct NV_UDC_S {
+struct nv_udc_s {
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
 	union {
@@ -627,18 +552,18 @@ struct NV_UDC_S {
 	struct device *dev; /* a shortcut to pdev.[pci/plat]->dev */
 
 	struct otg_transceiver *transceiver;
-	struct NV_UDC_EP udc_ep[32];
-	unsigned int irq;
-	struct NV_BUFFER_INFO_S ep_cx;
-	struct EP_CX_S *p_epcx;
-	resource_size_t mmio_phys_len;
-	resource_size_t mmio_phys_base;
+	struct nv_udc_ep udc_ep[32];
+	u32 irq;
+	struct nv_buffer_info_s ep_cx;
+	struct ep_cx_s *p_epcx;
+	resource_size_t	mmio_phys_len;
+	resource_size_t	mmio_phys_base;
 
 	void __iomem *mmio_reg_base;
 
-	struct NV_BUFFER_INFO_S event_ring0;
-	struct NV_BUFFER_INFO_S event_ring1;
-	struct EVENT_TRB_S *evt_dq_pt;
+	struct nv_buffer_info_s event_ring0;
+	struct nv_buffer_info_s event_ring1;
+	struct event_trb_s *evt_dq_pt;
 	u8 CCS;
 	bool registered;
 	bool enabled;
@@ -647,8 +572,8 @@ struct NV_UDC_S {
 	u32 act_bulk_ep;
 	u32 num_enabled_eps;
 	u32 g_isoc_eps;
-	struct NV_UDC_REQUEST *status_req;
-	struct SEL_VALUE_S sel_value;
+	struct nv_udc_request *status_req;
+	struct sel_value_s sel_value;
 	u16 statusbuf;
 
 #define WAIT_FOR_SETUP      0
@@ -662,8 +587,8 @@ struct NV_UDC_S {
 	u8 resume_state;
 	u16 ctrl_seq_num;
 	spinlock_t lock;
-	struct EVENT_TRB_S *evt_seg0_last_trb;
-	struct EVENT_TRB_S *evt_seg1_last_trb;
+	struct event_trb_s *evt_seg0_last_trb;
+	struct event_trb_s *evt_seg1_last_trb;
 	u32 dbg_cnt1;
 	u32 dbg_cnt2;
 	u32 dbg_cnt3;
@@ -671,7 +596,7 @@ struct NV_UDC_S {
 #define CTRL_REQ_QUEUE_DEPTH  5
 	struct nv_setup_packet ctrl_req_queue[CTRL_REQ_QUEUE_DEPTH];
 	u8    ctrl_req_enq_idx;
-	void (*setup_fn_call_back) (struct NV_UDC_S *);
+	void (*setup_fn_call_back) (struct nv_udc_s *);
 	u16   dev_addr;
 	u32 num_evts_processed;
 	u32 iso_delay;
@@ -706,9 +631,9 @@ struct NV_UDC_S {
 	struct work_struct work;
 };
 
-void free_data_struct(struct NV_UDC_S *nvudc);
-u32 reset_data_struct(struct NV_UDC_S *nvudc);
-void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
+void free_data_struct(struct nv_udc_s *nvudc);
+u32 reset_data_struct(struct nv_udc_s *nvudc);
+void nvudc_handle_event(struct nv_udc_s *nvudc, struct event_trb_s *event);
 /*
  * macro to poll STCHG reg for expected value.  If we exceed polling limit,
  * a console message is printed.  _fmt must be enclosed * in ""

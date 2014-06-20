@@ -44,7 +44,7 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 static const char const driver_name[] = "tegra-xudc";
-static struct NV_UDC_S *the_controller;
+static struct nv_udc_s *the_controller;
 
 static const char * const udc_regulator_names[] = {
 	"hvdd_usb",		/* TODO 3.3V */
@@ -61,14 +61,14 @@ static int nvudc_gadget_start(struct usb_gadget *,
 static int nvudc_gadget_stop(struct usb_gadget *,
 		struct usb_gadget_driver *);
 
-static void build_ep0_status(struct NV_UDC_EP *udc_ep_ptr, bool default_value,
-		u32 status, struct NV_UDC_REQUEST *udc_req_ptr);
+static void build_ep0_status(struct nv_udc_ep *udc_ep_ptr, bool default_value,
+		u32 status, struct nv_udc_request *udc_req_ptr);
 
-static int ep_halt(struct NV_UDC_EP *udc_ep_ptr, int halt);
-static void setup_status_trb(struct NV_UDC_S *nvudc,
-	struct TRANSFER_TRB_S *p_trb, struct usb_request *usb_req, u8 pcs);
+static int ep_halt(struct nv_udc_ep *udc_ep_ptr, int halt);
+static void setup_status_trb(struct nv_udc_s *nvudc,
+	struct transfer_trb_s *p_trb, struct usb_request *usb_req, u8 pcs);
 
-static void nvudc_handle_setup_pkt(struct NV_UDC_S *nvudc,
+static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 		struct usb_ctrlrequest *setup_pkt, u16 seq_num);
 #define NUM_EP_CX	32
 
@@ -91,11 +91,12 @@ static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.wMaxPacketSize = cpu_to_le16(64),
 };
 
-int debug_level = LEVEL_WARNING;
+int debug_level = LEVEL_INFO;
 module_param(debug_level, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(debug_level, "level 0~4");
 
-static void usbep_struct_setup(struct NV_UDC_S *nvudc, u32 index, u8 *name);
+static void usbep_struct_setup(struct nv_udc_s *nvudc, u32 index, u8 *name);
+
 static bool u1_u2_enable = true;
 module_param(u1_u2_enable, bool, S_IRUGO|S_IWUSR);
 
@@ -144,7 +145,7 @@ MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
-static inline void xudc_set_port_power(struct NV_UDC_S *nvudc, bool on)
+static inline void xudc_set_port_power(struct nv_udc_s *nvudc, bool on)
 {
 	u32 portsc;
 	struct device *dev = nvudc->dev;
@@ -177,7 +178,7 @@ static inline void xudc_set_port_power(struct NV_UDC_S *nvudc, bool on)
 }
 
 /* must hold nvudc->lock */
-static inline void vbus_detected(struct NV_UDC_S *nvudc)
+static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
 	/* set VBUS_OVERRIDE only in device mode when ID pin is floating */
 	if (nvudc->vbus_detected || nvudc->id_grounded)
@@ -190,7 +191,7 @@ static inline void vbus_detected(struct NV_UDC_S *nvudc)
 }
 
 /* must hold nvudc->lock */
-static inline void vbus_not_detected(struct NV_UDC_S *nvudc)
+static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 {
 	if (!nvudc->vbus_detected)
 		return; /* nothing to do */
@@ -201,7 +202,7 @@ static inline void vbus_not_detected(struct NV_UDC_S *nvudc)
 	nvudc->vbus_detected = false;
 }
 
-static inline void xudc_enable_vbus(struct NV_UDC_S *nvudc)
+static inline void xudc_enable_vbus(struct nv_udc_s *nvudc)
 {
 	struct device *dev = nvudc->dev;
 	int ret;
@@ -216,7 +217,7 @@ static inline void xudc_enable_vbus(struct NV_UDC_S *nvudc)
 	}
 }
 
-static inline void xudc_disable_vbus(struct NV_UDC_S *nvudc)
+static inline void xudc_disable_vbus(struct nv_udc_s *nvudc)
 {
 	struct device *dev = nvudc->dev;
 	int ret;
@@ -233,8 +234,8 @@ static inline void xudc_disable_vbus(struct NV_UDC_S *nvudc)
 
 static void irq_work(struct work_struct *work)
 {
-	struct NV_UDC_S *nvudc =
-		container_of(work, struct NV_UDC_S, work);
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, work);
 
 	if (nvudc->id_grounded) {
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
@@ -256,8 +257,8 @@ static void irq_work(struct work_struct *work)
 static int extcon_id_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
-	struct NV_UDC_S *nvudc =
-			container_of(nb, struct NV_UDC_S, id_extcon_nb);
+	struct nv_udc_s *nvudc =
+			container_of(nb, struct nv_udc_s, id_extcon_nb);
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
 
@@ -290,8 +291,8 @@ done:
 static int extcon_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
-	struct NV_UDC_S *nvudc =
-			container_of(nb, struct NV_UDC_S, vbus_extcon_nb);
+	struct nv_udc_s *nvudc =
+			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
 
@@ -315,7 +316,7 @@ exit:
 	return NOTIFY_DONE;
 }
 
-static void set_interrupt_moderation(struct NV_UDC_S *nvudc, unsigned us)
+static void set_interrupt_moderation(struct nv_udc_s *nvudc, unsigned us)
 {
 	u32 reg;
 	u32 imodi = us * 4; /* 1 us = 4 x 250 ns */
@@ -334,7 +335,7 @@ static void set_interrupt_moderation(struct NV_UDC_S *nvudc, unsigned us)
 	iowrite32(reg, nvudc->mmio_reg_base + RT_IMOD);
 }
 
-static void setup_link_trb(struct TRANSFER_TRB_S *link_trb,
+static void setup_link_trb(struct transfer_trb_s *link_trb,
 					bool toggle, dma_addr_t next_trb)
 {
 	u32 dw = 0;
@@ -353,8 +354,8 @@ static void setup_link_trb(struct TRANSFER_TRB_S *link_trb,
 	link_trb->trb_dword3 = cpu_to_le32(dw);
 }
 
-static dma_addr_t tran_trb_virt_to_dma(struct NV_UDC_EP *udc_ep,
-	struct TRANSFER_TRB_S *trb)
+static dma_addr_t tran_trb_virt_to_dma(struct nv_udc_ep *udc_ep,
+	struct transfer_trb_s *trb)
 {
 	unsigned long offset;
 	int trb_idx;
@@ -371,12 +372,12 @@ static dma_addr_t tran_trb_virt_to_dma(struct NV_UDC_EP *udc_ep,
 	return dma_addr;
 }
 
-static struct TRANSFER_TRB_S *tran_trb_dma_to_virt(struct NV_UDC_EP *udc_ep,
+static struct transfer_trb_s *tran_trb_dma_to_virt(struct nv_udc_ep *udc_ep,
 	u64 address)
 {
 	unsigned long offset;
-	struct TRANSFER_TRB_S *trb_virt;
-	struct NV_UDC_S *nvudc = udc_ep->nvudc;
+	struct transfer_trb_s *trb_virt;
+	struct nv_udc_s *nvudc = udc_ep->nvudc;
 
 	if (lower_32_bits(address) & 0xf) {
 		msg_dbg(nvudc->dev, "transfer ring dma address incorrect\n");
@@ -386,24 +387,24 @@ static struct TRANSFER_TRB_S *tran_trb_dma_to_virt(struct NV_UDC_EP *udc_ep,
 	offset = address - udc_ep->tran_ring_info.dma;
 	if (unlikely(offset > udc_ep->tran_ring_info.len))
 		return NULL;
-	offset = offset / sizeof(struct TRANSFER_TRB_S);
+	offset = offset / sizeof(struct transfer_trb_s);
 	trb_virt = udc_ep->tran_ring_ptr + offset;
 	return trb_virt;
 }
 
-static dma_addr_t event_trb_virt_to_dma(struct NV_UDC_S *nvudc,
-		struct EVENT_TRB_S *event)
+static dma_addr_t event_trb_virt_to_dma(struct nv_udc_s *nvudc,
+		struct event_trb_s *event)
 {
 	dma_addr_t dma_addr = 0;
 	unsigned long seg_offset;
-	struct EVENT_TRB_S *evt_seg0_first_trb;
-	struct EVENT_TRB_S *evt_seg1_first_trb;
+	struct event_trb_s *evt_seg0_first_trb;
+	struct event_trb_s *evt_seg1_first_trb;
 
 	if (!nvudc || !event)
 		return 0;
 
-	evt_seg0_first_trb = (struct EVENT_TRB_S *)nvudc->event_ring0.vaddr;
-	evt_seg1_first_trb = (struct EVENT_TRB_S *)nvudc->event_ring1.vaddr;
+	evt_seg0_first_trb = (struct event_trb_s *)nvudc->event_ring0.vaddr;
+	evt_seg1_first_trb = (struct event_trb_s *)nvudc->event_ring1.vaddr;
 
 	if ((event >= evt_seg0_first_trb) &&
 		(event <= nvudc->evt_seg0_last_trb)) {
@@ -418,14 +419,14 @@ static dma_addr_t event_trb_virt_to_dma(struct NV_UDC_S *nvudc,
 	return dma_addr;
 }
 
-static void nvudc_epcx_setup(struct NV_UDC_EP *udc_ep)
+static void nvudc_epcx_setup(struct nv_udc_ep *udc_ep)
 {
-	struct NV_UDC_S *nvudc = udc_ep->nvudc;
+	struct nv_udc_s *nvudc = udc_ep->nvudc;
 	struct device *dev = nvudc->dev;
 	const struct usb_endpoint_descriptor *desc = udc_ep->desc;
 	const struct usb_ss_ep_comp_descriptor *comp_desc = udc_ep->comp_desc;
 	u8 DCI = udc_ep->DCI;
-	struct EP_CX_S *epcx = (struct EP_CX_S *)nvudc->p_epcx + DCI;
+	struct ep_cx_s *epcx = (struct ep_cx_s *)nvudc->p_epcx + DCI;
 	enum EP_TYPE_E ep_type;
 	u16 esit_payload = 0;
 	u16 maxburst = 0;
@@ -435,7 +436,7 @@ static void nvudc_epcx_setup(struct NV_UDC_EP *udc_ep)
 	u32 dw;
 
 	msg_dbg(dev, "nvudc->p_epcx %p, epcx %p\n", nvudc->p_epcx, epcx);
-	msg_dbg(dev, "DCI %d, sizeof ep_cx %d\n", DCI, sizeof(struct EP_CX_S));
+	msg_dbg(dev, "DCI %d, sizeof ep_cx %d\n", DCI, sizeof(struct ep_cx_s));
 
 	if (usb_endpoint_dir_out(desc))
 		ep_type = usb_endpoint_type(desc);
@@ -521,24 +522,24 @@ static void nvudc_epcx_setup(struct NV_UDC_EP *udc_ep)
 static int nvudc_ep_enable(struct usb_ep *ep,
 		const struct usb_endpoint_descriptor *desc)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s *nvudc;
 	struct device *dev;
 	bool is_isoc_ep = false;
 	u32 u_temp = 0;
 	unsigned long flags;
-	struct EP_CX_S *p_ep_cx;
+	struct ep_cx_s *p_ep_cx;
 
 	if  (!ep || !desc || (desc->bDescriptorType != USB_DT_ENDPOINT))
 		return -EINVAL;
 
-	udc_ep = container_of(ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 
 	if (!nvudc->driver)
 		return -ESHUTDOWN;
 
-	p_ep_cx = (struct EP_CX_S *) nvudc->p_epcx + udc_ep->DCI;
+	p_ep_cx = (struct ep_cx_s *) nvudc->p_epcx + udc_ep->DCI;
 	if (XHCI_GETF(EP_CX_EP_STATE, p_ep_cx->ep_dw0) != EP_STATE_DISABLED)
 		nvudc_ep_disable(ep);
 
@@ -577,7 +578,7 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 			else if (usb_endpoint_xfer_int(desc))
 				ring_size = NVUDC_INT_EP_TD_RING_SIZE;
 
-			len = ring_size * sizeof(struct TRANSFER_TRB_S);
+			len = ring_size * sizeof(struct transfer_trb_s);
 			vaddr = dma_alloc_coherent(nvudc->dev, len,
 					&dma, GFP_ATOMIC);
 			if (!vaddr) {
@@ -678,10 +679,10 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 /* Completes request.  Calls gadget completion handler
  * caller must have acquired spin lock.
  */
-static void req_done(struct NV_UDC_EP *udc_ep,
-			struct NV_UDC_REQUEST *udc_req, int status)
+static void req_done(struct nv_udc_ep *udc_ep,
+			struct nv_udc_request *udc_req, int status)
 {
-	struct NV_UDC_S *nvudc = udc_ep->nvudc;
+	struct nv_udc_s *nvudc = udc_ep->nvudc;
 
 	if (likely(udc_req->usb_req.status == -EINPROGRESS))
 		udc_req->usb_req.status = status;
@@ -706,13 +707,13 @@ static void req_done(struct NV_UDC_EP *udc_ep,
 	msg_exit(nvudc->dev);
 }
 
-static void nuke(struct NV_UDC_EP *udc_ep, int status)
+static void nuke(struct nv_udc_ep *udc_ep, int status)
 {
-	struct NV_UDC_REQUEST *req = NULL;
+	struct nv_udc_request *req = NULL;
 	while (!list_empty(&udc_ep->queue)) {
 
 		req = list_entry(udc_ep->queue.next,
-				struct NV_UDC_REQUEST,
+				struct nv_udc_request,
 				queue);
 
 		req_done(udc_ep, req, status);
@@ -722,9 +723,9 @@ static void nuke(struct NV_UDC_EP *udc_ep, int status)
 
 static int nvudc_ep_disable(struct usb_ep *_ep)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S *nvudc;
-	struct EP_CX_S *p_ep_cx;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s *nvudc;
+	struct ep_cx_s *p_ep_cx;
 	unsigned long flags;
 	u32 u_temp, u_temp2;
 	uint	ep_state;
@@ -732,11 +733,11 @@ static int nvudc_ep_disable(struct usb_ep *_ep)
 	if (!_ep)
 		return -EINVAL;
 
-	udc_ep = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 	msg_entry(nvudc->dev);
 
-	p_ep_cx = (struct EP_CX_S *)nvudc->p_epcx + udc_ep->DCI;
+	p_ep_cx = (struct ep_cx_s *)nvudc->p_epcx + udc_ep->DCI;
 
 	ep_state = XHCI_GETF(EP_CX_EP_STATE, p_ep_cx->ep_dw0);
 	if (!ep_state) {
@@ -771,7 +772,7 @@ static int nvudc_ep_disable(struct usb_ep *_ep)
 	udc_ep->desc = NULL;
 
 	/* clean up the endpoint context */
-	memset(p_ep_cx, 0, sizeof(struct EP_CX_S));
+	memset(p_ep_cx, 0, sizeof(struct ep_cx_s));
 
 	/* clean up the hw registers which used to track ep states*/
 	/* EP_PAUSE register */
@@ -829,15 +830,15 @@ static int nvudc_ep_disable(struct usb_ep *_ep)
 static struct usb_request *
 nvudc_alloc_request(struct usb_ep *_ep, gfp_t gfp_flags)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S *nvudc;
-	struct NV_UDC_REQUEST *udc_req_ptr = NULL;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s *nvudc;
+	struct nv_udc_request *udc_req_ptr = NULL;
 
-	udc_ep = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 	msg_entry(nvudc->dev);
 
-	udc_req_ptr = kzalloc(sizeof(struct NV_UDC_REQUEST), gfp_flags);
+	udc_req_ptr = kzalloc(sizeof(struct nv_udc_request), gfp_flags);
 
 	msg_dbg(nvudc->dev, "udc_req_ptr = 0x%p\n", udc_req_ptr);
 
@@ -853,26 +854,26 @@ nvudc_alloc_request(struct usb_ep *_ep, gfp_t gfp_flags)
 
 static void nvudc_free_request(struct usb_ep *_ep, struct usb_request *_req)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S *nvudc;
-	struct NV_UDC_REQUEST *udc_req_ptr = NULL;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s *nvudc;
+	struct nv_udc_request *udc_req_ptr = NULL;
 
-	udc_ep = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 	msg_entry(nvudc->dev);
 
 	if (!_ep || !_req)
 		return;
 
-	udc_req_ptr = container_of(_req, struct NV_UDC_REQUEST, usb_req);
+	udc_req_ptr = container_of(_req, struct nv_udc_request, usb_req);
 	kfree(udc_req_ptr);
 	msg_exit(nvudc->dev);
 }
 
 /* num_trbs here is the size of the ring. */
-u32 room_on_ring(struct NV_UDC_S *nvudc, u32 num_trbs,
-		struct TRANSFER_TRB_S *p_ring, struct TRANSFER_TRB_S *enq_pt,
-		struct TRANSFER_TRB_S *dq_pt)
+u32 room_on_ring(struct nv_udc_s *nvudc, u32 num_trbs,
+		struct transfer_trb_s *p_ring, struct transfer_trb_s *enq_pt,
+		struct transfer_trb_s *dq_pt)
 {
 	u32 i = 0;
 
@@ -899,7 +900,7 @@ u32 room_on_ring(struct NV_UDC_S *nvudc, u32 num_trbs,
 	return i-1;
 }
 
-void setup_status_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
+void setup_status_trb(struct nv_udc_s *nvudc, struct transfer_trb_s *p_trb,
 		struct usb_request *usb_req, u8 pcs)
 {
 
@@ -933,7 +934,7 @@ void setup_status_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
 
 }
 
-void setup_datastage_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
+void setup_datastage_trb(struct nv_udc_s *nvudc, struct transfer_trb_s *p_trb,
 		struct usb_request *usb_req, u8 pcs, u32 num_trb,
 		u32 transfer_length, u32 td_size, u8 IOC, u8 dir)
 {
@@ -968,7 +969,7 @@ void setup_datastage_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
 }
 
 
-void setup_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
+void setup_trb(struct nv_udc_s *nvudc, struct transfer_trb_s *p_trb,
 		struct usb_request *usb_req, u32 xfer_len,
 		dma_addr_t xfer_buf_addr, u8 td_size, u8 pcs,
 		u8 trb_type, u8 short_pkt, u8 chain_bit,
@@ -1025,9 +1026,9 @@ void setup_trb(struct NV_UDC_S *nvudc, struct TRANSFER_TRB_S *p_trb,
  *    Actual transfer length is gotten and usb_request gets completed
  *    during IOC interrupt of TD. The completion of zlp is ignored.
  */
-static void nvudc_queue_zlp_td(struct NV_UDC_S *nvudc, struct NV_UDC_EP *udc_ep)
+static void nvudc_queue_zlp_td(struct nv_udc_s *nvudc, struct nv_udc_ep *udc_ep)
 {
-	struct TRANSFER_TRB_S *enq_pt = udc_ep->enq_pt;
+	struct transfer_trb_s *enq_pt = udc_ep->enq_pt;
 	u32 dw = 0;
 
 	enq_pt->data_buf_ptr_lo = 0;
@@ -1061,23 +1062,23 @@ static void nvudc_queue_zlp_td(struct NV_UDC_S *nvudc, struct NV_UDC_EP *udc_ep)
 	udc_ep->enq_pt = enq_pt;
 }
 
-int nvudc_queue_trbs(struct NV_UDC_EP *udc_ep_ptr,
-		struct NV_UDC_REQUEST *udc_req_ptr,  bool b_isoc,
+int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
+		struct nv_udc_request *udc_req_ptr,  bool b_isoc,
 		u32 xfer_ring_size,
 		u32 num_trbs_needed, u64 buffer_length)
 {
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
-	struct TRANSFER_TRB_S *p_xfer_ring = udc_ep_ptr->tran_ring_ptr;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
+	struct transfer_trb_s *p_xfer_ring = udc_ep_ptr->tran_ring_ptr;
 	u32 num_trbs_ava = 0;
 	struct usb_request *usb_req = &udc_req_ptr->usb_req;
-	struct EP_CX_S *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
+	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
 	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
 	u32 deq_pt_hi = p_ep_cx->ep_dw3;
 	u64 dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
-	struct TRANSFER_TRB_S *dq_pt;
+	struct transfer_trb_s *dq_pt;
 	u64 buff_len_temp = 0;
 	u32 i, j = 1;
-	struct TRANSFER_TRB_S *enq_pt = udc_ep_ptr->enq_pt;
+	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
 	u8 td_size;
 	u8 chain_bit = 1;
 	u8 short_pkt = 0;
@@ -1105,7 +1106,7 @@ int nvudc_queue_trbs(struct NV_UDC_EP *udc_ep_ptr,
 	td_size = num_trbs_needed;
 
 	num_trbs_ava = room_on_ring(nvudc, xfer_ring_size, p_xfer_ring,
-			udc_ep_ptr->enq_pt, (struct TRANSFER_TRB_S *)dq_pt);
+			udc_ep_ptr->enq_pt, (struct transfer_trb_s *)dq_pt);
 
 
 	/* trb_buf_addr points to the addr of the buffer that we write in
@@ -1129,7 +1130,7 @@ int nvudc_queue_trbs(struct NV_UDC_EP *udc_ep_ptr,
 		count = num_trbs_needed;
 	else {
 		if (b_isoc) {
-			struct NV_UDC_REQUEST *udc_req_ptr_temp;
+			struct nv_udc_request *udc_req_ptr_temp;
 			u8 temp = 0;
 			list_for_each_entry(udc_req_ptr_temp,
 					&udc_ep_ptr->queue, queue) {
@@ -1196,7 +1197,6 @@ int nvudc_queue_trbs(struct NV_UDC_EP *udc_ep_ptr,
 			   chain_bit = 1;
 			   pcs ^= 0x1;
 			 */
-#define TRB_TYPE_XFER_STREAM	48
 		if (udc_ep_ptr->comp_desc
 				&& usb_ss_max_streams(udc_ep_ptr->comp_desc)) {
 			setup_trb(nvudc, enq_pt, usb_req, buff_len_temp,
@@ -1244,19 +1244,19 @@ int nvudc_queue_trbs(struct NV_UDC_EP *udc_ep_ptr,
 
 
 
-int nvudc_queue_ctrl(struct NV_UDC_EP *udc_ep_ptr,
-		struct NV_UDC_REQUEST *udc_req_ptr, u32 num_of_trbs_needed)
+int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
+		struct nv_udc_request *udc_req_ptr, u32 num_of_trbs_needed)
 {
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
-	struct EP_CX_S *p_ep_cx = nvudc->p_epcx;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
+	struct ep_cx_s *p_ep_cx = nvudc->p_epcx;
 	u8 ep_state = XHCI_GETF(EP_CX_EP_STATE, p_ep_cx->ep_dw0);
-	struct TRANSFER_TRB_S *enq_pt = udc_ep_ptr->enq_pt;
+	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
 	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
-	struct TRANSFER_TRB_S *dq_pt;
+	struct transfer_trb_s *dq_pt;
 	u32 deq_pt_hi = p_ep_cx->ep_dw3;
 	u64 dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
 	struct usb_request *usb_req = &udc_req_ptr->usb_req;
-	struct TRANSFER_TRB_S *p_trb;
+	struct transfer_trb_s *p_trb;
 	u32 transfer_length;
 	u32 td_size = 0;
 	u8 IOC;
@@ -1383,11 +1383,11 @@ int nvudc_queue_ctrl(struct NV_UDC_EP *udc_ep_ptr,
 	return 0;
 }
 
-int nvudc_build_td(struct NV_UDC_EP *udc_ep_ptr,
-		struct NV_UDC_REQUEST *udc_req_ptr)
+int nvudc_build_td(struct nv_udc_ep *udc_ep_ptr,
+		struct nv_udc_request *udc_req_ptr)
 {
 	int status = 0;
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
 	u32 num_trbs_needed;
 	u64 buffer_length;
 	u32 u_temp;
@@ -1456,17 +1456,17 @@ int nvudc_build_td(struct NV_UDC_EP *udc_ep_ptr,
 static int
 nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 {
-	struct NV_UDC_REQUEST *udc_req_ptr;
-	struct NV_UDC_EP *udc_ep_ptr;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_request *udc_req_ptr;
+	struct nv_udc_ep *udc_ep_ptr;
+	struct nv_udc_s *nvudc;
 	int status;
 	unsigned long flags;
 
 	if (!_req || !_ep)
 		return -EINVAL;
 
-	udc_req_ptr = container_of(_req, struct NV_UDC_REQUEST, usb_req);
-	udc_ep_ptr = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_req_ptr = container_of(_req, struct nv_udc_request, usb_req);
+	udc_ep_ptr = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep_ptr->nvudc;
 	msg_entry(nvudc->dev);
 
@@ -1549,10 +1549,10 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 /* This function will go through the list of the USB requests for the
  * given endpoint and schedule any unscheduled trb's to the xfer ring
  */
-void queue_pending_trbs(struct NV_UDC_EP *nvudc_ep_ptr)
+void queue_pending_trbs(struct nv_udc_ep *nvudc_ep_ptr)
 {
-	struct NV_UDC_S *nvudc = nvudc_ep_ptr->nvudc;
-	struct NV_UDC_REQUEST *udc_req_ptr;
+	struct nv_udc_s *nvudc = nvudc_ep_ptr->nvudc;
+	struct nv_udc_request *udc_req_ptr;
 	msg_entry(nvudc->dev);
 	/* schedule  trbs till there arent any pending unscheduled ones
 	 * or the ring is full again
@@ -1567,10 +1567,10 @@ void queue_pending_trbs(struct NV_UDC_EP *nvudc_ep_ptr)
 	msg_exit(nvudc->dev);
 }
 
-u32 actual_data_xfered(struct NV_UDC_EP *udc_ep, struct NV_UDC_REQUEST *udc_req)
+u32 actual_data_xfered(struct nv_udc_ep *udc_ep, struct nv_udc_request *udc_req)
 {
-	struct NV_UDC_S *nvudc = udc_ep->nvudc;
-	struct EP_CX_S *p_ep_cx = nvudc->p_epcx + udc_ep->DCI;
+	struct nv_udc_s *nvudc = udc_ep->nvudc;
+	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep->DCI;
 	u16 data_offset = XHCI_GETF(EP_CX_DATA_OFFSET, p_ep_cx->ep_dw7);
 	u8 num_trbs = XHCI_GETF(EP_CX_NUMTRBS, p_ep_cx->ep_dw7);
 	u64 data_left = ((num_trbs+1) * TRB_MAX_BUFFER_SIZE) -
@@ -1578,13 +1578,13 @@ u32 actual_data_xfered(struct NV_UDC_EP *udc_ep, struct NV_UDC_REQUEST *udc_req)
 	return udc_req->usb_req.length - data_left;
 }
 
-void flush_xfer_ring(struct NV_UDC_EP *udc_ep_ptr,
-		struct NV_UDC_REQUEST *udc_req_ptr, u8 num_trbs)
+void flush_xfer_ring(struct nv_udc_ep *udc_ep_ptr,
+		struct nv_udc_request *udc_req_ptr, u8 num_trbs)
 {
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
-	struct TRANSFER_TRB_S *enq_pt = udc_req_ptr->td_start;
-	struct TRANSFER_TRB_S *dq_pt;
-	struct EP_CX_S *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
+	struct transfer_trb_s *enq_pt = udc_req_ptr->td_start;
+	struct transfer_trb_s *dq_pt;
+	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
 	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
 	u32 deq_pt_hi = p_ep_cx->ep_dw3;
 	u64   dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
@@ -1608,21 +1608,21 @@ void flush_xfer_ring(struct NV_UDC_EP *udc_ep_ptr,
 	static int
 nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s *nvudc;
 	u32 u_temp, u_temp2 = 0;
-	struct NV_UDC_REQUEST *udc_req;
+	struct nv_udc_request *udc_req;
 	int ret = 0;
-	struct EP_CX_S *p_ep_cx;
+	struct ep_cx_s *p_ep_cx;
 	u8 ep_state;
-	struct NV_UDC_REQUEST *p_new_udc_req;
+	struct nv_udc_request *p_new_udc_req;
 	u64 new_dq_pt;
 	unsigned long flags;
 
 	if (!_ep || !_req)
 		return -EINVAL;
 
-	udc_ep = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 	msg_entry(nvudc->dev);
 
@@ -1673,7 +1673,7 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		 update dequeue pointer to next TD. */
 		udc_req->usb_req.actual = actual_data_xfered(udc_ep, udc_req);
 		p_new_udc_req = list_entry(udc_ep->queue.next,
-						struct NV_UDC_REQUEST, queue);
+						struct nv_udc_request, queue);
 
 		if (p_new_udc_req) {
 			msg_dbg(nvudc->dev, " more requests pending\n");
@@ -1713,7 +1713,7 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		/* request was written to the transfer ring, but haven't
 		 * processed by HW yet.*/
 		u32 xfer_ring_size;
-		struct NV_UDC_REQUEST *next_req;
+		struct nv_udc_request *next_req;
 		msg_dbg(nvudc->dev, "haven't process by HW yet.\n");
 
 		if (usb_endpoint_xfer_control(udc_ep->desc))
@@ -1733,7 +1733,7 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 			udc_ep->tran_ring_full = false;
 
 		next_req = list_entry(udc_req->queue.next,
-					struct NV_UDC_REQUEST,	queue);
+					struct nv_udc_request,	queue);
 
 		list_for_each_entry_from(next_req, &udc_ep->queue, queue) {
 			next_req->usb_req.status = -EINPROGRESS;
@@ -1780,15 +1780,15 @@ dqerr:
  */
 static int nvudc_ep_set_halt(struct usb_ep *_ep, int value)
 {
-	struct NV_UDC_EP *udc_ep_ptr;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_ep *udc_ep_ptr;
+	struct nv_udc_s *nvudc;
 	int status;
 	unsigned long flags;
 
 	if (!_ep)
 		return -EINVAL;
 
-	udc_ep_ptr = container_of(_ep, struct NV_UDC_EP, usb_ep);
+	udc_ep_ptr = container_of(_ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep_ptr->nvudc;
 	msg_entry(nvudc->dev);
 
@@ -1806,11 +1806,11 @@ static int nvudc_ep_set_halt(struct usb_ep *_ep, int value)
 	return status;
 }
 
-static int ep_halt(struct NV_UDC_EP *udc_ep_ptr, int halt)
+static int ep_halt(struct nv_udc_ep *udc_ep_ptr, int halt)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 	u32 u_temp, u_temp2, u_pause;
-	struct EP_CX_S *p_ep_cx;
+	struct ep_cx_s *p_ep_cx;
 	bool reset_seq_only = false;
 
 	nvudc = udc_ep_ptr->nvudc;
@@ -1914,11 +1914,11 @@ static int ep_halt(struct NV_UDC_EP *udc_ep_ptr, int halt)
 	return 0;
 }
 
-void doorbell_for_unpause(struct NV_UDC_S *nvudc, u32 paused_bits)
+void doorbell_for_unpause(struct nv_udc_s *nvudc, u32 paused_bits)
 {
 	int i;
 	u32 u_temp;
-	struct NV_UDC_EP *udc_ep_ptr;
+	struct nv_udc_ep *udc_ep_ptr;
 
 	for (i = 0; i < NUM_EP_CX; i++) {
 		if (!paused_bits)
@@ -1948,13 +1948,13 @@ static struct usb_ep_ops nvudc_ep_ops = {
 static int nvudc_gadget_get_frame(struct usb_gadget *gadget)
 {
 	u32 u_temp;
-	struct NV_UDC_S *nvudc = container_of(gadget, struct NV_UDC_S, gadget);
+	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	u_temp = ioread32(nvudc->mmio_reg_base + MFINDEX);
 	u_temp = MFINDEX_FRAME(u_temp);
 	return u_temp >> MFINDEX_FRAME_SHIFT;
 }
 
-static void nvudc_resume_state(struct NV_UDC_S *nvudc)
+static void nvudc_resume_state(struct nv_udc_s *nvudc)
 {
 	u32 ep_paused, u_temp, u_temp2;
 
@@ -1992,7 +1992,7 @@ static void nvudc_resume_state(struct NV_UDC_S *nvudc)
 
 static int nvudc_gadget_wakeup(struct usb_gadget *gadget)
 {
-	struct NV_UDC_S *nvudc = container_of(gadget, struct NV_UDC_S, gadget);
+	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	u32 utemp, u_temp2;
 	unsigned long flags;
 
@@ -2001,7 +2001,7 @@ static int nvudc_gadget_wakeup(struct usb_gadget *gadget)
 
 	utemp = ioread32(nvudc->mmio_reg_base + PORTPM);
 
-	msg_dbg(nvudc->dev, "PORTPM = %08x, speed = %d\n", utemp,
+	msg_info(nvudc->dev, "PORTPM = %08x, speed = %d\n", utemp,
 		nvudc->gadget.speed);
 
 	if (((nvudc->gadget.speed == USB_SPEED_FULL ||
@@ -2032,7 +2032,7 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 {
 	u32 temp;
 	unsigned long flags;
-	struct NV_UDC_S *nvudc = container_of(gadget, struct NV_UDC_S, gadget);
+	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	msg_dbg(nvudc->dev, "pullup is_on = %x", is_on);
 
 	spin_lock_irqsave(&nvudc->lock, flags);
@@ -2062,9 +2062,9 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 
 static int nvudc_vbus_draw(struct usb_gadget *gadget, unsigned m_a)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
-	nvudc = container_of(gadget, struct NV_UDC_S, gadget);
+	nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	msg_dbg(nvudc->dev, "nvudc_vbus_draw m_a= 0x%x\n", m_a);
 	return -ENOTSUPP;
 }
@@ -2074,7 +2074,6 @@ static struct usb_gadget_ops nvudc_gadget_ops = {
 	.get_frame = nvudc_gadget_get_frame,
 	.wakeup = nvudc_gadget_wakeup,
 	.pullup = nvudc_gadget_pullup,
-	/* TODO: remove when we don't support 3.8.2 anymore */
 	.udc_start = nvudc_gadget_start,
 	.udc_stop = nvudc_gadget_stop,
 	.vbus_draw = nvudc_vbus_draw,
@@ -2085,11 +2084,11 @@ static void nvudc_gadget_release(struct device *dev)
 	return;
 }
 
-static void update_ep0_maxpacketsize(struct NV_UDC_S *nvudc)
+static void update_ep0_maxpacketsize(struct nv_udc_s *nvudc)
 {
 	u16 maxpacketsize = 0;
-	struct EP_CX_S *p_epcx = nvudc->p_epcx;
-	struct NV_UDC_EP *ep0 = &nvudc->udc_ep[0];
+	struct nv_udc_ep *ep0 = &nvudc->udc_ep[0];
+	struct ep_cx_s *p_epcx = nvudc->p_epcx;
 
 	if (nvudc->gadget.speed == USB_SPEED_SUPER)
 		maxpacketsize = 512;
@@ -2101,10 +2100,10 @@ static void update_ep0_maxpacketsize(struct NV_UDC_S *nvudc)
 	ep0->usb_ep.maxpacket = maxpacketsize;
 }
 
-int init_ep0(struct NV_UDC_S *nvudc)
+int init_ep0(struct nv_udc_s *nvudc)
 {
-	struct EP_CX_S *epcx = nvudc->p_epcx;
-	struct NV_UDC_EP *udc_ep = &nvudc->udc_ep[0];
+	struct ep_cx_s *epcx = nvudc->p_epcx;
+	struct nv_udc_ep *udc_ep = &nvudc->udc_ep[0];
 	struct device *dev = nvudc->dev;
 	u32 dw;
 
@@ -2115,8 +2114,8 @@ int init_ep0(struct NV_UDC_S *nvudc)
 		void *vaddr;
 		size_t len;
 
-		len = ring_size * sizeof(struct TRANSFER_TRB_S);
-		vaddr = dma_alloc_coherent(nvudc->dev, len, &dma, GFP_ATOMIC);
+		len = ring_size * sizeof(struct transfer_trb_s);
+		vaddr = dma_alloc_coherent(nvudc->dev, len, &dma, GFP_KERNEL);
 		if (!vaddr) {
 			msg_err(dev, "failed to allocate trb ring\n");
 			return -ENOMEM;
@@ -2177,7 +2176,7 @@ int init_ep0(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-int EP0_Start(struct NV_UDC_S *nvudc)
+int EP0_Start(struct nv_udc_s *nvudc)
 {
 	struct usb_ep *usb_ep;
 
@@ -2192,11 +2191,11 @@ int EP0_Start(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-void build_ep0_status(struct NV_UDC_EP *udc_ep_ptr, bool default_value, u32
-		status, struct NV_UDC_REQUEST *udc_req_ptr)
+void build_ep0_status(struct nv_udc_ep *udc_ep_ptr, bool default_value, u32
+		status, struct nv_udc_request *udc_req_ptr)
 {
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
-	struct TRANSFER_TRB_S *enq_pt = udc_ep_ptr->enq_pt;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
+	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
 	u32 u_temp;
 
 	if (default_value) {
@@ -2243,9 +2242,9 @@ void build_ep0_status(struct NV_UDC_EP *udc_ep_ptr, bool default_value, u32
 	list_add_tail(&udc_req_ptr->queue, &udc_ep_ptr->queue);
 }
 
-void ep0_req_complete(struct NV_UDC_EP *udc_ep_ptr)
+void ep0_req_complete(struct nv_udc_ep *udc_ep_ptr)
 {
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
 	switch (nvudc->setup_status) {
 	case DATA_STAGE_XFER:
 		nvudc->setup_status = STATUS_STAGE_RECV;
@@ -2273,9 +2272,9 @@ void ep0_req_complete(struct NV_UDC_EP *udc_ep_ptr)
 static void retry_stream_rejected_work(struct work_struct *work)
 {
 	u32 u_temp;
-	struct NV_UDC_EP *udc_ep_ptr = container_of(work, struct NV_UDC_EP,
+	struct nv_udc_ep *udc_ep_ptr = container_of(work, struct nv_udc_ep,
 								      work);
-	struct NV_UDC_S *nvudc = udc_ep_ptr->nvudc;
+	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
 	msleep(stream_rejected_sleep_msecs);
 
 	u_temp = NV_BIT(udc_ep_ptr->DCI);
@@ -2291,12 +2290,12 @@ static void retry_stream_rejected_work(struct work_struct *work)
 }
 #endif
 
-void handle_cmpl_code_success(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event,
-	struct NV_UDC_EP *udc_ep_ptr)
+void handle_cmpl_code_success(struct nv_udc_s *nvudc, struct event_trb_s *event,
+	struct nv_udc_ep *udc_ep_ptr)
 {
 	u64 trb_pt;
-	struct TRANSFER_TRB_S *p_trb;
-	struct NV_UDC_REQUEST *udc_req_ptr;
+	struct transfer_trb_s *p_trb;
+	struct nv_udc_request *udc_req_ptr;
 	u32 trb_transfer_length;
 
 	msg_entry(nvudc->dev);
@@ -2311,7 +2310,7 @@ void handle_cmpl_code_success(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event,
 		* is the end of a TD */
 		msg_dbg(nvudc->dev, "end of TD\n");
 		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
-					struct NV_UDC_REQUEST, queue);
+					struct nv_udc_request, queue);
 
 		msg_dbg(nvudc->dev, "udc_req_ptr = 0x%p\n", udc_req_ptr);
 
@@ -2333,13 +2332,13 @@ void handle_cmpl_code_success(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event,
 	}
 }
 
-int nvudc_handle_exfer_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
+int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 {
 	u8 ep_index = XHCI_GETF(EVE_TRB_ENDPOINT_ID, event->eve_trb_dword3);
-	struct NV_UDC_EP *udc_ep_ptr = &nvudc->udc_ep[ep_index];
-	struct EP_CX_S *p_ep_cx = nvudc->p_epcx + ep_index;
+	struct nv_udc_ep *udc_ep_ptr = &nvudc->udc_ep[ep_index];
+	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + ep_index;
 	u16 comp_code;
-	struct NV_UDC_REQUEST *udc_req_ptr;
+	struct nv_udc_request *udc_req_ptr;
 	bool trbs_dequeued = false;
 
 	msg_entry(nvudc->dev);
@@ -2396,7 +2395,7 @@ int nvudc_handle_exfer_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
 			trb_transfer_length = XHCI_GETF(EVE_TRB_TRAN_LEN,
 						event->eve_trb_dword2);
 			udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
-						struct NV_UDC_REQUEST, queue);
+						struct nv_udc_request, queue);
 
 			udc_req_ptr->usb_req.actual =
 				udc_req_ptr->usb_req.length -
@@ -2525,7 +2524,7 @@ int nvudc_handle_exfer_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
 		msg_dbg(nvudc->dev, "CMPL_CODE_SEQNUM_ERR\n");
 
 		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
-					struct NV_UDC_REQUEST, queue);
+					struct nv_udc_request, queue);
 		req_done(udc_ep_ptr, udc_req_ptr, -EINVAL);
 
 		/*drop all the queued setup packet, only
@@ -2550,7 +2549,7 @@ int nvudc_handle_exfer_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
 		msg_dbg(nvudc->dev, "CMPL_CODE_STOPPED\n");
 		msg_dbg(nvudc->dev, "EPDCI = 0x%x\n", udc_ep_ptr->DCI);
 		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
-				struct NV_UDC_REQUEST,
+				struct nv_udc_request,
 				queue);
 		if (udc_req_ptr)
 			req_done(udc_ep_ptr, udc_req_ptr, -ECONNREFUSED);
@@ -2573,12 +2572,12 @@ int nvudc_handle_exfer_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
 	return 0;
 }
 
-bool setfeaturesrequest(struct NV_UDC_S *nvudc, u8 RequestType, u8 bRequest, u16
+bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 		value, u16 index, u16 length)
 {
 	int status = -EINPROGRESS;
 	u8  DCI;
-	struct NV_UDC_EP *udc_ep_ptr;
+	struct nv_udc_ep *udc_ep_ptr;
 	u32 u_temp;
 	bool set_feat = 0;
 
@@ -2745,14 +2744,14 @@ set_feature_error:
 
 }
 
-void getstatusrequest(struct NV_UDC_S *nvudc, u8 RequestType, u16 value,
+void getstatusrequest(struct nv_udc_s *nvudc, u8 RequestType, u16 value,
 		u16 index, u16 length)
 {
 	u64 temp = 0;
 	u32 temp2;
 	u32 status = -EINPROGRESS;
-	struct NV_UDC_REQUEST *udc_req_ptr = nvudc->status_req;
-	struct NV_UDC_EP *udc_ep_ptr;
+	struct nv_udc_request *udc_req_ptr = nvudc->status_req;
+	struct nv_udc_ep *udc_ep_ptr;
 
 	if ((value) || (length > 2) || !length) {
 		status = -EINVAL;
@@ -2816,8 +2815,8 @@ void getstatusrequest(struct NV_UDC_S *nvudc, u8 RequestType, u16 value,
 		}
 
 		if (nvudc->device_state == USB_STATE_CONFIGURED) {
-			struct EP_CX_S *p_ep_cx =
-				(struct EP_CX_S *)nvudc->p_epcx + DCI;
+			struct ep_cx_s *p_ep_cx =
+				(struct ep_cx_s *)nvudc->p_epcx + DCI;
 			msg_dbg(nvudc->dev, "p_ep_cx->EPDWord0 = 0x%x\n",
 				p_ep_cx->ep_dw0);
 			if (XHCI_GETF(EP_CX_EP_STATE, p_ep_cx->ep_dw0) ==
@@ -2877,10 +2876,10 @@ get_status_error:
 
 void nvudc_set_sel_cmpl(struct usb_ep *ep, struct usb_request *req)
 {
-	struct NV_UDC_EP *udc_ep;
-	struct NV_UDC_S	 *nvudc;
+	struct nv_udc_ep *udc_ep;
+	struct nv_udc_s	 *nvudc;
 
-	udc_ep = container_of(ep, struct NV_UDC_EP, usb_ep);
+	udc_ep = container_of(ep, struct nv_udc_ep, usb_ep);
 	nvudc = udc_ep->nvudc;
 	msg_entry(nvudc->dev);
 
@@ -2890,12 +2889,12 @@ void nvudc_set_sel_cmpl(struct usb_ep *ep, struct usb_request *req)
 	msg_exit(nvudc->dev);
 }
 
-void setselrequest(struct NV_UDC_S *nvudc, u16 value, u16 index, u16 length,
+void setselrequest(struct nv_udc_s *nvudc, u16 value, u16 index, u16 length,
 		u64 data)
 {
 	int status = -EINPROGRESS;
-	struct NV_UDC_REQUEST *udc_req_ptr = nvudc->status_req;
-	struct NV_UDC_EP *udc_ep_ptr = &nvudc->udc_ep[0];
+	struct nv_udc_request *udc_req_ptr = nvudc->status_req;
+	struct nv_udc_ep *udc_ep_ptr = &nvudc->udc_ep[0];
 
 	if (nvudc->device_state == USB_STATE_DEFAULT)
 		status = -EINVAL;
@@ -2937,7 +2936,7 @@ void setselrequest(struct NV_UDC_S *nvudc, u16 value, u16 index, u16 length,
 	}
 }
 
-void set_isoch_delay(struct NV_UDC_S *nvudc, u16 value, u16 index, u16 length,
+void set_isoch_delay(struct nv_udc_s *nvudc, u16 value, u16 index, u16 length,
 		u16 seq_num)
 {
 	int status = -EINPROGRESS;
@@ -2949,7 +2948,7 @@ void set_isoch_delay(struct NV_UDC_S *nvudc, u16 value, u16 index, u16 length,
 	build_ep0_status(&nvudc->udc_ep[0], true, status, NULL);
 }
 
-void set_address_cmpl(struct NV_UDC_S *nvudc)
+void set_address_cmpl(struct nv_udc_s *nvudc)
 {
 	if ((nvudc->device_state == USB_STATE_DEFAULT) &&
 				nvudc->dev_addr != 0) {
@@ -2962,11 +2961,11 @@ void set_address_cmpl(struct NV_UDC_S *nvudc)
 	}
 }
 
-void setaddressrequest(struct NV_UDC_S *nvudc, u16 value, u16 index, u16 length,
+void setaddressrequest(struct nv_udc_s *nvudc, u16 value, u16 index, u16 length,
 		u16 seq_num)
 {
 	int status = -EINPROGRESS;
-	struct EP_CX_S *p_epcx = nvudc->p_epcx;
+	struct ep_cx_s *p_epcx = nvudc->p_epcx;
 	u32 reg;
 
 	if ((value > 127) || (index != 0) || (length != 0)) {
@@ -2997,7 +2996,7 @@ set_address_error:
 }
 
 
-void nvudc_handle_setup_pkt(struct NV_UDC_S *nvudc,
+void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 		struct usb_ctrlrequest *setup_pkt, u16 seq_num)
 {
 	u16 wValue = setup_pkt->wValue;
@@ -3139,11 +3138,11 @@ void nvudc_handle_setup_pkt(struct NV_UDC_S *nvudc,
 	spin_lock(&nvudc->lock);
 }
 
-void nvudc_reset(struct NV_UDC_S *nvudc)
+void nvudc_reset(struct nv_udc_s *nvudc)
 {
 	u32 i, u_temp;
-	struct NV_UDC_EP *udc_ep_ptr;
-	struct EP_CX_S *p_ep_cx;
+	struct nv_udc_ep *udc_ep_ptr;
+	struct ep_cx_s *p_ep_cx;
 	dma_addr_t dqptaddr;
 	nvudc->setup_status = WAIT_FOR_SETUP;
 	/* Base on Figure 9-1, default USB_STATE is attached */
@@ -3211,12 +3210,12 @@ void nvudc_reset(struct NV_UDC_S *nvudc)
 	msg_exit(nvudc->dev);
 }
 
-void dbg_print_rings(struct NV_UDC_S *nvudc)
+void dbg_print_rings(struct nv_udc_s *nvudc)
 {
 	u32 i;
-	struct EVENT_TRB_S *temp_trb;
+	struct event_trb_s *temp_trb;
 	msg_dbg(nvudc->dev, "Event Ring Segment 0\n");
-	temp_trb = (struct EVENT_TRB_S *)nvudc->event_ring0.vaddr;
+	temp_trb = (struct event_trb_s *)nvudc->event_ring0.vaddr;
 	for (i = 0; i < (EVENT_RING_SIZE + 5); i++) {
 		msg_dbg(nvudc->dev, "0x%p: 0x%x, 0x%x, 0x%x, 0x%x\n",
 				temp_trb, temp_trb->trb_pointer_lo,
@@ -3227,7 +3226,7 @@ void dbg_print_rings(struct NV_UDC_S *nvudc)
 	}
 
 	msg_dbg(nvudc->dev, "Event Ring Segment 1\n");
-	temp_trb = (struct EVENT_TRB_S *)nvudc->event_ring1.vaddr;
+	temp_trb = (struct event_trb_s *)nvudc->event_ring1.vaddr;
 	for (i = 0; i < (EVENT_RING_SIZE + 5); i++) {
 		msg_dbg(nvudc->dev, "0x%p: 0x%x, 0x%x, 0x%x, 0x%x\n",
 				temp_trb, temp_trb->trb_pointer_lo,
@@ -3238,11 +3237,11 @@ void dbg_print_rings(struct NV_UDC_S *nvudc)
 	}
 }
 
-void dbg_print_ep_ctx(struct NV_UDC_S *nvudc)
+void dbg_print_ep_ctx(struct nv_udc_s *nvudc)
 {
 	u32 i, j;
-	struct EP_CX_S *p_epcx_temp = nvudc->p_epcx;
-	struct TRANSFER_TRB_S *temp_trb1;
+	struct ep_cx_s *p_epcx_temp = nvudc->p_epcx;
+	struct transfer_trb_s *temp_trb1;
 
 	msg_dbg(nvudc->dev, "ENDPOINT CONTEXT\n");
 	for (i = 0; i < 32; i++) {
@@ -3280,7 +3279,7 @@ void dbg_print_ep_ctx(struct NV_UDC_S *nvudc)
 			msg_dbg(nvudc->dev, "endpoint DCI = %d\n",
 				nvudc->udc_ep[i].DCI);
 			temp_trb1 =
-			(struct TRANSFER_TRB_S *)nvudc->udc_ep[i].tran_ring_ptr;
+			(struct transfer_trb_s *)nvudc->udc_ep[i].tran_ring_ptr;
 			for (j = 0; j < NVUDC_BULK_EP_TD_RING_SIZE; j++) {
 				msg_dbg(nvudc->dev,
 					"0x%lx: 0x%x 0x%x 0x%x 0x%x\n",
@@ -3299,7 +3298,7 @@ void dbg_print_ep_ctx(struct NV_UDC_S *nvudc)
 static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 	const char *buf, size_t size)
 {
-	struct NV_UDC_S *nvudc = the_controller;
+	struct nv_udc_s *nvudc = the_controller;
 
 	if (sysfs_streq(buf, "show_evtr"))
 		dbg_print_rings(nvudc);
@@ -3311,7 +3310,7 @@ static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR(debug, S_IWUSR, NULL, debug_store);
 
-static void portpm_config_war(struct NV_UDC_S *nvudc)
+static void portpm_config_war(struct nv_udc_s *nvudc)
 {
 	u32 portsc_value = ioread32(nvudc->mmio_reg_base + PORTSC);
 	u32 reg_portpm;
@@ -3335,7 +3334,7 @@ static void portpm_config_war(struct NV_UDC_S *nvudc)
 	}
 }
 
-bool nvudc_handle_port_status(struct NV_UDC_S *nvudc)
+bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 {
 	u32 u_temp, u_temp2;
 	bool update_ptrs = true;
@@ -3534,12 +3533,12 @@ bool nvudc_handle_port_status(struct NV_UDC_S *nvudc)
 	return update_ptrs;
 }
 
-void process_event_ring(struct NV_UDC_S *nvudc)
+void process_event_ring(struct nv_udc_s *nvudc)
 {
-	struct EVENT_TRB_S *event;
+	struct event_trb_s *event;
 	nvudc->num_evts_processed = 0;
 	while (nvudc->evt_dq_pt) {
-		event = (struct EVENT_TRB_S *)nvudc->evt_dq_pt;
+		event = (struct event_trb_s *)nvudc->evt_dq_pt;
 
 		if (XHCI_GETF(EVE_TRB_CYCLE_BIT, event->eve_trb_dword3) !=
 				nvudc->CCS)
@@ -3566,7 +3565,7 @@ void process_event_ring(struct NV_UDC_S *nvudc)
 	}
 }
 
-void queue_setup_pkt(struct NV_UDC_S *nvudc, struct usb_ctrlrequest *setup_pkt,
+void queue_setup_pkt(struct nv_udc_s *nvudc, struct usb_ctrlrequest *setup_pkt,
 			u16 seq_num)
 {
 	msg_entry(nvudc->dev);
@@ -3582,7 +3581,7 @@ void queue_setup_pkt(struct NV_UDC_S *nvudc, struct usb_ctrlrequest *setup_pkt,
 	msg_exit(nvudc->dev);
 }
 
-void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
+void nvudc_handle_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 {
 
 	msg_entry(nvudc->dev);
@@ -3629,7 +3628,7 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event)
 
 static irqreturn_t nvudc_irq(int irq, void *_udc)
 {
-	struct NV_UDC_S *nvudc = (struct NV_UDC_S *)_udc;
+	struct nv_udc_s *nvudc = (struct nv_udc_s *)_udc;
 	u32 u_temp;
 	unsigned long flags;
 	dma_addr_t erdp;
@@ -3666,9 +3665,9 @@ static irqreturn_t nvudc_irq(int irq, void *_udc)
 }
 
 
-void usbep_struct_setup(struct NV_UDC_S *nvudc, u32 index, u8 *name)
+void usbep_struct_setup(struct nv_udc_s *nvudc, u32 index, u8 *name)
 {
-	struct NV_UDC_EP *ep = &nvudc->udc_ep[index];
+	struct nv_udc_ep *ep = &nvudc->udc_ep[index];
 	ep->DCI = index;
 
 	if (index) {
@@ -3697,7 +3696,7 @@ void usbep_struct_setup(struct NV_UDC_S *nvudc, u32 index, u8 *name)
 static int nvudc_gadget_start(struct usb_gadget *gadget,
 		struct usb_gadget_driver *driver)
 {
-	struct NV_UDC_S *nvudc = the_controller;
+	struct nv_udc_s *nvudc = the_controller;
 	unsigned long flags;
 	int retval = -ENODEV;
 	u32 u_temp = 0;
@@ -3789,7 +3788,7 @@ static int nvudc_gadget_stop(struct usb_gadget *gadget,
 		struct usb_gadget_driver *driver)
 {
 	u32 u_temp;
-	struct NV_UDC_S *nvudc = the_controller;
+	struct nv_udc_s *nvudc = the_controller;
 	unsigned long flags;
 
 	if (!nvudc)
@@ -3829,7 +3828,7 @@ static int nvudc_gadget_stop(struct usb_gadget *gadget,
 	return 0;
 }
 
-u32 init_hw_event_ring(struct NV_UDC_S *nvudc)
+u32 init_hw_event_ring(struct nv_udc_s *nvudc)
 {
 	u32 u_temp, buff_length;
 	int retval = 0;
@@ -3848,7 +3847,7 @@ u32 init_hw_event_ring(struct NV_UDC_S *nvudc)
 	u_temp |= ERSTSZ_ERST1SZ(EVENT_RING_SIZE);
 	iowrite32(u_temp, nvudc->mmio_reg_base + ERSTSZ);
 
-	buff_length = EVENT_RING_SIZE * sizeof(struct EVENT_TRB_S);
+	buff_length = EVENT_RING_SIZE * sizeof(struct event_trb_s);
 	if (!(nvudc->event_ring0).vaddr) {
 		(nvudc->event_ring0).vaddr =
 			dma_alloc_coherent(nvudc->dev, buff_length,
@@ -3871,7 +3870,7 @@ u32 init_hw_event_ring(struct NV_UDC_S *nvudc)
 	u_temp = upper_32_bits(mapping);
 	iowrite32(u_temp, nvudc->mmio_reg_base + ERST0BAHI);
 
-	buff_length = EVENT_RING_SIZE * sizeof(struct EVENT_TRB_S);
+	buff_length = EVENT_RING_SIZE * sizeof(struct event_trb_s);
 	if (!nvudc->event_ring1.vaddr) {
 		(nvudc->event_ring1).vaddr =
 			dma_alloc_coherent(nvudc->dev, buff_length,
@@ -3897,7 +3896,7 @@ u32 init_hw_event_ring(struct NV_UDC_S *nvudc)
 }
 
 static void
-fpga_hack_setup_vbus_sense_and_termination(struct NV_UDC_S *nvudc)
+fpga_hack_setup_vbus_sense_and_termination(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -3919,7 +3918,7 @@ fpga_hack_setup_vbus_sense_and_termination(struct NV_UDC_S *nvudc)
 	iowrite32(reg, nvudc->base + TERMINATION_1);
 }
 
-u32 reset_data_struct(struct NV_UDC_S *nvudc)
+u32 reset_data_struct(struct nv_udc_s *nvudc)
 {
 	int retval = 0;
 	u32 u_temp = 0, buff_length = 0;
@@ -3932,7 +3931,7 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	if (retval)
 		return retval;
 
-	buff_length = EVENT_RING_SIZE * sizeof(struct EVENT_TRB_S);
+	buff_length = EVENT_RING_SIZE * sizeof(struct event_trb_s);
 	memset((void *)nvudc->event_ring0.vaddr, 0, buff_length);
 
 	nvudc->evt_dq_pt = (nvudc->event_ring0).vaddr;
@@ -3954,13 +3953,13 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	memset((void *)(nvudc->event_ring1.vaddr), 0, buff_length);
 
 	nvudc->evt_seg0_last_trb =
-		(struct EVENT_TRB_S *)(nvudc->event_ring0.vaddr)
+		(struct event_trb_s *)(nvudc->event_ring0.vaddr)
 		+ (EVENT_RING_SIZE - 1);
 	nvudc->evt_seg1_last_trb =
-		(struct EVENT_TRB_S *)(nvudc->event_ring1.vaddr)
+		(struct event_trb_s *)(nvudc->event_ring1.vaddr)
 		+ (EVENT_RING_SIZE - 1);
 
-	buff_length = NUM_EP_CX * sizeof(struct EP_CX_S);
+	buff_length = NUM_EP_CX * sizeof(struct ep_cx_s);
 
 	if (!nvudc->ep_cx.vaddr) {
 		(nvudc->ep_cx).vaddr =
@@ -3998,7 +3997,7 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	if (!nvudc->status_req) {
 		nvudc->status_req =
 		container_of(nvudc_alloc_request(&nvudc->udc_ep[0].usb_ep,
-			GFP_ATOMIC), struct NV_UDC_REQUEST,
+			GFP_ATOMIC), struct nv_udc_request,
 			usb_req);
 
 		nvudc->status_req->usb_req.buf = kmalloc(8, GFP_ATOMIC);
@@ -4048,7 +4047,7 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static int nvudc_pci_get_irq_resources(struct NV_UDC_S *nvudc)
+static int nvudc_pci_get_irq_resources(struct nv_udc_s *nvudc)
 {
 	struct pci_dev *pdev = nvudc->pdev.pci;
 
@@ -4062,7 +4061,7 @@ static int nvudc_pci_get_irq_resources(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static int nvudc_pci_get_memory_resources(struct NV_UDC_S *nvudc)
+static int nvudc_pci_get_memory_resources(struct nv_udc_s *nvudc)
 {
 	struct pci_dev *pdev = nvudc->pdev.pci;
 	int len;
@@ -4090,9 +4089,9 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 {
 	int retval;
 	u32 i;
-	struct NV_UDC_S *nvudc_dev;
+	struct nv_udc_s *nvudc_dev;
 
-	nvudc_dev = kzalloc(sizeof(struct NV_UDC_S), GFP_ATOMIC);
+	nvudc_dev = kzalloc(sizeof(struct nv_udc_s), GFP_ATOMIC);
 	if  (nvudc_dev == NULL) {
 		retval = -ENOMEM;
 		goto error;
@@ -4180,11 +4179,11 @@ error:
 	return retval;
 }
 
-void free_data_struct(struct NV_UDC_S *nvudc)
+void free_data_struct(struct nv_udc_s *nvudc)
 {
 	u32 i;
-	struct NV_UDC_EP *udc_ep_ptr;
-	struct EP_CX_S *p_ep_cx;
+	struct nv_udc_ep *udc_ep_ptr;
+	struct ep_cx_s *p_ep_cx;
 	if (nvudc->event_ring0.vaddr) {
 		dma_free_coherent(nvudc->dev,
 				nvudc->event_ring0.len,
@@ -4235,9 +4234,10 @@ void free_data_struct(struct NV_UDC_S *nvudc)
 	/*        otg_put_transceiver(nvudc->transceiver); */
 }
 
+
 static void nvudc_remove_pci(struct pci_dev *pdev)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
 	nvudc = pci_get_drvdata(pdev);
 	msg_entry(nvudc->dev);
@@ -4267,7 +4267,7 @@ static void nvudc_remove_pci(struct pci_dev *pdev)
 }
 
 #ifdef ELPG
-void save_mmio_reg(struct NV_UDC_S *nvudc)
+void save_mmio_reg(struct nv_udc_s *nvudc)
 {
 	/* Save Device Address, U2 Timeout, Port Link State and Port State
 	*Event Ring enqueue pointer and PCS
@@ -4280,7 +4280,7 @@ void save_mmio_reg(struct NV_UDC_S *nvudc)
 	nvudc->mmio_reg.ctrl = ioread32(nvudc->mmio_reg_base + CTRL);
 }
 
-void restore_mmio_reg(struct NV_UDC_S *nvudc)
+void restore_mmio_reg(struct nv_udc_s *nvudc)
 {
 	u32 u_temp;
 	dma_addr_t dma;
@@ -4325,7 +4325,7 @@ static int nvudc_suspend_platform(struct platform_device *pdev,
 				pm_message_t state)
 {
 	u32 u_temp;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
 	nvudc = platform_get_drvdata(pdev);
 
@@ -4345,7 +4345,7 @@ static int nvudc_suspend_platform(struct platform_device *pdev,
 static int nvudc_suspend_pci(struct pci_dev *pdev)
 {
 	u32 u_temp;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
 	nvudc = pci_get_drvdata(pdev);
 
@@ -4363,7 +4363,7 @@ static int nvudc_suspend_pci(struct pci_dev *pdev)
 
 static int nvudc_resume_pci(struct pci_dev *pdev)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
 	nvudc = pci_get_drvdata(pdev);
 	restore_mmio_reg(nvudc);
@@ -4373,7 +4373,7 @@ static int nvudc_resume_pci(struct pci_dev *pdev)
 
 static int nvudc_resume_platform(struct platform_device *pdev)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 
 	nvudc = platform_get_drvdata(pdev);
 	restore_mmio_reg(nvudc);
@@ -4382,7 +4382,7 @@ static int nvudc_resume_platform(struct platform_device *pdev)
 }
 #endif
 
-static void nvudc_plat_clocks_deinit(struct NV_UDC_S *nvudc)
+static void nvudc_plat_clocks_deinit(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4408,7 +4408,7 @@ static void nvudc_plat_clocks_deinit(struct NV_UDC_S *nvudc)
 	}
 }
 
-static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
+static int nvudc_plat_clocks_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4449,7 +4449,7 @@ static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static int nvudc_plat_clocks_enable(struct NV_UDC_S *nvudc)
+static int nvudc_plat_clocks_enable(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4497,7 +4497,7 @@ err_disable_pll_u_480M:
 	return err;
 }
 
-static void nvudc_plat_clocks_disable(struct NV_UDC_S *nvudc)
+static void nvudc_plat_clocks_disable(struct nv_udc_s *nvudc)
 {
 
 	clk_disable_unprepare(nvudc->pll_e);
@@ -4506,7 +4506,7 @@ static void nvudc_plat_clocks_disable(struct NV_UDC_S *nvudc)
 	clk_disable_unprepare(nvudc->pll_u_480M);
 }
 
-static int nvudc_plat_regulators_init(struct NV_UDC_S *nvudc)
+static int nvudc_plat_regulators_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4550,7 +4550,7 @@ static int nvudc_plat_regulators_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static void nvudc_plat_regulator_deinit(struct NV_UDC_S *nvudc)
+static void nvudc_plat_regulator_deinit(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4569,7 +4569,7 @@ static void nvudc_plat_regulator_deinit(struct NV_UDC_S *nvudc)
 	devm_kfree(dev, nvudc->supplies);
 }
 
-static int nvudc_plat_mmio_regs_init(struct NV_UDC_S *nvudc)
+static int nvudc_plat_mmio_regs_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4619,7 +4619,7 @@ static int nvudc_plat_mmio_regs_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
+static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4660,7 +4660,7 @@ static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
 
 }
 
-static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
+static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4685,7 +4685,7 @@ static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-static int nvudc_get_bdata(struct NV_UDC_S *nvudc)
+static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device_node *node = pdev->dev.of_node;
@@ -4729,7 +4729,7 @@ static void t210_program_ss_pad()
 			RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
 }
 
-static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
+static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 {
 	/* VBUS_ID init */
 	usb2_vbus_id_init();
@@ -4764,7 +4764,7 @@ static void fpga_hack_init(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to map CAR mmio\n");
 }
 
-static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
+static void fpga_hack_setup_car(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
@@ -4788,7 +4788,7 @@ static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 static int tegra_xudc_plat_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 	int i;
 	int err;
 
@@ -4948,7 +4948,7 @@ err_kfree_nvudc:
 
 static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 {
-	struct NV_UDC_S *nvudc = platform_get_drvdata(pdev);
+	struct nv_udc_s *nvudc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
@@ -4976,7 +4976,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 
 static void tegra_xudc_plat_shutdown(struct platform_device *pdev)
 {
-	struct NV_UDC_S *nvudc = platform_get_drvdata(pdev);
+	struct nv_udc_s *nvudc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
