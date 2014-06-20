@@ -442,28 +442,6 @@ static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned req_functi
 	return 0;
 }
 
-static void tegra_pinctrl_disable(struct pinctrl_dev *pctldev,
-				  unsigned function, unsigned group)
-{
-	struct tegra_pmx *pmx = pinctrl_dev_get_drvdata(pctldev);
-	const struct tegra_pingroup *g;
-	u32 val;
-	unsigned long flags;
-
-	g = &pmx->soc->groups[group];
-
-	if (WARN_ON(g->mux_reg < 0))
-		return;
-
-	spin_lock_irqsave(&mux_lock, flags);
-
-	val = pmx_readl(pmx, g->mux_bank, g->mux_reg);
-	val &= ~(0x3 << g->mux_bit);
-	pmx_writel(pmx, val, g->mux_bank, g->mux_reg);
-
-	spin_unlock_irqrestore(&mux_lock, flags);
-}
-
 static int tegra_pinctrl_gpio_request_enable(struct pinctrl_dev *pctldev,
 				struct pinctrl_gpio_range *range,
 				unsigned pin)
@@ -517,7 +495,6 @@ static const struct pinmux_ops tegra_pinmux_ops = {
 	.get_function_name = tegra_pinctrl_get_func_name,
 	.get_function_groups = tegra_pinctrl_get_func_groups,
 	.enable = tegra_pinctrl_enable,
-	.disable = tegra_pinctrl_disable,
 	.gpio_request_enable = tegra_pinctrl_gpio_request_enable,
 	.gpio_set_direction = tegra_pinctrl_gpio_set_direction,
 };
