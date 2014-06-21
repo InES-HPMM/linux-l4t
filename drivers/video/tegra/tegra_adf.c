@@ -991,7 +991,7 @@ static int tegra_adf_intf_blank(struct adf_interface *intf, u8 state)
 		break;
 
 	case DRM_MODE_DPMS_STANDBY:
-		tegra_dc_blank(adf_info->dc);
+		tegra_dc_blank(adf_info->dc, BLANK_ALL);
 		break;
 
 	case DRM_MODE_DPMS_SUSPEND:
