@@ -204,8 +204,6 @@
 #define PLL_OUT_CLKEN			(1<<1)
 #define PLL_OUT_RESET_DISABLE		(1<<0)
 
-#define PLL_FIXED_MDIV(c, ref)		((ref) == 38400000 ? 2 : 1)
-
 /* PLLC, PLLC2, PLLC3 and PLLA1 */
 #define PLLCX_USE_DYN_RAMP		0
 #define PLLCX_BASE_LOCK			(1 << 26)
@@ -2376,6 +2374,11 @@ static u32 pll_expo_p_to_pdiv(u32 p, u32 *pdiv)
 	return -EINVAL;
 }
 
+static u16 get_fixed_mdiv(struct clk *c, unsigned long input_rate)
+{
+	return input_rate / c->u.pll.cf_min;
+}
+
 static bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
 			    struct clk_pll_freq_table *new_cfg)
 {
@@ -2527,7 +2530,7 @@ static int pll_fixed_mdiv_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	if (IS_ERR_VALUE(p))
 		return -EINVAL;
 
-	cfg->m = PLL_FIXED_MDIV(c, input_rate);
+	cfg->m = get_fixed_mdiv(c, input_rate);
 	cfg->p = p;
 	cfg->output_rate = rate * cfg->p;
 	if (cfg->output_rate > c->u.pll.vco_max)
@@ -2565,7 +2568,7 @@ static int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 			}
 
 			if (c->u.pll.controls->dramp_en_mask)
-				BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
+				BUG_ON(sel->m != get_fixed_mdiv(c, input_rate));
 			BUG_ON(!c->u.pll.controls->sdm_en_mask &&
 			       sel->sdm_din);
 			*cfg = *sel;
@@ -2724,7 +2727,7 @@ static void tegra_pll_clk_init(struct clk *c)
 	u32 val;
 	unsigned long vco_min;
 	unsigned long input_rate = clk_get_rate(c->parent);
-	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
+	unsigned long cf = input_rate / get_fixed_mdiv(c, input_rate);
 
 	struct clk_pll_freq_table cfg = { };
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
@@ -3491,7 +3494,7 @@ static struct clk_ops tegra_pllp_vco_ops = {
 static void pllx_get_dyn_steps(struct clk *c, unsigned long input_rate,
 				u32 *step_a, u32 *step_b)
 {
-	input_rate /= PLL_FIXED_MDIV(c, input_rate); /* cf rate */
+	input_rate /= get_fixed_mdiv(c, input_rate); /* cf rate */
 	switch (input_rate) {
 	case 12000000:
 	case 12800000:
@@ -3691,7 +3694,7 @@ static void tegra21_pllm_clk_init(struct clk *c)
 {
 	u32 val;
 	unsigned long input_rate = clk_get_rate(c->parent);
-	unsigned long cf = input_rate / PLL_FIXED_MDIV(c, input_rate);
+	unsigned long cf = input_rate / get_fixed_mdiv(c, input_rate);
 
 	struct clk_pll_freq_table cfg = { };
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
@@ -6607,7 +6610,7 @@ static struct clk tegra_pll_ref = {
 static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
 	{ 12000000, 510000000,  85, 1, 2},
 	{ 13000000, 510000000,  78, 1, 2},	/* actual: 507.0 MHz */
-	{ 38400000, 510000000,  53, 2, 2},	/* actual: 508.8 MHz */
+	{ 38400000, 510000000,  79, 3, 2},	/* actual: 505.6 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6760,9 +6763,9 @@ static struct clk_pll_freq_table tegra_pll_a_freq_table[] = {
 	{ 13000000, 368640000, 55, 1, 2, 1, 9944},	/* actual: 368640137 */
 	{ 13000000, 240000000, 55, 1, 3, 1, },		/* actual: 238.3 MHz */
 
-	{ 38400000, 282240000, 28, 2, 2, 1, 7373},	/* actual: 282240234 */
-	{ 38400000, 368640000, 37, 2, 2, 1, 7373},	/* actual: 368640234 */
-	{ 38400000, 240000000, 50, 2, 4, 1,},
+	{ 38400000, 282240000, 43, 3, 2, 1, 4915},	/* actual: 282239844 */
+	{ 38400000, 368640000, 56, 3, 2, 1, 9011},	/* actual: 368639844 */
+	{ 38400000, 240000000, 75, 3, 4, 1,},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6831,7 +6834,7 @@ static struct clk tegra_pll_a_out0 = {
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  90, 1, 2, 0, 7247},	/* actual: 594000183 */
-	{ 38400000, 594000000,  60, 2, 2, 0, 11264},
+	{ 38400000, 594000000,  91, 3, 2, 0, 10752},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6898,7 +6901,7 @@ static struct clk tegra_pll_d_out0 = {
 static struct clk_pll_freq_table tegra_pll_d2_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  90, 1, 2, 0, 7247},	/* actual: 594000183 */
-	{ 38400000, 594000000,  60, 2, 2, 0, 11264},
+	{ 38400000, 594000000,  91, 3, 2, 0, 10752},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6959,7 +6962,7 @@ static struct clk tegra_pll_d2 = {
 static struct clk_pll_freq_table tegra_pll_dp_freq_table[] = {
 	{ 12000000, 270000000,  90, 1, 4},
 	{ 13000000, 270000000,  83, 1, 4},	/* actual: 269.8 MHz */
-	{ 38400000, 270000000,  56, 2, 4},	/* actual: 268.8 MHz */
+	{ 38400000, 270000000,  84, 3, 4},	/* actual: 268.8 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -7005,7 +7008,7 @@ static struct clk tegra_pll_dp = {
 static struct clk_pll_freq_table tegra_pllc4_vco_freq_table[] = {
 	{ 12000000, 600000000,  50, 1, 1},
 	{ 13000000, 600000000,  46, 1, 1},	/* actual: 598.0 MHz */
-	{ 38400000, 600000000,  31, 2, 1},	/* actual: 595.2 MHz */
+	{ 38400000, 600000000,  62, 4, 1},	/* actual: 595.2 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -7088,7 +7091,7 @@ static struct clk tegra_pll_c4_out3 = {
 static struct clk_pll_freq_table tegra_pllre_vco_freq_table[] = {
 	{ 12000000, 672000000,  56, 1, 1},
 	{ 13000000, 672000000,  51, 1, 1},	/* actual: 663.0 MHz */
-	{ 38400000, 672000000,  35, 2, 1},
+	{ 38400000, 672000000,  70, 4, 1},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -7156,7 +7159,7 @@ static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	/* 1 GHz */
 	{ 12000000, 1000000000, 166, 1, 2},	/* actual: 996.0 MHz */
 	{ 13000000, 1000000000, 153, 1, 2},	/* actual: 994.0 MHz */
-	{ 38400000, 1000000000, 104, 2, 2},	/* actual: 998.4 MHz */
+	{ 38400000, 1000000000, 156, 3, 2},	/* actual: 998.4 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -7228,7 +7231,7 @@ static struct clk tegra_pll_x_out0 = {
 static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 12000000, 800000000, 66, 1, 1},	/* actual: 792.0 MHz */
 	{ 13000000, 800000000, 61, 1, 1},	/* actual: 793.0 MHz */
-	{ 38400000, 800000000, 41, 2, 1},	/* actual: 787.2 MHz */
+	{ 38400000, 800000000, 83, 4, 1},	/* actual: 796.8 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -7435,7 +7438,7 @@ static struct clk tegra_pll_p_out5 = {
 static struct clk_pll_freq_table tegra_pll_u_vco_freq_table[] = {
 	{ 12000000, 480000000, 40, 1, 1},
 	{ 13000000, 480000000, 36, 1, 1},	/* actual: 468.0 MHz */
-	{ 38400000, 480000000, 25, 2, 1},
+	{ 38400000, 480000000, 50, 4, 1},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -9325,7 +9328,7 @@ static bool tegra21_is_dyn_ramp(
 		unsigned long input_rate = clk_get_rate(c->parent);
 
 		if (from_vco_min) {
-			old_cfg.m = PLL_FIXED_MDIV(c, input_rate);
+			old_cfg.m = get_fixed_mdiv(c, input_rate);
 			old_cfg.p = 1;
 		} else {
 			u32 val = clk_readl(c->reg + PLL_BASE);
