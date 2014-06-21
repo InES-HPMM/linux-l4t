@@ -626,7 +626,17 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 
 	if (rate == 0) {
 		d->cur_millivolts = 0;
-	} else {
+		/*
+		 * For single clock GPU rail keep DVFS rate unchanged when clock
+		 * is disabled. Rail is turned off explicitly, in any case, but
+		 * with non-zero rate voltage level at regulator is updated when
+		 * temperature is changes while rail is off.
+		 */
+		if (d->dvfs_rail == tegra_gpu_rail)
+			rate = d->cur_rate;
+	}
+
+	if (rate != 0) {
 		while (i < d->num_freqs && rate > freqs[i])
 			i++;
 
