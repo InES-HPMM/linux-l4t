@@ -46,6 +46,7 @@ obj-y += common.o
 obj-y += devices.o
 obj-y += io.o
 obj-y += clock.o
+obj-y += tegra_clocks_pll.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
 
 # FIXME: Bug 1211919:
