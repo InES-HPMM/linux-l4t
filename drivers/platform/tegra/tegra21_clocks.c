@@ -10001,6 +10001,9 @@ void __init tegra21x_init_clocks(void)
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
 
+	/* Tegra21 allows to change dividers of disabled clocks */
+	tegra_clk_set_disabled_div_all();
+
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
 #endif
