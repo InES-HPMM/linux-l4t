@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include "hier_ictlr.h"
 
 #define HIER_GROUP_CPU_ENABLE                                 0x00000000
@@ -186,9 +187,19 @@ static int __exit tegra_hier_ictlr_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id tegra_hier_ictlr_of_match[] = {
+	{ .compatible = "nvidia,tegra-hier-ictlr", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, tegra_hier_ictlr_of_match);
+#endif
+
 static struct platform_driver tegra_hier_ictlr_driver = {
 	.driver = {
 		   .name = "tegra-hier-ictlr",
+		   .of_match_table = of_match_ptr(tegra_hier_ictlr_of_match),
 		   .owner = THIS_MODULE,
 		   },
 	.probe = tegra_hier_ictlr_probe,
