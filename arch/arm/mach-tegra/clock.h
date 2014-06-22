@@ -91,6 +91,7 @@ struct clk;
 #define SHARED_BUS_USE_SKIPPERS	(1 << 1)
 
 #define PERIPH_DIV		(DIV_U71 | DIV_U151 | DIV_U16)
+#define PERIPH_INIT_SAFE_RATE	12000000
 
 #ifdef CONFIG_COMMON_CLK
 struct clk_tegra;

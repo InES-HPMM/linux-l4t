@@ -4058,6 +4058,36 @@ static inline u32 periph_clk_source_shift(struct clk *c)
 		return 29;
 }
 
+static void periph_clk_state_init(struct clk *c)
+{
+	if (c->flags & PERIPH_NO_ENB) {
+		c->state = c->parent->state;
+		return;
+	}
+
+	c->state = ON;
+
+	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
+		c->state = OFF;
+	if (!(c->flags & PERIPH_NO_RESET))
+		if (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))
+			c->state = OFF;
+}
+
+static bool periph_clk_can_force_safe_rate(struct clk *c)
+{
+	/*
+	 * As a general rule, force safe rate always for clocks supplied
+	 * to peripherals under reset. If clock does not have associated reset
+	 * at all, force safe rate if clock is disabled (can do it on Tegra21
+	 * that allow to change dividers of the disabled clocks).
+	 */
+	if (c->flags & PERIPH_NO_RESET)
+			return c->state == OFF;
+
+	return clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c);
+}
+
 static void tegra21_periph_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
@@ -4074,13 +4104,6 @@ static void tegra21_periph_clk_init(struct clk *c)
 		c->parent = mux->input;
 	} else {
 		c->parent = c->inputs[0].input;
-	}
-
-	/* if peripheral is left under reset - enforce safe rate */
-	if (!(c->flags & PERIPH_NO_RESET) &&
-	    (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))) {
-		tegra_periph_clk_safe_rate_init(c);
-		val = clk_readl(c->reg);
 	}
 
 	if (c->flags & DIV_U71) {
@@ -4111,18 +4134,11 @@ static void tegra21_periph_clk_init(struct clk *c)
 		c->mul = 1;
 	}
 
-	if (c->flags & PERIPH_NO_ENB) {
-		c->state = c->parent->state;
-		return;
-	}
+	periph_clk_state_init(c);
 
-	c->state = ON;
-
-	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
-		c->state = OFF;
-	if (!(c->flags & PERIPH_NO_RESET))
-		if (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))
-			c->state = OFF;
+	/* if peripheral is left under reset - enforce safe rate */
+	if (periph_clk_can_force_safe_rate(c))
+		tegra_periph_clk_safe_rate_init(c);
 }
 
 static int tegra21_periph_clk_enable(struct clk *c)
