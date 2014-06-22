@@ -6217,9 +6217,12 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
+	unsigned long flags;
 
+	clk_lock_save(c->parent, &flags);
 	c->u.shared_bus_user.rate = rate;
-	ret = tegra_clk_shared_bus_update(c->parent);
+	ret = tegra_clk_shared_bus_update_locked(c->parent);
+	clk_unlock_restore(c->parent, &flags);
 
 	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
@@ -6255,11 +6258,14 @@ static long tegra_clk_shared_bus_user_round_rate(
 static int tegra_clk_shared_bus_user_enable(struct clk *c)
 {
 	int ret;
+	unsigned long flags;
 
+	clk_lock_save(c->parent, &flags);
 	c->u.shared_bus_user.enabled = true;
-	ret = tegra_clk_shared_bus_update(c->parent);
+	ret = tegra_clk_shared_bus_update_locked(c->parent);
 	if (!ret && c->u.shared_bus_user.client)
 		ret = clk_enable(c->u.shared_bus_user.client);
+	clk_unlock_restore(c->parent, &flags);
 
 	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
@@ -6269,10 +6275,14 @@ static int tegra_clk_shared_bus_user_enable(struct clk *c)
 
 static void tegra_clk_shared_bus_user_disable(struct clk *c)
 {
+	unsigned long flags;
+
+	clk_lock_save(c->parent, &flags);
 	if (c->u.shared_bus_user.client)
 		clk_disable(c->u.shared_bus_user.client);
 	c->u.shared_bus_user.enabled = false;
-	tegra_clk_shared_bus_update(c->parent);
+	tegra_clk_shared_bus_update_locked(c->parent);
+	clk_unlock_restore(c->parent, &flags);
 
 	if (c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
