@@ -863,17 +863,23 @@ int tegra_is_clk_enabled(struct clk *c)
 }
 EXPORT_SYMBOL(tegra_is_clk_enabled);
 
-int tegra_clk_shared_bus_update(struct clk *c)
+int tegra_clk_shared_bus_update_locked(struct clk *c)
 {
 	int ret = 0;
+	if (c->ops && c->ops->shared_bus_update)
+		ret = c->ops->shared_bus_update(c);
+	return ret;
+}
+
+int tegra_clk_shared_bus_update(struct clk *c)
+{
+	int ret;
 	unsigned long flags;
 
 	clk_lock_save(c, &flags);
-
-	if (c->ops && c->ops->shared_bus_update)
-		ret = c->ops->shared_bus_update(c);
-
+	ret = tegra_clk_shared_bus_update_locked(c);
 	clk_unlock_restore(c, &flags);
+
 	return ret;
 }
 
