@@ -192,10 +192,6 @@ extern struct platform_device tegra_ptm_device;
 extern struct platform_device tegra_mipi_bif_device;
 #endif
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-extern struct platform_device tegra_hier_ictlr_device;
-#endif
-
 void __init tegra_init_debug_uart_rate(void);
 
 #endif

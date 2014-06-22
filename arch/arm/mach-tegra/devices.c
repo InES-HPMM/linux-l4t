@@ -2536,30 +2536,3 @@ void __init tegra_init_debug_uart_rate(void)
 	debug_uarte_platform_data[0].uartclk = uartclk;
 #endif
 }
-
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-static struct resource tegra_hier_ictlr_resource[] = {
-	[0] = {
-		.start	= TEGRA_HIER2_ICTLR1_BASE,
-		.end	= TEGRA_HIER2_ICTLR1_BASE + TEGRA_HIER2_ICTLR1_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= TEGRA_MSELECT_BASE,
-		.end	= TEGRA_MSELECT_BASE + TEGRA_MSELECT_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[2] = {
-		.start	= INT_HIER_GROUP1_CPU,
-		.end	= INT_HIER_GROUP1_CPU,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-struct platform_device tegra_hier_ictlr_device = {
-	.name		= "tegra-hier-ictlr",
-	.id		= -1,
-	.resource	= tegra_hier_ictlr_resource,
-	.num_resources	= ARRAY_SIZE(tegra_hier_ictlr_resource),
-};
-#endif
