@@ -282,7 +282,7 @@ static int clk_enable_locked(struct clk *c)
 			ret = c->ops->enable(c);
 			trace_clock_enable(c->name, 1, 0);
 			if (ret) {
-				if (c->parent)
+				if (!(c->flags & BUS_RATE_LIMIT) && c->parent)
 					tegra_clk_disable_unprepare(c->parent);
 				return ret;
 			}
