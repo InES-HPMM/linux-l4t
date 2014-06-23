@@ -1478,6 +1478,21 @@ static int parse_arg_pmic_wdt_disable(char *options)
 }
 __setup("watchdog=", parse_arg_pmic_wdt_disable);
 
+#ifdef CONFIG_OF
+void find_dc_node(struct device_node **dc1_node,
+		struct device_node **dc2_node) {
+	*dc1_node =
+		of_find_node_by_path("/host1x/dc@54200000");
+	*dc2_node =
+		of_find_node_by_path("/host1x/dc@54240000");
+}
+#else
+void find_dc_node(struct device_node *dc1_node,
+		struct device_node *dc2_node) {
+	return;
+}
+#endif
+
 static int tegra_get_board_info_properties(struct board_info *bi,
 		const char *property_name)
 {
@@ -1539,45 +1554,35 @@ out:
 
 void tegra_get_board_info(struct board_info *bi)
 {
-#ifdef CONFIG_OF
 	int ret;
+	static bool parsed = 0;
 
-	memset(bi, 0, sizeof(*bi));
-	ret = tegra_get_board_info_properties(bi, "board_info");
-	if (ret == 0) {
-		system_serial_high = (bi->board_id << 16) | bi->sku;
-		system_serial_low = (bi->fab << 24) |
-			(bi->major_revision << 16) | (bi->minor_revision << 8);
-	} else {
-#endif
+	if (!parsed) {
+		parsed = 1;
+		ret = tegra_get_board_info_properties(bi, "board_info");
+		if (ret)
+			ret = tegra_get_board_info_properties(bi, "proc-board");
+		if (!ret) {
+			memcpy(&main_board_info, bi, sizeof(struct board_info));
+			system_serial_high = (bi->board_id << 16) | bi->sku;
+			system_serial_low = (bi->fab << 24) |
+						(bi->major_revision << 16) |
+						(bi->minor_revision << 8);
+			return;
+		}
+
 		if (system_serial_high || system_serial_low) {
 			bi->board_id = (system_serial_high >> 16) & 0xFFFF;
 			bi->sku = (system_serial_high) & 0xFFFF;
 			bi->fab = (system_serial_low >> 24) & 0xFF;
 			bi->major_revision = (system_serial_low >> 16) & 0xFF;
 			bi->minor_revision = (system_serial_low >> 8) & 0xFF;
-		} else {
-			memcpy(bi, &main_board_info, sizeof(struct board_info));
+			memcpy(&main_board_info, bi, sizeof(struct board_info));
+			return;
 		}
-#ifdef CONFIG_OF
 	}
-#endif
+	memcpy(bi, &main_board_info, sizeof(struct board_info));
 }
-
-#ifdef CONFIG_OF
-void find_dc_node(struct device_node **dc1_node,
-		struct device_node **dc2_node) {
-	*dc1_node =
-		of_find_node_by_path("/host1x/dc@54200000");
-	*dc2_node =
-		of_find_node_by_path("/host1x/dc@54240000");
-}
-#else
-void find_dc_node(struct device_node *dc1_node,
-		struct device_node *dc2_node) {
-	return;
-}
-#endif
 
 static int __init tegra_main_board_info(char *info)
 {
@@ -1589,7 +1594,6 @@ static int __init tegra_main_board_info(char *info)
 	main_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
-
 __setup("board_info=", tegra_main_board_info);
 
 static int __init tegra_pmu_board_info(char *info)
@@ -1602,22 +1606,21 @@ static int __init tegra_pmu_board_info(char *info)
 	pmu_board_info.minor_revision = memparse(p+1, &p);
 	return 0;
 }
+early_param("pmuboard", tegra_pmu_board_info);
 
 void tegra_get_pmu_board_info(struct board_info *bi)
 {
-#ifdef CONFIG_OF
-	int ret;
+	static bool parsed = 0;
 
-	memset(bi, 0, sizeof(*bi));
-	ret = tegra_get_board_info_properties(bi, "pmuboard");
-	if (ret == 0)
-		return;
-	else
-#endif
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+		ret = tegra_get_board_info_properties(bi, "pmu-board");
+		if (!ret)
+			memcpy(&pmu_board_info, bi, sizeof(struct board_info));
+	}
 	memcpy(bi, &pmu_board_info, sizeof(struct board_info));
 }
-
-early_param("pmuboard", tegra_pmu_board_info);
 
 static int __init tegra_display_board_info(char *info)
 {
@@ -1629,22 +1632,21 @@ static int __init tegra_display_board_info(char *info)
 	display_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("displayboard=", tegra_display_board_info);
 
 void tegra_get_display_board_info(struct board_info *bi)
 {
-#ifdef CONFIG_OF
-	int ret;
+	static bool parsed = 0;
 
-	memset(bi, 0, sizeof(*bi));
-	ret = tegra_get_board_info_properties(bi, "displayboard");
-	if (ret == 0)
-		return;
-	else
-#endif
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+		ret = tegra_get_board_info_properties(bi, "display-board");
+		if (!ret)
+			memcpy(&display_board_info, bi, sizeof(struct board_info));
+	}
 	memcpy(bi, &display_board_info, sizeof(struct board_info));
 }
-
-__setup("displayboard=", tegra_display_board_info);
 
 static int __init tegra_camera_board_info(char *info)
 {
@@ -1656,22 +1658,22 @@ static int __init tegra_camera_board_info(char *info)
 	camera_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("cameraboard=", tegra_camera_board_info);
 
 void tegra_get_camera_board_info(struct board_info *bi)
 {
-#ifdef CONFIG_OF
-	int ret;
+	static bool parsed = 0;
 
-	memset(bi, 0, sizeof(*bi));
-	ret = tegra_get_board_info_properties(bi, "cameraboard");
-	if (ret == 0)
-		return;
-	else
-#endif
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "camera-board");
+		if (!ret)
+			memcpy(&camera_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &camera_board_info, sizeof(struct board_info));
 }
-
-__setup("cameraboard=", tegra_camera_board_info);
 
 static int __init tegra_leftspeaker_board_info(char *info)
 {
@@ -1683,13 +1685,23 @@ static int __init tegra_leftspeaker_board_info(char *info)
 	leftspeaker_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("leftspeakerboard=", tegra_leftspeaker_board_info);
 
 void tegra_get_leftspeaker_board_info(struct board_info *bi)
 {
+	static bool parsed = 0;
+
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "left-speaker-board");
+		if (!ret)
+			memcpy(&leftspeaker_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &leftspeaker_board_info, sizeof(struct board_info));
 }
 
-__setup("leftspeakerboard=", tegra_leftspeaker_board_info);
 
 static int __init tegra_rightspeaker_board_info(char *info)
 {
@@ -1701,13 +1713,23 @@ static int __init tegra_rightspeaker_board_info(char *info)
 	rightspeaker_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("rightspeakerboard=", tegra_rightspeaker_board_info);
 
 void tegra_get_rightspeaker_board_info(struct board_info *bi)
 {
+	static bool parsed = 0;
+
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "right-speaker-board");
+		if (!ret)
+			memcpy(&rightspeaker_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &rightspeaker_board_info, sizeof(struct board_info));
 }
 
-__setup("rightspeakerboard=", tegra_rightspeaker_board_info);
 
 static int __init tegra_joystick_board_info(char *info)
 {
@@ -1719,13 +1741,23 @@ static int __init tegra_joystick_board_info(char *info)
 	joystick_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("joystickboard=", tegra_joystick_board_info);
 
 void tegra_get_joystick_board_info(struct board_info *bi)
 {
+	static bool parsed = 0;
+
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "joystick-board");
+		if (!ret)
+			memcpy(&joystick_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &joystick_board_info, sizeof(struct board_info));
 }
 
-__setup("joystickboard=", tegra_joystick_board_info);
 
 static int __init tegra_button_board_info(char *info)
 {
@@ -1737,13 +1769,22 @@ static int __init tegra_button_board_info(char *info)
 	button_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("buttonboard=", tegra_button_board_info);
 
 void tegra_get_button_board_info(struct board_info *bi)
 {
+	static bool parsed = 0;
+
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "button-board");
+		if (!ret)
+			memcpy(&button_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &button_board_info, sizeof(struct board_info));
 }
-
-__setup("buttonboard=", tegra_button_board_info);
 
 static int __init tegra_io_board_info(char *info)
 {
@@ -1755,13 +1796,22 @@ static int __init tegra_io_board_info(char *info)
 	io_board_info.minor_revision = memparse(p+1, &p);
 	return 1;
 }
+__setup("ioboard=", tegra_io_board_info);
 
 void tegra_get_io_board_info(struct board_info *bi)
 {
+	static bool parsed = 0;
+
+	if (!parsed) {
+		int ret;
+		parsed = 1;
+
+		ret = tegra_get_board_info_properties(bi, "io-board");
+		if (!ret)
+			memcpy(&io_board_info, bi, sizeof(*bi));
+	}
 	memcpy(bi, &io_board_info, sizeof(struct board_info));
 }
-
-__setup("ioboard=", tegra_io_board_info);
 
 static int __init tegra_modem_id(char *id)
 {
