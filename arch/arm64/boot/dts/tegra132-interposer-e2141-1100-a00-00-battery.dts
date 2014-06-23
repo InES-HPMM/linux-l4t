@@ -3,13 +3,13 @@
 / {
 	nvidia,dtsfilename = __FILE__;
 	i2c@7000c000 {
-		hpa2163@6b {
+		battery-charger@6b {
 			charger {
 				status = "okay";
 			};
 		};
 
-		bq27441@55 {
+		battery-gauge@55 {
 			status = "okay";
 		};
 	};
