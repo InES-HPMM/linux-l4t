@@ -29,39 +29,33 @@
 #include "../../../arch/arm/mach-tegra/include/mach/nct.h"
 #endif
 
-#define NVDUMPER_CLEAN 0xf000caf3U
-#define NVDUMPER_DIRTY 0xdeadbeefU
+static void __init nvdumper_debugfs_init(void);
+static void __exit nvdumper_debugfs_exit(void);
+
+#define NVDUMPER_CLEAN      0xf000caf3U
+#define NVDUMPER_DIRTY      0x2badfaceU
+#define NVDUMPER_DIRTY_DUMP 0xdeadbeefU
 
 #define RW_MODE (S_IWUSR | S_IRUGO)
 
 static uint32_t *nvdumper_ptr;
+static uint32_t nvdumper_last_reboot;
 
-static int get_dirty_state(void)
+static uint32_t get_dirty_state(void)
 {
-	uint32_t val;
-
-	val = ioread32(nvdumper_ptr);
-	if (val == NVDUMPER_DIRTY)
-		return 1;
-	else if (val == NVDUMPER_CLEAN)
-		return 0;
-	else
-		return -1;
+	return ioread32(nvdumper_ptr);
 }
 
-static void set_dirty_state(int dirty)
+static void set_dirty_state(uint32_t state)
 {
-	if (dirty)
-		iowrite32(NVDUMPER_DIRTY, nvdumper_ptr);
-	else
-		iowrite32(NVDUMPER_CLEAN, nvdumper_ptr);
+	iowrite32(state, nvdumper_ptr);
 }
 
 static int nvdumper_reboot_cb(struct notifier_block *nb,
 		unsigned long event, void *unused)
 {
 	pr_info("nvdumper: rebooting cleanly.\n");
-	set_dirty_state(0);
+	set_dirty_state(NVDUMPER_CLEAN);
 	return NOTIFY_DONE;
 }
 
@@ -71,7 +65,7 @@ struct notifier_block nvdumper_reboot_notifier = {
 
 static int __init nvdumper_init(void)
 {
-	int ret, dirty;
+	int ret;
 
 #ifdef CONFIG_TEGRA_USE_NCT
 	union nct_item_type *item;
@@ -98,18 +92,22 @@ static int __init nvdumper_init(void)
 
 	nvdumper_dbg_footprint_init();
 
-	dirty = get_dirty_state();
-	switch (dirty) {
-	case 0:
+	nvdumper_last_reboot = get_dirty_state();
+	switch (nvdumper_last_reboot) {
+	case NVDUMPER_CLEAN:
 		pr_info("nvdumper: last reboot was clean\n");
 		break;
-	case 1:
+	case NVDUMPER_DIRTY:
+	case NVDUMPER_DIRTY_DUMP:
 		pr_info("nvdumper: last reboot was dirty\n");
 		break;
 	default:
 		pr_info("nvdumper: last reboot was unknown\n");
 		break;
 	}
+
+	nvdumper_debugfs_init();
+
 #ifdef CONFIG_TEGRA_USE_NCT
 	item = kzalloc(sizeof(*item), GFP_KERNEL);
 	if (!item) {
@@ -127,9 +125,11 @@ static int __init nvdumper_init(void)
 	pr_info("%s: RAMDUMP flag(%d) from NCT\n",
 			__func__, item->ramdump.flag);
 	if (item->ramdump.flag == 1)
-		set_dirty_state(1);
+		set_dirty_state(NVDUMPER_DIRTY_DUMP);
+	else if (item->ramdump.flag == 2)
+		set_dirty_state(NVDUMPER_DIRTY);
 	else
-		set_dirty_state(0);
+		set_dirty_state(NVDUMPER_CLEAN);
 
 	kfree(item);
 
@@ -138,7 +138,7 @@ static int __init nvdumper_init(void)
 err_out3:
 
 #else
-	set_dirty_state(1);
+	set_dirty_state(NVDUMPER_DIRTY);
 	return 0;
 #endif
 
@@ -153,12 +153,73 @@ err_out1:
 
 static void __exit nvdumper_exit(void)
 {
+	nvdumper_debugfs_exit();
 	nvdumper_regdump_exit();
 	nvdumper_dbg_footprint_exit();
 	unregister_reboot_notifier(&nvdumper_reboot_notifier);
-	set_dirty_state(0);
+	set_dirty_state(NVDUMPER_CLEAN);
 	iounmap(nvdumper_ptr);
 }
+
+#ifdef CONFIG_DEBUG_FS
+static struct dentry *nvdumper_dbg_dentry;
+static char *nvdumper_last_reboot_str = "unknown\n";
+
+static int nvdumper_reboot_state_show(struct seq_file *s, void *data)
+{
+	seq_puts(s, nvdumper_last_reboot_str);
+	return 0;
+}
+
+static int nvdumper_dbg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvdumper_reboot_state_show, inode->i_private);
+}
+
+static const struct file_operations nvdumper_dbg_fops = {
+	.open		= nvdumper_dbg_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static void __init nvdumper_debugfs_init(void)
+{
+	nvdumper_dbg_dentry = debugfs_create_file("last_reboot", S_IRUGO,
+			NULL, NULL, &nvdumper_dbg_fops);
+
+	if (!nvdumper_dbg_dentry)
+		return;
+
+	switch (nvdumper_last_reboot) {
+	case NVDUMPER_CLEAN:
+		nvdumper_last_reboot_str = "clean\n";
+		break;
+	case NVDUMPER_DIRTY:
+	case NVDUMPER_DIRTY_DUMP:
+		nvdumper_last_reboot_str = "dirty\n";
+		break;
+	default:
+		break;
+	}
+}
+
+static void __exit nvdumper_debugfs_exit(void)
+{
+	debugfs_remove(nvdumper_dbg_dentry);
+}
+
+#else
+
+static void __init nvdumper_debugfs_init(void)
+{
+}
+
+static void __exit nvdumper_debugfs_exit(void)
+{
+}
+
+#endif
 
 arch_initcall(nvdumper_init);
 module_exit(nvdumper_exit);
