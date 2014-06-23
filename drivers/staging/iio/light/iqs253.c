@@ -56,6 +56,7 @@
 #define DEFAULT_COMMS_POINTER	0xDD
 
 #define IQS253_PROD_ID		41
+#define IQS263_PROD_ID		0x3C
 
 #define PROX_CH0		0x01
 #define PROX_CH1		0x02
@@ -100,13 +101,68 @@
 
 #define NUM_REG 17
 
+
+/* iqs263 registers and values */
+#define DEV_INFO     0x00
+#define SYST_FLAGS   0x01
+#define CO_NATES     0x02
+#define TOUCH_STAT   0x03
+#define COUNTS	     0x04
+#define LTA	     0x05
+#define DELTAS	     0x06
+#define MULTIPLERS   0x07
+#define COMPENSATION 0x08
+#define PROX_SETTINGS 0x09
+#define THRESHOLDS   0x0A
+#define TIM_TARGETS  0x0B
+#define GESTURE_TIME 0x0C
+#define ACTIVE_CH    0x0D
+
+#define PROX_THR     0x04
+#define TOUCH_THR1   0x14
+#define TOUCH_THR2   0x02
+#define TOUCH_THR3   0x03
+#define MOV_THR      0x15
+#define MOV_DEB      0x00
+#define HALT_TIME    0xFF
+#define I2C_TIMEOUT  0x04
+
+#define SYST_SET     0x80
+#define CH0_MULT     0x1B
+#define CH1_MULT     0x08
+#define CH2_MULT     0x08
+#define CH3_MULT     0x00
+
+#define CH_BASE      0x11
+
+#define PROX_SET0    0x00
+#define PROX_SET1    0x00
+#define PROX_SET2    0x00
+#define PROX_SET3    0x00
+#define EVENT_MASK   0x00
+
+#define LP_TIME      0x00
+#define TARGET_T     0x64    /* set the target of 1000, 0x80 */
+#define TARGET_P     0x64
+
+#define TAP_TIM      0x00
+#define FLICK_TIM    0x00
+#define FLICK_THR    0x07
+
+#define IQS263_RESET 0x80
+#define IQS263_EV_MASK 0x04
+
+#define ACT_CH0      0x0
+
+
+
 struct iqs253_chip {
 	struct i2c_client	*client;
 	const struct i2c_device_id	*id;
 	u32			rdy_gpio;
 	u32			wake_gpio;
 	u32			sar_gpio;
-	u32			mode;
+	u32			version;
 	u32			value;
 	struct regulator	*vddhi;
 	u32			using_regulator;
@@ -149,9 +205,40 @@ struct reg_val_pair reg_val_map_iqs253[NUM_MODE][NUM_REG] = {
 	},
 };
 
+struct cmd_val_pair {
+	u8 cmd;
+	int len;
+	u8 *vals;
+};
+
+static u8 beforeinit_prox_settings[10] = { PROX_SET0 | 0x80, PROX_SET1 | 0x0,
+					   PROX_SET2 , PROX_SET3 | 0x01,
+					   EVENT_MASK };
+static u8 active_ch[] = { ACT_CH0 | 0x05 };
+static u8 set_thresholds[] = { PROX_THR, TOUCH_THR1, TOUCH_THR2, TOUCH_THR3,
+			       MOV_THR, MOV_DEB, HALT_TIME, I2C_TIMEOUT };
+static u8 set_multipliers[] = { CH0_MULT, CH1_MULT, CH2_MULT, CH3_MULT,
+				 CH_BASE | 0x00};
+static u8 set_tim_targets[] = { LP_TIME, TARGET_T, TARGET_P };
+static u8 afterinit_prox_settings[] = { PROX_SET0 | 0x10, PROX_SET1 | 0x02,
+					PROX_SET2 | 0x00, PROX_SET3 | 0x01,
+					EVENT_MASK };
+static u8 set_ati[] = {0 };
+
+struct cmd_val_pair cmd_val_map_iqs263[] = {
+	/* iqs263 init sequence */
+	{ PROX_SETTINGS, 5, beforeinit_prox_settings},
+	{ ACTIVE_CH, 1, active_ch},
+	{ THRESHOLDS, 8, set_thresholds},
+	{ MULTIPLERS, 5, set_multipliers},
+	{ TIM_TARGETS, 3, set_tim_targets},
+	{ PROX_SETTINGS, 5, afterinit_prox_settings},
+	{ ATI, 0x0, set_ati}, /* wait for ATI to finish */
+};
+
 static void iqs253_detect_comwindow(struct iqs253_chip *chip)
 {
-	int gpio_count = 500;
+	int gpio_count = 10000; /* wait for a maximum of 1 second */
 	while (gpio_get_value(chip->rdy_gpio) && gpio_count--)
 		usleep_range(100, 110);
 }
@@ -217,6 +304,9 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip)
 	struct reg_val_pair *reg_val_pair_map;
 	int modes[NUM_MODE] = {INIT_MODE, FORCE_ATI_MODE, POST_INIT_MODE};
 
+	if (iqs253_chip->version != 253)
+		return 0;
+
 	for (j = 0; j < NUM_MODE; j++) {
 
 		if (modes[j] == MODE_NONE)
@@ -249,6 +339,92 @@ static int iqs253_set(struct iqs253_chip *iqs253_chip)
 	return 0;
 }
 
+static int iqs263_i2c_read_bytes(struct iqs253_chip *chip,
+				  u8 cmd)
+{
+	int ret = 0;
+
+	iqs253_detect_comwindow(chip);
+	ret = i2c_smbus_read_word_data(chip->client, cmd);
+	if (ret < 0)
+		pr_err("iqs263 i2c read from %d failed", cmd);
+	usleep_range(1000, 1100);
+	return ret;
+}
+
+static void iqs263_wait_for_ati_finish(struct iqs253_chip *iqs253_chip)
+{
+	int ret;
+
+	do {
+		iqs253_detect_comwindow(iqs253_chip);
+		ret = iqs263_i2c_read_bytes(iqs253_chip, SYST_FLAGS);
+	} while (ret & ATI_IN_PROGRESS);
+}
+
+/* must call holding lock */
+static int iqs263_i2c_write_bytes(struct iqs253_chip *chip,
+				  struct cmd_val_pair *cmd_val)
+{
+	int ret = 0;
+
+	iqs253_detect_comwindow(chip);
+	ret = i2c_smbus_write_i2c_block_data(chip->client, cmd_val->cmd,
+					     cmd_val->len, cmd_val->vals);
+	if (ret < 0)
+		pr_err("iqs263 i2c write to %d failed", cmd_val->cmd);
+	usleep_range(1000, 1100);
+	return ret;
+}
+
+static int iqs263_i2c_read_word(struct iqs253_chip *chip, u8 cmd)
+{
+	int ret = 0;
+	u8 data_buffer[2];
+
+	iqs253_detect_comwindow(chip);
+	ret = i2c_smbus_read_i2c_block_data(chip->client, cmd, 2, data_buffer);
+	if (ret < 0)
+		pr_err("iqs263 i2c word read  : %d failed", cmd);
+	else
+		ret = (data_buffer[0] & 0x0f) | ((data_buffer[1] << 8) & 0xF0);
+
+	return ret;
+}
+
+/* must call holding lock */
+static int iqs263_set(struct iqs253_chip *iqs253_chip)
+{
+	int ret = 0, j;
+	struct cmd_val_pair *cmd_val_pair_map;
+
+	pr_debug("%s :<-- INIT START -->\n", __func__);
+
+	if (iqs253_chip->version != 263)
+		return 0;
+
+	for (j = 0; j < ARRAY_SIZE(cmd_val_map_iqs263); j++) {
+
+		cmd_val_pair_map = &cmd_val_map_iqs263[j];
+
+		if (cmd_val_pair_map->cmd == ATI) {
+			iqs263_wait_for_ati_finish(iqs253_chip);
+			continue;
+		}
+
+		if (!cmd_val_pair_map->len)
+			continue;
+
+		ret = iqs263_i2c_write_bytes(iqs253_chip,
+					     cmd_val_pair_map);
+		if (ret)
+			return ret;
+	}
+
+	pr_debug("%s :<--INIT DONE -->\n", __func__);
+	return 0;
+}
+
 static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
 {
 	int ret;
@@ -263,39 +439,61 @@ static void iqs253_sar_proximity_detect_work(struct work_struct *ws)
 		chip->using_regulator = true;
 	}
 
-	ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
-	if (ret < 0) {
-		pr_err(
-		  "iqs253: read proximity status fails in func:%s at line:%d\n",
-		  __func__, __LINE__);
-		return;
-	}
-
-	if (ret & IQS253_RESET) {
-		ret = iqs253_set(chip);
-		if (ret)
+	if (chip->version == 253) {
+		ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
+		if (ret < 0) {
+			pr_err("iqs253: reading proximity status failed\n");
 			goto finish;
+		}
+
+		if (ret & IQS253_RESET) {
+			ret = iqs253_i2c_firsthand_shake(chip);
+			if (ret < 0) {
+				pr_err("func:%s first i2c handshake failed\n",
+					__func__);
+				goto finish;
+			}
+			ret = iqs253_set(chip);
+			if (ret)
+				goto finish;
+		}
+	} else { /* iqs263 */
+		ret = iqs253_i2c_read_byte(chip, SYST_FLAGS);
+		if (ret < 0) {
+			pr_err("iqs263: reading system flags failed\n");
+			goto finish;
+		}
+
+		if (ret & IQS263_RESET) {
+			ret = iqs263_set(chip);
+			if (ret)
+				goto finish;
+		}
 	}
 
-	ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
 	chip->value = -1;
-	if (ret >= 0) {
-		ret = ret & PROXIMITY_ONLY;
-		/*
-		 * if both channel detect proximity => distance = 0;
-		 * if one channel detects proximity => distance = 1;
-		 * if no channel detects proximity => distance = 2;
-		 */
-		chip->value = (ret == (PROX_CH1 | PROX_CH2)) ? 0 :
-							ret ? 1 : 2;
+	if (chip->version == 253) {
+		ret = iqs253_i2c_read_byte(chip, PROX_STATUS);
+		if (ret < 0)
+			goto finish;
+
+		chip->value = ret & PROXIMITY_ONLY;
+	} else {
+		ret = iqs263_i2c_read_word(chip, TOUCH_STAT);
+		if (ret < 0)
+			goto finish;
+
+		chip->value = ret & IQS263_EV_MASK;
 	}
-	if (chip->value == -1)
-		goto finish;
+
 	/* provide input to SAR */
-	if (chip->value/2)
+	if (chip->value) {
 		gpio_direction_output(chip->sar_gpio, 0);
-	else
+		pr_debug("iqs253 sar: send near event\n");
+	} else {
 		gpio_direction_output(chip->sar_gpio, 1);
+		pr_debug("iqs253 sar: send far event\n");
+	}
 
 	ret = regulator_disable(chip->vddhi);
 	if (ret)
@@ -345,7 +543,6 @@ static int iqs253_probe(struct i2c_client *client,
 
 	iqs253_chip->client = client;
 	iqs253_chip->id = id;
-	iqs253_chip->mode = MODE_NONE;
 	iqs253_chip->vddhi = devm_regulator_get(&client->dev, "vddhi");
 	if (IS_ERR(iqs253_chip->vddhi)) {
 		dev_err(&client->dev,
@@ -372,17 +569,14 @@ static int iqs253_probe(struct i2c_client *client,
 			id->name, __func__);
 		goto err_gpio_request;
 	}
-
-	ret = iqs253_i2c_firsthand_shake(iqs253_chip);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"devname:%s func:%s first i2c handshake failed\n",
-			id->name, __func__);
-		goto err_gpio_request;
-	}
+	iqs253_chip->using_regulator = true;
 
 	ret = iqs253_i2c_read_byte(iqs253_chip, 0);
-	if (ret != IQS253_PROD_ID) {
+	if (ret == IQS253_PROD_ID) {
+		iqs253_chip->version = 253;
+	} else if (ret == IQS263_PROD_ID) {
+		iqs253_chip->version = 263;
+	} else {
 		dev_err(&client->dev,
 			"devname:%s func:%s device not present\n",
 			id->name, __func__);
