@@ -1490,43 +1490,50 @@ static int tegra_get_board_info_properties(struct board_info *bi,
 	strcat(board_info_path, property_name);
 
 	board_info = of_find_node_by_path(board_info_path);
+	memset(bi, 0, sizeof(*bi));
+
 	if (!board_info) {
-		memset(bi, 0, sizeof(*bi));
 
 		err = of_property_read_u32(board_info, "id", &prop_val);
-		if (err)
+		if (err < 0) {
 			pr_err("failed to read %s/id\n", board_info_path);
-		else
-			bi->board_id = prop_val;
+			goto out;
+		}
+		bi->board_id = prop_val;
 
 		err = of_property_read_u32(board_info, "sku", &prop_val);
-		if (err)
+		if (err < 0) {
 			pr_err("failed to read %s/sku\n", board_info_path);
-		else
-			bi->sku = prop_val;
+			goto out;
+		}
+		bi->sku = prop_val;
 
 		err = of_property_read_u32(board_info, "fab", &prop_val);
-		if (err)
+		if (err < 0) {
 			pr_err("failed to read %s/fab\n", board_info_path);
-		else
-			bi->fab = prop_val;
+			goto out;
+		}
+		bi->fab = prop_val;
 
 		err = of_property_read_u32(board_info, "major_revision", &prop_val);
-		if (err)
+		if (err < 0) {
 			pr_err("failed to read %s/major_revision\n",
 					board_info_path);
-		else
-			bi->major_revision = prop_val;
+			goto out;
+		}
+		bi->major_revision = prop_val;
 
 		err = of_property_read_u32(board_info, "minor_revision", &prop_val);
-		if (err)
+		if (err < 0) {
 			pr_err("failed to read %s/minor_revision\n",
 					board_info_path);
-		else
-			bi->minor_revision = prop_val;
-
+			goto out;
+		}
+		bi->minor_revision = prop_val;
 		return 0;
 	}
+
+out:
 	return -1;
 }
 
