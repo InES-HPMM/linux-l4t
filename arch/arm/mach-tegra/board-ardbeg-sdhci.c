@@ -474,10 +474,11 @@ int __init ardbeg_sdhci_init(void)
 	if (board_info.board_id == BOARD_E1780)
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 
-	/* E1780 and E1784 are using interposer E1816, Due to this the
+	/* E1780, E2141, E1784 are using interposer E1816, Due to this the
 	 * SDIO trace length got increased. So hard coding the drive
 	 * strength to type A for these boards to support 204 Mhz */
 	if ((board_info.board_id == BOARD_E1780) ||
+		(board_info.board_id == BOARD_E2141) ||
 		(board_info.board_id == BOARD_E1784)) {
 		tegra_sdhci_platform_data0.default_drv_type =
 			MMC_SET_DRIVER_TYPE_A;
