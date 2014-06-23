@@ -193,7 +193,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	unsigned long timeout;
 	bool booted = false;
 
-	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(cpu == raw_smp_processor_id());
 	BUG_ON(is_lp_cluster());
 
 	if (cpu_isset(cpu, tegra_cpu_init_map))
@@ -255,7 +255,7 @@ fail:
 
 static int tegra11x_power_up_cpu(unsigned int cpu)
 {
-	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(cpu == raw_smp_processor_id());
 	BUG_ON(is_lp_cluster());
 
 	cpu = cpu_logical_map(cpu);
