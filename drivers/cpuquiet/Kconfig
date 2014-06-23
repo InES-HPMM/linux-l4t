@@ -49,6 +49,16 @@ config CPUQUIET_GOVERNOR_RUNNABLE
 
 	  If in doubt say Y.
 
+config CPUQUIET_TEGRA_SMP
+	bool "Cpuquiet SMP driver for Nvidia SoCs"
+	depends on (ARCH_TEGRA_21x_SOC || ARCH_TEGRA_13x_SOC) && TEGRA_CPUQUIET
+	default y
+	help
+	  Support for runtime hotplugging of CPU cores for power and performance
+	  management.
+
+	  Select this option to enable cpuquiet platform support for Tegra210.
+
 choice
 	prompt "Default CPUQuiet governor"
 	default CPUQUIET_DEFAULT_GOV_USERSPACE
