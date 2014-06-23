@@ -33,6 +33,11 @@
 #include <linux/syscore_ops.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
+#include <linux/interrupt.h>
+#include <linux/suspend.h>
+#include <linux/tick.h>
+#include <linux/irq.h>
+#include "../../kernel/irq/internals.h"
 
 #include <asm/suspend.h>
 #include <asm/proc-fns.h>
@@ -731,6 +736,91 @@ static const struct file_operations slow_cluster_enable_fops = {
 	.write	=	slow_enable_write,
 };
 
+static void suspend_all_device_irqs(void)
+{
+	struct irq_desc *desc;
+	int irq;
+
+	for_each_irq_desc(irq, desc) {
+		unsigned long flags;
+
+		raw_spin_lock_irqsave(&desc->lock, flags);
+		__disable_irq(desc, irq, false);
+		desc->istate |= IRQS_SUSPENDED;
+		raw_spin_unlock_irqrestore(&desc->lock, flags);
+	}
+
+	for_each_irq_desc(irq, desc)
+		if (desc->istate & IRQS_SUSPENDED)
+			synchronize_irq(irq);
+}
+
+static void resume_all_device_irqs(void)
+{
+	struct irq_desc *desc;
+	int irq;
+
+	for_each_irq_desc(irq, desc) {
+		unsigned long flags;
+
+		raw_spin_lock_irqsave(&desc->lock, flags);
+		__enable_irq(desc, irq, true);
+		raw_spin_unlock_irqrestore(&desc->lock, flags);
+	}
+}
+
+static struct dentry *cpuidle_debugfs_root;
+static u64 idle_state;
+
+static int idle_write(void *data, u64 val)
+{
+	struct cpuidle_device dev;
+	struct cpuidle_driver *drv;
+	unsigned long timer_interval_us = (ulong)val;
+	ktime_t time, interval, sleep;
+
+	preempt_disable();
+	drv = &per_cpu(cpuidle_drv, smp_processor_id());
+
+	if (idle_state >= drv->state_count) {
+		pr_err("%s: Requested invalid forced idle state\n", __func__);
+		preempt_enable_no_resched();
+		return -EINVAL;
+	}
+
+	memset(&dev, 0, sizeof(dev));
+
+	dev.cpu = smp_processor_id();
+	suspend_all_device_irqs();
+	tick_nohz_idle_enter();
+	stop_critical_timings();
+	local_fiq_disable();
+	local_irq_disable();
+
+	interval = ktime_set(0, (NSEC_PER_USEC * timer_interval_us));
+
+	time = ktime_get();
+	sleep = ktime_add(time, interval);
+	tick_program_event(sleep, true);
+
+	t210_idle_states[idle_state].enter(&dev, drv, idle_state);
+
+	sleep = ktime_sub(ktime_get(), time);
+	time = ktime_sub(sleep, interval);
+	trace_printk("idle: %lld, exit latency: %lld\n", sleep.tv64, time.tv64);
+
+	local_irq_enable();
+	local_fiq_enable();
+	start_critical_timings();
+	tick_nohz_idle_exit();
+	resume_all_device_irqs();
+	preempt_enable_no_resched();
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(duration_us_fops, NULL, idle_write, "%llu\n");
+
 static int __init debugfs_init(void)
 {
 	struct dentry *dfs_file;
@@ -747,6 +837,19 @@ static int __init debugfs_init(void)
 
 	dfs_file = debugfs_create_file("slow_cluster_states_enable", 0644,
 			cpuidle_debugfs_root, NULL, &slow_cluster_enable_fops);
+
+	if (!dfs_file)
+		goto err_out;
+
+	dfs_file = debugfs_create_u64("forced_idle_state", 0644,
+			cpuidle_debugfs_root, &idle_state);
+
+	if (!dfs_file)
+		goto err_out;
+
+	dfs_file = debugfs_create_file("forced_idle_duration_us", 0644,
+			cpuidle_debugfs_root, NULL, &duration_us_fops);
+
 	if (!dfs_file)
 		goto err_out;
 
@@ -784,7 +887,6 @@ int __init tegra210_idle_init(void)
 #ifdef CONFIG_DEBUG_FS
 	debugfs_init();
 #endif
-
 	return register_cpu_notifier(&tegra210_cpu_nb);
 }
 device_initcall(tegra210_idle_init);
