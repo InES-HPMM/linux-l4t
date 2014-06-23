@@ -90,16 +90,11 @@ static int __init denver_power_states_init(void)
 
 		state->enter = denver_enter_c_state;
 
-		/* Bringup all states except clock gating in disabled mode */
-		if (of_property_read_u32(child, "pmstate", &prop) == 0) {
-			if (prop == 0)
-				state->disabled = false;
-			else
-				state->disabled = true;
-			if ((prop == 9) && (tegra_revision == TEGRA_REVISION_A01))
-				prop = 0;
-		} else
+		if (of_property_read_u32(child, "pmstate", &prop) != 0)
 			continue;
+
+		if ((prop == 9) && (tegra_revision == TEGRA_REVISION_A01))
+			prop = 0;
 
 		/* Map index to the actual LP state */
 		pmstate_map[state_count] = prop;
