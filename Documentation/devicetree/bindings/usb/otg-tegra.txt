@@ -1,0 +1,36 @@
+* Nvidia USB tegra otg controller
+
+This file documents the properties used by the tegra-otg driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra210-otg"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- turn_off_vbus_on_lp0: Specify whether vbus should be powered power during LP0.
+- support_y_cable: Specify whether y-cable should be supported on that platform.
+- support_pmu_vbus: Specify whether vbus detection is supported from PMU.
+- vbus_extcon_dev_name: If vbus detection is supported from PMU, specify the name of extcon device which gives notifications.
+- id_det_type: Specify how usb id detection type on the platform.
+        TEGRA_USB_ID = 0,
+        TEGRA_USB_PMU_ID = 1,
+        TEGRA_USB_GPIO_ID = 2,
+        TEGRA_USB_VIRTUAL_ID = 3,
+- id_det_gpio: If id detection is supported through GPIO, specify the GPIO number.
+- id_extcon_dev_name: If id detection is supported from PMU, specify the name of extcon device which gives notifications.
+- is_xhci: Specify whether this port is taken by XUSB.
+
+Example:
+        otg@0x7d000000 {
+		compatible = "nvidia,tegra210-otg";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
+
+		nvidia,support_y_cable;
+                nvidia,support_pmu_vbus;
+                nvidia,vbus_extcon_dev_name = "palmas-extcon";
+                nvidia,id_det_type = <1>;
+                nvidia,id_extcon_dev_name = "palmas-extcon";
+                status = "okay";
+        };

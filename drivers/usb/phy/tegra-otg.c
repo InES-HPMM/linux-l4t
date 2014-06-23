@@ -28,6 +28,8 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/export.h>
@@ -37,8 +39,11 @@
 #include <linux/regulator/consumer.h>
 #include <linux/usb/hcd.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/dma-mapping.h>
+#include <linux/module.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -93,6 +98,12 @@ struct tegra_otg {
 	struct extcon_dev *edev;
 };
 
+struct tegra_otg_soc_data {
+	struct platform_device *ehci_device;
+	struct tegra_usb_platform_data *ehci_pdata;
+};
+
+static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 static struct tegra_otg *tegra_clone;
 static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
@@ -696,11 +707,137 @@ void tegra_otg_set_id_detection_type(struct tegra_otg *tegra)
 	}
 }
 
+static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
+	struct platform_device *pdev, struct tegra_otg_soc_data *soc_data)
+{
+	struct tegra_usb_otg_data *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	const char *ext_name = NULL;
+	int status;
+
+	if (!np)
+		return NULL;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_otg_data),
+			GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pdata->is_xhci = of_property_read_bool(np, "nvidia,is_xhci");
+	pdata->ehci_device = soc_data->ehci_device;
+	pdata->ehci_pdata = soc_data->ehci_pdata;
+	pdata->ehci_pdata->u_data.host.support_y_cable =
+	       of_property_read_bool(np, "nvidia,support_y_cable");
+	pdata->ehci_pdata->support_pmu_vbus = of_property_read_bool(np,
+					"nvidia,support_pmu_vbus");
+	pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
+		of_property_read_bool(np, "nvidia,turn_off_vbus_on_lp0");
+	of_property_read_u32(np, "nvidia,id_det_type",
+			&pdata->ehci_pdata->id_det_type);
+	of_property_read_u32(np, "nvidia,id_det_gpio", &pdata->id_det_gpio);
+	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
+				&ext_name);
+	if (status < 0)
+		ext_name = NULL;
+	pdata->ehci_pdata->vbus_extcon_dev_name = ext_name;
+
+	status = of_property_read_string(np, "nvidia,id_extcon_dev_name",
+				&ext_name);
+	if (status < 0)
+		ext_name = NULL;
+	pdata->ehci_pdata->id_extcon_dev_name = ext_name;
+
+	return pdata;
+}
+
+static struct resource tegra_usb_resources[] = {
+	[0] = {
+		.start  = TEGRA_USB_BASE,
+		.end    = TEGRA_USB_BASE + TEGRA_USB_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start  = INT_USB,
+		.end    = INT_USB,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device tegra_ehci_device = {
+	.name   = "tegra-ehci",
+	.id     = 0,
+	.dev    = {
+		.dma_mask       = &tegra_ehci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
+	},
+	.resource = tegra_usb_resources,
+	.num_resources = ARRAY_SIZE(tegra_usb_resources),
+};
+
+static struct tegra_usb_platform_data tegra_ehci_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 0,
+		.xcvr_lsrslew = 3,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x4,
+		.xcvr_hsslew_lsb = 2,
+	},
+};
+
+struct tegra_otg_soc_data tegra_soc_data = {
+	.ehci_device = &tegra_ehci_device,
+	.ehci_pdata = &tegra_ehci_utmi_pdata,
+};
+
+struct of_device_id tegra_otg_of_match[] = {
+	{.compatible = "nvidia,tegra210-otg", .data = &tegra_soc_data, },
+	{.compatible = "nvidia,tegra132-otg", .data = &tegra_soc_data, },
+};
+MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
+
 static int tegra_otg_conf(struct platform_device *pdev)
 {
-	struct tegra_usb_otg_data *pdata = dev_get_platdata(&pdev->dev);
+	struct tegra_usb_otg_data *pdata, *dev_pdata;
 	struct tegra_otg *tegra;
+	struct tegra_otg_soc_data *soc_data;
+	const struct of_device_id *match;
 	int err;
+
+	if (pdev->dev.of_node) {
+		match = of_match_device(of_match_ptr(tegra_otg_of_match),
+				&pdev->dev);
+		if (!match) {
+			dev_err(&pdev->dev, "Error: No device match found\n");
+			return -ENODEV;
+		}
+
+		soc_data = (struct tegra_otg_soc_data *)match->data;
+		pdata = tegra_otg_dt_parse_pdata(pdev, soc_data);
+		dev_pdata = dev_get_platdata(&pdev->dev);
+		if (dev_pdata)
+			pdata->is_xhci = dev_pdata->is_xhci;
+	} else {
+		pdata = dev_get_platdata(&pdev->dev);
+	}
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "unable to get platform data\n");
@@ -1155,6 +1292,7 @@ static struct platform_driver tegra_otg_driver = {
 #ifdef CONFIG_PM
 		.pm    = &tegra_otg_pm_ops,
 #endif
+		.of_match_table = of_match_ptr(tegra_otg_of_match),
 	},
 	.remove  = __exit_p(tegra_otg_remove),
 	.probe   = tegra_otg_probe,
