@@ -563,7 +563,7 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	ret = (val & 0xFFF);
 	if (ret == 0) {
 		ret = palmas_gpadc_check_status(adc);
-		if (ret == 0)
+		if (ret < 0)
 			ret = -EAGAIN;
 	}
 
