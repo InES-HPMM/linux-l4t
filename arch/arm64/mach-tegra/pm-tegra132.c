@@ -207,15 +207,16 @@ static int __cpuinit pm_suspend_notifier(struct notifier_block *nb,
 		if (!cpu)
 			continue;
 		ret = cpu_up(cpu);
-		if (ret)
-			pr_warn("%s: Couldn't bring up CPU%d on LP0 entry\n",
-					__func__, cpu);
+
 		/*
 		 * Error in getting CPU out of C6. Let -EINVAL through as CPU
 		 * could have come online
 		 */
-		if (ret && ret != -EINVAL)
+		if (ret && ret != -EINVAL) {
+			pr_err("%s: Couldn't bring up CPU%d on LP0 entry: %d\n",
+					__func__, cpu, ret);
 			return NOTIFY_BAD;
+		}
 	}
 
 	return NOTIFY_OK;
