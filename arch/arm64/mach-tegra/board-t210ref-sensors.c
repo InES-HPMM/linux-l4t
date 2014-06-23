@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-ardbeg-sensors.c
+ * arch/arm/mach-tegra/board-t210ref-sensors.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -45,11 +45,11 @@
 #include "devices.h"
 #include "board.h"
 #include "board-common.h"
-#include "board-ardbeg.h"
+#include "board-t210ref.h"
 #include "tegra-board-id.h"
 
 #if defined(ARCH_TEGRA_12x_SOC)
-static struct i2c_board_info ardbeg_i2c_board_info_cm32181[] = {
+static struct i2c_board_info t210ref_i2c_board_info_cm32181[] = {
 	{
 		I2C_BOARD_INFO("cm32181", 0x48),
 	},
@@ -133,7 +133,7 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
-	/* TN8 with diferent Compass address from ardbeg */
+	/* TN8 with diferent Compass address from t210ref */
 	if (of_machine_is_compatible("nvidia,tn8"))
 		inv_mpu9250_i2c0_board_info[2].addr = MPU_COMPASS_ADDR_TN8;
 
@@ -149,17 +149,17 @@ static void mpuirq_init(void)
  * Soc Camera platform driver for testing
  */
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
-static int ardbeg_soc_camera_add(struct soc_camera_device *icd);
-static void ardbeg_soc_camera_del(struct soc_camera_device *icd);
+static int t210ref_soc_camera_add(struct soc_camera_device *icd);
+static void t210ref_soc_camera_del(struct soc_camera_device *icd);
 
-static int ardbeg_soc_camera_set_capture(struct soc_camera_platform_info *info,
+static int t210ref_soc_camera_set_capture(struct soc_camera_platform_info *info,
 		int enable)
 {
 	/* TODO: probably add clk opertaion here */
 	return 0; /* camera sensor always enabled */
 }
 
-static struct soc_camera_platform_info ardbeg_soc_camera_info = {
+static struct soc_camera_platform_info t210ref_soc_camera_info = {
 	.format_name = "RGB4",
 	.format_depth = 32,
 	.format = {
@@ -169,10 +169,10 @@ static struct soc_camera_platform_info ardbeg_soc_camera_info = {
 		.width = 1280,
 		.height = 720,
 	},
-	.set_capture = ardbeg_soc_camera_set_capture,
+	.set_capture = t210ref_soc_camera_set_capture,
 };
 
-static struct tegra_camera_platform_data ardbeg_camera_platform_data = {
+static struct tegra_camera_platform_data t210ref_camera_platform_data = {
 	.flip_v                 = 0,
 	.flip_h                 = 0,
 	.port                   = TEGRA_CAMERA_PORT_CSI_A,
@@ -180,54 +180,54 @@ static struct tegra_camera_platform_data ardbeg_camera_platform_data = {
 	.continuous_clk         = 0,
 };
 
-static struct soc_camera_link ardbeg_soc_camera_link = {
+static struct soc_camera_link t210ref_soc_camera_link = {
 	.bus_id         = 0, /* This must match the .id of tegra_vi01_device */
-	.add_device     = ardbeg_soc_camera_add,
-	.del_device     = ardbeg_soc_camera_del,
+	.add_device     = t210ref_soc_camera_add,
+	.del_device     = t210ref_soc_camera_del,
 	.module_name    = "soc_camera_platform",
-	.priv		= &ardbeg_camera_platform_data,
-	.dev_priv	= &ardbeg_soc_camera_info,
+	.priv		= &t210ref_camera_platform_data,
+	.dev_priv	= &t210ref_soc_camera_info,
 };
 
-static struct platform_device *ardbeg_pdev;
+static struct platform_device *t210ref_pdev;
 
-static void ardbeg_soc_camera_release(struct device *dev)
+static void t210ref_soc_camera_release(struct device *dev)
 {
-	soc_camera_platform_release(&ardbeg_pdev);
+	soc_camera_platform_release(&t210ref_pdev);
 }
 
-static int ardbeg_soc_camera_add(struct soc_camera_device *icd)
+static int t210ref_soc_camera_add(struct soc_camera_device *icd)
 {
-	return soc_camera_platform_add(icd, &ardbeg_pdev,
-			&ardbeg_soc_camera_link,
-			ardbeg_soc_camera_release, 0);
+	return soc_camera_platform_add(icd, &t210ref_pdev,
+			&t210ref_soc_camera_link,
+			t210ref_soc_camera_release, 0);
 }
 
-static void ardbeg_soc_camera_del(struct soc_camera_device *icd)
+static void t210ref_soc_camera_del(struct soc_camera_device *icd)
 {
-	soc_camera_platform_del(icd, ardbeg_pdev, &ardbeg_soc_camera_link);
+	soc_camera_platform_del(icd, t210ref_pdev, &t210ref_soc_camera_link);
 }
 
-static struct platform_device ardbeg_soc_camera_device = {
+static struct platform_device t210ref_soc_camera_device = {
 	.name   = "soc-camera-pdrv",
 	.id     = 0,
 	.dev    = {
-		.platform_data = &ardbeg_soc_camera_link,
+		.platform_data = &t210ref_soc_camera_link,
 	},
 };
 #endif
 
-static struct regulator *ardbeg_vcmvdd;
+static struct regulator *t210ref_vcmvdd;
 
-static int ardbeg_get_extra_regulators(void)
+static int t210ref_get_extra_regulators(void)
 {
-	if (!ardbeg_vcmvdd) {
-		ardbeg_vcmvdd = regulator_get(NULL, "avdd_af1_cam");
-		if (WARN_ON(IS_ERR(ardbeg_vcmvdd))) {
+	if (!t210ref_vcmvdd) {
+		t210ref_vcmvdd = regulator_get(NULL, "avdd_af1_cam");
+		if (WARN_ON(IS_ERR(t210ref_vcmvdd))) {
 			pr_err("%s: can't get regulator avdd_af1_cam: %ld\n",
-					__func__, PTR_ERR(ardbeg_vcmvdd));
-			regulator_put(ardbeg_vcmvdd);
-			ardbeg_vcmvdd = NULL;
+					__func__, PTR_ERR(t210ref_vcmvdd));
+			regulator_put(t210ref_vcmvdd);
+			t210ref_vcmvdd = NULL;
 			return -ENODEV;
 		}
 	}
@@ -253,24 +253,24 @@ static struct tegra_io_dpd csie_io = {
 	.io_dpd_bit		= 12,
 };
 
-static int ardbeg_ar0261_power_on(struct ar0261_power_rail *pw)
+static int t210ref_ar0261_power_on(struct ar0261_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
 		return -EFAULT;
 
-	/* disable CSIE IOs DPD mode to turn on front camera for ardbeg */
+	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
 	tegra_io_dpd_disable(&csie_io);
 
-	if (ardbeg_get_extra_regulators())
-		goto ardbeg_ar0261_poweron_fail;
+	if (t210ref_get_extra_regulators())
+		goto t210ref_ar0261_poweron_fail;
 
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM_AF_PWDN, 1);
 
 
-	err = regulator_enable(ardbeg_vcmvdd);
+	err = regulator_enable(t210ref_vcmvdd);
 	if (unlikely(err))
 		goto ar0261_vcm_fail;
 
@@ -299,25 +299,25 @@ ar0261_dvdd_fail:
 	regulator_disable(pw->avdd);
 
 ar0261_avdd_fail:
-	regulator_disable(ardbeg_vcmvdd);
+	regulator_disable(t210ref_vcmvdd);
 
 ar0261_vcm_fail:
 	pr_err("%s vcmvdd failed.\n", __func__);
 	return -ENODEV;
 
-ardbeg_ar0261_poweron_fail:
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+t210ref_ar0261_poweron_fail:
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
 }
 
-static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
+static int t210ref_ar0261_power_off(struct ar0261_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd ||
-					!ardbeg_vcmvdd))) {
+					!t210ref_vcmvdd))) {
 		/* put CSIE IOs into DPD mode to
-		 * save additional power for ardbeg
+		 * save additional power for t210ref
 		 */
 		tegra_io_dpd_enable(&csie_io);
 		return -EFAULT;
@@ -330,19 +330,19 @@ static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->dvdd);
 	regulator_disable(pw->avdd);
-	regulator_disable(ardbeg_vcmvdd);
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	regulator_disable(t210ref_vcmvdd);
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return 0;
 }
 
-struct ar0261_platform_data ardbeg_ar0261_data = {
-	.power_on = ardbeg_ar0261_power_on,
-	.power_off = ardbeg_ar0261_power_off,
+struct ar0261_platform_data t210ref_ar0261_data = {
+	.power_on = t210ref_ar0261_power_on,
+	.power_off = t210ref_ar0261_power_off,
 	.mclk_name = "mclk2",
 };
 
-static int ardbeg_imx135_get_extra_regulators(struct imx135_power_rail *pw)
+static int t210ref_imx135_get_extra_regulators(struct imx135_power_rail *pw)
 {
 	if (!pw->ext_reg1) {
 		pw->ext_reg1 = regulator_get(NULL, "imx135_reg1");
@@ -367,18 +367,18 @@ static int ardbeg_imx135_get_extra_regulators(struct imx135_power_rail *pw)
 	return 0;
 }
 
-static int ardbeg_imx135_power_on(struct imx135_power_rail *pw)
+static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
 
-	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
+	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
 	tegra_io_dpd_disable(&csia_io);
 	tegra_io_dpd_disable(&csib_io);
 
-	if (ardbeg_imx135_get_extra_regulators(pw))
+	if (t210ref_imx135_get_extra_regulators(pw))
 		goto imx135_poweron_fail;
 
 	err = regulator_enable(pw->ext_reg1);
@@ -430,7 +430,7 @@ imx135_poweron_fail:
 	return -ENODEV;
 }
 
-static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
+static int t210ref_imx135_power_off(struct imx135_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
 		tegra_io_dpd_enable(&csia_io);
@@ -444,20 +444,20 @@ static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
 	regulator_disable(pw->ext_reg1);
 	regulator_disable(pw->ext_reg2);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
-static int ardbeg_imx179_power_on(struct imx179_power_rail *pw)
+static int t210ref_imx179_power_on(struct imx179_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
 
-	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
+	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
 	tegra_io_dpd_disable(&csia_io);
 	tegra_io_dpd_disable(&csib_io);
 
@@ -499,7 +499,7 @@ imx179_avdd_fail:
 	return -ENODEV;
 }
 
-static int ardbeg_imx179_power_off(struct imx179_power_rail *pw)
+static int t210ref_imx179_power_off(struct imx179_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
 		tegra_io_dpd_enable(&csia_io);
@@ -511,13 +511,13 @@ static int ardbeg_imx179_power_off(struct imx179_power_rail *pw)
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
-struct imx135_platform_data ardbeg_imx135_data = {
+struct imx135_platform_data t210ref_imx135_data = {
 	.flash_cap = {
 		.enable = 1,
 		.edge_trig_en = 1,
@@ -525,11 +525,11 @@ struct imx135_platform_data ardbeg_imx135_data = {
 		.repeat = 1,
 		.delay_frm = 0,
 	},
-	.power_on = ardbeg_imx135_power_on,
-	.power_off = ardbeg_imx135_power_off,
+	.power_on = t210ref_imx135_power_on,
+	.power_off = t210ref_imx135_power_off,
 };
 
-struct imx179_platform_data ardbeg_imx179_data = {
+struct imx179_platform_data t210ref_imx179_data = {
 	.flash_cap = {
 		.enable = 1,
 		.edge_trig_en = 1,
@@ -537,11 +537,11 @@ struct imx179_platform_data ardbeg_imx179_data = {
 		.repeat = 1,
 		.delay_frm = 0,
 	},
-	.power_on = ardbeg_imx179_power_on,
-	.power_off = ardbeg_imx179_power_off,
+	.power_on = t210ref_imx179_power_on,
+	.power_off = t210ref_imx179_power_off,
 };
 
-static int ardbeg_dw9718_power_on(struct dw9718_power_rail *pw)
+static int t210ref_dw9718_power_on(struct dw9718_power_rail *pw)
 {
 	int err;
 	pr_info("%s\n", __func__);
@@ -571,7 +571,7 @@ dw9718_vdd_fail:
 	return -ENODEV;
 }
 
-static int ardbeg_dw9718_power_off(struct dw9718_power_rail *pw)
+static int t210ref_dw9718_power_off(struct dw9718_power_rail *pw)
 {
 	pr_info("%s\n", __func__);
 
@@ -585,7 +585,7 @@ static int ardbeg_dw9718_power_off(struct dw9718_power_rail *pw)
 }
 
 static u16 dw9718_devid;
-static int ardbeg_dw9718_detect(void *buf, size_t size)
+static int t210ref_dw9718_detect(void *buf, size_t size)
 {
 	dw9718_devid = 0x9718;
 	return 0;
@@ -599,18 +599,18 @@ static struct nvc_focus_cap dw9718_cap = {
 	.focus_hyper = 200,
 };
 
-static struct dw9718_platform_data ardbeg_dw9718_data = {
+static struct dw9718_platform_data t210ref_dw9718_data = {
 	.cfg = NVC_CFG_NODEV,
 	.num = 0,
 	.sync = 0,
 	.dev_name = "focuser",
 	.cap = &dw9718_cap,
-	.power_on = ardbeg_dw9718_power_on,
-	.power_off = ardbeg_dw9718_power_off,
-	.detect = ardbeg_dw9718_detect,
+	.power_on = t210ref_dw9718_power_on,
+	.power_off = t210ref_dw9718_power_off,
+	.detect = t210ref_dw9718_detect,
 };
 
-static struct as364x_platform_data ardbeg_as3648_data = {
+static struct as364x_platform_data t210ref_as3648_data = {
 	.config		= {
 		.led_mask	= 3,
 		.max_total_current_mA = 1000,
@@ -628,14 +628,14 @@ static struct as364x_platform_data ardbeg_as3648_data = {
 	.gpio_strobe	= CAM_FLASH_STROBE,
 };
 
-static int ardbeg_ov7695_power_on(struct ov7695_power_rail *pw)
+static int t210ref_ov7695_power_on(struct ov7695_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
 		return -EFAULT;
 
-	/* disable CSIE IOs DPD mode to turn on front camera for ardbeg */
+	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
 	tegra_io_dpd_disable(&csie_io);
 
 	gpio_set_value(CAM2_PWDN, 0);
@@ -661,16 +661,16 @@ ov7695_iovdd_fail:
 
 ov7695_avdd_fail:
 	gpio_set_value(CAM_RSTN, 0);
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return -ENODEV;
 }
 
-static int ardbeg_ov7695_power_off(struct ov7695_power_rail *pw)
+static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd))) {
 		/* put CSIE IOs into DPD mode to
-		 * save additional power for ardbeg
+		 * save additional power for t210ref
 		 */
 		tegra_io_dpd_enable(&csie_io);
 		return -EFAULT;
@@ -685,24 +685,24 @@ static int ardbeg_ov7695_power_off(struct ov7695_power_rail *pw)
 
 	regulator_disable(pw->avdd);
 
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return 0;
 }
 
-struct ov7695_platform_data ardbeg_ov7695_pdata = {
-	.power_on = ardbeg_ov7695_power_on,
-	.power_off = ardbeg_ov7695_power_off,
+struct ov7695_platform_data t210ref_ov7695_pdata = {
+	.power_on = t210ref_ov7695_power_on,
+	.power_off = t210ref_ov7695_power_off,
 	.mclk_name = "mclk2",
 };
 
-static int ardbeg_mt9m114_power_on(struct mt9m114_power_rail *pw)
+static int t210ref_mt9m114_power_on(struct mt9m114_power_rail *pw)
 {
 	int err;
 	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
 		return -EFAULT;
 
-	/* disable CSIE IOs DPD mode to turn on front camera for ardbeg */
+	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
 	tegra_io_dpd_disable(&csie_io);
 
 	gpio_set_value(CAM_RSTN, 0);
@@ -730,16 +730,16 @@ mt9m114_avdd_fail:
 
 mt9m114_iovdd_fail:
 	gpio_set_value(CAM_RSTN, 0);
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return -ENODEV;
 }
 
-static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
+static int t210ref_mt9m114_power_off(struct mt9m114_power_rail *pw)
 {
 	if (unlikely(!pw || !pw->avdd || !pw->iovdd)) {
 		/* put CSIE IOs into DPD mode to
-		 * save additional power for ardbeg
+		 * save additional power for t210ref
 		 */
 		tegra_io_dpd_enable(&csie_io);
 		return -EFAULT;
@@ -752,30 +752,30 @@ static int ardbeg_mt9m114_power_off(struct mt9m114_power_rail *pw)
 	usleep_range(100, 120);
 	regulator_disable(pw->iovdd);
 
-	/* put CSIE IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return 1;
 }
 
-struct mt9m114_platform_data ardbeg_mt9m114_pdata = {
-	.power_on = ardbeg_mt9m114_power_on,
-	.power_off = ardbeg_mt9m114_power_off,
+struct mt9m114_platform_data t210ref_mt9m114_pdata = {
+	.power_on = t210ref_mt9m114_power_on,
+	.power_off = t210ref_mt9m114_power_off,
 	.mclk_name = "mclk2",
 };
 
 
-static int ardbeg_ov5693_power_on(struct ov5693_power_rail *pw)
+static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
 		return -EFAULT;
 
-	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
+	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
 	tegra_io_dpd_disable(&csia_io);
 	tegra_io_dpd_disable(&csib_io);
 
-	if (ardbeg_get_extra_regulators())
+	if (t210ref_get_extra_regulators())
 		goto ov5693_poweron_fail;
 
 	gpio_set_value(CAM1_PWDN, 0);
@@ -792,7 +792,7 @@ static int ardbeg_ov5693_power_on(struct ov5693_power_rail *pw)
 	udelay(2);
 	gpio_set_value(CAM1_PWDN, 1);
 
-	err = regulator_enable(ardbeg_vcmvdd);
+	err = regulator_enable(t210ref_vcmvdd);
 	if (unlikely(err))
 		goto ov5693_vcmvdd_fail;
 
@@ -810,18 +810,18 @@ ov5693_avdd_fail:
 	gpio_set_value(CAM1_PWDN, 0);
 
 ov5693_poweron_fail:
-	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
 
-static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
+static int t210ref_ov5693_power_off(struct ov5693_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd))) {
 		/* put CSIA/B IOs into DPD mode to
-		 * save additional power for ardbeg
+		 * save additional power for t210ref
 		 */
 		tegra_io_dpd_enable(&csia_io);
 		tegra_io_dpd_enable(&csib_io);
@@ -832,11 +832,11 @@ static int ardbeg_ov5693_power_off(struct ov5693_power_rail *pw)
 	gpio_set_value(CAM1_PWDN, 0);
 	udelay(2);
 
-	regulator_disable(ardbeg_vcmvdd);
+	regulator_disable(t210ref_vcmvdd);
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
+	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	return 0;
@@ -889,11 +889,11 @@ static struct nvc_imager_cap ov5693_cap = {
 };
 
 
-static struct ov5693_platform_data ardbeg_ov5693_pdata = {
+static struct ov5693_platform_data t210ref_ov5693_pdata = {
 	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
 	.gpio		= ov5693_gpio_pdata,
-	.power_on	= ardbeg_ov5693_power_on,
-	.power_off	= ardbeg_ov5693_power_off,
+	.power_on	= t210ref_ov5693_power_on,
+	.power_off	= t210ref_ov5693_power_off,
 	.dev_name	= "ov5693",
 	.cap		= &ov5693_cap,
 	.mclk_name	= "mclk",
@@ -905,14 +905,14 @@ static struct ov5693_platform_data ardbeg_ov5693_pdata = {
 	.has_eeprom = 1,
 };
 
-static int ardbeg_ov5693_front_power_on(struct ov5693_power_rail *pw)
+static int t210ref_ov5693_front_power_on(struct ov5693_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
 		return -EFAULT;
 
-	if (ardbeg_get_extra_regulators())
+	if (t210ref_get_extra_regulators())
 		goto ov5693_front_poweron_fail;
 
 	gpio_set_value(CAM2_PWDN, 0);
@@ -931,7 +931,7 @@ static int ardbeg_ov5693_front_power_on(struct ov5693_power_rail *pw)
 	gpio_set_value(CAM2_PWDN, 1);
 	gpio_set_value(CAM_RSTN, 1);
 
-	err = regulator_enable(ardbeg_vcmvdd);
+	err = regulator_enable(t210ref_vcmvdd);
 	if (unlikely(err))
 		goto ov5693_front_vcmvdd_fail;
 
@@ -954,7 +954,7 @@ ov5693_front_poweron_fail:
 	return -ENODEV;
 }
 
-static int ardbeg_ov5693_front_power_off(struct ov5693_power_rail *pw)
+static int t210ref_ov5693_front_power_off(struct ov5693_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd))) {
 		return -EFAULT;
@@ -965,7 +965,7 @@ static int ardbeg_ov5693_front_power_off(struct ov5693_power_rail *pw)
 	gpio_set_value(CAM_RSTN, 0);
 	udelay(2);
 
-	regulator_disable(ardbeg_vcmvdd);
+	regulator_disable(t210ref_vcmvdd);
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
@@ -1011,11 +1011,11 @@ static struct nvc_imager_cap ov5693_front_cap = {
 	.is_hdr					= 1,
 };
 
-static struct ov5693_platform_data ardbeg_ov5693_front_pdata = {
+static struct ov5693_platform_data t210ref_ov5693_front_pdata = {
 	.gpio_count	= ARRAY_SIZE(ov5693_front_gpio_pdata),
 	.gpio		= ov5693_front_gpio_pdata,
-	.power_on	= ardbeg_ov5693_front_power_on,
-	.power_off	= ardbeg_ov5693_front_power_off,
+	.power_on	= t210ref_ov5693_front_power_on,
+	.power_off	= t210ref_ov5693_front_power_off,
 	.dev_name	= "ov5693.1",
 	.mclk_name	= "mclk2",
 	.cap		= &ov5693_front_cap,
@@ -1027,7 +1027,7 @@ static struct ov5693_platform_data ardbeg_ov5693_front_pdata = {
 	.has_eeprom = 0,
 };
 
-static int ardbeg_ad5823_power_on(struct ad5823_platform_data *pdata)
+static int t210ref_ad5823_power_on(struct ad5823_platform_data *pdata)
 {
 	int err = 0;
 
@@ -1038,7 +1038,7 @@ static int ardbeg_ad5823_power_on(struct ad5823_platform_data *pdata)
 	return err;
 }
 
-static int ardbeg_ad5823_power_off(struct ad5823_platform_data *pdata)
+static int t210ref_ad5823_power_off(struct ad5823_platform_data *pdata)
 {
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 0);
@@ -1047,39 +1047,39 @@ static int ardbeg_ad5823_power_off(struct ad5823_platform_data *pdata)
 	return 0;
 }
 
-static struct ad5823_platform_data ardbeg_ad5823_pdata = {
+static struct ad5823_platform_data t210ref_ad5823_pdata = {
 	.gpio = CAM_AF_PWDN,
-	.power_on	= ardbeg_ad5823_power_on,
-	.power_off	= ardbeg_ad5823_power_off,
+	.power_on	= t210ref_ad5823_power_on,
+	.power_off	= t210ref_ad5823_power_off,
 };
 
-static struct camera_data_blob ardbeg_camera_lut[] = {
-	{"ardbeg_imx135_pdata", &ardbeg_imx135_data},
-	{"ardbeg_dw9718_pdata", &ardbeg_dw9718_data},
-	{"ardbeg_ar0261_pdata", &ardbeg_ar0261_data},
-	{"ardbeg_mt9m114_pdata", &ardbeg_mt9m114_pdata},
-	{"ardbeg_ov5693_pdata", &ardbeg_ov5693_pdata},
-	{"ardbeg_ad5823_pdata", &ardbeg_ad5823_pdata},
-	{"ardbeg_as3648_pdata", &ardbeg_as3648_data},
-	{"ardbeg_ov7695_pdata", &ardbeg_ov7695_pdata},
-	{"ardbeg_imx179_pdata", &ardbeg_imx179_data},
-	{"ardbeg_ov5693f_pdata", &ardbeg_ov5693_front_pdata},
+static struct camera_data_blob t210ref_camera_lut[] = {
+	{"t210ref_imx135_pdata", &t210ref_imx135_data},
+	{"t210ref_dw9718_pdata", &t210ref_dw9718_data},
+	{"t210ref_ar0261_pdata", &t210ref_ar0261_data},
+	{"t210ref_mt9m114_pdata", &t210ref_mt9m114_pdata},
+	{"t210ref_ov5693_pdata", &t210ref_ov5693_pdata},
+	{"t210ref_ad5823_pdata", &t210ref_ad5823_pdata},
+	{"t210ref_as3648_pdata", &t210ref_as3648_data},
+	{"t210ref_ov7695_pdata", &t210ref_ov7695_pdata},
+	{"t210ref_imx179_pdata", &t210ref_imx179_data},
+	{"t210ref_ov5693f_pdata", &t210ref_ov5693_front_pdata},
 	{},
 };
 
-void __init ardbeg_camera_auxdata(void *data)
+void __init t210ref_camera_auxdata(void *data)
 {
 	struct of_dev_auxdata *aux_lut = data;
 	while (aux_lut && aux_lut->compatible) {
 		if (!strcmp(aux_lut->compatible, "nvidia,tegra124-camera")) {
 			pr_info("%s: update camera lookup table.\n", __func__);
-			aux_lut->platform_data = ardbeg_camera_lut;
+			aux_lut->platform_data = t210ref_camera_lut;
 		}
 		aux_lut++;
 	}
 }
 
-static int ardbeg_camera_init(void)
+static int t210ref_camera_init(void)
 {
 	struct board_info board_info;
 
@@ -1087,14 +1087,14 @@ static int ardbeg_camera_init(void)
 	tegra_get_board_info(&board_info);
 
 	/* put CSIA/B/C/D/E IOs into DPD mode to
-	 * save additional power for ardbeg
+	 * save additional power for t210ref
 	 */
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	tegra_io_dpd_enable(&csie_io);
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
-	platform_device_register(&ardbeg_soc_camera_device);
+	platform_device_register(&t210ref_soc_camera_device);
 #endif
 
 	return 0;
@@ -1317,10 +1317,11 @@ static struct balanced_throttle emergency_throttle = {
 	.throt_tab = emergency_throttle_table,
 };
 
-static int __init ardbeg_balanced_throttle_init(void)
+static int __init t210ref_balanced_throttle_init(void)
 {
-	if (of_machine_is_compatible("nvidia,e2141"))
+	if (!of_machine_is_compatible("nvidia,e2141"))
 		return 0;
+
 	if (!balanced_throttle_register(&cpu_throttle, "cpu-balanced"))
 		pr_err("balanced_throttle_register 'cpu-balanced' FAILED.\n");
 	if (!balanced_throttle_register(&gpu_throttle, "gpu-balanced"))
@@ -1328,10 +1329,9 @@ static int __init ardbeg_balanced_throttle_init(void)
 	if (!balanced_throttle_register(&emergency_throttle,
 							"emergency-balanced"))
 		pr_err("balanced_throttle_register 'emergency-balanced' FAILED\n");
-
 	return 0;
 }
-late_initcall(ardbeg_balanced_throttle_init);
+late_initcall(t210ref_balanced_throttle_init);
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_trip_info skin_trips[] = {
@@ -1511,14 +1511,12 @@ static struct balanced_throttle skin_throttle = {
 	.throt_tab = skin_throttle_table,
 };
 
-static int __init ardbeg_skin_init(void)
+static int __init t210ref_skin_init(void)
 {
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-
-
-	if (of_machine_is_compatible("nvidia,e2141"))
+	if (!of_machine_is_compatible("nvidia,e2141"))
 		return 0;
 
 	if (board_info.board_id == BOARD_P1761 ||
@@ -1543,10 +1541,10 @@ static int __init ardbeg_skin_init(void)
 
 	return 0;
 }
-late_initcall(ardbeg_skin_init);
+late_initcall(t210ref_skin_init);
 #endif
 
-static struct nct1008_platform_data ardbeg_nct72_pdata = {
+static struct nct1008_platform_data t210ref_nct72_pdata = {
 	.loc_name = "tegra",
 	.supported_hwrev = true,
 	.conv_rate = 0x06, /* 4Hz conversion rate */
@@ -1600,7 +1598,7 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
+static struct nct1008_platform_data t210ref_nct72_tskin_pdata = {
 	.loc_name = "skin",
 
 	.supported_hwrev = true,
@@ -1635,22 +1633,22 @@ static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 };
 #endif
 
-static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
+static struct i2c_board_info t210ref_i2c_nct72_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct72", 0x4c),
-		.platform_data = &ardbeg_nct72_pdata,
+		.platform_data = &t210ref_nct72_pdata,
 		.irq = -1,
 	},
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
 		I2C_BOARD_INFO("nct72", 0x4d),
-		.platform_data = &ardbeg_nct72_tskin_pdata,
+		.platform_data = &t210ref_nct72_tskin_pdata,
 		.irq = -1,
 	}
 #endif
 };
 
-static int ardbeg_nct72_init(void)
+static int t210ref_nct72_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
@@ -1662,10 +1660,10 @@ static int ardbeg_nct72_init(void)
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
 	if ((tegra_fuse_calib_base_get_cp(NULL, NULL) >= 0) &&
 	    (tegra_fuse_calib_base_get_ft(NULL, NULL) >= 0)) {
-		ardbeg_nct72_pdata.sensors[EXT].shutdown_limit += 20;
-		for (i = 0; i < ardbeg_nct72_pdata.sensors[EXT].num_trips;
+		t210ref_nct72_pdata.sensors[EXT].shutdown_limit += 20;
+		for (i = 0; i < t210ref_nct72_pdata.sensors[EXT].num_trips;
 			 i++) {
-			trip_state = &ardbeg_nct72_pdata.sensors[EXT].trips[i];
+			trip_state = &t210ref_nct72_pdata.sensors[EXT].trips[i];
 			if (!strncmp(trip_state->cdev_type, "cpu-balanced",
 					THERMAL_NAME_LENGTH)) {
 				trip_state->cdev_type = "_none_";
@@ -1674,21 +1672,21 @@ static int ardbeg_nct72_init(void)
 		}
 	} else {
 		tegra_platform_edp_init(
-			ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips,
+			t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips,
 					12000); /* edp temperature margin */
 		tegra_add_cpu_vmax_trips(
-			ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+			t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips);
 		tegra_add_tgpu_trips(
-			ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+			t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips);
 		tegra_add_vc_trips(
-			ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+			t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips);
 		tegra_add_core_vmax_trips(
-			ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+			t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips);
 	}
 
 	/* vmin trips are bound to soctherm on norrin and bowmore */
@@ -1696,14 +1694,14 @@ static int ardbeg_nct72_init(void)
 		board_info.board_id == BOARD_E2141 ||
 		board_info.board_id == BOARD_E1971 ||
 		board_info.board_id == BOARD_E1991))
-		tegra_add_all_vmin_trips(ardbeg_nct72_pdata.sensors[EXT].trips,
-			&ardbeg_nct72_pdata.sensors[EXT].num_trips);
+		tegra_add_all_vmin_trips(t210ref_nct72_pdata.sensors[EXT].trips,
+			&t210ref_nct72_pdata.sensors[EXT].num_trips);
 
 	/* T210_interposer use GPIO_PC7 for alert*/
 	if (board_info.board_id == BOARD_E2141)
 		nct72_port = TEGRA_GPIO_PC7;
 
-	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
+	t210ref_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
 
 	ret = gpio_request(nct72_port, "temp_alert");
 	if (ret < 0)
@@ -1717,29 +1715,29 @@ static int ardbeg_nct72_init(void)
 
 	/* norrin has thermal sensor on GEN1-I2C i.e. instance 0 */
 	if (board_info.board_id == BOARD_PM374)
-		i2c_register_board_info(0, ardbeg_i2c_nct72_board_info,
+		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 					1); /* only register device[0] */
-	/* ardbeg has thermal sensor on GEN2-I2C i.e. instance 1 */
+	/* t210ref has thermal sensor on GEN2-I2C i.e. instance 1 */
 	else if (board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM370 ||
 			board_info.board_id == BOARD_PM363)
-		i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
-		ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
+		i2c_register_board_info(1, t210ref_i2c_nct72_board_info,
+		ARRAY_SIZE(t210ref_i2c_nct72_board_info));
 	else if (board_info.board_id == BOARD_PM375) {
-		ardbeg_nct72_pdata.sensors[EXT].shutdown_limit = 100;
-		ardbeg_nct72_pdata.sensors[LOC].shutdown_limit = 95;
-		i2c_register_board_info(0, ardbeg_i2c_nct72_board_info,
+		t210ref_nct72_pdata.sensors[EXT].shutdown_limit = 100;
+		t210ref_nct72_pdata.sensors[LOC].shutdown_limit = 95;
+		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 					1); /* only register device[0] */
 	}
 	else
-		i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
-			ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
+		i2c_register_board_info(1, t210ref_i2c_nct72_board_info,
+			ARRAY_SIZE(t210ref_i2c_nct72_board_info));
 
 	return ret;
 }
 
-int __init ardbeg_sensors_init(void)
+int __init t210ref_sensors_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
@@ -1752,7 +1750,7 @@ int __init ardbeg_sensors_init(void)
 		!of_machine_is_compatible("nvidia,e2141") &&
 		board_info.board_id != BOARD_PM375)
 		mpuirq_init();
-	ardbeg_camera_init();
+	t210ref_camera_init();
 
 	if (board_info.board_id == BOARD_P1761 ||
 		board_info.board_id == BOARD_E1784 ||
@@ -1762,15 +1760,15 @@ int __init ardbeg_sensors_init(void)
 		/* Sensor is on DT */
 		pr_err("Temp sensor are from DT\n");
 	} else
-		ardbeg_nct72_init();
+		t210ref_nct72_init();
 
 #if defined(ARCH_TEGRA_12x_SOC)
 	/* TN8 and PM359 don't have ALS CM32181 */
 	if (!of_machine_is_compatible("nvidia,tn8") &&
 	    board_info.board_id != BOARD_PM359 &&
 	    board_info.board_id != BOARD_PM375)
-		i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
-			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
+		i2c_register_board_info(0, t210ref_i2c_board_info_cm32181,
+			ARRAY_SIZE(t210ref_i2c_board_info_cm32181));
 #endif
 	return 0;
 }

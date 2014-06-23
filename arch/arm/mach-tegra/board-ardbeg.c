@@ -1636,11 +1636,6 @@ static const char * const loki_dt_board_compat[] = {
 	NULL
 };
 
-static const char * const e2141_dt_board_compat[] = {
-	"nvidia,e2141",
-	NULL
-};
-
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 DT_MACHINE_START(LOKI, "t132loki")
 	.atag_offset	= 0x100,
@@ -1653,20 +1648,6 @@ DT_MACHINE_START(LOKI, "t132loki")
 	.init_machine	= tegra_ardbeg_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= loki_dt_board_compat,
-	.init_late      = tegra_init_late
-MACHINE_END
-
-DT_MACHINE_START(E2141, "e2141")
-	.atag_offset	= 0x100,
-	.smp		= smp_ops(tegra_smp_ops),
-	.map_io		= tegra_map_common_io,
-	.reserve	= tegra_ardbeg_reserve,
-	.init_early	= tegra_ardbeg_init_early,
-	.init_irq	= irqchip_init,
-	.init_time	= clocksource_of_init,
-	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
-	.dt_compat	= e2141_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
 #endif
