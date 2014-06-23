@@ -1543,7 +1543,7 @@ static void __exit akm_exit(void)
 	i2c_del_driver(&akm_driver);
 }
 
-module_init(akm_init);
+late_initcall(akm_init);
 module_exit(akm_exit);
 
 MODULE_LICENSE("GPL");

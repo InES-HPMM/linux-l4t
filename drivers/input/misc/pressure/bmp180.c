@@ -1771,7 +1771,7 @@ static void __exit bmp_exit(void)
 	i2c_del_driver(&bmp_driver);
 }
 
-module_init(bmp_init);
+late_initcall(bmp_init);
 module_exit(bmp_exit);
 
 MODULE_LICENSE("GPL");
