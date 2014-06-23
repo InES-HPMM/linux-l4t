@@ -736,8 +736,12 @@ static void ardbeg_usb_init(void)
 		tegra_otg_pdata.is_xhci = true;
 		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
+
+#if !defined(CONFIG_ARM64)
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
+#endif
+
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
@@ -963,6 +967,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 #if defined(CONFIG_ARM64)
 	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
 			&tegra_udc_pdata.u_data.dev),
+	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
+			&tegra_otg_pdata),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
