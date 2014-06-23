@@ -20,12 +20,12 @@ targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
 ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
-DTC_FLAGS += -i $(srctree)/../kernel-t186/arch/arm64/boot/dts
+DTC_FLAGS += -i $(srctree)/../kernel-t18x/arch/arm64/boot/dts
 endif
 
 DTCCPP_FLAGS := -I$(srctree)/arch/arm/boot/dts
 ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
-DTCCPP_FLAGS += -I$(srctree)/../kernel-t186/arch/arm64/boot/dts
+DTCCPP_FLAGS += -I$(srctree)/../kernel-t18x/arch/arm64/boot/dts
 endif
 
 dtbs: $(addprefix $(obj)/, $(dtb-y))
