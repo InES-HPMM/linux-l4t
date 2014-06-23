@@ -920,33 +920,12 @@ static void tegra21_super_clk_init(struct clk *c)
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	source = (val >> shift) & SUPER_SOURCE_MASK;
 
-	/*
-	 * Enforce PLLX DIV2 bypass setting as early as possible. It is always
-	 * safe to do for both cclk_lp and cclk_g when booting on G CPU. (In
-	 * case of booting on LP CPU, cclk_lp will be updated during the cpu
-	 * rate change after boot, and cclk_g after the cluster switch.)
-	 */
-	if (c->flags & DIV_U71) {
-		val |= SUPER_LP_DIV2_BYPASS;
-		clk_writel_delay(val, c->reg);
-	}
-
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->value == source)
 			break;
 	}
 	BUG_ON(sel->input == NULL);
 	c->parent = sel->input;
-
-	/* Update parent in case when LP CPU PLLX DIV2 bypassed */
-	if ((c->flags & DIV_2) && (c->parent->flags & PLLX) &&
-	    (val & SUPER_LP_DIV2_BYPASS))
-		c->parent = c->parent->parent;
-
-	/* Update parent in case when LP CPU PLLX DIV2 bypassed */
-	if ((c->flags & DIV_2) && (c->parent->flags & PLLX) &&
-	    (val & SUPER_LP_DIV2_BYPASS))
-		c->parent = c->parent->parent;
 
 	if (c->flags & DIV_U71) {
 		c->mul = 2;
@@ -990,16 +969,6 @@ static int tegra21_super_clk_set_parent(struct clk *c, struct clk *p)
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
-			/* For LP mode super-clock switch between PLLX direct
-			   and divided-by-2 outputs is allowed only when other
-			   than PLLX clock source is current parent */
-			if ((c->flags & DIV_2) && (p->flags & PLLX) &&
-			    ((sel->value ^ val) & SUPER_LP_DIV2_BYPASS)) {
-				if (c->parent->flags & PLLX)
-					return -EINVAL;
-				val ^= SUPER_LP_DIV2_BYPASS;
-				clk_writel_delay(val, c->reg);
-			}
 			val &= ~(SUPER_SOURCE_MASK << shift);
 			val |= (sel->value & SUPER_SOURCE_MASK) << shift;
 
@@ -1041,49 +1010,6 @@ static int tegra21_super_clk_set_rate(struct clk *c, unsigned long rate)
 	 */
 	return clk_set_rate(c->parent, rate);
 }
-
-#ifdef CONFIG_PM_SLEEP
-static void tegra21_super_clk_resume(struct clk *c, struct clk *backup,
-				     u32 setting)
-{
-	u32 val;
-	const struct clk_mux_sel *sel;
-	int shift;
-
-	/* For sclk and cclk_g super clock just restore saved value */
-	if (!(c->flags & DIV_2)) {
-		clk_writel_delay(setting, c->reg);
-		return;
-	}
-
-	/*
-	 * For cclk_lp supper clock: switch to backup (= not PLLX) source,
-	 * safely restore PLLX DIV2 bypass, and only then restore full
-	 * setting
-	 */
-	val = clk_readl(c->reg);
-	BUG_ON(((val & SUPER_STATE_MASK) != SUPER_STATE_RUN) &&
-		((val & SUPER_STATE_MASK) != SUPER_STATE_IDLE));
-	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
-		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
-	for (sel = c->inputs; sel->input != NULL; sel++) {
-		if (sel->input == backup) {
-			val &= ~(SUPER_SOURCE_MASK << shift);
-			val |= (sel->value & SUPER_SOURCE_MASK) << shift;
-
-			BUG_ON(backup->flags & PLLX);
-			clk_writel_delay(val, c->reg);
-
-			val &= ~SUPER_LP_DIV2_BYPASS;
-			val |= (setting & SUPER_LP_DIV2_BYPASS);
-			clk_writel_delay(val, c->reg);
-			clk_writel_delay(setting, c->reg);
-			return;
-		}
-	}
-	BUG();
-}
-#endif
 
 static struct clk_ops tegra_super_ops = {
 	.init			= tegra21_super_clk_init,
@@ -6554,14 +6480,6 @@ static struct clk tegra_pll_x = {
 	},
 };
 
-static struct clk tegra_pll_x_out0 = {
-	.name      = "pll_x_out0",
-	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_2 | PLLX,
-	.parent    = &tegra_pll_x,
-	.max_rate  = 700000000,
-};
-
 static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 12000000, 800000000, 66, 1, 1},	/* actual: 792.0 MHz */
 	{ 13000000, 800000000, 61, 1, 1},	/* actual: 793.0 MHz */
@@ -8586,7 +8504,6 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_u_60M,
 	&tegra_pll_u_48M,
 	&tegra_pll_x,
-	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
 	&tegra_pll_d2,
 	&tegra_pll_c4_vco,
