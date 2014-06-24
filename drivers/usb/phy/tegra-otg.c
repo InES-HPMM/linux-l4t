@@ -30,6 +30,7 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/export.h>
@@ -734,9 +735,9 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 					"nvidia,support_pmu_vbus");
 	pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
 		of_property_read_bool(np, "nvidia,turn_off_vbus_on_lp0");
+	pdata->id_det_gpio = of_get_named_gpio(np, "nvidia,id_det_gpio", 0);
 	of_property_read_u32(np, "nvidia,id_det_type",
 			&pdata->ehci_pdata->id_det_type);
-	of_property_read_u32(np, "nvidia,id_det_gpio", &pdata->id_det_gpio);
 	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
 				&ext_name);
 	if (status < 0)
