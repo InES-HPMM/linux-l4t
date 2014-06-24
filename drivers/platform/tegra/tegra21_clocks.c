@@ -1277,8 +1277,6 @@ static int tegra21_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 				" ready is not allowed\n");
 			return -ENOSYS;
 		}
-	} else { /* for non silicon platform, return zero for now */
-		return 0;
 	}
 	if (has_dfll && c->dvfs && c->dvfs->dvfs_rail) {
 		if (tegra_dvfs_is_dfll_range(c->dvfs, rate))
