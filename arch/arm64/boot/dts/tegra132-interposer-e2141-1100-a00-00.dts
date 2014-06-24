@@ -176,7 +176,7 @@
 		};
 
 		/* T210 interposer use I2C0 for Charger & FG */
-		battery-charger@6b {
+		bq2419x_int: battery-charger@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
@@ -184,7 +184,7 @@
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 			#extcon-cells = <1>;
 
-			charger {
+			battery_charger_int: charger {
 				status = "disabled";
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
@@ -200,12 +200,6 @@
 				ti,temp-polling-time-sec = <5>;
 				ti,ir-comp-voltage-millivolt = <1>;
 				ti,ir-comp-resister-ohm = <70>;
-				consumers {
-					c1 {
-						regulator-consumer-supply = "usb_bat_chg";
-						regulator-consumer-device = "tegra-udc.0";
-					};
-				};
 			};
 
 			vbus {
@@ -253,5 +247,29 @@
 		cc4 {
 			pmstate = <0x0>;
 		};
+	};
+
+	udc@7d000000 {
+		nvidia,port_otg;
+		nvidia,charging_supported;
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "bq2419x-extcon";
+		nvidia,id_det_type = <2>;
+		extcon-cables = <&bq2419x_int 0>;
+		extcon-cable-names = "vbus";
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger_int>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "bq2419x-extcon";
+		nvidia,id_det_type = <2>;
+		nvidia,id_det_gpio = <&max77620 0 0>;
+		extcon-cables = <&bq2419x_int 0>;
+		extcon-cable-names = "vbus";
+		status = "okay";
 	};
 };
