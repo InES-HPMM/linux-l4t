@@ -876,7 +876,6 @@ static void __init tegra_loki_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	loki_sensors_init();
 
-	loki_fan_init();
 	loki_soctherm_init();
 	loki_setup_bluedroid_pm();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);

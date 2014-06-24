@@ -131,9 +131,6 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 #define I2C_TP_IRQ	TEGRA_GPIO_PW3
 
 /* TN8 specific */
-
-int loki_fan_init(void);
-
 enum {
 	P2530_LOKI = 0,
 	E2549 = 1,

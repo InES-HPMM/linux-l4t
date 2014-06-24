@@ -152,7 +152,6 @@ int loki_kbc_init(void);
 int loki_sensors_init(void);
 int loki_soctherm_init(void);
 int loki_edp_init(void);
-int loki_fan_init(void);
 int loki_rail_alignment_init(void);
 
 /* AUO Display related GPIO */

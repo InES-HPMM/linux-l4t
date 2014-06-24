@@ -1504,7 +1504,6 @@ static void __init tegra_ardbeg_late_init(void)
 	}	else if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530) {
 		loki_sensors_init();
-		loki_fan_init();
 		loki_soctherm_init();
 	}	else {
 		ardbeg_sensors_init();
