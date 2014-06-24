@@ -7753,7 +7753,7 @@ static struct clk tegra_clk_host1x = {
 	.ops       = &tegra_1xbus_clk_ops,
 	.reg       = 0x180,
 	.inputs    = mux_pllm_pllc_pllp_plla,
-	.flags     = MUX | DIV_U71 | DIV_U71_INT,
+	.flags     = MUX | DIV_U71,
 	.max_rate  = 500000000,
 	.min_rate  = 12000000,
 	.u.periph = {
@@ -9774,6 +9774,10 @@ void __init tegra12x_init_clocks(void)
 {
 	int i;
 	struct clk *c;
+
+	/* Allow host1x fractional divider for Automotive SKUs */
+	if (tegra_soc_speedo_id() != 2)
+		tegra_clk_host1x.flags |= DIV_U71_INT;
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra12_init_one_clock(tegra_ptr_clks[i]);
