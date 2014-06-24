@@ -16,12 +16,5 @@
 			power = <19>;
 			pmstate = <0x9>;
 		};
-		cc6 {
-			state-name = "Virtual Retention";
-			latency = <180>;
-			residency = <16000>;
-			power = <10>;
-			pmstate = <0x10>;
-		};
 	};
 };
