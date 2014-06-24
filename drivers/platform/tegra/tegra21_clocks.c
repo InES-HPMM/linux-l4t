@@ -912,10 +912,8 @@ static void tegra21_super_clk_init(struct clk *c)
 	const struct clk_mux_sel *sel;
 	val = clk_readl(c->reg + SUPER_CLK_MUX);
 	c->state = ON;
-#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	BUG_ON(((val & SUPER_STATE_MASK) != SUPER_STATE_RUN) &&
 		((val & SUPER_STATE_MASK) != SUPER_STATE_IDLE));
-#endif
 	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	source = (val >> shift) & SUPER_SOURCE_MASK;
