@@ -11,9 +11,14 @@
  * more details.
  */
 
-#include "tegra124-loki-e2530-a01.dts"
-#include "tegra124-platforms/tegra124-loki-pwm-fan.dtsi"
+#include "tegra124-pwm-fan.dtsi"
 
 / {
-	nvidia,dtsfilename = __FILE__;
+	pwm-fan {
+		compatible = "foster-pwm-fan";
+		name = "pwm-fan";
+
+		shared_data = <&pwm_fan_shared_data>;
+		active_pwm = <0 70 115 135 135 240 245 250 252 255>;
+	};
 };

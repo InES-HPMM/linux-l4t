@@ -11,9 +11,21 @@
  * more details.
  */
 
-#include "tegra124-loki-e2530-a01.dts"
-#include "tegra124-platforms/tegra124-loki-pwm-fan.dtsi"
-
 / {
-	nvidia,dtsfilename = __FILE__;
+	pwm_fan_shared_data: pfsd {
+		num_resources = <0>;
+		secret = <47>;
+		active_steps = <10>;
+		active_rpm = <0 1000 2000 3000 4000 5000 6000 7000 10000 11000>;
+		active_rru = <40 2 1 1 1 1 1 1 1 1>;
+		active_rrd = <40 2 1 1 1 1 1 1 1 1>;
+		state_cap_lookup = <2 2 2 2 3 3 3 4 4 4>;
+		pwm_period = <45334>;
+		pwm_id = <0>;
+		step_time = <100>; /* mesecs */
+		state_cap = <7>;
+		active_pwm_max = <256>;
+		tach_gpio =  <162>; /* TEGRA_GPIO_PU2 */
+		pwm_gpio = <163>; /* TEGRA_GPIO_PU3 */
+	};
 };
