@@ -1270,6 +1270,9 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 {
 	struct dentry *dent;
 	struct arm_smmu_device *smmu = dev->archdata.iommu;
+	char name[] = "cb000";
+	char target[] = "../../cb000";
+	u8 cbndx = smmu_domain->root_cfg.cbndx;
 
 	dent = debugfs_create_dir(dev_name(dev), smmu->masters_root);
 	if (!dent)
@@ -1278,6 +1281,9 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
 	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->root_cfg.cbndx);
 	debugfs_create_smmu_cb(smmu_domain, dev);
+	sprintf(name, "cb%03d", cbndx);
+	sprintf(target, "../../cb%03d", cbndx);
+	debugfs_create_symlink(name, dent, target);
 	master->debugfs_root = dent;
 }
 
