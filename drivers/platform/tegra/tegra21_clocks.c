@@ -1045,9 +1045,10 @@ static int tegra21_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 				    unsigned long old_rate)
 {
 	int ret = 0;
+	bool dramp = false;
 	bool on_main = false;
 	unsigned long backup_rate, main_rate;
-	unsigned long vco_min = c->u.cpu.main->u.pll.vco_min;
+	struct clk *main_pll = c->u.cpu.main;
 
 	/*
 	 * Take an extra reference to the main pll so it doesn't turn off when
@@ -1056,29 +1057,27 @@ static int tegra21_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 	 * lower current rate to pll VCO minimum level before switching to
 	 * backup source.
 	 */
-	if (c->parent->parent == c->u.cpu.main) {
-		bool dramp = (rate > c->u.cpu.backup_rate) &&
-			tegra21_is_dyn_ramp(c->u.cpu.main, rate, false);
-		clk_enable(c->u.cpu.main);
+	if (c->parent->parent == main_pll) {
+		clk_enable(main_pll);
 		on_main = true;
+		main_rate = rate;
 
-		if (dramp ||
-		    ((old_rate > vco_min) &&
-		     tegra21_is_dyn_ramp(c->u.cpu.main, vco_min, false))) {
-			main_rate = dramp ? rate : vco_min;
-			ret = clk_set_rate(c->u.cpu.main, main_rate);
+		dramp = (rate > c->u.cpu.backup_rate) &&
+			tegra_pll_can_ramp_to_rate(main_pll, rate);
+
+		if (dramp || tegra_pll_can_ramp_to_min(main_pll, &main_rate)) {
+			ret = clk_set_rate(main_pll, main_rate);
 			if (ret) {
 				pr_err("Failed to set cpu rate %lu on source"
-				       " %s\n", main_rate, c->u.cpu.main->name);
+				       " %s\n", main_rate, main_pll->name);
 				goto out;
 			}
-			if (dramp)
+
+			if (main_rate == rate)
 				goto out;
-		} else if (old_rate > vco_min) {
-#if PLLX_USE_DYN_RAMP
-			pr_warn("No dynamic ramp down: %s: %lu to %lu\n",
-				c->u.cpu.main->name, old_rate, vco_min);
-#endif
+		} else if (main_pll->u.pll.dyn_ramp) {
+			pr_warn("%s: not ready for dynamic ramp to %lu\n",
+				main_pll->name, rate);
 		}
 	}
 
@@ -1109,39 +1108,37 @@ static int tegra21_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 	   minimum. Use dynamic ramp to reach target rate if it is above VCO
 	   minimum. */
 	main_rate = rate;
-	if (rate > vco_min) {
-		if (tegra21_is_dyn_ramp(c->u.cpu.main, rate, true))
-			main_rate = vco_min;
-#if PLLX_USE_DYN_RAMP
-		else
-			pr_warn("No dynamic ramp up: %s: %lu to %lu\n",
-				c->u.cpu.main->name, vco_min, rate);
-#endif
+	if (!tegra_pll_can_ramp_from_min(main_pll, rate, &main_rate)) {
+		if (main_pll->u.pll.dyn_ramp)
+			pr_warn("%s: not ready for dynamic ramp to %lu\n",
+				main_pll->name, rate);
 	}
 
-	ret = clk_set_rate(c->u.cpu.main, main_rate);
+	ret = clk_set_rate(main_pll, main_rate);
 	if (ret) {
 		pr_err("Failed to set cpu rate %lu on source"
-		       " %s\n", main_rate, c->u.cpu.main->name);
+		       " %s\n", main_rate, main_pll->name);
 		goto out;
 	}
-	ret = clk_set_parent(c->parent, c->u.cpu.main);
+
+	ret = clk_set_parent(c->parent, main_pll);
 	if (ret) {
-		pr_err("Failed to switch cpu to %s\n", c->u.cpu.main->name);
+		pr_err("Failed to switch cpu to %s\n", main_pll->name);
 		goto out;
 	}
+
 	if (rate != main_rate) {
-		ret = clk_set_rate(c->u.cpu.main, rate);
+		ret = clk_set_rate(main_pll, rate);
 		if (ret) {
 			pr_err("Failed to set cpu rate %lu on source"
-			       " %s\n", rate, c->u.cpu.main->name);
+			       " %s\n", rate, main_pll->name);
 			goto out;
 		}
 	}
 
 out:
 	if (on_main)
-		clk_disable(c->u.cpu.main);
+		clk_disable(main_pll);
 
 	return ret;
 }
@@ -2970,9 +2967,9 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	pll_writel_delay(PLLX_MISC5_DEFAULT_VALUE, c->reg + c->u.pll.misc5);
 }
 
+#if PLLX_USE_DYN_RAMP
 static int pllx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 {
-#if PLLX_USE_DYN_RAMP
 	u32 reg, val, base, ndiv_new_mask;
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
@@ -2997,11 +2994,11 @@ static int pllx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 	val &= ~ctrl->dramp_en_mask;
 	pll_writel_delay(val, reg);
 
+	pr_debug("%s: dynamic ramp to ndiv = %u\n", c->name, cfg->n);
+
 	return 0;
-#else
-	return -ENOSYS;
-#endif
 }
+#endif
 
 static void tegra21_pllx_clk_init(struct clk *c)
 {
@@ -6471,7 +6468,9 @@ static struct clk tegra_pll_x = {
 		.controls = &pllx_controls,
 		.div_layout = &pllx_div_layout,
 		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
+#if PLLX_USE_DYN_RAMP
 		.dyn_ramp = pllx_dyn_ramp,
+#endif
 		.set_defaults = pllx_set_defaults,
 	},
 };
@@ -6666,7 +6665,7 @@ static struct clk tegra_pll_p_out3 = {
 static struct clk tegra_pll_p_out4 = {
 	.name      = "pll_p_out4",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_INT | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p_out_cpu,
 	.reg       = 0xa8,
 	.reg_shift = 16,
@@ -8563,28 +8562,6 @@ static bool tegra21_is_dyn_ramp(
 		if (!pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
 				return c->u.pll.defaults_set;
-		}
-	}
-#endif
-
-#if PLLX_USE_DYN_RAMP
-	/* PPLX, PLLC support dynamic ramp when changing NDIV only */
-	if (c == &tegra_pll_x) {
-		struct clk_pll_freq_table cfg, old_cfg;
-		unsigned long input_rate = clk_get_rate(c->parent);
-
-		if (from_vco_min) {
-			old_cfg.m = pll_get_fixed_mdiv(c, input_rate);
-			old_cfg.p = 1;
-		} else {
-			u32 val = clk_readl(c->reg + PLL_BASE);
-			PLL_BASE_PARSE(PLLXC, old_cfg, val);
-			old_cfg.p = pllxc_p[old_cfg.p];
-		}
-
-		if (!pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL)) {
-			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
-				return true;
 		}
 	}
 #endif

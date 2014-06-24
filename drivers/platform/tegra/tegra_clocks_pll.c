@@ -93,13 +93,6 @@ void pll_clk_verify_fixed_rate(struct clk *c)
 	}
 }
 
-bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
-		     struct clk_pll_freq_table *new_cfg)
-{
-	return (c->state == ON) && c->u.pll.defaults_set && c->u.pll.dyn_ramp &&
-		(new_cfg->m == old_cfg->m) && (new_cfg->p == old_cfg->p);
-}
-
 void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg)
 {
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
@@ -281,6 +274,65 @@ int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 		return -EINVAL;
 	}
 	return 0;
+}
+
+/*
+ * Dynamic ramp queries. For "can_ramp" queries assume PLL will be enabled
+ * (caller responsibility).
+ */
+static bool pll_is_dyn_ramp(struct clk *c, struct clk_pll_freq_table *old_cfg,
+			    struct clk_pll_freq_table *new_cfg)
+{
+	return (c->state == ON) && c->u.pll.defaults_set && c->u.pll.dyn_ramp &&
+		(new_cfg->m == old_cfg->m) && (new_cfg->p == old_cfg->p);
+}
+
+bool tegra_pll_can_ramp_to_rate(struct clk *c, unsigned long rate)
+{
+	struct clk_pll_freq_table cfg = { };
+	struct clk_pll_freq_table old_cfg = { };
+	unsigned long input_rate = clk_get_rate(c->parent);
+
+	if (!c->u.pll.dyn_ramp || !c->u.pll.defaults_set)
+		return false;
+
+	if (pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL))
+		return false;
+
+	pll_base_parse_cfg(c, &old_cfg);
+
+	return (cfg.m == old_cfg.m) && (cfg.p == old_cfg.p);
+}
+
+bool tegra_pll_can_ramp_to_min(struct clk *c, unsigned long *min_rate)
+{
+	struct clk_pll_freq_table cfg = { };
+
+	if (!c->u.pll.dyn_ramp || !c->u.pll.defaults_set)
+		return false;
+
+	pll_base_parse_cfg(c, &cfg);
+
+	/* output rate after VCO ramped down to min with current M, P */
+	*min_rate = DIV_ROUND_UP(c->u.pll.vco_min, cfg.p);
+	return true;
+}
+
+bool tegra_pll_can_ramp_from_min(struct clk *c, unsigned long rate,
+				 unsigned long *min_rate)
+{
+	struct clk_pll_freq_table cfg = { };
+	unsigned long input_rate = clk_get_rate(c->parent);
+
+	if (!c->u.pll.dyn_ramp || !c->u.pll.defaults_set)
+		return false;
+
+	if (pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL))
+		return false;
+
+	/* output rate before VCO ramped up from min with target M, P */
+	*min_rate = DIV_ROUND_UP(c->u.pll.vco_min, cfg.p);
+	return true;
 }
 
 /* Common PLL ops */

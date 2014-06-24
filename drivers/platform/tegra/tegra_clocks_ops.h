@@ -74,6 +74,11 @@ void pll_clk_verify_fixed_rate(struct clk *c);
 int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	unsigned long rate, unsigned long input_rate, u32 *pdiv);
 
+bool tegra_pll_can_ramp_to_rate(struct clk *c, unsigned long rate);
+bool tegra_pll_can_ramp_to_min(struct clk *c, unsigned long *min_rate);
+bool tegra_pll_can_ramp_from_min(struct clk *c, unsigned long rate,
+				 unsigned long *min_rate);
+
 void tegra_pll_clk_init(struct clk *c);
 int tegra_pll_clk_enable(struct clk *c);
 void tegra_pll_clk_disable(struct clk *c);
