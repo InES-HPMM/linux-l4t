@@ -217,10 +217,6 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_USB2);
 
-	val = gizmo_readl(AHB_GIZMO_USB3);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_USB3);
-
 	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 		| AHB_PRIORITY_WEIGHT(7);
