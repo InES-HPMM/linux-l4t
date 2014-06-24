@@ -1600,7 +1600,7 @@ ____iommu_create_mapping(struct device *dev, dma_addr_t *req,
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	unsigned int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	dma_addr_t dma_addr, iova;
-	int i, ret = DMA_ERROR_CODE;
+	int i;
 
 	if (req)
 		dma_addr = __alloc_iova_at(mapping, req, size, attrs);
@@ -1612,6 +1612,7 @@ ____iommu_create_mapping(struct device *dev, dma_addr_t *req,
 
 	iova = dma_addr;
 	for (i = 0; i < count; ) {
+		int ret;
 		unsigned int next_pfn = page_to_pfn(pages[i]) + 1;
 		phys_addr_t phys = page_to_phys(pages[i]);
 		unsigned int len, j;
