@@ -7087,7 +7087,7 @@ MUX_I2S_SPDIF(audio, 5);		/* SPDIF */
 		},					\
 		.inputs    = mux_audio_sync_clk,	\
 		.reg       = _reg,			\
-		.max_rate  = 24000000,			\
+		.max_rate  = 24576000,			\
 		.ops       = &tegra_audio_sync_clk_ops	\
 	}
 
@@ -8195,7 +8195,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c6",	"tegra21-i2c.5",	"div-clk",	166,	0x65c,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("mipibif",	"mipibif",		NULL,	173,	0x660,	408000000,  mux_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	60000000,  mux_clk_m, PERIPH_ON_APB),
-	PERIPH_CLK("mipi-cal-fixed", "mipi-cal-fixed",	NULL,	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("uarta",	"serial-tegra.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartb",	"serial-tegra.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
@@ -8203,7 +8202,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartape",	"uartape",		NULL,	212,	0x710,	50000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	700000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	4080000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_plld_plla_pllc_plld2_clkm,	MUX),
