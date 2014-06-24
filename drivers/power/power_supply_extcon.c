@@ -34,60 +34,86 @@
 
 #define CHARGER_TYPE_DETECTION_DEFAULT_DEBOUNCE_TIME_MS		500
 
+struct power_supply_cables;
+
 struct power_supply_extcon {
 	struct device				*dev;
-	struct extcon_dev			*edev;
-	struct extcon_dev			*y_cable_edev;
 	struct power_supply			ac;
 	struct power_supply			usb;
 	uint8_t					ac_online;
 	uint8_t					usb_online;
 	struct power_supply_extcon_plat_data	*pdata;
 	spinlock_t				lock;
+	struct power_supply_cables		*psy_cables;
+	int					max_psy_cables;
 };
 
 struct power_supply_cables {
 	const char *name;
-	long int event;
+	const char *print_str;
+	int usb_online;
+	int ac_online;
 	struct power_supply_extcon	*psy_extcon;
 	struct notifier_block nb;
-	struct extcon_specific_cable_nb *ec_cable_nb;
-	struct delayed_work extcon_notifier_work;
+	struct extcon_specific_cable_nb ec_cable_nb;
+	struct extcon_cable *ec_cable;
 };
 
 static struct power_supply_cables psy_cables[] = {
 	{
 		.name	= "USB",
+		.print_str = "USB charger",
+		.usb_online = 1,
 	},
 	{
 		.name	= "TA",
+		.print_str = "USB TA",
+		.ac_online = 1,
 	},
 	{
 		.name	= "QC2",
+		.print_str = "USB QC2-charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "MAXIM",
+		.print_str = "USB Maxim-charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Fast-charger",
+		.print_str = "USB Fast-charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Slow-charger",
+		.print_str = "USB Slow-charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Charge-downstream",
+		.print_str = "USB charger downstream",
+		.usb_online = 1,
 	},
 	{
 		.name	= "Apple 500mA-charger",
+		.print_str = "USB Apple 500mA-charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Apple 1A-charger",
+		.print_str = "USB Apple 1A charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Apple 2A-charger",
+		.print_str = "USB Apple 2A charger",
+		.ac_online = 1,
 	},
 	{
 		.name	= "Y-cable",
+		.print_str = "Y cable",
+		.ac_online = 1,
 	},
 };
 
@@ -122,84 +148,65 @@ static int power_supply_extcon_get_property(struct power_supply *psy,
 	return ret;
 }
 
-static int power_supply_extcon_remove_cable(
-		struct power_supply_extcon *psy_extcon,
-		struct extcon_dev *edev)
+static bool psy_get_cable_state(struct power_supply_extcon *psy_extcon,
+		const char *cable_name)
 {
-	dev_info(psy_extcon->dev, "Charging cable removed\n");
+	int i;
+	bool found = false;
+	int ret;
 
-	psy_extcon->ac_online = 0;
-	psy_extcon->usb_online = 0;
-	power_supply_changed(&psy_extcon->usb);
-	power_supply_changed(&psy_extcon->ac);
-	return 0;
+	for (i = 0; i < psy_extcon->max_psy_cables; ++i) {
+		if (!strncmp(psy_extcon->psy_cables[i].name,
+				cable_name, CABLE_NAME_MAX)) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return 0;
+
+	if (!psy_extcon->psy_cables[i].ec_cable)
+		return 0;
+
+	ret = extcon_get_cable_state_(psy_extcon->psy_cables[i].ec_cable->edev,
+			psy_extcon->psy_cables[i].ec_cable->cable_index);
+	if (ret >= 1)
+		return true;
+	return false;
 }
 
 static int power_supply_extcon_attach_cable(
-		struct power_supply_extcon *psy_extcon,
-		struct extcon_dev *edev)
+		struct power_supply_extcon *psy_extcon)
 {
+	struct power_supply_cables *psy_cable;
+	bool state = false;
+	int i;
+
 	psy_extcon->usb_online = 0;
 	psy_extcon->ac_online = 0;
 
-	if (true == extcon_get_cable_state(edev, "USB")) {
-		psy_extcon->usb_online = 1;
-		dev_info(psy_extcon->dev, "USB charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
-		psy_extcon->usb_online = 1;
-		dev_info(psy_extcon->dev,
-			"USB charger downstream cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "TA")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB TA cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "QC2")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB QC2-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "MAXIM")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB Maxim-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB Fast-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB Slow-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev,
-						"Apple 500mA-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev,
-			"USB Apple 500mA-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Apple 1A-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev,
-			"USB Apple 1A-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Apple 2A-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev,
-			"USB Apple 2A-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Y-cable")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "Y cable charging detected\n");
-	} else {
-		dev_info(psy_extcon->dev, "Unknown cable detected\n");
+	for (i = 0; i < psy_extcon->max_psy_cables; ++i) {
+		psy_cable = &psy_extcon->psy_cables[i];
+		if (!psy_cable->ec_cable)
+			continue;
+
+		state = psy_get_cable_state(psy_extcon, psy_cable->name);
+		if (state) {
+			dev_info(psy_extcon->dev, "%s cable detected\n",
+					psy_cable->print_str);
+			psy_extcon->ac_online = psy_cable->ac_online;
+			psy_extcon->usb_online = psy_cable->usb_online;
+			break;
+		}
 	}
+
+	if (!state)
+		dev_info(psy_extcon->dev, "No cable detected\n");
 
 	power_supply_changed(&psy_extcon->usb);
 	power_supply_changed(&psy_extcon->ac);
 	return 0;
-}
-
-static void psy_extcon_extcon_handle_notifier(struct work_struct *w)
-{
-	struct power_supply_cables *cable = container_of(to_delayed_work(w),
-			struct power_supply_cables, extcon_notifier_work);
-	struct power_supply_extcon *psy_extcon = cable->psy_extcon;
-	struct extcon_dev *edev = cable->ec_cable_nb->edev;
-
-	if (cable->event == 0)
-		power_supply_extcon_remove_cable(psy_extcon, edev);
-	else if (cable->event == 1)
-		power_supply_extcon_attach_cable(psy_extcon, edev);
 }
 
 static int psy_extcon_extcon_notifier(struct notifier_block *self,
@@ -208,15 +215,21 @@ static int psy_extcon_extcon_notifier(struct notifier_block *self,
 	struct power_supply_cables *cable = container_of(self,
 		struct power_supply_cables, nb);
 	struct power_supply_extcon *psy_extcon = cable->psy_extcon;
-	struct extcon_dev *edev = cable->ec_cable_nb->edev;
 
 	spin_lock(&psy_extcon->lock);
-	cable->event = event;
-	if (cable->event == 0)
-		power_supply_extcon_remove_cable(psy_extcon, edev);
-	else if (cable->event == 1)
-		power_supply_extcon_attach_cable(psy_extcon, edev);
+	if (event == 0) {
+		dev_info(psy_extcon->dev, "Charging cable removed\n");
+		psy_extcon->ac_online = 0;
+		psy_extcon->usb_online = 0;
+	} else if (event == 1) {
+		dev_info(psy_extcon->dev, "%s cable detected\n",
+				cable->print_str);
+		psy_extcon->ac_online = cable->ac_online;
+		psy_extcon->usb_online = cable->usb_online;
+	}
 
+	power_supply_changed(&psy_extcon->usb);
+	power_supply_changed(&psy_extcon->ac);
 	spin_unlock(&psy_extcon->lock);
 
 	return NOTIFY_DONE;
@@ -298,68 +311,56 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		goto pwr_sply_error;
 	}
 
-	for (j = 0 ; j < ARRAY_SIZE(psy_cables); j++) {
+	psy_extcon->psy_cables = psy_cables;
+	psy_extcon->max_psy_cables = ARRAY_SIZE(psy_cables);
+	for (j = 0; j < psy_extcon->max_psy_cables; j++) {
 		struct power_supply_cables *psy_cable = &psy_cables[j];
-
-		psy_cable->ec_cable_nb =  devm_kzalloc(&pdev->dev,
-					sizeof(struct extcon_specific_cable_nb),
-					GFP_KERNEL);
-		if (!psy_cable->ec_cable_nb) {
-			dev_err(&pdev->dev, "Malloc for ec_cable_nb failed\n");
-			goto econ_err;
-		}
-
-		INIT_DELAYED_WORK(&psy_cable->extcon_notifier_work,
-					psy_extcon_extcon_handle_notifier);
+		const char *ext_name;
 
 		psy_cable->psy_extcon = psy_extcon;
 		psy_cable->nb.notifier_call = psy_extcon_extcon_notifier;
 
-		if (strcmp(psy_cable->name, "Y-cable") == 0 &&
-				pdata->y_cable_extcon_name) {
-			ret = extcon_register_interest(psy_cable->ec_cable_nb,
-				pdata->y_cable_extcon_name,
-				psy_cable->name, &psy_cable->nb);
-		} else {
-			ret = extcon_register_interest(psy_cable->ec_cable_nb,
-				pdata->extcon_name,
-				psy_cable->name, &psy_cable->nb);
+		psy_cable->ec_cable = extcon_get_extcon_cable(psy_extcon->dev,
+						psy_cable->name);
+		if (!IS_ERR(psy_cable->ec_cable))
+			goto register_cable;
+
+		psy_cable->ec_cable = NULL;
+		ext_name = pdata->extcon_name;
+		if (!strcmp(psy_cable->name, "Y-cable"))
+			ext_name = pdata->y_cable_extcon_name;
+		if (!ext_name) {
+			dev_warn(psy_extcon->dev, "No extname for cable %s\n",
+						psy_cable->name);
+			continue;
 		}
 
+		psy_cable->ec_cable = extcon_get_extcon_cable_by_extcon_name(
+					ext_name, psy_cable->name);
+		if (IS_ERR(psy_cable->ec_cable)) {
+			dev_err(psy_extcon->dev,
+				"Cable %s not found on ext_name %s\n",
+					psy_cable->name, ext_name);
+			psy_cable->ec_cable = NULL;
+			continue;
+		}
+
+register_cable:
+		ret = extcon_register_cable_interest(&psy_cable->ec_cable_nb,
+				psy_cable->ec_cable, &psy_cable->nb);
 		if (ret < 0)
 			dev_err(psy_extcon->dev,
 				"Cable %s registration failed: %d\n",
 				psy_cable->name, ret);
 	}
 
-	psy_extcon->edev = extcon_get_extcon_dev(pdata->extcon_name);
-	if (!psy_extcon->edev) {
-		dev_err(psy_extcon->dev, "No extcon device with %s\n",
-			pdata->extcon_name);
-		goto econ_err;
-	}
-
 	spin_lock(&psy_extcon->lock);
-	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
+	power_supply_extcon_attach_cable(psy_extcon);
 	spin_unlock(&psy_extcon->lock);
-
-	if (pdata->y_cable_extcon_name) {
-		psy_extcon->y_cable_edev =
-			extcon_get_extcon_dev(pdata->y_cable_extcon_name);
-		if (!psy_extcon->y_cable_edev)
-			goto econ_err;
-
-		spin_lock(&psy_extcon->lock);
-		if (!psy_extcon->usb_online && !psy_extcon->ac_online)
-			power_supply_extcon_attach_cable(psy_extcon,
-				psy_extcon->y_cable_edev);
-		spin_unlock(&psy_extcon->lock);
-	}
 
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
 	return 0;
 
-econ_err:
 	power_supply_unregister(&psy_extcon->usb);
 pwr_sply_error:
 	power_supply_unregister(&psy_extcon->ac);
