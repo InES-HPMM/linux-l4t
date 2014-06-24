@@ -151,6 +151,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_USE_64BIT_ADDR			(1<<10)
 /* delayed clock gate */
 #define SDHCI_QUIRK2_DELAYED_CLK_GATE			(1<<11)
+/* Enable pm domain */
+#define SDHCI_QUIRK2_PM_DOMAIN				(1<<12)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */

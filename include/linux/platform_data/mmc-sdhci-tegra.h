@@ -65,6 +65,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int calib_3v3_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	unsigned int calib_1v8_offsets;	/* Format to be filled: 0xXXXXPDPU */
 	bool disable_clock_gate; /* no clock gate when true */
+	bool enable_pm_domain; /* enable pm domain when true */
 	u32 cpu_speedo;
 	unsigned char default_drv_type;
 };

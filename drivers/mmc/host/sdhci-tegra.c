@@ -4500,6 +4500,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (!plat->disable_clock_gate)
 		host->mmc->caps2 |= MMC_CAP2_CLOCK_GATING;
 
+	if (plat->disable_clock_gate && plat->enable_pm_domain)
+		host->quirks2 |= SDHCI_QUIRK2_PM_DOMAIN;
+
 	tegra_host->nominal_vcore_mv =
 		tegra_dvfs_get_core_nominal_millivolts();
 	tegra_host->min_vcore_override_mv =
