@@ -36,6 +36,15 @@
 #include "pinconf.h"
 #include "pinctrl-utils.h"
 
+#define MAX77620_PIN_NUM 8
+#define MAX77620_PIN_PPDRV_MASK 1
+
+enum max77620_pin_ppdrv {
+	MAX77620_PIN_UNCONFIG_DRV,
+	MAX77620_PIN_OD_DRV,
+	MAX77620_PIN_PP_DRV,
+};
+
 struct max77620_pin_function {
 	const char *name;
 	const char * const *groups;
@@ -60,6 +69,10 @@ struct max77620_pingroup {
 	enum max77620_alternate_pinmux_option alt_option;
 };
 
+struct max77620_pin_info {
+	enum max77620_pin_ppdrv drv_type;
+};
+
 struct max77620_pctrl_info {
 	struct device *dev;
 	struct pinctrl_dev *pctl;
@@ -71,6 +84,7 @@ struct max77620_pctrl_info {
 	int num_pin_groups;
 	const struct pinctrl_pin_desc *pins;
 	unsigned num_pins;
+	struct max77620_pin_info pin_info[MAX77620_PIN_NUM];
 };
 
 static const struct pinctrl_pin_desc max77620_pins_desc[] = {
@@ -220,9 +234,80 @@ static const struct pinmux_ops max77620_pinmux_ops = {
 	.enable			= max77620_pinctrl_enable,
 };
 
+static int max77620_pinconf_get(struct pinctrl_dev *pctldev,
+			unsigned pin, unsigned long *config)
+{
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	enum pin_config_param param = pinconf_to_config_param(*config);
+	int arg = 0;
+
+	switch (param) {
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		if (max77620_pci->pin_info[pin].drv_type == MAX77620_PIN_OD_DRV)
+			arg = 1;
+		break;
+
+	case PIN_CONFIG_DRIVE_PUSH_PULL:
+		if (max77620_pci->pin_info[pin].drv_type == MAX77620_PIN_PP_DRV)
+			arg = 1;
+		break;
+
+	default:
+		dev_err(max77620_pci->dev, "Properties not supported\n");
+		return -ENOTSUPP;
+	}
+
+	*config = pinconf_to_config_packed(param, (u16)arg);
+	return 0;
+}
+
+static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
+		unsigned pin, unsigned long config)
+{
+
+	struct max77620_pctrl_info *max77620_pci =
+					pinctrl_dev_get_drvdata(pctldev);
+	enum pin_config_param param = pinconf_to_config_param(config);
+	u16 param_val = pinconf_to_config_argument(config);
+	unsigned int val;
+
+	switch (param) {
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		val = param_val ? 0 : 1;
+		max77620_reg_update(max77620_pci->max77620->dev,
+			MAX77620_PWR_SLAVE, MAX77620_REG_GPIO0 + pin,
+			MAX77620_PIN_PPDRV_MASK, val);
+		max77620_pci->pin_info[pin].drv_type = val ?
+			MAX77620_PIN_PP_DRV : MAX77620_PIN_OD_DRV;
+		break;
+
+	case PIN_CONFIG_DRIVE_PUSH_PULL:
+		val = param_val ? 1 : 0;
+		max77620_reg_update(max77620_pci->max77620->dev,
+			MAX77620_PWR_SLAVE, MAX77620_REG_GPIO0 + pin,
+			MAX77620_PIN_PPDRV_MASK, val);
+		max77620_pci->pin_info[pin].drv_type = val ?
+			MAX77620_PIN_PP_DRV : MAX77620_PIN_OD_DRV;
+		break;
+
+	default:
+		dev_err(max77620_pci->dev, "Properties not supported\n");
+		return -ENOTSUPP;
+	}
+
+	return 0;
+}
+
+static const struct pinconf_ops max77620_pinconf_ops = {
+	.pin_config_get = max77620_pinconf_get,
+	.pin_config_set = max77620_pinconf_set,
+};
+
 static struct pinctrl_desc max77620_pinctrl_desc = {
 	.pctlops = &max77620_pinctrl_ops,
 	.pmxops = &max77620_pinmux_ops,
+	.confops = &max77620_pinconf_ops,
 	.owner = THIS_MODULE,
 };
 
