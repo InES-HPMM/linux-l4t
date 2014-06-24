@@ -51,7 +51,7 @@ struct power_supply_cables {
 	long int event;
 	struct power_supply_extcon	*psy_extcon;
 	struct notifier_block nb;
-	struct extcon_specific_cable_nb *extcon_dev;
+	struct extcon_specific_cable_nb *ec_cable_nb;
 	struct delayed_work extcon_notifier_work;
 };
 
@@ -194,7 +194,7 @@ static void psy_extcon_extcon_handle_notifier(struct work_struct *w)
 	struct power_supply_cables *cable = container_of(to_delayed_work(w),
 			struct power_supply_cables, extcon_notifier_work);
 	struct power_supply_extcon *psy_extcon = cable->psy_extcon;
-	struct extcon_dev *edev = cable->extcon_dev->edev;
+	struct extcon_dev *edev = cable->ec_cable_nb->edev;
 
 	if (cable->event == 0)
 		power_supply_extcon_remove_cable(psy_extcon, edev);
@@ -208,7 +208,7 @@ static int psy_extcon_extcon_notifier(struct notifier_block *self,
 	struct power_supply_cables *cable = container_of(self,
 		struct power_supply_cables, nb);
 	struct power_supply_extcon *psy_extcon = cable->psy_extcon;
-	struct extcon_dev *edev = cable->extcon_dev->edev;
+	struct extcon_dev *edev = cable->ec_cable_nb->edev;
 
 	spin_lock(&psy_extcon->lock);
 	cable->event = event;
@@ -299,37 +299,37 @@ static int psy_extcon_probe(struct platform_device *pdev)
 	}
 
 	for (j = 0 ; j < ARRAY_SIZE(psy_cables); j++) {
-		struct power_supply_cables *cable = &psy_cables[j];
+		struct power_supply_cables *psy_cable = &psy_cables[j];
 
-		cable->extcon_dev =  devm_kzalloc(&pdev->dev,
+		psy_cable->ec_cable_nb =  devm_kzalloc(&pdev->dev,
 					sizeof(struct extcon_specific_cable_nb),
 					GFP_KERNEL);
-		if (!cable->extcon_dev) {
-			dev_err(&pdev->dev, "Malloc for extcon_dev failed\n");
+		if (!psy_cable->ec_cable_nb) {
+			dev_err(&pdev->dev, "Malloc for ec_cable_nb failed\n");
 			goto econ_err;
 		}
 
-		INIT_DELAYED_WORK(&cable->extcon_notifier_work,
+		INIT_DELAYED_WORK(&psy_cable->extcon_notifier_work,
 					psy_extcon_extcon_handle_notifier);
 
-		cable->psy_extcon = psy_extcon;
-		cable->nb.notifier_call = psy_extcon_extcon_notifier;
+		psy_cable->psy_extcon = psy_extcon;
+		psy_cable->nb.notifier_call = psy_extcon_extcon_notifier;
 
-		if (strcmp(cable->name, "Y-cable") == 0 &&
+		if (strcmp(psy_cable->name, "Y-cable") == 0 &&
 				pdata->y_cable_extcon_name) {
-			ret = extcon_register_interest(cable->extcon_dev,
+			ret = extcon_register_interest(psy_cable->ec_cable_nb,
 				pdata->y_cable_extcon_name,
-				cable->name, &cable->nb);
+				psy_cable->name, &psy_cable->nb);
 		} else {
-			ret = extcon_register_interest(cable->extcon_dev,
+			ret = extcon_register_interest(psy_cable->ec_cable_nb,
 				pdata->extcon_name,
-				cable->name, &cable->nb);
+				psy_cable->name, &psy_cable->nb);
 		}
 
 		if (ret < 0)
 			dev_err(psy_extcon->dev,
 				"Cable %s registration failed: %d\n",
-				cable->name, ret);
+				psy_cable->name, ret);
 	}
 
 	psy_extcon->edev = extcon_get_extcon_dev(pdata->extcon_name);
