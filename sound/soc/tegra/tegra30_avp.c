@@ -213,7 +213,7 @@ struct snd_compr_codec_caps tegra30_avp_compr_codec_caps[] = {
 					SND_RATECONTROLMODE_VARIABLEBITRATE,
 				.profiles = SND_AUDIOPROFILE_AAC,
 				.modes = SND_AUDIOMODE_AAC_LC,
-				.formats = SND_AUDIOSTREAMFORMAT_MP4ADTS,
+				.formats = SND_AUDIOSTREAMFORMAT_RAW,
 				.min_buffer = 1024,
 			},
 		},
@@ -1059,7 +1059,7 @@ static int tegra30_avp_compr_set_params(int id,
 		/* AAC-LC is only supported profile*/
 		stream->u.aac.audio_profile = AAC_PROFILE_LC;
 		stream->u.aac.sampling_freq = params->rate;
-		stream->u.aac.payload_type  = AAC_PAYLOAD_ADTS;
+		stream->u.aac.payload_type  = AAC_PAYLOAD_RAW;
 		switch (params->rate) {
 		case 8000:
 			stream->u.aac.sampling_freq_index = 0xb;
