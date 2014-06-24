@@ -154,6 +154,9 @@ struct sdhci_host {
 /* Enable pm domain */
 #define SDHCI_QUIRK2_PM_DOMAIN				(1<<12)
 
+	unsigned int  acmd12_ctrl;
+	unsigned int  ier;
+	unsigned int  command;
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
 

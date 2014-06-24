@@ -166,13 +166,10 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 
 static void sdhci_clear_set_irqs(struct sdhci_host *host, u32 clear, u32 set)
 {
-	u32 ier;
-
-	ier = sdhci_readl(host, SDHCI_INT_ENABLE);
-	ier &= ~clear;
-	ier |= set;
-	sdhci_writel(host, ier, SDHCI_INT_ENABLE);
-	sdhci_writel(host, ier, SDHCI_SIGNAL_ENABLE);
+	host->ier &= ~clear;
+	host->ier |= set;
+	sdhci_writel(host, host->ier, SDHCI_INT_ENABLE);
+	sdhci_writel(host, host->ier, SDHCI_SIGNAL_ENABLE);
 }
 
 static void sdhci_unmask_irqs(struct sdhci_host *host, u32 irqs)
@@ -217,16 +214,12 @@ static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
 	u32 ctrl;
 	unsigned long timeout;
-	u32 uninitialized_var(ier);
 
 	if (host->quirks & SDHCI_QUIRK_NO_CARD_NO_RESET) {
 		if (!(sdhci_readl(host, SDHCI_PRESENT_STATE) &
 			SDHCI_CARD_PRESENT))
 			return;
 	}
-
-	if (host->quirks & SDHCI_QUIRK_RESTORE_IRQS_AFTER_RESET)
-		ier = sdhci_readl(host, SDHCI_INT_ENABLE);
 
 	if (host->ops->platform_reset_enter)
 		host->ops->platform_reset_enter(host, mask);
@@ -255,7 +248,7 @@ static void sdhci_reset(struct sdhci_host *host, u8 mask)
 		host->ops->platform_reset_exit(host, mask);
 
 	if (host->quirks & SDHCI_QUIRK_RESTORE_IRQS_AFTER_RESET)
-		sdhci_clear_set_irqs(host, SDHCI_INT_ALL_MASK, ier);
+		sdhci_clear_set_irqs(host, SDHCI_INT_ALL_MASK, host->ier);
 
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if ((host->ops->enable_dma) && (mask & SDHCI_RESET_ALL))
@@ -1362,7 +1355,8 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	    cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)
 		flags |= SDHCI_CMD_DATA;
 
-	sdhci_writew(host, SDHCI_MAKE_CMD(cmd->opcode, flags), SDHCI_COMMAND);
+	host->command = SDHCI_MAKE_CMD(cmd->opcode, flags);
+	sdhci_writew(host, host->command, SDHCI_COMMAND);
 }
 
 static void sdhci_finish_command(struct sdhci_host *host)
@@ -2229,7 +2223,6 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
 	struct sdhci_host *host;
 	u16 ctrl;
-	u32 ier;
 	int tuning_loop_counter = MAX_TUNING_LOOP;
 	unsigned long timeout;
 	int err = 0;
@@ -2285,8 +2278,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	 * to make sure we don't hit a controller bug, we _only_
 	 * enable Buffer Read Ready interrupt here.
 	 */
-	ier = sdhci_readl(host, SDHCI_INT_ENABLE);
-	sdhci_clear_set_irqs(host, ier, SDHCI_INT_DATA_AVAIL);
+	sdhci_clear_set_irqs(host, host->ier, SDHCI_INT_DATA_AVAIL);
 
 	/*
 	 * Issue CMD19 repeatedly till Execute Tuning is set to 0 or the number
@@ -2424,7 +2416,7 @@ out:
 	if (err && (host->flags & SDHCI_USING_RETUNING_TIMER))
 		err = 0;
 
-	sdhci_clear_set_irqs(host, SDHCI_INT_DATA_AVAIL, ier);
+	sdhci_clear_set_irqs(host, SDHCI_INT_DATA_AVAIL, host->ier);
 	spin_unlock(&host->lock);
 	enable_irq(host->irq);
 	sdhci_runtime_pm_put(host);
@@ -2857,7 +2849,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 
 	/* CMD19, CMD21 generates _only_ Buffer Read Ready interrupt */
 	if (intmask & SDHCI_INT_DATA_AVAIL) {
-		command = SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND));
+		command = SDHCI_GET_CMD(host->command);
 		if (command == MMC_SEND_TUNING_BLOCK ||
 		    command == MMC_SEND_TUNING_BLOCK_HS200) {
 			host->tuning_done = 1;
@@ -2897,7 +2889,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		pr_err("%s: Data END Bit error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
 	} else if ((intmask & SDHCI_INT_DATA_CRC) &&
-		SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND))
+		SDHCI_GET_CMD(host->command)
 			!= MMC_BUS_TEST_R) {
 		host->data->error = -EILSEQ;
 		pr_err("%s: Data CRC error, intmask: %x Interface clock = %uHz\n",
@@ -3163,7 +3155,7 @@ int sdhci_suspend_host(struct sdhci_host *host)
 			host->ops->set_clock(host, max(mmc->ios.clock, mmc->f_min));
 
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
-		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
+		host->card_int_set = host->ier &
 			SDHCI_INT_CARD_INT;
 
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {

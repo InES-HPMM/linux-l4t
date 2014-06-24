@@ -2356,8 +2356,8 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 	/* Set the cmd flags */
 	flags = SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_DATA;
 	/* Issue the command */
-	sdhci_writew(sdhci, SDHCI_MAKE_CMD(
-		tegra_host->tuning_opcode, flags), SDHCI_COMMAND);
+	sdhci->command = SDHCI_MAKE_CMD(tegra_host->tuning_opcode, flags);
+	sdhci_writew(sdhci, sdhci->command, SDHCI_COMMAND);
 
 	timeout = 5;
 	do {
@@ -3358,7 +3358,6 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	int err;
 	u16 ctrl_2;
 	u32 misc_ctrl;
-	u32 ier;
 	u8 i, set_retuning = 0;
 	bool force_retuning = false;
 	bool enable_lb_clk;
@@ -3398,7 +3397,6 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	 * detection for buffer read ready and data crc. We use
 	 * polling for tuning as it involves less overhead.
 	 */
-	ier = sdhci_readl(sdhci, SDHCI_INT_ENABLE);
 	sdhci_writel(sdhci, 0, SDHCI_SIGNAL_ENABLE);
 	sdhci_writel(sdhci, SDHCI_INT_DATA_AVAIL |
 		SDHCI_INT_DATA_CRC, SDHCI_INT_ENABLE);
@@ -3471,8 +3469,8 @@ out:
 	sdhci_tegra_set_tuning_voltage(sdhci, 0);
 
 	/* Enable interrupts. Enable full range for core voltage */
-	sdhci_writel(sdhci, ier, SDHCI_INT_ENABLE);
-	sdhci_writel(sdhci, ier, SDHCI_SIGNAL_ENABLE);
+	sdhci_writel(sdhci, sdhci->ier, SDHCI_INT_ENABLE);
+	sdhci_writel(sdhci, sdhci->ier, SDHCI_SIGNAL_ENABLE);
 	mutex_unlock(&tuning_mutex);
 
 	SDHCI_TEGRA_DBG("%s: Freq tuning done\n", mmc_hostname(sdhci->mmc));
