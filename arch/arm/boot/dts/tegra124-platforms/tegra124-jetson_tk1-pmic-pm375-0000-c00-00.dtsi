@@ -18,12 +18,6 @@
 			ams,major-rev = <1>;
 			ams,minor-rev = <2>;
 			ams,system-power-controller;
-			#extcon-cells = <1>;
-			ams,enable-adc1-continuous-mode;
-			ams,enable-low-voltage-range;
-			ams,adc-channel = <12>;
-			ams,hi-threshold = <256>;
-			ams,low-threshold = <128>;
 			ams,enable-clock32k-out;
 			ams,backup-battery-chargable;
 			ams,battery-backup-charge-current = <AS3722_BBCCUR_400UA>;
@@ -59,6 +53,18 @@
 					function = "gpio";
 					bias-high-impedance;
 				};
+			};
+
+			adc_extcon: adc_extcon {
+				compatible = "ams,as3722-adc-extcon";
+				ams,extcon-name = "as3722-extcon";
+				ams,enable-adc1-continuous-mode;
+				ams,enable-low-voltage-range;
+				ams,adc-channel = <12>;
+				ams,hi-threshold = <256>;
+				ams,low-threshold = <128>;
+				#extcon-cells = <1>;
+				#io-channel-cells = <1>;
 			};
 
 		     	regulators {

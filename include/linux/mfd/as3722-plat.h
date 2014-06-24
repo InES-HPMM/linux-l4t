@@ -139,16 +139,28 @@ struct as3722_regulator_platform_data {
 };
 
 /*
- * as3722_adc_extcon_platform_data: ADC platform data.
- * @connection_name: Extcon connection name.
+ * ADC auto conv property: Generate auto conv interrupt when threshold crossed.
+ * @adc_channel_number: ADC channel number for monitoring.
+ * @adc_high_threshold: ADC High raw data for upper threshold to generate int.
+ * @adc_low_threshold: ADC low raw data for lower threshold to generate int.
+ * @adc_shutdown: Shutdown when interrupt generated.
  */
-struct as3722_adc_extcon_platform_data {
-	const char *connection_name;
-	bool enable_adc1_continuous_mode;
-	bool enable_low_voltage_range;
+struct as3722_adc_auto_conv_property {
 	int adc_channel;
 	int hi_threshold;
 	int low_threshold;
+	int auto_conversion_period_ms;
+	const char *connection_name;
+	bool enable_adc1_continuous_mode;
+	bool enable_low_voltage_range;
+};
+
+/*
+ * as3722_adc_extcon_platform_data: ADC platform data.
+ * @auto conv property: Generate auto conv interrupt when threshold crossed.
+ */
+struct as3722_adc_extcon_platform_data {
+	struct as3722_adc_auto_conv_property adc1_auto_conv_data;
 };
 
 struct as3722_platform_data {
