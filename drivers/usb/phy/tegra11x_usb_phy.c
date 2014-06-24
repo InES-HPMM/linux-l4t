@@ -1278,6 +1278,11 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 			phy->pmc_remote_wakeup = false;
 			phy->pmc_hotplug_wakeup = false;
 			local_irq_restore(flags);
+			if (usb_phy_reg_status_wait(base + USB_USBCMD,
+				USB_USBCMD_RS, USB_USBCMD_RS, 2000))
+				pr_err(
+				"%s: timeout waiting for USB_USBCMD_RS\n",
+				__func__);
 		} else {
 			mdelay(25);
 			local_irq_save(flags);
@@ -1288,12 +1293,6 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 		}
 
 		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, phy->inst);
-
-		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
-							 USB_USBCMD_RS, 2000)) {
-			pr_err("%s: timeout waiting for USB_USBCMD_RS\n",\
-			__func__);
-		}
 
 		/* Clear PCI and SRI bits to avoid an interrupt upon resume */
 		val = readl(base + USB_USBSTS);
