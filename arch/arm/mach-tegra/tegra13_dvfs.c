@@ -49,8 +49,8 @@ static int gpu_vmin_offsets[] = { 0, -20, };
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
-static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62, };
-static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS] = { 1100, };
+static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62, 72, 82, };
+static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS] = { 1130, 1100, 1060, };
 
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
 static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72,   82, };
