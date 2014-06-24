@@ -504,8 +504,10 @@ int __init loki_sdhci_init(void)
 	tegra_sdhci_platform_data2.cpu_speedo = speedo;
 	tegra_sdhci_platform_data3.cpu_speedo = speedo;
 
-	tegra_sdhci_platform_data3.disable_clock_gate = 1;
-	tegra_sdhci_platform_data2.disable_clock_gate = 1;
+	/*
+	 * To enable pm domain disable_clock_gate and
+	 * enable_pm_domain should be set to one
+	 */
 
 	platform_device_register(&tegra_sdhci_device3);
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
