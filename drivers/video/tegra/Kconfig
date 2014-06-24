@@ -225,7 +225,7 @@ config ADF_TEGRA_FBDEV
 
 config TEGRA_DC_EXTENSIONS
 	bool "Tegra Display Controller Extensions"
-	depends on TEGRA_DC
+	depends on TEGRA_DC && ADF_TEGRA = n
 	default y
 	help
 	  Provides additional IOCTLs exposing display controller specific features
