@@ -32,7 +32,7 @@
 		cpu_pwm_reg: pwm-regulator@0 {
 			reg = <0>;
 			compatible = "regulator-pwm";
-			pwms = <&pwm_dfll 0 12750000>;
+			pwms = <&pwm_dfll 0 2500>;
 			regulator-name = "vdd-cpu-pwm-reg";
 			regulator-min-microvolt = <703000>;
 			regulator-max-microvolt = <1317400>;

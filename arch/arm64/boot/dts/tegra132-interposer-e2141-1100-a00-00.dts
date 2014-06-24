@@ -253,4 +253,10 @@
 		status = "okay";
 		nvidia,invert-interrupt;
 	};
+
+	power_states: denver_power_states {
+		cc4 {
+			pmstate = <0x0>;
+		};
+	};
 };
