@@ -2271,6 +2271,132 @@ bool device_is_iommuable(struct device *dev)
 		(dev->archdata.dma_ops == &iommu_coherent_ops);
 }
 
+static inline void __dummy_common(void)
+{ WARN(1, "DMA API should be called after ->probe() is done.\n"); }
+
+static void *__dummy_alloc_attrs(struct device *dev, size_t size,
+				 dma_addr_t *dma_handle, gfp_t gfp,
+				 struct dma_attrs *attrs)
+{ __dummy_common(); return NULL; }
+
+static void __dummy_free_attrs(struct device *dev, size_t size,
+			       void *vaddr, dma_addr_t dma_handle,
+			       struct dma_attrs *attrs)
+{ __dummy_common(); }
+
+static int __dummy_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
+			      void *cpu_addr, dma_addr_t dma_addr, size_t size,
+			      struct dma_attrs *attrs)
+{ __dummy_common(); return -ENXIO; }
+
+static int __dummy_get_sgtable(struct device *dev, struct sg_table *sgt,
+			       void *cpu_addr, dma_addr_t dma_addr,
+			       size_t size, struct dma_attrs *attrs)
+{ __dummy_common(); return -ENXIO; }
+
+static dma_addr_t __dummy_map_page(struct device *dev, struct page *page,
+				   unsigned long offset, size_t size,
+				   enum dma_data_direction dir,
+				   struct dma_attrs *attrs)
+{ __dummy_common(); return DMA_ERROR_CODE; }
+
+static dma_addr_t __dummy_map_pages(struct device *dev, struct page **pages,
+				    dma_addr_t dma_handle, size_t count,
+				    enum dma_data_direction dir,
+				    struct dma_attrs *attrs)
+{ __dummy_common(); return DMA_ERROR_CODE; }
+
+static dma_addr_t __dummy_map_page_at(struct device *dev, struct page *page,
+				      dma_addr_t dma_handle,
+				      unsigned long offset, size_t size,
+				      enum dma_data_direction dir,
+				      struct dma_attrs *attrs)
+{ __dummy_common(); return DMA_ERROR_CODE; }
+
+static void __dummy_unmap_page(struct device *dev, dma_addr_t dma_handle,
+			       size_t size, enum dma_data_direction dir,
+			       struct dma_attrs *attrs)
+{ __dummy_common(); }
+
+static int __dummy_map_sg(struct device *dev, struct scatterlist *sg,
+			  int nents, enum dma_data_direction dir,
+			  struct dma_attrs *attrs)
+{ __dummy_common(); return 0; }
+
+static void __dummy_unmap_sg(struct device *dev,
+			     struct scatterlist *sg, int nents,
+			     enum dma_data_direction dir,
+			     struct dma_attrs *attrs)
+{ __dummy_common(); }
+
+static void __dummy_sync_single_for_cpu(struct device *dev,
+					dma_addr_t dma_handle, size_t size,
+					enum dma_data_direction dir)
+{ __dummy_common(); }
+
+static void __dummy_sync_single_for_device(struct device *dev,
+					   dma_addr_t dma_handle, size_t size,
+					   enum dma_data_direction dir)
+{ __dummy_common(); }
+
+static void __dummy_sync_sg_for_cpu(struct device *dev,
+				    struct scatterlist *sg, int nents,
+				    enum dma_data_direction dir)
+{ __dummy_common(); }
+
+static void __dummy_sync_sg_for_device(struct device *dev,
+				       struct scatterlist *sg, int nents,
+				       enum dma_data_direction dir)
+{ __dummy_common(); }
+
+static dma_addr_t __dummy_iova_alloc(struct device *dev, size_t size,
+				     struct dma_attrs *attrs)
+{ __dummy_common(); return DMA_ERROR_CODE; }
+
+static dma_addr_t __dummy_iova_alloc_at(struct device *dev, dma_addr_t *dma_addr,
+					size_t size, struct dma_attrs *attrs)
+{ __dummy_common(); return DMA_ERROR_CODE; }
+
+static void __dummy_iova_free(struct device *dev, dma_addr_t addr, size_t size,
+			      struct dma_attrs *attrs)
+{ __dummy_common(); }
+
+static size_t __dummy_iova_get_free_total(struct device *dev)
+{ __dummy_common(); return 0; }
+
+static size_t __dummy_iova_get_free_max(struct device *dev)
+{ __dummy_common(); return 0; }
+
+static struct dma_map_ops __dummy_ops = {
+	.alloc		= __dummy_alloc_attrs,
+	.free		= __dummy_free_attrs,
+	.mmap		= __dummy_mmap_attrs,
+	.get_sgtable	= __dummy_get_sgtable,
+
+	.map_page		= __dummy_map_page,
+	.map_pages		= __dummy_map_pages,
+	.map_page_at		= __dummy_map_page_at,
+	.unmap_page		= __dummy_unmap_page,
+	.sync_single_for_cpu	= __dummy_sync_single_for_cpu,
+	.sync_single_for_device	= __dummy_sync_single_for_device,
+
+	.map_sg			= __dummy_map_sg,
+	.unmap_sg		= __dummy_unmap_sg,
+	.sync_sg_for_cpu	= __dummy_sync_sg_for_cpu,
+	.sync_sg_for_device	= __dummy_sync_sg_for_device,
+
+	.iova_alloc		= __dummy_iova_alloc,
+	.iova_alloc_at		= __dummy_iova_alloc_at,
+	.iova_free		= __dummy_iova_free,
+	.iova_get_free_total	= __dummy_iova_get_free_total,
+	.iova_get_free_max	= __dummy_iova_get_free_max,
+};
+
+void set_dummy_dma_ops(struct device *dev)
+{
+	set_dma_ops(dev, &__dummy_ops);
+}
+
 /**
  * arm_iommu_create_mapping
  * @bus: pointer to the bus holding the client device (for IOMMU calls)
