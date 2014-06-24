@@ -23,6 +23,7 @@ Optional properties:
 	Mask SDR50 mode: 0x4
 	Mask DDR50 mode: 0x8
 - calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
+- pll_source: Specify list of clock parents
 
 Example:
 
@@ -40,5 +41,6 @@ Example:
 		built-in;
 		calib_3v3_offsets = <0x0202>;
 		calib_1v8_offsets = <0x0202>;
+		pll_source = "pll_m", "pll_p";
 		status = "okay";
 	};
