@@ -96,9 +96,6 @@ static int __init mods_init_module(void)
 
 	LOG_ENT();
 
-	/* Initilize memory tracker */
-	mods_init_mem();
-
 	rc = misc_register(&mods_dev);
 	if (rc < 0)
 		return -EBUSY;
@@ -146,9 +143,6 @@ static void __exit mods_exit_module(void)
 	mods_shutdown_clock_api();
 #endif
 
-	/* Check for memory leakage */
-	mods_check_mem();
-
 	mods_info_printk("driver unloaded\n");
 	LOG_EXT();
 }
@@ -188,7 +182,7 @@ static void mods_disable_all_devices(struct mods_file_private_data *priv)
 		pci_disable_device(old->dev);
 #endif
 		priv->enabled_devices = old->next;
-		MODS_KFREE(old, sizeof(*old));
+		kfree(old);
 	}
 }
 
@@ -196,38 +190,35 @@ static void mods_disable_all_devices(struct mods_file_private_data *priv)
  * MAPPING FUNCTIONS *
  *********************/
 static int mods_register_mapping(
-	struct file *fp,
-	struct SYS_MEM_MODS_INFO *p_mem_info,
-	u64 dma_addr,
-	u64 virtual_address,
-	u32 mapping_length)
+	struct file          *fp,
+	struct MODS_MEM_INFO *p_mem_info,
+	u64                   dma_addr,
+	u64                   virtual_address,
+	u32                   mapping_length)
 {
 	struct SYS_MAP_MEMORY *p_map_mem;
 	MODS_PRIVATE_DATA(private_data, fp);
 
 	LOG_ENT();
 
-	mods_debug_printk(DEBUG_MEM_DETAILED,
-			  "mapped dma 0x%llx, virt 0x%llx, size 0x%x\n",
-			  dma_addr, virtual_address, mapping_length);
-
-	MODS_KMALLOC(p_map_mem, sizeof(*p_map_mem));
+	p_map_mem = kmalloc(sizeof(*p_map_mem), GFP_KERNEL);
 	if (unlikely(!p_map_mem)) {
 		LOG_EXT();
 		return -ENOMEM;
 	}
 	memset(p_map_mem, 0, sizeof(*p_map_mem));
 
-	if (p_mem_info == NULL)
-		p_map_mem->contiguous = true;
-	else
-		p_map_mem->contiguous = false;
 	p_map_mem->dma_addr = dma_addr;
 	p_map_mem->virtual_addr = virtual_address;
 	p_map_mem->mapping_length = mapping_length;
 	p_map_mem->p_mem_info = p_mem_info;
 
 	list_add(&p_map_mem->list, private_data->mods_mapping_list);
+
+	mods_debug_printk(DEBUG_MEM_DETAILED,
+	    "map alloc %p as %p: phys 0x%llx, virt 0x%llx, size 0x%x\n",
+	    p_mem_info, p_map_mem, dma_addr, virtual_address, mapping_length);
+
 	LOG_EXT();
 	return OK;
 }
@@ -250,7 +241,7 @@ static void mods_unregister_mapping(struct file *fp, u64 virtual_address)
 			list_del(iter);
 
 			/* free our data struct which keeps track of mapping */
-			MODS_KFREE(p_map_mem, sizeof(*p_map_mem));
+			kfree(p_map_mem);
 
 			return;
 		}
@@ -308,7 +299,7 @@ static pgprot_t mods_get_prot_for_range(struct file *fp, u64 dma_addr,
 	return prot;
 }
 
-static char *mods_get_prot_str(u32 mem_type)
+const char *mods_get_prot_str(u32 mem_type)
 {
 	switch (mem_type) {
 	case MODS_MEMORY_CACHED:
@@ -325,8 +316,9 @@ static char *mods_get_prot_str(u32 mem_type)
 	}
 }
 
-static char *mods_get_prot_str_for_range(struct file *fp, u64 dma_addr,
-					 u64 size)
+static const char *mods_get_prot_str_for_range(struct file *fp,
+					       u64          dma_addr,
+					       u64          size)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
 	if ((dma_addr == private_data->mem_type.dma_addr) &&
@@ -375,8 +367,7 @@ static void mods_krnl_vma_close(struct vm_area_struct *vma)
 					  "closed vma, virt 0x%lx\n",
 					  vma->vm_start);
 			MODS_VMA_PRIVATE(vma) = NULL;
-			MODS_KFREE(vma_private_data,
-				   sizeof(*vma_private_data));
+			kfree(vma_private_data);
 
 			spin_unlock(&private_data->lock);
 		}
@@ -398,23 +389,23 @@ static int mods_krnl_open(struct inode *ip, struct file *fp)
 
 	LOG_ENT();
 
-	MODS_KMALLOC(mods_alloc_list, sizeof(struct list_head));
+	mods_alloc_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
 	if (unlikely(!mods_alloc_list)) {
 		LOG_EXT();
 		return -ENOMEM;
 	}
 
-	MODS_KMALLOC(mods_mapping_list, sizeof(struct list_head));
+	mods_mapping_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
 	if (unlikely(!mods_mapping_list)) {
-		MODS_KFREE(mods_alloc_list, sizeof(struct list_head));
+		kfree(mods_alloc_list);
 		LOG_EXT();
 		return -ENOMEM;
 	}
 
-	MODS_KMALLOC(private_data, sizeof(*private_data));
+	private_data = kmalloc(sizeof(*private_data), GFP_KERNEL);
 	if (unlikely(!private_data)) {
-		MODS_KFREE(mods_alloc_list, sizeof(struct list_head));
-		MODS_KFREE(mods_mapping_list, sizeof(struct list_head));
+		kfree(mods_alloc_list);
+		kfree(mods_mapping_list);
 		LOG_EXT();
 		return -ENOMEM;
 	}
@@ -422,9 +413,9 @@ static int mods_krnl_open(struct inode *ip, struct file *fp)
 	id	=  mods_alloc_channel();
 	if (id_is_valid(id) != OK) {
 		mods_error_printk("too many clients\n");
-		MODS_KFREE(mods_alloc_list, sizeof(struct list_head));
-		MODS_KFREE(mods_mapping_list, sizeof(struct list_head));
-		MODS_KFREE(private_data, sizeof(*private_data));
+		kfree(mods_alloc_list);
+		kfree(mods_mapping_list);
+		kfree(private_data);
 		LOG_EXT();
 		return -EBUSY;
 	}
@@ -467,9 +458,9 @@ static int mods_krnl_close(struct inode *ip, struct file *fp)
 	mods_unregister_all_alloc(fp);
 	mods_disable_all_devices(private_data);
 
-	MODS_KFREE(private_data->mods_alloc_list, sizeof(struct list_head));
-	MODS_KFREE(private_data->mods_mapping_list, sizeof(struct list_head));
-	MODS_KFREE(private_data, sizeof(*private_data));
+	kfree(private_data->mods_alloc_list);
+	kfree(private_data->mods_mapping_list);
+	kfree(private_data);
 
 	mods_info_printk("driver closed\n");
 	LOG_EXT();
@@ -502,7 +493,7 @@ static int mods_krnl_mmap(struct file *fp, struct vm_area_struct *vma)
 
 	vma->vm_ops = &mods_krnl_vm_ops;
 
-	MODS_KMALLOC(vma_private_data, sizeof(*vma_private_data));
+	vma_private_data = kmalloc(sizeof(*vma_private_data), GFP_KERNEL);
 	if (unlikely(!vma_private_data)) {
 		LOG_EXT();
 		return -ENOMEM;
@@ -529,147 +520,136 @@ static int mods_krnl_mmap(struct file *fp, struct vm_area_struct *vma)
 
 static int mods_krnl_map_inner(struct file *fp, struct vm_area_struct *vma)
 {
-	struct SYS_MEM_MODS_INFO *p_mem_info;
-	unsigned int pages;
-	int i, j;
+	u64                   req_pa     = MODS_VMA_OFFSET(vma);
+	struct MODS_MEM_INFO *p_mem_info = mods_find_alloc(fp, req_pa);
+	u32                   req_pages  = MODS_VMA_SIZE(vma) >> PAGE_SHIFT;
 
-	pages = MODS_VMA_SIZE(vma) >> PAGE_SHIFT;
-
-	/* find already allocated memory */
-	p_mem_info = mods_find_alloc(fp, MODS_VMA_OFFSET(vma));
+	if ((req_pa             & ~PAGE_MASK) != 0 ||
+	    (MODS_VMA_SIZE(vma) & ~PAGE_MASK) != 0) {
+		mods_error_printk("requested mapping is not page-aligned\n");
+		return -EINVAL;
+	}
 
 	/* system memory */
-	if (p_mem_info != NULL) {
-		if (p_mem_info->alloc_type != MODS_ALLOC_TYPE_NON_CONTIG) {
-			u64 dma_addr = MODS_VMA_OFFSET(vma);
-			u32 pfn = MODS_DMA_TO_PHYS(dma_addr) >> PAGE_SHIFT;
-			pgprot_t prot = mods_get_prot(p_mem_info->cache_type,
-						      vma->vm_page_prot);
+	if (p_mem_info) {
+		u32                     first, i;
+		struct MODS_PHYS_CHUNK *pt         = p_mem_info->pages;
+		u32                     have_pages = 0;
+		unsigned long           map_va     = 0;
+		const pgprot_t          prot       =
+		    mods_get_prot(p_mem_info->cache_type, vma->vm_page_prot);
 
-			mods_debug_printk(DEBUG_MEM,
-				"map contig sysmem: "
-				"dma 0x%llx, virt 0x%lx, size 0x%x, "
-				"caching %s\n",
-				dma_addr,
-				(unsigned long)vma->vm_start,
-				(unsigned int)MODS_VMA_SIZE(vma),
-				mods_get_prot_str(p_mem_info->cache_type));
+		/* Find the beginning of the requested range */
+		for (first = 0; first < p_mem_info->max_chunks; first++) {
+			u64 dma_addr;
+			if (!pt[first].allocated)
+				continue;
+			dma_addr = pt[first].dma_addr;
+			if ((req_pa >= dma_addr) &&
+			    (req_pa <  dma_addr + (PAGE_SIZE << pt->order))) {
+				break;
+			}
+		}
+
+		if (first == p_mem_info->max_chunks) {
+			mods_error_printk("can't satisfy requested mapping\n");
+			return -EINVAL;
+		}
+
+		/* Count how many remaining pages we have in the allocation */
+		for (i = first; i < p_mem_info->max_chunks; i++) {
+			if (!pt[i].allocated)
+				break;
+			if (i == first) {
+				u64 aoffs      = req_pa - pt[i].dma_addr;
+				u32 skip_pages = aoffs >> PAGE_SHIFT;
+				have_pages     -= skip_pages;
+			}
+			have_pages += 1U << pt[i].order;
+		}
+
+		if (have_pages < req_pages) {
+			mods_error_printk("requested mapping exceeds bounds\n");
+			return -EINVAL;
+		}
+
+		/* Map pages into VA space */
+		map_va     = vma->vm_start;
+		have_pages = req_pages;
+		for (i = first; have_pages > 0; i++) {
+			u64 map_pa    = MODS_DMA_TO_PHYS(pt[i].dma_addr);
+			u32 map_size  = PAGE_SIZE << pt[i].order;
+			u32 map_pages = 1U << pt[i].order;
+
+			if (!pt[i].allocated)
+				break;
+
+			if (i == first) {
+				u64 aoffs = req_pa - pt[i].dma_addr;
+				map_pa    += aoffs;
+				map_size  -= aoffs;
+				map_pages -= aoffs >> PAGE_SHIFT;
+			}
+
+			if (map_pages > have_pages) {
+				map_size  = have_pages << PAGE_SHIFT;
+				map_pages = have_pages;
+			}
+
+			mods_debug_printk(DEBUG_MEM_DETAILED,
+			    "remap va 0x%lx pfn 0x%x size 0x%x pages 0x%x\n",
+			    map_va, (unsigned int)(map_pa>>PAGE_SHIFT),
+			    map_size, map_pages);
 
 			if (remap_pfn_range(vma,
-					    vma->vm_start,
-					    pfn,
-					    MODS_VMA_SIZE(vma),
+					    map_va,
+					    map_pa>>PAGE_SHIFT,
+					    map_size,
 					    prot)) {
-				mods_error_printk(
-					"failed to map contiguous memory\n");
+				mods_error_printk("failed to map memory\n");
 				return -EAGAIN;
 			}
 
-			/* MODS_VMA_OFFSET(vma) can change so it can't be used
-			 * to register the mapping */
-			mods_register_mapping(fp,
-					      p_mem_info,
-					      dma_addr,
-					      vma->vm_start,
-					      MODS_VMA_SIZE(vma));
-		} else {
-			/* insert consecutive pages one at a time */
-
-			unsigned long start = 0;
-			u64 dma_addr = 0;
-			struct SYS_PAGE_TABLE **p_page_tbl
-				= p_mem_info->p_page_tbl;
-			const pgprot_t prot
-				= mods_get_prot(p_mem_info->cache_type,
-						vma->vm_page_prot);
-
-			mods_debug_printk(DEBUG_MEM,
-				"map noncontig sysmem: "
-				"virt 0x%lx, size 0x%x, caching %s\n",
-				(unsigned long)vma->vm_start,
-				(unsigned int)MODS_VMA_SIZE(vma),
-				mods_get_prot_str(p_mem_info->cache_type));
-
-			for (i = 0; i < p_mem_info->num_pages; i++) {
-				u64 offs = MODS_VMA_OFFSET(vma);
-				dma_addr = p_page_tbl[i]->dma_addr;
-				if ((offs >= dma_addr) &&
-				    (offs <  dma_addr + PAGE_SIZE)) {
-
-					break;
-				}
-			}
-
-			if (i == p_mem_info->num_pages) {
-				mods_error_printk(
-			"unable to find noncontiguous memory allocation\n");
-				return -EINVAL;
-			}
-
-			if ((i + pages) > p_mem_info->num_pages) {
-				mods_error_printk(
-			"requested mapping exceeds allocation's boundary!\n");
-				return -EINVAL;
-			}
-
-			start = vma->vm_start;
-			for (j = i; j < (i + pages); j++) {
-				dma_addr = MODS_DMA_TO_PHYS(
-						p_page_tbl[j]->dma_addr);
-				if (remap_pfn_range(vma,
-						    start,
-						    dma_addr>>PAGE_SHIFT,
-						    PAGE_SIZE,
-						    prot)) {
-					mods_error_printk(
-						    "failed to map memory\n");
-					return -EAGAIN;
-				}
-
-				start += PAGE_SIZE;
-			}
-
-			/* MODS_VMA_OFFSET(vma) can change so it can't be used
-			 * to register the mapping */
-			mods_register_mapping(fp,
-					      p_mem_info,
-					      p_page_tbl[i]->dma_addr,
-					      vma->vm_start,
-					      MODS_VMA_SIZE(vma));
+			map_va     += map_size;
+			have_pages -= map_pages;
 		}
+
+		/* MODS_VMA_OFFSET(vma) can change so it can't be used
+		 * to register the mapping */
+		mods_register_mapping(fp,
+				      p_mem_info,
+				      pt[first].dma_addr,
+				      vma->vm_start,
+				      MODS_VMA_SIZE(vma));
+
 	} else {
 		/* device memory */
 
-		u64 dma_addr = MODS_VMA_OFFSET(vma);
 		mods_debug_printk(DEBUG_MEM,
-			    "map device mem: "
-			    "dma 0x%llx, virt 0x%lx, size 0x%x, caching %s\n",
-			    dma_addr,
-			    (unsigned long)vma->vm_start,
-			    (unsigned int)MODS_VMA_SIZE(vma),
-			    mods_get_prot_str_for_range(fp,
-							MODS_VMA_OFFSET(vma),
-							MODS_VMA_SIZE(vma)));
+		    "map dev: phys 0x%llx, virt 0x%lx, size 0x%x, %s\n",
+		    req_pa,
+		    (unsigned long)vma->vm_start,
+		    (unsigned int)MODS_VMA_SIZE(vma),
+		    mods_get_prot_str_for_range(fp, req_pa,
+						MODS_VMA_SIZE(vma)));
 
 		if (io_remap_pfn_range(
 				vma,
 				vma->vm_start,
-				dma_addr>>PAGE_SHIFT,
+				req_pa>>PAGE_SHIFT,
 				MODS_VMA_SIZE(vma),
 				mods_get_prot_for_range(
 					fp,
-					MODS_VMA_OFFSET(vma),
+					req_pa,
 					MODS_VMA_SIZE(vma),
 					vma->vm_page_prot))) {
 			mods_error_printk("failed to map device memory\n");
 			return -EAGAIN;
 		}
 
-		/* MODS_VMA_OFFSET(vma) can change so it can't be used to
-		 * register the mapping */
 		mods_register_mapping(fp,
 				      NULL,
-				      dma_addr,
+				      req_pa,
 				      vma->vm_start,
 				      MODS_VMA_SIZE(vma));
 	}
@@ -716,7 +696,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 	arg_size = _IOC_SIZE(cmd);
 
 	if (arg_size > 0) {
-		MODS_KMALLOC(arg_copy, arg_size);
+		arg_copy = kmalloc(arg_size, GFP_KERNEL);
 		if (unlikely(!arg_copy)) {
 			LOG_EXT();
 			return -ENOMEM;
@@ -724,7 +704,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 
 		if (copy_from_user(arg_copy, arg, arg_size)) {
 			mods_error_printk("failed to copy ioctl data\n");
-			MODS_KFREE(arg_copy, arg_size);
+			kfree(arg_copy);
 			LOG_EXT();
 			return -EFAULT;
 		}
@@ -1041,8 +1021,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 		break;
 	}
 
-	if (arg_copy)
-		MODS_KFREE(arg_copy, arg_size);
+	kfree(arg_copy);
 
 	LOG_EXT();
 	return ret;

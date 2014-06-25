@@ -71,8 +71,7 @@ static int mods_enable_device(struct mods_file_private_data *priv,
 
 	ret = pci_enable_device(pdev);
 	if (ret == 0) {
-		entry = 0;
-		MODS_KMALLOC(entry, sizeof(*entry));
+		entry = kmalloc(sizeof(*entry), GFP_KERNEL);
 		if (unlikely(!entry))
 			return 0;
 		entry->dev = pdev;
@@ -285,7 +284,7 @@ static int add_irq_map(unsigned char channel,
 	LOG_ENT();
 
 	/* Allocate memory for the new entry */
-	MODS_KMALLOC(newmap, sizeof(*newmap));
+	newmap = kmalloc(sizeof(*newmap), GFP_KERNEL);
 	if (unlikely(!newmap)) {
 		LOG_EXT();
 		return -ENOMEM;
@@ -310,7 +309,7 @@ static int add_irq_map(unsigned char channel,
 			nvdev->name,
 			nvdev)) {
 		mods_error_printk("unable to enable IRQ 0x%x\n", irq);
-		MODS_KFREE(newmap, sizeof(*newmap));
+		kfree(newmap);
 		LOG_EXT();
 		return ERROR;
 	}
@@ -405,7 +404,7 @@ static void mods_free_map(struct dev_irq_map *del)
 #endif
 
 	/* Free memory */
-	MODS_KFREE(del, sizeof(*del));
+	kfree(del);
 
 	LOG_EXT();
 }

@@ -47,11 +47,6 @@
 #define MSI_DEV_FOUND	  1
 #define MSI_DEV_NOT_FOUND 0
 
-struct SYS_PAGE_TABLE {
-	u64	     dma_addr;
-	struct page *p_page;
-};
-
 struct en_dev_entry {
 	struct pci_dev	    *dev;
 	struct en_dev_entry *next;
@@ -80,31 +75,28 @@ struct mods_vm_private_data {
 	atomic_t     usage_count;
 };
 
+struct MODS_PHYS_CHUNK {
+	u64          dma_addr:58; /* phys addr (or machine addr on XEN) */
+	u32          order:5;     /* 1<<order = number of contig pages */
+	int          allocated:1;
+	struct page *p_page;
+};
+
 /* system memory allocation tracking */
-struct SYS_MEM_MODS_INFO {
-	u32		 alloc_type;
-
-	/* tells how the memory is cached:
-	 * (MODS_MEMORY_CACHED, MODS_MEMORY_UNCACHED, MODS_MEMORY_WRITECOMBINE)
-	 */
-	u32		 cache_type;
-
-	u32		 length;    /* actual number of bytes allocated */
-	u32		 order;	    /* 2^order pages allocated (contig alloc) */
-	u32		 num_pages; /* number of allocated pages */
-	u32		 k_mapping_ref_cnt;
-
-	u32		 addr_bits;
-	struct page	*p_page;
+struct MODS_MEM_INFO {
 	u64		 logical_addr; /* kernel logical address */
-	u64		 dma_addr;     /* physical address, for contig alloc,
-					  machine address on Xen */
+	u32		 num_pages;    /* number of allocated pages */
+	u32		 alloc_type;   /* MODS_ALLOC_TYPE_* */
+	u32		 cache_type;   /* MODS_MEMORY_* */
+	u32		 length;       /* actual number of bytes allocated */
+	u32		 max_chunks;   /* max number of contig chunks */
+	u32		 addr_bits;    /* phys addr size requested */
 	int		 numa_node;    /* numa node for the allocation */
 
-	/* keeps information about allocated pages for noncontig allocation */
-	struct SYS_PAGE_TABLE **p_page_tbl;
-
 	struct list_head list;
+
+	/* information about allocated pages */
+	struct MODS_PHYS_CHUNK pages[1];
 };
 
 #define MODS_ALLOC_TYPE_NON_CONTIG	0
@@ -113,14 +105,13 @@ struct SYS_MEM_MODS_INFO {
 
 /* map memory tracking */
 struct SYS_MAP_MEMORY {
-	u32 contiguous;
-	u64 dma_addr;		  /* first physical address of given mapping,
-				     machine address on Xen */
+	/* used for offset lookup, NULL for device memory */
+	struct MODS_MEM_INFO *p_mem_info;
+
+	u64 dma_addr;	    /* first physical address of given mapping,
+			       machine address on Xen */
 	u64 virtual_addr;   /* virtual address of given mapping */
 	u32 mapping_length; /* tells how many bytes were mapped */
-
-	/* helps to unmap noncontiguous memory, NULL for contiguous */
-	struct SYS_MEM_MODS_INFO *p_mem_info;
 
 	struct list_head   list;
 };
@@ -160,10 +151,6 @@ int mods_get_mem4goffset(void);
 
 #define LOG_ENT() mods_debug_printk(DEBUG_FUNC, "> %s\n", __func__)
 #define LOG_EXT() mods_debug_printk(DEBUG_FUNC, "< %s\n", __func__)
-#define LOG_ENT_C(format, args...) \
-	mods_debug_printk(DEBUG_FUNC, "> %s: " format, __func__, ##args)
-#define LOG_EXT_C(format, args...) \
-	mods_debug_printk(DEBUG_FUNC, "< %s: " format, __func__, ##args)
 
 #define mods_debug_printk(level, fmt, args...)\
 	({ \
@@ -217,57 +204,6 @@ struct mods_priv {
 	struct irq_q_info rec_info[MODS_CHANNEL_MAX];
 	spinlock_t	  lock;
 };
-
-/* ************************************************************************* */
-/* ************************************************************************* */
-/* **									     */
-/* ** SYSTEM CALLS							     */
-/* **									     */
-/* ************************************************************************* */
-/* ************************************************************************* */
-
-/* MEMORY */
-#define MODS_KMALLOC(ptr, size)						  \
-	{								  \
-		(ptr) = kmalloc(size, GFP_KERNEL);			  \
-		MODS_ALLOC_RECORD(ptr, size, "km_alloc");		  \
-	}
-
-#define MODS_KMALLOC_ATOMIC(ptr, size)					  \
-	{								  \
-		(ptr) = kmalloc(size, GFP_ATOMIC);			  \
-		MODS_ALLOC_RECORD(ptr, size, "km_alloc_atomic");	  \
-	}
-
-#define MODS_KFREE(ptr, size)						  \
-	{								  \
-		MODS_FREE_RECORD(ptr, size, "km_free");			  \
-		kfree((void *) (ptr));					  \
-	}
-
-#define MODS_ALLOC_RECORD(ptr, size, name)				  \
-	{if (ptr != NULL) {						  \
-		mods_add_mem(ptr, size, __FILE__, __LINE__);		  \
-	} }
-
-#define MODS_FREE_RECORD(ptr, size, name)				  \
-	{if (ptr != NULL) {						  \
-		mods_del_mem(ptr, size, __FILE__, __LINE__);		  \
-	} }
-
-#define MEMDBG_ALLOC(a, b)	 (a = kmalloc(b, GFP_ATOMIC))
-#define MEMDBG_FREE(a)		 (kfree(a))
-#define MODS_FORCE_KFREE(ptr)	 (kfree(ptr))
-
-#define __MODS_ALLOC_PAGES(page, order, gfp_mask, numa_node)		  \
-	{								  \
-		(page) = alloc_pages_node(numa_node, gfp_mask, order);	  \
-	}
-
-#define __MODS_FREE_PAGES(page, order)					  \
-	{								  \
-		__free_pages(page, order);				  \
-	}
 
 #ifndef MODS_HAS_SET_MEMORY
 #	define MODS_SET_MEMORY_UC(addr, pages) \
@@ -367,12 +303,9 @@ void mods_irq_dev_set_pri(unsigned char id, void *pri);
 int mods_irq_event_check(unsigned char);
 
 /* mem */
-void mods_init_mem(void);
-void mods_add_mem(void *, u32, const char *, u32);
-void mods_del_mem(void *, u32, const char *, u32);
-void mods_check_mem(void);
+const char *mods_get_prot_str(u32 mem_type);
 void mods_unregister_all_alloc(struct file *fp);
-struct SYS_MEM_MODS_INFO *mods_find_alloc(struct file *, u64);
+struct MODS_MEM_INFO *mods_find_alloc(struct file *, u64);
 
 /* clock */
 #ifdef CONFIG_ARCH_TEGRA

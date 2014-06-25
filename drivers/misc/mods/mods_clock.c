@@ -51,7 +51,7 @@ void mods_shutdown_clock_api(void)
 		struct clock_entry *entry
 			= list_entry(iter, struct clock_entry, list);
 		list_del(iter);
-		MEMDBG_FREE(entry);
+		kfree(entry);
 	}
 
 	spin_unlock(&mods_clock_lock);
@@ -77,7 +77,7 @@ static u32 mods_get_clock_handle(struct clk *pclk)
 	}
 
 	if (!entry) {
-		MEMDBG_ALLOC(entry, sizeof(*entry));
+		entry = kmalloc(sizeof(*entry), GFP_ATOMIC);
 		if (!unlikely(!entry)) {
 			entry->pclk = pclk;
 			entry->handle = ++last_handle;
