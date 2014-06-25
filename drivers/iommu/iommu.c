@@ -535,15 +535,26 @@ static int iommu_bus_notifier(struct notifier_block *nb,
 	 * ADD/DEL call into iommu driver ops if provided, which may
 	 * result in ADD/DEL notifiers to group->notifier
 	 */
-	if (action == BUS_NOTIFY_ADD_DEVICE) {
+	switch (action) {
+	case BUS_NOTIFY_ADD_DEVICE:
 		if (ops->add_device)
 			return ops->add_device(dev);
-	} else if (action == BUS_NOTIFY_DEL_DEVICE) {
+		break;
+	case BUS_NOTIFY_DEL_DEVICE:
 		if (ops->remove_device && dev->iommu_group) {
 			ops->remove_device(dev);
 			return 0;
 		}
-	}
+		break;
+	case BUS_NOTIFY_BOUND_DRIVER:
+		if (ops->bound_driver)
+			ops->bound_driver(dev);
+		break;
+	case BUS_NOTIFY_UNBIND_DRIVER:
+		if (ops->unbind_driver)
+			ops->unbind_driver(dev);
+		break;
+	};
 
 	/*
 	 * Remaining BUS_NOTIFYs get filtered and republished to the

@@ -103,6 +103,8 @@ struct iommu_ops {
 			      unsigned long cap);
 	int (*add_device)(struct device *dev);
 	void (*remove_device)(struct device *dev);
+	int (*bound_driver)(struct device *dev);
+	void (*unbind_driver)(struct device *dev);
 	int (*device_group)(struct device *dev, unsigned int *groupid);
 	int (*domain_get_attr)(struct iommu_domain *domain,
 			       enum iommu_attr attr, void *data);
