@@ -1026,7 +1026,7 @@ static struct clk_ops tegra_super_ops = {
  */
 static void tegra21_cpu_clk_init(struct clk *c)
 {
-	c->state = ON;
+	c->state = (!is_lp_cluster() == (c->u.cpu.mode == MODE_G)) ? ON : OFF;
 }
 
 static int tegra21_cpu_clk_enable(struct clk *c)
@@ -1310,7 +1310,12 @@ static struct clk_ops tegra_cpu_ops = {
 
 static void tegra21_cpu_cmplx_clk_init(struct clk *c)
 {
-	c->parent = c->inputs[0].input;
+	int i = is_lp_cluster() ? 1 : 0;
+
+	BUG_ON(c->inputs[0].input->u.cpu.mode != MODE_G);
+	BUG_ON(c->inputs[1].input->u.cpu.mode != MODE_LP);
+
+	c->parent = c->inputs[i].input;
 }
 
 /* cpu complex clock provides second level vitualization (on top of
@@ -1372,6 +1377,7 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	struct clk *p_source;
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
+	BUG_ON(c->parent->u.cpu.mode != (is_lp_cluster() ? MODE_LP : MODE_G));
 
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p)
@@ -1410,7 +1416,8 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 		delay = 0;
 	}
-	flags |= TEGRA_POWER_CLUSTER_G;
+	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
+		TEGRA_POWER_CLUSTER_G;
 
 	if (p == c->parent) {
 		if (flags & TEGRA_POWER_CLUSTER_FORCE) {
@@ -3577,6 +3584,11 @@ static int tegra21_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 		return -ENOSYS;
 
 	clk_lock_save(c, &c_flags);
+	if (c->parent->u.cpu.mode == MODE_LP) {
+		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
+		clk_unlock_restore(c, &c_flags);
+		return -ENOSYS;
+	}
 
 	clk_lock_save(c->parent, &p_flags);
 	old_use_dfll = use_dfll;
@@ -7092,6 +7104,15 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_cclk_lp[] = {
+	{ .input = &tegra_clk_m,	.value = 0},
+	{ .input = &tegra_clk_32k,	.value = 2},
+	{ .input = &tegra_pll_p_out_cpu, .value = 4},
+	{ .input = &tegra_pll_p_out4,	.value = 5},
+	{ .input = &tegra_pll_x,	.value = 8},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c_out1,	.value = 1},
@@ -7167,6 +7188,15 @@ static struct clk tegra_clk_cclk_g = {
 	.max_rate = 3000000000UL,
 };
 
+static struct clk tegra_clk_cclk_lp = {
+	.name	= "cclk_lp",
+	.flags  = DIV_U71 | DIV_U71_INT | MUX,
+	.inputs	= mux_cclk_lp,
+	.reg	= 0x370,
+	.ops	= &tegra_super_ops,
+	.max_rate = 1350000000,
+};
+
 static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
 	.parent    = &tegra_clk_cclk_g,
@@ -7180,8 +7210,22 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	},
 };
 
+static struct clk tegra_clk_virtual_cpu_lp = {
+	.name      = "cpu_lp",
+	.parent    = &tegra_clk_cclk_lp,
+	.ops       = &tegra_cpu_ops,
+	.max_rate  = 1350000000,
+	.min_rate  = 3187500,
+	.u.cpu = {
+		.main      = &tegra_pll_x,
+		.backup    = &tegra_pll_p_out4,
+		.mode      = MODE_LP,
+	},
+};
+
 static struct clk_mux_sel mux_cpu_cmplx[] = {
 	{ .input = &tegra_clk_virtual_cpu_g,	.value = 0},
+	{ .input = &tegra_clk_virtual_cpu_lp,	.value = 1},
 	{ 0, 0},
 };
 
@@ -8520,6 +8564,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pciex_clk,
 	&tegra_pex_uphy_clk,
 	&tegra_clk_cclk_g,
+	&tegra_clk_cclk_lp,
 	&tegra_clk_sclk_mux,
 	&tegra_clk_sclk_div,
 	&tegra_clk_sclk,
@@ -8527,6 +8572,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_pclk,
 	&tegra_clk_aclk_adsp,
 	&tegra_clk_virtual_cpu_g,
+	&tegra_clk_virtual_cpu_lp,
 	&tegra_clk_cpu_cmplx,
 	&tegra_clk_blink,
 	&tegra_clk_cop,
@@ -8623,6 +8669,7 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 
 	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
+	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
 }
 
 static void tegra21_init_one_clock(struct clk *c)
@@ -8865,7 +8912,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 26];
+			   PERIPH_CLK_SOURCE_NUM + 28];
 
 static int tegra21_clk_suspend(void)
 {
@@ -8930,6 +8977,9 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_clk_cclk_g.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 
+	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
+	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
+
 	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
 	*ctx++ = clk_readl(CLK_MASK_ARM);
@@ -8941,7 +8991,7 @@ static void tegra21_clk_resume(void)
 {
 	unsigned long off;
 	const u32 *ctx = clk_rst_suspend;
-	u32 val, pll_u_mask, pll_u_base, pll_u_out12;
+	u32 val, clk_y, pll_u_mask, pll_u_base, pll_u_out12;
 	u32 pll_p_out_hsio, pll_p_out_mask, pll_p_out34;
 	u32 pll_a_out0, pll_c_out1, pll_c4_out3, pll_re_out1;
 	struct clk *p;
@@ -9060,8 +9110,11 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_V);
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
 	clk_writel(*ctx++, CLK_OUT_ENB_X);
-	clk_writel(*ctx++, CLK_OUT_ENB_Y);
-	wmb();
+
+	/* Keep pllp_out_cpu enabled */
+	clk_y = *ctx++;
+	val = 1 << (tegra_pll_p_out_cpu.u.periph.clk_num % 32);
+	clk_writel_delay(clk_y | val, CLK_OUT_ENB_Y);
 
 	/* DFLL resume after cl_dvfs and i2c5 clocks are resumed */
 	tegra21_dfll_clk_resume(&tegra_dfll_cpu);
@@ -9069,6 +9122,10 @@ static void tegra21_clk_resume(void)
 	/* CPU G clock restored after DFLL and PLLs */
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
+
+	/* CPU LP clock restored after PLLs and pllp_out_cpu branch */
+	clk_writel(*ctx++, tegra_clk_cclk_lp.reg);
+	clk_writel_delay(*ctx++, tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
 	clk_writel(*ctx++, SPARE_REG);
 	clk_writel(*ctx++, MISC_CLK_ENB);
@@ -9083,6 +9140,8 @@ static void tegra21_clk_resume(void)
 	clk_writel(pll_u_out12, tegra_pll_u_out1.reg);
 	val = clk_readl(tegra_pll_u_vco.reg) & (~pll_u_mask);
 	clk_writel(val | (pll_u_base & pll_u_mask), tegra_pll_u_vco.reg);
+
+	clk_writel_delay(clk_y, CLK_OUT_ENB_Y);
 
 	p = &tegra_pll_c;
 	if (p->state == OFF)
