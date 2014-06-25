@@ -646,7 +646,6 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
 	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
 	.num_adx = 2,
-	.max9485_addr = 0,
 	/* sound card: tegra-wm8731-ad1937 */
 	.card_name = "tegra-wm-ad",
 };
@@ -707,7 +706,6 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
 	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
 	.num_adx = 2,
-	.max9485_addr = 0,
 	/* sound card: tegra-ak4618-ad1937 */
 	.card_name = "tegra-ak-ad",
 };
@@ -759,7 +757,6 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	/* initialize DAM input sampling rate */
 	.dam_in_srate = tegra_voice_call_in_srate,
 	.num_dam = 2,
-	.max9485_addr = 0,
 	/* sound card: tegra-ak4618-voicecall */
 	.card_name = "tegra-ak-vc",
 };
@@ -781,14 +778,19 @@ static void __init vcm30_t124_audio_init(void)
 
 	/* check the version of embedded breakout board */
 	is_e1892 = tegra_is_board(NULL, "61892", NULL, NULL, NULL);
-	tegra_e1860_b00_pdata.max9485_addr =
-	tegra_e1860_a0x_pdata.max9485_addr =
-		is_e1892 ? 0x70 : 0x60;
 
+	/* set max9485 addr as priv data for a0x and b00 */
+	tegra_e1860_a0x_pdata.priv_data =
+	tegra_e1860_b00_pdata.priv_data =
+	tegra_voice_call_pdata.priv_data =
+		(void *)(is_e1892 ? 0x70 : 0x60);
+
+	/* initialize the platform data structure */
 	tegra_snd_vcm30t124.dev.platform_data = is_e1860_b00 ?
 		(modem_id ? &tegra_voice_call_pdata :
 			&tegra_e1860_b00_pdata) : &tegra_e1860_a0x_pdata;
 
+	/* register the platform device and dummy codec if any */
 	platform_device_register(&tegra_snd_vcm30t124);
 	platform_device_register(&tegra_spdif_dit);
 }

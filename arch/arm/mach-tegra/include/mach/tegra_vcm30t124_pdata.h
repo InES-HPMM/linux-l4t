@@ -42,7 +42,7 @@ struct dai_link_config {
  * @adx_slot_map: ADX slot map table
  * @num_adx: number of ADXs to be initialized
  * @dev_num: number of 'config' devices initialized
- * @max9485_addr: I2C address for max9485
+ * @priv_data: platform specific private data if any
  * @card_name: sound card name needed (default: tegra-generic)
  */
 struct tegra_vcm30t124_platform_data {
@@ -56,6 +56,6 @@ struct tegra_vcm30t124_platform_data {
 	unsigned int num_amx;
 	unsigned int *adx_slot_map[2];
 	unsigned int num_adx;
-	unsigned int max9485_addr;
+	void *priv_data;
 	const char *card_name;
 };
