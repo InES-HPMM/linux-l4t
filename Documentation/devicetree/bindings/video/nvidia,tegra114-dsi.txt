@@ -21,9 +21,9 @@ NVIDIA TEGRA114 Display Serial Interface
  Required properties
  - name: Can be arbitrary.
  - compatible: Can be arbitrary. One panel has its own unique compatible.
- - nvidia,dsi-panel-rst-gpio: panel reset gpio.
- - nvidia,dsi-panel-bl-en-gpio: backlight enabling gpio.
- - nvidia,dsi-panel-bl-pwm-gpio: gpio for backlight pwm signal.
+ - nvidia,panel-rst-gpio: panel reset gpio.
+ - nvidia,panel-bl-en-gpio: backlight enabling gpio.
+ - nvidia,panel-bl-pwm-gpio: gpio for backlight pwm signal.
  - nvidia,dsi-te-gpio: gpio for panel TE(Tearing Effect) signal.
  - nvidia,dsi-n-data-lanes: Number of DSI lanes in use. Should be one of 2, 3, 4, and 8
  - nvidia,dsi-video-burst-mode: Video mode. Write 0, 1, 2, 3, 4, 5 and 6 for TEGRA_DSI_VIDEO_NONE_BURST_MODE,
@@ -210,7 +210,7 @@ Example
 				nvidia,dsi-virtual-channel = <TEGRA_DSI_VIRTUAL_CHANNEL_0>;
 				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-power-saving-suspend = <TEGRA_DSI_ENABLE>;
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 				nvidia,dsi-pkt-seq =
 					 <CMD_VS LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT PKT_LP LINE_STOP>,
 					 <CMD_VE LEN_SHORT CMD_BLNK LEN_HSYNC CMD_HE LEN_SHORT PKT_LP LINE_STOP>,

@@ -78,13 +78,13 @@
 			status = "okay";
 			panel-a-wxga-8-0 {
 				nvidia,dsi-boardinfo = <1761 0 0 0>;
-				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 			panel-a-wuxga-8-0 {
 				nvidia,dsi-boardinfo = <1761 0 0 1>;
-				nvidia,dsi-panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
-				nvidia,dsi-panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 		};
 	};
