@@ -127,14 +127,13 @@
 	udc@7d000000 {
 		nvidia,port_otg;
 		nvidia,charging_supported;
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,id_det_type = <1>;
 		status = "okay";
 	};
 
 	otg@7d000000 {
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,id_det_type = <1>;
+		nvidia,id_extcon_dev_name = "as3722-extcon";
 		status = "okay";
 	};
 
