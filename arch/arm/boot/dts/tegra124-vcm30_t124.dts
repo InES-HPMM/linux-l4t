@@ -125,6 +125,15 @@
 		i2s@70301000 {
 			status = "okay";
 		};
+		i2s@70301100 {
+			status = "okay";
+		};
+		i2s@70301200 {
+			status = "okay";
+		};
+		i2s@70301300 {
+			status = "okay";
+		};
 		i2s@70301400 {
 			status = "okay";
 		};
