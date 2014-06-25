@@ -43,6 +43,7 @@
 #include "rndis.c"
 #include "f_ecm.c"
 #include "f_eem.c"
+#include "f_ncm.c"
 #include "u_ether.c"
 
 MODULE_AUTHOR("Mike Lockwood");
@@ -972,6 +973,103 @@ static struct android_usb_function eem_function = {
 	.attributes	= eem_function_attributes,
 };
 
+struct ncm_function_config {
+	u8      ethaddr[ETH_ALEN];
+	struct eth_dev *dev;
+};
+
+static int
+ncm_function_init(struct android_usb_function *f,
+		struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct ncm_function_config), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+	return 0;
+}
+
+static void ncm_function_cleanup(struct android_usb_function *f)
+{
+	kfree(f->config);
+	f->config = NULL;
+}
+
+static int
+ncm_function_bind_config(struct android_usb_function *f,
+		struct usb_configuration *c)
+{
+	int ret;
+	struct ncm_function_config *ncm = f->config;
+	struct eth_dev *dev;
+
+	if (!ncm) {
+		pr_err("%s: ncm_pdata\n", __func__);
+		return -1;
+	}
+
+	pr_info("%s MAC: %02X:%02X:%02X:%02X:%02X:%02X\n", __func__,
+		ncm->ethaddr[0], ncm->ethaddr[1], ncm->ethaddr[2],
+		ncm->ethaddr[3], ncm->ethaddr[4], ncm->ethaddr[5]);
+
+	dev = gether_setup_name(c->cdev->gadget, ncm->ethaddr, "ncm");
+	if (IS_ERR(dev)) {
+		ret = PTR_ERR(dev);
+		pr_err("%s: gether_setup failed\n", __func__);
+		return ret;
+	}
+	ncm->dev = dev;
+
+	return ncm_bind_config(c, ncm->ethaddr, ncm->dev);
+}
+
+static void ncm_function_unbind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct ecm_function_config *ecm = f->config;
+	gether_cleanup(ecm->dev);
+}
+
+static ssize_t ncm_ethaddr_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct ncm_function_config *ncm = f->config;
+	return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+		ncm->ethaddr[0], ncm->ethaddr[1], ncm->ethaddr[2],
+		ncm->ethaddr[3], ncm->ethaddr[4], ncm->ethaddr[5]);
+}
+
+static ssize_t ncm_ethaddr_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct ncm_function_config *ncm = f->config;
+
+	if (sscanf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+		    (int *)&ncm->ethaddr[0], (int *)&ncm->ethaddr[1],
+		    (int *)&ncm->ethaddr[2], (int *)&ncm->ethaddr[3],
+		    (int *)&ncm->ethaddr[4], (int *)&ncm->ethaddr[5]) == 6)
+		return size;
+	return -EINVAL;
+}
+
+static DEVICE_ATTR(ncm_ethaddr, S_IRUGO | S_IWUSR, ncm_ethaddr_show,
+					       ncm_ethaddr_store);
+
+static struct device_attribute *ncm_function_attributes[] = {
+	&dev_attr_ncm_ethaddr,
+	NULL
+};
+
+static struct android_usb_function ncm_function = {
+	.name		= "ncm",
+	.init		= ncm_function_init,
+	.cleanup	= ncm_function_cleanup,
+	.bind_config	= ncm_function_bind_config,
+	.unbind_config	= ncm_function_unbind_config,
+	.attributes	= ncm_function_attributes,
+};
+
 struct mass_storage_function_config {
 	struct fsg_config fsg;
 	struct fsg_common *common;
@@ -1188,6 +1286,7 @@ static struct android_usb_function *supported_functions[] = {
 	&ptp_function,
 	&ecm_function,
 	&eem_function,
+	&ncm_function,
 	&rndis_function,
 	&mass_storage_function,
 	&accessory_function,
