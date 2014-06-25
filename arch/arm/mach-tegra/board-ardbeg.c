@@ -54,7 +54,6 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/mfd/palmas.h>
 #include <linux/clk/tegra.h>
-#include <media/tegra_dtv.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
@@ -826,6 +825,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dtv", 0x7000c300, "dtv", NULL),
 #if defined(CONFIG_ARM64)
 	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
 			&tegra_udc_pdata.u_data.dev),
@@ -1276,18 +1276,6 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("ardbeg");
 }
 
-#if !defined(CONFIG_ARM64)
-static struct tegra_dtv_platform_data ardbeg_dtv_pdata = {
-	.dma_req_selector = 11,
-};
-
-static void __init ardbeg_dtv_init(void)
-{
-	tegra_dtv_device.dev.platform_data = &ardbeg_dtv_pdata;
-	platform_device_register(&tegra_dtv_device);
-}
-#endif
-
 static struct tegra_io_dpd pexbias_io = {
 	.name			= "PEX_BIAS",
 	.io_dpd_reg_index	= 0,
@@ -1353,9 +1341,6 @@ static void __init tegra_ardbeg_late_init(void)
 		; /* T210_interposer use DT for power tree*/
 	else
 		ardbeg_regulator_init();
-#if !defined(CONFIG_ARM64)
-	ardbeg_dtv_init();
-#endif
 	ardbeg_suspend_init();
 
 	if ((board_info.board_id == BOARD_PM374) ||
