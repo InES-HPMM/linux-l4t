@@ -393,6 +393,8 @@ int wldev_miracast_tuning(
 	int ampdu_mpdu;
 	int roam_off;
 	int ampdu_rx_tid = -1;
+	int disable_interference_mitigation = 0;
+	int auto_interference_mitigation = -1;
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	int mchan_algo;
 	int mchan_bw;
@@ -449,8 +451,29 @@ set_mode:
 		ampdu_rx_tid = 0x7f;
 		mode = 0;
 		goto set_mode;
-	}
-	else {
+	} else if (mode == 5) {
+		/* Blake connected mode, disable interference mitigation */
+		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
+			&disable_interference_mitigation, sizeof(int), true);
+		if (error) {
+			WLDEV_ERROR((
+				"Failed to set interference_override: mode:%d, error:%d\n",
+				mode, error));
+			return -1;
+		}
+		return error;
+	} else if (mode == 6) {
+		/* No Blake connected, enable auto interference mitigation */
+		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
+			&auto_interference_mitigation, sizeof(int), true);
+		if (error) {
+			WLDEV_ERROR((
+				"Failed to set interference_override: mode:%d, error:%d\n",
+				mode, error));
+			return -1;
+		}
+		return error;
+	} else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
 		return -1;
 	}
