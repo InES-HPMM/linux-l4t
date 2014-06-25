@@ -149,7 +149,7 @@ static inline unsigned int is_lp_cluster(void)
 	    :
 	    : "cc","memory");
 #endif
-	return reg ; /* 0 == G, 1 == LP*/
+	return reg & 1; /* 0 == G, 1 == LP*/
 #endif
 }
 int tegra_cluster_control(unsigned int us, unsigned int flags);
