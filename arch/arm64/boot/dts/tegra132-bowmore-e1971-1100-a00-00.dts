@@ -127,7 +127,7 @@
 		nvidia,id_det_type = <1>;
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
-
+		#extcon-cells = <1>;
 		status = "okay";
 	};
 
@@ -138,6 +138,7 @@
 		nvidia,id_extcon_dev_name = "palmas-extcon";
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
 		status = "okay";
 	};
 
@@ -176,5 +177,17 @@
 				};
 			};
 		};
+	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		extcon-cables = <&udc 1 &udc 2 &udc 3
+				&udc 4 &udc 5 &udc 6
+				&udc 7 &udc 8 &udc 9
+				&udc 10 &otg 0>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger","fast-charger",
+				"slow-charger", "apple-500ma", "apple-1a",
+				"apple-2a", "y-cable";
 	};
 };

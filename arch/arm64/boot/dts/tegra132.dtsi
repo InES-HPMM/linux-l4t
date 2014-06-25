@@ -85,7 +85,7 @@
 		status = "disabled";
 	};
 
-	otg@7d000000 {
+	otg: otg@7d000000 {
 		compatible = "nvidia,tegra132-otg";
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;

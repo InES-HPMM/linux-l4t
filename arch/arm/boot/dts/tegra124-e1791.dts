@@ -98,4 +98,9 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		status = "okay";
 	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		power-supply,extcon-dev = "tegra-udc";
+	};
 };

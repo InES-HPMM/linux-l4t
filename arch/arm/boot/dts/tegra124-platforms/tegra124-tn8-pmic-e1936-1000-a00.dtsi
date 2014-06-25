@@ -675,11 +675,6 @@
 		vpp_fuse-supply = <&vpp_fuse>;
 	};
 
-	psy_extcon {
-		compatible = "power-supply-extcon";
-		power-supply,extcon-dev = "tegra-udc";
-	};
-
 	power-detect {
 		pwrdet-nand-supply = <&palmas_smps8>;
 		pwrdet-sdmmc1-supply = <&palmas_smps8>;

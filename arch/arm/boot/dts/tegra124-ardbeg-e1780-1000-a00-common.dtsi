@@ -151,4 +151,9 @@
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 		status = "okay";
 	};
+
+	psy_extcon {
+		compatible = "power-supply-extcon";
+		power-supply,extcon-dev = "tegra-udc";
+	};
 };
